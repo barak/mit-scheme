@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: class.scm,v 1.11 2001/12/23 17:20:59 cph Exp $
+;;; $Id: class.scm,v 1.12 2002/02/03 03:38:58 cph Exp $
 ;;;
-;;; Copyright (c) 1995-1999, 2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1995-1999, 2001, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -273,9 +273,10 @@
 
 (let-syntax
     ((define-primitive-class
-      (non-hygienic-macro-transformer
-       (lambda (name . superclasses)
-	 `(DEFINE ,name (MAKE-CLASS ',name (LIST ,@superclasses) '()))))))
+      (syntax-rules ()
+	((define-primitive-class name superclass ...)
+	 (define name
+	   (make-class 'name (list superclass ...) '()))))))
 
 (define-primitive-class <boolean> <object>)
 (define-primitive-class <char> <object>)

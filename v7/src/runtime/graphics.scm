@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.19 2001/12/23 17:20:59 cph Exp $
+$Id: graphics.scm,v 1.20 2002/02/03 03:38:55 cph Exp $
 
-Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1989-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -253,12 +253,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-graphics-operation
-      (non-hygienic-macro-transformer
-       (lambda (name)
-	 `(DEFINE-INTEGRABLE
-	    (,(symbol-append 'GRAPHICS-DEVICE/OPERATION/ name) DEVICE)
-	    (,(symbol-append 'GRAPHICS-DEVICE-TYPE/OPERATION/ name)
-	     (GRAPHICS-DEVICE/TYPE DEVICE)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (let ((name (cadr form)))
+	   `(DEFINE-INTEGRABLE
+	      (,(close-syntax (symbol-append 'GRAPHICS-DEVICE/OPERATION/ name)
+			      environment)
+	       DEVICE)
+	      (,(close-syntax (symbol-append 'GRAPHICS-DEVICE-TYPE/OPERATION/
+					     name)
+			      environment)
+	       (GRAPHICS-DEVICE/TYPE DEVICE))))))))
   (define-graphics-operation clear)
   (define-graphics-operation close)
   (define-graphics-operation coordinate-limits)

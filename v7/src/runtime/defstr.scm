@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.37 2002/01/12 02:56:14 cph Exp $
+$Id: defstr.scm,v 14.38 2002/02/03 03:38:55 cph Exp $
 
 Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -70,306 +70,497 @@ differences:
 
 |#
 
-(define-syntax define-structure
-  (non-hygienic-macro-transformer
-   (lambda (name-and-options . slot-descriptions)
-     (let ((structure
-	    (with-values
-		(lambda ()
-		  (if (pair? name-and-options)
-		      (values (car name-and-options) (cdr name-and-options))
-		      (values name-and-options '())))
-	      (lambda (name options)
-		(parse/options name
-			       options
-			       (map parse/slot-description
-				    slot-descriptions))))))
-       (do ((slots (structure/slots structure) (cdr slots))
-	    (index (if (structure/named? structure)
-		       (+ (structure/offset structure) 1)
-		       (structure/offset structure))
-		   (+ index 1)))
-	   ((null? slots))
-	 (set-slot/index! (car slots) index))
-       `(BEGIN ,@(type-definitions structure)
-	       ,@(constructor-definitions structure)
-	       ,@(accessor-definitions structure)
-	       ,@(modifier-definitions structure)
-	       ,@(predicate-definitions structure)
-	       ,@(copier-definitions structure))))))
+(define-expander 'DEFINE-STRUCTURE system-global-environment
+  (lambda (form environment closing-environment)
+    (if (not (and (pair? (cdr form)) (list? (cddr form))))
+	(error "Ill-formed special form:" form))
+    (make-syntactic-closure closing-environment '()
+      (let ((name-and-options (cadr form))
+	    (slot-descriptions (cddr form)))
+	(let ((structure
+	       (call-with-values
+		   (lambda ()
+		     (if (pair? name-and-options)
+			 (values (car name-and-options) (cdr name-and-options))
+			 (values name-and-options '())))
+		 (lambda (name options)
+		   (if (not (symbol? name))
+		       (error "Structure name must be a symbol:" name))
+		   (if (not (list? options))
+		       (error "Structure options must be a list:" options))
+		   (let ((context
+			  (make-parser-context name
+					       environment
+					       closing-environment)))
+		     (parse/options options
+				    (parse/slot-descriptions slot-descriptions)
+				    context))))))
+	  `(BEGIN ,@(type-definitions structure)
+		  ,@(constructor-definitions structure)
+		  ,@(accessor-definitions structure)
+		  ,@(modifier-definitions structure)
+		  ,@(predicate-definitions structure)
+		  ,@(copier-definitions structure)))))))
 
-;;;; Parse Options
+;;;; Parse options
 
-;; These two names are separated to cross-syntaxing from #F=='() to
-;; #F != '()
+(define (parse/options options slots context)
+  (let ((options (apply-option-transformers options context)))
+    (let ((conc-name-option (find-option 'CONC-NAME options))
+	  (constructor-options (find-options 'CONSTRUCTOR options))
+	  (keyword-constructor-options
+	   (find-options 'KEYWORD-CONSTRUCTOR options))
+	  (copier-option (find-option 'COPIER options))
+	  (predicate-option (find-option 'PREDICATE options))
+	  (print-procedure-option (find-option 'PRINT-PROCEDURE options))
+	  (type-option (find-option 'TYPE options))
+	  (type-descriptor-option (find-option 'TYPE-DESCRIPTOR options))
+	  (named-option (find-option 'NAMED options))
+	  (safe-accessors-option (find-option 'SAFE-ACCESSORS options))
+	  (initial-offset-option (find-option 'INITIAL-OFFSET options)))
+      (check-for-duplicate-constructors constructor-options
+					keyword-constructor-options)
+      (if (and type-descriptor-option named-option)
+	  (error "Conflicting structure options:"
+		 (option/original type-descriptor-option)
+		 (option/original named-option)))
+      (let ((tagged?
+	     (or (not type-option)
+		 type-descriptor-option
+		 named-option))
+	    (offset
+	     (if initial-offset-option
+		 (option/argument initial-offset-option)
+		 0)))
+	(if (not type-option)
+	    (check-for-illegal-untyped named-option initial-offset-option))
+	(if (not tagged?)
+	    (check-for-illegal-untagged predicate-option
+					print-procedure-option))
+	(do ((slots slots (cdr slots))
+	     (index (if tagged? (+ offset 1) offset) (+ index 1)))
+	    ((not (pair? slots)))
+	  (set-slot/index! (car slots) index))
+	(call-with-values
+	    (lambda ()
+	      (compute-tagging-info type-descriptor-option
+				    named-option
+				    context))
+	  (lambda (type-name tag-expression)
+	    (make-structure context
+			    (if conc-name-option
+				(option/argument conc-name-option)
+				(default-conc-name context))
+			    (compute-constructors constructor-options
+						  keyword-constructor-options
+						  context)
+			    (map option/arguments keyword-constructor-options)
+			    (and copier-option (option/argument copier-option))
+			    (if predicate-option
+				(option/argument predicate-option)
+				(and tagged? (default-predicate-name context)))
+			    (if print-procedure-option
+				(option/argument print-procedure-option)
+				(and type-option
+				     (default-unparser-text context)))
+			    (if type-option
+				(option/argument type-option)
+				'RECORD)
+			    tagged?
+			    (and tagged? type-name)
+			    (and tagged? tag-expression)
+			    (and safe-accessors-option
+				 (option/argument safe-accessors-option))
+			    offset
+			    slots)))))))
+
+(define (find-option keyword options)
+  (find-matching-item options
+    (lambda (option)
+      (eq? (option/keyword option) keyword))))
 
-(define names-meaning-false
-  '(#F FALSE NIL))
+(define (find-options keyword options)
+  (keep-matching-items options
+    (lambda (option)
+      (eq? (option/keyword option) keyword))))
 
-(define (make-default-defstruct-unparser-text name)
-  `(,(absolute 'STANDARD-UNPARSER-METHOD)
-    ',name
+(define (check-for-duplicate-constructors constructor-options
+					  keyword-constructor-options)
+  (let loop
+      ((options (append constructor-options keyword-constructor-options)))
+    (if (pair? options)
+	(let ((option (car options))
+	      (options (cdr options)))
+	  (let ((conflict
+		 (let ((name (car (option/arguments option))))
+		   (and name
+			(find-matching-item options
+			  (lambda (option*)
+			    (eq? (car (option/arguments option*))
+				 name)))))))
+	    (if conflict
+		(error "Conflicting constructor definitions:"
+		       (option/original option)
+		       (option/original conflict))))
+	  (loop options)))))
+
+(define (check-for-illegal-untyped named-option initial-offset-option)
+  (let ((lose
+	 (lambda (option)
+	   (error "Structure option illegal without TYPE option:"
+		  (option/original option)))))
+    (if (and named-option
+	     (let ((arguments (option/arguments named-option)))
+	       (and (pair? arguments)
+		    (not (car arguments)))))
+	(lose named-option))
+    (if initial-offset-option
+	(lose initial-offset-option))))
+
+(define (check-for-illegal-untagged predicate-option print-procedure-option)
+  (let ((test
+	 (lambda (option)
+	   (if (and option
+		    (let ((arguments (option/arguments option)))
+		      (and (pair? arguments)
+			   (car arguments))))
+	       (error "Structure option illegal for unnamed structure:"
+		      (option/original option))))))
+    (test predicate-option)
+    (test print-procedure-option)))
+
+(define (compute-constructors constructor-options
+			      keyword-constructor-options
+			      context)
+  (let* ((constructors (map option/arguments constructor-options))
+	 (constructors* (delete '(#F) constructors)))
+    (cond ((or (pair? keyword-constructor-options)
+	       (pair? constructors*))
+	   constructors*)
+	  ((member '(#F) constructors) '())
+	  (else (list (list (default-constructor-name context)))))))
+
+(define (compute-tagging-info type-descriptor-option named-option context)
+  (let ((single (lambda (name) (values name name))))
+    (cond (type-descriptor-option
+	   (single (option/argument type-descriptor-option)))
+	  (named-option
+	   (let ((arguments (option/arguments named-option)))
+	     (if (pair? arguments)
+		 (values #f (car arguments))
+		 (single (default-type-name context)))))
+	  (else
+	   (single (default-type-name context))))))
+
+(define (false-expression? object context)
+  (or (let loop ((object object))
+	(or (not object)
+	    (and (syntactic-closure? object)
+		 (loop (syntactic-closure/form object)))))
+      (and (identifier? object)
+	   (there-exists? false-expression-names
+	     (lambda (name)
+	       (identifier=? (parser-context/environment context)
+			     object
+			     (parser-context/closing-environment context)
+			     name))))))
+
+(define (false-marker? object)
+  (or (not object)
+      (memq object false-expression-names)))
+
+(define false-expression-names
+  '(FALSE NIL))
+
+(define (true-marker? object)
+  (or (eq? #t object)
+      (memq object true-expression-names)))
+
+(define true-expression-names
+  '(TRUE T))
+
+(define (option/argument option)
+  (car (option/arguments option)))
+
+(define (default-conc-name context)
+  (symbol-append (parser-context/name context) '-))
+
+(define (default-constructor-name context)
+  (close (symbol-append 'MAKE- (parser-context/name context)) context))
+
+(define (default-copier-name context)
+  (close (symbol-append 'COPY- (parser-context/name context)) context))
+
+(define (default-predicate-name context)
+  (close (symbol-append (parser-context/name context) '?) context))
+
+(define (default-unparser-text context)
+  `(,(absolute 'STANDARD-UNPARSER-METHOD context)
+    ',(parser-context/name context)
     #F))
 
-(define (parse/options name options slots)
-  (if (not (symbol? name))
-      (error "Structure name must be a symbol:" name))
-  (if (not (list? options))
-      (error "Structure options must be a list:" options))
-  (let ((conc-name (symbol-append name '-))
-	(default-constructor-disabled? false)
-	(boa-constructors '())
-	(keyword-constructors '())
-	(copier-name false)
-	(predicate-name (symbol-append name '?))
-	(print-procedure default)
-	(type 'RECORD)
-	(type-name name)
-	(tag-expression name)
-	(safe-accessors? #f)
-	(offset 0)
-	(options-seen '()))
-    (for-each
-     (lambda (option)
-       (if (not (or (symbol? option)
-		    (and (pair? option)
-			 (symbol? (car option))
-			 (list? (cdr option)))))
-	   (error "Ill-formed structure option:" option))
-       (with-values
-	   (lambda ()
-	     (if (pair? option)
-		 (values (car option) (cdr option))
-		 (values option '())))
-	 (lambda (keyword arguments)
-	   (set! options-seen (cons (cons keyword option) options-seen))
-	   (let ((n-arguments (length arguments))
-		 (check-duplicate
-		  (lambda ()
-		    (let ((previous (assq keyword (cdr options-seen))))
-		      (if previous
-			  (error "Duplicate structure option:"
-				 previous option)))))
-		 (symbol-option
-		  (lambda (argument)
-		    (cond ((memq argument names-meaning-false) false)
-			  ((symbol? argument) argument)
-			  (else (error "Illegal structure option:" option))))))
-	     (let ((check-argument
-		    (lambda ()
-		      (if (not (= n-arguments 1))
-			  (error
-			   (if (= n-arguments 0)
-			       "Structure option requires an argument:"
-			       "Structure option accepts at most 1 argument:")
-			   option))))
-		   (check-arguments
-		    (lambda (max)
-		      (if (> n-arguments max)
-			  (error (string-append
-				  "Structure option accepts at most "
-				  (number->string max)
-				  " arguments:")
-				 option)))))
-	       (case keyword
-		 ((CONC-NAME)
-		  (check-duplicate)
-		  (check-argument)
-		  (set! conc-name (symbol-option (car arguments))))
-		 ((CONSTRUCTOR)
-		  (check-arguments 2)
-		  (if (null? arguments)
-		      (set! boa-constructors
-			    (cons (list option (symbol-append 'MAKE- name))
-				  boa-constructors))
-		      (let ((name (car arguments)))
-			(if (memq name names-meaning-false)
-			    (set! default-constructor-disabled? true)
-			    (set! boa-constructors
-				  (cons (cons option arguments)
-					boa-constructors))))))
-		 ((KEYWORD-CONSTRUCTOR)
-		  (check-arguments 1)
-		  (set! keyword-constructors
-			(cons (list option
-				    (if (null? arguments)
-					(symbol-append 'MAKE- name)
-					(car arguments)))
-			      keyword-constructors)))
-		 ((COPIER)
-		  (check-duplicate)
-		  (check-arguments 1)
-		  (set! copier-name
-			(if (null? arguments)
-			    (symbol-append 'COPY- name)
-			    (symbol-option (car arguments)))))
-		 ((PREDICATE)
-		  (check-duplicate)
-		  (check-arguments 1)
-		  (set! predicate-name
-			(if (null? arguments)
-			    (symbol-append name '?)
-			    (symbol-option (car arguments)))))
-		 ((PRINT-PROCEDURE)
-		  (check-duplicate)
-		  (check-argument)
-		  (set! print-procedure
-			(and (not (memq (car arguments) names-meaning-false))
-			     (car arguments))))
-		 ((TYPE)
-		  (check-duplicate)
-		  (check-argument)
-		  (if (not (memq (car arguments) '(VECTOR LIST)))
-		      (error "Illegal structure option:" option))
-		  (set! type (car arguments)))
-		 ((TYPE-DESCRIPTOR)
-		  (check-duplicate)
-		  (check-argument)
-		  (set! type-name (car arguments))
-		  (set! tag-expression type-name))
-		 ((NAMED)
-		  (check-duplicate)
-		  (check-arguments 1)
-		  (if (null? arguments)
-		      (begin
-			(set! type-name name)
-			(set! tag-expression type-name))
-		      (begin
-			(set! type-name false)
-			(set! tag-expression (car arguments)))))
-		 ((SAFE-ACCESSORS)
-		  (check-duplicate)
-		  (check-arguments 1)
-		  (set! safe-accessors?
-			(if (null? arguments) #t (car arguments))))
-		 ((INITIAL-OFFSET)
-		  (check-duplicate)
-		  (check-argument)
-		  (if (not (exact-nonnegative-integer? (car arguments)))
-		      (error "Illegal structure option:" option))
-		  (set! offset (car arguments)))
-		 (else
-		  (error "Unknown structure option:" option))))))))
-     options)
-    (let loop ((constructors (append boa-constructors keyword-constructors)))
-      (if (not (null? constructors))
-	  (begin
-	    (let ((name (cadar constructors)))
-	      (for-each (lambda (constructor)
-			  (if (eq? name (cadr constructor))
-			      (error "Conflicting constructor definitions:"
-				     (caar constructors)
-				     (car constructor))))
-			(cdr constructors)))
-	    (loop (cdr constructors)))))
-    (let ((type-seen? (assq 'TYPE options-seen))
-	  (type-descriptor-seen? (assq 'TYPE-DESCRIPTOR options-seen))
-	  (named-seen? (assq 'NAMED options-seen)))
-      (if (and type-descriptor-seen? named-seen?)
-	  (error "Conflicting options:" type-descriptor-seen? named-seen?))
-      (let ((named? (or (not type-seen?) type-descriptor-seen? named-seen?)))
-	(if (not type-seen?)
-	    (let ((check-option
-		   (lambda (seen?)
-		     (if seen?
-			 (error "Structure option illegal without TYPE option:"
-				(cdr seen?))))))
-	      (check-option (and (not type-name) named-seen?))
-	      (check-option (assq 'INITIAL-OFFSET options-seen))))
-	(if (not named?)
-	    (let ((check
-		   (lambda (option-seen)
-		     (if option-seen
-			 (error
-			  "Structure option illegal for unnamed structure:"
-			  (cdr option-seen))))))
-	      (if predicate-name
-		  (check (assq 'PREDICATE options-seen)))
-	      (if (and (not (eq? print-procedure default)) print-procedure)
-		  (check (assq 'PRINT-PROCEDURE options-seen)))))
-	(make-structure name
-			conc-name
-			(map cdr keyword-constructors)
-			(cond ((or (not (null? boa-constructors))
-				   (not (null? keyword-constructors)))
-			       (map cdr boa-constructors))
-			      ((not default-constructor-disabled?)
-			       (list (list (symbol-append 'MAKE- name))))
-			      (else
-			       '()))
-			copier-name
-			(and named? predicate-name)
-			(and named?
-			     (cond ((not (eq? print-procedure default))
-				    print-procedure)
-				   ((eq? type 'RECORD)
-				    false)
-				   (else
-				    (make-default-defstruct-unparser-text
-				     name))))
-			type
-			named?
-			(and named? type-name)
-			(and named? tag-expression)
-			safe-accessors?
-			offset
-			slots)))))
+(define (default-type-name context)
+  (close (parser-context/name context) context))
 
-(define default
-  (list 'DEFAULT))
+(define (close name context)
+  (make-syntactic-closure (parser-context/environment context) '() name))
 
-;;;; Parse Slot-Descriptions
+(define (apply-option-transformers options context)
+  (let loop ((options options))
+    (if (pair? options)
+	(let ((option (car options))
+	      (options (cdr options)))
+	  (let ((lose
+		 (lambda () (error "Ill-formed structure option:" option))))
+	    (let ((entry
+		   (assq (cond ((and (pair? option)
+				     (symbol? (car option))
+				     (list? (cdr option)))
+				(car option))
+			       ((symbol? option)
+				option)
+			       (else
+				(lose)))
+			 known-options)))
+	      (if (not entry)
+		  (lose))
+	      (let ((normal-option (if (pair? option) option (list option)))
+		    (can-be-duplicated? (cadr entry))
+		    (transformer (cddr entry)))
+		(let ((option*
+		       (and (not can-be-duplicated?)
+			    (find-matching-item options
+			      (let ((keyword (car normal-option)))
+				(lambda (option*)
+				  (eq? (if (pair? option*)
+					   (car option*)
+					   option*)
+				       keyword)))))))
+		  (if option*
+		      (error "Duplicate structure option:" option option*)))
+		(cons (let ((option* (transformer normal-option context)))
+			(if (not option*)
+			    (lose))
+			(make-option (car option*)
+				     (cdr option*)
+				     option))
+		      (loop options))))))
+	'())))
+
+(define (define-option keyword duplicates? transformer)
+  (let ((entry (assq keyword known-options))
+	(tail (cons duplicates? transformer)))
+    (if entry
+	(set-cdr! entry tail)
+	(begin
+	  (set! known-options (cons (cons keyword tail) known-options))
+	  unspecific))))
+
+(define known-options '())
+
+(define (one-required-argument option if-1)
+  (case (length (cdr option))
+    ((1) (if-1 (cadr option)))
+    (else #f)))
+
+(define (one-optional-argument option if-0 if-1)
+  (case (length (cdr option))
+    ((0) (if-0))
+    ((1) (if-1 (cadr option)))
+    (else #f)))
+
+(define (two-optional-arguments option if-0 if-1 if-2)
+  (case (length (cdr option))
+    ((0) (if-0))
+    ((1) (if-1 (cadr option)))
+    ((2) (if-2 (cadr option) (caddr option)))
+    (else #f)))
+
+(define-option 'CONC-NAME #f
+  (lambda (option context)
+    context
+    (one-required-argument option
+      (lambda (arg)
+	(cond ((false-marker? arg) `(CONC-NAME #F))
+	      ((symbol? arg) `(CONC-NAME ,arg))
+	      (else #f))))))
+
+(define-option 'CONSTRUCTOR #t
+  (lambda (option context)
+    (two-optional-arguments option
+      (lambda ()
+	`(CONSTRUCTOR ,(default-constructor-name context)))
+      (lambda (arg1)
+	(cond ((false-expression? arg1 context) `(CONSTRUCTOR #F))
+	      ((identifier? arg1) `(CONSTRUCTOR ,(close arg1 context)))
+	      (else #f)))
+      (lambda (arg1 arg2)
+	(if (and (identifier? arg1) (mit-lambda-list? arg2))
+	    `(CONSTRUCTOR ,(close arg1 context) ,arg2)
+	    #f)))))
+
+(define-option 'KEYWORD-CONSTRUCTOR #t
+  (lambda (option context)
+    (one-optional-argument option
+      (lambda ()
+	`(KEYWORD-CONSTRUCTOR ,(default-constructor-name context)))
+      (lambda (arg)
+	(if (identifier? arg)
+	    `(KEYWORD-CONSTRUCTOR ,(close arg context))
+	    #f)))))
+
+(define-option 'COPIER #f
+  (lambda (option context)
+    (one-optional-argument option
+      (lambda ()
+	`(COPIER ,(default-copier-name context)))
+      (lambda (arg)
+	(cond ((false-expression? arg context) `(COPIER #F))
+	      ((identifier? arg) `(COPIER ,(close arg context)))
+	      (else #f))))))
+
+(define-option 'PREDICATE #f
+  (lambda (option context)
+    (one-optional-argument option
+      (lambda ()
+	`(PREDICATE ,(default-predicate-name context)))
+      (lambda (arg)
+	(cond ((false-expression? arg context) `(PREDICATE #F))
+	      ((identifier? arg) `(PREDICATE ,(close arg context)))
+	      (else #f))))))
+
+(define-option 'PRINT-PROCEDURE #f
+  (lambda (option context)
+    (one-required-argument option
+      (lambda (arg)
+	`(PRINT-PROCEDURE ,(if (false-expression? arg context)
+			       #f
+			       (close arg context)))))))
+
+(define-option 'TYPE #f
+  (lambda (option context)
+    context
+    (one-required-argument option
+      (lambda (arg)
+	(if (memq arg '(VECTOR LIST))
+	    `(TYPE ,arg)
+	    #f)))))
+
+(define-option 'TYPE-DESCRIPTOR #f
+  (lambda (option context)
+    (one-required-argument option
+      (lambda (arg)
+	(if (identifier? arg)
+	    `(TYPE-DESCRIPTOR ,(close arg context))
+	    #f)))))
+
+(define-option 'NAMED #f
+  (lambda (option context)
+    (one-optional-argument option
+      (lambda ()
+	`(NAMED))
+      (lambda (arg)
+	`(NAMED ,(if (false-expression? arg context)
+		     #f
+		     (close arg context)))))))
+
+(define-option 'SAFE-ACCESSORS #f
+  (lambda (option context)
+    context
+    (one-optional-argument option
+      (lambda ()
+	`(SAFE-ACCESSORS #T))
+      (lambda (arg)
+	(cond ((true-marker? arg) `(SAFE-ACCESSORS #T))
+	      ((false-marker? arg) `(SAFE-ACCESSORS #F))
+	      (else #f))))))
+
+(define-option 'INITIAL-OFFSET #f
+  (lambda (option context)
+    context
+    (one-required-argument option
+      (lambda (arg)
+	(if (exact-nonnegative-integer? arg)
+	    `(INITIAL-OFFSET ,arg)
+	    #f)))))
+
+;;;; Parse slot descriptions
+
+(define (parse/slot-descriptions slot-descriptions)
+  (let ((slots
+	 (map (lambda (description)
+		(cons (parse/slot-description description)
+		      description))
+	      slot-descriptions)))
+    (do ((slots slots (cdr slots)))
+	((not (pair? slots)))
+      (let ((name (slot/name (caar slots))))
+	(let ((slot*
+	       (find-matching-item (cdr slots)
+		 (lambda (slot)
+		   (eq? (slot/name (car slot)) name)))))
+	  (if slot*
+	      (error "Structure slots must not have duplicate names:"
+		     (cdar slots)
+		     (cdr slot*))))))
+    (map car slots)))
 
 (define (parse/slot-description slot-description)
-  (with-values
+  (call-with-values
       (lambda ()
 	(if (pair? slot-description)
 	    (if (pair? (cdr slot-description))
 		(values (car slot-description)
 			(cadr slot-description)
 			(cddr slot-description))
-		(values (car slot-description) false '()))
-	    (values slot-description false '())))
+		(values (car slot-description) #f '()))
+	    (values slot-description #f '())))
     (lambda (name default options)
       (if (not (list? options))
 	  (error "Structure slot options must be a list:" options))
-      (let ((type true)
-	    (read-only? false)
+      (let ((type #t)
+	    (read-only? #f)
 	    (options-seen '()))
 	(do ((options options (cddr options)))
-	    ((null? options))
-	  (if (null? (cdr options))
+	    ((not (pair? options)))
+	  (if (not (pair? (cdr options)))
 	      (error "Missing slot option argument:" (car options)))
-	  (let ((previous (assq (car options) options-seen))
-		(option (list (car options) (cadr options))))
-	    (if previous
-		(error "Duplicate slot option:" previous option))
-	    (set! options-seen (cons option options-seen))
-	    (case (car options)
-	      ((TYPE)
-	       (set! type
-		     (let ((argument (cadr options)))
-		       (cond ((memq argument '(#T TRUE T)) true)
+	  (let ((keyword (car options))
+		(argument (cadr options)))
+	    (let ((option (list keyword argument)))
+	      (let ((previous (assq keyword options-seen)))
+		(if previous
+		    (error "Duplicate slot option:" previous option)))
+	      (set! options-seen (cons option options-seen))
+	      (case keyword
+		((TYPE)
+		 (set! type
+		       (cond ((true-marker? argument) #t)
 			     ((symbol? argument) argument)
-			     (else (error "Illegal slot option:" option))))))
-	      ((READ-ONLY)
-	       (set! read-only?
-		     (let ((argument (cadr options)))
-		       (cond ((memq argument names-meaning-false) false)
-			     ((memq argument '(#T TRUE T)) true)
-			     (else (error "Illegal slot option:" option))))))
-	      (else
-	       (error "Unrecognized structure slot option:" option)))))
+			     (else (error "Illegal slot option:" option)))))
+		((READ-ONLY)
+		 (set! read-only?
+		       (cond ((false-marker? argument) #f)
+			     ((true-marker? argument) #t)
+			     (else (error "Illegal slot option:" option)))))
+		(else
+		 (error "Unrecognized structure slot option:" option))))))
 	(make-slot name default type read-only?)))))
+
+(define (get-slot-default slot structure)
+  (make-syntactic-closure
+      (parser-context/environment (structure/context structure))
+      (map slot/name (structure/slots structure))
+    (slot/default slot)))
 
 ;;;; Descriptive Structure
 
 (define structure-rtd
   (make-record-type
    "structure"
-   '(NAME CONC-NAME KEYWORD-CONSTRUCTORS BOA-CONSTRUCTORS COPIER-NAME
-	  PREDICATE-NAME PRINT-PROCEDURE TYPE NAMED? TYPE-NAME
-	  TAG-EXPRESSION SAFE-ACCESSORS? OFFSET SLOTS)))
+   '(CONTEXT CONC-NAME CONSTRUCTORS KEYWORD-CONSTRUCTORS COPIER-NAME
+	     PREDICATE-NAME PRINT-PROCEDURE TYPE NAMED? TYPE-NAME
+	     TAG-EXPRESSION SAFE-ACCESSORS? OFFSET SLOTS)))
 
 (define make-structure
   (record-constructor structure-rtd))
@@ -377,22 +568,22 @@ differences:
 (define structure?
   (record-predicate structure-rtd))
 
-(define structure/name
-  (record-accessor structure-rtd 'NAME))
+(define structure/context
+  (record-accessor structure-rtd 'CONTEXT))
 
 (define structure/conc-name
   (record-accessor structure-rtd 'CONC-NAME))
 
+(define structure/constructors
+  (record-accessor structure-rtd 'CONSTRUCTORS))
+
 (define structure/keyword-constructors
   (record-accessor structure-rtd 'KEYWORD-CONSTRUCTORS))
 
-(define structure/boa-constructors
-  (record-accessor structure-rtd 'BOA-CONSTRUCTORS))
-
-(define structure/copier-name
+(define structure/copier
   (record-accessor structure-rtd 'COPIER-NAME))
 
-(define structure/predicate-name
+(define structure/predicate
   (record-accessor structure-rtd 'PREDICATE-NAME))
 
 (define structure/print-procedure
@@ -401,10 +592,10 @@ differences:
 (define structure/type
   (record-accessor structure-rtd 'TYPE))
 
-(define structure/named?
+(define structure/tagged?
   (record-accessor structure-rtd 'NAMED?))
 
-(define structure/type-name
+(define structure/type-descriptor
   (record-accessor structure-rtd 'TYPE-NAME))
 
 (define structure/tag-expression
@@ -419,6 +610,45 @@ differences:
 (define structure/slots
   (record-accessor structure-rtd 'SLOTS))
 
+(define parser-context-rtd
+  (make-record-type "parser-context"
+		    '(NAME ENVIRONMENT CLOSING-ENVIRONMENT)))
+
+(define make-parser-context
+  (record-constructor parser-context-rtd))
+
+(define parser-context?
+  (record-predicate parser-context-rtd))
+
+(define parser-context/name
+  (record-accessor parser-context-rtd 'NAME))
+
+(define parser-context/environment
+  (record-accessor parser-context-rtd 'ENVIRONMENT))
+
+(define parser-context/closing-environment
+  (record-accessor parser-context-rtd 'CLOSING-ENVIRONMENT))
+
+
+(define option-rtd
+  (make-record-type "option" '(KEYWORD ARGUMENTS ORIGINAL)))
+
+(define make-option
+  (record-constructor option-rtd))
+
+(define option?
+  (record-predicate option-rtd))
+
+(define option/keyword
+  (record-accessor option-rtd 'KEYWORD))
+
+(define option/arguments
+  (record-accessor option-rtd 'ARGUMENTS))
+
+(define option/original
+  (record-accessor option-rtd 'ORIGINAL))
+
+
 (define slot-rtd
   (make-record-type "slot" '(NAME DEFAULT TYPE READ-ONLY? INDEX)))
 
@@ -448,137 +678,153 @@ differences:
 
 ;;;; Code Generation
 
-(define (absolute name)
-  `(ACCESS ,name #F))
+(define (absolute name context)
+  (make-syntactic-closure (parser-context/closing-environment context) '()
+    `(ACCESS ,name #F)))
 
 (define (accessor-definitions structure)
-  (map (lambda (slot)
-	 (let* ((name (slot/name slot))
-		(accessor-name
-		 (if (structure/conc-name structure)
-		     (symbol-append (structure/conc-name structure) name)
-		     name)))
-	   (if (structure/safe-accessors? structure)
-	       `(DEFINE ,accessor-name
-		  (,(absolute
-		     (case (structure/type structure)
-		       ((RECORD) 'RECORD-ACCESSOR)
-		       ((VECTOR) 'DEFINE-STRUCTURE/VECTOR-ACCESSOR)
-		       ((LIST) 'DEFINE-STRUCTURE/LIST-ACCESSOR)))
-		   ,(or (structure/tag-expression structure)
-			(slot/index slot))
-		   ',name))
-	       `(DEFINE-INTEGRABLE (,accessor-name STRUCTURE)
-		  (,(absolute
-		     (case (structure/type structure)
-		       ((RECORD) '%RECORD-REF)
-		       ((VECTOR) 'VECTOR-REF)
-		       ((LIST) 'LIST-REF)))
-		   STRUCTURE
-		   ,(slot/index slot))))))
-       (structure/slots structure)))
+  (let ((context (structure/context structure)))
+    (map (lambda (slot)
+	   (let* ((name (slot/name slot))
+		  (accessor-name
+		   (close (let ((conc-name (structure/conc-name structure)))
+			    (if conc-name
+				(symbol-append conc-name name)
+				name))
+			  context)))
+	     (if (structure/safe-accessors? structure)
+		 `(DEFINE ,accessor-name
+		    (,(absolute (case (structure/type structure)
+				  ((RECORD) 'RECORD-ACCESSOR)
+				  ((VECTOR) 'DEFINE-STRUCTURE/VECTOR-ACCESSOR)
+				  ((LIST) 'DEFINE-STRUCTURE/LIST-ACCESSOR))
+				context)
+		     ,(or (structure/tag-expression structure)
+			  (slot/index slot))
+		     ',name))
+		 `(DEFINE-INTEGRABLE (,accessor-name STRUCTURE)
+		    (,(absolute (case (structure/type structure)
+				  ((RECORD) '%RECORD-REF)
+				  ((VECTOR) 'VECTOR-REF)
+				  ((LIST) 'LIST-REF))
+				context)
+		     STRUCTURE
+		     ,(slot/index slot))))))
+	 (structure/slots structure))))
 
 (define (modifier-definitions structure)
-  (append-map!
-   (lambda (slot)
-     (if (slot/read-only? slot)
-	 '()
-	 (list
-	  (let* ((name (slot/name slot))
-		 (modifier-name
-		  (if (structure/conc-name structure)
-		      (symbol-append 'SET-
-				     (structure/conc-name structure)
-				     name
-				     '!)
-		      (symbol-append 'SET- name '!))))
-	    (if (structure/safe-accessors? structure)
-		`(DEFINE ,modifier-name
-		   (,(absolute
-		      (case (structure/type structure)
-			((RECORD) 'RECORD-MODIFIER)
-			((VECTOR) 'DEFINE-STRUCTURE/VECTOR-MODIFIER)
-			((LIST) 'DEFINE-STRUCTURE/LIST-MODIFIER)))
-		    ,(or (structure/tag-expression structure)
-			 (slot/index slot))
-		    ',name))
-		`(DEFINE-INTEGRABLE (,modifier-name STRUCTURE VALUE)
-		   ,(case (structure/type structure)
-		      ((RECORD)
-		       `(,(absolute '%RECORD-SET!) STRUCTURE
-						   ,(slot/index slot)
-						   VALUE))
-		      ((VECTOR)
-		       `(,(absolute 'VECTOR-SET!) STRUCTURE
-						  ,(slot/index slot)
-						  VALUE))
-		      ((LIST)
-		       `(,(absolute 'SET-CAR!)
-			 (,(absolute 'LIST-TAIL) STRUCTURE
-						 ,(slot/index slot))
-			 VALUE)))))))))
-   (structure/slots structure)))
+  (let ((context (structure/context structure)))
+    (map (lambda (slot)
+	   (let* ((name (slot/name slot))
+		  (modifier-name
+		   (close (let ((conc-name (structure/conc-name structure)))
+			    (if conc-name
+				(symbol-append 'SET- conc-name name '!)
+				(symbol-append 'SET- name '!)))
+			  context)))
+	     (if (structure/safe-accessors? structure)
+		 `(DEFINE ,modifier-name
+		    (,(absolute (case (structure/type structure)
+				  ((RECORD) 'RECORD-MODIFIER)
+				  ((VECTOR) 'DEFINE-STRUCTURE/VECTOR-MODIFIER)
+				  ((LIST) 'DEFINE-STRUCTURE/LIST-MODIFIER))
+				context)
+		     ,(or (structure/tag-expression structure)
+			  (slot/index slot))
+		     ',name))
+		 `(DEFINE-INTEGRABLE (,modifier-name STRUCTURE VALUE)
+		    ,(case (structure/type structure)
+		       ((RECORD)
+			`(,(absolute '%RECORD-SET! context) STRUCTURE
+							    ,(slot/index slot)
+							    VALUE))
+		       ((VECTOR)
+			`(,(absolute 'VECTOR-SET! context) STRUCTURE
+							   ,(slot/index slot)
+							   VALUE))
+		       ((LIST)
+			`(,(absolute 'SET-CAR! context)
+			  (,(absolute 'LIST-TAIL context) STRUCTURE
+							  ,(slot/index slot))
+			  VALUE)))))))
+	 (delete-matching-items (structure/slots structure) slot/read-only?))))
 
 (define (constructor-definitions structure)
-  `(,@(map (lambda (boa-constructor)
-	     (if (null? (cdr boa-constructor))
-		 (constructor-definition/default structure
-						 (car boa-constructor))
+  `(,@(map (lambda (constructor)
+	     (if (pair? (cdr constructor))
 		 (constructor-definition/boa structure
-					     (car boa-constructor)
-					     (cadr boa-constructor))))
-	   (structure/boa-constructors structure))
-    ,@(map (lambda (keyword-constructor)
-	     (constructor-definition/keyword structure
-					     (car keyword-constructor)))
+					     (car constructor)
+					     (cadr constructor))
+		 (constructor-definition/default structure (car constructor))))
+	   (structure/constructors structure))
+    ,@(map (lambda (constructor)
+	     (constructor-definition/keyword structure (car constructor)))
 	   (structure/keyword-constructors structure))))
 
 (define (constructor-definition/default structure name)
-  (let ((slot-names
-	 (map (lambda (slot)
-		(string->uninterned-symbol (symbol->string (slot/name slot))))
-	      (structure/slots structure))))
+  (let ((slot-names (map slot/name (structure/slots structure))))
     (make-constructor structure name slot-names
       (lambda (tag-expression)
-	`(,(absolute
-	    (case (structure/type structure)
-	      ((RECORD) '%RECORD)
-	      ((VECTOR) 'VECTOR)
-	      ((LIST) 'LIST)))
+	`(,(absolute (case (structure/type structure)
+		       ((RECORD) '%RECORD)
+		       ((VECTOR) 'VECTOR)
+		       ((LIST) 'LIST))
+		     (structure/context structure))
 	  ,@(constructor-prefix-slots structure tag-expression)
 	  ,@slot-names)))))
 
 (define (constructor-definition/keyword structure name)
-  (let ((keyword-list (string->uninterned-symbol "keyword-list")))
-    (make-constructor structure name keyword-list
-      (lambda (tag-expression)
+  (make-constructor structure name 'KEYWORD-LIST
+    (lambda (tag-expression)
+      (let ((context (structure/context structure)))
 	(let ((list-cons
 	       `(,@(constructor-prefix-slots structure tag-expression)
-		 (,(absolute 'DEFINE-STRUCTURE/KEYWORD-PARSER)
-		  ,keyword-list
-		  (,(absolute 'LIST)
+		 (,(absolute 'DEFINE-STRUCTURE/KEYWORD-PARSER context)
+		  KEYWORD-LIST
+		  (,(absolute 'LIST context)
 		   ,@(map (lambda (slot)
-			    `(,(absolute 'CONS) ',(slot/name slot)
-						,(slot/default slot)))
+			    `(,(absolute 'CONS context)
+			      ',(slot/name slot)
+			      ,(get-slot-default slot structure)))
 			  (structure/slots structure)))))))
 	  (case (structure/type structure)
 	    ((RECORD)
-	     `(,(absolute 'APPLY) ,(absolute '%RECORD) ,@list-cons))
+	     `(,(absolute 'APPLY context) ,(absolute '%RECORD context)
+					  ,@list-cons))
 	    ((VECTOR)
-	     `(,(absolute 'APPLY) ,(absolute 'VECTOR) ,@list-cons))
+	     `(,(absolute 'APPLY context) ,(absolute 'VECTOR context)
+					  ,@list-cons))
 	    ((LIST)
-	     `(,(absolute 'CONS*) ,@list-cons))))))))
+	     `(,(absolute 'CONS* context) ,@list-cons))))))))
+
+(define (define-structure/keyword-parser argument-list default-alist)
+  (if (null? argument-list)
+      (map cdr default-alist)
+      (let ((alist
+	     (map (lambda (entry) (cons (car entry) (cdr entry)))
+		  default-alist)))
+	(let loop ((arguments argument-list))
+	  (if (pair? arguments)
+	      (begin
+		(if (not (pair? (cdr arguments)))
+		    (error "Keyword list does not have even length:"
+			   argument-list))
+		(set-cdr! (or (assq (car arguments) alist)
+			      (error "Unknown keyword:" (car arguments)))
+			  (cadr arguments))
+		(loop (cddr arguments)))))
+	(map cdr alist))))
 
 (define (constructor-definition/boa structure name lambda-list)
   (make-constructor structure name lambda-list
     (lambda (tag-expression)
-      `(,(absolute
-	  (case (structure/type structure)
-	    ((RECORD) '%RECORD)
-	    ((VECTOR) 'VECTOR)
-	    ((LIST) 'LIST)))
+      `(,(absolute (case (structure/type structure)
+		     ((RECORD) '%RECORD)
+		     ((VECTOR) 'VECTOR)
+		     ((LIST) 'LIST))
+		   (structure/context structure))
 	,@(constructor-prefix-slots structure tag-expression)
-	,@(parse-lambda-list lambda-list
+	,@(call-with-values (lambda () (parse-mit-lambda-list lambda-list))
 	    (lambda (required optional rest)
 	      (let ((name->slot
 		     (lambda (name)
@@ -593,87 +839,90 @@ differences:
 				(slot/name slot))
 			       ((memq slot optional)
 				`(IF (DEFAULT-OBJECT? ,(slot/name slot))
-				     ,(slot/default slot)
+				     ,(get-slot-default slot structure)
 				     ,(slot/name slot)))
 			       (else
-				(slot/default slot))))
+				(get-slot-default slot structure))))
 		       (structure/slots structure))))))))))
 
-(define (make-constructor structure name arguments generate-body)
+(define (make-constructor structure name lambda-list generate-body)
   (let ((tag-expression (structure/tag-expression structure)))
     (if (eq? (structure/type structure) 'RECORD)
-	(let ((tag (generate-uninterned-symbol 'TAG-)))
+	(let ((tag (make-synthetic-identifier 'TAG)))
 	  `(DEFINE ,name
 	     (LET ((,tag (RECORD-TYPE-DISPATCH-TAG ,tag-expression)))
-	       (NAMED-LAMBDA (,name ,@arguments)
+	       (NAMED-LAMBDA (,name ,@lambda-list)
 		 ,(generate-body tag)))))
-	`(DEFINE (,name ,@arguments)
+	`(DEFINE (,name ,@lambda-list)
 	   ,(generate-body tag-expression)))))
 
 (define (constructor-prefix-slots structure tag-expression)
-  (let ((offsets (make-list (structure/offset structure) false)))
-    (if (structure/named? structure)
+  (let ((offsets (make-list (structure/offset structure) '#F)))
+    (if (structure/tagged? structure)
 	(cons tag-expression offsets)
 	offsets)))
 
 (define (copier-definitions structure)
-  (let ((copier-name (structure/copier-name structure)))
+  (let ((copier-name (structure/copier structure)))
     (if copier-name
 	`((DEFINE ,copier-name
-	    ,(absolute
-	      (case (structure/type structure)
-		((RECORD) 'RECORD-COPY)
-		((VECTOR) 'VECTOR-COPY)
-		((LIST) 'LIST-COPY)))))
+	    ,(absolute (case (structure/type structure)
+			 ((RECORD) 'RECORD-COPY)
+			 ((VECTOR) 'VECTOR-COPY)
+			 ((LIST) 'LIST-COPY))
+		       (structure/context structure))))
 	'())))
 
 (define (predicate-definitions structure)
-  (let ((predicate-name (structure/predicate-name structure)))
+  (let ((predicate-name (structure/predicate structure)))
     (if predicate-name
 	(let ((tag-expression (structure/tag-expression structure))
-	      (variable (string->uninterned-symbol "object")))
+	      (context (structure/context structure)))
 	  (case (structure/type structure)
 	    ((RECORD)
-	     (let ((tag (generate-uninterned-symbol 'TAG-)))
-	       `((DEFINE ,predicate-name
-		   (LET ((,tag (RECORD-TYPE-DISPATCH-TAG ,tag-expression)))
-		     (NAMED-LAMBDA (,predicate-name ,variable)
-		       (AND (,(absolute '%RECORD?) ,variable)
-			    (,(absolute 'EQ?)
-			     (,(absolute '%RECORD-REF) ,variable 0)
-			     ,tag))))))))
+	     `((DEFINE ,predicate-name
+		 (LET ((TAG (RECORD-TYPE-DISPATCH-TAG ,tag-expression)))
+		   (NAMED-LAMBDA (,predicate-name OBJECT)
+		     (AND (,(absolute '%RECORD? context) OBJECT)
+			  (,(absolute 'EQ? context)
+			   (,(absolute '%RECORD-REF context) OBJECT 0)
+			   TAG)))))))
 	    ((VECTOR)
-	     `((DEFINE (,predicate-name ,variable)
-		 (AND (,(absolute 'VECTOR?) ,variable)
-		      (,(absolute 'NOT)
-		       (,(absolute 'ZERO?)
-			(,(absolute 'VECTOR-LENGTH) ,variable)))
-		      (,(absolute 'EQ?) (,(absolute 'VECTOR-REF) ,variable 0)
-					,tag-expression)))))
+	     `((DEFINE (,predicate-name OBJECT)
+		 (AND (,(absolute 'VECTOR? context) OBJECT)
+		      (,(absolute 'NOT context)
+		       (,(absolute 'ZERO? context)
+			(,(absolute 'VECTOR-LENGTH context) OBJECT)))
+		      (,(absolute 'EQ? context)
+		       (,(absolute 'VECTOR-REF context) OBJECT 0)
+		       ,tag-expression)))))
 	    ((LIST)
-	     `((DEFINE (,predicate-name ,variable)
-		 (AND (,(absolute 'PAIR?) ,variable)
-		      (,(absolute 'EQ?) (,(absolute 'CAR) ,variable)
-					,tag-expression)))))))
+	     `((DEFINE (,predicate-name OBJECT)
+		 (AND (,(absolute 'PAIR? context) OBJECT)
+		      (,(absolute 'EQ? context)
+		       (,(absolute 'CAR context) OBJECT)
+		       ,tag-expression)))))))
 	'())))
 
 (define (type-definitions structure)
-  (if (structure/named? structure)
+  (if (structure/tagged? structure)
       (let ((type (structure/type structure))
-	    (type-name (structure/type-name structure))
-	    (name (symbol->string (structure/name structure)))
-	    (field-names (map slot/name (structure/slots structure))))
+	    (type-name (structure/type-descriptor structure))
+	    (name
+	     (symbol->string
+	      (parser-context/name (structure/context structure))))
+	    (field-names (map slot/name (structure/slots structure)))
+	    (context (structure/context structure)))
 	(if (eq? type 'RECORD)
 	    `((DEFINE ,type-name
-		(,(absolute 'MAKE-RECORD-TYPE)
+		(,(absolute 'MAKE-RECORD-TYPE context)
 		 ',name ',field-names
-		 ,@(let ((print-procedure
-			  (structure/print-procedure structure)))
-		     (if (not print-procedure)
+		 ,@(let ((expression (structure/print-procedure structure)))
+		     (if (not expression)
 			 `()
-			 `(,print-procedure))))))
+			 `(,expression))))))
 	    (let ((type-expression
-		   `(,(absolute 'MAKE-DEFINE-STRUCTURE-TYPE)
+		   `(,(absolute 'MAKE-DEFINE-STRUCTURE-TYPE context)
 		     ',type
 		     ',name
 		     ',field-names
@@ -681,8 +930,7 @@ differences:
 		     ,(structure/print-procedure structure))))
 	      (if type-name
 		  `((DEFINE ,type-name ,type-expression))
-		  `((DEFINE ,(string->uninterned-symbol name)
-		      (NAMED-STRUCTURE/SET-TAG-DESCRIPTION!
-		       ,(structure/tag-expression structure)
-		       ,type-expression)))))))
+		  `((NAMED-STRUCTURE/SET-TAG-DESCRIPTION!
+		     ,(structure/tag-expression structure)
+		     ,type-expression))))))
       '()))

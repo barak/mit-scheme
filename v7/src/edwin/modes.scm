@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: modes.scm,v 1.34 2001/03/21 19:25:25 cph Exp $
+;;; $Id: modes.scm,v 1.35 2002/02/03 03:38:54 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -74,19 +74,18 @@
 (define editor-modes
   (make-string-table))
 
-(define (name->mode object #!optional if-undefined)
-  (let ((name (canonicalize-name object)))
-    (let ((sname (symbol-name name)))
-      (or (string-table-get editor-modes sname)
-	  (case (if (default-object? if-undefined) 'INTERN if-undefined)
-	    ((#F) #f)
-	    ((ERROR) (error "Undefined mode:" name))
-	    ((INTERN)
-	     (make-mode name #t sname #f ""
-			(lambda () (error "Undefined mode:" name))))
-	    
-	  (else
-	   (error:bad-range-argument if-undefined 'NAME->MODE)))))))
+(define (name->mode name #!optional if-undefined)
+  (let ((sname (symbol-name name)))
+    (or (string-table-get editor-modes sname)
+	(case (if (default-object? if-undefined) 'INTERN if-undefined)
+	  ((#F) #f)
+	  ((ERROR) (error "Undefined mode:" name))
+	  ((INTERN)
+	   (make-mode name #t sname #f ""
+		      (lambda () (error "Undefined mode:" name))))
+
+	(else
+	 (error:bad-range-argument if-undefined 'NAME->MODE))))))
 
 (define (->mode object)
   (if (mode? object)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.22 2001/12/20 16:13:18 cph Exp $
+;;; $Id: shared.scm,v 1.23 2002/02/03 03:38:58 cph Exp $
 ;;;
-;;; Copyright (c) 2001 Massachusetts Institute of Technology
+;;; Copyright (c) 2001, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -24,31 +24,41 @@
 (declare (usual-integrations))
 
 (define *buffer-name*)
+(define *environment*)
+(define *closing-environment*)
 (define debug:disable-substitution-optimizer? #f)
 (define debug:disable-pointer-optimizer? #f)
 (define debug:disable-peephole-optimizer? #f)
 (define debug:trace-substitution? #f)
 
-(define (generate-external-procedure expression preprocessor generator)
-  (fluid-let ((*id-counters* '()))
-    (let ((external-bindings (list 'BINDINGS))
-	  (internal-bindings (list 'BINDINGS))
-	  (b (generate-identifier 'B)))
-      (let ((expression
-	     (preprocessor expression external-bindings internal-bindings)))
-	(maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
-			     (cdr external-bindings))
-	  `(LAMBDA (,b)
-	     ;; Note that PROTECT is used here as a marker to identify
-	     ;; code that has potential side effects.  See below for
-	     ;; an explanation.
-	     ,(fluid-let ((*buffer-name* `(PROTECT ,b)))
-		(maybe-make-let (map (lambda (b)
-				       (list (cdr b) (car b)))
-				     (cdr internal-bindings))
-		  (strip-protection-wrappers
-		   (run-optimizers
-		    (generator expression)))))))))))
+(define (generate-external-procedure expression environment
+				     preprocessor generator)
+  (capture-syntactic-environment
+   (lambda (closing-environment)
+     (fluid-let ((*id-counters* '())
+		 (*environment* environment)
+		 (*closing-environment* closing-environment))
+       (let ((external-bindings (list 'BINDINGS))
+	     (internal-bindings (list 'BINDINGS))
+	     (b (make-synthetic-identifier 'B)))
+	 (let ((expression
+		(preprocessor expression external-bindings internal-bindings)))
+	   (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
+				(cdr external-bindings))
+	     `(LAMBDA (,b)
+		;; Note that PROTECT is used here as a marker to identify
+		;; code that has potential side effects.  See below for
+		;; an explanation.
+		,(fluid-let ((*buffer-name* `(PROTECT ,b)))
+		   (maybe-make-let (map (lambda (b)
+					  (list (cdr b) (car b)))
+					(cdr internal-bindings))
+		     (strip-protection-wrappers
+		      (run-optimizers
+		       (generator
+			expression
+			(append (map cdr (cdr external-bindings))
+				(map cdr (cdr internal-bindings))))))))))))))))
 
 (define (run-optimizers expression)
   (let ((expression*
@@ -133,15 +143,8 @@
 			      (cdr bindings)))
 	      variable)))))
 
-(define (named-lambda-bvl? object)
-  (and (pair? object)
-       (symbol? (car object))
-       (let loop ((object (cdr object)))
-	 (or (null? object)
-	     (symbol? object)
-	     (and (pair? object)
-		  (symbol? (car object))
-		  (loop (cdr object)))))))
+(define (close expression)
+  (close-syntax expression *closing-environment*))
 
 ;;;; Parser macros
 
@@ -259,6 +262,9 @@
   (make-delayed-lambda make-ks-identifier
 		       (list make-value-identifier make-kf-identifier)
 		       generator))
+
+(define (protect expression free-names)
+  `(PROTECT ,(make-syntactic-closure *environment* free-names expression)))
 
 (define (make-kf-identifier)
   (generate-identifier 'KF))

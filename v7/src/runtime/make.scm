@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.83 2002/01/12 02:56:18 cph Exp $
+$Id: make.scm,v 14.84 2002/02/03 03:38:56 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -50,16 +50,15 @@ USA.
 
 (define system-global-environment #f)
 
-(define (non-hygienic-macro-transformer transformer)
-  transformer)
-
 ;; *MAKE-ENVIRONMENT is referred to by compiled code.  It must go
 ;; before the uses of the-environment later, and after apply above.
 (define (*make-environment parent names . values)
   (let-syntax
       ((ucode-type
-	(non-hygienic-macro-transformer
-	 (lambda (name) (microcode-type name)))))
+	(sc-macro-transformer
+	 (lambda (form environment)
+	   environment
+	   (microcode-type (cadr form))))))
     (system-list->vector
      (ucode-type environment)
      (cons (system-pair-cons (ucode-type procedure)
@@ -74,14 +73,16 @@ USA.
 			  (vector lambda-tag:unnamed))))
 
 (define-syntax ucode-primitive
-  (non-hygienic-macro-transformer
-   (lambda arguments
-     (apply make-primitive-procedure arguments))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (apply make-primitive-procedure (cdr form)))))
 
 (define-syntax ucode-type
-  (non-hygienic-macro-transformer
-   (lambda (name)
-     (microcode-type name))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (microcode-type (cadr form)))))
 
 (define-integrable + (ucode-primitive integer-add))
 (define-integrable - (ucode-primitive integer-subtract))
@@ -335,11 +336,10 @@ USA.
 (package/add-child! system-global-package 'PACKAGE environment-for-package)
 
 (define packages-file
-  (fasload (case os-name
-	     ((NT) "runtime-w32.pkd")
-	     ((OS/2) "runtime-os2.pkd")
-	     ((UNIX) "runtime-unx.pkd")
-	     (else "runtime-unk.pkd"))
+  (fasload (cond ((eq? os-name 'NT) "runtime-w32.pkd")
+		 ((eq? os-name 'OS/2) "runtime-os2.pkd")
+		 ((eq? os-name 'UNIX) "runtime-unx.pkd")
+		 (else "runtime-unk.pkd"))
 	   #f))
 ((lexical-reference environment-for-package 'CONSTRUCT-PACKAGES-FROM-FILE)
  packages-file)
@@ -358,7 +358,8 @@ USA.
 	 ("random" . (RUNTIME RANDOM-NUMBER))
 	 ("gentag" . (RUNTIME GENERIC-PROCEDURE))
 	 ("poplat" . (RUNTIME POPULATION))
-	 ("record" . (RUNTIME RECORD))))
+	 ("record" . (RUNTIME RECORD))
+	 ("syntax-transforms" . (RUNTIME SYNTACTIC-CLOSURES))))
       (files2
        '(("prop1d" . (RUNTIME 1D-PROPERTY))
 	 ("events" . (RUNTIME EVENT-DISTRIBUTOR))
@@ -382,6 +383,9 @@ USA.
 		      #t)
   (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-PACKAGE! #t)
   (package-initialize '(RUNTIME RECORD) 'INITIALIZE-RECORD-TYPE-TYPE! #t)
+  (package-initialize '(RUNTIME SYNTACTIC-CLOSURES)
+		      'INITIALIZE-SYNTAX-TRANSFORMS!
+		      #t)
   (load-files files2)
   (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-PACKAGE! #t)
   (package-initialize '(RUNTIME EVENT-DISTRIBUTOR) 'INITIALIZE-PACKAGE! #t)
@@ -478,9 +482,6 @@ USA.
    (RUNTIME NUMBER-PARSER)
    (RUNTIME PARSER)
    (RUNTIME UNPARSER)
-   (RUNTIME SYNTAXER)
-   (RUNTIME ILLEGAL-DEFINITIONS)
-   (RUNTIME MACROS)
    (RUNTIME UNSYNTAXER)
    (RUNTIME PRETTY-PRINTER)
    (RUNTIME EXTENDED-SCODE-EVAL)

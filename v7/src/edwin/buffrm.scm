@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffrm.scm,v 1.58 2000/10/26 04:18:59 cph Exp $
+;;; $Id: buffrm.scm,v 1.59 2002/02/03 03:38:53 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Buffer Frames
 
@@ -45,21 +46,21 @@
    ))
 
 (define-method buffer-frame (:make-leaf frame)
-  (let ((frame* (=> superior :make-inferior buffer-frame)))
+  (let ((frame* (==> superior :make-inferior buffer-frame)))
     (set-buffer-frame-size! frame* (window-x-size frame) (window-y-size frame))
     (set-window-buffer! frame* (window-buffer frame))
     (initial-modeline! frame* modeline-inferior)
     frame*))
 
 (define-method buffer-frame (:initialize! frame window*)
-  (usual=> frame :initialize! window*)
+  (usual==> frame :initialize! window*)
   (set! text-inferior (make-inferior frame buffer-window))
   (set! border-inferior (make-inferior frame vertical-border-window))
   (set! last-select-time 0))
 
 (define-method buffer-frame (:kill! window)
   (remove-buffer-window! (window-buffer window) window)
-  (usual=> window :kill!))
+  (usual==> window :kill!))
 
 (define-method buffer-frame (:update-display! window screen x-start y-start
 					      xl xu yl yu display-style)
@@ -109,7 +110,7 @@
 
 (define (set-buffer-frame-size! window x y)
   (with-instance-variables buffer-frame window (x y)
-    (usual=> window :set-size! x y)
+    (usual==> window :set-size! x y)
     (if modeline-inferior
 	(begin
 	  (set! y (- y (inferior-y-size modeline-inferior)))
@@ -142,7 +143,7 @@
   (object-of-class? buffer-frame object))
 
 (define (make-buffer-frame superior new-buffer modeline?)
-  (let ((frame (=> superior :make-inferior buffer-frame)))
+  (let ((frame (==> superior :make-inferior buffer-frame)))
     (set-window-buffer! frame new-buffer)
     (initial-modeline! frame modeline?)
     frame))

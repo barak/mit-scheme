@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: starbase.scm,v 1.15 2001/12/23 17:20:59 cph Exp $
+$Id: starbase.scm,v 1.16 2002/02/03 03:38:56 cph Exp $
 
-Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1989-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -106,17 +106,26 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-accessors-and-mutators
-      (non-hygienic-macro-transformer
-       (lambda (name)
-	 `(BEGIN
-	    (DEFINE (,(symbol-append 'STARBASE-DEVICE/ name) DEVICE)
-	      (,(symbol-append 'STARBASE-GRAPHICS-DESCRIPTOR/ name)
-	       (GRAPHICS-DEVICE/DESCRIPTOR DEVICE)))
-	    (DEFINE (,(symbol-append 'SET-STARBASE-DEVICE/ name '!)
-		     DEVICE VALUE)
-	      (,(symbol-append 'SET-STARBASE-GRAPHICS-DESCRIPTOR/ name '!)
-	       (GRAPHICS-DEVICE/DESCRIPTOR DEVICE)
-	       VALUE)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (let ((name (cadr form)))
+	   `(BEGIN
+	      (DEFINE (,(close-syntax (symbol-append 'STARBASE-DEVICE/ name)
+				      environment)
+		       DEVICE)
+		(,(close-syntax
+		   (symbol-append 'STARBASE-GRAPHICS-DESCRIPTOR/ name)
+		   environment)
+		 (GRAPHICS-DEVICE/DESCRIPTOR DEVICE)))
+	      (DEFINE (,(close-syntax
+			 (symbol-append 'SET-STARBASE-DEVICE/ name '!)
+			 environment)
+		       DEVICE VALUE)
+		(,(close-syntax
+		   (symbol-append 'SET-STARBASE-GRAPHICS-DESCRIPTOR/ name '!)
+		   environment)
+		 (GRAPHICS-DEVICE/DESCRIPTOR DEVICE)
+		 VALUE))))))))
   (define-accessors-and-mutators x-left)
   (define-accessors-and-mutators y-bottom)
   (define-accessors-and-mutators x-right)

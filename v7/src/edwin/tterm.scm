@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.32 2001/12/23 17:20:58 cph Exp $
+$Id: tterm.scm,v 1.33 2002/02/03 03:38:54 cph Exp $
 
-Copyright (c) 1990-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1990-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -442,19 +442,31 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (key-table false))
 
 (let-syntax ((define-accessor
-	      (non-hygienic-macro-transformer
-	       (lambda (name)
-		 `(DEFINE-INTEGRABLE (,(symbol-append 'SCREEN- name) SCREEN)
-		    (,(symbol-append 'TERMINAL-STATE/ name)
-		     (SCREEN-STATE SCREEN))))))
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 (let ((name (cadr form)))
+		   `(DEFINE-INTEGRABLE
+		      (,(close-syntax (symbol-append 'SCREEN- name)
+				      environment)
+		       SCREEN)
+		      (,(close-syntax (symbol-append 'TERMINAL-STATE/ name)
+				      environment)
+		       (SCREEN-STATE SCREEN)))))))
 	     (define-updater
-	      (non-hygienic-macro-transformer
-	       (lambda (name)
-		 `(DEFINE-INTEGRABLE
-		    (,(symbol-append 'SET-SCREEN- name '!) SCREEN ,name)
-		    (,(symbol-append 'SET-TERMINAL-STATE/ name '!)
-		     (SCREEN-STATE SCREEN)
-		     ,name))))))
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 (let ((name (cadr form)))
+		   (let ((param (make-synthetic-identifier name)))
+		     `(DEFINE-INTEGRABLE
+			(,(close-syntax (symbol-append 'SET-SCREEN- name '!)
+					environment)
+			 SCREEN
+			 ,param)
+			(,(close-syntax
+			   (symbol-append 'SET-TERMINAL-STATE/ name '!)
+			   environment)
+			 (SCREEN-STATE SCREEN)
+			 ,param))))))))
   (define-accessor description)
   (define-accessor baud-rate-index)
   (define-accessor baud-rate)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: os2pm.scm,v 1.10 2001/12/23 17:20:59 cph Exp $
+$Id: os2pm.scm,v 1.11 2002/02/03 03:38:55 cph Exp $
 
-Copyright (c) 1995-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1995-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -52,10 +52,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;;; Syntax
 
 (define-syntax define-pm-procedure
-  (non-hygienic-macro-transformer
-   (lambda (name . clauses)
-     (let ((external-name (if (pair? name) (car name) name))
-	   (internal-name (if (pair? name) (cadr name) name)))
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (let ((external-name
+	    (if (pair? (cadr form)) (car (cadr form)) (cadr form)))
+	   (internal-name
+	    (if (pair? (cadr form)) (cadr (cadr form)) (cadr form)))
+	   (clauses (cddr form)))
        `(BEGIN
 	  (HASH-TABLE/PUT! PM-PROCEDURES ',external-name
 	    (MAKE-PMP (TRANSLATE-NAME ',external-name)

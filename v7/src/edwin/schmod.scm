@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: schmod.scm,v 1.58 2001/12/20 21:28:00 cph Exp $
+;;; $Id: schmod.scm,v 1.59 2002/02/03 03:38:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -145,56 +145,37 @@ The following commands evaluate Scheme expressions:
 		     (symbol->string symbol)
 		     method))
 
-(for-each (lambda (entry) (scheme-indent-method (car entry) (cdr entry)))
-	  `((BEGIN . 0)
-	    (CASE . 1)
-	    (DELAY . 0)
-	    (DO . 2)
-	    (LAMBDA . 1)
-	    (LET . ,scheme-mode:indent-let-method)
-	    (LET* . 1)
-	    (LETREC . 1)
+(for-each (lambda (entry)
+	    (for-each (lambda (name) (scheme-indent-method name (car entry)))
+		      (cdr entry)))
+	  `(;; R4RS keywords:
+	    (0 BEGIN DELAY)
+	    (1 CASE LAMBDA LET* LETREC LET-SYNTAX LETREC-SYNTAX SYNTAX-RULES)
+	    (2 DO)
+	    (,scheme-mode:indent-let-method LET)
 
-	    (CALL-WITH-INPUT-FILE . 1)
-	    (WITH-INPUT-FROM-FILE . 1)
-	    (CALL-WITH-OUTPUT-FILE . 1)
-	    (WITH-OUTPUT-TO-FILE . 1)
+	    ;; R4RS procedures:
+	    (1 CALL-WITH-INPUT-FILE WITH-INPUT-FROM-FILE
+	       CALL-WITH-OUTPUT-FILE WITH-OUTPUT-TO-FILE)
 
-	    ;; Remainder are MIT Scheme specific.
+	    ;; MIT Scheme keywords:
+	    (1 DEFINE-STRUCTURE FLUID-LET LET*-SYNTAX LOCAL-DECLARE
+	       NAMED-LAMBDA)
 
-	    (DEFINE-STRUCTURE . 1)
-	    (FLUID-LET . 1)
-	    (LET-SYNTAX . 1)
-	    (LOCAL-DECLARE . 1)
-	    (NAMED-LAMBDA . 1)
-
-	    (CALL-WITH-APPEND-FILE . 1)
-	    (CALL-WITH-BINARY-APPEND-FILE . 1)
-	    (CALL-WITH-BINARY-INPUT-FILE . 1)
-	    (CALL-WITH-BINARY-OUTPUT-FILE . 1)
-	    (WITH-INPUT-FROM-PORT . 1)
-	    (WITH-INPUT-FROM-STRING . 1)
-	    (WITH-OUTPUT-TO-PORT . 1)
-	    (WITH-OUTPUT-TO-STRING . 0)
-	    (CALL-WITH-VALUES . 1)
-	    (WITH-VALUES . 1)
-	    (WITHIN-CONTINUATION . 1)
-
-	    (MAKE-CONDITION-TYPE . 3)
-	    (WITH-RESTART . 4)
-	    (WITH-SIMPLE-RESTART . 2)
-	    (BIND-CONDITION-HANDLER . 2)
-	    (KEEP-MATCHING-ITEMS . 1)
-	    (KEEP-MATCHING-ITEMS! . 1)
-	    (DELETE-MATCHING-ITEMS . 1)
-	    (DELETE-MATCHING-ITEMS! . 1)
-	    (FIND-MATCHING-ITEM . 1)
-	    (LIST-TRANSFORM-POSITIVE . 1)
-	    (LIST-TRANSFORM-NEGATIVE . 1)
-	    (LIST-SEARCH-POSITIVE . 1)
-	    (LIST-SEARCH-NEGATIVE . 1)
-	    (FOR-ALL? . 1)
-	    (THERE-EXISTS? . 1)))
+	    ;; MIT Scheme procedures:
+	    (0 WITH-OUTPUT-TO-STRING)
+	    (1 CALL-WITH-APPEND-FILE CALL-WITH-BINARY-APPEND-FILE
+	       CALL-WITH-BINARY-INPUT-FILE CALL-WITH-BINARY-OUTPUT-FILE
+	       WITH-INPUT-FROM-PORT WITH-INPUT-FROM-STRING WITH-OUTPUT-TO-PORT
+	       CALL-WITH-VALUES WITH-VALUES WITHIN-CONTINUATION
+	       KEEP-MATCHING-ITEMS KEEP-MATCHING-ITEMS! DELETE-MATCHING-ITEMS
+	       DELETE-MATCHING-ITEMS! FIND-MATCHING-ITEM
+	       LIST-TRANSFORM-POSITIVE LIST-TRANSFORM-NEGATIVE
+	       LIST-SEARCH-POSITIVE LIST-SEARCH-NEGATIVE
+	       FOR-ALL? THERE-EXISTS?)
+	    (2 WITH-SIMPLE-RESTART BIND-CONDITION-HANDLER)
+	    (3 MAKE-CONDITION-TYPE)
+	    (4 WITH-RESTART)))
 
 (define scheme-mode:indent-regexps
   `(SCHEME-MODE:INDENT-REGEXPS

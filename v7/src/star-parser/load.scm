@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.11 2001/11/09 21:37:51 cph Exp $
+;;; $Id: load.scm,v 1.12 2002/02/03 03:38:58 cph Exp $
 ;;;
-;;; Copyright (c) 2001 Massachusetts Institute of Technology
+;;; Copyright (c) 2001, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -23,4 +23,4 @@
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (package/system-loader "parser" '() 'QUERY)))
-(add-subsystem-identification! "*Parser" '(0 10))
+(add-subsystem-identification! "*Parser" '(0 11))

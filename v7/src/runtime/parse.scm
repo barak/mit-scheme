@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.35 2001/12/23 17:20:59 cph Exp $
+$Id: parse.scm,v 14.36 2002/02/03 03:38:56 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -276,19 +276,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define *parser-current-position*)
 
 (define-syntax define-accretor
-  (non-hygienic-macro-transformer
-   (lambda (param-list-1 param-list-2 . body)
-     (let ((real-param-list (if (number? param-list-1)
-				param-list-2
-				param-list-1))
-	   (real-body (if (number? param-list-1)
-			  body
-			  (cons param-list-2 body)))
-	   (offset (if (number? param-list-1)
-		       param-list-1
-		       0)))
-       `(DEFINE ,real-param-list
-	  (LET ((CORE (LAMBDA () ,@real-body)))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((offset (cadr form))
+	   (param-list (caddr form))
+	   (body (cdddr form)))
+       `(DEFINE ,(map (lambda (name)
+			(close-syntax name environment))
+		      param-list)
+	  (LET ((CORE
+		 (LAMBDA ()
+		   ,@(map (lambda (expression)
+			    (close-syntax expression environment))
+			  body))))
 	    (IF *PARSER-ASSOCIATE-POSITIONS?*
 		(RECORDING-OBJECT-POSITION ,offset CORE)
 		(CORE))))))))
@@ -328,7 +328,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 ;;;; Symbols/Numbers
 
-(define-accretor (parse-object/atom)
+(define-accretor 0 (parse-object/atom)
   (build-atom (read-atom)))
 
 (define-integrable (read-atom)
@@ -358,7 +358,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       (substring-downcase! string 0 (string-length string)))
   (string->symbol string))
 
-(define-accretor (parse-object/symbol)
+(define-accretor 0 (parse-object/symbol)
   (intern-string! (read-atom)))
 
 (define-accretor 1 (parse-object/numeric-prefix)
@@ -387,7 +387,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 ;;;; Lists/Vectors
 
-(define-accretor (parse-object/list-open)
+(define-accretor 0 (parse-object/list-open)
   (discard-char)
   (collect-list/top-level))
 
@@ -488,15 +488,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 ;;;; Quoting
 
-(define-accretor (parse-object/quote)
+(define-accretor 0 (parse-object/quote)
   (discard-char)
   (list 'QUOTE (parse-object/dispatch)))
 
-(define-accretor (parse-object/quasiquote)
+(define-accretor 0 (parse-object/quasiquote)
   (discard-char)
   (list 'QUASIQUOTE (parse-object/dispatch)))
 
-(define-accretor (parse-object/unquote)
+(define-accretor 0 (parse-object/unquote)
   (discard-char)
   (if (char=? #\@ (peek-char))
       (begin
@@ -505,7 +505,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       (list 'UNQUOTE (parse-object/dispatch))))
 
 
-(define-accretor (parse-object/string-quote)
+(define-accretor 0 (parse-object/string-quote)
   ;; This version uses a string output port to collect the string fragments
   ;; because string ports store the string efficiently and append the
   ;; string fragments in amortized linear time.
@@ -574,11 +574,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 ;;;; Constants
 
-(define-accretor (parse-object/false)
+(define-accretor 0 (parse-object/false)
   (discard-char)
   false)
 
-(define-accretor (parse-object/true)
+(define-accretor 0 (parse-object/true)
   (discard-char)
   true)
 

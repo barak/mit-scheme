@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.279 2001/12/21 18:41:18 cph Exp $
+$Id: edwin.pkg,v 1.280 2002/02/03 03:38:54 cph Exp $
 
-Copyright (c) 1989-2001 Massachusetts Institute of Technology
+Copyright (c) 1989-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -127,20 +127,25 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (files "clsmac")
   (parent (edwin))
   (export (edwin window)
-	  =>
+	  ==>
 	  define-class
 	  define-method
-	  usual=>
+	  usual==>
 	  with-instance-variables)
-  (import ()
-	  (make-scode-variable make-variable)
-	  (scode-variable-name variable-name)))
+  (import (runtime syntactic-closures)
+	  compile/subexpression
+	  make-compiler-item
+	  select-caddr
+	  select-cddddr))
 
 (define-package (edwin class-macros transform-instance-variables)
   (files "xform")
   (parent (edwin class-macros))
   (export (edwin class-macros)
-	  transform-instance-variables))
+	  transform-instance-variables)
+  (import ()
+	  (make-scode-variable make-variable)
+	  (scode-variable-name variable-name)))
 
 (define-package (edwin class-constructor)
   (files "clscon")
@@ -157,7 +162,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (files "macros")
   (parent (edwin))
   (export (edwin)
-	  canonicalize-name
 	  command-defined?
 	  command-name->scheme-name
 	  define-command

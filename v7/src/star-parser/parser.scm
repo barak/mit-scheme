@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.31 2001/12/23 17:21:00 cph Exp $
+;;; $Id: parser.scm,v 1.32 2002/02/03 03:38:58 cph Exp $
 ;;;
-;;; Copyright (c) 2001 Massachusetts Institute of Technology
+;;; Copyright (c) 2001, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -47,6 +47,8 @@
 	   (if preprocessor
 	       (preprocessor expression external-bindings internal-bindings)
 	       expression)))
+	((identifier? expression)
+	 expression)
 	((or (string? expression)
 	     (char? expression))
 	 (preprocess-parser-expression `(NOISE ,expression)
@@ -72,18 +74,20 @@
   name)
 
 (define-syntax define-*parser-macro
-  (non-hygienic-macro-transformer
-   (lambda (bvl expression)
-     (cond ((symbol? bvl)
-	    `(DEFINE-*PARSER-EXPANDER ',bvl
-	       (LAMBDA ()
-		 ,expression)))
-	   ((named-lambda-bvl? bvl)
-	    `(DEFINE-*PARSER-EXPANDER ',(car bvl)
-	       (LAMBDA ,(cdr bvl)
-		 ,expression)))
-	   (else
-	    (error "Malformed bound-variable list:" bvl))))))
+  (rsc-macro-transformer
+   (lambda (form environment)
+     (let ((r-dpe (close-syntax 'DEFINE-*PARSER-EXPANDER environment))
+	   (r-lambda (close-syntax 'LAMBDA environment)))
+       (cond ((syntax-match? '(SYMBOL EXPRESSION) (cdr form))
+	      `(,r-dpe ',(cadr form)
+		       (,r-lambda ()
+				  ,(caddr form))))
+	     ((syntax-match? '((SYMBOL . MIT-BVL) + EXPRESSION) (cdr form))
+	      `(,r-dpe ',(car (cadr form))
+		       (,r-lambda ,(cdr (cadr form))
+				  ,@(cddr form))))
+	     (else
+	      (ill-formed-syntax form)))))))
 
 (define (define-*parser-expander name procedure)
   (define-parser-macro name
@@ -175,21 +179,25 @@
 ;;;; Compiler
 
 (define-syntax *parser
-  (non-hygienic-macro-transformer
-   (lambda (expression)
-     (generate-parser-code expression))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '(EXPRESSION) (cdr form))
+	 (generate-parser-code (cadr form) environment)
+	 (ill-formed-syntax form)))))
 
-(define (generate-parser-code expression)
-  (generate-external-procedure expression preprocess-parser-expression
-    (lambda (expression)
+(define (generate-parser-code expression environment)
+  (generate-external-procedure expression environment
+			       preprocess-parser-expression
+    (lambda (expression free-names)
       (call-with-pointer #f
 	(lambda (p)
 	  (bind-delayed-lambdas
-	   (lambda (ks kf) (compile-parser-expression expression #f ks kf))
+	   (lambda (ks kf)
+	     (compile-parser-expression expression #f ks kf free-names))
 	   (make-parser-ks-lambda (lambda (v kf) kf v))
 	   (backtracking-kf p (lambda () #f))))))))
 
-(define (compile-parser-expression expression pointer ks kf)
+(define (compile-parser-expression expression pointer ks kf free-names)
   (cond ((and (pair? expression)
 	      (symbol? (car expression))
 	      (list? (cdr expression))
@@ -199,12 +207,13 @@
 		    (compiler (cdr entry)))
 		(if (and arity (not (= (length (cdr expression)) arity)))
 		    (error "Incorrect arity for parser:" expression))
-		(apply compiler pointer ks kf (cdr expression)))))
+		(apply compiler pointer ks kf free-names (cdr expression)))))
 	((or (symbol? expression)
 	     (and (pair? expression) (eq? (car expression) 'SEXP)))
-	 (wrap-external-parser `((PROTECT ,(if (pair? expression)
+	 (wrap-external-parser `(,(protect (if (pair? expression)
 					       (cadr expression)
-					       expression))
+					       expression)
+					   free-names)
 				 ,*buffer-name*)
 			       ks
 			       kf))
@@ -219,14 +228,19 @@
 	   ,(delay-call kf)))))
 
 (define-syntax define-parser
-  (non-hygienic-macro-transformer
-   (lambda (form . compiler-body)
-     (let ((name (car form))
-	   (parameters (cdr form)))
-       `(DEFINE-PARSER-COMPILER ',name
-	  ,(if (symbol? parameters) `#F (length parameters))
-	  (LAMBDA (POINTER KS KF . ,parameters)
-	    ,@compiler-body))))))
+  (rsc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '((SYMBOL . MIT-BVL) + EXPRESSION) (cdr form))
+	 (let ((name (car (cadr form)))
+	       (parameters (cdr (cadr form)))
+	       (compiler-body (cddr form))
+	       (r-dpc (close-syntax 'DEFINE-PARSER-COMPILER environment))
+	       (r-lambda (close-syntax 'LAMBDA environment)))
+	   `(,r-dpc ',name
+		    ,(if (identifier? parameters) `#F (length parameters))
+		    (,r-lambda (POINTER KS KF FREE-NAMES . ,parameters)
+			       ,@compiler-body)))
+	 (ill-formed-syntax form)))))
 
 (define (define-parser-compiler keyword arity compiler)
   (hash-table/put! parser-compilers keyword (cons arity compiler))
@@ -240,7 +254,7 @@
     (lambda (pointer)
       (bind-delayed-lambdas
        (lambda (ks)
-	 (compile-matcher-expression expression pointer ks kf))
+	 (compile-matcher-expression expression pointer ks kf free-names))
        (make-matcher-ks-lambda
 	(lambda (kf)
 	  (delay-call ks
@@ -251,7 +265,7 @@
 (define-parser (noise expression)
   (bind-delayed-lambdas
    (lambda (ks)
-     (compile-matcher-expression expression pointer ks kf))
+     (compile-matcher-expression expression pointer ks kf free-names))
    (make-matcher-ks-lambda
      (lambda (kf)
        (delay-call ks `(VECTOR) kf)))))
@@ -260,40 +274,41 @@
   pointer
   (delay-call ks
 	      `(VECTOR ,@(map (lambda (expression)
-				`(PROTECT ,expression))
+				(protect expression free-names))
 			      expressions))
 	      kf))
 
 (define-parser (transform transform expression)
-  (post-processed-parser expression pointer ks kf
+  (post-processed-parser expression pointer ks kf free-names
     (lambda (ks v kf)
-      (wrap-external-parser `((PROTECT ,transform) ,v) ks kf))))
+      (wrap-external-parser `(,(protect transform free-names) ,v) ks kf))))
 
 (define-parser (map transform expression)
-  (post-processed-parser expression pointer ks kf
+  (post-processed-parser expression pointer ks kf free-names
     (lambda (ks v kf)
-      (delay-call ks `(VECTOR-MAP (PROTECT ,transform) ,v) kf))))
+      (delay-call ks `(VECTOR-MAP ,(protect transform free-names) ,v) kf))))
 
 (define-parser (encapsulate transform expression)
-  (post-processed-parser expression pointer ks kf
+  (post-processed-parser expression pointer ks kf free-names
     (lambda (ks v kf)
-      (delay-call ks `(VECTOR ((PROTECT ,transform) ,v)) kf))))
+      (delay-call ks `(VECTOR (,(protect transform free-names) ,v)) kf))))
 
-(define (post-processed-parser expression pointer ks kf procedure)
+(define (post-processed-parser expression pointer ks kf free-names procedure)
   (bind-delayed-lambdas
    (lambda (ks)
-     (compile-parser-expression expression pointer ks kf))
+     (compile-parser-expression expression pointer ks kf free-names))
    (make-parser-ks-lambda
     (lambda (v kf)
       (procedure ks v kf)))))
 
 (define-parser (with-pointer identifier expression)
   `((LAMBDA (,identifier)
-      ,(compile-parser-expression expression (or pointer identifier) ks kf))
+      ,(compile-parser-expression expression (or pointer identifier) ks kf
+				  (cons identifier free-names)))
     ,(or pointer (fetch-pointer))))
 
 (define-parser (discard-matched)
-  pointer
+  pointer free-names
   `(BEGIN
      (DISCARD-PARSER-BUFFER-HEAD! ,*buffer-name*)
      ,(delay-call ks `(VECTOR) kf)))
@@ -308,14 +323,16 @@
 	       (kf kf))
 	    (bind-delayed-lambdas
 	     (lambda (ks)
-	       (compile-parser-expression (car expressions) pointer ks kf))
+	       (compile-parser-expression (car expressions) pointer ks kf
+					  free-names))
 	     (make-parser-ks-lambda
 	      (lambda (v kf)
 		(let ((vs (cons v vs)))
 		  (if (pair? (cdr expressions))
 		      (loop (cdr expressions) #f vs kf)
 		      (delay-call ks `(VECTOR-APPEND ,@(reverse vs)) kf)))))))
-	  (compile-parser-expression (car expressions) pointer ks kf))
+	  (compile-parser-expression (car expressions) pointer ks kf
+				     free-names))
       (delay-call ks `(VECTOR) kf)))
 
 (define-parser (alt . expressions)
@@ -330,15 +347,17 @@
 		       (compile-parser-expression (car expressions)
 						  pointer
 						  ks
-						  kf))
+						  kf
+						  free-names))
 		     (backtracking-kf pointer
 		       (lambda ()
 			 (loop (cdr expressions) pointer))))))
 		(compile-parser-expression (car expressions)
 					   pointer
 					   ks
-					   kf)))
-	  (compile-parser-expression (car expressions) ks kf))
+					   kf
+					   free-names)))
+	  (compile-parser-expression (car expressions) ks kf free-names))
       (delay-call kf)))
 
 (define-parser (* expression)
@@ -351,7 +370,7 @@
 	  (lambda (pointer)
 	    (bind-delayed-lambdas
 	     (lambda (ks kf)
-	       (compile-parser-expression expression pointer ks kf))
+	       (compile-parser-expression expression pointer ks kf free-names))
 	     (make-parser-ks-lambda
 	      (lambda (v2 kf)
 		(delay-call ks2 `(VECTOR-APPEND ,v ,(delay-reference v2)) kf)))

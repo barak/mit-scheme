@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: xform.scm,v 1.11 2001/12/19 01:44:43 cph Exp $
+;;;$Id: xform.scm,v 1.12 2002/02/03 03:38:55 cph Exp $
 ;;;
-;;; Copyright (c) 1985, 1989, 1990, 1999, 2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1985, 1989, 1990, 1999, 2001, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -58,9 +58,7 @@
   (let ((entry (assq (scode-variable-name variable) transforms)))
     (if (not entry)
 	variable
-	(make-combination vector-ref
-			  (list (make-scode-variable name-of-self)
-				(cdr entry))))))
+	(make-combination vector-ref (list name-of-self (cdr entry))))))
 
 (define (transform-assignment transforms assignment)
   (assignment-components assignment
@@ -70,7 +68,7 @@
 	(if (not entry)
 	    (make-assignment name value)
 	    (make-combination vector-set!
-			      (list (make-scode-variable name-of-self)
+			      (list name-of-self
 				    (cdr entry)
 				    value)))))))
 

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: recslot.scm,v 1.6 2001/12/23 17:20:59 cph Exp $
+;;; $Id: recslot.scm,v 1.7 2002/02/03 03:38:56 cph Exp $
 ;;;
-;;; Copyright (c) 1995-1999, 2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1995-1999, 2001, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -45,13 +45,16 @@
 	   (%record-initpred index)))))
 
 (define-syntax generate-index-cases
-  (non-hygienic-macro-transformer
-   (lambda (index limit expand-case)
-     `(CASE ,index
-	,@(let loop ((i 1))
-	    (if (= i limit)
-		`((ELSE (,expand-case ,index)))
-		`(((,i) (,expand-case ,i)) ,@(loop (+ i 1)))))))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((index (close-syntax (cadr form) environment))
+	   (limit (caddr form))
+	   (expand-case (close-syntax (cadddr form) environment)))
+       `(CASE ,index
+	  ,@(let loop ((i 1))
+	      (if (= i limit)
+		  `((ELSE (,expand-case ,index)))
+		  `(((,i) (,expand-case ,i)) ,@(loop (+ i 1))))))))))
 
 (define (%record-accessor index)
   (generate-index-cases index 16

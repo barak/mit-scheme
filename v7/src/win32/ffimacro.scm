@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ffimacro.scm,v 1.5 2001/12/23 17:21:00 cph Exp $
+$Id: ffimacro.scm,v 1.6 2002/02/03 03:38:58 cph Exp $
 
-Copyright (c) 1993, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1993, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -96,131 +96,148 @@ to inside a string that is being used as the buffer).
 (define ffi-module-entry-variable  (string->symbol "[ffi entry]"))
 (define ffi-result-variable (string->symbol "[ffi result]"))
 
-(define (type->checker type)
-  (string->symbol (string-append (symbol-name type) ":check")))
+(define ((make-type-namer suffix) type environment)
+  (close-syntax (symbol-append type suffix) environment))
 
-(define (type->converter type)
-  (string->symbol (string-append (symbol-name type) ":convert")))
-
-(define (type->check&converter type)
-  (string->symbol (string-append (symbol-name type) ":check&convert")))
-
-(define (type->return-converter type)
-  (string->symbol (string-append (symbol-name type) ":return-convert")))
-
-(define (type->reverter type)
-  (string->symbol (string-append (symbol-name type) ":revert")))
+(define type->checker (make-type-namer ':CHECK))
+(define type->converter (make-type-namer ':CONVERT))
+(define type->check&converter (make-type-namer ':CHECK&CONVERT))
+(define type->return-converter (make-type-namer ':RETURN-CONVERT))
+(define type->reverter (make-type-namer ':REVERT))
 
 (define-syntax windows-procedure
-  (non-hygienic-macro-transformer
-   (lambda (args return-type module entry-name . additional-specifications)
-
-     (define (make-converted-name sym)
-       (string->symbol (string-append "[converted " (symbol-name sym) "]")))
-
-     (define (make-check type arg)
-       `(if (not (,(type->checker type) ,arg))
-	    (windows-procedure-argument-type-check-error ',type ,arg)))
-
-     (define (make-conversion type arg)
-       `(,(type->converter type) ,arg))
-
-     (define (make-reversion type sym representation)
-       `(,(type->reverter type) ,sym ,representation))
-
-     (define (make-return-conversion type expr)
-       `(,(type->return-converter type) ,expr))
-
-     (if  additional-specifications
-	  ;; expanded version:
-	  (let* ((procedure-name (car args))
-		 (arg-names    (map car (cdr args)))
-		 (arg-types    (map cadr (cdr args)))
-		 (cvt-names    (map make-converted-name arg-names))
-		 (checks       (map make-check arg-types arg-names))
-		 (conversions  (map (lambda (cvt-name arg-type arg-name)
-				      `(,cvt-name
-					,(make-conversion arg-type arg-name)))
-				    cvt-names arg-types arg-names))
-		 (reversions
-		  (map make-reversion arg-types arg-names cvt-names))
-		 (additional-checks
-		  (if (and (pair? additional-specifications)
-			   (symbol? (car additional-specifications)))
-		      (cdr additional-specifications)
-		      additional-specifications)))
-
-	    `((access parameterize-with-module-entry ())
-	      (lambda (,ffi-module-entry-variable)
-		(named-lambda (,procedure-name . ,arg-names)
-		  ,@checks
-		  ,@additional-checks
-		  (let ,conversions
-		      (let ((,ffi-result-variable
-			     (%call-foreign-function
-			      (module-entry/machine-address
-			       ,ffi-module-entry-variable)
-			      . ,cvt-names)))
-			,@reversions
-			,(make-return-conversion return-type
-						 ffi-result-variable)))))
-	      ,module ,entry-name))
-
-	  ;; closure version:
-	  (let* ((arg-types     (map cadr (cdr args))))
-	    `(make-windows-procedure ,module ,entry-name
-				     ,(type->return-converter return-type)
-				     ,@(map type->check&converter
-					    arg-types)))))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((args (cadr form))
+	   (return-type (caddr form))
+	   (module (close-syntax (cadddr form) environment))
+	   (entry-name (close-syntax (car (cddddr form)) environment))
+	   (additional-specifications (cdr (cddddr form))))
+       (if additional-specifications
+	   ;; expanded version:
+	   (let* ((procedure-name (car args))
+		  (arg-names (map car (cdr args)))
+		  (arg-types (map cadr (cdr args)))
+		  (cvt-names
+		   (map (lambda (sym)
+			  (intern
+			   (string-append "[converted "
+					  (symbol-name sym)
+					  "]")))
+			arg-names)))
+	     `((ACCESS PARAMETERIZE-WITH-MODULE-ENTRY
+		       SYSTEM-GLOBAL-ENVIRONMENT)
+	       (LAMBDA (,ffi-module-entry-variable)
+		 (NAMED-LAMBDA (,procedure-name ,@arg-names)
+		   ,@(map (lambda (type arg)
+			    `(IF (NOT (,(type->checker type environment) ,arg))
+				 (WINDOWS-PROCEDURE-ARGUMENT-TYPE-CHECK-ERROR
+				  ',type
+				  ,arg)))
+			  arg-types
+			  arg-names)
+		   ,@(if (and (pair? additional-specifications)
+			      (symbol? (car additional-specifications)))
+			 (cdr additional-specifications)
+			 additional-specifications)
+		   (LET ,(map (lambda (cvt-name arg-type arg-name)
+				`(,cvt-name
+				  (,(type->converter arg-type environment)
+				   ,arg-name)))
+			      cvt-names
+			      arg-types
+			      arg-names)
+		       (LET ((,ffi-result-variable
+			      (%CALL-FOREIGN-FUNCTION
+			       (MODULE-ENTRY/MACHINE-ADDRESS
+				,ffi-module-entry-variable)
+			       ,@cvt-names)))
+			 ,@(map (lambda (type arg-name cvt-name)
+				  `(,(type->reverter type environment)
+				    ,arg-name
+				    ,cvt-name))
+				arg-types
+				arg-names
+				cvt-names)
+			 (,(type->return-converter return-type environment)
+			  ,ffi-result-variable)))))
+	       ,module
+	       ,entry-name))
+	   ;; closure version:
+	   (let ((arg-types (map cadr (cdr args))))
+	     `(MAKE-WINDOWS-PROCEDURE
+	       ,module
+	       ,entry-name
+	       ,(type->return-converter return-type environment)
+	       ,@(map (lambda (name)
+			(type->check&converter name environment))
+		      arg-types))))))))
 
 (define-syntax define-windows-type
-  (non-hygienic-macro-transformer
-   (lambda (name #!optional check convert return revert)
-     (let ((check    (if (default-object? check)   #f check))
-	   (convert  (if (default-object? convert) #f convert))
-	   (return   (if (default-object? return)  #f return))
-	   (revert   (if (default-object? revert)  #f revert)))
-       (let ((check    (or check   '(lambda (x) x #t)))
-	     (convert  (or convert '(lambda (x) x)))
-	     (return   (or return  '(lambda (x) x)))
-	     (revert   (or revert  '(lambda (x y) x y unspecific))))
-	 `(begin 
-	    (define-integrable (,(type->checker name) x)
-	      (,check x))
-	    (define-integrable (,(type->converter name) x)
-	      (,convert x))
-	    (define-integrable (,(type->check&converter name) x)
-	      (if (,(type->checker name) x)
-		  (,(type->converter name) x)
-		  (windows-procedure-argument-type-check-error ',name x)))
-	    (define-integrable (,(type->return-converter name) x)
-	      (,return x))
-	    (define-integrable (,(type->reverter name) x y)
-	      (,revert x y))))))))
-
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (list-ref form 1))
+	   (check
+	    (if (> (length form) 2)
+		(list-ref form 2)
+		'(LAMBDA (X) X #T)))
+	   (convert
+	    (if (> (length form) 3)
+		(list-ref form 3)
+		'(LAMBDA (X) X)))
+	   (return
+	    (if (> (length form) 4)
+		(list-ref form 4)
+		'(LAMBDA (X) X)))
+	   (revert
+	    (if (> (length form) 5)
+		(list-ref form 5)
+		'(LAMBDA (X Y) X Y UNSPECIFIC))))
+       `(BEGIN 
+	  (DEFINE-INTEGRABLE (,(type->checker name environment) X)
+	    (,check X))
+	  (DEFINE-INTEGRABLE (,(type->converter name environment) X)
+	    (,convert X))
+	  (DEFINE-INTEGRABLE (,(type->check&converter name environment) X)
+	    (IF (,(type->checker name environment) X)
+		(,(type->converter name environment) X)
+		(WINDOWS-PROCEDURE-ARGUMENT-TYPE-CHECK-ERROR ',name X)))
+	  (DEFINE-INTEGRABLE (,(type->return-converter name environment) X)
+	    (,return X))
+	  (DEFINE-INTEGRABLE (,(type->reverter name environment) X Y)
+	    (,revert X Y)))))))
 
 (define-syntax define-similar-windows-type
-  (non-hygienic-macro-transformer
-   (lambda (name model #!optional check convert return revert)
-     (let ((check    (if (default-object? check)   #f check))
-	   (convert  (if (default-object? convert) #f convert))
-	   (return   (if (default-object? return)  #f return))
-	   (revert   (if (default-object? revert)  #f revert)))
-       ;; eta conversion below are deliberate to persuade integration to chain
-       (let ((check    (or check   (type->checker model)))
-	     (convert  (or convert (type->converter model)))
-	     (return   (or return  (type->return-converter model)))
-	     (revert   (or revert  (type->reverter model))))
-	 `(begin
-	    (define-integrable (,(type->checker name) x)
-	      (,check x))
-	    (define-integrable (,(type->converter name) x)
-	      (,convert x))
-	    (define-integrable (,(type->check&converter name) x)
-	      (if (,(type->checker name) x)
-		  (,(type->converter name) x)
-		  (windows-procedure-argument-type-check-error ',name x)))
-	    (define-integrable (,(type->return-converter name) x)
-	      (,return x))
-	    (define-integrable (,(type->reverter name) x y)
-	      (,revert x y))))))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (list-ref form 1))
+	   (model (list-ref form 2)))
+       (let ((check
+	      (if (> (length form) 3)
+		  (list-ref form 3)
+		  (type->checker model environment)))
+	     (convert
+	      (if (> (length form) 4)
+		  (list-ref form 4)
+		  (type->converter model environment)))
+	     (return
+	      (if (> (length form) 5)
+		  (list-ref form 5)
+		  (type->return-converter model environment)))
+	     (revert
+	      (if (> (length form) 6)
+		  (list-ref form 6)
+		  (type->reverter model environment))))
+	 `(BEGIN
+	    (DEFINE-INTEGRABLE (,(type->checker name environment) X)
+	      (,check X))
+	    (DEFINE-INTEGRABLE (,(type->converter name environment) X)
+	      (,convert X))
+	    (DEFINE-INTEGRABLE (,(type->check&converter name environment) X)
+	      (IF (,(type->checker name environment) X)
+		  (,(type->converter name environment) X)
+		  (WINDOWS-PROCEDURE-ARGUMENT-TYPE-CHECK-ERROR ',name X)))
+	    (DEFINE-INTEGRABLE (,(type->return-converter name environment) X)
+	      (,return X))
+	    (DEFINE-INTEGRABLE (,(type->reverter name environment) X Y)
+	      (,revert X Y))))))))

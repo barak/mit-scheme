@@ -1,8 +1,8 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.31 2001/12/18 18:39:26 cph Exp $
+$Id: ed-ffi.scm,v 1.32 2002/02/03 03:38:55 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -88,8 +88,8 @@ USA.
     ("lambdx"	(runtime alternative-lambda))
     ("list"	(runtime list))
     ("load"	(runtime load))
-    ("macros"	(runtime macros))
     ("mime-codec" (runtime mime-codec))
+    ("mit-syntax" (runtime syntactic-closures))
     ("msort"	(runtime merge-sort))
     ("ntdir"	(runtime directory))
     ("ntprm"	(runtime os-primitives))
@@ -140,8 +140,11 @@ USA.
     ("strout"	(runtime string-output))
     ("symbol"	(runtime symbol))
     ("syncproc"	(runtime synchronous-subprocess))
-    ("syntab"	(runtime syntax-table))
-    ("syntax"	(runtime syntaxer))
+    ("syntactic-closures" (runtime syntactic-closures))
+    ("syntax-check" (runtime syntactic-closures))
+    ("syntax-output" (runtime syntactic-closures))
+    ("syntax-rules" (runtime syntactic-closures))
+    ("syntax-transforms" (runtime syntactic-closures))
     ("sysclk"	(runtime system-clock))
     ("sysmac"	(runtime system-macros))
     ("system"	(runtime system))

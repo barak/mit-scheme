@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: infstr.scm,v 1.13 2001/12/23 17:20:59 cph Exp $
+$Id: infstr.scm,v 1.14 2002/02/03 03:38:55 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -152,10 +152,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((dbg-block-name
-      (non-hygienic-macro-transformer
-       (lambda (name)
-	 (let ((symbol (symbol-append 'DBG-BLOCK-NAME/ name)))
-	   `(DEFINE-INTEGRABLE ,symbol
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (let ((symbol (symbol-append 'DBG-BLOCK-NAME/ (cadr form))))
+	   `(DEFINE-INTEGRABLE ,(close-syntax symbol environment)
 	      ',((ucode-primitive string->symbol)
 		 (string-append "#[(runtime compiler-info)"
 				(string-downcase (symbol-name symbol))

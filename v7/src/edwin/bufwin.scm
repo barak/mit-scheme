@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: bufwin.scm,v 1.309 2000/04/10 02:30:36 cph Exp $
+;;; $Id: bufwin.scm,v 1.310 2002/02/03 03:38:53 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Buffer Windows: Base
 
@@ -652,7 +653,7 @@
 ;;;; Standard Methods
 
 (define-method buffer-window (:initialize! window window*)
-  (usual=> window :initialize! window*)
+  (usual==> window :initialize! window*)
   (%reset-window-structures! window)
   (%clear-window-buffer-state! window))
 
@@ -660,7 +661,7 @@
   (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
     (%unset-window-buffer! window)
     (set-interrupt-enables! mask))
-  (usual=> window :kill!))
+  (usual==> window :kill!))
 
 (define-method buffer-window (:salvage! window)
   (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
@@ -697,12 +698,12 @@
 (define (buffer-window/cursor-enable! window)
   (if (%window-debug-trace window)
       ((%window-debug-trace window) 'window window 'cursor-enable!))
-  (=> (inferior-window (%window-cursor-inferior window)) :enable!))
+  (==> (inferior-window (%window-cursor-inferior window)) :enable!))
 
 (define (buffer-window/cursor-disable! window)
   (if (%window-debug-trace window)
       ((%window-debug-trace window) 'window window 'cursor-disable!))
-  (=> (inferior-window (%window-cursor-inferior window)) :disable!))
+  (==> (inferior-window (%window-cursor-inferior window)) :disable!))
 
 ;;;; Update
 
@@ -876,7 +877,8 @@
   (let ((group (%window-group window)))
     (add-group-clip-daemon! group (%window-clip-daemon window))
     (%set-window-point-index! window (mark-index (group-point group))))
-  (if (buffer-display-start new-buffer)
+  (if (and (buffer-display-start new-buffer)
+	   (window-x-size window))
       (set-new-coordinates! window
 			    (mark-index (buffer-display-start new-buffer))
 			    0

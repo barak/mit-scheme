@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: constr.scm,v 1.3 1999/01/02 06:06:43 cph Exp $
+$Id: constr.scm,v 1.4 2002/02/03 03:38:53 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1989-1999, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,8 +16,11 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
+
+(declare (usual-integrations))
 
 ;;; Procedures for managing a set of ordering constraints
 

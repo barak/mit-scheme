@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.28 2001/12/23 17:21:00 cph Exp $
+;;; $Id: matcher.scm,v 1.29 2002/02/03 03:38:58 cph Exp $
 ;;;
-;;; Copyright (c) 2001 Massachusetts Institute of Technology
+;;; Copyright (c) 2001, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -47,6 +47,8 @@
 	   (if preprocessor
 	       (preprocessor expression external-bindings internal-bindings)
 	       expression)))
+	((identifier? expression)
+	 expression)
 	((string? expression)
 	 (preprocess-matcher-expression `(STRING ,expression)
 					external-bindings
@@ -75,18 +77,20 @@
   name)
 
 (define-syntax define-*matcher-macro
-  (non-hygienic-macro-transformer
-   (lambda (bvl expression)
-     (cond ((symbol? bvl)
-	    `(DEFINE-*MATCHER-EXPANDER ',bvl
-	       (LAMBDA ()
-		 ,expression)))
-	   ((named-lambda-bvl? bvl)
-	    `(DEFINE-*MATCHER-EXPANDER ',(car bvl)
-	       (LAMBDA ,(cdr bvl)
-		 ,expression)))
-	   (else
-	    (error "Malformed bound-variable list:" bvl))))))
+  (rsc-macro-transformer
+   (lambda (form environment)
+     (let ((r-dme (close-syntax 'DEFINE-*MATCHER-EXPANDER environment))
+	   (r-lambda (close-syntax 'LAMBDA environment)))
+       (cond ((syntax-match? '(SYMBOL EXPRESSION) (cdr form))
+	      `(,r-dme ',(cadr form)
+		       (,r-lambda ()
+				  ,(caddr form))))
+	     ((syntax-match? '((SYMBOL . MIT-BVL) + EXPRESSION) (cdr form))
+	      `(,r-dme ',(car (cadr form))
+		       (,r-lambda ,(cdr (cadr form))
+				  ,@(cddr form))))
+	     (else
+	      (ill-formed-syntax form)))))))
 
 (define (define-*matcher-expander name procedure)
   (define-matcher-macro name
@@ -158,8 +162,8 @@
 	  `(,(car expression)
 	    ,(handle-complex-expression
 	      (if (string-prefix? "^" arg)
-		  `(RE-COMPILE-CHAR-SET ,(string-tail arg 1) #T)
-		  `(RE-COMPILE-CHAR-SET ,arg #F))
+		  `(,(close 'RE-COMPILE-CHAR-SET) ,(string-tail arg 1) #T)
+		  `(,(close 'RE-COMPILE-CHAR-SET) ,arg #F))
 	      external-bindings))
 	  expression))))
 
@@ -171,7 +175,8 @@
 
 (define-matcher-preprocessor 'WITH-POINTER
   (lambda (expression external-bindings internal-bindings)
-    (check-2-args expression (lambda (expression) (symbol? (cadr expression))))
+    (check-2-args expression
+		  (lambda (expression) (identifier? (cadr expression))))
     `(,(car expression) ,(cadr expression)
 			,(preprocess-matcher-expression (caddr expression)
 							external-bindings
@@ -186,21 +191,25 @@
 ;;;; Compiler
 
 (define-syntax *matcher
-  (non-hygienic-macro-transformer
-   (lambda (expression)
-     (generate-matcher-code expression))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '(EXPRESSION) (cdr form))
+	 (generate-matcher-code (cadr form) environment)
+	 (ill-formed-syntax form)))))
 
-(define (generate-matcher-code expression)
-  (generate-external-procedure expression preprocess-matcher-expression
-    (lambda (expression)
+(define (generate-matcher-code expression environment)
+  (generate-external-procedure expression environment
+			       preprocess-matcher-expression
+    (lambda (expression free-names)
       (call-with-pointer #f
 	(lambda (p)
 	  (bind-delayed-lambdas
-	   (lambda (ks kf) (compile-matcher-expression expression #f ks kf))
+	   (lambda (ks kf)
+	     (compile-matcher-expression expression #f ks kf free-names))
 	   (make-matcher-ks-lambda (lambda (kf) kf `#T))
 	   (backtracking-kf p (lambda () `#F))))))))
 
-(define (compile-matcher-expression expression pointer ks kf)
+(define (compile-matcher-expression expression pointer ks kf free-names)
   (cond ((and (pair? expression)
 	      (symbol? (car expression))
 	      (list? (cdr expression))
@@ -210,12 +219,13 @@
 		    (compiler (cdr entry)))
 		(if (and arity (not (= (length (cdr expression)) arity)))
 		    (error "Incorrect arity for matcher:" expression))
-		(apply compiler pointer ks kf (cdr expression)))))
-	((or (symbol? expression)
+		(apply compiler pointer ks kf free-names (cdr expression)))))
+	((or (identifier? expression)
 	     (and (pair? expression) (eq? (car expression) 'SEXP)))
-	 (wrap-external-matcher `((PROTECT ,(if (pair? expression)
+	 (wrap-external-matcher `(,(protect (if (pair? expression)
 						(cadr expression)
-						expression))
+						expression)
+					    free-names)
 				  ,*buffer-name*)
 				ks
 				kf))
@@ -228,14 +238,19 @@
        ,(delay-call kf)))
 
 (define-syntax define-matcher
-  (non-hygienic-macro-transformer
-   (lambda (form . compiler-body)
-     (let ((name (car form))
-	   (parameters (cdr form)))
-       `(DEFINE-MATCHER-COMPILER ',name
-	  ,(if (symbol? parameters) `#F (length parameters))
-	  (LAMBDA (POINTER KS KF . ,parameters)
-	    ,@compiler-body))))))
+  (rsc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '((SYMBOL . MIT-BVL) + EXPRESSION) (cdr form))
+	 (let ((name (car (cadr form)))
+	       (parameters (cdr (cadr form)))
+	       (compiler-body (cddr form))
+	       (r-dmc (close-syntax 'DEFINE-MATCHER-COMPILER environment))
+	       (r-lambda (close-syntax 'LAMBDA environment)))
+	   `(,r-dmc ',name
+		    ,(if (identifier? parameters) `#F (length parameters))
+		    (,r-lambda (POINTER KS KF FREE-NAMES . ,parameters)
+			       ,@compiler-body)))
+	 (ill-formed-syntax form)))))
 
 (define (define-matcher-compiler keyword arity compiler)
   (hash-table/put! matcher-compilers keyword (cons arity compiler))
@@ -245,86 +260,87 @@
   (make-eq-hash-table))
 
 (define-syntax define-atomic-matcher
-  (non-hygienic-macro-transformer
-   (lambda (form test-expression)
-     `(DEFINE-MATCHER ,form
-	POINTER
-	(WRAP-EXTERNAL-MATCHER ,test-expression KS KF)))))
+  (rsc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '(DATUM + EXPRESSION) (cdr form))
+	 (let ((r-dm (close-syntax 'DEFINE-MATCHER environment))
+	       (r-wem (close-syntax 'WRAP-EXTERNAL-MATCHER environment)))
+	   `(,r-dm ,(cadr form)
+		   POINTER ,@(except-last-pair (cddr form))
+		   (,r-wem ,(car (last-pair (cddr form))) KS KF)))
+	 (ill-formed-syntax form)))))
 
 (define-atomic-matcher (char char)
-  `(MATCH-PARSER-BUFFER-CHAR ,*buffer-name* (PROTECT ,char)))
+  `(MATCH-PARSER-BUFFER-CHAR ,*buffer-name* ,(protect char free-names)))
 
 (define-atomic-matcher (char-ci char)
-  `(MATCH-PARSER-BUFFER-CHAR-CI ,*buffer-name* (PROTECT ,char)))
+  `(MATCH-PARSER-BUFFER-CHAR-CI ,*buffer-name* ,(protect char free-names)))
 
 (define-atomic-matcher (not-char char)
-  `(MATCH-PARSER-BUFFER-NOT-CHAR ,*buffer-name* (PROTECT ,char)))
+  `(MATCH-PARSER-BUFFER-NOT-CHAR ,*buffer-name* ,(protect char free-names)))
 
 (define-atomic-matcher (not-char-ci char)
-  `(MATCH-PARSER-BUFFER-NOT-CHAR-CI ,*buffer-name* (PROTECT ,char)))
+  `(MATCH-PARSER-BUFFER-NOT-CHAR-CI ,*buffer-name* ,(protect char free-names)))
 
 (define-atomic-matcher (char-set char-set)
-  `(MATCH-PARSER-BUFFER-CHAR-IN-SET ,*buffer-name* (PROTECT ,char-set)))
+  `(MATCH-PARSER-BUFFER-CHAR-IN-SET ,*buffer-name*
+				    ,(protect char-set free-names)))
 
 (define-atomic-matcher (alphabet alphabet)
-  `(MATCH-UTF8-CHAR-IN-ALPHABET ,*buffer-name* (PROTECT ,alphabet)))
+  `(MATCH-UTF8-CHAR-IN-ALPHABET ,*buffer-name* ,(protect alphabet free-names)))
 
 (define-atomic-matcher (string string)
-  `(MATCH-PARSER-BUFFER-STRING ,*buffer-name* (PROTECT ,string)))
+  `(MATCH-PARSER-BUFFER-STRING ,*buffer-name* ,(protect string free-names)))
 
 (define-atomic-matcher (string-ci string)
-  `(MATCH-PARSER-BUFFER-STRING-CI ,*buffer-name* (PROTECT ,string)))
+  `(MATCH-PARSER-BUFFER-STRING-CI ,*buffer-name* ,(protect string free-names)))
 
 (define-atomic-matcher (end-of-input)
+  free-names
   `(NOT (PEEK-PARSER-BUFFER-CHAR ,*buffer-name*)))
 
 (define-matcher (discard-matched)
-  pointer
+  pointer free-names
   `(BEGIN
      (DISCARD-PARSER-BUFFER-HEAD! ,*buffer-name*)
      ,(delay-call ks kf)))
 
 (define-matcher (with-pointer identifier expression)
   `((LAMBDA (,identifier)
-      ,(compile-matcher-expression expression (or pointer identifier) ks kf))
+      ,(compile-matcher-expression expression (or pointer identifier) ks kf
+				   (cons identifier free-names)))
     ,(or pointer (fetch-pointer))))
 
 (define-matcher (seq . expressions)
   (if (pair? expressions)
-      (if (pair? (cdr expressions))
-	  (let loop ((expressions expressions) (pointer pointer) (kf kf))
-	    (if (pair? (cdr expressions))
-		(bind-delayed-lambdas
-		 (lambda (ks)
-		   (compile-matcher-expression (car expressions)
-					       pointer
-					       ks
-					       kf))
-		 (make-matcher-ks-lambda
-		  (lambda (kf)
-		    (loop (cdr expressions) #f kf))))
-		(compile-matcher-expression (car expressions) pointer ks kf)))
-	  (compile-matcher-expression (car expressions) pointer ks kf))
+      (let loop ((expressions expressions) (pointer pointer) (kf kf))
+	(if (pair? (cdr expressions))
+	    (bind-delayed-lambdas
+	     (lambda (ks)
+	       (compile-matcher-expression (car expressions) pointer ks kf
+					   free-names))
+	     (make-matcher-ks-lambda
+	      (lambda (kf)
+		(loop (cdr expressions) #f kf))))
+	    (compile-matcher-expression (car expressions) pointer ks kf
+					free-names)))
       (delay-call ks kf)))
 
 (define-matcher (alt . expressions)
   (if (pair? expressions)
-      (if (pair? (cdr expressions))
-	  (let loop ((expressions expressions) (pointer pointer))
-	    (if (pair? (cdr expressions))
-		(call-with-pointer pointer
-		  (lambda (pointer)
-		    (bind-delayed-lambdas
-		     (lambda (kf)
-		       (compile-matcher-expression (car expressions)
-						   pointer
-						   ks
-						   kf))
-		     (backtracking-kf pointer
-		       (lambda ()
-			 (loop (cdr expressions) pointer))))))
-		(compile-matcher-expression (car expressions) pointer ks kf)))
-	  (compile-matcher-expression (car expressions) pointer ks kf))
+      (let loop ((expressions expressions) (pointer pointer))
+	(if (pair? (cdr expressions))
+	    (call-with-pointer pointer
+	      (lambda (pointer)
+		(bind-delayed-lambdas
+		 (lambda (kf)
+		   (compile-matcher-expression (car expressions) pointer ks kf
+					       free-names))
+		 (backtracking-kf pointer
+		   (lambda ()
+		     (loop (cdr expressions) pointer))))))
+	    (compile-matcher-expression (car expressions) pointer ks kf
+					free-names)))
       (delay-call kf)))
 
 (define-matcher (* expression)
@@ -336,7 +352,7 @@
 	  (lambda (pointer)
 	    (bind-delayed-lambdas
 	     (lambda (kf)
-	       (compile-matcher-expression expression #f ks2 kf))
+	       (compile-matcher-expression expression #f ks2 kf free-names))
 	     (backtracking-kf pointer
 	       (lambda ()
 		 (delay-call ks kf2)))))))))

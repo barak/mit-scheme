@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: search.scm,v 1.153 2001/12/23 17:20:58 cph Exp $
+;;;$Id: search.scm,v 1.154 2002/02/03 03:38:54 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999, 2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-1999, 2001, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -24,76 +24,79 @@
 (declare (usual-integrations))
 
 (let-syntax
-    ((define-forward-search
-      (non-hygienic-macro-transformer
-       (lambda (name find-next)
-	 `(DEFINE (,name GROUP START END CHAR)
-	    ;; Assume (FIX:<= START END)
-	    (AND (NOT (FIX:= START END))
-		 (COND ((FIX:<= END (GROUP-GAP-START GROUP))
-			(,find-next (GROUP-TEXT GROUP) START END CHAR))
-		       ((FIX:<= (GROUP-GAP-START GROUP) START)
-			(LET ((POSITION
-			       (,find-next
-				(GROUP-TEXT GROUP)
-				(FIX:+ START (GROUP-GAP-LENGTH GROUP))
-				(FIX:+ END (GROUP-GAP-LENGTH GROUP))
-				CHAR)))
-			  (AND POSITION
-			       (FIX:- POSITION (GROUP-GAP-LENGTH GROUP)))))
-		       ((,find-next (GROUP-TEXT GROUP)
-				    START
-				    (GROUP-GAP-START GROUP)
-				    CHAR))
-		       (ELSE
-			(LET ((POSITION
-			       (,find-next (GROUP-TEXT GROUP)
-					   (GROUP-GAP-END GROUP)
-					   (FIX:+ END (GROUP-GAP-LENGTH GROUP))
-					   CHAR)))
-			  (AND POSITION
-			       (FIX:- POSITION
-				      (GROUP-GAP-LENGTH GROUP))))))))))))
-(define-forward-search group-find-next-char substring-find-next-char)
-(define-forward-search group-find-next-char-ci substring-find-next-char-ci)
-(define-forward-search group-find-next-char-in-set
-  substring-find-next-char-in-set))
+    ((define-search
+       (sc-macro-transformer
+	(lambda (form environment)
+	  (let ((name (close-syntax (cadr form) environment))
+		(find-next (close-syntax (caddr form) environment)))
+	    `(DEFINE (,name GROUP START END CHAR)
+	       ;; Assume (FIX:<= START END)
+	       (AND (NOT (FIX:= START END))
+		    (COND ((FIX:<= END (GROUP-GAP-START GROUP))
+			   (,find-next (GROUP-TEXT GROUP) START END CHAR))
+			  ((FIX:<= (GROUP-GAP-START GROUP) START)
+			   (LET ((POSITION
+				  (,find-next
+				   (GROUP-TEXT GROUP)
+				   (FIX:+ START (GROUP-GAP-LENGTH GROUP))
+				   (FIX:+ END (GROUP-GAP-LENGTH GROUP))
+				   CHAR)))
+			     (AND POSITION
+				  (FIX:- POSITION (GROUP-GAP-LENGTH GROUP)))))
+			  ((,find-next (GROUP-TEXT GROUP)
+				       START
+				       (GROUP-GAP-START GROUP)
+				       CHAR))
+			  (ELSE
+			   (LET ((POSITION
+				  (,find-next (GROUP-TEXT GROUP)
+					      (GROUP-GAP-END GROUP)
+					      (FIX:+ END
+						     (GROUP-GAP-LENGTH GROUP))
+					      CHAR)))
+			     (AND POSITION
+				  (FIX:- POSITION
+					 (GROUP-GAP-LENGTH GROUP)))))))))))))
+  (define-search group-find-next-char substring-find-next-char)
+  (define-search group-find-next-char-ci substring-find-next-char-ci)
+  (define-search group-find-next-char-in-set substring-find-next-char-in-set))
 
 (let-syntax
-    ((define-backward-search
-      (non-hygienic-macro-transformer
-       (lambda (name find-previous)
-	 `(DEFINE (,name GROUP START END CHAR)
-	    ;; Assume (FIX:<= START END)
-	    (AND (NOT (FIX:= START END))
-		 (COND ((FIX:<= END (GROUP-GAP-START GROUP))
-			(,find-previous (GROUP-TEXT GROUP) START END CHAR))
-		       ((FIX:<= (GROUP-GAP-START GROUP) START)
-			(LET ((POSITION
-			       (,find-previous
-				(GROUP-TEXT GROUP)
-				(FIX:+ START (GROUP-GAP-LENGTH GROUP))
-				(FIX:+ END (GROUP-GAP-LENGTH GROUP))
-				CHAR)))
-			  (AND POSITION
-			       (FIX:- POSITION (GROUP-GAP-LENGTH GROUP)))))
-		       ((,find-previous (GROUP-TEXT GROUP)
-					(GROUP-GAP-END GROUP)
-					(FIX:+ END (GROUP-GAP-LENGTH GROUP))
-					CHAR)
-			=> (LAMBDA (POSITION)
-			     (FIX:- POSITION (GROUP-GAP-LENGTH GROUP))))
-		       (else
-			(,find-previous (GROUP-TEXT GROUP)
-					START
-					(GROUP-GAP-START GROUP)
-					CHAR)))))))))
-(define-backward-search group-find-previous-char substring-find-previous-char)
-(define-backward-search group-find-previous-char-ci
-  substring-find-previous-char-ci)
-(define-backward-search group-find-previous-char-in-set
-  substring-find-previous-char-in-set))
-
+    ((define-search
+       (sc-macro-transformer
+	(lambda (form environment)
+	  (let ((name (close-syntax (cadr form) environment))
+		(find-previous (close-syntax (caddr form) environment)))
+	    `(DEFINE (,name GROUP START END CHAR)
+	       ;; Assume (FIX:<= START END)
+	       (AND (NOT (FIX:= START END))
+		    (COND ((FIX:<= END (GROUP-GAP-START GROUP))
+			   (,find-previous (GROUP-TEXT GROUP) START END CHAR))
+			  ((FIX:<= (GROUP-GAP-START GROUP) START)
+			   (LET ((POSITION
+				  (,find-previous
+				   (GROUP-TEXT GROUP)
+				   (FIX:+ START (GROUP-GAP-LENGTH GROUP))
+				   (FIX:+ END (GROUP-GAP-LENGTH GROUP))
+				   CHAR)))
+			     (AND POSITION
+				  (FIX:- POSITION (GROUP-GAP-LENGTH GROUP)))))
+			  ((,find-previous (GROUP-TEXT GROUP)
+					   (GROUP-GAP-END GROUP)
+					   (FIX:+ END (GROUP-GAP-LENGTH GROUP))
+					   CHAR)
+			   => (LAMBDA (POSITION)
+				(FIX:- POSITION (GROUP-GAP-LENGTH GROUP))))
+			  (else
+			   (,find-previous (GROUP-TEXT GROUP)
+					   START
+					   (GROUP-GAP-START GROUP)
+					   CHAR))))))))))
+  (define-search group-find-previous-char substring-find-previous-char)
+  (define-search group-find-previous-char-ci substring-find-previous-char-ci)
+  (define-search group-find-previous-char-in-set
+    substring-find-previous-char-in-set))
+
 (define-integrable (%find-next-newline group start end)
   (group-find-next-char group start end #\newline))
 
@@ -102,7 +105,7 @@
   (let ((index (group-find-previous-char group end start #\newline)))
     (and index
 	 (fix:+ index 1))))
-
+
 (define (group-match-substring-forward group start end
 				       string string-start string-end)
   (let ((text (group-text group))
@@ -268,24 +271,28 @@
 	   (make-mark group index)))))
 
 (define-syntax default-end-mark
-  (non-hygienic-macro-transformer
-   (lambda (start end)
-     `(IF (DEFAULT-OBJECT? ,end)
-	  (GROUP-END ,start)
-	  (BEGIN
-	    (IF (NOT (MARK<= ,start ,end))
-		(ERROR "Marks incorrectly related:" ,start ,end))
-	    ,end)))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((start (close-syntax (cadr form) environment))
+	   (end (close-syntax (caddr form) environment)))
+       `(IF (DEFAULT-OBJECT? ,end)
+	    (GROUP-END ,start)
+	    (BEGIN
+	      (IF (NOT (MARK<= ,start ,end))
+		  (ERROR "Marks incorrectly related:" ,start ,end))
+	      ,end))))))
 
 (define-syntax default-start-mark
-  (non-hygienic-macro-transformer
-   (lambda (start end)
-     `(IF (DEFAULT-OBJECT? ,start)
-	  (GROUP-START ,end)
-	  (BEGIN
-	    (IF (NOT (MARK<= ,start ,end))
-		(ERROR "Marks incorrectly related:" ,start ,end))
-	    ,start)))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((start (close-syntax (cadr form) environment))
+	   (end (close-syntax (caddr form) environment)))
+       `(IF (DEFAULT-OBJECT? ,start)
+	    (GROUP-START ,end)
+	    (BEGIN
+	      (IF (NOT (MARK<= ,start ,end))
+		  (ERROR "Marks incorrectly related:" ,start ,end))
+	      ,start))))))
 
 (define (char-match-forward char start #!optional end case-fold-search)
   (and (mark< start (default-end-mark start end))

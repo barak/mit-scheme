@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: scomb.scm,v 14.18 2001/12/23 17:20:59 cph Exp $
+$Id: scomb.scm,v 14.19 2002/02/03 03:38:56 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -281,26 +281,32 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((combination-dispatch
-      (non-hygienic-macro-transformer
-       (lambda (name combination case-0 case-1 case-2 case-n)
-	 `(COND ((OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-0)
-			       ,combination)
-		 ,case-0)
-		((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION-1) ,combination)
-		     (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-1)
-				   ,combination))
-		 ,case-1)
-		((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION-2) ,combination)
-		     (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-2)
-				   ,combination))
-		 ,case-2)
-		((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION) ,combination)
-		     (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-3)
-				   ,combination))
-		 ,case-n)
-		(ELSE
-		 (ERROR:WRONG-TYPE-ARGUMENT ,combination "SCode combination"
-					    ',name)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (let ((name (list-ref form 1))
+	       (combination (close-syntax (list-ref form 2) environment))
+	       (case-0 (close-syntax (list-ref form 3) environment))
+	       (case-1 (close-syntax (list-ref form 4) environment))
+	       (case-2 (close-syntax (list-ref form 5) environment))
+	       (case-n (close-syntax (list-ref form 6) environment)))
+	   `(COND ((OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-0)
+				 ,combination)
+		   ,case-0)
+		  ((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION-1) ,combination)
+		       (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-1)
+				     ,combination))
+		   ,case-1)
+		  ((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION-2) ,combination)
+		       (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-2)
+				     ,combination))
+		   ,case-2)
+		  ((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION) ,combination)
+		       (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-3)
+				     ,combination))
+		   ,case-n)
+		  (ELSE
+		   (ERROR:WRONG-TYPE-ARGUMENT ,combination "SCode combination"
+					      ',name))))))))
 
 (define (combination-size combination)
   (combination-dispatch combination-size combination

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 14.42 2001/12/23 17:20:59 cph Exp $
+$Id: debug.scm,v 14.43 2002/02/03 03:38:55 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -207,14 +207,21 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define command-set)
 
 (define-syntax define-command
-  (non-hygienic-macro-transformer
-   (lambda (bvl . body)
-     (let ((dstate (cadr bvl))
-	   (port (caddr bvl)))
-       `(DEFINE (,(car bvl) #!OPTIONAL ,dstate ,port)
-	  (LET ((,dstate (IF (DEFAULT-OBJECT? ,dstate) *DSTATE* ,dstate))
-		(,port (IF (DEFAULT-OBJECT? ,port) *PORT* ,port)))
-	    ,@body))))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '((IDENTIFIER IDENTIFIER IDENTIFIER) + EXPRESSION)
+			(cdr form))
+	 (let ((dstate (cadr (cadr form)))
+	       (port (caddr (cadr form))))
+	   `(DEFINE (,(car (cadr form)) #!OPTIONAL ,dstate ,port)
+	      (LET ((,dstate (IF (DEFAULT-OBJECT? ,dstate) *DSTATE* ,dstate))
+		    (,port (IF (DEFAULT-OBJECT? ,port) *PORT* ,port)))
+		,@(map (let ((free (list dstate port)))
+			 (lambda (expression)
+			   (make-syntactic-closure environment free
+			     expression)))
+		       (cddr form)))))
+	 (ill-formed-syntax form)))))
 
 ;;;; Display commands
 

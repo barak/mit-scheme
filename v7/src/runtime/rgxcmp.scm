@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rgxcmp.scm,v 1.118 2001/12/23 17:20:59 cph Exp $
+;;; $Id: rgxcmp.scm,v 1.119 2002/02/03 03:38:56 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -27,18 +27,22 @@
 ;;;; Compiled Opcodes
 
 (define-syntax define-enumeration
-  (non-hygienic-macro-transformer
-   (lambda (name prefix . suffixes)
-     `(BEGIN
-	,@(let loop ((n 0) (suffixes suffixes))
-	    (if (pair? suffixes)
-		(cons `(DEFINE-INTEGRABLE
-			 ,(symbol-append prefix (car suffixes))
-			 ,n)
-		      (loop (+ n 1) (cdr suffixes)))
-		'()))
-	(DEFINE ,name
-	  (VECTOR ,@(map (lambda (suffix) `',suffix) suffixes)))))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (close-syntax (cadr form) environment))
+	   (prefix (caddr form))
+	   (suffixes (cdddr form)))
+       `(BEGIN
+	  ,@(let loop ((n 0) (suffixes suffixes))
+	      (if (pair? suffixes)
+		  (cons `(DEFINE-INTEGRABLE
+			   ,(close-syntax (symbol-append prefix (car suffixes))
+					  environment)
+			   ,n)
+			(loop (+ n 1) (cdr suffixes)))
+		  '()))
+	  (DEFINE ,name
+	    (VECTOR ,@(map (lambda (suffix) `',suffix) suffixes))))))))
 
 (define-enumeration re-codes re-code:
 

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: edtfrm.scm,v 1.90 1999/01/02 06:11:34 cph Exp $
+;;; $Id: edtfrm.scm,v 1.91 2002/02/03 03:38:54 cph Exp $
 ;;;
-;;; Copyright (c) 1985, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1985, 1989-1999, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Editor Frame
 
@@ -75,7 +76,7 @@
 
 (define (set-editor-frame-size! window x y)
   (with-instance-variables editor-frame window (x y)
-    (usual=> window :set-size! x y)
+    (usual==> window :set-size! x y)
     (set-inferior-start! root-inferior 0 0)
     (let ((y* (- y typein-y-size)))
       (set-inferior-start! typein-inferior 0 y*)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unsyn.scm,v 14.27 2001/12/24 04:17:53 cph Exp $
+$Id: unsyn.scm,v 14.28 2002/02/03 03:38:57 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -165,7 +165,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (unexpand-definition name value)
   (cond ((macro-reference-trap-expression? value)
 	 `(DEFINE-SYNTAX ,name
-	    ,(macro-reference-trap-expression-transformer value)))
+	    ,(unsyntax-object
+	      (macro-reference-trap-expression-transformer value))))
 	((and (eq? #t unsyntaxer:macroize?)
 	      (lambda? value)
 	      (not (has-substitution? value)))

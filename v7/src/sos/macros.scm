@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: macros.scm,v 1.12 2001/12/23 17:21:00 cph Exp $
+;;; $Id: macros.scm,v 1.13 2002/02/03 03:38:58 cph Exp $
 ;;;
-;;; Copyright (c) 1993-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1993-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -24,59 +24,70 @@
 (declare (usual-integrations))
 
 (define-syntax define-class
-  (non-hygienic-macro-transformer
-   (lambda (name superclasses . slot-arguments)
-     (let ((lose
-	    (lambda (s a)
-	      (error (string-append "Malformed " s ":") a))))
-       (call-with-values (lambda () (parse-define-class-name name lose))
-	 (lambda (name post-definitions separator)
-	   (if (not (list? superclasses))
-	       (lose "superclasses" superclasses))
-	   (let ((pre-definitions
-		  (extract-generic-definitions! slot-arguments name separator
-						lose)))
-	     `(BEGIN
-		,@pre-definitions
-		(DEFINE ,name
-		  (,(make-absolute-reference 'MAKE-CLASS)
-		   ',name
-		   (,(make-absolute-reference 'LIST) ,@superclasses)
-		   (,(make-absolute-reference 'LIST)
-		    ,@(map
-		       (lambda (arg)
-			 (cond ((symbol? arg)
-				`',arg)
-			       ((and (pair? arg)
-				     (symbol? (car arg))
-				     (list? (cdr arg)))
-				`(,(make-absolute-reference 'LIST)
-				  ',(car arg)
-				  ,@(let loop ((plist (cdr arg)))
-				      (cond ((null? plist)
-					     '())
-					    ((and (symbol? (car plist))
-						  (pair? (cdr plist)))
-					     (cons* `',(car plist)
-						    (cadr plist)
-						    (loop (cddr plist))))
-					    (else
-					     (lose "slot argument" arg))))))
-			       (else
-				(lose "slot argument" arg))))
-		       slot-arguments))))
-		,@post-definitions))))))))
+  (rsc-macro-transformer
+   (let ((lose
+	  (lambda (s a)
+	    (error (string-append "Malformed " s ":") a))))
+     (lambda (form environment)
+       (if (syntax-match? '(DATUM (* EXPRESSION) * DATUM) (cdr form))
+	   (let ((name (cadr form))
+		 (superclasses (caddr form))
+		 (slot-arguments
+		  (map (lambda (arg) (canonicalize-slot-argument arg lose))
+		       (cdddr form))))
+	     (call-with-values
+		 (lambda ()
+		   (parse-define-class-name name environment lose))
+	       (lambda (name post-definitions separator)
+		 (let ((pre-definitions
+			(extract-generic-definitions!
+			 slot-arguments name separator environment lose)))
+		   `(,(close-syntax 'BEGIN environment)
+		     ,@pre-definitions
+		     (,(close-syntax 'DEFINE environment)
+		      ,name
+		      (,(absolute 'MAKE-CLASS environment)
+		       ',name
+		       (,(absolute 'LIST environment) ,@superclasses)
+		       (,(absolute 'LIST environment)
+			,@(map (lambda (arg)
+				 (if (null? (cdr arg))
+				     `',arg
+				     `(,(absolute 'LIST environment)
+				       ',(car arg)
+				       ,@(let loop ((plist (cdr arg)))
+					   (if (pair? plist)
+					       (cons* `',(car plist)
+						      (cadr plist)
+						      (loop (cddr plist)))
+					       '())))))
+			       slot-arguments))))
+		     ,@post-definitions)))))
+	   (ill-formed-syntax form))))))
+
+(define (canonicalize-slot-argument arg lose)
+  (cond ((symbol? arg)
+	 (list arg))
+	((and (pair? arg)
+	      (symbol? (car arg))
+	      (list? (cdr arg)))
+	 (let loop ((plist (cdr arg)))
+	   (if (pair? plist)
+	       (begin
+		 (if (not (and (symbol? (car plist))
+			       (pair? (cdr plist))))
+		     (lose "slot argument" arg))
+		 (loop (cddr plist)))))
+	 (list-copy arg))
+	(else
+	 (lose "slot argument" arg))))
 
-(define (parse-define-class-name name lose)
+(define (parse-define-class-name name environment lose)
   (call-with-values (lambda () (parse-define-class-name-1 name lose))
     (lambda (class-name alist)
       (let ((post-definitions '())
 	    (separator #f))
-	(let ((alist
-	       (if (assq 'PREDICATE alist)
-		   alist
-		   (cons '(PREDICATE) alist)))
-	      (post-def
+	(let ((post-def
 	       (lambda (def)
 		 (set! post-definitions (cons def post-definitions))
 		 unspecific)))
@@ -92,33 +103,39 @@
 				       (false? (cadr option)))
 				   (null? (cddr option)))
 			      (cadr option))
-			     (else (lose "class option" option)))))
+			     (else
+			      (lose "class option" option)))))
 		  (if pn
 		      (post-def
-		       `(DEFINE ,pn
-			  (,(make-absolute-reference 'INSTANCE-PREDICATE)
-			   ,class-name))))))
+		       `(,(close-syntax 'DEFINE environment)
+			 ,pn
+			 (,(absolute 'INSTANCE-PREDICATE environment)
+			  ,class-name))))))
 	       ((CONSTRUCTOR)
 		(call-with-values
 		    (lambda ()
 		      (parse-constructor-option class-name lose option))
 		  (lambda (name slots ii-args)
 		    (post-def
-		     `(DEFINE ,name
-			(,(make-absolute-reference 'INSTANCE-CONSTRUCTOR)
-			 ,class-name
-			 ',slots
-			 ,@(map (lambda (x) `',x) ii-args)))))))
+		     `(,(close-syntax 'DEFINE environment)
+		       ,name
+		       (,(absolute 'INSTANCE-CONSTRUCTOR environment)
+			,class-name
+			',slots
+			,@(map (lambda (x) `',x) ii-args)))))))
 	       ((SEPARATOR)
 		(if (or separator
-			(null? (cdr option))
-			(not (string? (cadr option)))
-			(not (null? (cddr option))))
+			(not (and (pair? (cdr option))
+				  (string? (cadr option))
+				  (null? (cddr option)))))
 		    (lose "class option" option))
 		(set! separator (cadr option))
 		unspecific)
-	       (else (lose "class option" option))))
-	   alist))
+	       (else
+		(lose "class option" option))))
+	   (if (assq 'PREDICATE alist)
+	       alist
+	       (cons '(PREDICATE) alist))))
 	(values class-name post-definitions (or separator "-"))))))
 
 (define (parse-define-class-name-1 name lose)
@@ -136,17 +153,14 @@
 	(else (lose "class name" name))))
 
 (define (parse-constructor-option class-name lose option)
-  (cond ((match `(,symbol? ,list-of-symbols? . ,optional?) (cdr option))
+  (cond ((syntax-match? `(SYMBOL (* SYMBOL) . ,optional?) (cdr option))
 	 (values (cadr option) (caddr option) (cdddr option)))
-	((match `(,list-of-symbols? . ,optional?) (cdr option))
+	((syntax-match? `((* SYMBOL) . ,optional?) (cdr option))
 	 (values (default-constructor-name class-name)
 		 (cadr option)
 		 (cddr option)))
 	(else
 	 (lose "class option" option))))
-
-(define (list-of-symbols? x)
-  (list-of-type? x symbol?))
 
 (define (optional? x)
   (or (null? x) (and (pair? x) (null? (cdr x)))))
@@ -157,7 +171,7 @@
 (define (default-constructor-name class-name)
   (intern (string-append "make-" (strip-angle-brackets class-name))))
 
-(define (make-named-lambda name required optional rest body)
+(define (make-named-lambda name required optional rest body environment)
   (let ((bvl
 	 (append required
 		 (if (null? optional)
@@ -165,13 +179,14 @@
 		     `(#!OPTIONAL ,@optional))
 		 (or rest '()))))
     (if name
-	`(NAMED-LAMBDA (,name ,@bvl) ,@body)
-	`(LAMBDA ,bvl ,@body))))
+	`(,(close-syntax 'NAMED-LAMBDA environment) (,name ,@bvl) ,@body)
+	`(,(close-syntax 'LAMBDA environment) ,bvl ,@body))))
 
-(define (make-absolute-reference name)
-  `(ACCESS ,name #F))
+(define (absolute name environment)
+  (close-syntax `(ACCESS ,name #F) environment))
 
-(define (extract-generic-definitions! slot-arguments name separator lose)
+(define (extract-generic-definitions! slot-arguments name separator environment
+				      lose)
   (let ((definitions '()))
     (for-each
      (lambda (arg)
@@ -197,19 +212,20 @@
 			     (append! (translate-define-arg (cadr plist)
 							    name
 							    separator
-							    arg)
+							    arg
+							    environment)
 				      definitions)))
 		     (loop (cddr plist) (cdr plist)))))))
      slot-arguments)
     definitions))
 
-(define (translate-define-arg arg name separator slot-argument)
+(define (translate-define-arg arg name separator slot-argument environment)
   (let ((translate
 	 (lambda (keyword standard? arity generate)
 	   (if (or (and standard? (eq? 'STANDARD arg))
 		   (eq? keyword arg)
 		   (and (pair? arg) (memq keyword arg)))
-	       `((DEFINE
+	       `((,(close-syntax 'DEFINE environment)
 		   ,(or (plist-lookup keyword (cdr slot-argument) #f)
 			(let ((name
 			       (intern
@@ -221,8 +237,7 @@
 			  (set-cdr! slot-argument
 				    (cons* keyword name (cdr slot-argument)))
 			  name))
-		   (,(make-absolute-reference 'MAKE-GENERIC-PROCEDURE)
-		    ,arity)))
+		   (,(absolute 'MAKE-GENERIC-PROCEDURE environment) ,arity)))
 	       '()))))
     (append (translate 'ACCESSOR #t 1
 		       (lambda (root) root))
@@ -248,134 +263,151 @@
 	s)))
 
 (define-syntax define-generic
-  (non-hygienic-macro-transformer
-   (lambda (name lambda-list)
-     (if (not (symbol? name))
-	 (error "Malformed generic procedure name:" name))
-     (call-with-values (lambda () (parse-lambda-list lambda-list #f))
-       (lambda (required optional rest)
-	 `(DEFINE ,name
-	    (,(make-absolute-reference 'MAKE-GENERIC-PROCEDURE)
-	     ',(let ((low (length required)))
-		 (cond (rest (cons low #f))
-		       ((null? optional) low)
-		       (else (cons low (+ low (length optional))))))
-	     ',name)))))))
+  (rsc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '(IDENTIFIER MIT-BVL) (cdr form))
+	 (call-with-values (lambda () (parse-mit-lambda-list (caddr form)))
+	   (lambda (required optional rest)
+	     `(,(close-syntax 'DEFINE environment)
+	       ,(cadr form)
+	       (,(absolute 'MAKE-GENERIC-PROCEDURE environment)
+		',(let ((low (length required)))
+		    (if rest
+			(cons low #f)
+			(let ((n (length optional)))
+			  (if (> n 0)
+			      (cons low (+ low n))
+			      low))))
+		',(cadr form)))))
+	 (ill-formed-syntax form)))))
 
 (define-syntax define-method
-  (non-hygienic-macro-transformer
-   (lambda (name lambda-list . body)
-     (transform-define-method name lambda-list body
-       (lambda (name required specializers optional rest body)
-	 `(,(make-absolute-reference 'ADD-METHOD)
-	   ,name
-	   ,(make-method-sexp name required optional rest specializers
-			      body)))))))
+  (rsc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '(IDENTIFIER DATUM + EXPRESSION) (cdr form))
+	 (call-with-values
+	     (lambda () (parse-specialized-lambda-list (caddr form)))
+	   (lambda (required specializers optional rest)
+	     (let ((name (cadr form)))
+	       (capture-syntactic-environment
+		(lambda (instance-environment)
+		  `(,(absolute 'ADD-METHOD environment)
+		    ,name
+		    ,(make-method-sexp name required optional rest specializers
+				       (cdddr form)
+				       environment
+				       instance-environment)))))))
+	 (ill-formed-syntax form)))))
 
 (define-syntax define-computed-method
-  (non-hygienic-macro-transformer
-   (lambda (name lambda-list . body)
-     (transform-define-method name lambda-list body
-       (lambda (name required specializers optional rest body)
-	 `(,(make-absolute-reference 'ADD-METHOD)
-	   ,name
-	   (,(make-absolute-reference 'MAKE-COMPUTED-METHOD)
-	    (,(make-absolute-reference 'LIST) ,@specializers)
-	    ,(make-named-lambda name required optional rest body))))))))
-
-(define (transform-define-method name lambda-list body generator)
-  (if (not (symbol? name))
-      (error "Malformed generic procedure name:" name))
-  (call-with-values (lambda () (parse-lambda-list lambda-list #t))
-    (lambda (required optional rest)
-      (call-with-values (lambda () (extract-required-specializers required))
-	(lambda (required specializers)
-	  (generator name required specializers optional rest body))))))
+  (rsc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '(IDENTIFIER DATUM + EXPRESSION) (cdr form))
+	 (call-with-values
+	     (lambda () (parse-specialized-lambda-list (caddr form)))
+	   (lambda (required specializers optional rest)
+	     (let ((name (cadr form)))
+	       `(,(absolute 'ADD-METHOD environment)
+		 ,name
+		 (,(absolute 'MAKE-COMPUTED-METHOD environment)
+		  (,(absolute 'LIST environment) ,@specializers)
+		  ,(make-named-lambda name required optional rest (cdddr form)
+				      environment))))))
+	 (ill-formed-syntax form)))))
 
 (define-syntax define-computed-emp
-  (non-hygienic-macro-transformer
-   (lambda (name key lambda-list . body)
-     (if (not (symbol? name))
-	 (error "Malformed generic procedure name:" name))
-     (call-with-values (lambda () (parse-lambda-list lambda-list #t))
-       (lambda (required optional rest)
-	 (call-with-values (lambda () (extract-required-specializers required))
-	   (lambda (required specializers)
-	     `(,(make-absolute-reference 'ADD-METHOD)
-	       ,name
-	       (,(make-absolute-reference 'MAKE-COMPUTED-EMP)
-		,key
-		(,(make-absolute-reference 'LIST) ,@specializers)
-		,(make-named-lambda name required optional rest body))))))))))
+  (rsc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '(IDENTIFIER EXPRESSION DATUM + EXPRESSION) (cdr form))
+	 (call-with-values
+	     (lambda () (parse-specialized-lambda-list (cadddr form)))
+	   (lambda (required specializers optional rest)
+	     (let ((name (cadr form)))
+	       `(,(absolute 'ADD-METHOD environment)
+		 ,name
+		 (,(absolute 'MAKE-COMPUTED-EMP environment)
+		  ,(caddr form)
+		  (,(absolute 'LIST environment) ,@specializers)
+		  ,(make-named-lambda name required optional rest (cddddr form)
+				      environment))))))
+	 (ill-formed-syntax form)))))
 
 (define-syntax method
-  (non-hygienic-macro-transformer
-   (lambda (lambda-list . body)
-     (call-with-values (lambda () (parse-lambda-list lambda-list #t))
-       (lambda (required optional rest)
-	 (call-with-values (lambda () (extract-required-specializers required))
-	   (lambda (required specializers)
-	     (make-method-sexp #f required optional rest specializers
-			       body))))))))
+  (rsc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '(DATUM + EXPRESSION) (cdr form))
+	 (call-with-values
+	     (lambda () (parse-specialized-lambda-list (cadr form)))
+	   (lambda (required specializers optional rest)
+	     (capture-syntactic-environment
+	      (lambda (instance-environment)
+		(make-method-sexp #f required optional rest specializers
+				  (caddr form)
+				  environment
+				  instance-environment)))))
+	 (ill-formed-syntax form)))))
 
-(define (extract-required-specializers required)
-  (let loop ((required required) (names '()) (specializers '()))
-    (cond ((null? required)
-	   (values (reverse! names)
-		   (reverse! (let loop ((specializers specializers))
-			       (if (and (not (null? specializers))
-					(eq? '<OBJECT> (car specializers))
-					(not (null? (cdr specializers))))
-				   (loop (cdr specializers))
-				   specializers)))))
-	  ((pair? (car required))
-	   (loop (cdr required)
-		 (cons (caar required) names)
-		 (cons (cadar required) specializers)))
-	  (else
-	   (loop (cdr required)
-		 (cons (car required) names)
-		 (cons '<OBJECT> specializers))))))
-
-(define (make-method-sexp name required optional rest specializers body)
+(define (make-method-sexp name required optional rest specializers body
+			  environment instance-environment)
   (let ((normal
 	 (lambda ()
-	   (call-with-values (lambda () (call-next-method-used? body))
+	   (call-with-values
+	       (lambda ()
+		 (call-next-method-used? body
+					 environment
+					 instance-environment))
 	     (lambda (body used?)
-	       (let ((s `(,(make-absolute-reference 'LIST) ,@specializers))
-		     (l (make-named-lambda name required optional rest body)))
+	       (let ((s `(,(absolute 'LIST environment) ,@specializers))
+		     (l
+		      (make-named-lambda name required optional rest body
+					 environment)))
 		 (if used?
-		     `(,(make-absolute-reference 'MAKE-CHAINED-METHOD)
+		     `(,(absolute 'MAKE-CHAINED-METHOD environment)
 		       ,s
-		       (LAMBDA (CALL-NEXT-METHOD) ,l))
-		     `(,(make-absolute-reference 'MAKE-METHOD) ,s ,l))))))))
+		       (,(close-syntax 'LAMBDA environment) (CALL-NEXT-METHOD)
+							    ,l))
+		     `(,(absolute 'MAKE-METHOD environment) ,s ,l)))))))
+	(match-identifier
+	 (lambda (identifier)
+	   (lambda (identifier*)
+	     (identifier=? environment identifier
+			   instance-environment identifier*)))))
     (if (and (null? optional)
 	     (not rest)
-	     (not (eq? '<OBJECT> (car specializers))))
+	     (not (and (pair? specializers)
+		       (eq? '<OBJECT> (car specializers)))))
 	(case (length required)
 	  ((1)
-	   (cond ((match `((SLOT-VALUE ,(car required) ',symbol?)) body)
-		  `(,(make-absolute-reference 'SLOT-ACCESSOR-METHOD)
+	   (cond ((match `((,(match-identifier 'SLOT-VALUE)
+			    ,(car required)
+			    ',symbol?))
+			 body)
+		  `(,(absolute 'SLOT-ACCESSOR-METHOD environment)
 		    ,(car specializers)
 		    ,(caddar body)))
-		 ((match `((SLOT-INITIALIZED? ,(car required) ',symbol?)) body)
-		  `(,(make-absolute-reference 'SLOT-INITPRED-METHOD)
+		 ((match `((,(match-identifier 'SLOT-INITIALIZED?)
+			    ,(car required)
+			    ',symbol?))
+			 body)
+		  `(,(absolute 'SLOT-INITPRED-METHOD environment)
 		    ,(car specializers)
 		    ,(caddar body)))
 		 (else (normal))))
 	  ((2)
 	   (if (and (null? (cdr specializers))
-		    (match `((SET-SLOT-VALUE! ,(car required)
-					      ',symbol?
-					      ,(cadr required)))
-			   body))
-	       `(,(make-absolute-reference 'SLOT-MODIFIER-METHOD)
+		    (match
+		     `((,(match-identifier 'SET-SLOT-VALUE!)
+			,(car required)
+			',symbol?
+			,(cadr required)))
+		     body))
+	       `(,(absolute 'SLOT-MODIFIER-METHOD environment)
 		 ,(car specializers)
 		 ,(caddar body))
 	       (normal)))
 	  (else (normal)))
 	(normal))))
-
+
 (define (match pattern instance)
   (cond ((procedure? pattern)
 	 (pattern instance))
@@ -385,22 +417,29 @@
 	      (match (cdr pattern) (cdr instance))))
 	(else
 	 (eqv? pattern instance))))
-
-(define (call-next-method-used? body)
-  (if (null? body)
-      (values body #f)
+
+(define (call-next-method-used? body environment instance-environment)
+  (if (pair? body)
       (let ((body
 	     (let loop ((body body))
-	       (cond ((or (not (symbol? (car body)))
-			  (null? (cdr body)))
-		      body)
-		     ((eq? (car body) 'CALL-NEXT-METHOD)
-		      (loop (cdr body)))
-		     (else
-		      (cons (car body) (loop (cdr body))))))))
+	       (if (and (identifier? (car body))
+			(pair? (cdr body)))
+		   (if (identifier=? instance-environment (car body)
+				     environment 'CALL-NEXT-METHOD)
+		       (loop (cdr body))
+		       (cons (car body) (loop (cdr body))))
+		   body))))
 	(values body
-		(free-variable? 'CALL-NEXT-METHOD (syntax* body))))))
-
+		(let ((l
+		       (syntax `(,(make-syntactic-closure environment '()
+				    'LAMBDA)
+				 (CALL-NEXT-METHOD)
+				 ,@body)
+			       instance-environment)))
+		  (free-variable? (car (lambda-bound l))
+				  (lambda-body l)))))
+      (values body #f)))
+
 (define free-variable?
   (letrec
       ((do-expr
@@ -408,10 +447,10 @@
 	  ((scode-walk scode-walker expr) name expr)))
        (do-exprs
 	(lambda (name exprs)
-	  (if (null? exprs)
-	      '()
+	  (if (pair? exprs)
 	      (or (do-expr name (car exprs))
-		  (do-exprs name (cdr exprs))))))
+		  (do-exprs name (cdr exprs)))
+	      '())))
        (scode-walker
 	(make-scode-walker
 	 (lambda (name expr) name expr #f)
@@ -464,78 +503,95 @@
        (illegal (lambda (expr) (error "Illegal expression:" expr))))
     do-expr))
 
-(define (parse-lambda-list lambda-list allow-specializers?)
-  (let ((required '())
-	(optional '())
-	(rest #f))
-    (letrec
-	((parse-required
-	  (lambda (lambda-list)
-	    (cond ((null? lambda-list)
-		   (finish))
-		  ((pair? lambda-list)
-		   (cond ((or (valid-name? (car lambda-list))
-			      (and allow-specializers?
-				   (pair? (car lambda-list))
-				   (valid-name? (caar lambda-list))
-				   (pair? (cdar lambda-list))
-				   (null? (cddar lambda-list))))
-			  (set! required (cons (car lambda-list) required))
-			  (parse-required (cdr lambda-list)))
-			 ((eq? #!optional (car lambda-list))
-			  (parse-optional (cdr lambda-list)))
-			 ((eq? #!rest (car lambda-list))
-			  (parse-rest (cdr lambda-list)))
-			 (else
-			  (illegal-element lambda-list))))
-		  ((symbol? lambda-list)
-		   (set! rest lambda-list)
-		   (finish))
-		  (else
-		   (illegal-tail lambda-list)))))
-	 (parse-optional
-	  (lambda (lambda-list)
-	    (cond ((null? lambda-list)
-		   (finish))
-		  ((pair? lambda-list)
-		   (cond ((valid-name? (car lambda-list))
-			  (set! optional (cons (car lambda-list) optional))
-			  (parse-optional (cdr lambda-list)))
-			 ((eq? #!optional (car lambda-list))
-			  (error "#!optional may not recur:" lambda-list))
-			 ((eq? #!rest (car lambda-list))
-			  (parse-rest (cdr lambda-list)))
-			 (else
-			  (illegal-element lambda-list))))
-		  ((symbol? lambda-list)
-		   (set! rest lambda-list)
-		   (finish))
-		  (else
-		   (illegal-tail lambda-list)))))
-	 (parse-rest
-	  (lambda (lambda-list)
-	    (if (and (pair? lambda-list)
-		     (null? (cdr lambda-list)))
-		(if (valid-name? (car lambda-list))
-		    (begin
-		      (set! rest (car lambda-list))
-		      (finish))
-		    (illegal-element lambda-list))
-		(illegal-tail lambda-list))))
-	 (valid-name?
-	  (lambda (element)
-	    (and (symbol? element)
-		 (not (eq? #!optional element))
-		 (not (eq? #!rest element)))))
-	 (finish
-	  (lambda ()
-	    (values (reverse! required)
-		    (reverse! optional)
-		    rest)))
-	 (illegal-tail
-	  (lambda (lambda-list)
-	    (error "Illegal parameter list tail:" lambda-list)))
-	 (illegal-element
-	  (lambda (lambda-list)
-	    (error "Illegal parameter list element:" (car lambda-list)))))
-      (parse-required lambda-list))))
+(define (parse-specialized-lambda-list bvl)
+  (letrec
+      ((parse-required
+	(lambda (bvl required)
+	  (cond ((null? bvl)
+		 (finish required '() #f))
+		((pair? bvl)
+		 (cond ((eq? #!optional (car bvl))
+			(parse-optional (cdr bvl) required '()))
+		       ((eq? #!rest (car bvl))
+			(parse-rest (cdr bvl) required '()))
+		       ((or (identifier? (car bvl))
+			    (and (pair? (car bvl))
+				 (identifier? (caar bvl))
+				 (pair? (cdar bvl))
+				 (null? (cddar bvl))))
+			(parse-required (cdr bvl)
+					(cons (car bvl) required)))
+		       (else
+			(illegal-element bvl))))
+		((identifier? bvl)
+		 (finish required '() bvl))
+		(else
+		 (illegal-tail bvl)))))
+       (parse-optional
+	(lambda (bvl required optional)
+	  (cond ((null? bvl)
+		 (finish required optional #f))
+		((pair? bvl)
+		 (cond ((eq? #!optional (car bvl))
+			(error "#!optional may not recur:" bvl))
+		       ((eq? #!rest (car bvl))
+			(parse-rest (cdr bvl) required optional))
+		       ((identifier? (car bvl))
+			(parse-optional (cdr bvl)
+					required
+					(cons (car bvl) optional)))
+		       (else
+			(illegal-element bvl))))
+		((identifier? bvl)
+		 (finish required optional bvl))
+		(else
+		 (illegal-tail bvl)))))
+       (parse-rest
+	(lambda (bvl required optional)
+	  (if (and (pair? bvl)
+		   (null? (cdr bvl)))
+	      (if (identifier? (car bvl))
+		  (finish required optional (car bvl))
+		  (illegal-element bvl))
+	      (illegal-tail bvl))))
+       (finish
+	(lambda (required optional rest)
+	  (let ((required (reverse! required))
+		(optional (reverse! optional)))
+	    (do ((names (append required optional (if rest (list rest) '()))
+			(cdr names)))
+		((null? names))
+	      (if (memq (car names) (cdr names))
+		  (error "Lambda list has duplicate parameter:"
+			 (car names)
+			 (error-irritant/noise " in")
+			 bvl)))
+	    (call-with-values
+		(lambda () (extract-required-specializers required))
+	      (lambda (required specializers)
+		(values required specializers optional rest))))))
+       (illegal-tail
+	(lambda (bvl)
+	  (error "Illegal parameter list tail:" bvl)))
+       (illegal-element
+	(lambda (bvl)
+	  (error "Illegal parameter list element:" (car bvl)))))
+    (parse-required bvl '())))
+
+(define (extract-required-specializers required)
+  (let loop ((required required) (names '()) (specializers '()))
+    (if (pair? required)
+	(if (pair? (car required))
+	    (loop (cdr required)
+		  (cons (caar required) names)
+		  (cons (cadar required) specializers))
+	    (loop (cdr required)
+		  (cons (car required) names)
+		  (cons '<OBJECT> specializers)))
+	(values (reverse! names)
+		(reverse! (let loop ((specializers specializers))
+			    (if (and (pair? specializers)
+				     (eq? '<OBJECT> (car specializers))
+				     (pair? (cdr specializers)))
+				(loop (cdr specializers))
+				specializers)))))))

@@ -2,7 +2,7 @@
 
 (DECLARE (USUAL-INTEGRATIONS))	; MIT Scheme-ism: promise not to redefine prims
 
-;;; $Id: test-wabbit.scm,v 1.3 2001/12/23 17:21:00 cph Exp $
+;;; $Id: test-wabbit.scm,v 1.4 2002/02/03 03:38:58 cph Exp $
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;									     ;;
@@ -22,7 +22,7 @@
 ;;	- Document dependencies
 ;;	- [SCREWS] see last page
 
-;;; $Id: test-wabbit.scm,v 1.3 2001/12/23 17:21:00 cph Exp $
+;;; $Id: test-wabbit.scm,v 1.4 2002/02/03 03:38:58 cph Exp $
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;									     ;;
@@ -206,8 +206,10 @@
 
 (let-syntax
     ((ucode-type
-      (non-hygienic-macro-transformer
-       (lambda (name) (microcode-type name)))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (microcode-type (cadr form))))))
 
   (define   apply-hook-tag 
     (access apply-hook-tag (->environment '(runtime procedure))))

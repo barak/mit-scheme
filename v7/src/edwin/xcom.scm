@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xcom.scm,v 1.19 2001/12/23 17:20:58 cph Exp $
+;;; $Id: xcom.scm,v 1.20 2002/02/03 03:38:55 cph Exp $
 ;;;
-;;; Copyright (c) 1989-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1989-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -310,10 +310,14 @@ When called interactively, completion is available on the input."
 
 (let-syntax
     ((copy
-      (non-hygienic-macro-transformer
-       (lambda (name)
-	 `(DEFINE ,(symbol-append 'EDWIN-COMMAND$X- name)
-	    ,(symbol-append 'EDWIN-COMMAND$ name))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (let ((name (cadr form)))
+	   `(DEFINE
+	      ,(close-syntax (symbol-append 'EDWIN-COMMAND$X- name)
+			     environment)
+	      ,(close-syntax (symbol-append 'EDWIN-COMMAND$ name)
+			     environment)))))))
   (copy set-foreground-color)
   (copy set-background-color)
   (copy set-border-color)
@@ -340,10 +344,14 @@ When called interactively, completion is available on the input."
 
 (let-syntax
     ((copy
-      (non-hygienic-macro-transformer
-       (lambda (name)
-	 `(DEFINE ,(symbol-append 'EDWIN-VARIABLE$X-SCREEN- name)
-	    ,(symbol-append 'EDWIN-VARIABLE$FRAME- name))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (let ((name (cadr form)))
+	   `(DEFINE
+	      ,(close-syntax (symbol-append 'EDWIN-VARIABLE$X-SCREEN- name)
+			     environment)
+	      ,(close-syntax (symbol-append 'EDWIN-VARIABLE$FRAME- name)
+			     environment)))))))
   (copy icon-name-format)
   (copy icon-name-length))
 

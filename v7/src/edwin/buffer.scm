@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.184 2001/12/23 17:20:58 cph Exp $
+;;; $Id: buffer.scm,v 1.185 2002/02/03 03:38:53 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -46,10 +46,13 @@
 
 (let-syntax
     ((rename
-      (non-hygienic-macro-transformer
-       (lambda (slot-name)
-	 `(DEFINE-INTEGRABLE ,(symbol-append 'BUFFER- slot-name)
-	    ,(symbol-append 'BUFFER-% slot-name))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (let ((slot-name (cadr form)))
+	   `(DEFINE-INTEGRABLE
+	      ,(close-syntax (symbol-append 'BUFFER- slot-name) environment)
+	      ,(close-syntax (symbol-append 'BUFFER-% slot-name)
+			     environment)))))))
   (rename name)
   (rename default-directory)
   (rename pathname)

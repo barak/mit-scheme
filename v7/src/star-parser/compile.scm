@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.4 2001/11/11 06:00:08 cph Exp $
+;;; $Id: compile.scm,v 1.5 2002/02/03 03:38:58 cph Exp $
 ;;;
-;;; Copyright (c) 2001 Massachusetts Institute of Technology
+;;; Copyright (c) 2001, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -27,6 +27,5 @@
     (for-each compile-file
 	      '("matcher"
 		"parser"
-		"shared"
-		"synchk"))
+		"shared"))
     (cref/generate-constructors "parser")))

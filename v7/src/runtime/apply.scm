@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: apply.scm,v 1.4 2001/12/23 17:20:59 cph Exp $
+$Id: apply.scm,v 1.5 2002/02/03 03:38:55 cph Exp $
 
-Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1992, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -30,59 +30,65 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;;  at boot time, and this code replaces it.
 
 (define (apply-2 f a0)
-  (define (fail)
-    (error "apply: Improper argument list" a0))
-
-  (let-syntax ((apply-dispatch&bind
-		(non-hygienic-macro-transformer
-		 (lambda (var clause . clauses)
-		   (if (null? clauses)
-		       (cadr clause)
-		       (let walk ((lv var)
-				  (clause clause)
-				  (clauses clauses))
-			 `(if (not (pair? ,lv))
-			      (if (null? ,lv)
-				  ,(cadr clause)
-				  (fail))
-			      ,(if (null? (cdr clauses))
-				   (cadr (car clauses))
-				   (let ((lv* (generate-uninterned-symbol))
-					 (av* (car clause)))
-				     `(let ((,lv* (cdr ,lv))
-					    (,av* (car ,lv)))
-					,(walk lv* (car clauses)
-					       (cdr clauses))))))))))))
-    (apply-dispatch&bind a0
-			 (v0 (f))
-			 (v1 (f v0))
-			 (v2 (f v0 v1))
-			 (v3 (f v0 v1 v2))
-			 (v4 (f v0 v1 v2 v3))
-			 (v5 (f v0 v1 v2 v3 v4))
-			 #|
+  (let ((fail (lambda () (error "apply: Improper argument list" a0))))
+    (let-syntax
+	((apply-dispatch&bind
+	  (sc-macro-transformer
+	   (lambda (form environment)
+	     (let ((var (close-syntax (cadr form) environment))
+		   (clause (caddr form))
+		   (clauses (cdddr form)))
+	       (if (pair? clauses)
+		   (let walk
+		       ((lv var)
+			(clause clause)
+			(clauses clauses)
+			(free '()))
+		     `(COND ((PAIR? ,lv)
+			     ,(if (pair? (cdr clauses))
+				  (let ((av (car clause))
+					(lv* (make-synthetic-identifier 'L)))
+				    `(LET ((,av (CAR ,lv))
+					   (,lv* (CDR ,lv)))
+				       ,(walk lv*
+					      (car clauses)
+					      (cdr clauses)
+					      (cons av free))))
+				  (make-syntactic-closure environment free
+				    (cadr (car clauses)))))
+			    ((NULL? ,lv)
+			     ,(make-syntactic-closure environment free
+				(cadr clause)))
+			    (ELSE (FAIL))))
+		   (make-syntactic-closure environment '() (cadr clause))))))))
+      (apply-dispatch&bind a0
+			   (v0 (f))
+			   (v1 (f v0))
+			   (v2 (f v0 v1))
+			   (v3 (f v0 v1 v2))
+			   (v4 (f v0 v1 v2 v3))
+			   (v5 (f v0 v1 v2 v3 v4))
+			   #|
 			 (v6 (f v0 v1 v2 v3 v4 v5))
 			 (v7 (f v0 v1 v2 v3 v4 v5 v6))
 			 |#
-			 (else ((ucode-primitive apply) f a0)))))
+			   (else ((ucode-primitive apply) f a0))))))
   
 (define (apply-entity-procedure self f . args)
-  ;; This is safe because args is a newly-consed list
-  ;; shared with no other code (modulo debugging).
-
-  (define (splice! last next)
-    (if (null? (cdr next))
-	(set-cdr! last (car next))
-	(splice! next (cdr next))))
-
   self					; ignored
   (apply-2 f
-	   (cond ((null? args) '())
-		 ((null? (cdr args))
-		  (car args))
-		 (else
-		  (splice! args (cdr args))
-		  args))))
+	   (if (pair? args)
+	       (if (pair? (cdr args))
+		   (begin
+		     ;; This is safe because args is a newly-consed list
+		     ;; shared with no other code (modulo debugging).
+		     (let loop ((last args) (next (cdr args)))
+		       (if (pair? (cdr next))
+			   (loop next (cdr next))
+			   (set-cdr! last (car next))))
+		     args)
+		   (car args))
+	       '())))
 
 (define (initialize-package!)
   (set! apply
@@ -90,8 +96,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 apply-entity-procedure
 	 (vector (fixed-objects-item 'ARITY-DISPATCHER-TAG)
 		 (lambda ()
-		   (error "apply needs at least one argument"))
-		 (lambda (f)
-		   (f))
+		   (error:wrong-number-of-arguments apply '(1 . #F) '()))
+		 (lambda (f) (f))
 		 apply-2)))
   unspecific)

@@ -20,12 +20,16 @@
 (declare (usual-integrations))
 
 (define-syntax deflap
-  (non-hygienic-macro-transformer
-   (lambda (name . lap)
-     `(DEFINE ,name
-	(SCODE-EVAL
-	 ',((access lap->code (->environment '(COMPILER TOP-LEVEL))) name lap)
-	 SYSTEM-GLOBAL-ENVIRONMENT)))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (let ((name (cadr form))
+	   (lap (cddr form)))
+       `(DEFINE ,name
+	  (SCODE-EVAL ',((access lap->code
+				 (->environment '(COMPILER TOP-LEVEL)))
+			 name lap)
+		      SYSTEM-GLOBAL-ENVIRONMENT))))))
 
 (define set-floating-error-mask!
   (let ()

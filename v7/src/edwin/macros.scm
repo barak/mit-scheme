@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: macros.scm,v 1.70 2001/12/23 17:20:58 cph Exp $
+;;; $Id: macros.scm,v 1.71 2002/02/03 03:38:54 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999, 2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-1999, 2001, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -22,171 +22,223 @@
 ;;;; Editor Macros
 
 (declare (usual-integrations))
-
-(define edwin-syntax-table (->environment '(EDWIN))) ;upwards compatibility
 
+;; Upwards compatibility:
+(define edwin-syntax-table (->environment '(EDWIN)))
+
 (define-syntax define-command
-  (non-hygienic-macro-transformer
-   (lambda (name description interactive procedure)
-     (let ((name (canonicalize-name name)))
-       (let ((scheme-name (command-name->scheme-name name)))
-	 `(DEFINE ,scheme-name
-	    (MAKE-COMMAND ',name
-			  ,description
-			  ,(if (null? interactive)
-			       `'()
-			       interactive)
-			  ,(if (and (pair? procedure)
-				    (eq? 'LAMBDA (car procedure))
-				    (pair? (cdr procedure)))
-			       `(NAMED-LAMBDA (,scheme-name
-					       ,@(cadr procedure))
-				  ,@(cddr procedure))
-			       procedure))))))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (capture-syntactic-environment
+      (lambda (closing-environment)
+	(if (syntax-match? '(SYMBOL EXPRESSION EXPRESSION EXPRESSION)
+			   (cdr form))
+	    (let ((name (list-ref form 1))
+		  (description (close-syntax (list-ref form 2) environment))
+		  (interactive (list-ref form 3))
+		  (procedure (list-ref form 4)))
+	      (let ((scheme-name
+		     (close-syntax (command-name->scheme-name name)
+				   environment)))
+		`(DEFINE ,scheme-name
+		   (MAKE-COMMAND ',name
+				 ,description
+				 ,(if (null? interactive)
+				      `'()
+				      (close-syntax interactive environment))
+				 ,(close-syntax
+				   (if (and (pair? procedure)
+					    (identifier=? environment
+							  (car procedure)
+							  closing-environment
+							  'LAMBDA)
+					    (pair? (cdr procedure)))
+				       `(,(close-syntax 'NAMED-LAMBDA
+							closing-environment)
+					 (,scheme-name ,@(cadr procedure))
+					 ,@(cddr procedure))
+				       procedure)
+				   environment)))))
+	    (ill-formed-syntax form)))))))
 
 (define-syntax ref-command-object
-  (non-hygienic-macro-transformer
-   (lambda (name)
-     (command-name->scheme-name (canonicalize-name name)))))
-
-(define-syntax ref-command
-  (non-hygienic-macro-transformer
-   (lambda (name)
-     `(COMMAND-PROCEDURE
-       ,(command-name->scheme-name (canonicalize-name name))))))
-
-(define-syntax command-defined?
-  (non-hygienic-macro-transformer
-   (lambda (name)
-     (let ((variable-name
-	    (command-name->scheme-name (canonicalize-name name))))
-       `(LET ((_ENV (->ENVIRONMENT '(EDWIN))))
-	  (AND (ENVIRONMENT-BOUND? _ENV ',variable-name)
-	       (ENVIRONMENT-ASSIGNED? _ENV ',variable-name)))))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '(SYMBOL) (cdr form))
+	 (close-syntax (command-name->scheme-name (cadr form)) environment)
+	 (ill-formed-syntax form)))))
 
 (define (command-name->scheme-name name)
   (symbol-append 'EDWIN-COMMAND$ name))
+
+(define-syntax ref-command
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (if (syntax-match? '(SYMBOL) (cdr form))
+	 `(COMMAND-PROCEDURE (REF-COMMAND-OBJECT ,(cadr form)))
+	 (ill-formed-syntax form)))))
+
+(define-syntax command-defined?
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (if (syntax-match? '(SYMBOL) (cdr form))
+	 (let ((variable-name (command-name->scheme-name (cadr form))))
+	   `(LET ((_ENV (->ENVIRONMENT '(EDWIN))))
+	      (AND (ENVIRONMENT-BOUND? _ENV ',variable-name)
+		   (ENVIRONMENT-ASSIGNED? _ENV ',variable-name))))
+	 (ill-formed-syntax form)))))
 
 (define-syntax define-variable
-  (non-hygienic-macro-transformer
-   (lambda args
-     (apply (variable-definition #f) args))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (expand-variable-definition form environment `#F))))
 
 (define-syntax define-variable-per-buffer
-  (non-hygienic-macro-transformer
-   (lambda args
-     (apply (variable-definition #t) args))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (expand-variable-definition form environment `#T))))
 
-(define (variable-definition buffer-local?)
-  (lambda (name description #!optional value test normalization)
-    (let ((name (canonicalize-name name)))
-      (let ((scheme-name (variable-name->scheme-name name)))
-	`(BEGIN
-	   (DEFINE ,scheme-name
-	     (MAKE-VARIABLE ',name
-			    ,description
-			    ,(if (default-object? value) '#F value)
-			    ',buffer-local?))
-	   ,@(if (default-object? test)
-		 '()
-		 `((SET-VARIABLE-VALUE-VALIDITY-TEST! ,scheme-name
-						      ,test)))
-	   ,@(if (default-object? normalization)
-		 '()
-		 `((SET-VARIABLE-VALUE-NORMALIZATION!
-		    ,scheme-name
-		    ,normalization))))))))
+(define (expand-variable-definition form environment buffer-local?)
+  (if (and (syntax-match? '(SYMBOL + EXPRESSION) (cdr form))
+	   (<= (length form) 6))
+      `(DEFINE ,(close-syntax (variable-name->scheme-name (list-ref form 1))
+			      environment)
+	 (MAKE-VARIABLE ',(list-ref form 1)
+			,(close-syntax (list-ref form 2) environment)
+			,(if (> (length form) 3)
+			     (close-syntax (list-ref form 3) environment)
+			     '#F)
+			,buffer-local?
+			,(if (> (length form) 4)
+			     (close-syntax (list-ref form 4) environment)
+			     '#F)
+			,(if (> (length form) 5)
+			     (close-syntax (list-ref form 5) environment)
+			     '#F)))
+      (ill-formed-syntax form)))
 
 (define-syntax ref-variable-object
-  (non-hygienic-macro-transformer
-   (lambda (name)
-     (variable-name->scheme-name (canonicalize-name name)))))
-
-(define-syntax ref-variable
-  (non-hygienic-macro-transformer
-   (lambda (name #!optional buffer)
-     (let ((name (variable-name->scheme-name (canonicalize-name name))))
-       (if (default-object? buffer)
-	   `(VARIABLE-VALUE ,name)
-	   `(VARIABLE-LOCAL-VALUE ,buffer ,name))))))
-
-(define-syntax set-variable!
-  (non-hygienic-macro-transformer
-   (lambda (name #!optional value buffer)
-     (let ((name (variable-name->scheme-name (canonicalize-name name)))
-	   (value (if (default-object? value) '#F value)))
-       (if (default-object? buffer)
-	   `(SET-VARIABLE-VALUE! ,name ,value)
-	   `(SET-VARIABLE-LOCAL-VALUE! ,buffer ,name ,value))))))
-
-(define-syntax local-set-variable!
-  (non-hygienic-macro-transformer
-   (lambda (name #!optional value buffer)
-     `(DEFINE-VARIABLE-LOCAL-VALUE!
-       ,(if (default-object? buffer) '(CURRENT-BUFFER) buffer)
-       ,(variable-name->scheme-name (canonicalize-name name))
-       ,(if (default-object? value) '#F value)))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '(SYMBOL) (cdr form))
+	 (close-syntax (variable-name->scheme-name (cadr form)) environment)
+	 (ill-formed-syntax form)))))
 
 (define (variable-name->scheme-name name)
   (symbol-append 'EDWIN-VARIABLE$ name))
+
+(define-syntax ref-variable
+  (sc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '(SYMBOL ? EXPRESSION) (cdr form))
+	 (let ((name `(REF-VARIABLE-OBJECT ,(cadr form))))
+	   (if (pair? (cddr form))
+	       `(VARIABLE-LOCAL-VALUE ,(close-syntax (caddr form) environment)
+				      ,name)
+	       `(VARIABLE-VALUE ,name)))
+	 (ill-formed-syntax form)))))
+
+(define-syntax set-variable!
+  (sc-macro-transformer
+   (lambda (form environment)
+     (expand-variable-assignment form environment
+       (lambda (name value buffer)
+	 (if buffer
+	     `(SET-VARIABLE-LOCAL-VALUE! ,buffer ,name ,value)
+	     `(SET-VARIABLE-VALUE! ,name ,value)))))))
+
+(define-syntax local-set-variable!
+  (sc-macro-transformer
+   (lambda (form environment)
+     (expand-variable-assignment form environment
+       (lambda (name value buffer)
+	 `(DEFINE-VARIABLE-LOCAL-VALUE! ,(or buffer `(CURRENT-BUFFER)) ,name
+	    ,value))))))
+
+(define (expand-variable-assignment form environment generator)
+  (if (and (syntax-match? '(SYMBOL * EXPRESSION) (cdr form))
+	   (<= (length form) 4))
+      (generator `(REF-VARIABLE-OBJECT ,(list-ref form 1))
+		 (if (> (length form) 2)
+		     (close-syntax (list-ref form 2) environment)
+		     `#F)
+		 (if (> (length form) 3)
+		     (close-syntax (list-ref form 3) environment)
+		     #f))
+      (ill-formed-syntax form)))
 
 (define-syntax define-major-mode
-  (non-hygienic-macro-transformer
-   (lambda (name super-mode-name display-name description
-		 #!optional initialization)
-     (let ((name (canonicalize-name name))
-	   (super-mode-name
-	    (and super-mode-name (canonicalize-name super-mode-name))))
-       `(DEFINE ,(mode-name->scheme-name name)
-	  (MAKE-MODE ',name
-		     #T
-		     ',(or display-name (symbol->string name))
-		     ,(if super-mode-name
-			  `(->MODE ',super-mode-name)
-			  `#F)
-		     ,description
-		     ,(let ((super-initialization
-			     (and super-mode-name
-				  `(MODE-INITIALIZATION
-				    ,(mode-name->scheme-name
-				      super-mode-name))))
-			    (initialization
-			     (and (not (default-object? initialization))
-				  initialization)))
-			(cond (super-initialization
-			       `(LAMBDA (BUFFER)
-				  (,super-initialization BUFFER)
-				  ,@(if initialization
-					`((,initialization BUFFER))
-					`())))
-			      (initialization)
-			      (else
-			       `(LAMBDA (BUFFER) BUFFER UNSPECIFIC))))))))))
+  (sc-macro-transformer
+   (let ((pattern
+	  `(SYMBOL ,(lambda (x) (or (not x) (symbol? x)))
+		   ,(lambda (x) (or (not x) (string? x)))
+		   EXPRESSION
+		   ? EXPRESSION)))
+     (lambda (form environment)
+       (if (syntax-match? pattern (cdr form))
+	   (let ((name (list-ref form 1))
+		 (super-mode-name (list-ref form 2)))
+	     (let ((scheme-name
+		    (close-syntax (mode-name->scheme-name name) environment)))
+	       `(DEFINE ,scheme-name
+		  (MAKE-MODE ',name
+			     #T
+			     ',(or (list-ref form 3)
+				   (symbol->string name))
+			     ,(if super-mode-name
+				  `(->MODE ',super-mode-name)
+				  `#F)
+			     ,(close-syntax (list-ref form 4) environment)
+			     ,(let ((initialization
+				     (if (and (> (length form) 5)
+					      (list-ref form 5))
+					 (close-syntax (list-ref form 5)
+						       environment)
+					 #f)))
+				(if super-mode-name
+				    `(LAMBDA (BUFFER)
+				       ((MODE-INITIALIZATION
+					 (MODE-SUPER-MODE ,scheme-name))
+					BUFFER)
+				       ,@(if initialization
+					     `((,initialization BUFFER))
+					     `()))
+				    (or initialization
+					`(LAMBDA (BUFFER)
+					   BUFFER
+					   UNSPECIFIC))))))))
+	   (ill-formed-syntax form))))))
 
 (define-syntax define-minor-mode
-  (non-hygienic-macro-transformer
-   (lambda (name display-name description #!optional initialization)
-     (let ((name (canonicalize-name name)))
-       `(DEFINE ,(mode-name->scheme-name name)
-	  (MAKE-MODE ',name
-		     #F
-		     ',(or display-name (symbol->string name))
-		     #F
-		     ,description
-		     ,(if (and (not (default-object? initialization))
-			       initialization)
-			  initialization
-			  `(LAMBDA (BUFFER) BUFFER UNSPECIFIC))))))))
+  (sc-macro-transformer
+   (let ((pattern
+	  `(SYMBOL ,(lambda (x) (or (not x) (string? x)))
+		   EXPRESSION
+		   ? EXPRESSION)))
+     (lambda (form environment)
+       (if (syntax-match? pattern (cdr form))
+	   (let ((name (list-ref form 1)))
+	     `(DEFINE ,(close-syntax (mode-name->scheme-name name) environment)
+		(MAKE-MODE ',name
+			   #F
+			   ',(or (list-ref form 2)
+				 (symbol->string name))
+			   #F
+			   ,(close-syntax (list-ref form 3) environment)
+			   ,(if (and (> (length form) 4)
+				     (list-ref form 4))
+				(close-syntax (list-ref form 4) environment)
+				`(LAMBDA (BUFFER) BUFFER UNSPECIFIC)))))
+	   (ill-formed-syntax form))))))
 
 (define-syntax ref-mode-object
-  (non-hygienic-macro-transformer
-   (lambda (name)
-     (mode-name->scheme-name (canonicalize-name name)))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '(SYMBOL) (cdr form))
+	 (close-syntax (mode-name->scheme-name (cadr form)) environment)
+	 (ill-formed-syntax form)))))
 
 (define (mode-name->scheme-name name)
   (symbol-append 'EDWIN-MODE$ name))
-
-(define (canonicalize-name name)
-  (cond ((symbol? name) name)
-	((string? name) (intern (string-replace name #\Space #\-)))
-	(else (error "illegal name" name))))

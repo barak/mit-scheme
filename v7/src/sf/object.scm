@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: object.scm,v 4.12 2001/12/23 17:20:59 cph Exp $
+$Id: object.scm,v 4.13 2002/02/03 03:38:58 cph Exp $
 
-Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -65,16 +65,20 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-enumeration
-      (non-hygienic-macro-transformer
-       (lambda (enumeration-name enumerand-names)
-	 `(BEGIN
-	    (DEFINE ,enumeration-name
-	      (ENUMERATION/MAKE ',enumerand-names))
-	    ,@(map (lambda (enumerand-name)
-		     `(DEFINE ,(symbol-append enumerand-name '/ENUMERAND)
-			(ENUMERATION/NAME->ENUMERAND ,enumeration-name
-						     ',enumerand-name)))
-		   enumerand-names))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (let ((enumeration-name (close-syntax (cadr form) environment))
+	       (enumerand-names (caddr form)))
+	   `(BEGIN
+	      (DEFINE ,enumeration-name
+		(ENUMERATION/MAKE ',enumerand-names))
+	      ,@(map (lambda (enumerand-name)
+		       `(DEFINE ,(close-syntax
+				  (symbol-append enumerand-name '/ENUMERAND)
+				  environment)
+			  (ENUMERATION/NAME->ENUMERAND ,enumeration-name
+						       ',enumerand-name)))
+		     enumerand-names)))))))
   (define-enumeration enumeration/random
     (block
      delayed-integration
@@ -121,16 +125,23 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-simple-type
-      (non-hygienic-macro-transformer
-       (lambda (name slots #!optional scode?)
-	 `(DEFINE-STRUCTURE (,name (TYPE VECTOR)
-				   (NAMED ,(symbol-append name '/ENUMERAND))
-				   (CONC-NAME ,(symbol-append name '/))
-				   (CONSTRUCTOR ,(symbol-append name '/MAKE)))
-	    ,@(if (or (default-object? scode?) scode?)
-		  `((scode #f read-only #t))
-		  `())
-	    ,@slots)))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (let ((name (cadr form))
+	       (slots (caddr form))
+	       (scode? (if (pair? (cdddr form)) (cadddr form) #t)))
+	   `(DEFINE-STRUCTURE
+		(,name
+		 (TYPE VECTOR)
+		 (NAMED
+		  ,(close-syntax (symbol-append name '/ENUMERAND) environment))
+		 (CONC-NAME ,(symbol-append name '/))
+		 (CONSTRUCTOR
+		  ,(close-syntax (symbol-append name '/MAKE) environment)))
+	      ,@(if scode?
+		    `((scode #f read-only #t))
+		    `())
+	      ,@slots))))))
   (define-simple-type variable (block name flags) #F)
   (define-simple-type access (environment name))
   (define-simple-type assignment (block variable value))
@@ -167,16 +178,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-flag
-      (non-hygienic-macro-transformer
-       (lambda (name tester setter)
-	 `(BEGIN
-	    (DEFINE (,tester VARIABLE)
-	      (MEMQ ',name (VARIABLE/FLAGS VARIABLE)))
-	    (DEFINE (,setter VARIABLE)
-	      (IF (NOT (MEMQ ',name (VARIABLE/FLAGS VARIABLE)))
-		  (SET-VARIABLE/FLAGS! VARIABLE
-				       (CONS ',name
-					     (VARIABLE/FLAGS VARIABLE))))))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (let ((name (cadr form))
+	       (tester (close-syntax (caddr form) environment))
+	       (setter (close-syntax (cadddr form) environment)))
+	   `(BEGIN
+	      (DEFINE (,tester VARIABLE)
+		(MEMQ ',name (VARIABLE/FLAGS VARIABLE)))
+	      (DEFINE (,setter VARIABLE)
+		(IF (NOT (MEMQ ',name (VARIABLE/FLAGS VARIABLE)))
+		    (SET-VARIABLE/FLAGS!
+		     VARIABLE
+		     (CONS ',name (VARIABLE/FLAGS VARIABLE)))))))))))
   (define-flag SIDE-EFFECTED variable/side-effected variable/side-effect!)
   (define-flag REFERENCED    variable/referenced    variable/reference!)
   (define-flag INTEGRATED    variable/integrated    variable/integrated!)

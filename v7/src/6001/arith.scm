@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.8 2001/12/23 17:20:57 cph Exp $
+$Id: arith.scm,v 1.9 2002/02/03 03:38:53 cph Exp $
 
-Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1989-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -46,12 +46,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-standard-unary
-      (non-hygienic-macro-transformer
-       (lambda (name flo:op int:op)
-	 `(DEFINE (,name X)
-	    (IF (FLONUM? X)
-		(,flo:op X)
-		(,int:op X)))))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  `(DEFINE (,(close-syntax (list-ref form 1) environment) X)
+	     (IF (FLONUM? X)
+		 (,(close-syntax (list-ref form 2) environment) X)
+		 (,(close-syntax (list-ref form 3) environment) X)))))))
   (define-standard-unary rational? (lambda (x) x true) int:integer?)
   (define-standard-unary integer? flo:integer? int:integer?)
   (define-standard-unary exact? (lambda (x) x false)
@@ -78,16 +78,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-standard-binary
-      (non-hygienic-macro-transformer
-       (lambda (name flo:op int:op)
-	 `(DEFINE (,name X Y)
-	    (IF (FLONUM? X)
-		(IF (FLONUM? Y)
-		    (,flo:op X Y)
-		    (,flo:op X (INT:->FLONUM Y)))
-		(IF (FLONUM? Y)
-		    (,flo:op (INT:->FLONUM X) Y)
-		    (,int:op X Y))))))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  (let ((flo:op (close-syntax (list-ref form 2) environment))
+		(int:op (close-syntax (list-ref form 3) environment)))
+	    `(DEFINE (,(close-syntax (list-ref form 1) environment) X Y)
+	       (IF (FLONUM? X)
+		   (IF (FLONUM? Y)
+		       (,flo:op X Y)
+		       (,flo:op X (INT:->FLONUM Y)))
+		   (IF (FLONUM? Y)
+		       (,flo:op (INT:->FLONUM X) Y)
+		       (,int:op X Y)))))))))
   (define-standard-binary real:+ flo:+ int:+)
   (define-standard-binary real:- flo:- int:-)
   (define-standard-binary rationalize
@@ -186,21 +188,28 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-integer-binary
-      (non-hygienic-macro-transformer
-       (lambda (name operator)
-	 `(DEFINE (,name N M)
-	    (IF (FLONUM? N)
-		(INT:->FLONUM
-		 (,operator (FLO:->INTEGER N)
-			    (IF (FLONUM? M) (FLO:->INTEGER M) M)))
-		(IF (FLONUM? M)
-		    (INT:->FLONUM (,operator N (FLO:->INTEGER M)))
-		    (,operator N M))))))))
-  (define-integer-binary quotient int:quotient)
-  (define-integer-binary remainder int:remainder)
-  (define-integer-binary modulo int:modulo)
-  (define-integer-binary real:gcd int:gcd)
-  (define-integer-binary real:lcm int:lcm))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (let ((operator (close-syntax (list-ref form 3) environment))
+	       (flo->int
+		(lambda (n)
+		  `(IF (FLO:INTEGER? ,n)
+		       (FLO:->INTEGER ,n)
+		       (ERROR:WRONG-TYPE-ARGUMENT ,n "integer"
+						  ',(list-ref form 2))))))
+	   `(DEFINE (,(close-syntax (list-ref form 1) environment) N M)
+	      (IF (FLONUM? N)
+		  (INT:->FLONUM
+		   (,operator ,(flo->int 'N)
+			      (IF (FLONUM? M) (FLO:->INTEGER M) M)))
+		  (IF (FLONUM? M)
+		      (INT:->FLONUM (,operator N ,(flo->int 'M)))
+		      (,operator N M)))))))))
+  (define-integer-binary quotient quotient int:quotient)
+  (define-integer-binary remainder remainder int:remainder)
+  (define-integer-binary modulo modulo int:modulo)
+  (define-integer-binary real:gcd gcd int:gcd)
+  (define-integer-binary real:lcm lcm int:lcm))
 
 (define (numerator q)
   (if (flonum? q)
@@ -218,12 +227,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-transcendental-unary
-      (non-hygienic-macro-transformer
-       (lambda (name hole? hole-value function)
-	 `(DEFINE (,name X)
-	    (IF (,hole? X)
-		,hole-value
-		(,function (REAL:->FLONUM X))))))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  `(DEFINE (,(close-syntax (list-ref form 1) environment) X)
+	     (IF (,(close-syntax (list-ref form 2) environment) X)
+		 ,(close-syntax (list-ref form 3) environment)
+		 (,(close-syntax (list-ref form 4) environment)
+		  (REAL:->FLONUM X))))))))
   (define-transcendental-unary exp real:exact0= 1 flo:exp)
   (define-transcendental-unary log real:exact1= 0 flo:log)
   (define-transcendental-unary sin real:exact0= 0 flo:sin)

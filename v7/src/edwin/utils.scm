@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: utils.scm,v 1.50 2001/12/23 17:20:58 cph Exp $
+;;; $Id: utils.scm,v 1.51 2002/02/03 03:38:54 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -55,8 +55,9 @@
 		       standard-error-handler))
 
 (define-syntax chars-to-words-shift
-  (non-hygienic-macro-transformer
-   (lambda ()
+  (sc-macro-transformer
+   (lambda (form environment)
+     form environment
      ;; This is written as a macro so that the shift will be a constant
      ;; in the compiled code.
      ;; It does not work when cross-compiled!

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: sysmac.scm,v 14.7 2001/12/23 17:20:59 cph Exp $
+$Id: sysmac.scm,v 14.8 2002/02/03 03:38:57 cph Exp $
 
-Copyright (c) 1988, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,12 +26,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (declare (usual-integrations))
 
 (define-syntax define-primitives
-  (non-hygienic-macro-transformer
-   (let ((primitive-definition
-	  (lambda (variable-name primitive-args)
-	    `(DEFINE-INTEGRABLE ,variable-name
-	       ,(apply make-primitive-procedure primitive-args)))))
-     (lambda names
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((primitive-definition
+	    (lambda (variable-name primitive-args)
+	      `(DEFINE-INTEGRABLE ,(close-syntax variable-name environment)
+		 ,(apply make-primitive-procedure primitive-args)))))
        `(BEGIN ,@(map (lambda (name)
 			(cond ((not (pair? name))
 			       (primitive-definition name (list name)))
@@ -39,19 +39,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			       (primitive-definition (car name) name))
 			      (else
 			       (primitive-definition (car name) (cdr name)))))
-		      names))))))
+		      (cdr form)))))))
 
 (define-syntax ucode-type
-  (non-hygienic-macro-transformer
-   (lambda arguments
-     (apply microcode-type arguments))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (apply microcode-type (cdr form)))))
 
 (define-syntax ucode-primitive
-  (non-hygienic-macro-transformer
-   (lambda arguments
-     (apply make-primitive-procedure arguments))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (apply make-primitive-procedure (cdr form)))))
 
 (define-syntax ucode-return-address
-  (non-hygienic-macro-transformer
-   (lambda arguments
-     (make-return-address (apply microcode-return arguments)))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (make-return-address (apply microcode-return (cdr form))))))

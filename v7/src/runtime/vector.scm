@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: vector.scm,v 14.19 2001/12/23 17:20:59 cph Exp $
+$Id: vector.scm,v 14.20 2002/02/03 03:38:57 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -204,11 +204,11 @@ USA.
 
 (let-syntax
     ((iref
-      (non-hygienic-macro-transformer
-       (lambda (name index)
-	 `(DEFINE-INTEGRABLE (,name VECTOR)
+      (sc-macro-transformer
+       (lambda (form environment)
+	 `(DEFINE-INTEGRABLE (,(close-syntax (cadr form) environment) VECTOR)
 	    (GUARANTEE-VECTOR VECTOR 'SAFE-VECTOR-REF)
-	    (VECTOR-REF VECTOR ,index))))))
+	    (VECTOR-REF VECTOR ,(caddr form)))))))
   (iref vector-first 0)
   (iref vector-second 1)
   (iref vector-third 2)

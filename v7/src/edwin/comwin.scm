@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: comwin.scm,v 1.146 2000/10/30 19:18:54 cph Exp $
+;;; $Id: comwin.scm,v 1.147 2002/02/03 03:38:54 cph Exp $
 ;;;
-;;; Copyright (c) 1985, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1985, 1989-1999, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Combination Windows
 
@@ -27,7 +28,7 @@
 ;;; support the :NEW-ROOT-WINDOW! operation, but is otherwise not
 ;;; constrained.
 
-;;; (=> WINDOW :NEW-ROOT-WINDOW! WINDOW*)
+;;; (==> WINDOW :NEW-ROOT-WINDOW! WINDOW*)
 
 ;;; This is called whenever the root is changed.  It need not do
 ;;; anything at all, but it is useful to keep track of the root.
@@ -45,15 +46,15 @@
 ;;; The leaf windows must be subclasses of COMBINATION-LEAF-WINDOW,
 ;;; and they must support these operations:
 
-;;; (=> WINDOW :MAKE-LEAF)
+;;; (==> WINDOW :MAKE-LEAF)
 
 ;;; Make a new leaf which can be placed next to WINDOW.  For example,
 ;;; if WINDOW is a buffer window, the new window should also be a
 ;;; buffer window, visiting the same buffer, and sharing the same
 ;;; superior.
 
-;;; (=> WINDOW :MINIMUM-X-SIZE)
-;;; (=> WINDOW :MINIMUM-Y-SIZE)
+;;; (==> WINDOW :MINIMUM-X-SIZE)
+;;; (==> WINDOW :MINIMUM-Y-SIZE)
 
 ;;; These define how small the window is allowed to be.  Since the
 ;;; combination window operations change the sizes of leaf windows,
@@ -299,14 +300,14 @@
 	       (set-inferior-start! (window-inferior combination new)
 				    (+ x n)
 				    y))))
-	 (if (or (< n (=> leaf :minimum-x-size))
-		 (< n* (=> new :minimum-x-size)))
+	 (if (or (< n (==> leaf :minimum-x-size))
+		 (< n* (==> new :minimum-x-size)))
 	     (begin
 	       (deallocate-leaf! new)
 	       false)
 	     (begin
-	       (=> leaf :set-x-size! n)
-	       (=> new :set-size! n* y)
+	       (==> leaf :set-x-size! n)
+	       (==> new :set-size! n* y)
 	       new)))))))
 
 (define (window-split-vertically! leaf #!optional n)
@@ -327,34 +328,34 @@
 	       (set-inferior-start! (window-inferior combination new)
 				    x
 				    (+ y n)))))
-	 (if (or (< n (=> leaf :minimum-y-size))
-		 (< n* (=> new :minimum-y-size)))
+	 (if (or (< n (==> leaf :minimum-y-size))
+		 (< n* (==> new :minimum-y-size)))
 	     (begin
 	       (deallocate-leaf! new)
 	       false)
 	     (begin
-	       (=> leaf :set-y-size! n)
-	       (=> new :set-size! x n*)
+	       (==> leaf :set-y-size! n)
+	       (==> new :set-size! x n*)
 	       new)))))))
 
 (define (allocate-leaf! leaf v)
   (let ((superior (window-superior leaf)))
     (if (or (not (combination? superior))
 	    (not (eq? v (combination-vertical? superior))))
-	(let ((combination (=> superior :make-inferior combination-window)))
-	  (=> superior :set-inferior-position! combination
-	      (=> superior :inferior-position leaf))
+	(let ((combination (==> superior :make-inferior combination-window)))
+	  (==> superior :set-inferior-position! combination
+	       (==> superior :inferior-position leaf))
 	  (set-combination-vertical! combination v)
 	  (window-replace! leaf combination)
 	  (set-combination-child! combination leaf)
 	  (set-window-next! leaf false)
-	  (=> superior :delete-inferior! leaf)
+	  (==> superior :delete-inferior! leaf)
 	  (add-inferior! combination leaf)
 	  (set-inferior-start! (window-inferior combination leaf) 0 0)
 	  (set-window-size! combination
 			    (window-x-size leaf)
 			    (window-y-size leaf)))))
-  (let ((new (=> leaf :make-leaf)))
+  (let ((new (==> leaf :make-leaf)))
     (set-window-next! new (window-next leaf))
     (if (window-next leaf) (set-window-previous! (window-next leaf) new))
     (link-windows! leaf new)
@@ -389,10 +390,10 @@
 				 window))))
 		      (unlink-leaf! leaf)
 		      (if (combination-vertical? superior)
-			  (=> window :set-y-size!
-			      (+ (window-y-size window) y-size))
-			  (=> window :set-x-size!
-			      (+ (window-x-size window) x-size))))))
+			  (==> window :set-y-size!
+			       (+ (window-y-size window) y-size))
+			  (==> window :set-x-size!
+			       (+ (window-x-size window) x-size))))))
 	       (let ((do-next
 		      (lambda ()
 			(adjust-size! next)
@@ -425,7 +426,7 @@
   (let ((combination (window-superior leaf))
 	(next (window-next leaf))
 	(previous (window-previous leaf)))
-    (=> leaf :kill!)
+    (==> leaf :kill!)
     (delete-inferior! combination leaf)
     (if previous
 	(set-window-next! previous next)
@@ -438,15 +439,15 @@
     (if (not (window-next child))
 	(begin
 	  (delete-inferior! combination child)
-	  (=> (window-superior combination) :replace-inferior!
-	      combination
-	      child)
+	  (==> (window-superior combination) :replace-inferior!
+	       combination
+	       child)
 	  (window-replace! combination child)))))
 
 (define (window-replace! old new)
   (with-instance-variables combination-leaf-window old (new)
     (cond ((not (combination? superior))
-	   (=> superior :new-root-window! new))
+	   (==> superior :new-root-window! new))
 	  ((and (combination? new)
 		(eq? (combination-vertical? superior)
 		     (combination-vertical? new)))
@@ -624,16 +625,16 @@
 				(- new-room new-s)))))))))))))
 
 (define (window-min-x-size window)
-  (=> window :minimum-x-size))
+  (==> window :minimum-x-size))
 
 (define (send-window-x-size! window x)
-  (=> window :set-x-size! x))
+  (==> window :set-x-size! x))
 
 (define (window-min-y-size window)
-  (=> window :minimum-y-size))
+  (==> window :minimum-y-size))
 
 (define (send-window-y-size! window y)
-  (=> window :set-y-size! y))
+  (==> window :set-y-size! y))
 
 (define scale-combination-inferiors-x!
   (scale-combination-inferiors! false window-x-size window-min-x-size
@@ -654,10 +655,10 @@
 		scale-combination-inferiors-y!))
 
 (define-method combination-window (:minimum-x-size combination)
-  (=> (window-leftmost-leaf combination) :minimum-x-size))
+  (==> (window-leftmost-leaf combination) :minimum-x-size))
 
 (define-method combination-window (:minimum-y-size combination)
-  (=> (window-leftmost-leaf combination) :minimum-y-size))
+  (==> (window-leftmost-leaf combination) :minimum-y-size))
 
 (define (set-combination-x-size! combination x)
   (scale-combination-inferiors-x! combination x false)

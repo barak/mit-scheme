@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.21 2001/12/23 17:20:59 cph Exp $
+$Id: port.scm,v 1.22 2002/02/03 03:38:56 cph Exp $
 
-Copyright (c) 1991-2001 Massachusetts Institute of Technology
+Copyright (c) 1991-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -188,11 +188,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (port/operation-names port)
   (port-type/operation-names (port/type port)))
 
-(let-syntax ((define-port-operation
-	       (non-hygienic-macro-transformer
-		(lambda (dir name)
-		  `(DEFINE (,(symbol-append dir '-PORT/OPERATION/ name) PORT)
-		     (,(symbol-append 'PORT-TYPE/ name) (PORT/TYPE PORT)))))))
+(let-syntax
+    ((define-port-operation
+       (sc-macro-transformer
+	(lambda (form environment)
+	  (let ((dir (cadr form))
+		(name (caddr form)))
+	    `(DEFINE (,(close-syntax (symbol-append dir '-PORT/OPERATION/ name)
+				     environment)
+		      PORT)
+	       (,(close-syntax (symbol-append 'PORT-TYPE/ name) environment)
+		(PORT/TYPE PORT))))))))
   (define-port-operation input char-ready?)
   (define-port-operation input peek-char)
   (define-port-operation input read-char)
@@ -231,7 +237,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (set-port/state! port state)
     (set-port/thread-mutex! port (make-thread-mutex))
     port))
-
+
 (define (close-port port)
   (let ((close (port/operation port 'CLOSE)))
     (if close
@@ -239,7 +245,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(begin
 	  (close-output-port port)
 	  (close-input-port port)))))
-
+
 (define (close-input-port port)
   (let ((close-input (port/operation port 'CLOSE-INPUT)))
     (if close-input
@@ -280,7 +286,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		    ((BUFFERED-CHARS) 'BUFFERED-OUTPUT-CHARS)
 		    ((CHANNEL) 'OUTPUT-CHANNEL)
 		    (else name))))
-
+
 (define (input-port? object)
   (and (port? object)
        (port-type/supports-input? (port/type object))))

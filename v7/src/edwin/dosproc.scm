@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dosproc.scm,v 1.7 2001/12/23 17:20:58 cph Exp $
+;;; $Id: dosproc.scm,v 1.8 2002/02/03 03:38:54 cph Exp $
 ;;;
-;;; Copyright (c) 1992-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1992-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -23,33 +23,34 @@
 ;; package: (edwin process)
 
 (declare (usual-integrations))
-
-(define subprocesses-available? false)
+
+(define subprocesses-available?
+  #f)
 
 (define (process-list)
   '())
 
 (define (get-buffer-process buffer)
   buffer
-  false)
+  #f)
 
 (define (buffer-processes buffer)
   buffer
   '())
 
-(define-integrable (process-operation name)
+(define (process-operation name)
   (lambda (process)
     (editor-error "Processes not implemented" name process)))
 
 (let-syntax ((define-process-operation
-	      (non-hygienic-macro-transformer
-	       (lambda (name)
-		 `(define ,name (process-operation ',name))))))
-
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 (let ((name (close-syntax (cadr form) environment)))
+		   `(DEFINE ,name (PROCESS-OPERATION ',name)))))))
   (define-process-operation delete-process))
 
 (define (process-status-changes?)
-  false)
+  #f)
 
 (define (process-output-available?)
-  false)
+  #f)

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: i386.h,v 1.34 2001/12/19 19:53:46 cph Exp $
+$Id: i386.h,v 1.35 2002/02/03 03:38:55 cph Exp $
 
-Copyright (c) 1992-2001 Massachusetts Institute of Technology
+Copyright (c) 1992-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -540,7 +540,6 @@ DEFUN_VOID (i386_reset_hook)
 {
   extern int EXFUN (ASM_ENTRY_POINT(i386_interface_initialize), (void));
   extern void EXFUN (declare_builtin, (unsigned long, char *));
-  extern int ia32_cpuid_needed;
   int offset = (COMPILER_REGBLOCK_N_FIXED * (sizeof (SCHEME_OBJECT)));
   unsigned char * esi_value = ((unsigned char *) (&Registers[0]));
   int fp_support_present = (i386_interface_initialize ());

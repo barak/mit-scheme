@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: win32.sf,v 1.8 2001/12/23 17:21:00 cph Exp $
+$Id: win32.sf,v 1.9 2002/02/03 03:38:58 cph Exp $
 
-Copyright (c) 1993-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1993-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -29,16 +29,6 @@ USA.
       (construct-packages-from-file (fasload package-set))))
 
 (fluid-let ((sf/default-syntax-table (->environment '(WIN32))))
-  (for-each
-    (lambda (names)
-      (sf/add-file-declarations! (car names)
-				 `((integrate-external . ,(cdr names)))))
-    '(("module" "winuser" "wingdi" "wt_user")
-      ("graphics" "winuser" "wingdi" "wt_user")
-      ("win_ffi" "winuser" "wingdi" "wt_user")
-      ("wf_user" "win_ffi" "wt_user")
-      ("dib" "win_ffi")))
-
   (sf-conditionally "ffimacro")
   (if (not (file-modification-time<? "ffimacro.bin" "ffimacro.com"))
       (cbf "ffimacro"))
@@ -47,7 +37,17 @@ USA.
   (sf-conditionally "winuser")
   (sf-conditionally "wingdi")
   (sf-conditionally "wt_user")
-  (sf-conditionally "win_ffi")
+  (fluid-let ((sf/default-declarations
+	       `((INTEGRATE-EXTERNAL "winuser" "wingdi" "wt_user"))))
+    (sf-conditionally "win_ffi")
+    (sf-conditionally "graphics")
+    (sf-conditionally "module"))
+  (fluid-let ((sf/default-declarations
+	       `((INTEGRATE-EXTERNAL "win_ffi" "wt_user"))))
+    (sf-conditionally "wf_user"))
+  (fluid-let ((sf/default-declarations
+	       `((INTEGRATE-EXTERNAL "win_ffi"))))
+    (sf-conditionally "dib"))
   (sf-directory "."))
 
 (cref/generate-constructors "win32")

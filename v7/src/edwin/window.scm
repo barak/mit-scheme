@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: window.scm,v 1.159 1999/01/02 06:11:34 cph Exp $
+;;; $Id: window.scm,v 1.160 2002/02/03 03:38:54 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-1999, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Window System
 
@@ -51,11 +52,12 @@
 (define (window-initialize! window window*)
   (%set-window-superior! window window*)
   (set-window-inferiors! window '())
-  (%set-window-redisplay-flags! window
-				(=> window* :inferior-redisplay-flags window)))
+  (%set-window-redisplay-flags!
+   window
+   (==> window* :inferior-redisplay-flags window)))
 
 (define (window-kill! window)
-  (for-each-inferior-window window (lambda (window) (=> window :kill!))))
+  (for-each-inferior-window window (lambda (window) (==> window :kill!))))
 
 (define-integrable (window-superior window)
   (with-instance-variables vanilla-window window () superior))
@@ -97,13 +99,13 @@
 
 (define (set-window-superior! window window*)
   (%set-window-superior! window window*)
-  (let ((flags (=> window* :inferior-redisplay-flags window)))
+  (let ((flags (==> window* :inferior-redisplay-flags window)))
     (%set-window-redisplay-flags! window flags)
     (setup-redisplay-flags! flags)
     (for-each-inferior window
       (lambda (inferior)
 	(set-inferior-redisplay-flags! inferior (cons false flags))
-	(=> (inferior-window inferior) :set-superior! window)))))
+	(==> (inferior-window inferior) :set-superior! window)))))
 
 (define (window-size window receiver)
   (receiver (window-x-size window) (window-y-size window)))
@@ -154,7 +156,7 @@
 			   false
 			   (cons false (window-redisplay-flags window)))))
       (set-window-inferiors! window (cons inferior (window-inferiors window)))
-      (=> window* :initialize! window)
+      (==> window* :initialize! window)
       inferior)))
 
 (define (add-inferior! window window*)
@@ -164,7 +166,7 @@
 			 false
 			 (cons false (window-redisplay-flags window)))))
     (set-window-inferiors! window (cons inferior (window-inferiors window)))
-    (=> window* :set-superior! window)
+    (==> window* :set-superior! window)
     inferior))
 
 (define (delete-inferior! window window*)
@@ -175,7 +177,7 @@
 
 (define (replace-inferior! window old new)
   (set-inferior-window! (find-inferior (window-inferiors window) old) new)
-  (=> new :set-superior! window))
+  (==> new :set-superior! window))
 
 ;;; Returns #T if the redisplay finished, #F if aborted.
 ;;; Notice that the :UPDATE-DISPLAY! operation is assumed to return
@@ -189,8 +191,8 @@
     (lambda (window screen x-start y-start xl xu yl yu display-style)
       (and (or (display-style/ignore-input? display-style)
 	       (not ((editor-halt-update? current-editor))))
-	   (=> window :update-display! screen x-start y-start xl xu yl yu
-	       display-style)))))
+	   (==> window :update-display! screen x-start y-start xl xu yl yu
+		display-style)))))
 
 (define (update-inferiors! inferiors screen x-start y-start xl xu yl yu
 			   display-style updater)
@@ -236,7 +238,7 @@
 	  (if (fix:< 0 bs) (receiver 0 bs) true))))
 
 (define (salvage-inferiors! window)
-  (for-each-inferior-window window (lambda (window) (=> window :salvage!))))
+  (for-each-inferior-window window (lambda (window) (==> window :salvage!))))
 
 (define (display-style/discard-screen-contents? display-style)
   (if (pair? display-style)
@@ -447,7 +449,7 @@
   (%set-window-x-size! (inferior-window inferior) x))
 
 (define-integrable (set-inferior-x-size! inferior x)
-  (=> (inferior-window inferior) :set-x-size! x))
+  (==> (inferior-window inferior) :set-x-size! x))
 
 (define-integrable (inferior-y-size inferior)
   (window-y-size (inferior-window inferior)))
@@ -456,13 +458,13 @@
   (%set-window-y-size! (inferior-window inferior) y))
 
 (define-integrable (set-inferior-y-size! inferior y)
-  (=> (inferior-window inferior) :set-y-size! y))
+  (==> (inferior-window inferior) :set-y-size! y))
 
 (define-integrable (inferior-size inferior receiver)
   (window-size (inferior-window inferior) receiver))
 
 (define-integrable (set-inferior-size! inferior x y)
-  (=> (inferior-window inferior) :set-size! x y))
+  (==> (inferior-window inferior) :set-size! x y))
 
 (define (find-inferior? inferiors window)
   (let loop ((inferiors inferiors))

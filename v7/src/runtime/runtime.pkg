@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.406 2002/01/12 02:56:35 cph Exp $
+$Id: runtime.pkg,v 14.407 2002/02/03 03:38:56 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -1237,12 +1237,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  stack-frame/debugging-info)
   (initialization (initialize-package!)))
 
-(define-package (runtime defstruct)
-  (files "defstr")
-  (parent (runtime))
-  (export ()
-	  define-structure))
-
 (define-package (runtime directory)
   (parent (runtime))
   (export (runtime pathname)
@@ -1945,8 +1939,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  lambda-wrapper-components)
   (export (runtime environment)
 	  internal-lambda?)
-  (export (runtime syntaxer)
-	  make-block-declaration)
   (export (runtime compiler-info)
 	  lambda-tag:internal-lambda
 	  lambda-tag:internal-lexpr)
@@ -2109,23 +2101,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  read-file
 	  set-command-line-parser!
 	  simple-command-line-parser)
-  (initialization (initialize-package!)))
-
-(define-package (runtime macros)
-  (files "macros")
-  (parent (runtime))
-  #|
-  (export ()
-	  and
-	  case
-	  cons-stream
-	  define-integrable
-	  do
-	  let*
-	  letrec
-	  quasiquote
-	  sequence)
-  |#
   (initialization (initialize-package!)))
 
 (define-package (runtime microcode-errors)
@@ -2334,15 +2309,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  system-global-parser-table)
   (export (runtime character)
 	  char-set/atom-delimiters)
-  (export (runtime syntaxer)
-	  lambda-auxiliary-tag
+  (export (runtime syntactic-closures)
 	  lambda-optional-tag
 	  lambda-rest-tag)
   (export (runtime unparser)
-	  lambda-auxiliary-tag
-	  lambda-optional-tag
-	  lambda-rest-tag)
-  (export (runtime macros)
 	  lambda-auxiliary-tag
 	  lambda-optional-tag
 	  lambda-rest-tag)
@@ -2702,7 +2672,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  unmapped-macro-reference-trap?
 	  unmapped-unassigned-reference-trap?
 	  unmapped-unbound-reference-trap?)
-  (export (runtime syntaxer)
+  (export (runtime syntactic-closures)
 	  make-macro-reference-trap-expression)
   (export (runtime unsyntaxer)
 	  macro-reference-trap-expression-transformer
@@ -3762,41 +3732,63 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  with-output-to-string)
   (initialization (initialize-package!)))
 
-(define-package (runtime syntax-table)
-  (files "syntab")
-  (parent (runtime))
-  (export (runtime syntaxer)
-	  guarantee-syntax-table
-	  make-syntax-table
-	  syntax-table/define
-	  syntax-table/environment
-	  syntax-table/extend
-	  syntax-table/ref))
-
-(define-package (runtime syntaxer)
-  (files "syntax")
+(define-package (runtime syntactic-closures)
+  (files "syntactic-closures"
+	 "syntax-output"
+	 "syntax-transforms"
+	 "mit-syntax"
+	 "syntax-rules"
+	 "syntax-check")
   (parent (runtime))
   (export ()
-	  hook/syntax-expression
+	  call-with-syntax-error-procedure
+	  capture-syntactic-environment
+	  close-syntax
+	  er-macro-transformer->expander
+	  identifier->symbol
+	  identifier=?
+	  identifier?
+	  ill-formed-syntax
 	  lambda-tag:fluid-let
 	  lambda-tag:let
 	  lambda-tag:unnamed
-	  make-syntax-closure
+	  make-syntactic-closure
+	  make-synthetic-identifier
+	  mit-lambda-list?
+	  non-hygienic-macro-transformer->expander
+	  parse-mit-lambda-list
+	  r4rs-lambda-list?
+	  sc-macro-transformer->expander
+	  rsc-macro-transformer->expander
+	  strip-syntactic-closures
+	  syntactic-closure-rtd
+	  syntactic-closure/environment
+	  syntactic-closure/free-names
+	  syntactic-closure/form
+	  syntactic-closure?
+	  synthetic-identifier?
 	  syntax
 	  syntax*
-	  syntax-closure/expression
-	  syntax-closure?
-	  syntax/top-level?)
+	  syntax-match?)
   (export (runtime defstruct)
-	  parse-lambda-list)
-  (initialization (initialize-package!)))
+	  define-expander
+	  parse-mit-lambda-list))
 
-(define-package (runtime illegal-definitions)
-  (files "illdef")
+(define-package (runtime defstruct)
+  (files "defstr")
   (parent (runtime))
-  (export (runtime syntaxer)
-	  check-for-illegal-definitions)
-  (initialization (initialize-package!)))
+  (export ()
+	  ;;define-structure
+	  ))
+
+(define-package (runtime system-macros)
+  (files "sysmac")
+  (parent (runtime))
+  (export (runtime)
+	  define-primitives
+	  ucode-primitive
+	  ucode-return-address
+	  ucode-type))
 
 (define-package (runtime system)
   (files "system")
@@ -3825,15 +3817,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (export (runtime gc-statistics)
 	  increment-non-runtime!)
   (initialization (initialize-package!)))
-
-(define-package (runtime system-macros)
-  (files "sysmac")
-  (parent (runtime))
-  (export (runtime)
-	  define-primitives
-	  ucode-primitive
-	  ucode-return-address
-	  ucode-type))
 
 (define-package (runtime truncated-string-output)
   (files "strott")

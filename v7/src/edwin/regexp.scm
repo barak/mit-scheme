@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: regexp.scm,v 1.77 2001/12/23 17:20:58 cph Exp $
+;;; $Id: regexp.scm,v 1.78 2002/02/03 03:38:54 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -155,31 +155,37 @@
     (make-mark group start)))
 
 (define-syntax default-end-mark
-  (non-hygienic-macro-transformer
-   (lambda (start end)
-     `(IF (DEFAULT-OBJECT? ,end)
-	  (GROUP-END ,start)
-	  (BEGIN
-	    (IF (NOT (MARK<= ,start ,end))
-		(ERROR "Marks incorrectly related:" ,start ,end))
-	    ,end)))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((start (close-syntax (cadr form) environment))
+	   (end (close-syntax (caddr form) environment)))
+       `(IF (DEFAULT-OBJECT? ,end)
+	    (GROUP-END ,start)
+	    (BEGIN
+	      (IF (NOT (MARK<= ,start ,end))
+		  (ERROR "Marks incorrectly related:" ,start ,end))
+	      ,end))))))
 
 (define-syntax default-start-mark
-  (non-hygienic-macro-transformer
-   (lambda (start end)
-     `(IF (DEFAULT-OBJECT? ,start)
-	  (GROUP-START ,end)
-	  (BEGIN
-	    (IF (NOT (MARK<= ,start ,end))
-		(ERROR "Marks incorrectly related:" ,start ,end))
-	    ,start)))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((start (close-syntax (cadr form) environment))
+	   (end (close-syntax (caddr form) environment)))
+       `(IF (DEFAULT-OBJECT? ,start)
+	    (GROUP-START ,end)
+	    (BEGIN
+	      (IF (NOT (MARK<= ,start ,end))
+		  (ERROR "Marks incorrectly related:" ,start ,end))
+	      ,start))))))
 
 (define-syntax default-case-fold-search
-  (non-hygienic-macro-transformer
-   (lambda (case-fold-search mark)
-     `(IF (DEFAULT-OBJECT? ,case-fold-search)
-	  (GROUP-CASE-FOLD-SEARCH (MARK-GROUP ,mark))
-	  ,case-fold-search))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((case-fold-search (close-syntax (cadr form) environment))
+	   (mark (close-syntax (caddr form) environment)))
+       `(IF (DEFAULT-OBJECT? ,case-fold-search)
+	    (GROUP-CASE-FOLD-SEARCH (MARK-GROUP ,mark))
+	    ,case-fold-search)))))
 
 (define (search-forward string start #!optional end case-fold-search)
   (%re-search string start (default-end-mark start end)
@@ -217,7 +223,7 @@
 		   (mark-index end))))
       (and index
 	   (make-mark group index)))))
-
+
 (define (re-match-forward regexp start #!optional end case-fold-search)
   (let ((end (default-end-mark start end))
 	(case-fold-search (default-case-fold-search case-fold-search start))
@@ -233,7 +239,7 @@
 				    (mark-index end))))
       (and index
 	   (make-mark group index)))))
-
+
 (define (re-search-buffer-forward regexp syntax-table group start end)
   (let ((index
 	 ((ucode-primitive re-search-buffer-forward)

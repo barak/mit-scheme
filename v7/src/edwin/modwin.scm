@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: modwin.scm,v 1.41 1999/03/18 02:29:30 cph Exp $
+;;;$Id: modwin.scm,v 1.42 2002/02/03 03:38:54 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-1999, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Modeline Window
 
@@ -34,7 +35,7 @@
     (set! shows-buffer-modified? value)))
 
 (define-method modeline-window (:initialize! window window*)
-  (usual=> window :initialize! window*)
+  (usual==> window :initialize! window*)
   (set! y-size 1)
   (set! shows-buffer-modified? #f))
 

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: syntax.scm,v 1.88 2001/12/23 17:20:58 cph Exp $
+;;; $Id: syntax.scm,v 1.89 2002/02/03 03:38:54 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -192,24 +192,28 @@ a comment ending."
 ;;;; Lisp Parsing
 
 (define-syntax default-end/forward
-  (non-hygienic-macro-transformer
-   (lambda (start end)
-     `(COND ((DEFAULT-OBJECT? ,end)
-	     (GROUP-END ,start))
-	    ((MARK<= ,start ,end)
-	     ,end)
-	    (ELSE
-	     (ERROR "Marks incorrectly related:" ,start ,end))))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((start (close-syntax (cadr form) environment))
+	   (end (close-syntax (caddr form) environment)))
+       `(IF (DEFAULT-OBJECT? ,end)
+	    (GROUP-END ,start)
+	    (BEGIN
+	      (IF (NOT (MARK<= ,start ,end))
+		  (ERROR "Marks incorrectly related:" ,start ,end))
+	      ,end))))))
 
 (define-syntax default-end/backward
-  (non-hygienic-macro-transformer
-   (lambda (start end)
-     `(COND ((DEFAULT-OBJECT? ,end)
-	     (GROUP-START ,start))
-	    ((MARK>= ,start ,end)
-	     ,end)
-	    (ELSE
-	     (ERROR "Marks incorrectly related:" ,start ,end))))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((start (close-syntax (cadr form) environment))
+	   (end (close-syntax (caddr form) environment)))
+       `(IF (DEFAULT-OBJECT? ,end)
+	    (GROUP-START ,start)
+	    (BEGIN
+	      (IF (NOT (MARK>= ,start ,end))
+		  (ERROR "Marks incorrectly related:" ,start ,end))
+	      ,end))))))
 
 (define (forward-prefix-chars start #!optional end)
   (let ((group (mark-group start))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: calias.scm,v 1.23 2001/12/23 17:20:58 cph Exp $
+;;; $Id: calias.scm,v 1.24 2002/02/03 03:38:54 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -256,9 +256,11 @@
 
 ;; Predefined special keys
 (let-syntax ((make-key
-	      (non-hygienic-macro-transformer
-	       (lambda (name)
-		 `(DEFINE ,name (INTERN-SPECIAL-KEY ',name 0))))))
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 (let ((name (close-syntax (cadr form) environment)))
+		   `(DEFINE ,name
+		      (INTERN-SPECIAL-KEY ',name 0)))))))
   (make-key backspace)
   (make-key stop)
   (make-key f1)

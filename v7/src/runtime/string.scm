@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.46 2001/12/23 17:20:59 cph Exp $
+$Id: string.scm,v 14.47 2002/02/03 03:38:57 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -203,27 +203,31 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   ;; Calling the primitive is expensive, so avoid it for small copies.
   (let-syntax
       ((unrolled-move-left
-	(non-hygienic-macro-transformer
-	 (lambda (n)
-	   `(BEGIN
-	      (STRING-SET! STRING2 START2 (STRING-REF STRING1 START1))
-	      ,@(let loop ((i 1))
-		  (if (< i n)
-		      `((STRING-SET! STRING2 (FIX:+ START2 ,i)
-				     (STRING-REF STRING1 (FIX:+ START1 ,i)))
-			,@(loop (+ i 1)))
-		      '()))))))
+	(sc-macro-transformer
+	 (lambda (form environment)
+	   environment
+	   (let ((n (cadr form)))
+	     `(BEGIN
+		(STRING-SET! STRING2 START2 (STRING-REF STRING1 START1))
+		,@(let loop ((i 1))
+		    (if (< i n)
+			`((STRING-SET! STRING2 (FIX:+ START2 ,i)
+				       (STRING-REF STRING1 (FIX:+ START1 ,i)))
+			  ,@(loop (+ i 1)))
+			'())))))))
        (unrolled-move-right
-	(non-hygienic-macro-transformer
-	 (lambda (n)
-	   `(BEGIN
-	      ,@(let loop ((i 1))
-		  (if (< i n)
-		      `(,@(loop (+ i 1))
-			(STRING-SET! STRING2 (FIX:+ START2 ,i)
-				     (STRING-REF STRING1 (FIX:+ START1 ,i))))
-		      '()))
-	      (STRING-SET! STRING2 START2 (STRING-REF STRING1 START1)))))))
+	(sc-macro-transformer
+	 (lambda (form environment)
+	   environment
+	   (let ((n (cadr form)))
+	     `(BEGIN
+		,@(let loop ((i 1))
+		    (if (< i n)
+			`(,@(loop (+ i 1))
+			  (STRING-SET! STRING2 (FIX:+ START2 ,i)
+				       (STRING-REF STRING1 (FIX:+ START1 ,i))))
+			'()))
+		(STRING-SET! STRING2 START2 (STRING-REF STRING1 START1))))))))
     (let ((n (fix:- end1 start1)))
       (if (or (not (eq? string2 string1)) (fix:< start2 start1))
 	  (cond ((fix:> n 4)

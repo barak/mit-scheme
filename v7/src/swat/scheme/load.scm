@@ -611,7 +611,6 @@
       row-lists->col-lists
       run-queue-trace
       scc-define-structure		;macro
-      scc-define-syntax			;macro
       screen-area=
       scrollable-canvas-canvas
       scrollable-canvas-hscroll
