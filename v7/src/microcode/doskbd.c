@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/doskbd.c,v 1.5 1992/05/25 16:19:34 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/doskbd.c,v 1.6 1992/05/28 19:08:24 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -251,17 +251,15 @@ normalize_RM_address (union RM_address * addr)
 }
 
 static dos_boolean
-DOSX_install_kbd_hook_p()
+install_kbd_hook_p (char * var_name)
 {
-  char *envvar = DOS_getenv("SCM_DOSX_KBD_HOOK_P");
+  extern int strcmp_ci (char *, char *);
+  char * envvar = (DOS_getenv (var_name));
 
-  if ( (envvar != NULL) &&
-       ((strcmp(envvar, "false") == 0) ||
-        (strcmp(envvar, "FALSE") == 0) ||
-        (strcmp(envvar, "False") == 0)) )
-    return dos_false;	  
+  if ((envvar != NULL) && ((strcmp_ci (envvar, "false")) == 0))
+    return (dos_false);
   else
-    return dos_true;  
+    return (dos_true);
 }
 
 /*
@@ -708,7 +706,7 @@ make_RM_trampoline (void (* hook) (void))
   return (trampoline);
 }
 #endif /* DPMI_RM_HANDLER_PROTECTED */
-
+
 #ifdef DPMI_RM_HANDLER_PROTECTED
   static union RM_address DPMI_RM_call_back;
   static void * DPMI_RM_regs = ((void *) NULL);
@@ -717,10 +715,15 @@ make_RM_trampoline (void (* hook) (void))
 #ifdef DPMI_RM_HANDLER_REAL
   static unsigned short DPMI_RM_selector = 0;
 #endif /* DPMI_RM_HANDLER_REAL */
+
+static char * DPMI_env_var = "MITSCHEME_DPMI_EXT_KBD";
 
 static int
 DPMI_restore_kbd_hook (void)
 {
+  if (!(install_kbd_hook_p (DPMI_env_var)))
+    return (DOS_FAILURE);
+
 #ifdef DPMI_RM_HANDLER_REAL
   if (DPMI_RM_selector != 0)
   {
@@ -911,6 +914,9 @@ make_RM_handler (void)
 static int
 DPMI_install_kbd_hook (void)
 {
+  if (!(install_kbd_hook_p (DPMI_env_var)))
+    return (DOS_FAILURE);
+
 #ifndef DPMI_PM_HANDLER_UNTOUCHED
 
   DPMI_PM_getvector (DOS_INTVECT_SYSTEM_SERVICES,
@@ -1061,10 +1067,12 @@ DPMI_install_kbd_hook (void)
   static unsigned char kludge;
 #endif /* DOSX_USE_INT_INTERCEPT */
 
+static char * DOSX_env_var = "MITSCHEME_DOSX_EXT_KBD";
+
 static int
 DOSX_install_kbd_hook (void)
 {
-  if (!(DOSX_install_kbd_hook_p ()))
+  if (!(install_kbd_hook_p (DOSX_env_var)))
     return (DOS_FAILURE);
   
 #ifdef DOSX_USE_INT_INTERCEPT
@@ -1191,7 +1199,7 @@ DOSX_install_kbd_hook (void)
 static int
 DOSX_restore_kbd_hook (void)
 {
-  if (!(DOSX_install_kbd_hook_p ()))
+  if (!(install_kbd_hook_p (DOSX_env_var)))
     return (DOS_FAILURE);
 
 #ifdef DOSX_USE_INT_INTERCEPT
