@@ -30,14 +30,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/version.h,v 5.10 1987/01/13 18:14:24 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/version.h,v 9.20 1987/01/21 20:30:25 jinx Exp $
 
 This file contains version information for the microcode. */
 
 /* Scheme system release version */
 
 #ifndef RELEASE
-#define RELEASE		"5.0.19"
+#define RELEASE		"5.0.20"
 #endif
 
 /* Microcode release version */
@@ -46,7 +46,7 @@ This file contains version information for the microcode. */
 #define VERSION		9
 #endif
 #ifndef SUBVERSION
-#define SUBVERSION	19
+#define SUBVERSION	20
 #endif
 
 #ifndef UCODE_TABLES_FILENAME

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.h,v 5.3 1986/12/17 06:34:23 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.h,v 9.20 1987/01/21 20:14:50 jinx Exp $
 
 Head file for bignums.  This is shared by bignum.c and generic.c. */
 

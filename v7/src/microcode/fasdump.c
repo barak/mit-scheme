@@ -331,7 +331,9 @@ Built_In_Primitive(Prim_Band_Dump, 2, "DUMP-BAND")
   Free += 2;
   *Free++ = Combination;
   *Free++ = return_to_interpreter;
-  *Free++ = Make_Pointer(TC_LIST, Free-2);
+  *Free = Make_Pointer(TC_LIST, Free-2);
+  Free++;  /* Some compilers are TOO clever about this and increment Free
+	      before calculating Free-2! */
   *Free++ = Ext_Prims;
   /* Aligning here confuses some of the counts computed.
      Align_Float(Free);

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 5.3 1986/12/17 18:26:45 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.20 1987/01/21 20:14:34 jinx Exp $
 
 This file contains the procedures for handling BIGNUM Arithmetic. */
 
@@ -862,9 +862,12 @@ fast long how_much;
   DEST   = Bignum_Top(DEST);
   SOURCE = Bignum_Bottom(SOURCE);
   while (SCAN >= SOURCE)
-  { digits = Mul_Radix(carry) + *SCAN--;
-    *DEST  = digits / how_much;
-    carry  = digits - (*DEST-- * how_much);
+  { fast unsigned bigdouble digits, temp;	/* Bug fix by JMiller */
+    digits = Mul_Radix(carry) + *SCAN--;
+    temp = digits / how_much;
+    *DEST--  = temp;
+    temp = temp * how_much;
+    carry  = digits - temp;
   }
   return carry;   /* returns remainder */
 }

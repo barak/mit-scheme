@@ -81,4 +81,16 @@ extern long New_Time, Old_Time, Time_Meters[], Current_Zone;
 #define Zone_GCIdle 9
 #define Zone_Lookup 10
 
-#define Max_Meters 11
+/* For finding out about lock contention - 1/19/87 - sas */
+
+#define Zone_Count_Locks 11
+#define Zone_Count_Lock_0 12
+#define Zone_Count_Lock_1 13
+#define Zone_Count_Lock_2 14
+#define Zone_Count_Lock_3 15
+#define Zone_Count_Lock_4 16
+#define Zone_Count_Lock_5 17
+#define Zone_Count_Lock_6 18
+#define Zone_Count_Lock_N 19
+
+#define Max_Meters 20

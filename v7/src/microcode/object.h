@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 5.3 1987/01/12 17:17:33 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.20 1987/01/21 20:24:48 jinx Exp $ */
 
 /* This file contains definitions pertaining to the C view of 
    Scheme pointers: widths of fields, extraction macros, pre-computed

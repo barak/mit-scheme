@@ -59,7 +59,7 @@ Built_In_Primitive( Prim_Apply, 2, "APPLY")
   fast Pointer scan_list, *scan_stack;
   fast long number_of_args, i;
 #ifdef butterfly
-  Pointer saved_stack_pointer;
+  Pointer *saved_stack_pointer;
 #endif
   Primitive_2_Args();
 

@@ -295,3 +295,10 @@ Loc = Apply_Primitive(N)
 #ifndef Allow_Aux_Compilation
 #define Allow_Aux_Compilation	true
 #endif
+
+/* This is how we support future numbering for external metering */
+#ifndef New_Future_Number
+#define New_Future_Number() NIL
+#else
+Pointer Get_New_Future_Number();
+#endif

@@ -235,7 +235,7 @@ Pointer Name;
   if (File_Load_Debug)
     printf("\nMachine type %d, Version %d, Subversion %d\n",
            Machine_Type, Version, Sub_Version);
-#ifdef butterfly
+#ifdef BYTE_INVERSION
   if ((Sub_Version > FASL_SUBVERSION))
 #else
   if ((Sub_Version > FASL_SUBVERSION) ||
@@ -263,8 +263,14 @@ CANNOT_LOAD:
      Align_Float(Free);
    */
   Load_Data(Heap_Count, (char *) Free);
+#ifdef BYTE_INVERSION
+  Byte_Invert_Region((char *) Free, Heap_Count);
+#endif
   Free += Heap_Count;
   Load_Data(Const_Count, (char *) Free_Constant);
+#ifdef BYTE_INVERSION
+  Byte_Invert_Region((char *) Free_Constant, Const_Count);
+#endif
   Free_Constant += Const_Count;
   /* Same 
      Align_Float(Free);
@@ -346,6 +352,7 @@ fast Pointer *Next_Pointer, *Stop_At;
 	    Next_Pointer, (Stop_At-Next_Pointer)-1, Stop_At);
   while (Next_Pointer < Stop_At)
   { fast Pointer Temp = *Next_Pointer;
+
     Switch_by_GC_Type(Temp)
     { case TC_BROKEN_HEART:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
@@ -361,6 +368,12 @@ fast Pointer *Next_Pointer, *Stop_At;
       case TC_MANIFEST_NM_VECTOR:
         Next_Pointer += Get_Integer(Temp)+1;
         break;
+
+#ifdef BYTE_INVERSION
+      case TC_CHARACTER_STRING:
+	String_Inversion(Relocate(Datum(Temp)));
+			 /* THEN FALL THROUGH */
+#endif
 
       	/* These work automagically */
       case_compiled_entry_point:
@@ -494,9 +507,17 @@ Boolean Not_From_Band_Load;
 
 	/* Relocate the new Data */
 
+#ifdef BYTE_INVERSION
+  Setup_For_String_Inversion();
+#endif
+
   Found_Ext_Prims = false;
   Relocate_Block(Orig_Heap, Free);
   Relocate_Block(Orig_Constant, Free_Constant);
+
+#ifdef BYTE_INVERSION
+  Finish_String_Inversion();
+#endif
 
 /* Fasload continues on the next page */
 
@@ -670,3 +691,98 @@ Pointer String;
   else Free = Orig_Free;
   return Interned_Symbol;
 }
+
+#ifdef BYTE_INVERSION
+
+#define MAGIC_OFFSET TC_FIXNUM+1
+
+Pointer String_Chain, Last_String;
+extern Boolean Byte_Invert_Fasl_Files;
+
+Setup_For_String_Inversion()
+{ if (!Byte_Invert_Fasl_Files) return;
+  String_Chain = NIL;
+  Last_String = NIL;
+}
+
+Finish_String_Inversion()
+{ while (String_Chain != NIL)
+  { long Count;
+    Pointer Next;
+
+    if (!Byte_Invert_Fasl_Files) return;
+
+    Count = Get_Integer(Fast_Vector_Ref(String_Chain, STRING_HEADER));
+    Count = 4*(Count-2)+Type_Code(String_Chain)-MAGIC_OFFSET;
+    if (Reloc_Debug)
+      printf("String at 0x%x: restoring length of %d.\n",
+             Address(String_Chain), Count);
+    Next = Fast_Vector_Ref(String_Chain, STRING_LENGTH);
+    Fast_Vector_Set(String_Chain, STRING_LENGTH, FIXNUM_0+Count);
+    String_Chain = Next;
+  }
+}
+
+String_Inversion(Orig_Pointer)
+Pointer *Orig_Pointer;
+{ Pointer *Pointer_Address;
+  char *To_Char;
+  long Code;
+
+  if (!Byte_Invert_Fasl_Files) return;
+
+  Code = Type_Code(Orig_Pointer[STRING_LENGTH]);
+  if (Code == TC_FIXNUM || Code == 0)	/* Already reversed? */
+  { long Count, old_size, new_size, i;
+
+    old_size = Get_Integer(Orig_Pointer[STRING_HEADER]);
+    new_size = 
+      2+(Get_Integer(Orig_Pointer[STRING_LENGTH]))/4;
+
+    if (Reloc_Debug)
+      printf("\nString at 0x%x with %d characters",
+             Orig_Pointer,
+             Get_Integer(Orig_Pointer[STRING_LENGTH]));
+
+    if (old_size != new_size)
+    { printf("\nWord count changed from %d to %d: ",
+             old_size , new_size);
+      printf("\nWhich, of course, is impossible!!\n");
+      Microcode_Termination(TERM_EXIT);
+    }
+
+    Count = Get_Integer(Orig_Pointer[STRING_LENGTH])%4;
+    if (Count==0) Count = 4;
+    if (Last_String == NIL)
+      String_Chain = Make_Pointer(Count+MAGIC_OFFSET, Orig_Pointer);
+    else Fast_Vector_Set(Last_String, STRING_LENGTH,
+			 Make_Pointer(Count+MAGIC_OFFSET, Orig_Pointer));
+    Last_String = Make_Pointer(TC_NULL, Orig_Pointer);
+    Orig_Pointer[STRING_LENGTH] = NIL;
+    Count = Get_Integer(Orig_Pointer[STRING_HEADER])-1;
+    if (Reloc_Debug) 
+       printf("\nCell count=%d\n", Count);
+    Pointer_Address = &(Orig_Pointer[STRING_CHARS]);
+    To_Char = (char *) Pointer_Address;
+    for (i=0; i < Count; i++, Pointer_Address++)
+    { int C1, C2, C3, C4;
+      C4 = Type_Code(*Pointer_Address) & 0xFF;
+      C3 = (((long) *Pointer_Address)>>16) & 0xFF;
+      C2 = (((long) *Pointer_Address)>>8) & 0xFF;
+      C1 = ((long) *Pointer_Address) & 0xFF;
+      if (Reloc_Debug || (old_size != new_size))
+      { print_char(C1);
+        print_char(C2);
+        print_char(C3);
+        print_char(C4);
+      }
+      *To_Char++ = C1;
+      *To_Char++ = C2;
+      *To_Char++ = C3;
+      *To_Char++ = C4;
+    }
+  }
+  if (Reloc_Debug) printf("\n");
+}
+#endif
+

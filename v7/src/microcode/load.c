@@ -55,13 +55,17 @@ long Heap_Count, Const_Count,
      Heap_Base, Const_Base, Dumped_Object,
      Dumped_Heap_Top, Dumped_Constant_Top, Dumped_Stack_Top;
 Pointer Ext_Prim_Vector;
-Boolean Found_Ext_Prims;
+Boolean Found_Ext_Prims, Byte_Invert_Fasl_Files;
 
 Boolean Read_Header()
 { Pointer Buffer[FASL_HEADER_LENGTH];
   Pointer Pointer_Heap_Base, Pointer_Const_Base;
   Load_Data(FASL_OLD_LENGTH, (char *) Buffer);
   if (Buffer[FASL_Offset_Marker] != FASL_FILE_MARKER) return false;
+#ifdef BYTE_INVERSION
+  Byte_Invert_Header(Buffer,sizeof(Buffer)/sizeof(Pointer),
+		     Buffer[FASL_Offset_Heap_Base],Buffer[FASL_Offset_Heap_Count]);
+#endif
   Heap_Count = Get_Integer(Buffer[FASL_Offset_Heap_Count]);
   Pointer_Heap_Base = Buffer[FASL_Offset_Heap_Base];
   Heap_Base = Datum(Pointer_Heap_Base);
@@ -80,6 +84,10 @@ Boolean Read_Header()
   if (Sub_Version >= FASL_LONG_HEADER)
   { Load_Data(FASL_HEADER_LENGTH-FASL_OLD_LENGTH,
 	      (char *) &(Buffer[FASL_OLD_LENGTH]));
+#if BYTE_INVERSION
+    Byte_Invert_Region((char *) &(Buffer[FASL_OLD_LENGTH]),
+		       FASL_HEADER_LENGTH-FASL_OLD_LENGTH);
+#endif
     Ext_Prim_Vector =
       Make_Non_Pointer(TC_CELL, Datum(Buffer[FASL_Offset_Ext_Loc]));
   }
@@ -95,3 +103,27 @@ Boolean Read_Header()
   }
   return true;
 }
+
+#ifdef BYTE_INVERSION
+Byte_Invert_Header(Header, Headsize, Test1, Test2)
+long *Header, Headsize, Test1, Test2;
+{ Byte_Invert_Fasl_Files = false;
+
+  if ((Test1 & 0xff) == TC_BROKEN_HEART &&
+      (Test2 & 0xff) == TC_BROKEN_HEART &&
+      (Type_Code(Test1) != TC_BROKEN_HEART ||
+       Type_Code(Test2) != TC_BROKEN_HEART)) {
+    Byte_Invert_Fasl_Files = true;
+    Byte_Invert_Region(Header,Headsize); }
+}
+
+Byte_Invert_Region(Region, Size)
+long *Region, Size;
+{ register long word, size;
+
+  if (Byte_Invert_Fasl_Files)
+    for (size=Size; size>0; size--, Region++) {
+      word=(*Region);
+      *Region=((word>>24)&0xff) | ((word>>8)&0xff00) |
+	((word<<8)&0xff0000) | ((word<<24)&0xff000000); } }
+#endif

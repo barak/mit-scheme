@@ -325,7 +325,7 @@ Define_Primitive(Prim_Make_Cheap_Future, 3, "MAKE-CHEAP-FUTURE")
   Pointer IO_Vector, IO_Cons, IO_Hunk3, Empty_Queue, IO_String;
   Primitive_3_Args();
  
-  Primitive_GC_If_Needed(20);
+  Primitive_GC_If_Needed(21);
 
   Empty_Queue=Make_Pointer(TC_LIST,Free);
   *Free++=NIL;
@@ -349,16 +349,17 @@ Define_Primitive(Prim_Make_Cheap_Future, 3, "MAKE-CHEAP-FUTURE")
   *Free++=IO_Hunk3;
 
   The_Future=Make_Pointer(TC_FUTURE,Free);
-  *Free++=Make_Non_Pointer(TC_MANIFEST_VECTOR,9);
+  *Free++=Make_Non_Pointer(TC_MANIFEST_VECTOR,10);
   *Free++=NIL;			/* No value yet. */
   *Free++=NIL;			/* Not locked. */
   *Free++=Empty_Queue;		/* Put the empty queue here. */
   *Free++=Arg1;			/* The process slot. */
-  *Free++=TRUTH;		/* Status slot - not used? */
-  *Free++=Arg2;			/* For debugging. */
+  *Free++=TRUTH;		/* Status slot. */
+  *Free++=Arg2;			/* Original code. */
   *Free++=IO_Vector;		/* Put the I/O system stuff here. */
   *Free++=NIL;			/* Waiting on list. */
-  *Free++=NIL;			/* User slot? */
+  *Free++=New_Future_Number();	/* Metering number. */
+  *Free++=NIL;			/* User data slot */
 
   return The_Future; }
 

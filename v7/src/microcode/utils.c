@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 5.2 1987/01/12 17:26:03 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.20 1987/01/21 20:29:54 jinx Exp $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -252,6 +252,20 @@ signal_interrupt_from_primitive ()
 {
   Back_Out_Of_Primitive ();
   longjmp (*Back_To_Eval, PRIM_INTERRUPT);
+  /*NOTREACHED*/
+}
+
+void
+special_interrupt_from_primitive(local_mask)
+     int local_mask;
+{
+  Back_Out_Of_Primitive();
+  Save_Cont();
+  Store_Return(RC_RESTORE_INT_MASK);
+  Store_Expression(FIXNUM_0+IntEnb);
+  IntEnb = (local_mask);
+  longjmp(*Back_To_Eval, PRIM_INTERRUPT);
+  /*NOTREACHED*/
 }
 
 void
@@ -526,6 +540,8 @@ Do_Micro_Error (Err, From_Pop_Return)
 		  Get_Fixed_Obj_Slot(System_Error_Vector))) !=
        TC_VECTOR))
   { printf("\nBogus Error Vector! I'm terribly confused!\n");
+    printf("\n**** Stack Trace ****\n\n");
+    Back_Trace();
     Microcode_Termination(TERM_NO_ERROR_HANDLER, Err);
   }
   if (Err >= Vector_Length(Error_Vector))
