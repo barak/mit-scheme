@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseep.scm,v 4.3 1988/05/09 19:54:46 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseep.scm,v 4.4 1988/08/11 20:10:58 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -78,3 +78,23 @@ MIT in each case. |#
 (define-integrable (interpreter-register-reference? expression)
   (and (rtl:offset? expression)
        (interpreter-regs-pointer? (rtl:offset-register expression))))
+
+(define (expression-non-object? expression)
+  (if (rtl:register? expression)
+      (or (register-contains-address? (rtl:register-number expression))
+	  (register-contains-fixnum? (rtl:register-number expression)))
+      (memq (rtl:expression-type expression)
+	    '(OBJECT->ADDRESS
+	      OBJECT->DATUM
+	      OBJECT->TYPE
+	      OBJECT->FIXNUM
+	      CHAR->ASCII
+	      OFFSET-ADDRESS
+	      VARIABLE-CACHE
+	      ASSIGNMENT-CACHE))))
+
+(define (expression-address-varies? expression)
+  (and (not (interpreter-register-reference? expression))
+       (or (memq (rtl:expression-type expression)
+		 '(OFFSET BYTE-OFFSET PRE-INCREMENT POST-INCREMENT)))
+       (rtl:any-subexpression? expression expression-address-varies?)))

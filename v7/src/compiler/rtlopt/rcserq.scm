@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcserq.scm,v 4.2 1988/06/14 08:44:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcserq.scm,v 4.3 1988/08/11 20:11:14 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -57,12 +57,11 @@ MIT in each case. |#
 	quantity)))
 
 (define (new-quantity register)
-  (make-quantity (generate-quantity-number) register register))
-
-(define (generate-quantity-number)
-  (let ((n *next-quantity-number*))
-    (set! *next-quantity-number* (1+ *next-quantity-number*))
-    n))
+  (make-quantity (let ((n *next-quantity-number*))
+		   (set! *next-quantity-number* (1+ *next-quantity-number*))
+		   n)
+		 register
+		 register))
 
 (define *next-quantity-number*)
 
@@ -98,7 +97,7 @@ MIT in each case. |#
 	  (vector-copy (vector-ref register-tables 3))
 	  (vector-copy (vector-ref register-tables 4))
 	  (vector-copy (vector-ref register-tables 5))))
-
+
 (define *register-tables*)
 
 (define-integrable (register-quantity register)

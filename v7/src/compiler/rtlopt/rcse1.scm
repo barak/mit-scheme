@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.10 1988/06/14 08:44:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.11 1988/08/11 20:10:34 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -32,7 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; RTL Common Subexpression Elimination
+;;;; RTL Common Subexpression Elimination: Codewalker
 ;;;  Based on the GNU C Compiler
 
 (declare (usual-integrations))
@@ -48,7 +48,8 @@ MIT in each case. |#
 	      (*next-quantity-number* 0)
 	      (*initial-queue* (make-queue))
 	      (*branch-queue* '()))
-    (for-each (lambda (edge) (enqueue! *initial-queue* (edge-right-node edge)))
+    (for-each (lambda (edge)
+		(enqueue!/unsafe *initial-queue* (edge-right-node edge)))
 	      (rgraph-initial-edges rgraph))
     (fluid-let ((*register-tables*
 		 (register-tables/make (rgraph-n-registers rgraph)))
@@ -82,7 +83,8 @@ MIT in each case. |#
   (register-tables/reset! *register-tables*)
   (set! *hash-table* (make-hash-table))
   (set! *stack-offset* 0)
-  (set! *stack-reference-quantities* '()))
+  (set! *stack-reference-quantities* '())
+  unspecific)
 
 (define (state/get)
   (make-state (register-tables/copy *register-tables*)
@@ -91,16 +93,17 @@ MIT in each case. |#
 	      (list-copy *stack-reference-quantities*)))
 
 (define (walk-bblock bblock)
-  (define (loop rinst)
+  (let loop ((rinst (bblock-instructions bblock)))
     (let ((rtl (rinst-rtl rinst)))
       ((if (eq? (rtl:expression-type rtl) 'ASSIGN)
 	   cse/assign
-	   (cdr (or (assq (rtl:expression-type rtl) cse-methods)
-		    (error "Missing CSE method" (car rtl)))))
+	   (let ((entry (assq (rtl:expression-type rtl) cse-methods)))
+	     (if (not entry)
+		 (error "Missing CSE method" (rtl:expression-type rtl)))
+	     (cdr entry)))
        rtl))
     (if (rinst-next rinst)
 	(loop (rinst-next rinst))))
-  (loop (bblock-instructions bblock))
   (node-mark! bblock)
   (if (sblock? bblock)
       (let ((next (snode-next bblock)))
@@ -125,10 +128,10 @@ MIT in each case. |#
 		(walk-next alternative)
 		(continue-walk))))))
 
-(define (walk-next? bblock)
+(define-integrable (walk-next? bblock)
   (and bblock (not (node-marked? bblock))))
 
-(define (walk-next bblock)
+(define-integrable (walk-next bblock)
   (if (node-previous>1? bblock) (state/reset!))
   (walk-bblock bblock))
 
@@ -179,7 +182,6 @@ MIT in each case. |#
 						    hash
 						    insert-source!
 						    memory-invalidate!)))))
-
 	      (else
 	       (let ((address (expression-canonicalize address)))
 		 (rtl:set-assign-address! statement address)
@@ -205,8 +207,7 @@ MIT in each case. |#
 				     (hash-table-delete!
 				      hash
 				      (hash-table-lookup hash address))
-				     (hash-table-delete-class!
-				      element-address-varies?))))))
+				     (varying-address-invalidate!))))))
 		       (if (or volatile? volatile?*)
 			   (memory-invalidate!)
 			   (assignment-memory-insertion address
@@ -215,7 +216,7 @@ MIT in each case. |#
 							memory-invalidate!)))))
 		 (notice-push/pop! address)))))
       (notice-push/pop! (rtl:assign-expression statement)))))
-
+
 (define (notice-push/pop! expression)
   ;; **** Kludge.  Works only because stack-pointer
   ;; gets used in very fixed way by code generator.
@@ -260,14 +261,14 @@ MIT in each case. |#
   rtl:eq-test-expression-1 rtl:set-eq-test-expression-1!
   rtl:eq-test-expression-2 rtl:set-eq-test-expression-2!)
 
+(define-trivial-one-arg-method 'FIXNUM-PRED-1-ARG
+  rtl:fixnum-pred-1-arg-operand rtl:set-fixnum-pred-1-arg-operand!)
+
 (define-trivial-two-arg-method 'FIXNUM-PRED-2-ARGS
   rtl:fixnum-pred-2-args-operand-1 rtl:set-fixnum-pred-2-args-operand-1!
   rtl:fixnum-pred-2-args-operand-2 rtl:set-fixnum-pred-2-args-operand-2!)
 (define-trivial-one-arg-method 'TRUE-TEST
   rtl:true-test-expression rtl:set-true-test-expression!)
-
-(define-trivial-one-arg-method 'FIXNUM-PRED-1-ARG
-  rtl:fixnum-pred-1-arg-operand rtl:set-fixnum-pred-1-arg-operand!)
 
 (define-trivial-one-arg-method 'TYPE-TEST
   rtl:type-test-expression rtl:set-type-test-expression!)
@@ -277,7 +278,7 @@ MIT in each case. |#
 
 (define (method/noop statement)
   statement
-  'DONE)
+  unspecific)
 
 (define-cse-method 'POP-RETURN method/noop)
 
@@ -295,25 +296,16 @@ MIT in each case. |#
 (define-cse-method 'INVOCATION:PRIMITIVE method/noop)
 (define-cse-method 'INVOCATION:SPECIAL-PRIMITIVE method/noop)
 
-(define-cse-method 'INVOCATION:CACHE-REFERENCE
-  (lambda (statement)
-    (expression-replace! rtl:invocation:cache-reference-name
-			 rtl:set-invocation:cache-reference-name!
-			 statement
-			 trivial-action)))
+(define-trivial-one-arg-method 'INVOCATION:CACHE-REFERENCE
+  rtl:invocation:cache-reference-name rtl:set-invocation:cache-reference-name!)
 
-(define-cse-method 'INVOCATION:LOOKUP
-  (lambda (statement)
-    (expression-replace! rtl:invocation:lookup-environment
-			 rtl:set-invocation:lookup-environment!
-			 statement
-			 trivial-action)))
-
+(define-trivial-one-arg-method 'INVOCATION:LOOKUP
+  rtl:invocation:lookup-environment rtl:set-invocation:lookup-environment!)
 (define-cse-method 'CONS-CLOSURE
   (lambda (statement)
     statement
     (expression-invalidate! (interpreter-register:enclose))))
-
+
 (define-cse-method 'INVOCATION-PREFIX:MOVE-FRAME-UP
   (lambda (statement)
     (expression-replace! rtl:invocation-prefix:move-frame-up-locative
@@ -374,7 +366,7 @@ MIT in each case. |#
   rtl:interpreter-call:unbound?-environment
   rtl:set-interpreter-call:unbound?-environment!
   interpreter-register:unbound?)
-
+
 (define (define-assignment-method type
 	  get-environment set-environment!
 	  get-value set-value!)
@@ -383,7 +375,7 @@ MIT in each case. |#
       (expression-replace! get-value set-value! statement trivial-action)
       (expression-replace! get-environment set-environment! statement
 	(lambda (volatile? insert-source!)
-	  (hash-table-delete-class! element-address-varies?)
+	  (varying-address-invalidate!)
 	  (non-object-invalidate!)
 	  (if (not volatile?) (insert-source!)))))))
 

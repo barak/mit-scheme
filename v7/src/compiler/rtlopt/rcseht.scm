@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.4 1988/06/14 08:44:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.5 1988/08/11 20:11:06 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -61,8 +61,7 @@ MIT in each case. |#
   (previous-hash false)
   (next-value false)
   (previous-value false)
-  (first-value false)
-  (copy-cache false))
+  (first-value false))
 
 (set-type-object-description!
  element
@@ -74,18 +73,16 @@ MIT in each case. |#
      (ELEMENT-PREVIOUS-HASH ,(element-previous-hash element))
      (ELEMENT-NEXT-VALUE ,(element-next-value element))
      (ELEMENT-PREVIOUS-VALUE ,(element-previous-value element))
-     (ELEMENT-FIRST-VALUE ,(element-first-value element))
-     (ELEMENT-COPY-CACHE ,(element-copy-cache element)))))
+     (ELEMENT-FIRST-VALUE ,(element-first-value element)))))
 
 (define (hash-table-lookup hash expression)
-  (define (loop element)
+  (let loop ((element (hash-table-ref hash)))
     (and element
 	 (if (let ((expression* (element-expression element)))
 	       (or (eq? expression expression*)
 		   (expression-equivalent? expression expression* true)))
 	     element
-	     (loop (element-next-hash element)))))
-  (loop (hash-table-ref hash)))
+	     (loop (element-next-hash element))))))
 
 (define (hash-table-insert! hash expression class)
   (let ((element (make-element expression))
@@ -142,7 +139,8 @@ MIT in each case. |#
 	 (if next (set-element-previous-hash! next previous))
 	 (if previous
 	     (set-element-next-hash! previous next)
-	     (hash-table-set! hash next))))))
+	     (hash-table-set! hash next)))))
+  unspecific)
 
 (define (hash-table-delete-class! predicate)
   (let table-loop ((i 0))
@@ -152,63 +150,56 @@ MIT in each case. |#
 	      (begin (if (predicate element)
 			 (hash-table-delete! i element))
 		     (bucket-loop (element-next-hash element)))
-	      (table-loop (1+ i)))))))
+	      (table-loop (1+ i))))))
+  unspecific)
 
-(define hash-table-copy
-  (let ()
-    (define (copy-loop elements)
-      (define (per-element element previous)
-	(and element
-	     (let ((element*
-		    (%make-element (element-expression element)
-				   (element-cost element)
-				   (element-in-memory? element)
-				   (per-element (element-next-hash element)
-						element)
-				   previous
-				   (element-next-value element)
-				   (element-previous-value element)
-				   (element-first-value element)
-				   element)))
-	       (set-element-copy-cache! element element*)
-	       element*)))
-      (if (null? elements)
-	  '()
-	  (cons (per-element (car elements) false)
-		(copy-loop (cdr elements)))))
-
-    (define (update-values! elements)
-      (define (per-element element)
-	(if element
-	    (begin (if (element-first-value element)
-		       (set-element-first-value!
-			element
-			(element-copy-cache (element-first-value element))))
-		   (if (element-previous-value element)
-		       (set-element-previous-value!
-			element
-			(element-copy-cache (element-previous-value element))))
-		   (if (element-next-value element)
-		       (set-element-next-value!
-			element
-			(element-copy-cache (element-next-value element))))
-		   (per-element (element-next-hash element)))))
-      (if (not (null? elements))
-	  (begin (per-element (car elements))
-		 (update-values! (cdr elements)))))
-
-    (define (reset-caches! elements)
-      (define (per-element element)
-	(if element
-	    (begin (set-element-copy-cache! element false)
-		   (per-element (element-next-hash element)))))
-      (if (not (null? elements))
-	  (begin (per-element (car elements))
-		 (reset-caches! (cdr elements)))))
-
-    (named-lambda (hash-table-copy table)
-      (let ((elements (vector->list table)))
-	(let ((elements* (copy-loop elements)))
-	  (update-values! elements*)
-	  (reset-caches! elements)
-	  (list->vector elements*))))))
+(define (hash-table-copy table)
+  ;; During this procedure, the `element-cost' slots of `table' are
+  ;; reused as "broken hearts".
+  (let ((elements (vector->list table)))
+    (let ((elements*
+	   (map (lambda (element)
+		  (let per-element ((element element) (previous false))
+		    (and element
+			 (let ((element*
+				(%make-element
+				 (element-expression element)
+				 (element-cost element)
+				 (element-in-memory? element)
+				 (per-element (element-next-hash element)
+					      element)
+				 previous
+				 (element-next-value element)
+				 (element-previous-value element)
+				 (element-first-value element))))
+			   (set-element-cost! element element*)
+			   element*))))
+		elements)))
+      (letrec ((per-element
+		(lambda (element)
+		  (if element
+		      (begin
+			(if (element-first-value element)
+			    (set-element-first-value!
+			     element
+			     (element-cost (element-first-value element))))
+			(if (element-previous-value element)
+			    (set-element-previous-value!
+			     element
+			     (element-cost (element-previous-value element))))
+			(if (element-next-value element)
+			    (set-element-next-value!
+			     element
+			     (element-cost (element-next-value element))))
+			(per-element (element-next-hash element)))))))
+	(for-each per-element elements*))
+      (letrec ((per-element
+		(lambda (element)
+		  (if element
+		      (begin
+			(set-element-cost!
+			 element
+			 (element-cost (element-cost element)))
+			(per-element (element-next-hash element)))))))
+	(for-each per-element elements))
+      (list->vector elements*))))
