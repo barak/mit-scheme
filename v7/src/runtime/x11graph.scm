@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.29 1993/09/01 22:45:36 cph Exp $
+$Id: x11graph.scm,v 1.30 1993/09/01 23:12:10 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -398,13 +398,12 @@ MIT in each case. |#
     (if (not block-events?)
 	(unblock-thread-events))))
 
-(define (read-event-of-type device event-type)
-  (let ((display (x-graphics/display device)))
-    (let loop ()
-      (let ((event (read-event display)))
-	(if (fix:= (vector-ref event 0) event-type)
-	    event
-	    (loop))))))
+(define (read-event-of-type display event-type)
+  (let loop ()
+    (let ((event (read-event display)))
+      (if (fix:= (vector-ref event 0) event-type)
+	  event
+	  (loop)))))
 
 (define (process-event display event)
   (let ((handler (vector-ref event-handlers (vector-ref event 0))))
