@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapopt.scm,v 1.2 1993/02/14 04:23:48 gjr Exp $
+$Id: lapopt.scm,v 1.3 1993/02/14 06:26:55 gjr Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -123,10 +123,17 @@ MIT in each case. |#
 	  ((memq opcode '(COMB ...))
 	   <>)
 	  |#
-	  ((memq opcode '(LABEL EQUATE))
+	  ((memq opcode '(LABEL EQUATE ENTRY-POINT
+				EXTERNAL-LABEL BLOCK-OFFSET))
 	   (values 'DIRECTIVE false false false))
 	  (else
 	   (values 'UNKNOWN false false false)))))
+
+(define (instruction-type instr)
+  (with-values (lambda () (classify-instruction instr))
+    (lambda (type tgt src1 src2)
+      tgt src1 src2			; ignored
+      type)))
 
 ;;;; Utilities
 
@@ -287,9 +294,7 @@ MIT in each case. |#
 	   (let* ((next (find-or-label (cdr instrs)))
 		  (next* (and next (find-non-label (cdr next)))))
 	     (if (and next
-		      (not (memq (caar next)
-				 '(LABEL ENTRY-POINT
-					 EXTERNAL-LABEL BLOCK-OFFSET)))
+		      (memq (instruction-type (car next) '(MEMORY ALU)))
 		      (not (skips? (car next)))
 		      (or (not next*)
 			  (not (skips? (car next*)))))
