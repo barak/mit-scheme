@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.28 1987/12/14 00:11:30 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.29 1988/07/08 02:26:36 cph Exp $
  *
  * Random system primitives.  Most are implemented in terms of
  * utilities in os.c
@@ -186,4 +186,57 @@ DEFINE_PRIMITIVE ("UNDER-EMACS?", Prim_under_emacs_p, 0)
   PRIMITIVE_HEADER (0);
 
   PRIMITIVE_RETURN (((OS_Under_Emacs ()) ? TRUTH : NIL));
+}
+
+#define CONVERT_ADDRESS(address)					\
+  (C_Integer_To_Scheme_Integer ((long) (C_To_Scheme (address))))
+
+DEFINE_PRIMITIVE ("GC-SPACE-STATUS", Prim_gc_space_status, 0)
+{
+  Pointer * constant_low;
+  Pointer * constant_free;
+  Pointer * constant_high;
+  Pointer * heap_low;
+  Pointer * heap_free;
+  Pointer * heap_limit;
+  Pointer * heap_high;
+#ifndef USE_STACKLETS
+  Pointer * stack_low;
+  Pointer * stack_free;
+  Pointer * stack_limit;
+  Pointer * stack_high;
+#endif /* USE_STACKLETS */
+  Pointer result;
+  PRIMITIVE_HEADER (0);
+
+  constant_low = Constant_Space;
+  constant_free = Free_Constant;
+  constant_high = Constant_Top;
+  heap_low = Heap_Bottom;
+  heap_free = Free;
+  heap_limit = MemTop;
+  heap_high = Heap_Top;
+#ifndef USE_STACKLETS
+  stack_low = Absolute_Stack_Base;
+  stack_free = Stack_Pointer;
+  stack_limit = Stack_Guard;
+  stack_high = Stack_Top;
+#endif /* USE_STACKLETS */
+
+  result = (make_vector (12, NIL));
+  User_Vector_Set (result, 0, (MAKE_UNSIGNED_FIXNUM (sizeof (Pointer))));
+  User_Vector_Set (result, 1, (CONVERT_ADDRESS (constant_low)));
+  User_Vector_Set (result, 2, (CONVERT_ADDRESS (constant_free)));
+  User_Vector_Set (result, 3, (CONVERT_ADDRESS (constant_high)));
+  User_Vector_Set (result, 4, (CONVERT_ADDRESS (heap_low)));
+  User_Vector_Set (result, 5, (CONVERT_ADDRESS (heap_free)));
+  User_Vector_Set (result, 6, (CONVERT_ADDRESS (heap_limit)));
+  User_Vector_Set (result, 7, (CONVERT_ADDRESS (heap_high)));
+#ifndef USE_STACKLETS
+  User_Vector_Set (result, 8, (CONVERT_ADDRESS (stack_low)));
+  User_Vector_Set (result, 9, (CONVERT_ADDRESS (stack_free)));
+  User_Vector_Set (result, 10, (CONVERT_ADDRESS (stack_limit)));
+  User_Vector_Set (result, 11, (CONVERT_ADDRESS (stack_high)));
+#endif /* USE_STACKLETS */
+  PRIMITIVE_RETURN (result);
 }
