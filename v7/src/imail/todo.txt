@@ -1,12 +1,8 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.29 2000/05/19 21:03:53 cph Exp $
+$Id: todo.txt,v 1.30 2000/05/19 21:28:43 cph Exp $
 
 Bug fixes
 ---------
-
-* Summary buffers don't navigate correctly unless they are showing all
-  of the messages.  Partial summaries manipulate index numbers that
-  are the line numbers of the buffer rather than the message indexes.
 
 * Password should be cached s.t. it can be shared between connections
   with compatible URLs.  Right now it is per-connection.
