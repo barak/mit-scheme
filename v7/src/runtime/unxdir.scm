@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxdir.scm,v 14.9 1992/02/08 15:08:44 cph Exp $
+$Id: unxdir.scm,v 14.10 1992/11/03 22:42:56 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,6 +37,8 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(define *expand-directory-prefixes?* true)
+
 (define (directory-read pattern #!optional sort?)
   (if (if (default-object? sort?) true sort?)
       (sort (directory-read-nosort pattern) pathname<?)
@@ -59,8 +61,9 @@ MIT in each case. |#
       (map (lambda (pathname)
 	     (merge-pathnames pathname directory-path))
 	   (let ((pathnames
-		  (map ->pathname
-		       (generate-directory-pathnames directory-path))))
+		  (let ((fnames (generate-directory-pathnames directory-path)))
+		    (fluid-let ((*expand-directory-prefixes?* false))
+		      (map ->pathname fnames)))))
 	     (if (and (eq? (pathname-name pattern) 'WILD)
 		      (eq? (pathname-type pattern) 'WILD))
 		 pathnames

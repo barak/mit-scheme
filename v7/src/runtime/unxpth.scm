@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.12 1992/08/12 08:42:46 jinx Exp $
+$Id: unxpth.scm,v 14.13 1992/11/03 22:42:43 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -98,7 +98,8 @@ MIT in each case. |#
       component))
 
 (define (expand-directory-prefixes string)
-  (if (string-null? string)
+  (if (or (string-null? string)
+	  (not *expand-directory-prefixes?*))
       (list string)
       (case (string-ref string 0)
 	((#\$)

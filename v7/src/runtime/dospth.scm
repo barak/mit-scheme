@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.16 1992/10/08 18:20:25 jinx Exp $
+$Id: dospth.scm,v 1.17 1992/11/03 22:42:35 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -129,15 +129,16 @@ MIT in each case. |#
 	       component)))))
 
 (define (expand-directory-prefixes string)
-  (if (string-null? string)
+  (if (or (string-null? string)
+	  (not *expand-directory-prefixes?*))
       (list string)
       (case (string-ref string 0)
 	((#\$)
-	 (let ((name (string-tail string 1)))
-	   (let ((value (get-environment-variable name)))
-	     (if (not value)
-		 (error "Unbound environment variable:" name))
-	     (string-components value sub-directory-delimiters))))
+	 (let* ((name (string-tail string 1))
+		(value (get-environment-variable name)))
+	   (if (not value)
+	       (list string)
+	       (string-components value sub-directory-delimiters))))
 	((#\~)
 	 (let ((user-name (substring string 1 (string-length string))))
 	   (string-components
