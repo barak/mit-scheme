@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.33 1987/07/22 21:54:00 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.34 1987/08/06 06:05:47 cph Exp $ */
 
 /* Memory management top level.  Garbage collection to disk.
 
@@ -440,6 +440,9 @@ guarantee_in_memory(addr)
 {
   long position, offset;
 
+  if (addr >= Constant_Space)
+    return addr;
+
   position = (addr - Heap_Bottom);
   offset = (position % GC_DISK_BUFFER_SIZE);
   position = (position / GC_DISK_BUFFER_SIZE);
@@ -548,7 +551,8 @@ Fix_Weak_Chain()
 }
 
 void
-GC()
+GC(initial_weak_chain)
+     Pointer initial_weak_chain;
 {
   static Pointer *Root, *Result, *end_of_constant_area,
   		 The_Precious_Objects, *Root2, *free_buffer;
@@ -556,7 +560,7 @@ GC()
   free_buffer = initialize_free_buffer();
   Free = Heap_Bottom;
   Set_Mem_Top(Heap_Top - GC_Reserve);
-  Weak_Chain = NIL;
+  Weak_Chain = initial_weak_chain;
 
   /* Save the microcode registers so that they can be relocated */
 
@@ -667,7 +671,7 @@ Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT", 0x3A)
     /*NOTREACHED*/
   }
   GC_Reserve = Get_Integer(Arg1);
-  GC();
+  GC(NIL);
   IntCode &= ~INT_GC;
   Pop_Primitive_Frame(1);
   GC_Daemon_Proc = Get_Fixed_Obj_Slot(GC_Daemon);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.33 1987/06/16 23:43:14 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.34 1987/08/06 06:06:22 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -125,10 +125,10 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 		   (overflow % GC_DISK_BUFFER_SIZE)) - 1);
 	  break;
 	}
-
+
       case_Non_Pointer:
 	break;
-
+
       case_compiled_entry_point:
 	if (purify_mode == PURE_COPY)
 	  break;
@@ -151,10 +151,7 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 
       case TC_REFERENCE_TRAP:
 	if (Datum(Temp) <= TRAP_MAX_IMMEDIATE)
-	{
-	  /* It is a non pointer. */
-	  break;
-	}
+	  break; /* It is a non pointer. */
 	goto purify_pair;
 
       case TC_INTERNED_SYMBOL:
@@ -168,11 +165,16 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 	}
 	/* Fall through. */
 
-      case TC_WEAK_CONS:
       case_Fasdump_Pair:
       purify_pair:
 	relocate_normal_pointer(copy_pair(), 2);
 
+      case TC_WEAK_CONS:
+	if (purify_mode == PURE_COPY)
+	  break;
+	else
+	  relocate_normal_pointer(copy_weak_pair(), 2);
+	
       case TC_VARIABLE:
       case_Triple:
 	relocate_normal_pointer(copy_triple(), 3);
@@ -228,6 +230,7 @@ purify(object, flag)
   long length, pure_length;
   Pointer value, *Result, *free_buffer, *block_start;
 
+  Weak_Chain = NIL;
   free_buffer = initialize_free_buffer();
   block_start = Free_Constant;
   Free_Constant += 2;
@@ -315,7 +318,7 @@ purify(object, flag)
   *block_start++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR,
 				    pure_length);
   *block_start = Make_Non_Pointer(PURE_PART, (length - 1));
-  GC();
+  GC(Weak_Chain);
   Set_Pure_Top();
   return TRUTH;
 }
