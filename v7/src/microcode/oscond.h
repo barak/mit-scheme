@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/oscond.h,v 1.9 1992/06/11 12:43:55 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/oscond.h,v 1.10 1992/07/23 03:48:28 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -41,7 +41,7 @@ MIT in each case. */
 /* _POSIX is assumed to be independent of all operating-system and
    machine specification macros.  */
 
-#if defined(_OSF)
+#if defined (__osf__)
 #  define _POSIX
 #  define _BSD4_3
 #endif
