@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: curren.scm,v 1.138 2000/10/27 03:16:20 cph Exp $
+;;; $Id: curren.scm,v 1.139 2000/10/27 04:00:34 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -411,6 +411,8 @@ The frame is guaranteed to be deselected at that time."
 (define (kill-buffer buffer)
   (without-interrupts
    (lambda ()
+     (if (not (make-buffer-invisible buffer))
+	 (error "Buffer to be killed has no replacement" buffer))
      (for-each (lambda (process)
 		 (hangup-process process #t)
 		 (set-process-buffer! process #f))
@@ -418,8 +420,6 @@ The frame is guaranteed to be deselected at that time."
      (for-each (lambda (hook) (hook buffer))
 	       (get-buffer-hooks buffer 'KILL-BUFFER-HOOKS))
      (delete-buffer-layout buffer)
-     (if (not (make-buffer-invisible buffer))
-	 (error "Buffer to be killed has no replacement" buffer))
      (bufferset-kill-buffer! (current-bufferset) buffer))))
 
 (define (make-buffer-invisible buffer)
@@ -481,8 +481,7 @@ The frame is guaranteed to be deselected at that time."
 (define (change-selected-buffer window buffer record? selection-thunk)
   (change-local-bindings! (selected-buffer) buffer selection-thunk)
   (set-buffer-point! buffer (window-point window))
-  (if record?
-      (bufferset-select-buffer! (current-bufferset) buffer))
+  (if record? (bufferset-select-buffer! (current-bufferset) buffer))
   (for-each (lambda (hook) (hook buffer window))
 	    (get-buffer-hooks buffer 'SELECT-BUFFER-HOOKS))
   (if (not (minibuffer? buffer))
@@ -564,18 +563,24 @@ The buffer is guaranteed to be selected at that time."
 		  (if (let loop ((buffers (cdr l2)))
 			(or (not (weak-pair? buffers))
 			    (and (let ((buffer (weak-car buffers)))
-				   (and buffer (buffer-alive? buffer)))
+				   (and buffer
+					(buffer-alive? buffer)))
 				 (loop (weak-cdr buffers)))))
 		      (begin
-			(hash-table/put! screen-buffer-layouts screen l2)
 			(delete-other-windows window)
+			(hash-table/put! screen-buffer-layouts screen l2)
 			l2)
 		      (begin
 			(delete-buffer-layout-1 l2)
 			#f))))))))
-
+
 (define (maybe-deselect-buffer-layout screen)
-  (hash-table/remove! screen-buffer-layouts screen))
+  (without-interrupts
+   (lambda ()
+     (if (hash-table/get screen-buffer-layouts screen #f)
+	 (begin
+	   (hash-table/remove! screen-buffer-layouts screen)
+	   (delete-other-windows (screen-selected-window screen)))))))
 
 (define (delete-buffer-layout buffer)
   ;; Caller disables interrupts.
