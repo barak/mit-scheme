@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.2 1995/03/07 22:32:11 adams Exp $
+$Id: make.scm,v 1.3 1995/09/05 12:31:38 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -36,31 +36,29 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(let ((old-purify purify))
-  ;; This temporary monkey-business stops uncompiled code from being
-  ;; purified so that TRACE & BREAK dont take so long
-  (fluid-let
-      ((purify (lambda (thing)
-		 (if (not (comment? thing))
-		     (old-purify thing)))))
+(let ((loader
+       (lambda ()
+	 (load-option 'SF)
+	 (let ((value ((load "base/make")
+		       (lambda ()
+			 (string-append
+			  "HP PA  untagged fixnums and entries, "
+			  (number->string
+			   ((access rtlgen/number-of-argument-registers
+				    (->environment '(compiler midend)))))
+			  " arg regs")))))
+	   (set! (access compiler:compress-top-level?
+			 (->environment '(compiler)))
+		 true)
+	   value)
+	 (load "midend/load" #F))))
 
-    ;; Original expression
-    (load-option 'SF)
-    (let ((value ((load "base/make")
-		  (lambda ()
-		    (string-append
-		     "HP PA  untagged fixnums and entries, "
-		     (number->string
-		      ((access rtlgen/number-of-argument-registers
-			       (->environment '(compiler midend)))))
-		     " arg regs")))))
-      (set! (access compiler:compress-top-level? (->environment '(compiler)))
-	    true)
-      value)))
-
-
-
-(load "midend/load" #F)
-
-
-
+  (if #F
+      ;; This temporary monkey-business stops uncompiled code from being
+      ;; purified so that TRACE & BREAK dont take so long
+      (let ((old-purify purify))
+	(fluid-let ((purify (lambda (thing)
+			      (if (not (comment? thing))
+				  (old-purify thing)))))
+	  (loader)))
+      (loader)))
