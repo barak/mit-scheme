@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwfs.scm,v 1.12 1991/04/01 19:46:00 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwfs.scm,v 1.13 1991/04/02 00:01:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -215,7 +215,7 @@
 		((index start-index)
 		 (column-offset (fix:- start-column xl))
 		 (partial 0)
-		 (y 0))
+		 (y y-start))
 	      (if (fix:< y yu)
 		  (let ((line
 			 ;; If line is clipped off top of window, draw
@@ -266,40 +266,52 @@
       (%scroll-lines-up window start end new-start-y)
       (let ((start-outline (o3-outline start))
 	    (amount (fix:- (o3-y start) new-start-y)))
-	(if (fix:<= (fix:- (o3-y end) amount) 0)
+	(if (or (fix:<= (fix:- (o3-y end) amount) 0)
+		(and (fix:>= (o3-y end) (window-y-size window))
+		     (eq? start-outline (o3-outline end))))
 	    (begin
 	      (deallocate-outlines! window start-outline (o3-outline end))
 	      (deallocate-o3! window start)
 	      (deallocate-o3! window end)
 	      false)
-	    (let loop
-		((outline start-outline)
-		 (index (o3-index start))
-		 (new-start-y new-start-y))
-	      (let ((new-end-y (fix:+ new-start-y (outline-y-size outline))))
-		(cond ((fix:< new-end-y 0)
-		       (loop (outline-next outline)
-			     (fix:+ index
-				    (fix:+ (outline-index-length outline) 1))
-			     new-end-y))
-		      ((fix:> new-end-y 0)
-		       (set-o3-outline! start outline)
-		       (set-o3-index! start index)
-		       (set-o3-y! start (fix:+ new-start-y amount))
-		       (if (not (eq? start-outline outline))
-			   (deallocate-outlines! window
-						 start-outline
-						 (outline-previous outline)))
-		       (%scroll-lines-up window start end new-start-y))
-		      (else
-		       (set-o3-outline! start (outline-next outline))
-		       (set-o3-index!
-			start
-			(fix:+ (fix:+ index (outline-index-length outline))
-			       1))
-		       (set-o3-y! start amount)
-		       (deallocate-outlines! window start-outline outline)
-		       (%scroll-lines-up window start end new-end-y)))))))))
+	    (begin
+	      (if (fix:>= (o3-y end) (window-y-size window))
+		  (let ((outline (o3-outline end)))
+		    (set-o3-outline! end (outline-previous outline))
+		    (set-o3-index!
+		     end
+		     (fix:- (o3-index end)
+			    (fix:+ (outline-index-length outline) 1)))
+		    (set-o3-y! end (fix:- (o3-y end) (outline-y-size outline)))
+		    (deallocate-outlines! window outline outline)))
+	      (let loop
+		  ((outline start-outline)
+		   (index (o3-index start))
+		   (new-start-y new-start-y))
+		(let ((new-end-y (fix:+ new-start-y (outline-y-size outline))))
+		  (cond ((fix:< new-end-y 0)
+			 (loop (outline-next outline)
+			       (fix:+ index
+				      (fix:+ (outline-index-length outline) 1))
+			       new-end-y))
+			((fix:> new-end-y 0)
+			 (set-o3-outline! start outline)
+			 (set-o3-index! start index)
+			 (set-o3-y! start (fix:+ new-start-y amount))
+			 (if (not (eq? start-outline outline))
+			     (deallocate-outlines! window
+						   start-outline
+						   (outline-previous outline)))
+			 (%scroll-lines-up window start end new-start-y))
+			(else
+			 (set-o3-outline! start (outline-next outline))
+			 (set-o3-index!
+			  start
+			  (fix:+ (fix:+ index (outline-index-length outline))
+				 1))
+			 (set-o3-y! start amount)
+			 (deallocate-outlines! window start-outline outline)
+			 (%scroll-lines-up window start end new-end-y))))))))))
 
 (define (%scroll-lines-up window start end new-start-y)
   (let ((yl (o3-y start))
@@ -330,26 +342,38 @@
 	    false)))))
 
 (define (scroll-lines-down window start end new-start-y)
-  (let ((y-size (window-y-size window))
-	(start-outline (o3-outline start))
-	(end-outline (o3-outline end)))
-    (if (fix:>= new-start-y y-size)
+  (let ((y-size (window-y-size window)))
+    (if (or (fix:>= new-start-y y-size)
+	    (and (fix:< (o3-y start) 0)
+		 (eq? (o3-outline start) (o3-outline end))))
 	(begin
-	  (deallocate-outlines! window start-outline end-outline)
+	  (deallocate-outlines! window (o3-outline start) (o3-outline end))
 	  (deallocate-o3! window start)
 	  (deallocate-o3! window end)
 	  false)
-	(begin
+	(let ((new-start-y
+	       (if (fix:< (o3-y start) 0)
+		   (let ((outline (o3-outline start)))
+		     (let ((y-size (outline-y-size outline)))
+		       (set-o3-outline! start (outline-next outline))
+		       (set-o3-index!
+			start
+			(fix:+ (o3-index start)
+			       (fix:+ (outline-index-length outline) 1)))
+		       (set-o3-y! start (fix:+ (o3-y start) y-size))
+		       (deallocate-outlines! window outline outline)
+		       (fix:+ new-start-y y-size)))
+		   new-start-y)))
 	  (let loop
-	      ((outline start-outline)
+	      ((outline (o3-outline start))
 	       (start-index (o3-index start))
 	       (start-y new-start-y))
 	    (let ((end-y (fix:+ start-y (outline-y-size outline))))
 	      (cond ((fix:>= end-y y-size)
-		     (if (not (eq? outline end-outline))
+		     (if (not (eq? outline (o3-outline end)))
 			 (deallocate-outlines! window
 					       (outline-next outline)
-					       end-outline))
+					       (o3-outline end)))
 		     (set-o3-outline! end outline)
 		     (set-o3-index! end
 				    (fix:+ start-index
@@ -357,7 +381,7 @@
 		     (set-o3-y! end
 				(fix:- end-y
 				       (fix:- new-start-y (o3-y start)))))
-		    ((not (eq? outline end-outline))
+		    ((not (eq? outline (o3-outline end)))
 		     (loop (outline-next outline)
 			   (fix:+ (fix:+ start-index
 					 (outline-index-length outline))
