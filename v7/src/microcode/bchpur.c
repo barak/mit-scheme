@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.35 1987/11/17 08:06:48 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.36 1987/12/09 06:31:42 jinx Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -223,6 +223,29 @@ end_purifyloop:
   return Scan;
 }
 
+/* This is not paranoia!
+   The two words in the header may overflow the free buffer. 
+ */
+
+Pointer *
+purify_header_overflow(free_buffer)
+     Pointer *free_buffer;
+{
+  Pointer *scan_buffer;
+  long delta;
+
+  delta = (free_buffer - free_buffer_top);
+  free_buffer = dump_and_reset_free_buffer(delta, NULL);
+  scan_buffer = dump_and_reload_scan_buffer(0, NULL);
+  if ((scan_buffer + delta) != free_buffer)
+  {
+    fprintf(stderr,
+	    "\nPurify: Scan and Free do not meet at the end.\n");
+    Microcode_Termination(TERM_EXIT);
+  }
+  return (free_buffer);
+}
+
 Pointer
 purify(object, flag)
      Pointer object, flag;
@@ -233,15 +256,16 @@ purify(object, flag)
   Weak_Chain = NIL;
   free_buffer = initialize_free_buffer();
   block_start = Free_Constant;
+
   Free_Constant += 2;
   *free_buffer++ = NIL;		/* Pure block header. */
   *free_buffer++ = object;
-  /* This is paranoia, but... */
   if (free_buffer >= free_buffer_top)
   {
     free_buffer =
       dump_and_reset_free_buffer((free_buffer - free_buffer_top), NULL);
   }
+
   if (flag == TRUTH)
   {
     Result = purifyloop(initialize_scan_buffer(),
@@ -258,15 +282,15 @@ purify(object, flag)
   {
     pure_length = 3;
   }
+
   Free_Constant += 2;
   *free_buffer++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
   *free_buffer++ = Make_Non_Pointer(CONSTANT_PART, pure_length);
-  /* This is paranoia, but... */
   if (free_buffer >= free_buffer_top)
   {
-    free_buffer =
-      dump_and_reset_free_buffer((free_buffer - free_buffer_top), NULL);
+    free_buffer = purify_header_overflow(free_buffer);
   }
+
   if (flag == TRUTH)
   {
     Result = purifyloop(initialize_scan_buffer(),
@@ -282,28 +306,16 @@ purify(object, flag)
     fprintf(stderr, "\nPurify: Constant Copy ended too early.\n");
     Microcode_Termination(TERM_BROKEN_HEART);
   }
+
   Free_Constant += 2;
   length = (Free_Constant - block_start);
   *free_buffer++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
   *free_buffer++ = Make_Non_Pointer(END_OF_BLOCK, (length - 1));
-
-  /* This is not paranoia!
-     The last two words may overflow the free buffer. 
-   */
   if (free_buffer >= free_buffer_top)
   {
-    long delta;
-
-    delta = (free_buffer - free_buffer_top);
-    free_buffer =
-      dump_and_reset_free_buffer(delta, NULL);
-    Result = dump_and_reload_scan_buffer(0, NULL);
-    if ((Result + delta) != free_buffer)
-    {
-      fprintf(stderr, "\nPurify: Scan and Free do not meet at the end.\n");
-      Microcode_Termination(TERM_EXIT);
-    }
+    free_buffer = purify_header_overflow(free_buffer);
   }
+
   end_transport(NULL);
 
   if (!Test_Pure_Space_Top(Free_Constant))
