@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.46 1990/09/20 03:02:26 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.47 1991/01/31 07:00:00 hal Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -807,7 +807,7 @@ DEFINE_PRIMITIVE ("BIT-STRING->UNSIGNED-INTEGER", Prim_bit_string_to_unsigned, 1
     PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (0));
   nbits = (((nwords - 1) * OBJECT_LENGTH) + (long_significant_bits (word)));
   PRIMITIVE_RETURN
-    ((nbits < FIXNUM_LENGTH)
+    ((nbits <= FIXNUM_LENGTH)
      ? (LONG_TO_UNSIGNED_FIXNUM (word))
      : (bit_string_to_bignum (nbits, bit_string)));
 }
