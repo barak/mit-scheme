@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.204 1993/10/15 10:26:34 cph Exp $
+$Id: runtime.pkg,v 14.205 1993/10/19 07:16:30 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -861,6 +861,10 @@ MIT in each case. |#
     (else))
   (parent ())
   (export ()
+	  eq-hash
+	  eq-hash-mod
+	  equal-hash-mod
+	  eqv-hash-mod
 	  hash-table->alist
 	  hash-table/clean!
 	  hash-table/clear!

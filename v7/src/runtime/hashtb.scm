@@ -1,6 +1,6 @@
-#| -*-Scheme-*-
+~#| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.12 1993/10/12 22:19:02 cph Exp $
+$Id: hashtb.scm,v 1.13 1993/10/19 07:16:22 cph Exp $
 
 Copyright (c) 1990-93 Massachusetts Institute of Technology
 
@@ -68,21 +68,13 @@ MIT in each case. |#
   (shrink-size 0)
   buckets
   (primes prime-numbers-stream)
-  (flags (if (and (eq? eq? key=?)
-		  (or (eq? car entry-key)
-		      (eq? strong-car entry-key)
-		      (eq? weak-car entry-key))
-		  (or (eq? cdr entry-datum)
-		      (eq? strong-cdr entry-datum)
-		      (eq? weak-cdr entry-datum))
-		  (or (eq? set-cdr! set-entry-datum!)
-		      (eq? strong-set-cdr! set-entry-datum!)
-		      (eq? weak-set-cdr! set-entry-datum!)))
-	     1
-	     0)))
+  (flags 0))
 
 (define-integrable (table-standard-accessors? table)
   (read-flag table 1))
+
+(define-integrable (set-table-standard-accessors?! table value)
+  (write-flag table 1 value))
 
 (define-integrable (table-needs-rehash? table)
   (read-flag table 2))
@@ -95,6 +87,12 @@ MIT in each case. |#
 
 (define-integrable (set-table-initial-size-in-effect?! table value)
   (write-flag table 4 value))
+
+(define-integrable (table-rehash-after-gc? table)
+  (read-flag table 8))
+
+(define-integrable (set-table-rehash-after-gc?! table value)
+  (write-flag table 8 value))
 
 (define-integrable (read-flag table flag)
   (fix:= (fix:and (table-flags table) flag) flag))
@@ -115,7 +113,8 @@ MIT in each case. |#
 ;;;; Constructors
 
 (define (hash-table/constructor key-hash key=? make-entry entry-valid?
-				entry-key entry-datum set-entry-datum!)
+				entry-key entry-datum set-entry-datum!
+				#!optional rehash-after-gc?)
   (let ((make-entry (if (eq? cons make-entry) strong-cons make-entry))
 	(entry-valid? (if (eq? #t entry-valid?) strong-valid? entry-valid?))
 	(entry-key (if (eq? car entry-key) strong-car entry-key))
@@ -123,7 +122,10 @@ MIT in each case. |#
 	(set-entry-datum!
 	 (if (eq? set-cdr! set-entry-datum!)
 	     strong-set-cdr!
-	     set-entry-datum!)))
+	     set-entry-datum!))
+	(rehash-after-gc?
+	 (and (not (default-object? rehash-after-gc?))
+	      rehash-after-gc?)))
     (lambda (#!optional initial-size)
       (let ((initial-size
 	     (if (default-object? initial-size)
@@ -145,8 +147,21 @@ MIT in each case. |#
 	      (begin
 		(set-table-grow-size! table initial-size)
 		(set-table-initial-size-in-effect?! table #t)))
+	  (set-table-standard-accessors?!
+	   table
+	   (and (eq? eq? key=?)
+		(or (eq? car entry-key)
+		    (eq? strong-car entry-key)
+		    (eq? weak-car entry-key))
+		(or (eq? cdr entry-datum)
+		    (eq? strong-cdr entry-datum)
+		    (eq? weak-cdr entry-datum))
+		(or (eq? set-cdr! set-entry-datum!)
+		    (eq? strong-set-cdr! set-entry-datum!)
+		    (eq? weak-set-cdr! set-entry-datum!))))
+	  (set-table-rehash-after-gc?! table rehash-after-gc?)
 	  (reset-table! table)
-	  (if (address-hash? key-hash)
+	  (if rehash-after-gc?
 	      (set! address-hash-tables (weak-cons table address-hash-tables)))
 	  table)))))
 
@@ -158,12 +173,18 @@ MIT in each case. |#
 (define (strong-cdr entry) (cdr entry))
 (define (strong-set-cdr! entry datum) (set-cdr! entry datum))
 
-(define (strong-hash-table/constructor key-hash key=?)
-  (hash-table/constructor key-hash key=? cons #t car cdr set-cdr!))
+(define (strong-hash-table/constructor key-hash key=?
+				       #!optional rehash-after-gc?)
+  (hash-table/constructor key-hash key=? cons #t car cdr set-cdr!
+			  (and (not (default-object? rehash-after-gc?))
+			       rehash-after-gc?)))
 
-(define (weak-hash-table/constructor key-hash key=?)
+(define (weak-hash-table/constructor key-hash key=?
+				     #!optional rehash-after-gc?)
   (hash-table/constructor key-hash key=? weak-cons weak-pair/car?
-			  weak-car weak-cdr weak-set-cdr!))
+			  weak-car weak-cdr weak-set-cdr!
+			  (and (not (default-object? rehash-after-gc?))
+			       rehash-after-gc?)))
 
 ;;;; Accessors
 
@@ -632,7 +653,7 @@ MIT in each case. |#
 
 (define (compute-key-hash table key)
   (let ((key-hash (table-key-hash table)))
-    (if (address-hash? key-hash)
+    (if (table-rehash-after-gc? table)
 	(let ((interrupt-mask (set-interrupt-enables! interrupt-mask/none)))
 	  (let loop ()
 	    (if (table-needs-rehash? table)
@@ -649,59 +670,54 @@ MIT in each case. |#
 	    hash))
 	(key-hash key (vector-length (table-buckets table))))))
 
-(define-integrable (address-hash? key-hash)
-  (or (eq? eq-hash key-hash)
-      (eq? eqv-hash key-hash)
-      (eq? equal-hash key-hash)))
+(define-integrable (eq-hash-mod key modulus)
+  (fix:remainder (eq-hash key) modulus))
 
-(define-integrable (eq-hash key modulus)
-  (fix:remainder (%object->fixnum key) modulus))
-
-(define (eqv-hash key modulus)
+(define (eqv-hash-mod key modulus)
   (cond ((%bignum? key)
-	 (int-hash key modulus))
+	 (int-hash-mod key modulus))
 	((%ratnum? key)
-	 (int-hash (%ratnum->integer key) modulus))
+	 (int-hash-mod (%ratnum->integer key) modulus))
 	((flo:flonum? key)
-	 (int-hash (%flonum->integer key) modulus))
+	 (int-hash-mod (%flonum->integer key) modulus))
 	((%recnum? key)
-	 (int-hash (%recnum->integer key) modulus))
+	 (int-hash-mod (%recnum->integer key) modulus))
 	(else
-	 (eq-hash key modulus))))
+	 (eq-hash-mod key modulus))))
 
-(define (equal-hash key modulus)
-  (int-hash (let loop ((object key))
-	      (cond ((pair? object)
-		     (int:+ (loop (car object))
-			    (loop (cdr object))))
-		    ((vector? object)
-		     (let ((length (vector-length object)))
-		       (do ((i 0 (fix:+ i 1))
-			    (accum 0
-				   (int:+ accum
-					  (loop (vector-ref object i)))))
-			   ((fix:= i length) accum))))
-		    ((cell? object)
-		     (loop (cell-contents object)))
-		    ((%bignum? object)
-		     object)
-		    ((%ratnum? object)
-		     (%ratnum->integer object))
-		    ((flo:flonum? object)
-		     (%flonum->integer object))
-		    ((%recnum? object)
-		     (%recnum->integer object))
-		    ((string? object)
-		     (string-hash object))
-		    ((bit-string? object)
-		     (bit-string->unsigned-integer object))
-		    ((pathname? object)
-		     (string-hash (->namestring object)))
-		    (else
-		     (%object->fixnum object))))
-	    modulus))
+(define (equal-hash-mod key modulus)
+  (int-hash-mod (let loop ((object key))
+		  (cond ((pair? object)
+			 (int:+ (loop (car object))
+				(loop (cdr object))))
+			((vector? object)
+			 (let ((length (vector-length object)))
+			   (do ((i 0 (fix:+ i 1))
+				(accum 0
+				       (int:+ accum
+					      (loop (vector-ref object i)))))
+			       ((fix:= i length) accum))))
+			((cell? object)
+			 (loop (cell-contents object)))
+			((%bignum? object)
+			 object)
+			((%ratnum? object)
+			 (%ratnum->integer object))
+			((flo:flonum? object)
+			 (%flonum->integer object))
+			((%recnum? object)
+			 (%recnum->integer object))
+			((string? object)
+			 (string-hash object))
+			((bit-string? object)
+			 (bit-string->unsigned-integer object))
+			((pathname? object)
+			 (string-hash (->namestring object)))
+			(else
+			 (eq-hash object))))
+		modulus))
 
-(define-integrable (%object->fixnum object)
+(define-integrable (eq-hash object)
   (let ((n
 	 ((ucode-primitive primitive-object-set-type) (ucode-type fixnum)
 						      object)))
@@ -736,7 +752,8 @@ MIT in each case. |#
     (int:+ (%real->integer (system-pair-car recnum))
 	   (%real->integer (system-pair-cdr recnum)))))
 
-(define (int-hash n d)
+(declare (integrate-operator int-hash-mod))
+(define (int-hash-mod n d)
   (int:remainder (if (int:negative? n) (int:negate n) n) d))
 
 (define (mark-address-hash-tables!)
@@ -769,12 +786,12 @@ MIT in each case. |#
 (define (initialize-package!)
   (set! address-hash-tables '())
   (add-primitive-gc-daemon! mark-address-hash-tables!)
-  (set! make-eq-hash-table (weak-hash-table/constructor eq-hash eq?))
+  (set! make-eq-hash-table (weak-hash-table/constructor eq-hash-mod eq?))
   ;; EQV? hash tables are weak except for numbers and #F.  It's
   ;; important to keep numbers in the table, and handling #F specially
   ;; makes it easier to deal with weak pairs.
   (set! make-eqv-hash-table
-	(hash-table/constructor eqv-hash
+	(hash-table/constructor eqv-hash-mod
 				eqv?
 				(lambda (key datum)
 				  (if (or (not key) (number? key))
@@ -792,7 +809,7 @@ MIT in each case. |#
 				(lambda (entry datum)
 				  (system-pair-set-cdr! entry datum))))
   (set! make-equal-hash-table
-	(strong-hash-table/constructor equal-hash equal?))
+	(strong-hash-table/constructor equal-hash-mod equal?))
   (set! make-symbol-hash-table make-eq-hash-table)
   (set! make-object-hash-table make-eqv-hash-table)
   (set! make-string-hash-table
