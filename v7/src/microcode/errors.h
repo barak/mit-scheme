@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.27 1987/12/04 22:15:36 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.28 1987/12/13 21:59:11 cph Rel $
  *
  * Error and termination code declarations.
  *
@@ -135,10 +135,11 @@ MIT in each case. */
 #define TERM_NO_SPACE				0x15
 #define TERM_SIGNAL				0x16
 #define TERM_TOUCH				0x17
+#define TERM_SAVE_AND_EXIT			0x18
 
 /*
   If you add any termination codes here, remember to add them to
   storage.c as well.
  */
 
-#define MAX_TERMINATION				0x17
+#define MAX_TERMINATION				0x18

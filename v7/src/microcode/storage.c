@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.39 1987/12/04 22:19:35 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.40 1987/12/13 21:59:30 cph Rel $
 
 This file defines the storage for global variables for
 the Scheme Interpreter. */
@@ -348,12 +348,13 @@ char *Term_Names[] = {
 /* 0x14 */		"GC-OUT-OF-SPACE",
 /* 0x15 */		"NO-SPACE",
 /* 0x16 */		"SIGNAL",
-/* 0x17 */		"TOUCH"
+/* 0x17 */		"TOUCH",
+/* 0x18 */		"SAVE-AND-EXIT"
 };
 
 /* If you change this table, change the Term_Messages table below as well. */
 
-#if (MAX_TERMINATION != 0x17)
+#if (MAX_TERMINATION != 0x18)
 /* Cause an error */
 #include "Inconsistency: errors.h and storage.c (Termination code table)"
 #endif
@@ -384,5 +385,6 @@ char *Term_Messages[] = {
 /* 0x14 */		"Out of space after garbage collection",
 /* 0x15 */		"Out of memory: Available memory exceeded",
 /* 0x16 */		"Unhandled signal received",
-/* 0x17 */		"Touch without futures support"
+/* 0x17 */		"Touch without futures support",
+/* 0x18 */		"Halt requested by external source"
 };
