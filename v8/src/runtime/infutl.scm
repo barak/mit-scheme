@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.29 1992/05/26 19:36:08 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.30 1992/05/26 20:06:18 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -403,24 +403,28 @@ MIT in each case. |#
 
 (define (inf-structure->bif/bsm binf bifpath bsmpath)
   (let* ((bifpath (merge-pathnames bifpath))
-	 (bsmpath (merge-pathnames bsmpath))
-	 (bsmname (->namestring bsmpath)))
+	 (bsmpath (and bsmpath (merge-pathnames bsmpath)))
+	 (bsmname (and bsmpath (->namestring bsmpath))))
     (cond ((dbg-info? binf)
 	   (let ((labels (dbg-info/labels/desc binf)))
 	     (set-dbg-info/labels/desc! binf bsmname)
 	     (fasdump binf bifpath true)
-	     (fasdump labels bsmpath true)))
+	     (if bsmpath
+		 (fasdump labels bsmpath true))))
 	  ((vector? binf)
 	   (let ((bsm (make-vector (vector-length binf))))
 	     (let loop ((pos 0))
 	       (if (fix:= pos (vector-length bsm))
 		   (begin
-		     (fasdump bsm bsmpath true)
-		     (fasdump binf bifpath true))
+		     (fasdump binf bifpath true)
+		     (if bsmpath
+			 (fasdump bsm bsmpath true)))
 		   (let ((dbg-info (vector-ref binf pos)))
 		     (let ((labels (dbg-info/labels/desc dbg-info)))
 		       (vector-set! bsm pos labels)
-		       (set-dbg-info/labels/desc! dbg-info (cons bsmname pos))
+		       (set-dbg-info/labels/desc!
+			dbg-info
+			(and bsmnname (cons bsmname pos)))
 		       (loop (fix:1+ pos))))))))
 	  (else 
 	   (error "Unknown inf file format" infpath)))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.39 1992/05/26 19:50:35 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.40 1992/05/26 20:06:27 mhwu Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -1148,6 +1148,16 @@ MIT in each case. |#
 		(compress bif-path bci-path)
 		(compress bsm-path bcs-path)
 		(announce-info-files bci-path bcs-path)))))))))
+
+(define (compiler:dump-bci-file binf pathname)
+  (let ((bci-path (pathname-new-type pathname "bci")))
+    (load-option 'COMPRESS)
+    (call-with-temporary-filename
+      (lambda (bif-name)
+	(let ((bif-path (merge-pathnames bif-name)))
+	  (inf-structure->bif/bsm binf bif-path false)
+	  (compress bif-path bci-path)
+	  (announce-info-files bci-path))))))
 
 (define compiler:dump-info-file compiler:dump-bci/bcs-files)
 
