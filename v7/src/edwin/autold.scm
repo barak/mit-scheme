@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: autold.scm,v 1.58 2001/12/18 21:34:52 cph Exp $
+;;;$Id: autold.scm,v 1.59 2001/12/18 22:16:06 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -224,4 +224,4 @@ Second arg PURIFY? means purify the file's contents after loading;
        (lambda ()
 	 (fluid-let ((load/suppress-loading-message? #t)
 		     (*parser-canonicalize-symbols?* #t))
-	   (load filename environment environment purify?)))))))
+	   (load filename environment #f purify?)))))))
