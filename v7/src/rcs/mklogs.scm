@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mklogs.scm,v 1.14 1999/12/15 01:34:41 cph Exp $
+$Id: mklogs.scm,v 1.15 1999/12/15 01:35:30 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -32,7 +32,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    "/scheme/v7/src/runtime"
 	    "/scheme/v7/src/sf"
 	    "/scheme/v7/src/sos"
-	    "/scheme/v8/src/swat"
+	    "/scheme/v7/src/swat"
 	    "/scheme/v7/src/win32"
 
 	    "/scheme/v8/src/bench"
