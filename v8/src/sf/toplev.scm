@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/toplev.scm,v 4.6 1990/03/26 20:44:52 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/toplev.scm,v 4.7 1990/04/10 15:46:39 cph Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -380,9 +380,10 @@ Currently only the 68000 implementation needs this."
 (define (phase:syntax s-expression #!optional syntax-table)
   (mark-phase "Syntax")
   (syntax* s-expression
-	   (if (or (default-object? syntax-table) (not syntax-table))
-	       (make-syntax-table system-global-syntax-table)
-	       syntax-table)))
+	   (make-syntax-table
+	    (if (or (default-object? syntax-table) (not syntax-table))
+		system-global-syntax-table
+		syntax-table))))
 
 (define (phase:transform scode)
   (mark-phase "Transform")
