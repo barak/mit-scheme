@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insutl.scm,v 1.1 1987/08/13 01:13:58 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insutl.scm,v 1.2 1987/08/14 05:03:45 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -171,7 +171,45 @@ MIT in each case. |#
     (R M W A V I)
     (BYTE (4 15)
 	  (4 15))
-    (BYTE (32 off SIGNED)))))
+    (BYTE (32 off SIGNED)))
+
+   ;; Self adjusting modes
+
+   ((@PCR (? label))
+    (R M W A V I)
+    (VARIABLE-WIDTH
+     (disp `(- ,label (+ *PC* 2)))
+     ((-128 127)			; (@PCO B label)
+      (BYTE (4 15)
+	    (4 10))
+      (BYTE (8 disp SIGNED)))
+     ;; The following range is correct.  Think about it.
+     ((-32767 32768)			; (@PCO W label)
+      (BYTE (4 15)
+	    (4 12))
+      (BYTE (16 (- disp 1) SIGNED)))
+     ((() ())				; (@PCO L label)
+      (BYTE (4 15)
+	    (4 14))
+      (BYTE (32 (- disp 3) SIGNED)))))
+
+   ((@@PCR (? label))
+    (R M W A V I)
+    (VARIABLE-WIDTH
+     (disp `(- ,label (+ *PC* 2)))
+     ((-128 127)			; (@@PCO B label)
+      (BYTE (4 15)
+	    (4 11))
+      (BYTE (8 disp SIGNED)))
+     ;; The following range is correct.  Think about it.
+     ((-32767 32768)			; (@@PCO W label)
+      (BYTE (4 15)
+	    (4 13))
+      (BYTE (16 (- disp 1) SIGNED)))
+     ((() ())				; (@@PCO L label)
+      (BYTE (4 15)
+	    (4 15))
+      (BYTE (32 (- disp 3) SIGNED)))))))
 
 ;;;; Effective address processing
 
@@ -230,6 +268,11 @@ MIT in each case. |#
   (NEQ . #x2) (NEQU . #x2) (EQL . #x3) (EQLU . #x3)
   (GTR . #x4) (LEQ . #x5) (GEQ . #x8) (LSS . #x9) (GTRU . #xA) (LEQU . #xB)
   (VC . #xC) (VS . #xD) (GEQU . #xE) (CC . #xE) (LSSU . #xF) (CS . #xF))
+
+(define-symbol-transformer inverse-cc
+  (NEQ . #x3) (NEQU . #x3) (EQL . #x2) (EQLU . #x2)
+  (GTR . #x5) (LEQ . #x4) (GEQ . #x9) (LSS . #x8) (GTRU . #xB) (LEQU . #xA)
+  (VC . #xD) (VS . #xC) (GEQU . #xF) (CC . #xF) (LSSU . #xE) (CS . #xE))
 
 (define-transformer displacement
   (lambda (expression)
