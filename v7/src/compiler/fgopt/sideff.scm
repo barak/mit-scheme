@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/sideff.scm,v 1.1 1988/12/06 18:57:56 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/sideff.scm,v 1.2 1988/12/13 14:05:47 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -159,7 +159,8 @@ MIT in each case. |#
 	       (there-exists?
 		(variable-assignments variable)
 		(lambda (assignment)
-		  (eq? (assignment-block assignment)
+		  (eq? (reference-context/block
+			(assignment-context assignment))
 		       block)))))))
 	(arbitrary-callees
 	 (list-transform-negative
