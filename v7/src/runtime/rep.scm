@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.43 1993/10/21 12:25:15 cph Exp $
+$Id: rep.scm,v 14.44 1993/11/02 23:32:15 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -416,6 +416,13 @@ MIT in each case. |#
 	       (if (default-object? prompt) 'INHERIT prompt))))
 
 (define (repl-driver repl)
+  (let ((condition (repl/condition repl)))
+    (if (and condition (condition/error? condition))
+	(cond ((cmdl/operation repl 'ERROR-DECISION)
+	       => (lambda (operation)
+		    (operation repl condition)))
+	      (hook/error-decision
+	       (hook/error-decision repl condition)))))
   (let ((reader-history (repl/reader-history repl))
 	(printer-history (repl/printer-history repl)))
     (port/set-default-environment (cmdl/port repl) (repl/environment repl))
@@ -480,16 +487,8 @@ MIT in each case. |#
 			   (*unparser-string-length-limit* 500))
 		 (condition/report-string condition)))))
      (and condition
-	  (cmdl-message/append
-	   (and (condition/error? condition)
-		(lambda (repl)
-		  (cond ((cmdl/operation repl 'ERROR-DECISION)
-			 => (lambda (operation)
-			      (operation repl condition)))
-			(hook/error-decision
-			 (hook/error-decision repl condition)))))
-	   (and repl:allow-restart-notifications?
-		(condition-restarts-message condition))))
+	  repl:allow-restart-notifications?
+	  (condition-restarts-message condition))
      repl/set-default-environment)))
 
 (define hook/error-decision)
