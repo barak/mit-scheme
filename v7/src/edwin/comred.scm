@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comred.scm,v 1.106 1993/09/15 20:30:50 cph Exp $
+;;;	$Id: comred.scm,v 1.107 1993/09/23 07:09:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -103,7 +103,10 @@
 		   (if (queue-empty? command-reader-override-queue)
 		       (let ((input (get-next-keyboard-char)))
 			 (if (input-event? input)
-			     (apply-input-event input)
+			     (begin
+			       (apply-input-event input)
+			       (if (not (eq? 'BUTTON (input-event/type input)))
+				   (preserve-command-state!)))
 			     (begin
 			       (set! *command-key* input)
 			       (clear-message)
@@ -122,7 +125,7 @@
 						      (window-point window))
 				  false)))))
 		       ((dequeue! command-reader-override-queue)))))))))))))
-
+
 (define (bind-abort-editor-command thunk)
   (call-with-current-continuation
    (lambda (continuation)
@@ -144,7 +147,7 @@
     (if (not restart) (error "Missing ABORT-EDITOR-COMMAND restart."))
     (keyboard-macro-disable)
     (invoke-restart restart input)))
-
+
 (define (get-next-keyboard-char)
   (if *executing-keyboard-macro?*
       (begin
@@ -165,9 +168,15 @@
   (if *defining-keyboard-macro?*
       (keyboard-macro-finalize-keys)))
 
+(define (preserve-command-state!)
+  (set! *next-argument* *command-argument*)
+  (set! *next-message* *command-message*)
+  (set! *command* *last-command*)
+  unspecific)
+
 (define (override-next-command! override)
   (enqueue! command-reader-override-queue override))
-
+
 (define-integrable (current-command-key)
   *command-key*)
 
