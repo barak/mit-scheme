@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.9 1991/07/11 03:55:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.10 1991/07/12 23:17:57 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -308,6 +308,7 @@ struct full_sigcontext
 #include <sys/ucontext.h>
 
 #define SIGINFO_T siginfo_t *
+#define SIGINFO_VALID_P(info) ((info) != 0)
 #define SIGINFO_CODE(info) ((info) -> si_code)
 
 #define SIGCONTEXT ucontext
@@ -362,6 +363,7 @@ struct full_sigcontext
 
 #ifndef SIGINFO_T
 #define SIGINFO_T int
+#define SIGINFO_VALID_P(info) (1)
 #define SIGINFO_CODE(info) (info)
 #endif
 
