@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.39 1989/03/14 07:58:35 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.40 1989/03/15 19:08:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -173,12 +173,10 @@
   (temporary-message "Loading file \""
 		     (pathname->string (->pathname filename))
 		     "\"")
-  (let ((scode (fasload filename)))
-    (append-message " -- done")
+  (let ((scode (fasload filename true)))
     (if (or (default-object? purify?) purify?) (purify scode))
-    (temporary-message "Evaluate...")
     (scode-eval scode (->environment package)))
-  (temporary-message "Done"))
+  (append-message " -- done"))
 
 (define-variable "Load File Default"
   "Pathname given as default for \\[Load File]."
