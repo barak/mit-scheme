@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.2 1990/11/14 10:53:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.3 1990/11/14 13:29:38 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -602,22 +602,41 @@ DEFUN (free_parsed_path, (path), CONST char ** path)
 }
 
 #define FILE_ABSOLUTE(filename) (((filename) [0]) == '/')
-#define TRY_WORKING_DIRECTORY(filename) ((strchr ((filename), '/')) == 0)
 #define FILE_READABLE(filename) ((access ((filename), 4)) >= 0)
 
 static CONST char *
 DEFUN (search_path_for_file, (path, filename),
-       CONST char ** path AND
-       CONST char * filename)
+       CONST char * option AND
+       CONST char * filename AND
+       int default_p)
 {
   unsigned int flen = (strlen (filename));
+  CONST char ** scan_path = option_library_path;
   while (1)
     {
-      CONST char * directory = (*path++);
+      CONST char * directory = (*scan_path++);
       unsigned int dlen;
       CONST char * fullname;
       if (directory == 0)
-	return (0);
+	{
+	  fprintf (stderr, "%s: can't find readable %s for %s option.\n",
+		   scheme_program_name,
+		   (default_p ? "default" : "file"),
+		   option);
+	  fprintf (stderr, "    searched for file %s in these directories:\n",
+		   filename);
+	  if (!default_p)
+	    fprintf (stderr, "    .\n");
+	  scan_path = option_library_path;
+	  while (1)
+	    {
+	      CONST char * element = (*scan_path++);
+	      if (element == 0)
+		break;
+	      fprintf (stderr, "    %s\n", element);
+	    }
+	  termination_init_error ();
+	}
       dlen = (strlen (directory));
       if (dlen > 0)
 	{
@@ -636,30 +655,6 @@ DEFUN (search_path_for_file, (path, filename),
       obstack_free ((&scratch_obstack), ((char *) fullname));
     }
 }
-
-static void
-DEFUN (error_library_search, (option, filename, default_p, wdp),
-       CONST char * option AND
-       CONST char * filename AND
-       int default_p AND
-       int wdp)
-{
-  CONST char ** path = option_library_path;
-  fprintf (stderr, "%s: can't find readable %s for %s option.\n",
-	   scheme_program_name, (default_p ? "default" : "file"), option);
-  fprintf (stderr, "    searched for file %s in these directories:\n",
-	   filename);
-  if (wdp)
-    fprintf (stderr, "    .\n");
-  while (1)
-    {
-      CONST char * element = (*path++);
-      if (element == 0)
-	break;
-      fprintf (stderr, "    %s\n", element);
-    }
-  termination_init_error ();
-}
 
 static CONST char *
 DEFUN (standard_filename_option, (option, optval, variable, defval),
@@ -670,16 +665,15 @@ DEFUN (standard_filename_option, (option, optval, variable, defval),
 {
   if (optval != 0)
     {
-      int try_working_directory = (TRY_WORKING_DIRECTORY (optval));
-      if (try_working_directory && (FILE_READABLE (optval)))
+      if (FILE_READABLE (optval))
 	return (string_copy (optval));
-      {
-	CONST char * filename =
-	  (search_path_for_file (option_library_path, optval));
-	if (filename == 0)
-	  error_library_search (option, optval, 0, try_working_directory);
-	return (filename);
-      }
+      if (FILE_ABSOLUTE (optval))
+	{
+	  fprintf (stderr, "%s: can't read option file: %s %s\n",
+		   scheme_program_name, option, optval);
+	  termination_init_error ();
+	}
+      return (search_path_for_file (option, optval, 0));
     }
   {
     CONST char * filename = (getenv (variable));
@@ -695,13 +689,7 @@ DEFUN (standard_filename_option, (option, optval, variable, defval),
 	  }
 	return (string_copy (filename));
       }
-    {
-      CONST char * fullname =
-	(search_path_for_file (option_library_path, filename));
-      if (fullname == 0)
-	error_library_search (option, filename, 1, 0);
-      return (fullname);
-    }
+    return (search_path_for_file (option, filename, 1));
   }
 }
 
