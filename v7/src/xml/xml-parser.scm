@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.33 2003/08/03 06:14:19 cph Exp $
+$Id: xml-parser.scm,v 1.34 2003/08/05 16:51:42 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -892,11 +892,9 @@ USA.
 	  (make-xml-parameter-entity-ref name)))))
 
 (define (find-parameter-entity name)
-  (let loop ((entities *parameter-entities*))
-    (and (pair? entities)
-	 (if (eq? (xml-parameter-!entity-name (car entities)) name)
-	     (car entities)
-	     (loop (cdr entities))))))
+  (find-matching-item *parameter-entities*
+    (lambda (entity)
+      (eq? name (xml-parameter-!entity-name entity)))))
 
 (define *parameter-entities*)
 
@@ -1283,9 +1281,7 @@ USA.
 	 (external-decl-parser (*matcher (seq "<!ATTLIST" S))
 			       parse-!attlist))
 	(parse-!entity
-	 (external-decl-parser (*matcher (seq "<!ENTITY"
-					      S
-					      (? (seq "%" S))))
+	 (external-decl-parser (*matcher (seq "<!ENTITY" S (? (seq "%" S))))
 			       parse-!entity))
 	(parse-!notation
 	 (external-decl-parser (*matcher (seq "<!NOTATION" S))
