@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxenv.c,v 1.6 1991/10/08 21:46:43 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxenv.c,v 1.7 1992/05/06 14:03:36 jinx Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -332,7 +332,7 @@ DEFUN_VOID (OS_current_user_name)
 {
   {
     CONST char * result = (UX_getlogin ());
-    if (result != 0)
+    if ((result != 0) && (*result != '\0'))
       return (result);
   }
   {
