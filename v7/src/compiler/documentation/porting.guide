@@ -1,6 +1,6 @@
 	   Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.24 1992/07/25 15:48:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.25 1993/03/25 22:20:23 jawilson Exp $
 
 
 Copyright (c) 1991-1992 Massachusetts Institute of Technology
@@ -1454,15 +1454,15 @@ For example,
     (DEFINE-INSTRUCTION ADD
       (((R (? target)) (R (? reg1)) (R (? reg2)))
        (WORD (6 #x24)
-	     (5 ,target)
-	     (5 ,reg1)
-	     (5 ,reg2)
+	     (5 target)
+	     (5 reg1)
+	     (5 reg2)
 	     (11 0)))
       (((R (? target)) (R (? reg)) (& (? constant)))
        (WORD (6 #x23)
-	     (5 ,target)
-	     (5 ,reg)
-	     (16 ,constant SIGNED))))
+	     (5 target)
+	     (5 reg)
+	     (16 constant SIGNED))))
 would match (ADD (R 1) (R 2) (R 3)) and (ADD (R 7) (R 22) (& 257)),
 firing the corresponding body.
 
