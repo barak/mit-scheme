@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 14.7 1992/05/11 01:53:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 14.8 1992/05/23 01:12:29 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -37,9 +37,6 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (add-event-receiver! event:after-restore re-read-microcode-tables!))
-
 (define (re-read-microcode-tables!)
   (let ((file-name ((ucode-primitive microcode-tables-filename))))
     (cond ((file-exists? file-name)
@@ -47,7 +44,7 @@ MIT in each case. |#
 	  ((not (equal? ((ucode-primitive microcode-identify))
 			identification-vector))
 	   (error
-	    "event:after-restore: Cannot find description for new microcode in"
+	    "re-read-microcode-tables!: Cannot find description for new microcode in"
 	    file-name)))))
 
 (define (read-microcode-tables! #!optional filename)
