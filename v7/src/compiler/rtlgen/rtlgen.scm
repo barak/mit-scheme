@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.3 1988/02/17 19:12:51 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.4 1988/03/14 20:55:24 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -130,7 +130,7 @@ MIT in each case. |#
 	   (scfg-append!
 	    (if (continuation/avoid-check? continuation)
 		(rtl:make-continuation-entry label)
-		(rtl:make-continuation-heap-check label))
+		(rtl:make-continuation-header label))
 	    (generate/continuation-entry/ic-block continuation)
 	    (if (block/dynamic-link?
 		 (continuation/closing-block continuation))

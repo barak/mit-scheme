@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 4.1 1987/12/30 06:53:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 4.2 1988/03/14 20:45:17 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -75,9 +75,28 @@ MIT in each case. |#
 
   (define free-assignment-label (->label assq *interned-assignments*))
 
-  (define free-uuo-link-label (->label assq *interned-uuo-links*))
   ;; End of let-syntax
   )
+
+;; This one is different because a different uuo-link is used for different
+;; numbers of arguments.
+
+(define (free-uuo-link-label name frame-size)
+  (let ((entry (assq name *interned-uuo-links*)))
+    (if entry
+	 (let ((place (assv frame-size (cdr entry))))
+	   (if place
+	       (cdr place)
+	       (let ((label (allocate-constant-label)))
+		 (set-cdr! entry
+			   (cons (cons frame-size label)
+				 (cdr entry)))
+		 label)))
+	 (let ((label (allocate-constant-label)))
+	   (set! *interned-uuo-links*
+		 (cons (list name (cons frame-size label))
+		       *interned-uuo-links*))
+	   label))))
 
 (define-integrable (set-current-branches! consequent alternative)
   (set-pblock-consequent-lap-generator! *current-bblock* consequent)

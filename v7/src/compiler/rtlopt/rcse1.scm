@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.5 1988/02/17 19:14:05 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.6 1988/03/14 20:58:41 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -260,22 +260,20 @@ MIT in each case. |#
   'DONE)
 
 (define-cse-method 'POP-RETURN method/noop)
-(define-cse-method 'PROCEDURE-HEAP-CHECK method/noop)
-(define-cse-method 'CONTINUATION-HEAP-CHECK method/noop)
+
 (define-cse-method 'CONTINUATION-ENTRY method/noop)
+(define-cse-method 'CONTINUATION-HEADER method/noop)
+(define-cse-method 'IC-PROCEDURE-HEADER method/noop)
+(define-cse-method 'OPEN-PROCEDURE-HEADER method/noop)
+(define-cse-method 'PROCEDURE-HEADER method/noop)
+(define-cse-method 'CLOSURE-HEADER method/noop)
+
 (define-cse-method 'INVOCATION:APPLY method/noop)
 (define-cse-method 'INVOCATION:JUMP method/noop)
 (define-cse-method 'INVOCATION:LEXPR method/noop)
+(define-cse-method 'INVOCATION:UUO-LINK method/noop)
 (define-cse-method 'INVOCATION:PRIMITIVE method/noop)
 (define-cse-method 'INVOCATION:SPECIAL-PRIMITIVE method/noop)
-(define-cse-method 'INVOCATION:UUO-LINK method/noop)
-
-(define-cse-method 'INTERPRETER-CALL:ENCLOSE
-  (lambda (statement)
-    (let ((n (rtl:interpreter-call:enclose-size statement)))
-      (stack-region-invalidate! 0 n)
-      (stack-pointer-adjust! n))
-    (expression-invalidate! (interpreter-register:enclose))))
 
 (define-cse-method 'INVOCATION:CACHE-REFERENCE
   (lambda (statement)
@@ -290,12 +288,11 @@ MIT in each case. |#
 			 rtl:set-invocation:lookup-environment!
 			 statement
 			 trivial-action)))
-
-(define-cse-method 'SETUP-LEXPR
-  (lambda (statement)
-    (stack-invalidate!)
-    (stack-pointer-invalidate!)))
 
+(define-cse-method 'CONS-CLOSURE
+  (lambda (statement)
+    (expression-invalidate! (interpreter-register:enclose))))
+
 (define-cse-method 'INVOCATION-PREFIX:MOVE-FRAME-UP
   (lambda (statement)
     (expression-replace! rtl:invocation-prefix:move-frame-up-locative

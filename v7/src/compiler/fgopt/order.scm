@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.3 1987/12/31 08:51:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.4 1988/03/14 20:51:42 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -275,7 +275,10 @@ MIT in each case. |#
 	  ((rvalue/procedure? callee)
 	   (case (procedure/type callee)
 	     ((OPEN-EXTERNAL OPEN-INTERNAL) continuation-type/effect)
-	     ((CLOSURE) continuation-type/push)
+	     ((CLOSURE)
+	      (if (procedure/trivial-closure? callee)
+		  continuation-type/effect
+		  continuation-type/push))
 	     ((IC) continuation-type/apply)
 	     (else (error "Unknown procedure type" callee))))
 	  (else

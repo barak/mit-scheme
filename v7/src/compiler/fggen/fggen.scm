@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.3 1988/01/02 15:17:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.4 1988/03/14 20:48:00 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -642,16 +642,31 @@ MIT in each case. |#
        (scode/make-combination compiled-error-procedure
 			       (cons message irritants))))))
 
+;; For now
+
+(define (compile-recursively expression block)
+  (error "compile-recursively: invoked!" expression))
+
+(define (compile-recursively? block)
+  false)
+
 (define (generate/in-package block continuation expression)
-  (warn "IN-PACKAGE not supported; body will be interpreted" expression)
-  (scode/in-package-components expression
-    (lambda (environment expression)
-      (generate/combination
-       block
-       continuation
-       (scode/make-combination (ucode-primitive scode-eval)
-			       (list (scode/make-quotation expression)
-				     environment))))))
+  (let ((recursive? (compile-recursively? block)))
+    (if (not recursive?)
+	(warn "dynamic IN-PACKAGE not supported; body will be interpreted"
+	      expression))
+    (scode/in-package-components expression
+     (lambda (environment expression)
+       (generate/combination
+	block
+	continuation
+	(scode/make-combination
+	 (ucode-primitive scode-eval)
+	 (list (if recursive?
+		   (scode/make-constant
+		    (compile-recursively expression false))
+		   (scode/make-quotation expression))
+	       environment)))))))
 
 (define (generate/quotation block continuation expression)
   (generate/combination

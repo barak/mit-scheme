@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.1 1987/12/04 20:31:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.2 1988/03/14 20:54:09 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -44,17 +44,27 @@ MIT in each case. |#
        (scfg*scfg->scfg!
 	(if inline?
 	    (make-null-cfg)
-	    (rtl:make-procedure-heap-check (procedure-label procedure)))
+	    (rtl:make-ic-procedure-header (procedure-label procedure)))
 	(setup-ic-frame procedure))
        (scfg*scfg->scfg!
-	(cond ((or (procedure-rest procedure)
-		   (and (procedure/closure? procedure)
-			(not (null? (procedure-optional procedure)))))
-	       (rtl:make-setup-lexpr (procedure-label procedure)))
+	(cond ((procedure/closure? procedure)
+	       (if (procedure/trivial-closure? procedure)
+		   (with-procedure-arity-encoding
+		    procedure
+		    (lambda (min max)
+		      (rtl:make-procedure-header (procedure-label procedure)
+						 min max)))
+		   (rtl:make-closure-header (procedure-label procedure))))
 	      (inline?
 	       (make-null-cfg))
+	      ((procedure-rest procedure)
+	       (with-procedure-arity-encoding
+		procedure
+		(lambda (min max)
+		  (rtl:make-procedure-header (procedure-label procedure)
+					     min max))))
 	      (else
-	       (rtl:make-procedure-heap-check (procedure-label procedure))))
+	       (rtl:make-open-procedure-header (procedure-label procedure))))
 	(setup-stack-frame procedure)))
    body))
 
@@ -100,7 +110,7 @@ MIT in each case. |#
 	(map (lambda (name value)
 	       (if (and (procedure? value)
 			(procedure/closure? value)
-			(procedure-closing-block value))
+			(not (procedure/trivial-closure? value)))
 		   (letrec-close block name value)
 		   (make-null-cfg)))
 	     names values))))))
@@ -110,25 +120,34 @@ MIT in each case. |#
       (scfg*->scfg! pushes)
       (setup-bindings (cdr names)
 		      (cdr values)
-		      (cons (make-auxiliary-push (car names)
-						 (letrec-value (car values)))
-			    pushes))))
+		      (letrec-value (car values)
+		       (lambda (scfg expression)
+			 (cons (scfg*scfg->scfg!
+				scfg
+				(make-auxiliary-push (car names) expression))
+			       pushes))))))
 
 (define (make-auxiliary-push variable value)
   (rtl:make-push (if (variable-in-cell? variable)
 		     (rtl:make-cell-cons value)
 		     value)))
 
-(define (letrec-value value)
+(define (letrec-value value recvr)
   (cond ((constant? value)
-	 (rtl:make-constant (constant-value value)))
+	 (recvr (make-null-cfg)
+		(rtl:make-constant (constant-value value))))
 	((procedure? value)
 	 (enqueue-procedure! value)
 	 (case (procedure/type value)
 	   ((CLOSURE)
-	    (make-closure-cons value (rtl:make-constant '())))
+	    (if (procedure/trivial-closure? value)
+		(recvr (make-null-cfg)
+		       (make-trivial-closure-cons value))
+		(recvr (make-non-trivial-closure-cons value)
+		       (rtl:interpreter-call-result:enclose))))
 	   ((IC)
-	    (make-ic-cons value))
+	    (recvr (make-null-cfg)
+		   (make-ic-cons value)))
 	   ((OPEN-EXTERNAL OPEN-INTERNAL)
 	    (error "Letrec value is open procedure" value))
 	   (else
@@ -137,21 +156,14 @@ MIT in each case. |#
 	 (error "Unknown letrec binding value" value))))
 
 (define (letrec-close block variable value)
-  (transmit-values (make-closure-environment value 0)
-    (lambda (prefix environment)
-      (scfg*scfg->scfg! prefix
-			(rtl:make-assignment
-			 (closure-procedure-environment-locative
-			  (find-variable block variable 0
-			    (lambda (locative) locative)
-			    (lambda (nearest-ic-locative name)
-			      (error "Missing closure variable" variable))
-			    (lambda (name)
-			      (error "Missing closure variable" variable))))
-			 environment)))))
-
-(define-integrable (closure-procedure-environment-locative locative)
-  (rtl:locative-offset (rtl:make-fetch locative) 1))
+  (load-closure-environment
+   value 0
+   (find-variable block variable 0
+		  rtl:make-fetch
+		  (lambda (nearest-ic-locative name)
+		    (error "Missing closure variable" variable))
+		  (lambda (name)
+		    (error "Missing closure variable" variable)))))
 
 ;;; end GENERATE/PROCEDURE-HEADER
 )

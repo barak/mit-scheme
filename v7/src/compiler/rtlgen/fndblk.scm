@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndblk.scm,v 4.4 1988/01/02 19:12:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndblk.scm,v 4.5 1988/03/14 20:53:19 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -74,22 +74,26 @@ MIT in each case. |#
 
 (define (find-variable-internal block variable offset if-compiler if-ic)
   (let ((rvalue (lvalue-known-value variable)))
-    (if (and rvalue
-	     (rvalue/procedure? rvalue)
-	     (procedure/closure? rvalue)
-	     (block-ancestor-or-self? block (procedure-block rvalue)))
-	(if-compiler
-	 (stack-locative-offset
-	  (block-ancestor-or-self->locative block
-					    (procedure-block rvalue)
-					    offset)
-	  (procedure-closure-offset rvalue)))
-	(find-block/variable block variable offset
-	  (lambda (offset-locative)
-	    (lambda (block locative)
-	      (if-compiler
-	       (offset-locative locative (variable-offset block variable)))))
-	  if-ic))))
+    (cond ((not
+	    (and rvalue
+		 (rvalue/procedure? rvalue)
+		 (procedure/closure? rvalue)
+		 (block-ancestor-or-self? block (procedure-block rvalue))))
+	   (find-block/variable block variable offset
+	    (lambda (offset-locative)
+	      (lambda (block locative)
+		(if-compiler
+		 (offset-locative locative (variable-offset block variable)))))
+	    if-ic))
+	  ((procedure/trivial-closure? rvalue)
+	   (if-compiler (make-trivial-closure-cons rvalue)))
+	  (else
+	   (if-compiler
+	    (stack-locative-offset
+	     (block-ancestor-or-self->locative block
+					       (procedure-block rvalue)
+					       offset)
+	     (procedure-closure-offset rvalue)))))))
 
 (define (find-definition-variable block lvalue offset)
   (find-block/variable block lvalue offset
@@ -177,16 +181,26 @@ MIT in each case. |#
 (define (find-block/parent-procedure block)
   (enumeration-case block-type (block-type block)
     ((STACK)
-     (if (procedure/closure? (block-procedure block))
-	 stack-block/closure-parent-locative
-	 (let ((parent (block-parent block)))
-	   (if parent
-	       (enumeration-case block-type (block-type parent)
-		 ((STACK) internal-block/parent-locative)
-		 ((IC) stack-block/static-link-locative)
-		 ((CLOSURE) (error "Closure parent of open procedure" block))
-		 (else (error "Illegal procedure parent" parent)))
-	       (error "Block has no parent" block)))))
+     (let ((parent (block-parent block)))
+       (cond ((not (procedure/closure? (block-procedure block)))
+	      (if parent
+		  (enumeration-case block-type (block-type parent)
+		   ((STACK) internal-block/parent-locative)
+		   ((IC) stack-block/static-link-locative)
+		   ((CLOSURE) (error "Closure parent of open procedure" block))
+		   (else (error "Illegal procedure parent" parent)))
+		  (error "Block has no parent" block)))
+	     ((procedure/trivial-closure? (block-procedure block))
+	      trivial-closure/bogus-locative)
+	     ((not parent)
+	      (error "Block has no parent" block))
+	     (else
+	      (enumeration-case
+	       block-type (block-type parent)
+	       ((STACK) (error "Closure has a stack parent" block))
+	       ((IC) stack-block/parent-of-dummy-closure-locative)
+	       ((CLOSURE) stack-block/closure-parent-locative)
+	       (else (error "Illegal procedure parent" parent)))))))
     ((CLOSURE) closure-block/parent-locative)
     ((CONTINUATION) continuation-block/parent-locative)
     (else (error "Illegal parent block type" block))))
@@ -221,14 +235,23 @@ MIT in each case. |#
 
 (define (stack-block/closure-parent-locative block locative)
   (rtl:make-fetch
-   (rtl:locative-offset
-    (rtl:make-fetch
-     (stack-locative-offset
-      locative
-      (procedure-closure-offset (block-procedure block))))
-    1)))
+   (stack-locative-offset
+    locative
+    (procedure-closure-offset (block-procedure block)))))
+
+;; This value should make anyone trying to look at it crash.
+
+(define (trivial-closure/bogus-locative block locative)
+  'TRIVIAL-CLOSURE-BOGUS-LOCATIVE)
 
 (define (closure-block/parent-locative block locative)
-  (rtl:make-fetch (rtl:locative-offset locative 1)))
+  (rtl:make-fetch
+   (rtl:locative-offset locative
+			closure-block-first-offset)))
+
+(define (stack-block/parent-of-dummy-closure-locative block locative)
+  (closure-block/parent-locative
+   block
+   (stack-block/closure-parent-locative block locative)))
 
 )

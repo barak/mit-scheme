@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.2 1987/12/30 07:10:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.3 1988/03/14 20:55:03 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -59,26 +59,28 @@ MIT in each case. |#
 		(generate/cached-assignment name expression))))))))
 
 (define (generate/cached-assignment name value)
-  (let ((temp (rtl:make-pseudo-register)))
-    (let ((cell (rtl:make-fetch temp)))
-      (let ((contents (rtl:make-fetch cell)))
-	(let ((n1 (rtl:make-assignment temp (rtl:make-assignment-cache name)))
-	      (n2 (rtl:make-type-test (rtl:make-object->type contents)
-				      (ucode-type reference-trap)))
-	      (n3 (rtl:make-unassigned-test contents))
-	      (n4 (rtl:make-assignment cell value))
-	      (n5 (rtl:make-interpreter-call:cache-assignment cell value))
-	      ;; Copy prevents premature control merge which confuses CSE
-	      (n6 (rtl:make-assignment cell value)))
-	  (scfg-next-connect! n1 n2)
-	  (pcfg-consequent-connect! n2 n3)
-	  (pcfg-alternative-connect! n2 n4)
-	  (pcfg-consequent-connect! n3 n6)
-	  (pcfg-alternative-connect! n3 n5)
-	  (make-scfg (cfg-entry-node n1)
-		     (hooks-union (scfg-next-hooks n4)
-				  (hooks-union (scfg-next-hooks n5)
-					       (scfg-next-hooks n6)))))))))
+  (let* ((temp (rtl:make-pseudo-register))
+	 (cell (rtl:make-fetch temp))
+	 (contents (rtl:make-fetch cell))
+	 (n1 (rtl:make-assignment temp (rtl:make-assignment-cache name))))
+    ;; n1 MUST be bound before the rest.  It flags temp as a
+    ;; register that contains an address.
+    (let ((n2 (rtl:make-type-test (rtl:make-object->type contents)
+				  (ucode-type reference-trap)))
+	  (n3 (rtl:make-unassigned-test contents))
+	  (n4 (rtl:make-assignment cell value))
+	  (n5 (rtl:make-interpreter-call:cache-assignment cell value))
+	  ;; Copy prevents premature control merge which confuses CSE
+	  (n6 (rtl:make-assignment cell value)))
+      (scfg-next-connect! n1 n2)
+      (pcfg-consequent-connect! n2 n3)
+      (pcfg-alternative-connect! n2 n4)
+      (pcfg-consequent-connect! n3 n6)
+      (pcfg-alternative-connect! n3 n5)
+      (make-scfg (cfg-entry-node n1)
+		 (hooks-union (scfg-next-hooks n4)
+			      (hooks-union (scfg-next-hooks n5)
+					   (scfg-next-hooks n6)))))))
 
 (define (generate/definition definition)
   (let ((block (definition-block definition))
@@ -205,23 +207,25 @@ MIT in each case. |#
 	     (generate/node alternative))))))
 
 (define (generate/cached-unassigned? name)
-  (let ((temp (rtl:make-pseudo-register)))
-    (let ((cell (rtl:make-fetch temp)))
-      (let ((reference (rtl:make-fetch cell)))
-	(let ((n1 (rtl:make-assignment temp (rtl:make-variable-cache name)))
-	      (n2 (rtl:make-type-test (rtl:make-object->type reference)
-				      (ucode-type reference-trap)))
-	      (n3 (rtl:make-unassigned-test reference))
-	      (n4 (rtl:make-interpreter-call:cache-unassigned? cell))
-	      (n5
-	       (rtl:make-true-test
-		(rtl:interpreter-call-result:cache-unassigned?))))
-	  (scfg-next-connect! n1 n2)
-	  (pcfg-consequent-connect! n2 n3)
-	  (pcfg-alternative-connect! n3 n4)
-	  (scfg-next-connect! n4 n5)
-	  (make-pcfg (cfg-entry-node n1)
-		     (hooks-union (pcfg-consequent-hooks n3)
-				  (pcfg-consequent-hooks n5))
-		     (hooks-union (pcfg-alternative-hooks n2)
-				  (pcfg-alternative-hooks n5))))))))
+  (let* ((temp (rtl:make-pseudo-register))
+	 (cell (rtl:make-fetch temp))
+	 (reference (rtl:make-fetch cell))
+	 (n1 (rtl:make-assignment temp (rtl:make-variable-cache name))))
+    ;; n1 MUST be bound before the rest.  It flags temp as a
+    ;; register that contains an address.
+    (let ((n2 (rtl:make-type-test (rtl:make-object->type reference)
+				  (ucode-type reference-trap)))
+	  (n3 (rtl:make-unassigned-test reference))
+	  (n4 (rtl:make-interpreter-call:cache-unassigned? cell))
+	  (n5
+	   (rtl:make-true-test
+	    (rtl:interpreter-call-result:cache-unassigned?))))
+      (scfg-next-connect! n1 n2)
+      (pcfg-consequent-connect! n2 n3)
+      (pcfg-alternative-connect! n3 n4)
+      (scfg-next-connect! n4 n5)
+      (make-pcfg (cfg-entry-node n1)
+		 (hooks-union (pcfg-consequent-hooks n3)
+			      (pcfg-consequent-hooks n5))
+		 (hooks-union (pcfg-alternative-hooks n2)
+			      (pcfg-alternative-hooks n5))))))

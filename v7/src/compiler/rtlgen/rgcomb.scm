@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.3 1988/01/02 17:24:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.4 1988/03/14 20:53:42 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -76,7 +76,13 @@ MIT in each case. |#
 	       (case (procedure/type callee)
 		 ((OPEN-EXTERNAL) (finish invocation/jump true))
 		 ((OPEN-INTERNAL) (finish invocation/jump false))
-		 ((CLOSURE) (finish invocation/jump true))
+		 ((CLOSURE)
+		  ;; *** For the time being, known lexpr closures are invoked through
+		  ;; apply.  This makes the code simpler and probably does not matter
+		  ;; much. ***
+		  (if (procedure-rest callee)
+		      (finish invocation/apply true)
+		      (finish invocation/jump true)))
 		 ((IC) (finish invocation/ic true))
 		 (else (error "Unknown procedure type" callee))))
 	      (else
@@ -181,9 +187,11 @@ MIT in each case. |#
 (define (invocation/cache-reference offset frame-size continuation prefix name)
   (let* ((temp (rtl:make-pseudo-register))
 	 (cell (rtl:make-fetch temp))
-	 (contents (rtl:make-fetch cell)))
-    (let ((n1 (rtl:make-assignment temp (rtl:make-variable-cache name)))
-	  (n2
+	 (contents (rtl:make-fetch cell))
+	 (n1 (rtl:make-assignment temp (rtl:make-variable-cache name))))
+    ;; n1 MUST be bound before the rest.  It flags temp as a
+    ;; register that contains an address.
+    (let ((n2
 	   (rtl:make-type-test (rtl:make-object->type contents)
 			       (ucode-type reference-trap)))
 	  (n3

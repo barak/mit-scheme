@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.2 1987/12/30 06:43:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.3 1988/03/14 20:51:26 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -69,33 +69,38 @@ MIT in each case. |#
   (let ((procedure (block-procedure block))
 	(parent (block-parent block)))
     (set-procedure-closure-block! procedure parent)
-    (set-block-parent!
-     block
-     ((find-closure-bindings parent)
-      (list-transform-negative (block-free-variables block)
-	(lambda (lvalue)
-	  (eq? (lvalue-known-value lvalue) procedure)))
-      '()))
+    (((find-closure-bindings
+       (lambda (closure-frame-block size)
+	 (set-block-parent! block closure-frame-block)
+	 (set-procedure-closure-size! procedure size)))
+      parent)
+     (list-transform-negative (block-free-variables block)
+       (lambda (lvalue)
+	 (eq? (lvalue-known-value lvalue) procedure)))
+     '())
     (set-block-children! parent (delq! block (block-children parent)))
     (set-block-disowned-children!
      parent
      (cons block (block-disowned-children parent)))))
 
-(define (find-closure-bindings block)
-  (lambda (free-variables bound-variables)
-    (if (or (not block) (ic-block? block))
-	(let ((grandparent (and (not (null? free-variables)) block)))
-	  (if (null? bound-variables)
-	      grandparent
-	      (make-closure-block grandparent
-				  free-variables
-				  bound-variables
-				  (and block (block-procedure block)))))
-	(transmit-values
-	    (filter-bound-variables (block-bound-variables block)
+(define (find-closure-bindings receiver)
+  (define (find-internal block)
+    (lambda (free-variables bound-variables)
+      (if (or (not block) (ic-block? block))
+	  (let ((grandparent (and (not (null? free-variables)) block)))
+	    (if (null? bound-variables)
+		(receiver grandparent (if grandparent 1 0))
+		(make-closure-block receiver
+				    grandparent
 				    free-variables
-				    bound-variables)
-	  (find-closure-bindings (block-parent block))))))
+				    bound-variables
+				    (and block (block-procedure block)))))
+	  (transmit-values
+	   (filter-bound-variables (block-bound-variables block)
+				   free-variables
+				   bound-variables)
+	   (find-internal (block-parent block))))))
+  find-internal)
 
 (define (filter-bound-variables bindings free-variables bound-variables)
   (cond ((null? bindings)
@@ -109,25 +114,34 @@ MIT in each case. |#
 				 free-variables
 				 bound-variables))))
 
-(define (make-closure-block parent free-variables bound-variables frame)
-  (let ((block (make-block parent 'CLOSURE)))
+;; Note: The use of closure-block-first-offset below implies that
+;; closure frames are not shared between different closures.
+;; This may have to change if we ever do simultaneous closing of multiple
+;; procedures sharing structure.
+
+(define (make-closure-block recvr parent free-variables bound-variables frame)
+  (let ((block (make-block parent 'CLOSURE))
+	(extra (if (and parent (ic-block/use-lookup? parent)) 1 0)))
     (set-block-free-variables! block free-variables)
     (set-block-bound-variables! block bound-variables)
     (set-block-frame! block
 		      (and frame
 			   (rvalue/procedure? frame)
 			   (procedure-name frame)))
-    (set-block-closure-offsets!
-     block
-     (let loop
-	 ((variables (block-bound-variables block))
-	  (offset (if (and parent (ic-block/use-lookup? parent)) 2 1)))
-       (cond ((null? variables) '())
-	     ((lvalue-integrated? (car variables))
-	      (loop (cdr variables) offset))
-	     (else
-	      (cons (cons (car variables) offset)
-		    (loop (cdr variables) (1+ offset)))))))
-    block))
+    (let loop ((variables (block-bound-variables block))
+	       (offset (+ closure-block-first-offset extra))
+	       (table '())
+	       (size extra))
+      (cond ((null? variables)
+	     (set-block-closure-offsets! block table)
+	     (recvr block size))
+	    ((lvalue-integrated? (car variables))
+	     (loop (cdr variables) offset table size))
+	    (else
+	     (loop (cdr variables)
+		   (1+ offset)
+		   (cons (cons (car variables) offset)
+			 table)
+		   (1+ size)))))))
 
 )

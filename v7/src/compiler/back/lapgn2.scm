@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.5 1987/08/28 21:54:15 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.6 1988/03/14 20:44:59 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -59,6 +59,9 @@ MIT in each case. |#
       (register-type? register type)
       (pseudo-register-alias *register-map* type register)))
 
+(define-integrable (is-alias-for-register? potential-alias register)
+  (is-pseudo-register-alias? *register-map* potential-alias register))
+
 (define-integrable (register-alias register type)
   (maybe-need-register! (pseudo-register-alias *register-map* type register)))
 
@@ -71,6 +74,9 @@ MIT in each case. |#
 
 (define ((register-type-predicate type) register)
   (register-type? register type))
+
+(define-integrable (same-register? reg1 reg2)
+  (= reg1 reg2))
 
 (define-integrable (dead-register? register)
   (memv register *dead-registers*))

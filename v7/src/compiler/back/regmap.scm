@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.1 1987/12/30 06:53:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.2 1988/03/14 20:45:30 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -368,6 +368,13 @@ REGISTER-RENUMBERs are equal.
     (and entry
 	 (list-search-positive (map-entry-aliases entry)
 	   (register-type-predicate type)))))
+
+(define (is-pseudo-register-alias? map maybe-alias register)
+  (let ((entry (map-entries:find-home map register)))
+    (and entry
+	 (list-search-positive (map-entry-aliases entry)
+	   (lambda (alias)
+	     (same-register? maybe-alias alias))))))
 
 (define (save-machine-register map register receiver)
   (let ((entry (map-entries:find-alias map register)))

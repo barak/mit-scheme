@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.3 1987/12/31 07:01:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.4 1988/03/14 20:59:05 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -100,7 +100,9 @@ MIT in each case. |#
 	   (memq (rtl:expression-type expression)
 		 '(OBJECT->ADDRESS OBJECT->DATUM
 				   OBJECT->TYPE
-				   OFFSET-ADDRESS)))))))
+				   OFFSET-ADDRESS
+				   VARIABLE-CACHE
+				   ASSIGNMENT-CACHE)))))))
 
 (define (element-address-varies? element)
   (and (element-in-memory? element)
