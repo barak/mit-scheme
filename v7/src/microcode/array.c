@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.22 1987/10/19 20:46:14 pas Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.23 1987/10/24 09:42:18 pas Rel $ */
 
 /* CONTAINS:                                                         */
 /* Scheme_Array constructors, and selectors                          */
@@ -45,6 +45,8 @@ MIT in each case. */
 #include "flonum.h"
 #include "array.h"
 #include <math.h>
+#include <values.h>
+/* <values.h> contains some math constants */
 
 /* first a useful procedure */
 
@@ -116,21 +118,21 @@ Define_Primitive(Prim_Array_Predicate, 1, "ARRAY?")
   else return NIL;
 }
 */
-
+
 Define_Primitive(Prim_Vector_To_Array, 1, "VECTOR->ARRAY")
 { Pointer Scheme_Vector_To_Scheme_Array();
   Primitive_1_Args();
   Arg_1_Type(TC_VECTOR);
   return Scheme_Vector_To_Scheme_Array(Arg1);
 }
-
+
 Define_Primitive(Prim_Array_To_Vector, 1, "ARRAY->VECTOR")
 { Pointer Scheme_Array_To_Scheme_Vector();
   Primitive_1_Args();
   Arg_1_Type(TC_ARRAY);
   return Scheme_Array_To_Scheme_Vector(Arg1);
 }
-
+
 Define_Primitive(Prim_Array_Cons, 2, "ARRAY-CONS")
 { long Length, i, allocated_cells;
   REAL Init_Value, *Next;
@@ -153,13 +155,13 @@ Define_Primitive(Prim_Array_Cons, 2, "ARRAY-CONS")
   }
   return Result; 
 }
-
+
 Define_Primitive(Prim_Array_Length, 1, "ARRAY-LENGTH")
 { Primitive_1_Args();
   Arg_1_Type(TC_ARRAY);
   return Make_Pointer(TC_FIXNUM, Array_Length(Arg1));
 }
-
+
 Define_Primitive(Prim_Array_Ref, 2, "ARRAY-REF")
 { long Index;
   REAL *Array, value;
@@ -172,7 +174,7 @@ Define_Primitive(Prim_Array_Ref, 2, "ARRAY-REF")
   value = Array[Index];
   Reduced_Flonum_Result((double) value);
 }
-
+
 Define_Primitive(Prim_Array_Set, 3, "ARRAY-SET!")
 { long Index;
   REAL *Array, Old_Value;
@@ -191,7 +193,7 @@ Define_Primitive(Prim_Array_Set, 3, "ARRAY-SET!")
 
   Reduced_Flonum_Result((double) Old_Value);
 }
-
+
 Define_Primitive(Prim_Array_Copy, 1, "ARRAY-COPY")
 { long Length, i, allocated_cells;
   REAL *To_Array, *From_Array;
@@ -206,7 +208,6 @@ Define_Primitive(Prim_Array_Copy, 1, "ARRAY-COPY")
   return Result;
 }
 
-
 Define_Primitive(Prim_SubArray, 3, "SUBARRAY")
 { long Length, i, allocated_cells, Start, End, New_Length;
   REAL *To_Here, *From_Here;
@@ -229,7 +230,7 @@ Define_Primitive(Prim_SubArray, 3, "SUBARRAY")
   C_Array_Copy(From_Here, To_Here, New_Length);
   return Result; 
 }
-
+
 Define_Primitive(Prim_Array_Set_SubArray, 4, "ARRAY-SET-SUBARRAY!")
 { long Length, i, Start, End, New_Length;
   REAL *To_Here, *From_Here;
@@ -253,7 +254,7 @@ Define_Primitive(Prim_Array_Set_SubArray, 4, "ARRAY-SET-SUBARRAY!")
   C_Array_Copy(From_Here, To_Here, New_Length);
   return Arg1;
 }
-
+
 Define_Primitive(Prim_Array_Append, 2, "ARRAY-APPEND")
 { long Length, Length1, Length2, i, allocated_cells;
   REAL *To_Here, *From_Here;
@@ -283,7 +284,7 @@ Define_Primitive(Prim_Array_Append, 2, "ARRAY-APPEND")
   
   return Result; 
 }
-
+
 Define_Primitive(Prim_Array_Reverse, 1, "ARRAY-REVERSE!")
 { long Length, i,j, Half_Length;
   REAL *Array, Temp;
@@ -300,7 +301,7 @@ Define_Primitive(Prim_Array_Reverse, 1, "ARRAY-REVERSE!")
   }
   return Arg1;
 }
-
+
 Define_Primitive(Prim_Array_Scale, 2, "ARRAY-SCALE!")
 { long Length, i;
   REAL *To_Here, *From_Here, Scale;
@@ -324,7 +325,7 @@ Define_Primitive(Prim_Array_Scale, 2, "ARRAY-SCALE!")
   }
   return Result; 
 }
-
+
 Define_Primitive(Prim_Array_Log, 1, "ARRAY-LOG!")
 { long Length, i, allocated_cells;
   REAL *To_Here, *From_Here;
@@ -346,7 +347,137 @@ Define_Primitive(Prim_Array_Log, 1, "ARRAY-LOG!")
   }
   return Result; 
 }
-
+
+/* The following functions are used in the primitive "ARRAY-FUNCTION!"
+   for tranforming arrays
+   */
+
+void REALabs(a,b) REAL *a,*b;
+{ (*b) = ( (REAL) fabs( (double) (*a)) );
+}
+void REALexp(a,b) REAL *a,*b;
+{ register double y;
+  if ((y = exp((double) (*a))) == HUGE)
+    Primitive_Error(ERR_ARG_1_BAD_RANGE); /* OVERFLOW */
+  (*b) = ((REAL) y);
+}
+void REALlog(a,b) REAL *a,*b;
+{ if ((*a) < 0.0)
+    Primitive_Error(ERR_ARG_1_BAD_RANGE); /* log(negative) */
+  (*b) = ( (REAL) log( (double) (*a)) );
+}
+void REALsquare(a,b) REAL *a,*b;
+{ (*b) = ( (REAL) ((*a) * (*a)) );
+}
+void REALsqrt(a,b) REAL *a,*b;
+{ if ((*a) < 0.0)
+    Primitive_Error(ERR_ARG_1_BAD_RANGE); /* sqrt(negative) */
+  (*b) = ( (REAL) sqrt( (double) (*a)) );
+}
+
+void REALsin(a,b) REAL *a,*b;
+{ (*b) = ( (REAL) sin( (double) (*a)) );
+}
+void REALcos(a,b) REAL *a,*b;
+{ (*b) = ( (REAL) cos( (double) (*a)) );
+}
+void REALtan(a,b) REAL *a,*b;
+{ (*b) = ( (REAL) tan( (double) (*a)) );
+}
+void REALasin(a,b) REAL *a,*b;
+{ (*b) = ( (REAL) asin( (double) (*a)) );
+}
+void REALacos(a,b) REAL *a,*b;
+{ (*b) = ( (REAL) acos( (double) (*a)) );
+}
+void REALatan(a,b) REAL *a,*b;
+{ (*b) = ( (REAL) atan( (double) (*a)) );
+}
+
+void REALgamma(a,b) REAL *a,*b;
+{ register double y;
+  if ((y = gamma(((double) (*a)))) > LN_MAXDOUBLE)
+    Primitive_Error(ERR_ARG_1_BAD_RANGE); /* gamma( non-positive integer ) */
+  (*b) = ((REAL) (signgam * exp(y)));  /* see HPUX Section 3 */
+}
+void REALerf(a,b) REAL *a,*b;
+{ (*b) = ( (REAL) erf((double) (*a)) );
+}
+void REALerfc(a,b) REAL *a,*b;
+{ (*b) = ( (REAL) erfc((double) (*a)) );
+}
+void REALbessel1(order,a,b) long order; REAL *a,*b;  /* Bessel of first kind */
+{ if (order == 0)
+    (*b) = ( (REAL) j0((double) (*a)) );
+  if (order == 1)
+    (*b) = ( (REAL) j1((double) (*a)) );
+  else
+    (*b) = ( (REAL) jn(((int) order), ((double) (*a))) );
+}
+void REALbessel2(order,a,b) long order; REAL *a,*b;  /* Bessel of second kind */
+{ if ((*a) <= 0.0)
+    Primitive_Error(ERR_ARG_1_BAD_RANGE); /* Blows Up */
+  if (order == 0)
+    (*b) = ( (REAL) y0((double) (*a)) );
+  if (order == 1)
+    (*b) = ( (REAL) y1((double) (*a)) );
+  else
+    (*b) = ( (REAL) yn(((int) order), ((double) (*a))) );
+}
+
+/* Table to store the available functions for transforming arrays.
+   It also stores the corresponding numofargs (whether unary or binary function).
+   */
+
+struct array_func_table {
+  long numofargs;
+  void (*func)();
+} Array_Function_Table[] ={
+  1, REALabs,
+  1, REALexp,
+  1, REALlog,
+  1, REALsquare,
+  1, REALsqrt,
+  1, REALsin,
+  1, REALcos,
+  1, REALtan,
+  1, REALasin,
+  1, REALacos,
+  1, REALatan,
+  1, REALgamma,
+  1, REALerf,
+  1, REALerfc,
+  2, REALbessel1,
+  2, REALbessel2
+  };
+
+#define MAX_ARRAY_FUNCTC 15
+
+Define_Primitive(Prim_Array_Unary_Function, 2, "ARRAY-UNARY-FUNCTION!")
+{ long Length, i, allocated_cells;
+  REAL *a,*b;
+  SCHEME_ARRAY Result;
+  long functc;
+  void (*f)();
+  
+  Primitive_2_Args();
+  Arg_1_Type(TC_ARRAY);
+  Arg_2_Type(TC_FIXNUM);
+  Length = Array_Length(Arg1);
+  Range_Check(functc, Arg2, 0, MAX_ARRAY_FUNCTC, ERR_ARG_2_BAD_RANGE);
+  f = ((Array_Function_Table[functc]).func);
+  if (1 != (Array_Function_Table[functc]).numofargs) /* check unary */
+    Primitive_Error(ERR_ARG_2_WRONG_TYPE);
+
+  Result = Arg1;
+  a = Scheme_Array_To_C_Array(Arg1);
+  b = Scheme_Array_To_C_Array(Result);
+  
+  for (i=0; i<Length; i++)
+    (*f) ( &(a[i]), &(b[i]) );	/* a to b */
+  return Result; 
+}
+
 Define_Primitive(Prim_Array_Min_Max, 1, "ARRAY-MIN-MAX")
 { long Length, nmin, nmax;
   Pointer Result, *Orig_Free;
@@ -368,7 +499,7 @@ Define_Primitive(Prim_Array_Min_Max, 1, "ARRAY-MIN-MAX")
   *(++Orig_Free)=NIL;
   return Result;
 }
-
+
 Define_Primitive(Prim_Array_Min_Max_Index, 1, "ARRAY-MIN-MAX-INDEX")
 { long Length, nmin, nmax;
   Pointer Result, *Orig_Free;
@@ -389,7 +520,6 @@ Define_Primitive(Prim_Array_Min_Max_Index, 1, "ARRAY-MIN-MAX-INDEX")
   *Orig_Free=NIL;
   return Result; 
 }
-
 void C_Array_Find_Min_Max(x, n, nmin, nmax) REAL *x; long n, *nmax, *nmin;
 { REAL *xold = x;
   register REAL xmin, xmax;
@@ -418,7 +548,6 @@ void C_Array_Find_Min_Max(x, n, nmin, nmax) REAL *x; long n, *nmax, *nmin;
   *nmin = nnmin ;
   *nmax = nnmax ;
 }
-
 Define_Primitive(Prim_Array_Find_Average, 1, "ARRAY-AVERAGE")
 { long Length; REAL average;
   Primitive_1_Args();
@@ -428,7 +557,6 @@ Define_Primitive(Prim_Array_Find_Average, 1, "ARRAY-AVERAGE")
   C_Array_Find_Average( Scheme_Array_To_C_Array(Arg1), Length, &average);
   Reduced_Flonum_Result((double) average);
 }
-
 void C_Array_Find_Average(Array, Length, pAverage)
      long Length; REAL *Array, *pAverage;
 { long i;
@@ -447,7 +575,7 @@ void C_Array_Find_Average(Array, Length, pAverage)
   }
   *pAverage = average_n;
 }
-
+
 Define_Primitive(Prim_Array_Make_Histogram, 2, "ARRAY-MAKE-HISTOGRAM")
 { long Length, npoints, allocated_cells; 
   REAL *Array, *Histogram;
@@ -464,7 +592,6 @@ Define_Primitive(Prim_Array_Make_Histogram, 2, "ARRAY-MAKE-HISTOGRAM")
   C_Array_Make_Histogram(Array, Length, Histogram, npoints);
   return Result;
 }
-
 void C_Array_Make_Histogram(Array, Length, Histogram, npoints)
      REAL Array[], Histogram[]; long Length, npoints;
 { REAL Max,Min, Offset, Scale;
@@ -479,7 +606,6 @@ void C_Array_Make_Histogram(Array, Length, Histogram, npoints)
     Histogram[index] += 1.0; }
 }
 
-
 Define_Primitive(Prim_Array_Clip_Min_Max, 3, "ARRAY-CLIP-MIN-MAX!")
 { long Length, i; /* , allocated_cells; */
   REAL *To_Here, *From_Here, xmin, xmax;
@@ -505,11 +631,10 @@ Define_Primitive(Prim_Array_Clip_Min_Max, 3, "ARRAY-CLIP-MIN-MAX!")
     if ((*From_Here)<xmin) *To_Here++ = xmin;
     else if ((*From_Here)>xmax) *To_Here++ = xmax;
     else *To_Here++ = *From_Here;
-    From_Here++ ;
-  }
+    From_Here++ ; }
   return Result; 
 }
-
+
 Define_Primitive(Prim_Array_Make_Polar, 2, "ARRAY-MAKE-POLAR!")
 { long Length, i;
   REAL *To_Here_Mag, *To_Here_Phase;
@@ -547,7 +672,7 @@ Define_Primitive(Prim_Array_Make_Polar, 2, "ARRAY-MAKE-POLAR!")
   *Free++ = NIL;
   return answer;
 }
-
+
 Define_Primitive(Prim_Array_Find_Magnitude, 2, "ARRAY-FIND-MAGNITUDE")
 { long Length, i, allocated_cells;
   REAL *From_Here_Real, *From_Here_Imag, *To_Here;
@@ -572,18 +697,16 @@ Define_Primitive(Prim_Array_Find_Magnitude, 2, "ARRAY-FIND-MAGNITUDE")
   return Result;
 }
 
-
 /* ATTENTION: To1,To2 SHOULD BE Length1-1, and Length2-2 RESPECTIVELY ! */
 
 #define C_Convolution_Point_Macro(X, Y, To1, To2, N, Result)                                \
 { long Min_of_N_To1=min((N),(To1));                                                         \
   long mi, N_minus_mi;                                                                      \
-  REAL Sum=0.0;                                                                           \
+  REAL Sum=0.0;                                                                             \
   for (mi=max(0,(N)-(To2)), N_minus_mi=(N)-mi; mi <= Min_of_N_To1; mi++, N_minus_mi--)      \
     Sum += (X[mi] * Y[N_minus_mi]);                                                         \
   (Result)=Sum;                                                                             \
 }
-
 Define_Primitive(Prim_Convolution_Point, 3, "CONVOLUTION-POINT")
 { long Length1, Length2, N;
   REAL *Array1, *Array2;
@@ -601,7 +724,7 @@ Define_Primitive(Prim_Convolution_Point, 3, "CONVOLUTION-POINT")
   C_Convolution_Point_Macro(Array1, Array2, Length1-1, Length2-1, N, C_Result);
   Reduced_Flonum_Result(C_Result);
 }
-
+
 Define_Primitive(Prim_Array_Convolution, 2, "ARRAY-CONVOLUTION")
 { long Endpoint1, Endpoint2, allocated_cells, i;
   /* ASSUME A SIGNAL FROM INDEX 0 TO ENDPOINT=LENGTH-1 */
@@ -632,7 +755,7 @@ Define_Primitive(Prim_Array_Convolution, 2, "ARRAY-CONVOLUTION")
   }
   return Result;
 }
-
+
 Define_Primitive(Prim_Array_Multiplication_Into_Second_One, 2, "ARRAY-MULTIPLICATION-INTO-SECOND-ONE!")
 { long Length, i;
   REAL *To_Here;
@@ -658,7 +781,7 @@ Define_Primitive(Prim_Array_Multiplication_Into_Second_One, 2, "ARRAY-MULTIPLICA
   }
   return Result;
 }
-
+
 Define_Primitive(Prim_Array_Complex_Multiplication_Into_Second_One, 4, "ARRAY-COMPLEX-MULTIPLICATION-INTO-SECOND-ONE!")
 { long Length, i;
   REAL *To_Here_1, *To_Here_2;
@@ -812,7 +935,7 @@ Define_Primitive(Prim_Array_Complex_Multiplication_Into_First_One, 5, "ARRAY-COM
   }
   return NIL;
 }
-
+
 Define_Primitive(Prim_Array_Linear_Superposition_Into_Second_One, 4, "ARRAY-LINEAR-SUPERPOSITION-INTO-SECOND-ONE!")
 { long Length, i;
   REAL *To_Here, Coeff1, Coeff2;
@@ -846,8 +969,9 @@ Define_Primitive(Prim_Array_Linear_Superposition_Into_Second_One, 4, "ARRAY-LINE
   }
   return Result;
 }
-
-/*  m_pi = 3.14159265358979323846264338327950288419716939937510; */
+
+/*  m_pi = 3.14159265358979323846264338327950288419716939937510;
+ */
 
 Define_Primitive(Prim_Sample_Periodic_Function, 4, "SAMPLE-PERIODIC-FUNCTION")
 { long N, i, allocated_cells, Function_Number;
@@ -897,7 +1021,7 @@ Define_Primitive(Prim_Sample_Periodic_Function, 4, "SAMPLE-PERIODIC-FUNCTION")
   
   return Result; 
 }
-
+
 double hamming(t, length) double t, length;
 { double twopi = 6.28318530717958;
   double pi = twopi/2.;
@@ -905,7 +1029,7 @@ double hamming(t, length) double t, length;
   if ((t<length) && (t>0.0)) return(.08 + .46 * (1 - t_bar));
   else return (0);
 }
-
+
 double hanning(t, length) double t, length;
 { double twopi = 6.28318530717958;
   double pi = twopi/2.;
@@ -913,7 +1037,7 @@ double hanning(t, length) double t, length;
   if ((t<length) && (t>0.0))     return(.5 * (1 - t_bar));
   else                           return (0);
 }
-
+
 double unit_square_wave(t) double t;
 { double twopi = 6.28318530717958;
   double fmod(), fabs();
@@ -922,7 +1046,7 @@ double unit_square_wave(t) double t;
   if (t_bar < pi)                 return(1);
   else                            return(-1);
 }
-
+
 double unit_triangle_wave(t) double t;
 { double twopi = 6.28318530717958;
   double pi = twopi/2.;
@@ -935,7 +1059,7 @@ double unit_triangle_wave(t) double t;
   else if (t_bar<three_pi_half)  return((twopi-t_bar)/pi);
   else                           return (-((twopi-t_bar)/pi));
 }
-
+
 Define_Primitive(Prim_Sample_Aperiodic_Function, 3, "SAMPLE-APERIODIC-FUNCTION")
 { long N, i, allocated_cells, Function_Number;
   double Sampling_Frequency, DT, DTi;
@@ -987,7 +1111,7 @@ Define_Primitive(Prim_Sample_Aperiodic_Function, 3, "SAMPLE-APERIODIC-FUNCTION")
   
   return Result; 
 }
-
+
 Define_Primitive(Prim_Array_Periodic_Downsample, 2, "ARRAY-PERIODIC-DOWNSAMPLE")
 { long Length, Pseudo_Length, Sampling_Ratio;
   REAL *Array, *To_Here;
@@ -999,8 +1123,8 @@ Define_Primitive(Prim_Array_Periodic_Downsample, 2, "ARRAY-PERIODIC-DOWNSAMPLE")
   Arg_2_Type(TC_FIXNUM);
   Length = Array_Length(Arg1);
 
-  Sign_Extend(Arg2, Sampling_Ratio);               /* Sampling_Ratio = integer ratio of sampling_frequencies */
-  Sampling_Ratio = Sampling_Ratio % Length;                                  /* periodicity */
+  Sign_Extend(Arg2, Sampling_Ratio); /* Sampling_Ratio = integer ratio of sampling_frequencies */
+  Sampling_Ratio = Sampling_Ratio % Length; /* periodicity */
   if (Sampling_Ratio < 1)  Primitive_Error(ERR_ARG_2_BAD_RANGE);
   
   Array = Scheme_Array_To_C_Array(Arg1);
@@ -1008,15 +1132,14 @@ Define_Primitive(Prim_Array_Periodic_Downsample, 2, "ARRAY-PERIODIC-DOWNSAMPLE")
   To_Here = Scheme_Array_To_C_Array(Result);
   
   Pseudo_Length = Length * Sampling_Ratio;
-  for (i=0; i<Pseudo_Length; i += Sampling_Ratio) {       /* new Array has the same Length by assuming periodicity */
-    array_index = i % Length;
-    *To_Here++ = Array[array_index];
-  }
-  
+  for (i=0; i<Pseudo_Length; i += Sampling_Ratio) /* new Array has the same Length by assuming periodicity */
+  { array_index = i % Length;
+    *To_Here++ = Array[array_index]; }
   return Result;
 }
- 
-/* DONE WITHOUT SIDE-EFFECTS FOR SIMPLICITY */
+
+/* Shift is not done in place (no side-effects).
+ */
 Define_Primitive(Prim_Array_Periodic_Shift, 2, "ARRAY-PERIODIC-SHIFT")
 { long Length, Shift;
   REAL *Array, *To_Here;
@@ -1041,9 +1164,9 @@ Define_Primitive(Prim_Array_Periodic_Shift, 2, "ARRAY-PERIODIC-SHIFT")
   
   return Result;
 }
-
-/* this should really be done in SCHEME using ARRAY-MAP ! */
 
+/* this should really be done in SCHEME using ARRAY-MAP !
+ */
 Define_Primitive(Prim_Array_Aperiodic_Downsample, 2, "ARRAY-APERIODIC-DOWNSAMPLE")
 { long Length, New_Length, Sampling_Ratio;
   REAL *Array, *To_Here;
@@ -1067,18 +1190,17 @@ Define_Primitive(Prim_Array_Aperiodic_Downsample, 2, "ARRAY-APERIODIC-DOWNSAMPLE
   
   return Result;
 }
-
-/* ARRAY-APERIODIC-SHIFT can be done in scheme using subarray, and array-append */
+/* ARRAY-APERIODIC-SHIFT can be done in scheme using subarray, and array-append
+ */
 
 /* for UPSAMPLING
    if ((Length % Sampling_Ratio) != 0) Primitive_Error(ERR_ARG_2_BAD_RANGE);
    UNIMPLEMENTED YET !!! 
    */
 
-/* END ARRAY PROCESSING */
+/* END ARRAY PROCESSING
+ */
 
-
-
 /*********** CONVERSION BETWEEN ARRAYS,VECTORS ********************/
 
 Pointer Scheme_Array_To_Scheme_Vector(Scheme_Array) Pointer Scheme_Array;
