@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.10 1993/11/09 04:08:10 gjr Exp $
+$Id: cout.scm,v 1.11 1993/11/09 04:25:49 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -120,7 +120,6 @@ MIT in each case. |#
 	     (string-append default
 			    "_"
 			    (canonicalize-label-name (pathname-name path))
-			    midfix
 			    suffix
 			    time-stamp)))))
 
