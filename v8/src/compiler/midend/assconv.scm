@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: assconv.scm,v 1.6 1995/03/12 05:59:29 adams Exp $
+$Id: assconv.scm,v 1.7 1995/04/03 06:08:41 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -74,7 +74,7 @@ MIT in each case. |#
 ;;    two cases.
 ;;
 ;;  . Note that there are two access paths for N, but we keep only one.
-;;    Lest us assume also that at [3] the CELL-REF version is available.
+;;    Let us assume also that at [3] the CELL-REF version is available.
 ;;    How do we know which one to keep at [2]?  Perhaps the right
 ;;    thing is to generate all of the access paths and discard those
 ;;    which use information which is not available.  Discarding
@@ -88,16 +88,16 @@ MIT in each case. |#
 (define-macro (define-assignment-converter keyword bindings . body)
   (let ((proc-name (symbol-append 'ASSCONV/ keyword)))
     (call-with-values
-     (lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
-     (lambda (names code)
-       `(DEFINE ,proc-name
-	  (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
-	    (NAMED-LAMBDA (,proc-name ENV FORM)
-	      (LET ((INFO (ASSCONV/GET-DBG-INFO ENV FORM)))
-		(LET ((CODE ,code))
-		  (IF INFO
-		      (CODE-REWRITE/REMEMBER* CODE INFO))
-		  CODE)))))))))
+	(lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
+      (lambda (names code)
+	`(DEFINE ,proc-name
+	   (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
+	     (NAMED-LAMBDA (,proc-name ENV FORM)
+	       (LET ((INFO (ASSCONV/GET-DBG-INFO ENV FORM)))
+		 (LET ((CODE ,code))
+		   (IF INFO
+		       (CODE-REWRITE/REMEMBER* CODE INFO))
+		   CODE)))))))))
 
 ;;;; Variable manipulation forms
 
@@ -181,31 +181,17 @@ MIT in each case. |#
   (if (not (pair? expr))
       (illegal expr))
   (case (car expr)
-    ((QUOTE)
-     (assconv/quote env expr))
-    ((LOOKUP)
-     (assconv/lookup env expr))
-    ((LAMBDA)
-     (assconv/lambda env expr))
-    ((LET)
-     (assconv/let env expr))
-    ((DECLARE)
-     (assconv/declare env expr))
-    ((CALL)
-     (assconv/call env expr))
-    ((BEGIN)
-     (assconv/begin env expr))
-    ((IF)
-     (assconv/if env expr))
-    ((SET!)
-     (assconv/set! env expr))
-    ((LETREC)
-     (not-yet-legal expr))
-    ((UNASSIGNED? OR DELAY
-      ACCESS DEFINE IN-PACKAGE THE-ENVIRONMENT)
-     (no-longer-legal expr))
-    (else
-     (illegal expr))))
+    ((QUOTE)    (assconv/quote env expr))
+    ((LOOKUP)   (assconv/lookup env expr))
+    ((LAMBDA)   (assconv/lambda env expr))
+    ((LET)      (assconv/let env expr))
+    ((DECLARE)  (assconv/declare env expr))
+    ((CALL)     (assconv/call env expr))
+    ((BEGIN)    (assconv/begin env expr))
+    ((IF)       (assconv/if env expr))
+    ((SET!)     (assconv/set! env expr))
+    ((LETREC) (not-yet-legal expr))
+    (else     (illegal expr))))
 
 (define (assconv/expr* env exprs)
   (map (lambda (expr)
