@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.39 1995/08/31 15:25:40 adams Exp $
+$Id: rtlgen.scm,v 1.40 1995/09/05 19:04:13 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -778,17 +778,23 @@ MIT in each case. |#
 	rand*)))
 
 (define (rtlgen/value-assignment state value)
-  (let* ((target (rtlgen/state/expr/target state))
-	 (target*
-	  (case (car target)
-	    ((ANY)
-	     (rtlgen/new-reg))
-	    ((REGISTER)
-	     target)
-	    (else
-	     (internal-error "Unexpected target for value" target)))))
-    (rtlgen/assign! target* value)
-    target*))
+  (let ((target (rtlgen/state/expr/target state)))
+    (case (car target)
+      ((ANY)
+       (let ((target* (rtlgen/new-reg))) ; new register even if already in one
+	 (rtlgen/assign! target* value)
+	 target*))
+      ((REGISTER)
+       (rtlgen/assign! target value)
+       target)
+      ((PREDICATE)
+       ;; This case is extremely rare - for example, the predicate is a
+       ;; %make-heap-closure which does not have a predicate position
+       ;; method. In this case we generate the value and test it (even
+       ;; though we known a heap closure must be `true').
+       (rtlgen/branch/false? state value))
+      (else
+       (internal-error "Unexpected target for value" target)))))
 
 ;;;; Stack and Heap allocation
 
@@ -1453,8 +1459,10 @@ MIT in each case. |#
 
 
 (define (rtlgen/call-lambda-with-stack-closure state dict call rator cont rands)
-  ;; (CALL (LAMBDA (CONT) ...)
-  ;;       (call %make-stack-closure ...))
+  ;; This usually occurs when calling a primitive procedure as a
+  ;; subproblem.
+  ;;   (CALL (LAMBDA (CONT) ...)
+  ;;         (call %make-stack-closure ...))
   ;; This is nasty because the LAMBDA has free variables which might be
   ;; stack references and the stack might contain a (raw) closure
   ;; pointer.
@@ -3602,7 +3610,8 @@ MIT in each case. |#
 			  `(OFFSET ,ptr (MACHINE-CONSTANT ,offset))))))))))))
   ;;(define-indexed-selector 'VECTOR-REF (machine-tag 'VECTOR) 1 2)
   (define-indexed-selector %vector-ref (machine-tag 'VECTOR) 1 2)
-  (define-indexed-selector '%RECORD-REF (machine-tag 'RECORD) 1 2)
+  ;;(define-indexed-selector '%RECORD-REF (machine-tag 'RECORD) 1 2)
+  (define-indexed-selector %%RECORD-REF (machine-tag 'RECORD) 1 2)
   ;; NOTE: This assumes that the result of the following two is always
   ;; an object.  If it isn't it could be incorrectly preserved, and...
   (define-indexed-selector 'SYSTEM-VECTOR-REF false 1 2)
@@ -3670,14 +3679,17 @@ MIT in each case. |#
 		  state
 		  `(CONS-NON-POINTER (MACHINE-CONSTANT ,fixnum-tag)
 				     ,field))))))))
-  (define-fixnumized-selector/tagged 'VECTOR-LENGTH  (machine-tag 'VECTOR) 0)
+  ;;(define-fixnumized-selector/tagged 'VECTOR-LENGTH  (machine-tag 'VECTOR) 0)
   (define-fixnumized-selector/tagged %vector-length  (machine-tag 'VECTOR) 0)
-  (define-fixnumized-selector/tagged '%RECORD-LENGTH (machine-tag 'RECORD) 0)
+  ;;(define-fixnumized-selector/tagged '%RECORD-LENGTH (machine-tag 'RECORD) 0)
+  (define-fixnumized-selector/tagged %%RECORD-LENGTH (machine-tag 'RECORD) 0)
   (define-fixnumized-selector/tagged 'SYSTEM-VECTOR-SIZE false 1)
-  (define-fixnumized-selector 'STRING-LENGTH     (machine-tag 'STRING)    1)
-  (define-fixnumized-selector 'BIT-STRING-LENGTH (machine-tag 'VECTOR-1B) 1))
+  ;;(define-fixnumized-selector 'STRING-LENGTH     (machine-tag 'STRING)    1)
+  (define-fixnumized-selector %STRING-LENGTH     (machine-tag 'STRING)    1)
+  ;;(define-fixnumized-selector 'BIT-STRING-LENGTH (machine-tag 'VECTOR-1B) 1)
+  (define-fixnumized-selector %BIT-STRING-LENGTH (machine-tag 'VECTOR-1B) 1))
 
-(define-open-coder/value 'FLOATING-VECTOR-LENGTH 1
+(define-open-coder/value %FLOATING-VECTOR-LENGTH 1 ; 'FLOATING-VECTOR-LENGTH
   (let ((factor (rtlgen/fp->words 1))
 	(tag (machine-tag 'POSITIVE-FIXNUM)))
     (cond ((= factor 1)
@@ -3889,10 +3901,12 @@ MIT in each case. |#
 		 (rtlgen/value-assignment
 		  state
 		  `(CONS-NON-POINTER (MACHINE-CONSTANT ,tag) ,byte))))))))
-  (define-string-reference 'VECTOR-8B-REF (machine-tag 'POSITIVE-FIXNUM))
-  (define-string-reference 'STRING-REF    (machine-tag 'CHARACTER)))
+  ;(define-string-reference 'VECTOR-8B-REF (machine-tag 'POSITIVE-FIXNUM))
+  ;(define-string-reference 'STRING-REF    (machine-tag 'CHARACTER))
+  (define-string-reference %VECTOR-8B-REF (machine-tag 'POSITIVE-FIXNUM))
+  (define-string-reference %STRING-REF    (machine-tag 'CHARACTER)))
 
-(define-open-coder/value 'FLOATING-VECTOR-REF 2
+(define-open-coder/value %FLOATING-VECTOR-REF 2 ;'FLOATING-VECTOR-REF 2
   (let ((factor (rtlgen/fp->words 1)))
     (if (= factor 1)
 	(lambda (state rands open-coder)
@@ -3999,8 +4013,8 @@ MIT in each case. |#
 	      (rtlgen/fixed-mutation rands offset))))))
   (define-fixed-mutator 'SET-CELL-CONTENTS! (machine-tag 'CELL) 0 2)
   (define-fixed-mutator %cell-set! (machine-tag 'CELL) 0 3)
-  (define-fixed-mutator 'SET-CAR!  (machine-tag 'PAIR) 0 2)
-  (define-fixed-mutator 'SET-CDR!  (machine-tag 'PAIR) 1 2)
+  ;;(define-fixed-mutator 'SET-CAR!  (machine-tag 'PAIR) 0 2)
+  ;;(define-fixed-mutator 'SET-CDR!  (machine-tag 'PAIR) 1 2)
   (define-fixed-mutator %set-car!  (machine-tag 'PAIR) 0 2)
   (define-fixed-mutator %set-cdr!  (machine-tag 'PAIR) 1 2)
   (define-fixed-mutator 'SET-STRING-LENGTH! (machine-tag 'STRING) 1 2))
@@ -4043,7 +4057,8 @@ MIT in each case. |#
 				   ,value)))))))))))
   ;(define-indexed-mutator 'VECTOR-SET!  (machine-tag 'VECTOR) 1 3)
   (define-indexed-mutator %vector-set!  (machine-tag 'VECTOR) 1 3)
-  (define-indexed-mutator '%RECORD-SET! (machine-tag 'RECORD) 1 3)
+  ;(define-indexed-mutator '%RECORD-SET! (machine-tag 'RECORD) 1 3)
+  (define-indexed-mutator %%RECORD-SET! (machine-tag 'RECORD) 1 3)
   (define-indexed-mutator 'PRIMITIVE-OBJECT-SET! false 0 3))
 
 (define-open-coder/stmt %heap-closure-set! 4
@@ -4104,10 +4119,12 @@ MIT in each case. |#
 			  (rtlgen/emit!/1
 			   `(ASSIGN (BYTE-OFFSET ,ptr (MACHINE-CONSTANT ,off))
 				    ,byte)))))))))))
-  (define-string-mutation 'VECTOR-8B-SET!)
-  (define-string-mutation 'STRING-SET!))
+  ;(define-string-mutation 'VECTOR-8B-SET!)
+  ;(define-string-mutation 'STRING-SET!)
+  (define-string-mutation %VECTOR-8B-SET!)
+  (define-string-mutation %STRING-SET!))
 
-(define-open-coder/stmt 'FLOATING-VECTOR-SET! 3
+(define-open-coder/stmt %FLOATING-VECTOR-SET! 3 ;'FLOATING-VECTOR-SET! 3
   (let ((factor (rtlgen/fp->words 1)))
     (if (= factor 1)
 	(lambda (state rands open-coder)
