@@ -131,7 +131,7 @@ struct obstack		/* control current object in current chunk */
   char	*object_base;		/* address of object we are building */
   char	*next_free;		/* where to add next char to current object */
   char	*chunk_limit;		/* address of char after current chunk */
-  int	temp;			/* Temporary for some macros.  */
+  long	temp;			/* Temporary for some macros.  */
   int   alignment_mask;		/* Mask of alignment for each object. */
 				 /* User's fcn to allocate a chunk.  */
   struct _obstack_chunk * EXFUN ((*chunkfun), (long));
