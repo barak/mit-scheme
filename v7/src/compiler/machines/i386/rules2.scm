@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules2.scm,v 1.6 1993/07/16 19:27:54 gjr Exp $
+$Id: rules2.scm,v 1.7 1993/08/26 18:00:26 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -92,6 +92,20 @@ MIT in each case. |#
   (set-equal-branches!)
   (LAP (CMP W ,(offset->reference! expression)
 	    (&U ,(non-pointer->literal constant)))))
+
+(define-rule predicate
+  (EQ-TEST (CONSTANT (? constant-1)) (CONSTANT (? constant-2)))
+  (let ((always-jump
+	 (lambda (label)
+	   (LAP (JMP (@PCR ,label)))))
+	(always-fall-through
+	 (lambda (label)
+	   label			; ignored
+	   (LAP))))
+    (if (eq? constant-1 constant-2)
+	(set-current-branches! always-jump always-fall-through)
+	(set-current-branches! always-fall-through always-jump)))
+  (LAP))
 
 (define-rule predicate
   (EQ-TEST (CONS-POINTER (MACHINE-CONSTANT (? type))
