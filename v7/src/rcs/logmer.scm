@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: logmer.scm,v 1.22 2000/03/30 05:04:13 cph Exp $
+$Id: logmer.scm,v 1.23 2000/03/30 23:01:37 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -66,7 +66,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		    (call-with-output-file output-file
 		      (lambda (port)
 			(if changelog?
-			    (format-changelog entries changelog-map port)
+			    (format-changelog entries
+					      (if (pair? changelog?)
+						  changelog?
+						  '())
+					      changelog-map
+					      port)
 			    (format-rcs.log entries port)))))))
 	      (begin
 		(write-string " log is up to date" port)
@@ -110,7 +115,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; ChangeLog format
 
-(define (format-changelog entries changelog-map port)
+(define (format-changelog entries options changelog-map port)
   (let ((groups
 	 (group-entries-by-author&date
 	  (list-transform-negative entries
@@ -140,8 +145,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (write-char #\tab port)
 	      (write-string "* " port)
 	      (let ((filenames
-		     (remove-duplicate-strings
-		      (sort (map cdr entries) string<?))))
+		     (if (memq 'SHOW-VERSIONS options)
+			 (map (lambda (entry)
+				(string-append (cdr entry)
+					       "["
+					       (delta/number (car entry))
+					       "]"))
+			      (sort-changelog-entries-by-revision entries))
+			 (remove-duplicate-strings
+			  (sort (map cdr entries) string<?)))))
 		(write-string (car filenames) port)
 		(let loop
 		    ((filenames (cdr filenames))
@@ -232,17 +244,43 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (lambda (entries)
 	     (let loop
 		 ((entries (cdr entries))
-		  (winner (date/universal (delta/date (caar entries)))))
+		  (winner
+		   (decoded-time->universal-time
+		    (date/decoded (delta/date (caar entries))))))
 	       (if (pair? entries)
 		   (loop (cdr entries)
 			 (let ((this
-				(date/universal (delta/date (caar entries)))))
+				(decoded-time->universal-time
+				 (date/decoded (delta/date (caar entries))))))
 			   (if (< this winner)
 			       this
 			       winner)))
 		   winner)))))
       (lambda (g1 g2)
 	(> (find-oldest g1) (find-oldest g2))))))
+
+(define (sort-changelog-entries-by-revision entries)
+  (sort entries
+    (lambda (x y)
+      (or (string<? (cdr x) (cdr y))
+	  (and (string=? (cdr x) (cdr y))
+	       (revision<? (delta/number (car y))
+			   (delta/number (car x))))))))
+
+(define (revision<? x y)
+  (let loop ((x (string->revision x)) (y (string->revision y)))
+    (if (pair? x)
+	(and (pair? y)
+	     (or (< (car x) (car y))
+		 (and (= (car x) (car y))
+		      (loop (cdr x) (cdr y)))))
+	(pair? y))))
+
+(define (string->revision x)
+  (map (lambda (s)
+	 (or (string->number s)
+	     (error "Malformed revision string:" x)))
+       (burst-string x #\. #f)))
 
 (define (group-entries-by-author&date entries)
   (group-entries entries

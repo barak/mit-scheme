@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mklogs.scm,v 1.17 2000/03/21 17:40:33 cph Exp $
+$Id: mklogs.scm,v 1.18 2000/03/30 23:01:44 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -44,7 +44,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 ("thanos" "Thanos Siapas")
 	 ("ziggy" "Michael R. Blair"))))
   (for-each (lambda (directory)
-	      (rcs-directory-log directory #f #t changelog-map))
+	      (rcs-directory-log directory #f '(SHOW-VERSIONS) changelog-map))
 	    '("/scheme/v7/src"
 	      "/scheme/etc"
 	      "/scheme/documentation/ref-manual"
