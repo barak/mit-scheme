@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.10 1991/02/19 22:45:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.11 1991/03/06 18:39:26 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -43,19 +43,22 @@ MIT in each case. |#
 	 (system-library-directory-pathname (string->pathname "options"))))
     (if (not entry)
 	(error "Unknown option name" name))
-    (for-each
-     (lambda (descriptor)
-       (let ((environment
-	      (package/environment (find-package (car descriptor)))))
-	 (for-each (lambda (filename)
-		     (load (merge-pathnames (string->pathname filename)
-					    directory)
-			   environment
-			   syntax-table/system-internal
-			   true))
-		   (cddr descriptor))
-	 (eval (cadr descriptor) environment)))
-     (cdr entry))
+    (if (not (memq name loaded-options))
+	(begin
+	  (for-each
+	   (lambda (descriptor)
+	     (let ((environment
+		    (package/environment (find-package (car descriptor)))))
+	       (for-each (lambda (filename)
+			   (load (merge-pathnames (string->pathname filename)
+						  directory)
+				 environment
+				 syntax-table/system-internal
+				 true))
+			 (cddr descriptor))
+	       (eval (cadr descriptor) environment)))
+	   (cdr entry))
+	  (set! loaded-options (cons name loaded-options))))
     name))
 
 (define options
@@ -63,3 +66,6 @@ MIT in each case. |#
     (FORMAT ((RUNTIME FORMAT) (INITIALIZE-PACKAGE!) "format"))
     (HASH-TABLE ((RUNTIME HASH-TABLE) (INITIALIZE-PACKAGE!) "hashtb"))
     (SUBPROCESS ((RUNTIME SUBPROCESS) (INITIALIZE-PACKAGE!) "process"))))
+
+(define loaded-options
+  '())
