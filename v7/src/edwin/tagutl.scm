@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.39 1991/05/02 01:14:40 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.40 1991/05/04 20:14:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -227,7 +227,8 @@ See documentation of variable tags-file-name."
       (list source
 	    (prompt-for-string
 	     (string-append "Tags query replace " source " with")
-	     false)
+	     false
+	     'NULL-DEFAULT)
 	    (command-argument))))
   (lambda (source target delimited)
     (set! tags-loop-continuation

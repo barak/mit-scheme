@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.69 1991/05/02 01:14:17 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.70 1991/05/04 20:14:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -54,7 +54,9 @@
 (define (replace-string-arguments name)
   (let ((source (prompt-for-string name false)))
     (list source
-	  (prompt-for-string (string-append name " " source " with") false)
+	  (prompt-for-string (string-append name " " source " with")
+			     false
+			     'NULL-DEFAULT)
 	  (command-argument))))
 
  (define-command replace-string
