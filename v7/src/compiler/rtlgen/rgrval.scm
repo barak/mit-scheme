@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rgrval.scm,v 4.20 1992/11/18 00:47:09 gjr Exp $
+$Id: rgrval.scm,v 4.21 1993/07/01 03:27:12 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -276,9 +276,8 @@ MIT in each case. |#
 		(closure-environment-adjustment nentries entry))))
 	  (if (back-end:= distance 0)
 	      expression
-	      ;; This is cheaper than the obvious thing with object->address,
-	      ;; etc.
-	      (rtl:make-byte-offset-address expression distance)))))))
+	      (rtl:bump-closure expression
+				(rtl:make-machine-constant distance))))))))
 
 (define (make-non-trivial-closure-cons procedure block**)
   (let* ((block (procedure-closing-block procedure))

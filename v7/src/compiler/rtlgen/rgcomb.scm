@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.17 1992/04/01 19:08:50 arthur Exp $
+$Id: rgcomb.scm,v 4.18 1993/07/01 03:27:04 gjr Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -133,13 +133,24 @@ MIT in each case. |#
 	call-code
 	(let ((locative
 	       (rtl:make-offset (rtl:make-fetch (interpreter-stack-pointer))
-				(stack->memory-offset 0))))
+				(rtl:make-machine-constant
+				 (stack->memory-offset 0)))))
 	  (scfg*scfg->scfg!
 	   (rtl:make-assignment
 	    locative
-	    (rtl:make-byte-offset-address (rtl:make-fetch locative)
-					  distance))
+	    (rtl:bump-closure (rtl:make-fetch locative)
+			      (rtl:make-machine-constant distance)))
 	   call-code)))))
+
+(define (rtl:bump-closure closure distance)
+  #|
+  ;; We want this, but it doesn't type check.
+  ;; It is turned into this by a rewrite rule.
+  (rtl:make-byte-offset-address closure distance)
+  |#
+  (rtl:make-typed-cons:procedure
+   (rtl:make-byte-offset-address (rtl:make-object->address closure)
+				 distance)))
 
 (define (invocation/apply model operator frame-size continuation prefix)
   model operator			; ignored
