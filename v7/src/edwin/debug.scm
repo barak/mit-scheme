@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.24 1993/10/26 01:12:23 cph Exp $
+;;;	$Id: debug.scm,v 1.25 1993/10/26 21:22:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -163,18 +163,10 @@
 	  (buffer-put! buffer 'BROWSER browser)
 	  browser)))))
 
-;;; Delete the screen if :  it is the debugger, not the env browser
-;;;                        there is more than one active screen
-;;;                        there is only one debugger buffer
-
 (define (kill-browser-buffer buffer)
   (let ((browser (buffer-get buffer 'BROWSER)))
     (if browser
-	(for-each kill-buffer (browser/buffers browser)))
-    (if (and (equal? (browser/name browser) "*debug*")
-	     (> (length (screen-list)) 1)
-	     (= (length (find-debugger-buffers)) 1))
-	(delete-screen! (selected-screen)))))
+	(for-each kill-buffer (browser/buffers browser)))))
 
 (define (buffer-browser buffer)
   (let ((browser (buffer-get buffer 'BROWSER)))
@@ -223,6 +215,16 @@
 			   (delq! buffer (browser/buffers browser)))))
   (set-browser/buffers! browser (cons buffer (browser/buffers browser)))
   (buffer-put! buffer 'ASSOCIATED-WITH-BROWSER browser))
+
+(define (browser/new-screen browser)
+  (let ((pair (1d-table/get (browser/properties browser) 'NEW-SCREEN #f)))
+    (and pair
+	 (weak-car pair))))
+
+(define (set-browser/new-screen! browser screen)
+  (1d-table/put! (browser/properties browser)
+		 'NEW-SCREEN
+		 (weak-cons screen #f)))
 
 ;;;; Browser Commands
 
@@ -338,7 +340,7 @@
 	      (dehigh-between mark (line-end mark 0))
 	      (insert-char #\space (mark1+ mark))
 	      (delete-right-char mark)))))))
-
+
 ;;; For any frame with an environment (excluding the mark frame) an
 ;;; inferior repl is started below the other descriptions.
 
@@ -386,54 +388,58 @@
 		 (append-message "done")
 		 buffer))))))
 
-;;;Main addition deals with possibility that the debugger was
-;;;called by a break procure, makes sure to restart the thread
-
 (define-command browser-quit
   "Exit the current browser, deleting its buffer."
   ()
   (lambda ()
     (let ((buffer (current-buffer)))
-      (let ((window (current-window))
-	    (buffers (browser/buffers (buffer-browser buffer))))
-	(for-each (lambda (window*)
-		    (if (and (not (eq? window* window))
-			     (not (typein-window? window*))
-			     (memq (window-buffer window*) buffers))
-			(window-delete! window*)))
-		  (screen-window-list (selected-screen))))
-      (let ((browser (buffer-get buffer 'ASSOCIATED-WITH-BROWSER)))
+      (let ((browser (buffer-browser buffer))
+	    (screen (selected-screen)))
+	;; Delete all windows that are currently showing buffers that
+	;; are associated with this browser.
+	(let ((window (screen-selected-window screen))
+	      (buffers (browser/buffers browser)))
+	  (for-each (lambda (window*)
+		      (if (and (not (eq? window* window))
+			       (not (typein-window? window*))
+			       (memq (window-buffer window*) buffers))
+			  (window-delete! window*)))
+		    (screen-window-list screen)))
+	;; If the browser was popped up in a new screen, and that
+	;; screen is the current screen, delete it too.
+	(let ((new-screen (browser/new-screen browser)))
+	  (if (and (eq? new-screen screen)
+		   (other-screen screen #t))
+	      (delete-screen! screen))))
+      ;; Kill the buffer, then maybe select another browser.
+      (let ((browser (get-buffer-browser buffer 'ASSOCIATED-WITH-BROWSER)))
 	(kill-buffer-interactive buffer)
-	(if (maybe-select-browser browser)
-	    (let ((buffer (current-buffer)))
-	      (if (maybe-select-browser (buffer-get buffer 'BROWSER))
-		  (maybe-select-browser
-		   (buffer-get buffer 'ASSOCIATED-WITH-BROWSER))))))
+	(let ((browser
+	       (or browser
+		   (let ((buffer (current-buffer)))
+		     (or (get-buffer-browser buffer 'BROWSER)
+			 (get-buffer-browser buffer
+					     'ASSOCIATED-WITH-BROWSER))))))
+	  (if browser
+	      (begin
+		(select-buffer (browser/buffer browser))
+		((ref-command browser-select-line))))))
       (clear-current-message!)
-      (let ((cont (maybe-get-continuation buffer))
-	    (thread (buffer-get buffer 'THREAD)))
-	(if (and thread cont)
-	    (if (eq? thread editor-thread)
-		(signal-thread-event editor-thread
-				     (lambda () (cont unspecific)))
-		(restart-thread thread #f #f)))))))
+      (maybe-restart-buffer-thread buffer))))
 
-;;;Just gets the current browser continuation if it exists
-(define (maybe-get-continuation buffer)
-  (let* ((browser (buffer-get buffer 'BROWSER))
-	 (object (browser/object browser)))
-    (if (continuation? object)
-	object
-	#f)))
-
-(define (maybe-select-browser browser)
-  (if (and (browser? browser)
-	   (buffer-alive? (browser/buffer browser)))
-      (begin
-	(select-buffer (browser/buffer browser))
-	((ref-command browser-select-line))
-	false)
-      true))
+(define (get-buffer-browser buffer key)
+  (let ((browser (buffer-get buffer key)))
+    (and (browser? browser)
+	 (buffer-alive? (browser/buffer browser))
+	 browser)))
+
+(define (maybe-restart-buffer-thread buffer)
+  (let ((cont (maybe-get-continuation buffer))
+	(thread (buffer-get buffer 'THREAD)))
+    (if (and thread cont)
+	(if (eq? thread editor-thread)
+	    (signal-thread-event editor-thread (lambda () (cont unspecific)))
+	    (restart-thread thread #f #f)))))
 
 ;;;addition for when debugger is called from a break
 ;;;should quit the debugger, and give the continuation
@@ -448,9 +454,9 @@
 	   (thread (buffer-get buffer 'THREAD)))
       (if (thread? thread)
 	  (let ((value (prompt-for-expression-value
-			"Please enter a value to continue with:  "))
+			"Please enter a value to continue with"))
 		(cont (maybe-get-continuation buffer)))
-	    (buffer-put! buffer 'THREAD #f)
+	    (buffer-remove! buffer 'THREAD)
 	    ((ref-command browser-quit))
 	    (cond ((eq? thread editor-thread)
 		   (signal-thread-event editor-thread (lambda ()
@@ -460,6 +466,11 @@
 		   (restart-thread thread #t (lambda ()
 					       (cont value))))))
 	  (invoke-restarts #f)))))
+
+(define (maybe-get-continuation buffer)
+  (let ((object (browser/object (buffer-get buffer 'BROWSER))))
+    (and (continuation? object)
+	 object)))
 
 ;;;Method for invoking the standard restarts from within the
 ;;;debugger.
@@ -908,51 +919,11 @@ Set this variable to #F to disable this abbreviation."
       #T
       #F)
   boolean-or-ask?)
-
-(define-variable debugger-prompt-geometry?
-  "#T means always prompt for screen geometry.
-#F means use default screen geometry"
-  #F
-  boolean?)
 
-(define-variable debugger-sticky-prompt
-  "#T means don't change variable debugger-prompt-geometry?.
-#F means change debugger-prompt-geometry? if true after the first time."
-  #F
-  boolean?)
-
 (define-variable debugger-hide-system-code?
   "True means don't show subproblems created by the runtime system."
   #T
   boolean?)
-
-(define-variable new-screen-geometry
-  "Geometry string for screens created by the debugger.
-False means use default."
-  "80x75-0+0"
-  (lambda (object)
-    (or (not object)
-	(string? object))))
-
-(define-variable debugger-debug-evaluations?
-  "True means evaluation errors in a debugger buffer start new debuggers."
-  #F
-  boolean?); *not currently used
-
-(define-variable debugger-quit-on-restart?
-  "True means quit debugger when executing a \"restart\" command."
-  #T
-  boolean?)
-
-(define-variable subexpression-start-marker
-  "Subexpressions are preceeded by this value."
-  "#"
-  string?)
-
-(define-variable subexpression-end-marker
-  "Subexpressions are followed by this value."
-  "#"
-  string?)
 
 (define-variable debugger-show-frames?
   "If true show the environment frames in the description buffer.
@@ -961,27 +932,6 @@ If false show the bindings without frames."
   boolean?)
 
 ;;;; Pred's
-
-;;;Used to check if the debugger has been started from
-;;;within the debugger, a bit of a kludge
-(define (debugger-evaluation-buffer? buffer-name)
-  (let ((debug-pattern
-	 " \\*debug\\*-[0-9]+")
-	(where-pattern
-	 " \\*where\\*-[0-9]+"))
-    (or (re-match-string-forward
-	 (re-compile-pattern debug-pattern false) false false buffer-name)
-	(re-match-string-forward
-	 (re-compile-pattern where-pattern false) false false buffer-name))))
-
-;;;Makes sure that the prompted geometry is legal
-(define (geometry? geometry)
-  (let ((geometry-pattern
-	 "[0-9]+x[0-9]+\\(-[0-9]+\\|+[0-9]+\\|\\)\\(-[0-9]+\\|+[0-9]+\\|\\)"))
-    (re-match-string-forward  (re-compile-pattern geometry-pattern false)
-			      false
-			      false
-			      geometry)))
 
 ;;;Determines if a frame is marked
 (define (system-frame? stack-frame)
@@ -1029,112 +979,120 @@ The buffer below describes the current subproblem or reduction.
 
 ;;;; Debugger Entry
 
-;;;many changes
-;;;see comments after each change
-(define (continuation-browser-buffer object #!optional thread)
-  ;;**NOTE: if a thread is passed that means it is being called by a breakpoint
-  (let ((in-debugger?
-	 (debugger-evaluation-buffer? (buffer-name (current-buffer))))
-	(break-thread
-	 (if (default-object? thread)
-	     #f
-	     thread)))
-    ;;the above sets the break-thread
-    (set! value? #f)
-    (let ((buffers (find-debugger-buffers)))
-      (if (and (not (null? buffers))
-	       (null? (cdr buffers))
-	       (if (eq? 'ASK (ref-variable debugger-one-at-a-time?))
-		   (prompt-for-confirmation?
-		    "Another debugger buffer exists.  Delete it")
-		   (ref-variable debugger-one-at-a-time?)))
-	  (fluid-let ((find-debugger-buffers (lambda () '()))); kludge, works
-	    ;;otherwise, killing the buffer will delete the screen also
-	    (kill-buffer (car buffers)))))
-    (let ((debug-screen (if in-debugger?
-			    (selected-screen)
-			    (make-debug-screen))))
-      ;;sets up the debug screen
-      (let ((browser
-	     (make-browser "*debug*"
-			   (ref-mode-object continuation-browser)
-			   object))
-	    (blines
-	     (continuation->blines
-	      (cond ((continuation? object)
-		     object)
-		    ((condition? object)
-		     (condition/continuation object))
-		    (else
-		     (error:wrong-type-argument object
-						"condition or continuation"
-						continuation-browser-buffer)))
-	      (ref-variable debugger-max-subproblems))))
-	(let ((buffer (browser/buffer browser)))
-	  (let ((mark (buffer-end buffer)))
-	    (with-buffer-open mark
-	      (lambda ()
-		(call-with-output-mark
-		 mark
-		 (lambda (port)
-		   (if (ref-variable debugger-show-help-message?)
-		       (write-string debugger-help-message port))
-		   (newline port)
-		   (if (condition? object)
-		       (begin
-			 (write-string
-			  "The *ERROR* that started the debugger is:"
-			  port)
-			 (newline port)
-			 (newline port)
-			 (write-string "  " port)
-			 (with-output-highlighted port
-			   (lambda ()
-			     (write-condition-report object port)))
-			 (newline port)))
-		   (newline port))))))
-	  (insert-blines browser 0 blines)
-	  (buffer-put! buffer 'THREAD break-thread) ;  adds thread
-	  (select-screen debug-screen)
-	  (select-window (screen-window0 debug-screen))
-	  (if (null? blines)
-	      (set-buffer-point! buffer (buffer-end buffer))
-	      (select-bline (car blines)))
-	  buffer)))))
+(define (select-continuation-browser-buffer object #!optional thread)
+  (set! value? #f)
+  (let ((buffers (find-debugger-buffers)))
+    (if (and (not (null? buffers))
+	     (null? (cdr buffers))
+	     (if (eq? 'ASK (ref-variable debugger-one-at-a-time?))
+		 (prompt-for-confirmation?
+		  "Another debugger buffer exists.  Delete it")
+		 (ref-variable debugger-one-at-a-time?)))
+	(kill-buffer (car buffers))))
+  (let ((buffer (continuation-browser-buffer object)))
+    (let ((thread (and (not (default-object? thread)) thread)))
+      (if thread
+	  (buffer-put! buffer 'THREAD thread)))
+    (let ((screen (make-debug-screen buffer)))
+      (if screen
+	  (let ((window (screen-window0 screen)))
+	    (select-buffer-in-window buffer window #t)
+	    (select-window window))
+	  (select-buffer buffer))))
+  ((ref-command browser-select-line)))
+
+(define (make-debug-screen buffer)
+  (and (multiple-screens?)
+       (let ((new-screen?
+	      (ref-variable debugger-start-new-screen? buffer)))
+	 (if (eq? new-screen? 'ASK)
+	     (prompt-for-confirmation? "Start debugger in new screen")
+	     new-screen?))
+       (let ((screen
+	      (apply make-screen buffer (make-debug-screen-args buffer))))
+	 (set-browser/new-screen! (buffer-browser buffer) screen)
+	 screen)))
+
+(define (make-debug-screen-args buffer)
+  (case (display-type/name (current-display-type))
+    ((X)
+     (list (or new-screen-geometry
+	       (let ((geometry
+		      (prompt-for-string "Please enter a geometry"
+					 default-screen-geometry)))
+		 (if (geometry? geometry)
+		     (begin
+		       (set! new-screen-geometry geometry)
+		       geometry)
+		     (begin
+		       (message "Invalid geometry!  Using default.")
+		       default-screen-geometry))))))
+    (else '())))
+
+(define (geometry? geometry)
+  (let ((geometry-pattern
+	 "[0-9]+x[0-9]+\\(-[0-9]+\\|+[0-9]+\\|\\)\\(-[0-9]+\\|+[0-9]+\\|\\)"))
+    (re-match-string-forward  (re-compile-pattern geometry-pattern false)
+			      false
+			      false
+			      geometry)))
+
+(define default-screen-geometry "80x75-0+0")
+(define new-screen-geometry default-screen-geometry)
+
+(define (continuation-browser-buffer object)
+  (let ((browser
+	 (make-browser "*debug*"
+		       (ref-mode-object continuation-browser)
+		       object))
+	(blines
+	 (continuation->blines
+	  (cond ((continuation? object)
+		 object)
+		((condition? object)
+		 (condition/continuation object))
+		(else
+		 (error:wrong-type-argument object
+					    "condition or continuation"
+					    'CONTINUATION-BROWSER-BUFFER)))
+	  (ref-variable debugger-max-subproblems))))
+    (let ((buffer (browser/buffer browser)))
+      (let ((mark (buffer-end buffer)))
+	(with-buffer-open mark
+	  (lambda ()
+	    (call-with-output-mark mark
+	      (lambda (port)
+		(if (ref-variable debugger-show-help-message?)
+		    (write-string debugger-help-message port))
+		(newline port)
+		(if (condition? object)
+		    (begin
+		      (write-string "The " port)
+		      (write-string (if (condition/error? object)
+					"*ERROR*"
+					"condition")
+				    port)
+		      (write-string " that started the debugger is:" port)
+		      (newline port)
+		      (newline port)
+		      (write-string "  " port)
+		      (with-output-highlighted port
+			(lambda ()
+			  (write-condition-report object port)))
+		      (newline port)))
+		(newline port))))))
+      (insert-blines browser 0 blines)
+      (set-buffer-point! buffer
+			 (if (null? blines)
+			     (buffer-end buffer)
+			     (bline/start-mark (car blines))))
+      buffer)))
 
 (define (find-debugger-buffers)
   (list-transform-positive (buffer-list)
     (let ((debugger-mode (ref-mode-object continuation-browser)))
       (lambda (buffer)
 	(eq? (buffer-major-mode buffer) debugger-mode)))))
-
-;;;Determines if necessary to make a new screen and if so makes it
-(define (make-debug-screen)
-  (cond ((> (length (screen-list)) 1)
-	 (screen1+ (selected-screen)))
-	((and (multiple-screens?)
-	      (if (eq? (ref-variable debugger-start-new-screen?) 'ASK)
-		  (prompt-for-confirmation? "Start new Xwindow?")
-		  (ref-variable debugger-start-new-screen?)))
-	 (let* ((def-geometry (ref-variable new-screen-geometry))
-		(geometry
-		 (if (ref-variable debugger-prompt-geometry?)
-		     (let ((prompted-geometry
-			    (prompt-for-string
-			     "Please enter a geometry" def-geometry)))
-		       (if (geometry? prompted-geometry)
-			   (begin
-			     (if (not (ref-variable debugger-sticky-prompt))
-				 (set-variable! debugger-prompt-geometry? #f))
-			     (set-variable! new-screen-geometry
-					    prompted-geometry)
-			     prompted-geometry)
-			   (begin
-			     (message "Invalid geometry! Using default")
-			     def-geometry)))
-		     def-geometry)))
-	   (make-screen (current-buffer) geometry)))
-	(else (selected-screen))))
 
 ;;;Procedure that actually calls the cont-browser with the continuation
 ;;;and stops the thread when a break-pt is called
@@ -1150,8 +1108,7 @@ The buffer below describes the current subproblem or reduction.
 	    (let ((thread (current-thread)))
 	      (call-with-current-continuation
 	       (lambda (cont)
-		 (select-buffer
-		  (continuation-browser-buffer cont thread))
+		 (select-continuation-browser-buffer cont thread)
 		 (if (eq? thread editor-thread)
 		     (abort-current-command)
 		     (stop-current-thread))
@@ -1175,9 +1132,6 @@ The buffer below describes the current subproblem or reduction.
     (if val
 	bkvalue
 	(apply proc args))))
-
-(define (select-continuation-browser-buffer object)
-  (select-buffer (continuation-browser-buffer object)))
 
 (define-command browse-continuation
   "Invoke the continuation-browser on CONTINUATION."
@@ -1221,20 +1175,16 @@ Commands:
      Move the cursor up the list of subproblems and reductions and
      display info in the description buffer.
 
-`e'
-     Show the environment structure.
+`e'  Show the environment structure.
 
-`q'
-     Quit the debugger, destroying its window.
+`q'  Quit the debugger, destroying its window.
 
-`p'
-     Invoke the standard restarts.
+`p'  Invoke the standard restarts.
 
 `SPC'
      Display info on current item in the description buffer.
 
-`?'
-     Display help information.
+`?'  Display help information.
 
    Each line beginning with `S' represents either a subproblem or stack
 frame.  A subproblem line may be followed by one or more indented lines
@@ -1282,8 +1232,7 @@ information is presented.  These buffers are given names beginning with
 spaces so that they do not appear in the buffer list; they are
 automatically deleted when you quit the debugger.  If you wish to keep
 one of these buffers, simply rename it using `M-x rename-buffer': once
-it has been renamed, it will not be deleted automatically."
-  )
+it has been renamed, it will not be deleted automatically.")
 
 (define-key 'continuation-browser #\p 'quit-with-restart-value)
 (if (equal? microcode-id/operating-system-name "unix")
@@ -1462,9 +1411,12 @@ it has been renamed, it will not be deleted automatically."
 		   (cons subexpression
 			 (unparser-literal/make
 			  (string-append
-			   (ref-variable subexpression-start-marker)
+			   subexpression-start-marker
 			   sub
-			   (ref-variable subexpression-end-marker)))))))))))
+			   subexpression-end-marker))))))))))
+
+(define subexpression-start-marker "#")
+(define subexpression-end-marker "#")
 
 (define-structure (unparser-literal
 		   (conc-name unparser-literal/)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.140 1993/10/15 12:50:15 cph Exp $
+$Id: edwin.pkg,v 1.141 1993/10/26 21:23:00 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -789,7 +789,6 @@ MIT in each case. |#
 	  with-break-on
 	  call-with-break)
   (export (edwin)
-	  continuation-browser-buffer
 	  debug-scheme-error
 	  edwin-command$browse-continuation
 	  edwin-command$browse-environment
@@ -802,7 +801,6 @@ MIT in each case. |#
 	  edwin-mode$continuation-browser
 	  edwin-mode$environment-browser
 	  edwin-variable$debugger-confirm-return?
-	  edwin-variable$debugger-debug-evaluations?
 	  edwin-variable$debugger-expand-reductions?
 	  edwin-variable$debugger-hide-system-code?
 	  edwin-variable$debugger-max-subproblems
@@ -812,10 +810,10 @@ MIT in each case. |#
 	  edwin-variable$debugger-quit-on-return?
 	  edwin-variable$debugger-show-help-message?
 	  edwin-variable$debugger-split-window?
+	  edwin-variable$debugger-start-new-screen?
 	  edwin-variable$debugger-start-on-error?
 	  edwin-variable$debugger-verbose-mode?
-	  edwin-variable$environment-browser-package-limit
-	  environment-browser-buffer)
+	  edwin-variable$environment-package-limit)
   (import (runtime continuation-parser)
 	  stack-frame/reductions)
   (import (runtime debugger)
