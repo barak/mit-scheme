@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.28 1989/02/24 09:28:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.29 1989/02/28 18:35:03 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -43,6 +43,7 @@ MIT in each case. |#
 	 "global"
 	 "lambdx"
 	 "queue"
+	 "record"
 	 "sfile"
 	 "string"
 	 "udata"
