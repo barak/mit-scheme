@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.39 1987/11/17 08:19:44 jinx Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.40 1987/12/13 22:47:00 cph Rel $
 
 (declare (usual-integrations))
 
@@ -517,27 +517,31 @@
 
 (vector-set! (get-fixed-objects-vector)
 	     22 ;(fixed-objects-vector-slot 'MICROCODE-TERMINATIONS-VECTOR)
-	     #(HALT                              ;00
-	       DISK-RESTORE                      ;01
-	       BROKEN-HEART                      ;02
-	       NON-POINTER-RELOCATION            ;03
-	       BAD-ROOT                          ;04
-	       NON-EXISTENT-CONTINUATION         ;05
-	       BAD-STACK                         ;06
-	       STACK-OVERFLOW                    ;07
-	       STACK-ALLOCATION-FAILED           ;08
-	       NO-ERROR-HANDLER                  ;09
-	       NO-INTERRUPT-HANDLER              ;0A
-	       UNIMPLEMENTED-CONTINUATION        ;0B
-	       EXIT                              ;0C
-	       BAD-PRIMITIVE-DURING-ERROR        ;0D
-	       EOF                               ;0E
-	       BAD-PRIMITIVE                     ;0F
-	       TERMINATION-HANDLER		 ;10
-	       END-OF-CONTINUATION               ;11
-	       INVALID-TYPE-CODE		 ;12
-	       COMPILER-DEATH			 ;13
-	       GC-OUT-OF-SPACE			 ;14
+	     #(HALT                             ;00
+	       DISK-RESTORE                     ;01
+	       BROKEN-HEART                     ;02
+	       NON-POINTER-RELOCATION           ;03
+	       BAD-ROOT                         ;04
+	       NON-EXISTENT-CONTINUATION        ;05
+	       BAD-STACK                        ;06
+	       STACK-OVERFLOW                   ;07
+	       STACK-ALLOCATION-FAILED          ;08
+	       NO-ERROR-HANDLER                 ;09
+	       NO-INTERRUPT-HANDLER             ;0A
+	       UNIMPLEMENTED-CONTINUATION       ;0B
+	       EXIT                             ;0C
+	       BAD-PRIMITIVE-DURING-ERROR       ;0D
+	       EOF                              ;0E
+	       BAD-PRIMITIVE                    ;0F
+	       TERMINATION-HANDLER		;10
+	       END-OF-CONTINUATION              ;11
+	       INVALID-TYPE-CODE		;12
+	       COMPILER-DEATH			;13
+	       GC-OUT-OF-SPACE			;14
+	       NO-SPACE				;15
+	       SIGNAL				;16
+	       TOUCH				;17
+	       SAVE-AND-EXIT			;18
 	       ))
 
 (vector-set! (get-fixed-objects-vector)
@@ -562,4 +566,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.39 1987/11/17 08:19:44 jinx Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.40 1987/12/13 22:47:00 cph Rel $"
