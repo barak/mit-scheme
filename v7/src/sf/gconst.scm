@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 4.24 2001/06/15 20:36:18 cph Exp $
+$Id: gconst.scm,v 4.25 2001/09/25 05:10:59 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -37,7 +37,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     %RECORD-SET!
     %RECORD?
     *THE-NON-PRINTING-OBJECT*
-    ASCII->CHAR
     BIT-STRING->UNSIGNED-INTEGER
     BIT-STRING-ALLOCATE
     BIT-STRING-AND!
@@ -58,18 +57,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     BIT-SUBSTRING-MOVE-RIGHT!
     CAR
     CDR
-    CELL-CONTENTS
-    CELL?
-    CHAR->ASCII
     CHAR->INTEGER
-    CHAR-ASCII?
-    CHAR-BITS
     CHAR-BITS-LIMIT
-    CHAR-CODE
     CHAR-CODE-LIMIT
-    CHAR-DOWNCASE
     CHAR-INTEGER-LIMIT
-    CHAR-UPCASE
     CHAR:NEWLINE
     CHAR?
     COMPILED-CODE-ADDRESS->BLOCK
@@ -178,7 +169,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     LAMBDA-TAG:LET
     LAMBDA-TAG:MAKE-ENVIRONMENT
     LAMBDA-TAG:UNNAMED
-    LENGTH
     LEXICAL-ASSIGNMENT
     LEXICAL-REFERENCE
     LEXICAL-UNASSIGNED?
@@ -186,11 +176,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     LEXICAL-UNREFERENCEABLE?
     LIST->VECTOR
     LOCAL-ASSIGNMENT
-    MAKE-BIT-STRING
-    MAKE-CELL
-    MAKE-CHAR
     MAKE-NON-POINTER-OBJECT
-    ;; MODULO ; expanded to primitive.  Global defn. is not.
     NOT
     NULL?
     OBJECT-CONSTANT?
@@ -202,17 +188,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     OBJECT-TYPE?
     PAIR?
     PRIMITIVE-PROCEDURE-ARITY
-    PROCESS-TIME-CLOCK
-    ;; QUOTIENT ; expanded to primitive.  Global defn. is not.
-    READ-BITS!
-    REAL-TIME-CLOCK
-    ;; REMAINDER ; expanded to primitive.  Global defn. is not.
     SET-CAR!
     SET-CDR!
-    SET-CELL-CONTENTS!
     SET-INTERRUPT-ENABLES!
     SET-STRING-LENGTH!
-    ;; STRING->SYMBOL ; Runtime version copies the string
     STRING-ALLOCATE
     STRING-HASH
     STRING-HASH-MOD
@@ -221,15 +200,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     STRING-REF
     STRING-SET!
     STRING?
-    SUBSTRING-CI=?
-    SUBSTRING-DOWNCASE!
     SUBSTRING-MATCH-BACKWARD
-    SUBSTRING-MATCH-BACKWARD-CI
     SUBSTRING-MATCH-FORWARD
-    SUBSTRING-MATCH-FORWARD-CI
     SUBSTRING-MOVE-LEFT!
     SUBSTRING-MOVE-RIGHT!
-    SUBSTRING-UPCASE!
     SUBSTRING<?
     SUBSTRING=?
     SUBVECTOR->LIST
@@ -261,11 +235,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     UNSIGNED-INTEGER->BIT-STRING
     UNSPECIFIC
     VECTOR
-    VECTOR-8B-FILL!
-    VECTOR-8B-FIND-NEXT-CHAR
-    VECTOR-8B-FIND-NEXT-CHAR-CI
-    VECTOR-8B-FIND-PREVIOUS-CHAR
-    VECTOR-8B-FIND-PREVIOUS-CHAR-CI
     VECTOR-8B-REF
     VECTOR-8B-SET!
     VECTOR-LENGTH
@@ -274,5 +243,4 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     VECTOR?
     WITH-HISTORY-DISABLED
     WITH-INTERRUPT-MASK
-    WRITE-BITS!
     ))
