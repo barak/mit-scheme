@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.3 2004/10/27 20:03:43 cph Exp $
+$Id: compile.scm,v 1.4 2004/11/01 19:09:24 cph Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -35,4 +35,5 @@ USA.
 		"xdoc"
 		"xhtml-expander"
 		"xmlrpc"))
-    (cref/generate-constructors "ssp")))
+    (cref/generate-constructors "ssp")
+    (cref/generate-constructors "xdoc")))

@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.1 2004/10/29 05:32:18 cph Exp $
+# $Id: Makefile.in,v 1.2 2004/11/01 19:09:24 cph Exp $
 #
 # Copyright 2004 Massachusetts Institute of Technology
 #
@@ -68,5 +68,6 @@ install:
 	$(INSTALL_DATA) *.com $(DESTDIR)$(SSP_DIR)/.
 	$(INSTALL_DATA) *.bci $(DESTDIR)$(SSP_DIR)/.
 	$(INSTALL_DATA) ssp-unx.pkd $(DESTDIR)$(SSP_DIR)/.
+	$(INSTALL_DATA) $(srcdir)/load.scm $(DESTDIR)$(SSP_DIR)/.
 
 .PHONY: install

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.3 2004/10/27 20:04:01 cph Exp $
+$Id: load.scm,v 1.4 2004/11/01 19:09:24 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -25,10 +25,10 @@ USA.
 
 ;;;; SSP/XDOC loader
 
-(load-option 'XML)
-(load-option 'POSTGRESQL)
-(load-option 'MIME-CODEC)
+(load-option 'xml)
+(load-option 'postgresql)
+(load-option 'mime-codec)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
-    (package/system-loader "ssp" '() 'QUERY)))
-(add-subsystem-identification! "SSP/XDOC" '(0 3))
+    (package/system-loader "ssp" '() 'query)))
+(add-subsystem-identification! "SSP" '(0 3))
