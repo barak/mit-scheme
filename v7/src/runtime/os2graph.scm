@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.18 2001/03/21 05:39:53 cph Exp $
+$Id: os2graph.scm,v 1.19 2002/06/26 03:28:26 cph Exp $
 
-Copyright (c) 1995-2001 Massachusetts Institute of Technology
+Copyright (c) 1995-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -57,6 +57,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	   (minimize-window ,os2-graphics/minimize-window)
 	   (move-cursor ,os2-graphics/move-cursor)
 	   (open ,os2-graphics/open)
+	   (open? ,os2-graphics/open-window?)
 	   (raise-window ,os2-graphics/raise-window)
 	   (read-button ,os2-graphics/read-button)
 	   (read-user-event ,os2-graphics/read-user-event)
@@ -230,6 +231,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(os2-graphics/clear device)
 	(set-window/device! window device)
 	device))))
+
+(define (os2-graphics/open-window? device)
+  (if (os2-graphics-device/wid device) #t #f))
 
 (define (os2-graphics/close device)
   (let ((window (graphics-device/descriptor device)))

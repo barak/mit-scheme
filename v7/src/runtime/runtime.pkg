@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.413 2002/04/24 19:21:21 cph Exp $
+$Id: runtime.pkg,v 14.414 2002/06/26 03:27:28 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -3167,6 +3167,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  x-graphics/move-cursor
 	  x-graphics/move-window
 	  x-graphics/open-display
+	  x-graphics/open-display?
+	  x-graphics/open-window?
 	  x-graphics/query-pointer
 	  x-graphics/raise-window
 	  x-graphics/read-button

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.51 2001/02/11 00:09:07 cph Exp $
+$Id: x11graph.scm,v 1.52 2002/06/26 03:26:53 cph Exp $
 
-Copyright (c) 1989-2001 Massachusetts Institute of Technology
+Copyright (c) 1989-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; X Graphics Interface
@@ -169,6 +170,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (move-cursor ,x-graphics/move-cursor)
 	   (move-window ,x-graphics/move-window)
 	   (open ,x-graphics/open)
+	   (open? ,x-graphics/open-window?)
 	   (query-pointer ,x-graphics/query-pointer)
 	   (raise-window ,x-graphics/raise-window)
 	   (reset-clip-rectangle ,x-graphics/reset-clip-rectangle)
@@ -254,6 +256,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (remove-all-from-gc-finalizer! (x-display/window-finalizer display))
 	   (remove-from-gc-finalizer! display-finalizer display)
 	   (set-x-display/xd! display #f))))))
+
+(define (x-graphics/open-display? display)
+  (if (x-display/xd display) #t #f))
 
 (define (make-event-previewer display)
   (let ((registration))
@@ -420,6 +425,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-integrable (x-graphics-device/visibility device)
   (x-window/visibility (graphics-device/descriptor device)))
+
+(define (x-graphics/open-window? device)
+  (if (x-graphics-device/xw device) #t #f))
 
 (define (x-graphics/close-window device)
   (without-interrupts
