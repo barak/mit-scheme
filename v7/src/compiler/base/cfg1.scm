@@ -37,215 +37,187 @@
 
 ;;;; Control Flow Graph Abstraction
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.142 1986/12/18 12:07:02 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.143 1986/12/20 22:51:15 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
 
-;;;; Basic Node Types
+;;;; Node Datatypes
 
 (define cfg-node-tag (make-vector-tag false 'CFG-NODE))
 (define cfg-node? (tagged-vector-subclass-predicate cfg-node-tag))
-(define-vector-slots node 1 previous alist generation)
-
-(define (cfg-node-describe node)
-  `((NODE-PREVIOUS ,(node-previous node))
-    (NODE-ALIST ,(node-alist node))
-    (NODE-GENERATION ,(node-generation node))))
+(define-vector-slots node 1 generation bblock alist previous-edges)
 
 (define-vector-method cfg-node-tag ':DESCRIBE
-  cfg-node-describe)
+  (lambda (node)
+    (descriptor-list node generation bblock alist previous-edges)))
 
 (define snode-tag (make-vector-tag cfg-node-tag 'SNODE))
 (define snode? (tagged-vector-subclass-predicate snode-tag))
-(define-vector-slots snode 4 &next)
+(define-vector-slots snode 5 next-edge)
 
 (define (make-snode tag . extra)
-  (list->vector (cons* tag '() '() false false extra)))
+  (list->vector (cons* tag false false '() '() false extra)))
 
-(define (snode-describe snode)
-  (append! (cfg-node-describe snode)
-	   `((SNODE-&NEXT ,(snode-&next snode)))))
+(define-integrable (snode-next snode)
+  (edge-right-node (snode-next-edge snode)))
 
 (define-vector-method snode-tag ':DESCRIBE
-  snode-describe)
+  (lambda (snode)
+    (append! ((vector-tag-parent-method snode-tag ':DESCRIBE) snode)
+	     (descriptor-list snode next-edge))))
 
 (define pnode-tag (make-vector-tag cfg-node-tag 'PNODE))
 (define pnode? (tagged-vector-subclass-predicate pnode-tag))
-(define-vector-slots pnode 4 &consequent &alternative)
+(define-vector-slots pnode 5 consequent-edge alternative-edge)
 
 (define (make-pnode tag . extra)
-  (list->vector (cons* tag '() '() false false false extra)))
-
-(define (pnode-describe pnode)
-  (append! (cfg-node-describe pnode)
-	   `((PNODE-&CONSEQUENT ,(pnode-&consequent pnode))
-	     (PNODE-&ALTERNATIVE ,(pnode-&alternative pnode)))))
-
-(define-vector-method pnode-tag ':DESCRIBE
-  pnode-describe)
-
-;;;; Hooks
-
-;;; There are several different types of node, each of which has
-;;; different types of "next" connections, for example, the predicate
-;;; node has a consequent and an alternative connection.  Any kind of
-;;; node can be connected to either of these connections.  Since it is
-;;; desirable to be able to splice nodes in and out of the graph, we
-;;; would like to be able to dis/connect a node from its previous node
-;;; without knowing anything about that node.  Hooks provide this
-;;; capability by providing an operation for setting the previous
-;;; node's appropriate "next" connection to any value.
-
-(define-integrable make-hook cons)
-(define-integrable hook-node car)
-(define-integrable hook-basher cdr)
-
-(define-integrable (find-hook node next)
-  (assq node (node-previous next)))
-
-(define (hook=? x y)
-  (and (eq? (hook-node x) (hook-node y))
-       (eq? (hook-basher x) (hook-basher y))))
-
-(define hook-member?
-  (member-procedure hook=?))
-
-(define (hooks-union x y)
-  (let loop ((x x))
-    (cond ((null? x) y)
-	  ((hook-member? (car x) y) (loop (cdr x)))
-	  (else (cons (car x) (loop (cdr x)))))))
-
-(define (hook-connect! hook node)
-  (set-node-previous! node (cons hook (node-previous node)))
-  (let ((old ((hook-basher hook) (hook-node hook) node)))
-    (if old
-	(error "Connect node twice!" hook old node))))
-
-(define (hook-disconnect! hook node)
-  (set-node-previous! node (delq! hook (node-previous node)))
-  (if (not ((hook-basher hook) (hook-node hook) false))
-      (error "Disconnect node twice!" hook node)))
-
-(define (hooks-connect! hooks node)
-  (define (loop hooks)
-    (if (not (null? hooks))
-	(begin (hook-connect! (car hooks) node)
-	       (loop (cdr hooks)))))
-  (loop hooks))
-
-(define (hooks-disconnect! hooks node)
-  (define (loop hooks)
-    (if (not (null? hooks))
-	(begin (hook-disconnect! (car hooks) node)
-	       (loop (cdr hooks)))))
-  (loop hooks))
-
-;;;; Holders
-
-;;; Entry/Exit holder nodes are used to hold onto the edges of a
-;;; graph.  Entry holders need only a next connection, and exit
-;;; holders need only a previous connection.
-
-(define entry-holder-tag (make-vector-tag cfg-node-tag 'ENTRY-HOLDER))
-(define-vector-slots entry-holder 1 &next)
-
-(define (entry-holder? node)
-  (eq? (vector-ref node 0) entry-holder-tag))
-
-(define-integrable (make-entry-holder)
-  (vector entry-holder-tag false))
-
-(define (node->holder node)
-  (let ((holder (make-entry-holder)))
-    (entry-holder-connect! holder node)
-    holder))
-
-(define (set-entry-holder-next! entry-holder node)
-  (entry-holder-disconnect! entry-holder)
-  (entry-holder-connect! entry-holder node))
-
-(define-vector-method entry-holder-tag ':DESCRIBE
-  (lambda (entry-holder)
-    `((ENTRY-HOLDER-&NEXT ,(entry-holder-&next entry-holder)))))
-
-(define exit-holder-tag (make-vector-tag cfg-node-tag 'EXIT-HOLDER))
-
-(define (exit-holder? node)
-  (eq? (vector-ref node 0) exit-holder-tag))
-
-(define-integrable (make-exit-holder)
-  (vector exit-holder-tag '()))
-
-(define-vector-method exit-holder-tag ':DESCRIBE
-  (lambda (exit-holder)
-    `((NODE-PREVIOUS ,(node-previous exit-holder)))))
-
-(define (next-reference node)
-  (and node (not (exit-holder? node)) node))
-
-(define-integrable (snode-next snode)
-  (next-reference (snode-&next snode)))
+  (list->vector (cons* tag false false '() '() false false extra)))
 
 (define-integrable (pnode-consequent pnode)
-  (next-reference (pnode-&consequent pnode)))
+  (edge-right-node (pnode-consequent-edge pnode)))
 
 (define-integrable (pnode-alternative pnode)
-  (next-reference (pnode-&alternative pnode)))
+  (edge-right-node (pnode-alternative-edge pnode)))
 
-(define-integrable (entry-holder-next entry)
-  (next-reference (entry-holder-&next entry)))
+(define-vector-method pnode-tag ':DESCRIBE
+  (lambda (pnode)
+    (append! ((vector-tag-parent-method pnode-tag ':DESCRIBE) pnode)
+	     (descriptor-list pnode consequent-edge alternative-edge))))
 
-(define-integrable (entry-holder-hook? hook)
-  (entry-holder? (hook-node hook)))
+;;;; Edge Datatype
+
+(define-vector-slots edge 0 left-node left-connect right-node)
+
+(define-integrable (make-edge left-node left-connect right-node)
+  (vector left-node left-connect right-node))
+
+(define (create-edge! left-node left-connect right-node)
+  (let ((edge (make-edge left-node left-connect right-node)))
+    (if left-node
+	(left-connect left-node edge))
+    (if right-node
+	(let ((previous (node-previous-edges right-node)))
+	  (if (not (memq right-node previous))
+	      (set-node-previous-edges! right-node (cons edge previous)))))))
+
+(define (edge-connect-left! edge left-node left-connect)
+  (set-edge-left-node! edge left-node)
+  (set-edge-left-connect! edge left-connect)
+  (if left-node
+      (left-connect left-node edge)))
+
+(define (edge-connect-right! edge right-node)
+  (set-edge-right-node! edge right-node)
+  (if right-node
+      (let ((previous (node-previous-edges right-node)))
+	(if (not (memq right-node previous))
+	    (set-node-previous-edges! right-node (cons edge previous))))))
+
+(define (edges-connect-right! edges right-node)
+  (for-each (lambda (edge)
+	      (edge-connect-right! edge right-node))
+	    edges))
+
+(define (edge-disconnect-left! edge)
+  (let ((left-node (set-edge-left-node! edge false))
+	(left-connect (set-edge-left-connect! edge false)))
+    (if left-node
+	(left-connect left-node false))))
+
+(define (edge-disconnect-right! edge)
+  (let ((right-node (set-edge-right-node! edge false)))
+    (if right-node
+	(set-node-previous-edges! right-node
+				  (delq! edge
+					 (node-previous-edges right-node))))))
+
+(define (edge-disconnect! edge)
+  (edge-disconnect-left! edge)
+  (edge-disconnect-right! edge))
+
+(define (edges-disconnect-right! edges)
+  (for-each edge-disconnect-right! edges))
+
+;;;; Editing
+
+;;; BBlock information is preserved only for deletions.  Doing the
+;;; same for insertions is more difficult and not currently needed.
+
+(define (snode-delete! snode)
+  (let ((bblock (node-bblock snode)))
+    (if (and bblock
+	     (eq? snode (bblock-exit bblock))
+	     (not (eq? snode (bblock-entry bblock))))
+	(set-bblock-exit! bblock (node-previous-first snode))))
+  (let ((previous-edges (node-previous-edges snode))
+	(next-edge (snode-next-edge snode)))
+    (let ((node (edge-right-node next-edge)))
+      (edges-disconnect-right! previous-edges)
+      (edge-disconnect! next-edge)
+      (edges-connect-right! previous-edges node))))
+
+(define (edge-insert-snode! edge snode)
+  (let ((next (edge-right-node edge)))
+    (edge-disconnect-right! edge)
+    (edge-connect-right! edge snode)
+    (create-edge! snode set-snode-next! next)))
+
+(define (node-insert-snode! node snode)
+  (let ((previous-edges (node-previous-edges node)))
+    (edges-disconnect-right! previous-edges)
+    (edges-connect-right! previous-edges snode)
+    (create-edge! snode set-snode-next! node)))
+
+;;;; Previous Connections
 
 (define-integrable (node-previous=0? node)
-  (hooks=0? (node-previous node)))
+  (edges=0? (node-previous node)))
 
-(define (hooks=0? hooks)
-  (or (null? hooks)
-      (and (entry-holder-hook? (car hooks))
-	   (hooks=0? (cdr hooks)))))
+(define (edges=0? edges)
+  (cond ((null? edges) true)
+	((edge-left-node (car edges)) false)
+	(else (edges=0? (cdr edges)))))
 
 (define-integrable (node-previous>0? node)
-  (hooks>0? (node-previous node)))
+  (edges>0? (node-previous node)))
 
-(define (hooks>0? hooks)
-  (and (not (null? hooks))
-       (or (not (entry-holder-hook? (car hooks)))
-	   (hooks>0? (cdr hooks)))))
+(define (edges>0? edges)
+  (cond ((null? edges) false)
+	((edge-left-node (car edges)) true)
+	(else (edges>0? (cdr edges)))))
 
 (define-integrable (node-previous=1? node)
-  (hooks=1? (node-previous node)))
+  (edges=1? (node-previous node)))
 
-(define (hooks=1? hooks)
-  (and (not (null? hooks))
-       ((if (entry-holder-hook? (car hooks)) hooks=1? hooks=0?)
-	(cdr hooks))))
+(define (edges=1? edges)
+  (if (null? edges)
+      false
+      ((if (entry-holder-hook? (car edges)) edges=1? edges=0?) (cdr edges))))
 
 (define-integrable (node-previous>1? node)
-  (hooks>1? (node-previous node)))
+  (edges>1? (node-previous node)))
 
-(define (hooks>1? hooks)
-  (and (not (null? hooks))
-       ((if (entry-holder-hook? (car hooks)) hooks>1? hooks>0?)
-	(cdr hooks))))
+(define (edges>1? edges)
+  (if (null? edges)
+      false
+      ((if (entry-holder-hook? (car edges)) edges>1? edges>0?) (cdr edges))))
 
 (define-integrable (node-previous-first node)
-  (hook-node (hooks-first (node-previous node))))
+  (edges-first-node (node-previous-edges node)))
 
-(define (hooks-first hooks)
-  (cond ((null? hooks) (error "No first hook"))
-	((entry-holder-hook? (car hooks)) (hooks-first (cdr hooks)))
-	(else (car hooks))))
+(define (edges-first-node edges)
+  (if (null? edges)
+      (error "No first hook")
+      (or (edge-left-node (car edges))
+	  (edges-first-node (cdr edges)))))
 
 (define (for-each-previous-node node procedure)
-  (for-each (lambda (hook)
-	      (let ((node (hook-node hook)))
-		(if (not (entry-holder? node))
+  (for-each (lambda (edge)
+	      (let ((node (edge-left-node edge)))
+		(if node
 		    (procedure node))))
-	    (node-previous node)))
+	    (node-previous-edges node)))
 
 ;;;; Noops
 
@@ -284,48 +256,17 @@
 (define (constant->pcfg value)
   ((if value make-true-pcfg make-false-pcfg)))
 
-;;;; Simple Construction
+;;;; Miscellaneous
 
-(define ((node-connector set-node-next!) node next)
-  (hook-connect! (make-hook node set-node-next!) next))
-
-(define snode-next-connect! (node-connector set-snode-&next!))
-(define pnode-consequent-connect! (node-connector set-pnode-&consequent!))
-(define pnode-alternative-connect! (node-connector set-pnode-&alternative!))
-(define entry-holder-connect! (node-connector set-entry-holder-&next!))
-
-(define ((node-disconnector node-next) node)
-  (let ((next (node-next node)))
-    (if next (node-disconnect! node next))
-    next))
-
-(define (node-disconnect! node next)
-  (hook-disconnect! (find-hook node next) next))
-
-(define snode-next-disconnect! (node-disconnector snode-&next))
-(define pnode-consequent-disconnect! (node-disconnector pnode-&consequent))
-(define pnode-alternative-disconnect! (node-disconnector pnode-&alternative))
-(define entry-holder-disconnect! (node-disconnector entry-holder-next))
-
-(define (node-previous-disconnect! node)
-  (let ((hooks (node-previous node)))
-    (hooks-disconnect! hooks node)
-    hooks))
-
-(define (node-get node key)
-  (let ((entry (assq key (node-alist node))))
-    (and entry (cdr entry))))
-
-(define (node-put! node key item)
-  (let ((entry (assq key (node-alist node))))
-    (if entry
-	(set-cdr! entry item)
-	(set-node-alist! node (cons (cons key item) (node-alist node))))))
-
-(define (node-remove! node key)
-  (set-node-alist! node (del-assq! key (node-alist node))))
+(package (with-new-node-marks
+	  node-marked?
+	  node-mark!)
 
 (define *generation*)
+
+(define-export (with-new-node-marks thunk)
+  (fluid-let ((*generation* (make-generation)))
+    (thunk)))
 
 (define make-generation
   (let ((generation 0))
@@ -333,8 +274,41 @@
       (let ((value generation))
 	(set! generation (1+ generation))
 	value))))
+
+(define-export (node-marked? node)
+  (eq? (node-generation node) *generation*))
+
+(define-export (node-mark! node)
+  (set-node-generation! node *generation*))
+
+)
+
+(define (node-property-get node key)
+  (let ((entry (assq key (node-alist node))))
+    (and entry (cdr entry))))
+
+(define (node-property-put! node key item)
+  (let ((entry (assq key (node-alist node))))
+    (if entry
+	(set-cdr! entry item)
+	(set-node-alist! node (cons (cons key item) (node-alist node))))))
+
+(define (node-property-remove! node key)
+  (set-node-alist! node (del-assq! key (node-alist node))))
+
+(define (node-label node)
+  (or (node-labelled? node)
+      (let ((label (generate-label)))
+	(set-node-label! node label)
+	label)))
+
+(define-integrable (node-labelled? node)
+  (node-property-get node node-label))
+
+(define-integrable (set-node-label! node label)
+  (node-property-put! node node-label label))
 
-;;;; CFG Objects
+;;;; CFG Datatypes
 
 ;;; A CFG is a compound CFG-node, so there are different types of CFG
 ;;; corresponding to the (connective-wise) different types of
@@ -365,28 +339,52 @@
 (define-integrable (pcfg-alternative-hooks pcfg)
   (vector-ref pcfg 3))
 
+(define-integrable (make-null-cfg) false)
+(define-integrable cfg-null? false?)
+
+(define-integrable (snode->scfg snode)
+  (node->scfg snode set-snode-next!))
+
 (define (node->scfg node set-node-next!)
   (make-scfg node
 	     (list (make-hook node set-node-next!))))
 
-(define-integrable (snode->scfg snode)
-  (node->scfg snode set-snode-&next!))
+(define-integrable (pnode->pcfg pnode)
+  (node->pcfg pnode
+	      set-pnode-consequent!
+	      set-pnode-alternative!))
 
 (define (node->pcfg node set-node-consequent! set-node-alternative!)
   (make-pcfg node
 	     (list (make-hook node set-node-consequent!))
 	     (list (make-hook node set-node-alternative!))))
+
+;;;; Hook Datatype
 
-(define-integrable (pnode->pcfg pnode)
-  (node->pcfg pnode
-	      set-pnode-&consequent!
-	      set-pnode-&alternative!))
+(define-integrable make-hook cons)
+(define-integrable hook-node car)
+(define-integrable hook-connect cdr)
 
-(define-integrable (make-null-cfg)
-  false)
+(define (hook=? x y)
+  (and (eq? (hook-node x) (hook-node y))
+       (eq? (hook-connect x) (hook-connect y))))
 
-(define-integrable (cfg-null? cfg)
-  (false? cfg))
+(define hook-member?
+  (member-procedure hook=?))
+
+(define (hooks-union x y)
+  (let loop ((x x))
+    (cond ((null? x) y)
+	  ((hook-member? (car x) y) (loop (cdr x)))
+	  (else (cons (car x) (loop (cdr x)))))))
+
+(define (hooks-connect! hooks node)
+  (for-each (lambda (hook)
+	      (hook-connect! hook node))
+	    hooks))
+
+(define (hook-connect! hook node)
+  (create-edge! (hook-node hook) (hook-connect hook) node))
 
 ;;;; CFG Construction
 
@@ -399,12 +397,18 @@
 (define-integrable (pcfg-alternative-connect! pcfg cfg)
   (hooks-connect! (pcfg-alternative-hooks pcfg) (cfg-entry-node cfg)))
 
+(define (scfg*scfg->scfg! scfg scfg*)
+  (cond ((not scfg) scfg*)
+	((not scfg*) scfg)
+	(else (scfg-next-connect! scfg scfg*)
+	      (make-scfg (cfg-entry-node scfg) (scfg-next-hooks scfg*)))))
+
 (package (scfg-append! scfg*->scfg!)
 
-(define (scfg-append! . scfgs)
+(define-export (scfg-append! . scfgs)
   (scfg*->scfg! scfgs))
 
-(define (scfg*->scfg! scfgs)
+(define-export (scfg*->scfg! scfgs)
   (let ((first (find-non-null scfgs)))
     (and (not (null? first))
 	 (let ((second (find-non-null (cdr first))))
@@ -429,12 +433,6 @@
       (find-non-null (cdr scfgs))))
 
 )
-
-(define (scfg*scfg->scfg! scfg scfg*)
-  (cond ((not scfg) scfg*)
-	((not scfg*) scfg)
-	(else (scfg-next-connect! scfg scfg*)
-	      (make-scfg (cfg-entry-node scfg) (scfg-next-hooks scfg*)))))
 
 (define (pcfg->scfg! pcfg)
   (make-scfg* (cfg-entry-node pcfg)
@@ -527,125 +525,6 @@
   (pcfg*pcfg->cfg! pcfg->scfg! make-scfg*))
 
 )
-
-;;;; CFG Editing Support
-
-(define (snode-replace! snode scfg)
-  (if (cfg-null? scfg)
-      (snode-delete! snode)
-      (begin (node-previous-replace! snode scfg)
-	     (node-next-replace! snode snode-&next (scfg-next-hooks scfg)))))
-
-(define (snode-delete! snode)
-  (node-next-replace! snode snode-&next (node-previous-disconnect! snode)))
-
-(define (pnode-replace! pnode pcfg)
-  (if (cfg-null? pcfg)
-      (error "PNODE-REPLACE!: Cannot delete pnode"))
-  (node-previous-replace! pnode pcfg)
-  (node-next-replace! pnode pnode-&consequent (pcfg-consequent-hooks pcfg))
-  (node-next-replace! pnode pnode-&alternative (pcfg-alternative-hooks pcfg)))
-
-(define (node-replace! node cfg)
-  ((vector-method node node-replace!) node cfg))
-
-(define-vector-method snode-tag node-replace! snode-replace!)
-(define-vector-method pnode-tag node-replace! pnode-replace!)
-
-(define (node-previous-replace! node cfg)
-  (let ((previous (node-previous node)))
-    (hooks-disconnect! previous node)
-    (hooks-connect! previous (cfg-entry-node cfg))))
-
-(define (node-next-replace! node next hooks)
-  (let ((next (next node)))
-    (if next
-	(begin (node-disconnect! node next)
-	       (hooks-connect! hooks next)))))
-
-(define (hook-insert-scfg! hook next scfg)
-  (if scfg
-      (begin (hook-disconnect! hook next)
-	     (hook-connect! hook (cfg-entry-node scfg))
-	     (hooks-connect! (scfg-next-hooks scfg) next))))
-
-(define (node-insert-scfg! node scfg)
-  (if scfg
-      (begin (node-previous-replace! node scfg)
-	     (hooks-connect! (scfg-next-hooks scfg) node))))
-
-;;;; Frames
-
-(define frame-tag (make-vector-tag false 'FRAME))
-(define-vector-slots frame 1 &entry)
-
-(define-integrable (frame-entry-node frame)
-  (entry-holder-next (frame-&entry frame)))
-
-(define (frame-describe frame)
-  `((FRAME-&ENTRY ,(frame-&entry frame))))
-
-(define sframe-tag (make-vector-tag frame-tag 'SFRAME))
-(define-vector-slots sframe 2 &next)
-
-(define-integrable (make-sframe entry next)
-  (vector sframe-tag entry next))
-
-(define-integrable (sframe-next-hooks sframe)
-  (node-previous (sframe-&next sframe)))
-
-(define-vector-method sframe-tag ':DESCRIBE
-  (lambda (sframe)
-    (append! (frame-describe sframe)
-	     `((SFRAME-&NEXT ,(sframe-&next sframe))))))
-
-(define (scfg->sframe scfg)
-  (let ((entry (make-entry-holder))
-	(next (make-exit-holder)))
-    (entry-holder-connect! entry (cfg-entry-node scfg))
-    (hooks-connect! (scfg-next-hooks scfg) next)
-    (make-sframe entry next)))
-
-(define (sframe->scfg sframe)
-  (let ((entry (frame-entry-node sframe)))
-    (if entry
-	(make-scfg entry (sframe-next-hooks sframe))
-	(make-null-cfg))))
-
-(define pframe-tag (make-vector-tag frame-tag 'PFRAME))
-(define-vector-slots pframe 2 &consequent &alternative)
-
-(define-integrable (make-pframe entry consequent alternative)
-  (vector pframe-tag entry consequent alternative))
-
-(define-integrable (pframe-consequent-hooks pframe)
-  (node-previous (pframe-&consequent pframe)))
-
-(define-integrable (pframe-alternative-hooks pframe)
-  (node-previous (pframe-&alternative pframe)))
-
-(define-vector-method pframe-tag ':DESCRIBE
-  (lambda (pframe)
-    (append! (frame-describe pframe)
-	     `((PFRAME-&CONSEQUENT ,(pframe-&consequent pframe))
-	       (PFRAME-&ALTERNATIVE ,(pframe-&alternative pframe))))))
-
-(define (pcfg->pframe pcfg)
-  (let ((entry (make-entry-holder))
-	(consequent (make-exit-holder))
-	(alternative (make-exit-holder)))
-    (entry-holder-connect! entry (cfg-entry-node pcfg))
-    (hooks-connect! (pcfg-consequent-hooks pcfg) consequent)
-    (hooks-connect! (pcfg-alternative-hooks pcfg) alternative)
-    (make-pframe entry consequent alternative)))
-
-(define (pframe->pcfg pframe)
-  (let ((entry (frame-entry-node pframe)))
-    (if entry
-	(make-pcfg entry
-		   (pframe-consequent-hooks pframe)
-		   (pframe-alternative-hooks pframe))
-	(make-null-cfg))))
 
 ;;; end USING-SYNTAX
 )

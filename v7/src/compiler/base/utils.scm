@@ -37,7 +37,7 @@
 
 ;;;; Compiler Utilities
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.76 1986/12/18 06:12:29 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.77 1986/12/20 22:54:13 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -85,9 +85,15 @@
   (vector-tag-put! tag name method)
   name)
 
+(define (vector-tag-method tag name)
+  (or (vector-tag-get tag name)
+      (error "Unbound method" tag name)))
+
+(define-integrable (vector-tag-parent-method tag name)
+  (vector-tag-method (cdr tag) name))
+
 (define-integrable (vector-method vector name)
-  (or (vector-tag-get (vector-tag vector) name)
-      (error "Unbound method" vector name)))
+  (vector-tag-method (vector-tag vector) name))
 
 (define (define-unparser tag unparser)
   (define-vector-method tag ':UNPARSE unparser))

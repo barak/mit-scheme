@@ -38,56 +38,10 @@
 ;;;; RTL Register Lifetime Analysis
 ;;;  Based on the GNU C Compiler
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rlife.scm,v 1.52 1986/12/18 12:11:09 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rlife.scm,v 1.53 1986/12/20 22:53:21 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
-
-;;;; Basic Blocks
-
-(define *block-number*)
-
-(define (find-blocks rnodes)
-  (fluid-let ((*generation* (make-generation))
-	      (*block-number* 0))
-    (set! *bblocks* '())
-    (for-each (lambda (rnode)
-		(set-node-generation! rnode *generation*))
-	      rnodes)
-    (for-each walk-entry rnodes)))
-
-(define (walk-next next)
-  (if (not (eq? (node-generation next) *generation*))
-      (walk-entry next)))
-
-(define (walk-entry rnode)
-  (let ((bblock (make-bblock *block-number* rnode *n-registers*)))
-    (set! *block-number* (1+ *block-number*))
-    (set! *bblocks* (cons bblock *bblocks*))
-    (walk-rnode bblock rnode)))
-
-(define (walk-rnode bblock rnode)
-  (set-node-generation! rnode *generation*)
-  (set-rnode-bblock! rnode bblock)
-  ((vector-method rnode walk-rnode) bblock rnode))
-
-(define-vector-method rtl-snode-tag walk-rnode
-  (lambda (bblock snode)
-    (let ((next (snode-next snode)))
-      (cond ((not next)
-	     (set-bblock-exit! bblock snode))
-	    ((or (node-previous>1? next)
-		 (rtl:invocation? (rnode-rtl snode)))
-	     (set-bblock-exit! bblock snode)
-	     (walk-next next))
-	    (else
-	     (walk-rnode bblock next))))))
-
-(define-vector-method rtl-pnode-tag walk-rnode
-  (lambda (bblock pnode)
-    (set-bblock-exit! bblock pnode)
-    (walk-next (pnode-consequent pnode))
-    (walk-next (pnode-alternative pnode))))
 
 ;;;; Lifetime Analysis
 
@@ -107,7 +61,7 @@
 			       (for-each-previous-node (bblock-entry bblock)
 				 (lambda (rnode)
 				   (regset-union! (bblock-new-live-at-exit
-						   (rnode-bblock rnode))
+						   (node-bblock rnode))
 						  live-at-entry)))))))
 		bblocks)
       (if changed?
@@ -143,7 +97,7 @@
   (let ((old (bblock-live-at-entry bblock))
 	(dead (regset-allocate *n-registers*))
 	(live (regset-allocate *n-registers*)))
-    (walk-bblock-backward bblock
+    (bblock-walk-backward bblock
       (lambda (rnode previous)
 	(regset-clear! dead)
 	(regset-clear! live)
@@ -166,7 +120,7 @@
 (define (rtl-snode-delete! rnode)
   (let ((previous (node-previous rnode))
 	(next (snode-next rnode))
-	(bblock (rnode-bblock rnode)))
+	(bblock (node-bblock rnode)))
     (snode-delete! rnode)
     (if (eq? rnode (bblock-entry bblock))
 	(if (eq? rnode (bblock-exit bblock))
@@ -188,7 +142,7 @@
 		    (record-register-reference register rnode)
 		    (if (and (regset-member? needed register)
 			     rnode*
-			     (eq? (rnode-bblock rnode) (rnode-bblock rnode*)))
+			     (eq? (node-bblock rnode) (node-bblock rnode*)))
 			(set-rnode-logical-link! rnode* rnode)))))))))
 
 (define (mark-used-registers! needed live rtl rnode)
@@ -216,7 +170,7 @@
       (rtl:for-each-subexpression rtl loop)))
 
 (define (record-register-reference register rnode)
-  (let ((bblock (rnode-bblock rnode))
+  (let ((bblock (node-bblock rnode))
 	(bblock* (register-bblock register)))
     (cond ((not bblock*)
 	   (set-register-bblock! register bblock))
@@ -228,23 +182,27 @@
   (and (rtl:register? expression)
        (pseudo-register? (rtl:register-number expression))))
 
-;;;; Optimization
+;;;; Dead Code Elimination
 
-(define (optimize-block bblock)
-  (if (not (eq? (bblock-entry bblock) (bblock-exit bblock)))
-      (let ((live (regset-copy (bblock-live-at-entry bblock)))
-	    (births (make-regset *n-registers*)))
-	(walk-bblock-forward bblock
-	  (lambda (rnode next)
-	    (if next
-		(begin (optimize-rtl live rnode next)
-		       (regset-clear! births)
-		       (mark-set-registers! live births (rnode-rtl rnode)
-					    false)
-		       (for-each (lambda (register)
-				   (regset-delete! live register))
-				 (rnode-dead-registers rnode))
-		       (regset-union! live births))))))))
+(define (dead-code-elimination bblocks)
+  (for-each (lambda (bblock)
+	      (if (not (eq? (bblock-entry bblock) (bblock-exit bblock)))
+		  (let ((live (regset-copy (bblock-live-at-entry bblock)))
+			(births (make-regset *n-registers*)))
+		    (bblock-walk-forward bblock
+		      (lambda (rnode next)
+			(if next
+			    (begin (optimize-rtl live rnode next)
+				   (regset-clear! births)
+				   (mark-set-registers! live
+							births
+							(rnode-rtl rnode)
+							false)
+				   (for-each (lambda (register)
+					       (regset-delete! live register))
+					     (rnode-dead-registers rnode))
+				   (regset-union! live births))))))))
+	    bblocks))
 
 (define (optimize-rtl live rnode next)
   (let ((rtl (rnode-rtl rnode)))
@@ -306,7 +264,7 @@
 			     (write-string "; multiple blocks")))
 			(bblock
 			 (write-string "; block ")
-			 (write (bblock-number bblock)))
+			 (write (unhash bblock)))
 			(else
 			 (write-string "; no block!")))))))))
 

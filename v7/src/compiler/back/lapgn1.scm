@@ -37,56 +37,53 @@
 
 ;;;; LAP Code Generation
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.19 1986/12/18 06:10:31 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.20 1986/12/20 22:52:16 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
 
 (define *code-object-label*)
 (define *code-object-entry*)
+(define *current-rnode*)
+(define *dead-registers*)
 
 (define (generate-lap quotations procedures continuations receiver)
-  (fluid-let ((*generation* (make-generation))
-	      (*next-constant* 0)
-	      (*interned-constants* '())
-	      (*block-start-label* (generate-label))
-	      (*code-object-label*)
-	      (*code-object-entry*))
-    (for-each (lambda (quotation)
-		(cgen-cfg quotation quotation-rtl))
-	      quotations)
-    (for-each (lambda (procedure)
-		(cgen-cfg procedure procedure-rtl))
-	      procedures)
-    (for-each (lambda (continuation)
-		(cgen-cfg continuation continuation-rtl))
-	      continuations)
-    (receiver *interned-constants* *block-start-label*)))
+  (with-new-node-marks
+   (lambda ()
+     (fluid-let ((*next-constant* 0)
+		 (*interned-constants* '())
+		 (*block-start-label* (generate-label))
+		 (*code-object-label*)
+		 (*code-object-entry*))
+       (for-each (lambda (quotation)
+		   (cgen-cfg quotation quotation-rtl))
+		 quotations)
+       (for-each (lambda (procedure)
+		   (cgen-cfg procedure procedure-rtl))
+		 procedures)
+       (for-each (lambda (continuation)
+		   (cgen-cfg continuation continuation-rtl))
+		 continuations)
+       (receiver *interned-constants* *block-start-label*)))))
 
 (define (cgen-cfg object extract-cfg)
   (set! *code-object-label* (code-object-label-initialize object))
   (let ((rnode (cfg-entry-node (extract-cfg object))))
     (set! *code-object-entry* rnode)
     (cgen-rnode rnode)))
-
-(define *current-rnode*)
-(define *dead-registers*)
 
 (define (cgen-rnode rnode)
   (define (cgen-right-node next)
-    (if (and next (not (eq? (node-generation next) *generation*)))
+    (if (and next (not (node-marked? next)))
 	(begin (if (node-previous>1? next)
-		   (let ((hook (find-hook rnode next))
-			 (snode (statement->snode '(NOOP))))
-		     (set-node-generation! snode *generation*)
+		   (let ((snode (statement->snode '(NOOP))))
 		     (set-rnode-lap! snode
 				     (clear-map-instructions
 				      (rnode-register-map rnode)))
-		     (hook-disconnect! hook next)
-		     (hook-connect! hook snode)
-		     (snode-next-connect! snode next)))
+		     (node-mark! snode)
+		     (insert-snode-in-edge! rnode next snode)))
 	       (cgen-rnode next))))
-  (set-node-generation! rnode *generation*)
+  (node-mark! rnode)
   ;; LOOP is for easy restart while debugging.
   (let loop ()
     (let ((match-result (pattern-lookup *cgen-rules* (rnode-rtl rnode))))
@@ -115,7 +112,7 @@
 	(cons (cons pattern result-procedure)
 	      *cgen-rules*))
   pattern)
-
+
 (define (rnode-input-register-map rnode)
   (if (or (eq? rnode *code-object-entry*)
 	  (not (node-previous=1? rnode)))
@@ -127,8 +124,8 @@
 	       map
 	       (regset->list
 		(regset-difference
-		 (bblock-live-at-exit (rnode-bblock previous))
-		 (bblock-live-at-entry (rnode-bblock rnode))))
+		 (bblock-live-at-exit (node-bblock previous))
+		 (bblock-live-at-entry (node-bblock rnode))))
 	       (lambda (map aliases) map))
 	      map)))))
 

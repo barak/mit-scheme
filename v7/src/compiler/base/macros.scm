@@ -37,6 +37,8 @@
 
 ;;;; Compiler Macros
 
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 1.53 1986/12/20 22:52:39 cph Exp $
+
 (declare (usual-integrations))
 
 (in-package compiler-package
@@ -160,29 +162,33 @@
 (let-syntax
  ((define-type-definition
     (macro (name reserved)
-      `(SYNTAX-TABLE-DEFINE (ACCESS COMPILER-SYNTAX-TABLE COMPILER-PACKAGE)
-			    ',(symbol-append 'DEFINE- name)
-	 (macro (type . slots)
-	   (let ((tag-name (symbol-append type '-TAG)))
-	     `(BEGIN (DEFINE ,tag-name
-		       (MAKE-VECTOR-TAG ,',(symbol-append name '-TAG) ',type))
-		     (DEFINE ,(symbol-append type '?)
-		       (TAGGED-VECTOR-PREDICATE ,tag-name))
-		     (DEFINE-VECTOR-SLOTS ,type ,,reserved ,@slots)
-		     (DEFINE-VECTOR-METHOD ,tag-name ':DESCRIBE
-		       (LAMBDA (,type)
-			 (APPEND!
-			  (,',(symbol-append name '-DESCRIBE) ,type)
-			  (LIST ,@(map (lambda (slot)
-					 (let ((ref-name
-						(symbol-append type '- slot)))
-					   ``(,',ref-name
-					      ,(,ref-name ,type))))
-				       slots))))))))))))
- (define-type-definition snode 5)
- (define-type-definition pnode 6)
+      (let ((parent (symbol-append name '-TAG)))
+	`(SYNTAX-TABLE-DEFINE (ACCESS COMPILER-SYNTAX-TABLE COMPILER-PACKAGE)
+			      ',(symbol-append 'DEFINE- name)
+	   (macro (type . slots)
+	     (let ((tag-name (symbol-append type '-TAG)))
+	       `(BEGIN (DEFINE ,tag-name
+			 (MAKE-VECTOR-TAG ,',parent ',type))
+		       (DEFINE ,(symbol-append type '?)
+			 (TAGGED-VECTOR-PREDICATE ,tag-name))
+		       (DEFINE-VECTOR-SLOTS ,type ,,reserved ,@slots)
+		       (DEFINE-VECTOR-METHOD ,tag-name ':DESCRIBE
+			 (LAMBDA (,type)
+			   (APPEND!
+			    ((VECTOR-TAG-METHOD ,',parent ':DESCRIBE) ,type)
+			    (DESCRIPTOR-LIST ,type ,@slots))))))))))))
+ (define-type-definition snode 6)
+ (define-type-definition pnode 7)
  (define-type-definition rvalue 1)
  (define-type-definition vnode 10))
+
+(syntax-table-define (access compiler-syntax-table compiler-package)
+		     'DESCRIPTOR-LIST
+  (macro (type . slots)
+    `(LIST ,@(map (lambda (slot)
+		    (let ((ref-name (symbol-append type '- slot)))
+		      ``(,',ref-name ,(,ref-name ,type))))
+		  slots))))
 
 (let ((rtl-common
        (lambda (type prefix components wrap-constructor)

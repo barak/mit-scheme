@@ -38,7 +38,7 @@
 ;;;; Register Allocation
 ;;;  Based on the GNU C Compiler
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/ralloc.scm,v 1.8 1986/12/15 05:27:11 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/ralloc.scm,v 1.9 1986/12/20 22:52:48 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -71,7 +71,7 @@
 			       (vector-ref register->renumber register)))
 			  (if renumber
 			      (regset-adjoin! live renumber)))))
-		    (walk-bblock-forward bblock
+		    (bblock-walk-forward bblock
 		      (lambda (rnode next)
 			(for-each-regset-member live
 			  (lambda (renumber)

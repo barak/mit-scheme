@@ -38,7 +38,7 @@
 ;;;; RTL Common Subexpression Elimination
 ;;;  Based on the GNU C Compiler
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.95 1986/12/18 12:10:53 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.96 1986/12/20 22:52:56 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -169,6 +169,17 @@
 (define-cse-method 'RETURN noop)
 (define-cse-method 'PROCEDURE-HEAP-CHECK noop)
 (define-cse-method 'CONTINUATION-HEAP-CHECK noop)
+
+(define (define-stack-trasher type)
+  (define-cse-method type trash-stack))
+
+(define (trash-stack statement)
+  (stack-invalidate!)
+  (stack-pointer-invalidate!))
+
+(define-stack-trasher 'SETUP-CLOSURE-LEXPR)
+(define-stack-trasher 'SETUP-STACK-LEXPR)
+(define-stack-trasher 'MESSAGE-SENDER:VALUE)
 
 (define (define-lookup-method type get-environment set-environment! register)
   (define-cse-method type
@@ -225,6 +236,9 @@
 
 (define (define-invocation-method type)
   (define-cse-method type
+    noop
+#|  This will be needed when the snode-next of an invocation
+    gets connected to the callee's entry node.
     (lambda (statement)
       (let ((prefix (rtl:invocation-prefix statement)))
 	(case (car prefix)
@@ -235,7 +249,9 @@
 	     (stack-region-invalidate! 0 (+ size distance)) ;laziness
 	     (stack-pointer-adjust! distance)))
 	  ((APPLY-STACK APPLY-CLOSURE) (trash-stack statement))
-	  (else (error "Bad prefix type" prefix)))))))
+	  (else (error "Bad prefix type" prefix)))))
+|#
+    ))
 
 (define (continuation-adjustment statement)
   (let ((continuation (rtl:invocation-continuation statement)))
@@ -270,17 +286,6 @@
 
 (define-message-receiver 'MESSAGE-RECEIVER:SUBPROBLEM
   rtl:message-receiver-size:subproblem)
-
-(define (define-stack-trasher type)
-  (define-cse-method type trash-stack))
-
-(define (trash-stack statement)
-  (stack-invalidate!)
-  (stack-pointer-invalidate!))
-
-(define-stack-trasher 'SETUP-CLOSURE-LEXPR)
-(define-stack-trasher 'SETUP-STACK-LEXPR)
-(define-stack-trasher 'MESSAGE-SENDER:VALUE)
 
 ;;;; Canonicalization
 

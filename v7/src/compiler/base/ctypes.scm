@@ -37,7 +37,7 @@
 
 ;;;; Compiler CFG Datatypes
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.36 1986/12/18 03:37:04 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.37 1986/12/20 22:51:33 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -59,11 +59,6 @@
 (define-integrable (make-true-test rvalue)
   (pnode->pcfg (make-pnode true-test-tag rvalue)))
 
-(define-pnode type-test rvalue type)
-
-(define (make-type-test rvalue type)
-  (pnode->pcfg (make-pnode type-test-tag rvalue type)))
-
 (define-pnode unassigned-test block variable)
 
 (define-integrable (make-unassigned-test block variable)
@@ -74,11 +69,6 @@
 (define-integrable (make-unbound-test block variable)
   (pnode->pcfg (make-pnode unbound-test-tag block variable)))
 
-(define-snode rtl-quote generator)
-
-(define-integrable (make-rtl-quote generator)
-  (snode->scfg (make-snode rtl-quote-tag generator)))
-
 (define-snode combination block compilation-type value operator operands
   procedures known-operator)
 (define *combinations*)
@@ -94,35 +84,19 @@
 			     (cons combination (vnode-combinations value)))
     (snode->scfg combination)))
 
-(define-snode continuation block &entry delta generator rtl-frame label)
+(define-snode continuation rtl delta label)
 (define *continuations*)
 
-(define-integrable (make-continuation block entry delta generator)
+(define-integrable (make-continuation rtl delta)
   (let ((continuation
-	 (make-snode continuation-tag block (node->holder entry) delta
-		     generator false (generate-label 'CONTINUATION))))
+	 (make-snode continuation-tag rtl delta
+		     (generate-label 'CONTINUATION))))
     (set! *continuations* (cons continuation *continuations*))
     continuation))
-
-(define-integrable (continuation-entry continuation)
-  (entry-holder-next (continuation-&entry continuation)))
-
-(define-integrable (continuation-rtl continuation)
-  (sframe->scfg (continuation-rtl-frame continuation)))
-
-(define-integrable (set-continuation-rtl! continuation rtl)
-  (set-continuation-rtl-frame! continuation (scfg->sframe rtl)))
 
 (define-unparser continuation-tag
   (lambda (continuation)
     (write (continuation-label continuation))))
-
-(define-snode invocation number-pushed continuation procedure generator)
-
-(define-integrable (make-invocation number-pushed continuation procedure
-				    generator)
-  (snode->scfg (make-snode invocation-tag number-pushed continuation procedure
-			   generator)))
 
 ;;; end USING-SYNTAX
 )
