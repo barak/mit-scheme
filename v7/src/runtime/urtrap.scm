@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: urtrap.scm,v 14.8 2001/12/21 04:37:56 cph Exp $
+$Id: urtrap.scm,v 14.9 2001/12/21 18:22:57 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -120,19 +120,25 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(cached-reference-trap-value value)
 	value)))
 
-(define (macro->reference-trap transformer)
+(define (make-macro-reference-trap transformer)
   (make-reference-trap 15 transformer))
 
 (define (macro-reference-trap? object)
   (and (reference-trap? object)
        (fix:= 15 (reference-trap-kind object))))
 
-(define (reference-trap->macro trap)
+(define (macro-reference-trap-transformer trap)
   (if (not (macro-reference-trap? trap))
       (error:wrong-type-argument trap "macro reference trap"
-				 'MACRO-REFERENCE-TRAP-VALUE))
+				 'MACRO-REFERENCE-TRAP-TRANSFORMER))
   (reference-trap-extra trap))
 
-(define (macro->unmapped-reference-trap transformer)
+(define (make-unmapped-macro-reference-trap transformer)
   (primitive-object-set-type (ucode-type reference-trap)
 			     (cons 15 transformer)))
+
+(define (unmapped-macro-reference-trap? getter)
+  (and (primitive-object-type? (ucode-type reference-trap) (getter))
+       (let ((index (object-datum (getter))))
+	 (and (> index trap-max-immediate)
+	      (fix:= 15 (primitive-object-ref (getter) 0))))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unsyn.scm,v 14.24 2001/12/20 20:32:02 cph Exp $
+$Id: unsyn.scm,v 14.25 2001/12/21 18:22:53 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -163,17 +163,21 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       `(SET! ,name ,@(unexpand-binding-value value)))))
 
 (define (unexpand-definition name value)
-  (if (and (eq? #t unsyntaxer:macroize?)
-	   (lambda? value)
-	   (not (has-substitution? value)))
-      (lambda-components** value
-	(lambda (lambda-name required optional rest body)
-	  (if (eq? lambda-name name)
-	      `(DEFINE (,name . ,(lambda-list required optional rest '()))
-		 ,@(with-bindings required optional rest
-				  unsyntax-sequence body))
-	      `(DEFINE ,name ,@(unexpand-binding-value value)))))
-      `(DEFINE ,name ,@(unexpand-binding-value value))))
+  (cond ((macro-reference-trap? value)
+	 `(DEFINE-SYNTAX ,name
+	    ,(macro-reference-trap-transformer value)))
+	((and (eq? #t unsyntaxer:macroize?)
+	      (lambda? value)
+	      (not (has-substitution? value)))
+	 (lambda-components** value
+	   (lambda (lambda-name required optional rest body)
+	     (if (eq? lambda-name name)
+		 `(DEFINE (,name . ,(lambda-list required optional rest '()))
+		    ,@(with-bindings required optional rest
+				     unsyntax-sequence body))
+		 `(DEFINE ,name ,@(unexpand-binding-value value))))))
+	(else
+	 `(DEFINE ,name ,@(unexpand-binding-value value)))))
 
 (define (unexpand-binding-value value)
   (if (unassigned-reference-trap? value)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.49 2001/12/21 05:18:22 cph Exp $
+$Id: uenvir.scm,v 14.50 2001/12/21 18:22:49 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -25,12 +25,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  ;; This variable is predefined in "make.scm" for the boot sequence.
-  ;; Otherwise it would be defined here.
-  (set! environment-define-macro real-environment-define-macro)
-  unspecific)
-
 (define (environment? object)
   (or (system-global-environment? object)
       (ic-environment? object)
@@ -195,15 +189,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(else
 	 (illegal-environment environment 'ENVIRONMENT-DEFINE))))
 
-(define real-environment-define-macro
-  (named-lambda (environment-define-macro environment name value)
-    (cond ((interpreter-environment? environment)
-	   (interpreter-environment/define-macro environment name value))
-	  ((or (stack-ccenv? environment)
-	       (closure-ccenv? environment))
-	   (error:bad-range-argument environment 'ENVIRONMENT-DEFINE-MACRO))
-	  (else
-	   (illegal-environment environment 'ENVIRONMENT-DEFINE-MACRO)))))
+(define (environment-define-macro environment name value)
+  (cond ((interpreter-environment? environment)
+	 (interpreter-environment/define-macro environment name value))
+	((or (stack-ccenv? environment)
+	     (closure-ccenv? environment))
+	 (error:bad-range-argument environment 'ENVIRONMENT-DEFINE-MACRO))
+	(else
+	 (illegal-environment environment 'ENVIRONMENT-DEFINE-MACRO))))
 
 (define (illegal-environment object procedure)
   (error:wrong-type-argument object "environment" procedure))
@@ -311,7 +304,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (interpreter-environment/lookup-macro environment name)
   (let ((value (safe-lexical-reference environment name)))
     (and (macro-reference-trap? value)
-	 (reference-trap->macro value))))
+	 (macro-reference-trap-transformer value))))
 
 (define (interpreter-environment/assign! environment name value)
   (lexical-assignment environment name value)
@@ -321,7 +314,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (local-assignment environment name value))
 
 (define (interpreter-environment/define-macro environment name value)
-  (local-assignment environment name (macro->unmapped-reference-trap value)))
+  (local-assignment environment name
+		    (make-unmapped-macro-reference-trap value)))
 
 (define (ic-environment/bound-names environment)
   (map-ic-environment-bindings environment
@@ -655,9 +649,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (stack-ccenv/bound? environment name)
   (or (dbg-block/find-name (stack-ccenv/block environment) name)
-      (let ((parent (stack-ccenv/parent environment)))
-	(and parent
-	     (environment-bound? parent name)))))
+      (environment-bound? (stack-ccenv/parent environment) name)))
 
 (define (stack-ccenv/assigned? environment name)
   (and (stack-ccenv/lookup environment name) #t))
@@ -771,9 +763,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	       (closure-ccenv/variable-bound?
 		environment
 		(vector-ref (dbg-block/layout-vector block) index)))))
-      (let ((parent (closure-ccenv/parent environment)))
-	(and parent
-	     (environment-bound? parent name)))))
+      (environment-bound? (closure-ccenv/parent environment) name)))
 
 (define (closure-ccenv/assigned? environment name)
   (and (closure-ccenv/lookup environment name) #t))

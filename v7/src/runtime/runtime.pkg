@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.399 2001/12/21 05:18:12 cph Exp $
+$Id: runtime.pkg,v 14.400 2001/12/21 18:22:33 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -1326,8 +1326,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  environment-bound-names
 	  environment-bound?
 	  environment-define
-	  ;; Defined in "make.scm":
-	  ;; environment-define-macro
+	  environment-define-macro
 	  environment-has-parent?
 	  environment-lambda
 	  environment-lookup
@@ -2119,6 +2118,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-package (runtime macros)
   (files "macros")
   (parent (runtime))
+  #|
+  (export ()
+	  and
+	  case
+	  cons-stream
+	  define-integrable
+	  do
+	  let*
+	  letrec
+	  quasiquote
+	  sequence)
+  |#
   (initialization (initialize-package!)))
 
 (define-package (runtime microcode-errors)
@@ -2666,22 +2677,23 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (export ()
 	  cached-reference-trap-value
 	  cached-reference-trap?
-	  macro->reference-trap
+	  macro-reference-trap-transformer
 	  macro-reference-trap?
-	  macro->unmapped-reference-trap
+	  make-macro-reference-trap
 	  make-unassigned-reference-trap
 	  make-unbound-reference-trap
+	  make-unmapped-macro-reference-trap
 	  make-unmapped-unassigned-reference-trap
 	  make-unmapped-unbound-reference-trap
 	  map-reference-trap
 	  map-reference-trap-value
-	  reference-trap->macro
 	  reference-trap-kind
 	  reference-trap-kind-name
 	  reference-trap?
 	  unassigned-reference-trap?
 	  unbound-reference-trap?
 	  unmap-reference-trap
+	  unmapped-macro-reference-trap?
 	  unmapped-unassigned-reference-trap?
 	  unmapped-unbound-reference-trap?))
 
@@ -3743,17 +3755,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (files "syntab")
   (parent (runtime))
   (export ()
-	  environment-syntax-table
 	  guarantee-syntax-table
 	  make-syntax-table
-	  set-environment-syntax-table!
-	  syntax-table/copy
 	  syntax-table/define
-	  syntax-table/defined-names
-	  syntax-table/extend
-	  syntax-table/parent
 	  syntax-table/ref
-	  syntax-table?))
+	  syntax-table?)
+  (export (runtime syntaxer)
+	  syntax-table/environment
+	  syntax-table/extend))
 
 (define-package (runtime syntaxer)
   (files "syntax")
@@ -3811,7 +3820,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-package (runtime system-macros)
   (files "sysmac")
   (parent (runtime))
-  (initialization (initialize-package!)))
+  (export (runtime)
+	  define-primitives
+	  ucode-primitive
+	  ucode-return-address
+	  ucode-type))
 
 (define-package (runtime truncated-string-output)
   (files "strott")

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 1.5 2001/12/20 18:03:05 cph Exp $
+$Id: macros.scm,v 1.6 2001/12/21 18:22:15 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -27,9 +27,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (initialize-package!)
   (for-each (lambda (keyword transform)
-	      (syntax-table/define system-global-environment
-				   keyword
-				   transform))
+	      (environment-define-macro system-global-environment
+					keyword
+					transform))
 	    '(AND
 	      CASE
 	      CONS-STREAM

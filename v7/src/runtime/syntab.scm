@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntab.scm,v 14.8 2001/12/20 06:52:49 cph Exp $
+$Id: syntab.scm,v 14.9 2001/12/21 18:22:36 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -29,67 +29,53 @@ USA.
 				(predicate %syntax-table?)
 				(conc-name syntax-table/))
   alist
-  (%parent #f read-only #t))
+  (parent #f read-only #t))
 
 (define (syntax-table? object)
   (or (%syntax-table? object)
-      (interpreter-environment? object)))
+      (environment? object)))
 
-(define (make-syntax-table #!optional parent)
-  (%make-syntax-table '()
-		      (if (default-object? parent)
-			  #f
-			  (guarantee-syntax-table parent 'MAKE-SYNTAX-TABLE))))
+(define (make-syntax-table parent)
+  (guarantee-syntax-table parent 'MAKE-SYNTAX-TABLE)
+  (%make-syntax-table '() parent))
 
 (define (guarantee-syntax-table table procedure)
-  (cond ((%syntax-table? table) table)
-	((interpreter-environment? table) (environment-syntax-table table))
-	(else (error:wrong-type-argument table "syntax table" procedure))))
-
-(define (syntax-table/parent table)
-  (syntax-table/%parent (guarantee-syntax-table table 'SYNTAX-TABLE/PARENT)))
+  (if (not (syntax-table? table))
+      (error:wrong-type-argument table "syntax table" procedure))
+  table)
 
 (define (syntax-table/ref table name)
-  (let loop ((table (guarantee-syntax-table table 'SYNTAX-TABLE/REF)))
-    (and table
-	 (let ((entry (assq name (syntax-table/alist table))))
-	   (if entry
-	       (cdr entry)
-	       (loop (syntax-table/%parent table)))))))
+  (guarantee-syntax-table table 'SYNTAX-TABLE/REF)
+  (let loop ((table table))
+    (if (%syntax-table? table)
+	(let ((entry (assq name (syntax-table/alist table))))
+	  (if entry
+	      (cdr entry)
+	      (let ((parent (syntax-table/parent table)))
+		(if (eq? parent 'NONE)
+		    #f
+		    (loop parent)))))
+	(and (environment-bound? table name)
+	     (environment-lookup-macro table name)))))
 
 (define (syntax-table/define table name transform)
-  (let ((table (guarantee-syntax-table table 'SYNTAX-TABLE/DEFINE)))
-    (let ((entry (assq name (syntax-table/alist table))))
-      (if entry
-	  (set-cdr! entry transform)
-	  (set-syntax-table/alist! table
-				   (cons (cons name transform)
-					 (syntax-table/alist table)))))))
-
-(define (syntax-table/defined-names table)
-  (map car
-       (syntax-table/alist
-	(guarantee-syntax-table table 'SYNTAX-TABLE/DEFINED-NAMES))))
-
-(define (syntax-table/copy table)
-  (let loop ((table (guarantee-syntax-table table 'SYNTAX-TABLE/COPY)))
-    (and table
-	 (%make-syntax-table (alist-copy (syntax-table/alist table))
-			     (loop (syntax-table/%parent table))))))
+  (guarantee-syntax-table table 'SYNTAX-TABLE/DEFINE)
+  (if (%syntax-table? table)
+      (let ((entry (assq name (syntax-table/alist table))))
+	(if entry
+	    (set-cdr! entry transform)
+	    (set-syntax-table/alist! table
+				     (cons (cons name transform)
+					   (syntax-table/alist table)))))
+      (environment-define-macro table name transform)))
 
 (define (syntax-table/extend table alist)
-  (%make-syntax-table (alist-copy alist)
-		      (guarantee-syntax-table table 'SYNTAX-TABLE/EXTEND)))
+  (guarantee-syntax-table table 'SYNTAX-TABLE/EXTEND)
+  (%make-syntax-table (alist-copy alist) table))
 
-(define (environment-syntax-table environment)
-  (environment-lookup environment syntax-table-tag))
-
-(define (set-environment-syntax-table! environment table)
-  (environment-define environment
-		      syntax-table-tag
-		      (guarantee-syntax-table table
-					      'SET-ENVIRONMENT-SYNTAX-TABLE!)))
-
-(define-integrable syntax-table-tag
-  ((ucode-primitive string->symbol)
-   "#[(runtime syntax-table)syntax-table-tag]"))
+(define (syntax-table/environment table)
+  (guarantee-syntax-table table 'SYNTAX-TABLE/ENVIRONMENT)
+  (let loop ((table table))
+    (if (%syntax-table? table)
+	(loop (syntax-table/parent table))
+	table)))

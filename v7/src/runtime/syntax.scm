@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.47 2001/12/21 05:18:17 cph Exp $
+$Id: syntax.scm,v 14.48 2001/12/21 18:22:41 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -30,13 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (enable-scan-defines!)
   (set! *disallow-illegal-definitions?* #t)
   (set! hook/syntax-expression default/syntax-expression)
-  (set-environment-syntax-table! system-global-environment (make-syntax-table))
-  (install-system-global-syntax!)
-  (set-environment-syntax-table! user-initial-environment
-				 (make-syntax-table system-global-environment))
-  (set! syntaxer/default-environment
-	(extend-interpreter-environment system-global-environment))
-  unspecific)
+  (install-system-global-syntax!))
 
 (define *syntax-table*)
 (define *current-keyword* #f)
@@ -44,39 +38,40 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define *disallow-illegal-definitions?*)
 
 (define (install-system-global-syntax!)
-  (for-each (lambda (entry)
-	      (syntax-table/define system-global-environment
-				   (car entry)
-				   (make-primitive-syntaxer (cadr entry))))
-	    `(
-	      ;; R*RS special forms
-	      (BEGIN ,syntax/begin)
-	      (COND ,syntax/cond)
-	      (DEFINE ,syntax/define)
-	      (DELAY ,syntax/delay)
-	      (IF ,syntax/if)
-	      (LAMBDA ,syntax/lambda)
-	      (LET ,syntax/let)
-	      (OR ,syntax/or)
-	      (QUOTE ,syntax/quote)
-	      (SET! ,syntax/set!)
+  (for-each
+   (lambda (entry)
+     (environment-define-macro system-global-environment
+			       (car entry)
+			       (make-primitive-syntaxer (cadr entry))))
+   `(
+     ;; R*RS special forms
+     (BEGIN ,syntax/begin)
+     (COND ,syntax/cond)
+     (DEFINE ,syntax/define)
+     (DELAY ,syntax/delay)
+     (IF ,syntax/if)
+     (LAMBDA ,syntax/lambda)
+     (LET ,syntax/let)
+     (OR ,syntax/or)
+     (QUOTE ,syntax/quote)
+     (SET! ,syntax/set!)
 
-	      ;; Syntax extensions
-	      (DEFINE-SYNTAX ,syntax/define-syntax)
-	      (LET-SYNTAX ,syntax/let-syntax)
+     ;; Syntax extensions
+     (DEFINE-SYNTAX ,syntax/define-syntax)
+     (LET-SYNTAX ,syntax/let-syntax)
 
-	      ;; Environment extensions
-	      (ACCESS ,syntax/access)
-	      (THE-ENVIRONMENT ,syntax/the-environment)
-	      (UNASSIGNED? ,syntax/unassigned?)
-	      ;; To facilitate upgrade to new option argument mechanism.
-	      (DEFAULT-OBJECT? ,syntax/unassigned?)
+     ;; Environment extensions
+     (ACCESS ,syntax/access)
+     (THE-ENVIRONMENT ,syntax/the-environment)
+     (UNASSIGNED? ,syntax/unassigned?)
+     ;; To facilitate upgrade to new option argument mechanism.
+     (DEFAULT-OBJECT? ,syntax/unassigned?)
 
-	      ;; Miscellaneous extensions
-	      (DECLARE ,syntax/declare)
-	      (FLUID-LET ,syntax/fluid-let)
-	      (LOCAL-DECLARE ,syntax/local-declare)
-	      (NAMED-LAMBDA ,syntax/named-lambda))))
+     ;; Miscellaneous extensions
+     (DECLARE ,syntax/declare)
+     (FLUID-LET ,syntax/fluid-let)
+     (LOCAL-DECLARE ,syntax/local-declare)
+     (NAMED-LAMBDA ,syntax/named-lambda))))
 
 ;;;; Top Level Syntaxers
 
@@ -93,8 +88,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 (fluid-let ((*syntax-table*
 		      (if (eq? table 'DEFAULT)
 			  (if (unassigned? *syntax-table*)
-			      (environment-syntax-table
-			       (nearest-repl/environment))
+			      (nearest-repl/environment)
 			      *syntax-table*)
 			  (guarantee-syntax-table table name)))
 		     (*current-keyword* #f))
@@ -139,7 +133,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
    ((pair? expression)
     (if (not (list? expression))
 	(error "syntax-expression: not a valid expression" expression))
-    (let ((transform (syntax-table/ref syntax-table (car expression))))
+    (let ((transform
+	   (and (symbol? (car expression))
+		(syntax-table/ref syntax-table (car expression)))))
       (if transform
 	  (if (primitive-syntaxer? transform)
 	      (transform-apply (primitive-syntaxer/transform transform)
@@ -298,8 +294,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   top-level?
   (let ((make-definition
 	 (lambda (name value)
-	   (if (syntax-table/ref *syntax-table* name)
-	       (syntax-error "redefinition of syntactic keyword" name))
 	   (make-definition name value))))
     (cond ((symbol? pattern)
 	   (make-definition
@@ -439,19 +433,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (syntax/define-syntax top-level? name value)
   (if (not (symbol? name))
       (syntax-error "illegal name" name))
-  (syntax-table/define *syntax-table*
-		       name
-		       (syntax-eval (syntax-subexpression value)))
-  (if top-level?
-      (syntax-expression
-       top-level?
-       `((ACCESS ENVIRONMENT-DEFINE-MACRO #F) (THE-ENVIRONMENT) ',name ,value))
-      name))
+  (let ((value (syntax-subexpression value)))
+    (syntax-table/define *syntax-table* name (syntax-eval value))
+    (if top-level?
+	(make-definition name (make-macro-reference-trap value))
+	name)))
 
-(define-integrable (syntax-eval scode)
-  (extended-scode-eval scode syntaxer/default-environment))
-
-(define syntaxer/default-environment)
+(define (syntax-eval scode)
+  (extended-scode-eval scode (syntax-table/environment *syntax-table*)))
 
 ;;;; FLUID-LET
 
