@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.33 1990/11/14 10:59:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.34 1990/11/15 23:20:21 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -299,6 +299,7 @@ char.c \
 comutl.c \
 daemon.c \
 debug.c \
+dmpwrld.c \
 error.c \
 extern.c \
 fasdump.c \
@@ -381,6 +382,7 @@ char.o \
 comutl.o \
 daemon.o \
 debug.o \
+dmpwrld.o \
 error.o \
 extern.o \
 fasload.o \
@@ -578,8 +580,10 @@ hunk.o list.o step.o vector.o sysprim.o daemon.o prim.o extern.o : \
 
 lookup.o debug.o intern.o : scheme.touch prims.h lookup.h trap.h locks.h
 
-fasdump.o fasload.o : scheme.touch prims.h trap.h $(GC_HEAD_FILES) fasl.h \
-	load.c dump.c
+fasload.o : scheme.touch prims.h osfile.h osio.h $(GC_HEAD_FILES) \
+	trap.h option.h load.c fasl.h
+fasdump.o : scheme.touch prims.h osio.h osfile.h osfs.h $(GC_HEAD_FILES) \
+	trap.h lookup.h fasl.h dump.c
 
 memmag.o gcloop.o purify.o purutl.o comutl.o : scheme.touch prims.h \
 	$(GC_HEAD_FILES) zones.h
@@ -600,8 +604,10 @@ term.o : scheme.touch
 
 compiler.o : config.h object.h sdata.h types.h errors.h const.h returns.h
 
-bchmmg.o bchgcl.o bchpur.o : scheme.touch prims.h bchgcc.h option.h oscond.h $(GC_HEAD_FILES)
-bchdmp.o : scheme.touch prims.h bchgcc.h oscond.h $(GC_HEAD_FILES) fasl.h dump.c
+bchmmg.o bchgcl.o bchpur.o : scheme.touch prims.h bchgcc.h option.h \
+	$(GC_HEAD_FILES)
+bchdmp.o : scheme.touch prims.h osio.h osfile.h trap.h lookup.h bchgcc.h \
+	$(GC_HEAD_FILES) fasl.h dump.c
 
 syntax.o : scheme.touch prims.h edwin.h syntax.h
 bitstr.o : scheme.touch prims.h bitstr.h
@@ -612,7 +618,8 @@ Bintopsb.o : psbmap.touch trap.h limits.h fasl.h load.c bltdef.h
 Psbtobin.o : psbmap.touch float.h fasl.h dump.c
 Ppband.o : config.h types.h const.h object.h sdata.h fasl.h load.c
 
-dmpwrld.o : unexec.c getpagesize.h
+dmpwrld.o : scheme.touch prims.h ux.h osfs.h \
+	unexec.c unexhp9k800.c getpagesize.h
 
 x11base.o x11graph.o x11term.o starbasex.o : scheme.touch prims.h x11.h
 x11base.o : ux.h
