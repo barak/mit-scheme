@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.12 1992/03/05 20:29:13 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.13 1992/03/06 00:20:06 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -102,6 +102,14 @@
 ifdef(`DOS',
 `',
 `	.file	"cmpaux-i386.s"')
+
+ifdef(`ENABLE_387',
+      `define(IF387,`$1')',
+      `define(IF387,`')')
+
+ifdef(`ENABLE_387',
+      `define(IFN387,`')',
+      `define(IFN387,`$1')')
 
 ifdef(`DOS',
       `define(use_external_data,`	extrn $1')',
@@ -284,13 +292,13 @@ declare_alignment(2)
 define_c_label(interface_initialize)
 	OP(push,l)	REG(ebp)
 	OP(mov,l)	TW(REG(esp),REG(ebp))
-	OP(sub,l)	TW(IMM(4),REG(esp))
+IF387(`	OP(sub,l)	TW(IMM(4),REG(esp))
 	fstcw	WOF(-2,REG(ebp))
 	# Set rounding mode to round-to-even, precision control to double,
 	# mask the inexact result exception, and unmask the other exceptions.
 	OP(and,l)	TW(IMM(HEX(0000f0e0)),LOF(-4,REG(ebp)))
 	OP(or,l)	TW(IMM(HEX(00000220)),LOF(-4,REG(ebp)))
-	fldcw	LOF(-2,REG(ebp))
+	fldcw	LOF(-2,REG(ebp))')
 	OP(mov,w)	TW(REG(cs),REG(ax))		# Obtain code segment
 	leave
 	ret
@@ -353,13 +361,13 @@ define_c_label(interface_to_scheme)
 	jmp	IJMP(REG(edx))
 
 define_c_label(interface_to_C)
-	ffree	ST(0)					# Free floating "regs"
+IF387(`	ffree	ST(0)					# Free floating "regs"
 	ffree	ST(1)
 	ffree	ST(2)
 	ffree	ST(3)
 	ffree	ST(4)
 	ffree	ST(5)
-	ffree	ST(6)
+	ffree	ST(6)')
 	OP(mov,l)	TW(REG(edx),REG(eax))		# Set up result
 	OP(pop,l)	REG(ebx)			# Restore callee-saves
 	OP(pop,l)	REG(esi)			#  registers
@@ -480,7 +488,7 @@ define_apply_fixed_size(8)
 ###	numeric types are much faster than the rare ones
 ###	(bignums, ratnums, recnums)
 
-declare_alignment(2)
+IF387(`declare_alignment(2)
 asm_generic_flonum_result:
 	OP(mov,l)	TW(IMM(eval(TAG(TC_MANIFEST_NM_VECTOR,2))),IND(rfree))
 	OP(mov,l)	TW(rfree,REG(eax))
@@ -509,7 +517,7 @@ declare_alignment(2)
 asm_generic_return_sharp_f:
 	OP(and,l)	TW(rmask,IND(REG(esp)))
 	OP(mov,l)	TW(IMM(eval(TAG(TC_FALSE,0))),LOF(REGBLOCK_VAL(),regs))
-	ret
+	ret')
 
 define(define_unary_operation,
 `declare_alignment(2)
@@ -754,23 +762,7 @@ asm_generic_$1_fail:
 	OP(mov,b)	TW(IMM(HEX($2)),REG(al))
 	jmp	scheme_to_interface')
 
-# define_jump_indirection(generic_decrement,22)
-# define_jump_indirection(generic_divide,23)
-# define_jump_indirection(generic_equal,24)
-# define_jump_indirection(generic_greater,25)
-# define_jump_indirection(generic_increment,26)
-# define_jump_indirection(generic_less,27)
-# define_jump_indirection(generic_subtract,28)
-# define_jump_indirection(generic_multiply,29)
-# define_jump_indirection(generic_negative,2a)
-# define_jump_indirection(generic_add,2b)
-# define_jump_indirection(generic_positive,2c)
-# define_jump_indirection(generic_zero,2d)
-define_jump_indirection(generic_quotient,37)
-define_jump_indirection(generic_remainder,38)
-define_jump_indirection(generic_modulo,39)
-
-define_unary_operation(decrement,22,sub,fsubr)
+IF387(`define_unary_operation(decrement,22,sub,fsubr)
 define_unary_operation(increment,26,add,fadd)
 
 define_unary_predicate(negative,2a,jl,jb)
@@ -782,10 +774,30 @@ define_unary_predicate(zero,2d,je,je)
 define_binary_operation(add,2b,add,fiadd,fiadd,fadd)
 define_binary_operation(subtract,28,sub,fisubr,fisub,fsub)
 define_binary_operation(multiply,29,imul,fimul,fimul,fmul)
-# Divide needs to check for 0, so we can't really use the following
+# Divide needs to check for 0, so we cant really use the following
 # define_binary_operation(divide,23,NONE,fidivr,fidiv,fdiv)
 
 # define_binary_predicate(name,index,fix*fix,fix*flo,flo*fix,flo*flo)
 define_binary_predicate(equal,24,je,je,je,je)
 define_binary_predicate(greater,25,jg,ja,ja,ja)
-define_binary_predicate(less,27,jl,jb,jb,jb)
+define_binary_predicate(less,27,jl,jb,jb,jb)')
+
+IFN387(`define_jump_indirection(generic_decrement,22)
+define_jump_indirection(generic_divide,23)
+define_jump_indirection(generic_equal,24)
+define_jump_indirection(generic_greater,25)
+define_jump_indirection(generic_increment,26)
+define_jump_indirection(generic_less,27)
+define_jump_indirection(generic_subtract,28)
+define_jump_indirection(generic_multiply,29)
+define_jump_indirection(generic_negative,2a)
+define_jump_indirection(generic_add,2b)
+define_jump_indirection(generic_positive,2c)
+define_jump_indirection(generic_zero,2d)')
+
+# These don't currently differ according to whether there
+# is a 387 or not.
+
+define_jump_indirection(generic_quotient,37)
+define_jump_indirection(generic_remainder,38)
+define_jump_indirection(generic_modulo,39)
