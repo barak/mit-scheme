@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlcon.scm,v 4.28 1997/07/15 03:00:32 adams Exp $
+$Id: rtlcon.scm,v 4.29 1997/10/17 20:24:18 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -99,14 +99,14 @@ MIT in each case. |#
       (expression-simplify-for-predicate operand2
 	(lambda (operand2)
 	  (%make-pred-2-args predicate operand1 operand2))))))
-
+
 (define (rtl:make-unassigned-test expression)
   (rtl:make-eq-test
    expression
    (rtl:make-cons-non-pointer
     (rtl:make-machine-constant (ucode-type unassigned))
     (rtl:make-machine-constant 0))))
-
+
 (define (rtl:make-fixnum-pred-1-arg predicate operand)
   (expression-simplify-for-predicate operand
     (lambda (operand)
@@ -268,7 +268,7 @@ MIT in each case. |#
   (let ((pseudo (rtl:make-pseudo-register)))
     (scfg-append! (rtl:make-assignment-internal pseudo expression)
 		  (receiver pseudo))))
-
+
 (define (make-offset register offset granularity)
   (case granularity
     ((OBJECT)
@@ -290,7 +290,7 @@ MIT in each case. |#
      (rtl:make-float-offset-address register offset))
     (else
      (error "unknown offset granularity" granularity))))
-
+
 (define (locative-dereference locative scfg-append! if-register if-memory)
   (let ((dereference-fetch
 	 (lambda (locative offset granularity)
@@ -503,190 +503,102 @@ MIT in each case. |#
 
 (define-expression-method 'CELL-CONS
   (lambda (receiver scfg-append! expression)
-    (expression-simplify expression scfg-append!
-      (lambda (expression)
-	(let ((free (interpreter-free-pointer)))
-	  (expression-simplify
-	   (rtl:make-cons-pointer (rtl:make-machine-constant type-code:cell)
-				  free)
-	   scfg-append!
-	   (lambda (temporary)
-	     (if use-pre/post-increment?
-		 (scfg-append!
-		  (rtl:make-assignment-internal
-		   (rtl:make-post-increment free 1)
-		   expression)
-		  (receiver temporary))
-		 (scfg-append!
-		  (rtl:make-assignment-internal
-		   (rtl:make-offset free (rtl:make-machine-constant 0))
-		   expression)
-		  (scfg-append!
-		   (rtl:make-assignment-internal
-		    free
-		    (rtl:make-offset-address free
-					     (rtl:make-machine-constant 1)))
-		   (receiver temporary)))))))))))
+    (typed-cons receiver scfg-append!
+		(rtl:make-machine-constant type-code:cell)
+		(list expression))))
 
 (define-expression-method 'TYPED-CONS:PAIR
   (lambda (receiver scfg-append! type car cdr)
-    (let ((free (interpreter-free-pointer)))
-      (expression-simplify type scfg-append!
-	(lambda (type)
-	  (expression-simplify car scfg-append!
-	    (lambda (car)
-	       (expression-simplify cdr scfg-append!
-		 (lambda (cdr)
-		   (assign-to-temporary (rtl:make-cons-pointer type free)
-					scfg-append!
-		     (lambda (temporary)
-		       (if use-pre/post-increment?
-			   (scfg-append!
-			    (rtl:make-assignment-internal
-			     (rtl:make-post-increment free 1)
-			     car)
-			    (scfg-append!
-			     (rtl:make-assignment-internal
-			      (rtl:make-post-increment free 1)
-			      cdr)
-			     (receiver temporary)))
-			   (scfg-append!
-			    (rtl:make-assignment-internal
-			     (rtl:make-offset free
-					      (rtl:make-machine-constant 0))
-			     car)
-			    (scfg-append!
-			     (rtl:make-assignment-internal
-			      (rtl:make-offset free
-					       (rtl:make-machine-constant 1))
-			      cdr)
-			     (scfg-append!
-			      (rtl:make-assignment-internal
-			       free
-			       (rtl:make-offset-address
-				free
-				(rtl:make-machine-constant 2)))
-			      (receiver temporary))))))))))))))))
-
+    (typed-cons receiver scfg-append! type (list car cdr))))
+
 (define-expression-method 'TYPED-CONS:VECTOR
   (lambda (receiver scfg-append! type . elements)
-    (let ((nelements (length elements)))
-      (if (> nelements (-1+ (number-of-available-word-registers)))
-	  (simplify-cons-long-vector nelements receiver
-				     scfg-append! type elements)
-	  (let* ((free (interpreter-free-pointer)))
-	    (expression-simplify type scfg-append!
-	      (lambda (type)
-		(simplify-expressions elements scfg-append!
-		  (lambda (elements)
-		    (assign-to-temporary (rtl:make-cons-pointer type free)
-			scfg-append!
-		      (lambda (temporary)
-			(expression-simplify
-			    (rtl:make-cons-non-pointer
-			     (rtl:make-machine-constant
-			      (ucode-type manifest-vector))
-			     (rtl:make-machine-constant (length elements)))
-			    scfg-append!
-			  (lambda (header)
-			    (if use-pre/post-increment?
-				(scfg-append!
-				 (rtl:make-assignment-internal
-				  (rtl:make-post-increment free 1)
-				  header)
-				 (let loop ((elements elements))
-				   (if (null? elements)
-				       (receiver temporary)
-				       (scfg-append!
-					(rtl:make-assignment-internal
-					 (rtl:make-post-increment free 1)
-					 (car elements))
-					(loop (cdr elements))))))
-				(scfg-append!
-				 (rtl:make-assignment-internal
-				  (rtl:make-offset
-				   free
-				   (rtl:make-machine-constant 0))
-				  header)
-				 (let loop ((elements elements) (offset 1))
-				   (if (null? elements)
-				       (scfg-append!
-					(rtl:make-assignment-internal
-					 free
-					 (rtl:make-offset-address
-					  free
-					  (rtl:make-machine-constant offset)))
-					(receiver temporary))
-				       (scfg-append!
-					(rtl:make-assignment-internal
-					 (rtl:make-offset
-					  free
-					  (rtl:make-machine-constant offset))
-					 (car elements))
-					(loop (cdr elements)
-					      (+ offset 1))))))))))))))))))))
-
-(define (simplify-cons-long-vector nelements receiver
-				   scfg-append! type elements)
-  (let ((chunk-size (-1+ (number-of-available-word-registers)))
-	(free (interpreter-free-pointer)))
-    (let ((nchunks (quotient (+ nelements (-1+ chunk-size)) chunk-size))
-	  (store-element!
-	   (if use-pre/post-increment?
-	       (lambda (element offset)
-		 offset			; ignored
-		 (rtl:make-assignment-internal
-		  (rtl:make-post-increment free 1)
-		  element))
-	       (lambda (element offset)
-		 (rtl:make-assignment-internal
-		  (rtl:make-offset free (rtl:make-machine-constant offset))
-		  element)))))
-	     
-      (define (do-chunk elements offset tail)
-	(simplify-expressions elements scfg-append!
-	  (lambda (elements)
-	    (let loop ((elements elements) (offset offset))
-	      (if (null? elements)
-		  tail
-		  (scfg-append! (store-element! (car elements) offset)
-				(loop (cdr elements)
-				      (1+ offset))))))))
+    (let ((header
+	   (rtl:make-cons-non-pointer
+	    (rtl:make-machine-constant
+	     (ucode-type manifest-vector))
+	    (rtl:make-machine-constant (length elements)))))
+      (typed-cons receiver scfg-append!
+		  type
+		  (cons header elements)))))
+
+
+;; TYPED-CONS stores ELEMENTS in sequence into newly allocated memory
+;; and `returns' a tagged pointer to the beginning of the allocated
+;; memory.
+;;
+;; The old code used to make the tagged pointer and then do the
+;; storing, which left the tagged pointer live throughout the
+;; allocation.  This version does the storing first.  If the
+;; allocation is done by `pushing', the tagging operation now includes
+;; a negative offset.  All the machines that I can think of can fold
+;; the offset and tag (e.g. MC68000, i386), either together, or into
+;; other operations (e.g. HPPA must copy the free pointer, so the
+;; offset be put in a move (i.e. ldo) instead.)
+
+
+(define (typed-cons receiver scfg-append! type elements)
+
+  (let ((nelements (length elements)))
+    (let ((chunk-size (max 1 (-1+ (number-of-available-word-registers))))
+	  (free (interpreter-free-pointer)))
+      (let ((nchunks (quotient (+ nelements (-1+ chunk-size)) chunk-size))
+	    (store-element!
+	     (if use-pre/post-increment?
+		 (lambda (element offset)
+		   offset		; ignored
+		   (rtl:make-assignment-internal
+		    (rtl:make-post-increment free 1)
+		    element))
+		 (lambda (element offset)
+		   (rtl:make-assignment-internal
+		    (rtl:make-offset free (rtl:make-machine-constant offset))
+		    element)))))
+
+	(define (finish)
+	  (expression-simplify type scfg-append!
+	    (lambda (type)
+	      (if use-pre/post-increment?
+		  (assign-to-temporary  
+		   (rtl:make-offset-address free
+					    (rtl:make-machine-constant (- nelements)))
+		   scfg-append!
+		   (lambda (temporary)
+		     (receiver (rtl:make-cons-pointer type temporary))))
+		  (assign-to-temporary 
+		   (rtl:make-cons-pointer type free)
+		   scfg-append!
+		   (lambda (temporary)
+		     (scfg-append!
+		      (rtl:make-assignment-internal
+		       free
+		       (rtl:make-offset-address
+			free
+			(rtl:make-machine-constant nelements)))
+		      (receiver temporary))))))))
+
+	(define (do-chunk elements offset tail)
+	  (simplify-expressions elements scfg-append!
+	    (lambda (elements)
+	      (let loop ((elements elements) (offset offset))
+		(if (null? elements)
+		    tail
+		    (scfg-append! (store-element! (car elements) offset)
+				  (loop (cdr elements)
+					(1+ offset))))))))
 	  
-      (expression-simplify type scfg-append!
-	(lambda (type)
-	  (assign-to-temporary (rtl:make-cons-pointer type free) scfg-append!
-	    (lambda (temporary)
-	      (expression-simplify
-		  (rtl:make-cons-non-pointer
-		   (rtl:make-machine-constant
-		    (ucode-type manifest-vector))
-		   (rtl:make-machine-constant (length elements)))
-		  scfg-append!
-		(lambda (header)
-		  (scfg-append!
-		   (store-element! header 0)
-		   (let process ((elements elements)
-				 (offset 1)
-				 (chunk 1))
-		     (if (= chunk nchunks)
-			 (do-chunk elements
-				   offset
-				   (if use-pre/post-increment?
-				       (receiver temporary)
-				       (scfg-append!
-					(rtl:make-assignment-internal
-					 free
-					 (rtl:make-offset-address
-					  free
-					  (rtl:make-machine-constant
-					   (1+ nelements))))
-					(receiver temporary))))
-			 (do-chunk (list-head elements chunk-size)
-				   offset
-				   (process (list-tail elements chunk-size)
-					    (+ offset chunk-size)
-					    (1+ chunk)))))))))))))))
+	(let process ((elements elements)
+		      (offset 0)
+		      (chunk 1))
+	  (if (= chunk nchunks)
+	      (do-chunk elements
+			offset
+			(finish))
+	      (do-chunk (list-head elements chunk-size)
+			offset
+			(process (list-tail elements chunk-size)
+				 (+ offset chunk-size)
+				 (1+ chunk)))))))))
 
 ;; This re-caches and re-computes if we change the number of registers
 
