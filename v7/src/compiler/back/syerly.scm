@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syerly.scm,v 1.5 1988/06/14 08:10:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syerly.scm,v 1.6 1988/08/23 09:04:54 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -41,41 +41,41 @@ MIT in each case. |#
 (define lap:syntax-instruction-expander
   (scode->scode-expander
    (lambda (operands if-expanded if-not-expanded)
-     (define (kernel opcode instruction rules)
-       (early-pattern-lookup
-	rules
-	instruction
-	early-transformers
-	(scode/make-constant opcode)
-	(lambda (mode result)
-	  (cond ((false? mode)
-		 (error "lap:syntax-instruction-expander: unknown instruction"
-			instruction))
-		((eq? mode 'TOO-MANY)
-		 (if-not-expanded))
-		(else (if-expanded result))))
-	1))
-
      (let ((instruction (scode/unquasiquote (car operands))))
-       (cond ((not (pair? instruction))
-	      (error "LAP:SYNTAX-INSTRUCTION-EXPANDER: bad instruction"
-		     instruction))
-	     ((eq? (car instruction) 'UNQUOTE)
-	      (if-not-expanded))
-	     ((memq (car instruction)
-		    '(EQUATE SCHEME-OBJECT ENTRY-POINT LABEL BLOCK-OFFSET))
-	      (if-expanded
-	       (scode/make-combination
-		(scode/make-variable  'DIRECTIVE->INSTRUCTION-SEQUENCE)
-		operands)))
-	     (else
-	      (let ((place (assq (car instruction) early-instructions)))
-		(if (null? place)
-		    (error "lap:syntax-instruction-expander: unknown opcode"
-			   (car instruction))
-		    (kernel (car instruction)
-			    (cdr instruction)
-			    (cdr place))))))))))
+       (let ((ierror
+	      (lambda (message)
+		(error (string-append "LAP:SYNTAX-INSTRUCTION-EXPANDER: "
+				      message)
+		       instruction))))
+	 (if (not (pair? instruction))
+	     (ierror "bad instruction"))
+	 (cond ((eq? (car instruction) 'UNQUOTE)
+		(if-not-expanded))
+	       ((memq (car instruction)
+		      '(EQUATE SCHEME-OBJECT ENTRY-POINT LABEL BLOCK-OFFSET))
+		(if-expanded
+		 (scode/make-combination
+		  (scode/make-variable  'DIRECTIVE->INSTRUCTION-SEQUENCE)
+		  operands)))
+	       (else
+		(let ((place (assq (car instruction) early-instructions)))
+		  (if (null? place)
+		      (ierror "unknown opcode"))
+		  (let ((opcode (car instruction))
+			(body (cdr instruction))
+			(rules (cdr place)))
+		    (early-pattern-lookup
+		     rules
+		     body
+		     early-transformers
+		     (scode/make-constant opcode)
+		     (lambda (mode result)
+		       (if (false? mode)
+			   (ierror "unknown instruction"))
+		       (if (eq? mode 'TOO-MANY)
+			   (if-not-expanded)
+			   (if-expanded result)))
+		     1))))))))))
 
 ;;;; Quasiquote unsyntaxing
 
