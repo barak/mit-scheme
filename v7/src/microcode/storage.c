@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.21 1987/01/22 14:32:38 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.22 1987/02/02 15:17:19 jinx Exp $
 
 This file defines the storage for global variables for
 the Scheme Interpreter. */
@@ -251,9 +251,9 @@ char Arg_Count_Table[] = {
 /* 057 */ (char) 1, /* BINARY-FASLOAD */
 /* 058 */ (char) 3, /* STRING-POSITION */
 /* 059 */ (char) 2, /* STRING-LESS? */
-/* 05A */ (char) 1, /* OBJECT-HASH */
-/* 05B */ (char) 1, /* OBJECT-UNHASH */
-/* 05C */ (char) 0, /* GC-REHASH-DAEMON */
+/* 05A */ (char) 0, /* unused */
+/* 05B */ (char) 0, /* unused */
+/* 05C */ (char) 2, /* REHASH */
 /* 05D */ (char) 1, /* LENGTH */
 /* 05E */ (char) 2, /* ASSQ */
 /* 05F */ (char) 1, /* BUILD-STRING-FROM-LIST */
@@ -304,7 +304,7 @@ char Arg_Count_Table[] = {
 /* 087 */ (char) 1, /* Sys-PAIR-CDR */
 /* 088 */ (char) 2, /* Sys-PAIR-SET!-CAR */
 /* 089 */ (char) 2, /* Sys-PAIR-SET!-CDR */
-/* 08A */ (char) 1, /* INITIALIZE-OBJECT-HASH */
+/* 08A */ (char) 0, /* unused */
 /* 08B */ (char) 1, /* GET-CHARACTER-IMMEDIATE */
 /* 08C */ (char) 2, /* SET-CONTENTS! */
 /* 08D */ (char) 2, /* &MAKE-OBJECT */
@@ -370,7 +370,7 @@ char Arg_Count_Table[] = {
 /* 0C4 */ (char) 1, /* FILE-LENGTH */
 /* 0C5 */ (char) 2, /* FILE-WRITE-CHAR */
 /* 0C6 */ (char) 2, /* FILE-WRITE-STRING */
-/* 0C7 */ (char) 0, /* CLOSE-LOST-OPEN-FILES */
+/* 0C7 */ (char) 1, /* CLOSE-LOST-OPEN-FILES */
 /* 0C8 */ (char) 2, /* PUT-CHARACTER-TO-OUTPUT-CHANNEL */
 
 /* Argument Count Table continues on next page */
@@ -664,7 +664,6 @@ extern Pointer
   Prim_Greater_Fixnum(), Prim_Greater_Flonum(),
   Prim_Hunk3_Cons(), Prim_Hunk3_Cxr(), Prim_Hunk3_Set_Cxr(),
   Prim_Impurify(), Prim_Init_Floppy(),
-  Prim_Initialize_Object_Hash(),
   Prim_Ins_BStr(), Prim_Ins_BStr_Excl(),
   Prim_Insert_Non_Marked_Vector(), Prim_Insert_String(),
   Prim_Int_To_Float(), Prim_Integer_Divide(),
@@ -698,7 +697,6 @@ extern Pointer
   Prim_Negative_Flonum(), Prim_Next_File(),
   Prim_Non_Marked_Vector_Cons(), Prim_Non_Reentrant_Catch(),
   Prim_Non_Restartable_Exit(), Prim_Null(),
-  Prim_Object_Hash(), Prim_Object_Unhash(), 
   Prim_One_Plus(), Prim_One_Plus_Fixnum(),
   Prim_Open_Catalog(),
   Prim_Overwrite_String(), Prim_Pack_Volume(),
@@ -712,7 +710,7 @@ extern Pointer
   Prim_Prim_Type_QM(), Prim_Print_String(), Prim_Pure_P(),
   Prim_Put_Char_To_Output_Channel(),
   Prim_Raise_Char(), Prim_Raise_String(),
-  Prim_Rehash_Gc_Daemon(),
+  Prim_Rehash(),
   Prim_Remove_File(), Prim_Rename_File(),
   Prim_Restartable_Exit(), Prim_Return_Step(),
   Prim_Round(),
@@ -983,9 +981,9 @@ Pointer (*(Primitive_Table[]))() = {
 /* 057 */ Prim_Binary_Fasload,
 /* 058 */ Prim_String_Position,
 /* 059 */ Prim_String_Less,
-/* 05A */ Prim_Object_Hash,
-/* 05B */ Prim_Object_Unhash,
-/* 05C */ Prim_Rehash_Gc_Daemon,
+/* 05A */ Prim_Unused,
+/* 05B */ Prim_Unused,
+/* 05C */ Prim_Rehash,
 /* 05D */ Prim_Length,
 /* 05E */ Prim_Assq,
 /* 05F */ Prim_Build_String_From_List,
@@ -1036,7 +1034,7 @@ Pointer (*(Primitive_Table[]))() = {
 /* 087 */ Prim_Sys_Pair_Cdr,
 /* 088 */ Prim_Sys_Set_Car,
 /* 089 */ Prim_Sys_Set_Cdr,
-/* 08A */ Prim_Initialize_Object_Hash,
+/* 08A */ Prim_Unused,
 /* 08B */ Prim_Get_Char_Immediate,
 /* 08C */ Prim_Set_Cell_Contents,
 /* 08D */ Prim_And_Make_Object,
@@ -1445,9 +1443,9 @@ char *Primitive_Names[] = {
 /* 0x57 in fasload */	"BINARY-FASLOAD",
 /* 0x58 in string */	"STRING-POSITION",
 /* 0x59 in string */	"STRING-LESS?",
-/* 0x5A in daemon */	"OBJECT-HASH",
-/* 0x5B in daemon */	"OBJECT-UNHASH",
-/* 0x5C in daemon */	"REHASH-GC-DAEMON",
+/* 0x5A not here */	No_Name,
+/* 0x5B not here */	No_Name,
+/* 0x5C in daemon */	"REHASH",
 /* 0x5D in list */	"LENGTH",
 /* 0x5E in list */	"ASSQ",
 /* 0x5F in string */	"LIST->STRING",
@@ -1498,7 +1496,7 @@ char *Primitive_Names[] = {
 /* 0x87 in list */	"SYSTEM-PAIR-CDR",
 /* 0x88 in list */	"SYSTEM-PAIR-SET-CAR!",
 /* 0x89 in list */	"SYSTEM-PAIR-SET-CDR!",
-/* 0x8A in daemon */	"INITIALIZE-OBJECT-HASH",
+/* 0x8A not here */	No_Name,
 /* 0x8B in io */	"GET-CHARACTER-FROM-INPUT-CHANNEL-IMMEDIATE",
 /* 0x8C in prim */	"SET-CELL-CONTENTS!",
 /* 0x8D in prim */	"&MAKE-OBJECT",

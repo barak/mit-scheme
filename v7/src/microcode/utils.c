@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.20 1987/01/21 20:29:54 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.21 1987/02/02 15:15:54 jinx Exp $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -172,8 +172,6 @@ Err_Print (Micro_Error)
       printf("Not enough room to impurify object.\n"); break;
     case ERR_WRITE_INTO_PURE_SPACE:
       printf("Write into pure area\n"); break;
-    case ERR_NO_HASH_TABLE:
-      printf("No hash table installed.\n"); break;
     case ERR_BAD_SET:
       printf("Attempt to perform side-effect on 'self'.\n"); break;
     case ERR_ARG_1_FAILED_COERCION:

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.21 1987/01/22 14:23:37 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.22 1987/02/02 15:18:06 jinx Exp $
  *
  * Error and termination code declarations.  This must correspond
  * to UTABMD.SCM
@@ -46,7 +46,7 @@ MIT in each case. */
 #define ERR_UNBOUND_VARIABLE			0x01
 #define ERR_UNASSIGNED_VARIABLE			0x02
 #define ERR_INAPPLICABLE_OBJECT			0x03
-#define ERR_OUT_OF_HASH_NUMBERS			0x04 /* Not generated */
+/* #define ERR_OUT_OF_HASH_NUMBERS		0x04 */
 /* #define ERR_ENVIRONMENT_CHAIN_TOO_DEEP	0x05 */
 #define ERR_BAD_FRAME				0x06
 #define ERR_BROKEN_COMPILED_VARIABLE		0x07
@@ -72,7 +72,7 @@ MIT in each case. */
 /* The following do not exist in the 68000 version */
 #define ERR_WRITE_INTO_PURE_SPACE		0x1A
 /* #define ERR_LOSING_SPARE_HEAP		0x1B */
-#define ERR_NO_HASH_TABLE			0x1C
+/* #define ERR_NO_HASH_TABLE			0x1C */
 #define ERR_BAD_SET                             0x1D
 #define ERR_ARG_1_FAILED_COERCION      		0x1E
 #define ERR_ARG_2_FAILED_COERCION      		0x1F

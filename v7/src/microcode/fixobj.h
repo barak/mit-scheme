@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixobj.h,v 9.21 1987/01/22 14:25:31 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixobj.h,v 9.22 1987/02/02 15:16:55 jinx Exp $
  *
  * Declarations of user offsets into the Fixed Objects Vector.
  * This should correspond to the file UTABMD.SCM
@@ -44,12 +44,8 @@ MIT in each case. */
 #define Returns_Vector		0x05	/* Return code -> Name map */
 #define Primitives_Vector	0x06	/* Primitive code -> Name map */
 #define Errors_Vector		0x07	/* Error code -> Name map */
-#define Hash_Number		0x08	/* Next number for hashing */
-#define Hash_Table		0x09	/* Table for hashing objects */
-#define Unhash_Table		0x0A	/* Inverse hash table */
 #define GC_Daemon		0x0B	/* Procedure to run after GC */
 #define Trap_Handler		0x0C	/* Continue after disaster */
-#define Open_Files		0x0D	/* List of open files */
 #define Stepper_State		0x0E	/* NOT IMPLEMENTED YET */
 #define Fixed_Objects_Slots	0x0F	/* Names of these slots */
 #define External_Primitives	0x10	/* Names of external prims */

@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.20 1987/01/21 20:29:40 jinx Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.21 1987/02/02 15:16:36 jinx Exp $
 
 (declare (usual-integrations))
 
@@ -63,12 +63,12 @@
 	       MICROCODE-RETURNS-VECTOR			;05
 	       MICROCODE-PRIMITIVES-VECTOR		;06
 	       MICROCODE-ERRORS-VECTOR			;07
-	       HASH-NUMBER				;08
-	       HASH-TABLE				;09
-	       UNHASH-TABLE				;0A
+	       #F					;08
+	       #F					;09
+	       #F					;0A
 	       GC-DAEMON				;0B
 	       TRAP-HANDLER				;0C
-	       OPEN-FILES				;0D
+	       #F					;0D
 	       STEPPER-STATE				;0E
 	       MICROCODE-FIXED-OBJECTS-SLOTS		;0F
 	       MICROCODE-EXTERNAL-PRIMITIVES		;10
@@ -408,9 +408,9 @@
 	       BINARY-FASLOAD				;$57
 	       STRING-POSITION				;$58
 	       STRING-LESS?				;$59
-	       OBJECT-HASH				;$5A
-	       OBJECT-UNHASH				;$5B
-	       REHASH-GC-DAEMON				;$5C
+	       #F					;$5A
+	       #F					;$5B
+	       REHASH					;$5C
 	       LENGTH					;$5D
 	       ASSQ					;$5E
 	       LIST->STRING				;$5F
@@ -456,7 +456,7 @@
 	       SYSTEM-PAIR-CDR				;$87
 	       SYSTEM-PAIR-SET-CAR!			;$88
 	       SYSTEM-PAIR-SET-CDR!			;$89
-	       INITIALIZE-OBJECT-HASH			;$8A
+	       #F					;$8A
 	       GET-CHARACTER-FROM-INPUT-CHANNEL-IMMEDIATE ;$8B
 	       SET-CELL-CONTENTS!			;$8C
 	       &MAKE-OBJECT				;$8D
@@ -753,7 +753,7 @@
 	       UNBOUND-VARIABLE				;01
 	       UNASSIGNED-VARIABLE			;02
 	       UNDEFINED-PROCEDURE			;03
-	       RAN-OUT-OF-HASH-NUMBERS			;04
+	       #F					;04
 	       #F					;05
 	       BAD-FRAME				;06
 	       BROKEN-CVARIABLE				;07
@@ -777,7 +777,7 @@
 	       IMPURIFY-OBJECT-TOO-LARGE		;19
 	       WRITE-INTO-PURE-SPACE                    ;1A
 	       #F		                        ;1B
-	       NO-HASH-TABLE                            ;1C
+	       #F					;1C
                ASSIGN-LAMBDA-NAME			;1D
 	       FAILED-ARG-1-COERCION                    ;1E
 	       FAILED-ARG-2-COERCION                    ;1F
@@ -832,3 +832,4 @@
 
 ;;; This identification string is saved by the system.
 
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.21 1987/02/02 15:16:36 jinx Exp $"

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.21 1987/01/22 14:17:17 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.22 1987/02/02 15:17:52 jinx Exp $
  *
  * This file contains the code to support startup of
  * the SCHEME interpreter.
@@ -348,7 +348,6 @@ int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
   User_Vector_Set(Fixed_Objects, System_Interrupt_Vector, Int_Vec);	\
   User_Vector_Set(Fixed_Objects, System_Error_Vector, Error);		\
   User_Vector_Set(Fixed_Objects, OBArray, OB_Array);			\
-  User_Vector_Set(Fixed_Objects, Hash_Number, FIXNUM_0);		\
   User_Vector_Set(Fixed_Objects, Dummy_History,				\
                   Make_Pointer(TC_HUNK3, Dummy_Hist));			\
   User_Vector_Set(Fixed_Objects, State_Space_Tag, TRUTH);		\
