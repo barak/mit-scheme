@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulfix.scm,v 1.1 1990/05/07 04:17:20 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulfix.scm,v 1.2 1991/08/12 22:15:22 cph Exp $
 $MC68020-Header: rules1.scm,v 4.32 90/01/18 22:43:54 GMT cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
@@ -104,7 +104,7 @@ MIT in each case. |#
 			 (OBJECT->FIXNUM (CONSTANT 4))
 			 #F))
   (standard-unary-conversion source target fixnum->index-fixnum))
-
+
 ; "Fixnum" in this context means an integer left shifted 6 bits
 
 (define-integrable (fixnum->index-fixnum src tgt)
@@ -141,6 +141,24 @@ MIT in each case. |#
 
 (define-integrable -fixnum-1
   (- fixnum-1))
+
+(define (no-overflow-branches!)
+  (set-current-branches!
+   (lambda (if-overflow)
+     if-overflow
+     (LAP))
+   (lambda (if-no-overflow)
+     (LAP (BGEZ 0 (@PCR ,if-no-overflow))
+	  (NOP)))))
+
+(define (guarantee-signed-fixnum n)
+  (if (not (signed-fixnum? n)) (error "Not a signed fixnum" n))
+  n)
+
+(define (signed-fixnum? n)
+  (and (exact-integer? n)
+       (>= n signed-fixnum/lower-limit)
+       (< n signed-fixnum/upper-limit)))
 
 ;;;; Arithmetic Operations
 
@@ -160,42 +178,57 @@ MIT in each case. |#
 (define fixnum-methods/1-arg
   (list 'FIXNUM-METHODS/1-ARG))
 
-; Assumption: overflow sets or clears register regnum:assembler-temp,
-; and this code is followed immediately by a branch on overflow
-
 (define-arithmetic-method 'ONE-PLUS-FIXNUM fixnum-methods/1-arg
   (lambda (tgt src overflow?)
-    (if overflow?
-	(let ((label-1 (generate-label))
-	      (label-2 (generate-label)))
-	  (LAP (BLTZ ,src (@PCR ,label-1))
-	       (ADDI ,regnum:assembler-temp 0 0)
-	       (ADDIU ,regnum:first-arg ,src ,fixnum-1)
-	       (BGEZ ,regnum:assembler-temp (@PCR ,label-2))
-	       (ADDIU ,tgt ,src ,fixnum-1)
-	       (ADDI ,regnum:assembler-temp 0 1)
-             (LABEL ,label-1)
-	       (ADDIU ,tgt ,src ,fixnum-1)
-	     (LABEL ,label-2)))
-	(LAP (ADDIU ,tgt ,src ,fixnum-1)))))
+    (fixnum-add-constant tgt src 1 overflow?)))
 
-(define-arithmetic-method 'MINUS-ONE-PLUS-FIXNUM
-  fixnum-methods/1-arg
+(define-arithmetic-method 'MINUS-ONE-PLUS-FIXNUM fixnum-methods/1-arg
   (lambda (tgt src overflow?)
-    (if overflow?
-	(let ((label-1 (generate-label))
-	      (label-2 (generate-label)))
-	  (LAP (BGEZ ,src (@PCR ,label-1))		      ; Can't overflow if >0
-	         (ADDI ,regnum:assembler-temp 0 0)	      ; Clear o'flow flag
-	       (ADDIU ,regnum:assembler-temp ,src ,-fixnum-1) ; Do subtraction into temp
-	       (BGEZ ,regnum:assembler-temp (@PCR ,label-2))  ; Overflow? -> label-2
-	         (ADDIU ,regnum:assembler-temp 0 1)	      ; Set overflow flag
- 	       (ADDI ,regnum:assembler-temp 0 0)	      ; Clear overflow flag
-             (LABEL ,label-1)
-	       (ADDIU ,tgt ,src ,-fixnum-1)		     ; Do subtraction
-	     (LABEL ,label-2)))
-	(LAP (ADDIU ,tgt ,src ,-fixnum-1)))))
+    (fixnum-add-constant tgt src -1 overflow?)))
 
+(define (fixnum-add-constant tgt src constant overflow?)
+  (let ((constant (* fixnum-1 constant)))
+    (cond ((not overflow?)
+	   (add-immediate constant src tgt))
+	  ((= constant 0)
+	   (no-overflow-branches!)
+	   (LAP (ADDIU ,tgt ,src 0)))
+	  (else
+	   (let ((bcc (if (> constant 0) 'BLEZ 'BGEZ)))
+	     (let ((prefix
+		    (lambda (label)
+		      (if (fits-in-16-bits-signed? constant)
+			  (LAP (,bcc ,src (@PCR ,label))
+			       (ADDIU ,tgt ,src ,constant))
+			  (let ((temp (if (= src tgt) regnum:first-arg tgt)))
+			    (LAP ,@(load-immediate constant temp)
+				 (,bcc ,src (@PCR ,label))
+				 (ADDU ,tgt ,src ,temp)))))))
+	       (if (> constant 0)
+		   (set-current-branches!
+		    (lambda (if-overflow)
+		      (let ((if-no-overflow (generate-label)))
+			(LAP ,@(prefix if-no-overflow)
+			     (BLTZ ,tgt (@PCR ,if-overflow))
+			     (NOP)
+			     (LABEL ,if-no-overflow))))
+		    (lambda (if-no-overflow)
+		      (LAP ,@(prefix if-no-overflow)
+			   (BGEZ ,tgt (@PCR ,if-no-overflow))
+			   (NOP))))
+		   (set-current-branches!
+		    (lambda (if-overflow)
+		      (let ((if-no-overflow (generate-label)))
+			(LAP ,@(prefix if-no-overflow)
+			     (BGEZ ,tgt (@PCR ,if-overflow))
+			     (NOP)
+			     (LABEL ,if-no-overflow))))
+		    (lambda (if-no-overflow)
+		      (LAP ,@(prefix if-no-overflow)
+			   (BLTZ ,tgt (@PCR ,if-no-overflow))
+			   (NOP)))))))
+	   (LAP)))))
+
 (define-rule statement
   ;; execute a binary fixnum operation
   (ASSIGN (REGISTER (? target))
@@ -213,65 +246,120 @@ MIT in each case. |#
 (define fixnum-methods/2-args
   (list 'FIXNUM-METHODS/2-ARGS))
 
-(define (do-overflow-addition tgt src1 src2)
-  (let ((label-1 (generate-label))
-	(label-2 (generate-label)))
-    (LAP (ADDI ,regnum:assembler-temp 0 0)
-	 (XOR  ,regnum:first-arg ,src1 ,src2)
-	 (BLTZ ,regnum:first-arg (@PCR ,label-1))
-	 (ADDU ,regnum:first-arg ,src1 ,src2)
-	 (XOR  ,regnum:first-arg ,src1 ,regnum:first-arg)
-	 (BGEZ ,regnum:first-arg (@PCR ,label-2))
-	 (ADDU ,tgt ,src1 ,src2)
-	 (ADDI ,regnum:assembler-temp 0 1)
-       (LABEL ,label-1)
-         (ADDU ,tgt ,src1 ,src2)
-       (LABEL ,label-2))))
-
 (define-arithmetic-method 'PLUS-FIXNUM fixnum-methods/2-args
   (lambda (tgt src1 src2 overflow?)
     (if overflow?
 	(do-overflow-addition tgt src1 src2)
 	(LAP (ADDU ,tgt ,src1 ,src2)))))
 
-(define (do-overflow-subtraction tgt src1 src2)
-  (let ((label-1 (generate-label))
-	(label-2 (generate-label)))
-    (LAP (ADDI ,regnum:assembler-temp 0 0)
-	 (XOR  ,regnum:first-arg ,src1 ,src2)
-	 (BGEZ ,regnum:first-arg (@PCR ,label-1))
-	 (SUBU ,regnum:first-arg ,src1 ,src2)
-	 (XOR  ,regnum:first-arg ,regnum:first-arg ,src1)
-	 (BGEZ ,regnum:first-arg (@PCR ,label-2))
-	 (SUBU ,tgt ,src1 ,src2)
-	 (ADDI ,regnum:assembler-temp 0 1)
-       (LABEL ,label-1)
-	 (SUBU ,tgt ,src1 ,src2)
-       (LABEL ,label-2))))
+;;; Use of REGNUM:ASSEMBLER-TEMP is OK here, but only because its
+;;; value is not used after the branch instruction that tests it.
+;;; The long form of the @PCR branch will test it correctly, but
+;;; clobbers it after testing.
 
+(define (do-overflow-addition tgt src1 src2)
+  (cond ((not (= src1 src2))
+	 (set-current-branches!
+	  (lambda (if-overflow)
+	    (let ((if-no-overflow (generate-label)))
+	      (LAP (XOR  ,regnum:assembler-temp ,src1 ,src2)
+		   (BLTZ ,regnum:assembler-temp (@PCR ,if-no-overflow))
+		   (ADDU ,tgt ,src1 ,src2)
+		   (XOR  ,regnum:assembler-temp
+			 ,tgt
+			 ,(if (= tgt src1) src2 src1))
+		   (BLTZ ,regnum:assembler-temp (@PCR ,if-overflow))
+		   (NOP)
+		   (LABEL ,if-no-overflow))))
+	  (lambda (if-no-overflow)
+	    (LAP (XOR  ,regnum:assembler-temp ,src1 ,src2)
+		 (BLTZ ,regnum:assembler-temp (@PCR ,if-no-overflow))
+		 (ADDU ,tgt ,src1 ,src2)
+		 (XOR  ,regnum:assembler-temp
+		       ,tgt
+		       ,(if (= tgt src1) src2 src1))
+		 (BGEZ ,regnum:assembler-temp (@PCR ,if-no-overflow))
+		 (NOP)))))
+	((not (= tgt src1))
+	 (set-current-branches!
+	  (lambda (if-overflow)
+	    (LAP (ADDU ,tgt ,src1 ,src1)
+		 (XOR  ,regnum:assembler-temp ,tgt ,src1)
+		 (BLTZ ,regnum:assembler-temp (@PCR ,if-overflow))
+		 (NOP)))
+	  (lambda (if-no-overflow)
+	    (LAP (ADDU ,tgt ,src1 ,src1)
+		 (XOR  ,regnum:assembler-temp ,tgt ,src1)
+		 (BGEZ ,regnum:assembler-temp (@PCR ,if-no-overflow))
+		 (NOP)))))
+	(else
+	 (set-current-branches!
+	  (lambda (if-overflow)
+	    (LAP (ADDU ,regnum:first-arg ,src1 ,src1)
+		 (XOR  ,regnum:assembler-temp ,regnum:first-arg ,src1)
+		 (BLTZ ,regnum:assembler-temp (@PCR ,if-overflow))
+		 (ADD  ,tgt 0 ,regnum:first-arg)))
+	  (lambda (if-no-overflow)
+	    (LAP (ADDU ,regnum:first-arg ,src1 ,src1)
+		 (XOR  ,regnum:assembler-temp ,regnum:first-arg ,src1)
+		 (BGEZ ,regnum:assembler-temp (@PCR ,if-no-overflow))
+		 (ADD  ,tgt 0 ,regnum:first-arg))))))
+  (LAP))
+
 (define-arithmetic-method 'MINUS-FIXNUM fixnum-methods/2-args
   (lambda (tgt src1 src2 overflow?)
     (if overflow?
-	(do-overflow-subtraction tgt src1 src2)
+	(if (= src1 src2)		;probably won't ever happen.
+	    (begin
+	      (no-overflow-branches!)
+	      (LAP (SUBU ,tgt ,src1 ,src1)))
+	    (do-overflow-subtraction tgt src1 src2))
 	(LAP (SUB ,tgt ,src1 ,src2)))))
+
+(define (do-overflow-subtraction tgt src1 src2)
+  (set-current-branches!
+   (lambda (if-overflow)
+     (let ((if-no-overflow (generate-label)))
+       (LAP (XOR  ,regnum:assembler-temp ,src1 ,src2)
+	    (BGEZ ,regnum:assembler-temp (@PCR ,if-no-overflow))
+	    (SUBU ,tgt ,src1 ,src2)
+	    ,@(if (not (= tgt src1))
+		  (LAP (XOR  ,regnum:assembler-temp ,tgt ,src1)
+		       (BLTZ ,regnum:assembler-temp (@PCR ,if-overflow)))
+		  (LAP (XOR  ,regnum:assembler-temp ,tgt ,src2)
+		       (BGEZ ,regnum:assembler-temp (@PCR ,if-overflow))))
+	    (NOP)
+	    (LABEL ,if-no-overflow))))
+   (lambda (if-no-overflow)
+     (LAP (XOR  ,regnum:assembler-temp ,src1 ,src2)
+	  (BGEZ ,regnum:assembler-temp (@PCR ,if-no-overflow))
+	  (SUBU ,tgt ,src1 ,src2)
+	  ,@(if (not (= tgt src1))
+		(LAP (XOR  ,regnum:assembler-temp ,tgt ,src1)
+		     (BGEZ ,regnum:assembler-temp (@PCR ,if-no-overflow)))
+		(LAP (XOR  ,regnum:assembler-temp ,tgt ,src2)
+		     (BLTZ ,regnum:assembler-temp (@PCR ,if-no-overflow))))
+	  (NOP))))
+  (LAP))
 
 (define (do-multiply tgt src1 src2 overflow?)
   (if overflow?
-      (let ((temp (standard-temporary!))
-	    (label-1 (generate-label)))
-	(LAP (SRL  ,regnum:first-arg ,src1 6)	; Unshift 1st arg.
-	     (MULT ,regnum:first-arg ,src2)	; Result is left justified
-	     (MFLO ,temp)
-	     (SRA  ,temp ,temp 31)		; Get sign bit only
-	     (MFHI ,regnum:first-arg)		; Should match the sign
-	     (BNE  ,regnum:first-arg ,temp (@pcr ,label-1))
- 	       (ADDI ,regnum:assembler-temp 0 1) ; Set overflow flag
-	     (ADDI ,regnum:assembler-temp 0 0)	; Clear overflow flag
-	     (MFLO ,tgt)
-           (LABEL ,label-1)))
-      (LAP (SRL  ,regnum:assembler-temp ,src1 6)
-	   (MULT ,regnum:assembler-temp ,src2)
-	   (MFLO ,tgt))))
+      (set-current-branches!
+       (lambda (if-overflow)
+	 (LAP (MFHI ,regnum:first-arg)
+	      (SRA  ,regnum:assembler-temp ,tgt 31)
+	      (BNE  ,regnum:first-arg ,regnum:assembler-temp
+		    (@PCR ,if-overflow))
+	      (NOP)))
+       (lambda (if-no-overflow)
+	 (LAP (MFHI ,regnum:first-arg)
+	      (SRA  ,regnum:assembler-temp ,tgt 31)
+	      (BEQ  ,regnum:first-arg ,regnum:assembler-temp
+		    (@PCR ,if-no-overflow))
+	      (NOP)))))
+  (LAP (SRA  ,regnum:assembler-temp ,src1 6)
+       (MULT ,regnum:assembler-temp ,src2)
+       (MFLO ,tgt)))
 
 (define-arithmetic-method 'MULTIPLY-FIXNUM fixnum-methods/2-args do-multiply)
 
@@ -301,7 +389,7 @@ MIT in each case. |#
 	   target source constant overflow?)
 	  ((fixnum-2-args/operator/constant*register operation)
 	   target constant source overflow?)))))
-
+
 (define (fixnum-2-args/commutative? operator)
   (memq operator '(PLUS-FIXNUM MULTIPLY-FIXNUM)))
 
@@ -311,73 +399,77 @@ MIT in each case. |#
 (define fixnum-methods/2-args/register*constant
   (list 'FIXNUM-METHODS/2-ARGS/REGISTER*CONSTANT))
 
-(define-arithmetic-method 'PLUS-FIXNUM
-  fixnum-methods/2-args/register*constant
-  (lambda (tgt src constant overflow?)
-    (guarantee-signed-fixnum constant)
-    (if overflow?
-	(if (zero? constant)
-	    (LAP (ADDI ,regnum:assembler-temp 0 0))
-	    (let ((temp (standard-temporary!)))
-	      (LAP ,@(load-fixnum-constant constant temp)
-		   ,@(do-overflow-addition tgt src temp))))
-	(add-immediate (* fixnum-1 constant) src tgt))))
-
-(define-arithmetic-method 'MINUS-FIXNUM
-  fixnum-methods/2-args/register*constant
-  (lambda (tgt src constant overflow?)
-    (guarantee-signed-fixnum constant)
-    (if overflow?
-	(if (zero? constant)
-	    (LAP (ADDI ,regnum:assembler-temp 0 0)
-		 (ADD ,tgt 0 ,src))
-	    (let ((temp (standard-temporary!)))
-	      (LAP ,@(load-fixnum-constant constant temp)
-		   ,@(do-overflow-subtraction tgt src temp))))
-	(add-immediate (- (* constant fixnum-1)) src tgt))))
-
-(define-arithmetic-method 'MULTIPLY-FIXNUM
-  fixnum-methods/2-args/register*constant
-  (lambda (tgt src constant overflow?)
-    (define (power-of-two? integer)
-      (cond ((<= integer 0) #F)
-	    ((= integer 1) 0)
-	    ((odd? integer) #F)
-	    ((power-of-two? (quotient integer 2)) => 1+)
-	    (else #F)))
-    (define (multiply-by-power-of-two what-power)
-      (if overflow?
-	  (let ((label-1 (generate-label)))
-	    (LAP (SLL  ,regnum:first-arg ,src ,what-power)
-		 (SRA  ,regnum:assembler-temp ,regnum:first-arg ,what-power)
-		 (BNE  ,regnum:assembler-temp ,src (@pcr ,label-1))
-	           (ADDI ,regnum:assembler-temp 0 1)
-		 (ADDI ,regnum:assembler-temp 0 0)
-		 (SLL  ,tgt ,src ,what-power)
-	       (LABEL ,label-1)))
-	  (LAP (SLL ,tgt ,src ,what-power))))
-    (cond ((zero? constant)
-	   (LAP ,@(if overflow?
-		      (LAP (ADDI ,regnum:assembler-temp 0 0))
-		      '())
-		(ADDI ,tgt 0 0)))
-	  ((= constant 1) 
-	   (LAP ,@(if overflow?
-		      (LAP (ADDI ,regnum:assembler-temp 0 0))
-		      '())
-		(ADD ,tgt 0 ,src)))
-	   ((power-of-two? constant) => multiply-by-power-of-two)
-	   (else
-	    (let ((temp (standard-temporary!)))
-	      (LAP ,@(load-fixnum-constant constant temp)
-		   ,@(do-multiply tgt src temp overflow?)))))))
-
 (define (fixnum-2-args/operator/constant*register operation)
   (lookup-arithmetic-method operation
 			    fixnum-methods/2-args/constant*register))
 
 (define fixnum-methods/2-args/constant*register
   (list 'FIXNUM-METHODS/2-ARGS/CONSTANT*REGISTER))
+
+(define-arithmetic-method 'PLUS-FIXNUM
+  fixnum-methods/2-args/register*constant
+  (lambda (tgt src constant overflow?)
+    (guarantee-signed-fixnum constant)
+    (fixnum-add-constant tgt src constant overflow?)))
+
+(define-arithmetic-method 'MINUS-FIXNUM
+  fixnum-methods/2-args/register*constant
+  (lambda (tgt src constant overflow?)
+    (guarantee-signed-fixnum constant)
+    (fixnum-add-constant tgt src (- constant) overflow?)))
+
+(define-arithmetic-method 'MULTIPLY-FIXNUM
+  fixnum-methods/2-args/register*constant
+  (lambda (tgt src constant overflow?)
+    (cond ((zero? constant)
+	   (if overflow? (no-overflow-branches!))
+	   (LAP (ADDI ,tgt 0 0)))
+	  ((= constant 1) 
+	   (if overflow? (no-overflow-branches!))
+	   (LAP (ADD ,tgt 0 ,src)))
+	  ((let loop ((n constant))
+	     (and (> n 0)
+		  (if (= n 1)
+		      0
+		      (and (even? n)
+			   (let ((m (loop (quotient n 2))))
+			     (and m
+				  (+ m 1)))))))
+	   =>
+	   (lambda (power-of-two)
+	     (if overflow?
+		 (do-left-shift-overflow tgt src power-of-two)
+		 (LAP (SLL ,tgt ,src ,power-of-two)))))
+	  (else
+	   (let ((temp (standard-temporary!)))
+	     (LAP ,@(load-fixnum-constant constant temp)
+		  ,@(do-multiply tgt src temp overflow?)))))))
+
+(define (do-left-shift-overflow tgt src power-of-two)
+  (if (= tgt src)
+      (set-current-branches!
+       (lambda (if-overflow)
+	 (LAP (SLL  ,regnum:first-arg ,src ,power-of-two)
+	      (SRA  ,regnum:assembler-temp ,regnum:first-arg ,power-of-two)
+	      (BNE  ,regnum:assembler-temp ,src (@PCR ,if-overflow))
+	      (ADD  ,tgt 0 ,regnum:first-arg)))
+       (lambda (if-no-overflow)
+	 (LAP (SLL  ,regnum:first-arg ,src ,power-of-two)
+	      (SRA  ,regnum:assembler-temp ,regnum:first-arg ,power-of-two)
+	      (BEQ  ,regnum:assembler-temp ,src (@PCR ,if-no-overflow))
+	      (ADD  ,tgt 0 ,regnum:first-arg))))
+      (set-current-branches!
+       (lambda (if-overflow)
+	 (LAP (SLL  ,tgt ,src ,power-of-two)
+	      (SRA  ,regnum:assembler-temp ,tgt ,power-of-two)
+	      (BNE  ,regnum:assembler-temp ,src (@PCR ,if-overflow))
+	      (NOP)))
+       (lambda (if-no-overflow)
+	 (LAP (SLL  ,tgt ,src ,power-of-two)
+	      (SRA  ,regnum:assembler-temp ,tgt ,power-of-two)
+	      (BEQ  ,regnum:assembler-temp ,src (@PCR ,if-no-overflow))
+	      (NOP)))))
+  (LAP))
 
 (define-arithmetic-method 'MINUS-FIXNUM
   fixnum-methods/2-args/constant*register
@@ -388,29 +480,17 @@ MIT in each case. |#
 	   ,@(if overflow?
 		 (do-overflow-subtraction tgt temp src)
 		 (LAP (SUB ,tgt ,temp ,src)))))))
-
-(define (guarantee-signed-fixnum n)
-  (if (not (signed-fixnum? n)) (error "Not a signed fixnum" n))
-  n)
-
-(define (signed-fixnum? n)
-  (and (exact-integer? n)
-       (>= n signed-fixnum/lower-limit)
-       (< n signed-fixnum/upper-limit)))
 
 ;;;; Predicates
 
-;;; This is a kludge.  It assumes that the last instruction of the
-;;; arithmetic operation that may cause an overflow condition will
-;;; have set regnum:assembler-temp to 0 if there is no overflow.
-
 (define-rule predicate
   (OVERFLOW-TEST)
-  (set-current-branches!
-   (lambda (label)
-     (LAP (BNE ,regnum:assembler-temp 0 (@PCR ,label)) (NOP)))
-   (lambda (label)
-     (LAP (BEQ ,regnum:assembler-temp 0 (@PCR ,label)) (NOP))))
+  ;; The RTL code generate guarantees that this instruction is always
+  ;; immediately preceded by a fixnum operation with the OVERFLOW?
+  ;; flag turned on.  Furthermore, it also guarantees that there are
+  ;; no other fixnum operations with the OVERFLOW? flag set.  So all
+  ;; the processing of overflow tests has been moved into the fixnum
+  ;; operations.
   (LAP))
 
 (define-rule predicate
@@ -425,7 +505,7 @@ MIT in each case. |#
     ((NEGATIVE-FIXNUM?) '<)
     ((POSITIVE-FIXNUM?) '>)
     (else (error "unknown fixnum predicate" predicate))))
-
+
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (REGISTER (? source1))
