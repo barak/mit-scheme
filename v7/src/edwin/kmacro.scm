@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.34 1991/08/06 15:40:44 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.35 1991/11/22 06:58:36 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -120,7 +120,7 @@
 
 (define (keyboard-macro-define name *macro)
   (string-table-put! named-keyboard-macros name last-keyboard-macro)
-  (make-command name
+  (make-command (intern name)
 		"Command defined by keyboard macro"
 		"P"
 		(lambda (#!optional argument)
