@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.19 1991/05/20 22:16:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.20 1991/05/21 02:06:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -215,36 +215,28 @@ environment are considered."
 		       (editor-error "No symbol preceding point"))
 		   point)))))
       (let ((start (forward-prefix-chars (backward-sexp end 1 'LIMIT) end)))
-	(let ((prefix (extract-string start end)))
-	  (let ((completions
-		 (let ((completions (obarray-completions prefix)))
-		   (if (not bound-only?)
-		       completions
-		       (let ((environment (evaluation-environment false)))
-			 (list-transform-positive completions
-			   (lambda (name)
-			     (environment-bound? environment name))))))))
-	    (cond ((null? completions)
-		   (editor-beep)
-		   (message "Can't find completion for \"" prefix "\""))
-		  ((null? (cdr completions))
-		   (let ((completion (system-pair-car (car completions))))
-		     (if (not (string=? completion prefix))
-			 (begin
-			   (delete-string start end)
-			   (insert-string completion start))
-			 (message "Sole completion: \"" prefix "\""))))
-		  (else
-		   (let ((completions (map system-pair-car completions)))
-		     (let ((completion
-			    (string-greatest-common-prefix completions)))
-		       (if (not (string=? completion prefix))
-			   (begin
-			     (delete-string start end)
-			     (insert-string completion start))
-			   (comint-list-filename-completions
-			    (lambda ()
-			      (sort completions string<=?))))))))))))))
+	(standard-completion (extract-string start end)
+	  (lambda (prefix if-unique if-not-unique if-not-found)
+	    (let ((completions
+		   (let ((completions (obarray-completions prefix)))
+		     (if (not bound-only?)
+			 completions
+			 (let ((environment (evaluation-environment false)))
+			   (list-transform-positive completions
+			     (lambda (name)
+			       (environment-bound? environment name))))))))
+	      (cond ((null? completions)
+		     (if-not-found))
+		    ((null? (cdr completions))
+		     (if-unique (system-pair-car (car completions))))
+		    (else
+		     (let ((completions (map system-pair-car completions)))
+		       (if-not-unique
+			(string-greatest-common-prefix completions)
+			(lambda () (sort completions string<=?))))))))
+	  (lambda (completion)
+	    (delete-string start end)
+	    (insert-string completion start)))))))
 
 (define (obarray-completions prefix)
   (let ((obarray (fixed-objects-item 'OBARRAY)))

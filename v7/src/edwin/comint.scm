@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.5 1991/05/20 22:05:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.6 1991/05/21 02:05:45 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -473,54 +473,24 @@ it just adds completion characters to the end of the filename."
   "List all possible completions of the filename at point."
   ()
   (lambda ()
-    (comint-list-filename-completions
+    (pop-up-generated-completions
      (lambda ()
        (filename-completions-list
 	(merge-pathnames
 	 (->pathname (region->string (comint-current-filename-region)))
 	 (buffer-default-directory (current-buffer))))))))
-
+
 (define (comint-current-filename-region)
   (let ((point (current-point))
 	(chars "~/A-Za-z0-9---_.$#,"))
-    (let ((start
-	   (skip-chars-backward chars
-				point
-				(comint-line-start point)
-				'LIMIT)))
-      (let ((end
-	     (skip-chars-forward chars start (line-end start 0) 'LIMIT)))
+    (let ((start (skip-chars-backward chars point (comint-line-start point))))
+      (let ((end (skip-chars-forward chars start (line-end start 0))))
 	(and (mark< start end)
 	     (make-region start end))))))
 
 (define (comint-filename-complete pathname filename insert-completion)
-  (filename-complete-string pathname
-    (lambda (filename*)
-      (if (string=? filename filename*)
-	  (message "Sole completion")
-	  (insert-completion filename*)))
-    (lambda (filename* list-completions)
-      (if (string=? filename filename*)
-	  (if (ref-variable completion-auto-help)
-	      (comint-list-filename-completions list-completions)
-	      (message "Next char not unique"))
-	  (insert-completion filename*)))
-    (lambda ()
-      (editor-failure "No completions"))))
-
-(define (comint-list-filename-completions list-completions)
-  (message "Making completion list...")
-  (let ((completions (list-completions)))
-    (clear-message)
-    (if (null? completions)
-	(editor-failure "No completions")
-	(begin
-	  (write-completions-list completions)
-	  (message "Hit space to flush.")
-	  (reset-command-prompt!)
-	  (let ((char (keyboard-peek-char)))
-	    (if (char=? #\space char)
-		(begin
-		  (keyboard-read-char)
-		  (kill-pop-up-buffer false))))
-	  (clear-message)))))
+  (standard-completion filename
+    (lambda (filename if-unique if-not-unique if-not-found)
+      filename
+      (filename-complete-string pathname if-unique if-not-unique if-not-found))
+    insert-completion))
