@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.13 1988/08/15 20:44:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.14 1988/11/08 07:31:15 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -50,24 +50,25 @@ extern void
 #define COMPILED_CODE_ADDRESS_P(object)			\
    ((OBJECT_TYPE (object)) == TC_COMPILED_ENTRY)
 
-DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->BLOCK", Prim_comp_code_address_block, 1, 1, 0)
+DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->BLOCK", Prim_comp_code_address_block, 1, 1,
+  "Given a compiled code address, return its compiled code block.")
 {
-  Pointer *address;
-  Primitive_1_Arg ();
+  PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
-  address = compiled_entry_to_block_address(Arg1);
-  PRIMITIVE_RETURN (Make_Pointer (TC_COMPILED_CODE_BLOCK, address));
+  PRIMITIVE_RETURN
+    (Make_Pointer (TC_COMPILED_CODE_BLOCK,
+		   (compiled_entry_to_block_address (ARG_REF (1)))));
 }
 
-DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->OFFSET", Prim_comp_code_address_offset, 1, 1, 0)
+DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->OFFSET", Prim_comp_code_address_offset, 1, 1,
+  "Given a compiled code address, return its offset into its block.")
 {
-  long offset;
-  Primitive_1_Arg ();
+  PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
-  offset = compiled_entry_to_block_offset(Arg1);
-  PRIMITIVE_RETURN (MAKE_SIGNED_FIXNUM (offset));
+  PRIMITIVE_RETURN
+    (MAKE_SIGNED_FIXNUM (compiled_entry_to_block_offset (ARG_REF (1))));
 }
 
 /*
@@ -128,4 +129,23 @@ DEFINE_PRIMITIVE ("COERCE-TO-COMPILED-PROCEDURE", Prim_coerce_to_closure, 2, 2, 
       Primitive_Error(ERR_ARG_2_BAD_RANGE);
       /*NOTREACHED*/
   }
+}
+
+DEFINE_PRIMITIVE ("COMPILED-CLOSURE->ENTRY", Prim_compiled_closure_to_entry, 1, 1,
+  "Given a compiled closure, return the entry point which it invokes.")
+{
+  Pointer entry_type [3];
+  Pointer closure;
+  extern void compiled_entry_type ();
+  extern long compiled_entry_manifest_closure_p ();
+  extern Pointer compiled_closure_to_entry ();
+  PRIMITIVE_HEADER (1);
+
+  CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
+  closure = (ARG_REF (1));
+  compiled_entry_type (closure, (& entry_type));
+  if (! (((entry_type [0]) == 0) &&
+	 (compiled_entry_manifest_closure_p (closure))))
+    error_bad_range_arg (1);
+  PRIMITIVE_RETURN (compiled_closure_to_entry (closure));
 }
