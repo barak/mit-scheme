@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ssp.pkg,v 1.9 2004/10/30 05:20:03 cph Exp $
+$Id: ssp.pkg,v 1.10 2004/10/30 05:28:20 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -176,6 +176,8 @@ USA.
 	  xdoc-db-id
 	  xdoc-output?)
   (export (runtime ssp-expander-environment)
+	  find-xdoc-due-date
+	  with-xdoc-expansion-context
 	  xd:answer
 	  xd:answer?
 	  xd:boolean
@@ -236,7 +238,10 @@ USA.
 	  xd:xdoc?
 	  xdoc-due-date-attributes
 	  xdoc-due-date-string
-	  xdoc-part-number))
+	  xdoc-outputs-submitted?
+	  xdoc-part-number
+	  xdoc-ps-number
+	  xdoc-recursive?))
 
 (define-package (runtime ssp database-interface)
   (files "db")
