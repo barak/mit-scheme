@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.150 1992/05/23 01:13:04 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.151 1992/05/26 17:40:49 mhwu Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -884,6 +884,15 @@ MIT in each case. |#
   (export ()
 	  encrypt
 	  decrypt))
+
+(define-package (runtime compress)
+  (file-case options
+    ((load) "cpress")
+    (else))
+  (parent ())
+  (export ()
+	  compress
+	  uncompress))
 
 (define-package (runtime port)
   (files "port")
