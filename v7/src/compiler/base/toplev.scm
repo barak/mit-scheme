@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.58 2000/01/10 03:39:30 cph Exp $
+$Id: toplev.scm,v 4.59 2000/01/10 03:47:47 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -54,6 +54,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				 #f)))))))))
 	  (if (not (null? reasons))
 	      (begin
+		(fresh-line)
 		(write-string ";Generating ")
 		(write (->namestring output-file))
 		(write-string " because of:")
@@ -158,6 +159,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			   output-pathname))))
 		(if compiler:noisy?
 		    (begin
+		      (fresh-line)
 		      (write-string "Compile File: ")
 		      (write (enough-namestring input-pathname))
 		      (write-string " => ")
@@ -266,6 +268,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (set! *recursive-compilation-count* (1+ my-number))
     (if output?
 	(begin
+	  (fresh-line)
 	  (newline)
 	  (write-string *output-prefix*)
 	  (write-string "*** Recursive compilation ")
@@ -307,6 +310,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      (do-it))))))))
       (if output?
 	  (begin
+	    (fresh-line)
 	    (write-string *output-prefix*)
 	    (write-string "*** Done with recursive compilation ")
 	    (write my-number)
@@ -560,6 +564,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (compiler-phase/visible name thunk)
   (fluid-let ((*output-prefix* (string-append "    " *output-prefix*)))
+    (fresh-line)
     (write-string *output-prefix*)
     (write-string name)
     (write-string "...")

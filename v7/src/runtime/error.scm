@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.49 1999/01/02 06:11:34 cph Exp $
+$Id: error.scm,v 14.50 2000/01/10 03:46:12 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -584,7 +584,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(let ((port (notification-output-port)))
 	  (fresh-line port)
 	  (write-string ";Warning: " port)
-	  (write-condition-report condition port)))))
+	  (write-condition-report condition port)
+	  (newline port)))))
 
 (define standard-error-hook false)
 (define standard-warning-hook false)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.16 2000/01/09 21:33:46 cph Exp $
+$Id: toplev.scm,v 4.17 2000/01/10 03:48:20 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -170,6 +170,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((start-date (get-decoded-time)))
     (if sf:noisy?
 	(begin
+	  (fresh-line)
 	  (write-string "Syntax file: ")
 	  (write (enough-namestring input-pathname))
 	  (write-string " ")
@@ -339,6 +340,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (end-phase)
   (if sf:noisy?
       (begin
+	(fresh-line)
 	(write-string "    ")
 	(write-string this-name)
 	(write-string "...")
@@ -362,6 +364,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (time-report prefix process-time real-time)
   (if sf:noisy?
       (begin
+	(fresh-line)
 	(write-string prefix)
 	(write-string ": ")
 	(write (/ (exact->inexact process-time) 1000))

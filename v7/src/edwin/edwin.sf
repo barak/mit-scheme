@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: edwin.sf,v 1.22 2000/01/10 03:42:30 cph Exp $
+;;; $Id: edwin.sf,v 1.23 2000/01/10 03:43:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -65,10 +65,10 @@
 	 (lambda (filename)
 	   (write-string "Pre-loading class definitions from ")
 	   (write filename)
-	   (newline)
 	   (syntax* (read-file (string-append filename ".scm"))
 		    syntax-table)
-	   (write-string " -- done")))))
+	   (write-string " -- done")
+	   (newline)))))
   (read-class-definitions "window")
   (read-class-definitions "utlwin")
   (read-class-definitions "modwin")
