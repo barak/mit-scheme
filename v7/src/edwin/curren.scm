@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: curren.scm,v 1.112 1994/05/13 20:26:58 cph Exp $
+;;;	$Id: curren.scm,v 1.113 1995/02/07 23:51:22 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -73,8 +73,17 @@
 	 (set-editor-screens! current-editor
 			      (append! (editor-screens current-editor)
 				       (list screen)))
+	 (event-distributor/invoke!
+	  (variable-default-value (ref-variable-object screen-creation-hook))
+	  screen)
 	 (update-screen! screen false)
 	 screen)))))
+
+(define-variable screen-creation-hook
+  "An event distributor that is invoked when a screen is created.
+The new screen passed as its argument.
+The screen is guaranteed to be deselected at that time."
+  (make-event-distributor))
 
 (define (delete-screen! screen)
   (without-interrupts
@@ -454,7 +463,9 @@
   (for-each (lambda (hook) (hook buffer))
 	    (get-buffer-hooks buffer 'SELECT-BUFFER-HOOKS))
   (if (not (minibuffer? buffer))
-      (event-distributor/invoke! (ref-variable select-buffer-hook) buffer)))
+      (event-distributor/invoke!
+       (variable-default-value (ref-variable-object select-buffer-hook))
+       buffer)))
 
 (define-integrable (add-select-buffer-hook buffer hook)
   (add-buffer-hook buffer 'SELECT-BUFFER-HOOKS hook))
