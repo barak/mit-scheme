@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.27 1987/08/10 21:36:57 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.28 1987/10/27 23:13:41 jinx Rel $
  *
  * Preprocessor to find and declare defined primitives.
  *
@@ -225,12 +225,17 @@ main(argc, argv)
       process_argument(*++argv);
     }
   }
-  dprintf("About to sort %s\n", "");
-  sort();
+  if (!Built_in_p)
+  {
+    dprintf("About to sort %s\n", "");
+    sort();
+  }
   dprintf("About to dump %s\n", "");
   dump(TRUE);
   if (output != stdout)
+  {
     fclose(output);
+  }
   normal_exit();
 }
 
@@ -393,7 +398,8 @@ copy_string(is, s, cap, Size)
 #define ARITY_SIZE    6
 
 typedef struct dsc
-{ char C_Name[STRING_SIZE];		/* The C name of the function */
+{
+  char C_Name[STRING_SIZE];		/* The C name of the function */
   char Arity[ARITY_SIZE];         	/* Number of arguments */
   char Scheme_Name[STRING_SIZE];	/* Scheme name of the primitive */
   char File_Name[STRING_SIZE];		/* File where found. */
@@ -408,9 +414,11 @@ typedef struct dsc
 static int buffer_index = 0;
 descriptor Data_Buffer[BUFFER_SIZE];
 descriptor *Result_Buffer[BUFFER_SIZE];
+descriptor *Temp_Buffer[BUFFER_SIZE];
 
 static descriptor Dummy_Entry =
-{ "Dummy_Primitive",
+{
+  "Dummy_Primitive",
   "0",
   "\"DUMMY-PRIMITIVE\"",
   "Findprim.c"
@@ -420,7 +428,8 @@ static char Dummy_Error_String[] =
   "Microcode_Termination(TERM_BAD_PRIMITIVE)";
 
 static descriptor Inexistent_Entry =
-{ "Prim_Inexistent",
+{
+  "Prim_Inexistent",
   "0",
   "No_Name",
   "Findprim.c"
@@ -428,6 +437,7 @@ static descriptor Inexistent_Entry =
 
 static char Inexistent_Real_Name[] =
   "\"INEXISTENT-PRIMITIVE\"";
+
 static char Inexistent_Error_String[] =
   "Primitive_Error(ERR_UNIMPLEMENTED_PRIMITIVE)";
 
@@ -562,11 +572,128 @@ initialize_builtin(arg)
   return;
 }
 
-/* *** FIX *** No-op for now */
+int
+compare_descriptors(d1, d2)
+     descriptor *d1, *d2;
+{
+  int value;
+
+  dprintf("comparing %s", d1->Scheme_Name);
+  dprintf(" and %s.\n", d2->Scheme_Name);
+  value = strcmp(d1->Scheme_Name, d2->Scheme_Name);
+  if (value > 0)
+  {
+    return 1;
+  }
+  else if (value < 0)
+  {
+    return -1;
+  }
+  else
+  {
+    return 0;
+  }
+}
+
+void
+mergesort(low, high, array, temp_array)
+     int low;
+     register int high;
+     register descriptor **array, **temp_array;
+{
+  register int index, low1, low2;
+  int high1, high2;
+
+  dprintf("mergesort: low = %d", low);
+  dprintf("; high = %d", high);
+
+  if (high <= low)
+  {
+    dprintf("; done.%s\n", "");
+    return;
+  }
+
+  low1 = low;
+  high1 = ((low + high) / 2);
+  low2 = (high1 + 1);
+  high2 = high;
+
+  dprintf("; high1 = %d\n", high1);
+
+  mergesort(low, high1, temp_array, array);
+  mergesort(low2, high, temp_array, array);
+
+  dprintf("mergesort: low1 = %d", low1);
+  dprintf("; high1 = %d", high1);
+  dprintf("; low2 = %d", low2);
+  dprintf("; high2 = %d\n", high2);
+
+  for (index = low; index <= high; index += 1)
+  {
+    dprintf("index = %d", index);
+    dprintf("; low1 = %d", low1);
+    dprintf("; low2 = %d\n", low2);
+
+    if (low1 > high1)
+    {
+      array[index] = temp_array[low2];
+      low2 += 1;
+    }
+    else if (low2 > high2)
+    {
+      array[index] = temp_array[low1];
+      low1 += 1;
+    }
+    else
+    {
+      switch(compare_descriptors(temp_array[low1], temp_array[low2]))
+      {
+	case -1:
+	  array[index] = temp_array[low1];
+	  low1 += 1;
+	  break;
+
+	case 1:
+	  array[index] = temp_array[low2];
+	  low2 += 1;
+	  break;
+
+	default:
+	  fprintf(stderr, "Error: bad comparison.\n");
+	  goto comparison_abort;
+
+	case 0:
+	{
+	  fprintf(stderr, "Error: repeated primitive.\n");
+comparison_abort:
+	  initialize_index_size();
+	  output = stderr;
+	  fprintf(stderr, "definition 1:\n");
+	  print_entry(low1, temp_array[low1]);
+	  fprintf(stderr, "\ndefinition 2:\n");
+	  print_entry(low2, temp_array[low2]);
+	  fprintf(stderr, "\n");
+	  error_exit(FALSE);
+	  break;
+	}
+      }
+    }
+  }
+  return;
+}
 
 void
 sort()
 {
+  register int count;
+  if (buffer_index <= 0)
+    return;
+  
+  for (count = (buffer_index - 1); count >= 0; count -= 1)
+  {
+    Temp_Buffer[count] = Result_Buffer[count];
+  }
+  mergesort(0, (buffer_index - 1), Result_Buffer, Temp_Buffer);
   return;
 }
 
