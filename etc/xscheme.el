@@ -20,7 +20,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.29 1991/08/29 01:46:35 jinx Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.30 1993/01/29 12:54:51 gjr Exp $
 
 (require 'scheme)
 
@@ -628,17 +628,25 @@ Useful for working with debugging Scheme under adb."
   (interactive)
   (send-string xscheme-process-name "(proceed)\n"))
 
+(defun buffer-local-value-cell (buffer name)
+  (let ((pair (assq name (buffer-local-variables (get-buffer buffer)))))
+    (if (not pair)
+	(error "buffer-local-value-cell: Not bound")
+      pair)))
+
 (defun xscheme-send-control-g-interrupt ()
   "Cause the Scheme processor to halt and flush input.
 Control returns to the top level rep loop."
   (interactive)
-  (let ((inhibit-quit t))
+  (let* ((inhibit-quit t)
+	 (vcell (buffer-local-value-cell xscheme-buffer-name
+					 'xscheme-control-g-disabled-p)))
     (cond ((not xscheme-control-g-synchronization-p)
 	   (interrupt-process xscheme-process-name))
-	  (xscheme-control-g-disabled-p
+	  ((cdr vcell)
 	   (message "Relax..."))
 	  (t
-	   (setq xscheme-control-g-disabled-p t)
+	   (rplacd vcell t)
 	   (message "Sending C-G interrupt to Scheme...")
 	   (interrupt-process xscheme-process-name)
 	   (send-string xscheme-process-name (char-to-string 0))))))
