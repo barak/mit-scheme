@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.17 1995/04/15 06:11:22 cph Exp $
+$Id: floppy.scm,v 1.18 1996/10/04 19:30:23 cph Exp $
 
-Copyright (c) 1992-95 Massachusetts Institute of Technology
+Copyright (c) 1992-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1012,10 +1012,10 @@ The following filenames are reserved and may not be used:
 
 (set! os/buffer-backup-pathname
       (let ((usual os/buffer-backup-pathname))
-	(lambda (truename)
+	(lambda (truename buffer)
 	  (if (student-directory? truename)
 	      (values (pathname-new-type truename "bak") '())
-	      (usual truename)))))
+	      (usual truename buffer)))))
 
 ;;; These next two depend on the fact that they are only invoked when
 ;;; the current buffer is the Dired buffer that is being tested.
