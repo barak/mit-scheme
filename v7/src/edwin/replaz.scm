@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.72 1991/08/06 15:54:41 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.73 1991/09/11 02:11:57 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -259,12 +259,13 @@ The argument, if given, is the number of context lines to show
   "sList matching lines (regexp)\nP"
   (lambda (regexp argument)
     (let ((argument (or argument 0)))
-      (let ((-arg (- argument))
+      (let ((end (group-end (current-point)))
+	    (-arg (- argument))
 	    (1+arg (1+ argument)))
 	(with-output-to-temporary-buffer "*Occur*"
 	  (lambda ()
 	    (define (loop start)
-	      (let ((mark (re-search-forward regexp start)))
+	      (let ((mark (re-search-forward regexp start end)))
 		(if mark
 		    (begin (write-string
 			    (extract-string (line-start mark -arg)
