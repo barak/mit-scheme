@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/telnet.scm,v 1.2 1991/10/02 09:18:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/telnet.scm,v 1.3 1991/10/03 17:47:59 arthur Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -74,18 +74,40 @@ and telnet-mode-hook, in that order."
 
 (define-command telnet
   "Run telnet in a buffer.
-With a prefix argument, it unconditionally creates a new telnet connection."
+With a prefix argument, it unconditionally creates a new telnet connection.
+If port number is typed after hostname (separated by a space), use it instead
+of the default."
   "sTelnet to Host\nP"
   (lambda (host #!optional arg)
-    (select-buffer
-     (make-comint (ref-mode-object telnet)
-		  (let ((default (string-append host "-telnet")))
-		    (if (or (default-object? arg)
-			    (not arg))
+    (let ((default
+	    (let ((default (string-append host "-telnet")))
+	      (if (or (default-object? arg)
+		      (not arg))
+		  default
+		  (list default)))))
+      (select-buffer
+       (if (re-match-string-forward
+	    (re-compile-pattern "\\([^ ]+\\) \\([^ ]+\\)" false)
+	    true
+	    false
+	    host)
+	   (let ((host* (substring host
+				   (re-match-start-index 1)
+				   (re-match-end-index 1))))
+	     (let ((port (substring host
+				    (re-match-start-index 2)
+				    (re-match-end-index 2))))
+	       (if (exact-nonnegative-integer? (string->number port))
+		   (make-comint (ref-mode-object telnet)
+				default
+				"telnet"
+				host*
+				port)
+		   (editor-error "Port must be a positive integer"))))
+	   (make-comint (ref-mode-object telnet)
 			default
-			(list default)))
-		  "telnet"
-		  host))))
+			"telnet"
+			host))))))
 
 (define-command telnet-send-input
   "Send input to telnet process.
