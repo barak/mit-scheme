@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: buffrm.scm,v 1.51 1996/05/14 01:24:05 cph Exp $
+;;;	$Id: buffrm.scm,v 1.52 1998/02/01 05:11:35 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -517,3 +517,23 @@ Automatically becomes local when set in any fashion."
 	      (if window
 		  (weak-set-car! *minibuffer-scroll-window*
 				 (convert-window window)))))))))
+
+(define (with-saved-configuration thunk)
+  (let ((screen (selected-screen)))
+    (let ((configuration (screen-window-configuration screen)))
+      (fluid-let ((restore-saved-continuation? #t))
+	(dynamic-wind
+	 (lambda () unspecific)
+	 thunk
+	 (lambda ()
+	   (if restore-saved-continuation?
+	       (set-screen-window-configuration! screen configuration))))))))
+
+(define (dont-restore-saved-configuration)
+  ;; This conditional will signal an error if this procedure is called
+  ;; outside the dynamic context of WITH-SAVED-CONFIGURATION.
+  (if restore-saved-continuation?
+      (set! restore-saved-continuation? #f))
+  unspecific)
+
+(define restore-saved-continuation?)

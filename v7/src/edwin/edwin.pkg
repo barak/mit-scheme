@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.219 1998/01/29 06:05:35 cph Exp $
+$Id: edwin.pkg,v 1.220 1998/02/01 05:12:21 cph Exp $
 
 Copyright (c) 1989-98 Massachusetts Institute of Technology
 
@@ -297,6 +297,7 @@ MIT in each case. |#
 	  display-style/ignore-input?
 	  display-style/ignore-redisplay-flags?
 	  display-style/no-screen-output?
+	  dont-restore-saved-configuration
 	  edwin-variable$cursor-centering-point
 	  edwin-variable$mode-line-inverse-video
 	  edwin-variable$scroll-step
@@ -339,7 +340,8 @@ MIT in each case. |#
 	  window-select-time
 	  window-set-override-message!
 	  window-start-mark
-	  window-y-center)
+	  window-y-center
+	  with-saved-configuration)
   (export (edwin screen)
 	  editor-frame-screen
 	  editor-frame-select-cursor!
