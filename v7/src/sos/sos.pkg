@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sos.pkg,v 1.2 1997/06/04 22:28:49 cph Exp $
+$Id: sos.pkg,v 1.3 1997/06/15 06:41:44 cph Exp $
 
 Copyright (c) 1995-97 Massachusetts Institute of Technology
 
@@ -127,6 +127,7 @@ MIT in each case. |#
   (files "instance")
   (parent ())
   (export ()
+	  initialize-instance
 	  instance-class
 	  instance-constructor
 	  instance-of?

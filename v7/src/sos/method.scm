@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: method.scm,v 1.2 1997/06/04 22:24:21 cph Exp $
+;;; $Id: method.scm,v 1.3 1997/06/15 06:41:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -454,3 +454,7 @@
 
 (add-method computed-emp-key
 	    (slot-accessor-method <computed-emp> 'KEY))
+
+(add-method initialize-instance
+	    (make-method (list <instance>)
+			 (lambda (instance) instance unspecific)))
