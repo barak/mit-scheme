@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.300 1998/03/04 21:15:17 cph Exp $
+$Id: runtime.pkg,v 14.301 1998/03/09 03:44:18 cph Exp $
 
 Copyright (c) 1988-98 Massachusetts Institute of Technology
 
@@ -325,7 +325,8 @@ MIT in each case. |#
 	  char-upper-case?
 	  char-whitespace?
 	  chars->char-set
-	  predicate->char-set)
+	  predicate->char-set
+	  string->char-set)
   (initialization (initialize-package!)))
 
 (define-package (runtime compiler-info)
