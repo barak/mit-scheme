@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xeval.scm,v 1.7 2001/12/20 16:28:23 cph Exp $
+$Id: xeval.scm,v 1.8 2002/01/05 06:15:01 cph Exp $
 
 Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
 
@@ -73,7 +73,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     (lambda (item)
       (memq item items*))))
 
-(define (environment-which-binds environment name)
+(define (environment-that-binds environment name)
   (let loop ((environment environment))
     (if (environment-bound? environment name)
 	environment
@@ -126,7 +126,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (ccenv-lookup environment name)
   (make-combination (make-absolute-reference 'ENVIRONMENT-LOOKUP)
-		    (list (environment-which-binds environment name) name)))
+		    (list (environment-that-binds environment name) name)))
 
 (define (rewrite/assignment expression environment bound-names)
   (let ((name (assignment-name expression))
@@ -135,7 +135,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			     environment
 			     bound-names)))
     (if (memq name bound-names)
-	(let ((environment (environment-which-binds environment name)))
+	(let ((environment (environment-that-binds environment name)))
 	  (if (not (environment-assignable? environment name))
 	      (error
 	       "Cannot perform assignment to this compiled-code variable:"
