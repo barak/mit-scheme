@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.17 1996/03/23 19:24:40 adams Exp $
+$Id: nttop.c,v 1.18 1996/04/09 20:15:53 adams Exp $
 
 Copyright (c) 1993-96 Massachusetts Institute of Technology
 
@@ -65,7 +65,8 @@ extern CONST char * OS_Variant;
 BOOL
 win32_under_win32s_p ()
 {
-  return  ((GetVersion()) >> 31);
+  DWORD dwVersion = GetVersion();
+  return  ((dwVersion>0x80000000) && LOBYTE(LOWORD(dwVersion))<4);
 }
 
 WIN32_SYSTEM_UTILITIES win32_system_utilities;
@@ -123,16 +124,32 @@ DEFUN_VOID (OS_initialize)
 
   OS_Name = SYSTEM_NAME;
   {
-    version_t version_number;
-    const char * variant;
+    DWORD dwVersion = GetVersion();
+    char variant[128];
 
-    nt_get_version (&version_number);
-    variant = ((version_number.platform == 0) ? "Windows NT" : "Windows");
-    OS_Variant = (malloc ((strlen (variant)) + 64));
-    sprintf (OS_Variant, "%s %d.%d 386/486\n",
-	     variant,
-	     ((int) version_number.major),
-	     ((int) version_number.minor));
+    if (dwVersion < 0x80000000) {
+      // Windows NT
+	sprintf (variant, "Microsoft Windows NT %u.%u (Build: %u)",
+		 (DWORD)(LOBYTE(LOWORD(dwVersion))),
+		 (DWORD)(HIBYTE(LOWORD(dwVersion))),
+		 (DWORD)(HIWORD(dwVersion)));
+    }
+    else if (LOBYTE(LOWORD(dwVersion))<4) {
+      // Win32s
+	sprintf (variant, "Microsoft Win32s %u.%u (Build: %u)",
+		 (DWORD)(LOBYTE(LOWORD(dwVersion))),
+		 (DWORD)(HIBYTE(LOWORD(dwVersion))),
+		 (DWORD)(HIWORD(dwVersion) & ~0x8000));
+    } else {
+      // Windows 95
+	sprintf (variant, "Microsoft Windows 95 %u.%u (Build: %u)",
+		 (DWORD)(LOBYTE(LOWORD(dwVersion))),
+		 (DWORD)(HIBYTE(LOWORD(dwVersion))),
+		 (DWORD)(HIWORD(dwVersion) & ~0x8000));
+    }
+
+    OS_Variant = malloc (128);
+    sprintf (OS_Variant, "%s 386/486\n", variant);
   }
 }
 

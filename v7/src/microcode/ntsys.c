@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntsys.c,v 1.4 1993/09/03 18:03:03 gjr Exp $
+$Id: ntsys.c,v 1.5 1996/04/09 20:16:32 adams Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,18 +46,6 @@ nt_console_write (void * vbuffer, size_t nsize)
     putchar (buffer[i]);
 
   return (nsize);
-}
-
-void
-nt_get_version (version_t * version_number)
-{
-  DWORD ver;
-  ver = (GetVersion ());
-  version_number->platform = ((unsigned char)
-			      ((((unsigned long) ver) & 0x80000000UL) >> 31));
-  version_number->major = (LOBYTE (LOWORD (ver)));
-  version_number->minor = (HIBYTE (LOWORD (ver)));
-  return;
 }
 
 BOOL

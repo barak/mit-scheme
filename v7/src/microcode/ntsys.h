@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntsys.h,v 1.5 1996/03/23 19:24:46 adams Exp $
+$Id: ntsys.h,v 1.6 1996/04/09 20:16:08 adams Exp $
 
-Copyright (c) 1992-96 Massachusetts Institute of Technology
+Copyright (c) 1992-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,18 +35,10 @@ MIT in each case. */
 #ifndef SCM_NTSYS_H
 #define SCM_NTSYS_H
 
-typedef struct version_struct
-{
-  unsigned char platform;
-  unsigned char major;
-  unsigned char minor;
-} version_t;
-
 /* Misc */
 
 extern BOOL win32_under_win32s_p ();
-extern int nt_console_write (void * vbuffer, size_t nsize);
-extern void nt_get_version (version_t * version_number);
+extern int  nt_console_write (void * vbuffer, size_t nsize);
 extern BOOL nt_pathname_as_filename (char * name, char * buffer);
 
 #endif /* SCM_NTSYS_H */
