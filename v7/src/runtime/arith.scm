@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.57 2003/04/14 18:59:05 cph Exp $
+$Id: arith.scm,v 1.58 2003/04/19 04:23:41 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1999,2001,2002 Massachusetts Institute of Technology
@@ -935,7 +935,7 @@ USA.
        (real:= 1 x)))
 
 (define (real:rational? x)
-  (or (flonum? x) (rat:rational? x)))
+  (if (flonum? x) #t (rat:rational? x)))
 
 (define (real:integer? x)
   (if (flonum? x) (flo:integer? x) ((copy rat:integer?) x)))
@@ -949,7 +949,7 @@ USA.
   (if (flonum? x) (flo:zero? x) ((copy rat:zero?) x)))
 
 (define (real:exact0= x)
-  (and (not (flonum? x)) ((copy rat:zero?) x)))
+  (if (flonum? x) #f ((copy rat:zero?) x)))
 
 (define (real:negative? x)
   (if (flonum? x) (flo:negative? x) ((copy rat:negative?) x)))
@@ -1674,7 +1674,10 @@ USA.
 
 (define (complex:expt z1 z2)
   (cond ((complex:zero? z1)
-	 (cond ((complex:zero? z2) (if (complex:exact? z2) 1 1.0))
+	 (cond ((complex:zero? z2)
+		(if (complex:exact? z2)
+		    1
+		    (error:bad-range-argument z2 'EXPT)))
 	       ((complex:positive? z2) (real:0 (complex:exact? z1)))
 	       (else (error:divide-by-zero 'EXPT (list z1 z2)))))
 	((and (recnum? z1)
