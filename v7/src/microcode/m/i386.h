@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for Intel i386 computers
 
-$Id: i386.h,v 1.4 1992/09/26 02:46:54 cph Exp $
+$Id: i386.h,v 1.5 1992/11/18 15:51:35 gjr Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -33,7 +33,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+#ifndef PROC_TYPE
 #define PROC_TYPE PROC_TYPE_I386
+#endif /* PROC_TYPE */
 
 #ifdef _SYSV
 #define M4_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6

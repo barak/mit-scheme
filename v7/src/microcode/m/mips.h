@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for MIPS computers.
 
-$Id: mips.h,v 1.6 1992/09/26 02:46:54 cph Exp $
+$Id: mips.h,v 1.7 1992/11/18 15:52:47 gjr Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,7 +33,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+#ifndef PROC_TYPE
 #define PROC_TYPE PROC_TYPE_MIPS
+#endif /* PROC_TYPE */
 
 /* The MIPS compiler/linker doesn't use -lg.  */
 #define LIB_DEBUG

@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for Encore Multimax computers with NS32x32 processors
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/umax.h,v 1.1 1989/08/02 17:02:36 cph Rel $
+$Id: umax.h,v 1.2 1992/11/18 15:55:38 gjr Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,4 +33,6 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+#ifndef PROC_TYPE
 #define PROC_TYPE PROC_TYPE_NS32K
+#endif /* PROC_TYPE */

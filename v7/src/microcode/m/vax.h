@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for DEC Vax computers
 
-$Id: vax.h,v 1.4 1992/09/26 02:46:57 cph Exp $
+$Id: vax.h,v 1.5 1992/11/18 15:56:17 gjr Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,7 +39,9 @@ MIT in each case. */
 #undef vax
 #endif
 
+#ifndef PROC_TYPE
 #define PROC_TYPE PROC_TYPE_VAX
+#endif /* PROC_TYPE */
 
 /* The M4_SWITCH_MACHINE must contain -P "define(GCC,1)", if using GCC,
    -P "define(VMS,1)" if preparing the files for VMS Vax C,

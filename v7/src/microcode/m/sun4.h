@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for Sun 4
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/sun4.h,v 1.2 1990/06/20 19:54:13 cph Rel $
+$Id: sun4.h,v 1.3 1992/11/18 15:54:50 gjr Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,7 +33,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+#ifndef PROC_TYPE
 #define PROC_TYPE PROC_TYPE_SPARC
+#endif /* PROC_TYPE */
 
 #define C_SWITCH_MACHINE -Dsun4
 #define LD_SWITCH_MACHINE  

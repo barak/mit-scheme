@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for IBM PC/RT computers
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/ibm032.h,v 1.1 1989/10/20 12:36:54 jinx Rel $
+$Id: ibm032.h,v 1.2 1992/11/18 15:52:13 gjr Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,7 +33,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+#ifndef PROC_TYPE
 #define PROC_TYPE PROC_TYPE_IBM032
+#endif /* PROC_TYPE */
 
 #define C_SWITCH_MACHINE -Dunix
 

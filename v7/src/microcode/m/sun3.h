@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for Sun 3
 
-$Id: sun3.h,v 1.5 1992/09/26 02:46:56 cph Exp $
+$Id: sun3.h,v 1.6 1992/11/18 15:54:08 gjr Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,7 +33,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+#ifndef PROC_TYPE
 #define PROC_TYPE PROC_TYPE_68020
+#endif /* PROC_TYPE */
 
 #ifndef ALTERNATE_CC
 

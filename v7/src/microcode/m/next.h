@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for NeXT
 
-$Id: next.h,v 1.4 1992/09/26 02:46:55 cph Exp $
+$Id: next.h,v 1.5 1992/11/18 15:53:16 gjr Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+#ifndef PROC_TYPE
 #define PROC_TYPE PROC_TYPE_68020
+#endif /* PROC_TYPE */
+
 #define C_SWITCH_MACHINE -DNeXT
 #define LD_SWITCH_MACHINE
