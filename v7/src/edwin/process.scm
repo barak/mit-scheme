@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: process.scm,v 1.63 2003/01/10 20:24:40 cph Exp $
+$Id: process.scm,v 1.64 2003/01/22 18:43:45 cph Exp $
 
 Copyright 1991,1992,1993,1996,1997,1999 Massachusetts Institute of Technology
 Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -132,7 +132,7 @@ Initialized from the SHELL environment variable."
     (if registration
 	(begin
 	  (set-process-input-registration! process #f)
-	  (deregister-input-thread-event registration)))))
+	  (deregister-io-thread-event registration)))))
 
 (define (start-process name buffer environment program . arguments)
   (let ((make-subprocess
@@ -218,10 +218,12 @@ Initialized from the SHELL environment variable."
 (define (register-process-input process channel)
   (set-process-input-registration!
    process
-   (permanently-register-input-thread-event
+   (permanently-register-io-thread-event
     (channel-descriptor-for-select channel)
+    'READ
     (current-thread)
-    (lambda ()
+    (lambda (mode)
+      mode
       (let ((queue process-input-queue))
 	(if (not (memq process (car queue)))
 	    (let ((tail (list process)))

@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 3.116 2002/11/20 19:46:00 cph Exp $
+$Id: make.scm,v 3.117 2003/01/22 18:43:32 cph Exp $
 
-Copyright (c) 1989-2002 Massachusetts Institute of Technology
+Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
+Copyright 1995,2000,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -38,4 +39,4 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
        (load-package-set "edwin"
 	 `((alternate-package-loader
 	    . ,(load "edwin.bld" system-global-environment))))))))
-(add-identification! "Edwin" 3 113)
+(add-identification! "Edwin" 3 114)

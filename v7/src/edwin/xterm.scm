@@ -1,25 +1,28 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: xterm.scm,v 1.70 2002/11/20 19:46:05 cph Exp $
-;;;
-;;; Copyright (c) 1989-2002 Massachusetts Institute of Technology
-;;;
-;;; This file is part of MIT Scheme.
-;;;
-;;; MIT Scheme is free software; you can redistribute it and/or modify
-;;; it under the terms of the GNU General Public License as published
-;;; by the Free Software Foundation; either version 2 of the License,
-;;; or (at your option) any later version.
-;;;
-;;; MIT Scheme is distributed in the hope that it will be useful, but
-;;; WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with MIT Scheme; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: xterm.scm,v 1.71 2003/01/22 18:44:04 cph Exp $
+
+Copyright 1989,1990,1991,1992,1993,1995 Massachusetts Institute of Technology
+Copyright 1996,1998,1999,2000,2001,2002 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
+
+This file is part of MIT Scheme.
+
+MIT Scheme is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+MIT Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT Scheme; if not, write to the Free Software Foundation,
+Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+|#
 
 ;;;; X Terminal
 ;;; Package: (edwin x-screen)
@@ -556,9 +559,10 @@
 		 event:process-status)
 		(else
 		 (let ((flag
-			(test-for-input-on-descriptor
+			(test-for-io-on-descriptor
 			 (x-display-descriptor display)
-			 block?)))
+			 block?
+			 'READ)))
 		   (set-interrupt-enables! interrupt-mask)
 		   (case flag
 		     ((#F) #f)
@@ -568,10 +572,12 @@
 
 (define (preview-event-stream)
   (set! previewer-registration
-	(permanently-register-input-thread-event
+	(permanently-register-io-thread-event
 	 (x-display-descriptor x-display-data)
+	 'READ
 	 (current-thread)
-	 (lambda ()
+	 (lambda (mode)
+	   mode
 	   (if (not reading-event?)
 	       (let ((event (x-display-process-events x-display-data 2)))
 		 (if event
@@ -1312,7 +1318,7 @@ Otherwise, it is copied from the primary selection."
      preview-event-stream
      (lambda () (receiver (lambda (thunk) (thunk)) '()))
      (lambda ()
-       (deregister-input-thread-event previewer-registration)))))
+       (deregister-io-thread-event previewer-registration)))))
 
 (define (with-x-interrupts-enabled thunk)
   (with-signal-interrupts #t thunk))

@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.35 2002/11/20 19:46:04 cph Exp $
+$Id: tterm.scm,v 1.36 2003/01/22 18:43:51 cph Exp $
 
-Copyright (c) 1990-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1990,1991,1993,1994,1998,1999 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -249,9 +250,10 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 			((not have-select?)
 			 (and block? (read-event block?)))
 			(else
-			 (case (test-for-input-on-descriptor
+			 (case (test-for-io-on-descriptor
 				(channel-descriptor-for-select channel)
-				block?)
+				block?
+				'READ)
 			   ((#F) #f)
 			   ((PROCESS-STATUS-CHANGE) event:process-status)
 			   ((INTERRUPT) (loop))
