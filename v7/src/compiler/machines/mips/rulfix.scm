@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.7 1992/12/22 02:20:45 cph Exp $
+$Id: rulfix.scm,v 1.8 1992/12/28 22:01:22 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -399,6 +399,7 @@ MIT in each case. |#
 			 (REGISTER (? source))
 			 (OBJECT->FIXNUM (CONSTANT (? constant)))
 			 (? overflow?)))
+  (QUALIFIER (fixnum-2-args/operator/register*constant? operation))
   (standard-unary-conversion source target
     (lambda (source target)
       ((fixnum-2-args/operator/register*constant operation)
@@ -411,6 +412,10 @@ MIT in each case. |#
 			 (OBJECT->FIXNUM (CONSTANT (? constant)))
 			 (REGISTER (? source))
 			 (? overflow?)))
+  (QUALIFIER
+   (or (fixnum-2-args/operator/constant*register? operation)
+       (and (fixnum-2-args/commutative? operation)
+	    (fixnum-2-args/operator/register*constant? operation))))
   (standard-unary-conversion source target
     (lambda (source target)
       (if (fixnum-2-args/commutative? operation)
@@ -426,12 +431,17 @@ MIT in each case. |#
 (define (fixnum-2-args/operator/register*constant operation)
   (lookup-arithmetic-method operation fixnum-methods/2-args/register*constant))
 
+(define (fixnum-2-args/operator/register*constant? operation)
+  (arithmetic-method? operation fixnum-methods/2-args/register*constant))
+
 (define fixnum-methods/2-args/register*constant
   (list 'FIXNUM-METHODS/2-ARGS/REGISTER*CONSTANT))
 
 (define (fixnum-2-args/operator/constant*register operation)
-  (lookup-arithmetic-method operation
-			    fixnum-methods/2-args/constant*register))
+  (lookup-arithmetic-method operation fixnum-methods/2-args/constant*register))
+
+(define (fixnum-2-args/operator/constant*register? operation)
+  (arithmetic-method? operation fixnum-methods/2-args/constant*register))
 
 (define fixnum-methods/2-args/constant*register
   (list 'FIXNUM-METHODS/2-ARGS/CONSTANT*REGISTER))

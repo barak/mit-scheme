@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/lapgen.scm,v 1.11 1992/08/20 01:23:26 jinx Exp $
+$Id: lapgen.scm,v 1.12 1992/12/28 22:01:14 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -531,6 +531,9 @@ MIT in each case. |#
 (define (lookup-arithmetic-method operator methods)
   (cdr (or (assq operator (cdr methods))
 	   (error "Unknown operator" operator))))
+
+(define-integrable (arithmetic-method? operator methods)
+  (assq operator (cdr methods)))
 
 (define-integrable (ea/mode ea) (car ea))
 (define-integrable (register-ea/register ea) (cadr ea))
