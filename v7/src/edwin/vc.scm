@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.62 2000/04/06 02:31:23 cph Exp $
+;;; $Id: vc.scm,v 1.63 2000/04/06 03:10:45 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -817,7 +817,7 @@ If `F.~REV~' already exists, it is used instead of being re-created."
 Headers are inserted at the start of the buffer."
   ()
   (lambda ()
-    (let* ((master (buffer-vc-master buffer #t))
+    (let* ((master (current-vc-master #t))
 	   (buffer (vc-workfile-buffer master #t)))
       (without-group-clipped! (buffer-group buffer)
 	(lambda ()
@@ -849,7 +849,7 @@ This asks for confirmation if the buffer contents are not identical
 to that version."
   ()
   (lambda ()
-    (let* ((master (buffer-vc-master buffer #t))
+    (let* ((master (current-vc-master #t))
 	   (buffer (vc-workfile-buffer master #t)))
       (if (or (and (vc-workfile-modified? master)
 		   (or (ref-variable vc-suppress-confirm)
