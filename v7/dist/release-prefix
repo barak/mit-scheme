@@ -1,6 +1,6 @@
 #!/bin/sh
 get_release()
 {
-  fgrep "#define RELEASE" /scheme/v7/src/microcode/version.h | awk '{ print $3 }' | tr -d \"
+  fgrep Release /scheme/v7/src/runtime/version.scm | awk '{ print $3 "." $4 "." $5 }' | tr -d \(\)\'
 }
 echo "scheme-`get_release`"
