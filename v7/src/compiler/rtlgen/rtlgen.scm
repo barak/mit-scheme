@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.14 1988/12/16 13:37:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.15 1988/12/30 07:11:17 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -160,20 +160,71 @@ MIT in each case. |#
 		 (error "Illegal continuation type" continuation)))
 	      (generate/node node)))))
       (lambda (rgraph entry-edge)
-	(make-rtl-continuation rgraph
-			       label
-			       entry-edge
-			       (continuation/debugging-info continuation))))))
+	(make-rtl-continuation
+	 rgraph
+	 label
+	 entry-edge
+	 (continuation/next-continuation-offset
+	  (continuation/closing-block continuation)
+	  (continuation/offset continuation))
+	 (continuation/debugging-info continuation))))))
+
+(define (wrap-with-continuation-entry context scfg)
+  (with-values (lambda () (generate-continuation-entry context))
+    (lambda (label setup cleanup)
+      label
+      (scfg-append! setup scfg cleanup))))
+
+(define (generate-continuation-entry context)
+  (let ((label (generate-label))
+	(closing-block (reference-context/block context)))
+    (let ((setup (push-continuation-extra closing-block))
+	  (cleanup
+	   (scfg*scfg->scfg!
+	    (rtl:make-continuation-entry label)
+	    (pop-continuation-extra closing-block))))
+      (set! *extra-continuations*
+	    (cons (make-rtl-continuation
+		   *current-rgraph*
+		   label
+		   (cfg-entry-edge cleanup)
+		   (continuation/next-continuation-offset
+		    closing-block
+		    (reference-context/offset context))
+		   (generated-dbg-continuation context label))
+		  *extra-continuations*))
+      (values label setup cleanup))))
+
+(define (continuation/next-continuation-offset block offset)
+  (if (stack-block? block)
+      (let ((popping-limit (block-popping-limit block)))
+	(and popping-limit
+	     (let loop ((block block) (offset offset))
+	       (let ((offset (+ offset (block-frame-size block))))
+		 (if (eq? block popping-limit)
+		     offset
+		     (loop (block-parent block) offset))))))      offset))
 
 (define (generate/continuation-entry/pop-extra continuation)
-  (let ((block (continuation/closing-block continuation)))
-    (scfg*scfg->scfg!
-     (if (ic-block? block)
-	 (rtl:make-pop register:environment)
-	 (make-null-cfg))
-     (if (block/dynamic-link? block)
-	 (rtl:make-pop-link)
-	 (make-null-cfg)))))
+  (pop-continuation-extra (continuation/closing-block continuation)))
+
+(define (push-continuation-extra closing-block)
+  (cond ((ic-block? closing-block)
+	 (rtl:make-push (rtl:make-fetch register:environment)))
+	((and (stack-block? closing-block)
+	      (stack-block/dynamic-link? closing-block))
+	 (rtl:make-push-link))
+	(else
+	 (make-null-cfg))))
+
+(define (pop-continuation-extra closing-block)
+  (cond ((ic-block? closing-block)
+	 (rtl:make-pop register:environment))
+	((and (stack-block? closing-block)
+	      (stack-block/dynamic-link? closing-block))
+	 (rtl:make-pop-link))
+	(else
+	 (make-null-cfg))))
 
 (define (generate/node node)
   (let ((memoization (cfg-node-get node memoization-tag)))

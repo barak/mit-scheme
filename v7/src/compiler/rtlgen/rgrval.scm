@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.12 1988/12/12 21:52:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.13 1988/12/30 07:11:06 cph Rel $
 #| -*-Scheme-*-
 Copyright (c) 1988 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.12 1988/12/12 21:52:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.13 1988/12/30 07:11:06 cph Rel $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -79,11 +79,16 @@ promotional, or sales literature without prior written consent from
 		  (expression-value/simple (rtl:make-fetch locative)))
 		(lambda (environment name)
 		  (expression-value/temporary
-		   (rtl:make-interpreter-call:lookup
-		    environment
-		    (intern-scode-variable! (reference-context/block context)
-					    name)
-		    safe?)
+		   (load-temporary-register scfg*scfg->scfg! environment
+		     (lambda (environment)
+		       (wrap-with-continuation-entry
+			context
+			(rtl:make-interpreter-call:lookup
+			 environment
+			 (intern-scode-variable!
+			  (reference-context/block context)
+			  name)
+			 safe?))))
 		   (rtl:interpreter-call-result:lookup)))
 		(lambda (name)
 		  (if (memq 'IGNORE-REFERENCE-TRAPS
@@ -91,7 +96,7 @@ promotional, or sales literature without prior written consent from
 		      (load-temporary-register values
 					       (rtl:make-variable-cache name)
 					       rtl:make-fetch)
-		      (generate/cached-reference name safe?)))))))
+		      (generate/cached-reference context name safe?)))))))
 	(cond ((not value) (perform-fetch))
 			  lvalue))
 	       |#

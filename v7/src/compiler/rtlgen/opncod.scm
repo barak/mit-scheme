@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.24 1988/12/14 00:01:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.25 1988/12/30 07:10:49 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -86,10 +86,11 @@ MIT in each case. |#
 ;;;; Code Generator
 
 (define (combination/inline combination)
-  (generate/return* (combination/context combination)
-		    (combination/continuation combination)
-		    (combination/continuation-push combination)
-		    (let ((inliner (combination/inliner combination)))
+  (let ((context (combination/context combination))
+	(inliner (combination/inliner combination)))
+    (generate/return* context
+		      (combination/continuation combination)
+		      (combination/continuation-push combination)
 		      (let ((handler (inliner/handler inliner))
 			    (generator (inliner/generator inliner))
 			    (expressions
@@ -97,13 +98,17 @@ MIT in each case. |#
 				  (inliner/operands inliner))))
 			(make-return-operand
 			 (lambda ()
-			   ((vector-ref handler 1) generator expressions))
+			   ((vector-ref handler 1) generator
+						   context
+						   expressions))
 			 (lambda (finish)
 			   ((vector-ref handler 2) generator
+						   context
 						   expressions
 						   finish))
 			 (lambda (finish)
 			   ((vector-ref handler 3) generator
+						   context
 						   expressions
 						   finish))
 			 false)))))
@@ -128,11 +133,11 @@ MIT in each case. |#
 	      (continuation*/register
 	       (subproblem-continuation subproblem))))))))
 
-(define (invoke/effect->effect generator expressions)
-  (generator expressions false))
+(define (invoke/effect->effect generator context expressions)
+  (generator context expressions false))
 
-(define (invoke/predicate->value generator expressions finish)
-  (generator expressions
+(define (invoke/predicate->value generator context expressions finish)
+  (generator context expressions
     (lambda (pcfg)
       (let ((temporary (rtl:make-pseudo-register)))
 	;; Force assignments to be made first.
@@ -144,17 +149,17 @@ MIT in each case. |#
 	   (pcfg*scfg->scfg! pcfg consequent alternative)
 	   (finish (rtl:make-fetch temporary))))))))
 
-(define (invoke/value->effect generator expressions)
-  generator expressions
+(define (invoke/value->effect generator context expressions)
+  generator context expressions
   (make-null-cfg))
 
-(define (invoke/value->predicate generator expressions finish)
-  (generator expressions
+(define (invoke/value->predicate generator context expressions finish)
+  (generator context expressions
     (lambda (expression)
       (finish (rtl:make-true-test expression)))))
 
-(define (invoke/value->value generator expressions finish)
-  (generator expressions finish))
+(define (invoke/value->value generator context expressions finish)
+  (generator context expressions finish))
 
 ;;;; Definers
 
@@ -222,7 +227,7 @@ MIT in each case. |#
 (define-integrable (make-invocation operator operands)
   `(,operator ,@operands))
 
-(define (open-code:with-checks checks non-error-cfg error-finish
+(define (open-code:with-checks context checks non-error-cfg error-finish
 			       prim-invocation)
   (let ((checks (list-transform-negative checks cfg-null?)))
     (if (null? checks)
@@ -231,19 +236,17 @@ MIT in each case. |#
 	;; it creates some unreachable code which we can't easily
 	;; remove from the output afterwards.
 	(let ((error-cfg
-	       (let ((continuation-entry (generate-continuation-entry)))
-		 (scfg-append!
-		  (generate-primitive
-		   (car prim-invocation)
-		   (cdr prim-invocation)
-		   (rtl:continuation-entry-continuation
-		    (rinst-rtl
-		     (bblock-instructions
-		      (cfg-entry-node continuation-entry)))))
-		  continuation-entry
-		  (if error-finish
-		      (error-finish (rtl:make-fetch register:value))
-		      (make-null-cfg))))))
+	       (with-values (lambda () (generate-continuation-entry context))
+		 (lambda (label setup cleanup)
+		   (scfg-append!
+		    setup
+		    (generate-primitive (car prim-invocation)
+					(cdr prim-invocation)
+					label)
+		    cleanup
+		    (if error-finish
+			(error-finish (rtl:make-fetch register:value))
+			(make-null-cfg)))))))
 	  (let loop ((checks checks))
 	    (if (null? checks)
 		non-error-cfg
@@ -280,14 +283,6 @@ MIT in each case. |#
 			  identity-procedure)
       (make-null-cfg)))
 
-(define (generate-continuation-entry)
-  (let* ((label (generate-label))
-	 (rtl (rtl:make-continuation-entry label))
-	 (rtl-continuation
-	  (make-rtl-continuation *current-rgraph* label (cfg-entry-edge rtl))))
-    (set! *extra-continuations* (cons rtl-continuation *extra-continuations*))
-    rtl))
-
 (define (generate-primitive name arg-list continuation-label)
   (scfg*scfg->scfg!
    (let loop ((args arg-list))
@@ -319,13 +314,15 @@ MIT in each case. |#
 (define-open-coder/predicate 'NULL?
   (lambda (operands)
     operands
-    (return-2 (lambda (expressions finish)
+    (return-2 (lambda (context expressions finish)
+		context
 		(finish (pcfg-invert (rtl:make-true-test (car expressions)))))
 	      '(0))))
 
 (let ((open-code/type-test
        (lambda (type)
-	 (lambda (expressions finish)
+	 (lambda (context expressions finish)
+	   context
 	   (finish
 	    (rtl:make-type-test (rtl:make-object->type (car expressions))
 				type))))))
@@ -347,7 +344,8 @@ MIT in each case. |#
 	  (return-2 (open-code/type-test type) '(1)))))))
 
 (let ((open-code/eq-test
-       (lambda (expressions finish)
+       (lambda (context expressions finish)
+	 context
 	 (finish (rtl:make-eq-test (car expressions) (cadr expressions))))))
   (define-open-coder/predicate 'EQ?
     (lambda (operands)
@@ -356,7 +354,8 @@ MIT in each case. |#
 
 (let ((open-code/pair-cons
        (lambda (type)
-	 (lambda (expressions finish)
+	 (lambda (context expressions finish)
+	   context
 	   (finish
 	    (rtl:make-typed-cons:pair (rtl:make-constant type)
 				      (car expressions)
@@ -376,7 +375,8 @@ MIT in each case. |#
 (define-open-coder/value 'VECTOR
   (lambda (operands)
     (and (< (length operands) 32)
-	 (return-2 (lambda (expressions finish)
+	 (return-2 (lambda (context expressions finish)
+		     context
 		     (finish
 		      (rtl:make-typed-cons:vector
 		       (rtl:make-constant (ucode-type vector))
@@ -391,7 +391,8 @@ MIT in each case. |#
 
 (let ((open-code/memory-length
        (lambda (index)
-	 (lambda (expressions finish)
+	 (lambda (context expressions finish)
+	   context
 	   (finish
 	    (rtl:make-cons-pointer
 	     (rtl:make-constant (ucode-type fixnum))
@@ -423,17 +424,17 @@ MIT in each case. |#
    finish))
 
 (let* ((open-code/memory-ref
-	(lambda (index)
-	  (lambda (expressions finish)
-	    (finish
-	     (rtl:make-fetch
-	      (rtl:locative-offset (car expressions) index))))))
+	(lambda (expressions finish index)
+	  (finish
+	   (rtl:make-fetch
+	    (rtl:locative-offset (car expressions) index)))))
        (open-code/vector-ref
 	(lambda (name)
-	  (lambda (expressions finish)
+	  (lambda (context expressions finish)
 	    (let ((vector (car expressions))
 		  (index (cadr expressions)))
 	      (open-code:with-checks
+	       context
 	       (list
 		(open-code:type-check vector 'VECTOR)
 		(open-code:type-check index 'FIXNUM)
@@ -444,22 +445,21 @@ MIT in each case. |#
 		vector
 		index
 		(lambda (memory-locative)
-		  ((open-code/memory-ref 1)
-		   (list memory-locative)
-		   finish)))
+		  (open-code/memory-ref (list memory-locative) finish 1)))
 	       finish
 	       (make-invocation name expressions))))))
        (open-code/constant-vector-ref
 	(lambda (name index)
-	  (lambda (expressions finish)
+	  (lambda (context expressions finish)
 	    (let ((vector (car expressions)))
 	      (open-code:with-checks
+	       context
 	       (list
 		(open-code:type-check vector 'VECTOR)
 		(open-code:limit-check
 		 (rtl:make-constant index)
 		 (rtl:make-fetch (rtl:locative-offset vector 0))))
-	       ((open-code/memory-ref (1+ index)) expressions finish)
+	       (open-code/memory-ref expressions finish (1+ index))
 	       finish
 	       (make-invocation name expressions)))))))
   (let ((define/ref
@@ -467,7 +467,10 @@ MIT in each case. |#
 	    (define-open-coder/value name
 	      (lambda (operands)
 		operands
-		(return-2 (open-code/memory-ref index) '(0)))))))
+		(return-2 (lambda (context expressions finish)
+			    context
+			    (open-code/memory-ref expressions finish index))
+			  '(0)))))))
     (define/ref '(CAR SYSTEM-PAIR-CAR CELL-CONTENTS SYSTEM-HUNK3-CXR0) 0)
     (define/ref '(CDR SYSTEM-PAIR-CDR SYSTEM-HUNK3-CXR1) 1)
     (define/ref 'SYSTEM-HUNK3-CXR2 2))
@@ -483,7 +486,8 @@ MIT in each case. |#
 
 (let ((open-code/general-car-cdr
        (lambda (pattern)
-	 (lambda (expressions finish)
+	 (lambda (context expressions finish)
+	   context
 	   (finish
 	    (let loop ((pattern pattern) (expression (car expressions)))
 	      (if (= pattern 1)
@@ -501,25 +505,25 @@ MIT in each case. |#
 	  (return-2 (open-code/general-car-cdr pattern) '(0)))))))
 
 (let* ((open-code/memory-assignment
-	(lambda (index)
-	  (lambda (expressions finish)
-	    (let* ((locative (rtl:locative-offset (car expressions) index))
-		   (assignment
-		    (rtl:make-assignment locative
-					 (car (last-pair expressions)))))
-	      (if finish
-		  (load-temporary-register scfg*scfg->scfg!
-					   (rtl:make-fetch locative)
-		    (lambda (temporary)
-		      (scfg*scfg->scfg! assignment (finish temporary))))
-		  assignment)))))
+	(lambda (expressions finish index)
+	  (let* ((locative (rtl:locative-offset (car expressions) index))
+		 (assignment
+		  (rtl:make-assignment locative
+				       (car (last-pair expressions)))))
+	    (if finish
+		(load-temporary-register scfg*scfg->scfg!
+					 (rtl:make-fetch locative)
+		  (lambda (temporary)
+		    (scfg*scfg->scfg! assignment (finish temporary))))
+		assignment))))
        (open-code/vector-set
 	(lambda (name)
-	  (lambda (expressions finish)
+	  (lambda (context expressions finish)
 	    (let ((vector (car expressions))
 		  (index (cadr expressions))
 		  (newval-list (cddr expressions)))
 	      (open-code:with-checks
+	       context
 	       (list
 		(open-code:type-check vector 'VECTOR)
 		(open-code:type-check index 'FIXNUM)
@@ -530,22 +534,24 @@ MIT in each case. |#
 		vector
 		index
 		(lambda (memory-locative)
-		  ((open-code/memory-assignment 1)
+		  (open-code/memory-assignment
 		   (cons memory-locative newval-list)
-		   finish)))
+		   finish
+		   1)))
 	       finish
 	       (make-invocation name expressions))))))
        (open-code/constant-vector-set
 	(lambda (name index)
-	  (lambda (expressions finish)
+	  (lambda (context expressions finish)
 	    (let ((vector (car expressions)))
 	      (open-code:with-checks
+	       context
 	       (list
 		(open-code:type-check vector 'VECTOR)
 		(open-code:limit-check
 		 (rtl:make-constant index)
 		 (rtl:make-fetch (rtl:locative-offset vector 0))))
-	       ((open-code/memory-assignment index) expressions finish)
+	       (open-code/memory-assignment expressions finish index)
 	       finish
 	       (make-invocation name expressions)))))))
 
@@ -558,7 +564,11 @@ MIT in each case. |#
 	    (define-open-coder/effect name
 	      (lambda (operands)
 		operands
-		(return-2 (open-code/memory-assignment index) '(0 1)))))))
+		(return-2
+		 (lambda (context expressions finish)
+		   context
+		   (open-code/memory-assignment expressions finish index))
+		 '(0 1)))))))
     (define/set! '(SET-CAR!
 		   SET-CELL-CONTENTS!
 		   #| SYSTEM-PAIR-SET-CAR! |#
@@ -588,7 +598,8 @@ MIT in each case. |#
 	      (lambda (operands)
 		operands
 		(return-2
-		 (lambda (expressions finish)
+		 (lambda (context expressions finish)
+		   context
 		   (finish
 		    (rtl:make-fixnum->object
 		     (rtl:make-fixnum-2-args
@@ -607,7 +618,8 @@ MIT in each case. |#
 	      (lambda (operand)
 		operand
 		(return-2
-		 (lambda (expressions finish)
+		 (lambda (context expressions finish)
+		   context
 		   (finish
 		    (rtl:make-fixnum->object
 		     (rtl:make-fixnum-1-arg
@@ -621,7 +633,8 @@ MIT in each case. |#
 	      (lambda (operands)
 		operands
 		(return-2
-		 (lambda (expressions finish)
+		 (lambda (context expressions finish)
+		   context
 		   (finish
 		    (rtl:make-fixnum-pred-2-args
 		     fixnum-pred
@@ -635,7 +648,8 @@ MIT in each case. |#
 	      (lambda (operand)
 		operand
 		(return-2
-		 (lambda (expressions finish)
+		 (lambda (context expressions finish)
+		   context
 		   (finish
 		    (rtl:make-fixnum-pred-1-arg
 		     fixnum-pred
@@ -645,30 +659,26 @@ MIT in each case. |#
 
 ;;; Generic arithmetic
 
-(define (generate-generic-binary expression finish is-pred?)
-  (let ((continuation-entry (generate-continuation-entry))
-	(generic-op (rtl:generic-binary-operator expression))
+(define (generate-generic-binary context expression finish is-pred?)
+  (let ((generic-op (rtl:generic-binary-operator expression))
 	(fix-op
 	 (generic->fixnum-op (rtl:generic-binary-operator expression)))
 	(op1 (rtl:generic-binary-operand-1 expression))
 	(op2 (rtl:generic-binary-operand-2 expression)))
     (let ((give-it-up
 	   (lambda ()
-	     (scfg-append!
-	      (generate-primitive
-	       generic-op
-	       (cddr expression)
-	       (rtl:continuation-entry-continuation
-		(rinst-rtl
-		 (bblock-instructions
-		  (cfg-entry-node continuation-entry)))))
-	      continuation-entry
-	      (if is-pred?
-		  (finish
-		   (rtl:make-true-test (rtl:make-fetch register:value)))
-		  (expression-simplify-for-statement
-		   (rtl:make-fetch register:value)
-		   finish))))))
+	     (with-values (lambda () (generate-continuation-entry context))
+	       (lambda (label setup cleanup)
+		 (scfg-append!
+		  setup
+		  (generate-primitive generic-op (cddr expression) label)
+		  cleanup
+		  (if is-pred?
+		      (finish
+		       (rtl:make-true-test (rtl:make-fetch register:value)))
+		      (expression-simplify-for-statement
+		       (rtl:make-fetch register:value)
+		       finish))))))))
       (if is-pred?
 	  (generate-binary-type-test 'FIXNUM op1 op2
 	    give-it-up
@@ -717,29 +727,25 @@ MIT in each case. |#
 			      (pcfg*scfg->scfg! test* (do-it) give-it-up)
 			      give-it-up)))))))
 
-(define (generate-generic-unary expression finish is-pred?)
-  (let ((continuation-entry (generate-continuation-entry))
-	(generic-op (rtl:generic-unary-operator expression))
+(define (generate-generic-unary context expression finish is-pred?)
+  (let ((generic-op (rtl:generic-unary-operator expression))
 	(fix-op
 	 (generic->fixnum-op (rtl:generic-unary-operator expression)))
 	(op (rtl:generic-unary-operand expression)))
     (let ((give-it-up
 	   (lambda ()
-	     (scfg-append!
-	      (generate-primitive
-	       generic-op
-	       (cddr expression)
-	       (rtl:continuation-entry-continuation
-		(rinst-rtl
-		 (bblock-instructions
-		  (cfg-entry-node continuation-entry)))))
-	      continuation-entry
-	      (if is-pred?
-		  (finish
-		   (rtl:make-true-test (rtl:make-fetch register:value)))
-		  (expression-simplify-for-statement
-		   (rtl:make-fetch register:value)
-		   finish))))))
+	     (with-values (lambda () (generate-continuation-entry context))
+	       (lambda (label setup cleanup)
+		 (scfg-append!
+		  setup
+		  (generate-primitive generic-op (cddr expression) label)
+		  cleanup
+		  (if is-pred?
+		      (finish
+		       (rtl:make-true-test (rtl:make-fetch register:value)))
+		      (expression-simplify-for-statement
+		       (rtl:make-fetch register:value)
+		       finish))))))))
       (if is-pred?
 	  (generate-unary-type-test 'FIXNUM op
 	    give-it-up
@@ -804,8 +810,9 @@ MIT in each case. |#
 	      (lambda (operands)
 		operands
 		(return-2
-		  (lambda (expressions finish)
+		  (lambda (context expressions finish)
 		    (generate-generic-binary
+		     context
 		     (rtl:make-generic-binary generic-op
 					      (car expressions)
 					      (cadr expressions))
@@ -816,12 +823,13 @@ MIT in each case. |#
 
 (for-each (lambda (generic-op)
 	    (define-open-coder/value generic-op
-	      (lambda (operand)
-		operand
+	      (lambda (operands)
+		operands
 		(return-2
-		  (lambda (expression finish)
+		  (lambda (context expressions finish)
 		    (generate-generic-unary
-		     (rtl:make-generic-unary generic-op (car expression))
+		     context
+		     (rtl:make-generic-unary generic-op (car expressions))
 		     finish
 		     false))
 		  '(0)))))
@@ -832,8 +840,9 @@ MIT in each case. |#
 	      (lambda (operands)
 		operands
 		(return-2
-		  (lambda (expressions finish)
+		  (lambda (context expressions finish)
 		    (generate-generic-binary
+		     context
 		     (rtl:make-generic-binary generic-op
 					      (car expressions)
 					      (cadr expressions))
@@ -844,12 +853,13 @@ MIT in each case. |#
 
 (for-each (lambda (generic-op)
 	    (define-open-coder/predicate generic-op
-	      (lambda (operand)
-		operand
+	      (lambda (operands)
+		operands
 		(return-2
-		  (lambda (expression finish)
+		  (lambda (context expressions finish)
 		    (generate-generic-unary
-		     (rtl:make-generic-unary generic-op (car expression))
+		     context
+		     (rtl:make-generic-unary generic-op (car expressions))
 		     finish
 		     true))
 		  '(0)))))
@@ -862,7 +872,8 @@ MIT in each case. |#
 	  (define-open-coder/value character->fixnum
 	    (lambda (operand)
 	      operand
-	      (return-2 (lambda (expressions finish)
+	      (return-2 (lambda (context expressions finish)
+			  context
 			  (finish
 			   (rtl:make-cons-pointer
 			    (rtl:make-constant (ucode-type fixnum))
@@ -881,9 +892,10 @@ MIT in each case. |#
     (filter/nonnegative-integer (cadr operands)
       (lambda (index)
 	(return-2
-	 (lambda (expressions finish)
+	 (lambda (context expressions finish)
 	   (let ((string (car expressions)))
 	     (open-code:with-checks
+	      context
 	      (list
 	       (open-code:type-check string 'STRING)
 	       (open-code:limit-check
@@ -904,10 +916,11 @@ MIT in each case. |#
     (filter/nonnegative-integer (cadr operands)
       (lambda (index)
 	(return-2
-	 (lambda (expressions finish)
+	 (lambda (context expressions finish)
 	   (let ((string (car expressions))
 		 (value (caddr expressions)))
 	     (open-code:with-checks
+	      context
 	      (list
 	       (open-code:type-check string 'STRING)
 	       (open-code:limit-check

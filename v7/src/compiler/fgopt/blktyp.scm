@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.9 1988/12/16 16:19:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.10 1988/12/30 07:11:57 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -76,24 +76,26 @@ MIT in each case. |#
       ;; the procedure is being "demoted" from first-class to closure.
       (set-procedure-closure-context! procedure
 				      (make-reference-context parent))
-      (((find-closure-bindings
-	 (lambda (closure-frame-block size)
-	   (set-block-parent! block closure-frame-block)
-	   (set-procedure-closure-size! procedure size)))
-	parent)
-       (list-transform-negative (block-free-variables block)
-	 (lambda (lvalue)
-	   (or (lvalue-integrated? lvalue)
-	       ;; Some of this is redundant
-	       (let ((value (lvalue-known-value lvalue)))
-		 (and value
-		      (or (eq? value procedure)
-			  (and (rvalue/procedure? value)
-			       (procedure/trivial-or-virtual? value)))))
-	       (begin
-		 (set-variable-closed-over?! lvalue true)
-		 false))))
-       '())
+      (with-values
+	  (lambda ()
+	    (find-closure-bindings
+	     parent
+	     (list-transform-negative (block-free-variables block)
+	       (lambda (lvalue)
+		 (or (lvalue-integrated? lvalue)
+		     ;; Some of this is redundant
+		     (let ((value (lvalue-known-value lvalue)))
+		       (and value
+			    (or (eq? value procedure)
+				(and (rvalue/procedure? value)
+				     (procedure/trivial-or-virtual? value)))))
+		     (begin
+		       (set-variable-closed-over?! lvalue true)
+		       false))))
+	     '()))
+	(lambda (closure-frame-block size)
+	  (set-block-parent! block closure-frame-block)
+	  (set-procedure-closure-size! procedure size)))
       (let ((new (procedure/trivial-closure? procedure)))
 	(if (or (and previously-trivial? (not new))
 		(and (not previously-trivial?) new))
@@ -101,25 +103,23 @@ MIT in each case. |#
 		   procedure))))
     (disown-block-child! current-parent block)))
 
-(define (find-closure-bindings receiver)
-  (define (find-internal block)
-    (lambda (free-variables bound-variables)
-      (if (or (not block) (ic-block? block))
-	  (let ((grandparent (and (not (null? free-variables)) block)))
-	    (if (null? bound-variables)
-		(receiver grandparent (if grandparent 1 0))
-		(make-closure-block receiver
-				    grandparent
+(define (find-closure-bindings block free-variables bound-variables)
+  (if (or (not block) (ic-block? block))
+      (let ((grandparent (and (not (null? free-variables)) block)))
+	(if (null? bound-variables)
+	    (values grandparent (if grandparent 1 0))
+	    (make-closure-block grandparent
+				free-variables
+				bound-variables)))
+      (with-values
+	  (lambda ()
+	    (filter-bound-variables (block-bound-variables block)
 				    free-variables
-				    bound-variables
-				    (and block (block-procedure block)))))
-	  (with-values
-	      (lambda ()
-		(filter-bound-variables (block-bound-variables block)
-					free-variables
-					bound-variables))
-	    (find-internal (original-block-parent block))))))
-  find-internal)
+				    bound-variables))
+	(lambda (free-variables bound-variables)
+	  (find-closure-bindings (original-block-parent block)
+				 free-variables
+				 bound-variables)))))
 
 (define (filter-bound-variables bindings free-variables bound-variables)
   (cond ((null? bindings)
@@ -138,28 +138,21 @@ MIT in each case. |#
 ;; This may have to change if we ever do simultaneous closing of multiple
 ;; procedures sharing structure.
 
-(define (make-closure-block recvr parent free-variables bound-variables frame)
-  (let ((block (make-block parent 'CLOSURE))
-	(extra (if (and parent (ic-block/use-lookup? parent)) 1 0)))
+(define (make-closure-block parent free-variables bound-variables)
+  (let ((block (make-block parent 'CLOSURE)))
     (set-block-free-variables! block free-variables)
     (set-block-bound-variables! block bound-variables)
-    (let loop ((variables (block-bound-variables block))
-	       (offset (+ closure-block-first-offset extra))
-	       (table '())
-	       (size extra))
-      (cond ((null? variables)
-	     (set-block-closure-offsets! block table)
-	     (recvr block size))
-	    ((lvalue-integrated? (car variables))
-	     (error "make-closure-block: Found integrated lvalue"
-		    (car variables))
-	     (loop (cdr variables) offset table size))
-	    (else
-	     (loop (cdr variables)
-		   (1+ offset)
-		   (cons (cons (car variables) offset)
-			 table)
-		   (1+ size)))))))
+    (do ((variables (block-bound-variables block) (cdr variables))
+	 (size (if (and parent (ic-block/use-lookup? parent)) 1 0) (1+ size))
+	 (table '()
+		(cons (cons (car variables)
+			    (+ closure-block-first-offset size))
+		      table)))
+	((null? variables)
+	 (set-block-closure-offsets! block table)
+	 (values block size))
+      (if (lvalue-integrated? (car variables))
+	  (error "make-closure-block: integrated lvalue" (car variables))))))
 
 (define (setup-closure-contexts! expression procedures)
   (with-new-node-marks

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.9 1988/12/12 21:52:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.10 1988/12/30 07:11:11 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -50,11 +50,18 @@ MIT in each case. |#
 	      (lambda (locative)
 		(rtl:make-assignment locative expression))
 	      (lambda (environment name)
-		(rtl:make-interpreter-call:set!
-		 environment
-		 (intern-scode-variable! (reference-context/block context)
-					 name)
-		 expression))
+		(load-temporary-register scfg*scfg->scfg! environment
+		  (lambda (environment)
+		    (load-temporary-register scfg*scfg->scfg! expression
+		      (lambda (expression)
+			(wrap-with-continuation-entry
+			 context
+			 (rtl:make-interpreter-call:set!
+			  environment
+			  (intern-scode-variable!
+			   (reference-context/block context)
+			   name)
+			  expression)))))))
 	      (lambda (name)
 		(if (memq 'IGNORE-ASSIGNMENT-TRAPS
 			  (variable-declarations lvalue))
@@ -62,9 +69,11 @@ MIT in each case. |#
 					     (rtl:make-assignment-cache name)
 		      (lambda (cell)
 			(rtl:make-assignment cell expression)))
-		    (generate/cached-assignment name expression)))))))))
+		    (generate/cached-assignment context
+						name
+						expression)))))))))
 
-(define (generate/cached-assignment name value)
+(define (generate/cached-assignment context name value)
   (load-temporary-register scfg*scfg->scfg!
 			   (rtl:make-assignment-cache name)
     (lambda (cell)
@@ -73,7 +82,12 @@ MIT in each case. |#
 				      (ucode-type reference-trap)))
 	      (n3 (rtl:make-unassigned-test contents))
 	      (n4 (rtl:make-assignment cell value))
-	      (n5 (rtl:make-interpreter-call:cache-assignment cell value))
+	      (n5
+	       (load-temporary-register scfg*scfg->scfg! value
+		 (lambda (value)
+		   (wrap-with-continuation-entry
+		    context
+		    (rtl:make-interpreter-call:cache-assignment cell value)))))
 	      ;; Copy prevents premature control merge which confuses CSE
 	      (n6 (rtl:make-assignment cell value)))
 	  (pcfg-consequent-connect! n2 n3)
@@ -93,9 +107,15 @@ MIT in each case. |#
       (lambda (expression)
 	(with-values (lambda () (find-definition-variable context lvalue))
 	  (lambda (environment name)
-	    (rtl:make-interpreter-call:define environment
-					      name
-					      expression)))))))
+	    (load-temporary-register scfg*scfg->scfg! environment
+	      (lambda (environment)
+		(load-temporary-register scfg*scfg->scfg! expression
+		  (lambda (expression)
+		    (wrap-with-continuation-entry
+		     context
+		     (rtl:make-interpreter-call:define environment
+						       name
+						       expression))))))))))))
 
 ;;;; Virtual Returns
 
@@ -159,18 +179,14 @@ MIT in each case. |#
       (receiver setup (generator (rtl:make-fetch temporary))))))
 
 (define (generate/continuation-cons continuation)
-  (let ((closing-block (continuation/closing-block continuation)))
-    (scfg-append!
-     (if (ic-block? closing-block)
-	 (rtl:make-push (rtl:make-fetch register:environment))
-	 (make-null-cfg))
-     (if (block/dynamic-link? closing-block)
-	 (rtl:make-push-link)
-	 (make-null-cfg))
-     (if (continuation/always-known-operator? continuation)
-	 (make-null-cfg)
-	 (begin
-	   (enqueue-continuation! continuation)
+  (let ((extra
+	 (push-continuation-extra (continuation/closing-block continuation))))
+    (if (continuation/always-known-operator? continuation)
+	extra
+	(begin
+	  (enqueue-continuation! continuation)
+	  (scfg*scfg->scfg!
+	   extra
 	   (rtl:make-push-return (continuation/label continuation)))))))
 
 (define (generate/pop pop)
@@ -242,19 +258,26 @@ MIT in each case. |#
 		     consequent)))
 
 (define (generate/unassigned-test rvalue consequent alternative)
-  (let ((lvalue (unassigned-test-lvalue rvalue)))
+  (let ((context (unassigned-test-context rvalue))
+	(lvalue (unassigned-test-lvalue rvalue)))
     (let ((value (lvalue-known-value lvalue)))
       (cond ((not value)
 	     (pcfg*scfg->scfg!
-	      (find-variable (unassigned-test-context rvalue) lvalue
+	      (find-variable context lvalue
 		(lambda (locative)
 		  (rtl:make-unassigned-test (rtl:make-fetch locative)))
 		(lambda (environment name)
 		  (scfg*pcfg->pcfg!
-		   (rtl:make-interpreter-call:unassigned? environment name)
+		   (load-temporary-register scfg*scfg->scfg! environment
+		     (lambda (environment)
+		       (wrap-with-continuation-entry
+			context
+			(rtl:make-interpreter-call:unassigned? environment
+							       name))))
 		   (rtl:make-true-test
 		    (rtl:interpreter-call-result:unassigned?))))
-		generate/cached-unassigned?)
+		(lambda (name)
+		  (generate/cached-unassigned? context name)))
 	      (generate/node consequent)
 	      (generate/node alternative)))
 	    ((and (rvalue/constant? value)
@@ -263,7 +286,7 @@ MIT in each case. |#
 	    (else
 	     (generate/node alternative))))))
 
-(define (generate/cached-unassigned? name)
+(define (generate/cached-unassigned? context name)
   (load-temporary-register scfg*pcfg->pcfg!
 			   (rtl:make-variable-cache name)
     (lambda (cell)
@@ -271,7 +294,10 @@ MIT in each case. |#
 	(let ((n2 (rtl:make-type-test (rtl:make-object->type reference)
 				      (ucode-type reference-trap)))
 	      (n3 (rtl:make-unassigned-test reference))
-	      (n4 (rtl:make-interpreter-call:cache-unassigned? cell))
+	      (n4
+	       (wrap-with-continuation-entry
+		context
+		(rtl:make-interpreter-call:cache-unassigned? cell)))
 	      (n5
 	       (rtl:make-true-test
 		(rtl:interpreter-call-result:cache-unassigned?))))

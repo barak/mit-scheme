@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.6 1988/12/12 21:52:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.7 1988/12/30 07:11:01 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -36,63 +36,67 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package (generate/procedure-header)
-
-(define-export (generate/procedure-header procedure body inline?)
+(define (generate/procedure-header procedure body inline?)
   (scfg*scfg->scfg!
-   (if (procedure/ic? procedure)
-       (scfg*scfg->scfg!
-	(if inline?
-	    (make-null-cfg)
-	    (rtl:make-ic-procedure-header (procedure-label procedure)))
-	(setup-ic-frame procedure))
-       (scfg*scfg->scfg!
-	(cond (inline?
-	       ;; Paranoia
-	       (if (not (procedure/virtually-open? procedure))
-		   (error "Inlining a real closure!" procedure))
-	       (make-null-cfg))
-	      ((procedure/closure? procedure)
-	       (cond ((not (procedure/trivial-closure? procedure))
-		      (rtl:make-closure-header (procedure-label procedure)))
-		     ((or (procedure-rest procedure)
-			  (closure-procedure-needs-external-descriptor?
-			   procedure))
-		      (with-values
-			  (lambda () (procedure-arity-encoding procedure))
-			(lambda (min max)
-			  (rtl:make-procedure-header
-			   (procedure-label procedure)
-			   min max))))
-		     (else
-		      ;; It's not an open procedure but it looks like one
-		      ;; at the rtl level.
-		      (rtl:make-open-procedure-header
-		       (procedure-label procedure)))))
-	      ((procedure-rest procedure)
-	       (with-values (lambda () (procedure-arity-encoding procedure))
-		 (lambda (min max)
-		   (rtl:make-procedure-header (procedure-label procedure)
-					      min max))))
-	      (else
-	       (rtl:make-open-procedure-header (procedure-label procedure))))
-	(setup-stack-frame procedure)))
+   (let ((context (make-reference-context (procedure-block procedure))))
+     (set-reference-context/offset! context 0)
+     (if (procedure/ic? procedure)
+	 (scfg*scfg->scfg!
+	  (if inline?
+	      (make-null-cfg)
+	      (rtl:make-ic-procedure-header (procedure-label procedure)))
+	  (setup-ic-frame procedure context))
+	 (scfg*scfg->scfg!
+	  (cond (inline?
+		 ;; Paranoia
+		 (if (not (procedure/virtually-open? procedure))
+		     (error "Inlining a real closure!" procedure))
+		 (make-null-cfg))
+		((procedure/closure? procedure)
+		 (cond ((not (procedure/trivial-closure? procedure))
+			(rtl:make-closure-header (procedure-label procedure)))
+		       ((or (procedure-rest procedure)
+			    (closure-procedure-needs-external-descriptor?
+			     procedure))
+			(with-values
+			    (lambda () (procedure-arity-encoding procedure))
+			  (lambda (min max)
+			    (rtl:make-procedure-header
+			     (procedure-label procedure)
+			     min max))))
+		       (else
+			;; It's not an open procedure but it looks like one
+			;; at the rtl level.
+			(rtl:make-open-procedure-header
+			 (procedure-label procedure)))))
+		((procedure-rest procedure)
+		 (with-values (lambda () (procedure-arity-encoding procedure))
+		   (lambda (min max)
+		     (rtl:make-procedure-header (procedure-label procedure)
+						min max))))
+		(else
+		 (rtl:make-open-procedure-header (procedure-label procedure))))
+	  (setup-stack-frame procedure context))))
    body))
-
-(define (setup-ic-frame procedure)
+
+(define (setup-ic-frame procedure context)
   (scfg*->scfg!
    (map (let ((block (procedure-block procedure)))
 	  (lambda (name value)
-	    (generate/rvalue value 0 scfg*scfg->scfg!
+	    (generate/rvalue value scfg*scfg->scfg!
 	      (lambda (expression)
-		(rtl:make-interpreter-call:set!
-		 (rtl:make-fetch register:environment)
-		 (intern-scode-variable! block (variable-name name))
-		 expression)))))
+		(load-temporary-register scfg*scfg->scfg! expression
+		  (lambda (expression)
+		    (wrap-with-continuation-entry
+		     context
+		     (rtl:make-interpreter-call:set!
+		      (rtl:make-fetch register:environment)
+		      (intern-scode-variable! block (variable-name name))
+		      expression))))))))
 	(procedure-names procedure)
 	(procedure-values procedure))))
-
-(define (setup-stack-frame procedure)
+
+(define (setup-stack-frame procedure context)
   (let ((block (procedure-block procedure)))
     (define (cellify-variables variables)
       (scfg*->scfg! (map cellify-variable variables)))
@@ -118,13 +122,11 @@ MIT in each case. |#
 	     (cellify-variable rest)
 	     (make-null-cfg)))
        (scfg*->scfg!
-	(map (let ((context (make-reference-context block)))
-	       (set-reference-context/offset! context 0)
-	       (lambda (name value)
-		 (if (and (procedure? value)
-			  (not (procedure/trivial-or-virtual? value)))
-		     (letrec-close context name value)
-		     (make-null-cfg))))
+	(map (lambda (name value)
+	       (if (and (procedure? value)
+			(not (procedure/trivial-or-virtual? value)))
+		   (letrec-close context name value)
+		   (make-null-cfg)))
 	     names values))))))
 
 (define (setup-bindings names values pushes)
@@ -179,6 +181,3 @@ MIT in each case. |#
 		  (lambda (name)
 		    name ;; ignored
 		    (error "Missing closure variable" variable)))))
-
-;;; end GENERATE/PROCEDURE-HEADER
-)
