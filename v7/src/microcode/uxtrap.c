@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.19 1992/03/26 10:59:14 cph Exp $
+$Id: uxtrap.c,v 1.20 1992/08/29 13:11:27 jinx Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -646,7 +646,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
   (*xtra_info++) = ((SCHEME_OBJECT) C_sp);
   {
     int counter = FULL_SIGCONTEXT_NREGS;
-    int * regs = (FULL_SIGCONTEXT_FIRST_REG (scp));
+    long * regs = ((long *) (FULL_SIGCONTEXT_FIRST_REG (scp)));
     while ((counter--) > 0)
     {
       (*xtra_info++) = ((SCHEME_OBJECT) (*regs++));
