@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.sf,v 14.3 1989/08/03 23:16:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.sf,v 14.4 1989/10/26 06:47:00 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -32,8 +32,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-(sf/set-default-syntax-table! syntax-table/system-internal)
-(sf-directory ".")
+(fluid-let ((sf/default-syntax-table syntax-table/system-internal))
+  (sf-directory "."))
+
 ;; Guarantee that the package modeller is loaded.
 (if (not (name->package '(CROSS-REFERENCE)))
     (with-working-directory-pathname "../cref" (lambda () (load "make"))))

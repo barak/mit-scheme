@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/conpar.scm,v 14.9 1989/10/10 11:38:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/conpar.scm,v 14.10 1989/10/26 06:45:54 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -169,7 +169,7 @@ MIT in each case. |#
 		(element-stream/head stream))))
 	  (let ((length
 		 (let ((length (stack-frame-type/length type)))
-		   (if (integer? length)
+		   (if (exact-nonnegative-integer? length)
 		       length
 		       (length stream (parser-state/n-elements state))))))
 	    ((stack-frame-type/parser type)
@@ -316,7 +316,7 @@ MIT in each case. |#
 		    (element-stream/head stream)))
 	     (length
 	      (let ((length (stack-frame-type/length type)))
-		(if (integer? length)
+		(if (exact-nonnegative-integer? length)
 		    length
 		    (length stream offset))))
 	     (ltail (stream-tail* stream length)))
@@ -641,7 +641,7 @@ MIT in each case. |#
     (write-string "  ")
     (write-string name)
     (write-string " = ")
-    (write-string (number->string value '(HEUR (RADIX X))))))
+    (write-string (number->string value 16))))
 
 (define (hardware-trap-frame/print-registers frame)
   (guarantee-hardware-trap-frame frame)
@@ -653,7 +653,8 @@ MIT in each case. |#
 	  (let loop ((i 0))
 	    (if (< i nregs)
 		(begin
-		  (print-register block (+ 2 i)
+		  (print-register block
+				  (+ 2 i)
 				  (string-append "register "
 						 (number->string i)))
 		  (loop (1+ i)))))))))
@@ -701,7 +702,8 @@ MIT in each case. |#
 	   (write-string
 	    (number->string (stack-frame/ref frame
 					     hardware-trap/pc-info2-index)
-			    '(HEUR (RADIX X))))	   (newline)
+			    16))
+	   (newline)
 	   (write-string "within ")
 	   (let ((block (stack-frame/ref frame hardware-trap/pc-info1-index)))
 	     (write block)

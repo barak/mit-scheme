@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.9 1989/08/04 02:42:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.10 1989/10/26 06:47:14 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -129,7 +129,8 @@ MIT in each case. |#
   (- (stack-frame/length frame) 4))
 
 (define (internal-apply-frame/select frame selector)
-  (if (integer? selector)      (internal-apply-frame/operand frame selector)
+  (if (exact-nonnegative-integer? selector)
+      (internal-apply-frame/operand frame selector)
       (selector frame)))
 
 (define ((internal-apply-frame/operator-filter . operators) frame)

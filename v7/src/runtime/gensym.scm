@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gensym.scm,v 14.1 1988/06/13 11:45:28 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gensym.scm,v 14.2 1989/10/26 06:46:15 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,8 +41,8 @@ MIT in each case. |#
   (if (not (default-object? argument))
       (cond ((symbol? argument)
 	     (set! name-prefix (symbol->string argument)))
-	    ((and (integer? argument)
-		  (not (negative? argument)))	     (set! name-counter argument))
+	    ((exact-nonnegative-integer? argument)
+	     (set! name-counter argument))
 	    (else
 	     (error "GENERATE-UNINTERNED-SYMBOL: Bad argument" argument))))
   (string->uninterned-symbol

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.13 1989/10/03 22:55:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.14 1989/10/26 06:46:23 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -78,8 +78,7 @@ MIT in each case. |#
 			 (vector-ref binf 0))))))
 	((and (pair? descriptor)
 	      (string? (car descriptor))
-	      (integer? (cdr descriptor))
-	      (not (negative? (cdr descriptor))))
+	      (exact-nonnegative-integer? (cdr descriptor)))
 	 (let ((binf (read-binf-file (car descriptor))))
 	   (and binf
 		(vector? binf)
@@ -158,11 +157,15 @@ MIT in each case. |#
   (let loop
       ((info
 	(compiled-code-block/debugging-info (compiled-entry/block entry))))
-    (cond ((string? info) info)
-	  ((not (pair? info)) false)
-	  ((string? (car info)) (car info))
+    (cond ((string? info) (values info false))
+	  ((not (pair? info)) (values false false))
 	  ((dbg-info? (car info)) (loop (cdr info)))
-	  (else false))))
+	  ((string? (car info))
+	   (values (car info)
+		   (and (exact-nonnegative-integer? (cdr info))
+			(cdr info))))
+	  (else (values false false)))))
+
 (define (dbg-labels/find-offset labels offset)
   (vector-binary-search labels < dbg-label/offset offset))
 

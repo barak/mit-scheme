@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/version.scm,v 14.61 1989/10/03 22:56:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/version.scm,v 14.62 1989/10/26 06:47:30 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -45,7 +45,7 @@ MIT in each case. |#
 		     '()))
   (add-system! microcode-system)
   (add-event-receiver! event:after-restore snarf-microcode-version!)
-  (add-identification! "Runtime" 14 61))
+  (add-identification! "Runtime" 14 62))
 (define microcode-system)
 
 (define (snarf-microcode-version!)

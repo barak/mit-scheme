@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 14.2 1988/07/09 02:24:02 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 14.3 1989/10/26 06:50:33 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,238 +34,261 @@ MIT in each case. |#
 
 ;;;; Number Parser
 ;;; package: (runtime number-parser)
-
-(declare (usual-integrations))
 
-;;; These are not supported right now.
+(define (string->number string #!optional radix-default)
+  (let ((radix-default
+	 (if (default-object? radix-default)
+	     10
+	     (begin
+	       (if (not (memv radix-default '(2 8 10 16)))
+		   (bad-range 'STRING->NUMBER radix-default))
+	       radix-default))))
+    (with-values (lambda () (parse-prefix (string->list string)))
+      (lambda (chars radix-prefix exactness)
+	((if (eq? exactness 'INEXACT)
+	     exact->inexact
+	     identity-procedure)
+	 (let ((radix (or radix-prefix radix-default)))
+	   (with-values (lambda () (parse-sign chars))
+	     (lambda (chars real-sign)
+	       (if (and real-sign (imaginary-suffix? chars))
+		   (make-rectangular 0 real-sign)
+		   (with-values (lambda () (parse-unsigned-real chars radix))
+		     (lambda (chars real inexact?)
+		       (let ((real
+			      (combine-sign real-sign
+					    real
+					    exactness
+					    inexact?)))
+			 (cond ((or (null? chars) (not real))
+				real)
+			       ((and real-sign (imaginary-suffix? chars))
+				(make-rectangular 0 real))
+			       ((char=? #\@ (car chars))
+				(with-values
+				    (lambda ()
+				      (parse-signed-real (cdr chars)
+							 radix
+							 exactness))
+				  (lambda (chars angle)
+				    (and angle
+					 (null? chars)
+					 (make-polar real angle)))))
+			       (else
+				(parse-imaginary-tail chars
+						      radix
+						      exactness
+						      real)))))))))))))))
 
-(define-integrable (->exact number) number)
-(define-integrable (->inexact number) number)
-(define-integrable (->long-flonum number) number)
-(define-integrable (->short-flonum number) number)
-
-(define *radix*)
-
-(define (string->number string #!optional exactness radix)
-  ((cond ((or (default-object? exactness) (not exactness)) identity-procedure)
-	 ((eq? exactness 'E) ->exact)
-	 ((eq? exactness 'I) ->inexact)
-	 (else (error "Illegal exactness argument" exactness)))
-   (fluid-let ((*radix*
-		(cond ((default-object? radix) 10)
-		      ((memv radix '(2 8 10 16)) radix)
-		      ((eq? radix 'B) 2)
-		      ((eq? radix 'O) 8)
-		      ((eq? radix 'D) 10)
-		      ((eq? radix 'X) 16)
-		      (else (error "Illegal radix argument" radix)))))
-     (parse-number (string->list string)))))
-
-(define (parse-number chars)
-  (parse-real chars
-    (lambda (chars real)
-      (if (null? chars)
-	  real
-	  (case (car chars)
-	    ((#\+ #\-)
-	     (parse-real chars
-	       (lambda (chars* real*)
-		 (and (not (null? chars*))
-		      (null? (cdr chars*))
-		      (or (char-ci=? (car chars*) #\i)
-			  (char-ci=? (car chars*) #\j))
-		      (make-rectangular real real*)))))
-	    ((#\@)
-	     (parse-real (cdr chars)
-	       (lambda (chars real*)
-		 (and (null? chars)
-		      (make-polar real real*)))))
-	    (else false))))))
+(define (parse-imaginary-tail chars radix exactness real)
+  (with-values (lambda () (parse-sign chars))
+    (lambda (chars sign)
+      (and sign
+	   (if (imaginary-suffix? chars)
+	       (make-rectangular real sign)
+	       (with-values (lambda () (parse-unsigned-real chars radix))
+		 (lambda (chars imag inexact?)
+		   (and imag
+			(imaginary-suffix? chars)
+			(make-rectangular
+			 real
+			 (combine-sign sign imag exactness inexact?))))))))))
 
-(define (parse-real chars receiver)
-  (and (not (null? chars))
-       (case (car chars)
-	 ((#\+)
-	  (parse-unsigned-real (cdr chars)
-	    receiver))
-	 ((#\-)
-	  (parse-unsigned-real (cdr chars)
-	    (lambda (chars real)
-	      (receiver chars (- real)))))
-	 (else
-	  (parse-unsigned-real chars
-	    receiver)))))
+(define (parse-prefix chars)
+  (parse-1-prefix chars
+    (lambda (chars radix)
+      (parse-1-prefix chars
+	(lambda (chars radix)
+	  chars radix
+	  (values '() false false))
+	(lambda (chars exactness)
+	  (values chars radix exactness))
+	(lambda (chars)
+	  (values chars radix false))))
+    (lambda (chars exactness)
+      (parse-1-prefix chars
+	(lambda (chars radix)
+	  (values chars radix exactness))
+	(lambda (chars exactness)
+	  chars exactness
+	  (values '() false false))
+	(lambda (chars)
+	  (values chars false exactness))))
+    (lambda (chars)
+      (values chars false false))))
 
-(define (parse-unsigned-real chars receiver)
-  (parse-prefix chars false false false
-    (lambda (chars radix exactness precision)
-      (let ((finish
-	     (lambda ()
-	       (parse-body chars
-		 (lambda (chars real)
-		   (parse-suffix chars
-		     (lambda (chars exponent)
-		       (receiver chars
-				 ((case exactness
-				    ((#F) identity-procedure)
-				    ((#\e) ->exact)
-				    ((#\i) ->inexact))
-				  ((case precision
-				     ((#F) identity-procedure)
-				     ((#\s) ->short-flonum)
-				     ((#\l) ->long-flonum))
-				   (if exponent
-				       (* real (expt 10 exponent))
-				       real)))))))))))
-	(if radix
-	    (fluid-let ((*radix*
-			 (cdr (assv radix
-				    '((#\b . 2)
-				      (#\o . 8)
-				      (#\d . 10)
-				      (#\x . 16))))))
-	      (finish))
-	    (finish))))))
-
-(define (parse-prefix chars radix exactness precision receiver)
-  (and (not (null? chars))
-       (if (char=? (car chars) #\#)
-	   (and (pair? (cdr chars))
-		(let ((type (char-downcase (cadr chars)))
-		      (rest (cddr chars)))
-		  (let ((specify-prefix-type
-			 (lambda (old)
-			   (if old
-			       (error "Respecification of prefix type" type)
-			       type))))
-		    (case type
-		      ((#\b #\o #\d #\x)
-		       (parse-prefix rest
-				     (specify-prefix-type radix)
-				     exactness
-				     precision
-				     receiver))
-		      ((#\i #\e)
-		       (parse-prefix rest
-				     radix
-				     (specify-prefix-type exactness)
-				     precision
-				     receiver))
-		      ((#\s #\l)
-		       (parse-prefix rest
-				     radix
-				     exactness
-				     (specify-prefix-type precision)
-				     receiver))
-		      (else (error "Unknown prefix type" type))))))
-	   (receiver chars radix exactness precision))))
-
-(define (parse-suffix chars receiver)
+(define (parse-1-prefix chars if-radix if-exactness if-neither)
   (if (and (not (null? chars))
-	   (char-ci=? (car chars) #\e))
-      (parse-signed-suffix (cdr chars) receiver)
-      (receiver chars false)))
+	   (char=? (car chars) #\#)
+	   (not (null? (cdr chars))))
+      (let ((char (cadr chars))
+	    (chars* (cddr chars)))
+	(cond ((char-ci=? #\i char) (if-exactness chars* 'INEXACT))
+	      ((char-ci=? #\e char) (if-exactness chars* 'EXACT))
+	      ((char-ci=? #\b char) (if-radix chars* 2))
+	      ((char-ci=? #\o char) (if-radix chars* 8))
+	      ((char-ci=? #\d char) (if-radix chars* 10))
+	      ((char-ci=? #\x char) (if-radix chars* 16))
+	      (else (if-neither chars))))
+      (if-neither chars)))
 
-(define (parse-signed-suffix chars receiver)
+(define (imaginary-suffix? chars)
   (and (not (null? chars))
-       (case (car chars)
-	 ((#\+)
-	  (parse-unsigned-suffix (cdr chars)
-	    receiver))
-	 ((#\-)
-	  (parse-unsigned-suffix (cdr chars)
-	    (lambda (chars exponent)
-	      (receiver chars (and exponent (- exponent))))))
-	 (else
-	  (parse-unsigned-suffix chars
-	    receiver)))))
-
-(define (parse-unsigned-suffix chars receiver)
-  (define (parse-digit chars value if-digit)
-    (let ((digit (char->digit (car chars) 10)))
-      (if digit
-	  (if-digit (cdr chars) digit)
-	  (receiver chars value))))
-
-  (define (loop chars value)
-    (if (null? chars)
-	(receiver chars value)
-	(parse-digit chars value
-	  (lambda (chars digit)
-	    (loop chars (+ digit (* value 10)))))))
-
-  (and (not (null? chars))
-       (parse-digit chars false
-	 loop)))
+       (null? (cdr chars))
+       (or (char-ci=? (car chars) #\i)
+	   (char-ci=? (car chars) #\j))))
 
-(define (parse-body chars receiver)
-  (and (not (null? chars))
-       (if (char=? (car chars) #\.)
-	   (require-digit (cdr chars)
-	     (lambda (chars digit)
-	       (parse-fraction chars digit 1
-		 receiver)))
-	   (parse-integer chars
-	     (lambda (chars integer)
-	       (if (null? chars)
-		   (receiver chars integer)
-		   (case (car chars)
-		     ((#\/)
-		      (parse-integer (cdr chars)
-			(lambda (chars denominator)
-			  (receiver chars (/ integer denominator)))))
-		     ((#\.)
-		      (parse-fraction (cdr chars) 0 0
-			(lambda (chars fraction)
-			  (receiver chars (+ integer fraction)))))
-		     (else
-		      (receiver chars integer)))))))))
+(define (parse-signed-real chars radix exactness)
+  (with-values (lambda () (parse-sign chars))
+    (lambda (chars sign)
+      (with-values (lambda () (parse-unsigned-real chars radix))
+	(lambda (chars real inexact?)
+	  (values chars (combine-sign sign real exactness inexact?)))))))
 
-(define (parse-integer chars receiver)
-  (define (loop chars integer)
-    (parse-digit/sharp chars
-      (lambda (chars count)
-	(receiver chars (->inexact (* integer (expt *radix* count)))))
-      (lambda (chars digit)
-	(loop chars (+ digit (* integer *radix*))))
-      (lambda (chars)
-	(receiver chars integer))))
-  (require-digit chars loop))
+(define (parse-unsigned-real chars radix)
+  (with-values (lambda () (parse-integer chars radix))
+    (lambda (chars* numerator inexact?)
+      (cond ((not numerator)
+	     (if (= radix 10)
+		 (parse-decimal chars)
+		 (values chars false false)))
+	    ((and (not (null? chars*))
+		  (char=? #\/ (car chars*)))
+	     (with-values (lambda () (parse-integer (cdr chars*) radix))
+	       (lambda (chars* denominator inexact?*)
+		 (if denominator
+		     (values chars*
+			     (/ numerator denominator)
+			     (or inexact? inexact?*))
+		     (values chars false false)))))
+	    (else
+	     (values chars* numerator inexact?))))))
 
-(define (parse-fraction chars integer place-value receiver)
-  (define (loop chars integer place-value)
-    (parse-digit/sharp chars
-      (lambda (chars count)
-	count
-	(finish chars (->inexact integer) place-value))
-      (lambda (chars digit)
-	(loop chars
-	      (+ digit (* integer *radix*))
-	      (1+ place-value)))
-      (lambda (chars)
-	(finish chars integer place-value))))
-
-  (define (finish chars integer place-value)
-    (receiver chars (/ integer (expt *radix* place-value))))
-
-  (loop chars integer place-value))
+(define (parse-integer chars radix)
+  (if (or (null? chars)
+	  (not (char->digit (car chars) radix)))
+      (values chars false false)
+      (let loop ((chars* (cdr chars)) (n (char->digit (car chars) radix)))
+	(if (null? chars*)
+	    (values chars* n false)
+	    (let ((digit (char->digit (car chars*) radix)))
+	      (cond (digit
+		     (loop (cdr chars*) (+ (* n radix) digit)))
+		    ((char=? (car chars*) #\.)
+		     (values chars false false))
+		    ((char=? (car chars*) #\#)
+		     (let loop ((chars* (cdr chars*)) (n (* n radix)))
+		       (cond ((null? chars*)
+			      (values chars* n true))
+			     ((char=? (car chars*) #\#)
+			      (loop (cdr chars*) (* n radix)))
+			     ((char=? (car chars*) #\.)
+			      (values chars false false))
+			     (else
+			      (values chars* n true)))))
+		    (else
+		     (values chars* n false))))))))
 
-(define (require-digit chars receiver)
-  (and (not (null? chars))
-       (let ((digit (char->digit (car chars) *radix*)))
-	 (and digit
-	      (receiver (cdr chars) digit)))))
+(define (parse-decimal chars)
+  (let ((handle-suffix
+	 (lambda (chars x inexact?)
+	   (with-values (lambda () (parse-suffix chars))
+	     (lambda (chars exponent)
+	       (if exponent
+		   (values chars (* x (expt 10 exponent)) true)
+		   (values chars x inexact?)))))))
+    (cond ((null? chars)
+	   (values chars false false))
+	  ((char=? #\. (car chars))
+	   (let ((chars* (cdr chars)))
+	     (if (and (not (null? chars*))
+		      (char->digit (car chars*) 10))
+		 (with-values (lambda () (parse-decimal-fraction chars*))
+		   (lambda (chars x)
+		     (handle-suffix chars x true)))
+		 (values chars false false))))
+	  ((char->digit (car chars) 10)
+	   (with-values (lambda () (parse-decimal-integer chars))
+	     handle-suffix))
+	  (else
+	   (values chars false false)))))
 
-(define (parse-digit/sharp chars if-sharp if-digit otherwise)
-  (cond ((null? chars) (otherwise chars))
-	((char=? (car chars) #\#)
-	 (let count-sharps ((chars (cdr chars)) (count 1))
-	   (if (and (not (null? chars))
-		    (char=? (car chars) #\#))
-	       (count-sharps (cdr chars) (1+ count))
-	       (if-sharp chars count))))
-	(else
-	 (let ((digit (char->digit (car chars) *radix*)))
-	   (if digit
-	       (if-digit (cdr chars) digit)
-	       (otherwise chars))))))
+(define (parse-decimal-integer chars)
+  (let loop ((chars* (cdr chars)) (n (char->digit (car chars) 10)))
+    (if (null? chars*)
+	(values '() n false)
+	(let ((digit (char->digit (car chars*) 10)))
+	  (if digit
+	      (loop (cdr chars*) (+ (* n 10) digit))
+	      (cond ((char=? #\. (car chars*))
+		     (with-values
+			 (lambda () (parse-decimal-fraction (cdr chars*)))
+		       (lambda (chars* fraction)
+			 (values chars* (+ n fraction) true))))
+		    ((char=? #\# (car chars*))
+		     (let loop ((chars* (cdr chars*)) (n (* n 10)))
+		       (cond ((null? chars*)
+			      (values '() n true))
+			     ((char=? #\# (car chars*))
+			      (loop (cdr chars*) (* n 10)))
+			     ((char=? #\. (car chars*))
+			      (let loop ((chars* (cdr chars*)))
+				(if (and (not (null? chars*))
+					 (char=? #\# (car chars*)))
+				    (loop (cdr chars*))
+				    (values chars* n true))))
+			     (else
+			      (values chars* n true)))))
+		    (else
+		     (values chars* n false))))))))
+
+(define (parse-decimal-fraction chars)
+  (let loop ((chars chars) (f 0) (exponent 0))
+    (let ((done
+	   (lambda (chars)
+	     (values chars (* f (expt 10 exponent))))))
+      (if (null? chars)
+	  (done '())
+	  (let ((digit (char->digit (car chars) 10)))
+	    (if digit
+		(loop (cdr chars) (+ (* f 10) digit) (-1+ exponent))
+		(let loop ((chars chars))
+		  (cond ((not (char=? #\# (car chars))) (done chars))
+			((null? (cdr chars)) (done '()))
+			(else (loop (cdr chars)))))))))))
+
+(define (parse-suffix chars)
+  (if (and (not (null? chars))
+	   (or (char-ci=? #\e (car chars))
+	       (char-ci=? #\s (car chars))
+	       (char-ci=? #\f (car chars))
+	       (char-ci=? #\d (car chars))
+	       (char-ci=? #\l (car chars))))
+      (with-values (lambda () (parse-sign (cdr chars)))
+	(lambda (chars* sign)
+	  (let ((digit
+		 (and (not (null? chars*))
+		      (char->digit (car chars*) 10))))
+	    (if digit
+		(let loop ((chars* (cdr chars*)) (n digit))
+		  (let ((digit
+			 (and (not (null? chars*))
+			      (char->digit (car chars*) 10))))
+		    (if digit
+			(loop (cdr chars*) (+ (* n 10) digit))
+			(values chars* (if (eqv? -1 sign) (- n) n)))))
+		(values chars false)))))
+      (values chars false)))
+
+(define (parse-sign chars)
+  (cond ((null? chars) (values chars false))
+	((char=? (car chars) #\+) (values (cdr chars) 1))
+	((char=? (car chars) #\-) (values (cdr chars) -1))
+	(else (values chars false))))
+
+(define (combine-sign sign real exactness inexact?)
+  (let ((real (if (and real (eqv? -1 sign)) (- real) real)))
+    (if (and inexact?
+	     (not (eq? exactness 'EXACT)))
+	(exact->inexact real)
+	real)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 14.3 1989/04/15 01:22:51 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 14.4 1989/10/26 06:47:03 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -45,11 +45,9 @@ MIT in each case. |#
 	       &+
 	       &-
 	       &/
-	       &ATAN
 	       -1+
 	       1+
 	       ASCII->CHAR
-	       CEILING
 	       CELL?
 	       CHAR->ASCII
 	       CHAR->INTEGER
@@ -60,12 +58,8 @@ MIT in each case. |#
 	       CHAR-UPCASE
 	       COMPILED-CODE-ADDRESS->BLOCK
 	       COMPILED-CODE-ADDRESS->OFFSET
-	       COS
 	       EQ?
-	       EXP
-	       FLOOR
 	       INTEGER->CHAR
-	       LOG
 	       MAKE-CHAR
 	       MAKE-NON-POINTER-OBJECT
 	       NEGATIVE?
@@ -75,14 +69,11 @@ MIT in each case. |#
 	       PAIR?
 	       POSITIVE?
 	       PRIMITIVE-PROCEDURE-ARITY
-	       ROUND
-	       SIN
-	       SQRT
 	       ;; STRING->SYMBOL is a special case.  Strings have can
 	       ;; be side-effected, but it is useful to be able to
 	       ;; constant fold this primitive anyway.
 	       STRING->SYMBOL
-	       TRUNCATE	       ZERO?
+	       ZERO?
 	       ))))
 
 ;;;; Sequence

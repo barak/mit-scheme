@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.13 1989/08/09 11:08:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.14 1989/10/26 06:47:18 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -85,6 +85,7 @@ MIT in each case. |#
 		(NULL ,unparse/null)
 		(PRIMITIVE ,unparse/primitive-procedure)
 		(PROCEDURE ,unparse/compound-procedure)
+		(RATNUM ,unparse/number)
 		(RETURN-ADDRESS ,unparse/return-address)
 		(STRING ,unparse/string)
 		(TRUE ,unparse/true)
@@ -194,7 +195,8 @@ MIT in each case. |#
 (define-integrable (*unparse-datum object)
   (*unparse-hex (object-datum object)))
 
-(define-integrable (*unparse-hex number)
+(define (*unparse-hex number)
+  (*unparse-string "#x")
   (*unparse-string (number->string number 16)))
 
 (define-integrable (*unparse-hash object)
@@ -490,19 +492,21 @@ MIT in each case. |#
      (if closure? 'COMPILED-CLOSURE type)
      entry
      (lambda ()
-       (let ((unparse-name
-	      (lambda ()
-		(*unparse-object
-		 (let ((filename (compiled-entry/filename entry)))
-		   (if filename
-		       (list 'FILE (pathname-name (->pathname filename)))
-		       '()))))))
-	 (if (eq? type 'COMPILED-PROCEDURE)
-	     (let ((name (compiled-procedure/name entry)))
-	       (if name
-		   (*unparse-string name)
-		   (unparse-name)))
-	     (unparse-name)))
+       (let ((name (compiled-procedure/name entry)))	 (with-values (lambda () (compiled-entry/filename entry))
+	   (lambda (filename block-number)
+	     (*unparse-char #\()
+	     (if name
+		 (*unparse-string name))
+	     (if filename
+		 (begin
+		   (if name
+		       (*unparse-char #\Space))
+		   (*unparse-object (pathname-name (->pathname filename)))
+		   (if block-number
+		       (begin
+			 (*unparse-char #\Space)
+			 (*unparse-hex block-number)))))
+	     (*unparse-char #\)))))
        (*unparse-char #\Space)
        (*unparse-hex (compiled-entry/offset entry))
        (*unparse-char #\Space)
@@ -510,7 +514,7 @@ MIT in each case. |#
 	   (begin (*unparse-datum (compiled-closure->entry entry))
 		  (*unparse-char #\Space)))
        (*unparse-datum entry)))))
-
+
 ;;;; Miscellaneous
 
 (define (unparse/environment environment)
@@ -523,7 +527,24 @@ MIT in each case. |#
     (lambda () (*unparse-object (variable-name variable)))))
 
 (define (unparse/number object)
-  (*unparse-string (number->string object *unparser-radix*)))
+  (*unparse-string
+   (number->string
+    object
+    (let ((prefix
+	   (lambda (prefix limit radix)
+	     (if (exact-rational? object)
+		 (begin
+		   (if (not (and (exact-integer? object)
+				 (< (abs object) limit)))
+		       (*unparse-string prefix))
+		   radix)
+		 10))))
+      (case *unparser-radix*
+	((2) (prefix "#b" 2 2))
+	((8) (prefix "#o" 8 8))
+	((16) (prefix "#x" 10 16))
+	(else 10))))))
+
 (define (unparse/future future)
   (*unparse-with-brackets 'FUTURE false
     (lambda ()

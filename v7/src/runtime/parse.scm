@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.8 1989/08/16 01:06:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.9 1989/10/26 06:46:39 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -264,8 +264,9 @@ MIT in each case. |#
   (or (parse-number string)
       (intern-string! string)))
 
-(define-integrable (parse-number string)
-  (string->number string false *parser-radix*))
+(define (parse-number string)
+  (string->number string
+		  (if (memv *parser-radix* '(2 8 10 16)) *parser-radix* 10)))
 
 (define (intern-string! string)
   ;; Special version of `intern' to reduce consing and increase speed.
@@ -287,7 +288,7 @@ MIT in each case. |#
   (let ((string (read-atom)))
     (unsigned-integer->bit-string
      (string-length string)
-     (or (string->number string false 2)
+     (or (string->number string 2)
 	 (error "READ: bad syntax for bit-string")))))
 ;;;; Lists/Vectors
 
@@ -482,7 +483,8 @@ MIT in each case. |#
 (define (parse-object/unhash)
   (discard-char)
   (let ((number (parse-object/dispatch)))
-    (if (not (integer? number))	(parse-error "Invalid unhash syntax" number))
+    (if (not (exact-nonnegative-integer? number))
+	(parse-error "Invalid unhash syntax" number))
     (let ((object (object-unhash number)))
       ;; This knows that 0 is the hash of #f.
       (if (and (false? object) (not (zero? number)))

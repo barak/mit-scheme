@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/stream.scm,v 14.5 1989/09/20 15:06:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/stream.scm,v 14.6 1989/10/26 06:47:07 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -78,8 +78,8 @@ MIT in each case. |#
     (stream-car tail)))
 
 (define (stream-head stream index)
-  (if (not (and (integer? index) (not (negative? index))))
-      (error "STREAM-HEAD: index must be nonnegative integer" index))
+  (if (not (exact-nonnegative-integer? index))
+      (error "index must be exact nonnegative integer" index))
   (let loop ((stream stream) (index index))
     (if (zero? index)
 	'()
@@ -89,8 +89,9 @@ MIT in each case. |#
 	  (cons (stream-car stream) (loop (stream-cdr stream) (-1+ index)))))))
 
 (define (stream-tail stream index)
-  (if (not (and (integer? index) (not (negative? index))))
-      (error "STREAM-TAIL: index must be nonnegative integer" index))  (let loop ((stream stream) (index index))
+  (if (not (exact-nonnegative-integer? index))
+      (error "index must be exact nonnegative integer" index))
+  (let loop ((stream stream) (index index))
     (if (zero? index)
 	stream
 	(begin (if (not (stream-pair? stream))

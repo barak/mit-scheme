@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.9 1989/09/20 15:05:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.10 1989/10/26 06:46:31 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -52,8 +52,8 @@ MIT in each case. |#
 		    (cdr rest-elements))))))
 
 (define (make-list length #!optional value)
-  (if (not (and (integer? length) (not (negative? length))))
-      (error "MAKE-LIST: length must be nonnegative integer" length))
+  (if (not (exact-nonnegative-integer? length))
+      (error "length must be exact nonnegative integer" length))
   (let ((value (if (default-object? value) '() value)))
     (let loop ((n length) (result '()))
       (if (zero? n)
@@ -69,8 +69,8 @@ MIT in each case. |#
   items)
 
 (define (make-circular-list length #!optional value)
-  (if (not (and (integer? length) (not (negative? length))))
-      (error "MAKE-CIRCULAR-LIST: length must be nonnegative integer" length))
+  (if (not (exact-nonnegative-integer? length))
+      (error "length must be exact nonnegative integer" length))
   (if (positive? length)
       (let ((value (if (default-object? value) '() value)))
 	(let ((last (cons value '())))
@@ -89,8 +89,8 @@ MIT in each case. |#
     (car tail)))
 
 (define (list-tail list index)
-  (if (not (and (integer? index) (not (negative? index))))
-      (error "LIST-TAIL: index must be nonnegative integer" index))
+  (if (not (exact-nonnegative-integer? index))
+      (error "index must be exact nonnegative integer" index))
   (let loop ((list list) (index index))
     (if (zero? index)
 	list
@@ -100,8 +100,8 @@ MIT in each case. |#
 	  (loop (cdr list) (-1+ index))))))
 
 (define (list-head list index)
-  (if (not (and (integer? index) (not (negative? index))))
-      (error "LIST-HEAD: index must be nonnegative integer" index))
+  (if (not (exact-nonnegative-integer? index))
+      (error "index must be exact nonnegative integer" index))
   (let loop ((list list) (index index))
     (if (zero? index)
 	'()

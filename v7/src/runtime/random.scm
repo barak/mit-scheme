@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/random.scm,v 14.2 1988/06/13 11:50:32 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/random.scm,v 14.3 1989/10/26 06:46:47 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,7 +36,7 @@ MIT in each case. |#
 ;;; package: (runtime random-number)
 
 (declare (usual-integrations))
-
+
 (define seed)
 (define a)
 (define m)
@@ -45,20 +45,18 @@ MIT in each case. |#
 (define (initialize-package!)
   (set! seed 1)
   (set! a (+ (* 3141 1000 1000) (* 592 1000) 621))
-  (set! m (integer-expt 2 63))
-  (set! c 1))
+  (set! m (expt 2 63))
+  (set! c 1)
+  unspecific)
 
 (define (random k)
-  (if (not (integer? k))
-      (error "RANDOM is valid only for integers" k))
-  (if (not (and (positive? k) (<= k m)))
-      (error "RANDOM is valid only for integers from 1 to" m))
+  (if (not (and (exact-integer? k) (<= 1 k m)))
+      (error "RANDOM is valid only for exact integers from 1 to" m))
   (set! seed (remainder (+ (* a seed) c) m))
   (quotient (* seed k) m))
 
 (define (randomize k)
-  (if (not (integer? k))
-      (error "RANDOMIZE is valid only for integers" k))
-  (if (not (and (positive? k) (<= k m)))
-      (error "RANDOMIZE is valid only for integers from 1 to" m))
-  (set! seed k))
+  (if (not (and (exact-integer? k) (<= 1 k m)))
+      (error "RANDOMIZE is valid only for exact integers from 1 to" m))
+  (set! seed k)
+  unspecific)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.8 1989/08/15 13:20:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.9 1989/10/26 06:46:43 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -61,12 +61,8 @@ MIT in each case. |#
 (define *forced-x-size* false)
 
 (define (pp object #!optional port . rest)
-  (let ((object
-	 (or (and (integer? object)
-		  (not (negative? object))
-		  (unhash object))
-	     object))
-	(port (if (default-object? port) (current-output-port) port)))    (let ((pretty-print
+  (let ((port (if (default-object? port) (current-output-port) port)))
+    (let ((pretty-print
 	   (lambda (object) (apply pretty-print object port rest))))
       (newline port)
       (if (named-structure? object)

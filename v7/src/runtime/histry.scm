@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/histry.scm,v 14.1 1988/06/13 11:45:51 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/histry.scm,v 14.2 1989/10/26 06:46:19 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -117,9 +117,10 @@ MIT in each case. |#
 		    head
 		    (make-reduction false false (reduction-loop (-1+ n))))))
 	     (make-vertebra head '() '())))))
-    (if (not (and (integer? depth) (positive? depth)))
+    (if (not (and (exact-integer? depth) (positive? depth)))
 	(error "CREATE-HISTORY: invalid depth" depth))
-    (if (not (and (integer? width) (positive? width)))	(error "CREATE-HISTORY: invalid width" width))
+    (if (not (and (exact-integer? width) (positive? width)))
+	(error "CREATE-HISTORY: invalid width" width))
     (let ((head (new-vertebra)))
       (let subproblem-loop ((n (-1+ depth)) (previous head))
 	(if (zero? n)

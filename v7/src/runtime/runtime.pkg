@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.52 1989/09/24 15:44:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.53 1989/10/26 06:46:55 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -945,7 +945,7 @@ MIT in each case. |#
   (initialization (initialize-package!)))
 
 (define-package (runtime number)
-  (files "narith")
+  (files "arith" "dragon4")
   (parent ())
   (export ()
 	  *
@@ -965,14 +965,19 @@ MIT in each case. |#
 	  asin
 	  atan
 	  ceiling
+	  ceiling->exact
 	  complex?
 	  conjugate
 	  cos	  even?
 	  exact->inexact
+	  exact-integer?
+	  exact-nonnegative-integer?
+	  exact-rational?
 	  exact?
 	  exp
 	  expt
 	  floor
+	  floor->exact
 	  gcd
 	  imag-part
 	  inexact->exact
@@ -981,7 +986,6 @@ MIT in each case. |#
 	  integer-divide
 	  integer-divide-quotient
 	  integer-divide-remainder
-	  integer-expt
 	  integer-floor
 	  integer-round
 	  integer-truncate
@@ -995,20 +999,30 @@ MIT in each case. |#
 	  min
 	  modulo
 	  negative?
+	  number->string
 	  number?
+	  numerator
 	  odd?
 	  positive?
 	  quotient
 	  rational?
+	  rationalize
+	  rationalize->exact
 	  real-part
 	  real?
 	  remainder
 	  round
+	  round->exact
+	  simplest-exact-rational
+	  simplest-rational
 	  sin
 	  sqrt
 	  tan
 	  truncate
+	  truncate->exact
 	  zero?)
+  (export (runtime number-parser)
+	  bad-range)
   (initialization (initialize-package!)))
 (define-package (runtime number-parser)
   (files "numpar")
@@ -1016,12 +1030,6 @@ MIT in each case. |#
   (export ()
 	  string->number))
 
-(define-package (runtime number-unparser)
-  (files "numunp")
-  (parent ())
-  (export ()
-	  number->string)
-  (initialization (initialize-package!)))
 (define-package (runtime options)
   (files "option")
   (parent ())

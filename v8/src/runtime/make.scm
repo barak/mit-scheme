@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.18 1989/08/18 19:14:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.19 1989/10/26 06:46:35 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -320,7 +320,7 @@ MIT in each case. |#
    (RUNTIME LOAD)
    ;; Syntax
    (RUNTIME PARSER)
-   (RUNTIME NUMBER-UNPARSER)   (RUNTIME UNPARSER)
+   (RUNTIME UNPARSER)
    (RUNTIME SYNTAXER)
    (RUNTIME MACROS)
    (RUNTIME SYSTEM-MACROS)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcnote.scm,v 14.5 1989/08/15 13:19:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcnote.scm,v 14.6 1989/10/26 06:46:11 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -103,8 +103,10 @@ MIT in each case. |#
 		   (number->string (internal-time/ticks->seconds delta-time))
 		   " ("
 		   (number->string
-		    (round (* (/ delta-time 
-				 (- (gc-statistic/this-gc-end statistic)
-				    (gc-statistic/last-gc-end statistic)))
-			      100)))		   "%) free: "
+		    (round->exact
+		     (* (/ delta-time 
+			   (- (gc-statistic/this-gc-end statistic)
+			      (gc-statistic/last-gc-end statistic)))
+			100)))
+		   "%) free: "
 		   (number->string (gc-statistic/heap-left statistic)))))

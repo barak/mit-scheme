@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 14.6 1989/08/07 07:37:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 14.7 1989/10/26 06:47:10 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -76,7 +76,8 @@ MIT in each case. |#
 
 (define (version->string version)
   (cond ((string? version) version)
-	((integer? version) (number->string version))	((null? version) "")
+	((exact-nonnegative-integer? version) (number->string version))
+	((null? version) "")
 	((list? version)
 	 (let loop ((version version))
 	   (if (null? (cdr version))

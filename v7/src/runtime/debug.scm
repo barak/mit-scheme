@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.15 1989/08/07 07:36:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.16 1989/10/26 06:45:59 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -417,8 +417,8 @@ MIT in each case. |#
 					      (number->string (-1+ limit))
 					      " inclusive)")
 			       "")))))
-      (cond ((not (and (integer? expression)
-		       (not (negative? expression))))	     (debugger-failure prompt " must be nonnegative integer")
+      (cond ((not (exact-nonnegative-integer? expression))
+	     (debugger-failure prompt " must be nonnegative integer")
 	     (loop))
 	    ((and limit (>= expression limit))
 	     (debugger-failure prompt " too large")

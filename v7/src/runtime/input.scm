@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.4 1989/03/06 19:57:44 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.5 1989/10/26 06:46:27 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -250,8 +250,10 @@ MIT in each case. |#
 	 (if (default-object? interval)
 	     0
 	     (begin
-	       (if (not (and (integer? interval) (>= interval 0)))
-		   (error "Bad interval" interval))	       interval))))
+	       (if (not (exact-nonnegative-integer? interval))
+		   (error "interval must be exact nonnegative integer"
+			  interval))
+	       interval))))
     (input-port/char-ready? port interval)))
 
 (define (peek-char #!optional port)

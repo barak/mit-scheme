@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.12 1989/08/15 13:20:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.13 1989/10/26 06:46:50 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -445,8 +445,8 @@ MIT in each case. |#
 	       (set-repl-history/elements! history (cdr elements))))))
 
 (define (repl-history/read history n)
-  (if (not (and (integer? n)
-		(not (negative? n))		(< n (repl-history/size history))))
+  (if (not (and (exact-nonnegative-integer? n)
+		(< n (repl-history/size history))))
       (error "REPL-HISTORY/READ: Bad argument" n))
   (list-ref (repl-history/elements history)
 	    (- (-1+ (repl-history/size history)) n)))

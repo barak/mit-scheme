@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.4 1989/04/25 01:04:43 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.5 1989/10/26 06:47:23 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -131,7 +131,8 @@ MIT in each case. |#
 	  (let ((pathname (pathname->absolute-pathname (->pathname filename))))
 	    (if (let ((version (pathname-version pathname)))
 		  (or (not version)
-		      (integer? version)))		pathname
+		      (exact-integer? version)))
+		pathname
 		(or (pathname->input-truename pathname)
 		    (pathname-new-version pathname false)))))))
     (let ((result ((ucode-primitive file-touch) filename)))

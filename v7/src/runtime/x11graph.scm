@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.3 1989/06/27 10:16:02 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.4 1989/10/26 06:47:37 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -165,9 +165,12 @@ MIT in each case. |#
 	    (vector-ref limits 3))))
 
 (define (operation/set-line-style xw line-style)
-  (cond ((zero? line-style)
+  (cond ((not (and (exact-nonnegative-integer? line-style)
+		   (< line-style 8)))
+	 (error "Illegal line style" line-style))
+	((zero? line-style)
 	 (x-graphics-set-line-style xw 0))
-	((and (integer? line-style) (<= 1 line-style 7))
+	(else
 	 (x-graphics-set-line-style xw 2)
 	 (x-graphics-set-dashes
 	  xw
@@ -179,6 +182,4 @@ MIT in each case. |#
 			 "\013\005"
 			 "\014\001\002\001"
 			 "\011\001\002\001\002\001")
-		      (-1+ line-style))))
-	(else
-	 (error "Illegal line style" line-style))))
+		      (-1+ line-style))))))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/equals.scm,v 14.1 1988/06/13 11:44:04 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/equals.scm,v 14.2 1989/10/26 06:46:03 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,36 +41,33 @@ MIT in each case. |#
   ;; EQV? is officially supposed to work on booleans, characters, and
   ;; numbers specially, but it turns out that EQ? does the right thing
   ;; for everything but numbers, so we take advantage of that.
-  (if (eq? x y)
-      true
+  (or (eq? x y)
       (and (object-type? (object-type x) y)
-	   (or (and (or (object-type? (ucode-type big-fixnum) y)
-			(object-type? (ucode-type big-flonum) y))
-		    (= x y))
+	   (if (number? y)
+	       (and (= x y)
+		    (boolean=? (exact? x) (exact? y)))
 	       (and (object-type? (ucode-type vector) y)
 		    (zero? (vector-length x))
 		    (zero? (vector-length y)))))))
 
 (define (equal? x y)
-  (if (eq? x y)
-      true
+  (or (eq? x y)
       (and (object-type? (object-type x) y)
-	   (cond ((or (object-type? (ucode-type big-fixnum) y)
-		      (object-type? (ucode-type big-flonum) y))
-		  (= x y))
+	   (cond ((number? y)
+		  (and (= x y)
+		       (boolean=? (exact? x) (exact? y))))
 		 ((object-type? (ucode-type list) y)
 		  (and (equal? (car x) (car y))
 		       (equal? (cdr x) (cdr y))))
 		 ((object-type? (ucode-type vector) y)
 		  (let ((size (vector-length x)))
-		    (define (loop index)
-		      (if (= index size)
-			  true
-			  (and (equal? (vector-ref x index)
-				       (vector-ref y index))
-			       (loop (1+ index)))))
 		    (and (= size (vector-length y))
-			 (loop 0))))		 ((object-type? (ucode-type cell) y)
+			 (let loop ((index 0))
+			   (or (= index size)
+			       (and (equal? (vector-ref x index)
+					    (vector-ref y index))
+				    (loop (1+ index))))))))
+		 ((object-type? (ucode-type cell) y)
 		  (equal? (cell-contents x) (cell-contents y)))
 		 ((object-type? (ucode-type character-string) y)
 		  (string=? x y))

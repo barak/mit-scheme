@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 14.3 1988/12/30 06:41:58 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 14.4 1989/10/26 06:45:49 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -323,26 +323,44 @@ MIT in each case. |#
 
 (define (trace-display procedure arguments #!optional result)
   (newline)
-  (let ((width (- (output-port/x-size (current-output-port)) 3)))
-    (let ((output
-	   (with-output-to-truncated-string
-	    width
-	    (lambda ()
-	      (if (default-object? result)
-		  (write-string "[Entering ")
-		  (begin (write-string "[")
-			 (write result)
-			 (write-string " <== ")))
-	      (write-string "<")
-	      (write procedure)
-	      (for-each (lambda (arg) (write-char #\Space) (write arg))
-			arguments)))))
-      (if (car output)			; Too long?
-	  (begin
-	   (write-string (substring (cdr output) 0 (- width 5)))
-	   (write-string " ... "))
-	  (write-string (cdr output)))))
-  (write-string ">]"))
+  (let ((width (-1+ (max 40 (output-port/x-size (current-output-port)))))
+	(write-truncated
+	 (lambda (object width)
+	   (let ((output
+		  (with-output-to-truncated-string width
+		    (lambda ()
+		      (write object)))))
+	     (if (car output)
+		 (substring-fill! (cdr output) (- width 3) width #\.))
+	     (write-string (cdr output))))))
+    (if (default-object? result)
+	(write-string "[Entering ")
+	(begin
+	  (write-string "[")
+	  (write-truncated result (- width 2))
+	  (newline)
+	  (write-string "      <== ")))
+    (write-truncated procedure (- width 11))
+    (newline)
+    (let ((write-args
+	   (lambda (arguments)
+	     (let loop ((prefix "    Args: ") (arguments arguments))
+	       (write-string prefix)
+	       (write-truncated (car arguments) (- width 11))
+	       (if (not (null? (cdr arguments)))
+		   (begin
+		     (newline)
+		     (loop "          " (cdr arguments))))))))
+      (cond ((null? arguments)
+	     (write-string "]"))
+	    ((<= (length arguments) 10)
+	     (write-args arguments)
+	     (write-string "]"))
+	    (else
+	     (write-args (list-head arguments 10))
+	     (newline)
+	     (write-string "          ...]"))))))
+
 (define primitive-trace-entry)
 (define primitive-trace-exit)
 (define primitive-trace-both)
