@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.30 1988/10/26 21:08:26 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.31 1988/10/27 05:22:28 cph Exp $
  *
  * Utilities to help with debugging
  */
@@ -39,6 +39,9 @@ MIT in each case. */
 #include "prims.h"
 #include "trap.h"
 #include "lookup.h"
+
+static void do_printing ();
+static Boolean print_primitive_name ();
 
 /* Compiled Code Debugging */
 
@@ -117,22 +120,22 @@ Show_Pure ()
     Total_Size = Get_Integer(Obj_Address[1]);
     printf ("0x%x: pure=0x%x, total=0x%x\n",
            Obj_Address, Pure_Size, Total_Size);
-    if (Type_Code(*Obj_Address) != TC_MANIFEST_SPECIAL_NM_VECTOR)
+    if (OBJECT_TYPE(*Obj_Address) != TC_MANIFEST_SPECIAL_NM_VECTOR)
     {
       printf ("Missing initial SNMV.\n");
       return;
     }
-    if (Type_Code(Obj_Address[1]) != PURE_PART)
+    if (OBJECT_TYPE(Obj_Address[1]) != PURE_PART)
     {
       printf ("Missing subsequent pure header.\n");
     }
-    if (Type_Code(Obj_Address[Pure_Size-1]) !=
+    if (OBJECT_TYPE(Obj_Address[Pure_Size-1]) !=
         TC_MANIFEST_SPECIAL_NM_VECTOR)
     {
       printf ("Missing internal SNMV.\n");
       return;
     }
-    if (Type_Code(Obj_Address[Pure_Size]) != CONSTANT_PART)
+    if (OBJECT_TYPE(Obj_Address[Pure_Size]) != CONSTANT_PART)
     {
       printf ("Missing constant header.\n");
       return;
@@ -142,13 +145,13 @@ Show_Pure ()
       printf ("Pure size mismatch 0x%x.\n",
 	     Get_Integer(Obj_Address[Pure_Size]));
     }
-    if (Type_Code(Obj_Address[Total_Size-1]) !=
+    if (OBJECT_TYPE(Obj_Address[Total_Size-1]) !=
         TC_MANIFEST_SPECIAL_NM_VECTOR)
     {
       printf ("Missing ending SNMV.\n");
       return;
     }
-    if (Type_Code(Obj_Address[Total_Size]) != END_OF_BLOCK)
+    if (OBJECT_TYPE(Obj_Address[Total_Size]) != END_OF_BLOCK)
     {
       printf ("Missing ending header.\n");
       return;
@@ -178,7 +181,7 @@ Show_Env (The_Env)
   procedure = Vector_Ref (The_Env, ENVIRONMENT_FUNCTION);
   value_ptr = Nth_Vector_Loc(The_Env, ENVIRONMENT_FIRST_ARG);
 
-  if (Type_Code(procedure) == AUX_LIST_TYPE)
+  if (OBJECT_TYPE(procedure) == AUX_LIST_TYPE)
   {
     extension = procedure;
     procedure = Fast_Vector_Ref (extension, ENV_EXTENSION_PROCEDURE);
@@ -186,8 +189,8 @@ Show_Env (The_Env)
   else
     extension = NIL;
 
-  if ((Type_Code(procedure) != TC_PROCEDURE) &&
-      (Type_Code(procedure) != TC_EXTENDED_PROCEDURE))
+  if ((OBJECT_TYPE(procedure) != TC_PROCEDURE) &&
+      (OBJECT_TYPE(procedure) != TC_EXTENDED_PROCEDURE))
   {
     printf ("Not created by a procedure");
     return;
@@ -220,60 +223,43 @@ Show_Env (The_Env)
   }
 }
 
-int
-List_Print (Expr)
-     Pointer Expr;
-{ int Count;
-  Count = 0;
-  printf ("(");
-  while (((Type_Code(Expr) == TC_LIST) ||
-	  (Type_Code(Expr) == TC_WEAK_CONS))
-	  && Count < MAX_LIST_PRINT)
-  { Print_Expression(Vector_Ref (Expr, CONS_CAR),
-		     (Type_Code(Expr)==TC_LIST) ? "" : "{weak}");
-    Expr = Vector_Ref (Expr, CONS_CDR);
-    if (Type_Code(Expr) != TC_NULL) printf (" ");
-    Count += 1;
-  }
-  if (Type_Code(Expr) != TC_NULL)
-  { if (Count==MAX_LIST_PRINT) printf ("...");
-    else
-    { printf (". ");
-      Print_Expression(Expr, "");
-    }
-  }
-  printf (")");
-}
+#define NULL_P(object) ((OBJECT_TYPE (object)) == TC_NULL)
+#define PAIR_CAR(pair) (Vector_Ref ((pair), CONS_CAR))
+#define PAIR_CDR(pair) (Vector_Ref ((pair), CONS_CDR))
 
 static void
-print_vector (vector)
-     Pointer vector;
+print_list (pair)
+     Pointer pair;
 {
-  long length;
-  long limit;
-  long index;
+  int count;
 
-  length = (UNSIGNED_FIXNUM_VALUE (Fast_Vector_Ref ((vector), 0)));
-  limit = ((length > MAX_LIST_PRINT) ? MAX_LIST_PRINT : length);
-  index = 0;
-  printf ("#(");
-  while (1)
+  printf ("(");
+  count = 0;
+  while (((PAIR_P (pair)) || (WEAK_PAIR_P (pair))) && (count < MAX_LIST_PRINT))
     {
-      if (index >= limit)
-	break;
-      Print_Expression ((User_Vector_Ref (vector, index)), "");
-      index += 1;
-      if (index < limit)
+      if (count > 0)
 	printf (" ");
+      Print_Expression ((PAIR_CAR (pair)),
+			((WEAK_PAIR_P (pair)) ? "{weak}" : ""));
+      pair = (PAIR_CDR (pair));
+      count += 1;
     }
-  if (limit < length)
-    printf (" ...");
+  if (! (NULL_P (pair)))
+    {
+      if (count == MAX_LIST_PRINT)
+	printf (" ...");
+      else
+	{
+	  printf (" . ");
+	  Print_Expression (pair, "");
+	}
+    }
   printf (")");
   return;
 }
 
-void
-Print_Return_Name (Ptr)
+static void
+print_return_name (Ptr)
      Pointer Ptr;
 {
   long index;
@@ -299,10 +285,10 @@ Print_Return (String)
      char * String;
 {
   printf ("%s: ", String);
-  Print_Return_Name (Fetch_Return ());
+  print_return_name (Fetch_Return ());
   CRLF ();
 }
-
+
 static void
 print_string (string)
      Pointer string;
@@ -363,7 +349,7 @@ print_symbol (symbol)
     putchar (*next++);
   return;
 }
-
+
 static void
 print_filename (filename)
      Pointer filename;
@@ -388,31 +374,69 @@ void
 print_object (object)
      Pointer object;
 {
-  fflush (stdout);
-  Do_Printing (object, true);
+  do_printing (object, true);
   printf ("\n");
   fflush (stdout);
   return;
 }
 
-extern Boolean Prt_PName ();
+DEFINE_PRIMITIVE ("DEBUGGING-PRINTER", Prim_debugging_printer, 1, 1,
+  "A cheap, built-in printer intended for debugging the interpreter.")
+{
+  PRIMITIVE_HEADER (1);
+
+  print_object (ARG_REF (1));
+  return (SHARP_F);
+}
 
 void
-Print_Expression (Expr, String)
-     char *String;
-     Pointer Expr;
+print_objects (objects, n)
+     Pointer * objects;
+     int n;
 {
-  if (String[0] != 0)
-  {
-    printf ("%s: ", String);
-  }
-  Do_Printing (Expr, true);
+  Pointer * scan;
+  Pointer * end;
+  
+  scan = objects;
+  end = (objects + n);
+  while (scan < end)
+    {
+      printf ("%4x: ", (((char *) scan) - ((char *) objects)));
+      do_printing ((*scan++), true);
+      printf ("\n");
+    }
+  fflush (stdout);
+  return;
+}
+
+/* This is useful because `do_printing' doesn't print the contents of
+   vectors.  The reason that it doesn't is because vectors are used to
+   represent named structures, and most named structures don't want to
+   be printed out explicitly.  */
+
+void
+print_vector (vector)
+     Pointer vector;
+{
+  print_objects ((Nth_Vector_Loc (vector, 1)),
+		 (UNSIGNED_FIXNUM_VALUE (Fast_Vector_Ref ((vector), 0))));
+  return;
 }
 
+void
+Print_Expression (expression, string)
+     Pointer expression;
+     char * string;
+{
+  if ((string [0]) != 0)
+    printf ("%s: ", string);
+  do_printing (expression, true);
+}
+
 extern char * Type_Names [];
 
-int
-Do_Printing (Expr, Detailed)
+static void
+do_printing (Expr, Detailed)
      Pointer Expr;
      Boolean Detailed;
 {
@@ -464,17 +488,8 @@ Do_Printing (Expr, Detailed)
 
     case TC_WEAK_CONS:
     case TC_LIST:
-      List_Print (Expr);
+      print_list (Expr);
       return;
-
-#if 0
-      /* This would be nice except that named structures are
-	 represented by vectors, so they print out their contents
-	 instead of their usual printed representation.  */
-    case TC_VECTOR:
-      print_vector (Expr);
-      return;
-#endif
 
     case TC_NULL:
       if (Temp_Address == 0)
@@ -509,7 +524,7 @@ Do_Printing (Expr, Detailed)
       if (Detailed)
 	{
 	  printf (" (");
-	  Do_Printing ((Vector_Ref (Expr, COMB_FN_SLOT)), false);
+	  do_printing ((Vector_Ref (Expr, COMB_FN_SLOT)), false);
 	  printf (" ...)");
 	}
       return;
@@ -519,9 +534,9 @@ Do_Printing (Expr, Detailed)
       if (Detailed)
 	{
 	  printf (" (");
-	  Do_Printing ((Vector_Ref (Expr, COMB_1_FN)), false);
+	  do_printing ((Vector_Ref (Expr, COMB_1_FN)), false);
 	  printf (", ");
-	  Do_Printing ((Vector_Ref (Expr, COMB_1_ARG_1)), false);
+	  do_printing ((Vector_Ref (Expr, COMB_1_ARG_1)), false);
 	  printf (")");
 	}
       return;
@@ -531,11 +546,11 @@ Do_Printing (Expr, Detailed)
       if (Detailed)
 	{
 	  printf (" (");
-	  Do_Printing ((Vector_Ref (Expr, COMB_2_FN)), false);
+	  do_printing ((Vector_Ref (Expr, COMB_2_FN)), false);
 	  printf (", ");
-	  Do_Printing ((Vector_Ref (Expr, COMB_2_ARG_1)), false);
+	  do_printing ((Vector_Ref (Expr, COMB_2_ARG_1)), false);
 	  printf (", ");
-	  Do_Printing ((Vector_Ref (Expr, COMB_2_ARG_2)), false);
+	  do_printing ((Vector_Ref (Expr, COMB_2_ARG_2)), false);
 	  printf (")");
 	}
       return;
@@ -547,9 +562,9 @@ Do_Printing (Expr, Detailed)
 	printf ("[ENVIRONMENT 0x%x]", Temp_Address);
 	printf (" (from ");
 	procedure = (Vector_Ref (Expr, ENVIRONMENT_FUNCTION));
-	if ((Type_Code (procedure)) == TC_QUAD)
+	if ((OBJECT_TYPE (procedure)) == TC_QUAD)
 	  procedure = (Vector_Ref (procedure, ENV_EXTENSION_PROCEDURE));
-	Do_Printing (procedure, false);
+	do_printing (procedure, false);
 	printf (")");
 	return;
       }
@@ -557,7 +572,7 @@ Do_Printing (Expr, Detailed)
     case TC_EXTENDED_LAMBDA:
       if (Detailed)
 	printf ("[EXTENDED_LAMBDA (");
-      Do_Printing ((Vector_Ref ((Vector_Ref (Expr, ELAMBDA_NAMES)), 1)),
+      do_printing ((Vector_Ref ((Vector_Ref (Expr, ELAMBDA_NAMES)), 1)),
 		   false);
       if (Detailed)
 	printf (") 0x%x", Temp_Address);
@@ -566,7 +581,7 @@ Do_Printing (Expr, Detailed)
     case TC_EXTENDED_PROCEDURE:
       if (Detailed)
 	printf ("[EXTENDED_PROCEDURE (");
-      Do_Printing ((Vector_Ref (Expr, PROCEDURE_LAMBDA_EXPR)), false);
+      do_printing ((Vector_Ref (Expr, PROCEDURE_LAMBDA_EXPR)), false);
       if (Detailed)
 	printf (") 0x%x]", Temp_Address);
       break;
@@ -574,7 +589,7 @@ Do_Printing (Expr, Detailed)
     case TC_LAMBDA:
       if (Detailed)
 	printf ("[LAMBDA (");
-      Do_Printing ((Vector_Ref ((Vector_Ref (Expr, LAMBDA_FORMALS)), 1)),
+      do_printing ((Vector_Ref ((Vector_Ref (Expr, LAMBDA_FORMALS)), 1)),
 		  false);
       if (Detailed)
 	printf (") 0x%x]", Temp_Address);
@@ -582,21 +597,21 @@ Do_Printing (Expr, Detailed)
 
     case TC_PRIMITIVE:
       printf ("[PRIMITIVE ");
-      Prt_PName (Expr);
+      print_primitive_name (Expr);
       printf ("]");
       return;
 
     case TC_PROCEDURE:
       if (Detailed)
 	printf ("[PROCEDURE (");
-      Do_Printing ((Vector_Ref (Expr, PROCEDURE_LAMBDA_EXPR)), false);
+      do_printing ((Vector_Ref (Expr, PROCEDURE_LAMBDA_EXPR)), false);
       if (Detailed)
 	printf (") 0x%x]", Temp_Address);
       return;
 
     case TC_REFERENCE_TRAP:
       {
-	if ((Datum (Expr)) <= TRAP_MAX_IMMEDIATE)
+	if ((OBJECT_DATUM (Expr)) <= TRAP_MAX_IMMEDIATE)
 	  break;
 	printf ("[REFERENCE-TRAP");
 	Print_Expression ((Vector_Ref (Expr, TRAP_TAG)), " tag");
@@ -607,7 +622,7 @@ Do_Printing (Expr, Detailed)
 
     case TC_RETURN_CODE:
       printf ("[RETURN_CODE ");
-      Print_Return_Name (Expr);
+      print_return_name (Expr);
       printf ("]");
       return;
 
@@ -709,10 +724,10 @@ Print_One_Continuation_Frame (Temp)
   Expr = (Pop ());
   Print_Expression (Expr, "Expression");
   printf ("\n");
-  if (((Datum (Temp)) == RC_END_OF_COMPUTATION) ||
-      ((Datum (Temp)) == RC_HALT))
+  if (((OBJECT_DATUM (Temp)) == RC_END_OF_COMPUTATION) ||
+      ((OBJECT_DATUM (Temp)) == RC_HALT))
     return (true);
-  if ((Datum (Temp)) == RC_JOIN_STACKLETS)
+  if ((OBJECT_DATUM (Temp)) == RC_JOIN_STACKLETS)
     Stack_Pointer = (Previous_Stack_Pointer (Expr));
   return (false);
 }
@@ -730,7 +745,6 @@ Back_Trace (where)
 {
   Pointer Temp, *Old_Stack;
 
-  fflush (stdout);
   Back_Trace_Entry_Hook();
   Old_Stack = Stack_Pointer;
   while (true)
@@ -752,7 +766,7 @@ Back_Trace (where)
     {
       Temp = Pop();
     }
-    if (Type_Code(Temp) == TC_RETURN_CODE)
+    if ((OBJECT_TYPE (Temp)) == TC_RETURN_CODE)
     {
       if (Print_One_Continuation_Frame(Temp))
       {
@@ -762,7 +776,7 @@ Back_Trace (where)
     else
     {
       Print_Expression(Temp, "  ...");
-      if (Type_Code(Temp) == TC_MANIFEST_NM_VECTOR)
+      if ((OBJECT_TYPE (Temp)) == TC_MANIFEST_NM_VECTOR)
       {
 	Stack_Pointer = Simulate_Popping(Get_Integer(Temp));
         printf (" (skipping)");
@@ -775,22 +789,22 @@ Back_Trace (where)
   fflush (stdout);
   return;
 }
-
-void
-Print_Stack (SP)
-     Pointer *SP;
-{
-  Pointer *Saved_SP;
 
-  Saved_SP = Stack_Pointer;
-  Stack_Pointer = SP;
-  Back_Trace(stdout);
-  Stack_Pointer = Saved_SP;
+void
+print_stack (sp)
+     Pointer * sp;
+{
+  Pointer * saved_sp;
+
+  saved_sp = Stack_Pointer;
+  Stack_Pointer = sp;
+  Back_Trace (stdout);
+  Stack_Pointer = saved_sp;
   return;
 }
 
-Boolean
-Prt_PName (primitive)
+static Boolean
+print_primitive_name (primitive)
      Pointer primitive;
 {
   extern char *primitive_to_name();
@@ -818,7 +832,7 @@ Print_Primitive (primitive)
   int NArgs, i;
 
   printf ("Primitive: ");
-  if (Prt_PName(primitive))
+  if (print_primitive_name(primitive))
   {
     NArgs = primitive_to_arity(primitive);
   }
@@ -835,23 +849,6 @@ Print_Primitive (primitive)
     Print_Expression(buffer1, buffer2);
     printf ("\n");
   }
-}
-
-int
-Debug_Printer (Expr)
-     Pointer Expr;
-{
-  Print_Expression(Expr, "");
-  putchar('\n');
-}
-
-DEFINE_PRIMITIVE ("DEBUGGING-PRINTER", Prim_debugging_printer, 1, 1,
-  "A cheap, built-in printer intended for debugging the interpreter.")
-{
-  PRIMITIVE_HEADER (1);
-
-  Debug_Printer (ARG_REF (1));
-  return (SHARP_T);
 }
 
 /* Code for interactively setting and clearing the interpreter
