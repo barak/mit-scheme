@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.58 1991/08/24 01:51:14 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.59 1991/09/05 22:27:17 markf Exp $
 ;;;
 ;;;	Copyright (c) 1987-91 Massachusetts Institute of Technology
 ;;;
@@ -628,6 +628,7 @@
 	       TIME
 	       TIMES
 	       UNLINK
+	       UTIME
 	       VFORK
 	       WRITE
 	       ))
@@ -695,4 +696,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.58 1991/08/24 01:51:14 cph Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.59 1991/09/05 22:27:17 markf Exp $"

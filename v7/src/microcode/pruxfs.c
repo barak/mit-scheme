@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.44 1991/01/24 11:25:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.45 1991/09/05 22:26:48 markf Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -355,4 +355,21 @@ DEFUN (protect_fd, (fd), int fd)
   int * p = (dstack_alloc (sizeof (int)));
   (*p) = fd;
   transaction_record_action (tat_always, protect_fd_close, p);
+}
+
+DEFINE_PRIMITIVE ("SET-FILE-TIMES!", Prim_set_file_times, 3, 3,
+  "Given a file name and two integers, change the access and modification \n\
+times of the file to the times represented by the two integers. \n\
+Those integers are the times in seconds since 00:00:00 GMT, Jan. 1, 1970 \n\
+The file must exist and you must be the owner (or superuser).")
+{
+  PRIMITIVE_HEADER (3);
+  {
+    struct utimbuf times;
+    
+    times.actime = arg_integer (2);
+    times.modtime = arg_integer (3);
+    STD_VOID_SYSTEM_CALL(syscall_utime, (UX_utime ((STRING_ARG (1)), &times)));
+    PRIMITIVE_RETURN (SHARP_F);
+  }
 }

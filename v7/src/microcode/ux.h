@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.25 1991/08/24 02:27:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.26 1991/09/05 22:26:30 markf Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -49,6 +49,7 @@ MIT in each case. */
 #include <errno.h>
 #include <pwd.h>
 #include <grp.h>
+#include <utime.h>
 
 #include "oscond.h"
 #include "ansidecl.h"
@@ -111,6 +112,7 @@ enum syscall_names
   syscall_time,
   syscall_times,
   syscall_unlink,
+  syscall_utime,
   syscall_vfork,
   syscall_write
 };
@@ -706,6 +708,7 @@ extern char * EXFUN (getlogin, (void));
 #define UX_system system
 #define UX_time time
 #define UX_unlink unlink
+#define UX_utime utime
 #define UX_write write
 #define UX_wait wait
 
