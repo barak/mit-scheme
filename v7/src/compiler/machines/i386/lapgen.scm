@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.15 1992/02/15 16:16:57 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.16 1992/02/16 02:06:41 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.42 1991/05/28 19:14:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -422,13 +422,19 @@ MIT in each case. |#
     set! define lookup-apply primitive-error
     quotient remainder modulo))
 
+(define-integrable (invoke-hook entry)
+  (LAP (JMP ,entry)))
+
+(define-integrable (invoke-hook/call entry)
+  (LAP (CALL ,entry)))
+
 (define-integrable (invoke-interface code)
   (LAP (MOV B (R ,eax) (& ,code))
-       (JMP F ,entry:compiler-scheme-to-interface)))
+       ,@(invoke-hook entry:compiler-scheme-to-interface)))
 
 (define-integrable (invoke-interface/call code)
   (LAP (MOV B (R ,eax) (& ,code))
-       (CALL F ,entry:compiler-scheme-to-interface/call)))
+       ,@(invoke-hook/call entry:compiler-scheme-to-interface/call)))
 
 (let-syntax ((define-entries
 	       (macro (start . names)
@@ -440,7 +446,7 @@ MIT in each case. |#
 						(car names))
 				(byte-offset-reference regnum:regs-pointer
 						       ,index))
-			     (loop (cdr names) (+ index 8)))))
+			     (loop (cdr names) (+ index 4)))))
 		 `(BEGIN ,@(loop names start)))))
   (define-entries #x40			; (* 16 4)
     scheme-to-interface			; Main entry point (only one necessary)

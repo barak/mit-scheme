@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules4.scm,v 1.3 1992/02/15 14:17:10 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules4.scm,v 1.4 1992/02/16 02:06:50 jinx Exp $
 $mc68020-Header: rules4.scm,v 4.12 90/05/03 15:17:38 GMT jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -100,9 +100,9 @@ MIT in each case. |#
     (LAP ,@set-extension
 	 ,@(clear-map!)
 	 #|
-	 (CALL F ,(if safe?
-		      entry:compiler-safe-reference-trap
-		      entry:compiler-reference-trap))
+	 ,@(invoke-hook/call (if safe?
+				 entry:compiler-safe-reference-trap
+				 entry:compiler-reference-trap))
 	 |#
 	 ,@(invoke-interface/call
 	    (if safe?
@@ -120,7 +120,7 @@ MIT in each case. |#
 	 ,@set-value
 	 ,@(clear-map!)
 	 #|
-	 (CALL F ,entry:compiler-assignment-trap)
+	 ,@(invoke-hook/call entry:compiler-assignment-trap)
 	 |#
 	 ,@(invoke-interface/call code:compiler-assignment-trap))))
 

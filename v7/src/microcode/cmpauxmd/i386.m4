@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.8 1992/02/16 00:12:38 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.9 1992/02/16 02:07:10 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -204,18 +204,10 @@ define_c_label(interface_to_scheme)
 	movl	REGBLOCK_VAL()(regs),%eax		# Value/dynamic link
 	movl	IMMEDIATE(ADDRESS_MASK),rmask 		# = %ebp
 	movl	external_reference(Ext_Stack_Pointer),%esp
-	movl	%edx,(rfree)				# Far pointer offset
-	xorl	%ecx,%ecx				# Far pointer segment
-	movw	%ds,%ecx
-	movl	%ecx,4(rfree)
 	movl	%eax,%ecx				# Preserve if used
 	andl	rmask,%ecx				# Restore potential
 	movl	%ecx,REGBLOCK_DLINK()(regs)		#  dynamic link
-#	Apparently gas does not understand the following instruction
-#	even though gdb disassembles the word into that format.
-#	ljmp	*(rfree)
-#	.word	0x2fff
-	ljmp	0(rfree)
+	jmp	*%edx
 
 define_c_label(interface_to_C)
 	movl	%edx,%eax				# Set up result

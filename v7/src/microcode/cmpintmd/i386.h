@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.9 1992/02/16 00:10:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.10 1992/02/16 02:07:02 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -38,7 +38,7 @@ MIT in each case. */
  *
  * See cmpint.txt for a description of these fields.
  *
- * Specialized for the Intel 386 (and successor) architecture.
+ * Specialized for the Intel 386 (and successors) architecture.
  */
 
 #ifndef CMPINT2_H_INCLUDED
@@ -168,13 +168,13 @@ entry	0		CALL opcode		0xE8
 - Trampoline encoding:
 
 entry	0		MOV	AL,code		0xB0, code-byte
-	2		LCALL	n(ESI)		0xFF 0x9e n-longword
+	2		CALL	n(ESI)		0xFF 0x96 n-longword
 	8		<trampoline dependent storage>
 
 
 - GC & interrupt check at procedure/continuation entry:
 
-gc_lab	-7		LCALL	n(ESI)		0xFF 0x5e n-byte
+gc_lab	-7		CALL	n(ESI)		0xFF 0x56 n-byte
 	-4		<type/arity info>
 	-2		<gc offset>
 entry	0		CMP	EDI,(ESI)	0x39 0x3e
@@ -185,7 +185,7 @@ entry	0		CMP	EDI,(ESI)	0x39 0x3e
 - GC & interrupt check at closure entry:
 
 gc_lab	-11		ADD	(ESP),&offset	0x83 0x04 0x24 offset-byte
-  	-7		LJMP	n(ESI)		0xFF 0x6e n-byte
+  	-7		JMP	n(ESI)		0xFF 0x66 n-byte
 	-4		<type/arity info>
 	-2		<gc offset>
 entry	0		ADD	(ESP),&magic	0x81 0x04 0x24 magic-longword
@@ -326,8 +326,8 @@ do {									\
 									\
   *PC++ = 0xb0;			/* MOV	AL,byte */			\
   *PC++ = (index);		/* byte value */			\
-  *PC++ = 0xff;			/* LCALL */				\
-  *PC++ = 0x9e;			/* /3 disp32(ESI) */			\
+  *PC++ = 0xff;			/* CALL */				\
+  *PC++ = 0x96;			/* /2 disp32(ESI) */			\
   (* ((unsigned long *) PC)) = ESI_TRAMPOLINE_TO_INTERFACE_OFFSET;	\
 } while (0)
 
@@ -341,10 +341,10 @@ do {									\
 #define COMPILER_REGBLOCK_N_FIXED		16
 
 #define COMPILER_REGBLOCK_N_HOOKS		80
-	/* A hook is a 48-bit address (segment + offset) for a far-indirect
-	   CALL/JMP instruction.  Pad to 64 bits.
-	 */
-#define COMPILER_HOOK_SIZE			2
+
+	/* A hook is the address (offset) of an assembly-language routine. */
+
+#define COMPILER_HOOK_SIZE			1
 
 #define COMPILER_REGBLOCK_EXTRA_SIZE					\
   (COMPILER_REGBLOCK_N_HOOKS * COMPILER_HOOK_SIZE)
@@ -371,11 +371,9 @@ long i386_pc_displacement_relocation = 0;
 #define SETUP_REGISTER(hook) do						\
 {									\
   extern void hook ();							\
-  unsigned long * far_pointer =						\
-    ((unsigned long *) (esi_value + offset));				\
 									\
-  *far_pointer++ = ((unsigned long) hook);				\
-  *far_pointer = ((unsigned long) code_segment);			\
+  (* ((unsigned long *) (esi_value + offset))) =			\
+    ((unsigned long) hook);						\
   offset += (COMPILER_HOOK_SIZE * (sizeof (SCHEME_OBJECT)));		\
 } while (0)
 

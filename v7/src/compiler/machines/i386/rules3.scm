@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.14 1992/02/15 14:34:45 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.15 1992/02/16 02:06:29 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -55,17 +55,17 @@ MIT in each case. |#
   (LAP ,@(clear-map!)
        #|
        ,@(case frame-size
-	   ((1) (LAP (JMP F ,entry:compiler-shortcircuit-apply-size-1)))
-	   ((2) (LAP (JMP F ,entry:compiler-shortcircuit-apply-size-2)))
-	   ((3) (LAP (JMP F ,entry:compiler-shortcircuit-apply-size-3)))
-	   ((4) (LAP (JMP F ,entry:compiler-shortcircuit-apply-size-4)))
-	   ((5) (LAP (JMP F ,entry:compiler-shortcircuit-apply-size-5)))
-	   ((6) (LAP (JMP F ,entry:compiler-shortcircuit-apply-size-6)))
-	   ((7) (LAP (JMP F ,entry:compiler-shortcircuit-apply-size-7)))
-	   ((8) (LAP (JMP F ,entry:compiler-shortcircuit-apply-size-8)))
+	   ((1) (invoke-hook entry:compiler-shortcircuit-apply-size-1))
+	   ((2) (invoke-hook entry:compiler-shortcircuit-apply-size-2))
+	   ((3) (invoke-hook entry:compiler-shortcircuit-apply-size-3))
+	   ((4) (invoke-hook entry:compiler-shortcircuit-apply-size-4))
+	   ((5) (invoke-hook entry:compiler-shortcircuit-apply-size-5))
+	   ((6) (invoke-hook entry:compiler-shortcircuit-apply-size-6))
+	   ((7) (invoke-hook entry:compiler-shortcircuit-apply-size-7))
+	   ((8) (invoke-hook entry:compiler-shortcircuit-apply-size-8))
 	   (else
 	    (LAP (MOV W (R ,ecx) (& ,frame-size))
-		 (JMP F ,entry:compiler-shortcircuit-apply))))
+		 ,@(invoke-hook entry:compiler-shortcircuit-apply))))
        |#
        (MOV W (R ,ecx) (& ,frame-size))
        ,@(invoke-interface code:compiler-apply)))
@@ -151,8 +151,6 @@ MIT in each case. |#
 (define-rule statement
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
   continuation				; ignored
-  (define-integrable (invoke-entry entry)
-    (LAP (JMP F ,entry)))
   (let-syntax ((invoke
 		(macro (code entry)
 		  `(invoke-interface ,code))))
@@ -229,7 +227,7 @@ MIT in each case. |#
 
 (define (optimized-primitive-invocation entry)
   (LAP ,@(clear-map!)
-       (JMP F ,entry)))
+       ,@(invoke-hook entry)))
 
 ;;; Invocation Prefixes
 
@@ -365,7 +363,7 @@ MIT in each case. |#
 (define-integrable (simple-procedure-header code-word label entry)
   (let ((gc-label (generate-label)))    
     (LAP (LABEL ,gc-label)
-	 (CALL F ,entry)
+	 ,@(invoke-hook/call entry)
 	 ,@(make-external-label code-word label)
 	 (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
 	 (JGE (@PCR ,gc-label)))))
@@ -504,7 +502,7 @@ MIT in each case. |#
 	       ,@(if (zero? entry)
 		     (LAP)
 		     (LAP (ADD W (@R ,esp) (& ,(* 10 entry)))))
-	       (JMP F ,entry:compiler-interrupt-closure)
+	       ,@(invoke-hook entry:compiler-interrupt-closure)
 	       ,@(make-external-label internal-entry-code-word
 				      external-label)
 	       (ADD W (@R ,esp)
@@ -568,7 +566,7 @@ MIT in each case. |#
 		  (LEA (R ,ebx) (@RO W ,eax (- ,free-ref-label ,pc-label)))
 		  (MOV W ,reg:utility-arg-4 (& ,n-sections))
 		  #|
-		  (CALL F ,entry:compiler-link)
+		  ,@(invoke-hook/call entry:compiler-link)
 		  |#
 		  ,@(invoke-interface/call code:compiler-link)
 		  ,@(make-external-label (continuation-code-word false)
@@ -588,7 +586,7 @@ MIT in each case. |#
 		  (MOV W (@RO W ,edx ,environment-offset) (R ,ecx))
 		  (MOV W ,reg:utility-arg-4 (& ,n-sections))
 		  #|
-		  (CALL F ,entry:compiler-link)
+		  ,@(invoke-hook/call entry:compiler-link)
 		  |#
 		  ,@(invoke-interface/call code:compiler-link)
 		  ,@(make-external-label (continuation-code-word false)
