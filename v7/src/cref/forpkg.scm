@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/forpkg.scm,v 1.1 1988/06/13 12:38:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/forpkg.scm,v 1.2 1988/06/14 10:29:46 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -173,10 +173,9 @@ MIT in each case. |#
       (begin
 	(newline)
 	(write-label "Files")
-	(newline)
 	(for-each (lambda (pathname)
 		    (write-string indentation)
-		    (write-string (pathname->string pathname))
+		    (write (pathname->string pathname))
 		    (newline))
 		  (package/files package)))))
 
