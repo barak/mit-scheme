@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.31 1988/10/20 11:00:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.32 1988/11/03 08:35:21 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -489,6 +489,7 @@ file_touch (filename)
   extern int stat ();
   extern int write ();
 
+#if 0
 #ifdef bsd
   extern long time ();
   long current_time;
@@ -499,6 +500,7 @@ file_touch (filename)
   extern int utime ();
 #endif /* hpux */
 #endif /* bsd */
+#endif /* 0 */
 
   /* CASE 1: create the file if it doesn't exist. */
   result = (stat (filename, (& file_status)));
@@ -512,6 +514,10 @@ file_touch (filename)
 	return (system_error_message ("open"));
       goto zero_length_file;
     }
+
+#if 0
+  /* Disable this code -- this is subject to clock skew problems
+     when the file is on an NFS server.  */
 
   /* CASE 2: try utime (utimes) if it's available. */
 #ifdef bsd
@@ -534,9 +540,14 @@ file_touch (filename)
 
 #endif /* hpux */
 #endif /* bsd */
+#endif /* 0 */
 
   /* utime (utimes) has failed, or does not exist.  Instead, open the
      file, read one byte, and write it back in place.  */
+
+  if (((file_status . st_mode) & S_IFMT) != S_IFREG)
+    return (C_String_To_Scheme_String ("can only touch regular files"));
+
   fd = (open (filename, O_RDWR, 0666));
   if (fd < 0)
     return (system_error_message ("open"));
