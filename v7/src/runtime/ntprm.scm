@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.19 1997/12/23 05:09:01 cph Exp $
+$Id: ntprm.scm,v 1.20 1997/12/30 01:25:40 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -295,10 +295,12 @@ MIT in each case. |#
 		;; directory of system drive.  If still nothing, use
 		;; root directory of system drive.
 		(or (let ((usersdir (%users-directory)))
-		      (and usersdir
+		      (and user-name
+			   usersdir
 			   (trydir (merge-pathnames user-name usersdir))))
 		    (let ((rootdir (%system-root-directory)))
-		      (or (trydir (merge-pathnames user-name rootdir))
+		      (or (and user-name
+			       (trydir (merge-pathnames user-name rootdir)))
 			  rootdir)))))))
 
   (set! user-home-directory
