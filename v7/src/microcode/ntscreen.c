@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.8 1993/08/11 20:28:55 adams Exp $
+$Id: ntscreen.c,v 1.9 1993/08/24 06:27:19 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -448,7 +448,14 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	 int  i;
 	 for (i=0;  i<screen->n_commands; i++)
 	   if (screen->commands[i].wID == wID)
-	     return  screen->commands[i].thunk(hWnd, wID);
+	   {
+	     void flush_typeahead (SCREEN);
+	     LRESULT intrpt = (screen->commands[i].thunk(hWnd, wID));
+
+	     if (intrpt)
+	       flush_typeahead (screen);
+	     return  intrpt;
+	   }
 	 return  DefWindowProc (hWnd, uMsg, wParam, lParam);
 	 //return  DefWindowProc (hWnd, wID>=0xf000?WM_SYSCOMMAND:WM_COMMAND,
 	 //                       wParam, lParam);
@@ -1470,6 +1477,36 @@ ScreenPeekOrRead (SCREEN screen, int count, SCREEN_EVENT * buffer, BOOL remove)
       }
     }
     return (processed);
+}
+
+void
+flush_typeahead (SCREEN screen)
+{
+  SCREEN_EVENT_LINK ** next_loc, * last;
+
+  next_loc = & screen->queue_head;
+  last = ((SCREEN_EVENT_LINK *) NULL);
+
+  while ((* next_loc) != ((SCREEN_EVENT_LINK *) NULL))
+  {
+    SCREEN_EVENT_LINK * current = (* next_loc);
+    
+    if (current->event.type != SCREEN_EVENT_TYPE_KEY)
+    {
+      last = current;
+      next_loc = &current->next;
+    }
+    else
+    {
+      (* next_loc) = current->next;
+      current->next = screen->free_events;
+      screen->free_events = current;
+      screen->n_events -= 1;
+    }
+  }
+  screen->queue_tail = last;
+  screen->n_chars = 0;
+  return;
 }
 
 //---------------------------------------------------------------------------
@@ -2906,8 +2943,14 @@ MIT_TranslateMessage (CONST MSG * lpmsg)
 	  return (MIT_post_char_message (lpmsg, ((WPARAM) ASCII_BS)));
 	  
 	case VK_SPACE:
-	  if (((GetKeyState (VK_RCONTROL)) < 0)
-	      || ((GetKeyState (VK_LCONTROL)) < 0))
+	  if (
+#if 0
+	      ((GetKeyState (VK_RCONTROL)) < 0)
+	      || ((GetKeyState (VK_LCONTROL)) < 0)
+#else
+	      (((DWORD) (GetKeyState (VK_CONTROL))) & 0x8000) != 0
+#endif
+	      )
 	    return (MIT_post_char_message (lpmsg, ((WPARAM) '\0')));
 	  break;
 
@@ -2928,8 +2971,12 @@ MIT_TranslateMessage (CONST MSG * lpmsg)
 	  WPARAM control_char;
 
 	  if (((message == WM_SYSKEYDOWN) || (lpmsg->lParam & KEYDATA_ALT_BIT))
+#if 0
 	      && (((GetKeyState (VK_RCONTROL)) < 0)
 		  || ((GetKeyState (VK_LCONTROL)) < 0))
+#else
+	      && ((((DWORD) (GetKeyState (VK_CONTROL))) & 0x8000) != 0)
+#endif
 	      && (MIT_controlify (virtual_key, &control_char)))
 	    return (MIT_post_char_message (lpmsg, control_char));
 	  break;
