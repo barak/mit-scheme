@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.17 1991/03/26 18:46:16 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.18 1991/03/28 20:07:19 jinx Exp $
 ###
 ###	Copyright (c) 1989-1991 Massachusetts Institute of Technology
 ###
@@ -460,7 +460,7 @@ define_c_label(asm_allocate_closure)
 	mov.l	%d1,-(%sp)		# Push args
 	mov.l	%d0,-(%sp)
 	jsr	extern_c_label(allocate_closure)
-	addq.l	&8,(%sp)		# Pop args
+	addq.l	&8,%sp			# Pop args
 	mov.l	%d0,%a0			# Return value
 	mov.l	(%sp)+,%a1		# Restore regs
 	switch_to_scheme_registers()
@@ -468,25 +468,24 @@ define_c_label(asm_allocate_closure)
 
 ###	These utilities improve the performance of floating point code
 ###	significantly.
-###	Arguments on top of the stack.
-###	Return address follow.
+###	Arguments on top of the stack followed by the return address.
 
 define_debugging_label(asm_generic_flonum_result)
 	mov.l	rfree,regblock_val(regs)
-	mov.l	&((TYPE_CODE_TO_OBJECT(tc_manifest_nmv))+2),(rfree)+
+	mov.l	&TYPE_CODE_TO_OBJECT(tc_manifest_nmv)+2,(rfree)+
 	fmove.d	%fp0,(rfree)+
-	or.b	&(TYPE_CODE_TO_BYTE(tc_flonum)),regblock_val(regs)
-	and.b	&((TYPE_CODE_TO_BYTE(1))-1),(%sp)
+	or.b	&TYPE_CODE_TO_BYTE(tc_flonum),regblock_val(regs)
+	and.b	&TYPE_CODE_TO_BYTE(1)-1,(%sp)
 	rts
 
 define_debugging_label(asm_true_result)
-	mov.l	&(TYPE_CODE_TO_OBJECT(tc_true)),regblock_val(regs)
-	and.b	&((TYPE_CODE_TO_BYTE(1))-1),(%sp)
+	mov.l	&TYPE_CODE_TO_OBJECT(tc_true),regblock_val(regs)
+	and.b	&TYPE_CODE_TO_BYTE(1)-1,(%sp)
 	rts
 
 define_debugging_label(asm_false_result)
-	mov.l	&(TYPE_CODE_TO_OBJECT(tc_false)),regblock_val(regs)
-	and.b	&((TYPE_CODE_TO_BYTE(1))-1),(%sp)
+	mov.l	&TYPE_CODE_TO_OBJECT(tc_false),regblock_val(regs)
+	and.b	&TYPE_CODE_TO_BYTE(1)-1,(%sp)
 	rts
 
 define(define_generic_unary,
