@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.14 1987/04/21 23:51:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.15 1987/04/27 20:11:22 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -37,115 +37,134 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (set-working-directory-pathname! "$zcomp")
-(load "base/rcs" system-global-environment)
-(load "base/load" system-global-environment)
+;(load "base/rcs" system-global-environment)
 
-(load-system system-global-environment
-	     'COMPILER-PACKAGE
-	     '(SYSTEM-GLOBAL-ENVIRONMENT)
-	     '(
-	       (SYSTEM-GLOBAL-ENVIRONMENT
-		"base/pbs"		;bit-string read/write syntax
-		)
-
-	       (COMPILER-PACKAGE
-		"base/macros"		;compiler syntax
-		"base/decls"		;declarations
-;		"machines/bobcat/decls"	;more declarations
-
-		"base/object"		;tagged object support
-		"base/queue"		;queue abstraction
-		"base/sets"		;set abstraction
-		"source/mvalue"		;multiple-value support
-
-		"machines/bobcat/machin" ;machine dependent stuff
-		"base/toplev"		;top level
-		"base/utils"		;odds and ends
-		"base/cfg"		;control flow graph
-		"base/ctypes"		;CFG datatypes
-		"base/dtypes"		;DFG datatypes
-		"base/bblock"		;Basic block datatype
-		"base/dfg"		;data flow graph
-		"base/rtltyp"		;RTL: type definitions
-		"base/rtlexp"		;RTL: expression operations
-		"base/rtlcon"		;RTL: complex constructors
-		"base/rtlreg"		;RTL: registers
-		"base/rtlcfg"		;RTL: CFG types
-		"base/emodel"		;environment model
-		"base/rtypes"		;RTL analyzer datatypes
-		"base/pmlook"		;pattern matcher: lookup
-		"base/pmpars"		;pattern matcher: parser
-		)
-
-	       (CONVERTER-PACKAGE
-		"alpha/graphc"		;SCode->flow-graph converter
-		)
-
-	       (DATAFLOW-PACKAGE
-		"alpha/dflow"		;Dataflow analyzer
-		)
-
-	       (RTL-GENERATOR-PACKAGE
-		"front-end/rtlgen"	;RTL generator
-		"front-end/rgcomb"	;RTL generator: combinations
-		"base/linear"		;linearization
-		)
-
-	       (RTL-CSE-PACKAGE
-		"front-end/rcse"	;RTL common subexpression eliminator
-		"front-end/rcseep"	;CSE expression predicates
-		"front-end/rcsesr"	;CSE stack references
-		"front-end/rcseht"	;CSE hash table
-		"front-end/rcsesa"	;CSE state abstraction
-		"front-end/rcserq"	;CSE register/quantity abstractions
-		)
-
-	       (RTL-ANALYZER-PACKAGE
-		"front-end/rlife"	;RTL register lifetime analyzer
-		"front-end/rdeath"	;RTL dead code eliminations
-		"front-end/rdebug"	;RTL optimizer debugging output
-		"front-end/ralloc"	;RTL register allocator
-		)
-
-	       (LAP-GENERATOR-PACKAGE
-		"back-end/lapgen"	;LAP generator.
-		"back-end/regmap"	;Hardware register allocator.
-		"machines/bobcat/lapgen" ;code generation rules.
-		)
-
-	       (LAP-SYNTAXER-PACKAGE
-		"back-end/syntax"	;Generic syntax phase
-		"machines/bobcat/coerce" ;Coercions: integer -> bit string
-		"back-end/asmmac"	;Macros for hairy syntax
-		"machines/bobcat/insmac" ;Macros for hairy syntax
-		"machines/bobcat/instr1" ;68000 Effective addressing
-		"machines/bobcat/instr2" ;68000 Instructions
-		"machines/bobcat/instr3" ;  "        "
-		)
-
-	       (LAP-PACKAGE
-		"machines/bobcat/assmd" ;Machine dependent
-		"back-end/symtab"	;Symbol tables
-		"back-end/block"	;Assembly blocks
-		"back-end/laptop"	;Assembler top level
-		)
-
-	       ))
+(in-package system-global-environment
+  (define compiler-package
+    (make-environment
+      (define converter-package
+	(make-environment))
+      (define dataflow-package
+	(make-environment))
+      (define rtl-generator-package
+	(make-environment))
+      (define rtl-cse-package
+	(make-environment))
+      (define rtl-analyzer-package
+	(make-environment))
+      (define lap-generator-package
+	(make-environment))
+      (define lap-syntaxer-package
+	(make-environment))
+      (define lap-package
+	(make-environment)))))
 
 (in-package compiler-package
 
   (define compiler-system
     (make-environment
       (define :name "Liar (Bobcat 68020)")
-      (define :version)
-      (define :modification)
+      (define :version 1)
+      (define :modification 15)
+      (define :files)
 
-      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.14 1987/04/21 23:51:35 cph Exp $"
-	(lambda (filename version date time author state)
-	  (set! :version (car version))
-	  (set! :modification (cadr version))))))
+;      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.15 1987/04/27 20:11:22 cph Exp $"
+;	(lambda (filename version date time author state)
+;	  (set! :version (car version))
+;	  (set! :modification (cadr version))))
 
-  (add-system! compiler-system))
+      (define :files-lists
+	(list
+	 (cons system-global-environment
+	       '("base/pbs.bin"		;bit-string read/write syntax
+		 ))
+
+	 (cons compiler-package
+	       '("base/macros.bin"	;compiler syntax
+		 "base/decls.bin"	;declarations
+
+		 "base/object.bin"	;tagged object support
+		 "base/queue.bin"	;queue abstraction
+		 "base/sets.bin"	;set abstraction
+		 "source/mvalue.bin"	;multiple-value support
+
+		 "machines/bobcat/machin.bin" ;machine dependent stuff
+		 "base/toplev.bin"	;top level
+		 "base/utils.bin"	;odds and ends
+		 "base/cfg.bin"		;control flow graph
+		 "base/ctypes.bin"	;CFG datatypes
+		 "base/dtypes.bin"	;DFG datatypes
+		 "base/bblock.bin"	;Basic block datatype
+		 "base/dfg.bin"		;data flow graph
+		 "base/rtltyp.bin"	;RTL: type definitions
+		 "base/rtlexp.bin"	;RTL: expression operations
+		 "base/rtlcon.bin"	;RTL: complex constructors
+		 "base/rtlreg.bin"	;RTL: registers
+		 "base/rtlcfg.bin"	;RTL: CFG types
+		 "base/emodel.bin"	;environment model
+		 "base/rtypes.bin"	;RTL analyzer datatypes
+		 "base/pmlook.com"	;pattern matcher: lookup
+		 "base/pmpars.bin"	;pattern matcher: parser
+		 ))
+
+	 (cons converter-package
+	       '("alpha/graphc.bin"	;SCode->flow-graph converter
+		 ))
+
+	 (cons dataflow-package
+	       '("alpha/dflow.bin"	;Dataflow analyzer
+		 ))
+
+	 (cons rtl-generator-package
+	       '("front-end/rtlgen.bin"	;RTL generator
+		 "front-end/rgcomb.bin"	;RTL generator: combinations
+		 "base/linear.bin"	;linearization
+		 ))
+
+	 (cons rtl-cse-package
+	       '("front-end/rcse.bin"	;RTL common subexpression eliminator
+		 "front-end/rcseep.com"	;CSE expression predicates
+		 "front-end/rcsesr.com"	;CSE stack references
+		 "front-end/rcseht.com"	;CSE hash table
+		 "front-end/rcsesa.com"	;CSE state abstraction
+		 "front-end/rcserq.com"	;CSE register/quantity abstractions
+		 ))
+
+	 (cons rtl-analyzer-package
+	       '("front-end/rlife.bin"	;RTL register lifetime analyzer
+		 "front-end/rdeath.com"	;RTL dead code eliminations
+		 "front-end/rdebug.bin"	;RTL optimizer debugging output
+		 "front-end/ralloc.bin"	;RTL register allocator
+		 ))
+
+	 (cons lap-generator-package
+	       '("back-end/lapgen.bin"	;LAP generator.
+		 "back-end/regmap.bin"	;Hardware register allocator.
+		 "machines/bobcat/lapgen.bin" ;code generation rules.
+		 ))
+
+	 (cons lap-syntaxer-package
+	       '("back-end/syntax.com"	;Generic syntax phase
+		 "machines/bobcat/coerce.bin" ;Coercions: integer -> bit string
+		 "back-end/asmmac.bin"	;Macros for hairy syntax
+		 "machines/bobcat/insmac.bin" ;Macros for hairy syntax
+		 "machines/bobcat/instr1.bin" ;68000 Effective addressing
+		 "machines/bobcat/instr2.bin" ;68000 Instructions
+		 "machines/bobcat/instr3.bin" ;  "        "
+		 ))
+
+	 (cons lap-package
+	       '("machines/bobcat/assmd.bin" ;Machine dependent
+		 "back-end/symtab.bin"	;Symbol tables
+		 "back-end/block.bin"	;Assembly blocks
+		 "back-end/laptop.bin"	;Assembler top level
+		 ))
+
+	 ))
+
+      ))
+
+  (load-system! compiler-system true))
 
 (%ge compiler-package)
 (%gst (access compiler-syntax-table compiler-package))
