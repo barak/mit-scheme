@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.1 1991/03/15 23:59:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.2 1991/03/27 23:36:34 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -49,7 +49,7 @@ license should have been included along with this file. |#
 	      (not (process-runnable? process))))
 	(begin
 	  (set-buffer-major-mode! buffer mode)
-	  (apply comint-exec buffer name program switches)))
+	  (comint-exec buffer name program switches)))
     buffer))
 
 (define (comint-exec buffer name program switches)
@@ -59,18 +59,19 @@ license should have been included along with this file. |#
   (define-variable-local-value! buffer
     (ref-variable-object comint-program-name)
     program)
-  (start-process name
-		 buffer
-		 (process-environment-bind scheme-subprocess-environment
-					   (string-append
-					    "TERMCAP=emacs:co#"
-					    (number->string
-					     (screen-x-size (selected-screen)))
-					    ":tc=unknown")
-					   "TERM=emacs"
-					   "EMACS=t")
-		 program
-		 switches))
+  (apply start-process
+	 name
+	 buffer
+	 (process-environment-bind scheme-subprocess-environment
+				   (string-append
+				    "TERMCAP=emacs:co#"
+				    (number->string
+				     (screen-x-size (selected-screen)))
+				    ":tc=unknown")
+				   "TERM=emacs"
+				   "EMACS=t")
+	 program
+	 switches))
 
 (define-variable-per-buffer comint-prompt-regexp
   "Regexp to recognise prompts in the inferior process.
