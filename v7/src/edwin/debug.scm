@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.6 1993/08/12 09:46:09 cph Exp $
+;;;	$Id: debug.scm,v 1.7 1993/08/13 00:12:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -503,7 +503,8 @@
 			 (call-with-interface-port 
 			  (buffer-end buffer) 
 			  (lambda (port)
-			    (hook/repl-eval (prompt-for-expression prompt)
+			    (hook/repl-eval #f
+					    (prompt-for-expression prompt)
 					    (if (unassigned? environment)
 						(nearest-repl/environment)
 						environment)
@@ -997,50 +998,10 @@ If false show the bindings without frames."
 			      false
 			      geometry)))
 
-;;;****** SYSTEM CODE STUFF
-
-;;WARNING
-;;!!!!!!!!!If you remove this eval it will not work when compiled!!!!!!!!!!!
-(define saved-mark-stack-hook default/repl-eval)
-
-(eval
-  (let ((mark-procedure-symbol-name
-	 (generate-uninterned-symbol 'STACK-MARK)))
-    `(begin       
-       (define mark-name
-	 ',mark-procedure-symbol-name)
-       (define ,mark-procedure-symbol-name
-	 (lambda (ignore value)
-	   value))
-       (define (mark-stack/repl-eval repl
-				     s-expression environment syntax-table)
-	 (,mark-procedure-symbol-name
-	  'the-turd
-	  (saved-mark-stack-hook
-	   repl s-expression environment syntax-table)))))
-  (the-environment))
-
-(set! hook/repl-eval mark-stack/repl-eval)
-
-;;End of the system code stuff.
-
-
 ;;;Determines if a frame is marked
 (define (system-frame? stack-frame)
   (and (ref-variable debugger-hide-system-code?)
-       (with-values (lambda () (stack-frame/debugging-info stack-frame))
-	 (lambda (expression environment subexpression)
-	   (and (not (or (invalid-expression? expression)
-			 (debugging-info/noise? expression)))
-		(combination? expression)
-		(let ((operator (combination-operator expression)))
-		  (and (scode-variable? operator)
-		       (eq? (scode-variable-name operator)
-			    mark-name))))))))
-
-(define scode-variable? (access variable? system-global-environment))
-
-(define scode-variable-name (access variable-name system-global-environment))
+       (stack-frame/repl-eval-boundary? stack-frame)))
 
 ;;;Bad implementation to determine for breaks
 ;;;if a value to proceed with is desired
