@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: evlcom.scm,v 1.56 1998/04/30 22:15:43 cph Exp $
+;;;	$Id: evlcom.scm,v 1.57 1998/05/01 04:32:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -55,7 +55,7 @@ If 'DEFAULT, use the default (REP loop) environment."
   'DEFAULT
   #f
   (lambda (object)
-    (if (or (eq? 'DEFAULT object) (name->package object))
+    (if (or (eq? 'DEFAULT object) (list-of-type? object symbol?))
 	object
 	(call-with-current-continuation
 	 (lambda (k)
