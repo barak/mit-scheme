@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.49 2003/09/26 19:39:03 cph Exp $
+$Id: xml-parser.scm,v 1.50 2003/10/15 01:25:14 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -365,7 +365,16 @@ USA.
 	  #t))))
 
 (define parse-char-data			;[14]
-  (terminated-region-parser "character data" alphabet:char-data "]]>"))
+  (let ((parse-body
+	 (terminated-region-parser "character data"
+				   alphabet:char-data
+				   "]]>")))
+    (*parser
+     (transform (lambda (v)
+		  (if (string-null? (vector-ref v 0))
+		      '#()
+		      v))
+       parse-body))))
 
 (define parse-comment			;[15]
   (let ((parse-body
