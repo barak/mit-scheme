@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.19 1993/09/10 17:54:35 cph Exp $
+$Id: thread.scm,v 1.20 1993/09/10 19:15:44 cph Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -404,9 +404,7 @@ MIT in each case. |#
 
 (define-integrable (maybe-signal-input-thread-events)
   (if input-registrations
-      (let ((result (select-registry-test input-registry #f)))
-	(if (pair? result)
-	    (signal-input-thread-events result)))))
+      (signal-select-result (select-registry-test input-registry #f))))
 
 (define (wait-for-input)
   (if (not input-registrations)
@@ -420,34 +418,51 @@ MIT in each case. |#
 	(set-interrupt-enables! interrupt-mask/all)
 	(let ((result (select-registry-test input-registry #t)))
 	  (set-interrupt-enables! interrupt-mask/gc-ok)
-	  (if (pair? result)
-	      (signal-input-thread-events result))
+	  (signal-select-result result)
 	  (let ((thread first-running-thread))
 	    (if thread
 		(if (thread/continuation thread)
 		    (run-thread thread))
 		(wait-for-input)))))))
+
+(define (signal-select-result result)
+  (cond ((pair? result)
+	 (signal-input-thread-events result))
+	((eq? 'PROCESS-STATUS-CHANGE result)
+	 (signal-input-thread-events '(PROCESS-STATUS-CHANGE)))))
 
 (define (block-on-input-descriptor descriptor)
   (without-interrupts
    (lambda ()
-     (let ((delivered? #f)
-	   (registration))
+     (let ((result 'INTERRUPT)
+	   (registration-1)
+	   (registration-2))
        (dynamic-wind
 	(lambda ()
-	  (set! registration
-		(%register-input-thread-event descriptor
-					      (current-thread)
-					      (lambda ()
-						(set! delivered? #t)
-						unspecific)
-					      #t))
+	  (let ((thread (current-thread)))
+	    (set! registration-1
+		  (%register-input-thread-event
+		   descriptor
+		   thread
+		   (lambda ()
+		     (set! result 'INPUT-AVAILABLE)
+		     unspecific)
+		   #t))
+	    (set! registration-2
+		  (%register-input-thread-event
+		   'PROCESS-STATUS-CHANGE
+		   thread
+		   (lambda ()
+		     (set! result 'PROCESS-STATUS-CHANGE)
+		     unspecific)
+		   #t)))
 	  unspecific)
 	(lambda ()
 	  (%suspend-current-thread)
-	  delivered?)
+	  result)
 	(lambda ()
-	  (%deregister-input-thread-event registration)))))))
+	  (%deregister-input-thread-event registration-1)
+	  (%deregister-input-thread-event registration-2)))))))
 
 (define (permanently-register-input-thread-event descriptor thread event)
   (guarantee-thread thread permanently-register-input-thread-event)
@@ -467,7 +482,7 @@ MIT in each case. |#
      (let ((tentry (%register-input-thread-event descriptor thread event #f)))
        (%maybe-toggle-thread-timer)
        tentry))))
-
+
 (define (%register-input-thread-event descriptor thread event front?)
   (let ((tentry (make-tentry)))
     (%%register-input-thread-event descriptor thread event front? tentry)
@@ -493,7 +508,8 @@ MIT in each case. |#
 	      (set-dentry/prev! input-registrations dentry))
 	  (set-dentry/next! dentry input-registrations)
 	  (set! input-registrations dentry)
-	  (add-to-select-registry! input-registry descriptor))
+	  (if (not (eq? 'PROCESS-STATUS-CHANGE descriptor))
+	      (add-to-select-registry! input-registry descriptor)))
 	(begin
 	  (set-tentry/dentry! tentry dentry)
 	  (if front?
@@ -573,8 +589,9 @@ MIT in each case. |#
 	(set-dentry/last-tentry! dentry prev))
     (if (not (or prev next))
 	(begin
-	  (remove-from-select-registry! input-registry
-					(dentry/descriptor dentry))
+	  (let ((descriptor (dentry/descriptor dentry)))
+	    (if (not (eq? 'PROCESS-STATUS-CHANGE descriptor))
+		(remove-from-select-registry! input-registry descriptor)))
 	  (let ((prev (dentry/prev dentry))
 		(next (dentry/next dentry)))
 	    (if prev

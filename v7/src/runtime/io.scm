@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.36 1993/08/18 22:52:46 cph Exp $
+$Id: io.scm,v 14.37 1993/09/10 19:15:54 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -269,9 +269,7 @@ MIT in each case. |#
 (define (test-for-input-on-descriptor descriptor block?)
   (if block?
       (or (select-descriptor descriptor #f)
-	  (if (block-on-input-descriptor descriptor)
-	      'INPUT-AVAILABLE
-	      'INTERRUPT))
+	  (block-on-input-descriptor descriptor))
       (select-descriptor descriptor #f)))
 
 (define-integrable (channel-descriptor-for-select channel)
