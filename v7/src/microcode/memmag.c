@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.56 1993/10/14 19:14:24 gjr Exp $
+$Id: memmag.c,v 9.57 1994/03/28 22:26:54 gjr Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,10 +34,11 @@ MIT in each case. */
 
 /* Memory management top level.
 
-   The memory management code is spread over 3 files:
+   The memory management code is spread over 4 files:
    - memmag.c: initialization.
    - gcloop.c: main garbage collector loop.
    - purify.c: constant/pure space hacking.
+   - wabbit.c: alternate garbage collector loop that collects references.
    There is also a relevant header file, gccode.h.
 
    The object dumper, fasdump, shares properties and code with the
@@ -53,6 +54,14 @@ MIT in each case. */
 
 extern SCHEME_OBJECT *
   EXFUN (GCLoop, (SCHEME_OBJECT *, SCHEME_OBJECT **));
+extern SCHEME_OBJECT *
+  EXFUN (wabbit_hunting_gcloop, (SCHEME_OBJECT *, SCHEME_OBJECT **));
+extern void
+  EXFUN (wabbit_season, (SCHEME_OBJECT));
+extern void
+  EXFUN (duck_season, (SCHEME_OBJECT));
+extern void
+  EXFUN (fix_weak_chain_and_hunt_wabbits, (void));
 
 /* Exports */
 
@@ -281,25 +290,25 @@ DEFUN_VOID (Fix_Weak_Chain)
   low_heap = Constant_Top;
   while (Weak_Chain != EMPTY_LIST)
   {
-    Old_Weak_Cell = OBJECT_ADDRESS (Weak_Chain);
-    Scan = OBJECT_ADDRESS (*Old_Weak_Cell++);
-    Weak_Chain = *Old_Weak_Cell;
-    Old_Car = *Scan;
+    Old_Weak_Cell = (OBJECT_ADDRESS (Weak_Chain));
+    Scan = (OBJECT_ADDRESS (*Old_Weak_Cell++));
+    Weak_Chain = * Old_Weak_Cell;
+    Old_Car = * Scan;
     Temp = (MAKE_OBJECT_FROM_OBJECTS (Weak_Chain, Old_Car));
     Weak_Chain = (OBJECT_NEW_TYPE (TC_NULL, Weak_Chain));
 
-    switch(GC_Type(Temp))
+    switch (GC_Type (Temp))
     { case GC_Non_Pointer:
         *Scan = Temp;
 	continue;
 
       case GC_Special:
-	if (OBJECT_TYPE (Temp) != TC_REFERENCE_TRAP)
+	if ((OBJECT_TYPE (Temp)) != TC_REFERENCE_TRAP)
 	{
 	  /* No other special type makes sense here. */
 	  goto fail;
 	}
-	if (OBJECT_DATUM (Temp) <= TRAP_MAX_IMMEDIATE)
+	if ((OBJECT_DATUM (Temp)) <= TRAP_MAX_IMMEDIATE)
 	{
 	  *Scan = Temp;
 	  continue;
@@ -317,24 +326,24 @@ DEFUN_VOID (Fix_Weak_Chain)
       case GC_Triple:
       case GC_Quadruple:
       case GC_Vector:
-	Old = OBJECT_ADDRESS (Old_Car);
+	Old = (OBJECT_ADDRESS (Old_Car));
 	if (Old < low_heap)
 	{
 	  *Scan = Temp;
 	  continue;
 	}
-	Normal_BH(false, continue);
+	Normal_BH (false, continue);
 	*Scan = SHARP_F;
 	continue;
 
       case GC_Compiled:
-	Old = OBJECT_ADDRESS (Old_Car);
+	Old = (OBJECT_ADDRESS (Old_Car));
 	if (Old < low_heap)
 	{
 	  *Scan = Temp;
 	  continue;
 	}
-	Compiled_BH(false, { *Scan = Temp; continue; });
+	Compiled_BH (false, { *Scan = Temp; continue; });
 	*Scan = SHARP_F;
 	continue;
 
@@ -348,8 +357,7 @@ DEFUN_VOID (Fix_Weak_Chain)
       fail:
         outf_fatal ("\nFix_Weak_Chain: Bad Object: 0x%08lx.\n",
 		    Temp);
-	Microcode_Termination(TERM_INVALID_TYPE_CODE);
-	/*NOTREACHED*/
+	*Scan = SHARP_F;
     }
   }
   return;
@@ -357,14 +365,11 @@ DEFUN_VOID (Fix_Weak_Chain)
 
 /* Here is the set up for the full garbage collection:
 
-   - First it makes the constant space and stack into one large area
-   by "hiding" the gap between them with a non-marked header.
-
-   - Then it saves away all the relevant microcode registers into new
+   - First it saves away all the relevant microcode registers into new
    space, making this the root for garbage collection.
 
    - Then it does the actual garbage collection in 4 steps:
-     1) Trace constant space.
+     1) Trace the stack and constant space (contiguous).
      2) Trace objects pointed out by the root and constant space.
      3) Trace the precious objects, remembering where consing started.
      4) Update all weak pointers.
@@ -373,33 +378,61 @@ DEFUN_VOID (Fix_Weak_Chain)
    new space.
 */
 
-void 
+void
 DEFUN_VOID (GC)
 {
+  Boolean hunting_wabbits_p;
   SCHEME_OBJECT
     * Root, * Result, * Check_Value,
     The_Precious_Objects, * Root2;
+  SCHEME_OBJECT wabbit_descriptor;
+  SCHEME_OBJECT *
+    EXFUN ((* transport_loop), (SCHEME_OBJECT *, SCHEME_OBJECT **));
+
+  wabbit_descriptor = (Get_Fixed_Obj_Slot (GC_WABBIT_DESCRIPTOR));
+  if ((! (VECTOR_P (wabbit_descriptor)))
+      || ((VECTOR_LENGTH (wabbit_descriptor)) != 4)
+      || ((VECTOR_REF (wabbit_descriptor, 0)) != SHARP_F)
+      || (! (VECTOR_P (VECTOR_REF (wabbit_descriptor, 1))))
+      || ((OBJECT_ADDRESS (VECTOR_REF (wabbit_descriptor, 1))) < Constant_Top)
+      || (! (VECTOR_P (VECTOR_REF (wabbit_descriptor, 2))))
+      || ((OBJECT_ADDRESS (VECTOR_REF (wabbit_descriptor, 2))) < Constant_Top)
+      || ((VECTOR_LENGTH (VECTOR_REF (wabbit_descriptor, 2)))
+	  < (2 + (2 * (VECTOR_LENGTH (VECTOR_REF (wabbit_descriptor, 1)))))))
+  {
+    hunting_wabbits_p = false;
+    transport_loop = GCLoop;
+  }
+  else
+  {
+    hunting_wabbits_p = true;
+    transport_loop = wabbit_hunting_gcloop;
+  }
 
   /* Save the microcode registers so that they can be relocated */
 
   Terminate_Old_Stacklet ();
   SEAL_CONSTANT_SPACE ();
   Check_Value = (CONSTANT_AREA_END ());
-  Root = Free;
   The_Precious_Objects = (Get_Fixed_Obj_Slot (Precious_Objects));
   Set_Fixed_Obj_Slot (Precious_Objects, SHARP_F);
   Set_Fixed_Obj_Slot (Lost_Objects_Base, SHARP_F);
 
+  if (hunting_wabbits_p)
+    wabbit_season (wabbit_descriptor);
+
+  Root = Free;
   *Free++ = Fixed_Objects;
   *Free++ = (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, History));
   *Free++ = Get_Current_Stacklet ();
   *Free++ =
     ((Prev_Restore_History_Stacklet == NULL)
      ? SHARP_F
-     : (MAKE_POINTER_OBJECT (TC_CONTROL_POINT, Prev_Restore_History_Stacklet)));
+     : (MAKE_POINTER_OBJECT (TC_CONTROL_POINT,
+			     Prev_Restore_History_Stacklet)));
   *Free++ = Current_State_Point;
   *Free++ = Fluid_Bindings;
-
+
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
   if (gc_objects_referencing != SHARP_F)
     {
@@ -428,29 +461,29 @@ DEFUN_VOID (GC)
 
   /* The 4 step GC */
 
-  Result = (GCLoop ((CONSTANT_AREA_START ()), &Free));
+  Result = ((* transport_loop) ((CONSTANT_AREA_START ()), &Free));
   if (Result != Check_Value)
   {
     outf_fatal ("\nGC: Constant Scan ended too early.\n");
     Microcode_Termination (TERM_BROKEN_HEART);
   }
 
-  Result = (GCLoop (Root, &Free));
+  Result = ((* transport_loop) (Root, &Free));
   if (Free != Result)
   {
     outf_fatal ("\nGC-1: Heap Scan ended too early.\n");
     Microcode_Termination (TERM_BROKEN_HEART);
   }
-
+
   Root2 = Free;
   *Free++ = The_Precious_Objects;
-  Result = (GCLoop (Root2, &Free));
+  Result = ((* transport_loop) (Root2, &Free));
   if (Free != Result)
   {
     outf_fatal ("\nGC-2: Heap Scan ended too early.\n");
     Microcode_Termination (TERM_BROKEN_HEART);
   }
-
+
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
   if (gc_objects_referencing != SHARP_F)
     {
@@ -476,7 +509,10 @@ DEFUN_VOID (GC)
     }
 #endif
 
-  Fix_Weak_Chain ();
+  if (hunting_wabbits_p)
+    fix_weak_chain_and_hunt_wabbits ();
+  else
+    Fix_Weak_Chain ();
 
   /* Make the microcode registers point to the copies in new-space. */
 
@@ -499,6 +535,13 @@ DEFUN_VOID (GC)
   Current_State_Point = *Root++;
   Fluid_Bindings = *Root++;
   Free_Stacklets = NULL;
+
+  if (hunting_wabbits_p)
+  {
+    wabbit_descriptor = (Get_Fixed_Obj_Slot (GC_WABBIT_DESCRIPTOR));
+    duck_season (wabbit_descriptor);
+  }
+
   COMPILER_TRANSPORT_END ();
   CLEAR_INTERRUPT (INT_GC);
   return;
