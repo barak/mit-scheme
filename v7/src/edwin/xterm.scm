@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xterm.scm,v 1.43 1993/08/17 21:31:35 cph Exp $
+;;;	$Id: xterm.scm,v 1.44 1993/08/20 00:17:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -400,65 +400,63 @@
 	     (lambda (event)
 	       (if (fix:= event-type:key-press (vector-ref event 0))
 		   (process-key-press-event event)
-		   (process-special-event event)))))
-	(let ((probe
+		   (process-special-event event))))
+	    (pce-event
+	     (lambda (flag)
+	       (make-input-event (if (eq? flag 'FORCE-RETURN) 'RETURN 'UPDATE)
+				 update-screens!
+				 #f))))
+	(let ((get-next-event
 	       (lambda (block?)
 		 (let loop ()
 		   (let ((event (read-event queue display block?)))
-		     (cond ((not event) #f)
-			   ((not (vector? event))
-			    (process-change-event event)
-			    (loop))
-			   (else
-			    (let ((result (process-event event)))
-			      (if result
-				  (begin (set! pending-result result) result)
-				  (loop)))))))))
-	      (guarantee-result
-	       (lambda ()
-		 (let loop ()
-		   (let ((event (read-event queue display #t)))
 		     (cond ((not event)
-			    (error "#F returned from blocking read"))
+			    #f)
 			   ((not (vector? event))
 			    (let ((flag (process-change-event event)))
 			      (if flag
-				  (make-input-event
-				   (if (eq? flag 'FORCE-RETURN)
-				       'RETURN
-				       'UPDATE)
-				   update-screens!
-				   #f)
+				  (pce-event flag)
 				  (loop))))
 			   (else
-			    (or (process-event event) (loop)))))))))
-	  (values
-	   (lambda ()			;halt-update?
-	     (or pending-result
-		 (fix:< start end)
-		 (probe 'IN-UPDATE)))
-	   (lambda ()			;peek-no-hang
-	     (or pending-result
-		 (fix:< start end)
-		 (probe #f)))
-	   (lambda ()			;peek
-	     (or pending-result
-		 (if (fix:< start end)
-		     (string-ref string start)
-		     (let ((result (guarantee-result)))
-		       (set! pending-result result)
-		       result))))
-	   (lambda ()			;read
-	     (cond (pending-result
-		    => (lambda (result)
-			 (set! pending-result #f)
-			 result))
-		   ((fix:< start end)
-		    (let ((char (string-ref string start)))
-		      (set! start (fix:+ start 1))
-		      char))
-		   (else
-		    (guarantee-result))))))))))
+			    (or (process-event event)
+				(loop)))))))))
+	  (let ((probe
+		 (lambda (block?)
+		   (let ((result (get-next-event block?)))
+		     (if result
+			 (set! pending-result result))
+		     result)))
+		(guarantee-result
+		 (lambda ()
+		   (or (get-next-event #t)
+		       (error "#F returned from blocking read")))))
+	    (values
+	     (lambda ()			;halt-update?
+	       (or pending-result
+		   (fix:< start end)
+		   (probe 'IN-UPDATE)))
+	     (lambda ()			;peek-no-hang
+	       (or pending-result
+		   (fix:< start end)
+		   (probe #f)))
+	     (lambda ()			;peek
+	       (or pending-result
+		   (if (fix:< start end)
+		       (string-ref string start)
+		       (let ((result (guarantee-result)))
+			 (set! pending-result result)
+			 result))))
+	     (lambda ()			;read
+	       (cond (pending-result
+		      => (lambda (result)
+			   (set! pending-result #f)
+			   result))
+		     ((fix:< start end)
+		      (let ((char (string-ref string start)))
+			(set! start (fix:+ start 1))
+			char))
+		     (else
+		      (guarantee-result)))))))))))
 
 (define (read-event queue display block?)
   (let loop ()
@@ -491,16 +489,24 @@
 (define (read-event-1 display block?)
   (or (x-display-process-events display 2)
       (let loop ()
-	(cond (inferior-thread-changes? event:inferior-thread-output)
-	      ((process-output-available?) event:process-output)
-	      (else
-	       (case (test-for-input-on-descriptor
-		      (x-display-descriptor display)
-		      block?)
-		 ((#F) #f)
-		 ((PROCESS-STATUS-CHANGE) event:process-status)
-		 ((INTERRUPT) (loop))
-		 (else (read-event-1 display block?))))))))
+	(let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+	  (cond (inferior-thread-changes?
+		 (set-interrupt-enables! interrupt-mask)
+		 event:inferior-thread-output)
+		((process-output-available?)
+		 (set-interrupt-enables! interrupt-mask)
+		 event:process-output)
+		(else
+		 (let ((flag
+			(test-for-input-on-descriptor
+			 (x-display-descriptor display)
+			 block?)))
+		   (set-interrupt-enables! interrupt-mask)
+		   (case flag
+		     ((#F) #f)
+		     ((PROCESS-STATUS-CHANGE) event:process-status)
+		     ((INTERRUPT) (loop))
+		     (else (read-event-1 display block?))))))))))
 
 (define (preview-event-stream)
   (set! previewer-registration
