@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.99 1992/09/10 02:44:17 cph Exp $
+$Id: edwin.pkg,v 1.100 1992/09/23 23:06:38 jinx Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -74,6 +74,7 @@ MIT in each case. |#
 	 "autosv"			; auto save
 	 "basic"			; basic commands
 	 "bufcom"			; buffer commands
+	 "comhst"			; command history
 	 "comint"			; command interpreter process stuff
 	 "compile"			; compilation subprocess
 	 "evlcom"			; evaluation commands
@@ -735,8 +736,11 @@ MIT in each case. |#
 
 (define-package (edwin dired)
   (files "dired")
+  (file-case os-type
+   ((unix) "dirunx"))
   (parent (edwin))
   (export (edwin)
+	  dired-filename-start			; needed by unix.scm
 	  edwin-command$dired
 	  edwin-command$dired-other-window
 	  edwin-command$dired-find-file
@@ -761,10 +765,7 @@ MIT in each case. |#
 	  edwin-command$list-directory
 	  edwin-mode$dired
 	  edwin-variable$dired-kept-versions
-	  edwin-variable$dired-listing-switches
 	  edwin-variable$dired-mode-hook
-	  edwin-variable$list-directory-brief-switches
-	  edwin-variable$list-directory-verbose-switches
 	  make-dired-buffer))
 
 (define-package (edwin info)
@@ -810,25 +811,21 @@ MIT in each case. |#
   (export (edwin)
 	  accept-process-output
 	  buffer-default-directory
-	  buffer-processes
+	  buffer-processes			; always present
 	  continue-process
-	  delete-process
+	  delete-process			; always present
 	  edwin-command$list-processes
 	  edwin-command$shell-command
 	  edwin-command$shell-command-on-region
-	  edwin-variable$backup-by-copying-when-linked
-	  edwin-variable$backup-by-copying-when-mismatch
+	  edwin-variable$delete-exited-processes
 	  edwin-variable$exec-path
-	  edwin-variable$kept-new-versions
-	  edwin-variable$kept-old-versions
 	  edwin-variable$process-connection-type
-	  edwin-variable$version-control
 	  find-program
-	  get-buffer-process
+	  get-buffer-process			; always present
 	  get-process-by-name
 	  handle-process-status-changes
 	  hangup-process
-	  initialize-processes!
+	  initialize-processes!			; always present
 	  interrupt-process
 	  kill-process
 	  process-arguments
@@ -838,7 +835,7 @@ MIT in each case. |#
 	  process-exit-reason
 	  process-filter
 	  process-kill-without-query
-	  process-list
+	  process-list				; always present
 	  process-mark
 	  process-name
 	  process-runnable?
@@ -857,6 +854,7 @@ MIT in each case. |#
 	  shell-command
 	  start-process
 	  stop-process
+	  subprocesses-available?		; always present
 	  run-synchronous-process))
 
 (define-package (edwin sendmail)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.39 1992/08/27 06:32:33 jinx Exp $
+$Id: decls.scm,v 1.40 1992/09/23 23:05:59 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -124,6 +124,7 @@ MIT in each case. |#
 		"c-mode"
 		"calias"
 		"cinden"
+		"comhst"
 		"comint"
 		"compile"
 		"comtab"
@@ -132,6 +133,7 @@ MIT in each case. |#
 		"debug"
 		"debuge"
 		"dired"
+		"dirunx"
 		"dos"
 		"dosproc"
 		"ed-ffi"
