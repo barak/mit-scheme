@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.25 1990/04/12 22:46:26 jinx Exp $
+
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.24 1989/12/07 04:49:20 cph Exp $
+/*
  *
  * Compiled code interface.  Portable version.
  * This file requires a bit of assembly language from cmpaux-md.m4
@@ -289,7 +291,8 @@ extern SCHEME_UTILITY struct utility_result
   comutil_unbound_p(),
   comutil_assignment(),
   comutil_definition(),
-  comutil_lookup_apply();
+  comutil_lookup_apply(),
+  comutil_interrupt_multiclosure();
 
 extern struct utility_result
   (*(utility_table[]))();
@@ -359,7 +362,8 @@ struct utility_result
   comutil_unbound_p,				/* 0x32 */
   comutil_assignment,				/* 0x33 */
   comutil_definition,				/* 0x34 */
-  comutil_lookup_apply				/* 0x35 */
+  comutil_lookup_apply,				/* 0x35 */
+  comutil_interrupt_multiclosure		/* 0x36 */
   };
 
 /* These definitions reflect the indices into the table above. */
@@ -1348,7 +1352,10 @@ comutil_operator_4_0_trap (tramp_data, ignore_2, ignore_3, ignore_4)
   }									\
 }
 
-/* Called with no arguments, closure at top of (Scheme) stack */
+/* Called with no arguments, closure at top of (Scheme) stack.
+   This has been superseded by comutil_interrupt_multiclosure (below).
+   It's provided for compatibility with old code.
+ */
 
 SCHEME_UTILITY struct utility_result
 comutil_interrupt_closure (ignore_1, ignore_2, ignore_3, ignore_4)
@@ -1380,8 +1387,9 @@ comutil_interrupt_closure (ignore_1, ignore_2, ignore_3, ignore_4)
  */
 
 static struct utility_result
-compiler_interrupt_common (entry_point, state)
+compiler_interrupt_common (entry_point, offset, state)
      instruction *entry_point;
+     long offset;
      SCHEME_OBJECT state;
 {
   TEST_GC_NEEDED();
@@ -1389,7 +1397,7 @@ compiler_interrupt_common (entry_point, state)
   {
     Store_Env (state);
     Val = state;
-    RETURN_TO_SCHEME (entry_point + ENTRY_SKIPPED_CHECK_OFFSET);
+    RETURN_TO_SCHEME (entry_point + offset);
   }
   else
   {
@@ -1419,7 +1427,9 @@ comutil_interrupt_procedure (entry_point, ignore_2, ignore_3, ignore_4)
      instruction *entry_point;
      long ignore_2, ignore_3, ignore_4;
 {
-  return (compiler_interrupt_common(entry_point, SHARP_F));
+  return (compiler_interrupt_common(entry_point,
+				    ENTRY_SKIPPED_CHECK_OFFSET,
+				    SHARP_F));
 }
 
 /* Val has live data, and there is no entry address on the stack */
@@ -1429,7 +1439,9 @@ comutil_interrupt_continuation (return_address, ignore_2, ignore_3, ignore_4)
      instruction *return_address;
      long ignore_2, ignore_3, ignore_4;
 {
-  return (compiler_interrupt_common (return_address, Val));
+  return (compiler_interrupt_common (return_address,
+				     ENTRY_SKIPPED_CHECK_OFFSET,
+				     Val));
 }
 
 /* Env has live data; no entry point on the stack */
@@ -1439,7 +1451,19 @@ comutil_interrupt_ic_procedure (entry_point, ignore_2, ignore_3, ignore_4)
      instruction *entry_point;
      long ignore_2, ignore_3, ignore_4;
 {
-  return (compiler_interrupt_common (entry_point, (Fetch_Env())));
+  return (compiler_interrupt_common (entry_point,
+				     ENTRY_SKIPPED_CHECK_OFFSET,
+				     (Fetch_Env())));
+}
+
+SCHEME_UTILITY struct utility_result
+comutil_interrupt_multiclosure (entry_point, ignore_2, ignore_3, ignore_4)
+     instruction *entry_point;
+     long ignore_2, ignore_3, ignore_4;
+{
+  return (compiler_interrupt_common (entry_point,
+				     CLOSURE_SKIPPED_CHECK_OFFSET,
+				     SHARP_F));
 }
 
 C_TO_SCHEME long
