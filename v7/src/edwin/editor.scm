@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: editor.scm,v 1.238 1995/01/06 01:01:50 cph Exp $
+;;;	$Id: editor.scm,v 1.239 1995/01/06 17:47:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -193,23 +193,27 @@
 		 (load-edwin-file filename '(EDWIN) #t)))
 	   (set! init-file-loaded? #t)
 	   unspecific))))
-  (start-inferior-repl!
-   (current-buffer)
-   (nearest-repl/environment)
-   (nearest-repl/syntax-table)
-   (and (not (ref-variable inhibit-startup-message))
-	(cmdl-message/append
-	 (cmdl-message/active
-	  (lambda (port)
-	    (identify-world port)
-	    (newline port)
-	    (newline port)))
-	 (cmdl-message/strings
-	  "You are in an interaction window of the Edwin editor."
-	  "Type C-h for help.  C-h m will describe some commands.")))))
+  (let ((buffer (find-buffer initial-buffer-name)))
+    (if (and buffer
+	     (not inhibit-initial-inferior-repl?))
+	(start-inferior-repl!
+	 (current-buffer)
+	 (nearest-repl/environment)
+	 (nearest-repl/syntax-table)
+	 (and (not (ref-variable inhibit-startup-message))
+	      (cmdl-message/append
+	       (cmdl-message/active
+		(lambda (port)
+		  (identify-world port)
+		  (newline port)
+		  (newline port)))
+	       (cmdl-message/strings
+		"You are in an interaction window of the Edwin editor."
+		"Type C-h for help.  C-h m will describe some commands.")))))))
 
 (define inhibit-editor-init-file? #f)
 (define init-file-loaded? #f)
+(define inhibit-initial-inferior-repl? #f)
 
 (define-variable inhibit-startup-message
   "True inhibits the initial startup messages.
