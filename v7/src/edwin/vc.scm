@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.8 1994/03/08 22:06:19 cph Exp $
+;;;	$Id: vc.scm,v 1.9 1994/03/09 21:33:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -223,9 +223,9 @@ lock steals will raise an error.
     #|
     (cond ((not (eq? (current-major-mode) (ref-mode-object vc-dired-mode)))
 	   (let ((workfile (buffer-pathname (current-buffer))))
-	     (if workfile
-		 (vc-next-action-on-file workfile revision? #f)
-		 (vc-registration-error #f))))
+	     (if (not workfile)
+		 (vc-registration-error #f))
+	     (vc-next-action-on-file workfile revision? #f)))
 	  ((= (length (dired-get-marked-files)) 1)
 	   (let ((workfile (dired-current-pathname)))
 	     (find-file-other-window workfile)
@@ -421,7 +421,7 @@ and two version designators specifying which versions to compare."
   (lambda (revisions?)
     (if revisions?
 	(dispatch-on-command (ref-command-object vc-version-diff))
-	(vc-diff (buffer-vc-master (current-buffer) #t) #f #f))))
+	(vc-diff (current-vc-master #t) #f #f))))
 
 (define-command vc-version-diff
   "For FILE, report diffs between two stored versions REV1 and REV2 of it.
@@ -461,7 +461,7 @@ If the current buffer is named `F', the version is named `F.~REV~'.
 If `F.~REV~' already exists, it is used instead of being re-created."
   "sVersion to visit (default is latest version)"
   (lambda (revision)
-    (let ((master (buffer-vc-master (current-buffer))))
+    (let ((master (current-vc-master)))
       (let ((revision
 	     (or (vc-normalize-version revision)
 		 (vc-backend-default-version master))))
@@ -485,7 +485,7 @@ Headers are inserted at the start of the buffer."
   "List the change log of the current buffer in a window."
   ()
   (lambda ()
-    (vc-backend-print-log (buffer-vc-master (current-buffer)))
+    (vc-backend-print-log (current-vc-master))
     (pop-up-vc-command-buffer #f)))
 
 (define-command vc-list-locked-files
@@ -494,8 +494,7 @@ Normally lists only those files locked by the user;
 prefix arg says to list all locked files regardless."
   "P"
   (lambda (all-lockers?)
-    (vc-backend-list-locked-files (buffer-vc-master (current-buffer))
-				  all-lockers?)
+    (vc-backend-list-locked-files (current-vc-master) all-lockers?)
     (pop-up-vc-command-buffer #f)))
 
 (define-command vc-revert-buffer
@@ -531,13 +530,11 @@ A prefix argument means do not revert the buffer afterwards."
       (begin
 	(finish-entry comment)
 	(if after (after)))
-      (let ((log-buffer (find-or-create-buffer "*VC-log*")))
-	(buffer-reset! log-buffer)
+      (let ((log-buffer (new-buffer "*VC-log*")))
 	(set-buffer-major-mode! log-buffer (ref-mode-object vc-log))
-	(buffer-not-modified! log-buffer)
-	(set-buffer-pathname! log-buffer #f)
 	(if (vc-master? master)
 	    (vc-mode-line master log-buffer))
+	(buffer-put! log-buffer 'VC-PARENT-BUFFER (vc-workfile-buffer master))
 	(let ((window (current-window)))
 	  (let ((log-window (pop-up-buffer log-buffer #t)))
 	    (buffer-put! log-buffer
@@ -622,93 +619,93 @@ the value of vc-log-mode-hook."
 	    (error "No log operation is pending."))
 	(finish-entry buffer)))))
 
-;;;; Back End
+;;;; VC-Master Association
 
-(define (vc-backend-register workfile revision comment)
-  ((vc-type-operation
-    (if (and (not (null? vc-types))
-	     (null? (cdr vc-types)))
-	(cdar vc-types)
-	(let ((likely-types
-	       (list-transform-positive vc-types
-		 (lambda (entry)
-		   ((vc-type-operation (cdr entry) 'LIKELY-CONTROL-TYPE?)
-		    workfile)))))
-	  (if (and (not (null? likely-types))
-		   (null? (cdr likely-types)))
-	      (cdar likely-types)
-	      (cleanup-pop-up-buffers
-	       (lambda ()
-		 (call-with-output-to-temporary-buffer " *VC-types*"
-		   (lambda (port)
-		     (for-each (lambda (entry)
-				 (write-string (car entry) port)
-				 (newline port))
-			       vc-types)))
-		 (prompt-for-alist-value "Version control type"
-					 vc-types
-					 #f
-					 #f))))))
-    'REGISTER)
-   workfile revision comment))
+(define (file-vc-master workfile #!optional require-master?)
+  (let ((require-master?
+	 (if (default-object? require-master?)
+	     #f
+	     require-master?))
+	(buffer (pathname->buffer workfile)))
+    (if buffer
+	(buffer-vc-master buffer require-master?)
+	(%file-vc-master workfile require-master?))))
 
-(define (vc-backend-claim-lock master revision)
-  (vc-call 'CLAIM-LOCK master revision))
+(define (current-vc-master #!optional require-master?)
+  (buffer-vc-master (let ((buffer (current-buffer)))
+		      (or (buffer-get buffer 'VC-PARENT-BUFFER)
+			  buffer))
+		    (if (default-object? require-master?)
+			#f
+			require-master?)))
 
-(define (vc-backend-checkout master revision lock? workfile)
-  (let ((workfile
-	 (and workfile
-	      (not (pathname=? workfile (vc-workfile-pathname master)))
-	      workfile)))
-    (vc-call 'CHECKOUT master revision lock? workfile)
-    (if (and (not revision) (not workfile))
-	(set-vc-master-checkout-time!
-	 master
-	 (file-modification-time-indirect (vc-workfile-pathname master))))))
-
-(define (vc-backend-revert master revision)
-  (vc-call 'REVERT master revision))
-
-(define (vc-backend-checkin master revision comment)
-  (vc-call 'CHECKIN master revision comment))
-
-(define (vc-backend-steal master revision)
-  (vc-call 'STEAL master revision))
-
-(define (vc-backend-logentry-check master log-buffer)
-  (vc-call 'LOGENTRY-CHECK master log-buffer))
-
-(define (vc-backend-diff master rev1 rev2)
-  (vc-call 'DIFF master rev1 rev2))
-
-(define (vc-backend-print-log master)
-  (vc-call 'PRINT-LOG master))
-      
-(define (vc-backend-list-locked-files master all-lockers?)
-  (vc-call 'LIST-LOCKED-FILES master all-lockers?))
-
-(define (vc-backend-default-version master)
-  (vc-call 'DEFAULT-VERSION master))
-
-(define (vc-backend-buffer-version master buffer)
-  (vc-call 'BUFFER-VERSION master buffer))
+(define (buffer-vc-master buffer #!optional require-master?)
+  (let ((require-master?
+	 (if (default-object? require-master?)
+	     #f
+	     require-master?))
+	(workfile (buffer-pathname buffer)))
+    (if workfile
+	(let ((master (buffer-get buffer 'VC-MASTER)))
+	  (if (and master
+		   (pathname=? workfile (vc-master-workfile master))
+		   (vc-master-valid? master))
+	      master
+	      (let ((master (%file-vc-master workfile require-master?)))
+		(buffer-put! buffer 'VC-MASTER master)
+		master)))
+	(begin
+	  (buffer-put! buffer 'VC-MASTER #f)
+	  (if require-master? (vc-registration-error buffer))
+	  #f))))
 
-(define (vc-locking-user master revision)
-  (vc-call 'LOCKING-USER master revision))
+(define (%file-vc-master workfile require-master?)
+  (let ((master (hash-table/get vc-master-table workfile #f)))
+    (if (and master (vc-master-valid? master))
+	master
+	(begin
+	  (if master
+	      (hash-table/remove! vc-master-table workfile))
+	  (let loop ((templates vc-master-templates))
+	    (if (null? templates)
+		(begin
+		  (if require-master? (vc-registration-error workfile))
+		  #f)
+		(let ((master
+		       (make-vc-master (cdar templates)
+				       ((caar templates) workfile)
+				       workfile)))
+		  (if (vc-master-valid? master)
+		      (begin
+			(hash-table/put! vc-master-table workfile master)
+			master)
+		      (loop (cdr templates))))))))))
 
-(define (vc-mode-line-status master buffer)
-  (vc-call 'MODE-LINE-STATUS master buffer))
+(define vc-master-table
+  ;; EQUAL-HASH-MOD happens to work correctly here, because a pathname
+  ;; has the same hash value as its namestring.
+  ((weak-hash-table/constructor equal-hash-mod pathname=? #t)))
 
-(define (vc-admin master)
+(define (guarantee-vc-master-valid master)
+  (if (not (vc-master-valid? master))
+      (error "VC master file disappeared:" (vc-master-workfile master))))
+
+(define (vc-master-valid? master)
+  ;; FILE-EQ? yields #f if either file doesn't exist.
   (let ((pathname (vc-master-pathname master)))
-    (let loop ()
-      (let ((time (file-modification-time-indirect pathname)))
-	(or (and (eqv? (vc-master-%time master) time)
-		 (vc-master-%admin master))
-	    (begin
-	      (set-vc-master-%time! master time)
-	      (set-vc-master-%admin! master (vc-call 'GET-ADMIN master))
-	      (loop)))))))
+    (and (file-exists? pathname)
+	 (not (file-eq? (vc-master-workfile master) pathname)))))
+
+(define (vc-registration-error object)
+  (if (or (buffer? object) (not object))
+      (editor-error "Buffer "
+		    (buffer-name (or object (current-buffer)))
+		    " is not associated with a file.")
+      (editor-error "File "
+		    (vc-workfile-string object)
+		    " is not under version control.")))
+
+;;;; VC-Master Datatype
 
 (define-structure (vc-master
 		   (constructor make-vc-master (type pathname workfile)))
@@ -761,86 +758,98 @@ the value of vc-log-mode-hook."
 (define (vc-call name master . arguments)
   (apply (vc-type-operation (vc-master-type master) name) master arguments))
 
-(define (file-vc-master workfile #!optional require-master?)
-  (let ((require-master?
-	 (if (default-object? require-master?)
-	     #f
-	     require-master?))
-	(buffer (pathname->buffer workfile)))
-    (if buffer
-	(buffer-vc-master buffer require-master?)
-	(%file-vc-master workfile require-master?))))
+;;;; Back-End Calls
 
-(define (buffer-vc-master buffer #!optional require-master?)
-  (let ((require-master?
-	 (if (default-object? require-master?)
-	     #f
-	     require-master?))
-	(workfile (buffer-pathname buffer)))
-    (if workfile
-	(let ((master (buffer-get buffer 'VC-MASTER)))
-	  (if (and master
-		   (pathname=? workfile (vc-master-workfile master))
-		   (vc-master-valid? master))
-	      master
-	      (let ((master (%file-vc-master workfile require-master?)))
-		(buffer-put! buffer 'VC-MASTER master)
-		master)))
-	(begin
-	  (buffer-put! buffer 'VC-MASTER #f)
-	  (if require-master? (vc-registration-error buffer))
-	  #f))))
+(define (vc-backend-register workfile revision comment)
+  ((vc-type-operation
+    (if (and (not (null? vc-types))
+	     (null? (cdr vc-types)))
+	(cdar vc-types)
+	(let ((likely-types
+	       (list-transform-positive vc-types
+		 (lambda (entry)
+		   ((vc-type-operation (cdr entry) 'LIKELY-CONTROL-TYPE?)
+		    workfile)))))
+	  (if (and (not (null? likely-types))
+		   (null? (cdr likely-types)))
+	      (cdar likely-types)
+	      (cleanup-pop-up-buffers
+	       (lambda ()
+		 (call-with-output-to-temporary-buffer " *VC-types*"
+		   (lambda (port)
+		     (for-each (lambda (entry)
+				 (write-string (car entry) port)
+				 (newline port))
+			       vc-types)))
+		 (prompt-for-alist-value "Version control type"
+					 vc-types
+					 #f
+					 #f))))))
+    'REGISTER)
+   workfile revision comment))
 
-(define (%file-vc-master workfile require-master?)
-  (let ((master (hash-table/get vc-master-table workfile #f)))
-    (if (and master (vc-master-valid? master))
-	master
-	(begin
-	  (if master
-	      (hash-table/remove! vc-master-table workfile))
-	  (let loop ((templates vc-master-templates))
-	    (if (null? templates)
-		(begin
-		  (if require-master? (vc-registration-error workfile))
-		  #f)
-		(let ((master
-		       (make-vc-master (cdar templates)
-				       ((caar templates) workfile)
-				       workfile)))
-		  (if (vc-master-valid? master)
-		      (begin
-			(hash-table/put! vc-master-table workfile master)
-			master)
-		      (loop (cdr templates))))))))))
+(define (vc-backend-claim-lock master revision)
+  (vc-call 'CLAIM-LOCK master revision))
 
-(define vc-master-table
-  ;; EQUAL-HASH-MOD happens to work correctly here, because a pathname
-  ;; has the same hash value as its namestring.
-  ((weak-hash-table/constructor equal-hash-mod pathname=? #t)))
+(define (vc-backend-checkout master revision lock? workfile)
+  (let ((workfile
+	 (and workfile
+	      (not (pathname=? workfile (vc-workfile-pathname master)))
+	      workfile)))
+    (vc-call 'CHECKOUT master revision lock? workfile)
+    (if (and (not revision) (not workfile))
+	(set-vc-master-checkout-time!
+	 master
+	 (file-modification-time-indirect (vc-workfile-pathname master))))))
+
+(define (vc-backend-revert master revision)
+  (vc-call 'REVERT master revision))
 
-(define (guarantee-vc-master-valid master)
-  (if (not (vc-master-valid? master))
-      (error "VC master file disappeared:" (vc-master-workfile master))))
+(define (vc-backend-checkin master revision comment)
+  (vc-call 'CHECKIN master revision comment))
 
-(define (vc-master-valid? master)
-  ;; FILE-EQ? yields #f if either file doesn't exist.
+(define (vc-backend-steal master revision)
+  (vc-call 'STEAL master revision))
+
+(define (vc-backend-logentry-check master log-buffer)
+  (vc-call 'LOGENTRY-CHECK master log-buffer))
+
+(define (vc-backend-diff master rev1 rev2)
+  (vc-call 'DIFF master rev1 rev2))
+
+(define (vc-backend-print-log master)
+  (vc-call 'PRINT-LOG master))
+      
+(define (vc-backend-list-locked-files master all-lockers?)
+  (vc-call 'LIST-LOCKED-FILES master all-lockers?))
+
+(define (vc-backend-default-version master)
+  (vc-call 'DEFAULT-VERSION master))
+
+(define (vc-backend-buffer-version master buffer)
+  (vc-call 'BUFFER-VERSION master buffer))
+
+(define (vc-locking-user master revision)
+  (vc-call 'LOCKING-USER master revision))
+
+(define (vc-mode-line-status master buffer)
+  (vc-call 'MODE-LINE-STATUS master buffer))
+
+(define (vc-admin master)
   (let ((pathname (vc-master-pathname master)))
-    (and (file-exists? pathname)
-	 (not (file-eq? (vc-master-workfile master) pathname)))))
-
-(define (vc-registration-error object)
-  (if (or (buffer? object) (not object))
-      (editor-error "Buffer "
-		    (buffer-name (or object (current-buffer)))
-		    " is not associated with a file.")
-      (editor-error "File "
-		    (vc-workfile-string object)
-		    " is not under version control.")))
+    (let loop ()
+      (let ((time (file-modification-time-indirect pathname)))
+	(or (and (eqv? (vc-master-%time master) time)
+		 (vc-master-%admin master))
+	    (begin
+	      (set-vc-master-%time! master time)
+	      (set-vc-master-%admin! master (vc-call 'GET-ADMIN master))
+	      (loop)))))))
 
 ;;;; RCS Commands
 
 (define vc-type:rcs
-  (make-vc-type 'RCS "$Id: vc.scm,v 1.8 1994/03/08 22:06:19 cph Exp $"))
+  (make-vc-type 'RCS "$Id: vc.scm,v 1.9 1994/03/09 21:33:05 cph Exp $"))
 
 (define-vc-master-template vc-type:rcs
   (lambda (pathname)
