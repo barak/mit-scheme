@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: const.h,v 9.41 1992/09/11 21:58:14 cph Exp $
+$Id: const.h,v 9.42 1993/06/09 20:28:27 jawilson Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -185,3 +185,4 @@ MIT in each case. */
 #define BOOT_FASLOAD		0
 #define BOOT_LOAD_BAND		1
 #define BOOT_GET_WORK		2
+#define BOOT_EXECUTE		3

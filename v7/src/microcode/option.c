@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.31 1993/02/11 02:24:35 adams Exp $
+$Id: option.c,v 1.32 1993/06/09 20:30:00 jawilson Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1127,12 +1127,14 @@ DEFUN (read_command_line_options, (argc, argv),
       {
 	if (option_raw_band != 0)
 	  conflicting_options ("-fasl", "-band");
+#ifndef NATIVE_CODE_IS_C
 	if (! (FILE_READABLE (option_fasl_file)))
 	  {
 	    fprintf (stderr, "%s: can't read option file: -fasl %s\n",
 		     scheme_program_name, option_fasl_file);
 	    termination_init_error ();
 	  }
+#endif /* NATIVE_CODE_IS_C */
 	option_large_sizes = 1;
 	option_band_specified = 1;
 	option_band_file = 0;

@@ -1,7 +1,7 @@
 #
 # Makefile for MIT CScheme microcode.
 #
-# $Id: makefile,v 1.23 1993/06/09 18:38:44 jawilson Exp $
+# $Id: makefile,v 1.24 1993/06/09 20:29:39 jawilson Exp $
 #
 CPP = cc -E
 MAKE = make  # BSD doesn't have it as a default.
@@ -60,7 +60,7 @@ everything: xmakefile
 
 # If you have a problem with cc -E here, changing
 # the definition of CPP above may fix it.
-xmakefile: ymakefile ymake.script ymake.local cf.h s.h m.h
+xmakefile: ymakefile ymake.script ymake.local ymake.cclist cf.h s.h m.h
 	rm -f xmakefile junk.c
 	cp ymakefile junk.c
 	$(CPP) junk.c | sed -n -f ymake.script > xmakefile
@@ -68,6 +68,9 @@ xmakefile: ymakefile ymake.script ymake.local cf.h s.h m.h
 
 ymake.local:
 	touch ymake.local
+
+ymake.cclist:
+	echo "COMPILED_SOURCES =" > ymake.cclist
 
 clean remove:
 # the - at the beginning of the following line is what causes make to continue 

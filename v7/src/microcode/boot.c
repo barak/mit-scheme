@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.77 1993/02/23 20:19:14 gjr Exp $
+$Id: boot.c,v 9.78 1993/06/09 20:28:14 jawilson Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -104,6 +104,8 @@ DEFUN (usage, (error_string), CONST char * error_string)
 #define main_type void
 #endif
 
+#define FILE_READABLE(filename) ((access ((filename), 4)) >= 0)
+
 main_type
 DEFUN (main, (argc, argv),
        int argc AND CONST char ** argv)
@@ -157,15 +159,22 @@ DEFUN (main, (argc, argv),
       Setup_Memory ((BLOCKS_TO_BYTES (Heap_Size)),
 		    (BLOCKS_TO_BYTES (Stack_Size)),
 		    (BLOCKS_TO_BYTES (Constant_Size)));
-      if (option_fasl_file)
-	{
-	  compiler_initialize (1);
-	  Start_Scheme (BOOT_FASLOAD, option_fasl_file);
-	}
-      else
+      if (! option_fasl_file)
 	{
 	  compiler_initialize (0);
 	  Start_Scheme (BOOT_LOAD_BAND, option_band_file);
+	}
+#ifdef NATIVE_CODE_IS_C
+      else if (! (FILE_READABLE (option_fasl_file)))
+      {
+	compiler_initialize (1);
+	Start_Scheme (BOOT_EXECUTE, option_fasl_file);
+      }
+#endif /* NATIVE_CODE_IS_C */
+      else
+	{
+	  compiler_initialize (1);
+	  Start_Scheme (BOOT_FASLOAD, option_fasl_file);
 	}
     }
   termination_init_error ();
@@ -298,7 +307,7 @@ static void
 DEFUN (Start_Scheme, (Start_Prim, File_Name),
        int Start_Prim AND CONST char * File_Name)
 {
-  SCHEME_OBJECT FName, Init_Prog, *Fasload_Call, prim;
+  SCHEME_OBJECT FName, expr, * inner_arg, prim;
   fast long i;
   /* Parallel processor test */
   Boolean I_Am_Master = (Start_Prim != BOOT_GET_WORK);
@@ -320,40 +329,56 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
         (SCODE-EVAL (BINARY-FASLOAD <file-name>) SYSTEM-GLOBAL-ENVIRONMENT),
 	(LOAD-BAND <file-name>), or
 	((GET-WORK))
+	(SCODE-EVAL (INITIALIZE-C-COMPILED-BLOCK <file>) GLOBAL-ENV)
      depending on the value of Start_Prim. */
   switch (Start_Prim)
   {
     case BOOT_FASLOAD:	/* (SCODE-EVAL (BINARY-FASLOAD <file>) GLOBAL-ENV) */
       FName = (char_pointer_to_string ((unsigned char *) File_Name));
       prim = (make_primitive ("BINARY-FASLOAD"));
-      Fasload_Call = Free;
+      inner_arg = Free;
       *Free++ = prim;
       *Free++ = FName;
       prim = (make_primitive ("SCODE-EVAL"));
-      Init_Prog = MAKE_POINTER_OBJECT (TC_PCOMB2, Free);
+      expr = (MAKE_POINTER_OBJECT (TC_PCOMB2, Free));
       *Free++ = prim;
-      *Free++ = MAKE_POINTER_OBJECT (TC_PCOMB1, Fasload_Call);
-      *Free++ = MAKE_OBJECT (GLOBAL_ENV, GO_TO_GLOBAL);
+      *Free++ = (MAKE_POINTER_OBJECT (TC_PCOMB1, inner_arg));
+      *Free++ = (MAKE_OBJECT (GLOBAL_ENV, GO_TO_GLOBAL));
       break;
 
     case BOOT_LOAD_BAND:	/* (LOAD-BAND <file>) */
       FName = (char_pointer_to_string ((unsigned char *) File_Name));
       prim = (make_primitive ("LOAD-BAND"));
-      Fasload_Call = Free;
+      inner_arg = Free;
       *Free++ = prim;
       *Free++ = FName;
-      Init_Prog = MAKE_POINTER_OBJECT (TC_PCOMB1, Fasload_Call);
+      expr = (MAKE_POINTER_OBJECT (TC_PCOMB1, inner_arg));
       break;
 
     case BOOT_GET_WORK:		/* ((GET-WORK)) */
       prim = (make_primitive ("GET-WORK"));
-      Fasload_Call = Free;
+      inner_arg = Free;
       *Free++ = prim;
       *Free++ = SHARP_F;
-      Init_Prog = MAKE_POINTER_OBJECT (TC_COMBINATION, Free);
-      *Free++ = MAKE_OBJECT (TC_MANIFEST_VECTOR, 1);
-      *Free++ = MAKE_POINTER_OBJECT (TC_PCOMB1, Fasload_Call);
+      expr = (MAKE_POINTER_OBJECT (TC_COMBINATION, Free));
+      *Free++ = (MAKE_OBJECT (TC_MANIFEST_VECTOR, 1));
+      *Free++ = (MAKE_POINTER_OBJECT (TC_PCOMB1, inner_arg));
       break;
+
+    case BOOT_EXECUTE:
+      /* (SCODE-EVAL (INITIALIZE-C-COMPILED-BLOCK <file>) GLOBAL-ENV) */
+      FName = (char_pointer_to_string ((unsigned char *) File_Name));
+      prim = (make_primitive ("INITIALIZE-C-COMPILED-BLOCK"));
+      inner_arg = Free;
+      *Free++ = prim;
+      *Free++ = FName;
+      prim = (make_primitive ("SCODE-EVAL"));
+      expr = (MAKE_POINTER_OBJECT (TC_PCOMB2, Free));
+      *Free++ = prim;
+      *Free++ = (MAKE_POINTER_OBJECT (TC_PCOMB1, inner_arg));
+      *Free++ = (MAKE_OBJECT (GLOBAL_ENV, GO_TO_GLOBAL));
+      break;
+      
 
     default:
       fprintf (stderr, "Unknown boot time option: %d\n", Start_Prim);
@@ -375,7 +400,7 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
   Save_Cont ();
  Pushed ();
 
-  Store_Expression (Init_Prog);
+  Store_Expression (expr);
 
   /* Go to it! */
   if ((Stack_Pointer <= Stack_Guard) || (Free > MemTop))
