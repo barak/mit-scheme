@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.19 1990/11/19 22:50:15 cph Rel $
+$Id: lvalue.scm,v 4.20 1993/01/08 23:34:45 gjr Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -330,6 +330,10 @@ MIT in each case. |#
 		   (memq variable
 			 (block-bound-variables reference-block))))))))
 
+;; This is not in use anywhere!  What is it for? -- Arthur & GJR 1/93
+
+#|
+
 (define (lvalue/articulation-points lvalue)
   ;; This won't work if (memq lvalue (lvalue-backward-links lvalue))?
   (let ((articulation-points '())
@@ -376,3 +380,5 @@ MIT in each case. |#
     (for-each (lambda (lvalue) (lvalue-remove! lvalue number-tag))
 	      (cons lvalue (lvalue-backward-links lvalue)))
     articulation-points))
+
+|#
