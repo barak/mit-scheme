@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.10 1995/04/15 06:12:21 cph Exp $
+$Id: os2prm.scm,v 1.11 1995/04/15 06:29:04 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -131,12 +131,7 @@ MIT in each case. |#
 	 (time    (quotient  time 32))
 	 (month   (remainder time 16))
 	 (year    (quotient  time 16)))
-    (make-decoded-time (limit 0 (* twosecs 2) 59)
-		       (limit 0 minutes 59)
-		       (limit 0 hours 23)
-		       (limit 1 day 31)
-		       (limit 1 month 12)
-		       (+ 1980 year))))
+    (make-decoded-time (* twosecs 2) minutes hours day month (+ 1980 year))))
 
 (define (file-attributes filename)
   ((ucode-primitive file-info 1)
