@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.40 2000/01/13 05:07:14 cph Exp $
+$Id: ntscreen.c,v 1.41 2000/01/13 16:27:52 cph Exp $
 
 Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
@@ -1788,9 +1788,9 @@ flush_typeahead (SCREEN screen)
 /* The following handling of the keyboard is taken with only minor
    changes from Emacs 20.5.  */
 
-#define LP_REPEAT(lparam) ((lparam) & KF_REPEAT)
-#define LP_SCAN_CODE(lparam) (((lparam) & 0xff0000) >> 16)
-#define LP_EXTENDED(lparam) (((lparam) & KF_EXTENDED) != 0)
+#define LP_REPEAT(lparam)     ((lparam) & 0x0000ffff)
+#define LP_SCAN_CODE(lparam) (((lparam) & 0x00ff0000) >> 16)
+#define LP_EXTENDED(lparam)  (((lparam) & 0x01000000) != 0)
 
 /* GetKeyState and MapVirtualKey on Windows 95 do not actually distinguish
    between left and right keys as advertised.  We test for this
