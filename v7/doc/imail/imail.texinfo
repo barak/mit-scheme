@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.17 2000/08/07 01:37:19 cph Exp $
+@comment $Id: imail.texinfo,v 1.18 2000/11/28 18:42:05 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -27,8 +27,8 @@ Free Documentation License".
 
 @titlepage
 @title{IMAIL User's Manual}
-@subtitle Edition 1.1 for IMAIL Version 1.5
-@subtitle 6 August 2000
+@subtitle Edition 1.2 for IMAIL Version 1.5
+@subtitle 28 November 2000
 @author by Chris Hanson
 
 @page
@@ -817,12 +817,17 @@ they appear in the specified folder.
 @kindex o
 @findex imail-output
 @vindex imail-delete-after-output
+@vindex imail-output-default
 The @kbd{o} (@code{imail-output}) command copies the current message
-into a folder that you specify as a @acronym{URL}.  If the target folder
-doesn't exist, it is created first; in any case, the copied message is
-appended to the end of the folder.  The current message is flagged as
-@samp{filed}.  If the variable @code{imail-delete-after-output} is true,
-the message is also marked as deleted.
+into a folder that you specify as a @acronym{URL}.  The folder initially
+defaults to the current folder, unless you have set the variable
+@code{imail-output-default} to a different default; after the first
+message is output, the default folder becomes the one to which you last
+output a message.  If the target folder doesn't exist, it is created
+first; in any case, the copied message is appended to the end of the
+folder.  The current message is flagged as @samp{filed}.  If the
+variable @code{imail-delete-after-output} is true, the message is also
+marked as deleted.
 
 @kindex C
 @findex imail-copy-folder
