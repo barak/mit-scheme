@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lspcom.scm,v 1.148 1989/03/14 08:01:23 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lspcom.scm,v 1.149 1989/04/15 00:51:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -43,114 +43,150 @@
 
 ;;;; S-expression Commands
 
-(define-command ("^R Forward Sexp" (argument 1))
+(define-command forward-sexp
   "Move forward across one balanced expression.
 With argument, do this that many times."
-  (move-thing forward-sexp argument))
+  "p"
+  (lambda (argument)
+    (move-thing forward-sexp argument)))
 
-(define-command ("^R Backward Sexp" (argument 1))
+(define-command backward-sexp
   "Move backward across one balanced expression.
 With argument, do this that many times."
-  (move-thing backward-sexp argument))
+  "p"
+  (lambda (argument)
+    (move-thing backward-sexp argument)))
 
-(define-command ("^R Flash Forward Sexp" (argument 1))
+(define-command flash-sexp
   "Flash the char which ends the expression to the right of point.
-Shows you where \\[^R Forward Sexp] would go."
-  (mark-flash (forward-sexp (current-point) argument)
-	      (if (negative? argument) 'RIGHT 'LEFT)))
+Shows you where \\[forward-sexp] would go."
+  "p"
+  (lambda (argument)
+    (mark-flash (forward-sexp (current-point) argument)
+		(if (negative? argument) 'RIGHT 'LEFT))))
 
-(define-command ("^R Flash Backward Sexp" (argument 1))
+(define-command backward-flash-sexp
   "Flash the char which starts the expression to the left of point.
-Shows you where \\[^R Backward Sexp] would go."
-  (mark-flash (backward-sexp (current-point) argument)
-	      (if (negative? argument) 'LEFT 'RIGHT)))
+Shows you where \\[backward-sexp] would go."
+  "p"
+  (lambda (argument)
+    (mark-flash (backward-sexp (current-point) argument)
+		(if (negative? argument) 'LEFT 'RIGHT))))
 
-(define-command ("^R Kill Sexp" (argument 1))
+(define-command kill-sexp
   "Kill the syntactic expression following the cursor.
 With argument, kill that many expressions after (or before) the cursor."
-  (kill-thing forward-sexp argument))
+  "p"
+  (lambda (argument)
+    (kill-thing forward-sexp argument)))
 
-(define-command ("^R Backward Kill Sexp" (argument 1))
+(define-command backward-kill-sexp
   "Kill the syntactic expression preceding the cursor.
 With argument, kill that many expressions before (or after) the cursor."
-  (kill-thing backward-sexp argument))
+  "p"
+  (lambda (argument)
+    (kill-thing backward-sexp argument)))
 
-(define-command ("^R Transpose Sexps" (argument 1))
+(define-command transpose-sexps
   "Transpose the sexps before and after point.
-See ^R Transpose Words, reading 'sexp' for 'word'."
-  (transpose-things forward-sexp argument))
+See \\[transpose-words], reading 'sexp' for 'word'."
+  "p"
+  (lambda (argument)
+    (transpose-things forward-sexp argument)))
 
-(define-command ("^R Mark Sexp" (argument 1))
+(define-command mark-sexp
   "Mark one or more sexps from point."
-  (mark-thing forward-sexp argument))
+  "p"
+  (lambda (argument)
+    (mark-thing forward-sexp argument)))
 
 ;;;; List Commands
 
-(define-command ("^R Forward List" (argument 1))
+(define-command forward-list
   "Move forward across one balanced group of parentheses.
 With argument, do this that many times."
-  (move-thing forward-list argument))
+  "p"
+  (lambda (argument)
+    (move-thing forward-list argument)))
 
-(define-command ("^R Backward List" (argument 1))
+(define-command backward-list
   "Move backward across one balanced group of parentheses.
 With argument, do this that many times."
-  (move-thing backward-list argument))
+  "p"
+  (lambda (argument)
+    (move-thing backward-list argument)))
 
-(define-command ("^R Forward Down List" (argument 1))
+(define-command down-list
   "Move forward down one level of parentheses.
 With argument, do this that many times.
 A negative argument means move backward but still go down a level."
-  (move-thing forward-down-list argument))
+  "p"
+  (lambda (argument)
+    (move-thing forward-down-list argument)))
 
-(define-command ("^R Backward Down List" (argument 1))
+(define-command backward-down-list
   "Move backward down one level of parentheses.
 With argument, do this that many times.
 A negative argument means move forward but still go down a level."
-  (move-thing backward-down-list argument))
+  "p"
+  (lambda (argument)
+    (move-thing backward-down-list argument)))
 
-(define-command ("^R Forward Up List" (argument 1))
+(define-command up-list
   "Move forward out one level of parentheses.
 With argument, do this that many times.
 A negative argument means move backward but still to a less deep spot."
-  (move-thing forward-up-list argument))
+  "p"
+  (lambda (argument)
+    (move-thing forward-up-list argument)))
 
-(define-command ("^R Backward Up List" (argument 1))
+(define-command backward-up-list
   "Move backward out one level of parentheses.
 With argument, do this that many times.
 A negative argument means move forward but still to a less deep spot."
-  (move-thing backward-up-list argument))
-
+  "p"
+  (lambda (argument)
+    (move-thing backward-up-list argument)))
+
 ;;;; Definition Commands
 
-(define-command ("^R Beginning of Definition" (argument 1))
+(define-command beginning-of-definition
   "Move to beginning of this or previous definition.
 Leaves the mark behind, in case typed by accident.
 With a negative argument, moves forward to the beginning of a definition.
 The beginning of a definition is determined by Definition Start."
-  (move-thing backward-definition-start argument))
+  "p"
+  (lambda (argument)
+    (move-thing backward-definition-start argument)))
 
-(define-command ("^R End of Definition" (argument 1))
+(define-command end-of-definition
   "Move to end of this or next definition.
 Leaves the mark behind, in case typed by accident.
 With argument of 2, finds end of following definition.
 With argument of -1, finds end of previous definition, etc."
-  (move-thing forward-definition-end (if (zero? argument) 1 argument)))
+  "p"
+  (lambda (argument)
+    (move-thing forward-definition-end (if (zero? argument) 1 argument))))
 
-(define-command ("^R Mark Definition")
+(define-command mark-definition
   "Put mark at end of definition, point at beginning."
-  (let ((point (current-point)))
-    (let ((end (forward-definition-end point 1 'ERROR)))
-      (let ((start (backward-definition-start end 1 'ERROR)))
-	(push-current-mark! point)
-	(push-current-mark! end)
-	(set-current-point!
-	 (or (re-search-backward "^\n" start (mark-1+ start))
-	     start))))))
+  ()
+  (lambda ()
+    (let ((point (current-point)))
+      (let ((end (forward-definition-end point 1 'ERROR)))
+	(let ((start (backward-definition-start end 1 'ERROR)))
+	  (push-current-mark! point)
+	  (push-current-mark! end)
+	  (set-current-point!
+	   (or (re-search-backward "^\n" start (mark-1+ start))
+	       start)))))))
 
-(define-command ("^R Reposition Window")
+(define-command align-definition
   "Reposition window so current definition is at the top.
 If this would place point off screen, nothing happens."
-  (reposition-window-top (current-definition-start)))
+  ()
+  (lambda ()
+    (reposition-window-top (current-definition-start))))
 
 (define (current-definition-start)
   (let ((point (current-point)))
@@ -160,24 +196,30 @@ If this would place point off screen, nothing happens."
 
 ;;;; Miscellaneous Commands
 
-(define-command ("^R Lisp Insert Paren" (argument 1))
+(define-command lisp-insert-paren
   "Insert one or more close parens, flashing the matching open paren."
-  (insert-chars (current-command-char) argument)
-  (if (positive? argument)
-      (let ((point (current-point)))
-	(if (and (not (mark-left-char-quoted? point))
-		 (not (keyboard-active? 5)))
-	    (mark-flash (backward-one-sexp point) 'RIGHT)))))
+  "p"
+  (lambda (argument)
+    (insert-chars (current-command-char) argument)
+    (if (positive? argument)
+	(let ((point (current-point)))
+	  (if (and (not (mark-left-char-quoted? point))
+		   (not (keyboard-active? 5)))
+	      (mark-flash (backward-one-sexp point) 'RIGHT))))))
 
-(define-command ("^R Indent for Lisp" argument)
+(define-command lisp-indent-line
   "Indent current line as lisp code.
 With argument, indent any additional lines of the same expression
 rigidly along with this one."
-  (lisp-indent-line argument))
+  "P"
+  (lambda (#!optional argument)
+    (lisp-indent-line (and (not (default-object? argument)) argument))))
 
-(define-command ("^R Indent Sexp")
+(define-command indent-sexp
   "Indent each line of the expression starting just after the point."
-  (lisp-indent-sexp (current-point)))
+  "d"
+  (lambda (mark)
+    (lisp-indent-sexp mark)))
 
 ;;;; Motion Covers
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.79 1989/03/30 16:40:07 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.80 1989/04/15 00:52:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -99,7 +99,7 @@
 		    (set! new-flag (screen-in-update? screen))
 		    (set-screen-in-update?! screen old-flag)
 		    ((screen-operation/finish-update! screen) screen)))))
-
+
 (define (screen-x-size screen)
   ((screen-operation/x-size screen) screen))
 

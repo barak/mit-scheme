@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.128 1989/03/15 19:09:51 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.129 1989/04/15 00:47:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -60,14 +60,14 @@
   backed-up?
   modification-time
   )
-(define-variable "Buffer Creation Hook"
+(define-variable buffer-creation-hook
   "If not false, a procedure to call when a new buffer is created.
 The procedure is passed the new buffer as its argument.
 The buffer is guaranteed to be deselected at that time."
   false)
 
 (define (make-buffer name #!optional mode)
-  (let ((mode (if (default-object? mode) fundamental-mode mode)))
+  (let ((mode (if (default-object? mode) (ref-mode-object fundamental) mode)))
     (let ((group (region-group (string->region ""))))
       (let ((buffer (%make-buffer)))
 	(vector-set! buffer buffer-index:name name)
@@ -79,7 +79,7 @@ The buffer is guaranteed to be deselected at that time."
 	    (enable-group-undo! group))
 	(vector-set! buffer
 		     buffer-index:mark-ring
-		     (make-ring (ref-variable "Mark Ring Maximum")))
+		     (make-ring (ref-variable mark-ring-maximum)))
 	(ring-push! (buffer-mark-ring buffer) (group-start-mark group))
 	(vector-set! buffer buffer-index:modes (list mode))
 	(vector-set! buffer buffer-index:comtabs (mode-comtabs mode))
@@ -97,7 +97,7 @@ The buffer is guaranteed to be deselected at that time."
 	(vector-set! buffer buffer-index:save-length 0)
 	(vector-set! buffer buffer-index:backed-up? false)
 	(vector-set! buffer buffer-index:modification-time false)
-	(let ((hook (ref-variable "Buffer Creation Hook")))
+	(let ((hook (ref-variable buffer-creation-hook)))
 	  (if hook (hook buffer)))
 	buffer))))
 
@@ -314,35 +314,29 @@ The buffer is guaranteed to be deselected at that time."
 
 ;;;; Local Bindings
 
-(define (make-local-binding! name #!optional new-value)
+(define (make-local-binding! variable new-value)
   (without-interrupts
    (lambda ()
      (let ((buffer (current-buffer))
-	   (value (lexical-assignment variable-environment
-				      name
-				      (if (default-object? new-value)
-					  (unmap-reference-trap
-					   (make-unassigned-reference-trap))
-					  new-value))))
+	   (old-value (variable-value variable)))
+       (set-variable-value! variable new-value)
        (let ((bindings (buffer-local-bindings buffer)))
-	 (let ((binding (assq name bindings)))
+	 (let ((binding (assq variable bindings)))
 	   (if (not binding)
 	       (vector-set! buffer
 			    buffer-index:local-bindings
-			    (cons (cons name value) bindings))))))
+			    (cons (cons variable old-value) bindings))))))
      unspecific)))
 
-(define (unmake-local-binding! name)
+(define (unmake-local-binding! variable)
   (without-interrupts
    (lambda ()
      (let ((buffer (current-buffer)))
        (let ((bindings (buffer-local-bindings buffer)))
-	 (let ((binding (assq name bindings)))
+	 (let ((binding (assq variable bindings)))
 	   (if binding
 	       (begin
-		 (lexical-assignment variable-environment
-				     name
-				     (cdr binding))
+		 (set-variable-value! variable (cdr binding))
 		 (vector-set! buffer
 			      buffer-index:local-bindings
 			      (delq! binding bindings)))))))
@@ -353,9 +347,7 @@ The buffer is guaranteed to be deselected at that time."
    (lambda ()
      (let ((buffer (current-buffer)))
        (for-each (lambda (binding)
-		   (lexical-assignment variable-environment
-				       (car binding)
-				       (cdr binding)))
+		   (set-variable-value! (car binding) (cdr binding)))
 		 (buffer-local-bindings buffer))
        (vector-set! buffer buffer-index:local-bindings '()))
      unspecific)))
@@ -363,10 +355,10 @@ The buffer is guaranteed to be deselected at that time."
 (define (%wind-local-bindings! buffer)
   ;; Assumes that interrupts are disabled and that BUFFER is selected.
   (for-each (lambda (binding)
-	      (set-cdr! binding
-			(lexical-assignment variable-environment
-					    (car binding)
-					    (cdr binding)))
+	      (let ((variable (car binding)))
+		(let ((old-value (variable-value variable)))
+		  (set-variable-value! variable (cdr binding))
+		  (set-cdr! binding old-value)))
 	      unspecific)
 	    (buffer-local-bindings buffer)))
 ;;;; Modes

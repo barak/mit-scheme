@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.46 1989/03/14 08:02:02 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.47 1989/04/15 00:52:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -74,7 +74,7 @@
 
 (define (compile-pattern regexp)
   ;; Incredible hair here to prevent excessive consing.
-  ((if (ref-variable "Case Fold Search") cdr car)
+  ((if (ref-variable case-fold-search) cdr car)
    (cdr (or (assq regexp pattern-cache)
 	    (let ((entry
 		   (cons regexp
@@ -86,10 +86,10 @@
 	      entry)))))
 
 (define (compile-char char)
-  (re-compile-char char (ref-variable "Case Fold Search")))
+  (re-compile-char char (ref-variable case-fold-search)))
 
 (define (compile-string string)
-  (re-compile-string string (ref-variable "Case Fold Search")))
+  (re-compile-string string (ref-variable case-fold-search)))
 
 ;;;; Search
 
@@ -122,8 +122,8 @@
   (%re-finish group
 	      ((ucode-primitive re-search-buffer-forward)
 	       pattern
-	       (re-translation-table (ref-variable "Case Fold Search"))
-	       (syntax-table/entries (ref-variable "Syntax Table"))
+	       (re-translation-table (ref-variable case-fold-search))
+	       (syntax-table/entries (ref-variable syntax-table))
 	       registers
 	       group start end)))
 
@@ -140,8 +140,8 @@
   (%re-finish group
 	      ((ucode-primitive re-search-buffer-backward)
 	       pattern
-	       (re-translation-table (ref-variable "Case Fold Search"))
-	       (syntax-table/entries (ref-variable "Syntax Table"))
+	       (re-translation-table (ref-variable case-fold-search))
+	       (syntax-table/entries (ref-variable syntax-table))
 	       registers
 	       group end start)))
 
@@ -197,8 +197,8 @@
   (%re-finish group
 	      ((ucode-primitive re-match-buffer)
 	       pattern
-	       (re-translation-table (ref-variable "Case Fold Search"))
-	       (syntax-table/entries (ref-variable "Syntax Table"))
+	       (re-translation-table (ref-variable case-fold-search))
+	       (syntax-table/entries (ref-variable syntax-table))
 	       registers
 	       group start end)))
 

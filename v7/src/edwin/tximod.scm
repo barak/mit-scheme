@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tximod.scm,v 1.10 1989/03/14 08:03:31 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tximod.scm,v 1.11 1989/04/15 00:53:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,33 +41,33 @@
 
 (declare (usual-integrations))
 
-(define-command ("Texinfo Mode")
+(define-command texinfo-mode
   "Make the current mode be Texinfo mode."
-  (set-current-major-mode! texinfo-mode))
+  ()
+  (lambda ()
+    (set-current-major-mode! (ref-mode-object texinfo))))
 
-(define-major-mode "Texinfo" "Text"
+(define-major-mode texinfo text "Texinfo"
   "Major mode for editing texinfo files.
 These are files that are input for TeX and also to be turned
-into Info files by \\[Texinfo Format Buffer].
+into Info files by \\[texinfo-format-buffer].
 These files must be written in a very restricted and
 modified version of TeX input format."
-  (local-set-variable! "Syntax Table" texinfo-mode:syntax-table)
-  (local-set-variable! "Fill Column" 75)
-  (local-set-variable! "Require Final Newline" true)
-  (local-set-variable! "Page Delimiter"
+  (local-set-variable! syntax-table texinfo-mode:syntax-table)
+  (local-set-variable! fill-column 75)
+  (local-set-variable! require-final-newline true)
+  (local-set-variable! page-delimiter
 		       (string-append "^@node\\|"
-				      (ref-variable "Page Delimiter")))
-  (local-set-variable! "Paragraph Start"
+				      (ref-variable page-delimiter)))
+  (local-set-variable! paragraph-start
 		       (string-append "^\\|^@[a-z]*[ \n]\\|"
-				      (ref-variable "Paragraph Start")))
-  (local-set-variable! "Paragraph Separate"
+				      (ref-variable paragraph-start)))
+  (local-set-variable! paragraph-separate
 		       (string-append "^\\|^@[a-z]*[ \n]\\|"
-				      (ref-variable "Paragraph Separate")))
-  (if (ref-variable "Texinfo Mode Hook") ((ref-variable "Texinfo Mode Hook"))))
+				      (ref-variable paragraph-separate)))
+  (if (ref-variable texinfo-mode-hook) ((ref-variable texinfo-mode-hook))))
 
-(define texinfo-mode:syntax-table
-  (make-syntax-table))
-
+(define texinfo-mode:syntax-table (make-syntax-table))
 (modify-syntax-entry! texinfo-mode:syntax-table #\" " ")
 (modify-syntax-entry! texinfo-mode:syntax-table #\\ " ")
 (modify-syntax-entry! texinfo-mode:syntax-table #\@ "\\")

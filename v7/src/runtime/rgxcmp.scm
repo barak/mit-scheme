@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rgxcmp.scm,v 1.99 1989/03/14 08:02:16 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rgxcmp.scm,v 1.100 1989/04/15 00:52:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -94,7 +94,7 @@
 
   ;; Matches any one character except for newline.
   any-char
-
+
   ;; Matches any one char belonging to specified set. First following
   ;; byte is # bitmap bytes.  Then come bytes for a bit-map saying
   ;; which chars are in.  Bits in each byte are ordered low-bit-first.
@@ -256,6 +256,9 @@
 (define-integrable stack-maximum-length
   re-number-of-registers)
 
+(define error-type:re-compile-pattern
+  (make-error-type '() "Error compiling regular expression:"))
+
 (define input-list)
 (define current-byte)
 (define translation-table)
@@ -291,7 +294,7 @@
 	      (if fixup-jump
 		  (store-jump! fixup-jump re-code:jump (output-position)))
 	      (if (not (stack-empty?))
-		  (error "Unmatched \\("))
+		  (error error-type:re-compile-pattern "Unmatched \\("))
 	      (list->string (map ascii->char (cdr output-head))))
 	    (begin
 	      (compile-pattern-char)
@@ -425,7 +428,7 @@
   ((vector-ref pattern-chars (input-peek-1))))
 
 (define (premature-end)
-  (error "Premature end of regular expression"))
+  (error error-type:re-compile-pattern "Premature end of regular expression"))
 
 (define (normal-char)
   (if (if (input-end?)
@@ -633,7 +636,7 @@
 (define-backslash-char #\(
   (lambda ()
     (if (stack-full?)
-	(error "Nesting too deep"))
+	(error error-type:re-compile-pattern "Nesting too deep"))
     (if (< register-number re-number-of-registers)
 	(begin
 	  (output-re-code! re-code:start-memory)
@@ -651,7 +654,7 @@
 (define-backslash-char #\)
   (lambda ()
     (if (stack-empty?)
-	(error "Unmatched close paren"))
+	(error error-type:re-compile-pattern "Unmatched close paren"))
     (if fixup-jump
 	(store-jump! fixup-jump re-code:jump (output-position)))
     (stack-pop!

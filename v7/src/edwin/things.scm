@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/things.scm,v 1.75 1989/03/14 08:03:22 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/things.scm,v 1.76 1989/04/15 00:53:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -171,8 +171,8 @@
 (define (compute-horizontal-space c1 c2 receiver)
   ;; Compute the number of tabs/spaces required to fill from column C1
   ;; to C2 with whitespace.  It is assumed that C1 >= C2.
-  (if (ref-variable "Indent Tabs Mode")
-      (let ((tab-width (ref-variable "Tab Width")))
+  (if (ref-variable indent-tabs-mode)
+      (let ((tab-width (ref-variable tab-width)))
 	(let ((qr1 (integer-divide c1 tab-width))
 	      (qr2 (integer-divide c2 tab-width)))
 	  (if (> (integer-divide-quotient qr1) (integer-divide-quotient qr2))

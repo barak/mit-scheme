@@ -48,7 +48,8 @@
   (char-history false read-only true))
 
 (define (make-editor name screen)
-  (let ((initial-buffer (make-buffer initial-buffer-name interaction-mode)))
+  (let ((initial-buffer
+	 (make-buffer initial-buffer-name (ref-mode-object interaction))))
     (let ((bufferset (make-bufferset initial-buffer)))
       (let ((frame
 	     (make-editor-frame screen

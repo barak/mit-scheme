@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modes.scm,v 1.21 1989/03/14 08:01:35 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modes.scm,v 1.22 1989/04/15 00:51:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -43,19 +43,23 @@
 
 (define-named-structure "Mode"
   name
+  display-name
   major?
   comtabs
   description
   initialization
   alist
   )
-(define (make-mode name major? comtabs description initialization)
-  (let ((mode (or (string-table-get editor-modes name)
-		  (let ((mode (%make-mode)))
-		    (vector-set! mode mode-index:comtabs (list (make-comtab)))
-		    (string-table-put! editor-modes name mode)
-		    mode))))
+(define (make-mode name major? display-name comtabs description initialization)
+  (let ((mode
+	 (let ((name (symbol->string name)))
+	   (or (string-table-get editor-modes name)
+	       (let ((mode (%make-mode)))
+		 (vector-set! mode mode-index:comtabs (list (make-comtab)))
+		 (string-table-put! editor-modes name mode)
+		 mode)))))
     (vector-set! mode mode-index:name name)
+    (vector-set! mode mode-index:display-name display-name)
     (vector-set! mode mode-index:major? major?)
     (set-cdr! (vector-ref mode mode-index:comtabs) comtabs)
     (vector-set! mode mode-index:description description)
@@ -70,9 +74,11 @@
   (make-string-table))
 
 (define (name->mode name)
-  (or (string-table-get editor-modes name)
-      (make-mode name
-		 true
-		 '()
-		 ""
-		 (lambda () (error "Undefined mode" name)))))
+  (let ((name (canonicalize-name name)))
+    (or (string-table-get editor-modes (symbol->string name))
+	(make-mode name
+		   true
+		   (symbol->string name)
+		   '()
+		   ""
+		   (lambda () (error "Undefined mode" name))))))

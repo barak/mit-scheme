@@ -3,11 +3,11 @@
 (if (not (name->package '(EDWIN)))
     (begin
       (load "edwin.bcon")
-      (load "macros" '(EDWIN MACROS))
-      (load "clsmac" '(EDWIN CLASS-MACROS))
-      (load "xform" '(EDWIN CLASS-MACROS TRANSFORM-INSTANCE-VARIABLES))
-      (load "class" '(EDWIN))
-      (load "clscon" '(EDWIN CLASS-CONSTRUCTOR))))
+      (load "macros.bin" '(EDWIN MACROS))
+      (load "clsmac.bin" '(EDWIN CLASS-MACROS))
+      (load "xform.bin" '(EDWIN CLASS-MACROS TRANSFORM-INSTANCE-VARIABLES))
+      (load "class.bin" '(EDWIN))
+      (load "clscon.bin" '(EDWIN CLASS-CONSTRUCTOR))))
 (load "decls")
 
 ;; Guarantee that the package modeller is loaded.

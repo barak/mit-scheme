@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/strtab.scm,v 1.39 1989/03/14 08:02:58 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/strtab.scm,v 1.40 1989/04/15 00:53:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -117,12 +117,19 @@
     (lambda (index) index false)))
 
 (define (string-table-complete table string
-			       if-unambiguous if-ambiguous if-not-found)
+			       if-unique if-not-unique if-not-found)
   (%string-table-complete table string
-    if-unambiguous
+    if-unique
     (lambda (close-match gcs lower upper)
-      lower upper			;ignore
-      (if-ambiguous close-match gcs))
+      (if-not-unique
+       (substring close-match 0 gcs)
+       (lambda ()
+	 (let loop ((index lower))
+	   (if (= index upper)
+	       '()
+	       (cons (string-table-entry-string
+		      (vector-ref (string-table-vector table) index))
+		     (loop (1+ index))))))))
     if-not-found))
 
 (define (string-table-completions table string)
@@ -140,55 +147,55 @@
       '())))
 
 (define (%string-table-complete table string
-				if-unambiguous if-ambiguous if-not-found)
+				if-unique if-not-unique if-not-found)
   (let ((size (string-length string))
-	(table-size (string-table-size table)))
-    (define (entry-string index)
-      (string-table-entry-string (vector-ref (string-table-vector table)
-					     index)))
-    (define (perform-search index)
-      (let ((close-match (entry-string index)))
-	(define (match-entry index)
-	  (string-match-forward-ci close-match (entry-string index)))
-
-	(define (scan-up gcs receiver)
-	  (define (loop gcs index)
-	    (if (= index table-size)
-		(receiver gcs table-size)
-		(let ((match (match-entry index)))
-		  (if (< match size)
-		      (receiver gcs index)
-		      (loop (min gcs match) (1+ index))))))
-	  (loop gcs (1+ index)))
-
-	(define (scan-down gcs receiver)
-	  (define (loop gcs index)
-	    (if (zero? index)
-		(receiver gcs 0)
-		(let ((new-index (-1+ index)))
-		  (let ((match (match-entry new-index)))
-		    (if (< match size)
-			(receiver gcs index)
-			(loop (min gcs match) new-index))))))
-	  (loop gcs index))
-
-	(if (string-prefix-ci? string close-match)
-	    (scan-up (string-length close-match)
-	      (lambda (gcs upper)
-		(scan-down gcs
-		  (lambda (gcs lower)
-		    (if (= lower (-1+ upper))
-			(if-unambiguous (entry-string lower))
-			(if-ambiguous close-match gcs lower upper))))))
-	    (if-not-found))))
-    (string-table-search table string
-      (lambda (index entry)
-	entry				;ignore
-	(perform-search index))
-      (lambda (index)
-	(if (= index table-size)
-	    (if-not-found)
-	    (perform-search index))))))
+	(table-size (string-table-size table))
+	(entry-string
+	 (lambda (index)
+	   (string-table-entry-string
+	    (vector-ref (string-table-vector table) index)))))
+    (let ((perform-search
+	   (lambda (index)
+	     (let ((close-match (entry-string index)))
+	       (let ((match-entry
+		      (lambda (index)
+			(string-match-forward-ci close-match
+						 (entry-string index)))))
+		 (define (scan-up gcs receiver)
+		   (let loop ((gcs gcs) (index (1+ index)))
+		     (if (= index table-size)
+			 (receiver gcs table-size)
+			 (let ((match (match-entry index)))
+			   (if (< match size)
+			       (receiver gcs index)
+			       (loop (min gcs match) (1+ index)))))))
+		 (define (scan-down gcs receiver)
+		   (let loop ((gcs gcs) (index index))
+		     (if (zero? index)
+			 (receiver gcs 0)
+			 (let ((new-index (-1+ index)))
+			   (let ((match (match-entry new-index)))
+			     (if (< match size)
+				 (receiver gcs index)
+				 (loop (min gcs match) new-index)))))))
+		 (if (string-prefix-ci? string close-match)
+		     (scan-up (string-length close-match)
+		       (lambda (gcs upper)
+			 (scan-down gcs
+			   (lambda (gcs lower)
+			     (if (= lower (-1+ upper))
+				 (if-unique (entry-string lower))
+				 (if-not-unique close-match
+						gcs lower upper))))))
+		     (if-not-found)))))))
+      (string-table-search table string
+	(lambda (index entry)
+	  entry				;ignore
+	  (perform-search index))
+	(lambda (index)
+	  (if (= index table-size)
+	      (if-not-found)
+	      (perform-search index)))))))
 
 (define (string-table-apropos table string)
   (let ((end (string-table-size table)))

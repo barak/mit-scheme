@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/pasmod.scm,v 1.40 1989/03/14 08:01:46 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/pasmod.scm,v 1.41 1989/04/15 00:51:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,26 +41,27 @@
 
 (declare (usual-integrations))
 
-(define-command ("Pascal Mode")
+(define-command pascal-mode
   "Enter Pascal mode."
-  (set-current-major-mode! pascal-mode))
+  ()
+  (lambda ()
+    (set-current-major-mode! (ref-mode-object pascal))))
 
-(define-major-mode "Pascal" "Fundamental"
+(define-major-mode pascal fundamental "Pascal"
   "Major mode specialized for editing Pascal code."
-  (local-set-variable! "Syntax Table" pascal-mode:syntax-table)
-  (local-set-variable! "Syntax Ignore Comments Backwards" true)
-  (local-set-variable! "Indent Line Procedure" ^r-pascal-indent-command)
-  (local-set-variable! "Comment Column" 32)
-  (local-set-variable! "Comment Locator Hook" pascal-comment-locate)
-  (local-set-variable! "Comment Indent Hook" pascal-comment-indentation)
-  (local-set-variable! "Comment Start" "(* ")
-  (local-set-variable! "Comment End" " *)")
-  (local-set-variable! "Paragraph Start" "^$")
-  (local-set-variable! "Paragraph Separate" (ref-variable "Paragraph Start"))
-  (local-set-variable! "Delete Indentation Right Protected" (char-set #\( #\[))
-  (local-set-variable! "Delete Indentation Left Protected" (char-set #\) #\]))
-  (if (ref-variable "Pascal Mode Hook")
-      ((ref-variable "Pascal Mode Hook"))))
+  (local-set-variable! syntax-table pascal-mode:syntax-table)
+  (local-set-variable! syntax-ignore-comments-backwards true)
+  (local-set-variable! indent-line-procedure (ref-command pascal-indent-line))
+  (local-set-variable! comment-column 32)
+  (local-set-variable! comment-locator-hook pascal-comment-locate)
+  (local-set-variable! comment-indent-hook pascal-comment-indentation)
+  (local-set-variable! comment-start "(* ")
+  (local-set-variable! comment-end " *)")
+  (local-set-variable! paragraph-start "^$")
+  (local-set-variable! paragraph-separate (ref-variable "Paragraph Start"))
+  (local-set-variable! delete-indentation-right-protected (char-set #\( #\[))
+  (local-set-variable! delete-indentation-left-protected (char-set #\) #\]))
+  (if (ref-variable pascal-mode-hook) ((ref-variable pascal-mode-hook))))
 
 (define pascal-mode:syntax-table (make-syntax-table))
 (modify-syntax-entry! pascal-mode:syntax-table #\( "()1 ")
@@ -88,40 +89,47 @@
     (if (line-start? start)
 	(indentation-of-previous-non-blank-line mark)
 	(max (1+ (mark-column start))
-	     (ref-variable "Comment Column")))))
+	     (ref-variable comment-column)))))
 
-(define-key "Pascal" #\C-\( "^R Pascal Shift Left")
-(define-key "Pascal" #\C-\) "^R Pascal Shift Right")
-(define-key "Pascal" #\Rubout "^R Backward Delete Hacking Tabs")
+(define-key 'pascal #\c-\( 'pascal-shift-left)
+(define-key 'pascal #\c-\) 'pascal-shift-right)
+(define-key 'pascal #\rubout 'backward-delete-char-untabify)
+(define-key 'pascal #\tab 'pascal-indent-line)
 
-(define-command ("^R Pascal Indent")
+(define-command pascal-indent-line
   "Indents the current line for Pascal code."
-  (let ((point (current-point)))
-    (let ((indentation (calculate-pascal-indentation point)))
-      (cond ((not (= indentation (current-indentation point)))
-	     (change-indentation indentation point))
-	    ((line-start? (horizontal-space-start point))
-	     (set-current-point! (horizontal-space-end point)))))))
+  ()
+  (lambda ()
+    (let ((point (current-point)))
+      (let ((indentation (calculate-pascal-indentation point)))
+	(cond ((not (= indentation (current-indentation point)))
+	       (change-indentation indentation point))
+	      ((line-start? (horizontal-space-start point))
+	       (set-current-point! (horizontal-space-end point))))))))
 
-(define-command ("^R Pascal Shift Right" (argument 1))
+(define-command pascal-shift-right
   "Shift the current line right by Pascal Shift Increment.
 With an argument, shifts right that many times."
-  (if (not (zero? argument))
-      (let ((mark (line-start (current-point) 0)))
-	(change-indentation (+ (current-indentation mark)
-			       (* argument
-				  (ref-variable "Pascal Shift Increment")))
-			    mark))))
+  "p"
+  (lambda (argument)
+    (if (not (zero? argument))
+	(let ((mark (line-start (current-point) 0)))
+	  (change-indentation (+ (current-indentation mark)
+				 (* argument
+				    (ref-variable pascal-shift-increment)))
+			      mark)))))
 
-(define-command ("^R Pascal Shift Left" (argument 1))
+(define-command pascal-shift-left
   "Shift the current line left by Pascal Shift Increment.
 With an argument, shifts left that many times."
-  (if (not (zero? argument))
-      (let ((mark (line-start (current-point) 0)))
-	(change-indentation (- (current-indentation mark)
-			       (* argument
-				  (ref-variable "Pascal Shift Increment")))
-			    mark))))
+  "p"
+  (lambda (argument)
+    (if (not (zero? argument))
+	(let ((mark (line-start (current-point) 0)))
+	  (change-indentation (- (current-indentation mark)
+				 (* argument
+				    (ref-variable pascal-shift-increment)))
+			      mark)))))
 
 (define (calculate-pascal-indentation mark)
   (let ((def-start
@@ -158,10 +166,10 @@ With an argument, shifts left that many times."
 		  0
 		  (let ((start (horizontal-space-end start)))
 		    (let ((indentation (mark-column start)))
-		      (if (and (ref-variable "Pascal Indentation Keywords")
+		      (if (and (ref-variable pascal-indentation-keywords)
 			       (re-match-forward
-				(ref-variable "Pascal Indentation Keywords")
+				(ref-variable pascal-indentation-keywords)
 				start))
 			  (+ indentation
-			     (ref-variable "Pascal Shift Increment"))
+			     (ref-variable pascal-shift-increment))
 			  indentation))))))))))

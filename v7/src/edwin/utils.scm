@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.11 1989/04/05 18:23:37 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.12 1989/04/15 00:53:57 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -55,6 +55,35 @@
       (substring-move-right! string2 start2 end2 result length1)
       result)))
 
+(define (string-greatest-common-prefix strings)
+  (let loop
+      ((strings (cdr strings))
+       (string (car strings))
+       (index (string-length (car strings))))
+    (if (null? strings)
+	(substring string 0 index)
+	(let ((string* (car strings)))
+	  (let ((index*
+		 (string-match-forward string string*)))
+	    (if (< index* index)
+		(loop (cdr strings) string* index*)
+		(loop (cdr strings) string index)))))))
+
+(define (xchar->name char)
+  (if (pair? char)
+      (chars->name char)
+      (char-name char)))
+
+(define (chars->name chars)
+  (if (null? chars)
+      ""
+      (string-append-separated (char-name (car chars))
+			       (chars->name (cdr chars)))))
+
+(define (string-append-separated x y)
+  (cond ((string-null? x) y)
+	((string-null? y) x)
+	(else (string-append x " " y))))
 (define (dotimes n procedure)
   (define (loop i)
     (if (< i n)
@@ -73,13 +102,15 @@
 
 (define char-set:not-graphic
   (char-set-invert char-set:graphic))
-
+
 (define (read-line #!optional port)
   (read-string char-set:return
 	       (if (default-object? port)
 		   (current-input-port)
 		   (guarantee-input-port port))))
 
+(define (read-from-string string)
+  (with-input-from-string string read))
 (define (y-or-n? . strings)
   (define (loop)
     (let ((char (char-upcase (read-char))))
@@ -105,13 +136,30 @@
 		 (let ((bits (char-bits char)))
 		   (if (odd? (quotient bits 2)) bits (+ bits 2))))))
 
+(define (char-controlified? char)
+  (or (ascii-controlified? char)
+      (odd? (quotient (char-bits char) 2))))
+
 (define (char-metafy char)
   (make-char (char-code char)
 	     (let ((bits (char-bits char)))
 	       (if (odd? bits) bits (1+ bits)))))
+
+(define-integrable (char-metafied? char)
+  (odd? (char-bits char)))
 
 (define (char-control-metafy char)
   (char-controlify (char-metafy char)))
 
 (define (char-base char)
   (make-char (char-code char) 0))
+
+(define (catch-file-errors if-error thunk)
+  (call-with-current-continuation
+   (lambda (continuation)
+     (bind-condition-handler
+	 (list error-type:file)
+	 (lambda (condition)
+	   condition
+	   (continuation (if-error)))
+       thunk))))

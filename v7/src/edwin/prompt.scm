@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.130 1989/03/14 08:01:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.131 1989/04/15 00:51:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,10 +41,14 @@
 
 (declare (usual-integrations))
 
-(define-variable "Enable Recursive Minibuffers"
+(define-variable enable-recursive-minibuffers
   "If true, allow minibuffers to invoke commands which use
 recursive minibuffers."
   false)
+
+(define-variable completion-auto-help
+  "*True means automatically provide help for invalid completion input."
+  true)
 
 (define typein-edit-abort-flag "Abort")
 
@@ -52,18 +56,19 @@ recursive minibuffers."
 (define typein-edit-depth)
 (define typein-saved-buffers)
 (define typein-saved-window)
+(define map-name/internal->external)
+(define map-name/external->internal)
 
 (define (initialize-typein!)
   (set! typein-edit-continuation false)
   (set! typein-edit-depth -1)
   (set! typein-saved-buffers '())
   (set! typein-saved-window)
+  (set! map-name/internal->external identity-procedure)
+  (set! map-name/external->internal identity-procedure)
   unspecific)
 
 (define (within-typein-edit thunk)
-  (if (and (not (ref-variable "Enable Recursive Minibuffers"))
-	   (typein-window? (current-window)))
-      (editor-error "Command attempted to use minibuffer while in minibuffer"))
   (let ((value
 	 (call-with-current-continuation
 	  (lambda (continuation)
@@ -107,22 +112,11 @@ recursive minibuffers."
 (define-integrable (within-typein-edit?)
   (not (false? typein-edit-continuation)))
 
-;;; The following are used by MESSAGE and friends.
-
-(define (set-message! message)
-  (let ((window (typein-window)))
-    (window-set-override-message! window message)
-    (window-direct-update! window true)))
-
-(define (clear-message!)
-  (let ((window (typein-window)))
-    (window-clear-override-message! window)
-    (window-direct-update! window true)))
-
-(define (update-typein!)
-  (window-direct-update! (typein-window) false))
-
-(define (prompt-for-typein prompt-string thunk)
+(define (prompt-for-typein prompt-string check-recursion? thunk)
+  (if (and check-recursion?
+	   (not (ref-variable enable-recursive-minibuffers))
+	   (typein-window? (current-window)))
+      (editor-error "Command attempted to use minibuffer while in minibuffer"))
   (within-typein-edit
    (lambda ()
      (insert-string prompt-string)
@@ -156,323 +150,524 @@ recursive minibuffers."
     (typein-edit-continuation (buffer-string (window-buffer window)))))
 
 (define-integrable (typein-string)
-  (buffer-string (current-buffer)))
+  (map-name/external->internal (buffer-string (current-buffer))))
 
 (define (set-typein-string! string #!optional update?)
   (let ((dont-update?
 	 (or (not (or (default-object? update?) update?))
 	     (window-needs-redisplay? (typein-window)))))
     (region-delete! (buffer-region (current-buffer)))
-    (insert-string string)
+    (insert-string (map-name/internal->external string))
     (if (not dont-update?) (update-typein!))))
+
+;;; The following are used by MESSAGE and friends.
 
-(define (set-typein-substring! string start end #!optional update?)
-  (let ((dont-update?
-	 (or (not (or (default-object? update?) update?))
-	     (window-needs-redisplay? (typein-window)))))
-    (region-delete! (buffer-region (current-buffer)))
-    (insert-substring string start end)
-    (if (not dont-update?) (update-typein!))))
+(define (set-message! message)
+  (let ((window (typein-window)))
+    (window-set-override-message! window message)
+    (window-direct-update! window true)))
+
+(define (clear-message!)
+  (let ((window (typein-window)))
+    (window-clear-override-message! window)
+    (window-direct-update! window true)))
+
+(define (update-typein!)
+  (window-direct-update! (typein-window) false))
+(define (temporary-typein-message string)
+  (let ((point) (start) (end))
+    (dynamic-wind (lambda ()
+		    (set! point (current-point))
+		    (set! end (buffer-end (current-buffer)))
+		    (set! start (mark-right-inserting end))
+		    (insert-string string start)
+		    (set-current-point! start))
+		  (lambda ()
+		    (sit-for 2000))
+		  (lambda ()
+		    (delete-string start end)
+		    (set-current-point! point)
+		    (set! point)
+		    (set! start)
+		    (set! end)
+		    unspecific))))
 
 ;;;; String Prompt
 
 (define *default-string*)
 (define *default-type*)
-(define *completion-string-table*)
-(define *completion-type*)
-(define *pop-up-window*)
+(define completion-procedure/complete-string)
+(define completion-procedure/list-completions)
+(define completion-procedure/verify-final-value?)
+(define *completion-confirm?*)
+
+(define (prompt-for-string prompt default-string #!optional default-type mode)
+  (fluid-let ((*default-string* default-string)
+	      (*default-type*
+	       (if (default-object? default-type)
+		   'VISIBLE-DEFAULT
+		   default-type)))
+    (%prompt-for-string prompt
+			(if (default-object? mode)
+			    (ref-mode-object minibuffer-local)
+			    mode))))
 
 (define (prompt-for-completed-string prompt
 				     default-string
 				     default-type
-				     completion-string-table
-				     completion-type
-				     #!optional mode)
+				     complete-string
+				     list-completions
+				     verify-final-value?
+				     require-match?)
   (fluid-let ((*default-string* default-string)
 	      (*default-type* default-type)
-	      (*completion-string-table* completion-string-table)
-	      (*completion-type* completion-type)
-	      (*pop-up-window* false))
-    (dynamic-wind
-     (lambda () unspecific)
+	      (completion-procedure/complete-string complete-string)
+	      (completion-procedure/list-completions list-completions)
+	      (completion-procedure/verify-final-value? verify-final-value?)
+	      (*completion-confirm?* (not (eq? require-match? true))))
+    (cleanup-pop-up-buffers
      (lambda ()
-       (prompt-for-typein
-	(string-append
-	 prompt
-	 (if (or (memq default-type
-		       '(NO-DEFAULT NULL-DEFAULT
-				    INVISIBLE-DEFAULT
-				    INSERTED-DEFAULT))
-		 (not default-string))
-	     ""
-	     (string-append " (Default is: \"" default-string "\")"))
-	 ": ")
-	(let ((thunk
-	       (typein-editor-thunk
-		(if (default-object? mode) prompt-for-string-mode mode))))
-	  (if (eq? default-type 'INSERTED-DEFAULT)
-	      (begin
-		(set! *default-string* false)
-		(lambda ()
-		  (insert-string default-string)
-		  ((thunk))))
-	      thunk))))
-     (lambda ()
-       (if (and *pop-up-window* (window-visible? *pop-up-window*))
-	   (window-delete! *pop-up-window*)
-	   (let ((buffer (find-buffer " *Completions*")))
-	     (if buffer
-		 (let ((windows (buffer-windows buffer)))
-		   (if (not (null? windows))
-		       (let ((replacement (other-buffer buffer)))
-			 (for-each (lambda (window)
-				     (set-window-buffer! window
-							 replacement
-							 false))
-				   windows)
-			 (bury-buffer buffer)))))))))))
+       (%prompt-for-string
+	prompt
+	(if require-match?
+	    (ref-mode-object minibuffer-local-must-match)
+	    (ref-mode-object minibuffer-local-completion)))))))
 
-(define (prompt-for-string prompt default-string #!optional default-type)
-  (prompt-for-completed-string prompt
-			       default-string
-			       (if (default-object? default-type)
-				   'VISIBLE-DEFAULT
-				   default-type)
-			       false
-			       'NO-COMPLETION))
+(define (%prompt-for-string prompt mode)
+  (prompt-for-typein
+   (string-append
+    prompt
+    (if (and *default-string* (eq? *default-type* 'VISIBLE-DEFAULT))
+	(string-append " (default is: \"" *default-string* "\")")
+	"")
+    ": ")
+   true
+   (let ((thunk (typein-editor-thunk mode)))
+     (if (eq? *default-type* 'INSERTED-DEFAULT)
+	 (let ((string *default-string*))
+	   (set! *default-string* false)
+	   (lambda ()
+	     (insert-string string)
+	     ((thunk))))
+	 thunk))))
+
+(define (prompt-for-number prompt default)
+  (let ((string
+	 (prompt-for-string prompt
+			    (and default (number->string default)))))
+    (or (string->number string)
+	(editor-error "Input string not a number: \"" string "\""))))
 
-(define (prompt-for-string-table-value prompt string-table)
+(define (prompt-for-string-table-name prompt
+				      default-string
+				      default-type
+				      string-table
+				      require-match?)
+  (prompt-for-completed-string
+   prompt
+   default-string
+   default-type
+   (lambda (string if-unique if-not-unique if-not-found)
+     (string-table-complete string-table
+			    string
+			    if-unique
+			    if-not-unique
+			    if-not-found))
+   (lambda (string)
+     (string-table-completions string-table string))
+   (lambda (string)
+     (string-table-get string-table string))
+   require-match?))
+
+(define (prompt-for-string-table-value prompt
+				       default-string
+				       default-type
+				       string-table
+				       require-match?)
   (string-table-get string-table
-		    (prompt-for-completed-string prompt
-						 false
-						 'NO-DEFAULT
-						 string-table
-						 'STRICT-COMPLETION)))
+		    (prompt-for-string-table-name prompt
+						  default-string
+						  default-type
+						  string-table
+						  require-match?)))
 
 (define (prompt-for-alist-value prompt alist)
-  (prompt-for-string-table-value prompt (alist->string-table alist)))
+  (fluid-let ((map-name/external->internal identity-procedure)
+	      (map-name/internal->external identity-procedure))
+    (prompt-for-string-table-value prompt
+				   false
+				   'NO-DEFAULT
+				   (alist->string-table alist)
+				   true)))
 
 (define (prompt-for-command prompt)
-  (prompt-for-string-table-value prompt editor-commands))
+  (fluid-let ((map-name/external->internal editor-name/external->internal)
+	      (map-name/internal->external editor-name/internal->external))
+    (prompt-for-string-table-value prompt
+				   false
+				   'NO-DEFAULT
+				   editor-commands
+				   true)))
 
 (define (prompt-for-variable prompt)
-  (prompt-for-string-table-value prompt editor-variables))
+  (fluid-let ((map-name/external->internal editor-name/external->internal)
+	      (map-name/internal->external editor-name/internal->external))
+    (prompt-for-string-table-value prompt
+				   false
+				   'NO-DEFAULT
+				   editor-variables
+				   true)))
 
-;;;; PROMPT-FOR-STRING Mode
+;;;; String Prompt Modes
 
-(define-major-mode "Prompt for String" "Fundamental"
+(define-major-mode minibuffer-local fundamental #f
   "Major mode for editing solicited input strings.
-Depending on what is being solicited, either defaulting or completion
-may be available.  The following commands are special to this mode:
+The following commands are special to this mode:
 
-\\[^R Terminate Input] terminates the input.
-\\[^R Yank Default String] yanks the default string, if there is one.
-\\[^R Complete Input] completes as much of the input as possible.
-\\[^R Complete Input Space] completes up to the next space.
-\\[^R List Completions] displays possible completions of the input.")
+\\[exit-minibuffer] terminates the input.
+\\[minibuffer-yank-default] yanks the default string, if there is one.")
 
-(define-key "Prompt for String" #\Return "^R Terminate Input")
-(define-key "Prompt for String" #\C-M-Y "^R Yank Default String")
-(define-key "Prompt for String" #\Tab "^R Complete Input")
-(define-key "Prompt for String" #\Space "^R Complete Input Space")
-(define-key "Prompt for String" #\? "^R List Completions")
+(define-key 'minibuffer-local #\return 'exit-minibuffer)
+(define-key 'minibuffer-local #\linefeed 'exit-minibuffer)
+(define-key 'minibuffer-local #\c-m-y 'minibuffer-yank-default)
 
-(define-command ("^R Yank Default String")
-  "Insert the default string at point."
-  (if *default-string*
-      (insert-string *default-string*)
-      (editor-failure)))
+(define-major-mode minibuffer-local-completion fundamental #f
+  "Major mode for editing solicited input strings.
+The following commands are special to this mode:
 
-(define-command ("^R Complete Input")
-  "Attempt to complete the current input string."
-  (cond ((not *completion-string-table*)
-	 ;; Effectively, this means do what would be done if this
-	 ;; command was not defined by this mode.
-	 (dispatch-on-command (comtab-entry (cdr (current-comtabs))
-					    (current-command-char))))
-	((not (complete-input-string *completion-string-table* true))
-	 (editor-failure))))
+\\[exit-minibuffer] terminates the input.
+\\[minibuffer-yank-default] yanks the default string, if there is one.
+\\[minibuffer-complete] completes as much of the input as possible.
+\\[minibuffer-complete-word] completes up to the next space.
+\\[minibuffer-completion-help] displays possible completions of the input.")
 
-(define-command ("^R Complete Input Space")
-  "Attempt to complete the input string, up to the next space."
-  (cond ((not *completion-string-table*)
-	 (dispatch-on-command (comtab-entry (cdr (current-comtabs))
-					    (current-command-char))))
-	((not (complete-input-string-to-char *completion-string-table*
-					     #\Space))
-	 (editor-failure))))
-
-(define-command ("^R List Completions")
-  "List the possible completions for the given input."
-  (if *completion-string-table*
-      (list-completions
-       (string-table-completions *completion-string-table* (typein-string)))
-      (^r-insert-self-command)))
+(define-key 'minibuffer-local-completion #\return 'exit-minibuffer)
+(define-key 'minibuffer-local-completion #\linefeed 'exit-minibuffer)
+(define-key 'minibuffer-local-completion #\c-m-y 'minibuffer-yank-default)
+(define-key 'minibuffer-local-completion #\tab 'minibuffer-complete)
+(define-key 'minibuffer-local-completion #\space 'minibuffer-complete-word)
+(define-key 'minibuffer-local-completion #\? 'minibuffer-completion-help)
 
-(define (list-completions strings)
-  (let ((window
-	 (with-output-to-temporary-buffer " *Completions*"
-	   (lambda ()
-	     (if (null? strings)
-		 (write-string
-		  "There are no valid completions for this input.")
-		 (begin
-		   (write-string "Possible completions:")
-		   (newline)
-		   (write-strings-densely strings)))))))
-    (if (not *pop-up-window*)
-	(set! *pop-up-window* window)))
-  unspecific)
+(define-major-mode minibuffer-local-must-match fundamental #f
+  "Major mode for editing solicited input strings.
+The following commands are special to this mode:
 
-(define-command ("^R Terminate Input")
-  "Terminate the input string.
-If defaulting is in effect, and there is no input, use the default.
-If completion is in effect, then:
-  If completion is cautious, return only if the input is completed.
-  If completion is strict, don't return unless the input completes."
-  (let ((string (typein-string)))
-    (cond ((string-null? string)
-	   (cond ((eq? *default-type* 'NULL-DEFAULT)
-		  (exit-typein-edit))
-		 ((or (eq? *default-type* 'NO-DEFAULT)
-		      (not *default-string*))
-		  (if (and (eq? *completion-type* 'STRICT-COMPLETION)
-			   (complete-input-string *completion-string-table*
-						  false))
-		      (exit-typein-edit)
-		      (begin
-			(update-typein!)
-			(editor-failure))))
-		 (else
-		  (set-typein-string! *default-string* false)
-		  (exit-typein-edit))))
-	  ((eq? *completion-type* 'CAUTIOUS-COMPLETION)
-	   (if (string-table-get *completion-string-table* string)
-	       (exit-typein-edit)
-	       (editor-failure)))
-	  ((eq? *completion-type* 'STRICT-COMPLETION)
-	   (if (complete-input-string *completion-string-table* false)
-	       (exit-typein-edit)
-	       (begin
-		 (update-typein!)
-		 (editor-failure))))
+\\[minibuffer-complete-and-exit] terminates the input.
+\\[minibuffer-yank-default] yanks the default string, if there is one.
+\\[minibuffer-complete] completes as much of the input as possible.
+\\[minibuffer-complete-word] completes up to the next space.
+\\[minibuffer-completion-help] displays possible completions of the input.")
+
+(define-key 'minibuffer-local-must-match #\return
+  'minibuffer-complete-and-exit)
+(define-key 'minibuffer-local-must-match #\linefeed
+  'minibuffer-complete-and-exit)
+(define-key 'minibuffer-local-must-match #\c-m-y 'minibuffer-yank-default)
+(define-key 'minibuffer-local-must-match #\tab 'minibuffer-complete)
+(define-key 'minibuffer-local-must-match #\space 'minibuffer-complete-word)
+(define-key 'minibuffer-local-must-match #\? 'minibuffer-completion-help)
+
+(define-command exit-minibuffer
+  "Terminate this minibuffer argument."
+  ()
+  (lambda ()
+    (cond ((or (not (string-null? (typein-string)))
+	       (memq *default-type* '(NULL-DEFAULT INSERTED-DEFAULT)))
+	   (exit-typein-edit))
+	  ((or (not *default-string*)
+	       (eq? *default-type* 'NO-DEFAULT))
+	   (editor-failure))
 	  (else
+	   (if (and (memq *default-type* '(INVISIBLE-DEFAULT VISIBLE-DEFAULT))
+		    *default-string*)
+	       (set-typein-string! *default-string* false))
 	   (exit-typein-edit)))))
+
+(define-command minibuffer-yank-default
+  "Insert the default string at point."
+  ()
+  (lambda ()
+    (if *default-string*
+	(insert-string *default-string*)
+	(editor-failure))))
+
+(define-command minibuffer-complete
+  "Complete the minibuffer contents as far as possible."
+  ()
+  (lambda ()
+    (case (complete-input-string completion-procedure/complete-string true)
+      ((WAS-ALREADY-EXACT-AND-UNIQUE-COMPLETION)
+       (temporary-typein-message " [Sole completion]"))
+      ((WAS-ALREADY-EXACT-COMPLETION)
+       (temporary-typein-message " [Complete, but not unique]")))))
+
+(define-command minibuffer-complete-word
+  "Complete the minibuffer contents at most a single word."
+  ()
+  (lambda ()
+    (case (complete-input-string completion-procedure/complete-word true)
+      ((WAS-ALREADY-EXACT-AND-UNIQUE-COMPLETION)
+       (temporary-typein-message " [Sole completion]"))
+      ((WAS-ALREADY-EXACT-COMPLETION)
+       (temporary-typein-message " [Complete, but not unique]")))))
+
+(define-command minibuffer-completion-help
+  "Display a list of possible completions of the current minibuffer contents."
+  ()
+  (lambda ()
+    (minibuffer-completion-help
+     (lambda ()
+       (completion-procedure/list-completions (typein-string))))))
+
+(define (minibuffer-completion-help list-completions)
+  (let ((window (typein-window)))
+    (window-set-override-message! window "Making completion list...")
+    (window-direct-update! window true)
+    (let ((completions (list-completions)))
+      (window-clear-override-message! window)
+      (if (null? completions)
+	  (begin
+	   (editor-beep)
+	   (temporary-typein-message " [No completions]"))
+	  (write-completions-list
+	   (map map-name/internal->external completions))))))
+
+(define-command minibuffer-complete-and-exit
+  "Complete the minibuffer contents, and maybe exit.
+Exit if the name is valid with no completion needed.
+If name was completed to a valid match,
+a repetition of this command will exit."
+  ()
+  (lambda ()
+    (let ((string (typein-string)))
+      (if (and (string-null? string)
+	       (memq *default-type* '(INVISIBLE-DEFAULT VISIBLE-DEFAULT))
+	       *default-string*)
+	  (set-typein-string! *default-string* false))
+      (case (complete-input-string completion-procedure/complete-string false)
+	((WAS-ALREADY-EXACT-AND-UNIQUE-COMPLETION
+	  WAS-ALREADY-EXACT-COMPLETION)
+	 (exit-typein-edit))
+	((COMPLETED-TO-EXACT-AND-UNIQUE-COMPLETION
+	  COMPLETED-TO-EXACT-COMPLETION)
+	 (if *completion-confirm?*
+	     (temporary-typein-message " [Confirm]")
+	     (exit-typein-edit)))
+	(else
+	 (update-typein!)
+	 (editor-failure))))))
 
 ;;;; Completion Primitives
 
-(define (complete-input-string string-table update?)
-  (string-table-complete string-table (typein-string)
-    (lambda (string) (set-typein-string! string update?))
-    (lambda (string limit) (set-typein-substring! string 0 limit update?))
-    (lambda () unspecific))
-  (string-table-get string-table (typein-string)))
-
-(define (complete-input-string-to-char string-table char)
+(define (complete-input-string complete-string update?)
   (let ((original (typein-string)))
-    (string-table-complete-to-char string-table original char
-      (lambda (string limit)
-	(if (> limit (string-length original))
-	    (set-typein-substring! string 0 limit))
-	true)
-      (lambda (string limit)
-	(and (> limit (string-length original))
-	     (begin
-	       (set-typein-substring! string 0 limit)
-	       true)))
-      (lambda () false))))
+    (complete-string original
+      (lambda (string)
+	(if (not (string=? string original))
+	    (set-typein-string! string update?))
+	(if (string-ci=? string original)
+	    'WAS-ALREADY-EXACT-AND-UNIQUE-COMPLETION
+	    'COMPLETED-TO-EXACT-AND-UNIQUE-COMPLETION))
+      (lambda (string list-completions)
+	(if (not (string=? string original))
+	    (set-typein-string! string update?))
+	(if (completion-procedure/verify-final-value? string)
+	    (if (string-ci=? string original)
+		'WAS-ALREADY-EXACT-COMPLETION
+		'COMPLETED-TO-EXACT-COMPLETION)
+	    (if (string-ci=? string original)
+		(begin
+		  (if (ref-variable completion-auto-help)
+		      (minibuffer-completion-help list-completions)
+		      (temporary-typein-message " [Next char not unique]"))
+		  'NO-COMPLETION-HAPPENED)
+		'SOME-COMPLETION-HAPPENED)))
+      (lambda ()
+	(editor-beep)
+	(temporary-typein-message " [No match]")
+	'NO-MATCH))))
 
-(define (string-table-complete-to-char string-table string char if-unambiguous
-				       if-ambiguous if-not-found)
-  (string-table-complete string-table string
-    (lambda (new-string)
-      (if-unambiguous
-       new-string
-       (let ((end (string-length new-string)))
-	 (let ((index
-		(substring-find-next-char new-string (string-length string)
-					  end char)))
-	   (if index
-	       (1+ index)
-	       end)))))
-    (lambda (new-string limit)
-      (let ((index (substring-find-next-char new-string (string-length string)
-					     limit char)))
-	(if index
-	    (if-unambiguous new-string (1+ index))
-	    (let ((string (string-append-char string char)))
-	      (string-table-complete string-table string
-		(lambda (new-string)
-		  (if-unambiguous new-string (string-length string)))
-		(lambda (new-string limit)
-		  limit			;ignore
-		  (if-ambiguous new-string (string-length string)))
-		(lambda ()
-		  (if-ambiguous new-string limit)))))))
-    if-not-found))
+(define (write-completions-list strings)
+  (with-output-to-temporary-buffer " *Completions*"
+    (lambda ()
+      (if (null? strings)
+	  (write-string
+	   "There are no possible completions of what you have typed.")
+	  (begin
+	    (write-string "Possible completions are:\n")
+	    (write-strings-densely (sort strings string<?)))))))
+
+(define (completion-procedure/complete-word string
+					    if-unique
+					    if-not-unique
+					    if-not-found)
+  (let ((truncate-string
+	 (lambda (new-string)
+	   (let ((end (string-length new-string)))
+	     (let ((index
+		    (substring-find-next-char-not-of-syntax
+		     new-string
+		     (string-length string)
+		     end
+		     #\w)))	       (if index
+		   (substring new-string 0 (1+ index))
+		   new-string))))))
+    (let ((if-unique
+	   (lambda (new-string)
+	     (if-unique (truncate-string new-string))))
+	  (if-not-unique
+	   (lambda (new-string list-completions)
+	     (if-not-unique (truncate-string new-string) list-completions))))
+      (completion-procedure/complete-string string
+	if-unique
+	(lambda (new-string list-completions)
+	  (if (= (string-length new-string) (string-length string))
+	      (let ((completions (list-completions)))
+		(let ((try-suffix
+		       (lambda (suffix if-not-found)
+			 (let ((completions
+				(list-transform-positive completions
+				  (let ((prefix (string-append string suffix)))
+				    (lambda (completion)
+				      (string-prefix? prefix completion))))))
+			   (cond ((null? completions)
+				  (if-not-found))
+				 ((null? (cdr completions))
+				  (if-unique (car completions)))
+				 (else
+				  (if-not-unique
+				   (string-greatest-common-prefix completions)
+				   (lambda () completions))))))))
+		  (try-suffix "-"
+		    (lambda ()
+		      (try-suffix " "
+			(lambda ()
+			  (if-not-unique string (lambda () completions))))))))
+	      (if-not-unique new-string list-completions)))
+	if-not-found))))
 
 ;;;; Character Prompts
 
 (define (prompt-for-char prompt)
-  (set-command-prompt! (string-append prompt ": "))
-  (let ((char (keyboard-read-char)))
-    (set-command-prompt! (string-append (command-prompt) (char-name char)))
-    char))
-
-(define (prompt-for-char-without-interrupts prompt)
-  (with-editor-interrupts-disabled (lambda () (prompt-for-char prompt))))
+  (with-editor-interrupts-disabled
+   (lambda ()
+     (prompt-for-typein (string-append prompt ": ") false
+       (lambda ()
+	 (let ((char (keyboard-read-char)))
+	   (set-typein-string! (char-name char))
+	   char))))))
 
 (define (prompt-for-key prompt #!optional comtab)
-  (let ((comtab (if (default-object? comtab) (current-comtabs) comtab))
-	(string (string-append prompt ": ")))
-    (set-command-prompt! string)
-    (let outer-loop ((prefix '()))
-      (let inner-loop ((char (keyboard-read-char)))
-	(let ((chars (append! prefix (list char))))
-	  (set-command-prompt! (string-append string (xchar->name chars)))
-	  (if (prefix-char-list? comtab chars)
-	      (outer-loop chars)
-	      (let ((command (comtab-entry comtab chars)))
-		(if (memq command extension-commands)
-		    (inner-loop (fluid-let ((execute-extended-chars? false))
-				  (dispatch-on-command command)))
-		    chars))))))))
+  (let ((comtab (if (default-object? comtab) (current-comtabs) comtab)))
+    (prompt-for-typein (string-append prompt ": ") false
+      (lambda ()
+	(with-editor-interrupts-disabled
+	 (lambda ()
+	   (let outer-loop ((prefix '()))
+	     (let inner-loop ((char (keyboard-read-char)))
+	       (let ((chars (append! prefix (list char))))
+		 (set-typein-string! (xchar->name chars))
+		 (if (prefix-char-list? comtab chars)
+		     (outer-loop chars)
+		     (let ((command (comtab-entry comtab chars)))
+		       (if (memq command extension-commands)
+			   (inner-loop
+			    (fluid-let ((execute-extended-chars? false))
+			      (dispatch-on-command command)))
+			   chars))))))))))))
 
 ;;;; Confirmation Prompts
 
 (define (prompt-for-confirmation? prompt)
-  (set-command-prompt! (string-append prompt " (y or n)? "))
-  (let loop ()
-    (let ((char (char-upcase (keyboard-read-char))))
-      (cond ((or (char=? char #\Y)
-		 (char=? char #\Space))
-	     (set-command-prompt! (string-append (command-prompt) "Yes"))
-	     (sit-for 500)
-	     true)
-	    ((or (char=? char #\N)
-		 (char=? char #\Rubout))
-	     (set-command-prompt! (string-append (command-prompt) "No"))
-	     (sit-for 500)
-	     false)
-	    (else
-	     (editor-failure)
-	     (loop))))))
+  (prompt-for-typein (string-append prompt " (y or n)? ") false
+    (lambda ()
+      (let loop ()
+	(let ((char (char-upcase (keyboard-read-char))))
+	  (cond ((or (char=? char #\Y)
+		     (char=? char #\Space))
+		 (set-typein-string! "Yes")
+		 true)
+		((or (char=? char #\N)
+		     (char=? char #\Rubout))
+		 (set-typein-string! "No")
+		 false)
+		(else
+		 (editor-failure)
+		 (loop))))))))
 
 (define (prompt-for-yes-or-no? prompt)
   (string-ci=?
    "Yes"
-   (prompt-for-typein (string-append prompt " (yes or no)? ")
-		      (typein-editor-thunk prompt-for-yes-or-no-mode))))
+   (prompt-for-typein (string-append prompt " (yes or no)? ") true
+     (typein-editor-thunk (ref-mode-object minibuffer-local-yes-or-no)))))
 
-(define-major-mode "Prompt for Yes or No" "Fundamental"
-  "Enter either ``Yes'' or ``No''.")
+(define-major-mode minibuffer-local-yes-or-no fundamental #f
+  "Enter either \"Yes\" or \"No\".")
 
-(define-key "Prompt for Yes or No" #\Return "^R Terminate Yes or No")
+(define-key 'minibuffer-local-yes-or-no #\return 'exit-minibuffer-yes-or-no)
 
-(define-command ("^R Terminate Yes or No")
-  "Like ^R Terminate Input, but insists on ``Yes'' or ``No'' as an answer."
-  (let ((string (typein-string)))
-    (if (or (string-ci=? "Yes" string)
-	    (string-ci=? "No" string))
-	(exit-typein-edit)
-	(editor-error "Please enter ``Yes'' or ``No''"))))
+(define-command exit-minibuffer-yes-or-no
+  "Like \\[exit-minibuffer], but insists on \"Yes\" or \"No\" as an answer."
+  ()
+  (lambda ()
+    (let ((string (typein-string)))
+      (if (or (string-ci=? "yes" string)
+	      (string-ci=? "no" string))
+	  (exit-typein-edit)
+	  (editor-error "Please enter \"Yes\" or \"No\"")))))
+
+;;;; Command History Prompt
+
+(define-command repeat-complex-command
+  "Edit and re-evaluate last complex command, or ARGth from last.
+A complex command is one which used the minibuffer.
+The command is placed in the minibuffer as a Scheme form for editing.
+The result is executed, repeating the command as changed.
+If the command has been changed or is not the most recent previous command
+it is added to the front of the command history.
+Whilst editing the command, the following commands are available:
+\\{repeat-complex-command}"
+  "p"
+  (lambda (argument)
+    (fluid-let ((*command-history* (command-history-list))
+		(*command-history-index* argument))
+      (if (not (< 0 argument (length *command-history*)))
+	  (editor-error "argument out of range: " argument))
+      (execute-command-history-entry
+       (read-from-string
+	(prompt-for-string "Redo"
+			   (write-to-string
+			    (list-ref *command-history* (-1+ argument)))
+			   'INSERTED-DEFAULT
+			   (ref-mode-object repeat-complex-command)))))))
+
+(define *command-history*)
+(define *command-history-index*)
+
+(define-major-mode repeat-complex-command minibuffer-local #f
+  "Major mode for editing command history.")
+
+(define-key 'repeat-complex-command #\M-n 'next-complex-command)
+(define-key 'repeat-complex-command #\M-p 'previous-complex-command)
+
+(define-command next-complex-command
+  "Inserts the next element of `command-history' into the minibuffer."
+  "p"
+  (lambda (argument)
+    (let ((index
+	   (min (max 1 (- *command-history-index* argument))
+		(length *command-history*))))
+      (if (and (not (zero? argument))
+	       (= index *command-history-index*))
+	  (editor-error (if (= index 1)
+			    "No following item in command history"
+			    "No preceeding item in command history")))
+      (set! *command-history-index* index)
+      (set-typein-string!
+       (write-to-string (list-ref *command-history* (-1+ index))))      (set-current-point! (buffer-start (current-buffer))))))
+
+(define-command previous-complex-command
+  "Inserts the next element of `command-history' into the minibuffer."
+  "p"
+  (lambda (argument)
+    ((ref-command next-complex-command) (- argument))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.2 1989/03/30 16:39:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.3 1989/04/15 00:48:50 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -44,7 +44,6 @@ MIT in each case. |#
 	 "strtab"
 	 "strpad"
 	 "class"
-	 "complt"
 	 "unix"
 
 	 "paths"
@@ -130,7 +129,12 @@ MIT in each case. |#
   (export (edwin)
 	  edwin-syntax-table)
   (export (edwin class-macros)
-	  edwin-syntax-table))
+	  edwin-syntax-table)
+  (export (edwin)
+	  canonicalize-name
+	  command-name->scheme-name
+	  mode-name->scheme-name
+	  variable-name->scheme-name))
 
 (define-package (edwin group-operations)
   (files "grpops")
@@ -318,6 +322,7 @@ MIT in each case. |#
   (parent (edwin))
   (export (edwin)
 	  abort-current-command
+	  command-history-list
 	  command-message-receive
 	  command-reader
 	  current-command
@@ -326,6 +331,9 @@ MIT in each case. |#
 	  dispatch-on-command
 	  execute-char
 	  execute-command
+	  execute-command-history-entry
+	  initialize-command-reader!
+	  keyboard-chars-read
 	  read-and-dispatch-on-char
 	  set-command-message!
 	  top-level-command-reader))
@@ -358,17 +366,16 @@ MIT in each case. |#
   (files "prompt")
   (parent (edwin))
   (export (edwin)
-	  enable-recursive-minibuffers
-	  initialize-typein!
-	  list-completions
+	  edwin-variable$enable-recursive-minibuffers	  initialize-typein!
 	  prompt-for-alist-value
 	  prompt-for-char
-	  prompt-for-char-without-interrupts
 	  prompt-for-command
 	  prompt-for-completed-string
 	  prompt-for-confirmation?
 	  prompt-for-key
+	  prompt-for-number
 	  prompt-for-string
+	  prompt-for-string-table-name
 	  prompt-for-string-table-value
 	  prompt-for-typein
 	  prompt-for-variable
@@ -432,6 +439,7 @@ MIT in each case. |#
   (files "rgxcmp")
   (parent (edwin))
   (export (edwin)
+	  error-type:re-compile-pattern
 	  re-compile-char
 	  re-compile-char-set
 	  re-compile-pattern
@@ -443,15 +451,15 @@ MIT in each case. |#
   (files "linden")
   (parent (edwin))
   (export (edwin)
+	  edwin-variable$lisp-body-indent
+	  edwin-variable$lisp-indent-hook
+	  edwin-variable$lisp-indent-methods
+	  edwin-variable$lisp-indent-offset
 	  indent-code-rigidly
-	  lisp-body-indent
 	  lisp-comment-indentation
 	  lisp-comment-locate
 	  lisp-indent-definition
-	  lisp-indent-hook
 	  lisp-indent-line
-	  lisp-indent-methods
-	  lisp-indent-offset
 	  lisp-indent-sexp
 	  lisp-indent-special-form
 	  standard-lisp-indent-hook))
@@ -468,6 +476,7 @@ MIT in each case. |#
 	  command-argument-prompt
 	  command-argument-self-insert?
 	  command-argument-standard-value
+	  command-argument-standard-value?
 	  command-argument-value
 	  reset-command-argument-reader!
 	  with-command-argument-reader))
@@ -476,7 +485,7 @@ MIT in each case. |#
   (files "bufmnu")
   (parent (edwin))
   (export (edwin)
-	  buffer-menu-kill-on-quit))
+	  edwin-variable$buffer-menu-kill-on-quit))
 
 (define-package (edwin register-command)
   (files "regcom")
@@ -492,7 +501,9 @@ MIT in each case. |#
 
 (define-package (edwin incremental-search)
   (files "iserch")
-  (parent (edwin)))
+  (parent (edwin))
+  (export (edwin)
+	  isearch))
 
 (define-package (edwin command-summary)
   (files "keymap")
@@ -503,7 +514,9 @@ MIT in each case. |#
   (parent (edwin)))
 |#(define-package (edwin dired)
   (files "dired")
-  (parent (edwin)))
+  (parent (edwin))
+  (export (edwin)
+	  make-dired-buffer))
 
 (define-package (edwin info)
   (files "info")

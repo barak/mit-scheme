@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.98 1989/03/15 19:10:20 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.99 1989/04/15 00:48:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,18 +41,27 @@
 
 (declare (usual-integrations))
 
-(define-command ("Dired")
-  "Edit a directory.  You type the directory name."
-  (select-buffer (make-dired-buffer "Dired")))
+(define-command dired
+  "\"Edit\" directory DIRNAME--delete, rename, print, etc. some files in it.
+Dired displays a list of files in DIRNAME.
+You can move around in it with the usual commands.
+You can flag files for deletion with C-d
+and then delete them by typing `x'.
+Type `h' after entering dired for more info."
+  "DDired (directory)"
+  (lambda (directory)
+    (select-buffer (make-dired-buffer directory))))
 
-(define-command ("Dired Other Window")
-  "Edit a directory in another window.  You type the directory name."
-  (select-buffer-other-window (make-dired-buffer "Dired Other Window")))
+(define-command dired-other-window
+  "\"Edit\" directory DIRNAME.  Like \\[dired] but selects in another window."
+  "DDired in other window (directory)"
+  (lambda (directory)
+    (select-buffer-other-window (make-dired-buffer directory))))
 
-(define (make-dired-buffer prompt)
-  (let ((pathname (prompt-for-directory prompt (current-default-pathname))))
+(define (make-dired-buffer directory)
+  (let ((pathname (->pathname directory)))
     (let ((buffer (get-dired-buffer pathname)))
-      (set-buffer-major-mode! buffer dired-mode)
+      (set-buffer-major-mode! buffer (ref-mode-object dired))
       (set-buffer-truename! buffer pathname)
       (buffer-put! buffer 'REVERT-BUFFER-METHOD revert-dired-buffer)
       (fill-dired-buffer! buffer)
@@ -61,13 +70,13 @@
 (define (get-dired-buffer pathname)
   (or (list-search-positive (buffer-list)
 	(lambda (buffer)
-	  (and (eq? dired-mode (buffer-major-mode buffer))
+	  (and (eq? (ref-mode-object dired) (buffer-major-mode buffer))
 	       (pathname=? pathname (buffer-truename buffer)))))
       (new-buffer (pathname->buffer-name pathname))))
 
-(define (revert-dired-buffer argument)
-  argument				;ignore
-  (fill-dired-buffer! (current-buffer)))
+(define (revert-dired-buffer buffer dont-use-auto-save? dont-confirm?)
+  dont-use-auto-save? dont-confirm?	;ignore
+  (fill-dired-buffer! buffer))
 
 (define (fill-dired-buffer! buffer)
   (set-buffer-writeable! buffer)
@@ -94,7 +103,7 @@
     (lambda ()
       (set-dired-point! (line-start (buffer-start (current-buffer)) 2)))))
 
-(define-major-mode "Dired" "Fundamental"
+(define-major-mode dired fundamental "Dired"
   "Major mode for editing a list of files.
 Each line describes a file in the directory.
 F -- visit the file on the current line.
@@ -104,79 +113,99 @@ Rubout -- back up a line and remove marks.
 Space -- move down one line.
 X -- kill marked files.
 Q -- quit, killing marked files.
-  This is like \\[^R Dired Execute] followed by \\[Kill Buffer].
-C-] -- abort Dired; this is like \\[Kill Buffer] on this buffer."
-  (local-set-variable! "Case Fold Search" true)
-  (local-set-variable! "Cursor Centering Threshold" 0)
-  (local-set-variable! "Cursor Centering Point" 10))
+  This is like \\[dired-do-deletions] followed by \\[kill-buffer].
+C-] -- abort Dired; this is like \\[kill-buffer] on this buffer."
+  (local-set-variable! case-fold-search true))
 
-(define-key "Dired" #\F "^R Dired Find File")
-(define-key "Dired" #\O "^R Dired Find File Other Window")
-(define-key "Dired" #\G "^R Dired Revert")
-(define-key "Dired" #\D "^R Dired Kill")
-(define-key "Dired" #\K "^R Dired Kill")
-(define-key "Dired" #\C-D "^R Dired Kill")
-(define-key "Dired" #\C-K "^R Dired Kill")
-(define-key "Dired" #\U "^R Dired Unmark")
-(define-key "Dired" #\Rubout "^R Dired Backup Unmark")
-(define-key "Dired" #\Space "^R Dired Next")
-(define-key "Dired" #\C-N "^R Dired Next")
-(define-key "Dired" #\C-P "^R Dired Previous")
-(define-key "Dired" #\X "^R Dired Execute")
-(define-key "Dired" #\Q "^R Dired Quit")
-(define-key "Dired" #\C-\] "^R Dired Abort")
-(define-key "Dired" #\? "^R Dired Summary")
+(define-key 'dired #\f 'dired-find-file)
+(define-key 'dired #\o 'dired-find-file-other-window)
+(define-key 'dired #\g 'dired-revert)
+(define-key 'dired #\d 'dired-flag-file-deleted)
+(define-key 'dired #\c-d 'dired-flag-file-deleted)
+(define-key 'dired #\u 'dired-unflag)
+(define-key 'dired #\rubout 'dired-backup-unflag)
+(define-key 'dired #\space 'dired-next-line)
+(define-key 'dired #\c-n 'dired-next-line)
+(define-key 'dired #\c-p 'dired-previous-line)
+(define-key 'dired #\x 'dired-do-deletions)
+(define-key 'dired #\q 'dired-quit)
+(define-key 'dired #\c-\] 'dired-abort)
+(define-key 'dired #\? 'dired-summary)
 
-(define-command ("^R Dired Find File")
+(define-command dired-find-file
   "Read the current file into a buffer."
-  (find-file (dired-current-pathname)))
+  ()
+  (lambda ()
+    (find-file (dired-current-pathname))))
 
-(define-command ("^R Dired Find File Other Window")
+(define-command dired-find-file-other-window
   "Read the current file into a buffer in another window."
-  (find-file-other-window (dired-current-pathname)))
+  ()
+  (lambda ()
+    (find-file-other-window (dired-current-pathname))))
 
-(define-command ("^R Dired Revert")
+(define-command dired-revert
   "Read the current buffer."
-  (revert-buffer (current-buffer) true true))
+  ()
+  (lambda ()
+    (revert-buffer (current-buffer) true true)))
 
-(define-command ("^R Dired Kill" (argument 1))
+(define-command dired-flag-file-deleted
   "Mark the current file to be killed."
-  (dired-mark #\D argument))
+  "p"
+  (lambda (argument)
+    (dired-mark #\D argument)))
 
-(define-command ("^R Dired Unmark" (argument 1))
+(define-command dired-unflag
   "Cancel the kill requested for the current file."
-  (dired-mark #\Space argument))
+  "p"
+  (lambda (argument)
+    (dired-mark #\Space argument)))
 
-(define-command ("^R Dired Backup Unmark" (argument 1))
+(define-command dired-backup-unflag
   "Cancel the kill requested for the file on the previous line."
-  (set-dired-point! (line-start (current-point) -1 'ERROR))
-  (dired-mark #\Space argument)
-  (set-dired-point! (line-start (current-point) -1 'ERROR)))
+  "p"
+  (lambda (argument)
+    (set-dired-point! (line-start (current-point) -1 'ERROR))
+    (dired-mark #\Space argument)
+    (set-dired-point! (line-start (current-point) -1 'ERROR))))
 
-(define-command ("^R Dired Next" (argument 1))
+(define-command dired-next-line
   "Move down to the next line."
-  (set-dired-point! (line-start (current-point) argument 'BEEP)))
+  "p"
+  (lambda (argument)
+    (set-dired-point! (line-start (current-point) argument 'BEEP))))
 
-(define-command ("^R Dired Previous" (argument 1))
+(define-command dired-previous-line
   "Move up to the previous line."
-  (set-dired-point! (line-start (current-point) (- argument) 'BEEP)))
+  "p"
+  (lambda (argument)
+    (set-dired-point! (line-start (current-point) (- argument) 'BEEP))))
 
-(define-command ("^R Dired Execute")
+(define-command dired-do-deletions
   "Kill all marked files."
-  (dired-kill-files))
+  ()
+  (lambda ()
+    (dired-kill-files)))
 
-(define-command ("^R Dired Quit")
+(define-command dired-quit
   "Exit Dired, offering to kill any files first."
-  (dired-kill-files)
-  (kill-buffer-interactive (current-buffer)))
+  ()
+  (lambda ()
+    (dired-kill-files)
+    (kill-buffer-interactive (current-buffer))))
 
-(define-command ("^R Dired Abort")
+(define-command dired-abort
   "Exit Dired."
-  (kill-buffer-interactive (current-buffer)))
+  ()
+  (lambda ()
+    (kill-buffer-interactive (current-buffer))))
 
-(define-command ("^R Dired Summary")
+(define-command dired-summary
   "Summarize the Dired commands in the typein window."
-  (message "d-elete, u-ndelete, x-ecute, q-uit, f-ind, o-ther window"))
+  ()
+  (lambda ()
+    (message "d-elete, u-ndelete, x-ecute, q-uit, f-ind, o-ther window")))
 
 (define (set-dired-point! mark)
   (set-current-point!
@@ -256,28 +285,30 @@ C-] -- abort Dired; this is like \\[Kill Buffer] on this buffer."
 
 ;;;; List Directory
 
-(define-command ("List Directory" argument)
+(define-command list-directory
   "Generate a directory listing."
-  (let ((pathname
-	 (prompt-for-directory "List Directory" (current-default-pathname))))
-    (let ((pathnames (directory-read pathname))
-	  (directory (pathname->string pathname)))
-      (with-output-to-temporary-buffer "*Directory*"
-	(lambda ()
-	  (write-string "Directory ")
-	  (write-string directory)
-	  (newline)
-	  (newline)
-	  (cond (argument
-		 (for-each (lambda (pathname)
-			     (write-string (os/make-dired-line pathname))
-			     (newline))
-			   pathnames))
-		((ref-variable "List Directory Unpacked")
-		 (for-each (lambda (pathname)
-			     (write-string (pathname-name-string pathname))
-			     (newline))
-			   pathnames))
-		(else
-		 (write-strings-densely
-		  (map pathname-name-string pathnames)))))))))
+  "P"
+  (lambda (argument)
+    (let ((pathname
+	   (prompt-for-directory "List directory" (current-default-pathname))))
+      (let ((pathnames (directory-read pathname))
+	    (directory (pathname->string pathname)))
+	(with-output-to-temporary-buffer "*Directory*"
+	  (lambda ()
+	    (write-string "Directory ")
+	    (write-string directory)
+	    (newline)
+	    (newline)
+	    (cond (argument
+		   (for-each (lambda (pathname)
+			       (write-string (os/make-dired-line pathname))
+			       (newline))
+			     pathnames))
+		  ((ref-variable list-directory-unpacked)
+		   (for-each (lambda (pathname)
+			       (write-string (pathname-name-string pathname))
+			       (newline))
+			     pathnames))
+		  (else
+		   (write-strings-densely
+		    (map pathname-name-string pathnames))))))))))

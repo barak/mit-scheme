@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/class.scm,v 1.67 1989/03/14 07:59:37 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/class.scm,v 1.68 1989/04/15 00:47:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -60,8 +60,7 @@
   (class-methods/ref (class-methods class) name))
 
 (define (class-methods/ref methods name)
-  (or (method-lookup methods name)
-      (error "unknown method" name)))
+  (or (method-lookup methods name) (error "unknown method" name)))
 
 (define (method-lookup methods name)
   (let loop ((methods methods))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.80 1989/03/14 08:00:13 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.81 1989/04/15 00:48:10 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -272,14 +272,14 @@
 (define-integrable (set-buffer-mark! buffer mark)
   (ring-set! (buffer-mark-ring buffer) 0 (mark-right-inserting mark)))
 
-(define-variable "Auto Push Point Notification"
+(define-variable auto-push-point-notification
   "Message to display when point is pushed on the mark ring, or false."
   "Mark Set")
 
 (define (push-current-mark! mark)
   (guarantee-mark mark 'PUSH-CURRENT-MARK!)
   (push-buffer-mark! (current-buffer) mark)
-  (let ((notification (ref-variable "Auto Push Point Notification")))
+  (let ((notification (ref-variable auto-push-point-notification)))
     (if (and notification
 	     (not *executing-keyboard-macro?*)
 	     (not (typein-window? (current-window))))

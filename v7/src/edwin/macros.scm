@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.43 1989/03/14 08:01:25 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.44 1989/04/15 00:51:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -100,99 +100,112 @@
 		  ,@(selector-loop selector-names 1)))))))
 
 (syntax-table-define edwin-syntax-table 'DEFINE-COMMAND
-  (lambda (bvl description . body)
-    (let ((name (car bvl))
-	  (bvl (cdr bvl)))
-      (let ((pname (symbol-append (canonicalize-name name) '-COMMAND)))
-	`(BEGIN
-	   ,(if (null? bvl)
-		(let ((argument (string->uninterned-symbol "ARGUMENT")))
-		  `(DEFINE (,pname #!OPTIONAL ,argument)
-		     ,argument		;ignore
-		     ,@body))
-		(let ((arg-names
-		       (map (lambda (arg) (if (pair? arg) (car arg) arg))
-			    bvl)))
-		  `(DEFINE (,pname #!OPTIONAL ,@arg-names)
-		     (LET* ,(map (lambda (name arg)
-				   (let ((init (and (pair? arg) (cadr arg))))
-				     `(,name
-				       (IF ,(if (not init)
-						`(DEFAULT-OBJECT? ,name)
-						`(OR (DEFAULT-OBJECT? ,name)
-						     (NOT ,name)))
-					   ,init
-					   ,name))))
-				 arg-names
-				 bvl)
-		       ,@body))))
-	   (MAKE-COMMAND ',name ',description ,pname))))))
+  (lambda (name description interactive procedure)
+    (let ((name (canonicalize-name name)))
+      `(BEGIN
+	 (DEFINE ,(command-name->scheme-name name)
+	   (MAKE-COMMAND ',name
+			 ',description
+			 ,(if (null? interactive)
+			      `'()
+			      interactive)
+			 ,procedure))
+	 ',name))))
+
+(syntax-table-define edwin-syntax-table 'REF-COMMAND-OBJECT
+  (lambda (name)
+    (command-name->scheme-name (canonicalize-name name))))
+
+(syntax-table-define edwin-syntax-table 'REF-COMMAND
+  (lambda (name)
+    `(COMMAND-PROCEDURE
+      ,(command-name->scheme-name (canonicalize-name name)))))
+
+(define (command-name->scheme-name name)
+  (symbol-append 'EDWIN-COMMAND$ name))
 
 (syntax-table-define edwin-syntax-table 'DEFINE-VARIABLE
-  (lambda (name description . tail)
-    (let ((variable-name (canonicalize-name name)))
+  (lambda (name description #!optional value)
+    (let ((name (canonicalize-name name)))
       `(BEGIN
-	 (DEFINE ,variable-name ,@tail)
-	 (MAKE-VARIABLE ',name ',description ',variable-name)))))
+	 (DEFINE ,(variable-name->scheme-name name)
+	   (MAKE-VARIABLE ',name
+			  ',description
+			  ,(if (default-object? value) '#F value)))
+	 ',name))))
+(syntax-table-define edwin-syntax-table 'REF-VARIABLE-OBJECT
+  (lambda (name)
+    (variable-name->scheme-name (canonicalize-name name))))
 
 (syntax-table-define edwin-syntax-table 'REF-VARIABLE
   (lambda (name)
-    (canonicalize-name name)))
+    `(VARIABLE-VALUE
+      ,(variable-name->scheme-name (canonicalize-name name)))))
 
 (syntax-table-define edwin-syntax-table 'SET-VARIABLE!
-  (lambda (name . tail)
-    `(BEGIN
-       (SET! ,(canonicalize-name name) ,@tail)
-       UNSPECIFIC)))
-
-(syntax-table-define edwin-syntax-table 'GLOBAL-SET-VARIABLE!
-  (lambda (name . tail)
-    (let ((variable-name (canonicalize-name name)))
-      `(BEGIN
-	 (UNMAKE-LOCAL-BINDING! ',variable-name)
-	 (SET! ,variable-name ,@tail)
-	 UNSPECIFIC))))
+  (lambda (name #!optional value)
+    `(SET-VARIABLE-VALUE!
+      ,(variable-name->scheme-name (canonicalize-name name))
+      ,(if (default-object? value) '#F value))))
 
 (syntax-table-define edwin-syntax-table 'LOCAL-SET-VARIABLE!
-  (lambda (name . tail)
-    `(MAKE-LOCAL-BINDING! ',(canonicalize-name name) ,@tail)))
+  (lambda (name #!optional value)
+    `(MAKE-LOCAL-BINDING!
+      ,(variable-name->scheme-name (canonicalize-name name))
+      ,(if (default-object? value) '#F value))))
+
+(define (variable-name->scheme-name name)
+  (symbol-append 'EDWIN-VARIABLE$ name))
 
 (syntax-table-define edwin-syntax-table 'DEFINE-MAJOR-MODE
-  (lambda (name super-mode-name description . initialization)
-    (let ((vname (mode-name->variable name)))
-      `(DEFINE ,vname
-	 (MAKE-MODE ',name
-		    TRUE
-		    ,(if super-mode-name
-			 `(MODE-COMTABS (NAME->MODE ',super-mode-name))
-			 ''())
-		    ',description
-		    (LAMBDA ()
-		      ,@(let ((initialization
-			       (if super-mode-name
-				   `(((MODE-INITIALIZATION
-				       ,(mode-name->variable super-mode-name)))
-				     ,@initialization)
-				   initialization)))
-			  (if (null? initialization)
-			      `(',unspecific)
-			      initialization))))))))
+  (lambda (name super-mode-name display-name description . initialization)
+    (let ((name (canonicalize-name name))
+	  (super-mode-name
+	   (and super-mode-name (canonicalize-name super-mode-name))))
+      `(BEGIN
+	 (DEFINE ,(mode-name->scheme-name name)
+	   (MAKE-MODE ',name
+		      TRUE
+		      ',(or display-name (symbol->string name))
+		      ,(if super-mode-name
+			   `(MODE-COMTABS (NAME->MODE ',super-mode-name))
+			   ''())
+		      ',description
+		      (LAMBDA ()
+			,@(let ((initialization
+				 (if super-mode-name
+				     `(((MODE-INITIALIZATION
+					 ,(mode-name->scheme-name
+					   super-mode-name)))
+				       ,@initialization)
+				     initialization)))
+			    (if (null? initialization)
+				`(',unspecific)
+				initialization)))))
+	 ',name))))
 
 (syntax-table-define edwin-syntax-table 'DEFINE-MINOR-MODE
-  (lambda (name description . initialization)
-    (let ((vname (mode-name->variable name)))
-      `(DEFINE ,vname
-	 (MAKE-MODE ',name
-		    FALSE
-		    '()
-		    ',description
-		    (LAMBDA ()
-		      ,@(if (null? initialization)
-			    `(',unspecific)
-			    initialization)))))))
+  (lambda (name display-name description . initialization)
+    (let ((name (canonicalize-name name)))
+      `(BEGIN
+	 (DEFINE ,(mode-name->scheme-name name)
+	   (MAKE-MODE ',name
+		      FALSE
+		      ',(or display-name (symbol->string name))
+		      '()
+		      ',description
+		      (LAMBDA ()
+			,@(if (null? initialization)
+			      `(',unspecific)
+			      initialization))))
+	 ',name))))
 
-(define-integrable (mode-name->variable name)
-  (symbol-append (canonicalize-name name) '-MODE))
+(syntax-table-define edwin-syntax-table 'REF-MODE-OBJECT
+  (lambda (name)
+    (mode-name->scheme-name (canonicalize-name name))))
+
+(define (mode-name->scheme-name name)
+  (symbol-append 'EDWIN-MODE$ name))
 
 (define (canonicalize-name name)
   (cond ((symbol? name) name)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.71 1989/03/14 07:59:44 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.72 1989/04/15 00:47:54 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,6 +41,33 @@
 
 (declare (usual-integrations))
 
+(define *command-continuation*)	;Continuation of current command
+(define *command-char*)		;Character read to find current command
+(define *command*)		;The current command
+(define *command-message*)	;Message from last command
+(define *next-message*)		;Message to next command
+(define *non-undo-count*)	;# of self-inserts since last undo boundary
+(define keyboard-chars-read)	;# of chars read from keyboard
+(define command-history)
+(define command-history-limit 30)
+
+(define (initialize-command-reader!)
+  (set! keyboard-chars-read 0)
+  (set! command-history (make-circular-list command-history-limit false))
+  unspecific)
+
+(define (command-history-list)
+  (let loop ((history command-history))
+    (if (car history)
+	(let loop ((history (cdr history)) (result (list (car history))))
+	  (if (eq? history command-history)
+	      result
+	      (loop (cdr history) (cons (car history) result))))
+	(let ((history (cdr history)))
+	  (if (eq? history command-history)
+	      '()
+	      (loop history))))))
+
 (define (top-level-command-reader)
   (let loop ()
     (with-keyboard-macro-disabled
@@ -48,13 +75,6 @@
        (intercept-^G-interrupts (lambda () unspecific)
 				command-reader)))
     (loop)))
-
-(define *command-continuation*)	;Continuation of current command
-(define *command-char*)		;Character read to find current command
-(define *command*)		;The current command
-(define *command-message*)	;Message from last command
-(define *next-message*)		;Message to next command
-(define *non-undo-count*)	;# of self-inserts since last undo boundary
 
 (define (command-reader)
   (define (command-reader-loop)
@@ -71,7 +91,7 @@
 
   (define (start-next-command)
     (reset-command-state!)
-    (let ((char (keyboard-read-char)))
+    (let ((char (with-editor-interrupts-disabled keyboard-read-char)))
       (set! *command-char* char)
       (set-command-prompt! (char-name char))
       (let ((window (current-window)))
@@ -106,8 +126,8 @@
   (reset-command-state!)
   (dispatch-on-command command))
 
-(define-integrable (read-and-dispatch-on-char)
-  (dispatch-on-char (current-comtabs) (keyboard-read-char)))
+(define-integrable (read-and-dispatch-on-char)  (dispatch-on-char (current-comtabs)
+		    (with-editor-interrupts-disabled keyboard-read-char)))
 
 (define (dispatch-on-char comtab char)
   (set! *command-char* char)
@@ -137,54 +157,201 @@
   (if (and *command-message*
 	   (eq? (car *command-message*) tag))
       (apply if-received (cdr *command-message*))
-      (if-not-received)))
-
+      (if-not-received)))
 (define (%dispatch-on-command window command)
   (set! *command* command)
-  (let ((procedure (command-procedure command))
-	(argument (command-argument-standard-value)))
-    (if (or argument
-	    *executing-keyboard-macro?*
-	    (window-needs-redisplay? window))
+  (guarantee-command-loaded command)
+  (let ((procedure (command-procedure command)))
+    (let ((normal
+	   (lambda ()
+	     (apply procedure (interactive-arguments command false)))))
+      (if (or *executing-keyboard-macro?*
+	      (window-needs-redisplay? window)
+	      (command-argument-standard-value?))
+	  (begin
+	    (set! *non-undo-count* 0)
+	    (normal))
+	  (let ((point (window-point window))
+		(point-x (window-point-x window)))
+	    (if (or (eq? procedure (ref-command self-insert-command))
+		    (and (eq? procedure (ref-command auto-fill-space))
+			 (not (auto-fill-break? point)))
+		    (command-argument-self-insert? procedure))
+		(let ((char *command-char*))
+		  (if (let ((buffer (window-buffer window)))
+			(and (buffer-auto-save-modified? buffer)
+			     (null? (cdr (buffer-windows buffer)))
+			     (line-end? point)
+			     (char-graphic? char)
+			     (< point-x (-1+ (window-x-size window)))))
+		      (begin
+			(if (or (zero? *non-undo-count*)
+				(>= *non-undo-count* 20))
+			    (begin
+			      (undo-boundary! point)
+			      (set! *non-undo-count* 0)))
+			(set! *non-undo-count* (1+ *non-undo-count*))
+			(window-direct-output-insert-char! window char))
+		      (region-insert-char! point char)))
+		(begin
+		  (set! *non-undo-count* 0)
+		  (cond ((eq? procedure (ref-command forward-char))
+			 (if (and (not (group-end? point))
+				  (char-graphic? (mark-right-char point))
+				  (< point-x (- (window-x-size window) 2)))
+			     (window-direct-output-forward-char! window)
+			     (normal)))
+			((eq? procedure (ref-command backward-char))
+			 (if (and (not (group-start? point))
+				  (char-graphic? (mark-left-char point))
+				  (positive? point-x))			     (window-direct-output-backward-char! window)
+			     (normal)))
+			(else
+			 (if (not (typein-window? window))
+			     (undo-boundary! point))
+			 (normal))))))))))
+(define (interactive-arguments command record?)
+  (let ((specification (command-interactive-specification command))
+	(record-command-arguments
+	 (lambda (arguments)
+	   (let ((history command-history))
+	     (set-car! history (cons (command-name command) arguments))
+	     (set! command-history (cdr history))))))
+    (cond ((string? specification)
+	   (with-values
+	       (lambda ()
+		 (let ((end (string-length specification)))
+		   (let loop
+		       ((index
+			 (if (and (not (zero? end))
+				  (char=? #\* (string-ref specification 0)))
+			     (begin
+			       (if (buffer-read-only? (current-buffer))
+				   (barf-if-read-only))
+			       1)
+			     0)))
+		     (if (< index end)
+			 (let ((newline
+				(substring-find-next-char specification
+							  index
+							  end
+							  #\newline)))
+			   (with-values
+			       (lambda ()
+				 (interactive-argument
+				  (string-ref specification index)
+				  (substring specification
+					     (1+ index)
+					     (or newline end))))
+			     (lambda (argument expression from-tty?)
+			       (with-values
+				   (lambda ()
+				     (if newline
+					 (loop (1+ newline))
+					 (values '() '() false)))
+				 (lambda (arguments expressions any-from-tty?)
+				   (values (cons argument arguments)
+					   (cons expression expressions)
+					   (or from-tty? any-from-tty?)))))))
+			 (values '() '() false)))))
+	     (lambda (arguments expressions any-from-tty?)
+	       (if (or record?
+		       (and any-from-tty?
+			    (not (prefix-char-list? (current-comtabs)
+						    (current-command-char)))))
+		   (record-command-arguments expressions))
+	       arguments)))
+	  ((null? specification)
+	   (if record?
+	       (record-command-arguments '()))
+	   '())
+	  (else
+	   (let ((old-chars-read keyboard-chars-read))
+	     (let ((arguments (specification)))
+	       (if (or record?
+		       (not (= keyboard-chars-read old-chars-read)))		   (record-command-arguments (map quotify-sexp arguments)))
+	       arguments))))))
+
+(define (execute-command-history-entry entry)
+  (let ((history command-history))
+    (if (not (equal? entry
+		     (let loop ((entries (cdr history)) (tail history))
+		       (if (eq? entries history)
+			   (car tail)
+			   (loop (cdr entries) entries)))))
 	(begin
-	  (set! *non-undo-count* 0)
-	  (procedure argument))
-	(let ((point (window-point window))
-	      (point-x (window-point-x window)))
-	  (if (or (eq? procedure ^r-insert-self-command)
-		  (and (eq? procedure ^r-auto-fill-space-command)
-		       (not (auto-fill-break? point)))
-		  (command-argument-self-insert? procedure))
-	      (if (let ((buffer (window-buffer window)))
-		    (and (buffer-auto-save-modified? buffer)
-			 (null? (cdr (buffer-windows buffer)))
-			 (line-end? point)
-			 (char-graphic? *command-char*)
-			 (< point-x (-1+ (window-x-size window)))))
-		  (begin
-		    (if (or (zero? *non-undo-count*)
-			    (>= *non-undo-count* 20))
-			(begin
-			  (undo-boundary! point)
-			  (set! *non-undo-count* 0)))
-		    (set! *non-undo-count* (1+ *non-undo-count*))
-		    (window-direct-output-insert-char! window *command-char*))
-		  (region-insert-char! point *command-char*))
-	      (begin
-		(set! *non-undo-count* 0)
-		(cond ((eq? procedure ^r-forward-character-command)
-		       (if (and (not (group-end? point))
-				(char-graphic? (mark-right-char point))
-				(< point-x (- (window-x-size window) 2)))
-			   (window-direct-output-forward-char! window)
-			   (procedure argument)))
-		      ((eq? procedure ^r-backward-character-command)
-		       (if (and (not (group-start? point))
-				(char-graphic? (mark-left-char point))
-				(positive? point-x))
-			   (window-direct-output-backward-char! window)
-			   (procedure argument)))
-		      (else
-		       (if (not (typein-window? window))
-			   (undo-boundary! point))
-		       (procedure argument)))))))))
+	  (set-car! history entry)
+	  (set! command-history (cdr history)))))
+  (apply (command-procedure (name->command (car entry)))
+	 (map (let ((environment (->environment '(EDWIN))))
+		(lambda (expression)
+		  (eval expression environment)))	      (cdr entry))))
+
+(define (interactive-argument char prompt)
+  (let ((prompting
+	 (lambda (value)
+	   (values value (quotify-sexp value) true)))
+	(prefix
+	 (lambda (prefix)
+	   (values prefix (quotify-sexp prefix) false)))
+	(varies
+	 (lambda (value expression)
+	   (values value expression false))))
+    (case char
+      ((#\b)
+       (prompting
+	(buffer-name (prompt-for-existing-buffer prompt (current-buffer)))))
+      ((#\B)
+       (prompting (buffer-name (prompt-for-buffer prompt (current-buffer)))))
+      ((#\c)
+       (prompting (prompt-for-char prompt)))
+      ((#\C)
+       (prompting (command-name (prompt-for-command prompt))))
+      ((#\d)
+       (varies (current-point) '(CURRENT-POINT)))
+      ((#\D)
+       (prompting
+	(pathname->string
+	 (prompt-for-directory prompt (current-default-pathname)))))
+      ((#\f)
+       (prompting
+	(pathname->string
+	 (prompt-for-input-truename prompt (current-default-pathname)))))
+      ((#\F)
+       (prompting
+	(pathname->string
+	 (prompt-for-pathname prompt (current-default-pathname)))))
+      ((#\k)
+       (prompting (prompt-for-key prompt (current-comtabs))))
+      ((#\m)
+       (varies (current-mark) '(CURRENT-MARK)))
+      ((#\n)
+       (prompting (prompt-for-number prompt false)))
+      ((#\N)
+       (prefix
+	(or (command-argument-standard-value)
+	    (prompt-for-number prompt false))))
+      ((#\p)
+       (prefix (or (command-argument-standard-value) 1)))
+      ((#\P)
+       (prefix (command-argument-standard-value)))
+      ((#\r)
+       (varies (current-region) '(CURRENT-REGION)))
+      ((#\s)
+       (prompting (or (prompt-for-string prompt false) "")))      ((#\v)
+       (prompting (variable-name (prompt-for-variable prompt))))
+      ((#\x)
+       (prompting (prompt-for-expression prompt false)))
+      ((#\X)
+       (prompting (prompt-for-expression-value prompt false)))      (else
+       (editor-error "Invalid control letter "
+		     char
+		     " in interactive calling string")))))
+
+(define (quotify-sexp sexp)
+  (if (or (boolean? sexp)
+	  (number? sexp)
+	  (string? sexp)
+	  (char? sexp))
+      sexp
+      `(QUOTE ,sexp)))

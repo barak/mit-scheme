@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regcom.scm,v 1.15 1989/03/14 08:02:00 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regcom.scm,v 1.16 1989/04/15 00:52:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,14 +41,17 @@
 
 (declare (usual-integrations))
 
-(define-command ("Point to Register")
+(define-command point-to-register
   "Store current location of point in a register."
-  (set-register! (prompt-for-char "Point to Register")
-		 (make-buffer-position (current-point) (current-buffer))))
+  "cPoint to register"
+  (lambda (register)
+    (set-register! register
+		   (make-buffer-position (current-point) (current-buffer)))))
 
-(define-command ("Register to Point")
+(define-command register-to-point
   "Move point to location stored in a register."
-  (let ((register (prompt-for-char "Register to Point")))
+  "cRegister to Point"
+  (lambda (register)
     (let ((value (get-register register)))
       (if (not (buffer-position? value))
 	  (register-error register "does not contain a buffer position."))
@@ -58,71 +61,77 @@
 			   "points to a buffer which has been deleted")))
       (set-current-point! (buffer-position-mark value)))))
 
-(define-command ("Number to Register" argument)
+(define-command number-to-register
   "Store a number in a given register.
 With prefix arg, stores that number in the register.
 Otherwise, reads digits from the buffer starting at point."
-  (set-register! (prompt-for-char "Number to Register")
-		 (or argument
-		     (let ((start (current-point))
-			   (end (skip-chars-forward "[0-9]")))
-		       (if (mark= start end)
-			   0
-			   (with-input-from-region (make-region start end)
-						   read))))))
+  "cNumber to Register\nP"
+  (lambda (register argument)
+    (set-register! register
+		   (or argument
+		       (let ((start (current-point))
+			     (end (skip-chars-forward "[0-9]")))
+			 (if (mark= start end)
+			     0
+			     (with-input-from-region (make-region start end)
+						     read)))))))
 
-(define-command ("Increment Register" (argument 1))
+(define-command increment-register
   "Add the prefix arg to the contents of a given register.
 The prefix defaults to one."
-  (let ((register (prompt-for-char "Increment Register")))
+  "cIncrement register\np"
+  (lambda (register argument)
     (let ((value (get-register register)))
       (if (not (integer? value))
 	  (register-error register "does not contain a number"))
       (set-register! register (+ value argument)))))
 
-(define-command ("Copy to Register" argument)
+(define-command copy-to-register
   "Copy region into given register.
 With prefix arg, delete as well."
-  (let ((region (current-region)))
-    (set-register! (prompt-for-char "Copy to Register")
-		   (region->string region))
-    (if argument (region-delete! region))))
+  "cCopy to register\nr\nP"
+  (lambda (register region delete?)
+    (set-register! register (region->string region))
+    (if delete? (region-delete! region))))
 
-(define-command ("Insert Register" argument)
+(define-command insert-register
   "Insert contents of given register at point.
 Normally puts point before and mark after the inserted text.
 With prefix arg, puts mark before and point after."
-  ((if argument unkill-reversed unkill)
-   (let ((value (get-register (prompt-for-char "Insert Register"))))
-     (cond ((string? value) value)
-	   ((integer? value) (write-to-string value))
-	   (else (register-error "does not contain text"))))))
+  "cInsert Register\nP"
+  (lambda (register argument)
+    ((if argument unkill-reversed unkill)
+     (let ((value (get-register register)))
+       (cond ((string? value) value)
+	     ((integer? value) (write-to-string value))
+	     (else (register-error "does not contain text")))))))
 
-(define-command ("Append to Register" argument)
+(define-command append-to-register
   "Append region to text in given register.
 With prefix arg, delete as well."
-  (let ((region (current-region))
-	(register (prompt-for-char "Append to Register")))
+  "cAppend to register\nr\nP"
+  (lambda (register region argument)
     (let ((value (get-register register)))
       (if (not (string? value))
 	  (register-error register "does not contain text"))
       (set-register! register (string-append value (region->string region))))
     (if argument (region-delete! region))))
 
-(define-command ("Prepend to Register" argument)
+(define-command prepend-to-register
   "Prepend region to text in given register.
 With prefix arg, delete as well."
-  (let ((region (current-region))
-	(register (prompt-for-char "Prepend to Register")))
+  "cPrepend to register\nr\nP"
+  (lambda (register region argument)
     (let ((value (get-register register)))
       (if (not (string? value))
 	  (editor-error register "does not contain text"))
       (set-register! register (string-append (region->string region) value)))
     (if argument (region-delete! region))))
 
-(define-command ("View Register")
+(define-command view-register
   "Display what is contained in a given register."
-  (let ((register (prompt-for-char "View Register")))
+  "cView register"
+  (lambda (register)
     (let ((value (get-register register)))
       (if (not value)
 	  (message "Register " (char-name register) " is empty")
@@ -141,11 +150,11 @@ With prefix arg, delete as well."
 		       (if (not buffer)
 			   (write-string "an invalid buffer position")
 			   (begin
-			    (write-string "a buffer position:\nbuffer ")
-			    (write-string (buffer-name buffer))
-			    (write-string ", position ")
-			    (write
-			     (mark-index (buffer-position-mark value)))))))
+			     (write-string "a buffer position:\nbuffer ")
+			     (write-string (buffer-name buffer))
+			     (write-string ", position ")
+			     (write
+			      (mark-index (buffer-position-mark value)))))))
 		    (else
 		     (write-string "a random object:\n")
 		     (write value)))))))))

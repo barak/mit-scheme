@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.28 1989/03/14 08:01:12 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.29 1989/04/15 00:50:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -117,6 +117,7 @@
   (string-table-put! named-keyboard-macros name last-keyboard-macro)
   (make-command name
 		"Command defined by keyboard macro"
+		"P"
 		(lambda (#!optional argument)
 		  (keyboard-macro-execute macro
 					  (if (or (default-object? argument)
@@ -124,102 +125,116 @@
 					      1
 					      argument)))))
 
-(define-command ("Start Keyboard Macro" argument)
+(define-command start-kbd-macro
   "Record subsequent keyboard input, defining a keyboard macro.
 The commands are recorded even as they are executed.
-Use \\[End Keyboard Macro] to finish recording and make the macro available.
-Use \\[Name Last Keyboard Macro] to give it a permanent name.
+Use \\[end-kbd-macro] to finish recording and make the macro available.
+Use \\[name-last-kbd-macro] to give it a permanent name.
 With argument, append to last keyboard macro defined;
  this begins by re-executing that macro as if you typed it again."
-  (if *defining-keyboard-macro?*
-      (editor-error "Already defining keyboard macro"))
-  (cond ((not argument)
-	 (set! keyboard-macro-buffer '())
-	 (set! keyboard-macro-buffer-end '())
-	 (set! *defining-keyboard-macro?* true)
-	 (keyboard-macro-event)
-	 (message "Defining keyboard macro..."))
-	((not last-keyboard-macro)
-	 (editor-error "No keyboard macro has been defined"))
-	(else
-	 (set! *defining-keyboard-macro?* true)
-	 (keyboard-macro-event)
-	 (message "Appending to keyboard macro...")
-	 (keyboard-macro-execute last-keyboard-macro 1))))
+  "P"
+  (lambda (argument)
+    (if *defining-keyboard-macro?*
+	(editor-error "Already defining keyboard macro"))
+    (cond ((not argument)
+	   (set! keyboard-macro-buffer '())
+	   (set! keyboard-macro-buffer-end '())
+	   (set! *defining-keyboard-macro?* true)
+	   (keyboard-macro-event)
+	   (message "Defining keyboard macro..."))
+	  ((not last-keyboard-macro)
+	   (editor-error "No keyboard macro has been defined"))
+	  (else
+	   (set! *defining-keyboard-macro?* true)
+	   (keyboard-macro-event)
+	   (message "Appending to keyboard macro...")
+	   (keyboard-macro-execute last-keyboard-macro 1)))))
 
-(define-command ("End Keyboard Macro" (argument 1))
+(define-command end-kbd-macro
   "Finish defining a keyboard macro.
-The definition was started by \\[Start Keyboard Macro].
-The macro is now available for use via \\[Call Last Keyboard Macro],
- or it can be given a name with \\[Name Last Keyboard Macro] and then invoked
+The definition was started by \\[start-kbd-macro].
+The macro is now available for use via \\[call-last-kbd-macro],
+ or it can be given a name with \\[name-last-kbd-macro] and then invoked
  under that name.
 With numeric argument, repeat macro now that many times,
  counting the definition just completed as the first repetition."
-  (if *defining-keyboard-macro?*
-      (begin (set! *defining-keyboard-macro?* false)
-	     (keyboard-macro-event)
-	     (set! last-keyboard-macro (reverse keyboard-macro-buffer-end))
-	     (message "Keyboard macro defined")))
-  (cond ((zero? argument)
-	 (keyboard-macro-execute last-keyboard-macro 0))
-	((> argument 1)
-	 (keyboard-macro-execute last-keyboard-macro (-1+ argument)))))
+  "p"
+  (lambda (argument)
+    (if *defining-keyboard-macro?*
+	(begin
+	  (set! *defining-keyboard-macro?* false)
+	  (keyboard-macro-event)
+	  (set! last-keyboard-macro (reverse keyboard-macro-buffer-end))
+	  (message "Keyboard macro defined")))
+    (cond ((zero? argument)
+	   (keyboard-macro-execute last-keyboard-macro 0))
+	  ((> argument 1)
+	   (keyboard-macro-execute last-keyboard-macro (-1+ argument))))))
 
-(define-command ("Call Last Keyboard Macro" (argument 1))
-  "Call the last keyboard macro that you defined with \\[Start Keyboard Macro].
+(define-command call-last-kbd-macro
+  "Call the last keyboard macro that you defined with \\[start-kbd-macro].
 To make a macro permanent so you can call it even after
- defining others, use \\[Name Last Keyboard Macro]."
-  (if *defining-keyboard-macro?*
-      (editor-error "Can execute anonymous macro while defining one."))
-  (if (not last-keyboard-macro)
-      (editor-error "No keyboard macro has been defined"))
-  (keyboard-macro-execute last-keyboard-macro argument))
+ defining others, use \\[name-last-kbd-macro]."
+  "p"
+  (lambda (argument)
+    (if *defining-keyboard-macro?*
+	(editor-error "Can execute anonymous macro while defining one."))
+    (if (not last-keyboard-macro)
+	(editor-error "No keyboard macro has been defined"))
+    (keyboard-macro-execute last-keyboard-macro argument)))
 
-(define-command ("Name Last Keyboard Macro")
+(define-command name-last-kbd-macro
   "Assign a name to the last keyboard macro defined."
-  (if *defining-keyboard-macro?*
-      (editor-error "Can't name a keyboard macro while defining one."))
-  (if (not last-keyboard-macro)
-      (editor-error "No keyboard macro has been defined"))
-  (keyboard-macro-define (prompt-for-string "Name last keyboard macro" false)
-			 last-keyboard-macro))
+  "sName last keyboard macro"
+  (lambda (name)
+    (if *defining-keyboard-macro?*
+	(editor-error "Can't name a keyboard macro while defining one."))
+    (if (not last-keyboard-macro)
+	(editor-error "No keyboard macro has been defined"))
+    (keyboard-macro-define name last-keyboard-macro)))
 
-(define-command ("Write Keyboard Macro" argument)
+(define-command write-kbd-macro
   "Save keyboard macro in file.
 Use LOAD to load the file.
 With argument, also record the keys it is bound to."
-  (let ((name (prompt-for-completed-string "Write keyboard macro"
-					   false 'NO-DEFAULT
-					   named-keyboard-macros
-					   'STRICT-COMPLETION)))
-    (let ((pathname (prompt-for-pathname (string-append "Write keyboard macro "
-							name
-							" to file")
-					 (current-default-pathname)))
-	  (buffer (temporary-buffer "*Write-Keyboard-Macro-temp*")))
-      (with-output-to-mark (buffer-point buffer)
-	(lambda ()
-	  (write-string "(IN-PACKAGE EDWIN-PACKAGE")
-	  (newline) (write-string "  (KEYBOARD-MACRO-DEFINE ") (write name)
-	  (newline) (write-string "    '")
-	  (write (string-table-get named-keyboard-macros name))
-	  (write-string ")")
-	  (if argument
-	      (for-each (lambda (key)
-			  (newline)
-			  (write-string "  (DEFINE-KEY \"Fundamental\" '")
-			  (write key)
-			  (write-string " ")
-			  (write name)
-			  (write-string ")"))
-			(comtab-key-bindings (mode-comtabs fundamental-mode)
-					     (name->command name))))
-	  (newline) (write-string ")")))
-      (set-buffer-pathname! buffer pathname)
-      (write-buffer buffer)
-      (kill-buffer buffer))))
+  "P"
+  (lambda (argument)
+    (let ((name
+	   (prompt-for-string-table-name "Write keyboard macro"
+					 false
+					 'NO-DEFAULT
+					 named-keyboard-macros
+					 true)))
+      (let ((pathname
+	     (prompt-for-pathname (string-append "Write keyboard macro "
+						 name
+						 " to file")
+				  (current-default-pathname)))
+	    (buffer (temporary-buffer "*Write-Keyboard-Macro-temp*")))
+	(with-output-to-mark (buffer-point buffer)
+	  (lambda ()
+	    (write-string "(IN-PACKAGE EDWIN-PACKAGE")
+	    (newline) (write-string "  (KEYBOARD-MACRO-DEFINE ") (write name)
+	    (newline) (write-string "    '")
+	    (write (string-table-get named-keyboard-macros name))
+	    (write-string ")")
+	    (if argument
+		(for-each (lambda (key)
+			    (newline)
+			    (write-string "  (DEFINE-KEY \"Fundamental\" '")
+			    (write key)
+			    (write-string " ")
+			    (write name)
+			    (write-string ")"))
+			  (comtab-key-bindings
+			   (mode-comtabs (ref-mode-object fundamental))
+			   (name->command name))))
+	    (newline) (write-string ")")))
+	(set-buffer-pathname! buffer pathname)
+	(write-buffer buffer)
+	(kill-buffer buffer)))))
 
-(define-command ("Keyboard Macro Query" argument)
+(define-command kbd-macro-query
   "Query user during keyboard macro execution.
 With prefix argument, enters recursive edit,
  reading keyboard commands even within a keyboard macro.
@@ -227,28 +242,39 @@ With prefix argument, enters recursive edit,
 Without argument, reads a character.  Your options are:
  Space -- execute the rest of the macro.
  Rubout -- skip the rest of the macro; start next repetition.
- C-D -- skip the rest of the macro and don't repeat it any more.
- C-R -- Enter a recursive edit, then on exit ask again for a character
- C-L -- redisplay screen and ask again."
-  (define (loop)
-    (let ((char (with-keyboard-macro-disabled
-		 (lambda ()
-		   (set-command-prompt!
-		    "Proceed with macro? (Space, Rubout, C-D, C-R or C-L)")
-		   (char-upcase (keyboard-read-char))))))
-      (cond ((char=? char #\Space))
-	    ((char=? char #\Rubout)
-	     (*keyboard-macro-continuation* true))
-	    ((char=? char #\C-D)
-	     (*keyboard-macro-continuation* false))
-	    ((char=? char #\C-R)
-	     (with-keyboard-macro-disabled enter-recursive-edit)
-	     (loop))
-	    ((or (char=? char #\C-L) (char=? char #\Page))
-	     (window-redraw! (current-window) false)
-	     (loop))
-	    (else
-	     (editor-beep)
-	     (loop)))))
-  (cond (argument (with-keyboard-macro-disabled enter-recursive-edit))
-	(*executing-keyboard-macro?* (loop))))
+ C-d -- skip the rest of the macro and don't repeat it any more.
+ C-r -- Enter a recursive edit, then on exit ask again for a character
+ C-l -- redisplay screen and ask again."
+  "P"
+  (lambda (argument)
+    (cond ((and (not *defining-keyboard-macro?*)
+		(not *executing-keyboard-macro?*))
+	   (editor-error "Not defining or executing kbd macro"))
+	  (argument
+	   (with-keyboard-macro-disabled enter-recursive-edit))
+	  (*executing-keyboard-macro?*
+	   (let loop ()
+	     (let ((char
+		    (with-keyboard-macro-disabled
+		     (lambda ()
+		       (set-command-prompt!
+			"Proceed with macro? (Space, DEL, C-d, C-r or C-l)")
+		       (keyboard-read-char)))))
+	       (let ((test-for
+		      (lambda (char*)
+			(char=? char (remap-alias-char char*)))))
+		 (cond ((test-for #\space)
+			unspecific)
+		       ((test-for #\rubout)
+			(*keyboard-macro-continuation* true))
+		       ((test-for #\C-d)
+			(*keyboard-macro-continuation* false))
+		       ((test-for #\C-r)
+			(with-keyboard-macro-disabled enter-recursive-edit)
+			(loop))
+		       ((test-for #\C-l)
+			(window-redraw! (current-window) false)
+			(loop))
+		       (else
+			(editor-beep)
+			(loop))))))))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debuge.scm,v 1.35 1989/03/14 08:00:20 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debuge.scm,v 1.36 1989/04/15 00:48:15 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -80,23 +80,23 @@
 		      (set-buffer-truename! buffer truename)
 		      (buffer-not-modified! buffer)))))))))
 
-(define-command ("Redraw Display")
-  "Redraws the entire display from scratch."
-  (update-screens! true))
-
-(define-command ("Debug Show Rings")
+(define-command debug-show-rings
   ""
-  (message "Mark Ring: "
-	   (write-to-string (ring-size (buffer-mark-ring (current-buffer))))
-	   "; Kill Ring: "
-	   (write-to-string (ring-size (current-kill-ring)))))
+  ()
+  (lambda ()
+    (message "Mark Ring: "
+	     (write-to-string (ring-size (buffer-mark-ring (current-buffer))))
+	     "; Kill Ring: "
+	     (write-to-string (ring-size (current-kill-ring))))))
 
-(define-command ("Debug Count Marks")
+(define-command debug-count-marks
   ""
-  (count-marks-group (buffer-group (current-buffer))
-    (lambda (n-existing n-gced)
-      (message "Existing: " (write-to-string n-existing)
-	       "; GCed: " (write-to-string n-gced)))))
+  ()
+  (lambda ()
+    (count-marks-group (buffer-group (current-buffer))
+		       (lambda (n-existing n-gced)
+			 (message "Existing: " (write-to-string n-existing)
+				  "; GCed: " (write-to-string n-gced))))))
 
 (define (count-marks-group group receiver)
   (let loop ((marks (group-marks group)) (receiver receiver))

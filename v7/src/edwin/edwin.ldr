@@ -18,7 +18,6 @@
     (load "clsmac" (->environment '(EDWIN CLASS-MACROS)))
     (load "xform"
 	  (->environment '(EDWIN CLASS-MACROS TRANSFORM-INSTANCE-VARIABLES)))
-    (load "complt" environment)
     (load "paths" environment)
     (load "struct" environment)
     (load "grpops" (->environment '(EDWIN GROUP-OPERATIONS)))

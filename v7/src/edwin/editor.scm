@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.184 1989/03/30 16:39:37 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.185 1989/04/15 00:48:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -45,43 +45,56 @@
   (if (not edwin-editor)
       (edwin-reset))
   (call-with-current-continuation
-   (lambda (edwin-abort-continuation)
+   (lambda (continuation)
      (bind-condition-handler
-      '()
-      (lambda (condition)
-	(within-continuation edwin-abort-continuation
-			     (lambda ()
-			       (signal-error condition))))
-      enter-edwin))))
-
-(define (enter-edwin)
-  (using-screen edwin-screen
-   (lambda ()
-     (with-editor-input-port edwin-input-port
-      (lambda ()
-	(with-editor-interrupts
-	 (lambda ()
-	   (within-editor edwin-editor
-	    (lambda ()
-	      (perform-buffer-initializations! (current-buffer))
-	      (dynamic-wind
-	       (lambda ()
-		 (update-screens! true))
-	       (lambda ()
-		 ;; Should this be in a dynamic wind? -- Jinx
-		 (if edwin-initialization (edwin-initialization))
-		 (let ((message (cmdl-message/null)))
-		   (push-cmdl (lambda (cmdl)
-				cmdl	;ignore
-				(top-level-command-reader)
-				message)
-			      false
-			      message)))
-	       (lambda ()
-		 unspecific))))))))))
-  ;; Should this be here or in a dynamic wind? -- Jinx
-  (if edwin-finalization (edwin-finalization))
+	 '()
+	 (lambda (condition)
+	   (and (not (condition/internal? condition))
+		(error? condition)
+		(if (ref-variable debug-on-error)
+		    (begin
+		     (with-output-to-temporary-buffer "*Error*"
+		       (lambda ()
+			 (format-error-message (condition/message condition)
+					       (condition/irritants condition)
+					       (current-output-port))))
+		     (editor-error "Scheme error"))
+		    (within-continuation continuation
+		      (lambda ()
+			(signal-error condition))))))
+       (lambda ()
+	 (using-screen edwin-screen
+	  (lambda ()
+	    (with-editor-input-port edwin-input-port
+	     (lambda ()
+	       (with-editor-interrupts
+		(lambda ()
+		  (within-editor edwin-editor
+		   (lambda ()
+		     (perform-buffer-initializations! (current-buffer))
+		     (dynamic-wind
+		      (lambda ()
+			(update-screens! true))
+		      (lambda ()
+			;; Should this be in a dynamic wind? -- Jinx
+			(if edwin-initialization (edwin-initialization))
+			(let ((message (cmdl-message/null)))
+			  (push-cmdl (lambda (cmdl)
+				       cmdl	;ignore
+				       (top-level-command-reader)
+				       message)
+				     false
+				     message)))
+		      (lambda ()
+			unspecific))))))))))
+	 ;; Should this be here or in a dynamic wind? -- Jinx
+	 (if edwin-finalization (edwin-finalization))))))
   unspecific)
+
+(define-variable debug-on-error
+  "*True means enter debugger if an error is signalled.
+Does not apply to editor errors."
+  false)
 
 ;; Set this before entering the editor to get something done after the
 ;; editor's dynamic environment is initialized, but before the command
@@ -91,7 +104,7 @@
 ;; the editor's dynamic environment; for example, this can be used to
 ;; reset and then reenter the editor.
 (define edwin-finalization false)
-
+
 (define (within-editor editor thunk)
   (call-with-current-continuation
    (lambda (continuation)
@@ -106,7 +119,7 @@
 (define recursive-edit-continuation)
 (define recursive-edit-level)
 (define current-editor)
-
+
 (define (enter-recursive-edit)
   (let ((value
 	 (call-with-current-continuation
@@ -131,7 +144,7 @@
 (define (exit-recursive-edit value)
   (if recursive-edit-continuation
       (recursive-edit-continuation value)
-      (editor-abort value)))
+      (editor-error "No recursive edit is in progress")))
 
 (define (editor-abort value)
   (editor-continuation value))

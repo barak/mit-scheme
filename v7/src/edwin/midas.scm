@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/midas.scm,v 1.12 1989/03/14 08:01:31 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/midas.scm,v 1.13 1989/04/15 00:51:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,22 +41,24 @@
 
 (declare (usual-integrations))
 
-(define-command ("Midas Mode")
+(define-command midas-mode
   "Enter Midas mode."
-  (set-current-major-mode! midas-mode))
+  ()
+  (lambda ()
+    (set-current-major-mode! (ref-mode-object midas))))
 
-(define-major-mode "Midas" "Fundamental"
+(define-major-mode midas fundamental "Midas"
   "Major mode for editing assembly code."
-  (local-set-variable! "Syntax Table" midas-mode:syntax-table)
-  (local-set-variable! "Comment Column" 40)
-  (local-set-variable! "Comment Locator Hook" lisp-comment-locate)
-  (local-set-variable! "Comment Indent Hook" midas-comment-indentation)
-  (local-set-variable! "Comment Start" ";")
-  (local-set-variable! "Comment End" "")
-  (local-set-variable! "Paragraph Start" "^$")
-  (local-set-variable! "Paragraph Separate" (ref-variable "Paragraph Start"))
-  (local-set-variable! "Indent Line Procedure" ^r-tab-command)
-  (if (ref-variable "Midas Mode Hook") ((ref-variable "Midas Mode Hook"))))
+  (local-set-variable! syntax-table midas-mode:syntax-table)
+  (local-set-variable! comment-column 40)
+  (local-set-variable! comment-locator-hook lisp-comment-locate)
+  (local-set-variable! comment-indent-hook midas-comment-indentation)
+  (local-set-variable! comment-start ";")
+  (local-set-variable! comment-end "")
+  (local-set-variable! paragraph-start "^$")
+  (local-set-variable! paragraph-separate (ref-variable paragraph-start))
+  (local-set-variable! indent-line-procedure (ref-command insert-tab))
+  (if (ref-variable midas-mode-hook) ((ref-variable midas-mode-hook))))
 
 (define midas-mode:syntax-table (make-syntax-table))
 (modify-syntax-entry! midas-mode:syntax-table #\; "<   ")
@@ -71,4 +73,4 @@
   (if (match-forward ";;;" mark)
       0
       (max (1+ (mark-column (horizontal-space-start mark)))
-	   comment-column)))
+	   (ref-variable comment-column))))

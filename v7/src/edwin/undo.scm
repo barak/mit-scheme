@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/undo.scm,v 1.43 1989/03/14 08:03:33 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/undo.scm,v 1.44 1989/04/15 00:53:47 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -292,38 +292,40 @@
 
 (define undo-command-tag "Undo")
 
-(define-command ("Undo" (argument 1))
+(define-command undo
   "Undo some previous changes.
 Repeat this command to undo more changes.
 A numeric argument serves as a repeat count."
-  (if (positive? argument)
-      (let ((buffer (current-buffer)))
-	(let ((undo-data (group-undo-data (buffer-group buffer))))
-	  (if (not undo-data)
-	      (editor-error "Undo information not kept for this buffer"))
-	  (without-interrupts
-	   (lambda ()
-	     (command-message-receive undo-command-tag
-	       (lambda ()
-		 (if (or (not (eq? last-undone-buffer buffer))
-			 (= -1 last-undone-record))
-		     (editor-error cant-undo-more)))
-	       (lambda ()
-		 (set! last-undone-buffer buffer)
-		 (set! number-records-undone 0)
-		 (set! number-chars-left
-		       (string-length (undo-data-chars undo-data)))
-		 (set! last-undone-record (undo-data-next-record undo-data))
-		 (set! last-undone-char (undo-data-next-char undo-data))
-		 ;; This accounts for the boundary that is inserted
-		 ;; just before this command is called.
-		 (set! argument (1+ argument))
-		 unspecific))
-	     (undo-n-records undo-data
-			     buffer
-			     (count-records-to-undo undo-data argument))))
-	  (set-command-message! undo-command-tag)
-	  (temporary-message "Undo!")))))
+  "p"
+  (lambda (argument)
+    (if (positive? argument)
+	(let ((buffer (current-buffer)))
+	  (let ((undo-data (group-undo-data (buffer-group buffer))))
+	    (if (not undo-data)
+		(editor-error "Undo information not kept for this buffer"))
+	    (without-interrupts
+	     (lambda ()
+	       (command-message-receive undo-command-tag
+		 (lambda ()
+		   (if (or (not (eq? last-undone-buffer buffer))
+			   (= -1 last-undone-record))
+		       (editor-error cant-undo-more)))
+		 (lambda ()
+		   (set! last-undone-buffer buffer)
+		   (set! number-records-undone 0)
+		   (set! number-chars-left
+			 (string-length (undo-data-chars undo-data)))
+		   (set! last-undone-record (undo-data-next-record undo-data))
+		   (set! last-undone-char (undo-data-next-char undo-data))
+		   ;; This accounts for the boundary that is inserted
+		   ;; just before this command is called.
+		   (set! argument (1+ argument))
+		   unspecific))
+	       (undo-n-records undo-data
+			       buffer
+			       (count-records-to-undo undo-data argument))))
+	    (set-command-message! undo-command-tag)
+	    (temporary-message "Undo!"))))))
 
 (define (count-records-to-undo undo-data argument)
   (let ((records (undo-data-records undo-data)))

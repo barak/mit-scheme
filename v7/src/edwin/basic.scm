@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.95 1989/03/14 07:58:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.96 1989/04/15 00:46:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,69 +41,72 @@
 
 (declare (usual-integrations))
 
-(define-command ("^R Bad Command")
-  "This command is used to capture undefined keys.
-It is usually called directly by the command lookup
-procedure when it fails to find a command."
-  (editor-error "Undefined command: " (xchar->name (current-command-char))))
-
-(define-command ("^R Insert Self" (argument 1))
+(define-command self-insert-command
   "Insert the character used to invoke this.
 With an argument, insert the character that many times."
-  (insert-chars (current-command-char) argument))
+  "P"
+  (lambda (argument)
+    (insert-chars (current-command-char) (or argument 1))))
 
-(define-command ("^R Quoted Insert" (argument 1))
+(define-command quoted-insert
   "Reads a character and inserts it."
-  (define (read-char)
-    (let ((char (keyboard-read-char)))
-      (set-command-prompt! (string-append (command-prompt) (char-name char)))
-      char))
+  "P"
+  (lambda (argument)
+    (let ((read-char
+	   (lambda ()
+	     (let ((char (with-editor-interrupts-disabled keyboard-read-char)))
+	       (set-command-prompt!
+		(string-append (command-prompt) (char-name char)))
+	       char))))
+      (let ((read-digit
+	     (lambda ()
+	       (or (char->digit (read-char) 8)
+		   (editor-error "Not an octal digit")))))
+	(set-command-prompt! "Quote Character: ")
+	(insert-chars (let ((char (read-char)))
+			(let ((digit (char->digit char 4)))
+			  (if digit
+			      (ascii->char
+			       (let ((digit2 (read-digit)))
+				 (let ((digit3 (read-digit)))
+				   (+ (* (+ (* digit 8) digit2) 8) digit3))))
+			      char)))
+		      (or argument 1))))))
 
-  (define (read-digit)
-    (or (char->digit (read-char) 8)
-	(editor-error "Not an octal digit")))
-
-  (set-command-prompt! "Quote Character: ")
-  (insert-chars (let ((char (read-char)))
-		  (let ((digit (char->digit char 4)))
-		    (if digit
-			(ascii->char
-			 (let ((digit2 (read-digit)))
-			   (let ((digit3 (read-digit)))
-			     (+ (* (+ (* digit 8) digit2) 8) digit3))))
-			char)))
-		argument))
-
-(define-command ("^R Open Line" (argument 1))
+(define-command open-line
   "Insert a newline after point.
 Differs from ordinary insertion in that point remains
 before the inserted characters.
 With an argument, inserts several newlines."
-  (let ((m* (mark-right-inserting (current-point))))
-    (insert-newlines argument)
-    (set-current-point! m*)))
+  "P"
+  (lambda (argument)
+    (let ((m* (mark-right-inserting (current-point))))
+      (insert-newlines (or argument 1))
+      (set-current-point! m*))))
+
+(define-command keyboard-quit
+  "Signals a quit condition."
+  ()
+  (lambda ()
+    (editor-beep)
+    (temporary-message "Quit")
+    (^G-signal)))
 
-(define (xchar->name char)
-  (if (pair? char)
-      (chars->name char)
-      (char-name char)))
+(define-command ^r-bad-command
+  "This command is used to capture undefined keys.
+It is usually called directly by the command lookup
+procedure when it fails to find a command."
+  ()
+  (lambda ()
+    (editor-error "Undefined command: " (xchar->name (current-command-char)))))
 
-(define (chars->name chars)
-  (if (null? chars)
-      ""
-      (string-append-separated (char-name (car chars))
-			       (chars->name (cdr chars)))))
-
-(define (string-append-separated x y)
-  (cond ((string-null? x) y)
-	((string-null? y) x)
-	(else (string-append x " " y))))
+(define (barf-if-read-only)
+  (editor-error "Trying to modify read only text."))
 
 (define (editor-error . strings)
   (if (not (null? strings)) (apply temporary-message strings))
   (editor-beep)
   (abort-current-command))
-
 (define (editor-failure . strings)
   (cond ((not (null? strings)) (apply temporary-message strings))
 	(*defining-keyboard-macro?* (clear-message)))
@@ -116,41 +119,47 @@ With an argument, inserts several newlines."
 (define (not-implemented)
   (editor-error "Not yet implemented"))
 
-(define-command ("^R Prefix Control")
+(define-command control-prefix
   "Sets Control-bit of following character.
 This command followed by an = is equivalent to a Control-=."
-  (read-extension-char "C-" char-controlify))
+  ()
+  (lambda ()
+    (read-extension-char "C-" char-controlify)))
 
-(define-command ("^R Prefix Meta")
+(define-command meta-prefix
   "Sets Meta-bit of following character. 
 Turns a following A into a Meta-A.
 If the Metizer character is Altmode, it turns ^A
 into Control-Meta-A.  Otherwise, it turns ^A into plain Meta-A."
-  (read-extension-char "M-"
-		       (if (let ((char (current-command-char)))
-			     (and (char? char)
-				  (char=? #\Altmode char)))
-			   char-metafy
-			   (lambda (char)
-			     (char-metafy (char-base char))))))
+  ()
+  (lambda ()
+    (read-extension-char "M-"
+			 (if (let ((char (current-command-char)))
+			       (and (char? char)
+				    (char=? #\Altmode char)))
+			     char-metafy
+			     (lambda (char)
+			       (char-metafy (char-base char)))))))
 
-(define-command ("^R Prefix Control-Meta")
+(define-command control-meta-prefix
   "Sets Control- and Meta-bits of following character.
 Turns a following A (or C-A) into a Control-Meta-A."
-  (read-extension-char "C-M-" char-control-metafy))
+  ()
+  (lambda ()
+    (read-extension-char "C-M-" char-control-metafy)))
 
 (define execute-extended-chars?
   true)
 
 (define extension-commands
-  (list (name->command "^R Prefix Control")
-	(name->command "^R Prefix Meta")
-	(name->command "^R Prefix Control-Meta")))
+  (list (name->command 'control-prefix)
+	(name->command 'meta-prefix)
+	(name->command 'control-meta-prefix)))
 
 (define (read-extension-char prefix-string modifier)
   (if execute-extended-chars?
       (set-command-prompt-prefix! prefix-string))
-  (let ((char (modifier (keyboard-read-char))))
+  (let ((char (modifier (with-editor-interrupts-disabled keyboard-read-char))))
     (if execute-extended-chars?
 	(dispatch-on-char (current-comtabs) char)
 	char)))
@@ -160,165 +169,192 @@ Turns a following A (or C-A) into a Control-Meta-A."
    (string-append-separated (command-argument-prompt)
 			    prefix-string)))
 
-(define-command ("^R Prefix Character")
+(define-command prefix-char
   "This is a prefix for more commands.
 It reads another character (a subcommand) and dispatches on it."
-  (let ((prefix-char (current-command-char)))
-    (set-command-prompt-prefix! (string-append (xchar->name prefix-char) " "))
-    (dispatch-on-char (current-comtabs)
-		      ((if (pair? prefix-char) append cons)
-		       prefix-char
-		       (list (keyboard-read-char))))))
+  ()
+  (lambda ()
+    (let ((prefix-char (current-command-char)))
+      (set-command-prompt-prefix!
+       (string-append (xchar->name prefix-char) " "))
+      (dispatch-on-char
+       (current-comtabs)
+       ((if (pair? prefix-char) append cons)
+	prefix-char
+	(list (with-editor-interrupts-disabled keyboard-read-char)))))))
 
-(define-command ("^R Extended Command")
+(define-command execute-extended-command
   "Read an extended command from the terminal with completion.
 This command reads the name of a function, with completion.  Then the
 function is called.  Completion is done as the function name is typed
 For more information type the HELP key while entering the name."
-  (dispatch-on-command (prompt-for-command "Extended Command")))
+  ()
+  (lambda ()
+    (dispatch-on-command (prompt-for-command "Extended Command"))))
 
-(define-command ("^R Return to Superior" argument)
+(define-command suspend-scheme
   "Go back to Scheme's superior job.
 With argument, saves visited file first."
-  (if argument (^r-save-file-command))
-  (quit)
-  (update-screens! true))
+  "P"
+  (lambda (argument)
+    (if argument ((ref-command save-buffer) false))
+    (quit)
+    (update-screens! true)))
 
-(define-command ("^R Scheme")
+(define-command suspend-edwin
   "Stop Edwin and return to Scheme."
-  (editor-abort *the-non-printing-object*))
-
-(define-command ("^R Exit")
+  ()
+  (lambda ()
+    (editor-abort *the-non-printing-object*)))
+(define-command exit-recursive-edit
   "Exit normally from a subsystem of a level of editing.
-At top level, exit from Edwin like \\[^R Return to Superior]."
-  (exit-recursive-edit 'EXIT))
+At top level, exit from Edwin like \\[suspend-scheme]."  ()
+  (lambda ()
+    (exit-recursive-edit 'EXIT)))
 
-(define-command ("Abort Recursive Edit")
+(define-command abort-recursive-edit
   "Abnormal exit from recursive editing command.
 The recursive edit is exited and the command that invoked it is aborted.
-For a normal exit, you should use \\[^R Exit], NOT this command."
-  (exit-recursive-edit 'ABORT))
+For a normal exit, you should use \\[exit-recursive-edit], NOT this command."
+  ()
+  (lambda ()
+    (exit-recursive-edit 'ABORT)))
 
-(define-command ("^R Narrow Bounds to Region")
+(define-command narrow-to-region
   "Restrict editing in current buffer to text between point and mark.
-Use \\[^R Widen Bounds] to undo the effects of this command."
-  (region-clip! (current-region)))
+Use \\[widen] to undo the effects of this command."
+  ()
+  (lambda ()
+    (region-clip! (current-region))))
 
-(define-command ("^R Widen Bounds")
+(define-command widen
   "Remove restrictions from current buffer.
 Allows full text to be seen and edited."
-  (buffer-widen! (current-buffer)))
+  ()
+  (lambda ()
+    (buffer-widen! (current-buffer))))
 
-(define-command ("Set Key")
+(define-command set-key
   "Define a key binding from the keyboard.
 Prompts for a command and a key, and sets the key's binding.
-The key is bound in Fundamental Mode."
-  (let ((command (prompt-for-command "Command")))
-    (let ((key (prompt-for-key (string-append "Put \""
-					      (command-name command)
-					      "\" on key")
-			       (mode-comtabs fundamental-mode))))
-      (if (prompt-for-confirmation? "Go ahead")
-	  (define-key "Fundamental" key (command-name command))))))
-
+The key is bound in fundamental mode."
+  (lambda ()
+    (let ((command (prompt-for-command "Command")))
+      (list command
+	    (prompt-for-key (string-append "Put \""
+					   (command-name-string command)
+					   "\" on key")
+			    (mode-comtabs (ref-mode-object fundamental))))))
+  (lambda (command key)
+    (if (prompt-for-confirmation? "Go ahead")
+	(define-key 'fundamental key (command-name command)))))
 ;;;; Comment Commands
 
-(define-variable "Comment Column"
+(define-variable comment-column
   "Column to indent right-margin comments to."
   32)
 
-(define-variable "Comment Locator Hook"
+(define-variable comment-locator-hook
   "Procedure to find a comment, or false if no comment syntax defined.
 The procedure is passed a mark, and should return false if it cannot
 find a comment, or a pair of marks.  The car should be the start of
 the comment, and the cdr should be the end of the comment's starter."
   false)
 
-(define-variable "Comment Indent Hook"
+(define-variable comment-indent-hook
   "Procedure to compute desired indentation for a comment.
 The procedure is passed the start mark of the comment
 and should return the column to indent the comment to."
   false)
 
-(define-variable "Comment Start"
+(define-variable comment-start
   "String to insert to start a new comment."
   "")
 
-(define-variable "Comment End"
+(define-variable comment-end
   "String to insert to end a new comment.
 This should be a null string if comments are terminated by Newline."
   "")
 
-(define-command ("^R Set Comment Column" argument)
+(define-command set-comment-column
   "Set the comment column based on point.
 With no arg, set the comment column to the current column.
 With just minus as an arg, kill any comment on this line.
 Otherwise, set the comment column to the argument."
-  (cond ((command-argument-negative-only?)
-	 (^r-kill-comment-command))
-	(else
-	 (set! comment-column (or argument (current-column)))
-	 (message "Comment column set to " (write-to-string comment-column)))))
+  "P"
+  (lambda (argument)
+    (cond ((command-argument-negative-only?)
+	   ((ref-command kill-comment)))
+	  (else
+	   (set-variable! comment-column (or argument (current-column)))
+	   (message "Comment column set to " (ref-variable comment-column))))))
 
-(define-command ("^R Indent for Comment")
+(define-command indent-for-comment
   "Indent this line's comment to comment column, or insert an empty comment."
-  (if (not (ref-variable "Comment Locator Hook"))
-      (editor-error "No comment syntax defined")
-      (let ((start (line-start (current-point) 0))
-	    (end (line-end (current-point) 0)))
-	(let ((com ((ref-variable "Comment Locator Hook") start)))
-	  (set-current-point! (if com (car com) end))
-	  (if com (mark-permanent! (cdr com)))
-	  (let ((indent ((ref-variable "Comment Indent Hook")
-			 (current-point))))
-	    (maybe-change-column indent)
-	    (if com
-		(set-current-point! (cdr com))
-		(begin (insert-string (ref-variable "Comment Start"))
-		       (insert-comment-end))))))))
+  ()
+  (lambda ()
+    (if (not (ref-variable comment-locator-hook))
+	(editor-error "No comment syntax defined")
+	(let ((start (line-start (current-point) 0))
+	      (end (line-end (current-point) 0)))
+	  (let ((com ((ref-variable comment-locator-hook) start)))
+	    (set-current-point! (if com (car com) end))
+	    (if com (mark-permanent! (cdr com)))
+	    (let ((indent
+		   ((ref-variable comment-indent-hook) (current-point))))
+	      (maybe-change-column indent)
+	      (if com
+		  (set-current-point! (cdr com))
+		  (begin (insert-string (ref-variable comment-start))
+			 (insert-comment-end)))))))))
 
-(define-variable "Comment Multi Line"
-  "If true, means \\[^R Indent New Comment Line] should continue same comment
+(define-variable comment-multi-line
+  "If true, means \\[indent-new-comment-line] should continue same comment
 on new line, with no new terminator or starter."
   false)
 
-(define-command ("^R Indent New Comment Line")
+(define-command indent-new-comment-line
   "Break line at point and indent, continuing comment if presently within one."
-  (define (if-not-in-comment)
-    (if (ref-variable "Fill Prefix")
-	(insert-string (ref-variable "Fill Prefix"))
-	(^r-indent-according-to-mode-command)))
-  (delete-horizontal-space)
-  (insert-newlines 1)
-  (if (ref-variable "Comment Locator Hook")
-      (let ((com ((ref-variable "Comment Locator Hook")
-		  (line-start (current-point) -1))))
-	(if com
-	    (let ((start-column (mark-column (car com)))
-		  (end-column (mark-column (cdr com)))
-		  (comment-start (extract-string (car com) (cdr com))))
-	      (if (ref-variable "Comment Multi Line")
-		  (maybe-change-column end-column)
-		  (begin (insert-string (ref-variable "Comment End")
-					(line-end (current-point) -1))
-			 (maybe-change-column start-column)
-			 (insert-string comment-start)))
-	      (if (line-end? (current-point))
-		  (insert-comment-end)))
-	    (if-not-in-comment)))
-      (if-not-in-comment)))
+  ()
+  (lambda ()
+    (delete-horizontal-space)
+    (insert-newlines 1)
+    (let ((if-not-in-comment
+	   (lambda ()
+	     (if (ref-variable fill-prefix)
+		 (insert-string (ref-variable fill-prefix))
+		 ((ref-command indent-according-to-mode))))))
+      (if (ref-variable comment-locator-hook)
+	  (let ((com ((ref-variable comment-locator-hook)
+		      (line-start (current-point) -1))))
+	    (if com
+		(let ((start-column (mark-column (car com)))
+		      (end-column (mark-column (cdr com)))
+		      (comment-start (extract-string (car com) (cdr com))))
+		  (if (ref-variable comment-multi-line)
+		      (maybe-change-column end-column)
+		      (begin (insert-string (ref-variable comment-end)
+					    (line-end (current-point) -1))
+			     (maybe-change-column start-column)
+			     (insert-string comment-start)))
+		  (if (line-end? (current-point))
+		      (insert-comment-end)))
+		(if-not-in-comment)))
+	  (if-not-in-comment)))))
 
 (define (insert-comment-end)
   (let ((point (mark-right-inserting (current-point))))
-    (insert-string (ref-variable "Comment End"))
+    (insert-string (ref-variable comment-end))
     (set-current-point! point)))
 
-(define-command ("^R Kill Comment")
+(define-command kill-comment
   "Kill the comment on this line, if any."
-  (if (not (ref-variable "Comment Locator Hook"))
-      (editor-error "No comment syntax defined")
-      (let ((start (line-start (current-point) 0))
-	    (end (line-end (current-point) 0)))
-	(let ((com ((ref-variable "Comment Locator Hook") start)))
-	  (if com
-	      (kill-string (horizontal-space-start (car com)) end))))))
+  ()
+  (lambda ()
+    (if (not (ref-variable comment-locator-hook))
+	(editor-error "No comment syntax defined")
+	(let ((start (line-start (current-point) 0))
+	      (end (line-end (current-point) 0)))
+	  (let ((com ((ref-variable comment-locator-hook) start)))
+	    (if com
+		(kill-string (horizontal-space-start (car com)) end)))))))

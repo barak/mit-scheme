@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/linden.scm,v 1.115 1989/03/14 08:01:17 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/linden.scm,v 1.116 1989/04/15 00:51:00 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,18 +41,18 @@
 
 (declare (usual-integrations))
 
-(define-variable "Lisp Indent Offset"
+(define-variable lisp-indent-offset
   "If not false, the number of extra columns to indent a subform."
   false)
 
-(define-variable "Lisp Indent Hook"
+(define-variable lisp-indent-hook
   "If not false, a procedure for modifying lisp indentation."
   false)
 
-(define-variable "Lisp Indent Methods"
+(define-variable lisp-indent-methods
   "String table identifying special forms for lisp indentation.")
 
-(define-variable "Lisp Body Indent"
+(define-variable lisp-body-indent
   "Number of extra columns to indent the body of a special form."
   2)
 
@@ -94,8 +94,8 @@
 (define (simple-indent state container last-sexp indent-point)
   (cond ((parse-state-in-string? state)
 	 (mark-column (horizontal-space-end indent-point)))
-	((and (integer? (ref-variable "Lisp Indent Offset")) container)
-	 (+ (ref-variable "Lisp Indent Offset") (mark-column container)))
+	((and (integer? (ref-variable lisp-indent-offset)) container)
+	 (+ (ref-variable lisp-indent-offset) (mark-column container)))
 	((positive? (parse-state-depth state))
 	 (if (not last-sexp)
 	     (mark-column (mark1+ container))
@@ -129,8 +129,8 @@
 	  ;; the indent hook.
 	  (mark-column (backward-prefix-chars normal-indent))
 	  (let ((normal-indent (backward-prefix-chars normal-indent)))
-	    (or (and (ref-variable "Lisp Indent Hook")
-		     ((ref-variable "Lisp Indent Hook")
+	    (or (and (ref-variable lisp-indent-hook)
+		     ((ref-variable lisp-indent-hook)
 		      state indent-point normal-indent))
 		(mark-column normal-indent)))))))
 
@@ -154,7 +154,7 @@
 	 (let ((name (extract-string first-sexp
 				     (forward-one-sexp first-sexp))))
 	   (let ((method
-		  (string-table-get (ref-variable "Lisp Indent Methods")
+		  (string-table-get (ref-variable lisp-indent-methods)
 				    name)))
 	     (cond ((or (eq? method 'DEFINITION)
 			(and (not method)
@@ -176,7 +176,7 @@
   indent-point normal-indent		;ignore
   (let ((container (parse-state-containing-sexp state)))
     (and (mark> (line-end container 0) (parse-state-last-sexp state))
-	 (+ (ref-variable "Lisp Body Indent") (mark-column container)))))
+	 (+ (ref-variable lisp-body-indent) (mark-column container)))))
 
 ;;; Indent the first N subforms normally, but then indent the
 ;;; remaining forms at the body-indent.  If this is one of the first
@@ -186,7 +186,7 @@
 (define (lisp-indent-special-form n state indent-point normal-indent)
   (if (negative? n) (error "Special form indent hook negative" n))
   (let ((container (parse-state-containing-sexp state)))
-    (let ((body-indent (+ (ref-variable "Lisp Body Indent")
+    (let ((body-indent (+ (ref-variable lisp-body-indent)
 			  (mark-column container)))
 	  (normal-indent (mark-column normal-indent)))
       (let ((second-sexp
@@ -206,7 +206,10 @@
 	      ((zero? n)
 	       body-indent)
 	      (else
-	       (cons normal-indent container)))))))
+	       (cons (if (< n 3)
+			 (+ body-indent (ref-variable lisp-body-indent))
+			 normal-indent)
+		     container)))))))
 
 ;;;; Indent Line
 
@@ -264,7 +267,7 @@
 	   (if (pair? indentation) (car indentation) indentation)))
 	(else
 	 (max (1+ (mark-column (horizontal-space-start mark)))
-	      comment-column))))
+	      (ref-variable comment-column)))))
 
 ;;;; Indent Expression
 
@@ -301,7 +304,7 @@
 	   (maybe-change-indentation
 	    (cond ((match-forward ";;;" mark) (mark-column mark))
 		  ((match-forward ";;" mark) (compute-indentation start stack))
-		  (else comment-column))
+		  (else (ref-variable comment-column)))
 	    mark)
 	   true))))
 

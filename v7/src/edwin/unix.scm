@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.2 1989/03/15 19:15:20 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.3 1989/04/15 00:53:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -66,13 +66,13 @@
 	(wrap (pathname-name-string pathname)
 	      (pathname-directory-path pathname)))))
 
-(define-variable "Backup By Copying When Linked"
+(define-variable backup-by-copying-when-linked
   "*Non-false means use copying to create backups for files with multiple names.
 This causes the alternate names to refer to the latest version as edited.
 This variable is relevant only if  Backup By Copying  is false."
  false)
 
-(define-variable "Backup By Copying When Mismatch"
+(define-variable backup-by-copying-when-mismatch
   "*Non-false means create backups by copying if this preserves owner or group.
 Renaming may still be used (subject to control of other variables)
 when it would not result in changing the owner or group of the file;
@@ -81,18 +81,18 @@ the default for a new file created there by you.
 This variable is relevant only if  Backup By Copying  is false."
   false)
 
-(define-variable "Version Control"
+(define-variable version-control
   "*Control use of version numbers for backup files.
 #T means make numeric backup versions unconditionally.
 #F means make them for files that have some already.
 'NEVER means do not make them."
   false)
 
-(define-variable "Kept Old Versions"
+(define-variable kept-old-versions
   "*Number of oldest versions to keep when a new numbered backup is made."
   2)
 
-(define-variable "Kept New Versions"
+(define-variable kept-new-versions
   "*Number of newest versions to keep when a new numbered backup is made.
 Includes the new backup.  Must be > 0"
   2)
@@ -112,9 +112,9 @@ Includes the new backup.  Must be > 0"
 
 (define (os/backup-by-copying? truename)
   (let ((attributes (file-attributes truename)))
-    (and (ref-variable "Backup By Copying When Linked")
+    (and (ref-variable backup-by-copying-when-linked)
 	 (> (file-attributes/n-links attributes) 1))
-    (and (ref-variable "Backup By Copying When Mismatch")
+    (and (ref-variable backup-by-copying-when-mismatch)
 	 (not (and (= (file-attributes/uid attributes) (unix/current-uid))
 		   (= (file-attributes/gid attributes) (unix/current-gid)))))))
 
@@ -124,28 +124,27 @@ Includes the new backup.  Must be > 0"
 	   (values
 	    (string->pathname (string-append (pathname->string truename) "~"))
 	    '()))))
-    (if (eq? 'NEVER (ref-variable "Version Control"))
+    (if (eq? 'NEVER (ref-variable version-control))
 	(no-versions)
-	(let ((non-numeric (char-set-invert char-set:numeric))
-	      (directory (pathname-directory-path truename))
-	      (prefix (string-append (pathname-name-string truename) ".~")))
-	  (let ((prefix-length (string-length prefix)))
-	    (let ((filenames
-		   (map pathname-name-string
-			(directory-read directory false))))
+	(let ((prefix (string-append (pathname-name-string truename) ".~")))
+	  (let ((filenames
+		 (os/directory-list-completions
+		  (pathname-directory-string truename)
+		  prefix))
+		(prefix-length (string-length prefix)))
 	    (let ((possibilities
 		   (list-transform-positive filenames
-		     (lambda (filename)
-		       (let ((end (string-length filename)))
-			 (let ((last (-1+ end)))
-			   (and (string-prefix? prefix filename)
-				(char=? #\~ (string-ref filename last))
-				(eqv? last
-				      (substring-find-next-char-in-set
-				       filename
-				       prefix-length
-				       end
-				       non-numeric)))))))))
+		     (let ((non-numeric (char-set-invert char-set:numeric)))
+		       (lambda (filename)
+			 (let ((end (string-length filename)))
+			   (let ((last (-1+ end)))
+			     (and (char=? #\~ (string-ref filename last))
+				  (eqv? last
+					(substring-find-next-char-in-set
+					 filename
+					 prefix-length
+					 end
+					 non-numeric))))))))))
 	      (let ((versions
 		     (sort (map (lambda (filename)
 				  (string->number
@@ -155,28 +154,29 @@ Includes the new backup.  Must be > 0"
 				possibilities)
 			   <)))
 		(let ((high-water-mark (apply max (cons 0 versions))))
-		  (if (or (ref-variable "Version Control")
+		  (if (or (ref-variable version-control)
 			  (positive? high-water-mark))
 		      (let ((version->pathname
-			     (lambda (version)
-			       (merge-pathnames
-				(string->pathname
-				 (string-append prefix
-						(number->string version)
-						"~"))
-				directory))))
+			     (let ((directory
+				    (pathname-directory-path truename)))
+			       (lambda (version)
+				 (merge-pathnames
+				  (string->pathname
+				   (string-append prefix
+						  (number->string version)
+						  "~"))
+				  directory)))))
 			(values
 			 (version->pathname (1+ high-water-mark))
-			 (let ((start
-				(ref-variable "Kept Old Versions"))
+			 (let ((start (ref-variable kept-old-versions))
 			       (end
 				(- (length versions)
-				   (-1+ (ref-variable "Kept New Versions")))))
+				   (-1+ (ref-variable kept-new-versions)))))
 			   (if (< start end)
 			       (map version->pathname
 				    (sublist versions start end))
 			       '()))))
-		      (no-versions)))))))))))
+		      (no-versions))))))))))
 
 (define (os/make-dired-line pathname)
   (let ((attributes (file-attributes pathname)))
@@ -209,3 +209,20 @@ Includes the new backup.  Must be > 0"
 (define (os/dired-filename-region lstart)
   (let ((lend (line-end lstart 0)))
     (char-search-backward #\Space lend lstart 'LIMIT)    (make-region (re-match-end 0) lend)))
+
+(define (os/directory-list directory)
+  (let loop
+      ((name ((ucode-primitive open-directory) directory))
+       (result '()))
+    (if name
+	(loop ((ucode-primitive directory-read)) (cons name result))
+	result)))
+
+(define (os/directory-list-completions directory prefix)
+  (let loop
+      ((name ((ucode-primitive open-directory) directory))
+       (result '()))
+    (if name
+	(loop ((ucode-primitive directory-read))
+	      (if (string-prefix? prefix name) (cons name result) result))
+	result)))

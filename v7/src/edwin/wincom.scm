@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.90 1989/03/30 16:40:11 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.91 1989/04/15 00:54:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,110 +41,139 @@
 
 (declare (usual-integrations))
 
-(define-variable "Cursor Centering Point"
+(define-variable cursor-centering-point
   "The distance from the top of the window at which to center the point.
 This number is a percentage, where 0 is the window's top and 100 the bottom."
   35)
 
-(define-variable "Cursor Centering Threshold"
+(define-variable cursor-centering-threshold
   "If point moves offscreen by more than this many lines, recenter.
 Otherwise, the screen is scrolled to put point at the edge it moved over."
   0)
 
-(define-variable "Window Minimum Width"
+(define-variable window-minimum-width
   "Delete any window less than this wide.
 Do not set this variable below 2."
   2)
 
-(define-variable "Window Minimum Height"
+(define-variable window-minimum-height
   "Delete any window less than this high.
 The modeline is not included in this figure.
 Do not set this variable below 1."
   1)
 
-(define-variable "Next Screen Context Lines"
+(define-variable next-screen-context-lines
   "Number of lines of continuity when scrolling by screenfuls."
   2)
 
-(define-variable "Mode Line Inverse Video"
+(define-variable mode-line-inverse-video
   "If true, the mode line is highlighted."
   true)
 
-(define-command ("^R New Window" argument)
+(define-variable pop-up-windows
+  "If false, this disables the use of pop-up windows."
+  true)
+
+(define-variable preserve-window-arrangement
+  "If true, commands that normally change the window arrangement do not."
+  false)
+
+(define-variable split-height-threshold
+  "Pop-up windows prefer to split the largest window if it is this large.
+If there is only one window, it is split regardless of this value."
+  500)
+
+(define-command redraw-display
+  "Redraws the entire display from scratch."
+  ()
+  (lambda ()
+    (update-screens! true)))
+
+(define-command recenter
   "Choose new window putting point at center, top or bottom.
 With no argument, chooses a window to put point at the center
-\(\"Cursor Centering Point\" says where).
+\(cursor-centering-point says where).
 An argument gives the line to put point on;
-negative args count from the bottom.
-C-U as argument redisplays the line containing point."
-  (let ((window (current-window)))
-    (let ((size (window-y-size window)))
+negative args count from the bottom."
+  "P"
+  (lambda (argument)
+    (let ((window (current-window)))
       (if (not argument)
 	  (begin
 	    (window-redraw! window false)
-	    (update-window-screen! window true))
+	    (update-screens! true))
 	  (window-scroll-y-absolute! window
-				     (let ((n (remainder argument size)))
-				       (if (negative? n)
-					   (+ n size)
-					   n)))))))
+				     (let ((size (window-y-size window)))
+				       (let ((n (remainder argument size)))
+					 (if (negative? n)
+					     (+ n size)
+					     n))))))))
 
-(define-command ("^R Move to Screen Edge" argument)
-  "Jump to top or bottom of screen.
-Like \\[^R New Window] except that point is changed instead of the window.
-With no argument, jumps to the center, according to \"Cursor Centering Point\".
-An argument specifies the number of lines from the top;
-negative args count from the bottom."
-  (let ((window (current-window)))
-    (let ((mark
-	   (or (window-coordinates->mark
-		window 0
-		(if (not argument)
-		    (window-y-center window)
-		    (let ((y-size (window-y-size window)))
-		      (let ((n (remainder argument y-size)))
-			(if (negative? n)
-			    (+ n y-size)
-			    n)))))
-	       (window-coordinates->mark
-		window 0
-		(window-mark->y window
-				(buffer-end (window-buffer window)))))))
-      (set-current-point! (if (group-start? mark)
-			      (group-start mark)
-			      mark)))))
+(define-command move-to-window-line
+  "Position point relative to window.
+With no argument, position at text at center of window.
+An argument specifies screen line; zero means top of window,
+negative means relative to bottom of window."
+  "P"
+  (lambda (argument)
+    (let ((window (current-window)))
+      (let ((mark
+	     (or (window-coordinates->mark
+		  window 0
+		  (if (not argument)
+		      (window-y-center window)
+		      (let ((y-size (window-y-size window)))
+			(let ((n (remainder argument y-size)))
+			  (if (negative? n)
+			      (+ n y-size)
+			      n)))))
+		 (window-coordinates->mark
+		  window 0
+		  (window-mark->y window
+				  (buffer-end (window-buffer window)))))))
+	(set-current-point! (if (group-start? mark)
+				(group-start mark)
+				mark))))))
 
-(define-command ("^R Next Screen" argument)
+(define-command scroll-up
   "Move down to display next screenful of text.
 With argument, moves window down that many lines (negative moves up).
 Just minus as an argument moves up a full screen."
-  (let ((window (current-window)))
-    (scroll-window window
-		   (standard-scroll-window-argument window argument 1))))
+  "P"
+  (lambda (argument)
+    (let ((window (current-window)))
+      (scroll-window window
+		     (standard-scroll-window-argument window argument 1)))))
 
-(define-command ("^R Previous Screen" argument)
+(define-command scroll-down
   "Move up to display previous screenful of text.
 With argument, moves window up that many lines (negative moves down).
 Just minus as an argument moves down a full screen."
-  (let ((window (current-window)))
-    (scroll-window window
-		   (standard-scroll-window-argument window argument -1))))
+  "P"
+  (lambda (argument)
+    (let ((window (current-window)))
+      (scroll-window window
+		     (standard-scroll-window-argument window argument -1)))))
 
-(define-command ("^R Next Several Screens" argument)
+(define-command scroll-up-several-screens
   "Move down to display next screenful of text.
 With argument, move window down that many screenfuls (negative moves up).
 Just minus as an argument moves up a full screen."
-  (let ((window (current-window)))
-    (scroll-window window
-		   (multi-scroll-window-argument window argument 1))))
+  "P"
+  (lambda (argument)
+    (let ((window (current-window)))
+      (scroll-window window
+		     (multi-scroll-window-argument window argument 1)))))
 
-(define-command ("^R Previous Several Screens" argument)
+(define-command scroll-down-several-screens
   "Move up to display previous screenful of text.
 With argument, move window down that many screenfuls (negative moves down).
 Just minus as an argument moves down full screen."
-  (let ((window (current-window)))
-    (scroll-window window
-		   (multi-scroll-window-argument window argument -1))))
+  "P"
+  (lambda (argument)
+    (let ((window (current-window)))
+      (scroll-window window
+		     (multi-scroll-window-argument window argument -1)))))
 
 (define (scroll-window window n #!optional limit)
   (if (if (negative? n)
@@ -158,7 +187,7 @@ Just minus as an argument moves down full screen."
   (* factor
      (let ((quantum
 	    (- (window-y-size window)
-	       (ref-variable "Next Screen Context Lines"))))
+	       (ref-variable next-screen-context-lines))))
        (cond ((not argument) quantum)
 	     ((command-argument-negative-only?) (- quantum))
 	     (else argument)))))
@@ -167,108 +196,127 @@ Just minus as an argument moves down full screen."
   (* factor
      (let ((quantum
 	    (- (window-y-size window)
-	       (ref-variable "Next Screen Context Lines"))))
+	       (ref-variable next-screen-context-lines))))
        (cond ((not argument) quantum)
-	     ((command-argument-negative-only?)
-	      (- quantum))
+	     ((command-argument-negative-only?) (- quantum))
 	     (else (* argument quantum))))))
 
-(define-command ("^R Screen Video" (argument 0))
+(define-command toggle-screen-video
   "Toggle the screen's use of inverse video.
 With a positive argument, inverse video is forced.
 With a negative argument, normal video is forced."
-  (screen-inverse-video!
-   (current-screen)
-   (or (positive? argument)
-       (not (or (negative? argument)
-		(screen-inverse-video!
-		 (current-screen)
-		 false)))))
-  (update-screens! true))
+  "P"
+  (lambda (argument)
+    (screen-inverse-video!
+     (current-screen)
+     (if (not argument)
+	 (screen-inverse-video! (current-screen) false)
+	 (positive? argument)))
+    (update-screens! true)))
 
-(define-command ("What Cursor Position")
+(define-command what-cursor-position
   "Print various things about where cursor is.
 Print the X position, the Y position,
 the ASCII code for the following character,
 point absolutely and as a percentage of the total file size,
 and the virtual boundaries, if any."
-  (let ((buffer (current-buffer))
-	(point (current-point)))
-    (let ((position (mark-index point))
-	  (total (group-length (buffer-group buffer))))
-      (message (if (group-end? point)
-		   ""
-		   (let ((char (mark-right-char point)))
-		     (string-append "Char: " (char-name char)
-				    " (0"
-				    (number->string (char->ascii char)
-						    '(HEUR (RADIX O S)
-							   (EXACTNESS S)))
-				    ") ")))
-	       "point=" (write-to-string position)
-	       " of " (write-to-string total)
-	       "("
-	       (write-to-string (if (zero? total)
-				    0
-				    (round (* 100 (/ position total)))))
-	       "%) "
-	       (let ((group (mark-group point)))
-		 (let ((start (group-start-index group))
-		       (end (group-end-index group)))
-		   (if (and (zero? start) (= end total))
-		       ""
-		       (string-append "<" (write-to-string start)
-				      " - " (write-to-string end)
-				      "> "))))
-	       "x=" (write-to-string (mark-column point))))))
+  ()
+  (lambda ()
+    (let ((buffer (current-buffer))
+	  (point (current-point)))
+      (let ((position (mark-index point))
+	    (total (group-length (buffer-group buffer))))
+	(message (if (group-end? point)
+		     ""
+		     (let ((char (mark-right-char point)))
+		       (string-append "Char: " (char-name char)
+				      " (0"
+				      (number->string (char->ascii char)
+						      '(HEUR (RADIX O S)
+							     (EXACTNESS S)))
+				      ") ")))
+		 "point=" (write-to-string position)
+		 " of " (write-to-string total)
+		 "("
+		 (write-to-string (if (zero? total)
+				      0
+				      (round (* 100 (/ position total)))))
+		 "%) "
+		 (let ((group (mark-group point)))
+		   (let ((start (group-start-index group))
+			 (end (group-end-index group)))
+		     (if (and (zero? start) (= end total))
+			 ""
+			 (string-append "<" (write-to-string start)
+					" - " (write-to-string end)
+					"> "))))
+		 "x=" (write-to-string (mark-column point)))))))
 
 ;;;; Multiple Windows
 
-(define-command ("^R Split Window Vertically" argument)
+(define-command split-window-vertically
   "Split current window into two windows, one above the other.
 This window becomes the uppermost of the two, and gets
 ARG lines.  No arg means split equally."
-  (disallow-typein)
-  (window-split-vertically! (current-window) argument))
+  "P"
+  (lambda (argument)
+    (disallow-typein)
+    (window-split-vertically! (current-window) argument)))
 
-(define-command ("^R Split Window Horizontally" argument)
+(define-command split-window-horizontally
   "Split current window into two windows side by side.
 This window becomes the leftmost of the two, and gets
 ARG lines.  No arg means split equally."
-  (disallow-typein)
-  (window-split-horizontally! (current-window) argument))
+  "P"
+  (lambda (argument)
+    (disallow-typein)
+    (window-split-horizontally! (current-window) argument)))
 
-(define-command ("^R Enlarge Window Vertically" (argument 1))
+(define-command enlarge-window
   "Makes current window ARG lines bigger."
-  (disallow-typein)
-  (window-grow-vertically! (current-window) argument))
+  "p"
+  (lambda (argument)
+    (disallow-typein)
+    (window-grow-vertically! (current-window) argument)))
 
-(define-command ("^R Shrink Window Vertically" (argument 1))
+(define-command shrink-window
   "Makes current window ARG lines smaller."
-  (disallow-typein)
-  (window-grow-vertically! (current-window) (- argument)))
+  "p"
+  (lambda (argument)
+    (disallow-typein)
+    (window-grow-vertically! (current-window) (- argument))))
 
-(define-command ("^R Enlarge Window Horizontally" (argument 1))
+(define-command enlarge-window-horizontally
   "Makes current window ARG columns wider."
-  (disallow-typein)
-  (window-grow-horizontally! (current-window) argument))
+  "p"
+  (lambda (argument)
+    (disallow-typein)
+    (window-grow-horizontally! (current-window) argument)))
 
-(define-command ("^R Shrink Window Horizontally" (argument 1))
+(define-command shrink-window-horizontally
   "Makes current window ARG columns narrower."
-  (disallow-typein)
-  (window-grow-horizontally! (current-window) (- argument)))
+  "p"
+  (lambda (argument)
+    (disallow-typein)
+    (window-grow-horizontally! (current-window) (- argument))))
 
-(define-command ("^R Delete Window")
+(define-command delete-window
   "Delete the current window from the screen."
-  (window-delete! (current-window)))
+  ()
+  (lambda ()
+    (window-delete! (current-window))))
 
-(define-command ("^R Delete Other Windows")
+(define-command delete-other-windows
   "Make the current window fill the screen."
-  (delete-other-windows (current-window)))
+  ()
+  (lambda ()
+    (delete-other-windows (current-window))))
 
-(define-command ("^R Other Window" argument)
+(define-command other-window
   "Select the ARG'th different window."
-  (select-window (other-window-interactive argument)))
+  "P"
+  (lambda (argument)
+    (select-window (other-window-interactive argument))))
 
 (define (other-window-interactive n)
   (let ((window (other-window n)))
@@ -279,93 +327,106 @@ ARG lines.  No arg means split equally."
 (define (disallow-typein)
   (if (typein-window? (current-window))
       (editor-error "Not implemented for typein window")))
-
-(define-command ("^R Scroll Other Window" argument)
+
+(define-command scroll-other-window
   "Scroll text of next window up ARG lines, or near full screen if no arg."
-  (let ((window (other-window-interactive 1)))
-    (scroll-window window
-		   (standard-scroll-window-argument window argument 1))))
+  "P"
+  (lambda (argument)
+    (let ((window (other-window-interactive 1)))
+      (scroll-window window
+		     (standard-scroll-window-argument window argument 1)))))
 
-(define-command ("^R Scroll Other Window Several Screens" argument)
+(define-command scroll-other-window-several-screens
   "Scroll other window up several screenfuls.
 Specify the number as a numeric argument, negative for down.
 The default is one screenful up.  Just minus as an argument
 means scroll one screenful down."
-  (let ((window (other-window-interactive 1)))
-    (scroll-window window
-		   (multi-scroll-window-argument window argument 1))))
+  "P"
+  (lambda (argument)
+    (let ((window (other-window-interactive 1)))
+      (scroll-window window
+		     (multi-scroll-window-argument window argument 1)))))
 
 ;;;; Pop-up Buffers
 
-(define-variable "Pop Up Windows"
-  "If false, this disables the use of pop-up windows."
-  true)
-
-(define-variable "Preserve Window Arrangement"
-  "If true, commands that normally change the window arrangement do not."
-  false)
-
-(define-variable "Split Height Threshold"
-  "Pop-up windows prefer to split the largest window if it is this large.
-If there is only one window, it is split regardless of this value."
-  500)
-
-(define-command ("Kill Pop Up Buffer")
+(define-command kill-pop-up-buffer
   "Kills the most recently popped up buffer, if one exists.
 Also kills any pop up window it may have created."
-  (let ((buffer (object-unhash *previous-popped-up-buffer*))
-	(window (object-unhash *previous-popped-up-window*)))
+  ()
+  (lambda ()
+    (kill-pop-up-buffer true)))
+
+(define (cleanup-pop-up-buffers thunk)
+  (fluid-let ((*previous-popped-up-window* (object-hash false))
+	      (*previous-popped-up-buffer* (object-hash false)))
+    (dynamic-wind (lambda () unspecific)
+		  thunk
+		  kill-pop-up-buffer)))
+
+(define (kill-pop-up-buffer #!optional error-if-none?)
+  (let ((window (object-unhash *previous-popped-up-window*)))
     (if (and window (window-visible? window))
-	(window-delete! window))
-    (if (and buffer (buffer-alive? buffer))
-	(kill-buffer-interactive buffer)
-	(editor-error "No previous pop up buffer"))))
+	(begin
+	 (set! *previous-popped-up-window* (object-hash false))
+	 (window-delete! window))))  (let ((buffer (object-unhash *previous-popped-up-buffer*)))
+    (cond ((and buffer (buffer-alive? buffer))
+	   (set! *previous-popped-up-buffer* (object-hash false))
+	   (kill-buffer-interactive buffer))
+	  ((and (not (default-object? error-if-none?)) error-if-none?)
+	   (editor-error "No previous pop up buffer")))))
 
 (define *previous-popped-up-buffer* (object-hash false))
 (define *previous-popped-up-window* (object-hash false))
-
+
 (define (pop-up-buffer buffer #!optional select?)
   ;; If some new window is created by this procedure, it is returned
   ;; as the value.  Otherwise the value is false.
   (let ((select? (and (not (default-object? select?)) select?)))
+
     (define (pop-up-window window)
       (let ((window (window-split-vertically! window false)))
 	(pop-into-window window)
 	window))
+
     (define (pop-into-window window)
       (set-window-buffer! window buffer true)
+      (maybe-record-window window))
+
+    (define (maybe-record-window window)
       (if select? (select-window window))
-      false)
-    (if (< (ref-variable "Window Minimum Height") 2)
-	(set-variable! "Window Minimum Height" 2))
+      (and (eq? window (object-unhash *previous-popped-up-window*))
+	   window))
+
+    (if (< (ref-variable window-minimum-height) 2)
+	(set-variable! window-minimum-height 2))
     (let ((window
 	   (let ((window (get-buffer-window buffer)))
 	     (if window
-		 (begin (set-window-point! window (buffer-point buffer))
-			(if select? (select-window window))
-			false)
-		 (let ((limit (* 2 (ref-variable "Window Minimum Height"))))
-		   (if (< (ref-variable "Split Height Threshold") limit)
-		       (set-variable! "Split Height Threshold" limit))
-		   (cond ((ref-variable "Preserve Window Arrangement")
+		 (begin
+		   (set-window-point! window (buffer-point buffer))
+		   (maybe-record-window window))
+		 (let ((limit (* 2 (ref-variable window-minimum-height))))
+		   (if (< (ref-variable split-height-threshold) limit)
+		       (set-variable! split-height-threshold limit))
+		   (cond ((ref-variable preserve-window-arrangement)
 			  (pop-into-window (largest-window)))
-			 ((ref-variable "Pop Up Windows")
-			  (or (let ((window (largest-window)))
-				(and (>= (window-y-size window)
-					 (ref-variable
-					  "Split Height Threshold"))
+			 ((ref-variable pop-up-windows)
+			  (let ((window (largest-window)))
+			    (if (and (>= (window-y-size window)
+					 (ref-variable split-height-threshold))
 				     (not
-				      (window-has-horizontal-neighbor? window))
-				     (pop-up-window window)))
-			      (let ((window (lru-window))
-				    (current (current-window)))
-				(if (and (or (eq? window current)
-					     (and (typein-window? current)
-						  (eq? window
-						       (window1+ window))))
-					 (>= (window-y-size window) limit))
-				    (pop-up-window window)
-				    (pop-into-window window)))))
+				      (window-has-horizontal-neighbor?
+				       window)))
+				(pop-up-window window)
+				(let ((window (lru-window))
+				      (current (current-window)))
+				  (if (and (or (eq? window current)
+					       (and (typein-window? current)
+						    (eq? window
+							 (window1+ window))))
+					   (>= (window-y-size window) limit))
+				      (pop-up-window window)
+				      (pop-into-window window))))))
 			 (else
 			  (pop-into-window (lru-window)))))))))
       (set! *previous-popped-up-window* (object-hash window))

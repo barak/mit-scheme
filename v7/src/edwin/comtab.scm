@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.50 1989/03/14 07:59:53 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.51 1989/04/15 00:48:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -44,11 +44,8 @@
 (define-structure (comtab (constructor make-comtab ()))
   (dispatch-alists (cons '() '()) read-only true))
 
-(define (remap-char char)
-  (char-upcase (remap-alias-char char)))
-
 (define (set-comtab-entry! alists char command)
-  (let ((char (remap-char char)))
+  (let ((char (remap-alias-char char)))
     (let ((entry (assq char (cdr alists))))
       (if entry
 	  (set-cdr! entry command)
@@ -56,7 +53,7 @@
   unspecific)
 
 (define (make-prefix-char! alists char alists*)
-  (let ((char (remap-char char)))
+  (let ((char (remap-alias-char char)))
     (let ((entry (assq char (car alists))))
       (if entry
 	  (set-cdr! entry alists*)
@@ -65,7 +62,7 @@
 
 (define (comtab-lookup-prefix comtabs char receiver #!optional if-undefined)
   (define (loop char->alist chars)
-    (let ((entry (assq (remap-char (car chars)) char->alist)))
+    (let ((entry (assq (remap-alias-char (car chars)) char->alist)))
       (if entry
 	  (if (null? (cddr chars))
 	      (receiver (cdr entry) (cadr chars))
@@ -90,21 +87,21 @@
 		 (else (cadr comtabs))))))
     (comtab-lookup-prefix comtabs xchar
       (lambda (alists char)
-	(let ((entry (assq (remap-char char) (cdr alists))))
+	(let ((entry (assq (remap-alias-char char) (cdr alists))))
 	  (if entry
 	      (cdr entry)
 	      (continue))))
       continue)))
 
 (define bad-command
-  (name->command "^R Bad Command"))
+  (name->command '^r-bad-command))
 
 (define (prefix-char-list? comtabs chars)
   (let loop
       ((char->alist (car (comtab-dispatch-alists (car comtabs))))
-       (chars chars))
+       (chars (if (list? chars) chars (list chars))))
     (or (null? chars)
-	(let ((entry (assq (remap-char (car chars)) char->alist)))
+	(let ((entry (assq (remap-alias-char (car chars)) char->alist)))
 	  (if entry
 	      (loop (cadr entry) (cdr chars))
 	      (and (not (null? (cdr comtabs)))

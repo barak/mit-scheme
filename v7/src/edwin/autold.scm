@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.41 1989/04/05 18:11:32 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.42 1989/04/15 00:46:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -43,14 +43,6 @@
 
 ;;;; Definitions
 
-(define (define-autoload-procedure package name library-name)
-  (let ((environment (->environment package)))
-    (local-assignment environment
-		      name
-		      (make-autoloading-procedure
-		       library-name
-		       (lambda () (lexical-reference environment name))))))
-
 (define (make-autoloading-procedure library-name get-procedure)
   (define entity
     (make-entity (lambda arguments
@@ -61,18 +53,28 @@
 		 (cons autoloading-procedure-tag library-name)))
   entity)
 
-(define autoloading-procedure-tag
-  "autoloading-procedure-tag")
+(define autoloading-procedure-tag "autoloading-procedure-tag")
 
 (define (autoloading-procedure? object)
   (and (entity? object)
        (eq? autoloading-procedure-tag (car (entity-extra object)))))
 
-(define (define-autoload-major-mode name super-mode-name library-name
-	  description)
+(define-integrable (autoloading-procedure/library-name procedure)
+  (cdr (entity-extra procedure)))
+(define (define-autoload-procedure name package library-name)
+  (let ((environment (->environment package)))
+    (local-assignment environment
+		      name
+		      (make-autoloading-procedure
+		       library-name
+		       (lambda () (lexical-reference environment name))))))
+
+(define (define-autoload-major-mode name super-mode-name display-name
+	  library-name description)
   (define mode
     (make-mode name
 	       true
+	       display-name
 	       (if super-mode-name
 		   (mode-comtabs (name->mode super-mode-name))
 		   '())
@@ -80,18 +82,25 @@
 	       (make-autoloading-procedure library-name
 					   (lambda ()
 					     (mode-initialization mode)))))
-  mode)
+  (local-assignment (->environment '(EDWIN))
+		    (mode-name->scheme-name name)
+		    mode)
+  name)
 
-(define (define-autoload-minor-mode name library-name description)
+(define (define-autoload-minor-mode name display-name library-name description)
   (define mode
     (make-mode name
 	       false
+	       display-name
 	       '()
 	       description
 	       (make-autoloading-procedure library-name
 					   (lambda ()
 					     (mode-initialization mode)))))
-  mode)
+  (local-assignment (->environment '(EDWIN))
+		    (mode-name->scheme-name name)
+		    mode)
+  name)
 
 (define (autoloading-mode? mode)
   (autoloading-procedure? (mode-initialization mode)))
@@ -100,13 +109,22 @@
   (define command
     (make-command name
 		  description
+		  '()
 		  (make-autoloading-procedure library-name
 					      (lambda ()
 						(command-procedure command)))))
-  command)
+  (local-assignment (->environment '(EDWIN))
+		    (command-name->scheme-name name)
+		    command)
+  name)
 
 (define (autoloading-command? command)
   (autoloading-procedure? (command-procedure command)))
+
+(define (guarantee-command-loaded command)
+  (let ((procedure (command-procedure command)))
+    (if (autoloading-procedure? procedure)
+	(load-library (autoloading-procedure/library-name procedure)))))
 
 ;;;; Libraries
 
@@ -176,23 +194,24 @@
       (if (or (default-object? purify?) purify?) (purify scode))
       (scode-eval scode (->environment package))))  (append-message " -- done"))
 
-(define-variable "Load File Default"
-  "Pathname given as default for \\[Load File]."
-  edwin-binary-directory)
-
-(define-command ("Load File" argument)
+(define-command load-file
   "Load an Edwin binary file.
 An argument, if given, means purify the file too."
-  (let ((pathname
-	 (prompt-for-pathname "Load File" (ref-variable "Load File Default"))))
-    (set-variable! "Load File Default" pathname)
-    (load-edwin-file pathname '(EDWIN) argument)))
+  "fLoad file\nP"
+  (lambda (filename purify?)
+    (load-edwin-file filename '(EDWIN) purify?)))
 
-(define-command ("Load Library")
+(define-command load-library
   "Load an Edwin library."
-  (%load-library
-   (prompt-for-alist-value "Load Library"
-			   (map (lambda (library)
-				  (cons (symbol->string (car library))
-					library))
-				known-libraries))))
+  (lambda ()
+    (list
+     (car
+      (prompt-for-alist-value "Load library"
+			      (map (lambda (library)
+				     (cons (symbol->string (car library))
+					   library))
+				   known-libraries)))))
+  (lambda (name)
+    (%load-library
+     (or (assq name known-libraries)
+	 (editor-error "Unknown library name: " name)))))

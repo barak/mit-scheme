@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.1 1989/03/14 08:08:54 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.2 1989/04/15 00:51:06 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -46,161 +46,166 @@
 (define-library 'INFO
   '("info" (EDWIN INFO)))
 
-(define-variable "Info Enable Edit"
-  "If true, the \\[^R Info Edit] command in Info can edit the current node."
+(define-variable info-enable-edit
+  "If true, the \\[info-edit] command in Info can edit the current node."
   false)
 
-(define-variable "Info Enable Active Nodes"
+(define-variable info-enable-active-nodes
   "If true, allows Info to execute Scheme code associated with nodes.
 The Scheme code is executed when the node is selected."
   true)
 
-(define-variable "Info Directory"
+(define-variable info-directory
   "Default directory pathname for Info documentation files."
   edwin-info-directory)
-(define-variable "Info Previous Search"
-  "Default search string for Info \\[^R Info Search] command to search for."
+(define-variable info-previous-search
+  "Default search string for Info \\[info-search] command to search for."
   false)
 
-(define-variable "Info Tag Table Start" "")
-(define-variable "Info Tag Table End" "")
-
-(define-autoload-command "Info" 'INFO
+(define-variable info-tag-table-start "")
+(define-variable info-tag-table-end "")
+(define-autoload-command 'info 'INFO
   "Create a buffer for Info, the documentation browser program.")
 
 (define-library 'DIRED
   '("dired" (EDWIN DIRED)))
 
-(define-variable "List Directory Unpacked"
-  "If not false, \\[List Directory] puts one file on each line.
+(define-variable list-directory-unpacked
+  "If not false, \\[list-directory] puts one file on each line.
 Normally it packs many onto a line.
-This has no effect if \\[List Directory] is invoked with an argument."
+This has no effect if \\[list-directory] is invoked with an argument."
   false)
 
-(define-autoload-command "Dired" 'DIRED
+(define-autoload-command 'dired 'DIRED
   "Edit a directory.  You type the directory name.")
 
-(define-autoload-command "Dired Other Window" 'DIRED
+(define-autoload-command 'dired-other-window 'DIRED
   "Edit a directory in another window.  You type the directory name.")
 
-(define-autoload-command "List Directory" 'DIRED
+(define-autoload-command 'list-directory 'DIRED
   "Generate a directory listing.")
+
+(define-autoload-procedure 'make-dired-buffer '(EDWIN DIRED) 'DIRED)
 
 (define-library 'RECTANGLE-COMMANDS
   '("reccom" (EDWIN RECTANGLE)))
 
-(define-autoload-command "Kill Rectangle" 'RECTANGLE-COMMANDS
+(define-autoload-command 'kill-rectangle 'RECTANGLE-COMMANDS
   "Delete rectangle with corners at point and mark; save as last killed one.")
 
-(define-autoload-command "Delete Rectangle" 'RECTANGLE-COMMANDS
+(define-autoload-command 'delete-rectangle 'RECTANGLE-COMMANDS
   "Delete (don't save) text in rectangle with point and mark as corners.
 The same range of columns is deleted in each line
 starting with the line where the region begins
 and ending with the line where the region ends.")
 
-(define-autoload-command "Open Rectangle" 'RECTANGLE-COMMANDS
+(define-autoload-command 'open-rectangle 'RECTANGLE-COMMANDS
   "Blank out rectangle with corners at point and mark, shifting text right.
 The text previously in the region is not overwritten by the blanks,
 but instead winds up to the right of the rectangle.")
 
-(define-autoload-command "Clear Rectangle" 'RECTANGLE-COMMANDS
+(define-autoload-command 'clear-rectangle 'RECTANGLE-COMMANDS
   "Blank out rectangle with corners at point and mark.
 The text previously in the region is overwritten by the blanks.")
 
-(define-autoload-command "Yank Rectangle" 'RECTANGLE-COMMANDS
+(define-autoload-command 'yank-rectangle 'RECTANGLE-COMMANDS
   "Yank the last killed rectangle with upper left corner at point.")
 
-(define-autoload-procedure '(EDWIN RECTANGLE) 'delete-rectangle
+(define-autoload-procedure 'delete-rectangle '(EDWIN RECTANGLE)
   'RECTANGLE-COMMANDS)
 
-(define-autoload-procedure '(EDWIN RECTANGLE) 'yank-rectangle
+(define-autoload-procedure 'yank-rectangle '(EDWIN RECTANGLE)
   'RECTANGLE-COMMANDS)
 
 (define-library 'COMMAND-SUMMARY
   '("keymap" (EDWIN COMMAND-SUMMARY)))
 
-(define-autoload-command "Make Command Summary" 'COMMAND-SUMMARY
+(define-autoload-command 'make-command-summary 'COMMAND-SUMMARY
   "Make a summary of current key bindings in the buffer *Summary*.
-Previous contents of that buffer are killed first.")
+Previous contents of that buffer are killed first.")
+(define-library 'RESTRICT-SCREEN
+  '("rescrn" (EDWIN WINDOW)))
+
+(define-autoload-command 'toggle-screen-width 'RESTRICT-SCREEN
+  "Restrict the editor's width on the screen.
+With no argument, restricts the width to 80 columns,
+ unless it is already restricted, in which case it undoes the restriction.
+With \\[universal-argument] only, undoes all restrictions.
+Otherwise, the argument is the number of columns desired.")
+
 ;;;; Tags Package
 
 (define-library 'TAGS
   '("tags" (EDWIN TAGS)))
 
-(define-variable "Tags Table Pathname"
+(define-variable tags-table-pathname
   "Pathname of current tags table."
   false)
 
-(define-autoload-command "Visit Tags Table" 'TAGS
+(define-autoload-command 'visit-tags-table 'TAGS
   "Tell tags commands to use a given tags table file.")
 
-(define-autoload-command "Find Tag" 'TAGS
+(define-autoload-command 'find-tag 'TAGS
   "Find tag (in current tags table) whose name contains a given string.
  Selects the buffer that the tag is contained in
 and puts point at its definition.
  With argument, searches for the next tag in the tags table that matches
 the string used in the previous Find Tag.")
 
-(define-autoload-command "Find Tag Other Window" 'TAGS
-  "Like \\[Find Tag], but selects buffer in another window.")
+(define-autoload-command 'find-tag-other-window 'TAGS
+  "Like \\[find-tag], but selects buffer in another window.")
 
-(define-autoload-command "Generate Tags Table" 'TAGS
-  "Generate a tags table from a files list of Scheme files.
- A files list is a file containing only strings which are file names.
- The generated tags table has the same name as the files list, except that
-the file type is TAG.")
-
-(define-autoload-command "Tags Search" 'TAGS
+(define-autoload-command 'tags-search 'TAGS
   "Search through all files listed in tag table for a given string.
 Stops when a match is found.
-To continue searching for next match, use command \\[Tags Loop Continue].")
+To continue searching for next match, use command \\[tags-loop-continue].")
 
-(define-autoload-command "RE Tags Search" 'TAGS
+(define-autoload-command 're-tags-search 'TAGS
   "Search through all files listed in tag table for a given regexp.
 Stops when a match is found.
-To continue searching for next match, use command \\[Tags Loop Continue].")
+To continue searching for next match, use command \\[tags-loop-continue].")
 
-(define-autoload-command "Tags Query Replace" 'TAGS
+(define-autoload-command 'tags-query-replace 'TAGS
   "Query replace a given string with another one though all files listed
 in tag table.  If you exit (C-G or Altmode), you can resume the query
-replace with the command \\[Tags Loop Continue].")
+replace with the command \\[tags-loop-continue].")
 
-(define-autoload-command "Tags Loop Continue" 'TAGS
-  "Continue last \\[Tags Search] or \\[Tags Query Replace] command.")
+(define-autoload-command 'tags-loop-continue 'TAGS
+  "Continue last \\[tags-search] or \\[tags-query-replace] command.")
 
 ;;;; Major Mode Libraries
 
 (define-library 'MIDAS-MODE
   '("midas" (EDWIN)))
 
-(define-autoload-major-mode "Midas" "Fundamental" 'MIDAS-MODE
+(define-autoload-major-mode 'midas 'fundamental "Midas" 'MIDAS-MODE
   "Major mode for editing assembly code.")
 
-(define-autoload-command "Midas Mode" 'MIDAS-MODE
+(define-autoload-command 'midas-mode 'MIDAS-MODE
   "Enter Midas mode.")
 
-(define-variable "Midas Mode Hook"
+(define-variable midas-mode-hook
   "If not false, a thunk to call when entering Midas mode."
   false)
 
 (define-library 'PASCAL-MODE
   '("pasmod" (EDWIN)))
 
-(define-autoload-major-mode "Pascal" "Fundamental" 'PASCAL-MODE
+(define-autoload-major-mode 'pascal 'fundamental "Pascal" 'PASCAL-MODE
   "Major mode specialized for editing Pascal code.")
 
-(define-autoload-command "Pascal Mode" 'PASCAL-MODE
+(define-autoload-command 'pascal-mode 'PASCAL-MODE
   "Enter Pascal mode.")
 
-(define-variable "Pascal Mode Hook"
+(define-variable pascal-mode-hook
   "If not false, a thunk to call when entering Pascal mode."
   false)
 
-(define-variable "Pascal Shift Increment"
+(define-variable pascal-shift-increment
   "Indentation increment for Pascal Shift commands."
   2)
 
-(define-variable "Pascal Indentation Keywords"
+(define-variable pascal-indentation-keywords
   "These keywords cause the lines below them to be indented to the right.
 This must be a regular expression, or #F to disable the option."
   false)
@@ -208,17 +213,17 @@ This must be a regular expression, or #F to disable the option."
 (define-library 'TEXINFO-MODE
   '("tximod" (EDWIN)))
 
-(define-autoload-major-mode "Texinfo" "Text" 'TEXINFO-MODE
+(define-autoload-major-mode 'texinfo 'text "Texinfo" 'TEXINFO-MODE
   "Major mode for editing texinfo files.
 These are files that are input for TeX and also to be turned
-into Info files by \\[Texinfo Format Buffer].
+into Info files by \\[texinfo-format-buffer].
 These files must be written in a very restricted and
 modified version of TeX input format.")
 
-(define-autoload-command "Texinfo Mode" 'TEXINFO-MODE
+(define-autoload-command 'texinfo-mode 'TEXINFO-MODE
   "Make the current mode be Texinfo mode.")
 
-(define-variable "Texinfo Mode Hook"
+(define-variable texinfo-mode-hook
   "A procedure to be called when Texinfo mode is entered, or false."
   false)
 
@@ -226,7 +231,7 @@ modified version of TeX input format.")
   '("c-mode" (EDWIN))
   '("cinden" (EDWIN C-INDENTATION)))
 
-(define-autoload-major-mode "C" "Fundamental" 'C-MODE
+(define-autoload-major-mode 'c 'fundamental "C" 'C-MODE
   "Major mode for editing C code.
 Expression and list commands understand all C brackets.
 Tab indents for C code.
@@ -236,58 +241,58 @@ Delete converts tabs to spaces as it moves back.
 The characters { } ; : correct indentation when typed.
 
 Variables controlling indentation style:
- C Auto Newline
+ c-auto-newline
     Non-false means automatically newline before and after braces,
     and after colons and semicolons, inserted in C code.
- C Indent Level
+ c-indent-level
     Indentation of C statements within surrounding block.
     The surrounding block's indentation is the indentation
     of the line on which the open-brace appears.
- C Continued Statement Offset
+ c-continued-statement-offset
     Extra indentation given to a substatement, such as the
     then-clause of an if or body of a while.
- C Brace Offset
+ c-brace-offset
     Extra indentation for line if it starts with an open brace.
- C Brace Imaginary Offset
+ c-brace-imaginary-offset
     An open brace following other text is treated as if it were
     this far to the right of the start of its line.
- C Argdecl Indent
+ c-argdecl-indent
     Indentation level of declarations of C function arguments.
- C Label Offset
+ c-label-offset
     Extra indentation for line that is a label, or case or default.")
 
-(define-autoload-command "C Mode" 'C-MODE
+(define-autoload-command 'c-mode 'C-MODE
   "Enter C mode.")
 
-(define-variable "C Mode Hook"
+(define-variable c-mode-hook
   "If not false, a thunk to call when entering C mode."
   false)
 
-(define-variable "C Indent Level"
+(define-variable c-indent-level
   "Indentation of C statements with respect to containing block."
   2)
 
-(define-variable "C Brace Offset"
+(define-variable c-brace-offset
   "Extra indentation for braces, compared with other text in same context."
   0)
 
-(define-variable "C Brace Imaginary Offset"
+(define-variable c-brace-imaginary-offset
   "Imagined indentation of a C open brace that actually follows a statement."
   0)
 
-(define-variable "C Argdecl Indent"
+(define-variable c-argdecl-indent
   "Indentation level of declarations of C function arguments."
   5)
 
-(define-variable "C Label Offset"
+(define-variable c-label-offset
   "Offset of C label lines and case statements relative to usual indentation."
   -2)
 
-(define-variable "C Continued Statement Offset"
+(define-variable c-continued-statement-offset
   "Extra indent for lines not starting new statements."
   2)
 
-(define-variable "C Auto Newline"
+(define-variable c-auto-newline
   "Non-false means automatically newline before and after braces,
 and after colons and semicolons, inserted in C code."
   false)

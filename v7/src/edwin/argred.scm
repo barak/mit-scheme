@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/argred.scm,v 1.27 1989/03/14 07:58:32 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/argred.scm,v 1.28 1989/04/15 00:46:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -58,67 +58,80 @@
 
 ;;;; Commands
 
-(define-command ("^R Universal Argument")
+(define-command universal-argument
   "Increments the argument multiplier and enters Autoarg mode.
 In Autoarg mode, - negates the numeric argument, and the
 digits 0, ..., 9 accumulate it."
-  (command-argument-increment-multiplier-exponent!)
-  (enter-autoargument-mode!)
-  (update-argument-prompt!)
-  (read-and-dispatch-on-char))
+  ()
+  (lambda ()
+    (command-argument-increment-multiplier-exponent!)
+    (enter-autoargument-mode!)
+    (update-argument-prompt!)
+    (read-and-dispatch-on-char)))
 
-(define-command ("^R Argument Digit")
+(define-command digit-argument
   "Sets the numeric argument for the next command.
 Several such digits typed consecutively accumulate to form
 the argument.  This command should *only* be placed on a character
 which is a digit (modulo control/meta bits)."
-  (command-argument-accumulate-digit! (char-base (current-command-char)))
-  (update-argument-prompt!)
-  (read-and-dispatch-on-char))
+  ()
+  (lambda ()
+    (command-argument-accumulate-digit! (char-base (current-command-char)))
+    (update-argument-prompt!)
+    (read-and-dispatch-on-char)))
 
-(define-command ("^R Negative Argument")
+(define-command negative-argument
   "Negates the numeric argument for the next command.
 If no argument has yet been given, the argument defaults to -1."
-  (command-argument-negate!)
-  (update-argument-prompt!)
-  (read-and-dispatch-on-char))
+  ()
+  (lambda ()
+    (command-argument-negate!)
+    (update-argument-prompt!)
+    (read-and-dispatch-on-char)))
 
 (define (command-argument-self-insert? procedure)
-  (and (or (eq? procedure ^r-autoargument-digit-command)
-	   (and (eq? procedure ^r-auto-negative-argument-command)
+  (and (or (eq? procedure (ref-command auto-digit-argument))
+	   (and (eq? procedure (ref-command auto-negative-argument))
 		(command-argument-beginning?)))
        (not *autoargument-mode?*)))
 
-(define-command ("^R Autoargument Digit" argument)
+(define-command auto-digit-argument
   "In Autoargument mode, sets numeric argument to the next command.
 Otherwise, the digit inserts itself.  This just dispatches to either
-Argument Digit or Insert Self, depending on the mode."
-  ((if (autoargument-mode?)
-       ^r-argument-digit-command
-       ^r-insert-self-command)
-   argument))
+\\[digit-argument] or \\[self-insert-command], depending on the mode."
+  ()
+  (lambda ()
+    (dispatch-on-command
+     (if (autoargument-mode?)
+	 (ref-command-object digit-argument)
+	 (ref-command-object self-insert-command)))))
 
-(define-command ("^R Auto Negative Argument" argument)
+(define-command auto-negative-argument
   "In Autoargument mode, sets numeric sign to the next command.
 Otherwise, the character inserts itself.  This just dispatches to either
-Negative Argument or Insert Self, depending on the mode."
-  ((if (and *autoargument-mode?* (command-argument-beginning?))
-       ^r-negative-argument-command
-       ^r-insert-self-command)
-   argument))
+\\[negative-argument] or \\[insert-self-command], depending on the mode."
+  ()
+  (lambda ()
+    (dispatch-on-command
+     (if (and *autoargument-mode?* (command-argument-beginning?))
+	 (ref-command-object negative-argument)
+	 (ref-command-object self-insert-command)))))
 
-(define-command ("^R Autoargument" argument)
+(define-command auto-argument
   "Used to start a command argument and enter Autoargument mode.
 This should only be placed on digits or -, with or without control
 or meta bits."
-  (let ((char (char-base (current-command-char))))
-    (if (eq? char #\-)
-	(if (command-argument-beginning?)
-	    (begin (enter-autoargument-mode!)
-		   (^r-negative-argument-command argument))
-	    (insert-chars char argument))
-	(begin (enter-autoargument-mode!)
-	       (^r-argument-digit-command argument)))))
+  "P"
+  (lambda (argument)
+    (let ((char (char-base (current-command-char))))
+      (cond ((not (eq? char #\-))
+	     (enter-autoargument-mode!)
+	     (dispatch-on-command (ref-command-object digit-argument)))
+	    ((command-argument-beginning?)
+	     (enter-autoargument-mode!)
+	     (dispatch-on-command (ref-command-object negative-argument)))
+	    (else
+	     (insert-chars char argument))))))
 
 ;;;; Primitives
 
@@ -214,6 +227,11 @@ or meta bits."
   *autoargument-mode?*)
 
 ;;;; Value
+
+(define (command-argument-standard-value?)
+  (or *magnitude*
+      (not (zero? *multiplier-exponent*))
+      *negative?*))
 
 (define (command-argument-standard-value)
   (or (command-argument-value)

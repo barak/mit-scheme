@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/c-mode.scm,v 1.41 1989/03/14 07:59:30 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/c-mode.scm,v 1.42 1989/04/15 00:47:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,11 +41,13 @@
 
 (declare (usual-integrations))
 
-(define-command ("C Mode")
+(define-command c-mode
   "Enter C mode."
-  (set-current-major-mode! c-mode))
+  ()
+  (lambda ()
+    (set-current-major-mode! (ref-mode-object c))))
 
-(define-major-mode "C" "Fundamental"
+(define-major-mode c fundamental "C"
   "Major mode for editing C code.
 Expression and list commands understand all C brackets.
 Tab indents for C code.
@@ -75,28 +77,28 @@ Variables controlling indentation style:
  C Label Offset
     Extra indentation for line that is a label, or case or default."
 
-  (local-set-variable! "Syntax Table" c-mode:syntax-table)
-  (local-set-variable! "Syntax Ignore Comments Backwards" true)
-  (local-set-variable! "Paragraph Start" "^$")
-  (local-set-variable! "Paragraph Separate" (ref-variable "Paragraph Start"))
-  (local-set-variable! "Indent Line Procedure" c-indent-line-command)
-  (local-set-variable! "Require Final Newline" true)
-  (local-set-variable! "Comment Locator Hook" c-mode:comment-locate)
-  (local-set-variable! "Comment Indent Hook" c-mode:comment-indent)
-  (local-set-variable! "Comment Start" "/* ")
-  (local-set-variable! "Comment End" " */")
-  (local-set-variable! "Comment Column" 32)
-  (if (ref-variable "C Mode Hook") ((ref-variable "C Mode Hook"))))
+  (local-set-variable! syntax-table c-mode:syntax-table)
+  (local-set-variable! syntax-ignore-comments-backwards true)
+  (local-set-variable! paragraph-start "^$")
+  (local-set-variable! paragraph-separate (ref-variable paragraph-start))
+  (local-set-variable! indent-line-procedure (ref-command c-indent-line))
+  (local-set-variable! require-final-newline true)
+  (local-set-variable! comment-locator-hook c-mode:comment-locate)
+  (local-set-variable! comment-indent-hook c-mode:comment-indent)
+  (local-set-variable! comment-start "/* ")
+  (local-set-variable! comment-end " */")
+  (local-set-variable! comment-column 32)
+  (if (ref-variable c-mode-hook) ((ref-variable c-mode-hook))))
 
-(define-key "C" #\Linefeed "Reindent then Newline and Indent")
-(define-key "C" #\{ "Electric C Brace")
-(define-key "C" #\} "Electric C Brace")
-(define-key "C" #\; "Electric C Semi")
-(define-key "C" #\: "Electric C Terminator")
-(define-key "C" #\C-M-H "Mark C Function")
-(define-key "C" #\C-M-Q "C Indent Expression")
-(define-key "C" #\Rubout "^R Backward Delete Hacking Tabs")
-(define-key "C" #\Tab "C Indent Line")
+(define-key 'c #\linefeed 'reindent-then-newline-and-indent)
+(define-key 'c #\{ 'electric-c-brace)
+(define-key 'c #\} 'electric-c-brace)
+(define-key 'c #\; 'electric-c-semi)
+(define-key 'c #\: 'electric-c-terminator)
+(define-key 'c #\c-m-h 'mark-c-function)
+(define-key 'c #\c-m-q 'indent-c-function)
+(define-key 'c #\rubout 'backward-delete-char-untabify)
+(define-key 'c #\tab 'c-indent-line)
 
 (define c-mode:syntax-table (make-syntax-table))
 (modify-syntax-entry! c-mode:syntax-table #\\ "\\")
@@ -118,77 +120,95 @@ Variables controlling indentation style:
   (if (re-match-forward "^/\\*" start (line-end start 0))
       0
       (max (1+ (mark-column (horizontal-space-start start)))
-	   (ref-variable "Comment Column"))))
+	   (ref-variable comment-column))))
 
-(define-command ("Electric C Brace" argument)
+(define-command electric-c-brace
   "Insert character and correct line's indentation."
-  (let ((point (current-point)))
-    (if (and (not argument)
-	     (line-end? point)
-	     (or (line-blank? point)
-		 (and (ref-variable "C Auto Newline")
-		      (begin (c-indent-line-command false)
-			     (insert-newline)
-			     true))))
-	(begin (^r-insert-self-command false)
-	       (c-indent-line-command false)
-	       (if (ref-variable "C Auto Newline")
-		   (begin (insert-newline)
-			  (c-indent-line-command false))))
-	(^r-insert-self-command argument))))
+  "P"
+  (lambda (argument)
+    (let ((point (current-point)))
+      (if (and (not argument)
+	       (line-end? point)
+	       (or (line-blank? point)
+		   (and (ref-variable c-auto-newline)
+			(begin
+			  ((ref-command c-indent-line) false)
+			  (insert-newline)
+			  true))))
+	  (begin
+	    ((ref-command self-insert-command) false)
+	    ((ref-command c-indent-line) false)
+	    (if (ref-variable c-auto-newline)
+		(begin
+		  (insert-newline)
+		  ((ref-command c-indent-line) false))))
+	  ((ref-command self-insert-command) false)))))
 
-(define-command ("Electric C Semi" argument)
+(define-command electric-c-semi
   "Insert character and correct line's indentation."
-  (if (ref-variable "C Auto Newline")
-      (electric-c-terminator-command argument)
-      (^r-insert-self-command argument)))
+  "P"
+  (lambda (argument)
+    (if (ref-variable c-auto-newline)
+	((ref-command electric-c-terminator) argument)
+	((ref-command self-insert-command) argument))))
 
-(define-command ("Electric C Terminator" argument)
+(define-command electric-c-terminator
   "Insert character and correct line's indentation."
-  (let ((point (current-point)))
-    (if (and (not argument)
-	     (line-end? point)
-	     (not (let ((mark (indentation-end point)))
-		    (or (char-match-forward #\# mark)
-			(let ((state (parse-partial-sexp mark point)))
-			  (or (parse-state-in-string? state)
-			      (parse-state-in-comment? state)
-			      (parse-state-quoted? state)))))))
-	(begin
-	  (^r-insert-self-command false)
-	  (c-indent-line-command false)
-	  (if (and (ref-variable "C Auto Newline")
-		   (not (c-inside-parens? point)))
-	      (begin
-		(insert-newline)
-		(c-indent-line-command false))))
-	(^r-insert-self-command argument))))
-
-(define-command ("Mark C Procedure")
+  "P"
+  (lambda (argument)
+    (let ((point (current-point)))
+      (if (and (not argument)
+	       (line-end? point)
+	       (not (let ((mark (indentation-end point)))
+		      (or (char-match-forward #\# mark)
+			  (let ((state (parse-partial-sexp mark point)))
+			    (or (parse-state-in-string? state)
+				(parse-state-in-comment? state)
+				(parse-state-quoted? state)))))))
+	  (begin
+	    ((ref-command self-insert-command) false)
+	    ((ref-command c-indent-line) false)
+	    (if (and (ref-variable c-auto-newline)
+		     (not (c-inside-parens? point)))
+		(begin
+		  (insert-newline)
+		  ((ref-command c-indent-line) false))))
+	  ((ref-command self-insert-command) argument)))))
+
+(define-command mark-c-procedure
   "Put mark at end of C procedure, point at beginning."
-  (push-current-mark! (current-point))
-  (let ((end (forward-definition-end (current-point) 1 'LIMIT)))
-    (push-current-mark! end)
-    (set-current-point!
-     (backward-paragraph (backward-definition-start end 1 'LIMIT) 1 'LIMIT))))
+  ()
+  (lambda ()
+    (push-current-mark! (current-point))
+    (let ((end (forward-definition-end (current-point) 1 'LIMIT)))
+      (push-current-mark! end)
+      (set-current-point!
+       (backward-paragraph (backward-definition-start end 1 'LIMIT)
+			   1
+			   'LIMIT)))))
 
-(define-command ("C Indent Line" argument)
+(define-command c-indent-line
   "Indent current line as C code.
 Argument means shift any additional lines of grouping
 rigidly with this line."
-  (let ((start (line-start (current-point) 0)))
-    (let ((indentation (c-indent-line:indentation start)))
-      (let ((shift-amount (- indentation (mark-indentation start))))
-	(cond ((not (zero? shift-amount))
-	       (change-indentation indentation start)
-	       (if argument
-		   (indent-code-rigidly start
-					(forward-sexp start 1 'ERROR)
-					shift-amount
-					"#")))
-	      ((within-indentation? (current-point))
-	       (set-current-point! (indentation-end (current-point)))))))))
+  "P"
+  (lambda (#!optional argument)
+    (let ((argument (and (not (default-object? argument)) argument))
+	  (start (line-start (current-point) 0)))
+      (let ((indentation (c-indent-line:indentation start)))
+	(let ((shift-amount (- indentation (mark-indentation start))))
+	  (cond ((not (zero? shift-amount))
+		 (change-indentation indentation start)
+		 (if argument
+		     (indent-code-rigidly start
+					  (forward-sexp start 1 'ERROR)
+					  shift-amount
+					  "#")))
+		((within-indentation? (current-point))
+		 (set-current-point! (indentation-end (current-point))))))))))
 
-(define-command ("C Indent Expression")
+(define-command c-indent-expression
   "Indent each line of the C grouping following point."
-  (c-indent-expression (current-point)))
+  ()
+  (lambda ()
+    (c-indent-expression (current-point))))

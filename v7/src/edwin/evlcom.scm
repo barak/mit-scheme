@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.12 1989/03/15 19:11:35 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.13 1989/04/15 00:49:00 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,105 +41,119 @@
 
 (declare (usual-integrations))
 
-(define-variable "Scheme Environment"
+(define-variable scheme-environment
   "The environment used by the evaluation commands, or 'DEFAULT.
 If 'DEFAULT, use the default (REP loop) environment."
   'DEFAULT)
 
-(define-variable "Scheme Syntax Table"
+(define-variable scheme-syntax-table
   "The syntax table used by the evaluation commands, or false.
 If false, use the default (REP loop) syntax-table."
   false)
 
-(define-variable "Previous Evaluation Environment"
-  "The last explicit environment for an evaluation command."
+(define-variable previous-evaluation-expression
+  "The last expression evaluated in the typein window."
   false)
 
-(define-command ("^R Evaluate Definition" argument)
+(define-command eval-definition
   "Evaluate the definition at point.
 Prints the result in the typein window.
 With an argument, prompts for the evaluation environment.
 Output goes to the transcript buffer."
-  (evaluate-sexp (current-definition-start)
-		 (evaluation-environment argument)))
+  "P"
+  (lambda (argument)
+    (evaluate-from-mark (current-definition-start)
+			(evaluation-environment argument))))
 
-(define-command ("^R Evaluate Sexp" argument)
+(define-command eval-next-sexp
   "Evaluate the expression following point.
 Prints the result in the typein window.
 With an argument, prompts for the evaluation environment.
 Output goes to the transcript buffer."
-  (evaluate-sexp (current-point)
-		 (evaluation-environment argument)))
+  "P"
+  (lambda (argument)
+    (evaluate-from-mark (current-point)
+			(evaluation-environment argument))))
 
-(define-command ("^R Evaluate Previous Sexp" argument)
+(define-command eval-previous-sexp
   "Evaluate the expression preceding point.
 Prints the result in the typein window.
 With an argument, prompts for the evaluation environment.
 Output goes to the transcript buffer."
-  (evaluate-sexp (backward-one-sexp (current-point))
-		 (evaluation-environment argument)))
+  "P"
+  (lambda (argument)
+    (evaluate-from-mark (backward-one-sexp (current-point))
+			(evaluation-environment argument))))
 
-(define-command ("^R Evaluate Region" argument)
+(define-command eval-region
   "Evaluate the region, printing the results in the typein window.
 With an argument, prompts for the evaluation environment.
 Output goes to the transcript buffer."
-  (evaluate-region (current-region)
-		   (evaluation-environment argument)))
+  "r\nP"
+  (lambda (region argument)
+    (evaluate-region region (evaluation-environment argument))))
 
-(define-command ("^R Evaluate Buffer" argument)
+(define-command eval-current-buffer
   "Evaluate the buffer.
 The values are printed in the typein window.
 With an argument, prompts for the evaluation environment.
 Output goes to the transcript buffer."
-  (evaluate-region (buffer-region (current-buffer))
-		   (evaluation-environment argument)))
+  "P"
+  (lambda (argument)
+    (evaluate-region (buffer-region (current-buffer))
+		     (evaluation-environment argument))))
 
-(define-command ("^R Evaluate Previous Sexp into Buffer" argument)
+(define-command eval-previous-sexp-into-buffer
   "Evaluate the expression preceding point.
 With an argument, prompts for the evaluation environment.
 Output is inserted into the buffer at point."
-  (let ((start (backward-sexp (current-point) 1 false)))
-    (if (not start) (editor-error "No previous expression"))
-    (let ((environment (evaluation-environment argument)))
-      (with-output-to-current-point
-       (lambda ()
-	 (write-line (eval-with-history (with-input-from-mark start read)
-					environment)))))))
+  "P"
+  (lambda (argument)
+    (let ((start (backward-sexp (current-point) 1 false)))
+      (if (not start) (editor-error "No previous expression"))
+      (let ((environment (evaluation-environment argument)))
+	(with-output-to-current-point
+	 (lambda ()
+	   (write-line
+	    (eval-with-history (read-from-mark start) environment))))))))
 
-(define-variable "Previous Typein Expression"
-  "The last expression evaluated in the typein window."
-  false)
-
-(define-command ("^R Evaluate Sexp Typein" argument)
+(define-command eval-expression
   "Read an evaluate an expression in the typein window.
 With an argument, prompts for the evaluation environment."
-  (let ((string
-	 (prompt-for-expression "Evaluate Sexp"
-				(ref-variable "Previous Typein Expression")
-				'INVISIBLE-DEFAULT)))
-    (set-variable! "Previous Typein Expression" string)
-    (editor-eval (with-input-from-string string read)
-		 (evaluation-environment argument))))
+  "xEvaluate expression\nP"
+  (lambda (expression argument)
+    (editor-eval expression (evaluation-environment argument))))
 
-(define-command ("Set Environment")
+(define-command set-environment
   "Sets the environment for the editor and any inferior REP loops."
-  (set-repl/environment! (nearest-repl)
-			 (->environment
-			  (prompt-for-expression-value
-			   "REP environment"
-			   (ref-variable "Previous Evaluation Environment")))))
+  "XSet environment"
+  (lambda (environment)
+    (set-repl/environment! (nearest-repl) (->environment environment))))
 
-(define-command ("Set Syntax Table")
-  "Sets the current syntax table (for the syntaxer, not the editor)."
-  (set-repl/syntax-table! (nearest-repl)
-			  (prompt-for-expression-value "Set Syntax Table"
-						       false)))
+(define (evaluation-environment argument)
+  (cond (argument
+	 (->environment
+	  (prompt-for-expression-value "Evaluate in environment" false)))
+	((eq? 'DEFAULT (ref-variable scheme-environment))
+	 (nearest-repl/environment))
+	(else
+	 (->environment (ref-variable scheme-environment)))))
+
+(define-command set-syntactic-environment
+  "Sets the current syntactic environment."
+  "XSet syntactic environment"
+  (lambda (syntactic-environment)
+    (set-repl/syntax-table! (nearest-repl) syntactic-environment)))
+
+(define (evaluation-syntax-table)
+  (or (ref-variable scheme-syntax-table)
+      (nearest-repl/syntax-table)))
 
-(define (evaluate-sexp input-mark environment)
-  (editor-eval (with-input-from-mark input-mark read) environment))
+(define (evaluate-from-mark input-mark environment)
+  (editor-eval (read-from-mark input-mark) environment))
 
-(define (evaluate-string string environment)
-  (eval-with-history (with-input-from-string string read) environment))
+(define (read-from-mark input-mark)
+  (with-input-from-mark input-mark read))
 
 (define (editor-eval sexp environment)
   (with-output-to-transcript-buffer
@@ -150,14 +164,14 @@ With an argument, prompts for the evaluation environment."
 
 (define (evaluate-region region environment)
   (with-output-to-transcript-buffer
-   (lambda ()
-     (with-input-from-region region
-       (lambda ()
-	 (define (loop object)
-	   (if (not (eof-object? object))
-	       (begin (transcript-write (eval-with-history object environment))
-		      (loop (read)))))
-	 (loop (read)))))))
+    (lambda ()
+      (with-input-from-region region
+	(lambda ()
+	  (let loop ((object (read)))
+	    (if (not (eof-object? object))
+		(begin
+		  (transcript-write (eval-with-history object environment))
+		  (loop (read))))))))))
 
 (define (eval-with-history expression environment)
   (let ((scode (syntax expression (evaluation-syntax-table))))
@@ -174,72 +188,55 @@ With an argument, prompts for the evaluation environment."
 		(editor-error "Error while evaluating expression"))))
       (lambda ()
 	(with-new-history (lambda () (scode-eval scode environment)))))))
-(define (prompt-for-expression prompt default-string #!optional default-type)
-  (prompt-for-completed-string prompt
-			       default-string
-			       (if (default-object? default-type)
-				   'VISIBLE-DEFAULT
-				   default-type)
-			       false 'NO-COMPLETION
-			       prompt-for-expression-mode))
+(define (prompt-for-expression-value prompt default)
+  (eval-with-history (prompt-for-expression prompt default)
+		     (evaluation-environment false)))
 
-(define-major-mode "Prompt for Expression" "Scheme"
+(define (prompt-for-expression prompt default-object #!optional default-type)
+  (read-from-string
+   (prompt-for-string prompt
+		      (and default-object
+			   (write-to-string default-object))
+		      (if (default-object? default-type)
+			  'VISIBLE-DEFAULT
+			  default-type)
+		      (ref-mode-object prompt-for-expression))))
+
+(define-major-mode prompt-for-expression scheme #f
   "Major mode for editing solicited input expressions.
 Depending on what is being solicited, either defaulting or completion
 may be available.  The following commands are special to this mode:
 
-\\[^R Terminate Input] terminates the input.
-\\[^R Yank Default String] yanks the default string, if there is one.")
+\\[exit-minibuffer] terminates the input.
+\\[minibuffer-yank-default] yanks the default string, if there is one.")
 
-(define-key "Prompt for Expression" #\Return "^R Terminate Input")
-(define-key "Prompt for Expression" #\C-M-Y "^R Yank Default String")
-
-(define (prompt-for-expression-value prompt default)
-  (evaluate-string (prompt-for-expression prompt default)
-		   (evaluation-environment false)))
-
-(define (evaluation-syntax-table)
-  (or (ref-variable "Scheme Syntax Table")
-      (nearest-repl/syntax-table)))
-
-(define (evaluation-environment argument)
-  (cond (argument
-	 (let ((string
-		(prompt-for-expression
-		 "Evaluate in environment"
-		 (ref-variable "Previous Evaluation Environment"))))
-	   (set-variable! "Previous Evaluation Environment" string)
-	   (->environment (eval (with-input-from-string string read)
-				(evaluation-environment false)))))
-	((eq? 'DEFAULT (ref-variable "Scheme Environment"))
-	 (nearest-repl/environment))
-	(else
-	 (->environment (ref-variable "Scheme Environment")))))
+(define-key 'prompt-for-expression #\return 'exit-minibuffer)
+(define-key 'prompt-for-expression #\c-m-y 'minibuffer-yank-default)
 
 ;;;; Transcript Buffer
 
-(define-variable "Transcript Buffer Name"
+(define-variable transcript-buffer-name
   "Name of buffer to which evaluation commands record their output."
   "*Transcript*")
 
-(define-variable "Enable Transcript Buffer"
+(define-variable enable-transcript-buffer
   "If true, I/O from evaluation commands is recorded in transcript buffer.
 Recording is done only for commands that write their output to the
 message area, not commands that write to a specific buffer."
   false)
 
 (define (transcript-buffer)
-  (find-or-create-buffer (ref-variable "Transcript Buffer Name")))
+  (find-or-create-buffer (ref-variable transcript-buffer-name)))
 
 (define (transcript-write value)
-  (if (ref-variable "Enable Transcript Buffer")
+  (if (ref-variable enable-transcript-buffer)
       (write-line value))
-  (if (or (not (ref-variable "Enable Transcript Buffer"))
+  (if (or (not (ref-variable enable-transcript-buffer))
 	  (null? (buffer-windows (transcript-buffer))))
       (message (write-to-string value))))
 
 (define (with-output-to-transcript-buffer thunk)
-  (if (ref-variable "Enable Transcript Buffer")
+  (if (ref-variable enable-transcript-buffer)
       (with-interactive-output-port (transcript-output-port) thunk)
       (thunk)))
 

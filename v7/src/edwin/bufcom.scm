@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.80 1989/03/14 07:58:45 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.81 1989/04/15 00:46:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,76 +41,96 @@
 
 (declare (usual-integrations))
 
-(define-command ("^R Buffer Not Modified")
+(define-command not-modified
   "Pretend that this buffer hasn't been altered."
-  (buffer-not-modified! (current-buffer)))
+  ()
+  (lambda ()
+    (buffer-not-modified! (current-buffer))))
 
-(define-command ("Select Buffer")
-  "Select buffer with specified name.
-If the variable Select Buffer Create is true,
-specifying a non-existent buffer will cause it to be created."
-  (select-buffer (prompt-for-select-buffer "Select Buffer")))
-
-(define-command ("Select Buffer Other Window")
-  "Select buffer in another window."
-  (select-buffer-other-window
-   (prompt-for-select-buffer "Select Buffer Other Window")))
-
-(define-variable "Select Buffer Create"
+(define-variable select-buffer-create
   "If true, buffer selection commands may create new buffers."
   true)
 
 (define (prompt-for-select-buffer prompt)
-  ((if (ref-variable "Select Buffer Create")
-       prompt-for-buffer prompt-for-existing-buffer)
-   prompt (previous-buffer)))
+  (lambda ()
+    (list
+     (buffer-name
+      ((if (ref-variable select-buffer-create)
+	   prompt-for-buffer
+	   prompt-for-existing-buffer)
+       prompt
+       (previous-buffer))))))
 
-(define-command ("Create Buffer")
+(define-command switch-to-buffer
+  "Select buffer with specified name.
+If the variable select-buffer-create is true,
+specifying a non-existent buffer will cause it to be created."
+  (prompt-for-select-buffer "Switch to buffer")
+  (lambda (buffer)
+    (select-buffer (find-buffer buffer))))
+(define-command switch-to-buffer-other-window
+  "Select buffer in another window."
+  (prompt-for-select-buffer "Switch to buffer in other window")
+  (lambda (buffer)
+    (select-buffer-other-window (find-buffer buffer))))
+
+(define-command create-buffer
   "Create a new buffer with a given name, and select it."
-  (let ((buffer (new-buffer (prompt-for-string "Create Buffer" false))))
-    (set-buffer-major-mode! buffer (ref-variable "Editor Default Mode"))
-    (select-buffer buffer)))
+  "sCreate buffer"
+  (lambda (name)
+    (let ((buffer (new-buffer name)))
+      (set-buffer-major-mode! buffer (ref-variable editor-default-mode))
+      (select-buffer buffer))))
 
-(define-command ("Insert Buffer")
+(define-command insert-buffer
   "Insert the contents of a specified buffer at point."
-  (let ((point (mark-right-inserting (current-point))))
-    (region-insert-string!
-     point
-     (region->string
-      (buffer-region (prompt-for-existing-buffer "Insert Buffer" false))))
-    (push-current-mark! (current-point))
-    (set-current-point! point)))
+  "bInsert buffer"
+  (lambda (buffer)
+    (let ((point (mark-right-inserting (current-point))))
+      (region-insert-string!
+       point
+       (region->string (buffer-region (find-buffer buffer))))
+      (push-current-mark! (current-point))
+      (set-current-point! point))))
 
-(define-command ("^R Twiddle Buffers")
+(define-command twiddle-buffers
   "Select previous buffer."
-  (let ((buffer (previous-buffer)))
-    (if buffer
-	(select-buffer buffer)
-	(editor-error "No previous buffer to select"))))
+  ()
+  (lambda ()
+    (let ((buffer (previous-buffer)))
+      (if buffer
+	  (select-buffer buffer)
+	  (editor-error "No previous buffer to select")))))
 
-(define-command ("Bury Current Buffer")
-  "Deselect the current buffer, putting it at the end of the buffer list."
-  (let ((buffer (current-buffer))
-	(previous (previous-buffer)))
-    (if previous
-	(begin (select-buffer previous)
-	       (bury-buffer buffer)))))
+(define-command bury-buffer
+  "Put current buffer at the end of the list of all buffers.
+There it is the least likely candidate for other-buffer to return;
+thus, the least likely buffer for \\[switch-to-buffer] to select by default."
+  ()
+  (lambda ()
+    (let ((buffer (current-buffer))
+	  (previous (previous-buffer)))
+      (if previous
+	  (begin
+	    (select-buffer previous)
+	    (bury-buffer buffer))))))
 
-(define-command ("Kill Buffer")
-  "Kill the buffer with specified name.
-Does a completing read of the buffer name in the echo area.
-If the buffer has changes in it, we offer to write it out."
-  (kill-buffer-interactive
-   (prompt-for-existing-buffer "Kill Buffer" (current-buffer))))
+(define-command kill-buffer
+  "One arg, a string or a buffer.  Get rid of the specified buffer."
+  "bKill buffer"
+  (lambda (buffer)
+    (kill-buffer-interactive (find-buffer buffer))))
 
 (define (kill-buffer-interactive buffer)
   (if (not (other-buffer buffer)) (editor-error "Only one buffer"))
   (save-buffer-changes buffer)
   (kill-buffer buffer))
 
-(define-command ("Kill Some Buffers")
+(define-command kill-some-buffers
   "For each buffer, ask whether to kill it."
-  (kill-some-buffers true))
+  ()
+  (lambda ()
+    (kill-some-buffers true)))
 
 (define (kill-some-buffers prompt?)
   (for-each (lambda (buffer)
@@ -126,27 +146,25 @@ If the buffer has changes in it, we offer to write it out."
 			(kill-buffer-interactive buffer)
 			(set-buffer-major-mode!
 			 (create-buffer initial-buffer-name)
-			 (ref-variable "Editor Default Mode"))
+			 (ref-variable editor-default-mode))
 			(kill-buffer dummy)))))
 	    (buffer-list)))
 
-(define-command ("Rename Buffer")
+(define-command rename-buffer
   "Change the name of the current buffer.
 Reads the new name in the echo area."
-  (let ((buffer (current-buffer)))
-    (let ((name
-	   (prompt-for-string "Rename Buffer"
-			      (let ((pathname (buffer-pathname buffer)))
-				(and pathname
-				     (pathname->buffer-name pathname))))))
-      (if (find-buffer name)
-	  (editor-error "Buffer named " name " already exists"))
-      (rename-buffer buffer name))))
+  "sRename buffer (to new name)"
+  (lambda (name)
+    (if (find-buffer name)
+	(editor-error "Buffer named " name " already exists"))
+    (rename-buffer (current-buffer) name)))
 
-(define-command ("Normal Mode")
+(define-command normal-mode
   "Reset mode and local variable bindings to their default values.
 Just like what happens when the file is first visited."
-  (initialize-buffer! (current-buffer)))
+  ()
+  (lambda ()
+    (initialize-buffer! (current-buffer))))
 
 (define (save-buffer-changes buffer)
   (if (and (buffer-pathname buffer)
@@ -181,30 +199,22 @@ Just like what happens when the file is first visited."
     buffer))
 
 (define (prompt-for-buffer prompt default-buffer)
-  (let ((name (prompt-for-buffer-name prompt default-buffer)))
+  (let ((name (prompt-for-buffer-name prompt default-buffer false)))
     (or (find-buffer name)
 	(let ((buffer (create-buffer name)))
-	  (set-buffer-major-mode! buffer (ref-variable "Editor Default Mode"))
+	  (set-buffer-major-mode! buffer (ref-variable editor-default-mode))
 	  (temporary-message "(New Buffer)")
 	  buffer))))
 
-(define (prompt-for-buffer-name prompt default-buffer)
-  (prompt-for-completed-string prompt
-			       (and default-buffer
-				    (buffer-name default-buffer))
-			       (if default-buffer
-				   'VISIBLE-DEFAULT
-				   'NO-DEFAULT)
-			       (buffer-names)
-			       'PERMISSIVE-COMPLETION))
-
 (define (prompt-for-existing-buffer prompt default-buffer)
-  (find-buffer
-   (prompt-for-completed-string prompt
+  (find-buffer (prompt-for-buffer-name prompt default-buffer true)))
+
+(define (prompt-for-buffer-name prompt default-buffer require-match?)
+  (prompt-for-string-table-name prompt
 				(and default-buffer
 				     (buffer-name default-buffer))
-			       (if default-buffer
-				   'VISIBLE-DEFAULT
-				   'NO-DEFAULT)
+				(if default-buffer
+				    'VISIBLE-DEFAULT
+				    'NO-DEFAULT)
 				(buffer-names)
-				'STRICT-COMPLETION)))
+				require-match?))

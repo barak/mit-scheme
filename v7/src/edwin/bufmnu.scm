@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.108 1989/03/14 07:58:57 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.109 1989/04/15 00:47:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,32 +41,35 @@
 
 (declare (usual-integrations))
 
-(define-variable "Buffer Menu Kill on Quit"
+(define-variable buffer-menu-kill-on-quit
   "If not false, kill the *Buffer-List* buffer when leaving it."
   false)
 
-(define-command ("List Buffers")
+(define-command list-buffers
   "Display a list of names of existing buffers."
-  (pop-up-buffer (update-buffer-list) false))
+  ()
+  (lambda ()
+    (pop-up-buffer (update-buffer-list) false)))
 
-(define-command ("Buffer Menu")
+(define-command buffer-menu
   "Display a list of names of existing buffers."
-  (pop-up-buffer (update-buffer-list) true)
-  (message "Commands: d, s, x; 1, 2, m, u, q; rubout; ? for help."))
+  ()
+  (lambda ()
+    (pop-up-buffer (update-buffer-list) true)
+    (message "Commands: d, s, x; 1, 2, m, u, q; rubout; ? for help.")))
 
 (define (update-buffer-list)
   (let ((buffer (temporary-buffer "*Buffer-List*")))
-    (set-buffer-major-mode! buffer buffer-menu-mode)
+    (set-buffer-major-mode! buffer (ref-mode-object buffer-menu))
     (buffer-put! buffer 'REVERT-BUFFER-METHOD revert-buffer-menu)
     (fill-buffer-menu! buffer)
     buffer))
 
-(define (revert-buffer-menu argument)
-  argument				;ignore
-  (let ((buffer (current-buffer)))
-    (set-buffer-writeable! buffer)
-    (region-delete! (buffer-region buffer))
-    (fill-buffer-menu! buffer)))
+(define (revert-buffer-menu buffer dont-use-auto-save? dont-confirm?)
+  dont-use-auto-save? dont-confirm?	;ignore
+  (set-buffer-writeable! buffer)
+  (region-delete! (buffer-region buffer))
+  (fill-buffer-menu! buffer))
 
 (define (fill-buffer-menu! buffer)
   (with-output-to-mark (buffer-point buffer)
@@ -83,7 +86,7 @@
 			   (buffer-name buffer)
 			   (write-to-string
 			    (group-length (buffer-group buffer)))
-			   (mode-name (buffer-major-mode buffer))
+			   (mode-display-name (buffer-major-mode buffer))
 			   (let ((truename (buffer-truename buffer)))
 			     (if truename (pathname->string truename) ""))))
 			 (newline))))
@@ -91,100 +94,113 @@
   (set-buffer-point! buffer (line-start (buffer-start buffer) 2))
   (set-buffer-read-only! buffer))
 
-(define-major-mode "Buffer-Menu" "Fundamental"
+(define-major-mode buffer-menu fundamental "Buffer Menu"
   "Major mode for editing a list of buffers.
 Each line describes a buffer in the editor.
-M -- mark buffer to be displayed.
-Q -- select buffer of line point is in.
+m -- mark buffer to be displayed.
+q -- select buffer of line point is in.
 1 -- select that buffer in full-screen window.
 2 -- select that buffer in one window,
   together with buffer selected before this one in another window.
-F -- select buffer of line point is in,
+f -- select buffer of line point is in,
   leaving *Buffer-List* as the previous buffer.
-O -- like F, but select buffer in another window.
+o -- like f, but select buffer in another window.
 ~ -- clear modified-flag of that buffer.
-S -- mark that buffer to be saved.
-D or K or C-D or C-K -- mark that buffer to be killed.
-X -- kill or save marked buffers.
-U -- remove all kinds of marks from the current line.
-Rubout -- move up a line and remove marks.
-Space -- move down a line.
+s -- mark that buffer to be saved.
+d or k or C-d or C-k -- mark that buffer to be killed.
+x -- kill or save marked buffers.
+u -- remove all kinds of marks from the current line.
+DEL -- move up a line and remove marks.
+SPC -- move down a line.
 C-] -- abort Buffer-Menu edit, killing *Buffer-List*.")
 
-(define-key "Buffer-Menu" #\M "^R Buffer Menu Mark")
-(define-key "Buffer-Menu" #\Q "^R Buffer Menu Quit")
-(define-key "Buffer-Menu" #\1 "^R Buffer Menu 1 Window")
-(define-key "Buffer-Menu" #\2 "^R Buffer Menu 2 Window")
-(define-key "Buffer-Menu" #\F "^R Buffer Menu Find")
-(define-key "Buffer-Menu" #\O "^R Buffer Menu Find Other Window")
-(define-key "Buffer-Menu" #\~ "^R Buffer Menu Not Modified")
-(define-key "Buffer-Menu" #\S "^R Buffer Menu Save")
-(define-key "Buffer-Menu" #\D "^R Buffer Menu Kill")
-(define-key "Buffer-Menu" #\K "^R Buffer Menu Kill")
-(define-key "Buffer-Menu" #\C-D "^R Buffer Menu Kill")
-(define-key "Buffer-Menu" #\C-K "^R Buffer Menu Kill")
-(define-key "Buffer-Menu" #\X "^R Buffer Menu Execute")
-(define-key "Buffer-Menu" #\U "^R Buffer Menu Unmark")
-(define-key "Buffer-Menu" #\Rubout "^R Buffer Menu Backup Unmark")
-(define-key "Buffer-Menu" #\Space "^R Buffer Menu Next")
-(define-key "Buffer-Menu" #\C-\] "^R Buffer Menu Abort")
-(define-key "Buffer-Menu" #\? "Describe Mode")
+(define-key 'buffer-menu #\m 'buffer-menu-mark)
+(define-key 'buffer-menu #\q 'buffer-menu-quit)
+(define-key 'buffer-menu #\1 'buffer-menu-1-window)
+(define-key 'buffer-menu #\2 'buffer-menu-2-window)
+(define-key 'buffer-menu #\f 'buffer-menu-this-window)
+(define-key 'buffer-menu #\o 'buffer-menu-other-window)
+(define-key 'buffer-menu #\~ 'buffer-menu-not-modified)
+(define-key 'buffer-menu #\s 'buffer-menu-save)
+(define-key 'buffer-menu #\d 'buffer-menu-delete)
+(define-key 'buffer-menu #\k 'buffer-menu-delete)
+(define-key 'buffer-menu #\c-d 'buffer-menu-delete)
+(define-key 'buffer-menu #\c-k 'buffer-menu-delete)
+(define-key 'buffer-menu #\x 'buffer-menu-execute)
+(define-key 'buffer-menu #\u 'buffer-menu-unmark)
+(define-key 'buffer-menu #\rubout 'buffer-menu-backup-unmark)
+(define-key 'buffer-menu #\space 'buffer-menu-next-line)
+(define-key 'buffer-menu #\c-\] 'buffer-menu-abort)
+(define-key 'buffer-menu #\? 'describe-mode)
 
-(define-command ("^R Buffer Menu Mark" (argument 1))
-  "Mark buffer on this line for being displayed by \\[^R Buffer Menu Quit] command."
-  (set-multiple-marks! 0 #\> argument))
+(define-command buffer-menu-mark
+  "Mark buffer on this line for being displayed by \\[buffer-menu-quit] command."
+  "p"
+  (lambda (argument)
+    (set-multiple-marks! 0 #\> argument)))
 
-(define-command ("^R Buffer Menu Quit")
+(define-command buffer-menu-quit
   "Select this line's buffer; also display buffers marked with >.
-You can mark buffers with the \\[^R Buffer Menu Mark] command."
-  (let ((lstart (current-lstart))
-	(window (current-window)))
-    (let ((menu (window-buffer window))
-	  (buffer (buffer-menu-buffer lstart))
-	  (others (map buffer-menu-buffer (find-buffers-marked 0 #\>))))
-      (if (and (ref-variable "Preserve Window Arrangement")
-	       (null? others))
-	  (buffer-menu-select menu buffer false)
-	  (begin
-	   (delete-other-windows window)
-	   (buffer-menu-select menu buffer (memq menu others))
-	   (let ((height (max (quotient (1+ (window-y-size window))
-					(1+ (length others)))
-			      (1+ (ref-variable "Window Minimum Height")))))
-	     (define (loop window buffers)
-	       (let ((new (window-split-vertically! window height)))
-		 (if new
-		     (begin
-		       (set-window-buffer! new (car buffers) true)
-		       (loop new (cdr buffers))))))
-	     (loop window others))))))
-  (clear-message))
+You can mark buffers with the \\[buffer-menu-mark] command."
+  ()
+  (lambda ()
+    (let ((lstart (current-lstart))
+	  (window (current-window)))
+      (let ((menu (window-buffer window))
+	    (buffer (buffer-menu-buffer lstart))
+	    (others (map buffer-menu-buffer (find-buffers-marked 0 #\>))))
+	(if (and (ref-variable preserve-window-arrangement)
+		 (null? others))
+	    (buffer-menu-select menu buffer false)
+	    (begin
+	      (delete-other-windows window)
+	      (buffer-menu-select menu buffer (memq menu others))
+	      (let ((height (max (quotient (1+ (window-y-size window))
+					   (1+ (length others)))
+				 (1+ (ref-variable window-minimum-height)))))
+		(define (loop window buffers)
+		  (let ((new (window-split-vertically! window height)))
+		    (if new
+			(begin
+			  (set-window-buffer! new (car buffers) true)
+			  (loop new (cdr buffers))))))
+		(loop window others))))))
+    (clear-message)))
 
-(define-command ("^R Buffer Menu 1 Window")
+(define-command buffer-menu-1-window
   "Select this line's buffer, alone, in full screen."
-  (let ((window (current-window)))
-    (delete-other-windows window)
-    (buffer-menu-select (window-buffer window)
-			(buffer-menu-buffer (current-lstart))
-			false))
-  (clear-message))
+  ()
+  (lambda ()
+    (let ((window (current-window)))
+      (delete-other-windows window)
+      (buffer-menu-select (window-buffer window)
+			  (buffer-menu-buffer (current-lstart))
+			  false))
+    (clear-message)))
 
-(define-command ("^R Buffer Menu 2 Window")
+(define-command buffer-menu-2-window
   "Select this line's buffer, with previous buffer in second window."
-  (buffer-menu-select (window-buffer (current-window))
-		      (buffer-menu-buffer (current-lstart))
-		      false)
-  (fluid-let (((ref-variable "Pop Up Windows") true))
-    (pop-up-buffer (previous-buffer)))
-  (clear-message))
+  ()
+  (lambda ()
+    (buffer-menu-select (window-buffer (current-window))
+			(buffer-menu-buffer (current-lstart))
+			false)
+    (with-variable-value! (ref-variable-object pop-up-windows) true
+      (lambda ()
+	(pop-up-buffer (previous-buffer))))
+    (clear-message)))
 
-(define-command ("^R Buffer Menu Find")
+(define-command buffer-menu-this-window
   "Select this line's buffer."
-  (buffer-menu-find select-buffer))
+  ()
+  (lambda ()
+    (buffer-menu-find select-buffer)))
 
-(define-command ("^R Buffer Menu Find Other Window")
+(define-command buffer-menu-other-window
   "Select this line's buffer in another window."
-  (buffer-menu-find select-buffer-other-window))
+  ()
+  (lambda ()
+    (buffer-menu-find select-buffer-other-window)))
 
 (define (buffer-menu-find select-buffer)
   (let ((buffer (buffer-menu-buffer (current-lstart))))
@@ -192,53 +208,69 @@ You can mark buffers with the \\[^R Buffer Menu Mark] command."
 	(select-buffer buffer)))
   (clear-message))
 
-(define-command ("^R Buffer Menu Not Modified")
+(define-command buffer-menu-not-modified
   "Mark buffer on this line as unmodified (no changes to save)."
-  (buffer-not-modified! (buffer-menu-buffer (current-lstart)))
-  (let ((lstart (current-lstart)))
-    (if (char=? #\* (buffer-menu-mark lstart 1))
-	(set-buffer-menu-mark! lstart 1 #\Space))))
+  ()
+  (lambda ()
+    (buffer-not-modified! (buffer-menu-buffer (current-lstart)))
+    (let ((lstart (current-lstart)))
+      (if (char=? #\* (buffer-menu-mark lstart 1))
+	  (set-buffer-menu-mark! lstart 1 #\Space)))))
 
-(define-command ("^R Buffer Menu Save" (argument 1))
+(define-command buffer-menu-save
   "Mark buffer on this line to be saved by X command."
-  (set-multiple-marks! 1 #\S argument))
+  "p"
+  (lambda (argument)
+    (set-multiple-marks! 1 #\S argument)))
 
-(define-command ("^R Buffer Menu Kill" (argument 1))
+(define-command buffer-menu-delete
   "Mark buffer on this line to be killed by X command."
-  (set-multiple-marks! 0 #\K argument))
+  "p"
+  (lambda (argument)
+    (set-multiple-marks! 0 #\K argument)))
 
-(define-command ("^R Buffer Menu Execute")
-  "Save and/or Kill buffers marked with \\[^R Buffer Menu Save] or \\[^R Buffer Menu Kill]."
-  (buffer-menu-save-and-kill!))
+(define-command buffer-menu-execute
+  "Save and/or Kill buffers marked with \\[buffer-menu-save] or \\[buffer-menu-delete]."
+  ()
+  (lambda ()
+    (buffer-menu-save-and-kill!)))
 
-(define-command ("^R Buffer Menu Unmark")
+(define-command buffer-menu-unmark
   "Remove all marks from this line."
-  (let ((lstart (mark-right-inserting (current-lstart))))
-    (let ((buffer (buffer-menu-buffer lstart)))
-      (set-buffer-menu-mark! lstart 0 #\Space)
-      (set-buffer-menu-mark! lstart 1
-			     (if (buffer-modified? buffer) #\* #\Space))))
-  (set-current-point! (next-lstart)))
+  ()
+  (lambda ()
+    (let ((lstart (mark-right-inserting (current-lstart))))
+      (let ((buffer (buffer-menu-buffer lstart)))
+	(set-buffer-menu-mark! lstart 0 #\Space)
+	(set-buffer-menu-mark! lstart 1
+			       (if (buffer-modified? buffer) #\* #\Space))))
+    (set-current-point! (next-lstart))))
 
-(define-command ("^R Buffer Menu Backup Unmark")
+(define-command buffer-menu-backup-unmark
   "Remove all marks from the previous line."
-  (set-current-point! (previous-lstart))
-  (^r-buffer-menu-unmark-command)
-  (set-current-point! (previous-lstart)))
+  ()
+  (lambda ()
+    (set-current-point! (previous-lstart))
+    ((ref-command buffer-menu-unmark))
+    (set-current-point! (previous-lstart))))
 
-(define-command ("^R Buffer Menu Next" (argument 1))
+(define-command buffer-menu-next-line
   "Move down to the next line."
-  (set-current-point! (line-start (current-point) argument 'BEEP)))
+  "p"
+  (lambda (argument)
+    (set-current-point! (line-start (current-point) argument 'BEEP))))
 
-(define-command ("^R Buffer Menu Abort")
+(define-command buffer-menu-abort
   "Abort buffer menu edit."
-  (kill-buffer-interactive (current-buffer))
-  (clear-message))
+  ()
+  (lambda ()
+    (kill-buffer-interactive (current-buffer))
+    (clear-message)))
 
 (define (buffer-menu-select menu buffer needed?)
   (select-buffer buffer)
   (if (not (or (eq? menu buffer) needed?))
-      (if (ref-variable "Buffer Menu Kill on Quit")
+      (if (ref-variable buffer-menu-kill-on-quit)
 	  (kill-buffer-interactive menu)
 	  (bury-buffer menu))))
 
@@ -247,7 +279,7 @@ You can mark buffers with the \\[^R Buffer Menu Mark] command."
   (for-each buffer-menu-kill! (find-buffers-marked 0 #\K)))
 
 (define (buffer-menu-save! lstart)
-  (save-file (buffer-menu-buffer lstart))
+  (save-buffer (buffer-menu-buffer lstart))
   (set-buffer-menu-mark! lstart 1 #\Space))
 
 (define (buffer-menu-kill! lstart)

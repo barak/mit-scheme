@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.275 1989/03/14 07:59:06 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.276 1989/04/15 00:47:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -217,9 +217,15 @@
     (if (not override-inferior)
 	(begin
 	  (set! override-inferior (make-inferior window line-window))
-	  (set! inferiors (list override-inferior blank-inferior))
+	  (set! inferiors
+		(list override-inferior cursor-inferior blank-inferior))
 	  (set-inferior-start! override-inferior 0 0)))
-    (set-line-window-string! (inferior-window override-inferior) message)
+    (let ((override-window (inferior-window override-inferior)))
+      (set-line-window-string! override-window message)
+      (let ((length (string-length message)))
+	(set-inferior-position!
+	 cursor-inferior
+	 (string-base:index->coordinates override-window length))))
     (set-blank-inferior-start! window (inferior-y-end override-inferior))))
 
 (define (clear-override-message! window)
@@ -229,6 +235,9 @@
 	  (set! override-inferior false)
 	  (set! inferiors
 		(cons* cursor-inferior blank-inferior line-inferiors))
+	  (let ((coordinates (%window-mark->coordinates window point)))
+	    (set-inferior-position! cursor-inferior coordinates)
+	    (set-buffer-cursor-y! buffer (cdr coordinates)))
 	  (blank-inferior-changed! window)
 	  (for-each inferior-needs-redisplay! inferiors)))))
 
@@ -377,7 +386,7 @@
 
 (define (maybe-recenter! window)
   (with-instance-variables buffer-window window ()
-    (let ((threshold (ref-variable "Cursor Centering Threshold")))
+    (let ((threshold (ref-variable cursor-centering-threshold)))
       (if (zero? threshold)
 	  (%window-redraw! window (%window-y-center window))
 	  (if (< (mark-index point) (mark-index start-mark))
@@ -424,7 +433,7 @@
 	      (string-base:index->y (inferior-window inferior)
 				    (- index start))))
 	  (fill-top! window (list inferior) start true))))))
-
+
 (define (everything-changed! window if-not-visible)
   (with-instance-variables buffer-window window (if-not-visible)
     (no-outstanding-changes! window)
@@ -433,7 +442,7 @@
     (start-mark-changed! window)
     (end-mark-changed! window)
     (update-cursor! window if-not-visible)))
-
+
 (define (maybe-marks-changed! window inferiors y-end)
   (with-instance-variables buffer-window window (inferiors y-end)
     (no-outstanding-changes! window)
@@ -495,7 +504,9 @@
 
 (define (%window-y-center window)
   (with-instance-variables buffer-window window ()
-    (let ((qr (integer-divide (* y-size cursor-centering-point) 100)))
+    (let ((qr
+	   (integer-divide (* y-size (ref-variable cursor-centering-point))
+			   100)))
       (if (< (integer-divide-remainder qr) 50)
 	  (integer-divide-quotient qr)
 	  (1+ (integer-divide-quotient qr))))))

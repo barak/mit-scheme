@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.30 1989/03/30 16:39:21 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.31 1989/04/15 00:47:06 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -130,15 +130,15 @@
 
 (define-method buffer-frame (:minimum-x-size window)
   (if (window-has-right-neighbor? window)
-      (+ (ref-variable "Window Minimum Width")
+      (+ (ref-variable window-minimum-width)
 	 (inferior-x-size border-inferior))
-      (ref-variable "Window Minimum Width")))
+      (ref-variable window-minimum-width)))
 
 (define-method buffer-frame (:minimum-y-size window)
   (if modeline-inferior
-      (+ (ref-variable "Window Minimum Height")
+      (+ (ref-variable window-minimum-height)
 	 (inferior-y-size modeline-inferior))
-      (ref-variable "Window Minimum Height")))
+      (ref-variable window-minimum-height)))
 
 (define (buffer-frame-x-size frame)
   (window-x-size (frame-text-inferior frame)))

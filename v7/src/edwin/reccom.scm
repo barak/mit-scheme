@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/reccom.scm,v 1.10 1989/03/14 08:01:58 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/reccom.scm,v 1.11 1989/04/15 00:52:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -76,27 +76,35 @@
 		(iter (line-start perm-mark 1) (append ring-list (list line$)))))))
       (iter first (list spacenum)))))
 
-(define-command ("Kill Rectangle")
+(define-command kill-rectangle
   "Delete rectangle with corners at point and mark; save as last killed one."
-  (set-cdr! rectangle-ring (delete-rectangle (current-mark) (current-point))))
+  ()
+  (lambda ()
+    (set-cdr! rectangle-ring (delete-rectangle (current-mark) (current-point)))))
 
-(define-command ("Delete Rectangle")
+(define-command delete-rectangle
   "Delete (don't save) text in rectangle with point and mark as corners.
 The same range of columns is deleted in each line
 starting with the line where the region begins
 and ending with the line where the region ends."
-  (delete-rectangle (current-mark) (current-point)))
+  ()
+  (lambda ()
+    (delete-rectangle (current-mark) (current-point))))
 
-(define-command ("Open Rectangle")
+(define-command open-rectangle
   "Blank out rectangle with corners at point and mark, shifting text right.
 The text previously in the region is not overwritten by the blanks,
 but instead winds up to the right of the rectangle."
-  (delete-rectangle (current-mark) (current-point) true true))
+  ()
+  (lambda ()
+    (delete-rectangle (current-mark) (current-point) true true)))
 
-(define-command ("Clear Rectangle")
+(define-command clear-rectangle
   "Blank out rectangle with corners at point and mark.
 The text previously in the region is overwritten by the blanks."
-  (delete-rectangle (current-mark) (current-point) true))
+  ()
+  (lambda ()
+    (delete-rectangle (current-mark) (current-point) true)))
 
 (define (make-space-to-column column mark) ;new make-space-to-column
   (mark-permanent! mark)
@@ -128,6 +136,8 @@ The text previously in the region is overwritten by the blanks."
 			(cdr insert$)))))
 	  (iter (line-end point 0) point (cddr rectangle))))))
 
-(define-command ("Yank Rectangle")
+(define-command yank-rectangle
   "Yank the last killed rectangle with upper left corner at point."
-  (yank-rectangle rectangle-ring (current-point)))
+  ()
+  (lambda ()
+    (yank-rectangle rectangle-ring (current-point))))

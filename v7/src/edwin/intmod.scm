@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.31 1989/03/30 16:39:58 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.32 1989/04/15 00:50:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,42 +41,41 @@
 
 (declare (usual-integrations))
 
-(define-major-mode "Interaction" "Scheme"
+(define-major-mode interaction scheme "Interaction"
   "Major mode for evaluating Scheme expressions interactively.
 Same as Scheme mode, except for
 
-\\[^R Interaction Execute] evaluates the current expression.
-\\[^R Interaction Refresh] deletes the contents of the buffer.
-\\[^R Interaction Yank] yanks the last expression.
-\\[^R Interaction Yank Pop] yanks an earlier expression, replacing a yank."
-  (local-set-variable! "Interaction Prompt"
-		       (ref-variable "Interaction Prompt"))
-  (local-set-variable! "Interaction Kill Ring" (make-ring 32))
-  (local-set-variable! "Scheme Environment"
-		       (ref-variable "Scheme Environment"))
-  (local-set-variable! "Scheme Syntax-table"
-		       (ref-variable "Scheme Syntax-table")))
+\\[interaction-execute] evaluates the current expression.
+\\[interaction-refresh] deletes the contents of the buffer.
+\\[interaction-yank] yanks the last expression.
+\\[interaction-yank-pop] yanks an earlier expression, replacing a yank."
+  (local-set-variable! interaction-prompt (ref-variable interaction-prompt))
+  (local-set-variable! interaction-kill-ring (make-ring 32))
+  (local-set-variable! scheme-environment (ref-variable scheme-environment))
+  (local-set-variable! scheme-syntax-table (ref-variable scheme-syntax-table)))
 
-(define-key "Interaction" #\Return "^R Interaction Execute")
-(define-prefix-key "Interaction" #\C-C "^R Prefix Character")
-(define-key "Interaction" '(#\C-C #\Page) "^R Interaction Refresh")
-(define-key "Interaction" '(#\C-C #\C-Y) "^R Interaction Yank")
-(define-key "Interaction" '(#\C-C #\C-R) "^R Interaction Yank Pop")
+(define-key 'interaction #\return 'interaction-execute)
+(define-prefix-key 'interaction #\c-c 'prefix-char)
+(define-key 'interaction '(#\c-c #\page) 'interaction-refresh)
+(define-key 'interaction '(#\c-c #\c-y) 'interaction-yank)
+(define-key 'interaction '(#\c-c #\c-r) 'interaction-yank-pop)
 
-(define-command ("Interaction Mode")
+(define-command interaction-mode
   "Make the current mode be Interaction mode."
-  (set-current-major-mode! Interaction-mode)
-  (let ((buffer (current-buffer)))
-    (if (not (mark= (buffer-start buffer) (buffer-end buffer)))
-	(begin (set-current-point! (buffer-end buffer))
-	       (insert-interaction-prompt))
-	(insert-interaction-prompt false))))
+  ()
+  (lambda ()
+    (set-current-major-mode! (ref-mode-object interaction))
+    (let ((buffer (current-buffer)))
+      (if (not (mark= (buffer-start buffer) (buffer-end buffer)))
+	  (begin (set-current-point! (buffer-end buffer))
+		 (insert-interaction-prompt))
+	  (insert-interaction-prompt false)))))
 
 (define (insert-interaction-prompt #!optional newlines?)
   (if (or (default-object? newlines?) newlines?)
       (insert-newlines 2))
   (insert-string "1 ")
-  (insert-string (ref-variable "Interaction Prompt"))
+  (insert-string (ref-variable interaction-prompt))
   (insert-string " ")
   (buffer-put! (current-buffer)
 	       interaction-mode:buffer-mark-tag
@@ -85,16 +84,16 @@ Same as Scheme mode, except for
 (define interaction-mode:buffer-mark-tag
   "Mark")
 
-(define-variable "Interaction Prompt"
+(define-variable interaction-prompt
   "Prompt string used by Interaction mode."
   "]=>")
 
-(define-variable "Interaction Kill Ring"
+(define-variable interaction-kill-ring
   "Kill ring used by Interaction mode evaluation commands.")
 
-(define-command ("^R Interaction Execute" argument)
+(define-command interaction-execute
   "Evaluate the input expression.
-With an argument, calls ^R Insert Self instead.
+With an argument, calls \\[self-insert-command] instead.
 
 If invoked in the current `editing area', evaluates the expression there.
  The editing area is defined as the space between the last prompt and
@@ -106,82 +105,93 @@ Otherwise, goes to the end of the current line, copies the preceding
  editing area must be empty.
 
 Output is inserted into the buffer at the end."
-  (define (extract-expression start)
-    (let ((expression (extract-string start (or (forward-one-sexp start)
-						(editor-error "No Expression")))))
-      (ring-push! (ref-variable "Interaction Kill Ring") expression)
-      expression))
+  "P"
+  (lambda (argument)
+    (define (extract-expression start)
+      (let ((expression
+	     (extract-string start
+			     (or (forward-one-sexp start)
+				 (editor-error "No Expression")))))
+	(ring-push! (ref-variable interaction-kill-ring) expression)
+	expression))
 
-  (if argument
-      (^r-insert-self-command argument)
-      (let ((mark (or (buffer-get (current-buffer)
-				  interaction-mode:buffer-mark-tag)
-		      (error "Missing interaction buffer mark")))
-	    (point (current-point)))
-	(if (mark< point (line-start mark 0))
-	    (begin
-	     (if (not (group-end? mark))
-		 (editor-error "Can't copy: unfinished expression"))
-	     (let ((start (backward-one-sexp (line-end point 0))))
-	       (if (not start) (editor-error "No previous expression"))
-	       (let ((expression (extract-expression start)))
-		 (set-current-point! mark)
-		 (insert-string expression mark))))
-	    (let ((state (parse-partial-sexp mark (group-end mark))))
-	      (if (or (not (zero? (parse-state-depth state)))
-		      (parse-state-in-string? state)
-		      (parse-state-in-comment? state)
-		      (parse-state-quoted? state))
-		  (editor-error "Imbalanced expression"))
-	      (let ((last-sexp (parse-state-last-sexp state)))
-		(if (not last-sexp)
-		    (editor-error "No expression"))
-		(extract-expression last-sexp))
-	      (set-current-point! (group-end point))))
-	(dynamic-wind
-	 (lambda () 'DONE)
-	 (lambda ()
-	   (with-output-to-current-point
-	    (lambda ()
-	      (intercept-^G-interrupts
-	       (lambda ()
-		 (newline)
-		 (write-string "Abort!"))
-	       (lambda ()
-		 (write-line
-		  (eval-with-history (with-input-from-mark mark
-							   read)
-				     (evaluation-environment false))))))))
-	 insert-interaction-prompt))))
+    (if argument
+	((ref-command self-insert-command) argument)
+	(let ((mark (or (buffer-get (current-buffer)
+				    interaction-mode:buffer-mark-tag)
+			(error "Missing interaction buffer mark")))
+	      (point (current-point)))
+	  (if (mark< point (line-start mark 0))
+	      (begin
+		(if (not (group-end? mark))
+		    (editor-error "Can't copy: unfinished expression"))
+		(let ((start (backward-one-sexp (line-end point 0))))
+		  (if (not start) (editor-error "No previous expression"))
+		  (let ((expression (extract-expression start)))
+		    (set-current-point! mark)
+		    (insert-string expression mark))))
+	      (let ((state (parse-partial-sexp mark (group-end mark))))
+		(if (or (not (zero? (parse-state-depth state)))
+			(parse-state-in-string? state)
+			(parse-state-in-comment? state)
+			(parse-state-quoted? state))
+		    (editor-error "Imbalanced expression"))
+		(let ((last-sexp (parse-state-last-sexp state)))
+		  (if (not last-sexp)
+		      (editor-error "No expression"))
+		  (extract-expression last-sexp))
+		(set-current-point! (group-end point))))
+	  (dynamic-wind
+	   (lambda () 'DONE)
+	   (lambda ()
+	     (with-output-to-current-point
+	      (lambda ()
+		(intercept-^G-interrupts
+		 (lambda ()
+		   (newline)
+		   (write-string "Abort!"))
+		 (lambda ()
+		   (write-line
+		    (eval-with-history (with-input-from-mark mark
+							     read)
+				       (evaluation-environment false))))))))
+	   insert-interaction-prompt)))))
 
-(define-command ("^R Interaction Refresh")
+(define-command interaction-refresh
   "Delete the contents of the buffer, then prompt for input.
 Preserves the current `editing area'."
-  (let ((buffer (current-buffer)))
-    (let ((edit-area
-	   (extract-string (buffer-get buffer interaction-mode:buffer-mark-tag)
-			   (buffer-end buffer))))
-      (region-delete! (buffer-region buffer))
-      (insert-interaction-prompt false)
-      (insert-string edit-area))))
+  ()
+  (lambda ()
+    (let ((buffer (current-buffer)))
+      (let ((edit-area
+	     (extract-string
+	      (buffer-get buffer interaction-mode:buffer-mark-tag)
+	      (buffer-end buffer))))
+	(region-delete! (buffer-region buffer))
+	(insert-interaction-prompt false)
+	(insert-string edit-area)))))
 
 (define interaction-mode:yank-command-message
   "Yank")
 
-(define-command ("^R Interaction Yank")
+(define-command interaction-yank
   "Yank the last input expression."
-  (push-current-mark! (mark-right-inserting (current-point)))
-  (insert-string (ring-ref (ref-variable "Interaction Kill Ring") 0))
-  (set-command-message! interaction-mode:yank-command-message))
+  ()
+  (lambda ()
+    (push-current-mark! (mark-right-inserting (current-point)))
+    (insert-string (ring-ref (ref-variable interaction-kill-ring) 0))
+    (set-command-message! interaction-mode:yank-command-message)))
 
-(define-command ("^R Interaction Yank Pop")
+(define-command interaction-yank-pop
   "Yank the last input expression."
-  (command-message-receive interaction-mode:yank-command-message
-    (lambda ()
-      (delete-string (pop-current-mark!) (current-point))
-      (push-current-mark! (mark-right-inserting (current-point)))
-      (ring-pop! (ref-variable "Interaction Kill Ring"))
-      (insert-string (ring-ref (ref-variable "Interaction Kill Ring") 0))
-      (set-command-message! interaction-mode:yank-command-message))
-    (lambda ()
-      (editor-error "No previous yank to replace"))))
+  ()
+  (lambda ()
+    (command-message-receive interaction-mode:yank-command-message
+      (lambda ()
+	(delete-string (pop-current-mark!) (current-point))
+	(push-current-mark! (mark-right-inserting (current-point)))
+	(ring-pop! (ref-variable interaction-kill-ring))
+	(insert-string (ring-ref (ref-variable interaction-kill-ring) 0))
+	(set-command-message! interaction-mode:yank-command-message))
+      (lambda ()
+	(editor-error "No previous yank to replace")))))

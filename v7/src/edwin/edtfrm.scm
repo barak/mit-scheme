@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtfrm.scm,v 1.73 1989/03/14 08:00:30 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtfrm.scm,v 1.74 1989/04/15 00:48:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -49,7 +49,8 @@
    typein-inferior
    selected-window
    cursor-window
-   select-time))
+   select-time
+   properties))
 
 (define (make-editor-frame root-screen main-buffer typein-buffer)
   (let ((window (make-object editor-frame)))
@@ -61,6 +62,7 @@
       (set! y-size (screen-y-size root-screen))
       (set! redisplay-flags (list false))
       (set! inferiors '())
+      (set! properties (make-1d-table))
       (let ((main-window (make-buffer-frame window main-buffer true))
 	    (typein-window (make-buffer-frame window typein-buffer false)))
 	(set! screen root-screen)
@@ -118,6 +120,13 @@
   (with-instance-variables editor-frame window ()
     cursor-window))
 
+(define-integrable (editor-frame-root-window window)
+  (with-instance-variables editor-frame window ()
+    (inferior-window root-inferior)))
+
+(define-integrable (editor-frame-screen window)
+  (with-instance-variables editor-frame window ()
+    screen))
 (define (editor-frame-select-window! window window*)
   (with-instance-variables editor-frame window (window*)
     (if (not (buffer-frame? window*))

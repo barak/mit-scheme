@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.27 1989/03/14 08:01:37 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.28 1989/04/15 00:51:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -54,7 +54,7 @@
 						 xl xu yl yu display-style)
   display-style				;ignore
   (if (< yl yu)
-      (with-inverse-video! screen (ref-variable "Mode Line Inverse Video")
+      (with-inverse-video! screen (ref-variable mode-line-inverse-video)
 	(lambda ()
 	  (screen-write-substring!
 	   screen x-start y-start
@@ -121,11 +121,11 @@
      "("
      (let loop ((modes (buffer-modes buffer)))
        (if (null? (cdr modes))
-	   (string-append (mode-name (car modes))
+	   (string-append (mode-display-name (car modes))
 			  (if *defining-keyboard-macro?* " Def" "")
 			  (if (group-clipped? (buffer-group buffer))
 			      " Narrow" ""))
-	   (string-append (mode-name (car modes))
+	   (string-append (mode-display-name (car modes))
 			  " "
 			  (loop (cdr modes)))))
      ")"

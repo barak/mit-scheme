@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.2 1989/03/30 16:39:53 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.3 1989/04/15 00:49:40 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -75,10 +75,6 @@
 
 (define gap-allocation-extra 2000)
 
-(define-integrable (barf-if-read-only group)
-  (if (group-read-only? group)
-      (editor-error "Trying to modify read only text.")))
-
 (define (group-insert-char! group index char)
   (without-interrupts
    (lambda ()
@@ -86,7 +82,7 @@
      (record-insertion! group index (group-gap-start group)))))
 
 (define-integrable (%group-insert-char! group index char)
-  (barf-if-read-only group)
+  (if (group-read-only? group) (barf-if-read-only))
   (move-gap-to! group index)
   (guarantee-gap-length! group 1)
   (string-set! (group-text group) index char)
@@ -105,7 +101,7 @@
      (record-insertion! group index (group-gap-start group)))))
 
 (define-integrable (%group-insert-substring! group index string start end)
-  (barf-if-read-only group)
+  (if (group-read-only? group) (barf-if-read-only))
   (move-gap-to! group index)
   (let ((n (- end start)))
     (guarantee-gap-length! group n)
@@ -126,7 +122,7 @@
    (lambda ()
      (if (not (= start end))
 	 (begin
-	   (barf-if-read-only group)
+	   (if (group-read-only? group) (barf-if-read-only))
 	   (let ((gap-start (group-gap-start group))
 		 (new-end (+ end (group-gap-length group))))
 	     ;; Guarantee that the gap is between START and END.

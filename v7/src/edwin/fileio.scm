@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.88 1989/04/05 18:19:54 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.89 1989/04/15 00:49:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -65,18 +65,25 @@
   (initialize-buffer-modes! buffer)
   (initialize-buffer-local-variables! buffer))
 
-(define (insert-file mark pathname)
-  (let ((truename (pathname->input-truename pathname)))
-    (if truename
-	(region-insert! mark (file->region-interactive truename))
-	(editor-error "File \"" (pathname->string pathname) "\" not found"))))
+(define (insert-file mark filename)
+  (let ((pathname (->pathname filename)))
+    (let ((truename (pathname->input-truename pathname)))
+      (if truename
+	  (region-insert! mark (file->region-interactive truename))
+	  (editor-error "File " (pathname->string pathname) " not found")))))
+
+(define-variable read-file-message
+  "If true, messages are displayed when files are read into the editor."
+  false)
 
 (define (file->region-interactive truename)
-  (let ((filename (pathname->string truename)))
-    (temporary-message "Reading file \"" filename "\"")
-    (let ((region (file->region truename)))
-      (append-message " -- done")
-      region)))
+  (if (ref-variable read-file-message)
+      (let ((filename (pathname->string truename)))
+	(temporary-message "Reading file \"" filename "\"")
+	(let ((region (file->region truename)))
+	  (append-message " -- done")
+	  region))
+      (file->region truename)))
 
 (define (file->region pathname)
   (call-with-input-file pathname port->region))
@@ -105,7 +112,7 @@
 			   mode))))
 	     (filename-default-mode buffer))))
     (set-buffer-major-mode! buffer
-			    (or mode (ref-variable "Editor Default Mode"))))))
+			    (or mode (ref-variable editor-default-mode))))))
 
 (define (filename-default-mode buffer)
   (let ((entry
@@ -115,20 +122,21 @@
 		  (and (string? type)
 		       (assoc-string-ci
 			type
-			(ref-variable "File Type to Major Mode"))))))))
-    (and entry (cdr entry))))
+			(ref-variable file-type-to-major-mode))))))))
+    (and entry (name->mode (cdr entry)))))
 
 (define assoc-string-ci
   (association-procedure string-ci=? car))
 
 (define (parse-buffer-mode-header buffer)
-  (fluid-let (((ref-variable "Case Fold Search") true))
-    (let ((start (buffer-start buffer)))
-      (let ((end (line-end start 0)))
-	(let ((start (re-search-forward "-\\*-[ \t]*" start end)))
-	  (and start
-	       (re-search-forward "[ \t]*-\\*-" start end)
-	       (parse-mode-header start (re-match-start 0))))))))
+  (with-variable-value! (ref-variable-object case-fold-search) true
+    (lambda ()
+      (let ((start (buffer-start buffer)))
+	(let ((end (line-end start 0)))
+	  (let ((start (re-search-forward "-\\*-[ \t]*" start end)))
+	    (and start
+		 (re-search-forward "[ \t]*-\\*-" start end)
+		 (parse-mode-header start (re-match-start 0)))))))))
 
 (define (parse-mode-header start end)
   (if (not (char-search-forward #\: start end))
@@ -144,7 +152,7 @@
 
 ;;;; Local Variable Initialization
 
-(define-variable "Local Variable Search Limit"
+(define-variable local-variable-search-limit
   "The maximum number of characters searched when looking for local variables
 at the end of a file."
   3000)
@@ -158,24 +166,22 @@ at the end of a file."
     (let ((start
 	   (with-narrowed-region!
 	    (make-region (mark- end
-				(ref-variable "Local Variable Search Limit")
+				(ref-variable local-variable-search-limit)
 				'LIMIT)
 			 end)
 	    (lambda ()
 	      (backward-one-page end)))))
       (if start
-	  (fluid-let (((ref-variable "Case Fold Search") true))
-	    (if (re-search-forward "Edwin Variables:[ \t]*" start)
-		(parse-local-variables buffer
-				       (re-match-start 0)
-				       (re-match-end 0)))))))))
+	  (with-variable-value! (ref-variable-object case-fold-search) true
+	    (lambda ()
+	      (if (re-search-forward "Edwin Variables:[ \t]*" start)
+		  (parse-local-variables buffer
+					 (re-match-start 0)
+					 (re-match-end 0))))))))))
 
 (define (evaluate sexp)
   (scode-eval (syntax sexp system-global-syntax-table)
 	      system-global-environment))
-
-(define ((local-binding-thunk name value))
-  (make-local-binding! name value))
 
 (define (parse-local-variables buffer start end)
   (let ((prefix (extract-string (line-start start 0) start))
@@ -233,24 +239,27 @@ at the end of a file."
 				     (evaluate val)
 				     (add-buffer-initialization!
 				      buffer
-				      (local-binding-thunk
-				       (variable-symbol (name->variable var))
-				       (evaluate val)))))))))
+				      (let ((variable (name->variable var))
+					    (value (evaluate val)))
+					(lambda ()
+					  (make-local-binding! variable
+							       value))))))))))
 		      (loop m4))))))))
 
       (loop start))))
+
 
 )
 
 ;;;; Output
 
-(define-variable "Require Final Newline"
+(define-variable require-final-newline
   "True says silently put a newline at the end whenever a file is saved.
 Neither false nor true says ask user whether to add a newline in each
 such case.  False means don't add newlines."
   false)
 
-(define-variable "Make Backup Files"
+(define-variable make-backup-files
   "*Create a backup of each file when it is saved for the first time.
 This can be done by renaming the file or by copying.
 
@@ -265,16 +274,16 @@ names that the old file had will now refer to the new (edited) file.
 The file's owner and group are unchanged.
 
 The choice of renaming or copying is controlled by the variables
-Backup By Copying, Backup By Copying When Linked and
-Backup By Copying When Mismatch."
+backup-by-copying ,  backup-by-copying-when-linked  and
+backup-by-copying-when-mismatch ."
   true)
 
-(define-variable "Backup By Copying"
+(define-variable backup-by-copying
   "*True means always use copying to create backup files.
-See documentation of variable  Make Backup Files."
+See documentation of variable  make-backup-files."
  false)
 
-(define-variable "Trim Versions Without Asking"
+(define-variable trim-versions-without-asking
   "*If true, deletes excess backup versions silently.
 Otherwise asks confirmation."
   false)
@@ -339,8 +348,8 @@ Otherwise asks confirmation."
 	  (set-buffer-modification-time! buffer
 					 (file-modification-time truename))))))
 
-(define (write-region region pathname)
-  (let ((truename (pathname->output-truename pathname)))
+(define (write-region region filename)
+  (let ((truename (pathname->output-truename (->pathname filename))))
     (temporary-message "Writing file \"" (pathname->string truename) "\"")
     (region->file region truename)
     (append-message " -- done")
@@ -352,7 +361,7 @@ Otherwise asks confirmation."
       (write-string (region->string region) port))))
 
 (define (require-newline buffer)
-  (let ((require-final-newline? (ref-variable "Require Final Newline")))
+  (let ((require-final-newline? (ref-variable require-final-newline)))
     (if require-final-newline?
 	(without-group-clipped! (buffer-group buffer)
 	  (lambda ()
@@ -370,7 +379,7 @@ Otherwise asks confirmation."
 (define (backup-buffer! buffer truename)
   (let ((continue-with-false (lambda () false)))
     (and truename
-	 (ref-variable "Make Backup Files")
+	 (ref-variable make-backup-files)
 	 (not (buffer-backed-up? buffer))
 	 (file-exists? truename)
 	 (os/backup-buffer? truename)
@@ -392,7 +401,7 @@ Otherwise asks confirmation."
 			    false))
 			(lambda ()
 			  (if (or (file-symbolic-link? truename)
-				  (ref-variable "Backup By Copying")
+				  (ref-variable backup-by-copying)
 				  (os/backup-by-copying? truename))
 			      (begin
 				(copy-file truename backup-pathname)
@@ -406,7 +415,7 @@ Otherwise asks confirmation."
 				(file-modes backup-pathname)))))))
 		  (set-buffer-backed-up?! buffer true)
 		  (if (and (not (null? targets))
-			   (or (ref-variable "Trim Versions Without Asking")
+			   (or (ref-variable trim-versions-without-asking)
 			       (prompt-for-confirmation?
 				(string-append
 				 "Delete excess backup versions of "
@@ -418,13 +427,3 @@ Otherwise asks confirmation."
 						       (delete-file target))))
 				targets))
 		  modes))))))))
-
-(define (catch-file-errors if-error thunk)
-  (call-with-current-continuation
-   (lambda (continuation)
-     (bind-condition-handler
-	 (list error-type:file)
-	 (lambda (condition)
-	   condition
-	   (continuation (if-error)))
-       thunk))))

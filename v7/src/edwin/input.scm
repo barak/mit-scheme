@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.77 1989/03/14 08:01:01 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.78 1989/04/15 00:50:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -133,10 +133,10 @@ B 3BAB8C
       (set-command-prompt! (string-append (command-prompt) string))))
 
 (define (message . args)
-  (%message (apply string-append args) false))
+  (%message (message-args->string args) false))
 
 (define (temporary-message . args)
-  (%message (apply string-append args) true))
+  (%message (message-args->string args) true))
 
 (define (%message string temporary?)
   (if command-prompt-displayed?
@@ -147,10 +147,15 @@ B 3BAB8C
   (set! message-should-be-erased? temporary?)
   (set-message! string))
 
+(define (message-args->string args)
+  (apply string-append
+	 (map (lambda (x) (if (string? x) x (write-to-string x)))
+	      args)))
+
 (define (append-message . args)
   (if (not message-string)
       (error "Attempt to append to nonexistent message"))
-  (let ((string (string-append message-string (apply string-append args))))
+  (let ((string (string-append message-string (message-args->string args))))
     (set! message-string string)
     (set-message! string)))
 
@@ -180,6 +185,7 @@ B 3BAB8C
 	(remap-alias-char (peek-char editor-input-port)))))
 
 (define (keyboard-read-char)
+  (set! keyboard-chars-read (1+ keyboard-chars-read))
   (if *executing-keyboard-macro?*
       (keyboard-macro-read-char)
       (begin
@@ -197,7 +203,7 @@ B 3BAB8C
   (if (not (keyboard-active? 0))
       (begin
 	(update-screens! false)
-	(if (let ((interval (ref-variable "Auto Save Interval"))
+	(if (let ((interval (ref-variable auto-save-interval))
 		  (count *auto-save-keystroke-count*))
 	      (and (positive? interval)
 		   (> count interval)
@@ -208,10 +214,7 @@ B 3BAB8C
   (cond ((within-typein-edit?)
 	 (if message-string
 	     (begin
-	       (keyboard-active?
-		(if message-should-be-erased?
-		    read-char-timeout/fast
-		    read-char-timeout/slow))
+	       (keyboard-active? read-char-timeout/slow)
 	       (set! message-string false)
 	       (set! message-should-be-erased? false)
 	       (clear-message!))))

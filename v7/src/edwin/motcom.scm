@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motcom.scm,v 1.37 1989/03/14 08:01:39 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motcom.scm,v 1.38 1989/04/15 00:51:47 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,132 +41,143 @@
 
 (declare (usual-integrations))
 
-(define-command ("^R Beginning of Line" (argument 1))
+(define-command beginning-of-line
   "Move point to beginning of line."
-  (set-current-point! (line-start (current-point) (-1+ argument) 'LIMIT)))
+  "p"
+  (lambda (argument)
+    (set-current-point! (line-start (current-point) (-1+ argument) 'LIMIT))))
 
-(define-command ("^R Backward Character" (argument 1))
+(define-command backward-char
   "Move back one character.
 With argument, move that many characters backward.
 Negative arguments move forward."
-  (move-thing mark- argument))
+  "p"
+  (lambda (argument)
+    (move-thing mark- argument)))
 
-(define-command ("^R End of Line" (argument 1))
+(define-command end-of-line
   "Move point to end of line."
-  (set-current-point! (line-end (current-point) (-1+ argument) 'LIMIT)))
+  "p"
+  (lambda (argument)
+    (set-current-point! (line-end (current-point) (-1+ argument) 'LIMIT))))
 
-(define-command ("^R Forward Character" (argument 1))
+(define-command forward-char
   "Move forward one character.
 With argument, move that many characters forward.
 Negative args move backward."
-  (move-thing mark+ argument))
+  "p"
+  (lambda (argument)
+    (move-thing mark+ argument)))
 
-(define-command ("^R Goto Beginning" argument)
+(define-command beginning-of-buffer
   "Go to beginning of buffer (leaving mark behind).
 With arg from 0 to 10, goes that many tenths of the file
-down from the beginning.  Just C-U as arg means go to end."
-  (push-current-mark! (current-point))
-  (cond ((not argument)
-	 (set-current-point! (buffer-start (current-buffer))))
-	((command-argument-multiplier-only?)
-	 (set-current-point! (buffer-end (current-buffer))))
-	((<= 0 argument 10)
-	 (set-current-point! (region-10ths (buffer-region (current-buffer))
-					   argument)))))
+down from the beginning.  Just \\[universal-argument] as arg means go to end."
+  "P"
+  (lambda (argument)
+    (push-current-mark! (current-point))
+    (cond ((not argument)
+	   (set-current-point! (buffer-start (current-buffer))))
+	  ((command-argument-multiplier-only?)
+	   (set-current-point! (buffer-end (current-buffer))))
+	  ((<= 0 argument 10)
+	   (set-current-point! (region-10ths (buffer-region (current-buffer))
+					     argument))))))
 
-(define-command ("^R Goto End" argument)
+(define-command end-of-buffer
   "Go to end of buffer (leaving mark behind).
 With arg from 0 to 10, goes up that many tenths of the file from the end."
-  (push-current-mark! (current-point))
-  (cond ((not argument)
-	 (set-current-point! (buffer-end (current-buffer))))
-	((<= 0 argument 10)
-	 (set-current-point! (region-10ths (buffer-region (current-buffer))
-					   (- 10 argument))))))
+  "P"
+  (lambda (argument)
+    (push-current-mark! (current-point))
+    (cond ((not argument)
+	   (set-current-point! (buffer-end (current-buffer))))
+	  ((<= 0 argument 10)
+	   (set-current-point! (region-10ths (buffer-region (current-buffer))
+					     (- 10 argument)))))))
 
 (define (region-10ths region n)
   (mark+ (region-start region)
 	 (quotient (* n (region-count-chars region)) 10)))
 
-(define-command ("Goto Char" (argument 0))
-  "Goto the Nth character from the start of the buffer.
-A negative argument goes to the -Nth character from the end of the buffer."
-  (let ((mark (mark+ ((if (negative? argument) buffer-end buffer-start)
-		      (current-buffer))
-		     argument)))
-    (if mark
-	(set-current-point! mark)
-	(editor-error))))
+(define-command goto-char
+  "Goto the Nth character from the start of the buffer."
+  "p"
+  (lambda (argument)
+    (let ((mark (mark+ (buffer-start (current-buffer)) (-1+ argument))))
+      (if mark
+	  (set-current-point! mark)
+	  (editor-error)))))
 
-(define-command ("Goto Line" (argument 0))
-  "Goto the Nth line from the start of the buffer.
-A negative argument goes to the -Nth line from the end of the buffer."
-  (let ((mark (line-start ((if (negative? argument) buffer-end buffer-start)
-			   (current-buffer))
-			  argument)))
-    (if mark
-	(set-current-point! mark)
-	(editor-error))))
+(define-command goto-line
+  "Goto the Nth line from the start of the buffer."
+  "p"
+  (lambda (argument)
+    (let ((mark (line-start (buffer-start (current-buffer)) (-1+ argument))))
+      (if mark
+	  (set-current-point! mark)
+	  (editor-error)))))
 
-(define-command ("Goto Page" (argument 1))
-  "Goto the Nth page from the start of the buffer.
-A negative argument goes to the -Nth page from the end of the buffer."
-  (let ((mark (forward-page ((if (negative? argument) buffer-end buffer-start)
-			     (current-buffer))
-			    (cond ((negative? argument) argument)
-				  ((positive? argument) (-1+ argument))
-				  (else 1)))))
-    (if mark
-	(set-current-point! mark)
-	(editor-error))))
+(define-command goto-page
+  "Goto the Nth page from the start of the buffer."
+  "p"
+  (lambda (argument)
+    (let ((mark (forward-page (buffer-start (current-buffer)) (-1+ argument))))
+      (if mark
+	  (set-current-point! mark)
+	  (editor-error)))))
 
-(define-variable "Goal Column"
+(define-variable goal-column
   "Semipermanent goal column for vertical motion,
-as set by \\[^R Set Goal Column], or false, indicating no goal column."
+as set by \\[set-goal-column], or false, indicating no goal column."
   false)
 
 (define temporary-goal-column-tag
   "Temporary Goal Column")
 
-(define-command ("^R Set Goal Column" argument)
+(define-command set-goal-column
   "Set (or flush) a permanent goal for vertical motion.
 With no argument, makes the current column the goal for vertical
 motion commands.  They will always try to go to that column.
 With argument, clears out any previously set goal.
-Only \\[^R Up Real Line] and \\[^R Down Real Line] are affected."
-  (set! goal-column
-	(and (not argument)
-	     (current-column))))
+Only \\[previous-line] and \\[next-line] are affected."
+  "P"
+  (lambda (argument)
+    (set-variable! goal-column (and (not argument) (current-column)))))
 
 (define (current-goal-column)
-  (or goal-column
+  (or (ref-variable goal-column)
       (command-message-receive temporary-goal-column-tag
 	identity-procedure
 	current-column)))
 
-(define-command ("^R Down Real Line" argument)
+(define-command next-line
   "Move down vertically to next real line.
 Continuation lines are skipped.  If given after the
 last newline in the buffer, makes a new one at the end."
-  (let ((column (current-goal-column)))
-    (cond ((not argument)
-	   (let ((mark (line-start (current-point) 1 false)))
-	     (if mark
-		 (set-current-point! (move-to-column mark column))
-		 (begin (set-current-point! (group-end (current-point)))
-			(insert-newlines 1)))))
-	  ((not (zero? argument))
-	   (set-current-point!
-	    (move-to-column (line-start (current-point) argument 'FAILURE)
-			    column))))
-    (set-command-message! temporary-goal-column-tag column)))
+  "P"
+  (lambda (argument)
+    (let ((column (current-goal-column)))
+      (cond ((not argument)
+	     (let ((mark (line-start (current-point) 1 false)))
+	       (if mark
+		   (set-current-point! (move-to-column mark column))
+		   (begin (set-current-point! (group-end (current-point)))
+			  (insert-newlines 1)))))
+	    ((not (zero? argument))
+	     (set-current-point!
+	      (move-to-column (line-start (current-point) argument 'FAILURE)
+			      column))))
+      (set-command-message! temporary-goal-column-tag column))))
 
-(define-command ("^R Up Real Line" (argument 1))
+(define-command previous-line
   "Move up vertically to next real line.
 Continuation lines are skipped."
-  (let ((column (current-goal-column)))
-    (if (not (zero? argument))
-	(set-current-point!
-	 (move-to-column (line-start (current-point) (- argument) 'FAILURE)
-			 column)))
-    (set-command-message! temporary-goal-column-tag column)))
+  "p"
+  (lambda (argument)
+    (let ((column (current-goal-column)))
+      (if (not (zero? argument))
+	  (set-current-point!
+	   (move-to-column (line-start (current-point) (- argument) 'FAILURE)
+			   column)))
+      (set-command-message! temporary-goal-column-tag column))))

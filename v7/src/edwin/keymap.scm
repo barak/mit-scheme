@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/keymap.scm,v 1.5 1989/03/14 08:01:09 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/keymap.scm,v 1.6 1989/04/15 00:50:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,24 +41,27 @@
 
 (declare (usual-integrations))
 
-(define-command ("Make Command Summary")
+(define-command make-command-summary
   "Make a summary of current key bindings in the buffer *Summary*.
 Previous contents of that buffer are killed first."
-  (let ((buffer (temporary-buffer "*Summary*")))
-    (with-output-to-mark (buffer-point buffer)
-      (lambda ()
-	(write-keymap
-	 ""
-	 (comtab-dispatch-alists (car (mode-comtabs fundamental-mode))))))
-    (select-buffer buffer)
-    (set-current-point! (buffer-start buffer))))
+  ()
+  (lambda ()
+    (let ((buffer (temporary-buffer "*Summary*")))
+      (with-output-to-mark (buffer-point buffer)
+	(lambda ()
+	  (write-keymap
+	   ""
+	   (comtab-dispatch-alists
+	    (car (mode-comtabs (ref-mode-object fundamental)))))))
+      (select-buffer buffer)
+      (set-current-point! (buffer-start buffer)))))
 
 (define (write-keymap prefix da)
   (for-each (lambda (element)
 	      (write-string prefix)
 	      (write-string (pad-on-right-to (char-name (car element)) 9))
 	      (write-string " ")
-	      (write-string (command-name (cdr element)))
+	      (write-string (command-name-string (cdr element)))
 	      (newline))
 	    (sort-by-char (filter-uninteresting (cdr da))))
   (for-each (lambda (element)
@@ -70,13 +73,13 @@ Previous contents of that buffer are killed first."
 
 (define (uninteresting-element? element)
   (or (char-lower-case? (char-base (car element)))
-      (let ((name (command-name (cdr element))))
-	(or (string=? name "^R Insert Self")
-	    (string=? name "^R Negative Argument")
-	    (string=? name "^R Argument Digit")
-	    (string=? name "^R Auto Negative Argument")
-	    (string=? name "^R Autoargument Digit")
-	    (string=? name "^R Autoargument")))))
+      (memq (command-name (cdr element))
+	    '(self-insert-command
+	      negative-argument
+	      digit-argument
+	      auto-negative-argument
+	      auto-digit-argument
+	      auto-argument))))
 
 (define (filter-uninteresting items)
   (list-transform-negative items uninteresting-element?))

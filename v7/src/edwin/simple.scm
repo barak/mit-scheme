@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.26 1989/03/14 08:02:53 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.27 1989/04/15 00:53:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -171,7 +171,7 @@
      (string-downcase! string)
      (string-set! string 0 (char-upcase (string-ref string 0)))
      string)))
-
+
 (define (mark-flash mark #!optional type)
   (cond (*executing-keyboard-macro?* unspecific)
 	((not mark) (editor-beep))

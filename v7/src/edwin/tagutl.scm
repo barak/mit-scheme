@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.31 1989/04/05 18:22:38 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.32 1989/04/15 00:53:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -42,100 +42,89 @@
 
 (declare (usual-integrations))
 
-(define-command ("Visit Tags Table")
-  "Tell tags commands to use a given tags table file."
-  (set-variable!
-   "Tags Table Pathname"
-   (prompt-for-pathname "Visit tags table"
-			(or (ref-variable "Tags Table Pathname")
-			    (pathname-new-type (current-default-pathname)
-					       "TAG")))))
+(define-command visit-tags-table
+  "Tell tags commands to use tag table file FILE.
+FILE should be the name of a file created with the `etags' program.
+A directory name is ok too; it means file TAGS in that directory."
+  "FVisit tags table (default TAGS)"
+  (lambda (filename)
+    (let ((pathname (->pathname filename)))
+      (set-variable! tags-table-pathname
+		     (if (file-directory? pathname)
+			 (pathname-new-name pathname "TAGS")
+			 pathname)))))
 
-(define-command ("Find Tag" argument)
-  "Find tag (in current tags table) whose name contains a given string.
+(define-command find-tag
+  "Find tag (in current tag table) whose name contains TAGNAME.
  Selects the buffer that the tag is contained in
 and puts point at its definition.
- With argument, searches for the next tag in the tags table that matches
-the string used in the previous Find Tag."
-  (&find-tag-command argument find-file))
+ If TAGNAME is a null string, the expression in the buffer
+around or before point is used as the tag name.
+ If second arg NEXT is non-false (interactively, with prefix arg),
+searches for the next tag in the tag table
+that matches the tagname used in the previous find-tag.
 
-(define-command ("Find Tag Other Window" argument)
-  "Like \\[Find Tag], but selects buffer in another window."
-  (&find-tag-command argument find-file-other-window))
+See documentation of variable tags-file-name."
+  (lambda () (find-tag-arguments "Find tag"))
+  (lambda (string previous-tag?)
+    (&find-tag-command string previous-tag? find-file)))
 
-(define (tags-table-buffer)
-  (if (not (ref-variable "Tags Table Pathname"))
-      (visit-tags-table-command false))
-  (let ((pathname (ref-variable "Tags Table Pathname")))
-    (let ((buffer (find-file-noselect pathname)))
-      (if (and (not (verify-visited-file-modification-time buffer))
-	       (prompt-for-yes-or-no?
-		"Tags file has changed, read new contents"))
-	  (revert-buffer true true))
-      (if (not (eqv? (extract-right-char (buffer-start buffer)) #\Page))
-	  (editor-error "File "
-			(pathname->string pathname)
-			" not a valid tag table"))
-      buffer)))
+(define-command find-tag-other-window
+  "Find tag (in current tag table) whose name contains TAGNAME.
+ Selects the buffer that the tag is contained in in another window
+and puts point at its definition.
+ If TAGNAME is a null string, the expression in the buffer
+around or before point is used as the tag name.
+ If second arg NEXT is non-false (interactively, with prefix arg),
+searches for the next tag in the tag table
+that matches the tagname used in the previous find-tag.
 
-(define (tag->pathname tag)
-  (define (loop mark)
-    (let ((file-mark (skip-chars-backward "^,\n" (line-end mark 1))))
-      (let ((mark (mark+ (line-start file-mark 1)
-			 (with-input-from-mark file-mark read))))
-	(if (mark> mark tag)
-	    (string->pathname (extract-string (line-start file-mark 0)
-					      (mark-1+ file-mark)))
-	    (loop mark)))))
-  (loop (group-start tag)))
-
-(define (tags-table-pathnames)
-  (let ((buffer (tags-table-buffer)))
-    (define (loop mark)
-      (let ((file-mark (skip-chars-backward "^,\n" (line-end mark 1))))
-	(let ((mark (mark+ (line-start file-mark 1)
-			   (with-input-from-mark file-mark read))))
-	  (cons (string->pathname (extract-string (line-start file-mark 0)
-						  (mark-1+ file-mark)))
-		(if (group-end? mark)
-		    '()
-		    (loop mark))))))
-    (or (buffer-get buffer tags-table-pathnames)
-	(let ((pathnames (loop (buffer-start buffer))))
-	  (buffer-put! buffer tags-table-pathnames pathnames)
-	  pathnames))))
+See documentation of variable tags-file-name."
+  (lambda () (find-tag-arguments "Find tag in other window"))
+  (lambda (string previous-tag?)
+    (&find-tag-command string previous-tag? find-file-other-window)))
 
 ;;;; Find Tag
 
 (define previous-find-tag-string
   false)
 
-(define (&find-tag-command previous-tag? find-file)
+(define (find-tag-arguments prompt)
+  (let ((previous-tag? (command-argument-standard-value)))
+    (if previous-tag?
+	(list false true)
+	(let ((string (prompt-for-string prompt (find-tag-default))))
+	  (set! previous-find-tag-string string)
+	  (list string false)))))
+
+(define (&find-tag-command string previous-tag? find-file)
   (let ((buffer (tags-table-buffer)))
     (if previous-tag?
 	(find-tag previous-find-tag-string
 		  buffer
 		  (buffer-point buffer)
 		  find-file)
-	(let ((string (prompt-for-string "Find tag" (find-tag-default))))
-	  (set! previous-find-tag-string string)
-	  (find-tag string
-		    buffer
-		    (buffer-start buffer)
-		    find-file)))))
+	(find-tag string buffer (buffer-start buffer) find-file)))
+  (set! tags-loop-continuation
+	(lambda () ((ref-command find-tag) false true)))
+  unspecific)
 
 (define (find-tag-default)
   (let ((point (current-point)))
     (let ((end (group-end point)))
-      (let ((mark (re-search-forward "\\(\\sw\\|\\s_\\)*" point end 'LIMIT)))
-	(and (re-search-backward "\\sw\\|\\s_" mark)
-	     (let ((mark*
-		    (re-search-forward "\\(\\s'\\)*"
-				       (backward-sexp mark 1 'LIMIT)
-				       mark)))
-	       (and mark*
-		    (extract-string mark* mark))))))))
-
+      (let ((mark
+	     (re-search-backward
+	      "\\sw\\|\\s_"
+	      (re-search-forward "\\(\\sw\\|\\s_\\)*" point end 'LIMIT))))
+	(and mark
+	     (let ((mark (mark1+ mark)))
+	       (let ((mark*
+		      (re-search-forward "\\(\\s'\\)*"
+					 (backward-sexp mark 1 'LIMIT)
+					 mark)))
+		 (and mark*
+		      (extract-string mark* mark)))))))))
+
 (define (find-tag string buffer start find-file)
   (let ((tag
 	 (let loop ((mark start))
@@ -190,78 +179,116 @@ the string used in the previous Find Tag."
 
 ;;;; Tags Search
 
-(define-command ("Tags Search")
-  "Search through all files listed in tag table for a given string.
+(define-command tags-search
+  "Search through all files listed in tag table for match for REGEXP.
 Stops when a match is found.
-To continue searching for next match, use command \\[Tags Loop Continue]."
-  (let ((string
-	 (prompt-for-string "Tags Search"
-			    (ref-variable "Previous Search String"))))
-    (set-variable! "Previous Search String" string)
-    (tags-search (re-quote-string string))))
+To continue searching for next match, use command \\[tags-loop-continue].
 
-(define-command ("RE Tags Search")
-  "Search through all files listed in tag table for a given regexp.
-Stops when a match is found.
-To continue searching for next match, use command \\[Tags Loop Continue]."
-  (let ((regexp
-	 (prompt-for-string "RE Tags Search"
-			    (ref-variable "Previous Search Regexp"))))
-    (set-variable! "Previous Search Regexp" regexp)
-    (tags-search regexp)))
+See documentation of variable tags-file-name."
+  (re-search-prompt "Tags search")
+  (lambda (regexp)
+    (set! tags-loop-continuation
+	  (lambda ()
+	    (let ((mark (re-search-forward regexp (current-point))))
+	      (if mark
+		  (begin
+		    (set-current-point! mark)
+		    (clear-message))
+		  (tags-loop-start)))))
+    (set! tags-loop-pathnames (tags-table-pathnames))
+    (tags-loop-start)))
 
-(define-command ("Tags Query Replace")
-  "Query replace a given string with another one though all files listed
-in tag table.  If you exit (C-G or Altmode), you can resume the query
-replace with the command \\[Tags Loop Continue]."
-  (replace-string-arguments "Tags Query Replace"
-    (lambda (source target)
-      (let ((replacer (replace-string "Tags Query Replace" false true false)))
-	(set! tags-loop-operator
-	      (lambda (buffer start)
-		(select-buffer-no-record buffer)
-		(set-current-point! start)
-		(replacer source target))))))
-  (set! tags-loop-done clear-message)
-  (tags-loop-start (tags-table-pathnames)))
+(define-command tags-query-replace
+  "Query-replace-regexp FROM with TO through all files listed in tag table.
+Third arg DELIMITED (prefix arg) means replace only word-delimited matches.
+If you exit (C-G or ESC), you can resume the query-replace
+with the command \\[tags-loop-continue].
 
-(define-command ("Tags Loop Continue")
-  "Continue last \\[Tags Search] or \\[Tags Query Replace] command."
-  (let ((buffer (object-unhash tags-loop-buffer)))
-    (if (and (not (null? tags-loop-entry))
-	     buffer)
-	(tags-loop-continue buffer (buffer-point buffer))
-	(editor-error "No Tags Loop in progress"))))
+See documentation of variable tags-file-name."
+  (lambda () (replace-string-arguments "Tags query replace"))
+  (lambda (source target replace-words-only?)
+    (set! tags-loop-continuation
+	  (let ((replacer
+		 (replace-string 'tags-query-replace
+				 replace-words-only?
+				 true
+				 false)))
+	    (lambda ()
+	      (if (replacer source target)
+		  (clear-message)
+		  (tags-loop-start)))))
+    (set! tags-loop-pathnames (tags-table-pathnames))
+    (tags-loop-start)))
+
+(define tags-loop-continuation false)
+(define tags-loop-pathnames)
+
+(define (tags-loop-start)
+  (let ((pathnames tags-loop-pathnames))
+    (if (null? pathnames)
+	(editor-error "All files processed.")
+	(begin
+	  (set! tags-loop-pathnames (cdr pathnames))
+	  (find-file (car pathnames))
+	  (message "Scanning file "
+		   (pathname->string (buffer-truename (current-buffer)))
+		   "...")
+	  (set-current-point! (buffer-start (current-buffer)))
+	  (tags-loop-continuation)))))
+
+(define-command tags-loop-continue
+  "Continue last \\[tags-search] or \\[tags-query-replace] command."
+  ()
+  (lambda ()
+    (if tags-loop-continuation
+	(tags-loop-continuation)
+	(editor-error "No tags loop in progress"))))
 
-(define tags-loop-buffer (object-hash false))
-(define tags-loop-entry '())
-(define tags-loop-operator)
-(define tags-loop-done)
+(define (tags-table-buffer)
+  (if (not (ref-variable tags-table-pathname))
+      (dispatch-on-command (ref-command-object visit-tags-table)))
+  (let ((pathname (ref-variable tags-table-pathname)))
+    (let ((buffer (find-file-noselect pathname)))
+      (if (and (not (verify-visited-file-modification-time buffer))
+	       (prompt-for-yes-or-no?
+		"Tags file has changed, read new contents"))
+	  (revert-buffer true true))
+      (if (not (eqv? (extract-right-char (buffer-start buffer)) #\Page))
+	  (editor-error "File "
+			(pathname->string pathname)
+			" not a valid tag table"))
+      buffer)))
 
-(define (tags-search regexp)
-  (set! tags-loop-operator
-	(lambda (buffer start)
-	  (let ((mark (re-search-forward regexp start)))
-	    (and mark
-		 (begin (if (not (eq? (current-buffer) buffer))
-			    (select-buffer buffer))
-			(set-current-point! mark)
-			(temporary-message "Tags Search succeeded")
-			true)))))
-  (set! tags-loop-done
-	(lambda ()
-	  (editor-failure "Tags Search failed")))
-  (tags-loop-start (tags-table-pathnames)))
+(define (tag->pathname tag)
+  (define (loop mark)
+    (let ((file-mark (skip-chars-backward "^,\n" (line-end mark 1))))
+      (let ((mark (mark+ (line-start file-mark 1)
+			 (with-input-from-mark file-mark read))))
+	(if (mark> mark tag)
+	    (string->pathname (extract-string (line-start file-mark 0)
+					      (mark-1+ file-mark)))
+	    (loop mark)))))
+  (loop (group-start tag)))
 
-(define (tags-loop-start entries)
-  (set! tags-loop-entry entries)
-  (if (null? entries)
-      (tags-loop-done)
-      (let ((buffer (find-file-noselect (car entries))))
-	(set! tags-loop-buffer (object-hash buffer))
-	(tags-loop-continue buffer (buffer-start buffer)))))
-
-(define (tags-loop-continue buffer start)
-  (if (not (and (buffer-alive? buffer)
-		(tags-loop-operator buffer start)))
-      (tags-loop-start (cdr tags-loop-entry))))
+(define (tags-table-pathnames)
+  (let ((buffer (tags-table-buffer)))
+    (or (buffer-get buffer tags-table-pathnames)
+	(let ((pathnames
+	       (let ((directory
+		      (pathname-directory-path (buffer-truename buffer))))
+		 (let loop ((mark (buffer-start buffer)))
+		   (let ((file-mark
+			  (skip-chars-backward "^,\n" (line-end mark 1))))
+		     (let ((mark
+			    (mark+ (line-start file-mark 1)
+				   (with-input-from-mark file-mark read))))
+		       (cons (merge-pathnames
+			      (string->pathname
+			       (extract-string (line-start file-mark 0)
+					       (mark-1+ file-mark)))
+			      directory)
+			     (if (group-end? mark)
+				 '()
+				 (loop mark)))))))))
+	  (buffer-put! buffer tags-table-pathnames pathnames)
+	  pathnames))))

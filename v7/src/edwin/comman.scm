@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.56 1989/03/14 07:59:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.57 1989/04/15 00:47:49 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -44,16 +44,28 @@
 (define-named-structure "Command"
   name
   description
+  interactive-specification
   procedure)
 
-(define (make-command name description procedure)
+(define (command-name-string command)
+  (editor-name/internal->external (symbol->string (command-name command))))
+
+(define (editor-name/internal->external string)
+  string)
+
+(define (editor-name/external->internal string)
+  string)
+
+(define (make-command name description specification procedure)
   (let ((command
-	 (or (string-table-get editor-commands name)
-	     (let ((command (%make-command)))
-	       (string-table-put! editor-commands name command)
-	       command))))
+	 (let ((name (symbol->string name)))
+	   (or (string-table-get editor-commands name)
+	       (let ((command (%make-command)))
+		 (string-table-put! editor-commands name command)
+		 command)))))
     (vector-set! command command-index:name name)
     (vector-set! command command-index:description description)
+    (vector-set! command command-index:interactive-specification specification)
     (vector-set! command command-index:procedure procedure)
     command))
 
@@ -61,52 +73,57 @@
   (make-string-table 500))
 
 (define (name->command name)
-  (or (string-table-get editor-commands name)
-      (make-command name
-		    ""
-		    (lambda (#!optional argument)
-		      argument		;ignore
-		      (editor-error "Undefined command: \"" name "\"")))))
-
+  (let ((name (canonicalize-name name)))
+    (or (string-table-get editor-commands (symbol->string name))
+	(letrec ((command
+		  (make-command
+		   name
+		   "undefined command"
+		   '()
+		   (lambda ()
+		     (editor-error "Undefined command: "
+				   (command-name-string command))))))
+	  command))))
+
 (define-named-structure "Variable"
   name
   description
-  symbol)
+  value)
 
-(define (make-variable name description symbol)
+(define (variable-name-string variable)
+  (editor-name/internal->external (symbol->string (variable-name variable))))
+
+(define (make-variable name description value)
   (let ((variable
-	 (or (string-table-get editor-variables name)
-	     (let ((variable (%make-variable)))
-	       (string-table-put! editor-variables name variable)
-	       variable))))
+	 (let ((name (symbol->string name)))
+	   (or (string-table-get editor-variables name)
+	       (let ((variable (%make-variable)))
+		 (string-table-put! editor-variables name variable)
+		 variable)))))
     (vector-set! variable variable-index:name name)
     (vector-set! variable variable-index:description description)
-    (vector-set! variable variable-index:symbol symbol)
+    (vector-set! variable variable-index:value value)
     variable))
 
 (define editor-variables
   (make-string-table 50))
 
 (define (name->variable name)
-  (or (string-table-get editor-variables name)
-      (make-variable name "" 'UNASSIGNED-VARIABLE)))
-
-(define-integrable (variable-ref variable)
-  (lexical-reference variable-environment (variable-symbol variable)))
-
-(define (variable-set! variable #!optional value)
-  (lexical-assignment variable-environment
-		      (variable-symbol variable)
-		      (if (default-object? value)
-			  (unmap-reference-trap
-			   (make-unassigned-reference-trap))
-			  value)))
-
-(define-integrable (variable-unbound? variable)
-  (lexical-unbound? variable-environment (variable-symbol variable)))
-
-(define-integrable (variable-unassigned? variable)
-  (lexical-unassigned? variable-environment (variable-symbol variable)))
-
-(define variable-environment
-  (->environment '(EDWIN)))
+  (let ((name (canonicalize-name name)))
+    (or (string-table-get editor-variables (symbol->string name))
+	(make-variable name "" false))))
+(define-integrable (set-variable-value! variable value)  (vector-set! variable variable-index:value value)
+  unspecific)
+(define (with-variable-value! variable new-value thunk)
+  (let ((old-value))
+    (dynamic-wind (lambda ()
+		    (set! old-value (variable-value variable))
+		    (set-variable-value! variable new-value)
+		    (set! new-value)
+		    unspecific)
+		  thunk
+		  (lambda ()
+		    (set! new-value (variable-value variable))
+		    (set-variable-value! variable old-value)
+		    (set! old-value)
+		    unspecific))))

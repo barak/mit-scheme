@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/syntax.scm,v 1.66 1989/03/14 08:03:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/syntax.scm,v 1.67 1989/04/15 00:53:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -43,10 +43,10 @@
 
 ;;;; Syntax Tables
 
-(define-variable "Syntax Table"
+(define-variable syntax-table
   "The syntax-table used for word and list parsing.")
 
-(define-variable "Syntax Ignore Comments Backwards"
+(define-variable syntax-ignore-comments-backwards
   "If true, ignore comments in backwards expression parsing.
 This can be #T for comments that end in }, as in Pascal or C.
 It should be #F for comments that end in Newline, as in Lisp;
@@ -111,7 +111,7 @@ a comment ending."
        (vector-copy (syntax-table/entries standard-syntax-table))))))
 
 (define (initialize-syntax-table!)
-  (set-variable! "Syntax Table" (make-syntax-table)))
+  (set-variable! syntax-table (make-syntax-table)))
 
 ;;;; Word Parsing
 
@@ -125,7 +125,7 @@ a comment ending."
     (let loop ((start (mark-index mark)) (n n))
       (let ((m
 	     ((ucode-primitive scan-word-forward)
-	      (syntax-table/entries (ref-variable "Syntax Table"))
+	      (syntax-table/entries (ref-variable syntax-table))
 	      group start end)))
 	(cond ((not m) (limit-mark-motion limit? (make-mark group start)))
 	      ((= n 1) (make-mark group m))
@@ -137,7 +137,7 @@ a comment ending."
     (let loop ((start (mark-index mark)) (n n))
       (let ((m
 	     ((ucode-primitive scan-word-backward)
-	      (syntax-table/entries (ref-variable "Syntax Table"))
+	      (syntax-table/entries (ref-variable syntax-table))
 	      group start end)))
 	(cond ((not m) (limit-mark-motion limit? (make-mark group start)))
 	      ((= n 1) (make-mark group m))
@@ -163,7 +163,7 @@ a comment ending."
   (let ((limit? (and (not (default-object? limit?)) limit?))
 	(index
 	 ((ucode-primitive scan-forward-to-word)
-	  (syntax-table/entries (ref-variable "Syntax Table"))
+	  (syntax-table/entries (ref-variable syntax-table))
 	  (mark-group mark)
 	  (mark-index mark)
 	  (mark-index (group-end mark)))))
@@ -186,14 +186,14 @@ a comment ending."
 (define (backward-prefix-chars start #!optional end)
   (make-mark (mark-group start)
 	     ((ucode-primitive scan-backward-prefix-chars)
-	      (syntax-table/entries (ref-variable "Syntax Table"))
+	      (syntax-table/entries (ref-variable syntax-table))
 	      (mark-group start)
 	      (mark-index start)
 	      (mark-index (default-end/backward start end)))))
 
 (define (mark-right-char-quoted? mark)
   ((ucode-primitive quoted-char?)
-   (syntax-table/entries (ref-variable "Syntax Table"))
+   (syntax-table/entries (ref-variable syntax-table))
    (mark-group mark)
    (mark-index mark)
    (group-start-index (mark-group mark))))
@@ -216,7 +216,7 @@ a comment ending."
 (define (%forward-list start end depth sexp?)
   (let ((index
 	 ((ucode-primitive scan-list-forward)
-	  (syntax-table/entries (ref-variable "Syntax Table"))
+	  (syntax-table/entries (ref-variable syntax-table))
 	  (mark-group start)
 	  (mark-index start)
 	  (mark-index end)
@@ -228,13 +228,13 @@ a comment ending."
 (define (%backward-list start end depth sexp?)
   (let ((index
 	 ((ucode-primitive scan-list-backward)
-	  (syntax-table/entries (ref-variable "Syntax Table"))
+	  (syntax-table/entries (ref-variable syntax-table))
 	  (mark-group start)
 	  (mark-index start)
 	  (mark-index end)
 	  depth
 	  sexp?
-	  (ref-variable "Syntax Ignore Comments Backwards"))))
+	  (ref-variable syntax-ignore-comments-backwards))))
     (and index (make-mark (mark-group start) index))))
 
 (set! forward-one-sexp
@@ -298,7 +298,7 @@ a comment ending."
 	(group (mark-group start)))
     (let ((state
 	   ((ucode-primitive scan-sexps-forward)
-	    (syntax-table/entries (ref-variable "Syntax Table"))
+	    (syntax-table/entries (ref-variable syntax-table))
 	    group
 	    (mark-index start)
 	    (mark-index end)
@@ -319,25 +319,39 @@ a comment ending."
 
 (define (char->syntax-code char)
   ((ucode-primitive char->syntax-code)
-   (syntax-table/entries (ref-variable "Syntax Table"))
+   (syntax-table/entries (ref-variable syntax-table))
    char))
+
+(define (substring-find-next-char-of-syntax string start end syntax)
+  (let loop ((index start))
+    (and (not (= index end))
+	 (if (char=? syntax (char->syntax-code (string-ref string index)))
+	     index
+	     (loop (1+ index))))))
+
+(define (substring-find-next-char-not-of-syntax string start end syntax)
+  (let loop ((index start))
+    (and (not (= index end))
+	 (if (char=? syntax (char->syntax-code (string-ref string index)))
+	     (loop (1+ index))
+	     index))))
 
 ;;;; Definition Start/End
 
-(define-variable "Definition Start"
+(define-variable definition-start
   "Regexp to match start of a definition."
   "^\\s(")
 
 (define (definition-start? mark)
-  (re-match-forward (ref-variable "Definition Start") mark))
+  (re-match-forward (ref-variable definition-start) mark))
 
 (define (forward-one-definition-start mark)
-  (and (re-search-forward (ref-variable "Definition Start")
+  (and (re-search-forward (ref-variable definition-start)
 			  (if (line-start? mark) (line-end mark 0) mark))
        (re-match-start 0)))
 
 (define (backward-one-definition-start mark)
-  (re-search-backward (ref-variable "Definition Start") mark))
+  (re-search-backward (ref-variable definition-start) mark))
 
 (define (forward-one-definition-end mark)
   (define (loop start)
