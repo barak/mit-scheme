@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ostty.c,v 1.1 1990/06/20 19:36:51 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ostty.c,v 1.2 1992/02/27 18:56:52 mhwu Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -53,7 +53,12 @@ DEFUN_VOID (OS_tty_next_interrupt_char)
   if (next_interrupt_char == '\0')
     error_external_return ();
   {
-    cc_t result = next_interrupt_char;
+    /* The interrupt character is mapped here. This provides a
+       chance for OS's which have only one interrupt character
+       and can't do I/O during an interrupt to request the
+       interrupt character in a safe place.
+     */
+    cc_t result = OS_tty_map_interrupt_char(next_interrupt_char);
     next_interrupt_char = '\0';
     return (result);
   }

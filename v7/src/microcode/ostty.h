@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ostty.h,v 1.2 1990/11/05 11:55:06 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ostty.h,v 1.3 1992/02/27 18:53:26 mhwu Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -44,5 +44,6 @@ extern unsigned int EXFUN (OS_tty_y_size, (void));
 extern CONST char * EXFUN (OS_tty_command_beep, (void));
 extern CONST char * EXFUN (OS_tty_command_clear, (void));
 extern cc_t EXFUN (OS_tty_next_interrupt_char, (void));
+extern cc_t EXFUN (OS_tty_map_interrupt_char, (cc_t));
 
 #endif /* SCM_OSTTY_H */

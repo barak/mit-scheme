@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.21 1992/02/04 04:15:02 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.22 1992/02/27 18:54:43 mhwu Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -694,6 +694,15 @@ DEFUN_VOID (UX_initialize_signals)
 }
 
 /* Interactive Interrupt Handler */
+
+/* Under Unix, the interrupt char is NOT requested when the interrupt is
+   taken.
+ */
+cc_t
+DEFUN (OS_tty_map_interrupt_char, (int_char), cc_t int_char)
+{
+  return int_char;
+}
 
 static void EXFUN (print_interactive_help, (void));
 static void EXFUN (print_interrupt_chars, (void));
