@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.181 2001/06/16 04:12:02 cph Exp $
+;;; $Id: imail-imap.scm,v 1.182 2001/07/08 05:25:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1564,7 +1564,7 @@
       'OFFLINE))
 
 (define-method disconnect-folder ((folder <imap-folder>))
-  (close-resource folder #f))
+  (close-resource folder #t))
 
 (define-method folder-supports-mime? ((folder <imap-folder>))
   folder
