@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.54 1992/02/03 23:35:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.55 1992/02/27 19:02:48 mhwu Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -212,18 +212,20 @@ DEFUN (primitive_code_to_documentation, (number), long number)
 /* Externally visible utilities */
 
 extern SCHEME_OBJECT EXFUN (make_primitive, (char *));
+extern SCHEME_OBJECT EXFUN
+  (find_primitive, (SCHEME_OBJECT, Boolean, Boolean, int));
+extern SCHEME_OBJECT
+EXFUN (search_for_primitive,
+       (SCHEME_OBJECT scheme_name AND char * c_name
+        AND Boolean intern_p AND Boolean allow_p AND int arity));
 
 SCHEME_OBJECT
 DEFUN (make_primitive, (name), char * name)
 {
-  SCHEME_OBJECT search_for_primitive();
 
   return (search_for_primitive(SHARP_F, name, true, true,
 			       UNKNOWN_PRIMITIVE_ARITY));
 }
-
-extern SCHEME_OBJECT EXFUN
-  (find_primitive, (SCHEME_OBJECT, Boolean, Boolean, int));
 
 SCHEME_OBJECT
 DEFUN (find_primitive, (name, intern_p, allow_p, arity),
@@ -231,7 +233,6 @@ DEFUN (find_primitive, (name, intern_p, allow_p, arity),
        AND Boolean intern_p AND Boolean allow_p
        AND int arity)
 {
-  SCHEME_OBJECT search_for_primitive();
 
   return (search_for_primitive(name, (STRING_LOC (name, 0)),
 			       intern_p, allow_p, arity));
