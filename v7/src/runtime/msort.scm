@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/msort.scm,v 13.41 1987/01/23 00:15:59 jinx Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/msort.scm,v 13.42 1987/11/21 18:06:51 jinx Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -41,9 +41,9 @@
 
 (declare (usual-integrations))
 
-;; Functional and unstable but fairly fast
+;; Functional and unstable
 
-(define (sort the-list p)
+(define (sort obj pred)
   (define (loop l)
     (if (and (pair? l) (pair? (cdr l)))
 	(split l '() '())
@@ -56,47 +56,49 @@
 
   (define (merge one two)
     (cond ((null? one) two)
-	  ((p (car two) (car one))
+	  ((pred (car two) (car one))
 	   (cons (car two)
 		 (merge (cdr two) one)))
 	  (else
 	   (cons (car one)
 		 (merge (cdr one) two)))))
 
-  (loop the-list))
-    
-;; In-place and stable, fairly slow
+  (cond ((or (pair? obj) (null? obj))
+	 (loop obj))
+	((vector? obj)
+	 (sort! (vector-copy obj) pred))
+	(else
+	 (error "sort: argument should be a list or vector" obj))))
+
+;; This merge sort is stable for partial orders (for predicates like
+;; <=, rather than like <).
 
-#|
+(define (sort! v pred)
+  (define (sort-internal! vec temp low high)
+    (if (< low high)
+	(let* ((middle (quotient (+ low high) 2))
+	       (next (1+ middle)))
+	  (sort-internal! temp vec low middle)
+	  (sort-internal! temp vec next high)
+	  (let loop ((p low) (p1 low) (p2 next))
+	    (if (not (> p high))
+		(cond ((> p1 middle)
+		       (vector-set! vec p (vector-ref temp p2))
+		       (loop (1+ p) p1 (1+ p2)))
+		      ((or (> p2 high)
+			   (pred (vector-ref temp p1)
+				 (vector-ref temp p2)))
+		       (vector-set! vec p (vector-ref temp p1))
+		       (loop (1+ p) (1+ p1) p2))
+		      (else
+		       (vector-set! vec p (vector-ref temp p2))
+		       (loop (1+ p) p1 (1+ p2)))))))))
 
-(define (sort! vector p)
-  (define (merge! source target low1 high1 low2 high2 point)
-    (define (loop low1 high1 low2 high2 point)
-      (cond ((= low1 high1) (transfer! source target low2 high2 point))
-	    ((p (vector-ref source low2) (vector-ref source low1))
-	     (vector-set! target point (vector-ref source low2))
-	     (loop (1+ low2) high2 low1 high1 (1+ point)))
-	    (else
-	     (vector-set! target point (vector-ref source low1))
-	     (loop (1+ low1) high1 low2 high2 (1+ point)))))
-    (loop low1 high1 low2 high2 point))
-  (define (transfer! from to low high where)
-    (if (= low high)
-	'DONE
-	(begin (vector-set! to where (vector-ref from low))
-	       (transfer! from to (1+ low) high (1+ where)))))
-  (define (split! source target low high)
-    (let ((bound (ceiling (/ (+ low high) 2))))
-      (transfer! source target low bound low)
-      (transfer! source target bound high bound)
-      (do! target source low bound)
-      (do! target source bound high)
-      (merge! target source low bound bound high low)))
-  (define (do! source target low high)
-    (if (< high (+ low 2))
-	'DONE
-	(split! source target low high)))
-  (let ((size (vector-length vector)))
-    (do! vector (vector-cons size '()) 0 size)
-    vector))
-|#
+  (if (not (vector? v))
+      (error "sort!: argument not a vector" v))
+
+  (sort-internal! v
+		  (vector-copy v)
+		  0
+		  (-1+ (vector-length v)))
+  v)
