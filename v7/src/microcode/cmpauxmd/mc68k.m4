@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.16 1991/03/21 23:25:40 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.17 1991/03/26 18:46:16 jinx Exp $
 ###
 ###	Copyright (c) 1989-1991 Massachusetts Institute of Technology
 ###
@@ -350,18 +350,18 @@ define_interface_jsr_indirection(interrupt_continuation,1b)
 define_interface_jsr_indirection(assignment_trap,1d)
 define_interface_jsr_indirection(reference_trap,1f)
 define_interface_jsr_indirection(safe_reference_trap,20)
-define_interface_indirection(generic_decrement,22)
-define_interface_indirection(generic_divide,23)
-define_interface_indirection(generic_equal,24)
-define_interface_indirection(generic_greater,25)
-define_interface_indirection(generic_increment,26)
-define_interface_indirection(generic_less,27)
-define_interface_indirection(generic_subtract,28)
-define_interface_indirection(generic_multiply,29)
-define_interface_indirection(generic_negative,2a)
-define_interface_indirection(generic_add,2b)
-define_interface_indirection(generic_positive,2c)
-define_interface_indirection(generic_zero,2d)
+### define_interface_indirection(generic_decrement,22)
+### define_interface_indirection(generic_divide,23)
+### define_interface_indirection(generic_equal,24)
+### define_interface_indirection(generic_greater,25)
+### define_interface_indirection(generic_increment,26)
+### define_interface_indirection(generic_less,27)
+### define_interface_indirection(generic_subtract,28)
+### define_interface_indirection(generic_multiply,29)
+### define_interface_indirection(generic_negative,2a)
+### define_interface_indirection(generic_add,2b)
+### define_interface_indirection(generic_positive,2c)
+### define_interface_indirection(generic_zero,2d)
 define_interface_jsr_indirection(primitive_error,36)
 
 # Save an additional instruction here to load the dynamic link.
@@ -382,6 +382,11 @@ define_c_label(asm_primitive_apply)
 	utility_call(1)                 # one argument
 
 	set	tc_compiled_entry,HEX(28)
+	set	tc_flonum,HEX(06)
+	set	tc_fixnum,HEX(1A)
+	set	tc_manifest_nmv,HEX(27)
+	set	tc_false,HEX(0)
+	set	tc_true,HEX(8)
 	set	offset_apply,HEX(14)
 
 define(call_utility,
@@ -460,3 +465,164 @@ define_c_label(asm_allocate_closure)
 	mov.l	(%sp)+,%a1		# Restore regs
 	switch_to_scheme_registers()
 	rts
+
+###	These utilities improve the performance of floating point code
+###	significantly.
+###	Arguments on top of the stack.
+###	Return address follow.
+
+define_debugging_label(asm_generic_flonum_result)
+	mov.l	rfree,regblock_val(regs)
+	mov.l	&((TYPE_CODE_TO_OBJECT(tc_manifest_nmv))+2),(rfree)+
+	fmove.d	%fp0,(rfree)+
+	or.b	&(TYPE_CODE_TO_BYTE(tc_flonum)),regblock_val(regs)
+	and.b	&((TYPE_CODE_TO_BYTE(1))-1),(%sp)
+	rts
+
+define_debugging_label(asm_true_result)
+	mov.l	&(TYPE_CODE_TO_OBJECT(tc_true)),regblock_val(regs)
+	and.b	&((TYPE_CODE_TO_BYTE(1))-1),(%sp)
+	rts
+
+define_debugging_label(asm_false_result)
+	mov.l	&(TYPE_CODE_TO_OBJECT(tc_false)),regblock_val(regs)
+	and.b	&((TYPE_CODE_TO_BYTE(1))-1),(%sp)
+	rts
+
+define(define_generic_unary,
+`define_c_label(asm_generic_$1)
+	EXTRACT_TYPE_CODE((%sp),%d0)	# Get arg1s type
+ 	COMPARE_TYPE_CODE(%d0,tc_flonum)
+	bne.b	asm_generic_$1_hook
+	mov.l	(%sp)+,%d0		# arg1
+	and.l	rmask,%d0
+	mov.l	%d0,%a0
+	fmove.d	4(%a0),%fp0
+	$3.b	&1,%fp0
+	bra	asm_generic_flonum_result
+
+asm_generic_$1_hook:
+	movq	&HEX($2),%d0
+	bra	scheme_to_interface')
+
+define(define_generic_unary_predicate,
+`define_c_label(asm_generic_$1)
+	EXTRACT_TYPE_CODE((%sp),%d0)	# Get arg1s type
+ 	COMPARE_TYPE_CODE(%d0,tc_flonum)
+	bne.b	asm_generic_$1_hook
+	mov.l	(%sp)+,%d0		# arg1
+	and.l	rmask,%d0
+	mov.l	%d0,%a0
+	fmove.d	4(%a0),%fp0
+	fb$3	asm_true_result
+	bra	asm_false_result
+
+asm_generic_$1_hook:
+	movq	&HEX($2),%d0
+	bra	scheme_to_interface')
+
+define(define_generic_binary,
+`define_c_label(asm_generic_$1)
+	EXTRACT_TYPE_CODE((%sp),%d0)	# Get arg1s type
+	EXTRACT_TYPE_CODE(4(%sp),%d1)	# Get arg2s type
+	mov.l	(%sp),%d2		# arg1
+	mov.l	4(%sp),%d3		# arg2
+	and.l	rmask,%d2
+	and.l	rmask,%d3
+	mov.l	%d2,%a0
+	mov.l	%d3,%a1
+ 	COMPARE_TYPE_CODE(%d0,tc_flonum)
+	bne.b	asm_generic_$1_fix_flo
+	COMPARE_TYPE_CODE(%d1,tc_flonum)
+	bne.b	asm_generic_$1_flo_fix
+	fmove.d	4(%a0),%fp0
+	$3.d	4(%a1),%fp0
+	addq.l	&8,%sp
+	bra	asm_generic_flonum_result
+
+asm_generic_$1_fix_flo:
+	COMPARE_TYPE_CODE(%d0,tc_fixnum)
+	bne.b	asm_generic_$1_hook
+	COMPARE_TYPE_CODE(%d1,tc_flonum)
+	bne.b	asm_generic_$1_hook
+	lsl.l	&TC_LENGTH,%d2
+	asr.l	&TC_LENGTH,%d2
+	fmove.l	%d2,%fp0
+	$3.d	4(%a1),%fp0
+	addq.l	&8,%sp
+	bra	asm_generic_flonum_result
+
+asm_generic_$1_flo_fix:
+	COMPARE_TYPE_CODE(%d1,tc_fixnum)
+	bne.b	asm_generic_$1_hook
+	lsl.l	&TC_LENGTH,%d3
+	asr.l	&TC_LENGTH,%d3
+	fmove.d	4(%a0),%fp0
+	$3.l	%d3,%fp0
+	addq.l	&8,%sp
+	bra	asm_generic_flonum_result
+
+asm_generic_$1_hook:
+	movq	&HEX($2),%d0
+	bra	scheme_to_interface')
+
+define(define_generic_binary_predicate,
+`define_c_label(asm_generic_$1)
+	EXTRACT_TYPE_CODE((%sp),%d0)	# Get arg1s type
+	EXTRACT_TYPE_CODE(4(%sp),%d1)	# Get arg2s type
+	mov.l	(%sp),%d2		# arg1
+	mov.l	4(%sp),%d3		# arg2
+	and.l	rmask,%d2
+	and.l	rmask,%d3
+	mov.l	%d2,%a0
+	mov.l	%d3,%a1
+ 	COMPARE_TYPE_CODE(%d0,tc_flonum)
+	bne.b	asm_generic_$1_fix_flo
+	COMPARE_TYPE_CODE(%d1,tc_flonum)
+	bne.b	asm_generic_$1_flo_fix
+	addq.l	&8,%sp
+	fmove.d	4(%a0),%fp0
+	fcmp.d	%fp0,4(%a1)
+	fb$3	asm_true_result
+	bra	asm_false_result
+
+asm_generic_$1_fix_flo:
+	COMPARE_TYPE_CODE(%d0,tc_fixnum)
+	bne.b	asm_generic_$1_hook
+	COMPARE_TYPE_CODE(%d1,tc_flonum)
+	bne.b	asm_generic_$1_hook
+	addq.l	&8,%sp
+	lsl.l	&TC_LENGTH,%d2
+	asr.l	&TC_LENGTH,%d2
+	fmove.l	%d2,%fp0
+	fcmp.d	%fp0,4(%a1)
+	fb$3	asm_true_result
+	bra	asm_false_result
+
+asm_generic_$1_flo_fix:
+	COMPARE_TYPE_CODE(%d1,tc_fixnum)
+	bne.b	asm_generic_$1_hook
+	addq.l	&8,%sp
+	lsl.l	&TC_LENGTH,%d3
+	asr.l	&TC_LENGTH,%d3
+	fmove.d	4(%a0),%fp0
+	fcmp.l	%fp0,%d3
+	fb$3	asm_true_result
+	bra	asm_false_result
+
+asm_generic_$1_hook:
+	movq	&HEX($2),%d0
+	bra	scheme_to_interface')
+
+define_generic_unary(decrement,22,fsub)
+define_generic_binary(divide,23,fdiv)
+define_generic_binary_predicate(equal,24,eq)
+define_generic_binary_predicate(greater,25,gt)
+define_generic_unary(increment,26,fadd)
+define_generic_binary_predicate(less,27,lt)
+define_generic_binary(subtract,28,fsub)
+define_generic_binary(multiply,29,fmul)
+define_generic_unary_predicate(negative,2a,lt)
+define_generic_binary(add,2b,fadd)
+define_generic_unary_predicate(positive,2c,gt)
+define_generic_unary_predicate(zero,2d,eq)
