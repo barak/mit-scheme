@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.153 2000/06/14 20:16:21 cph Exp $
+;;; $Id: imail-top.scm,v 1.154 2000/06/15 01:11:22 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -396,6 +396,66 @@ regardless of the folder type."
        unspecific))))
 
 (define-major-mode imail read-only "IMAIL"
+  (lambda ()
+    (with-string-output-port
+      (lambda (port)
+	(write-string imail-mode-description port)
+	(newline port)
+	(newline port)
+	(write-string (make-string 70 #\-) port)
+	(newline port)
+	(write-string "These variables customize the behavior of IMAIL:" port)
+	(newline port)
+	(newline port)
+	(for-each
+	 (lambda (variable)
+	   (write-string (variable-name-string variable) port)
+	   (newline port)
+	   (write-string "  " port)
+	   (write-description
+	    (description-first-line (variable-description variable))
+	    port)
+	   (newline port)
+	   (newline port))
+	 (string-table-apropos editor-variables "^imail-"))
+	(write-string (make-string 70 #\-) port)
+	(newline port)
+	(write-string "These are all the key bindings for IMAIL mode:" port)
+	(newline port)
+	(newline port)
+	(write-string "\\{imail}" port))))
+  (lambda (buffer)
+    (buffer-put! buffer 'REVERT-BUFFER-METHOD imail-revert-buffer)
+    (add-kill-buffer-hook buffer imail-kill-buffer)
+    (buffer-put! buffer 'MAIL-YANK-ORIGINAL-METHOD imail-yank-original)
+    (local-set-variable! mode-line-modified "--- " buffer)
+    (add-adaptive-fill-regexp! "[ \t]*[-a-zA-Z0-9]*>+[ \t]*" buffer)
+    (standard-alternate-paragraph-style! buffer)
+    (set-buffer-read-only! buffer)
+    (disable-group-undo! (buffer-group buffer))
+    (event-distributor/invoke! (ref-variable imail-mode-hook buffer) buffer)))
+
+(define-variable imail-mode-hook
+  "An event distributor that is invoked when entering IMAIL mode."
+  (make-event-distributor))
+
+(define (add-adaptive-fill-regexp! regexp buffer)
+  (local-set-variable!
+   adaptive-fill-regexp
+   (string-append regexp
+		  "\\|"
+		  (variable-default-value
+		   (ref-variable-object adaptive-fill-regexp)))
+   buffer)
+  (local-set-variable!
+   adaptive-fill-first-line-regexp
+   (string-append regexp
+		  "\\|"
+		  (variable-default-value
+		   (ref-variable-object adaptive-fill-first-line-regexp)))
+   buffer))
+
+(define imail-mode-description
   "IMAIL mode is used by \\[imail] for editing mail folders.
 All normal editing commands are turned off.
 Instead, these commands are available:
@@ -448,109 +508,70 @@ Instead, these commands are available:
 \\[imail-summary-by-flags]	Like \\[imail-summary] only just messages with particular flag(s).
 \\[imail-summary-by-recipients]   Like \\[imail-summary] only just messages with particular recipient(s).
 
-\\[imail-toggle-message]	Toggle between standard and raw message formats.
-
-The following variables customize the behavior of IMAIL.  See each
-variable's documentation (using \\[describe-variable]) for details:
-
-    imail-auto-wrap
-    imail-body-cache-limit
-    imail-default-dont-reply-to-names
-    imail-default-imap-mailbox
-    imail-default-imap-server
-    imail-default-user-id
-    imail-delete-after-output
-    imail-dont-reply-to-names
-    imail-expunge-confirmation
-    imail-forward-all-headers
-    imail-forward-using-mime
-    imail-ignored-headers
-    imail-kept-headers
-    imail-known-mime-charsets
-    imail-message-filter
-    imail-mode-hook
-    imail-pass-phrase-retention-time
-    imail-primary-folder
-    imail-reply-with-re
-    imail-update-interval
-
-\\{imail}"
-  (lambda (buffer)
-    (buffer-put! buffer 'REVERT-BUFFER-METHOD imail-revert-buffer)
-    (add-kill-buffer-hook buffer imail-kill-buffer)
-    (buffer-put! buffer 'MAIL-YANK-ORIGINAL-METHOD imail-yank-original)
-    (local-set-variable! mode-line-modified "--- " buffer)
-    (add-adaptive-fill-regexp! "[ \t]*[-a-zA-Z0-9]*>+[ \t]*" buffer)
-    (standard-alternate-paragraph-style! buffer)
-    (set-buffer-read-only! buffer)
-    (disable-group-undo! (buffer-group buffer))
-    (event-distributor/invoke! (ref-variable imail-mode-hook buffer) buffer)))
+\\[imail-toggle-message]	Toggle between standard and raw message formats.")
 
-(define-variable imail-mode-hook
-  "An event distributor that is invoked when entering IMAIL mode."
-  (make-event-distributor))
-
-(define (add-adaptive-fill-regexp! regexp buffer)
-  (local-set-variable!
-   adaptive-fill-regexp
-   (string-append regexp
-		  "\\|"
-		  (variable-default-value
-		   (ref-variable-object adaptive-fill-regexp)))
-   buffer)
-  (local-set-variable!
-   adaptive-fill-first-line-regexp
-   (string-append regexp
-		  "\\|"
-		  (variable-default-value
-		   (ref-variable-object adaptive-fill-first-line-regexp)))
-   buffer))
-
-(define-key 'imail #\.		'beginning-of-buffer)
-(define-key 'imail #\space	'scroll-up)
-(define-key 'imail #\rubout	'scroll-down)
-(define-key 'imail #\n		'imail-next-undeleted-message)
-(define-key 'imail #\p		'imail-previous-undeleted-message)
-(define-key 'imail #\m-n	'imail-next-message)
-(define-key 'imail #\m-p	'imail-previous-message)
-(define-key 'imail #\j		'imail-select-message)
-(define-key 'imail #\>		'imail-last-message)
-
 (define-key 'imail #\a		'imail-add-flag)
-(define-key 'imail #\k		'imail-kill-flag)
-(define-key 'imail #\c-m-n	'imail-next-flagged-message)
-(define-key 'imail #\c-m-p	'imail-previous-flagged-message)
-
+(define-key 'imail #\c		'imail-continue)
 (define-key 'imail #\d		'imail-delete-forward)
 (define-key 'imail #\c-d	'imail-delete-backward)
+(define-key 'imail #\m-d	'imail-disconnect)
+(define-key 'imail #\f		'imail-forward)
+(define-key 'imail #\g		'imail-get-new-mail)
+(define-key 'imail #\h		'imail-summary)
+(define-key 'imail #\i		'imail-input)
+(define-key 'imail #\j		'imail-select-message)
+(define-key 'imail #\k		'imail-kill-flag)
+(define-key 'imail #\l		'imail-summary-by-flags)
+(define-key 'imail #\m		'imail-mail)
+(define-key 'imail #\n		'imail-next-undeleted-message)
+(define-key 'imail #\m-n	'imail-next-message)
+(define-key 'imail #\c-m-n	'imail-next-flagged-message)
+(define-key 'imail #\o		'imail-output)
+(define-key 'imail #\c-o	'imail-save-attachment)
+(define-key 'imail #\m-o	'imail-copy-messages)
+(define-key 'imail #\p		'imail-previous-undeleted-message)
+(define-key 'imail #\m-p	'imail-previous-message)
+(define-key 'imail #\c-m-p	'imail-previous-flagged-message)
+(define-key 'imail #\q		'imail-quit)
+(define-key 'imail #\r		'imail-reply)
+(define-key 'imail #\s		'imail-save-folder)
+(define-key 'imail #\m-s	'imail-search)
+(define-key 'imail #\t		'imail-toggle-message)
 (define-key 'imail #\u		'imail-undelete-previous-message)
 (define-key 'imail #\x		'imail-expunge)
+(define-key 'imail #\.		'beginning-of-buffer)
+(define-key 'imail #\<		'imail-first-message)
+(define-key 'imail #\>		'imail-last-message)
+(define-key 'imail #\space	'scroll-up)
+(define-key 'imail #\rubout	'scroll-down)
+(define-key 'imail #\?		'describe-mode)
 
-(define-key 'imail #\g		'imail-get-new-mail)
-(define-key 'imail #\m-d	'imail-disconnect)
-(define-key 'imail #\s		'imail-save-folder)
-
-(define-key 'imail #\c-m-h	'imail-summary)
+;; Putting these after the group above exploits behavior in the comtab
+;; abstraction that makes these bindings the ones that show up during
+;; command substitution.
 (define-key 'imail #\c-m-f	'imail-summary-by-flags)
+(define-key 'imail #\c-m-h	'imail-summary)
 (define-key 'imail #\c-m-r	'imail-summary-by-recipients)
 
-(define-key 'imail #\m		'imail-mail)
-(define-key 'imail #\r		'imail-reply)
-(define-key 'imail #\c		'imail-continue)
-(define-key 'imail #\f		'imail-forward)
-
-(define-key 'imail #\t		'imail-toggle-message)
-(define-key 'imail #\m-s	'imail-search)
-(define-key 'imail #\i		'imail-input)
-(define-key 'imail #\o		'imail-output)
-(define-key 'imail #\m-o	'imail-copy-messages)
+;; These commands have no equivalent in RMAIL.
 (define-key 'imail #\C		'imail-copy-folder)
-(define-key 'imail #\c-o	'imail-save-attachment)
+(define-key 'imail #\R		'imail-rename-folder)
 (define-key 'imail #\+		'imail-create-folder)
 (define-key 'imail #\-		'imail-delete-folder)
-(define-key 'imail #\R		'imail-rename-folder)
-(define-key 'imail #\q		'imail-quit)
-(define-key 'imail #\?		'describe-mode)
+
+;; These commands not yet implemented.
+;;(define-key 'imail #\b		'imail-bury)
+;;(define-key 'imail #\m-m	'imail-retry-failure)
+;;(define-key 'imail #\w		'imail-output-body-to-file)
+;;(define-key 'imail '(#\c-c #\c-s #\c-d) 'imail-sort-by-date)
+;;(define-key 'imail '(#\c-c #\c-s #\c-s) 'imail-sort-by-subject)
+;;(define-key 'imail '(#\c-c #\c-s #\c-a) 'imail-sort-by-author)
+;;(define-key 'imail '(#\c-c #\c-s #\c-r) 'imail-sort-by-recipient)
+;;(define-key 'imail '(#\c-c #\c-s #\c-c) 'imail-sort-by-correspondent)
+;;(define-key 'imail '(#\c-c #\c-s #\c-l) 'imail-sort-by-lines)
+;;(define-key 'imail '(#\c-c #\c-s #\c-k) 'imail-sort-by-keywords)
+;;(define-key 'imail '(#\c-c #\c-n) 'imail-next-same-subject)
+;;(define-key 'imail '(#\c-c #\c-p) 'imail-previous-same-subject)
 
 (define (imail-revert-buffer buffer dont-use-auto-save? dont-confirm?)
   dont-use-auto-save?
