@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/notify.scm,v 1.7 1992/03/08 16:32:05 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/notify.scm,v 1.8 1992/03/08 17:38:09 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -77,7 +77,7 @@
 		   (vector-ref
 		    '#(" Jan" " Feb" " Mar" " Apr" " May" " Jun"
 		      " Jul" " Aug" " Sep" " Oct" " Nov" " Dec")
-		    (decoded-time/month time)))))
+		    (-1+ (decoded-time/month time))))))
 
 (define-variable notify-show-load
   "If true, the notifier displays the load average."
