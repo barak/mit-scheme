@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.101 1991/05/10 05:00:17 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.102 1991/05/10 22:18:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -46,12 +46,12 @@
 
 (declare (usual-integrations))
 
-(define-variable window-minimum-width
+(define-variable window-min-width
   "Delete any window less than this wide.
 Do not set this variable below 2."
   2)
 
-(define-variable window-minimum-height
+(define-variable window-min-height
   "Delete any window less than this high.
 The modeline is not included in this figure.
 Do not set this variable below 1."
@@ -101,7 +101,9 @@ negative args count from the bottom."
 	    (update-selected-screen! true))
 	  (window-scroll-y-absolute!
 	   window
-	   (modulo (command-argument-value argument)
+	   (modulo (if (command-argument-multiplier-only? argument)
+		       (window-y-center window)
+		       (command-argument-value argument))
 		   (window-y-size window)))))))
 
 (define-command move-to-window-line
@@ -422,15 +424,15 @@ Also kills any pop up window it may have created."
       (and (eq? window (object-unhash *previous-popped-up-window*))
 	   window))
 
-    (if (< (ref-variable window-minimum-height) 2)
-	(set-variable! window-minimum-height 2))
+    (if (< (ref-variable window-min-height) 2)
+	(set-variable! window-min-height 2))
     (let ((window
 	   (let ((window (get-buffer-window buffer)))
 	     (if window
 		 (begin
 		   (set-window-point! window (buffer-point buffer))
 		   (maybe-record-window window))
-		 (let ((limit (* 2 (ref-variable window-minimum-height))))
+		 (let ((limit (* 2 (ref-variable window-min-height))))
 		   (if (< (ref-variable split-height-threshold) limit)
 		       (set-variable! split-height-threshold limit))
 		   (cond ((and (use-multiple-screens?)
