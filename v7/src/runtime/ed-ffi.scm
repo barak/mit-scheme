@@ -1,8 +1,8 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.9 1994/12/19 21:07:03 cph Exp $
+$Id: ed-ffi.scm,v 1.10 1995/01/06 00:40:35 cph Exp $
 
-Copyright (c) 1988-94 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -152,7 +152,11 @@ MIT in each case. |#
 		syntax-table/system-internal)
     ("os2dir"	(runtime directory)
 		syntax-table/system-internal)
+    ("os2graph"	(runtime os2-graphics)
+		syntax-table/system-internal)
     ("os2prm"	()
+		syntax-table/system-internal)
+    ("os2winp"	(runtime os2-window-primitives)
 		syntax-table/system-internal)
     ("output"	(runtime output-port)
 		syntax-table/system-internal)
