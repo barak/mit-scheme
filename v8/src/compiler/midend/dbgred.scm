@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgred.scm,v 1.8 1995/07/21 14:28:53 adams Exp $
+$Id: dbgred.scm,v 1.9 1995/08/02 14:05:42 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -320,16 +320,18 @@ MIT in each case. |#
 	       (cond ((not entry)
 		      (vector (dbg-red/edge/make expr)))
 		     (else
-		      (make-initialized-vector (1+ (vector-length entry))
-			(lambda (i)
-			  (if (< i (vector-length entry))
-			      (vector-ref entry i)
-			      (dbg-red/edge/make expr)))))))
+		      (vector-append entry
+				     (vector (dbg-red/edge/make expr))))))
 	      (if (and (not (scode-constant? key))
 		       (not (%record? key))
 		       (not entry))
 		  (set! expressions (cons key expressions))))))
       (cdr infos))
+    (if compiler:enable-statistics?
+	(hash-table/for-each table
+	  (lambda (key entry)
+	    key
+	    (sample/1 '(DBG-RED/OUT-DEGREE HISTOGRAM) (vector-length entry)))))
     (dbg-red/graph/make table expressions)))
 
 (define dbg-red/cache-sets 0)
