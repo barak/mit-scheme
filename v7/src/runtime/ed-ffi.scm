@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.25 2001/10/05 15:43:40 cph Exp $
+$Id: ed-ffi.scm,v 1.26 2001/10/05 15:48:10 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -163,6 +163,8 @@ USA.
     ("mime-codec" (runtime mime-codec)
 		syntax-table/system-internal)
     ("msort"	()
+		syntax-table/system-internal)
+    ("ntdir"	(runtime directory)
 		syntax-table/system-internal)
     ("ntprm"	()
 		syntax-table/system-internal)
