@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.87 1993/11/08 20:38:25 cph Exp $
+$Id: boot.c,v 9.88 1994/10/04 21:07:50 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -188,6 +188,40 @@ DEFUN (main_name, (argc, argv),
   termination_init_error ();
 }
 
+static SCHEME_OBJECT
+DEFUN (names_to_vector, (length, names),
+       unsigned int length AND
+       unsigned char ** names)
+{
+  SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, length, 1));
+  unsigned int i;
+  for (i = 0; (i < length); i += 1)
+    {
+      VECTOR_SET (v, i, (char_pointer_to_symbol (names [i])));
+    }
+  return (v);
+}
+
+static SCHEME_OBJECT
+DEFUN_VOID (fixed_objects_syscall_names)
+{
+  unsigned int length;
+  unsigned char ** names;
+  extern void EXFUN (OS_syscall_names, (unsigned int *, unsigned char ***));
+  OS_syscall_names ((&length), (&names));
+  return (names_to_vector (length, names));
+}
+
+static SCHEME_OBJECT
+DEFUN_VOID (fixed_objects_syserr_names)
+{
+  unsigned int length;
+  unsigned char ** names;
+  extern void EXFUN (OS_syserr_names, (unsigned int *, unsigned char ***));
+  OS_syserr_names ((&length), (&names));
+  return (names_to_vector (length, names));
+}
+
 SCHEME_OBJECT
 DEFUN_VOID (make_fixed_objects_vector)
 {
@@ -222,6 +256,14 @@ DEFUN_VOID (make_fixed_objects_vector)
   FAST_VECTOR_SET (fixed_objects_vector, Bignum_One, (long_to_bignum (1)));
   FAST_VECTOR_SET (fixed_objects_vector, FIXOBJ_EDWIN_AUTO_SAVE, EMPTY_LIST);
   FAST_VECTOR_SET (fixed_objects_vector, FIXOBJ_FILES_TO_DELETE, EMPTY_LIST);
+  FAST_VECTOR_SET
+    (fixed_objects_vector,
+     FIXOBJ_SYSTEM_CALL_NAMES,
+     (fixed_objects_syscall_names ()));
+  FAST_VECTOR_SET
+    (fixed_objects_vector,
+     FIXOBJ_SYSTEM_CALL_ERRORS,
+     (fixed_objects_syserr_names ()));
 
   (*Free++) = EMPTY_LIST;
   (*Free++) = EMPTY_LIST;
@@ -574,6 +616,18 @@ DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_microcode_identify, 0, 0, 0)
 		   (char_pointer_to_string
 		    ((unsigned char *) STACK_TYPE_STRING)));
   PRIMITIVE_RETURN (Result);
+}
+
+DEFINE_PRIMITIVE ("MICROCODE-SYSTEM-CALL-NAMES", Prim_microcode_syscall_names, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (fixed_objects_syscall_names ());
+}
+
+DEFINE_PRIMITIVE ("MICROCODE-SYSTEM-ERROR-NAMES", Prim_microcode_syserr_names, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (fixed_objects_syserr_names ());
 }
 
 DEFINE_PRIMITIVE ("MICROCODE-TABLES-FILENAME", Prim_microcode_tables_filename, 0, 0, 0)

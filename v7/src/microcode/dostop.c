@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dostop.c,v 1.7 1993/08/03 08:29:43 gjr Exp $
+$Id: dostop.c,v 1.8 1994/10/04 21:08:20 cph Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -209,4 +209,121 @@ void bcopy (const char *s1, char *s2, int n)
   while (n-- > 0)
     *s2++ = *s1++;
   return;
+}
+
+static unsigned char * syscall_names_table [] =
+{
+  "ACCEPT",
+  "BIND",
+  "CHDIR",
+  "CHMOD",
+  "CLOSE",
+  "CONNECT",
+  "FCNTL-GETFL",
+  "FCNTL-SETFL",
+  "FORK",
+  "FSTAT",
+  "FTRUNCATE",
+  "GETCWD",
+  "GETHOSTNAME",
+  "GETTIMEOFDAY",
+  "IOCTL-TIOCGPGRP",
+  "IOCTL-TIOCSIGSEND",
+  "KILL",
+  "LINK",
+  "LISTEN",
+  "LOCALTIME",
+  "LSEEK",
+  "MALLOC",
+  "MKDIR",
+  "OPEN",
+  "OPENDIR",
+  "PAUSE",
+  "PIPE",
+  "READ",
+  "READLINK",
+  "REALLOC",
+  "RENAME",
+  "RMDIR",
+  "SELECT",
+  "SETITIMER",
+  "SETPGID",
+  "SIGHOLD",
+  "SIGPROCMASK",
+  "SIGSUSPEND",
+  "SLEEP",
+  "SOCKET",
+  "SYMLINK",
+  "TCDRAIN",
+  "TCFLUSH",
+  "TCGETPGRP",
+  "TCSETPGRP",
+  "TERMINAL-GET-STATE",
+  "TERMINAL-SET-STATE",
+  "TIME",
+  "TIMES",
+  "UNLINK",
+  "UTIME",
+  "VFORK",
+  "WRITE",
+  "STAT",
+  "LSTAT",
+  "MKTIME",
+  "DYNAMIC-LOAD"
+};
+
+void
+OS_syscall_names (unsigned int * length, unsigned char *** names)
+{
+  (*length) = ((sizeof (syscall_names_table)) / (sizeof (unsigned char *)));
+  (*names) = syscall_names_table;
+}
+
+static unsigned char * syserr_names_table [] =
+{
+  "UNKNOWN",
+  "ARG-LIST-TOO-LONG",
+  "BAD-ADDRESS",
+  "BAD-FILE-DESCRIPTOR",
+  "BROKEN-PIPE",
+  "DIRECTORY-NOT-EMPTY",
+  "DOMAIN-ERROR",
+  "EXEC-FORMAT-ERROR",
+  "FILE-EXISTS",
+  "FILE-TOO-LARGE",
+  "FILENAME-TOO-LONG",
+  "FUNCTION-NOT-IMPLEMENTED",
+  "IMPROPER-LINK",
+  "INAPPROPRIATE-IO-CONTROL-OPERATION",
+  "INTERRUPTED-FUNCTION-CALL",
+  "INVALID-ARGUMENT",
+  "INVALID-SEEK",
+  "IO-ERROR",
+  "IS-A-DIRECTORY",
+  "NO-CHILD-PROCESSES",
+  "NO-LOCKS-AVAILABLE",
+  "NO-SPACE-LEFT-ON-DEVICE",
+  "NO-SUCH-DEVICE",
+  "NO-SUCH-DEVICE-OR-ADDRESS",
+  "NO-SUCH-FILE-OR-DIRECTORY",
+  "NO-SUCH-PROCESS",
+  "NOT-A-DIRECTORY",
+  "NOT-ENOUGH-SPACE",
+  "OPERATION-NOT-PERMITTED",
+  "PERMISSION-DENIED",
+  "READ-ONLY-FILE-SYSTEM",
+  "RESOURCE-BUSY",
+  "RESOURCE-DEADLOCK-AVOIDED",
+  "RESOURCE-TEMPORARILY-UNAVAILABLE",
+  "RESULT-TOO-LARGE",
+  "TOO-MANY-LINKS",
+  "TOO-MANY-OPEN-FILES",
+  "TOO-MANY-OPEN-FILES"
+};
+
+void
+OS_syserr_names (unsigned int * length, unsigned char *** names)
+{
+  (*length) = ((sizeof (syserr_names_table)) / (sizeof (unsigned char *)));
+  (*names) = syserr_names_table;
 }

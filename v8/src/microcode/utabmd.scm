@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: utabmd.scm,v 9.74 1994/03/28 02:15:56 ziggy Exp $
+;;; $Id: utabmd.scm,v 9.75 1994/10/04 21:08:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987-1994 Massachusetts Institute of Technology
 ;;;
@@ -592,110 +592,119 @@
 
 ;;; [] System-call names
 
+(define-macro (ucode-primitive name)
+  (make-primitive-procedure name))
+
 (vector-set! (get-fixed-objects-vector)
 	     #x09 ;(fixed-objects-vector-slot 'SYSTEM-CALL-NAMES)
-	     #(ACCEPT
-	       BIND
-	       CHDIR
-	       CHMOD
-	       CLOSE
-	       CONNECT
-	       FCNTL-GETFL
-	       FCNTL-SETFL
-	       FORK
-	       FSTAT
-	       FTRUNCATE
-	       GETCWD
-	       GETHOSTNAME
-	       GETTIMEOFDAY
-	       IOCTL-TIOCGPGRP
-	       IOCTL-TIOCSIGSEND
-	       KILL
-	       LINK
-	       LISTEN
-	       LOCALTIME
-	       LSEEK
-	       MALLOC
-	       MKDIR
-	       OPEN
-	       OPENDIR
-	       PAUSE
-	       PIPE
-	       READ
-	       READLINK
-	       REALLOC
-	       RENAME
-	       RMDIR
-	       SELECT
-	       SETITIMER
-	       SETPGID
-	       SIGHOLD
-	       SIGPROCMASK
-	       SIGSUSPEND
-	       SLEEP
-	       SOCKET
-	       SYMLINK
-	       TCDRAIN
-	       TCFLUSH
-	       TCGETPGRP
-	       TCSETPGRP
-	       TERMINAL-GET-STATE
-	       TERMINAL-SET-STATE
-	       TIME
-	       TIMES
-	       UNLINK
-	       UTIME
-	       VFORK
-	       WRITE
-	       STAT
-	       LSTAT
-	       MKTIME
-	       DYNAMIC-LOAD
-	       ))
+	     (let ((prim (ucode-primitive microcode-system-call-names 0)))
+	       (if (implemented-primitive-procedure? prim)
+		   (prim)
+		   ;; For compatibility with older microcodes:
+		   '#(ACCEPT
+		      BIND
+		      CHDIR
+		      CHMOD
+		      CLOSE
+		      CONNECT
+		      FCNTL-GETFL
+		      FCNTL-SETFL
+		      FORK
+		      FSTAT
+		      FTRUNCATE
+		      GETCWD
+		      GETHOSTNAME
+		      GETTIMEOFDAY
+		      IOCTL-TIOCGPGRP
+		      IOCTL-TIOCSIGSEND
+		      KILL
+		      LINK
+		      LISTEN
+		      LOCALTIME
+		      LSEEK
+		      MALLOC
+		      MKDIR
+		      OPEN
+		      OPENDIR
+		      PAUSE
+		      PIPE
+		      READ
+		      READLINK
+		      REALLOC
+		      RENAME
+		      RMDIR
+		      SELECT
+		      SETITIMER
+		      SETPGID
+		      SIGHOLD
+		      SIGPROCMASK
+		      SIGSUSPEND
+		      SLEEP
+		      SOCKET
+		      SYMLINK
+		      TCDRAIN
+		      TCFLUSH
+		      TCGETPGRP
+		      TCSETPGRP
+		      TERMINAL-GET-STATE
+		      TERMINAL-SET-STATE
+		      TIME
+		      TIMES
+		      UNLINK
+		      UTIME
+		      VFORK
+		      WRITE
+		      STAT
+		      LSTAT
+		      MKTIME
+		      DYNAMIC-LOAD))))
 
 ;;; [] System-call errors
 
 (vector-set! (get-fixed-objects-vector)
 	     #x0A ;(fixed-objects-vector-slot 'SYSTEM-CALL-ERRORS)
-	     #(UNKNOWN
-	       ARG-LIST-TOO-LONG
-	       BAD-ADDRESS
-	       BAD-FILE-DESCRIPTOR
-	       BROKEN-PIPE
-	       DIRECTORY-NOT-EMPTY
-	       DOMAIN-ERROR
-	       EXEC-FORMAT-ERROR
-	       FILE-EXISTS
-	       FILE-TOO-LARGE
-	       FILENAME-TOO-LONG
-	       FUNCTION-NOT-IMPLEMENTED
-	       IMPROPER-LINK
-	       INAPPROPRIATE-IO-CONTROL-OPERATION
-	       INTERRUPTED-FUNCTION-CALL
-	       INVALID-ARGUMENT
-	       INVALID-SEEK
-	       IO-ERROR
-	       IS-A-DIRECTORY
-	       NO-CHILD-PROCESSES
-	       NO-LOCKS-AVAILABLE
-	       NO-SPACE-LEFT-ON-DEVICE
-	       NO-SUCH-DEVICE
-	       NO-SUCH-DEVICE-OR-ADDRESS
-	       NO-SUCH-FILE-OR-DIRECTORY
-	       NO-SUCH-PROCESS
-	       NOT-A-DIRECTORY
-	       NOT-ENOUGH-SPACE
-	       OPERATION-NOT-PERMITTED
-	       PERMISSION-DENIED
-	       READ-ONLY-FILE-SYSTEM
-	       RESOURCE-BUSY
-	       RESOURCE-DEADLOCK-AVOIDED
-	       RESOURCE-TEMPORARILY-UNAVAILABLE
-	       RESULT-TOO-LARGE
-	       TOO-MANY-LINKS
-	       TOO-MANY-OPEN-FILES
-	       TOO-MANY-OPEN-FILES
-	       ))
+	     (let ((prim (ucode-primitive microcode-system-error-names 0)))
+	       (if (implemented-primitive-procedure? prim)
+		   (prim)
+		   ;; For compatibility with older microcodes:
+		   '#(UNKNOWN
+		      ARG-LIST-TOO-LONG
+		      BAD-ADDRESS
+		      BAD-FILE-DESCRIPTOR
+		      BROKEN-PIPE
+		      DIRECTORY-NOT-EMPTY
+		      DOMAIN-ERROR
+		      EXEC-FORMAT-ERROR
+		      FILE-EXISTS
+		      FILE-TOO-LARGE
+		      FILENAME-TOO-LONG
+		      FUNCTION-NOT-IMPLEMENTED
+		      IMPROPER-LINK
+		      INAPPROPRIATE-IO-CONTROL-OPERATION
+		      INTERRUPTED-FUNCTION-CALL
+		      INVALID-ARGUMENT
+		      INVALID-SEEK
+		      IO-ERROR
+		      IS-A-DIRECTORY
+		      NO-CHILD-PROCESSES
+		      NO-LOCKS-AVAILABLE
+		      NO-SPACE-LEFT-ON-DEVICE
+		      NO-SUCH-DEVICE
+		      NO-SUCH-DEVICE-OR-ADDRESS
+		      NO-SUCH-FILE-OR-DIRECTORY
+		      NO-SUCH-PROCESS
+		      NOT-A-DIRECTORY
+		      NOT-ENOUGH-SPACE
+		      OPERATION-NOT-PERMITTED
+		      PERMISSION-DENIED
+		      READ-ONLY-FILE-SYSTEM
+		      RESOURCE-BUSY
+		      RESOURCE-DEADLOCK-AVOIDED
+		      RESOURCE-TEMPORARILY-UNAVAILABLE
+		      RESULT-TOO-LARGE
+		      TOO-MANY-LINKS
+		      TOO-MANY-OPEN-FILES
+		      TOO-MANY-OPEN-FILES))))
 
 ;;; [] Identification
 
@@ -716,4 +725,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Id: utabmd.scm,v 9.74 1994/03/28 02:15:56 ziggy Exp $"
+"$Id: utabmd.scm,v 9.75 1994/10/04 21:08:02 cph Exp $"

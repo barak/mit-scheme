@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: intern.c,v 9.53 1992/11/24 23:14:23 gjr Exp $
+$Id: intern.c,v 9.54 1994/10/04 21:09:15 cph Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,6 +41,8 @@ MIT in each case. */
 /* These are exported to other parts of the system. */
 
 extern SCHEME_OBJECT EXFUN (string_to_symbol, (SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (char_pointer_to_symbol, (unsigned char *));
+extern SCHEME_OBJECT EXFUN (memory_to_symbol, (long, unsigned char *));
 extern SCHEME_OBJECT EXFUN (find_symbol, (long, unsigned char *));
 
 /* Hashing strings */
@@ -131,22 +133,18 @@ DEFUN (link_new_symbol, (symbol, cell),
 SCHEME_OBJECT
 DEFUN (find_symbol, (length, string), long length AND unsigned char * string)
 {
-  fast SCHEME_OBJECT result = (* (find_symbol_internal (length, string)));
+  SCHEME_OBJECT result = (* (find_symbol_internal (length, string)));
   return ((result == EMPTY_LIST) ? SHARP_F : result);
 }
 
-SCHEME_OBJECT
-DEFUN (string_to_symbol, (string), SCHEME_OBJECT string)
+static SCHEME_OBJECT
+DEFUN (make_symbol, (string, cell),
+       SCHEME_OBJECT string AND
+       SCHEME_OBJECT * cell)
 {
-  fast SCHEME_OBJECT * cell =
-    (find_symbol_internal ((STRING_LENGTH (string)),
-			   (STRING_LOC (string, 0))));
-  if ((*cell) != EMPTY_LIST)
-    return (*cell);
   Primitive_GC_If_Needed (2);
   {
-    fast SCHEME_OBJECT symbol =
-      (MAKE_POINTER_OBJECT (TC_UNINTERNED_SYMBOL, Free));
+    SCHEME_OBJECT symbol = (MAKE_POINTER_OBJECT (TC_UNINTERNED_SYMBOL, Free));
     (Free [SYMBOL_NAME]) = string;
     (Free [SYMBOL_GLOBAL_VALUE]) = UNBOUND_OBJECT;
     Free += 2;
@@ -155,15 +153,41 @@ DEFUN (string_to_symbol, (string), SCHEME_OBJECT string)
 }
 
 SCHEME_OBJECT
+DEFUN (memory_to_symbol, (length, string),
+       long length AND
+       unsigned char * string)
+{
+  SCHEME_OBJECT * cell = (find_symbol_internal (length, string));
+  return
+    (((*cell) == EMPTY_LIST)
+     ? (make_symbol ((memory_to_string (length, string)), cell))
+     : (*cell));
+}
+
+SCHEME_OBJECT
+DEFUN (char_pointer_to_symbol, (string), unsigned char * string)
+{
+  return (memory_to_symbol ((strlen (string)), string));
+}
+
+SCHEME_OBJECT
+DEFUN (string_to_symbol, (string), SCHEME_OBJECT string)
+{
+  SCHEME_OBJECT * cell =
+    (find_symbol_internal ((STRING_LENGTH (string)),
+			   (STRING_LOC (string, 0))));
+  return (((*cell) == EMPTY_LIST) ? (make_symbol (string, cell)) : (*cell));
+}
+
+SCHEME_OBJECT
 DEFUN (intern_symbol, (symbol), SCHEME_OBJECT symbol)
 {
-  fast SCHEME_OBJECT name = (FAST_MEMORY_REF (symbol, SYMBOL_NAME));
-  fast SCHEME_OBJECT * cell =
+  SCHEME_OBJECT name = (FAST_MEMORY_REF (symbol, SYMBOL_NAME));
+  SCHEME_OBJECT * cell =
     (find_symbol_internal ((STRING_LENGTH (name)), (STRING_LOC (name, 0))));
-  return
-    (((*cell) != EMPTY_LIST)
-     ? (*cell)
-     : (link_new_symbol (symbol, cell)));
+  return (((*cell) == EMPTY_LIST)
+	  ? (link_new_symbol (symbol, cell))
+	  : (*cell));
 }
 
 DEFINE_PRIMITIVE ("FIND-SYMBOL", Prim_find_symbol, 1, 1,
@@ -175,7 +199,8 @@ Returns the symbol whose name is STRING, or #F if no such symbol exists.")
 
   CHECK_ARG (1, STRING_P);
   string = (ARG_REF (1));
-  PRIMITIVE_RETURN (find_symbol ((STRING_LENGTH (string)), (STRING_LOC (string, 0))));
+  PRIMITIVE_RETURN
+    (find_symbol ((STRING_LENGTH (string)), (STRING_LOC (string, 0))));
 }
 
 DEFINE_PRIMITIVE ("STRING->SYMBOL", Prim_string_to_symbol, 1, 1,
