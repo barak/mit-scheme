@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.177 2000/06/20 19:16:07 cph Exp $
+;;; $Id: imail-top.scm,v 1.178 2000/06/20 19:21:06 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -747,25 +747,11 @@ With prefix argument N, removes FLAG from next N messages,
 				       'HISTORY-INDEX 0
 				       'REQUIRE-MATCH? #t)))
   (lambda (url-string)
-    (let ((url (imail-parse-partial-url url-string))
-	  (folder (selected-folder)))
-      (let ((from (open-folder url))
-	    (to (folder-url folder)))
-	(let ((n (folder-length from)))
-	  (do ((i 0 (+ i 1)))
-	      ((= i n))
-	    ((message-wrapper #f
-			      "Copying message "
-			      (number->string (+ i 1))
-			      "/"
-			      (number->string n))
-	     (lambda () (append-message (get-message from i) to))))
-	  ((ref-command imail-get-new-mail) #f)
-	  (message (number->string n)
-		   " message"
-		   (if (= n 1) "" "s")
-		   " copied from "
-		   (url->string url)))))))
+    (let ((url (imail-parse-partial-url url-string)))
+      (copy-folder (open-folder url)
+		   (folder-url (selected-folder))
+		   (lambda () ((ref-command imail-get-new-mail) #f))
+		   (string-append "from " (url->string url))))))
 
 (define-command imail-output
   "Append this message to a specified folder."
@@ -1255,20 +1241,25 @@ If it doesn't exist, it is created first."
 	  (to (imail-parse-partial-url to)))
       (with-open-connection to
 	(lambda ()
-	  (let ((n (folder-length folder)))
-	    (do ((i 0 (+ i 1)))
-		((= i n))
-	      ((message-wrapper #f
-				"Copying message "
-				(number->string (+ i 1))
-				"/"
-				(number->string n))
-	       (lambda () (append-message (get-message folder i) to))))
-	    (message (number->string n)
-		     " message"
-		     (if (= n 1) "" "s")
-		     " copied to "
-		     (url->string to))))))))
+	  (copy-folder folder to #f
+		       (string-append "to " (url->string to))))))))
+
+(define (copy-folder folder to refresh reference-string)
+  (let ((n (folder-length folder)))
+    (do ((i 0 (+ i 1)))
+	((= i n))
+      ((message-wrapper #f
+			"Copying message "
+			(number->string (+ i 1))
+			"/"
+			(number->string n))
+       (lambda () (append-message (get-message folder i) to))))
+    (if refresh (refresh))
+    (message (number->string n)
+	     " message"
+	     (if (= n 1) "" "s")
+	     " copied "
+	     reference-string)))
 
 ;;;; Miscellany
 
