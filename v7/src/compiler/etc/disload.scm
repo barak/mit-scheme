@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: disload.scm,v 1.1 1993/06/30 23:58:12 gjr Exp $
+$Id: disload.scm,v 1.2 1993/07/01 00:24:28 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -36,18 +36,19 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (load-disassembler #!optional directory)
+(define (load-disassembler #!optional directory addressing-granularity)
   (with-working-directory-pathname
     (if (default-object? directory)
-	"/scheme/700/compiler/machine"
+	"/usr/local/lib/mit-scheme/SRC/compiler/machine"
 	directory)
     (lambda ()
-      (let* ((compiler (name->package '(compiler)))
+      (let* ((parent (or (name->package '(compiler))
+			 (find-package '())))
+	     (parenv (package/environment parent))
 	     (disassembler
-	      (package/add-child! compiler
+	      (package/add-child! parent
 				  'disassembler
-				  (eval '(make-environment)
-					(package/environment compiler)))))
+				  (eval '(make-environment) parenv))))
 	(let ((disenv (package/environment disassembler))
 	      (global system-global-environment)
 	      (compinfo (package/environment (find-package '(runtime compiler-info)))))
@@ -56,6 +57,12 @@ MIT in each case. |#
 	  (define (import name)
 	    (environment-link-name disenv compinfo name))
 
+	  (if (not (environment-bound? parenv 'addressing-granularity))
+	      (local-assignment parenv
+				'addressing-granularity
+				(if (default-object? addressing-granularity)
+				    4
+				    addressing-granularity)))
 	  (for-each import
 		    '(compiled-code-block/dbg-info
 		      dbg-info-vector/blocks-vector
@@ -76,9 +83,3 @@ MIT in each case. |#
 	  (for-each export
 		    '(compiler:write-lap-file
 		      compiler:disassemble)))))))
-	 
-	
-    
-      
-    
-  
