@@ -1,11 +1,21 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.7 2000/05/14 03:34:40 cph Exp $
+$Id: todo.txt,v 1.8 2000/05/15 16:45:57 cph Exp $
 
 Bug fixes
 ---------
 
+* Use UID FETCH instead of FETCH for IMAP?  In the case of Cyrus, it
+  looks like UID FETCH does new-mail checks, while FETCH doesn't.
+
 * Implement operations for IMAP: FOLDER-VALID?, SEARCH-FOLDER, and
   APPEND-MESSAGE.
+
+* APPEND-MESSAGE should use the IMAP COPY command if the source and
+  target folder are both on the same server and belong to the same
+  user (i.e. if the URLs are equal except for the mailbox).  If the
+  IMAP APPEND command is used, the internal date should be set from
+  the unix from line, if available, or else computed from the
+  "received:" headers, or the "date:" header as a last resort.
 
 * Implement background thread to periodically send NOOP to IMAP server
   both to check for new mail and to keep the connection alive.
@@ -28,6 +38,9 @@ Bug fixes
 
 Design changes
 --------------
+
+* Eliminate COPY-FOLDER operation.  Implement something closer to the
+  IMAP COPY operation, e.g. APPEND-MESSAGES.
 
 * Eliminate message properties.  Store this information in the headers
   and translate as needed.  E.g. unix from line in umail message would
@@ -54,6 +67,11 @@ New features
 * Implement URL completion.
 
 * Write M-x imail-resend.
+
+* Add an indication showing the connection status in the mode line.
+
+* Add mail notification in mode line, active across the editor as long
+  as there is an IMAP connection open in some buffer.
 
 * Implement cache that saves information about messages on disk.  This
   should use UIDs for IMAP folders; for other folders perhaps the
