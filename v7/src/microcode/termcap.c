@@ -142,6 +142,10 @@ int bufsize = 128;
 # endif /* __STDC__ */
 #endif /* PTR */
 
+#ifndef NULL
+#define NULL 0
+#endif
+
 static
 memory_out ()
 {
