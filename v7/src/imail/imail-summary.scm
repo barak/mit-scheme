@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.9 2000/05/19 17:04:31 cph Exp $
+;;; $Id: imail-summary.scm,v 1.10 2000/05/19 17:26:24 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -29,6 +29,21 @@ If false, the message buffer is updated but not popped up."
   #t
   boolean?)
 
+(define-variable imail-summary-highlight-message
+  "If true, the selected message is highlighted in the summary buffer."
+  #t
+  boolean?)
+
+(define-variable imail-summary-show-date
+  "If true, an abbreviated date field is shown."
+  #f
+  boolean?)
+
+(define-variable imail-summary-subject-width
+  "Width of the subject field, in characters."
+  35
+  exact-nonnegative-integer?)
+
 (define-command imail-summary
   "Display a summary of the selected folder, one line per message."
   ()
@@ -40,16 +55,12 @@ Only messages marked with one of the given flags are shown.
 The flags are specified as a comma-separated list of names."
   "sFlags to summarize by"
   (lambda (flags-string)
-    (imail-summary
-     (string-append "Flags " flags-string)
-     (let ((flags (parse-comma-list-string flags-string)))
-       (lambda (m)
-	 (flags-intersect? (message-flags m) flags))))))
-
-(define (flags-intersect? f1 f2)
-  (there-exists? f1
-    (lambda (flag)
-      (flags-member? flag f2))))
+    (imail-summary (string-append "Flags " flags-string)
+		   (let ((flags (parse-comma-list-string flags-string)))
+		     (lambda (m)
+		       (there-exists? (message-flags m)
+			 (lambda (flag)
+			   (flags-member? flag flags))))))))
 
 (define-command imail-summary-by-recipients
   "Display a summary of the selected folder, one line per message.
@@ -111,9 +122,7 @@ The recipients are specified as a comma-separated list of names."
 	(let ((windows (buffer-windows buffer)))
 	  (if (pair? windows)
 	      (select-window (car windows))
-	      (select-buffer buffer))))
-    (if (ref-variable imail-summary-pop-up-message buffer)
-	(imail-summary-pop-up-message-buffer buffer))))
+	      (select-buffer buffer))))))
 
 (define (imail-summary-detach buffer)
   (let ((folder-buffer (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)))
@@ -141,14 +150,10 @@ The recipients are specified as a comma-separated list of names."
 			(message-flag-markers (car parameters)))))
 		   (buffer-not-modified! buffer)))))
 	  ((SELECT-MESSAGE)
-	   (let ((mark (imail-summary-message-mark buffer (car parameters))))
-	     (if mark
-		 (set-buffer-point! buffer mark)))
-	   (if (ref-variable imail-summary-pop-up-message buffer)
-	       (imail-summary-pop-up-message-buffer buffer)))
+	   (imail-summary-select-message buffer (car parameters)))
 	  ((EXPUNGE INCREASE-LENGTH SET-LENGTH)
 	   (maybe-add-command-suffix! rebuild-imail-summary-buffer buffer))))))
-
+
 (define (imail-folder->summary-buffer folder error?)
   (let ((buffer (imail-folder->buffer folder error?)))
     (and buffer
@@ -156,6 +161,31 @@ The recipients are specified as a comma-separated list of names."
 	     (and error?
 		  (error:bad-range-argument folder
 					    'IMAIL-FOLDER->SUMMARY-BUFFER))))))
+
+;;;; Navigation
+
+(define (imail-summary-selected-message buffer)
+  (let ((folder (selected-folder #f buffer))
+	(start (imail-summary-first-line buffer))
+	(here (line-start (buffer-point buffer) 0)))
+    (and folder
+	 (mark<= start here)
+	 (let ((index (count-lines start here)))
+	   (and (< index (folder-length folder))
+		(get-message folder index))))))
+
+(define (imail-summary-select-message buffer message)
+  (highlight-region (buffer-unclipped-region buffer) #f)
+  (let ((mark (imail-summary-message-mark buffer message)))
+    (if mark
+	(begin
+	  (set-buffer-point! buffer mark)
+	  (if (ref-variable imail-summary-highlight-message buffer)
+	      (begin
+		(highlight-region (make-region mark (line-start mark 1 'LIMIT))
+				  #t))))))
+  (if (ref-variable imail-summary-pop-up-message buffer)
+      (imail-summary-pop-up-message-buffer buffer)))
 
 (define (imail-summary-message-mark buffer message)
   (let ((index (message-index message)))
@@ -166,6 +196,11 @@ The recipients are specified as a comma-separated list of names."
   (let ((folder-buffer (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)))
     (if (and folder-buffer (selected-buffer? buffer))
 	(pop-up-buffer folder-buffer))))
+
+(define (imail-summary-first-line buffer)
+  (line-start (buffer-start buffer) 2 'LIMIT))
+
+;;;; Summary content generation
 
 (define (rebuild-imail-summary-buffer buffer)
   (buffer-widen! buffer)
@@ -185,26 +220,6 @@ The recipients are specified as a comma-separated list of names."
     (if message
 	(imail-summary-select-message buffer message))))
 
-(define (imail-summary-selected-message buffer)
-  (let ((folder (selected-folder #f buffer))
-	(start (imail-summary-first-line buffer))
-	(here (line-start (buffer-point buffer) 0)))
-    (and folder
-	 (mark<= start here)
-	 (let ((index (count-lines start here)))
-	   (and (< index (folder-length folder))
-		(get-message folder index))))))
-
-(define (imail-summary-select-message buffer message)
-  (let ((mark
-	 (line-start (imail-summary-first-line buffer)
-		     (message-index message))))
-    (if mark
-	(set-buffer-point! buffer mark))))
-
-(define (imail-summary-first-line buffer)
-  (line-start (buffer-start buffer) 2 'LIMIT))
-
 (define (fill-imail-summary-buffer! buffer folder predicate)
   (let ((end (folder-length folder)))
     (let ((messages
@@ -216,21 +231,27 @@ The recipients are specified as a comma-separated list of names."
 	   (let loop ((n 1) (k 10))
 	     (if (< end k)
 		 n
-		 (loop (+ n 1) (* k 10))))))
+		 (loop (+ n 1) (* k 10)))))
+	  (show-date? (ref-variable imail-summary-show-date buffer))
+	  (subject-width (imail-summary-subject-width buffer)))
       (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
 	(insert-string " Flags" mark)
 	(insert-string " " mark)
 	(insert-chars #\# index-digits mark)
-	(insert-string " Length  Date   " mark)
-	(insert-string-pad-right "Subject" 40 #\space mark)
+	(insert-string " Length" mark)
+	(if show-date? (insert-string "  Date " mark))
+	(insert-string "  " mark)
+	(insert-string-pad-right "Subject" subject-width #\space mark)
 	(insert-string "  " mark)
 	(insert-string "From" mark)
 	(insert-newline mark)
 	(insert-string " -----" mark)
 	(insert-string " " mark)
 	(insert-chars #\- index-digits mark)
-	(insert-string " ------ ------  " mark)
-	(insert-chars #\- 40 mark)
+	(insert-string " ------" mark)
+	(if show-date? (insert-string " ------" mark))
+	(insert-string "  " mark)
+	(insert-chars #\- subject-width mark)
 	(insert-string "  " mark)
 	(insert-chars #\-
 		      (max 4 (- (mark-x-size mark) (+ (mark-column mark) 1)))
@@ -241,7 +262,7 @@ The recipients are specified as a comma-separated list of names."
 			(write-imail-summary-line! message index-digits mark)))
 		  messages)
 	(mark-temporary! mark)))))
-
+
 (define (write-imail-summary-line! message index-digits mark)
   (insert-char #\space mark)
   (insert-string (message-flag-markers message) mark)
@@ -250,10 +271,13 @@ The recipients are specified as a comma-separated list of names."
 			  index-digits #\space mark)
   (insert-string "  " mark)
   (insert-string (message-summary-length-string message) mark)
-  (insert-string " " mark)
-  (insert-string (message-summary-date-string message) mark)
+  (if (ref-variable imail-summary-show-date mark)
+      (begin
+	(insert-string " " mark)
+	(insert-string (message-summary-date-string message) mark)))
   (insert-string "  " mark)
-  (let ((target-column (+ (mark-column mark) 40)))
+  (let ((target-column
+	 (+ (mark-column mark) (imail-summary-subject-width mark))))
     (insert-string (message-summary-subject-string message) mark)
     (if (> (mark-column mark) target-column)
 	(delete-string (move-to-column mark target-column) mark))
@@ -262,6 +286,10 @@ The recipients are specified as a comma-separated list of names."
   (insert-string "  " mark)
   (insert-string (message-summary-from-string message) mark)
   (insert-newline mark))
+
+(define (imail-summary-subject-width mark)
+  (max (ref-variable imail-summary-subject-width mark)
+       (string-length "Subject")))
 
 (define (message-flag-markers message)
   (let ((s (make-string 5 #\space)))
@@ -324,6 +352,8 @@ The recipients are specified as a comma-separated list of names."
 	  (string-head s i)
 	  s))))
 
+;;;; IMAIL Summary mode
+
 (define-major-mode imail-summary imail "IMAIL Summary"
   "Major mode in effect in IMAIL summary buffer.
 Each line summarizes a single mail message.
