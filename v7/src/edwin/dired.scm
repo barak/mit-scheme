@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.99 1989/04/15 00:48:24 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.100 1989/04/25 02:02:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -86,22 +86,33 @@ Type `h' after entering dired for more info."
      (string-append "Reading directory "
 		    (pathname->string pathname)
 		    "..."))
-    (with-output-to-mark (buffer-point buffer)
-      (lambda ()
-	(write-string "Directory ")
-	(write-string (pathname->string pathname))
-	(newline)
-	(newline)
-	(for-each (lambda (pathname)
-		    (write-string (os/make-dired-line pathname))
-		    (newline))
-		  (directory-read pathname))))
-    (append-message "done"))
+    (let ((pathnames (directory-read pathname)))
+      (let ((lines (map os/make-dired-line pathnames))
+	    (point (buffer-point buffer)))
+	(append-message "done")
+	(for-each (lambda (line pathname)
+		    (if (not line)
+			(begin
+			  (insert-string "can't find file: " point)
+			  (insert-string (pathname-name-string pathname) point)
+			  (insert-newline point))))
+		  lines
+		  pathnames)
+	(insert-string "Directory " point)
+	(insert-string (pathname->string pathname) point)
+	(insert-newlines 2 point)
+	(buffer-put! buffer 'DIRED-HEADER-END (mark-right-inserting point))
+	(for-each (lambda (line)
+		    (if line
+			(begin
+			  (insert-string line point)
+			  (insert-newline point))))
+		  lines))))
   (buffer-not-modified! buffer)
   (set-buffer-read-only! buffer)
   (add-buffer-initialization! buffer
     (lambda ()
-      (set-dired-point! (line-start (buffer-start (current-buffer)) 2)))))
+      (set-dired-point! (buffer-get (current-buffer) 'DIRED-HEADER-END)))))
 
 (define-major-mode dired fundamental "Dired"
   "Major mode for editing a list of files.
@@ -224,9 +235,7 @@ C-] -- abort Dired; this is like \\[kill-buffer] on this buffer."
       (editor-error "No file on this line")))
 
 (define (dired-filename-line? lstart)
-  (let ((lend (line-end lstart 0)))
-    (and (not (mark= lstart lend))
-	 (not (match-forward "Directory" lstart)))))
+  (mark>= lstart (buffer-get (current-buffer) 'DIRED-HEADER-END)))
 
 (define (dired-pathname lstart)
   (merge-pathnames
@@ -287,28 +296,30 @@ C-] -- abort Dired; this is like \\[kill-buffer] on this buffer."
 
 (define-command list-directory
   "Generate a directory listing."
-  "P"
-  (lambda (argument)
-    (let ((pathname
-	   (prompt-for-directory "List directory" (current-default-pathname))))
-      (let ((pathnames (directory-read pathname))
-	    (directory (pathname->string pathname)))
-	(with-output-to-temporary-buffer "*Directory*"
-	  (lambda ()
-	    (write-string "Directory ")
-	    (write-string directory)
-	    (newline)
-	    (newline)
-	    (cond (argument
-		   (for-each (lambda (pathname)
-			       (write-string (os/make-dired-line pathname))
-			       (newline))
-			     pathnames))
-		  ((ref-variable list-directory-unpacked)
-		   (for-each (lambda (pathname)
-			       (write-string (pathname-name-string pathname))
-			       (newline))
-			     pathnames))
-		  (else
-		   (write-strings-densely
-		    (map pathname-name-string pathnames))))))))))
+  "DList directory\nP"
+  (lambda (directory argument)
+    (temporary-message
+     (string-append "Reading directory "
+		    directory
+		    "..."))
+    (let ((pathnames (directory-read directory)))
+      (append-message "done")
+      (with-output-to-temporary-buffer "*Directory*"
+	(lambda ()
+	  (write-string "Directory ")
+	  (write-string directory)
+	  (newline)
+	  (newline)
+	  (cond (argument
+		 (for-each (lambda (pathname)
+			     (write-string (os/make-dired-line pathname))
+			     (newline))
+			   pathnames))
+		((ref-variable list-directory-unpacked)
+		 (for-each (lambda (pathname)
+			     (write-string (pathname-name-string pathname))
+			     (newline))
+			   pathnames))
+		(else
+		 (write-strings-densely
+		  (map pathname-name-string pathnames)))))))))
