@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mousecom.scm,v 1.4 2000/06/11 04:24:30 cph Exp $
+;;; $Id: mousecom.scm,v 1.5 2000/06/11 04:32:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -98,7 +98,7 @@ Display cursor at that position for a second."
 
 (define-variable mouse-scroll-increment
   "Number of lines by which a mouse-scroll event moves."
-  10
+  5
   exact-nonnegative-integer?)
 
 (define-command mouse-ignore
