@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.11 1989/03/14 08:00:33 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.12 1989/03/15 19:11:35 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -165,7 +165,13 @@ With an argument, prompts for the evaluation environment."
 	(lambda (condition)
 	  (and (not (condition/internal? condition))
 	       (error? condition)
-	       (editor-error "Error while evaluating expression")))
+	       (begin
+		(with-output-to-temporary-buffer "*Error*"
+		  (lambda ()
+		    (format-error-message (condition/message condition)
+					  (condition/irritants condition)
+					  (current-output-port))))
+		(editor-error "Error while evaluating expression"))))
       (lambda ()
 	(with-new-history (lambda () (scode-eval scode environment)))))))
 (define (prompt-for-expression prompt default-string #!optional default-type)
