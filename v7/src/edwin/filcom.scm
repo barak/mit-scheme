@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.202 1999/08/09 03:25:20 cph Exp $
+;;; $Id: filcom.scm,v 1.203 1999/08/09 18:19:24 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -636,7 +636,7 @@ Deletes the plaintext file after encryption."
 	     (lambda (input)
 	       (call-with-binary-output-file to
 		 (lambda (output)
-		   (blowfish-encrypt-port input output password
+		   (blowfish-encrypt-port input output (md5 password)
 					  (write-blowfish-file-header output)
 					  #t))))))
 	  (delete-file from)))))
@@ -661,7 +661,7 @@ Prefix arg means treat the plaintext file as binary data."
 	     (string-append "File "
 			    (->namestring to)
 			    " already exists; overwrite")))
-	(let ((password (prompt-for-password "Password")))
+	(let ((password (prompt-for-password "Pass phrase")))
 	  (call-with-binary-input-file from
 	    (lambda (input)
 	      ((if binary?
@@ -669,7 +669,7 @@ Prefix arg means treat the plaintext file as binary data."
 		   call-with-output-file)
 	       to
 	       (lambda (output)
-		 (blowfish-encrypt-port input output password
+		 (blowfish-encrypt-port input output (md5 password)
 					(read-blowfish-file-header input)
 					#f)))))))))
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dosfile.scm,v 1.28 1999/08/09 03:25:51 cph Exp $
+;;; $Id: dosfile.scm,v 1.29 1999/08/09 18:19:15 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-1999 Massachusetts Institute of Technology
 ;;;
@@ -602,7 +602,7 @@ filename suffixes \".bf\" and \".ky\"."
 	   (equal? "ky" (pathname-type pathname)))))
 
 (define (read-encrypted-file pathname mark)
-  (let ((password (prompt-for-password "Password: "))
+  (let ((password (prompt-for-password "Pass phrase"))
 	(type (pathname-type pathname)))
     (message "Decrypting file " (->namestring pathname) "...")
     (cond ((equal? "bf" type)
@@ -610,7 +610,7 @@ filename suffixes \".bf\" and \".ky\"."
 	     (lambda (input)
 	       (call-with-output-mark mark
 		 (lambda (output)
-		   (blowfish-encrypt-port input output password
+		   (blowfish-encrypt-port input output (md5 password)
 					  (read-blowfish-file-header input)
 					  #f))))))
 	  ((or (equal? "ky" type) (equal? "KY" type))
@@ -645,7 +645,7 @@ filename suffixes \".bf\" and \".ky\"."
 					  (region-end region))))
 	     (call-with-binary-output-file pathname
 	       (lambda (output)
-		 (blowfish-encrypt-port input output password
+		 (blowfish-encrypt-port input output (md5 password)
 					(write-blowfish-file-header output)
 					#t)))))
 	  ((or (equal? "ky" type) (equal? "KY" type))
