@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.2 1994/11/26 19:24:41 adams Exp $
+$Id: lapgen.scm,v 1.3 1995/04/01 14:27:57 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -89,7 +89,7 @@ MIT in each case. |#
 		   0
 		   ,regnum:regs-pointer)))
 
-(define-integrable (sort-machine-registers registers)
+(define (sort-machine-registers registers)
   registers)
 
 ;; ***
