@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.94 2000/05/23 03:55:50 cph Exp $
+;;; $Id: imail-top.scm,v 1.95 2000/05/23 03:57:44 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -928,6 +928,7 @@ With prefix argument N, undeletes backward N messages,
 (define (imail-expunge-pop-up-messages folder)
   (pop-up-temporary-buffer " *imail-message*" '(READ-ONLY SHRINK-WINDOW)
     (lambda (buffer window)
+      window
       (local-set-variable! truncate-partial-width-windows #f buffer)
       (let ((mark (mark-left-inserting-copy (buffer-point buffer)))
 	    (n (folder-length folder)))

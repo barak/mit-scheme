@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.41 2000/05/23 03:27:02 cph Exp $
+$Id: todo.txt,v 1.42 2000/05/23 03:55:57 cph Exp $
 
 Bug fixes
 ---------
@@ -42,8 +42,6 @@ New features
 * Optionally convert quoted-printable messages to 8bit for presentation.
 
 * Optionally wrap long lines for presentation.
-
-* Add configurable confirmation for performing EXPUNGE.
 
 * Add command to rename folders.  Add command to append all of the
   messages from one folder to another.
