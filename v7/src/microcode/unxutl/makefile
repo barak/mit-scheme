@@ -1,7 +1,7 @@
 #
 # Makefile for MIT CScheme microcode.
 #
-# $Id: makefile,v 1.26 1993/06/24 03:37:59 gjr Exp $
+# $Id: makefile,v 1.27 1993/06/29 23:12:54 cph Exp $
 #
 CPP = cc -E
 MAKE = make  # BSD doesn't have it as a default.
@@ -76,7 +76,7 @@ clean remove:
 # the - at the beginning of the following line is what causes make to continue 
 # even if the clean.world target doesn't exist
 	- $(MAKE) $(MAKEOVERRIDES) -f xmkfile ${MFLAGS} clean.world
-	rm -f *.o *.s *.touch xmkfile
+	rm -f *.o *.s *.tch xmkfile
 	rm -f scheme xscheme bchscheme bchdrn
 	rm -f findprim bintopsb psbtobin breakup wsize ppband
 	rm -f hard-par limits.h float.h
