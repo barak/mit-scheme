@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.26 1991/10/25 06:49:34 cph Exp $
+$Id: machin.scm,v 4.27 1992/11/08 04:10:31 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -213,6 +213,12 @@ MIT in each case. |#
 
 (define/format-dependent closure-environment-adjustment)
 )
+
+(define-integrable (byte-offset:zero? obj)
+  (zero? obj))
+
+(define-integrable (byte-offset:- x y)
+  (- x y))
 
 (define-integrable d0 0)
 (define-integrable d1 1)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.1 1992/08/29 13:51:27 jinx Exp $
+$Id: machin.scm,v 1.2 1992/11/08 04:12:22 jinx Exp $
 
 Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
 
@@ -119,6 +119,12 @@ case.
 (define (closure-environment-adjustment nentries entry)
   nentries entry			; ignored
   0)
+
+(define-integrable (byte-offset:zero? obj)
+  (zero? obj))
+
+(define-integrable (byte-offset:- x y)
+  (- x y))
 
 ;;;; Machine Registers
 

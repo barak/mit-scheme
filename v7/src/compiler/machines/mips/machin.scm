@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/machin.scm,v 1.7 1992/08/20 01:25:15 jinx Exp $
+$Id: machin.scm,v 1.8 1992/11/08 04:11:28 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -115,6 +115,12 @@ MIT in each case. |#
 (define (closure-environment-adjustment nentries entry)
   nentries entry			; ignored
   0)
+
+(define-integrable (byte-offset:zero? obj)
+  (zero? obj))
+
+(define-integrable (byte-offset:- x y)
+  (- x y))
 
 ;;;; Machine Registers
 

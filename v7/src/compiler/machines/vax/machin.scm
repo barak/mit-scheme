@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/machin.scm,v 4.8 1991/10/25 12:57:26 cph Exp $
+$Id: machin.scm,v 4.9 1992/11/08 04:11:05 jinx Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -120,6 +120,12 @@ MIT in each case. |#
   (declare (integrate-operator closure-entry-distance))
   (closure-entry-distance nentries entry 0))
 
+(define-integrable (byte-offset:zero? obj)
+  (zero? obj))
+
+(define-integrable (byte-offset:- x y)
+  (- x y))
+
 (define-integrable r0 0)		; return value
 (define-integrable r1 1)
 (define-integrable r2 2)

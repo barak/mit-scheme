@@ -1,7 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/machin.scm,v 1.13 1992/08/17 16:35:58 jinx Exp $
-$MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/machin.scm,v 4.26 1991/10/25 06:49:34 cph Exp $
+$Id: machin.scm,v 1.14 1992/11/08 04:12:02 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -121,7 +120,15 @@ MIT in each case. |#
 (define (closure-environment-adjustment nentries entry)
   (declare (integrate-operator closure-entry-distance))
   (closure-entry-distance nentries entry 0))
+
+(define-integrable (byte-offset:zero? obj)
+  (zero? obj))
+
+(define-integrable (byte-offset:- x y)
+  (- x y))
 
+;;;; Machine registers
+
 (define eax 0)				; acumulator
 (define ecx 1)				; counter register
 (define edx 2)				; multiplication high-half target

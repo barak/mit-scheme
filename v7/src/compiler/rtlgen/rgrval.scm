@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.17 1990/08/24 20:19:59 jinx Rel $
+$Id: rgrval.scm,v 4.18 1992/11/08 04:07:53 jinx Exp $
 
-Copyright (c) 1988, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -267,9 +267,10 @@ MIT in each case. |#
 	    (entry (closure-block-entry-number block))
 	    (entry* (closure-block-entry-number block*)))
 	(let ((distance
-	       (- (closure-entry-distance nentries entry entry*)
-		  (closure-environment-adjustment nentries entry))))
-	  (if (zero? distance)
+	       (byte-offset:-
+		(closure-entry-distance nentries entry entry*)
+		(closure-environment-adjustment nentries entry))))
+	  (if (byte-offset:zero? distance)
 	      expression
 	      ;; This is cheaper than the obvious thing with object->address,
 	      ;; etc.
@@ -399,6 +400,7 @@ MIT in each case. |#
   ;; is always the canonical entry point.
   (let* ((closure-block (procedure-closing-block procedure))
 	 (shared-block (block-shared-block closure-block)))
-    (zero? (closure-environment-adjustment
-	    (block-number-of-entries shared-block)
-	    (closure-block-entry-number closure-block)))))
+    (byte-offset:zero?
+     (closure-environment-adjustment
+      (block-number-of-entries shared-block)
+      (closure-block-entry-number closure-block)))))

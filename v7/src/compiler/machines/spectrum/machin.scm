@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/machin.scm,v 4.24 1991/10/25 12:29:51 cph Exp $
+$Id: machin.scm,v 4.25 1992/11/08 04:09:47 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -147,6 +147,12 @@ MIT in each case. |#
 (define (closure-environment-adjustment nentries entry)
   nentries entry			; ignored
   0)
+
+(define-integrable (byte-offset:zero? obj)
+  (zero? obj))
+
+(define-integrable (byte-offset:- x y)
+  (- x y))
 
 ;;;; Machine Registers
 
