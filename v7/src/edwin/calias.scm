@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.8 1989/08/14 09:22:15 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.9 1991/05/17 00:26:01 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -99,37 +99,14 @@
   (< (char-code char) #x20))
 
 (define-variable enable-emacs-key-names
-  "*If true, keys are shown using Emacs-style names."
-  true)
+  "True means keys are shown using Emacs-style names."
+  true
+  boolean?)
 
 (define (char-name char)
   (if (ref-variable enable-emacs-key-names)
       (emacs-char-name char true)
       (char->name (unmap-alias-char char))))
-
-(define (emacs-char-name char handle-prefixes?)
-  (let ((code (char-code char))
-	(bits (char-bits char))
-	(normal (lambda () (char->name (unmap-alias-char char)))))
-    (let ((process-code
-	   (lambda ()
-	     (cond ((< #x20 code #x7F) (char->name (make-char code 0)))
-		   ((= code #x09) "TAB")
-		   ((= code #x0A) "LFD")
-		   ((= code #x0D) "RET")
-		   ((= code #x1B) "ESC")
-		   ((= code #x20) "SPC")
-		   ((= code #x7F) "DEL")
-		   (else
-		    (char->name
-		     (make-char (+ code (if (<= #x01 code #x1A) #x60 #x40))
-				2)))))))
-      (cond ((zero? bits) (process-code))
-	    ((not handle-prefixes?) (normal))
-	    ((= 1 bits) (string-append "ESC " (process-code)))
-	    ((= 2 bits) (string-append "C-^ " (process-code)))
-	    ((= 3 bits) (string-append "C-z " (process-code)))
-	    (else (normal))))))
 
 (define (xchar->name xchar)
   (let ((chars (xchar->list xchar)))
@@ -147,6 +124,37 @@
 	     (string-append-separated
 	      (char-name (car chars))
 	      (loop (cdr chars)))))))))
+
+(define (emacs-char-name char handle-prefixes?)
+  (let ((code (char-code char))
+	(bits (char-bits char)))
+    (let ((prefix
+	   (lambda (bits suffix)
+	     (if (zero? bits)
+		 suffix
+		 (string-append "M-" suffix)))))
+      (let ((process-code
+	     (lambda (bits)
+	       (cond ((< #x20 code #x7F)
+		      (prefix bits (string (ascii->char code))))
+		     ((= code #x09) (prefix bits "TAB"))
+		     ((= code #x0A) (prefix bits "LFD"))
+		     ((= code #x0D) (prefix bits "RET"))
+		     ((= code #x1B) (prefix bits "ESC"))
+		     ((= code #x20) (prefix bits "SPC"))
+		     ((= code #x7F) (prefix bits "DEL"))
+		     (else
+		      (string-append
+		       (if (zero? bits) "C-" "C-M-")
+		       (string
+			(ascii->char
+			 (+ code (if (<= #x01 code #x1A) #x60 #x40))))))))))
+	(cond ((< bits 2)
+	       (process-code bits))
+	      ((and handle-prefixes? (< bits 4))
+	       (string-append (if (= 2 bits) "C-^ " "C-z ") (process-code 0)))
+	      (else
+	       (char->name (unmap-alias-char char))))))))
 
 (define (xchar<? x y)
   (let loop ((x (xchar->list x)) (y (xchar->list y)))
