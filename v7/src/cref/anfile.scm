@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/anfile.scm,v 1.1 1988/06/13 12:38:14 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/anfile.scm,v 1.2 1989/08/03 23:25:35 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -54,7 +54,12 @@ MIT in each case. |#
 	(analyze/file input-pathname output-pathname))))
 
 (define (analyze/file input-pathname output-pathname)
-  (fasdump (analyze/top-level (fasload input-pathname)) output-pathname))
+  (let ((analyzed-file (analyze/top-level (fasload input-pathname))))
+    (if analyze/file/memoize?
+	(fasdump analyzed-file output-pathname))
+    analyzed-file))
+
+(define analyze/file/memoize? false)
 (define (compare-file-modification-times x y)
   (let ((x (file-modification-time x)))
     (and x
