@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.6 1995/04/15 06:28:23 cph Exp $
+$Id: datime.scm,v 14.7 1995/04/15 06:56:27 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -66,12 +66,12 @@ MIT in each case. |#
 		 ((> number high) high)
 		 (else number)))))
     (let ((month (limit 1 month 12)))
-      (make-decoded-time (limit 0 second 59)
-			 (limit 0 minute 59)
-			 (limit 0 hour 23)
-			 (limit 1 day (month/max-days month))
-			 month
-			 (if (< year 0) 0 year)))))
+      (%make-decoded-time (limit 0 second 59)
+			  (limit 0 minute 59)
+			  (limit 0 hour 23)
+			  (limit 1 day (month/max-days month))
+			  month
+			  (if (< year 0) 0 year)))))
 
 (define (month/max-days month)
   (guarantee-month month 'MONTH/MAX-DAYS)

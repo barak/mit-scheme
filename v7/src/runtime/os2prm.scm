@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.11 1995/04/15 06:29:04 cph Exp $
+$Id: os2prm.scm,v 1.12 1995/04/15 06:58:41 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -108,7 +108,7 @@ MIT in each case. |#
   ;; Except for the missing time zone, this is an RFC-822 date/time string.
   (let ((dt (decode-file-time time))
 	(d2 (lambda (n) (string-pad-left (number->string n) 2 #\0))))
-    (string-append (number->string (decoded-time/year dt))
+    (string-append (number->string (decoded-time/day dt))
 		   " "
 		   (month/short-string (decoded-time/month dt))
 		   " "
