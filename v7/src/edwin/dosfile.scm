@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dosfile.scm,v 1.31 1999/08/20 20:34:20 cph Exp $
+;;; $Id: dosfile.scm,v 1.32 1999/09/15 02:23:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-1999 Massachusetts Institute of Technology
 ;;;
@@ -297,11 +297,11 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
 	   (or (try "^\\([^.]+\\)\\.\\([0-9][0-9][0-9]\\)$")
 	       (try "^\\([^.]+\\.[^.]\\)\\([0-9][0-9]\\)$")
 	       (let loop ((suffixes dos/backup-suffixes))
-		 (if (pair? suffixes)
-		     (or (try (string-append "^\\(.+\\)\\.~\\([0-9]+\\)"
-					     (re-quote-string (car suffixes))
-					     "$"))
-			 (loop (cdr suffixes)))))))))
+		 (and (pair? suffixes)
+		      (or (try (string-append "^\\(.+\\)\\.~\\([0-9]+\\)"
+					      (re-quote-string (car suffixes))
+					      "$"))
+			  (loop (cdr suffixes)))))))))
     (and r
 	 (let ((root-start (re-match-start-index 1 r))
 	       (root-end (re-match-end-index 1 r))
