@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.37 1995/04/09 23:28:06 cph Exp $
+;;;	$Id: rmail.scm,v 1.38 1995/04/10 20:24:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -119,11 +119,6 @@ Called with the start and end marks of the header as arguments."
 (define-variable rmail-new-mail-hook
   "An event distributor that is invoked when RMAIL incorporates new mail."
   (make-event-distributor))
-
-(define-variable rmail-pop-procedure
-  "A procedure that will get mail from a POP server.
-A value of #F means there is no mechanism to get POP mail."
-  (os/rmail-pop-procedure))
 
 (define-major-mode rmail read-only "RMAIL"
   "Rmail Mode is used by \\[rmail] for editing Rmail files.
@@ -206,11 +201,19 @@ together with two commands to return to regular RMAIL:
     (enable-group-undo! (buffer-group buffer))))
 
 (define (guarantee-variables-initialized)
+  (if (not (ref-variable rmail-pop-procedure))
+      (set-variable! rmail-pop-procedure (os/rmail-pop-procedure)))
   (if (null? (ref-variable rmail-primary-inbox-list))
-      (set-variable! rmail-primary-inbox-list
-		     (list "~/mbox"
-			   (string-append rmail-spool-directory
-					  (current-user-name)))))
+      (set-variable!
+       rmail-primary-inbox-list
+       (list "~/mbox"
+	     (let ((server
+		    (and (ref-variable rmail-pop-procedure)
+			 (ref-variable rmail-primary-pop-server))))
+	       (if server
+		   (string-append "pop:" server)
+		   (string-append rmail-spool-directory
+				  (current-user-name)))))))
   (if (not (ref-variable rmail-dont-reply-to-names))
       (set-variable!
        rmail-dont-reply-to-names
@@ -318,6 +321,17 @@ but does not copy any new mail into the file."
 	     (editor-error "Exit rmail-edit mode before getting new mail"))
 	    ((not (eq? mode (ref-mode-object rmail)))
 	     (set-current-major-mode! (ref-mode-object rmail)))))
+    ;; This guarantees that a message is selected.  This is desirable
+    ;; because the process of getting mail may perform prompting, and
+    ;; since this buffer is selected, it will appear to the user when
+    ;; the prompting occurs.  By selecting a message, the buffer at
+    ;; least appears as the user expects it to.
+    (let ((buffer (current-buffer)))
+      (show-message buffer
+		    (let ((memo (buffer-msg-memo buffer)))
+		      (if (msg-memo? memo)
+			  (msg-memo/number memo)
+			  0))))
     ((ref-command rmail-get-new-mail) false)))
 
 (define-command rmail-input
@@ -455,8 +469,7 @@ and use that file as the inbox."
 	new-messages))))
 
 (define (insert-inbox-text buffer mark inbox-name rename?)
-  (let ((directory (buffer-default-directory buffer))
-	(insert
+  (let ((insert
 	 (lambda (pathname)
 	   (and (file-exists? pathname)
 		(let ((mark (mark-left-inserting-copy mark)))
@@ -469,15 +482,15 @@ and use that file as the inbox."
 		  (mark-temporary! mark)
 		  pathname)))))
     (cond ((string-prefix? "pop:" inbox-name)
-	   (get-mail-from-pop-inbox (or (ref-variable rmail-pop-procedure mark)
-					(error "POP mail not supported."))
-				    (string-tail inbox-name 3)
-				    insert
-				    directory))
+	   (get-mail-from-pop-server (string-tail inbox-name 4)
+				     insert
+				     buffer))
 	  ((not rename?)
 	   (insert inbox-name))
 	  ((string=? rmail-spool-directory (directory-namestring inbox-name))
-	   (rename-inbox-using-movemail inbox-name insert directory))
+	   (rename-inbox-using-movemail inbox-name
+					insert
+					(buffer-default-directory buffer)))
 	  (else
 	   (rename-inbox-using-rename inbox-name insert)))))
 
@@ -528,17 +541,139 @@ and use that file as the inbox."
 	(message msg "done")
 	value))))
 
-(define (get-mail-from-pop-inbox procedure server insert directory)
-  (let ((target (merge-pathnames (string-append ".pop-" server) directory))
-	(msg (string-append "Getting mail from POP server " server "..."))
-	(password
-	 (prompt-for-password
-	  (string-append "Password for POP server " server))))
-    (message msg)
-    (procedure server target password)
-    (let ((value (insert target)))
-      (message msg "done")
-      value)))
+;;;; POP Support
+
+(define-variable rmail-pop-procedure
+  "A procedure that will get mail from a POP server.
+This procedure will be called with four arguments:
+  1. The server's name.
+  2. The user name on that server.
+  3. The password for that user.
+  4. The directory in which to temporarily store the mail.
+The procedure must return the name of the file in which the mail is
+stored.  If there is no mail, this file must exist but be empty.
+
+A value of #F means there is no mechanism to get POP mail."
+  #f)
+
+(define-variable rmail-primary-pop-server
+  "The host name of a POP server to use as a default, or #F.
+If not #F, this server is used to initialize rmail-primary-inbox-list.
+Otherwise, rmail-primary-inbox-list is initialized to the operating
+system's mail inbox.
+
+If this variable is set, it is useful to initialize the variable
+rmail-pop-accounts with the corresponding account information.
+
+This variable is ignored if rmail-pop-procedure is #F."
+  #f
+  string-or-false?)
+
+(define-variable rmail-pop-accounts
+  "A list of lists, each of which specifies a POP account.
+Each element of the list is a list of three items:
+
+  1. The POP server host name, a string.
+  2. The user name to use with that server, a string.
+  3. The password to use for that account.
+
+Each server host name should appear only once; only the first entry
+with that name is used.
+
+The password field can take on several values.  A string is the
+password to use.  The symbol 'PROMPT-ONCE means to prompt the first
+time the password is needed, saving the password and reusing it
+subsequently.  The symbol 'PROMPT-ALWAYS means to prompt each time
+that the password is needed.
+
+This variable is ignored if rmail-pop-procedure is #F."
+  '()
+  (lambda (object)
+    (and (list? object)
+	 (for-all? object
+	   (lambda (object)
+	     (and (list? object)
+		  (= 3 (length object))
+		  (string? (car object))
+		  (string? (cadr object))
+		  (or (string? (caddr object))
+		      (memq (caddr object) '(PROMPT-ONCE PROMPT-ALWAYS)))))))))
+
+(define (get-mail-from-pop-server server insert buffer)
+  (let ((procedure (ref-variable rmail-pop-procedure buffer)))
+    (and procedure
+	 (call-with-values (lambda () (get-pop-account-info server buffer))
+	   (lambda (user-name password)
+	     (let ((msg
+		    (string-append "Getting mail from POP server "
+				   server
+				   "...")))
+	       (message msg)
+	       (let ((value
+		      (insert
+		       (let ((success? #f))
+			 (dynamic-wind
+			  (lambda () unspecific)
+			  (lambda ()
+			    (let ((filename
+				   (procedure
+				    server user-name password
+				    (buffer-default-directory buffer))))
+			      (set! success? #t)
+			      filename))
+			  (lambda ()
+			    ;; Failure might be due to bad password.
+			    (if (not success?)
+				(delete-saved-pop-server-password
+				 server
+				 user-name))))))))
+		 (message msg "done")
+		 value)))))))
+
+(define (get-pop-account-info server buffer)
+  (let ((entry (assoc server (ref-variable rmail-pop-accounts buffer))))
+    (if entry
+	(let ((user-name (cadr entry))
+	      (password (caddr entry)))
+	  (values user-name
+		  (case password
+		    ((PROMPT-ONCE)
+		     (or (get-saved-pop-server-password server user-name)
+			 (let ((password
+				(prompt-for-pop-server-password server)))
+			   (save-pop-server-password server user-name password)
+			   password)))
+		    ((PROMPT-ALWAYS)
+		     (prompt-for-pop-server-password server))
+		    (else
+		     password))))
+	(let ((user-name
+	       (prompt-for-string
+		(string-append "User name for POP server " server)
+		(current-user-name))))
+	  (values user-name
+		  (prompt-for-pop-server-password server))))))
+
+(define (get-saved-pop-server-password server user-name)
+  (let ((entry (assoc (cons server user-name) saved-pop-passwords)))
+    (and entry
+	 (cdr entry))))
+
+(define (save-pop-server-password server user-name password)
+  (set! saved-pop-passwords
+	(cons (cons (cons server user-name) password)
+	      saved-pop-passwords))
+  unspecific)
+
+(define (delete-saved-pop-server-password server user-name)
+  (set! saved-pop-passwords
+	(delete (cons server user-name) saved-pop-passwords))
+  unspecific)
+
+(define saved-pop-passwords '())
+
+(define (prompt-for-pop-server-password server)
+  (prompt-for-password (string-append "Password for POP server " server)))
 
 ;;;; Moving around
 
@@ -707,8 +842,9 @@ and reverse search is specified by a negative numeric arg."
 		  (narrow-to-region start (mark1+ m))))
 	    (set-buffer-point! buffer start))
 	  (if (current-buffer? buffer)
-	      (begin (update-mode-line! buffer)
-		     (message "No messages"))))
+	      (begin
+		(update-mode-line! buffer)
+		(message "No messages"))))
 	(let ((last (msg-memo/last memo)))
 	  (cond ((not n)
 		 (select-message buffer last))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.164 1995/02/24 00:36:53 cph Exp $
+$Id: edwin.pkg,v 1.165 1995/04/10 20:24:17 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -1438,7 +1438,10 @@ MIT in each case. |#
 	  edwin-variable$rmail-message-filter
 	  edwin-variable$rmail-mode-hook
 	  edwin-variable$rmail-new-mail-hook
+	  edwin-variable$rmail-pop-accounts
+	  edwin-variable$rmail-pop-procedure
 	  edwin-variable$rmail-primary-inbox-list
+	  edwin-variable$rmail-primary-pop-server
 	  edwin-variable$rmail-reply-with-re
 	  rmail-spool-directory))
 
