@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.33 1988/03/21 21:17:00 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.34 1988/05/05 08:42:17 cph Exp $
  *
  * This file contains the code that copies objects into pure
  * and constant space.
@@ -387,7 +387,7 @@ Pointer Object, Purify_Object;
   *Free++ = Object;
   Result = GCLoop(Heap_Start, &Free);
   if (Free != Result)
-  { fprintf(stderr, "\Purify: Pure Scan ended too early.\n");
+  { fprintf(stderr, "\nPurify: Pure Scan ended too early.\n");
     Microcode_Termination(TERM_BROKEN_HEART);
   }
   Length = (Free-Heap_Start)-1;		/* Length of object */
@@ -476,7 +476,7 @@ Pointer Info;
   return (TRUTH);
 }
 
-/* (PRIMITIVE-PURIFY OBJECT PURE?)
+/* (PRIMITIVE-PURIFY OBJECT PURE? SAFETY-MARGIN)
    Copy an object from the heap into constant space.  This requires
    a spare heap, and is tricky to use -- it should only be used
    through the wrapper provided in the Scheme runtime system.
@@ -496,28 +496,35 @@ Pointer Info;
    have changed.
 */
 
-Built_In_Primitive(Prim_Primitive_Purify, 2, "PRIMITIVE-PURIFY", 0xB4)
-Define_Primitive(Prim_Primitive_Purify, 2, "PRIMITIVE-PURIFY")
+DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_Primitive_Purify, 3)
 {
   long Saved_Zone;
   Pointer Object, Lost_Objects, Purify_Result, Daemon;
-  Primitive_2_Args();
+  Primitive_3_Args();
 
   Save_Time_Zone(Zone_Purify);
   if ((Arg2 != TRUTH) && (Arg2 != NIL))
     Primitive_Error(ERR_ARG_2_WRONG_TYPE);
+  Arg_3_Type(TC_FIXNUM);
 
   /* Pass 1 (Purify, above) does a first copy.  Then any GC daemons
      run, and then Purify_Pass_2 is called to copy back.
   */
 
   Touch_In_Primitive(Arg1, Object);
+  GC_Reserve = (Get_Integer (Arg3));
   Purify_Result = Purify(Object, Arg2);
-  Pop_Primitive_Frame(2);
+  Pop_Primitive_Frame(3);
   Daemon = Get_Fixed_Obj_Slot(GC_Daemon);
   if (Daemon == NIL)
   {
-    Val = Purify_Pass_2(Purify_Result);
+    Pointer words_free;
+
+    Purify_Result = Purify_Pass_2(Purify_Result);
+    words_free = (Make_Unsigned_Fixnum (MemTop - Free));
+    Val = (Make_Pointer (TC_LIST, Free));
+    (*Free++) = Purify_Result;
+    (*Free++) = words_free;
     PRIMITIVE_ABORT(PRIM_POP_RETURN);
     /*NOTREACHED*/
   }

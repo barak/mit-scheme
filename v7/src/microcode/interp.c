@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.43 1988/03/23 18:45:39 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.44 1988/05/05 08:42:47 cph Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -112,6 +112,16 @@ if (GC_Check(Amount))							\
 {									\
   Prepare_Eval_Repeat();						\
   Immediate_GC(Amount);							\
+}
+
+#define RESULT_OF_PURIFY(success)					\
+{									\
+  Pointer words_free;							\
+									\
+  words_free = (Make_Unsigned_Fixnum (MemTop - Free));			\
+  Val = (Make_Pointer (TC_LIST, Free));					\
+  (*Free++) = (success);						\
+  (*Free++) = words_free;						\
 }
 
 #define Prepare_Eval_Repeat()						\
@@ -1908,20 +1918,19 @@ Primitive_Internal_Apply:
       Result = Purify_Pass_2(Fetch_Expression());
       Import_Registers();
       if (Result == NIL)
-      {
-	/* The object does not fit in Constant space.
-	   There is no need to run the daemons, and we should let the runtime
-	   system know what happened.
-	 */
-	Val = NIL;
-        break;
-      }
+	{
+	  /* The object does not fit in Constant space.
+	     There is no need to run the daemons, and we should let
+	     the runtime system know what happened.  */
+	  RESULT_OF_PURIFY (NIL);
+	  break;
+	}
       GC_Daemon_Proc = Get_Fixed_Obj_Slot(GC_Daemon);
       if (GC_Daemon_Proc == NIL)
-      {
-	Val = TRUTH;
-        break;
-      }
+	{
+	  RESULT_OF_PURIFY (TRUTH);
+	  break;
+	}
       Store_Expression(NIL);
       Store_Return(RC_PURIFY_GC_2);
       Save_Cont();
@@ -1933,7 +1942,7 @@ Primitive_Internal_Apply:
     }
 
     case RC_PURIFY_GC_2:
-      Val = TRUTH;
+      RESULT_OF_PURIFY (TRUTH);
       break;
 
     case RC_REPEAT_DISPATCH:

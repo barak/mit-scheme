@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 13.43 1987/03/18 20:07:23 jinx Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 13.44 1988/05/05 08:39:12 cph Exp $
 ;;;
-;;;	Copyright (c) 1987 Massachusetts Institute of Technology
+;;;	Copyright (c) 1988 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -149,12 +149,13 @@
 
 (set! purify
 (named-lambda (purify item #!optional really-pure?)
-  (if (primitive-purify item
-			(if (unassigned? really-pure?)
-			    false
-			    really-pure?))
-      item
-      (error "Not enough room in constant space" purify item))))
+  (if (not (car (primitive-purify item
+				  (if (unassigned? really-pure?)
+				      false
+				      really-pure?)
+				  default-safety-margin)))
+      (error "Not enough room in constant space" purify item))
+  item))
 	      
 (set! impurify
 (named-lambda (impurify object)
