@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 4.35 1990/07/22 18:53:55 jinx Rel $
-$MC68020-Header: lapgen.scm,v 4.35 90/07/20 15:53:40 GMT jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 4.36 1991/05/07 17:44:02 jinx Exp $
+$MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.41 1991/05/06 23:05:51 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -532,7 +532,8 @@ MIT in each case. |#
     reference-trap safe-reference-trap unassigned?-trap
     -1+ &/ &= &> 1+ &< &- &* negative? &+ positive? zero?
     access lookup safe-lookup unassigned? unbound?
-    set! define lookup-apply))
+    set! define lookup-apply primitive-error
+    quotient remainder modulo))
 
 (define-integrable (invoke-interface-ble code)
   ;; Jump to scheme-to-interface-ble
@@ -545,7 +546,7 @@ MIT in each case. |#
   ;; Jump to scheme-to-interface
   (LAP (BLE () (OFFSET 12 4 ,regnum:scheme-to-interface-ble))
        (LDI () ,code 28)))
-
+
 (let-syntax ((define-hooks
 	       (macro (start . names)
 		 (define (loop names index)
@@ -563,7 +564,23 @@ MIT in each case. |#
     multiply-fixnum
     fixnum-quotient
     fixnum-remainder
-    fixnum-lsh))
+    fixnum-lsh
+    &+
+    &-
+    &*
+    &/
+    &=
+    &<
+    &>
+    1+
+    -1+
+    zero?
+    positive?
+    negative?))
+
+(define (invoke-hook hook)
+  (LAP (BLE () (OFFSET ,hook 4 ,regnum:scheme-to-interface-ble))
+       (NOP ())))
 
 (define (require-registers! . regs)
   (let ((code (apply clear-registers! regs)))

@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rgspcm.scm,v 4.1 1990/01/25 16:39:03 jinx Rel $
-$MC68020-Header: rgspcm.scm,v 4.1 87/12/30 07:05:38 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rgspcm.scm,v 4.2 1991/05/07 17:43:26 jinx Exp $
+$MC68020-Header: /scheme/compiler/bobcat/RCS/rgspcm.scm,v 4.2 1991/05/06 23:17:03 jinx Exp $
 
-Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -61,7 +61,7 @@ MIT in each case. |#
 
 (define-special-primitive/standard '&+)
 (define-special-primitive/standard '&-)
-;; (define-special-primitive/standard '&*)
+(define-special-primitive/standard '&*)
 (define-special-primitive/standard '&/)
 (define-special-primitive/standard '&=)
 (define-special-primitive/standard '&<)
@@ -71,5 +71,5 @@ MIT in each case. |#
 (define-special-primitive/standard 'zero?)
 (define-special-primitive/standard 'positive?)
 (define-special-primitive/standard 'negative?)
-
-
+(define-special-primitive/standard 'quotient)
+(define-special-primitive/standard 'remainder)
