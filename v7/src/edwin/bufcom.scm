@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufcom.scm,v 1.94 1992/09/29 21:11:24 cph Exp $
+;;;	$Id: bufcom.scm,v 1.95 1992/09/30 01:34:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -46,59 +46,25 @@
 
 (declare (usual-integrations))
 
-(define-command not-modified
-  "Pretend that this buffer hasn't been altered."
-  ()
-  (lambda ()
-    (buffer-not-modified! (current-buffer))))
-
-(define-command toggle-read-only
-  "Change whether this buffer is visiting its file read-only."
-  ()
-  (lambda ()
-    (let ((buffer (current-buffer)))
-      (if (buffer-writeable? buffer)
-	  (set-buffer-read-only! buffer)
-	  (set-buffer-writeable! buffer)))))
-
-(define-command no-toggle-read-only
-  "Display warning indicating that this buffer may not be modified."
-  ()
-  (lambda ()
-    (editor-failure "This buffer may not be modified.")))
-
-(define-variable select-buffer-create
-  "If true, buffer selection commands may create new buffers."
-  true)
-
-(define (prompt-for-select-buffer prompt)
-  (lambda ()
-    (list
-     (buffer-name
-      (let ((buffer (previous-buffer)))
-	(if (ref-variable select-buffer-create)
-	    (prompt-for-buffer prompt buffer)
-	    (prompt-for-existing-buffer prompt buffer)))))))
-
 (define-command switch-to-buffer
   "Select buffer with specified name.
 If the variable select-buffer-create is true,
 specifying a non-existent buffer will cause it to be created."
-  (prompt-for-select-buffer "Switch to buffer")
+  "BSwitch to buffer"
   (lambda (buffer)
     (select-buffer (find-buffer buffer))))
 
-(define-command switch-to-buffer-other-screen
-  "Select buffer in another screen."
-  (prompt-for-select-buffer "Switch to buffer in other screen")
-  (lambda (buffer)
-    (select-buffer-other-screen (find-buffer buffer))))
-
 (define-command switch-to-buffer-other-window
   "Select buffer in another window."
-  (prompt-for-select-buffer "Switch to buffer in other window")
+  "BSwitch to buffer in other window"
   (lambda (buffer)
     (select-buffer-other-window (find-buffer buffer))))
+
+(define-command switch-to-buffer-other-screen
+  "Select buffer in another screen."
+  "BSwitch to buffer in other screen"
+  (lambda (buffer)
+    (select-buffer-other-screen (find-buffer buffer))))
 
 (define-command create-buffer
   "Create a new buffer with a given name, and select it."
@@ -122,7 +88,7 @@ specifying a non-existent buffer will cause it to be created."
        (region->string (buffer-region (find-buffer buffer))))
       (push-current-mark! (current-point))
       (set-current-point! point))))
-
+
 (define-command twiddle-buffers
   "Select previous buffer."
   ()
@@ -145,6 +111,15 @@ thus, the least likely buffer for \\[switch-to-buffer] to select by default."
 	    (select-buffer previous)
 	    (bury-buffer buffer))))))
 
+(define-command rename-buffer
+  "Change the name of the current buffer.
+Reads the new name in the echo area."
+  "sRename buffer (to new name)"
+  (lambda (name)
+    (if (find-buffer name)
+	(editor-error "Buffer named " name " already exists"))
+    (rename-buffer (current-buffer) name)))
+
 (define-command kill-buffer
   "One arg, a string or a buffer.  Get rid of the specified buffer."
   "bKill buffer"
@@ -177,15 +152,6 @@ thus, the least likely buffer for \\[switch-to-buffer] to select by default."
 			(create-buffer initial-buffer-name)
 			(kill-buffer dummy)))))
 	    (buffer-list)))
-
-(define-command rename-buffer
-  "Change the name of the current buffer.
-Reads the new name in the echo area."
-  "sRename buffer (to new name)"
-  (lambda (name)
-    (if (find-buffer name)
-	(editor-error "Buffer named " name " already exists"))
-    (rename-buffer (current-buffer) name)))
 
 (define-command normal-mode
   "Choose the major mode for this buffer automatically.
@@ -208,6 +174,27 @@ When locked, the buffer's major mode may not be changed."
 	  (begin
 	    (buffer-put! buffer 'MAJOR-MODE-LOCKED true)
 	    (message "Major mode locked"))))))
+
+(define-command not-modified
+  "Pretend that this buffer hasn't been altered."
+  ()
+  (lambda ()
+    (buffer-not-modified! (current-buffer))))
+
+(define-command toggle-read-only
+  "Change whether this buffer is visiting its file read-only."
+  ()
+  (lambda ()
+    (let ((buffer (current-buffer)))
+      (if (buffer-writeable? buffer)
+	  (set-buffer-read-only! buffer)
+	  (set-buffer-writeable! buffer)))))
+
+(define-command no-toggle-read-only
+  "Display warning indicating that this buffer may not be modified."
+  ()
+  (lambda ()
+    (editor-failure "This buffer may not be modified.")))
 
 (define (save-buffer-changes buffer)
   (if (and (buffer-pathname buffer)
@@ -267,11 +254,32 @@ When locked, the buffer's major mode may not be changed."
     buffer))
 
 (define (prompt-for-buffer prompt default-buffer)
-  (let ((name (prompt-for-buffer-name prompt default-buffer false)))
+  (let ((name
+	 (prompt-for-buffer-name prompt
+				 default-buffer
+				 (ref-variable select-buffer-create))))
     (or (find-buffer name)
-	(let ((buffer (create-buffer name)))
-	  (temporary-message "(New Buffer)")
-	  buffer))))
+	(let loop ((hooks (ref-variable select-buffer-not-found-hooks)))
+	  (cond ((null? hooks)
+		 (let ((buffer (create-buffer name)))
+		   (temporary-message "(New Buffer)")
+		   buffer))
+		((not ((car hooks) name))
+		 (loop (cdr hooks))))))))
+
+(define-variable select-buffer-create
+  "If true, buffer selection commands may create new buffers."
+  true
+  boolean?)
+
+(define-variable select-buffer-not-found-hooks
+  "List of procedures to be called for select-buffer on nonexistent buffer.
+These procedures are called as soon as the error is detected.
+The procedures are called in the order given,
+until one of them returns non-false.
+This variable has no effect if select-buffer-create is false."
+  '()
+  list?)
 
 (define (prompt-for-existing-buffer prompt default-buffer)
   (find-buffer (prompt-for-buffer-name prompt default-buffer true)))
