@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.66 1991/04/23 06:42:12 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.67 1991/04/26 03:13:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -46,160 +46,138 @@
 
 (declare (usual-integrations))
 
-(define-variable replace-string-search
-  "The last string that a replacement command searched for."
-  false)
-
-(define-variable replace-string-replace
-  "The last string that a replacement command replaced with."
-  false)
-
 (define-variable case-replace
-  "If not false, means replacement commands should preserve case."
-  true)
+  "If true, means replacement commands should preserve case."
+  true
+  boolean?)
 
 (define (replace-string-arguments name)
-  (let ((source
-	 (prompt-for-string name
-			    (ref-variable replace-string-search)
-			    'NULL-DEFAULT)))
-    (let ((target 
-	   (prompt-for-string (string-append name " " source " with")
-			      (ref-variable replace-string-replace)
-			      'NULL-DEFAULT)))
-      (set-variable! replace-string-search source)
-      (set-variable! replace-string-replace target)
-      (list source target (command-argument-standard-value)))))
+  (let ((source (prompt-for-string name false)))
+    (list source
+	  (prompt-for-string (string-append name " " source " with") false)
+	  (command-argument-standard-value))))
 
-(define-command replace-string
-  "Replace occurrences of a given string with another one.
-Preserve case in each match if Case Replace and Case Fold Search
-are true and the given strings have no uppercase letters.
-With an argument, replace only matches surrounded by word boundaries."
+ (define-command replace-string
+  "Replace occurrences of FROM-STRING with TO-STRING.
+Preserve case in each match if  case-replace  and  case-fold-search
+are true and FROM-STRING has no uppercase letters.
+Third arg DELIMITED (prefix arg if interactive) true means replace
+only matches surrounded by word boundaries."
   (lambda () (replace-string-arguments "Replace string"))
-  (lambda (source target replace-words-only?)
-    ((replace-string 'replace-string replace-words-only? false true)
-     source target)))
+  (lambda (from-string to-string delimited)
+    (replace-string from-string to-string delimited false false)
+    (message "Done")))
+
+(define-command replace-regexp
+  "Replace things after point matching REGEXP with TO-STRING.
+Preserve case in each match if case-replace and case-fold-search
+are true and REGEXP has no uppercase letters.
+Third arg DELIMITED (prefix arg if interactive) true means replace
+only matches surrounded by word boundaries.
+In TO-STRING, \\& means insert what matched REGEXP,
+and \\<n> means insert what matched <n>th \\(...\\) in REGEXP."
+  (lambda () (replace-string-arguments "Replace regexp"))
+  (lambda (regexp to-string delimited)
+    (replace-string regexp to-string delimited false true)
+    (message "Done")))
 
 (define-command query-replace
-  "Replace some occurrences of a given string with another one.
+  "Replace some occurrences of FROM-STRING with TO-STRING.
 As each match is found, the user must type a character saying
-what to do with it.
-Type C-H within query-replace for directions.
+what to do with it.  For directions, type \\[help-command] at that time.
 
-Preserve case in each match if Case Replace and Case Fold Search
-are true and the given strings have no uppercase letters.
-With an argument, replace only matches surrounded by word boundaries."
+Preserve case in each replacement if  case-replace  and  case-fold-search
+are true and FROM-STRING has no uppercase letters.
+Third arg DELIMITED (prefix arg if interactive) true means replace
+only matches surrounded by word boundaries."
   (lambda () (replace-string-arguments "Query replace"))
-  (lambda (source target replace-words-only?)
-    ((replace-string 'query-replace replace-words-only? true true)
-     source target)))
+  (lambda (from-string to-string delimited)
+    (replace-string from-string to-string delimited true false)
+    (message "Done")))
+
+(define-command query-replace-regexp
+  "Replace some things after point matching REGEXP with TO-STRING.
+As each match is found, the user must type a character saying
+what to do with it.  For directions, type \\[help-command] at that time.
+
+Preserve case in each replacement if  case-replace  and  case-fold-search
+are true and REGEXP has no uppercase letters.
+Third arg DELIMITED (prefix arg if interactive) true means replace
+only matches surrounded by word boundaries.
+In TO-STRING, \\& means insert what matched REGEXP,
+and \\<n> means insert what matched <n>th \\(...\\) in REGEXP."
+  (lambda () (replace-string-arguments "Query replace regexp"))
+  (lambda (regexp to-string delimited)
+    (replace-string regexp to-string delimited true true)
+    (message "Done")))
 
-(define ((replace-string name replace-words-only? query? clear-on-exit?)
-	 source target)
+(define (replace-string source target delimited? query? regexp?)
   ;; Returns TRUE iff the query loop was exited at the user's request,
   ;; FALSE iff the loop finished by failing to find an occurrence.
-  (let ((preserve-case? (and (ref-variable case-replace)
-			     (ref-variable case-fold-search)
-			     (string-lower-case? source)
-			     (not (string-null? target))
-			     (string-lower-case? target)))
-	(upper (delay (string-upcase target)))
-	(capital (delay (string-capitalize target)))
-	(words-only-source
-	 (delay (string-append "\\b" (re-quote-string source) "\\b")))
+  (let ((preserve-case?
+	 (and (ref-variable case-replace)
+	      (ref-variable case-fold-search)
+	      (string-lower-case? source)
+	      (not (string-null? target))
+	      (string-lower-case? target)))
+	(source*
+	 (if delimited?
+	     (string-append "\\b"
+			    (if regexp? source (re-quote-string source))
+			    "\\b")
+	     source))
 	(message-string
-	 (string-append (editor-name/internal->external (symbol->string name))
-			": " (write-to-string source)
-			" => " (write-to-string target)))
-	(old-notification (ref-variable auto-push-point-notification)))
+	 (string-append "Query replacing " source " with " target)))
 
-    (define (find-next-occurrence start receiver)
-      (if (let ((end (group-end start)))
-	    (if replace-words-only?
-		(re-search-forward (force words-only-source) start end)
-		(search-forward source start end)))
-	  (receiver (re-match-start 0) (re-match-end 0))
-	  (begin
-	    (if clear-on-exit? (clear-message))
-	    false)))
+    (define (replacement-loop point)
+      (undo-boundary! point)
+      (cond ((not (find-next-occurrence point))
+	     (done false))
+	    ((mark< point (re-match-end 0))
+	     (replacement-loop (perform-replacement)))
+	    ((not (group-end? point))
+	     (replacement-loop (mark1+ point)))
+	    (else
+	     (done false))))
 
-    (define (query-loop start end)
-      (undo-boundary! end)
-      (push-current-mark! start)
-      (find-next-occurrence end
-	(lambda (start end)
-	  (set-current-point! end)
-	  (perform-query (mark-right-inserting start)
-			 (current-point)
-			 false))))
+    (define (query-loop point)
+      (undo-boundary! point)
+      (cond ((not (find-next-occurrence point))
+	     (done false))
+	    ((mark< point (re-match-end 0))
+	     (set-current-mark! point)
+	     (set-current-point! (re-match-end 0))
+	     (perform-query false))
+	    ((not (group-end? point))
+	     (query-loop (mark1+ point)))
+	    (else
+	     (done false))))
 
-    (define (replacement-loop start)
-      (undo-boundary! start)
-      (find-next-occurrence start
-	(lambda (start end)
-	  (let ((end (mark-left-inserting end)))
-	    (perform-replacement start end)
-	    (replacement-loop end)))))
+    (define (find-next-occurrence start)
+      (if (or regexp? delimited?)
+	  (re-search-forward source* start (group-end start))
+	  (search-forward source* start (group-end start))))
 
-    (define (perform-replacement start end)
-      (let ((replaced (extract-string start end)))
-	(delete-string start end)
-	(insert-string (cond ((not preserve-case?) target)
-			     ((string-upper-case? replaced) (force upper))
-			     ((string-capitalized? replaced)
-			      (force capital))
-			     (else target))
-		       end)))
+    (define (perform-replacement)
+      (replace-match target preserve-case? (not regexp?)))
 
-    (define (edit)
-      (with-variable-value! (ref-variable-object auto-push-point-notification)
-			    old-notification
-	(lambda ()
-	  (clear-message)
-	  (enter-recursive-edit))))
+    (define (done value)
+      (pop-current-mark!)
+      value)
 
-    (define (perform-query start end replaced?)
-      (message message-string)
-      (let ((char (with-editor-interrupts-disabled keyboard-read-char)))
+    (define (perform-query replaced?)
+      (message message-string ":")
+      (let ((char (with-editor-interrupts-disabled keyboard-peek-char)))
 	(let ((test-for
 	       (lambda (char*)
-		 (char=? char (remap-alias-char char*)))))
-	  (cond ((test-for #\space)
-		 (if (not replaced?) (perform-replacement start end))
-		 (query-loop start end))
-		((test-for #\rubout)
-		 (query-loop start end))
-		((test-for #\altmode)
-		 (if clear-on-exit? (clear-message))
-		 true)
-		((test-for #\.)
-		 (if (not replaced?) (perform-replacement start end))
-		 (if clear-on-exit? (clear-message))
-		 true)
-		((test-for #\,)
-		 (if (not replaced?) (perform-replacement start end))
-		 (perform-query start end true))
-		((test-for #\C-r)
-		 (edit)
-		 (perform-query start end replaced?))
-		((test-for #\C-w)
-		 (if (not replaced?) (delete-string start end))
-		 (edit)
-		 (query-loop start end))
-		((test-for #\!)
-		 (if (not replaced?) (perform-replacement start end))
-		 (replacement-loop end))
-		((test-for #\^)
-		 (set-current-point! (pop-current-mark!))
-		 (perform-query (current-mark) (current-mark) true))
-		((test-for #\C-h)
+		 (and (char=? char (remap-alias-char char*))
+		      (begin
+			(keyboard-read-char)
+			true)))))
+	  (cond ((test-for #\C-h)
 		 (with-output-to-help-display
 		  (lambda ()
-		    (write-string "Query replacing ")
-		    (write source)
-		    (write-string " with ")
-		    (write target)
+		    (write-string message-string)
 		    (write-string ".
 
 Type space to replace one match, Rubout to skip to next,
@@ -208,19 +186,51 @@ Comma to replace but not move point immediately,
 C-R to enter recursive edit, C-W to delete match and recursive edit,
 ! to replace all remaining matches with no more questions,
 ^ to move point back to previous match.")))
-		 (perform-query start end replaced?))
+		 (perform-query replaced?))
+		((or (test-for #\altmode)
+		     (test-for #\q))
+		 (done true))
+		((test-for #\^)
+		 (set-current-point! (current-mark))
+		 (perform-query true))
+		((or (test-for #\space)
+		     (test-for #\y))
+		 (if (not replaced?) (perform-replacement))
+		 (query-loop (current-point)))
+		((test-for #\.)
+		 (if (not replaced?) (perform-replacement))
+		 (done true))
+		((test-for #\,)
+		 (if (not replaced?) (perform-replacement))
+		 (perform-query true))
+		((test-for #\!)
+		 (if (not replaced?) (perform-replacement))
+		 (replacement-loop (current-point)))
+		((or (test-for #\rubout)
+		     (test-for #\n))
+		 (query-loop (current-point)))
+		((test-for #\C-l)
+		 ((ref-command recenter) false)
+		 (perform-query replaced?))
+		((test-for #\C-r)
+		 (edit)
+		 (perform-query replaced?))
+		((test-for #\C-w)
+		 (if (not replaced?) (delete-match))
+		 (edit)
+		 (perform-query true))
 		(else
-		 (if clear-on-exit? (clear-message))
-		 (execute-char (current-comtabs) char)
-		 true)))))
+		 (done true))))))
+
+    (define (edit)
+      (clear-message)
+      (preserving-match-data enter-recursive-edit))
 
     (let ((point (current-point)))
+      (push-current-mark! point)
+      (push-current-mark! point)
       (if query?
-	  (with-variable-value!
-	      (ref-variable-object auto-push-point-notification)
-	      false
-	    (lambda ()
-	      (query-loop point point)))
+	  (query-loop point)
 	  (replacement-loop point)))))
 
 ;;;; Occurrence Commands
