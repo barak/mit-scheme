@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.226 2000/12/21 04:36:45 cph Exp $
+;;; $Id: imail-top.scm,v 1.227 2000/12/21 05:05:00 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -287,6 +287,9 @@ regardless of the folder type."
     (add-kill-buffer-hook buffer imail-kill-buffer)
     (buffer-put! buffer 'MAIL-YANK-ORIGINAL-METHOD imail-yank-original)
     (local-set-variable! mode-line-modified "--- " buffer)
+    (local-set-variable! mode-line-process
+			 imail-mode-line-summary-string
+			 buffer)
     (imail-adjust-adaptive-fill buffer)
     (standard-alternate-paragraph-style! buffer)
     (set-buffer-read-only! buffer)
@@ -296,7 +299,7 @@ regardless of the folder type."
 (define-variable imail-mode-hook
   "An event distributor that is invoked when entering IMAIL mode."
   (make-event-distributor))
-
+
 (define (imail-adjust-adaptive-fill buffer)
   (add-adaptive-fill-regexp! "[ \t]*[-a-zA-Z0-9]*>\\([ \t]*>\\)*[ \t]*"
 			     buffer))
@@ -311,6 +314,37 @@ regardless of the folder type."
    (string-append regexp "\\|"
 		  (ref-variable adaptive-fill-first-line-regexp #f))
    buffer))
+
+(define (imail-mode-line-summary-string window)
+  (let* ((buffer (window-buffer window))
+	 (folder (selected-folder #f buffer))
+	 (message (selected-message #f buffer)))
+    (if folder
+	(let ((n (folder-length folder)))
+	  (string-append
+	   (let ((status (folder-connection-status folder)))
+	     (if (eq? status 'NO-SERVER)
+		 ""
+		 (string-append " " (symbol->string status))))
+	   " "
+	   (let ((index (and message (message-index message))))
+	     (cond (index (number->string (+ 1 index)))
+		   ((> n 0) "??")
+		   (else "0")))
+	   "/"
+	   (number->string n)
+	   (let ((unseen (count-unseen-messages folder)))
+	     (if (> unseen 0)
+		 (string-append " (" (number->string unseen) " unseen)")
+		 ""))
+	   (let ((flags
+		  (if message
+		      (flags-delete "seen" (message-flags message))
+		      '())))
+	     (if (pair? flags)
+		 (string-append " " (decorated-string-append "" "," "" flags))
+		 ""))))
+	"")))
 
 (define imail-mode-description
   "IMAIL mode is used by \\[imail] for editing mail folders.
@@ -1907,9 +1941,6 @@ Negative argument means search in reverse."
 					 (and (< index (folder-length folder))
 					      index)))
 				   #t))))
-	  (local-set-variable! mode-line-process
-			       (imail-mode-line-summary-string buffer)
-			       buffer)
 	  (if (and (ref-variable imail-global-mail-notification buffer)
 		   (eq? (folder-url folder) (imail-default-url "imap")))
 	      (begin
@@ -1919,35 +1950,6 @@ Negative argument means search in reverse."
 			       buffer)
 		(global-window-modeline-event!)))
 	  (buffer-modeline-event! buffer 'PROCESS-STATUS)))))
-
-(define (imail-mode-line-summary-string buffer)
-  (let ((folder (selected-folder #f buffer))
-	(message (selected-message #f buffer)))
-    (and folder
-	 (let ((n (folder-length folder)))
-	   (string-append
-	    (let ((status (folder-connection-status folder)))
-	      (if (eq? status 'NO-SERVER)
-		  ""
-		  (string-append " " (symbol->string status))))
-	    " "
-	    (let ((index (and message (message-index message))))
-	      (cond (index (number->string (+ 1 index)))
-		    ((> n 0) "??")
-		    (else "0")))
-	    "/"
-	    (number->string n)
-	    (let ((unseen (count-unseen-messages folder)))
-	      (if (> unseen 0)
-		  (string-append " (" (number->string unseen) " unseen)")
-		  ""))
-	    (let ((flags
-		   (if message
-		       (flags-delete "seen" (message-flags message))
-		       '())))
-	      (if (pair? flags)
-		  (string-append " " (decorated-string-append "" "," "" flags))
-		  "")))))))
 
 (define (count-unseen-messages folder)
   (let ((n (folder-length folder)))
