@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.1 1988/06/13 11:43:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.2 1988/07/13 20:09:56 hal Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -128,10 +128,8 @@ MIT in each case. |#
   (beep console-output-port)
   (if paranoid-error-decision?
       (begin
-	(transmit-signal-with-argument #\P
-"Error! Type ctl-E to enter error loop, anything else to return to top level.")
-	(if (not (char-ci=? (emacs/read-char-immediate) #\C-E))
-	    (abort-to-previous-driver "Quit!")))))
+	(transmit-signal-with-argument #\P "Error!")
+	(abort-to-previous-driver "Quit!"))))
 
 (define paranoid-error-decision?
   false)
