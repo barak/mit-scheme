@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2winp.scm,v 1.11 1995/11/04 01:44:33 cph Exp $
+$Id: os2winp.scm,v 1.12 1995/11/04 01:53:49 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -97,7 +97,7 @@ MIT in each case. |#
   (os2win-get-pos 1)
   (os2win-get-size 1)
   (os2win-invalidate 5)
-  (os2win-load-icon 3)
+  (os2win-load-pointer 3)
   (os2win-load-menu 3)
   (os2win-move-cursor 3)
   (os2win-open 2)
