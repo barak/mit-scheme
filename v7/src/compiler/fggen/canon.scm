@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: canon.scm,v 1.10 1992/12/30 16:35:14 gjr Exp $
+$Id: canon.scm,v 1.11 1993/02/25 02:05:42 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -642,6 +642,9 @@ ARBITRARY:	The expression may be executed more than once.  It
 
 ;;;; Hair cubed
 
+#|
+;; The Old Code
+
 (define (canonicalize/lambda* expr bound context)
   (scode/lambda-components expr
     (lambda (name required optional rest auxiliary decls body)
@@ -689,6 +692,104 @@ ARBITRARY:	The expression may be executed more than once.  It
 					  (scode/make-the-environment)
 					  (eq? context 'ARBITRARY)
 					  expr)))))))))
+|#
+
+(define (canonicalize/lambda* expr bound context)
+  (scode/lambda-components expr
+    (lambda (name required optional rest auxiliary decls body)
+      (let ((nbody (canonicalize/expression
+		    body
+		    (append required optional
+			    (if rest (list rest) '())
+			    auxiliary bound)
+		    context)))
+
+	(cond ((canout-safe? nbody)
+	       (make-canout
+		(scode/make-lambda name required optional rest auxiliary
+				   decls
+				   (canout-expr nbody))
+		true
+		(canout-needs? nbody)
+		(canout-splice? nbody)))
+	      ((not compiler:avoid-scode?)
+	       ;; Old way of handling 1st-class environments
+	       (make-canout
+		(scode/make-directive
+		 (scode/make-combination
+		  (ucode-primitive SCODE-EVAL)
+		  (list
+		   (scode/make-quotation
+		    (scode/make-lambda
+		     name required optional rest '()
+		     decls
+		     (let* ((env-code (scode/make-the-environment))
+			    (nbody
+			     (canonicalize/expression
+			      (unscan-defines auxiliary decls (canout-expr nbody))
+			      '()
+			      (if (canonicalize/optimization-low? context)
+				  'FIRST-CLASS
+				  'TOP-LEVEL)))
+			    (nexpr
+			     (canonicalize/bind-environment (canout-expr nbody)
+							    env-code
+							    body)))
+      
+		       (if (canonicalize/optimization-low? context)
+			   nexpr
+			   (scode/make-evaluation nexpr
+						  (scode/make-the-environment)
+						  (eq? context 'ARBITRARY)
+						  expr)))))
+		   (scode/make-variable environment-variable)))
+		 '(ENCLOSE)
+		 expr)
+		false true false))
+
+	      (else
+	       (make-canout
+		(scode/make-directive
+		 (scode/make-lambda
+		  name required optional rest '()
+		  decls
+		  (let* ((names
+			  (append required optional (if rest (list rest) '())))
+			 (env-code
+			  (scode/make-combination
+			   (scode/make-absolute-reference '*MAKE-ENVIRONMENT)
+			   (cons* (scode/make-variable environment-variable)
+				  (list->vector
+				   (cons lambda-tag:make-environment
+					 names))
+				  (map scode/make-variable names)))))
+
+		    (if (and (scode/the-environment? body)
+			     (null? auxiliary))
+			env-code
+			(let* ((uexpr (unscan-defines auxiliary decls (canout-expr nbody)))
+			       (nexpr
+				(canout-expr
+				 (canonicalize/expression
+				  uexpr
+				  '()
+				  (if (canonicalize/optimization-low? context)
+				      'FIRST-CLASS
+				      'TOP-LEVEL)))))
+
+			   (if (canonicalize/optimization-low? context)
+			       (canonicalize/bind-environment nexpr env-code uexpr)
+			       (scode/make-evaluation
+				(canonicalize/bind-environment
+				 nexpr
+				 (scode/make-the-environment)
+				 uexpr)
+				env-code
+				(eq? context 'ARBITRARY)
+				expr))))))
+		 '(PROCESSED)
+		 expr)
+		false true false)))))))
 
 ;;;; Dispatch
 
