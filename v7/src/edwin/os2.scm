@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.17 1995/05/12 09:30:55 cph Exp $
+;;;	$Id: os2.scm,v 1.18 1995/05/19 18:52:49 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -718,7 +718,7 @@ filename suffix \".gz\"."
 	    (kill-buffer buffer)
 	    (begin
 	      (pop-up-buffer buffer)
-	      (error "Error getting mail from POP server:" status.reason)))))
+	      (editor-error "Error getting mail from POP server.")))))
     target))
 
 (define-variable rmail-pop-delete
