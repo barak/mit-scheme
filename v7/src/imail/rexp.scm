@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rexp.scm,v 1.8 2000/04/13 16:56:49 cph Exp $
+;;; $Id: rexp.scm,v 1.9 2000/04/13 17:57:57 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -22,7 +22,7 @@
 
 (declare (usual-integrations))
 
-(define (rexp? object)
+(define (rexp? rexp)
   (or (string? rexp)
       (char-set? rexp)
       (and (pair? rexp)
@@ -133,15 +133,14 @@
 (define (rexp-not-syntax-char type) `(NOT-SYNTAX-CHAR ,type))
 
 (define (rexp-case-fold rexp)
-  (let ((lose (lambda () (error "Malformed rexp:" rexp))))
-    (cond ((string? rexp)
-	   `(CASE-FOLD rexp))
-	  ((and (pair? rexp)
-		(memq (car rexp) '(ALTERNATIVES SEQUENCE GROUP OPTIONAL * +))
-		(list? (cdr rexp)))
-	   (cons (car rexp)
-		 (map rexp-case-fold (cdr rexp))))
-	  (else rexp))))
+  (cond ((string? rexp)
+	 `(CASE-FOLD rexp))
+	((and (pair? rexp)
+	      (memq (car rexp) '(ALTERNATIVES SEQUENCE GROUP OPTIONAL * +))
+	      (list? (cdr rexp)))
+	 (cons (car rexp)
+	       (map rexp-case-fold (cdr rexp))))
+	(else rexp)))
 
 (define (rexp-compile rexp)
   (re-compile-pattern (rexp->regexp rexp) #f))
@@ -193,7 +192,7 @@
 		 ((NOT-SYNTAX-CHAR) (string-append "\\S" (syntax-type)))
 		 (else (lose))))))
 	  (else (lose)))))
-
+
 (define (case-fold-string s)
   (let ((end (string-length s)))
     (let loop ((start 0) (parts '()))
@@ -211,26 +210,3 @@
 			  (substring s start index))
 			 parts))
 	    (apply string-append (reverse! parts)))))))
-
-(define (separated-append tokens separator)
-  (cond ((not (pair? tokens)) "")
-	((not (pair? (cdr tokens))) (car tokens))
-	(else
-	 (let ((string
-		(make-string
-		 (let ((ns (string-length separator)))
-		   (do ((tokens (cdr tokens) (cdr tokens))
-			(count (string-length (car tokens))
-			       (fix:+ count
-				      (fix:+ (string-length (car tokens))
-					     ns))))
-		       ((not (pair? tokens)) count))))))
-	   (let loop
-	       ((tokens (cdr tokens))
-		(index (string-move! (car tokens) string 0)))
-	     (if (pair? tokens)
-		 (loop (cdr tokens)
-		       (string-move! (car tokens)
-				     string
-				     (string-move! separator string index)))))
-	   string))))

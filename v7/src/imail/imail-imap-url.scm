@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap-url.scm,v 1.5 2000/04/13 16:58:39 cph Exp $
+;;; $Id: imail-imap-url.scm,v 1.6 2000/04/13 17:57:52 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -165,10 +165,12 @@
   (or (imap:match-quoted-string string start end)
       (imap:match-literal string start end)))
 
+(define imap:char-set:achar
+  (char-set-union url:char-set:unreserved
+		  (string->char-set "&=~")))
+
 (define imap:rexp:achar+
-  (rexp+ (rexp-alternatives (char-set-union url:char-set:unreserved
-					    (string->char-set "&=~"))
-			    url:rexp:escape)))
+  (rexp+ (rexp-alternatives imap:char-set:achar url:rexp:escape)))
 
 (define imap:rexp:bchar+
   (rexp+ (rexp-alternatives (char-set-union imap:char-set:achar
