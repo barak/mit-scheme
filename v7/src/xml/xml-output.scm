@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.18 2003/03/09 17:17:06 cph Exp $
+$Id: xml-output.scm,v 1.19 2003/07/03 16:47:49 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -60,7 +60,13 @@ USA.
   (apply %make-ctx 'PORT port options))
 
 (define (emit-char char ctx)
-  (write-char char (ctx-port ctx)))
+  (let ((port (ctx-port ctx)))
+    (if (fix:< (char->integer char) #x80)
+	(write-char char port)
+	(begin
+	  (write-string "&#x" port)
+	  (write-string (number->string (char->integer char) 16) port)
+	  (write-string ";" port)))))
 
 (define (emit-string string ctx)
   (write-string string (ctx-port ctx)))
