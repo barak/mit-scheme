@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dataflow.scm,v 1.19 1995/08/19 22:43:34 adams Exp $
+$Id: dataflow.scm,v 1.20 1995/09/05 18:48:37 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1465,7 +1465,7 @@ MIT in each case. |#
 (define (graph/dataflow! graph)
   (graph/for-each-node graph
     (lambda (node) (set-node/values! node 'NOT-CACHED)))
-  (graph/for-each-node graph node/initialize-cache!)))
+  (graph/for-each-node graph node/initialize-cache!)
   ;; Trivial closures need to
   (graph/initialize-closure-procedures! graph)
   (let ((queue  (queue/make)))
