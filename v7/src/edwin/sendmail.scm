@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.70 2000/11/29 05:51:17 cph Exp $
+;;; $Id: sendmail.scm,v 1.71 2000/11/30 17:22:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -1436,7 +1436,8 @@ This is a list, each element of which is a list of three items:
 
 (define (mail-delete-bcc-lines mail-buffer)
   (let* ((header-start (buffer-start mail-buffer))
-	 (header-end (mail-header-end header-start)))
+	 (header-end
+	  (mark-left-inserting-copy (mail-header-end header-start))))
     (let loop ((start header-start))
       (let ((fs (mail-field-start start header-end "bcc")))
 	(if fs
@@ -1444,7 +1445,8 @@ This is a list, each element of which is a list of three items:
 	      (delete-string ls
 			     (let ((fe (%mail-field-end fs header-end)))
 			       (if (mark< fe header-end) (mark1+ fe) fe)))
-	      (loop ls)))))))
+	      (loop ls)))))
+    (mark-temporary! header-end)))
 
 (define (call-with-smtp-socket host-name trace-buffer receiver)
   (let ((port #f))
