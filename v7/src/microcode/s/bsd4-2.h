@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for BSD4.2
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/bsd4-2.h,v 1.2 1989/07/24 21:02:33 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/bsd4-2.h,v 1.3 1989/08/02 01:03:59 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -42,3 +42,5 @@ MIT in each case. */
 
 #define SOURCES_SYSTEM unixprim.c
 #define OBJECTS_SYSTEM unixprim.o
+
+#define ALTERNATE_M4 s/ultrix.m4
