@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.7 1993/09/21 17:54:10 gjr Exp $
+$Id: nttrap.c,v 1.8 1993/09/21 18:08:09 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -1265,7 +1265,7 @@ DEFUN_VOID (winnt_stack_reset)
 
   boundary = ((((unsigned long) Stack_Guard)
 	       & (~ ((unsigned long) (PAGE_SIZE - 1))))
-	      - PAGE_SIZE);
+	      - (2 * PAGE_SIZE));
   if (stack_protected && (protected_stack_base == boundary))
     return;
   winnt_unprotect_stack ();
