@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.sf,v 1.3 1995/01/07 00:29:42 cph Exp $
+$Id: compiler.sf,v 1.4 1995/03/13 04:33:05 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -35,6 +35,7 @@ MIT in each case. |#
 ;;;; Script to incrementally syntax the compiler
 
 ;; Guarantee that the package modeller is loaded.
+(load-option 'SF)
 (load-option 'CREF)
 
 ;; Guarantee that the compiler's package structure exists.
@@ -87,6 +88,16 @@ MIT in each case. |#
       (sf-and-load '("base/pmerly") '(COMPILER PATTERN-MATCHER/EARLY))
       (sf-and-load '("machines/spectrum/inerly" "back/syerly")
 		   '(COMPILER LAP-SYNTAXER))))
+
+(if (lexical-unreferenceable? (->environment '()) '%matchup)
+    (let ((sf-and-load
+	   (lambda (files package)
+	     (sf-conditionally files)
+	     (for-each (lambda (file)
+			 (load (string-append file ".bin") package))
+		       files))))
+      (write-string "\n\n---- Loading compile-time files ----")
+      (sf-and-load '("midend/synutl") '()))) ;; This should go elsewhere!
 
 ;; Load the assembler instruction database.
 (in-package (->environment '(COMPILER LAP-SYNTAXER))
