@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.78 1989/03/14 08:02:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.79 1989/03/30 16:40:07 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -55,7 +55,11 @@
 				 operation/write-substring!
 				 operation/write-substrings!
 				 operation/x-size
-				 operation/y-size)))
+				 operation/y-size
+				 operation/wipe!
+				 operation/enter!
+				 operation/exit!
+				 operation/discard!)))
   (state false read-only true)
   (operation/beep false read-only true)
   (operation/finish-update! false read-only true)
@@ -69,8 +73,19 @@
   (operation/write-substrings! false read-only true)
   (operation/x-size false read-only true)
   (operation/y-size false read-only true)
+  (operation/wipe! false read-only true)
+  (operation/enter! false read-only true)
+  (operation/exit! false read-only true)
+  (operation/discard! false read-only true)
   (window false)
   (in-update? false))
+
+(define (using-screen screen thunk)
+  (dynamic-wind (lambda ()
+		  ((screen-operation/enter! screen) screen))
+		thunk
+		(lambda ()
+		  ((screen-operation/exit! screen) screen))))   
 
 (define (with-screen-in-update! screen thunk)
   (let ((old-flag)
@@ -115,3 +130,15 @@
 (define (screen-write-substrings! screen x y strings bil biu bjl bju)
   ((screen-operation/write-substrings! screen)
    screen x y strings bil biu bjl bju))
+
+(define (screen-wipe! screen)
+  ((screen-operation/wipe! screen) screen))
+
+(define (screen-enter! screen)
+  ((screen-operation/enter! screen) screen))
+
+(define (screen-exit! screen)
+  ((screen-operation/exit! screen) screen))
+
+(define (screen-discard! screen)
+  ((screen-operation/discard! screen) screen))

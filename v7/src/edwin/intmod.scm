@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.30 1989/03/14 08:01:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.31 1989/03/30 16:39:58 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -141,16 +141,17 @@ Output is inserted into the buffer at the end."
 	(dynamic-wind
 	 (lambda () 'DONE)
 	 (lambda ()
-	   (intercept-^G-interrupts (lambda ()
-				      (newline)
-				      (write-string "Abort!"))
-	     (lambda ()
-	       (let ((environment (evaluation-environment false)))
-		 (with-output-to-current-point
-		  (lambda ()
-		    (write-line (eval-with-history (with-input-from-mark mark
-						     read)
-						   environment))))))))
+	   (with-output-to-current-point
+	    (lambda ()
+	      (intercept-^G-interrupts
+	       (lambda ()
+		 (newline)
+		 (write-string "Abort!"))
+	       (lambda ()
+		 (write-line
+		  (eval-with-history (with-input-from-mark mark
+							   read)
+				     (evaluation-environment false))))))))
 	 insert-interaction-prompt))))
 
 (define-command ("^R Interaction Refresh")

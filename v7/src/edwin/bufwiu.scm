@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.5 1989/03/14 07:59:18 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.6 1989/03/30 16:39:27 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -287,6 +287,7 @@
 ;;; modifiable, and the modeline must already show that it has been
 ;;; modified.  None of the procedures may be used if the window needs
 ;;; redisplay.
+;;; They must be called without interrupts.
 
 (define (%window-direct-update! window display-style)
   (with-instance-variables buffer-window window (display-style)
@@ -301,90 +302,80 @@
 
 (define (%direct-output-forward-character! window)
   (with-instance-variables buffer-window window ()
-    (without-interrupts
-     (lambda ()
-       (%set-buffer-point! buffer (mark1+ point))
-       (set! point (buffer-point buffer))
-       (let ((x-start (1+ (inferior-x-start cursor-inferior)))
-	     (y-start (inferior-y-start cursor-inferior)))
-	 (screen-write-cursor! saved-screen
-			       (+ saved-x-start x-start)
-			       (+ saved-y-start y-start))
-	 (screen-flush! saved-screen)
-	 (%set-inferior-x-start! cursor-inferior x-start))))))
+   (%set-buffer-point! buffer (mark1+ point))
+   (set! point (buffer-point buffer))
+   (let ((x-start (1+ (inferior-x-start cursor-inferior)))
+	 (y-start (inferior-y-start cursor-inferior)))
+     (screen-write-cursor! saved-screen
+			   (+ saved-x-start x-start)
+			   (+ saved-y-start y-start))
+     (screen-flush! saved-screen)
+     (%set-inferior-x-start! cursor-inferior x-start))))
 
 (define (%direct-output-backward-character! window)
   (with-instance-variables buffer-window window ()
-    (without-interrupts
-     (lambda ()
-       (%set-buffer-point! buffer (mark-1+ point))
-       (set! point (buffer-point buffer))
-       (let ((x-start (-1+ (inferior-x-start cursor-inferior)))
-	     (y-start (inferior-y-start cursor-inferior)))
-	 (screen-write-cursor! saved-screen
-			       (+ saved-x-start x-start)
-			       (+ saved-y-start y-start))
-	 (screen-flush! saved-screen)
-	 (%set-inferior-x-start! cursor-inferior x-start))))))
+   (%set-buffer-point! buffer (mark-1+ point))
+   (set! point (buffer-point buffer))
+   (let ((x-start (-1+ (inferior-x-start cursor-inferior)))
+	 (y-start (inferior-y-start cursor-inferior)))
+     (screen-write-cursor! saved-screen
+			   (+ saved-x-start x-start)
+			   (+ saved-y-start y-start))
+     (screen-flush! saved-screen)
+     (%set-inferior-x-start! cursor-inferior x-start))))
 
 (define (%direct-output-insert-char! window char)
   (with-instance-variables buffer-window window (char)
-    (without-interrupts
-     (lambda ()
-       (let ((x-start (inferior-x-start cursor-inferior))
-	     (y-start (inferior-y-start cursor-inferior)))
-	 (let ((x (+ saved-x-start x-start))
-	       (y (+ saved-y-start y-start)))
-	   (screen-write-char! saved-screen x y char)
-	   (screen-write-cursor! saved-screen (1+ x) y)
-	   (screen-flush! saved-screen))
-	 (line-window-direct-output-insert-char!
-	  (inferior-window (car (y->inferiors window y-start)))
-	  x-start
-	  char)
-	 (%set-inferior-x-start! cursor-inferior (1+ x-start)))))))
+   (let ((x-start (inferior-x-start cursor-inferior))
+	 (y-start (inferior-y-start cursor-inferior)))
+     (let ((x (+ saved-x-start x-start))
+	   (y (+ saved-y-start y-start)))
+       (screen-write-char! saved-screen x y char)
+       (screen-write-cursor! saved-screen (1+ x) y)
+       (screen-flush! saved-screen))
+     (line-window-direct-output-insert-char!
+      (inferior-window (car (y->inferiors window y-start)))
+      x-start
+      char)
+     (%set-inferior-x-start! cursor-inferior (1+ x-start)))))
 
 (define (%direct-output-insert-newline! window)
   (with-instance-variables buffer-window window ()
-    (without-interrupts
-     (lambda ()
-       (let ((y-start (1+ (inferior-y-start cursor-inferior))))
-	 (let ((inferior (make-inferior window line-window)))
-	   (%set-inferior-x-start! inferior 0)
-	   (%set-inferior-y-start! inferior y-start)
-	   (set-cdr! (last-pair line-inferiors) (list inferior))
-	   (set! last-line-inferior inferior)
-	   (line-window-direct-output-insert-newline!
-	    (inferior-window inferior)))
-	 (let ((y-end (1+ y-start)))
-	   (if (< y-end y-size)
-	       (begin
-		 (%set-inferior-y-size! blank-inferior (- y-size y-end))
-		 (%set-inferior-y-start! blank-inferior y-end))
-	       (begin
-		 (%set-inferior-x-start! blank-inferior false)
-		 (%set-inferior-y-start! blank-inferior false))))
-	 (%set-inferior-x-start! cursor-inferior 0)
-	 (%set-inferior-y-start! cursor-inferior y-start)
-	 (screen-write-cursor! saved-screen
-			       saved-x-start
-			       (+ saved-y-start y-start))
-	 (screen-flush! saved-screen))))))
+   (let ((y-start (1+ (inferior-y-start cursor-inferior))))
+     (let ((inferior (make-inferior window line-window)))
+       (%set-inferior-x-start! inferior 0)
+       (%set-inferior-y-start! inferior y-start)
+       (set-cdr! (last-pair line-inferiors) (list inferior))
+       (set! last-line-inferior inferior)
+       (line-window-direct-output-insert-newline!
+	(inferior-window inferior)))
+     (let ((y-end (1+ y-start)))
+       (if (< y-end y-size)
+	   (begin
+	     (%set-inferior-y-size! blank-inferior (- y-size y-end))
+	     (%set-inferior-y-start! blank-inferior y-end))
+	   (begin
+	     (%set-inferior-x-start! blank-inferior false)
+	     (%set-inferior-y-start! blank-inferior false))))
+     (%set-inferior-x-start! cursor-inferior 0)
+     (%set-inferior-y-start! cursor-inferior y-start)
+     (screen-write-cursor! saved-screen
+			   saved-x-start
+			   (+ saved-y-start y-start))
+     (screen-flush! saved-screen))))
 
 (define (%direct-output-insert-substring! window string start end)
   (with-instance-variables buffer-window window (string start end)
-    (without-interrupts
-     (lambda ()
-       (let ((x-start (inferior-x-start cursor-inferior))
-	     (y-start (inferior-y-start cursor-inferior))
-	     (length (- end start)))
-	 (let ((x (+ saved-x-start x-start))
-	       (y (+ saved-y-start y-start)))
-	   (screen-write-substring! saved-screen x y string start end)
-	   (screen-write-cursor! saved-screen (+ x length) y)
-	   (screen-flush! saved-screen))
-	 (line-window-direct-output-insert-substring!
-	  (inferior-window (car (y->inferiors window y-start)))
-	  x-start
-	  string start end)
-	 (%set-inferior-x-start! cursor-inferior (+ x-start length)))))))
+   (let ((x-start (inferior-x-start cursor-inferior))
+	 (y-start (inferior-y-start cursor-inferior))
+	 (length (- end start)))
+     (let ((x (+ saved-x-start x-start))
+	   (y (+ saved-y-start y-start)))
+       (screen-write-substring! saved-screen x y string start end)
+       (screen-write-cursor! saved-screen (+ x length) y)
+       (screen-flush! saved-screen))
+     (line-window-direct-output-insert-substring!
+      (inferior-window (car (y->inferiors window y-start)))
+      x-start
+      string start end)
+     (%set-inferior-x-start! cursor-inferior (+ x-start length)))))

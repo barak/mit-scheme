@@ -8,6 +8,7 @@
      "clscon"
      "clsmac"
      "complt"
+     "cterm"
      "entity"
      "grpops"
      "image"

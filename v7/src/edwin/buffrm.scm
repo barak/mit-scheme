@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.29 1989/03/14 07:58:54 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.30 1989/03/30 16:39:21 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -197,27 +197,37 @@
   (%window-direct-update! (frame-text-inferior frame) display-style))
 
 (define (window-direct-output-insert-char! frame char)
-  (let ((point (window-point frame)))
-    (%group-insert-char! (mark-group point) (mark-index point) char))
-  (%direct-output-insert-char! (frame-text-inferior frame) char))
+  (without-interrupts
+   (lambda ()
+     (let ((point (window-point frame)))
+       (%group-insert-char! (mark-group point) (mark-index point) char))
+     (%direct-output-insert-char! (frame-text-inferior frame) char))))
 
 (define (window-direct-output-insert-newline! frame)
-  (let ((point (window-point frame)))
-    (%group-insert-char! (mark-group point) (mark-index point) #\newline))
-  (%direct-output-insert-newline! (frame-text-inferior frame)))
+  (without-interrupts
+   (lambda ()
+     (let ((point (window-point frame)))
+       (%group-insert-char! (mark-group point) (mark-index point) #\newline))
+     (%direct-output-insert-newline! (frame-text-inferior frame)))))
 
 (define (window-direct-output-insert-substring! frame string start end)
-  (let ((point (window-point frame)))
-    (%group-insert-substring! (mark-group point) (mark-index point)
-			      string start end))
-  (%direct-output-insert-substring! (frame-text-inferior frame)
-				    string start end))
+  (without-interrupts
+   (lambda ()
+     (let ((point (window-point frame)))
+       (%group-insert-substring! (mark-group point) (mark-index point)
+				 string start end))
+     (%direct-output-insert-substring! (frame-text-inferior frame)
+				       string start end))))
 
 (define-integrable (window-direct-output-forward-char! frame)
-  (%direct-output-forward-character! (frame-text-inferior frame)))
+  (without-interrupts
+   (lambda ()
+     (%direct-output-forward-character! (frame-text-inferior frame)))))
 
 (define-integrable (window-direct-output-backward-char! frame)
-  (%direct-output-backward-character! (frame-text-inferior frame)))
+  (without-interrupts
+   (lambda ()
+     (%direct-output-backward-character! (frame-text-inferior frame)))))
 
 (define (window-scroll-y-absolute! frame y-point)
   (let ((window (frame-text-inferior frame)))

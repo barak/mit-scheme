@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.1 1989/03/14 08:12:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.2 1989/03/30 16:39:47 jinx Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -179,11 +179,15 @@ MIT in each case. |#
   (export (edwin)
 	  make-screen
 	  screen-beep
+	  screen-discard!
+	  screen-enter!
+	  screen-exit!
 	  screen-flush!
 	  screen-in-update?
 	  screen-inverse-video!
 	  screen-state
 	  screen-window
+	  screen-wipe!
 	  screen-write-char!
 	  screen-write-cursor!
 	  screen-write-substring!
@@ -192,24 +196,22 @@ MIT in each case. |#
 	  screen-y-size
 	  set-screen-window!
 	  subscreen-clear!
+	  using-screen
 	  with-screen-in-update!))
 
 (define-package (edwin x-screen)
   (files "xterm")
   (parent (edwin))
   (export (edwin)
-	  make-xterm-input-port
-	  make-xterm-screen
-	  with-editor-interrupts
-	  with-editor-interrupts-disabled
-	  with-editor-interrupts-enabled
-	  xterm-close-all-displays
-	  xterm-close-display
-	  xterm-close-window
-	  xterm-map
-	  xterm-open-display
-	  xterm-open-window
-	  xterm-unmap))
+	  X-display)
+  (initialization (initialize-package!)))
+
+(define-package (edwin console-screen)
+  (files "cterm")
+  (parent (edwin))
+  (export (edwin)
+	  console-display)
+  (initialization (initialize-package!)))
 
 (define-package (edwin window)
   (files "window"
@@ -224,6 +226,8 @@ MIT in each case. |#
 	 "edtfrm"
 	 "winmis")
   (parent (edwin))
+  (export ()
+	  edwin-set-display!)
   (export (edwin)
 	  editor-frame-select-cursor!
 	  editor-frame-select-window!
@@ -231,10 +235,13 @@ MIT in each case. |#
 	  editor-frame-typein-window
 	  editor-frame-window0
 	  edwin-discard-state!
+	  edwin-display
 	  edwin-editor
 	  edwin-input-port
 	  edwin-reset
 	  edwin-reset-windows
+	  edwin-screen
+	  make-display
 	  make-editor-frame
 	  modeline-mode-string
 	  modeline-modified-string
@@ -272,7 +279,10 @@ MIT in each case. |#
 	  window-select-time
 	  window-set-override-message!
 	  window-start-mark
-	  window-y-center)
+	  window-y-center
+	  with-editor-interrupts
+	  with-editor-interrupts-enabled
+	  with-editor-interrupts-disabled)
   (export (edwin prompt)
 	  clear-override-message!
 	  frame-text-inferior

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.1 1989/03/14 08:08:58 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.2 1989/03/30 16:40:21 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -68,7 +68,7 @@
 
 (define (make-xterm-screen #!optional geometry)
   (make-screen (make-xterm-screen-state
-		(xterm-open-window (or (xterm-open-display false)
+		(xterm-open-window (or (get-X-display)
 				       (error "unable to open display"))
 				   (and (not (default-object? geometry))
 					geometry)
@@ -84,14 +84,18 @@
 	       xterm-screen/write-substring!
 	       xterm-screen/write-substrings!
 	       xterm-screen/x-size
-	       xterm-screen/y-size))
+	       xterm-screen/y-size
+	       xterm-screen/wipe!
+	       xterm-screen/enter!
+	       xterm-screen/exit!
+	       xterm-screen/discard!))
 
 (define-integrable (screen-xterm screen)
   (xterm-screen-state/xterm (screen-state screen)))
 
 (define-integrable (screen-highlight screen)
   (xterm-screen-state/highlight (screen-state screen)))
-
+
 (define-integrable (set-screen-highlight! screen highlight)
   (set-xterm-screen-state/highlight! (screen-state screen) highlight))
 
@@ -140,7 +144,7 @@
 					    ail aiu
 					    highlight)
 		    (loop (1+ y) (1+ j)))))))))))
-
+
 (define (clip axu x bil biu receiver)
   (let ((ail (- bil x)))
     (if (< ail biu)
@@ -159,6 +163,22 @@
 
 (define (xterm-screen/y-size screen)
   (xterm-y-size (screen-xterm screen)))
+
+(define (xterm-screen/wipe! screen)
+  screen				; ignored
+  unspecific)
+
+(define (xterm-screen/enter! screen)
+  screen				; ignored
+  unspecific)
+
+(define (xterm-screen/exit! screen)
+  screen				; ignored
+  unspecific)
+
+(define (xterm-screen/discard! screen)
+  screen				; ignored
+  (close-X-display))
 
 ;;;; Input Port
 
@@ -270,15 +290,15 @@
   (set! pending-interrupt? false)
   (^G-signal))
 
-(define (with-editor-interrupts thunk)
+(define (with-editor-interrupts-from-X thunk)
   (fluid-let ((signal-interrupts? true)
 	      (pending-interrupt? false))
     (thunk)))
 
-(define (with-editor-interrupts-enabled thunk)
+(define (with-X-interrupts-enabled thunk)
   (bind-signal-interrupts? true thunk))
 
-(define (with-editor-interrupts-disabled thunk)
+(define (with-X-interrupts-disabled thunk)
   (bind-signal-interrupts? false thunk))
 
 (define (bind-signal-interrupts? new-mask thunk)
@@ -294,3 +314,30 @@
 		    (set! signal-interrupts? old-mask)
 		    (if (and old-mask pending-interrupt?)
 			(signal-interrupt!))))))
+
+;;;; Display description for X displays
+
+(define X-display)
+(define X-display-data)
+
+(define (get-X-display)
+  (if (and (not (unassigned? X-display-data))
+	   X-display-data)
+      X-display-data
+      (let ((display (xterm-open-display false)))
+	(set! X-display-data display)
+	display)))      
+
+(define (close-X-display)
+  (xterm-close-all-displays)
+  (set! X-display-data false)
+  unspecific)
+
+(define (initialize-package!)
+  (set! X-display
+	(make-display get-X-display
+		      make-xterm-screen
+		      make-xterm-input-port
+		      with-editor-interrupts-from-X
+		      with-X-interrupts-enabled
+		      with-X-interrupts-disabled)))

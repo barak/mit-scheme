@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.1 1989/03/14 08:00:49 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.2 1989/03/30 16:39:53 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -82,15 +82,10 @@
 (define (group-insert-char! group index char)
   (without-interrupts
    (lambda ()
-     (group-insert-char-kernel group index char)
+     (%group-insert-char! group index char)
      (record-insertion! group index (group-gap-start group)))))
 
-(define (%group-insert-char! group index char)
-  (without-interrupts
-   (lambda ()
-     (group-insert-char-kernel group index char))))
-
-(define-integrable (group-insert-char-kernel group index char)
+(define-integrable (%group-insert-char! group index char)
   (barf-if-read-only group)
   (move-gap-to! group index)
   (guarantee-gap-length! group 1)
@@ -106,15 +101,10 @@
 (define (group-insert-substring! group index string start end)
   (without-interrupts
    (lambda ()
-     (group-insert-substring-kernel group index string start end)
+     (%group-insert-substring! group index string start end)
      (record-insertion! group index (group-gap-start group)))))
 
-(define (%group-insert-substring! group index string start end)
-  (without-interrupts
-   (lambda ()
-     (group-insert-substring-kernel group index string start end))))
-
-(define-integrable (group-insert-substring-kernel group index string start end)
+(define-integrable (%group-insert-substring! group index string start end)
   (barf-if-read-only group)
   (move-gap-to! group index)
   (let ((n (- end start)))

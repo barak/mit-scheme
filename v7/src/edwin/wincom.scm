@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.89 1989/03/14 08:03:47 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.90 1989/03/30 16:40:11 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 ;;;
@@ -178,9 +178,12 @@ Just minus as an argument moves down full screen."
 With a positive argument, inverse video is forced.
 With a negative argument, normal video is forced."
   (screen-inverse-video!
+   (current-screen)
    (or (positive? argument)
        (not (or (negative? argument)
-		(screen-inverse-video! false)))))
+		(screen-inverse-video!
+		 (current-screen)
+		 false)))))
   (update-screens! true))
 
 (define-command ("What Cursor Position")
