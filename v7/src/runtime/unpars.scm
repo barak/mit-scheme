@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.41 1995/03/04 00:37:55 cph Exp $
+$Id: unpars.scm,v 14.42 1995/04/12 21:14:45 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -55,6 +55,7 @@ MIT in each case. |#
   (set! *unparse-disambiguate-null-lambda-list?* false)
   (set! *unparse-compound-procedure-names?* true)
   (set! *unparse-with-datum?* false)
+  (set! *unparse-abbreviate-quotations?* #f)
   (set! system-global-unparser-table (make-system-global-unparser-table))
   (set! *default-list-depth* 0)
   (set-current-unparser-table! system-global-unparser-table))
@@ -70,6 +71,7 @@ MIT in each case. |#
 (define *unparse-disambiguate-null-lambda-list?*)
 (define *unparse-compound-procedure-names?*)
 (define *unparse-with-datum?*)
+(define *unparse-abbreviate-quotations?*)
 (define system-global-unparser-table)
 (define *default-list-depth*)
 (define *current-unparser-table*)
@@ -548,7 +550,8 @@ MIT in each case. |#
   (*unparse-object (cadr pair)))
 
 (define (unparse-list/prefix-pair? object)
-  (and (not (future? (car object)))
+  (and *unparse-abbreviate-quotations?*
+       (not (future? (car object)))
        (pair? (cdr object))
        (null? (cddr object))
        (case (car object)
