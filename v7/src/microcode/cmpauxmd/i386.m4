@@ -1,8 +1,8 @@
 ### -*-Midas-*-
 ###
-### $Id: i386.m4,v 1.56 2001/12/19 19:53:35 cph Exp $
+### $Id: i386.m4,v 1.57 2002/03/11 21:39:18 cph Exp $
 ###
-### Copyright (c) 1992-2001 Massachusetts Institute of Technology
+### Copyright (c) 1992-2002 Massachusetts Institute of Technology
 ###
 ### This program is free software; you can redistribute it and/or
 ### modify it under the terms of the GNU General Public License as
@@ -181,7 +181,9 @@ ifdef(`DASM',
 
 IFNDASM(`	.file	"cmpaux-i386.s"')
 
-# GAS doesn't implement pushfd/popfd, for no obvious reason.
+# GAS doesn't implement these, for no obvious reason.
+IFNDASM(`define(pushad,`pusha')')
+IFNDASM(`define(popad,`popa')')
 IFNDASM(`define(pushfd,`pushf')')
 IFNDASM(`define(popfd,`popf')')
 
@@ -673,10 +675,10 @@ define_code_label(EFR(ia32_cache_synchronize))
 ### Run the CPUID instruction for serialization.
 
 define_hook_label(serialize_cache)
-	pusha
+	pushad
 	OP(xor,l)	TW(REG(eax),REG(eax))
 	cpuid
-	popa
+	popad
 	ret
 
 ### Stub to be used in place of above on machines that don't need it.
