@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.12 2001/09/24 05:24:55 cph Exp $
+$Id: char.scm,v 14.13 2001/09/25 05:17:00 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -93,6 +93,7 @@ USA.
   (map char->ascii chars))
 
 (define (char=? x y)
+  ;; There's no %CHAR=? because the compiler recodes CHAR=? as EQ?.
   (guarantee-char x 'CHAR=?)
   (guarantee-char y 'CHAR=?)
   (fix:= (char->integer x) (char->integer y)))
@@ -100,25 +101,34 @@ USA.
 (define (char<? x y)
   (guarantee-char x 'CHAR<?)
   (guarantee-char y 'CHAR<?)
+  (%char<? x y))
+
+(define-integrable (%char<? x y)
   (fix:< (char->integer x) (char->integer y)))
 
 (define (char<=? x y)
   (guarantee-char x 'CHAR<=?)
   (guarantee-char y 'CHAR<=?)
+  (%char<=? x y))
+
+(define-integrable (%char<=? x y)
   (fix:<= (char->integer x) (char->integer y)))
 
 (define (char>? x y)
   (guarantee-char x 'CHAR>?)
   (guarantee-char y 'CHAR>?)
+  (%char>? x y))
+
+(define-integrable (%char>? x y)
   (fix:> (char->integer x) (char->integer y)))
 
 (define (char>=? x y)
   (guarantee-char x 'CHAR>=?)
   (guarantee-char y 'CHAR>=?)
-  (fix:>= (char->integer x) (char->integer y)))
+  (%char>=? x y))
 
-(define (char-ci->integer char)
-  (char->integer (char-upcase char)))
+(define-integrable (%char>=? x y)
+  (fix:>= (char->integer x) (char->integer y)))
 
 (define (char-ci=? x y)
   (fix:= (char-ci->integer x) (char-ci->integer y)))
@@ -134,6 +144,9 @@ USA.
 
 (define (char-ci>=? x y)
   (fix:>= (char-ci->integer x) (char-ci->integer y)))
+
+(define-integrable (char-ci->integer char)
+  (char->integer (char-upcase char)))
 
 (define (char-downcase char)
   (guarantee-char char 'CHAR-DOWNCASE)
@@ -141,12 +154,9 @@ USA.
 
 (define (%char-downcase char)
   (if (fix:< (%char-code char) 256)
-      (%%char-downcase char)
+      (%make-char (vector-8b-ref downcase-table (%char-code char))
+		  (%char-bits char))
       char))
-
-(define-integrable (%%char-downcase char)
-  (%make-char (vector-8b-ref downcase-table (%char-code char))
-	      (%char-bits char)))
 
 (define (char-upcase char)
   (guarantee-char char 'CHAR-UPCASE)
@@ -154,12 +164,9 @@ USA.
 
 (define (%char-upcase char)
   (if (fix:< (%char-code char) 256)
-      (%%char-upcase char)
+      (%make-char (vector-8b-ref upcase-table (%char-code char))
+		  (%char-bits char))
       char))
-
-(define-integrable (%%char-upcase char)
-  (%make-char (vector-8b-ref upcase-table (%char-code char))
-	      (%char-bits char)))
 
 (define downcase-table)
 (define upcase-table)
