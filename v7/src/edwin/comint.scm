@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: comint.scm,v 1.20 1993/08/22 04:16:25 gjr Exp $
+$Id: comint.scm,v 1.21 1995/01/06 00:58:04 cph Exp $
 
-Copyright (c) 1991-1993 Massachusetts Institute of Technology
+Copyright (c) 1991-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -432,15 +432,13 @@ it just adds completion characters to the end of the filename."
 			 (buffer-default-directory (current-buffer))))))))
 
 (define (comint-current-filename-region)
-  (let ((point (current-point))
-	(chars "~/A-Za-z0-9---_.$#,"))
-    (let ((line-start (comint-line-start point)))
-      (let ((start
-	     (if (mark< point line-start)
-		 point
-		 (skip-chars-backward chars point (comint-line-start point)))))
-	(let ((end (skip-chars-forward chars start (line-end start 0))))
-	  (make-region start end))))))
+  (let ((point (current-point)))
+    (os/comint-filename-region (let ((line-start (comint-line-start point)))
+				 (if (mark< point line-start)
+				     point
+				     line-start))
+			       point
+			       (line-end point 0))))
 
 (define (comint-filename-complete pathname filename insert-completion)
   (standard-completion filename
