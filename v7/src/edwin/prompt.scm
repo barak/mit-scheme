@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.132 1989/04/20 08:16:22 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.133 1989/04/23 23:24:49 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -631,7 +631,8 @@ Whilst editing the command, the following commands are available:
   (lambda (argument)
     (fluid-let ((*command-history* (command-history-list))
 		(*command-history-index* argument))
-      (if (not (< 0 argument (length *command-history*)))
+      (if (or (<= argument 0)
+	      (> argument (length *command-history*)))
 	  (editor-error "argument out of range: " argument))
       (execute-command-history-entry
        (read-from-string
