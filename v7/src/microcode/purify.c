@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.43 1990/06/20 17:41:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.44 1990/06/28 18:19:53 jinx Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -378,28 +378,30 @@ N <     |                      |    |
 SCHEME_OBJECT
 Purify (Object, Purify_Object)
      SCHEME_OBJECT Object, Purify_Object;
-{ long Length;
+{
+  long Length;
   SCHEME_OBJECT *Heap_Start, *Result, Answer;
 
 /* Pass 1 -- Copy object to new heap, then GC into that heap */
 
-  GCFlip();
+  GCFlip ();
   Heap_Start = Free;
   *Free++ = Object;
-  Result = GCLoop(Heap_Start, &Free);
+  Result = GCLoop (Heap_Start, &Free);
   if (Free != Result)
-  { fprintf(stderr, "\nPurify: Pure Scan ended too early.\n");
-    Microcode_Termination(TERM_BROKEN_HEART);
+  {
+    fprintf (stderr, "\nPurify: Pure Scan ended too early.\n");
+    Microcode_Termination (TERM_BROKEN_HEART);
   }
-  Length = (Free-Heap_Start)-1;		/* Length of object */
-  GC();
+  Length = ((Free - Heap_Start) - 1);		/* Length of object */
+  GC ();
   Free[Purify_Vector_Header] =
     MAKE_OBJECT (TC_MANIFEST_VECTOR, Purify_N_Slots);
   Free[Purify_Length] = LONG_TO_UNSIGNED_FIXNUM(Length);
   Free[Purify_Really_Pure] = Purify_Object;
   Answer =  MAKE_POINTER_OBJECT (TC_VECTOR, Free);
-  Free += Purify_N_Slots+1;
-  return Answer;
+  Free += (Purify_N_Slots + 1);
+  return (Answer);
 }
 
 SCHEME_OBJECT
@@ -411,40 +413,48 @@ Purify_Pass_2 (Info)
   SCHEME_OBJECT *New_Object, Relocated_Object, *Result;
   long Pure_Length, Recomputed_Length;
 
-  Length = OBJECT_DATUM (FAST_MEMORY_REF (Info, Purify_Length));
+  Length = (OBJECT_DATUM (FAST_MEMORY_REF (Info, Purify_Length)));
   if (FAST_MEMORY_REF (Info, Purify_Really_Pure) == SHARP_F)
+  {
     Purify_Object =  false;
+  }
   else
+  {
     Purify_Object = true;
+  }
   Relocated_Object = *Heap_Bottom;
-  if (!Test_Pure_Space_Top(Free_Constant+Length+6))
-    return SHARP_F;
+  if (!(Test_Pure_Space_Top (Free_Constant + Length + 6)))
+  {
+    return (SHARP_F);
+  }
   New_Object = Free_Constant;
-  GCFlip();
+  GCFlip ();
   *Free_Constant++ = SHARP_F;	/* Will hold pure space header */
   *Free_Constant++ = Relocated_Object;
   if (Purify_Object)
   {
-    Result = PurifyLoop(New_Object + 1, &Free_Constant, PURE_COPY);
+    Result = PurifyLoop ((New_Object + 1), &Free_Constant, PURE_COPY);
 
     if (Free_Constant != Result)
     {
-      fprintf(stderr, "\nPurify: Pure Copy ended too early.\n");
-      Microcode_Termination(TERM_BROKEN_HEART);
+      fprintf (stderr, "\nPurify: Pure Copy ended too early.\n");
+      Microcode_Termination (TERM_BROKEN_HEART);
     }
-    Pure_Length = (Free_Constant-New_Object) + 1;
+    Pure_Length = ((Free_Constant - New_Object) + 1);
   }
   else
+  {
     Pure_Length = 3;
-  *Free_Constant++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
-  *Free_Constant++ = MAKE_OBJECT (CONSTANT_PART, Pure_Length);
+  }
+  *Free_Constant++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
+  *Free_Constant++ = (MAKE_OBJECT (CONSTANT_PART, Pure_Length));
   if (Purify_Object)
   {
-    Result = PurifyLoop(New_Object + 1, &Free_Constant, CONSTANT_COPY);
+    Result = PurifyLoop ((New_Object + 1), &Free_Constant, CONSTANT_COPY);
     if (Result != Free_Constant)
     {
-      fprintf(stderr, "\nPurify: Pure Copy ended too early.\n");
-      Microcode_Termination(TERM_BROKEN_HEART);
+      fprintf (stderr, "\nPurify: Pure Copy ended too early.\n");
+      Microcode_Termination (TERM_BROKEN_HEART);
     }
   }
 
@@ -454,29 +464,28 @@ Purify_Pass_2 (Info)
 
   else
   {
-    Result = GCLoop(New_Object + 1, &Free_Constant);
+    Result = GCLoop ((New_Object + 1), &Free_Constant);
     if (Result != Free_Constant)
     {
-      fprintf(stderr, "\nPurify: Constant Copy ended too early.\n");
-      Microcode_Termination(TERM_BROKEN_HEART);
+      fprintf (stderr, "\nPurify: Constant Copy ended too early.\n");
+      Microcode_Termination (TERM_BROKEN_HEART);
     }
   }
   Recomputed_Length = ((Free_Constant - New_Object) - 4);
-  *Free_Constant++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
-  *Free_Constant++ = MAKE_OBJECT (END_OF_BLOCK, (Recomputed_Length + 5));
-#ifndef FLOATING_ALIGNMENT
-  if (Length > Recomputed_Length)
+  *Free_Constant++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
+  *Free_Constant++ = (MAKE_OBJECT (END_OF_BLOCK, (Recomputed_Length + 5)));
+  if (!(Test_Pure_Space_Top (Free_Constant)))
   {
-    fprintf(stderr, "\nPurify phase error %x, %x\n",
-	    Length, Recomputed_Length);
-    Microcode_Termination(TERM_EXIT);
+    fprintf (stderr,
+	     "\nPurify overrun: Constant_Top = 0x%lx, Free_Constant = 0x%lx\n",
+	     Constant_Top, Free_Constant);
+    Microcode_Termination (TERM_EXIT);
   }
-#endif
   *New_Object++ =
-    MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, Pure_Length);
-  *New_Object = MAKE_OBJECT (PURE_PART, (Recomputed_Length + 5));
-  GC();
-  Set_Pure_Top();
+    (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, Pure_Length));
+  *New_Object = (MAKE_OBJECT (PURE_PART, (Recomputed_Length + 5)));
+  GC ();
+  Set_Pure_Top ();
   return (SHARP_T);
 }
 
