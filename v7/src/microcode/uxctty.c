@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxctty.c,v 1.4 1990/11/05 22:59:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxctty.c,v 1.5 1990/11/11 00:25:13 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -390,6 +390,9 @@ DEFUN (UX_initialize_ctty, (interactive), int interactive)
        : (UX_open (tty, O_RDWR, 0)));
   }
   permit_ctty_control = interactive;
+  (inside_ctty_state . fd) = (outside_ctty_state . fd) = ctty_fildes;
+  (inside_stdin_state . fd) = (outside_stdin_state . fd) = STDIN_FILENO;
+  (inside_stdout_state . fd) = (outside_stdout_state . fd) = STDOUT_FILENO;
   UX_ctty_save_external_state ();
   (inside_ctty_state . recorded_p) = 0;
   (inside_stdin_state . recorded_p) = 0;
