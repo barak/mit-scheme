@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.1 1993/06/08 06:13:32 gjr Exp $
+$Id: lapgen.scm,v 1.2 1993/06/09 10:09:41 jawilson Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -140,8 +140,11 @@ MIT in each case. |#
 (define-integrable (register-is-machine-register? reg)
   (< reg number-of-machine-registers))
 
-(define (cast reg type)
+(define (rhs-cast reg type)
   (string-append "((" (type->name type) ") " reg ")"))
+
+(define (lhs-cast reg type)
+  (string-append "(* ((" (type->name type) " *) &" reg "))"))
 
 (define permanent-register-list)
 (define current-register-list)
@@ -160,11 +163,11 @@ MIT in each case. |#
 	 (let ((name (machine-register-name reg)))
 	   (if (eq? (machine-register-type-symbol reg) type)
 	       name
-	       (cast name type))))
+	       (rhs-cast name type))))
 	((find-register reg type))
 	((find-register reg false)
 	 => (lambda (reg)
-	      (cast reg type)))
+	      (rhs-cast reg type)))
 	(else
 	 (comp-internal-error "Unallocated register"
 			      'STANDARD-SOURCE! reg))))
@@ -172,6 +175,11 @@ MIT in each case. |#
 (define (standard-target! reg type)
   (cond ((register-is-machine-register? reg)
 	 (machine-register-name reg))
+	#|
+	;; This code is broken.
+	;; It gives multiple C aliases to a single RTL register,
+	;; but nothing guarantees that the most recent alias is used
+	;; when reading the value.
 	((assq reg current-register-list)
 	 => (lambda (aliases)
 	      (let ((alias (assq type (cdr aliases))))
@@ -181,6 +189,11 @@ MIT in each case. |#
 		      (set-cdr! aliases (list (cons type name)))
 		      name)
 		    (cdr alias)))))
+	|#
+	((find-register reg type))
+	((find-register reg false)
+	 => (lambda (reg)
+	      (lhs-cast reg type)))
 	(else
 	 (let ((name (new-register-name reg type)))
 	   (set! current-register-list
@@ -220,7 +233,18 @@ MIT in each case. |#
     (let ((tgt (standard-target! tgt src-type)))
       (LAP ,tgt " = " ,src ";\n\t")))
 
-  (cond ((register-is-machine-register? src)
+  (define (do-src tgt tgt-type)
+    (let ((src (standard-source! src tgt-type)))
+      (LAP ,tgt " = " ,src ";\n\t")))
+
+  (cond ((register-is-machine-register? tgt)
+	 (do-src (machine-register-name tgt)
+		 (machine-register-type-symbol tgt)))
+	((assq tgt current-register-list)
+	 => (lambda (aliases)
+	      (let ((alias (cadr aliases)))
+		(do-src (cdr alias) (car alias)))))
+	((register-is-machine-register? src)
 	 (do-tgt (machine-register-name src)
 		 (machine-register-type-symbol src)))
 	((assq src current-register-list)
