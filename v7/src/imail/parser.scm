@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.1 2000/04/18 21:30:42 cph Exp $
+;;; $Id: parser.scm,v 1.2 2000/04/22 05:04:31 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -31,6 +31,15 @@
 ;;; was parsed, and whose cdr is an alist of keyword/token pairs.  If
 ;;; the parser fails, it returns #F.
 
+(define (parse-string parser string)
+  (parse-substring parser string 0 (string-length string)))
+
+(define (parse-substring parser string start end)
+  (let ((pv (parser string start end)))
+    (and pv
+	 (fix:= (car pv) end)
+	 pv)))
+
 (define (parser-token parser-value keyword)
   (let ((entry (assq keyword (cdr parser-value))))
     (and entry
@@ -56,16 +65,38 @@
       (and i
 	   (list i (cons keyword (substring string start i)))))))
 
-(define (decoding-parser match-encoded decode match-decoded keyword)
+(define (decoding-parser match-encoded decode parse-decoded)
   (lambda (string start end)
     (let ((i (match-encoded string start end)))
       (and i
 	   (let ((string (decode string start i)))
 	     (let ((end (string-length string)))
-	       (let ((j (match-decoded string 0 end)))
-		 (and j
-		      (fix:= j end)
-		      (list i (cons keyword (substring string 0 j)))))))))))
+	       (let ((pv (parse-substring parse-decoded string 0 end)))
+		 (and pv
+		      (cons i (cdr pv))))))))))
+
+(define (encapsulating-parser parser transformer keyword)
+  (lambda (string start end)
+    (let ((pv (parser string start end)))
+      (and pv
+	   (list (car pv) (cons keyword (transformer pv)))))))
+
+(define (list-parser match-element match-delimiter keyword)
+  (lambda (string start end)
+    (let ((index (match-element string start end)))
+      (if index
+	  (let loop
+	      ((start index)
+	       (elements (list (substring string start index))))
+	    (let ((index (match-delimiter string start end)))
+	      (if index
+		  (let ((index* (match-element string start end)))
+		    (if index*
+			(loop index*
+			      (cons (substring string index index*) elements))
+			(list start (cons keyword elements))))
+		  (list start (cons keyword elements)))))
+	  (list start (list keyword))))))
 
 (define (optional-parser . parsers)
   (let ((parse (apply sequence-parser parsers)))
