@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.84 2000/05/23 17:40:04 cph Exp $
+;;; $Id: imail-imap.scm,v 1.85 2000/05/23 18:03:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -323,15 +323,21 @@
 	       (reset-imap-connection connection)
 	       (if (not (memq 'IMAP4REV1 (imap:command:capability connection)))
 		   (error "Server doesn't support IMAP4rev1:" url))
-	       (let ((response
-		      (imail-call-with-pass-phrase
-		       (imap-connection-url connection)
-		       (lambda (pass-phrase)
-			 (imap:command:login connection
-					     (imap-url-user-id url)
-					     pass-phrase)))))
-		 (if (imap:response:no? response)
-		     (error "Unable to log in:" response)))
+	       (bind-condition-handler
+		   (list condition-type:imap-server-error)
+		   (lambda (condition)
+		     (let ((response (imap:server-error:response condition)))
+		       (if (imap:response:no? response)
+			   (error
+			    "Unable to log in:"
+			    (imap:response:response-text-string response)))))
+		 (lambda ()
+		   (imail-call-with-pass-phrase
+		    (imap-connection-url connection)
+		    (lambda (pass-phrase)
+		      (imap:command:login connection
+					  (imap-url-user-id url)
+					  pass-phrase)))))
 	       (set! finished? #t))
 	     (lambda ()
 	       (if (not finished?)
@@ -455,10 +461,9 @@
 	    (dynamic-wind
 	     (lambda () unspecific)
 	     (lambda ()
-	       (set! selected?
-		     (imap:command:select
-		      connection
-		      (imap-url-mailbox (folder-url folder))))
+	       (imap:command:select connection
+				    (imap-url-mailbox (folder-url folder)))
+	       (set! selected? #t)
 	       unspecific)
 	     (lambda ()
 	       (if (not selected?)
@@ -788,16 +793,22 @@
   (let ((folder (message-folder message))
 	(maybe-create
 	 (lambda (connection thunk)
-	   (let ((response (thunk)))
-	     (if (imap:response:no? response)
-		 (if (imap:response-code:trycreate?
-		      (imap:response:response-text-code response))
-		     (begin
-		       (imap:command:create connection (imap-url-mailbox url))
-		       (let ((response (thunk)))
-			 (if (imap:response:no? response)
-			     (imap:server-error response))))
-		     (imap:server-error response)))))))
+	   (call-with-current-continuation
+	    (lambda (k)
+	      (if (bind-condition-handler
+		      (list condition-type:imap-server-error)
+		      (lambda (condition)
+			(let ((response
+			       (imap:server-error:response condition)))
+			  (if (and (imap:response:no? response)
+				   (imap:response-code:trycreate?
+				    (imap:response:response-text-code
+				     response)))
+			      (k #t))))
+		    (lambda () (thunk) #f))
+		  (begin
+		    (imap:command:create connection (imap-url-mailbox url))
+		    (thunk))))))))
     (if (let ((url* (folder-url folder)))
 	  (and (imap-url? url*)
 	       (compatible-imap-urls? url url*)))
@@ -901,13 +912,12 @@
 (define (imap:command:login connection user-id pass-phrase)
   ((imail-message-wrapper "Logging in as " user-id)
    (lambda ()
-     (imap:command:no-response-1 connection 'LOGIN user-id pass-phrase))))
+     (imap:command:no-response connection 'LOGIN user-id pass-phrase))))
 
 (define (imap:command:select connection mailbox)
   ((imail-message-wrapper "Select mailbox " mailbox)
    (lambda ()
-     (imap:response:ok?
-      (imap:command:no-response-1 connection 'SELECT mailbox)))))
+     (imap:command:no-response connection 'SELECT mailbox))))
 
 (define (imap:command:fetch connection index items)
   (imap:command:single-response imap:response:fetch? connection
@@ -952,13 +962,13 @@
   (imap:command:no-response connection 'RENAME from to))
 
 (define (imap:command:uid-copy connection uid mailbox)
-  (imap:command:no-response-1 connection 'UID 'COPY uid mailbox))
+  (imap:command:no-response connection 'UID 'COPY uid mailbox))
 
 (define (imap:command:append connection mailbox flags time text)
-  (imap:command:no-response-1 connection 'APPEND mailbox
-			      (and (pair? flags) flags)
-			      (imap:universal-time->date-time time)
-			      (cons 'LITERAL text)))
+  (imap:command:no-response connection 'APPEND mailbox
+			    (and (pair? flags) flags)
+			    (imap:universal-time->date-time time)
+			    (cons 'LITERAL text)))
 
 (define (imap:command:search connection . key-plist)
   (apply imap:command:single-response imap:response:search? connection
@@ -969,44 +979,45 @@
 				  'LIST reference pattern))
 
 (define (imap:command:no-response connection command . arguments)
-  (let ((response
-	 (apply imap:command:no-response-1 connection command arguments)))
-    (if (not (imap:response:ok? response))
-	(imap:server-error response))))
-
-(define (imap:command:no-response-1 connection command . arguments)
   (let ((responses (apply imap:command connection command arguments)))
     (if (not (null? (cdr responses)))
 	(error "Malformed response from IMAP server:" responses))
-    (car responses)))
+    unspecific))
 
 (define (imap:command:single-response predicate connection command . arguments)
   (let ((responses (apply imap:command connection command arguments)))
-    (if (imap:response:ok? (car responses))
-	(if (and (pair? (cdr responses))
-		 (predicate (cadr responses))
-		 (null? (cddr responses)))
-	    (cadr responses)
-	    (error "Malformed response from IMAP server:" responses))
-	(imap:server-error (car responses)))))
+    (if (and (pair? (cdr responses))
+	     (predicate (cadr responses))
+	     (null? (cddr responses)))
+	(cadr responses)
+	(error "Malformed response from IMAP server:" responses))))
 
 (define (imap:command:multiple-response predicate
 					connection command . arguments)
   (let ((responses (apply imap:command connection command arguments)))
-    (if (imap:response:ok? (car responses))
-	(if (for-all? (cdr responses) predicate)
-	    (cdr responses)
-	    (error "Malformed response from IMAP server:" responses))
-	(imap:server-error (car responses)))))
+    (if (for-all? (cdr responses) predicate)
+	(cdr responses)
+	(error "Malformed response from IMAP server:" responses))))
 
-(define (imap:server-error response)
-  (let ((msg
-	 (string-append "Server signalled a command error: "
-			(imap:response:response-text-string response)))
-	(code (imap:response:response-text-code response)))
-    (if code
-	(error msg code)
-	(error msg))))
+(define condition-type:imap-server-error
+  (make-condition-type 'IMAP-SERVER-ERROR condition-type:error '(RESPONSE)
+    (lambda (condition port)
+      (let ((response (imap:server-error:response condition)))
+	(write-string "Server signalled a command error: " port)
+	(write-string (imap:response:response-text-string response) port)
+	(let ((code (imap:response:response-text-code response)))
+	  (if code
+	      (begin
+		(write-char #\space port)
+		(write code port))))))))
+
+(define imap:server-error
+  (condition-signaller condition-type:imap-server-error
+		       '(RESPONSE)
+		       standard-error-handler))
+
+(define imap:server-error:response
+  (condition-accessor condition-type:imap-server-error 'RESPONSE))
 
 (define (imap:command connection command . arguments)
   (handle-broken-pipe
@@ -1097,7 +1108,7 @@
 	       (imap:write-literal-string-body string port))
 	      ((and (imap:response:tag response)
 		    (string-ci=? tag (imap:response:tag response)))
-	       (error "Unable to finish continued command:" response))
+	       (imap:server-error response))
 	      (else
 	       (enqueue-imap-response connection response)
 	       (loop)))))))
@@ -1117,10 +1128,9 @@
 		      connection command
 		      (dequeue-imap-responses connection))))
 		(if (string-ci=? tag tag*)
-		    (if (or (imap:response:ok? response)
-			    (imap:response:no? response))
+		    (if (imap:response:ok? response)
 			(cons response responses)
-			(error "IMAP protocol error:" response))
+			(imap:server-error response))
 		    (if (< (base26-string->nonnegative-integer tag*)
 			   (base26-string->nonnegative-integer tag))
 			;; If this is an old tag, ignore it and move on.
