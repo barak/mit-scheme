@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.21 1992/04/23 18:22:38 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.22 1992/04/23 18:27:05 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -48,7 +48,7 @@
 
 (define-variable rmailsum-rcs-header
   "The RCS header of the rmailsum.scm file."
-  "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.21 1992/04/23 18:22:38 bal Exp $"
+  "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.22 1992/04/23 18:27:05 bal Exp $"
   string?)
 
 (define-variable-per-buffer rmail-buffer
@@ -454,7 +454,6 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
 (define-key 'rmail-summary #\?		'describe-mode)
 (define-key 'rmail-summary #\m		'rmail-summary-mail)
 (define-key 'rmail-summary #\r		'rmail-summary-reply)
-(define-key 'rmail-summary #\R		'rmail-summary-reply)
 
 ;;; (define-key 'rmail #\a		'rmail-add-label)
 ;;; (define-key 'rmail #\k		'rmail-kill-label)
@@ -814,14 +813,10 @@ Calls whatever function is bound to #\m in RMAIL mode."
 
 (define-command rmail-summary-reply
   "Reply to the current message.
-Calls whatever function is bound to the command key in RMAIL mode.
-Note that both #\r and #\R are bound to this command."
+Calls whatever function is bound to #\r in RMAIL mode."
   "P"
   (lambda (arg)
-    (let ((key (current-command-key)))
-      (if (char? key)
-	  (begin
-	    (select-buffer-other-window (ref-variable rmail-buffer))
-	    ((command-procedure
-	      (comtab-entry (mode-comtabs (current-major-mode)) key))
-	     arg))))))
+    (select-buffer-other-window (ref-variable rmail-buffer))
+    ((command-procedure
+      (comtab-entry (mode-comtabs (current-major-mode)) #\r))
+     arg)))
