@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: abbrev.scm,v 1.9 2003/02/14 18:28:10 cph Exp $
+$Id: abbrev.scm,v 1.10 2003/03/08 02:38:57 cph Exp $
 
-Copyright 2000-2001 Massachusetts Institute of Technology
+Copyright 2000,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,35 +32,31 @@ USA.
 (define make-abbrev-table make-string-hash-table)
 (define abbrev-table? hash-table?)
 
-(define-structure (abbrev-entry (type-descriptor abbrev-entry-rtd))
+(define-structure (abbrev-entry (type-descriptor <abbrev-entry>))
   (expansion #f read-only #t)
   (hook #f read-only #t)
   (count 0))
+
+(define (guarantee-abbrev-table object caller)
+  (if (not (abbrev-table? object))
+      (error:wrong-type-argument object "abbrev table" caller)))
 
 (define (clear-abbrev-table table)
   (set! abbrevs-changed? #t)
   (hash-table/clear! table))
 
 (define (define-abbrev table abbrev expansion #!optional hook count)
-  (if (not (abbrev-table? table))
-      (error:wrong-type-argument table "abbrev table" 'DEFINE-ABBREV))
-  (if (not (string? abbrev))
-      (error:wrong-type-argument abbrev "string" 'DEFINE-ABBREV))
-  (if (not (string? expansion))
-      (error:wrong-type-argument expansion "string" 'DEFINE-ABBREV))
-  (if (not (or (default-object? hook) (not hook) (symbol? hook)))
-      (error:wrong-type-argument hook "symbol" 'DEFINE-ABBREV))
-  (if (not (or (default-object? count) (exact-nonnegative-integer? count)))
-      (error:wrong-type-argument count
-				 "exact non-negative integer"
-				 'DEFINE-ABBREV))
-  (set! abbrevs-changed? #t)
-  (hash-table/put! table
-		   (string-downcase abbrev)
-		   (make-abbrev-entry
-		    expansion
-		    (if (default-object? hook) #f hook)
-		    (if (default-object? count) 0 count))))
+  (let ((hook (if (default-object? hook) #f hook))
+	(count (if (default-object? count) 0 count)))
+    (guarantee-abbrev-table table 'DEFINE-ABBREV)
+    (guarantee-string abbrev 'DEFINE-ABBREV)
+    (guarantee-string expansion 'DEFINE-ABBREV)
+    (if hook (guarantee-symbol hook 'DEFINE-ABBREV))
+    (guarantee-exact-nonnegative-integer count 'DEFINE-ABBREV)
+    (set! abbrevs-changed? #t)
+    (hash-table/put! table
+		     (string-downcase abbrev)
+		     (make-abbrev-entry expansion hook count))))
 
 (define (define-global-abbrev abbrev expansion)
   (define-abbrev (ref-variable global-abbrev-table #f) abbrev expansion))
@@ -72,10 +68,8 @@ USA.
     (define-abbrev table abbrev expansion)))
 
 (define (undefine-abbrev table abbrev)
-  (if (not (abbrev-table? table))
-      (error:wrong-type-argument table "abbrev table" 'UNDEFINE-ABBREV))
-  (if (not (string? abbrev))
-      (error:wrong-type-argument abbrev "string" 'UNDEFINE-ABBREV))
+  (guarantee-abbrev-table table 'UNDEFINE-ABBREV)
+  (guarantee-string abbrev 'UNDEFINE-ABBREV)
   (set! abbrevs-changed? #t)
   (hash-table/remove! table (string-downcase abbrev)))
 

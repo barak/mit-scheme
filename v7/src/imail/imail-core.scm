@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.150 2003/03/07 05:49:18 cph Exp $
+$Id: imail-core.scm,v 1.151 2003/03/08 02:40:14 cph Exp $
 
 Copyright 1999,2000,2001,2003 Massachusetts Institute of Technology
 
@@ -719,7 +719,7 @@ USA.
 ;;;; Folder orders
 
 (define-structure (folder-order
-		   (type-descriptor folder-order-rtd)
+		   (type-descriptor <folder-order>)
 		   (constructor make-folder-order (predicate)))
   (predicate #f read-only #t)
   (forward #f)
@@ -879,7 +879,7 @@ USA.
 ;;;; Header fields
 
 (define-structure (header-field
-		   (type-descriptor header-field-rtd)
+		   (type-descriptor <header-field>)
 		   (safe-accessors #t)
 		   (constructor #f)
 		   (print-procedure
@@ -891,7 +891,7 @@ USA.
   (value #f read-only #t))
 
 (define make-header-field
-  (let ((constructor (record-constructor header-field-rtd)))
+  (let ((constructor (record-constructor <header-field>)))
     (lambda (name value)
       (guarantee-header-field-name name 'MAKE-HEADER-FIELD)
       (constructor name value))))
