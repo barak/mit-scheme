@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.52 2000/05/25 22:24:20 cph Exp $
+$Id: todo.txt,v 1.53 2000/05/30 13:01:05 cph Exp $
 
 Bug fixes
 ---------
@@ -19,6 +19,8 @@ Bug fixes
 
 New features
 ------------
+
+* Need command to move to first unseen message in folder.
 
 * In M-x imail-copy-folder, default the target buffer to have the same
   name as the source buffer, e.g. from "foo.rmail" to "inbox.foo".
