@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxproc.c,v 1.15 1993/06/24 07:10:11 gjr Exp $
+$Id: uxproc.c,v 1.16 1993/11/22 22:36:28 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -354,6 +354,9 @@ DEFUN (OS_make_subprocess,
 		|| ((SLAVE_PTY_P (ctty_name)) && (! (SETUP_SLAVE_PTY (fd))))
 #endif
 		|| (! (isatty (fd)))
+#ifdef TIOCSCTTY
+		|| ((UX_ioctl (fd, TIOCSCTTY, 0)) < 0)
+#endif
 		|| ((child_setup_tty (fd)) < 0))
 	      goto kill_child;
 	    /* Use CTTY for standard I/O if requested. */
