@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.3 1992/02/14 21:08:48 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.4 1992/02/14 21:12:00 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -98,8 +98,6 @@
 ####	registers need not be preserved by subprocedures.
 
 ####	Utility macros and definitions
-
-ifdef(GCC,`errprint("cmpaux-i386.m4 only works with GCC!")')
 
 define(use_external,`')			# Declare desire to use an external
 define(external_reference,`_$1')	# The actual reference
