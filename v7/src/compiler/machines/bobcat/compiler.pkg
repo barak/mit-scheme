@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.17 1989/01/06 20:50:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.18 1989/01/21 09:22:17 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -400,6 +400,8 @@ MIT in each case. |#
   (files "rtlgen/opncod")
   (parent (compiler rtl-generator))
   (export (compiler rtl-generator) combination/inline)
+  (export (compiler fg-optimizer simplicity-analysis)
+	  combination/inline/simple?)
   (export (compiler top-level) open-coding-analysis))
 
 (define-package (compiler rtl-generator find-block)
