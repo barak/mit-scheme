@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.31 1989/09/25 17:59:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.32 1989/10/28 06:44:35 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -193,13 +193,7 @@ DEFINE_PRIMITIVE ("FLONUM-EXPT", Prim_flonum_expt, 2, 2, 0)
 {
   extern double pow ();
   PRIMITIVE_HEADER (2);
-  {
-    fast double x = (arg_flonum (1));
-    fast double y = (arg_flonum (2));
-    if (x <= 0)
-      error_bad_range_arg (1);
-    FLONUM_RESULT (pow (x, y));
-  }
+  FLONUM_RESULT (pow ((arg_flonum (1)), (arg_flonum (2))));
 }
 
 DEFINE_PRIMITIVE ("FLONUM?", Prim_flonum_p, 1, 1, 0)
