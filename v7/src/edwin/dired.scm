@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.156 1995/09/25 20:29:00 cph Exp $
+;;;	$Id: dired.scm,v 1.157 1995/10/06 21:01:06 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -102,8 +102,6 @@ Type \\[dired-revert] to read the directory again.  This discards all deletion-f
 Space and Rubout can be used to move down and up by lines."
 ;;Type v to view a file in View mode, returning to Dired when done.
   (lambda (buffer)
-    (define-variable-local-value! buffer (ref-variable-object case-fold-search)
-      false)
     (event-distributor/invoke! (ref-variable dired-mode-hook buffer) buffer)))
 
 (define-key 'dired #\# 'dired-flag-auto-save-files)
