@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.6 1989/06/19 22:22:49 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.7 1989/06/21 10:43:20 cph Rel $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -47,26 +47,25 @@
 (declare (usual-integrations))
 
 (define-primitives
-  (xterm-open-display 1)
-  (xterm-close-display 1)
-  (xterm-close-all-displays 0)
+  (x-open-display 1)
+  (x-close-display 1)
+  (x-close-all-displays 0)
+  (x-close-window 1)
+  (x-window-beep 1)
+  (x-window-flush 1)
+  (x-window-read-event-flags! 1)
   (xterm-open-window 3)
-  (xterm-close-window 1)
-  (xterm-map 1)
-  (xterm-unmap 1)
   (xterm-x-size 1)
   (xterm-y-size 1)
-  (xterm-read-event-flags! 1)
-  (xterm-beep 1)
-  (xterm-flush 1)
+  (xterm-set-size 3)
   (xterm-write-cursor! 3)
   (xterm-write-char! 5)
   (xterm-write-substring! 7)
   (xterm-clear-rectangle! 6)
   (xterm-read-chars 2)
+  (xterm-button 1)
   (xterm-pointer-x 1)
-  (xterm-pointer-y 1)
-  (xterm-button 1))
+  (xterm-pointer-y 1))
 
 (define-structure (xterm-screen-state
 		   (constructor make-xterm-screen-state (xterm))
@@ -76,7 +75,7 @@
 
 (define (make-xterm-screen #!optional geometry)
   (make-screen (make-xterm-screen-state
-		(xterm-open-window (or (get-X-display)
+		(xterm-open-window (or (get-x-display)
 				       (error "unable to open display"))
 				   (and (not (default-object? geometry))
 					geometry)
@@ -111,15 +110,15 @@
   (xterm-screen/process-events! screen))
 
 (define (xterm-screen/finish-update! screen)
-  (xterm-flush (screen-xterm screen)))
+  (x-window-flush (screen-xterm screen)))
 
 (define (xterm-screen/beep screen)
   (let ((xterm (screen-xterm screen)))
-    (xterm-beep xterm)
-    (xterm-flush xterm)))
+    (x-window-beep xterm)
+    (x-window-flush xterm)))
 
 (define (xterm-screen/flush! screen)
-  (xterm-flush (screen-xterm screen)))
+  (x-window-flush (screen-xterm screen)))
 
 (define (xterm-screen/inverse-video! screen highlight?)
   (let ((result (not (zero? (screen-highlight screen)))))
@@ -186,7 +185,7 @@
 
 (define (xterm-screen/discard! screen)
   screen				; ignored
-  (close-X-display))
+  (close-x-display))
 
 ;;;; Input Port
 
@@ -275,78 +274,6 @@
 	(update-screen! screen false))
     result))
 
-(define xterm-event-list '())
-
-(define xterm-event-mask car)
-
-(define xterm-event-proc cdr)
-
-(define (add-xterm-event mask thunk)
-  (set! xterm-event-list
-	(cons (cons mask thunk)
-	      xterm-event-list)))
-
-(define xterm-event-resized (unsigned-integer->bit-string 32 1))
-(add-xterm-event xterm-event-resized
-   (lambda (xterm window)
-     (send window ':set-size!
-	   (xterm-x-size xterm)
-	   (xterm-y-size xterm))))
-
-(define *xterm-max-button-number* 5)
-
-(define (max-button-number)
-  (xterm-normalize-button-number *xterm-max-button-number*))
-
-(define (xterm-normalize-button-number button-number)
-  (-1+ button-number))
-
-(define xterm-button xterm-normalize-button-number)
-
-(define xterm-event-button-down (unsigned-integer->bit-string 32 2))
-(add-xterm-event xterm-event-button-down
-   (lambda (xterm window)
-     (send window ':button-down
-	   (xterm-normalize-button-number (xterm-button xterm))
-	   (xterm-pointer-x xterm)
-	   (xterm-pointer-y xterm))))
-
-(define xterm-event-button-up (unsigned-integer->bit-string 32 4))
-(add-xterm-event xterm-event-button-up
-   (lambda (xterm window)
-     (send window ':button-up
-	   (xterm-normalize-button-number (xterm-button xterm))
-	   (xterm-pointer-x xterm)
-	   (xterm-pointer-y xterm))))
-
-(define (xterm-screen/process-events! screen)
-  (let* ((xterm (screen-xterm screen))
-	 (flags (xterm-read-event-flags! xterm)))
-    (and (not (zero? flags))
-	 (let ((window (screen-window screen)))
-	   (and window
-		(let ((flag-bits
-		       (unsigned-integer->bit-string 32 flags)))
-		  (let loop ((events xterm-event-list)
-			     (any-events? false))
-		    (if (and (not (bit-string-zero? flag-bits))
-			     (pair? events))
-			(let ((event-found?
-			       (not (bit-string-zero?
-				     (bit-string-and
-				      flag-bits
-				      (xterm-event-mask (car events)))))))
-			  (bit-string-xor! flag-bits
-					   (xterm-event-mask (car events)))
-			  (if event-found?
-			      (begin
-				((xterm-event-proc (car events))
-				 xterm
-				 window)
-				(loop (cdr events) true))
-			      (loop (cdr events) any-events?)))
-			any-events?))))))))
-
 (define (check-for-interrupts! state buffer index)
   (set-xterm-input-port-state/buffer! state buffer)
   (let ((^g-index
@@ -367,15 +294,15 @@
   (set! pending-interrupt? false)
   (^G-signal))
 
-(define (with-editor-interrupts-from-X thunk)
+(define (with-editor-interrupts-from-x thunk)
   (fluid-let ((signal-interrupts? true)
 	      (pending-interrupt? false))
     (thunk)))
 
-(define (with-X-interrupts-enabled thunk)
+(define (with-x-interrupts-enabled thunk)
   (bind-signal-interrupts? true thunk))
 
-(define (with-X-interrupts-disabled thunk)
+(define (with-x-interrupts-disabled thunk)
   (bind-signal-interrupts? false thunk))
 
 (define (bind-signal-interrupts? new-mask thunk)
@@ -392,29 +319,120 @@
 		    (if (and old-mask pending-interrupt?)
 			(signal-interrupt!))))))
 
+(define (xterm-screen/process-events! screen)
+  (let ((xterm (screen-xterm screen))
+	(window (screen-window screen)))
+    (and window
+	 (let ((handlers
+		(vector-ref xterm-event-flags->handlers
+			    (x-window-read-event-flags! xterm))))
+	   (and (not (null? handlers))
+		(begin
+		  (for-each (lambda (handler) (handler xterm window)) handlers)
+		  true))))))
+
+(define-integrable xterm-event-flag:resized 0)
+(define-integrable xterm-event-flag:button-down 1)
+(define-integrable xterm-event-flag:button-up 2)
+(define-integrable xterm-number-of-event-flags 3)
+
+(define (define-xterm-event-handler event handler)
+  (vector-set! xterm-event-handlers event handler)
+  (set! xterm-event-flags->handlers
+	(binary-powerset-vector xterm-event-handlers))
+  unspecific)
+
+(define (binary-powerset-vector items)
+  (let ((n-items (vector-length items)))
+    (let ((table-length (expt 2 n-items)))
+      (let ((table (make-vector table-length '())))
+	(let loop ((i 1))
+	  (if (< i table-length)
+	      (begin
+		(vector-set!
+		 table
+		 i
+		 (let loop ((i i) (index 0))
+		   (if (zero? i)
+		       '()
+		       (let ((qr (integer-divide i 2)))
+			 (let ((rest
+				(loop (integer-divide-quotient qr)
+				      (1+ index))))
+			   (if (zero? (integer-divide-remainder qr))
+			       rest
+			       (cons (vector-ref items index) rest)))))))
+		(loop (1+ i)))))
+	table))))
+
+(define xterm-event-handlers
+  (make-vector xterm-number-of-event-flags false))
+
+(define xterm-event-flags->handlers)
+  
+(define-xterm-event-handler xterm-event-flag:resized
+  (lambda (xterm window)
+    (send window ':set-size!
+	  (xterm-x-size xterm)
+	  (xterm-y-size xterm))))
+
+(define-xterm-event-handler xterm-event-flag:button-down
+  (lambda (xterm window)
+    (send window ':button-event!
+	  (button-downify (xterm-button xterm))
+	  (xterm-pointer-x xterm)
+	  (xterm-pointer-y xterm))))
+
+(define-xterm-event-handler xterm-event-flag:button-up
+  (lambda (xterm window)
+    (send window ':button-event!
+	  (button-upify (xterm-button xterm))
+	  (xterm-pointer-x xterm)
+	  (xterm-pointer-y xterm))))
+
+(define button1-down)
+(define button2-down)
+(define button3-down)
+(define button4-down)
+(define button5-down)
+(define button1-up)
+(define button2-up)
+(define button3-up)
+(define button4-up)
+(define button5-up)
+
 ;;;; Display description for X displays
 
-(define X-display)
-(define X-display-data)
+(define x-display)
+(define x-display-data false)
 
-(define (get-X-display)
-  (if (and (not (unassigned? X-display-data))
-	   X-display-data)
-      X-display-data
-      (let ((display (xterm-open-display false)))
-	(set! X-display-data display)
+(define (get-x-display)
+  (or x-display-data
+      (let ((display (x-open-display false)))
+	(set! x-display-data display)
 	display)))      
 
-(define (close-X-display)
-  (xterm-close-all-displays)
-  (set! X-display-data false)
+(define (close-x-display)
+  (x-close-all-displays)
+  (set! x-display-data false)
   unspecific)
 
 (define (initialize-package!)
-  (set! X-display
-	(make-display get-X-display
+  (set! x-display
+	(make-display get-x-display
 		      make-xterm-screen
 		      make-xterm-input-port
-		      with-editor-interrupts-from-X
-		      with-X-interrupts-enabled
-		      with-X-interrupts-disabled)))
+		      with-editor-interrupts-from-x
+		      with-x-interrupts-enabled
+		      with-x-interrupts-disabled))  (initialize-buttons! 5)
+  (set! button1-down (button-downify 0))
+  (set! button2-down (button-downify 1))
+  (set! button3-down (button-downify 2))
+  (set! button4-down (button-downify 3))
+  (set! button5-down (button-downify 4))
+  (set! button1-up (button-upify 0))
+  (set! button2-up (button-upify 1))
+  (set! button3-up (button-upify 2))
+  (set! button4-up (button-upify 3))
+  (set! button5-up (button-upify 4))
+  unspecific)
