@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.24 1991/07/26 21:52:37 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.25 1991/08/06 15:11:28 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -543,6 +543,8 @@ enum event_type
 #define EVENT_2 4
 #define EVENT_3 5
 
+#define EVENT_EXTRA(max_event) (max_event - 1)
+
 #define EVENT_INTEGER(event, slot, number)				\
   VECTOR_SET ((event), (slot), (long_to_integer (number)))
 
@@ -625,28 +627,37 @@ DEFUN (key_event, (xw, event, type),
 		    (sizeof (copy_buffer)),
 		    (&keysym),
 		    (&compose_status)));
-  if ((nbytes < 1) || (IsModifierKey (keysym)))
+  if (IsModifierKey (keysym))
     return (SHARP_F);
   else
     {
       long bucky = 0;
 
-      SCHEME_OBJECT result = (make_event_object (xw, type, 2));
-      if (nbytes == 1)
-      {
-	/* Convert to Scheme bucky bits (kept independent of the */
-	/* character).  Let X handle controlification. */
-	if ((event -> state) & Mod1Mask) /* Meta */
-	  bucky |= 1;
-	if ((event -> state) & Mod2Mask) /* Super */
-	  bucky |= 4;
-	if ((event -> state) & Mod3Mask) /* Hyper */
-	  bucky |= 8;
-	if ((event -> state) & Mod4Mask) /* Top */
-	  bucky |= 16;
-      }
+      SCHEME_OBJECT result
+	= (make_event_object (xw, type, EVENT_EXTRA (EVENT_2)));
+
+      /* Create Scheme bucky bits (kept independent of the */
+      /* character).  X has already controlified, so Scheme may */
+      /* choose to ignore the control bucky bit. */
+      if ((event -> state) & Mod1Mask) /* Meta */
+	bucky |= 1;
+      if ((event -> state) & ControlMask) /* Control */
+	bucky |= 2;
+      if ((event -> state) & Mod2Mask) /* Super */
+	bucky |= 4;
+      if ((event -> state) & Mod3Mask) /* Hyper */
+	bucky |= 8;
+      if ((event -> state) & Mod4Mask) /* Top */
+	bucky |= 16;
       VECTOR_SET (result, EVENT_0, (memory_to_string (nbytes, copy_buffer)));
       VECTOR_SET (result, EVENT_1, LONG_TO_UNSIGNED_FIXNUM (bucky));
+      /* Move vendor-specific bit from bit 28 (zero-based) to bit 23 */
+      /* so that all keysym values will fit in Scheme fixnums. */
+      VECTOR_SET
+	(result,
+	 EVENT_2,
+	 LONG_TO_UNSIGNED_FIXNUM ((keysym & 0xffffff)
+				  | (0x800000 & (keysym >> 5))));
       return (result);
     }
 }
