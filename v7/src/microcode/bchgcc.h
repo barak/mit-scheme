@@ -30,10 +30,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.28 1987/06/15 19:25:36 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.29 1987/06/30 19:26:56 jinx Rel $ */
 
 #include "gccode.h"
+#ifdef bsd
+#include <sys/file.h>
+#else
 #include <fcntl.h>
+#endif
 
 /* All of these are in objects (Pointer), not bytes. */
 
