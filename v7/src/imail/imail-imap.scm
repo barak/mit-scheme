@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.122 2000/06/19 05:00:50 cph Exp $
+;;; $Id: imail-imap.scm,v 1.123 2000/06/19 20:45:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -900,18 +900,20 @@
       (lambda ()
 	(imap:read-literal-progress-hook imail-ui:progress-meter
 	  (lambda ()
-	    (imap:command:uid-fetch
-	     (imap-folder-connection (message-folder message))
-	     (imap-message-uid message)
-	     `(',(string-append "body["
-				(decorated-string-append
-				 "" "." ""
-				 (map (lambda (x)
-					(if (exact-nonnegative-integer? x)
-					    (number->string x)
-					    (symbol->string x)))
-				      section))
-				"]"))))))))
+	    (with-imap-message-open message
+	      (lambda (connection)
+		(imap:command:uid-fetch
+		 connection
+		 (imap-message-uid message)
+		 `(',(string-append "body["
+				    (decorated-string-append
+				     "" "." ""
+				     (map (lambda (x)
+					    (if (exact-nonnegative-integer? x)
+						(number->string x)
+						(symbol->string x)))
+					  section))
+				    "]"))))))))))
    section
    #f))
 
