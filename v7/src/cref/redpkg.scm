@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.24 2001/12/18 19:09:58 cph Exp $
+$Id: redpkg.scm,v 1.25 2001/12/19 01:54:09 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -560,8 +560,8 @@ USA.
   (for-each (lambda (export)
 	      (let ((destination (get-package (car export) #t)))
 		(for-each (lambda (names)
-			    (link! package (car names)
-				   destination (cdr names)
+			    (link! package (cdr names)
+				   destination (car names)
 				   package #t))
 			  (cdr export))))
 	    (package-description/exports description))
