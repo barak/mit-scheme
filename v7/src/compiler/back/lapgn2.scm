@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.8 1988/08/29 22:31:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.9 1988/11/07 13:57:02 cph Rel $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -88,9 +88,8 @@ MIT in each case. |#
   (memv register *dead-registers*))
 
 (define (delete-dead-registers!)
-  (delete-pseudo-registers *register-map* *dead-registers*
-    (lambda (map aliases)
-      (set! *register-map* map)))
+  (set! *register-map*
+	(delete-pseudo-registers *register-map* *dead-registers*))
   (set! *dead-registers* '()))
 
 ;; `*prefix-instructions*' is used to accumulate LAP instructions to
