@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dassm1.scm,v 1.2 1994/11/22 04:01:23 adams Exp $
+$Id: dassm1.scm,v 1.3 1995/01/14 17:02:41 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -353,8 +353,26 @@ MIT in each case. |#
 		       (loop (cdr names) (1+ index)
 			     (cons (cons index (car names)) assocs))))
 		 `(BEGIN ,@(loop names start '())))))
-  ;; Copied from lapgen.scm
-  (define-codes #x012
+  (define-codes #x0
+    TRAMPOLINE_K_RETURN	
+    TRAMPOLINE_K_APPLY	
+    TRAMPOLINE_K_ARITY	
+    TRAMPOLINE_K_ENTITY	
+    TRAMPOLINE_K_INTERPRETED	
+    TRAMPOLINE_K_LEXPR_PRIMITIVE	
+    TRAMPOLINE_K_PRIMITIVE	
+    TRAMPOLINE_K_LOOKUP	
+    TRAMPOLINE_K_1_0	
+    TRAMPOLINE_K_2_1	
+    TRAMPOLINE_K_2_0	
+    TRAMPOLINE_K_3_2	
+    TRAMPOLINE_K_3_1	
+    TRAMPOLINE_K_3_0	
+    TRAMPOLINE_K_4_3	
+    TRAMPOLINE_K_4_2	
+    TRAMPOLINE_K_4_1	
+    TRAMPOLINE_K_4_0	
+    ;; From index 0x12 onwards copied from lapgen.scm
     primitive-apply primitive-lexpr-apply
     apply error lexpr-apply link
     interrupt-closure interrupt-dlink interrupt-procedure 
@@ -478,7 +496,8 @@ MIT in each case. |#
 
       (define (hook?)
 	(and (or (equal? '(ble () (offset 0 4 3)) prev-instruction)
-		 (equal? '(ble () (offset 12 4 3)) prev-instruction))
+		 (equal? '(ble () (offset 12 4 3)) prev-instruction)
+		 (equal? '(ble () (offset -16 4 3)) prev-instruction))
 	     (match? '(ldi () ? 28) instruction)))
       (define (hook-name)
 	(let ((id.name  (assoc (third instruction) code:compiler-xxx-alist)))
