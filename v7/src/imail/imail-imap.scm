@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.178 2001/06/03 01:42:40 cph Exp $
+;;; $Id: imail-imap.scm,v 1.179 2001/06/03 06:00:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -65,9 +65,9 @@
 (define-method imap-url-mailbox ((url <container-url>))
   (let ((mailbox
 	 (imap-url-mailbox (imap-container-url-corresponding-folder url))))
-    (if (string-null? mailbox)
-	mailbox
-	(string-append mailbox "/"))))
+    (if mailbox
+	(string-append mailbox "/")
+	"")))
 
 (define make-imap-url
   (let ((make-folder
@@ -178,7 +178,7 @@
 (define imap-list-info-duration 60)
 
 (define-method url-base-name ((url <imap-folder-url>))
-  (let ((mailbox (imap-url-mailbox url)))
+  (let ((mailbox (or (imap-url-mailbox url) "")))
     (let ((index (imap-mailbox-container-slash mailbox)))
       (if index
 	  (string-tail mailbox (fix:+ index 1))
@@ -234,7 +234,7 @@
 			    "")))
 
 (define-method url-content-name ((url <imap-url>))
-  (let* ((mailbox (imap-url-mailbox url))
+  (let* ((mailbox (or (imap-url-mailbox url) ""))
 	 (index (imap-mailbox-container-slash mailbox)))
     (if index
 	(string-tail mailbox (fix:+ index 1))
@@ -244,10 +244,11 @@
   (imap-url-new-mailbox url (string-append (imap-url-mailbox url) name)))
 
 (define (imap-url-container-mailbox url)
-  (let* ((mailbox (imap-url-mailbox url))
-	 (index (imap-mailbox-container-slash mailbox)))
-    (and index
-	 (string-head mailbox (fix:+ index 1)))))
+  (let ((mailbox (imap-url-mailbox url)))
+    (and mailbox
+	 (let ((index (imap-mailbox-container-slash mailbox)))
+	   (and index
+		(string-head mailbox (fix:+ index 1)))))))
 
 (define (imap-mailbox-container-slash mailbox)
   (substring-find-previous-char mailbox
@@ -385,9 +386,10 @@
   (imap-mailbox/url->server
    url
    (let ((mailbox (imap-url-mailbox url)))
-     (if (string-suffix? "/" mailbox)
-	 (string-head mailbox (fix:- (string-length mailbox) 1))
-	 mailbox))))
+     (cond ((not mailbox) "")
+	   ((string-suffix? "/" mailbox)
+	    (string-head mailbox (fix:- (string-length mailbox) 1)))
+	   (else mailbox)))))
 
 (define (imap-mailbox/url->server url mailbox)
   (let ((delimiter (imap-mailbox-delimiter url mailbox)))
