@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for Linux
 
-$Id: linux.h,v 1.4 1995/10/05 03:34:50 cph Exp $
+$Id: linux.h,v 1.5 1995/10/05 06:33:15 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -42,7 +42,9 @@ MIT in each case. */
 #define ALTERNATE_M4 s/ultrix.m4
 
 #ifdef __ELF__
+#define C_SWITCH_SYSTEM -D_LINUX_ELF
 #define M4_SWITCH_SYSTEM -P "define(LINUX_ELF,1)"
 #else
+#define C_SWITCH_SYSTEM
 #define M4_SWITCH_SYSTEM
 #endif

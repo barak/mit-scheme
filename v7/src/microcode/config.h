@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.91 1995/10/05 03:32:04 cph Exp $
+$Id: config.h,v 9.92 1995/10/05 06:32:26 cph Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -463,13 +463,12 @@ extern unsigned long winnt_address_delta;
 
 #endif /* WINNT && !WINNT_RAW_ADDRESSES */
 
-#if defined(__linux) && defined(__ELF__)
+#ifdef _LINUX_ELF
 
 /* Linux ELF adds a data-segment bit which must be translated away.
    We'll use the same trick as Win32s since the code is there and it
    maintains binary compatibility.  */
 
-#define _LINUX_ELF 1
 #define LINUX_ELF_DATA_SEGMENT_START 0x08000000
 #define LINUX_ELF_DATA_SEGMENT_LIMIT 0x04000
 
