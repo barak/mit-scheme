@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stackopt.scm,v 1.2 1994/11/25 16:29:40 adams Exp $
+$Id: stackopt.scm,v 1.3 1994/11/25 17:08:10 jmiller Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -312,7 +312,7 @@ End of Big Note A |#
   (if state
       (internal-error "Model exists at non-continuation lambda!" state))
   (let* ((frame  (cadr (assq stackopt/?frame-vector match-result)))
-	 (model  (stackopt/model/make #F frame #T))
+	 (model  (stackopt/model/make #F frame #T #T))
 	 (form*  (stackopt/expr model lambda-body)))
     (set-stackopt/model/form! model #F)
     (stackopt/reorder! model)
@@ -348,11 +348,11 @@ End of Big Note A |#
 		     match-result)))
 	(body (cadr (assq stackopt/?body match-result)))
 	(real-rands (cadr (assq stackopt/?closure-elts match-result))))
-    (let* ((call-model (stackopt/model/make state call-frame-vector #F))
+    (let* ((call-model (stackopt/model/make state call-frame-vector #F #F))
 	   (cont-model
 	    (if (eq? call-frame-vector cont-frame-vector)
 		call-model
-		(stackopt/model/make call-model cont-frame-vector #F)))
+		(stackopt/model/make call-model cont-frame-vector #F #F)))
 	   ;; See Big Note A at the top of this file.
 	   (handler*
 	    `(LAMBDA ,lambda-list
@@ -380,7 +380,7 @@ End of Big Note A |#
   (let ((frame-vector (quote/text (call/%make-stack-closure/vector cont)))
 	(real-rands   (call/%make-stack-closure/values cont))
 	(non-lambda   (call/%make-stack-closure/lambda-expression cont)))
-    (let* ((model (stackopt/model/make state frame-vector #T))
+    (let* ((model (stackopt/model/make state frame-vector #T #F))
 	   (form* `(CALL (QUOTE ,%make-stack-closure)
 			 (QUOTE #F)
 			 ,(stackopt/expr false non-lambda)
@@ -711,7 +711,12 @@ End of Big Note A |#
   (n-unwired false read-only false)
   (extended? false read-only false))
 
-(define (stackopt/model/make parent frame wire-all?)
+(define (stackopt/model/make parent frame wire-all? dont-reorder?)
+  ;; DONT-REORDER? is used to prevent moving continuations to the
+  ;; front; it really implies more than just suppression of
+  ;; reordering.  This is basically a patch to avoid fixing a harder
+  ;; problem: ignored-continuations are being closed over and passed
+  ;; as procedure arguments.
   (let ((new (stackopt/model/%make parent frame)))
     (if parent
 	(set-stackopt/model/children! parent
@@ -719,7 +724,9 @@ End of Big Note A |#
 					    (stackopt/model/children parent))))
     (call-with-values
      (lambda ()
-       (list-split (vector->list frame) continuation-variable?))
+       (if dont-reorder?
+	   (values '() (vector->list frame))
+	   (list-split (vector->list frame) continuation-variable?)))
      (lambda (cont-vars others)
        (cond ((null? cont-vars) 'OK)
 	     ((null? (cdr cont-vars))
