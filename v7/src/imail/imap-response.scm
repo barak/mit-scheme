@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.4 2000/04/23 04:13:53 cph Exp $
+;;; $Id: imap-response.scm,v 1.5 2000/04/25 03:41:01 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -60,7 +60,6 @@
 		  ((OK NO BAD) (cons #f (read-response-text port)))
 		  ((PREAUTH BYE) (read-response-text port))
 		  ((FLAGS) (read-flags-response port))
-		  ((MAILBOX) (read-mailbox-response port))
 		  ((LIST LSUB) (read-list-response port))
 		  ((SEARCH) (read-search-response port))
 		  ((STATUS) (read-status-response port))
@@ -76,10 +75,6 @@
 (define (read-flags-response port)
   (discard-known-char #\space port)
   (read-list port read-flag))
-
-(define (read-mailbox-response port)
-  (discard-known-char #\space port)
-  (list (read-text port)))
 
 (define (read-list-response port)
   (let ((flags (read-flags-response port)))
@@ -113,10 +108,10 @@
   (let ((code
 	 (and (char=? #\[ (peek-char-no-eof port))
 	      (read-response-text-code port))))
-    (cons code
+    (list code
 	  (if (char=? #\= (peek-char port))
 	      (read-mime2-text port)
-	      (list (read-text port))))))
+	      (read-text port)))))
 
 (define (read-response-text-code port)
   (discard-known-char #\[ port)
@@ -428,3 +423,81 @@
   (let ((char* (read-char-no-eof port)))
     (if (not (char=? char char*))
 	(error "Missing newline in literal:" char*))))
+
+(define (imap:response:bad? response) (eq? (car response) 'BAD))
+(define (imap:response:bye? response) (eq? (car response) 'BYE))
+(define (imap:response:capability? response) (eq? (car response) 'CAPABILITY))
+(define (imap:response:continue? response) (eq? (car response) 'CONTINUE))
+(define (imap:response:exists? response) (eq? (car response) 'EXISTS))
+(define (imap:response:expunge? response) (eq? (car response) 'EXPUNGE))
+(define (imap:response:fetch? response) (eq? (car response) 'FETCH))
+(define (imap:response:flags? response) (eq? (car response) 'FLAGS))
+(define (imap:response:list? response) (eq? (car response) 'LIST))
+(define (imap:response:lsub? response) (eq? (car response) 'LSUB))
+(define (imap:response:no? response) (eq? (car response) 'NO))
+(define (imap:response:ok? response) (eq? (car response) 'OK))
+(define (imap:response:preauth? response) (eq? (car response) 'PREAUTH))
+(define (imap:response:recent? response) (eq? (car response) 'RECENT))
+(define (imap:response:search? response) (eq? (car response) 'SEARCH))
+(define (imap:response:status? response) (eq? (car response) 'STATUS))
+
+(define (imap:response:tag response)
+  (and (memq (car response) '(OK NO BAD))
+       (cadr response)))
+
+(define (imap:response:response-text-code response)
+  (car (imap:response:response-text response)))
+
+(define (imap:response:response-text-string response)
+  (cadr (imap:response:response-text response)))
+
+(define (imap:response:response-text response)
+  (case (car response)
+    ((BAD NO OK) (cddr response))
+    ((PREAUTH BYE) (cdr response))
+    (else #f)))
+
+(define (imap:response:capabilities response)
+  (cdr response))
+
+(define (imap:find-response responses keyword error?)
+  (if (pair? responses)
+      (if (eq? (caar responses) keyword)
+	  (car responses)
+	  (imap:find-response (cdr responses) keyword error?))
+      (and error?
+	   (error "Missing response keyword:" keyword))))
+
+
+(define (imap:response:status? response)
+  (memq (car response) '(OK NO BAD PREAUTH BYE)))
+
+(define (imap:response:expunge-index response)
+  (cadr response))
+
+(define (imap:response:exists-count response)
+  (cadr response))
+
+(define (imap:response:flags response)
+  (cdr response))
+
+(define (imap:response:recent-count response)
+  (cadr response))
+
+(define (imap:response-code:alert? code) (eq? (car code) 'ALERT))
+(define (imap:response-code:newname? code) (eq? (car code) 'NEWNAME))
+(define (imap:response-code:parse? code) (eq? (car code) 'PARSE))
+(define (imap:response-code:read-only? code) (eq? (car code) 'READ-ONLY))
+(define (imap:response-code:read-write? code) (eq? (car code) 'READ-WRITE))
+(define (imap:response-code:trycreate? code) (eq? (car code) 'TRYCREATE))
+(define (imap:response-code:uidvalidity? code) (eq? (car code) 'UIDVALIDITY))
+(define (imap:response-code:unseen? code) (eq? (car code) 'UNSEEN))
+
+(define (imap:response-code:permanentflags? code)
+  (eq? (car code) 'PERMANENTFLAGS))
+
+(define (imap:response-code:newname-old code) (cadr code))
+(define (imap:response-code:newname-new code) (caddr code))
+(define (imap:response-code:uidvalidity code) (cadr code))
+(define (imap:response-code:unseen code) (cadr code))
+(define (imap:response-code:permanentflags code) (cdr code))
