@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: utils.scm,v 1.33 1993/09/07 21:49:11 gjr Exp $
+;;;	$Id: utils.scm,v 1.34 1993/09/13 18:30:49 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -92,27 +92,28 @@
       (error:wrong-type-argument n-chars "fixnum" 'STRING-ALLOCATE))
   (if (not (fix:>= n-chars 0))
       (error:bad-range-argument n-chars 'STRING-ALLOCATE))
-  (let* ((n-words (fix:+ (fix:lsh n-chars (chars-to-words-shift)) 3))
-	 (mask (if ((ucode-primitive heap-available? 1) n-words)
-		   (set-interrupt-enables! interrupt-mask/none)
-		   (let ((mask
-			  (set-interrupt-enables! interrupt-mask/gc-normal)))
-		     (guarantee-heap-available n-words 'STRING-ALLOCATE mask)
-		     (set-interrupt-enables! interrupt-mask/none)
-		     mask)))
-	 (result ((ucode-primitive primitive-get-free 1) (ucode-type string))))
-    ((ucode-primitive primitive-object-set! 3)
-     result
-     0
-     ((ucode-primitive primitive-object-set-type 2)
-      (ucode-type manifest-nm-vector)
-      (fix:- n-words 1)))
-    (set-string-length! result n-chars)
-    ;; This won't work if range-checking is turned on.
-    (string-set! result n-chars #\nul)
-    ((ucode-primitive primitive-increment-free 1) n-words)
-    (set-interrupt-enables! mask)
-    result))
+  (with-interrupt-mask interrupt-mask/none
+    (lambda (mask)
+      (let ((n-words (fix:+ (fix:lsh n-chars (chars-to-words-shift)) 3)))
+	(if (not ((ucode-primitive heap-available? 1) n-words))
+	    (with-interrupt-mask interrupt-mask/gc-normal
+	      (lambda (ignore)
+		ignore			; ignored
+		(guarantee-heap-available n-words 'STRING-ALLOCATE mask))))
+	(let ((result ((ucode-primitive primitive-get-free 1)
+		       (ucode-type string))))
+	  ((ucode-primitive primitive-object-set! 3)
+	   result
+	   0
+	   ((ucode-primitive primitive-object-set-type 2)
+	    (ucode-type manifest-nm-vector)
+	    (fix:- n-words 1)))
+	  (set-string-length! result n-chars)
+	  ;; This won't work if range-checking is turned on.
+	  (string-set! result n-chars #\nul)
+	  ((ucode-primitive primitive-increment-free 1) n-words)
+	  (set-interrupt-enables! mask)
+	  result)))))
 
 (define (set-string-maximum-length! string n-chars)
   (if (not (string? string))
