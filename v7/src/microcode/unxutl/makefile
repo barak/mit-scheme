@@ -1,7 +1,7 @@
 #
 # Makefile for MIT CScheme microcode.
 #
-# $Id: makefile,v 1.21 1993/04/15 09:16:10 cph Exp $
+# $Id: makefile,v 1.22 1993/06/08 04:10:57 gjr Exp $
 #
 CPP = cc -E
 MAKE = make  # BSD doesn't have it as a default.
@@ -37,6 +37,10 @@ Bintopsb: xmakefile
 Ppband: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} Ppband
 .PHONY: Ppband
+
+hppacache: xmakefile
+	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} hppacache
+.PHONY: hppacache
 
 install: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} install
