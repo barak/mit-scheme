@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/sideff.scm,v 1.7 1990/05/03 15:09:20 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/sideff.scm,v 1.8 1994/02/02 04:10:30 adams Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -310,7 +310,7 @@ MIT in each case. |#
     (if (not (null? returns))
 	(let ((result (test-return (car returns))))
 	  (and result (compare result (cdr returns) lvalues)))
-	(and lvalues
+	(and (not (null? lvalues))
 	     (find (lvalue-applications (car lvalues))
 		   (cdr lvalues))))))
 
