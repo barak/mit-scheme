@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: alpha.scm,v 1.10 1995/07/04 14:41:18 adams Exp $
+$Id: alpha.scm,v 1.11 1995/07/04 18:02:28 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -84,13 +84,12 @@ MIT in each case. |#
 	 (new-dbg-procedure? info)
 	 (let ((block (new-dbg-procedure/block info)))
 	   (and block
-		(for-each
-		 (lambda (var)
-		   (let ((new-name
-			  (alphaconv/env/lookup (new-dbg-variable/name var)
-						env*)))
-		     (dbg-info/remember var new-name)))
-		 (new-dbg-block/variables block)))))))
+		(for-each-vector-element (new-dbg-block/variables block)
+		  (lambda (var)
+		    (let ((new-name
+			   (alphaconv/env/lookup (new-dbg-variable/name var)
+						 env*)))
+		      (dbg-info/remember var new-name)))))))))
 
 (define-alphaconv CALL (state env rator cont #!rest rands)
   `(CALL ,(alphaconv/expr state env rator)
