@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.48 1992/08/29 12:45:42 jinx Exp $
+$Id: cmpint.c,v 1.49 1992/09/11 02:04:05 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -1369,8 +1369,9 @@ DEFUN (comutil_interrupt_closure,
        (ignore_1, ignore_2, ignore_3, ignore_4),
        long ignore_1 AND long ignore_2 AND long ignore_3 AND long ignore_4)
 {
-  TEST_GC_NEEDED();
-  if (((PENDING_INTERRUPTS()) == 0) && (Stack_Pointer > Stack_Guard))
+  TEST_GC_NEEDED ();
+  Stack_Check (Stack_Pointer);
+  if ((PENDING_INTERRUPTS()) == 0)
   {
     SCHEME_OBJECT entry_point;
 
@@ -1402,8 +1403,9 @@ DEFUN (compiler_interrupt_common,
        long offset AND
        SCHEME_OBJECT state)
 {
-  TEST_GC_NEEDED();
-  if (((PENDING_INTERRUPTS()) == 0) && (Stack_Pointer > Stack_Guard))
+  TEST_GC_NEEDED ();
+  Stack_Check (Stack_Pointer);
+  if ((PENDING_INTERRUPTS()) == 0)
   {
     Store_Env (state);
     Val = state;
