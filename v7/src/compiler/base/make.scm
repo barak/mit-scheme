@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.107 1997/03/30 23:33:24 cph Exp $
+$Id: make.scm,v 4.108 1998/02/12 02:54:27 cph Exp $
 
-Copyright (c) 1988-97 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,7 +52,4 @@ MIT in each case. |#
 				'INITIALIZE-PACKAGE!)))))
     (initialize-package! '(COMPILER MACROS))
     (initialize-package! '(COMPILER DECLARATIONS)))
-  (add-system!
-   (make-system (string-append "Liar (" architecture-name ")")
-		4 107
-		'())))
+  (add-identification! (string-append "Liar (" architecture-name ")") 4 108))
