@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulfix.scm,v 1.2 1991/08/12 22:15:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulfix.scm,v 1.3 1991/08/18 14:47:31 jinx Exp $
 $MC68020-Header: rules1.scm,v 4.32 90/01/18 22:43:54 GMT cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -105,7 +105,9 @@ MIT in each case. |#
 			 #F))
   (standard-unary-conversion source target fixnum->index-fixnum))
 
-; "Fixnum" in this context means an integer left shifted 6 bits
+;; "Fixnum" in this context means an integer left shifted so that
+;; the sign bit is the leftmost bit of the word, i.e., the datum
+;; has been left shifted by scheme-type-width bits.
 
 (define-integrable (fixnum->index-fixnum src tgt)
   ; Shift left 2 bits
@@ -357,7 +359,7 @@ MIT in each case. |#
 	      (BEQ  ,regnum:first-arg ,regnum:assembler-temp
 		    (@PCR ,if-no-overflow))
 	      (NOP)))))
-  (LAP (SRA  ,regnum:assembler-temp ,src1 6)
+  (LAP (SRA  ,regnum:assembler-temp ,src1 ,scheme-type-width)
        (MULT ,regnum:assembler-temp ,src2)
        (MFLO ,tgt)))
 
