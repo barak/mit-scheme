@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.30 1996/04/24 04:22:19 cph Exp $
+$Id: defstr.scm,v 14.31 1997/06/19 21:43:01 cph Exp $
 
-Copyright (c) 1988-96 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -237,6 +237,11 @@ differences:
 		  (if (not (memq (car arguments) '(VECTOR LIST)))
 		      (error "Illegal structure option:" option))
 		  (set! type (car arguments)))
+		 ((TYPE-DESCRIPTOR)
+		  (check-duplicate)
+		  (check-argument)
+		  (set! type-name (car arguments))
+		  (set! tag-expression type-name))
 		 ((NAMED)
 		  (check-duplicate)
 		  (check-arguments 1)
@@ -268,8 +273,11 @@ differences:
 			(cdr constructors)))
 	    (loop (cdr constructors)))))
     (let ((type-seen? (assq 'TYPE options-seen))
+	  (type-descriptor-seen? (assq 'TYPE-DESCRIPTOR options-seen))
 	  (named-seen? (assq 'NAMED options-seen)))
-      (let ((named? (or (not type-seen?) named-seen?)))
+      (if (and type-descriptor-seen? named-seen?)
+	  (error "Conflicting options:" type-descriptor-seen? named-seen?))
+      (let ((named? (or (not type-seen?) type-descriptor-seen? named-seen?)))
 	(if (not type-seen?)
 	    (let ((check-option
 		   (lambda (seen?)
