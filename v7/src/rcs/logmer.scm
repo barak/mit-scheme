@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: logmer.scm,v 1.16 1999/01/02 06:11:34 cph Exp $
+$Id: logmer.scm,v 1.17 2000/02/01 01:55:12 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -31,10 +31,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			      output-file)
 			  (pathname-as-directory directory)))
 	(port (notification-output-port)))
-    (newline port)
     (write-string "regenerating log for directory: " port)
     (write (->namestring directory))
     (write-string "..." port)
+    (newline port)
     (let ((pathnames (rcs-directory-read directory)))
       (if (let ((time (file-modification-time-indirect output-file)))
 	    (or (not time)
@@ -42,16 +42,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		  (lambda (w.r)
 		    (> (file-modification-time-indirect (cdr w.r)) time)))))
 	  (begin
-	    (newline port)
 	    (write-string "total files: " port)
 	    (write (length pathnames) port)
+	    (newline port)
 	    (let ((entries (read-entries pathnames port)))
-	      (newline port)
 	      (write-string "total entries: " port)
 	      (write (length entries) port)
+	      (newline port)
 	      (let ((entries (sort-entries entries)))
-		(newline port)
 		(write-string "sorting finished" port)
+		(newline port)
 		(call-with-output-file output-file
 		  (lambda (port)
 		    (format/entries entries port))))))
@@ -126,9 +126,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (read-file pathname notification-port)
   (if notification-port
       (begin
-	(newline notification-port)
 	(write-string "read-file " notification-port)
-	(write-string (->namestring pathname) notification-port)))
+	(write-string (->namestring pathname) notification-port)
+	(newline notification-port)))
   (let ((deltas (rcstext->deltas (rcs/read-file pathname 'LOG-ONLY))))
     (for-each (lambda (delta)
 		(set-delta/log! delta
