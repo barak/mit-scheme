@@ -14,7 +14,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/error.c,v 1.3 1992/08/29 13:24:26 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/error.c,v 1.4 1993/02/22 21:25:32 gjr Exp $ */
 
 #include <stdio.h>
 #include "dstack.h"
@@ -157,7 +157,7 @@ DEFUN (generalizations_union_2, (x, y), Tptrvec x AND Tptrvec y)
   return (result);
 }
 
-static Tptrvec
+Tptrvec
 DEFUN (generalizations_union, (generalizations), Tptrvec generalizations)
 {
   Tptrvec_length length = (PTRVEC_LENGTH (generalizations));
