@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfs.c,v 1.3 1991/01/24 11:25:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfs.c,v 1.4 1991/04/12 03:20:51 cph Exp $
 
 Copyright (c) 1990-1 Massachusetts Institute of Technology
 
@@ -168,7 +168,7 @@ static struct direct * directory_entry;
   return (directory_entry -> d_name);					\
 }
 
-CONST char *
+void
 DEFUN (OS_directory_open, (name), CONST char * name)
 {
   if (directory_pointer != 0)
@@ -181,7 +181,6 @@ DEFUN (OS_directory_open, (name), CONST char * name)
 #else
     error_external_return ();
 #endif
-  READ_DIRECTORY_ENTRY ();
 }
 
 CONST char *
@@ -190,6 +189,28 @@ DEFUN_VOID (OS_directory_read)
   if (directory_pointer == 0)
     error_external_return ();
   READ_DIRECTORY_ENTRY ();
+}
+
+CONST char *
+DEFUN (OS_directory_read_matching, (prefix), CONST char * prefix)
+{
+  if (directory_pointer == 0)
+    error_external_return ();
+  {
+    unsigned int n = (strlen (prefix));
+    while (1)
+      {
+	directory_entry = (readdir (directory_pointer));
+	if (directory_entry == 0)
+	  {
+	    closedir (directory_pointer);
+	    directory_pointer = 0;
+	    return (0);
+	  }
+	if ((strncmp (prefix, (directory_entry -> d_name), n)) == 0)
+	  return (directory_entry -> d_name);
+      }
+  }
 }
 
 void
@@ -210,15 +231,21 @@ DEFUN_VOID (UX_initialize_directory_reader)
 
 #else /* not HAVE_DIRENT nor HAVE_DIR */
 
-CONST char *
+void
 DEFUN (OS_directory_open, (name), CONST char * name)
+{
+  error_unimplemented_primitive ();
+}
+
+CONST char *
+DEFUN_VOID (OS_directory_read)
 {
   error_unimplemented_primitive ();
   return (0);
 }
 
 CONST char *
-DEFUN_VOID (OS_directory_read)
+DEFUN (OS_directory_read_matching, (prefix), CONST char * prefix)
 {
   error_unimplemented_primitive ();
   return (0);

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osfs.h,v 1.1 1990/06/20 19:36:23 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osfs.h,v 1.2 1991/04/12 03:20:38 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,8 +52,9 @@ extern void EXFUN
 extern void EXFUN
   (OS_file_link_soft, (CONST char * from_name, CONST char * to_name));
 extern void EXFUN (OS_directory_make, (CONST char * name));
-extern CONST char * EXFUN (OS_directory_open, (CONST char * name));
-extern CONST char * EXFUN (OS_directory_read, (void));
+extern void EXFUN (OS_directory_open, (CONST char * name));
 extern void EXFUN (OS_directory_close, (void));
+extern CONST char * EXFUN (OS_directory_read, (void));
+extern CONST char * EXFUN (OS_directory_read_matching, (CONST char * prefix));
 
 #endif /* SCM_OSFS_H */

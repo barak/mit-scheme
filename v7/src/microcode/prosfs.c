@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfs.c,v 1.2 1990/11/21 07:04:38 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfs.c,v 1.3 1991/04/12 03:20:45 cph Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -233,10 +233,19 @@ DEFINE_PRIMITIVE ("DIRECTORY-MAKE", Prim_directory_make, 1, 1,
 DEFINE_PRIMITIVE ("DIRECTORY-OPEN", Prim_directory_open, 1, 1,
   "Open the directory NAME for reading.\n\
 If successful, return the first filename in the directory as a string.\n\
-If there is no such file, or the directory cannot be opened, #F is returned.")
+If there is no such file, #F is returned.")
 {
   PRIMITIVE_HEADER (1);
-  STRING_RESULT (OS_directory_open (STRING_ARG (1)));
+  OS_directory_open (STRING_ARG (1));
+  STRING_RESULT (OS_directory_read ());
+}
+
+DEFINE_PRIMITIVE ("DIRECTORY-OPEN-NOREAD", Prim_directory_open_noread, 1, 1,
+  "Open the directory NAME for reading.")
+{
+  PRIMITIVE_HEADER (1);
+  OS_directory_open (STRING_ARG (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("DIRECTORY-READ", Prim_directory_read, 0, 0,
@@ -245,6 +254,15 @@ Return #F if there are no more files in the directory.")
 {
   PRIMITIVE_HEADER (0);
   STRING_RESULT (OS_directory_read ());
+}
+
+DEFINE_PRIMITIVE ("DIRECTORY-READ-MATCHING", Prim_directory_read_matching, 1, 1,
+  "Read and return a filename from the directory opened by `directory-open'.\n\
+The filename must begin with the argument string.\n\
+Return #F if there are no more matching files in the directory.")
+{
+  PRIMITIVE_HEADER (1);
+  STRING_RESULT (OS_directory_read_matching (STRING_ARG (1)));
 }
 
 DEFINE_PRIMITIVE ("DIRECTORY-CLOSE", Prim_directory_close, 0, 0,
