@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.233 2001/01/25 00:15:55 cph Exp $
+;;; $Id: imail-top.scm,v 1.234 2001/03/19 19:31:12 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; IMAIL mail reader: top level
 
@@ -1666,14 +1667,19 @@ Negative argument means search in reverse."
 	  v)))))
 
 (define (imail-ui:progress-meter current total)
-  (if (and *imail-message-wrapper-prefix* (< 0 current total))
-      (message *imail-message-wrapper-prefix*
-	       (string-pad-left
-		(number->string (round->exact (* (/ current total) 100)))
-		3)
-	       "% (of "
-	       (number->string total)
-	       ")")))
+  (if (and *imail-message-wrapper-prefix* (< 0 current))
+      (if total
+	  (if (< current total)
+	      (message *imail-message-wrapper-prefix*
+		       (string-pad-left
+			(number->string
+			 (round->exact (* (/ current total) 100)))
+			3)
+		       "% (of "
+		       (number->string total)
+		       ")"))
+	  (message *imail-message-wrapper-prefix*
+		   (number->string current)))))
 
 (define *imail-message-wrapper-prefix* #f)
 
@@ -1976,15 +1982,26 @@ Negative argument means search in reverse."
 	  (buffer-modeline-event! buffer 'PROCESS-STATUS)))))
 
 (define (count-unseen-messages folder)
-  (let ((n (folder-length folder)))
-    (do ((i 0 (+ i 1))
-	 (unseen 0
-		 (if (let ((m (get-message folder i)))
-		       (or (message-seen? m)
-			   (message-deleted? m)))
-		     unseen
-		     (+ unseen 1))))
-	((= i n) unseen))))
+  (let ((count (get-property folder 'COUNT-UNSEEN-MESSAGES #f))
+	(mod-count (folder-modification-count folder)))
+    (if (and count (= (cdr count) mod-count))
+	(car count)
+	(let ((n (folder-length folder)))
+	  (do ((i 0 (+ i 1))
+	       (unseen 0
+		       (if (let loop
+			       ((flags (message-flags (get-message folder i))))
+			     (and (pair? flags)
+				  (or (string-ci=? "seen" (car flags))
+				      (string-ci=? "deleted" (car flags))
+				      (loop (cdr flags)))))
+			   unseen
+			   (+ unseen 1))))
+	      ((= i n)
+	       (store-property! folder
+				'COUNT-UNSEEN-MESSAGES
+				(cons unseen mod-count))
+	       unseen))))))
 
 ;;;; Probe-folder thread
 
