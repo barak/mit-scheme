@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.69 1999/05/08 02:57:38 cph Exp $
+@comment $Id: scheme.texinfo,v 1.70 1999/05/28 05:02:51 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -95,9 +95,9 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.69
+@subtitle Edition 1.70
 @subtitle for Scheme Release 7.5
-@subtitle 7 May 1999
+@subtitle 28 May 1999
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -147,7 +147,7 @@ facilities available for developing programs in MIT Scheme, and the
 * Procedures::                  
 * Environments::                
 * Input/Output::                
-* Operating-System Interface::       
+* Operating-System Interface::  
 * Error System::                
 * Graphics::                    
 * Win32 Package Reference::     
@@ -357,7 +357,10 @@ Operating-System Interface
 * Working Directory::           
 * File Manipulation::           
 * Directory Reader::            
-* Time::                        
+* Date and Time::               
+* Machine Time::                
+* Subprocesses::                
+* Miscellaneous OS Facilities::  
 
 Pathnames
 
@@ -366,13 +369,19 @@ Pathnames
 * Operations on Pathnames::     
 * Miscellaneous Pathnames::     
 
-Time
+Date and Time
 
 * Universal Time::              
 * Decoded Time::                
 * File Time::                   
 * Time-Format Conversion::      
 * External Representation of Time::  
+
+Subprocesses
+
+* Subprocess Procedures::       
+* Subprocess Conditions::       
+* Subprocess Options::          
 
 Error System
 
@@ -13530,7 +13539,10 @@ the formats, and generating human-readable time strings.
 * Working Directory::           
 * File Manipulation::           
 * Directory Reader::            
-* Time::                        
+* Date and Time::               
+* Machine Time::                
+* Subprocesses::                
+* Miscellaneous OS Facilities::  
 @end menu
 
 @node Pathnames, Working Directory, Operating-System Interface, Operating-System Interface
@@ -14707,7 +14719,7 @@ The allocated length of the file, which can be larger than the length of
 the file due to fixed-length allocation units.
 @end deffn
 
-@node Directory Reader, Time, File Manipulation, Operating-System Interface
+@node Directory Reader, Date and Time, File Manipulation, Operating-System Interface
 @section Directory Reader
 @cindex directory, reading
 
@@ -14728,8 +14740,8 @@ anything'' and ``match any character'', respectively.  This ``globbing''
 is supported only in the file part of @var{directory}.
 @end deffn
 
-@node Time,  , Directory Reader, Operating-System Interface
-@section Time
+@node Date and Time, Machine Time, Directory Reader, Operating-System Interface
+@section Date and Time
 
 MIT Scheme provides a simple set of procedures for manipulating date
 and time information.  There are four time representations, each of
@@ -14781,7 +14793,7 @@ respectively required to be of the corresponding format.
 * External Representation of Time::  
 @end menu
 
-@node Universal Time, Decoded Time, Time, Time
+@node Universal Time, Decoded Time, Date and Time, Date and Time
 @subsection Universal Time
 
 @deffn {procedure+} get-universal-time
@@ -14801,7 +14813,7 @@ epoch @result{} 2208988800
 @end example
 @end defvr
 
-@node Decoded Time, File Time, Universal Time, Time
+@node Decoded Time, File Time, Universal Time, Date and Time
 @subsection Decoded Time
 
 Objects representing standard time components, such as seconds and
@@ -14976,7 +14988,7 @@ must be an exact integer between @code{1} and @code{12} inclusive.
 @end example
 @end deffn
 
-@node File Time, Time-Format Conversion, Decoded Time, Time
+@node File Time, Time-Format Conversion, Decoded Time, Date and Time
 @subsection File Time
 
 As stated above, file time is operating-system dependent.  As of this
@@ -15031,7 +15043,7 @@ file-attributes/change-time
 Additionally, @code{set-file-times!} accepts its time arguments in
 file-time format.
 
-@node Time-Format Conversion, External Representation of Time, File Time, Time
+@node Time-Format Conversion, External Representation of Time, File Time, Date and Time
 @subsection Time-Format Conversion
 
 The procedures described in this section convert times from one format
@@ -15058,7 +15070,8 @@ The result is in the local time zone or UTC, respectively.
 @end group
 
 @group
-(pp (universal-time->global-decoded-time (get-universal-time)))
+(pp (universal-time->global-decoded-time
+     (get-universal-time)))
 #[decoded-time 22]
 (second 27)
 (minute 57)
@@ -15156,7 +15169,8 @@ result is in the local time zone or UTC, respectively.
 
 @example
 @group
-(pp (file-time->local-decoded-time (file-modification-time "/")))
+(pp (file-time->local-decoded-time
+     (file-modification-time "/")))
 #[decoded-time 26]
 (second 47)
 (minute 31)
@@ -15170,7 +15184,8 @@ result is in the local time zone or UTC, respectively.
 @end group
 
 @group
-(pp (file-time->global-decoded-time (file-modification-time "/")))
+(pp (file-time->global-decoded-time
+     (file-modification-time "/")))
 #[decoded-time 27]
 (second 47)
 (minute 31)
@@ -15244,7 +15259,7 @@ Converts a time-string argument to file-time format.
 @end example
 @end deffn
 
-@node External Representation of Time,  , Time-Format Conversion, Time
+@node External Representation of Time,  , Time-Format Conversion, Date and Time
 @subsection External Representation of Time
 
 The normal external representation for time is the time string, as
@@ -15314,6 +15329,533 @@ the same string that is used to generate RFC-822 time strings.
 @end group
 @end example
 @end deffn
+
+@node Machine Time, Subprocesses, Date and Time, Operating-System Interface
+@section Machine Time
+
+The previous section dealt with procedures that manipulate clock time.
+This section describes procedures that deal with computer time: elapsed
+CPU time, elapsed real time, and so forth.  These procedures are useful
+for measuring the amount of time it takes to execute code.
+
+@cindex tick
+Some of the procedures in this section manipulate a time representation
+called @dfn{ticks}.  A tick is a unit of time that is unspecified here
+but can be converted to and from seconds by supplied procedures.  A
+count in ticks is represented as an exact integer.  At present each tick
+is one millisecond, but this may change in the future.
+
+@deffn {procedure+} process-time-clock
+Returns the amount of process time, in ticks, that has elapsed since
+Scheme was started.  Process time is measured by the operating system
+and is time during which the Scheme process is computing.  It does not
+include time in system calls, but depending on the operating system it
+may include time used by subprocesses.
+
+@example
+(process-time-clock) @result{} 21290
+@end example
+@end deffn
+
+@deffn {procedure+} real-time-clock
+Returns the amount of real time, in ticks, that has elapsed since Scheme
+was started.  Real time is the time measured by an ordinary clock.
+
+@example
+(real-time-clock) @result{} 33474836
+@end example
+@end deffn
+
+@deffn {procedure+} internal-time/ticks->seconds ticks
+Returns the number of seconds corresponding to @var{ticks}.  The result
+is always a real number.
+
+@example
+@group
+(internal-time/ticks->seconds 21290) @result{} 21.29
+(internal-time/ticks->seconds 33474836) @result{} 33474.836
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} internal-time/seconds->ticks seconds
+Returns the number of ticks corresponding to @var{seconds}.
+@var{Seconds} must be a real number.
+
+@example
+@group
+(internal-time/seconds->ticks 20.88) @result{} 20880
+(internal-time/seconds->ticks 20.83) @result{} 20830
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} system-clock
+Returns the amount of process time, in seconds, that has elapsed since
+Scheme was started.  Roughly equivalent to:
+
+@example
+(internal-time/ticks->seconds (process-time-clock))
+@end example
+
+@noindent
+Example:
+
+@example
+(system-clock) @result{} 20.88
+@end example
+@end deffn
+
+@deffn {procedure+} runtime
+Returns the amount of process time, in seconds, that has elapsed since
+Scheme was started.  However, it does not include time spent in garbage
+collection.
+
+@example
+(runtime) @result{} 20.83
+@end example
+@end deffn
+
+@deffn {procedure+} with-timings thunk receiver
+Calls @var{thunk} with no arguments.  After @var{thunk} returns,
+@var{receiver} is called with three arguments describing the time spent
+while computing @var{thunk}: the elapsed run time, the amount of time
+spent in the garbage collector, and the elapsed real time.  All three
+times are in ticks.
+
+This procedure is most useful for doing performance measurements, and is
+designed to have relatively low overhead.
+
+@example
+@group
+(with-timings
+ (lambda () @r{...hairy computation...})
+ (lambda (run-time gc-time real-time)
+   (write (internal-time/ticks->seconds run-time))
+   (write-char #\space)
+   (write (internal-time/ticks->seconds gc-time))
+   (write-char #\space)
+   (write (internal-time/ticks->seconds real-time))
+   (newline)))
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} measure-interval runtime? procedure
+Calls @var{procedure}, passing it the current process time, in seconds,
+as an argument.  The result of this call must be another procedure.
+When @var{procedure} returns, the resulting procedure is
+tail-recursively called with the ending time, in seconds, as an
+argument.
+
+If @var{runtime?} is @code{#f}, the elapsed time is deducted from the
+elapsed system time returned by @code{runtime}.
+
+While this procedure can be used for time measurement, its interface is
+somewhat clumsy for that purpose.  We recommend that you use
+@code{with-timings} instead, because it is more convenient and has lower
+overhead.
+
+@example
+@group
+(measure-interval #t
+                  (lambda (start-time)
+                    (let ((v @r{...hairy computation...}))
+                      (lambda (end-time)
+                        (write (- end-time start-time))
+                        (newline)
+                        v))))
+@end group
+@end example
+@end deffn
+
+@node Subprocesses, Miscellaneous OS Facilities, Machine Time, Operating-System Interface
+@section Subprocesses
+
+MIT Scheme provides the ability to run and control subprocesses.  This
+support is divided into two parts: a low-level set of primitives that
+maps directly to the underlying operating system's process-control
+primitives, and a high-level set of procedures for starting a subprocess
+and running it to completion in a single call.  Subprocesses that are
+run in the latter fashion are referred to as @dfn{synchronous}, because
+they are started and stopped in synchrony with a Scheme procedure call.
+
+This chapter documents Scheme's high-level synchronous-subprocess
+support.  The low-level support is not documented but is available for
+those who are willing to read the source code.
+
+@menu
+* Subprocess Procedures::       
+* Subprocess Conditions::       
+* Subprocess Options::          
+@end menu
+
+@node Subprocess Procedures, Subprocess Conditions, Subprocesses, Subprocesses
+@subsection Subprocess Procedures
+
+There are two commands for running synchronous subprocesses under
+Scheme.  @code{run-shell-command} is very simple to use, provides access
+to all shell features, and is to be preferred in most situations.
+@code{run-synchronous-subprocess} allows direct execution of a program
+and precise control of the command-line arguments passed to the program,
+but does not provide file globbing, I/O redirection, or other shell
+features.
+
+@deffn {procedure+} run-shell-command command option @dots{}
+Runs @var{command}, which must be a string.  @var{Command} is passed to
+a command shell for interpretation; how the shell is chosen is detailed
+below.
+
+The @var{option}s are a sequence of keyword/value pairs that specify
+optional behavior.  See below for more information about options.
+
+@code{run-shell-command} waits until the subprocess completes its
+execution and returns the exit code from the subprocess.  If the
+subprocess is killed or stopped, an error is signalled and the procedure
+does not return.
+@end deffn
+
+@deffn {procedure+} run-synchronous-subprocess program arguments option @dots{}
+Runs @var{program}, passing it the given command-line @var{arguments}.
+@var{Program} must be either the name of a program on the path, or else
+a pathname to a specific program.  @var{Arguments} must be a list of
+strings; each string is a single command-line argument to the program.
+
+The @var{option}s are a sequence of keyword/value pairs that specify
+optional behavior.  See below for more information about options.
+
+@code{run-synchronous-subprocess} waits until the subprocess completes
+its execution and returns the exit code from the subprocess.  If the
+subprocess is killed or stopped, an error is signalled and the procedure
+does not return.
+@end deffn
+
+@node Subprocess Conditions, Subprocess Options, Subprocess Procedures, Subprocesses
+@subsection Subprocess Conditions
+
+If a subprocess spawned by one of the above procedures is killed or
+suspended, then one of the following errors will be signalled.
+
+@deffn {condition type+} condition-type:subprocess-signalled subprocess reason
+This condition type is a subtype of
+@code{condition-type:subprocess-abnormal-termination}.  It is signalled
+when the subprocess is killed.
+
+@var{Subprocess} is an object that represents the subprocess involved.
+The internals of this object can be accessed but the interface is not
+documented at this time; see the source code for details.
+
+@var{Reason} is interesting only on unix systems, where it is the signal
+that killed the process.  On other systems it has a fixed value that
+conveys no useful information.
+@end deffn
+
+@deffn {condition type+} condition-type:subprocess-stopped subprocess reason
+This condition type is a subtype of
+@code{condition-type:subprocess-abnormal-termination}.  It is signalled
+when the subprocess is stopped or suspended.
+
+@var{Subprocess} is an object that represents the subprocess involved.
+The internals of this object can be accessed but the interface is not
+documented at this time; see the source code for details.
+
+@var{Reason} is interesting only on unix systems, where it is the signal
+that stopped the process.  On other systems it has a fixed value that
+conveys no useful information.
+@end deffn
+
+@deffn {condition type+} condition-type:subprocess-abnormal-termination subprocess reason
+This condition type is a subtype of @code{condition-type:error}.  This
+is an abstract type that is never signalled.  It is provided so that
+condition handlers can be bound to it.
+@end deffn
+
+@node Subprocess Options,  , Subprocess Conditions, Subprocesses
+@subsection Subprocess Options
+
+The following subprocess options may be passed to
+@code{run-shell-command} or @code{run-synchronous-subprocess}.  These
+options are passed as alternating keyword/value pairs, for example:
+
+@example
+@group
+(run-shell-command "ls /"
+                   'output my-output-port
+                   'output-buffer-size 8192)
+@end group
+@end example
+
+@noindent
+The example shows a shell command being run with two options,
+@code{output} and @code{output-buffer-size}, being specified.
+
+@deffn {subprocess option+} input port
+Specifies the standard input of the subprocess.  @var{Port} may be an
+input port, in which case characters are read from @var{port} and fed to
+the subprocess until @var{port} reaches end-of-file.  Alternatively,
+@var{port} may be @code{#f}, indicating that the subprocess has no
+standard input.
+
+The default value of this option is @code{#f}.
+
+@example
+@group
+(call-with-input-file "foo.in"
+  (lambda (port)
+    (run-shell-command "cat > /dev/null" 'input port)))
+@end group
+@end example
+@end deffn
+
+@deffn {subprocess option+} input-line-translation line-ending
+Specifies how line-endings should be translated when writing characters
+to the subprocess.  Ignored if the @code{input} option is @code{#f}.
+@var{Line-ending} must be either a string specifying the line ending, or
+the symbol @code{default}, meaning to use the operating system's
+standard line ending.  In either case, newline characters to be written
+to the @code{input} port are translated to the specified line ending
+before being written.
+
+The default value of this option is @code{default}.
+
+@example
+@group
+(call-with-input-file "foo.in"
+  (lambda (port)
+    (run-shell-command "cat > /dev/null"
+                       'input port
+                       'input-line-translation "\r\n")))
+@end group
+@end example
+@end deffn
+
+@deffn {subprocess option+} input-buffer-size n
+Specifies the size of the input buffer for the standard input of the
+subprocess.  (This is the buffer on the Scheme side, and has nothing to
+do with any buffering done on the subprocess side.)  Ignored if the
+@code{input} option is @code{#f}.  @var{N} must be an exact positive
+integer specifying the number of characters the buffer can hold.
+
+The default value of this option is @code{512}.
+
+@example
+@group
+(call-with-input-file "foo.in"
+  (lambda (port)
+    (run-shell-command "cat > /dev/null"
+                       'input port
+                       'input-buffer-size 4096)))
+@end group
+@end example
+@end deffn
+
+@deffn {subprocess option+} output port
+Specifies the standard output and standard error of the subprocess.
+@var{Port} may be an output port, in which case characters are read from
+the subprocess and fed to @var{port} until the subprocess finishes.
+Alternatively, @var{port} may be @code{#f}, indicating that the
+subprocess has no standard output or standard error.
+
+The default value of this option is the value of
+@code{(current-output-port)}.
+
+@example
+@group
+(call-with-output-file "foo.out"
+  (lambda (port)
+    (run-shell-command "ls -la /etc" 'output port)))
+@end group
+@end example
+@end deffn
+
+@deffn {subprocess option+} output-line-translation line-ending
+Specifies how line-endings should be translated when reading characters
+from the standard output of the subprocess.  Ignored if the
+@code{output} option is @code{#f}.  @var{Line-ending} must be either a
+string specifying the line ending, or the symbol @code{default}, meaning
+to use the operating system's standard line ending.  In either case,
+newline characters read from the subprocess port are translated to the
+specified line ending.
+
+The default value of this option is @code{default}.
+
+@example
+@group
+(call-with-output-file "foo.out"
+  (lambda (port)
+    (run-shell-command "ls -la /etc"
+                       'output port
+                       'output-line-translation "\r\n")))
+@end group
+@end example
+@end deffn
+
+@deffn {subprocess option+} output-buffer-size n
+Specifies the size of the output buffer for the standard output of the
+subprocess.  (This is the buffer on the Scheme side, and has nothing to
+do with any buffering done on the subprocess side.)  Ignored if the
+@code{output} option is @code{#f}.  @var{N} must be an exact positive
+integer specifying the number of characters the buffer can hold.
+
+The default value of this option is @code{512}.
+
+@example
+@group
+(call-with-output-file "foo.out"
+  (lambda (port)
+    (run-shell-command "ls -la /etc"
+                       'output port
+                       'output-buffer-size 4096)))
+@end group
+@end example
+@end deffn
+
+@deffn {subprocess option+} redisplay-hook thunk
+Specifies that @var{thunk} is to be run periodically when output from
+the subprocess is available.  @var{Thunk} must be a procedure of no
+arguments, or @code{#f} indicating that no hook is supplied.  This
+option is mostly useful for interactive systems.  For example, the Edwin
+text editor uses this to update output buffers when running some
+subprocesses.
+
+The default value of this option is @code{#f}.
+
+@example
+@group
+(run-shell-command "ls -la /etc"
+                   'redisplay-hook
+                   (lambda ()
+                     (update-buffer-contents buffer)))
+@end group
+@end example
+@end deffn
+
+@deffn {subprocess option+} environment environment
+Specifies the environment variables that are to be used for the
+subprocess.  @var{Environment} must be either a vector of strings or
+@code{#f} indicating the default environment.  If it is a vector of
+strings, each string must be a name/value pair where the name and value
+are separated by an equal sign, for example, @code{"foo=bar"}.  To
+define a variable with no value, just omit the value, as in @code{"foo="}.
+
+@vindex scheme-subprocess-environment
+Note that the variable @code{scheme-subprocess-environment} is bound to
+the default subprocess environment.
+
+The default value of this option is @code{#f}.
+
+@example
+@group
+(run-shell-command "ls -la /etc"
+                   'environment
+                   (let* ((v scheme-subprocess-environment)
+                          (n (vector-length v))
+                          (v (vector-grow v (+ n 1))))
+                     (vector-set! v n "TERM=none")
+                     v))
+@end group
+@end example
+@end deffn
+
+@deffn {subprocess option+} working-directory pathname
+Specifies the working directory in which the subprocess will run.
+
+The default value of this option is @code{(working-directory-pathname)}.
+
+@example
+@group
+(run-shell-command "ls -la" 'working-directory "/etc/")
+@end group
+@end example
+@end deffn
+
+@deffn {subprocess option+} use-pty? boolean
+This option is meaningful only on unix systems; on other systems it is
+ignored.  Specifies whether to communicate with the subprocess using
+@sc{pty} devices; if true, @sc{pty}s will be used, otherwise pipes will
+be used.
+
+The default value of this option is @code{#f}.
+
+@example
+@group
+(run-shell-command "ls -la /etc" 'use-pty? #t)
+@end group
+@end example
+@end deffn
+
+@deffn {subprocess option+} shell-file-name pathname
+Specifies the shell program to use for @code{run-shell-command}.
+
+The default value of this option is @code{(os/shell-file-name)}.  This
+is the value of the environment variable @code{SHELL}, or if
+@code{SHELL} is not set, the value is operating-system dependent as
+follows:
+
+@itemize @bullet
+@item
+On unix systems, @file{/bin/sh} is used.
+
+@item
+On OS/2 systems, the value of the environment variable @code{COMSPEC} is
+used, or if that is not set, @file{cmd.exe} on the current path.
+
+@item
+On Windows systems, the value of the environment variable @code{COMSPEC}
+is used.  If that is not set, @file{cmd.exe} is used for Windows NT, or
+@file{command.com} is used for Windows 9x; in each case the shell is
+found by searching the path.
+@end itemize
+
+@example
+@group
+(run-shell-command "ls -la /etc"
+                   'shell-file-name "/usr/local/bin/bash")
+@end group
+@end example
+@end deffn
+
+@node Miscellaneous OS Facilities,  , Subprocesses, Operating-System Interface
+@section Miscellaneous OS Facilities
+
+This section contains assorted operating-system facilities that don't
+fit into other categories.
+
+@defvr {variable+} microcode-id/operating-system
+@defvrx {variable+} microcode-id/operating-system-name
+@code{microcode-id/operating-system} is bound to a symbol that specifies
+the type of operating system that Scheme is running under.  There are
+three possible values: @code{unix}, @code{os/2}, or @code{nt}.
+
+@code{microcode-id/operating-system-name} is a string containing the
+same name as @code{microcode-id/operating-system}; the latter is created
+by interning the former as a symbol.
+@end defvr
+
+@defvr {variable+} microcode-id/operating-system-variant
+This variable is a string that identifies the particular variant of the
+operating system that Scheme is running under.  Here are some of the
+possible values:
+
+@example
+@group
+"GNU/Linux"
+"FreeBSD"
+"HP-UX"
+"SunOS"
+"OS/2 2.1"
+"OS/2 4.0"
+"Microsoft Windows NT 4.0 (Build 1381; Service Pack 3)"
+"Microsoft Windows 98 (Build 410)"
+@end group
+@end example
+
+@noindent
+For Windows systems, it is recommended that you match on the prefix of
+this string and ignore the @code{"Build"} suffix.  This is because the
+suffix may contain information about service packs or fixes, while the
+prefix will be constant for a particular version of Windows.
+@end defvr
 
 @node Error System, Graphics, Operating-System Interface, Top
 @chapter Error System
