@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/telnet.scm,v 1.1 1991/08/28 14:53:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/telnet.scm,v 1.2 1991/10/02 09:18:48 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -67,9 +67,10 @@ and telnet-mode-hook, in that order."
 (define-key 'telnet '(#\C-c #\C-z) 'telnet-self-send)
 (define-key 'telnet '(#\C-c #\C-\\) 'telnet-self-send)
 
-(define-variable telnet-mode-hook
-  "An event distributor that is invoked when entering Telnet mode."
-  (make-event-distributor))
+;;;moved to "loadef.scm".
+;;;(define-variable telnet-mode-hook
+;;;  "An event distributor that is invoked when entering Telnet mode."
+;;;  (make-event-distributor))
 
 (define-command telnet
   "Run telnet in a buffer.
