@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.12 1993/10/27 22:16:43 gjr Exp $
+$Id: ux.c,v 1.13 1993/11/22 22:34:39 cph Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -171,10 +171,7 @@ DEFUN_VOID (UX_setsid)
       UX_close (fd);
     }
 #endif
-  {
-    pid_t pid = (getpid ());
-    return (setpgrp (pid, pid));
-  }
+  return (setpgrp (0, 0));
 }
 
 #ifndef _SUNOS
