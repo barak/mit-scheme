@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.35 1992/05/27 03:44:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.36 1992/05/27 04:07:00 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -410,9 +410,9 @@ MIT in each case. |#
 				       ";Pseudo-fasloading ")
 		      (caddr place))))))
 	   (file-exists?
-	    (lambda (filename)
+	    (lambda (fname)
 	      (or (find-filename fname alist)
-		  (real-file-exists? filename))))
+		  (real-file-exists? fname))))
 	   (flush-purification-queue! (lambda () 'done)))
         (load (caar alist))))
     (flush-purification-queue!))
