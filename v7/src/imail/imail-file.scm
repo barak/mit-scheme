@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.4 2000/01/19 05:54:55 cph Exp $
+;;; $Id: imail-file.scm,v 1.5 2000/01/21 20:22:06 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -138,8 +138,21 @@
 		    (cons (car messages) messages*))))))))
 
 (define-method search-folder ((folder <file-folder>) criteria)
-  folder criteria
-  (error "Unimplemented operation:" 'SEARCH-FOLDER))
+  (cond ((string? criteria)
+	 (let ((n (count-messages folder)))
+	   (let loop ((index 0) (winners '()))
+	     (if (< index n)
+		 (loop (+ index 1)
+		       (if (string-search-forward
+			    criteria
+			    (message->string (get-message folder index)))
+			   (cons index winners)
+			   winners))
+		 (reverse! winners)))))
+	(else
+	 (error:wrong-type-argument criteria
+				    "search criteria"
+				    'SEARCH-FOLDER))))
 
 (define-method synchronize-folder ((folder <file-folder>))
   folder
