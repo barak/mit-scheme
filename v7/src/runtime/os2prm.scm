@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.13 1995/04/22 23:38:03 cph Exp $
+$Id: os2prm.scm,v 1.14 1995/04/23 03:20:38 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -126,15 +126,10 @@ MIT in each case. |#
 			  tz))))))
 
 (define (local-time-zone)
-  (let ((tz (get-environment-variable "TZ")))
-    (or (and tz
-	     (let ((l (string-length tz)))
-	       (and (fix:> l 6)
-		    (let ((n (substring->number tz 3 (fix:- l 3))))
-		      (and (exact-integer? n)
-			   (<= -24 n 24)
-			   n)))))
-	5)))
+  (/ ((ucode-primitive os2-time-zone 0)) 3600))
+
+(define os2/daylight-savings-time?
+  (ucode-primitive os2-daylight-savings-time? 0))
 
 (define (decode-file-time time)
   (let* ((twosecs (remainder time 32))
