@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosdir.scm,v 1.2 1992/08/06 13:40:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosdir.scm,v 1.3 1992/08/06 13:45:41 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -96,38 +96,35 @@ MIT in each case. |#
 	   (let* ((len (string-length pattern))
 		  (min-len (-1+ len)))
 	     (cond ((zero? posn)
-		    (let ((suffix (substring pattern 1 len)))
-		      (lambda (instance)
-			(and (string? instance)
-			     (let ((len* (string-length instance)))
-			       (and (>= len* min-len)
-				    (string=? suffix
-					      (substring instance
-							 (- len* min-len)
-							 len*))))))))
+		    (lambda (instance)
+		      (and (string? instance)
+			   (let ((len* (string-length instance)))
+			     (and (>= len* min-len)
+				  (substring=?
+				   pattern 1 len
+				   instance (- len* min-len) len*))))))
 		   ((= posn (-1+ len))
-		    (let ((prefix (substring pattern 0 min-len)))
-		      (lambda (instance)
-			(and (string? instance)
-			     (let ((len* (string-length instance)))
-			       (and (>= len* min-len)
-				    (string=? prefix
-					      (substring instance 0
-							 min-len))))))))
+		    (lambda (instance)
+		      (and (string? instance)
+			   (let ((len* (string-length instance)))
+			     (and (>= len* min-len)
+				  (substring=?
+				   pattern 0 min-len
+				   instance 0 min-len))))))
 		   (else
-		    (let ((prefix (substring pattern 0 posn))
-			  (suffix (substring pattern (1+ posn) len))
-			  (suffix-len (- len (1+ posn))))
+		    (let* ((suffix-start (1+ posn))
+			   (suffix-len (- len suffix-start)))
 		      (lambda (instance)
 			(and (string? instance)
 			     (let ((len* (string-length instance)))
-			       (and (>= len* min-len)
-				    (string=? prefix
-					      (substring instance 0 posn))
-				    (string=? suffix
-					      (substring instance
-							 (- len* suffix-len)
-							 len*))))))))))))
+			       (and
+				(>= len* min-len)
+				(substring=?
+				 pattern 0 posn
+				 instance 0 posn)
+				(substring=?
+				 pattern suffix-start len
+				 instance (- len* suffix-len) len*)))))))))))
 	(else
 	 (lambda (instance)
 	   (equal? pattern instance)))))
