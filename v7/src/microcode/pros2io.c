@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2io.c,v 1.12 2003/04/25 05:13:14 cph Exp $
+$Id: pros2io.c,v 1.13 2003/04/25 19:49:47 cph Exp $
 
 Copyright 1994,1995,1997,2000,2003 Massachusetts Institute of Technology
 
@@ -45,7 +45,7 @@ DEFINE_PRIMITIVE ("CHANNEL-DESCRIPTOR", Prim_channel_descriptor, 1, 1, 0)
       (LONG_TO_UNSIGNED_FIXNUM
        ((CHANNEL_ABSTRACT_P (channel))
 	? (OS2_channel_thread_descriptor (channel))
-	: 0));
+	: QID_NONE));
   }
 }
 
