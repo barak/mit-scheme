@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.74 1990/09/11 20:45:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.75 1990/09/11 22:33:37 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -1128,8 +1128,6 @@ MIT in each case. |#
 	  truncate
 	  truncate->exact
 	  zero?)
-  (export (runtime number-parser)
-	  bad-range)
   (initialization (initialize-package!)))
 
 (define-package (runtime number interface)

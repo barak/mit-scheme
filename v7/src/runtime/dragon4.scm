@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dragon4.scm,v 1.3 1990/01/15 21:27:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dragon4.scm,v 1.4 1990/09/11 22:33:57 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -204,4 +204,5 @@ MIT in each case. |#
 		      ((normal) (values k r s m- m+ k round-up?))
 		      ((absolute) (cutoff-adjust cutoff))
 		      ((relative) (cutoff-adjust (+ k cutoff)))
-		      (else (wrong-type 'DRAGON4 cutoff-mode)))))))))))))
+		      (else
+		       (error:illegal-datum cutoff-mode 'DRAGON4)))))))))))))
