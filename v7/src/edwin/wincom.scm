@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: wincom.scm,v 1.112 1992/09/10 02:44:25 cph Exp $
+;;;	$Id: wincom.scm,v 1.113 1992/11/13 22:59:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -442,10 +442,13 @@ Also kills any pop up window it may have created."
 (define *previous-popped-up-window* (object-hash false))
 (define *minibuffer-scroll-window* (object-hash false))
 
-(define (pop-up-buffer buffer #!optional select?)
+(define (pop-up-buffer buffer #!optional select? not-current-window)
   ;; If some new window is created by this procedure, it is returned
   ;; as the value.  Otherwise the value is false.
-  (let ((select? (and (not (default-object? select?)) select?)))
+  (let ((select? (and (not (default-object? select?)) select?))
+	(current-window-ok?
+	 (not (and (not (default-object? not-current-window?))
+		   not-current-window?))))
 
     (define (pop-up-window window)
       (let ((window (window-split-vertically! window false)))
@@ -462,10 +465,19 @@ Also kills any pop up window it may have created."
       (and (eq? window (object-unhash *previous-popped-up-window*))
 	   window))
 
+    (define (find-visible-window buffer)
+      (let loop ((windows (buffer-windows buffer)))
+	(and (not (null? windows))
+	     (let ((window (car windows)))
+	       (if (and (window-visible? window)
+			(or current-window-ok? (not (current-window? window))))
+		   window
+		   (loop (cdr windows)))))))
+
     (if (< (ref-variable window-min-height) 2)
 	(set-variable! window-min-height 2))
     (let ((window
-	   (let ((window (get-buffer-window buffer)))
+	   (let ((window (find-visible-window buffer)))
 	     (if window
 		 (begin
 		   (set-window-point! window (buffer-point buffer))
