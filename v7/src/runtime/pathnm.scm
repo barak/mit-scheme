@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.11 1991/02/15 18:06:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.12 1991/08/22 15:17:51 arthur Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -340,8 +340,8 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
 (define (canonicalize-input-pathname filename)
   (let ((pathname (->pathname filename)))
     (let ((truename (pathname->input-truename pathname)))
-      (if (not truename) (error:open-file pathname))
-      truename)))
+      (or truename
+	  (canonicalize-input-pathname (error:open-file pathname))))))
 
 (define (pathname->input-truename pathname)
   (let ((pathname (pathname->absolute-pathname pathname))
@@ -425,11 +425,15 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
 (define library-directory-path)
 
 (define (system-library-pathname pathname)
-  (let loop ((directories library-directory-path))
-    (if (null? directories)
-	(error:open-file pathname))
-    (or (pathname->input-truename (merge-pathnames pathname (car directories)))
-	(loop (cdr directories)))))
+  (if (and (pathname-absolute? pathname)
+	   (pathname->input-truename pathname))
+      pathname
+      (let loop ((directories library-directory-path))
+	(if (null? directories)
+	    (system-library-pathname (->pathname (error:open-file pathname)))
+	    (or (pathname->input-truename
+		 (merge-pathnames pathname (car directories)))
+		(loop (cdr directories)))))))
 
 (define (system-library-directory-pathname pathname)
   (if (not pathname)

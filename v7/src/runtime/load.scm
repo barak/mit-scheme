@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.23 1991/08/20 22:01:33 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.24 1991/08/22 15:18:02 arthur Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -189,9 +189,9 @@ MIT in each case. |#
 		   (pathname->input-truename pathname)
 		   (load/default-find-pathname-with-type pathname
 							 default-types)))))
-	(if (not truename)
-	    (error:open-file pathname))
-	truename)))
+	(or truename
+	    (find-true-pathname (->pathname (error:open-file pathname))
+				default-types)))))
 
 (define (search-types-in-order pathname default-types)
   (let loop ((types default-types))
