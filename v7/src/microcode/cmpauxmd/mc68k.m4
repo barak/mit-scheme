@@ -1,8 +1,8 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.14 1990/10/02 21:49:55 jinx Rel $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.15 1991/01/08 22:16:01 cph Exp $
 ###
-###	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+###	Copyright (c) 1989, 1990, 1991 Massachusetts Institute of Technology
 ###
 ###	This material was developed by the Scheme project at the
 ###	Massachusetts Institute of Technology, Department of
@@ -225,7 +225,7 @@ define_debugging_label(ring_block_5)
 
 define_c_label(interface_initialize)
 	link	%a6,&0
-	ifdef(`MC68881', `fmov.l	&0x7480,%fpcr')
+	ifdef(`MC68881', `fmov.l	&0x3480,%fpcr')
 	unlk	%a6
 	rts
 
