@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.19 1999/01/29 22:46:52 cph Exp $
+$Id: ed-ffi.scm,v 1.20 1999/05/07 21:23:35 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -231,7 +231,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		syntax-table/system-internal)
     ("stream"	(runtime stream)
 		syntax-table/system-internal)
-    ("string"	()
+    ("string"	(runtime string)
 		syntax-table/system-internal)
     ("strnin"	(runtime string-input)
 		syntax-table/system-internal)
