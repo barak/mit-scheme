@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.54 1996/10/02 18:57:42 cph Exp $
+$Id: hooks.c,v 9.55 1996/10/02 19:17:34 cph Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -570,6 +570,7 @@ DEFINE_PRIMITIVE ("TRANSLATE-TO-STATE-POINT", Prim_translate_to_point, 1, 1,
     POP_PRIMITIVE_FRAME (1);
     Translate_To_Point (state_point);
     /*NOTREACHED*/
+    PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }
 
