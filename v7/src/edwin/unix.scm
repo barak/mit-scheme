@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.22 1992/02/08 15:23:43 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.23 1992/04/06 20:25:27 bal Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -334,6 +334,14 @@ Includes the new backup.  Must be > 0."
 	(and (file-exists? pathname)
 	     pathname))))
 
+(define (os/read-file-methods)
+  (list maybe-read-compressed-file
+	maybe-read-encrypted-file))
+
+(define (os/write-file-methods)
+  (list maybe-write-compressed-file
+	maybe-write-encrypted-file))
+
 ;;;; Compressed Files
 
 (define-variable enable-compressed-files
@@ -342,9 +350,6 @@ and recompressed when written.  A compressed file is identified by the
 filename suffix \".Z\"."
   true
   boolean?)
-
-(define (os/read-file-methods)
-  (list maybe-read-compressed-file))
 
 (define (maybe-read-compressed-file pathname mark visit?)
   visit?
@@ -369,9 +374,6 @@ filename suffix \".Z\"."
 			    read-compressed-file
 			    (list pathname mark))))
 
-(define (os/write-file-methods)
-  (list maybe-write-compressed-file))
-
 (define (maybe-write-compressed-file region pathname visit?)
   visit?
   (and (ref-variable enable-compressed-files (region-start region))
@@ -394,3 +396,63 @@ filename suffix \".Z\"."
 			    "[unknown]"
 			    write-compressed-file
 			    (list region pathname))))
+
+;;;; Encrypted files
+
+(load-option 'krypt)
+
+(define-variable enable-encrypted-files
+  "If true, encrypted files are automatically decrypted when read,
+and recrypted when written.  An encrypted file is identified by the
+filename suffix \".KY\"."
+  true
+  boolean?)
+
+(define (maybe-read-encrypted-file pathname mark visit?)
+  visit?
+  (and (ref-variable enable-encrypted-files mark)
+       (equal? "KY" (pathname-type pathname))
+       (begin
+	 (read-encrypted-file pathname mark)
+	 true)))
+
+(define (read-encrypted-file pathname mark)
+  (let ((the-encrypted-file
+	 (with-input-from-file pathname
+	   (lambda ()
+	     (read-string (char-set)))))
+	(password 
+	 (prompt-for-password "Password: ")))
+    (insert-string
+     (decrypt the-encrypted-file password
+	      (lambda () 
+		(kill-buffer (mark-buffer mark))
+		(editor-beep)
+		(message "krypt: Password error!")
+		(abort-current-command))
+	      (lambda (x) 
+		(editor-beep)
+		(message "krypt: Checksum error!")
+		x))
+     mark)))
+
+(define (maybe-write-encrypted-file region pathname visit?)
+  visit?
+  (and (ref-variable enable-compressed-files (region-start region))
+       (equal? "KY" (pathname-type pathname))
+       (begin
+	 (write-encrypted-file region pathname)
+	 true)))
+
+(define (write-encrypted-file region pathname)
+  (let* ((password 
+	  (prompt-for-confirmed-password))
+	 (the-encrypted-file
+	  (encrypt (extract-string (region-start region) (region-end region))
+		   password)))
+    (with-output-to-file pathname
+      (lambda ()
+	(write-string the-encrypted-file)))))
+
+;;; End of encrypted files
+
