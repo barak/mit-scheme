@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: txtprp.scm,v 1.15 1994/10/11 23:10:12 cph Exp $
+;;;	$Id: txtprp.scm,v 1.16 1994/10/12 07:24:28 cph Exp $
 ;;;
-;;;	Copyright (c) 1993 Massachusetts Institute of Technology
+;;;	Copyright (c) 1993-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -610,25 +610,27 @@
   interval)
 
 (define (split-interval-left interval index group)
-  (let ((start (interval-start interval))
-	(left (interval-left interval)))
-    (let ((interval*
-	   (make-interval interval
-			  left
-			  #f
-			  'RED
-			  (fix:+ (if left (interval-total-length left) 0)
-				 (fix:- index start))
-			  start
-			  (properties/copy (interval-properties interval)))))
-      (set-interval-left! interval interval*)
-      (if left (set-interval-up! left interval*))
-      (set-interval-start! interval index)
-      (insert-fixup! group
-		     (if (and left (eq? 'RED (interval-color left)))
-			 left
-			 interval*))
-      interval*)))
+  (let ((delta (fix:- index (interval-start interval)))
+	(start (interval-start interval)))
+    (set-interval-start! interval index)
+    (let ((new
+	   (lambda (parent d)
+	     (let ((interval*
+		    (make-interval parent #f #f 'RED delta start
+				   (properties/copy
+				    (interval-properties interval)))))
+	       (set-link+! parent d interval*)
+	       (insert-fixup! group interval*)
+	       interval*))))
+      (if (not (interval-left interval))
+	  (new interval 'LEFT)
+	  (let loop ((parent (interval-left interval)))
+	    (set-interval-total-length! parent
+					(fix:+ (interval-total-length parent)
+					       delta))
+	    (if (not (interval-right parent))
+		(new parent 'RIGHT)
+		(loop (interval-right parent))))))))
 
 (define (insert-fixup! group x)
   ;; Assumptions: X is red, and the only possible violation of the
