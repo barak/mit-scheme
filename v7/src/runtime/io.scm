@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.37 1993/09/10 19:15:54 cph Exp $
+$Id: io.scm,v 14.38 1994/11/14 00:13:38 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -64,17 +64,7 @@ MIT in each case. |#
   ;; Make sure that interrupts are disabled before `descriptor' is
   ;; created until after this procedure returns.
   (let ((channel
-	 (%make-channel
-	  descriptor
-	  (let ((type ((ucode-primitive channel-type 1) descriptor))
-		(types
-		 '#(#F FILE PIPE FIFO TERMINAL PTY-MASTER
-		       UNIX-STREAM-SOCKET TCP-STREAM-SOCKET
-		       TCP-SERVER-SOCKET DIRECTORY CHARACTER-DEVICE
-		       BLOCK-DEVICE)))
-	    (and (< type (vector-length types))
-		 (vector-ref types type)))
-	  false)))
+	 (%make-channel descriptor (descriptor-type-name descriptor) #f)))
     (with-absolutely-no-interrupts
      (lambda ()
        (set-cdr! open-channels-list
@@ -91,26 +81,35 @@ MIT in each case. |#
 	     (system-pair-car (car channels))
 	     (loop (cdr channels))))))
 
+(define descriptor-type-name
+  (let ((channel-type-name (ucode-primitive channel-type-name 1))
+	(channel-type (ucode-primitive channel-type 1)))
+    (lambda (descriptor)
+      (if (implemented-primitive-procedure? channel-type-name)
+	  (let ((name (channel-type-name descriptor)))
+	    (and name
+		 (intern name)))
+	  ;; For upwards compatibility with old microcodes:
+	  (let ((index (channel-type descriptor))
+		(types
+		 '#(#F FILE PIPE FIFO TERMINAL PTY-MASTER
+		       UNIX-STREAM-SOCKET TCP-STREAM-SOCKET
+		       TCP-SERVER-SOCKET DIRECTORY CHARACTER-DEVICE
+		       BLOCK-DEVICE)))
+	    (and (< index (vector-length types))
+		 (vector-ref types index)))))))
+
 (define-integrable (channel-type=unknown? channel)
   (false? (channel-type channel)))
 
 (define-integrable (channel-type=file? channel)
   (eq? 'FILE (channel-type channel)))
 
-(define-integrable (channel-type=terminal? channel)
-  (eq? 'TERMINAL (channel-type channel)))
-
-(define-integrable (channel-type=pty-master? channel)
-  (eq? 'PTY-MASTER (channel-type channel)))
-
 (define-integrable (channel-type=directory? channel)
   (eq? 'DIRECTORY (channel-type channel)))
 
-(define-integrable (channel-type=character-device? channel)
-  (eq? 'CHARACTER-DEVICE (channel-type channel)))
-
-(define-integrable (channel-type=block-device? channel)
-  (eq? 'BLOCK-DEVICE (channel-type channel)))
+(define-integrable (channel-type=terminal? channel)
+  (eq? 'TERMINAL (channel-type channel)))
 
 (define (channel-close channel)
   ;; This is locked from interrupts, but GC can occur since the
