@@ -175,7 +175,7 @@
   (lambda (vector)
     (define (normal)
       (*unparse-char #\#)
-      (unparse-list-internal (vector->list vector)))
+      (unparse-list (vector->list vector)))
     (cond ((zero? (vector-length vector)) (*unparse-string "#()"))
 	  ((future? vector) (normal))
 	  (else
@@ -198,20 +198,30 @@
     ((cond ((future? (car object)) unparse-list)
 	   ((unassigned-object? object) unparse-unassigned)
 	   ((unbound-object? object) unparse-unbound)
-	   (else unparse-list))
+	   (else
+	    (let ((entry (assq (car object) *unparser-special-pairs*)))
+	      (if entry
+		  (cdr entry)
+		  unparse-list))))
      object)))
 
-(define (unparse-list list)
-    (cond ((and (not (future? (car list)))
-		(eq? (car list) 'QUOTE)
-		(pair? (cdr list))
-		(null? (cddr list)))
-	   (*unparse-char #\')
-	   (*unparse-object-or-future (cadr list)))
-	  (else
-	   (unparse-list-internal list))))
+(define *unparser-special-pairs* '())
 
-(define (unparse-list-internal list)
+(define (add-unparser-special-pair! key unparser)
+  (set! *unparser-special-pairs*
+	(cons (cons key unparser)
+	      *unparser-special-pairs*))
+  *the-non-printing-object*)
+
+(add-unparser-special-pair! 'QUOTE
+  (lambda (pair)
+    (if (and (pair? (cdr pair))
+	     (null? (cddr pair)))
+	(begin (*unparse-char #\')
+	       (*unparse-object-or-future (cadr pair)))
+	(unparse-list pair))))
+
+(define (unparse-list list)
   (if *unparser-list-depth-limit*
       (fluid-let ((*unparser-list-depth* (1+ *unparser-list-depth*)))
 	(if (> *unparser-list-depth* *unparser-list-depth-limit*)
