@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: curren.scm,v 1.124 2000/04/07 20:12:50 cph Exp $
+;;; $Id: curren.scm,v 1.125 2000/05/23 02:08:59 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -318,7 +318,7 @@ The frame is guaranteed to be deselected at that time."
 
 (define (set-current-message! message)
   (let ((window (typein-window)))
-    (if message
+    (if (and message (not *suppress-messages?*))
 	(window-set-override-message! window message)
 	(window-clear-override-message! window))
     (if (not *executing-keyboard-macro?*)
@@ -329,6 +329,13 @@ The frame is guaranteed to be deselected at that time."
     (window-clear-override-message! window)
     (if (not *executing-keyboard-macro?*)
 	(window-direct-update! window true))))
+
+(define (with-messages-suppressed thunk)
+  (fluid-let ((*suppress-messages?* #t))
+    (clear-current-message!)
+    (thunk)))
+
+(define *suppress-messages?* #f)
 
 ;;;; Buffers
 
