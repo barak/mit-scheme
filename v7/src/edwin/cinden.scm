@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: cinden.scm,v 1.12 1995/02/07 23:50:20 cph Exp $
+;;;	$Id: cinden.scm,v 1.13 1996/03/23 06:17:00 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -126,10 +126,10 @@ This is in addition to c-continued-statement-offset."
 	   start
 	   (backward-definition-start start 1 'LIMIT))))
 	((char-match-forward #\} start)
-	 (- indentation (ref-variable c-indent-level start)))
+	 (max 0 (- indentation (ref-variable c-indent-level start))))
 	((char-match-forward #\{ start)
-	 (+ indentation (ref-variable c-brace-offset start)))
-	(else indentation)))
+	 (max 0 (+ indentation (ref-variable c-brace-offset start))))
+	(else (max 0 indentation))))
 
 (define (calculate-indentation mark parse-start)
   (let ((indent-point (line-start mark 0)))
