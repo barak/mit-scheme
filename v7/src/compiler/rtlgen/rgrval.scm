@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.10 1987/06/13 02:55:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.11 1987/06/13 20:17:39 cph Exp $
 #| -*-Scheme-*-
 Copyright (c) 1987 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.10 1987/06/13 02:55:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.11 1987/06/13 20:17:39 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -165,7 +165,7 @@ promotional, or sales literature without prior written consent from
 			    '()
 			    false)))
     (set! *ic-procedure-headers*
-	  (cons (cons procedure header)
+	  (cons (cons header (procedure-external-label procedure))
 		*ic-procedure-headers*))
     (rtl:make-typed-cons:pair
      (rtl:make-constant (scode/procedure-type-code header))
