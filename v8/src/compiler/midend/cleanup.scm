@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.3 1995/01/22 04:02:29 adams Exp $
+$Id: cleanup.scm,v 1.4 1995/01/22 17:13:24 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -87,11 +87,11 @@ MIT in each case. |#
   `(DECLARE ,@anything))
 
 (define-cleanup-handler IF (env pred conseq alt)
-  (let* ((pred* (cleanup/expr env pred))
-	 (default (lambda ()
-		    `(IF ,pred* 
-			 ,(cleanup/expr env conseq)
-			 ,(cleanup/expr env alt)))))
+  (let ((pred* (cleanup/expr env pred)))
+    (define (default)
+      `(IF ,pred* 
+	   ,(cleanup/expr env conseq)
+	   ,(cleanup/expr env alt)))
     (cond ((QUOTE/? pred*)
 	   (case (boolean/discriminate (quote/text pred*))
 	     ((FALSE)
@@ -339,45 +339,39 @@ MIT in each case. |#
 			body*)))))))))
 
 (define (cleanup/easy? form)
-  (and (pair? form)
-       (case (car form)
-	 ((LOOKUP) true)
-	 ((CALL)
-	  (let ((rator (cadr form)))
-	    (and (QUOTE/? rator)
-		 (memq (quote/text rator) cleanup/easy/ops)
-		 (let ((cont&rands (cddr form)))
-		   (and (for-all? cont&rands cleanup/trivial?)
-			(let ((all-lookups
-			       (list-transform-positive cont&rands
-				 (lambda (rand) (LOOKUP/? rand)))))
-			  (or (null? all-lookups)
-			      (null? (cdr all-lookups)))))))))
-	 (else
-	  false))))
+  (cond ((LOOKUP/? form) true)
+	((CALL/? form)
+	 (let ((rator (call/operator form)))
+	   (and (QUOTE/? rator)
+		(memq (quote/text rator) cleanup/easy/ops)
+		(let ((cont&rands (call/cont-and-operands form)))
+		  (and (for-all? cont&rands cleanup/trivial?)
+		       (let ((all-lookups
+			      (list-transform-positive cont&rands LOOKUP/?)))
+			 (or (null? all-lookups)
+			     (null? (cdr all-lookups)))))))))
+	(else
+	 false)))
 
 (define (cleanup/trivial? form)
-  (and (pair? form)
-       (or (memq (car form) '(QUOTE LOOKUP))
-	   (and (eq? (car form) 'CALL)
-		(pair? (cadr form))
-		(eq? 'QUOTE (car (cadr form)))
-		(memq (cadr (cadr form)) cleanup/trivial/ops)
-		(for-all? (cddr form)
-		  (lambda (rand)
-		    (and (pair? rand)
-			 (eq? 'QUOTE (car rand)))))))))
+  (or (QUOTE/? form)
+      (LOOKUP/? form)
+      (and (CALL/? form)
+	   (QUOTE (call/operator form))
+	   (memq (quote/text (call/operator form)) cleanup/trivial/ops)
+	   (for-all? (call/cont-and-operands form)
+	     QUOTE/?))))
 
 (define (cleanup/easy/name form)
   ;; form must satisfy cleanup/easy?
-  (case (car form)
-    ((LOOKUP) (cadr form))
-    ((CALL)
-     (let ((lookup-rand (list-search-positive (cddr form) LOOKUP/?)))
-       (and lookup-rand
-	    (cadr lookup-rand))))
-    (else
-     (internal-error "Unrecognized easy form" form))))
+  (cond ((LOOKUP/? form) (lookup/name form))
+	((CALL/? form)
+	 (let ((lookup-rand
+		(list-search-positive (call/cont-and-operands form) LOOKUP/?)))
+	   (and lookup-rand
+		(lookup/name lookup-rand))))
+	(else
+	 (internal-error "Unrecognized easy form" form))))
 
 (define cleanup/trivial/ops
   (list %vector-index))
