@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.235 1999/02/01 03:31:51 cph Exp $
+$Id: edwin.pkg,v 1.236 1999/02/18 04:03:57 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -971,8 +971,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    terminal-raw-input
 	    terminal-raw-output
 	    terminal-set-state)
-    (import (runtime transcript)
-	    transcript-port)
     (initialization (initialize-package!)))))
 
 (os-type-case

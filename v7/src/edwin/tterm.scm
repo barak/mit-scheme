@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.28 1999/01/02 06:11:34 cph Exp $
+$Id: tterm.scm,v 1.29 1999/02/18 04:04:05 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -222,14 +222,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (if block?
 		(channel-blocking channel)
 		(channel-nonblocking channel))
-	    (let ((n  (channel-read channel string end input-buffer-size)))
+	    (let ((n (channel-read channel string end input-buffer-size)))
 	      (cond ((not n)  #F)
 		    ((fix:> n 0)
-		     (let ((new-end (fix:+ end n)))
-		       (if transcript-port
-			   (output-port/write-substring transcript-port
-							string end new-end))
-		       (set! end new-end))
+		     (set! end (fix:+ end n))
 		     #T)
 		    ((fix:= n 0)
 		     ;;(error "Reached EOF in keyboard input.")
