@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.16 1992/11/03 22:42:11 jinx Exp $
+$Id: dosprm.scm,v 1.17 1993/01/12 19:01:03 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -253,9 +253,6 @@ MIT in each case. |#
 (define (dos/current-home-directory)
   (or (get-environment-variable "HOME")
       (dos/user-home-directory (dos/current-user-name))))
-
-(define dos/current-file-time
-  (ucode-primitive current-file-time 0))
 
 (define dos/file-time->string
   (ucode-primitive file-time->string 1))
