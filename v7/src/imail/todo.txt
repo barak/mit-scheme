@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.68 2000/06/08 04:16:20 cph Exp $
+$Id: todo.txt,v 1.69 2000/06/08 04:16:53 cph Exp $
 
 Bug fixes
 ---------
@@ -11,9 +11,6 @@ Bug fixes
 
 * Treat messages in unrecognized encodings as type
   application/octet-stream.
-
-* Provide ability to show contents of text/<subtype> in known
-  character sets with unrecognized <subtype>.
 
 * M-x imail-copy-messages re-reads the target folder UIDs for each
   message that is written, when the target folder is not being
