@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.114 1991/09/17 19:03:27 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.115 1991/10/02 08:59:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -221,7 +221,10 @@ by the variable indent-line-procedure."
   (lambda (argument)
     (let ((indent-line-procedure (ref-variable indent-line-procedure)))
       (if (eq? indent-line-procedure indent-to-left-margin)
-	  (insert-chars #\tab argument)
+	  (let ((insert-tab (ref-command insert-tab)))
+	    (do ((i argument (- i 1)))
+		((<= i 0))
+	      (insert-tab)))
 	  (indent-line-procedure)))))
 
 (define-command newline-and-indent
