@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.180 2001/02/05 18:15:49 cph Exp $
+;;; $Id: buffer.scm,v 1.181 2001/05/24 19:18:57 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Buffer Abstraction
 
@@ -300,8 +301,8 @@ The buffer is guaranteed to be deselected at that time."
   (set-group-read-only! (buffer-group buffer))
   (buffer-modeline-event! buffer 'BUFFER-MODIFIABLE))
 
-(define (with-read-only-defeated mark thunk)
-  (let ((group (mark-group mark))
+(define (with-read-only-defeated object thunk)
+  (let ((group (buffer-group (->buffer object)))
 	(outside)
 	(inside 'FULLY))
     (dynamic-wind (lambda ()
