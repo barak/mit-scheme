@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.26 1992/11/20 19:00:43 bal Exp $
+;;;	$Id: rmail.scm,v 1.27 1993/01/12 19:05:06 gjr Exp $
 ;;;
-;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-1993 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -1360,7 +1360,7 @@ buffer visiting that file."
 		     (fetch-first-field "from" start (header-end start end)))
 		    "unknown")
 		" "
-		(unix/file-time->string (unix/current-file-time))
+		(unix/file-time->string (get-time))
 		"\n")
 	       start)))
 	  (append-to-file (buffer-region buffer) pathname false)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.17 1992/11/17 17:50:18 cph Exp $
+;;;	$Id: sendmail.scm,v 1.18 1993/01/12 19:05:30 gjr Exp $
 ;;;
-;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-1993 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -525,7 +525,7 @@ Numeric argument means justify as well."
       (insert-string "From " end)
       (insert-string (unix/current-user-name) end)
       (insert-string " " end)
-      (insert-string (unix/file-time->string (unix/current-file-time)) end)
+      (insert-string (unix/file-time->string (get-time)) end)
       (insert-newline end)
       (insert-region (buffer-start mail-buffer)
 		     (buffer-end mail-buffer)
