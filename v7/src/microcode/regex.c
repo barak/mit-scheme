@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: regex.c,v 1.14 1993/11/18 22:54:21 gjr Exp $
+$Id: regex.c,v 1.15 1994/12/19 22:27:11 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -108,11 +108,11 @@ extern void free ();
 
 #define READ_PATTERN_OFFSET(target) do					\
 {									\
-  char _fetched;							\
+  SIGNED char _fetched;							\
   if ((pattern_pc + 1) >= pattern_end)					\
     BAD_PATTERN ();							\
   (target) = (*pattern_pc++);						\
-  _fetched = (* ((char *) (pattern_pc++)));				\
+  _fetched = (* ((SIGNED char *) (pattern_pc++)));			\
   (target) += ((SIGN_EXTEND_CHAR (_fetched)) << ASCII_LENGTH);		\
   if (((pattern_pc + (target)) < pattern_start) ||			\
       ((pattern_pc + (target)) > pattern_end))				\
