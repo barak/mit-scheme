@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.192 1997/08/23 05:20:15 cph Exp $
+;;;	$Id: filcom.scm,v 1.193 1997/10/22 01:21:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
@@ -169,7 +169,9 @@ invocation."
 	       (message "File is write protected"))
 	      (else
 	       (serious-message
-		(if (file-test-no-errors file-exists? pathname)
+		(if (file-test-no-errors
+		     (lambda (pathname) (file-access pathname 0))
+		     pathname)
 		    "File exists, but is read-protected."
 		    (string-append
 		     "File not found and directory "
