@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.78 2001/06/12 00:47:24 cph Exp $
+;;; $Id: imail-file.scm,v 1.79 2001/09/14 02:06:43 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -375,7 +375,7 @@
 	   (let loop ((index 0) (winners '()))
 	     (if (< index n)
 		 (loop (+ index 1)
-		       (if (let ((message (get-message folder index)))
+		       (if (let ((message (%get-message folder index)))
 			     (or (string-search-forward
 				  criteria
 				  (header-fields->string

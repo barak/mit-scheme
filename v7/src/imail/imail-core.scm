@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.144 2001/06/12 00:47:19 cph Exp $
+;;; $Id: imail-core.scm,v 1.145 2001/09/14 02:06:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -397,7 +397,16 @@
 (define-method url-base-name ((resource <resource>))
   (url-base-name (resource-locator resource)))
 
-(define-class <folder> (<resource>))
+(define-class <folder> (<resource>)
+  (permutation define accessor
+	       initial-value #f))
+
+(define set-folder-permutation!
+  (let ((modifier (slot-modifier <folder> 'PERMUTATION)))
+    (lambda (folder permutation)
+      (modifier folder permutation)
+      (object-modified! folder 'PERMUTED))))
+
 (define-class <container> (<resource>))
 
 (define-method resource-type-name ((r <folder>)) r 'FOLDER)
@@ -505,7 +514,11 @@
   (guarantee-index index 'GET-MESSAGE)
   (if (not (< index (folder-length folder)))
       (error:bad-range-argument index 'GET-MESSAGE))
-  (%get-message folder index))
+  (%get-message folder
+		(let ((permutation (folder-permutation folder)))
+		  (if permutation
+		      (permute-index permutation folder index)
+		      index))))
 
 (define-generic %get-message (folder index))
 
@@ -583,6 +596,7 @@
   (folder define standard
 	  initial-value #f)
   (index define standard
+	 accessor %message-index
 	 initial-value #f))
 
 (define-method write-instance ((message <message>) port)
@@ -591,7 +605,7 @@
       (write-char #\space port)
       (write (message-folder message) port)
       (write-char #\space port)
-      (write (message-index message) port))))
+      (write (%message-index message) port))))
 
 (define (guarantee-message message procedure)
   (if (not (message? message))
@@ -601,6 +615,16 @@
 (define-generic set-message-flags! (message flags))
 (define-generic message-internal-time (message))
 (define-generic message-length (message))
+
+(define (message-index message)
+  (let ((index (%message-index message))
+	(folder (message-folder message)))
+    (let ((permutation
+	   (and folder
+		(folder-permutation folder))))
+      (if permutation
+	  (unpermute-index permutation folder index)
+	  index))))
 
 (define %set-message-flags!
   (let ((modifier (slot-modifier <message> 'FLAGS)))
@@ -644,7 +668,11 @@
 
 (define (first-unseen-message folder)
   (let ((end (folder-length folder)))
-    (let loop ((start (first-unseen-message-index folder)))
+    (let loop
+	((start
+	  (if (folder-permutation folder)
+	      0
+	      (first-unseen-message-index folder))))
       (and (< start end)
 	   (let ((message (get-message folder start)))
 	     (if (message-seen? message)
@@ -690,6 +718,52 @@
 		 (if (predicate message)
 		     message
 		     (loop index)))))))))
+
+;;;; Folder permutations
+
+(define-structure (folder-permutation
+		   (type-descriptor folder-permutation-rtd)
+		   (constructor make-folder-permutation (predicate)))
+  (predicate #f read-only #t)
+  (forward #f)
+  (reverse #f)
+  (modification-count -1))
+
+(define (permute-index permutation folder index)
+  (guarantee-valid-permutation permutation folder)
+  (let ((v (folder-permutation-forward permutation)))
+    (if (fix:< index (vector-length v))
+	(vector-ref v index)
+	index)))
+
+(define (unpermute-index permutation folder index)
+  (guarantee-valid-permutation permutation folder)
+  (let ((v (folder-permutation-reverse permutation)))
+    (if (fix:< index (vector-length v))
+	(vector-ref v index)
+	index)))
+
+(define (guarantee-valid-permutation permutation folder)
+  (let loop ()
+    (let ((count (object-modification-count folder)))
+      (if (not (= (folder-permutation-modification-count permutation) count))
+	  (begin
+	    (let ((n (folder-length folder)))
+	      (let ((vf (make-vector n))
+		    (vr (make-vector n)))
+		(do ((i 0 (fix:+ i 1)))
+		    ((fix:= i n))
+		  (vector-set! vf i (%get-message folder i)))
+		(sort! vf (folder-permutation-predicate permutation))
+		(do ((i 0 (fix:+ i 1)))
+		    ((fix:= i n))
+		  (let ((j (%message-index (vector-ref vf i))))
+		    (vector-set! vf i j)
+		    (vector-set! vr j i)))
+		(set-folder-permutation-forward! permutation vf)
+		(set-folder-permutation-reverse! permutation vr)))
+	    (set-folder-permutation-modification-count! permutation count)
+	    (loop))))))
 
 ;;;; Message flags
 

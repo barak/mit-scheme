@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.184 2001/07/21 03:53:36 cph Exp $
+;;; $Id: imail-imap.scm,v 1.185 2001/09/14 02:06:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1072,7 +1072,7 @@
     (if (not (initpred message))
 	(with-imap-message-open message
 	  (lambda (connection)
-	    (let ((index (message-index message)))
+	    (let ((index (%message-index message)))
 	      (let ((suffix
 		     (string-append " UID for message "
 				    (number->string (+ index 1)))))
@@ -1099,7 +1099,7 @@
 	    (let ((suffix
 		   (string-append
 		    " " noun " for message "
-		    (number->string (+ (message-index message) 1)))))
+		    (number->string (+ (%message-index message) 1)))))
 	      ((imail-ui:message-wrapper "Reading" suffix)
 	       (lambda ()
 		 (imap:read-literal-progress-hook imail-ui:progress-meter
@@ -1173,7 +1173,7 @@
 	  (reverse! messages)))))
 
 (define (message-list->set messages)
-  (let loop ((indexes (map message-index messages)) (groups '()))
+  (let loop ((indexes (map %message-index messages)) (groups '()))
     (if (pair? indexes)
 	(let ((start (car indexes)))
 	  (let parse-group ((this start) (rest (cdr indexes)))
@@ -1235,7 +1235,7 @@
 	  (string-append " body"
 			 (if (equal? section '(TEXT)) "" " part")
 			 " for message "
-			 (number->string (+ (message-index message) 1)))))
+			 (number->string (+ (%message-index message) 1)))))
      ((imail-ui:message-wrapper "Reading" suffix)
       (lambda ()
 	(imap:read-literal-progress-hook imail-ui:progress-meter
@@ -1972,8 +1972,8 @@
 	 (with-imap-connection-folder connection
 	   (lambda (folder)
 	     (process-fetch-attributes
-	      (get-message folder
-			   (- (imap:response:fetch-index response) 1))
+	      (%get-message folder
+			    (- (imap:response:fetch-index response) 1))
 	      response)))
 	 (eq? command 'FETCH))
 	(else
