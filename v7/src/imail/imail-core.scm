@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.7 2000/01/14 19:20:32 cph Exp $
+;;; $Id: imail-core.scm,v 1.8 2000/01/14 22:40:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -21,8 +21,6 @@
 ;;;; IMAIL mail reader: core definitions
 
 ;;; **** Implement file backup.
-;;; **** Strip IMAIL headers when importing or exporting messages.
-;;;      (What does that mean, precisely?)
 
 (declare (usual-integrations))
 
@@ -105,6 +103,24 @@
   (make-eq-hash-table))
 
 ;;;; Server operations
+
+;;; In "online" mode, these server operations directly modify the
+;;; server's state.
+
+;;; In "disconnected" mode, server operations don't interact with the
+;;; server, but instead manipulate locally-cached copies of folders
+;;; that reside on the server.  The operations are recorded and saved
+;;; in the file system, then played back when SYNCHRONIZE-FOLDER is
+;;; called.  In this mode, SYNCHRONIZE-FOLDER and POLL-FOLDER are the
+;;; only operations that interact with the server.
+
+;;; [**** Note that SYNCHRONIZE-FOLDER is insufficient to properly
+;;; implement "disconnected" mode.  The client must also know how to
+;;; enumerate the server's folder set, so that it can tell whether a
+;;; given cached folder has been deleted or renamed on the server.
+;;; Similarly, the SYNCHRONIZE-FOLDER operation must be able to tell
+;;; the client that the folder being synchronized has been deleted or
+;;; renamed, so that the client can take appropriate action.]
 
 ;; Open the folder named URL.
 (define (open-folder url)
@@ -270,6 +286,18 @@
 
 (define-method %save-folder ((folder <folder>))
   (%write-folder folder (folder-url folder)))
+
+;; Check to see if the persistent copy of FOLDER has changed since it
+;; was copied into memory, and update the memory copy if so.  Return
+;; #t if the memory copy is updated, #f if it is not.  If both
+;; the memory copy and the persistent copy have changed, the procedure
+;; RESOLVE-CONFLICT is called with the folder as an argument.
+;; RESOLVE-CONFLICT must return a boolean which if true indicates that
+;; the folder should be reverted.
+(define (maybe-revert-folder folder resolve-conflict)
+  (%maybe-revert-folder folder resolve-conflict))
+
+(define-generic %maybe-revert-folder (folder resolve-conflict))
 
 ;; Write the contents of FOLDER to URL.
 (define (write-folder folder url)
