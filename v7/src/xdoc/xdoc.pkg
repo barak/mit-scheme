@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xdoc.pkg,v 1.1 2004/11/01 19:21:05 cph Exp $
+$Id: xdoc.pkg,v 1.2 2004/11/22 19:45:27 cph Exp $
 
 Copyright 2004 Massachusetts Institute of Technology
 
@@ -185,6 +185,7 @@ USA.
 	  db-clear-submitter
 	  db-delete-global-value!
 	  db-delete-persistent-value!
+	  db-encrypt-password
 	  db-generate-password
 	  db-get-global-value
 	  db-get-persistent-value

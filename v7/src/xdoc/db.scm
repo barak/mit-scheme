@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: db.scm,v 1.2 2004/11/19 14:52:24 cph Exp $
+$Id: db.scm,v 1.3 2004/11/22 19:45:23 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -609,7 +609,7 @@ USA.
 		    " (" (db-quote user-name)
 		    ", " (db-quote first-names)
 		    ", " (db-quote last-name)
-		    ", " (db-quote (encrypt-password password))
+		    ", " (db-quote password)
 		    ", " "FALSE"
 		    ", " (if enabled? "TRUE" "FALSE")
 		    ")")
@@ -618,7 +618,7 @@ USA.
 (define (db-change-user-password user-name password)
   (guarantee-known-user user-name)
   (db-run-cmd "UPDATE users"
-	      " SET password = " (db-quote (encrypt-password password))
+	      " SET password = " (db-quote password)
 	      " WHERE user_name = " (db-quote user-name)))
 
 (define (db-user-real-name user-name)
@@ -674,7 +674,7 @@ USA.
 	      " SET " flag-name " = " (if value "TRUE" "FALSE")
 	      " WHERE user_name = " (db-quote user-name)))
 
-(define (encrypt-password password)
+(define (db-encrypt-password password)
   (let ((pw-line
 	 (call-with-output-string
 	   (lambda (port)
