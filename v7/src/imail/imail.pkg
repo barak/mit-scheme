@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.91 2001/11/05 21:19:37 cph Exp $
+;;; $Id: imail.pkg,v 1.92 2001/11/05 21:21:12 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -27,9 +27,7 @@
 (global-definitions "../star-parser/parser")
 
 (define-package (runtime url)
-  (file-case options
-    ((load) "url")
-    (else))
+  (files "url")
   (parent ())
   (export ()
 	  url:char-set:escaped

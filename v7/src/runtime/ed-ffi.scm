@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.27 2001/10/05 15:58:12 cph Exp $
+$Id: ed-ffi.scm,v 1.28 2001/11/05 21:24:26 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -295,8 +295,6 @@ USA.
     ("unxpth"	(runtime pathname unix)
 		syntax-table/system-internal)
     ("uproc"	(runtime procedure)
-		syntax-table/system-internal)
-    ("url"	(runtime url)
 		syntax-table/system-internal)
     ("urtrap"	(runtime reference-trap)
 		syntax-table/system-internal)

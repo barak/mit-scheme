@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.12 2001/10/09 17:52:00 cph Exp $
+$Id: optiondb.scm,v 1.13 2001/11/05 21:22:01 cph Exp $
 
 Copyright (c) 1994-2001 Massachusetts Institute of Technology
 
@@ -71,7 +71,6 @@ USA.
    (STEPPER	(RUNTIME STEPPER)	#F			"ystep")
    (SUBPROCESS	(RUNTIME SUBPROCESS)	(INITIALIZE-PACKAGE!)	"process")
    (SYNCHRONOUS-SUBPROCESS (RUNTIME SYNCHRONOUS-SUBPROCESS) #F	"syncproc")
-   (URL		(RUNTIME URL)		#F			"url")
    (WT-TREE	(RUNTIME WT-TREE)	#F			"wttree")
    ))
 

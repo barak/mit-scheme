@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.14 2001/10/10 04:26:21 cph Exp $
+;;; $Id: compile.scm,v 1.15 2001/11/05 21:23:58 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -34,7 +34,8 @@
 		"imail-umail"
 		"imail-util"
 		"imap-response"
-		"imap-syntax"))
+		"imap-syntax"
+		"url"))
     (for-each (let ((syntax-table
 		     (access edwin-syntax-table (->environment '(EDWIN)))))
 		(lambda (filename)
