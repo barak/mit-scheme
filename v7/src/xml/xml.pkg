@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.42 2004/07/12 19:05:36 cph Exp $
+$Id: xml.pkg,v 1.43 2004/07/12 19:08:36 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -299,6 +299,7 @@ USA.
   (export ()
 	  html-attrs
 	  html-dtd
+	  html-element?
 	  html-external-dtd
 	  html-iri
 	  html:a

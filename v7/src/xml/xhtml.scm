@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml.scm,v 1.1 2004/07/12 19:05:17 cph Exp $
+$Id: xhtml.scm,v 1.2 2004/07/12 19:08:32 cph Exp $
 
 Copyright 2002,2003,2004 Massachusetts Institute of Technology
 
@@ -36,6 +36,10 @@ USA.
 
 (define html-iri
   (make-xml-namespace-iri "http://www.w3.org/1999/xhtml"))
+
+(define (html-element? object)
+  (and (xml-element? object)
+       (xml-name-iri=? (xml-element-name object) html-iri)))
 
 (define-syntax define-standard-element
   (sc-macro-transformer
