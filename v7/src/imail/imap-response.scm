@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.23 2000/05/21 00:03:05 cph Exp $
+;;; $Id: imap-response.scm,v 1.24 2000/05/22 15:24:50 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -26,23 +26,23 @@
   (let ((tag (read-string-internal char-set:space port)))
     (if (eof-object? tag)
 	tag
-	(begin
-	  (discard-known-char #\space port)
-	  (let ((response
-		 (cond ((string=? "+" tag)
-			(cons 'CONTINUE (read-response-text port)))
-		       ((string=? "*" tag)
-			(read-untagged-response port))
-		       ((let ((end (string-length tag)))
-			  (let ((index (imap:match:tag tag 0 end)))
-			    (and index
-				 (fix:= index end))))
-			(read-tagged-response tag port))
-		       (else
-			(error "Malformed server response:" tag)))))
-	    (discard-known-char #\return port)
-	    (discard-known-char #\linefeed port)
-	    response)))))
+	(let ((response
+	       (if (string=? "+" tag)
+		   (cons 'CONTINUE (read-response-text port))
+		   (begin
+		     (discard-known-char #\space port)
+		     (cond ((string=? "*" tag)
+			    (read-untagged-response port))
+			   ((let ((end (string-length tag)))
+			      (let ((index (imap:match:tag tag 0 end)))
+				(and index
+				     (fix:= index end))))
+			    (read-tagged-response tag port))
+			   (else
+			    (error "Malformed server response:" tag)))))))
+	  (discard-known-char #\return port)
+	  (discard-known-char #\linefeed port)
+	  response))))
 
 (define (read-untagged-response port)
   (let ((x (read-atom port)))
