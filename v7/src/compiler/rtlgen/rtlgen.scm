@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 4.27 1992/09/30 19:23:21 cph Exp $
+$Id: rtlgen.scm,v 4.28 1992/09/30 21:02:16 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -126,13 +126,25 @@ MIT in each case. |#
        (procedure/type procedure)
        (procedure-debugging-info procedure)
        (block/next-continuation-offset (procedure-block procedure) 0)
-       (let ((block (procedure-block procedure)))
-	 (and (stack-block? block)
-	      (for-all? (block-children block)
-		(lambda (block)
-		  (and (continuation-block? block)
-		       (continuation/always-known-operator?
-			(block-procedure block)))))))))))
+       ;; This expression computes the value of STACK-LEAF? for
+       ;; PROCEDURE.  This is defined to mean that the procedure
+       ;; doesn't push anything, but it's not what this expression
+       ;; computes.  Instead, it is true if the procedure doesn't push
+       ;; any continuations on the stack.  Thus it is true of
+       ;; procedures that push environment bindings on the stack,
+       ;; provided that all of the procedure calls made by them are
+       ;; reductions.
+       (let loop ((block (procedure-block procedure)))
+	 (for-all? (block-children block)
+	   (lambda (block)
+	     (let ((procedure (block-procedure block)))
+	       (and (procedure? procedure)
+		    (if (procedure-continuation? procedure)
+			(continuation/always-known-operator? procedure)
+			;; Inline-coded child procedures are treated
+			;; as an extension of this procedure.
+			(or (not (procedure-inline-code? procedure))
+			    (loop block))))))))))))
 
 (define (generate/procedure-entry/inline procedure)
   (generate/procedure-header procedure
