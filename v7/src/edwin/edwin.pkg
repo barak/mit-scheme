@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.277 2001/12/18 22:23:26 cph Exp $
+$Id: edwin.pkg,v 1.278 2001/12/19 01:43:59 cph Exp $
 
 Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
@@ -116,20 +116,21 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  edwin
 	  inhibit-editor-init-file?
 	  reset-editor
-	  reset-editor-windows))
+	  reset-editor-windows
+	  (save-editor-files debug-save-files)))
 
 (define-package (edwin class-macros)
   (files "clsmac")
-  (parent (edwin)))
+  (parent (edwin))
+  (import ()
+	  (make-scode-variable make-variable)
+	  (scode-variable-name variable-name)))
 
 (define-package (edwin class-macros transform-instance-variables)
   (files "xform")
   (parent (edwin class-macros))
   (export (edwin class-macros)
-	  transform-instance-variables)
-  (import ()
-	  (make-scode-variable make-variable)
-	  (scode-variable-name variable-name)))
+	  transform-instance-variables))
 
 (define-package (edwin class-constructor)
   (files "clscon")
@@ -322,6 +323,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  window-mark->y
 	  window-mark-visible?
 	  window-modeline-event!
+	  (window-needs-redisplay? buffer-frame-needs-redisplay?)
 	  window-override-message
 	  window-point
 	  window-point-coordinates
@@ -334,7 +336,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  window-select-time
 	  window-set-override-message!
 	  window-start-mark
+	  (window-x-size buffer-frame-x-size)
 	  window-y-center
+	  (window-y-size buffer-frame-y-size)
+	  (window? buffer-frame?)
 	  with-saved-configuration)
   (export (edwin screen)
 	  editor-frame-screen
