@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 13.43 1987/05/19 12:51:34 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 13.44 1987/05/19 13:16:48 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -69,7 +69,7 @@
   (set! make-true (make-constant-maker 'TRUE)))
 
 (define undefined-conditional-branch
-  (primitive-set-type (microcode-type 'TRUE 1)))
+  (primitive-set-type (microcode-type 'TRUE) 1))
 
 ;;;; QUOTATION
 
