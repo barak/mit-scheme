@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.139 2000/07/07 01:52:18 cph Exp $
+;;; $Id: imail-imap.scm,v 1.140 2000/07/09 01:10:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -48,8 +48,10 @@
 
 (define (make-imap-url-string url mailbox)
   (string-append "//"
-		 (url:encode-string (imap-url-user-id url))
-		 "@"
+		 (let ((user-id (imap-url-user-id url)))
+		   (if (string=? user-id (current-user-name))
+		       ""
+		       (string-append (url:encode-string user-id) "@")))
 		 (string-downcase (imap-url-host url))
 		 (let ((port (imap-url-port url)))
 		   (if (= port 143)
