@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.470 2004/01/06 06:22:37 cph Exp $
+$Id: runtime.pkg,v 14.471 2004/01/09 21:12:19 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -2104,6 +2104,8 @@ USA.
 	  reduce-right
 	  reverse
 	  reverse!
+	  reverse*
+	  reverse*!
 	  second
 	  set-car!
 	  set-cdr!

@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.37 2003/04/25 03:31:49 cph Exp $
+$Id: list.scm,v 14.38 2004/01/09 21:12:16 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,2000 Massachusetts Institute of Technology
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -434,8 +434,8 @@ USA.
 ;;; clever compiler could optimize this into the obvious loop that
 ;;; everyone would write in assembly language.
 
-(define (append . lists)
-  (%append lists))
+(define (append . lists) (%append lists))
+(define (append! . lists) (%append! lists))
 
 (define (%append lists)
   (let ((lists (reverse! lists)))
@@ -466,9 +466,6 @@ USA.
 	      accum))
 	'())))
 
-(define (append! . lists)
-  (%append! lists))
-
 (define (%append! lists)
   (if (pair? lists)
       (let loop ((head (car lists)) (tail (cdr lists)))
@@ -483,27 +480,27 @@ USA.
 	       (loop (car tail) (cdr tail)))))
       '()))
 
-(define (reverse l)
-  (%reverse l '()))
+(define (reverse l) (reverse* l '()))
+(define (reverse! l) (reverse*! l '()))
 
-(define (%reverse l tail)
+(define (reverse* l tail)
   (let loop ((rest l) (so-far tail))
     (if (pair? rest)
 	(loop (cdr rest) (cons (car rest) so-far))
 	(begin
 	  (if (not (null? rest))
-	      (error:wrong-type-argument l "list" '%REVERSE))
+	      (error:wrong-type-argument l "list" 'REVERSE*))
 	  so-far))))
 
-(define (reverse! l)
-  (let loop ((current l) (new-cdr '()))
+(define (reverse*! l tail)
+  (let loop ((current l) (new-cdr tail))
     (if (pair? current)
 	(let ((next (cdr current)))
 	  (set-cdr! current new-cdr)
 	  (loop next current))
 	(begin
 	  (if (not (null? current))
-	      (error:wrong-type-argument l "list" 'REVERSE!))
+	      (error:wrong-type-argument l "list" 'REVERSE*!))
 	  new-cdr))))
 
 ;;;; Mapping Procedures
