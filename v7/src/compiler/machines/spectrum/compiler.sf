@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/compiler.sf,v 1.11 1990/01/29 21:29:59 jinx Exp $
-$MC68020-Header: comp.sf,v 1.11 89/08/28 18:33:37 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/compiler.sf,v 1.12 1990/03/26 23:27:32 jinx Rel $
+$MC68020-Header: comp.sf,v 1.12 90/01/18 22:43:26 GMT cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -61,7 +61,7 @@ MIT in each case. |#
 			 (load (string-append file ".bin") package))
 		       files))))
       (write-string "\n\n---- Loading compile-time files ----")
-      (sf-and-load '("machines/spectrum/switch" "base/hashtb") '(COMPILER))
+      (sf-and-load '("base/switch" "base/hashtb") '(COMPILER))
       (sf-and-load '("base/macros") '(COMPILER MACROS))
       ((access initialize-package! (->environment '(COMPILER MACROS))))
       (sf-and-load '("machines/spectrum/decls") '(COMPILER DECLARATIONS))
