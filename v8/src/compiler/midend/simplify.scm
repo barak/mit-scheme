@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.12 1995/05/18 20:34:21 adams Exp $
+$Id: simplify.scm,v 1.13 1995/05/19 20:55:17 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -397,10 +397,6 @@ MIT in each case. |#
       ordinary-refs)
 
     (for-each (lambda (ref)
-		(form/rewrite! ref value))
-      (simplify/binding/dbg-info-refs node))
-    
-    (for-each (lambda (ref)
 		(form/rewrite! ref `(CALL ,(copy-value ref) ,@(cddr ref))))
       operator-refs)
 
@@ -420,7 +416,7 @@ MIT in each case. |#
     (if (memq name '(#!aux #!rest #!optional))
 	name
 	(let ((new-name (variable/rename name)))
-	  (dbg-info/remember name new-name)
+	  (dbg-info/remember name `(LOOKUP ,new-name))
 	  new-name)))
   (define (walk renames form)
     (define (extend old new) (map* renames cons old new))
@@ -621,35 +617,6 @@ MIT in each case. |#
 
 (define (simplify/new-name prefix)
   (new-variable prefix))
-
-
-
-;;(define (simplify/get-dbg-info env expr)
-;;  (cond ((code-rewrite/original-form/previous expr)
-;;         => (lambda (dbg-info)
-;;	      ;; Copy the dbg info, keeping dbg-info-refs in the environment
-;;              ;; which may later be overwritten
-;;              (let* ((block     (new-dbg-form/block dbg-info))
-;;                     (block*    (new-dbg-block/copy-transforming
-;;                                 (lambda (expr)
-;;                                   (simplify/copy-dbg-kmp expr env))
-;;                                 block))
-;;                     (dbg-info* (new-dbg-form/new-block dbg-info block*)))
-;;                dbg-info*)))
-;;        (else #F)))
-;;
-;;
-;;(define (simplify/copy-dbg-kmp expr env)
-;;  (form/copy-transforming
-;;   (lambda (form copy uninteresting)
-;;     copy
-;;     (cond ((and (LOOKUP/? form)
-;;		 (simplify/lookup*! env (lookup/name form)
-;;				    `(LOOKUP ,(lookup/name form))
-;;				    'DBG-INFO))
-;;	    => (lambda (reference)  reference))
-;;	   (else (uninteresting form))))
-;;   expr))
 
 (define-structure
     (simplify/binding
@@ -663,8 +630,7 @@ MIT in each case. |#
 
   (name false read-only true)
   (ordinary-refs '() read-only false)
-  (operator-refs '() read-only false)
-  (dbg-info-refs '() read-only false))
+  (operator-refs '() read-only false))
 
 (define-structure
     (simplify/env
@@ -704,12 +670,11 @@ MIT in each case. |#
 	#F)))
 
 (define (simplify/lookup*! env name reference kind)
-  ;; kind = 'OPERATOR, 'ORDINARY or 'DBG-INFO
+  ;; kind = 'OPERATOR, 'ORDINARY
   (let frame-loop ((prev #F)
 		   (env env))
     (cond ((not env)
-	   (if (not (eq? kind 'DBG-INFO))
-	       (free-var-error name))
+	   (free-var-error name)
 	   reference)
 	  ((simplify/env/frame-lookup name (simplify/env/bindings env))
 	   => (lambda (binding)
@@ -726,10 +691,6 @@ MIT in each case. |#
 		   (set-simplify/binding/ordinary-refs!
 		    binding
 		    (cons reference (simplify/binding/ordinary-refs binding))))
-		  ((DBG-INFO)
-		   (set-simplify/binding/dbg-info-refs!
-		    binding
-		    (cons reference (simplify/binding/dbg-info-refs binding))))
 		  (else
 		   (internal-error "simplify/lookup*! bad KIND" kind)))
 		reference))
