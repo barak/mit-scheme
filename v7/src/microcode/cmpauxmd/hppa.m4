@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.10 1990/08/08 20:08:52 jinx Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.11 1991/05/02 06:12:10 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -470,9 +470,13 @@ interface_to_C
 ;;; Its C signature is
 ;;;
 ;;; void
-;;; cache_flush_region (address, count)
+;;; cache_flush_region (address, count, cache_set)
 ;;;     void *address;
 ;;;     long count;		/* in long words */
+;;;	unsigned int cache_set;
+;;;
+;;; cache_set is a bit mask of the flags I_CACHE (1) and D_CACHE (2).
+;;; the requested cache (or both) is flushed.
 ;;;
 ;;; We only need to flush every 16 bytes, since cache lines are
 ;;; architecturally required to have cache line sizes that are
@@ -493,15 +497,21 @@ cache_flush_region
 	COPY	25,28			; save for FIC loop
 	COPY	26,29			; save for FIC loop
 	LDI	16,1			; increment
+	BB,>=,N	24,30,process_i_cache	; if D_CACHE is not set, skip d-cache
 ;;;
 flush_cache_fdc_loop
 	ADDIB,>=	-1,25,flush_cache_fdc_loop
 	FDC,M	1(0,26)
 	SYNC
 ;;;
+process_i_cache
+	BB,>=,N	24,31,L$exit2		; if I_CACHE is not set, return
+;;;
 flush_cache_fic_loop
 	ADDIB,>=	-1,28,flush_cache_fic_loop
 	FIC,M	1(5,29)
+;;;
+L$exit2
 	BV	0(2)
 	.EXIT
 	SYNC
