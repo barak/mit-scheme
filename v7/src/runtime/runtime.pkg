@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.302 1999/01/31 20:42:20 cph Exp $
+$Id: runtime.pkg,v 14.303 1999/02/01 03:29:46 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -2281,6 +2281,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (parent ())
   (export ()
 	  make-subprocess
+	  process-environment-bind
 	  run-subprocess-in-foreground
 	  scheme-subprocess-environment
 	  start-batch-subprocess
@@ -2329,7 +2330,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (parent ())
   (export ()
 	  condition-type:subprocess-abnormal-termination
-	  condition-type:subprocess-exited
 	  condition-type:subprocess-signalled
 	  condition-type:subprocess-stopped
 	  run-shell-command
