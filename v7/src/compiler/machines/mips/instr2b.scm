@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/instr2b.scm,v 1.1 1990/05/07 04:14:32 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/instr2b.scm,v 1.2 1991/07/21 07:41:51 cph Exp $
 
-Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,7 +48,7 @@ MIT in each case. |#
 	       (LONG (6 ,opcode)
 		     (5 base-reg)
 		     (5 source/dest-reg)
-		     (16 offset-ls SIGNED)))
+		     (16 delta SIGNED)))
 	      ((() ())
 	       ;; LUI    1,adjusted-left<offset>
 	       ;; ADDU    1,1,base-reg
@@ -56,7 +56,7 @@ MIT in each case. |#
 	       (LONG (6 15)	; LUI
 		     (5 0)
 		     (5 1)
-		     (16 (adjusted:high offset-ls))
+		     (16 (adjusted:high delta))
 		     (6 0)	; ADD
 		     (5 1)
 		     (5 base-reg)
@@ -66,7 +66,7 @@ MIT in each case. |#
 		     (6 ,opcode); LW
 		     (5 1)
 		     (5 source/dest-reg)
-		     (16 (adjusted:low offset-ls) SIGNED)))))
+		     (16 (adjusted:low delta) SIGNED)))))
 	   (((? source/dest-reg) (@PCR (? label)))
 	    (VARIABLE-WIDTH (delta `(- ,label (+ *PC* 8)))
 	      ((#x-8000 #x7fff)
