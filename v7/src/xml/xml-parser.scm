@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.27 2003/07/27 03:06:41 cph Exp $
+$Id: xml-parser.scm,v 1.28 2003/07/27 03:38:15 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -435,7 +435,7 @@ USA.
   (*matcher (+ (char-set char-set:numeric))))
 
 (define match-hexadecimal
-  (*matcher (+ (char-set (char-set "0-9a-fA-f")))))
+  (*matcher (+ (char-set "0-9a-fA-f"))))
 
 (define parse-reference			;[67]
   (*parser
