@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme16.c,v 1.3 1993/08/21 05:30:41 gjr Exp $
+$Id: scheme16.c,v 1.4 1993/08/24 04:53:32 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -40,6 +40,28 @@ MIT in each case. */
 #define W32SUT_16
 #include "ntscmlib.h"
 #include <dos.h>
+
+#ifdef DEBUG
+#include <windows.h>
+int
+TellUser (char FAR * format, ...)
+{
+  va_list arg_ptr;
+  char buffer[1024];
+  
+  va_start (arg_ptr, format);
+  wvsprintf (&buffer[0], format, arg_ptr);
+  va_end (arg_ptr);
+  return (MessageBox (NULL,
+		      ((LPCSTR) &buffer[0]),
+		      ((LPCSTR) "MIT Scheme Win16 Notification"),
+		      (MB_TASKMODAL | MB_ICONINFORMATION | MB_OK)));
+}
+
+#define DEBUGGING(what) what
+#else
+#define DEBUGGING(what) do { } while (0)
+#endif /* DEBUG */
 
 struct seg_desc_s
 {
@@ -327,6 +349,7 @@ possibly_uninstall_async_handler (void)
 {
   if (async_timers != ((struct ntw16lib_itimer_s FAR *) NULL))
     return;
+  DEBUGGING (TellUser ("Un-Installing asynctimer."));
   if (htimer != 0)
   {
     KillSystemTimer (htimer);
@@ -373,6 +396,7 @@ do_install_async_handler (void)
   WORD (FAR PASCAL * CreateSystemTimer) (WORD rate, FARPROC callback);
   HINSTANCE hsystem;
 
+  DEBUGGING (TellUser ("Installing asynctimer."));
   if (! (pagelock (((void FAR *) scheme_asynctimer),
 		   ((unsigned long) scheme_asynctimer_end)
 		   - ((unsigned long) scheme_asynctimer))))
