@@ -1,8 +1,8 @@
 /* #define DEBUG_INTERFACE */ /* -*-Midas-*- */
  ###
- ###	$Id: mips.m4,v 1.11 1993/10/17 11:16:34 cph Exp $
+ ###	$Id: mips.m4,v 1.12 1997/11/16 23:12:44 cph Exp $
  ###
- ###	Copyright (c) 1989-93 Massachusetts Institute of Technology
+ ###	Copyright (c) 1989-97 Massachusetts Institute of Technology
  ###
  ###	This material was developed by the Scheme project at the
  ###	Massachusetts Institute of Technology, Department of
@@ -518,7 +518,8 @@ shortcircuit_apply_1:
 shortcircuit_apply_lose:
 	lw	$C_arg2,0($stack)	# pop procedure into arg register
 	addi	$stack,$stack,4
-	j	scheme_to_interface	# invoke the standard apply
+	la	$at,scheme_to_interface	# invoke the standard apply
+	j	$at
 	addi	$tramp_index,$0,80
 
 	.globl	set_interrupt_enables
