@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.33 1992/05/23 00:11:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.34 1992/05/26 01:00:57 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -360,9 +360,19 @@ MIT in each case. |#
                  (car alist)
                  (loop (cdr alist)))))))
 
+  (define (loading-message fname suppress? kind)
+    (if (not suppress?)
+	(let ((port (nearest-cmdl/port)))
+	  (fresh-line port)
+	  (write-string kind port)
+	  (write-string (->namestring (->pathname fname)))
+	  (write-string "..."))))
+
   (define (process-bunch alist)
-    (let* ((real-load load)
-	   (new-load
+    (let ((real-load load)
+	  (real-fasload fasload))
+      (fluid-let
+	  ((load
 	    (lambda (fname #!optional env syntax-table purify?)
 	      (let ((env (if (default-object? env)
 			     environment
@@ -377,18 +387,29 @@ MIT in each case. |#
 		  (if (not place)
 		      (real-load fname env st purify?)
 		      (let ((scode (caddr place)))
-			(if (not load/suppress-loading-message?)
-			    (begin
-			      (newline)
-			      (display ";Pseudo-loading ")
-			      (display (->namestring (->pathname fname)))
-			      (display "...")))
+			(loading-message fname
+                                         load/suppress-loading-message?
+					 ";Pseudo-loading ")
 			(if (and purify? (not (eq? purify? default-object)))
 			    (purify (load/purification-root scode)))
-			(extended-scode-eval scode env))))))))
-      (fluid-let ((load new-load)
-		  (flush-purification-queue! (lambda () 'done)))
-        (new-load (caar alist))))
+			(extended-scode-eval scode env)))))))
+
+	   (fasload
+	    (lambda (filename #!optional suppress-message?)
+	      (let ((suppress-message?
+		     (if (default-object? suppress-message?)
+			 load/suppress-loading-message?
+			 suppress-message?))
+		    (place (find-filename filename alist)))
+		(if (not place)
+		    (real-fasload filename suppress-message?)
+		    (begin
+		      (loading-message filename
+		                       suppress-message?
+				       ";Pseudo-fasloading ")
+		      (caddr place))))))
+	   (flush-purification-queue! (lambda () 'done)))
+        (load (caar alist))))
     (flush-purification-queue!))
 
   (with-binary-input-file (->truename pathname)
@@ -408,8 +429,8 @@ MIT in each case. |#
 	    ((= count 1)
 	     (process-next-bunch))
 	  (process-next-bunch))))))
-
-;;;; Utilities for the binary unpacker
+
+;;; Utilities for the binary unpacker
 
 (define (with-binary-file-channel file action open extract-channel name)
   (let ((port false))
