@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.266 2001/02/05 17:45:42 cph Exp $
+$Id: edwin.pkg,v 1.267 2001/02/05 18:14:54 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -529,6 +529,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  re-match-buffer-forward
 	  re-match-data
 	  re-match-end
+	  re-match-extract-string
 	  re-match-forward
 	  re-match-start
 	  re-search-backward

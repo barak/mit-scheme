@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: regexp.scm,v 1.73 1999/06/26 02:02:50 cph Exp $
+;;; $Id: regexp.scm,v 1.74 2001/02/05 18:14:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -34,6 +34,12 @@
   (let ((index (re-match-end-index i)))
     (and index
 	 (make-mark (re-match-group) index))))
+
+(define (re-match-extract-string i)
+  (group-extract-string (re-match-group)
+			(or (re-match-start-index i)
+			    (error "No such register:" i))
+			(re-match-end-index i)))
 
 (define (re-match-group)
   (let ((group (object-unhash match-group)))
