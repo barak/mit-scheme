@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: numpar.scm,v 14.8 1993/10/26 22:48:28 cph Exp $
+$Id: numpar.scm,v 14.9 1995/06/27 22:15:06 adams Exp $
 
-Copyright (c) 1989-93 Massachusetts Institute of Technology
+Copyright (c) 1989-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,6 +34,8 @@ MIT in each case. |#
 
 ;;;; Number Parser
 ;;; package: (runtime number-parser)
+
+(declare (usual-integrations))
 
 (define (string->number string #!optional radix-default)
   (parse-chars (string->list string)
