@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.116 1991/11/04 20:44:32 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.117 1991/11/26 07:53:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -108,14 +108,14 @@ transposed."
 A page boundary is any string in Page Delimiters, at a line's beginning."
   "p"
   (lambda (argument)
-    (set-current-point! (forward-page (current-point) argument 'BEEP))))
+    (move-thing forward-page argument 'FAILURE)))
 
 (define-command backward-page
   "Move backward to page boundary.  With arg, repeat, or go fwd if negative.
 A page boundary is any string in Page Delimiters, at a line's beginning."
   "p"
   (lambda (argument)
-    (set-current-point! (backward-page (current-point) argument 'BEEP))))
+    (move-thing backward-page argument 'FAILURE)))
 
 (define-command mark-page
   "Put mark at end of page, point at beginning."
