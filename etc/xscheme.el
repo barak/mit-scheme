@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.2 1987/11/02 20:19:30 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.3 1987/11/23 18:32:32 cph Exp $
 
 (require 'scheme)
 
@@ -90,6 +90,11 @@ reading-string         reading prompt string")
 (defvar xscheme-running-p nil
   "This variable, if nil, indicates that the scheme process is
 waiting for input.  Otherwise, it is busy evaluating something.")
+
+(defconst xscheme-control-g-synchronization-p (eq system-type 'hpux)
+  "If non-nil, insert markers in the scheme input stream to indicate when
+control-g interrupts were signalled.  Do not allow more control-g's to be
+signalled until the scheme process acknowledges receipt.")
 
 (defvar xscheme-control-g-disabled-p nil
   "This variable, if non-nil, indicates that a control-g is being processed
@@ -238,13 +243,15 @@ Useful for working with `adb'."
 Control returns to the top level rep loop."
   (interactive)
   (let ((inhibit-quit t))
-    (if xscheme-control-g-disabled-p
-	(message "Relax...")
-	(progn
-	  (setq xscheme-control-g-disabled-p t)
-	  (message "Sending C-G interrupt to Scheme...")
-	  (interrupt-process "scheme" t)
-	  (send-string "scheme" (char-to-string 0))))))
+    (cond ((not xscheme-control-g-synchronization-p)
+	   (interrupt-process "scheme" t))
+	  (xscheme-control-g-disabled-p
+	   (message "Relax..."))
+	  (else
+	   (setq xscheme-control-g-disabled-p t)
+	   (message "Sending C-G interrupt to Scheme...")
+	   (interrupt-process "scheme" t)
+	   (send-string "scheme" (char-to-string 0))))))
 
 (defun xscheme-send-control-u-interrupt ()
   "Cause the Scheme process to halt, returning to previous rep loop."
@@ -384,7 +391,7 @@ Control returns to the top level rep loop."
 		(substring string (1+ start))))
 	(progn (xscheme-process-filter:idle-1 string)
 	       (xscheme-process-filter:finish)))))
-
+
 (defun xscheme-process-filter:idle-1 (string)
   (while (string-match "\\(\007\\|\f\\)" string)
     (let ((start (match-beginning 0))
@@ -396,7 +403,7 @@ Control returns to the top level rep loop."
 	  (beep))
       (setq string (substring string (1+ start)))))
   (xscheme-process-filter-output string))
-
+
 (defun xscheme-process-filter:reading-type (string)
   (let ((len (length string)))
     (if (= 0 len)
