@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.59 2000/06/15 20:28:49 cph Exp $
+;;; $Id: sendmail.scm,v 1.60 2000/06/15 20:50:43 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -958,8 +958,8 @@ the user from the mailer."
   (let ((attachment
 	 (list->vector (cons* type subtype parameters disposition rest))))
     (set-buffer-mime-attachments! buffer
-				  (cons attachment
-					(buffer-mime-attachments buffer)))
+				  (append (buffer-mime-attachments buffer)
+					  (list attachment)))
     attachment))
 
 (define (delete-buffer-mime-attachment! buffer attachment)
