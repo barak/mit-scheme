@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.23 1991/10/26 21:49:58 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.24 1992/04/01 02:17:07 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -89,7 +89,9 @@ normally they record the associated output in a transcript buffer:
 (define-key 'scheme #\rubout 'backward-delete-char-untabify)
 (define-key 'scheme #\tab 'lisp-indent-line)
 (define-key 'scheme #\) 'lisp-insert-paren)
+(define-key 'scheme #\m-g 'undefined)
 (define-key 'scheme #\m-o 'eval-current-buffer)
+(define-key 'scheme #\m-q 'undefined)
 (define-key 'scheme #\m-z 'eval-defun)
 (define-key 'scheme #\c-m-q 'indent-sexp)
 (define-key 'scheme #\c-m-z 'eval-region)
