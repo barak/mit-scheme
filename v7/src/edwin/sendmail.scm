@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.14 1992/08/18 22:10:54 cph Exp $
+;;;	$Id: sendmail.scm,v 1.15 1992/09/25 01:00:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -160,7 +160,7 @@ is inserted."
 		 (prompt-for-confirmation?
 		  "Unsent message being composed; erase it")))
 	(begin
-	  (set-buffer-default-directory! buffer (->pathname "~/"))
+	  (set-buffer-default-directory! buffer (default-homedir-pathname))
 	  (setup-buffer-auto-save! buffer)
 	  (region-delete! (buffer-unclipped-region buffer))
 	  (mail-setup buffer to subject in-reply-to cc reply-buffer)))))

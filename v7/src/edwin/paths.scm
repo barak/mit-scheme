@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/paths.scm,v 1.12 1992/05/26 17:14:48 jinx Exp $
+$Id: paths.scm,v 1.13 1992/09/25 01:00:44 cph Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -70,3 +70,8 @@ MIT in each case. |#
 
 (define (edwin-tutorial-pathname)
   (edwin-etc-pathname "TUTORIAL"))
+
+(define default-homedir-pathname
+  ;; This binding exists to allow uses of the "home" directory as a
+  ;; default directory to be overridden.
+  user-homedir-pathname)
