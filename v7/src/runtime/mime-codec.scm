@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mime-codec.scm,v 14.2 2000/06/08 20:52:23 cph Exp $
+;;; $Id: mime-codec.scm,v 14.3 2000/06/15 15:11:29 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -66,9 +66,9 @@
 	   (let ((char (string-ref string start))
 		 (start (fix:+ start 1)))
 	     (cond ((not (char-lwsp? char))
-		    (if (char-qp-unencoded? char)
-			(write-qp-clear context char)
-			(write-qp-encoded context char))
+		    (if (char-set-member? char-set:qp-encoded char)
+			(write-qp-encoded context char)
+			(write-qp-clear context char))
 		    (loop start))
 		   ((and (eq? type 'PARTIAL)
 			 (not (fix:< start end)))
@@ -197,17 +197,19 @@
 	(end* (skip-lwsp-backwards string start end)))
 
     (define (loop start)
-      (if (fix:< start end*)
-	  (let ((char (string-ref string start))
-		(start (fix:+ start 1)))
-	    (if (char=? char #\=)
-		(handle-equals start)
-		(begin
+      (let ((i
+	     (substring-find-next-char-in-set string start end*
+					      char-set:qp-encoded)))
+	(if i
+	    (begin
+	      (write-substring string start i port)
+	      (if (char=? (string-ref string i) #\=)
+		  (handle-equals (fix:+ i 1))
 		  ;; RFC 2045 recommends dropping illegal encoded char.
-		  (if (char-qp-unencoded? char)
-		      (write-char char port))
-		  (loop start))))
-	  (finish)))
+		  (loop (fix:+ i 1))))
+	    (begin
+	      (write-substring string start end* port)
+	      (finish)))))
 
     (define (handle-equals start)
       (if (fix:< (fix:+ start 1) end*)
@@ -241,8 +243,7 @@
 		   (newline port)))
 	      ((eqv? pending #\=)
 	       (if (eq? type 'LINE-END)
-		   ;; Soft line break.
-		   unspecific
+		   unspecific		; Soft line break.
 		   ;; Illegal: RFC 2045 recommends leaving as is.
 		   (write-char #\= port)))
 	      ((char? pending)
@@ -283,13 +284,11 @@
 	  (substring string start end))
       pending))
 
-(define-integrable (char-qp-unencoded? char)
-  (char-set-member? char-set:qp-unencoded char))
-
-(define char-set:qp-unencoded
-  (char-set-union (char-set-difference (ascii-range->char-set #x21 #x7F)
-				       (char-set #\=))
-		  (char-set #\space #\tab)))
+(define char-set:qp-encoded
+  (char-set-invert
+   (char-set-union (char-set-difference (ascii-range->char-set #x21 #x7F)
+					(char-set #\=))
+		   (char-set #\space #\tab))))
 
 (define (char-lwsp? char)
   (or (char=? #\space char)
