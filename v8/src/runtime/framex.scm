@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: framex.scm,v 14.19 1995/07/27 20:42:20 adams Exp $
+$Id: framex.scm,v 14.20 1996/07/26 00:34:27 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -391,6 +391,9 @@ MIT in each case. |#
      method)
     (set-stack-frame-type/debugging-info-method!
      stack-frame-type/interrupt-compiled-return-address
+     method)
+    (set-stack-frame-type/debugging-info-method!
+     stack-frame-type/restore-regs
      method)
     )
 

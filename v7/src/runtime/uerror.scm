@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uerror.scm,v 14.42 1994/12/19 21:07:34 cph Exp $
+$Id: uerror.scm,v 14.43 1996/07/26 00:34:57 adams Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -122,7 +122,7 @@ MIT in each case. |#
 
 (define (variable/use-value continuation environment name thunk)
   (let ((continuation (continuation/next-continuation continuation)))
-    (if continuation
+    (if (continuation-restartable? continuation)
 	(with-restart 'USE-VALUE
 	    (lambda (port)
 	      (write-string "Specify a value to use instead of " port)
@@ -140,7 +140,7 @@ MIT in each case. |#
 
 (define (inapplicable-object/use-value continuation operands thunk)
   (let ((continuation (continuation/next-continuation continuation)))
-    (if continuation
+    (if (continuation-restartable? continuation)
 	(with-restart 'USE-VALUE "Specify a procedure to use in its place."
 	    (lambda (operator)
 	      (within-continuation continuation
@@ -159,8 +159,9 @@ MIT in each case. |#
 	  (signal continuation (list-ref operands index) operator index))))))
 
 (define (illegal-argument/use-value continuation operator operands index thunk)
-  (let ((continuation (continuation/next-continuation continuation)))
-    (if continuation
+  (let ((continuation
+	 (continuation/next-continuation/no-compiled-code continuation)))
+    (if (continuation-restartable? continuation)
 	(with-restart 'USE-VALUE "Specify an argument to use in its place."
 	    (lambda (operand)
 	      (within-continuation continuation
@@ -187,7 +188,7 @@ MIT in each case. |#
 (define (file-operation/use-value continuation operator operands index
 				  verb noun thunk)
   (let ((continuation (continuation/next-continuation continuation)))
-    (if continuation
+    (if (continuation-restartable? continuation)
 	(with-restart 'USE-VALUE
 	    (string-append "Try to " verb " a different " noun ".")
 	    (lambda (operand)
@@ -206,7 +207,7 @@ MIT in each case. |#
 
 (define (file-operation/retry continuation operator operands verb noun thunk)
   (let ((continuation (continuation/next-continuation continuation)))
-    (if continuation
+    (if (continuation-restartable? continuation)
 	(with-restart 'RETRY
 	    (string-append "Try to " verb " the same " noun " again.")
 	    (lambda ()
@@ -231,6 +232,29 @@ MIT in each case. |#
 	 (let ((next-subproblem (stack-frame/next first-subproblem)))
 	   (and next-subproblem
 		(stack-frame->continuation next-subproblem))))))
+
+
+;; With the 8.0 compiler, we do not want to restart a primitive that
+;; signalled a bad argument type or range.  This allows the compiler
+;; to generate better code. We return #F if the continuation is an
+;; apply frame of a primitive called from compiled code:
+
+(define (continuation/next-continuation/no-compiled-code continuation)
+  (let ((first-subproblem (continuation/first-subproblem continuation)))
+    (and first-subproblem
+	 (let ((next-subproblem (stack-frame/next first-subproblem)))
+	   (and next-subproblem
+		(if (and (apply-frame? first-subproblem)
+			 (primitive-procedure?
+			  (apply-frame/operator first-subproblem))
+			 (let ((further-subproblem
+				(stack-frame/next next-subproblem)))
+			   (stack-frame/compiled-code? further-subproblem)))
+		    #F
+		    (stack-frame->continuation next-subproblem)))))))
+
+(define (continuation-restartable? continuation)
+  continuation)
 
 (define-integrable (frame/type frame)
   (microcode-return/code->name (stack-frame/return-code frame)))

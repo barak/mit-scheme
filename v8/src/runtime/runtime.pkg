@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.273 1996/07/12 18:03:45 adams Exp $
+$Id: runtime.pkg,v 14.274 1996/07/26 00:36:11 adams Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -349,7 +349,8 @@ MIT in each case. |#
   (export (runtime debugging-info)
 	  stack-frame-type/interrupt-compiled-procedure
 	  stack-frame-type/interrupt-compiled-expression
-	  stack-frame-type/interrupt-compiled-return-address)
+	  stack-frame-type/interrupt-compiled-return-address
+	  stack-frame-type/restore-regs)
   (initialization (initialize-package!)))
 
 (define-package (runtime control-point)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.36 1995/07/27 20:37:03 adams Exp $
+$Id: conpar.scm,v 14.37 1996/07/26 00:34:49 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -371,6 +371,12 @@ MIT in each case. |#
 (define-integrable code/apply-compiled 6)
 (define-integrable code/continue-linking 7)
 
+(define (parser/restore-regs type elements state)
+  (let ((code (vector-ref elements 1)))
+    (if (not (and (fix:fixnum? code) (fix:= code code/restore-regs)))
+	(error "Unknown special compiled frame" code))
+    (parse/standard-next type elements state false false)))
+
 (define (parser/special-compiled type elements state)
   (let ((code (vector-ref elements 1)))
     (cond ((fix:= code code/special-compiled/internal-apply)
@@ -613,6 +619,20 @@ MIT in each case. |#
 	  (1+ frame-size)
 	  (stack-address->index (element-stream/ref stream 1) offset)))))
 
+(define (length/restore-regs stream offset)
+  ;; return address is reflect-to-interface
+  offset
+  (let ((code (element-stream/ref stream 1)))
+    (if (and (fix:fixnum? code)
+	     (fix:= code code/restore-regs))
+	(let ((guess (fix:+ 3 (object-datum (element-stream/ref stream 2)))))
+	  (let loop ((guess* guess))
+	    (if (compiled-return-address? (element-stream/ref stream guess*))
+		(+ guess* 1)
+		(loop (+ guess 1)))))
+	(error "length/resyspecial-compiled: Unknown code" code))))
+
+
 (define (length/special-compiled stream offset)
   ;; return address is reflect-to-interface
   offset
@@ -640,11 +660,7 @@ MIT in each case. |#
 	  ((fix:= code code/interrupt-restart)
 	   (default))
 	  ((fix:= code code/restore-regs)
-	   (let ((guess (fix:+ 3 (object-datum (element-stream/ref stream 2)))))
-	     (let loop ((guess* guess))
-	       (if (compiled-return-address? (element-stream/ref stream guess*))
-		   (+ guess* 1)
-		   (loop (+ guess 1))))))
+	   (default))
 	  ((fix:= code code/apply-compiled)
 	   ;; Stream[2] is code entry point, [3] is frame size
 	   (+ 3 (object-datum (element-stream/ref stream 3))))
@@ -779,6 +795,8 @@ MIT in each case. |#
 	    ((compiled-continuation/reflect-to-interface? return-address)
 	     (cond ((= (element-stream/ref stream 1) code/interrupt-restart)
 		    (interrupt-frame))
+		   ((= (element-stream/ref stream 1) code/restore-regs)
+		    stack-frame-type/restore-regs)
 		   (else
 		    stack-frame-type/special-compiled)))
 	    (else
@@ -805,6 +823,11 @@ MIT in each case. |#
 	(make-stack-frame-type false false true
 			       1
 			       parser/standard
+			       stream/standard))
+  (set! stack-frame-type/restore-regs
+  	(make-stack-frame-type false true false
+  			       length/restore-regs
+  			       parser/restore-regs
 			       stream/standard))
   (set! stack-frame-type/special-compiled
 	(make-stack-frame-type false true false
@@ -838,6 +861,7 @@ MIT in each case. |#
 (define stack-frame-types)
 (define stack-frame-type/compiled-return-address)
 (define stack-frame-type/return-to-interpreter)
+(define stack-frame-type/restore-regs)
 (define stack-frame-type/special-compiled)
 (define stack-frame-type/hardware-trap)
 (define stack-frame-type/stack-marker)
