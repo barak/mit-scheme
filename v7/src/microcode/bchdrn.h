@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchdrn.h,v 1.5 1993/06/24 07:06:55 gjr Exp $
+$Id: bchdrn.h,v 1.6 1993/11/22 00:32:47 gjr Exp $
 
-Copyright (c) 1991-1992 Massachusetts Institute of Technology
+Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,6 +62,9 @@ MIT in each case. */
 
 #ifndef AVOID_SYSV_SHARED_MEMORY
 #  if defined(_SYSV4) || defined(_SUNOS4) || defined(_ULTRIX)
+#    define HAVE_SYSV_SHARED_MEMORY
+#  endif
+#  if defined(_HPUX) || defined(__osf__) || defined(_AIX)
 #    define HAVE_SYSV_SHARED_MEMORY
 #  endif
 #endif
