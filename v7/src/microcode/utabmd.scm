@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.44 1988/03/24 07:55:27 cph Rel $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.45 1988/05/03 16:30:39 jinx Exp $
 
 (declare (usual-integrations))
 
@@ -485,7 +485,7 @@
 	       WRITE-INTO-PURE-SPACE                    ;1A
 	       #F		                        ;1B
 	       #F					;1C
-	       #F					;1D
+	       BAD-ASSIGNMENT				;1D
 	       FAILED-ARG-1-COERCION                    ;1E
 	       FAILED-ARG-2-COERCION                    ;1F
 	       OUT-OF-FILE-HANDLES			;20
@@ -571,4 +571,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.44 1988/03/24 07:55:27 cph Rel $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.45 1988/05/03 16:30:39 jinx Exp $"
