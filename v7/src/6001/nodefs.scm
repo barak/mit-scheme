@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: nodefs.scm,v 1.8 1993/08/13 00:08:00 cph Exp $
+$Id: nodefs.scm,v 1.9 1993/08/16 20:11:49 cph Exp $
 
 Copyright (c) 1991-93 Massachusetts Institute of Technology
 
@@ -80,17 +80,16 @@ MIT in each case. |#
 	expression)))
 
 (define (write-definition-value name #!optional value)
-  (let ((port (nearest-cmdl/port)))
-    (fresh-line port)
-    (write-string ";" port)
-    (write name port)
-    (if (not (default-object? value))
-	(begin
-	  (write-string " --> " port)
-	  (fluid-let ((*unparser-list-depth-limit* 2)
-		      (*unparser-list-breadth-limit* 10)
-		      (*unparser-string-length-limit* 30))
-	    (write value port))))))
+  (with-string-output-port
+   (lambda (port)
+     (write name port)
+     (if (not (default-object? value))
+	 (begin
+	   (write-string " --> " port)
+	   (fluid-let ((*unparser-list-depth-limit* 2)
+		       (*unparser-list-breadth-limit* 10)
+		       (*unparser-string-length-limit* 30))
+	     (write value port)))))))
 
 (define (check-for-illegal-definitions expression)
   (walk/expression (if (open-block? expression)
