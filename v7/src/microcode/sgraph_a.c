@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.9 1989/12/20 18:03:19 pas Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.10 1990/01/18 00:43:35 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -188,34 +188,6 @@ DEFINE_PRIMITIVE ("POLYGON2D", Prim_polygon2d, 2,2, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-
-DEFINE_PRIMITIVE ("BOX-CLEAR", Prim_box_clear, 2,2, 0)
-{
-  int device; 
-  float Plotting_Box [4];	/* x_min, y_min, x_max, y_max */
-  PRIMITIVE_HEADER (2);
-  device = (SB_DEVICE_ARG (1));  
-  arg_plotting_box (2, Plotting_Box);
-  C_Clear_Rectangle (device, Plotting_Box);
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-C_Clear_Rectangle(device, Box)
-     int device;
-     float *Box;
-{
-  xposition = 0.0;
-  yposition = 0.0;
-  move2d(device, xposition, yposition);
-  /* shuffle around the coords */
-  clip_rectangle (device, Box[0], Box[2], Box[1], Box[3]);
-  clear_control (device, CLEAR_CLIP_RECTANGLE);
-  clear_view_surface(device);
-  make_picture_current(device);
-  /*                               back to default values */
-  clear_control(device, CLEAR_DISPLAY_SURFACE);
-  clip_rectangle(device, sb_xmin, sb_xmax, sb_ymin, sb_ymax);
-}
 
 DEFINE_PRIMITIVE ("BOX-MOVE", Prim_box_move, 3,3, 0)
 {
