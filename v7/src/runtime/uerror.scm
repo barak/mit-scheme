@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.18 1991/02/15 18:07:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.19 1991/02/22 21:03:07 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -543,7 +543,7 @@ MIT in each case. |#
       (write-operator (access-condition condition 'OPERATOR) port)
       (write-string " is not implemented for this operating system." port))))
 
-(define-primitive-error 'UNDEFINED-PRIMITIVE
+(define-primitive-error 'UNDEFINED-PRIMITIVE-OPERATION
   condition-type:unimplemented-primitive-for-os)
 
 (set! condition-type:compiled-code-error
