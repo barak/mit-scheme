@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.44 2004/11/18 18:17:59 cph Exp $
+$Id: usiexp.scm,v 4.45 2005/01/06 18:10:44 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1997,2000,2001 Massachusetts Institute of Technology
-Copyright 2004 Massachusetts Institute of Technology
+Copyright 2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -673,6 +673,7 @@ USA.
     intern
     list
     make-string
+    make-vector-8b
     ;; modulo	; Compiler does not currently open-code it.
     negative?
     number?
@@ -754,6 +755,7 @@ USA.
    exact-integer?-expansion
    intern-expansion
    list-expansion
+   make-string-expansion
    make-string-expansion
    ;; modulo-expansion
    negative?-expansion

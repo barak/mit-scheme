@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.56 2004/02/17 05:35:46 cph Exp $
+$Id: string.scm,v 14.57 2005/01/06 18:10:27 cph Exp $
 
 Copyright 1986,1987,1988,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1997,1999,2000,2001,2002 Massachusetts Institute of Technology
-Copyright 2003,2004 Massachusetts Institute of Technology
+Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -74,6 +74,21 @@ USA.
 (define-integrable (vector-8b-find-previous-char-ci string start end ascii)
   (substring-find-previous-char-ci string start end (ascii->char ascii)))
 
+(define (vector-8b->hexadecimal bytes)
+  (let ((n (vector-8b-length bytes)))
+    (let ((s (make-string (fix:* 2 n))))
+      (do ((i 0 (fix:+ i 1))
+	   (j 0 (fix:+ j 2)))
+	  ((not (fix:< i n)))
+	(string-set! s j (hex-digit (fix:lsh (vector-8b-ref bytes i) -4)))
+	(string-set! s
+		     (fix:+ j 1)
+		     (hex-digit (fix:and (vector-8b-ref bytes i) #x0F))))
+      s)))
+
+(define-integrable (hex-digit k)
+  (string-ref "0123456789abcdef" k))
+
 ;;; Character optimizations
 
 (define-integrable (%%char-downcase char)
@@ -101,6 +116,9 @@ USA.
 	(let ((result (string-allocate length)))
 	  (%substring-fill! result 0 length char)
 	  result))))
+
+(define (make-vector-8b length #!optional ascii)
+  (make-string length (if (default-object? ascii) ascii (ascii->char ascii))))
 
 (define (string-fill! string char)
   (guarantee-string string 'STRING-FILL!)
