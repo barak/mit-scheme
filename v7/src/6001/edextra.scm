@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/edextra.scm,v 1.1 1992/09/01 20:11:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/edextra.scm,v 1.2 1992/09/02 02:04:51 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -53,7 +53,6 @@ MIT in each case. |#
 		(string-append "/users/u6001/bin/print-pgm.sh "
 			       filename
 			       " "
-			       (print/assemble-switches "Scheme Picture" '())
-			       switches))
+			       (print/assemble-switches "Scheme Picture" '())))
 	       (append-message "done"))
 	     (editor-error "No picture to print!")))))))
