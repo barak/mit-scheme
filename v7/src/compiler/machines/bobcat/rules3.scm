@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.4 1987/07/03 18:59:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.5 1987/07/03 21:57:52 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -116,6 +116,7 @@ MIT in each case. |#
   (INVOCATION:UUO-LINK (? number-pushed) (? prefix) (? continuation) (? name))
   (disable-frame-pointer-offset!
    `(,@(generate-invocation-prefix prefix '())
+     ,(load-dnw (1+ number-pushed) 0)
      (MOVE L (@PCR ,(free-uuo-link-label name)) (D 1))
      (MOVE L (D 1) (@-A 7))
      (AND L (D 7) (D 1))
