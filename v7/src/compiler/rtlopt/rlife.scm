@@ -38,25 +38,23 @@
 ;;;; RTL Register Lifetime Analysis
 ;;;  Based on the GNU C Compiler
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rlife.scm,v 1.50 1986/12/15 05:27:44 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rlife.scm,v 1.51 1986/12/18 06:11:04 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
 
 ;;;; Basic Blocks
 
-(define *blocks*)
 (define *block-number*)
 
 (define (find-blocks rnodes)
   (fluid-let ((*generation* (make-generation))
-	      (*blocks* '())
 	      (*block-number* 0))
+    (set! *bblocks* '())
     (for-each (lambda (rnode)
 		(set-node-generation! rnode *generation*))
 	      rnodes)
-    (for-each walk-entry rnodes)
-    *blocks*))
+    (for-each walk-entry rnodes)))
 
 (define (walk-next next)
   (if (not (eq? (node-generation next) *generation*))
@@ -65,7 +63,7 @@
 (define (walk-entry rnode)
   (let ((bblock (make-bblock *block-number* rnode *n-registers*)))
     (set! *block-number* (1+ *block-number*))
-    (set! *blocks* (cons bblock *blocks*))
+    (set! *bblocks* (cons bblock *bblocks*))
     (walk-rnode bblock rnode)))
 
 (define (walk-rnode bblock rnode)
@@ -121,7 +119,7 @@
 		      (propagate-block&delete! bblock))
 		    bblocks)))
     (loop true)))
-
+
 (define (propagate-block bblock)
   (propagation-loop bblock
     (lambda (old dead live rtl rnode)
@@ -140,7 +138,7 @@
 	  (begin (update-live-registers! old dead live rtl rnode)
 		 (for-each-regset-member old
 		   increment-register-live-length!))))))
-
+
 (define (propagation-loop bblock procedure)
   (let ((old (bblock-live-at-entry bblock))
 	(dead (regset-allocate *n-registers*))
@@ -164,6 +162,17 @@
 	      (let ((register (rtl:register-number address)))
 		(and (pseudo-register? register)
 		     (not (regset-member? needed register))))))))
+
+(define (rtl-snode-delete! rnode)
+  (let ((previous (node-previous-disconnect! rnode))
+	(next (snode-next-disconnect! rnode))
+	(bblock (rnode-bblock rnode)))
+    (if (eq? rnode (bblock-entry bblock))
+	(if (eq? rnode (bblock-exit bblock))
+	    (set! *bblocks* (delq! bblock *bblocks*))
+	    (set-bblock-entry! bblock next))
+	(if (eq? rnode (bblock-exit bblock))
+	    (set-bblock-exit! bblock (hook-node (car previous)))))))
 
 (define (mark-set-registers! needed dead rtl rnode)
   ;; **** This code safely ignores PRE-INCREMENT and POST-INCREMENT
@@ -236,28 +245,6 @@
 				 (rnode-dead-registers rnode))
 		       (regset-union! live births))))))))
 
-(define (rtl-snode-delete! rnode)
-  (bblock-edit! (rnode-bblock rnode)
-    (lambda ()
-      (snode-delete! rnode))))
-
-(define (bblock-edit! bblock thunk)
-  (if (rtl-pnode? (bblock-exit bblock))
-      (let ((entry (make-entry-holder)))
-	(entry-holder-connect! entry (bblock-entry bblock))
-	(thunk)
-	(set-bblock-entry! bblock (entry-holder-disconnect! entry)))
-      (let ((entry (make-entry-holder))
-	    (exit (make-exit-holder)))
-	(entry-holder-connect! entry (bblock-entry bblock))
-	(snode-next-connect! (bblock-exit bblock) exit)
-	(thunk)
-	(let ((next (entry-holder-disconnect! entry))
-	      (hooks (node-previous-disconnect! exit)))
-	  (if next
-	      (begin (set-bblock-entry! bblock next)
-		     (set-bblock-exit! bblock (hook-node (car hooks)))))))))
-
 (define (optimize-rtl live rnode next)
   (let ((rtl (rnode-rtl rnode)))
     (if (rtl:assign? rtl)
@@ -277,9 +264,9 @@
 			(for-each increment-register-live-length! dead)
 			(set-rnode-dead-registers!
 			 next
-			 (set-union dead
-				    (delv! register
-					   (rnode-dead-registers next)))))
+			 (eqv-set-union dead
+					(delv! register
+					       (rnode-dead-registers next)))))
 		      (for-each-regset-member live 
 			decrement-register-live-length!)
 		      (rtl:modify-subexpressions (rnode-rtl next)
@@ -294,20 +281,6 @@
 		      (reset-register-live-length! register)
 		      (set-register-next-use! register false)
 		      (set-register-bblock! register false)))))))))
-
-(define set-union
-  (let ()
-    (define (loop x y)
-      (if (null? x)
-	  y
-	  (loop (cdr x)
-		(if (memv (car x) y)
-		    y
-		    (cons (car x) y)))))
-    (named-lambda (set-union x y)
-      (if (null? y)
-	  x
-	  (loop x y)))))
 
 ;;;; Debugging Output
 
