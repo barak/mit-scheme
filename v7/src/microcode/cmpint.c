@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.16 1989/11/21 23:31:05 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.17 1989/11/22 16:29:55 jinx Exp $
  *
  * This file corresponds to
  * $COMPILER-Header: compiler.c,v 9.37 89/10/25 14:55:45 GMT jinx Exp $
@@ -429,8 +429,6 @@ apply_compiled_procedure()
   }
   else
   {
-    STACK_PUSH (procedure);
-    STACK_PUSH (nactuals);
     return (result);
   }
 }
@@ -477,11 +475,15 @@ setup_compiled_invocation (nactuals, compiled_entry_address)
   if (nmin < 0)
   {
     /* Not a procedure. */
+    STACK_PUSH (ENTRY_TO_OBJECT (compiled_entry_address));
+    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
     return (ERR_INAPPLICABLE_OBJECT);
   }
   if (nactuals < nmin)
   {
     /* Too few arguments. */
+    STACK_PUSH (ENTRY_TO_OBJECT (compiled_entry_address));
+    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
     return (ERR_WRONG_NUMBER_OF_ARGUMENTS);
   }
   delta = (nactuals - nmax);
@@ -497,12 +499,14 @@ setup_compiled_invocation (nactuals, compiled_entry_address)
   if (nmax > 0)
   {
     /* Too many arguments */
+    STACK_PUSH (ENTRY_TO_OBJECT (compiled_entry_address));
+    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
     return (ERR_WRONG_NUMBER_OF_ARGUMENTS);
   }
   /* The procedure can take arbitrarily many arguments, ie.
      it is a lexpr.
    */
-  return (setup_lexpr_invocation (nactuals, nmax));
+  return (setup_lexpr_invocation (nactuals, nmax, compiled_entry_address));
 }
 
 /* Default some optional parameters, and return the location
@@ -535,8 +539,9 @@ open_gap (nactuals, delta)
 /* Setup a rest argument as appropriate. */
 
 static long
-setup_lexpr_invocation (nactuals, nmax)
+setup_lexpr_invocation (nactuals, nmax, entry_address)
      register long nactuals, nmax;
+     machine_word *entry_address;
 {
   register long delta;
 
@@ -595,6 +600,8 @@ setup_lexpr_invocation (nactuals, nmax)
     if (GC_Check (list_size))
     {
       Request_GC (list_size);
+      STACK_PUSH (ENTRY_TO_OBJECT (entry_address));
+      STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
       return (PRIM_APPLY_INTERRUPT);
     }
     gap_location = &Free[list_size];
@@ -749,7 +756,7 @@ comutil_apply (procedure, nactuals, ignore_3, ignore_4)
 
       long arity;
 
-      arity = PRIMITIVE_ARITY (procedure);
+      arity = (PRIMITIVE_ARITY (procedure));
       if (arity == (nactuals - 1))
       {
         return (comutil_primitive_apply (procedure, 0, 0, 0));
@@ -759,7 +766,7 @@ comutil_apply (procedure, nactuals, ignore_3, ignore_4)
       {
         /* Wrong number of arguments. */
         STACK_PUSH (procedure);
-        STACK_PUSH (nactuals);
+        STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
         RETURN_TO_C (ERR_WRONG_NUMBER_OF_ARGUMENTS);
       }
       if (!(IMPLEMENTED_PRIMITIVE_P (procedure)))
@@ -817,7 +824,8 @@ comutil_lexpr_apply (entry_address, nactuals, ignore_3, ignore_4)
   RETURN_UNLESS_EXCEPTION
     ((setup_lexpr_invocation
       ((nactuals + 1),
-       (COMPILED_ENTRY_MAXIMUM_ARITY (entry_address)))),
+       (COMPILED_ENTRY_MAXIMUM_ARITY (entry_address)),
+       ((machine_word *) entry_address))),
      entry_address);
 }
 
