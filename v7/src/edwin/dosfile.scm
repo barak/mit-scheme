@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dosfile.scm,v 1.35 2000/02/03 22:24:52 cph Exp $
+;;; $Id: dosfile.scm,v 1.36 2000/02/28 04:23:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -443,11 +443,10 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
      ("y" . c))))
 
 (define (os/init-file-name)
-  (let ((name "edwin.ini"))
-    (let ((user-init-file (merge-pathnames name (user-homedir-pathname))))
-      (if (file-exists? user-init-file)
-	  user-init-file
-	  (merge-pathnames name (system-library-directory-pathname #f))))))
+  "~/edwin.ini")
+
+(define (os/abbrev-file-name)
+  "~/abbrevs.scm")
 
 (define (os/find-file-initialization-filename pathname)
   (or (and (equal? "scm" (pathname-type pathname))

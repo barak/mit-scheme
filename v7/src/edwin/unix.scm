@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unix.scm,v 1.105 2000/01/16 13:24:11 cph Exp $
+;;; $Id: unix.scm,v 1.106 2000/02/28 04:23:05 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -326,6 +326,9 @@ Includes the new backup.  Must be > 0."
 
 (define (os/init-file-name)
   "~/.edwin")
+
+(define (os/abbrev-file-name)
+  "~/.abbrev_defs")
 
 (define (os/find-file-initialization-filename pathname)
   (or (and (equal? "scm" (pathname-type pathname))
