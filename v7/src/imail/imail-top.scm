@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.187 2000/06/24 01:35:41 cph Exp $
+;;; $Id: imail-top.scm,v 1.188 2000/06/24 01:39:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1762,6 +1762,7 @@ Negative argument means search in reverse."
 ;;;; Folder-event handling
 
 (define (notice-folder-event folder type parameters)
+  type parameters
   (maybe-add-command-suffix! notice-folder-modifications folder))
 
 (define (notice-folder-modifications folder)

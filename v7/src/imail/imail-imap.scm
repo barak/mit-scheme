@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.125 2000/06/23 19:05:37 cph Exp $
+;;; $Id: imail-imap.scm,v 1.126 2000/06/24 01:37:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1485,12 +1485,14 @@
        thunk))))
 
 (define (process-responses connection command responses)
-  (if (pair? responses)
-      (if (process-response connection command (car responses))
-	  (cons (car responses)
-		(process-responses connection command (cdr responses)))
-	  (process-responses connection command (cdr responses)))
-      '()))
+  (with-folder-events-deferred
+    (lambda ()
+      (if (pair? responses)
+	  (if (process-response connection command (car responses))
+	      (cons (car responses)
+		    (process-responses connection command (cdr responses)))
+	      (process-responses connection command (cdr responses)))
+	  '()))))
 
 (define (process-response connection command response)
   (cond ((imap:response:status-response? response)

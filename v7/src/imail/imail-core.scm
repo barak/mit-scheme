@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.109 2000/06/23 17:58:28 cph Exp $
+;;; $Id: imail-core.scm,v 1.110 2000/06/24 01:37:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -282,15 +282,31 @@
   (apply folder-event folder type parameters))
 
 (define (folder-event folder type . parameters)
-  (if (and imap-trace-port (imap-folder? folder))
+  (if *deferred-folder-events*
+      (set-cdr! *deferred-folder-events*
+		(cons (cons* folder type parameters)
+		      (cdr *deferred-folder-events*)))
       (begin
-	(write-line (cons* 'FOLDER-EVENT folder type parameters)
-		    imap-trace-port)
-	(flush-output imap-trace-port)))
-  (event-distributor/invoke! (folder-modification-event folder)
-			     folder
-			     type
-			     parameters))
+	(if (and imap-trace-port (imap-folder? folder))
+	    (begin
+	      (write-line (cons* 'FOLDER-EVENT folder type parameters)
+			  imap-trace-port)
+	      (flush-output imap-trace-port)))
+	(event-distributor/invoke! (folder-modification-event folder)
+				   folder
+				   type
+				   parameters))))
+
+(define (with-folder-events-deferred thunk)
+  (let ((events (list 'EVENTS)))
+    (let ((v
+	   (fluid-let ((*deferred-folder-events* events))
+	     (thunk))))
+      (for-each (lambda (event) (apply folder-event event))
+		(reverse! (cdr events)))
+      v)))
+
+(define *deferred-folder-events* #f)
 
 (define (get-memoized-folder url)
   (let ((folder (hash-table/get memoized-folders url #f)))
