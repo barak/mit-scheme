@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwiu.scm,v 1.29 1994/09/08 20:34:04 adams Exp $
+;;;	$Id: bufwiu.scm,v 1.30 1996/02/13 00:03:32 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -66,25 +66,30 @@
 		  ;; been updated to reflect these changes.
 		  (%set-window-modified-tick! window
 					      (group-modified-tick group))))
-	  (if (and start (%window-start-line-mark window))
+	  (if start
 	      (begin
 		;; If this change affects START-MARK, invalidate it
-		;; and request a display update.
-		(if (and (fix:<= start (%window-start-index window))
-			 (fix:<= (%window-start-line-index window) end))
+		;; and request a display update.  Don't invalidate
+		;; START-MARK unless the changes require it.
+		(if (and (%window-start-line-mark window)
+			 (let ((wlstart (%window-start-line-index window))
+			       (wstart (%window-start-index window)))
+			   (and (if (and (fix:= wlstart wstart)
+					 (fix:= (%window-start-partial window)
+						0))
+				    (fix:< start wstart)
+				    (fix:<= start wstart))
+				(fix:<= wlstart end))))
 		    (begin
 		      (clear-window-start! window)
 		      (window-needs-redisplay! window)))
-		;; If this change affects POINT, invalidate it.  It's
-		;; not necessary to request a display update here
-		;; because POINT is always in the visible region of
-		;; the buffer.
-		(if (and (not (eq? (%window-point-moved? window)
-				   'SINCE-START-SET))
-			 (fix:<= start (%window-point-index window))
+		;; If this change affects POINT, invalidate it and
+		;; request a display update.
+		(if (and (fix:<= start (%window-point-index window))
 			 (fix:<= (%window-point-index window) end))
-		    (%set-window-point-moved?! window
-					       'SINCE-START-SET))))))))
+		    (begin
+		      (%set-window-point-moved?! window 'SINCE-START-SET)
+		      (window-needs-redisplay! window)))))))))
 
 ;;;; Clip
 
