@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.79 2000/12/08 21:32:34 cph Exp $
+@comment $Id: user.texinfo,v 1.80 2000/12/24 03:59:37 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -29,9 +29,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.79
-@subtitle for Scheme Release 7.5.11
-@subtitle 8 December 2000
+@subtitle Edition 1.80
+@subtitle for Scheme Release 7.5.12
+@subtitle 23 December 2000
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -522,9 +522,9 @@ itself, clear the screen, and print something like this:
 
 @example
 @group
-Scheme saved on Tuesday November 28, 2000 at 1:26:51 PM
-  Release 7.5.11
-  Microcode 11.171
+Scheme saved on Tuesday December 19, 2000 at 3:44:53 PM
+  Release 7.5.12
+  Microcode 14.0
   Runtime 14.184
 @end group
 @end example
@@ -4706,6 +4706,15 @@ the Algorithmic Language Scheme}.
 These are the changes since release 7.5.0:
 
 @itemize @bullet
+@item
+Release 7.5.12 is a complete reorganization of the source tree to use
+modern configuration techniques based on autoconf.  The purpose of this
+reorganization is to simplify maintenance, porting, and the generation
+of binary packages (e.g. Debian @samp{.deb} packages).  The C code has
+been extensively modified to support this, and a lot of general cleanup
+has been done.  There should be no user-visible changes due to the
+reorganization, aside from the usual crop of bug fixes.
+
 @item
 Release 7.5.11 includes unencumbered support for blowfish encryption,
 reflecting recent changes to US export controls.  More bug fixes,
