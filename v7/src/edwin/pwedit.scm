@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: pwedit.scm,v 1.5 1999/05/04 17:23:09 cph Exp $
+;;; $Id: pwedit.scm,v 1.6 1999/05/04 17:41:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1999 Massachusetts Institute of Technology
 ;;;
@@ -38,7 +38,8 @@ If password-file is #f, or if prefix arg supplied, prompts for a filename."
      (let ((filename (ref-variable password-file)))
        (if (and filename (not (command-argument)))
 	   filename
-	   (prompt-for-existing-file "View password file" filename)))))
+	   (prompt-for-existing-file "View password file"
+				     (and filename (list filename)))))))
   (lambda (pathname)
     (let ((forms
 	   (call-with-temporary-buffer " view-pw-file"
