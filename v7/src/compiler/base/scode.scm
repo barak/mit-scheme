@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/scode.scm,v 4.6 1989/04/15 18:06:27 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/scode.scm,v 4.7 1989/08/15 12:58:32 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -82,11 +82,27 @@ MIT in each case. |#
   (recvr (scode/quotation-expression quot)))
 
 (define comment-tag:directive
-  (intern "#[(compiler)comment-tag:directive"))
+  (intern "#[(compiler)comment-tag:directive]"))
 
-(define (scode/make-directive directive code)
-  (scode/make-comment (list comment-tag:directive directive)
-		      code))
+(define (scode/make-directive code directive original-code)
+  (scode/make-comment
+   (list comment-tag:directive
+	 directive
+	 (scode/original-expression original-code))
+   code))
+
+(define (scode/original-expression scode)
+  (if (and (scode/comment? scode)
+	   (scode/comment-directive? (scode/comment-text scode)))
+      (caddr (scode/comment-text scode))
+      scode))
+
+(define (scode/comment-directive? text . kinds)
+  (and (pair? text)
+       (eq? (car text) comment-tag:directive)
+       (or (null? kinds)
+	   (memq (caadr text) kinds))))
+
 (define (scode/make-let names values . body)
   (scan-defines (scode/make-sequence body)
     (lambda (auxiliary declarations body)
