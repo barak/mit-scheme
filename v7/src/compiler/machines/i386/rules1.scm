@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules1.scm,v 1.12 1992/02/15 16:21:03 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules1.scm,v 1.13 1992/02/17 22:36:58 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -101,10 +101,12 @@ MIT in each case. |#
 	       =>
 	       (lambda (alias)
 		 (if (pseudo-register? target)
-		     (reuse-pseudo-register-alias! datum 'GENERAL
-						   two-arg
-						   (lambda ()
-						     (three-arg alias)))
+		     (reuse-pseudo-register-alias!
+		      datum 'GENERAL
+		      (lambda (alias)
+			(two-arg (register-reference alias)))
+		      (lambda ()
+			(three-arg alias)))
 		     (three-arg alias))))
 	      (else
 	       (two-arg (standard-move-to-target! datum target)))))))
@@ -207,6 +209,13 @@ MIT in each case. |#
 	    (&U ,(non-pointer->literal value)))))
 
 (define-rule statement
+  (ASSIGN (OFFSET (REGISTER (? a)) (? n))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(MACHINE-CONSTANT (? datum))))
+  (LAP (MOV W ,(target-indirect-reference! a n)
+	    (&U ,(make-non-pointer-literal type datum)))))
+
+(define-rule statement
   (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
 	  (BYTE-OFFSET-ADDRESS (OFFSET (REGISTER (? address)) (? offset))
 			       (? n)))
@@ -230,10 +239,15 @@ MIT in each case. |#
   (LAP (PUSH ,(source-register-reference r))))
 
 (define-rule statement
+  (ASSIGN (PRE-INCREMENT (REGISTER 4) -1) (CONSTANT (? value)))
+  (QUALIFIER (non-pointer-object? value))
+  (LAP (PUSH W (&U ,(non-pointer->literal value)))))
+
+(define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 4) -1)
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(MACHINE-CONSTANT (? datum))))
-  (LAP (PUSH W (& ,(make-non-pointer-literal type datum)))))
+  (LAP (PUSH W (&U ,(make-non-pointer-literal type datum)))))
 
 ;;;; CHAR->ASCII/BYTE-OFFSET
 
