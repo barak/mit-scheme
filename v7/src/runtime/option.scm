@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.29 1994/09/30 02:37:48 adams Exp $
+$Id: option.scm,v 14.30 1994/10/03 17:30:36 adams Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,41 +39,94 @@ MIT in each case. |#
 
 (define *initial-options-file*  #F)
 
-(define loaded-options  '())
-
-
-(define (initial-options-file-pathname)
-  (define (library-file? library-internal-path)
-    (let* ((library    (library-directory-pathname ""))
-	   (pathname   (merge-pathnames library-internal-path library)))
-      (and (file-exists? pathname)
-	   pathname)))
+(define (initial-load-options)
   (or *initial-options-file*
       (get-environment-variable "MITSCHEME_LOAD_OPTIONS")
-      (library-file? "options.db")
-      (library-file? "options/options.db")
-      (error "Cannot locate an options database")
-      "options.db"))
+      (local-load-options)))
 
+(define (local-load-options)
+  (or (library-file? "optiondb")
+      (standard-load-options)))
+
+(define (standard-load-options)
+  (or (library-file? "options/optiondb")
+      (error "Cannot locate a load-option database")
+      "optiondb"))
+
+(define (define-load-option name . loaders)
+  (set! *options* (cons (cons name loaders) *options*))
+  unspecific)
+
+(define (further-load-options place)
+  (set! *parent* place)
+  unspecific)
 
 (define (load-option name)
-  
-  (define (eval-filename form)
-    (eval form system-global-environment))
 
-  (define (process-descriptor descriptor)
-    (let ((environment (package/environment (find-package (car descriptor)))))
+  (define (load-entry entry)
+    (for-each (lambda (thunk) (thunk)) (cdr entry))
+    (set! loaded-options (cons name loaded-options))
+    unspecific)
+
+  (define (search-parent file)
+    (fluid-let ((*options* '())
+		(*parent*  #F))
+      (fluid-let ((load/suppress-loading-message? #T))
+	(load-latest (merge-pathnames file (library-directory-pathname ""))
+		     (make-load-environment)
+		     system-global-syntax-table
+		     #F))
+      (find-option)))
+
+  (define (make-load-environment)
+    (eval '(LET () (THE-ENVIRONMENT))  system-global-environment))
+
+  (define (find-option)
+    (cond ((assq name *options*) => load-entry)
+	  ((force* *parent*)     => search-parent)
+	  (else
+	   (error "Unknown option name:" name))))
+
+  (if (not (memq name loaded-options))
+      (find-option))
+  name)
+
+(define loaded-options  '())
+(define *options* '())			; Current options.
+(define *parent*  initial-load-options)	; A thunk or a pathname/string or #F.
+
+
+(define (library-file? library-internal-path)
+  (let* ((library    (library-directory-pathname ""))
+	 (pathname   (merge-pathnames library-internal-path library)))
+    (let loop ((file-types load/default-types))
+      (if (null? file-types)
+	  #F
+	  (let ((full-pathname (pathname-new-type pathname (caar file-types))))
+	    (if (file-exists? full-pathname)
+		pathname;; not full-pathname to allow load-latest
+		(loop (cdr file-types))))))))
+
+(define (force* value)
+  (cond	((procedure? value)  (force* (value)))
+	((promise? value)    (force* (force value)))
+	(else value)))
+
+(define (standard-option-loader package-name init-expression . files)
+  (lambda ()
+    (let ((environment     (package/environment (find-package package-name)))
+	  (library-options (delay (library-directory-pathname "options"))))
       (for-each
-	  (lambda (filename-form)
-	    (let ((filename  (eval-filename filename-form)))
+	  (lambda (file)
+	    (let ((file  (force* file)))
 	      (cond 
 	       (((ucode-primitive initialize-c-compiled-block 1)
-		 (string-append "runtime_" filename))
+		 (string-append "runtime_" file))
 		=> (lambda (obj)
 		     (purify obj)
 		     (scode-eval obj environment)))
 	       (else
-		(let ((path (merge-pathnames filename (library-directory-pathname "options"))))
+		(let ((path  (merge-pathnames file (force library-options))))
 		  (with-working-directory-pathname
 		   (directory-pathname path)
 		   (lambda ()
@@ -81,41 +134,8 @@ MIT in each case. |#
 			   environment
 			   syntax-table/system-internal
 			   true))))))))
-	(cddr descriptor))
-      (eval (cadr descriptor) environment)))
-  
-  (define (load-entry entry)
-    (for-each process-descriptor (cdr entry))
-    (set! loaded-options (cons name loaded-options))
-    unspecific)
-
-  (define (file-loop options-file)
-    (let ((options (with-input-from-file options-file read)))
-      (verify-options-syntax options options-file)
-      (cond ((assq name (cdr options)) => load-entry)
-	    ((car options)
-	     (file-loop
-	      (merge-pathnames (eval-filename (car options))
-			       (library-directory-pathname ""))))
-	    (else
-	     (error "Unknown option name:" name)))))
-
-  (define (verify-options-syntax options filename)
-    (define (verify-entry thing)
-      (if (not (and (pair? thing)
-		    (symbol? (car thing))
-		    (list? (cdr thing))))
-	  (error "Bad entry in options database" filename thing)))
-    (if (and (pair? options)
-	     (list? (cdr options)))
-	(for-each verify-entry (cdr options))
-	(error "Bad options database" filename options)))
-
-
-  (if (not (memq name loaded-options))
-      (file-loop  (initial-options-file-pathname)))
-  name)
-
+	files)
+      (eval init-expression environment))))
 
 (define (library-directory-pathname name)
   (or (system-library-directory-pathname name)
@@ -126,7 +146,6 @@ MIT in each case. |#
 			     "no such directory in system library path"
 			     library-directory-pathname
 			     (list name)))))
-
 
 (define (declare-shared-library shared-library thunk)
   (let ((thunk-valid?
