@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: applicat.scm,v 1.1 1994/11/19 02:04:29 adams Exp $
+$Id: applicat.scm,v 1.2 1995/02/02 19:35:50 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -43,13 +43,13 @@ MIT in each case. |#
 (define-macro (define-applicator keyword bindings . body)
   (let ((proc-name (symbol-append 'APPLICAT/ keyword)))
     (call-with-values
-     (lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
-     (lambda (names code)
-       `(define ,proc-name
-	  (let ((handler (lambda ,(cons (car bindings) names) ,@body)))
-	    (named-lambda (,proc-name env form)
-	      (applicat/remember ,code
-			       form))))))))
+	(lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
+      (lambda (names code)
+	`(DEFINE ,proc-name
+	   (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
+	     (NAMED-LAMBDA (,proc-name ENV FORM)
+	       (APPLICAT/REMEMBER ,code
+				  FORM))))))))
 
 (define-applicator LOOKUP (env name)
   env					; ignored
