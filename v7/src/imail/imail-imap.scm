@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.91 2000/05/25 05:16:36 cph Exp $
+;;; $Id: imail-imap.scm,v 1.92 2000/05/25 22:34:05 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -309,40 +309,40 @@
 				       (or (imap-url-port url) "imap2")
 				       #f
 				       "\n")))
-	  (let ((finished? #f))
-	    (dynamic-wind
-	     (lambda () unspecific)
-	     (lambda ()
-	       (set-imap-connection-port! connection port)
-	       (set-imap-connection-greeting!
-		connection
-		(let ((response (imap:read-server-response-1 port)))
-		  (if (imap:response:ok? response)
-		      (imap:response:response-text-string response)
-		      response)))
-	       (reset-imap-connection connection)
-	       (if (not (memq 'IMAP4REV1 (imap:command:capability connection)))
-		   (error "Server doesn't support IMAP4rev1:" url))
-	       (bind-condition-handler
-		   (list condition-type:imap-server-error)
-		   (lambda (condition)
-		     (let ((response (imap:server-error:response condition)))
-		       (if (imap:response:no? response)
-			   (begin
-			     (imail-delete-stored-pass-phrase url)
-			     (error "Unable to log in:"
-				    (imap:response:response-text-string
-				     response))))))
-		 (lambda ()
-		   (imail-call-with-pass-phrase url
-		     (lambda (pass-phrase)
-		       (imap:command:login connection
-					   (imap-url-user-id url)
-					   pass-phrase)))))
-	       (set! finished? #t))
-	     (lambda ()
-	       (if (not finished?)
-		   (close-imap-connection connection))))))
+	  (let ((response
+		 (imap:catch-no-response
+		  (lambda ()
+		    (let ((finished? #f))
+		      (dynamic-wind
+		       (lambda () unspecific)
+		       (lambda ()
+			 (set-imap-connection-port! connection port)
+			 (set-imap-connection-greeting!
+			  connection
+			  (let ((response (imap:read-server-response-1 port)))
+			    (if (imap:response:ok? response)
+				(imap:response:response-text-string response)
+				response)))
+			 (reset-imap-connection connection)
+			 (if (not (memq 'IMAP4REV1
+					(imap:command:capability connection)))
+			     (error "Server doesn't support IMAP4rev1:" url))
+			 (let ((response
+				(imail-call-with-pass-phrase url
+				  (lambda (pass-phrase)
+				    (imap:command:login connection
+							(imap-url-user-id url)
+							pass-phrase)))))
+			   (set! finished? #t)
+			   response))
+		       (lambda ()
+			 (if (not finished?)
+			     (close-imap-connection connection)))))))))
+	    (if (imap:response:no? response)
+		(begin
+		  (imail-delete-stored-pass-phrase url)
+		  (error "Unable to log in:"
+			 (imap:response:response-text-string response))))))
 	#t)))
 
 (define (test-imap-connection-open connection)
@@ -987,7 +987,7 @@
   (let ((responses (apply imap:command connection command arguments)))
     (if (not (null? (cdr responses)))
 	(error "Malformed response from IMAP server:" responses))
-    unspecific))
+    (car responses)))
 
 (define (imap:command:single-response predicate connection command . arguments)
   (let ((responses (apply imap:command connection command arguments)))
@@ -1154,6 +1154,17 @@
 	  (write-line (list 'RECEIVE response) imap-trace-port)
 	  (flush-output imap-trace-port)))
     response))
+
+(define (imap:catch-no-response thunk)
+  (call-with-current-continuation
+   (lambda (k)
+     (bind-condition-handler
+	 (list condition-type:imap-server-error)
+	 (lambda (condition)
+	   (let ((response (imap:server-error:response condition)))
+	     (if (imap:response:no? response)
+		 (k response))))
+       thunk))))
 
 (define (process-responses connection command responses)
   (if (pair? responses)
