@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.130 1989/03/14 08:00:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.131 1989/03/15 19:13:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -389,11 +389,20 @@ If a file with the new name already exists, confirmation is requested first."
 ;;; Derives buffername from pathname
 
 (define (pathname->buffer-name pathname)
-  (pathname->string
-   (make-pathname false false false
-		  (pathname-name pathname)
-		  (pathname-type pathname)
-		  false)))
+  (let ((name (pathname-name pathname)))
+    (if name
+	(pathname->string
+	 (make-pathname false false false
+			name
+			(pathname-type pathname)
+			false))
+	(let ((name
+	       (let ((directory (pathname-directory pathname)))
+		 (and (pair? directory)
+		      (car (last-pair directory))))))
+	  (if (string? name)
+	      name
+	      "*random*")))))
 
 (define-integrable (prompt-string->pathname string)
   (string->pathname (os/trim-pathname-string string)))
@@ -421,9 +430,18 @@ If a file with the new name already exists, confirmation is requested first."
 				    false
 				    'NO-COMPLETION
 				    prompt-for-pathname-mode)))))
-
+
+(define (prompt-for-directory prompt default-pathname)
+  (let ((pathname (prompt-for-pathname prompt default-pathname)))
+    (if (file-directory? pathname)
+	(pathname-as-directory pathname)
+	pathname)))
+
 (define (current-default-pathname)
-  (newest-pathname (buffer-pathname (current-buffer))))
+  (newest-pathname
+   (let ((buffer (current-buffer)))
+     (or (buffer-pathname buffer)
+	 (buffer-truename buffer)))))
 
 (define (newest-pathname pathname)
   (pathname-new-version (or pathname (working-directory-pathname))
