@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.12 1991/09/20 20:46:33 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.13 1991/10/26 21:10:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -135,6 +135,12 @@ modified version of TeX input format.")
 
 (define-autoload-command 'manual-entry 'MANUAL
   "Display UNIX man page.")
+
+(define-variable manual-entry-reuse-buffer?
+  "If true, MANUAL-ENTRY uses buffer *Manual-Entry* for all entries.
+Otherwise, a new buffer is created for each topic."
+  false
+  boolean?)
 
 (define-library 'print
   '("print" (EDWIN)))

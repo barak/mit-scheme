@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/manual.scm,v 1.6 1991/10/26 21:08:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/manual.scm,v 1.7 1991/10/26 21:11:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -46,12 +46,6 @@
 
 (declare (usual-integrations))
 
-(define-variable manual-entry-reuse-buffer?
-  "If true, MANUAL-ENTRY uses buffer *Manual-Entry* for all entries.
-Otherwise, a new buffer is created for each topic."
-  false
-  boolean?)
-
 (define-command manual-entry
   "Display the Unix manual entry for TOPIC.
 TOPIC is either the title of the entry, or has the form TITLE(SECTION)
