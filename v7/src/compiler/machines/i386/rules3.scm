@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.29 1997/10/17 01:32:18 adams Exp $
+$Id: rules3.scm,v 1.30 1998/02/14 00:52:23 adams Exp $
 
-Copyright (c) 1992-1997 Massachusetts Institute of Technology
+Copyright (c) 1992-1998 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,34 +39,41 @@ MIT in each case. |#
 
 ;;;; Invocations
 
-;;(define-integrable (clear-continuation-type-code)
-;;  (LAP (AND W (@R ,regnum:stack-pointer) (R ,regnum:datum-mask))))
-
 (define-rule statement
   (POP-RETURN)
   ;; The continuation is on the stack.
   ;; The type code needs to be cleared first.
-  (cond ((block-association 'POP-RETURN)
-	 => current-bblock-continue!)
-	(else
-	 (let ((bblock
-		(make-new-sblock
-		 (let ((interrupt-label (generate-label 'INTERRUPT)))
-		   (LAP (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
-			(JGE (@PCR ,interrupt-label))
-			(POP (R ,eax))	; continuation
+  (let ((checks (get-exit-interrupt-checks)))
+    (cond ((null? checks)
+	   (let ((bblock
+		  (make-new-sblock
+		   (LAP (POP (R ,eax))	; continuation
 			(AND W (R ,eax) (R ,regnum:datum-mask)) ; clear type
-			(JMP (R ,eax))
-			(LABEL ,interrupt-label)
-			,@(invoke-hook
-			   entry:compiler-interrupt-continuation-2))))))
-	   (block-associate! 'POP-RETURN bblock)
-	   (current-bblock-continue! bblock))))
-  (clear-map!))
+			(JMP (R ,eax))))))
+	     (current-bblock-continue! bblock)))
+	  ((block-association 'POP-RETURN)
+	   => current-bblock-continue!)
+	  (else
+	   (let ((bblock
+		  (make-new-sblock
+		   (let ((interrupt-label (generate-label 'INTERRUPT)))
+		     (LAP (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
+			  (JGE (@PCR ,interrupt-label))
+			  (POP (R ,eax))	; continuation
+			  (AND W (R ,eax) (R ,regnum:datum-mask)) ; clear type
+			  (JMP (R ,eax))
+			  (LABEL ,interrupt-label)
+			  ,@(invoke-hook
+			     entry:compiler-interrupt-continuation-2))))))
+	     (block-associate! 'POP-RETURN bblock)
+	     (current-bblock-continue! bblock))))
+    (clear-map!)))
+
 
 (define-rule statement
   (INVOCATION:APPLY (? frame-size) (? continuation))
   continuation
+  (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
        (POP (R ,ecx))
        #|
@@ -89,6 +96,7 @@ MIT in each case. |#
 (define-rule statement
   (INVOCATION:JUMP (? frame-size) (? continuation) (? label))
   frame-size continuation
+  (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
        (JMP (@PCR ,label))))
 
@@ -96,6 +104,7 @@ MIT in each case. |#
   (INVOCATION:COMPUTED-JUMP (? frame-size) (? continuation))
   frame-size continuation
   ;; It expects the procedure at the top of the stack
+  (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
        (POP (R ,eax))
        (AND W (R ,eax) (R ,regnum:datum-mask)) ;clear type code
@@ -104,6 +113,7 @@ MIT in each case. |#
 (define-rule statement
   (INVOCATION:LEXPR (? number-pushed) (? continuation) (? label))
   continuation
+  (expect-no-exit-interrupt-checks)
   (with-pc
     (lambda (pc-label pc-register)
       (LAP ,@(clear-map!)
@@ -115,6 +125,7 @@ MIT in each case. |#
   (INVOCATION:COMPUTED-LEXPR (? number-pushed) (? continuation))
   continuation
   ;; It expects the procedure at the top of the stack
+  (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
        (POP (R ,ecx))
        (AND W (R ,ecx) (R ,regnum:datum-mask)) ; clear type code
@@ -124,12 +135,14 @@ MIT in each case. |#
 (define-rule statement
   (INVOCATION:UUO-LINK (? frame-size) (? continuation) (? name))
   continuation
+  (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
        (JMP (@PCRO ,(free-uuo-link-label name frame-size) 3))))
 
 (define-rule statement
   (INVOCATION:GLOBAL-LINK (? frame-size) (? continuation) (? name))
   continuation
+  (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
        (JMP (@PCRO ,(global-uuo-link-label name frame-size) 3))))
 
@@ -168,6 +181,8 @@ MIT in each case. |#
 (define-rule statement
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
   continuation				; ignored
+  ;;
+  ;;(expect-no-exit-interrupt-checks)
   (let-syntax ((invoke
 		#|
 		(macro (code entry)
@@ -226,6 +241,7 @@ MIT in each case. |#
 	     (? continuation)
 	     ,(make-primitive-procedure name true))
 	    frame-size continuation
+	    '(expect-no-exit-interrupt-checks)
 	    (special-primitive-invocation
 	     ,(symbol-append 'CODE:COMPILER- name)))))
 
@@ -237,6 +253,7 @@ MIT in each case. |#
 	     (? continuation)
 	     ,(make-primitive-procedure name true))
 	    frame-size continuation
+	    '(expect-no-exit-interrupt-checks)
 	    (optimized-primitive-invocation
 	     ,(symbol-append 'ENTRY:COMPILER- name))))))
 
@@ -403,27 +420,29 @@ MIT in each case. |#
 ;;; interrupt handler that saves and restores the dynamic link
 ;;; register.
 
-(define (interrupt-check procedure-label interrupt-label)
+(define (interrupt-check procedure-label interrupt-label checks)
   ;; This always does interrupt checks in line.
-  (LAP (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
-       (JGE (@PCR ,interrupt-label))
-       ,@(if (let ((object (label->object procedure-label)))
-	       (and (rtl-procedure? object)
-		    (not (rtl-procedure/stack-leaf? object))
-		    compiler:generate-stack-checks?))
+  (LAP ,@(if (or (memq 'INTERRUPT checks) (memq 'HEAP checks))
+	     (LAP (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
+		  (JGE (@PCR ,interrupt-label)))
+	     (LAP))
+       ,@(if (memq 'STACK checks)
 	     (LAP (CMP W (R ,regnum:stack-pointer) ,reg:stack-guard)
 		  (JL (@PCR ,interrupt-label)))
 	     (LAP))))
 
-(define (simple-procedure-header code-word label entry)
-  (let ((gc-label (generate-label)))    
-    (LAP (LABEL ,gc-label)
-	 ,@(invoke-hook/call entry)
-	 ,@(make-external-label code-word label)
-	 ,@(interrupt-check label gc-label))))
-
+(define (simple-procedure-header code-word label checks entry)
+  (if (null? checks)
+      (LAP ,@(make-external-label code-word label))
+      (let ((gc-label (generate-label)))    
+	(LAP (LABEL ,gc-label)
+	     ,@(invoke-hook/call entry)
+	     ,@(make-external-label code-word label)
+	     ,@(interrupt-check label gc-label checks)))))
+  
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
+  (expect-no-entry-interrupt-checks)
   (make-external-label (continuation-code-word internal-label)
 		       internal-label))
 
@@ -434,6 +453,7 @@ MIT in each case. |#
 			   internal-label
 			   entry:compiler-interrupt-continuation)
   |#
+  (expect-no-entry-interrupt-checks)
   (make-external-label (continuation-code-word internal-label)
 		       internal-label))
 
@@ -455,6 +475,7 @@ MIT in each case. |#
     (LAP (EQUATE ,(rtl-procedure/external-label rtl-proc) ,internal-label)
 	 ,@(simple-procedure-header (internal-procedure-code-word rtl-proc)
 				    internal-label
+				    (get-entry-interrupt-checks)
 				    (if (rtl-procedure/dynamic-link? rtl-proc)
 					entry:compiler-interrupt-dlink
 					entry:compiler-interrupt-procedure)))))
@@ -466,7 +487,191 @@ MIT in each case. |#
 	       ,internal-label)
        ,@(simple-procedure-header (make-procedure-code-word min max)
 				  internal-label
+				  (get-entry-interrupt-checks)
 				  entry:compiler-interrupt-procedure)))
+
+;; Interrupt check placement
+;;
+;; The first two procedures are the interface.
+;; GET-EXIT-INTERRUPT-CHECKS and GET-ENTRY-INTERRUPT-CHECKS get a list
+;; of kinds interrupt check.  An empty list implies no check is
+;; required.  The list can contain these symbols:
+;;
+;;    STACK      stack check required here
+;;    HEAP       heap check required here
+;;    INTERRUPT  check required here to avoid loops without checks.
+;;
+;; The traversal and decision making is done on the first call and
+;; cached.  It would have been better to have a back-end specific
+;; pre-lapgen pass to do the decision making.  Then the cfg marking
+;; abstraction could have been used, but we can't use it here because
+;; the lapgen control is already using it.
+
+(define (get-entry-interrupt-checks)
+  (get-interupt-checks 'ENTRY-INTERRUPT-CHECKS))
+
+(define (get-exit-interrupt-checks)
+  (get-interupt-checks 'EXIT-INTERRUPT-CHECKS))
+
+(define (expect-no-entry-interrupt-checks)
+  (if (not (null? (get-entry-interrupt-checks)))
+      (error "No entry interrupt checks expected here" *current-bblock*)))  
+
+(define (expect-no-exit-interrupt-checks)
+  (if (not (null? (get-exit-interrupt-checks)))
+      (error "No exit interrupt checks expected here" *current-bblock*)))  
+
+(define (get-interupt-checks kind)
+  (let retry ((failed? #F))
+    (cond ((cfg-node-get *current-bblock* kind)
+	   => cdr)
+	  (failed?  (error "DETERMINE-INTERRUPT-CHECKS failed" kind) #F)
+	  (else
+	   (determine-interrupt-checks)
+	   (retry #T)))))
+
+
+;; This algorithm finds leaf-procedure-like paths in the rtl control
+;; flow graph.  If a procedure entry point can only reach a return, it
+;; is leaf-like.  If a return can only be reached from a procedure
+;; entry, it too is leaf-like.
+;;
+;; If a procedure reaches a procedure call, that could be a loop, so
+;; it is not leaf-like.  Similarly, if a continuation entry reaches
+;; return, that could be a long unwinding of recursion, so a check is
+;; needed in case the unwinding does allocation.
+;;
+;; Typically, true leaf procedures avoid both checks, and trivial
+;; cases (like MAP returning '()) avoid the exit check.
+;;
+;; This could be a lot smarter.  For example, a procedure entry does
+;; not need to check for interrupts if it reaches call sites of
+;; strictly lesser arity; or it could analyze the cycles in the CFG
+;; and select good places to break them
+;;
+;; The algorithm has three phases: (1) explore the CFG to find all
+;; entry and exit points, (2) propagate entry (exit) information so
+;; that each potential interrupt check point knows what kinds of exits
+;; (entrys) it reaches (is reached from), and (3) decide on the kninds
+;; of interrupt check that are required at each entry and exit.
+;;
+;; [TOFU is just a header node for the list of interrupt checks, to
+;; distingish () and #F]
+
+(define (determine-interrupt-checks)
+  (let ((entries '())
+	(exits '()))
+
+    (define (explore bblock)
+      (or (cfg-node-get bblock 'INTERRUPT-CHECK-EXPLORE)
+	  (begin
+	    (cfg-node-put! bblock 'INTERRUPT-CHECK-EXPLORE #T)
+	    (if (node-previous=0? bblock)
+		(set! entries (cons bblock entries))
+		(if (rtl:continuation-entry?
+		     (rinst-rtl (bblock-instructions bblock)))
+		    ;; previous block is invocation:special-primitive
+		    ;; so it is just an out of line instruction
+		    (cfg-node-put! bblock 'ENTRY-INTERRUPT-CHECKS '(TOFU))))
+
+	    (for-each-previous-node bblock explore)
+	    (for-each-subsequent-node bblock explore)
+	    (if (and (snode? bblock)
+		     (not (snode-next bblock)))
+		(set! exits (cons bblock exits))))))
+
+    (define (for-each-subsequent-node node procedure)
+      (if (snode? node)
+	  (if (snode-next node)
+	      (procedure (snode-next node)))
+	  (begin
+	    (procedure (pnode-consequent node))
+	    (procedure (pnode-alternative node)))))
+
+    (define (propagator for-each-link)
+      (lambda (node update place)
+	(let propagate ((node node))
+	  (let ((old (cfg-node-get node place)))
+	    (let ((new (update old)))
+	      (if (not (equal? old new))
+		  (begin
+		    (cfg-node-put! node place new)
+		    (for-each-link node propagate))))))))
+
+    (define upward   (propagator for-each-previous-node))
+    (define downward (propagator for-each-subsequent-node))
+
+    (define (setting-flag old) old #T)
+
+    (define (propagate-entry-info bblock)
+      (let ((insn (rinst-rtl (bblock-instructions bblock))))
+	(cond ((or (rtl:continuation-entry? insn)
+		   (rtl:continuation-header? insn))
+	       (downward bblock setting-flag 'REACHED-FROM-CONTINUATION))
+	      ((or (rtl:closure-header? insn)
+		   (rtl:ic-procedure-header? insn)
+		   (rtl:open-procedure-header? insn)
+		   (rtl:procedure-header? insn))
+	       (downward bblock setting-flag 'REACHED-FROM-PROCEDURE))
+	      (else unspecific))))
+
+    (define (propagate-exit-info exit-bblock)
+      (let ((insn (last-insn exit-bblock)))
+	(cond ((rtl:pop-return? insn)
+	       (upward exit-bblock setting-flag 'REACHES-POP-RETURN))
+	      (else
+	       (upward exit-bblock setting-flag 'REACHES-INVOCATION)))))
+
+    (define (decide-entry-checks bblock)
+      (define (checks! types)
+	(cfg-node-put! bblock 'ENTRY-INTERRUPT-CHECKS (cons 'TOFU types)))
+      (define (decide-label internal-label)
+	(let ((object (label->object internal-label)))
+	  (let ((stack?
+		 (if (and (rtl-procedure? object)
+			  (not (rtl-procedure/stack-leaf? object))
+			  compiler:generate-stack-checks?)
+		     '(STACK)
+		     '())))
+	    (if (or (cfg-node-get bblock 'REACHES-INVOCATION)
+		    (pair? stack?))
+		(checks! (cons* 'HEAP 'INTERRUPT stack?))
+		(checks! '())))))
+
+      (let ((insn (rinst-rtl (bblock-instructions bblock))))
+	(cond ((rtl:continuation-entry? insn)  (checks! '()))
+	      ((rtl:continuation-header? insn) (checks! '()))
+	      ((rtl:closure-header? insn)
+	       (decide-label (rtl:closure-header-procedure insn)))
+	      ((rtl:ic-procedure-header? insn)
+	       (decide-label (rtl:ic-procedure-header-procedure insn)))
+	      ((rtl:open-procedure-header? insn)
+	       (decide-label (rtl:open-procedure-header-procedure insn)))
+	      ((rtl:procedure-header? insn)
+	       (decide-label (rtl:procedure-header-procedure insn)))
+	      (else
+	       (checks! '(INTERRUPT))))))
+
+    (define (last-insn bblock)
+      (rinst-rtl (rinst-last (bblock-instructions bblock))))
+
+    (define (decide-exit-checks bblock)
+      (define (checks! types)
+	(cfg-node-put! bblock 'EXIT-INTERRUPT-CHECKS (cons 'TOFU types)))
+      (if (rtl:pop-return? (last-insn bblock))
+	  (if (cfg-node-get bblock 'REACHED-FROM-CONTINUATION)
+	      (checks! '(INTERRUPT))
+	      (checks! '()))
+	  (checks! '())))
+
+    (explore *current-bblock*)
+
+    (for-each propagate-entry-info entries)
+    (for-each propagate-exit-info exits)
+    (for-each decide-entry-checks entries)
+    (for-each decide-exit-checks exits)
+
+    ))
 
 ;;;; Closures:			 
 
@@ -545,46 +750,52 @@ MIT in each case. |#
 	     (MOV W (@RO B ,regnum:free-pointer -4) ,temp))))))
 
 (define closure-share-names
-  '#(
-     closure-0-interrupt closure-1-interrupt closure-2-interrupt closure-3-interrupt
-     closure-4-interrupt closure-5-interrupt closure-6-interrupt closure-7-interrupt
-     ))
+  '#(closure-0-interrupt closure-1-interrupt closure-2-interrupt
+     closure-3-interrupt closure-4-interrupt closure-5-interrupt
+     closure-6-interrupt closure-7-interrupt))
 
 (define (generate/closure-header internal-label nentries entry)
   nentries				; ignored
   (let* ((rtl-proc (label->object internal-label))
-	 (external-label (rtl-procedure/external-label rtl-proc)))
+	 (external-label (rtl-procedure/external-label rtl-proc))
+	 (checks (get-entry-interrupt-checks)))
+	      
     (if (zero? nentries)
 	(LAP (EQUATE ,external-label ,internal-label)
 	     ,@(simple-procedure-header
 		(internal-procedure-code-word rtl-proc)
 		internal-label
 		entry:compiler-interrupt-procedure))
-	(let ((prefix
-	       (lambda (gc-label)
-		 (LAP (LABEL ,gc-label)
-		      ,@(if (zero? entry)
-			    (LAP)
-			    (LAP (ADD W (@R ,esp) (& ,(* 10 entry)))))
-		      ,@(invoke-hook entry:compiler-interrupt-closure))))
-	      (suffix
-	       (lambda (gc-label)
-		 (LAP ,@(make-external-label internal-entry-code-word
-					     external-label)
-		      (ADD W (@R ,esp)
-			   (&U ,(generate/make-magic-closure-constant entry)))
-		      (LABEL ,internal-label)
-		      ,@(interrupt-check internal-label gc-label)))))
-	  (if (>= entry (vector-length closure-share-names))
-	      (let ((gc-label (generate-label)))
-		(LAP ,@(prefix gc-label)
-		     ,@(suffix gc-label)))
-	      (share-instruction-sequence!
-	       (vector-ref closure-share-names entry)
-	       suffix
-	       (lambda (gc-label)
-		 (LAP ,@(prefix gc-label)
-		      ,@(suffix gc-label)))))))))
+	(let* ((prefix
+		(lambda (gc-label)
+		  (LAP (LABEL ,gc-label)
+		       ,@(if (zero? entry)
+			     (LAP)
+			     (LAP (ADD W (@R ,esp) (& ,(* 10 entry)))))
+		       ,@(invoke-hook entry:compiler-interrupt-closure))))
+	       (label+adjustment
+		(lambda ()
+		  (LAP ,@(make-external-label internal-entry-code-word
+					      external-label)
+		       (ADD W (@R ,esp)
+			    (&U ,(generate/make-magic-closure-constant entry)))
+		       (LABEL ,internal-label))))
+	       (suffix
+		(lambda (gc-label)
+		  (LAP ,@(label+adjustment)
+		       ,@(interrupt-check internal-label gc-label checks)))))
+	  (if (null? checks)
+	      (LAP ,@(label+adjustment))
+	      (if (>= entry (vector-length closure-share-names))
+		  (let ((gc-label (generate-label)))
+		    (LAP ,@(prefix gc-label)
+			 ,@(suffix gc-label)))
+		  (share-instruction-sequence!
+		   (vector-ref closure-share-names entry)
+		   suffix
+		   (lambda (gc-label)
+		     (LAP ,@(prefix gc-label)
+			  ,@(suffix gc-label))))))))))
 
 (define (generate/make-magic-closure-constant entry)
   (- (make-non-pointer-literal (ucode-type compiled-entry) 0)
@@ -816,3 +1027,4 @@ MIT in each case. |#
 ;;; Local Variables: ***
 ;;; eval: (put 'declare-constants 'scheme-indent-hook 2) ***
 ;;; End: ***
+
