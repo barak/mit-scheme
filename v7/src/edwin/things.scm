@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/things.scm,v 1.81 1991/10/02 09:00:31 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/things.scm,v 1.82 1991/10/29 13:49:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -81,14 +81,14 @@
   (define (%forward-thing mark n limit?)
     (let loop ((mark mark) (n n))
       (let ((end (forward-one-thing mark)))
-	(cond ((not end) (limit-mark-motion limit? mark))
+	(cond ((not end) (limit-mark-motion limit? (group-end mark)))
 	      ((= n 1) end)
 	      (else (loop end (-1+ n)))))))
 
   (define (%backward-thing mark n limit?)
     (let loop ((mark mark) (n n))
       (let ((start (backward-one-thing mark)))
-	(cond ((not start) (limit-mark-motion limit? mark))
+	(cond ((not start) (limit-mark-motion limit? (group-start mark)))
 	      ((= n 1) start)
 	      (else (loop start (-1+ n)))))))
 
