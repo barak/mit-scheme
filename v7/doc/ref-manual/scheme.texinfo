@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.76 1999/08/13 21:25:08 cph Exp $
+@comment $Id: scheme.texinfo,v 1.77 1999/08/19 14:50:58 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -11450,29 +11450,80 @@ of @var{continuation}.  In other words, the ``current'' continuation is
 abandoned before @var{thunk} is invoked.
 @end deffn
 
-@deffn {procedure+} dynamic-wind before-thunk action-thunk after-thunk
-@cindex unwind protect
-@findex unwind-protect
-This facility is a generalization of Common Lisp @code{unwind-protect},
-designed to take into account the fact that continuations produced by
-@code{call-with-current-continuation} may be reentered.  The arguments
-@var{before-thunk}, @var{action-thunk}, and @var{after-thunk} must all
-be procedures of no arguments (thunks).
+@deffn {procedure+} dynamic-wind before thunk after
+Calls @var{thunk} without arguments, returning the result(s) of this
+call.  @var{Before} and @var{after} are called, also without arguments,
+as required by the following rules (note that in the absence of calls to
+continuations captured using @code{call-with-current-continuation} the
+three arguments are called once each, in order).  @var{Before} is called
+whenever execution enters the dynamic extent of the call to @var{thunk}
+and @var{after} is called whenever it exits that dynamic extent.  The
+dynamic extent of a procedure call is the period between when the call
+is initiated and when it returns.  In Scheme, because of
+@code{call-with-current-continuation}, the dynamic extent of a call may
+not be a single, connected time period.  It is defined as follows:
 
-@code{dynamic-wind} behaves as follows.  First @var{before-thunk} is
-called.  Then @var{action-thunk} is called.  Finally, @var{after-thunk}
-is called.  The value returned by @var{action-thunk} is returned as the
-result of @code{dynamic-wind}.  @var{After-thunk} is also called if
-@var{action-thunk} escapes from its continuation.  If @var{action-thunk}
-captures its continuation as an escape procedure, escapes from it, then
-escapes back to it, @var{after-thunk} is invoked when escaping away, and
-@var{before-thunk} is invoked when escaping back.
+@itemize @bullet
+@item
+The dynamic extent is entered when execution of the body of the called
+procedure begins.
 
-@cindex locks, and dynamic-wind
-@code{dynamic-wind} is useful, for example, for ensuring the proper
-maintenance of locks: locking would occur in the @var{before-thunk},
-protected code would appear in the @var{action-thunk}, and unlocking
-would occur in the @var{after-thunk}.
+@item
+The dynamic extent is also entered when execution is not within the
+dynamic extent and a continuation is invoked that was captured (using
+@code{call-with-current-continuation}) during the dynamic extent.
+
+@item
+It is exited when the called procedure returns.
+
+@item
+It is also exited when execution is within the dynamic extent and a
+continuation is invoked that was captured while not within the dynamic
+extent.
+@end itemize
+
+If a second call to @code{dynamic-wind} occurs within the dynamic extent
+of the call to @var{thunk} and then a continuation is invoked in such a
+way that the @var{after}s from these two invocations of
+@code{dynamic-wind} are both to be called, then the @var{after}
+associated with the second (inner) call to @code{dynamic-wind} is called
+first.
+
+If a second call to @code{dynamic-wind} occurs within the dynamic extent
+of the call to @var{thunk} and then a continuation is invoked in such a
+way that the @var{before}s from these two invocations of
+@code{dynamic-wind} are both to be called, then the @var{before}
+associated with the first (outer) call to @code{dynamic-wind} is called
+first.
+
+If invoking a continuation requires calling the @var{before} from one
+call to @code{dynamic-wind} and the @var{after} from another, then the
+@var{after} is called first.
+
+The effect of using a captured continuation to enter or exit the dynamic
+extent of a call to @var{before} or @var{after} is undefined.
+
+@example
+@group
+(let ((path '())
+      (c #f))
+  (let ((add (lambda (s)
+               (set! path (cons s path)))))
+    (dynamic-wind
+      (lambda () (add 'connect))
+      (lambda ()
+        (add (call-with-current-continuation
+               (lambda (c0)
+                 (set! c c0)
+                 'talk1))))
+      (lambda () (add 'disconnect)))
+    (if (< (length path) 4)
+        (c 'talk2)
+        (reverse path))))
+
+@result{} (connect talk1 disconnect connect talk2 disconnect)
+@end group
+@end example
 @end deffn
 
 The following two procedures support multiple values.
