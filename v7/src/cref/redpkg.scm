@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/redpkg.scm,v 1.2 1988/10/28 07:03:24 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/redpkg.scm,v 1.3 1990/10/05 11:33:16 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,16 +38,15 @@ MIT in each case. |#
 	 (integrate-external "object"))
 
 (define (read-package-model filename)
-  (let* ((pathname (pathname->absolute-pathname (->pathname filename)))
-	 (default-pathname (pathname-directory-path pathname)))
+  (let ((model-pathname (pathname->absolute-pathname (->pathname filename))))
     (with-values
 	(lambda ()
 	  (sort-descriptions
 	   (map (lambda (expression)
 		  (parse-package-expression expression))
-		(read-package-description-file pathname))))
+		(read-package-description-file model-pathname))))
       (lambda (packages globals)
-	(let ((pmodel (descriptions->pmodel packages default-pathname)))
+	(let ((pmodel (descriptions->pmodel packages model-pathname)))
 	  (for-each
 	   (let ((root-package (pmodel/root-package pmodel)))
 	     (lambda (pathname)
@@ -59,7 +58,7 @@ MIT in each case. |#
 			     (bind! root-package name expression)))
 			 (fasload
 			  (merge-pathnames (pathname-new-type pathname "glob")
-					   default-pathname)))))
+					   model-pathname)))))
 	   globals)
 	  pmodel)))))
 
@@ -86,47 +85,96 @@ MIT in each case. |#
   (read-file (pathname-default-type pathname "pkg")))
 
 (define (read-file-analyses! pmodel)
-  (for-each (lambda (package)
-	      (for-each (lambda (pathname)
-			  (read-file-analysis! pmodel package pathname))
-			(package/files package)))
-	    (pmodel/packages pmodel)))
+  (for-each (lambda (p&c)
+	      (record-file-analysis! pmodel
+				     (car p&c)
+				     (analysis-cache/pathname (cdr p&c))
+				     (analysis-cache/data (cdr p&c))))
+	    (cache-file-analyses! pmodel)))
 
-(define (read-file-analysis! pmodel package pathname)
-  (let ((filename (pathname->string pathname))
-	(root-package (pmodel/root-package pmodel))
-	(primitive-package (pmodel/primitive-package pmodel)))
-    (for-each (lambda (entry)
-		(let ((name (vector-ref entry 0))
-		      (expression
-		       (make-expression package
-					filename
-					(vector-ref entry 4))))
-		  (let ((intern!
-			 (lambda (name)
-			   (cond ((symbol? name)
-				  (make-reference package name expression))
-				 ((primitive-procedure? name)
-				  (make-reference
-				   primitive-package
-				   (primitive-procedure-name name)
-				   expression))
-				 ((access? name)
-				  (if (access-environment name)
-				      (error "Non-root access" name))
-				  (make-reference root-package
-						  (access-name name)
-						  expression))
-				 (else
-				  (error "Illegal reference name" name))))))
-		    (for-each intern! (vector-ref entry 1))
-		    (for-each intern! (vector-ref entry 2))
-		    (for-each intern! (vector-ref entry 3)))
-		  (if name
-		      (bind! package name expression))))
-	      (read-analyzed-file
-	       (merge-pathnames (pathname-new-type pathname "bin")
-				(pmodel/default-pathname pmodel))))))
+(define-structure (analysis-cache
+		   (type vector)
+		   (constructor make-analysis-cache (pathname time data))
+		   (conc-name analysis-cache/))
+  (pathname false read-only true)
+  (time false)
+  (data false))
+
+(define (cache-file-analyses! pmodel)
+  (let ((pathname (pathname-new-type (pmodel/pathname pmodel) "free")))
+    (let ((result
+	   (let ((caches (if (file-exists? pathname) (fasload pathname) '())))
+	     (append-map! (lambda (package)
+			    (map (lambda (pathname)
+				   (cons package
+					 (cache-file-analysis! pmodel
+							       caches
+							       pathname)))
+				 (package/files package)))
+			  (pmodel/packages pmodel)))))
+      (fasdump (map cdr result) pathname)
+      result)))
+
+(define (cache-file-analysis! pmodel caches pathname)
+  (let ((cache (analysis-cache/lookup caches pathname))
+	(full-pathname
+	 (merge-pathnames (pathname-new-type pathname "bin")
+			  (pmodel/pathname pmodel))))
+    (let ((time (file-modification-time full-pathname)))
+      (if (not time)
+	  (error "unable to open file" full-pathname))
+      (if cache
+	  (begin
+	    (if (> time (analysis-cache/time cache))
+		(begin
+		  (set-analysis-cache/data! cache (analyze-file full-pathname))
+		  (set-analysis-cache/time! cache time)))
+	    cache)
+	  (make-analysis-cache pathname time (analyze-file full-pathname))))))
+
+(define (analysis-cache/lookup caches pathname)
+  (let loop ((caches caches))
+    (and (not (null? caches))
+	 (if (pathname=? pathname (analysis-cache/pathname (car caches)))
+	     (car caches)
+	     (loop (cdr caches))))))
+
+(define (pathname=? x y)
+  (and (equal? (pathname-name x) (pathname-name y))
+       (equal? (pathname-directory x) (pathname-directory y))
+       (equal? (pathname-type x) (pathname-type y))
+       (equal? (pathname-version x) (pathname-version y))
+       (equal? (pathname-host x) (pathname-host y))
+       (equal? (pathname-device x) (pathname-device y))))
+
+(define (record-file-analysis! pmodel package pathname entries)
+  (for-each
+   (let ((filename (pathname->string pathname))
+	 (root-package (pmodel/root-package pmodel))
+	 (primitive-package (pmodel/primitive-package pmodel)))
+     (lambda (entry)
+       (let ((name (vector-ref entry 0))
+	     (expression
+	      (make-expression package filename (vector-ref entry 1))))
+	 (for-each-vector-element (vector-ref entry 2)
+	   (lambda (name)
+	     (cond ((symbol? name)
+		    (make-reference package name expression))
+		   ((primitive-procedure? name)
+		    (make-reference primitive-package
+				    (primitive-procedure-name name)
+				    expression))
+		   ((access? name)
+		    (if (access-environment name)
+			(error "Non-root access" name))
+		    (make-reference root-package
+				    (access-name name)
+				    expression))
+		   (else
+		    (error "Illegal reference name" name)))))
+	 (if name
+	     (bind! package name expression)))))
+   entries))
 
 (define (resolve-references! pmodel)
   (for-each (lambda (package)
@@ -271,7 +319,7 @@ MIT in each case. |#
     (lambda (package)
       (symbol-list=? name (package/name package)))))
 
-(define (descriptions->pmodel descriptions default-pathname)
+(define (descriptions->pmodel descriptions pathname)
   (let ((packages
 	 (map (lambda (description)
 		(make-package
@@ -322,7 +370,7 @@ MIT in each case. |#
 		   (make-package primitive-package-name '() '() false)
 		   packages
 		   extra-packages
-		   default-pathname))))
+		   pathname))))
 
 (define primitive-package-name
   (list (string->symbol "#[(cross-reference reader)primitives]")))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/anfile.scm,v 1.3 1989/08/06 07:52:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/anfile.scm,v 1.4 1990/10/05 11:36:32 cph Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,49 +36,18 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (analyze/directory filename)
-  (for-each
-   (lambda (input-pathname)
-     (let ((output-pathname (pathname-new-type input-pathname "free")))
-       (if (not (compare-file-modification-times input-pathname
-						 output-pathname))
-	   (analyze/file input-pathname output-pathname))))
-   (directory-read
-    (merge-pathnames (pathname-as-directory (->pathname filename))
-		     (string->pathname "*.bin")))))
+(define (analyze-file pathname)
+  (analyze/top-level (fasload pathname)))
 
-(define (read-analyzed-file input-pathname)
-  (let ((output-pathname (pathname-new-type input-pathname "free")))
-    (if (compare-file-modification-times input-pathname output-pathname)
-	(fasload output-pathname)
-	(analyze/file input-pathname output-pathname))))
-
-(define (analyze/file input-pathname output-pathname)
-  (let ((analyzed-file (analyze/top-level (fasload input-pathname))))
-    (if analyze/file/memoize?
-	(fasdump analyzed-file output-pathname))
-    analyzed-file))
-
-(define analyze/file/memoize? true)
-
-(define (compare-file-modification-times x y)
-  (let ((x (file-modification-time x)))
-    (and x
-	 (let ((y (file-modification-time y)))
-	   (and y
-		(< x y))))))
-
 (define (analyze/top-level expression)
   (with-values (lambda () (sort-expressions (process-top-level expression)))
     (lambda (definitions others)
       (let ((definition-analysis
 	      (map analyze/top-level/definition definitions)))
 	(if (not (null? others))
-	    (cons (with-values (lambda ()
-				 (analyze/expression (make-sequence others)))
-		    (lambda (references assignments executions)
-		      (vector false references assignments executions
-			      'EXPRESSION)))
+	    (cons (vector false
+			  'EXPRESSION
+			  (analyze-and-compress (make-sequence others)))
 		  definition-analysis)
 	    definition-analysis)))))
 
@@ -106,29 +75,30 @@ MIT in each case. |#
   (let ((name (definition-name definition))
 	(expression (definition-value definition)))
     (cond ((unassigned-reference-trap? expression)
-	   (vector name '() '() '() 'UNASSIGNED))
+	   (vector name 'UNASSIGNED '#()))
 	  ((scode-constant? expression)
-	   (vector name '() '() '() 'CONSTANT))
+	   (vector name 'CONSTANT '#()))
 	  (else
-	   (with-values (lambda () (analyze/expression expression))
-	     (lambda (references assignments executions)
-	       (vector name references assignments executions
-		       (cond ((lambda? expression) 'LAMBDA)
-			     ((delay? expression) 'DELAY)
-			     (else 'EXPRESSION)))))))))
+	   (vector name
+		   (cond ((lambda? expression) 'LAMBDA)
+			 ((delay? expression) 'DELAY)
+			 (else 'EXPRESSION))
+		   (analyze-and-compress expression))))))
+
+(define (analyze-and-compress expression)
+  (list->vector (analyze/expression expression)))
 
 (define (analyze/expression expression)
   ((scode-walk analyze/dispatch expression) expression))
 
 (define (analyze/expressions expressions)
   (if (null? expressions)
-      (values '() '() '())
-      (result-sum (lambda () (analyze/expression (car expressions)))
-		  (lambda () (analyze/expressions (cdr expressions))))))
+      '()
+      (eq-set-union (analyze/expression (car expressions))
+		    (analyze/expressions (cdr expressions)))))
 
 (define (analyze/uninteresting expression)
-  (values (if (primitive-procedure? expression) (list expression) '())
-	  '() '()))
+  (if (primitive-procedure? expression) (list expression) '()))
 
 (define (analyze/error expression)
   (error "Illegal expression" expression))
@@ -136,46 +106,28 @@ MIT in each case. |#
 (define (analyze/access expression)
   (if (access-environment expression)
       (warn "Access to non-global environment:" (unsyntax expression)))
-  (values (list expression) '() '()))
+  (list expression))
 
 (define (analyze/variable expression)
-  (values (list (variable-name expression)) '() '()))
+  (list (variable-name expression)))
 
 (define (analyze/assignment expression)
-  (with-values (lambda () (analyze/expression (assignment-value expression)))
-    (lambda (references assignments executions)
-      (values references
-	      (cons (assignment-name expression) assignments)
-	      executions))))
+  (eq-set-adjoin (assignment-name expression)
+		 (analyze/expression (assignment-value expression))))
 
 (define (analyze/combination expression)
-  (result-sum (lambda ()
-		(let ((operator (combination-operator expression)))
-		  (cond ((variable? operator)
-			 (values '() '() (list (variable-name operator))))
-			((or (primitive-procedure? operator)
-			     (and (access? operator)
-				  (not (access-environment operator))))
-			 (values '() '() (list operator)))
-			(else
-			 (analyze/expression operator)))))
-	      (lambda ()
-		(analyze/expressions (combination-operands expression)))))
+  (eq-set-union (analyze/expression (combination-operator expression))
+		(analyze/expressions (combination-operands expression))))
 
 (define (analyze/lambda expression)
   (lambda-components expression
     (lambda (name required optional rest auxiliary declarations body)
       name declarations
-      (with-values (lambda () (analyze/expression body))
-	(lambda (references assignments executions)
-	  (let ((bound
-		 (append required
-			 optional
-			 (if rest (list rest) '())
-			 auxiliary)))
-	    (values (multiset-difference references bound)
-		    (multiset-difference assignments bound)
-		    (multiset-difference executions bound))))))))
+      (eq-set-difference (analyze/expression body)
+			 (append required
+				 optional
+				 (if rest (list rest) '())
+				 auxiliary)))))
 
 (define (analyze/error-combination expression)
   (combination-components expression
@@ -214,11 +166,24 @@ MIT in each case. |#
      (SEQUENCE ,analyze/sequence)
      (VARIABLE ,analyze/variable))))
 
-(define (result-sum first rest)
-  (with-values first
-    (lambda (references assignments executions)
-      (with-values rest
-	(lambda (references* assignments* executions*)
-	  (values (append! references references*)
-		  (append! assignments assignments*)
-		  (append! executions executions*)))))))
+(define (eq-set-adjoin x y)
+  (if (memq x y)
+      y
+      (cons x y)))
+
+(define (eq-set-union x y)
+  (if (null? y)
+      x
+      (let loop ((x x) (y y))
+	(if (null? x)
+	    y
+	    (loop (cdr x)
+		  (if (memq (car x) y)
+		      y
+		      (cons (car x) y)))))))
+
+(define (eq-set-difference x y)
+  (let loop ((x x))
+    (cond ((null? x) '())
+	  ((memq (car x) y) (loop (cdr x)))
+	  (else (cons (car x) (loop (cdr x)))))))

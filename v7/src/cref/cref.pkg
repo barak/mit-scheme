@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/cref.pkg,v 1.2 1988/10/28 07:03:12 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/cref.pkg,v 1.3 1990/10/05 11:31:38 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -61,8 +61,7 @@ MIT in each case. |#
   (files "anfile")
   (parent (cross-reference))
   (export (cross-reference)
-	  analyze/directory
-	  read-analyzed-file))
+	  analyze-file))
 
 (define-package (cross-reference constructor)
   (files "conpkg")
