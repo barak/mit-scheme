@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: closconv.scm,v 1.3 1994/11/22 19:50:34 gjr Exp $
+$Id: closconv.scm,v 1.4 1995/01/22 04:51:43 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -48,16 +48,31 @@ MIT in each case. |#
 	    (program* (closconv/expr env (lifter/letrecify program))))
        (closconv/analyze! env program*)))))
 
+;;(define-macro (define-closure-converter keyword bindings . body)
+;;  (let ((proc-name (symbol-append 'CLOSCONV/ keyword)))
+;;    (call-with-values
+;;     (lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
+;;     (lambda (names code)
+;;       `(DEFINE ,proc-name
+;;	  (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
+;;	    (NAMED-LAMBDA (,proc-name ENV FORM)
+;;	      (CLOSCONV/REMEMBER ,code
+;;				 FORM))))))))
+
 (define-macro (define-closure-converter keyword bindings . body)
   (let ((proc-name (symbol-append 'CLOSCONV/ keyword)))
     (call-with-values
      (lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
      (lambda (names code)
-       `(define ,proc-name
-	  (let ((handler (lambda ,(cons (car bindings) names) ,@body)))
-	    (named-lambda (,proc-name env form)
-	      (closconv/remember ,code
-				 form))))))))
+       `(DEFINE ,proc-name
+	  (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
+	    (NAMED-LAMBDA (,proc-name ENV FORM)
+	      (LET ((INFO (CLOSCONV/GET-DBG-INFO ENV FORM)))
+		(LET ((CODE ,code))
+		  (IF INFO
+		      (CODE-REWRITE/REMEMBER* CODE INFO))
+		  CODE)))))))))
+
 
 (define-closure-converter LOOKUP (env name)
   (closconv/lookup* env name 'ORDINARY))
@@ -99,32 +114,30 @@ MIT in each case. |#
 	   (lambda ()
 	     `(CALL ,(closconv/expr env rator)
 		    ,@(closconv/expr* env rands)))))
-    (cond ((not (pair? rator))
-	   (default))
-	  ((eq? (car rator) 'LOOKUP)
-	   (let* ((name (cadr rator))
+    (cond ((LOOKUP/? rator)
+	   (let* ((name (lookup/name rator))
 		  (rator* (closconv/remember
 			   (closconv/lookup* env name 'OPERATOR)
 			   rator)))
 	     `(CALL ,rator*
 		    ,@(closconv/expr* env rands))))
-	  ((eq? (car rator) 'LAMBDA)
-	   (let ((ll (cadr rator))
-		 (body (caddr rator)))
+	  ((LAMBDA/? rator)
+	   (let ((ll   (lambda/formals rator))
+		 (body (lambda/body rator)))
 	     (guarantee-simple-lambda-list ll)
 	     (guarantee-argument-list rands (length ll))
 	     (let ((bindings (map list ll rands)))
 	       (call-with-values
-		(lambda ()
-		  (closconv/lambda*
-		   (binding-context-type 'CALL
-					 (closconv/env/context env)
-					 bindings)
-		   env ll body))
-		(lambda (rator* env*)
-		  (let ((bindings* (closconv/bindings env* env bindings)))
-		    `(CALL ,(closconv/remember rator* rator)
-			   ,@(lmap cadr bindings*))))))))
+		   (lambda ()
+		     (closconv/lambda*
+		      (binding-context-type 'CALL
+					    (closconv/env/context env)
+					    bindings)
+		      env ll body))
+		 (lambda (rator* env*)
+		   (let ((bindings* (closconv/bindings env* env bindings)))
+		     `(CALL ,(closconv/remember rator* rator)
+			    ,@(lmap cadr bindings*))))))))
 	  (else
 	   (default)))))
 
@@ -193,6 +206,29 @@ MIT in each case. |#
 
 (define (closconv/new-name prefix)
   (new-variable prefix))
+
+(define (closconv/get-dbg-info env expr)
+  (cond ((code-rewrite/original-form/previous expr)
+         => (lambda (dbg-info)
+              ;; Copy the dbg info, keeping dbg-references in the
+	      ;; environment which will later be overwritten
+              (let* ((block     (new-dbg-form/block dbg-info))
+                     (block*    (new-dbg-block/copy-transforming
+                                 (lambda (expr)
+                                   (closconv/copy-dbg-kmp expr env))
+                                 block))
+                     (dbg-info* (new-dbg-form/new-block dbg-info block*)))
+                dbg-info*)))
+        (else #F)))
+
+(define (closconv/copy-dbg-kmp expr env)
+  (form/copy-transforming
+   (lambda (form copy uninteresting)
+     copy
+     (or (and (LOOKUP/? form)
+	      (closconv/lookup*/dbg env (lookup/name form)))
+	 (uninteresting form)))
+   expr))
 
 ;;;; Parameterization for invocation before and after cps conversion
 
@@ -306,26 +342,42 @@ MIT in each case. |#
   (parent false read-only true)
   (children '() read-only false)
   (bound '() read-only false)		; list of closconv/binding structures
-  (free '() read-only false)		; list of (closconv/binding reference)
+
+  ;; a list of (closconv/binding reference reference ...)
+  (free '() read-only false)
+  ;; like FREE, but in debugging info.  Held separately as not to affect
+  ;; the algorithm.
+  (dbg-free '())
+
   (form false read-only false)
-  (close? false read-only false)	; should be considered for
-					; having its form closed (i.e.
-					; converted to a %make-xxx-closure)
-  (closed-over false read-only false)	; slots required in closure
-					; object: either #F, #T
-					; (closed, but no slots), or a
-					; list of (closconv/binding
-					; reference) elements from free
+
+  ;; should be considered for having its form closed (i.e. converted to a
+  ;; %make-xxx-closure)
+  (close? false read-only false)
+
+  ;;  slots required in closure object: either #F, #T (closed, but no
+  ;;  slots), or a list of (closconv/binding reference) elements from
+  ;;  free
+  (closed-over false read-only false)
+
   (binding false read-only false))      ; known self-reference binding
 
-(define-structure (closconv/binding
-		   (conc-name closconv/binding/)
-		   (constructor closconv/binding/make (name env)))
+(define-structure
+    (closconv/binding
+     (conc-name closconv/binding/)
+     (constructor closconv/binding/make (name env))
+     (print-procedure
+      (standard-unparser-method 'CLOSCONV/BINDING
+	(lambda (binding port)
+	  (write-char #\space port)
+	  (write (closconv/binding/name binding) port)))))
+      
   (name false read-only true)
   (env false read-only true)
-  (operator-refs '() read-only false)
-  (ordinary-refs '() read-only false)
-  (value false read-only false))
+  (operator-refs '())
+  (ordinary-refs '())
+  ;;(dbg-info-refs '())
+  (value false))
 
 (define (closconv/env/make context parent bound-names)
   (let ((env (closconv/env/%make context parent)))
@@ -339,29 +391,52 @@ MIT in each case. |#
     env))
 
 (define (closconv/lookup* env name kind)
+  ;; kind = 'OPERATOR or 'ORDINARY
   (let ((ref `(LOOKUP ,name)))
     (let walk-spine ((env env))
       (cond ((not env)
 	     (free-var-error name))
 	    ((closconv/binding/find (closconv/env/bound env) name)
 	     => (lambda (binding)
-		  (if (eq? kind 'OPERATOR)
-		      (set-closconv/binding/operator-refs!
-		       binding
-		       (cons ref (closconv/binding/operator-refs binding)))
-		      (set-closconv/binding/ordinary-refs!
-		       binding
-		       (cons ref (closconv/binding/ordinary-refs binding))))
+		  (case kind
+		    ((ORDINARY)
+		     (set-closconv/binding/ordinary-refs!
+		      binding
+		      (cons ref (closconv/binding/ordinary-refs binding))))
+		    ((OPERATOR)
+		     (set-closconv/binding/operator-refs!
+		      binding
+		      (cons ref (closconv/binding/operator-refs binding))))
+		    (else
+		     (internal-error "closconv/lookup* Illegal kind" kind)))
 		  binding))
 	    (else
 	     (let* ((binding (walk-spine (closconv/env/parent env)))
-		    (free (closconv/env/free env))
-		    (place (assq binding free)))
+		    (free    (closconv/env/free env))
+		    (place   (assq binding free)))
 	       (if (not place)
-		   (set-closconv/env/free! env
-					   (cons (list binding ref) free))
+		   (set-closconv/env/free! env (cons (list binding ref) free))
 		   (set-cdr! place (cons ref (cdr place))))
 	       binding))))
+    ref))
+
+(define (closconv/lookup*/dbg env name)
+  (let ((ref `(LOOKUP ,name)))
+    (let walk-spine ((env env))
+      (cond ((not env) #F)
+	    ((closconv/binding/find (closconv/env/bound env) name)
+	     => (lambda (binding) binding))
+	    (else
+	     (let ((binding (walk-spine (closconv/env/parent env))))
+	       (if binding
+		   (let* ((free    (closconv/env/dbg-free env))
+			  (place   (assq binding free)))
+		     (if (not place)
+			 (set-closconv/env/dbg-free!
+			  env
+			  (cons (list binding ref) free))
+			 (set-cdr! place (cons ref (cdr place)))))
+		   binding)))))
     ref))
 
 (define (closconv/binding/find bindings name)
@@ -377,7 +452,7 @@ MIT in each case. |#
   (let* ((env* (closconv/env/make context
 				  env
 				  (lambda-list->names lambda-list)))
-	 (expr* `(lambda ,lambda-list
+	 (expr* `(LAMBDA ,lambda-list
 		   ,(closconv/expr env* body))))
     (set-closconv/env/form! env* expr*)
     (values expr* env*)))
@@ -477,12 +552,11 @@ MIT in each case. |#
   (let ((form (closconv/env/form env))
 	(closed-over (closconv/env/closed-over env)))
     (cond ((or (not form)
-	       (not (pair? form))
-	       (eq? (car form) 'LET))
+	       (LET/? form))
 	   (if closed-over
 	       (internal-error "Form can't be closed" form))
 	   (for-each closconv/rewrite! (closconv/env/children env)))
-	  ((eq? (car form) 'LETREC)
+	  ((LETREC/? form)
 	   ;; Handled specially because it must ensure that recursive
 	   ;; references work, and the LETREC must remain syntactically
 	   ;; acceptable (only lambda bindings allowed).
@@ -497,7 +571,7 @@ MIT in each case. |#
 	     (if (null? closed)
 		 (closconv/rewrite/letrec/trivial! env)
 		 (closconv/rewrite/letrec! env closed))))
-	  ((eq? (car form) 'LAMBDA)
+	  ((LAMBDA/? form)
 	   (cond ((closconv/env/binding env) => closconv/verify-binding))
 	   (cond ((pair? closed-over)
 		  (closconv/rewrite/lambda! env '()))
@@ -525,62 +599,72 @@ MIT in each case. |#
   (let ((closure-name (closconv/closure/new-name))
 	(closed-over*
 	 (closconv/closure/sort-variables (closconv/env/closed-over env))))
-    (let* ((closed-over			; Remove self-reference if present
-	    (let ((binding (closconv/env/binding env)))
-	      (cond ((and binding (assq binding closed-over*))
-		     => (lambda (free-ref)
-			  (delq free-ref closed-over*)))
-		    (else
-		     closed-over*))))
+    (let* ((self-binding  (closconv/env/binding env)) ;possibly #F
+	   (closed-over			; Remove self-reference if present
+	    (cond ((and self-binding (assq self-binding closed-over*))
+		   => (lambda (free-ref)
+			(delq free-ref closed-over*)))
+		  (else
+		   closed-over*)))
 	   (closed-over-names
-	    (list->vector (lmap (lambda (free-ref)
-				  (closconv/binding/name (car free-ref)))
+	    (list->vector (lmap (lambda (binding.refs)
+				  (closconv/binding/name (car binding.refs)))
 				closed-over)))
 	   (captured
-	    (lmap (lambda (free-ref)
-		    (let ((binding (car free-ref)))
-		      (if (memq binding circular)
-			  `(QUOTE ,#f)
-			  (form/preserve (cadr free-ref)))))
+	    (lmap (lambda (binding.refs)
+		    (if (memq (car binding.refs) circular)
+			`(QUOTE ,#f)
+			(form/preserve (cadr binding.refs))))
 		  closed-over))
 	   (form (closconv/env/form env)))
-      ;; Rewrite references to closed variables
+
+      ;; Rewrite references to closed variables and self
       (for-each
        (lambda (free-ref)
-	 (let ((name (closconv/binding/name (car free-ref))))
-	   (for-each (lambda (ref)
-		       (form/rewrite!
-			ref
-			`(CALL (QUOTE ,%closure-ref)
-			       (QUOTE #F)
-			       (LOOKUP ,closure-name)
-			       (CALL (QUOTE ,%vector-index)
-				     (QUOTE #F)
-				     (QUOTE ,closed-over-names)
-				     (QUOTE ,name))
-			       (QUOTE ,name))))
-		     (cdr free-ref))))
-       closed-over)
-      ;; Rewrite self references
-      (if (not (eq? closed-over closed-over*))
-	  (let* ((self-binding (closconv/env/binding env))
-		 (free-ref (assq self-binding closed-over*)))
-	    (for-each (lambda (ref)
-			(form/rewrite! ref
-				       `(LOOKUP ,closure-name)))
-		      (cdr free-ref))))
+	 (let* ((binding    (car free-ref))
+		(name       (closconv/binding/name binding))
+		(references (cdr free-ref))
+		(references-and-dbg-references
+		 (cond ((assq binding (closconv/env/dbg-free env))
+			=> (lambda (dbg-ref)
+			     (append references (cdr dbg-ref))))
+		       (else  references))))
+
+	   (define (rewrite-self-reference! ref)
+	     (form/rewrite! ref
+	       `(LOOKUP ,closure-name)))
+	   (define (rewrite-other-reference! ref)
+	     (form/rewrite! ref
+	       `(CALL (QUOTE ,%closure-ref)
+		      (QUOTE #F)
+		      (LOOKUP ,closure-name)
+		      (CALL (QUOTE ,%vector-index)
+			    (QUOTE #F)
+			    (QUOTE ,closed-over-names)
+			    (QUOTE ,name))
+		      (QUOTE ,name))))
+
+	   (for-each (if (eq? (car free-ref) self-binding)
+			 rewrite-self-reference!
+			 rewrite-other-reference!)
+		     references-and-dbg-references)))
+       closed-over*)
+
       ;; Convert to closure and maybe lift to top level
       (closconv/maybe-lift!
        env
        (closconv/remember*
 	(closconv/closure/make-handler closure-name
-				       (cadr form)
-				       (caddr form)
+				       (lambda/formals form)
+				       (lambda/body form)
 				       closed-over-names)
 	form)
        (lambda (handler)
-	 `(CALL (QUOTE ,%make-closure) (QUOTE #F) ,handler
-		(QUOTE ,closed-over-names) ,@captured)))
+	 `(CALL (QUOTE ,%make-closure)
+		(QUOTE #F)
+		,handler
+		(QUOTE ,closed-over-names)
+		,@captured)))
       closed-over-names)))
 
 (define (closconv/maybe-lift! env handler transform)
@@ -611,7 +695,7 @@ MIT in each case. |#
    (lambda (closed trivial)
      ;; IMPORTANT: This assumes that make-trivial-closure can be called
      ;; multiple times for the same lambda expression and returns
-     ;; eq? results!
+     ;; EQ? results!
      (for-each
       (lambda (binding)
 	(let ((val-form
