@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bigprm.c,v 1.4 1996/10/02 18:57:03 cph Exp $
+$Id: bigprm.c,v 1.5 1997/04/22 22:18:06 cph Exp $
 
-Copyright (c) 1989-96 Massachusetts Institute of Technology
+Copyright (c) 1989-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -176,4 +176,11 @@ DEFINE_PRIMITIVE ("BIGNUM->FLONUM", Prim_bignum_to_flonum, 1, 1, 0)
   Set_Time_Zone (Zone_Math);
   CHECK_ARG (1, BIGNUM_P);
   PRIMITIVE_RETURN (bignum_to_flonum (ARG_REF (1)));
+}
+
+DEFINE_PRIMITIVE ("BIGNUM-LENGTH-IN-BITS", Prim_bignum_length_in_bits, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, BIGNUM_P);
+  PRIMITIVE_RETURN (bignum_length_in_bits (ARG_REF (1)));
 }
