@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.11 1997/11/01 19:21:16 cph Exp $
+$Id: socket.scm,v 1.12 1998/08/31 04:02:22 cph Exp $
 
-Copyright (c) 1990-97 Massachusetts Institute of Technology
+Copyright (c) 1990-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -92,7 +92,7 @@ MIT in each case. |#
 
 (define (tcp-service->port service)
   (if (exact-nonnegative-integer? service)
-      service
+      ((ucode-primitive get-service-by-number 1) service)
       ((ucode-primitive get-service-by-name 2) service "tcp")))
 
 (define (close-tcp-server-socket server-socket)
