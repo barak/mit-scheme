@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.2 1993/11/10 21:41:48 adams Exp $
+$Id: make.scm,v 1.3 1998/02/01 05:17:47 cph Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,9 +36,16 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(load "ffimacro")
+(with-working-directory-pathname (directory-pathname (current-load-pathname))
+  (lambda ()
+    ((access with-directory-rewriting-rule
+	     (->environment '(RUNTIME COMPILER-INFO)))
+     (working-directory-pathname)
+     (pathname-as-directory "win32")
+     (lambda ()
+       (load "ffimacro")
+       (package/system-loader "win32" '() 'QUERY)))))
 
-(package/system-loader "win32" '() 'QUERY)
 ;((package/reference (find-package '(WIN32))
 ;		    'INITIALIZE-PACKAGE!))
 (add-system! (make-system "Win32" 1 0 '()))

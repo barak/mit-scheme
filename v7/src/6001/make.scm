@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 15.26 1998/01/23 00:23:08 cph Exp $
+$Id: make.scm,v 15.27 1998/02/01 05:17:17 cph Exp $
 
 Copyright (c) 1991-98 Massachusetts Institute of Technology
 
@@ -36,12 +36,19 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package/system-loader "6001" '() 'QUERY)
-(let ((edwin (->environment '(edwin))))
-  (load "edextra" edwin)
-  (if (and (eq? 'UNIX microcode-id/operating-system)
-	   (string-ci=? "HP-UX" microcode-id/operating-system-variant))
-      (load "floppy" edwin)))
+(with-working-directory-pathname (directory-pathname (current-load-pathname))
+  (lambda ()
+    ((access with-directory-rewriting-rule
+	     (->environment '(RUNTIME COMPILER-INFO)))
+     (working-directory-pathname)
+     (pathname-as-directory "6001")
+     (lambda ()
+       (package/system-loader "6001" '() 'QUERY)
+       (let ((edwin (->environment '(edwin))))
+	 (load "edextra" edwin)
+	 (if (and (eq? 'UNIX microcode-id/operating-system)
+		  (string-ci=? "HP-UX" microcode-id/operating-system-variant))
+	     (load "floppy" edwin)))))))
 ((access initialize-package! (->environment '(student scode-rewriting))))
 (add-system! (make-system "6.001" 15 23 '()))
 
