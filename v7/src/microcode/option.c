@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.4 1990/11/14 16:41:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.5 1990/11/15 10:34:20 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -42,7 +42,7 @@ MIT in each case. */
 
 extern char * getenv ();
 extern void free ();
-#define xfree(p) ((PTR) (p))
+#define xfree(p) free ((PTR) (p))
 extern int strlen ();
 extern int atoi ();
 extern int access ();
