@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.24 1991/09/18 20:00:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.25 1991/12/10 23:30:58 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -66,7 +66,8 @@ MIT in each case. |#
 
 (define (set-current-unparser-table! table)
   (guarantee-unparser-table table)
-  (set! *current-unparser-table* table))
+  (set! *current-unparser-table* table)
+  unspecific)
 
 (define (make-system-global-unparser-table)
   (let ((table (make-unparser-table unparse/default)))
@@ -80,7 +81,7 @@ MIT in each case. |#
 		(ENVIRONMENT ,unparse/environment)
 		(EXTENDED-PROCEDURE ,unparse/compound-procedure)
 		(FIXNUM ,unparse/number)
-		(FLONUM ,unparse/number)
+		(FLONUM ,unparse/flonum)
 		(FUTURE ,unparse/future)
 		(INTERNED-SYMBOL ,unparse/interned-symbol)
 		(LIST ,unparse/pair)
@@ -562,6 +563,11 @@ MIT in each case. |#
 	((8) (prefix "#o" 8 8))
 	((16) (prefix "#x" 10 16))
 	(else 10))))))
+
+(define (unparse/flonum flonum)
+  (if (= (system-vector-length flonum) (system-vector-length 0.0))
+      (unparse/number flonum)
+      (unparse/default flonum)))
 
 (define (unparse/future future)
   (*unparse-with-brackets 'FUTURE false
