@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.13 1991/07/03 16:55:39 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.14 1991/07/08 17:39:44 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -564,8 +564,7 @@ DEFINE_PRIMITIVE ("X-CREATE-IMAGE", Prim_x_create_image, 3, 3,
 }
 
 DEFINE_PRIMITIVE ("X-BYTES-INTO-IMAGE", Prim_x_bytes_into_image, 2, 2,
-  "Stick the bytes from the vector-8b (first arg) into the x_image/
-(second arg).")
+  "Stick the bytes from the vector-8b (first arg) into the x_image (second arg).")
 {
   PRIMITIVE_HEADER (2);
   {
