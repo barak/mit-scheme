@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.h,v 1.2 1991/03/01 00:56:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.h,v 1.3 1991/03/09 21:11:04 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -40,14 +40,22 @@ MIT in each case. */
 struct process
 {
   pid_t id;
+  long tick;
+  long sync_tick;
+  unsigned short raw_reason;
   unsigned short reason;
+  enum process_status raw_status;
   enum process_status status;
   enum process_jc_status jc_status;
 };
 
 #define PROCESS_ID(process) ((process_table [(process)]) . id)
-#define PROCESS_STATUS(process) ((process_table [(process)]) . status)
+#define PROCESS_TICK(process) ((process_table [(process)]) . tick)
+#define PROCESS_SYNC_TICK(process) ((process_table [(process)]) . sync_tick)
+#define PROCESS_RAW_REASON(process) ((process_table [(process)]) . raw_reason)
 #define PROCESS_REASON(process) ((process_table [(process)]) . reason)
+#define PROCESS_RAW_STATUS(process) ((process_table [(process)]) . raw_status)
+#define PROCESS_STATUS(process) ((process_table [(process)]) . status)
 #define PROCESS_JC_STATUS(process) ((process_table [(process)]) . jc_status)
 
 extern struct process * process_table;

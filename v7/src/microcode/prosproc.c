@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.5 1991/03/08 19:49:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.6 1991/03/09 21:10:50 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -46,17 +46,8 @@ DEFUN (arg_process, (argument_number), int argument_number)
 {
   Tprocess process =
     (arg_index_integer (argument_number, OS_process_table_size));
-  switch (OS_process_status (process))
-    {
-    case process_status_exited:
-    case process_status_signalled:
-    case process_status_running:
-    case process_status_stopped:
-      break;
-    default:
-      error_bad_range_arg (1);
-      break;
-    }
+  if (! (OS_process_valid_p (process)))
+    error_bad_range_arg (argument_number);
   return (process);
 }
 
@@ -222,14 +213,8 @@ DEFINE_PRIMITIVE ("PROCESS-TABLE", Prim_process_table, 0, 0,
   {
     Tprocess process;
     for (process = 0; (process < OS_process_table_size); process += 1)
-      {
-	enum process_status status = (OS_process_status (process));
-	if ((status == process_status_running)
-	    || (status == process_status_stopped)
-	    || (status == process_status_exited)
-	    || (status == process_status_signalled))
-	  obstack_grow ((&scratch_obstack), (&process), (sizeof (Tprocess)));
-      }
+      if (OS_process_valid_p (process))
+	obstack_grow ((&scratch_obstack), (&process), (sizeof (Tprocess)));
   }
   {
     unsigned int n_processes =
@@ -258,47 +243,6 @@ DEFINE_PRIMITIVE ("PROCESS-ID", Prim_process_id, 1, 1,
   PRIMITIVE_RETURN (long_to_integer (OS_process_id (arg_process (1))));
 }
 
-static SCHEME_OBJECT
-DEFUN (status_to_object, (status), enum process_status status)
-{
-  switch (status)
-    {
-    case process_status_running:
-      return (LONG_TO_UNSIGNED_FIXNUM (0));
-    case process_status_stopped:
-      return (LONG_TO_UNSIGNED_FIXNUM (1));
-    case process_status_exited:
-      return (LONG_TO_UNSIGNED_FIXNUM (2));
-    case process_status_signalled:
-      return (LONG_TO_UNSIGNED_FIXNUM (3));
-    default:
-      error_bad_range_arg (1);
-      return (UNSPECIFIC);
-    }
-}
-
-DEFINE_PRIMITIVE ("PROCESS-STATUS", Prim_process_status, 1, 1,
-  "Return the status of process PROCESS-NUMBER, a nonnegative integer:\n\
-  0 = running; 1 = stopped; 2 = exited; 3 = signalled.")
-{
-  PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN
-    (status_to_object
-     (OS_process_status (arg_index_integer (1, OS_process_table_size))));
-}
-
-DEFINE_PRIMITIVE ("PROCESS-REASON", Prim_process_reason, 1, 1, 
-  "Return the termination reason of process PROCESS-NUMBER.\n\
-This is a nonnegative integer, which depends on the process's status:\n\
-  running => zero;\n\
-  stopped => the signal that stopped the process;\n\
-  exited => the exit code returned by the process;\n\
-  signalled => the signal that killed the process.")
-{
-  PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (OS_process_reason (arg_process (1))));
-}
-
 DEFINE_PRIMITIVE ("PROCESS-JOB-CONTROL-STATUS", Prim_process_jc_status, 1, 1, 
   "Returns the job-control status of process PROCESS-NUMBER:\n\
   0 means this system doesn't support job control.\n\
@@ -321,6 +265,50 @@ DEFINE_PRIMITIVE ("PROCESS-JOB-CONTROL-STATUS", Prim_process_jc_status, 1, 1,
       error_bad_range_arg (1);
       PRIMITIVE_RETURN (UNSPECIFIC);
     }
+}
+
+DEFINE_PRIMITIVE ("PROCESS-STATUS-SYNC", Prim_process_status_sync, 1, 1,
+  "Synchronize the status of process PROCESS-NUMBER.\n\
+Return #F if it was previously synchronized, #T if not.")
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT (OS_process_status_sync (arg_process (1))));
+}
+
+DEFINE_PRIMITIVE ("PROCESS-STATUS", Prim_process_status, 1, 1,
+  "Return the status of process PROCESS-NUMBER, a nonnegative integer:\n\
+  0 = running; 1 = stopped; 2 = exited; 3 = signalled.\n\
+The value is from the last synchronization.")
+{
+  PRIMITIVE_HEADER (1);
+  switch (OS_process_status (arg_process (1)))
+    {
+    case process_status_running:
+      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (0));
+    case process_status_stopped:
+      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (1));
+    case process_status_exited:
+      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (2));
+    case process_status_signalled:
+      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (3));
+    default:
+      error_external_return ();
+      PRIMITIVE_RETURN (UNSPECIFIC);
+    }
+}
+
+DEFINE_PRIMITIVE ("PROCESS-REASON", Prim_process_reason, 1, 1, 
+  "Return the termination reason of process PROCESS-NUMBER.\n\
+This is a nonnegative integer, which depends on the process's status:\n\
+  running => zero;\n\
+  stopped => the signal that stopped the process;\n\
+  exited => the exit code returned by the process;\n\
+  signalled => the signal that killed the process.\n\
+The value is from the last synchronization.")
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (long_to_integer (OS_process_reason (arg_process (1))));
 }
 
 DEFINE_PRIMITIVE ("PROCESS-SIGNAL", Prim_process_signal, 2, 2,
@@ -353,62 +341,39 @@ DEFINE_PRIMITIVE ("PROCESS-QUIT", Prim_process_quit, 1, 1,
 DEFINE_PRIMITIVE ("PROCESS-STOP", Prim_process_stop, 1, 1,
   "Stops process PROCESS-NUMBER (unix SIGTSTP).")
      PROCESS_SIGNALLING_PRIMITIVE (OS_process_stop)
-
+
 DEFINE_PRIMITIVE ("PROCESS-CONTINUE-BACKGROUND", Prim_process_continue_background, 1, 1,
   "Continues process PROCESS-NUMBER in the background.")
 {
   PRIMITIVE_HEADER (1);
   {
     Tprocess process = (arg_process (1));
-    switch (OS_process_status (process))
-      {
-      case process_status_stopped:
-      case process_status_running:
-	break;
-      default:
-	error_bad_range_arg (1);
-	break;
-      }
+    if (! (OS_process_continuable_p (process)))
+      error_bad_range_arg (1);
     OS_process_continue_background (process);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("PROCESS-WAIT", Prim_process_wait, 1, 1,
-  "Waits until process PROCESS-NUMBER is not running.\n\
-Returns the process status.")
+  "Waits until process PROCESS-NUMBER is not running.")
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (status_to_object (OS_process_wait (arg_process (1))));
+  OS_process_wait (arg_process (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("PROCESS-CONTINUE-FOREGROUND", Prim_process_continue_foreground, 1, 1,
   "Continues process PROCESS-NUMBER in the foreground.\n\
-The process must have the same controlling terminal as Scheme.\n\
-Returns the process status.")
+The process must have the same controlling terminal as Scheme.")
 {
   PRIMITIVE_HEADER (1);
   {
     Tprocess process = (arg_process (1));
-    switch (OS_process_jc_status (process))
-      {
-      case process_jc_status_no_jc:
-      case process_jc_status_jc:
-	break;
-      default:
-	error_bad_range_arg (1);
-	break;
-      }
-    switch (OS_process_status (process))
-      {
-      case process_status_stopped:
-      case process_status_running:
-	break;
-      default:
-	error_bad_range_arg (1);
-	break;
-      }
-    PRIMITIVE_RETURN
-      (status_to_object (OS_process_continue_foreground (process)));
+    if (! ((OS_process_foregroundable_p (process))
+	   && (OS_process_continuable_p (process))))
+      error_bad_range_arg (1);
+    OS_process_continue_foreground (process);
+    PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osproc.h,v 1.2 1991/03/01 00:55:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osproc.h,v 1.3 1991/03/09 21:10:45 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -99,18 +99,25 @@ extern Tprocess EXFUN
     enum process_channel_type channel_err_type,
     Tchannel channel_err));
 extern void EXFUN (OS_process_deallocate, (Tprocess process));
+
+extern int EXFUN (OS_process_valid_p, (Tprocess process));
+extern int EXFUN (OS_process_continuable_p, (Tprocess process));
+extern int EXFUN (OS_process_foregroundable_p, (Tprocess process));
+
 extern pid_t EXFUN (OS_process_id, (Tprocess process));
+extern enum process_jc_status EXFUN (OS_process_jc_status, (Tprocess process));
+extern int EXFUN (OS_process_status_sync, (Tprocess process));
 extern enum process_status EXFUN (OS_process_status, (Tprocess process));
 extern unsigned short EXFUN (OS_process_reason, (Tprocess process));
-extern enum process_jc_status EXFUN (OS_process_jc_status, (Tprocess process));
+
 extern void EXFUN (OS_process_send_signal, (Tprocess process, int sig));
 extern void EXFUN (OS_process_kill, (Tprocess process));
 extern void EXFUN (OS_process_stop, (Tprocess process));
 extern void EXFUN (OS_process_interrupt, (Tprocess process));
 extern void EXFUN (OS_process_quit, (Tprocess process));
+
 extern void EXFUN (OS_process_continue_background, (Tprocess process));
-extern enum process_status EXFUN
-  (OS_process_continue_foreground, (Tprocess process));
-extern enum process_status EXFUN (OS_process_wait, (Tprocess process));
+extern void EXFUN (OS_process_continue_foreground, (Tprocess process));
+extern void EXFUN (OS_process_wait, (Tprocess process));
 
 #endif /* SCM_OSPROC_H */

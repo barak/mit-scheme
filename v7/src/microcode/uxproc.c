@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.7 1991/03/08 19:50:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.8 1991/03/09 21:10:57 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -52,7 +52,7 @@ static void EXFUN (subprocess_death, (pid_t pid, wait_status_t * status));
 static void EXFUN (stop_signal_handler, (int signo));
 static void EXFUN (give_terminal_to, (Tprocess process));
 static void EXFUN (get_terminal_back, (void));
-static enum process_status EXFUN (process_wait, (Tprocess process));
+static void EXFUN (process_wait, (Tprocess process));
 static int EXFUN (child_setup_tty, (int fd));
 
 size_t OS_process_table_size;
@@ -61,6 +61,22 @@ enum process_jc_status scheme_jc_status;
 
 static int scheme_ctty_fd;
 static Tprocess foreground_child_process;
+
+static long process_tick;
+
+#define NEW_RAW_STATUS(process, status, reason)				\
+{									\
+  (PROCESS_RAW_STATUS (process)) = (status);				\
+  (PROCESS_RAW_REASON (process)) = (reason);				\
+  (PROCESS_TICK (process)) = (++process_tick);				\
+}
+
+#define PROCESS_STATUS_SYNC(process)					\
+{									\
+  (PROCESS_STATUS (process)) = (PROCESS_RAW_STATUS (process));		\
+  (PROCESS_REASON (process)) = (PROCESS_RAW_REASON (process));		\
+  (PROCESS_SYNC_TICK (process)) = (PROCESS_TICK (process));		\
+}
 
 /* This macro should only be used when
    (scheme_jc_status == process_jc_status_jc). */
@@ -160,6 +176,7 @@ DEFUN_VOID (UX_initialize_processes)
   foreground_child_process = NO_PROCESS;
   subprocess_death_hook = subprocess_death;
   stop_signal_hook = stop_signal_handler;
+  process_tick = 0;
 }
 
 void
@@ -174,7 +191,7 @@ static void
 DEFUN (process_allocate_abort, (environment), PTR environment)
 {
   Tprocess process = (* ((Tprocess *) environment));
-  switch (PROCESS_STATUS (process))
+  switch (PROCESS_RAW_STATUS (process))
     {
     case process_status_stopped:
     case process_status_running:
@@ -189,12 +206,12 @@ DEFUN_VOID (process_allocate)
 {
   Tprocess process;
   for (process = 0; (process < OS_process_table_size); process += 1)
-    if ((PROCESS_STATUS (process)) == process_status_free)
+    if ((PROCESS_RAW_STATUS (process)) == process_status_free)
       {
 	Tprocess * pp = (dstack_alloc (sizeof (Tprocess)));
 	(*pp) = process;
 	transaction_record_action (tat_abort, process_allocate_abort, pp);
-	(PROCESS_STATUS (process)) = process_status_allocated;
+	(PROCESS_RAW_STATUS (process)) = process_status_allocated;
 	return (process);
       }
   error_out_of_processes ();
@@ -205,8 +222,7 @@ void
 DEFUN (OS_process_deallocate, (process), Tprocess process)
 {
   (PROCESS_ID (process)) = 0;
-  (PROCESS_STATUS (process)) = process_status_free;
-  (PROCESS_REASON (process)) = 0;
+  (PROCESS_RAW_STATUS (process)) = process_status_free;
 }
 
 Tprocess
@@ -266,16 +282,18 @@ DEFUN (OS_make_subprocess,
     {
       /* In the parent process. */
       (PROCESS_ID (child)) = child_pid;
-      (PROCESS_STATUS (child)) = process_status_running;
-      (PROCESS_REASON (child)) = 0;
       (PROCESS_JC_STATUS (child)) = child_jc_status;
+      (PROCESS_RAW_STATUS (child)) = process_status_running;
+      (PROCESS_RAW_REASON (child)) = 0;
+      (PROCESS_TICK (child)) = process_tick;
+      PROCESS_STATUS_SYNC (child);
       if (child_jc_status == process_jc_status_jc)
 	STD_VOID_SYSTEM_CALL
 	  (syscall_setpgid, (UX_setpgid (child_pid, child_pid)));
       if (ctty_type == process_ctty_type_inherit_fg)
 	{
 	  give_terminal_to (child);
-	  (void) process_wait (child);
+	  process_wait (child);
 	}
       transaction_commit ();
       return (child);
@@ -412,6 +430,61 @@ DEFUN_PROCESS_ACCESSOR (OS_process_reason, unsigned short, PROCESS_REASON)
 DEFUN_PROCESS_ACCESSOR
   (OS_process_jc_status, enum process_jc_status, PROCESS_JC_STATUS)
 
+int
+DEFUN (OS_process_valid_p, (process), Tprocess process)
+{
+  switch (PROCESS_RAW_STATUS (process))
+    {
+    case process_status_exited:
+    case process_status_signalled:
+    case process_status_stopped:
+    case process_status_running:
+      return (1);
+    default:
+      return (0);
+    }
+}
+
+int
+DEFUN (OS_process_continuable_p, (process), Tprocess process)
+{
+  switch (PROCESS_RAW_STATUS (process))
+    {
+    case process_status_stopped:
+    case process_status_running:
+      return (1);
+    default:
+      return (0);
+    }
+}
+
+int
+DEFUN (OS_process_foregroundable_p, (process), Tprocess process)
+{
+  switch (PROCESS_JC_STATUS (process))
+    {
+    case process_jc_status_no_jc:
+    case process_jc_status_jc:
+      return (1);
+    default:
+      return (0);
+    }
+}
+
+int
+DEFUN (OS_process_status_sync, (process), Tprocess process)
+{
+  transaction_begin ();
+  block_sigchld ();
+  {
+    int result = ((PROCESS_TICK (process)) != (PROCESS_SYNC_TICK (process)));
+    if (result)
+      PROCESS_STATUS_SYNC (process);
+    transaction_commit ();
+    return (result);
+  }
+}
+
 void
 DEFUN (OS_process_send_signal, (process, sig), Tprocess process AND int sig)
 {
@@ -452,48 +525,40 @@ DEFUN (OS_process_continue_background, (process), Tprocess process)
 {
   transaction_begin ();
   block_sigchld ();
-  if ((PROCESS_STATUS (process)) == process_status_stopped)
+  if ((PROCESS_RAW_STATUS (process)) == process_status_stopped)
     {
-      (PROCESS_STATUS (process)) = process_status_running;
-      (PROCESS_REASON (process)) = 0;
+      NEW_RAW_STATUS (process, process_status_running, 0);
       OS_process_send_signal (process, SIGCONT);
     }
   transaction_commit ();
 }
 
-enum process_status
+void
 DEFUN (OS_process_continue_foreground, (process), Tprocess process)
 {
   transaction_begin ();
   grab_signal_mask ();
   block_jc_signals ();
   give_terminal_to (process);
-  if ((PROCESS_STATUS (process)) == process_status_stopped)
+  if ((PROCESS_RAW_STATUS (process)) == process_status_stopped)
     {
-      (PROCESS_STATUS (process)) = process_status_running;
-      (PROCESS_REASON (process)) = 0;
+      NEW_RAW_STATUS (process, process_status_running, 0);
       OS_process_send_signal (process, SIGCONT); 
     }
-  {
-    enum process_status result = (process_wait (process));
-    transaction_commit ();
-    return (result);
-  }
+  process_wait (process);
+  transaction_commit ();
 }
-
-enum process_status
+
+void
 DEFUN (OS_process_wait, (process), Tprocess process)
 {
   transaction_begin ();
   grab_signal_mask ();
   block_jc_signals ();
-  {
-    enum process_status result = (process_wait (process));
-    transaction_commit ();
-    return (result);
-  }
+  process_wait (process);
+  transaction_commit ();
 }
-
+
 static void
 DEFUN (get_terminal_back_1, (environment), PTR environment)
 {
@@ -526,31 +591,30 @@ DEFUN_VOID (get_terminal_back)
     }
 }
 
-static enum process_status
+static void
 DEFUN (process_wait, (process), Tprocess process)
 {
-  enum process_status result;
 #ifdef HAVE_POSIX_SIGNALS
-  while (((result = (PROCESS_STATUS (process))) == process_status_running)
+  while (((PROCESS_RAW_STATUS (process)) == process_status_running)
 	 && (! (pending_interrupts_p ())))
     UX_sigsuspend (&grabbed_signal_mask);
 #else /* not HAVE_POSIX_SIGNALS */
-  result = (PROCESS_STATUS (process));
-  while ((result == process_status_running)
+  enum process_status status = (PROCESS_RAW_STATUS (process));
+  while ((status == process_status_running)
 	 && (! (pending_interrupts_p ())))
     {
       /* INTERRUPTABLE_EXTENT eliminates the interrupt window between
-	 PROCESS_STATUS and `pause'. */
+	 PROCESS_RAW_STATUS and `pause'. */
       int scr;
       INTERRUPTABLE_EXTENT
 	(scr,
-	 ((((result = (PROCESS_STATUS (process))) == process_status_running)
+	 ((((status = (PROCESS_RAW_STATUS (process)))
+	    == process_status_running)
 	   && (! (pending_interrupts_p ())))
 	  ? (UX_pause ())
 	  : ((errno = EINTR), (-1))));
     }
 #endif /* not HAVE_POSIX_SIGNALS */
-  return (result);
 }
 
 static Tprocess EXFUN (find_process, (pid_t pid));
@@ -563,18 +627,18 @@ DEFUN (subprocess_death, (pid, status), pid_t pid AND wait_status_t * status)
     {
       if (WIFEXITED (*status))
 	{
-	  (PROCESS_STATUS (process)) = process_status_exited;
-	  (PROCESS_REASON (process)) = (WEXITSTATUS (*status));
+	  NEW_RAW_STATUS
+	    (process, process_status_exited, (WEXITSTATUS (*status)));
 	}
       else if (WIFSTOPPED (*status))
 	{
-	  (PROCESS_STATUS (process)) = process_status_stopped;
-	  (PROCESS_REASON (process)) = (WSTOPSIG (*status));
+	  NEW_RAW_STATUS
+	    (process, process_status_stopped, (WSTOPSIG (*status)));
 	}
       else if (WIFSIGNALED (*status))
 	{
-	  (PROCESS_STATUS (process)) = process_status_signalled;
-	  (PROCESS_REASON (process)) = (WTERMSIG (*status));
+	  NEW_RAW_STATUS
+	    (process, process_status_signalled, (WTERMSIG (*status)));
 	}
     }
 }
