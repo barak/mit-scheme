@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.27 1987/04/17 10:54:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.28 1987/04/24 14:17:28 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -70,10 +70,24 @@ MIT in each case. |#
 (define *cgen-rules*
   '())
 
+(define *assign-rules*
+  '())
+
 (define (add-statement-rule! pattern result-procedure)
-  (set! *cgen-rules*
-	(cons (cons pattern result-procedure)
-	      *cgen-rules*))
+  (let ((result (cons pattern result-procedure)))
+    (if (eq? (car pattern) 'ASSIGN)
+	(let ((entry (assq (caadr pattern) *assign-rules*)))
+	  (if entry
+	      (set-cdr! entry (cons result (cdr entry)))
+	      (set! *assign-rules*
+		    (cons (list (caadr pattern) result)
+			  *assign-rules*))))
+	(let ((entry (assq (car pattern) *cgen-rules*)))
+	  (if entry
+	      (set-cdr! entry (cons result (cdr entry)))
+	      (set! *cgen-rules*
+		    (cons (list (car pattern) result)
+			  *cgen-rules*))))))
   pattern)
 
 (define (cgen-rnode rnode)
@@ -91,7 +105,13 @@ MIT in each case. |#
   (node-mark! rnode)
   ;; LOOP is for easy restart while debugging.
   (let loop ()
-    (let ((match-result (pattern-lookup *cgen-rules* (rnode-rtl rnode))))
+    (let ((match-result
+	   (pattern-lookup
+	    (cdr (or (if (eq? (car (rnode-rtl rnode)) 'ASSIGN)
+			 (assq (caadr (rnode-rtl rnode)) *assign-rules*)
+			 (assq (car (rnode-rtl rnode)) *cgen-rules*))
+		     (error "CGEN-RNODE: Unknown keyword" rnode)))
+	    (rnode-rtl rnode))))
       (if match-result
 	  (fluid-let ((*current-rnode* rnode)
 		      (*dead-registers* (rnode-dead-registers rnode))
@@ -120,9 +140,8 @@ MIT in each case. |#
 	      (delete-pseudo-registers
 	       map
 	       (regset->list
-		(regset-difference
-		 (bblock-live-at-exit (node-bblock previous))
-		 (bblock-live-at-entry (node-bblock rnode))))
+		(regset-difference (bblock-live-at-exit (node-bblock previous))
+				   (bblock-live-at-entry (node-bblock rnode))))
 	       (lambda (map aliases) map))
 	      map)))))
 
