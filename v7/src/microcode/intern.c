@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.49 1989/07/05 18:45:54 cph Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.50 1989/08/28 18:28:55 cph Exp $ */
 
 /* String hash functions and interning of symbols. */
 
@@ -124,7 +124,7 @@ link_new_symbol (symbol, cell)
      list in the bucket by 1 new element). */
 
   fast Pointer result =
-    (Make_Object (TC_INTERNED_SYMBOL, (OBJECT_DATUM (symbol))));
+    (MAKE_OBJECT (TC_INTERNED_SYMBOL, (OBJECT_DATUM (symbol))));
   Primitive_GC_If_Needed (2);
   (*cell) = (Make_Pointer (TC_LIST, Free));
   (Free [CONS_CAR]) = result;

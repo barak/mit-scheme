@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.45 1989/08/02 17:04:43 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.46 1989/08/28 18:28:38 cph Exp $
  *
  * This file contains the configuration information and the information
  * given on the command line on Unix.
@@ -452,14 +452,9 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define FLONUM_MANTISSA_BITS 	53
 #define MAX_FLONUM_EXPONENT	2047
 #endif
-
+
 #ifdef hp9000s800
-/* Heap resides in "Quad 1", and hence memory addresses have a 1
-   in the second MSBit. This is taken care of in object.h, and is
-   still considered Heap_In_Low_Memory.
-*/
 #define MACHINE_TYPE		"hp9000s800"
-#define Heap_In_Low_Memory
 #define UNSIGNED_SHIFT
 #define CHAR_SIZE		8
 #define USHORT_SIZE		16
@@ -472,7 +467,43 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define FLOATING_ALIGNMENT	0x7	/* Low 3 MBZ for float storage */
 #define HAS_FLOOR
 #define HAS_FREXP
-#endif
+
+#ifndef AVOID_SPECTRUM_TC_KLUDGE
+
+/* Heap resides in "Quad 1", and hence memory addresses have a 1
+   in the second MSBit. This is kludged by the definitions below, and is
+   still considered Heap_In_Low_Memory.
+*/
+
+#define Heap_In_Low_Memory
+
+/* It must be at least one more than the minimum necessary,
+   and it may not work if it is not even.
+ */
+
+#define TYPE_CODE_LENGTH	8
+
+/* Clear the quad tag if there */
+
+#define TC_BITS_TO_TC(BITS)	((BITS) & 0x3F)
+
+/* This assumes that the max type code is 6, so that it does not
+   overflow into the quad tag.
+ */
+
+#define TC_TO_TC_BITS(TC)	(TC)
+
+#define OBJECT_TYPE(O)		(TC_BITS_TO_TC((O) >> ADDRESS_LENGTH))
+
+/* Keep quad bit. */
+
+#define OBJECT_DATUM(O)		((O) & 0x40FFFFFF)
+
+#define MAKE_OBJECT(TC, D)						\
+  ((((unsigned) (TC_TO_TC_BITS(TC))) << ADDRESS_LENGTH) | (OBJECT_DATUM (D)))
+
+#endif /* AVOID_SPECTRUM_TC_KLUDGE */
+#endif /* spectrum */
 
 #ifdef umax
 #define MACHINE_TYPE		"umax"
@@ -580,9 +611,9 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #endif
 
 #ifndef COMPILER_HEAP_SIZE
-#define COMPILER_HEAP_SIZE	1000
+#define COMPILER_HEAP_SIZE	500
 #endif
 
 #ifndef COMPILER_CONSTANT_SIZE
-#define COMPILER_CONSTANT_SIZE	800
+#define COMPILER_CONSTANT_SIZE	1000
 #endif

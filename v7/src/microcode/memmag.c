@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.38 1989/06/08 00:24:10 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.39 1989/08/28 18:29:06 cph Exp $ */
 
 /* Memory management top level.
 
@@ -103,6 +103,8 @@ void
 Setup_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
      int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
 {
+  Pointer test_value;
+
   /* Consistency check 1 */
   if (Our_Heap_Size == 0)
   {
@@ -133,7 +135,11 @@ Setup_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
   Align_Float(Constant_Space);
 
   /* Consistency check 3 */
-  if (((C_To_Scheme(Highest_Allocated_Address)) & TYPE_CODE_MASK) != 0)
+
+  test_value = (Make_Pointer(LAST_TYPE_CODE, Highest_Allocated_Address));
+
+  if (((OBJECT_TYPE(test_value)) != LAST_TYPE_CODE) ||
+      ((Get_Pointer(test_value)) != Highest_Allocated_Address))
   {
     fprintf(stderr,
 	    "Largest address does not fit in datum field of Pointer.\n");
@@ -403,7 +409,7 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
   }
   ENTER_CRITICAL_SECTION ("garbage collector");
   gc_counter += 1;
-  GC_Reserve = Get_Integer(Arg1);
+  GC_Reserve = (UNSIGNED_FIXNUM_VALUE (Arg1));
   GCFlip();
   GC();
   CLEAR_INTERRUPT(INT_GC);

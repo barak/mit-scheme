@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/list.c,v 9.26 1988/08/15 20:50:44 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/list.c,v 9.27 1989/08/28 18:28:59 cph Exp $
  *
  * List creation and manipulation primitives.
  */
@@ -38,40 +38,36 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 
-/* (CONS LEFT RIGHT)
-   Creates a pair with left component LEFT and right component
-   RIGHT.
-*/
+Pointer
+cons (car, cdr)
+     Pointer car;
+     Pointer cdr;
+{
+  Pointer result = (Make_Pointer (TC_LIST, Free));
+  Primitive_GC_If_Needed (2);
+  (*Free++) = car;
+  (*Free++) = cdr;
+  return (result);
+}
+
 DEFINE_PRIMITIVE ("CONS", Prim_cons, 2, 2, 0)
 {
-  Primitive_2_Args();
-
-  Primitive_GC_If_Needed(2);
-  *Free++ = Arg1;
-  *Free++ = Arg2;
-  return Make_Pointer(TC_LIST, Free-2);
-}
-
-/* (CDR PAIR)
-   Returns the second element in the pair.
-*/
-DEFINE_PRIMITIVE ("CDR", Prim_cdr, 1, 1, 0)
-{
-  Primitive_1_Arg();
-
-  Arg_1_Type(TC_LIST);
-  return Vector_Ref(Arg1, CONS_CDR);
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN (cons ((ARG_REF (1)), (ARG_REF (2))));
 }
       
-/* (CAR PAIR)
-   Returns the first element in the pair.
-*/
 DEFINE_PRIMITIVE ("CAR", Prim_car, 1, 1, 0)
 {
-  Primitive_1_Arg();
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, PAIR_P);
+  PRIMITIVE_RETURN (Vector_Ref ((ARG_REF (1)), CONS_CAR));
+}
 
-  Arg_1_Type(TC_LIST);
-  return Vector_Ref(Arg1, CONS_CAR);
+DEFINE_PRIMITIVE ("CDR", Prim_cdr, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, PAIR_P);
+  PRIMITIVE_RETURN (Vector_Ref ((ARG_REF (1)), CONS_CDR));
 }
 
 /* (GENERAL-CAR-CDR LIST DIRECTIONS)

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.31 1988/08/15 20:52:46 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.32 1989/08/28 18:29:14 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -84,21 +84,26 @@ DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-DATUM", Prim_prim_obj_datum, 1, 1, 0)
   PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (OBJECT_DATUM (ARG_REF (1))));
 }
 
-/* (MAKE-NON-POINTER-OBJECT NUMBER)
-   Converts the unsigned integer NUMBER into a fixnum, by creating an
-   object whose type is TC_FIXNUM and whose datum is NUMBER.  */
-
-DEFINE_PRIMITIVE ("MAKE-NON-POINTER-OBJECT", Prim_make_non_pointer_object, 1, 1, 0)
+DEFINE_PRIMITIVE ("MAKE-NON-POINTER-OBJECT", Prim_make_non_pointer_object, 1, 1,
+  "Convert the unsigned integer NUMBER into a fixnum.\n\
+The result has a fixnum type and a datum of NUMBER.")
 {
+  fast Pointer result;
   fast long datum;
   PRIMITIVE_HEADER (1);
 
   datum = (object_to_long ((ARG_REF (1)),
 			   ERR_ARG_1_WRONG_TYPE,
 			   ERR_ARG_1_BAD_RANGE));
-  if ((datum < 0) || (datum > ADDRESS_MASK))
+
+  result = (MAKE_FIXNUM (datum));
+  if ((datum < 0) ||
+      (!(FIXNUM_P(result))) ||
+      ((OBJECT_DATUM(result)) != datum))
+  {
     error_bad_range_arg (1);
-  PRIMITIVE_RETURN (MAKE_FIXNUM (datum));
+  }
+  PRIMITIVE_RETURN (result);
 }
 
 /* (PRIMITIVE-OBJECT-SET-TYPE TYPE-CODE OBJECT)

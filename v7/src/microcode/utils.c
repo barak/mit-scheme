@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.42 1989/05/31 01:51:07 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.43 1989/08/28 18:29:38 cph Exp $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -834,7 +834,7 @@ record_primitive_entry (primitive)
   {
     long index, old_value;
 
-    index = (1 + (pointer_datum (primitive)));
+    index = (1 + (OBJECT_DATUM (primitive)));
     Scheme_Integer_To_C_Integer ((Vector_Ref (table, index)), &old_value);
     Vector_Set (table, index, (C_Integer_To_Scheme_Integer (1 + old_value)));
   }
@@ -873,7 +873,7 @@ Allocate_New_Stacklet (N)
   Terminate_Old_Stacklet();
   if ((Free_Stacklets == NULL) ||
       ((N + STACKLET_SLACK) >
-       Get_Integer(Free_Stacklets[STACKLET_LENGTH])))
+       (OBJECT_DATUM (Free_Stacklets[STACKLET_LENGTH]))))
   {
     long size;
 
@@ -905,7 +905,7 @@ Allocate_New_Stacklet (N)
     New_Stacklet = Free_Stacklets;
     Free_Stacklets = ((Pointer *) Free_Stacklets[STACKLET_FREE_LIST_LINK]);
     Stack_Pointer =
-      &New_Stacklet[1 + Get_Integer(New_Stacklet[STACKLET_LENGTH])];
+      &New_Stacklet[1 + (OBJECT_DATUM (New_Stacklet[STACKLET_LENGTH]))];
     Stack_Guard = &New_Stacklet[STACKLET_HEADER_SIZE];
   }
   Old_Expression = Fetch_Expression();
@@ -929,8 +929,9 @@ Pointer
 Find_State_Space (State_Point)
      Pointer State_Point;
 {
-  long How_Far = Get_Integer(Fast_Vector_Ref(State_Point,
-					     STATE_POINT_DISTANCE_TO_ROOT));
+  long How_Far =
+    (UNSIGNED_FIXNUM_VALUE
+     (Fast_Vector_Ref (State_Point, STATE_POINT_DISTANCE_TO_ROOT)));
   long i;
   fast Pointer Point = State_Point;
 
@@ -988,7 +989,8 @@ Translate_To_Point (Target)
   Path = Free;
   guarantee_state_point();
   Distance =
-    Get_Integer(Fast_Vector_Ref(Target, STATE_POINT_DISTANCE_TO_ROOT));
+    (UNSIGNED_FIXNUM_VALUE
+     (Fast_Vector_Ref (Target, STATE_POINT_DISTANCE_TO_ROOT)));
   if (State_Space == NIL)
   {
     Current_Location = Current_State_Point;
@@ -1013,7 +1015,8 @@ Translate_To_Point (Target)
   }
 
   From_Depth =
-    Get_Integer(Fast_Vector_Ref(Current_Location, STATE_POINT_DISTANCE_TO_ROOT));
+    (UNSIGNED_FIXNUM_VALUE
+     (Fast_Vector_Ref (Current_Location, STATE_POINT_DISTANCE_TO_ROOT)));
 
   for (Path_Point = Current_Location, Merge_Depth = From_Depth;
        Merge_Depth > Distance;

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbtobin.c,v 9.34 1988/04/25 17:30:02 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbtobin.c,v 9.35 1989/08/28 18:28:07 cph Exp $
  *
  * This File contains the code to translate portable format binary
  * files to internal format.
@@ -547,7 +547,7 @@ Relocate_Objects(from, how_many, disp)
       case TC_BIG_FIXNUM:
       case TC_BIG_FLONUM:
       case TC_CHARACTER_STRING:
-	*from++ == Make_Object(OBJECT_TYPE(*from), (disp + OBJECT_DATUM(*from)));
+	*from++ == MAKE_OBJECT(OBJECT_TYPE(*from), (disp + OBJECT_DATUM(*from)));
 	break;
 
       default:
@@ -746,8 +746,8 @@ print_external_objects(area_name, Table, N)
         fprintf(stderr,
 		"Table[%6d] = Character %c = 0x%02x\n",
 		(N - (Table_End - Table)),
-		Get_Integer(*Table),
-		Get_Integer(*Table));
+		(OBJECT_DATUM (*Table)),
+		(OBJECT_DATUM (*Table)));
 	break;
 
       case TC_CHARACTER_STRING:

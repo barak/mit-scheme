@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/const.h,v 9.33 1989/06/16 09:37:04 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/const.h,v 9.34 1989/08/28 18:28:42 cph Exp $
  *
  * Named constants used throughout the interpreter
  *
@@ -46,21 +46,33 @@ MIT in each case. */
 #define STACK_FRAME_HEADER	1
 
 /* Precomputed typed pointers */
-#ifndef b32			/* Safe version */
+#ifdef b32			/* 32 bit word */
 
-#define SHARP_F			Make_Non_Pointer(TC_NULL, 0)
-#define SHARP_T			Make_Non_Pointer(TC_TRUE, 0)
-#define UNSPECIFIC		Make_Non_Pointer(TC_TRUE, 1)
-#define FIXNUM_ZERO		Make_Non_Pointer(TC_FIXNUM, 0)
-#define BROKEN_HEART_ZERO	Make_Non_Pointer(TC_BROKEN_HEART, 0)
-
-#else				/* 32 bit word */
+#if (TYPE_CODE_LENGTH == 8)
 #define SHARP_F			0x00000000
 #define SHARP_T			0x08000000
 #define UNSPECIFIC		0x08000001
 #define FIXNUM_ZERO		0x1A000000
 #define BROKEN_HEART_ZERO	0x22000000
-#endif				/* b32 */
+#endif /* (TYPE_CODE_LENGTH == 8) */
+
+#if (TYPE_CODE_LENGTH == 6)
+#define SHARP_F			0x00000000
+#define SHARP_T			0x20000000
+#define UNSPECIFIC		0x20000001
+#define FIXNUM_ZERO		0x68000000
+#define BROKEN_HEART_ZERO	0x88000000
+#endif /* (TYPE_CODE_LENGTH == 6) */
+
+#endif /* b32 */
+
+#ifndef SHARP_F			/* Safe version */
+#define SHARP_F			Make_Non_Pointer(TC_NULL, 0)
+#define SHARP_T			Make_Non_Pointer(TC_TRUE, 0)
+#define UNSPECIFIC		Make_Non_Pointer(TC_TRUE, 1)
+#define FIXNUM_ZERO		Make_Non_Pointer(TC_FIXNUM, 0)
+#define BROKEN_HEART_ZERO	Make_Non_Pointer(TC_BROKEN_HEART, 0)
+#endif /* SHARP_F */
 
 #define EMPTY_LIST SHARP_F
 #define NIL SHARP_F

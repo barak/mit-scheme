@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.30 1989/05/24 18:14:52 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.31 1989/08/28 18:29:10 cph Exp $ */
 
 /* This file contains definitions pertaining to the C view of 
    Scheme pointers: widths of fields, extraction macros, pre-computed
@@ -42,27 +42,35 @@ MIT in each case. */
    POINTER_LENGTH is defined this way to make it available to
    the preprocessor. */
 
-/* TYPE_CODE_LENGTH must match the value in Wsize.c! */
-#define TYPE_CODE_LENGTH	8	/* Not CHAR_SIZE!! */
-#define MAX_TYPE_CODE		0xFF	/* ((1<<TYPE_CODE_LENGTH) - 1) */
+/* The value in Wsize.c for TYPE_CODE_LENGTH must match this!! */
+  
+#ifndef TYPE_CODE_LENGTH
+#define TYPE_CODE_LENGTH	8
+#endif
+  
+#if (TYPE_CODE_LENGTH == 8)
+#define MAX_TYPE_CODE		0xFF
+#endif
+  
+#if (TYPE_CODE_LENGTH == 6)
+#define MAX_TYPE_CODE		0x3F
+#endif
+
+#ifdef MIN_TYPE_CODE_LENGTH
+#if (TYPE_CODE_LENGTH < MIN_TYPE_CODE_LENGTH)
+#include ";; inconsistency between object.h and types.h: MIN_TYPE_CODE_LENGTH"
+#endif
+#endif
+  
+#ifndef MAX_TYPE_CODE
+#define MAX_TYPE_CODE		((1 << TYPE_CODE_LENGTH) - 1)
+#endif
+
 #define POINTER_LENGTH		ULONG_SIZE
+  
+#ifdef b32			/* 32 bit word versions */
 
-#ifndef b32			/* Portable versions */
-
-#define ADDRESS_LENGTH		(POINTER_LENGTH-TYPE_CODE_LENGTH)
-#define ADDRESS_MASK		((1 << ADDRESS_LENGTH) - 1)
-#define TYPE_CODE_MASK		(~ADDRESS_MASK)
-/* FIXNUM_LENGTH does NOT include the sign bit! */
-#define FIXNUM_LENGTH		(ADDRESS_LENGTH - 1)
-#define FIXNUM_SIGN_BIT		(1 << FIXNUM_LENGTH)
-#define SIGN_MASK		(TYPE_CODE_MASK | FIXNUM_SIGN_BIT)
-#define SMALLEST_FIXNUM		((long) (-1 << FIXNUM_LENGTH))
-#define BIGGEST_FIXNUM		((long) (~(-1 << FIXNUM_LENGTH)))
-
-#define HALF_ADDRESS_LENGTH	(ADDRESS_LENGTH / 2)
-#define HALF_ADDRESS_MASK	((1 << HALF_ADDRESS_LENGTH) - 1)
-
-#else				/* 32 bit word versions */
+#if (TYPE_CODE_LENGTH == 8)
 
 #define ADDRESS_LENGTH		24
 #define ADDRESS_MASK		0x00FFFFFF
@@ -72,29 +80,59 @@ MIT in each case. */
 #define SIGN_MASK		0xFF800000
 #define SMALLEST_FIXNUM		((long) 0xFF800000)
 #define BIGGEST_FIXNUM		((long) 0x007FFFFF)
-
 #define HALF_ADDRESS_LENGTH	12
 #define HALF_ADDRESS_MASK	0x00000FFF
+#endif /* (TYPE_CODE_LENGTH == 8) */
 
-#endif
+#if (TYPE_CODE_LENGTH == 6)
+#define ADDRESS_LENGTH		26
+#define ADDRESS_MASK		0x03FFFFFF
+#define TYPE_CODE_MASK		0XFC000000
+#define FIXNUM_LENGTH		25
+#define FIXNUM_SIGN_BIT		0x02000000
+#define SIGN_MASK		0xFE000000
+#define SMALLEST_FIXNUM		((long) 0xFE000000)
+#define BIGGEST_FIXNUM		((long) 0x01FFFFFF)
+#define HALF_ADDRESS_LENGTH	13
+#define HALF_ADDRESS_MASK	0x00001FFF
+#endif /* (TYPE_CODE_LENGTH == 6) */
+
+#endif /* b32 */
+
+#ifndef ADDRESS_LENGTH		/* Safe versions */
+#define ADDRESS_LENGTH		(POINTER_LENGTH-TYPE_CODE_LENGTH)
+#define ADDRESS_MASK		((1 << ADDRESS_LENGTH) - 1)
+#define TYPE_CODE_MASK		(~ADDRESS_MASK)
+/* FIXNUM_LENGTH does NOT include the sign bit! */
+#define FIXNUM_LENGTH		(ADDRESS_LENGTH - 1)
+#define FIXNUM_SIGN_BIT		(1 << FIXNUM_LENGTH)
+#define SIGN_MASK		(TYPE_CODE_MASK | FIXNUM_SIGN_BIT)
+#define SMALLEST_FIXNUM		((long) (-1 << FIXNUM_LENGTH))
+#define BIGGEST_FIXNUM		((long) (~(-1 << FIXNUM_LENGTH)))
+#define HALF_ADDRESS_LENGTH	(ADDRESS_LENGTH / 2)
+#define HALF_ADDRESS_MASK	((1 << HALF_ADDRESS_LENGTH) - 1)
+#endif /* ADDRESS_LENGTH */
 
+#ifndef OBJECT_TYPE
 #ifndef UNSIGNED_SHIFT		/* Portable version */
 #define OBJECT_TYPE(P)		(((P) >> ADDRESS_LENGTH) & MAX_TYPE_CODE)
 #else				/* Faster for logical shifts */
 #define OBJECT_TYPE(P)		((P) >> ADDRESS_LENGTH)
 #endif
+#endif /* OBJECT_TYPE */
 
+#ifndef OBJECT_DATUM
 #define OBJECT_DATUM(P)		((P) & ADDRESS_MASK)
+#endif
+
+#ifndef MAKE_OBJECT
+#define MAKE_OBJECT(TC, D)						\
+  ((((unsigned) (TC)) << ADDRESS_LENGTH) | (OBJECT_DATUM (D)))
+#endif
 
 /* compatibility definitions */
 #define Type_Code(P)		(OBJECT_TYPE (P))
 #define Datum(P)		(OBJECT_DATUM (P))
-
-#define pointer_type(P)		(OBJECT_TYPE (P))
-#define pointer_datum(P)	(OBJECT_DATUM (P))
-
-#define Make_Object(TC, D)						\
-  ((((unsigned) (TC)) << ADDRESS_LENGTH) | (OBJECT_DATUM (D)))
 
 #ifndef Heap_In_Low_Memory	/* Portable version */
 
@@ -113,7 +151,8 @@ extern Pointer *Memory_Base;
 #define Get_Pointer(P) ((Pointer *) (Memory_Base + (OBJECT_DATUM (P))))
 #define C_To_Scheme(P) ((Pointer) ((P) - Memory_Base))
 
-#else				/* Storing absolute addresses */
+#else /* not Heap_In_Low_Memory */
+/* Storing absolute addresses */
 
 typedef long relocation_type;	/* Used to relocate pointers on fasload */
 
@@ -121,29 +160,20 @@ typedef long relocation_type;	/* Used to relocate pointers on fasload */
   (Heap = ((Pointer *) (malloc ((sizeof (Pointer)) * (space)))),	\
    ((Heap + (space)) - 1))
 
-#ifdef spectrum
-
-#define Quad1_Tag 	0x40000000
-#define Get_Pointer(P)	((Pointer *) (((P) & ADDRESS_MASK) | Quad1_Tag))
-#define C_To_Scheme(P)  ((Pointer) (((long) (P)) & ADDRESS_MASK))
-
-#else /* Not Spectrum, fast case */
-
 #define Get_Pointer(P)		((Pointer *) (OBJECT_DATUM (P)))
 #define C_To_Scheme(P)          ((Pointer) (P))
 
-#endif /* spectrum */
 #endif /* Heap_In_Low_Memory */
 
-#define Make_Pointer(TC, A)	Make_Object((TC), C_To_Scheme(A))
-#define Make_Non_Pointer(TC, D)	Make_Object(TC, ((Pointer) (D)))
+#define Make_Pointer(TC, A)	MAKE_OBJECT((TC), C_To_Scheme(A))
+#define Make_Non_Pointer(TC, D)	MAKE_OBJECT(TC, ((Pointer) (D)))
 
 /* (Make_New_Pointer (TC, A)) may be more efficient than
    (Make_Pointer (TC, (Get_Pointer (A)))) */
 
-#define Make_New_Pointer(TC, A) (Make_Object (TC, ((Pointer) A)))
+#define Make_New_Pointer(TC, A) (MAKE_OBJECT (TC, ((Pointer) A)))
 
-#define Store_Type_Code(P, TC)	P = (Make_Object ((TC), (P)))
+#define Store_Type_Code(P, TC)	P = (MAKE_OBJECT ((TC), (P)))
 
 #define Store_Address(P, A)						\
   P = (((P) & TYPE_CODE_MASK) | (OBJECT_DATUM ((Pointer) (A))))
@@ -158,7 +188,7 @@ typedef long relocation_type;	/* Used to relocate pointers on fasload */
 #define Fast_User_Vector_Ref(P, N) 	Fast_Vector_Ref(P, (N)+1)
 #define Fast_User_Vector_Set(P, N, S)	Fast_Vector_Set(P, (N)+1, S)
 #define Nth_Vector_Loc(P, N)		(&(Fast_Vector_Ref(P, N)))
-#define Vector_Length(P)		(Get_Integer(Fast_Vector_Ref((P), 0)))
+#define Vector_Length(P) (OBJECT_DATUM (Fast_Vector_Ref((P), 0)))
 
 /* General case vector handling requires atomicity for parallel processors */
 
@@ -209,9 +239,9 @@ typedef long relocation_type;	/* Used to relocate pointers on fasload */
 #define MAKE_FIXNUM(N) (Make_Non_Pointer (TC_FIXNUM, (N)))
 #define FIXNUM_NEGATIVE_P(fixnum) (((fixnum) & FIXNUM_SIGN_BIT) != 0)
 #define MAKE_UNSIGNED_FIXNUM(N)	(FIXNUM_ZERO + (N))
-#define UNSIGNED_FIXNUM_VALUE(fixnum) (OBJECT_DATUM (fixnum))
-#define MAKE_SIGNED_FIXNUM Make_Signed_Fixnum
-#define long_to_object C_Integer_To_Scheme_Integer
+#define UNSIGNED_FIXNUM_VALUE OBJECT_DATUM
+#define MAKE_SIGNED_FIXNUM MAKE_FIXNUM
+#define NONNEGATIVE_FIXNUM_P(x) ((FIXNUM_P (x)) && (! (FIXNUM_NEGATIVE_P (x))))
 
 #define FIXNUM_VALUE(fixnum, target)					\
 do									\
@@ -221,20 +251,16 @@ do									\
     (target) |= (-1 << ADDRESS_LENGTH);					\
 } while (0)
 
+/* Compatibility */
+#define Make_Unsigned_Fixnum MAKE_UNSIGNED_FIXNUM
+#define Make_Signed_Fixnum MAKE_FIXNUM
+#define Get_Integer OBJECT_DATUM
+#define Sign_Extend FIXNUM_VALUE
+
 #define BOOLEAN_TO_OBJECT(expression) ((expression) ? SHARP_T : SHARP_F)
 
 #define Make_Broken_Heart(N)	(BROKEN_HEART_ZERO + (N))
-#define Make_Unsigned_Fixnum(N)	(FIXNUM_ZERO + (N))
-#define Make_Signed_Fixnum(N)	Make_Non_Pointer( TC_FIXNUM, (N))
 #define Get_Float(P)   (* ((double *) (Nth_Vector_Loc ((P), 1))))
-#define Get_Integer(P) (OBJECT_DATUM (P))
-
-#define Sign_Extend(P, S)						\
-{									\
-  (S) = (Get_Integer (P));						\
-  if (((S) & FIXNUM_SIGN_BIT) != 0)					\
-    (S) |= (-1 << ADDRESS_LENGTH);					\
-}
 
 #define Fixnum_Fits(x)							\
   ((((x) & SIGN_MASK) == 0) ||						\

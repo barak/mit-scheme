@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.31 1989/06/16 09:37:49 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.32 1989/08/28 18:28:48 cph Exp $
  *
  * External declarations.
  *
@@ -164,6 +164,10 @@ extern int Parse_Option();
 extern Boolean Restore_History();
 extern long NColumns(), NLines(), OS_process_clock ();
 extern void OS_Flush_Output_Buffer(), OS_Re_Init();
+extern Pointer cons ();
+extern Pointer allocate_non_marked_vector ();
+extern Pointer allocate_marked_vector ();
+extern Pointer make_vector ();
 
 /* Memory management utilities */
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.h,v 9.42 1989/05/31 01:50:41 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.h,v 9.43 1989/08/28 18:29:03 cph Exp $ */
 
 /* Macros and declarations for the variable lookup code. */
 
@@ -68,10 +68,24 @@ extern Pointer
 
 /* Common constants. */
 
-#ifndef b32
-#define UNCOMPILED_VARIABLE		Make_Non_Pointer(UNCOMPILED_REF, 0)
-#else
+#ifdef b32				/* 32 bit objects */
+
+#if (TYPE_CODE_LENGTH == 8)
 #define UNCOMPILED_VARIABLE		0x08000000
+#endif
+
+#if (TYPE_CODE_LENGTH == 6)
+#define UNCOMPILED_VARIABLE		0x20000000
+#endif
+
+#if (TC_TRUE != 0x08)
+#include "error:lookup.h and types.h are inconsistent"
+#endif
+
+#endif /* b32 */
+
+#ifndef UNCOMPILED_VARIABLE		/* Safe version */
+#define UNCOMPILED_VARIABLE		Make_Non_Pointer(UNCOMPILED_REF, 0)
 #endif
 
 /* Macros for speedy variable reference. */
@@ -214,7 +228,7 @@ label:									\
   fast long depth;							\
 									\
   verify(FORMAL_REF, offset, get_offset(hunk), label);			\
-  depth = Get_Integer(frame);						\
+  depth = (OBJECT_DATUM (frame));					\
   frame = env;								\
   while(--depth >= 0)							\
   {									\
@@ -233,7 +247,7 @@ label:									\
   fast long depth;							\
 									\
   verify(AUX_REF, offset, get_offset(hunk), label);			\
-  depth = Get_Integer(frame);						\
+  depth = (OBJECT_DATUM (frame));					\
   frame = env;								\
   while(--depth >= 0)							\
   {									\

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbmap.h,v 9.27 1988/08/15 20:53:22 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbmap.h,v 9.28 1989/08/28 18:29:21 cph Exp $
  *
  * This file contains macros and declarations for Bintopsb.c
  * and Psbtobin.c
@@ -45,10 +45,10 @@ MIT in each case. */
 
 #include <stdio.h>
 #include "config.h"
+#include "types.h"
 #include "object.h"
 #include "bignum.h"
 #include "bitstr.h"
-#include "types.h"
 #include "sdata.h"
 #include "const.h"
 #include "gccode.h"

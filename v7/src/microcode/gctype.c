@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gctype.c,v 9.29 1988/08/15 20:48:26 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gctype.c,v 9.30 1989/08/28 18:28:51 cph Rel $
  *
  * This file contains the table which maps between Types and
  * GC Types.
@@ -110,6 +110,13 @@ int GC_Type_Map[MAX_TYPE_CODE + 1] = {
     GC_Pair,			/* TC_COMPLEX */
     GC_Vector,			/* TC_COMPILED_CODE_BLOCK */
     GC_Undefined,			/* 0x3E */
+
+#if (TYPE_CODE_LENGTH == 6)
+
+    GC_Undefined			/* 0x3F */
+
+#else /* (TYPE_CODE_LENGTH != 6) */
+
     GC_Undefined,			/* 0x3F */
     GC_Undefined,			/* 0x40 */
     GC_Undefined,			/* 0x41 */
@@ -310,10 +317,21 @@ int GC_Type_Map[MAX_TYPE_CODE + 1] = {
     GC_Undefined,			/* 0xFC */
     GC_Undefined,			/* 0xFD */
     GC_Undefined,			/* 0xFE */
-    GC_Undefined			/* 0xFF */
+    GC_Undefined			/* last */
+#endif /* (TYPE_CODE_LENGTH != 6) */
+
     };
 
-#if (MAX_TYPE_CODE != 0xFF)
-#include "gctype.c and scheme.h inconsistent -- GC_Type_Map"
+#if (TYPE_CODE_LENGTH == 6)
+
+#if (MAX_TYPE_CODE != 0x3F)
+#include "gctype.c and object.h inconsistent -- GC_Type_Map"
 #endif
 
+#else /* (TYPE_CODE_LENGTH != 6) */
+
+#if (MAX_TYPE_CODE != 0xFF)
+#include "gctype.c and object.h inconsistent -- GC_Type_Map"
+#endif
+
+#endif /* (TYPE_CODE_LENGTH == 6) */

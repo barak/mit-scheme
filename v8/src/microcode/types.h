@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/types.h,v 9.29 1988/08/15 20:56:46 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/types.h,v 9.30 1989/08/28 18:29:35 cph Exp $
  *
  * Type code definitions, numerical order
  *
@@ -107,6 +107,14 @@ MIT in each case. */
  */
 
 #define LAST_TYPE_CODE			0X3D
+
+#define MIN_TYPE_CODE_LENGTH		6
+
+#ifdef TYPE_CODE_LENGTH
+#if (TYPE_CODE_LENGTH < MIN_TYPE_CODE_LENGTH)
+#include ";; inconsistency between object.h and types.h: MIN_TYPE_CODE_LENGTH"
+#endif
+#endif
 
 #define TYPE_NAME_TABLE							\
 {									\

@@ -30,14 +30,16 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/wsize.c,v 9.26 1989/05/24 18:42:37 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/wsize.c,v 9.27 1989/08/28 18:28:11 cph Exp $ */
 
 #include <stdio.h>
 #include <math.h>
 #include <errno.h>
 
+#ifndef TYPE_CODE_LENGTH
 /* This MUST match object.h */ 
 #define TYPE_CODE_LENGTH	8
+#endif
 
 #define ASCII_LOWER_A		0141
 #define ASCII_UPPER_A		0101

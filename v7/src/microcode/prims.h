@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.34 1989/05/31 01:50:51 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.35 1989/08/28 18:29:17 cph Exp $ */
 
 /* This file contains some macros for defining primitives,
    for argument type or value checking, and for accessing
@@ -169,11 +169,13 @@ extern void canonicalize_primitive_context();
 }
 
 #define Primitive_GC_If_Needed(Amount)					\
-  if (GC_Check (Amount)) Primitive_GC(Amount)
+{									\
+  if (GC_Check (Amount)) Primitive_GC(Amount);				\
+}
 
 #define Range_Check(To_Where, P, Low, High, Error)			\
 {									\
-  To_Where = Get_Integer (P);						\
+  To_Where = UNSIGNED_FIXNUM_VALUE (P);					\
   if ((To_Where < (Low)) || (To_Where > (High)))			\
     Primitive_Error (Error);						\
 }
@@ -206,34 +208,34 @@ extern Pointer allocate_marked_vector ();
 /* Instances of the following should be flushed. */
 
 #define Arg_1_Type(TC)  					\
-do { if ((pointer_type (Arg1)) != (TC)) error_wrong_type_arg (1); } while (0)
+do { if ((OBJECT_TYPE (Arg1)) != (TC)) error_wrong_type_arg (1); } while (0)
 
 #define Arg_2_Type(TC)  					\
-do { if ((pointer_type (Arg2)) != (TC)) error_wrong_type_arg (2); } while (0)
+do { if ((OBJECT_TYPE (Arg2)) != (TC)) error_wrong_type_arg (2); } while (0)
 
 #define Arg_3_Type(TC)						\
-do { if ((pointer_type (Arg3)) != (TC)) error_wrong_type_arg (3); } while (0)
+do { if ((OBJECT_TYPE (Arg3)) != (TC)) error_wrong_type_arg (3); } while (0)
 
 #define Arg_4_Type(TC)  					\
-do { if ((pointer_type (Arg4)) != (TC)) error_wrong_type_arg (4); } while (0)
+do { if ((OBJECT_TYPE (Arg4)) != (TC)) error_wrong_type_arg (4); } while (0)
 
 #define Arg_5_Type(TC)  					\
-do { if ((pointer_type (Arg5)) != (TC)) error_wrong_type_arg (5); } while (0)
+do { if ((OBJECT_TYPE (Arg5)) != (TC)) error_wrong_type_arg (5); } while (0)
 
 #define Arg_6_Type(TC)						\
-do { if ((pointer_type (Arg6)) != (TC)) error_wrong_type_arg (6); } while (0)
+do { if ((OBJECT_TYPE (Arg6)) != (TC)) error_wrong_type_arg (6); } while (0)
 
 #define Arg_7_Type(TC)						\
-do { if ((pointer_type (Arg7)) != (TC)) error_wrong_type_arg (7); } while (0)
+do { if ((OBJECT_TYPE (Arg7)) != (TC)) error_wrong_type_arg (7); } while (0)
 
 #define Arg_8_Type(TC)						\
-do { if ((pointer_type (Arg8)) != (TC)) error_wrong_type_arg (8); } while (0)
+do { if ((OBJECT_TYPE (Arg8)) != (TC)) error_wrong_type_arg (8); } while (0)
 
 #define Arg_9_Type(TC)						\
-do { if ((pointer_type (Arg9)) != (TC)) error_wrong_type_arg (9); } while (0)
+do { if ((OBJECT_TYPE (Arg9)) != (TC)) error_wrong_type_arg (9); } while (0)
 
 #define Arg_10_Type(TC)						\
-do { if ((pointer_type (Arg10)) != (TC)) error_wrong_type_arg (10); } while (0)
+do { if ((OBJECT_TYPE (Arg10)) != (TC)) error_wrong_type_arg (10); } while (0)
 
 
 #define Arg_1_GC_Type(GCTC)                                     \

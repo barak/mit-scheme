@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/edwin.h,v 1.2 1988/08/15 20:45:21 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/edwin.h,v 1.3 1989/08/28 18:28:45 cph Exp $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,14 +35,14 @@ MIT in each case. */
 /* Definitions for Edwin data structures.
    This MUST match the definitions in the Edwin source code. */
 
-#define GROUP_P(object) ((pointer_type (object)) == TC_VECTOR)
+#define GROUP_P(object) ((OBJECT_TYPE (object)) == TC_VECTOR)
 #define GROUP_TEXT(group) (User_Vector_Ref ((group), 1))
-#define GROUP_GAP_START(group) (Get_Integer (User_Vector_Ref ((group), 2)))
-#define GROUP_GAP_LENGTH(group) (Get_Integer (User_Vector_Ref ((group), 3)))
-#define GROUP_GAP_END(group) (Get_Integer (User_Vector_Ref ((group), 4)))
+#define GROUP_GAP_START(group) (UNSIGNED_FIXNUM_VALUE (User_Vector_Ref ((group), 2)))
+#define GROUP_GAP_LENGTH(group) (UNSIGNED_FIXNUM_VALUE (User_Vector_Ref ((group), 3)))
+#define GROUP_GAP_END(group) (UNSIGNED_FIXNUM_VALUE (User_Vector_Ref ((group), 4)))
 #define GROUP_START_MARK(group) (User_Vector_Ref ((group), 6))
 #define GROUP_END_MARK(group) (User_Vector_Ref ((group), 7))
 
 #define MARK_GROUP(mark) (User_Vector_Ref ((mark), 1))
-#define MARK_POSITION(mark) (Get_Integer (User_Vector_Ref ((mark), 2)))
-#define MARK_LEFT_INSERTING(mark) ((User_Vector_Ref ((mark), 3)) != NIL)
+#define MARK_POSITION(mark) (UNSIGNED_FIXNUM_VALUE (User_Vector_Ref ((mark), 2)))
+#define MARK_LEFT_INSERTING(mark) ((User_Vector_Ref ((mark), 3)) != SHARP_F)

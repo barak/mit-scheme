@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.27 1989/08/28 18:28:19 cph Exp $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,10 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.26 1988/08/15 20:36:45 cph Rel $
-
-   This file contains the procedures for handling BIGNUM Arithmetic. 
-*/
+/* BIG NUMber arithmetic */
 
 #include "scheme.h"
 #include <math.h>
@@ -42,20 +41,157 @@ MIT in each case. */
 #include "flonum.h"
 #include "zones.h"
 
-/* General Purpose Utilities */
+/* The following macros are the beginnings of a redesign of the bignum
+   code.  Some of the procedures and primitives defined here use these
+   new conventions.  Please update things as you work on them. */
 
-Pointer
-return_bignum_zero()
+#define DIGITS_PER_POINTER ((sizeof (Pointer)) / (sizeof (bigdigit)))
+
+#define DIGITS_TO_POINTERS(n_digits)					\
+  (((n_digits) + (DIGITS_PER_POINTER - 1)) / DIGITS_PER_POINTER)
+
+#define DIGITS_TO_GC_LENGTH(n_digits) (DIGITS_TO_POINTERS ((n_digits) + 2))
+
+#define DIGITS_TO_GC_HEADER(n_digits)					\
+  (Make_Non_Pointer (TC_MANIFEST_NM_VECTOR, (DIGITS_TO_GC_LENGTH (n_digits))))
+
+#define BIGNUM_PTR(bignum, index)					\
+  (((bigdigit *) (Nth_Vector_Loc ((bignum), 1))) + (index))
+
+#define BIGNUM_REF(bignum, index) (* (BIGNUM_PTR ((bignum), (index))))
+#define BIGNUM_SIGN(bignum) (BIGNUM_REF ((bignum), 0))
+#define BIGNUM_LENGTH(bignum) (BIGNUM_REF ((bignum), 1))
+#define BIGNUM_START_PTR(bignum) (BIGNUM_PTR ((bignum), 2))
+#define BIGNUM_END_PTR(bignum)						\
+  (BIGNUM_PTR ((bignum), (2 + (BIGNUM_LENGTH (bignum)))))
+
+#define BIGNUM_NEGATIVE_P(bignum) ((BIGNUM_SIGN (bignum)) == 0)
+#define BIGNUM_ZERO_P(bignum) ((BIGNUM_LENGTH (bignum)) == 0)
+
+static Pointer
+make_bignum_zero ()
 {
-  bigdigit *REG;
-  long Align_0 = Align(0);
-  Primitive_GC_If_Needed(Align_0);
-  REG = BIGNUM(Free);
-  Prepare_Header(REG, 0, POSITIVE);
-  Free += Align_0;
-  return Make_Pointer(TC_BIG_FIXNUM, Free-Align_0);
+  Pointer bignum =
+    (allocate_non_marked_vector
+     (TC_BIG_FIXNUM, (DIGITS_TO_GC_LENGTH (0)), true));
+  (BIGNUM_SIGN (bignum)) = 1;
+  (BIGNUM_LENGTH (bignum)) = 0;
+  return (bignum);
 }
 
+static Pointer
+bignum_allocate (n_digits, negative_p)
+     long n_digits;
+     Boolean negative_p;
+{
+  Pointer bignum =
+    (allocate_non_marked_vector
+     (TC_BIG_FIXNUM, (DIGITS_TO_GC_LENGTH (n_digits)), true));
+  (BIGNUM_SIGN (bignum)) = (negative_p ? 0 : 1);
+  (BIGNUM_LENGTH (bignum)) = n_digits;
+  return (bignum);
+}
+
+static void
+bignum_destructive_copy (source, target)
+     Pointer source;
+     Pointer target;
+{
+  fast bigdigit * scan_source;
+  fast bigdigit * end_source;
+  fast bigdigit * scan_target;
+
+  (BIGNUM_SIGN (target)) = (BIGNUM_SIGN (source));
+  (BIGNUM_LENGTH (target)) = (BIGNUM_LENGTH (source));
+  scan_source = (BIGNUM_START_PTR (source));
+  end_source = (BIGNUM_END_PTR (source));
+  scan_target = (BIGNUM_START_PTR (target));
+  while (scan_source < end_source)
+    (*scan_target++) = (*scan_source++);
+  return;
+}
+
+static Pointer
+bignum_copy (source)
+     Pointer source;
+{
+  Pointer target =
+    (allocate_non_marked_vector
+     (TC_BIG_FIXNUM, (DIGITS_TO_GC_LENGTH (BIGNUM_LENGTH (source))), true));
+  bignum_destructive_copy (source, target);
+  return (target);
+}
+
+static int
+bignum_length_in_bits (bignum)
+     Pointer bignum;
+{
+  if (BIGNUM_ZERO_P (bignum))
+    return (0);
+  {
+    int max_index = ((BIGNUM_LENGTH (bignum)) - 1);
+    fast int result = (max_index * SHIFT);
+    fast unsigned long max_digit = (BIGNUM_REF (bignum, max_index));
+    while (max_digit > 0)
+      {
+	result += 1;
+	max_digit >>= 1;
+      }
+    return (result);
+  }
+}
+
+static unsigned long
+scale_down (source, target, denominator)
+     Pointer source;
+     Pointer target;
+     unsigned long denominator;
+{
+  fast unsigned long remainder;
+  fast unsigned long quotient;
+  fast bigdigit * scan_source;
+  fast bigdigit * scan_target;
+  fast bigdigit * start_source;
+
+  (BIGNUM_SIGN (target)) = (BIGNUM_SIGN (source));
+  (BIGNUM_LENGTH (target)) = (BIGNUM_LENGTH (source));
+  scan_source = (BIGNUM_END_PTR (source));
+  start_source = (BIGNUM_START_PTR (source));
+  scan_target = (BIGNUM_END_PTR (target));
+  remainder = 0;
+  while (scan_source > start_source)
+    {
+      remainder = ((remainder << SHIFT) + (*--scan_source));
+      quotient = (remainder / denominator);
+      remainder = (remainder % denominator);
+      (*--scan_target) = quotient;
+    }
+  return (remainder);
+}
+
+static unsigned long
+scale_down_self (bignum, denominator)
+     Pointer bignum;
+     unsigned long denominator;
+{
+  fast unsigned long remainder;
+  fast unsigned long quotient;
+  fast bigdigit * scan;
+  fast bigdigit * start;
+
+  scan = (BIGNUM_END_PTR (bignum));
+  start = (BIGNUM_START_PTR (bignum));
+  remainder = 0;
+  while (scan > start)
+    {
+      remainder = ((remainder << SHIFT) + (*--scan));
+      quotient = (remainder / denominator);
+      remainder = (remainder % denominator);
+      (*scan) = quotient;
+    }
+  return (remainder);
+}
+
 void
 trim_bignum(ARG)
      bigdigit *ARG;
@@ -86,22 +222,6 @@ copy_bignum(SOURCE, TARGET)
   while (LIMIT >= SOURCE)
     *TARGET++ = *SOURCE++;
   return;
-}
-
-long
-Find_Length(pradix, length)
-     fast long pradix;
-     bigdigit length;
-{
-  fast int log_pradix;
-
-  log_pradix = 0;
-  while (pradix != 1)
-  {
-    pradix = pradix >> 1;
-    log_pradix += 1;
-  }
-  return (((SHIFT / log_pradix) + 1) * length);
 }
 
 /* scale() and unscale() used by Division and Listify */
@@ -220,132 +340,90 @@ big_compare(ARG1, ARG2)
 }
 
 Pointer
-Fix_To_Big(Arg1)
-     Pointer Arg1;
+Fix_To_Big (object)
+     Pointer object;
 {
-  fast bigdigit *Answer, *SCAN, *size;
-  long Length, ARG1;
+  fast long value;
+  fast Pointer result;
 
-  if (Type_Code(Arg1) != TC_FIXNUM) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-  if (Get_Integer(Arg1) == 0)
-  { long Align_0 = Align(0);
-    bigdigit *REG;
-    Primitive_GC_If_Needed(2);
-    REG = BIGNUM(Free);
-    Prepare_Header(REG, 0, POSITIVE);
-    Free += Align_0;
-    return Make_Pointer(TC_BIG_FIXNUM, Free-Align_0);
-  }
-  Length = Align(FIXNUM_LENGTH_AS_BIGNUM);
-  Primitive_GC_If_Needed(Length);
-  Sign_Extend(Arg1, ARG1);
-  Answer = BIGNUM(Free); 
-  Prepare_Header(Answer, 0, (ARG1 >= 0) ? POSITIVE : NEGATIVE);
-  size   = &LEN(Answer);
-  if (ARG1 < 0) ARG1 = - ARG1;
-  for (SCAN = Bignum_Bottom(Answer); ARG1 != 0; *size += 1)
-  { *SCAN++ = Rem_Radix(ARG1);
-    ARG1    = Div_Radix(ARG1);
-  }
-  Length = Align(*size);
-  *((Pointer *) Answer) = Make_Header(Length);
-  Free  += Length;
-  Debug_Test(Free-Length);
-  return Make_Pointer(TC_BIG_FIXNUM, Free-Length);
-}
-
-Pointer
-Big_To_Fix (bignum_object)
-     Pointer bignum_object;
-{
-  fast bigdigit *bptr, *scan;
-  fast long result, i;
-  long Length;
-
-  if ((Type_Code (bignum_object)) != TC_BIG_FIXNUM)
-    return (bignum_object);
-  bptr = BIGNUM (Get_Pointer (bignum_object));
-  Length = LEN (bptr);
-  if (Length == 0)
-    return (Make_Unsigned_Fixnum(0));
-  if (Length > FIXNUM_LENGTH_AS_BIGNUM)
-    return (bignum_object);
-
-  scan = Bignum_Top (bptr);
-  result = *scan--;
-
-  if (result < 0)
-    return (bignum_object);
-
-  if (Length == FIXNUM_LENGTH_AS_BIGNUM)
+  FIXNUM_VALUE (object, value);
+  if (value == 0)
+    return (make_bignum_zero ());
+  else if (value > 0)
+    result = (bignum_allocate (FIXNUM_LENGTH_AS_BIGNUM, false));
+  else
+    {
+      result = (bignum_allocate (FIXNUM_LENGTH_AS_BIGNUM, true));
+      value = (- value);
+    }
   {
-    long saved_result, length_in_bits;
-
-    saved_result = result;
-
-    for (i = 0; result != 0; i+= 1)
-      result = result >> 1;
-
-    length_in_bits = i + ((Length == 0) ? 0 : ((Length - 1)  * SHIFT));
-
-    if (length_in_bits > FIXNUM_LENGTH)
-      return (bignum_object);
-
-    result = (saved_result &
-	      ((1 << ((FIXNUM_LENGTH + 1) -
-		       ((FIXNUM_LENGTH + 1) % SHIFT))) - 1));
-
+    fast bigdigit * scan = (BIGNUM_START_PTR (result));
+    fast long length = 0;
+    while (value > 0)
+      {
+	(*scan++) = (value & DIGIT_MASK);
+	value = (value >> SHIFT);
+	length += 1;
+      }
+    (BIGNUM_LENGTH (result)) = length;
+    Fast_Vector_Set (result, 0, (DIGITS_TO_GC_HEADER (length)));
   }
-
-  for (i = (Length - 1); (i > 0); i -= 1)
-    result = (Mul_Radix (result) + *scan--);
-
-  if (result < 0)
-    return (bignum_object);
-  if (NEG_BIGNUM (bptr))
-    result = (- result);
-  return (Fixnum_Fits (result)
-	  ? Make_Signed_Fixnum (result)
-	  : bignum_object);
-}
-
-Boolean
-Fits_Into_Flonum(Bignum)
-     bigdigit *Bignum;
-{
-  fast int k;
-  quick bigdigit top_digit;
-
-  k = (LEN(Bignum) - 1) * SHIFT;
-  for (top_digit = *Bignum_Top(Bignum); top_digit != 0; k++)
-    top_digit >>= 1;
-
-/* If precision should not be lost,
-  if (k <= FLONUM_MANTISSA_BITS) return true;
-   Otherwise,
-*/
-
-  if (k <= MAX_FLONUM_EXPONENT) return true;
-  return false;
+  return (result);
 }
 
 Pointer
-Big_To_Float(Arg1)
-     Pointer Arg1;
+Big_To_Fix (object)
+     Pointer object;
 {
-  fast bigdigit *ARG1, *LIMIT;
-  fast double F = 0.0;
+  if (! (BIGNUM_P (object)))
+    return (object);
+  if (BIGNUM_ZERO_P (object))
+    return (MAKE_UNSIGNED_FIXNUM (0));
+  {
+    long length = (BIGNUM_LENGTH (object));
+    if (length > FIXNUM_LENGTH_AS_BIGNUM)
+      return (object);
+    {
+      fast bigdigit * start = (BIGNUM_START_PTR (object));
+      fast bigdigit * scan = (start + length);
+      fast long result = (*--scan);
+      if (length == FIXNUM_LENGTH_AS_BIGNUM)
+	{
+	  long max_value = (1 << (FIXNUM_LENGTH - ((length - 1) * SHIFT)));
 
-  ARG1 = BIGNUM(Get_Pointer(Arg1));
-  if (!Fits_Into_Flonum(ARG1)) return Arg1;
-  Primitive_GC_If_Needed(FLONUM_SIZE+1);
-  LIMIT = Bignum_Bottom(ARG1);
-  ARG1 = Bignum_Top(ARG1);
-  while (ARG1 >= LIMIT)  F = (F * ((double) RADIX)) + ((double) *ARG1--);
-  if (NEG_BIGNUM(BIGNUM(Get_Pointer(Arg1)))) F = -F;
-  return Allocate_Float(F);
+	  if ((result > max_value) ||
+	      ((result == max_value) && (! (BIGNUM_NEGATIVE_P (object)))))
+	    return (object);
+	}
+      while (scan > start)
+	result = ((result << SHIFT) + (*--scan));
+      if (BIGNUM_NEGATIVE_P (object))
+	result = (- result);
+      return ((Fixnum_Fits (result)) ? (MAKE_SIGNED_FIXNUM (result)) : object);
+    }
+  }
 }
-
+
+Pointer
+Big_To_Float (bignum)
+     Pointer bignum;
+{
+  /* If precision should not be lost,
+     compare to FLONUM_MANTISSA_BITS instead. */
+  if ((bignum_length_in_bits (bignum)) > MAX_FLONUM_EXPONENT)
+    return (bignum);
+  {
+    fast bigdigit * start = (BIGNUM_START_PTR (bignum));
+    fast bigdigit * scan = (BIGNUM_END_PTR (bignum));
+    fast double accumulator = (0.0);
+    while (scan > start)
+      accumulator = ((accumulator * ((double) RADIX)) + ((double) (*--scan)));
+    if (BIGNUM_NEGATIVE_P (bignum))
+      accumulator = (- accumulator);
+    Primitive_GC_If_Needed (FLONUM_SIZE + 1);
+    return (Allocate_Float (accumulator));
+  }
+}
 
 #ifdef HAS_FREXP
 extern double frexp(), ldexp();
@@ -363,7 +441,7 @@ Float_To_Big(flonum)
   long Align_size;
 
   if (flonum == 0.0)
-    return return_bignum_zero();
+    return (make_bignum_zero ());
   mantissa = frexp(flonum, &exponent);
   if (flonum < 0) mantissa = -mantissa;
   if (mantissa >= 1.0)
@@ -522,7 +600,7 @@ plus_signed_bignum(ARG1, ARG2)
      bigdigit *ARG1, *ARG2;
 { /* Special Case for answer being zero */
   if (ZERO_BIGNUM(ARG1) && ZERO_BIGNUM(ARG2))
-     return return_bignum_zero();
+     return (make_bignum_zero ());
   switch(Categorize_Sign(ARG1, ARG2))
   { case BOTH_POSITIVE : return(plus_unsigned_bignum(ARG1, ARG2, POSITIVE));
     case ARG1_NEGATIVE : return(minus_unsigned_bignum(ARG2, ARG1, POSITIVE));
@@ -542,7 +620,7 @@ minus_signed_bignum(ARG1, ARG2)
   /* Special Case for answer being zero */
 
   if (ZERO_BIGNUM(ARG1) && ZERO_BIGNUM(ARG2))
-     return return_bignum_zero();
+     return (make_bignum_zero ());
 
   /* Dispatches According to Sign of Args */
 
@@ -619,7 +697,7 @@ multiply_signed_bignum(ARG1, ARG2)
      bigdigit *ARG1, *ARG2;
 {
   if (ZERO_BIGNUM(ARG1) || ZERO_BIGNUM(ARG2))
-     return return_bignum_zero();
+     return (make_bignum_zero ());
 
   switch(Categorize_Sign(ARG1,ARG2))
   { case BOTH_POSITIVE :
@@ -744,7 +822,7 @@ div_internal(ARG1, ARG2, Quotient)
  */
 
 Pointer
-div_signed_bignum(ARG1, ARG2)
+div_signed_bignum (ARG1, ARG2)
      bigdigit *ARG1, *ARG2;
 {
   bigdigit *SARG2;
@@ -760,8 +838,7 @@ div_signed_bignum(ARG1, ARG2)
   if (big_compare_unsigned(ARG1, ARG2) == TWO_BIGGER)
   {
     /* Trivial Solution for ARG1 > ARG2 
-     * Quotient is zero and the remainder is just a copy of Arg_1.
-     */
+       Quotient is zero and the remainder is just a copy of Arg_1. */
 
     Primitive_GC_If_Needed(Align(0)+Align(LEN(ARG1)));
     QUOT = BIGNUM(Free);
@@ -774,9 +851,8 @@ div_signed_bignum(ARG1, ARG2)
   else if (LEN(ARG2)==1)
   {
     /* Divisor is only one digit long.
-     * unscale() is used to divide out Arg_1 and the remainder is the
-     * single digit returned by unscale(), coerced to a bignum.
-     */
+       unscale() is used to divide out Arg_1 and the remainder is the
+       single digit returned by unscale(), coerced to a bignum. */
 
     Primitive_GC_If_Needed(Align(LEN(ARG1))+Align(1));
     QUOT = BIGNUM(Free);
@@ -791,18 +867,14 @@ div_signed_bignum(ARG1, ARG2)
     trim_bignum(QUOT);
   }
   else
-
   {
     /* Usual case. div_internal() is called.  A normalized copy of Arg_1
-     * resides in REMD, which ultimately becomes the remainder.  The
-     * normalized copy of Arg_2 is in SARG2.
-     */
+       resides in REMD, which ultimately becomes the remainder.  The
+       normalized copy of Arg_2 is in SARG2. */
 
-    bigdouble temp;
-
-    temp = (Align(LEN(ARG1)-LEN(ARG2)+1) + Align(LEN(ARG1)+1)
-	    + Align(LEN(ARG2)+1));
-    Primitive_GC_If_Needed(temp);
+    bigdouble temp =
+      (Align(LEN(ARG1)-LEN(ARG2)+1) + Align(LEN(ARG1)+1) + Align(LEN(ARG2)+1));
+    Primitive_GC_If_Needed (temp);
     QUOT = BIGNUM(Free);
     *Free = Make_Header(Align(LEN(ARG1)-LEN(ARG2)+1));
     Free += Align(LEN(ARG1)-LEN(ARG2)+1);
@@ -876,122 +948,100 @@ print_digits(name, num, how_many)
 }
 #endif
 
-/* Top level bignum primitives */
-/* Coercion primitives. */
-
-/* (COERCE-FIXNUM-TO-BIGNUM FIXNUM)
-      Returns its argument if FIXNUM isn't a fixnum.  Otherwise 
-      it returns the corresponding bignum.
-*/
-DEFINE_PRIMITIVE ("COERCE-FIXNUM-TO-BIGNUM", Prim_fix_to_big, 1, 1, 0)
+DEFINE_PRIMITIVE ("COERCE-FIXNUM-TO-BIGNUM", Prim_fix_to_big, 1, 1,
+  "Returns the bignum that corresponds to FIXNUM.")
 {
-  Primitive_1_Arg();
+  PRIMITIVE_HEADER (1);
 
-  Arg_1_Type(TC_FIXNUM);
-  return Fix_To_Big(Arg1);
+  CHECK_ARG (1, FIXNUM_P);
+  PRIMITIVE_RETURN (Fix_To_Big (ARG_REF (1)));
 }
 
-/* (COERCE-BIGNUM-TO-FIXNUM BIGNUM)
-   When given a bignum, returns the equivalent fixnum if there is
-   one. If BIGNUM is out of range, or isn't a bignum, returns
-   BIGNUM. */
-
-DEFINE_PRIMITIVE ("COERCE-BIGNUM-TO-FIXNUM", Prim_big_to_fix, 1, 1, 0)
+DEFINE_PRIMITIVE ("COERCE-BIGNUM-TO-FIXNUM", Prim_big_to_fix, 1, 1,
+  "Returns the fixnum that corresponds to BIGNUM.
+If BIGNUM cannot be represented as a fixnum, returns BIGNUM.")
 {
-  Primitive_1_Arg ();
+  PRIMITIVE_HEADER (1);
 
-  Arg_1_Type (TC_BIG_FIXNUM);
-  return (Big_To_Fix (Arg1));
+  CHECK_ARG (1, BIGNUM_P);
+  PRIMITIVE_RETURN (Big_To_Fix (ARG_REF (1)));
+}
+
+DEFINE_PRIMITIVE ("LISTIFY-BIGNUM", Prim_listify_bignum, 2, 2,
+  "Returns a list of the digits of BIGNUM in RADIX.")
+{
+  Pointer bignum;
+  long radix;
+  PRIMITIVE_HEADER (2);
+
+  Set_Time_Zone (Zone_Math);
+
+  CHECK_ARG (1, BIGNUM_P);
+  bignum = (ARG_REF (1));
+  radix = (arg_nonnegative_integer (2, (BIGGEST_FIXNUM + 1)));
+  if (BIGNUM_ZERO_P (bignum))
+    PRIMITIVE_RETURN (cons ((MAKE_UNSIGNED_FIXNUM (0)), EMPTY_LIST));
+  {
+    Pointer working_copy = (bignum_copy (bignum));
+    fast bigdigit * start_copy = (BIGNUM_START_PTR (working_copy));
+    fast bigdigit * end_copy = (BIGNUM_END_PTR (working_copy));
+    fast Pointer previous_cdr = EMPTY_LIST;
+    while (end_copy > start_copy)
+      {
+	if ((end_copy [-1]) == 0)
+	  end_copy -= 1;
+	else
+	  previous_cdr =
+	    (cons
+	     ((MAKE_UNSIGNED_FIXNUM (scale_down_self (working_copy, radix))),
+	      previous_cdr));
+      }
+    PRIMITIVE_RETURN (previous_cdr);
+  }
 }
 
-/* (LISTIFY-BIGNUM BIGNUM RADIX)
-      Returns a list of numbers, in the range 0 through RADIX-1, which
-      represent the BIGNUM in that radix.
-*/
-DEFINE_PRIMITIVE ("LISTIFY-BIGNUM", Prim_listify_bignum, 2, 2, 0)
-{
-  fast bigdigit *TOP1, *size;
-  quick Pointer *RFree;
-  fast bigdigit *ARG1;
-  fast long pradix;
-  Primitive_2_Args();
-
-  Arg_1_Type(TC_BIG_FIXNUM);
-  Arg_2_Type(TC_FIXNUM);
-  Set_Time_Zone(Zone_Math);
-
-  ARG1 = BIGNUM(Get_Pointer(Arg1));
-  size = &LEN(ARG1);  
-  if (*size == 0)
-  {
-    Primitive_GC_If_Needed(2);
-    *Free++ = Make_Unsigned_Fixnum(0);
-    *Free++ = EMPTY_LIST;
-    return Make_Pointer(TC_LIST, Free-2);
-  }
-  Sign_Extend(Arg2, pradix);
-  Primitive_GC_If_Needed(Find_Length(pradix, *size)+Align(*size));
-  ARG1  = BIGNUM(Free);
-  copy_bignum(BIGNUM(Get_Pointer(Arg1)), ARG1);
-  Free += Align(*size);
-  RFree = Free;
-  size = &LEN(ARG1);
-  TOP1 = Bignum_Top(ARG1);
-  while (*size > 0)
-  {
-    *RFree++ = Make_Unsigned_Fixnum(unscale(ARG1, ARG1, pradix));
-    *RFree = Make_Pointer(TC_LIST, RFree-3); 
-    RFree += 1; 
-    if (*TOP1 == 0) 
-    {
-      *size -= 1;
-      TOP1--;
-    }
-  }
-  Free[CONS_CDR] = EMPTY_LIST;
-  Free = RFree;
-  return Make_Pointer(TC_LIST, RFree-2);
-}
-
-/* All the binary bignum primitives take two arguments and return NIL
-   if either of them is not a bignum.  If both arguments are bignums,
-   the perform the operation and return the answer.
-*/
-
-#define Binary_Primitive(Op)						\
+#define BINARY_PRIMITIVE(operator)					\
 {									\
-  Pointer Result, *Orig_Free;						\
-  Primitive_2_Args();							\
+  PRIMITIVE_HEADER (2);							\
 									\
-  Arg_1_Type(TC_BIG_FIXNUM);						\
-  Arg_2_Type(TC_BIG_FIXNUM);						\
-  Set_Time_Zone(Zone_Math);						\
-  Orig_Free = Free;							\
-  Result = Op(BIGNUM(Get_Pointer(Arg1)), BIGNUM(Get_Pointer(Arg2)));	\
-  if (Consistency_Check && (Get_Pointer(Result) != Orig_Free))		\
+  Set_Time_Zone (Zone_Math);						\
+  CHECK_ARG (1, BIGNUM_P);						\
+  CHECK_ARG (2, BIGNUM_P);						\
   {									\
-    fprintf(stderr, "\nBignum operation result at 0x%x, Free was 0x%x\n", \
-           Address(Result), Free);					\
-    Microcode_Termination(TERM_EXIT);					\
+    Pointer * original_free = Free;					\
+    Pointer result =							\
+      (operator								\
+       ((BIGNUM (Get_Pointer (ARG_REF (1)))),				\
+	(BIGNUM (Get_Pointer (ARG_REF (2))))));				\
+    if (Consistency_Check && ((Get_Pointer (result)) != original_free))	\
+      {									\
+	fprintf (stderr,						\
+		 "\nBignum operation result at 0x%x, Free was 0x%x\n",	\
+		 (Address (result)),					\
+		 Free);							\
+	Microcode_Termination (TERM_EXIT);				\
+      }									\
+    Free = (Nth_Vector_Loc (result, ((Vector_Length (result)) + 1)));	\
+    if (Consistency_Check && (Free > Heap_Top))				\
+      {									\
+	fprintf (stderr,						\
+		 "\nBignum operation result at 0x%x, length 0x%x\n",	\
+		 (Address (result)),					\
+		 (Vector_Length (result)));				\
+	Microcode_Termination (TERM_EXIT);				\
+      }									\
+    PRIMITIVE_RETURN (result);						\
   }									\
-  Free = Nth_Vector_Loc(Result, Vector_Length(Result)+1);		\
-  if (Consistency_Check && (Free > Heap_Top))				\
-  {									\
-    fprintf(stderr, "\nBignum operation result at 0x%x, length 0x%x\n",	\
-           Address(Result), Vector_Length(Result));			\
-    Microcode_Termination(TERM_EXIT);					\
-  }									\
-  return Result;							\
 }
 
 DEFINE_PRIMITIVE ("PLUS-BIGNUM", Prim_plus_bignum, 2, 2, 0)
-Binary_Primitive(plus_signed_bignum)
+BINARY_PRIMITIVE (plus_signed_bignum)
 
 DEFINE_PRIMITIVE ("MINUS-BIGNUM", Prim_minus_bignum, 2, 2, 0)
-Binary_Primitive(minus_signed_bignum)
+BINARY_PRIMITIVE (minus_signed_bignum)
 
 DEFINE_PRIMITIVE ("MULTIPLY-BIGNUM", Prim_multiply_bignum, 2, 2, 0)
-Binary_Primitive(multiply_signed_bignum)
+BINARY_PRIMITIVE (multiply_signed_bignum)
 
 /* (DIVIDE-BIGNUM ONE-BIGNUM ANOTHER_BIGNUM)
  * returns a cons of the bignum quotient and remainder of both arguments.
@@ -999,7 +1049,7 @@ Binary_Primitive(multiply_signed_bignum)
 
 DEFINE_PRIMITIVE ("DIVIDE-BIGNUM", Prim_divide_bignum, 2, 2, 0)
 {
-  Pointer Result, *End_Of_First, *First, *Second, *Orig_Free=Free;
+  Pointer Result, *End_Of_First, *First, *Second, *original_free=Free;
   Primitive_2_Args();
 
   Arg_1_Type(TC_BIG_FIXNUM);
@@ -1021,13 +1071,13 @@ DEFINE_PRIMITIVE ("DIVIDE-BIGNUM", Prim_divide_bignum, 2, 2, 0)
       fprintf(stderr, "\nBignum_Divide: results swapped.\n");
       Microcode_Termination(TERM_EXIT);
     }
-    else if (First != Orig_Free+2)
+    else if (First != original_free+2)
     {
       fprintf(stderr, "\nBignum Divide: hole at start\n");
       Microcode_Termination(TERM_EXIT);
     }
   }
-  End_Of_First = First + 1 + Get_Integer(First[0]);
+  End_Of_First = First + 1 + (OBJECT_DATUM (First[0]));
   if (Bignum_Debug)
     printf("\nEnd_Of_First=0x%x\n", End_Of_First);
   if (End_Of_First != Second)
@@ -1037,7 +1087,7 @@ DEFINE_PRIMITIVE ("DIVIDE-BIGNUM", Prim_divide_bignum, 2, 2, 0)
     if (Bignum_Debug)
       printf("\nGap=0x%x\n", (Second-End_Of_First)-1);
   }
-  Free = Second + 1 + Get_Integer(Second[0]);
+  Free = Second + 1 + (OBJECT_DATUM (Second[0]));
   if (Bignum_Debug)
     printf("\nEnd=0x%x\n", Free);
   return Result;
@@ -1058,7 +1108,7 @@ DEFINE_PRIMITIVE ("DIVIDE-BIGNUM", Prim_divide_bignum, 2, 2, 0)
   Arg_1_Type(TC_BIG_FIXNUM);						\
   Set_Time_Zone(Zone_Math);						\
   ARG = BIGNUM(Get_Pointer(Arg1));					\
-  return Make_Unsigned_Fixnum(((Test) ? 1 : 0));			\
+  return (MAKE_UNSIGNED_FIXNUM (((Test) ? 1 : 0)));			\
 }
 
 DEFINE_PRIMITIVE ("ZERO-BIGNUM?", Prim_zero_bignum, 1, 1, 0)
@@ -1088,7 +1138,7 @@ Unary_Predicate((LEN(ARG) != 0) && NEG_BIGNUM(ARG))
     result = 1;								\
   else									\
     result = 0;								\
-  return Make_Unsigned_Fixnum(result);					\
+  return (MAKE_UNSIGNED_FIXNUM (result));				\
 }
 
 DEFINE_PRIMITIVE ("EQUAL-BIGNUM?", Prim_equal_bignum, 2, 2, 0)

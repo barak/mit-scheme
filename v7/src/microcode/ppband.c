@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.34 1989/08/28 18:28:03 cph Exp $
+
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,16 +32,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.33 1989/02/14 20:41:32 jinx Rel $
- *
- * Dumps Scheme FASL in user-readable form .
- */
+/* Dumps Scheme FASL in user-readable form. */
 
 #include <stdio.h>
 #include "config.h"
 #include "types.h"
 #include "const.h"
 #include "object.h"
+#include "gccode.h"
 #include "sdata.h"
 
 #define fast register
@@ -281,21 +281,27 @@ Display(Location, Type, The_Datum)
 }
 
 Pointer *
-show_area(area, size, name)
+show_area(area, start, end, name)
      fast Pointer *area;
-     fast long size;
+     long start;
+     fast long end;
      char *name;
 {
   fast long i;
 
   printf("\n%s contents:\n\n", name);
-  for (i = 0; i < size;  area++, i++)
+  for (i = start; i < end;  area++, i++)
   {
-    if (OBJECT_TYPE(*area) == TC_MANIFEST_NM_VECTOR)
+    if ((OBJECT_TYPE(*area) == TC_MANIFEST_NM_VECTOR) ||
+	(OBJECT_TYPE(*area) == TC_MANIFEST_CLOSURE) ||
+	(OBJECT_TYPE(*area) == TC_LINKAGE_SECTION))
     {
       fast long j, count;
 
-      count = Get_Integer(*area);
+      count =
+	((OBJECT_TYPE(*area) == TC_LINKAGE_SECTION)
+	 ? (READ_CACHE_LINKAGE_COUNT (*area))
+	 : (OBJECT_DATUM (*area)));
       Display(i, OBJECT_TYPE(*area), OBJECT_DATUM(*area));
       area += 1;
       for (j = 0; j < count ; j++, area++)
@@ -376,11 +382,11 @@ main(argc, argv)
 
   if (Heap_Count > 0)
   {
-    Next = show_area(Data, Heap_Count, "Heap");
+    Next = show_area(Data, 0, Heap_Count, "Heap");
   }
   if (Const_Count > 0)
   {
-    Next = show_area(Next, Const_Count, "Constant Space");
+    Next = show_area(Next, Heap_Count, Const_Count, "Constant Space");
   }
   if ((Primitive_Table_Size > 0) && (Next < end_of_memory))
   {
@@ -401,7 +407,7 @@ main(argc, argv)
 	 count += 1)
     {
       Sign_Extend(*Next++, arity);
-      size = Get_Integer(*Next);
+      size = (OBJECT_DATUM (*Next));
       printf("Number = %3lx; Arity = %2ld; Name = ", count, arity);
       scheme_string((Next - Data), true);
       Next += (1 + size);

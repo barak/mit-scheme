@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for HP9000 series 300 (or 200)
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k300.h,v 1.4 1989/07/27 08:17:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k300.h,v 1.5 1989/08/28 18:30:12 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -37,8 +37,10 @@ MIT in each case. */
    model 310. */
 #define PROC_TYPE PROC_TYPE_68020
 
+#define C_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6
+
 #if (PROC_TYPE == PROC_TYPE_68020)
-#define M4_SWITCH_MACHINE -DMC68881
+#define M4_SWITCH_MACHINE -DMC68881 -DTYPE_CODE_LENGTH=6
 #define AS_SWITCH_MACHINE +x -V 3
 #else
 #define M4_SWITCH_MACHINE

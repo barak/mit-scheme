@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/char.c,v 9.26 1988/08/15 20:43:16 cph Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/char.c,v 9.27 1989/08/28 18:28:24 cph Exp $ */
 
 /* Character primitives. */
 
@@ -47,7 +47,7 @@ arg_ascii_char (n)
 
   CHECK_ARG (n, CHARACTER_P);
   ascii = ARG_REF(n);
-  if (pointer_datum(ascii) >= MAX_ASCII)
+  if (OBJECT_DATUM(ascii) >= MAX_ASCII)
     error_bad_range_arg (n);
   return (scheme_char_to_c_char(ascii));
 }
@@ -170,7 +170,7 @@ DEFINE_PRIMITIVE ("CHAR-ASCII?", Prim_char_ascii_p, 1, 1, 0)
   CHECK_ARG (1, CHARACTER_P);
   character = ARG_REF (1);
   PRIMITIVE_RETURN
-    ((pointer_datum(character) >= MAX_ASCII) ?
+    ((OBJECT_DATUM(character) >= MAX_ASCII) ?
      NIL :
      (MAKE_UNSIGNED_FIXNUM (scheme_char_to_c_char(character))));
 }

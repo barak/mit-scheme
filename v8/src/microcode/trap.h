@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/trap.h,v 9.40 1988/08/15 20:56:29 cph Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/trap.h,v 9.41 1989/08/28 18:29:32 cph Exp $ */
 
 /* Kinds of traps:
 
@@ -81,16 +81,9 @@ MIT in each case. */
 
 /* Common constants */
 
-#ifndef b32
-#define UNASSIGNED_OBJECT		Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_UNASSIGNED)
-#define DANGEROUS_UNASSIGNED_OBJECT	Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_UNASSIGNED_DANGEROUS)
-#define UNBOUND_OBJECT			Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_UNBOUND)
-#define DANGEROUS_UNBOUND_OBJECT	Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_UNBOUND_DANGEROUS)
-#define ILLEGAL_OBJECT			Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_ILLEGAL)
-#define DANGEROUS_ILLEGAL_OBJECT	Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_ILLEGAL_DANGEROUS)
-#define EXPENSIVE_OBJECT		Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_EXPENSIVE)
-#define DANGEROUS_EXPENSIVE_OBJECT	Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_EXPENSIVE_DANGEROUS)
-#else
+#ifdef b32				/* 32 bit objects */
+
+#if (TYPE_CODE_LENGTH == 8)
 #define UNASSIGNED_OBJECT		0x32000000
 #define DANGEROUS_UNASSIGNED_OBJECT	0x32000001
 #define UNBOUND_OBJECT			0x32000002
@@ -99,14 +92,37 @@ MIT in each case. */
 #define DANGEROUS_ILLEGAL_OBJECT	0x32000005
 #define EXPENSIVE_OBJECT		0x32000006
 #define DANGEROUS_EXPENSIVE_OBJECT	0x32000007
-#endif
+#endif /* (TYPE_CODE_LENGTH == 8) */
 
-#define NOP_OBJECT			Make_Unsigned_Fixnum(TRAP_NOP)
-#define DANGEROUS_OBJECT		Make_Unsigned_Fixnum(TRAP_DANGEROUS)
-#define REQUEST_RECACHE_OBJECT		DANGEROUS_ILLEGAL_OBJECT
-#define EXPENSIVE_ASSIGNMENT_OBJECT	EXPENSIVE_OBJECT
+#if (TYPE_CODE_LENGTH == 6)
+#define UNASSIGNED_OBJECT		0xc8000000
+#define DANGEROUS_UNASSIGNED_OBJECT	0xc8000001
+#define UNBOUND_OBJECT			0xc8000002
+#define DANGEROUS_UNBOUND_OBJECT	0xc8000003
+#define ILLEGAL_OBJECT			0xc8000004
+#define DANGEROUS_ILLEGAL_OBJECT	0xc8000005
+#define EXPENSIVE_OBJECT		0xc8000006
+#define DANGEROUS_EXPENSIVE_OBJECT	0xc8000007
+#endif /* (TYPE_CODE_LENGTH == 6) */
 
 #if (TC_REFERENCE_TRAP != 0x32)
 #include "error: trap.h and types.h are inconsistent"
 #endif
 
+#endif /* b32 */
+
+#ifndef UNASSIGNED_OBJECT		/* Safe version */
+#define UNASSIGNED_OBJECT		Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_UNASSIGNED)
+#define DANGEROUS_UNASSIGNED_OBJECT	Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_UNASSIGNED_DANGEROUS)
+#define UNBOUND_OBJECT			Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_UNBOUND)
+#define DANGEROUS_UNBOUND_OBJECT	Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_UNBOUND_DANGEROUS)
+#define ILLEGAL_OBJECT			Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_ILLEGAL)
+#define DANGEROUS_ILLEGAL_OBJECT	Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_ILLEGAL_DANGEROUS)
+#define EXPENSIVE_OBJECT		Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_EXPENSIVE)
+#define DANGEROUS_EXPENSIVE_OBJECT	Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_EXPENSIVE_DANGEROUS)
+#endif /* UNASSIGNED_OBJECT */
+
+#define NOP_OBJECT			MAKE_UNSIGNED_FIXNUM(TRAP_NOP)
+#define DANGEROUS_OBJECT		MAKE_UNSIGNED_FIXNUM(TRAP_DANGEROUS)
+#define REQUEST_RECACHE_OBJECT		DANGEROUS_ILLEGAL_OBJECT
+#define EXPENSIVE_ASSIGNMENT_OBJECT	EXPENSIVE_OBJECT

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.18 1989/05/16 18:19:32 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.19 1989/08/28 18:29:24 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -681,7 +681,7 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
       in_comment = 0;
       quoted = false;
     }
-  else if (((pointer_type (state_argument)) == TC_VECTOR) &&
+  else if (((OBJECT_TYPE (state_argument)) == TC_VECTOR) &&
 	   (Vector_Length (state_argument)) == 7)
     {
       Pointer temp;
@@ -697,8 +697,8 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
       temp = (User_Vector_Ref (state_argument, 1));
       if (temp == NIL)
 	in_string = -1;
-      else if ((FIXNUM_P (temp)) && ((pointer_datum (temp)) < MAX_ASCII))
-	in_string = (pointer_datum (temp));
+      else if ((FIXNUM_P (temp)) && ((OBJECT_DATUM (temp)) < MAX_ASCII))
+	in_string = (OBJECT_DATUM (temp));
       else
 	error_bad_range_arg (7);
 
