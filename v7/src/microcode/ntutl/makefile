@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.3 1993/07/18 21:24:52 gjr Exp $
+###	$Id: makefile,v 1.4 1993/07/21 00:42:36 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
@@ -64,8 +64,8 @@ LDFLAGS =
 cflags = $(cflags) -DMIT_SCHEME -DWINNT -DCL386 $(MACHINE_SWITCHES) -DGUI=1
 
 # NT compilation system for scheme (NOT utilities)
-sysflags = $(conflags)
-#sysflags = $(guiflags)
+#sysflags = $(conflags)
+sysflags = $(guiflags)
 syslibs = $(guilibs)
 cvobj = cvtomf
 
