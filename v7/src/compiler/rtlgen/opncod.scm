@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.54 1992/12/23 13:36:44 cph Exp $
+$Id: opncod.scm,v 4.55 1992/12/28 21:57:56 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -604,7 +604,8 @@ MIT in each case. |#
 	      (finish
 	       (rtl:make-eq-test (rtl:make-object->datum type)
 				 (rtl:make-object->type object)))
-	      finish
+	      (lambda (expression)
+		(finish (rtl:make-true-test expression)))
 	      'OBJECT-TYPE?
 	      expressions)))))
    '(0 1)
