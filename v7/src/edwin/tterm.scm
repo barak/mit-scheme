@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.26 1994/11/03 04:25:45 adams Exp $
+$Id: tterm.scm,v 1.27 1998/02/11 05:02:16 cph Exp $
 
-Copyright (c) 1990-1994 Massachusetts Institute of Technology
+Copyright (c) 1990-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -189,20 +189,27 @@ MIT in each case. |#
 	    (and (fix:< start end)
 		 terminal-state
 		 (let ((n-chars  (fix:- end start)))
-		   (let find ((key-pairs (terminal-state/key-table terminal-state))
-			      (possible-pending? #F))
+		   (let find
+		       ((key-pairs (terminal-state/key-table terminal-state))
+			(possible-pending? #F))
 		     (if (null? key-pairs)
 			 (begin
 			   (if (number? incomplete-pending)
 			       (if (or (not possible-pending?)
-				       (> (real-time-clock) incomplete-pending))
+				       (> (real-time-clock)
+					  incomplete-pending))
 				   (set! incomplete-pending #T)))
 			   (if (number? incomplete-pending)
 			       #F
 			       (begin
 				 (set! len 1)
-				 (string-ref string start))))
-
+				 ;; We must explicitly map the 8th bit
+				 ;; of an incoming character to the
+				 ;; meta bit.
+				 (let ((code (vector-8b-ref string start)))
+				   (if (fix:< code #x80)
+				       (make-char code 0)
+				       (make-char (fix:and code #x7f) 1))))))
 			 (let* ((key-seq  (caar key-pairs))
 				(n-seq    (string-length key-seq)))
 			   (cond ((and (fix:<= n-seq n-chars)
@@ -221,7 +228,8 @@ MIT in each case. |#
 					       timeout-interval)))
 				  (find (cdr key-pairs) #T))
 				 (else
-				  (find (cdr key-pairs) possible-pending?))))))))))
+				  (find (cdr key-pairs)
+					possible-pending?))))))))))
 	 (read-more?			; -> #F or #T is some chars were read
 	  (lambda (block?)
 	    (if block?
