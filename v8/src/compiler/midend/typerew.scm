@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.12 1996/07/17 21:37:45 adams Exp $
+$Id: typerew.scm,v 1.13 1996/07/19 23:32:03 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -75,6 +75,9 @@ MIT in each case. |#
 (define (typerew/type form)
   (or (form-map/get *typerew-type-map* form #F)
       (internal-error "No type associated with form" form)))
+
+(define (typerew/type/no-error form)
+  (form-map/get *typerew-type-map* form #F))
 
 (define (typerew/suggest-rewrite form rewrite)
   (form-map/put! *typerew-suggestions-map* form rewrite))
@@ -400,14 +403,17 @@ MIT in each case. |#
 	       form env
 	       (lambda (quantity type env*)
 		 type
-		 ;;(pp `(predicate-q ,quantity))
+		 ;;(pp `((predicate-q ,quantity) (pred-type ,type) (env* ,env*)))
 		 (let ((arg-quantity (quantity:operand1 quantity))
 		       (env*_t (q-env:glb/1 env* quantity type:not-false))
 		       (env*_f (q-env:glb/1 env* quantity type:false)))
-		   ;;(pp `(env*_t: ,env*_t env*_f: ,env*_f))
-		   (receiver 
-		    (q-env:glb/1 env*_t arg-quantity (car test-types))
-		    (q-env:glb/1 env*_f arg-quantity (cdr test-types))))))))
+		   ;;(pp `((arg-quantity ,arg-quantity)(env*_t: ,env*_t) (env*_f: ,env*_f)))
+		   (let ((glb-t (q-env:glb/1 env*_t arg-quantity (car test-types)))
+			 (glb-f (q-env:glb/1 env*_f arg-quantity (cdr test-types))))
+		     ;;(pp `((glb-t: ,glb-t) (glb-f: ,glb-f)))
+		     (receiver glb-t glb-f)))))))
+		    
+		    
 	((and (CALL/? form)
 	      (QUOTE/? (call/operator form))
 	      (eq? OBJECT-TYPE? (quote/text (call/operator form)))
@@ -804,12 +810,13 @@ MIT in each case. |#
 ;; Example: SUBSTRING?
 ;;  SUBSTRING? checks that the two arguments are strings and signals an
 ;;  error if they are not.  If it returns, the result is either #T or
-;;  #F, and it makes no effects (e.g. it doesnt change the strings).
-(define-typerew-type-method 'SUBSTRING? 2
-  (typerew/general-type-method 'SUBSTRING?
-			       (list type:string type:string)
-			       type:boolean
-			       effect:none))
+;;  #F, (THIS IS INACCURATE) and it makes no effects (e.g. it doesnt
+;;  change the strings).
+;;(define-typerew-type-method 'SUBSTRING? 2
+;;  (typerew/general-type-method 'SUBSTRING?
+;;			       (list type:string type:string)
+;;			       type:boolean
+;;			       effect:none))
 
 ;; 
 (define (typerew/rewrite! program)
@@ -856,18 +863,32 @@ MIT in each case. |#
 		(apply-method method (cddr rands))))
 	  (else (rewrite! rator))))
 
+  (define (check-constant form simple?)
+    (let ((type (typerew/type/no-error form)))
+      (if type
+	  (let ((cst (type:->constant? type)))
+	    (if cst
+		(form/rewrite! form
+		  (if simple?
+		      cst
+		      `(BEGIN ,(code-rewrite/remember (form/preserve form) form)
+			      ,cst))))))))
+
   (define (rewrite! form)
     (cond ((QUOTE/? form))
-	  ((LOOKUP/? form))
+	  ((LOOKUP/? form)
+	   (check-constant form #T))
 	  ((CALL/? form)
 	   (rewrite-call! form
 			  (call/operator form)
 			  (call/continuation form)
-			  (call/operands form)))
+			  (call/operands form))
+	   (check-constant form #F))
 	  ((IF/? form)
 	   (rewrite! (if/predicate form))
 	   (rewrite! (if/consequent form))
-	   (rewrite! (if/alternative form)))
+	   (rewrite! (if/alternative form))
+	   (check-constant form #F))
 	  ((BEGIN/? form)
 	   (rewrite!* (begin/exprs form)))
 	  ((LET/? form)
@@ -880,7 +901,7 @@ MIT in each case. |#
 	   (rewrite! (lambda/body form)))
 	  ((DECLARE/? form))
 	  (else (illegal form))))
-
+  
   (rewrite! program))
 
 ;; REPLACEMENT METHODS
@@ -1226,6 +1247,26 @@ MIT in each case. |#
     (lambda (form arg1)
       (search (typerew/type arg1) (typerew/type form)))))
 
+(define (define-typerew-unary-predicate-type-method operator method)
+  (define-typerew-type-method operator 1
+    (lambda (quantities types env form receiver)
+      form				; No operator replacement
+      (let ((env* (q-env:glb* env quantities types (list type:any))))
+	(typerew/send receiver
+		      (quantity:combination operator quantities)
+		      (method form (first types))
+		      env*)))))
+
+(define (define-typerew-binary-predicate-type-method operator method)
+  (define-typerew-type-method operator 2
+    (lambda (quantities types env form receiver)
+      form				; No operator replacement
+      (let ((env* (q-env:glb* env quantities types (list type:any type:any))))
+	(typerew/send receiver
+		      (quantity:combination operator quantities)
+		      (method form (first types) (second types))
+		      env*)))))
+
 (define (define-typerew-unary-variants-type-method name . spec)
   (define-typerew-type-method name 1
     (apply typerew-unary-variants-type-method name spec)))
@@ -1351,17 +1392,6 @@ MIT in each case. |#
 (define-typerew-unary-variants-replacement-method 'SYMBOL-NAME
   type:symbol    type:string    system-pair-car)
 
-(for-each
-    (lambda (name)
-      (define-typerew-unary-variants-type-method (make-primitive-procedure name)
-	type:any type:boolean
-	effect:none))
-  '(BIT-STRING? CELL? FIXNUM? FLONUM? INDEX-FIXNUM? NOT NULL?
-		PAIR? STRING? INTEGER?))
-
-(define-typerew-unary-variants-type-method %compiled-entry?
-  type:any type:boolean   effect:none)
-				 
 
 (let ((&+ (make-primitive-procedure '&+)))
 
@@ -1396,6 +1426,15 @@ MIT in each case. |#
     type:fixnum            type:fixnum            type:fixnum        fix:+
     type:flonum            type:flonum            type:flonum        flo:+))
 
+
+(define-typerew-binary-variants-type-method fix:+
+  type:any           type:any            type:fixnum
+  effect:none
+  type:unsigned-byte    type:unsigned-byte     type:small-fixnum>=0
+  type:small-fixnum>=0  type:small-fixnum>=0   type:fixnum>=0
+  type:small-fixnum-ve  type:small-fixnum-ve   type:fixnum-ve
+  type:small-fixnum>=0  type:small-fixnum-ve   type:small-fixnum
+  type:small-fixnum-ve  type:small-fixnum>=0   type:small-fixnum)
 
 (define-typerew-binary-variants-type-method (make-primitive-procedure '&-)
   type:number           type:number           type:number
@@ -1521,6 +1560,56 @@ MIT in each case. |#
   ;; MODULO is not integrated.
   )
 
+(let ((INTEGER-ADD-1     (ucode-primitive INTEGER-ADD-1))
+      (INTEGER-SUBTRACT-1 (ucode-primitive INTEGER-SUBTRACT-1))
+      (INTEGER-ADD        (ucode-primitive INTEGER-ADD))
+      (INTEGER-SUBTRACT   (ucode-primitive INTEGER-SUBTRACT))
+      (INTEGER-MULTIPLY   (ucode-primitive INTEGER-MULTIPLY))
+      (INTEGER-QUOTIENT   (ucode-primitive INTEGER-QUOTIENT))
+      (INTEGER-REMAINDER  (ucode-primitive INTEGER-REMAINDER)))
+
+  (define-typerew-unary-variants-type-method INTEGER-ADD-1
+    type:exact-integer    type:exact-integer     effect:none
+    type:unsigned-byte    type:small-fixnum>=0
+    type:small-fixnum+ve  type:fixnum+ve
+    type:small-fixnum>=0  type:fixnum+ve
+    type:small-fixnum-ve  type:small-fixnum
+    type:small-fixnum     type:fixnum
+    type:fixnum-ve        type:fixnum)
+
+  (define-typerew-unary-variants-type-method INTEGER-SUBTRACT-1
+    type:exact-integer    type:exact-integer     effect:none
+    type:small-fixnum-ve  type:fixnum-ve
+    type:small-fixnum+ve  type:small-fixnum>=0
+    type:small-fixnum     type:fixnum
+    type:fixnum+ve        type:fixnum>=0
+    type:small-fixnum>=0  type:small-fixnum
+    type:fixnum>=0        type:fixnum)
+
+  (define-typerew-binary-variants-type-method INTEGER-ADD
+    type:exact-integer    type:exact-integer     type:exact-integer
+    effect:none
+    type:unsigned-byte    type:unsigned-byte     type:small-fixnum>=0
+    type:small-fixnum>=0  type:small-fixnum>=0   type:fixnum>=0
+    type:small-fixnum-ve  type:small-fixnum-ve   type:fixnum-ve
+    type:small-fixnum>=0  type:small-fixnum-ve   type:small-fixnum
+    type:small-fixnum-ve  type:small-fixnum>=0   type:small-fixnum
+    type:small-fixnum     type:small-fixnum      type:fixnum
+    type:fixnum>=0        type:fixnum-ve         type:fixnum
+    type:fixnum-ve        type:fixnum>=0         type:fixnum
+    type:exact-integer    type:exact-integer     type:exact-integer)
+
+  (define-typerew-binary-variants-type-method INTEGER-SUBTRACT
+    type:exact-integer  type:exact-integer type:exact-integer effect:none
+    type:small-fixnum   type:small-fixnum  type:fixnum)
+
+  (define-typerew-binary-variants-type-method INTEGER-MULTIPLY
+    type:exact-integer  type:exact-integer  type:exact-integer  effect:none)
+  (define-typerew-binary-variants-type-method INTEGER-QUOTIENT
+    type:exact-integer  type:exact-integer  type:exact-integer  effect:none)
+  (define-typerew-binary-variants-type-method INTEGER-REMAINDER
+    type:exact-integer  type:exact-integer  type:exact-integer  effect:none)
+)
 #|
 (let ()
   ;; Binary MIN and MAX.  We can replace
@@ -1624,8 +1713,8 @@ MIT in each case. |#
     effect:none)
   (define-typerew-binary-variants-replacement-method  &=
     ;; Representation note: EQ? works for comparing any exact number to a
-    ;; fixnum because the generic arithetic canonocalizes values to
-    ;; fixnums if possible.
+    ;; fixnum because the generic arithmetic canonicalizes values to
+    ;; fixnums wherever possible.
     type:fixnum             type:exact-number       type:any    EQ?
     type:exact-number       type:fixnum             type:any    EQ?
     type:flonum             type:flonum             type:any    flo:=
@@ -1639,10 +1728,21 @@ MIT in each case. |#
     type:fixnum             type:exact-integer      type:any    EQ?
     type:exact-integer      type:fixnum             type:any    EQ?))    
 
-(define-typerew-unary-variants-type-method
-  (make-primitive-procedure 'INTEGER-ZERO?)
-  type:exact-integer  type:any   (make-primitive-procedure 'EQ?))
 
+;; We have no objects which could be EQ? (EQV? EQUAL?) without being the
+;; same type.
+;;
+(let ((define-equality-disjointness
+	(lambda (equality-test)
+	  (define-typerew-binary-predicate-type-method equality-test
+	    (lambda (form type1 type2)
+	      form				; unused
+	      (if (type:disjoint? type1 type2)
+		  type:false
+		  type:boolean))))))
+  (define-equality-disjointness EQ?)
+  (define-equality-disjointness 'EQV?)
+  (define-equality-disjointness 'EQUAL?))
 
 (let ((type:eqv?-is-eq?
        (type:or (type:not type:number) type:fixnum))
@@ -1663,6 +1763,22 @@ MIT in each case. |#
   (define-typerew-binary-variants-replacement-method 'EQUAL?
     type:equal?-is-eq?   type:any             type:any      EQ?
     type:any             type:equal?-is-eq?   type:any      EQ?))
+
+
+
+(define-typerew-binary-predicate-type-method %small-fixnum?
+  (let ((type:not-small-fixnum (type:not type:small-fixnum))
+	(type:not-fixnum       (type:not type:fixnum)))
+    (lambda (form argtype1 argtype2)
+      argtype2 ; ignored
+      (define (discern type1 type2)
+	(cond ((type:disjoint? argtype1 type1)  type:false)
+	      ((type:disjoint? argtype1 type2)  type:true)
+	      (else                           type:boolean)))
+      (let ((n-bits (form/exact-integer? (call/operand2 form))))
+	(cond ((= n-bits 1) (discern type:small-fixnum type:not-small-fixnum))
+	      ((= n-bits 0) (discern type:fixnum       type:not-fixnum))
+	      (else         (discern type:small-fixnum type:any)))))))
 
 (let ()
   (define (def-unary-selector name asserted-type  type-check-class
@@ -1815,7 +1931,31 @@ MIT in each case. |#
 
 
 (define (typerew/initialize-known-operators!)
-  ;; Augment our special knowledge
+
+  ;; Augment our special knowledge.
+
+  ;; (1) Predicates defined in terms of the types they distinguish:
+
+  (for-every (monotonic-strong-eq-hash-table->alist
+	      *operator-predicate-test-types*)
+    (lambda (operator.t1.t2)
+      (let ((operator (car operator.t1.t2))
+	    (types-possibly-true   (cadr operator.t1.t2))
+	    (types-possibly-false  (cddr operator.t1.t2)))
+	(if (not (monotonic-strong-eq-hash-table/get *typerew/type-methods*
+						     operator #F))
+	    (define-typerew-unary-predicate-type-method operator
+	      (lambda (form argtype)
+		form ; unused
+		(cond ((type:disjoint? argtype types-possibly-false)
+		       type:true)
+		      ((type:disjoint? argtype types-possibly-true)
+		       type:false)
+		      (else type:boolean))))
+	    (warn "Already defined:" operator)))))
+
+  ;; (2) Any operations defined in typedb.scm:
+
   (for-every (monotonic-strong-eq-hash-table->alist *operator-types*)
     (lambda (operator.procedure-type)
       (let ((operator   (car operator.procedure-type))
@@ -1830,6 +1970,7 @@ MIT in each case. |#
 		     argtypes
 		     (procedure-type/result-type proc-type)
 		     (procedure-type/effects-performed proc-type))))))))))
+		 
 
 (typerew/initialize-known-operators!)
 
