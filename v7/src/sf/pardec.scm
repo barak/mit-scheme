@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 4.2 1988/10/30 14:31:20 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 4.3 1990/06/13 22:19:38 jinx Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -238,22 +238,48 @@ MIT in each case. |#
 			(values (cons name names) (cons value vals)))))))))
       (lambda (names vals)
 	(bind/values table/cons table 'INTEGRATE true names vals)))))
+
+#|
+The following are allowed:
+
+symbol				; obvious.
+(symbol)			; obvious.
+(symbol1 symbol2)		; use symbol1 for primitive named symbol2.
+(symbol number)			; primitive symbol has arity number.
+(symbol1 symbol2 number)	; use symbol1 for primitive named symbol2
+				;   with arity number.
+
+|#
 
 (define (parse-primitive-specification block specification)
   block					;ignored
-  (let ((finish
-	 (lambda (variable-name primitive-name)
+  (let ((fail
+	 (lambda ()
+	   (error "Bad primitive specification" specification)))
+	(finish
+	 (lambda (variable-name arguments)
 	   (values variable-name
 		   (constant->integration-info
-		    (make-primitive-procedure primitive-name))))))
-    (cond ((and (pair? specification)
-		(symbol? (car specification))
-		(pair? (cdr specification))
-		(symbol? (cadr specification))
-		(null? (cddr specification)))
-	   (finish (first specification) (second specification)))
-	  ((symbol? specification) (finish specification specification))
-	  (else (error "Bad primitive specification" specification)))))
+		    (apply make-primitive-procedure arguments))))))
+    (cond ((symbol? specification)
+	   (finish specification (list specification)))
+	  ((or (not (pair? specification))
+	       (not (symbol? (car specification))))
+	   (fail))
+	  ((null? (cdr specification))
+	   (finish (car specification) specification))
+	  ((not (null? (cddr specification)))
+	   (if (and (null? (cdddr specification))
+		    (symbol? (cadr specification))
+		    (number? (caddr specification)))
+	       (finish (car specification) (cdr specification))
+	       (fail)))
+	  ((symbol? (cadr specification))
+	   (finish (car specification) (cdr specification)))
+	  ((number? (cadr specification))
+	   (finish (car specification) specification))
+	  (else
+	   (fail)))))
 
 ;;; Special declarations courtesy JRM
 ;;; I return the operations table unmodified, but bash on the
