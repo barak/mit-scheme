@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.15 1995/02/21 23:20:21 cph Exp $
+$Id: graphics.scm,v 1.16 1996/03/23 06:43:31 cph Exp $
 
-Copyright (c) 1989-95 Massachusetts Institute of Technology
+Copyright (c) 1989-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -223,8 +223,8 @@ MIT in each case. |#
 		   (and error?
 			(error "Graphics type unknown:" object)))))))))
 
-(define graphics-type-available?
-  graphics-type)
+(define (graphics-type-available? type)
+  (graphics-type type #f))
 
 (define (enumerate-graphics-types)
   (list-transform-positive graphics-types graphics-device-type/available?))
