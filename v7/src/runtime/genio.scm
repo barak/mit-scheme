@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.30 2004/02/26 19:03:58 cph Exp $
+$Id: genio.scm,v 1.31 2004/05/26 15:19:53 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004 Massachusetts Institute of Technology
@@ -102,6 +102,7 @@ USA.
 	   (LINE-ENDING ,generic-io/line-ending)
 	   (SET-CODING ,generic-io/set-coding)
 	   (SET-LINE-ENDING ,generic-io/set-line-ending)
+	   (SUPPORTS-CODING? ,generic-io/supports-coding?)
 	   (WRITE-SELF ,generic-io/write-self))))
     (set! generic-input-type
 	  (make-port-type (append input-operations
@@ -285,6 +286,10 @@ USA.
 	(else
 	 (write-string " for channel" output-port))))
 
+(define (generic-io/supports-coding? port)
+  port
+  #t)
+
 (define (generic-io/coding port)
   (gstate-coding (port/state port)))
 

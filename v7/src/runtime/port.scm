@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.32 2004/02/24 20:35:44 cph Exp $
+$Id: port.scm,v 1.33 2004/05/26 15:20:09 cph Exp $
 
 Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
@@ -682,6 +682,12 @@ USA.
   (if (fix:>= (char->integer char) #x100)
       (error:not-8-bit-char char)))
 
+(define (port/supports-coding? port)
+  (let ((operation (port/operation port 'SUPPORTS-CODING?)))
+    (if operation
+	(operation port)
+	#f)))
+
 (define (port/coding port)
   (let ((operation (port/operation port 'CODING)))
     (if operation
