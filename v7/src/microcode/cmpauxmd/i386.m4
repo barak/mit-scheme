@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-### $Id: i386.m4,v 1.54 2001/12/17 20:27:54 cph Exp $
+### $Id: i386.m4,v 1.55 2001/12/17 22:05:33 cph Exp $
 ###
 ### Copyright (c) 1992-2001 Massachusetts Institute of Technology
 ###
@@ -491,7 +491,7 @@ i386_initialize_no_fp:
 	OP(cmp,l)	TW(IMM(HEX(444d4163)),REG(ecx))
 	jne		not_amd_cpu
 
-# Problem appears to exist only on Athlon models 1, 2, 3, and 4.
+# Problem appears to exist only on Athlon models 1, 3, and 4.
 
 	OP(mov,l)	TW(IMM(HEX(01)),REG(eax))
 	cpuid
@@ -507,6 +507,8 @@ i386_initialize_no_fp:
 	OP(and,l)	TW(IMM(HEX(0000000F)),REG(eax))
 	OP(cmp,l)	TW(IMM(HEX(6)),REG(eax))	# model 6 and up OK
 	jge		done_setting_up_cpuid
+	OP(cmp,l)	TW(IMM(HEX(2)),REG(eax))	# model 2 OK
+	je		done_setting_up_cpuid
 
 	OP(mov,l)	TW(IMM(HEX(00000001)),ABS(EVR(ia32_cpuid_needed)))
 
