@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.10 1992/02/04 04:04:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.11 1992/02/12 12:06:31 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -242,14 +242,15 @@ MIT in each case. |#
 (define (with-console-interrupts-disabled thunk)
   (with-console-interrupt-state 0 thunk))
 
-(define (with-console-interrupt-state state thunk)
+(define (with-console-interrupt-state inside thunk)
   (let ((outside))
-    (unwind-protect (lambda ()
-		      (set! outside (tty-get-interrupt-enables))
-		      (tty-set-interrupt-enables state))
-		    thunk
-		    (lambda ()
-		      (tty-set-interrupt-enables outside)))))
+    (dynamic-wind (lambda ()
+		    (set! outside (tty-get-interrupt-enables))
+		    (tty-set-interrupt-enables inside))
+		  thunk
+		  (lambda ()
+		    (set! inside (tty-get-interrupt-enables))
+		    (tty-set-interrupt-enables outside)))))
 
 (define console-display-type)
 (define console-description)
@@ -285,16 +286,17 @@ MIT in each case. |#
 	     (thunk))))
        `((INTERRUPT/ABORT-TOP-LEVEL ,signal-interrupt!))))))
 
-(define (bind-console-state state receiver)
+(define (bind-console-state inside-state receiver)
   (let ((outside-state))
-    (unwind-protect (lambda ()
-		      (set! outside-state (console-state))
-		      (if state
-			  (set-console-state! state)))
-		    (lambda ()
-		      (receiver (lambda () outside-state)))
-		    (lambda ()
-		      (set-console-state! outside-state)))))
+    (dynamic-wind (lambda ()
+		    (set! outside-state (console-state))
+		    (if inside-state
+			(set-console-state! inside-state)))
+		  (lambda ()
+		    (receiver (lambda () outside-state)))
+		  (lambda ()
+		    (set! inside-state (console-state))
+		    (set-console-state! outside-state)))))
 
 (define (console-state)
   (vector (channel-state (input-port/channel console-input-port))
