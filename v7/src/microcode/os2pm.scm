@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: os2pm.scm,v 1.15 2003/02/14 18:48:12 cph Exp $
+$Id: os2pm.scm,v 1.16 2003/04/25 03:51:27 cph Exp $
 
-Copyright 1995-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1995,1997,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -49,7 +49,6 @@ USA.
 
 (declare (usual-integrations))
 
-(load-option 'HASH-TABLE)
 (load-option 'FORMAT)
 
 ;;;; Syntax

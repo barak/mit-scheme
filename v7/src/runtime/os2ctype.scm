@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: os2ctype.scm,v 1.5 2003/02/14 18:28:33 cph Exp $
+$Id: os2ctype.scm,v 1.6 2003/04/25 03:53:28 cph Exp $
 
-Copyright (c) 1995, 1999 Massachusetts Institute of Technology
+Copyright 1995,1999,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -271,7 +271,6 @@ USA.
 ;;;; OS/2 Type Specification
 
 (define (initialize-c-types!)
-  (load-option 'hash-table)
   (set! c-type-names (make-equal-hash-table))
 
   (define-c-integer-type "signed char"  #t 1)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pcsample.scm,v 1.5 2003/02/14 18:28:31 cph Exp $
+$Id: pcsample.scm,v 1.6 2003/04/25 03:52:04 cph Exp $
 
 Copyright (c) 1995, 1999 Massachusetts Institute of Technology
 
@@ -473,7 +473,6 @@ TODO:
 (define      profile-hash-table-cdr)
 
 (define (install-profile-hash-table)
-  (load-option 'hash-table)		; For code block profile tables
 
 ;;;(set! make-profile-hash-table     make-eq-hash-table);   weakly held
 ;;;(set!      profile-hash-table-car weak-car)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: win_ffi.scm,v 1.12 2003/03/29 05:54:59 cph Exp $
+$Id: win_ffi.scm,v 1.13 2003/04/25 03:54:44 cph Exp $
 
 Copyright 1993,1994,1998,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -143,8 +143,6 @@ USA.
 ;;  in other cases?  Ugh.
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(load-option 'hash-table)
 
 (define make-integer-hash-table
         (hash-table/constructor  modulo

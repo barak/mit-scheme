@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.15 2003/02/14 18:28:35 cph Exp $
+$Id: load.scm,v 1.16 2003/04/25 03:53:58 cph Exp $
 
-Copyright 2001, 2002 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -23,8 +23,7 @@ USA.
 
 |#
 
-(load-option 'HASH-TABLE)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (package/system-loader "parser" '() 'QUERY)))
-(add-subsystem-identification! "*Parser" '(0 11))
+(add-subsystem-identification! "*Parser" '(0 12))

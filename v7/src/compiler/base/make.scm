@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.121 2003/04/25 03:47:06 cph Exp $
+$Id: make.scm,v 4.122 2003/04/25 03:50:34 cph Exp $
 
 Copyright (c) 1991,1992,1993,1994,1997 Massachusetts Institute of Technology
 Copyright (c) 1998,1999,2001,2002,2003 Massachusetts Institute of Technology
@@ -36,7 +36,6 @@ USA.
    (pathname-as-directory "compiler")
    (lambda ()
      (load-option 'COMPRESS)
-     (load-option 'HASH-TABLE)
      (load-option 'RB-TREE)
      (load-package-set "compiler")))
   (add-identification! "LIAR" 4 116))
