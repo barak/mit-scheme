@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sendmail.scm,v 1.84 2004/10/29 16:31:41 cph Exp $
+$Id: sendmail.scm,v 1.85 2004/10/29 20:05:06 cph Exp $
 
 Copyright 1991,1992,1993,1994,1995,1996 Massachusetts Institute of Technology
 Copyright 1997,1998,2000,2001,2003,2004 Massachusetts Institute of Technology
@@ -1232,11 +1232,15 @@ the user from the mailer."
 (define (buffer-mime-processing-enabled? buffer)
   (not (buffer-get buffer 'MAIL-DISABLE-MIME-PROCESSING #f)))
 
-(define (add-buffer-mime-attachment! buffer
-				     type subtype parameters disposition
+(define (add-buffer-mime-attachment! buffer mime-type parameters disposition
 				     . rest)
   (let ((attachment
-	 (list->vector (cons* type subtype parameters disposition rest))))
+	 (list->vector
+	  (cons* (mime-type/top-level mime-type)
+		 (mime-type/subtype mime-type)
+		 parameters
+		 disposition
+		 rest))))
     (set-buffer-mime-attachments! buffer
 				  (append (buffer-mime-attachments buffer)
 					  (list attachment)))
