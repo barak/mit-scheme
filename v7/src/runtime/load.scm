@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.31 1991/11/26 07:06:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.32 1992/04/05 02:00:34 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,6 +52,7 @@ MIT in each case. |#
 (define load/suppress-loading-message?)
 (define load/default-types)
 (define load/after-load-hooks)
+(define load/current-pathname)
 (define load/default-find-pathname-with-type)
 (define fasload/default-types)
 
@@ -128,15 +129,17 @@ MIT in each case. |#
 		      (load/after-load-hooks '()))
 	    (let ((kernel
 		   (lambda (filename last-file?)
-		     (let ((value
-			    (load/internal
-			     (find-pathname filename load/default-types)
-			     environment
-			     syntax-table
-			     purify?
-			     load-noisily?)))
-		       (cond (last-file? value)
-			     (load-noisily? (write-line value)))))))
+		     (let ((pathname
+			    (find-pathname filename load/default-types)))
+		       (fluid-let ((load/current-pathname pathname))
+			 (let ((value
+				(load/internal pathname
+					       environment
+					       syntax-table
+					       purify?
+					       load-noisily?)))
+			   (cond (last-file? value)
+				 (load-noisily? (write-line value)))))))))
 	      (let ((value
 		     (if (pair? filename/s)
 			 (let loop ((filenames filename/s))
