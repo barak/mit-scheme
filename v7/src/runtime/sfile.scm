@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.34 2003/02/14 18:28:33 cph Exp $
+$Id: sfile.scm,v 14.35 2003/09/05 20:51:22 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1999,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -168,16 +169,16 @@ USA.
 	      result))))))
 
 (define (file-processed? filename input-type output-type)
-  (file-modification-time<?
-   (pathname-default-type filename input-type)
-   (pathname-new-type filename output-type)))
+  (file-modification-time<=? (pathname-default-type filename input-type)
+			     (pathname-new-type filename output-type)))
 
-(define (file-modification-time<? source target)
-  (let ((source (file-modification-time-indirect source)))
-    (and source
-	 (let ((target (file-modification-time-indirect target)))
-	   (and target
-		(<= source target))))))
+(define (file-modification-time<? p1 p2)
+  (< (or (file-modification-time p1) -1)
+     (or (file-modification-time p2) -1)))
+
+(define (file-modification-time<=? p1 p2)
+  (<= (or (file-modification-time p1) -1)
+      (or (file-modification-time p2) -1)))
 
 (define (call-with-temporary-filename receiver)
   (call-with-temporary-file-pathname

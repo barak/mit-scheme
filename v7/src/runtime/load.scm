@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.65 2003/02/14 18:28:33 cph Exp $
+$Id: load.scm,v 14.66 2003/09/05 20:51:14 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -242,12 +243,17 @@ USA.
 				(lambda (exp&value) exp&value #f)))))))))
 
 (define (fasload/internal pathname suppress-loading-message?)
-  (let ((value
-	 (loading-message suppress-loading-message? pathname
-	   (lambda ()
-	     ((ucode-primitive binary-fasload) (->namestring pathname))))))
-    (fasload/update-debugging-info! value pathname)
-    value))
+  (let ((namestring (->namestring pathname)))
+    (if (and (not suppress-loading-message?)
+	     (file-modification-time<? pathname
+				       (pathname-new-type pathname "scm")))
+	(warn "Source file newer than binary:" namestring))
+    (let ((value
+	   (loading-message suppress-loading-message? pathname
+	     (lambda ()
+	       ((ucode-primitive binary-fasload) namestring)))))
+      (fasload/update-debugging-info! value pathname)
+      value)))
 
 (define (load-object-file pathname environment purify? load-noisily?)
   load-noisily?		; ignored

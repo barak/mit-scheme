@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: butils.scm,v 4.13 2003/02/14 18:28:34 cph Exp $
+$Id: butils.scm,v 4.14 2003/09/05 20:51:56 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright 1988,1989,1991,1992,1993,1996 Massachusetts Institute of Technology
+Copyright 2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,7 +44,7 @@ USA.
 	    (output-type (output-type)))
 	(for-each (lambda (pathname)
 		    (if (or force?
-			    (not (file-modification-time<?
+			    (not (file-modification-time<=?
 				  (pathname-default-type pathname input-type)
 				  (let ((output-pathname
 					 (pathname-new-type pathname
@@ -95,7 +96,7 @@ USA.
 	       (lambda () (sf/pathname-defaulting filename #f #f))
 	     (lambda (input output spec)
 	       spec
-	       (cond ((not (file-modification-time<? input output))
+	       (cond ((not (file-modification-time<=? input output))
 		      (sf filename))
 		     ((and (not (default-object? echo-up-to-date?))
 			   echo-up-to-date?)

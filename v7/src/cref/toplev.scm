@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.20 2003/02/14 18:28:10 cph Exp $
+$Id: toplev.scm,v 1.21 2003/09/05 20:51:44 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright 1988,1989,1991,1993,1995,1996 Massachusetts Institute of Technology
+Copyright 1998,2000,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -76,18 +77,16 @@ USA.
 (define (write-external-descriptions pathname pmodel changes? os-type)
   (let ((package-set (package-set-pathname pathname os-type)))
     (if (or changes?
-	    (not (file-modification-time<?
-		  (pathname-default-type pathname "pkg")
-		  package-set)))
+	    (file-modification-time<? package-set
+				      (pathname-default-type pathname "pkg")))
 	(fasdump (construct-external-descriptions pmodel) package-set))))
 
 (define (write-cref pathname pmodel changes? os-type)
   (let ((cref-pathname
 	 (pathname-new-type (package-set-pathname pathname os-type) "crf")))
     (if (or changes?
-	    (not (file-modification-time<?
-		  (pathname-default-type pathname "pkg")
-		  cref-pathname)))
+	    (file-modification-time<? cref-pathname
+				      (pathname-default-type pathname "pkg")))
 	(with-output-to-file cref-pathname
 	  (lambda ()
 	    (format-packages pmodel))))))
@@ -96,9 +95,8 @@ USA.
   (let ((cref-pathname
 	 (pathname-new-type (package-set-pathname pathname os-type) "crf")))
     (if (or changes?
-	    (not (file-modification-time<?
-		  (pathname-default-type pathname "pkg")
-		  cref-pathname)))
+	    (file-modification-time<? cref-pathname
+				      (pathname-default-type pathname "pkg")))
 	(with-output-to-file cref-pathname
 	  (lambda ()
 	    (format-packages-unusual pmodel))))))
