@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/sideff.scm,v 1.2 1988/12/13 14:05:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/sideff.scm,v 1.3 1988/12/13 18:21:52 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -398,9 +398,9 @@ MIT in each case. |#
      (declare (integrate block definition-block))
      (block-ancestor-or-self? block definition-block))))
 
-(define-integrable (r/lvalue->rvalue block r/lvalue)
+(define-integrable (r/lvalue->rvalue context r/lvalue)
   (if (lvalue/variable? r/lvalue)
-      (make-reference block r/lvalue false)
+      (make-reference context r/lvalue false)
       r/lvalue))
 
 (define (combination/trivial! comb r/lvalue)
@@ -409,8 +409,9 @@ MIT in each case. |#
 	(set-virtual-continuation/type!
 	 (virtual-return-operator push)
 	 continuation-type/effect)))
-  (combination/constant! comb
-			 (r/lvalue->rvalue (combination/block comb) r/lvalue)))
+  (combination/constant!
+   comb
+   (r/lvalue->rvalue (combination/context comb) r/lvalue)))
 
 (define (procedure/trivial! procedure kind)
   (let ((place (assq 'TRIVIAL (procedure-properties procedure))))
@@ -430,13 +431,13 @@ MIT in each case. |#
 				     (procedure-properties procedure))))
   (set-procedure-entry-node!
    procedure
-   (let ((block (procedure-block procedure)))
+   (let ((context (make-reference-context (procedure-block procedure))))
      (cfg-entry-node
-      (make-return block
-		   (make-reference block
+      (make-return context
+		   (make-reference context
 				   (procedure-continuation-lvalue procedure)
 				   true)
-		   (r/lvalue->rvalue block r/lvalue))))))
+		   (r/lvalue->rvalue context r/lvalue))))))
 
 (define (procedure/simplified-value procedure block)
   (let ((node (procedure-entry-node procedure)))
