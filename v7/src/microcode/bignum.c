@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.28 1989/09/20 23:05:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.29 1990/01/12 23:36:36 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -1091,14 +1091,21 @@ bignum_divide_unsigned_normalized (u, v, q)
   while (u_scan_limit < u_scan)
     {
       uj = (*--u_scan);
-      /* comparand =
-	   (((((uj * BIGNUM_RADIX) + uj1) % v1) * BIGNUM_RADIX) + uj2);
-	 guess = (((uj * BIGNUM_RADIX) + uj1) / v1); */
-      cl = (u_scan[-2]);
-      ch = (bignum_digit_divide (uj, (u_scan[-1]), v1, (&gm)));
-      guess = gm;
-      if (guess > (BIGNUM_RADIX - 1))
-	guess = (BIGNUM_RADIX - 1);
+      if (uj != v1)
+	{
+	  /* comparand =
+	     (((((uj * BIGNUM_RADIX) + uj1) % v1) * BIGNUM_RADIX) + uj2);
+	     guess = (((uj * BIGNUM_RADIX) + uj1) / v1); */
+	  cl = (u_scan[-2]);
+	  ch = (bignum_digit_divide (uj, (u_scan[-1]), v1, (&gm)));
+	  guess = gm;
+	}
+      else
+	{
+	  cl = (u_scan[-2]);
+	  ch = ((u_scan[-1]) + v1);
+	  guess = (BIGNUM_RADIX - 1);
+	}
       while (1)
 	{
 	  /* product = (guess * v2); */
@@ -1323,11 +1330,17 @@ bignum_destructive_unnormalization (bignum, shift_right)
 #define BDD_STEP(qn, j)							\
 {									\
   uj = (u[j]);								\
-  uj_uj1 = (HD_CONS (uj, (u[j + 1])));					\
-  guess = (uj_uj1 / v1);						\
-  comparand = (HD_CONS ((uj_uj1 % v1), (u[j + 2])));			\
-  if (guess > (BIGNUM_RADIX_ROOT - 1))					\
-    guess = (BIGNUM_RADIX_ROOT - 1);					\
+  if (uj != v1)								\
+    {									\
+      uj_uj1 = (HD_CONS (uj, (u[j + 1])));				\
+      guess = (uj_uj1 / v1);						\
+      comparand = (HD_CONS ((uj_uj1 % v1), (u[j + 2])));		\
+    }									\
+  else									\
+    {									\
+      guess = (BIGNUM_RADIX_ROOT - 1);					\
+      comparand = (HD_CONS (((u[j + 1]) + v1), (u[j + 2])));		\
+    }									\
   while ((guess * v2) > comparand)					\
     {									\
       guess -= 1;							\
