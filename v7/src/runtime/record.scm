@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.32 2003/03/07 05:48:28 cph Exp $
+$Id: record.scm,v 1.33 2003/03/07 18:32:38 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 1997,2002,2003 Massachusetts Institute of Technology
@@ -284,13 +284,12 @@ USA.
 			    (if (not (null? values)) (lose))))
 		      record))))
 	      constructor)))))))
-
+
 (define (%record-constructor-given-names record-type field-names)
   (let ((indexes
 	 (map (lambda (field-name)
 		(record-type-field-index record-type field-name #t))
-	      field-names))
-	(template (%record-type-default-record record-type)))
+	      field-names)))
     (letrec
 	((constructor
 	  (lambda field-values
@@ -299,16 +298,41 @@ USA.
 		     (error:wrong-number-of-arguments constructor
 						      (length indexes)
 						      field-values))))
-	      (let ((record (%copy-record template)))
-		(let loop ((indexes indexes) (values field-values))
-		  (if (pair? indexes)
-		      (begin
-			(if (not (pair? values)) (lose))
-			(%record-set! record (car indexes) (car values))
-			(loop (cdr indexes) (cdr values)))
-		      (if (not (null? values)) (lose))))
+	      (let ((record (%copy-default-record record-type)))
+		(do ((indexes indexes (cdr indexes))
+		     (values field-values (cdr values)))
+		    ((not (pair? indexes))
+		     (if (not (null? values))
+			 (lose)))
+		  (if (not (pair? values))
+		      (lose))
+		  (%record-set! record (car indexes) (car values)))
 		record)))))
       constructor)))
+
+(define (record-keyword-constructor record-type)
+  (letrec
+      ((constructor
+	(lambda keyword-list
+	  (let* ((record (%copy-default-record record-type))
+		 (seen? (make-vector (%record-length record) #f)))
+	    (do ((kl keyword-list (cddr kl)))
+		((not (and (pair? kl)
+			   (symbol? (car kl))
+			   (pair? (cdr kl))))
+		 (if (not (null? kl))
+		     (error:wrong-type-argument keyword-list "keyword list"
+						constructor)))
+	      (let ((i (record-type-field-index record-type (car kl) #t)))
+		(if (not (vector-ref seen? i))
+		    (begin
+		      (%record-set! record i (cadr kl))
+		      (vector-set! seen? i #t)))))
+	    record))))
+    constructor))
+
+(define-integrable (%copy-default-record record-type)
+  (%copy-record (%record-type-default-record record-type)))
 
 (define (record? object)
   (and (%record? object)
