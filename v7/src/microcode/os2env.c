@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2env.c,v 1.8 1995/10/09 05:54:02 cph Exp $
+$Id: os2env.c,v 1.9 1995/10/15 00:37:52 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -39,20 +39,23 @@ MIT in each case. */
 #include <sys\types.h>
 
 #ifdef __IBMC__
-
 #include <sys\timeb.h>
-
-#else /* not __IBMC__ */
-#ifdef __GNUC__
-
-#include <errno.h>
-#include <sys/times.h>
-#ifdef __EMX__
-#include <sys/timeb.h>
+#define NC_TIMEZONE _timezone
+#define NC_DAYLIGHT _daylight
+#define NC_FTIME _ftime
 #endif
 
-#endif /* __GNUC__ */
-#endif /* not __IBMC__ */
+#if defined(__WATCOMC__) || defined(__EMX__)
+#include <sys\timeb.h>
+#define NC_TIMEZONE timezone
+#define NC_DAYLIGHT daylight
+#define NC_FTIME ftime
+#endif
+
+#ifdef __GCC2__
+#include <errno.h>
+#include <sys/times.h>
+#endif
 
 static void initialize_real_time_clock (void);
 static double get_real_time_clock (void);
@@ -116,41 +119,21 @@ OS_encode_time (struct time_structure * buffer)
   }
 }
 
-#ifdef __IBMC__
-
 long
 OS2_timezone (void)
 {
-  return (_timezone);
+#ifdef NC_TIMEZONE
+  return (NC_TIMEZONE);
+#endif
 }
 
 int
 OS2_daylight_savings_p (void)
 {
-  return (_daylight);
+#ifdef NC_DAYLIGHT
+  return (NC_DAYLIGHT);
+#endif
 }
-
-#else /* not __IBMC__ */
-#ifdef __EMX__
-
-long
-OS2_timezone (void)
-{
-  struct timeb tb;
-  ftime (&tb);
-  return (tb . timezone);
-}
-
-int
-OS2_daylight_savings_p (void)
-{
-  struct timeb tb;
-  ftime (&tb);
-  return (tb . dstflag);
-}
-
-#endif /* __EMX__ */
-#endif /* not __IBMC__ */
 
 static double initial_rtc;
 
@@ -169,17 +152,16 @@ OS_real_time_clock (void)
 static double
 get_real_time_clock (void)
 {
-#ifdef __IBMC__
+#ifdef NC_FTIME
   struct timeb rtc;
-  _ftime (&rtc);
+  NC_FTIME (&rtc);
   return ((((double) (rtc . time)) * 1000.0) + ((double) (rtc . millitm)));
-#else /* not __IBMC__ */
-#ifdef __GNUC__
+#endif
+#ifdef __GCC2__
   struct tms rtc;
   times (&rtc);
   return (((double) (rtc . tms_utime)) * (1000.0 / ((double) CLK_TCK)));
-#endif /* __GNUC__ */
-#endif /* not __IBMC__ */
+#endif
 }
 
 double

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: oscond.h,v 1.19 1995/06/29 23:49:23 cph Exp $
+$Id: oscond.h,v 1.20 1995/10/15 00:39:20 cph Exp $
 
 Copyright (c) 1990-95 Massachusetts Institute of Technology
 
@@ -169,12 +169,12 @@ MIT in each case. */
 #define _OS2
 /* Don't really know the version but this is correct for my machine.  */
 #define _OS2_VERSION 211
-#ifdef _M_I386
+#if defined(_M_I386) || defined(M_I386)
 #define _OS2386
 #ifndef i386
 #define i386
 #endif /* i386 */
-#endif /* _M_I386 */
+#endif /* _M_I386 or M_I386 */
 #endif /* __OS2__ */
 
 #if defined(_BSD) || defined(_SYSV) || defined(_PIXEL)

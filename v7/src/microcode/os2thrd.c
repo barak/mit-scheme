@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2thrd.c,v 1.4 1995/10/09 05:55:14 cph Exp $
+$Id: os2thrd.c,v 1.5 1995/10/15 00:38:48 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -36,6 +36,19 @@ MIT in each case. */
 #include "prims.h"
 #include "errors.h"
 
+#ifdef __IBMC__
+#define HAVE_BEGINTHREAD
+#endif
+
+#ifdef __WATCOMC__
+#include <process.h>
+#define HAVE_BEGINTHREAD
+#endif
+
+#ifdef __EMX__
+#define HAVE_BEGINTHREAD
+#endif
+
 extern void OS2_create_msg_queue (void);
 extern ULONG APIENTRY OS2_subthread_exception_handler
   (PEXCEPTIONREPORTRECORD, PEXCEPTIONREGISTRATIONRECORD, PCONTEXTRECORD,
@@ -50,24 +63,24 @@ OS2_beginthread (thread_procedure_t procedure,
     = ((stack_size < 0x2000)
        ? 0x2000
        : ((stack_size + 0xfff) & (~0xfff)));
-#if defined(__IBMC__) || defined(__EMX__)
+#ifdef HAVE_BEGINTHREAD
   int result = (_beginthread (procedure, 0, ss, argument));
   if (result < 0)
     OS2_error_system_call (ERROR_MAX_THRDS_REACHED, syscall_beginthread);
   return (result);
-#else /* not __IBMC__ nor __EMX__ */
+#else /* not HAVE_BEGINTHREAD */
   TID tid;
   STD_API_CALL (dos_create_thread,
 		((&tid), ((PFNTHREAD) procedure), ((ULONG) argument), 0, ss));
   return (tid);
-#endif /* not __IBMC__ nor __EMX__ */
+#endif /* not HAVE_BEGINTHREAD */
 }
 
 void
 OS2_endthread (void)
 {
   DosUnsetExceptionHandler (THREAD_EXCEPTION_HANDLER ());
-#if defined(__IBMC__) || defined(__EMX__)
+#ifdef HAVE_BEGINTHREAD
   _endthread ();
 #else
   dos_exit (EXIT_THREAD, 0);

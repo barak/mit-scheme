@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.11 1995/10/09 05:58:55 cph Exp $
+###	$Id: makefile,v 1.12 1995/10/15 00:42:29 cph Exp $
 ###
 ###	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ###
@@ -47,6 +47,9 @@ all: scheme.exe bchschem.exe bintopsb.exe psbtobin.exe
 
 # IBM C Set++/2 or IBM Visual Age C++:
 include os2utl\makefile.vac
+
+# Watcom C/C++:
+#include os2utl\makefile.wcc
 
 # EMX/GCC:
 #include os2utl\makefile.emx

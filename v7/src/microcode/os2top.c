@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2top.c,v 1.15 1995/10/09 05:55:38 cph Exp $
+$Id: os2top.c,v 1.16 1995/10/15 00:39:03 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -420,7 +420,7 @@ OS_restartable_exit (void)
 {
 }
 
-#ifdef __IBMC__
+#if defined(__IBMC__) || defined(__WATCOMC__)
 void
 bcopy (const char * from, char * to, unsigned int n)
 {

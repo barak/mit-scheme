@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: i386.h,v 1.27 1995/10/09 05:53:15 cph Exp $
+$Id: i386.h,v 1.28 1995/10/15 00:40:18 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -51,7 +51,7 @@ MIT in each case. */
 
 /* Hack for OS/2 calling-convention type: */
 
-#if defined(_OS2) && defined(__IBMC__)
+#if defined(_OS2) && (defined(__IBMC__) || defined(__WATCOMC__))
 #define ASM_ENTRY_POINT(name) (_System name)
 #else
 #define ASM_ENTRY_POINT(name) name

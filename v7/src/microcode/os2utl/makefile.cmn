@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile.cmn,v 1.1 1995/10/09 05:59:13 cph Exp $
+###	$Id: makefile.cmn,v 1.2 1995/10/15 00:42:44 cph Exp $
 ###
 ###	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ###
@@ -256,9 +256,11 @@ BCHOBJECTS = $(CORE_OBJECTS) $(BCH_GC_OBJECTS) $(OS2_OBJECTS) \
 	$(OS_PRIM_OBJECTS) bchdef.$(OBJ)
 
 clean:
-	rm -f *.$(OBJ) *.exe *.tch usrdef.c bchdef.c
+	del *.$(OBJ) *.exe *.tch cmpauxmd.$(ASM) usrdef.c bchdef.c \
+	$(SYSTEM_CLEAN)
 
 findprim.exe : findprim.$(OBJ)
+asmcvt.exe : asmcvt.$(OBJ)
 bintopsb.exe : bintopsb.$(OBJ) missing.$(OBJ)
 psbtobin.exe : psbtobin.$(OBJ) missing.$(OBJ)
 breakup.exe : breakup.$(OBJ)
@@ -271,7 +273,7 @@ usrdef.c : $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.tch \
 
 bchdef.c : $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) usrdef.tch \
 	findprim.exe
-	.\findprim.exe $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) \
+	.\findprim $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) \
 	> bchdef.c
 
 cmpauxmd.$(ASM) : cmpauxmd.m4
@@ -282,17 +284,14 @@ scheme.tch : scheme.h oscond.h ansidecl.h dstack.h obstack.h config.h \
 	bkpt.h object.h scode.h sdata.h gc.h interp.h stack.h futures.h \
 	types.h errors.h returns.h const.h fixobj.h default.h extern.h \
 	prim.h intrpt.h critsec.h outf.h
-	rm -f $@
-	touch $@
+	echo touch > $@
 
 psbmap.tch : config.h object.h bignum.h bignmint.h bitstr.h types.h \
 	sdata.h const.h psbmap.h $(GC_HEAD_FILES) comlin.h comlin.c
-	rm -f $@
-	touch $@
+	echo touch > $@
 
 usrdef.tch : usrdef.h config.h object.h prim.h
-	rm -f $@
-	touch $@
+	echo touch > $@
 
 foo $(USER_PRIM_OBJECTS) : $(HEAD_FILES)
 

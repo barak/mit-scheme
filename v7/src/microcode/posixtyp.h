@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: posixtyp.h,v 1.11 1994/11/28 04:30:16 cph Exp $
+$Id: posixtyp.h,v 1.12 1995/10/15 00:39:32 cph Exp $
 
 Copyright (c) 1990-1994 Massachusetts Institute of Technology
 
@@ -104,7 +104,7 @@ MIT in each case. */
 #endif
 
 #ifdef _OS2
-#ifdef __IBMC__
+#if defined(__IBMC__) || defined(__WATCOMC__)
 
 #include <sys/types.h>
 #include <time.h>
