@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: schmod.scm,v 1.34 1993/09/16 21:59:02 cph Exp $
+;;;	$Id: schmod.scm,v 1.35 1993/12/10 19:25:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -334,9 +334,11 @@ Grumbles if PROC is an undocumented primitive."
 	    (string-append (write-to-string proc)
 			   " has no documentation string.")))
       (let ((code (procedure-lambda proc)))
-	(lambda-components* code
-	  (lambda (name required optional rest body)
-	    name body
-	    (append required
-		    (if (null? optional) '() `(#!OPTIONAL ,@optional))
-		    (if rest `(#!REST ,rest) '())))))))
+	(if code
+	    (lambda-components* code
+	      (lambda (name required optional rest body)
+		name body
+		(append required
+			(if (null? optional) '() `(#!OPTIONAL ,@optional))
+			(if rest `(#!REST ,rest) '()))))
+	    "No debugging information available for this procedure."))))
