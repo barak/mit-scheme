@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prgdbm.c,v 1.1 1996/04/23 20:36:48 cph Exp $
+$Id: prgdbm.c,v 1.2 1997/03/31 05:33:54 cph Exp $
 
-Copyright (c) 1996 Massachusetts Institute of Technology
+Copyright (c) 1996-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -149,8 +149,8 @@ DEFUN (datum_to_object, (d), datum d)
 static void
 DEFUN (gdbm_fatal_error, (msg), char * msg)
 {
-  fprintf (stderr, "\ngdbm: %s\n", msg);
-  fflush (stderr);
+  outf_error ("\ngdbm: %s\n", msg);
+  outf_flush_error ();
   error_external_return ();
 }
 
