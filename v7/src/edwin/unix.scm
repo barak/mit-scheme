@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.29 1992/11/13 22:54:18 cph Exp $
+;;;	$Id: unix.scm,v 1.30 1992/11/18 23:35:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -442,8 +442,6 @@ filename suffix \".Z\"."
 			    (list region pathname))))
 
 ;;;; Encrypted files
-
-(load-option 'krypt)
 
 (define-variable enable-encrypted-files
   "If true, encrypted files are automatically decrypted when read,

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.37 1992/11/17 22:44:29 cph Exp $
+$Id: edwin.ldr,v 1.38 1992/11/18 23:35:19 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -77,6 +77,11 @@ MIT in each case. |#
 		  alist))
       (define string-member? (member-procedure string=?))
       (define (boolean-and a b) (and a b))
+
+      (if (eq? (lookup 'OS-TYPE) 'UNIX)
+	  (begin
+	    (load-option 'KRYPT)
+	    (load-option 'SUBPROCESS)))
 
       (let ((environment (->environment '(EDWIN))))
 	(load "utils" environment)
@@ -155,8 +160,6 @@ MIT in each case. |#
 
 	(load "fileio" environment)
 
-	(if (eq? (lookup 'os-type) 'unix)
-	    (load-option 'SUBPROCESS))
 	(load-case 'os-type '((unix . "process") (dos . "dosproc"))
 		   (->environment '(EDWIN PROCESS)))
 
