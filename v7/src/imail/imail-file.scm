@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.58 2000/08/05 02:00:10 cph Exp $
+;;; $Id: imail-file.scm,v 1.59 2000/08/18 16:55:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -321,6 +321,11 @@
 (define-class <file-message> (<message>)
   (body define accessor))
 
+(define-method file-message-body ((message <message>))
+  (with-string-output-port
+    (lambda (port)
+      (write-message-body message port))))
+
 (define-method write-message-body ((message <file-message>) port)
   (write-string (file-message-body message) port))
 
@@ -346,7 +351,6 @@
 			winner)))
 	    winner))
       (message-time headers)))
-      
 
 (define (received-header-time header)
   (let ((time
