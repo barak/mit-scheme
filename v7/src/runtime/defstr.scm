@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.4 1988/12/11 11:24:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.5 1989/02/08 22:43:50 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -98,7 +98,8 @@ must be defined when the defstruct is evaluated.
 	      ,@(settor-definitions structure)
 	      ,@(predicate-definitions structure)
 	      ,@(copier-definitions structure)
-	      ,@(print-procedure-definitions structure)))))
+	      ,@(print-procedure-definitions structure)
+	      ',(structure/name structure)))))
 
 ;;;; Parse Name-and-Options
 
