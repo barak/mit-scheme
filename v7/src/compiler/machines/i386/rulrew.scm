@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulrew.scm,v 1.2 1992/02/05 05:03:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulrew.scm,v 1.3 1992/02/13 05:51:07 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rulrew.scm,v 1.4 1991/10/25 06:50:06 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -246,8 +246,11 @@ MIT in each case. |#
     (rtl:make-flonum-2-args
      'FLONUM-SUBTRACT
      (rtl:make-object->float (rtl:make-constant 1.))
-     (rtl:make-flonum-2-args 'FLONUM-MULTIPLY operand operand)))
-   operand))
+     (rtl:make-flonum-2-args 'FLONUM-MULTIPLY operand operand false)
+     false)
+    false)
+   operand
+   false))
 
 ;; asin (x) = atan (x / (sqrt (1 - x^2)))
 
@@ -261,7 +264,9 @@ MIT in each case. |#
     (rtl:make-flonum-2-args
      'FLONUM-SUBTRACT
      (rtl:make-object->float (rtl:make-constant 1.))
-     (rtl:make-flonum-2-args 'FLONUM-MULTIPLY operand operand)))))
+     (rtl:make-flonum-2-args 'FLONUM-MULTIPLY operand operand false))
+    false)
+   false))
 
 (define (rtl:constant-flonum-test expression predicate)
   (and (rtl:object->float? expression)

@@ -1,6 +1,6 @@
->#| -*-Scheme-*-
+#| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insmac.scm,v 1.5 1992/02/13 05:42:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insmac.scm,v 1.6 1992/02/13 05:43:25 jinx Exp $
 $Vax-Header: insmac.scm,v 1.12 89/05/17 20:29:15 GMT jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology

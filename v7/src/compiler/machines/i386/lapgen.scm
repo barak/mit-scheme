@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.7 1992/02/11 14:47:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.8 1992/02/13 05:48:25 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.42 1991/05/28 19:14:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -426,7 +426,7 @@ MIT in each case. |#
 						       ,index))
 			     (loop (cdr names) (+ index 4)))))
 		 `(BEGIN ,@(loop names start)))))
-  (define-entries (* 16 4)
+  (define-entries #x40			; (* 16 4)
     scheme-to-interface			; Main entry point (only one necessary)
     scheme-to-interface/call		; Used by rules3&4, for convenience.
     trampoline-to-interface		; Used by trampolines, for convenience.
