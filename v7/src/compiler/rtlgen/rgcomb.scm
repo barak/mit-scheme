@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rgcomb.scm,v 4.18 1993/07/01 03:27:04 gjr Exp $
+$Id: rgcomb.scm,v 4.19 1993/07/08 21:56:26 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -132,9 +132,9 @@ MIT in each case. |#
     (if (zero? distance)
 	call-code
 	(let ((locative
-	       (rtl:make-offset (rtl:make-fetch (interpreter-stack-pointer))
-				(rtl:make-machine-constant
-				 (stack->memory-offset 0)))))
+	       (rtl:locative-offset
+		(rtl:make-fetch (interpreter-stack-pointer))
+		(rtl:make-machine-constant (stack->memory-offset 0)))))
 	  (scfg*scfg->scfg!
 	   (rtl:make-assignment
 	    locative
