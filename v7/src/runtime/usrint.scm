@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.5 1993/10/15 10:26:42 cph Exp $
+$Id: usrint.scm,v 1.6 1993/10/16 06:33:09 cph Exp $
 
 Copyright (c) 1991-93 Massachusetts Institute of Technology
 
@@ -98,12 +98,12 @@ MIT in each case. |#
 	  (flush-output port)
 	  (let loop ()
 	    (let ((char (read-char port)))
-	      (if (eqv? #\newline char)
-		  (loop)
+	      (if (char-graphic? char)
 		  (begin
 		    (write-char char port)
 		    (flush-output port)
-		    char)))))))))
+		    char)
+		  (loop)))))))))
 
 (define (prompt-for-confirmation prompt #!optional port)
   (let ((port (if (default-object? port) (nearest-cmdl/port) port)))
