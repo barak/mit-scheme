@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.16 1992/05/05 02:25:04 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.17 1992/05/23 01:18:30 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -879,15 +879,18 @@ DEFUN (search_for_library_file, (filename), CONST char * filename)
 }
 
 CONST char *
-DEFUN (search_path_for_file, (option, filename, default_p),
+DEFUN (search_path_for_file, (option, filename, default_p, fail_p),
        CONST char * option AND
        CONST char * filename AND
-       int default_p)
+       int default_p AND
+       int fail_p)
 {
   CONST char * result;
 
   if ((result = (search_for_library_file (filename))) != ((char *) NULL))
     return (result);
+  if (!fail_p)
+    return (filename);
   else
   {
     CONST char ** scan_path = option_library_path;
@@ -914,39 +917,40 @@ DEFUN (search_path_for_file, (option, filename, default_p),
 }
 
 static CONST char *
-DEFUN (standard_filename_option, (option, optval, variable, defval),
+DEFUN (standard_filename_option, (option, optval, variable, defval, fail_p),
        CONST char * option AND
        CONST char * optval AND
        CONST char * variable AND
-       CONST char * defval)
+       CONST char * defval AND
+       int fail_p)
 {
   if (optval != 0)
     {
-      if (FILE_READABLE (optval))
+      if (!(FILE_ABSOLUTE (optval)))
+	return (search_path_for_file (option, optval, 0, fail_p));
+      if ((FILE_READABLE (optval)) || (!fail_p))
 	return (string_copy (optval));
-      if (FILE_ABSOLUTE (optval))
+      else
 	{
 	  fprintf (stderr, "%s: can't read file %s for option %s.\n",
 		   scheme_program_name, optval, option);
 	  termination_init_error ();
 	}
-      return (search_path_for_file (option, optval, 0));
     }
   {
     CONST char * filename = (getenv (variable));
     if (filename == 0)
       filename = defval;
-    if (FILE_ABSOLUTE (filename))
-      {
-	if (! (FILE_READABLE (filename)))
-	  {
-	    fprintf (stderr, "%s: can't read default file %s for option %s.\n",
-		     scheme_program_name, filename, option);
-	    termination_init_error ();
-	  }
-	return (string_copy (filename));
-      }
-    return (search_path_for_file (option, filename, 1));
+    if (!(FILE_ABSOLUTE (filename)))
+      return (search_path_for_file (option, filename, 1, fail_p));
+    else if ((FILE_READABLE (filename)) || (!fail_p))
+      return (string_copy (filename));
+    else
+    {
+      fprintf (stderr, "%s: can't read default file %s for option %s.\n",
+	       scheme_program_name, filename, option);
+      termination_init_error ();
+    }
   }
 }
 
@@ -1120,7 +1124,8 @@ DEFUN (read_command_line_options, (argc, argv),
 	  (standard_filename_option ("-band",
 				     option_raw_band,
 				     band_variable,
-				     default_band));
+				     default_band,
+				     1));
       }
   }
   if (option_large_sizes)
@@ -1169,14 +1174,16 @@ DEFUN (read_command_line_options, (argc, argv),
 	(standard_filename_option ("-utabmd",
 				   option_raw_utabmd,
 				   UTABMD_FILE_VARIABLE,
-				   DEFAULT_UTABMD_FILE));
+				   DEFAULT_UTABMD_FILE,
+				   (option_fasl_file != 0)));
     }
   else
     option_utabmd_file =
       (standard_filename_option ("-utab",
 				 option_raw_utab,
 				 UTABMD_FILE_VARIABLE,
-				 DEFAULT_UTABMD_FILE));
+				 DEFAULT_UTABMD_FILE,
+				 (option_fasl_file != 0)));
 
   /* These are only meaningful for bchscheme. */
 
@@ -1193,14 +1200,12 @@ DEFUN (read_command_line_options, (argc, argv),
 			     GC_DIRECTORY_VARIABLE,
 			     DEFAULT_GC_DIRECTORY));
 
-  /* Can't use standard_filename because that will barf
-     if it is not found.
-   */
-
   option_gc_drone =
-    (standard_string_option (option_gc_drone,
-			     GC_DRONE_VARIABLE,
-			     DEFAULT_GC_DRONE));
+    (standard_filename_option ("-gc-drone",
+			       option_gc_drone,
+			       GC_DRONE_VARIABLE,
+			       DEFAULT_GC_DRONE,
+			       0));
 
   option_gc_end_position =
     (non_negative_numeric_option ("-gc-end-position",
