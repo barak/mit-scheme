@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: apropos.scm,v 1.1 1993/11/18 04:30:52 adams Exp $
+$Id: apropos.scm,v 1.2 1993/11/21 06:51:42 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,33 +35,37 @@ MIT in each case. |#
 ;;;; Apropos command
 ;;; package: (runtime apropos)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (declare (usual-integrations))
-
+
 (define (apropos text #!optional package/env search-parents?)
   (let* ((env
-	  (cond ((default-object? package/env)    (nearest-repl/environment))
-		((eq? package/env #t)             (nearest-repl/environment))
-		(else                             (->environment package/env))))
+	  (cond ((default-object? package/env)   (nearest-repl/environment))
+		((eq? package/env #t)            (nearest-repl/environment))
+		(else                            (->environment package/env))))
 	 (search-parents?
 	  (or (default-object? package/env)
 	      (and (not (default-object? search-parents?))
 		   search-parents?))))
-    (aproposer text env search-parents? apropos-describe-env apropos-describe)))
+    (aproposer text env search-parents?
+	       apropos-describe-env apropos-describe)))
 
 
 (define (apropos-list text #!optional package/env search-parents?)
   (let* ((env
-	  (cond ((default-object? package/env)    (nearest-repl/environment))
-		((eq? package/env #t)             (nearest-repl/environment))
-		(else                             (->environment package/env))))
+	  (cond ((default-object? package/env)   (nearest-repl/environment))
+		((eq? package/env #t)            (nearest-repl/environment))
+		(else                            (->environment package/env))))
 	 (search-parents?
 	  (or (default-object? package/env)
 	      (and (not (default-object? search-parents?))
 		   search-parents?))))
     (let ((names '()))
-      (define (add-name name env) (set! names (cons name names)))
+      (define (add-name name env)
+	env
+	(set! names (cons name names))
+	unspecific)
       (aproposer text env search-parents? (lambda (env) env) add-name)
       names)))
 
@@ -79,6 +83,7 @@ MIT in each case. |#
 
 
 (define (apropos-describe symbol env)
+  env
   (newline)
   (display symbol))
 
@@ -86,4 +91,3 @@ MIT in each case. |#
   (let ((package (environment->package env)))
     (newline)
     (display (or package env))))
-
