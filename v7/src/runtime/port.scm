@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.18 1999/02/25 18:23:06 cph Exp $
+$Id: port.scm,v 1.19 1999/02/25 18:23:55 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -396,7 +396,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	     (or (assq 'WRITE-CHAR operations)
 		 (assq 'WRITE-SUBSTRING operations))))
 	(if (not (or input? output?))
-	    (error "No standard operations specified:" operations))
+	    (error "Port type must implement one of the following operations:"
+		   '(READ-CHAR WRITE-CHAR WRITE-SUBSTRING)))
 	(install-operations! type input?
 			     input-operation-names
 			     input-operation-modifiers
