@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: wincom.scm,v 1.114 1992/11/14 01:01:25 cph Exp $
+;;;	$Id: wincom.scm,v 1.115 1994/03/07 19:01:15 cph Exp $
 ;;;
-;;;	Copyright (c) 1987, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -356,9 +356,10 @@ ARG lines.  No arg means split equally."
   (let ((window
 	 (let ((window (other-window n)))
 	   (if (current-window? window)
-	       (let ((screen (other-screen (selected-screen) false)))
-		 (and screen
-		      (screen-selected-window screen)))
+	       (and (use-multiple-screens?)
+		    (let ((screen (other-screen (selected-screen) false)))
+		      (and screen
+			   (screen-selected-window screen))))
 	       window))))
     (if (not window)
 	(editor-error "No other window"))
