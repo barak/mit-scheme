@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.16 2001/06/02 01:26:39 cph Exp $
+$Id: socket.scm,v 1.17 2001/06/05 02:46:59 cph Exp $
 
 Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
@@ -59,7 +59,7 @@ USA.
      (with-thread-timer-stopped
        (lambda ()
 	 ((ucode-primitive new-open-unix-stream-socket 2) filename p))))))
-
+
 (define (open-tcp-server-socket service #!optional host)
   (open-channel
    (lambda (p)
@@ -85,18 +85,33 @@ USA.
 
 (define (tcp-server-connection-accept server-socket block? peer-address)
   (let ((channel
-	 (with-channel-blocking server-socket block?
+	 (with-thread-events-blocked
 	   (lambda ()
-	     (open-channel
-	      (lambda (p)
-		(with-thread-timer-stopped
-		  (lambda ()
-		    ((ucode-primitive new-tcp-server-connection-accept 3)
-		     (channel-descriptor server-socket)
-		     peer-address
-		     p)))))))))
+	     (let ((do-test
+		    (lambda (k)
+		      (let ((result (test-for-input-on-channel server-socket)))
+			(case result
+			  ((INPUT-AVAILABLE)
+			   (open-channel
+			    (lambda (p)
+			      (with-thread-timer-stopped
+				(lambda ()
+				  ((ucode-primitive
+				    new-tcp-server-connection-accept
+				    3)
+				   (channel-descriptor server-socket)
+				   peer-address
+				   p))))))
+			  ((PROCESS-STATUS-CHANGE)
+			   (handle-subprocess-status-change)
+			   (if (channel-closed? server-socket) #f (k)))
+			  (else
+			   (k)))))))
+	       (if block?
+		   (let loop () (do-test loop))
+		   (do-test (lambda () #f))))))))
     (and channel
-	 (make-generic-i/o-port channel channel 64 64))))
+	 (make-generic-i/o-port channel channel 4096 4096))))
 
 (define (get-host-by-name host-name)
   (with-thread-timer-stopped
