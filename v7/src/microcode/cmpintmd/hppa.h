@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.1 1989/11/27 03:29:16 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.2 1989/11/27 16:12:48 jinx Exp $
  *
  * Compiled code interface macros.
  *
@@ -81,6 +81,85 @@ typedef unsigned short format_word;
 
 #define PC_ZERO_BITS                    2
 
+/* Utilities for manipulating absolute subroutine calls.
+   On the PA the absolute address is "smeared out" over two
+   instructions, an LDIL and a BLE instruction.
+
+   Note: The following does not do a full decoding of the BLE instruction.
+   It assumes that the overlap bits with the LDIL instruction are all
+   zeroed.  Thus only 9 bits of w2 are needed (the rest, including
+   w, w1, and the top and bottom bits of w2) are zero.
+ */
+
+/* This does the full decoding, unnecessary */
+
+#if 0
+#define EXTRACT_ABSOLUTE_ADDRESS(target, address)			\
+{									\
+  unsigned long ldil_inst, ble_inst, w, w1, w2, offset;			\
+									\
+  ldil_inst = ((long *) (address))[0];					\
+  ble_inst = ((long *) (address))[1];					\
+									\
+  w = (ble_inst & 1);							\
+  w1 = ((ble_inst >> 16) & ((1 << 6) - 1));				\
+  w2 = ((ble_inst >> 2) & ((1 << 12) - 1));				\
+									\
+  offset = ((w << 16) | (w1 << 11) |					\
+	    ((w2 & 1) << 10) | (w2 >> 1));				\
+  if (w != 0)								\
+  {									\
+    offset |= (((1 << 16) - 1) << 17);					\
+  }									\
+									\
+  ((long) (target)) =							\
+    (((long) ((ldil_inst & ((1 << 22) - 1)) << 11)) +			\
+     ((long) (offset << 2)));						\
+}
+#endif
+
+/* This does the partial decoding needed. */
+
+#define EXTRACT_ABSOLUTE_ADDRESS(target, address)			\
+{									\
+  unsigned long ldil_inst, ble_inst, offset;				\
+									\
+  ldil_inst = ((long *) (address))[0];					\
+  ble_inst = ((long *) (address))[1];					\
+									\
+  offset = ((ble_inst >> 3) & ((1 << 10) - 1));				\
+									\
+  ((long) (target)) =							\
+    (((ldil_inst & ((1 << 22) - 1)) << 11) +				\
+     (offset << 2));							\
+}
+
+#define STORE_ABSOLUTE_ADDRESS(absadd, address, nullify_p)		\
+{									\
+  unsigned long actual_address, offset;					\
+									\
+  actual_address = ((long) (real_entry_point));				\
+									\
+  /* LDIL	L'actual_address,26 */					\
+									\
+  ((unsigned long *) (entry_point))[0] =				\
+    ((0x8 << 26) | (26 << 21) | (actual_address >> 11));		\
+									\
+  offset = ((actual_address & ((1 << 12) - 1)) >> 2);			\
+									\
+  /* BLE	R'actual_address(5,26)					\
+     The following instruction is nullified if nullify_p is true.	\
+     The w and w1 fields are 0, and so are the top and bottom bits	\
+     of w2.								\
+   */									\
+									\
+  ((unsigned long *) (entry_point))[1] =				\
+    ((0x39 << 26) | (26 << 21) | (5 << 13) | ((offset << 1) << 2) |	\
+     ((nullify_p) ? 2 : 0));						\
+}
+
+/* Interrupt/GC polling. */
+
 /* Skip over this many BYTES to bypass the GC check code (ordinary
 procedures and continuations differ from closured procedures) */
 
@@ -94,8 +173,8 @@ procedures and continuations differ from closured procedures) */
 
   For a closure
 
-  DEPI		tc_closure>>1,4,5,R31
-  STWS,MB	R31,-4(0,Rstack)
+  DEPI		tc_closure>>1,4,5,31
+  STWS,MB	31,-4(0,Rstack)
   COMBT,>=,N	Rfree,Rmemtop,interrupt
 
   Where interrupt must be downstream so that the following instruction
@@ -110,16 +189,18 @@ procedures and continuations differ from closured procedures) */
 
  */
 
+/* Compiled closures */
+
 /* Manifest closure entry block size.
-   Size in `machine_word's of a compiled closure's header excluding the
+   Size in bytes of a compiled closure's header excluding the
    TC_MANIFEST_CLOSURE header.
 
    On the PA this is 2 format_words for the format word and gc
    offset words, and 12 more bytes for 3 instructions:
 
-   LDIL		L'target,R26
-   BLE		R'target(5,R26)
-   SUBI		12,R31,R31
+   LDIL		L'target,26
+   BLE		R'target(5,26)
+   SUBI		12,31,31
  */
 
 #define COMPILED_CLOSURE_ENTRY_SIZE     16
@@ -131,52 +212,11 @@ procedures and continuations differ from closured procedures) */
    from the closure.
    On the PA, the real entry point is "smeared out" over the LDIL and
    the BLE instructions.
-
-   Note: The following does not do a full decoding of the BLE instruction.
-   It assumes that the overlap bits with the LDIL instruction are all
-   zeroed.  Thus only 9 bits of w2 are needed (the rest, including
-   w, w1, and the top and bottom bits of w2) are zero.
 */
 
-#if 0
-/* This does the full decoding. */
-
 #define EXTRACT_CLOSURE_ENTRY_ADDRESS(real_entry_point, entry_point)	\
 {									\
-  unsigned long ldil_inst, ble_inst, w, w1, w2, offset;			\
-									\
-  ldil_inst = ((long *) (entry_point))[0];				\
-  ble_inst = ((long *) (entry_point))[1];				\
-									\
-  w = (ble_inst & 1);							\
-  w1 = ((ble_inst >> 16) & ((1 << 6) - 1));				\
-  w2 = ((ble_inst >> 2) & ((1 << 12) - 1));				\
-									\
-  offset = ((w << 16) | (w1 << 11) |					\
-	    ((w2 & 1) << 10) | (w2 >> 1));				\
-  if (w != 0)								\
-  {									\
-    offset |= (((1 << 16) - 1) << 17);					\
-  }									\
-									\
-  ((long) (real_entry_point)) =						\
-    (((long) ((ldil_inst & ((1 << 22) - 1)) << 11)) +			\
-     ((long) (offset << 2)));						\
-}
-#endif
-
-#define EXTRACT_CLOSURE_ENTRY_ADDRESS(real_entry_point, entry_point)	\
-{									\
-  unsigned long ldil_inst, ble_inst, offset;				\
-									\
-  ldil_inst = ((long *) (entry_point))[0];				\
-  ble_inst = ((long *) (entry_point))[1];				\
-									\
-  offset = ((ble_inst >> 3) & ((1 << 10) - 1));				\
-									\
-  ((long) (real_entry_point)) =						\
-    (((ldil_inst & ((1 << 22) - 1)) << 11) +				\
-     (offset << 2));							\
+  EXTRACT_ABSOLUTE_ADDRESS(real_entry_point, entry_point);		\
 }
 
 /* This is the inverse of EXTRACT_CLOSURE_ENTRY_ADDRESS.
@@ -186,28 +226,12 @@ procedures and continuations differ from closured procedures) */
 
 #define STORE_CLOSURE_ENTRY_ADDRESS(real_entry_point, entry_point)	\
 {									\
-  unsigned long actual_address, offset;					\
-									\
-  actual_address = ((long) (real_entry_point));				\
-									\
-  /* LDIL	L'actual_address,26 */					\
-									\
-  ((unsigned long *) (entry_point))[0] =				\
-    ((0x8 << 26) | (26 << 21) | (actual_address >> 11));		\
-									\
-  offset = ((actual_address & ((1 << 12) - 1)) >> 2);			\
-									\
-  /* BLE	R'actual_address(5,26)					\
-     The following instruction is not nullified.			\
-     The w and w1 fields are 0, and so are the top and bottom bits	\
-     of w2.								\
-   */									\
-									\
-  ((unsigned long *) (entry_point))[1] =				\
-    ((0x39 << 26) | (26 << 21) | (5 << 13) | ((offset << 1) << 2));	\
+  STORE_ABSOLUTE_ADDRESS(real_entry_point, entry_point, false);		\
 }
 
-/* On the PA, here's a picture of a trampoline (offset in bytes from
+/* Trampolines
+
+   On the PA, here's a picture of a trampoline (offset in bytes from
    entry point)
 
      -12: MANIFEST vector header
@@ -215,7 +239,7 @@ procedures and continuations differ from closured procedures) */
      - 4: Format word
      - 2: 0xFFF4 (GC Offset to start of block from .+2)
        0: BLE	0(4,3)		; call trampoline_to_interface
-       4: ADDI	index,0,28
+       4: LDI	index,28
        8: trampoline dependent storage (0 - 3 longwords)
 
    TRAMPOLINE_ENTRY_SIZE is the size in longwords of the machine
@@ -248,30 +272,32 @@ procedures and continuations differ from closured procedures) */
 ((((SCHEME_OBJECT *) tramp) - TRAMPOLINE_BLOCK_TO_ENTRY) +		\
  (2 + TRAMPOLINE_ENTRY_SIZE)) 
 
-/* *** HERE *** */
-
 #define STORE_TRAMPOLINE_ENTRY(entry_address, index)			\
 {									\
-  machine_word *PC;							\
-  /* D0 will get the index.  JSR will be used to call the assembly	\
-     language to C SCHEME_UTILITY handler:				\
-	mov.w	#index,%d0						\
-	jsr	n(a6)							\
-  */									\
-  PC = ((machine_word *) entry_address);				\
-  *PC++ = ((machine_word) 0x303C);	/* mov.w #???,%d0 */		\
-  *PC++ = ((machine_word) index); 	/* ??? */			\
-  *PC++ = ((machine_word) 0x4EAE);	/* jsr n(a6) */			\
-  *PC++ = ((machine_word) A6_OFFSET); 	/* n */				\
+  unsigned long *PC;							\
+									\
+  PC = ((unsigned long *) (entry_address));				\
+									\
+  /*	BLE	0(4,3) */						\
+									\
+  *PC++ = ((unsigned long) 0xe4608000);					\
+									\
+  /*	LDO	index(0),28 */						\
+									\
+  *PC++ = (((unsigned long) 0x341c0000) + ((unsigned long) (index)));	\
 }
 
-/* Execute cache entry size size in longwords.  The cache itself
+/* Execute cache entries.
+
+   Execute cache entry size size in longwords.  The cache itself
    contains both the number of arguments provided by the caller and
    code to jump to the destination address.  Before linkage, the cache
    contains the callee's name instead of the jump code.
+
+   On PA: 2 instructions, and a fixnum representing the number of arguments.
  */
 
-#define EXECUTE_CACHE_ENTRY_SIZE        2
+#define EXECUTE_CACHE_ENTRY_SIZE        3
 
 /* Execute cache destructuring. */
 
@@ -279,25 +305,27 @@ procedures and continuations differ from closured procedures) */
    execute cache entry, extract from the cache cell the number of
    arguments supplied by the caller and store it in target. */
 
-/* For the 68K, addresses in bytes from start of cache:
+/* For the HPPA, addresses in bytes from the start of the cache:
    Before linking
      +0: TC_SYMBOL || symbol address
-     +4: TC_FIXNUM || 0
-     +6: number of supplied arguments, + 1
+     +4: #F
+     +8: TC_FIXNUM || 0
+    +10: number of supplied arguments, +1
    After linking
-     +0: jmp $xxx
-     +2:  xxx
-     +6: (unchanged)
+     +0: LDIL	L'target,26
+     +4: BLE,n	R'target(5,26)
+     +8: (unchanged)
+    +10: (unchanged)
 */
 
 #define EXTRACT_EXECUTE_CACHE_ARITY(target, address)			\
 {									\
-  (target) = ((long) (* (((machine_word *) (address)) + 3)));		\
+  (target) = ((unsigned short *) (address))[5];				\
 }
 
 #define EXTRACT_EXECUTE_CACHE_SYMBOL(target, address)			\
 {									\
-  ((long) (target)) = (* (((long *) (address) + 0)));			\
+  ((long) (target)) = (* (((long *) (address))));			\
 }
 
 /* Extract the target address (not the code to get there) from an
@@ -306,16 +334,14 @@ procedures and continuations differ from closured procedures) */
 
 #define EXTRACT_EXECUTE_CACHE_ADDRESS(target, address)			\
 {									\
-  ((long) (target)) =							\
-    (* ((long *) (((machine_word *) (address)) + 1)));			\
+  EXTRACT_ABSOLUTE_ADDRESS(target, address);				\
 }
 
 /* This is the inverse of EXTRACT_EXECUTE_CACHE_ADDRESS. */
 
-#define STORE_EXECUTE_CACHE_ADDRESS(address, entry_address)		\
+#define STORE_EXECUTE_CACHE_ADDRESS(address, entry)			\
 {									\
-  (* ((long *) (((machine_word *) (address)) + 1))) =			\
-    ((long) entry_address);						\
+  STORE_ABSOLUTE_ADDRESS(entry, address, true);				\
 }
 
 /* This stores the fixed part of the instructions leaving the
@@ -325,22 +351,23 @@ procedures and continuations differ from closured procedures) */
    instructions may change due to GC and then STORE_EXECUTE_CACHE_CODE
    should become a no-op and all of the work is done by
    STORE_EXECUTE_CACHE_ADDRESS instead.
+   On PA this is a NOP.
  */
 
 #define STORE_EXECUTE_CACHE_CODE(address)				\
 {									\
-  (* ((machine_word *) (address))) = ((machine_word) 0x4ef9);		\
 }
 
 /* Derived parameters and macros.
+
    These macros expect the above definitions to be meaningful.
    If they are not, the macros below may have to be changed as well.
  */
 
 #define COMPILED_ENTRY_OFFSET_WORD(entry)                               \
-  (((machine_word *) (entry))[-1])
+  (((format_word *) (entry))[-1])
 #define COMPILED_ENTRY_FORMAT_WORD(entry)                               \
-  (((machine_word *) (entry))[-2])
+  (((format_word *) (entry))[-2])
 
 /* The next one assumes 2's complement integers....*/
 #define CLEAR_LOW_BIT(word)                     ((word) & ((unsigned long) -2))
@@ -402,7 +429,7 @@ procedures and continuations differ from closured procedures) */
  */
 
 #define CC_BLOCK_FIRST_ENTRY_OFFSET                                     \
-  (2 * ((sizeof(SCHEME_OBJECT)) + (sizeof(machine_word))))
+  (2 * ((sizeof(SCHEME_OBJECT)) + (sizeof(format_word))))
 
 /* Format words */
 
