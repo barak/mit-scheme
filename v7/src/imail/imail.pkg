@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.3 2000/04/12 02:25:56 cph Exp $
+;;; $Id: imail.pkg,v 1.4 2000/04/12 03:08:15 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -41,9 +41,20 @@
   (files "url")
   (parent (edwin))
   (export (edwin)
+	  url:char-set:escaped
+	  url:char-set:extra
+	  url:char-set:national
+	  url:char-set:punctuation
+	  url:char-set:reserved
+	  url:char-set:safe
+	  url:char-set:unescaped
+	  url:char-set:unreserved
 	  url:decode-string
 	  url:decode-substring
 	  url:encode-string
 	  url:encode-substring
+	  url:regexp:escape
+	  url:regexp:uchar
+	  url:regexp:xchar
 	  url:string-encoded?
 	  url:substring-encoded?))

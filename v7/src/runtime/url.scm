@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: url.scm,v 1.1 2000/04/12 02:26:05 cph Exp $
+;;; $Id: url.scm,v 1.2 2000/04/12 03:08:11 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -22,16 +22,34 @@
 
 (declare (usual-integrations))
 
-(define url:char-set:safe
-  (char-set-difference
-   char-set:graphic
-   (char-set #\space #\< #\> #\" #\# #\% #\{ #\} #\| #\\ #\^ #\~ #\[ #\] #\`)))
+(define url:char-set:safe (string->char-set "$-_.+"))
+(define url:char-set:extra (string->char-set "!*'(),"))
+(define url:char-set:national (string->char-set "{}|\^~[]`"))
+(define url:char-set:punctuation (string->char-set "<>#%\""))
+(define url:char-set:reserved (string->char-set ";/?:@&="))
 
-(define url:char-set:must-encode
-  (char-set-invert url:char-set:safe))
+(define url:char-set:unreserved
+  (char-set-union char-set:alphanumeric
+		  url:char-set:safe
+		  url:char-set:extra))
 
-(define url:encoded-char-regexp
+(define url:char-set:unescaped
+  (char-set-union url:char-set:unreserved
+		  url:char-set:reserved))
+
+(define url:char-set:escaped
+  (char-set-invert url:char-set:unescaped))
+
+(define url:regexp:escape
   "%[0-9A-Fa-f][0-9A-Fa-f]")
+
+(define url:regexp:uchar
+  (regexp-group (char-set->regexp url:char-set:unreserved)
+		url:regexp:escape))
+
+(define url:regexp:xchar
+  (regexp-group (char-set->regexp url:char-set:unescaped)
+		url:regexp:escape))
 
 (define (url:string-encoded? string)
   (url:substring-encoded? string 0 (string-length string)))
@@ -46,9 +64,8 @@
   (let ((pattern
 	 (re-compile-pattern
 	  (string-append
-	   (regexp-group
-	    (char-set->regexp-char-range url:char-set:safe)
-	    url:encoded-char-regexp)
+	   (regexp-group (char-set->regexp url:char-set:unescaped)
+			 url:regexp:escape)
 	   "*")
 	  #f)))
     (lambda (string start end)
@@ -61,7 +78,7 @@
 	 (let loop ((start start) (n-to-encode 0))
 	   (let ((index
 		  (substring-find-next-char-in-set string start end
-						   url:char-set:must-encode)))
+						   url:char-set:escaped)))
 	     (if index
 		 (loop (fix:+ index 1) (fix:+ n-to-encode 1))
 		 n-to-encode)))))
@@ -73,7 +90,7 @@
 	  (let loop ((start start) (i 0))
 	    (let ((index
 		   (substring-find-next-char-in-set string start end
-						    url:char-set:must-encode)))
+						    url:char-set:escaped)))
 	      (if index
 		  (begin
 		    (substring-move-left! string start index encoded i)
@@ -95,7 +112,7 @@
   (let ((n-encoded
 	 (let loop ((start start) (n-encoded 0))
 	   (let ((regs
-		  (re-substring-search-forward url:encoded-char-regexp
+		  (re-substring-search-forward url:regexp:escape
 					       string start end)))
 	     (if regs
 		 (loop (re-match-end-index 0 regs) (fix:+ n-encoded 1))
@@ -106,7 +123,7 @@
 	       (make-string (fix:- (fix:- end start) (fix:* 2 n-encoded)))))
 	  (let loop ((start start) (i 0))
 	    (let ((regs
-		   (re-substring-search-forward url:encoded-char-regexp
+		   (re-substring-search-forward url:regexp:escape
 						string start end)))
 	      (if regs
 		  (let ((index (re-match-start-index 0 regs)))
