@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.34 1989/02/19 17:51:20 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.35 1989/03/29 04:34:06 pas Exp $ */
 
 /* ARRAY = 
    sequence of REAL(float or double numbers) with a tag on the front */
@@ -161,23 +161,25 @@ DEFINE_PRIMITIVE ("ARRAY-CONS", Prim_array_cons, 2, 2, 0)
 
 DEFINE_PRIMITIVE ("ARRAY-CONS-REALS", Prim_array_cons_reals, 3, 3, 0)
 { long i, Length, allocated_cells;
-  REAL *a, from, dt;
+  REAL *a;
+  double from, dt;
   Pointer Result;
   int Error_Number;
   Primitive_3_Args();
-
-  Error_Number = Scheme_Number_To_REAL(Arg1, &from); /*         starting time */
+  
+  Error_Number = Scheme_Number_To_Double(Arg1, &from); /*         starting time */
   if (Error_Number == 1) Primitive_Error(ERR_ARG_1_BAD_RANGE);
   if (Error_Number == 2) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-  Error_Number = Scheme_Number_To_REAL(Arg2, &dt); /*           dt interval */
+  Error_Number = Scheme_Number_To_Double(Arg2, &dt); /*           dt interval */
   if (Error_Number == 1) Primitive_Error(ERR_ARG_2_BAD_RANGE);
   if (Error_Number == 2) Primitive_Error(ERR_ARG_2_WRONG_TYPE);
   Length = Get_Integer(Arg3);	/* number of points */
   
   Allocate_Array(Result,Length,allocated_cells);
   a = Scheme_Array_To_C_Array(Result);
-  a[0] = from; 
-  for (i=1; i<Length; i++) a[i] = a[i-1]+dt;
+  a[0] = (REAL) from; 
+  for (i=1; i<Length; i++) { from = from + dt; a[i] = (REAL) from; }
+  /* the variable <from> is used as double precision accumulator */
   return Result; 
 }
 
