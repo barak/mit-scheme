@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: mc68k.h,v 1.34 1993/02/19 17:47:36 cph Exp $
+$Id: mc68k.h,v 1.35 1993/06/24 04:08:24 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -41,22 +41,10 @@ MIT in each case. */
  * Specialized for the Motorola 68K family.
  */
 
-#ifndef CMPINT2_H_INCLUDED
-#define CMPINT2_H_INCLUDED
+#ifndef CMPINTMD_H_INCLUDED
+#define CMPINTMD_H_INCLUDED
 
-#define COMPILER_NONE_TYPE			0
-#define COMPILER_MC68020_TYPE			1
-#define COMPILER_VAX_TYPE			2
-#define COMPILER_SPECTRUM_TYPE			3
-#define COMPILER_OLD_MIPS_TYPE			4
-#define COMPILER_MC68040_TYPE			5
-#define COMPILER_SPARC_TYPE			6
-#define COMPILER_RS6000_TYPE			7
-#define COMPILER_MC88K_TYPE			8
-#define COMPILER_I386_TYPE			9
-#define COMPILER_ALPHA_TYPE			10
-#define COMPILER_MIPS_TYPE			11
-#define COMPILER_LOSING_C_TYPE			12
+#include "cmptype.h"
 
 /* Machine parameters to be set by the user. */
 
@@ -883,4 +871,4 @@ DEFUN (allocate_closure, (size), long size)
 #define COMPILED_ENTRY_MAXIMUM_ARITY    COMPILED_ENTRY_FORMAT_LOW
 #define COMPILED_ENTRY_MINIMUM_ARITY    COMPILED_ENTRY_FORMAT_HIGH
 
-#endif /* CMPINT2_H_INCLUDED */
+#endif /* CMPINTMD_H_INCLUDED */

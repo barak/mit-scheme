@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppa.h,v 1.40 1993/06/12 22:31:31 gjr Exp $
+$Id: hppa.h,v 1.41 1993/06/24 04:03:22 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -41,22 +41,10 @@ MIT in each case. */
  * Specialized for the HP Precision Architecture (Spectrum)
  */
 
-#ifndef CMPINT2_H_INCLUDED
-#define CMPINT2_H_INCLUDED
+#ifndef CMPINTMD_H_INCLUDED
+#define CMPINTMD_H_INCLUDED
 
-#define COMPILER_NONE_TYPE			0
-#define COMPILER_MC68020_TYPE			1
-#define COMPILER_VAX_TYPE			2
-#define COMPILER_SPECTRUM_TYPE			3
-#define COMPILER_OLD_MIPS_TYPE			4
-#define COMPILER_MC68040_TYPE			5
-#define COMPILER_SPARC_TYPE			6
-#define COMPILER_RS6000_TYPE			7
-#define COMPILER_MC88K_TYPE			8
-#define COMPILER_I386_TYPE			9
-#define COMPILER_ALPHA_TYPE			10
-#define COMPILER_MIPS_TYPE			11
-#define COMPILER_LOSING_C_TYPE			12
+#include "cmptype.h"
 
 /* Machine parameters to be set by the user. */
 
@@ -275,7 +263,7 @@ DEFUN (hppa_store_absolute_address, (addr, sourcev, nullify_p),
    Uses routines from cmpaux-hppa.m4.
  */
 
-#include "hppacache.h"
+#include "hppacach.h"
 #include "option.h"
 
 static struct pdc_cache_dump cache_info;
@@ -349,7 +337,7 @@ DEFUN (push_d_cache_region, (start_address, block_size),
 }
 
 #ifndef MODELS_FILENAME
-#define MODELS_FILENAME "HPPAmodels"
+#define MODELS_FILENAME "hppacach.mod"
 #endif
 
 static void
@@ -967,4 +955,4 @@ DEFUN (hppa_reset_hook, (table_length, utility_table),
 #define COMPILED_ENTRY_MAXIMUM_ARITY    COMPILED_ENTRY_FORMAT_LOW
 #define COMPILED_ENTRY_MINIMUM_ARITY    COMPILED_ENTRY_FORMAT_HIGH
 
-#endif /* CMPINT2_H_INCLUDED */
+#endif /* CMPINTMD_H_INCLUDED */

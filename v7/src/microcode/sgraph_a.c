@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.14 1991/08/27 08:23:53 jinx Exp $
+$Id: sgraph_a.c,v 1.15 1993/06/24 03:42:46 gjr Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,7 +34,7 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
-#include "Sgraph.h"
+#include "sgraph.h"
 #include "array.h"
 #include "x11.h"
 

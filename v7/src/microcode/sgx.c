@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgx.c,v 1.7 1989/09/20 23:04:51 cph Rel $
+$Id: sgx.c,v 1.8 1993/06/24 03:39:57 gjr Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,7 +38,7 @@ MIT in each case. */
 #include <X/Xhp.h>
 #include "scheme.h"
 #include "prims.h"
-#include "Sgraph.h"
+#include "sgraph.h"
 
 static Display * display = NULL;
 static Window window = 0;

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: mips.h,v 1.17 1992/11/18 05:02:32 gjr Exp $
+$Id: mips.h,v 1.18 1993/06/24 04:09:34 gjr Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,9 +41,11 @@ MIT in each case. */
  * Specialized for the MIPS R2000/R3000
  */
 
-#ifndef CMPINT2_H_INCLUDED
-#define CMPINT2_H_INCLUDED
+#ifndef CMPINTMD_H_INCLUDED
+#define CMPINTMD_H_INCLUDED
 
+#include "cmptype.h"
+
 #ifdef _IRIX4
 
 #include <sys/cachectl.h>
@@ -91,20 +93,6 @@ extern void syscall();
 
 #endif /* not sonyrisc */
 #endif /* not _IRIX4 */
-
-#define COMPILER_NONE_TYPE			0
-#define COMPILER_MC68020_TYPE			1
-#define COMPILER_VAX_TYPE			2
-#define COMPILER_SPECTRUM_TYPE			3
-#define COMPILER_OLD_MIPS_TYPE			4
-#define COMPILER_MC68040_TYPE			5
-#define COMPILER_SPARC_TYPE			6
-#define COMPILER_RS6000_TYPE			7
-#define COMPILER_MC88K_TYPE			8
-#define COMPILER_I386_TYPE			9
-#define COMPILER_ALPHA_TYPE			10
-#define COMPILER_MIPS_TYPE			11
-#define COMPILER_LOSING_C_TYPE			12
 
 /* Machine parameters to be set by the user. */
 
@@ -742,4 +730,4 @@ DEFUN (allocate_closure, (size), long size)
 #define COMPILED_ENTRY_MAXIMUM_ARITY    COMPILED_ENTRY_FORMAT_LOW
 #define COMPILED_ENTRY_MINIMUM_ARITY    COMPILED_ENTRY_FORMAT_HIGH
 
-#endif /* CMPINT2_H_INCLUDED */
+#endif /* CMPINTMD_H_INCLUDED */

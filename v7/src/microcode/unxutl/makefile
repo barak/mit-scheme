@@ -1,90 +1,94 @@
 #
 # Makefile for MIT CScheme microcode.
 #
-# $Id: makefile,v 1.25 1993/06/15 19:07:53 gjr Exp $
+# $Id: makefile,v 1.26 1993/06/24 03:37:59 gjr Exp $
 #
 CPP = cc -E
 MAKE = make  # BSD doesn't have it as a default.
 
-all: xmakefile
-	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} all
+all: xmkfile
+	$(MAKE) $(MAKEOVERRIDES) -f xmkfile ${MFLAGS} all
 .PHONY: all
 
-scheme: xmakefile
-	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} scheme
+scheme: xmkfile
+	$(MAKE) $(MAKEOVERRIDES) -f xmkfile ${MFLAGS} scheme
 .PHONY: scheme
 
-xscheme: xmakefile
-	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} xscheme
+xscheme: xmkfile
+	$(MAKE) $(MAKEOVERRIDES) -f xmkfile ${MFLAGS} xscheme
 .PHONY: xscheme
 
-bchscheme: xmakefile
-	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} bchscheme
+bchscheme: xmkfile
+	$(MAKE) $(MAKEOVERRIDES) -f xmkfile ${MFLAGS} bchscheme
 .PHONY: bchscheme
 
-bchdrn: xmakefile
-	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} bchdrn
+bchdrn: xmkfile
+	$(MAKE) $(MAKEOVERRIDES) -f xmkfile ${MFLAGS} bchdrn
 .PHONY: bchdrn
 
-Psbtobin: xmakefile
-	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} Psbtobin
-.PHONY: Psbtobin
+psbtobin: xmkfile
+	$(MAKE) $(MAKEOVERRIDES) -f xmkfile ${MFLAGS} psbtobin
+.PHONY: psbtobin
 
-Bintopsb: xmakefile
-	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} Bintopsb
-.PHONY: Bintopsb
+bintopsb: xmkfile
+	$(MAKE) $(MAKEOVERRIDES) -f xmkfile ${MFLAGS} bintopsb
+.PHONY: bintopsb
 
-Ppband: xmakefile
-	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} Ppband
-.PHONY: Ppband
+ppband: xmkfile
+	$(MAKE) $(MAKEOVERRIDES) -f xmkfile ${MFLAGS} ppband
+.PHONY: ppband
 
-hppacache: xmakefile
-	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} hppacache
-.PHONY: hppacache
+hppacach: xmkfile
+	$(MAKE) $(MAKEOVERRIDES) -f xmkfile ${MFLAGS} hppacach
+.PHONY: hppacach
 
-install: xmakefile
-	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} install
+install: xmkfile
+	$(MAKE) $(MAKEOVERRIDES) -f xmkfile ${MFLAGS} install
 .PHONY: install
 
-world: xmakefile
-	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} world
+world: xmkfile
+	$(MAKE) $(MAKEOVERRIDES) -f xmkfile ${MFLAGS} world
 .PHONY: world
 
-install.world: xmakefile
-	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} install.world
+install.world: xmkfile
+	$(MAKE) $(MAKEOVERRIDES) -f xmkfile ${MFLAGS} install.world
 .PHONY: install.world
 
-everything: xmakefile
-	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} everything
+everything: xmkfile
+	$(MAKE) $(MAKEOVERRIDES) -f xmkfile ${MFLAGS} everything
 .PHONY: everything
 
 # If you have a problem with cc -E here, changing
 # the definition of CPP above may fix it.
-xmakefile: ymakefile ymake.script ymake.local ymake.cclist cf.h s.h m.h
-	rm -f xmakefile junk.c
-	cp ymakefile junk.c
-	$(CPP) junk.c | sed -n -f ymake.script > xmakefile
+xmkfile: ymkfile ymake.sed ymake.lcl ymake.ccl cf.h s.h m.h
+	rm -f xmkfile junk.c
+	cp ymkfile junk.c
+	$(CPP) junk.c | sed -n -f ymake.sed > xmkfile
 	rm -f junk.c
 
-ymake.local:
-	touch ymake.local
+ymake.lcl:
+	touch ymake.lcl
 
-ymake.cclist:
-	echo "COMPILED_SOURCES =" > ymake.cclist
+ymake.ccl:
+	echo "COMPILED_SOURCES =" > ymake.ccl
 
 clean remove:
 # the - at the beginning of the following line is what causes make to continue 
 # even if the clean.world target doesn't exist
-	- $(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} clean.world
-	rm -f *.o *.s *.touch xmakefile
+	- $(MAKE) $(MAKEOVERRIDES) -f xmkfile ${MFLAGS} clean.world
+	rm -f *.o *.s *.touch xmkfile
 	rm -f scheme xscheme bchscheme bchdrn
-	rm -f Findprim Bintopsb Psbtobin Breakup Wsize Ppband
-	rm -f hard-params limits.h float.h
+	rm -f findprim bintopsb psbtobin breakup wsize ppband
+	rm -f hard-par limits.h float.h
 	rm -f usrdef.c bchdef.c compinit.h
 	rm -f lint.out
 
 unconfig:
-	rm -f m.h s.h cmpint2.h config.status
+	rm -f m.h s.h cmpintmd.h cmpauxmd.* config.out
+	rm -f ymkfile ymake.sed makefile
+	- rm -f cf-save.h ymake-save.lcl
+	- mv -f cf.h cf-save.h
+	- mv -f ymake.lcl ymake-save.lcl
 
 tags:
 	etags *.[ch] ../runtime/*.scm
@@ -94,7 +98,9 @@ locked:
 	rlog -L -R m/RCS/*,v
 	rlog -L -R s/RCS/*,v
 	rlog -L -R dosutl/RCS/*,v
+	rlog -L -R ntutl/RCS/*,v
+	rlog -L -R unxutl/RCS/*,v
 
-getpagesize.h : pagesize.h
-	rm -f getpagesize.h
-	cp pagesize.h getpagesize.h
+getpgsz.h : pagesize.h
+	rm -f getpgsz.h
+	cp pagesize.h getpgsz.h

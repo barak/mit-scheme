@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.75 1992/06/03 21:55:24 jinx Exp $
+$Id: bchmmg.c,v 9.76 1993/06/24 03:49:40 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,12 +42,20 @@ MIT in each case. */
 #ifdef DOS386
 #  include "msdos.h"
 #  define SUB_DIRECTORY_DELIMITER '\\'
-extern char * EXFUN (mktemp, (char *));
-#else
+   extern char * EXFUN (mktemp, (char *));
+#endif
+
+#ifdef WINNT
+#  include "nt.h"
+#  define SUB_DIRECTORY_DELIMITER '\\'
+   extern char * EXFUN (mktemp, (char *));
+#endif
+
+#ifndef SUB_DIRECTORY_DELIMITER
 #  include "ux.h"
 #  define SUB_DIRECTORY_DELIMITER '/'
 #  define UNLINK_BEFORE_CLOSE
-extern int EXFUN (unlink, (CONST char *));
+   extern int EXFUN (unlink, (CONST char *));
 #endif
 
 #include "bchgcc.h"
@@ -241,7 +249,11 @@ DEFUN (io_error_retry_p, (operation_name, noise),
 	/*NOTREACHED*/
 
       case 'S':
+#ifdef WINNT
+        Sleep (1000);
+#else
 	sleep (60);
+#endif
 	/* fall through */
 
       case 'R':
@@ -258,14 +270,14 @@ DEFUN (verify_write, (position, size, success),
   if ((position >= gc_file_start_position)
       && ((position + size) <= gc_file_end_position))
     return (0);
-  fprintf (stderr,
+  outf_error (
 	   "\n%s (verify_write): attempting to write outside allowed area.\n",
 	   scheme_program_name);
-  fprintf (stderr, "\tlow position = 0x%lx; high position = 0x%lx.\n",
-	   gc_file_start_position, gc_file_end_position);
-  fprintf (stderr, "\twrite position = 0x%lx; size = 0x%lx = %d bytes.\n",
-	   position, size, size);
-  fflush (stderr);
+  outf_error("\tlow position = 0x%lx; high position = 0x%lx.\n",
+	     gc_file_start_position, gc_file_end_position);
+  outf_error("\twrite position = 0x%lx; size = 0x%lx = %d bytes.\n",
+	     position, size, size);
+  outf_flush_error();
   if (success == ((Boolean *) NULL))
   {
     Microcode_Termination (TERM_EXIT);
@@ -1888,6 +1900,12 @@ DEFUN (open_gc_file, (size, unlink_p),
   }
   else
   {
+#ifdef WINNT
+    /* SRA: for NT, for the time being, we just assume that it will be a
+       normal file */
+    exists_p = true;
+    can_dump_directly_p = true;
+#else
     /* If it is S_IFCHR, it should determine the IO block
        size and make sure that it will work.
        I don't know how to do that.
@@ -1916,6 +1934,7 @@ DEFUN (open_gc_file, (size, unlink_p),
     }
     else
       can_dump_directly_p = true;
+#endif
   }
 
   gc_file = (open (gc_file_name, flags, GC_FILE_MASK));

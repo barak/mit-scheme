@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchutl.c,v 1.2 1992/02/29 19:39:41 mhwu Exp $
+$Id: bchutl.c,v 1.3 1993/06/24 03:53:29 gjr Exp $
 
-Copyright (c) 1991 Massachusetts Institute of Technology
+Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,7 +38,9 @@ MIT in each case. */
 #endif
 
 #ifndef DOS386
+#ifndef WINNT
 #include <unistd.h>
+#endif
 #endif
 
 #include "ansidecl.h"
@@ -49,6 +51,21 @@ extern int EXFUN (retrying_file_operation,
 		   int, char *, long, long, char *, char *, long *,
 		   int (*)(char *, char *)));
 
+#ifdef WINNT
+
+#define lseek _lseek
+
+char *
+DEFUN (error_name, (code), int code)
+{
+  static char buf[512];
+
+  sprintf (&buf[0], "%d, unknown error", code);
+  return (&buf[0]);
+}
+
+#else /* not WINNT */
+
 char *
 DEFUN (error_name, (code), int code)
 {
@@ -62,6 +79,8 @@ DEFUN (error_name, (code), int code)
     sprintf (&buf[0], "%d, unknown error", code);
   return (&buf[0]);
 }
+
+#endif /* WINNT */
 
 #ifndef SEEK_SET
 #define SEEK_SET 0

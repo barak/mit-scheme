@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.51 1992/07/23 12:33:30 jinx Exp $
+$Id: bchgcc.h,v 9.52 1993/06/24 03:48:45 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,10 +47,14 @@ MIT in each case. */
 #  endif
 #endif
 
-#ifndef DOS386
-#  include <sys/param.h>
-#else
+#ifdef DOS386
 #  define IO_PAGE_SIZE		4096
+#endif
+#ifdef WINNT
+#  define IO_PAGE_SIZE		4096
+#endif
+#ifndef IO_PAGE_SIZE
+#    include <sys/param.h>
 #endif
 
 #ifndef BCH_START_CLOSURE_RELOCATION

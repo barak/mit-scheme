@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgx11.c,v 1.2 1989/09/20 23:04:57 cph Rel $
+$Id: sgx11.c,v 1.3 1993/06/24 03:41:23 gjr Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,7 +37,7 @@ MIT in each case. */
 #include <X11/Xlib.h>
 #include "scheme.h"
 #include "prims.h"
-#include "Sgraph.h"
+#include "sgraph.h"
 
 static int
 x_io_error_handler (display)

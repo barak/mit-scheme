@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/cf-dist.h,v 1.14 1992/06/10 21:47:27 jinx Exp $
+$Id: cf-dist.h,v 1.15 1993/06/24 03:57:26 gjr Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,6 +45,7 @@ MIT in each case. */
 #define PROC_TYPE_I386		10
 #define PROC_TYPE_ALPHA		11
 #define PROC_TYPE_POWER		12	/* IBM RS6000 and PowerPC */
+#define PROC_TYPE_LIARC		13	/* Scheme compiled to C */
 
 /* Define this macro to use a non-standard compiler.
    It must be defined before including the m/ and s/ files because

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: i386.h,v 1.20 1992/11/18 05:01:56 gjr Exp $
+$Id: i386.h,v 1.21 1993/06/24 04:07:07 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,22 +41,10 @@ MIT in each case. */
  * Specialized for the Intel 386 (and successors) architecture.
  */
 
-#ifndef CMPINT2_H_INCLUDED
-#define CMPINT2_H_INCLUDED
+#ifndef CMPINTMD_H_INCLUDED
+#define CMPINTMD_H_INCLUDED
 
-#define COMPILER_NONE_TYPE			0
-#define COMPILER_MC68020_TYPE			1
-#define COMPILER_VAX_TYPE			2
-#define COMPILER_SPECTRUM_TYPE			3
-#define COMPILER_OLD_MIPS_TYPE			4
-#define COMPILER_MC68040_TYPE			5
-#define COMPILER_SPARC_TYPE			6
-#define COMPILER_RS6000_TYPE			7
-#define COMPILER_MC88K_TYPE			8
-#define COMPILER_I386_TYPE			9
-#define COMPILER_ALPHA_TYPE			10
-#define COMPILER_MIPS_TYPE			11
-#define COMPILER_LOSING_C_TYPE			12
+#include "cmptype.h"
 
 /* Until cmpaux-i386.m4 is updated. */
 #define CMPINT_USE_STRUCS
@@ -524,8 +512,7 @@ DEFUN_VOID (i386_reset_hook)
 
   if (offset != ESI_TRAMPOLINE_TO_INTERFACE_OFFSET)
   {
-    fprintf (stderr,
-	     "\ni386_reset_hook: ESI_TRAMPOLINE_TO_INTERFACE_OFFSET\n");
+    outf_fatal ("\ni386_reset_hook: ESI_TRAMPOLINE_TO_INTERFACE_OFFSET\n");
     Microcode_Termination (TERM_EXIT);
   }
   SETUP_REGISTER (asm_trampoline_to_interface);		/* 2 */
@@ -617,7 +604,7 @@ DEFUN_VOID (i386_reset_hook)
 		    &inheritance, &shared, &object, &offset))
 	!= KERN_SUCCESS)
     {
-      fprintf (stderr, "compiler_reset: vm_region() failed.\n");
+      outf_fatal ( "compiler_reset: vm_region() failed.\n");
       Microcode_Termination (TERM_EXIT);
       /*NOTREACHED*/
     }
@@ -625,9 +612,9 @@ DEFUN_VOID (i386_reset_hook)
     {
       if ((max_prot & VM_PROT_SCHEME) != VM_PROT_SCHEME)
       {
-	fprintf (stderr,
+	outf_fatal (
 		 "compiler_reset: inadequate protection for Heap.\n");
-	fprintf (stderr, "maximum = 0x%lx; desired = 0x%lx\n",
+	outf_fatal ( "maximum = 0x%lx; desired = 0x%lx\n",
 		 ((unsigned long) (max_prot & VM_PROT_SCHEME)),
 		 ((unsigned long) VM_PROT_SCHEME));
 	Microcode_Termination (TERM_EXIT);
@@ -638,9 +625,9 @@ DEFUN_VOID (i386_reset_hook)
 		       0, VM_PROT_SCHEME))
 	  != KERN_SUCCESS)
       {
-	fprintf (stderr,
+	outf_fatal (
 		 "compiler_reset: unable to change protection for Heap.\n");
-	fprintf (stderr, "actual = 0x%lx; desired = 0x%lx\n",
+	outf_fatal ( "actual = 0x%lx; desired = 0x%lx\n",
 		 ((unsigned long) (prot & VM_PROT_SCHEME)),
 		 ((unsigned long) VM_PROT_SCHEME));
 	Microcode_Termination (TERM_EXIT);
@@ -769,4 +756,4 @@ DEFUN_VOID (i386_reset_hook)
 #define COMPILED_ENTRY_MAXIMUM_ARITY    COMPILED_ENTRY_FORMAT_LOW
 #define COMPILED_ENTRY_MINIMUM_ARITY    COMPILED_ENTRY_FORMAT_HIGH
 
-#endif /* CMPINT2_H_INCLUDED */
+#endif /* CMPINTMD_H_INCLUDED */

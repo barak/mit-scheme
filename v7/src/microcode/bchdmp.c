@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchdmp.c,v 9.69 1993/02/18 05:14:43 gjr Exp $
+$Id: bchdmp.c,v 9.70 1993/06/24 03:47:00 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -58,7 +58,27 @@ DEFUN (mktemp, (fname), unsigned char * fname)
 
 #  define FASDUMP_FILENAME "\\tmp\\fasdump.bin"
 
-#else /* not DOS386 */
+#endif /* DOS386 */
+
+#ifdef WINNT
+#  include "nt.h"
+#  include "ntio.h"
+
+char *
+DEFUN (mktemp, (fname), unsigned char * fname)
+{
+  /* Should call tmpname */
+
+  return;
+}
+
+#  define FASDUMP_FILENAME "\\tmp\\fasdump.bin"
+
+#endif /* WINNT */
+
+#ifndef FASDUMP_FILENAME
+
+/* Assume Unix */
 
 #  include "ux.h"
 #  include "uxio.h"
@@ -66,8 +86,8 @@ extern int EXFUN (unlink, (CONST char *));
 
 #  define FASDUMP_FILENAME "/tmp/fasdumpXXXXXX"
 
-#endif /* DOS386 */
-
+#endif /* FASDUMP_FILENAME */
+
 #include "bchgcc.h"
 
 static Tchannel dump_channel;

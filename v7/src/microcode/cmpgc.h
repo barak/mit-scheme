@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: cmpgc.h,v 1.23 1993/03/23 22:34:54 cph Exp $
+$Id: cmpgc.h,v 1.24 1993/06/24 03:58:48 gjr Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -57,7 +57,7 @@ See cmpint.txt, cmpint.c, cmpint-md.h, and cmpaux-md.m4 for more details.
 
 #ifdef HAS_COMPILER_SUPPORT
 
-#include "cmpint2.h"
+#include "cmpintmd.h"
 
 /*
   The following is a kludge which is used to get return_to_interpreter

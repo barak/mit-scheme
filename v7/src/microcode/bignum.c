@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bignum.c,v 9.39 1993/02/10 23:13:36 adams Exp $
+$Id: bignum.c,v 9.40 1993/06/24 03:55:00 gjr Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,12 +41,7 @@ MIT in each case. */
 #include "bignum.h"
 #endif
 
-#ifdef WINNT
-#include "bignumin.h"  /* SRA: renamed for 8 char name length*/
-#else
-#include "bignumint.h"
-#endif
-
+#include "bignmint.h"
 #include "limits.h"
 
 #ifndef MIT_SCHEME

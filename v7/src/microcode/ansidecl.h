@@ -67,6 +67,10 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 /* Some systems don't declare their libraries correctly, making CONST
    impossible to have. */
+#ifdef CONST
+#undef CONST
+#endif
+
 #ifdef NO_CONST
 #define CONST
 #else

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.78 1993/06/09 20:28:14 jawilson Exp $
+$Id: boot.c,v 9.79 1993/06/24 03:55:53 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -42,6 +42,7 @@ MIT in each case. */
 #include <ctype.h>
 #endif
 #include "ostop.h"
+#include "ostty.h"
 
 extern PTR EXFUN (malloc, (unsigned int size));
 extern void EXFUN (free, (PTR ptr));
@@ -71,9 +72,8 @@ DEFUN (obstack_chunk_alloc, (size), unsigned int size)
   PTR result = (malloc (size));
   if (result == 0)
     {
-      fprintf (stderr, "\n%s: unable to allocate obstack chunk of %d bytes\n",
+      outf_fatal ("\n%s: unable to allocate obstack chunk of %d bytes\n",
 	       scheme_program_name, size);
-      fflush (stderr);
       Microcode_Termination (TERM_EXIT);
     }
   return (result);
@@ -93,8 +93,7 @@ DECLARE_CRITICAL_SECTION ();
 static void
 DEFUN (usage, (error_string), CONST char * error_string)
 {
-  fprintf (stderr, "%s: %s\n\n", scheme_program_name, error_string);
-  fflush (stderr);
+  outf_fatal ("%s: %s\n\n", scheme_program_name, error_string);
   termination_init_error ();
 }
 
@@ -104,10 +103,12 @@ DEFUN (usage, (error_string), CONST char * error_string)
 #define main_type void
 #endif
 
-#define FILE_READABLE(filename) ((access ((filename), 4)) >= 0)
+#ifndef main_name
+#define main_name main
+#endif
 
 main_type
-DEFUN (main, (argc, argv),
+DEFUN (main_name, (argc, argv),
        int argc AND CONST char ** argv)
 {
   init_exit_scheme ();
@@ -117,6 +118,7 @@ DEFUN (main, (argc, argv),
   reload_saved_string = 0;
   reload_saved_string_length = 0;
   read_command_line_options (argc, argv);
+
   if (scheme_dumped_p)
     {
       extern SCHEME_OBJECT compiler_utilities;
@@ -126,15 +128,16 @@ DEFUN (main, (argc, argv),
 	     && (Stack_Size == option_stack_size)
 	     && (Constant_Size == option_constant_size)))
 	{
-	  fprintf (stderr, "%s: warning: ignoring allocation parameters.\n",
-		   scheme_program_name);
-	  fflush (stderr);
+	  outf_error ("%s: warning: ignoring allocation parameters.\n",
+		      scheme_program_name);
+	  outf_flush_error ();
 	}
       OS_reset ();
       compiler_reset (compiler_utilities);
       if (!option_band_specified)
 	{
-	  printf ("Scheme Microcode Version %d.%d\n", VERSION, SUBVERSION);
+	  outf_console ("Scheme Microcode Version %d.%d\n",
+	                VERSION, SUBVERSION);
 	  OS_initialize ();
 	  Enter_Interpreter ();
 	}
@@ -298,6 +301,14 @@ DEFUN_VOID (make_fixed_objects_vector)
   }
 #endif /* DOS386 */
 
+#ifdef WINNT
+  {
+    extern void EXFUN (NT_initialize_fov, (SCHEME_OBJECT));
+    
+    NT_initialize_fov (fixed_objects_vector);
+  }
+#endif
+
   return (fixed_objects_vector);
 }
 
@@ -308,14 +319,13 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
        int Start_Prim AND CONST char * File_Name)
 {
   SCHEME_OBJECT FName, expr, * inner_arg, prim;
-  fast long i;
+  /* fast long i; */
   /* Parallel processor test */
   Boolean I_Am_Master = (Start_Prim != BOOT_GET_WORK);
   if (I_Am_Master)
     {
-      fprintf (stdout, "Scheme Microcode Version %d.%d\n",
-	       VERSION, SUBVERSION);
-      fflush (stdout);
+      outf_console ("Scheme Microcode Version %d.%d\n",  VERSION, SUBVERSION);
+      outf_flush_console ();
     }
   OS_initialize ();
   if (I_Am_Master)
@@ -340,29 +350,29 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
       *Free++ = prim;
       *Free++ = FName;
       prim = (make_primitive ("SCODE-EVAL"));
-      expr = (MAKE_POINTER_OBJECT (TC_PCOMB2, Free));
+      expr = MAKE_POINTER_OBJECT (TC_PCOMB2, Free);
       *Free++ = prim;
-      *Free++ = (MAKE_POINTER_OBJECT (TC_PCOMB1, inner_arg));
-      *Free++ = (MAKE_OBJECT (GLOBAL_ENV, GO_TO_GLOBAL));
+      *Free++ = MAKE_POINTER_OBJECT (TC_PCOMB1, inner_arg);
+      *Free++ = MAKE_OBJECT (GLOBAL_ENV, GO_TO_GLOBAL);
       break;
 
     case BOOT_LOAD_BAND:	/* (LOAD-BAND <file>) */
       FName = (char_pointer_to_string ((unsigned char *) File_Name));
-      prim = (make_primitive ("LOAD-BAND"));
+      prim = make_primitive ("LOAD-BAND");
       inner_arg = Free;
       *Free++ = prim;
       *Free++ = FName;
-      expr = (MAKE_POINTER_OBJECT (TC_PCOMB1, inner_arg));
+      expr = MAKE_POINTER_OBJECT (TC_PCOMB1, inner_arg);
       break;
 
     case BOOT_GET_WORK:		/* ((GET-WORK)) */
-      prim = (make_primitive ("GET-WORK"));
+      prim = make_primitive ("GET-WORK");
       inner_arg = Free;
       *Free++ = prim;
       *Free++ = SHARP_F;
-      expr = (MAKE_POINTER_OBJECT (TC_COMBINATION, Free));
-      *Free++ = (MAKE_OBJECT (TC_MANIFEST_VECTOR, 1));
-      *Free++ = (MAKE_POINTER_OBJECT (TC_PCOMB1, inner_arg));
+      expr = MAKE_POINTER_OBJECT (TC_COMBINATION, Free);
+      *Free++ = MAKE_OBJECT (TC_MANIFEST_VECTOR, 1);
+      *Free++ = MAKE_POINTER_OBJECT (TC_PCOMB1, inner_arg);
       break;
 
     case BOOT_EXECUTE:
@@ -381,7 +391,7 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
       
 
     default:
-      fprintf (stderr, "Unknown boot time option: %d\n", Start_Prim);
+      outf_fatal ("Unknown boot time option: %d\n", Start_Prim);
       Microcode_Termination (TERM_BAD_PRIMITIVE);
       /*NOTREACHED*/
   }
@@ -405,7 +415,7 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
   /* Go to it! */
   if ((Stack_Pointer <= Stack_Guard) || (Free > MemTop))
   {
-    fprintf (stderr, "Configuration won't hold initial data.\n");
+    outf_fatal ("Configuration won't hold initial data.\n");
     termination_init_error ();
   }
 #ifdef ENTRY_HOOK
@@ -420,7 +430,7 @@ static void
 DEFUN_VOID (Enter_Interpreter)
 {
   Interpret (scheme_dumped_p);
-  fprintf (stderr, "\nThe interpreter returned to top level!\n");
+  outf_fatal ("\nThe interpreter returned to top level!\n");
   Microcode_Termination (TERM_EXIT);
 }
 
@@ -430,7 +440,7 @@ SCHEME_OBJECT
 DEFUN_VOID (Re_Enter_Interpreter)
 {
   Interpret (true);
-  return (Val);
+  return  Val;
 }
 
 /* Garbage collection debugging utilities. */
@@ -464,8 +474,8 @@ DEFUN (gc_death, (code, message, scan, free),
        long code AND char * message
        AND SCHEME_OBJECT * scan AND SCHEME_OBJECT * free)
 {
-  fprintf (stderr, "\n%s.\n", message);
-  fprintf (stderr, "scan = 0x%lx; free = 0x%lx\n", scan, free);
+  outf_fatal ("\n%s.\n", message);
+  outf_fatal ("scan = 0x%lx; free = 0x%lx\n", scan, free);
   deadly_scan = scan;
   deadly_free = free;
   Microcode_Termination (code);
@@ -475,11 +485,9 @@ DEFUN (gc_death, (code, message, scan, free),
 void
 DEFUN (stack_death, (name), CONST char * name)
 {
-  fprintf (stderr,
-	   "\n%s: Constant space is no longer sealed!\n",
-	   name);
-  fprintf (stderr,
-	   "Perhaps a runaway recursion has overflowed the stack.\n");
+  outf_fatal ("\n%s: Constant space is no longer sealed!\n",
+	      name);
+  outf_fatal ("Perhaps a runaway recursion has overflowed the stack.\n");
   Microcode_Termination (TERM_STACK_OVERFLOW);
   /*NOTREACHED*/
 }
