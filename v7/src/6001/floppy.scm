@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.6 1992/09/14 21:43:09 cph Exp $
+$Id: floppy.scm,v 1.7 1992/09/17 23:48:42 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -697,6 +697,11 @@ M-x rename-file, or use the `r' command in Dired.")
 		      make-condition:no-floppy-in-drive)
 		     ((string-prefix? non-dos-floppy-in-drive output)
 		      make-condition:non-dos-floppy-in-drive)
+		     ((re-match-forward floppy-write-protected-regexp
+					(buffer-start buffer)
+					(buffer-end buffer)
+					false)
+		      make-condition:floppy-write-protected)
 		     (else
 		      make-condition:floppy-error))
 	       command output)))))))
@@ -704,10 +709,11 @@ M-x rename-file, or use the `r' command in Dired.")
 (define no-floppy-in-drive
   "Error reading. block = 0 on device /dev/rfd")
 
+(define floppy-write-protected-regexp
+  "Error writing. block = [0-9]+ on device /dev/rfd\nErrno = 13$")
+
 (define non-dos-floppy-in-drive
   "Unrecognizable disc format on /dev/rfd")
-
-;;;; Floppy Errors
 
 (define (handle-floppy-errors continue abort thunk)
   (fluid-let ((*floppy-abort-handler* abort))
@@ -734,6 +740,8 @@ M-x rename-file, or use the `r' command in Dired.")
 (define (default-floppy-abort-handler)
   (message "OK, aborting command")
   (abort-current-command))
+
+;;;; Floppy Errors
 
 (define condition-type:floppy-error
   (make-condition-type 'FLOPPY-ERROR condition-type:error
@@ -765,6 +773,17 @@ M-x rename-file, or use the `r' command in Dired.")
 
 (define make-condition:no-floppy-in-drive
   (condition-signaller condition-type:no-floppy-in-drive
+		       '(COMMAND OUTPUT)
+		       standard-error-handler))
+
+(define condition-type:floppy-write-protected
+  (make-condition-type 'FLOPPY-WRITE-PROTECTED condition-type:floppy-error '()
+    (lambda (condition port)
+      condition
+      (write-string "The floppy disk is write-protected." port))))
+
+(define make-condition:floppy-write-protected
+  (condition-signaller condition-type:floppy-write-protected
 		       '(COMMAND OUTPUT)
 		       standard-error-handler))
 
