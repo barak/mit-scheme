@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.3 1989/06/06 17:15:44 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.4 1989/06/13 08:21:36 jinx Exp $
  *
  * This file corresponds to
  * $COMPILER-Header: compiler.c,v 9.35 88/10/26 20:02:13 GMT cph Exp $
@@ -84,10 +84,11 @@ MIT in each case. */
 #include "types.h"	/* Needed by const.h */
 #include "errors.h"	/* Error codes and Termination codes */
 #include "const.h"	/* REGBLOCK_MINIMUM_LENGTH and PRIM_... codes */
-#include "trap.h"	/* UNASSIGNED_OBJECT */
+#include "trap.h"	/* UNASSIGNED_OBJECT, TRAP_EXTENSION_TYPE */
 #include "interp.h"	/* Interpreter state and primitive destructuring */
 #include "prims.h"	/* LEXPR */
-#include "cmpgc.h"	/* Compiled code object destructuring */
+#include "cmpint.h"	/* Compiled code object destructuring */
+#include "cmpgc.h"	/* Compiled code object relocation */
 #include "default.h"	/* Metering_Apply_Primitive */
 
 /* Imports from the rest of the "microcode" */
@@ -158,7 +159,7 @@ enter_compiled_expression()
 
   compiled_entry_address = (Get_Pointer(Fetch_Expression ()));
   if ((COMPILED_ENTRY_FORMAT_WORD (compiled_entry)) !=
-      (EXPRESSION_FORMAT_WORD))
+      (FORMAT_WORD_EXPRESSION))
   {
     /* It self evaluates. */
     Val = (Fetch_Expression ());
@@ -199,7 +200,9 @@ return_to_compiled_code ()
   register Pointer *compiled_entry_address;
 
   compiled_entry_address = (Get_Pointer (Pop ()));
-  /* *** No checking here? *** */
+  /* Note that this does not check that compiled_entry_address
+     is a valid return address. -- Should it?
+   */
   return (enter_compiled_code (compiled_entry_address));
 }
 
@@ -217,7 +220,7 @@ setup_compiled_invocation (nactuals, compiled_entry_address)
   static Pointer *open_gap();
   register long nmin, nmax, delta;	/* all +1 */
 
-  nmax = (COMPILED_ENTRY_MAXIMUM_ARITY (compiled_entry_address));
+  nmax = (COMPILED_ENTRY_MAXIMUM_ARITY(compiled_entry_address));
   if (nactuals == nmax)
   {
     /* Either the procedure takes exactly the number of arguments
@@ -227,7 +230,7 @@ setup_compiled_invocation (nactuals, compiled_entry_address)
      */
     return (PRIM_DONE);
   }
-  nmin = (COMPILED_ENTRY_MINIMUM_ARITY (compiled_entry_address));
+  nmin = (COMPILED_ENTRY_MINIMUM_ARITY(compiled_entry_address));
   if (nmin < 0)
   {
     /* Not a procedure. */
@@ -321,13 +324,15 @@ setup_lexpr_invocation (nactuals, nmax)
        The procedure should (and currently will) on entry.
      */
 
-    register Pointer temp, *gap_location;
+    register Pointer temp, *gap_location, *local_free;
 
+    local_free = Free;
+    Free += 2;
     gap_location = STACK_LOC(nactuals - 2);
     temp = *gap_location;
-    *gap_location = (Make_Pointer (TC_LIST, Free));
-    *Free++ = temp;
-    *Free++ = NIL;
+    *gap_location = (Make_Pointer (TC_LIST, local_free));
+    *local_free++ = temp;
+    *local_free = NIL;
     return (PRIM_DONE);
   }
 
@@ -338,16 +343,19 @@ setup_lexpr_invocation (nactuals, nmax)
        need to be placed in a list passed at the last parameter
        location. The extra arguments must then be popped from the stack.
      */
+    long list_size;
     register Pointer *gap_location, *source_location;
 
     /* Allocate the list, and GC if necessary. */
 
-    gap_location = &Free[2 * (delta + 1)];
-    if (GC_Check (gap_location - Free))
+    list_size = (2 * (delta + 1));
+    if (GC_Check (list_size))
     {
-      Request_GC (gap_location - Free);
+      Request_GC (list_size);
       return (PRIM_APPLY_INTERRUPT);
     }
+    gap_location = &Free[list_size];
+    Free = gap_location;
 
     /* Place the arguments in the list, and link it. */
 
@@ -509,8 +517,8 @@ comutil_error (nactuals)
 /*
   comutil_setup_lexpr is invoked to reformat the frame when compiled
   code calls a known lexpr.  The actual arguments are on the stack,
-  and it is given the number of arguments (and the entry point being
-  invoked).
+  and it is given the number of arguments (WITHOUT the entry point
+  being invoked).
 
   Important: This code assumes that it is always invoked with a valid
   number of arguments (the compiler checked it), and will not check.
@@ -522,7 +530,7 @@ comutil_setup_lexpr (nactuals, compiled_entry_address)
      register machine_word *compiled_entry_address;
 {
   return (setup_lexpr_invocation
-	  ((nactuals),
+	  ((nactuals + 1),
 	   (COMPILED_ENTRY_MAXIMUM_ARITY(compiled_entry_address))));
 }
 /*
@@ -546,7 +554,7 @@ comutil_invoke_primitive (primitive)
 
 /* Core of comutil_link and comutil_continue_linking. */
 
-#define MAKE_LINKAGE_SECTION_HEADER(kind, count)			\
+#define MAKE_LINKAGE_SECTION_HEADER(kind, count)			\ \
 Make_Non_Pointer(TC_LINKAGE_SECTION,					\
 		 (kind |						\
 		  ((kind != OPERATOR_LINKAGE_KIND) ?			\
@@ -586,6 +594,11 @@ link_cc_block (block_address, offset, last_header_offset,
 		       compiler_cache_assignment);
       count = (READ_CACHE_LINKAGE_COUNT(header)); 
     }
+
+    /* This accomodates the re-entry case after a GC.
+       It undoes the effects of the "Smash header" code below.
+     */
+
     total_count = ((OBJECT_TYPE(header) == TC_LINKAGE_SECTION) ?
 		   original_count :
 		   count);
@@ -609,7 +622,9 @@ link_cc_block (block_address, offset, last_header_offset,
 	Push(block);
 	Push(MAKE_UNSIGNED_FIXNUM(total_count));
 
-	/* Smash header for the garbage collector. */
+	/* Smash header for the garbage collector.
+	   It is smashed back on return.  See the comment above.
+	 */
 
 	block_address[last_header_offset] =
 	  (MAKE_LINKAGE_SECTION_HEADER(kind, (total_count - (count + 1))));
@@ -670,6 +685,496 @@ comutil_continue_linking ()
 			 original_count));
 }
 
+/* Procedures to destructure compiled entries and closures. */
+
+/*
+  Extract the debugging information attached to `block'.  Usually
+  this is a string which contains the filename where the debugging
+  info is stored.
+*/
+
+C_UTILITY Pointer
+compiled_block_debugging_info(block)
+     Pointer block;
+{
+  long length;
+
+  length = Vector_Length(block);
+  return (Fast_Vector_Ref(block, (length - 1)));
+}
+
+/* Extract the environment where the `block' was "loaded". */
+
+C_UTILITY Pointer
+compiled_block_environment(block)
+     Pointer block;
+{
+  long length;
+
+  length = Vector_Length(block);
+  return (Fast_Vector_Ref(block, length));
+}
+
+/*
+  Given `entry', a Scheme object representing a compiled code entry point,
+  it returns the address of the block to which it belongs.
+ */
+
+C_UTILITY Pointer *
+compiled_entry_to_block_address(entry)
+     Pointer entry;
+{
+  Pointer *block_address;
+
+  Get_Compiled_Block(block_address, (Get_Pointer(entry)));
+  return (block_address);
+}
+
+/* Returns the offset from the block to the entry point. */
+
+C_UTILITY long
+compiled_entry_to_block_offset(entry)
+     Pointer entry;
+{
+  Pointer *entry_address, block_address;
+
+  entry_address = (Get_Pointer(entry));
+  Get_Compiled_Block(block_address, entry_address);
+  return (((char *) entry_address) - ((char *) block_address));
+}
+
+/*
+  Check whether the compiled code block whose address is `block_addr'
+  is a compiled closure block.
+ */
+
+static long
+block_address_closure_p(block_addr)
+     Pointer *block_addr;
+{
+  Pointer header_word;
+
+  header_word = (*block_addr);
+  return ((OBJECT_TYPE(header_word) == TC_MANIFEST_CLOSURE));
+}
+
+/*
+  Check whether the compiled code block `block' is a compiled closure block.
+ */
+
+C_UTILITY long
+compiled_block_manifest_closure_p(block)
+     Pointer block;
+{
+  return (block_address_closure_p(Get_Pointer(block)));
+}
+
+/*
+  Check whether the compiled procedure `entry' is a compiled closure.
+ */
+
+C_UTILITY long
+compiled_entry_manifest_closure_p(entry)
+     Pointer entry;
+{
+  return (block_address_closure_p(compiled_entry_to_block_address(entry));
+}
+
+/*
+  Extract the entry point ultimately invoked by the compiled closure
+  represented by `entry'.
+ */
+
+C_UTILITY Pointer
+compiled_closure_to_entry(entry)
+     Pointer entry;
+{
+  Pointer *real_entry, *block;
+
+  Get_Compiled_Block(blck, Get_Pointer(entry));
+  EXTRACT_COMPILED_CLOSURE_ENTRY_ADDRESS(real_entry, block);
+  return (Make_Pointer(TC_COMPILED_ENTRY, real_entry));
+}
+
+/*
+  Store the information for `entry' into `buffer'.
+  This is used by the printer and debugging utilities.
+ */
+
+/* Kinds and subkinds of entries. */
+
+#define KIND_PROCEDURE				0
+#define KIND_CONTINUATION			1
+#define KIND_EXPRESSION				2
+#define KIND_OTHER				3
+#define KIND_ILLEGAL				4
+
+/* Continuation subtypes */
+
+#define CONTINUATION_NORMAL			0
+#define CONTINUATION_DYNAMIC_LINK		1
+#define CONTINUATION_RETURN_TO_INTERPRETER	2
+
+C_UTILITY void
+compiled_entry_type(entry, buffer)
+     Pointer entry, *buffer;
+{
+  long kind, min_arity, max_arity, field1, field2;
+  Pointer *entry_address;
+
+  entry_address = (Get_Pointer(entry));
+  max_arity = (COMPILED_ENTRY_FORMAT_HIGH(entry_address));
+  min_arity = (COMPILED_ENTRY_FORMAT_LOW(entry_address));
+  field1 = min_arity;
+  field2 = max_arity;
+  if (min_arity >= 0)
+  {
+    kind = KIND_PROCEDURE;
+  }
+  else if (max_arity >= 0)
+  {
+    kind = KIND_ILLEGAL;
+  }
+  else if ((((unsigned long) max_arity) & 0xff) < 0xe0)
+  {
+    /* Field2 is the offset to the next continuation */
+    
+    kind = KIND_CONTINUATION;
+    field1 = CONTINUATION_NORMAL;
+    field2 = (((((unsigned long) max_arity) & 0x3f) << 7) |
+	      (((unsigned long) min_arity) & 0x7f));
+  }
+  else if (min_arity != (-1))
+  {
+    kind = KIND_ILLEGAL;
+  }
+
+  else
+  {
+    switch (max_arity)
+    {
+      case FORMAT_BYTE_EXPR:
+      {
+	kind = KIND_EXPRESSION;
+	break;
+      }
+      case FORMAT_BYTE_COMPLR:
+      case FORMAT_BYTE_CMPINT:
+      {
+	kind = KIND_OTHER;
+	break;
+      }
+      case FORMAT_BYTE_DLINK:
+      {
+	kind = KIND_CONTINUATION;
+	field1 = CONTINUATION_DYNAMIC_LINK;
+	field2 = -1;
+	break;
+      }
+      case FORMAT_BYTE_RETURN:
+      {
+	kind = KIND_CONTINUATION;
+	field1 = CONTINUATION_RETURN_TO_INTERPRETER;
+	field2 = 0;
+	break;
+      }
+      default:
+      {
+	kind = KIND_ILLEGAL;
+	break;
+      }
+    }
+  }
+  buffer[0] = kind;
+  buffer[1] = field1;
+  buffer[2] = field2;
+  return;
+}
+
+/* Destructuring free variable caches. */
+
+C_UTILITY void
+store_variable_cache(extension, block, offset)
+     Pointer extension, block;
+     long offset;
+{
+  Fast_Vector_Set(block, offset, ((Pointer) (Get_Pointer(extension))));
+  return;
+}
+
+C_UTILITY Pointer
+extract_variable_cache(block, offset)
+     Pointer block;
+     long offset;
+{
+  return (Make_Pointer(TRAP_EXTENSION_TYPE,
+		       ((Pointer *) (Fast_Vector_Ref(block, offset)))));
+}
+
+/* Get a compiled procedure from a cached operator reference. */
+
+C_UTILITY Pointer
+extract_uuo_link(block, offset)
+     Pointer block;
+     long offset;
+{
+  Pointer *cache_address, *compiled_entry_address;
+
+  cache_address = Nth_Vector_Loc(block, offset);
+  EXTRACT_OPERATOR_LINK_ADDRESS(compiled_entry_address, cache_address);
+  return (Make_Pointer(TC_COMPILED_ENTRY, compiled_entry_address));
+}
+
+static void
+store_uuo_link(entry, cache_address)
+     Pointer entry, *cache_address;
+{
+  Pointer *entry_address;
+
+  entry_address = (Get_Pointer(entry));
+  STORE_OPERATOR_LINK_INSTRUCTION(cache_address);
+  STORE_OPERATOR_LINK_ADDRESS(cache_address, entry_address);
+  return;
+}
+
+/* This makes a fake compiled procedure which traps to kind handler when
+   invoked.
+ */
+
+static long
+make_trampoline(slot, format_word, kind, size, value1, value2, value3)
+     Pointer *slot;
+     machine_word format_word;
+     long kind, size;
+     Pointer value1, value2, value3;
+{
+  Pointer *block, *local_free;
+
+  if (GC_Check(TRAMPOLINE_SIZE + size))
+  {
+    Request_GC(TRAMPOLINE_SIZE + size);
+    return (PRIM_INTERRUPT);
+  }
+  
+  local_free = Free;
+  Free += (TRAMPOLINE_SIZE + size);
+  block = local_free;
+  *local_free++ = (Make_Non_Pointer(TC_MAIFEST_VECTOR,
+				    ((TRAMPOLINE_SIZE - 1) + size)));
+  *local_free++ = (Make_Non_Pointer(TC_MANIFEST_NM_VECTOR,
+				    (TRAMPOLINE_ENTRY_SIZE + 1)));
+  local_free += 1;
+  (COMPILED_ENTRY_FORMAT_WORD(local_free)) = format_word;
+  (COMPILED_ENTRY_OFFSET_WORD(local_free)) =
+    (MAKE_OFFSET_WORD(local_free, block, false));
+  STORE_TRAMPOLINE_ENTRY(local_free, kind);
+  if ((--size) >= 0)
+  {
+    *local_free++ = value1;
+  }
+  if ((--size) >= 0)
+  {
+    *local_free++ = value2;
+  }
+  if ((--size) >= 0)
+  {
+    *local_free++ = value3;
+  }
+  *slot = (Make_Pointer(TC_COMPILED_ENTRY, block));
+  return (PRIM_DONE);
+}
+
+static long
+make_simple_trampoline(slot, kind, procedure)
+     Pointer *slot;
+     long kind;
+     Pointer procedure;
+{
+  return (make_trampoline(slot,
+			  ((machine_word) FORMAT_WORD_CMPINT), kind,
+			  1, procedure, NIL, NIL));
+}
+
+#define TRAMPOLINE_TABLE_SIZE	4
+
+static long 
+trampoline_arity_table[TRAMPOLINE_TABLE_SIZE * TRAMPOLINE_TABLE_SIZE] =
+{
+  TRAMPOLINE_1_0,			/* 1_0 */
+  TRAMPOLINE_ARITY,			/* 1_1 should not get here */
+  TRAMPOLINE_ARITY,			/* 1_2 should not get here */
+  TRAMPOLINE_ARITY,			/* 1_3 should not get here */
+  TRAMPOLINE_2_0,			/* 2_0 */
+  TRAMPOLINE_2_1,			/* 2_1 */
+  TRAMPOLINE_ARITY,			/* 2_2 should not get here */
+  TRAMPOLINE_ARITY,			/* 2_3 should not get here */
+  TRAMPOLINE_3_0,			/* 3_0 */
+  TRAMPOLINE_3_1,			/* 3_1 */
+  TRAMPOLINE_3_2,			/* 3_2 */
+  TRAMPOLINE_ARITY,			/* 3_3 should not get here */
+  TRAMPOLINE_4_0,			/* 4_0 */
+  TRAMPOLINE_4_1,			/* 4_1 */
+  TRAMPOLINE_4_2,			/* 4_2 */
+  TRAMPOLINE_4_3			/* 4_3 */
+};
+
+/*
+  make_uuo_link is called by C and initializes a compiled procedure
+  cache at a location given by a block and an offset.
+
+  make_uuo_link checks its procedure argument, and:
+
+  - If it is not a compiled procedure, an entity, or a primitive
+  procedure with a matching number of arguments, it stores a fake
+  compiled procedure which will invoke comentry_operator_interpreted_trap
+  when invoked.
+
+  - If its argument is an entity, it stores a fake compiled procedure
+  which will invoke comentry_operator_entity_trap when invoked.
+
+  - If its argument is a primitive, it stores a fake compiled procedure
+  which will invoke comentry_operator_primitive_trap, or
+  comentry_operator_lexpr_trap when invoked.
+
+  - If its argument is a compiled procedure that expects more or
+  less arguments than those provided, it stores a fake compiled
+  procedure which will invoke comentry_operator_arity_trap, or one of
+  its specialized versions when invoked.
+
+  - Otherwise, the actual (compatible) operator is stored.
+*/
+
+C_UTILITY long
+make_uuo_link(procedure, extension, block, offset)
+     Pointer procedure, extension, block;
+     long offset;
+{
+  long kind, result, nactuals;
+  Pointer trampoline, *cache_address;
+  
+  cache_address = Nth_Vector_Loc(block, offset);
+  EXTRACT_OPERATOR_LINK_ARITY(nactuals, cache_address);
+
+  switch (OBJECT_TYPE(procedure))
+  {
+    case TC_COMPILED_ENTRY:
+    {
+      Pointer *entry;
+      long nmin, nmax;
+      
+      entry = (Get_Pointer(procedure));
+      nmax = (COMPILED_ENTRY_MAXIMUM_ARITY(entry));
+      if (nactuals == nmax)
+      {
+	store_uuo_link(procedure, cache_address);
+	return (PRIM_DONE);
+      }
+      nmin = (COMPILED_ENTRY_MINIMUM_ARITY(entry));
+
+      if ((nmax > 0) && (nmin > 0) && (nmin <= nactuals) &&
+	  (nactuals <= TRAMPOLINE_TABLE_SIZE) &&
+	  (nmax <= (TRAMPOLINE_TABLE_SIZE + 1)))
+      {
+	kind = trampoline_arity_table[((nmax - 1) * TRAMPOLINE_TABLE_SIZE) +
+				      nactuals];
+      }
+      else
+      {
+	kind = TRAMPOLINE_ARITY;
+      }
+      break;
+    }
+
+    case TC_ENTITY:
+    {
+      kind = TRAMPOLINE_ENTITY;
+      break;
+    }
+
+    case TC_PRIMITIVE:
+    {
+      long arity;
+      extern long primitive_to_arity();
+
+      arity = primitive_to_arity(procedure);
+      if (arity == (nactuals - 1))
+      {
+	kind = TRAMPOLINE_PRIMITIVE;
+      }
+      else if (arity == LEXPR_PRIMITIVE_ARITY)
+      {
+	kind = TRAMPOLINE_LEXPR_PRIMITIVE;
+      }
+      else
+      {
+	kind = TRAMPOLINE_INTERPRETED;
+      }
+      break;
+    }
+    
+    default:
+    uuo_link_interpreted:
+    {
+      kind = TRAMPOLINE_INTERPRETED;
+      break;
+    }
+  }
+  result = make_simple_trampoline(&trampoline, kind, procedure);
+  if (result != PRIM_DONE)
+  {
+    return (result);
+  }
+  store_uuo_link(trampoline, cache_address);
+  return (PRIM_DONE);
+}
+
+C_UTILITY long
+make_fake_uuo_link(extension, block, offset)
+     Pointer extension, block;
+     long offset;
+{
+  Pointer trampoline, *cache_address;
+
+  result = make_trampoline(&trampoline,
+			   ((machine_word) FORMAT_WORD_CMPINT),
+			   TRAMPOLINE_LOOKUP, 3,
+			   extension, block,
+			   MAKE_UNSIGNED_FIXNUM(offset));
+  if (result != PRIM_DONE)
+  {
+    return (result);
+  }
+  cache_address = Nth_Vector_Loc(block, offset);
+  store_uuo_link(trampoline, cache_address);
+  return (PRIM_DONE);
+}
+
+C_UTILITY long
+coerce_to_compiled(procedure, arity, location)
+     Pointer procedure, *location;
+     long arity;
+{
+  long frame_size;
+
+  frame_size = (arity + 1)
+  if ((OBJECT_TYPE(procedure) != TC_COMPILED_ENTRY) ||
+      ((COMPILED_ENTRY_MAXIMUM_ARITY(Get_Pointer(procedure))) !=
+       frame_size))
+  {
+    if (frame_size > FORMAT_BYTE_FRAMEMAX)
+    {
+      return (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+    }
+    return (make_trampoline(location,
+			    ((machine_word)
+			     (MAKE_FORMAT_WORD(frame_size, frame_size))),
+			    TRAMPOLINE_INVOKE, 1,
+			    procedure, NIL, NIL));
+  }
+  *location = procedure;
+  return (PRIM_DONE);
+}
+
 /* *** HERE *** */
 
 /* Priorities:
@@ -689,117 +1194,8 @@ long
   compiler_interface_version,
   compiler_processor_type;
 
-/* Bad entry points. */
+/* Missing entry points. */
 
-long
-make_fake_uuo_link(extension, block, offset)
-     Pointer extension, block;
-     long offset;
-{
-  Microcode_Termination (TERM_COMPILER_DEATH);
-  /*NOTREACHED*/
-}
-
-long
-make_uuo_link(value, extension, block, offset)
-     Pointer value, extension, block;
-     long offset;
-{
-  Microcode_Termination (TERM_COMPILER_DEATH);
-  /*NOTREACHED*/
-}
-
-Pointer
-extract_uuo_link(block, offset)
-     Pointer block;
-     long offset;
-{
-  Microcode_Termination (TERM_COMPILER_DEATH);
-  /*NOTREACHED*/
-}
-
-void
-store_variable_cache(extension, block, offset)
-     Pointer extension, block;
-     long offset;
-{
-  Microcode_Termination (TERM_COMPILER_DEATH);
-  /*NOTREACHED*/
-}
-
-Pointer
-extract_variable_cache(block, offset)
-     Pointer block;
-     long offset;
-{
-  Microcode_Termination (TERM_COMPILER_DEATH);
-  /*NOTREACHED*/
-}
-
-Pointer
-compiled_block_debugging_info(block)
-     Pointer block;
-{
-  Microcode_Termination (TERM_COMPILER_DEATH);
-  /*NOTREACHED*/
-}
-
-Pointer
-compiled_block_environment(block)
-     Pointer block;
-{
-  Microcode_Termination (TERM_COMPILER_DEATH);
-  /*NOTREACHED*/
-}
-
-long
-compiled_block_manifest_closure_p(block)
-     Pointer block;
-{
-  Microcode_Termination (TERM_COMPILER_DEATH);
-  /*NOTREACHED*/
-}
-
-Pointer *
-compiled_entry_to_block_address(entry)
-     Pointer entry;
-{
-  Microcode_Termination (TERM_COMPILER_DEATH);
-  /*NOTREACHED*/
-}
-
-long
-compiled_entry_to_block_offset(entry)
-     Pointer entry;
-{
-  Microcode_Termination (TERM_COMPILER_DEATH);
-  /*NOTREACHED*/
-}
-
-void
-compiled_entry_type(entry, buffer)
-     Pointer entry, *buffer;
-{
-  Microcode_Termination (TERM_COMPILER_DEATH);
-  /*NOTREACHED*/
-}
-
-long
-compiled_entry_manifest_closure_p(entry)
-     Pointer entry;
-{
-  Microcode_Termination (TERM_COMPILER_DEATH);
-  /*NOTREACHED*/
-}
-
-Pointer
-compiled_closure_to_entry(entry)
-     Pointer entry;
-{
-  Microcode_Termination (TERM_COMPILER_DEATH);
-  /*NOTREACHED*/
-}
-
 #define losing_return_address(name)					\
 extern long name();							\
 long									\
@@ -857,15 +1253,4 @@ compiler_initialize ()
   return_to_interpreter =
     (Make_Non_Pointer (TC_RETURN_CODE, RC_POP_FROM_COMPILED_CODE));
   return;
-}
-
-/* Identity procedure */
-
-long
-coerce_to_compiled(object, arity, location)
-     Pointer object, *location;
-     long arity;
-{
-  *location = object;
-  return (PRIM_DONE);
 }
