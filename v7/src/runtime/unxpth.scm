@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.3 1989/03/14 02:17:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.4 1989/03/14 02:23:10 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -82,7 +82,7 @@ MIT in each case. |#
 (define (file-modification-time filename)
   (let ((attributes (file-attributes filename)))
     (and attributes
-	 (vector-ref attributes 5))))
+	 (file-attributes/modification-time attributes))))
 
 (define (file-modes filename)
   (let ((truename (pathname->input-truename (->pathname filename))))
