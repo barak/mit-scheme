@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.2 1989/08/09 13:17:06 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.3 1990/09/12 07:53:39 cph Rel $
 ;;;
-;;;	Copyright (c) 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -62,7 +62,7 @@
 	       (substitute-command-keys
 		"This is a debugger buffer:
 Type \\[continuation-browser-quit] to exit.
-Type \\[continuation-browser-print-reduction] to see where you are.
+Type \\[continuation-browser-print-subproblem-or-reduction] to see where you are.
 Type \\[describe-mode] for more information.
 
 The error that started the debugger is:
@@ -76,7 +76,7 @@ The error that started the debugger is:
   (lambda (continuation)
     (if (not (continuation? continuation)) (editor-error "Not a continuation"))
     (let ((buffer (continuation-browser continuation)))
-      (invoke-debugger-command command/print-reduction buffer)
+      (invoke-debugger-command command/print-subproblem-or-reduction buffer)
       (select-buffer buffer))))
 
 (define (continuation-browser continuation)
@@ -138,18 +138,18 @@ The error that started the debugger is:
 	 (car environment-list)
 	 'DEFAULT))))
 
-(define-command continuation-browser-print-reduction
-  "Print the current reduction in the standard format."
+(define-command continuation-browser-print-subproblem-or-reduction
+  "Print the current subproblem or reduction in the standard format."
   ()
-  (debugger-command-invocation command/print-reduction))
+  (debugger-command-invocation command/print-subproblem-or-reduction))
 
 (define-command continuation-browser-print-expression
-  "Pretty-print the current expression."
+  "Pretty print the current expression."
   ()
   (debugger-command-invocation command/print-expression))
 
 (define-command continuation-browser-print-environment-procedure
-  "Pretty-print the procedure that created the current environment."
+  "Pretty print the procedure that created the current environment."
   ()
   (debugger-command-invocation command/print-environment-procedure))
 
@@ -158,14 +158,14 @@ The error that started the debugger is:
   ()
   (debugger-command-invocation command/print-reductions))
 
-(define-command continuation-browser-summarize-history
+(define-command continuation-browser-summarize-subproblems
   "Print a summary of all subproblems."
   ()
-  (debugger-command-invocation command/summarize-history))
+  (debugger-command-invocation command/summarize-subproblems))
 
 (define-command continuation-browser-goto
-  "Move to an arbitrary subproblem/reduction.
-Prompts for the subproblem and reduction numbers."
+  "Move to an arbitrary subproblem.
+Prompts for the subproblem number."
   ()
   (debugger-command-invocation command/goto))
 
@@ -204,34 +204,34 @@ move to the next later subproblem."
   (debugger-command-invocation command/show-all-frames))
 
 (define-command continuation-browser-move-to-parent-environment
-  "Move to the environment frame which is the parent of the current one."
+  "Move to the environment frame that is the parent of the current one."
   ()
   (debugger-command-invocation command/move-to-parent-environment))
 
 (define-command continuation-browser-move-to-child-environment
-  "Move to the environment frame which is the child of the current one."
+  "Move to the environment frame that is the child of the current one."
   ()
   (debugger-command-invocation command/move-to-child-environment))
 
 (define-command continuation-browser-return
-  "Invoke the continuation which is the current subproblem,
-supplying it with a value which is prompted for."
+  "Invoke the continuation that is the current subproblem.
+Prompts for a value to give the continuation as an argument."
   ()
   (debugger-command-invocation command/return))
 
 (define-command continuation-browser-frame
-  "Show the current subproblem's stack-frame in internal format."
+  "Show the current subproblem's stack frame in internal format."
   ()
   (debugger-command-invocation command/frame))
 
 (define-command continuation-browser-quit
-  "Kill the current continuation-browser."
+  "Kill the current continuation browser."
   ()
   (lambda ()
     (kill-buffer-interactive (current-buffer))))
 
 (define-command continuation-browser-error-info
-  "Show the error-message associated with this continuation."
+  "Show the error message associated with this continuation."
   ()
   (lambda ()
     (let ((buffer (current-buffer)))
@@ -242,22 +242,22 @@ supplying it with a value which is prompted for."
 (define-major-mode continuation-browser fundamental "Debug"
   "You are in the Scheme debugger, where you can do the following:
 
-\\[continuation-browser-show-all-frames] shows bindings of the current environment and its ancestors.
-\\[continuation-browser-earlier-reduction] moves Back to the previous reduction.
+\\[continuation-browser-show-all-frames] shows All bindings of the current environment and its ancestors.
+\\[continuation-browser-earlier-reduction] moves Back to the next reduction (earlier in time).
 \\[continuation-browser-show-current-frame] shows bindings of identifiers in the Current environment.
-\\[continuation-browser-later-subproblem] moves Down to the next subproblem.
-\\[continuation-browser-error-info] prints the Error message.
-\\[continuation-browser-later-reduction] moves Forward to the next reduction.
-\\[continuation-browser-goto] Goes to an arbitrary subproblem and reduction.
-\\[continuation-browser-summarize-history] prints a summary of all subproblems (History).
-\\[continuation-browser-print-expression] pretty-prints the current expression.
-\\[continuation-browser-print-environment-procedure] pretty-prints the procedure that created the current environment.
-\\[continuation-browser-move-to-parent-environment] moves to the environment which is the Parent of the current environment.
-\\[continuation-browser-print-reductions] shows all the Reductions in the current subproblem.
+\\[continuation-browser-later-subproblem] moves Down to the previous subproblem (later in time).
+\\[continuation-browser-later-reduction] moves Forward to the previous reduction (later in time).
+\\[continuation-browser-goto] Goes to an arbitrary subproblem.
+\\[continuation-browser-summarize-subproblems] prints a summary (History) of all subproblems.
+\\[continuation-browser-error-info] prints the error message Info.
+\\[continuation-browser-print-expression] pretty prints the current expression.
+\\[continuation-browser-print-environment-procedure] pretty prints the procedure that created the current environment.
+\\[continuation-browser-move-to-parent-environment] moves to the environment that is the Parent of the current environment.
+\\[continuation-browser-print-reductions] shows the execution history (Reductions) of the current subproblem level.
 \\[continuation-browser-move-to-child-environment] moves to the child of the current environment (in current chain).
-\\[continuation-browser-print-reduction] shows the current reduction.
-\\[continuation-browser-earlier-subproblem] moves Up to the previous subproblem.
-\\[continuation-browser-frame] displays the current stack-frame in internal format.
+\\[continuation-browser-print-subproblem-or-reduction] shows the current subproblem or reduction.
+\\[continuation-browser-earlier-subproblem] moves Up to the next subproblem (earlier in time).
+\\[continuation-browser-frame] displays the current stack frame in internal format.
 \\[continuation-browser-return] returns (continues with) an expression after evaluating it."
   (local-set-variable! scheme-environment (ref-variable scheme-environment)))
 
@@ -266,10 +266,11 @@ supplying it with a value which is prompted for."
 (define-key 'continuation-browser #\b 'continuation-browser-earlier-reduction)
 (define-key 'continuation-browser #\c 'continuation-browser-show-current-frame)
 (define-key 'continuation-browser #\d 'continuation-browser-later-subproblem)
-(define-key 'continuation-browser #\e 'continuation-browser-error-info)
 (define-key 'continuation-browser #\f 'continuation-browser-later-reduction)
 (define-key 'continuation-browser #\g 'continuation-browser-goto)
-(define-key 'continuation-browser #\h 'continuation-browser-summarize-history)
+(define-key 'continuation-browser #\h
+  'continuation-browser-summarize-subproblems)
+(define-key 'continuation-browser #\i 'continuation-browser-error-info)
 (define-key 'continuation-browser #\l 'continuation-browser-print-expression)
 (define-key 'continuation-browser #\o
   'continuation-browser-print-environment-procedure)
@@ -279,7 +280,8 @@ supplying it with a value which is prompted for."
 (define-key 'continuation-browser #\r 'continuation-browser-print-reductions)
 (define-key 'continuation-browser #\s
   'continuation-browser-move-to-child-environment)
-(define-key 'continuation-browser #\t 'continuation-browser-print-reduction)
+(define-key 'continuation-browser #\t
+  'continuation-browser-print-subproblem-or-reduction)
 (define-key 'continuation-browser #\u 'continuation-browser-earlier-subproblem)
 (define-key 'continuation-browser #\v 'eval-expression)
 (define-key 'continuation-browser #\y 'continuation-browser-frame)
