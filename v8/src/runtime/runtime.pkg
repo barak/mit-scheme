@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.103 1991/05/06 03:19:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.104 1991/05/10 00:03:45 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -551,6 +551,7 @@ MIT in each case. |#
 	  condition-type:cell-error
 	  condition-type:control-error
 	  condition-type:datum-out-of-range
+	  condition-type:derived-file-error
 	  condition-type:derived-port-error
 	  condition-type:divide-by-zero
 	  condition-type:error
@@ -587,6 +588,7 @@ MIT in each case. |#
 	  error-irritant/noise
 	  error:bad-range-argument
 	  error:datum-out-of-range
+	  error:derived-file
 	  error:derived-port
 	  error:divide-by-zero
 	  error:file-touch

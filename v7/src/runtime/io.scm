@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.24 1991/05/06 18:43:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.25 1991/05/10 00:03:37 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -333,7 +333,6 @@ MIT in each case. |#
   (file-open (ucode-primitive file-open-input-channel 1) filename))
 
 (define (file-open-output-channel filename)
-  ((ucode-primitive file-remove-link 1) filename)
   (file-open (ucode-primitive file-open-output-channel 1) filename))
 
 (define (file-open-io-channel filename)
@@ -454,7 +453,11 @@ MIT in each case. |#
     (dynamic-wind
      (lambda ()
        (set! input-channel (file-open-input-channel input-filename))
-       (set! output-channel (file-open-output-channel output-filename)))
+       (set! output-channel
+	     (begin
+	       ((ucode-primitive file-remove-link 1) output-filename)
+	       (file-open-output-channel output-filename)))
+       unspecific)
      (lambda ()
        (let ((source-length (file-length input-channel))
 	     (buffer-length 8192))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.24 1991/03/23 01:17:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.25 1991/05/10 00:03:55 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -656,11 +656,36 @@ MIT in each case. |#
 			    system-call))
 		      (let ((error-type (vector-ref error-code 1)))
 			(or (microcode-system-call-error/code->name error-type)
-			    error-type))))
-		    (port (port-error-test operator operands)))
-		(if port
-		    (error:derived-port port condition)
-		    (error condition)))))))))
+			    error-type)))))
+		(cond ((port-error-test operator operands)
+		       => (lambda (port)
+			    (error:derived-port port condition)))
+		      ((and (memq operator file-primitives)
+			    (not (null? operands))
+			    (string? (car operands)))
+		       (error:derived-file (car operands) condition))
+		      (else
+		       (error condition))))))))))
+
+(define file-primitives
+  (list (ucode-primitive file-open-input-channel 1)
+	(ucode-primitive file-open-output-channel 1)
+	(ucode-primitive file-open-io-channel 1)
+	(ucode-primitive file-open-append-channel 1)
+	(ucode-primitive file-exists? 1)
+	(ucode-primitive file-access 2)
+	(ucode-primitive file-directory? 1)
+	(ucode-primitive file-soft-link? 1)
+	(ucode-primitive file-remove 1)
+	(ucode-primitive file-remove-link 1)
+	(ucode-primitive file-rename 2)
+	(ucode-primitive file-link-hard 2)
+	(ucode-primitive file-link-soft 2)
+	(ucode-primitive link-file 3)
+	(ucode-primitive file-copy 2)
+	(ucode-primitive directory-make 1)
+	(ucode-primitive directory-open 1)
+	(ucode-primitive directory-open-noread 1)))
 
 ;;;; FASLOAD Errors
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.13 1991/03/11 23:31:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.14 1991/05/10 00:03:27 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -257,6 +257,11 @@ MIT in each case. |#
   (guarantee-condition condition 'WRITE-CONDITION-REPORT)
   (guarantee-output-port port 'WRITE-CONDITION-REPORT)
   ((%condition-type/reporter (%condition/type condition)) condition port))
+
+(define (condition/report-string condition)
+  (with-string-output-port
+    (lambda (port)
+      (write-condition-report condition port))))
 
 ;;;; Restarts
 
@@ -527,6 +532,7 @@ MIT in each case. |#
 (define condition-type:cell-error)
 (define condition-type:control-error)
 (define condition-type:datum-out-of-range)
+(define condition-type:derived-file-error)
 (define condition-type:derived-port-error)
 (define condition-type:divide-by-zero)
 (define condition-type:error)
@@ -559,6 +565,7 @@ MIT in each case. |#
 (define error:file-touch)
 (define error:no-such-restart)
 (define error:open-file)
+(define error:derived-file)
 (define error:derived-port)
 (define error:wrong-number-of-arguments)
 (define error:wrong-type-argument)
@@ -760,6 +767,28 @@ MIT in each case. |#
 				   port
 				   condition)))))
 
+  (set! condition-type:derived-file-error
+	(make-condition-type 'DERIVED-FILE-ERROR condition-type:file-error
+	    '(CONDITION)
+	  (lambda (condition port)
+	    (write-string "The file " port)
+	    (write (access-condition condition 'FILENAME) port)
+	    (write-string " received an error:" port)
+	    (newline port)
+	    (write-condition-report (access-condition condition 'CONDITION)
+				    port))))
+
+  (set! error:derived-file
+	(let ((make-condition
+	       (condition-constructor condition-type:derived-file-error
+				      '(FILENAME CONDITION))))
+	  (lambda (filename condition)
+	    (guarantee-condition condition 'ERROR:DERIVED-FILE)
+	    (error (make-condition (%condition/continuation condition)
+				   (%condition/restarts condition)
+				   filename
+				   condition)))))
+
   (set! condition-type:open-file-error
 	(make-condition-type 'OPEN-FILE-ERROR condition-type:file-error '()
 	  (lambda (condition port)
@@ -774,7 +803,7 @@ MIT in each case. |#
 	    (write-string "The primitive file-touch signalled an error: " port)
 	    (write (access-condition condition 'MESSAGE) port)
 	    (write-string "." port))))
-
+
   (set! condition-type:variable-error
 	(make-condition-type 'VARIABLE-ERROR condition-type:cell-error
 	    '(ENVIRONMENT)
