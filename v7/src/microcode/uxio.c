@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.24 1993/03/15 18:36:18 cph Exp $
+$Id: uxio.c,v 1.25 1993/04/06 22:18:45 cph Exp $
 
 Copyright (c) 1990-93 Massachusetts Institute of Technology
 
@@ -373,7 +373,7 @@ DEFUN (OS_channel_blocking, (channel), Tchannel channel)
 #endif
 
 #ifdef HAVE_SELECT
-CONST int UX_have_select_p = 1;
+CONST int OS_have_select_p = 1;
 extern int EXFUN (UX_process_any_status_change, (void));
 #ifndef SELECT_DECLARED
 extern int EXFUN (UX_select,
@@ -381,7 +381,7 @@ extern int EXFUN (UX_select,
 		   struct timeval *));
 #endif /* not SELECT_DECLARED */
 #else /* not HAVE_SELECT */
-CONST int UX_have_select_p = 0;
+CONST int OS_have_select_p = 0;
 #endif /* not HAVE_SELECT */
 
 unsigned int

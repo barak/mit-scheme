@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosio.c,v 1.7 1992/02/04 04:36:56 cph Exp $
+$Id: prosio.c,v 1.8 1993/04/06 22:18:09 cph Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -205,6 +205,12 @@ DEFINE_PRIMITIVE ("MAKE-PIPE", Prim_make_pipe, 0, 0,
     SET_PAIR_CDR (result, (long_to_integer (writer)));
     PRIMITIVE_RETURN (result);
   }
+}
+
+DEFINE_PRIMITIVE ("HAVE-SELECT?", Prim_have_select_p, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (OS_have_select_p));
 }
 
 DEFINE_PRIMITIVE ("CHANNEL-REGISTERED?", Prim_channel_registered_p, 1, 1,

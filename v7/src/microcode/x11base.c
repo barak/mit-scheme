@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.47 1993/03/10 17:56:24 cph Exp $
+$Id: x11base.c,v 1.48 1993/04/06 22:18:36 cph Exp $
 
 Copyright (c) 1989-93 Massachusetts Institute of Technology
 
@@ -38,6 +38,7 @@ MIT in each case. */
 #include "prims.h"
 #include "ux.h"
 #include "uxselect.h"
+#include "osio.h"
 #include "x11.h"
 
 #ifndef X_DEFAULT_FONT
@@ -1134,7 +1135,7 @@ DEFUN (xd_process_events, (xd, non_block_p, use_select_p),
 {
   Display * display = (XD_DISPLAY (xd));
   unsigned int events_queued;
-  if (!UX_have_select_p)
+  if (!OS_have_select_p)
     use_select_p = 0;
   if (XD_CACHED_EVENT_P (xd))
     {

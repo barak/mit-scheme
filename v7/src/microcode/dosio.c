@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dosio.c,v 1.3 1992/11/23 04:17:43 gjr Exp $
+$Id: dosio.c,v 1.4 1993/04/06 22:19:01 cph Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -491,8 +491,9 @@ DEFUN (OS_channel_unregister, (channel), Tchannel channel)
     }
 }
 
-
 /* No SELECT in DOS */
+CONST int OS_have_select_p = 0;
+
 long
 DEFUN (OS_channel_select_then_read, (channel, buffer, nbytes),
        Tchannel channel AND

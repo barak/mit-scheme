@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxselect.h,v 1.3 1993/03/10 17:55:54 cph Exp $
+$Id: uxselect.h,v 1.4 1993/04/06 22:18:54 cph Exp $
 
 Copyright (c) 1991-93 Massachusetts Institute of Technology
 
@@ -44,7 +44,6 @@ enum select_input
   select_input_interrupt
 };
 
-extern CONST int UX_have_select_p;
 extern enum select_input EXFUN (UX_select_input, (int fd, int blockp));
 extern unsigned int EXFUN (UX_select_registry_size, (void));
 extern unsigned int EXFUN (UX_select_registry_lub, (void));
