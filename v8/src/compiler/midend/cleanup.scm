@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.11 1995/03/10 14:52:16 adams Exp $
+$Id: cleanup.scm,v 1.12 1995/03/11 17:09:32 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -73,8 +73,8 @@ MIT in each case. |#
 
 (define (do-letrec-cleanup env bindings body)
   (let* ((renames (cleanup/renamings env (map car bindings)))
-	 (env*  (append renames env))
-	 (body* (cleanup/expr env* body)))
+	 (env*    (append renames env))
+	 (body*   (cleanup/expr env* body)))
     (if (null? bindings)
 	body*
 	`(LETREC ,(map (lambda (binding)
@@ -132,9 +132,16 @@ MIT in each case. |#
 
 (define-cleanup-handler CALL (env rator cont #!rest rands)
   (define (default)
-    `(CALL ,(cleanup/expr env rator)
-	   ,(cleanup/expr env cont)
-	   ,@(cleanup/expr* env rands)))
+    (let ((rator*  (cleanup/expr env rator))
+	  (cont*   (cleanup/expr env cont))
+	  (rands*  (cleanup/expr* env rands)))
+      ;; (CALL (LETREC (...) foo) a b c) =>  (LETREC (...) (CALL foo a b c))
+      ;;  [assumption: program is alpha-converted to avoid name capture]
+      (if (and (LETREC/? rator*)
+	       (LOOKUP/? (letrec/body rator*)))
+	  `(LETREC ,(letrec/bindings rator*)
+	     (CALL ,(letrec/body rator*) ,cont* ,@rands*))
+	  `(CALL ,rator* ,cont* ,@rands*))))
   (cond ((QUOTE/? rator)
 	 (let ((rator-name  (quote/text rator))
 	       (cont*   (cleanup/expr env cont))
@@ -162,8 +169,8 @@ MIT in each case. |#
 				 (else (default)))))
 		     (else (default)))))))
 	((LAMBDA/? rator)
-         (let ((lambda-list (lambda/formals rator))
-               (lambda-body (lambda/body rator)))
+         (let ((lambda-list  (lambda/formals rator))
+               (lambda-body  (lambda/body rator)))
            (define (generate env let-names let-values)
              (cleanup/let*
               (lambda (bindings* body*)
