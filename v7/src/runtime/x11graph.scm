@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.14 1992/02/04 18:52:59 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.15 1992/02/25 22:38:44 cph Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,40 +47,45 @@ MIT in each case. |#
   (x-display-get-default 3)
   (x-display-process-events 2)
   (x-font-structure 2)
-  (x-window-x-size 1)
-  (x-window-y-size 1)
-  (x-window-map 1)
-  (x-window-unmap 1)
+
   (x-window-beep 1)
   (x-window-clear 1)
   (x-window-display 1)
-  (x-window-set-foreground-color 2)
+  (x-window-iconify 1)
+  (x-window-map 1)
   (x-window-set-background-color 2)
   (x-window-set-border-color 2)
+  (x-window-set-border-width 2)
   (x-window-set-cursor-color 2)
+  (x-window-set-font 2)
+  (x-window-set-foreground-color 2)
+  (x-window-set-icon-name 2)
+  (x-window-set-internal-border-width 2)
   (x-window-set-mouse-color 2)
   (x-window-set-mouse-shape 2)
-  (x-window-set-font 2)
-  (x-window-set-border-width 2)
-  (x-window-set-internal-border-width 2)
-  (x-window-set-size 3)
+  (x-window-set-name 2)
   (x-window-set-position 3)
+  (x-window-set-size 3)
   (x-window-starbase-filename 1)
-  (x-graphics-open-window 3)
-  (x-graphics-vdc-extent 1)
-  (x-graphics-set-vdc-extent 5)
-  (x-graphics-reset-clip-rectangle 1)
-  (x-graphics-set-clip-rectangle 5)
-  (x-graphics-move-cursor 3)
+  (x-window-unmap 1)
+  (x-window-x-size 1)
+  (x-window-y-size 1)
+
+  (x-graphics-copy-area 7)
   (x-graphics-drag-cursor 3)
   (x-graphics-draw-line 5)
   (x-graphics-draw-point 3)
   (x-graphics-draw-string 4)
-  (x-graphics-copy-area 7)
-  (x-graphics-set-function 2)
-  (x-graphics-set-fill-style 2)
-  (x-graphics-set-line-style 2)
+  (x-graphics-move-cursor 3)
+  (x-graphics-open-window 3)
+  (x-graphics-reset-clip-rectangle 1)
+  (x-graphics-set-clip-rectangle 5)
   (x-graphics-set-dashes 3)
+  (x-graphics-set-fill-style 2)
+  (x-graphics-set-function 2)
+  (x-graphics-set-line-style 2)
+  (x-graphics-set-vdc-extent 5)
+  (x-graphics-vdc-extent 1)
 
   (x-bytes-into-image 2)
   (x-create-image 3)
@@ -154,6 +159,7 @@ MIT in each case. |#
 	   (font-structure ,operation/font-structure)
 	   (get-colormap ,operation/get-colormap)
 	   (get-default ,operation/get-default)
+	   (iconify-window ,operation/iconify-window)
 	   (map-window ,operation/map-window)
 	   (move-cursor ,operation/move-cursor)
 	   (move-window ,operation/move-window)
@@ -169,10 +175,12 @@ MIT in each case. |#
 	   (set-drawing-mode ,operation/set-drawing-mode)
 	   (set-font ,operation/set-font)
 	   (set-foreground-color ,operation/set-foreground-color)
+	   (set-icon-name ,operation/set-icon-name)
 	   (set-internal-border-width ,operation/set-internal-border-width)
 	   (set-line-style ,operation/set-line-style)
 	   (set-mouse-color ,operation/set-mouse-color)
 	   (set-mouse-shape ,operation/set-mouse-shape)
+	   (set-window-name ,operation/set-window-name)
 	   (starbase-filename ,operation/starbase-filename)
 	   (unmap-window ,operation/unmap-window))))
   (set! window-list (make-protection-list))
@@ -408,6 +416,18 @@ MIT in each case. |#
 (define (operation/unmap-window device)
   (x-graphics-device/process-events! device)
   (x-window-unmap (x-graphics-device/window device)))
+
+(define (operation/iconify-window device)
+  (x-graphics-device/process-events! device)
+  (x-window-iconify (x-graphics-device/window device)))
+
+(define (operation/set-icon-name device name)
+  (x-graphics-device/process-events! device)
+  (x-window-set-icon-name (x-graphics-device/window device) name))
+
+(define (operation/set-window-name device name)
+  (x-graphics-device/process-events! device)
+  (x-window-set-name (x-graphics-device/window device) name))
 
 ;;;; Images
 
