@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: curren.scm,v 1.137 2000/10/26 22:12:50 cph Exp $
+;;; $Id: curren.scm,v 1.138 2000/10/27 03:16:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -541,70 +541,63 @@ The buffer is guaranteed to be selected at that time."
 		 buffers)))))
 
 (define (maybe-select-buffer-layout window buffer)
-  (let ((thunk
-	 (and (not (typein-window? window))
-	      (without-interrupts
-	       (lambda ()
-		 (let ((screen (window-screen window)))
-		   (if (let ((layout
-			      (hash-table/get screen-buffer-layouts
-					      screen #f)))
-			 (and layout
-			      (not (weak-memq buffer (cdr layout)))))
-		       (begin
-			 (hash-table/remove! screen-buffer-layouts screen)
-			 (delete-other-windows window)))
-		   (let ((layout (buffer-get buffer buffer-layout-key #f)))
-		     (and layout
-			  (let ((buffers (weak-list->list (cdr layout))))
-			    (if (for-all? buffers
-				  (lambda (buffer)
-				    (and buffer
-					 (buffer-alive? buffer))))
-				(and (for-all? buffers
-				       (lambda (buffer*)
-					 (or (eq? buffer* buffer)
-					     (not (buffer-visible? buffer*)))))
-				     (begin
-				       (hash-table/put! screen-buffer-layouts
-							screen layout)
-				       (delete-other-windows window)
-				       (lambda ()
-					 ((car layout) window buffers))))
-				(begin
-				  (delete-buffer-layout buffer)
-				  #f)))))))))))
-    (if thunk (thunk))))
-
+  (if (not (or setting-up-buffer-layout? (typein-window? window)))
+      (let ((layout
+	     (without-interrupts
+	      (lambda ()
+		(maybe-select-buffer-layout-1 window buffer)))))
+	(if layout
+	    (fluid-let ((setting-up-buffer-layout? #t))
+	      ((car layout) window (weak-list->list (cdr layout))))))))
+
+(define (maybe-select-buffer-layout-1 window buffer)
+  (let ((screen (window-screen window)))
+    (let ((l1 (hash-table/get screen-buffer-layouts screen #f))
+	  (l2 (buffer-get buffer buffer-layout-key #f)))
+      (and (not (eq? l1 l2))
+	   (begin
+	     (if l1
+		 (begin
+		   (hash-table/remove! screen-buffer-layouts screen)
+		   (delete-other-windows window)))
+	     (and l2
+		  (if (let loop ((buffers (cdr l2)))
+			(or (not (weak-pair? buffers))
+			    (and (let ((buffer (weak-car buffers)))
+				   (and buffer (buffer-alive? buffer)))
+				 (loop (weak-cdr buffers)))))
+		      (begin
+			(hash-table/put! screen-buffer-layouts screen l2)
+			(delete-other-windows window)
+			l2)
+		      (begin
+			(delete-buffer-layout-1 l2)
+			#f))))))))
+
 (define (maybe-deselect-buffer-layout screen)
-  (without-interrupts
-   (lambda ()
-     (let ((layout (hash-table/get screen-buffer-layouts screen #f)))
-       (and layout
-	    (begin
-	      (hash-table/remove! screen-buffer-layouts screen)
-	      layout))))))
+  (hash-table/remove! screen-buffer-layouts screen))
 
 (define (delete-buffer-layout buffer)
-  (without-interrupts
-   (lambda ()
-     (let ((layout (buffer-get buffer buffer-layout-key #f)))
-       (if layout
-	   (begin
-	     (hash-table/for-each screen-buffer-layouts
-	       (lambda (screen layout*)
-		 (if (eq? layout layout*)
-		     (hash-table/remove! screen-buffer-layouts screen))))
-	     (do ((buffers (cdr layout) (weak-cdr buffers)))
-		 ((not (weak-pair? buffers)))
-	       (let ((buffer (weak-car buffers)))
-		 (if buffer
-		     (buffer-remove! buffer buffer-layout-key))))))))))
+  ;; Caller disables interrupts.
+  (let ((layout (buffer-get buffer buffer-layout-key #f)))
+    (if layout
+	(delete-buffer-layout-1 layout))))
 
-(define buffer-layout-key
-  (list 'BUFFER-LAYOUT))
+(define (delete-buffer-layout-1 layout)
+  (hash-table/for-each screen-buffer-layouts
+    (lambda (screen layout*)
+      (if (eq? layout layout*)
+	  (hash-table/remove! screen-buffer-layouts screen))))
+  (do ((buffers (cdr layout) (weak-cdr buffers)))
+      ((not (weak-pair? buffers)))
+    (let ((buffer (weak-car buffers)))
+      (if buffer
+	  (buffer-remove! buffer buffer-layout-key)))))
 
+(define setting-up-buffer-layout? #f)
+(define buffer-layout-key (list 'BUFFER-LAYOUT))
 (define screen-buffer-layouts)
+
 (add-event-receiver! editor-initializations
   (lambda ()
     (set! screen-buffer-layouts (make-eq-hash-table))
