@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2fs.c,v 1.6 1995/10/23 06:16:20 cph Exp $
+$Id: os2fs.c,v 1.7 1995/11/06 21:51:37 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -223,6 +223,18 @@ void
 OS_file_link_soft (const char * from_name, const char * to_name)
 {
   OS2_error_unimplemented_primitive ();
+}
+
+void
+OS_file_copy (const char * from, const char * to)
+{
+  FILESTATUS3 * info = (OS2_read_file_status (to));
+  if ((info != 0) && (((info -> attrFile) & FILE_READONLY) != 0))
+    {
+      (info -> attrFile) &=~ FILE_READONLY;
+      OS2_write_file_status (to, info);
+    }
+  STD_API_CALL (dos_copy, (((PSZ) from), ((PSZ) to), DCPY_EXISTING));
 }
 
 void

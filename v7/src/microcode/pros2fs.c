@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2fs.c,v 1.14 1995/11/06 21:50:55 cph Exp $
+$Id: pros2fs.c,v 1.15 1995/11/06 21:52:24 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -42,6 +42,7 @@ extern void OS2_write_file_status (const char *, FILESTATUS3 *);
 extern char * OS2_drive_type (char);
 extern long OS2_timezone (void);
 extern long OS2_daylight_savings_p (void);
+extern void EXFUN (OS_file_copy, (CONST char *, CONST char *));
 
 #ifndef FILE_TOUCH_OPEN_TRIES
 #define FILE_TOUCH_OPEN_TRIES 5

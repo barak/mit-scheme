@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosfs.c,v 1.11 1992/10/21 00:27:22 jinx Exp $
+$Id: prosfs.c,v 1.12 1995/11/06 21:52:33 cph Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -47,6 +47,7 @@ extern int EXFUN (OS_channel_copy,
 		  (off_t source_length,
 		   Tchannel source_channel,
 		   Tchannel destination_channel));
+extern void EXFUN (OS_file_copy, (CONST char *, CONST char *));
 
 #define STRING_RESULT(expression)					\
 {									\
@@ -200,30 +201,6 @@ DEFUN (OS_channel_copy, (source_length, source_channel, destination_channel),
   }
   return (0);
 }  
-
-void
-DEFUN (OS_file_copy, (from_name, to_name),
-       CONST char * from_name AND
-       CONST char * to_name)
-{
-  int result;
-  Tchannel source_channel = (OS_open_input_file (from_name));
-  Tchannel destination_channel = (OS_open_output_file (to_name));
-  off_t source_length = (OS_file_length (source_channel));
-
-  result = (OS_channel_copy (source_length,
-			     source_channel,
-			     destination_channel));
-  
-  OS_channel_close (source_channel);
-  OS_channel_close (destination_channel);
-
-  if (result < 0)
-  {
-    signal_error_from_primitive (ERR_IO_ERROR);
-  }
-  return;
-}
 
 DEFINE_PRIMITIVE ("FILE-COPY", Prim_file_copy, 2, 2,
   "Make a new copy of the file FROM-NAME, called TO-NAME.")

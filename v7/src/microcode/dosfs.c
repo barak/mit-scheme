@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dosfs.c,v 1.4 1992/10/21 00:27:11 jinx Exp $
+$Id: dosfs.c,v 1.5 1995/11/06 21:51:03 cph Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -115,6 +115,30 @@ DEFUN (OS_file_rename, (from_name, to_name),
 {
   if ((rename (from_name, to_name)) != 0)
     error_system_call (errno, syscall_rename);
+}
+
+void
+DEFUN (OS_file_copy, (from_name, to_name),
+       CONST char * from_name AND
+       CONST char * to_name)
+{
+  int result;
+  Tchannel source_channel = (OS_open_input_file (from_name));
+  Tchannel destination_channel = (OS_open_output_file (to_name));
+  off_t source_length = (OS_file_length (source_channel));
+
+  result = (OS_channel_copy (source_length,
+			     source_channel,
+			     destination_channel));
+  
+  OS_channel_close (source_channel);
+  OS_channel_close (destination_channel);
+
+  if (result < 0)
+  {
+    signal_error_from_primitive (ERR_IO_ERROR);
+  }
+  return;
 }
 
 void

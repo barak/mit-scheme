@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxfs.c,v 1.9 1992/10/21 00:26:46 jinx Exp $
+$Id: uxfs.c,v 1.10 1995/11/06 21:51:12 cph Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -120,7 +120,7 @@ DEFUN (OS_file_soft_link_p, (name), CONST char * name)
   return (0);
 #endif
 }
-
+
 int
 DEFUN (OS_file_access, (name, mode), CONST char * name AND unsigned int mode)
 {
@@ -145,7 +145,7 @@ DEFUN (OS_file_remove_link, (name), CONST char * name)
 	  ))
     UX_unlink (name);
 }
-
+
 void
 DEFUN (OS_file_link_hard, (from_name, to_name),
        CONST char * from_name AND
@@ -172,6 +172,30 @@ DEFUN (OS_file_rename, (from_name, to_name),
        CONST char * to_name)
 {
   STD_VOID_SYSTEM_CALL (syscall_rename, (UX_rename (from_name, to_name)));
+}
+
+void
+DEFUN (OS_file_copy, (from_name, to_name),
+       CONST char * from_name AND
+       CONST char * to_name)
+{
+  int result;
+  Tchannel source_channel = (OS_open_input_file (from_name));
+  Tchannel destination_channel = (OS_open_output_file (to_name));
+  off_t source_length = (OS_file_length (source_channel));
+
+  result = (OS_channel_copy (source_length,
+			     source_channel,
+			     destination_channel));
+  
+  OS_channel_close (source_channel);
+  OS_channel_close (destination_channel);
+
+  if (result < 0)
+  {
+    signal_error_from_primitive (ERR_IO_ERROR);
+  }
+  return;
 }
 
 void
