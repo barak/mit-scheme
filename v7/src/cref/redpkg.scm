@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.23 2001/12/17 17:40:58 cph Exp $
+$Id: redpkg.scm,v 1.24 2001/12/18 19:09:58 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -522,8 +522,8 @@ USA.
 			 (vector-ref entry 0)
 			 (vector-ref entry 2))))
 		(bind! package name expression #f)
-		(link! package name #f
-		       external-package external-name #f
+		(link! package name
+		       external-package external-name
 		       package #f))))
 	  ;; Imported bindings.
 	  (for-each-vector-element (vector-ref desc 4)
@@ -534,8 +534,8 @@ USA.
 			 (vector-ref entry 0)
 			 (vector-ref entry 2))))
 		(bind! external-package external-name expression #f)
-		(link! external-package external-name #f
-		       package (vector-ref entry 0) #f
+		(link! external-package external-name
+		       package (vector-ref entry 0)
 		       package #f)))))))))
 
 (define (package-lookup package name)
@@ -557,25 +557,22 @@ USA.
 	      (append-map! (lambda (file-case)
 			     (append-map cdr (cdr file-case)))
 			   file-cases))))
-  (let ((package-new?
-	 (lambda (package)
-	   (if (get-package (package/name package) #f) #t #f))))
-    (for-each (lambda (export)
-		(let ((destination (get-package (car export) #t)))
-		  (for-each (lambda (names)
-			      (link! package (car names) (package-new? package)
-				     destination (cdr names) #t
-				     package #t))
-			    (cdr export))))
-	      (package-description/exports description))
-    (for-each (lambda (import)
-		(let ((source (get-package (car import) #t)))
-		  (for-each (lambda (names)
-			      (link! source (cdr names) (package-new? source)
-				     package (car names) #t
-				     package #t))
-			    (cdr import))))
-	      (package-description/imports description))))
+  (for-each (lambda (export)
+	      (let ((destination (get-package (car export) #t)))
+		(for-each (lambda (names)
+			    (link! package (car names)
+				   destination (cdr names)
+				   package #t))
+			  (cdr export))))
+	    (package-description/exports description))
+  (for-each (lambda (import)
+	      (let ((source (get-package (car import) #t)))
+		(for-each (lambda (names)
+			    (link! source (cdr names)
+				   package (car names)
+				   package #t))
+			  (cdr import))))
+	    (package-description/imports description)))
 
 (define primitive-package-name
   (list (string->symbol "#[(cross-reference reader)primitives]")))
@@ -596,11 +593,10 @@ USA.
 	  (set-value-cell/expressions! value-cell
 				       (cons expression expressions))))))
 
-(define (link! source-package source-name source-new?
-	       destination-package destination-name destination-new?
-	       owner-package link-new?)
-  (let ((source-binding
-	 (intern-binding! source-package source-name source-new?)))
+(define (link! source-package source-name
+	       destination-package destination-name
+	       owner-package new?)
+  (let ((source-binding (intern-binding! source-package source-name #f)))
     (make-link source-binding
 	       (let ((binding
 		      (package/find-binding destination-package
@@ -611,19 +607,19 @@ USA.
 				     (binding/value-cell source-binding)))
 			   (error "Attempt to reinsert binding:"
 				  destination-name destination-package))
-		       (if destination-new? (set-binding/new?! binding #t))
+		       (if new? (set-binding/new?! binding #t))
 		       binding)
 		     (let ((binding
 			    (make-binding destination-package
 					  destination-name
 					  (binding/value-cell source-binding)
-					  destination-new?)))
+					  new?)))
 		       (rb-tree/insert! (package/bindings destination-package)
 					destination-name
 					binding)
 		       binding)))
 	       owner-package
-	       link-new?)))
+	       new?)))
 
 (define (intern-binding! package name new?)
   (let ((binding (package/find-binding package name)))
