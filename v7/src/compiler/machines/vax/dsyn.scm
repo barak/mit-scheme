@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dsyn.scm,v 1.3 1987/08/20 19:13:58 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dsyn.scm,v 1.4 1987/08/21 02:21:17 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -85,10 +85,21 @@ MIT in each case. |#
 (define (make-instruction-parser prefix operands)
   `(lambda ()
      (append ',prefix
-	     (list ,@(map process-operand operands)))))
+	     (process-operands operands))))
 
-(define (process-operand operand)
-  (case (car operand)
-    ((OPERAND) `(decode-operand ',(cadr operand)))
-    ((DISPLACEMENT) `(decode-displacement ,(caadr operand)))
-    (else (error "process-operand: Unknown operand kind" operand))))
+;; A let* is used below to force the order of evaluation.
+
+(define (process-operands operands)
+  (if (null? operands)
+      ''()
+      `(let* ((this ,(let ((operand (car operands)))
+		       (case (car operand)
+			 ((OPERAND)
+			  `(decode-operand ',(cadr operand)))
+			 ((DISPLACEMENT)
+			  `(decode-displacement ,(caadr operand)))
+			 (else
+			  (error "process-operand: Unknown operand kind"
+				 operand)))))
+	      (rest ,(process-operands (cdr operands))))
+	 (cons this rest))))
