@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.10 1995/05/19 21:39:32 cph Exp $
+$Id: os2pmcon.c,v 1.11 1995/05/19 21:57:13 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -116,10 +116,15 @@ OS2_initialize_pm_console (void)
     console_wid = (OS2_window_open (console_pm_qid, remote, 0, "Scheme"));
   }
   OS2_window_permanent (console_wid);
-  console_psid = (OS2_window_client_ps (console_wid));
-  console_metrics = (OS2_ps_set_font (console_psid, 1, "4.System VIO"));
-  if (console_metrics == 0)
-    OS2_logic_error ("Unable to find 4 point System VIO font.");
+  {
+    psid_t psid = (OS2_window_client_ps (console_wid));
+    /* This prevents the font-change hook from being invoked.  */
+    console_psid = 0;
+    console_metrics = (OS2_ps_set_font (psid, 1, "4.System VIO"));
+    if (console_metrics == 0)
+      OS2_logic_error ("Unable to find 4 point System VIO font.");
+    console_psid = psid;
+  }
   OS2_window_set_grid (console_wid, CHAR_WIDTH, CHAR_HEIGHT);
   OS2_window_shape_cursor
     (console_wid, CHAR_WIDTH, CHAR_HEIGHT, (CURSOR_SOLID | CURSOR_FLASH));
