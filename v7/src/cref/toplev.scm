@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.23 2004/12/13 03:26:51 cph Exp $
+$Id: toplev.scm,v 1.24 2004/12/13 03:27:17 cph Exp $
 
 Copyright 1988,1989,1991,1993,1995,1996 Massachusetts Institute of Technology
 Copyright 1998,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -39,7 +39,7 @@ USA.
 		      (kernel pathname pmodel changes? os-type))))
 		os-types))))
 
-(define (cref/generate-trivial-constructor filename #!optional os-type)
+(define (cref/generate-trivial-constructor filename)
   (let ((pathname (merge-pathnames filename)))
     (for-each (lambda (os-type)
 		(write-external-descriptions
