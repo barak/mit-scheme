@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: characters.texi,v 1.4 2003/09/09 03:47:32 cph Exp $
+@c $Id: characters.texi,v 1.5 2004/10/14 03:54:52 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -687,7 +687,7 @@ So for the time being, the base character set for @acronym{I/O} and
 strings is @acronym{ISO-8859-1}, and Unicode support is grafted on.
 
 This Unicode support was implemented as a part of the @acronym{XML}
-parser (@pxref{XML Parser}) implementation.  @acronym{XML} uses
+parser (@pxref{XML Support}) implementation.  @acronym{XML} uses
 Unicode as its base character set, and any @acronym{XML}
 implementation @emph{must} support Unicode.
 

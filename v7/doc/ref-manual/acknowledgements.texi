@@ -1,0 +1,21 @@
+@node Acknowledgements, Overview, Top, Top
+@unnumbered Acknowledgements
+
+While "a cast of thousands" may be an overstatement, it is certainly the
+case that this document represents the work of many people.  First and
+foremost, thanks go to the authors of the @cite{Revised^4 Report on the
+Algorithmic Language Scheme}, from which much of this document is
+derived.  Thanks also to BBN Advanced Computers Inc.@: for the use of
+parts of their @cite{Butterfly Scheme Reference}, and to Margaret
+O'Connell for translating it from BBN's text-formatting language to
+ours.
+
+Special thanks to Richard Stallman, Bob Chassell, and Brian Fox, all of
+the Free Software Foundation, for creating and maintaining the Texinfo
+formatting language in which this document is written.
+
+This report describes research done at the Artificial Intelligence
+Laboratory and the Laboratory for Computer Science, both of the
+Massachusetts Institute of Technology.  Support for this research is
+provided in part by the Advanced Research Projects Agency of the
+Department of Defense and by the National Science Foundation.

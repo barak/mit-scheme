@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.126 2004/06/16 01:55:18 cph Exp $
+@comment $Id: scheme.texinfo,v 1.127 2004/10/14 03:54:52 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT/GNU Scheme Reference
@@ -51,9 +51,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT/GNU Scheme Reference Manual}
-@subtitle Edition 1.100
-@subtitle for Scheme Release 7.7.90
-@subtitle 15 June 2004
+@subtitle Edition 1.101
+@subtitle for Scheme Release 7.7.91
+@subtitle 13 October 2004
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -215,6 +215,12 @@ Characters
 * Character Sets::              
 * Unicode::                     
 
+Unicode
+
+* Wide Strings::                
+* Unicode Representations::     
+* Alphabets::                   
+
 Strings
 
 * Construction of Strings::     
@@ -323,7 +329,7 @@ Input/Output
 * Port Primitives::             
 * Parser Buffers::              
 * Parser Language::             
-* XML Parser::                  
+* XML Support::                 
 
 Port Primitives
 
@@ -339,6 +345,13 @@ Parser Language
 * *Matcher::                    
 * *Parser::                     
 * Parser-language Macros::      
+
+XML Support
+
+* XML Input::                   
+* XML Output::                  
+* XML Names::                   
+* XML Structure::               
 
 Operating-System Interface
 
@@ -449,28 +462,7 @@ Device Independent Bitmap Utilities
 @end detailmenu
 @end menu
 
-@node Acknowledgements, Overview, Top, Top
-@unnumbered Acknowledgements
-
-While "a cast of thousands" may be an overstatement, it is certainly the
-case that this document represents the work of many people.  First and
-foremost, thanks go to the authors of the @cite{Revised^4 Report on the
-Algorithmic Language Scheme}, from which much of this document is
-derived.  Thanks also to BBN Advanced Computers Inc.@: for the use of
-parts of their @cite{Butterfly Scheme Reference}, and to Margaret
-O'Connell for translating it from BBN's text-formatting language to
-ours.
-
-Special thanks to Richard Stallman, Bob Chassell, and Brian Fox, all of
-the Free Software Foundation, for creating and maintaining the Texinfo
-formatting language in which this document is written.
-
-This report describes research done at the Artificial Intelligence
-Laboratory and the Laboratory for Computer Science, both of the
-Massachusetts Institute of Technology.  Support for this research is
-provided in part by the Advanced Research Projects Agency of the
-Department of Defense and by the National Science Foundation.
-
+@include acknowledgements.texi
 @include overview.texi
 @include special-forms.texi
 @include equivalence.texi
@@ -489,17 +481,9 @@ Department of Defense and by the National Science Foundation.
 @include error.texi
 @include graphics.texi
 @include win32-packaging.texi
-@node GNU Free Documentation License, Binding Index, Win32 Package Reference, Top
-@appendix GNU Free Documentation License
 @include gfdl.texinfo
-
-@node Binding Index, Concept Index, GNU Free Documentation License, Top
-@appendix Binding Index
-@printindex fn
-
-@node Concept Index,  , Binding Index, Top
-@appendix Concept Index
-@printindex cp
+@include binding-index.texi
+@include concept-index.texi
 
 @summarycontents
 @contents
