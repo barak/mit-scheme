@@ -20,7 +20,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Id: xscheme.el,v 1.34 1994/03/24 17:59:43 cph Exp $
+;;; $Id: xscheme.el,v 1.35 1994/03/24 18:04:53 cph Exp $
 
 (require 'scheme)
 
@@ -365,12 +365,14 @@ with no args, if that value is non-nil.
 	(car (cdr (car entries))))
       (setq entries (cdr entries)))))
 
-(defvar scheme-interaction-mode-commands-alist
-  '(("\C-c\C-m" xscheme-send-current-line)
-    ("\C-c\C-p" xscheme-send-proceed)
-    ("\C-c\C-y" xscheme-yank)
-    ("\ep" xscheme-yank-pop)
-    ("\en" xscheme-yank-push)))
+(defvar scheme-interaction-mode-commands-alist nil)
+(setq scheme-interaction-mode-commands-alist
+      (append scheme-interaction-mode-commands-alist
+	      '(("\C-c\C-m" xscheme-send-current-line)
+		("\C-c\C-p" xscheme-send-proceed)
+		("\C-c\C-y" xscheme-yank)
+		("\ep" xscheme-yank-pop)
+		("\en" xscheme-yank-push))))
 
 (defun xscheme-enter-interaction-mode ()
   (save-excursion
