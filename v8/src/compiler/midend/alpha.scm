@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: alpha.scm,v 1.9 1995/07/04 14:39:30 adams Exp $
+$Id: alpha.scm,v 1.10 1995/07/04 14:41:18 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -78,7 +78,7 @@ MIT in each case. |#
 	  (else
 	   (loop (cdr ll) (cdr nn) (cons (car nn) result))))))
 
- (define (alphaconv/remember-renames form env*)
+(define (alphaconv/remember-renames form env*)
   (let ((info (code-rewrite/original-form/previous form)))
     (and info
 	 (new-dbg-procedure? info)
@@ -90,20 +90,6 @@ MIT in each case. |#
 			  (alphaconv/env/lookup (new-dbg-variable/name var)
 						env*)))
 		     (dbg-info/remember var new-name)))
-		 (new-dbg-block/variables block)))))))
-
- (define (alphaconv/remember-renames form env*)
-  (let ((info (code-rewrite/original-form/previous form)))
-    (and info
-	 (new-dbg-procedure? info)
-	 (let ((block (new-dbg-procedure/block info)))
-	   (and block
-		(for-each
-		 (lambda (var)
-		   (let ((new-name
-			  (alphaconv/env/lookup (new-dbg-variable/name var)
-						env*)))
-		     (dbg-info/remember var `(LOOKUP ,new-name))))
 		 (new-dbg-block/variables block)))))))
 
 (define-alphaconv CALL (state env rator cont #!rest rands)
