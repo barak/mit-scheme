@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.16 1992/02/12 06:40:08 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.17 1992/04/29 22:29:26 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -1372,6 +1372,50 @@ buffer visiting that file."
        (let ((addresses (strip-quoted-names field)))
 	 (and (not (null? addresses))
 	      (car addresses)))))
+
+;;;; Editing 
+(define-command rmail-edit-current-message
+  "Edit the current RMAIL message."
+  '()
+  (lambda ()
+    (let* ((memo (current-msg-memo))
+	   (original-message #f)
+	   (return-value 'ABORT)
+	   (msg-num (msg-memo/number memo)))
+      (dynamic-wind
+       (lambda ()
+	 (with-buffer-open
+	  (current-buffer)
+	  (lambda ()
+	    (set! original-message
+		  (extract-string
+		   (msg-memo/start-body memo)
+		   (msg-memo/end-body memo)))))
+	 (set-buffer-writeable! (current-buffer))
+	 (set-current-major-mode! (ref-mode-object rmail-edit)))
+       (lambda ()
+	 (set! return-value (enter-recursive-edit))
+	 (message return-value)
+	 return-value)
+       (lambda ()
+	 (if (eq? return-value 'ABORT)
+	     (begin
+	       (with-buffer-open
+		(current-buffer)
+		(lambda ()
+		  (kill-string
+		   (msg-memo/start-body memo)
+		   (msg-memo/end-body memo))
+		  (insert-string original-message
+				 (msg-memo/start-body memo))))))
+	 (set-current-major-mode! (ref-mode-object rmail))
+	 (let ((buf (current-buffer)))
+	   (with-buffer-open
+	       buf
+	     (lambda ()
+	       (memoize-buffer buf)
+	       (update-mode-line! buf)))
+	   (show-message buf msg-num)))))))
 
 ;;;; Undigestifier
 
