@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.22 1990/09/13 23:33:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.23 1990/09/13 23:43:13 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -325,7 +325,7 @@ MIT in each case. |#
        (cond ((debugging-info/compiled-code? expression)
 	      (write-string ";compiled code"))
 	     ((not (debugging-info/undefined-expression? expression))
-	      (debugger-pp expression 0))
+	      (pretty-print expression (current-output-port) true 0))
 	     ((debugging-info/noise? expression)
 	      (write-string ";")
 	      (write-string ((debugging-info/noise expression) false)))
