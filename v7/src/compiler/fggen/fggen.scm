@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.7 1988/07/20 00:08:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.8 1988/08/11 20:13:27 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -733,10 +733,19 @@ MIT in each case. |#
 			 (the-environment? (car operands))
 			 (scode/symbol? (cadr operands)))
 		    (generate/unassigned? block continuation expression))
-		   ((or (eq? operator (ucode-primitive error-procedure))
-			(and (scode/absolute-reference? operator)
-			     (eq? (scode/absolute-reference-name operator)
-				  'ERROR-PROCEDURE)))
+		   ((and (or (eq? operator (ucode-primitive error-procedure))
+			     (and (scode/absolute-reference? operator)
+				  (eq? (scode/absolute-reference-name operator)
+				       'ERROR-PROCEDURE)))
+			 (let ((irritants (cadr operands)))
+			   (or (null? irritants)
+			       (and (scode/absolute-combination? irritants)
+				    (eq? (scode/absolute-combination-name
+					  irritants)
+					 'LIST))
+			       (and (scode/combination? irritants)
+				    (eq? (scode/combination-operator irritants)
+					 cons)))))
 		    (generate/error-combination block continuation expression))
 		   (else
 		    (generate/combination block continuation expression))))))
