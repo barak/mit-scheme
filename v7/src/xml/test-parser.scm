@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: test-parser.scm,v 1.11 2004/02/23 20:52:49 cph Exp $
+$Id: test-parser.scm,v 1.12 2004/02/24 01:51:00 cph Exp $
 
 Copyright 2001,2004 Massachusetts Institute of Technology
 
@@ -61,10 +61,8 @@ USA.
 				(write-string "Can't re-read: ")
 				(write-condition-report x
 							(current-output-port)))
-			      (begin
-				(write-string "Parsed: ")
-				(write v))))))))
-	   (newline)
+			      (write-string "Parsed")))))))
+	   (fresh-line)
 	   v))
        (directory-read
 	(merge-pathnames "*.xml" (pathname-as-directory directory)))))
