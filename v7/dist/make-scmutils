@@ -1,0 +1,199 @@
+#!/bin/sh
+
+# $Id: make-scmutils,v 1.1 2001/04/14 02:34:27 cph Exp $
+#
+# Copyright (c) 2001 Massachusetts Institute of Technology
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+# USA.
+
+set -e
+
+if [ $# -gt 0 ]; then
+    echo "usage: ${0}"
+    exit 1
+fi
+
+SCHEME_TAR=$(ls scheme-*-ix86-gnu-linux.tar.gz 2> /dev/null)
+if [ -z "${SCHEME_TAR}" ]; then
+    echo "Unable to find file 'scheme-X.Y.Z-ix86-gnu-linux.tar.gz'"
+    exit 1
+fi
+SVERSION=$(echo "${SCHEME_TAR}" | tail -1 | sed -e 's/^scheme-\(..*\)-ix86-gnu-linux\.tar\.gz$/\1/')
+
+TL_DIR="$(pwd)"
+SOURCE_DIR="/sw/scmutils"
+DIST_DIR="/scheme/v7/dist"
+
+SCHEME_DIR="${TL_DIR}/scheme-${SVERSION}"
+SBINDIR="${SCHEME_DIR}/bin"
+SAUXDIR="${SCHEME_DIR}/lib/mit-scheme"
+
+VERSION="$(date '+%Y%m%d')"
+BUILD_DIR="${TL_DIR}/scmutils-${VERSION}"
+IMAGE_DIR="${BUILD_DIR}-image"
+BINDIR="${IMAGE_DIR}/bin"
+AUXDIR="${IMAGE_DIR}/scmutils"
+MBINDIR="${AUXDIR}/mit-scheme/bin"
+MAUXDIR="${AUXDIR}/mit-scheme/lib"
+
+STAMP_UNPACK="${TL_DIR}/stamp-unpack"
+STAMP_BUILD="${TL_DIR}/stamp-build"
+STAMP_IMAGE="${TL_DIR}/stamp-image"
+
+MKDIR="mkdir -p"
+INSTALL="install -p"
+INSTALL_DATA="${INSTALL} -m 644"
+
+SCHEME="${SBINDIR}/scheme -library ${SAUXDIR}"
+
+if [ ! -f "${STAMP_UNPACK}" ];then
+    echo "Unpack MIT Scheme"
+    rm -rf "${SCHEME_DIR}"
+    ${MKDIR} "${SCHEME_DIR}"
+    (cd "${SCHEME_DIR}"; tar xzf "../${SCHEME_TAR}")
+    touch "${STAMP_UNPACK}"
+fi
+
+if [ ! -f "${STAMP_BUILD}" ];then
+    echo "Remove old build directory"
+    rm -rf "${BUILD_DIR}"
+    echo "Create new build directory"
+    cpx -qsE "${SOURCE_DIR}/src" "${BUILD_DIR}"
+    cd "${BUILD_DIR}"
+    echo "Compile binaries"
+    ${SCHEME} -compiler -heap 4000 > compile.out \
+<<EOF
+(load "compile")
+EOF
+    echo "Compiler output in ${BUILD_DIR}/compile.out"
+    echo "Generate mechanics band"
+    ${SCHEME} -edwin -compiler -heap 4000 > load.out \
+<<EOF
+(load "load")
+(disk-save "edwin-mechanics.com")
+EOF
+    echo "Output in ${BUILD_DIR}/load.out"
+    touch "${STAMP_BUILD}"
+fi
+
+if [ ! -f "${STAMP_IMAGE}" ];then
+    if [ -e "${IMAGE_DIR}" ]; then
+	echo "Remove old image directory"
+	rm -rf "${IMAGE_DIR}"
+    fi
+
+    echo "Create new image directory"
+    ${MKDIR} "${BINDIR}"
+    ${MKDIR} "${AUXDIR}"
+
+    echo "Copy MIT Scheme"
+    ${MKDIR} "${MBINDIR}"
+    cpx -q "${SBINDIR}"/* "${MBINDIR}/."
+    ${MKDIR} "${MAUXDIR}"
+    (
+	cd "${SAUXDIR}"
+	for FILE in *; do
+	    case "${FILE}" in
+	    *.com)
+		;;
+	    *)
+		cpx -q "${FILE}" "${MAUXDIR}/."
+		;;
+	    esac
+	done
+    )
+
+    echo "Copy mechanics band"
+    ${INSTALL_DATA} "${BUILD_DIR}/edwin-mechanics.com" "${MAUXDIR}/."
+
+    echo "Copy mechanics shell script"
+    ${INSTALL} "${SOURCE_DIR}/dist/mechanics" "${BINDIR}/."
+
+    echo "Copy source code"
+    for DIR in $(cd "${SOURCE_DIR}";find src -type d -print); do
+	${MKDIR} "${AUXDIR}/${DIR}"
+	for FILE in ${SOURCE_DIR}/${DIR}/*.doc; do
+	    [ -f "${FILE}" ] \
+		&& ${INSTALL_DATA} "${FILE}" "${AUXDIR}/${DIR}/."
+	done
+	# This hack prepends a copyright statement on each Scheme and C file.
+	for SUFFIX in scm c; do
+	    for FILE in ${SOURCE_DIR}/${DIR}/*.${SUFFIX}; do
+		if [ -f "${FILE}" ]; then
+		    TFILE="${AUXDIR}/${DIR}/$(basename "${FILE}")"
+		    rm -f "${TFILE}"
+		    cat "${DIST_DIR}/copyright.${SUFFIX}" "${FILE}" \
+			> "${TFILE}"
+		    chtime "${FILE}" "${TFILE}" 2> /dev/null
+		fi
+	    done
+	done
+    done
+    ${INSTALL_DATA} "${SOURCE_DIR}/src/copyrigh" "${AUXDIR}/src/LICENSE"
+    ${INSTALL_DATA} "${DIST_DIR}/COPYING" "${AUXDIR}/src/."
+    ${INSTALL_DATA} "${SOURCE_DIR}/src/general/binio/transcript" \
+	"${AUXDIR}/src/general/binio/."
+
+    echo "Copy debugging files"
+    for DIR in $(cd ${BUILD_DIR};find * -type d -print); do
+	${MKDIR} "${AUXDIR}/linux/${DIR}"
+	for FILE in ${BUILD_DIR}/${DIR}/*.bci; do
+	    [ -f "${FILE}" ] \
+		&& ${INSTALL_DATA} "${FILE}" "${AUXDIR}/linux/${DIR}/."
+	done
+    done
+
+    echo "Copy manuals"
+    ${MKDIR} "${AUXDIR}/manual"
+    for FILE in beginner.txt graphing.txt refman.txt; do
+	${INSTALL_DATA} "${SOURCE_DIR}/manual/${FILE}" "${AUXDIR}/manual/."
+    done
+
+    echo "Remove unwanted files"
+    for FILE in $(cat "${SOURCE_DIR}/dist/dist-exclude"); do
+	rm -rf "${AUXDIR}/${FILE}"
+    done
+
+    echo "Remove empty directories"
+    for DIR in $(find "${IMAGE_DIR}" -type d -print | sort -r); do
+	rmdir --ignore-fail-on-non-empty "${DIR}"
+    done
+
+    echo "Fix file permissions"
+    find "${IMAGE_DIR}" -type f -print | xargs chmod og-w
+    find "${IMAGE_DIR}" -type d -print | xargs chmod og-w
+
+    touch "${STAMP_IMAGE}"
+fi
+
+echo "Build tar file"
+TARFILE="${TL_DIR}/scmutils-${VERSION}-ix86-gnu-linux.tar.gz"
+if [ -e "${TARFILE}" ]; then
+    rm -rf "${TARFILE}"
+fi
+(cd "${IMAGE_DIR}"; tar czf "${TARFILE}" *)
+chmod 444 "${TARFILE}"
+
+echo "Remove image directory"
+rm -rf "${STAMP_IMAGE}" "${IMAGE_DIR}"
+
+echo "Remove build directory"
+rm -rf "${STAMP_BUILD}" "${BUILD_DIR}"
+
+echo "Remove MIT Scheme directory"
+rm -rf "${STAMP_UNPACK}" "${SCHEME_DIR}"
+
+echo "All done; tar file is ${TARFILE}"
