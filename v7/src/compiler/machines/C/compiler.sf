@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compiler.sf,v 1.1 1993/06/08 06:13:32 gjr Exp $
+$Id: compiler.sf,v 1.2 1993/10/13 00:00:44 cph Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -59,8 +59,9 @@ MIT in each case. |#
 	     (for-each (lambda (file)
 			 (load (string-append file ".bin") package))
 		       files))))
+      (load-option 'HASH-TABLE)
       (write-string "\n\n---- Loading compile-time files ----")
-      (sf-and-load '("base/switch" "base/hashtb") '(COMPILER))
+      (sf-and-load '("base/switch") '(COMPILER))
       (sf-and-load '("base/macros") '(COMPILER MACROS))
       ((access initialize-package! (->environment '(COMPILER MACROS))))
       (sf-and-load '("machines/C/decls") '(COMPILER DECLARATIONS))

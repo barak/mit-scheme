@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compiler.sf,v 1.1 1992/08/29 13:52:04 jinx Exp $
+$Id: compiler.sf,v 1.2 1993/10/13 00:00:51 cph Exp $
 
-Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
+Copyright (c) 1992-93 Digital Equipment Corporation (D.E.C.)
 
 This software was developed at the Digital Equipment Corporation
 Cambridge Research Laboratory.  Permission to copy this software, to
@@ -61,8 +61,9 @@ case.
 	     (for-each (lambda (file)
 			 (load (string-append file ".bin") package))
 		       files))))
+      (load-option 'HASH-TABLE)
       (write-string "\n\n---- Loading compile-time files ----")
-      (sf-and-load '("base/switch" "base/hashtb") '(COMPILER))
+      (sf-and-load '("base/switch") '(COMPILER))
       (sf-and-load '("base/macros") '(COMPILER MACROS))
       ((access initialize-package! (->environment '(COMPILER MACROS))))
       (sf-and-load '("machines/alpha/decls") '(COMPILER DECLARATIONS))
