@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: object.h,v 9.46 1995/09/18 22:33:38 cph Exp $
+$Id: object.h,v 9.47 1997/07/15 22:06:24 adams Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -504,6 +504,9 @@ extern SCHEME_OBJECT * memory_base;
 
 #define ADDRESS_PURE_P(address)						\
   ((ADDRESS_CONSTANT_P (address)) && (Pure_Test (address)))
+
+#define ADDRESS_HEAP_P(address)						\
+  (((address) >= Heap_Bottom) && ((address) < Heap_Top))
 
 #define SIDE_EFFECT_IMPURIFY(Old_Pointer, Will_Contain)			\
 if ((ADDRESS_CONSTANT_P (OBJECT_ADDRESS (Old_Pointer))) &&		\
