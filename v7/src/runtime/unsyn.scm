@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.5 1989/08/15 13:20:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.6 1989/08/16 11:46:23 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -137,7 +137,14 @@ MIT in each case. |#
   `(UNASSIGNED? ,(unassigned?-name unassigned?)))
 
 (define (unsyntax-COMMENT-object comment)
-  (unsyntax-object (comment-expression comment)))
+  (let ((expression (unsyntax-object (comment-expression comment))))
+    (if unsyntaxer:show-comments?
+	`(COMMENT ,(comment-text comment) ,expression)
+	expression)))
+
+(define unsyntaxer:show-comments?
+  false)
+
 (define (unsyntax-DECLARATION-object declaration)
   (declaration-components declaration
     (lambda (text expression)
