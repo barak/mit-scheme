@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.51 1995/07/27 20:22:21 adams Exp $
+$Id: load.scm,v 14.52 1995/08/04 17:35:53 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -108,7 +108,8 @@ MIT in each case. |#
 				       purify?
 				       load-noisily?))))
 			(cond (last-file? (load-it))
-			      (load-noisily? (write-line (load-it)))))))))))
+			      (load-noisily? (write-line (load-it)))
+			      (else (load-it) unspecific)))))))))
 	 (if (pair? filename/s)
 	     (let loop ((filenames filename/s))
 	       (if (null? (cdr filenames))
