@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rexp.scm,v 1.14 2000/04/18 21:52:57 cph Exp $
+;;; $Id: rexp.scm,v 1.15 2000/07/08 00:41:45 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -40,6 +40,9 @@
 				   (string-null? rexp))
 			      (and (pair? rexp)
 				   (memq (car rexp) boundary-rexp-types))))))
+	       ((CASE-FOLD)
+		(and (fix:= 1 (length (cdr rexp)))
+		     (string? (cadr exp))))
 	       ((ANY-CHAR LINE-START LINE-END STRING-START STRING-END
 			  WORD-EDGE NOT-WORD-EDGE WORD-START WORD-END
 			  WORD-CHAR NOT-WORD-CHAR)
