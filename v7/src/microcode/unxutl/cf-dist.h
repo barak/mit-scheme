@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cf-dist.h,v 1.21 1994/06/28 19:30:49 cph Exp $
+$Id: cf-dist.h,v 1.22 1994/06/28 19:34:10 cph Exp $
 
 Copyright (c) 1989-94 Massachusetts Institute of Technology
 
@@ -79,6 +79,22 @@ MIT in each case. */
 #define PROC_TYPE PROC_TYPE_UNKNOWN
 #endif
 
+/* The following two switches are mutually exclusive for most C compilers.
+   An exception is the GNU C compiler. */
+
+/* If defined, this prevents the C compiler from running its optimizer. */
+#define SUPPRESS_C_OPTIMIZER
+
+/* If defined, this prevents the C compiler from
+   generating debugging information. */
+/* #define SUPPRESS_C_DEBUGGING */
+
+/* Some compilation options:
+   -DDISABLE_HISTORY		turns off history recording mechanism
+   -DCOMPILE_STEPPER		turns on support for the stepper    
+ */
+#define C_SWITCH_FEATURES -DCOMPILE_STEPPER
+
 /* Define HAVE_X_WINDOWS if you want to use the X window system.  */
 #define HAVE_X_WINDOWS
 
@@ -110,20 +126,3 @@ MIT in each case. */
 #endif /* __hp9000s300 */
 #endif /* __hp9000s700 */
 #endif /* HAVE_STARBASE_GRAPHICS */
-
-/* Some compilation options:
-   -DDISABLE_HISTORY		turns off history recording mechanism
-   -DCOMPILE_STEPPER		turns on support for the stepper    
- */
-
-#define C_SWITCH_FEATURES
-
-/* The following two switches are mutually exclusive for most C compilers.
-   An exception is the GNU C compiler. */
-
-/* If defined, this prevents the C compiler from running its optimizer. */
-/* #define SUPPRESS_C_OPTIMIZER */
-
-/* If defined, this prevents the C compiler from
-   generating debugging information. */
-#define SUPPRESS_C_DEBUGGING
