@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.277 1989/04/20 08:12:57 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.278 1989/04/23 23:17:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -507,9 +507,14 @@
 
 (define (%window-y-center window)
   (with-instance-variables buffer-window window ()
-    (let ((qr
-	   (integer-divide (* y-size (ref-variable cursor-centering-point))
-			   100)))
-      (if (< (integer-divide-remainder qr) 50)
-	  (integer-divide-quotient qr)
-	  (1+ (integer-divide-quotient qr))))))
+    (let ((result
+	   (let ((qr
+		  (integer-divide
+		   (* y-size (ref-variable cursor-centering-point))
+		   100)))
+	     (if (< (integer-divide-remainder qr) 50)
+		 (integer-divide-quotient qr)
+		 (1+ (integer-divide-quotient qr))))))
+      (cond ((< result 0) 0)
+	    ((< result y-size) result)
+	    (else (-1+ y-size))))))
