@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.19 1987/05/18 17:50:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.20 1987/05/21 14:58:20 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -51,7 +51,8 @@ MIT in each case. |#
 					(procedure-optional callee)
 					(procedure-rest callee)
 					(combination-operands combination))
-		     (map generate/operand (combination-operands combination)))))
+		     (map generate/operand
+			  (combination-operands combination)))))
 	    (or (and callee
 		     (normal-primitive-constant? callee)
 		     (let ((open-coder
@@ -117,21 +118,23 @@ MIT in each case. |#
 (define (combination/normal combination subproblem? operator operands)
   ;; For the time being, all close-coded combinations will return
   ;; their values in the value register.
-  (let ((value (combination-value combination)))
-    (cond ((temporary? value)
-	   (let ((type (temporary-type value)))
-	     (if type
-		 (if (not (eq? 'VALUE type))
-		     (error "Bad temporary type" type))
-		 (set-temporary-type! value 'VALUE))))
-	  ((not (value-ignore? value))
-	   (error "Unknown combination value" value))))
   (generate/normal-statement combination subproblem?
     (lambda (subproblem?)
-      ((if subproblem? combination/subproblem combination/reduction)
-       combination
-       operator
-       operands))))
+      (let ((value (combination-value combination)))
+	(cond ((temporary? value)
+	       (if (not subproblem?)
+		   (error "Reduction targeted to temporary!" combination))
+	       (scfg*scfg->scfg!
+		(combination/subproblem combination operator operands)
+		(rtl:make-assignment value (rtl:make-fetch register:value))))
+	      ((or (value-register? value)
+		   (value-ignore? value))
+	       ((if subproblem? combination/subproblem combination/reduction)
+		combination
+		operator
+		operands))
+	      (else
+	       (error "Unknown combination value" value)))))))
 
 (define (define-open-coder primitive open-coder)
   (let ((kernel
