@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instrf.scm,v 1.11 1992/08/05 22:13:59 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instrf.scm,v 1.12 1992/08/05 23:34:40 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -51,15 +51,17 @@ MIT in each case. |#
 (let-syntax
     ((define-binary-flonum
        (macro (mnemonic pmnemonic imnemonic digit opcode1 opcode2)
+	 ;; In the following code, the commented code follows the i486
+	 ;; manual, which is wrong.  The uncommented versions agree
+	 ;; with the hardware and the description in the i486 book.
+
+	 opcode2			; ignored
+
 	 `(begin
 	    (define-instruction ,mnemonic
 	      (((ST 0) (ST (? i)))
 	       (BYTE (8 #xd8)
 		     (8 (+ ,opcode1 i))))
-
-	      ;; In the following case, the manual uses opcode2
-	      ;; but the instructions (FDIV <-> FDIVR, FSUB <-> FSUBR)
-	      ;; are actually backwards.
 
 	      (((ST (? i)) (ST 0))
 	       (BYTE (8 #xdc)
@@ -69,7 +71,9 @@ MIT in each case. |#
 
 	      (()
 	       (BYTE (8 #xde)
-		     (8 (+ ,opcode2 1))))
+		     ;; (8 (+ ,opcode2 1))
+		     (8 (+ ,opcode1 1))
+		     ))
 
 	      ((D (? source mW))
 	       (BYTE (8 #xdc))
@@ -82,7 +86,9 @@ MIT in each case. |#
 	    (define-instruction ,pmnemonic
 	      (((ST (? i)) (ST 0))
 	       (BYTE (8 #xde)
-		     (8 (+ ,opcode2 i)))))
+		     ;; (8 (+ ,opcode2 i))
+		     (8 (+ ,opcode1 i))
+		     )))
 
 	    (define-instruction ,imnemonic
 	      ((L (? source mW))
