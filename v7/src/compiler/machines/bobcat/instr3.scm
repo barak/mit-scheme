@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr3.scm,v 1.19 2001/12/20 21:45:24 cph Exp $
+$Id: instr3.scm,v 1.20 2002/02/22 03:27:42 cph Exp $
 
-Copyright (c) 1988, 1990, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -46,69 +46,71 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-branch-instruction
-       (lambda (opcode prefix field . fall-through)
-	 `(define-instruction ,opcode
-	    ((,@prefix B (@PCO (? o)))
-	     (WORD ,@field
-		   (8 o SIGNED)))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  `(DEFINE-INSTRUCTION ,(cadr form)
+	     ((,@(caddr form) B (@PCO (? o)))
+	      (WORD ,@(cadddr form)
+		    (8 o SIGNED)))
 
-	    ((,@prefix B (@PCR (? l)))
-	     (WORD ,@field
-		   (8 l SHORT-LABEL)))
+	     ((,@(caddr form) B (@PCR (? l)))
+	      (WORD ,@(cadddr form)
+		    (8 l SHORT-LABEL)))
 
-	    ((,@prefix W (@PCO (? o)))
-	     (WORD ,@field
-		   (8 #b00000000))
-	     (immediate-word o))
+	     ((,@(caddr form) W (@PCO (? o)))
+	      (WORD ,@(cadddr form)
+		    (8 #b00000000))
+	      (immediate-word o))
 
-	    ((,@prefix W (@PCR (? l)))
-	     (WORD ,@field
-		   (8 #b00000000))
-	     (relative-word l))
+	     ((,@(caddr form) W (@PCR (? l)))
+	      (WORD ,@(cadddr form)
+		    (8 #b00000000))
+	      (relative-word l))
 
-	    ;; 68020 only
+	     ;; 68020 only
 
-	    ((,@prefix L (@PCO (? o)))
-	     (WORD ,@field
-		   (8 #b11111111))
-	     (immediate-long o))
+	     ((,@(caddr form) L (@PCO (? o)))
+	      (WORD ,@(cadddr form)
+		    (8 #b11111111))
+	      (immediate-long o))
 
-	    ((,@prefix L (@PCR (? l)))
-	     (WORD ,@field
-		   (8 #b11111111))
-	     (relative-long l))
-
-	    ((,@prefix (@PCO (? o)))
-	     (GROWING-WORD (disp o)
-	      ((0 0)
-	       ,@fall-through)
-	      ((-128 127)
-	       (WORD ,@field
-		     (8 disp SIGNED)))
-	      ((-32768 32767)
-	       (WORD ,@field
-		     (8 #b00000000)
-		     (16 disp SIGNED)))
-	      ((() ())
-	       (WORD ,@field
-		     (8 #b11111111)
-		     (32 disp SIGNED)))))
+	     ((,@(caddr form) L (@PCR (? l)))
+	      (WORD ,@(cadddr form)
+		    (8 #b11111111))
+	      (relative-long l))
 
-	    ((,@prefix (@PCR (? l)))
-	     (GROWING-WORD (disp `(- ,l (+ *PC* 2)))
-	      ((0 0)
-	       ,@fall-through)
-	      ((-128 127)
-	       (WORD ,@field
-		     (8 disp SIGNED)))
-	      ((-32768 32767)
-	       (WORD ,@field
-		     (8 #b00000000)
-		     (16 disp SIGNED)))
-	      ((() ())
-	       (WORD ,@field
-		     (8 #b11111111)
-		     (32 disp SIGNED)))))))))
+	     ((,@(caddr form) (@PCO (? o)))
+	      (GROWING-WORD (disp o)
+			    ((0 0)
+			     ,@(cddddr form))
+			    ((-128 127)
+			     (WORD ,@(cadddr form)
+				   (8 disp SIGNED)))
+			    ((-32768 32767)
+			     (WORD ,@(cadddr form)
+				   (8 #b00000000)
+				   (16 disp SIGNED)))
+			    ((() ())
+			     (WORD ,@(cadddr form)
+				   (8 #b11111111)
+				   (32 disp SIGNED)))))
+
+	     ((,@(caddr form) (@PCR (? l)))
+	      (GROWING-WORD (disp `(- ,l (+ *PC* 2)))
+			    ((0 0)
+			     ,@(cddddr form))
+			    ((-128 127)
+			     (WORD ,@(cadddr form)
+				   (8 disp SIGNED)))
+			    ((-32768 32767)
+			     (WORD ,@(cadddr form)
+				   (8 #b00000000)
+				   (16 disp SIGNED)))
+			    ((() ())
+			     (WORD ,@(cadddr form)
+				   (8 #b11111111)
+				   (32 disp SIGNED))))))))))
 
   (define-branch-instruction B ((? c cc)) ((4 #b0110) (4 c))
     (WORD (16 #b0100111001110001)))

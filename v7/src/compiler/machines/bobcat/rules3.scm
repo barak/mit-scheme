@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 4.42 2001/12/20 21:45:24 cph Exp $
+$Id: rules3.scm,v 4.43 2002/02/22 03:40:24 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -164,26 +164,30 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-special-primitive-invocation
-       (lambda (name)
-	 `(define-rule statement
-	    (INVOCATION:SPECIAL-PRIMITIVE
-	     (? frame-size)
-	     (? continuation)
-	     ,(make-primitive-procedure name true))
-	    frame-size continuation
-	    (special-primitive-invocation
-	     ,(symbol-append 'CODE:COMPILER- name)))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  `(DEFINE-RULE STATEMENT
+	     (INVOCATION:SPECIAL-PRIMITIVE
+	      (? frame-size)
+	      (? continuation)
+	      ,(make-primitive-procedure (cadr form) #t))
+	     FRAME-SIZE CONTINUATION
+	     (SPECIAL-PRIMITIVE-INVOCATION
+	      ,(close-syntax (symbol-append 'CODE:COMPILER- (cadr form))
+			     environment))))))
 
      (define-optimized-primitive-invocation
-       (lambda (name)
-	 `(define-rule statement
-	    (INVOCATION:SPECIAL-PRIMITIVE
-	     (? frame-size)
-	     (? continuation)
-	     ,(make-primitive-procedure name true))
-	    frame-size continuation
-	    (optimized-primitive-invocation
-	     ,(symbol-append 'ENTRY:COMPILER- name))))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  `(DEFINE-RULE STATEMENT
+	     (INVOCATION:SPECIAL-PRIMITIVE
+	      (? frame-size)
+	      (? continuation)
+	      ,(make-primitive-procedure (cadr form) #t))
+	     FRAME-SIZE CONTINUATION
+	     (OPTIMIZED-PRIMITIVE-INVOCATION
+	      ,(close-syntax (symbol-append 'ENTRY:COMPILER- (cadr form))
+			     environment)))))))
 
   (define-optimized-primitive-invocation &+)
   (define-optimized-primitive-invocation &-)
@@ -752,17 +756,18 @@ long-word aligned and there is no need for shuffling.
 				 (vector->list entries)))))
 
 (let-syntax ((define/format-dependent
-	       (lambda (name1 name2)
-		 `(define ,name1
-		    (case MC68K/closure-format
-		      ((MC68020)
-		       ,(intern
-			 (string-append "MC68020/" (symbol->string name2))))
-		      ((MC68040)
-		       ,(intern
-			 (string-append "MC68040/" (symbol->string name2))))
-		      (else
-		       (error "Unknown closure format" closure-format)))))))
+	       (sc-macro-transformer
+		(lambda (form environment)
+		  `(DEFINE ,(cadr form)
+		     (CASE MC68K/CLOSURE-FORMAT
+		       ((MC68020)
+			,(close-syntax (symbol-append 'MC68020/ (caddr form))
+				       environment))
+		       ((MC68040)
+			,(close-syntax (symbol-append 'MC68040/ (caddr form))
+				       environment))
+		       (ELSE
+			(ERROR "Unknown closure format:" CLOSURE-FORMAT))))))))
 
 (define/format-dependent generate/closure-header closure-header)
 (define/format-dependent generate/cons-closure cons-closure)

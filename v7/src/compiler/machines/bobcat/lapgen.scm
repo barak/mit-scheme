@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 4.52 2001/12/20 21:45:24 cph Exp $
+$Id: lapgen.scm,v 4.53 2002/02/22 03:35:12 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -745,16 +745,20 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((binary-fixnum
-      (lambda (name instr identity?)
-	`(begin
-	   (define-fixnum-method ',name fixnum-methods/2-args
-	     (lambda (target source)
-	       (LAP (,instr L ,',source ,',target))))
-	   (define-fixnum-method ',name fixnum-methods/2-args-constant
-	     (lambda (target n)
-	       (if (,identity? n)
-		   (LAP)
-		   (LAP (,instr L (& ,',(* n fixnum-1)) ,',target)))))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(BEGIN
+	    (DEFINE-FIXNUM-METHOD ',(cadr form) FIXNUM-METHODS/2-ARGS
+	      (LAMBDA (TARGET SOURCE)
+		(LAP (,(caddr form) L ,',SOURCE ,',TARGET))))
+	    (DEFINE-FIXNUM-METHOD ',(cadr form) FIXNUM-METHODS/2-ARGS-CONSTANT
+	      (LAMBDA (TARGET N)
+		(IF (,(cadddr form) N)
+		    (LAP)
+		    (LAP (,(caddr form) L
+					(& ,',(* N FIXNUM-1))
+					,',TARGET))))))))))
 
   (binary-fixnum PLUS-FIXNUM ADD zero?)
   (binary-fixnum FIXNUM-OR OR zero?)
@@ -981,12 +985,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-flonum-operation
-       (lambda (primitive-name instruction-name)
-	 `(DEFINE-FLONUM-METHOD ',primitive-name FLONUM-METHODS/1-ARG
-	    (LAMBDA (SOURCE TARGET)
-	      (IF (EFFECTIVE-ADDRESS/FLOAT-REGISTER? SOURCE)
-		  (LAP (,instruction-name ,',source ,',target))
-		  (LAP (,instruction-name D ,',source ,',target))))))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  `(DEFINE-FLONUM-METHOD ',(cadr form) FLONUM-METHODS/1-ARG
+	     (LAMBDA (SOURCE TARGET)
+	       (IF (EFFECTIVE-ADDRESS/FLOAT-REGISTER? SOURCE)
+		   (LAP (,(caddr form) ,',SOURCE ,',TARGET))
+		   (LAP (,(caddr form) D ,',SOURCE ,',TARGET)))))))))
   (define-flonum-operation flonum-negate fneg)
   (define-flonum-operation flonum-abs fabs)
   (define-flonum-operation flonum-sin fsin)
@@ -1009,12 +1015,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-flonum-operation
-       (lambda (primitive-name instruction-name)
-	 `(DEFINE-FLONUM-METHOD ',primitive-name FLONUM-METHODS/2-ARGS
-	   (LAMBDA (TARGET SOURCE)
-	     (IF (EFFECTIVE-ADDRESS/FLOAT-REGISTER? SOURCE)
-		 (LAP (,instruction-name ,',source ,',target))
-		 (LAP (,instruction-name D ,',source ,',target))))))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  `(DEFINE-FLONUM-METHOD ',(cadr form) FLONUM-METHODS/2-ARGS
+	     (LAMBDA (TARGET SOURCE)
+	       (IF (EFFECTIVE-ADDRESS/FLOAT-REGISTER? SOURCE)
+		   (LAP (,(caddr form) ,',SOURCE ,',TARGET))
+		   (LAP (,(caddr form) D ,',SOURCE ,',TARGET)))))))))
   (define-flonum-operation flonum-add fadd)
   (define-flonum-operation flonum-subtract fsub)
   (define-flonum-operation flonum-multiply fmul)
@@ -1172,16 +1180,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-integrable reg:stack-guard (INST-EA (@AO 6 #X002C)))
 
 (let-syntax ((define-codes
-	       (lambda (start . names)
-		 (define (loop names index)
-		   (if (null? names)
-		       '()
-		       (cons `(DEFINE-INTEGRABLE
-				,(symbol-append 'CODE:COMPILER-
-						(car names))
-				,index)
-			     (loop (cdr names) (1+ index)))))
-		 `(BEGIN ,@(loop names start)))))
+	       (sc-macro-transformer
+		(lambda (form environment)
+		  environment
+		  `(BEGIN
+		     ,@(let loop ((names (cddr form)) (index (cadr form)))
+			 (if (pair? names)
+			     (cons `(DEFINE-INTEGRABLE
+				      ,(symbol-append 'CODE:COMPILER-
+						      (car names))
+				      ,index)
+				   (loop (cdr names) (+ index 1)))
+			     '())))))))
   (define-codes #x012
     primitive-apply primitive-lexpr-apply
     apply error lexpr-apply link
@@ -1195,16 +1205,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     quotient remainder modulo))
 
 (let-syntax ((define-entries
-	       (lambda (start . names)
-		 (define (loop names index)
-		   (if (null? names)
-		       '()
-		       (cons `(DEFINE-INTEGRABLE
-				,(symbol-append 'ENTRY:COMPILER-
-						(car names))
-				(INST-EA (@AO 6 ,index)))
-			     (loop (cdr names) (+ index 8)))))
-		 `(BEGIN ,@(loop names start)))))
+	       (sc-macro-transformer
+		(lambda (form environment)
+		  environment
+		  `(BEGIN
+		     ,@(let loop ((names (cddr form)) (index (cadr form)))
+			 (if (pair? names)
+			     (cons `(DEFINE-INTEGRABLE
+				      ,(symbol-append 'ENTRY:COMPILER-
+						      (car names))
+				      (INST-EA (@AO 6 ,index)))
+				   (loop (cdr names) (+ index 8)))
+			     '())))))))
   (define-entries #x40
     scheme-to-interface			; Main entry point (only one necessary)
     scheme-to-interface-jsr		; Used by rules3&4, for convenience.

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 4.33 2001/12/20 21:45:24 cph Exp $
+$Id: machin.scm,v 4.34 2002/02/22 03:36:54 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -170,18 +170,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-integrable MC68K/closure-format 'MC68040) ; or MC68020
 
-(let-syntax ((define/format-dependent
-	       (lambda (name)
-		 `(define ,name
-		    (case MC68K/closure-format
-		      ((MC68020)
-		       ,(intern
-			 (string-append "MC68020/" (symbol->string name))))
-		      ((MC68040)
-		       ,(intern
-			 (string-append "MC68040/" (symbol->string name))))
-		      (else
-		       (error "Unknown closure format" closure-format)))))))
+(let-syntax
+    ((define/format-dependent
+       (sc-macro-transformer
+	(lambda (form environment)
+	  (let ((name (cadr form)))
+	    `(DEFINE ,name
+	       (CASE MC68K/CLOSURE-FORMAT
+		 ((MC68020)
+		  ,(close-syntax (symbol-append 'MC68020/ name) environment))
+		 ((MC68040)
+		  ,(close-syntax (symbol-append 'MC68040/ name) environment))
+		 (ELSE
+		  (ERROR "Unknown closure format" CLOSURE-FORMAT)))))))))
 
 ;; Given: the number of entry points in a closure, and a particular
 ;; entry point number, compute the distance from that entry point to
