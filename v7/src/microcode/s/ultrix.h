@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for Ultrix
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/ultrix.h,v 1.9 1990/07/30 23:13:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/ultrix.h,v 1.10 1990/10/10 02:36:36 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -42,7 +42,7 @@ MIT in each case. */
 /* This is in mips.h for some reason. */
 /* #define LIB_DEBUG */
 
-#define C_SWITCH_SYSTEM -D_ULTRIX
+#define C_SWITCH_SYSTEM -D_ULTRIX -YPOSIX
 
 #define LIBS_SYSTEM -ltermcap
 
@@ -73,9 +73,6 @@ MIT in each case. */
    ld(1)." */
 
 #define LIBX11_SYSTEM -lc
-
-/* #define SOURCES_SYSTEM unixprim.c */
-/* #define OBJECTS_SYSTEM unixprim.o */
 
 #define ALTERNATE_M4 s/ultrix.m4
 #ifndef INSTALL_PROGRAM
