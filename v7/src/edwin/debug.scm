@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.30 1994/10/11 23:09:58 cph Exp $
+;;;	$Id: debug.scm,v 1.31 1994/10/12 01:42:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-94 Massachusetts Institute of Technology
 ;;;
@@ -87,7 +87,9 @@
        indentation
        port))
     (if (and start-mark end-mark)
- 	(highlight-region-excluding-indentation start-mark end-mark))
+ 	(highlight-region-excluding-indentation
+	 (make-region start-mark end-mark)
+	 #t))
     (if start-mark (mark-temporary! start-mark))
     (if end-mark (mark-temporary! end-mark))))
 
