@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dbgutl.scm,v 14.20 2001/08/04 02:45:30 cph Exp $
+$Id: dbgutl.scm,v 14.21 2002/01/05 06:16:04 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -144,14 +144,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    (output-to-string (quotient x-size 2)
 	      (lambda ()
 		(write-dbg-name (car binding) (current-output-port))))))
-       (if (pair? (cdr binding))
-	   (let ((s (string-append name " = ")))
-	     (string-append
-	      s
-	      (output-to-string (max (- x-size (string-length s)) 0)
-				(lambda ()
-				  (write (cadr binding))))))
-	   (string-append name " is unassigned"))))
+       (cond ((not (pair? (cdr binding)))
+	      (string-append name " is unassigned"))
+	     ((macro-reference-trap? (cadr binding))
+	      (string-append name " is a syntactic keyword"))
+	     (else
+	      (let ((s (string-append name " = ")))
+		(string-append
+		 s
+		 (output-to-string (max (- x-size (string-length s)) 0)
+				   (lambda ()
+				     (write (cadr binding))))))))))
    port)
   (newline port))
 
