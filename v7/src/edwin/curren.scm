@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: curren.scm,v 1.139 2000/10/27 04:00:34 cph Exp $
+;;; $Id: curren.scm,v 1.140 2000/10/30 15:41:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -94,9 +94,9 @@ The frame is guaranteed to be deselected at that time."
 	       (let ((message (current-message)))
 		 (clear-current-message!)
 		 (screen-exit! screen*)
+		 (undo-leave-window! (screen-selected-window screen*))
 		 (let ((window (screen-selected-window screen)))
-		   (undo-leave-window! window)
-		   (change-selected-buffer window (window-buffer window) #t
+		   (change-selected-buffer (window-buffer window) window #t
 		     (lambda ()
 		       (set-editor-selected-screen! current-editor screen))))
 		 (set-current-message! message)
@@ -191,12 +191,13 @@ The frame is guaranteed to be deselected at that time."
 (define (select-window window)
   (without-interrupts
    (lambda ()
-     (let ((screen (window-screen window)))
-       (if (not (eq? window (screen-selected-window screen)))
+     (let* ((screen (window-screen window))
+	    (window* (screen-selected-window screen)))
+       (if (not (eq? window window*))
 	   (begin
-	     (undo-leave-window! window)
+	     (undo-leave-window! window*)
 	     (if (selected-screen? screen)
-		 (change-selected-buffer window (window-buffer window) #t
+		 (change-selected-buffer (window-buffer window) window #t
 		   (lambda ()
 		     (screen-select-window! screen window)))
 		 (begin
@@ -471,14 +472,14 @@ The frame is guaranteed to be deselected at that time."
 	      (begin
 		(undo-leave-window! window)
 		(if (selected-window? window)
-		    (change-selected-buffer window buffer record?
+		    (change-selected-buffer buffer window record?
 		      (lambda ()
 			(set-window-buffer! window buffer)))
 		    (set-window-buffer! window buffer))
 		#t))))
       (maybe-select-buffer-layout window buffer)))
 
-(define (change-selected-buffer window buffer record? selection-thunk)
+(define (change-selected-buffer buffer window record? selection-thunk)
   (change-local-bindings! (selected-buffer) buffer selection-thunk)
   (set-buffer-point! buffer (window-point window))
   (if record? (bufferset-select-buffer! (current-bufferset) buffer))
