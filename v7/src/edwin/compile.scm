@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.13 1999/09/14 20:18:23 cph Exp $
+;;; $Id: compile.scm,v 1.14 2001/05/07 17:59:35 cph Exp $
 ;;;
-;;; Copyright (c) 1992-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1992-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Compilation Subprocess
 
@@ -89,7 +90,6 @@ with output going to the buffer *compilation*."
     (set-buffer-default-directory! buffer directory)
     (set-buffer-major-mode! buffer (ref-mode-object fundamental))
     (local-set-variable! mode-line-process '(": %s") buffer)
-    (local-set-variable! process-connection-type #f buffer)
     (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
       (let ((window (get-buffer-window buffer)))
 	(if window
