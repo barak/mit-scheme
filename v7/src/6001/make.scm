@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/make.scm,v 15.2 1992/03/26 22:12:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/make.scm,v 15.3 1992/04/08 20:15:01 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -52,7 +52,7 @@ MIT in each case. |#
   (set! scheme-can-quit? false)
   (set! paranoid-exit? true)
   (set! x-screen-auto-raise true)
-  (%%set-variable-value! edwin-variable$enable-transcript-buffer true)
-  (%%set-variable-value! edwin-variable$repl-error-decision true))
+  (set-variable-value! edwin-variable$enable-transcript-buffer true)
+  (set-variable-value! edwin-variable$repl-error-decision true))
 
 (ge '(student))
