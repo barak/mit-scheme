@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.21 1993/08/03 03:10:46 gjr Exp $
+$Id: parse.scm,v 14.22 1993/12/15 19:35:37 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -56,6 +56,9 @@ MIT in each case. |#
 	(char-set-difference char-set/atom-constituents
 			     (char-set #\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9
 				       #\+ #\- #\. #\#)))
+  (set! char-set/non-digit
+	(char-set-difference (char-set-invert (char-set))
+			     char-set:numeric))
 
   (set! lambda-optional-tag (object-new-type (microcode-type 'CONSTANT) 3))
   (set! lambda-rest-tag (object-new-type (microcode-type 'CONSTANT) 4))
@@ -84,6 +87,7 @@ MIT in each case. |#
 (define char-set/atom-constituents)
 (define char-set/char-delimiters)
 (define char-set/symbol-leaders)
+(define char-set/non-digit)
 
 (define lambda-optional-tag)
 (define lambda-rest-tag)
@@ -131,6 +135,12 @@ MIT in each case. |#
 		(("#f" "#F") ,parse-object/false)
 		(("#t" "#T") ,parse-object/true)
 		("#!" ,parse-object/named-constant)
+		(("#0" "#1" "#2" "#3" "#4" "#5" "#6" "#7" "#8" "#9")
+		 ,parse-object/special-prefix ,collect-list/special-prefix)
+		("#=" ,parse-object/define-shared)
+		("##" ,parse-object/reference-shared)
+		("#[" ,parse-object/unhash-printed-representation)
+		;;("#$" ,test-recursive-read)
 		("#@" ,parse-object/unhash)))
     table))
 
@@ -169,11 +179,15 @@ MIT in each case. |#
 	(parser-table/parse-object-special parser-table))
        (*parser-collect-list-special-table*
 	(parser-table/collect-list-special parser-table))
+       (*parser-current-special-prefix* #f)
+       ;; Only create it on first entry:
+       (*parser-cyclic-context* (or *parser-cyclic-context* (make-context)))
        (*parser-current-position*
 	(if (not *parser-associate-positions?*)
 	    parser-current-position/default
 	    (current-position-getter port))))
-    (thunk)))
+    (cyclic-parser-post-edit (thunk))
+))
 
 ;;;; Character Operations
 
@@ -214,7 +228,7 @@ MIT in each case. |#
   (parse-error "end of file"))
 
 (define (parse-error message #!optional irritant)
-  (let ((message (string-append "PARSE-OBJECT: " message)))
+  (let ((message (string-append "PARSE-ERROR: " message)))
     (if (default-object? irritant)
 	(error message)
 	(error message irritant))))
@@ -225,6 +239,8 @@ MIT in each case. |#
 (define *parser-collect-list-table*)
 (define *parser-parse-object-special-table*)
 (define *parser-collect-list-special-table*)
+
+(define *parser-current-special-prefix*)
 
 (define-integrable (parse-object/dispatch)
   (let ((char (peek-char/eof-ok)))
@@ -238,10 +254,12 @@ MIT in each case. |#
 
 (define (parse-object/special)
   (discard-char)
+  (set! *parser-current-special-prefix* #f)
   ((vector-ref *parser-parse-object-special-table* (peek-ascii))))
 
 (define (collect-list/special)
   (discard-char)
+  (set! *parser-current-special-prefix* #f)
   ((vector-ref *parser-collect-list-special-table* (peek-ascii))))
 
 (define-integrable (peek-ascii)
@@ -358,9 +376,8 @@ MIT in each case. |#
 		      (case (string-ref string index)
 			((#\0) 0)
 			((#\1) 1)
-			(else
-			 (error "READ: bad bit-string syntax"
-				(string-append "#*" string))))))
+			(else  (parse-error "Bad bit-string syntax"
+					    (string-append "#*" string))))))
 	     result))))))
 
 ;;;; Lists/Vectors
@@ -556,22 +573,245 @@ MIT in each case. |#
 
 (define named-objects)
 
+
+(define (parse-unhash number)
+  (if (not (exact-nonnegative-integer? number))
+      (parse-error "Invalid unhash syntax" number))
+  (let ((object (object-unhash number)))
+    ;; This knows that 0 is the hash of #f.
+    (if (and (false? object) (not (zero? number)))
+	(parse-error "Invalid hash number" number))
+    object))
+
 (define-accretor 1 (parse-object/unhash)
   (discard-char)
-  (let ((number (parse-object/dispatch)))
-    (if (not (exact-nonnegative-integer? number))
-	(parse-error "Invalid unhash syntax" number))
-    (let ((object (object-unhash number)))
-      ;; This knows that 0 is the hash of #f.
-      (if (and (false? object) (not (zero? number)))
-	  (parse-error "Invalid hash number" number))
-      ;; This may seem a little random, because #@N doesn't just
-      ;; return an object.  However, the motivation for this piece of
-      ;; syntax is convenience -- and 99.99% of the time the result of
-      ;; this syntax will be evaluated, and the user will expect the
-      ;; result of the evaluation to be the object she was referring
-      ;; to.  If the quotation isn't there, the user just gets
-      ;; confused.
-      (if (scode-constant? object)
-	  object
-	  (make-quotation object)))))
+  (let* ((number (parse-object/dispatch))
+	 (object (parser-unhash number)))
+    ;; This may seem a little random, because #@N doesn't just
+    ;; return an object.  However, the motivation for this piece of
+    ;; syntax is convenience -- and 99.99% of the time the result of
+    ;; this syntax will be evaluated, and the user will expect the
+    ;; result of the evaluation to be the object she was referring
+    ;; to.  If the quotation isn't there, the user just gets
+    ;; confused.
+    (if (scode-constant? object)
+	object
+	(make-quotation object))))
+
+
+(define-accretor 1 (parse-object/unhash-printed-representation)
+  ;; #[fnord]
+  ;; #[fnord-with-hash-number n ... ]
+  (discard-char)
+  (let* ((name   (parse-object/dispatch)))
+    (discard-whitespace)
+    (if (char=? #\] (peek-char))
+	(begin  (read-char)
+		(parse-error "No hash number in #[" name)))
+    (let* ((number (parse-object/dispatch))
+	   (object (parse-unhash number)))
+      ;; now gobble up crap until we find the #\]
+      (let loop ()
+	(discard-whitespace)
+	(if (char=? #\] (peek-char))
+	    (read-char)
+	    (begin (parse-object/dispatch)
+		   (loop))))
+      object)))
+
+
+;;;; #<number>
+
+(define (parse-object/special-prefix)
+  (parse-special-prefix *parser-parse-object-special-table*))
+
+(define (collect-list/special-prefix)
+  (parse-special-prefix *parser-collect-list-special-table*))
+
+(define (parse-special-prefix table)
+  (set! *parser-current-special-prefix*
+	(string->number (read-string char-set/non-digit) 10))
+  ((vector-ref table (peek-ascii))))
+
+
+;;;; #n= and #n#
+;;
+;;  The fluid variable *parser-cyclic-context* contains the context
+;;  (roughly read operation) in which the #n= and #n# references are
+;;  defined.  It is basically a table associating <n> with the
+;;  reference #<n>#.
+;;  
+;;
+
+(define *parser-cyclic-context* #f)
+
+
+(define (parse-object/define-shared)
+  (discard-char)
+  (if (not *parser-current-special-prefix*)
+      (parse-error
+       "#= not allowed.  Circular structure syntax #<n>= requires <n>"))
+  (let* ((index *parser-current-special-prefix*)
+	 (ref   
+	  (let ((ref (context/find-reference *parser-cyclic-context*
+					     index)))
+	    ;; The follwing test is not necessary unless we want
+	    ;; to be CLtL compliant
+	    (if ref
+		(parse-error
+		 "Cannot redefine circular structure label #<n>=, <n> ="
+		 index))
+	    (context/touch! *parser-cyclic-context*)
+	    (context/define-reference *parser-cyclic-context* index)))
+	 (text  (parse-object/dispatch)))
+    (if (reference? text)
+	(parse-error
+	 (string-append
+	  "#"  (number->string (reference/index ref))
+	  "=#" (number->string (reference/index text))
+	  "# not allowed.  Circular structure labels must not refer to labels.")))
+    (context/close-reference ref text)
+    ref))
+
+
+(define (parse-object/reference-shared)
+  (discard-char)
+  (if (not *parser-current-special-prefix*)
+      (parse-error
+       "## not allowed.  Circular structure syntax #<n># requires <n>"))
+  (let* ((index  *parser-current-special-prefix*)
+	 (ref    (context/find-reference *parser-cyclic-context* index)))
+    (if ref
+	(begin  (context/touch! *parser-cyclic-context*)
+		ref)
+	(parse-error
+	 "Must define circular structure label #<n># before use: <n> ="
+	 index))))
+
+
+(define (cyclic-parser-post-edit datum)
+  (if *parser-cyclic-context*
+      (context/substitute-cycles *parser-cyclic-context* datum)
+      datum))
+
+
+;;;; contexts and references
+
+(define-structure
+  (reference
+   (conc-name reference/))
+  index
+  context
+  text
+  start-touch-count   ;; number of #n? things seen when we saw this #n=
+  end-touch-count     ;; number of #n? things seen after finishing this one
+                      ;;  is #f if this is not yet finished
+                      ;; if difference=0 this one contains no references
+  )
+
+(define (reference/contains-references? ref)
+  (not (eqv? (reference/start-touch-count ref)
+	     (reference/end-touch-count ref))))
+
+(define-structure
+  (context
+   (conc-name context/)
+   (constructor %make-context))
+  references        ;; some kind of association number->reference
+  touches           ;; number of #n# or #n= things see so far
+)
+
+(define (make-context)   (%make-context '() 0))
+
+(define (context/touch! context)
+  (set-context/touches! context  (fix:1+ (context/touches context))))
+
+
+(define (context/define-reference context index)
+  (let ((ref  (make-reference index
+			      context
+			      ()
+			      (context/touches context)
+			      #f)))
+    
+    (set-context/references!
+     context
+     (cons (cons index ref) (context/references context)))
+    ref))
+
+(define (context/close-reference ref text)
+  (set-reference/end-touch-count! ref (context/touches (reference/context ref)))
+  (set-reference/text! ref text))
+
+(define (context/find-reference context index)
+  (let ((index.ref (assq index (context/references context))))
+    (if index.ref (cdr index.ref) #f)))
+
+;;  SUBSTITUTE! traverses a tree, replacing all references by their text
+;;
+;;  This implementation assumes that #n= and #n# are THE ONLY source
+;;  of circularity, thus the objects given to SUBSTITUTE! are trees.
+
+(define (substitute! thing)
+  ;(display "[substitute!]")
+  (cond ((pair? thing)    (substitute/pair! thing))
+	((vector? thing)  (substitute/vector! thing))
+	((%record? thing) (substitute/%record! thing))
+	))
+
+(define (substitute/pair! pair)
+  (if (reference? (car pair))
+      (set-car! pair (reference/text (car pair)))
+      (substitute! (car pair)))
+  (if (reference? (cdr pair))
+      (set-cdr! pair (reference/text (cdr pair)))
+      (substitute! (cdr pair))))
+
+(define (substitute/vector! v)
+  (let ((n (vector-length v)))
+    (let loop ((i 0))
+      (if (not (fix:= i n))
+	  (let ((elt (vector-ref v i)))
+	    (if (reference? elt)
+		(vector-set! v i (reference/text elt))
+		(substitute! elt))
+	    (loop (fix:1+ i)))))))
+	
+(define (substitute/%record! r)
+  ;; TEST THIS CODE
+  (let ((n  (%record-length r)))
+    (if (fix:> n 0)
+	(let loop ((i (fix:- n 1)))
+	  (if (fix:> i 0)
+	      (let ((elt (%record-ref r i)))
+		(if (reference? elt)
+		    (%record-set! r i (reference/text elt))
+		    (substitute! elt))
+		(loop (fix:- i 1)))))
+	;; tail-call 0th element which is usually a record type decriptor
+	(let ((elt (%record-ref r 0)))
+	  (if (reference? elt)
+	      (%record-set! r i (reference/text elt))
+	      (substitute! elt))))))
+	
+  
+(define (context/substitute-cycles context datum)
+
+  (for-each (lambda (index.ref)
+	      (let ((ref (cdr index.ref)))
+		(if (reference/contains-references? ref)
+		    (substitute! (reference/text ref)))))
+	    (context/references context))
+
+  (cond ((null? (context/references context))	 datum)
+	((reference? datum)	                 (reference/text datum))
+	(else  (substitute! datum)
+	       datum)))
+
+
+
+
+
+;;(define (test-recursive-read)
+;;  (discard-char)
+;;  (vector (read *parser-input-port*)))
