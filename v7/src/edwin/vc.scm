@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.41 2000/03/27 17:41:35 cph Exp $
+;;; $Id: vc.scm,v 1.42 2000/03/27 17:54:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -170,7 +170,7 @@ Otherwise, the mod time of the file is the checkout time."
       (if (and v.t (eqv? time (cdr v.t)))
 	  (car v.t)
 	  (begin
-	    (vc-master-put! master key (cons (read-value) time))
+	    (vc-master-put! master key (cons (read-value time) time))
 	    (loop))))))
 #|
 (define (cache-value-1! master key pathname read-value)
@@ -189,7 +189,7 @@ Otherwise, the mod time of the file is the checkout time."
 	       (eqv? t2 (vector-ref vtt 2)))
 	  (vector-ref vtt 0)
 	  (begin
-	    (vc-master-put! master key (vector (read-value) t1 t2))
+	    (vc-master-put! master key (vector (read-value t1 t2) t1 t2))
 	    (loop))))))
 
 (define (cache-value-2! master key p1 p2 read-value)
@@ -1137,7 +1137,7 @@ the value of vc-log-mode-hook."
 (define (get-rcs-admin master)
   (let ((pathname (vc-master-pathname master)))
     (read-cached-value-1 master 'RCS-ADMIN pathname
-			 (lambda () (parse-rcs-admin pathname)))))
+			 (lambda (time) time (parse-rcs-admin pathname)))))
 
 (define (check-rcs-headers buffer)
   (re-search-forward (string-append "\\$[A-Za-z\300-\326\330-\366\370-\377]+"
@@ -1195,7 +1195,8 @@ the value of vc-log-mode-hook."
   (lambda (master)
     (let ((workfile (vc-master-workfile master)))
       (read-cached-value-1 master 'RCS-WORKFILE-REVISION workfile
-	(lambda ()
+	(lambda (time)
+	  time
 	  (let ((parse-buffer
 		 (lambda (buffer)
 		   (let ((start (buffer-start buffer))
@@ -1371,23 +1372,27 @@ the value of vc-log-mode-hook."
 
 (define (find-cvs-master workfile)
   (let ((entries-file (merge-pathnames "Entries" (cvs-directory workfile))))
-    (and (find-cvs-entry entries-file workfile)
+    (and (%find-cvs-entry entries-file workfile)
 	 (make-vc-master vc-type:cvs entries-file workfile))))
 
 (define (cvs-directory workfile)
   (subdirectory-pathname workfile "CVS"))
 
 (define (get-cvs-workfile-revision master error?)
-  (let ((pathname (vc-master-pathname master)))
-    (read-cached-value-1 master 'CVS-WORKFILE-REVISION pathname
-      (lambda ()
-	(let ((workfile (vc-master-workfile master)))
-	  (let ((tokens (find-cvs-entry pathname workfile)))
-	    (if tokens
-		(cadr tokens)
-		(and error? (error "Workfile has no version:" workfile)))))))))
+  (let ((tokens (find-cvs-entry master)))
+    (if tokens
+	(cadr tokens)
+	(and error?
+	     (error "Workfile has no version:" (vc-master-workfile master))))))
 
-(define (find-cvs-entry pathname workfile)
+(define (find-cvs-entry master)
+  (let ((pathname (vc-master-pathname master)))
+    (read-cached-value-1 master 'CVS-ENTRY pathname
+      (lambda (time)
+	time
+	(%find-cvs-entry pathname (vc-master-workfile master))))))
+
+(define (%find-cvs-entry pathname workfile)
   (and (file-readable? pathname)
        (call-with-input-file pathname
 	 (lambda (port)
@@ -1795,7 +1800,14 @@ the value of vc-log-mode-hook."
   (read-cached-value-2 master 'MODIFIED?
 		       (vc-master-pathname master)
 		       (vc-master-workfile master)
-		       (lambda () (vc-backend-diff master #f #f #t))))
+    (lambda (tm tw)
+      tm
+      (or (and tw
+	       (let ((tokens (find-cvs-entry master)))
+		 (and tokens
+		      (string=? (file-time->global-ctime-string tw)
+				(caddr tokens)))))
+	  (vc-backend-diff master #f #f #t)))))
 
 (define (vc-save-workfile-buffer workfile)
   (let ((buffer (pathname->buffer workfile)))
