@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fill.scm,v 1.65 2000/06/15 03:17:57 cph Exp $
+;;; $Id: fill.scm,v 1.66 2000/06/15 03:43:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -544,13 +544,13 @@ With argument, turn auto-fill mode on iff argument is positive."
 		 (v
 		  (group-column->index group
 				       ls-index
-				       end-index
+				       index
 				       0
 				       target-column
 				       tab-width
 				       image-strings)))
 	    (if (and (fix:>= (vector-ref v 1) target-column)
-		     (fix:< (vector-ref v 0) end-index)
+		     (fix:<= (vector-ref v 0) index)
 		     (re-search-backward "[^ \t][ \t]+"
 					 (make-mark group (vector-ref v 0))
 					 (make-mark group ls-index)))
