@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntfile.c,v 1.4 1993/09/13 18:36:20 gjr Exp $
+$Id: ntfile.c,v 1.5 1996/04/09 20:19:13 adams Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -98,8 +98,12 @@ DEFUN (name, (filename), CONST char * filename)				\
   return  OS_open_handle (hFile);					\
 }
 
+// In the following we specify FILE_SHARE_READ | FILE_SHARE_WRITE
+// so that we can edit and save out a file while we are still in a
+// error REPL from a buggy source file.
+
 DEFUN_OPEN_FILE (OS_open_input_file,
-  (filename, GENERIC_READ, FILE_SHARE_READ, 0,
+  (filename, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, 0,
    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0));
 
 DEFUN_OPEN_FILE (OS_open_output_file,
@@ -107,13 +111,9 @@ DEFUN_OPEN_FILE (OS_open_output_file,
    CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0));
 
 DEFUN_OPEN_FILE (OS_open_io_file,
-  (filename, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, 0,
+  (filename, GENERIC_READ | GENERIC_WRITE,
+   FILE_SHARE_READ | FILE_SHARE_WRITE, 0,
    OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0));
-
-
-//DEFUN_OPEN_FILE (OS_open_input_file, O_RDONLY | _O_BINARY)
-//DEFUN_OPEN_FILE (OS_open_output_file, (O_WRONLY | O_CREAT | O_TRUNC | _O_BINARY))
-//DEFUN_OPEN_FILE (OS_open_io_file, (O_RDWR | O_CREAT))
 
 
 #ifdef HAVE_APPEND
@@ -134,9 +134,6 @@ DEFUN (OS_open_append_file, (filename), CONST char * filename)
   SetFilePointer (hFile, 0, 0, FILE_END);
   return  OS_open_handle (hFile);
 }
-
-
-//DEFUN_OPEN_FILE (OS_open_append_file, (O_WRONLY | O_CREAT | O_APPEND | _O_BINARY))
 
 #else
 
