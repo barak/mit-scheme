@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.9 2000/01/20 17:12:53 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.10 2000/01/20 17:45:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -42,9 +42,7 @@
 
 (define-method %new-folder ((url <rmail-url>))
   (let ((folder (make-rmail-folder url '())))
-    (set-rmail-folder-header-fields!
-     folder
-     (compute-rmail-folder-header-fields folder))
+    (set-header-fields! folder (compute-rmail-folder-header-fields folder))
     (save-folder folder)
     folder))
 
