@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: evlcom.scm,v 1.47 1993/10/26 00:37:59 cph Exp $
+;;;	$Id: evlcom.scm,v 1.48 1993/10/27 02:23:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -321,7 +321,15 @@ Has no effect if evaluate-in-inferior-repl is false."
       (if (eq? default-type 'VISIBLE-DEFAULT)
 	  'INVISIBLE-DEFAULT
 	  default-type)
-      (ref-mode-object prompt-for-expression)))))
+      (let ((environment (evaluation-environment #f)))
+	(lambda (buffer)
+	  (set-buffer-major-mode! buffer
+				  (ref-mode-object prompt-for-expression))
+	  ;; This sets up the correct environment in the typein buffer
+	  ;; so that completion of variables works right.
+	  (define-variable-local-value! buffer
+	      (ref-variable-object scheme-environment)
+	    environment)))))))
 
 (define (read-from-string string)
   (bind-condition-handler (list condition-type:error) evaluation-error-handler
