@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxdld.c,v 1.4 1993/11/01 15:36:43 gjr Exp $
+$Id: pruxdld.c,v 1.5 1993/11/01 16:16:15 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -176,7 +176,7 @@ the corresponding Scheme integer.")
   PRIMITIVE_HEADER (1);
   
   address = ((unsigned long) (arg_integer (1)));
-  thunk = ((unsinged long (*) ()) address);
+  thunk = ((unsigned long EXFUN ((*), (void))) address);
   result = ((* thunk) ());
   PRIMITIVE_RETURN (ulong_to_integer (result));
 }
@@ -190,5 +190,5 @@ Construct the corresponding Scheme string.")
   PRIMITIVE_HEADER (1);
 
   address = ((unsigned long) (arg_integer (1)));
-  PRIMITIVE_RETURN (char_pointer_to_string ((char *) address));
+  PRIMITIVE_RETURN (char_pointer_to_string ((unsigned char *) address));
 }
