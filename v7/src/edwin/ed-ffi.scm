@@ -135,6 +135,8 @@
 	       edwin-syntax-table)
     ("motion"  (edwin)
 	       syntax-table/system-internal)
+    ("notify" (edwin)
+	       syntax-table/system-internal)
     ("nvector" (edwin)
 	       syntax-table/system-internal)
     ("pasmod"  (edwin)

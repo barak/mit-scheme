@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.12 1991/11/04 20:51:24 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.13 1992/02/14 22:30:53 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -77,6 +77,7 @@ Decimal digits after the % specify field width to which to pad."
        mode-line-buffer-identification
        "   "
        global-mode-string
+       notify-string
        "   %[(%M%m%n"
        mode-line-process
        ")%]----"
