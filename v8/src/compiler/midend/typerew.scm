@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.16 1996/07/22 18:06:48 adams Exp $
+$Id: typerew.scm,v 1.17 1996/07/22 18:48:32 adams Exp $
 
 Copyright (c) 1994-1996 Massachusetts Institute of Technology
 
@@ -39,17 +39,12 @@ MIT in each case. |#
 
 (define *typerew-type-map*)		; form->type
 
-;; Sometime it is convienient ot decide an operator rewrite at type
-;; analysis time:
-(define *typerew-suggestions-map*)	; form->rewrite
-
 (define *typerew-dbg-map*)
 
 (define (typerew/top-level program)
   (let  ((program* (copier/top-level program code-rewrite/remember)))
     ;;(kmp/ppp program*)
     (fluid-let ((*typerew-type-map*        (make-form-map))
-		(*typerew-suggestions-map* (make-form-map))
 		(*typerew-dbg-map*	   (make-form-map)))
       (typerew/expr program* q-env:top
 		    (lambda (q t e) q t e
@@ -78,9 +73,6 @@ MIT in each case. |#
 
 (define (typerew/type/no-error form)
   (form-map/get *typerew-type-map* form #F))
-
-(define (typerew/suggest-rewrite form rewrite)
-  (form-map/put! *typerew-suggestions-map* form rewrite))
 
 ;; This is incorrect in the following conservative way: QUANTITY may
 ;; already be bound in ENV to a type that would restrict TYPE.
@@ -849,9 +841,6 @@ MIT in each case. |#
       (sample/1 '(typerew/replacements count) 1)
       (form/rewrite! form (replacement-generator form)))
 
-    (define (apply-suggestion suggestion)
-      (install-replacement! suggestion))
-
     (define (apply-method method rands*)
       (install-replacement!
        (cond ((null? rands*)         (method form))
@@ -865,8 +854,6 @@ MIT in each case. |#
     (rewrite! cont)
     (cond ((not (QUOTE/? rator))
 	   (rewrite! rator))
-	  ((form-map/get *typerew-suggestions-map* form #F)
-	   => apply-suggestion)
 	  ((typerew/replacement-method? (quote/text rator) (length rands))
 	   => (lambda (method)
 		(apply-method method rands)))
@@ -2091,22 +2078,13 @@ MIT in each case. |#
 
 (define (pp/ann/ty program)
   (let ((type-map *typerew-type-map*)
-	(sugg-map *typerew-suggestions-map*)
 	(dbg-map  *typerew-dbg-map*)
 	(cache    (make-form-map)))	; prevents GC
     dbg-map
     (define (annotate e)
       (or (form-map/get cache e #F)
-	  (let ((type  (form-map/get type-map e #F))
-		(new   (form-map/get sugg-map e #F)))
-	    (let ((annotation
-		   (cond ((and (not type) (not new))  #F)
-			 ((not type)
-			  `(suggested-operator-replacement: ,new))
-			 ((not new)  type)
-			 (else
-			  `(type: ,type
-				  suggested-operator-replacement: ,new)))))
+	  (let ((type  (form-map/get type-map e #F)))
+	    (let ((annotation type))
 	      (form-map/put! cache e annotation)
 	      annotation))))
     (pp/ann program annotate)))
