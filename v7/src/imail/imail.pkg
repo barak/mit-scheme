@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.80 2001/01/06 05:49:02 cph Exp $
+;;; $Id: imail.pkg,v 1.81 2001/03/19 19:29:45 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -119,8 +119,7 @@
 	  file-folder-pathname
 	  file-folder?
 	  file-message?
-	  file-url?
-	  message-time))
+	  file-url?))
 
 (define-package (edwin imail file-folder rmail-folder)
   (files "imail-rmail")
