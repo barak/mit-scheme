@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.50 1996/04/15 19:33:35 adams Exp $
+@comment $Id: user.texinfo,v 1.51 1996/04/16 20:17:45 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -54,9 +54,9 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.48
+@subtitle Edition 1.51
 @subtitle for Scheme Release 7.4
-@subtitle 8 April 1996
+@subtitle 16 April 1996
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -546,9 +546,9 @@ This file.
 The executable programs @file{scheme.exe} and @file{bchschem.exe}.
 
 @item doc\
-Documentation files.  Two files, the MIT Scheme User's Manual and the MIT
-Scheme Reference Manual, are provided in @file{.inf} format; these files
-can be read with the OS/2 @file{view} command.
+Documentation files.  Two files, the @cite{MIT Scheme User's Manual} and
+the @cite{MIT Scheme Reference Manual}, are provided in @file{.inf}
+format; these files can be read with the OS/2 @file{view} command.
 
 @item etc\
 Installation command files.  These are scripts that will be used during
@@ -605,11 +605,11 @@ using @file{scheme.exe} with paging.  Of course, if you are using
 to win.
 
 @item
-Move the @file{lib\} directory anywhere you like.  You may rename it to
-anything you like.  (Here at MIT, we use @file{\scheme\lib}.)  After you
-have chosen where it will be located, set the
-@samp{MITSCHEME_LIBRARY_PATH} environment variable in @file{config.sys}
-to be that location.
+You may move the @file{lib\} directory anywhere you like.  You may
+rename it to anything you like.  (Here at MIT, we use
+@file{c:\scheme\lib}.)  After you have chosen where it will be located,
+set the @samp{MITSCHEME_LIBRARY_PATH} environment variable in
+@file{config.sys} to be that location.
 
 For example, if you decide to store the directory as @file{c:\schdata},
 you would add the following to @file{config.sys}:
@@ -721,14 +721,15 @@ Documentation for Scheme is included with this release, in the directory
 
 @itemize @bullet
 @item
-@file{user.inf} is the MIT Scheme User's Manual, which describes how to
-run and use Scheme.  It describes all of the environment variables and
-command-line options, how to run the compiler and editor, etc.
+@file{user.inf} is the @cite{MIT Scheme User's Manual}, which describes
+how to run and use Scheme.  It describes all of the environment
+variables and command-line options, how to run the compiler and editor,
+etc.
 
 @item
-@file{scheme.inf} is the MIT Scheme Reference Manual, which documents
-the programming language and the runtime library.  This is a large and
-detailed document for writing programs.
+@file{scheme.inf} is the @cite{MIT Scheme Reference Manual}, which
+documents the programming language and the runtime library.  This is a
+large and detailed document for writing programs.
 
 @item
 @file{console.txt} describes the procedures that can be used to control
@@ -830,7 +831,7 @@ with Windows NT 3.10.
 * Windows Installation Procedure::  
 @end menu
 
-@node Prerequisites, Windows Installation Procedure, Windows Installation, Windows Installation
+@node Prerequisites for Windows Installation, Windows Installation Procedure, Windows Installation, Windows Installation
 @subsection Prerequisites
 
 The Scheme files use about 20 megabytes of disk space when installed.
@@ -846,27 +847,28 @@ probably the least you should consider, and 12 megabytes is probably
 comfortable.  If you want to use the Scheme compiler or the Edwin text
 editor, you should have at least 16 megabytes of RAM.
 
-MIT Scheme is a 32 bit program.  To run it on Windows 3.1 you need to
-install the WIN32S compatibility package from Microsoft.  You might
-already have WIN32S on your machine if another 32 bit software package
-installed it.  WIN32S is provided in the self-extracting ZIP file
-@file{PW1118.EXE}.  Create a temporary directory.  Copy
-@file{PW1118.EXE} into the directory, change into the directory and run
-@code{PW1118}.  This will create three files.  Follow the instructions
-in @file{README.TXT}.
+MIT Scheme is a 32-bit program.  To run it on Windows 3.1 you need to
+install the Win32s compatibility package from Microsoft.  You might
+already have Win32s on your machine if another 32-bit software package
+installed it.  Win32s is provided in the self-extracting @sc{zip} file
+@file{pw1118.exe}.  Create a temporary directory.  Copy
+@file{pw1118.exe} into the directory, change into the directory and run
+@samp{pw1118}.  This will create three files.  Follow the instructions
+in @file{readme.txt}.
 
 @node Windows Installation Procedure,  , Prerequisites, Windows Installation
 @subsection Windows Installation Procedure
 
 Create a directory where you would like Scheme to be installed.  We
-suggest @file{C:\SCHEME}.
-From now on we will call this directory the @emph{Scheme root directory}.
-Change to this directory and unpack @file{BIN.ZIP}:
+suggest @file{c:\scheme}.
+From now on we will call this directory the @dfn{Scheme root directory}.
+Change to this directory and unpack @file{bin.zip}:
 
 @example
-	unzip bin.zip
+unzip bin.zip
 @end example
 
+@noindent
 You will have the following files and directories:
 
 @table @file
@@ -874,45 +876,42 @@ You will have the following files and directories:
 These installation instructions.
 
 @item bin\
-The executable programs, @file{scheme.exe} and @file{bchschem.exe} and
-libraries @file{scheme16.dll}, @file{scheme31.dll} and
-@file{scheme32.dll}.
+The executable programs @file{scheme.exe} and @file{bchschem.exe}, and
+the libraries@*
+@file{scheme16.dll}, @file{scheme31.dll} and @file{scheme32.dll}.
 
 @item doc\
-Documentation files.
-Three files, the MIT Scheme Users' Manual, the MIT Scheme Reference
-Manual, and the Revised$^4$ Report on the Algorithmic Language Scheme,
-are provided in Windows Help (@file{.hlp} format).
+Documentation files.  Three files, the @cite{MIT Scheme Users' Manual},
+the @cite{MIT Scheme Reference Manual}, and the @cite{Revised^4 Report
+on the Algorithmic Language Scheme}, are provided in Windows Help
+(@file{.hlp}) format.
 
 @item etc\
 Installation command files.
+
 @item lib\
 A directory containing the data files needed by Scheme when it is running.
-
 @end table
 
 @noindent
 If you do not get this directory structure you may be using a version of
-@file{UNZIP} that does not understand directory trees.  In this case use
-the version of @file{UNZIP} that comes with MIT Scheme, in the same
-directory as the @file{.ZIP} files.
-
+@file{unzip} that does not understand directory trees.  In this case use
+the version of @file{unzip} that comes with MIT Scheme, in the same
+directory as the @file{.zip} files.
 
 Perform the following steps to install Scheme:
 
-
 @enumerate
-
 @item
-@emph{Building bands.}
+@emph{Build the bands.}
 Make sure that you are in the Scheme root directory (you should be there
 already).  Run the following command files
 
 @example
 @group
-    ETC\MK_COMP.BAT
-    ETC\MK_EDWIN.BAT
-    ETC\MK_ALL.BAT
+etc\mk_comp.bat
+etc\mk_edwin.bat
+etc\mk_all.bat
 @end group
 @end example
 
@@ -920,32 +919,33 @@ This will create the image files @file{lib\compiler.com},
 @file{lib\edwin.com}, and @file{lib\all.com}.  You may now delete the
 files @file{lib\compdel.com} and @file{lib\eddel.com}.
 
-If you are running Windows 3.1 you cannot run Scheme from the
-command-line.  You need to make a folder containing icons to run Scheme,
-as described below, and then run the following icons in turn: "Build
-COMPILER.COM band", "Build EDWIN.COM band" and "Build ALL.COM band"
+If you are running Windows 3.1 you cannot run Scheme from the command
+line.  You need to make a folder containing icons to run Scheme, as
+described below, and then run the following icons in turn: @samp{Build
+COMPILER.COM band}, @samp{Build EDWIN.COM band} and @samp{Build ALL.COM
+band}.
 
 @item
-
 You may move the executable files @file{scheme.exe} and
-@file{bchschem.exe} and the three @file{scheme<nn>.dll} files from
-@file{BIN\} to any directory that appears in your PATH, though we
-suggest that you leave them put.
+@file{bchschem.exe} and the three@*
+@file{scheme@var{nn}.dll} files from @file{bin\} to any directory that
+appears in your @samp{PATH}, though we suggest that you leave them put.
 
-Depending on your needs, you may want to keep only one of
-@file{scheme.exe} or @file{bchschem.exe} files; each of these files is
+Depending on your needs, you may want to keep only one of the
+@file{scheme.exe} or@* @file{bchschem.exe} files; each of these files is
 about 550 kilobytes and chances are you'll only be using one of them.
 If you keep only @file{bchschem.exe} we recommend you rename it to
 @file{scheme.exe}.  Of course, you can also keep both programs around if
 you think you might use them both.
 
-The only difference between these two programs is how they handle garbage
-collection.  @file{scheme.exe} allocates two memory heaps, and copies
-objects between the heaps to preserve them.  This means that most of the
-time that other heap is occupying valuable memory but doesn't hold any
-interesting data.  @file{bchschem.exe} allocates only one memory heap,
-creates a disk file during garbage collection, copies objects into the
-file, then copies them back into memory.
+The only difference between these two programs is in how they handle
+garbage collection.  @file{scheme.exe} allocates two memory heaps, and
+copies objects between the heaps to preserve them.  This means that most
+of the time the other heap is occupying valuable memory but doesn't
+hold any interesting data.  @file{bchschem.exe} allocates only one
+memory heap, creates a disk file during garbage collection, copies
+objects into the file, then copies them back into
+memory.@footnote{@xref{Memory Usage}, for more detail about this topic.}
 
 These programs provide you with some important performance trade-offs.
 If you have plenty of memory and want the best performance, use
@@ -963,17 +963,17 @@ using @file{scheme.exe} with paging.  Of course, if you are using
 to win.
 
 @item
-
-You may move the @file{lib\} directory anywhere you like.  You may rename
-it to anything you like.  (Here at MIT, we use @file{c:\scheme\lib}.)
-After you have chosen where it will be located, set the
-@samp{MITSCHEME_LIBRARY_PATH} environment variable to be that location.
+You may move the @file{lib\} directory anywhere you like.  You may
+rename it to anything you like.  (Here at MIT, we use
+@file{c:\scheme\lib}.)  After you have chosen where it will be located,
+set the @samp{MITSCHEME_LIBRARY_PATH} environment variable to be that
+location.
 
 For example, if you decide to store the directory as @file{d:\schdata},
 you would add the following to @file{autoexec.bat}:
 
 @example
-   SET MITSCHEME_LIBRARY_PATH=D:\SCHDATA
+SET MITSCHEME_LIBRARY_PATH=D:\SCHDATA
 @end example
 
 @noindent
@@ -981,7 +981,7 @@ You can override the setting of this environment variable with the
 @samp{-library} command-line option to Scheme, for example:
 
 @example
-   scheme -library d:\schdata
+scheme -library d:\schdata
 @end example
 
 @noindent
@@ -992,23 +992,23 @@ have the environment variable defined.  For example, instead of editing
 automatically.
 
 @item
-@emph{Optional:} Move the DOC directory anywhere you like, or delete it
-if you do not want to keep the documentation.
+@emph{Optional:} Move the @file{doc} directory anywhere you like, or
+delete it if you do not want to keep the documentation.
 
 @item
-Creating a folder containing shortcuts (icons) to invoke Scheme.
+Create a folder containing shortcuts (icons) to invoke Scheme.
 Run Scheme and load the file @file{etc\pmgrp.scm}.
 On Windows 95 and windows NT you can run scheme from the command line:
 
 @example
-   bin\scheme -library lib -load etc\pmgrp
+bin\scheme -library lib -load etc\pmgrp
 @end example
 
-On windows 3.1 you have to use the @samp{File | Run..} menu option of the
+On Windows 3.1 you have to use the @samp{File | Run..} menu option of the
 Program Manager or File Manager and enter the full paths:
 
 @example
-   c:\scheme\bin\scheme -library c:\scheme\lib -load c:\scheme\etc\pmgrp.scm
+c:\scheme\bin\scheme -library c:\scheme\lib -load c:\scheme\etc\pmgrp.scm
 @end example
 
 @noindent
@@ -1020,7 +1020,7 @@ correspond to running Scheme with the image files @file{runtime.com},
 decide to delete any of the image files, you can delete the
 corresponding icons as well.
 
-There is a bug in Windows 95 which prevents the Edwin shortcut from
+There is a bug in Windows 95 that prevents the Edwin shortcut from
 being created correctly.  To get around this problem, we have created
 the shortcut with an incorrect command line.  You have to manually edit
 the shortcut to change the curly braces on the command line into
@@ -1038,21 +1038,21 @@ but should read
 @end example
 
 @item
-@emph{Optional} Consider setting some of other environment variables
+@emph{Optional:} Consider setting some of other environment variables
 described below.
-
 
 @item
 The two files @file{w32rtbci.zip} and @file{w32edbci.zip} contain
 debugging information for the Scheme runtime and Edwin respectively.
-The total space required for all of the debugging information is about 8MB.
-The runtime debugging information is the more useful as it allows the
-debugger to give you source code level information on all of the
-standard procedures like @samp{map} and @samp{number->string}.
+The total space required for all of the debugging information is about 8
+megabytes.  The runtime debugging information is the more useful as it
+allows the debugger to give you source code level information on all of
+the standard procedures like @samp{map} and @samp{number->string}.
 
 Debugging information can be installed by uncompressing the
-@file{w32rtbci.zip} and @file{w32edbci.zip} files in the @file{SRC}
-subdirectory of the library directory.
+@file{w32rtbci.zip} and@*
+@file{w32edbci.zip} files in the @file{SRC} subdirectory of the library
+directory.
 
 @example
 @group
@@ -1065,9 +1065,9 @@ unzip w32rtbci
 @end example
 
 @noindent
-Debugging information files can be installed in another place, in which
-case the the @code{MITSCHEME_INF_DIRECTORY} environment variable should
-be set in @file{autoexec.bat}.
+Debugging information files can be installed in another place.@*
+In this case the the @samp{MITSCHEME_INF_DIRECTORY} environment variable
+should be set in @file{autoexec.bat}.
 
 To test that you have installed the debugging information correctly, try
 to pretty-print a compiled procedure, for example,
@@ -1077,7 +1077,6 @@ to pretty-print a compiled procedure, for example,
 @end example
 
 @noindent
-
 When the debugging information is installed correctly, Scheme will be
 able to find the source code for the @code{pp} procedure, and display
 it.  Otherwise it will use the short opaque form, something like this:
@@ -1085,7 +1084,6 @@ it.  Otherwise it will use the short opaque form, something like this:
 @example
 #[compiled-procedure 13 ("pp" #x2) #xF #x646BF7]
 @end example
-
 @end enumerate
 
 @node Running Scheme, Using Scheme, Installation, Top
@@ -2000,7 +1998,7 @@ line as described at the beginning of this chapter.
 Under Windows 3.1, Scheme must be run from the Program Manager or the
 File Manager.  Scheme cannot be run from the command line, because it is
 not a @sc{dos} program (although some people run other shell programs in
-place of @file{command.com} that can run Window applications).
+place of @file{command.com} that can run Windows applications).
 
 Shortcuts (Windows 95) or Program Manager groups and icons (Windows 3.1
 and Windows NT) are a convenient way to start Scheme.
@@ -3776,10 +3774,10 @@ than getting efficient fixnum arithmetic.
 @cindex flonum consing
 One of the main disadvantages of generic arithmetic is that not all
 kinds of number fit in a machine register.
-Flonums have to be @dfn{boxed} because a 64 bit @sc{ieee} floating-point
+Flonums have to be @dfn{boxed} because a 64-bit @sc{ieee} floating-point
 number (the representation that MIT Scheme uses) does not fit in a
 regular machine word.
-This is true even on 64 bit architectures because some extra bits are
+This is true even on 64-bit architectures because some extra bits are
 needed to distinguish floating-point numbers from other objects like
 pairs and strings.
 Values are boxed by storing them in a small record in the heap.
@@ -4910,7 +4908,7 @@ sorting and time sorting.
 @end itemize
 
 @noindent
-Changes Specific to Windows 3.1, Windows 95, and Windows NT:
+Changes Specific to Windows:
 
 @itemize @bullet
 @item
