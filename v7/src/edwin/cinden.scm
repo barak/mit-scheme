@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: cinden.scm,v 1.9 1993/09/17 03:49:13 cph Exp $
+;;;	$Id: cinden.scm,v 1.10 1995/01/16 20:08:33 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -304,11 +304,10 @@ This is in addition to c-continued-statement-offset."
 
 (define (c-indent-expression:parse-line start end state)
   (let loop ((start start) (state state))
+    (if (and state (parse-state-in-comment? state))
+	(c-indent-line start))
     (let ((start* (line-start start 1)))
-      (let ((state*
-	     (parse-partial-sexp start start* false false state)))
-	(if (and state (parse-state-in-comment? state))
-	    (c-indent-line start))
+      (let ((state* (parse-partial-sexp start start* false false state)))
 	(cond ((mark= start* end)
 	       (values start* state*))
 	      ((parse-state-in-comment? state*)
