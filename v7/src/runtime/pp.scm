@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pp.scm,v 14.28 1993/08/12 06:01:50 cph Exp $
+$Id: pp.scm,v 14.29 1994/08/19 06:08:32 cph Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -65,7 +65,7 @@ MIT in each case. |#
 (define *pp-lists-as-tables?* true)
 (define *pp-forced-x-size* false)
 (define *pp-avoid-circularity?* false)
-(define *pp-default-as-code?* 'IF-SCODE)
+(define *pp-default-as-code?* #t)
 
 (define (pp object #!optional port . rest)
   (let ((port (if (default-object? port) (current-output-port) port)))
