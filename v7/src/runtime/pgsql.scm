@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pgsql.scm,v 1.8 2003/11/11 04:46:39 cph Exp $
+$Id: pgsql.scm,v 1.9 2004/11/25 04:00:06 cph Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -157,6 +157,10 @@ USA.
 					set-result-handle!))
 	       (set! pgsql-initialized? #t)))
 	 #t)))
+
+(define (guarantee-pgsql-available)
+  (if (not (pgsql-available?))
+      (error "No PostgreSQL support in this sytem.")))
 
 (define condition-type:pgsql-error
   (make-condition-type 'PGSQL-ERROR condition-type:error '()
@@ -207,8 +211,7 @@ USA.
       (write-string "." port)))
 
 (define (open-pgsql-conn parameters #!optional wait?)
-  (if (not (pgsql-available?))
-      (error "No PostgreSQL support in this sytem."))
+  (guarantee-pgsql-available)
   (let ((wait? (if (default-object? wait?) #t wait?)))
     (make-gc-finalized-object
      connections
@@ -280,6 +283,7 @@ USA.
   (index->name (pq-status (connection->handle connection)) connection-status))
 
 (define (escape-pgsql-string string)
+  (guarantee-pgsql-available)
   (let ((escaped (make-string (fix:* 2 (string-length string)))))
     (set-string-maximum-length! escaped (pq-escape-string string escaped))
     escaped))
