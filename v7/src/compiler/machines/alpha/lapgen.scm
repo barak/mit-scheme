@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.1 1992/08/29 13:51:26 jinx Exp $
+$Id: lapgen.scm,v 1.2 1992/10/15 16:46:07 jinx Exp $
 
 Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
 
@@ -823,6 +823,9 @@ case.
 
 (define-integrable reg:closure-limit
   (INST-EA (OFFSET #x0050 ,regnum:regs-pointer)))
+
+(define-integrable reg:stack-guard
+  (INST-EA (OFFSET #x0058 ,regnum:regs-pointer)))
 
 (define-integrable reg:divq
   (INST-EA (OFFSET #x00A0 ,regnum:regs-pointer)))
