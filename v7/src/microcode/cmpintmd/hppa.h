@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.4 1989/11/27 18:25:40 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.5 1989/11/27 20:22:42 jinx Exp $
  *
  * Compiled code interface macros.
  *
@@ -106,20 +106,22 @@ typedef unsigned short format_word;
 		 ((ldil_inst & ((1 << 14) - (1 << 12))) >> (12 - 0)));	\
   ble_offset = ((ble_inst >> 3) & ((1 << 10) - 1));			\
 									\
-  ((long) (target)) = ((ldil_offset << 11) + (ble_offset << 2));	\
+  (target) =								\
+    ((SCHEME_OBJECT) ((ldil_offset << 11) + (ble_offset << 2)));	\
 }
 
-#define STORE_ABSOLUTE_ADDRESS(absadd, address, nullify_p)		\
+#define STORE_ABSOLUTE_ADDRESS(entry_point, address, nullify_p)		\
 {									\
-  unsigned long actual_address, ldil_offset, ble_offset;		\
+  unsigned long *addr, ep, ldil_offset, ble_offset;			\
 									\
-  actual_address = ((long) (real_entry_point));				\
+  ep = ((unsigned long) (entry_point));					\
+  addr = ((unsigned long *) (address));					\
 									\
-  ldil_offset = (actual_address >> 11);					\
+  ldil_offset = (ep >> 11);						\
 									\
-  /* LDIL	L'actual_address,26 */					\
+  /* LDIL	L'ep,26 */						\
 									\
-  ((unsigned long *) (entry_point))[0] =				\
+  *addr++ =								\
     ((0x8 << 26) | (26 << 21) |						\
      ((ldil_offset & ((1 << 7) - (1 << 2))) << (16 - 2)) |		\
      ((ldil_offset & ((1 << 9) - (1 << 7))) << (14 - 7)) |		\
@@ -127,15 +129,15 @@ typedef unsigned short format_word;
      ((ldil_offset & ((1 << 20) - (1 << 9))) >> (9 - 1)) |		\
      ((ldil_offset & (1 << 20)) >> 20));				\
 									\
-  ble_offset = ((actual_address & ((1 << 12) - 1)) >> 2);		\
+  ble_offset = ((ep & ((1 << 12) - 1)) >> 2);				\
 									\
-  /* BLE	R'actual_address(5,26)					\
+  /* BLE	R'ep(5,26)						\
      The following instruction is nullified if nullify_p is true.	\
      The w and w1 fields are 0, and so are the top and bottom bits	\
      of w2.								\
    */									\
 									\
-  ((unsigned long *) (entry_point))[1] =				\
+  *addr =								\
     ((0x39 << 26) | (26 << 21) | (5 << 13) | ((ble_offset << 1) << 2) |	\
      ((nullify_p) ? 2 : 0));						\
 }
@@ -302,12 +304,12 @@ procedures and continuations differ from closures) */
 
 #define EXTRACT_EXECUTE_CACHE_ARITY(target, address)			\
 {									\
-  (target) = ((unsigned short *) (address))[5];				\
+  (target) = ((long) (* ((unsigned short *) (address)) + 5));		\
 }
 
 #define EXTRACT_EXECUTE_CACHE_SYMBOL(target, address)			\
 {									\
-  ((long) (target)) = (* (((long *) (address))));			\
+  (target) = (* (((SCHEME_OBJECT *) (address))));			\
 }
 
 /* Extract the target address (not the code to get there) from an
