@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: macros.scm,v 1.9 1999/01/02 06:19:10 cph Exp $
+;;; $Id: macros.scm,v 1.10 2000/04/06 03:43:15 cph Exp $
 ;;;
-;;; Copyright (c) 1993-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1993-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -36,29 +36,32 @@
 	  `(BEGIN
 	     ,@pre-definitions
 	     (DEFINE ,name
-	       (MAKE-CLASS ',name (LIST ,@superclasses)
-		 (LIST
-		  ,@(map
-		     (lambda (arg)
-		       (cond ((symbol? arg)
-			      `',arg)
-			     ((and (pair? arg)
-				   (symbol? (car arg))
-				   (list? (cdr arg)))
-			      `(LIST ',(car arg)
-				     ,@(let loop ((plist (cdr arg)))
-					 (cond ((null? plist)
-						'())
-					       ((and (symbol? (car plist))
-						     (pair? (cdr plist)))
-						(cons* `',(car plist)
-						       (cadr plist)
-						       (loop (cddr plist))))
-					       (else
-						(lose "slot argument" arg))))))
-			     (else
-			      (lose "slot argument" arg))))
-		     slot-arguments))))
+	       (,(make-absolute-reference 'MAKE-CLASS)
+		',name
+		(,(make-absolute-reference 'LIST) ,@superclasses)
+		(,(make-absolute-reference 'LIST)
+		 ,@(map
+		    (lambda (arg)
+		      (cond ((symbol? arg)
+			     `',arg)
+			    ((and (pair? arg)
+				  (symbol? (car arg))
+				  (list? (cdr arg)))
+			     `(,(make-absolute-reference 'LIST)
+			       ',(car arg)
+			       ,@(let loop ((plist (cdr arg)))
+				   (cond ((null? plist)
+					  '())
+					 ((and (symbol? (car plist))
+					       (pair? (cdr plist)))
+					  (cons* `',(car plist)
+						 (cadr plist)
+						 (loop (cddr plist))))
+					 (else
+					  (lose "slot argument" arg))))))
+			    (else
+			     (lose "slot argument" arg))))
+		    slot-arguments))))
 	     ,@post-definitions))))))
 
 (define (parse-define-class-name name lose)
@@ -89,7 +92,9 @@
 			     (else (lose "class option" option)))))
 		  (if pn
 		      (post-def
-		       `(DEFINE ,pn (INSTANCE-PREDICATE ,class-name))))))
+		       `(DEFINE ,pn
+			  (,(make-absolute-reference 'INSTANCE-PREDICATE)
+			   ,class-name))))))
 	       ((CONSTRUCTOR)
 		(call-with-values
 		    (lambda ()
@@ -97,7 +102,7 @@
 		  (lambda (name slots ii-args)
 		    (post-def
 		     `(DEFINE ,name
-			(INSTANCE-CONSTRUCTOR
+			(,(make-absolute-reference 'INSTANCE-CONSTRUCTOR)
 			 ,class-name
 			 ',slots
 			 ,@(map (lambda (x) `',x) ii-args)))))))
@@ -199,7 +204,8 @@
 			  (set-cdr! slot-argument
 				    (cons* keyword name (cdr slot-argument)))
 			  name))
-		   (MAKE-GENERIC-PROCEDURE ,arity)))
+		   (,(make-absolute-reference 'MAKE-GENERIC-PROCEDURE)
+		    ,arity)))
 	       '()))))
     (append (translate 'ACCESSOR #t 1
 		       (lambda (root) root))
@@ -231,7 +237,7 @@
     (call-with-values (lambda () (parse-lambda-list lambda-list #f mname))
       (lambda (required optional rest)
 	`(DEFINE ,name
-	   (MAKE-GENERIC-PROCEDURE
+	   (,(make-absolute-reference 'MAKE-GENERIC-PROCEDURE)
 	    ',(let ((low (length required)))
 		(cond (rest (cons low #f))
 		      ((null? optional) low)
@@ -257,14 +263,17 @@
 
 (define (generate-method-definition name required specializers optional rest
 				    body)
-  `(ADD-METHOD ,name
-     ,(make-method-sexp name required optional rest specializers body)))
+  `(,(make-absolute-reference 'ADD-METHOD)
+    ,name
+    ,(make-method-sexp name required optional rest specializers body)))
 
 (define (generate-computed-method-definition name required specializers
 					     optional rest body)
-  `(ADD-METHOD ,name
-     (MAKE-COMPUTED-METHOD (LIST ,@specializers)
-       ,(make-named-lambda name required optional rest body))))
+  `(,(make-absolute-reference 'ADD-METHOD)
+    ,name
+    (,(make-absolute-reference 'MAKE-COMPUTED-METHOD)
+     (,(make-absolute-reference 'LIST) ,@specializers)
+     ,(make-named-lambda name required optional rest body))))
 
 (define (transform:define-computed-emp name key lambda-list . body)
   (let ((mname 'DEFINE-COMPUTED-EMP))
@@ -274,9 +283,12 @@
       (lambda (required optional rest)
 	(call-with-values (lambda () (extract-required-specializers required))
 	  (lambda (required specializers)
-	    `(ADD-METHOD ,name
-	       (MAKE-COMPUTED-EMP ,key (LIST ,@specializers)
-		 ,(make-named-lambda name required optional rest body)))))))))
+	    `(,(make-absolute-reference 'ADD-METHOD)
+	      ,name
+	      (,(make-absolute-reference 'MAKE-COMPUTED-EMP)
+	       ,key
+	       (,(make-absolute-reference 'LIST) ,@specializers)
+	       ,(make-named-lambda name required optional rest body)))))))))
 
 (define (transform:method lambda-list . body)
   (call-with-values (lambda () (parse-lambda-list lambda-list #t 'METHOD))
@@ -309,20 +321,26 @@
 	 (lambda ()
 	   (call-with-values (lambda () (call-next-method-used? body))
 	     (lambda (body used?)
-	       (let ((s `(LIST ,@specializers))
+	       (let ((s `(,(make-absolute-reference 'LIST) ,@specializers))
 		     (l (make-named-lambda name required optional rest body)))
 		 (if used?
-		     `(MAKE-CHAINED-METHOD ,s (LAMBDA (CALL-NEXT-METHOD) ,l))
-		     `(MAKE-METHOD ,s ,l))))))))
+		     `(,(make-absolute-reference 'MAKE-CHAINED-METHOD)
+		       ,s
+		       (LAMBDA (CALL-NEXT-METHOD) ,l))
+		     `(,(make-absolute-reference 'MAKE-METHOD) ,s ,l))))))))
     (if (and (null? optional)
 	     (not rest)
 	     (not (eq? '<OBJECT> (car specializers))))
 	(case (length required)
 	  ((1)
 	   (cond ((match `((SLOT-VALUE ,(car required) ',symbol?)) body)
-		  `(SLOT-ACCESSOR-METHOD ,(car specializers) ,(caddar body)))
+		  `(,(make-absolute-reference 'SLOT-ACCESSOR-METHOD)
+		    ,(car specializers)
+		    ,(caddar body)))
 		 ((match `((SLOT-INITIALIZED? ,(car required) ',symbol?)) body)
-		  `(SLOT-INITPRED-METHOD ,(car specializers) ,(caddar body)))
+		  `(,(make-absolute-reference 'SLOT-INITPRED-METHOD)
+		    ,(car specializers)
+		    ,(caddar body)))
 		 (else (normal))))
 	  ((2)
 	   (if (and (null? (cdr specializers))
@@ -330,7 +348,9 @@
 					      ',symbol?
 					      ,(cadr required)))
 			   body))
-	       `(SLOT-MODIFIER-METHOD ,(car specializers) ,(caddar body))
+	       `(,(make-absolute-reference 'SLOT-MODIFIER-METHOD)
+		 ,(car specializers)
+		 ,(caddar body))
 	       (normal)))
 	  (else (normal)))
 	(normal))))
@@ -512,6 +532,9 @@
     (if name
 	`(NAMED-LAMBDA (,name ,@bvl) ,@body)
 	`(LAMBDA ,bvl ,@body))))
+
+(define (make-absolute-reference name)
+  `(ACCESS ,name #F))
 
 (define (serror procedure message . objects)
   procedure
