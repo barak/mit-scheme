@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.12 1989/08/14 09:22:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.13 1989/08/14 09:48:37 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -409,7 +409,9 @@ MIT in each case. |#
   (files "prompt")
   (parent (edwin))
   (export (edwin)
-	  edwin-variable$enable-recursive-minibuffers	  initialize-typein!
+	  edwin-variable$enable-recursive-minibuffers
+	  edwin-variable$completion-auto-help
+	  initialize-typein!
 	  prompt-for-alist-value
 	  prompt-for-char
 	  prompt-for-command
