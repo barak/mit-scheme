@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: intrpt.scm,v 14.16 1993/08/31 00:33:13 ziggy Exp $
+$Id: intrpt.scm,v 14.17 1993/08/31 00:35:02 ziggy Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -219,7 +219,7 @@ MIT in each case. |#
 		 (vector-set! interrupt-mask-vector i
 			      (fix:not (fix:lsh 1 i))))
 		 (vector-set! system-interrupt-vector i
-			      illegal-interrupt-handler))))
+			      illegal-interrupt-handler)))
 
 	 (vector-set! interrupt-mask-vector stack-overflow-slot
 		      interrupt-mask/none)
