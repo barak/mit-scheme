@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.18 1990/08/21 04:18:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.19 1990/11/15 19:07:18 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -222,19 +222,20 @@ MIT in each case. |#
 		       (loop (1+ index)))))))))))
 
 (define (process-binf-filename binf-filename com-pathname)
-  (pathname->string
-   (rewrite-directory
-    (let ((binf-pathname
-	   (pathname->absolute-pathname
-	    (->pathname binf-filename))))
-      (if (and (equal? (pathname-name binf-pathname)
-		       (pathname-name com-pathname))
-	       (not (equal? (pathname-type binf-pathname)
-			    (pathname-type com-pathname)))
-	       (equal? (pathname-version binf-pathname)
-		       (pathname-version com-pathname)))
-	  (pathname-new-type com-pathname (pathname-type binf-pathname))
-	  binf-pathname)))))
+  (and binf-filename
+       (pathname->string
+	(rewrite-directory
+	 (let ((binf-pathname
+		(pathname->absolute-pathname
+		 (->pathname binf-filename))))
+	   (if (and (equal? (pathname-name binf-pathname)
+			    (pathname-name com-pathname))
+		    (not (equal? (pathname-type binf-pathname)
+				 (pathname-type com-pathname)))
+		    (equal? (pathname-version binf-pathname)
+			    (pathname-version com-pathname)))
+	       (pathname-new-type com-pathname (pathname-type binf-pathname))
+	       binf-pathname))))))
 
 (define directory-rewriting-rules
   '())
