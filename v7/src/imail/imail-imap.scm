@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.66 2000/05/22 03:37:00 cph Exp $
+;;; $Id: imail-imap.scm,v 1.67 2000/05/22 03:43:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -53,8 +53,9 @@
 		 (url:encode-string user-id)
 		 "@"
 		 host
-		 ":"
-		 (number->string port)
+		 (if (= port 143)
+		     ""
+		     (string-append ":" (number->string port)))
 		 "/"
 		 (url:encode-string mailbox)))
 
