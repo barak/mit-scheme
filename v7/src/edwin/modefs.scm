@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: modefs.scm,v 1.142 1992/11/13 22:43:45 cph Exp $
+;;;	$Id: modefs.scm,v 1.143 1992/11/17 22:46:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -141,6 +141,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental #\m-, 'tags-loop-continue)
 (define-key 'fundamental #\m-- 'auto-argument)
 (define-key 'fundamental #\m-. 'find-tag)
+(define-key 'fundamental #\m-/ 'dabbrev-expand)
 (define-key 'fundamental #\m-0 'auto-argument)
 (define-key 'fundamental #\m-1 'auto-argument)
 (define-key 'fundamental #\m-2 'auto-argument)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.42 1992/11/01 07:13:12 arthur Exp $
+$Id: decls.scm,v 1.43 1992/11/17 22:42:45 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -130,6 +130,7 @@ MIT in each case. |#
 		"comtab"
 		"comred"
 		"curren"
+		"dabbrev"
 		"debug"
 		"debuge"
 		"dired"
