@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dostrap.c,v 1.3 1992/11/23 04:01:58 gjr Exp $
+$Id: dostrap.c,v 1.4 1993/07/17 03:37:05 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -423,7 +423,7 @@ DEFUN (setup_trap_frame, (trapno, info, scp, trinfo, new_stack_pointer),
     Request_GC (0);
 
   trap_name =
-    ((trapno <= 0)
+    ((trapno < 0)
      ? SHARP_F
      : (char_pointer_to_string
 	((unsigned char *) (find_trap_name (trapno)))));
