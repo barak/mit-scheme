@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.115 1989/04/15 00:51:28 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.116 1989/04/25 02:06:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -61,6 +61,12 @@ Most other major modes are defined by comparison to this one."
 (define-variable editor-default-mode
   "The default major mode for new buffers."
   (ref-mode-object fundamental))
+
+(define initial-buffer-name
+  "*scratch*")
+
+(define initial-buffer-mode
+  (ref-mode-object scheme-interaction))
 
 (define-variable file-type-to-major-mode
   "Specifies the major mode for new buffers based on file type.

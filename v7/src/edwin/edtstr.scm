@@ -48,8 +48,7 @@
   (char-history false read-only true))
 
 (define (make-editor name screen)
-  (let ((initial-buffer
-	 (make-buffer initial-buffer-name (ref-mode-object interaction))))
+  (let ((initial-buffer (make-buffer initial-buffer-name initial-buffer-mode)))
     (let ((bufferset (make-bufferset initial-buffer)))
       (let ((frame
 	     (make-editor-frame screen
@@ -63,9 +62,6 @@
 		      bufferset
 		      (make-ring 10)
 		      (make-ring 100))))))
-
-(define initial-buffer-name
-  "*scratch*")
 
 (define-integrable (current-screen)
   (editor-screen current-editor))
