@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.2 1995/01/11 20:53:51 ssmith Exp $
+$Id: rulrew.scm,v 1.3 1995/05/24 00:22:09 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -74,7 +74,7 @@ MIT in each case. |#
   (rtl:make-cons-pointer
    type
    (rtl:make-machine-constant
-    (careful-object-datum
+    (386-object-datum
      (rtl:constant-value (rtl:object->datum-expression datum))))))
 
 (define-rule rewriting
@@ -86,7 +86,7 @@ MIT in each case. |#
   (OBJECT->DATUM (REGISTER (? source register-known-value)))
   (QUALIFIER (rtl:constant-non-pointer? source))
   (rtl:make-machine-constant
-   (careful-object-datum (rtl:constant-value source))))
+   (386-object-datum (rtl:constant-value source))))
 
 (define (rtl:constant-non-pointer? expression)
   (and (rtl:constant? expression)
@@ -142,7 +142,7 @@ MIT in each case. |#
 	 (let ((value (rtl:constant-value expression)))
 	   (and (non-pointer-object? value)
 		(zero? (object-type value))
-		(zero? (careful-object-datum value)))))
+		(zero? (386-object-datum value)))))
 	((rtl:cons-pointer? expression)
 	 (and (let ((expression (rtl:cons-pointer-type expression)))
 		(and (rtl:machine-constant? expression)
