@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.43 1992/02/04 04:14:43 jinx Exp $
+$Id: debug.c,v 9.44 1993/06/24 04:23:41 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,9 +39,9 @@ MIT in each case. */
 #include "trap.h"
 #include "lookup.h"
 
-static void EXFUN (do_printing, (FILE *, SCHEME_OBJECT, Boolean));
-static Boolean EXFUN (print_primitive_name, (FILE *, SCHEME_OBJECT));
-static void EXFUN (print_expression, (FILE *, SCHEME_OBJECT, char *));
+static void EXFUN (do_printing, (outf_channel, SCHEME_OBJECT, Boolean));
+static Boolean EXFUN (print_primitive_name, (outf_channel, SCHEME_OBJECT));
+static void EXFUN (print_expression, (outf_channel, SCHEME_OBJECT, char *));
 
 /* Compiled Code Debugging */
 
@@ -112,57 +112,57 @@ DEFUN_VOID (Show_Pure)
   {
     if (Obj_Address > Free_Constant)
     {
-      printf ("Past end of area.\n");
+      outf_console ("Past end of area.\n");
       return;
     }
     if (Obj_Address == Free_Constant)
     {
-      printf ("Done.\n");
+      outf_console ("Done.\n");
       return;
     }
     Pure_Size = OBJECT_DATUM (*Obj_Address);
     Total_Size = OBJECT_DATUM (Obj_Address[1]);
-    printf ("0x%lx: pure=0x%lx, total=0x%lx\n",
+    outf_console ("0x%lx: pure=0x%lx, total=0x%lx\n",
 	    ((long) Obj_Address), ((long) Pure_Size), ((long) Total_Size));
     if (OBJECT_TYPE (*Obj_Address) != TC_MANIFEST_SPECIAL_NM_VECTOR)
     {
-      printf ("Missing initial SNMV.\n");
+      outf_console ("Missing initial SNMV.\n");
       return;
     }
     if (OBJECT_TYPE (Obj_Address[1]) != PURE_PART)
     {
-      printf ("Missing subsequent pure header.\n");
+      outf_console ("Missing subsequent pure header.\n");
     }
     if (OBJECT_TYPE (Obj_Address[Pure_Size-1]) !=
         TC_MANIFEST_SPECIAL_NM_VECTOR)
     {
-      printf ("Missing internal SNMV.\n");
+      outf_console ("Missing internal SNMV.\n");
       return;
     }
     if (OBJECT_TYPE (Obj_Address[Pure_Size]) != CONSTANT_PART)
     {
-      printf ("Missing constant header.\n");
+      outf_console ("Missing constant header.\n");
       return;
     }
     if (OBJECT_DATUM (Obj_Address[Pure_Size]) != Pure_Size)
     {
-      printf ("Pure size mismatch 0x%lx.\n",
+      outf_console ("Pure size mismatch 0x%lx.\n",
 	      ((long) (OBJECT_DATUM (Obj_Address[Pure_Size]))));
     }
     if (OBJECT_TYPE (Obj_Address[Total_Size-1]) !=
         TC_MANIFEST_SPECIAL_NM_VECTOR)
     {
-      printf ("Missing ending SNMV.\n");
+      outf_console ("Missing ending SNMV.\n");
       return;
     }
     if (OBJECT_TYPE (Obj_Address[Total_Size]) != END_OF_BLOCK)
     {
-      printf ("Missing ending header.\n");
+      outf_console ("Missing ending header.\n");
       return;
     }
     if (OBJECT_DATUM (Obj_Address[Total_Size]) != Total_Size)
     {
-      printf ("Total size mismatch 0x%lx.\n",
+      outf_console ("Total size mismatch 0x%lx.\n",
 	      ((long) (OBJECT_DATUM (Obj_Address[Total_Size]))));
     }
     Obj_Address += Total_Size+1;
@@ -195,7 +195,7 @@ DEFUN (Show_Env, (The_Env), SCHEME_OBJECT The_Env)
   if ((OBJECT_TYPE (procedure) != TC_PROCEDURE) &&
       (OBJECT_TYPE (procedure) != TC_EXTENDED_PROCEDURE))
   {
-    printf ("Not created by a procedure");
+    outf_console ("Not created by a procedure");
     return;
   }
   name_ptr = MEMORY_LOC (procedure, PROCEDURE_LAMBDA_EXPR);
@@ -207,11 +207,11 @@ DEFUN (Show_Env, (The_Env), SCHEME_OBJECT The_Env)
   {
     Print_Expression (*name_ptr++, "Name ");
     Print_Expression (*value_ptr++, " Value ");
-    printf ("\n");
+    outf_console ("\n");
   }
   if (extension != SHARP_F)
   {
-    printf ("Auxilliary Variables\n");
+    outf_console ("Auxilliary Variables\n");
     count = OBJECT_DATUM (MEMORY_REF (extension, AUX_LIST_COUNT));
     for (i = 0, name_ptr = MEMORY_LOC (extension, AUX_LIST_FIRST);
 	 i < count;
@@ -219,22 +219,22 @@ DEFUN (Show_Env, (The_Env), SCHEME_OBJECT The_Env)
     {
       Print_Expression ((PAIR_CAR (*name_ptr)), "Name ");
       Print_Expression ((PAIR_CDR (*name_ptr)), " Value ");
-      printf ("\n");
+      outf_console ("\n");
     }
   }
 }
 
 static void
-DEFUN (print_list, (stream, pair), FILE * stream AND SCHEME_OBJECT pair)
+DEFUN (print_list, (stream, pair), outf_channel stream AND SCHEME_OBJECT pair)
 {
   int count;
 
-  fprintf (stream, "(");
+  outf (stream, "(");
   count = 0;
   while (((PAIR_P (pair)) || (WEAK_PAIR_P (pair))) && (count < MAX_LIST_PRINT))
     {
       if (count > 0)
-	fprintf (stream, " ");
+	outf (stream, " ");
       print_expression (stream,
 			(PAIR_CAR (pair)),
 			((WEAK_PAIR_P (pair)) ? "{weak}" : ""));
@@ -244,19 +244,19 @@ DEFUN (print_list, (stream, pair), FILE * stream AND SCHEME_OBJECT pair)
   if (pair != EMPTY_LIST)
     {
       if (count == MAX_LIST_PRINT)
-	fprintf (stream, " ...");
+	outf (stream, " ...");
       else
 	{
-	  fprintf (stream, " . ");
+	  outf (stream, " . ");
 	  print_expression (stream, pair, "");
 	}
     }
-  fprintf (stream, ")");
+  outf (stream, ")");
   return;
 }
 
 static void
-DEFUN (print_return_name, (stream, Ptr), FILE * stream AND SCHEME_OBJECT Ptr)
+DEFUN (print_return_name, (stream, Ptr), outf_channel stream AND SCHEME_OBJECT Ptr)
 {
   long index;
   char * name;
@@ -268,31 +268,31 @@ DEFUN (print_return_name, (stream, Ptr), FILE * stream AND SCHEME_OBJECT Ptr)
       if ((name != ((char *) 0)) &&
 	  ((name [0]) != '\0'))
 	{
-	  fprintf (stream, "%s", name);
+	  outf (stream, "%s", name);
 	  return;
 	}
     }
-  fprintf (stream, "[0x%lx]", index);
+  outf (stream, "[0x%lx]", index);
   return;
 }
 
 void
 DEFUN (Print_Return, (String), char * String)
 {
-  printf ("%s: ", String);
-  print_return_name (stdout, Fetch_Return ());
-  printf ("\n");
+  outf_console ("%s: ", String);
+  print_return_name (console_output, Fetch_Return ());
+  outf_console ("\n");
 }
 
 static void
-DEFUN (print_string, (stream, string), FILE * stream AND SCHEME_OBJECT string)
+DEFUN (print_string, (stream, string), outf_channel stream AND SCHEME_OBJECT string)
 {
   long length;
   long i;
   char * next;
   char this;
 
-  fprintf (stream, "\"");
+  outf (stream, "\"");
   length = (STRING_LENGTH (string));
   next = ((char *) (STRING_LOC (string, 0)));
   for (i = 0; (i < length); i += 1)
@@ -301,34 +301,34 @@ DEFUN (print_string, (stream, string), FILE * stream AND SCHEME_OBJECT string)
       switch (this)
 	{
 	case '\\':
-	  fprintf (stream, "\\\\");
+	  outf (stream, "\\\\");
 	  break;
 	case '"':
-	  fprintf (stream, "\\\"");
+	  outf (stream, "\\\"");
 	  break;
 	case '\t':
-	  fprintf (stream, "\\t");
+	  outf (stream, "\\t");
 	  break;
 	case '\n':
-	  fprintf (stream, "\\n");
+	  outf (stream, "\\n");
 	  break;
 	case '\f':
-	  fprintf (stream, "\\f");
+	  outf (stream, "\\f");
 	  break;
 	default:
 	  if ((this >= ' ') && (this <= '~'))
-	    putc (this, stream);
+	    outf (stream, "%c", this);
 	  else
-	    fprintf (stream, "\\%03o", this);
+	    outf (stream, "\\%03o", this);
 	  break;
 	}
     }
-  fprintf (stream, "\"");
+  outf (stream, "\"");
   return;
 }
 
 static void
-DEFUN (print_symbol, (stream, symbol), FILE * stream AND SCHEME_OBJECT symbol)
+DEFUN (print_symbol, (stream, symbol), outf_channel stream AND SCHEME_OBJECT symbol)
 {
   SCHEME_OBJECT string;
   long length;
@@ -339,13 +339,13 @@ DEFUN (print_symbol, (stream, symbol), FILE * stream AND SCHEME_OBJECT symbol)
   length = (STRING_LENGTH (string));
   next = ((char *) (STRING_LOC (string, 0)));
   for (i = 0; (i < length); i += 1)
-    putc (*next++, stream);
+    outf(stream, "%c", *next++);  /*should use %s? */
   return;
 }
 
 static void
 DEFUN (print_filename, (stream, filename),
-       FILE * stream AND SCHEME_OBJECT filename)
+       outf_channel stream AND SCHEME_OBJECT filename)
 {
   long length;
   char * scan;
@@ -359,16 +359,16 @@ DEFUN (print_filename, (stream, filename),
   while (scan < end)
     if ((*scan++) == '/')
       slash = scan;
-  fprintf (stream, "\"%s\"", slash);
+  outf (stream, "\"%s\"", slash);
   return;
 }
 
 static void
 DEFUN (print_object, (object), SCHEME_OBJECT object)
 {
-  do_printing (stdout, object, true);
-  printf ("\n");
-  fflush (stdout);
+  do_printing (console_output, object, true);
+  outf_console ("\n");
+  outf_flush_console();
   return;
 }
 
@@ -392,11 +392,11 @@ DEFUN (print_objects, (objects, n),
   end = (objects + n);
   while (scan < end)
     {
-      printf ("%4x: ", (((char *) scan) - ((char *) objects)));
-      do_printing (stdout, (*scan++), true);
-      printf ("\n");
+      outf_console ("%4x: ", (((char *) scan) - ((char *) objects)));
+      do_printing (console_output, (*scan++), true);
+      outf_console ("\n");
     }
-  fflush (stdout);
+  outf_flush_console();
   return;
 }
 
@@ -415,10 +415,10 @@ DEFUN (print_vector, (vector), SCHEME_OBJECT vector)
 
 static void
 DEFUN (print_expression, (stream, expression, string),
-       FILE * stream AND SCHEME_OBJECT expression AND char * string)
+       outf_channel stream AND SCHEME_OBJECT expression AND char * string)
 {
   if ((string [0]) != 0)
-    fprintf (stream, "%s: ", string);
+    outf (stream, "%s: ", string);
   do_printing (stream, expression, true);
   return;
 }
@@ -427,7 +427,7 @@ void
 DEFUN (Print_Expression, (expression, string),
        SCHEME_OBJECT expression AND char * string)
 {
-  print_expression (stdout, expression, string);
+  print_expression (console_output, expression, string);
   return;
 }
 
@@ -435,7 +435,7 @@ extern char * Type_Names [];
 
 static void
 DEFUN (do_printing, (stream, Expr, Detailed),
-       FILE * stream AND SCHEME_OBJECT Expr AND Boolean Detailed)
+       outf_channel stream AND SCHEME_OBJECT Expr AND Boolean Detailed)
 {
   long Temp_Address;
   Boolean handled_p;
@@ -447,17 +447,17 @@ DEFUN (do_printing, (stream, Expr, Detailed),
     {
     case TC_ACCESS:
       {
-	fprintf (stream, "[ACCESS (");
+	outf (stream, "[ACCESS (");
 	Expr = (MEMORY_REF (Expr, ACCESS_NAME));
       SPrint:
 	print_symbol (stream, Expr);
 	handled_p = true;
-	fprintf (stream, ")");
+	outf (stream, ")");
 	break;
       }
 
     case TC_ASSIGNMENT:
-      fprintf (stream, "[SET! (");
+      outf (stream, "[SET! (");
       Expr = (MEMORY_REF ((MEMORY_REF (Expr, ASSIGN_NAME)), VARIABLE_SYMBOL));
       goto SPrint;
 
@@ -466,16 +466,16 @@ DEFUN (do_printing, (stream, Expr, Detailed),
       return;
 
     case TC_DEFINITION:
-      fprintf (stream, "[DEFINE (");
+      outf (stream, "[DEFINE (");
       Expr = (MEMORY_REF (Expr, DEFINE_NAME));
       goto SPrint;
 
     case TC_FIXNUM:
-      fprintf (stream, "%ld", ((long) (FIXNUM_TO_LONG (Expr))));
+      outf (stream, "%ld", ((long) (FIXNUM_TO_LONG (Expr))));
       return;
 
     case TC_BIG_FLONUM:
-      fprintf (stream, "%lf", (FLONUM_TO_DOUBLE (Expr)));
+      outf (stream, "%lf", (FLONUM_TO_DOUBLE (Expr)));
       return;
 
     case TC_WEAK_CONS:
@@ -486,13 +486,13 @@ DEFUN (do_printing, (stream, Expr, Detailed),
     case TC_NULL:
       if (Temp_Address == 0)
 	{
-	  fprintf (stream, "()");
+	  outf (stream, "()");
 	  return;
 	}
       break;
 
     case TC_UNINTERNED_SYMBOL:
-      fprintf (stream, "[UNINTERNED_SYMBOL (");
+      outf (stream, "[UNINTERNED_SYMBOL (");
       goto SPrint;
 
     case TC_INTERNED_SYMBOL:
@@ -503,47 +503,47 @@ DEFUN (do_printing, (stream, Expr, Detailed),
       Expr = (MEMORY_REF (Expr, VARIABLE_SYMBOL));
       if (Detailed)
 	{
-	  fprintf (stream, "[VARIABLE (");
+	  outf (stream, "[VARIABLE (");
 	  goto SPrint;
 	}
       print_symbol (stream, Expr);
       return;
 
     case TC_COMBINATION:
-      fprintf (stream, "[COMBINATION (%ld args) 0x%lx]",
+      outf (stream, "[COMBINATION (%ld args) 0x%lx]",
 	      ((long) ((VECTOR_LENGTH (Expr)) - 1)),
 	      ((long) Temp_Address));
       if (Detailed)
 	{
-	  fprintf (stream, " (");
+	  outf (stream, " (");
 	  do_printing (stream, (MEMORY_REF (Expr, COMB_FN_SLOT)), false);
-	  fprintf (stream, " ...)");
+	  outf (stream, " ...)");
 	}
       return;
 
     case TC_COMBINATION_1:
-      fprintf (stream, "[COMBINATION_1 0x%lx]", ((long) Temp_Address));
+      outf (stream, "[COMBINATION_1 0x%lx]", ((long) Temp_Address));
       if (Detailed)
 	{
-	  fprintf (stream, " (");
+	  outf (stream, " (");
 	  do_printing (stream, (MEMORY_REF (Expr, COMB_1_FN)), false);
-	  fprintf (stream, ", ");
+	  outf (stream, ", ");
 	  do_printing (stream, (MEMORY_REF (Expr, COMB_1_ARG_1)), false);
-	  fprintf (stream, ")");
+	  outf (stream, ")");
 	}
       return;
 
     case TC_COMBINATION_2:
-      fprintf (stream, "[COMBINATION_2 0x%lx]", ((long) Temp_Address));
+      outf (stream, "[COMBINATION_2 0x%lx]", ((long) Temp_Address));
       if (Detailed)
 	{
-	  fprintf (stream, " (");
+	  outf (stream, " (");
 	  do_printing (stream, (MEMORY_REF (Expr, COMB_2_FN)), false);
-	  fprintf (stream, ", ");
+	  outf (stream, ", ");
 	  do_printing (stream, (MEMORY_REF (Expr, COMB_2_ARG_1)), false);
-	  fprintf (stream, ", ");
+	  outf (stream, ", ");
 	  do_printing (stream, (MEMORY_REF (Expr, COMB_2_ARG_2)), false);
-	  fprintf (stream, ")");
+	  outf (stream, ")");
 	}
       return;
 
@@ -551,79 +551,79 @@ DEFUN (do_printing, (stream, Expr, Detailed),
       {
 	SCHEME_OBJECT procedure;
 
-	fprintf (stream, "[ENVIRONMENT 0x%lx]", ((long) Temp_Address));
-	fprintf (stream, " (from ");
+	outf (stream, "[ENVIRONMENT 0x%lx]", ((long) Temp_Address));
+	outf (stream, " (from ");
 	procedure = (MEMORY_REF (Expr, ENVIRONMENT_FUNCTION));
 	if ((OBJECT_TYPE (procedure)) == TC_QUAD)
 	  procedure = (MEMORY_REF (procedure, ENV_EXTENSION_PROCEDURE));
 	do_printing (stream, procedure, false);
-	fprintf (stream, ")");
+	outf (stream, ")");
 	return;
       }
 
     case TC_EXTENDED_LAMBDA:
       if (Detailed)
-	fprintf (stream, "[EXTENDED_LAMBDA (");
+	outf (stream, "[EXTENDED_LAMBDA (");
       do_printing (stream,
 		   (MEMORY_REF ((MEMORY_REF (Expr, ELAMBDA_NAMES)), 1)),
 		   false);
       if (Detailed)
-	fprintf (stream, ") 0x%lx", ((long) Temp_Address));
+	outf (stream, ") 0x%lx", ((long) Temp_Address));
       return;
 
     case TC_EXTENDED_PROCEDURE:
       if (Detailed)
-	fprintf (stream, "[EXTENDED_PROCEDURE (");
+	outf (stream, "[EXTENDED_PROCEDURE (");
       do_printing (stream, (MEMORY_REF (Expr, PROCEDURE_LAMBDA_EXPR)), false);
       if (Detailed)
-	fprintf (stream, ") 0x%lx]", ((long) Temp_Address));
+	outf (stream, ") 0x%lx]", ((long) Temp_Address));
       break;
 
     case TC_LAMBDA:
       if (Detailed)
-	fprintf (stream, "[LAMBDA (");
+	outf (stream, "[LAMBDA (");
       do_printing (stream,
 		   (MEMORY_REF ((MEMORY_REF (Expr, LAMBDA_FORMALS)), 1)),
 		  false);
       if (Detailed)
-	fprintf (stream, ") 0x%lx]", ((long) Temp_Address));
+	outf (stream, ") 0x%lx]", ((long) Temp_Address));
       return;
 
     case TC_PRIMITIVE:
-      fprintf (stream, "[PRIMITIVE ");
+      outf (stream, "[PRIMITIVE ");
       print_primitive_name (stream, Expr);
-      fprintf (stream, "]");
+      outf (stream, "]");
       return;
 
     case TC_PROCEDURE:
       if (Detailed)
-	fprintf (stream, "[PROCEDURE (");
+	outf (stream, "[PROCEDURE (");
       do_printing (stream, (MEMORY_REF (Expr, PROCEDURE_LAMBDA_EXPR)), false);
       if (Detailed)
-	fprintf (stream, ") 0x%lx]", ((long) Temp_Address));
+	outf (stream, ") 0x%lx]", ((long) Temp_Address));
       return;
 
     case TC_REFERENCE_TRAP:
       {
 	if ((OBJECT_DATUM (Expr)) <= TRAP_MAX_IMMEDIATE)
 	  break;
-	fprintf (stream, "[REFERENCE-TRAP");
+	outf (stream, "[REFERENCE-TRAP");
 	print_expression (stream, (MEMORY_REF (Expr, TRAP_TAG)), " tag");
 	print_expression (stream, (MEMORY_REF (Expr, TRAP_EXTRA)), " extra");
-	fprintf (stream, "]");
+	outf (stream, "]");
 	return;
       }
 
     case TC_RETURN_CODE:
-      fprintf (stream, "[RETURN_CODE ");
+      outf (stream, "[RETURN_CODE ");
       print_return_name (stream, Expr);
-      fprintf (stream, "]");
+      outf (stream, "]");
       return;
 
     case TC_TRUE:
       if (Temp_Address == 0)
 	{
-	  fprintf (stream, "#T");
+	  outf (stream, "#T");
 	  return;
 	}
       break;
@@ -662,27 +662,27 @@ DEFUN (do_printing, (stream, Expr, Detailed),
 	    break;
 	  }
 
-	fprintf (stream, "[%s offset: 0x%lx entry: 0x%lx",
+	outf (stream, "[%s offset: 0x%lx entry: 0x%lx",
 		 type_string,
 		 ((long) (compiled_entry_to_block_offset (entry))),
 		 ((long) (OBJECT_DATUM (entry))));
 	if (closure_p)
-	  fprintf (stream, " address: 0x%lx", ((long) Temp_Address));
+	  outf (stream, " address: 0x%lx", ((long) Temp_Address));
 
 	filename = (compiled_entry_debug_filename (entry));
 	if (STRING_P (filename))
 	  {
-	    fprintf (stream, " file: ");
+	    outf (stream, " file: ");
 	    print_filename (stream, filename);
 	  }
 	else if (PAIR_P (filename))
 	  {
-	    fprintf (stream, " file: ");
+	    outf (stream, " file: ");
 	    print_filename (stream, (PAIR_CAR (filename)));
-	    fprintf (stream, " block: %ld",
+	    outf (stream, " block: %ld",
 		    ((long) (FIXNUM_TO_LONG (PAIR_CDR (filename)))));
 	  }
-	fprintf (stream, "]");
+	outf (stream, "]");
 	return;
       }
 
@@ -692,25 +692,25 @@ DEFUN (do_printing, (stream, Expr, Detailed),
   if (! handled_p)
     {
       if ((OBJECT_TYPE (Expr)) <= LAST_TYPE_CODE)
-	fprintf (stream, "[%s", (Type_Names [OBJECT_TYPE (Expr)]));
+	outf (stream, "[%s", (Type_Names [OBJECT_TYPE (Expr)]));
       else
-	fprintf (stream, "[0x%02x", (OBJECT_TYPE (Expr)));
+	outf (stream, "[0x%02x", (OBJECT_TYPE (Expr)));
     }
-  fprintf (stream, " 0x%lx]", ((long) Temp_Address));
+  outf (stream, " 0x%lx]", ((long) Temp_Address));
   return;
 }
 
 static Boolean
 DEFUN (print_one_continuation_frame, (stream, Temp),
-       FILE * stream AND SCHEME_OBJECT Temp)
+       outf_channel stream AND SCHEME_OBJECT Temp)
 {
   SCHEME_OBJECT Expr;
 
   print_expression (stream, Temp, "Return code");
-  fprintf (stream, "\n");
+  outf (stream, "\n");
   Expr = (STACK_POP ());
   print_expression (stream, Expr, "Expression");
-  fprintf (stream, "\n");
+  outf (stream, "\n");
   if (((OBJECT_DATUM (Temp)) == RC_END_OF_COMPUTATION) ||
       ((OBJECT_DATUM (Temp)) == RC_HALT))
     return (true);
@@ -724,7 +724,7 @@ extern Boolean EXFUN (Print_One_Continuation_Frame, (SCHEME_OBJECT));
 Boolean
 DEFUN (Print_One_Continuation_Frame, (Temp), SCHEME_OBJECT Temp)
 {
-  return (print_one_continuation_frame (stdout, Temp));
+  return (print_one_continuation_frame (console_output, Temp));
 }
 
 /* Back_Trace relies on (a) only a call to Save_Cont puts a return code on the
@@ -732,7 +732,7 @@ DEFUN (Print_One_Continuation_Frame, (Temp), SCHEME_OBJECT Temp)
  */
 
 void
-DEFUN (Back_Trace, (stream), FILE * stream)
+DEFUN (Back_Trace, (stream), outf_channel stream)
 {
   SCHEME_OBJECT Temp, * Old_Stack;
 
@@ -743,9 +743,9 @@ DEFUN (Back_Trace, (stream), FILE * stream)
     if ((STACK_LOCATIVE_DIFFERENCE (Stack_Top, (STACK_LOC (0)))) <= 0)
     {
       if ((STACK_LOC (0)) == Old_Stack)
-	fprintf (stream, "\n[Invalid stack pointer.]\n");
+	outf (stream, "\n[Invalid stack pointer.]\n");
       else
-	fprintf (stream, "\n[Stack ends abruptly.]\n");
+	outf (stream, "\n[Stack ends abruptly.]\n");
       break;
     }
     if (Return_Hook_Address == (STACK_LOC (0)))
@@ -753,11 +753,11 @@ DEFUN (Back_Trace, (stream), FILE * stream)
       Temp = (STACK_POP ());
       if (Temp != (MAKE_OBJECT (TC_RETURN_CODE, RC_RETURN_TRAP_POINT)))
       {
-        fprintf (stream, "\n--> Return trap is missing here <--\n");
+        outf (stream, "\n--> Return trap is missing here <--\n");
       }
       else
       {
-	fprintf (stream, "\n[Return trap found here as expected]\n");
+	outf (stream, "\n[Return trap found here as expected]\n");
         Temp = Old_Return_Code;
       }
     }
@@ -776,14 +776,14 @@ DEFUN (Back_Trace, (stream), FILE * stream)
       if ((OBJECT_TYPE (Temp)) == TC_MANIFEST_NM_VECTOR)
       {
 	Stack_Pointer = (STACK_LOC (- (OBJECT_DATUM (Temp))));
-        fprintf (stream, " (skipping)");
+        outf (stream, " (skipping)");
       }
-      fprintf (stream, "\n");
+      outf (stream, "\n");
     }
   }
   Stack_Pointer = Old_Stack;
   Back_Trace_Exit_Hook();
-  fflush (stream);
+  outf_flush (stream);
   return;
 }
 
@@ -794,14 +794,14 @@ DEFUN (print_stack, (sp), SCHEME_OBJECT * sp)
 
   saved_sp = Stack_Pointer;
   Stack_Pointer = sp;
-  Back_Trace (stdout);
+  Back_Trace (console_output);
   Stack_Pointer = saved_sp;
   return;
 }
 
 static Boolean
 DEFUN (print_primitive_name, (stream, primitive),
-       FILE * stream AND SCHEME_OBJECT primitive)
+       outf_channel stream AND SCHEME_OBJECT primitive)
 {
   extern char * EXFUN (primitive_to_name, (SCHEME_OBJECT));
   char *name;
@@ -809,12 +809,12 @@ DEFUN (print_primitive_name, (stream, primitive),
   name = primitive_to_name(primitive);
   if (name == ((char *) NULL))
   {
-    fprintf (stream, "Unknown primitive 0x%08x", PRIMITIVE_NUMBER(primitive));
+    outf (stream, "Unknown primitive 0x%08x", PRIMITIVE_NUMBER(primitive));
     return false;
   }
   else
   {
-    fprintf (stream, "%s", name);
+    outf (stream, "%s", name);
     return true;
   }
 }
@@ -826,8 +826,8 @@ DEFUN (Print_Primitive, (primitive), SCHEME_OBJECT primitive)
   char buffer[40];
   int NArgs, i;
 
-  printf ("Primitive: ");
-  if (print_primitive_name (stdout, primitive))
+  outf_console ("Primitive: ");
+  if (print_primitive_name (console_output, primitive))
   {
     NArgs = primitive_to_arity(primitive);
   }
@@ -835,13 +835,13 @@ DEFUN (Print_Primitive, (primitive), SCHEME_OBJECT primitive)
   {
     NArgs = 3;	        /* Unknown primitive */
   }
-  printf ("\n");
+  outf_console ("\n");
 
   for (i = 0; i < NArgs; i++)
   {
     sprintf (buffer, "...Arg %ld", ((long) (i + 1)));
-    print_expression (stdout, (STACK_REF (i)), buffer);
-    printf ("\n");
+    print_expression (console_output, (STACK_REF (i)), buffer);
+    outf_console ("\n");
   }
   return;
 }
@@ -949,10 +949,10 @@ DEFUN (show_flags, (all), int all)
     {
       int value = (* (find_flag (i)));
       if (all || value)
-	fprintf (stdout, "Flag %ld (%s) is %s.\n",
+	outf (console_output, "Flag %ld (%s) is %s.\n",
 		 ((long) i), (flag_name (i)), (value ? "set" : "clear"));
     }
-  fflush (stdout);
+  outf_flush_console();
   return;
 }
 
@@ -986,8 +986,8 @@ DEFUN_VOID (debug_edit_flags)
   show_flags (0);
   while (1)
     {
-      fputs ("Clear<number>, Set<number>, Done, ?, or Halt: ", stdout);
-      fflush (stdout);
+      outf_console("Clear<number>, Set<number>, Done, ?, or Halt: ");
+      outf_flush_console();
       {
 	fgets (input_line, (sizeof (input_line)), stdin);
 	switch (input_line[0])
@@ -1020,8 +1020,8 @@ DEFUN_VOID (debug_edit_flags)
 void
 DEFUN_VOID (debug_edit_flags)
 {
-  fprintf (stderr, "Not a debugging version.  No flags to handle.\n");
-  fflush (stderr);
+  outf_error ("Not a debugging version.  No flags to handle.\n");
+  outf_flush_error();
   return;
 }
 

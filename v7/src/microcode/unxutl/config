@@ -1,6 +1,6 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Id: config,v 1.18 1993/02/18 01:50:41 gjr Exp $
+# $Id: config,v 1.19 1993/06/24 04:22:09 gjr Exp $
 # Modelled on the configuration script for GNU CC
 #   Copyright (C) 1988 Free Software Foundation, Inc.
 
@@ -24,11 +24,11 @@
 # Shell script to create proper links to machine-dependent files in
 # preparation for compiling gcc.
 #
-# Usage: config.sh machine
+# Usage: config machine
 #
-# If config.sh succeeds, it leaves its status in config.status.
-# If config.sh fails after disturbing the status quo, 
-# 	config.status is removed.
+# If config succeeds, it leaves its status in config.out.
+# If config fails after disturbing the status quo, 
+# 	config.out is removed.
 #
 
 progname=$0
@@ -36,6 +36,7 @@ progname=$0
 remove=rm
 hard_link=ln
 symbolic_link='ln -s'
+copy=cp
 
 #for Test
 #remove="echo rm"
@@ -43,6 +44,8 @@ symbolic_link='ln -s'
 #symbolic_link="echo ln -s"
 
 cmpint_file=nothing_special
+cmpaux_file=nothing_special
+cmpaux_target=cmpauxmd.m4
 cmp_file=nothing_special
 
 case $# in
@@ -50,116 +53,128 @@ case $# in
 	machine=$1
 
 	case $machine in
-	vax-bsd42)			# vaxen running 4.2BSD
-		system_file=bsd4-2
-		machine_file=vax
-		cmpint_file=cmpint-vax.h
-		;;
-	vax-bsd43)			# vaxen running 4.3BSD
-		system_file=bsd4-3
-		machine_file=vax
-		cmpint_file=cmpint-vax.h
-		;;
-	vax-ultrix)			# vaxen running ultrix
-		system_file=ultrix
-		machine_file=vax
-		cmpint_file=cmpint-vax.h
+	alpha-osf | alpha)		# DEC Alpha running OSF
+		system_file=decosf
+		machine_file=alpha
+		cmpint_file=alpha.h
+		cmpaux_file=alpha.m4
 		;;
 	mips-ultrix | dec-3100 | dec-5100 | pmax)
 		system_file=ultrix
 		machine_file=mips
-		cmpint_file=cmpint-mips.h
+		cmpint_file=mips.h
+		cmpaux_file=mips.m4
 		;;
  	sgi4d)
  		system_file=irix4
  		machine_file=mips
- 		cmpint_file=cmpint-mips.h
+ 		cmpint_file=mips.h
+		cmpaux_file=mips.m4
  		;;
 	nws3250)			# sony news laptop
 		system_file=newsos5
 		machine_file=mips
-		cmpint_file=cmpint-mips.h
-		;;
-	hp9k300)			# HP9000 series 300
-		system_file=hpux
-		machine_file=hp9k300
-		cmpint_file=cmpint-mc68k.h
-		;;
-	hp9k400)			# HP9000 series 400
-		system_file=hpux
-		machine_file=hp9k400
-		cmpint_file=cmpint-mc68k.h
-		;;
-	hp9k800 | hp9k700)		# HP9000 series 800
-		system_file=hpux
-		machine_file=hp9k800
-		cmpint_file=cmpint-hppa.h
-		;;
-	i386-sysv)
-		system_file=sysv3
-		machine_file=i386
-		cmpint_file=cmpint-i386.h
+		cmpint_file=mips.h
+		cmpaux_file=mips.m4
 		;;
  	386bsd)
  		system_file=386bsd
  		machine_file=i386
- 		cmpint_file=cmpint-i386.h
+ 		cmpint_file=i386.h
+		cmpaux_file=i386.m4
  		;;
+	i386-sysv)
+		system_file=sysv3
+		machine_file=i386
+		cmpint_file=i386.h
+		cmpaux_file=i386.m4
+		;;
+	hp9k800 | hp9k700)		# HP9000 series 800
+		system_file=hpux
+		machine_file=hp9k800
+		cmpint_file=hppa.h
+		cmpaux_file=hppa.m4
+		;;
+	hp9k300)			# HP9000 series 300
+		system_file=hpux
+		machine_file=hp9k300
+		cmpint_file=mc68k.h
+		cmpaux_file=mc68k.m4
+		;;
+	hp9k400)			# HP9000 series 400
+		system_file=hpux
+		machine_file=hp9k400
+		cmpint_file=mc68k.h
+		cmpaux_file=mc68k.m4
+		;;
+	next)
+		system_file=nextos.h
+		machine_file=next
+		cmpint_file=mc68k.h
+		cmpaux_file=mc68k.m4
+		cmp_file=sun3-gcc.s
+		;;
 	sun3)
 		system_file=sunos4
 		machine_file=sun3
-		cmpint_file=cmpint-mc68k.h
-		cmp_file=cmpaux/sun3.s
-		cmp_link=cmpaux-mc68k.s
+		cmpint_file=mc68k.h
+		cmpaux_file=mc68k.m4
+		cmp_file=sun3.s
 		;;
 	sun3-os3)			# sun3, pre-4.0 sunos
 		system_file=sunos3
 		machine_file=sun3
-		cmpint_file=cmpint-mc68k.h
-		cmp_file=cmpaux/sun3.s
-		cmp_link=cmpaux-mc68k.s
+		cmpint_file=mc68k.h
+		cmpaux_file=mc68k.m4
+		cmp_file=sun3.s
 		;;
 	sun3-nfp)			# sun3, No Floating Point
 		system_file=sunos4
 		machine_file=sun3
-		cmpint_file=cmpint-mc68k.h
-		cmp_file=cmpaux/sun3-nfp.s
-		cmp_link=cmpaux-mc68k.s
+		cmpint_file=mc68k.h
+		cmpaux_file=mc68k.m4
+		cmp_file=sun3-nfp.s
 		;;
 	sun3-os3-nfp)			# sun3, pre-4.0 sunos, No Floating Point
 		system_file=sunos3
 		machine_file=sun3
-		cmpint_file=cmpint-mc68k.h
-		cmp_file=cmpaux/sun3-nfp.s
-		cmp_link=cmpaux-mc68k.s
+		cmpint_file=mc68k.h
+		cmpaux_file=mc68k.m4
+		cmp_file=sun3-nfp.s
 		;;
 	sun4) 
 		system_file=sunos4
 		machine_file=sun4 
 		;;
-	next)
-		system_file=next-mach
-		machine_file=next
-		cmpint_file=cmpint-mc68k.h
-		cmp_file=cmpaux/sun3-gcc.s
-		cmp_link=cmpaux-mc68k.s
-		;;
 	umax)				# Encore Multimax
 	    	system_file=umax
 		machine_file=umax
 		;;
-	alpha-osf | alpha)		# DEC Alpha running OSF
-		system_file=decosf
-		machine_file=alpha
-		cmpint_file=cmpint-alpha.h
+	vax-bsd42)			# vaxen running 4.2BSD
+		system_file=bsd4-2
+		machine_file=vax
+		cmpint_file=vax.h
+		cmpaux_file=vax.m4
+		;;
+	vax-bsd43)			# vaxen running 4.3BSD
+		system_file=bsd4-3
+		machine_file=vax
+		cmpint_file=vax.h
+		cmpaux_file=vax.m4
+		;;
+	vax-ultrix)			# vaxen running ultrix
+		system_file=ultrix
+		machine_file=vax
+		cmpint_file=vax.h
+		cmpaux_file=vax.m4
 		;;
 	*)
 		echo "$progname: unknown machine name: $machine"
 		exit 1
 	esac
 
-	files="s/${system_file}.h m/${machine_file}.h"
-	links="s.h m.h"
+	files="s/${system_file}.h m/${machine_file}.h unxutl/makefile unxutl/ymkfile unxutl/ymake.sed"
+	links="s.h m.h makefile ymkfile ymake.sed"
 
 	while [ -n "$files" ]
 	do
@@ -175,7 +190,7 @@ case $# in
 		fi
 
 		$remove -f $link
-		rm -f config.status
+		rm -f config.out
 		# Make a symlink if possible, otherwise try a hard link
 		$symbolic_link $file $link 2>/dev/null || $hard_link $file $link
 
@@ -187,17 +202,62 @@ case $# in
 		echo "Linked \`$link' to \`$file'."
 	done
 
+	files="unxutl/cf-dist.h"
+	targets="cf.h"
+
+	while [ -n "$files" ]
+	do
+		# set file to car of files, files to cdr of files
+		set $files; file=$1; shift; files=$*
+		set $targets; target=$1; shift; targets=$*
+
+		if [ ! -r $file ]
+		then
+			echo "$progname: cannot create file \`$target',"
+			echo "since the file \`$file' does not exist."
+			exit 1
+		fi
+
+		$remove -f $target
+		rm -f config.out
+		# Make a symlink if possible, otherwise try a hard link
+		$copy $file $target
+
+		if [ ! -r $target ]
+		then
+			echo "$progname: unable to copy \`$file' to \`$target'."
+			exit 1
+		fi
+		echo "Copied \`$file' to \`$target'."
+	done
+
 	case $cmpint_file in
 	nothing_special)
 		;;
 	*)
-		$symbolic_link $cmpint_file cmpint2.h 2>/dev/null || $hard_link $cmpint_file cmpint2.h
-		if [ ! -r cmpint2.h ]
+		$symbolic_link cmpintmd/$cmpint_file cmpintmd.h 2>/dev/null \
+		  || $hard_link cmpintmd/$cmpint_file cmpintmd.h
+		if [ ! -r cmpintmd.h ]
 		then
-			echo "$progname: unable to link \`cmpint2.h' to \`$cmpint_file'."
+			echo "$progname: unable to link \`cmpintmd.h' to \`cmpintmd/$cmpint_file'."
 			exit 1
 		fi
-		echo "Linked \`cmpint2.h' to \`$cmpint_file'."
+		echo "Linked \`cmpintmd.h' to \`cmpintmd/$cmpint_file'."
+		;;
+	esac
+
+	case $cmpaux_file in
+	nothing_special)
+		;;
+	*)
+		$symbolic_link cmpauxmd/$cmpaux_file $cmpaux_target 2>/dev/null \
+		  || $hard_link cmpauxmd/$cmpaux_file $cmpaux_target
+		if [ ! -r $cmpaux_target ]
+		then
+			echo "$progname: unable to link \`$cmpaux_target' to \`cmpauxmd/$cmpaux_file'."
+			exit 1
+		fi
+		echo "Linked \`$cmpaux_target' to \`cmpauxmd/$cmpaux_file'."
 		;;
 	esac
 
@@ -205,31 +265,35 @@ case $# in
 	nothing_special)
 		;;
 	*)
-		$symbolic_link $cmp_file $cmp_link 2>/dev/null || $hard_link $cmp_file $cmp_link
-		if [ ! -r $cmp_link ]
+		$symbolic_link cmpauxmd/$cmp_file cmpauxmd.s 2>/dev/null \
+		  || $hard_link cmpauxmd/$cmp_file cmpauxmd.s
+		if [ ! -r cmpauxmd.s ]
 		then
-			echo "$progname: unable to link \`$cmp_link' to \`$cmp_file'."
+			echo "$progname: unable to link \`cmpauxmd.s' to \`cmpauxmd/$cmp_file'."
 			exit 1
 		fi
-		echo "Linked \`$cmp_link' to \`$cmp_file'."
+		echo "Linked \`cmpauxmd.s' to \`cmpauxmd/$cmp_file'."
 		;;
 	esac
 
-	echo "Links are now set up for use with a $machine." \
-		| tee config.status
+	(echo "Links are now set up for use with a $machine." ; \
+         echo "Remember to edit file cf.h before using make.") \
+		| tee config.out
 	exit 0
 
 	;;
 *)
 	echo "Usage: $progname machine"
 	echo "Where \`machine' is one of:"
-	echo "vax-bsd42 vax-bsd43 vax-ultrix mips-ultrix"
-	echo "nws3250 hp9k300 hp9k400 hp9k700 hp9k800 i386-sysv"
-	echo "sun3 sun3-os3 sun3-nfp sun3-os3-nfp sun4 umax next"
-	echo "alpha-osf alpha sgi4d"
-	if [ -r config.status ]
+	echo "alpha-osf alpha"
+	echo "mips-ultrix nws3250 sgi4d"
+	echo "hp9k300 hp9k400 hp9k700 hp9k800 next"
+	echo "sun3 sun3-os3 sun3-nfp sun3-os3-nfp sun4"
+	echo "i386-sysv 386bsd umax"
+	echo "vax-bsd42 vax-bsd43 vax-ultrix"
+	if [ -r config.out ]
 	then
-		cat config.status
+		cat config.out
 	fi
 	exit 1
 	;;
