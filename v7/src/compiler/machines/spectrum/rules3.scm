@@ -1,7 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules3.scm,v 4.32 1992/07/29 19:56:10 cph Exp $
-$MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.30 1991/05/07 13:45:31 jinx Exp $
+$Id: rules3.scm,v 4.33 1992/09/12 00:16:46 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -112,7 +111,7 @@ MIT in each case. |#
        ,@(load-immediate number-pushed regnum:second-arg)
        ,@(object->address regnum:first-arg)
        ,@(invoke-interface code:compiler-lexpr-apply)))
-
+
 (define-rule statement
   (INVOCATION:UUO-LINK (? frame-size) (? continuation) (? name))
   continuation				;ignore
@@ -134,7 +133,7 @@ MIT in each case. |#
        ,@(load-immediate frame-size regnum:third-arg)
        ,@(load-pc-relative-address *block-label* regnum:second-arg)
        ,@(invoke-interface code:compiler-cache-reference-apply)))
-
+
 (define-rule statement
   (INVOCATION:LOOKUP (? frame-size)
 		     (? continuation)
@@ -430,15 +429,27 @@ MIT in each case. |#
 	 ,@(interrupt-check gc-label))))
 
 (define (interrupt-check gc-label)
-  (LAP (COMB (>=) ,regnum:free-pointer ,regnum:memtop-pointer (@PCR ,gc-label))
-       (LDW () ,reg:memtop ,regnum:memtop-pointer)
-       ,@(if compiler:generate-stack-checks?
-	     (LAP (LDW () ,reg:stack-guard ,regnum:addil-result)
-		  (COMB (<=) ,regnum:stack-pointer ,regnum:addil-result
-			(@PCR ,gc-label))
-		  (NOP ()))
-	     (LAP))))
-
+  ;; When the microcode decides that it is not going to signal the
+  ;; interrupt immediately, it resumes execution at the second
+  ;; instruction after the entry point.  It is important that the
+  ;; interrupt-check code be designed to take this into account.
+  (if (not compiler:generate-stack-checks?)
+      (LAP (COMB (>=) ,regnum:free-pointer ,regnum:memtop-pointer
+		 (@PCR ,gc-label))
+	   ;; Microcode resumes here:
+	   (LDW () ,reg:memtop ,regnum:memtop-pointer))
+      (let ((label (generate-label)))
+	(LAP (BLE ()
+		  (OFFSET ,hook:compiler-stack-and-interrupt-check
+			  4
+			  ,regnum:scheme-to-interface-ble))
+	     ;; Microcode resumes here:
+	     ;; Assumes that (<= #x-2000 (- ,gc-label ,label) #x1fff)
+	     ;; otherwise this assembles to two instructions, and it
+	     ;; won't fit in the branch-delay slot.
+	     (LDI () (- ,gc-label ,label) ,regnum:first-arg)
+	     (LABEL ,label)))))
+
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
   (make-external-label (continuation-code-word internal-label)
