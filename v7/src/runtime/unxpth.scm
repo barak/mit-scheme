@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxpth.scm,v 14.21 1996/02/27 21:53:14 cph Exp $
+$Id: unxpth.scm,v 14.22 1996/02/28 23:26:12 cph Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -71,11 +71,11 @@ MIT in each case. |#
 				 (simplify-directory
 				  (if (string=? "" (car components))
 				      (cons 'ABSOLUTE
-					    (map parse-directory-component
-						 (cdr components)))
+					    (parse-directory-components
+					     (cdr components)))
 				      (cons 'RELATIVE
-					    (map parse-directory-component
-						 components))))))
+					    (parse-directory-components
+					     components))))))
 			  name
 			  type
 			  'UNSPECIFIC))))))
@@ -116,6 +116,10 @@ MIT in each case. |#
   (if (and (eq? (car directory) 'RELATIVE) (null? (cdr directory)))
       false
       directory))
+
+(define (parse-directory-components components)
+  (map parse-directory-component
+       (list-transform-negative components string-null?)))
 
 (define (parse-directory-component component)
   (if (string=? ".." component)

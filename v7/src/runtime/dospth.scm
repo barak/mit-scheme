@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.33 1996/02/27 21:53:06 cph Exp $
+$Id: dospth.scm,v 1.34 1996/02/28 23:30:20 cph Exp $
 
 Copyright (c) 1992-96 Massachusetts Institute of Technology
 
@@ -83,21 +83,26 @@ MIT in each case. |#
     (lambda (device components)
       (call-with-values (lambda () (parse-name (car (last-pair components))))
 	(lambda (name type)
-	  (dos/make-pathname host
-			     device
-			     (let ((components (except-last-pair components)))
-			       (and (not (null? components))
-				    (simplify-directory
-				     (if (string=? "" (car components))
-					 (cons 'ABSOLUTE
-					       (map parse-directory-component
-						    (cdr components)))
-					 (cons 'RELATIVE
-					       (map parse-directory-component
-						    components))))))
-			     name
-			     type
-			     'UNSPECIFIC))))))
+	  (dos/make-pathname
+	   host
+	   device
+	   (let ((components (except-last-pair components)))
+	     (and (not (null? components))
+		  (simplify-directory
+		   (if (string-null? (car components))
+		       (cons 'ABSOLUTE
+			     (if (and (pair? (cdr components))
+				      (string-null? (cadr components)))
+				 (cons (cadr components)
+				       (parse-directory-components
+					(cddr components)))
+				 (parse-directory-components
+				  (cdr components))))
+		       (cons 'RELATIVE
+			     (parse-directory-components components))))))
+	   name
+	   type
+	   'UNSPECIFIC))))))
 
 (define (expand-directory-prefixes components)
   (let ((string (car components))
@@ -129,7 +134,7 @@ MIT in each case. |#
 		   (current-home-directory)
 		   (user-home-directory user-name))))))
 	  (else components)))))
-
+
 (define (parse-device-and-path components)
   (let ((string (car components)))
     (let ((colon (string-find-next-char string #\:)))
@@ -144,11 +149,15 @@ MIT in each case. |#
 	((equal? '(ABSOLUTE UP) directory) '(ABSOLUTE))
 	(else directory)))
 
+(define (parse-directory-components components)
+  (map parse-directory-component
+       (list-transform-negative components string-null?)))
+
 (define (parse-directory-component component)
   (if (string=? ".." component)
       'UP
       component))
-
+
 (define (string-components string delimiters)
   (substring-components string 0 (string-length string) delimiters))
 
