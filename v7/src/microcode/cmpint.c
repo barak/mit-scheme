@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.10 1989/10/27 13:26:24 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.11 1989/11/01 18:57:07 jinx Exp $
  *
  * This file corresponds to
  * $COMPILER-Header: compiler.c,v 9.37 89/10/25 14:55:45 GMT jinx Exp $
@@ -101,9 +101,6 @@ MIT in each case. */
 #define SCHEME_UTILITY
 
 /* Structure returned by SCHEME_UTILITYs */
-
-typedef	char	instruction;	/* (instruction *) is a pointer to a 
-				   native instruction. */ 
 
 struct utility_result
 {
