@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.11 2000/05/25 05:06:45 cph Exp $
+;;; $Id: load.scm,v 1.12 2000/05/30 20:21:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -49,6 +49,7 @@
 	    edwin-command$imail-forward
 	    edwin-command$imail-get-new-mail
 	    edwin-command$imail-input
+	    edwin-command$imail-input-from-folder
 	    edwin-command$imail-kill-flag
 	    edwin-command$imail-last-message
 	    edwin-command$imail-mail

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.112 2000/05/26 18:47:21 cph Exp $
+;;; $Id: imail-top.scm,v 1.113 2000/05/30 20:21:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -159,7 +159,7 @@ regardless of the folder type."
 	(if buffer
 	    (begin
 	      (select-buffer buffer)
-	      ((ref-command imail-get-new-mail)))
+	      ((ref-command imail-get-new-mail) #f))
 	    (begin
 	      (let ((buffer
 		     (new-buffer
@@ -1156,9 +1156,17 @@ An error if signalled if the folder already exists."
 	  (message "Folder not deleted")))))
 
 (define-command imail-input
+  "Run IMAIL on a specified folder."
+  (lambda ()
+    (list (prompt-for-imail-url-string "Run IMAIL on folder"
+				       'HISTORY 'IMAIL)))
+  (lambda (url-string)
+    ((ref-command imail) url-string)))
+
+(define-command imail-input-from-folder
   "Append messages to this folder from a specified folder."
   (lambda ()
-    (list (prompt-for-imail-url-string "Input from folder"
+    (list (prompt-for-imail-url-string "Get messages from folder"
 				       'HISTORY 'IMAIL-INPUT
 				       'HISTORY-INDEX 0)))
   (lambda (url-string)
@@ -1175,7 +1183,7 @@ An error if signalled if the folder already exists."
 			      "/"
 			      (number->string n))
 	     (lambda () (append-message (get-message from i) to))))
-	  ((ref-command imail-get-new-mail))
+	  ((ref-command imail-get-new-mail) #f)
 	  (message (number->string n)
 		   " message"
 		   (if (= n 1) "" "s")
@@ -1448,34 +1456,45 @@ While composing the reply, use \\[mail-yank-original] to yank the
 (define-command imail-get-new-mail
   "Probe the mail server for new mail.
 Selects the first new message if any new mail.
-Currently useful only for IMAP folders."
-  ()
+ (Currently useful only for IMAP folders.)
+
+You can also specify another folder to get mail from.
+A prefix argument says to prompt for a URL and append all messages
+ from that folder to the current one."
   (lambda ()
-    (let* ((folder (selected-folder))
-	   (count (folder-modification-count folder))
-	   ;; NAVIGATOR/LAST-MESSAGE must run _after_
-	   ;; FOLDER-MODIFICATION-COUNT as it can potentially change
-	   ;; its value.  (E.g. when IMAP folder is closed, this
-	   ;; reopens it, reads new information from the server, and
-	   ;; changes the modification count.)
-	   (last (navigator/last-message folder)))
-      (probe-folder folder)
-      (if (> (folder-modification-count folder) count)
-	  (select-message
-	   folder
-	   (or (cond ((not last)
-		      (navigator/first-message folder))
-		     ((message-attached? last folder)
-		      (navigator/next-message last))
-		     ((message-index last)
-		      => (lambda (index)
-			   (let ((index (+ index 1)))
-			     (if (< index (folder-length folder))
-				 (get-message folder index)
-				 (navigator/first-unseen-message folder)))))
-		     (else (navigator/first-unseen-message folder)))
-	       (selected-message #f)))
-	  (message "(No changes to mail folder)")))))
+    (list (and (command-argument)
+	       (prompt-for-imail-url-string "Get messages from folder"
+					    'HISTORY 'IMAIL-INPUT
+					    'HISTORY-INDEX 0))))
+  (lambda (url-string)
+    (if url-string
+	(let* ((folder (selected-folder))
+	       (count (folder-modification-count folder))
+	       ;; NAVIGATOR/LAST-MESSAGE must run _after_
+	       ;; FOLDER-MODIFICATION-COUNT as it can potentially change
+	       ;; its value.  (E.g. when IMAP folder is closed, this
+	       ;; reopens it, reads new information from the server, and
+	       ;; changes the modification count.)
+	       (last (navigator/last-message folder)))
+	  (probe-folder folder)
+	  (if (> (folder-modification-count folder) count)
+	      (select-message
+	       folder
+	       (or (cond ((not last)
+			  (navigator/first-message folder))
+			 ((message-attached? last folder)
+			  (navigator/next-message last))
+			 ((message-index last)
+			  => (lambda (index)
+			       (let ((index (+ index 1)))
+				 (if (< index (folder-length folder))
+				     (get-message folder index)
+				     (navigator/first-unseen-message
+				      folder)))))
+			 (else (navigator/first-unseen-message folder)))
+		   (selected-message #f)))
+	      (message "(No changes to mail folder)")))
+	((ref-command imail-input-from-folder) url-string))))
 
 (define-command imail-save-folder
   "Save the currently selected IMAIL folder."
