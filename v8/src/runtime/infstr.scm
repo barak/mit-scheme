@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infstr.scm,v 1.2 1989/01/06 21:00:12 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infstr.scm,v 1.3 1990/01/22 23:41:23 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -157,14 +157,62 @@ MIT in each case. |#
   (dbg-block-name normal-closure)
   (dbg-block-name return-address)
   (dbg-block-name static-link))
+
+(define (dbg-label/name label)
+  (cond ((dbg-label-2? label) (dbg-label-2/name label))
+	((dbg-label-1? label) (dbg-label-1/name label))
+	(else (error error-type:wrong-type-argument label))))
 
-(define-structure (dbg-label
+(define (set-dbg-label/name! label name)
+  (cond ((dbg-label-1? label) (set-dbg-label-1/name! label name))
+	(else (error error-type:wrong-type-argument label))))
+
+(define (dbg-label/offset label)
+  (cond ((dbg-label-2? label) (dbg-label-2/offset label))
+	((dbg-label-1? label) (dbg-label-1/offset label))
+	(else (error error-type:wrong-type-argument label))))
+
+(define (dbg-label/external? label)
+  (cond ((dbg-label-2? label) (dbg-label-2/external? label))
+	((dbg-label-1? label) (dbg-label-1/external? label))
+	(else (error error-type:wrong-type-argument label))))
+
+(define (set-dbg-label/external?! label external?)
+  (cond ((dbg-label-2? label) (set-dbg-label-2/external?! label external?))
+	((dbg-label-1? label) (set-dbg-label-1/external?! label external?))
+	(else (error error-type:wrong-type-argument label))))
+
+(define (dbg-label/names label)
+  (cond ((dbg-label-2? label) (dbg-label-2/names label))
+	((dbg-label-1? label) (dbg-label-1/names label))
+	(else (error error-type:wrong-type-argument label))))
+
+(define (set-dbg-label/names! label names)
+  (cond ((dbg-label-1? label) (set-dbg-label-1/names! label names))
+	(else (error error-type:wrong-type-argument label))))
+
+(define-structure (dbg-label-1
 		   (named
 		    (string->symbol "#[(runtime compiler-info)dbg-label]"))
 		   (constructor make-dbg-label (name offset))
-		   (conc-name dbg-label/))
+		   (conc-name dbg-label-1/))
   (name false)				;a string, primary name
   (offset false read-only true)		;mach. dependent offset into code block
   (external? false)			;if true, can have pointer to this
   (names (list name))			;names of all labels at this offset
   )
+
+(define-integrable make-dbg-label-2 cons)
+(define-integrable dbg-label-2? pair?)
+(define-integrable dbg-label-2/name car)
+(define-integrable (dbg-label-2/offset label) (abs (cdr label)))
+(define-integrable (dbg-label-2/external? label) (negative? (cdr label)))
+(define-integrable (dbg-label-2/names label) (list (car label)))
+
+(define (set-dbg-label-2/external?! label external?)
+  (let ((offset (cdr label)))
+    (if (if external?
+	    (not (negative? offset))
+	    (negative? offset))
+	(set-cdr! label (- offset))))
+  unspecific)
