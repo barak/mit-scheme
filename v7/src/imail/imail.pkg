@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.58 2000/06/15 01:57:48 cph Exp $
+;;; $Id: imail.pkg,v 1.59 2000/06/15 02:35:54 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -202,6 +202,7 @@
   (export (edwin)
 	  edwin-command$imail
 	  edwin-command$imail-add-flag
+	  edwin-command$imail-bury
 	  edwin-command$imail-continue
 	  edwin-command$imail-copy-folder
 	  edwin-command$imail-copy-messages
@@ -222,10 +223,12 @@
 	  edwin-command$imail-mail
 	  edwin-command$imail-next-flagged-message
 	  edwin-command$imail-next-message
+	  edwin-command$imail-next-same-subject
 	  edwin-command$imail-next-undeleted-message
 	  edwin-command$imail-output
 	  edwin-command$imail-previous-flagged-message
 	  edwin-command$imail-previous-message
+	  edwin-command$imail-previous-same-subject
 	  edwin-command$imail-previous-undeleted-message
 	  edwin-command$imail-quit
 	  edwin-command$imail-rename-folder

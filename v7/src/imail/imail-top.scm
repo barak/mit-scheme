@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.156 2000/06/15 01:58:02 cph Exp $
+;;; $Id: imail-top.scm,v 1.157 2000/06/15 02:35:27 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -518,6 +518,7 @@ Instead, these commands are available:
 \\[imail-toggle-message]	Toggle between standard and raw message formats.")
 
 (define-key 'imail #\a		'imail-add-flag)
+(define-key 'imail #\b		'imail-bury)
 (define-key 'imail #\c		'imail-continue)
 (define-key 'imail #\d		'imail-delete-forward)
 (define-key 'imail #\c-d	'imail-delete-backward)
@@ -552,6 +553,8 @@ Instead, these commands are available:
 (define-key 'imail #\space	'scroll-up)
 (define-key 'imail #\rubout	'scroll-down)
 (define-key 'imail #\?		'describe-mode)
+(define-key 'imail '(#\c-c #\c-n)	'imail-next-same-subject)
+(define-key 'imail '(#\c-c #\c-p)	'imail-previous-same-subject)
 
 ;; Putting these after the group above exploits behavior in the comtab
 ;; abstraction that makes these bindings the ones that show up during
@@ -569,7 +572,6 @@ Instead, these commands are available:
 (define-key 'imail #\-		'imail-delete-folder)
 
 ;; These commands not yet implemented.
-;;(define-key 'imail #\b		'imail-bury)
 ;;(define-key 'imail #\m-m	'imail-retry-failure)
 ;;(define-key 'imail #\w		'imail-output-body-to-file)
 ;;(define-key 'imail '(#\c-c #\c-s #\c-d)	'imail-sort-by-date)
@@ -579,8 +581,6 @@ Instead, these commands are available:
 ;;(define-key 'imail '(#\c-c #\c-s #\c-c)	'imail-sort-by-correspondent)
 ;;(define-key 'imail '(#\c-c #\c-s #\c-l)	'imail-sort-by-lines)
 ;;(define-key 'imail '(#\c-c #\c-s #\c-k)	'imail-sort-by-keywords)
-;;(define-key 'imail '(#\c-c #\c-n)	'imail-next-same-subject)
-;;(define-key 'imail '(#\c-c #\c-p)	'imail-previous-same-subject)
 
 (define (imail-revert-buffer buffer dont-use-auto-save? dont-confirm?)
   dont-use-auto-save?
@@ -656,7 +656,7 @@ or forward if N is negative."
   "p"
   (lambda (delta)
     ((ref-command imail-next-message) (- delta))))
-
+
 (define-command imail-next-undeleted-message
   "Show following non-deleted message.
 With prefix argument N, moves forward N non-deleted messages,
@@ -672,6 +672,36 @@ or forward if N is negative."
   "p"
   (lambda (delta)
     ((ref-command imail-next-undeleted-message) (- delta))))
+
+(define-command imail-next-same-subject
+  "Go to the next mail message having the same subject header.
+With prefix argument N, do this N times.
+If N is negative, go backwards instead."
+  "p"
+  (lambda (delta)
+    (let ((get-subject
+	   (lambda (m)
+	     (let ((subject (get-first-header-field-value m "subject" #f)))
+	       (and subject
+		    (strip-subject-re (string-trim subject)))))))
+      (let ((subject (get-subject (selected-message))))
+	(if (not subject)
+	    (editor-error "Selected message has no subject header."))
+	(move-relative delta
+		       (lambda (m)
+			 (let ((subject* (get-subject m)))
+			   (and subject*
+				(string-ci=? subject subject*))))
+		       "message with same subject"
+		       #f)))))
+
+(define-command imail-previous-same-subject
+  "Go to the previous mail message having the same subject header.
+With prefix argument N, do this N times.
+If N is negative, go forwards instead."
+  "p"
+  (lambda (delta)
+    ((ref-command imail-next-same-subject) (- delta))))
 
 (define-command imail-next-flagged-message
   "Show next message with one of the flags FLAGS.
@@ -2001,9 +2031,37 @@ While composing the reply, use \\[mail-yank-original] to yank the
   "Quit out of IMAIL."
   ()
   (lambda ()
-    (close-folder (selected-folder))
-    ((ref-command bury-buffer))))
+    (let ((folder (selected-folder)))
+      (close-folder folder)
+      (imail-bury folder))))
 
+(define-command imail-bury
+  "Bury current IMAIL buffer and its summary buffer."
+  ()
+  (lambda ()
+    (imail-bury (selected-folder))))
+
+(define (imail-bury folder)
+  (let ((folder-buffer (imail-folder->buffer folder #t)))
+    (for-each
+     (lambda (buffer)
+       (if (buffer-alive? buffer)
+	   (let ((buffer* (other-buffer buffer)))
+	     (for-each (lambda (window)
+			 (if (window-has-no-neighbors? window)
+			     (if buffer*
+				 (select-buffer-in-window buffer* window #f))
+			     (window-delete! window)))
+		       (buffer-windows buffer))
+	     (bury-buffer buffer))))
+     (buffer-get folder-buffer 'IMAIL-ASSOCIATED-BUFFERS '()))
+    (let ((buffer (other-buffer folder-buffer)))
+      (if buffer
+	  (for-each (lambda (window)
+		      (select-buffer-in-window buffer window #f))
+		    (buffer-windows folder-buffer))))
+    (bury-buffer folder-buffer)))
+
 (define-command imail-get-new-mail
   "Probe the mail server for new mail.
 Selects the first new message if any new mail.
