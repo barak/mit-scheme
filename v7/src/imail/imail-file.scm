@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.25 2000/05/17 15:03:15 cph Exp $
+;;; $Id: imail-file.scm,v 1.26 2000/05/17 17:18:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -52,7 +52,7 @@
 
 ;;;; Folder
 
-(define-class <file-folder> (<folder>)
+(define-class (<file-folder> (predicate)) (<folder>)
   (messages define standard
 	    accessor %file-folder-messages
 	    initial-value 'UNKNOWN)
