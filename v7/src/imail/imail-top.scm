@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.218 2000/10/26 05:07:27 cph Exp $
+;;; $Id: imail-top.scm,v 1.219 2000/10/26 16:44:32 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -813,7 +813,7 @@ With prefix argument, prompt even when point is on an attachment."
 						       (current-point)
 						       always-prompt?
 						       mime-attachment?))
-		      (selected-buffer))))
+		      (imail-folder->buffer (selected-folder) #t))))
 
 (define-command imail-mouse-save-mime-entity
   "Save the MIME entity that mouse is on."
