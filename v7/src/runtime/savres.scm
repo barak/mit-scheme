@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: savres.scm,v 14.27 1992/11/24 01:12:26 gjr Exp $
+$Id: savres.scm,v 14.28 1995/06/21 18:19:39 robblau Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -149,7 +149,7 @@ MIT in each case. |#
     ((ucode-primitive load-band) filename)))
 
 (define world-identification "Scheme")
-(define time-world-saved)
+(define time-world-saved #f)
 
 (define (identify-world #!optional port)
   (let ((port
