@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.188 2001/09/29 02:58:17 cph Exp $
+;;; $Id: imail-imap.scm,v 1.189 2001/10/10 04:26:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -196,28 +196,31 @@
 
 (define parse-imap-url-body
   (let ((parser
-	 (let ((//server
-		(sequence-parser (noise-parser (string-matcher "//"))
-				 (imap:server-parser #f)))
-	       (/mbox
-		(sequence-parser (noise-parser (string-matcher "/"))
-				 (optional-parser imap:parse:enc-mailbox))))
-	   (alternatives-parser
-	    (sequence-parser //server (optional-parser /mbox))
-	    /mbox
-	    imap:parse:enc-mailbox))))
+	 (let ((parse-server (imap:server-parser #f)))
+	   (*parser
+	    (alt (seq "//"
+		      parse-server
+		      (alt (seq "/" imap:parse:enc-mailbox)
+			   imap:parse:enc-mailbox
+			   (values #f)))
+		 (seq (values #f #f #f)
+		      (? "/")
+		      imap:parse:enc-mailbox))))))
     (lambda (string default-url)
-      (let ((pv (parse-string parser string)))
-	(if pv
-	    (values (or (parser-token pv 'USER-ID)
-			(imap-url-user-id default-url))
-		    (or (parser-token pv 'HOST)
-			(imap-url-host default-url))
-		    (cond ((parser-token pv 'PORT) => string->number)
-			  ((parser-token pv 'HOST) 143)
-			  (else (imap-url-port default-url)))
-		    (or (parser-token pv 'MAILBOX)
-			(imap-url-mailbox default-url)))
+      (let ((v (parser (string->parser-buffer string))))
+	(if v
+	    (let ((user-id (vector-ref v 0))
+		  (host (vector-ref v 1))
+		  (port (vector-ref v 2))
+		  (mailbox (vector-ref v 3)))
+	      (values (or user-id
+			  (imap-url-user-id default-url))
+		      (or host
+			  (imap-url-host default-url))
+		      (or port
+			  (if host 143 (imap-url-port default-url)))
+		      (or mailbox
+			  (imap-url-mailbox default-url))))
 	    (values #f #f #f #f))))))
 
 ;;;; Container heirarchy

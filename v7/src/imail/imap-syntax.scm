@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-syntax.scm,v 1.16 2000/07/05 03:25:35 cph Exp $
+;;; $Id: imap-syntax.scm,v 1.17 2001/10/10 04:26:48 cph Exp $
 ;;;
-;;; Copyright (c) 2000 Massachusetts Institute of Technology
+;;; Copyright (c) 2000, 2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,40 +16,33 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; IMAP Syntax
 
 (declare (usual-integrations))
 
-(define imap:char-set:achar
-  (char-set-union url:char-set:unreserved (string->char-set "&=~")))
-
-(define imap:match:achar+
-  (rexp-matcher
-   (rexp+ (rexp-alternatives imap:char-set:achar url:rexp:escape))))
-
-(define imap:match:bchar+
-  (rexp-matcher
-   (rexp+ (rexp-alternatives (char-set-union imap:char-set:achar
-					     (string->char-set ":@/"))
-			     url:rexp:escape))))
-
-(define imap:char-set:quoted-specials
-  (char-set #\" #\\))
-
-(define (imap:quoted-special? char)
-  (char-set-member? imap:char-set:quoted-specials char))
-
-(define imap:char-set:list-wildcards
-  (char-set #\% #\*))
-
 (define imap:char-set:char
   (ascii-range->char-set #x01 #x80))
 
 (define imap:char-set:ctl
   (char-set-union (ascii-range->char-set #x00 #x20)
 		  (char-set #\rubout)))
+
+(define imap:char-set:list-wildcards
+  (char-set #\% #\*))
+
+(define imap:char-set:quoted-specials
+  (char-set #\" #\\))
+
+(define imap:char-set:text-char
+  (char-set-difference imap:char-set:char
+		       (char-set #\return #\linefeed)))
+
+(define imap:char-set:quoted-char
+  (char-set-difference imap:char-set:text-char
+		       imap:char-set:quoted-specials))
 
 (define imap:char-set:atom-char
   (char-set-difference imap:char-set:char
@@ -58,296 +51,158 @@
 				       imap:char-set:list-wildcards
 				       imap:char-set:quoted-specials)))
 
+(define imap:char-set:tag-char
+  (char-set-difference imap:char-set:atom-char
+		       (char-set #\+)))
+
+(define imap:char-set:achar
+  (char-set-union url:char-set:unreserved (string->char-set "&=~")))
+
 (define (imap:atom-char? char)
   (char-set-member? imap:char-set:atom-char char))
 
-(define imap:char-set:text-char
-  (char-set-difference imap:char-set:char
-		       (char-set #\return #\linefeed)))
-
-(define imap:char-set:not-text-char
-  (char-set-invert imap:char-set:text-char))
-
-(define (imap:string-may-be-quoted? string)
-  (not (string-find-next-char-in-set string imap:char-set:not-text-char)))
-
-(define imap:char-set:quoted-char
-  (char-set-difference imap:char-set:text-char
-		       imap:char-set:quoted-specials))
+(define (imap:quoted-special? char)
+  (char-set-member? imap:char-set:quoted-specials char))
 
 (define (imap:quoted-char? char)
   (char-set-member? imap:char-set:quoted-char char))
 
-(define imap:char-set:base64
-  (char-set-union char-set:alphanumeric
-		  (char-set #\+ #\/)))
+(define ((string-matching-procedure matcher) string)
+  (matcher (string->parser-buffer string)))
 
-(define imap:char-set:tag-char
-  (char-set-difference imap:char-set:atom-char
-		       (char-set #\+)))
+(define imap:string-may-be-quoted?
+  (string-matching-procedure
+   (*matcher (complete (* (char-set imap:char-set:text-char))))))
+
+(define imap:tag-string?
+  (string-matching-procedure
+   (*matcher (complete (+ (char-set imap:char-set:tag-char))))))
 
-(define imap:match:atom
-  (rexp-matcher (rexp+ imap:char-set:atom-char)))
-
-(define imap:match:text
-  (rexp-matcher (rexp+ imap:char-set:text-char)))
-
-(define imap:match:tag
-  (rexp-matcher (rexp+ imap:char-set:tag-char)))
-
-(define imap:match:base64
-  (rexp-matcher
-   (rexp-sequence
-    (rexp* imap:char-set:base64
-	   imap:char-set:base64
-	   imap:char-set:base64
-	   imap:char-set:base64)
-    (rexp-optional
-     (rexp-alternatives
-      (rexp-sequence imap:char-set:base64
-		     imap:char-set:base64
-		     "==")
-      (rexp-sequence imap:char-set:base64
-		     imap:char-set:base64
-		     imap:char-set:base64
-		     "="))))))
-
-(define imap:match:quoted-string
-  (rexp-matcher
-   (rexp-sequence "\""
-		  (rexp* (rexp-alternatives
-			  imap:char-set:quoted-char
-			  (rexp-sequence "\\" imap:char-set:quoted-specials)))
-		  "\"")))
-
-(define (imap:match:literal string start end)
-  (let ((regs (re-substring-match "{\\([0-9]+\\)}\r\n" string start end)))
-    (and regs
-	 (let ((index
-		(fix:+ (re-match-end-index 0 regs)
-		       (substring->number string
-					  (re-match-start-index 1 regs)
-					  (re-match-end-index 1 regs)))))
-	   (and (fix:<= index end)
-		index)))))
-
-(define imap:match:string
-  (alternatives-matcher imap:match:quoted-string
-			imap:match:literal))
-
-(define imap:match:astring
-  (alternatives-matcher imap:match:atom
-			imap:match:string))
-
-(define imap:match:number
-  (rexp-matcher (rexp+ char-set:numeric)))
-
-(define imap:match:nz-number
-  (rexp-matcher
-   (rexp-sequence (char-set-difference char-set:numeric (char-set #\0))
-		  (rexp* char-set:numeric))))
-
-(define imap:match:date
-  (let ((date-text
-	 (rexp-matcher
-	  (rexp-sequence
-	   (rexp-sequence (rexp-optional (char-set #\1 #\2 #\3))
-			  char-set:numeric)
-	   "-"
-	   (apply rexp-alternatives
-		  (map rexp-case-fold
-		       '("Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul"
-			       "Aug" "Sep" "Oct" "Nov" "Dec")))
-	   "-"
-	   (rexp-sequence char-set:numeric
-			  char-set:numeric
-			  char-set:numeric
-			  char-set:numeric)))))
-    (alternatives-matcher date-text
-			  (sequence-matcher (string-matcher "\"")
-					    date-text
-					    (string-matcher "\"")))))
-
-(define imap:parse:section-text
-  (alternatives-parser
-   (simple-parser (alternatives-matcher
-		   (ci-string-matcher "header")
-		   (ci-string-matcher "text"))
-		  'KEYWORD)
-   (sequence-parser
-    (simple-parser (sequence-matcher
-		    (ci-string-matcher "header.fields")
-		    (optional-matcher
-		     (ci-string-matcher ".not")))
-		   'KEYWORD)
-    (noise-parser (string-matcher " ("))
-    (predicated-parser (list-parser imap:match:astring
-				    (string-matcher " ")
-				    'HEADERS)
-		       (lambda (pv) (pair? (parser-token pv 'HEADERS))))
-    (noise-parser (string-matcher ")")))))
-
-(define imap:parse:section
-  (encapsulating-parser
-   (alternatives-parser
-    imap:parse:section-text
-    (sequence-parser
-     (list-parser imap:match:nz-number (string-matcher ".") 'NUMBER)
-     (optional-parser
-      (noise-parser (string-matcher "."))
-      (alternatives-parser
-       imap:parse:section-text
-       (simple-parser (ci-string-matcher "mime") 'KEYWORD)))))
-   (lambda (pv)
-     (map* (let ((keyword (parser-token pv 'KEYWORD)))
-	     (if keyword
-		 (cons (intern keyword)
-		       (or (parser-token pv 'HEADERS) '()))
-		 '()))
-	   string->number
-	   (or (parser-token pv 'NUMBER) '())))
-   'SECTION))
-
-(define imap:match:set
-  (let ((range
-	 (let ((number
-		(alternatives-matcher imap:match:nz-number
-				      (string-matcher "*"))))
-	   (alternatives-matcher number
-				 (sequence-matcher number ":" number)))))
-    (sequence-matcher range
-		      (*-matcher (string-matcher ",") range))))
-
-(define imap:match:search-key
-  (let ((m
-	 (lambda (keyword . arguments)
-	   (apply sequence-matcher
-		  (ci-string-matcher keyword)
-		  (map (lambda (argument)
-			 (sequence-matcher (string-matcher " ")
-					   argument))
-		       arguments))))
-	;; Kludge: self reference.
-	(imap:match:search-key
-	 (lambda (string start end)
-	   (imap:match:search-key string start end))))
-    (alternatives-matcher
-     (m "all")
-     (m "answered")
-     (m "bcc"		imap:match:astring)
-     (m "before"	imap:match:date)
-     (m "body"		imap:match:astring)
-     (m "cc"		imap:match:astring)
-     (m "deleted")
-     (m "draft")
-     (m "flagged")
-     (m "from"		imap:match:astring)
-     (m "header"	imap:match:astring imap:match:astring)
-     (m "keyword"	imap:match:atom)
-     (m "larger"	imap:match:number)
-     (m "new")
-     (m "not"		imap:match:search-key)
-     (m "old")
-     (m "on"		imap:match:date)
-     (m "or"		imap:match:search-key imap:match:search-key)
-     (m "recent")
-     (m "seen")
-     (m "sentbefore"	imap:match:date)
-     (m "senton"	imap:match:date)
-     (m "sentsince"	imap:match:date)
-     (m "since"		imap:match:date)
-     (m "smaller"	imap:match:number)
-     (m "subject"	imap:match:astring)
-     (m "text"		imap:match:astring)
-     (m "to"		imap:match:astring)
-     (m "uid"		imap:match:set)
-     (m "unanswered")
-     (m "undeleted")
-     (m "undraft")
-     (m "unflagged")
-     (m "unkeyword"	imap:match:atom)
-     (m "unseen")
-     imap:match:set
-     (sequence-matcher (string-matcher "(")
-		       imap:match:search-key
-		       (string-matcher ")")))))
-
-(define imap:match:search-program
-  (sequence-matcher
-   (optional-matcher (ci-string-matcher "charset ")
-		     imap:match:astring
-		     (string-matcher " "))
-   imap:match:search-key))
-
-;;;; URL parser
-
-(define (url:decoding-parser match-encoded keyword)
-  (decoding-parser match-encoded
-		   url:decode-substring
-		   (simple-parser (lambda (string start end)
-				    string start
-				    end)
-				  keyword)))
-
 (define (imap:server-parser allow-auth?)
-  (sequence-parser
-   (optional-parser
-    (sequence-parser
-     (let ((parse-user-id (url:decoding-parser imap:match:achar+ 'USER-ID)))
-       (if allow-auth?
-	   (let ((parse-auth
-		  (sequence-parser
-		   (noise-parser (ci-string-matcher ";auth="))
-		   (alternatives-parser
-		    (simple-parser (string-matcher "*") 'AUTH-TYPE)
-		    (url:decoding-parser imap:match:achar+ 'AUTH-TYPE)))))
-	     (alternatives-parser
-	      (sequence-parser parse-user-id
-			       (optional-parser parse-auth))
-	      (sequence-parser (optional-parser parse-user-id)
-			       parse-auth)))
-	   parse-user-id))
-     (noise-parser (string-matcher "@"))))
-   (simple-parser (rexp-matcher url:rexp:host) 'HOST)
-   (optional-parser
-    (noise-parser (string-matcher ":"))
-    (simple-parser (rexp-matcher (rexp+ char-set:numeric)) 'PORT))))
+  (let ((parse-user/auth
+	 (if allow-auth?
+	     (let ((parse-auth
+		    (*parser
+		     (seq (noise (string-ci ";auth="))
+			  (alt (match "*")
+			       imap:parse:achar+)))))
+	       (*parser
+		(alt (seq (alt (seq imap:parse:achar+
+				    (alt parse-auth (values #f)))
+			       (seq (alt imap:parse:achar+ (values #f))
+				    parse-auth))
+			  "@")
+		     (values #f #f))))
+	     (*parser
+	      (alt (seq imap:parse:achar+ "@")
+		   (values #f))))))
+    (*parser
+     (seq parse-user/auth
+	  url:parse:hostport))))
 
-(define imap:parse:server
-  (imap:server-parser #t))
-
-(define imap:parse:mailboxlist
-  (sequence-parser
-   (optional-parser
-    (url:decoding-parser imap:match:bchar+ 'MAILBOX-LIST))
-   (noise-parser (ci-string-matcher ";type="))
-   (simple-parser (alternatives-matcher (ci-string-matcher "list")
-					(ci-string-matcher "lsub"))
-		  'LIST-TYPE)))
+(define imap:parse:achar+
+  (*parser
+   (map url:decode-string
+	(match (+ (alt (char-set imap:char-set:achar)
+		       url:match:escape))))))
 
 (define imap:parse:enc-mailbox
-  (url:decoding-parser imap:match:bchar+ 'MAILBOX))
+  (*parser
+   (map url:decode-string
+	(match (+ (alt (char-set (char-set-union imap:char-set:achar
+						 (string->char-set ":@/")))
+		       url:match:escape))))))
 
-(define imap:parse:uidvalidity
-  (sequence-parser (noise-parser (ci-string-matcher ";uidvalidity="))
-		   (simple-parser imap:match:nz-number 'UID-VALIDITY)))
+(define imap:parse:section
+  (*parser
+   (encapsulate vector->list
+     (alt imap:parse:section-text
+	  (seq (? (seq imap:parse:nz-number
+		       (* (seq "." imap:parse:nz-number))))
+	       (? (seq "."
+		       (alt imap:parse:section-text
+			    (map intern (match (string-ci "mime")))))))))))
 
-(define imap:parse:messagelist
-  (sequence-parser imap:parse:enc-mailbox
-		   (optional-parser
-		    (url:decoding-parser imap:match:bchar+ 'SEARCH-PROGRAM))
-		   (optional-parser imap:parse:uidvalidity)))
+(define imap:parse:section-text
+  (*parser
+   (alt (map intern
+	     (match (alt (string-ci "header")
+			 (string-ci "text"))))
+	(seq (map intern
+		  (match (seq (string-ci "header.fields")
+			      (? (string-ci ".not")))))
+	     " ("
+	     imap:parse:astring
+	     (* (seq " " imap:parse:astring))
+	     ")"))))
+
+(define imap:parse:nz-number
+  (*parser
+   (map string->number
+	(match (seq (char-set (char-set-difference char-set:numeric
+						   (char-set #\0)))
+		    (* (char-set char-set:numeric)))))))
 
-(define imap:parse:messagepart
-  (sequence-parser imap:parse:enc-mailbox
-		   (optional-parser imap:parse:uidvalidity)
-		   (noise-parser (ci-string-matcher "/;uid="))
-		   (simple-parser imap:match:nz-number 'UID)
-		   (optional-parser
-		    (noise-parser (ci-string-matcher "/;section="))
-		    (decoding-parser imap:match:bchar+
-				     url:decode-substring
-				     imap:parse:section))))
+(define imap:parse:astring
+  (*parser (alt imap:parse:atom imap:parse:string)))
+
+(define imap:parse:atom
+  (*parser (match (+ (char-set imap:char-set:atom-char)))))
+
+(define imap:parse:string
+  (*parser (alt imap:parse:quoted-string imap:parse:literal)))
+
+(define imap:parse:quoted-string
+  (*parser
+   (seq #\"
+	(map decode-quoted-string
+	     (match (* (alt (char-set imap:char-set:quoted-char)
+			    (seq (char #\\)
+				 (char-set imap:char-set:quoted-specials))))))
+	#\")))
+
+(define (decode-quoted-string string)
+  (let ((end (string-length string)))
+    (let ((n-quotes
+	   (let loop ((start 0) (n-quotes 0))
+	     (if (fix:< start end)
+		 (let ((index (substring-find-next-char string start end #\\)))
+		   (if index
+		       (loop (fix:+ index 2) (fix:+ n-quotes 1))
+		       n-quotes))
+		 n-quotes))))
+      (let ((end* (fix:- end n-quotes)))
+	(let ((string* (make-string end*)))
+	  (let loop ((start 0) (start* 0))
+	    (if (fix:< start end)
+		(let ((index (substring-find-next-char string start end #\\)))
+		  (if index
+		      (let ((index*
+			     (substring-move! string start index
+					      string* start*)))
+			(string-set! string* index*
+				     (string-ref string (fix:+ index 1)))
+			(loop (fix:+ index 2) (fix:+ index* 1)))
+		      (substring-move! string start end string* start*)))))
+	  string*)))))
+
+(define (imap:parse:literal buffer)
+  (let ((p (get-parser-buffer-pointer buffer)))
+    (let ((v
+	   ((*parser
+	     (seq "{" (match (+ (char-set char-set:numeric))) "}\r\n"))
+	    buffer)))
+      (and v
+	   (let ((n (string->number (vector-ref v 0)))
+		 (p2 (get-parser-buffer-pointer buffer)))
+	     (let loop ((i 0))
+	       (cond ((= i n)
+		      (get-parser-buffer-tail buffer p2))
+		     ((read-parser-buffer-char buffer)
+		      (loop (+ i 1)))
+		     (else
+		      (set-parser-buffer-pointer! buffer p)
+		      #f))))))))
 
 ;;;; Mailbox-name encoding (modified UTF-7)
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.89 2001/10/05 19:20:05 cph Exp $
+;;; $Id: imail.pkg,v 1.90 2001/10/10 04:26:26 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -24,35 +24,7 @@
 (global-definitions "../runtime/runtime")
 (global-definitions "../sos/sos")
 (global-definitions "../edwin/edwinunx")
-
-(define-package (edwin imail parser)
-  (files "parser")
-  (parent (edwin imail))
-  (export (edwin imail)
-	  *-matcher
-	  +-matcher
-	  alternatives-matcher
-	  alternatives-parser
-	  ci-string-matcher
-	  decoding-parser
-	  encapsulating-parser
-	  list-parser
-	  match-always
-	  match-never
-	  noise-parser
-	  optional-matcher
-	  optional-parser
-	  parse-always
-	  parse-never
-	  parse-string
-	  parse-substring
-	  parser-token
-	  predicated-parser
-	  rexp-matcher
-	  sequence-matcher
-	  sequence-parser
-	  simple-parser
-	  string-matcher))
+(global-definitions "../star-parser/parser")
 
 (define-package (edwin imail)
   (files "imail-util"
@@ -106,10 +78,10 @@
 	  imap:char-set:atom-char
 	  imap:char-set:tag-char
 	  imap:char-set:text-char
-	  imap:match:tag
 	  imap:parse:section
 	  imap:quoted-char?
-	  imap:quoted-special?))
+	  imap:quoted-special?
+	  imap:tag-string?))
 
 (define-package (edwin imail imap-response)
   (files "imap-response")

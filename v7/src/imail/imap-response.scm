@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.43 2001/02/05 18:36:08 cph Exp $
+;;; $Id: imap-response.scm,v 1.44 2001/10/10 04:26:43 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; IMAP Server Response Reader
 
@@ -33,10 +34,7 @@
 		     (discard-known-char #\space port)
 		     (cond ((string=? "*" tag)
 			    (read-untagged-response port))
-			   ((let ((end (string-length tag)))
-			      (let ((index (imap:match:tag tag 0 end)))
-				(and index
-				     (fix:= index end))))
+			   ((imap:tag-string? tag)
 			    (read-tagged-response tag port))
 			   (else
 			    (error "Malformed server response:" tag)))))))
@@ -220,10 +218,10 @@
 (define *fetch-body-part-port* #f)
 
 (define (parse-section string)
-  (let ((pv (parse-string imap:parse:section string)))
-    (if (not pv)
+  (let ((v (imap:parse:section (string->parser-buffer string))))
+    (if (not v)
 	(error:bad-range-argument string 'PARSE-SECTION))
-    (parser-token pv 'SECTION)))
+    (vector-ref v 0)))
 
 (define (parse-date-time string)
   (decoded-time->universal-time

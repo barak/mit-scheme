@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.13 2001/10/05 19:20:01 cph Exp $
+;;; $Id: compile.scm,v 1.14 2001/10/10 04:26:21 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -23,6 +23,7 @@
 
 (load-option 'CREF)
 (load-option 'SOS)
+(load-option '*PARSER)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (for-each compile-file
@@ -33,8 +34,7 @@
 		"imail-umail"
 		"imail-util"
 		"imap-response"
-		"imap-syntax"
-		"parser"))
+		"imap-syntax"))
     (for-each (let ((syntax-table
 		     (access edwin-syntax-table (->environment '(EDWIN)))))
 		(lambda (filename)
