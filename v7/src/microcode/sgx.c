@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgx.c,v 1.5 1989/03/01 00:16:30 gjs Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgx.c,v 1.6 1989/06/22 23:01:50 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -137,13 +137,13 @@ close_display ()
   return;
 }
 
-/* (X-GRAPHICS-OPEN-WINDOW x y width height border-width)
+/* (X-GRAPHICS-OLD-OPEN-WINDOW x y width height border-width)
 
    Opens a window at the given position, with the given border width,
    on the current display.  If another window was previously opened
    using this primitive, it is closed.  */
 
-DEFINE_PRIMITIVE ("X-GRAPHICS-OPEN-WINDOW", Prim_x_graphics_open_window, 5, 5, 0)
+DEFINE_PRIMITIVE ("X-GRAPHICS-OLD-OPEN-WINDOW", Prim_x_graphics_old_open_window, 5, 5, 0)
 {
   XhpArgItem arglist [7];
   PRIMITIVE_HEADER (5);
