@@ -6,10 +6,6 @@ if [ "${type}" = "" ]
 then
   type="std"
 fi
-if [ "${destination}" = "" ]
-then
-  destination="`/scheme/v7/dist/release-prefix`-ix86-gnu-linux"
-fi
 
 case "${type}" in
 6001|all|std|scmutils)
@@ -177,8 +173,23 @@ fi
 find ${build_dir} -type f -print | xargs chmod a-w
 find ${build_dir} -type d -print | xargs chmod og-w
 
-tarfile=${destination}.tar.gz
-rm -f ${tarfile}
-(cd ${build_dir}; tar cvzf ../${tarfile} *)
-chmod 444 ${tarfile}
+make_tarfile ()
+{
+    tarfile=${1}.tar.gz
+    rm -f ${tarfile}
+    (cd ${build_dir}; tar cvzf ../${tarfile} *)
+    chmod 444 ${tarfile}
+}
+
+if [ "${destination}" = "" ]
+then
+  pre="`/scheme/v7/dist/release-prefix`-ix86"
+  make_tarfile "${pre}-gnu-linux"
+  rm -f ${build_dir}/bin/*
+  cpx ../freebsd-bin/* ${build_dir}/bin/.
+  make_tarfile "${pre}-freebsd"
+else
+  make_tarfile ${destination}
+fi
+
 rm -rf ${build_dir}
