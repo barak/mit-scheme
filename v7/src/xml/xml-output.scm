@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml-output.scm,v 1.6 2002/12/09 05:47:33 cph Exp $
+;;; $Id: xml-output.scm,v 1.7 2002/12/09 18:17:57 cph Exp $
 ;;;
 ;;; Copyright (c) 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -361,8 +361,6 @@
 	       (write-string (if (char=? char #\") "&quot;" "&apos;") port))
 	      ((char=? char #\%)
 	       (write-string "&#37;" port))
-	      ((char=? char #\&)
-	       (write-string "&amp;" port))
 	      (else
 	       (write-char char port)))))
     (write-char quote-char port)))
