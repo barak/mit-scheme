@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: autold.scm,v 1.54 1999/01/02 06:11:34 cph Exp $
+;;;$Id: autold.scm,v 1.55 1999/02/02 19:50:11 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -55,7 +55,7 @@
 (define (define-autoload-major-mode name super-mode-name display-name
 	  library-name description)
   (define mode
-    (make-mode name true display-name
+    (make-mode name #t display-name
 	       (and super-mode-name (->mode super-mode-name))
 	       description
 	       (make-autoloading-procedure library-name
@@ -68,7 +68,7 @@
 
 (define (define-autoload-minor-mode name display-name library-name description)
   (define mode
-    (make-mode name false display-name false description
+    (make-mode name #f display-name #f description
 	       (make-autoloading-procedure library-name
 					   (lambda ()
 					     (mode-initialization mode)))))
@@ -151,7 +151,7 @@
   "Load the Edwin library NAME.
 Second arg FORCE? controls what happens if the library is already loaded:
  'NO-WARN means do nothing,
- false means display a warning message in the minibuffer,
+ #f means display a warning message in the minibuffer,
  anything else means load it anyway.
 Second arg is prefix arg when called interactively."
   (lambda ()
@@ -163,11 +163,11 @@ Second arg is prefix arg when called interactively."
 				  known-libraries))
      (command-argument)))
   (lambda (name force?)
-    (load-edwin-library name force? true)))
+    (load-edwin-library name force? #t)))
 
 (define (load-edwin-library name #!optional force? interactive?)
-  (let ((force? (if (default-object? force?) false force?))
-	(interactive? (if (default-object? interactive?) false interactive?)))
+  (let ((force? (if (default-object? force?) #f force?))
+	(interactive? (if (default-object? interactive?) #f interactive?)))
     (let ((do-it
 	   (lambda (library)
 	     (let ((directory (edwin-binary-directory)))
@@ -193,7 +193,7 @@ Second arg is prefix arg when called interactively."
 			(bind-condition-handler (list condition-type:error)
 			    evaluation-error-handler
 			  (lambda ()
-			    (fluid-let ((load/suppress-loading-message? true))
+			    (fluid-let ((load/suppress-loading-message? #t))
 			      (message "Loading " (car library) "...")
 			      (do-it library)
 			      (append-message "done"))))))
@@ -221,5 +221,6 @@ Second arg PURIFY? means purify the file's contents after loading;
      (bind-condition-handler (list condition-type:error)
 	 evaluation-error-handler
        (lambda ()
-	 (fluid-let ((load/suppress-loading-message? true))
+	 (fluid-let ((load/suppress-loading-message? #t)
+		     (*parser-canonicalize-symbols?* #t))
 	   (load filename environment edwin-syntax-table purify?)))))))
