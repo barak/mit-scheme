@@ -1,8 +1,12 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.110 2000/07/05 19:17:58 cph Exp $
+$Id: todo.txt,v 1.111 2000/09/25 16:16:34 cph Exp $
 
 Bug fixes
 ---------
+
+* When Rmail parser encounters corruption, tell the user what message
+  is corrupted and attempt to recover the parse by looking for the
+  beginning of another message.
 
 MIME conformance
 ----------------
