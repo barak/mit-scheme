@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.98 1989/04/28 22:47:05 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.99 1989/08/03 01:33:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -108,10 +108,18 @@ procedure when it fails to find a command."
 (define (barf-if-read-only)
   (editor-error "Trying to modify read only text."))
 
+(define-variable debug-on-editor-error
+  "If not false, signal Scheme error when an editor error occurs."
+  false)
+
 (define (editor-error . strings)
-  (if (not (null? strings)) (apply temporary-message strings))
-  (editor-beep)
-  (abort-current-command))
+  (if (ref-variable debug-on-editor-error)
+      (error "editor error" (message-args->string strings))
+      (begin
+	(if (not (null? strings)) (apply temporary-message strings))
+	(editor-beep)
+	(abort-current-command))))
+
 (define (editor-failure . strings)
   (cond ((not (null? strings)) (apply temporary-message strings))
 	(*defining-keyboard-macro?* (clear-message)))
