@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dosx32.c,v 1.5 1992/10/12 20:00:46 jinx Exp $
+$Id: dosx32.c,v 1.6 1993/02/02 04:32:39 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,6 +34,7 @@ MIT in each case. */
 
 #include <int.h>
 #include <stdio.h>
+#include <process.h>
 #include "scheme.h"
 #include "msdos.h"
 #include "dosio.h"
@@ -350,19 +351,11 @@ DEFUN (X32_int_intercept, (iv, handler, ptr),
   }
   return (0);
 }
-
-extern int EXFUN (X32_subprocess, (const char *, int, int, int));
-extern int EXFUN (X32_system, (const char *));
-extern int EXFUN (system, (const char *));
 
 static int
-DEFUN (dummy_system, (command), const char * command)
-{
-  return (-1);
-}
-
-static int
-DEFUN (X32_DPMI_system, (command), const char * command)
+DEFUN (X32_DPMI_invoke, (proc, arg), 
+       int EXFUN ((* proc), (void *))
+       AND void * arg)
 {
   /* Plain system does not work in X32 under DPMI
      in the presence of our timer interrupt handler.
@@ -384,7 +377,7 @@ DEFUN (X32_DPMI_system, (command), const char * command)
       != 0)
     return (-1);
 
-  result = (system (command));
+  result = ((* proc) (arg));
   
   if ((X32_do_install (DOS_INTVECT_USER_TIMER_TICK, timer_record->handler))
       != 0)
@@ -398,6 +391,22 @@ DEFUN (X32_DPMI_system, (command), const char * command)
    */
   REQUEST_INTERRUPT (INT_Global_GC);
   return (result);
+}
+
+extern int EXFUN (X32_subprocess, (const char *, int, int, int));
+extern int EXFUN (X32_system, (const char *));
+extern int EXFUN (system, (const char *));
+
+static int
+DEFUN (dummy_system, (command), const char * command)
+{
+  return (-1);
+}
+
+DEFUN (X32_DPMI_system, (command), const char * command)
+{
+  return (X32_DPMI_invoke (((int EXFUN ((*), (void *))) system), 
+                           ((void *) command)));
 }
 
 int EXFUN (which_system, (const char *));
@@ -459,7 +468,7 @@ DEFUN (restore_io_handle, (handle, saved_handle),
   return (0);
 }
 
-#define SWAPPING_HANDLE(h, spec, code) do				\
+#define SWAP_HANDLE(h, spec, code) do					\
 {									\
   int saved_handle = (swap_io_handle ((h), (spec)));			\
   if (saved_handle < -1)						\
@@ -480,10 +489,36 @@ DEFUN (X32_subprocess, (command, in_spec, out_spec, err_spec),
 {
   int result;
   
-  SWAPPING_HANDLE (0, in_spec,
-		   SWAPPING_HANDLE (1, out_spec,
-				    SWAPPING_HANDLE (2, err_spec,
-						     (result = ((* fsystem)
-								(command))))));
+  SWAP_HANDLE (0, in_spec,
+	       SWAP_HANDLE (1, out_spec,
+		            SWAP_HANDLE (2, err_spec,
+			   	         (result = ((* fsystem)
+						    (command))))));
   return (result);
+}
+
+extern int EXFUN (X32_suspend, (void));
+
+#if !defined (EXEC_SYNC) && defined(P_WAIT)
+# define EXEC_SYNC P_WAIT
+#endif
+
+#define DOS_SHELL "command.com"
+
+int
+DEFUN (lambda_spawn, (ignore), void * ignore)
+{
+  return (spawnlp (EXEC_SYNC, DOS_SHELL, NULL));
+}
+
+int
+DEFUN_VOID (X32_suspend)
+{
+  if (! (under_X32_p ()))
+    return (-1);
+  else if (! (under_DPMI_p ()))
+    return (lambda_spawn ((void *) NULL));
+  else
+    return (X32_DPMI_invoke (((int EXFUN ((*), (void *))) lambda_spawn),
+                             ((void *) NULL)));
 }

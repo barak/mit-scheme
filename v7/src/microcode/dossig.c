@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dossig.c,v 1.15 1992/11/23 04:41:17 gjr Exp $
+$Id: dossig.c,v 1.16 1993/02/02 04:33:20 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -676,6 +676,10 @@ DEFUN_VOID (DOS_interactive_interrupt_handler)
 void
 DEFUN_VOID (OS_restartable_exit)
 {
+  extern int EXFUN (X32_suspend, (void));
+
+  if ((X32_suspend ()) < 0)
+    error_external_return ();
   return;
 }
 
