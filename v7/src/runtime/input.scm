@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.2 1988/07/11 23:50:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.3 1988/07/14 07:40:08 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -69,45 +69,32 @@ MIT in each case. |#
   (if (not (input-port? port)) (error "Bad input port" port))
   port)
 
-(define (input-port/custom-operation port name)
-  (let ((entry (assq name (input-port/custom-operations port))))
-    (and entry
-	 (cdr entry))))
-
 (define (input-port/copy port state)
   (let ((result (%input-port/copy port)))
     (set-input-port/state! result state)
     result))
 
-(define (input-port/char-ready? port interval)
-  ((input-port/operation/char-ready? port) port interval))
+(define (input-port/custom-operation port name)
+  (let ((entry (assq name (input-port/custom-operations port))))
+    (and entry
+	 (cdr entry))))
 
-(define (input-port/peek-char port)
-  ((input-port/operation/peek-char port) port))
-
-(define (input-port/read-char port)
-  ((input-port/operation/read-char port) port))
-
-(define (input-port/peek-char-immediate port)
-  ((input-port/operation/peek-char-immediate port) port))
-
-(define (input-port/read-char-immediate port)
-  ((input-port/operation/read-char-immediate port) port))
-
-(define (input-port/discard-char port)
-  ((input-port/operation/discard-char port) port))
-
-(define (input-port/read-string port delimiters)
-  ((input-port/operation/read-string port) port delimiters))
-
-(define (input-port/discard-chars port delimiters)
-  ((input-port/operation/discard-chars port) port delimiters))
-
-(define (input-port/read-start! port)
-  ((input-port/operation/read-start! port) port))
-
-(define (input-port/read-finish! port)
-  ((input-port/operation/read-finish! port) port))
+(define (input-port/operation port name)
+  (or (input-port/custom-operation port name)
+      (case name
+	((OPERATION/CHAR-READY?) (input-port/operation/char-ready? port))
+	((OPERATION/PEEK-CHAR) (input-port/operation/peek-char port))
+	((OPERATION/READ-CHAR) (input-port/operation/read-char port))
+	((OPERATION/PEEK-CHAR-IMMEDIATE)
+	 (input-port/operation/peek-char-immediate port))
+	((OPERATION/READ-CHAR-IMMEDIATE)
+	 (input-port/operation/read-char-immediate port))
+	((OPERATION/DISCARD-CHAR) (input-port/operation/discard-char port))
+	((OPERATION/READ-STRING) (input-port/operation/read-string port))
+	((OPERATION/DISCARD-CHARS) (input-port/operation/discard-chars port))
+	((OPERATION/READ-START!) (input-port/operation/read-start! port))
+	((OPERATION/READ-FINISH!) (input-port/operation/read-finish! port))
+	(else false))))
 
 (define (make-input-port operations state)
   (let ((operations
@@ -148,7 +135,7 @@ MIT in each case. |#
 			    read-start!
 			    read-finish!
 			    operations))))))
-
+
 (define (default-operation/read-string port delimiters)
   (list->string
    (let ((peek-char (input-port/operation/peek-char port))
@@ -175,6 +162,36 @@ MIT in each case. |#
   port
   false)
 
+(define (input-port/char-ready? port interval)
+  ((input-port/operation/char-ready? port) port interval))
+
+(define (input-port/peek-char port)
+  ((input-port/operation/peek-char port) port))
+
+(define (input-port/read-char port)
+  ((input-port/operation/read-char port) port))
+
+(define (input-port/peek-char-immediate port)
+  ((input-port/operation/peek-char-immediate port) port))
+
+(define (input-port/read-char-immediate port)
+  ((input-port/operation/read-char-immediate port) port))
+
+(define (input-port/discard-char port)
+  ((input-port/operation/discard-char port) port))
+
+(define (input-port/read-string port delimiters)
+  ((input-port/operation/read-string port) port delimiters))
+
+(define (input-port/discard-chars port delimiters)
+  ((input-port/operation/discard-chars port) port delimiters))
+
+(define (input-port/read-start! port)
+  ((input-port/operation/read-start! port) port))
+
+(define (input-port/read-finish! port)
+  ((input-port/operation/read-finish! port) port))
+
 (define eof-object
   "EOF Object")
 

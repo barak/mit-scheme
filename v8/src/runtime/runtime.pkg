@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.11 1988/07/13 18:41:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.12 1988/07/14 07:40:46 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -615,6 +615,7 @@ MIT in each case. |#
 	  input-port/custom-operation
 	  input-port/discard-char
 	  input-port/discard-chars
+	  input-port/operation
 	  input-port/operation/char-ready?
 	  input-port/operation/discard-char
 	  input-port/operation/discard-chars
@@ -965,6 +966,7 @@ MIT in each case. |#
 	  output-port/copy
 	  output-port/custom-operation
 	  output-port/flush-output
+	  output-port/operation
 	  output-port/operation/flush-output
 	  output-port/operation/write-char
 	  output-port/operation/write-string
@@ -1195,6 +1197,8 @@ MIT in each case. |#
 	  make-repl
 	  nearest-cmdl
 	  nearest-repl
+	  nearest-repl/environment
+	  nearest-repl/syntax-table
 	  out
 	  proceed
 	  prompt-for-command-char
@@ -1224,8 +1228,6 @@ MIT in each case. |#
 	  set-repl/prompt!
 	  set-repl/reader-history!
 	  set-repl/syntax-table!
-	  standard-repl-environment
-	  standard-repl-syntax-table
 	  ve
 	  vst
 	  with-proceed-point

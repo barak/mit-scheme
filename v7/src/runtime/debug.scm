@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.2 1988/06/21 05:48:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.3 1988/07/14 07:39:50 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -532,7 +532,7 @@ MIT in each case. |#
 	(print-undefined-environment)
 	(newline)
 	(write-string "Using the read-eval-print environment instead!")
-	(receiver (standard-repl-environment)))
+	(receiver (nearest-repl/environment)))
       (receiver environment)))
 
 (define (if-valid-environment environment receiver)

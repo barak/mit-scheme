@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/packag.scm,v 14.2 1988/06/13 11:48:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/packag.scm,v 14.3 1988/07/14 07:40:31 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -102,7 +102,7 @@ MIT in each case. |#
 			 load/default-types)))
 	  (load (pathname-new-type pathname "bcon") system-global-environment)
 	  ((load (pathname-new-type pathname "bldr") system-global-environment)
-	   (let ((syntax-table (standard-repl-syntax-table)))
+	   (let ((syntax-table (nearest-repl/syntax-table)))
 	     (lambda (filename environment)
 	       (load filename environment syntax-table true)))
 	   options)))))

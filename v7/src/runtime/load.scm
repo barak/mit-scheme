@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.2 1988/06/13 11:47:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.3 1988/07/14 07:40:16 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -136,7 +136,7 @@ MIT in each case. |#
 			     (if purify? (purify scode))
 			     scode)
 			   (if (eq? environment default-object)
-			       (standard-repl-environment)
+			       (nearest-repl/environment)
 			       environment)))
 	(write-stream (eval-stream (read-stream port) environment syntax-table)
 		      (if load-noisily?

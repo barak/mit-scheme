@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 14.1 1988/06/13 12:00:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 14.2 1988/07/14 07:41:03 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -72,7 +72,7 @@ MIT in each case. |#
 (define (where #!optional environment)
   (let ((environment
 	 (if (default-object? environment)
-	     (standard-repl-environment)
+	     (nearest-repl/environment)
 	     (->environment environment))))
     (hook/repl-environment (nearest-repl) environment)
     (fluid-let ((env environment)

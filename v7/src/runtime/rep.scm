@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.3 1988/07/11 18:53:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.4 1988/07/14 07:40:37 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -216,7 +216,7 @@ MIT in each case. |#
   (with-standard-proceed-point
    (lambda ()
      (breakpoint (cmdl-message/standard "^B interrupt")
-		 (standard-repl-environment)))))
+		 (nearest-repl/environment)))))
 
 ;;;; Proceed
 
@@ -330,13 +330,13 @@ MIT in each case. |#
 	(repl/base parent)
 	repl)))
 
-(define (standard-repl-environment)
+(define (nearest-repl/environment)
   (let ((repl (nearest-repl)))
     (if repl
 	(repl/environment repl)
 	user-initial-environment)))
 
-(define (standard-repl-syntax-table)
+(define (nearest-repl/syntax-table)
   (let ((repl (nearest-repl)))
     (if repl
 	(repl/syntax-table repl)
@@ -346,7 +346,7 @@ MIT in each case. |#
   (let ((parent (nearest-cmdl)))
     (make-repl parent
 	       environment
-	       (standard-repl-syntax-table)
+	       (nearest-repl/syntax-table)
 	       prompt
 	       (cmdl/input-port parent)
 	       (cmdl/output-port parent)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.3 1988/06/21 05:53:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.4 1988/07/14 07:40:00 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -115,7 +115,7 @@ MIT in each case. |#
     (1d-table/put! (condition/properties condition)
 		   environment-tag
 		   (if (eq? environment repl-environment)
-		       (cons (standard-repl-environment) true)
+		       (cons (nearest-repl/environment) true)
 		       (cons environment false)))
     condition))
 

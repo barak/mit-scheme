@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.1 1988/06/13 11:48:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.2 1988/07/14 07:40:24 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -64,31 +64,24 @@ MIT in each case. |#
   (if (not (output-port? port)) (error "Bad output port" port))
   port)
 
-(define (output-port/custom-operation port name)
-  (let ((entry (assq name (output-port/custom-operations port))))
-    (and entry
-	 (cdr entry))))
-
 (define (output-port/copy port state)
   (let ((result (%output-port/copy port)))
     (set-output-port/state! result state)
     result))
 
-(define (output-port/write-char port char)
-  ((output-port/operation/write-char port) port char))
+(define (output-port/custom-operation port name)
+  (let ((entry (assq name (output-port/custom-operations port))))
+    (and entry
+	 (cdr entry))))
 
-(define (output-port/write-string port string)
-  ((output-port/operation/write-string port) port string))
+(define (output-port/operation port name)
+  (or (output-port/custom-operation port name)
+      (case name
+	((WRITE-CHAR) (output-port/operation/write-char port))
+	((WRITE-STRING) (output-port/operation/write-string port))
+	((FLUSH-OUTPUT) (output-port/operation/flush-output port))
+	(else false))))
 
-(define (output-port/flush-output port)
-  ((output-port/operation/flush-output port) port))
-
-(define (output-port/x-size port)
-  (or (let ((operation (output-port/custom-operation port 'X-SIZE)))
-	(and operation
-	     (operation port)))
-      79))
-
 (define (make-output-port operations state)
   (let ((operations
 	 (map (lambda (entry)
@@ -125,6 +118,21 @@ MIT in each case. |#
   port
   false)
 
+(define (output-port/write-char port char)
+  ((output-port/operation/write-char port) port char))
+
+(define (output-port/write-string port string)
+  ((output-port/operation/write-string port) port string))
+
+(define (output-port/flush-output port)
+  ((output-port/operation/flush-output port) port))
+
+(define (output-port/x-size port)
+  (or (let ((operation (output-port/custom-operation port 'X-SIZE)))
+	(and operation
+	     (operation port)))
+      79))
+
 (define *current-output-port*)
 
 (define-integrable (current-output-port)
