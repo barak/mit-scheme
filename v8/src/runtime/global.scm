@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/global.scm,v 14.15 1990/06/07 19:53:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/global.scm,v 14.16 1990/07/20 01:12:03 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -197,42 +197,6 @@ MIT in each case. |#
    (->environment from)
    name))
 
-(define (copy-program exp)
-  (if (not (object-type? (ucode-type compiled-entry) exp))
-      (error "COPY-PROGRAM: Can only copy compiled programs" exp))
-  (let* ((original (compiled-code-address->block exp))
-	 (block
-	  (object-new-type
-	   (ucode-type compiled-code-block)
-	   (vector-copy (object-new-type (ucode-type vector) original))))
-	 (end (system-vector-length block)))
-
-    (define (map-entry entry)
-      (with-absolutely-no-interrupts
-       (lambda ()
-	 ((ucode-primitive primitive-object-set-type)
-	  (object-type entry)
-	  (+ (compiled-code-address->offset entry)
-	     (object-datum block))))))
-
-    (let loop ((n (1+ (object-datum (system-vector-ref block 0)))))
-      (if (< n end)
-	  (begin
-	    (if (lambda? (system-vector-ref block n))
-		(lambda-components (system-vector-ref block n)
-		  (lambda (name required optional rest auxiliary declarations
-				body)
-		    (if (and (object-type? (ucode-type compiled-entry) body)
-			     (eq? original
-				  (compiled-code-address->block body)))
-			(system-vector-set!
-			 block
-			 n
-			 (make-lambda name required optional rest auxiliary
-				      declarations (map-entry body)))))))
-	    (loop (1+ n)))))
-    (map-entry exp)))
-
 (define-integrable (object-non-pointer? object)
   (zero? (object-gc-type object)))
 
