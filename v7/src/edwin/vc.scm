@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.64 2000/04/07 19:54:21 cph Exp $
+;;; $Id: vc.scm,v 1.65 2000/04/07 19:57:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -1064,7 +1064,8 @@ There is a special command, `*l', to mark all files currently locked.
 	    ;; the comment.
 	    (if (not (vc-dired-buffer? parent-buffer))
 		(vc-save-buffer parent-buffer #t))
-	    (pop-up-buffer parent-buffer #t)))
+	    (if (not (buffer-visible? parent-buffer))
+		(pop-up-buffer parent-buffer #t))))
       ;; If a new window was created to hold the log buffer, and the log
       ;; buffer is still selected in that window, delete it.
       (let ((log-window (weak-car log-window)))
