@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.144 1994/03/16 23:26:45 cph Exp $
+;;;	$Id: dired.scm,v 1.145 1994/03/23 22:47:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -791,8 +791,8 @@ Actions controlled by variables list-directory-brief-switches
 		 (if next
 		     (loop next)
 		     '())))))
-	(if (and (dired-filename-start start)
-		 (char=? marker-char (mark-right-char start)))
+	(if (and (eqv? marker-char (mark-right-char start))
+		 (dired-filename-start start))
 	    (cons (cons (dired-pathname start) start)
 		  (continue))
 	    (continue))))))
