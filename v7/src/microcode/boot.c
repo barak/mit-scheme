@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.64 1990/11/13 08:44:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.65 1990/11/14 13:30:48 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -58,6 +58,8 @@ CONST char * OS_Name;
 CONST char * OS_Variant;
 struct obstack scratch_obstack;
 PTR initial_C_stack_pointer;
+static char * reload_saved_string;
+static unsigned int reload_saved_string_length;
 
 /* If true, this is an executable created by dump-world. */
 Boolean scheme_dumped_p = false;
@@ -110,6 +112,8 @@ main (argc, argv)
   scheme_program_name = (argv[0]);
   initial_C_stack_pointer = (&argc);
   obstack_init (&scratch_obstack);
+  reload_saved_string = 0;
+  reload_saved_string_length = 0;
   read_command_line_options (argc, argv);
   if (scheme_dumped_p)
     {
@@ -477,5 +481,55 @@ DEFINE_PRIMITIVE ("GET-COMMAND-LINE", Prim_get_command_line, 0, 0, 0)
 DEFINE_PRIMITIVE ("GET-UNUSED-COMMAND-LINE", Prim_get_unused_command_line, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (argv_to_object (option_unused_argc, option_unused_argv));
+  if (option_unused_argv == 0)
+    PRIMITIVE_RETURN (SHARP_F);
+  {
+    SCHEME_OBJECT result =
+      (argv_to_object (option_unused_argc, option_unused_argv));
+    option_unused_argv = 0;
+    PRIMITIVE_RETURN (result);
+  }
+}
+
+DEFINE_PRIMITIVE ("RELOAD-SAVE-STRING", Prim_reload_save_string, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  if (reload_saved_string != 0)
+    {
+      free (reload_saved_string);
+      reload_saved_string = 0;
+    }
+  if ((ARG_REF (1)) != SHARP_F)
+    {
+      CHECK_ARG (1, STRING_P);
+      {
+	unsigned int length = (STRING_LENGTH (ARG_REF (1)));
+	reload_saved_string = (malloc (length));
+	if (reload_saved_string == 0)
+	  error_external_return ();
+	reload_saved_string_length = length;
+	{
+	  char * scan = ((char *) (STRING_LOC ((ARG_REF (1)), 0)));
+	  char * end = (scan + length);
+	  char * scan_result = reload_saved_string;
+	  while (scan < end)
+	    (*scan_result++) = (*scan++);
+	}
+      }
+    }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("RELOAD-RETRIEVE-STRING", Prim_reload_retrieve_string, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  if (reload_saved_string == 0)
+    PRIMITIVE_RETURN (SHARP_F);
+  {
+    SCHEME_OBJECT result =
+      (memory_to_string (reload_saved_string_length, reload_saved_string));
+    free (reload_saved_string);
+    reload_saved_string = 0;
+    PRIMITIVE_RETURN (result);
+  }
 }
