@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.158 1991/09/06 16:19:44 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.159 1991/09/18 22:47:40 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -549,7 +549,8 @@ If a file with the new name already exists, confirmation is requested first."
 ;;;; Prompting
 
 (define (prompt-for-input-truename prompt default)
-  (pathname->input-truename (prompt-for-pathname prompt default true)))
+  (pathname->input-truename
+   (prompt-for-pathname-non-directory prompt default true)))
 
 (define (prompt-for-output-truename prompt default)
   (pathname->output-truename (prompt-for-pathname prompt default false)))
@@ -563,6 +564,15 @@ If a file with the new name already exists, confirmation is requested first."
 
 (define-integrable (prompt-for-pathname prompt default require-match?)
   (prompt-for-pathname* prompt default file-exists? require-match?))
+
+(define-integrable (prompt-for-pathname-non-directory
+		    prompt default require-match?)
+  (prompt-for-pathname* prompt
+			default
+			(lambda (file)
+			  (and (file-exists? file)
+			       (not (file-directory? file))))
+			require-match?))
 
 (define (prompt-for-pathname* prompt directory
 			      verify-final-value? require-match?)
