@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosfg.c,v 1.1 1992/05/05 06:55:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosfg.c,v 1.2 1992/05/08 19:05:26 mhwu Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -86,11 +86,11 @@ DEFINE_PRIMITIVE ("FG-OPEN", Prim_fg_open, 0, 0,
       current.y 	= (fg_coord_t) 0;
       
       fg_box_cpy(current.clip, fg.displaybox);
-#if 0      
+
       { int i;
 	for (i=1000000L; i > 0; i--);
       }
-#endif      
+
       PRIMITIVE_RETURN (SHARP_T);
     }
     else
@@ -290,7 +290,7 @@ DEFINE_PRIMITIVE ("FG-DEFINE-COLOR", Prim_fg_define_color, 4, 4,
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("FG-SET-LINE-COLOR", Prim_fg_set_line_color, 2, 2,
+DEFINE_PRIMITIVE ("FG-SET-LINE-COLOR", Prim_fg_set_line_color, 1, 1,
   "(FG-SET-LINE-COLOR COLOR-INDEX)")
 {
   PRIMITIVE_HEADER (1);
