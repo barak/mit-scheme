@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.247 2000/03/24 21:49:13 cph Exp $
+$Id: edwin.pkg,v 1.248 2000/03/25 18:48:58 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -1083,6 +1083,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (parent (edwin))
     (export (edwin)
 	    edwin-command$vc-diff
+	    edwin-command$vc-directory
+	    edwin-command$vc-dired
 	    edwin-command$vc-finish-logentry
 	    edwin-command$vc-insert-headers
 	    edwin-command$vc-next-action

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: modefs.scm,v 1.157 2000/02/28 22:51:02 cph Exp $
+;;; $Id: modefs.scm,v 1.158 2000/03/25 18:49:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1985, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -248,10 +248,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental '(#\c-x #\c-n) 'set-goal-column)
 (define-key 'fundamental '(#\c-x #\c-o) 'delete-blank-lines)
 (define-key 'fundamental '(#\c-x #\c-p) 'mark-page)
-(define-key 'fundamental '(#\c-x #\c-q)
-  (if (string-table-get editor-commands "vc-toggle-read-only")
-      'vc-toggle-read-only
-      'toggle-read-only))
+(define-key 'fundamental '(#\c-x #\c-q) 'vc-toggle-read-only)
 (define-key 'fundamental '(#\c-x #\c-s) 'save-buffer)
 (define-key 'fundamental '(#\c-x #\c-t) 'transpose-lines)
 (define-key 'fundamental '(#\c-x #\c-u) 'upcase-region)
@@ -322,11 +319,16 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental '(#\c-x #\s) 'save-some-buffers)
 (define-key 'fundamental '(#\c-x #\u) 'undo)
 (define-prefix-key 'fundamental '(#\c-x #\v))
-(define-key 'fundamental '(#\c-x #\v #\c) 'vc-cancel-version)
+;;(define-key 'fundamental '(#\c-x #\v #\a) 'vc-update-change-log)
+;;(define-key 'fundamental '(#\c-x #\v #\c) 'vc-cancel-version)
 (define-key 'fundamental '(#\c-x #\v #\d) 'vc-directory)
+;;(define-key 'fundamental '(#\c-x #\v #\g) 'vc-annotate)
 (define-key 'fundamental '(#\c-x #\v #\h) 'vc-insert-headers)
 (define-key 'fundamental '(#\c-x #\v #\i) 'vc-register)
 (define-key 'fundamental '(#\c-x #\v #\l) 'vc-print-log)
+;;(define-key 'fundamental '(#\c-x #\v #\m) 'vc-merge)
+;;(define-key 'fundamental '(#\c-x #\v #\r) 'vc-retrieve-snapshot)
+;;(define-key 'fundamental '(#\c-x #\v #\s) 'vc-create-snapshot)
 (define-key 'fundamental '(#\c-x #\v #\u) 'vc-revert-buffer)
 (define-key 'fundamental '(#\c-x #\v #\v) 'vc-next-action)
 (define-key 'fundamental '(#\c-x #\v #\=) 'vc-diff)
