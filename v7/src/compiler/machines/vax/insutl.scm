@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insutl.scm,v 1.7 1987/08/24 21:22:04 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insutl.scm,v 4.1 1988/02/23 19:34:34 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -255,6 +255,16 @@ MIT in each case. |#
   (NEQ . #x3) (NEQU . #x3) (EQL . #x2) (EQLU . #x2)
   (GTR . #x5) (LEQ . #x4) (GEQ . #x9) (LSS . #x8) (GTRU . #xB) (LEQU . #xA)
   (VC . #xD) (VS . #xC) (GEQU . #xF) (CC . #xF) (LSSU . #xE) (CS . #xE))
+
+;(define-symbol-transformer cc
+;  (NEQ #x2) (NEQU #x2) (EQL #x3) (EQLU #x3)
+;  (GTR #x4) (LEQ #x5) (GEQ #x8) (LSS #x9) (GTRU #xA) (LEQU #xB)
+;  (VC #xC) (VS #xD) (GEQU #xE) (CC #xE) (LSSU #xF) (CS #xF))
+
+;(define-symbol-transformer inverse-cc
+;  (NEQ #x3) (NEQU #x3) (EQL #x2) (EQLU #x2)
+;  (GTR #x5) (LEQ #x4) (GEQ #x9) (LSS #x8) (GTRU #xB) (LEQU #xA)
+;  (VC #xD) (VS #xC) (GEQU #xF) (CC #xF) (LSSU #xE) (CS #xE))
 
 (define-transformer displacement
   (lambda (expression)
