@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.34 1993/12/07 20:28:23 gjr Exp $
+;;;	$Id: hppa.m4,v 1.35 1994/04/05 21:22:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -712,37 +712,12 @@ define(define_generic_binary,
 	LDW	4(0,22),8			; arg2
 	EXTRU	6,TC_START,TC_LENGTH,7		; type of arg1
 	EXTRU	8,TC_START,TC_LENGTH,9		; type of arg2
-	COMIB,<>,N	TC_FLONUM,7,generic_$1_one_unk
-	COMIB,<>,N	TC_FLONUM,9,generic_$1_two_unk
-	DEP	5,TC_START,TC_LENGTH,6		; data segment quadrant bits
-	FLDDS	4(0,6),4			; arg1 -> fr4
-	DEP	5,TC_START,TC_LENGTH,8		; data segment quadrant bits
-	FLDDS	4(0,8),5			; arg2 -> fr5
-	B	binary_flonum_result		; cons flonum and return
-	$3,DBL	4,5,4				; operate
-
-generic_$1_one_unk				; ~FLO * ??
+	COMIB,<>,N	TC_FLONUM,7,generic_$1_fail
 	COMIB,<>,N	TC_FLONUM,9,generic_$1_fail
-	COMICLR,=	TC_FIXNUM,7,0
-	B,N	generic_$1_fail
-	EXTRS	6,31,FIXNUM_LENGTH,6		; sign extend arg1
-	STW	6,0(0,21)			; through memory into fp
-	DEP	5,TC_START,TC_LENGTH,8		; data segment quadrant bits
-	FLDWS	0(0,21),4			; single int arg1 -> fr4
-	FLDDS	4(0,8),5			; arg2 -> fr5
-        FCNVXF,SGL,DBL  4,4			; convert to double float
-	B	binary_flonum_result		; cons flonum and return
-	$3,DBL	4,5,4				; operate
-
-generic_$1_two_unk				; FLO * ~FLO
-	COMICLR,=	TC_FIXNUM,9,0
-	B,N	generic_$1_fail
-	EXTRS	8,31,FIXNUM_LENGTH,8		; sign extend arg2
-	STW	8,0(0,21)			; through memory into fpcp
 	DEP	5,TC_START,TC_LENGTH,6		; data segment quadrant bits
-	FLDWS	0(0,21),5			; single int arg2 -> fr5
 	FLDDS	4(0,6),4			; arg1 -> fr4
-        FCNVXF,SGL,DBL  5,5			; convert to double float
+	DEP	5,TC_START,TC_LENGTH,8		; data segment quadrant bits
+	FLDDS	4(0,8),5			; arg2 -> fr5
 	B	binary_flonum_result		; cons flonum and return
 	$3,DBL	4,5,4				; operate
 
