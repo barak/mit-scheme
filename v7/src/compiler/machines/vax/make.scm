@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/make.scm,v 4.2 1988/02/23 19:39:53 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/make.scm,v 4.3 1988/03/08 18:24:52 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -48,7 +48,7 @@ MIT in each case. |#
       (define :files)
 
 ;      (parse-rcs-header
-;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/make.scm,v 4.2 1988/02/23 19:39:53 bal Exp $"
+;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/make.scm,v 4.3 1988/03/08 18:24:52 bal Exp $"
 ;       (lambda (filename version date time zone author state)
 ;	 (set! :version (car version))
 ;	 (set! :modification (cadr version))))
@@ -209,9 +209,18 @@ MIT in each case. |#
 
   (load-system! compiler-system))
 
-(for-each (lambda (name)
-	    (local-assignment system-global-environment name
+;; This does not use system-global-environment so that multiple
+;; versions of the compiler can coexist in different environments.
+;; This file must therefore be loaded into system-global-environment
+;; when the names below must be exported everywhere.
+
+(let ((top-level-env (the-environment)))
+  (for-each (lambda (name)
+	    (local-assignment top-level-env name
 			      (lexical-reference compiler-package name)))
-	  '(COMPILE-BIN-FILE COMPILE-PROCEDURE COMPILER:RESET!))
-(toggle-gc-notification!)
+	    '(CF
+	      COMPILE-BIN-FILE
+	      COMPILE-PROCEDURE
+	      COMPILER:RESET!
+	      COMPILER:WRITE-LAP-FILE)))
 
