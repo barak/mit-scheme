@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/pic-imag.scm,v 1.5 1993/11/09 21:19:49 adams Exp $
+$Id: pic-imag.scm,v 1.6 1995/02/21 23:23:42 cph Exp $
 
-Copyright (c) 1991-92 Massachusetts Institute of Technology
+Copyright (c) 1991-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,8 +45,7 @@ MIT in each case. |#
 	 (pic-data (picture-data pic))
 	 (image-width (fix:* h-sf pic-width)) ;x
 	 (image-height (fix:* v-sf pic-height)) ;iy
-	 (image (graphics-operation window 'create-image
-				    image-width image-height))
+	 (image (image/create window image-width image-height))
 	 (byte-string (make-string (fix:* image-width image-height)))
 	 (py-max (- pic-height 1))
 	 (rect-index-height (fix:* v-sf image-width))
