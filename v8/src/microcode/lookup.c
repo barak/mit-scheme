@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.c,v 9.35 1987/10/05 19:25:33 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.c,v 9.36 1987/10/05 21:48:32 jinx Exp $
  *
  * This file contains symbol lookup and modification routines.  See
  * Hal Abelson for a paper describing and justifying the algorithm.
@@ -1915,7 +1915,7 @@ compiler_cache_assignment(name, block, offset)
 {
   return compiler_cache_reference(compiled_block_environment(block),
 				  name, block, offset,
-				  TRAP_REFERENCES_LOOKUP);
+				  TRAP_REFERENCES_ASSIGNMENT);
 }
 
 long
