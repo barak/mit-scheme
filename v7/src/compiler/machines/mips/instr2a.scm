@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/instr2a.scm,v 1.1 1990/05/07 04:14:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/instr2a.scm,v 1.2 1990/11/28 22:10:56 cph Rel $
 
 Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 
@@ -103,7 +103,7 @@ MIT in each case. |#
 	       ((6 1) (5 reg) (5 0)))
   (branch bgezal ((? reg))
 	         ((6 1) (5 reg) (5 17))
-		 ((16 can not branch tension a bgezal instruction)))
+		 ((16 "can't branch tension a bgezal instruction")))
   (branch bgtz ((? reg))
 	       ((6 7) (5 reg) (5 0))
 	       ((6 6) (5 reg) (5 0)))
@@ -115,8 +115,7 @@ MIT in each case. |#
 	       ((6 1) (5 reg) (5 1)))
   (branch bltzal ((? reg))
 	         ((6 1) (5 reg) (5 16))
-		 ((16 can not branch tension a bltzal instruction)))
+		 ((16 "can't branch tension a bltzal instruction")))
   (branch bne ((? reg1) (? reg2))
 	      ((6 5) (5 reg1) (5 reg2))
 	      ((6 4) (5 reg1) (5 reg2))))
-
