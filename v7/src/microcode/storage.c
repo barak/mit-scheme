@@ -30,12 +30,10 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* File: storage.c
- *
- * This file defines the storage for global variables for
- * the Scheme Interpreter
- *
- */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 5.2 1986/12/20 01:25:14 cph Exp $
+
+This file defines the storage for global variables for
+the Scheme Interpreter. */
 
 #include "scheme.h"
 #include "prims.h"
@@ -600,10 +598,11 @@ char Arg_Count_Table[] = {
 /* 19E */ (char) 0, /* WORKING-DIRECTORY-PATHNAME */
 /* 19F */ (char) 1, /* OPEN-DIRECTORY */
 /* 1A0 */ (char) 0, /* DIRECTORY-READ */
-/* 1A1 */ (char) 0  /* UNDER-EMACS? */
+/* 1A1 */ (char) 0, /* UNDER-EMACS? */
+/* 1A2 */ (char) 0  /* TTY-FLUSH-OUTPUT */
 };
 
-#if (MAX_PRIMITIVE_NUMBER != 0x1A1)
+#if (MAX_PRIMITIVE_NUMBER != 0x1A2)
 /* Cause an error */
 #include "prims.h and storage.c are inconsistent -- arity table"
 #endif
@@ -771,7 +770,7 @@ extern Pointer
 
   Prim_Tty_Read_Char_Ready_P(), Prim_Tty_Read_Char(),
   Prim_Tty_Read_Char_Immediate(), Prim_Tty_Read_Finish(),
-  Prim_Tty_Write_Char(), Prim_Tty_Write_String(),
+  Prim_Tty_Write_Char(), Prim_Tty_Write_String(), Prim_tty_flush_output(),
   Prim_Tty_Beep(), Prim_Tty_Clear(), 
   Prim_Photo_Open(), Prim_Photo_Close(),
   Prim_Setup_Timer_Interrupt(),
@@ -1331,10 +1330,11 @@ Pointer (*(Primitive_Table[]))() = {
 /* 19E */ Prim_working_directory_pathname,
 /* 19F */ Prim_open_directory,
 /* 1A0 */ Prim_directory_read,
-/* 1A1 */ Prim_under_emacs_p
+/* 1A1 */ Prim_under_emacs_p,
+/* 1A2 */ Prim_tty_flush_output
 };
 
-#if (MAX_PRIMITIVE_NUMBER != 0x1A1)
+#if (MAX_PRIMITIVE_NUMBER != 0x1A2)
 /* Cause an error */
 #include "Prims.h and storage.c are inconsistent -- Procedure Table"
 #endif
@@ -1796,10 +1796,11 @@ char *Primitive_Names[] = {
 /* 0x19E in fileio */     "WORKING-DIRECTORY-PATHNAME",
 /* 0x19F in fileio */     "OPEN-DIRECTORY",
 /* 0x1A0 in fileio */     "DIRECTORY-READ",
-/* 0x1A1 in sysprim */    "UNDER-EMACS?"
+/* 0x1A1 in sysprim */    "UNDER-EMACS?",
+/* 0x1A2 in ttyio */      "TTY-FLUSH-OUTPUT"
 };
 
-#if (MAX_PRIMITIVE_NUMBER != 0x1A1)
+#if (MAX_PRIMITIVE_NUMBER != 0x1A2)
 /* Cause an error */
 #include "Error: prims.h and storage.c are inconsistent -- Names Table"
 #endif
