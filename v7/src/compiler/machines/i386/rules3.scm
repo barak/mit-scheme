@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.30 1998/02/14 00:52:23 adams Exp $
+$Id: rules3.scm,v 1.31 1998/02/16 03:50:14 cph Exp $
 
 Copyright (c) 1992-1998 Massachusetts Institute of Technology
 
@@ -68,7 +68,6 @@ MIT in each case. |#
 	     (block-associate! 'POP-RETURN bblock)
 	     (current-bblock-continue! bblock))))
     (clear-map!)))
-
 
 (define-rule statement
   (INVOCATION:APPLY (? frame-size) (? continuation))
@@ -156,13 +155,12 @@ MIT in each case. |#
 	  (begin (require-register! edx)
 		 (load-pc-relative-address (INST-EA (R ,edx))
 					   *block-label*))))
-	  
     (delete-dead-registers!)
     (LAP ,@set-extension
 	 ,@set-address
 	 ,@(clear-map!)
 	 (MOV W (R ,ebx) (& ,frame-size))
-	 ,@(invoke-interface code:compiler-cache-reference-apply))))  
+	 ,@(invoke-interface code:compiler-cache-reference-apply))))
 
 (define-rule statement
   (INVOCATION:LOOKUP (? frame-size) (? continuation) (? environment) (? name))
@@ -432,14 +430,15 @@ MIT in each case. |#
 	     (LAP))))
 
 (define (simple-procedure-header code-word label checks entry)
-  (if (null? checks)
-      (LAP ,@(make-external-label code-word label))
-      (let ((gc-label (generate-label)))    
-	(LAP (LABEL ,gc-label)
-	     ,@(invoke-hook/call entry)
-	     ,@(make-external-label code-word label)
-	     ,@(interrupt-check label gc-label checks)))))
-  
+  (let ((checks (get-entry-interrupt-checks)))
+    (if (null? checks)
+	(LAP ,@(make-external-label code-word label))
+	(let ((gc-label (generate-label)))
+	  (LAP (LABEL ,gc-label)
+	       ,@(invoke-hook/call entry)
+	       ,@(make-external-label code-word label)
+	       ,@(interrupt-check label gc-label checks))))))
+
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
   (expect-no-entry-interrupt-checks)
@@ -475,7 +474,6 @@ MIT in each case. |#
     (LAP (EQUATE ,(rtl-procedure/external-label rtl-proc) ,internal-label)
 	 ,@(simple-procedure-header (internal-procedure-code-word rtl-proc)
 				    internal-label
-				    (get-entry-interrupt-checks)
 				    (if (rtl-procedure/dynamic-link? rtl-proc)
 					entry:compiler-interrupt-dlink
 					entry:compiler-interrupt-procedure)))))
@@ -487,7 +485,6 @@ MIT in each case. |#
 	       ,internal-label)
        ,@(simple-procedure-header (make-procedure-code-word min max)
 				  internal-label
-				  (get-entry-interrupt-checks)
 				  entry:compiler-interrupt-procedure)))
 
 ;; Interrupt check placement
@@ -515,11 +512,11 @@ MIT in each case. |#
 
 (define (expect-no-entry-interrupt-checks)
   (if (not (null? (get-entry-interrupt-checks)))
-      (error "No entry interrupt checks expected here" *current-bblock*)))  
+      (error "No entry interrupt checks expected here" *current-bblock*)))
 
 (define (expect-no-exit-interrupt-checks)
   (if (not (null? (get-exit-interrupt-checks)))
-      (error "No exit interrupt checks expected here" *current-bblock*)))  
+      (error "No exit interrupt checks expected here" *current-bblock*)))
 
 (define (get-interupt-checks kind)
   (let retry ((failed? #F))
@@ -673,7 +670,7 @@ MIT in each case. |#
 
     ))
 
-;;;; Closures:			 
+;;;; Closures:
 
 ;; Since i386 instructions are pc-relative, the GC can't relocate them unless
 ;; there is a way to find where the closure was in old space before being
@@ -759,7 +756,6 @@ MIT in each case. |#
   (let* ((rtl-proc (label->object internal-label))
 	 (external-label (rtl-procedure/external-label rtl-proc))
 	 (checks (get-entry-interrupt-checks)))
-	      
     (if (zero? nentries)
 	(LAP (EQUATE ,external-label ,internal-label)
 	     ,@(simple-procedure-header
@@ -924,7 +920,7 @@ MIT in each case. |#
 		   ;; Invoke linker
 		   ,@(invoke-hook/call entry:compiler-link)
 		   ,@(make-external-label (continuation-code-word false)
-					 (generate-label))		   
+					 (generate-label))
 		   ;; Increment counter and loop
 		   (INC W (@R ,esp))
 		   (CMP W (@R ,esp) (& ,n-blocks))
@@ -1027,4 +1023,3 @@ MIT in each case. |#
 ;;; Local Variables: ***
 ;;; eval: (put 'declare-constants 'scheme-indent-hook 2) ***
 ;;; End: ***
-
