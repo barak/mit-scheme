@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.1 2000/12/08 05:12:15 cph Exp $
+# $Id: Setup.sh,v 1.2 2000/12/08 06:13:56 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -30,7 +30,7 @@ fi
 
 maybe_link ()
 {
-    if [ ! -e ${1} ]; then
+    if [ ! -L ${1} ]; then
 	echo "ln -s ${2} ${1}"
 	ln -s ${2} ${1}
     fi

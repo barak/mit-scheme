@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.3 2000/12/08 06:04:32 cph Exp $
+# $Id: Setup.sh,v 1.4 2000/12/08 06:12:52 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -34,7 +34,7 @@ maybe_link ()
     fi
 }
 
-maybe_link Makefile ../etc/Makefile.std
+maybe_link Makefile ../Makefile.std
 for FN in Clean.sh Stage.sh Tags.sh; do
     maybe_link ${FN} ../etc/${FN}
 done

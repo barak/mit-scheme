@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.2 2000/12/08 06:12:52 cph Exp $
+# $Id: Clean.sh,v 1.3 2000/12/08 06:15:12 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -30,7 +30,7 @@ fi
 
 for SUBDIR in back base fggen fgopt machine rtlbase rtlgen rtlopt; do
     if [ -d ${SUBDIR} ]; then
-	echo "making ${COMMAND} in ${SUBDIR}"
+	echo "making ${1} in ${SUBDIR}"
 	(cd ${SUBDIR} && rm -f *.bin *.ext *.com *.bci)
     fi
 done
