@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.27 1987/07/07 20:01:19 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.28 1987/12/13 21:23:53 cph Rel $
  *
  * This file contains default definitions for some hooks which 
  * various machines require.  These machines define these hooks
@@ -151,7 +151,7 @@ do									\
 #endif
 
 #ifndef Sys_Clock
-#define Sys_Clock()	System_Clock()
+#define Sys_Clock() ((OS_process_clock ()) * 10)
 #endif
 
 /* Used in debug.c */
