@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgstr.scm,v 1.2 1994/11/20 00:42:11 jmiller Exp $
+$Id: dbgstr.scm,v 1.3 1994/11/25 23:03:33 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -78,4 +78,66 @@ MIT in each case. |#
   (variables '() read-only false)
   (parent false read-only false)
   (flattened false read-only false))
-			      
+
+(define (new-dbg-expression->old-dbg-expression label new-info)
+  ;; The old info format does not contain source for expressions!
+  (and new-info
+       (make-dbg-expression
+	(new-dbg-block->old-dbg-block (new-dbg-expression/block new-info))
+	label)))
+
+(define (new-dbg-procedure->old-dbg-procedure label type new-info)
+  (and new-info				; (lam-expr lambda-list block)
+       (call-with-values
+	(lambda ()
+	  (lambda-list/parse (new-dbg-procedure/lambda-list new-info)))
+	(lambda (required optional rest aux)
+	  ;; This does not set the external label!
+	  (make-dbg-procedure
+	   (new-dbg-block->old-dbg-block
+	    (new-dbg-procedure/block new-info))
+	   label			; internal-label
+	   type
+	   (car required)		; name
+	   (cdr required)		; true required
+	   optional
+	   rest
+	   aux
+	   (new-dbg-procedure/lam-expr new-info))))))
+
+(define (new-dbg-continuation->old-dbg-continuation label frame-size new-info)
+  (and new-info
+       (new-dbg-continuation/outer new-info)
+       (new-dbg-continuation/inner new-info)
+       (let ((frame-size (+ frame-size 1))
+	     (type (new-dbg-continuation/type new-info))
+	     (new-block (new-dbg-block->old-dbg-block
+			 (new-dbg-continuation/block new-info)))
+	     (aggregate
+	      (new-dbg-expression/expr
+	       (new-dbg-continuation/outer new-info)))
+	     (element
+	      (new-dbg-expression/expr
+	       (new-dbg-continuation/inner new-info))))	     
+	 (make-dbg-continuation
+	  new-block
+	  label
+	  false				; ?? type
+	  frame-size
+	  (vector (case type
+		    ((RATOR-OR-RAND)
+		     'COMBINATION-ELEMENT)
+		    ((BEGIN)
+		     'SEQUENCE-ELEMENT)
+		    ((PREDICATE)
+		     'CONDITIONAL-PREDICATE)
+		    (else
+		     "new-dbg-continuation->old-dbg-continuation: Unkown type"
+		     type))
+		  aggregate
+		  element)))))
+
+(define (new-dbg-block->old-dbg-block block)
+  ;; For now
+  block					; ignored
+  false)
