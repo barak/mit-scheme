@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.70 2000/05/22 15:08:12 cph Exp $
+;;; $Id: imail-imap.scm,v 1.71 2000/05/22 19:16:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -285,7 +285,7 @@
 (define memoized-imap-connections '())
 
 (define (guarantee-imap-connection-open connection)
-  (if (imap-connection-port connection)
+  (if (test-imap-connection-open connection)
       #f
       (let ((url (imap-connection-url connection)))
 	(let ((port
@@ -317,6 +317,36 @@
 		  (error "Unable to log in:" response)))))
 	#t)))
 
+(define (test-imap-connection-open connection)
+  (let ((port (imap-connection-port connection)))
+    (and port
+	 (let* ((process
+		 (lambda ()
+		   (process-responses connection #f
+				      (dequeue-imap-responses connection))))
+		(lose
+		 (lambda ()
+		   (process)
+		   (close-imap-connection connection)
+		   #f)))
+	   (let loop ()
+	     (cond ((not (char-ready? port))
+		    (process)
+		    #t)
+		   ((eof-object? (peek-char port))
+		    (lose))
+		   (else
+		    (let ((response
+			   (ignore-errors
+			    (lambda ()
+			      (imap:read-server-response port)))))
+		      (if (or (condition? response)
+			      (begin
+				(enqueue-imap-response connection response)
+				(imap:response:bye? response)))
+			  (lose)
+			  (loop))))))))))
+
 (define (close-imap-connection connection)
   (let ((port
 	 (without-interrupts
