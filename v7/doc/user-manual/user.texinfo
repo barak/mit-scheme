@@ -1,11 +1,12 @@
-\input texinfo @c -*-Texinfo-*-
-@c @tex
-@c \special{twoside}
-@c @end tex
-@c %**start of header
+\input texinfo @c -*-texinfo-*-
+@iftex
+@finalout
+@end iftex
+@comment $Id: user.texinfo,v 1.17 1993/12/06 20:37:10 cph Exp $
+@comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
-@c %**end of header
+@comment %**end of header (This is for running Texinfo on a region.)
 @setchapternewpage odd
 @syncodeindex vr cp
 @syncodeindex fn cp
@@ -53,7 +54,7 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 0.99
+@subtitle Edition 1.17 beta
 @subtitle for Scheme Release 7.3
 @subtitle DRAFT: @today{}
 @author by Stephen Adams
@@ -137,9 +138,20 @@ DOS, Windows, and Windows NT installation
 
 Release Notes
 
+* News::                        
 * Unix Release Notes::          
 * C Back-End Release Notes::    
 * DOS::                         
+
+News
+
+* 7.3 News::                    Changes from Release 7.2 to 7.3
+* 7.2 News::                    Changes from Release 7.1 to 7.2
+
+C Back-End Release Notes
+
+* Notes on C Back-End::         
+* Problems with C Back-End::    
 
 DOS, Windows 3.1, and Windows NT Release Notes
 
@@ -626,24 +638,357 @@ installed] hold the debugging information files for Edwin.
 @node Release Notes, Running Scheme, Installation, Top
 @chapter Release Notes
 
-General release notes
+This chapter describes interesting features and problems for the 7.3
+release.
 
 @menu
+* News::                        
 * Unix Release Notes::          
 * C Back-End Release Notes::    
 * DOS::                         
 @end menu
 
-@node Unix Release Notes, C Back-End Release Notes,  , Release Notes
+@node News, Unix Release Notes,  , Release Notes
+@section News
+
+The last full release of the MIT Scheme system was version 7.1.3 in
+1991.  Since that time, there was a partial release of version 7.2 for
+i386/i486 machines and some MIPS R3000 machines.  This section
+summarizes the changes that have occurred since version 7.1.3.  The
+changes are divided into two parts: those that were incorporated in the
+7.2 partial release, and those that were subsequently incorporated.
+
+@menu
+* 7.3 News::                    Changes from Release 7.2 to 7.3
+* 7.2 News::                    Changes from Release 7.1 to 7.2
+@end menu
+
+@node 7.3 News, 7.2 News,  , News
+@subsection Changes from Release 7.2 to 7.3
+
+This is an abbreviated list of the changes that have been incorporated
+in the 7.3 release since the (partial) 7.2 release.
+
+@itemize @bullet
+@item
+Support for MS Windows (3.1 and NT).
+
+@item
+Native compiled-code support for DEC Alpha.
+
+@item
+Compiler can now generate C code.  This is used to support the Sun SPARC
+and IBM RS6000 architectures.
+
+@item
+Support for dynamic loading of compiled C code on several operating
+systems, including HP-UX, OSF/1, SunOS 4, and AIX.
+
+@item
+New data structures: red/black trees and weight-balanced trees.
+
+@item
+Redesign of hash tables makes them much faster and somewhat more
+flexible.
+
+@item
+Completely new random-number generator.  The interface to the
+random-number generator has been changed to be like that of Common Lisp.
+
+@item
+Record abstraction now uses a special @dfn{record} type to represent
+records (previously it used vectors).  @code{define-structure} now
+creates records by default; these records are identical to those created
+with the record abstraction.
+
+@item
+@code{call-with-current-continuation} is now properly tail-recursive.
+
+@item
+New command-line switch @code{-no-suspend-file} prevents the generation
+of @file{scheme_suspend} files.
+
+@item
+Uncompression of compiled-code debugging information is now memoized
+to save time when doing many accesses to the same information (a
+common occurrence).
+
+@item
+Constant space now grows automatically when needed.
+
+@item
+New procedures:
+
+@example
+call-with-values                @r{;replaces} with-values
+current-load-pathname
+error-output-port
+fold-left
+fold-right
+interaction-i/o-port
+notification-output-port
+prompt-for-command-char
+prompt-for-command-expression
+prompt-for-confirmation
+prompt-for-evaluated-expression
+prompt-for-expression
+standard-unparser-method        @r{;replaces} unparser/standard-method
+stream-first
+stream-rest
+symbol<?
+trace-output-port
+@end example
+
+@item
+@code{string-pad-left} now truncates from the left instead of the right.
+
+@item
+Argument to @code{make-graphics-device} is now a symbol.
+
+@item
+Each @sc{repl} now has its own working directory pathname and pathname
+defaults.  @code{set-working-directory-pathname!} changes only the value
+for the current @sc{repl}.
+
+@item
+The definitions of the following procedures have been changed to
+implement more useful behavior:
+
+@example
+string-capitalized?
+string-lower-case?
+string-upper-case?
+substring-capitalized?
+substring-lower-case?
+substring-upper-case?
+@end example
+
+@item
+New Edwin features:
+
+@display
+@code{M-x dabbrev-expand}
+@code{M-x describe-syntax}
+@code{M-x rcs-ci-locked-files}
+@code{M-x rcs-diff}
+@code{M-x rcs-list-locked-files}
+@code{M-x rcs-log}
+@code{M-x recover-file}
+@code{M-x show-parameter-list}
+@code{M-x sort-lines and other sorting commands}
+@code{auto-mode-alist} variable (as in Emacs)
+Encryption/decryption of files in @code{Dired}
+Undo upgraded to match GNU Emacs 18.57
+Buffers grow/shrink with constant amortized time
+Emacs 19 tags support (multiple tags files, inclusion)
+@end display
+
+@item
+Edwin compression/uncompression commands changed to use @code{gzip}
+instead of @code{compress}.
+
+@item
+Edwin now has text-properties mechanism that permits implementation
+of highlighted and mouse-sensitive regions.
+@end itemize
+
+@node 7.2 News,  , 7.3 News, News
+@subsection Changes from Release 7.1 to 7.2
+
+This is an abbreviated list of the changes that were incorporated
+in the (partial) 7.2 release since the 7.1 release.
+
+@itemize @bullet
+@item
+Support for MS DOS.
+
+@item
+Native compiled-code support for the Intel i386 and i486 architectures.
+
+@item
+Fixes to MIPS compiled-code support MIPS R3000 with large cache-line
+sizes.
+
+@item
+Complete redesign of the error system.
+
+@item
+X11 graphics interface redesigned.  The new design is smarter about
+interaction with the window manager (for example, it implements the
+@code{WM_DELETE_WINDOW} protocol) and has some limited support for event
+handling.  Windows are now closed when they are reclaimed by the garbage
+collector.
+
+@item
+Redesign of @sc{i/o} ports.  New design supports ports that perform both
+input and output.
+
+@item
+Ports now have better-defined control over blocking mode and terminal
+mode.  Flushing of output buffers is not done automatically, except for
+the console port.
+
+@item
+New procedures:
+
+@example
+*default-pathname-defaults*
+->namestring
+->truename
+close-port
+directory-namestring
+directory-pathname
+directory-pathname-as-file
+enough-namestring
+enough-pathname
+file-access
+file-attributes-direct          @r{;same as} file-attributes
+file-modification-time-direct
+file-modification-time-indirect @r{;same as} file-modification-time
+file-namestring
+file-pathname
+file-readable?
+host-namestring
+i/o-port?
+make-generic-i/o-port
+make-i/o-port
+open-i/o-file
+pathname-simplify
+pathname-wild?
+pathname=?
+port/copy
+port/input-channel
+port/operation
+port/operation-names
+port/output-channel
+port/state
+port?
+record-copy
+record-modifier                 @r{;replaces} record-updater
+set-port/state!
+@end example
+
+@item
+@code{with-input-from-file} and @code{with-output-to-file} no longer
+close the port when they are exited abnormally.
+
+@item
+Redefined @code{#!optional} and @code{#!rest} to be something distinct
+from symbols.
+
+@item
+Strings now accept @code{"\@var{nnn}}" octal character escapes, much
+like those in C.
+
+@item
+Redesign of pathname abstraction.  New design is very similar to the
+Common Lisp pathname abstraction.
+
+@itemize @bullet
+@item
+->PATHNAME no longer accepts a symbol as an argument.  Only strings
+and pathnames are valid.
+
+@item
+Procedures eliminated:
+
+@example
+canonicalize-input-filename
+canonicalize-input-pathname
+canonicalize-output-filename
+canonicalize-output-pathname
+canonicalize-overwrite-filename
+canonicalize-overwrite-pathname
+home-directory-pathname
+init-file-truename
+pathname->absolute-pathname
+pathname->input-truename
+pathname->output-truename
+pathname->overwrite-truename
+pathname->string
+pathname-components
+pathname-default-host
+pathname-directory-path
+pathname-directory-string
+pathname-name-path
+pathname-name-string
+pathname-new-host
+pathname-relative?
+string->pathname
+symbol->pathname
+@end example
+
+@item
+@code{pathname-default} no longer accepts a @var{host} argument.
+
+@item
+Representation of pathname directories changed to match Common Lisp.
+Directory is now either @code{#f} or a list of symbols and strings with
+first element either @code{absolute} or @code{relative}.
+
+@item
+Unix pathnames now set @var{device} and @var{version} to
+@code{unspecific}.  @code{unspecific} now means that the field is not
+used by the operating system.
+
+@item
+Parsing rules for unix filenames changed: the file type is the part of
+the name after the last dot, if any.  If the dot occurs at the beginning
+or end of the filename, then it doesn't count -- in that case there is
+no type.  Thus, names like @file{"."} and @file{".."} have no type.
+@end itemize
+
+@item
+New Edwin features:
+
+@display
+@code{M-x manual-entry}
+@code{M-x outline-mode}
+@code{M-x shell-resync-dirs}
+@code{M-x shell-command}
+@code{M-x shell-command-on-region}
+@code{M-x telnet}
+@sc{rmail} summary
+@sc{rmail} sort
+@sc{repl} mode and asynchronous evaluation
+Printing commands
+``run light'' for evaluation commands
+Reading and writing of compressed files (@code{".Z"} suffix)
+Reading and writing of encrypted files (@code{".KY"} suffix)
+Compress/uncompress commands for @code{Dired}
+Support for X protocols: @code{WM_DELETE_WINDOW} and @code{WM_TAKE_FOCUS}
+Time, load, and mail notification in mode line
+@end display
+@end itemize
+
+@node Unix Release Notes, C Back-End Release Notes, News, Release Notes
 @section Unix Release Notes
 
 @node C Back-End Release Notes, DOS, Unix Release Notes, Release Notes
 @section C Back-End Release Notes
 
+This release introduces an important new feature: the compiler can
+generate output in C, which can then be compiled and linked using the
+usual C development tools.  This feature is being used to support
+architectures, such as the SPARC and IBM RS6000, for which the compiler
+does not have native-code support.
+
+@cindex C back-end
+MIT Scheme systems that have been built using this compiler feature are
+referred to as @dfn{C back-end} systems.  This section provides a brief
+description of the features and known problems for such systems.
+
+@menu
+* Notes on C Back-End::         
+* Problems with C Back-End::    
+@end menu
+
+@node Notes on C Back-End, Problems with C Back-End,  , C Back-End Release Notes
 @subsection General Notes
 
-@itemize @bullet
+This section describes the general design of C back-end systems.
 
+@itemize @bullet
 @item
 The C back end was written very recently, and we do not use it
 ourselves for development--we have native back ends for the
@@ -681,21 +1026,21 @@ However, there may very well be assumptions of the following form:
 
 @itemize @bullet
 @item
-Memory is byte addressable.
+Memory is byte-addressable.
 
 @item
-Addresses and ordinary data live in the same memory.
-Some special-purpose processors do not satisfy this constraint.
+Addresses and ordinary data live in the same memory.  Some
+special-purpose processors do not satisfy this constraint.
 
 @item
-@emph{unsigned} data items and addresses fit into the same
-memory, and if @emph{union}-ed, take the same space. 
+@code{unsigned} data items and addresses fit into the same memory, and
+if @code{union}-ed, take the same space.
 
 @item
 Signed integers are represented using 2s-complement representation.
 
 @item
-The machine/OS uses the ASCII character set.  This is not a
+The machine/OS uses the @sc{ascii} character set.  This is not a
 property of the compiler per-se, but of the MIT Scheme system.
 @end itemize
 
@@ -710,18 +1055,17 @@ Dynamic loading primitives are OS-dependent.
 @item
 Basic microcode configuration, including:
 
-@itemize
+@itemize @bullet
+@item
+OS interface.
 
 @item
-OS interface
-
-@item
-Choosing a new machine type (FASL numbers in @file{config. h})
+Choosing a new machine type (FASL numbers in @file{config. h}).
 @end itemize
 
 @item
-Build scripts dispatch on the OS and architecture type,
-and only understand a handful.
+Build scripts dispatch on the OS and architecture type, and only
+understand a handful of types.
 
 @item
 The compiler has a table of C compiler and linker switches
@@ -729,15 +1073,15 @@ for the configurations we have tried.  It needs to be extended
 for new configurations, although this can be done easily.
 @end itemize
 
-If you are interested in bringing up the system on a new
-configuration, please contact us for further instructions, and to
-obtain the set of crude tools that we use to do this.
+If you are interested in bringing up the system on a new configuration,
+please contact us for further instructions, and to obtain the set of
+crude tools that we use to do this.
 
 @item
 The performance of the output code could be greatly improved by
-judicious use of assembly language to achieve faster cross-module
-tail recursion.  So far, we've given more weight to portability
-than to performance.
+judicious use of assembly language to achieve faster cross-module tail
+recursion.  So far, we've given more weight to portability than to
+performance.
 
 @item
 The resulting C code can be compiled and statically linked with the MIT
@@ -751,31 +1095,32 @@ shared library of a large subsystem that you have written, please
 contact us for advice on how it can be done.
 @end itemize
 
-@subsection Problems and shortcomings of the system specific to the C back end
+@node Problems with C Back-End,  , Notes on C Back-End, C Back-End Release Notes
+@subsection Problems with C Back-End
+
+This section details problems and shortcomings of the system that are
+specific to the C back-end.
 
 @itemize @bullet
-
 @item
-@code{compile-procedure} and @code{compile-scode} do not work.  This will be
-fixed for a future release and is not very hard to bypass in most
-cases.
-@code{compile-procedure} gives an error.
+@code{compile-procedure} and @code{compile-scode} do not work.  This
+will be fixed for a future release and is not very hard to bypass in
+most cases.  @code{compile-procedure} gives an error.
 @code{compile-scode} returns something which is not a compiled
-expression.
-@code{cf} and @code{compile-bin-file} work.
+expression.  @code{cf} and @code{compile-bin-file} work.
 
 @item
 Dynamically loaded compiled modules are not unloaded when no longer
 accessed.  In particular, after a @code{disk-restore}, previously loaded
 modules are still mapped.  In addition, at least in some versions of
-Unix, the shared object file cannot be deleted while it is loaded, so
+unix, the shared object file cannot be deleted while it is loaded, so
 recompilation of a module in place will fail if some process has it
 already loaded.
 
 @item
-Multiple loading does not work.  This is bad for development.
-After loading a compiled module once, it cannot be reloaded 
-(presumably after recompilation).
+Multiple loading does not work.  This is bad for development.  After
+loading a compiled module once, it cannot be reloaded (presumably after
+recompilation).
 
 @item
 @code{fasdump} does not work for compiled code.  It gives an error.
@@ -786,32 +1131,33 @@ Several C compilers are unhappy about the size of the resulting C
 procedures.  They often turn their optimizers off.
 
 @item
-Some C compilers/optimizers produce non-working code for some of
-the output.  In particular, we've had serious problems with the
+Some C compilers/optimizers produce non-working code for some of the
+output.  In particular, we've had serious problems with the
 RS6000/AIX-3.2 C compiler.
 
 @item
 Several C compilers give copious ``statement not reached'' warnings
-about the resulting code.
-This arises from the heavy use of macros expanding into the pattern
+about the resulting code.  This arises from the heavy use of macros
+expanding into the pattern
+
 @example
 do
 @{
-  ...
+  @var{body}
 @} while (0)
 @end example
-Most of these macros are not really necessary, and the code
-generator could just issue the ... part directly.
+
+@noindent
+Most of these macros are not really necessary, and the code generator
+could just issue the @var{body} directly.
 
 @item
- The mechanism for accreting object files into large
-dynamically-loadable libraries is currently ad-hoc.
+The mechanism for accreting object files into large dynamically-loadable
+libraries is currently ad-hoc.
 @end itemize
-
 
 @node DOS,  , C Back-End Release Notes, Release Notes
 @section DOS, Windows 3.1, and Windows NT Release Notes
-
 
 @menu
 * Known Problems::              
@@ -821,14 +1167,13 @@ dynamically-loadable libraries is currently ad-hoc.
 @subsection Known Problems in this Beta Release
 
 @itemize @bullet
-
 @item
 The Windows version of MIT Scheme is more robust under NT than Windows
 3.1
 
 @item
-[NT] Exclusive file access problems.
-Edwin sometimes can't write a file that is still open for reading.
+[NT] Exclusive file access problems.  Edwin sometimes can't write a file
+that is still open for reading.
 
 Typically you will have entered @code{(load "foo.scm")} in the
 interaction buffer and got an error, say a mis-matched parenthesis.
@@ -840,6 +1185,7 @@ Edwin refuses, saying
 Unable to open file "@var{your-path}\\foo.scm" because: Unknown
 @end example
 
+@noindent
 Work-around: In the interaction buffer: Quit to top level.  Do a
 @code{(gc-flip)}, which forces the file to be closed when the file port
 is garbage-collected.  Now you will be able to save the file.
@@ -854,6 +1200,7 @@ To test if the debugging information is available, try
 (pp pp)
 @end example
 
+@noindent
 If the debugging information is available the @code{pp} procedure
 pretty-prints procedures as Scheme code.
 If the information cannot be found then it prints the procedure as an
@@ -875,11 +1222,7 @@ directory, for example, by putting
 
 @noindent
 in your @file{edwin.ini} file.
-
-
 @end itemize
-
-
 
 @c @node
 @c @subsection NT build
