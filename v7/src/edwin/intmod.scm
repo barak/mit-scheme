@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: intmod.scm,v 1.105 1999/10/31 15:04:23 cph Exp $
+;;; $Id: intmod.scm,v 1.106 1999/11/05 05:48:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -64,9 +64,7 @@ With no arguments, selects the current evaluation buffer,
  or creates a new one if there is none.
 With one C-u, creates a new REPL buffer unconditionally.
 With two C-u's, creates a new REPL buffer with a new evaluation environment.
-  (Otherwise USER-INITIAL-ENVIRONMENT is used.)
-If a new REPL buffer is created, it automatically becomes the REPL buffer
-  for the current buffer."
+  (Otherwise USER-INITIAL-ENVIRONMENT is used.)"
   "p"
   (lambda (argument)
     (select-buffer
@@ -78,15 +76,6 @@ If a new REPL buffer is created, it automatically becomes the REPL buffer
 					environment
 					(environment-syntax-table environment)
 					#f)
-		  ;; Wait for the buffer's thread to start up and
-		  ;; attach its interface port.
-		  (let loop ()
-		    (if (not (repl-buffer? repl-buffer))
-			(loop)))
-		  ;; If there is already a global REPL buffer, make
-		  ;; this one the local REPL buffer for this buffer.
-		  (if (pair? (repl-buffer-list))
-		      (set-local-repl-buffer! buffer repl-buffer))
 		  repl-buffer))))
 	 (if (>= argument 16)
 	     (make-new (extend-ic-environment system-global-environment))
