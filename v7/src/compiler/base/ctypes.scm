@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.10 1989/04/17 17:05:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.11 1989/04/17 18:42:36 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -177,7 +177,7 @@ MIT in each case. |#
 		    (set-procedure-applications!
 		     operator
 		     (delq! combination (procedure-applications operator)))))
-	      (rvalue-values (combination-operator combination)))
+	      (rvalue-values (combination/operator combination)))
     (set-application-type! combination 'RETURN)
     (set-application-operator! combination continuation)
     (set-application-operands! combination (list rvalue))
