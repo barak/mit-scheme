@@ -1,8 +1,13 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.133 2001/09/29 01:04:53 cph Exp $
+$Id: todo.txt,v 1.134 2001/09/30 15:10:22 cph Exp $
 
 Bug fixes
 ---------
+
+* Remove cache for folders that aren't on server any more.
+
+* Add locking to cache so that two processes don't try to
+  write into it simultaneously.
 
 * When browser pops up a window of URLs that it is operating on, the
   strings shown should be relative to the container being browsed.
@@ -44,6 +49,13 @@ MIME conformance
 New features
 ------------
 
+* Add ability to set quotas for cache management.
+
+* Add ability to work offline by accessing cache, but not initiating a
+  connection to get any uncached data.
+
+* Add command to pre-load the cache with all of a folder's contents.
+
 * Add feature to automatically bring up a summary window whenever
   imail is started.  Perhaps this ought to allow specification of the
   folders for which this is true.
@@ -70,10 +82,6 @@ New features
 
 * Examine spec for text/enriched and see if it can be incorporated
   into the reader.
-
-* Implement cache that saves information about messages on disk.  This
-  should use UIDs for IMAP folders; for other folders perhaps the
-  message ID can be used.
 
 * Implement file backup when writing file folders.
 
