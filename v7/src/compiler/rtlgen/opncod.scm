@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.13 1988/08/29 22:36:32 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.14 1988/09/01 18:51:35 markf Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -47,7 +47,20 @@ MIT in each case. |#
 		(lambda (application)
 		  (if (eq? (application-type application) 'COMBINATION)
 		      (let ((inliner (analyze-combination application)))
-			(set-combination/inliner! application inliner))))
+			(set-combination/inliner! application inliner)
+			;; Don't push a return address on the stack
+ 			;; if: (1) the combination is inline coded,
+ 			;; (2) the continuation is known, and (3) the
+ 			;; push is unique for this combination.
+ 			(let ((push
+ 			       (combination/continuation-push application)))
+ 			  (if (and inliner
+ 				   push
+ 				   (rvalue-known-value
+ 				    (combination/continuation application)))
+ 			      (set-virtual-continuation/type!
+ 			       (virtual-return-operator push)
+ 			       continuation-type/effect))))))
 		(lambda (application)
 		  (if (eq? (application-type application) 'COMBINATION)
 		      (set-combination/inliner! application false))))
@@ -80,6 +93,7 @@ MIT in each case. |#
   (let ((offset (node/offset combination)))
     (generate/return* (combination/block combination)
 		      (combination/continuation combination)
+ 		      (combination/continuation-push combination)
 		      (let ((inliner (combination/inliner combination)))
 			(let ((handler (inliner/handler inliner))
 			      (generator (inliner/generator inliner))
@@ -662,7 +676,7 @@ MIT in each case. |#
 ;;; Generic arithmetic
 
 (define-export generate-generic-binary
-  (lambda (expression finish)
+  (lambda (expression finish #!optional is-pred?)
     (let ((continuation-label (generate-label))
 	  (generic-op (rtl:generic-binary-operator expression))
 	  (fix-op (generic->fixnum-op
@@ -679,9 +693,14 @@ MIT in each case. |#
 		(cddr expression)
 		continuation-label)
 	       (rtl:make-continuation-entry continuation-label)
-	       (expression-simplify-for-statement
-		(rtl:make-fetch register:value)
-		finish)))
+	       (if (or (default-object? is-pred?)
+		       (not is-pred?))
+		   (expression-simplify-for-statement
+		    (rtl:make-fetch register:value)
+		    finish)
+		   (finish
+		    (rtl:make-true-test
+		     (rtl:make-fetch register:value))))))
 	     (generic-flonum
 	      ;; For now we will just call the generic op.
 	      ;; When we have open coded flonums, we will
@@ -717,27 +736,40 @@ MIT in each case. |#
 		generic-flonum
 		generic-3)
 	       give-it-up)))
-	(pcfg*scfg->scfg!
-	 (generate-type-test 'fixnum op1)
-	 (pcfg*scfg->scfg!
-	  (generate-type-test 'fixnum op2)
-	  (scfg*scfg->scfg!
-	   (rtl:make-assignment
-	    fix-temp
-	    (rtl:make-fixnum-2-args
-	     fix-op
-	     (rtl:make-object->fixnum op1)
-	     (rtl:make-object->fixnum op2)))
-	   (pcfg*scfg->scfg!
-	    (rtl:make-overflow-test)
-	    give-it-up
-	    (finish (rtl:make-fixnum->object
-		     fix-temp))))
-	  generic-2)
-	 generic-1)))))
+	(if (or (default-object? is-pred?)
+		(not is-pred?))
+	    (pcfg*scfg->scfg!
+	     (generate-type-test 'fixnum op1)
+	     (pcfg*scfg->scfg!
+	      (generate-type-test 'fixnum op2)
+	      (scfg*scfg->scfg!
+	       (rtl:make-assignment
+		fix-temp
+		(rtl:make-fixnum-2-args
+		 fix-op
+		 (rtl:make-object->fixnum op1)
+		 (rtl:make-object->fixnum op2)))
+	       (pcfg*scfg->scfg!
+		(rtl:make-overflow-test)
+		give-it-up
+		(finish (rtl:make-fixnum->object
+			 fix-temp))))
+	      generic-2)
+	     generic-1)
+	    (pcfg*scfg->scfg!
+	     (generate-type-test 'fixnum op1)
+	     (pcfg*scfg->scfg!
+	      (generate-type-test 'fixnum op2)
+	      (finish
+	       (rtl:make-fixnum-pred-2-args
+		fix-op
+		(rtl:make-object->fixnum op1)
+		(rtl:make-object->fixnum op2)))
+	      generic-2)
+	     generic-1))))))
 
 (define-export generate-generic-unary
-  (lambda (expression finish)
+  (lambda (expression finish #!optional is-pred?)
     (let ((continuation-label (generate-label))
 	  (generic-op (rtl:generic-unary-operator expression))
 	  (fix-op (generic->fixnum-op
@@ -753,31 +785,48 @@ MIT in each case. |#
 		(cddr expression)
 		continuation-label)
 	       (rtl:make-continuation-entry continuation-label)
-	       (expression-simplify-for-statement
-		(rtl:make-fetch register:value)
-		finish)))
+	       (if (or (default-object? is-pred?)
+		       (not is-pred?))
+		   (expression-simplify-for-statement
+		    (rtl:make-fetch register:value)
+		    finish)
+		   (finish
+		    (rtl:make-true-test
+		     (rtl:make-fetch register:value))))))
 	     (generic-flonum
 	      ;; For now we will just call the generic op.
 	      ;; When we have open coded flonums, we will
 	      ;; stick that stuff here.
 	      give-it-up))
-	(pcfg*scfg->scfg!
-	 (generate-type-test 'fixnum op)
-	 (scfg*scfg->scfg!
-	  (rtl:make-assignment
-	   fix-temp
-	   (rtl:make-fixnum-1-arg
-	    fix-op
-	    (rtl:make-object->fixnum op)))
-	  (pcfg*scfg->scfg!
-	   (rtl:make-overflow-test)
-	   give-it-up
-	   (finish (rtl:make-fixnum->object
-		    fix-temp))))
-	 (pcfg*scfg->scfg!
-	  (generate-type-test 'flonum op)
-	  generic-flonum
-	  give-it-up))))))
+	(if (or (default-object? is-pred?)
+		(not is-pred?))
+	    (pcfg*scfg->scfg!
+	     (generate-type-test 'fixnum op)
+	     (scfg*scfg->scfg!
+	      (rtl:make-assignment
+	       fix-temp
+	       (rtl:make-fixnum-1-arg
+		fix-op
+		(rtl:make-object->fixnum op)))
+	      (pcfg*scfg->scfg!
+	       (rtl:make-overflow-test)
+	       give-it-up
+	       (finish (rtl:make-fixnum->object
+			fix-temp))))
+	     (pcfg*scfg->scfg!
+	      (generate-type-test 'flonum op)
+	      generic-flonum
+	      give-it-up))
+	    (pcfg*scfg->scfg!
+	     (generate-type-test 'fixnum op)
+	     (finish
+	      (rtl:make-fixnum-pred-1-arg
+	      fix-op
+	      (rtl:make-object->fixnum op)))
+	     (pcfg*scfg->scfg!
+	      (generate-type-test 'flonum op)
+	      generic-flonum
+	      give-it-up)))))))
 
 (define (generic->fixnum-op generic-op)
   (case generic-op
@@ -848,8 +897,12 @@ MIT in each case. |#
 	      (return-2
 	        (lambda (expressions finish)
 		  (generate-generic-binary
-		   (cons generic-op expressions)
-		   finish))
+		   (rtl:make-generic-binary
+			   generic-op
+			   (car expressions)
+			   (cadr expressions))
+		   finish
+		   'PREDICATE))
 		'(0 1)))))))
   (for-each
    define-generic-binary-pred
@@ -862,8 +915,11 @@ MIT in each case. |#
 	      (return-2
 	        (lambda (expression finish)
 		  (generate-generic-unary
-		   (cons generic-op expression)
-		   finish))
+		   (rtl:make-generic-unary
+			   generic-op
+			   (car expression))
+		   finish
+		   'PREDICATE))
 		'(0)))))))
   (for-each
    define-generic-unary-pred
