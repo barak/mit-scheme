@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.2 2000/04/18 21:50:35 cph Exp $
+;;; $Id: imail-imap.scm,v 1.3 2000/04/22 05:05:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -43,11 +43,13 @@
 	(let ((slash (substring-find-next-char string 2 end)))
 	  (if (not slash)
 	      (lose))
-	  (let ((pv1 (imap:parse:server string 0 slash)))
-	    (if (not (and pv1 (fix:= (car pv1) slash)))
+	  (let ((pv1 (parse-substring imap:parse:server string 0 slash)))
+	    (if (not pv1)
 		(lose))
-	    (let ((pv2 (imap:parse:simple-message string (fix:+ slash 1) end)))
-	      (if (not (and pv2 (fix:= (car pv2) end)))
+	    (let ((pv2
+		   (parse-substring imap:parse:simple-message
+				    string (fix:+ slash 1) end)))
+	      (if (not pv2)
 		  (lose))
 	      (make-imap-url (parser-token pv1 'USER-ID)
 			     (parser-token pv1 'AUTH-TYPE)
