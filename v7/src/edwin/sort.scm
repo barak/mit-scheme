@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sort.scm,v 1.7 1999/01/02 06:11:34 cph Exp $
+;;; $Id: sort.scm,v 1.8 2002/08/14 02:55:26 cph Exp $
 ;;;
-;;; Copyright (c) 1992, 1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1992, 1999, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -29,22 +29,18 @@
   (let* ((start (region-start region))
 	 (end (region-end region))
 	 (delete-end (mark-right-inserting-copy end))
-	 (unsorted-list
-	  (identify-records region forward-record record-end))
+	 (unsorted-list (identify-records region forward-record record-end))
 	 (sorted-list
-	  (sort
-	   unsorted-list
-	   (let ((order (if reverse?
-			    not
-			    identity-procedure)))
-	     (lambda (element1 element2)
-	       (order
-		(let ((start1 (key-start (car element1)))
-		      (start2 (key-start (car element2))))
-		  (compare start1
-			   (key-end start1)
-			   start2
-			   (key-end start2)))))))))
+	  (sort unsorted-list
+	    (let ((order (if reverse? not identity-procedure)))
+	      (lambda (element1 element2)
+		(order
+		 (let ((start1 (key-start (car element1) (cdr element1)))
+		       (start2 (key-start (car element2) (cdr element2))))
+		   (compare start1
+			    (key-end start1 (cdr element1))
+			    start2
+			    (key-end start2 (cdr element2))))))))))
     (insert-reordered-region start end sorted-list unsorted-list)
     (kill-string start delete-end)
     (mark-temporary! delete-end)))
@@ -94,9 +90,9 @@
 	(string2 (extract-string start2 end2)))
     (let ((value1 (string->number string1))
 	  (value2 (string->number string2)))
-      (if (or (not value1) (not value2))
-	  (string<? string1 string2)
-	  (< value1 value2)))))
+      (if (and value1 value2)
+	  (< value1 value2)
+	  (string<? string1 string2)))))
 
 (define-command sort-lines
   "Sort lines in region in ascending order by comparing the text of
@@ -106,8 +102,8 @@ the lines.  Argument means sort in descending order."
     (sort-region region reverse?
 		 (lambda (mark) (forward-line mark 1))
 		 (lambda (mark) (line-end mark 0))
-		 identity-procedure
-		 (lambda (mark) (line-end mark 0))
+		 (lambda (mark end) end mark)
+		 (lambda (mark end) mark end)
 		 sort-textual-comparison)))
 
 (define-command sort-paragraphs
@@ -119,10 +115,10 @@ Argument means sort in descending order."
     (sort-region region reverse?
 		 (let ((end (region-end region)))
 		   (lambda (mark)
-		     (skip-chars-forward " \n\r\t\f" mark end false)))
+		     (skip-chars-forward " \n\r\t\f" mark end #f)))
 		 paragraph-text-end
-		 identity-procedure
-		 (lambda (mark) (line-end mark 0))
+		 (lambda (mark end) end mark)
+		 (lambda (mark end) end (line-end mark 0))
 		 sort-textual-comparison)))
 
 (define-command sort-pages
@@ -133,40 +129,32 @@ the pages.  Argument means sort in descending order."
     (let ((end (region-end region)))
       (sort-region region reverse?
 		   (lambda (mark)
-		     (skip-chars-forward
-		      "\n\r"
-		      (forward-one-page mark)
-		      end
-		      false))
+		     (skip-chars-forward "\n\r" (forward-one-page mark) end #f))
 		   (lambda (mark)
 		     (re-match-forward "[^\f]*" mark end))
-		   identity-procedure
-		   (lambda (mark) (line-end mark 0))
+		   (lambda (mark end) end mark)
+		   (lambda (mark end) end (line-end mark 0))
 		   sort-textual-comparison))))
 
 (define ((sort-fields compare) field region)
   (if (zero? field) (editor-error "Field number must be non-zero."))
-  (let ((end (line-end (region-end region) 0)))
-    (sort-region
-     region
-     (negative? field)
-     (lambda (mark) (forward-line mark 1))
-     (lambda (mark) (line-end mark 0))
-     (lambda (mark)
-       (let next-whitespace
-	   ((count (-1+ (abs field)))
-	    (mark (or (skip-chars-forward " \t" mark end false)
-		      mark)))
-	 (if (zero? count)
-	     mark
-	     (let ((new-mark (re-match-forward "[^ \t]+[ \t]*" mark end)))
-	       (if new-mark
-		   (next-whitespace (-1+ count) new-mark)
-		   mark)))))
-     (lambda (mark)
-       (or (re-match-forward "[^ \t]+" mark end)
-	   mark))
-     compare)))
+  (sort-region region
+	       (negative? field)
+	       (lambda (mark) (forward-line mark 1))
+	       (lambda (mark) (line-end mark 0))
+	       (lambda (mark end)
+		 (let next-whitespace
+		     ((count (- (abs field) 1))
+		      (mark (or (re-match-forward "\\s-+" mark end) mark)))
+		   (if (zero? count)
+		       mark
+		       (let ((mark* (re-match-forward "\\S-+\\s-*" mark end)))
+			 (if mark*
+			     (next-whitespace (- count 1) mark*)
+			     mark)))))
+	       (lambda (mark end)
+		 (or (re-match-forward "\\S-+" mark end) mark))
+	       compare))
 
 (define-command sort-fields
   "Sort lines in region in ascending order by comparing the text of
@@ -195,11 +183,10 @@ the line.  The last line is treated similarly."
 	   (end (region-end region))
 	   (start-column (mark-column start))
 	   (end-column (mark-column end)))
-    (sort-region (make-region (line-start start 0)
-			      (line-end end 0))
+    (sort-region (make-region (line-start start 0) (line-end end 0))
 		 reverse?
 		 (lambda (mark) (forward-line mark 1))
 		 (lambda (mark) (line-end mark 0))
-		 (lambda (mark) (move-to-column mark start-column))
-		 (lambda (mark) (move-to-column mark end-column))
+		 (lambda (mark end) end (move-to-column mark start-column))
+		 (lambda (mark end) end (move-to-column mark end-column))
 		 sort-textual-comparison))))
