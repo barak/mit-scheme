@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.24 2000/07/28 15:25:50 cph Exp $
+;;; $Id: imail-summary.scm,v 1.25 2000/08/05 01:53:54 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -147,6 +147,7 @@ SUBJECT is a string of regexps separated by commas."
 	  (if (pair? windows)
 	      (select-window (car windows))
 	      (select-buffer buffer))))
+    (preload-folder-outlines folder)
     (rebuild-imail-summary-buffer buffer)))
 
 (define (imail-summary-detach buffer)

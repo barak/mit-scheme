@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.142 2000/08/02 13:15:27 cph Exp $
+;;; $Id: imail-imap.scm,v 1.143 2000/08/05 01:53:44 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -934,6 +934,54 @@
 	       (guarantee-slot-initialized message initpred "body structure"
 					   '(BODYSTRUCTURE)))))
 
+(define-method preload-folder-outlines ((folder <imap-folder>))
+  (guarantee-imap-folder-open folder)
+  (let ((messages
+	 (messages-satisfying folder
+	   (lambda (message)
+	     (not (and (imap-message-header-fields-initialized? message)
+		       (imap-message-length-initialized? message)))))))
+    (if (pair? messages)
+	((imail-ui:message-wrapper "Reading message headers")
+	 (lambda ()
+	   (imap:command:fetch-set (imap-folder-connection folder)
+				   (message-list->set messages)
+				   '(RFC822.HEADER RFC822.SIZE)))))))
+	
+
+(define imap-message-header-fields-initialized?
+  (slot-initpred <imap-message> 'HEADER-FIELDS))
+
+(define imap-message-length-initialized?
+  (slot-initpred <imap-message> 'LENGTH))
+
+(define (messages-satisfying folder predicate)
+  (let ((n (folder-length folder)))
+    (let loop ((i 0) (messages '()))
+      (if (< i n)
+	  (loop (+ i 1)
+		(let ((message (get-message folder i)))
+		  (if (predicate message)
+		      (cons message messages)
+		      messages)))
+	  (reverse! messages)))))
+
+(define (message-list->set messages)
+  (let loop ((indexes (map message-index messages)) (groups '()))
+    (if (pair? indexes)
+	(let ((start (car indexes)))
+	  (let parse-group ((this start) (rest (cdr indexes)))
+	    (if (and (pair? rest) (= (car rest) (+ this 1)))
+		(parse-group (car rest) (cdr rest))
+		(loop rest
+		      (cons (if (= start this)
+				(number->string (+ start 1))
+				(string-append (number->string (+ start 1))
+					       ":"
+					       (number->string (+ this 1))))
+			    groups)))))
+	(decorated-string-append "" "," "" (reverse! groups)))))
+
 ;;;; MIME support
 
 (define-method mime-message-body-structure ((message <imap-message>))
@@ -1332,13 +1380,15 @@
 				uid items))
 
 (define (imap:command:fetch-range connection start end items)
-  (imap:command:multiple-response
-   imap:response:fetch? connection
-   'FETCH
-   `',(string-append (number->string (+ start 1))
-		     ":"
-		     (if end (number->string end) "*"))
-   items))
+  (imap:command:fetch-set connection
+			  (string-append (number->string (+ start 1))
+					 ":"
+					 (if end (number->string end) "*"))
+			  items))
+
+(define (imap:command:fetch-set connection set items)
+  (imap:command:multiple-response imap:response:fetch? connection
+				  'FETCH `',set items))
 
 (define (imap:command:uid-store-flags connection uid flags)
   (imap:command:no-response connection 'UID 'STORE uid 'FLAGS flags))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.112 2000/06/30 17:21:24 cph Exp $
+;;; $Id: imail-core.scm,v 1.113 2000/08/05 01:53:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -360,7 +360,7 @@
   (%get-message folder index))
 
 (define-generic %get-message (folder index))
-
+
 ;; -------------------------------------------------------------------
 ;; Remove all messages in FOLDER that are marked for deletion.
 ;; Unspecified result.
@@ -372,7 +372,7 @@
 ;; may be a string.  Returns a list of messages.
 
 (define-generic search-folder (folder criteria))
-
+
 ;; -------------------------------------------------------------------
 ;; Compare FOLDER's cache with the persistent folder and return a
 ;; symbol indicating whether they are synchronized, as follows:
@@ -417,6 +417,15 @@
 ;; Return #T if FOLDER supports MIME parsing.
 
 (define-generic folder-supports-mime? (folder))
+
+;; -------------------------------------------------------------------
+;; Preload outline information about each message in the folder.
+;; Normally used prior to generating a folder summary, to accelerate
+;; the downloading of this information from the server.  This
+;; operation need not be implemented, as it is just a performance
+;; enhancement.
+
+(define-generic preload-folder-outlines (folder))
 
 ;;;; Message type
 

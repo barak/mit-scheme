@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.56 2000/07/05 20:49:36 cph Exp $
+;;; $Id: imail-file.scm,v 1.57 2000/08/05 01:53:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -307,6 +307,10 @@
 (define-method folder-supports-mime? ((folder <file-folder>))
   folder
   #f)
+
+(define-method preload-folder-outlines ((folder <file-folder>))
+  folder
+  unspecific)
 
 (define-method first-unseen-message-index ((folder <file-folder>))
   folder
