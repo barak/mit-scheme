@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: hppa.h,v 1.48 1993/12/07 20:31:16 gjr Exp $
+$Id: hppa.h,v 1.49 1994/02/01 02:45:56 gjr Exp $
 
-Copyright (c) 1989-1993 Massachusetts Institute of Technology
+Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -680,14 +680,15 @@ static unsigned long
   * bkpt_minus_proceed_thunk_start,
   * bkpt_minus_proceed_thunk,
   * bkpt_closure_proceed_thunk,
-  * bkpt_closure_proceed_thunk_end;
+  * bkpt_closure_proceed_thunk_end,
+  * bkpt_proceed_buffer = ((unsigned long *) NULL);
 
 #define FAHRENHEIT 451
 
 static void
 DEFUN_VOID (bkpt_init)
 {
-  int i;
+  int i, this_size, max_size;
   union branch_inst instr;
   extern void EXFUN (bkpt_normal_proceed, (void));
   extern void EXFUN (bkpt_plus_proceed, (void));
@@ -742,6 +743,25 @@ DEFUN_VOID (bkpt_init)
   bkpt_closure_proceed_thunk_end
     = ((unsigned long *)
        (C_closure_entry_point ((unsigned long) bkpt_closure_proceed_end)));
+
+  max_size = (bkpt_closure_proceed_thunk_end - bkpt_closure_proceed_thunk);
+  this_size = (bkpt_plus_proceed_thunk - bkpt_normal_proceed_thunk);
+  if (this_size > max_size)
+    max_size = this_size;
+  this_size = (bkpt_closure_proceed_thunk - bkpt_minus_proceed_thunk_start);
+  if (this_size > max_size)
+    max_size = this_size;
+  this_size = (bkpt_minus_proceed_thunk_start - bkpt_plus_proceed_thunk);
+  if (this_size > max_size)
+    max_size = this_size;
+  
+  bkpt_proceed_buffer = ((unsigned long *)
+			 (malloc (max_size * (sizeof (unsigned long)))));
+  if (bkpt_proceed_buffer == ((unsigned long *) NULL))
+  {
+    outf_fatal ("Unable to allocate the breakpoint buffer.\n");
+    termination_init_error ();
+  }
   return;
 }
 
@@ -889,6 +909,7 @@ DEFUN (bkpt_p, (entry_point), PTR entry_point)
 Boolean
 DEFUN (do_bkpt_proceed, (value), unsigned long * value)
 {
+  unsigned long * buffer = ((unsigned long *) bkpt_proceed_buffer);
   SCHEME_OBJECT ep = (STACK_POP ());
   SCHEME_OBJECT handle = (STACK_POP ());
   SCHEME_OBJECT state = (STACK_POP ());
@@ -900,7 +921,6 @@ DEFUN (do_bkpt_proceed, (value), unsigned long * value)
     case BKPT_KIND_CLOSURE:
     {
       int i, len;
-      unsigned long * buffer = ((unsigned long *) Constant_Top);
       unsigned long * clos_entry
 	= (OBJECT_ADDRESS (FAST_MEMORY_REF (handle, 4)));
       SCHEME_OBJECT real_entry_point;
@@ -922,7 +942,6 @@ DEFUN (do_bkpt_proceed, (value), unsigned long * value)
     case BKPT_KIND_NORMAL:
     {
       int i, len;
-      unsigned long * buffer = ((unsigned long *) Constant_Top);
 
       len = (bkpt_plus_proceed_thunk - bkpt_normal_proceed_thunk);
       for (i = 0; i < (len - 2); i++)
@@ -943,7 +962,7 @@ DEFUN (do_bkpt_proceed, (value), unsigned long * value)
       * value = ((unsigned long) ((OBJECT_ADDRESS (ep)) + 2));
       return (TRUE);
     }
-
+
     case BKPT_KIND_BL_INST:
     case BKPT_KIND_BLE_INST:
     default:
@@ -956,7 +975,6 @@ DEFUN (do_bkpt_proceed, (value), unsigned long * value)
       long offset;
       int i, len, clobber;
       union branch_inst new, old;
-      unsigned long * buffer = ((unsigned long *) Constant_Top);
       unsigned long * instrs = ((unsigned long *) (OBJECT_ADDRESS (ep)));
       unsigned long * block;
 
