@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.6 2000/12/08 19:16:58 cph Exp $
+# $Id: Makefile.in,v 1.7 2000/12/08 19:17:37 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -72,7 +72,7 @@ all: compile
 	$(srcdir)/etc/build-bands.sh
 
 compile:
-	( cd microcode && $(MAKE) $@ )
+	( cd microcode && $(MAKE) all )
 	scheme -compiler -heap 4000 < $(srcdir)/etc/compile.scm
 
 mostlyclean clean distclean maintainer-clean:
