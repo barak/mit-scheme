@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.33 1992/07/06 23:42:06 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.34 1992/07/30 14:59:58 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -214,6 +214,17 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 
 #define ERRNO_NONBLOCK EAGAIN
 #define FCNTL_NONBLOCK O_NONBLOCK
+
+#ifdef _IRIX4
+
+#define HAVE_DIR
+#define HAVE_SELECT
+#define HAVE_SIGCONTEXT
+#define HAVE_SOCKETS
+#define HAVE_SYMBOLIC_LINKS
+#define HAVE_UNIX_SOCKETS
+
+#endif /* _IRIX4 */
 
 #else /* not _POSIX */
 #ifdef _BSD

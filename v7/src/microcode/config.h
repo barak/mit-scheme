@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.72 1992/07/23 12:31:38 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.73 1992/07/30 15:08:48 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -416,7 +416,7 @@ typedef unsigned long SCHEME_OBJECT;
 #endif
 #endif
 
-#ifdef sony
+#if defined(sony) || defined(_IRIX4)
 #define HAS_FLOOR
 #define HAS_FREXP
 #define HAS_MODF

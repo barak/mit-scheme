@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/oscond.h,v 1.10 1992/07/23 03:48:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/oscond.h,v 1.11 1992/07/30 15:04:07 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -111,6 +111,11 @@ MIT in each case. */
 #endif /* __hpux */
 #endif /* _HPUX */
   
+#ifdef _IRIX4
+#define _POSIX
+#define _SYSV3
+#endif
+
 #ifdef _SYSV4
 #define _POSIX
 #define _SYSV3

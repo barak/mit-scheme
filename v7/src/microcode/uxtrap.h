@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.14 1992/06/05 20:10:27 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.15 1992/07/30 15:03:01 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -252,6 +252,43 @@ struct full_sigcontext
 #endif /* vax */
 
 #ifdef mips
+#ifdef _IRIX4
+
+/* Information on sigcontext structure in signal.h */
+
+#ifndef sc_sp
+#define sc_sp				sc_regs[29]
+#endif
+
+#define sc_rfree			sc_regs[9]
+#define sc_schsp			sc_regs[3]
+
+#define HAVE_FULL_SIGCONTEXT
+#define FULL_SIGCONTEXT_RFREE(scp)	((scp)->sc_rfree)
+#define FULL_SIGCONTEXT_SCHSP(scp)	((scp)->sc_schsp)
+#define FULL_SIGCONTEXT_FIRST_REG(scp)	(&((scp)->sc_regs[0]))
+#define FULL_SIGCONTEXT_NREGS		32
+#define PROCESSOR_NREGS			32
+
+#define INITIALIZE_UX_SIGNAL_CODES()					\
+{									\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGTRAP, (~ 0L), BRK_OVERFLOW, "integer overflow trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGTRAP, (~ 0L), BRK_DIVZERO, "integer divide by 0 trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGTRAP, (~ 0L), BRK_MULOVF, "integer multiply overflow");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE,  (  0L),       0,      "floating-point exception");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGSEGV, (~ 0L),       EFAULT,   "Invalid virtual address");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGSEGV, (~ 0L),       EACCES,   "Read-only address");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGSEGV, (~ 0L),       ENXIO,   "Read beyond mapped object");	\
+}
+
+#else /* not _IRIX4 */
 #ifndef _SYSV4
 
 /* Information on sigcontext structure in signal.h */
@@ -364,6 +401,7 @@ struct full_sigcontext
 }
 
 #endif /* _SYSV4 */
+#endif /* _IRIX4 */
 #endif /* mips */
 
 #if defined(i386) && defined(_MACH_UNIX)
