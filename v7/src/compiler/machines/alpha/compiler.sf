@@ -1,0 +1,114 @@
+#| -*-Scheme-*-
+
+$Id: compiler.sf,v 1.1 1992/08/29 13:52:04 jinx Exp $
+
+Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
+
+This software was developed at the Digital Equipment Corporation
+Cambridge Research Laboratory.  Permission to copy this software, to
+redistribute it, and to use it for any purpose is granted, subject to
+the following restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to both the Digital Equipment Corporation Cambridge Research
+Lab (CRL) and the MIT Scheme project any improvements or extensions
+that they make, so that these may be included in future releases; and
+(b) to inform CRL and MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. D.E.C. has made no warrantee or representation that the operation
+of this software will be error-free, and D.E.C. is under no obligation
+to provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Digital Equipment Corporation
+nor of any adaptation thereof in any advertising, promotional, or
+sales literature without prior written consent from D.E.C. in each
+case.
+
+|#
+
+;;;; Script to incrementally syntax the compiler
+
+;; Guarantee that the package modeller is loaded.
+(if (not (name->package '(CROSS-REFERENCE)))
+    (with-working-directory-pathname "../cref" (lambda () (load "make"))))
+
+;; Guarantee that the compiler's package structure exists.
+(if (not (name->package '(COMPILER)))
+    (begin
+      ;; If there is no existing package constructor, generate one.
+      (if (not (file-exists? "comp.bcon"))
+	  (begin
+	    ((access cref/generate-trivial-constructor
+		     (->environment '(CROSS-REFERENCE)))
+	     "comp")
+	    (sf "comp.con" "comp.bcon")))
+      (load "comp.bcon")))
+
+;; Guarantee that the necessary syntactic transforms and optimizers
+;; are loaded.
+(if (lexical-unreferenceable? (->environment '(COMPILER)) 'SYNTAX-FILES!)
+    (let ((sf-and-load
+	   (lambda (files package)
+	     (sf-conditionally files)
+	     (for-each (lambda (file)
+			 (load (string-append file ".bin") package))
+		       files))))
+      (write-string "\n\n---- Loading compile-time files ----")
+      (sf-and-load '("base/switch" "base/hashtb") '(COMPILER))
+      (sf-and-load '("base/macros") '(COMPILER MACROS))
+      ((access initialize-package! (->environment '(COMPILER MACROS))))
+      (sf-and-load '("machines/alpha/decls") '(COMPILER DECLARATIONS))
+      (let ((environment (->environment '(COMPILER DECLARATIONS))))
+	(set! (access source-file-expression environment) "*.scm")
+	((access initialize-package! environment)))
+      (sf-and-load '("base/pmlook") '(COMPILER PATTERN-MATCHER/LOOKUP))
+      (sf-and-load '("base/pmpars") '(COMPILER PATTERN-MATCHER/PARSER))
+      (sf-and-load '("rtlbase/valclass") '(COMPILER))
+      (fluid-let ((sf/default-syntax-table
+		   (access compiler-syntax-table
+			   (->environment '(COMPILER MACROS)))))
+	(sf-and-load '("machines/alpha/machin") '(COMPILER)))
+      (set! (access endianness (->environment '(COMPILER))) 'LITTLE)
+      (fluid-let ((sf/default-declarations
+		   '((integrate-external "insseq")
+		     (integrate-external "machin")
+		     (usual-definition (set expt)))))
+	(sf-and-load '("machines/alpha/assmd") '(COMPILER ASSEMBLER)))
+      (sf-and-load '("back/syntax")
+		   '(COMPILER LAP-SYNTAXER))
+      (sf-and-load '("machines/alpha/coerce" "back/asmmac"
+					      "machines/alpha/insmac")
+		   '(COMPILER LAP-SYNTAXER))
+      (sf-and-load '("base/scode") '(COMPILER))
+      (sf-and-load '("base/pmerly") '(COMPILER PATTERN-MATCHER/EARLY))
+      (sf-and-load '("machines/alpha/inerly" "back/syerly")
+		   '(COMPILER LAP-SYNTAXER))))
+
+;; Load the assembler instruction database.
+(in-package (->environment '(COMPILER LAP-SYNTAXER))
+  (if (and compiler:enable-expansion-declarations?
+	   (null? early-instructions))
+      (fluid-let ((load-noisily? false)
+		  (load/suppress-loading-message? false))
+	(write-string "\n\n---- Pre-loading instruction sets ----")
+	(for-each (lambda (name)
+		    (load (string-append "machines/alpha/" name ".scm")
+			  '(COMPILER LAP-SYNTAXER)
+			  early-syntax-table))
+		  '("instr1" "instr2" "instr3")))))
+
+;; Resyntax any files that need it.
+((access syntax-files! (->environment '(COMPILER))))
+
+;; Rebuild the package constructors and cref.
+(cref/generate-constructors "comp")
+(sf "comp.con" "comp.bcon")
+(sf "comp.ldr" "comp.bldr")
