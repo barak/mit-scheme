@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.190 1987/10/05 20:25:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.191 1987/11/25 01:39:12 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -280,12 +280,14 @@ MIT in each case. |#
   (define-entries #x0228 uuo-link uuo-link-trap cache-reference-apply
     safe-reference-trap unassigned?-trap cache-variable-multiple
     uuo-link-multiple &+ &- &* &/ &= &< &> 1+ -1+ zero? positive? negative?
-    cache-assignment cache-assignment-multiple operator-trap))
+    cache-assignment cache-assignment-multiple operator-trap
+    primitive-lexpr-apply))
 
 (define-integrable reg:compiled-memtop (INST-EA (@A 6)))
 (define-integrable reg:environment (INST-EA (@AO 6 #x000C)))
 (define-integrable reg:temp (INST-EA (@AO 6 #x0010)))
 (define-integrable reg:enclose-result (INST-EA (@AO 6 #x0014)))
+(define-integrable reg:lexpr-primitive-arity (INST-EA (@AO 6 #x001C)))
 
 (define-integrable popper:apply-closure (INST-EA (@AO 6 #x0168)))
 (define-integrable popper:apply-stack (INST-EA (@AO 6 #x01A8)))
