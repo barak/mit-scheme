@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.23 1992/01/30 23:21:04 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.24 1992/06/11 19:28:24 jinx Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1051,7 +1051,7 @@ MIT in each case. |#
 (define (real:atan2 y x)
   (if (and (real:exact0= y)
 	   (real:exact? x))
-      0
+      (if (real:negative? x) rec:pi 0)
       (flo:atan2 (real:->flonum y) (real:->flonum x))))
 
 (define (rat:sqrt x)
