@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.6 1993/10/28 04:45:19 gjr Exp $
+$Id: lapgen.scm,v 1.7 1993/10/28 04:58:37 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -612,4 +612,7 @@ MIT in each case. |#
     reference-trap safe-reference-trap unassigned?-trap
     -1+ &/ &= &> 1+ &< &- &* negative? &+ positive? zero?
     access lookup safe-lookup unassigned? unbound?
-    set! define lookup-apply))
+    set! define lookup-apply primitive-error
+    quotient remainder modulo
+    reflect-to-interface interrupt-continuation-2
+    compiled-code-bkpt compiled-closure-bkpt))

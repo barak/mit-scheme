@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 4.44 1993/07/01 03:13:42 gjr Exp $
+$Id: lapgen.scm,v 4.45 1993/10/28 04:59:46 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -625,7 +625,8 @@ MIT in each case. |#
     access lookup safe-lookup unassigned? unbound?
     set! define lookup-apply primitive-error
     quotient remainder modulo
-    apply-in-interpreter allocate-block))
+    reflect-to-interface interrupt-continuation-2
+    compiled-code-bkpt compiled-closure-bkpt))
 
 (define-integrable (invoke-interface-ble code)
   ;; Jump to scheme-to-interface-ble
