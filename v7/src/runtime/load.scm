@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.13 1990/04/12 21:56:31 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.14 1990/04/12 22:50:28 markf Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -42,12 +42,14 @@ MIT in each case. |#
   (set! load/suppress-loading-message? false)
   (set! load/default-types '("com" "bin" "scm"))
   (set! fasload/default-types '("com" "bin"))
+  (set! load/default-find-pathname-with-type search-types-in-order)
   (add-event-receiver! event:after-restart load-init-file))
 
 (define load-noisily?)
 (define load/suppress-loading-message?)
 (define load/default-types)
 (define fasload/default-types)
+(define load/default-find-pathname-with-type)
 
 (define (read-file filename)
   (call-with-input-file
