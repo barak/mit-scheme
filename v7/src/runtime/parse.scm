@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.24 1994/03/22 21:30:55 cph Exp $
+$Id: parse.scm,v 14.25 1994/03/24 18:24:01 gjr Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -70,7 +70,7 @@ MIT in each case. |#
 	  (TRUE . ,true)
 	  (OPTIONAL . ,lambda-optional-tag)
 	  (REST . ,lambda-rest-tag)
-	  (AUX . ,lambda-aux-tag)))
+	  (AUX . ,lambda-auxiliary-tag)))
 
   (set! *parser-radix* 10)
   (set! *parser-associate-positions?* false)
