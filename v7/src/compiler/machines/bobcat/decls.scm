@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.20 1989/04/21 17:14:14 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.21 1989/04/26 05:09:22 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -357,7 +357,8 @@ MIT in each case. |#
 			      "rgretn" "rgrval" "rgstmt" "rtlgen")
 	     (filename/append "rtlopt"
 			      "ralloc" "rcse1" "rcse2" "rcseep" "rcseht"
-			      "rcserq" "rcsesr" "rdeath" "rdebug" "rlife"))
+			      "rcserq" "rcsesr" "rdeath" "rdebug" "rinvex"
+			      "rlife"))
      compiler-syntax-table)
     (file-dependency/syntax/join
      (filename/append "machines/bobcat"
@@ -373,7 +374,7 @@ MIT in each case. |#
 (define (initialize/integration-dependencies!)
   (let ((front-end-base
 	 (filename/append "base"
-			  "blocks" "cfg1" "cfg2" "cfg3" "constr"
+			  "blocks" "cfg1" "cfg2" "cfg3"
 			  "contin" "ctypes" "enumer" "lvalue"
 			  "object" "proced" "rvalue"
 			  "scode" "subprb" "utils"))
@@ -496,8 +497,8 @@ MIT in each case. |#
 
     (file-dependency/integration/join
      (append cse-base
-	     (filename/append "rtlopt" "ralloc" "rdeath" "rdebug" "rlife"))
-     (append bobcat-base rtl-base))
+	     (filename/append "rtlopt" "ralloc" "rdeath" "rdebug" "rinvex"
+			      "rlife"))     (append bobcat-base rtl-base))
 
     (file-dependency/integration/join cse-base cse-base)
 
