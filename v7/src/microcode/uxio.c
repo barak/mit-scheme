@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.3 1990/07/28 18:56:56 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.4 1990/08/10 02:13:44 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -117,28 +117,6 @@ DEFUN (OS_channel_type, (channel), Tchannel channel)
   return (CHANNEL_TYPE (channel));
 }
 
-#ifdef _POSIX
-
-#define ERRNO_NONBLOCK EAGAIN
-#define FCNTL_NONBLOCK O_NONBLOCK
-
-#else /* not _POSIX */
-#ifdef HAVE_ONDELAY
-
-#define AMBIGUOUS_NONBLOCK
-#define ERRNO_NONBLOCK EAGAIN
-#define FCNTL_NONBLOCK O_NDELAY
-
-#else /* not HAVE_ONDELAY */
-#ifdef HAVE_FNDELAY
-
-#define ERRNO_NONBLOCK EWOULDBLOCK
-#define FCNTL_NONBLOCK FNDELAY
-
-#endif /* HAVE_FNDELAY */
-#endif /* HAVE_ONDELAY */
-#endif /* not _POSIX */
-
 long
 DEFUN (OS_channel_read, (channel, buffer, nbytes),
        Tchannel channel AND

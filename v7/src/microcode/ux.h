@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.7 1990/07/30 23:16:25 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.8 1990/08/10 02:13:28 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -91,6 +91,9 @@ extern void EXFUN (error_system_call, (int code, CONST char * name));
 #define HAVE_WAITPID
 #define VOID_SIGNAL_HANDLERS
 
+#define ERRNO_NONBLOCK EAGAIN
+#define FCNTL_NONBLOCK O_NONBLOCK
+
 #else /* not _POSIX */
 #ifdef _BSD
 
@@ -106,12 +109,11 @@ extern void EXFUN (error_system_call, (int code, CONST char * name));
 #define HAVE_DIR
 #define HAVE_DUP2
 #define HAVE_FCNTL
-#define HAVE_FNDELAY
 #define HAVE_GETWD
 #define HAVE_MKDIR
 #define HAVE_RENAME
 #define HAVE_RMDIR
-#define HAVE_SELECT		/* does POSIX allow this */
+#define HAVE_SELECT
 #define HAVE_TIMES
 #define HAVE_WAIT3
 /* MORE/BSD has this -- do all 4.3 implementations? */
@@ -122,6 +124,9 @@ extern void EXFUN (error_system_call, (int code, CONST char * name));
 #define VOID_SIGNAL_HANDLERS
 #endif
 
+#define ERRNO_NONBLOCK EWOULDBLOCK
+#define FCNTL_NONBLOCK FNDELAY
+
 #else /* not _BSD */
 #ifdef _SYSV
 
@@ -131,10 +136,13 @@ extern void EXFUN (error_system_call, (int code, CONST char * name));
 
 #define HAVE_APPEND
 #define HAVE_FCNTL
-#define HAVE_ONDELAY
 #define HAVE_GETCWD
 #define HAVE_TERMIO
 #define HAVE_TIMES
+
+#define AMBIGUOUS_NONBLOCK
+#define ERRNO_NONBLOCK EAGAIN
+#define FCNTL_NONBLOCK O_NDELAY
 
 #ifdef _SYSV3
 
@@ -157,7 +165,7 @@ extern void EXFUN (error_system_call, (int code, CONST char * name));
 #define HAVE_MKDIR
 #define HAVE_RENAME
 #define HAVE_RMDIR
-#define HAVE_SELECT		/* does POSIX allow this */
+#define HAVE_SELECT
 #define HAVE_WAIT3
 
 #if (_HPUX_VERSION < 65)
