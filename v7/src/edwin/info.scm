@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: info.scm,v 1.127 1998/01/03 05:53:51 cph Exp $
+;;;	$Id: info.scm,v 1.128 1998/01/23 05:26:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -111,8 +111,7 @@ Once Info is started, the list of directories to search
 comes from the variable `info-directory-list'.
 This variable `info-default-directory-list' is used as the default
 for initializing `info-directory-list' when Info is started."
-  (append (os/info-default-directory-list)
-	  (list (edwin-info-directory)))
+  (os/info-default-directory-list)
   list-of-pathnames?)
 
 (define-variable info-suffix-list
