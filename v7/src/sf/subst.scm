@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 3.3 1987/03/20 23:49:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 3.4 1987/05/04 23:51:57 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -92,7 +92,10 @@ MIT in each case. |#
       (lambda (operation info)
 	(case operation
 	  ((INTEGRATE-OPERATOR EXPAND) expression)
-	  ((INTEGRATE) (integrate/name expression info environment))
+	  ((INTEGRATE)
+	   (integrate/name expression info environment
+	     identity-procedure
+	     (lambda () expression)))
 	  (else (error "Unknown operation" operation))))
       (lambda () expression))))
 
@@ -105,10 +108,11 @@ MIT in each case. |#
 	(case operation
 	  ((#F) (dont-integrate))
 	  ((INTEGRATE INTEGRATE-OPERATOR)
-	   (integrate/combination operations
-				  environment
-				  (integrate/name operator info environment)
-				  operands))
+	   (integrate/name operator info environment
+	     (lambda (operator)
+	       (integrate/combination operations environment operator
+				      operands))
+	     dont-integrate))
 	  ((EXPAND)
 	   (info operands
 		 identity-procedure ;expanded value can't be optimized further.
@@ -188,26 +192,30 @@ MIT in each case. |#
 			    (combination/operands combination)))))
 
 (define (integrate/combination operations environment operator operands)
-  (if (reference? operator)
-      (integrate/reference-operator operations
-				    environment
-				    operator
-				    operands)
-      (combination/optimizing-make
-       (if (procedure? operator)
-	   (integrate/procedure-operator operations
-					 environment
-					 operator
-					 operands)
-	   (let ((operator
-		  (integrate/expression operations environment operator)))
-	     (if (procedure? operator)
-		 (integrate/procedure-operator operations
-					       environment
-					       operator
-					       operands)
-		 operator)))
-       operands)))
+  (cond ((reference? operator)
+	 (integrate/reference-operator operations
+				       environment
+				       operator
+				       operands))
+	((and (access? operator)
+	      (system-global-environment? (access/environment operator)))
+	 (integrate/access-operator operations environment operator operands))
+	(else
+	 (combination/optimizing-make
+	  (if (procedure? operator)
+	      (integrate/procedure-operator operations
+					    environment
+					    operator
+					    operands)
+	      (let ((operator
+		     (integrate/expression operations environment operator)))
+		(if (procedure? operator)
+		    (integrate/procedure-operator operations
+						  environment
+						  operator
+						  operands)
+		    operator)))
+	  operands))))
 
 (define (integrate/procedure-operator operations environment procedure
 				      operands)
@@ -266,9 +274,33 @@ MIT in each case. |#
 
 (define-method/integrate 'ACCESS
   (lambda (operations environment expression)
-    (access/make (integrate/expression operations environment
-				       (access/environment expression))
-		 (access/name expression))))
+    (let ((environment* (access/environment expression))
+	  (name (access/name expression)))
+      (if (system-global-environment? environment*)
+	  (let ((entry (assq name usual-integrations/constant-alist)))
+	    (if entry
+		(cdr entry)
+		(access/make environment* name)))
+	  (access/make (integrate/expression operations environment
+					     environment*)
+		       name)))))
+
+(define (integrate/access-operator operations environment operator operands)
+  (let ((name (access/name operator))
+	(dont-integrate
+	 (lambda ()
+	   (combination/make operator operands))))
+    (let ((entry (assq name usual-integrations/constant-alist)))
+      (if entry
+	  (integrate/combination operations environment (cdr entry) operands)
+	  (let ((entry (assq name usual-integrations/expansion-alist)))
+	    (if entry
+		((cdr entry) operands identity-procedure dont-integrate)
+		(dont-integrate)))))))
+
+(define (system-global-environment? expression)
+  (and (constant? expression)
+       (eq? false (constant/value expression))))
 
 (define-method/integrate 'DELAY
   (lambda (operations environment expression)
@@ -306,21 +338,23 @@ MIT in each case. |#
       (return-2 environment
 		(map delayed-integration/force values)))))
 
-(define (integrate/name reference info environment)
+(define (integrate/name reference info environment if-integrated if-not)
   (let ((variable (reference/variable reference)))
     (let ((finish
 	   (lambda (value uninterned)
-	     (copy/expression (reference/block reference) value uninterned))))
+	     (if-integrated
+	      (copy/expression (reference/block reference) value
+			       uninterned)))))
       (if info
 	  (transmit-values info finish)
 	  (environment/lookup environment variable
 	    (lambda (value)
 	      (if (delayed-integration? value)
 		  (if (delayed-integration/in-progress? value)
-		      reference
+		      (if-not)
 		      (finish (delayed-integration/force value) '()))
 		  (finish value '())))
-	    (lambda () reference))))))
+	    if-not)))))
 
 (define (variable/final-value variable environment if-value if-not)
   (environment/lookup environment variable
