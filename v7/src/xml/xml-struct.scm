@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.45 2004/08/10 01:09:41 cph Exp $
+$Id: xml-struct.scm,v 1.46 2004/08/12 06:31:01 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -238,7 +238,7 @@ USA.
   (text canonicalize canonicalize-char-data))
 
 (define-xml-type dtd
-  (root xml-name?)
+  (root xml-qname?)
   (external (lambda (object)
 	      (or (not object)
 		  (xml-external-id? object))))
