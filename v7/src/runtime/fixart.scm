@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: fixart.scm,v 1.10 2003/02/14 18:28:32 cph Exp $
+$Id: fixart.scm,v 1.11 2003/02/25 20:35:26 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1994,1996,1999,2000,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -108,6 +108,10 @@ USA.
   (flo:vector-ref floating-vector-ref 2)
   (flo:vector-set! floating-vector-set! 3))
 
+(define (guarantee-index-fixnum object caller)
+  (if (not (index-fixnum? object))
+      (error:wrong-type-argument object "index integer" caller)))
+
 (define-integrable (fix:<= x y)
   (not (fix:> x y)))
 
