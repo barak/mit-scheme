@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for Linux
 
-$Id: linux.h,v 1.14 1998/01/20 01:06:09 cph Exp $
+$Id: linux.h,v 1.15 1998/07/25 05:52:03 cph Exp $
 
 Copyright (c) 1995-98 Massachusetts Institute of Technology
 
@@ -48,6 +48,10 @@ MIT in each case. */
    instead.  */
 #define LIBS_TERMCAP LINUX_STATIC_LIBS (-lncurses)
 #define HAVE_TERMINFO
+/* Comment out the following line if you are running ncurses 3.4 or
+   later (and possibly a bit earlier).  Version 3.0 and earlier
+   defined "tparam", but version 3.4 and later do not.  I'm not sure
+   about intermediate versions.  */
 #define TERMCAP_FILES
 #else
 #define M4_SWITCH_SYSTEM
