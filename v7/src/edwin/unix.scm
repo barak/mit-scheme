@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.18 1991/10/23 06:14:21 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.19 1991/11/04 20:52:15 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -98,10 +98,10 @@ Includes the new backup.  Must be > 0."
 	       (loop (-1+ slash))))))))
 
 (define (os/pathname->display-string pathname)
-  (let ((relative (pathname-relative? pathname (home-directory-pathname))))
-    (if relative
-	(string-append "~/" (pathname->string relative))
-	(pathname->string pathname))))
+  (let ((pathname (enough-pathname pathname (user-homedir-pathname))))
+    (if (pathname-absolute? pathname)
+	(->namestring pathname)
+	(string-append "~/" (->namestring pathname)))))
 
 (define (os/filename->display-string filename)
   (let ((home (unix/current-home-directory)))
@@ -117,16 +117,15 @@ Includes the new backup.  Must be > 0."
 (define (os/auto-save-pathname pathname buffer)
   (let ((wrap
 	 (lambda (name directory)
-	   (merge-pathnames (string->pathname (string-append "#" name "#"))
-			    directory))))
+	   (merge-pathnames (string-append "#" name "#") directory))))
     (if (not pathname)
 	(wrap (string-append "%" (buffer-name buffer))
 	      (buffer-default-directory buffer))
-	(wrap (pathname-name-string pathname)
-	      (pathname-directory-path pathname)))))
+	(wrap (file-namestring pathname)
+	      (directory-pathname pathname)))))
 
 (define (os/precious-backup-pathname pathname)
-  (string->pathname (string-append (pathname->string pathname) "#")))
+  (->pathname (string-append (->namestring pathname) "#")))
 
 (define (os/backup-buffer? truename)
   (and (memv (string-ref (vector-ref (file-attributes truename) 8) 0)
@@ -134,12 +133,28 @@ Includes the new backup.  Must be > 0."
        (not
 	(let ((directory (pathname-directory truename)))
 	  (and (pair? directory)
-	       (eq? 'ROOT (car directory))
+	       (eq? 'ABSOLUTE (car directory))
 	       (pair? (cdr directory))
 	       (eqv? "tmp" (cadr directory)))))))
 
 (define (os/default-backup-filename)
   "~/%backup%~")
+
+(define (os/truncate-filename-for-modeline filename width)
+  (let ((length (string-length filename)))
+    (if (< 0 width length)
+	(let ((result
+	       (substring
+		filename
+		(let ((index (- length width)))
+		  (or (and (not (char=? #\/ (string-ref filename index)))
+			   (substring-find-next-char filename index length
+						     #\/))
+		      (1+ index)))
+		length)))
+	  (string-set! result 0 #\$)
+	  result)
+	filename)))
 
 (define (os/backup-by-copying? truename)
   (let ((attributes (file-attributes truename)))
@@ -153,14 +168,14 @@ Includes the new backup.  Must be > 0."
   (let ((no-versions
 	 (lambda ()
 	   (values
-	    (string->pathname (string-append (pathname->string truename) "~"))
+	    (->pathname (string-append (->namestring truename) "~"))
 	    '()))))
     (if (eq? 'NEVER (ref-variable version-control))
 	(no-versions)
-	(let ((prefix (string-append (pathname-name-string truename) ".~")))
+	(let ((prefix (string-append (file-namestring truename) ".~")))
 	  (let ((filenames
 		 (os/directory-list-completions
-		  (pathname-directory-string truename)
+		  (directory-namestring truename)
 		  prefix))
 		(prefix-length (string-length prefix)))
 	    (let ((possibilities
@@ -188,14 +203,12 @@ Includes the new backup.  Must be > 0."
 		  (if (or (ref-variable version-control)
 			  (positive? high-water-mark))
 		      (let ((version->pathname
-			     (let ((directory
-				    (pathname-directory-path truename)))
+			     (let ((directory (directory-pathname truename)))
 			       (lambda (version)
 				 (merge-pathnames
-				  (string->pathname
-				   (string-append prefix
-						  (number->string version)
-						  "~"))
+				  (string-append prefix
+						 (number->string version)
+						 "~")
 				  directory)))))
 			(values
 			 (version->pathname (1+ high-water-mark))
@@ -208,68 +221,6 @@ Includes the new backup.  Must be > 0."
 				    (sublist versions start end))
 			       '()))))
 		      (no-versions))))))))))
-
-(define (os/make-dired-line pathname)
-  (let ((attributes (file-attributes pathname)))
-    (and attributes
-	 (string-append
-	  "  "
-	  (file-attributes/mode-string attributes)
-	  " "
-	  (pad-on-left-to
-	   (number->string (file-attributes/n-links attributes) 10)
-	   3)
-	  " "
-	  (pad-on-right-to (unix/uid->string (file-attributes/uid attributes))
-			   8)
-	  " "
-	  (pad-on-right-to (unix/gid->string (file-attributes/gid attributes))
-			   8)
-	  " "
-	  (pad-on-left-to
-	   (number->string (file-attributes/length attributes) 10)
-	   7)
-	  " "
-	  (substring (unix/file-time->string
-		      (file-attributes/modification-time attributes))
-		     4
-		     16)
-	  " "
-	  (pathname-name-string pathname)
-	  (let ((type (file-attributes/type attributes)))
-	    (if (string? type)
-		(string-append " -> " type)
-		""))))))
-
-(define (os/dired-filename-region lstart)
-  (let ((lend (line-end lstart 0)))
-    (if (not (re-search-forward
-	      "\\(Jan\\|Feb\\|Mar\\|Apr\\|May\\|Jun\\|Jul\\|Aug\\|Sep\\|Oct\\|Nov\\|Dec\\) +[0-9]+ +[0-9:]+ "
-	      lstart
-	      lend))
-	(editor-error "No filename on this line"))
-    (make-region (re-match-end 0) lend)))
-
-(define (os/dired-sort-pathnames pathnames)
-  (sort pathnames
-    (lambda (x y)
-      (string<? (pathname-name-string x) (pathname-name-string y)))))
-
-(define (os/truncate-filename-for-modeline filename width)
-  (let ((length (string-length filename)))
-    (if (< 0 width length)
-	(let ((result
-	       (substring
-		filename
-		(let ((index (- length width)))
-		  (or (and (not (char=? #\/ (string-ref filename index)))
-			   (substring-find-next-char filename index length
-						     #\/))
-		      (1+ index)))
-		length)))
-	  (string-set! result 0 #\$)
-	  result)
-	filename)))
 
 (define (os/directory-list directory)
   ((ucode-primitive directory-close 0))
@@ -339,19 +290,13 @@ Includes the new backup.  Must be > 0."
 
 (define (os/init-file-name)
   "~/.edwin")
-
-(define os/find-file-initialization-filename
-  (let ((name-path (string->pathname ".edwin-ffi")))
-    (lambda (pathname)
-      (or (and (equal? "scm" (pathname-type pathname))
-	       (let ((pathname (pathname-new-version pathname "ffi")))
-		 (and (file-exists? pathname)
-		      pathname)))
-	  (let ((pathname
-		 (merge-pathnames name-path
-				  (pathname-directory-path pathname))))
-	    (and (file-exists? pathname)
-		 pathname))))))
 
-(define-integrable (file-readable? filename)
-  (unix/file-access filename 4))
+(define (os/find-file-initialization-filename pathname)
+  (or (and (equal? "scm" (pathname-type pathname))
+	   (let ((pathname (pathname-new-type pathname "ffi")))
+	     (and (file-exists? pathname)
+		  pathname)))
+      (let ((pathname
+	     (merge-pathnames ".edwin-ffi" (directory-pathname pathname))))
+	(and (file-exists? pathname)
+	     pathname))))

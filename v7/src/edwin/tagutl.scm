@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.43 1991/10/11 03:32:51 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.44 1991/11/04 20:52:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -155,7 +155,7 @@ See documentation of variable tags-file-name."
 	  (let ((pathname
 		 (merge-pathnames
 		  (tag->pathname tag)
-		  (pathname-directory-path (buffer-pathname buffer))))
+		  (directory-pathname (buffer-pathname buffer))))
 		(regexp
 		 (string-append
 		  "^"
@@ -189,7 +189,7 @@ See documentation of variable tags-file-name."
 		(if (not mark)
 		    (editor-failure regexp
 				    " not found in "
-				    (pathname-name-string pathname))
+				    (file-namestring pathname))
 		    (set-current-point! (line-start mark 0))))))))))
 
 (define find-tag-match-regexp
@@ -252,7 +252,7 @@ See documentation of variable tags-file-name."
 	  (set! tags-loop-pathnames (cdr pathnames))
 	  (find-file (car pathnames))
 	  (message "Scanning file "
-		   (pathname->string (buffer-truename (current-buffer)))
+		   (->namestring (buffer-truename (current-buffer)))
 		   "...")
 	  (set-current-point! (buffer-start (current-buffer)))
 	  (tags-loop-continuation)))))
@@ -276,7 +276,7 @@ See documentation of variable tags-file-name."
 	  (revert-buffer buffer true true))
       (if (not (eqv? (extract-right-char (buffer-start buffer)) #\Page))
 	  (editor-error "File "
-			(pathname->string pathname)
+			(->namestring pathname)
 			" not a valid tag table"))
       buffer)))
 
@@ -286,8 +286,8 @@ See documentation of variable tags-file-name."
       (let ((mark (mark+ (line-start file-mark 1)
 			 (with-input-from-mark file-mark read))))
 	(if (mark> mark tag)
-	    (string->pathname (extract-string (line-start file-mark 0)
-					      (mark-1+ file-mark)))
+	    (->pathname (extract-string (line-start file-mark 0)
+					(mark-1+ file-mark)))
 	    (loop mark)))))
   (loop (group-start tag)))
 
@@ -296,7 +296,7 @@ See documentation of variable tags-file-name."
     (or (buffer-get buffer tags-table-pathnames)
 	(let ((pathnames
 	       (let ((directory
-		      (pathname-directory-path (buffer-truename buffer))))
+		      (directory-pathname (buffer-truename buffer))))
 		 (let loop ((mark (buffer-start buffer)))
 		   (let ((file-mark
 			  (skip-chars-backward "^,\n" (line-end mark 1))))
@@ -304,9 +304,8 @@ See documentation of variable tags-file-name."
 			    (mark+ (line-start file-mark 1)
 				   (with-input-from-mark file-mark read))))
 		       (cons (merge-pathnames
-			      (string->pathname
-			       (extract-string (line-start file-mark 0)
-					       (mark-1+ file-mark)))
+			      (extract-string (line-start file-mark 0)
+					      (mark-1+ file-mark))
 			      directory)
 			     (if (group-end? mark)
 				 '()

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.147 1991/10/29 13:39:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.148 1991/11/04 20:50:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -151,8 +151,7 @@ The buffer is guaranteed to be deselected at that time."
 (define (set-buffer-pathname! buffer pathname)
   (vector-set! buffer buffer-index:pathname pathname)
   (if pathname
-      (set-buffer-default-directory! buffer
-				     (pathname-directory-path pathname)))
+      (set-buffer-default-directory! buffer (directory-pathname pathname)))
   (buffer-modeline-event! buffer 'BUFFER-PATHNAME))
 
 (define (set-buffer-truename! buffer truename)

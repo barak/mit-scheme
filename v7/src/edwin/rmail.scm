@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.10 1991/10/26 21:08:26 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.11 1991/11/04 20:51:47 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -171,7 +171,7 @@ w	Edit the current message.  C-c C-c to return to Rmail."
      (let ((inboxes (parse-file-inboxes buffer)))
        (if (and (null? inboxes)
 		(pathname=? (buffer-pathname buffer)
-			    (->pathname (ref-variable rmail-file-name))))
+			    (ref-variable rmail-file-name)))
 	   (ref-variable rmail-primary-inbox-list)
 	   inboxes)))
     (buffer-put! buffer 'REVERT-BUFFER-METHOD rmail-revert-buffer)
@@ -287,9 +287,7 @@ then performs rmail editing on that file,
 but does not copy any new mail into the file."
   (lambda ()
     (list (and (command-argument)
-	       (pathname->string
-		(prompt-for-input-truename "Run rmail on RMAIL file"
-					   false)))))
+	       (prompt-for-existing-file "Run rmail on RMAIL file" false))))
   (lambda (filename)
     (rmail-find-file (or filename (ref-variable rmail-file-name)))
     (let ((mode (current-major-mode)))
@@ -363,9 +361,7 @@ Interactively, a prefix argument causes us to read a file name
 and use that file as the inbox."
   (lambda ()
     (list (and (command-argument)
-	       (pathname->string
-		(prompt-for-input-truename "Get new mail from file"
-					   false)))))
+	       (prompt-for-existing-file "Get new mail from file" false))))
   (lambda (filename)
     (let ((buffer (current-buffer)))
       (rmail-find-file-revert buffer)
@@ -452,8 +448,7 @@ and use that file as the inbox."
     (let ((source (->pathname filename)))
       (cond ((not rename?)
 	     (insert source))
-	    ((string=? rmail-spool-directory
-		       (pathname-directory-string source))
+	    ((string=? rmail-spool-directory (directory-namestring source))
 	     (rename-inbox-using-movemail source
 					  insert
 					  (buffer-default-directory buffer)))
@@ -461,11 +456,10 @@ and use that file as the inbox."
 	     (rename-inbox-using-rename source insert))))))
 
 (define (rename-inbox-using-rename source insert)
-  (let ((target
-	 (string->pathname (string-append (pathname->string source) "~"))))
+  (let ((target (string-append (->namestring source) "~")))
     (let ((msg
 	   (string-append "Getting mail from "
-			  (pathname->string source)
+			  (->namestring source)
 			  "...")))
       (message msg)
       (if (and (file-exists? source) (not (file-exists? target)))
@@ -479,16 +473,12 @@ and use that file as the inbox."
 	 ;; On some systems, /usr/spool/mail/foo is a directory and
 	 ;; the actual inbox is /usr/spool/mail/foo/foo.
 	 (if (file-directory? source)
-	     (merge-pathnames (string->pathname (pathname-name source))
+	     (merge-pathnames (pathname-name source)
 			      (pathname-as-directory source))
 	     source))
-	(target
-	 (merge-pathnames (string->pathname ".newmail")
-			  (->pathname directory))))
+	(target (merge-pathnames ".newmail" directory)))
     (let ((msg
-	   (string-append "Getting mail from "
-			  (pathname->string source)
-			  "...")))
+	   (string-append "Getting mail from " (->namestring source) "...")))
       (message msg)
       (if (and (file-exists? source)
 	       (not (file-exists? target)))
@@ -496,10 +486,10 @@ and use that file as the inbox."
 	    (let ((start (buffer-start error-buffer))
 		  (end (buffer-end error-buffer)))
 	      (run-synchronous-process false start false false
-				       (pathname->string
+				       (->namestring
 					(edwin-etc-pathname "movemail"))
-				       (pathname->string source)
-				       (pathname->string target))
+				       (->namestring source)
+				       (->namestring target))
 	      (if (mark< start end)
 		  (error
 		   (let ((m
@@ -1270,12 +1260,12 @@ If file is being visited, the message is appended to the
 buffer visiting that file."
   (lambda ()
     (list
-     (pathname->string
+     (->namestring
       (get-rmail-output-pathname "Output message to Rmail file"
 				 (ref-variable rmail-last-rmail-file)))))
   (lambda (filename)
     (let* ((pathname (->pathname filename))
-	   (filename (pathname->string pathname)))
+	   (filename (->namestring pathname)))
       (set-variable! rmail-last-rmail-file filename)
       (let* ((memo (current-msg-memo))
 	     (message
@@ -1325,12 +1315,12 @@ buffer visiting that file."
   "Append this message to Unix mail file named FILE-NAME."
   (lambda ()
     (list
-     (pathname->string
+     (->namestring
       (get-rmail-output-pathname "Output message to Unix mail file"
 				 (ref-variable rmail-last-file)))))
   (lambda (filename)
     (let* ((pathname (->pathname filename)))
-      (set-variable! rmail-last-file (pathname->string pathname))
+      (set-variable! rmail-last-file (->namestring pathname))
       (let ((memo (current-msg-memo)))
 	(let ((buffer (temporary-buffer " rmail output")))
 	  (let ((end (mark-left-inserting-copy (buffer-end buffer))))
@@ -1360,11 +1350,11 @@ buffer visiting that file."
 
 (define (get-rmail-output-pathname prompt default)
   (let ((default (->pathname default)))
-    (let ((name (pathname-name-path default)))
+    (let ((name (file-pathname default)))
       (let ((pathname
 	     (prompt-for-pathname
-	      (string-append prompt " (default " (pathname->string name) ")")
-	      (pathname-directory-path default)
+	      (string-append prompt " (default " (->namestring name) ")")
+	      (directory-pathname default)
 	      false)))
 	(if (file-directory? pathname)
 	    (merge-pathnames name (pathname-as-directory pathname))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.116 1991/05/10 22:19:16 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.117 1991/11/04 20:50:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -106,7 +106,7 @@ Type q immediately to make the buffer menu go away."
 			    (group-length (buffer-group buffer)))
 			   (mode-display-name (buffer-major-mode buffer))
 			   (let ((truename (buffer-truename buffer)))
-			     (if truename (pathname->string truename) ""))))
+			     (if truename (->namestring truename) ""))))
 			 (newline))))
 		  (buffer-list)))))
   (set-buffer-point! buffer (line-start (buffer-start buffer) 2))

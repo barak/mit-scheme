@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debuge.scm,v 1.42 1991/05/10 04:52:20 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debuge.scm,v 1.43 1991/11/04 20:50:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -54,33 +54,33 @@
   (if (and (buffer-modified? buffer)
 	   (buffer-writeable? buffer))
       (let ((pathname
-	     (let ((pathname (buffer-pathname buffer)))
-	       (cond ((not pathname)
-		      (and (y-or-n? "Save buffer "
-				    (buffer-name buffer)
-				    " (Y or N)? ")
-			   (->pathname (prompt-for-expression "Filename"))))
-		     ((integer? (pathname-version pathname))
-		      (pathname-new-version pathname 'NEWEST))
-		     (else
-		      pathname)))))
+	     (merge-pathnames
+	      (let ((pathname (buffer-pathname buffer)))
+		(cond ((not pathname)
+		       (and (y-or-n? "Save buffer "
+				     (buffer-name buffer)
+				     " (Y or N)? ")
+			    (prompt-for-expression "Filename")))
+		      ((integer? (pathname-version pathname))
+		       (pathname-new-version pathname 'NEWEST))
+		      (else
+		       pathname))))))
 	(if pathname
-	    (let ((truename (pathname->output-truename pathname)))
-	      (let ((filename (pathname->string truename)))
-		(if (or (not (file-exists? filename))
-			(y-or-n? "File '"
-				 (pathname->string pathname)
-				 "' exists.  Write anyway (Y or N)? "))
-		    (begin
-		      (newline)
-		      (write-string "Writing file '")
-		      (write-string filename)
-		      (write-string "'")
-		      (write-region (buffer-region buffer) filename false)
-		      (write-string " -- done")
-		      (set-buffer-pathname! buffer pathname)
-		      (set-buffer-truename! buffer truename)
-		      (buffer-not-modified! buffer)))))))))
+	    (let ((filename (->namestring pathname)))
+	      (if (or (not (file-exists? pathname))
+		      (y-or-n? "File '"
+			       filename
+			       "' exists.  Write anyway (Y or N)? "))
+		  (begin
+		    (newline)
+		    (write-string "Writing file '")
+		    (write-string filename)
+		    (write-string "'")
+		    (write-region (buffer-region buffer) filename false)
+		    (write-string " -- done")
+		    (set-buffer-pathname! buffer pathname)
+		    (set-buffer-truename! buffer (->truename pathname))
+		    (buffer-not-modified! buffer))))))))
 
 (define-command debug-count-marks
   "Show the number of in-use and GC'ed marks for the current buffer."

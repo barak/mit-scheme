@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.107 1991/10/18 16:02:39 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.108 1991/11/04 20:51:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -173,7 +173,7 @@ s	Search through this Info file for specified regexp,
 			"Info:  ("
 			(let ((pathname (ref-variable info-current-file)))
 			  (if pathname
-			      (pathname-name-string pathname)
+			      (file-namestring pathname)
 			      ""))
 			")"
 			(or (ref-variable info-current-node) ""))))
@@ -364,7 +364,7 @@ except for \\[info-cease-edit] to return to Info."
 			(begin
 			  (let ((pathname (subfile-pathname (car subfiles))))
 			    (message "Searching subfile "
-				     (pathname-name-string pathname)
+				     (file-namestring pathname)
 				     "...")
 			    (set-current-subfile! pathname))
 			  (let ((mark (perform-search (buffer-start buffer))))
@@ -648,13 +648,12 @@ The name may be an abbreviation of the reference name."
 			;; unless filename is explicitly self-relative.
 			(if (let ((directory (pathname-directory pathname)))
 			      (and (pair? directory)
-				   (eq? (car directory) 'SELF)))
+				   (eq? (car directory) 'RELATIVE)
+				   (pair? (cdr directory))
+				   (equal? (cadr directory) ".")))
 			    (buffer-default-directory (current-buffer))
-			    (let ((info-directory
-				   (ref-variable info-directory)))
-			      (if info-directory
-				  (->pathname info-directory)
-				  (edwin-info-directory))))))))
+			    (or (ref-variable info-directory)
+				(edwin-info-directory)))))))
 		(if (file-exists? pathname)
 		    pathname
 		    (let ((pathname*
@@ -672,9 +671,7 @@ The name may be an abbreviation of the reference name."
 		       (ref-variable info-current-node)
 		       (mark-index (current-point))))
       ;; Switch files if necessary.
-      (if (and pathname
-	       (let ((pathname* (ref-variable info-current-file)))
-		 (not (and pathname* (pathname=? pathname pathname*)))))
+      (if (and pathname (equal? pathname (ref-variable info-current-file)))
 	  (begin
 	    (read-buffer buffer pathname true)
 	    (if (not (eq? (buffer-major-mode buffer) (ref-mode-object info)))
@@ -909,18 +906,16 @@ The name may be an abbreviation of the reference name."
 	(loop (cdr subfiles)))))
 
 (define (set-current-subfile! pathname)
-  (let ((subfile (ref-variable info-current-subfile)))
-    (if (or (not subfile)
-	    (not (pathname=? subfile pathname)))
-	(begin
-	  (read-buffer (current-buffer) pathname true)
-	  (set-variable! info-current-subfile pathname)))))
+  (if (not (equal? pathname (ref-variable info-current-subfile)))
+      (begin
+	(read-buffer (current-buffer) pathname true)
+	(set-variable! info-current-subfile pathname))))
 
 (define-integrable subfile-filename car)
 (define-integrable subfile-index cdr)
 
 (define (subfile-pathname subfile)
-  (merge-pathnames (->pathname (subfile-filename subfile))
+  (merge-pathnames (subfile-filename subfile)
 		   (ref-variable info-current-file)))
 
 (define (subfile-list)

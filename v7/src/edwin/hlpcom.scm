@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.100 1991/08/06 15:39:10 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.101 1991/11/04 20:51:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -266,9 +266,7 @@ If you want VALUE to be a string, you must surround it with doublequotes."
   ()
   (lambda ()
     (delete-other-windows (current-window))
-    (let ((pathname
-	   (merge-pathnames (string->pathname "TUTORIAL")
-			    (home-directory-pathname))))
+    (let ((pathname (merge-pathnames "TUTORIAL" (user-homedir-pathname))))
       (let ((buffer (pathname->buffer pathname)))
 	(if buffer
 	    (select-buffer buffer)

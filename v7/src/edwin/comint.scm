@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.10 1991/10/25 00:02:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.11 1991/11/04 20:50:38 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -443,8 +443,7 @@ See also \\[comint-dynamic-complete]."
       (let ((filename (region->string region)))
 	(set-current-point! (region-end region))
 	(comint-filename-complete
-	 (merge-pathnames (->pathname filename)
-			  (buffer-default-directory (current-buffer)))
+	 (merge-pathnames filename (buffer-default-directory (current-buffer)))
 	 filename
 	 (lambda (filename*)
 	   (region-delete! region)
@@ -459,9 +458,9 @@ it just adds completion characters to the end of the filename."
   (lambda ()
     (let ((region (comint-current-filename-region)))
       (let ((pathname
-	     (merge-pathnames (->pathname (region->string region))
+	     (merge-pathnames (region->string region)
 			      (buffer-default-directory (current-buffer)))))
-	(let ((filename (pathname->string pathname)))
+	(let ((filename (->namestring pathname)))
 	  (set-current-point! (region-end region))
 	  (comint-filename-complete
 	   pathname
@@ -479,9 +478,8 @@ it just adds completion characters to the end of the filename."
     (pop-up-generated-completions
      (lambda ()
        (filename-completions-list
-	(merge-pathnames
-	 (->pathname (region->string (comint-current-filename-region)))
-	 (buffer-default-directory (current-buffer))))))))
+	(merge-pathnames (region->string (comint-current-filename-region))
+			 (buffer-default-directory (current-buffer))))))))
 
 (define (comint-current-filename-region)
   (let ((point (current-point))

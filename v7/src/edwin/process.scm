@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.12 1991/10/29 13:48:22 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.13 1991/11/04 20:51:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -656,11 +656,11 @@ Prefix arg means replace the region with it."
 ;;; These procedures are not specific to the process abstraction.
 
 (define (find-program program default-directory)
-  (pathname->string
-   (let ((program (->pathname program))
-	 (lose (lambda () (error "Can't find program:" program))))
+  (->namestring
+   (let ((lose
+	  (lambda () (error "Can't find program:" (->namestring program)))))
      (cond ((pathname-absolute? program)
-	    (if (not (unix/file-access program 1)) (lose))
+	    (if (not (file-access program 1)) (lose))
 	    program)
 	   ((not default-directory)
 	    (let loop ((path (ref-variable exec-path)))
@@ -668,12 +668,11 @@ Prefix arg means replace the region with it."
 	      (or (and (car path)
 		       (pathname-absolute? (car path))
 		       (let ((pathname (merge-pathnames program (car path))))
-			 (and (unix/file-access pathname 1)
+			 (and (file-access pathname 1)
 			      pathname)))
 		  (loop (cdr path)))))
 	   (else
-	    (let ((default-directory
-		   (pathname->absolute-pathname default-directory)))
+	    (let ((default-directory (merge-pathnames default-directory)))
 	      (let loop ((path (ref-variable exec-path)))
 		(if (null? path) (lose))
 		(let ((pathname
@@ -683,7 +682,7 @@ Prefix arg means replace the region with it."
 			      ((pathname-absolute? (car path)) (car path))
 			      (else (merge-pathnames (car path)
 						     default-directory))))))
-		  (if (unix/file-access pathname 1)
+		  (if (file-access pathname 1)
 		      pathname
 		      (loop (cdr path)))))))))))
 
@@ -691,8 +690,7 @@ Prefix arg means replace the region with it."
   (let ((end (string-length string))
 	(substring
 	 (lambda (string start end)
-	   (pathname-as-directory
-	    (string->pathname (substring string start end))))))
+	   (pathname-as-directory (substring string start end)))))
     (let loop ((start 0))
       (if (< start end)
 	  (let ((index (substring-find-next-char string start end #\:)))

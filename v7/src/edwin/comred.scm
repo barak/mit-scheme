@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.88 1991/10/21 23:40:40 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.89 1991/11/04 20:50:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -390,12 +390,11 @@
       ((#\d)
        (varies (current-point) '(CURRENT-POINT)))
       ((#\D)
-       (prompting
-	(pathname->string (prompt-for-directory prompt false false))))
+       (prompting (prompt-for-directory prompt false)))
       ((#\f)
-       (prompting (pathname->string (prompt-for-input-truename prompt false))))
+       (prompting (prompt-for-existing-file prompt false)))
       ((#\F)
-       (prompting (pathname->string (prompt-for-pathname prompt false false))))
+       (prompting (prompt-for-file prompt false)))
       ((#\k)
        (prompting (prompt-for-key prompt (current-comtabs))))
       ((#\m)

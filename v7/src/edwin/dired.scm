@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.119 1991/10/26 21:07:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.120 1991/11/04 20:50:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -134,8 +134,7 @@ Type `h' after entering dired for more info."
   (let ((directory (->pathname directory)))
     (let ((buffer (get-dired-buffer directory)))
       (set-buffer-major-mode! buffer (ref-mode-object dired))
-      (set-buffer-default-directory! buffer
-				     (pathname-directory-path directory))
+      (set-buffer-default-directory! buffer (directory-pathname directory))
       (buffer-put! buffer 'REVERT-BUFFER-METHOD revert-dired-buffer)
       (buffer-put! buffer 'DIRED-DIRECTORY directory)
       (fill-dired-buffer! buffer directory)
@@ -144,9 +143,7 @@ Type `h' after entering dired for more info."
 (define (get-dired-buffer directory)
   (or (list-search-positive (buffer-list)
 	(lambda (buffer)
-	  (let ((directory* (buffer-get buffer 'DIRED-DIRECTORY)))
-	    (and directory*
-		 (pathname=? directory* directory)))))
+	  (equal? directory (buffer-get buffer 'DIRED-DIRECTORY))))
       (new-buffer (pathname->buffer-name directory))))
 
 (define (dired-buffer-directory buffer)
@@ -191,9 +188,7 @@ CANNOT contain the 'F' option."
   (set-buffer-writeable! buffer)
   (region-delete! (buffer-region buffer))
   (temporary-message
-   (string-append "Reading directory "
-		  (pathname->string pathname)
-		  "..."))
+   (string-append "Reading directory " (->namestring pathname) "..."))
   (read-directory pathname
 		  (ref-variable dired-listing-switches)
 		  (buffer-point buffer))
@@ -213,34 +208,33 @@ CANNOT contain the 'F' option."
   (set-buffer-read-only! buffer))
 
 (define (read-directory pathname switches mark)
-  (let ((directory (pathname-directory-path pathname)))
+  (let ((directory (directory-pathname pathname)))
     (if (file-directory? pathname)
 	(run-synchronous-process false mark directory false
 				 (find-program "ls" false)
 				 switches
-				 (pathname->string pathname))
+				 (->namestring pathname))
 	(shell-command false mark directory false
 		       (string-append "ls "
 				      switches
 				      " "
-				      (pathname-name-string pathname))))))
+				      (file-namestring pathname))))))
 
 (define (add-dired-entry pathname)
   (let ((lstart (line-start (current-point) 0))
-	(directory (pathname-directory-path pathname)))
+	(directory (directory-pathname pathname)))
     (if (pathname=? (buffer-default-directory (mark-buffer lstart)) directory)
 	(let ((start (mark-right-inserting lstart)))
 	  (run-synchronous-process false lstart directory false
 				   (find-program "ls" directory)
 				   "-d"
 				   (ref-variable dired-listing-switches)
-				   (pathname->string pathname))
+				   (->namestring pathname))
 	  (insert-string "  " start)
 	  (let ((start (mark-right-inserting (dired-filename-start start))))
 	    (insert-string
-	     (pathname-name-string
-	      (string->pathname
-	       (extract-and-delete-string start (line-end start 0))))
+	     (file-namestring
+	      (extract-and-delete-string start (line-end start 0)))
 	     start))))))
 
 (define-command dired-find-file
@@ -322,10 +316,10 @@ CANNOT contain the 'F' option."
   "Rename this file to TO-FILE."
   (lambda ()
     (list
-     (pathname->string
+     (->namestring
       (let ((pathname (dired-current-pathname)))
 	(prompt-for-pathname (string-append "Rename "
-					    (pathname-name-string pathname)
+					    (file-namestring pathname)
 					    " to")
 			     pathname
 			     false)))))
@@ -344,10 +338,10 @@ CANNOT contain the 'F' option."
   "Copy this file to TO-FILE."
   (lambda ()
     (list
-     (pathname->string
+     (->namestring
       (let ((pathname (dired-current-pathname)))
 	(prompt-for-pathname (string-append "Copy "
-					    (pathname-name-string pathname)
+					    (file-namestring pathname)
 					    " to")
 			     pathname
 			     false)))))
@@ -382,11 +376,11 @@ CANNOT contain the 'F' option."
 
 (define (dired-change-line program argument)
   (let ((pathname (dired-current-pathname)))
-    (let ((directory (pathname-directory-path pathname)))
+    (let ((directory (directory-pathname pathname)))
       (run-synchronous-process false false directory false
 			       (find-program program directory)
 			       argument
-			       (pathname->string pathname)))
+			       (->namestring pathname)))
     (dired-redisplay pathname)))
 
 (define (dired-redisplay pathname)
@@ -430,8 +424,8 @@ CANNOT contain the 'F' option."
 
 (define (dired-pathname lstart)
   (merge-pathnames
-   (pathname-directory-path (dired-buffer-directory (current-buffer)))
-   (string->pathname (region->string (dired-filename-region lstart)))))
+   (directory-pathname (dired-buffer-directory (current-buffer)))
+   (region->string (dired-filename-region lstart))))
 
 (define (dired-mark char n)
   (with-read-only-defeated (current-point)
@@ -490,7 +484,7 @@ CANNOT contain the 'F' option."
 	(let ((buffer (temporary-buffer " *Deletions*")))
 	  (write-strings-densely
 	   (map (lambda (filename)
-		  (pathname-name-string (car filename)))
+		  (file-namestring (car filename)))
 		filenames)
 	   (mark->output-port (buffer-point buffer))
 	   (window-x-size (current-window)))
@@ -509,7 +503,7 @@ CANNOT contain the 'F' option."
 		       (loop (cdr filenames)
 			     (if (dired-kill-file! (car filenames))
 				 failures
-				 (cons (pathname-name-string (caar filenames))
+				 (cons (file-namestring (caar filenames))
 				       failures))))
 		      ((not (null? failures))
 		       (message "Deletions failed: " failures)))))
@@ -528,7 +522,7 @@ CANNOT contain the 'F' option."
 (define (dired-kill-file! filename)
   (let ((deleted?
 	 (catch-file-errors (lambda () false)
-			    (lambda () (delete-file (car filename))))))
+			    (lambda () (delete-file (car filename)) true))))
     (if deleted?
 	(with-read-only-defeated (cdr filename)
 	  (lambda ()
@@ -554,7 +548,7 @@ CANNOT contain the 'F' option."
 	(let ((buffer (temporary-buffer " *Copies*")))
 	  (write-strings-densely
 	   (map (lambda (filename)
-		  (pathname-name-string (car filename)))
+		  (file-namestring (car filename)))
 		filenames)
 	   (mark->output-port (buffer-point buffer))
 	   (window-x-size (current-window)))
@@ -563,19 +557,19 @@ CANNOT contain the 'F' option."
 	  (set-buffer-read-only! buffer)
 	  (let ((destination
 		 (pathname-directory
-		  (with-selected-buffer
-		   buffer
-		   (lambda ()
-		     (local-set-variable! truncate-partial-width-windows false)
-		     (prompt-for-directory "Copy these files to directory"
-					   false
-					   true))))))
+		  (with-selected-buffer buffer
+		    (lambda ()
+		      (local-set-variable! truncate-partial-width-windows
+					   false)
+		      (prompt-for-existing-directory
+		       "Copy these files to directory"
+		       false))))))
 	    (let loop ((filenames filenames) (failures '()))
 	      (cond ((not (null? filenames))
 		     (loop (cdr filenames)
 			   (if (dired-copy-file! (car filenames) destination)
 			       failures
-			       (cons (pathname-name-string (caar filenames))
+			       (cons (file-namestring (caar filenames))
 				     failures))))
 		    ((not (null? failures))
 		     (message "Copies failed: " (reverse! failures))))))
@@ -615,11 +609,10 @@ Actions controlled by variables list-directory-brief-switches
  and list-directory-verbose-switches."
   (lambda ()
     (let ((argument (command-argument)))
-      (list (pathname->string
-	     (prompt-for-directory (if argument
-				       "List directory (verbose)"
-				       "List directory (brief)")
-				   false false))
+      (list (prompt-for-directory (if argument
+				      "List directory (verbose)"
+				      "List directory (brief)")
+				  false)
 	    argument)))
   (lambda (directory argument)
     (let ((directory (->pathname directory))
@@ -627,7 +620,7 @@ Actions controlled by variables list-directory-brief-switches
       (disable-group-undo! (buffer-group buffer))
       (let ((point (buffer-end buffer)))
 	(insert-string "Directory " point)
-	(insert-string (pathname->string directory) point)
+	(insert-string (->namestring directory) point)
 	(insert-newline point)
 	(read-directory directory
 			(if argument

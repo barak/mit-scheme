@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.11 1991/10/26 21:08:33 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.12 1991/11/04 20:51:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -101,7 +101,9 @@ False means let mailer mail back a message to report errors."
 
 (define-variable sendmail-program
   "Filename of sendmail program."
-  "/usr/lib/sendmail"
+  (if (file-exists? "/usr/lib/sendmail")
+      "/usr/lib/sendmail"
+      "fakemail")
   string?)
 
 (define-variable mail-yank-ignored-headers
@@ -538,7 +540,7 @@ Numeric argument means justify as well."
 		 (extract-string (re-match-start 1) (re-match-end 1))))
 	    (move-mark-to! m (line-start (re-match-start 0) 0))
 	    (delete-string m (line-start m 1))
-	    (loop (cons (string->pathname filename) pathnames)))
+	    (loop (cons (->pathname filename) pathnames)))
 	  (begin
 	    (mark-temporary! m)
 	    pathnames)))))

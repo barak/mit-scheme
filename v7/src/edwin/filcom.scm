@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.160 1991/10/11 03:31:24 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.161 1991/11/04 20:50:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -56,11 +56,11 @@
   (select-buffer-other-screen (find-file-noselect filename true)))
 
 (define (find-file-noselect filename warn?)
-  (let ((pathname (pathname->absolute-pathname (->pathname filename))))
+  (let ((pathname (merge-pathnames filename)))
     (if (file-directory? pathname)
 	(if (ref-variable find-file-run-dired)
 	    (make-dired-buffer (pathname-as-directory pathname))
-	    (editor-error (pathname->string pathname) " is a directory."))
+	    (editor-error (->namestring pathname) " is a directory."))
 	(let ((buffer (pathname->buffer pathname)))
 	  (if buffer
 	      (begin
@@ -80,7 +80,7 @@
       (let ((pathname (buffer-pathname buffer)))
 	(cond ((not (file-exists? pathname))
 	       (editor-error "File "
-			     (pathname->string pathname)
+			     (->namestring pathname)
 			     " no longer exists!"))
 	      ((prompt-for-yes-or-no?
 		(string-append
@@ -157,14 +157,14 @@ Argument means don't offer to use auto-save file."
 	      "Buffer does not seem to be associated with any file"))
 	    ((not (file-readable? pathname))
 	     (editor-error "File "
-			   (pathname->string pathname)
+			   (->namestring pathname)
 			   " no longer "
 			   (if (file-exists? pathname) "exists" "readable")
 			   "!"))
 	    ((or dont-confirm?
 		 (prompt-for-yes-or-no?
 		  (string-append "Revert buffer from file "
-				 (pathname->string pathname))))
+				 (->namestring pathname))))
 	     ;; If file was backed up but has changed since, we
 	     ;; should make another backup.
 	     (if (and (not auto-save?)
@@ -215,7 +215,7 @@ Argument means don't offer to use auto-save file."
 		    "File is write protected")
 		   ((file-attributes pathname)
 		    "File exists, but is read-protected.")
-		   ((file-attributes (pathname-directory-path pathname))
+		   ((file-attributes (directory-pathname pathname))
 		    "File not found and directory write-protected")
 		   (else
 		    "File not found and directory doesn't exist"))))
@@ -333,7 +333,7 @@ If `trim-versions-without-asking' is false, system will query user
 	(if (and (ref-variable enable-emacs-write-file-message)
 		 (> (buffer-length buffer) 50000))
 	    (message "Saving file "
-		     (pathname->string (buffer-pathname buffer))
+		     (->namestring (buffer-pathname buffer))
 		     "..."))
 	(write-buffer-interactive buffer backup-mode))
       (message "(No changes need to be written)")))
@@ -366,7 +366,7 @@ With argument, saves all with no questions."
 			     (let ((pathname (buffer-pathname buffer)))
 			       (if pathname
 				   (string-append "Save file "
-						  (pathname->string pathname))
+						  (->namestring pathname))
 				   (string-append "Save buffer "
 						  (buffer-name buffer)))))
 			    (write-buffer-interactive buffer false))))
@@ -388,8 +388,8 @@ if you wish to make buffer not be visiting any file."
   (lambda (filename)
     (set-visited-pathname
      (current-buffer)
-     (let ((pathname (string->pathname filename)))
-       (and (not (string-null? (pathname-name-string pathname)))
+     (let ((pathname (->pathname filename)))
+       (and (not (string-null? (file-namestring pathname)))
 	    pathname)))))
 
 (define (set-visited-pathname buffer pathname)
@@ -444,68 +444,52 @@ Leaves point at the beginning, mark at the end."
 	(insert-file point filename)
 	(set-current-point! point)
 	(push-current-mark! mark)))))
-
+
 (define (pathname->buffer-name pathname)
-  (if (pathname-name pathname)
-      (pathname-name-string pathname)
-      (let ((name
-	     (let ((directory (pathname-directory pathname)))
-	       (and (pair? directory)
-		    (car (last-pair directory))))))
-	(if (string? name)
-	    name
-	    (pathname->string pathname)))))
+  (file-namestring
+   (let ((pathname (->pathname pathname)))
+     (if (pathname-name pathname)
+	 pathname
+	 (directory-pathname-as-file pathname)))))
 
 (define (pathname->buffer pathname)
-  (or (list-search-positive (buffer-list)
-	(lambda (buffer)
-	  (let ((pathname* (buffer-pathname buffer)))
-	    (and pathname*
-		 (pathname=? pathname pathname*)))))
-      (let ((truename (pathname->input-truename pathname)))
-	(and truename
-	     (list-search-positive (buffer-list)
-	       (lambda (buffer)
-		 (let ((pathname* (buffer-pathname buffer)))
-		   (and pathname*
-			(or (pathname=? pathname pathname*)
-			    (pathname=? truename pathname*)
-			    (let ((truename* (buffer-truename buffer)))
-			      (and truename*
-				   (pathname=? truename truename*))))))))))))
+  (let ((pathname (->pathname pathname)))
+    (list-search-positive (buffer-list)
+      (lambda (buffer)
+	(equal? pathname (buffer-pathname buffer))))))
 
 (define-command copy-file
   "Copy a file; the old and new names are read in the typein window.
 If a file with the new name already exists, confirmation is requested first."
   (lambda ()
-    (let ((old (prompt-for-input-truename "Copy file" false)))
-      (list old (prompt-for-output-truename "Copy to" old))))
+    (let ((old (prompt-for-existing-file "Copy file" false)))
+      (list old (prompt-for-file "Copy to" old))))
   (lambda (old new)
     (if (or (not (file-exists? new))
 	    (prompt-for-yes-or-no?
 	     (string-append "File "
-			    (pathname->string new)
+			    (->namestring new)
 			    " already exists; copy anyway")))
 	(begin (copy-file old new)
-	       (message "Copied " (pathname->string old)
-			" => " (pathname->string new))))))
+	       (message "Copied " (->namestring old)
+			" => " (->namestring new))))))
 
 (define-command rename-file
   "Rename a file; the old and new names are read in the typein window.
 If a file with the new name already exists, confirmation is requested first."
   (lambda ()
-    (let ((old (prompt-for-input-truename "Rename file" false)))
-      (list old (prompt-for-output-truename "Rename to" old))))
+    (let ((old (prompt-for-existing-file "Rename file" false)))
+      (list old (prompt-for-file "Rename to" old))))
   (lambda (old new)
     (let ((do-it
 	   (lambda ()
 	     (rename-file old new)
-	     (message "Renamed " (pathname->string old)
-		      " => " (pathname->string new)))))
+	     (message "Renamed " (->namestring old)
+		      " => " (->namestring new)))))
       (if (file-exists? new)
 	  (if (prompt-for-yes-or-no?
 	       (string-append "File "
-			      (pathname->string new)
+			      (->namestring new)
 			      " already exists; rename anyway"))
 	      (begin (delete-file new) (do-it)))
 	  (do-it)))))
@@ -520,7 +504,7 @@ If a file with the new name already exists, confirmation is requested first."
   ()
   (lambda ()
     (message "Directory "
-	     (pathname->string (buffer-default-directory (current-buffer))))))
+	     (->namestring (buffer-default-directory (current-buffer))))))
 
 (define-command cd
   "Make DIR become the current buffer's default directory."
@@ -533,49 +517,50 @@ If a file with the new name already exists, confirmation is requested first."
   (let ((buffer (current-buffer)))
     (let ((directory
 	   (pathname-as-directory
-	    (merge-pathnames (->pathname directory)
-			     (buffer-default-directory buffer)))))
+	    (merge-pathnames directory (buffer-default-directory buffer)))))
       (if (not (file-directory? directory))
-	  (editor-error (pathname->string directory) " is not a directory"))
-      (if (not (unix/file-access directory 1))
+	  (editor-error (->namestring directory) " is not a directory"))
+      (if (not (file-access directory 1))
 	  (editor-error "Cannot cd to "
-			(pathname->string directory)
+			(->namestring directory)
 			": Permission denied"))
       (set-buffer-default-directory! buffer directory))))
 
 ;;;; Prompting
 
-(define (prompt-for-input-truename prompt default)
-  (pathname->input-truename
-   (prompt-for-pathname-non-directory prompt default true)))
+(define (prompt-for-file prompt default)
+  (->namestring
+   (prompt-for-pathname* prompt default file-non-directory? false)))
 
-(define (prompt-for-output-truename prompt default)
-  (pathname->output-truename (prompt-for-pathname prompt default false)))
+(define (prompt-for-existing-file prompt default)
+  (->namestring
+   (prompt-for-pathname* prompt default file-non-directory? true)))
 
-(define (prompt-for-directory prompt default require-match?)
-  (let ((directory
-	 (prompt-for-pathname* prompt default file-directory? require-match?)))
-    (if (file-directory? directory)
-	(pathname-as-directory directory)
-	directory)))
+(define (file-non-directory? file)
+  (and (file-exists? file)
+       (not (file-directory? file))))
+
+(define (prompt-for-directory prompt default)
+  (->namestring
+   (let ((directory
+	  (prompt-for-pathname* prompt default file-directory? false)))
+     (if (file-directory? directory)
+	 (pathname-as-directory directory)
+	 directory))))
+
+(define (prompt-for-existing-directory prompt default)
+  (->namestring
+   (pathname-as-directory
+    (prompt-for-pathname* prompt default file-directory? true))))
 
 (define-integrable (prompt-for-pathname prompt default require-match?)
   (prompt-for-pathname* prompt default file-exists? require-match?))
-
-(define-integrable (prompt-for-pathname-non-directory
-		    prompt default require-match?)
-  (prompt-for-pathname* prompt
-			default
-			(lambda (file)
-			  (and (file-exists? file)
-			       (not (file-directory? file))))
-			require-match?))
 
 (define (prompt-for-pathname* prompt directory
 			      verify-final-value? require-match?)
   (let ((directory
 	 (if directory
-	     (pathname-directory-path (->pathname directory))
+	     (directory-pathname directory)
 	     (buffer-default-directory (current-buffer)))))
     (prompt-string->pathname
      (prompt-for-completed-string
@@ -640,8 +625,8 @@ If a file with the new name already exists, confirmation is requested first."
 		   (unique-case (car filtered-filenames)))
 		  (else
 		   (non-unique-case filtered-filenames)))))))
-  (let ((directory (pathname-directory-string pathname))
-	(prefix (pathname-name-string pathname)))
+  (let ((directory (directory-namestring pathname))
+	(prefix (file-namestring pathname)))
     (cond ((not (os/file-directory? directory))
 	   (if-not-found))
 	  ((string-null? prefix)
@@ -659,15 +644,14 @@ If a file with the new name already exists, confirmation is requested first."
 		 (loop directory filenames)))))))
 
 (define (filename-completions-list pathname)
-  (let ((directory (pathname-directory-string pathname)))
+  (let ((directory (directory-namestring pathname)))
     (canonicalize-filename-completions
      directory
      (os/directory-list-completions directory
-				    (pathname-name-string pathname)))))
+				    (file-namestring pathname)))))
 
 (define-integrable (prompt-string->pathname string directory)
-  (merge-pathnames (string->pathname (os/trim-pathname-string string))
-		   directory))
+  (merge-pathnames (os/trim-pathname-string string) directory))
 
 (define (canonicalize-filename-completions directory filenames)
   (do ((filenames filenames (cdr filenames)))

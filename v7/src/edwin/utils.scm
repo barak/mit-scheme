@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.25 1991/05/16 23:06:00 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.26 1991/11/04 20:52:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -167,10 +167,6 @@
 	   condition
 	   (continuation (if-error)))
        thunk))))
-
-(define (pathname=? x y)
-  (string=? (pathname->string x)
-	    (pathname->string y)))
 
 (define (string-or-false? object)
   ;; Useful as a type for option variables.

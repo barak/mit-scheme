@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.102 1991/09/17 14:05:09 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.103 1991/11/04 20:51:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -55,7 +55,9 @@
 
 (define (read-buffer buffer pathname visit?)
   (set-buffer-writeable! buffer)
-  (let ((truename (pathname->input-truename pathname)))
+  (let ((truename
+	 (catch-file-errors (lambda () false)
+			    (lambda () (->truename pathname)))))
     (if truename
 	(begin
 	  ;; Set modified so that file supercession check isn't done.
@@ -79,17 +81,17 @@
 (define (insert-file mark filename)
   (%insert-file
    mark
-   (let ((pathname (->pathname filename)))
-     (let ((truename (pathname->input-truename pathname)))
-       (if (not truename)
-	   (editor-error "File " (pathname->string pathname) " not found"))
-       truename))))
+   (bind-condition-handler (list condition-type:file-error)
+       (lambda (condition)
+	 condition
+	 (editor-error "File " (->namestring filename) " not found"))
+     (lambda () (->truename filename)))))
 
 (define (%insert-file mark truename)
   (if (ref-variable read-file-message)
       (let ((msg
 	     (string-append "Reading file \""
-			    (pathname->string truename)
+			    (->namestring truename)
 			    "\"...")))
 	(temporary-message msg)
 	(group-insert-file! (mark-group mark) (mark-index mark) truename)
@@ -97,7 +99,7 @@
       (group-insert-file! (mark-group mark) (mark-index mark) truename)))
 
 (define (group-insert-file! group index truename)
-  (let ((channel (file-open-input-channel (pathname->string truename))))
+  (let ((channel (file-open-input-channel (->namestring truename))))
     (let ((length (file-length channel)))
       (without-interrupts
        (lambda ()
@@ -215,7 +217,7 @@ after you find a file.  If you explicitly request such a scan with
 			(prompt-for-confirmation?
 			 (string-append
 			  "Set local variables as specified at end of "
-			  (pathname-name-string (buffer-pathname buffer)))))
+			  (file-namestring (buffer-pathname buffer)))))
 		    (parse-local-variables buffer start end)))))))))
 
 (define edwin-environment (->environment '(edwin)))
@@ -348,22 +350,22 @@ and the rest are not called."
   list?)
 
 (define (write-buffer-interactive buffer backup-mode)
-  (let ((truename (pathname->output-truename (buffer-pathname buffer))))
-    (let ((writable? (file-writable? truename)))
+  (let ((pathname (buffer-pathname buffer)))
+    (let ((writable? (file-writable? pathname)))
       (if (or writable?
 	      (prompt-for-yes-or-no?
 	       (string-append "File "
-			      (pathname-name-string truename)
+			      (file-namestring pathname)
 			      " is write-protected; try to save anyway"))
 	      (editor-error
 	       "Attempt to save to a file which you aren't allowed to write"))
 	  (begin
 	    (if (not (or (verify-visited-file-modification-time? buffer)
-			 (not (file-exists? truename))
+			 (not (file-exists? pathname))
 			 (prompt-for-yes-or-no?
 			  "Disk file has changed since visited or saved.  Save anyway")))
 		(editor-error "Save not confirmed"))
-	    (let ((modes (backup-buffer! buffer truename backup-mode)))
+	    (let ((modes (backup-buffer! buffer pathname backup-mode)))
 	      (require-newline buffer)
 	      (cond ((let loop ((hooks (ref-variable write-file-hooks buffer)))
 		       (and (not (null? hooks))
@@ -371,11 +373,11 @@ and the rest are not called."
 				(loop (cdr hooks)))))
 		     unspecific)
 		    ((ref-variable file-precious-flag buffer)
-		     (let ((old (os/precious-backup-pathname truename)))
+		     (let ((old (os/precious-backup-pathname pathname)))
 		       (let ((rename-back?
 			      (catch-file-errors (lambda () false)
 				(lambda ()
-				  (rename-file truename old)
+				  (rename-file pathname old)
 				  (set! modes (file-modes old))
 				  true))))
 			 (dynamic-wind
@@ -392,29 +394,29 @@ and the rest are not called."
 			  (lambda ()
 			    (if rename-back?
 				(begin
-				  (rename-file old truename)
+				  (rename-file old pathname)
 				  (clear-visited-file-modification-time!
 				   buffer))))))))
 		    (else
 		     (if (and (not writable?)
 			      (not modes)
-			      (file-exists? truename))
+			      (file-exists? pathname))
 			 (bind-condition-handler
 			     (list condition-type:file-error)
 			     (lambda (condition)
 			       condition
 			       (editor-error
 				"Can't get write permission for file: "
-				(pathname->string truename)))
+				(->namestring pathname)))
 			   (lambda ()
-			     (let ((m (file-modes truename)))
-			       (set-file-modes! truename #o777)
+			     (let ((m (file-modes pathname)))
+			       (set-file-modes! pathname #o777)
 			       (set! modes m)))))
 		     (write-buffer buffer)))
 	      (if modes
 		  (catch-file-errors
 		   (lambda () unspecific)
-		   (lambda () (set-file-modes! truename modes))))))))))
+		   (lambda () (set-file-modes! pathname modes))))))))))
 
 (define (verify-visited-file-modification-time? buffer)
   (let ((truename (buffer-truename buffer))
@@ -430,18 +432,15 @@ and the rest are not called."
 
 (define (write-buffer buffer)
   (let ((truename
-	 (string->pathname
+	 (->pathname
 	  (write-region (buffer-unclipped-region buffer)
 			(buffer-pathname buffer)
 			true))))
-    (if truename
-	(begin
-	  (set-buffer-truename! buffer truename)
-	  (delete-auto-save-file! buffer)
-	  (set-buffer-save-length! buffer)
-	  (buffer-not-modified! buffer)
-	  (set-buffer-modification-time! buffer
-					 (file-modification-time truename))))))
+    (set-buffer-truename! buffer truename)
+    (delete-auto-save-file! buffer)
+    (set-buffer-save-length! buffer)
+    (buffer-not-modified! buffer)
+    (set-buffer-modification-time! buffer (file-modification-time truename))))
 
 (define-variable enable-emacs-write-file-message
   "If true, generate Emacs-style message when writing files.
@@ -450,7 +449,13 @@ Otherwise, a message is written both before and after long file writes."
   boolean?)
 
 (define (write-region region filename message?)
-  (let ((filename (canonicalize-output-filename filename))
+  (write-region* region filename message? group-write-to-file))
+
+(define (append-to-file region filename message?)
+  (write-region* region filename message? group-append-to-file))
+
+(define (write-region* region filename message? group-write-to-file)
+  (let ((filename (->namestring filename))
 	(start (region-start-index region))
 	(end (region-end-index region)))
     (let ((do-it
@@ -467,26 +472,9 @@ Otherwise, a message is written both before and after long file writes."
 	       (message msg)
 	       (do-it)
 	       (message msg "done")))))
-    filename))
-
-(define (append-to-file region filename message?)
-  (let ((filename (canonicalize-overwrite-filename filename))
-	(start (region-start-index region))
-	(end (region-end-index region)))
-    (let ((do-it
-	   (lambda ()
-	     (group-append-to-file (region-group region) start end filename))))
-      (cond ((not message?)
-	     (do-it))
-	    ((or (ref-variable enable-emacs-write-file-message)
-		 (< (- end start) 50000))
-	     (do-it)
-	     (message "Wrote " filename))
-	    (else
-	     (let ((msg (string-append "Writing file " filename "...")))
-	       (message msg)
-	       (do-it)
-	       (message msg "done")))))
+    ;; This isn't the correct truename on systems that support version
+    ;; numbers.  For those systems, the truename must be supplied by
+    ;; the operating system after the channel is closed.
     filename))
 
 (define (group-write-to-file group start end filename)
@@ -554,7 +542,7 @@ Otherwise, a message is written both before and after long file writes."
 			  (temporary-message
 			   "Cannot write backup file; backing up in "
 			   filename)
-			  (copy-file truename (string->pathname filename))
+			  (copy-file truename filename)
 			  false))
 		      (lambda ()
 			(if (or (ref-variable file-precious-flag buffer)
@@ -578,7 +566,7 @@ Otherwise, a message is written both before and after long file writes."
 			     (prompt-for-confirmation?
 			      (string-append
 			       "Delete excess backup versions of "
-			       (pathname->string (buffer-pathname buffer))))))
+			       (->namestring (buffer-pathname buffer))))))
 		    (for-each (lambda (target)
 				(catch-file-errors
 				 (lambda () unspecific)

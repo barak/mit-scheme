@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.115 1991/08/28 13:52:20 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.116 1991/11/04 20:50:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -237,7 +237,7 @@ For more information type the HELP key while entering the name."
 	   (prompt-for-confirmation?
 	    "File has changed on disk; really want to edit the buffer"))))
       (editor-error "File changed on disk: "
-		    (pathname->string (buffer-pathname buffer))))
+		    (->namestring (buffer-pathname buffer))))
   (message
    "File on disk now will become a backup file if you save these changes.")
   (set-buffer-backed-up?! buffer false))

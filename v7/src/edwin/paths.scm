@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/paths.scm,v 1.10 1991/07/16 21:00:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/paths.scm,v 1.11 1991/11/04 20:51:29 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -37,20 +37,19 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define edwin-library-directory-pathname
-  (let ((directory (pathname-as-directory (string->pathname "edwin"))))
+  (let ((directory (pathname-as-directory "edwin")))
     (lambda (name)
       (let ((pathname
 	     (system-library-directory-pathname
-	      (merge-pathnames (->pathname name) directory))))
+	      (merge-pathnames name directory))))
 	(if (not pathname)
 	    (error "Can't find edwin library directory:" name))
 	pathname))))
 
 (define (edwin-etc-pathname filename)
-  (let ((pathname
-	 (merge-pathnames (->pathname filename) (edwin-etc-directory))))
+  (let ((pathname (merge-pathnames filename (edwin-etc-directory))))
     (if (not (file-exists? pathname))
-	(error "Unable to find file:" (pathname->string pathname)))
+	(error "Unable to find file:" (->namestring pathname)))
     pathname))
 
 (define (edwin-binary-directory)

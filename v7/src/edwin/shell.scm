@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/shell.scm,v 1.7 1991/10/25 00:03:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/shell.scm,v 1.8 1991/11/04 20:52:03 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -125,8 +125,7 @@ Otherwise, one argument `-i' is passed to the shell."
 	      (let ((variable
 		     (string-table-get editor-variables
 				       (string-append "explicit-"
-						      (pathname-name-string
-						       (->pathname program))
+						      (file-namestring program)
 						      "-args"))))
 		(if variable
 		    (variable-value variable)
@@ -190,7 +189,7 @@ Otherwise, one argument `-i' is passed to the shell."
 
 (define (shell-process-pushd arg)
   (let ((default-directory
-	  (pathname->string (buffer-default-directory (current-buffer))))
+	  (->namestring (buffer-default-directory (current-buffer))))
 	(dirstack (ref-variable shell-dirstack)))
     (if (string-null? arg)
 	;; no arg -- swap pwd and car of shell stack
@@ -251,7 +250,7 @@ Otherwise, one argument `-i' is passed to the shell."
        (lambda ()
 	 (set-default-directory
 	  (if (string-null? filename)
-	      (home-directory-pathname)
+	      (user-homedir-pathname)
 	      filename))))))
   (shell-dirstack-message))
 
@@ -261,7 +260,7 @@ Otherwise, one argument `-i' is passed to the shell."
 	     ((dirs
 	       (cons (buffer-default-directory (current-buffer))
 		     (ref-variable shell-dirstack))))
-	   (cons (os/pathname->display-string (->pathname (car dirs)))
+	   (cons (os/pathname->display-string (car dirs))
 		 (if (null? (cdr dirs))
 		     '()
 		     (cons " " (loop (cdr dirs))))))))

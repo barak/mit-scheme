@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.11 1991/08/28 22:28:33 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.12 1991/11/04 20:51:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -246,7 +246,7 @@ If #F, the normal method is used."
 	 (cond ((not pathname)
 		"[none]")
 	       ((pathname? pathname)
-		(os/truncate-filename-for-modeline (pathname->string pathname)
+		(os/truncate-filename-for-modeline (->namestring pathname)
 						   max-width))
 	       (else
 		""))))
