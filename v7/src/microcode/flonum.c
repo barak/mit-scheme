@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: flonum.c,v 9.41 1993/12/06 21:35:01 cph Exp $
+$Id: flonum.c,v 9.42 1993/12/06 21:45:03 cph Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -57,8 +57,7 @@ DEFUN (double_to_flonum, (value), double value)
   ALIGN_FLOAT (Free);
   Primitive_GC_If_Needed (FLONUM_SIZE + 1);
   {
-    SCHEME_OBJECT result =
-      (MAKE_POINTER_OBJECT (TC_BIG_FLONUM, (Free - (FLONUM_SIZE + 1))));
+    SCHEME_OBJECT result = (MAKE_POINTER_OBJECT (TC_BIG_FLONUM, Free));
     (*Free++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, FLONUM_SIZE));
     (*((double *) Free)) = value;
     Free += FLONUM_SIZE;
