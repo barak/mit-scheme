@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.267 2001/06/12 00:58:03 cph Exp $
+;;; $Id: imail-top.scm,v 1.268 2001/06/12 01:05:44 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1966,6 +1966,7 @@ Negative argument means search in reverse."
        (if folder
 	   (begin
 	     (ignore-modification-events folder notice-folder-event)
+	     (stop-probe-folder-thread folder)
 	     (remove-property! folder 'BUFFER)))))))
 
 (define (delete-associated-buffers folder-buffer)
