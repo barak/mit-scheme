@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.42 1996/04/24 03:27:06 cph Exp $
+$Id: unxprm.scm,v 1.43 1996/04/24 03:29:54 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -285,14 +285,30 @@ MIT in each case. |#
 (define (delete-directory name)
   ((ucode-primitive directory-delete 1)
    (->namestring (directory-pathname-as-file (merge-pathnames name)))))
-
+
 (define (os/file-end-of-line-translation pathname)
-  pathname
-  #f)
+  ;; This works because the line translation is harmless when not
+  ;; needed.  We can't tell when it is needed, because FAT and HPFS
+  ;; filesystems can be mounted with automatic translation (in the
+  ;; Linux kernel), and ISO9660 can be either DOS or unix format.
+  (let ((type
+	 ((ucode-primitive file-system-type 1)
+	  (->namestring
+	   (let loop ((pathname (merge-pathnames pathname)))
+	     (if (file-exists? pathname)
+		 pathname
+		 (loop (directory-pathname-as-file
+			(directory-pathname pathname)))))))))
+    (if (or (string-ci=? "fat" type)
+	    (string-ci=? "hpfs" type)
+	    (string-ci=? "iso9660" type)
+	    (string-ci=? "smb" type))
+	"\r\n"
+	#f)))
 
 (define (os/default-end-of-line-translation)
   #f)
-
+
 (define (copy-file from to)
   (let ((input-filename (->namestring (merge-pathnames from)))
 	(output-filename (->namestring (merge-pathnames to))))
