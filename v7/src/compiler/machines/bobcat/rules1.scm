@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.29 1989/11/15 02:40:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.30 1989/12/05 20:52:00 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -404,10 +404,14 @@ MIT in each case. |#
   (QUALIFIER (pseudo-word? r))
   (LAP (MOV L ,(standard-register-reference r false true) (@A+ 5))))
 
+#|
+;; This seems like a fossil.  Removed by Jinx.
+
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (REGISTER (? r)))
   (QUALIFIER (pseudo-float? r))
   (LAP (FMOVE D ,(machine-register-reference r 'FLOAT) (@A+ 5))))
+|#
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (OFFSET (REGISTER (? r)) (? n)))
@@ -483,9 +487,10 @@ MIT in each case. |#
 ;;;; Fixnum Operations
 
 (define-rule statement
-  (ASSIGN (? target) (FIXNUM-1-ARG (? operator) (REGISTER (? source))))
+  (ASSIGN (? target) (FIXNUM-1-ARG (? operator) (REGISTER (? source)) (? overflow?)))
   (QUALIFIER (and (machine-operation-target? target)
 		  (pseudo-register? source)))
+  overflow?				; ignored
   (reuse-and-load-machine-target! 'DATA
 				  target
 				  source
@@ -495,10 +500,12 @@ MIT in each case. |#
   (ASSIGN (? target)
 	  (FIXNUM-2-ARGS (? operator)
 			 (REGISTER (? source1))
-			 (REGISTER (? source2))))
+			 (REGISTER (? source2))
+			 (? overflow?)))
   (QUALIFIER (and (machine-operation-target? target)
 		  (pseudo-register? source1)
 		  (pseudo-register? source2)))
+  overflow?				; ignored
   (two-arg-register-operation (fixnum-2-args/operate operator)
 			      (fixnum-2-args/commutative? operator)
 			      'DATA
@@ -515,18 +522,22 @@ MIT in each case. |#
   (ASSIGN (? target)
 	  (FIXNUM-2-ARGS (? operator)
 			 (REGISTER (? source))
-			 (OBJECT->FIXNUM (CONSTANT (? constant)))))
+			 (OBJECT->FIXNUM (CONSTANT (? constant)))
+			 (? overflow?)))
   (QUALIFIER (and (machine-operation-target? target)
 		  (pseudo-register? source)))
+  overflow?				; ignored
   (fixnum-2-args/register*constant operator target source constant))
 
 (define-rule statement
   (ASSIGN (? target)
 	  (FIXNUM-2-ARGS (? operator)
 			 (OBJECT->FIXNUM (CONSTANT (? constant)))
-			 (REGISTER (? source))))
+			 (REGISTER (? source))
+			 (? overflow?)))
   (QUALIFIER (and (machine-operation-target? target)
 		  (pseudo-register? source)))
+  overflow?				; ignored
   (if (fixnum-2-args/commutative? operator)
       (fixnum-2-args/register*constant operator target source constant)
       (fixnum-2-args/constant*register operator target constant source)))
@@ -561,34 +572,42 @@ MIT in each case. |#
   (ASSIGN (? target)
 	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
 			 (OBJECT->FIXNUM (CONSTANT 4))
-			 (OBJECT->FIXNUM (REGISTER (? source)))))
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 (? overflow?)))
   (QUALIFIER (and (machine-operation-target? target)
 		  (pseudo-register? source)))
+  overflow?				; ignored
   (convert-index->fixnum/register target source))
 
 (define-rule statement
   (ASSIGN (? target)
 	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
 			 (OBJECT->FIXNUM (REGISTER (? source)))
-			 (OBJECT->FIXNUM (CONSTANT 4))))
+			 (OBJECT->FIXNUM (CONSTANT 4))
+			 (? overflow?)))
   (QUALIFIER (and (machine-operation-target? target)
 		  (pseudo-register? source)))
+  overflow?				; ignored
   (convert-index->fixnum/register target source))
 
 (define-rule statement
   (ASSIGN (? target)
 	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
 			 (OBJECT->FIXNUM (CONSTANT 4))
-			 (OBJECT->FIXNUM (OFFSET (REGISTER (? r)) (? n)))))
+			 (OBJECT->FIXNUM (OFFSET (REGISTER (? r)) (? n)))
+			 (? overflow?)))
   (QUALIFIER (machine-operation-target? target))
+  overflow?				; ignored
   (convert-index->fixnum/offset target r n))
 
 (define-rule statement
   (ASSIGN (? target)
 	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
 			 (OBJECT->FIXNUM (OFFSET (REGISTER (? r)) (? n)))
-			 (OBJECT->FIXNUM (CONSTANT 4))))
+			 (OBJECT->FIXNUM (CONSTANT 4))
+			 (? overflow?)))
   (QUALIFIER (machine-operation-target? target))
+  overflow?				; ignored
   (convert-index->fixnum/offset target r n))
 
 ;;; end (IF (<= SCHEME-TYPE-WIDTH 6) ...)
@@ -635,9 +654,10 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (? target)
-	  (FLONUM-1-ARG (? operator) (REGISTER (? source))))
+	  (FLONUM-1-ARG (? operator) (REGISTER (? source)) (? overflow?)))
   (QUALIFIER (and (machine-operation-target? target)
 		  (pseudo-float? source)))
+  overflow?				; ignored
   (let ((operate-on-target
 	 (lambda (target)
 	   ((flonum-1-arg/operate operator)
@@ -652,10 +672,12 @@ MIT in each case. |#
   (ASSIGN (? target)
 	  (FLONUM-2-ARGS (? operator)
 			 (REGISTER (? source1))
-			 (REGISTER (? source2))))
+			 (REGISTER (? source2))
+			 (? overflow?)))
   (QUALIFIER (and (machine-operation-target? target)
 		  (pseudo-float? source1)
 		  (pseudo-float? source2)))
+  overflow?				; ignored
   (let ((source-reference
 	 (lambda (source) (standard-register-reference source 'FLOAT false))))
     (two-arg-register-operation (flonum-2-args/operate operator)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.14 1989/07/25 12:37:01 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.15 1989/12/05 20:51:48 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -63,14 +63,16 @@ MIT in each case. |#
 (define-rtl-expression offset-address rtl: register number)
 (define-rtl-expression unassigned rtl:)
 
-(define-rtl-expression fixnum-1-arg rtl: operator operand)
-(define-rtl-expression fixnum-2-args rtl: operator operand-1 operand-2)
+(define-rtl-expression fixnum-1-arg rtl: operator operand overflow?)
+(define-rtl-expression fixnum-2-args rtl: operator operand-1 operand-2
+  overflow?)
 
 (define-rtl-predicate fixnum-pred-1-arg % predicate operand)
 (define-rtl-predicate fixnum-pred-2-args % predicate operand-1 operand-2)
 
-(define-rtl-expression flonum-1-arg rtl: operator operand)
-(define-rtl-expression flonum-2-args rtl: operator operand-1 operand-2)
+(define-rtl-expression flonum-1-arg rtl: operator operand overflow?)
+(define-rtl-expression flonum-2-args rtl: operator operand-1 operand-2
+  overflow?)
 
 (define-rtl-predicate flonum-pred-1-arg % predicate operand)
 (define-rtl-predicate flonum-pred-2-args % predicate operand-1 operand-2)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.18 1989/10/26 07:38:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.19 1989/12/05 20:52:20 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -547,19 +547,19 @@ MIT in each case. |#
 	    (receiver (rtl:make-cons-pointer type datum))))))))
 
 (define-expression-method 'FIXNUM-2-ARGS
-  (lambda (receiver scfg-append! operator operand1 operand2)
+  (lambda (receiver scfg-append! operator operand1 operand2 overflow?)
     (expression-simplify operand1 scfg-append!
       (lambda (operand1)
 	(expression-simplify operand2 scfg-append!
 	  (lambda (operand2)
 	    (receiver
-	     (rtl:make-fixnum-2-args operator operand1 operand2))))))))
+	     (rtl:make-fixnum-2-args operator operand1 operand2 overflow?))))))))
 
 (define-expression-method 'FIXNUM-1-ARG
-  (lambda (receiver scfg-append! operator operand)
+  (lambda (receiver scfg-append! operator operand overflow?)
     (expression-simplify operand scfg-append!
       (lambda (operand)
-	(receiver (rtl:make-fixnum-1-arg operator operand))))))
+	(receiver (rtl:make-fixnum-1-arg operator operand overflow?))))))
 
 (define-expression-method 'GENERIC-BINARY
   (lambda (receiver scfg-append! operator operand1 operand2)
@@ -577,15 +577,16 @@ MIT in each case. |#
 	(receiver (rtl:make-generic-unary operator operand))))))
 
 (define-expression-method 'FLONUM-1-ARG
-  (lambda (receiver scfg-append! operator operand)
+  (lambda (receiver scfg-append! operator operand overflow?)
     (expression-simplify operand scfg-append!
       (lambda (s-operand)
 	(receiver (rtl:make-flonum-1-arg
 		   operator
-		   s-operand))))))
+		   s-operand
+		   overflow?))))))
 
 (define-expression-method 'FLONUM-2-ARGS
-  (lambda (receiver scfg-append! operator operand1 operand2)
+  (lambda (receiver scfg-append! operator operand1 operand2 overflow?)
     (expression-simplify operand1 scfg-append!
       (lambda (s-operand1)
 	(expression-simplify operand2 scfg-append!
@@ -593,7 +594,8 @@ MIT in each case. |#
 	    (receiver (rtl:make-flonum-2-args
 		       operator
 		       s-operand1
-		       s-operand2))))))))
+		       s-operand2
+		       overflow?))))))))
 
 (define-expression-method 'FLOAT->OBJECT
   (lambda (receiver scfg-append! expression)
