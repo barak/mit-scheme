@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.31 2003/11/26 07:00:40 cph Exp $
+$Id: random.scm,v 14.32 2004/01/05 21:04:38 cph Exp $
 
 Copyright 1988,1989,1993,1994,1995,1996 Massachusetts Institute of Technology
-Copyright 1998,1999,2000,2001,2003 Massachusetts Institute of Technology
+Copyright 1998,1999,2000,2001,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -57,21 +57,8 @@ USA.
     ;; Kludge: an exact integer modulus means that result is an exact
     ;; integer.  Otherwise, the result is a real number.
     (cond ((int:integer? modulus)
-	   ;; This complexity guarantees that we use enough random
-	   ;; bits to uniformly cover the output interval.
 	   (if (int:> modulus 0)
-	       (let loop ((modulus modulus))
-		 (if (int:> modulus b)
-		     (let ((qr (int:divide modulus b)))
-		       (int:+ (int:* (car qr)
-				     (flo:truncate->exact
-				      (flo:random-element state)))
-			      (loop (cdr qr))))
-		     (flo:truncate->exact
-		      ;; This operation order minimizes error.
-		      (flo:/ (flo:* (flo:random-element state)
-				    (int:->flonum modulus))
-			     b.))))
+	       (%random-integer modulus state)
 	       (error:bad-range-argument modulus 'RANDOM)))
 	  ((flo:flonum? modulus)
 	   (if (flo:> modulus 0.)
@@ -89,7 +76,63 @@ USA.
 	   (error:wrong-type-argument modulus "real number" 'RANDOM)))))
 
 (define (flo:random-unit state)
-  (flo:/ (flo:random-element state) b.))
+  (flo:/ (int:->flonum (%random-integer flimit state)) flimit.))
+
+(define (random-byte-vector n #!optional state)
+  (let ((state (if (default-object? state) #f state))
+	(s (make-string n)))
+    (do ((i 0 (fix:+ i 1)))
+	((fix:= i n))
+      (vector-8b-set! s i (small-random-integer 256 state)))
+    s))
+
+(define (%random-integer m state)
+  (if (int:> m b)
+      (large-random-integer m state)
+      (small-random-integer m state)))
+
+(define (small-random-integer m state)
+  ;; This uses the rejection method to select a uniformly-distributed
+  ;; subset of the generated elements.  The trick with SCALE-FACTOR
+  ;; limits the number of samples required to find an element in the
+  ;; subset, which is otherwise on the order of B for small M.
+  (let ((m. (int:->flonum m)))
+    (let ((scale-factor (flo:truncate (flo:/ b. m.))))
+      (flo:truncate->exact
+       (flo:/ (let ((limit (flo:* scale-factor m.)))
+		(let loop ()
+		  (let ((elt (flo:random-element state)))
+		    (if (flo:< elt limit)
+			elt
+			(loop)))))
+	      scale-factor)))))
+
+(define (large-random-integer m state)
+  ;; This also uses the rejection method, but this time to select a
+  ;; subset of B^N where N is the smallest integer s.t. (<= M B^N).
+  (receive (n b^n)
+      (let loop ((n 2) (b^n (int:* b b)))
+	(if (int:<= m b^n)
+	    (values n b^n)
+	    (loop (fix:+ n 1) (int:* b^n b))))
+    (let ((scale-factor (int:quotient b^n m)))
+      (int:quotient (let ((limit (int:* scale-factor m)))
+		      (let loop ()
+			(let ((elt (int:large-random-element state n)))
+			  (if (int:< elt limit)
+			      elt
+			      (loop)))))
+		    scale-factor))))
+
+(define (int:large-random-element state n)
+  (let loop ((i 1) (elt (int:random-element state)))
+    (if (fix:< i n)
+	(loop (fix:+ i 1)
+	      (int:+ (int:* elt b) (int:random-element state)))
+	elt)))
+
+(define-integrable (int:random-element state)
+  (flo:truncate->exact (flo:random-element state)))
 
 (define (flo:random-element state)
   (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
@@ -116,14 +159,6 @@ USA.
 				       (fix:+ index 1))))
 	(set-interrupt-enables! mask)
 	element))))
-
-(define (random-byte-vector n #!optional state)
-  (let ((state (if (default-object? state) #f state))
-	(s (make-string n)))
-    (do ((i 0 (fix:+ i 1)))
-	((fix:= i n))
-      (vector-8b-set! s i (random 256 state)))
-    s))
 
 (define (make-random-state #!optional state)
   (let ((state (if (default-object? state) #f state)))
@@ -280,9 +315,17 @@ USA.
 	state)))
 
 (define *random-state*)
+(define flimit.)
+(define flimit)
 
 (define (initialize-package!)
   (set! *random-state* (simple-random-state))
+  (set! flimit.
+	(let loop ((x 1.))
+	  (if (flo:= (flo:+ x 1.) 1.)
+	      (flo:/ 1. x)
+	      (loop (flo:/ x 2.)))))
+  (set! flimit (flo:truncate->exact flimit.))
   unspecific)
 
 (define (finalize-random-state-type!)
