@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.90 1987/07/08 21:54:59 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.91 1987/08/27 21:32:46 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -325,7 +325,7 @@ MIT in each case. |#
 				with-history-disabled
 				force
 				primitive-purify
-				complete-garbage-collect
+				;;complete-garbage-collect
 				dump-band
 				primitive-impurify
 				with-threaded-continuation
@@ -370,8 +370,7 @@ MIT in each case. |#
 
 (define constant-foldable-operators
   (list primitive-type primitive-type?
-	eq? null? pair? car cdr vector-length vector-ref
-	number? complex? real? rational? integer?
+	eq? null? pair? number? complex? real? rational? integer?
 	zero? positive? negative? odd? even? exact? inexact?
 	= < > <= >= max min
 	+ - * / 1+ -1+ abs quotient remainder modulo integer-divide
