@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: asutl.scm,v 1.1 1992/11/18 00:46:56 gjr Exp $
+$Id: asutl.scm,v 1.2 1992/12/30 12:59:29 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -51,6 +51,12 @@ MIT in each case. |#
 
 (define-integrable (back-end:quotient x y)
   (quotient x y))
+
+(define-integrable (back-end:expt x y)
+  (expt x y))
+
+(define-integrable (back-end:< x y)
+  (< x y))
 
 (define make-non-pointer-literal
   (let ((type-maximum (expt 2 scheme-type-width))
