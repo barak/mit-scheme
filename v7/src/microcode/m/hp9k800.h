@@ -1,9 +1,9 @@
 /* -*-C-*-
-   Machine file for HP9000 series 800
+   Machine file for HP9000 series  600, 700, 800.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k800.h,v 1.5 1990/06/20 19:54:03 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k800.h,v 1.6 1991/08/13 18:19:38 jinx Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,5 +40,7 @@ MIT in each case. */
 #define STARBASE_DEVICE_DRIVERS -ldd98550
 #endif
 
-#define C_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6
+/* The following is also needed under HP-UX 8.01: +Obb999 */
+
+#define C_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6 -Wp,-H512000
 #define M4_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6
