@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.37 1990/08/16 08:42:15 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.38 1991/08/26 15:00:09 arthur Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -1002,7 +1002,7 @@ DEFUN_VOID (debug_edit_flags)
 	     return;
 	   case 'h':
 	   case 'H':
-	     termination_normal ();
+	     termination_normal (0);
 	   case '?':
 	   default:
 	     show_flags (1);

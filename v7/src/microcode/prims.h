@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.38 1991/03/01 00:55:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.39 1991/08/26 15:00:15 arthur Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -87,17 +87,17 @@ extern void canonicalize_primitive_context ();
 
 extern void EXFUN (signal_error_from_primitive, (long error_code));
 extern void EXFUN (signal_interrupt_from_primitive, (void));
-extern void error_wrong_type_arg ();
-extern void error_bad_range_arg ();
-extern void error_external_return ();
-extern long arg_integer ();
-extern long arg_nonnegative_integer ();
-extern long arg_index_integer ();
-extern long arg_integer_in_range ();
-extern double arg_real_number ();
-extern double arg_real_in_range ();
-extern long arg_ascii_char ();
-extern long arg_ascii_integer ();
+extern void EXFUN (error_wrong_type_arg, (int));
+extern void EXFUN (error_bad_range_arg, (int));
+extern void EXFUN (error_external_return, (void));
+extern long EXFUN (arg_integer, (int));
+extern long EXFUN (arg_nonnegative_integer, (int));
+extern long EXFUN (arg_index_integer, (int, long));
+extern long EXFUN (arg_integer_in_range, (int, long, long));
+extern double EXFUN (arg_real_number, (int));
+extern double EXFUN (arg_real_in_range, (int, double, double));
+extern long EXFUN (arg_ascii_char, (int));
+extern long EXFUN (arg_ascii_integer, (int));
 
 #define UNSIGNED_FIXNUM_ARG(arg)					\
   ((FIXNUM_P (ARG_REF (arg)))						\

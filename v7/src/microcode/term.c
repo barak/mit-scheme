@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/term.c,v 1.4 1990/11/13 08:44:58 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/term.c,v 1.5 1991/08/26 15:00:20 arthur Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -143,10 +143,10 @@ DEFUN (Microcode_Termination, (code), int code)
 }
 
 void
-DEFUN_VOID (termination_normal)
+DEFUN (termination_normal, (value), CONST int value)
 {
   termination_prefix (TERM_HALT);
-  termination_suffix (TERM_HALT, 0, 0);
+  termination_suffix (TERM_HALT, value, 0);
 }
 
 void

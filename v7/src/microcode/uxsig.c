@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.14 1991/08/24 02:10:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.15 1991/08/26 15:00:22 arthur Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -742,7 +742,7 @@ DEFUN (interactive_interrupt_handler, (scp), struct FULL_SIGCONTEXT * scp)
 	case 'Q':
 	case 'q':
 	  INTERACTIVE_NEWLINE ();
-	  termination_normal ();
+	  termination_normal (0);
 	  return;
 	case '\f':
 	  if (!option_emacs_subprocess)

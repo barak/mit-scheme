@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.35 1990/11/05 11:55:19 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.36 1991/08/26 15:00:18 arthur Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,7 +46,16 @@ DEFINE_PRIMITIVE ("EXIT", Prim_non_restartable_exit, 0, 0,
   "Exit Scheme with no option to restart.")
 {
   PRIMITIVE_HEADER (0);
-  termination_normal ();
+  termination_normal (0);
+}
+
+DEFINE_PRIMITIVE ("EXIT-WITH-VALUE", 
+		  Prim_non_restartable_exit_with_value, 1, 1,
+  "Exit Scheme with no option to restart, returning integer argument\n\
+as exit status.")
+{
+  PRIMITIVE_HEADER (1);
+  termination_normal ((int) arg_integer (1));
 }
 
 DEFINE_PRIMITIVE ("HALT", Prim_restartable_exit, 0, 0,
