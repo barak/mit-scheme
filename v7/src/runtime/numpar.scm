@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 14.3 1989/10/26 06:50:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 14.4 1989/10/27 04:42:59 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -46,7 +46,9 @@ MIT in each case. |#
     (with-values (lambda () (parse-prefix (string->list string)))
       (lambda (chars radix-prefix exactness)
 	((if (eq? exactness 'INEXACT)
-	     exact->inexact
+	     (lambda (number)
+	       (and number
+		    (exact->inexact number)))
 	     identity-procedure)
 	 (let ((radix (or radix-prefix radix-default)))
 	   (with-values (lambda () (parse-sign chars))
