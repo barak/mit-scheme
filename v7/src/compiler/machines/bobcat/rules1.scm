@@ -1,6 +1,40 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.14 1988/08/29 22:47:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.15 1988/10/20 18:21:39 markf Exp $
+
+Copyright (c) 1988 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
+
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.15 1988/10/20 18:21:39 markf Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -237,13 +271,14 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->FIXNUM (REGISTER (? source))))
   (QUALIFIER (pseudo-register? target))
-  (reuse-alias-deleting-dead-registers! source 'DATA
-    (lambda (alias)
-      (add-pseudo-register-alias! target alias)
-      (let ((reference (register-reference alias)))
-	(object->fixnum reference reference)))
-    (lambda (source)
-      (object->fixnum source (reference-target-alias! target 'DATA)))))
+  (let ((target (move-to-alias-register! source 'DATA target)))
+    (object->fixnum target)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (ADDRESS->FIXNUM (REGISTER (? source))))
+  (QUALIFIER (pseudo-register? target))
+  (let ((target (move-to-alias-register! source 'DATA target)))
+    (address->fixnum target)))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -251,19 +286,29 @@ MIT in each case. |#
   (QUALIFIER (pseudo-register? target))
   (let ((source (indirect-reference! address offset)))
     (delete-dead-registers!)
-    (object->fixnum source (reference-target-alias! target 'DATA))))
+    (let ((target (reference-target-alias! target 'DATA)))
+      (LAP (MOV L ,source ,target)
+	   ,(object->fixnum target)))))    
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (FIXNUM->OBJECT (REGISTER (? source))))
   (QUALIFIER (pseudo-register? target))
-  (fixnum->object (move-to-alias-register! source 'DATA target)))
+  (let ((target (move-to-alias-register! source 'DATA target)))
+    (fixnum->object target)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (FIXNUM->ADDRESS (REGISTER (? source))))
+  (QUALIFIER (pseudo-register? target))
+  (let ((target (move-to-alias-register! source 'DATA target)))
+    (fixnum->address target)))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (FIXNUM->OBJECT (REGISTER (? source))))
-  (let ((target (indirect-reference! a n)))
-    (LAP (MOV L ,(standard-register-reference source false) ,target)
-	 ,@(fixnum->object target))))
+  (let ((target (indirect-reference! a n))
+	(source-ref (reference-alias-register! source 'DATA)))
+    (LAP ,@(fixnum->object source-ref)
+	 (MOV L ,source-ref ,target))))
 
 ;;;; Transfers to Memory
 
@@ -340,8 +385,9 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1)
 	  (FIXNUM->OBJECT (REGISTER (? r))))
-  (LAP (MOV L ,(standard-register-reference r false) (@A+ 5))
-       ,@(fixnum->object  (INST-EA (@A 5)))))
+  (let ((source-ref (reference-alias-register! r 'DATA)))
+    (LAP ,@(fixnum->object source-ref)
+	 (MOV L ,source-ref (@A+ 5)))))
 
 (define-rule statement
   ;; This pops the top of stack into the heap
@@ -386,8 +432,9 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
 	  (FIXNUM->OBJECT (REGISTER (? r))))
-  (LAP (MOV L ,(standard-register-reference r false) (@-A 7))
-       ,@(fixnum->object (INST-EA (@A 7)))))
+  (let ((source-ref (reference-alias-register! r 'DATA)))
+    (LAP ,@(fixnum->object source-ref)
+	 (MOV L ,source-ref (@-A 7)))))
 
 ;;;; Fixnum Operations
 
@@ -455,7 +502,9 @@ MIT in each case. |#
       (lambda (target)
 	(reuse-pseudo-register-alias! source1 'DATA
 	  (lambda (alias)
-	    (let ((source2 (source-reference source2)))
+	    (let ((source2 (if (= source1 source2)
+			       (register-reference alias)
+			       (source-reference source2))))
 	      (delete-dead-registers!)
 	      (add-pseudo-register-alias! target alias)
 	      ((fixnum-2-args/operate operator) (register-reference alias)
