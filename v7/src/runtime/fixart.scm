@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fixart.scm,v 1.3 1999/01/02 06:11:34 cph Exp $
+$Id: fixart.scm,v 1.4 1999/05/07 19:47:25 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -110,6 +110,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-integrable (fix:>= x y)
   (not (fix:< x y)))
+
+(define (fix:min n m)
+  (if (fix:< n m) n m))
+
+(define (fix:max n m)
+  (if (fix:> n m) n m))
 
 (define-integrable (int:<= x y)
   (not (int:> x y)))
