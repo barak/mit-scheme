@@ -1,0 +1,138 @@
+# $Id: Makefile.in,v 1.1 2000/12/08 17:47:19 cph Exp $
+#
+# Copyright (c) 2000 Massachusetts Institute of Technology
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+# **** BEGIN BOILERPLATE ****
+
+SHELL = @SHELL@
+
+@SET_MAKE@
+
+srcdir = @srcdir@
+top_srcdir = @top_srcdir@
+VPATH = @srcdir@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+
+bindir = @bindir@
+sbindir = @sbindir@
+libexecdir = @libexecdir@
+datadir = @datadir@
+sysconfdir = @sysconfdir@
+sharedstatedir = @sharedstatedir@
+localstatedir = @localstatedir@
+libdir = @libdir@
+infodir = @infodir@
+mandir = @mandir@
+includedir = @includedir@
+oldincludedir = /usr/include
+
+DESTDIR =
+top_builddir = .
+
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+
+ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
+
+# **** END BOILERPLATE ****
+
+SUBDIRS = 6001 compiler cref edwin imail microcode \
+	  rcs runtime runtime-check sf sos win32
+
+AUXDIR = $(libdir)/mit-scheme
+EDDIR = $(AUXDIR)/edwin
+
+RUNOPTS = chrsyn cpress format gdbm hashtb krypt mime-codec numint optiondb \
+	  ordvec process rbtree regexp rgxcmp syncproc wttree ystep
+RODIR = $(AUXDIR)/options
+
+EDOPTS = eystep manual midas nntp pasmod print pwedit pwparse snr sort \
+	 techinfo telnet tximod verilog vhdl webster
+EODIR = $(EDDIR)/autoload
+
+all:
+	( cd microcode && $(MAKE) $@ )
+	scheme -compiler -heap 4000 < etc/compile.scm
+	etc/build-bands.sh
+
+setup:
+	./Setup.sh $(SUBDIRS)
+
+mostlyclean clean distclean maintainer-clean:
+	./Clean.sh $@ $(SUBDIRS)
+
+tags TAGS:
+	./Tags.sh $(SUBDIRS)
+
+install: all
+	$(mkinstalldirs) $(DESTDIR)$(bindir)
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/SRC
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/SRC/edwin
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/SRC/runtime
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/imail
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/sos
+	$(mkinstalldirs) $(DESTDIR)$(EDDIR)
+	$(mkinstalldirs) $(DESTDIR)$(EDDIR)/etc
+	$(mkinstalldirs) $(DESTDIR)$(EODIR)
+	$(mkinstalldirs) $(DESTDIR)$(RODIR)
+
+	$(INSTALL_PROGRAM) microcode/scheme $(DESTDIR)$(bindir)/.
+	$(INSTALL_PROGRAM) microcode/bchscheme $(DESTDIR)$(bindir)/.
+	$(INSTALL_PROGRAM) microcode/gcdrone $(DESTDIR)$(AUXDIR)/.
+
+	$(INSTALL_DATA) microcode/utabmd.bin $(DESTDIR)$(AUXDIR)/.
+	$(INSTALL_DATA) etc/optiondb.scm $(DESTDIR)$(AUXDIR)/.
+	$(INSTALL_DATA) etc/TUTORIAL $(DESTDIR)$(EDDIR)/etc/.
+	$(INSTALL_DATA) etc/mime.types $(DESTDIR)$(EDDIR)/etc/.
+	$(INSTALL_DATA) runtime/*.bci $(DESTDIR)$(AUXDIR)/SRC/runtime/.
+	$(INSTALL_DATA) edwin/*.bci $(DESTDIR)$(AUXDIR)/SRC/edwin/.
+
+	@for FN in $(RUN_OPTS); do \
+	    echo "$(INSTALL_DATA) runtime/$${FN}.com $(DESTDIR)$(RODIR)/.";\
+	    $(INSTALL_DATA) runtime/$${FN}.com $(DESTDIR)$(RODIR)/.;\
+	    echo "cd $(DESTDIR)$(RODIR); $(LN_S) ../SRC/runtime/$${FN}.bci .";\
+	    ( cd $(DESTDIR)$(RODIR); $(LN_S) ../SRC/runtime/$${FN}.bci . );\
+	done
+
+	@for FN in $(ED_OPTS); do \
+	    echo "installing edwin option $${FN}";\
+	    $(INSTALL_DATA) edwin/$${FN}.com $(DESTDIR)$(EODIR)/.;\
+	    echo "cd $(DESTDIR)$(EODIR); $(LN_S) ../SRC/edwin/$${FN}.bci .";\
+	    ( cd $(DESTDIR)$(EODIR); $(LN_S) ../SRC/edwin/$${FN}.bci . );\
+	done
+
+	$(INSTALL_DATA) sos/*.com $(DESTDIR)$(AUXDIR)/sos/.
+	$(INSTALL_DATA) sos/*.bci $(DESTDIR)$(AUXDIR)/sos/.
+	@for FN in sos.bco sos.bld load.scm; do \
+	    echo "$(INSTALL_DATA) sos/$${FN} $(DESTDIR)$(AUXDIR)/sos/.";\
+	    $(INSTALL_DATA) sos/$${FN} $(DESTDIR)$(AUXDIR)/sos/.;\
+	done
+
+	$(INSTALL_DATA) imail/*.com $(DESTDIR)$(AUXDIR)/imail/.
+	$(INSTALL_DATA) imail/*.bci $(DESTDIR)$(AUXDIR)/imail/.
+	@for FN in imail.bco imail.bld load.scm; do \
+	    echo "$(INSTALL_DATA) imail/$${FN} $(DESTDIR)$(AUXDIR)/imail/.";\
+	    $(INSTALL_DATA) imail/$${FN} $(DESTDIR)$(AUXDIR)/imail/.;\
+	done
+
+.PHONY: all setup mostlyclean clean distclean maintainer-clean
+.PHONY: tags TAGS install

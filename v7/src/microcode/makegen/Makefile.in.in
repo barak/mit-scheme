@@ -1,4 +1,4 @@
-# $Id: Makefile.in.in,v 1.10 2000/12/08 02:52:14 cph Exp $
+# $Id: Makefile.in.in,v 1.11 2000/12/08 17:47:19 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -19,6 +19,8 @@
 # **** BEGIN BOILERPLATE ****
 
 SHELL = @SHELL@
+
+@SET_MAKE@
 
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
