@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/missing.c,v 9.28 1992/01/15 03:39:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/missing.c,v 9.29 1992/02/20 16:23:58 jinx Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -212,8 +212,16 @@ DEFUN (modf, (value, iptr),
 	      }
 	  }
       }
-    (*iptr) = n;
-    return (s);
+    if (significand < 0)
+    {
+      (*iptr) = (- n);
+      return (- s);
+    }
+    else
+    {
+      (*iptr) = n;
+      return (s);
+    }
   }
 }
 
