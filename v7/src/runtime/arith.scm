@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.7 1989/10/31 05:06:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.8 1989/11/09 22:07:04 jinx Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -1556,7 +1556,8 @@ MIT in each case. |#
 	(else
 	 (complex:* (car zs)
 		    (complex:* (cadr zs)
-			       (reduce complex:+ 1 (cddr zs)))))))
+			       (reduce complex:* 1 (cddr zs)))))))
+
 (define (- z1 . zs)
   (cond ((null? zs) (complex:negate z1))
 	((null? (cdr zs)) (complex:- z1 (car zs)))
