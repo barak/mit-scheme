@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.32 1993/11/23 01:23:16 cph Exp $
+;;;	$Id: process.scm,v 1.33 1993/11/23 03:51:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-93 Massachusetts Institute of Technology
 ;;;
@@ -276,7 +276,8 @@ Initialized from the SHELL environment variable."
 (define (poll-process-for-output process)
   (let ((channel (process-input-channel process))
 	(buffer (make-string 512)))
-    (and (channel-open? channel)
+    (and channel
+	 (channel-open? channel)
 	 (let ((close-input
 		(lambda ()
 		  (deregister-process-input process)
