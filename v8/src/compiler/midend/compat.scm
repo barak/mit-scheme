@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compat.scm,v 1.2 1994/11/22 19:45:34 adams Exp $
+$Id: compat.scm,v 1.3 1994/11/22 19:48:54 gjr Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -423,12 +423,13 @@ MIT in each case. |#
 	     "%make-heap-closure LAMBDA-expression has bad formals" lam-expr))
 	`(CALL (QUOTE ,%make-heap-closure)
 	       ,(compat/expr env cont)
-	       ,(compat/rewrite-lambda
-		 lambda-list
-		 (lambda/body lam-expr)
-		 (compat/choose-stack-formals 2 lambda-list))
+	       ,(compat/remember
+		 (compat/rewrite-lambda
+		  lambda-list
+		  (lambda/body lam-expr)
+		  (compat/choose-stack-formals 2 lambda-list))
+		 lam-expr)
 	       . ,(compat/expr* env (cdr rands)))))))
-
 
 (define-rewrite/compat %variable-cache-ref
   ;; (CALL ',%variable-cache-ref '#F <read-variable-cache> 'NAME)
