@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: txtprp.scm,v 1.6 1993/08/23 20:46:20 cph Exp $
+;;;	$Id: txtprp.scm,v 1.7 1993/08/23 21:14:35 cph Exp $
 ;;;
 ;;;	Copyright (c) 1993 Massachusetts Institute of Technology
 ;;;
@@ -153,7 +153,7 @@
 	 (let ((p (assq prop (interval-properties z))))
 	   (let loop ((next (next-interval z)))
 	     (and next
-		  (if (eqv? p (assq prop (interval-properties next)))
+		  (if (eq? p (assq prop (interval-properties next)))
 		      (loop (next-interval next))
 		      (interval-start next))))))))
 
@@ -175,7 +175,7 @@
 	 (let ((p (assq prop (interval-properties z))))
 	   (let loop ((prev (previous-interval z)))
 	     (and prev
-		  (if (equal? p (assq prop (interval-properties prev)))
+		  (if (eq? p (assq prop (interval-properties prev)))
 		      (loop (previous-interval prev))
 		      (interval-start prev))))))))
 
@@ -185,8 +185,10 @@
 	 (lambda (p1 p2)
 	   (let loop ((p1 p1))
 	     (or (null? p1)
-		 (and (assq (caar p1) p2)
-		      (loop (cdr p1))))))))
+		 (let ((entry (assq (caar p1) p2)))
+		   (and entry
+			(eq? (cdar p1) (cdr entry))
+			(loop (cdr p1)))))))))
     (and (subset? p1 p2)
 	 (subset? p2 p1))))
 
