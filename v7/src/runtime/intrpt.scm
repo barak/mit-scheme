@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: intrpt.scm,v 14.20 1994/01/29 21:36:07 adams Exp $
+$Id: intrpt.scm,v 14.21 1994/09/02 22:41:28 adams Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -129,11 +129,10 @@ MIT in each case. |#
   ;; prevent us from getting into a loop just running the daemons.
   (clear-interrupts! interrupt-bit/after-gc))
 
-(define (illegal-interrupt-handler interrupt-code interrupt-enables)
+(define ((illegal-interrupt-handler interrupt-bit)
+	 interrupt-code interrupt-enables)
+  (clear-interrupts! interrupt-bit)
   (error "Illegal interrupt" interrupt-code interrupt-enables))
-
-(define (default-interrupt-handler interrupt-code interrupt-enables)
-  (error "Anomalous interrupt" interrupt-code interrupt-enables))
 
 ;;;; Keyboard Interrupts
 
@@ -217,11 +216,11 @@ MIT in each case. |#
 	   (do ((i 0 (fix:+ i 1)))
 	       ((fix:= i length))
 	     (if (not (vector-ref system-interrupt-vector i))
-		 (begin
+		 (let ((interrupt-bit (fix:lsh 1 i)))
 		   (vector-set! interrupt-mask-vector i
-				(fix:not (fix:lsh 1 i)))
+				(fix:- interrupt-bit 1)) ; higher priority only
 		   (vector-set! system-interrupt-vector i
-				illegal-interrupt-handler)))))
+				(illegal-interrupt-handler interrupt-bit))))))
 
 	 (vector-set! interrupt-mask-vector stack-overflow-slot
 		      interrupt-mask/none)
