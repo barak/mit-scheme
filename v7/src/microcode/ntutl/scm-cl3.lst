@@ -81,5 +81,5 @@ fasdump.obj
 gcloop.obj
 memmag.obj
 purify.obj
+wabbit.obj
 usrdef.obj
-
