@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: picture.scm,v 1.26 1997/12/30 05:42:53 cph Exp $
+$Id: picture.scm,v 1.27 1998/01/23 05:14:17 cph Exp $
 
-Copyright (c) 1991-97 Massachusetts Institute of Technology
+Copyright (c) 1991-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -170,17 +170,17 @@ MIT in each case. |#
       (else (error "Unsupported graphics type:" name)))))
 
 (define n-gray-map/win32
-  (let ((map (make-string 128)))
+  (let ((map (make-vector 128)))
     (do ((i 0 (fix:+ i 1)))
 	((fix:= i 128))
-      (vector-8b-set! map i i))
+      (vector-set! map i i))
     (lambda (window) window map)))
 
 (define n-gray-map/os2
-  (let ((map (make-string 256)))
+  (let ((map (make-vector 256)))
     (do ((i 0 (fix:+ i 1)))
 	((fix:= i 256))
-      (vector-8b-set! map i i))
+      (vector-set! map i i))
     (lambda (window) window map)))
 
 (define (n-gray-map/X11 window)
