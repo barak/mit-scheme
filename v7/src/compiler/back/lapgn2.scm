@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgn2.scm,v 1.24 2004/07/01 01:19:57 cph Exp $
+$Id: lapgn2.scm,v 1.25 2004/07/01 15:23:56 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1993 Massachusetts Institute of Technology
 Copyright 1994,2004 Massachusetts Institute of Technology
@@ -167,7 +167,7 @@ USA.
 
 (define (guarantee-registers-compatible r1 r2)
   (if (not (registers-compatible? r1 r2))
-      (error "Incompatible register types:" source target)))
+      (error "Incompatible register types:" r1 r2)))
 
 (define (registers-compatible? r1 r2)
   (register-types-compatible? (register-type r1) (register-type r2)))
