@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.sf,v 1.2 1995/10/25 19:27:00 ssmith Exp $
+$Id: compiler.sf,v 1.3 1995/10/25 19:48:33 ssmith Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -110,7 +110,7 @@ MIT in each case. |#
 		    (load (string-append "machines/i386/" name ".scm")
 			  '(COMPILER LAP-SYNTAXER)
 			  early-syntax-table))
-		  '("instr1" "instr2" "instr3")))))
+		  '("instr1" "instr2" "instrf" "insutl")))))
 
 ;; Resyntax any files that need it.
 ((access syntax-files! (->environment '(COMPILER))))
