@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: utils.scm,v 1.37 1994/08/24 19:50:40 adams Exp $
+;;;	$Id: utils.scm,v 1.38 1994/08/24 19:57:15 adams Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -144,7 +144,7 @@
       (ucode-primitive string-allocate)))
 
 (define set-string-maximum-length!
-  (if (compiler-procedure? edwin-set-string-maximum-length!)
+  (if (compiled-procedure? edwin-set-string-maximum-length!)
       edwin-set-string-maximum-length!
       (ucode-primitive set-string-maximum-length!)))
 
