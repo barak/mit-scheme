@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ttyio.scm,v 1.15 2003/03/21 17:51:19 cph Exp $
+$Id: ttyio.scm,v 1.16 2004/01/19 04:30:41 cph Exp $
 
-Copyright 1991,1993,1996,1999,2003 Massachusetts Institute of Technology
+Copyright 1991,1993,1996,1999,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -149,7 +149,8 @@ USA.
     (let loop ()
       (if (input-buffer/char-ready? buffer 0)
 	  (let ((char (input-buffer/peek-char buffer)))
-	    (if (char-whitespace? char)
+	    (if (and (not (eof-object? char))
+		     (char-whitespace? char))
 		(begin
 		  (operation/read-char port)
 		  (loop)))))))
