@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 4.15 1999/12/20 23:07:24 cph Exp $
+$Id: debug.scm,v 4.16 2001/10/17 03:26:55 cph Exp $
 
-Copyright (c) 1988, 1989, 1990, 1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1990, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Compiler Debugging Support
@@ -25,13 +26,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (po object)
   (let ((object (->tagged-vector object)))
-    (newline)
-    (write object)
+    (write-line object)
     (for-each pp ((tagged-vector/description object) object))))
 
 (define (debug/find-procedure name)
   (let loop ((procedures *procedures*))
-    (and (not (null? procedures))
+    (and (pair? procedures)
 	 (if (and (not (procedure-continuation? (car procedures)))
 		  (or (eq? name (procedure-name (car procedures)))
 		      (eq? name (procedure-label (car procedures)))))
@@ -42,7 +42,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((label
 	 (intern (string-append "continuation-" (number->string number)))))
     (let loop ((procedures *procedures*))
-      (and (not (null? procedures))
+      (and (pair? procedures)
 	   (if (and (procedure-continuation? (car procedures))
 		    (eq? label (procedure-label (car procedures))))
 	       (car procedures)
@@ -51,28 +51,23 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (debug/find-entry-node node)
   (let ((node (->tagged-vector node)))
     (if (eq? (expression-entry-node *root-expression*) node)
-	(begin
-	  (newline)
-	  (write *root-expression*)))
+	(write-line *root-expression*))
     (for-each (lambda (procedure)
 		(if (eq? (procedure-entry-node procedure) node)
-		    (begin
-		      (newline)
-		      (write procedure))))
+		    (write-line procedure)))
 	      *procedures*)))
 
 (define (debug/where object)
   (cond ((compiled-code-block? object)
-	 (newline)
-	 (write (compiled-code-block/debugging-info object)))
+	 (write-line (compiled-code-block/debugging-info object)))
 	((compiled-code-address? object)
-	 (newline)
-	 (write
+	 (write-line
 	  (compiled-code-block/debugging-info
 	   (compiled-code-address->block object)))
-	 (write-string "\nOffset: ")
+	 (write-string "Offset: ")
 	 (write-string
-	  (number->string (compiled-code-address->offset object) 16)))
+	  (number->string (compiled-code-address->offset object) 16))
+	 (newline))
 	(else
 	 (error "debug/where -- what?" object))))
 
@@ -91,30 +86,30 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (for-each show-rtl-instruction (linearize-rtl *rtl-graphs*)))))))
 
 (define (show-rtl rtl)
-  (newline)
   (pp-instructions
    (lambda ()
-     (for-each show-rtl-instruction rtl))))
+     (for-each show-rtl-instruction rtl)))
+  (newline))
 
 (define (show-bblock-rtl bblock)
-  (newline)
   (pp-instructions
    (lambda ()
      (bblock-walk-forward (->tagged-vector bblock)
        (lambda (rinst)
-	 (show-rtl-instruction (rinst-rtl rinst)))))))
+	 (show-rtl-instruction (rinst-rtl rinst))))))
+  (newline))
 
 (define (write-instructions thunk)
   (fluid-let ((*show-instruction* write)
 	      (*unparser-radix* 16)
-	      (*unparse-uninterned-symbols-by-name?* true))
+	      (*unparse-uninterned-symbols-by-name?* #t))
     (thunk)))
 
 (define (pp-instructions thunk)
   (fluid-let ((*show-instruction* pretty-print)
-	      (*pp-primitives-by-name* false)
+	      (*pp-primitives-by-name* #f)
 	      (*unparser-radix* 16)
-	      (*unparse-uninterned-symbols-by-name?* true))
+	      (*unparse-uninterned-symbols-by-name?* #t))
     (thunk)))
 
 (define *show-instruction*)
@@ -133,23 +128,28 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (show-fg)
   (fluid-let ((procedure-queue (make-queue))
 	      (procedures-located '()))
-    (write-string "\n---------- Expression ----------")
+    (write-string "---------- Expression ----------")
+    (newline)
     (fg/print-object *root-expression*)
     (with-new-node-marks
      (lambda ()
        (fg/print-entry-node (expression-entry-node *root-expression*))
        (queue-map!/unsafe procedure-queue
 	 (lambda (procedure)
+	   (newline)
 	   (if (procedure-continuation? procedure)
-	       (write-string "\n\n---------- Continuation ----------")
-	       (write-string "\n\n---------- Procedure ----------"))
+	       (write-string "---------- Continuation ----------")
+	       (write-string "---------- Procedure ----------"))
+	   (newline)
 	   (fg/print-object procedure)
 	   (fg/print-entry-node (procedure-entry-node procedure))))))
-    (write-string "\n\n---------- Blocks ----------")
+    (newline)
+    (write-string "---------- Blocks ----------")
+    (newline)
     (fg/print-blocks (expression-block *root-expression*))))
 
 (define (show-fg-node node)
-  (fluid-let ((procedure-queue false))
+  (fluid-let ((procedure-queue #f))
     (with-new-node-marks
      (lambda ()
        (fg/print-entry-node
@@ -163,8 +163,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (fg/print-node node)))
 
 (define (fg/print-object object)
-  (newline)
-  (po object))
+  (po object)
+  (newline))
 
 (define (fg/print-blocks block)
   (fg/print-object block)
