@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/xcbfdir.scm,v 1.3 1990/10/10 02:03:40 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/xcbfdir.scm,v 1.4 1991/02/06 02:51:10 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -40,7 +40,7 @@ MIT in each case. |#
   (for-each
    (lambda (pathname)
      (let ((one (pathname-new-type pathname extension))
-	   (two (pathname-new-type pathname "touch")))
+	   (two (pathname-new-type pathname "tch")))
        (call-with-current-continuation
 	(lambda (here)
 	  (bind-condition-handler
@@ -80,4 +80,4 @@ MIT in each case. |#
   (process-directory dir compile-bin-file "com"))
 
 (define (cross-compile-directory dir)
-  (process-directory dir cross-compile-bin-file "bits.x"))
+  (process-directory dir cross-compile-bin-file "moc"))
