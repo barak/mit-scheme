@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.31 1995/10/23 06:39:32 cph Exp $
+$Id: dosprm.scm,v 1.32 1995/10/24 05:39:49 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -248,22 +248,25 @@ MIT in each case. |#
 
   unspecific)				; End LET
 
-(define (user-home-directory user-name)
-  (or (and user-name
-	   (let ((directory (get-environment-variable "USERDIR")))
-	     (and directory
-		  (pathname-new-name
-		   (pathname-as-directory (merge-pathnames directory))
-		   user-name))))
-      "\\"))
+(define (current-home-directory)
+  (let ((home (get-environment-variable "HOME")))
+    (if home
+	(pathname-as-directory (merge-pathnames home))
+	(user-home-directory (current-user-name)))))
 
 (define (current-user-name)
   (or (get-environment-variable "USER")
       "nouser"))
 
-(define (current-home-directory)
-  (or (get-environment-variable "HOME")
-      (user-home-directory (current-user-name))))
+(define (user-home-directory user-name)
+  (or (and user-name
+	   (let ((directory (get-environment-variable "USERDIR")))
+	     (and directory
+		  (pathname-as-directory
+		   (pathname-new-name
+		    (pathname-as-directory (merge-pathnames directory))
+		    user-name)))))
+      (merge-pathnames "\\")))
 
 (define file-time->string
   (ucode-primitive file-time->string 1))

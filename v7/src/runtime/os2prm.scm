@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.20 1995/10/23 06:52:09 cph Exp $
+$Id: os2prm.scm,v 1.21 1995/10/24 05:40:10 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -249,7 +249,7 @@ MIT in each case. |#
 		   (pathname-new-name
 		    (pathname-as-directory (merge-pathnames directory))
 		    user-name)))))
-      "\\"))
+      (merge-pathnames "\\")))
 
 (define (os2/fs-drive-type pathname)
   (let ((type

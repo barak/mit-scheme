@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.27 1995/09/13 23:00:53 cph Exp $
+;;;	$Id: dos.scm,v 1.28 1995/10/24 05:37:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ;;;
@@ -435,9 +435,93 @@ Includes the new backup.  Must be > 0."
 (define (os/hostname)
   (error "OS/HOSTNAME procedure unimplemented."))
 
-(define (os/interprogram-cut string)
+(define (os/interprogram-cut string push?)
   string push?
   unspecific)
 
 (define (os/interprogram-paste)
   #f)
+
+(define (os/comint-filename-region start point end)
+  (let ((chars "]\\\\A-Za-z0-9!#$%&'()+,.:;=@[^_`{}~---"))
+    (let ((start (skip-chars-backward chars point start)))
+      (make-region start (skip-chars-forward chars start end)))))
+
+;;;; Subprocess/Shell Support
+
+(define (os/parse-path-string string)
+  (let ((end (string-length string))
+	(substring
+	 (lambda (string start end)
+	   (pathname-as-directory (substring string start end)))))
+    (let loop ((start 0))
+      (if (< start end)
+	  (let ((index (substring-find-next-char string start end #\;)))
+	    (if index
+		(if (= index start)
+		    (loop (+ index 1))
+		    (cons (substring string start index)
+			  (loop (+ index 1))))
+		(list (substring string start end))))
+	  '()))))
+
+(define (os/find-program program default-directory)
+  (or (dos/find-program program (ref-variable exec-path) default-directory)
+      (error "Can't find program:" (->namestring program))))
+
+(define (dos/find-program program exec-path default-directory)
+  (let* ((types dos/executable-suffixes)
+	 (try
+	  (lambda (pathname)
+	    (let ((type (pathname-type pathname)))
+	      (if type
+		  (and (member type types)
+		       (file-exists? pathname)
+		       (->namestring pathname))
+		  (let loop ((types types))
+		    (and (not (null? types))
+			 (let ((p
+				(pathname-new-type pathname (car types))))
+			   (if (file-exists? p)
+			       (->namestring p)
+			       (loop (cdr types)))))))))))
+    (cond ((pathname-absolute? program)
+	   (try program))
+	  ((not default-directory)
+	   (let loop ((path exec-path))
+	     (and (not (null? path))
+		  (or (and (pathname-absolute? (car path))
+			   (try (merge-pathnames program (car path))))
+		      (loop (cdr path))))))
+	  (else
+	   (let ((default-directory (merge-pathnames default-directory)))
+	     (let loop ((path exec-path))
+	       (and (not (null? path))
+		    (or (try (merge-pathnames
+			      program
+			      (merge-pathnames (car path)
+					       default-directory)))
+			(loop (cdr path))))))))))
+
+(define (os/shell-file-name)
+  (or (get-environment-variable "SHELL")
+      ;; Not sure if this is right for WinNT and/or Win95.
+      "command.com"))
+
+(define dos/executable-suffixes
+  ;; Not sure if there are other possibilities under WinNT and/or Win95.
+  '("exe" "com" "bat"))
+
+(define (os/form-shell-command command)
+  (list "/c" command))
+
+(define (os/shell-name pathname)
+  (if (member (pathname-type pathname) dos/executable-suffixes)
+      (pathname-name pathname)
+      (file-namestring pathname)))
+
+(define (os/default-shell-prompt-pattern)
+  "^\\[[^]]*] *")
+
+(define (os/default-shell-args)
+  '())

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.179 1995/09/27 16:24:28 cph Exp $
+$Id: edwin.pkg,v 1.180 1995/10/24 05:38:04 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -946,7 +946,7 @@ MIT in each case. |#
 	  run-synchronous-process))
 
 (os-type-case
- ((dos)
+ ((dos nt)
   (define-package (edwin dosjob)
     (files "doscom" "dosshell")
     (parent (edwin)))))
