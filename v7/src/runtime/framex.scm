@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/framex.scm,v 14.14 1990/10/03 21:52:58 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/framex.scm,v 14.15 1991/06/14 03:02:57 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -135,7 +135,7 @@ MIT in each case. |#
 	    (stack-frame/ref frame 2)
 	    (validate-subexpression
 	     frame
-	     (&vector-ref expression (1+ (stack-frame/ref frame 3)))))))
+	     (&vector-ref expression (stack-frame/ref frame 3))))))
 
 (define (method/eval-error frame)
   (values (stack-frame/ref frame 1)
