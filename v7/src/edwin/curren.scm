@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: curren.scm,v 1.129 2000/10/26 02:42:07 cph Exp $
+;;; $Id: curren.scm,v 1.130 2000/10/26 02:50:03 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -531,10 +531,18 @@ The buffer is guaranteed to be selected at that time."
 	  (delete-other-windows window)))
     (let ((layout (buffer-get buffer buffer-layout-key #f)))
       (if layout
-	  (begin
-	    (hash-table/put! screen-buffer-layouts screen layout)
-	    (delete-other-windows window)
-	    ((car layout) window (weak-list->list (cdr layout))))
+	  (let ((buffers (weak-list->list (cdr layout))))
+	    (if (for-all? buffers
+		  (lambda (buffer)
+		    (and buffer
+			 (buffer-alive? buffer))))
+		(begin
+		  (hash-table/put! screen-buffer-layouts screen layout)
+		  (delete-other-windows window)
+		  ((car layout) window buffers))
+		(begin
+		  (delete-buffer-layout buffer)
+		  (set-window-buffer! window buffer))))
 	  (set-window-buffer! window buffer)))))
 
 (define (delete-buffer-layout buffer)
