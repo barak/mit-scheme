@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.4 1988/06/22 21:24:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.5 1988/12/30 06:42:07 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -44,7 +44,8 @@ MIT in each case. |#
 				(type elements dynamic-state fluid-bindings
 				      interrupt-mask history
 				      previous-history-offset
-				      previous-history-control-point %next))
+				      previous-history-control-point
+				      offset %next))
 		   (conc-name stack-frame/))
   (type false read-only true)
   (elements false read-only true)
@@ -54,6 +55,7 @@ MIT in each case. |#
   (history false read-only true)
   (previous-history-offset false read-only true)
   (previous-history-control-point false read-only true)
+  (offset false read-only true)
   ;; %NEXT is either a parser-state object or the next frame.  In the
   ;; former case, the parser-state is used to compute the next frame.
   %next
@@ -92,7 +94,7 @@ MIT in each case. |#
       (let ((stack-frame (stack-frame/next stack-frame)))
 	(and stack-frame
 	     (stack-frame/skip-non-subproblems stack-frame)))))
-
+
 (define-integrable (stack-frame/length stack-frame)
   (vector-length (stack-frame/elements stack-frame)))
 
@@ -102,13 +104,24 @@ MIT in each case. |#
      (lambda ()
        (vector-ref elements index)))))
 (define-integrable (stack-frame/return-address stack-frame)
-  (stack-frame-type/address (stack-frame/type stack-frame)))
+  (stack-frame/ref stack-frame 0))
 
-(define-integrable (stack-frame/return-code stack-frame)
-  (stack-frame-type/code (stack-frame/type stack-frame)))
+(define (stack-frame/return-code stack-frame)
+  (let ((return-address (stack-frame/return-address stack-frame)))
+    (and (interpreter-return-address? return-address)
+	 (return-address/code return-address))))
 
 (define-integrable (stack-frame/subproblem? stack-frame)
   (stack-frame-type/subproblem? (stack-frame/type stack-frame)))
+
+(define (stack-frame/resolve-stack-address frame address)
+  (let loop
+      ((frame frame)
+       (offset (stack-address->index address (stack-frame/offset frame))))
+    (let ((length (stack-frame/length frame)))
+      (if (< offset length)
+	  (values frame offset)
+	  (loop (stack-frame/next frame) (- offset length))))))
 
 ;;;; Parser
 
@@ -121,6 +134,7 @@ MIT in each case. |#
   (previous-history-offset false read-only true)
   (previous-history-control-point false read-only true)
   (element-stream false read-only true)
+  (n-elements false read-only true)
   (next-control-point false read-only true))
 
 (define (continuation->stack-frame continuation)
@@ -139,52 +153,28 @@ MIT in each case. |#
 	 (control-point/previous-history-offset control-point)
 	 (control-point/previous-history-control-point control-point)
 	 (control-point/element-stream control-point)
+	 (control-point/n-elements control-point)
 	 (control-point/next-control-point control-point)))))
 
 (define (parse/start state)
   (let ((stream (parser-state/element-stream state)))
     (if (stream-pair? stream)
-	(let ((type (parse/type stream))
-	      (stream (stream-cdr stream)))
-	  (let ((length (parse/length stream type)))
-	    (with-values (lambda () (parse/elements stream length))
-	      (lambda (elements stream)
-		(parse/dispatch type
-				elements
-				(parse/next-state state length stream))))))
+	(let ((type
+	       (return-address->stack-frame-type
+		(element-stream/head stream))))
+	  (let ((length
+		 (let ((length (stack-frame-type/length type)))
+		   (if (integer? length)
+		       length
+		       (length stream (parser-state/n-elements state))))))
+	    ((stack-frame-type/parser type)
+	     type
+	     (list->vector (stream-head stream length))
+	     (parse/next-state state length (stream-tail stream length)))))
 	(parse/control-point (parser-state/next-control-point state)
 			     (parser-state/dynamic-state state)
 			     (parser-state/fluid-bindings state)))))
 
-(define (parse/type stream)
-  (let ((return-address (element-stream/head stream)))
-    (if (not (return-address? return-address))
-	(error "illegal return address" return-address))
-    (let ((code (return-address/code return-address)))
-      (let ((type (microcode-return/code->type code)))
-	(if (not type)
-	    (error "return-code has no type" code))
-	type))))
-
-(define (parse/length stream type)
-  (let ((length (stack-frame-type/length type)))
-    (if (integer? length)
-	length
-	(length stream))))
-
-(define (parse/elements stream length)
-  (let ((elements (make-vector length)))
-    (let loop ((stream stream) (index 0))
-      (if (< index length)
-	  (begin (if (not (stream-pair? stream))
-		     (error "stack too short" index))
-		 (vector-set! elements index (stream-car stream))
-		 (loop (stream-cdr stream) (1+ index)))
-	  (values elements stream)))))
-
-(define (parse/dispatch type elements state)
-  ((stack-frame-type/parser type) type elements state))
-
 (define (parse/next-state state length stream)
   (let ((previous-history-control-point
 	 (parser-state/previous-history-control-point state)))
@@ -195,13 +185,17 @@ MIT in each case. |#
      (parser-state/history state)
      (if previous-history-control-point
 	 (parser-state/previous-history-offset state)
-	 (max (- (parser-state/previous-history-offset state) length) 0))
+	 (max (- (parser-state/previous-history-offset state) (-1+ length))
+	      0))
      previous-history-control-point
      stream
+     (- (parser-state/n-elements state) length)
      (parser-state/next-control-point state))))
-
-(define (make-frame type elements state element-stream)
-  (let ((subproblem? (stack-frame-type/subproblem? type))
+
+(define (make-frame type elements state element-stream n-elements)
+  (let ((history-subproblem?
+	 (and (stack-frame-type/subproblem? type)
+	      (not (eq? type stack-frame-type/compiled-return-address))))
 	(history (parser-state/history state))
 	(previous-history-offset (parser-state/previous-history-offset state))
 	(previous-history-control-point
@@ -211,28 +205,29 @@ MIT in each case. |#
 		      (parser-state/dynamic-state state)
 		      (parser-state/fluid-bindings state)
 		      (parser-state/interrupt-mask state)
-		      (if subproblem? history undefined-history)
+		      (if history-subproblem? history undefined-history)
 		      previous-history-offset
 		      previous-history-control-point
+		      (+ (vector-length elements) n-elements)
 		      (make-parser-state
 		       (parser-state/dynamic-state state)
 		       (parser-state/fluid-bindings state)
 		       (parser-state/interrupt-mask state)
-		       (if subproblem? (history-superproblem history) history)
+		       (if history-subproblem?
+			   (history-superproblem history)
+			   history)
 		       previous-history-offset
 		       previous-history-control-point
 		       element-stream
+		       n-elements
 		       (parser-state/next-control-point state)))))
 
 (define (element-stream/head stream)
   (if (not (stream-pair? stream)) (error "not a stream-pair" stream))
   (map-reference-trap (lambda () (stream-car stream))))
 
-(define (element-stream/ref stream index)
-  (if (not (stream-pair? stream)) (error "not a stream-pair" stream))
-  (if (zero? index)
-      (map-reference-trap (lambda () (stream-car stream)))
-      (element-stream/ref (stream-cdr stream)  (-1+ index))))
+(define-integrable (element-stream/ref stream index)
+  (map-reference-trap (lambda () (stream-ref stream index))))
 
 ;;;; Unparser
 
@@ -260,41 +255,49 @@ MIT in each case. |#
     (cond ((stack-frame? next)
 	   (with-values (lambda () (unparse/stack-frame next))
 	     (lambda (element-stream next-control-point)
-	       (values (let ((type (stack-frame/type stack-frame)))
-			 ((stack-frame-type/unparser type)
-			  type
-			  (stack-frame/elements stack-frame)
-			  element-stream))
-		       next-control-point))))
+	       (values
+		(let ((elements (stack-frame/elements stack-frame)))
+		  (let ((length (vector-length elements)))
+		    (let loop ((index 0))
+		      (if (< index length)
+			  (cons-stream (vector-ref elements index)
+				       (loop (1+ index)))
+			  element-stream))))
+		next-control-point))))
 	  ((parser-state? next)
 	   (values (parser-state/element-stream next)
 		   (parser-state/next-control-point next)))
-	  (else (values (stream) false)))))
+	  (else
+	   (values (stream) false)))))
 
-;;;; Generic Parsers/Unparsers
+;;;; Special Frame Lengths
 
-(define (parser/interpreter-next type elements state)
-  (make-frame type elements state (parser-state/element-stream state)))
+(define (length/combination-save-value stream offset)
+  offset
+  (+ 3 (system-vector-length (element-stream/ref stream 1))))
 
-(define (unparser/interpreter-next type elements element-stream)
-  (cons-stream (make-return-address (stack-frame-type/code type))
-	       (let ((length (vector-length elements)))
-		 (let loop ((index 0))
-		   (if (< index length)
-		       (cons-stream (vector-ref elements index)
-				    (loop (1+ index)))
-		       element-stream)))))
+(define ((length/application-frame index missing) stream offset)
+  offset
+  (+ index 1 (- (object-datum (element-stream/ref stream index)) missing)))
 
-(define (parser/compiler-next type elements state)
-  (make-frame type elements state
-	      (cons-stream
-	       (ucode-return-address reenter-compiled-code)
-	       (cons-stream
-		(- (vector-ref elements 0) (vector-length elements))
-		(parser-state/element-stream state)))))
+(define (length/repeat-primitive stream offset)
+  offset
+  (primitive-procedure-arity (element-stream/ref stream 1)))
 
-(define (unparser/compiler-next type elements element-stream)
-  (unparser/interpreter-next type elements (stream-tail element-stream 2)))
+(define (length/compiled-return-address stream offset)
+  (let ((entry (element-stream/head stream)))
+    (let ((frame-size (compiled-continuation/next-continuation-offset entry)))
+      (if frame-size
+	  (1+ frame-size)
+	  (stack-address->index (element-stream/ref stream 1) offset)))))
+;;;; Parsers
+
+(define (parser/standard-next type elements state)
+  (make-frame type
+	      elements
+	      state
+	      (parser-state/element-stream state)
+	      (parser-state/n-elements state)))
 
 (define (make-restore-frame type
 			    elements
@@ -305,7 +308,7 @@ MIT in each case. |#
 			    history
 			    previous-history-offset
 			    previous-history-control-point)
-  (parser/interpreter-next
+  (parser/standard-next
    type
    elements
    (make-parser-state dynamic-state
@@ -315,9 +318,8 @@ MIT in each case. |#
 		      previous-history-offset
 		      previous-history-control-point
 		      (parser-state/element-stream state)
+		      (parser-state/n-elements state)
 		      (parser-state/next-control-point state))))
-
-;;;; Specific Parsers
 
 (define (parser/restore-dynamic-state type elements state)
   (make-restore-frame type elements state
@@ -325,7 +327,7 @@ MIT in each case. |#
 		      ;; consists of all of the state spaces in
 		      ;; existence.  Probably we should have some
 		      ;; mechanism for keeping track of them all.
-		      (let ((dynamic-state (vector-ref elements 0)))
+		      (let ((dynamic-state (vector-ref elements 1)))
 			(if (eq? system-state-space
 				 (state-point/space dynamic-state))
 			    dynamic-state
@@ -339,7 +341,7 @@ MIT in each case. |#
 (define (parser/restore-fluid-bindings type elements state)
   (make-restore-frame type elements state
 		      (parser-state/dynamic-state state)
-		      (vector-ref elements 0)
+		      (vector-ref elements 1)
 		      (parser-state/interrupt-mask state)
 		      (parser-state/history state)
 		      (parser-state/previous-history-offset state)
@@ -349,7 +351,7 @@ MIT in each case. |#
   (make-restore-frame type elements state
 		      (parser-state/dynamic-state state)
 		      (parser-state/fluid-bindings state)
-		      (vector-ref elements 0)
+		      (vector-ref elements 1)
 		      (parser-state/history state)
 		      (parser-state/previous-history-offset state)
 		      (parser-state/previous-history-control-point state)))
@@ -359,148 +361,144 @@ MIT in each case. |#
 		      (parser-state/dynamic-state state)
 		      (parser-state/fluid-bindings state)
 		      (parser-state/interrupt-mask state)
-		      (history-transform (vector-ref elements 0))
-		      (vector-ref elements 1)
-		      (vector-ref elements 2)))
-
-(define (length/combination-save-value stream)
-  (+ 2 (system-vector-length (element-stream/head stream))))
-
-(define ((length/application-frame index missing) stream)
-  (+ index 1 (- (object-datum (element-stream/ref stream index)) missing)))
-
-(define (length/repeat-primitive stream)
-  (-1+ (primitive-procedure-arity (element-stream/head stream))))
-
-(define (length/reenter-compiled-code stream)
-  (1+ (element-stream/head stream)))
+		      (history-transform (vector-ref elements 1))
+		      (vector-ref elements 2)
+		      (vector-ref elements 3)))
 
 ;;;; Stack Frame Types
 
 (define-structure (stack-frame-type
 		   (constructor make-stack-frame-type
-				(code subproblem? length parser unparser))
+				(code subproblem? length parser))
 		   (conc-name stack-frame-type/))
   (code false read-only true)
   (subproblem? false read-only true)
   (properties (make-1d-table) read-only true)
   (length false read-only true)
-  (parser false read-only true)
-  (unparser false read-only true))
+  (parser false read-only true))
 
 (define (microcode-return/code->type code)
   (if (not (< code (vector-length stack-frame-types)))
       (error "return-code too large" code))
   (vector-ref stack-frame-types code))
 
-(define-integrable (stack-frame-type/address frame-type)
-  (make-return-address (stack-frame-type/code frame-type)))
+(define (return-address->stack-frame-type return-address)
+  (cond ((interpreter-return-address? return-address)
+	 (let ((code (return-address/code return-address)))
+	   (let ((type (microcode-return/code->type code)))
+	     (if (not type)
+		 (error "return-code has no type" code))
+	     type)))
+	((compiled-return-address? return-address)
+	 (if (compiled-continuation/return-to-interpreter?
+	      return-address)
+	     stack-frame-type/return-to-interpreter
+	     stack-frame-type/compiled-return-address))
+	(else
+	 (error "illegal return address" return-address))))
 
 (define (initialize-package!)
-  (set! stack-frame-types (make-stack-frame-types)))
+  (set! stack-frame-types (make-stack-frame-types))
+  (set! stack-frame-type/compiled-return-address
+	(make-stack-frame-type false
+			       true
+			       length/compiled-return-address
+			       parser/standard-next))
+  (set! stack-frame-type/return-to-interpreter
+	(make-stack-frame-type false
+			       false
+			       1
+			       parser/standard-next))
+  unspecific)
 
 (define stack-frame-types)
+(define stack-frame-type/compiled-return-address)
+(define stack-frame-type/return-to-interpreter)
 
 (define (make-stack-frame-types)
   (let ((types (make-vector (microcode-return/code-limit) false)))
 
-    (define (stack-frame-type name subproblem? length parser unparser)
+    (define (stack-frame-type name subproblem? length parser)
       (let ((code (microcode-return name)))
 	(vector-set! types
 		     code
-		     (make-stack-frame-type code subproblem? length parser
-					    unparser))))
+		     (make-stack-frame-type code subproblem? length parser))))
 
-    (define (interpreter-frame name length #!optional parser)
-      (stack-frame-type name false length
+    (define (standard-frame name length #!optional parser)
+      (stack-frame-type name
+			false
+			length
 			(if (default-object? parser)
-			    parser/interpreter-next
-			    parser)
-			unparser/interpreter-next))
+			    parser/standard-next
+			    parser)))
 
-    (define (compiler-frame name length #!optional parser)
-      (stack-frame-type name false length
-			(if (default-object? parser)
-			    parser/compiler-next
-			    parser)
-			unparser/compiler-next))
-
-    (define (interpreter-subproblem name length)
-      (stack-frame-type name true length parser/interpreter-next
-			unparser/interpreter-next))
-
-    (define (compiler-subproblem name length)
-      (stack-frame-type name true length parser/compiler-next
-			unparser/compiler-next))
+    (define (standard-subproblem name length)
+      (stack-frame-type name
+			true
+			length
+			parser/standard-next))
 
-    (interpreter-frame 'RESTORE-TO-STATE-POINT 1 parser/restore-dynamic-state)
-    (interpreter-frame 'RESTORE-FLUIDS 1 parser/restore-fluid-bindings)
-    (interpreter-frame 'RESTORE-INTERRUPT-MASK 1 parser/restore-interrupt-mask)
-    (interpreter-frame 'RESTORE-HISTORY 3 parser/restore-history)
-    (interpreter-frame 'RESTORE-DONT-COPY-HISTORY 3 parser/restore-history)
+    (standard-frame 'RESTORE-TO-STATE-POINT 2 parser/restore-dynamic-state)
+    (standard-frame 'RESTORE-FLUIDS 2 parser/restore-fluid-bindings)
+    (standard-frame 'RESTORE-INTERRUPT-MASK 2 parser/restore-interrupt-mask)
+    (standard-frame 'RESTORE-HISTORY 4 parser/restore-history)
+    (standard-frame 'RESTORE-DONT-COPY-HISTORY 4 parser/restore-history)
 
-    (interpreter-frame 'NON-EXISTENT-CONTINUATION 1)
-    (interpreter-frame 'HALT 1)
-    (interpreter-frame 'JOIN-STACKLETS 1)
-    (interpreter-frame 'POP-RETURN-ERROR 1)
+    (standard-frame 'NON-EXISTENT-CONTINUATION 2)
+    (standard-frame 'HALT 2)
+    (standard-frame 'JOIN-STACKLETS 2)
+    (standard-frame 'POP-RETURN-ERROR 2)
+    (standard-frame 'REENTER-COMPILED-CODE 2)
+    (standard-frame 'COMPILER-INTERRUPT-RESTART 3)
+    (standard-frame 'COMPILER-LINK-CACHES-RESTART 8)
 
-    (interpreter-subproblem 'IN-PACKAGE-CONTINUE 1)
-    (interpreter-subproblem 'ACCESS-CONTINUE 1)
-    (interpreter-subproblem 'PRIMITIVE-COMBINATION-1-APPLY 1)
-    (interpreter-subproblem 'FORCE-SNAP-THUNK 1)
-    (interpreter-subproblem 'GC-CHECK 1)
-    (interpreter-subproblem 'RESTORE-VALUE 1)
-    (interpreter-subproblem 'ASSIGNMENT-CONTINUE 2)
-    (interpreter-subproblem 'DEFINITION-CONTINUE 2)
-    (interpreter-subproblem 'SEQUENCE-2-SECOND 2)
-    (interpreter-subproblem 'SEQUENCE-3-SECOND 2)
-    (interpreter-subproblem 'SEQUENCE-3-THIRD 2)
-    (interpreter-subproblem 'CONDITIONAL-DECIDE 2)
-    (interpreter-subproblem 'DISJUNCTION-DECIDE 2)
-    (interpreter-subproblem 'COMBINATION-1-PROCEDURE 2)
-    (interpreter-subproblem 'COMBINATION-2-FIRST-OPERAND 2)
-    (interpreter-subproblem 'EVAL-ERROR 2)
-    (interpreter-subproblem 'PRIMITIVE-COMBINATION-2-FIRST-OPERAND 2)
-    (interpreter-subproblem 'PRIMITIVE-COMBINATION-2-APPLY 2)
-    (interpreter-subproblem 'PRIMITIVE-COMBINATION-3-SECOND-OPERAND 2)
-    (interpreter-subproblem 'COMBINATION-2-PROCEDURE 3)
-    (interpreter-subproblem 'REPEAT-DISPATCH 3)
-    (interpreter-subproblem 'PRIMITIVE-COMBINATION-3-FIRST-OPERAND 3)
-    (interpreter-subproblem 'PRIMITIVE-COMBINATION-3-APPLY 3)
-    (interpreter-subproblem 'MOVE-TO-ADJACENT-POINT 5)
+    (standard-subproblem 'IN-PACKAGE-CONTINUE 2)
+    (standard-subproblem 'ACCESS-CONTINUE 2)
+    (standard-subproblem 'PRIMITIVE-COMBINATION-1-APPLY 2)
+    (standard-subproblem 'FORCE-SNAP-THUNK 2)
+    (standard-subproblem 'GC-CHECK 2)
+    (standard-subproblem 'RESTORE-VALUE 2)
+    (standard-subproblem 'ASSIGNMENT-CONTINUE 3)
+    (standard-subproblem 'DEFINITION-CONTINUE 3)
+    (standard-subproblem 'SEQUENCE-2-SECOND 3)
+    (standard-subproblem 'SEQUENCE-3-SECOND 3)
+    (standard-subproblem 'SEQUENCE-3-THIRD 3)
+    (standard-subproblem 'CONDITIONAL-DECIDE 3)
+    (standard-subproblem 'DISJUNCTION-DECIDE 3)
+    (standard-subproblem 'COMBINATION-1-PROCEDURE 3)
+    (standard-subproblem 'COMBINATION-2-FIRST-OPERAND 3)
+    (standard-subproblem 'EVAL-ERROR 3)
+    (standard-subproblem 'PRIMITIVE-COMBINATION-2-FIRST-OPERAND 3)
+    (standard-subproblem 'PRIMITIVE-COMBINATION-2-APPLY 3)
+    (standard-subproblem 'PRIMITIVE-COMBINATION-3-SECOND-OPERAND 3)
+    (standard-subproblem 'COMBINATION-2-PROCEDURE 4)
+    (standard-subproblem 'REPEAT-DISPATCH 4)
+    (standard-subproblem 'PRIMITIVE-COMBINATION-3-FIRST-OPERAND 4)
+    (standard-subproblem 'PRIMITIVE-COMBINATION-3-APPLY 4)
+    (standard-subproblem 'COMPILER-REFERENCE-RESTART 4)
+    (standard-subproblem 'COMPILER-SAFE-REFERENCE-RESTART 4)
+    (standard-subproblem 'COMPILER-ACCESS-RESTART 4)
+    (standard-subproblem 'COMPILER-UNASSIGNED?-RESTART 4)
+    (standard-subproblem 'COMPILER-UNBOUND?-RESTART 4)
+    (standard-subproblem 'COMPILER-REFERENCE-TRAP-RESTART 4)
+    (standard-subproblem 'COMPILER-SAFE-REFERENCE-TRAP-RESTART 4)
+    (standard-subproblem 'COMPILER-UNASSIGNED?-TRAP-RESTART 4)
+    (standard-subproblem 'COMPILER-ASSIGNMENT-RESTART 5)
+    (standard-subproblem 'COMPILER-DEFINITION-RESTART 5)
+    (standard-subproblem 'COMPILER-ASSIGNMENT-TRAP-RESTART 5)
+    (standard-subproblem 'MOVE-TO-ADJACENT-POINT 6)
 
-    (interpreter-subproblem 'COMBINATION-SAVE-VALUE
-			    length/combination-save-value)
+    (standard-subproblem 'COMBINATION-SAVE-VALUE length/combination-save-value)
+    (standard-subproblem 'REPEAT-PRIMITIVE length/repeat-primitive)
 
-    (interpreter-subproblem 'REPEAT-PRIMITIVE length/repeat-primitive)
+    (let ((length (length/application-frame 2 0)))
+      (standard-subproblem 'COMBINATION-APPLY length)
+      (standard-subproblem 'INTERNAL-APPLY length))
 
-    (let ((length (length/application-frame 1 0)))
-      (interpreter-subproblem 'COMBINATION-APPLY length)
-      (interpreter-subproblem 'INTERNAL-APPLY length))
+    (standard-subproblem 'COMPILER-LOOKUP-APPLY-RESTART
+			 (length/application-frame 4 1))
 
-    (interpreter-subproblem 'REENTER-COMPILED-CODE
-			    length/reenter-compiled-code)
-
-    (compiler-frame 'COMPILER-INTERRUPT-RESTART 2)
-    (compiler-frame 'COMPILER-LINK-CACHES-RESTART 7)
-
-    (compiler-subproblem 'COMPILER-REFERENCE-RESTART 3)
-    (compiler-subproblem 'COMPILER-SAFE-REFERENCE-RESTART 3)
-    (compiler-subproblem 'COMPILER-ACCESS-RESTART 3)
-    (compiler-subproblem 'COMPILER-UNASSIGNED?-RESTART 3)
-    (compiler-subproblem 'COMPILER-UNBOUND?-RESTART 3)
-    (compiler-subproblem 'COMPILER-REFERENCE-TRAP-RESTART 3)
-    (compiler-subproblem 'COMPILER-SAFE-REFERENCE-TRAP-RESTART 3)
-    (compiler-subproblem 'COMPILER-UNASSIGNED?-TRAP-RESTART 3)
-    (compiler-subproblem 'COMPILER-ASSIGNMENT-RESTART 4)
-    (compiler-subproblem 'COMPILER-DEFINITION-RESTART 4)
-    (compiler-subproblem 'COMPILER-ASSIGNMENT-TRAP-RESTART 4)
-
-    (compiler-subproblem 'COMPILER-LOOKUP-APPLY-RESTART
-			 (length/application-frame 3 1))
-
-    (let ((length (length/application-frame 3 0)))
-      (compiler-subproblem 'COMPILER-LOOKUP-APPLY-TRAP-RESTART length)
-      (compiler-subproblem 'COMPILER-OPERATOR-LOOKUP-TRAP-RESTART length))
-
+    (let ((length (length/application-frame 4 0)))
+      (standard-subproblem 'COMPILER-LOOKUP-APPLY-TRAP-RESTART length)
+      (standard-subproblem 'COMPILER-OPERATOR-LOOKUP-TRAP-RESTART length))
     types))

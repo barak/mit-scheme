@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/stream.scm,v 14.1 1988/06/13 11:51:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/stream.scm,v 14.2 1988/12/30 06:43:22 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -76,6 +76,17 @@ MIT in each case. |#
     (if (not (stream-pair? tail))
 	(error "STREAM-REF: index too large" index))
     (stream-car tail)))
+
+(define (stream-head stream index)
+  (if (not (and (integer? index) (not (negative? index))))
+      (error "STREAM-HEAD: index must be nonnegative integer" index))
+  (let loop ((stream stream) (index index))
+    (if (zero? index)
+	'()
+	(begin
+	  (if (not (stream-pair? stream))
+	      (error "STREAM-HEAD: stream has too few elements" stream index))
+	  (cons (stream-car stream) (loop (stream-cdr stream) (-1+ index)))))))
 
 (define (stream-tail stream index)
   (if (not (and (integer? index) (not (negative? index))))

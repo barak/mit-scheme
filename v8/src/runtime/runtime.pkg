@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.22 1988/10/29 00:12:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.23 1988/12/30 06:43:14 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -207,45 +207,38 @@ MIT in each case. |#
   (initialization (initialize-package!)))
 
 (define-package (runtime compiler-info)
-  (files "infutl")
+  (files "infstr" "infutl")
   (parent ())
   (export ()
-	  compiler-info?
-	  make-compiler-info
-	  compiler-info-procedures
-	  compiler-info-continuations
-	  compiler-info-labels
-
-	  make-label-info
-	  label-info-name
-	  label-info-offset
-	  label-info-external?
-	  
 	  *compiler-info/load-on-demand?*
-	  compiler-info/with-on-demand-loading
-	  compiler-info/without-on-demand-loading
-	  flush-compiler-info!
-
-	  make-sorted-vector
-	  sorted-vector/vector
-	  sorted-vector/find-element
-	  sorted-vector/lookup
-	  sorted-vector/find-indices
-	  sorted-vector/there-exists?
-	  sorted-vector/for-each
-
-	  compiler-info/symbol-table
-	  block-symbol-table
-	  compiled-code-block->pathstring
-	  compiled-code-block->compiler-info
-
-	  compiled-entry->name
-	  compiled-entry->pathname
-	  compiled-entry->compiler-info
-	  compiled-entry->block-and-offset
-	  compiled-entry->block-and-offset-indirect
-	  info-file
-	  )
+	  compiled-entry/block
+	  compiled-entry/dbg-object
+	  compiled-entry/filename
+	  compiled-entry/offset
+	  compiled-procedure/name
+	  discard-debugging-info!)
+  (export (runtime load)	  fasload/update-debugging-info!)
+  (export (runtime debugger-utilities)
+	  dbg-name<?
+	  dbg-name=?)
+  (export (runtime environment)
+	  dbg-block/find-name
+	  dbg-block/ic-parent-index
+	  dbg-block/layout
+	  dbg-block/normal-closure-index
+	  dbg-block/parent
+	  dbg-block/procedure
+	  dbg-block/stack-link
+	  dbg-block/static-link-index
+	  dbg-block/type
+	  dbg-continuation/block
+	  dbg-continuation/offset
+	  dbg-name/normal?
+	  dbg-procedure/block
+	  dbg-procedure/name
+	  dbg-procedure/required
+	  dbg-procedure/optional
+	  dbg-procedure/rest)
   (initialization (initialize-package!)))
 
 (define-package (runtime console-input)
@@ -289,8 +282,8 @@ MIT in each case. |#
 	  continuation/first-subproblem
 	  microcode-return/code->type
 	  stack-frame->continuation
-	  stack-frame-type/address
 	  stack-frame-type/code
+	  stack-frame-type/compiled-return-address
 	  stack-frame-type/properties
 	  stack-frame-type/subproblem?
 	  stack-frame-type?
@@ -301,9 +294,11 @@ MIT in each case. |#
 	  stack-frame/length
 	  stack-frame/next
 	  stack-frame/next-subproblem
+	  stack-frame/offset
 	  stack-frame/properties
 	  stack-frame/reductions
 	  stack-frame/ref
+	  stack-frame/resolve-stack-address
 	  stack-frame/return-address
 	  stack-frame/return-code
 	  stack-frame/skip-non-subproblems
@@ -319,6 +314,7 @@ MIT in each case. |#
 	  control-point/element-stream
 	  control-point/history
 	  control-point/interrupt-mask
+	  control-point/n-elements
 	  control-point/next-control-point
 	  control-point/previous-history-control-point
 	  control-point/previous-history-offset
@@ -358,10 +354,13 @@ MIT in each case. |#
   (parent (runtime debugger-command-loop))
   (export (runtime debugger-command-loop)
 	  debug/read-eval-print-1
-	  environment-name
+	  output-to-string
 	  print-user-friendly-name
+	  show-environment-bindings
 	  show-frame
-	  special-name?)
+	  show-frames
+	  special-name?
+	  write-dbg-name)
   (initialization (initialize-package!)))
 
 (define-package (runtime debugging-info)
@@ -404,15 +403,23 @@ MIT in each case. |#
   (parent ())
   (export ()
 	  environment-arguments
-	  environment-bindings
+	  environment-bound-names
+	  environment-bound?
 	  environment-has-parent?
+	  environment-lookup
 	  environment-parent
-	  environment-procedure
+	  environment-procedure-name
 	  environment?
 	  ic-environment?
-	  remove-environment-parent!
-	  set-environment-parent!
-	  system-global-environment?))
+	  interpreter-environment?
+	  system-global-environment?)
+  (export (runtime advice)
+	  ic-environment/arguments
+	  ic-environment/procedure)
+  (export (runtime debugger)
+	  ic-environment/procedure)
+  (export (runtime debugging-info)
+	  stack-frame/environment))
 
 (define-package (runtime environment-inspector)
   (files "where")
@@ -672,6 +679,7 @@ MIT in each case. |#
 	  lambda-body
 	  lambda-bound
 	  lambda-components
+	  lambda-name
 	  make-block-declaration
 	  make-lambda
 	  set-lambda-body!)
@@ -1506,6 +1514,7 @@ MIT in each case. |#
 	  stream->list
 	  stream-car
 	  stream-cdr
+	  stream-head
 	  stream-length
 	  stream-map
 	  stream-null?

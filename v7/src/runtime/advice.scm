@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 14.2 1988/08/05 20:46:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 14.3 1988/12/30 06:41:58 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -171,8 +171,8 @@ MIT in each case. |#
 ;;; of exit advice is equivalent to doing (PROCEED value) from it.
 
 (define (advised-procedure-wrapper environment)
-  (let ((procedure (environment-procedure environment))
-	(arguments (environment-arguments environment)))
+  (let ((procedure (ic-environment/procedure environment))
+	(arguments (ic-environment/arguments environment)))
     (lambda-wrapper-components (procedure-lambda procedure)
       (lambda (original-body state)
 	(call-with-current-continuation

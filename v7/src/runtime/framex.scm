@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/framex.scm,v 14.2 1988/06/13 11:44:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/framex.scm,v 14.3 1988/12/30 06:42:40 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -55,8 +55,10 @@ MIT in each case. |#
 (define-integrable (debugging-info/compiled-code? expression)
   (eq? expression compiled-code))
 
-(define-integrable (make-evaluated-object object)
-  (cons evaluated-object-tag object))
+(define (make-evaluated-object object)
+  (if (scode-constant? object)
+      object
+      (cons evaluated-object-tag object)))
 
 (define (debugging-info/evaluated-object? expression)
   (and (pair? expression)
@@ -72,29 +74,28 @@ MIT in each case. |#
 (define evaluated-object-tag "evaluated")
 
 (define (method/standard frame)
-  (values (stack-frame/ref frame 0) (stack-frame/ref frame 1)))
+  (values (stack-frame/ref frame 1) (stack-frame/ref frame 2)))
 
 (define (method/null frame)
   frame
   (values undefined-expression undefined-environment))
 
 (define (method/expression-only frame)
-  (values (stack-frame/ref frame 0) undefined-environment))
+  (values (stack-frame/ref frame 1) undefined-environment))
 
 (define (method/environment-only frame)
-  (values undefined-expression (stack-frame/ref frame 1)))
+  (values undefined-expression (stack-frame/ref frame 2)))
 
 (define (method/compiled-code frame)
-  frame
-  (values compiled-code undefined-environment))
+  (values compiled-code (stack-frame/environment frame undefined-environment)))
 
 (define (method/primitive-combination-3-first-operand frame)
-  (values (stack-frame/ref frame 0) (stack-frame/ref frame 2)))
+  (values (stack-frame/ref frame 1) (stack-frame/ref frame 3)))
 
 (define (method/force-snap-thunk frame)
   (values (make-combination
 	   (ucode-primitive force 1)
-	   (list (make-evaluated-object (stack-frame/ref frame 0))))
+	   (list (make-evaluated-object (stack-frame/ref frame 1))))
 	  undefined-environment))
 
 (define ((method/application-frame index) frame)
@@ -104,32 +105,32 @@ MIT in each case. |#
 	  undefined-environment))
 
 (define ((method/compiler-reference scode-maker) frame)
-  (values (scode-maker (stack-frame/ref frame 2))
-	  (stack-frame/ref frame 1)))
+  (values (scode-maker (stack-frame/ref frame 3))
+	  (stack-frame/ref frame 2)))
 
 (define ((method/compiler-assignment scode-maker) frame)
-  (values (scode-maker (stack-frame/ref frame 2)
-		       (make-evaluated-object (stack-frame/ref frame 3)))
-	  (stack-frame/ref frame 1)))
+  (values (scode-maker (stack-frame/ref frame 3)
+		       (make-evaluated-object (stack-frame/ref frame 4)))
+	  (stack-frame/ref frame 2)))
 
 (define ((method/compiler-reference-trap scode-maker) frame)
-  (values (scode-maker (stack-frame/ref frame 1))
-	  (stack-frame/ref frame 2)))
+  (values (scode-maker (stack-frame/ref frame 2))
+	  (stack-frame/ref frame 3)))
 
 (define ((method/compiler-assignment-trap scode-maker) frame)
-  (values (scode-maker (stack-frame/ref frame 1)
-		       (make-evaluated-object (stack-frame/ref frame 3)))
-	  (stack-frame/ref frame 2)))
+  (values (scode-maker (stack-frame/ref frame 2)
+		       (make-evaluated-object (stack-frame/ref frame 4)))
+	  (stack-frame/ref frame 3)))
 
 (define (method/compiler-lookup-apply-restart frame)
-  (values (make-combination (stack-frame/ref frame 2)
-			    (stack-frame-list frame 4))
+  (values (make-combination (stack-frame/ref frame 3)
+			    (stack-frame-list frame 5))
 	  undefined-environment))
 
 (define (method/compiler-lookup-apply-trap-restart frame)
-  (values (make-combination (make-variable (stack-frame/ref frame 1))
-			    (stack-frame-list frame 5))
-	  (stack-frame/ref frame 2)))
+  (values (make-combination (make-variable (stack-frame/ref frame 2))
+			    (stack-frame-list frame 6))
+	  (stack-frame/ref frame 3)))
 
 (define (stack-frame-list frame start)
   (let ((end (stack-frame/length frame)))
@@ -169,7 +170,8 @@ MIT in each case. |#
 	    (,method/null
 	     COMBINATION-APPLY
 	     GC-CHECK
-	     MOVE-TO-ADJACENT-POINT)
+	     MOVE-TO-ADJACENT-POINT
+	     REENTER-COMPILED-CODE)
 
 	    (,method/expression-only
 	     ACCESS-CONTINUE
@@ -181,19 +183,16 @@ MIT in each case. |#
 	    (,method/environment-only
 	     REPEAT-DISPATCH)
 
-	    (,method/compiled-code
-	     REENTER-COMPILED-CODE)
-
 	    (,method/primitive-combination-3-first-operand
 	     PRIMITIVE-COMBINATION-3-FIRST-OPERAND)
 
 	    (,method/force-snap-thunk
 	     FORCE-SNAP-THUNK)
 
-	    (,(method/application-frame 2)
+	    (,(method/application-frame 3)
 	     INTERNAL-APPLY)
 
-	    (,(method/application-frame 0)
+	    (,(method/application-frame 1)
 	     REPEAT-PRIMITIVE)
 
 	    (,(method/compiler-reference identity-procedure)
@@ -233,4 +232,8 @@ MIT in each case. |#
 
 	    (,method/compiler-lookup-apply-trap-restart
 	     COMPILER-LOOKUP-APPLY-TRAP-RESTART
-	     COMPILER-OPERATOR-LOOKUP-TRAP-RESTART))))
+	     COMPILER-OPERATOR-LOOKUP-TRAP-RESTART)))
+  (1d-table/put!
+   (stack-frame-type/properties stack-frame-type/compiled-return-address)
+   method-tag
+   method/compiled-code))

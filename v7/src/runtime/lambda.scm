@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambda.scm,v 14.3 1988/10/29 00:12:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambda.scm,v 14.4 1988/12/30 06:42:58 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -97,6 +97,11 @@ MIT in each case. |#
 		    set-clambda-unwrapped-body!
 		    set-clexpr-unwrapped-body!
 		    set-xlambda-unwrapped-body!))
+  (set! lambda-name
+	(dispatch-0 'LAMBDA-NAME
+		    slambda-name
+		    slexpr-name
+		    xlambda-name))
   (set! lambda-bound
 	(dispatch-0 'LAMBDA-BOUND
 		    clambda-bound
@@ -333,6 +338,9 @@ MIT in each case. |#
 				       (vector-length bound))
 		      (xlambda-unwrapped-body xlambda))))))))
 
+(define (xlambda-name xlambda)
+  (vector-ref (&triple-second xlambda) 0))
+
 (define (xlambda-bound xlambda)
   (let ((names (&triple-second xlambda)))
     (subvector->list names 1 (vector-length names))))
@@ -405,6 +413,7 @@ MIT in each case. |#
 (define lambda-unwrap-body!)
 (define lambda-body)
 (define set-lambda-body!)
+(define lambda-name)
 (define lambda-bound)
 
 (define-structure (block-declaration
@@ -451,6 +460,9 @@ MIT in each case. |#
     (receiver (vector-ref bound 0)
 	      (subvector->list bound 1 (vector-length bound))
 	      (&pair-car slexpr))))
+
+(define-integrable (slexpr-name slexpr)
+  (vector-ref (&pair-cdr slexpr) 0))
 
 (define-integrable (slexpr-body slexpr)
   (&pair-car slexpr))

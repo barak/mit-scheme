@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/packag.scm,v 14.5 1988/10/29 00:12:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/packag.scm,v 14.6 1988/12/30 06:43:09 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -68,6 +68,10 @@ MIT in each case. |#
 	       (loop (cdr path) child))))))
 
 (define (environment->package environment)
+  (and (interpreter-environment? environment)
+       (interpreter-environment->package environment)))
+
+(define (interpreter-environment->package environment)
   (and (not (lexical-unreferenceable? environment package-name-tag))
        (let ((package (lexical-reference environment package-name-tag)))
 	 (and (package? package)
@@ -97,7 +101,7 @@ MIT in each case. |#
       (error "Package already has child of given name" package name))
   (let ((child (make-package package name environment)))
     (set-package/children! package (cons child (package/children package)))
-    (if (not (environment->package environment))
+    (if (not (interpreter-environment->package environment))
 	(local-assignment environment package-name-tag child))
     child))
 
@@ -124,7 +128,10 @@ MIT in each case. |#
 
 (define (initialize-package!)
   (set! system-global-package
-	(make-package false false system-global-environment)))
+	(make-package false false system-global-environment))
+  (local-assignment system-global-environment
+		    package-name-tag
+		    system-global-package))
 
 (define (initialize-unparser!)
   (unparser/set-tagged-vector-method! package

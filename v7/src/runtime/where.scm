@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 14.4 1988/08/05 20:49:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 14.5 1988/12/30 06:44:04 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -61,13 +61,11 @@ MIT in each case. |#
 		"Create a read-eval-print loop in the current environment")
 	   (#\N ,name
 		"Name of procedure which created current environment")
-	   ))))
+	   )))
+  unspecific)
 
 (define command-set)
-
-(define env)
-(define current-frame)
-(define current-frame-depth)
+(define frame-list)
 
 (define (where #!optional environment)
   (let ((environment
@@ -75,73 +73,66 @@ MIT in each case. |#
 	     (nearest-repl/environment)
 	     (->environment environment))))
     (hook/repl-environment (nearest-repl) environment)
-    (fluid-let ((env environment)
-		(current-frame environment)
-		(current-frame-depth 0))
+    (fluid-let ((frame-list (list environment)))
       (letter-commands command-set
 		       (cmdl-message/standard "Environment Inspector")
 		       "Where-->"))))
 
-;;;; Display Commands
-
 (define (show)
-  (show-frame current-frame current-frame-depth))
+  (show-current-frame false))
+
+(define (show-current-frame brief?)
+  (show-frame (car frame-list) (length (cdr frame-list)) brief?))
 
 (define (show-all)
-  (let s1 ((env env) (depth 0))
-    (if (not (system-global-environment? env))
-	(begin (show-frame env depth)
-	       (if (environment-has-parent? env)
-		   (s1 (environment-parent env) (1+ depth))))))
-  unspecific)
-
-;;;; Motion Commands
+  (show-frames (car (last-pair frame-list)) 0))
 
 (define (parent)
-  (cond ((environment-has-parent? current-frame)
-	 (set! current-frame (environment-parent current-frame))
-	 (set! current-frame-depth (1+ current-frame-depth))
-	 (show))
-	(else
-	 (newline)
-	 (write-string "The current frame has no parent."))))
-
+  (if (environment-has-parent? (car frame-list))
+      (begin
+	(set! frame-list
+	      (cons (environment-parent (car frame-list)) frame-list))
+	(show-current-frame true))
+      (begin
+	(newline)
+	(write-string "The current frame has no parent."))))
 
 (define (son)
-  (cond ((eq? current-frame env)
-	 (newline)
-	 (write-string
-	  "This is the original frame.  Its children cannot be found."))
-	(else
-	 (let son-1 ((prev env)
-		     (prev-depth 0)
-		     (next (environment-parent env)))
-	   (if (eq? next current-frame)
-	       (begin (set! current-frame prev)
-		      (set! current-frame-depth prev-depth))
-	       (son-1 next
-		      (1+ prev-depth)
-		      (environment-parent next))))
-	 (show))))
-
-(define (recursive-where)
-  (let ((inp (prompt-for-expression "Object to eval and examine-> ")))
-    (write-string "New where!")
-    (debug/where (debug/eval inp current-frame))))
-
-;;;; Relative Evaluation Commands
-
-(define (enter)
-  (debug/read-eval-print current-frame
-			 "You are now in the desired environment"
-			 "Eval-in-env-->"))
-
-(define (show-object)
-  (debug/read-eval-print-1 current-frame))
-
-;;;; Miscellaneous Commands
+  (let ((frames frame-list))
+    (if (null? (cdr frames))
+	(begin
+	  (newline)
+	  (write-string
+	   "This is the original frame.  Its children cannot be found."))
+	(begin
+	  (set! frame-list (cdr frames))
+	  (show-current-frame true)))))
 
 (define (name)
   (newline)
   (write-string "This frame was created by ")
-  (print-user-friendly-name current-frame))
+  (print-user-friendly-name (car frame-list)))
+
+(define (recursive-where)
+  (if-interpreter-environment (car frame-list)
+    (lambda (environment)
+      (let ((inp (prompt-for-expression "Object to eval and examine-> ")))
+	(write-string "New where!")
+	(debug/where (debug/eval inp environment))))))
+
+(define (enter)
+  (if-interpreter-environment (car frame-list)
+    (lambda (environment)
+      (debug/read-eval-print environment
+			     "You are now in the desired environment"
+			     "Eval-in-env-->"))))
+
+(define (show-object)
+  (if-interpreter-environment (car frame-list) debug/read-eval-print-1))
+
+(define (if-interpreter-environment environment receiver)
+  (if (interpreter-environment? environment)
+      (receiver environment)
+      (begin
+	(newline)
+	(write-string "This frame is not an interpreter environment"))))

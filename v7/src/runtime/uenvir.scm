@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.3 1988/08/01 23:08:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.4 1988/12/30 06:43:34 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -37,91 +37,190 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-;;;; Environment
-
 (define (environment? object)
-  (if (system-global-environment? object)
-      true
+  (or (system-global-environment? object)
+      (ic-environment? object)
+      (stack-ccenv? object)
+      (closure-ccenv? object)))
+
+(define (environment-has-parent? environment)
+  (cond ((system-global-environment? environment)
+	 false)
+	((ic-environment? environment)
+	 (ic-environment/has-parent? environment))
+	((stack-ccenv? environment)
+	 (stack-ccenv/has-parent? environment))
+	((closure-ccenv? environment)
+	 (closure-ccenv/has-parent? environment))
+	(else (error "Illegal environment" environment))))
+
+(define (environment-parent environment)
+  (cond ((system-global-environment? environment)
+	 (error "Global environment has no parent" environment))
+	((ic-environment? environment)
+	 (ic-environment/parent environment))
+	((stack-ccenv? environment)
+	 (stack-ccenv/parent environment))
+	((closure-ccenv? environment)
+	 (closure-ccenv/parent environment))
+	(else (error "Illegal environment" environment))))
+
+(define (environment-bound-names environment)
+  (cond ((system-global-environment? environment)
+	 (system-global-environment/bound-names environment))
+	((ic-environment? environment)
+	 (ic-environment/bound-names environment))
+	((stack-ccenv? environment)
+	 (stack-ccenv/bound-names environment))
+	((closure-ccenv? environment)
+	 (closure-ccenv/bound-names environment))
+	(else (error "Illegal environment" environment))))
+
+(define (environment-arguments environment)
+  (cond ((ic-environment? environment)
+	 (ic-environment/arguments environment))
+	((stack-ccenv? environment)
+	 (stack-ccenv/arguments environment))
+	((or (system-global-environment? environment)
+	     (closure-ccenv? environment))
+	 'UNKNOWN)
+	(else (error "Illegal environment" environment))))
+
+(define (environment-procedure-name environment)
+  (cond ((system-global-environment? environment)
+	 false)
+	((ic-environment? environment)
+	 (ic-environment/procedure-name environment))
+	((stack-ccenv? environment)
+	 (stack-ccenv/procedure-name environment))
+	((closure-ccenv? environment)
+	 (closure-ccenv/procedure-name environment))
+	(else (error "Illegal environment" environment))))
+
+(define (environment-bound? environment name)
+  (cond ((system-global-environment? environment)
+	 (system-global-environment/bound? environment name))
+	((ic-environment? environment)
+	 (ic-environment/bound? environment name))
+	((stack-ccenv? environment)
+	 (stack-ccenv/bound? environment name))
+	((closure-ccenv? environment)
+	 (closure-ccenv/bound? environment name))
+	(else (error "Illegal environment" environment))))
+
+(define (environment-lookup environment name)
+  (cond ((system-global-environment? environment)
+	 (system-global-environment/lookup environment name))
+	((ic-environment? environment)
+	 (ic-environment/lookup environment name))
+	((stack-ccenv? environment)
+	 (stack-ccenv/lookup environment name))
+	((closure-ccenv? environment)
+	 (closure-ccenv/lookup environment name))
+	(else (error "Illegal environment" environment))))
+
+;;;; Interpreter Environments
+
+(define (interpreter-environment? object)
+  (or (system-global-environment? object)
       (ic-environment? object)))
 
 (define-integrable (system-global-environment? object)
   (eq? system-global-environment object))
 
+(define (system-global-environment/bound? environment name)
+  (not (lexical-unbound? environment name)))
+
+(define (system-global-environment/lookup environment name)
+  (if (lexical-unassigned? environment name)
+      (make-unassigned-reference-trap)
+      (lexical-reference environment name)))
+
+(define (system-global-environment/bound-names environment)
+  (let ((table (fixed-objects-item 'OBARRAY)))
+    (let per-bucket ((index (-1+ (vector-length table))) (accumulator '()))
+      (if (< index 0)
+	  accumulator
+	  (let per-symbol
+	      ((bucket (vector-ref table index))
+	       (accumulator accumulator))
+	    (if (null? bucket)
+		(per-bucket (-1+ index) accumulator)
+		(per-symbol
+		 (cdr bucket)
+		 (if (not (lexical-unbound? environment (car bucket)))
+		     (cons (car bucket) accumulator)
+		     accumulator))))))))
+
 (define-integrable (ic-environment? object)
   (object-type? (ucode-type environment) object))
 
-(define (environment-procedure environment)
-  (select-procedure (environment->external environment)))
+(define (guarantee-ic-environment object)
+  (if (not (ic-environment? object))
+      (error "Bad IC environment" object))
+  object)
 
-(define (environment-has-parent? environment)
-  (and (ic-environment? environment)
-       (not (eq? (select-parent (environment->external environment))
-		 null-environment))))
+(define (ic-environment/procedure-name environment)
+  (lambda-name (procedure-lambda (ic-environment/procedure environment))))
 
-(define (environment-parent environment)
-  (select-parent (environment->external environment)))
+(define (ic-environment/has-parent? environment)
+  (not (eq? (ic-environment/parent environment) null-environment)))
 
-(define (environment-bindings environment)
-  (environment-split environment
-    (lambda (external internal)
-      (map (lambda (name)
-	     (cons name
-		   (if (lexical-unassigned? internal name)
-		       '()
-		       `(,(lexical-reference internal name)))))
-	   (list-transform-negative
-	       (map* (lambda-bound (select-lambda external))
-		     car
-		     (let ((extension (environment-extension internal)))
-		       (if (environment-extension? extension)
-			   (environment-extension-aux-list extension)
-			   '())))
-	     (lambda (name)
-	       (lexical-unbound? internal name)))))))
+(define (ic-environment/parent environment)
+  (select-parent (ic-environment->external environment)))
 
-(define (environment-arguments environment)
-  (environment-split environment
-    (lambda (external internal)
+(define (ic-environment/bound-names environment)
+  (list-transform-negative
+      (map* (lambda-bound
+	     (select-lambda (ic-environment->external environment)))
+	    car
+	    (let ((extension (ic-environment/extension environment)))
+	      (if (environment-extension? extension)
+		  (environment-extension-aux-list extension)
+		  '())))
+    (lambda (name)
+      (lexical-unbound? environment name))))
+
+(define (ic-environment/bound? environment name)
+  (not (lexical-unbound? environment name)))
+
+(define (ic-environment/lookup environment name)
+  (if (lexical-unassigned? environment name)
+      (make-unassigned-reference-trap)
+      (lexical-reference environment name)))
+
+(define (ic-environment/arguments environment)
+  (lambda-components* (select-lambda (ic-environment->external environment))
+    (lambda (name required optional rest body)
+      name body
       (let ((lookup
 	     (lambda (name)
-	       (if (lexical-unassigned? internal name)
-		   (make-unassigned-reference-trap)
-		   (lexical-reference internal name)))))
-	(lambda-components* (select-lambda external)
-	  (lambda (name required optional rest body)
-	    name body
-	    (map* (let loop ((names optional))
-		    (cond ((null? names) (if rest (lookup rest) '()))
-			  ((lexical-unassigned? internal (car names)) '())
-			  (else
-			   (cons (lookup (car names)) (loop (cdr names))))))
-		  lookup
-		  required)))))))
-
-(define (set-environment-parent! environment parent)
+	       (ic-environment/lookup environment name))))
+	(map* (map* (if rest (lookup rest) '())
+		    lookup
+		    optional)
+	      lookup
+	      required)))))
+
+(define (ic-environment/procedure environment)
+  (select-procedure (ic-environment->external environment)))
+
+(define (ic-environment/set-parent! environment parent)
   (system-pair-set-cdr!
-   (let ((extension (environment-extension environment)))
+   (let ((extension (ic-environment/extension environment)))
      (if (environment-extension? extension)
 	 (begin (set-environment-extension-parent! extension parent)
 		(environment-extension-procedure extension))
 	 extension))
    parent))
 
-(define (remove-environment-parent! environment)
-  (set-environment-parent! environment null-environment))
+(define (ic-environment/remove-parent! environment)
+  (ic-environment/set-parent! environment null-environment))
 
 (define null-environment
   (object-new-type (ucode-type null) 1))
 
-(define (environment-split environment receiver)
-  (let ((procedure (select-procedure environment)))
-    (let ((lambda (compound-procedure-lambda procedure)))
-      (receiver (if (internal-lambda? lambda)
-		    (compound-procedure-environment procedure)
-		    environment)
-		environment))))
-
-(define (environment->external environment)
+(define (ic-environment->external environment)
   (let ((procedure (select-procedure environment)))
     (if (internal-lambda? (compound-procedure-lambda procedure))
 	(compound-procedure-environment procedure)
@@ -142,5 +241,35 @@ MIT in each case. |#
 (define (select-lambda environment)
   (compound-procedure-lambda (select-procedure environment)))
 
-(define (environment-extension environment)
-  (select-extension (environment->external environment)))
+(define (ic-environment/extension environment)
+  (select-extension (ic-environment->external environment)))
+
+;;;; Compiled Code Environments
+
+(define-structure (stack-ccenv
+		   (named
+		    (string->symbol "#[(runtime environment)stack-ccenv]"))
+		   (conc-name stack-ccenv/))
+  (block false read-only true)
+  (frame false read-only true)
+  (start-index false read-only true))
+
+(define (stack-frame/environment frame default)
+  (let ((continuation
+	 (compiled-entry/dbg-object (stack-frame/return-address frame))))
+    (if continuation
+	(let ((block (dbg-continuation/block continuation)))
+	  (let ((parent (dbg-block/parent block)))
+	    (case (dbg-block/type parent)
+	      ((STACK)
+	       (make-stack-ccenv parent
+				 frame
+				 (1+ (dbg-continuation/offset continuation))))
+	      ((IC)
+	       (let ((index (dbg-block/ic-parent-index block)))
+		 (if index
+		     (guarantee-ic-environment (stack-frame/ref frame index))
+		     default)))
+	      (else
+	       (error "Illegal continuation parent" parent)))))
+	default)))

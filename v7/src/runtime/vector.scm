@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/vector.scm,v 14.1 1988/06/13 12:00:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/vector.scm,v 14.2 1988/12/30 06:43:54 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -159,3 +159,23 @@ MIT in each case. |#
 (define-integrable (vector-sixth vector) (vector-ref vector 5))
 (define-integrable (vector-seventh vector) (vector-ref vector 6))
 (define-integrable (vector-eighth vector) (vector-ref vector 7))
+
+(define (subvector-find-next-element vector start end item)
+  (let loop ((index start))
+    (and (< index end)
+	 (if (eqv? (vector-ref vector index) item)
+	     index
+	     (loop (1+ index))))))
+
+(define (subvector-find-previous-element vector start end item)
+  (let loop ((index (-1+ end)))
+    (and (<= start index)
+	 (if (eqv? (vector-ref vector index) item)
+	     index
+	     (loop (-1+ index))))))
+
+(define-integrable (vector-find-next-element vector item)
+  (subvector-find-next-element vector 0 (vector-length vector) item))
+
+(define-integrable (vector-find-previous-element vector item)
+  (subvector-find-previous-element vector 0 (vector-length vector) item))

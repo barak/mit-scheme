@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.4 1988/08/05 20:47:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.5 1988/12/30 06:43:04 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -53,18 +53,28 @@ MIT in each case. |#
     (lambda (port)
       (stream->list (read-stream port)))))
 
-(define (fasload filename)
+(define (fasload filename #!optional quiet?)
   (fasload/internal
-   (find-true-filename (->pathname filename) fasload/default-types)))
+   (find-true-pathname (->pathname filename) fasload/default-types)
+   (if (default-object? quiet?) false quiet?)))
 
-(define (fasload/internal true-filename)
-  (let ((port (cmdl/output-port (nearest-cmdl))))
-    (newline port)
-    (write-string "FASLoading " port)
-    (write true-filename port)
-    (let ((value ((ucode-primitive binary-fasload) true-filename)))
-      (write-string " -- done" port)
-      value)))
+(define (fasload/internal true-pathname quiet?)
+  (let ((value
+	 (let ((true-filename (pathname->string true-pathname)))
+	   (let ((do-it
+		  (lambda ()
+		    ((ucode-primitive binary-fasload) true-filename))))
+	     (if quiet?
+		 (do-it)
+		 (let ((port (cmdl/output-port (nearest-cmdl))))
+		   (newline port)
+		   (write-string "FASLoading " port)
+		   (write true-filename port)
+		   (let ((value (do-it)))
+		     (write-string " -- done" port)
+		     value)))))))
+    (fasload/update-debugging-info! value true-pathname)
+    value))
 
 (define (load-noisily filename #!optional environment syntax-table purify?)
   (fluid-let ((load-noisily? true))
@@ -108,7 +118,7 @@ MIT in each case. |#
 	     (let ((value
 		    (let ((pathname (->pathname filename)))
 		      (load/internal pathname
-				     (find-true-filename pathname
+				     (find-true-pathname pathname
 							 load/default-types)
 				     environment
 				     syntax-table
@@ -127,37 +137,37 @@ MIT in each case. |#
 (define default-object
   "default-object")
 
-(define (load/internal pathname true-filename environment syntax-table
+(define (load/internal pathname true-pathname environment syntax-table
 		       purify? load-noisily?)
-  (let ((port (open-input-file/internal pathname true-filename)))
+  (let ((port
+	 (open-input-file/internal pathname (pathname->string true-pathname))))
     (if (= 250 (char->ascii (peek-char port)))
 	(begin (close-input-port port)
-	       (scode-eval (let ((scode (fasload/internal true-filename)))
-			     (if purify? (purify scode))
-			     scode)
-			   (if (eq? environment default-object)
-			       (nearest-repl/environment)
-			       environment)))
+	       (scode-eval
+		(let ((scode (fasload/internal true-pathname false)))
+		  (if purify? (purify scode))
+		  scode)
+		(if (eq? environment default-object)
+		    (nearest-repl/environment)
+		    environment)))
 	(write-stream (eval-stream (read-stream port) environment syntax-table)
 		      (if load-noisily?
 			  (lambda (value)
 			    (hook/repl-write (nearest-repl) value))
 			  (lambda (value) value false))))))
-(define (find-true-filename pathname default-types)
-  (pathname->string
-   (or (let ((try
-	      (lambda (pathname)
-		(pathname->input-truename
-		 (pathname-default-version pathname 'NEWEST)))))
-	 (if (pathname-type pathname)
-	     (try pathname)
-	     (or (pathname->input-truename pathname)
-		 (let loop ((types default-types))
-		   (and (not (null? types))
-			(or (try (pathname-new-type pathname (car types)))
-			    (loop (cdr types))))))))
-       (error "No such file" pathname))))
-
+(define (find-true-pathname pathname default-types)
+  (or (let ((try
+	     (lambda (pathname)
+	       (pathname->input-truename
+		(pathname-default-version pathname 'NEWEST)))))
+	(if (pathname-type pathname)
+	    (try pathname)
+	    (or (pathname->input-truename pathname)
+		(let loop ((types default-types))
+		  (and (not (null? types))
+		       (or (try (pathname-new-type pathname (car types)))
+			   (loop (cdr types))))))))
+      (error "No such file" pathname)))
 (define (read-stream port)
   (parse-objects port
 		 (current-parser-table)

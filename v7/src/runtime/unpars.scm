@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.9 1988/11/08 06:55:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.10 1988/12/30 06:43:48 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -442,8 +442,6 @@ MIT in each case. |#
   (*unparse-with-brackets 'PRIMITIVE-PROCEDURE false
     (lambda ()
       (*unparse-object (primitive-procedure-name procedure)))))
-
-;;;; Compiled entries
 
 (define (unparse/compiled-entry entry)
   (let* ((type (compiled-entry-type entry))
@@ -455,47 +453,27 @@ MIT in each case. |#
      (if closure? 'COMPILED-CLOSURE type)
      entry
      (lambda ()
-       (let ((entry* (if closure? (compiled-closure->entry entry) entry)))
-	 (*unparse-object
-	  (or (and (eq? type 'COMPILED-PROCEDURE)
-		   (compiled-procedure/name entry*))
-	      (compiled-entry/filename entry*)
-	      '()))
-	 (*unparse-char #\Space)
-	 (*unparse-hex (compiled-code-address->offset entry*))
-	 (*unparse-char #\Space)
-	 (*unparse-datum entry*)
-	 (if closure?
-	     (begin (*unparse-char #\Space)
-		    (*unparse-datum entry))))))))
+       (let ((unparse-name
+	      (lambda ()
+		(*unparse-object
+		 (let ((filename (compiled-entry/filename entry)))
+		   (if filename
+		       (list 'FILE (pathname-name (->pathname filename)))
+		       '()))))))
+	 (if (eq? type 'COMPILED-PROCEDURE)
+	     (let ((name (compiled-procedure/name entry)))
+	       (if name
+		   (*unparse-string name)
+		   (unparse-name)))
+	     (unparse-name)))
+       (*unparse-char #\Space)
+       (*unparse-hex (compiled-entry/offset entry))
+       (*unparse-char #\Space)
+       (if closure?
+	   (begin (*unparse-datum (compiled-closure->entry entry))
+		  (*unparse-char #\Space)))
+       (*unparse-datum entry)))))
 
-(define (compiled-procedure/name entry)
-  (compiled-entry->name entry
-    (lambda (string) (string->symbol (detach-suffix-number string)))
-    (lambda () false)))
-
-;;; Names in the symbol table are of the form "FOOBAR-127".  The 127
-;;; is added by the compiler.  This procedure detaches the suffix
-;;; number from the prefix name.  It does nothing if there is no
-;;; numeric suffix.
-
-(define (detach-suffix-number string)
-  (let loop ((index (-1+ (string-length string))))
-    (cond ((zero? index) string)
-	  ((char=? (string-ref string index) #\-)
-	   (string-append
-	    (substring string 0 index)
-	    " "
-	    (substring string (1+ index) (string-length string))))
-	  ((char-numeric? (string-ref string index))
-	   (loop (-1+ index)))
-	  (else string))))
-
-(define (compiled-entry/filename entry)
-  (compiled-entry->pathname entry
-    (lambda (pathname) (list 'FILE (pathname-name pathname)))
-    (lambda () false)))
-
 ;;;; Miscellaneous
 
 (define (unparse/environment environment)

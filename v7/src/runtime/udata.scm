@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.5 1988/11/08 06:55:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.6 1988/12/30 06:43:27 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -37,7 +37,11 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define-integrable (return-address? object)
+(define (return-address? object)
+  (or (interpreter-return-address? object)
+      (compiled-return-address? object)))
+
+(define-integrable (interpreter-return-address? object)
   (object-type? (ucode-type return-address) object))
 
 (define-integrable (make-return-address code)
@@ -72,34 +76,46 @@ MIT in each case. |#
 (define-integrable (compiled-code-address? object)
   (object-type? (ucode-type compiled-entry) object))
 
-(define (discriminate-compiled-entry object
-				     if-procedure
-				     if-return-address
-				     if-expression
-				     if-other)
-  (case (system-hunk3-cxr0 ((ucode-primitive compiled-entry-kind 1) object))
-    ((0) (if-procedure))
-    ((1) (if-return-address))
-    ((2) (if-expression))
-    (else (if-other))))
-
-(define (compiled-entry-type object)
-  (discriminate-compiled-entry object
-    (lambda () 'COMPILED-PROCEDURE)
-    (lambda () 'COMPILED-RETURN-ADDRESS)
-    (lambda () 'COMPILED-EXPRESSION)
-    (lambda () 'COMPILED-ENTRY)))
-
-(define-integrable compiled-code-address->block
-  (ucode-primitive compiled-code-address->block))
-
-(define-integrable compiled-code-address->offset
-  (ucode-primitive compiled-code-address->offset))
+(define-integrable (stack-address? object)
+  (object-type? (ucode-type stack-environment) object))
 
 (define (compiled-procedure? object)
   (and (compiled-code-address? object)
        (eq? (compiled-entry-type object) 'COMPILED-PROCEDURE)))
 
+(define (compiled-return-address? object)
+  (and (compiled-code-address? object)
+       (eq? (compiled-entry-type object) 'COMPILED-RETURN-ADDRESS)))
+
+(define (compiled-closure? object)
+  (and (compiled-procedure? object)
+       (compiled-code-block/manifest-closure?
+	(compiled-code-address->block object))))
+
+(define-primitives
+  (compiled-closure->entry 1)
+  (stack-address-offset 1)
+  (compiled-code-address->block 1)
+  (compiled-code-address->offset 1))
+
+(define (discriminate-compiled-entry entry
+				     if-procedure
+				     if-return-address
+				     if-expression
+				     if-other)
+  (case (system-hunk3-cxr0 ((ucode-primitive compiled-entry-kind 1) entry))
+    ((0) (if-procedure))
+    ((1) (if-return-address))
+    ((2) (if-expression))
+    (else (if-other))))
+
+(define (compiled-entry-type entry)
+  (case (system-hunk3-cxr0 ((ucode-primitive compiled-entry-kind 1) entry))
+    ((0) 'COMPILED-PROCEDURE)
+    ((1) 'COMPILED-RETURN-ADDRESS)
+    ((2) 'COMPILED-EXPRESSION)
+    (else 'COMPILED-ENTRY)))
+
 (define (compiled-procedure-arity object)
   (let ((info ((ucode-primitive compiled-entry-kind 1) object)))
     (if (not (= (system-hunk3-cxr0 info) 0))
@@ -108,13 +124,26 @@ MIT in each case. |#
 	  (let ((max (system-hunk3-cxr2 info)))
 	    (and (not (negative? max))
 		 (-1+ max))))))
-(define (compiled-closure? object)
-  (and (compiled-procedure? object)
-       (compiled-code-block/manifest-closure?
-	(compiled-code-address->block object))))
+(define (compiled-continuation/next-continuation-offset entry)
+  (let ((offset
+	 (system-hunk3-cxr2 ((ucode-primitive compiled-entry-kind 1) entry))))
+    (and (not (negative? offset))
+	 offset)))
 
-(define-primitives (compiled-closure->entry 1))
+(define-integrable (compiled-continuation/return-to-interpreter? entry)
+  (= 2 (system-hunk3-cxr1 ((ucode-primitive compiled-entry-kind 1) entry))))
 
+(define (stack-address->index address start-offset)
+  (if (not (stack-address? address))
+      (error "Not a stack address" address))
+  (let ((index (- start-offset (stack-address-offset address))))
+    (if (negative? index)
+	(error "Stack address out of range" address start-offset))
+    index))
+
+(define-integrable (compiled-closure/ref closure index)
+  ;; 68020 specific -- must be rewritten in compiler interface.
+  ((ucode-primitive primitive-object-ref 2) closure (+ 2 index)))
 ;;; These are now pretty useless.
 
 (define (compiled-procedure-entry procedure)

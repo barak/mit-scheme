@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/cpoint.scm,v 14.2 1988/06/13 11:42:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/cpoint.scm,v 14.3 1988/12/30 06:42:23 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -58,13 +58,22 @@ MIT in each case. |#
 (define-integrable (control-point/previous-history-control-point control-point)
   (control-point-ref control-point 5))
 
-(define (control-point-ref control-point index)
-  (system-vector-ref control-point
-		     (+ (control-point/unused-length control-point) 2 index)))
+(define-integrable (control-point-ref control-point index)
+  (system-vector-ref control-point (control-point-index control-point index)))
+
+(define-integrable (control-point-index control-point index)
+  (+ (control-point/unused-length control-point) (+ 2 index)))
+
+(define-integrable (control-point/first-element-index control-point)
+  (control-point-index control-point 6))
+
+(define (control-point/n-elements control-point)
+  (- (system-vector-length control-point)
+     (control-point/first-element-index control-point)))
 
 (define (control-point/element-stream control-point)
   (let ((end (system-vector-length control-point)))
-    (let loop ((index (+ (control-point/unused-length control-point) 8)))
+    (let loop ((index (control-point/first-element-index control-point)))
       (cond ((= index end) '())
 	    (((ucode-primitive primitive-object-type? 2)
 	      (ucode-type manifest-nm-vector)

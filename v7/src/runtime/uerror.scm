@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.5 1988/08/11 03:13:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.6 1988/12/30 06:43:40 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -81,14 +81,16 @@ MIT in each case. |#
 		(continuation/first-subproblem
 		 (current-proceed-continuation))))
 	   (let ((translator
-		  (let ((entry (assv (stack-frame/return-code frame) alist)))
-		    (and entry
-			 (let loop ((translators (cdr entry)))
-			   (and (not (null? translators))
-				(if (or (eq? (caar translators) true)
-					((caar translators) frame))
-				    (cdar translators)
-				    (loop (cdr translators)))))))))
+		  (let ((return-code (stack-frame/return-code frame)))
+		    (and return-code
+			 (let ((entry (assv return-code alist)))
+			   (and entry
+				(let loop ((translators (cdr entry)))
+				  (and (not (null? translators))
+				       (if (or (eq? (caar translators) true)
+					       ((caar translators) frame))
+					   (cdar translators)
+					   (loop (cdr translators)))))))))))
 	     (if translator
 		 (translator error-type frame)
 		 (make-error-condition error-type:missing-handler
@@ -108,25 +110,25 @@ MIT in each case. |#
 ;;;; Frame Decomposition
 
 (define-integrable (standard-frame/expression frame)
-  (stack-frame/ref frame 0))
+  (stack-frame/ref frame 1))
 
 (define-integrable (standard-frame/environment frame)
-  (stack-frame/ref frame 1))
+  (stack-frame/ref frame 2))
 
 (define (standard-frame/variable? frame)
   (variable? (standard-frame/expression frame)))
 
 (define-integrable (expression-only-frame/expression frame)
-  (stack-frame/ref frame 0))
+  (stack-frame/ref frame 1))
 
 (define-integrable (internal-apply-frame/operator frame)
-  (stack-frame/ref frame 2))
+  (stack-frame/ref frame 3))
 
 (define-integrable (internal-apply-frame/operand frame index)
-  (stack-frame/ref frame (+ 3 index)))
+  (stack-frame/ref frame (+ 4 index)))
 
 (define-integrable (internal-apply-frame/n-operands frame)
-  (- (stack-frame/length frame) 3))
+  (- (stack-frame/length frame) 4))
 
 (define (internal-apply-frame/select frame selector)
   (if (integer? selector)      (internal-apply-frame/operand frame selector)
@@ -441,8 +443,8 @@ MIT in each case. |#
 	(lambda (condition-type frame)
 	  (make-error-condition
 	   condition-type
-	   (list (stack-frame/ref frame 1))
-	   (stack-frame/ref frame 2)))))
+	   (list (stack-frame/ref frame 2))
+	   (stack-frame/ref frame 3)))))
 
     (define-standard-frame-handler 'UNBOUND-VARIABLE 'EVAL-ERROR
       standard-frame/variable? variable-name)
