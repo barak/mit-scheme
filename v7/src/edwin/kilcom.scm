@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kilcom.scm,v 1.63 1991/05/10 04:57:24 cph Exp $
+;;;	$Id: kilcom.scm,v 1.64 1993/01/10 10:47:06 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -101,7 +101,7 @@ Killed text is pushed onto the kill ring for retrieval."
        (cond ((not argument)
 	      (let ((end (line-end point 0)))
 		(if (and (region-blank? (make-region point end))
-			 (not (group-end? point)))
+			 (not (group-end? end)))
 		    (mark1+ end)
 		    end)))
 	     ((positive? argument)
