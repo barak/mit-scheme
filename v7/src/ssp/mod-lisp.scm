@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.2 2003/12/29 07:31:14 uid67408 Exp $
+$Id: mod-lisp.scm,v 1.3 2004/10/27 20:04:07 cph Exp $
 
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -34,36 +34,39 @@ USA.
 			       ((file-directory? "/var/www/") "/var/www/")
 			       (else (error "No server root?")))))
 
-(define root-paths
-  '("/projects/scheme-pages/"
-    "/classes/6.002x/spring04/"
-    "/classes/6.002ex/spring04/"))
-
 (define (start-server-internal tcp-port tcp-host server-root)
   (let ((socket (open-tcp-server-socket tcp-port tcp-host)))
     (dynamic-wind
      (lambda () unspecific)
      (lambda ()
        (do () ((channel-closed? socket))
-	 (let ((port (tcp-server-connection-accept socket #t #f "\n")))
+	 (let ((port (tcp-server-connection-accept socket #t #f)))
+	   (port/set-line-ending port 'NEWLINE)
 	   (dynamic-wind
 	    (lambda () unspecific)
 	    (lambda ()
 	      (write-response
-	       (let ((response
-		      (call-with-current-continuation
-		       (lambda (k)
-			 (bind-condition-handler (list condition-type:error)
-			     k
-			   (lambda ()
-			     (handle-request (read-request port)
-					     server-root)))))))
-		 (if (condition? response)
-		     (status-response 500 (condition->html response))
-		     response))
-	       port))
+	       (let ((generate-response
+		      (lambda ()
+			(handle-request (read-request port) server-root))))
+		 (if debug-internal-errors?
+		     (generate-response)
+		     (let ((response
+			    (call-with-current-continuation
+			     (lambda (k)
+			       (bind-condition-handler
+				   (list condition-type:error)
+				   k
+				 generate-response)))))
+		       (if (condition? response)
+			   (status-response 500 (condition->html response))
+			   response))))
+	       port)
+	      (flush-output port))
 	    (lambda () (close-port port))))))
      (lambda () (channel-close socket)))))
+
+(define debug-internal-errors? #f)
 
 (define (condition->html condition)
   (call-with-output-string
@@ -114,10 +117,12 @@ USA.
 (define (handle-request request server-root)
   (let ((url (http-message-url request)))
     (if trace-requests?
-	(write-line
-	 `(HANDLE-REQUEST ,(http-message-method request)
-			  ,url
-			  ,@(http-message-url-parameters request))))
+	(pp `(REQUEST (,(http-message-method request)
+		       ,url
+		       ,@(http-message-url-parameters request))
+		      ,@(map (lambda (p)
+			       (list (car p) (cdr p)))
+			     (http-message-headers request)))))
     (receive (root-dir relative) (url->relative url server-root)
       (fluid-let ((*root-dir* root-dir))
 	(let ((response (make-http-message)))
@@ -142,18 +147,45 @@ USA.
 					      response
 					      pathname
 					      expand))))))
+	  (if trace-requests?
+	      (pp `(RESPONSE ,@(map (lambda (p)
+				      (list (car p) (cdr p)))
+				    (http-message-headers response)))))
 	  response)))))
-
+
 (define (url->relative url server-root)
-  (let loop ((root-paths root-paths))
-    (if (not (pair? root-paths))
-	(error "Unknown URL root:" url))
-    (let ((prefix (->namestring (pathname-as-directory (car root-paths)))))
-      (if (string-prefix? prefix url)
-	  (values (merge-pathnames (enough-pathname prefix "/")
-				   (pathname-as-directory server-root))
-		  (string-tail url (string-length prefix)))
-	  (loop (cdr root-paths))))))
+  (cond ((rewrite-homedir url)
+	 => (lambda (path)
+	      (cond ((string-prefix? server-root path)
+		     (values server-root
+			     (string-tail path (string-length server-root))))
+		    ((string-prefix? "/" path)
+		     (values "/" (string-tail path 1)))
+		    (else
+		     (error "Unknown home path:" path)))))
+	((string-prefix? "/" url)
+	 (values server-root (string-tail url 1)))
+	(else
+	 (error "Unknown URL root:" url))))
+
+(define (rewrite-homedir url)
+  (let ((regs (re-string-match "^/~\\([^/]+\\)\\(.*\\)$" url)))
+    (and regs
+	 (rewrite-homedir-hook (re-match-extract url regs 1)
+			       (let ((path (re-match-extract url regs 2)))
+				 (if (string-prefix? "/" path)
+				     (string-tail path 1)
+				     path))))))
+
+(define (rewrite-homedir-hook user-name path)
+  (let ((dir
+	 (ignore-errors
+	  (lambda ()
+	    (user-home-directory user-name)))))
+    (and (not (condition? dir))
+	 (string-append (->namestring dir)
+			"public_html/"
+			path))))
 
 (define *root-dir*)
 (define trace-requests? #f)
@@ -220,7 +252,7 @@ USA.
 	   (merge-pathnames filename directory)))))
 
 (define default-index-pages
-  '("index.xhtml" "index.xml" "index.html"))
+  '("index.html" "index.xhtml" "index.ssp" "index.xml"))
 
 (define (mod-lisp-expander request response pathname expander)
   (call-with-output-string
@@ -242,9 +274,12 @@ USA.
 ;;;; MIME stuff
 
 (define (file-content-type pathname)
-  (let ((extension (pathname-type pathname)))
-    (and (string? extension)
-	 (hash-table/get mime-extensions extension #f))))
+  (or (let ((extension (pathname-type pathname)))
+	(and (string? extension)
+	     (hash-table/get mime-extensions extension #f)))
+      (let ((p (pathname-mime-type pathname)))
+	(and p
+	     (symbol (car p) '/ (cdr p))))))
 
 (define (get-mime-handler type)
   (hash-table/get mime-handlers type #f))
@@ -271,22 +306,6 @@ USA.
 
 (define mime-handlers (make-eq-hash-table))
 (define mime-extensions (make-string-hash-table))
-
-(define (initialize-mime-extensions)
-  (for-each-file-line "/etc/mime.types"
-    (lambda (line)
-      (let ((line (string-trim line)))
-	(if (and (fix:> (string-length line) 0)
-		 (not (char=? (string-ref line 0) #\#)))
-	    (let ((tokens (burst-string line char-set:whitespace #t)))
-	      (let ((type (string->symbol (car tokens))))
-		(for-each (lambda (token)
-			    (hash-table/put! mime-extensions token type))
-			  (cdr tokens))))))))
-  ;; Should be 'application/xhtml+xml -- IE loses.
-  (define-mime-handler '(text/html "xhtml" "xht")
-    (lambda (pathname port)
-      (expand-xhtml-file pathname port))))
 
 ;;;; Read request
 
@@ -328,9 +347,16 @@ USA.
 	      (loop)))))
     (let ((entity (http-message-entity request)))
       (if entity
-	  (begin
-	    (if (fix:> (string-length entity) 0)
-		(read-string! entity port)))))
+	  (let ((end (string-length entity)))
+	    (let loop ((start 0))
+	      (if (fix:< start end)
+		  (let ((n-read (read-substring! entity start end port)))
+		    (cond ((not n-read)
+			   (loop start))
+			  ((> n-read 0)
+			   (loop (+ start n-read)))
+			  (else
+			   (error "EOF while reading request entity.")))))))))
     request))
 
 (define debug-request-headers? #f)
@@ -418,12 +444,15 @@ USA.
   (cookie-parameters '()))
 
 (define (add-header message keyword datum)
-  (let ((new (list (cons keyword datum)))
-	(tail (http-message-headers-tail message)))
-    (if tail
-	(set-cdr! tail new)
-	(set-http-message-headers! message new))
-    (set-http-message-headers-tail! message new)))
+  (let ((p (assq keyword (http-message-headers message))))
+    (if p
+	(set-cdr! p datum)
+	(let ((new (list (cons keyword datum)))
+	      (tail (http-message-headers-tail message)))
+	  (if tail
+	      (set-cdr! tail new)
+	      (set-http-message-headers! message new))
+	  (set-http-message-headers-tail! message new)))))
 
 (define (set-entity message entity)
   (add-header message
@@ -596,9 +625,6 @@ USA.
 (define (http-request-pathname)
   *current-pathname*)
 
-(define (server-root-dir)
-  *root-dir*)
-
 (define (http-response-header keyword datum)
   (guarantee-symbol keyword 'HTTP-RESPONSE-HEADER)
   (guarantee-string datum 'HTTP-RESPONSE-HEADER)
@@ -610,6 +636,9 @@ USA.
   (guarantee-exact-nonnegative-integer code 'HTTP-STATUS-RESPONSE)
   (guarantee-string extra 'HTTP-STATUS-RESPONSE)
   (status-response! *current-response* code extra))
+
+(define (server-root-dir)
+  *root-dir*)
 
 (define (http-request-user-name)
   (let ((auth (http-request-header 'authorization)))
@@ -630,6 +659,37 @@ USA.
       (if (not colon)
 	  (error "Malformed authorization string."))
       (string-head auth colon))))
+
+(define (html-content-type)
+  (if (let ((type (http-browser-type)))
+	(and (pair? type)
+	     (eq? (car type) 'IE)))
+      "text/xml"
+      "application/xhtml+xml"))
+
+(define (http-browser-type)
+  (let ((ua (http-request-header 'user-agent)))
+    (and ua
+	 (let loop ((p browser-type-alist))
+	   (and (pair? p)
+		(if (re-string-match (caar p) ua #t)
+		    (cdar p)
+		    (loop (cdr p))))))))
+
+(define browser-type-alist
+  '(("^Mozilla/5\\.0 (.*) Gecko/[0-9]+ Firefox/[0-9.]+" gecko firefox)
+    ("^Mozilla/5\\.0 (.*) Gecko/[0-9]+ Epiphany/[0-9.]+" gecko epiphany)
+    ("^Mozilla/5\\.0 (.*) Gecko/[0-9]+ Galeon/[0-9.]+" gecko galeon)
+    ("^Mozilla/5\\.0 " gecko)
+    ("^Mozilla/[0-9.]+ (compatible; MSIE [0-9.]+; Win.+)" ie windows)
+    ("^Mozilla/[0-9.]+ (compatible; MSIE [0-9.]+; Mac.+)" ie mac)
+    ("^Mozilla/[0-9.]+ (compatible; MSIE [0-9.]+; .+)" ie)
+    ("^Mozilla/[0-9.]+ (compatible; Opera [0-9.]+; .+)" opera)
+    ("W3C_Validator/[0-9.]+" validator)
+    ("W3C_CSS_Validator_JFouffa/[0-9.]+" validator)
+    ("WDG_Validator/[0-9.]+" validator)
+    ("Page Valet/[0-9.]+" validator)
+    ("CSE HTML Validator" validator)))
 
 ;;;; Utilities
 

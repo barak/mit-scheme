@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.2 2003/12/29 07:31:10 uid67408 Exp $
+$Id: load.scm,v 1.3 2004/10/27 20:04:01 cph Exp $
 
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,4 +31,4 @@ USA.
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (package/system-loader "ssp" '() 'QUERY)))
-(add-subsystem-identification! "SSP/XDOC" '(0 2))
+(add-subsystem-identification! "SSP/XDOC" '(0 3))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ssp.pkg,v 1.1 2003/12/29 07:34:21 uid67408 Exp $
+$Id: ssp.pkg,v 1.2 2004/10/27 20:04:10 cph Exp $
 
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,182 +30,6 @@ USA.
 
 (define-package (runtime ssp)
   (parent (runtime)))
-
-(define-package (runtime ssp xhtml)
-  (files "xhtml")
-  (parent (runtime ssp))
-  (export (runtime ssp)
-	  a
-	  abbr
-	  acronym
-	  address
-	  attributes
-	  b
-	  big
-	  blockquote
-	  body
-	  br
-	  button
-	  caption
-	  cite
-	  code
-	  col
-	  colgroup
-	  comment
-	  convert-xhtml-string-value
-	  dd
-	  define-empty-element
-	  define-standard-element
-	  defn
-	  del
-	  dir
-	  div
-	  dl
-	  dt
-	  em
-	  empty-element-constructor
-	  flatten-xml-element-contents
-	  form
-	  h1
-	  h2
-	  h3
-	  h4
-	  h5
-	  head
-	  hr
-	  href
-	  html
-	  http-equiv
-	  i
-	  id-def
-	  id-ref
-	  img
-	  input
-	  ins
-	  kbd
-	  li
-	  link
-	  listing
-	  menu
-	  meta
-	  ol
-	  optgroup
-	  option
-	  p
-	  pre
-	  q
-	  rel-link
-	  s
-	  samp
-	  script
-	  select
-	  small
-	  span
-	  standard-element-constructor
-	  strike
-	  strong
-	  style
-	  style-link
-	  sub
-	  sup
-	  table
-	  tbody
-	  td
-	  textarea
-	  tfoot
-	  th
-	  thead
-	  title
-	  tr
-	  tt
-	  u
-	  ul
-	  var
-	  xhtml-dtd
-	  xhtml-iri)
-  (export (runtime ssp-expander-environment)
-	  a
-	  abbr
-	  acronym
-	  address
-	  attributes
-	  b
-	  big
-	  blockquote
-	  body
-	  br
-	  button
-	  caption
-	  cite
-	  code
-	  col
-	  colgroup
-	  comment
-	  dd
-	  defn
-	  del
-	  dir
-	  div
-	  dl
-	  dt
-	  em
-	  form
-	  h1
-	  h2
-	  h3
-	  h4
-	  h5
-	  head
-	  hr
-	  href
-	  html
-	  http-equiv
-	  i
-	  id-def
-	  id-ref
-	  img
-	  input
-	  ins
-	  kbd
-	  li
-	  link
-	  listing
-	  menu
-	  meta
-	  ol
-	  optgroup
-	  option
-	  p
-	  pre
-	  q
-	  rel-link
-	  s
-	  samp
-	  script
-	  select
-	  small
-	  span
-	  strike
-	  strong
-	  style
-	  style-link
-	  sub
-	  sup
-	  table
-	  tbody
-	  td
-	  textarea
-	  tfoot
-	  th
-	  thead
-	  title
-	  tr
-	  tt
-	  u
-	  ul
-	  var
-	  xhtml-dtd
-	  xhtml-iri))
 
 (define-package (runtime ssp xhtml-expander)
   (files "xhtml-expander")
@@ -241,6 +65,8 @@ USA.
   (export (runtime ssp)
 	  define-mime-handler
 	  define-subtree-handler
+	  http-browser-type
+	  html-content-type
 	  http-request-cookie-parameter
 	  http-request-cookie-parameter-bindings
 	  http-request-entity
@@ -260,6 +86,8 @@ USA.
 	  mod-lisp-expander
 	  server-root-dir)
   (export (runtime ssp-expander-environment)
+	  http-browser-type
+	  html-content-type
 	  http-request-cookie-parameter
 	  http-request-cookie-parameter-bindings
 	  http-request-entity
@@ -276,8 +104,7 @@ USA.
 	  http-request-user-name
 	  http-response-header
 	  http-status-response
-	  server-root-dir)
-  (initialization (initialize-mime-extensions)))
+	  server-root-dir))
 
 (define-package (runtime ssp xdoc)
   (files "xdoc")

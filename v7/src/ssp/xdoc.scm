@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xdoc.scm,v 1.3 2004/02/04 05:01:32 cph Exp $
+$Id: xdoc.scm,v 1.4 2004/10/27 20:04:12 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -27,6 +27,9 @@ USA.
 
 (declare (usual-integrations))
 
+(define *in-xdoc-context?* #f)
+(define *xdoc-recursive?*)
+(define *xdoc-ps-number*)
 (define *xdoc-environment*)
 (define *xdoc-root*)
 (define *xdoc-late?*)
@@ -35,12 +38,10 @@ USA.
 (define *xdoc-inputs*)
 (define *xdoc-outputs*)
 (define *trace-expansion-port* #f)
-(define db-name "six002x_spring04")
 
 (define-mime-handler '(application/xdoc+xml "xdoc")
   (lambda (pathname port)
-    ;; Should be "application/xhtml+xml" -- IE loses.
-    (http-response-header 'content-type "text/html")
+    (http-response-header 'content-type (html-content-type))
     (write-xml
      (with-xdoc-expansion-context (pathname->ps-number pathname) pathname
        (lambda (document)
@@ -52,9 +53,11 @@ USA.
 			(append-map! (lambda (item) (list item "\n"))
 				     misc)))))
 	   (make-xml-document (or (xml-document-declaration document)
-				  (make-xml-declaration "1.0" "utf-8" #f))
-			      (pad-misc (xml-document-misc-1 document))
-			      xhtml-dtd
+				  (make-xml-declaration "1.0" "UTF-8" #f))
+			      (pad-misc
+			       (cons (mathml-stylesheet)
+				     (xml-document-misc-1 document)))
+			      html-dtd
 			      (pad-misc (xml-document-misc-2 document))
 			      (generate-xdoc-html (xml-document-root document))
 			      (pad-misc (xml-document-misc-3 document))))))
@@ -62,6 +65,11 @@ USA.
      'indent-dtd? #t
      'indent-attributes? #t)))
 
+(define (mathml-stylesheet)
+  (make-xml-processing-instructions
+   'xml-stylesheet
+   "type=\"text/xsl\" href=\"/styles/mathml.xsl\""))
+
 (define (pathname->ps-number pathname)
   (let ((s (car (last-pair (pathname-directory pathname)))))
     (let ((regs (re-string-match "\\`ps\\([0-9]+\\)\\'" s #t)))
@@ -70,10 +78,13 @@ USA.
 	  0))))
 
 (define (with-xdoc-expansion-context ps-number pathname procedure)
-  (with-database-connection db-name ps-number pathname
+  (with-database-connection ps-number pathname
     (lambda ()
       (let ((environment (make-expansion-environment pathname)))
-	(fluid-let ((*xdoc-environment* environment)
+	(fluid-let ((*in-xdoc-context?* #t)
+		    (*xdoc-recursive?* *in-xdoc-context?*)
+		    (*xdoc-ps-number* ps-number)
+		    (*xdoc-environment* environment)
 		    (*xdoc-root*)
 		    (*xdoc-late?*)
 		    (*xdoc-element-properties* (make-eq-hash-table))
@@ -104,16 +115,14 @@ USA.
 ;;;; Document analysis
 
 (define (xdoc-pre-passes document)
-  (let ((root (xml-document-root document)))
-    (strip-xdoc-space document)
-    (save-structure-properties root)))
+  (strip-xdoc-space document)
+  (save-structure-properties (xml-document-root document)))
 
 (define (strip-xdoc-space document)
   (let ((strip!
 	 (lambda (object accessor modifier)
 	   (modifier object
-		     (delete-matching-items! (accessor object)
-		       xml-comment?))
+		     (delete-matching-items! (accessor object) xml-comment?))
 	   (modifier object
 		     (delete-matching-items! (accessor object)
 		       xml-whitespace-string?)))))
@@ -124,8 +133,7 @@ USA.
       (if (memq (xdoc-content-type elt) '(empty element))
 	  (strip! elt xml-element-contents set-xml-element-contents!))
       (for-each (lambda (item)
-		  (if (xml-element? item)
-		      (loop item)))
+		  (if (xml-element? item) (loop item)))
 		(xml-element-contents elt)))
     (strip! document xml-document-misc-3 set-xml-document-misc-3!)))
 
@@ -133,52 +141,65 @@ USA.
   (receive (prefix n) (ps-info root)
     ;; Make unique top-level ID.
     (save-container-props root '() (string-append "xdoc_" prefix) 1 (- n 1))
-    (let ((get-misc-id
-	   (let ((prefix (string-append prefix (number->string n) "-"))
-		 (count 0))
-	     (lambda ()
-	       (let ((id
-		      (string->symbol
-		       (string-append prefix
-				      (string-pad-left (number->string count)
-						       4
-						       #\0)))))
-		 (set! count (+ count 1))
-		 id)))))
-      (let walk-container
-	  ((elt root)
-	   (containers (list root))
-	   (prefix prefix)
-	   (offset (- n 1)))
-	(let loop ((items (xml-element-contents elt)) (count 1))
-	  (if (pair? items)
-	      (let ((item (car items)))
-		(if (xdoc-internal-container? item)
-		    (begin
-		      (walk-container item
-				      (cons item containers)
-				      (save-container-props item
-							    containers
-							    prefix
-							    count
-							    offset)
-				      0)
-		      (loop (cdr items) (+ count 1)))
-		    (begin
-		      (let walk-html ((item item))
-			(if (xdoc-container? item)
-			    (error "No containers in HTML:" item))
-			(if (xdoc-element? item)
-			    (save-element-props item containers (get-misc-id)))
-			(if (xml-element? item)
-			    (for-each walk-html (xml-element-contents item))))
-		      (loop (cdr items) count))))))))))
+    (let ((id-generator
+	   (lambda (suffix)
+	     (let ((prefix
+		    (string-append prefix (number->string n) suffix "-"))
+		   (count 0))
+	       (lambda ()
+		 (let ((id
+			(string->symbol
+			 (string-append prefix
+					(string-pad-left (number->string count)
+							 4
+							 #\0)))))
+		   (set! count (+ count 1))
+		   id))))))
+      (let ((get-misc-id (id-generator ""))
+	    (get-input-id (id-generator "-input"))
+	    (get-output-id (id-generator "-output")))
+	(let walk-container
+	    ((elt root)
+	     (containers (list root))
+	     (prefix prefix)
+	     (offset (- n 1)))
+	  (let loop ((items (xml-element-contents elt)) (count 1))
+	    (if (pair? items)
+		(let ((item (car items)))
+		  (if (xdoc-internal-container? item)
+		      (begin
+			(walk-container item
+					(cons item containers)
+					(save-container-props item
+							      containers
+							      prefix
+							      count
+							      offset)
+					0)
+			(loop (cdr items) (+ count 1)))
+		      (begin
+			(let walk-html ((item item))
+			  (if (xdoc-container? item)
+			      (error "No containers in HTML:" item))
+			  (if (xdoc-element? item)
+			      (save-element-props
+			       item containers
+			       (cond ((xdoc-input? item) (get-input-id))
+				     ((xdoc-output? item) (get-output-id))
+				     (else (get-misc-id)))))
+			  (if (xml-element? item)
+			      (for-each walk-html
+					(xml-element-contents item))))
+			(loop (cdr items) count)))))))))))
+
+(define (xdoc-recursive?) *xdoc-recursive?*)
+(define (xdoc-ps-number) *xdoc-ps-number*)
 
 (define (xdoc-part-number name)
   (if (string-prefix? "xdoc_" name)
       (string-tail name 5)
       name))
-
+
 (define (ps-info elt)
   (let ((no (find-attribute 'first-problem elt #f)))
     (if no
@@ -333,19 +354,19 @@ USA.
 (define (generate-xdoc-html root)
   (if (not (xd:xdoc? root))
       (error "Top level element must be <xd:xdoc>:" root))
-  (html (xdoc-attributes root 'xmlns xhtml-iri)
-	"\n"
-	(head #f
-	      "\n  "
-	      (style-link "/styles/xdoc.css")
-	      (append-map (lambda (item)
-			    (if (xd:head? item)
-				(xml-element-contents item)
-				'()))
-			  (xml-element-contents root)))
-	"\n"
-	(body #f "\n" ((xdoc-html-generator root) root) "\n")
-	"\n"))
+  (html:html (xdoc-attributes root 'xmlns html-iri)
+	     "\n"
+	     (html:head #f
+			"\n  "
+			(html:style-link "/styles/xdoc.css")
+			(append-map (lambda (item)
+				      (if (xd:head? item)
+					  (xml-element-contents item)
+					  '()))
+				    (xml-element-contents root)))
+	     "\n"
+	     (html:body #f "\n" ((xdoc-html-generator root) root) "\n")
+	     "\n"))
 
 (define (define-html-generator name handler)
   (hash-table/put! html-generators name handler))
@@ -359,35 +380,33 @@ USA.
 (define (generate-container-items items extra-content?)
   (generate-container-groups
    (parse-container-groups items xd:answer?)
-   (let ((expand-xdoc
-	  (lambda (elt valid-content?)
-	    (if (not (valid-content? elt))
-		(error "Illegal content in this context:" elt))
-	    (let ((handler (xdoc-html-generator elt)))
-	      (if (not handler)
-		  (error "Unhandled element type:" (xml-element-name elt)))
-	      (handler elt)))))
-     (lambda (items)
-       (map (lambda (item)
-	      (cond ((xdoc-element? item)
-		     (expand-xdoc item
-		       (lambda (elt)
-			 (or (memq (xdoc-element-type elt)
-				   '(internal-container
-				     output
-				     content-selector
-				     action))
-			     (extra-content? elt)))))
-		    ((xml-element? item)
-		     (generate-xdoc-in-html item
-		       (lambda (elt)
-			 (expand-xdoc elt
-			   (lambda (elt)
-			     (memq (xdoc-element-type elt)
-				   '(output content-selector action)))))))
-		    (else item)))
-	    items)))
+   (lambda (items)
+     (map (lambda (item)
+	    (generate-item item extra-content?))
+	  items))
    generate-answer-block))
+
+(define (generate-item item extra-content?)
+  (cond ((xdoc-element? item)
+	 (if (not (or (memq (xdoc-element-type item)
+			    '(output content-selector action))
+		      (extra-content? item)))
+	     (error "Illegal content in this context:" item))
+	 (expand-xdoc item))
+	((xml-element? item)
+	 (generate-xdoc-in-html item
+	   (lambda (elt)
+	     (if (not (memq (xdoc-element-type elt)
+			    '(output content-selector action)))
+		 (error "Illegal content in this context:" elt))
+	     (expand-xdoc elt))))
+	(else item)))
+
+(define (expand-xdoc elt)
+  (let ((handler (xdoc-html-generator elt)))
+    (if (not handler)
+	(error "Unhandled element type:" (xml-element-name elt)))
+    (handler elt)))
 
 (define (generate-xdoc-in-html elt procedure)
   (let loop ((elt elt))
@@ -472,25 +491,42 @@ USA.
 (define-html-generator 'xdoc
   (lambda (elt)
     (int0-attribute 'problem-set elt #t)	;require attribute
-    (form (attributes
-	   'method "post"
-	   'action (or (find-attribute 'form-url elt #f) (http-request-url)))
-	  (generate-container-items (xml-element-contents elt)
-				    (lambda (elt)
-				      (or (xd:head? elt)
-					  (xd:due-date? elt)))))))
+    (html:form (xml-attrs 'method 'post
+			  'action (or (find-attribute 'form-url elt #f)
+				      (http-request-url)))
+	       (generate-container-items
+		(if (confirming-submission? elt)
+		    (keep-matching-items (xml-element-contents elt)
+		      (lambda (item)
+			(or (xd:page-frame? item)
+			    (xd:when? item))))
+		    (xml-element-contents elt))
+		(lambda (elt)
+		  (or (xd:head? elt)
+		      (xd:page-frame? elt)
+		      (xd:due-date? elt)
+		      (xdoc-internal-container? elt)))))))
 
 (define-html-generator 'head
   (lambda (elt)
     elt
     '()))
 
+(define-html-generator 'page-frame
+  (lambda (elt)
+    (xml-element-contents elt)))
+
 (define-html-generator 'due-date
   (lambda (elt)
     (let ((dt (due-date->decoded-time elt)))
-      (p (merge-attributes (xdoc-due-date-attributes dt)
-			   (preserved-attributes elt))
-	 (xdoc-due-date-string dt)))))
+      (let ((s
+	     ((or (procedure-attribute 'format elt #f)
+		  xdoc-due-date-string)
+	      dt)))
+	(and s
+	     (html:p (merge-attributes (xdoc-due-date-attributes dt)
+				       (preserved-attributes elt))
+		     s))))))
 
 (define (due-date->decoded-time elt)
   (make-decoded-time
@@ -506,12 +542,17 @@ USA.
 		      elt
 		      #t)))
 
+(define (find-xdoc-due-date root error?)
+  (let ((elt (find-named-child 'due-date root error?)))
+    (and elt
+	 (due-date->decoded-time elt))))
+
 (define (xdoc-due-date-attributes dt)
-  (attributes 'class
-	      (string-append "xdoc-due-date "
-			     (if (decoded-time-in-past? dt)
-				 "xdoc-due-date-overdue"
-				 "xdoc-due-date-on-time"))))
+  (xml-attrs 'class
+	     (list 'xdoc-due-date
+		   (if (decoded-time-in-past? dt)
+		       'xdoc-due-date-overdue
+		       'xdoc-due-date-on-time))))
 
 (define (xdoc-due-date-string dt)
   (let ((hour (decoded-time/hour dt))
@@ -534,9 +575,9 @@ USA.
 		   (if (> hour 12) "PM" "AM"))))
 
 (define (due-date-in-past?)
-  (let ((elt (find-named-child 'due-date *xdoc-root* #f)))
-    (and elt
-	 (decoded-time-in-past? (due-date->decoded-time elt)))))
+  (let ((dt (find-xdoc-due-date *xdoc-root* #f)))
+    (and dt
+	 (decoded-time-in-past? dt))))
 
 (define (decoded-time-in-past? dt)
   (< (decoded-time->universal-time dt) (get-universal-time)))
@@ -549,47 +590,47 @@ USA.
 	    (body (generate-problem-body elt)))
 	(let ((class-attrs
 	       (lambda (part)
-		 (attributes 'class
-			     (let ((base (string-append "xdoc-problem-" part)))
-			       (string-append base "-" (number->string depth)
-					      " " base))))))
-	  (let ((label-attrs (class-attrs "label"))
-		(body-attrs (class-attrs "body")))
+		 (xml-attrs 'class
+			    (let ((base (symbol 'xdoc-problem- part)))
+			      (list base
+				    (symbol base '- depth)))))))
+	  (let ((label-attrs (class-attrs 'label))
+		(body-attrs (class-attrs 'body)))
 	    (list (if (and (> count 1) (problem-separator? elt))
-		      (list (hr) "\n")
+		      (list (html:hr) "\n")
 		      '())
 		  (if (> depth 1)
 		      (case (problem-group-type (nearest-container elt))
 			((dl)
-			 (list (dt label-attrs
-				   (if formatter
-				       (formatter prefix number elt)
-				       (list number ":")))
+			 (list (html:dt label-attrs
+					(if formatter
+					    (formatter prefix number elt)
+					    (list number ":")))
 			       "\n"
-			       (dd body-attrs "\n" body)))
+			       (html:dd body-attrs "\n" body)))
 			((ol)
-			 (li (append body-attrs (attributes 'value number))
-			     body))
-			((ul) (li body-attrs body))
-			(else (div body-attrs body)))
-		      (list (p label-attrs
-			       (if formatter
-				   (formatter prefix number elt)
-				   (list "Problem " prefix number)))
+			 (html:li (xml-attrs body-attrs 'value number)
+				  body))
+			((ul) (html:li body-attrs body))
+			(else (html:div body-attrs body)))
+		      (list (html:p label-attrs
+				    (if formatter
+					(formatter prefix number elt)
+					(list "Problem " prefix number)))
 			    "\n"
-			    (div body-attrs "\n" body))))))))))
+			    (html:div body-attrs "\n" body))))))))))
 
 (define (generate-problem-body elt)
   (let ((wrap
 	 (case (problem-group-type elt)
-	   ((dl) dl)
-	   ((ol) ol)
-	   ((ul) ul)
-	   (else div)))
-	(attrs (xdoc-attributes elt 'class "xdoc-problem-group"))
+	   ((dl) html:dl)
+	   ((ol) html:ol)
+	   ((ul) html:ul)
+	   (else html:div)))
+	(attrs (xdoc-attributes elt 'class 'xdoc-problem-group))
 	(generate-group
 	 (lambda (items)
-	   (generate-container-items items (lambda (elt) elt #f)))))
+	   (generate-container-items items xdoc-internal-container?))))
     (generate-container-groups
      (parse-container-groups (xml-element-contents elt) xd:problem?)
      generate-group
@@ -618,15 +659,15 @@ USA.
 (define (generate-answer-block elts)
   (fluid-let ((*answer-block-appendixes* '()))
     (let ((t
-	   (table (attributes 'class "xdoc-answer-block"
-			      'cellspacing "8")
-		  (append-map (lambda (elt)
-				(list "\n  "
-				      (tr (xdoc-attributes elt)
-					  (generate-answer-row elt)
-					  "\n  ")
-				      "\n"))
-			      elts))))
+	   (html:table (xml-attrs 'class 'xdoc-answer-block
+				  'cellspacing "8")
+		       (map (lambda (elt)
+			      (list "\n  "
+				    (html:tr (xdoc-attributes elt)
+					     (generate-answer-row elt)
+					     "\n  ")
+				    "\n"))
+			    elts))))
       ;; Let forces order of evaluation.
       (cons t (reverse! *answer-block-appendixes*)))))
 
@@ -652,11 +693,11 @@ USA.
       (if (null? items)
 	  '()
 	  (list "\n    "
-		(td (xdoc-attributes elt
-				     'class (symbol-append 'xdoc-answer- name))
-		    "\n      "
-		    items
-		    "\n    "))))))
+		(html:td (xdoc-attributes elt
+					  'class (symbol 'xdoc-answer- name))
+			 "\n      "
+			 items
+			 "\n    "))))))
 
 (define-html-generator 'label
   (lambda (elt)
@@ -716,13 +757,13 @@ USA.
   (lambda (elt)
     (receive (value submitter) (current-input-status elt)
       (let ((width (int0-attribute 'width elt #t)))
-	(input 'class "xdoc-text-input"
-	       'type 'text
-	       'size width
-	       'maxlen width
-	       'name (xdoc-db-id elt)
-	       'value value
-	       'disabled (and submitter 'disabled))))))
+	(html:input 'class 'xdoc-text-input
+		    'type 'text
+		    'size width
+		    'maxlen width
+		    'name (xdoc-db-id elt)
+		    'value value
+		    'disabled (and submitter 'disabled))))))
 
 (define-xdoc-input 'menu
   (lambda (value) (if (string=? value menu-dummy-string) "" value))
@@ -730,18 +771,19 @@ USA.
     (receive (value submitter) (current-input-status elt)
       (let ((size (or (int1-attribute 'size elt #f) 1)))
 	(list
-	 (select (xdoc-attributes elt
-				  'name (xdoc-db-id elt)
-				  'size size
-				  'disabled (and submitter 'disabled))
-		 "\n"
-		 (option #f menu-dummy-string)
-		 (map (lambda (v)
-			(list "\n"
-			      (option (attributes 'selected (string=? v value))
-				      v)))
-		      (xd:menu-values elt))
-		 "\n")
+	 (html:select (xdoc-attributes elt
+				       'name (xdoc-db-id elt)
+				       'size size
+				       'disabled (and submitter 'disabled))
+		      "\n"
+		      (html:option #f menu-dummy-string)
+		      (map (lambda (v)
+			     (list "\n"
+				   (html:option
+				    (xml-attrs 'selected (string=? v value))
+				    v)))
+			   (xd:menu-values elt))
+		      "\n")
 	 "\n")))))
 
 (define menu-dummy-string
@@ -758,34 +800,35 @@ USA.
   #f ;; special, see canonicalize-xdoc-input-value
   (lambda (elt)
     (receive (value submitter) (current-input-status elt)
-      (input 'class "xdoc-checkbox-input"
-	     'type 'checkbox
-	     'name (xdoc-db-id elt)
-	     'value "true"
-	     'checked (string=? value "true")
-	     'disabled (and submitter 'disabled)))))
+      (html:input 'class 'xdoc-checkbox-input
+		  'type 'checkbox
+		  'name (xdoc-db-id elt)
+		  'value "true"
+		  'checked (string=? value "true")
+		  'disabled (and submitter 'disabled)))))
 
 (define-xdoc-input 'radio-buttons
   identity-procedure
   (lambda (elt)
     (receive (value submitter) (current-input-status elt)
       (let ((id (xdoc-db-id elt)))
-	(table
-	 (attributes 'class "xdoc-radio-buttons-input")
-	 (tr #f
-	     (map (lambda (item)
-		    (if (not (xd:radio-entry? item))
-			(error "Illegal <xd:radio-buttons> content:" item))
-		    (let ((value* (find-attribute 'value item #t)))
-		      (list
-		       (td #f
-			   (input 'type 'radio
-				  'name id
-				  'value value*
-				  'checked (string=? value* value)
-				  'disabled (and submitter 'disabled)))
-		       (th #f (xml-element-contents item)))))
-		  (xml-element-contents elt))))))))
+	(html:table
+	 (xml-attrs 'class 'xdoc-radio-buttons-input)
+	 (html:tr
+	  #f
+	  (map (lambda (item)
+		 (if (not (xd:radio-entry? item))
+		     (error "Illegal <xd:radio-buttons> content:" item))
+		 (let ((value* (find-attribute 'value item #t)))
+		   (list
+		    (html:td #f
+			     (html:input 'type 'radio
+					 'name id
+					 'value value*
+					 'checked (string=? value* value)
+					 'disabled (and submitter 'disabled)))
+		    (html:th #f (xml-element-contents item)))))
+	       (xml-element-contents elt))))))))
 
 (define (xd:radio-button-values elt)
   (map (lambda (elt)
@@ -821,13 +864,19 @@ USA.
 	      (let ((sources
 		     (map named-element (ids-attribute 'sources elt #t))))
 		(if (not (pair? sources))
-		    (error
-		     "Multiple-input test needs at least one input."))
+		    (error "Multiple-input test needs at least one input."))
 		(receive (vals submitter) (current-inputs-status sources)
 		  (values (if (there-exists? vals string-null?)
 			      "unspecified"
 			      (procedure elt vals sources))
 			  submitter))))))
+  (define-html-generator local (lambda (elt) elt '())))
+
+(define (define-0-ary-xdoc-output local checkable? expected-value procedure)
+  (hash-table/put! xdoc-output-definitions local
+    (vector checkable?
+	    expected-value
+	    procedure))
   (define-html-generator local (lambda (elt) elt '())))
 
 (define (xdoc-output-checkable? elt)
@@ -865,6 +914,13 @@ USA.
     (find-attribute 'expected elt #f))
   (lambda (elt vals sources)
     ((procedure-attribute 'name elt #t) elt vals sources)))
+
+(define-0-ary-xdoc-output 'programmed-output #t
+  (lambda (elt)
+    (find-attribute 'expected elt #f))
+  (lambda (elt)
+    ((procedure-attribute 'name elt #t) elt
+					(xdoc-db-id (nearest-container elt)))))
 
 (define-unary-xdoc-output 'number #t
   (lambda (elt)
@@ -939,7 +995,7 @@ USA.
 
 (define (switched-content-selector elt noun)
   (let* ((type (xdoc-element-name elt))
-	 (name (symbol-append type '- (xdoc-db-id elt)))
+	 (name (symbol type '- (xdoc-db-id elt)))
 	 (value (db-get-persistent-value name #f)))
     (if (if (eq? value 'shown)
 	    (not (http-request-post-parameter name))
@@ -947,18 +1003,14 @@ USA.
 	(let ((text
 	       (list
 		"\n"
-		(blockquote
-		 (xdoc-attributes elt
-				  'class
-				  (string-append "xdoc-"
-						 (symbol-name type)
-						 "-blockquote"))
+		(html:blockquote
+		 (xdoc-attributes elt 'class (symbol 'xdoc- type '-blockquote))
 		 (xml-element-contents elt))
 		"\n"))
 	      (button
-	       (input 'type 'submit
-		      'name name
-		      'value (string-append "Hide " noun))))
+	       (html:input 'type 'submit
+			   'name name
+			   'value (string-append "Hide " noun))))
 	  (if (not (eq? value 'shown))
 	      (db-set-persistent-value! name 'shown))
 	  (if (xd:answer? (nearest-container elt))
@@ -969,9 +1021,9 @@ USA.
 	(begin
 	  (if (not (eq? value 'hidden))
 	      (db-set-persistent-value! name 'hidden))
-	  (input 'type 'submit
-		 'name name
-		 'value (string-append "Show " noun))))))
+	  (html:input 'type 'submit
+		      'name name
+		      'value (string-append "Show " noun))))))
 
 (define-html-generator 'expected-value
   (lambda (elt)
@@ -982,8 +1034,8 @@ USA.
 		   (error "Single source output required:" outputs))
 	       (car outputs)))))
       (and (output-submitted? source)
-	   (div (xdoc-attributes elt)
-		(xdoc-output-expected-value source))))))
+	   (html:div (xdoc-attributes elt)
+		     (xdoc-output-expected-value source))))))
 
 (define-html-generator 'when
   (lambda (elt)
@@ -991,8 +1043,10 @@ USA.
 	    (or (hash-table/get when-conditions condition #f)
 		(error "Unknown <xd:when> condition:" condition)))
 	  (content-selector-source elt))
-	 (div (xdoc-attributes elt)
-	      (xml-element-contents elt)))))
+	 (html:div (xdoc-attributes elt)
+		   (map (lambda (item)
+			  (generate-item item (lambda (elt) elt #f)))
+			(xml-element-contents elt))))))
 
 (define (define-when-condition name procedure)
   (hash-table/put! when-conditions name procedure))
@@ -1008,6 +1062,36 @@ USA.
   (lambda (elt)
     (not (descendant-outputs-submitted? elt))))
 
+(define-when-condition 'confirming-submission
+  (lambda (elt)
+    (confirming-submission? elt)))
+
+(define (descendant-outputs-submitted? elt)
+  (let ((outputs (descendant-outputs elt)))
+    (and (pair? outputs)
+	 (for-all? outputs output-submitted?))))
+
+(define (confirming-submission? elt)
+  (there-exists? (descendant-outputs elt)
+    (lambda (elt)
+      (receive (request submitter) (xdoc-active-element-request elt)
+	submitter
+	(eq? request 'confirm)))))
+
+(define (descendant-outputs elt)
+  (matching-descendants-or-self elt xdoc-output?))
+
+(define (xdoc-outputs-submitted? elt)
+  (let ((outputs (descendant-outputs elt)))
+    (and (pair? outputs)
+	 (for-all? outputs
+	   (lambda (elt)
+	     (let ((id (xdoc-db-id elt)))
+	       (receive (correctness submitter)
+		   (db-previously-saved-output id)
+		 correctness
+		 submitter)))))))
+
 (define-html-generator 'case
   (lambda (elt)
     (let ((children (xml-element-contents elt)))
@@ -1051,46 +1135,33 @@ USA.
 	      (error "Source must be container or output:" source))
 	  source)
 	(nearest-container elt))))
-
-(define (descendant-outputs-submitted? elt)
-  (for-all? (descendant-outputs elt) output-submitted?))
-
-(define (descendant-outputs elt)
-  (matching-descendants-or-self elt xdoc-output?))
 
 ;;;; Actions
 
-(define-html-generator 'check-action
+(define-html-generator 'submit
   (lambda (elt)
-    (submission-action elt 'check)))
-
-(define-html-generator 'submit-action
-  (lambda (elt)
-    (submission-action elt 'submit)))
-
-(define (submission-action elt prefix)
-  (let ((container
-	 (let ((container (idref-attribute 'scope elt #f)))
-	   (if container
-	       (begin
-		 (if (not (xdoc-container? container))
-		     (error "scope attribute must refer to container:"
-			    container))
-		 container)
-	       (nearest-container elt)))))
-    (let ((inputs (descendant-inputs container)))
-      (if (for-all? inputs input-submitted?)
-	  #f
-	  (input
-	   (xdoc-attributes
-	    elt
-	    'class "xdoc-submit-action"
-	    'type 'submit
-	    'name (symbol-append prefix '- (xdoc-db-id container))
-	    'value
-	    (string-append (string-capitalize (symbol-name prefix))
-			   " answer"
-			   (if (fix:= (length inputs) 1) "" "s"))))))))
+    (let ((prefix (symbol-attribute 'type elt #t))
+	  (label (find-attribute 'label elt #t))
+	  (container
+	   (let ((container (idref-attribute 'scope elt #f)))
+	     (if container
+		 (begin
+		   (if (not (xdoc-container? container))
+		       (error "scope attribute must refer to container:"
+			      container))
+		   container)
+		 (nearest-container elt)))))
+      (let ((inputs (descendant-inputs container)))
+	(if (for-all? inputs input-submitted?)
+	    #f
+	    (html:input
+	     (xdoc-attributes
+	      elt
+	      'class (list 'xdoc-submission-action
+			   (symbol 'xdoc- prefix '-action))
+	      'type 'submit
+	      'name (symbol prefix '- (xdoc-db-id container))
+	      'value label)))))))
 
 (define (descendant-inputs elt)
   (matching-descendants-or-self elt xdoc-input?))
@@ -1195,7 +1266,7 @@ USA.
 ;;;; Merging of attributes
 
 (define (xdoc-attributes elt . keyword-list)
-  (merge-attributes (apply attributes keyword-list)
+  (merge-attributes (apply xml-attrs keyword-list)
 		    (preserved-attributes elt)))
 
 (define (preserved-attributes elt)
@@ -1405,11 +1476,8 @@ USA.
        (let ((qname (symbol-append 'xd: local)))
 	 `(BEGIN
 	    (DEFINE ,qname
-	      (,(if (eq? content-type 'empty)
-		    'EMPTY-ELEMENT-CONSTRUCTOR
-		    'STANDARD-ELEMENT-CONSTRUCTOR)
-	       ',qname
-	       XDOC-IRI))
+	      (STANDARD-XML-ELEMENT-CONSTRUCTOR ',qname XDOC-IRI
+						,(eq? content-type 'empty)))
 	    (DEFINE ,(symbol-append qname '?)
 	      (LET ((NAME (MAKE-XML-NAME ',qname XDOC-IRI)))
 		(LAMBDA (OBJECT)
@@ -1420,6 +1488,7 @@ USA.
 
 (define-element xdoc mixed top-level-container)
 (define-element head mixed internal)
+(define-element page-frame mixed internal)
 (define-element due-date empty internal)
 (define-element problem mixed internal-container)
 (define-element answer element internal-container)
@@ -1451,9 +1520,9 @@ USA.
 (define-element submit-action empty action)
 
 (define (xd:true-false . keyword-list)
-  (xd:radio-buttons (apply attributes keyword-list)
-		    (xd:radio-entry (attributes 'value 'true) "True")
-		    (xd:radio-entry (attributes 'value 'false) "False")))
+  (xd:radio-buttons (apply xml-attrs keyword-list)
+		    (xd:radio-entry (xml-attrs 'value 'true) "True")
+		    (xd:radio-entry (xml-attrs 'value 'false) "False")))
 
 (define (xd:true-false? object)
   (and (xd:radio-buttons? object)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xhtml-expander.scm,v 1.2 2003/12/29 07:31:22 uid67408 Exp $
+$Id: xhtml-expander.scm,v 1.3 2004/10/27 20:04:15 cph Exp $
 
-Copyright 2002,2003 Massachusetts Institute of Technology
+Copyright 2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -27,13 +27,15 @@ USA.
 
 (declare (usual-integrations))
 
-(define (expand-xhtml-directory directory)
-  (for-each expand-xhtml-file (directory-read directory)))
+(define-mime-handler '(application/xhtml+xml "xhtml" "ssp")
+  (lambda (pathname port)
+    (expand-xhtml-file pathname port)))
 
-(define (expand-xhtml-file input #!optional output)
+(define (expand-xhtml-file pathname port)
+  (http-response-header 'content-type (html-content-type))
   (let ((document
-	 (read/expand-xml-file input
-			       (make-expansion-environment input))))
+	 (read/expand-xml-file pathname
+			       (make-expansion-environment pathname))))
     (let ((root (xml-document-root document)))
       (set-xml-element-contents!
        root
@@ -41,17 +43,12 @@ USA.
 	      (make-xml-comment
 	       (string-append
 		" This document was automatically generated from \""
-		(file-namestring input)
+		(file-namestring pathname)
 		"\"\n     on "
 		(universal-time->local-time-string (get-universal-time))
 		". "))
 	      (xml-element-contents root))))
-    (let ((output
-	   (if (default-object? output)
-	       (pathname-new-type input "html")
-	       output)))
-      ((if (output-port? output) write-xml write-xml-file)
-       document output 'INDENT-DTD? #t))))
+    (write-xml document port 'INDENT-DTD? #t)))
 
 (define (read/expand-xml-file pathname environment)
   (with-working-directory-pathname (directory-pathname pathname)
