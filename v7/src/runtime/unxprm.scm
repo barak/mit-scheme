@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.71 2005/03/31 05:06:59 cph Exp $
+$Id: unxprm.scm,v 1.72 2005/03/31 05:08:51 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1997,1998,1999,2000 Massachusetts Institute of Technology
@@ -117,8 +117,9 @@ USA.
 
 (define (file-length filename)
   (let ((attrs (file-attributes-direct filename)))
-    (and attrs
-	 (file-attributes/length attrs))))
+    (if (not attrs)
+	(error:bad-range-argument filename 'FILE-LENGTH))
+    (file-attributes/length attrs)))
 
 (define (file-modification-time-direct filename)
   ((ucode-primitive file-mod-time 1)
