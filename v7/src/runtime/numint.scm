@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numint.scm,v 1.2 1990/04/10 16:03:03 cph Rel $
+$Id: numint.scm,v 1.3 1992/09/30 13:28:16 jinx Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,30 +39,33 @@ MIT in each case. |#
 
 (define (make-=-operator =)
   (lambda zs
-    (reduce-comparator = zs)))
+    (reduce-comparator = zs 'make-=-operator)))
 
 (define (make-<-operator <)
   (lambda zs
-    (reduce-comparator < zs)))
+    (reduce-comparator < zs 'make-<-operator)))
 
 (define (make->-operator <)
   (lambda zs
     (reduce-comparator (lambda (x y) (< y x)) 
-		       zs)))
+		       zs
+		       'make->-operator)))
 
 (define (make-<=-operator <)
   (lambda zs
     (reduce-comparator (lambda (x y) (not (< y x)))
-		       zs)))
+		       zs
+		       'make-<=-operator)))
   
 (define (make->=-operator <)
   (lambda zs
     (reduce-comparator (lambda (x y) (not (< x y)))
-		       zs)))
+		       zs
+		       'make->=-operator)))
 
 (define (make-max/min-operator max/min)
   (lambda (x . xs)
-    (reduce-max/min max/min x xs)))
+    (reduce-max/min max/min x xs 'make-max/min-operator)))
 
 (define (make-atan-operator atan1 atan2)
   (lambda (z . xs)
