@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motcom.scm,v 1.45 1991/11/21 10:37:39 cph Exp $
+;;;	$Id: motcom.scm,v 1.46 1993/08/10 06:49:52 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -173,8 +173,8 @@ Continuation lines are skipped."
 	   (move-to-column (line-start (current-point) (- argument) 'FAILURE)
 			   column)))
       (set-command-message! temporary-goal-column-tag column))))
-
-;;; Jokes
+
+;;;; Jokes
 
 (define-command hyper-space
   "Engage warp drive."

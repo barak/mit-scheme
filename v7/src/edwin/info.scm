@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: info.scm,v 1.115 1992/11/17 17:38:34 cph Exp $
+;;;	$Id: info.scm,v 1.116 1993/08/10 06:43:44 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -683,7 +683,8 @@ The name may be an abbreviation of the reference name."
 		       (ref-variable info-current-node)
 		       (mark-index (current-point))))
       ;; Switch files if necessary.
-      (if (and pathname (not (equal? pathname (ref-variable info-current-file))))
+      (if (and pathname
+	       (not (equal? pathname (ref-variable info-current-file))))
 	  (begin
 	    (read-buffer buffer pathname true)
 	    (if (not (eq? (buffer-major-mode buffer) (ref-mode-object info)))
@@ -705,8 +706,7 @@ The name may be an abbreviation of the reference name."
 	   (let ((end (buffer-end buffer)))
 	     (let loop ((start (node-search-start nodename)))
 	       (let ((node (next-node start end)))
-		 (if (not node)
-		     (editor-error "No such node: " nodename))
+		 (if (not node) (editor-error "No such node: " nodename))
 		 (if (let ((name (extract-node-name node)))
 		       (and name
 			    (string-ci=? nodename name)))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: modlin.scm,v 1.15 1992/11/12 18:00:37 cph Exp $
+;;;	$Id: modlin.scm,v 1.16 1993/08/10 06:48:48 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -291,7 +291,8 @@ If #F, the normal method is used."
 		      (min
 		       (let ((start (group-display-start-index group)))
 			 (integer-round
-			  (* 100 (- (mark-index (window-start-mark window)) start))
+			  (* 100
+			     (- (mark-index (window-start-mark window)) start))
 			  (- (group-display-end-index group) start)))
 		       99))
 		     2)

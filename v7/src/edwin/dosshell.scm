@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosshell.scm,v 1.2 1993/02/25 02:56:29 gjr Exp $
+$Id: dosshell.scm,v 1.3 1993/08/10 06:38:22 cph Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -94,7 +94,7 @@ Customization: Entry to this mode runs the hook pseudo-shell-mode-hook."
 
 ;; (define-key 'pseudo-shell #\tab 'comint-dynamic-complete)
 ;; (define-key 'pseudo-shell #\M-? 'comint-dynamic-list-completions)
-
+
 (define-command shell
   "Run an inferior pseudo shell, with I/O through buffer *shell*.
 With prefix argument, unconditionally create a new buffer.

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: notify.scm,v 1.10 1992/09/17 00:26:15 jinx Exp $
+;;;	$Id: notify.scm,v 1.11 1993/08/10 06:50:48 cph Exp $
 ;;;
-;;;	Copyright (c) 1992 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -98,7 +98,7 @@
 		 "")))
 	(kill-buffer temporary-buffer)
 	result))))
-
+
 (define-variable notify-show-mail
   "If true, the notifier displays your mail status."
   true

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: macros.scm,v 1.59 1993/01/09 01:16:15 cph Exp $
+;;;	$Id: macros.scm,v 1.60 1993/08/10 06:47:41 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -125,7 +125,7 @@
 
 (define (command-name->scheme-name name)
   (symbol-append 'EDWIN-COMMAND$ name))
-
+
 (let ((variable-definition
        (lambda (buffer-local?)
 	 (lambda (name description #!optional value test)
@@ -228,24 +228,3 @@
   (cond ((symbol? name) name)
 	((string? name) (intern (string-replace name #\Space #\-)))
 	(else (error "illegal name" name))))
-
-(syntax-table-define edwin-syntax-table 'VALUES-LET
-  (lambda (bindings . forms)
-
-    (define (transform/binding binding forms)
-      (if (or (not (pair? binding))
-	      (not (pair? (cdr binding))))
-	  (error "values-let: bad binding clause" binding))
-      `(WITH-VALUES (LAMBDA () ,(cadr binding))
-	 (LAMBDA (,@(car binding)) ,@forms)))
-
-    (define (transform/values-let bindings forms)
-      (transform/binding
-       (car bindings)
-       (if (null? (cdr bindings))
-	   forms
-	   (list (transform/values-let (cdr bindings) forms)))))
-
-    (if (not (pair? bindings))
-	(error "values-let: missing bindings" (cons bindings forms))
-	(transform/values-let bindings forms))))

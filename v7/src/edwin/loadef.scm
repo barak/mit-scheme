@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: loadef.scm,v 1.22 1993/08/02 21:05:52 cph Exp $
+;;;	$Id: loadef.scm,v 1.23 1993/08/10 06:45:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -72,8 +72,8 @@
 (define-library 'RMAIL-SUMMARY-MODE
   '("rmailsum" (EDWIN RMAIL)))
 
-(define-autoload-major-mode 'rmail-summary 'fundamental "RMAIL-Summary" 'RMAIL-SUMMARY-MODE
-  "Summary mode for RMAIL.")
+(define-autoload-major-mode 'rmail-summary 'fundamental "RMAIL-Summary"
+  'RMAIL-SUMMARY-MODE "Summary mode for RMAIL.")
 
 (define-autoload-command 'rmail-summary 'RMAIL-SUMMARY-MODE
   "Enter RMAIL Summary mode.")

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: iserch.scm,v 1.18 1993/08/02 03:06:35 cph Exp $
+;;;	$Id: iserch.scm,v 1.19 1993/08/10 06:45:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -194,7 +194,7 @@
 
 (define (extract-rest-of-line mark)
   (extract-string mark (line-end mark (if (line-end? mark) 1 0) 'LIMIT)))
-
+
 (define (search-state-message state)
   (let ((invalid-regexp (search-state-invalid-regexp state)))
     (let ((m
@@ -209,7 +209,7 @@
 	    (if invalid-regexp (string-append " [" invalid-regexp "]") ""))))
       (string-set! m 0 (char-upcase (string-ref m 0)))
       m)))
-
+
 (define (search-state-append-string state string)
   (let ((text (string-append (search-state-text state) string)))
     (if (search-state-successful? state)

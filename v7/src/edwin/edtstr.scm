@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.21 1992/02/13 23:35:07 cph Exp $
+;;;	$Id: edtstr.scm,v 1.22 1993/08/10 06:39:51 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -104,6 +104,8 @@
     (set-editor-select-time! current-editor (1+ time))
     time))
 
+;;;; Buttons
+
 (define-structure (button-event (conc-name button-event/))
   (window false read-only true)
   (x false read-only true)
@@ -132,7 +134,7 @@
 
 (define button-record-type
   (make-record-type 'BUTTON '(NUMBER DOWN?)))
-
+
 (define make-down-button)
 (define make-up-button)
 (let ((%make-button

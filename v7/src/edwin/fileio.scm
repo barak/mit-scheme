@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.117 1993/04/27 09:18:34 cph Exp $
+;;;	$Id: fileio.scm,v 1.118 1993/08/10 06:41:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -774,7 +774,8 @@ Otherwise, a message is written both before and after long file writes."
 							old 1 olen))))
 		  (let ((end (fix:+ end delta)))
 		    (replace! next)
-		    (loop (group-find-next-char group (fix:+ next* delta) end match)
+		    (loop (group-find-next-char group (fix:+ next* delta) end
+						match)
 			  end))
 		  (loop (group-find-next-char group next* end match)
 			end))))))))

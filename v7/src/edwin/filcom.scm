@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.174 1993/01/12 10:45:46 cph Exp $
+;;;	$Id: filcom.scm,v 1.175 1993/08/10 06:40:36 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -735,4 +735,3 @@ If a file with the new name already exists, confirmation is requested first."
 
 (define-integrable (completion-ignore-filename? filename)
   (os/completion-ignore-filename? filename))
-
