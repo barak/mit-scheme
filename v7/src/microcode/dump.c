@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.30 1989/11/30 03:03:51 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.31 1990/10/05 18:58:04 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -38,11 +38,11 @@ extern SCHEME_OBJECT compiler_utilities;
 extern long compiler_interface_version, compiler_processor_type;
 
 void
-prepare_dump_header(Buffer, Dumped_Object,
-		    Heap_Count, Heap_Relocation,
-		    Constant_Count, Constant_Relocation,
-		    table_length, table_size,
-		    cc_code_p, band_p)
+prepare_dump_header (Buffer, Dumped_Object,
+		     Heap_Count, Heap_Relocation,
+		     Constant_Count, Constant_Relocation,
+		     table_length, table_size,
+		     cc_code_p, band_p)
      SCHEME_OBJECT
        *Buffer, *Dumped_Object,
        *Heap_Relocation, *Constant_Relocation;
@@ -119,10 +119,10 @@ prepare_dump_header(Buffer, Dumped_Object,
 }
 
 Boolean
-Write_File(Dumped_Object, Heap_Count, Heap_Relocation,
-           Constant_Count, Constant_Relocation,
-	   table_start, table_length, table_size,
-	   cc_code_p, band_p)
+Write_File (Dumped_Object, Heap_Count, Heap_Relocation,
+	    Constant_Count, Constant_Relocation,
+	    table_start, table_length, table_size,
+	    cc_code_p, band_p)
      SCHEME_OBJECT
        *Dumped_Object,
        *Heap_Relocation, *Constant_Relocation,
@@ -133,12 +133,39 @@ Write_File(Dumped_Object, Heap_Count, Heap_Relocation,
      Boolean cc_code_p, band_p;
 {
   SCHEME_OBJECT Buffer[FASL_HEADER_LENGTH];
+  unsigned long checksum, checksum_area ();
 
-  prepare_dump_header(Buffer, Dumped_Object,
-		      Heap_Count, Heap_Relocation,
-		      Constant_Count, Constant_Relocation,
-		      table_length, table_size, cc_code_p, band_p);
-  if (Write_Data(FASL_HEADER_LENGTH, ((char *) Buffer)) !=
+  prepare_dump_header (Buffer, Dumped_Object,
+		       Heap_Count, Heap_Relocation,
+		       Constant_Count, Constant_Relocation,
+		       table_length, table_size, cc_code_p, band_p);
+
+  /* This is not done in prepare_dump_header because it doesn't
+     work when prepare_dump_header is invoked from bchdmp.
+     The areas don't really have these values.
+     For the time being, bchdmp does not dump checksums.
+   */
+
+  checksum = (checksum_area (((unsigned long *) (&Buffer[0])),
+			     ((long) FASL_Offset_Check_Sum),
+			     ((unsigned long) 0L)));
+  checksum = (checksum_area (((unsigned long *)
+			      (&Buffer[FASL_Offset_Check_Sum + 1])),
+			     ((long) ((FASL_HEADER_LENGTH - 1) -
+				      FASL_Offset_Check_Sum)),
+			     checksum));
+  checksum = (checksum_area (((unsigned long *) Heap_Relocation),
+			     Heap_Count,
+			     checksum));
+  checksum = (checksum_area (((unsigned long *) Constant_Relocation),
+			     Constant_Count,
+			     checksum));
+  checksum = (checksum_area (((unsigned long *) table_start),
+			     table_size,
+			     checksum));
+  Buffer[FASL_Offset_Check_Sum] = checksum;
+
+  if (Write_Data (FASL_HEADER_LENGTH, ((char *) Buffer)) !=
       FASL_HEADER_LENGTH)
   {
     return (false);
@@ -168,3 +195,22 @@ Write_File(Dumped_Object, Heap_Count, Heap_Relocation,
   }
   return (true);
 }
+
+extern unsigned long checksum_area ();
+
+unsigned long
+checksum_area (start, count, initial_value)
+     register unsigned long *start;
+     register long count;
+     unsigned long initial_value;
+{
+  register unsigned long value;
+
+  value = initial_value;
+  while ((--count) >= 0)
+  {
+    value = (value ^ (*start++));
+  }
+  return (value);
+}
+     

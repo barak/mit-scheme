@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/load.c,v 9.28 1989/09/20 23:09:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/load.c,v 9.29 1990/10/05 18:58:18 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -74,54 +74,58 @@ static long
   Primitive_Table_Size, Primitive_Table_Length,
   dumped_processor_type, dumped_interface_version;
 
+static unsigned long
+  dumped_checksum, computed_checksum;
+
 static SCHEME_OBJECT
   Ext_Prim_Vector,
   dumped_utilities;
 
 void
-print_fasl_information()
+print_fasl_information ()
 {
-  printf("FASL File Information:\n\n");
-  printf("Machine = %ld; Version = %ld; Subversion = %ld\n",
-	 Machine_Type, Version, Sub_Version);
+  printf ("FASL File Information:\n\n");
+  printf ("Machine = %ld; Version = %ld; Subversion = %ld\n",
+	  Machine_Type, Version, Sub_Version);
   if ((dumped_processor_type != 0) || (dumped_interface_version != 0))
   {
-    printf("Compiled code interface version = %ld; Processor type = %ld\n",
-	   dumped_interface_version, dumped_processor_type);
+    printf ("Compiled code interface version = %ld; Processor type = %ld\n",
+	    dumped_interface_version, dumped_processor_type);
   }
   if (band_p)
   {
-    printf("The file contains a dumped image (band).\n");
+    printf ("The file contains a dumped image (band).\n");
   }
 
-  printf("\nRelocation Information:\n\n");
-  printf("Heap Count = %ld; Heap Base = 0x%lx; Heap Top = 0x%lx\n",
-	 Heap_Count, Heap_Base, Dumped_Heap_Top);
-  printf("Const Count = %ld; Const Base = 0x%lx; Const Top = 0x%lx\n",
-	 Const_Count, Const_Base, Dumped_Constant_Top);
-  printf("Stack Top = 0x%lx\n", Dumped_Stack_Top);
+  printf ("\nRelocation Information:\n\n");
+  printf ("Heap Count = %ld; Heap Base = 0x%lx; Heap Top = 0x%lx\n",
+	  Heap_Count, Heap_Base, Dumped_Heap_Top);
+  printf ("Const Count = %ld; Const Base = 0x%lx; Const Top = 0x%lx\n",
+	  Const_Count, Const_Base, Dumped_Constant_Top);
+  printf ("Stack Top = 0x%lx\n", Dumped_Stack_Top);
 
-  printf("\nDumped Objects:\n\n");
-  printf("Dumped object at 0x%lx (as read from file)\n", Dumped_Object);
-  printf("Compiled code utilities vector = 0x%lx\n", dumped_utilities);
+  printf ("\nDumped Objects:\n\n");
+  printf ("Dumped object at 0x%lx (as read from file)\n", Dumped_Object);
+  printf ("Compiled code utilities vector = 0x%lx\n", dumped_utilities);
   if (Ext_Prim_Vector != SHARP_F)
   {
-    printf("External primitives vector = 0x%lx\n", Ext_Prim_Vector);
+    printf ("External primitives vector = 0x%lx\n", Ext_Prim_Vector);
   }
   else
   {
-    printf("Length of primitive table = %ld\n", Primitive_Table_Length);
+    printf ("Length of primitive table = %ld\n", Primitive_Table_Length);
   }
+  printf ("Checksum = 0x%lx\n", dumped_checksum);
   return;
 }
 
 long
-Read_Header()
+Read_Header ()
 {
   SCHEME_OBJECT Buffer[FASL_HEADER_LENGTH];
   SCHEME_OBJECT Pointer_Heap_Base, Pointer_Const_Base;
 
-  if (Load_Data(FASL_HEADER_LENGTH, ((char *) Buffer)) !=
+  if (Load_Data (FASL_HEADER_LENGTH, ((char *) Buffer)) !=
       FASL_HEADER_LENGTH)
   {
     return (FASL_FILE_TOO_SHORT);
@@ -130,10 +134,10 @@ Read_Header()
   {
     return (FASL_FILE_NOT_FASL);
   }
-  NORMALIZE_HEADER(Buffer,
-		   (sizeof(Buffer) / sizeof(SCHEME_OBJECT)),
-		   Buffer[FASL_Offset_Heap_Base],
-		   Buffer[FASL_Offset_Heap_Count]);
+  NORMALIZE_HEADER (Buffer,
+		    (sizeof(Buffer) / sizeof(SCHEME_OBJECT)),
+		    Buffer[FASL_Offset_Heap_Base],
+		    Buffer[FASL_Offset_Heap_Count]);
   Heap_Count = OBJECT_DATUM (Buffer[FASL_Offset_Heap_Count]);
   Pointer_Heap_Base = Buffer[FASL_Offset_Heap_Base];
   Heap_Base = OBJECT_DATUM (Pointer_Heap_Base);
@@ -185,7 +189,6 @@ Read_Header()
   }
 
 #ifndef INHIBIT_FASL_VERSION_CHECK
-
   /* The error messages here should be handled by the runtime system! */
 
   if ((Version != FASL_READ_VERSION) ||
@@ -224,13 +227,13 @@ Read_Header()
 	((dumped_interface_version != 0) &&
 	 (dumped_interface_version != compiler_interface_version)))
     {
-      fprintf(stderr, "\nread_file:\n");
-      fprintf(stderr,
-	      "FASL File: compiled code interface %4d; processor %4d.\n",
-	      dumped_interface_version, dumped_processor_type);
-      fprintf(stderr,
-	      "Expected:  compiled code interface %4d; processor %4d.\n",
-	      compiler_interface_version, compiler_processor_type);
+      fprintf (stderr, "\nread_file:\n");
+      fprintf (stderr,
+	       "FASL File: compiled code interface %4d; processor %4d.\n",
+	       dumped_interface_version, dumped_processor_type);
+      fprintf (stderr,
+	       "Expected:  compiled code interface %4d; processor %4d.\n",
+	       compiler_interface_version, compiler_processor_type);
       return (((dumped_processor_type != 0) &&
 	       (dumped_processor_type != compiler_processor_type))	?
 	      FASL_FILE_BAD_PROCESSOR					:
@@ -239,6 +242,22 @@ Read_Header()
   }
 
 #endif /* INHIBIT_COMPILED_VERSION_CHECK */
+
+  dumped_checksum = (Buffer [FASL_Offset_Check_Sum]);
+
+#ifndef INHIBIT_CHECKSUMS
+
+  {
+    extern unsigned long checksum_area ();
+
+    computed_checksum =
+      (checksum_area (((unsigned long *) &Buffer[0]),
+		      ((unsigned long) (FASL_HEADER_LENGTH)),
+		      ((unsigned long) 0)));
+
+  }
+
+#endif /* INHIBIT_CHECKSUMS */
 
   return (FASL_FILE_FINE);
 }

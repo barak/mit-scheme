@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.56 1990/08/16 23:36:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.57 1990/10/05 18:58:30 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -156,12 +156,17 @@ static SCHEME_OBJECT *
 DEFUN_VOID (read_file_end)
 {
   SCHEME_OBJECT *table;
+  extern unsigned long checksum_area ();
 
   if ((Load_Data(Heap_Count, ((char *) Free))) != Heap_Count)
   {
     OS_channel_close_noerror (load_channel);
     signal_error_from_primitive (ERR_IO_ERROR);
   }
+  computed_checksum =
+    (checksum_area (((unsigned long *) Free),
+		    Heap_Count,
+		    computed_checksum));
   NORMALIZE_REGION(((char *) Free), Heap_Count);
   Free += Heap_Count;
 
@@ -170,6 +175,10 @@ DEFUN_VOID (read_file_end)
     OS_channel_close_noerror (load_channel);
     signal_error_from_primitive (ERR_IO_ERROR);
   }
+  computed_checksum =
+    (checksum_area (((unsigned long *) Free_Constant),
+		    Const_Count,
+		    computed_checksum));
   NORMALIZE_REGION(((char *) Free_Constant), Const_Count);
   Free_Constant += Const_Count;
 
@@ -180,10 +189,20 @@ DEFUN_VOID (read_file_end)
     OS_channel_close_noerror (load_channel);
     signal_error_from_primitive (ERR_IO_ERROR);
   }
+  computed_checksum =
+    (checksum_area (((unsigned long *) Free),
+		    Primitive_Table_Size,
+		    computed_checksum));
   NORMALIZE_REGION(((char *) table), Primitive_Table_Size);
   Free += Primitive_Table_Size;
 
   OS_channel_close_noerror (load_channel);
+
+  if ((computed_checksum != ((unsigned long) 0)) &&
+      (dumped_checksum != SHARP_F))
+  {
+    signal_error_from_primitive (ERR_IO_ERROR);
+  }
   return (table);
 }
 
