@@ -1,0 +1,46 @@
+#!/bin/sh
+
+types="texinfo info dvi ps html"
+
+tldir=documentation-`date +%Y%m%d`
+mkdir ${tldir}
+cd ${tldir}
+
+for type in ${types}
+do
+  mkdir doc-${type}
+done
+
+for man in ref-manual user-manual sos
+do
+  dir=/scheme/documentation/${man}
+  cpx ${dir}/*.texinfo doc-texinfo/.
+  cpx ${dir}/*.info* doc-info/.
+  cpx ${dir}/*.dvi doc-dvi/.
+  cpx ${dir}/*.ps doc-ps/.
+  cpx ${dir}/html/*.html doc-html/.
+done
+
+cpx /scheme/v7/linux/lib/edwin/info/dir doc-info/.
+cpx /scheme/v7/dist/index.html doc-html/.
+
+for type in ${types}
+do
+  chmod 444 doc-${type}/*
+done
+
+for type in ${types}
+do
+  tarfile=doc-${type}.tar.gz
+  (cd doc-${type}; tar cvzf ../${tarfile} *)
+  chmod 444 ${tarfile}
+done
+
+zipfile=doc-html.zip
+(cd doc-html; zip -l ../${zipfile} *)
+chmod 444 ${zipfile}
+
+rm -rf doc-texinfo
+rm -rf doc-info
+rm -rf doc-dvi
+rm -rf doc-ps

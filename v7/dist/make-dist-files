@@ -1,0 +1,171 @@
+#!/bin/sh
+type=$1
+destination=$2
+
+if [ "${type}" = "" ]
+then
+  type="std"
+fi
+if [ "${destination}" = "" ]
+then
+  destination="gnulinux-${type}-`date +%Y%m%d`"
+fi
+
+case "${type}" in
+6001|all|std|scmutils)
+  ;;
+*)
+  echo "Unknown distribution type: ${type}"
+  exit 1
+  ;;
+esac
+
+if [ -d ${destination} ]
+then
+  echo "DESTINATION must not be an existing directory"
+  exit 1
+fi
+
+bands="runtime.com compiler.com edwin.com all.com"
+case ${type} in
+6001)
+  bands="6001.com"
+  ;;
+all)
+  bands="${bands} 6001.com"
+  ;;
+scmutils)
+  bands=
+  ;;
+esac
+
+run_opts="optiondb numint cpress format gdbm hashtb ordvec rbtree ystep process syncproc wttree rgxcmp chrsyn regexp krypt"
+ed_opts="techinfo telnet midas pasmod tximod manual print sort eystep nntp snr verilog vhdl webster pwedit pwparse"
+
+mkdir ${destination}
+mkdir ${destination}/bin
+mkdir ${destination}/lib
+mkdir ${destination}/lib/mit-scheme
+mkdir ${destination}/lib/mit-scheme/SRC
+
+for file in scheme bchscheme
+do
+  cpx -v /scheme/v7/linux/microcode/${file} ${destination}/bin/.
+done
+
+for file in utabmd.bin ${bands}
+do
+  cpx -v /scheme/v7/linux/lib/${file} ${destination}/lib/mit-scheme/.
+done
+cpx -v /scheme/v7/dist/optiondb.scm ${destination}/lib/mit-scheme/.
+
+#
+# Edwin
+#
+mkdir ${destination}/lib/mit-scheme/edwin
+for file in info etc
+do
+  cpx -rv /scheme/v7/linux/lib/edwin/${file} ${destination}/lib/mit-scheme/edwin/.
+done
+
+#
+# Runtime debugging info and autoloads.
+#
+if [ ${type} = 6001 ]
+then
+  rundbg=/scheme/v7/linux/runtime-check
+else
+  rundbg=/scheme/v7/linux/runtime
+fi
+mkdir ${destination}/lib/mit-scheme/SRC/runtime
+ln -s SRC/runtime ${destination}/lib/mit-scheme/options
+for file in ${run_opts}
+do
+  cpx -v ${rundbg}/${file}.com ${destination}/lib/mit-scheme/SRC/runtime/.
+done
+cpx -v ${rundbg}/*.bci ${destination}/lib/mit-scheme/SRC/runtime/.
+
+#
+# Edwin debugging info and autoloads.
+#
+mkdir ${destination}/lib/mit-scheme/SRC/edwin
+ln -s ../SRC/edwin ${destination}/lib/mit-scheme/edwin/autoload
+for file in ${ed_opts}
+do
+  cpx -v /scheme/v7/linux/edwin/${file}.com ${destination}/lib/mit-scheme/SRC/edwin/.
+done
+cpx -v /scheme/v7/linux/edwin/*.bci ${destination}/lib/mit-scheme/SRC/edwin/.
+
+#
+# SOS
+#
+mkdir ${destination}/lib/mit-scheme/sos
+cpx -v /scheme/v7/linux/sos/*.com ${destination}/lib/mit-scheme/sos/.
+cpx -v /scheme/v7/linux/sos/*.bci ${destination}/lib/mit-scheme/sos/.
+cpx -v /scheme/v7/linux/sos/sos.bco ${destination}/lib/mit-scheme/sos/.
+cpx -v /scheme/v7/linux/sos/sos.bld ${destination}/lib/mit-scheme/sos/.
+cpx -vh /scheme/v7/linux/sos/load.scm ${destination}/lib/mit-scheme/sos/.
+
+#
+# Documentation
+#
+mkdir ${destination}/lib/mit-scheme/documentation
+cpx -v /scheme/v7/src/COPYING ${destination}/lib/mit-scheme/documentation/.
+cpx -v /scheme/v7/dist/index.html ${destination}/lib/mit-scheme/documentation/.
+cpx -v /scheme/documentation/ref-manual/html/*.html ${destination}/lib/mit-scheme/documentation/.
+cpx -v /scheme/documentation/user-manual/html/*.html ${destination}/lib/mit-scheme/documentation/.
+cpx -v /scheme/documentation/sos/html/*.html ${destination}/lib/mit-scheme/documentation/.
+
+#
+# Scmutils
+#
+if [ ${type} = scmutils ]
+then
+  mech_source=/sw/scmutils
+  mech_dest=${destination}/scmutils
+  mkdir ${mech_dest}
+
+  for dir in `cd ${mech_source};find src -type d -print`
+  do
+    mkdir ${mech_dest}/${dir}
+    for file in ${mech_source}/${dir}/*.scm ${mech_source}/${dir}/*.doc ${mech_source}/${dir}/*.c
+    do
+      if [ -f ${file} ]
+      then
+        cpx -v ${file} ${mech_dest}/${dir}/.
+      fi
+    done
+  done
+  cpx -v ${mech_source}/src/copyrigh ${mech_dest}/src/.
+  cpx -v ${mech_source}/src/general/binio/transcript ${mech_dest}/src/general/binio/.
+  rm -rf ${mech_dest}/src/commentary
+  rm -rf ${mech_dest}/src/poly/zuras
+
+  for dir in `cd ${mech_source};find linux -type d -print`
+  do
+    mkdir ${mech_dest}/${dir}
+    for file in ${mech_source}/${dir}/*.bci
+    do
+      if [ -f ${file} ]
+      then
+        cpx -v ${file} ${mech_dest}/${dir}/.
+      fi
+    done
+  done
+  rm -rf ${mech_dest}/linux/commentary
+  cpx -v ${mech_source}/dist/edwin-mechanics.com ${mech_dest}/linux/.
+  ln -s ../../scmutils/linux/edwin-mechanics.com ${destination}/lib/mit-scheme/.
+  cpx -v ${mech_source}/linux/c-utils/* ${mech_dest}/linux/c-utils/.
+
+  mkdir ${mech_dest}/manual
+  cpx -v ${mech_source}/manual/refman.txt ${mech_dest}/manual/.
+
+  cpx -v ${mech_source}/dist/mechanics ${destination}/bin/.
+  cpx -v ${mech_source}/dist/edwin ${destination}/bin/.
+fi
+
+#
+# Adjust permissions
+#
+find ${destination} -type f -print | xargs chmod a-w
+find ${destination} -type d -print | xargs chmod og-w
