@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.121 2000/06/02 18:15:21 cph Exp $
+;;; $Id: imail-top.scm,v 1.122 2000/06/02 20:42:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -793,7 +793,16 @@ With prefix argument N moves backward N messages with these flags."
 			   (eq? (mime-body-subtype enclosure) 'RFC822)))
 		  `(,@selector TEXT)
 		  selector))))
-	(case (mime-body-one-part-encoding body)
+	(case (let ((encoding
+		     (and enclosure
+			  (eq? (mime-body-type enclosure) 'MESSAGE)
+			  (eq? (mime-body-subtype enclosure) 'RFC822)
+			  (mime-body-one-part-encoding enclosure))))
+		(if (and encoding (not (memq encoding '(7BIT 8BIT BINARY))))
+		    ;; This is completely illegal, but Netscape does
+		    ;; this so we'd better handle it.
+		    encoding
+		    (mime-body-one-part-encoding body)))
 	  ((QUOTED-PRINTABLE)
 	   (insert-auto-wrapped-string (decode-quoted-printable-string text)
 				       #t
@@ -835,22 +844,19 @@ With prefix argument N moves backward N messages with these flags."
   (let ((start (mark-right-inserting-copy mark)))
     (insert-string "<IMAIL-ATTACHMENT " mark)
     (let ((column (mark-column mark)))
-      (cond ((mime-body-parameter body 'NAME #f)
-	     => (lambda (name)
-		  (insert-string "name=" mark)
-		  (insert name mark)
-		  (insert-newline mark)
-		  (change-column column mark)))
-	    ((let ((disposition (mime-body-disposition body)))
-	       (and disposition
-		    (let ((entry (assq 'FILENAME (cdr disposition))))
-		      (and entry
-			   (cdr entry)))))
-	     => (lambda (filename)
-		  (insert-string "filename=" mark)
-		  (insert filename mark)
-		  (insert-newline mark)
-		  (change-column column mark))))
+      (insert-string "name=" mark)
+      (insert (or (mime-body-parameter body 'NAME #f)
+		  (string-append
+		   "unnamed-attachment-"
+		   (if (null? selector)
+		       "0"
+		       (decorated-string-append
+			"" "." ""
+			(map (lambda (n) (number->string (+ n 1)))
+			     selector)))))
+	      mark)
+      (insert-newline mark)
+      (change-column column mark)
       (insert-string "type=" mark)
       (insert (mime-body-type body) mark)
       (insert-string "/" mark)
