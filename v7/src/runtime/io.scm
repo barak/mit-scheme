@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.1 1988/06/13 11:46:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.2 1989/06/09 16:51:31 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,7 +45,8 @@ MIT in each case. |#
   (set! open-files-list (list 'OPEN-FILES-LIST))
   (set! traversing? false)
   (add-gc-daemon! close-lost-open-files-daemon)
-  (add-event-receiver! event:after-restore primitive-io/reset!))
+  (add-event-receiver! event:after-restore primitive-io/reset!)
+  (add-event-receiver! event:before-exit close-all-open-files))
 
 (define-integrable (make-physical-channel descriptor channel direction)
   (hunk3-cons descriptor channel direction))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gdatab.scm,v 14.3 1988/06/16 06:27:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gdatab.scm,v 14.4 1989/06/09 16:51:21 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,12 +40,14 @@ MIT in each case. |#
 (define (initialize-package!)
   (set! event:after-restore (make-event-distributor))
   (set! event:after-restart (make-event-distributor))
+  (set! event:before-exit (make-event-distributor))
   (set! tagged-pair-methods (make-1d-table))
   (set! tagged-vector-methods (make-1d-table))
   (set! named-structure-descriptions (make-1d-table)))
 
 (define event:after-restore)
 (define event:after-restart)
+(define event:before-exit)
 (define tagged-pair-methods)
 (define tagged-vector-methods)
 (define named-structure-descriptions)

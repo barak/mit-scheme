@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/global.scm,v 14.8 1989/05/21 17:14:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/global.scm,v 14.9 1989/06/09 16:51:27 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -172,7 +172,7 @@ MIT in each case. |#
   (if (prompt-for-confirmation "Kill Scheme? ")      (%exit)))
 
 (define (%exit)
-  (close-all-open-files)
+  (event-distributor/invoke! event:before-exit)
   ((ucode-primitive exit)))
 
 (define (quit)

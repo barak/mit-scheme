@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.8 1989/03/14 02:16:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.9 1989/06/09 16:51:40 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -123,7 +123,7 @@ MIT in each case. |#
       (set! filename
 	    (or ((ucode-primitive reload-band-name))
 		(error "DISK-RESTORE: No default band name available"))))
-  (close-all-open-files)
+  (event-distributor/invoke! event:before-exit)
   ((ucode-primitive load-band) (canonicalize-input-filename filename)))
 (define world-identification "Scheme")
 (define time-world-saved)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.38 1989/06/06 22:42:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.39 1989/06/09 16:51:34 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -596,6 +596,7 @@ MIT in each case. |#
 	  add-unparser-special-pair!
 	  event:after-restart
 	  event:after-restore
+	  event:before-exit
 	  named-structure/get-tag-description
 	  named-structure/set-tag-description!
 	  unparse-with-brackets
