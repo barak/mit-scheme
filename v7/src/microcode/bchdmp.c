@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.50 1990/06/20 17:38:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.51 1990/06/20 21:13:26 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -38,6 +38,7 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
+#include "osio.h"
 #include "osfile.h"
 #include "trap.h"
 #include "lookup.h"		/* UNCOMPILED_VARIABLE */
@@ -736,7 +737,7 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
   }
   else
   {
-    unsigned char * filename = (STRING_LOC ((ARG_REF (2)), 0));
+    CONST char * filename = ((CONST char *) (STRING_LOC ((ARG_REF (2)), 0)));
     dump_channel = (OS_open_dump_file (filename));
     if (dump_channel == NO_CHANNEL)
       error_bad_range_arg (2);

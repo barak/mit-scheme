@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.54 1990/06/20 17:38:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.55 1990/06/20 21:13:44 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -109,7 +109,7 @@ extern char *mktemp();
 
 int gc_file;
 static long current_disk_position;
-static char *gc_file_name;
+static CONST char * gc_file_name;
 static char gc_default_file_name[FILE_NAME_LENGTH] = GC_DEFAULT_FILE_NAME;
 
 void
