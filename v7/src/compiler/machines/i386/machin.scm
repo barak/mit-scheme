@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/machin.scm,v 1.8 1992/02/13 16:46:55 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/machin.scm,v 1.9 1992/02/17 22:37:34 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/machin.scm,v 4.26 1991/10/25 06:49:34 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -165,7 +165,7 @@ MIT in each case. |#
 	     (= register regnum:free-pointer)
 	     (= register regnum:regs-pointer))
 	 value-class=address)
-	((<= fr0 register fr5)
+	((<= fr0 register fr7)
 	 value-class=float)
 	(else
 	 (error "illegal machine register" register))))
