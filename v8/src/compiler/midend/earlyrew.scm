@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: earlyrew.scm,v 1.8 1995/04/29 00:55:26 adams Exp $
+$Id: earlyrew.scm,v 1.9 1995/05/16 02:43:14 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -48,12 +48,12 @@ MIT in each case. |#
 (define-macro (define-early-rewriter keyword bindings . body)
   (let ((proc-name (symbol-append 'EARLYREW/ keyword)))
     (call-with-values
-     (lambda () (%matchup bindings '(handler) '(cdr form)))
-     (lambda (names code)
-       `(DEFINE ,proc-name
-	  (LET ((HANDLER (LAMBDA ,names ,@body)))
-	    (NAMED-LAMBDA (,proc-name FORM)
-	      (EARLYREW/REMEMBER ,code FORM))))))))
+	(lambda () (%matchup bindings '(handler) '(cdr form)))
+      (lambda (names code)
+	`(DEFINE ,proc-name
+	   (LET ((HANDLER (LAMBDA ,names ,@body)))
+	     (NAMED-LAMBDA (,proc-name FORM)
+	       (EARLYREW/REMEMBER ,code FORM))))))))
 
 (define-early-rewriter LOOKUP (name)
   `(LOOKUP ,name))
@@ -109,27 +109,15 @@ MIT in each case. |#
   (if (not (pair? expr))
       (illegal expr))
   (case (car expr)
-    ((QUOTE)
-     (earlyrew/quote expr))
-    ((LOOKUP)
-     (earlyrew/lookup expr))
-    ((LAMBDA)
-     (earlyrew/lambda expr))
-    ((LET)
-     (earlyrew/let expr))
-    ((DECLARE)
-     (earlyrew/declare expr))
-    ((CALL)
-     (earlyrew/call expr))
-    ((BEGIN)
-     (earlyrew/begin expr))
-    ((IF)
-     (earlyrew/if expr))
-    ((LETREC)
-     (earlyrew/letrec expr))
-    ((SET! UNASSIGNED? OR DELAY
-      ACCESS DEFINE IN-PACKAGE THE-ENVIRONMENT)
-     (no-longer-legal expr))
+    ((QUOTE)    (earlyrew/quote expr))
+    ((LOOKUP)   (earlyrew/lookup expr))
+    ((LAMBDA)   (earlyrew/lambda expr))
+    ((LET)      (earlyrew/let expr))
+    ((DECLARE)  (earlyrew/declare expr))
+    ((CALL)     (earlyrew/call expr))
+    ((BEGIN)    (earlyrew/begin expr))
+    ((IF)       (earlyrew/if expr))
+    ((LETREC)   (earlyrew/letrec expr))
     (else
      (illegal expr))))
 
