@@ -1,0 +1,29 @@
+;; -*- Scheme -*-
+
+(begin
+  (cd "/scheme/700/rcs")
+  (load "make")
+  (let ((rcs-directory-log (access rcs-directory-log (->environment '(RCS)))))
+    (define (make-log directory . subdirectories)
+      (with-working-directory-pathname directory
+	(lambda ()
+	  (apply rcs-directory-log
+		 "RCS.log"
+		 (cons "RCS"
+		       (map (lambda (subdirectory)
+			      (string-append subdirectory "/RCS"))
+			    subdirectories))))))
+
+
+    (make-log "/raid/jmiller/scheme/compiler"
+	      "/raid/ssmith/scheme/compiler/machines/i386"
+	      "back" "base" "doc" "machines/spectrum"
+	      "midend" "rtlbase" "rtlopt")
+
+    (make-log "/raid/jmiller/new-scheme/microcode")
+    (make-log "/raid/jmiller/new-scheme/runtime")
+    (make-log "/raid/jmiller/scheme/bench")
+
+    'done)
+  (load "mklogs")			; /scheme/src logs
+  )

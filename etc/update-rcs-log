@@ -1,0 +1,8 @@
+#!/bin/sh
+#
+#	Update RCS.log file in background.  no arguments
+
+PATH=/usr/contrib/bin:/usr/local/bin:/usr/bin:/bin
+export PATH
+
+bgx -ioe /raid/jmiller/scheme/compiler/etc/rcs scheme -large
