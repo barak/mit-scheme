@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xmlrpc.scm,v 1.3 2004/10/28 19:56:38 cph Exp $
+$Id: xmlrpc.scm,v 1.4 2004/10/30 01:25:48 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -61,7 +61,6 @@ USA.
 (define (xml-rpc:get-method-handler pathname name)
   (let ((methods (make-string-hash-table)))
     (let ((environment (make-expansion-environment pathname)))
-      (environment-define environment 'server-environment server-environment)
       (environment-define environment 'define-xmlrpc-method
 	(lambda (name handler)
 	  (hash-table/put! methods name handler)))
@@ -242,7 +241,7 @@ USA.
 	 ;; Probably not right -- formatting issues
 	 (rpc-elt:double (number->string object)))
 	((boolean? object)
-	 (rpc-elt:boolean? (if object "1" "0")))
+	 (rpc-elt:boolean (if object "1" "0")))
 	((string? object)
 	 (if (utf8-string-valid? object)
 	     (rpc-elt:string object)
