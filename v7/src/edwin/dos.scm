@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.24 1995/05/02 21:19:13 cph Exp $
+;;;	$Id: dos.scm,v 1.25 1995/05/05 22:32:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ;;;
@@ -470,6 +470,9 @@ Includes the new backup.  Must be > 0."
 
 (define (os/rmail-pop-procedure)
   #f)
+
+(define (os/hostname)
+  (error "OS/HOSTNAME procedure unimplemented."))
 
 (define (os/interprogram-cut string)
   string push?

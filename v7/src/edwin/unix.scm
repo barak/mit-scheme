@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.49 1995/05/02 21:19:22 cph Exp $
+;;;	$Id: unix.scm,v 1.50 1995/05/05 22:32:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -690,6 +690,9 @@ Value is a list of strings."
 
 (define (os/rmail-pop-procedure)
   #f)
+
+(define os/hostname
+  (ucode-primitive full-hostname 0))
 
 (define (os/ls-file-time-string time)
   (let ((dt (decode-file-time time))

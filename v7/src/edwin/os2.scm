@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.15 1995/05/04 07:06:12 cph Exp $
+;;;	$Id: os2.scm,v 1.16 1995/05/05 22:32:33 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -706,6 +706,26 @@ filename suffix \".gz\"."
 Otherwise, messages remain on the server and will be re-fetched later."
   #t
   boolean?)
+
+(define (os/hostname)
+  (if (not os2/cached-hostname)
+      (let ((buffer (temporary-buffer "*hostname*")))
+	(let ((status.reason
+	       (run-synchronous-process #f (buffer-end buffer) #f #f
+					"hostname")))
+	  (if (not (equal? status.reason '(EXITED . 0)))
+	      (begin
+		(pop-up-buffer buffer)
+		(error "Error running HOSTNAME program:" status.reason))))
+	(set! os2/cached-hostname (string-trim (buffer-string buffer)))
+	(kill-buffer buffer)))
+  os2/cached-hostname)
+
+(define os2/cached-hostname #f)
+(add-event-receiver! event:after-restore
+  (lambda ()
+    (set! os2/cached-hostname #f)
+    unspecific))
 
 ;;;; Generic Stuff
 ;;; These definitions are OS-independent and references to them should
