@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.32 1988/08/15 20:49:05 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.33 1988/10/21 00:12:37 cph Exp $
  *
  * This file contains various hooks and handles which connect the
  * primitives with the main interpreter.
@@ -535,22 +535,17 @@ DEFINE_PRIMITIVE ("SCODE-EVAL", Prim_scode_eval, 2, 2, 0)
   /*NOTREACHED*/
 }
 
-/* (GET-INTERRUPT-ENABLES)
-   Returns the current interrupt mask.  */
-
-DEFINE_PRIMITIVE ("GET-INTERRUPT-ENABLES", Prim_get_interrupt_enables, 0, 0, 0)
+DEFINE_PRIMITIVE ("GET-INTERRUPT-ENABLES", Prim_get_interrupt_enables, 0, 0,
+  "Returns the current interrupt mask.")
 {
   PRIMITIVE_HEADER (0);
 
   PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (FETCH_INTERRUPT_MASK ()));
 }
 
-/* (SET-INTERRUPT-ENABLES! NEW-INT-ENABLES)
-   Changes the enabled interrupt bits to NEW-INT-ENABLES and
-   returns the previous value.  See MASK_INTERRUPT_ENABLES for more
-   information on interrupts.  */
-
-DEFINE_PRIMITIVE ("SET-INTERRUPT-ENABLES!", Prim_set_interrupt_enables, 1, 1, 0)
+DEFINE_PRIMITIVE ("SET-INTERRUPT-ENABLES!", Prim_set_interrupt_enables, 1, 1,
+  "Sets the interrupt mask to NEW-INT-ENABLES; returns previous mask value.\n\
+See `mask_interrupt_enables' for more information on interrupts.")
 {
   long previous;
   PRIMITIVE_HEADER (1);
@@ -558,6 +553,16 @@ DEFINE_PRIMITIVE ("SET-INTERRUPT-ENABLES!", Prim_set_interrupt_enables, 1, 1, 0)
   previous = (FETCH_INTERRUPT_MASK ());
   SET_INTERRUPT_MASK ((FIXNUM_ARG (1)) & INT_Mask);
   PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (previous));
+}
+
+DEFINE_PRIMITIVE ("CLEAR-INTERRUPTS!", Prim_clear_interrupts, 1, 1, 
+  "Clears the interrupt bits in the MASK argument.
+The bits in MASK are interpreted as for `get-interrupt-enables'.")
+{
+  PRIMITIVE_HEADER (1);
+
+  CLEAR_INTERRUPT ((FIXNUM_ARG (1)) & INT_Mask);
+  PRIMITIVE_RETURN (SHARP_F);
 }
 
 /* (GET-FLUID-BINDINGS)

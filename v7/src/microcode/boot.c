@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.51 1988/09/29 04:51:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.52 1988/10/21 00:12:26 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -535,6 +535,9 @@ Enter_Interpreter()
   /*NOTREACHED*/
 }
 
+extern Boolean inhibit_termination_messages;
+Boolean inhibit_termination_messages = false;
+
 term_type
 Microcode_Termination(code)
      long code;
@@ -576,15 +579,14 @@ Microcode_Termination(code)
     }
   }
 
-  putchar('\n');
-  if ((code < 0) || (code > MAX_TERMINATION))
-  {
-    printf("Unknown termination code 0x%x\n", code);
-  }
-  else
-  {
-    printf("%s.\n", Term_Messages[code]);
-  }
+  if (! inhibit_termination_messages)
+    {
+      putchar('\n');
+      if ((code < 0) || (code > MAX_TERMINATION))
+	printf ("Unknown termination code 0x%x\n", code);
+      else
+	printf("%s.\n", Term_Messages [code]);
+    }
 
 /* Microcode_Termination continues on the next page */
 
@@ -604,14 +606,18 @@ Microcode_Termination(code)
       abnormal_p = false;
       break;
 
+#ifdef unix
     case TERM_SIGNAL:
     {
-      extern char *assassin_signal;
+      extern int assassin_signal;
+      extern char * find_signal_name ();
 
-      if (assassin_signal != ((char *) NULL))
-	printf("Killed by %s.\n", assassin_signal);
+      if ((! inhibit_termination_messages) &&
+	  (assassin_signal != 0))
+	printf("Killed by %s.\n", (find_signal_name (assassin_signal)));
       goto normal_termination;
     }
+#endif
 
     case TERM_TRAP:
       /* This claims not to be abnormal so that the user will
@@ -664,11 +670,11 @@ Microcode_Termination(code)
       }
       break;
   }
-  OS_Flush_Output_Buffer();
-  OS_Quit(abnormal_p);
-  Reset_Memory();
-  Exit_Hook();
-  Exit_Scheme(value);
+  OS_Flush_Output_Buffer ();
+  OS_Quit (code, abnormal_p);
+  Reset_Memory ();
+  Exit_Hook ();
+  Exit_Scheme (value);
   /*NOTREACHED*/
 }
 

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.27 1988/08/15 20:45:01 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.28 1988/10/21 00:12:33 cph Exp $
  *
  * This file contains a primitive to dump an executable version of Scheme.
  * It uses unexec.c from GNU Emacs.
@@ -218,7 +218,7 @@ DEFINE_PRIMITIVE ("DUMP-WORLD", Prim_dump_world, 1, 1, 0)
 
   Was_Scheme_Dumped = true;
   Val = SHARP_T;
-  OS_Quit();
+  OS_Quit (TERM_HALT, false);
   Pop_Primitive_Frame(1);
 
   /* Dump! */

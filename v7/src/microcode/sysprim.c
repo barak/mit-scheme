@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.30 1988/08/15 20:56:21 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.31 1988/10/21 00:12:44 cph Exp $
  *
  * Random system primitives.  Most are implemented in terms of
  * utilities in os.c
@@ -64,7 +64,6 @@ DEFINE_PRIMITIVE ("GET-NEXT-INTERRUPT-CHARACTER", Prim_get_next_interrupt_char, 
       Primitive_Error (ERR_EXTERNAL_RETURN);
       /*NOTREACHED*/
     }
-  CLEAR_INTERRUPT (INT_Character);
   PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (result));
 }
 
@@ -101,7 +100,6 @@ DEFINE_PRIMITIVE ("SETUP-TIMER-INTERRUPT", Prim_setup_timer_interrupt, 2, 2, 0)
     Sign_Extend(Arg2, Centi_Seconds);
     Set_Int_Timer(Days, Centi_Seconds);
   }
-  CLEAR_INTERRUPT(INT_Timer);
   PRIMITIVE_RETURN(NIL);
 }
 
