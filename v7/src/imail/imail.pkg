@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.84 2001/05/29 20:08:59 cph Exp $
+;;; $Id: imail.pkg,v 1.85 2001/06/02 05:55:51 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -361,7 +361,10 @@
   (export (edwin)
 	  edwin-command$imail-browse-container
 	  edwin-command$imail-browser-backup-unmark
-	  edwin-command$imail-browser-do-deletions
+	  edwin-command$imail-browser-do-copy
+	  edwin-command$imail-browser-do-delete
+	  edwin-command$imail-browser-do-flagged-delete
+	  edwin-command$imail-browser-do-rename
 	  edwin-command$imail-browser-flag-folder-deletion
 	  edwin-command$imail-browser-mark-folder
 	  edwin-command$imail-browser-mouse-toggle-container

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-browser.scm,v 1.3 2001/05/29 20:36:53 cph Exp $
+;;; $Id: imail-browser.scm,v 1.4 2001/06/02 05:55:41 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -30,12 +30,6 @@ To do:
 
 * Change revert command to preserve which folders are expanded and
   collapsed.
-
-* Change commands to operate on marked folders if any are marked:
-
-	imail-create-folder
-	imail-copy-folder
-	imail-rename-folder
 
 |#
 
@@ -286,8 +280,9 @@ Each line summarizes a single mail folder.
       (rebuild-imail-browser-buffer buffer)))
 
 (define-key 'imail-browser #\+ 'imail-create-folder)
-(define-key 'imail-browser #\C 'imail-copy-folder)
-(define-key 'imail-browser #\R 'imail-rename-folder)
+(define-key 'imail-browser #\C 'imail-browser-do-copy)
+(define-key 'imail-browser #\D 'imail-browser-do-delete)
+(define-key 'imail-browser #\R 'imail-browser-do-rename)
 
 (define-key 'imail-browser #\? 'describe-mode)
 (define-key 'imail-browser #\c 'imail-browser-view-container)
@@ -299,7 +294,7 @@ Each line summarizes a single mail folder.
 (define-key 'imail-browser #\q 'imail-browser-quit)
 (define-key 'imail-browser #\t 'imail-browser-toggle-container)
 (define-key 'imail-browser #\u 'imail-browser-unmark)
-(define-key 'imail-browser #\x 'imail-browser-do-deletions)
+(define-key 'imail-browser #\x 'imail-browser-do-flagged-delete)
 
 (define-key 'imail-browser #\rubout 'imail-browser-backup-unmark)
 (define-key 'imail-browser #\M-rubout 'imail-browser-unmark-all-folders)
@@ -442,20 +437,86 @@ With prefix argument, mark the next N folders for deletion."
 			 (loop (+ n 1) (line-start mark -1 'ERROR))))
 		   (editor-failure))))))))
 
-(define-command imail-browser-do-deletions
+(define-command imail-browser-do-flagged-delete
   "Delete each folder that is marked for deletion."
   ()
   (lambda ()
     (let ((buffer (selected-buffer)))
       (with-buffer-open buffer
 	(lambda ()
-	  (let ((urls (browser-marked-urls buffer #\D)))
-	    (if (and (pair? urls)
-		     (cleanup-pop-up-buffers
-		      (lambda ()
-			(browser-pop-up-urls-window urls)
-			(prompt-for-yes-or-no? "Delete these folders"))))
-		(for-each delete-resource urls))))))))
+	  (browser-internal-do-delete (browser-marked-urls buffer #\D)))))))
+
+(define-command imail-browser-do-delete
+  "Delete all marked (or next ARG) folders."
+  "P"
+  (lambda (argument)
+    (with-buffer-open (selected-buffer)
+      (lambda ()
+	(call-with-values
+	    (lambda () (browser-url-list argument (current-point)))
+	  (lambda (mark urls)
+	    (browser-internal-do-delete urls)
+	    (set-current-point! mark)
+	    (mark-temporary! mark)))))))
+
+(define-command imail-browser-do-copy
+  ""
+  "P"
+  (lambda (argument)
+    unspecific))
+
+(define-command imail-browser-do-rename
+  "Rename current folder or all marked (or next ARG) folders.
+When renaming just the current folder, you specify the new name.
+When renaming multiple or marked folders, you specify a container."
+  "P"
+  (lambda (argument)
+    (call-with-values
+	(lambda () (browser-url-list argument (current-point)))
+      (lambda (mark urls)
+	(if (pair? urls)
+	    (if (pair? (cdr urls))
+		(browser-rename-many-folders urls)
+		(browser-rename-one-folder (car urls)))
+	    (message "No folders to rename."))
+	(set-current-point! mark)
+	(mark-temporary! mark)))))
+
+(define (browser-rename-one-folder url)
+  (let ((new-url
+	 (let ((new-url
+		(prompt-for-url (string-append "Rename folder to") #f
+				'HISTORY 'IMAIL-BROWSER-DO-RENAME-1
+				'HISTORY-INDEX 0)))
+	   (if (container-url? new-url)
+	       (make-content-url new-url (url-content-name url))
+	       new-url))))
+    (rename-resource url new-url)
+    (message "Folder renamed to " (url->string new-url))))
+
+(define (browser-rename-many-folders urls)
+  (let ((container-url
+	 (prompt-for-container (string-append "Move folders into") #f
+			       'HISTORY 'IMAIL-BROWSER-DO-RENAME-N
+			       'HISTORY-INDEX 0
+			       'REQUIRE-MATCH? #t)))
+    (for-each (lambda (url)
+		(rename-resource url
+				 (make-content-url container-url
+						   (url-content-name url))))
+	      urls))
+  (message "Folders moved into " (url->string container-url)))
+
+(define (browser-internal-do-delete urls)
+  (if (pair? urls)
+      (if (if (pair? (cdr urls))
+	      (cleanup-pop-up-buffers
+	       (lambda ()
+		 (browser-pop-up-urls-window urls)
+		 (prompt-for-yes-or-no? "Delete these folders")))
+	      (prompt-for-yes-or-no?
+	       (string-append "Delete folder " (url->string (car urls)))))
+	  (for-each delete-resource urls))))
 
 (define (browser-pop-up-urls-window urls)
   (pop-up-temporary-buffer " *imail-browser-folders*"
@@ -466,6 +527,15 @@ With prefix argument, mark the next N folders for deletion."
        (map url->string urls)
        (mark->output-port (buffer-point buffer))
        (window-x-size (or window (car (buffer-windows buffer))))))))
+
+(define (browser-url-list argument mark)
+  (if argument
+      (browser-next-n-urls (command-argument-numeric-value argument) mark)
+      (values (mark-left-inserting-copy (line-start mark 0))
+	      (let ((urls (browser-marked-urls (mark-buffer mark) #\*)))
+		(if (pair? urls)
+		    urls
+		    (list (selected-url #t mark)))))))
 
 (define (browser-marked-urls buffer mark-char)
   (let loop ((mark (buffer-start buffer)) (result '()))
@@ -479,3 +549,25 @@ With prefix argument, mark the next N folders for deletion."
 		      (cons url result)
 		      result)))
 	  (reverse! result)))))
+
+(define (browser-next-n-urls n mark)
+  (cond ((> n 0)
+	 (let loop ((n n) (mark (line-start mark 0)) (urls '()))
+	   (let ((n (- n 1))
+		 (mark (line-start mark 1 'ERROR))
+		 (urls (cons (selected-url #t mark) urls)))
+	     (if (> n 0)
+		 (loop n mark urls)
+		 (values (mark-left-inserting-copy mark)
+			 (reverse! urls))))))
+	((< n 0)
+	 (let loop ((n n) (mark (line-start mark -1 'ERROR)) (urls '()))
+	   (let ((n (+ n 1))
+		 (urls (cons (selected-url #t mark) urls)))
+	     (if (< n 0)
+		 (loop n (line-start mark -1 'ERROR) urls)
+		 (values (mark-right-inserting-copy mark)
+			 urls)))))
+	(else
+	 (values (mark-left-inserting-copy (line-start mark 0))
+		 '()))))
