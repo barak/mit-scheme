@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.5 1987/11/23 05:17:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.6 1987/12/30 21:43:43 jrm Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -275,7 +275,7 @@ re_compile_fastmap (pattern_start, pattern_end, translation, syntax_table,
 	READ_PATTERN_LENGTH (length);
 	if (length == 0)
 	  goto loop;
-	(fastmap [(TRANSLATE_CHAR (pattern_pc [1]))]) = FASTMAP_TRUE;
+	(fastmap [(TRANSLATE_CHAR (pattern_pc [0]))]) = FASTMAP_TRUE;
 	goto next;
       }
 
@@ -287,6 +287,7 @@ re_compile_fastmap (pattern_start, pattern_end, translation, syntax_table,
 	  (fastmap [(TRANSLATE_CHAR (ascii))]) = FASTMAP_TRUE;
 	if (return_value != 0)
 	  goto return_point;
+	goto next;
       }
 
     case regexpcode_char_set:
@@ -1034,7 +1035,7 @@ int name (pattern_start, pattern_end, buffer, registers,		\
       if (match_pc >= (limit))						\
 	break;								\
 									\
-      if ((fastmap [(TRANSLATE_CHAR (*match_pc++))]) != FASTMAP_FALSE)	\
+      if ((fastmap [(TRANSLATE_CHAR (*match_pc++))]) == FASTMAP_FALSE)	\
 	continue;							\
 									\
       match_result = (RE_SEARCH_TEST (match_pc - 1));			\
@@ -1084,7 +1085,7 @@ DEFINE_RE_SEARCH (re_search_forward)
       if (match_pc <= (limit))						\
 	break;								\
 									\
-      if ((fastmap [(TRANSLATE_CHAR (*--match_pc))]) != FASTMAP_FALSE)	\
+      if ((fastmap [(TRANSLATE_CHAR (*--match_pc))]) == FASTMAP_FALSE)	\
 	continue;							\
 									\
       match_result = (RE_SEARCH_TEST (match_pc));			\
