@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comman.scm,v 1.78 1994/03/08 20:15:54 cph Exp $
+$Id: comman.scm,v 1.79 1994/10/25 23:57:52 cph Exp $
 
 Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 
@@ -108,6 +108,12 @@ of that license should have been included along with this file.
   (if (command? object)
       object
       (name->command object)))
+
+(define (copy-command new-name command)
+  (make-command new-name
+		(command-%description command)
+		(command-interactive-specification command)
+		(command-procedure command)))
 
 (define-structure (variable
 		   (constructor %make-variable ())
