@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.57 1997/03/04 06:43:28 cph Exp $
+;;;	$Id: rmail.scm,v 1.58 1997/06/04 21:58:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
 ;;;
@@ -1720,14 +1720,12 @@ Leaves original message, deleted, before the undigestified messages."
 		  (let ((hend (header-end start end)))
 		    (or (fetch-first-field "Reply-To" start hend)
 			(fetch-first-field "To" start hend)
-			(fetch-first-field "Apparently-To" start hend))))))
-	    (if (not (and digest-name
-			  (let ((m (mark- end 2)))
-			    (re-search-backward digest-end-regexp
-						m
-						(line-start m -10 'LIMIT)
-						true))))
-		(editor-error "Message is not a digest"))
+			(fetch-first-field "Apparently-To" start hend)
+			(fetch-first-field "From" start hend))))))
+	    (if (not digest-name)
+		(editor-error "Message is not a digest--bad header."))
+	    (if (not (re-search-backward digest-end-regexp end start #t))
+		(editor-error "Message is not a digest--no end line."))
 	    (let ((start
 		   (mark-left-inserting-copy (digest-summary-end start end))))
 	      (if (not (fetch-first-field "To" start (header-end start end)))
@@ -1767,7 +1765,8 @@ Leaves original message, deleted, before the undigestified messages."
       ((ref-command rmail-delete-forward) false))))
 
 (define (digest-summary-end start end)
-  (if (not (re-search-forward digest-summary-separator-regexp start end false))
+  (if (not (re-search-forward digest-summary-separator-regexp
+			      (header-end start end) end #f))
       (editor-error "Missing summary separator"))
   (replace-match digest-separator-replacement))
 
@@ -2388,7 +2387,7 @@ Note:    it means the file has no messages in it.\n\037")
   "^End of.*Digest.*\n\\*\\*\\*\\*\\*\\*\\*\\*\\**\\(\n------*\\)*")
 
 (define-integrable digest-summary-separator-regexp
-  "\n*\n--------------------------------------------------------*\n*")
+  "\n*\n------------------------------*\n*")
 
 (define-integrable digest-message-separator-regexp
   "\n*\n\n----------------------------*\n*")
