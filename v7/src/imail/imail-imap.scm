@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.194 2001/11/18 04:58:19 cph Exp $
+;;; $Id: imail-imap.scm,v 1.195 2001/11/19 20:19:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -63,11 +63,9 @@
   (reflect-1 url-exists?))
 
 (define-method imap-url-mailbox ((url <container-url>))
-  (let ((mailbox
-	 (imap-url-mailbox (imap-container-url-corresponding-folder url))))
-    (if mailbox
-	(string-append mailbox "/")
-	"")))
+  (string-append
+   (imap-url-mailbox (imap-container-url-corresponding-folder url))
+   "/"))
 
 (define make-imap-url
   (let ((make-folder
@@ -84,6 +82,8 @@
 	   (lambda (folder)
 	     (intern-url (constructor folder) imap-container-url)))))
     (lambda (user-id host port mailbox)
+      (if (not mailbox)
+	  (error:wrong-type-argument mailbox string 'MAKE-IMAP-URL))
       (let ((host (string-downcase host))
 	    (mailbox (canonicalize-imap-mailbox mailbox)))
 	(if (string-suffix? "/" mailbox)
@@ -106,6 +106,8 @@
   (make-imap-url-string url (imap-url-mailbox url)))
 
 (define (make-imap-url-string url mailbox)
+  (if (not mailbox)
+      (error:wrong-type-argument mailbox string 'MAKE-IMAP-URL-STRING))
   (string-append "//"
 		 (let ((user-id (imap-url-user-id url)))
 		   (if (string=? user-id (current-user-name))
@@ -116,11 +118,13 @@
 		   (if (= port 143)
 		       ""
 		       (string-append ":" (number->string port))))
-		 (if mailbox
+		 (if (or (string=? mailbox "")
+			 (string=? mailbox "/"))
+		     mailbox
 		     (string-append
 		      "/"
-		      (url:encode-string (canonicalize-imap-mailbox mailbox)))
-		     "")))
+		      (url:encode-string
+		       (canonicalize-imap-mailbox mailbox))))))
 
 (define (canonicalize-imap-mailbox mailbox)
   (cond ((string-ci=? "inbox" mailbox) "inbox")
@@ -178,14 +182,14 @@
 (define imap-list-info-duration 60)
 
 (define-method url-base-name ((url <imap-folder-url>))
-  (let ((mailbox (or (imap-url-mailbox url) "")))
+  (let ((mailbox (imap-url-mailbox url)))
     (let ((index (imap-mailbox-container-slash mailbox)))
       (if index
 	  (string-tail mailbox (fix:+ index 1))
 	  mailbox))))
 
 (define-method url-pass-phrase-key ((url <imap-url>))
-  (make-url-string (url-protocol url) (make-imap-url-string url #f)))
+  (make-url-string (url-protocol url) (make-imap-url-string url "")))
 
 (define-method parse-url-body (string (default-url <imap-url>))
   (call-with-values (lambda () (parse-imap-url-body string default-url))
@@ -237,7 +241,7 @@
 			    "")))
 
 (define-method url-content-name ((url <imap-url>))
-  (let* ((mailbox (or (imap-url-mailbox url) ""))
+  (let* ((mailbox (imap-url-mailbox url))
 	 (index (imap-mailbox-container-slash mailbox)))
     (if index
 	(string-tail mailbox (fix:+ index 1))
@@ -248,10 +252,9 @@
 
 (define (imap-url-container-mailbox url)
   (let ((mailbox (imap-url-mailbox url)))
-    (and mailbox
-	 (let ((index (imap-mailbox-container-slash mailbox)))
-	   (and index
-		(string-head mailbox (fix:+ index 1)))))))
+    (let ((index (imap-mailbox-container-slash mailbox)))
+      (and index
+	   (string-head mailbox (fix:+ index 1))))))
 
 (define (imap-mailbox-container-slash mailbox)
   (substring-find-previous-char mailbox
@@ -389,10 +392,9 @@
   (imap-mailbox/url->server
    url
    (let ((mailbox (imap-url-mailbox url)))
-     (cond ((not mailbox) "")
-	   ((string-suffix? "/" mailbox)
-	    (string-head mailbox (fix:- (string-length mailbox) 1)))
-	   (else mailbox)))))
+     (if (string-suffix? "/" mailbox)
+	 (string-head mailbox (fix:- (string-length mailbox) 1))
+	 mailbox))))
 
 (define (imap-mailbox/url->server url mailbox)
   (let ((delimiter (imap-mailbox-delimiter url mailbox)))
