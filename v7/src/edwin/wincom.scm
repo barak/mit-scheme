@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.94 1989/08/08 10:06:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.95 1989/08/11 11:50:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 ;;;
@@ -207,10 +207,11 @@ Just minus as an argument moves down full screen."
 
 (define (scroll-window window n #!optional limit)
   (if (if (negative? n)
-	  (mark= (window-start-mark window)
-		 (buffer-start (window-buffer window)))
-	  (mark= (window-end-mark window)
-		 (buffer-end (window-buffer window))))      ((if (default-object? limit) editor-error limit))
+	  (= (window-start-index window)
+	     (mark-index (buffer-start (window-buffer window))))
+	  (= (window-end-index window)
+	     (mark-index (buffer-end (window-buffer window)))))
+      ((if (default-object? limit) editor-error limit))
       (window-scroll-y-relative! window n)))
 
 (define (standard-scroll-window-argument window argument factor)

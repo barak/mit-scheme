@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.189 1989/08/08 10:05:54 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.190 1989/08/11 11:50:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -61,22 +61,25 @@
 		 (lambda ()
 		   (with-editor-interrupts
 		     (lambda ()
-		       (bind-condition-handler '() internal-error-handler
+		       (with-current-local-bindings!
 			 (lambda ()
-			   (perform-buffer-initializations! (current-buffer))
-			   (dynamic-wind
-			    (lambda () (update-screens! true))
-			    (lambda ()
-			      ;; Should this be in a dynamic wind? -- Jinx
-			      (if edwin-initialization (edwin-initialization))
-			      (let ((message (cmdl-message/null)))
-				(push-cmdl (lambda (cmdl)
-					     cmdl ;ignore
-					     (top-level-command-reader)
-					     message)
-					   false
-					   message)))
-			    (lambda () unspecific)))))))))))))))  ;; Should this be here or in a dynamic wind? -- Jinx
+			   (bind-condition-handler '() internal-error-handler
+			     (lambda ()
+			       (dynamic-wind
+				(lambda () (update-screens! true))
+				(lambda ()
+				  ;; Should this be in a dynamic wind? -- Jinx
+				  (if edwin-initialization
+				      (edwin-initialization))
+				  (let ((message (cmdl-message/null)))
+				    (push-cmdl (lambda (cmdl)
+						 cmdl ;ignore
+						 (top-level-command-reader)
+						 message)
+					       false
+					       message)))
+				(lambda () unspecific)))))))))))))))))
+  ;; Should this be here or in a dynamic wind? -- Jinx
   (if edwin-finalization (edwin-finalization))
   unspecific)
 

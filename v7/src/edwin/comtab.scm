@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.55 1989/06/21 11:55:22 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.56 1989/08/11 11:50:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -94,9 +94,12 @@
 		    (comtab? (cadr comtabs))
 		    (comtab-entry (cdr comtabs) key)))
 	     (lambda ()
-	       (cond ((null? (cdr comtabs)) bad-command)
-		     ((comtab? (cadr comtabs)) (comtab-entry (cdr comtabs) key))
-		     (else (cadr comtabs)))))))
+	       (cond ((null? (cdr comtabs))
+		      bad-command)
+		     ((comtab? (cadr comtabs))
+		      (comtab-entry (cdr comtabs) key))
+		     (else
+		      (cadr comtabs)))))))
     (let ((try
 	   (lambda (key alist)
 	     (let ((entry (assq key alist)))
@@ -127,8 +130,9 @@
 		   (comtab? (cadr comtabs))
 		   (prefix-char-list? (cdr comtabs) chars)))))))
 
-(define (define-key mode-name key command)
-  (let ((comtabs (mode-comtabs (name->mode mode-name))))
+(define (define-key mode key command)
+  (let ((comtabs (mode-comtabs (->mode mode)))
+	(command (->command command)))
     (if (button? key)
 	(let ((alist (comtab-button-alist (car comtabs))))
 	  (let ((entry (assq key alist)))
@@ -137,12 +141,10 @@
 		(set-comtab-button-alist! (car comtabs)
 					  (cons (cons key command) alist)))))
 	(let ((normal-key
-	       (let ((command
-		      (if (command? command) command (name->command command))))
-		 (lambda (key)
-		   (comtab-lookup-prefix comtabs key false
-		     (lambda (alists char)
-		       (set-comtab-entry! alists char command)))))))
+	       (lambda (key)
+		 (comtab-lookup-prefix comtabs key false
+		   (lambda (alists char)
+		     (set-comtab-entry! alists char command))))))
 	  (cond ((or (char? key) (pair? key))
 		 (normal-key key))
 		((char-set? key)
@@ -151,9 +153,9 @@
 		 (error "Illegal comtab key" key))))))
   key)
 
-(define (define-prefix-key mode-name key command-name)
-  (let ((comtabs (mode-comtabs (name->mode mode-name)))
-	(command (name->command command-name)))
+(define (define-prefix-key mode key command)
+  (let ((comtabs (mode-comtabs (->mode mode)))
+	(command (->command command)))
     (if (or (char? key) (pair? key))
 	(comtab-lookup-prefix comtabs key false
 	  (lambda (alists char)
@@ -162,11 +164,13 @@
 	(error "Illegal comtab key" key)))
   key)
 
-(define (define-default-key mode-name command-name)
-  (let ((comtabs (mode-comtabs (name->mode mode-name))))
+(define (define-default-key mode command)
+  (let ((comtabs (mode-comtabs (->mode mode)))
+	(command (->command command)))
     (if (not (or (null? (cdr comtabs)) (command? (cadr comtabs))))
-	(error "Can't define default key for this mode" mode-name))
-    (set-cdr! comtabs (list (name->command command-name))))  'DEFAULT-KEY)
+	(error "Can't define default key for this mode" mode))
+    (set-cdr! comtabs (list command)))
+  'DEFAULT-KEY)
 
 (define (comtab-key-bindings comtabs command)
   (define (search-comtabs comtabs)

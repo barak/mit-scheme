@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.48 1989/08/08 10:06:18 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.49 1989/08/11 11:50:41 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -127,27 +127,21 @@
 (define (command-name->scheme-name name)
   (symbol-append 'EDWIN-COMMAND$ name))
 
-(syntax-table-define edwin-syntax-table 'DEFINE-VARIABLE
-  (lambda (name description #!optional value)
-    (let ((name (canonicalize-name name)))
-      `(BEGIN
-	 (DEFINE ,(variable-name->scheme-name name)
-	   (MAKE-VARIABLE ',name
-			  ',description
-			  ,(if (default-object? value) '#F value)))
-	 ',name))))
-
-(syntax-table-define edwin-syntax-table 'DEFINE-VARIABLE-PER-BUFFER
-  (lambda (name description #!optional value)
-    (let ((name (canonicalize-name name)))
-      (let ((scheme-name (variable-name->scheme-name name)))
-	`(BEGIN
-	   (DEFINE ,scheme-name
-	     (MAKE-VARIABLE ',name
-			    ',description
-			    ,(if (default-object? value) '#F value)))
-	   (MAKE-VARIABLE-BUFFER-LOCAL! ,scheme-name)
-	   ',name)))))
+(let ((variable-definition
+       (lambda (buffer-local?)
+	 (lambda (name description #!optional value)
+	   (let ((name (canonicalize-name name)))
+	     `(BEGIN
+		(DEFINE ,(variable-name->scheme-name name)
+		  (MAKE-VARIABLE ',name
+				 ',description
+				 ,(if (default-object? value) '#F value)
+				 ',buffer-local?))
+		',name))))))
+  (syntax-table-define edwin-syntax-table 'DEFINE-VARIABLE
+    (variable-definition false))
+  (syntax-table-define edwin-syntax-table 'DEFINE-VARIABLE-PER-BUFFER
+    (variable-definition true)))
 
 (syntax-table-define edwin-syntax-table 'REF-VARIABLE-OBJECT
   (lambda (name)
@@ -230,25 +224,21 @@
 
 (syntax-table-define edwin-syntax-table 'VALUES-LET
   (lambda (bindings . forms)
+
     (define (transform/binding binding forms)
       (if (or (not (pair? binding))
 	      (not (pair? (cdr binding))))
-	  (error "values-let: bad binding clause"
-		 binding)
-	  `(WITH-VALUES
-	       (LAMBDA () ,(cadr binding))
-	     (LAMBDA (,@(car binding))
-	       ,@forms))))
+	  (error "values-let: bad binding clause" binding))
+      `(WITH-VALUES (LAMBDA () ,(cadr binding))
+	 (LAMBDA (,@(car binding)) ,@forms)))
+
     (define (transform/values-let bindings forms)
       (transform/binding
        (car bindings)
        (if (null? (cdr bindings))
 	   forms
-	   (list
-	    (transform/values-let (cdr bindings)
-				  forms)))))
+	   (list (transform/values-let (cdr bindings) forms)))))
+
     (if (not (pair? bindings))
-	(error "values-let: missing bindings"
-	       (cons bindings forms))
-	(transform/values-let bindings
-			      forms))))
+	(error "values-let: missing bindings" (cons bindings forms))
+	(transform/values-let bindings forms))))

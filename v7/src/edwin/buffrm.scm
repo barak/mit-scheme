@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.33 1989/08/08 10:05:25 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.34 1989/08/11 11:49:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -242,14 +242,6 @@
     (maybe-recompute-image! window)
     (%window-scroll-y-relative! window delta)))
 
-(define-integrable (window-y-center frame)
-  (%window-y-center (frame-text-inferior frame)))
-
-(define (window-start-mark frame)
-  (let ((window (frame-text-inferior frame)))
-    (maybe-recompute-image! window)
-    (%window-start-mark window)))
-
 (define (set-window-start-mark! frame mark force?)
   (let ((window (frame-text-inferior frame)))
     (maybe-recompute-image! window)
@@ -257,10 +249,19 @@
 			     (clip-mark-to-display window mark)
 			     force?)))
 
-(define (window-end-mark frame)
+(define-integrable (window-y-center frame)
+  (%window-y-center (frame-text-inferior frame)))
+
+(define (window-start-index frame)
   (let ((window (frame-text-inferior frame)))
     (maybe-recompute-image! window)
-    (%window-end-mark window)))
+    (%window-start-index window)))
+
+(define (window-end-index frame)
+  (let ((window (frame-text-inferior frame)))
+    (maybe-recompute-image! window)
+    (%window-end-index window)))
+
 (define (window-mark-visible? frame mark)
   (let ((window (frame-text-inferior frame)))
     (maybe-recompute-image! window)

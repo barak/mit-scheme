@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwfs.scm,v 1.5 1989/04/28 22:47:49 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwfs.scm,v 1.6 1989/08/11 11:50:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -172,7 +172,7 @@
 	 (%set-buffer-point! buffer (%window-coordinates->mark window 0 y))
 	 (set! point (buffer-point buffer))
 	 (set-inferior-start! cursor-inferior 0 y)
-	 (set-buffer-cursor-y! buffer y)	 (set! point-moved? false)
+	 (set! point-moved? false)
 	 (window-modeline-event! superior 'WINDOW-SCROLLED))))))
 
 (define (redraw-at! window mark)

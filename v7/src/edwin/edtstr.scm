@@ -50,7 +50,8 @@
   (frame-window false read-only true)
   (bufferset false read-only true)
   (kill-ring false read-only true)
-  (char-history false read-only true))
+  (char-history false read-only true)
+  (button-event false))
 
 (define (make-editor name screen)
   (let ((initial-buffer (make-buffer initial-buffer-name initial-buffer-mode)))
@@ -66,7 +67,8 @@
 		      frame
 		      bufferset
 		      (make-ring 10)
-		      (make-ring 100))))))
+		      (make-ring 100)
+		      false)))))
 
 (define-integrable (current-screen)
   (editor-screen current-editor))
@@ -90,3 +92,33 @@
 
 (define-integrable (current-char-history)
   (editor-char-history current-editor))
+
+(define-structure (button-event
+		   (conc-name button-event/))
+  (window false read-only true)
+  (x false read-only true)
+  (y false read-only true))
+
+(define (current-button-event)
+  (or (editor-button-event current-editor)
+      ;; Create a "dummy" event at point.
+      (let ((window (current-window)))
+	(let ((coordinates (window-point-coordinates window)))
+	  (make-button-event window
+			     (car coordinates)
+			     (cdr coordinates))))))
+
+(define (with-current-button-event button-event thunk)
+  (let ((old-button-event))
+    (dynamic-wind
+     (lambda ()
+       (set! old-button-event (editor-button-event current-editor))
+       (set-editor-button-event! current-editor button-event)
+       (set! button-event false)
+       unspecific)
+     thunk
+     (lambda ()
+       (set! button-event (editor-button-event current-editor))
+       (set-editor-button-event! current-editor old-button-event)
+       (set! old-button-event false)
+       unspecific))))

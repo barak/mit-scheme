@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.134 1989/08/10 04:42:50 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.135 1989/08/11 11:49:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -359,6 +359,25 @@ The buffer is guaranteed to be deselected at that time."
 	      (buffer-local-bindings buffer))
     (vector-set! buffer buffer-index:local-bindings '()))
   unspecific)
+
+(define (with-current-local-bindings! thunk)
+  (let ((wind-bindings
+	 (lambda (buffer)
+	   (for-each (lambda (binding)
+		       (let ((variable (car binding)))
+			 (let ((old-value (variable-value variable)))
+			   (%set-variable-value! variable (cdr binding))
+			   (set-cdr! binding old-value))))
+		     (buffer-local-bindings buffer)))))
+    (dynamic-wind
+     (lambda ()
+       (let ((buffer (current-buffer)))
+	 (wind-bindings buffer)
+	 (perform-buffer-initializations! buffer)))
+     thunk
+     (lambda ()
+       (wind-bindings (current-buffer))))))
+
 (define (change-local-bindings! old-buffer new-buffer select-buffer!)
   ;; Assumes that interrupts are disabled and that OLD-BUFFER is selected.
   (let ((variables '()))

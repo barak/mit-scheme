@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.110 1989/04/28 22:47:30 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.111 1989/08/11 11:50:01 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -51,38 +51,51 @@
   false)
 
 (define-command list-buffers
-  "Display a list of names of existing buffers."
-  ()
-  (lambda ()
-    (pop-up-buffer (update-buffer-list) false)))
+  "Display a list of names of existing buffers.
+Inserts it in buffer *Buffer-List* and displays that.
+Note that buffers with names starting with spaces are omitted.
+Non-null optional arg FILES-ONLY? means mention only file buffers.
+
+The M column contains a * for buffers that are modified.
+The R column contains a % for buffers that are read-only."
+  "P"
+  (lambda (files-only?)
+    (pop-up-buffer (update-buffer-list files-only?) false)))
 
 (define-command buffer-menu
-  "Display a list of names of existing buffers."
-  ()
-  (lambda ()
-    (pop-up-buffer (update-buffer-list) true)
+  "Make a menu of buffers so you can save, delete or select them.
+With argument, show only buffers that are visiting files.
+Type ? after invocation to get help on commands available.
+Type q immediately to make the buffer menu go away."
+  "P"
+  (lambda (files-only?)
+    (pop-up-buffer (update-buffer-list files-only?) true)
     (message "Commands: d, s, x; 1, 2, m, u, q; rubout; ? for help.")))
 
-(define (update-buffer-list)
+(define (update-buffer-list files-only?)
   (let ((buffer (temporary-buffer "*Buffer-List*")))
     (set-buffer-major-mode! buffer (ref-mode-object buffer-menu))
+    (buffer-put! buffer 'REVERT-BUFFER-FILES-ONLY? files-only?)
     (buffer-put! buffer 'REVERT-BUFFER-METHOD revert-buffer-menu)
-    (fill-buffer-menu! buffer)
+    (fill-buffer-menu! buffer files-only?)
     buffer))
 
 (define (revert-buffer-menu buffer dont-use-auto-save? dont-confirm?)
   dont-use-auto-save? dont-confirm?	;ignore
   (set-buffer-writeable! buffer)
   (region-delete! (buffer-region buffer))
-  (fill-buffer-menu! buffer))
+  (fill-buffer-menu! buffer (buffer-get buffer 'REVERT-BUFFER-FILES-ONLY?)))
 
-(define (fill-buffer-menu! buffer)
+(define (fill-buffer-menu! buffer files-only?)
   (with-output-to-mark (buffer-point buffer)
     (lambda ()
       (write-string list-buffers-header)
       (let ((current (current-buffer)))
 	(for-each (lambda (buffer)
-		    (if (not (minibuffer? buffer))			(begin
+		    (if (not (or (minibuffer? buffer)
+				 (and files-only?
+				      (not (buffer-pathname buffer)))))
+			(begin
 			 (write-string
 			  (list-buffers-format
 			   (if (eq? buffer current) "." " ")

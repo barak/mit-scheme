@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.10 1989/08/08 10:05:33 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.11 1989/08/11 11:50:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -152,7 +152,9 @@
 						(<= point-index end)
 						(%window-point-y window))))
 			 (else
+			  (destroy-mark! start-clip-mark)
 			  (set! start-clip-mark false)
+			  (destroy-mark! end-clip-mark)
 			  (set! end-clip-mark false)))))
 	     (if start-changes-mark
 		 (let ((start-changes (mark-index start-changes-mark))
@@ -167,7 +169,10 @@
 			       (recompute-image!:bottom-changed window)
 			       (recompute-image!:middle-changed window)))
 		       (begin
-			 (set! start-changes-mark false)			 (set! end-changes-mark false))))))
+			 (destroy-mark! start-changes-mark)
+			 (set! start-changes-mark false)
+			 (destroy-mark! end-changes-mark)
+			 (set! end-changes-mark false))))))
 	   (if point-moved?
 	       (update-cursor! window maybe-recenter!))))))
 

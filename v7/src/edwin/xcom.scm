@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xcom.scm,v 1.1 1989/06/21 10:42:34 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xcom.scm,v 1.2 1989/08/11 11:50:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -235,15 +235,77 @@ When called interactively, completion is available on the input."
      "watch"
      "xterm"))
 
-(define (x-switch-to-window window x y)
-  x y					;ignore
-  (select-window window))
+;;;; Mouse Commands
 
-(define (x-move-to-coordinates window x y)
-  (select-window window)
-  (set-current-point!
-   (or (window-coordinates->mark window x y)
-       (buffer-end (window-buffer window)))))
+(define-command x-mouse-select
+  "Select window the mouse is on."
+  ()
+  (lambda ()
+    (select-window (button-event/window (current-button-event)))))
 
-(define-key 'fundamental button1-down x-move-to-coordinates)
-(define-key 'fundamental button3-down x-switch-to-window)
+(define-command x-mouse-keep-one-window
+  "Select window mouse is on, then kill all other windows."
+  ()
+  (lambda ()
+    ((ref-command x-mouse-select))
+    ((ref-command delete-other-windows))))
+
+(define-command x-mouse-select-and-split
+  "Select window mouse is on, then split it vertically in half."
+  ()
+  (lambda ()
+    ((ref-command x-mouse-select))
+    ((ref-command split-window-vertically) false)))
+
+(define-command x-mouse-set-point
+  "Select window mouse is on, and move point to mouse position."
+  ()
+  (lambda ()
+    (let ((button-event (current-button-event)))
+      (let ((window (button-event/window button-event)))
+	(select-window window)
+	(set-current-point!
+	 (or (window-coordinates->mark window
+				       (button-event/x button-event)
+				       (button-event/y button-event))
+	     (buffer-end (window-buffer window))))))))
+
+(define-command x-mouse-set-mark
+  "Select window mouse is on, and set mark at mouse position.
+Display cursor at that position for a second."
+  ()
+  (lambda ()
+    (let ((button-event (current-button-event)))
+      (let ((window (button-event/window button-event)))
+	(select-window window)
+	(let ((mark
+	       (or (window-coordinates->mark window
+					     (button-event/x button-event)
+					     (button-event/y button-event))
+		   (buffer-end (window-buffer window)))))
+	  (push-current-mark! mark)
+	  (mark-flash mark))))))
+
+(define-command x-mouse-show-event
+  "Show the mouse position in the minibuffer."
+  ()
+  (lambda ()
+    (let ((button-event (current-button-event)))
+      (message "window: " (button-event/window button-event)
+	       " x: " (button-event/x button-event)
+	       " y: " (button-event/y button-event)))))
+
+(define-command x-mouse-ignore
+  "Don't do anything."
+  ()
+  (lambda () unspecific))
+
+;;; Prevent beeps on button-up.  If the button isn't bound to
+;;; anything, it will beep on button-down.
+(define-key 'fundamental button1-up 'x-mouse-ignore)
+(define-key 'fundamental button2-up 'x-mouse-ignore)
+(define-key 'fundamental button3-up 'x-mouse-ignore)
+(define-key 'fundamental button4-up 'x-mouse-ignore)
+(define-key 'fundamental button5-up 'x-mouse-ignore)
+
+(define-key 'fundamental button1-down 'x-mouse-set-point)

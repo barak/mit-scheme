@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.69 1989/06/19 22:42:29 markf Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.70 1989/08/11 11:50:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -393,8 +393,99 @@
 					      (group-marks group)))
 	  mark))))
 
-;;; Here is a simple algorithm that is haired up the wazoo for speed.
+;;; The next few procedures are simple algorithms that are haired up
+;;; the wazoo for maximum speed.
 
+(define (clean-group-marks! group)
+
+  (define (scan-head marks)
+    (cond ((null? marks)
+	   (set-group-marks! group '()))
+	  ((not (system-pair-car marks))
+	   (scan-head (system-pair-cdr marks)))
+	  (else
+	   (set-group-marks! group marks)
+	   (scan-tail marks (system-pair-cdr marks)))))
+
+  (define (scan-tail previous marks)
+    (cond ((null? marks)
+	   unspecific)
+	  ((not (system-pair-car marks))
+	   (skip-nulls previous (system-pair-cdr marks)))
+	  (else
+	   (scan-tail marks (system-pair-cdr marks)))))
+
+  (define (skip-nulls previous marks)
+    (cond ((null? marks)
+	   (system-pair-set-cdr! previous '())
+	   unspecific)
+	  ((not (system-pair-car marks))
+	   (skip-nulls previous (system-pair-cdr marks)))
+	  (else
+	   (system-pair-set-cdr! previous marks)
+	   (scan-tail marks (system-pair-cdr marks)))))
+
+  (let ((marks (group-marks group)))
+    (cond ((null? marks)
+	   unspecific)
+	  ((not (system-pair-car marks))
+	   (scan-head (system-pair-cdr marks)))
+	  (else
+	   (scan-tail marks (system-pair-cdr marks))))))
+
+(define (mark-temporary! mark)
+  ;; I'd think twice about using this one.
+  (if (not recycle-permanent-marks?)
+      (let ((group (mark-group mark)))
+
+	(define (scan-head marks)
+	  (if (null? marks)
+	      (set-group-marks! group '())
+	      (let ((mark* (system-pair-car marks)))
+		(cond ((not mark*)
+		       (scan-head (system-pair-cdr marks)))
+		      ((eq? mark mark*)
+		       (set-group-marks! group (system-pair-cdr marks)))
+		      (else
+		       (set-group-marks! group marks)
+		       (scan-tail marks (system-pair-cdr marks)))))))
+
+	(define (scan-tail previous marks)
+	  (if (not (null? marks))
+	      (let ((mark* (system-pair-car marks)))
+		(cond ((not mark*)
+		       (skip-nulls previous (system-pair-cdr marks)))
+		      ((eq? mark mark*)
+		       (system-pair-set-cdr! previous marks)
+		       unspecific)
+		      (else
+		       (scan-tail marks (system-pair-cdr marks)))))))
+
+	(define (skip-nulls previous marks)
+	  (if (null? marks)
+	      (begin
+		(system-pair-set-cdr! previous '())
+		unspecific)
+	      (let ((mark* (system-pair-car marks)))
+		(cond ((not mark*)
+		       (skip-nulls previous (system-pair-cdr marks)))
+		      ((eq? mark mark*)
+		       (system-pair-set-cdr! previous (system-pair-cdr marks))
+		       unspecific)
+		      (else
+		       (system-pair-set-cdr! previous marks)
+		       (scan-tail marks (system-pair-cdr marks)))))))
+
+	(let ((marks (group-marks group)))
+	  (if (not (null? marks))
+	      (let ((mark* (system-pair-car marks)))
+		(cond ((not mark*)
+		       (scan-head (system-pair-cdr marks)))
+		      ((eq? mark mark*)
+		       (set-group-marks! group (system-pair-cdr marks)))
+		      (else
+		       (scan-tail marks (system-pair-cdr marks))))))))))
+
 (define (find-permanent-mark group position left-inserting?)
 
   (define (scan-head marks)
@@ -444,7 +535,18 @@
 		    mark
 		    (scan-tail marks (system-pair-cdr marks))))))))
 
-  (scan-head (group-marks group)))
+  (let ((marks (group-marks group)))
+    (and (not (null? marks))
+	 (let ((mark (system-pair-car marks)))
+	   (cond ((not mark)
+		  (scan-head (system-pair-cdr marks)))
+		 ((and (if (mark-left-inserting? mark)
+			   left-inserting?
+			   (not left-inserting?))
+		       (= (mark-position mark) position))
+		  mark)
+		 (else
+		  (scan-tail marks (system-pair-cdr marks))))))))
 
 (define (for-each-mark group procedure)
 
@@ -484,7 +586,16 @@
 		(scan-tail marks rest))
 	      (skip-nulls previous rest)))))
 
-  (scan-head (group-marks group)))
+  (let ((marks (group-marks group)))
+    (if (not (null? marks))
+	(let ((mark (system-pair-car marks))
+	      (rest (system-pair-cdr marks)))
+	  (if mark
+	      (begin
+		(procedure mark)
+		(scan-tail marks rest))
+	      (scan-head rest))))))
+
 ;;;; Regions
 
 (define-integrable %make-region cons)

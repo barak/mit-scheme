@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debuge.scm,v 1.37 1989/04/28 22:49:09 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debuge.scm,v 1.38 1989/08/11 11:50:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -86,7 +86,7 @@
 		      (buffer-not-modified! buffer)))))))))
 
 (define-command debug-show-rings
-  ""
+  "Show the number of items in the mark and kill rings."
   ()
   (lambda ()
     (message "Mark Ring: "
@@ -95,7 +95,7 @@
 	     (write-to-string (ring-size (current-kill-ring))))))
 
 (define-command debug-count-marks
-  ""
+  "Show the number of in-use and GC'ed marks for the current buffer."
   ()
   (lambda ()
     (count-marks-group (buffer-group (current-buffer))
@@ -111,7 +111,57 @@
 	    (if (weak-pair/car? marks)
 		(receiver (1+ n-existing) n-gced)
 		(receiver n-existing (1+ n-gced)))))
-	(receiver 0 0))))
+	(receiver 0 0))))
+
+(define-command debug-clean-marks
+  "Perform a GC, then remove GC'ed marks from all buffers."
+  ()
+  (lambda ()
+    (gc-flip)
+    ((ref-command debug-count-marks))
+    (for-each (lambda (buffer) (clean-group-marks! (buffer-group buffer)))
+	      (buffer-list))))
+
+(define-command debug-show-standard-marks
+  ""
+  ()
+  (lambda ()
+    (with-output-to-temporary-buffer "*standard-marks*"
+      (lambda ()
+	(let ((buffer-frame (current-window)))
+	  (let ((window (car (instance-ref buffer-frame 'text-inferior)))
+		(buffer (window-buffer buffer-frame)))
+	    (let ((show-mark
+		   (lambda (name mark)
+		     (write-string
+		      (string-pad-right (write-to-string name) 24))
+		     (write mark)
+		     (newline))))
+	      (let ((show-instance
+		     (lambda (name)
+		       (show-mark name (instance-ref window name)))))
+		(show-instance 'point)
+		(show-instance 'start-line-mark)
+		(show-instance 'start-mark)
+		(show-instance 'end-mark)
+		(show-instance 'end-line-mark))
+	      (let ((group (buffer-group buffer)))
+		(show-mark 'group-start-mark (group-start-mark group))
+		(show-mark 'group-end-mark (group-end-mark group))
+		(show-mark 'group-display-start (group-display-start group))
+		(show-mark 'group-display-end (group-display-end group)))
+	      (let ((marks (ring-list (buffer-mark-ring buffer))))
+		(if (not (null? marks))
+		    (begin
+		      (write-string "mark-ring\t\t")
+		      (write (car marks))
+		      (newline)
+		      (for-each (lambda (mark)
+				  (write-string "\t\t\t")
+				  (write mark)
+				  (newline))
+				(cdr marks))))))))))))
+
 ;;;; Object System Debugging
 
 (define (po object)

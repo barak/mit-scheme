@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtfrm.scm,v 1.78 1989/08/08 10:05:57 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtfrm.scm,v 1.79 1989/08/11 11:50:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -162,27 +162,26 @@
 
 ;;;; Button Events
 
-(define (editor-frame-button-event editor-frame button x y)
-  (values-let (((frame relative-x relative-y)
-		(values-let (((window relative-x relative-y)
-			      (inferior-containing-coordinates editor-frame
-							       x
-							       y
-							       buffer-frame?)))
-		  (if window
-		      (=> window :leaf-containing-coordinates
-			  relative-x relative-y)
-		      (values false false false)))))
-    (if frame
-	 (let ((button-command
-		(comtab-entry (buffer-comtabs (window-buffer frame)) button)))
-	   (if button-command
-	       (button-command
-		frame
-		(min relative-x (buffer-frame-x-size frame))
-		(min relative-y (buffer-frame-y-size frame))))))))
-
-(define-method editor-frame :button-event! editor-frame-button-event)
+(define-method editor-frame (:button-event! editor-frame button x y)
+  (with-values
+      (lambda ()
+	(inferior-containing-coordinates editor-frame x y buffer-frame?))
+    (lambda (frame relative-x relative-y)
+      (if frame
+	  ;; Make sure the event is inside the text portion of the
+	  ;; buffer, not in the modeline or other decoration.
+	  (cond ((and (< -1 relative-x (buffer-frame-x-size frame))
+		      (< -1 relative-y (buffer-frame-y-size frame)))
+		 (let ((command
+			(comtab-entry (buffer-comtabs (window-buffer frame))
+				      button)))
+		   (if command
+		       (with-current-button-event
+			(make-button-event frame relative-x relative-y)
+			(lambda () (execute-command command)))
+		       (editor-beep))))
+		((down-button? button)
+		 (editor-beep)))))))
 
 (define-integrable (button-upify button-number)
   (vector-ref up-buttons button-number))
@@ -191,8 +190,15 @@
   (vector-ref down-buttons button-number))
 
 (define (button? object)
-  (or (vector-find-next-element up-buttons object)
-      (vector-find-next-element down-buttons object)))
+  (or (up-button? object)
+      (down-button? object)))
+
+(define-integrable (up-button? object)
+  (vector-find-next-element up-buttons object))
+
+(define-integrable (down-button? object)
+  (vector-find-next-element down-buttons object))
+
 (define up-buttons '#())
 (define down-buttons '#())
 

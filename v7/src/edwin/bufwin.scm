@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.280 1989/08/08 10:05:29 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.281 1989/08/11 11:50:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -46,6 +46,21 @@
 
 (declare (usual-integrations))
 
+;;; The following instance variables contain marks which must -NEVER-
+;;; be passed to anyone who will keep a pointer to them.  The reason
+;;; is that the `mark-temporary!' operation is called on these marks,
+;;; which invalidates them as soon as some change happens to the
+;;; buffer.  Remember, you were warned!
+;;;
+;;; start-line-mark
+;;; start-mark
+;;; end-mark
+;;; end-line-mark
+;;; start-changes-mark
+;;; end-changes-mark
+;;; start-clip-mark
+;;; end-clip-mark
+
 (define-class buffer-window vanilla-window
   (buffer point changes-daemon clip-daemon
 	  cursor-inferior blank-inferior
@@ -64,7 +79,7 @@
   (set! changes-daemon (make-changes-daemon window))
   (set! clip-daemon (make-clip-daemon window))
   (set! override-inferior false)
-  (set! force-redraw? 'BUFFER-CURSOR-Y)
+  (set! force-redraw? 'CENTER)
   unspecific)
 
 (define-method buffer-window (:kill! window)
@@ -79,6 +94,14 @@
   (update-buffer-window! window screen x-start y-start
 			 xl xu yl yu display-style))
 
+(define-method buffer-window (:salvage! window)
+  (%set-buffer-point! buffer
+		      (make-mark (buffer-group buffer)
+				 (group-start-index (buffer-group buffer))))
+  (set! point (buffer-point buffer))
+  (window-modeline-event! superior 'SALVAGE)
+  (%window-redraw! window false))
+
 (define (set-buffer-window-size! window x y)
   (with-instance-variables buffer-window window (x y)
     (set! saved-screen false)
@@ -86,12 +109,7 @@
       (usual=> window :set-size! x y)
       ;; Preserve point y unless it is offscreen now.
       (%window-setup-truncate-lines! window false)
-      (%window-force-redraw!
-       window
-       (or (and old-y
-		(let ((y (inferior-y-start cursor-inferior)))
-		  (and (< y y-size) y)))
-	   (%window-buffer-cursor-y window))))))
+      (%window-force-redraw! window (and old-y (%window-cursor-y window))))))
 
 (define (%window-setup-truncate-lines! window redraw-type)
   (with-instance-variables buffer-window window ()
@@ -177,18 +195,26 @@
   (with-instance-variables buffer-window window ()
     buffer))
 
+(define (%window-buffer-cursor-y window)
+  (with-instance-variables buffer-window window ()
+    (let ((py (buffer-cursor-y buffer)))
+      (and py
+	   (begin
+	     (set-buffer-cursor-y! buffer false)
+	     (and (= (car py) (mark-index point))
+		  (< (cdr py) y-size)
+		  (cdr py)))))))
+
 (define (%set-window-buffer! window new-buffer)
   (with-instance-variables buffer-window window (new-buffer)
     (if (not (buffer? new-buffer)) (error "Argument not a buffer" new-buffer))
+    (set-buffer-cursor-y! buffer
+			  (let ((y (%window-cursor-y window)))
+			    (and y (cons (mark-index point) y))))
     (delete-window-buffer! window)
     (initial-buffer! window new-buffer)
     (window-modeline-event! superior 'NEW-BUFFER)
     (%window-force-redraw! window (%window-buffer-cursor-y window))))
-
-(define (%window-buffer-cursor-y window)
-  (with-instance-variables buffer-window window (new-buffer)
-    (let ((y (buffer-cursor-y buffer)))
-      (and y (< y y-size) y))))
 
 (define (initial-buffer! window new-buffer)
   (with-instance-variables buffer-window window (new-buffer)
@@ -231,13 +257,10 @@
   (with-instance-variables buffer-window window ()
     (inferior-window cursor-inferior)))
 
-(define-method buffer-window (:salvage! window)
-  (%set-buffer-point! buffer
-		      (make-mark (buffer-group buffer)
-				 (group-start-index (buffer-group buffer))))
-  (set! point (buffer-point buffer))
-  (window-modeline-event! superior 'SALVAGE)
-  (%window-redraw! window false))
+(define (%window-cursor-y window)
+  (with-instance-variables buffer-window window ()
+    (let ((y (inferior-y-start cursor-inferior)))
+      (and y (< y y-size) y))))
 
 ;;;; Override Message
 
@@ -266,9 +289,8 @@
 	  (set! override-inferior false)
 	  (set! inferiors
 		(cons* cursor-inferior blank-inferior line-inferiors))
-	  (let ((coordinates (%window-mark->coordinates window point)))
-	    (set-inferior-position! cursor-inferior coordinates)
-	    (set-buffer-cursor-y! buffer (cdr coordinates)))
+	  (set-inferior-position! cursor-inferior
+				  (%window-mark->coordinates window point))
 	  (blank-inferior-changed! window)
 	  (for-each inferior-needs-redisplay! inferiors)))))
 
@@ -312,6 +334,7 @@
 (define-integrable (set-line-inferiors! window inferiors start)
   (with-instance-variables buffer-window window (inferiors start)
     (set! line-inferiors inferiors)
+    (destroy-mark! start-line-mark)
     (set! start-line-mark
 	  (%make-permanent-mark (buffer-group buffer) start false))
     unspecific))
@@ -320,12 +343,14 @@
   (with-instance-variables buffer-window window ()
     (define (loop inferiors start)
       (if (null? (cdr inferiors))
-	  (begin (set! last-line-inferior (car inferiors))
-		 (set! end-line-mark
-		       (let ((group (buffer-group buffer)))
-			 (%make-permanent-mark group
-					       (line-end-index group start)
-					       true))))
+	  (begin
+	    (set! last-line-inferior (car inferiors))
+	    (destroy-mark! end-line-mark)
+	    (set! end-line-mark
+		  (let ((group (buffer-group buffer)))
+		    (%make-permanent-mark group
+					  (line-end-index group start)
+					  true))))
 	  (loop (cdr inferiors)
 		(+ start (line-inferior-length inferiors)))))
     (loop line-inferiors (mark-index start-line-mark))
@@ -409,9 +434,9 @@
 (define (update-cursor! window if-not-visible)
   (with-instance-variables buffer-window window (if-not-invisible)
     (if (%window-mark-visible? window point)
-	(let ((coordinates (%window-mark->coordinates window point)))
-	  (set-inferior-position! cursor-inferior coordinates)
-	  (set-buffer-cursor-y! buffer (cdr coordinates))
+	(begin
+	  (set-inferior-position! cursor-inferior
+				  (%window-mark->coordinates window point))
 	  (set! point-moved? false)
 	  (window-modeline-event! superior 'CURSOR-MOVED))
 	(if-not-visible window))))
@@ -446,7 +471,7 @@
   (with-instance-variables buffer-window window ()
     (set! force-redraw? (or redraw-type 'CENTER))
     (setup-redisplay-flags! redisplay-flags)))
-
+
 (define (%window-redraw-preserving-start! window)
   (with-instance-variables buffer-window window ()
     (let ((group (mark-group start-mark))
@@ -464,7 +489,7 @@
 	   (cons inferior (fill-bottom window (inferior-y-end inferior) end))
 	   start)))))
   (everything-changed! window maybe-recenter!))
-
+
 (define (%window-redraw! window y)
   (with-instance-variables buffer-window window (y)
     (redraw-screen! window
@@ -501,7 +526,7 @@
     (start-mark-changed! window)
     (end-mark-changed! window)
     (update-cursor! window if-not-visible)))
-
+
 (define (maybe-marks-changed! window inferiors y-end)
   (with-instance-variables buffer-window window (inferiors y-end)
     (no-outstanding-changes! window)
@@ -515,15 +540,20 @@
 
 (define (no-outstanding-changes! window)
   (with-instance-variables buffer-window window ()
+    (destroy-mark! start-changes-mark)
     (set! start-changes-mark false)
+    (destroy-mark! end-changes-mark)
     (set! end-changes-mark false)
+    (destroy-mark! start-clip-mark)
     (set! start-clip-mark false)
+    (destroy-mark! end-clip-mark)
     (set! end-clip-mark false)
     (set! force-redraw? false)
     unspecific))
-
+
 (define (start-mark-changed! window)
   (with-instance-variables buffer-window window ()
+    (destroy-mark! start-mark)
     (set! start-mark
 	  (%make-permanent-mark
 	   (buffer-group buffer)
@@ -538,6 +568,7 @@
 
 (define (end-mark-changed! window)
   (with-instance-variables buffer-window window ()
+    (destroy-mark! end-mark)
     (set! end-mark
 	  (let ((group (buffer-group buffer)))
 	    (%make-permanent-mark
@@ -551,13 +582,18 @@
 	     true)))
     (window-modeline-event! superior 'END-MARK-CHANGED!)))
 
-(define-integrable (%window-start-mark window)
-  (with-instance-variables buffer-window window ()
-    start-mark))
+(define (destroy-mark! mark)
+  (if mark
+      (mark-temporary! mark)))
 
-(define-integrable (%window-end-mark window)
+(define-integrable (%window-start-index window)
   (with-instance-variables buffer-window window ()
-    end-mark))
+    (mark-index start-mark)))
+
+(define-integrable (%window-end-index window)
+  (with-instance-variables buffer-window window ()
+    (mark-index end-mark)))
+
 (define-integrable (%window-mark-visible? window mark)
   (with-instance-variables buffer-window window (mark)
     (and (mark<= start-mark mark)
