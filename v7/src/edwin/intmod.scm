@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.32 1989/04/15 00:50:13 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.33 1989/04/23 23:23:00 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,135 +41,97 @@
 
 (declare (usual-integrations))
 
-(define-major-mode interaction scheme "Interaction"
-  "Major mode for evaluating Scheme expressions interactively.
-Same as Scheme mode, except for
-
-\\[interaction-execute] evaluates the current expression.
-\\[interaction-refresh] deletes the contents of the buffer.
-\\[interaction-yank] yanks the last expression.
-\\[interaction-yank-pop] yanks an earlier expression, replacing a yank."
-  (local-set-variable! interaction-prompt (ref-variable interaction-prompt))
-  (local-set-variable! interaction-kill-ring (make-ring 32))
-  (local-set-variable! scheme-environment (ref-variable scheme-environment))
-  (local-set-variable! scheme-syntax-table (ref-variable scheme-syntax-table)))
-
-(define-key 'interaction #\return 'interaction-execute)
-(define-prefix-key 'interaction #\c-c 'prefix-char)
-(define-key 'interaction '(#\c-c #\page) 'interaction-refresh)
-(define-key 'interaction '(#\c-c #\c-y) 'interaction-yank)
-(define-key 'interaction '(#\c-c #\c-r) 'interaction-yank-pop)
-
 (define-command interaction-mode
   "Make the current mode be Interaction mode."
   ()
   (lambda ()
-    (set-current-major-mode! (ref-mode-object interaction))
-    (let ((buffer (current-buffer)))
-      (if (not (mark= (buffer-start buffer) (buffer-end buffer)))
-	  (begin (set-current-point! (buffer-end buffer))
-		 (insert-interaction-prompt))
-	  (insert-interaction-prompt false)))))
+    (set-current-major-mode! (ref-mode-object interaction))))
 
-(define (insert-interaction-prompt #!optional newlines?)
-  (if (or (default-object? newlines?) newlines?)
-      (insert-newlines 2))
-  (insert-string "1 ")
-  (insert-string (ref-variable interaction-prompt))
-  (insert-string " ")
-  (buffer-put! (current-buffer)
-	       interaction-mode:buffer-mark-tag
-	       (mark-right-inserting (current-point))))
+(define-major-mode interaction scheme "Interaction"
+  "Major mode for evaluating Scheme expressions interactively.
+Same as Scheme mode, except for
 
-(define interaction-mode:buffer-mark-tag
-  "Mark")
+\\[interaction-eval-previous-sexp] evaluates the current expression.
+\\[interaction-eval-definition] evaluates the current definition.
+\\[interaction-eval-region] evaluates the region.
+\\[interaction-yank] yanks the most recently evaluated expression.
+\\[interaction-yank-pop] yanks an earlier expression, replacing a yank."
+  (local-set-variable! interaction-kill-ring (make-ring 32))
+  (local-set-variable! scheme-environment (ref-variable scheme-environment))
+  (local-set-variable! scheme-syntax-table (ref-variable scheme-syntax-table)))
 
-(define-variable interaction-prompt
-  "Prompt string used by Interaction mode."
-  "]=>")
+(define-prefix-key 'interaction #\C-x 'prefix-char)
+(define-prefix-key 'interaction #\C-c 'prefix-char)
+(define-key 'interaction '(#\C-x #\C-e) 'interaction-eval-previous-sexp)
+(define-key 'interaction #\M-return 'interaction-eval-previous-sexp)
+(define-key 'interaction #\M-z 'interaction-eval-definition)
+(define-key 'interaction #\C-M-z 'interaction-eval-region)
+(define-key 'interaction '(#\C-c #\C-y) 'interaction-yank)
+(define-key 'interaction '(#\C-c #\C-r) 'interaction-yank-pop)
 
 (define-variable interaction-kill-ring
   "Kill ring used by Interaction mode evaluation commands.")
-
-(define-command interaction-execute
-  "Evaluate the input expression.
-With an argument, calls \\[self-insert-command] instead.
 
-If invoked in the current `editing area', evaluates the expression there.
- The editing area is defined as the space between the last prompt and
- the end of the buffer.  The expression is checked to make sure that it
- is properly balanced, and that there is only one such expression.
-
-Otherwise, goes to the end of the current line, copies the preceding
- expression to the editing area, then evaluates it.  In this case the
- editing area must be empty.
-
-Output is inserted into the buffer at the end."
-  "P"
-  (lambda (argument)
-    (define (extract-expression start)
-      (let ((expression
-	     (extract-string start
-			     (or (forward-one-sexp start)
-				 (editor-error "No Expression")))))
-	(ring-push! (ref-variable interaction-kill-ring) expression)
-	expression))
-
-    (if argument
-	((ref-command self-insert-command) argument)
-	(let ((mark (or (buffer-get (current-buffer)
-				    interaction-mode:buffer-mark-tag)
-			(error "Missing interaction buffer mark")))
-	      (point (current-point)))
-	  (if (mark< point (line-start mark 0))
-	      (begin
-		(if (not (group-end? mark))
-		    (editor-error "Can't copy: unfinished expression"))
-		(let ((start (backward-one-sexp (line-end point 0))))
-		  (if (not start) (editor-error "No previous expression"))
-		  (let ((expression (extract-expression start)))
-		    (set-current-point! mark)
-		    (insert-string expression mark))))
-	      (let ((state (parse-partial-sexp mark (group-end mark))))
-		(if (or (not (zero? (parse-state-depth state)))
-			(parse-state-in-string? state)
-			(parse-state-in-comment? state)
-			(parse-state-quoted? state))
-		    (editor-error "Imbalanced expression"))
-		(let ((last-sexp (parse-state-last-sexp state)))
-		  (if (not last-sexp)
-		      (editor-error "No expression"))
-		  (extract-expression last-sexp))
-		(set-current-point! (group-end point))))
-	  (dynamic-wind
-	   (lambda () 'DONE)
-	   (lambda ()
+(define (interaction-eval-region region argument)
+  (set-current-point! (region-end region))
+  (let ((string (region->string region)))
+    (ring-push! (ref-variable interaction-kill-ring) string)
+    (let ((expression (with-input-from-string string read)))
+      (let ((value
 	     (with-output-to-current-point
 	      (lambda ()
 		(intercept-^G-interrupts
 		 (lambda ()
-		   (newline)
-		   (write-string "Abort!"))
+		   (interaction-guarantee-newlines 1)
+		   (insert-string "Abort!")
+		   (insert-newlines 2)
+		   (^G-signal))
 		 (lambda ()
-		   (write-line
-		    (eval-with-history (with-input-from-mark mark
-							     read)
-				       (evaluation-environment false))))))))
-	   insert-interaction-prompt)))))
+		   (eval-with-history expression
+				      (evaluation-environment argument))))))))
+	(interaction-guarantee-newlines 1)
+	(if (undefined-value? value)
+	    (insert-string ";No value")
+	    (begin
+	      (insert-string ";Value: ")
+	      (insert-string (interaction-object->string value))))
+	(interaction-guarantee-newlines 2)))))
+
+(define (interaction-guarantee-newlines n)
+  (insert-newlines (if (line-start? (current-point)) (-1+ n) n)))
+
+(define (interaction-object->string object)
+  (fluid-let ((*unparser-list-depth-limit* 2)
+	      (*unparser-list-breadth-limit* 5))
+    (write-to-string object)))
 
-(define-command interaction-refresh
-  "Delete the contents of the buffer, then prompt for input.
-Preserves the current `editing area'."
-  ()
-  (lambda ()
-    (let ((buffer (current-buffer)))
-      (let ((edit-area
-	     (extract-string
-	      (buffer-get buffer interaction-mode:buffer-mark-tag)
-	      (buffer-end buffer))))
-	(region-delete! (buffer-region buffer))
-	(insert-interaction-prompt false)
-	(insert-string edit-area)))))
+(define-command interaction-eval-previous-sexp
+  "Evaluate the expression to the left of point."
+  "P"
+  (lambda (argument)
+    (let ((point (current-point)))
+      (interaction-eval-region (make-region (backward-one-sexp point) point)
+			       argument))))
+
+(define-command interaction-eval-definition
+  "Evaluate the definition at point.
+Moves point to the definition's end.
+Output and the result are written at that point.
+With an argument, prompts for the evaluation environment."
+  "P"
+  (lambda (argument)
+    (interaction-eval-region
+     (let ((start (current-definition-start)))
+       (make-region start (forward-one-definition-end start)))
+     argument)))
+
+(define-command interaction-eval-region
+  "Evaluate the definition at point.
+Moves point to the definition's end.
+Output and the result are written at that point.
+With an argument, prompts for the evaluation environment."
+  "r\nP"
+  interaction-eval-region)
 
 (define interaction-mode:yank-command-message
   "Yank")
