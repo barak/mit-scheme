@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stats.scm,v 1.4 1995/07/20 16:03:54 adams Exp $
+$Id: stats.scm,v 1.5 1995/09/05 18:01:24 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -119,10 +119,10 @@ MIT in each case. |#
 	 (sample/2/really statistic datum1 datum2))))
 
 
-(define-integrable (dethunk possible-thunk)
+(define (dethunk possible-thunk)
   (let ((possible-thunk possible-thunk))
-    (if (procedure? possible-thunk)
-	(possible-thunk)
+    (if (promise? possible-thunk)
+	(force possible-thunk)
 	possible-thunk)))
 
 (define-integrable (find-statistic specification)
