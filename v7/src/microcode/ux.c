@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.13 1993/11/22 22:34:39 cph Exp $
+$Id: ux.c,v 1.14 1996/04/23 20:58:45 cph Exp $
 
-Copyright (c) 1990-1993 Massachusetts Institute of Technology
+Copyright (c) 1990-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -617,3 +617,27 @@ DEFUN (fpathconf, (filedes, parameter), int filedes AND int parameter)
 }
 
 #endif /* EMULATE_FPATHCONF */
+
+void *
+DEFUN (OS_malloc, (size), unsigned int size)
+{
+  void * result = (UX_malloc (size));
+  if (result == 0)
+    error_system_call (ENOMEM, syscall_malloc);
+  return (result);
+}
+
+void *
+DEFUN (OS_realloc, (ptr, size), void * ptr AND unsigned int size)
+{
+  void * result = (UX_realloc (ptr, size));
+  if (result == 0)
+    error_system_call (ENOMEM, syscall_realloc);
+  return (result);
+}
+
+void
+DEFUN (OS_free, (ptr), void * ptr)
+{
+  UX_free (ptr);
+}
