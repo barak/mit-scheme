@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.20 2001/12/21 18:27:27 cph Exp $
+$Id: toplev.scm,v 4.21 2001/12/21 18:32:11 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -120,8 +120,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;;; File Syntaxer
 
 (define (syntax-file input-string bin-string spec-string)
-  (if (not (or (false? sf/default-syntax-table)
-	       (syntax-table? sf/default-syntax-table)))
+  (if (not (or (not sf/default-syntax-table)
+	       (environment? sf/default-syntax-table)))
       (error "Malformed binding of SF/DEFAULT-SYNTAX-TABLE:"
 	     sf/default-syntax-table))
   (if (not (list-of-symbols? sf/top-level-definitions))
