@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/string.scm,v 13.41 1987/01/23 00:20:37 jinx Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/string.scm,v 13.42 1987/07/28 01:22:23 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -43,13 +43,14 @@
 
 ;;;; Primitives
 
-(in-package system-global-environment
-(let-syntax ()
-  (define-macro (define-primitives . names)
-    `(BEGIN ,@(map (lambda (name)
-		     `(DEFINE ,name ,(make-primitive-procedure name)))
-		   names)))
-
+(let-syntax ((define-primitives
+	       (macro names
+		 `(BEGIN ,@(map (lambda (name)
+				  `(LOCAL-ASSIGNMENT
+				    SYSTEM-GLOBAL-ENVIRONMENT
+				    ',name
+				    ,(make-primitive-procedure name)))
+				names)))))
   (define-primitives
    string-allocate string? string-ref string-set!
    string-length string-maximum-length set-string-length!
@@ -63,7 +64,7 @@
 
    vector-8b-ref vector-8b-set! vector-8b-fill!
    vector-8b-find-next-char vector-8b-find-previous-char
-   vector-8b-find-next-char-ci vector-8b-find-previous-char-ci)))
+   vector-8b-find-next-char-ci vector-8b-find-previous-char-ci))
 
 ;;; Character Covers
 
