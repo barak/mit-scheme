@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/linden.scm,v 1.118 1989/04/28 22:50:57 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/linden.scm,v 1.119 1991/04/03 04:26:03 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -223,6 +223,8 @@
 		     indent))))
 	  (let ((shift-amount (- indentation (mark-column start))))
 	    (cond ((not (zero? shift-amount))
+		   (if whole-sexp?
+		       (mark-permanent! start))
 		   (change-indentation indentation start)
 		   (if whole-sexp?
 		       (indent-code-rigidly start
