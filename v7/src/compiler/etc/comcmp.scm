@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/etc/comcmp.scm,v 1.3 1991/11/04 20:36:02 cph Exp $
+$Id: comcmp.scm,v 1.4 1993/06/17 04:42:47 gjr Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,21 +39,74 @@ MIT in each case. |#
 (if (unassigned? compiled-code-block/bytes-per-object)
     (set! compiled-code-block/bytes-per-object 4))
 
+(define-macro (ucode-type name)
+  (microcode-type name))
+
 (define comcmp:ignore-debugging-info? true)
+(define comcmp:show-differing-blocks? false)
 
-(define (compare-com-files f1 f2 #!optional verbose?)
-  (let ((quiet? (or (default-object? verbose?) (not verbose?)))
-	(memoizations '()))
+(define (compare-code-blocks b1 b2)
+  (let ((memoizations '()))
+    (define (equal? x y)
+      (or (eq? x y)
+	  (if (object-type? (object-type x) y)
+	      (cond ((object-type? (ucode-type cell) y)
+		     (equal? (cell-contents x) (cell-contents y)))
+		    ((object-type? (ucode-type list) y)
+		     (and (equal? (car x) (car y))
+			  (equal? (cdr x) (cdr y))))
+		    ((object-type? (ucode-type character-string) y)
+		     (string=? x y))
+		    ((object-type? (ucode-type vector-1b) y)
+		     (bit-string=? x y))
+		    ((number? y)
+		     (and (= x y)
+			  (boolean=? (exact? x) (exact? y))))
+		    ((pathname? x)
+		     (and (pathname? y)
+			  (pathname=? x y)))
+		    ((object-type? (ucode-type vector) y)
+		     (let ((size (vector-length x)))
+		       (and (= size (vector-length y))
+			    (let loop ((index 0))
+			      (or (= index size)
+				  (and (equal? (vector-ref x index)
+					       (vector-ref y index))
+				       (loop (1+ index))))))))
+		    ((compiled-code-block? x)
+		     (not (compare-blocks x y false)))
+		    ((compiled-code-address? x)
+		     (and (= (compiled-entry/offset x)
+			     (compiled-entry/offset y))
+			  (not (compare-blocks
+				(compiled-entry/block x)
+				(compiled-entry/block y)
+				false))))
+		    (else
+		     false))
+	      (and (number? x)
+		   (number? y)
+		   (= x y)
+		   (boolean=? (exact? x) (exact? y))))))
 
-    (define (compare-blocks b1 b2)
+    (define (compare-blocks b1 b2 top-level?)
       (memoize! b1 b2
-	(lambda ()
-	  (let ((l1 (system-vector-length b1))
-		(l2 (system-vector-length b2)))
-	    (if (not (= l1 l2))
-		`(length ,l1 ,l2)
-		(or (compare-code-sections b1 b2)
-		    (compare-constant-sections b1 b2)))))))
+		(let ((core
+		       (lambda ()
+			 (let ((l1 (system-vector-length b1))
+			       (l2 (system-vector-length b2)))
+			   (if (not (= l1 l2))
+			       `(length ,l1 ,l2)
+			       (or (compare-code-sections b1 b2)
+				   (compare-constant-sections b1 b2)))))))
+		  (if (or top-level?
+			  (not comcmp:show-differing-blocks?))
+		      core
+		      (lambda ()
+			(let ((result (core)))
+			  (if result
+			      (write-line `(subblocks ,b1 ,b2 ,result)))
+			  result))))))
 
     (define (memoize! b1 b2 do-it)
       (let ((entry (assq b1 memoizations))
@@ -143,24 +196,13 @@ MIT in each case. |#
 	   (let ((differ
 		  (lambda ()
 		    `(CONSTANTS (,s ,c1 ,c2)))))
-	     (cond ((compiled-code-block? c1)
-		    (if (compiled-code-block? c2)
-			(compare-blocks c1 c2)
-			(differ)))
-		   ((compiled-code-address? c1)
-		    (if (and (compiled-code-address? c2)
-			     (= (compiled-entry/offset c1)
-				(compiled-entry/offset c2)))
-			(compare-blocks (compiled-entry/block c1)
-					(compiled-entry/block c2))
-			(differ)))
-		   ((quotation? c1)
+	     (cond ((quotation? c1)
 		    (if (quotation? c2)
 			(compare-constants s
 					   (quotation-expression c1)
 					   (quotation-expression c2))
 			(differ)))
-		   ((lambda? c1)
+		   ((LAMBDA? C1)
 		    (if (lambda? c2)
 			(lambda-components c1
 			  (lambda (name required optional rest auxiliary
@@ -179,6 +221,10 @@ MIT in each case. |#
 			(differ)))
 		   (else
 		    (differ))))))
+    (compare-blocks b1 b2 true)))
+
+(define (compare-com-files f1 f2 #!optional verbose?)
+  (let ((quiet? (or (default-object? verbose?) (not verbose?))))
 
     (let ((s1 (fasload f1 quiet?))
 	  (s2 (fasload f2 quiet?))
@@ -195,13 +241,13 @@ MIT in each case. |#
 		(let ((e1 (vector-length v1))
 		      (e2 (vector-length v2)))
 		  (if (= e1 e2)
-		      (compare-blocks (vector-ref v1 0) (vector-ref v2 0))
+		      (compare-code-blocks (vector-ref v1 0) (vector-ref v2 0))
 		      `(number-of-blocks ,e1 ,e2))))
 	      '(block-structure))
 	  (if (and (comment? s2) (dbg-info-vector? (comment-text s2)))
 	      '(block-structure)
-	      (compare-blocks (compiled-code-address->block s1)
-			      (compiled-code-address->block s2)))))))
+	      (compare-code-blocks (compiled-code-address->block s1)
+				   (compiled-code-address->block s2)))))))
 
 (define (show-differences f1 f2)
   (define (->name f)
