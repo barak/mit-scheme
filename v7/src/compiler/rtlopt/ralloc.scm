@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/ralloc.scm,v 1.15 1988/06/14 08:43:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/ralloc.scm,v 1.16 1988/09/07 06:25:33 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -39,7 +39,7 @@ MIT in each case. |#
 
 (package (register-allocation)
 
-(define (register-allocation rgraphs)
+(define-export (register-allocation rgraphs)
   (for-each (lambda (rgraph)
 	      (let ((n-temporaries (walk-rgraph rgraph)))
 		(if (> n-temporaries number-of-temporary-registers)
@@ -52,10 +52,7 @@ MIT in each case. |#
      rgraph
      (make-vector n-registers false))
     (fluid-let ((*current-rgraph* rgraph))
-      (walk-bblocks n-registers
-		    (let ((bblocks (rgraph-bblocks rgraph)))
-		      (set-rgraph-bblocks! rgraph false)
-		      bblocks)))))
+      (walk-bblocks n-registers (rgraph-bblocks rgraph)))))
 
 (define (walk-bblocks n-registers bblocks)
   ;; First, renumber all the registers remaining to be allocated.
