@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.55 2003/02/14 18:28:34 cph Exp $
+$Id: x11graph.scm,v 1.56 2003/03/07 20:48:09 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1998,1999,2000,2001 Massachusetts Institute of Technology
@@ -932,17 +932,16 @@ USA.
 
 ;;;; Colormaps
 
-(define x-colormap?)
-(define %make-colormap)
-(define colormap/descriptor)
+(define-record-type <colormap>
+    (%make-colormap descriptor)
+    x-colormap?
+  (descriptor colormap/descriptor))
+
 (define colormap-list)
 
 (define (initialize-colormap-datatype)
-  (let ((rtd (make-record-type "colormap" '(DESCRIPTOR))))
-    (set! x-colormap? (record-predicate rtd))
-    (set! %make-colormap (record-constructor rtd))
-    (set! colormap/descriptor (record-accessor rtd 'DESCRIPTOR)))
-  (set! colormap-list (make-gc-finalizer x-free-colormap)))
+  (set! colormap-list (make-gc-finalizer x-free-colormap))
+  unspecific)
 
 (define (make-colormap descriptor)
   (let ((colormap (%make-colormap descriptor)))
