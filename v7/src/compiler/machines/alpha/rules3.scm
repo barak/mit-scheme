@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.4 1993/02/15 21:44:43 gjr Exp $
+$Id: rules3.scm,v 1.5 1993/11/12 14:44:03 jmiller Exp $
 
 Copyright (c) 1992-1993 Digital Equipment Corporation (D.E.C.)
 
@@ -223,7 +223,8 @@ case.
 (define-rule statement
   ;; Move <frame-size> words back to SP+offset
   (INVOCATION-PREFIX:MOVE-FRAME-UP
-   (? frame-size) (OFFSET-ADDRESS (REGISTER (? stack)) (? offset)))
+   (? frame-size) (OFFSET-ADDRESS (REGISTER (? stack))
+				  (MACHINE-CONSTANT (? offset))))
   (QUALIFIER (= stack regnum:stack-pointer))
   (let ((how-far (* 8 (- offset frame-size))))
     (cond ((zero? how-far)
@@ -256,8 +257,7 @@ case.
 (define-rule statement
   ;; Move <frame-size> words back to base virtual register + offset
   (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size)
-				   (OFFSET-ADDRESS (REGISTER (? base))
-						   (? offset)))
+   (OFFSET-ADDRESS (REGISTER (? base)) (MACHINE-CONSTANT (? offset))))
   (QUALIFIER (not (= base 20)))
   (generate/move-frame-up frame-size
     (lambda (reg)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules1.scm,v 1.1 1992/08/29 13:51:30 jinx Exp $
+$Id: rules1.scm,v 1.2 1993/11/12 14:43:49 jmiller Exp $
 
 Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
 
@@ -101,11 +101,19 @@ case.
   ;; convert the contents of a register to an address
   (ASSIGN (REGISTER (? target)) (OBJECT->ADDRESS (REGISTER (? source))))
   (standard-unary-conversion source target object->address))
+
+(define-rule statement
+  ;; add a distance (in longwords) to a register's contents
+  (ASSIGN (REGISTER (? target))
+	  (OFFSET-ADDRESS (REGISTER (? source))
+			  (REGISTER (? offset))))
+  (address-add target source offset address-units-per-object))
 
 (define-rule statement
   ;; add a distance (in longwords) to a register's contents
   (ASSIGN (REGISTER (? target))
-	  (OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
+	  (OFFSET-ADDRESS (REGISTER (? source))
+			  (MACHINE-CONSTANT (? offset))))
   (standard-unary-conversion source target
     (lambda (source target)
       (add-immediate (* address-units-per-object offset)
@@ -114,10 +122,65 @@ case.
 (define-rule statement
   ;; add a distance (in bytes) to a register's contents
   (ASSIGN (REGISTER (? target))
-	  (BYTE-OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
+	  (BYTE-OFFSET-ADDRESS (REGISTER (? source))
+			       (REGISTER (? offset))))
+  (address-add target source offset 1))
+
+(define-rule statement
+  ;; add a distance (in bytes) to a register's contents
+  (ASSIGN (REGISTER (? target))
+	  (BYTE-OFFSET-ADDRESS (REGISTER (? source))
+			       (MACHINE-CONSTANT (? offset))))
   (standard-unary-conversion source target
     (lambda (source target)
       (add-immediate offset source target))))
+
+(define-rule statement
+  ;; add a distance (in "size of floating point constants") to a
+  ;; register's contents.
+  (ASSIGN (REGISTER (? target))
+	  (FLOAT-OFFSET-ADDRESS (REGISTER (? base))
+				(REGISTER (? index))))
+  (address-add target base index address-units-per-float))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLOAT-OFFSET-ADDRESS (REGISTER (? source))
+				(MACHINE-CONSTANT (? offset))))
+  (standard-unary-conversion source target
+    (lambda (source target)
+      (add-immediate (* address-units-per-float offset)
+		     source target))))
+
+(define (address-add target base index size-in-address-units)
+  (case size-in-address-units
+    ((1) (standard-binary-conversion base index target
+	  (lambda (base index target)
+	    (LAP (ADDQ ,index ,base ,target)))))
+    ((4) (standard-binary-conversion base index target
+	  (lambda (base index target)
+	    (LAP (S4ADDQ ,index ,base ,target)))))
+    ((8) (standard-binary-conversion base index target
+	  (lambda (base index target)
+	    (LAP (S8ADDQ ,index ,base ,target)))))
+    (else (error "address-add: size of object isn't 1, 4, or 8 bytes"
+		 size-in-address-units))))
+
+(define (with-indexed-address base index size-in-address-units recvr)
+  (let ((base (standard-source! base))
+	(index (standard-source! index))
+	(temp (standard-temporary!)))
+    (case size-in-address-units
+      ((0) (LAP (ADDQ ,base ,index ,temp)
+		,@(recvr temp)))
+      ((4) (LAP (S4ADDQ ,index ,base ,temp)
+		,@(recvr temp)))
+      ((8) (LAP (S8ADDQ ,index ,base ,temp)
+		,@(recvr temp)))
+      (else
+       (error
+	"with-indexed-address: size of object isn't 1, 4,or 8 bytes"
+	size-in-address-units)))))
 
 ;;;; Loading of Constants
 
@@ -205,11 +268,17 @@ case.
 
 (define-rule statement
   ;; read an object from memory
-  (ASSIGN (REGISTER (? target)) (OFFSET (REGISTER (? address)) (? offset)))
+  (ASSIGN (REGISTER (? target)) (OFFSET (REGISTER (? address))
+					(MACHINE-CONSTANT (? offset))))
   (standard-unary-conversion address target
     (lambda (address target)
       (LAP (LDQ ,target
-		(OFFSET ,(* address-units-per-object offset) ,address))))))
+		(OFFSET ,(* address-units-per-object offset)
+			,address))))))
+
+;; Note: we don't seem to need
+;;  (ASSIGN (REGISTER (? target)) (OFFSET (REGISTER (? base))
+;;	  				  (REGISTER (? index))))
 
 (define-rule statement
   ;; Pop stack to register
@@ -223,12 +292,16 @@ case.
 
 (define-rule statement
   ;; store an object in memory
-  (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
+  (ASSIGN (OFFSET (REGISTER (? address)) (MACHINE-CONSTANT (? offset)))
 	  (? source register-expression))
   (QUALIFIER (word-register? source))
   (LAP (STQ ,(standard-source! source)
 	    (OFFSET ,(* address-units-per-object offset)
 		    ,(standard-source! address)))))
+
+;; Note: we don't seem to need
+;; (ASSIGN (OFFSET (REGISTER (? base)) (REGISTER (? index)))
+;;         (? source register-expression))
 
 (define-rule statement
   ;; Push an object register on the heap
@@ -250,24 +323,30 @@ case.
 
 ;; Cheaper, common patterns.
 
+;; We don't need 
+;;  (ASSIGN (OFFSET (REGISTER (? base)) (REGISTER (? index)))
+;;          (MACHINE-CONSTANT 0))
+;; since it simplifies to (... (OFFSET REGISTER MACHINE-CONSTANT) ...)
+
 (define-rule statement
-  (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
+  (ASSIGN (OFFSET (REGISTER (? address)) (MACHINE-CONSTANT (? offset)))
 	  (MACHINE-CONSTANT 0))
-  (LAP (STQ 31 (OFFSET ,(* address-units-per-object offset)
-		       ,(standard-source! address)))))
+  (LAP (STQ ,regnum:zero (OFFSET ,(* address-units-per-object offset)
+				 ,(standard-source! address)))))
 
 (define-rule statement
   ; Push NIL (or whatever is represented by a machine 0) on heap
   (ASSIGN (POST-INCREMENT (REGISTER (? free)) 1) (MACHINE-CONSTANT 0))
   (QUALIFIER (= free regnum:free))
-  (LAP (STQ 31 (OFFSET 0 ,regnum:free))
+  (LAP (STQ ,regnum:zero (OFFSET 0 ,regnum:free))
        (ADDQ ,regnum:free (& ,address-units-per-object) ,regnum:free)))
 
 (define-rule statement
   ; Ditto, but on stack
   (ASSIGN (PRE-INCREMENT (REGISTER (? stack)) -1) (MACHINE-CONSTANT 0))
   (QUALIFIER (= stack regnum:stack-pointer))
-  (LAP (SW 31 (OFFSET ,(- address-units-per-object) ,regnum:stack-pointer))
+  (LAP (STQ ,regnum:zero
+	    (OFFSET ,(- address-units-per-object) ,regnum:stack-pointer))
        (SUBQ ,regnum:stack-pointer (& ,address-units-per-object)
 	     ,regnum:stack-pointer)))
 
@@ -283,7 +362,8 @@ case.
 
 (define-rule statement
   ;; store null byte in memory
-  (ASSIGN (BYTE-OFFSET (REGISTER (? source)) (? offset))
+  (ASSIGN (BYTE-OFFSET (REGISTER (? source))
+		       (MACHINE-CONSTANT (? offset)))
 	  (CHAR->ASCII (CONSTANT #\NUL)))
   (modify-byte (standard-source! source) offset
     (lambda (data-register offset-register)
@@ -294,12 +374,14 @@ case.
 (define-rule statement
   ;; load ASCII byte from memory
   (ASSIGN (REGISTER (? target))
-	  (BYTE-OFFSET (REGISTER (? address)) (? offset)))
+	  (BYTE-OFFSET (REGISTER (? address))
+		       (MACHINE-CONSTANT (? offset))))
   (load-byte address offset target))
 
 (define-rule statement
   ;; store ASCII byte in memory.  There may be a FIXNUM typecode.
-  (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
+  (ASSIGN (BYTE-OFFSET (REGISTER (? address))
+		       (MACHINE-CONSTANT (? offset)))
 	  (REGISTER (? source)))
   (let ((source (standard-source! source))
 	(address (standard-source! address)))
@@ -308,7 +390,8 @@ case.
 (define-rule statement
   ;; convert char object to ASCII byte and store it in memory
   ;; register + byte offset <- contents of register (clear top bits)
-  (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
+  (ASSIGN (BYTE-OFFSET (REGISTER (? address))
+		       (MACHINE-CONSTANT (? offset)))
 	  (CHAR->ASCII (REGISTER (? source))))
   (let ((source (standard-source! source))
 	(address (standard-source! address)))
