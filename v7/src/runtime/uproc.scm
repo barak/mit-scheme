@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uproc.scm,v 1.7 1995/01/12 17:02:26 adams Exp $
+$Id: uproc.scm,v 1.8 1995/02/14 01:06:18 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -299,9 +299,12 @@ MIT in each case. |#
        (%entity-is-apply-hook? object)))
 
 (define-integrable (%entity-is-apply-hook? object)
-  (let ((extra (entity-extra object)))
-    (and (object-type? (ucode-type hunk3) extra)
-	 (eq? apply-hook-tag (system-hunk3-cxr0 extra)))))
+  (%entity-extra/apply-hook? (entity-extra object)))
+
+(define (%entity-extra/apply-hook? extra)
+  ;; Ziggy cares about this one.
+  (and (object-type? (ucode-type hunk3) extra)
+       (eq? apply-hook-tag (system-hunk3-cxr0 extra))))
 
 (define apply-hook-tag
   "apply-hook-tag")
