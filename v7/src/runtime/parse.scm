@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.56 2004/11/19 07:14:37 cph Exp $
+$Id: parse.scm,v 14.57 2004/11/19 18:15:01 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1997,1998,1999 Massachusetts Institute of Technology
@@ -494,7 +494,7 @@ USA.
 
 (define lambda-optional-tag (object-new-type (ucode-type constant) 3))
 (define lambda-rest-tag (object-new-type (ucode-type constant) 4))
-(define lambda-aux-tag '|#!aux|)
+(define lambda-aux-tag (object-new-type (ucode-type constant) 8))
 (define lambda-key-tag (object-new-type (ucode-type constant) 5))
 
 (define (handler:unhash port db ctx char1 char2)
