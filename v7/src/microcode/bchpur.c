@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchpur.c,v 9.69 2000/12/05 21:23:42 cph Exp $
+$Id: bchpur.c,v 9.70 2000/12/05 21:34:56 cph Exp $
 
 Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
@@ -177,11 +177,6 @@ DEFUN (purify, (object, pure_p), SCHEME_OBJECT object AND Boolean pure_p)
       = (gc_loop (scan_start, (&free_buffer_ptr), (&new_free_const),
 		  Constant_Top, NORMAL_GC, 1));
   }
-
-  if (result != free_buffer_ptr)
-    gc_death (TERM_BROKEN_HEART, "purify: constant copy ended too early",
-	      result, free_buffer_ptr);
-    /*NOTREACHED*/
 
   length = (new_free_const + 1 - old_free_const);
   (*free_buffer_ptr++) = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));

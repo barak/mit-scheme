@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.97 2000/12/05 21:23:42 cph Exp $
+$Id: bchmmg.c,v 9.98 2000/12/05 21:34:56 cph Exp $
 
 Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
@@ -38,13 +38,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #ifdef __WIN32__
 #  include "nt.h"
 #  define SUB_DIRECTORY_DELIMITER '\\'
-#endif
-#ifndef F_OK
-#define F_OK 0
-#define X_OK 1
-#define W_OK 2
-#define R_OK 4
-#endif
 #endif
 
 #ifdef __OS2__
