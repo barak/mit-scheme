@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/compiler.pkg,v 1.1 1992/02/13 03:42:37 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/compiler.pkg,v 1.2 1992/02/13 03:50:24 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/comp.pkg,v 1.32 1991/05/06 23:09:24 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -586,9 +586,10 @@ MIT in each case. |#
 	 "back/asmmac"			;Macros for hairy syntax
 	 "machines/i386/insmac"		;Macros for hairy syntax
 	 "machines/i386/inerly"		;Early binding version
-	 "machines/i386/instr1"		;i386 instruction utilities
-	 "machines/i386/instr2"		;i386 instructions
-	 "machines/i386/instrf"		;  "        "
+	 "machines/i386/insutl"		;i386 instruction utilities
+	 "machines/i386/instr1"		;i386 instructions
+	 "machines/i386/instr2"		;  "        "
+	 "machines/i386/instrf"		;i387/i486 fp instructions
 	 )
   (parent (compiler))
   (export (compiler)
