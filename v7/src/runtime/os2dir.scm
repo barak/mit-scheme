@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: os2dir.scm,v 1.3 1994/12/19 21:08:45 cph Exp $
+$Id: os2dir.scm,v 1.4 1995/01/06 00:47:24 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -64,13 +64,4 @@ MIT in each case. |#
 	      result))))))
 
 (define (pathname<? x y)
-  (or (component<? (pathname-name x) (pathname-name y))
-      (and (equal? (pathname-name x) (pathname-name y))
-	   (component<? (pathname-type x) (pathname-type y)))))
-
-(define (component<? x y)
-  (and y
-       (or (not x)
-	   (and (string? y)
-		(or (not (string? x))
-		    (string<? x y))))))
+  (string-ci<? (file-namestring x) (file-namestring y)))
