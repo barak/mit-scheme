@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.61 1992/02/04 04:03:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.62 1992/04/02 08:14:57 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -173,11 +173,11 @@
 		 (list (substring pattern start end))))))
 	pattern)))
 
-
 (define (delete-match)
-  (let ((start (re-match-start 0)))
-    (delete-string start (re-match-end 0))
-    start))
+  (let ((group (re-match-group))
+	(start (re-match-start-index 0)))
+    (group-delete! group start (re-match-end-index 0))
+    (make-mark group start)))
 
 (define (re-search-buffer-forward pattern case-fold-search syntax-table
 				  group start end)
