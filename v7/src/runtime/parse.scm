@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.30 1999/01/02 06:11:34 cph Exp $
+$Id: parse.scm,v 14.31 1999/03/15 03:28:25 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -336,8 +336,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (intern-string! string)))
 
 (define (parse-number string)
-  (string->number string
-		  (if (memv *parser-radix* '(2 8 10 16)) *parser-radix* 10)))
+  (let ((radix (if (memv *parser-radix* '(2 8 10 16)) *parser-radix* 10)))
+    (if (fix:= radix 10)
+	(string->number string 10)
+	(or (string->number string radix)
+	    (begin
+	      (if (string->number string 10)
+		  (parse-error
+		   "Radix-10 number syntax with non-standard radix:"
+		   string))
+	      #f)))))
 
 (define *parser-canonicalize-symbols?*)
 
