@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.42 1989/09/25 17:47:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.43 1990/11/21 22:38:40 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -70,6 +70,7 @@ MIT in each case. */
 
 /* Some utility imports and definitions. */
 
+#include "ansidecl.h"
 #include <stdio.h>
 
 /* For macros toupper, isalpha, etc,
@@ -87,9 +88,9 @@ typedef int boolean;
 #ifdef vms
 /* VMS version 3 has no void. */
 /* #define void */
-#define NORMAL_EXIT() return
+#  define NORMAL_EXIT() return
 #else
-#define NORMAL_EXIT() exit(0)
+#  define NORMAL_EXIT() exit(0)
 #endif
 
 /* The 4.2 bsd vax compiler has a bug which forces the following. */
@@ -97,8 +98,8 @@ typedef int boolean;
 #define pseudo_void int
 
 char *
-xmalloc (length)
-     int length;
+DEFUN (xmalloc, (length),
+       int length)
 {
   char * result;
   extern char * malloc ();
@@ -113,9 +114,9 @@ xmalloc (length)
 }
 
 char *
-xrealloc (ptr, length)
-     char * ptr;
-     int length;
+DEFUN (xrealloc, (ptr, length),
+       char * ptr AND
+       int length)
 {
   char * result;
   extern char * realloc ();
@@ -138,9 +139,9 @@ xrealloc (ptr, length)
 }
 
 #ifdef DEBUGGING
-#define dprintf(one, two) fprintf(stderr, one, two)
+#  define dprintf(one, two) fprintf(stderr, one, two)
 #else
-#define dprintf(one, two)
+#  define dprintf(one, two)
 #endif
 
 /* Maximum number of primitives that can be handled. */
@@ -208,38 +209,43 @@ char inexistent_error_string [] =
 
 /* forward references */
 
-TOKEN_PROCESSOR scan ();
-boolean whitespace ();
-int compare_descriptors ();
-int read_index ();
-int strcmp_ci ();
-pseudo_void create_alternate_entry ();
-pseudo_void create_builtin_entry ();
-pseudo_void create_normal_entry ();
-void dump ();
-void grow_data_buffer ();
-void grow_token_buffer ();
-void initialize_builtin ();
-void initialize_data_buffer ();
-void initialize_default ();
-void initialize_external ();
-void initialize_token_buffer ();
-void mergesort ();
-void print_procedure ();
-void print_primitives ();
-void print_spaces ();
-void print_entry ();
-void process ();
-void process_argument ();
-void scan_to_token_start ();
-void skip_token ();
-void sort ();
-void update_from_entry ();
+TOKEN_PROCESSOR EXFUN (scan, (void));
+boolean EXFUN (whitespace, (int c));
+int EXFUN (compare_descriptors, (struct descriptor * d1, struct descriptor * d2));
+int EXFUN (read_index, (char * arg, char * identification));
+int EXFUN (strcmp_ci, (char * s1, char * s2));
+pseudo_void EXFUN (create_alternate_entry, (void));
+pseudo_void EXFUN (create_builtin_entry, (void));
+pseudo_void EXFUN (create_normal_entry, (void));
+void EXFUN (dump, (boolean check));
+void EXFUN (grow_data_buffer, (void));
+void EXFUN (grow_token_buffer, (void));
+void EXFUN (initialize_builtin, (char * arg));
+void EXFUN (initialize_data_buffer, (void));
+void EXFUN (initialize_default, (void));
+void EXFUN (initialize_external, (void));
+void EXFUN (initialize_token_buffer, (void));
+void EXFUN (mergesort, (int low, int high,
+			struct descriptor ** array,
+			struct descriptor ** temp_array));
+void EXFUN (print_procedure, (FILE * output,
+			      struct descriptor * primitive_descriptor,
+			      char * error_string));
+void EXFUN (print_primitives, (FILE * output, int limit));
+void EXFUN (print_spaces, (FILE * output, int how_many));
+void EXFUN (print_entry, (FILE * output, int index,
+			  struct descriptor * primitive_descriptor));
+void EXFUN (process, (void));
+void EXFUN (process_argument, (char * fn));
+void EXFUN (scan_to_token_start, (void));
+void EXFUN (skip_token, (void));
+void EXFUN (sort, (void));
+void EXFUN (update_from_entry, (struct descriptor * primitive_descriptor));
 
 void
-main (argc, argv)
-     int argc;
-     char * argv [];
+DEFUN (main, (argc, argv),
+       int argc AND
+       char **argv)
 {
   name = argv[0];
 
@@ -343,8 +349,8 @@ main (argc, argv)
 }
 
 void
-process_argument (fn)
-    char * fn;
+DEFUN (process_argument, (fn),
+       char * fn)
 {
   file_name = fn;
   if ((strcmp ("-", file_name)) == 0)
@@ -372,7 +378,7 @@ process_argument (fn)
 /* Search for tokens and when found, create primitive entries. */
 
 void
-process ()
+DEFUN_VOID (process)
 {
   TOKEN_PROCESSOR processor;
 
@@ -393,7 +399,7 @@ process ()
  */
 
 TOKEN_PROCESSOR
-scan ()
+DEFUN_VOID (scan)
 {
   register int c;
   char compare_buffer [1024];
@@ -470,8 +476,8 @@ scan ()
 /* Output Routines */
 
 void
-dump (check)
-     boolean check;
+DEFUN (dump, (check),
+       boolean check)
 {
   register int max_index;
   register int count;
@@ -520,10 +526,10 @@ dump (check)
 }
 
 void
-print_procedure (output, primitive_descriptor, error_string)
-     FILE * output;
-     struct descriptor * primitive_descriptor;
-     char * error_string;
+DEFUN (print_procedure, (output, primitive_descriptor, error_string),
+       FILE * output AND
+       struct descriptor * primitive_descriptor AND
+       char * error_string)
 {
   fprintf (output, "SCHEME_OBJECT\n");
   fprintf (output, "%s ()\n", (primitive_descriptor -> c_name));
@@ -538,9 +544,9 @@ print_procedure (output, primitive_descriptor, error_string)
 }
 
 void
-print_primitives (output, limit)
-     FILE * output;
-     register int limit;
+DEFUN (print_primitives, (output, limit),
+       FILE * output AND
+       register int limit)
 {
   register int last;
   register int count;
@@ -602,10 +608,10 @@ print_primitives (output, limit)
 }
 
 void
-print_entry (output, index, primitive_descriptor)
-     FILE * output;
-     int index;
-     struct descriptor * primitive_descriptor;
+DEFUN (print_entry, (output, index, primitive_descriptor),
+       FILE * output AND
+       int index AND
+       struct descriptor * primitive_descriptor)
 {
   int index_length;
 
@@ -632,9 +638,9 @@ print_entry (output, index, primitive_descriptor)
 }
 
 void
-print_spaces (output, how_many)
-     FILE * output;
-     register int how_many;
+DEFUN (print_spaces, (output, how_many),
+       FILE * output AND
+       register int how_many)
 {
   while ((--how_many) >= 0)
     putc (' ', output);
@@ -647,7 +653,7 @@ char * token_buffer;
 int token_buffer_length;
 
 void
-initialize_token_buffer ()
+DEFUN_VOID (initialize_token_buffer)
 {
   token_buffer_length = 80;
   token_buffer = (xmalloc (token_buffer_length));
@@ -655,7 +661,7 @@ initialize_token_buffer ()
 }
 
 void
-grow_token_buffer ()
+DEFUN_VOID (grow_token_buffer)
 {
   token_buffer_length *= 2;
   token_buffer = (xrealloc (token_buffer, token_buffer_length));
@@ -723,10 +729,10 @@ enum tokentype
   };
 
 void
-copy_token (target, size, token_type)
-     char ** target;
-     int * size;
-     register enum tokentype token_type;
+DEFUN (copy_token, (target, size, token_type),
+       char ** target AND
+       int * size AND
+       register enum tokentype token_type)
 {
   register int c;
   TOKEN_BUFFER_DECLS ();
@@ -778,8 +784,8 @@ copy_token (target, size, token_type)
 }
 
 boolean
-whitespace (c)
-     register int c;
+DEFUN (whitespace, (c),
+       register int c)
 {
   switch (c)
     {
@@ -794,7 +800,7 @@ whitespace (c)
 }
 
 void
-scan_to_token_start ()
+DEFUN_VOID (scan_to_token_start)
 {
   register int c;
 
@@ -804,7 +810,7 @@ scan_to_token_start ()
 }
 
 void
-skip_token ()
+DEFUN_VOID (skip_token)
 {
   register int c;
 
@@ -814,7 +820,7 @@ skip_token ()
 }
 
 void
-initialize_data_buffer ()
+DEFUN_VOID (initialize_data_buffer)
 {
   buffer_length = 0x200;
   buffer_index = 0;
@@ -836,13 +842,14 @@ initialize_data_buffer ()
 }
 
 void
-grow_data_buffer ()
+DEFUN_VOID (grow_data_buffer)
 {
   char * old_data_buffer = ((char *) data_buffer);
   buffer_length *= 2;
   data_buffer =
     ((struct descriptor (*) [])
-     (xrealloc (data_buffer, (buffer_length * (sizeof (struct descriptor))))));
+     (xrealloc (((char *) data_buffer),
+		(buffer_length * (sizeof (struct descriptor))))));
   {
     register struct descriptor ** scan = result_buffer;
     register struct descriptor ** end = (result_buffer + buffer_index);
@@ -855,7 +862,7 @@ grow_data_buffer ()
   }
   result_buffer =
     ((struct descriptor **)
-     (xrealloc (result_buffer,
+     (xrealloc (((char *) result_buffer),
 		(buffer_length * (sizeof (struct descriptor *))))));
   return;
 }
@@ -914,7 +921,7 @@ grow_data_buffer ()
 }
 
 void
-initialize_default ()
+DEFUN_VOID (initialize_default)
 {
   built_in_p = FALSE;
   (token_array [0]) = (& (default_token [0]));
@@ -929,7 +936,7 @@ initialize_default ()
 }
 
 void
-initialize_external ()
+DEFUN_VOID (initialize_external)
 {
   built_in_p = FALSE;
   (token_array [0]) = (& (external_token [0]));
@@ -942,8 +949,8 @@ initialize_external ()
 }
 
 void
-initialize_builtin (arg)
-     char * arg;
+DEFUN (initialize_builtin, (arg),
+       char * arg)
 {
   register int length;
   register int index;
@@ -965,8 +972,8 @@ initialize_builtin (arg)
 }
 
 void
-update_from_entry (primitive_descriptor)
-     register struct descriptor * primitive_descriptor;
+DEFUN (update_from_entry, (primitive_descriptor),
+       register struct descriptor * primitive_descriptor)
 {
   register int temp;
 
@@ -994,7 +1001,7 @@ update_from_entry (primitive_descriptor)
 }
 
 pseudo_void
-create_normal_entry ()
+DEFUN_VOID (create_normal_entry)
 {
   MAYBE_GROW_BUFFER ();
   COPY_C_NAME ((* data_buffer) [buffer_index]);
@@ -1008,7 +1015,7 @@ create_normal_entry ()
 }
 
 pseudo_void
-create_alternate_entry ()
+DEFUN_VOID (create_alternate_entry)
 {
   MAYBE_GROW_BUFFER ();
   COPY_SCHEME_NAME ((* data_buffer) [buffer_index]);
@@ -1024,7 +1031,7 @@ create_alternate_entry ()
 }
 
 pseudo_void
-create_builtin_entry ()
+DEFUN_VOID (create_builtin_entry)
 {
   struct descriptor desc;
   register int length;
@@ -1070,9 +1077,9 @@ create_builtin_entry ()
 }
 
 int
-read_index (arg, identification)
-     char * arg;
-     char * identification;
+DEFUN (read_index, (arg, identification),
+       char * arg AND
+       char * identification)
 {
   int result;
 
@@ -1092,7 +1099,7 @@ read_index (arg, identification)
 /* Sorting */
 
 void
-sort ()
+DEFUN_VOID (sort)
 {
   register struct descriptor ** temp_buffer;
   register int count;
@@ -1110,11 +1117,11 @@ sort ()
 }
 
 void
-mergesort (low, high, array, temp_array)
-     int low;
-     register int high;
-     register struct descriptor ** array;
-     register struct descriptor ** temp_array;
+DEFUN (mergesort, (low, high, array, temp_array),
+       int low AND
+       register int high AND
+       register struct descriptor ** array AND
+       register struct descriptor ** temp_array)
 {
   register int index;
   register int low1;
@@ -1202,9 +1209,9 @@ mergesort (low, high, array, temp_array)
 }
 
 int
-compare_descriptors (d1, d2)
-     struct descriptor * d1;
-     struct descriptor * d2;
+DEFUN (compare_descriptors, (d1, d2),
+       struct descriptor * d1 AND
+       struct descriptor * d2)
 {
   int value;
 
@@ -1220,9 +1227,9 @@ compare_descriptors (d1, d2)
 }
 
 int
-strcmp_ci (s1, s2)
-     register char * s1;
-     register char * s2;
+DEFUN (strcmp_ci, (s1, s2),
+       register char * s1 AND
+       register char * s2)
 {
   int length1 = (strlen (s1));
   int length2 = (strlen (s2));
