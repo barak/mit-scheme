@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: extern.h,v 9.48 1992/09/18 16:54:40 jinx Exp $
+$Id: extern.h,v 9.49 1992/09/26 02:54:58 cph Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -93,6 +93,7 @@ extern SCHEME_OBJECT
  * MemTop,		/* Top of heap space available */
  * Ext_Stack_Pointer,	/* Next available slot in control stack */
  * Stack_Top,		/* Top of control stack */
+ * Stack_Guard,		/* Guard area at end of stack */
  * Free_Stacklets,	/* Free list of stacklets */
  * Constant_Space,	/* Bottom of constant+pure space */
  * Free_Constant,	/* Next free cell in constant+pure area */

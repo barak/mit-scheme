@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: i386.h,v 1.18 1992/09/18 02:03:13 jinx Exp $
+$Id: i386.h,v 1.19 1992/09/26 02:54:51 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -218,10 +218,7 @@ typedef unsigned short format_word;
 
 /* See the encodings above. */
 
-#define ENTRY_SKIPPED_CHECK_OFFSET 		4
 #define ENTRY_PREFIX_LENGTH			3
-
-#define CLOSURE_SKIPPED_CHECK_OFFSET 		11
 
 #  define COMPILED_CLOSURE_ENTRY_SIZE					\
   ((2 * (sizeof (format_word))) + 6)

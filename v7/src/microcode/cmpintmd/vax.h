@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/vax.h,v 1.5 1992/02/12 15:27:27 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/vax.h,v 1.6 1992/09/26 02:54:54 cph Exp $
 
 Copyright (c) 1991-1992 Massachusetts Institute of Technology
 
@@ -83,12 +83,6 @@ typedef unsigned short format_word;
 
 #define PC_ZERO_BITS                    0
 
-/* Skip over this many BYTES to bypass the GC check code (ordinary
-procedures and continuations differ from closures) */
-
-#define ENTRY_SKIPPED_CHECK_OFFSET 	5
-#define CLOSURE_SKIPPED_CHECK_OFFSET 	12
-
 /* The length of the GC recovery code that precedes an entry.
    On the Vax a "movl s^code,r0; jsb b^n(r10)" sequence.
  */

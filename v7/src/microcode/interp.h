@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.35 1992/07/29 19:54:54 cph Exp $
+$Id: interp.h,v 9.36 1992/09/26 02:55:01 cph Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -90,7 +90,6 @@ extern int EXFUN (abort_to_interpreter_argument, (void));
 #define Val		Regs[REGBLOCK_VAL]
 #define Expression	Regs[REGBLOCK_EXPR]
 #define Return		Regs[REGBLOCK_RETURN]
-#define Stack_Guard	((SCHEME_OBJECT *) (Regs[REGBLOCK_STACK_GUARD]))
 
 /* Internal_Will_Push is in stack.h. */
 

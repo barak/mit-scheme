@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gc.h,v 9.31 1992/07/29 19:54:53 cph Exp $
+$Id: gc.h,v 9.32 1992/09/26 02:54:59 cph Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -104,29 +104,30 @@ MIT in each case. */
 
 /* Overflow detection, various cases */
 
-#define GC_ENABLED_P()		(INTERRUPT_ENABLED_P(INT_GC))
+#define GC_ENABLED_P() (INTERRUPT_ENABLED_P (INT_GC))
 
 #define GC_Check(Amount)						\
-(((Amount + Free) >= MemTop) && (GC_ENABLED_P()))
+  (((Amount + Free) >= MemTop) && (GC_ENABLED_P ()))
 
 #define Space_Before_GC()						\
-((GC_ENABLED_P()) ?							\
- ((Free <= MemTop) ? (MemTop - Free) : 0) :				\
- (Heap_Top - Free))
+  ((GC_ENABLED_P ())							\
+   ? ((Free <= MemTop) ? (MemTop - Free) : 0)				\
+   : (Heap_Top - Free))
 
 #define Request_GC(Amount)						\
 {									\
-  REQUEST_INTERRUPT(INT_GC);						\
+  REQUEST_INTERRUPT (INT_GC);						\
   GC_Space_Needed = Amount;						\
 }
 
-#define SET_MEMTOP(Addr)						\
+#define SET_MEMTOP(addr)						\
 {									\
-  MemTop = Addr;							\
-  COMPILER_SET_MEMTOP();						\
+  MemTop = (addr);							\
+  COMPILER_SETUP_INTERRUPT ();						\
 }
 
-#define Set_Stack_Guard(Addr)						\
+#define SET_STACK_GUARD(addr)						\
 {									\
-  (Regs[REGBLOCK_STACK_GUARD]) = ((SCHEME_OBJECT) (Addr));		\
+  Stack_Guard = (addr);							\
+  COMPILER_SETUP_INTERRUPT ();						\
 }

@@ -1,6 +1,6 @@
 /* -*- C -*-
 
-$Id: alpha.h,v 1.2 1992/08/29 12:53:22 jinx Exp $
+$Id: alpha.h,v 1.3 1992/09/26 02:54:49 cph Exp $
 
 Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
 
@@ -234,10 +234,6 @@ Code sequence 5 (call interrupt handler):
 
 /* The length of code sequence 1, above */
 #define ENTRY_PREFIX_LENGTH		(2 INSTRUCTIONS)
-/* Skip over this many BYTES to bypass the GC check code (ordinary
-   procedures and continuations differ from closures) */
-#define ENTRY_SKIPPED_CHECK_OFFSET 	(3 INSTRUCTIONS) /* Code Seq 2 */
-#define CLOSURE_SKIPPED_CHECK_OFFSET 	(6 INSTRUCTIONS) /* Code Seq 3 */
 
 /* Compiled closures */
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: mips.h,v 1.15 1992/08/29 13:30:29 jinx Exp $
+$Id: mips.h,v 1.16 1992/09/26 02:54:53 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -197,12 +197,6 @@ typedef unsigned short format_word;
 #define COMP_REG_LINKAGE		31
 
 /* Interrupt/GC polling. */
-
-/* Skip over this many BYTES to bypass the GC check code (ordinary
-procedures and continuations differ from closures) */
-
-#define ENTRY_SKIPPED_CHECK_OFFSET 	12
-#define CLOSURE_SKIPPED_CHECK_OFFSET 	28
 
 /* The length of the GC recovery code that precedes an entry.
    On the MIPS a "addi, jalr, addi" instruction sequence.

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: stack.h,v 9.32 1992/09/18 05:53:14 jinx Exp $
+$Id: stack.h,v 9.33 1992/09/26 02:55:03 cph Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -59,7 +59,7 @@ extern void EXFUN (dos386_stack_reset, (void));
   {									\
     Microcode_Termination(TERM_STACK_ALLOCATION_FAILED);		\
   }									\
-  Set_Stack_Guard (Free + STACKLET_HEADER_SIZE);			\
+  SET_STACK_GUARD (Free + STACKLET_HEADER_SIZE);			\
   *Free =								\
     (MAKE_OBJECT (TC_MANIFEST_VECTOR, (Default_Stacklet_Size - 1)));	\
   Free += Default_Stacklet_Size;					\
@@ -140,7 +140,7 @@ extern void EXFUN (dos386_stack_reset, (void));
   SCHEME_OBJECT Our_Where;						\
 									\
   Our_Where = (Where);							\
-  Set_Stack_Guard (MEMORY_LOC (Our_Where, STACKLET_HEADER_SIZE));	\
+  SET_STACK_GUARD (MEMORY_LOC (Our_Where, STACKLET_HEADER_SIZE));	\
   Stack_Pointer = Previous_Stack_Pointer(Our_Where);			\
 }
 
@@ -261,7 +261,7 @@ Pushed()
 	MEMORY_SET (Older_Stacklet, STACKLET_REUSE_FLAG, SHARP_F);	\
       }									\
       temp = Free;							\
-      Set_Stack_Guard (& (temp[STACKLET_HEADER_SIZE]));			\
+      SET_STACK_GUARD (& (temp[STACKLET_HEADER_SIZE]));			\
       temp[STACKLET_LENGTH] = Old_Stacklet_Top[STACKLET_LENGTH];	\
       Unused_Length =							\
 	OBJECT_DATUM (Old_Stacklet_Top[STACKLET_UNUSED_LENGTH]) +	\

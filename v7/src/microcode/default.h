@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.38 1992/02/10 13:52:06 jinx Exp $
+$Id: default.h,v 9.39 1992/09/26 02:54:57 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -88,7 +88,7 @@ do									\
 {									\
   Stack_Top = Highest_Allocated_Address;				\
   Stack_Pointer = Stack_Top;						\
-  Set_Stack_Guard (Absolute_Stack_Base + STACK_GUARD_SIZE);		\
+  SET_STACK_GUARD (Absolute_Stack_Base + STACK_GUARD_SIZE);		\
 } while (0)
 #endif
 

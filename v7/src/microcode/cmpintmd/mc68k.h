@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: mc68k.h,v 1.31 1992/09/25 01:19:03 cph Exp $
+$Id: mc68k.h,v 1.32 1992/09/26 02:54:52 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -84,12 +84,6 @@ typedef unsigned short format_word;
 */
 
 #define PC_ZERO_BITS                    1
-
-/* Skip over this many BYTES to bypass the GC check code (ordinary
-procedures and continuations differ from closures) */
-
-#define ENTRY_SKIPPED_CHECK_OFFSET 	4
-#define CLOSURE_SKIPPED_CHECK_OFFSET 	10
 
 /* The length of the GC recovery code that precedes an entry.
    On the 68K a "jsr n(a6)" instruction.

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: storage.c,v 9.51 1992/09/11 21:58:44 cph Exp $
+$Id: storage.c,v 9.52 1992/09/26 02:55:04 cph Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -49,6 +49,7 @@ SCHEME_OBJECT
  * Free,		/* Next free word in storage */
  * Ext_Stack_Pointer,	/* Next available slot in control stack */
  * Stack_Top,		/* Top of control stack */
+ * Stack_Guard,		/* Guard area at end of stack */
  * Free_Stacklets,	/* Free list of stacklets */
  * Constant_Space,	/* Bottom of constant+pure space */
  * Free_Constant,	/* Next free cell in constant+pure area */

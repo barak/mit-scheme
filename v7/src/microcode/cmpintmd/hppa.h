@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.33 1992/05/23 01:18:45 jinx Exp $
+$Id: hppa.h,v 1.34 1992/09/26 02:54:50 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -416,12 +416,6 @@ DEFUN_VOID (flush_i_cache_initialize)
 #endif	/* IN_CMPINT_C */
 
 /* Interrupt/GC polling. */
-
-/* Skip over this many BYTES to bypass the GC check code (ordinary
-procedures and continuations differ from closures) */
-
-#define ENTRY_SKIPPED_CHECK_OFFSET 	4
-#define CLOSURE_SKIPPED_CHECK_OFFSET 	16
 
 /* The length of the GC recovery code that precedes an entry.
    On the HP-PA a "ble, ldi" instruction sequence.

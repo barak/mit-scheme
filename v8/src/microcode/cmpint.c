@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.49 1992/09/11 02:04:05 cph Exp $
+$Id: cmpint.c,v 1.50 1992/09/26 02:54:55 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -40,7 +40,6 @@ MIT in each case. */
  *
  */
 
-#ifdef HAS_COMPILER_SUPPORT
 /*
  * Procedures in this file belong to the following categories:
  *
@@ -98,6 +97,8 @@ MIT in each case. */
 #include "prim.h"	/* Primitive_Procedure_Table, etc. */
 #define IN_CMPINT_C
 #include "cmpgc.h"      /* Compiled code object relocation */
+
+#ifdef HAS_COMPILER_SUPPORT
 
 #ifndef FLUSH_I_CACHE_REGION
 #  define FLUSH_I_CACHE_REGION(addr, nwords) NOP()
@@ -1335,116 +1336,76 @@ DEFUN (comutil_operator_4_0_trap,
 }
 
 /* INTERRUPT/GC from Scheme
-   The next four procedures are called from compiled code at the start
-   (respectively) of a closure, continuation, interpreter compatible
-   procedure, or ordinary (not closed) procedure if an interrupt has
-   been detected.  They return to the interpreter if the interrupt is
-   invalid after saving the state necessary to restart the compiled
-   code.
 
-   The code that handles RC_COMP_INTERRUPT_RESTART in interp.c will
+   These procedures are called from compiled code at the start
+   (respectively) of a procedure or continuation if an interrupt has
+   been detected.  They must not be called unless there is an
+   interrupt to be serviced.
+
+   The code that handles RC_COMP_INTERRUPT_RESTART in "interp.c" will
    return control to comp_interrupt_restart (below).  This assumes
-   that the Scheme stack contains a compiled code entry address (start
-   of continuation, procedure, etc.).  The Expression register saved
-   with the continuation is a piece of state that will be returned to
-   Val and Env (both) upon return.
-*/
+   that the Scheme stack contains a compiled code entry address
+   (start of continuation, procedure, etc.).  The Expression register
+   saved with the continuation is a piece of state that will be
+   returned to Val and Env (both) upon return.
 
-#define GC_DESIRED_P()		(Free >= MemTop)
 
-#define TEST_GC_NEEDED()						\
+  */
+
+#define MAYBE_REQUEST_INTERRUPTS()					\
 {									\
-  if (GC_DESIRED_P())							\
-  {									\
-    Request_GC(Free-MemTop);						\
-  }									\
+  if (Free >= MemTop)							\
+    Request_GC (Free - MemTop);						\
+  if (Stack_Pointer <= Stack_Guard)					\
+    REQUEST_INTERRUPT (INT_Stack_Overflow);				\
 }
-
-/* Called with no arguments, closure at top of (Scheme) stack.
-   If the interrupt is disabled, the closure is re-invoked.
- */
-
-SCHEME_UTILITY struct utility_result
-DEFUN (comutil_interrupt_closure,
-       (ignore_1, ignore_2, ignore_3, ignore_4),
-       long ignore_1 AND long ignore_2 AND long ignore_3 AND long ignore_4)
-{
-  TEST_GC_NEEDED ();
-  Stack_Check (Stack_Pointer);
-  if ((PENDING_INTERRUPTS()) == 0)
-  {
-    SCHEME_OBJECT entry_point;
-
-    EXTRACT_CLOSURE_ENTRY_ADDRESS (entry_point,
-				   (OBJECT_ADDRESS (STACK_REF (0))));
-    ADJUST_CLOSURE_AT_CALL (entry_point, (STACK_REF (0)));
-    RETURN_TO_SCHEME (((instruction *) entry_point) +
-		      CLOSURE_SKIPPED_CHECK_OFFSET);
-  }
-  else
-  {
-    /* Return to interpreter to handle interrupt */
-    
-    STACK_PUSH (SHARP_F);
-    Store_Expression (SHARP_F);
-    Store_Return (RC_COMP_INTERRUPT_RESTART);
-    Save_Cont ();
-    RETURN_TO_C (PRIM_INTERRUPT);
-  }
-}
-
-/* State is the live data; no entry point on the stack.
- */
 
 static struct utility_result
-DEFUN (compiler_interrupt_common,
-       (entry_point, offset, state),
-       instruction *entry_point AND
-       long offset AND
+DEFUN (compiler_interrupt_common, (entry_point, state),
+       instruction * entry_point AND
        SCHEME_OBJECT state)
 {
-  TEST_GC_NEEDED ();
-  Stack_Check (Stack_Pointer);
-  if ((PENDING_INTERRUPTS()) == 0)
-  {
-    Store_Env (state);
-    Val = state;
-    RETURN_TO_SCHEME (entry_point + offset);
-  }
-  else
-  {
+  MAYBE_REQUEST_INTERRUPTS ();
+  if (entry_point != 0)
     STACK_PUSH (ENTRY_TO_OBJECT (entry_point));
-    STACK_PUSH (state);
-    Store_Expression (SHARP_F);
-    Store_Return (RC_COMP_INTERRUPT_RESTART);
-    Save_Cont ();
-    RETURN_TO_C (PRIM_INTERRUPT);
-  }
+  STACK_PUSH (state);
+  Store_Expression (SHARP_F);
+  Store_Return (RC_COMP_INTERRUPT_RESTART);
+  Save_Cont ();
+  RETURN_TO_C (PRIM_INTERRUPT);
 }
 
 SCHEME_UTILITY struct utility_result
-DEFUN (comutil_interrupt_dlink,
-       (entry_point, dlink, ignore_3, ignore_4),
-       instruction * entry_point
-       AND SCHEME_OBJECT * dlink
-       AND long ignore_3 AND long ignore_4)
+DEFUN (comutil_interrupt_closure, (ignore_1, ignore_2, ignore_3, ignore_4),
+       long ignore_1 AND
+       long ignore_2 AND
+       long ignore_3 AND
+       long ignore_4)
+{
+  return (compiler_interrupt_common (0, SHARP_F));
+}
+
+SCHEME_UTILITY struct utility_result
+DEFUN (comutil_interrupt_dlink, (entry_point, dlink, ignore_3, ignore_4),
+       instruction * entry_point AND
+       SCHEME_OBJECT * dlink AND
+       long ignore_3 AND
+       long ignore_4)
 {
   return
-    (compiler_interrupt_common(entry_point,
-			       ENTRY_SKIPPED_CHECK_OFFSET,
-			       MAKE_POINTER_OBJECT(TC_STACK_ENVIRONMENT,
-						   dlink)));
+    (compiler_interrupt_common
+     (entry_point, (MAKE_POINTER_OBJECT (TC_STACK_ENVIRONMENT, dlink))));
 }
 
 SCHEME_UTILITY struct utility_result
 DEFUN (comutil_interrupt_procedure,
        (entry_point, ignore_2, ignore_3, ignore_4),
-       instruction * entry_point
-       AND long ignore_2 AND long ignore_3 AND long ignore_4)
+       instruction * entry_point AND
+       long ignore_2 AND
+       long ignore_3 AND
+       long ignore_4)
 {
-  return (compiler_interrupt_common(entry_point,
-				    ENTRY_SKIPPED_CHECK_OFFSET,
-				    SHARP_F));
+  return (compiler_interrupt_common (entry_point, SHARP_F));
 }
 
 /* Val has live data, and there is no entry address on the stack */
@@ -1452,12 +1413,12 @@ DEFUN (comutil_interrupt_procedure,
 SCHEME_UTILITY struct utility_result
 DEFUN (comutil_interrupt_continuation,
        (return_address, ignore_2, ignore_3, ignore_4),
-       instruction * return_address
-       AND long ignore_2 AND long ignore_3 AND long ignore_4)
+       instruction * return_address AND
+       long ignore_2 AND
+       long ignore_3 AND
+       long ignore_4)
 {
-  return (compiler_interrupt_common (return_address,
-				     ENTRY_SKIPPED_CHECK_OFFSET,
-				     Val));
+  return (compiler_interrupt_common (return_address, Val));
 }
 
 /* Env has live data; no entry point on the stack */
@@ -1465,12 +1426,12 @@ DEFUN (comutil_interrupt_continuation,
 SCHEME_UTILITY struct utility_result
 DEFUN (comutil_interrupt_ic_procedure,
        (entry_point, ignore_2, ignore_3, ignore_4),
-       instruction * entry_point
-       AND long ignore_2 AND long ignore_3 AND long ignore_4)
+       instruction * entry_point AND
+       long ignore_2 AND
+       long ignore_3 AND
+       long ignore_4)
 {
-  return (compiler_interrupt_common (entry_point,
-				     ENTRY_SKIPPED_CHECK_OFFSET,
-				     (Fetch_Env())));
+  return (compiler_interrupt_common (entry_point, (Fetch_Env ())));
 }
 
 C_TO_SCHEME long

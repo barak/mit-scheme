@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: intrpt.h,v 1.10 1992/09/14 20:34:20 cph Exp $
+$Id: intrpt.h,v 1.11 1992/09/26 02:55:03 cph Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -33,18 +33,6 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 /* Interrupt manipulation utilities. */
-
-/* The interrupt control registers. */
-
-/* interrupts requesting */
-#define IntCode ((long) (Registers[REGBLOCK_INT_CODE]))
-#define set_IntCode(code)						\
-  (Registers[REGBLOCK_INT_CODE]) = ((SCHEME_OBJECT) (code))
-
-/* interrupts enabled */
-#define IntEnb ((long) (Registers[REGBLOCK_INT_MASK]))
-#define set_IntEnb(mask)						\
-  (Registers[REGBLOCK_INT_MASK]) = ((SCHEME_OBJECT) (mask))
 
 /* Interrupt bits -- scanned from LSB (1) to MSB (16) */
 
@@ -70,52 +58,57 @@ MIT in each case. */
 
 /* Utility macros. */
 
-#define PENDING_INTERRUPTS() (IntEnb & IntCode)
+#define PENDING_INTERRUPTS()						\
+  ((FETCH_INTERRUPT_MASK ()) & (FETCH_INTERRUPT_CODE ()))
 
-#define INTERRUPT_QUEUED_P(mask) ((IntCode & (mask)) != 0)
+#define INTERRUPT_QUEUED_P(mask) (((FETCH_INTERRUPT_CODE ()) & (mask)) != 0)
 
-#define INTERRUPT_ENABLED_P(mask) ((IntEnb & (mask)) != 0)
+#define INTERRUPT_ENABLED_P(mask) (((FETCH_INTERRUPT_MASK ()) & (mask)) != 0)
 
-#define INTERRUPT_PENDING_P(mask) (((PENDING_INTERRUPTS()) & (mask)) != 0)
+#define INTERRUPT_PENDING_P(mask) (((PENDING_INTERRUPTS ()) & (mask)) != 0)
 
 #define COMPILER_SETUP_INTERRUPT()					\
 {									\
-  (Regs [REGBLOCK_MEMTOP]) =						\
+  (Registers[REGBLOCK_MEMTOP]) =					\
     ((INTERRUPT_PENDING_P (INT_Mask))					\
      ? ((SCHEME_OBJECT) -1)						\
-     : ((SCHEME_OBJECT) MemTop));					\
+     : (INTERRUPT_ENABLED_P (INT_GC))					\
+     ? ((SCHEME_OBJECT) MemTop)						\
+     : ((SCHEME_OBJECT) Heap_Top));					\
+  (Registers[REGBLOCK_STACK_GUARD]) =					\
+    ((INTERRUPT_ENABLED_P (INT_Stack_Overflow))				\
+     ? ((SCHEME_OBJECT) Stack_Guard)					\
+     : ((SCHEME_OBJECT) Absolute_Stack_Base));				\
 }
 
-#define FETCH_INTERRUPT_MASK()		(IntEnb)
+#define FETCH_INTERRUPT_MASK() ((long) (Registers[REGBLOCK_INT_MASK]))
 
 #define SET_INTERRUPT_MASK(mask)					\
 {									\
-  set_IntEnb (mask);							\
+  (Registers[REGBLOCK_INT_MASK]) = ((SCHEME_OBJECT) (mask));		\
   COMPILER_SETUP_INTERRUPT ();						\
 }
 
-#define FETCH_INTERRUPT_CODE()		(IntCode)
-
-#define CLEAR_INTERRUPT(code)						\
-{									\
-  set_IntCode (IntCode &~ (code));					\
-  COMPILER_SETUP_INTERRUPT ();						\
-}
+#define FETCH_INTERRUPT_CODE() ((long) (Registers[REGBLOCK_INT_CODE]))
 
 #define REQUEST_INTERRUPT(code)						\
 {									\
-  set_IntCode (IntCode | (code));					\
+  (Registers[REGBLOCK_INT_CODE]) =					\
+    ((SCHEME_OBJECT) ((FETCH_INTERRUPT_CODE ()) | (code)));		\
+  COMPILER_SETUP_INTERRUPT ();						\
+}
+
+#define CLEAR_INTERRUPT(code)						\
+{									\
+  (Registers[REGBLOCK_INT_CODE]) =					\
+    ((SCHEME_OBJECT) ((FETCH_INTERRUPT_CODE ()) &~ (code)));		\
   COMPILER_SETUP_INTERRUPT ();						\
 }
 
 #define INITIALIZE_INTERRUPTS()						\
 {									\
-  set_IntEnb (0);							\
-  set_IntCode (0);							\
+  (Registers[REGBLOCK_INT_MASK]) = ((SCHEME_OBJECT) 0);			\
+  (Registers[REGBLOCK_INT_CODE]) = ((SCHEME_OBJECT) 0);			\
   SET_INTERRUPT_MASK (INT_Mask);					\
   CLEAR_INTERRUPT (INT_Mask);						\
 }
-
-/* Compatibility */
-
-#define COMPILER_SET_MEMTOP COMPILER_SETUP_INTERRUPT
