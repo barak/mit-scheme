@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.149 1994/08/04 04:36:47 cph Exp $
+;;;	$Id: dired.scm,v 1.150 1994/08/04 06:21:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -541,6 +541,7 @@ When renaming multiple or marked files, you specify a directory."
 
 (define (dired-create-file-operation operation)
   (lambda (lstart from to)
+    lstart
     (call-with-current-continuation
      (lambda (continuation)
        (bind-condition-handler (list condition-type:file-error
