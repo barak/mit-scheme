@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.127 1989/03/14 07:58:47 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.128 1989/03/15 19:09:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -51,7 +51,6 @@
   cursor-y
   pathname
   truename
-  writeable?
   alist
   local-bindings
   initializations
@@ -88,7 +87,6 @@ The buffer is guaranteed to be deselected at that time."
 	(vector-set! buffer buffer-index:cursor-y false)
 	(vector-set! buffer buffer-index:pathname false)
 	(vector-set! buffer buffer-index:truename false)
-	(vector-set! buffer buffer-index:writeable? true)
 	(vector-set! buffer buffer-index:alist '())
 	(vector-set! buffer buffer-index:local-bindings '())
 	(vector-set! buffer
@@ -267,19 +265,15 @@ The buffer is guaranteed to be deselected at that time."
 (define-integrable (buffer-read-only? buffer)
   (group-read-only? (buffer-group buffer)))
 
+(define-integrable (buffer-writeable? buffer)
+  (not (buffer-read-only? buffer)))
+
 (define (set-buffer-writeable! buffer)
   (set-group-writeable! (buffer-group buffer))
-  (vector-set! buffer buffer-index:writeable? true)
-  (buffer-modeline-event! buffer 'BUFFER-MODIFIABLE))
-
-(define (set-buffer-file-read-only! buffer)
-  (set-group-writeable! (buffer-group buffer))
-  (vector-set! buffer buffer-index:writeable? false)
   (buffer-modeline-event! buffer 'BUFFER-MODIFIABLE))
 
 (define (set-buffer-read-only! buffer)
   (set-group-read-only! (buffer-group buffer))
-  (vector-set! buffer buffer-index:writeable? false)
   (buffer-modeline-event! buffer 'BUFFER-MODIFIABLE))
 
 (define (with-read-only-defeated mark thunk)
