@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.15 1992/02/25 23:32:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.16 1992/02/27 00:44:50 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -151,53 +151,54 @@ MIT in each case. |#
     (let ((read-event
 	   (lambda (block?)
 	     (let ((event pending-event))
-	       (if event
-		   (begin
-		     (set! pending-event false)
-		     event)
-		   (let loop ()
-		     (if block?
-			 (channel-blocking channel)
-			 (channel-nonblocking channel))
-		     (let ((n
-			    (channel-select-then-read
-			     channel string 0 input-buffer-size)))
-		       (cond ((not n)
-			      (if block?
-				  (error "#F returned from blocking read"))
-			      false)
-			     ((fix:> n 0)
-			      (set! start 0)
-			      (set! end n)
-			      (if transcript-port
-				  (output-port/write-substring
-				   transcript-port string 0 n))
-			      (string-ref string 0))
-			     ((or (fix:= n event:process-output)
-				  (fix:= n event:process-status))
-			      n)
-			     ((fix:= n event:interrupt)
-			      (if inferior-thread-changes? n (loop)))
-			     ((fix:= n 0)
-			      (error "Reached EOF in keyboard input."))
-			     (else
-			      (error "Illegal return value:" n))))))))))
+	       (cond (event
+		      (set! pending-event false)
+		      event)
+		     ((fix:< start end)
+		      (string-ref string start))
+		     (else
+		      (let loop ()
+			(if block?
+			    (channel-blocking channel)
+			    (channel-nonblocking channel))
+			(let ((n
+			       (channel-select-then-read
+				channel string 0 input-buffer-size)))
+			  (cond ((not n)
+				 (if block?
+				     (error "#F returned from blocking read"))
+				 false)
+				((fix:> n 0)
+				 (set! start 0)
+				 (set! end n)
+				 (if transcript-port
+				     (output-port/write-substring
+				      transcript-port string 0 n))
+				 (string-ref string 0))
+				((or (fix:= n event:process-output)
+				     (fix:= n event:process-status))
+				 n)
+				((fix:= n event:interrupt)
+				 (if inferior-thread-changes? n (loop)))
+				((fix:= n 0)
+				 (error "Reached EOF in keyboard input."))
+				(else
+				 (error "Illegal return value:" n)))))))))))
       (let ((read-until-result
 	     (lambda (block?)
 	       (let loop ()
-		 (or (fix:< start end)
-		     (let ((event
-			    (if block?
-				(or (read-event false)
-				    (begin
-				      (update-screens! false)
-				      (read-event true)))
-				(read-event false))))
-		       (if (fix:fixnum? event)
-			   (begin
-			     (process-change-event event)
-			     (loop))
-			   event)))))))
+		 (let ((event
+			(if block?
+			    (or (read-event false)
+				(begin
+				  (update-screens! false)
+				  (read-event true)))
+			    (read-event false))))
+		   (if (fix:fixnum? event)
+		       (begin
+			 (process-change-event event)
+			 (loop))
+		       event))))))
 	(values
 	 (lambda ()			;halt-update?
 	   (or pending-event
