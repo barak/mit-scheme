@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.21 1991/04/03 04:09:58 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.22 1991/04/03 04:21:15 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -240,7 +240,7 @@ may be available.  The following commands are special to this mode:
 		    (if (not (eof-object? sexp))
 			(begin
 			  (editor-eval sexp environment)
-			  (loop (read))))))))
+			  (loop)))))))
 	    loop))))))
 
 (define (evaluation-environment argument)
