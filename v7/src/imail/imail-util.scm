@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.38 2001/05/15 19:47:02 cph Exp $
+;;; $Id: imail-util.scm,v 1.39 2001/06/09 00:29:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -409,10 +409,13 @@
     (lambda (port)
       (let ((n-bytes ((port/operation port 'LENGTH) port)))
 	(let ((xstring (allocate-external-string n-bytes)))
-	  (let ((n-read (read-substring! xstring 0 n-bytes port)))
-	    (if (not (= n-read n-bytes))
-		(error "Failed to read complete file:"
-		       pathname n-read n-bytes)))
+	  (let loop ((start 0))
+	    (if (< start n-bytes)
+		(let ((n-read (read-substring! xstring 0 n-bytes port)))
+		  (if (= n-read 0)
+		      (error "Failed to read complete file:"
+			     (+ start n-read) n-bytes pathname))
+		  (loop (+ start n-read)))))
 	  xstring)))))
 
 (define (call-with-input-xstring xstring position receiver)
