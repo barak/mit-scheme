@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.8 2001/06/27 01:53:53 cph Exp $
+;;; $Id: parser.scm,v 1.9 2001/06/27 01:57:16 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -253,6 +253,7 @@
 	       ,(if-fail pointers)))))))
 
 (define-parser (* parser)
+  if-fail
   (handle-pending-backtracking pointers
     (lambda (pointers)
       (with-variable-binding

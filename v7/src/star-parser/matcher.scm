@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.4 2001/06/26 21:16:44 cph Exp $
+;;; $Id: matcher.scm,v 1.5 2001/06/27 02:00:08 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -148,16 +148,16 @@
 
 ;;;; Matchers
 
-(define-macro (define-matcher form compiler-body)
+(define-macro (define-matcher form . compiler-body)
   (let ((name (car form))
 	(parameters (cdr form)))
     (if (symbol? parameters)
 	`(DEFINE-MATCHER-COMPILER ',name #F
 	   (LAMBDA (POINTERS IF-SUCCEED IF-FAIL ,parameters)
-	     ,compiler-body))
+	     ,@compiler-body))
 	`(DEFINE-MATCHER-COMPILER ',name ,(length parameters)
 	   (LAMBDA (POINTERS IF-SUCCEED IF-FAIL ,@parameters)
-	     ,compiler-body)))))
+	     ,@compiler-body)))))
 
 (define (define-matcher-compiler keyword arity compiler)
   (hash-table/put! matcher-compilers keyword (cons arity compiler))
@@ -196,15 +196,17 @@
   `(MATCH-PARSER-BUFFER-STRING-CI ,*buffer-name* ,string))
 
 (define-matcher (* expression)
+  if-fail
   (handle-pending-backtracking pointers
     (lambda (pointers)
-      (let ((v (generate-uninterned-symbol)))
+      (let ((pointers (unknown-location pointers))
+	    (v (generate-uninterned-symbol)))
 	`(BEGIN
 	   (LET ,v ()
-	     ,(compile-matcher-expression expression (no-pointers)
+	     ,(compile-matcher-expression expression pointers
 		(simple-backtracking-continuation `(,v))
 		(simple-backtracking-continuation `UNSPECIFIC)))
-	   ,(if-succeed (no-pointers)))))))
+	   ,(if-succeed pointers))))))
 
 (define-matcher (seq . expressions)
   (with-current-pointer pointers
