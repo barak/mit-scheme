@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.48 2000/07/05 19:13:12 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.49 2000/07/05 20:02:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -56,6 +56,10 @@
     (set-rmail-folder-header-fields!
      folder
      (compute-rmail-folder-header-fields folder))
+    (set-file-folder-file-modification-time! folder (get-universal-time))
+    (set-file-folder-file-modification-count!
+     folder
+     (folder-modification-count folder))
     (save-folder folder)))
 
 ;;;; Folder
