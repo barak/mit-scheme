@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.102 2000/06/02 17:25:18 cph Exp $
+;;; $Id: imail-imap.scm,v 1.103 2000/06/03 07:16:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1133,7 +1133,8 @@
      (imap:command:no-response connection 'SELECT mailbox))))
 
 (define (imap:command:status connection mailbox items)
-  (imap:command:no-response connection 'STATUS mailbox items))
+  (imap:command:single-response imap:response:status? connection
+				'STATUS mailbox items))
 
 (define (imap:command:fetch connection index items)
   (imap:command:single-response imap:response:fetch? connection
