@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2term.scm,v 1.2 1995/01/06 01:12:44 cph Exp $
+;;;	$Id: os2term.scm,v 1.3 1995/01/06 20:39:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -45,7 +45,7 @@
 ;;; Package: (edwin screen os2-screen)
 
 (declare (usual-integrations))
-(declare (integrate-external "..\\runtime\\os2winp"))
+(declare (integrate-external "../runtime/os2winp"))
 
 (define os2-display-type)
 (define screen-list)
