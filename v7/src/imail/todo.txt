@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.72 2000/06/09 04:32:42 cph Exp $
+$Id: todo.txt,v 1.73 2000/06/09 14:58:59 cph Exp $
 
 Bug fixes
 ---------
@@ -7,11 +7,9 @@ Bug fixes
 * M-x imail-get-new-mail doesn't select message right when mailbox has
   changed significantly since last sync.  It ignores the UNSEEN
   attribute and uses the message indexes.  It should pay attention to
-  UNSEEN and to UIDNEXT to figure out what it needs to do.
-
-* M-x imail-copy-messages re-reads the target folder UIDs for each
-  message that is written, when the target folder is not being
-  visited.  [I haven't seen this lately.  Maybe it's fixed?]
+  UNSEEN and to UIDNEXT to figure out what it needs to do.  [See also
+  the note below regarding redesign of the UID synchronization code.
+  These may be related problems.]
 
 * Must be able to handle malformed headers in incoming mail.
   Generating a low-level error in this situation is unacceptable.
@@ -22,7 +20,14 @@ Bug fixes
 New features
 ------------
 
-* Change "X-Mailer" and "Organization" headers so that they is
+* It would be nice if URL prompts could fill in the leading "inbox"
+  that is nearly always required with Cyrus.  How is this figured out?
+  Do IMAP clients know this kind of detail about each server?
+
+* Support the "flagged" message flag by highlighting messages with
+  this flag in the summary buffer.
+
+* Change "X-Mailer" and "Organization" headers so that they are
   transparently added after the user has finished editing.  This will
   keep the message composition buffer cleaner.  There's no need to be
   able to delete these on a per-message basis.
@@ -36,7 +41,7 @@ New features
   original message using MIME, rather than the current copy-and-indent
   mechanism.
 
-* Forwarded messages should optionally be encapsulated using MIME.
+* Should MIME encapsulation of forwarded messages be optional?
 
 * Command to expand attachment inline.  Sometimes attachments aren't
   big binary things but small text things that are easier to view
@@ -77,6 +82,11 @@ New features
 
 Design changes
 --------------
+
+* Header parser should strip leading and trailing whitespace in the
+  header value.  It can also strip whitespace at the ends of lines.
+  Strictly speaking, this isn't correct, but I don't know of any
+  situation in which it would cause problems.
 
 * Move pathname-completion code into the runtime system.
 
