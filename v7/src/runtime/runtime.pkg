@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.492 2004/09/14 20:01:36 cph Exp $
+$Id: runtime.pkg,v 14.493 2004/10/01 01:53:10 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -281,7 +281,6 @@ USA.
 	  cell?
 	  default/exit
 	  default/quit
-	  enable-interrupts!
 	  environment-link-name
 	  eq?
 	  error-procedure
@@ -290,6 +289,7 @@ USA.
 	  false-procedure
 	  fasdump
 	  get-fixed-objects-vector
+	  get-interrupt-enables
 	  hook/exit
 	  hook/quit
 	  hook/scode-eval

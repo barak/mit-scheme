@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.64 2004/07/04 05:37:25 cph Exp $
+$Id: global.scm,v 14.65 2004/10/01 01:52:52 cph Exp $
 
 Copyright 1988,1989,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1998,2000,2001,2003,2004 Massachusetts Institute of Technology
@@ -33,7 +33,7 @@ USA.
 
 (define-primitives
   error-procedure
-  set-interrupt-enables! enable-interrupts! with-interrupt-mask
+  get-interrupt-enables set-interrupt-enables! with-interrupt-mask
   get-fixed-objects-vector with-history-disabled
   (primitive-procedure-arity 1)
   (primitive-procedure-documentation 1)
