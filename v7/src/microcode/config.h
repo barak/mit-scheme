@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.21 1987/01/22 14:22:36 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.22 1987/02/04 17:50:46 jinx Exp $
  *
  * This file contains the configuration information and the information
  * given on the command line on Unix.
@@ -213,7 +213,7 @@ typedef unsigned long Pointer;
 #ifdef pdp10
 #define Heap_In_Low_Memory
 #define CHAR_SIZE 36		/ * Ugh! Supposedly fixed in newer Cs * /
-/* #define BELL 		'\007' */
+#define BELL 			'\007'
 #define FASL_INTERNAL_FORMAT    FASL_PDP10
 #endif
 
@@ -225,7 +225,7 @@ typedef unsigned long Pointer;
 #define CHAR_SIZE		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
-/* #define BELL 		'\007' */
+#define BELL 			'\007'
 #define FASL_INTERNAL_FORMAT	FASL_NU
 #define FLONUM_EXPT_SIZE	7
 #define FLONUM_MANTISSA_BITS	56
@@ -240,7 +240,7 @@ typedef unsigned long Pointer;
 #define CHAR_SIZE 		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
-/* #define BELL			'\007' */
+#define BELL			'\007'
 #define FASL_INTERNAL_FORMAT	FASL_VAX
 #define FLONUM_EXPT_SIZE	7
 #define FLONUM_MANTISSA_BITS	56   /* D format */
@@ -303,7 +303,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define CHAR_SIZE		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
-/* #define BELL 		'\007' */
+#define BELL 			'\007'
 #define FASL_INTERNAL_FORMAT 	FASL_HP_9000_500
 #define FLONUM_EXPT_SIZE	10
 #define FLONUM_MANTISSA_BITS	53
@@ -324,7 +324,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define CHAR_SIZE		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
-/* #define BELL 		'\007' */
+#define BELL 			'\007'
 #define FASL_INTERNAL_FORMAT	FASL_SUN
 #define FLONUM_EXPT_SIZE	7
 #define FLONUM_MANTISSA_BITS 	56
@@ -338,7 +338,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define CHAR_SIZE		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
-/* #define BELL 		'\007' */
+#define BELL 			'\007'
 #define FASL_INTERNAL_FORMAT	FASL_BFLY
 #define FLONUM_EXPT_SIZE	7
 #define FLONUM_MANTISSA_BITS	56
@@ -355,7 +355,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define CHAR_SIZE		8
 #define USHORT_SIZE		???
 #define ULONG_SIZE		???
-/* #define BELL			'\007' */
+#define BELL			'\007'
 #define FASL_INTERNAL_FORMAT	FASL_CYBER
 #define FLONUM_EXPT_SIZE	14
 #define FLONUM_MANTISSA_BITS	48
@@ -372,7 +372,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define CHAR_SIZE		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
-/* #define BELL 		'\007' */
+#define BELL 			'\007'
 #define FASL_INTERNAL_FORMAT	FASL_CELERITY
 #define FLONUM_EXPT_SIZE	11
 #define FLONUM_MANTISSA_BITS 	53
@@ -389,7 +389,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define CHAR_SIZE		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
-/* #define BELL 		'\007' */
+#define BELL 			'\007'
 #define FASL_INTERNAL_FORMAT	FASL_HP_SPECTRUM
 #define FLONUM_EXPT_SIZE	10
 #define FLONUM_MANTISSA_BITS	53
