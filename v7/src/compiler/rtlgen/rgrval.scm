@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.11 1987/06/13 20:17:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.12 1987/07/24 21:08:01 cph Exp $
 #| -*-Scheme-*-
 Copyright (c) 1987 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.11 1987/06/13 20:17:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.12 1987/07/24 21:08:01 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -67,8 +67,8 @@ promotional, or sales literature without prior written consent from
 
 (define-rvalue-generator reference-tag
   (lambda (reference)
-    (if (vnode-known-constant? (reference-variable reference))
-	(generate/constant (vnode-known-value (reference-variable reference)))
+    (if (vnode-known? (reference-variable reference))
+	(generate/rvalue (vnode-known-value (reference-variable reference)))
 	(find-variable (reference-block reference)
 		       (reference-variable reference)
 	  (lambda (locative)
@@ -122,8 +122,8 @@ promotional, or sales literature without prior written consent from
 			      (hooks-union (scfg-next-hooks n3)
 (define-rvalue-generator temporary-tag
   (lambda (temporary)
-    (if (vnode-known-constant? temporary)
-	(generate/constant (vnode-known-value temporary))
+    (if (vnode-known? temporary)
+	(generate/rvalue (vnode-known-value temporary))
 	(expression-value/simple (rtl:make-fetch temporary)))))
 
 (define-rvalue-generator access-tag
