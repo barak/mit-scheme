@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: equals.scm,v 14.5 1993/10/10 08:33:30 cph Exp $
+$Id: equals.scm,v 14.6 1993/11/20 21:33:38 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -57,21 +57,9 @@ MIT in each case. |#
 (define (equal? x y)
   (or (eq? x y)
       (if (object-type? (object-type x) y)
-	  (cond ((cell? y)
-		 (equal? (cell-contents x) (cell-contents y)))
-		((pair? y)
+	  (cond ((pair? y)
 		 (and (equal? (car x) (car y))
 		      (equal? (cdr x) (cdr y))))
-		((string? y)
-		 (string=? x y))
-		((bit-string? y)
-		 (bit-string=? x y))
-		((number? y)
-		 (and (= x y)
-		      (boolean=? (exact? x) (exact? y))))
-		((pathname? x)
-		 (and (pathname? y)
-		      (pathname=? x y)))
 		((vector? y)
 		 (let ((size (vector-length x)))
 		   (and (fix:= size (vector-length y))
@@ -80,6 +68,18 @@ MIT in each case. |#
 			      (and (equal? (vector-ref x index)
 					   (vector-ref y index))
 				   (loop (fix:+ index 1))))))))
+		((string? y)
+		 (string=? x y))
+		((number? y)
+		 (and (= x y)
+		      (boolean=? (exact? x) (exact? y))))
+		((cell? y)
+		 (equal? (cell-contents x) (cell-contents y)))
+		((bit-string? y)
+		 (bit-string=? x y))
+		((pathname? x)
+		 (and (pathname? y)
+		      (pathname=? x y)))
 		(else false))
 	  (and (number? x)
 	       (number? y)
