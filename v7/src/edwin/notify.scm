@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/notify.scm,v 1.3 1992/02/18 03:25:07 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/notify.scm,v 1.4 1992/02/18 14:29:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -36,28 +36,40 @@
 ;;;	thereof in any advertising, promotional, or sales literature
 ;;;	without prior written consent from MIT in each case.
 ;;;
-;;; NOTE: Parts of this program (Edwin) were created by translation ;;; from corresponding parts of GNU Emacs.  Users should be aware that
+;;; NOTE: Parts of this program (Edwin) were created by translation
+;;; from corresponding parts of GNU Emacs.  Users should be aware that
 ;;; the GNU GENERAL PUBLIC LICENSE may apply to these parts.  A copy
-;;; of that license should have been included along with this file. ;;;
+;;; of that license should have been included along with this file.
+;;;
 
 ;;;; Mode-line notifications (e.g. presence of mail, load average)
 
 (declare (usual-integrations))
 
-(define-variable notify-string
-  "Either \" Mail\" or \"\" depending on whether mail is waiting."
-  ""
-  string?)
-
 (define-variable mail-notify-directory
   "Directory in which MAIL-NOTIFY checks for mail."
   (pathname-as-directory "/usr/mail/")
   file-directory?)
 
-(define-variable notify-interval
-  "Interval at which MAIL-NOTIFY checks for mail, in milliseconds."
-  60000
-  exact-nonnegative-integer?)
+(define mail-present-string " Mail")
+(define mail-not-present-string "")
+
+(define (mail-notify)
+  (install-mail-notify-hook! false)
+  (start-notifier (make-notifier get-mail-present-string)))
+
+(define (mail-and-load-notify)
+  (install-mail-notify-hook! true)
+  (start-notifier
+   (make-notifier
+    (lambda ()
+      (string-append (get-load-average-string)
+		     (get-mail-present-string))))))
+
+(define (get-mail-present-string)
+  (if (check-for-mail)
+      mail-present-string
+      mail-not-present-string))
 
 (define (check-for-mail)
   (let ((mail-file
@@ -81,11 +93,19 @@
 	      (extract-string (re-match-start 2) (re-match-end 2)))))
 	(kill-buffer temporary-buffer)
 	(or result "n/a")))))
+
+(define-variable notify-string
+  "Either \" Mail\" or \"\" depending on whether mail is waiting."
+  ""
+  string?)
 
-(define mail-present-string " Mail")
-(define mail-not-present-string "")
+(define-variable notify-interval
+  "Interval at which MAIL-NOTIFY checks for mail, in milliseconds."
+  60000
+  exact-nonnegative-integer?)
 
 (define mail-notify-hook-installed? false)
+(define current-notifier-thread false)
 
 (define (install-mail-notify-hook! load-notify?)
   (if (not mail-notify-hook-installed?)
@@ -96,11 +116,13 @@
 	  (set-variable! 
 	   notify-string 
 	   (if load-notify?
-	       (string-append (get-load-average-string) mail-not-present-string)
+	       (string-append (get-load-average-string)
+			      mail-not-present-string)
 	       mail-not-present-string))
 	  (global-window-modeline-event!)
 	  (update-screens! false)))
-       (set! mail-notify-hook-installed? true))))
+       (set! mail-notify-hook-installed? true)
+       unspecific)))
 
 (define (make-notifier thunk)
   (lambda ()
@@ -111,32 +133,11 @@
       (sleep-current-thread (ref-variable notify-interval))
       (notify-cycle))))
 
-(define current-notifier-thread false)
-
 (define (start-notifier notifier)
   (if current-notifier-thread
       (signal-thread-event current-notifier-thread
-			   (lambda () (exit-current-thread false))))
+			   (lambda () (exit-current-thread unspecific))))
   (let ((thread (create-thread editor-thread-root-continuation notifier)))
+    (detach-thread thread)
     (set! current-notifier-thread thread)
     thread))
-
-(define (mail-notify)
-  (install-mail-notify-hook! false)
-  (start-notifier 
-   (make-notifier
-    (lambda ()
-      (if (check-for-mail)
-	  mail-present-string
-	  mail-not-present-string)))))
-
-(define (mail-and-load-notify)
-  (install-mail-notify-hook! true)
-  (start-notifier
-   (make-notifier
-    (lambda ()
-      (string-append
-       (get-load-average-string)
-       (if (check-for-mail)
-	   mail-present-string
-	   mail-not-present-string))))))
