@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: kilcom.scm,v 1.65 1995/05/02 21:18:58 cph Exp $
+;;;	$Id: kilcom.scm,v 1.66 1995/05/02 21:47:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -212,29 +212,30 @@ The command \\[yank] can retrieve it from there.
     (kill-ring-save (extract-string mark point) (mark<= point mark))))
 
 (define (kill-ring-save string forward?)
-  (let ((strings (ref-variable kill-ring)))
-    (command-message-receive append-next-kill-tag
-      (lambda ()
-	(if (null? strings)
+  (command-message-receive append-next-kill-tag
+    (lambda ()
+      (let ((kill-ring (ref-variable kill-ring)))
+	(if (null? kill-ring)
 	    (editor-error "No previous kill"))
 	(let ((string
 	       (if forward?
-		   (string-append (car strings) string)
-		   (string-append string (car strings)))))
-	  (set-car! strings string)
-	  (set-variable! kill-ring-yank-pointer strings)
-	  (os/interprogram-cut string)))
-      (lambda ()
-	(kill-ring-save-1 string)
-	(os/interprogram-cut string))))
+		   (string-append (car kill-ring) string)
+		   (string-append string (car kill-ring)))))
+	  (set-car! kill-ring string)
+	  (set-variable! kill-ring-yank-pointer kill-ring)
+	  (os/interprogram-cut string))))
+    (lambda ()
+      (kill-ring-save-1 string)
+      (os/interprogram-cut string)))
   (set-command-message! append-next-kill-tag))
 
 (define (kill-ring-save-1 string)
   (let ((strings
-	 (let ((kill-ring-max (ref-variable kill-ring-max)))
+	 (let ((kill-ring (ref-variable kill-ring))
+	       (kill-ring-max (ref-variable kill-ring-max)))
 	   (if (zero? kill-ring-max)
 	       '()
-	       (let ((strings (cons string strings)))
+	       (let ((strings (cons string kill-ring)))
 		 (if (> (length strings) kill-ring-max)
 		     (set-cdr! (list-tail strings (- kill-ring-max 1)) '()))
 		 strings)))))
