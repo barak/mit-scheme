@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.19 1992/02/11 19:38:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.20 1992/03/14 00:08:54 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -152,36 +152,45 @@ DEFUN (xterm_process_event, (xw, event),
 {
 }
 
-static void
-DEFUN (xterm_set_wm_normal_hints, (xw, geometry_mask, x, y),
-       struct xwindow * xw AND
-       int geometry_mask AND
-       unsigned int x AND
-       unsigned int y)
+static XSizeHints *
+DEFUN (xterm_make_size_hints, (font, extra),
+       XFontStruct * font AND
+       unsigned int extra)
 {
-  XFontStruct * font = (XW_FONT (xw));
-  unsigned int fwidth = (FONT_WIDTH (font));
-  unsigned int fheight = (FONT_HEIGHT (font));
-  unsigned int extra = (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
   XSizeHints * size_hints = (XAllocSizeHints ());
   if (size_hints == 0)
     error_external_return ();
-  (size_hints -> flags) =
-    (PResizeInc | PMinSize | PBaseSize
-     | (((geometry_mask & XValue) && (geometry_mask & YValue))
-	? USPosition : PPosition)
-     | (((geometry_mask & WidthValue) && (geometry_mask & HeightValue))
-	? USSize : PSize));
-  (size_hints -> x) = x;
-  (size_hints -> y) = y;
-  (size_hints -> width) = (((XW_X_CSIZE (xw)) * fwidth) + extra);
-  (size_hints -> height) = (((XW_Y_CSIZE (xw)) * fheight) + extra);
+  (size_hints -> flags) = (PResizeInc | PMinSize | PBaseSize);
   (size_hints -> width_inc) = (FONT_WIDTH (font));
   (size_hints -> height_inc) = (FONT_HEIGHT (font));
   (size_hints -> min_width) = extra;
   (size_hints -> min_height) = extra;
   (size_hints -> base_width) = extra;
   (size_hints -> base_height) = extra;
+  return (size_hints);
+}
+
+static void
+DEFUN (xterm_set_wm_normal_hints, (xw, size_hints, geometry_mask, x, y),
+       struct xwindow * xw AND
+       XSizeHints * size_hints AND
+       int geometry_mask AND
+       unsigned int x AND
+       unsigned int y)
+{
+  (size_hints -> flags) |=
+    ((((geometry_mask & XValue) && (geometry_mask & YValue))
+      ? USPosition : PPosition)
+     | (((geometry_mask & WidthValue) && (geometry_mask & HeightValue))
+	? USSize : PSize));
+  (size_hints -> x) = x;
+  (size_hints -> y) = y;
+  (size_hints -> width) =
+    (((XW_X_CSIZE (xw)) * (size_hints -> width_inc))
+     + (size_hints -> base_width));
+  (size_hints -> height) =
+    (((XW_Y_CSIZE (xw)) * (size_hints -> height_inc))
+     + (size_hints -> base_height));
   XSetWMNormalHints ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), size_hints);
   XFree ((caddr_t) size_hints);
 }
@@ -189,7 +198,12 @@ DEFUN (xterm_set_wm_normal_hints, (xw, geometry_mask, x, y),
 static void
 DEFUN (xterm_update_normal_hints, (xw), struct xwindow * xw)
 {
-  xterm_set_wm_normal_hints (xw, 0, 0, 0);
+  xterm_set_wm_normal_hints
+    (xw,
+     (xterm_make_size_hints
+      ((XW_FONT (xw)),
+       (2 * (XW_INTERNAL_BORDER_WIDTH (xw))))),
+     0, 0, 0);
 }
 
 static void
@@ -500,27 +514,34 @@ DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3, 0)
     (methods . update_normal_hints) = xterm_update_normal_hints;
     {
       unsigned int extra = (2 * (attributes . internal_border_width));
-      int x_pos = (-1);
-      int y_pos = (-1);
-      int x_csize = 80;
-      int y_csize = 24;
+      int x_pos;
+      int y_pos;
+      int x_size;
+      int y_size;
+      XSizeHints * size_hints =
+	(xterm_make_size_hints ((attributes . font), extra));
       int geometry_mask =
-	(XGeometry
-	 (display, (DefaultScreen (display)),
+	(XWMGeometry
+	 (display,
+	  (DefaultScreen (display)),
 	  (((ARG_REF (2)) == SHARP_F)
 	   ? (x_get_default
 	      (display, resource_name, resource_class,
 	       "geometry", "Geometry", 0))
 	   : (STRING_ARG (2))),
-	  DEFAULT_GEOMETRY, (attributes . border_width),
-	  (FONT_WIDTH (attributes . font)), (FONT_HEIGHT (attributes . font)),
-	  extra, extra, (&x_pos), (&y_pos), (&x_csize), (&y_csize)));
-      unsigned int x_size = (x_csize * (FONT_WIDTH (attributes . font)));
-      unsigned int y_size = (y_csize * (FONT_HEIGHT (attributes . font)));
+	  DEFAULT_GEOMETRY,
+	  (attributes . border_width),
+	  size_hints,
+	  (&x_pos), (&y_pos), (&x_size), (&y_size),
+	  (& (size_hints -> win_gravity))));
+      unsigned int x_csize =
+	((x_size - (size_hints -> base_width)) / (size_hints -> width_inc));
+      unsigned int y_csize =
+	((y_size - (size_hints -> base_height)) / (size_hints -> height_inc));
       Window window =
 	(XCreateSimpleWindow
 	 (display, (RootWindow (display, (DefaultScreen (display)))),
-	  x_pos, y_pos, (x_size + extra), (y_size + extra),
+	  x_pos, y_pos, x_size, y_size,
 	  (attributes . border_width),
 	  (attributes . border_pixel),
 	  (attributes . background_pixel)));
@@ -529,7 +550,12 @@ DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3, 0)
       {
 	struct xwindow * xw =
 	  (x_make_window
-	   (xd, window, x_size, y_size, (&attributes), (&methods),
+	   (xd,
+	    window,
+	    (x_size - (size_hints -> base_width)),
+	    (y_size - (size_hints -> base_height)),
+	    (&attributes),
+	    (&methods),
 	    (sizeof (struct xterm_extra))));
 	unsigned int map_size = (x_csize * y_csize);
 	(XW_X_CSIZE (xw)) = x_csize;
@@ -552,7 +578,9 @@ DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3, 0)
 	  while (scan < end)
 	    (*scan++) = DEFAULT_HL;
 	}
-	xterm_set_wm_normal_hints (xw, geometry_mask, x_pos, y_pos);
+	(size_hints -> flags) |= PWinGravity;
+	xterm_set_wm_normal_hints
+	  (xw, size_hints, geometry_mask, x_pos, y_pos);
 	xw_set_wm_input_hint (xw, 1);
 	xw_set_wm_name (xw, "scheme-terminal");
 	xw_set_wm_icon_name (xw, "scheme-terminal");
