@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.13 1991/10/26 21:10:56 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.14 1992/01/10 18:52:19 bal Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -47,6 +47,15 @@
 (declare (usual-integrations))
 
 ;;;; Major Mode Libraries
+(define-library 'TECHINFO-MODE
+  '("techinfo" (EDWIN)))
+
+(define-autoload-major-mode 'techinfo 'fundamental "TechInfo" 'TECHINFO-MODE
+  "Mode for accessing the TechInfo database.")
+
+(define-autoload-command 'techinfo 'TECHINFO-MODE
+  "Enter TechInfo mode.")
+
 (define-library 'TELNET-MODE
   '("telnet" (EDWIN)))
 

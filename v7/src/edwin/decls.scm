@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.28 1991/11/26 20:10:33 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.29 1992/01/10 18:52:50 bal Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -177,6 +177,7 @@ MIT in each case. |#
 		"simple"
 		"syntax"
 		"tags"
+		"techinfo"
 		"telnet"
 		"texcom"
 		"things"

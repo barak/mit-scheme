@@ -197,6 +197,8 @@
 	       edwin-syntax-table)
     ("tags"    (edwin tags)
 	       edwin-syntax-table)
+    ("techinfo"   (edwin)
+	       edwin-syntax-table)
     ("telnet"   (edwin)
 	       edwin-syntax-table)
     ("termcap" (edwin console-screen)
