@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.34 1990/06/20 17:40:46 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.35 1991/01/18 01:12:48 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -52,7 +52,7 @@ MIT in each case. */
   {									\
     fast SCHEME_OBJECT x = (ARG_REF (1));				\
     if (FIXNUM_P (x))							\
-      return (test (x));						\
+      return (BOOLEAN_TO_OBJECT (test (x)));				\
   }									\
   INDIRECT (slot, 1);							\
 }
@@ -87,7 +87,7 @@ DEFINE_PRIMITIVE ("-1+", Prim_subtract_one, 1, 1, 0)
     fast SCHEME_OBJECT x = (ARG_REF (1));				\
     fast SCHEME_OBJECT y = (ARG_REF (2));				\
     if ((FIXNUM_P (x)) && (FIXNUM_P (y)))				\
-      return (test (x, y));						\
+      return (BOOLEAN_TO_OBJECT (test (x, y)));				\
   }									\
   INDIRECT (slot, 2);							\
 }

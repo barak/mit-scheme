@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/version.h,v 11.59 1990/12/10 19:40:48 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/version.h,v 11.60 1991/01/18 01:13:31 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,5 +46,5 @@ MIT in each case. */
 #define VERSION		11
 #endif
 #ifndef SUBVERSION
-#define SUBVERSION	59
+#define SUBVERSION	60
 #endif
