@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cpsconv.scm,v 1.5 1995/02/11 02:50:11 adams Exp $
+$Id: cpsconv.scm,v 1.6 1995/02/27 17:33:45 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -295,10 +295,14 @@ MIT in each case. |#
 		   next)))))))
 
 (define-cps-converter IF (cont pred conseq alt)
-  (if (and (form/simple&side-effect-free? pred)
-	   (form/pseudo-simple&side-effect-free? conseq)
-	   (form/pseudo-simple&side-effect-free? alt))
-      (cpsconv/return form cont (cpsconv/simple/copy form))
+  (if (form/simple? pred)
+      (if (and (not (eq? (cpsconv/cont/kind cont) 'NAMED))
+	       (form/pseudo-simple? conseq)
+	       (form/pseudo-simple? alt))
+	  (cpsconv/return form cont (cpsconv/simple/copy form))
+	  `(IF ,(cpsconv/simple/copy pred)
+	       ,(cpsconv/expr cont conseq)
+	       ,(cpsconv/expr cont alt)))
       ;; This does anchor pointing by default?
       (let ((consname (cpsconv/new-name 'CONS))
 	    (altname  (cpsconv/new-name 'ALT))
