@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.3 1991/05/15 17:51:07 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.4 1991/05/15 19:10:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -1422,12 +1422,14 @@ Leaves original message, deleted, before the undigestified messages."
 	(message "Message successfully undigestified")
 	(with-buffer-open buffer
 	  (lambda ()
-	    (insert-region (buffer-start temp)
-			   (buffer-end temp)
-			   (msg-memo/end memo))
-	    (kill-buffer temp)
-	    (set-buffer-msg-memo! buffer false)
-	    (memoize-buffer buffer))))
+	    (let* ((end (msg-memo/end memo))
+		   (start (mark-right-inserting-copy end)))
+	      (insert-region (buffer-start temp)
+			     (buffer-end temp)
+			     end)
+	      (kill-buffer temp)
+	      (memoize-messages-insert buffer start end memo)
+	      (mark-temporary! start)))))
       (show-message buffer (msg-memo/number memo))
       ((ref-command rmail-delete-forward) false))))
 
@@ -1455,36 +1457,68 @@ Leaves original message, deleted, before the undigestified messages."
 		(memoize-messages buffer m end)))))))
 
 (define (memoize-messages buffer start end)
-  (message "Counting messages...")
   (let ((memo (buffer-msg-memo buffer)))
-    (let loop
-	((start (mark-left-inserting-copy start))
-	 (tail (and (msg-memo? memo) (msg-memo/last memo)))
-	 (n 1))
-      (let ((mend (search-forward babyl-message-end-regexp start end false)))
-	(if mend
-	    (let ((mend (mark-left-inserting-copy mend)))
-	      (canonicalize-message-attributes start)
-	      (let ((memo
-		     (make-msg-memo tail
-				    false
-				    start
-				    (if tail (+ (msg-memo/number tail) 1) 1)
-				    (parse-attributes start))))
-		(if tail
-		    (set-msg-memo/next! tail memo))
-		(if (zero? (remainder n 20))
-		    (message "Counting messages..." n))
-		(loop mend memo (+ n 1))))
-	    (begin
-	      (if (not (msg-memo? memo))
-		  (set-buffer-msg-memo! buffer (or tail true)))
-	      (let ((old-end (buffer-last-msg-end buffer)))
-		(if old-end
-		    (mark-temporary! old-end)))
-	      (set-buffer-last-msg-end! buffer start))))))
-  (message "Counting messages...done"))
+    (with-values
+	(lambda ()
+	  (memoize-messages* start
+			     end
+			     (and (msg-memo? memo) (msg-memo/last memo))))
+      (lambda (start tail)
+	(if (not (msg-memo? memo))
+	    (set-buffer-msg-memo! buffer (or tail true)))
+	(let ((old-end (buffer-last-msg-end buffer)))
+	  (if old-end
+	      (mark-temporary! old-end)))
+	(set-buffer-last-msg-end! buffer start)))))
 
+(define (memoize-messages-insert buffer start end memo)
+  (let ((next (msg-memo/next memo)))
+    (if (not next)
+	(memoize-messages buffer start end)
+	(with-values (lambda () (memoize-messages* start end memo))
+	  (lambda (start tail)
+	    (mark-temporary! start)
+	    (set-msg-memo/next! tail next)
+	    (set-msg-memo/previous! next tail)
+	    (let loop ((memo next) (n (+ (msg-memo/number tail) 1)))
+	      (set-msg-memo/number! memo n)
+	      (if (msg-memo/next memo)
+		  (loop (msg-memo/next memo) (+ n 1)))))))))
+
+(define (memoize-messages* start end tail)
+  (message "Counting messages...")
+  (let loop ((start (mark-left-inserting-copy start)) (tail tail) (n 1))
+    (let ((mend (search-forward babyl-message-end-regexp start end false)))
+      (if mend
+	  (let ((mend (mark-left-inserting-copy mend)))
+	    (canonicalize-message-attributes start)
+	    (let ((memo
+		   (make-msg-memo tail
+				  false
+				  start
+				  (if tail (+ (msg-memo/number tail) 1) 1)
+				  (parse-attributes start))))
+	      (if tail
+		  (set-msg-memo/next! tail memo))
+	      (if (zero? (remainder n 20))
+		  (message "Counting messages..." n))
+	      (loop mend memo (+ n 1))))
+	  (begin
+	    (message "Counting messages...done")
+	    (values start tail))))))
+
+(define-integrable (buffer-msg-memo buffer)
+  (buffer-get buffer 'RMAIL-MSG-MEMO))
+
+(define-integrable (set-buffer-msg-memo! buffer memo)
+  (buffer-put! buffer 'RMAIL-MSG-MEMO memo))
+
+(define-integrable (buffer-last-msg-end buffer)
+  (buffer-get buffer 'RMAIL-LAST-MSG-END))
+
+(define-integrable (set-buffer-last-msg-end! buffer memo)
+  (buffer-put! buffer 'RMAIL-LAST-MSG-END memo))
+
 (define-structure (msg-memo (conc-name msg-memo/))
   previous
   next
@@ -1506,18 +1540,6 @@ Leaves original message, deleted, before the undigestified messages."
 (define (msg-memo/end-body memo)
   (mark-1+ (msg-memo/end memo)))
 
-(define-integrable (buffer-msg-memo buffer)
-  (buffer-get buffer 'RMAIL-MSG-MEMO))
-
-(define-integrable (set-buffer-msg-memo! buffer memo)
-  (buffer-put! buffer 'RMAIL-MSG-MEMO memo))
-
-(define-integrable (buffer-last-msg-end buffer)
-  (buffer-get buffer 'RMAIL-LAST-MSG-END))
-
-(define-integrable (set-buffer-last-msg-end! buffer memo)
-  (buffer-put! buffer 'RMAIL-LAST-MSG-END memo))
-
 (define (msg-memo/first memo)
   (let loop ((memo memo))
     (let ((previous (msg-memo/previous memo)))
