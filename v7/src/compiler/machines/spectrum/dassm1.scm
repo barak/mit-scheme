@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dassm1.scm,v 4.21 2001/12/20 21:45:25 cph Exp $
+$Id: dassm1.scm,v 4.22 2002/02/22 04:34:49 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -135,7 +135,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(cond ((not (< index end)) 'DONE)
 	      ((object-type?
 		(let-syntax ((ucode-type
-			      (lambda (name) (microcode-type name))))
+			      (sc-macro-transformer
+			       (lambda (form environment)
+				 environment
+				 (apply microcode-type (cdr form))))))
 		  (ucode-type linkage-section))
 		(system-vector-ref block index))
 	       (loop (disassembler/write-linkage-section block

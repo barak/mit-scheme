@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr1.scm,v 1.5 2001/12/20 21:45:25 cph Exp $
+$Id: instr1.scm,v 1.6 2002/02/22 04:38:10 cph Exp $
 
-Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -264,16 +264,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	`(,name ,value))))	
 
 (let-syntax ((define-operator
-	       (lambda (name handler)
-		 `(define ,name
-		    (make-operator ',name ,handler)))))
+	       (sc-macro-transformer
+		(lambda (form environment)
+		  `(DEFINE ,(cadr form)
+		     (MAKE-operator ',(cadr form)
+				    ,(close-syntax (caddr form)
+						   environment)))))))
 
-(define-operator LEFT
-  (lambda (number)
-    (bit-string->signed-integer
-     (bit-substring (signed-integer->bit-string 32 number) 11 32))))
+  (define-operator LEFT
+    (lambda (number)
+      (bit-string->signed-integer
+       (bit-substring (signed-integer->bit-string 32 number) 11 32))))
 
-(define-operator RIGHT
-  (lambda (number)
-    (bit-string->unsigned-integer
-     (bit-substring (signed-integer->bit-string 32 number) 0 11)))))
+  (define-operator RIGHT
+    (lambda (number)
+      (bit-string->unsigned-integer
+       (bit-substring (signed-integer->bit-string 32 number) 0 11)))))
