@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.54 1991/04/29 11:22:26 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.55 1991/05/06 00:59:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -112,19 +112,19 @@
     (mark-temporary! end)
     end))
 
-(define (re-substitute-registers string)
-  (let ((end (string-length string)))
-    (if (substring-find-next-char string 0 end #\\)
+(define (re-substitute-registers pattern)
+  (let ((end (string-length pattern)))
+    (if (substring-find-next-char pattern 0 end #\\)
 	(apply
 	 string-append
 	 (let loop ((start 0))
-	   (let ((slash (substring-find-next-char string start end #\\)))
+	   (let ((slash (substring-find-next-char pattern start end #\\)))
 	     (if slash
-		 (cons (substring string start slash)
+		 (cons (substring pattern start slash)
 		       (let ((next (+ slash 1)))
 			 (cons (let ((char
 				      (if (< next end)
-					  (string-ref string next)
+					  (string-ref pattern next)
 					  #\\)))
 				 (let ((n
 					(if (char=? #\& char)
@@ -141,8 +141,8 @@
 			       (if (< next end)
 				   (loop (+ next 1))
 				   '()))))
-		 (list (substring string start end))))))
-	string)))
+		 (list (substring pattern start end))))))
+	pattern)))
 
 (define (delete-match)
   (let ((start (re-match-start 0)))
