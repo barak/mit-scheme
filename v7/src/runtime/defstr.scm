@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.49 2003/03/11 05:00:41 cph Exp $
+$Id: defstr.scm,v 14.50 2003/03/12 20:40:28 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,1997,2000 Massachusetts Institute of Technology
@@ -742,20 +742,25 @@ differences:
 				     (eq? slot rest))
 				 name
 				 (let ((dv
-					(if (eq? type 'RECORD)
-					    `(,(absolute
-						'RECORD-TYPE-DEFAULT-VALUE
-						context)
-					      ,(close (structure/tag-expression
-						       structure)
-						      context)
-					      ',name)
-					    `(,(absolute
-						'STRUCTURE-TAG/DEFAULT-VALUE
-						context)
-					      ,tag-expression
-					      ',type
-					      ',name))))
+					(cond ((eq? type 'RECORD)
+					       `(,(absolute
+						   'RECORD-TYPE-DEFAULT-VALUE
+						   context)
+						 ,(close
+						   (structure/tag-expression
+						    structure)
+						   context)
+						 ',name))
+					      (tag-expression
+					       `(,(absolute
+						   'STRUCTURE-TAG/DEFAULT-VALUE
+						   context)
+						 ,tag-expression
+						 ',type
+						 ',name))
+					      (else
+					       (close (slot/default slot)
+						      context)))))
 				   (if (memq slot optional)
 				       `(IF (DEFAULT-OBJECT? ,name) ,dv ,name)
 				       dv)))))
