@@ -1,0 +1,5 @@
+system nt_dll initinstance terminstance
+name dibutils
+export=dibutils.lbc
+file dibutils.obj
+library gdi32.lib,user32.lib,kernel32.lib
