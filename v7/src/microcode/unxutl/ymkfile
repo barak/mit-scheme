@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.74 1993/08/04 21:17:45 cph Exp $
+$Id: ymkfile,v 1.75 1993/08/21 04:59:54 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -702,7 +702,7 @@ fasload.o : scheme.tch prims.h osscheme.h osfile.h osio.h $(GC_HEAD_FILES) \
 fasdump.o : scheme.tch prims.h osio.h osfile.h osfs.h $(GC_HEAD_FILES) \
 	trap.h lookup.h fasl.h dump.c
 
-memmag.o : scheme.tch prims.h memmag.h $(GC_HEAD_FILES)
+memmag.o : scheme.tch prims.h memmag.h $(GC_HEAD_FILES) memmag.h
 gcloop.o : scheme.tch $(GC_HEAD_FILES)
 purify.o : scheme.tch prims.h $(GC_HEAD_FILES) zones.h
 purutl.o : scheme.tch prims.h $(GC_HEAD_FILES) zones.h
@@ -729,7 +729,7 @@ BCHGCC_H = bchgcc.h oscond.h $(GC_HEAD_FILES)
 bchdmp.o : scheme.tch prims.h uxio.h osio.h osfile.h trap.h lookup.h \
 	$(BCHGCC_H) fasl.h dump.c
 bchdrn.o : ansidecl.h bchdrn.h
-bchmmg.o : scheme.tch prims.h memmag.h ux.h $(BCHGCC_H) option.h bchdrn.h
+bchmmg.o : scheme.tch prims.h memmag.h ux.h $(BCHGCC_H) option.h bchdrn.h memmag.h
 bchgcl.o : scheme.tch $(BCHGCC_H)
 bchpur.o : scheme.tch prims.h $(BCHGCC_H) zones.h
 bchutl.o : ansidecl.h
