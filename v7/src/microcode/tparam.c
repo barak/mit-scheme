@@ -107,6 +107,9 @@ what you give them.   Help stamp out software-hoarding!  */
 /* config.h may rename various library functions such as malloc.  */
 #ifdef emacs
 #include "config.h"
+#else
+/* Be safe */
+#define NO_ARG_ARRAY
 #endif
 
 #include "ansidecl.h"
