@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/framex.scm,v 14.7 1989/04/05 04:30:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/framex.scm,v 14.8 1989/04/15 01:24:10 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -131,13 +131,13 @@ MIT in each case. |#
   (values (stack-frame/ref frame 1) (stack-frame/ref frame 3)))
 
 (define (method/force-snap-thunk frame)
-  (values (make-combination
+  (values (%make-combination
 	   (ucode-primitive force 1)
 	   (list (make-evaluated-object (stack-frame/ref frame 1))))
 	  undefined-environment))
 
 (define ((method/application-frame index) frame)
-  (values (make-combination
+  (values (%make-combination
 	   (make-evaluated-object (stack-frame/ref frame index))
 	   (stack-frame-list frame (1+ index)))
 	  undefined-environment))
@@ -161,13 +161,13 @@ MIT in each case. |#
 	  (stack-frame/ref frame 3)))
 
 (define (method/compiler-lookup-apply-restart frame)
-  (values (make-combination (stack-frame/ref frame 3)
-			    (stack-frame-list frame 5))
+  (values (%make-combination (stack-frame/ref frame 3)
+			     (stack-frame-list frame 5))
 	  undefined-environment))
 
 (define (method/compiler-lookup-apply-trap-restart frame)
-  (values (make-combination (make-variable (stack-frame/ref frame 2))
-			    (stack-frame-list frame 6))
+  (values (%make-combination (make-variable (stack-frame/ref frame 2))
+			     (stack-frame-list frame 6))
 	  (stack-frame/ref frame 3)))
 
 (define (stack-frame-list frame start)
@@ -254,8 +254,8 @@ MIT in each case. |#
 
 	    (,(method/compiler-reference
 	       (lambda (name)
-		 (make-combination (ucode-primitive lexical-unbound?)
-				   (list (make-the-environment) name))))
+		 (%make-combination (ucode-primitive lexical-unbound?)
+				    (list (make-the-environment) name))))
 	     COMPILER-UNBOUND?-RESTART)
 
 	    (,(method/compiler-assignment make-assignment-from-variable)
