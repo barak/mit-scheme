@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 1.4 1987/10/14 22:03:14 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 1.5 1987/12/08 14:01:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -247,14 +247,17 @@ functionality is not implemented.
 		 (read-only? false))
 	     (define (loop options)
 	       (if (not (null? options))
-		   (begin (case (car options)
-			    ((TYPE)
-			     (set! type
-				   (parse/option-value (cadr options) true)))
-			    ((READ-ONLY)
-			     (set! read-only?
-				   (parse/option-value (cadr options) true))))
-			  (loop (cddr options)))))
+		   (begin
+		     (case (car options)
+		       ((TYPE)
+			(set! type (parse/option-value (cadr options) true)))
+		       ((READ-ONLY)
+			(set! read-only?
+			      (parse/option-value (cadr options) true)))
+		       (else
+			(error "Unrecognized structure slot option"
+			       (car options))))
+		     (loop (cddr options)))))
 	     (loop options)
 	     (vector name index default type read-only?)))))
     (if (pair? slot-description)
