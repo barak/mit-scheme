@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: pwedit.scm,v 1.7 1999/05/04 17:47:16 cph Exp $
+;;; $Id: pwedit.scm,v 1.8 2000/06/19 21:40:31 cph Exp $
 ;;;
-;;; Copyright (c) 1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -132,57 +132,69 @@ If password-file is #f, or if prefix arg supplied, prompts for a filename."
     (lambda ()
       (let ((form
 	     (or (get-pw-form point)
-		 (error:bad-range-argument point 'INSERT-PW-BODY))))
-	(if (eq? 'SHORT (car form))
-	    (let ((region (short-pw-body-region point)))
-	      (if region
-		  (region-delete! region))
-	      (if (or (eq? 'INSERT operation)
-		      (and (eq? 'TOGGLE operation)
-			   (not region)))
-		  (let ((end (mark-left-inserting-copy (line-end point 0))))
+		 (error:bad-range-argument point 'INSERT-PW-BODY)))
+	    (region (pw-body-region point)))
+	(if region
+	    (region-delete! region))
+	(if (or (eq? 'INSERT operation)
+		(and (eq? 'TOGGLE operation)
+		     (not region)))
+	    (let ((start (mark-right-inserting-copy (line-end point 0)))
+		  (end (mark-left-inserting-copy (line-end point 0))))
+	      (if (eq? 'SHORT (car form))
+		  (begin
 		    (insert-pw-body-spacer end)
-		    (insert-string (cddr form) end)
-		    (mark-temporary! end))))
-	    (let ((region (long-pw-body-region point)))
-	      (if region
-		  (region-delete! region))
-	      (if (or (eq? 'INSERT operation)
-		      (and (eq? 'TOGGLE operation)
-			   (not region)))
-		  (let ((end (mark-left-inserting-copy (line-end point 0))))
-		    (for-each (lambda (line)
-				(insert-newline end)
-				(if (pair? line)
-				    (begin
-				      (insert-string (car line) end)
-				      (insert-string ":" end)
-				      (insert-pw-body-spacer end)
-				      (insert-string (cdr line) end))
-				    (insert-string line end)))
-			      (cddr form))
-		    (mark-temporary! end)))))))))
+		    (insert-string (cddr form) end))
+		  (for-each (lambda (line)
+			      (insert-newline end)
+			      (if (pair? line)
+				  (begin
+				    (insert-string (car line) end)
+				    (insert-string ":" end)
+				    (insert-pw-body-spacer end)
+				    (insert-string (cdr line) end))
+				  (insert-string line end)))
+			    (cddr form)))
+	      (region-put! start end 'PW-FORM form)
+	      (mark-temporary! start)
+	      (mark-temporary! end)))))))
 
-(define (short-pw-body-region point)
-  (let ((end (line-end point 0)))
-    (let ((start
-	   (next-specific-property-change* (line-start point 0) end 'PW-FORM)))
-      (and start
-	   (mark< start end)
-	   (make-region start end)))))
-
-(define (long-pw-body-region point)
-  (let ((start (line-end point 0)))
-    (let ((end
-	   (let loop ((m start))
-	     (let ((m* (mark1+ m)))
-	       (if m*
-		   (if (line-blank? m*)
-		       m
-		       (loop (line-end m* 0)))
-		   m)))))
-      (and (mark< start end)
-	   (make-region start end)))))
+(define (pw-body-region point)
+  (let ((group (mark-group point))
+	(index (mark-index point))
+	(key 'PW-FORM))
+    (let ((g-start (group-start-index group))
+	  (g-end (group-end-index group)))
+      (let ((start
+	     (if (and (fix:< g-start index)
+		      (eq? (get-text-property group (fix:- index 1) key #f)
+			   (get-text-property group index key #f)))
+		 (let ((start
+			(previous-specific-property-change group g-start index
+							   key)))
+		   (if start
+		       (fix:+ start 1)
+		       g-start))
+		 index))
+	    (end
+	     (if (and (fix:< index g-end)
+		      (eq? (get-text-property group index key #f)
+			   (get-text-property group (fix:+ index 1) key #f)))
+		 (let ((end
+			(next-specific-property-change group index g-end key)))
+		   (if end
+		       (fix:- end 1)
+		       g-end))
+		 index)))
+	(let ((start
+	       (group-find-next-char group start (line-end-index group start)
+				     #\:)))
+	  (if (not start)
+	      (error "Can't find colon:" point))
+	  (let ((start (fix:+ start 1)))
+	    (and (fix:< start end)
+		 (make-region (make-mark group start)
+			      (make-mark group end)))))))))
 
 (define (insert-pw-body-spacer point)
   (insert-string (let ((column (mark-column point)))
@@ -190,12 +202,3 @@ If password-file is #f, or if prefix arg supplied, prompts for a filename."
 			 ((< column 16) "\t")
 			 (else " ")))
 		 point))
-
-(define (next-specific-property-change* start end key)
-  (let ((index
-	 (next-specific-property-change (mark-group start)
-					(mark-index start)
-					(mark-index end)
-					key)))
-    (and index
-	 (make-mark (mark-group start) index))))
