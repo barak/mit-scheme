@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: confshared.h,v 11.1 2000/12/05 21:23:43 cph Exp $
+$Id: confshared.h,v 11.2 2002/01/29 04:58:46 cph Exp $
 
-Copyright (c) 2000 Massachusetts Institute of Technology
+Copyright (c) 2000, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* Shared part of "config.h".  */
@@ -47,8 +48,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 /* These C type definitions are needed by everybody.
    They should not be here, but it is unavoidable. */
 typedef char Boolean;
-#define true		((Boolean) TRUE)
-#define false		((Boolean) FALSE)
+#ifdef HAVE_STDBOOL_H
+#  include <stdbool.h>
+#else
+#  define true		((Boolean) TRUE)
+#  define false		((Boolean) FALSE)
+#endif
 
 /* This is the Scheme object type.
    The various fields are defined in "object.h". */

@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-dnl Copyright (c) 2000-2001 Massachusetts Institute of Technology
+dnl Copyright (c) 2000-2002 Massachusetts Institute of Technology
 dnl
 dnl This program is free software; you can redistribute it and/or
 dnl modify it under the terms of the GNU General Public License as
@@ -17,7 +17,7 @@ dnl along with this program; if not, write to the Free Software
 dnl Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 dnl 02111-1307, USA.
 
-AC_REVISION([$Id: configure.in,v 11.13 2001/07/02 01:20:32 cph Exp $])
+AC_REVISION([$Id: configure.in,v 11.14 2002/01/29 04:59:03 cph Exp $])
 AC_INIT(boot.c)
 AC_CONFIG_HEADER(config.h)
 
@@ -111,7 +111,7 @@ AC_HEADER_TIME
 AC_CHECK_HEADERS(bsdtty.h fcntl.h limits.h malloc.h sgtty.h stropts.h time.h)
 AC_CHECK_HEADERS(sys/file.h sys/ioctl.h sys/mount.h sys/param.h sys/poll.h)
 AC_CHECK_HEADERS(sys/ptyio.h sys/socket.h sys/time.h sys/un.h sys/vfs.h)
-AC_CHECK_HEADERS(termio.h termios.h unistd.h utime.h)
+AC_CHECK_HEADERS(stdbool.h termio.h termios.h unistd.h utime.h)
 AC_CHECK_HEADERS(openssl/blowfish.h openssl/md5.h blowfish.h md5.h)
 AC_CHECK_HEADERS(mhash.h mcrypt.h gdbm.h curses.h term.h)
 
