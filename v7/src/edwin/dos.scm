@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.9 1993/02/25 08:51:55 gjr Exp $
+;;;	$Id: dos.scm,v 1.10 1993/03/05 03:12:29 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ;;;
@@ -46,12 +46,6 @@
 
 (declare (usual-integrations))
 
-;; This is bogus, but only used to determine whether SUSPEND-SCHEME works,
-;; which it sort of does (subshell) under DOS.
-
-(define (subprocess-job-control-available?)
-  true)
-
 (define-variable backup-by-copying-when-linked
   "True means use copying to create backups for files with multiple names.
 This causes the alternate names to refer to the latest version as edited.
