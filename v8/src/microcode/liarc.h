@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.3 1993/10/26 03:04:10 jawilson Exp $
+$Id: liarc.h,v 1.4 1993/10/26 17:23:08 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -74,6 +74,7 @@ extern void EXFUN (error_band_already_built, (void));
 #define ERROR_UNKNOWN_DISPATCH( pc ) lose_big ("Unknown tag.")
 
 #define ADDRESS_UNITS_PER_OBJECT	(sizeof (SCHEME_OBJECT))
+#define ADDRESS_UNITS_PER_FLOAT		(sizeof (double))
 
 #undef FIXNUM_TO_LONG
 #define FIXNUM_TO_LONG(source)						\
@@ -406,12 +407,6 @@ extern double EXFUN (atan2, (double, double));
 			dynamic_link);					\
 } while (0)
 
-/* This does nothing in the sources. */
-
-#define DECLARE_COMPILED_CODE(string, decl, code)			\
-extern void EXFUN (decl, (void));					\
-extern SCHEME_OBJECT * EXFUN (code, (SCHEME_OBJECT *));
-
 #ifdef USE_STDARG
 # define RCONSM_TYPE(frob) SCHEME_OBJECT EXFUN (frob, (int, SCHEME_OBJECT DOTS))
 #else /* not USE_STDARG */
@@ -433,6 +428,30 @@ extern int EXFUN (declare_compiled_code,
 		   SCHEME_OBJECT * EXFUN ((*), (SCHEME_OBJECT *))));
 extern SCHEME_OBJECT EXFUN (initialize_subblock, (char *));
 extern void EXFUN (NO_SUBBLOCKS, (void));
+
+/* This does nothing in the sources. */
+
+#ifndef COMPILE_FOR_DYNAMIC_LOADING
+
+# define DECLARE_COMPILED_CODE(string, decl, code)			\
+  extern void EXFUN (decl, (void));					\
+  extern SCHEME_OBJECT * EXFUN (code, (SCHEME_OBJECT *));
+
+#else /* COMPILE_FOR_DYNAMIC_LOADING */
+
+# define DECLARE_COMPILED_CODE(string, decl, code)			\
+  extern void EXFUN (dload_initialize_file, (void));			\
+									\
+  void									\
+  DEFUN_VOID (dload_initialize_file)					\
+  {									\
+    void EXFUN (decl, (void));						\
+    SCHEME_OBJECT * EXFUN (code, (SCHEME_OBJECT *));			\
+									\
+    declare_compiled_code (string, decl, code);				\
+  }
+
+#endif /* COMPILE_FOR_DYNAMIC_LOADING */
 
 #ifdef __GNUC__
 # ifdef hp9000s800
