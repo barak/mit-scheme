@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.93 1992/04/08 17:57:38 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.94 1992/05/14 18:38:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -278,7 +278,7 @@
 	     (normal))
 	    ((and (char? *command-key*)
 		  (or (eq? command (ref-command-object self-insert-command))
-		      (and (eq? command (ref-command-object auto-fill-space))
+		      (and (eq? command (ref-command-object &auto-fill-space))
 			   (not (auto-fill-break? point)))
 		      (command-argument-self-insert? command)))
 	     (let ((key *command-key*))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.53 1992/02/04 03:42:15 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.54 1992/05/14 18:38:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -349,23 +349,46 @@ With argument, turn auto-fill mode on iff argument is positive."
 		  (current-minor-mode? mode))
 	     (disable-current-minor-mode! mode))))))
 
-(define-command auto-fill-space
+(define-command &auto-fill-space
   "Breaks the line if it exceeds the fill column, then inserts a space."
   "p"
   (lambda (argument)
-    (insert-chars #\space argument)
-    (auto-fill-break)))
+    (conditionally-override-key
+     (ref-command-object self-insert-command)
+     (lambda ()
+       (insert-chars #\space argument)
+       (auto-fill-break)))))
 
-(define-command auto-fill-newline
+(define-command &auto-fill-newline
   "Breaks the line if it exceeds the fill column, then inserts a newline."
   "P"
   (lambda (argument)
-    (auto-fill-break)
-    ((ref-command newline) argument)))
+    (conditionally-override-key
+     (ref-command-object newline)
+     (lambda ()
+       (auto-fill-break)
+       ((ref-command newline) argument)))))
+
+(define (conditionally-override-key override-command action)
+  ;; This looks at the context in which the auto-fill commands are
+  ;; invoked, and performs the auto-fill action only when the context
+  ;; is the expected one.
+  (let ((comtabs (current-comtabs))
+	(key (current-command-key)))
+    (let ((tail
+	   (memq (minor-mode-comtab (ref-mode-object auto-fill)) comtabs)))
+      (if (or (null? tail)
+	      (null? (cdr tail)))
+	  (dispatch-on-key comtabs key)
+	  (let ((command (comtab-entry (cdr tail) key)))
+	    (if (or (eq? command override-command)
+		    (eq? command (ref-command-object undefined)))
+		(action)
+		(dispatch-on-command command)))))))
 
 (define-minor-mode auto-fill "Fill" "")
-(define-key 'auto-fill #\space 'auto-fill-space)
-(define-key 'auto-fill #\return 'auto-fill-newline)
+(define-key 'auto-fill #\space '&auto-fill-space)
+(define-key 'auto-fill #\return '&auto-fill-newline)
 
 (define (auto-fill-break)
   (let ((point (current-point)))
@@ -381,7 +404,7 @@ With argument, turn auto-fill mode on iff argument is positive."
 (define (auto-fill-break? point)
   (and (> (mark-column point) (ref-variable fill-column))
        (line-end? (horizontal-space-end point))))
-
+
 (define-variable-per-buffer left-margin
   "Column for the default indent-line-function to indent to.
 Linefeed indents to this column in Fundamental mode.
