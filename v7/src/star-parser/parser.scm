@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.17 2001/07/14 11:42:31 cph Exp $
+;;; $Id: parser.scm,v 1.18 2001/10/09 16:02:22 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -47,6 +47,11 @@
 	   (if preprocessor
 	       (preprocessor expression external-bindings internal-bindings)
 	       expression)))
+	((or (string? expression)
+	     (char? expression))
+	 (preprocess-parser-expression `(NOISE ,expression)
+				       external-bindings
+				       internal-bindings))
 	(else
 	 (error "Unknown parser expression:" expression))))
 
