@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.6 1988/10/15 17:19:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.7 1988/10/21 22:18:46 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -272,7 +272,8 @@ MIT in each case. |#
   (*unparse-string (symbol->string symbol)))
 
 (define (unparse/character character)
-  (if *slashify?*
+  (if (or *slashify?*
+	  (not (char-ascii? character)))
       (begin (*unparse-string "#\\")
 	     (*unparse-string (char->name character true)))
       (*unparse-char character)))
