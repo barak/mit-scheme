@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/version.h,v 11.97 1991/08/31 03:59:26 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/version.h,v 11.98 1991/09/07 22:48:14 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -46,5 +46,5 @@ MIT in each case. */
 #define VERSION		11
 #endif
 #ifndef SUBVERSION
-#define SUBVERSION	97
+#define SUBVERSION	98
 #endif
