@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.11 1991/10/26 21:08:14 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.12 1991/10/29 13:48:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -140,46 +140,45 @@ False means don't delete them until \\[list-processes] is run."
 	  (mark-right-inserting-copy (buffer-end buffer))))))
 
 (define (start-process name buffer environment program . arguments)
-  (let ((make-subprocess
-	 (let ((filename
-		(find-program program (buffer-default-directory buffer)))
-	       (arguments (list->vector (cons program arguments))))
-	   (if (and (eq? true (ref-variable process-connection-type))
-		    ((ucode-primitive have-ptys? 0)))
-	       (lambda ()
-		 (start-pty-subprocess filename arguments environment))
-	       (lambda ()
-		 (start-pipe-subprocess filename arguments environment))))))
-    (with-process-directory buffer
-      (lambda ()
-	(without-interrupts
-	 (lambda ()
-	   (let ((subprocess (make-subprocess)))
-	     (let ((channel (subprocess-input-channel subprocess)))
-	       (if channel
-		   (begin
-		     (channel-nonblocking channel)
-		     (channel-register channel))))
-	     (let ((process
-		    (%make-process
-		     subprocess
-		     (do ((n 2 (+ n 1))
-			  (name* name
-				 (string-append name
-						"<" (number->string n) ">")))
-			 ((not (get-process-by-name name*)) name*))
-		     buffer)))
-	       (update-process-mark! process)
-	       (subprocess-put! subprocess 'EDWIN-PROCESS process)
-	       (set! edwin-processes (cons process edwin-processes))
-	       process))))))))
+  (let ((directory (buffer-default-directory buffer)))
+    (let ((make-subprocess
+	   (let ((filename (find-program program directory))
+		 (arguments (list->vector (cons program arguments)))
+		 (pty? (ref-variable process-connection-type buffer)))
+	     (lambda ()
+	       (start-subprocess filename arguments environment pty?)))))
+      ;; Calling WITH-WORKING-DIRECTORY-PATHNAME is a kludge --
+      ;; there's no other way to specify the working directory of the
+      ;; subprocess.  The subprocess abstraction should be fixed to
+      ;; allow this.
+      (with-working-directory-pathname directory
+	(lambda ()
+	  (without-interrupts
+	   (lambda ()
+	     (let ((subprocess (make-subprocess)))
+	       (let ((channel (subprocess-input-channel subprocess)))
+		 (if channel
+		     (begin
+		       (channel-nonblocking channel)
+		       (channel-register channel))))
+	       (let ((process
+		      (%make-process
+		       subprocess
+		       (do ((n 2 (+ n 1))
+			    (name* name
+				   (string-append name
+						  "<" (number->string n) ">")))
+			   ((not (get-process-by-name name*)) name*))
+		       buffer)))
+		 (update-process-mark! process)
+		 (subprocess-put! subprocess 'EDWIN-PROCESS process)
+		 (set! edwin-processes (cons process edwin-processes))
+		 process)))))))))
 
-(define (with-process-directory buffer thunk)
-  ;; Calling WITH-WORKING-DIRECTORY-PATHNAME is a kludge -- there's
-  ;; no other way to specify the working directory of the subprocess.
-  ;; The subprocess abstraction should be fixed to allow this.
-  (with-working-directory-pathname (buffer-default-directory buffer)
-    thunk))
+(define (start-subprocess filename arguments environment pty?)
+  (if (and pty? ((ucode-primitive have-ptys? 0)))
+      (start-pty-subprocess filename arguments environment)
+      (start-pipe-subprocess filename arguments environment)))
 
 (define (delete-process process)
   (let ((subprocess (process-subprocess process)))
@@ -463,13 +462,12 @@ after the listing is made.)"
   (let ((process false)
 	(start-process
 	 (lambda ()
-	   ((if (and pty? ((ucode-primitive have-ptys? 0)))
-		start-pty-subprocess
-		start-pipe-subprocess)
+	   (start-subprocess
 	    program
 	    (list->vector
 	     (cons (os/filename-non-directory program) arguments))
-	    false))))
+	    false
+	    pty?))))
     (dynamic-wind
      (lambda ()
        (if (not process)
