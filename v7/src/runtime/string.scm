@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.8 1992/12/04 03:17:47 cph Exp $
+$Id: string.scm,v 14.9 1993/10/13 07:40:50 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -479,8 +479,8 @@ MIT in each case. |#
 	string
 	(let ((result (string-allocate n))
 	      (i (fix:- n length)))
-	  (if (negative? i)
-	      (substring-move-right! string 0 n result 0)
+	  (if (fix:< i 0)
+	      (substring-move-right! string (fix:- 0 i) length result 0)
 	      (begin
 		(let ((char (if (default-object? char) #\space char)))
 		  (substring-fill! result 0 i char))
