@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.22 1991/08/26 03:56:46 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.23 1991/10/26 21:49:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -178,7 +178,11 @@ normally they record the associated output in a transcript buffer:
 	    (WITH-OUTPUT-TO-PORT . 1)
 	    (WITH-OUTPUT-TO-STRING . 0)
 	    (WITH-VALUES . 1)
+	    (WITHIN-CONTINUATION . 1)
 
+	    (MAKE-CONDITION-TYPE . 3)
+	    (BIND-RESTART . 3)
+	    (WITH-SIMPLE-RESTART . 2)
 	    (BIND-CONDITION-HANDLER . 2)
 	    (LIST-TRANSFORM-POSITIVE . 1)
 	    (LIST-TRANSFORM-NEGATIVE . 1)
