@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.37 1994/11/04 20:06:41 cph Exp $
+$Id: unpars.scm,v 14.38 1995/01/12 17:24:07 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -686,6 +686,8 @@ MIT in each case. |#
 (define (unparse/entity entity)
   (*unparse-with-brackets (cond ((continuation? entity) 'CONTINUATION)
 				((apply-hook? entity) 'APPLY-HOOK)
+				((arity-dispatched-procedure? entity)
+				 'ARITY-DISPATCHED-PROCEDURE)
 				(else 'ENTITY))
 			  entity
 			  false))
