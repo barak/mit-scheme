@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.8 1988/12/06 18:54:25 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.9 1988/12/13 13:02:45 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -60,7 +60,7 @@ MIT in each case. |#
 (define (discriminate-items items predicate)
   (let loop ((items items) (passed '()) (failed '()))
     (cond ((null? items)
-	   (return-2 passed failed))
+	   (values (reverse! passed) (reverse! failed)))
 	  ((predicate (car items))
 	   (loop (cdr items) (cons (car items) passed) failed))
 	  (else
@@ -97,7 +97,7 @@ MIT in each case. |#
 
 (define (all-eq? items)
   (if (null? items)
-      (error "ALL-EQ? undefined for empty set"))
+      (error "ALL-EQ?: undefined for empty set"))
   (or (null? (cdr items))
       (for-all? (cdr items)
 	(let ((item (car items)))
@@ -106,12 +106,12 @@ MIT in each case. |#
 
 (define (all-eq-map? items map)
   (if (null? items)
-      (error "ALL-EQ-MAP? undefined for empty set"))
+      (error "ALL-EQ-MAP?: undefined for empty set"))
   (let ((item (map (car items))))
     (if (or (null? (cdr items))
 	    (for-all? (cdr items) (lambda (item*) (eq? item (map item*)))))
-	(return-2 true item)
-	(return-2 false false))))
+	(values true item)
+	(values false false))))
 
 (define (eq-set-union* set sets)
   (let loop ((set set) (sets sets) (accum '()))
