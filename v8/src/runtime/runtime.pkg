@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.182 1993/07/01 22:19:23 cph Exp $
+$Id: runtime.pkg,v 14.183 1993/07/01 23:07:57 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -2478,6 +2478,7 @@ MIT in each case. |#
 	  stop-thread-timer
 	  suspend-current-thread
 	  thread-continuation
+	  thread-dead?
 	  thread-execution-state
 	  thread-mutex-owner
 	  thread-mutex?

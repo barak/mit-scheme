@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.14 1993/07/01 22:19:24 cph Exp $
+$Id: thread.scm,v 1.15 1993/07/01 23:08:04 cph Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -89,6 +89,9 @@ MIT in each case. |#
 
 (define no-exit-value-marker
   (list 'NO-EXIT-VALUE-MARKER))
+
+(define-integrable (thread-dead? thread)
+  (eq? 'DEAD (thread/execution-state thread)))
 
 (define thread-population)
 (define first-running-thread)
