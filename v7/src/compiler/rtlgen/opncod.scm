@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.69 2001/09/25 05:31:16 cph Exp $
+$Id: opncod.scm,v 4.70 2001/09/25 05:37:45 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -1092,7 +1092,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	   (rtl:make-machine-constant (ucode-type character))
 	   (rtl:make-object->datum arg)))
 	 finish
-	 name
+	 'INTEGER->CHAR
 	 expressions)))
     '(0)
     internal-close-coding-for-type-checks)))
