@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.107 1992/04/04 13:07:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.108 1992/04/17 03:45:28 jinx Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -75,13 +75,14 @@
 
 (define (insert-file mark filename)
   (%insert-file
-   mark
-   (bind-condition-handler (list condition-type:file-error)
-       (lambda (condition)
-	 condition
-	 (editor-error "File " (->namestring filename) " not found"))
-     (lambda ()
-       (->truename filename)))
+   mark 
+   (bind-condition-handler
+    (list condition-type:file-error)
+    (lambda (condition)
+      condition
+      (editor-error "File " (->namestring filename) " not found"))
+    (lambda ()
+      (->truename filename)))
    false))
 
 (define-variable read-file-message
@@ -105,9 +106,12 @@ Each procedure is called with three arguments:
 	 (lambda ()
 	   (let loop ((methods (ref-variable read-file-methods mark)))
 	     (cond ((null? methods)
-		    (group-insert-file! (mark-group mark)
-					(mark-index mark)
-					truename))
+		    (group-insert-translated-file!
+		     (and *translate-file-data-on-input?*
+			  (pathname-newline-translation truename))
+		     (mark-group mark)
+		     (mark-index mark)
+		     truename))
 		   ((not ((car methods) truename mark visit?))
 		    (loop (cdr methods))))))))
     (if (ref-variable read-file-message)
@@ -120,20 +124,32 @@ Each procedure is called with three arguments:
 	  (temporary-message msg "done"))
 	(do-it))))
 
+(define (group-insert-translated-file! translation group index truename)
+  (if (not translation)
+      (group-insert-file! group index truename)
+      (with-group-daemons-disabled group true
+	(lambda ()
+	  (with-group-undo-flushed group
+	    (lambda ()
+	      (let* ((n (group-insert-file! group index truename))
+		     (end (group-translate! group translation "\n"
+					    index (fix:+ index n))))
+		(fix:- end index))))))))
+
 (define (group-insert-file! group index truename)
   (let ((channel (file-open-input-channel (->namestring truename))))
     (let ((length (file-length channel)))
       (without-interrupts
-       (lambda ()
-	 (prepare-gap-for-insert! group index length)))
+	(lambda ()
+	  (prepare-gap-for-insert! group index length)))
       (let ((n
 	     (channel-read channel (group-text group) index (+ index length))))
 	(without-interrupts
-	 (lambda ()
-	   (let ((gap-start* (fix:+ index n)))
-	     (undo-record-insertion! group index gap-start*)
-	     (finish-group-insert! group index n)
-	     (record-insertion! group index gap-start*))))
+	  (lambda ()
+	    (let ((gap-start* (fix:+ index n)))
+	      (undo-record-insertion! group index gap-start*)
+	      (finish-group-insert! group index n)
+	      (record-insertion! group index gap-start*))))
 	(channel-close channel)
 	n))))
 
@@ -477,20 +493,24 @@ Otherwise, a message is written both before and after long file writes."
   (write-region* region pathname message? true))
 
 (define (write-region* region pathname message? append?)
-  (let ((filename (->namestring pathname))
+  (let ((translation (and *translate-file-data-on-output?*
+			  (pathname-newline-translation pathname)))
+	(filename (->namestring pathname))
 	(group (region-group region))
 	(start (region-start-index region))
 	(end (region-end-index region)))
     (let ((do-it
 	   (if append?
 	       (lambda ()
-		 (group-append-to-file group start end filename))
+		 (group-append-to-file translation group start
+				       end filename))
 	       (lambda ()
 		 (let ((visit? (eq? 'VISIT message?)))
 		   (let loop
 		       ((methods (ref-variable write-file-methods group)))
 		     (cond ((null? methods)
-			    (group-write-to-file group start end filename))
+			    (group-write-to-file translation group start
+						 end filename))
 			   ((not ((car methods) region pathname visit?))
 			    (loop (cdr methods))))))))))
       (cond ((not message?)
@@ -509,16 +529,20 @@ Otherwise, a message is written both before and after long file writes."
     ;; the operating system after the channel is closed.
     filename))
 
-(define (group-write-to-file group start end filename)
-  (let ((channel (file-open-output-channel filename)))
-    (group-write-to-channel group start end channel)
-    (channel-close channel)))
+(define (group-write-to-file translation group start end filename)
+  (maybe-translating-output translation group start end
+    (lambda (end*)
+      (let ((channel (file-open-output-channel filename)))
+	(group-write-to-channel group start end* channel)
+	(channel-close channel)))))
 
-(define (group-append-to-file group start end filename)
-  (let ((channel (file-open-append-channel filename)))
-    (group-write-to-channel group start end channel)
-    (channel-close channel)))
-
+(define (group-append-to-file translation group start end filename)
+  (maybe-translating-output translation group start end
+    (lambda (end*)
+      (let ((channel (file-open-append-channel filename)))
+	(group-write-to-channel group start end* channel)
+	(channel-close channel)))))
+
 (define (group-write-to-channel group start end channel)
   (let ((text (group-text group))
 	(gap-start (group-gap-start group))
@@ -537,6 +561,29 @@ Otherwise, a message is written both before and after long file writes."
 				text
 				gap-end
 				(fix:+ end gap-length))))))
+
+(define-integrable (maybe-translating-output translation group start end core)
+  (if (not translation)
+      (core end)
+      (with-output-translation translation group start end core)))
+
+(define (with-output-translation translation group start end core)
+  (with-group-daemons-disabled group false
+    (lambda ()
+      (with-group-undo-disabled group
+	(lambda ()
+	  (let ((end end))
+	    (dynamic-wind
+	     (lambda ()
+	       (set! end (group-translate! group "\n" translation
+					   start end))
+	       unspecific)
+	     (lambda ()
+	       (core end))
+	     (lambda ()
+	       (set! end (group-translate! group translation "\n"
+					   start end))
+	       unspecific))))))))
 
 (define (require-newline buffer)
   (let ((require-final-newline? (ref-variable require-final-newline buffer)))
@@ -605,3 +652,122 @@ Otherwise, a message is written both before and after long file writes."
 				 (lambda () (delete-file target))))
 			      targets))
 		modes)))))))
+
+;;;; Utilities for text end-of-line translation
+
+(define *translate-file-data-on-input?* true)
+(define *translate-file-data-on-output?* true)
+
+(define (pathname-newline-translation pathname)
+  (let ((end-of-line (pathname-end-of-line-string pathname)))
+    (and (not (string=? "\n" end-of-line))
+	 end-of-line)))
+
+(define (with-group-daemons-disabled group redisplay? action)
+  (let ((insert-daemons '())
+	(delete-daemons '())
+	(clip-daemons '())
+	(move-point-daemons '()))
+    (let ((swap
+	   (lambda ()
+	     (let ((old (vector-ref group group-index:insert-daemons)))
+	       (vector-set! group group-index:insert-daemons
+			    insert-daemons)
+	       (set! insert-daemons old))
+	     (let ((old (vector-ref group group-index:delete-daemons)))
+	       (vector-set! group group-index:delete-daemons
+			    delete-daemons)
+	       (set! delete-daemons old))
+	     ;; I think the following two are unnecessary, but...
+	     (let ((old (vector-ref group group-index:clip-daemons)))
+	       (vector-set! group group-index:clip-daemons
+			    clip-daemons)
+	       (set! clip-daemons old))
+	     (let ((old (vector-ref group group-index:move-point-daemons)))
+	       (vector-set! group group-index:move-point-daemons
+			    move-point-daemons)
+	       (set! move-point-daemons old))
+	     unspecific)))
+      (dynamic-wind
+       swap
+       action
+       (lambda ()
+	 (swap)
+	 (if redisplay?
+	     (for-each window-redraw!
+		       (buffer-windows (group-buffer group)))))))))
+
+;;; For the time being, inserting a translated file loses all undo
+;;; information from before the insertion.
+
+(define (with-group-undo-flushed group action)
+  (dynamic-wind (lambda ()
+		  (disable-group-undo! group))
+		action
+		(lambda ()
+		  (enable-group-undo! group))))  
+
+;;; Group translation operation.
+;;; This operation could be pushed under the group abstraction and be taught
+;;; about the gap, etc., but it would then have to update the marks, etc.
+;;; For the time being, try it as is.  If it is inadequate, then fix.
+
+(define (group-translate! group old new start end)
+  (define (group-compare-substring group index string start end)
+    (let loop ((index index)
+	       (start start))
+      (or (fix:>= start end)
+	  (and (char=? (string-ref string start)
+		       (group-right-char group index))
+	       (loop (fix:+ index 1) (fix:+ start 1))))))
+
+  (let ((match (string-ref old 0))
+	(olen (string-length old))
+	(nlen (string-length new)))
+
+    (let ((delta (fix:- nlen olen))
+	  (replace!
+	   (cond ((and (fix:<= olen nlen)
+		       (substring=? old 0 olen new 0 olen))
+		  (lambda (position)
+		    (group-insert-substring! group position new olen nlen)))
+		 ((and (fix:<= nlen olen)
+		       (substring=? new 0 nlen old 0 nlen))
+		  (lambda (position)
+		    (group-delete! group
+				   (fix:+ position nlen)
+				   (fix:+ position olen))))
+		 ((and (fix:<= olen nlen)
+		       (substring=? old 0 olen new (fix:- nlen olen) nlen))
+		  (lambda (position)
+		    (group-insert-substring! group position new
+					     0 (fix:- nlen olen))))
+		 ((and (fix:<= nlen olen)
+		       (substring=? new 0 nlen old (fix:- olen nlen) olen))
+		  (lambda (position)
+		    (group-delete! group
+				   position
+				   (fix:+ position (fix:- olen nlen)))))
+		 (else
+		  (lambda (position)
+		    (group-delete! group position (fix:+ position olen))
+		    (group-insert-substring! group position new 0 nlen))))))
+		       
+      (let loop ((next (group-find-next-char group start end match))
+		 (end end))
+	(if (not next)
+	    end
+	    (let ((next* (fix:+ next 1)))
+	      (if (or (fix:= olen 1)
+		      (and (fix:<= (fix:+ next olen) end)
+			   (if (fix:= olen 2)
+			       (char=? (string-ref old 1)
+				       (group-right-char group next*))
+			       (group-compare-substring group next*
+							old 1 olen))))
+		  (let ((end (fix:+ end delta)))
+		    (replace! next)
+		    (loop (group-find-next-char group (fix:+ next* delta) end match)
+			  end))
+		  (loop (group-find-next-char group next* end match)
+			end))))))))
