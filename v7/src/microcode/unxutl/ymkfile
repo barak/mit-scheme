@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.60 1992/09/26 03:12:03 cph Exp $
+$Id: ymkfile,v 1.61 1993/01/23 00:07:44 nick Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -706,11 +706,6 @@ x11base.o x11color.o x11graph.o x11term.o starbasex.o : scheme.touch prims.h \
 	x11.h
 x11base.o : ux.h uxselect.h
 starbase.o : scheme.touch prims.h
-
-Sgraph.o Sgraph_xt.o SgX.o : scheme.touch prims.h Sgraph.h
-Sgraph_ar.o : scheme.touch prims.h Sgraph.h array.h
-fft.o : scheme.touch prims.h zones.h array.h image.h
-array.o image.o : scheme.touch prims.h array.h
 
 cmpint.o : scheme.touch prim.h $(GC_HEAD_FILES)
 cmpaux-hppa.s : cmpaux-hppa.m4

@@ -1,6 +1,6 @@
 /* -*- C -*-
    Switzerland local additions to the makefile
-   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y700.lcl,v 1.3 1992/12/07 22:14:03 cph Exp $
+   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y700.lcl,v 1.4 1993/01/23 00:08:05 nick Exp $
  */
 
 COMMON_OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJECTS)
@@ -20,9 +20,9 @@ COMMON_OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJ
 /* For GJS's signal processing stuff */
 
 SIG_SOURCES = $(X_SOURCES) $(TERMCAP_OBJECTS)\
-	SOURCES_SYSTEM SOURCES_MACHINE fft.c array.c image.c
+	SOURCES_SYSTEM SOURCES_MACHINE d_fft.c d_array.c image.c
 SIG_OBJECTS = $(X_OBJECTS) $(TERMCAP_OBJECTS)\
-	OBJECTS_SYSTEM OBJECTS_MACHINE fft.o array.o image.o usrSIG.o
+	OBJECTS_SYSTEM OBJECTS_MACHINE d_fft.o d_array.o image.o usrSIG.o
 SIG_LIB =  $(USER_LIBS) $(X_LIB) $(TERMCAP_LIBS)\
 	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
 
@@ -55,4 +55,28 @@ usrSIG.c : $(SIG_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xm
 	@ECHO "#** Re-making" $@ because of $?
 	rm -f usrSIG.c
 	./Findprim $(SIG_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrSIG.c
+
+Sgraph.o Sgraph_xt.o SgX.o : scheme.touch prims.h Sgraph.h
+Sgraph_ar.o : scheme.touch prims.h Sgraph.h array.h
+fft.o : scheme.touch prims.h zones.h array.h image.h
+array.o image.o : scheme.touch prims.h array.h
+
+d_Sgraph_ar.o : scheme.touch prims.h Sgraph.h array.h
+	$(CC) $(CFLAGS)  -DREAL_IS_DEFINED_DOUBLE=1 -c $*.c
+
+d_fft.o : scheme.touch prims.h zones.h array.h image.h
+	$(CC) $(CFLAGS)  -DREAL_IS_DEFINED_DOUBLE=1 -c $*.c
+
+d_array.o image.o : scheme.touch prims.h array.h
+	$(CC) $(CFLAGS)  -DREAL_IS_DEFINED_DOUBLE=1 -c $*.c
+
+
+d_Sgraph_ar.c : Sgraph_ar.c
+	ln -f -s Sgraph_ar.c d_Sgraph_ar.c
+
+d_fft.c : fft.c
+	ln -f -s fft.c d_fft.c
+
+d_array.c : array.c
+	ln -f -s array.c d_array.c
 
