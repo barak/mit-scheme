@@ -1,6 +1,6 @@
 Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.15 1991/03/01 00:23:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.16 1991/03/01 02:06:56 jinx Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -19,7 +19,7 @@ change in major ways any time soon.
 This is an early version of this document, and the order of
 presentation leaves a lot to be desired.  In particular, the document
 does not follow a monotonic progression, but is instead organized in a
-dictionary-like or graph-like manner.  We recommed that you read
+dictionary-like or graph-like manner.  We recommend that you read
 through the whole document twice since some important details,
 apparently omitted, may have their explanation later on in the
 document.  When reading the document for the second time, you will
@@ -89,7 +89,7 @@ usual entry point.  CF uses COMPILE-SCODE, and assumes that the code
 has been syntaxed by SF producing a .bin file, and dumps the resulting
 compiled code into a .com file.
 
-The internal sublanguages used by Liar are:
+The internal sub-languages used by Liar are:
 
     Scode --FGGEN--> 
     Flow-graph --RTLGEN--> 
@@ -151,13 +151,13 @@ subexpression eliminator pass of the RTL-level optimizer.
 	This package contains most of the machine-dependent parts of
 the compiler and the back end utilities.  In particular, it contains
 the RTL -> LAP translation rules, and the LAP -> bits translation
-rules, ie. the LAPGEN and ASSEMBLER passes respectively.  It has some
-sub-packges for various major utilities (linearizer, map-merger,
+rules, i.e. the LAPGEN and ASSEMBLER passes respectively.  It has some
+sub-packages for various major utilities (linearizer, map-merger,
 etc.).
 
 (COMPILER ASSEMBLER):
 	This package contains most of the machine-independent portion
-of the assembler.  In particular, it contains the bit-assembler, ie.
+of the assembler.  In particular, it contains the bit-assembler, i.e.
 the portion of the assembler that accumulates the bit strings produced
 by ASSEMBLER and performs branch-tensioning on the result.
 
@@ -251,7 +251,7 @@ and microcode/cmpint.c .
 
 microcode/cmpaux-md.m4 is an assembly language port-dependent file
 that allows compiled Scheme to call the C-written library routines and
-viceversa.  It is described in microcode/cmpaux.txt .
+vice versa.  It is described in microcode/cmpaux.txt .
 
 microcode/cmpint.c defines the library in a machine/port-independent
 way, but requires some information about the port and this is provided
@@ -299,7 +299,7 @@ problems.  Whatever technique the C back end may use can probably be
 emulated by architectures with such a strong division.
 
 - Liar assumes that the target machine is a general-register machine.
-Ie. operations are based on processor registers, and there is a
+I.E. operations are based on processor registers, and there is a
 moderately large set of general-purpose registers that can be used
 interchangeably.  It would be very hard to port Liar to a stack
 machine, a graph-reduction engine, or a 4-counter machine.  It is
@@ -381,8 +381,8 @@ Spectrum port as its model.
 - If you have a machine significantly different from those listed
 above, you are out of luck and will have to write a port from scratch.
 In particular, a port to an Intel 386/486 would use some of the
-concepts and code from ports to ther CISCs, but due to the reduced
-register set, would probably have to redo all the register allocation.
+concepts and code from ports to other CISCs, but due to the reduced
+register set, would probably have to re-do all the register allocation.
 
 Of course, no architecture is identical to any other, so you may want
 to mix and match ideas from many of the ports already done, and it is
@@ -408,7 +408,7 @@ registers, some of which have been reserved by the port to hold useful
 quantities (stack pointer, value register, etc.)  while
 pseudo-registers represent quantities that will need physical
 registers or memory locations to hold them in the final translation.
-In order to make the RTL more homogenous, the registers are not
+In order to make the RTL more homogeneous, the registers are not
 distinguished syntactically in the RTL, but are instead distinguished
 by their value range.  Machine registers are represented as the N
 lowest numbered RTL registers (where N is the number of hardware
@@ -418,7 +418,7 @@ numbers) vary from architecture to architecture, the register numbers
 in an RTL program will vary depending on the back end in use.  Note
 that all pseudo-registers are equivalent, and all can hold arbitrary
 Scheme objects, while machine registers can be further divided into
-separate classes (eg. address, data, and floating-point registers).
+separate classes (e.g. address, data, and floating-point registers).
 
 - RTL assumes only a load-store architecture, but can accommodate
 architectures that allow memory operands and rich addressing modes.
@@ -467,7 +467,7 @@ The RTL program is then translated into a Lisp-format
 assembly-language program (LAP).  Hardware register allocation occurs
 during this translation.  The register allocator is
 machine-independent and can accommodate different register classes,
-but does not currently accomodate register pairs (this is why floating
+but does not currently accommodate register pairs (this is why floating
 point operations are not currently open coded on the Vax).
 
 The register allocator works by considering unused machine registers
@@ -569,7 +569,7 @@ compiler/machines/port/machin.scm.  It contains a list of primitive
 names that the port cannot open code.
 
 ==> These last two parameters should probably be combined and
-inverted, ie. compiler:primitives-with-open-codings should replace
+inverted, i.e. compiler:primitives-with-open-codings should replace
 both of the above.  This has the advantage that if the RTL level is
 taught how to deal with additional primitives, but not all ports have
 open codings for them, there is no need to change the various
@@ -580,7 +580,7 @@ machin.scm files.
 The following is the list of files that usually appears in the port
 directory.  The files can be organized differently for each port, but
 it is probably easiest if the same pattern is kept.  In particular,
-the best way to write most is by editting the corresponding files from
+the best way to write most is by editing the corresponding files from
 an existing port.  Keeping the structure identical will make writing
 decls.scm, comp.pkg, and comp.sf straightforward, and will make future
 updates easier to track.
@@ -608,7 +608,7 @@ the originals that would make updating your port easier.
 compiler, the files loaded into each package, and what names are
 exported and imported from each package.
 	To write this file, copy the similar file from an existing
-port, change the name of the port (ie. mips -> sparc), and add or
+port, change the name of the port (i.e. mips -> sparc), and add or
 remove files as appropriate.  You should only need to add or remove
 assembler and LAPGEN files.
 
@@ -627,7 +627,7 @@ files in the assembler instruction database section, although this
 section is no longer used by default.
 
 The previous three files should be copied or linked to the top-level
-compiler directory.  Ie., compiler/comp.pkg should be a link (symbolic
+compiler directory.  I.E., compiler/comp.pkg should be a link (symbolic
 preferably) or copy of compiler/machines/port/comp.pkg .
 
 * make.scm:
@@ -661,7 +661,7 @@ circularities in the integration dependencies, some of the files are
 processed multiple times, but the mechanism in decls takes care of
 doing this the correct way.
 You should be able to edit the version from another port in the
-appropriate way.  Mostly you will need to rename the port (ie. mips ->
+appropriate way.  Mostly you will need to rename the port (i.e. mips ->
 sparc), and add/delete instruction and rules files as needed.
 ==> decls.scm should probably be split into two sections:  The
 machine-independent dependency management code, and the actual
@@ -683,13 +683,12 @@ move elsewhere.  Obviously, you can just copy it from another port.
 efficient use of the hardware's addressing modes and other
 capabilities.  The rules use the same syntax as the LAPGEN rules, but
 belong in the (rule) rewriting database.  Although these rules are
-port-dependent, it should be possible to emulate what other ports have
-done in order to arrive at a correct set.  In addition, examination of
-the assembly language issued by the compiler may lead to further
-beneficial rewriting rules.  A later section of this document
-describes these rules in some detail.  It is possible to start out
-with no port-dependent rules and only add them as local inefficiencies
-are discovered in the output assembly language.
+port-dependent, it should be straightforward to emulate what other
+ports have done in order to arrive at a working set.  Moreover, it is
+possible to start out with an empty set and only add them as
+inefficiencies are discovered in the output assembly language.  These
+rules manipulate RTL expressions by using the procedures defined in
+compiler/rtlbase/rtlty1.scm and compiler/rtlbase/rtlty2.scm.
 
 * machin.scm:
 	This file defines architecture and port parameters needed by
@@ -707,7 +706,7 @@ ported to any machines where the quantum of addressability is not an
 8-bit byte, so the notion may not apply to those.
 
 - addressing-granularity: How many bits are addressed by the
-addressing quantum.  Ie., increasing an address by 1 will bump the
+addressing quantum.  I.E., increasing an address by 1 will bump the
 address to point past this number of bits.  Again, the compiler has
 not been ported to any machine where this value is not 8.
 
@@ -738,12 +737,12 @@ used in the future.
 
 - signed-fixnum/upper-limit: This parameter should be derived from
 others, but is specified as a constant due to a shortcoming of the
-compiler pre-processing system (expt is not constant-folded).  Use the
+compiler pre-processing system (EXPT is not constant-folded).  Use the
 commented-out expression to derive the value for your port.  Note that
 all values that should be derived but are instead specified as
 constants are tagged by a comment containing ``***''.
 
-- stack->memory-offset: This procedure is provided to accomodate
+- stack->memory-offset: This procedure is provided to accommodate
 stacks that grow in either direction, but we have not tested any port
 in which the stack grows towards larger addresses, especially because
 the CScheme interpreter imposes its own direction of growth.  It
@@ -800,7 +799,7 @@ each of these integers for use in some of the rules, especially those
 dealing with the assembly language interface.
 
 - number-of-machine-registers should be the number of machine registers,
-ie. one greater than the number assigned to the last machine register.
+i.e. one greater than the number assigned to the last machine register.
 
 - number-of-temporary-registers is the number of reserved memory
 locations used for storing the contents of spilled pseudo-registers.
@@ -820,7 +819,7 @@ ports seem to have the same definition.
 
 The contents of pseudo-registers are divided into various classes to
 allow some consistency checking.  Some machine registers always
-contain values in a fixed class (eg. floating point registers and the
+contain values in a fixed class (e.g. floating point registers and the
 register holding the datum mask).
 
 - machine-register-value-class is a procedure that maps a register to
@@ -829,15 +828,15 @@ value-class=object, value-class=address, and value-class=float.
 The registers allocated for the special implementation quantities have
 fixed value classes.  The remaining registers, managed by the
 compiler's register allocator, may be generic (value-class=word) or
-allow ony certain values to be stored in them (value-class=float,
-value-class=addres, etc.).
+allow only certain values to be stored in them (value-class=float,
+value-class=address, etc.).
 
 Most of the remainder of compiler/machines/port/machin.scm is a set of
 procedures that return and compare the port's chosen locations for
 various operations.  Some of these operations are no longer used by
 the compiler, and reflect a previous reliance on the interpreter to
 accomplish certain environment operations.  These operations are now
-handled by invoking the appopriate primitives rather than using
+handled by invoking the appropriate primitives rather than using
 special entry points in the runtime library for them.  Under some
 compiler switch settings the older methods for handling these
 operations can be re-activated.
@@ -862,7 +861,7 @@ is needed.  The best estimate is the number of cycles that
 constructing the constant would take, but the number of bytes of
 instructions can be used instead.
 
-- copiler:open-code-floating-point-arithmetic? and
+- compiler:open-code-floating-point-arithmetic? and
 compiler:primitives-with-no-open-coding have been described in the
 section on compiler switches and parameters.
 
@@ -875,7 +874,7 @@ the code that results from each rule.  The rules, and how to write
 them, are described further in a later section.
 
 The rule set is partitioned into multiple subsets.  This is not
-necessary, but makes recompiling the compiler faster and reduces the
+necessary, but makes re-compiling the compiler faster and reduces the
 memory requirements of the compiler.  The partition can be done in a
 different way, but is probably best left as uniform as possible
 between the different ports to facilitate comparison and updating.
@@ -895,36 +894,62 @@ register allocator and the linearizer.
 
 The following definitions constitute the register allocator interface
 and must be provided by lapgen.scm:
-  available-machine-registers
-  sort-machine-registers
-  register-type
-  register-types-compatible?
-  register-reference
-  register->register-transfer
-  reference->register-transfer
-  pseudo-register-home
-  home->register-transfer
-  register->home-transfer
 
-*** Describe, especially, homes, types, and references.
+- AVAILABLE-MACHINE-REGISTERS is a list of the RTL register numbers
+corresponding to those registers that the register allocator should
+manage.  This should include all machine registers except those
+reserved by the port.
+
+- SORT-MACHINE-REGISTERS is a procedure that reorders a list of
+registers into the preferred allocation order.
+==> Is this right?
+
+- REGISTER-TYPE is a procedure that maps RTL register numbers to their
+inherent register types (typically GENERAL and FLOAT).
+
+- REGISTER-TYPES-COMPATIBLE? is a boolean procedure that decides
+whether two registers can hold the same range of values.
+
+- REGISTER-REFERENCE maps RTL register numbers into pieces of assembly
+language used to refer to those registers.
+
+- REGISTER->REGISTER-TRANSFER issues code to copy the contents of one
+RTL register into another.
+
+- REFERENCE->REGISTER-TRANSFER issues code to copy the contents of a
+machine register described by its reference into a given RTL register.
+
+- PSEUDO-REGISTER-HOME maps RTL registers to a fragment of assembly
+language used to refer to the memory location into which they will be
+spilled if necessary.  This is typically a location (or set of
+locations) in the Scheme ``register'' array.
+
+- HOME->REGISTER-TRANSFER generates code that copies the contents of
+an RTL register's home (its spill location) into a machine register.
+
+- REGISTER->HOME-TRANSFER generates code that copies the contents of
+an RTL register, currently held in a machine register, into its memory
+home.
 
 The following definitions constitute the linearizer interface, and
 must be provided by lapgen.scm:
-  lap:make-label-statement
-  lap:make-unconditional-branch
-  lap:make-entry-point
 
-The rest of the code in lapgen.scm is a set of utilities for the rule
-code, and is port-specific.
+- LAP:MAKE-LABEL-STATEMENT generates an assembly language directive
+that defines the specified label.
 
-*** Describe useful abstractions:
-  standard-target-reference
-  standard-temporary-reference
-  indirect-reference!
-  set-standard-branches!
-  invoke-interface
-  invoke-interface-jsr
-
+- LAP:MAKE-UNCONDITIONAL-BRANCH generates a fragment of assembly
+language used to unconditionally transfer control to the specified
+label.
+
+- LAP:MAKE-ENTRY-POINT generates a fragment of assembly language used
+to precede the root of the control flow graph.  Its output should use
+the assembler directive ENTRY-POINT and generate format and GC words
+for the entry point.
+
+The rest of the code in lapgen.scm is a port-specific set of utilities
+for the LAPGEN rules.  Some of the more common procedures are
+described in the section that covers the rules.
+
 * rules1.scm:
 	This file contains RTL statement rules for simple register assignments
 and operations.  In particular, it contains the rules for constructing
@@ -952,13 +977,13 @@ unless some switch settings vary.
 * rulfix.scm:
 	This file contains statement and predicate rules for
 manipulating fixnums (small integers represented in immediate
-form).  The rules handle tagging and detagging fixnum objects,
+form).  The rules handle tagging and de-tagging fixnum objects,
 arithmetic on them, comparison predicates, and overflow tests.
 
 * rulflo.scm:
 	This file contains statement and predicate rules for
 manipulating flonums (floating point data in boxed form).  The rules
-handle boxing and unboxing of flonums, arithmetic on them, and
+handle boxing and un-boxing of flonums, arithmetic on them, and
 comparison predicates.
 
 	4.4 Assembler files:
@@ -1080,7 +1105,7 @@ instructions is usually
       ...
       ((() ())
        <instruction-specifier-n>))
-Each instruction specifier is an ordinary (ie. not VARIABLE-WIDTH)
+Each instruction specifier is an ordinary (i.e. not VARIABLE-WIDTH)
 instruction specifier.  NAME is a variable to be bound to the
 bit-assembly-time value of EXPRESSION.  Each of the ranges
 <low-1>-<high-1> <low-2>-<high-2>, etc. must be properly nested in the
@@ -1124,7 +1149,7 @@ assembler.  They are usually split according to the size of the files
 or along the divisions in the architecture manual.  Not all
 instructions in the architecture need to be listed here -- only those
 actually used by the back end in the LAPGEN rules and utility procedures.
-Priviledged/supervisory instructions, BCD (binary coded decimal)
+Privileged/supervisory instructions, BCD (binary coded decimal)
 instructions, COBOL-style EDIT instructions, etc., can probably be
 safely ignored.
 
@@ -1150,23 +1175,32 @@ not machine-dependent, and should probably be moved to another directory.
 
 * dassm2.scm:
 	This file contains various utilities for the disassembler.  In
-particular, it contains the code for
+particular, it contains the definitions of
 
-    compiled-code-block/bytes-per-object
-    compiled-code-block/objects-per-procedure-cache
-    compiled-code-block/objects-per-variable-cache
+- COMPILED-CODE-BLOCK/BYTES-PER-OBJECT
+- COMPILED-CODE-BLOCK/OBJECTS-PER-PROCEDURE-CACHE
+- COMPILED-CODE-BLOCK/OBJECTS-PER-VARIABLE-CACHE
+  These parameters specify various relative sizes.
+==> Shouldn't these be in machin.scm?  The first two have counterparts
+there, and the last is always 1.
 
-==> Should these not be in machin.scm?  In particular, the first two
-have corresponding definitions there.
+- DISASSEMBLER/READ-VARIABLE-CACHE
+- DISASSEMBLER/READ-PROCEDURE-CACHE
+  These procedures are used to extract free variable information from
+a linked compiled code block.  Variable caches are maintained as
+native addresses (i.e. no tag bits), and procedure (execute) caches
+contain absolute jump instructions that must be decoded to extract the
+address of the called procedure.  Appropriate type bits must be added
+to both values before they are returned.
 
-    disassembler/read-variable-cache
-    disassembler/read-procedure-cache
-    disassembler/instructions
-    disassembler/instructions/null?
-    disassembler/instructions/read
-and the state machine to heuristically disassemble offsets, etc.
+This file also contains a state machine that allows the disassembler
+to display data appearing in the instruction stream in an appropriate
+format (gc and format words, mainly), and heuristics for displaying
+addressing modes and PC-relative offsets in a more legible form.
 
-*** Describe all of these.
+Note that the output of the disassembler need not be identical to the
+input of the assembler.  The disassembler is used almost exclusively
+fore debugging, and additional syntactic hints make it easier to read.
 
 * dassm3.scm:
 	This file contains the code to disassemble one instruction at
@@ -1187,9 +1221,9 @@ instead of the assembler rule data base.
 
 There are three subsystems in Liar that use rule-based languages.
 They are the RTL simplifier, LAPGEN (RTL->LAP translation), and the
-assembler.  The assembler need not be rule-basede, since it is
-machine independent, but given the availability of the rule language
-facility, this may be the easiest way to write it.
+assembler.  The assembler need not be rule-based, since it is machine
+dependent, but given the availability of the rule language, using it
+may be the easiest way to write it.
 
 	5.1 Rule syntax
 
@@ -1288,15 +1322,14 @@ rule bodies are a consequence of the WORD syntax.
 
 	5.2 Rule variable syntax.
 
-Although the simple variable syntax shown together with qualifiers is
-sufficient for all purposes, variable syntax provides some convenience
-for common cases in the form of additional syntax.  Moreover, the
-early matcher (used when COMPILER:ENABLE-EXPANSION-DECLARATIONS? is
-true) cannot currently handle qualifiers but can handle all the
-additional variable syntax, which can supplant qualifiers in most
-cases.  The early matcher is used only on the assembler rules, so if
-you want to use it, you only need to use the restricted language when
-writing those rules.
+Although qualifiers and the simple variable syntax shown are
+sufficient, some additional variable syntax is available for common
+patterns.  Moreover, the early matcher (used when
+COMPILER:ENABLE-EXPANSION-DECLARATIONS? is true) cannot currently
+handle qualifiers but can handle the additional variable syntax that
+can supplant most qualifiers.  The early matcher is used only on the
+assembler rules, so if you want to use it, you only need to use the
+restricted language when writing those rules.
 
 The complete variable syntax is as follows:
 
@@ -1334,14 +1367,14 @@ fragments of assembly language.  Most RTL instructions are
 assignments, where an RTL register is written with the contents of a
 virtual location or the result of some operation.
 
-	5.3.1 Outupt of the statement rules
+	5.3.1 Output of the statement rules
 
 The output of the statement rules is a fragment of assembly language
 written in the syntax expected by the LAP assembler.  The fragments,
 containing any number of machine instructions, are constructed by
 using the LAP macro, built on top of Scheme's QUASIQUOTE (back-quote).
 Within a LAP form, you can use UNQUOTE (comma) and UNQUOTE-SPLICING
-(comma atsign) to tag subexpressions that should be evaluated and
+(comma at-sign) to tag subexpressions that should be evaluated and
 appended.  For example,
     (LAP (MOV L ,r1 ,r2)
 	 (ADD L ,r3 ,r2))
@@ -1354,7 +1387,7 @@ constructs a fragment whose first instruction is a MOV instruction,
 and the rest is the fragment returned by generate-test.
 
 The INST macro is similar to LAP but constructs a single instruction.
-It should not be used unless necessary (ie. in
+It should not be used unless necessary (i.e. in
 LAP:MAKE-LABEL-STATEMENT), since you may find yourself later wanting
 to change a single instruction into a fragment in a utility procedure,
 and having to find every use of the procedure.
@@ -1374,7 +1407,7 @@ where non-pointer->ea may be used in
     (LAP (MOV L ,(non-pointer->ea <type> <datum>)
 		,(any-register-reference target)))
 INST-EA is superfluous on machines without general addressing modes
-(ie. load-store architectures).
+(i.e. load-store architectures).
 
 Each port provides a procedure, named REGISTER-REFERENCE, that maps
 between RTL machine registers and the assembly language syntax used to
@@ -1435,7 +1468,7 @@ the boolean argument determined whether other types are acceptable,
 although not desirable.  The register type may be false, specifying
 that there really is no preference for the type, and any reference is
 valid.  Note that STANDARD-REGISTER-REFERENCE should be used only for
-source pseudo-registers (ie. those that already contain data), and may
+source pseudo-registers (i.e. those that already contain data), and may
 return a memory reference for those machines with general addressing
 modes if there is no preferred type or alternates are acceptable.
 
@@ -1487,13 +1520,13 @@ This procedure returns an assembly language code fragment, and is
 typically used before invoking out-of-line code.
 
 * DELETE-DEAD-REGISTERS! informs the register allocator that RTL
-pseudo registers whose contens will not be needed after the RTL rule
+pseudo registers whose contents will not be needed after the RTL rule
 being translated can be eliminated from the register map and their
 aliases reused for other purposes.
 
 Most of the rules are actually written in terms of port-specific
 procedures that invoke the procedures listed above in particular fixed
-patterns.  For example, on a machine with general addresing modes and
+patterns.  For example, on a machine with general addressing modes and
 memory operands, we might define
     (define (standard-source rtl-reg)
       (standard-register-reference rtl-reg 'GENERAL true))
@@ -1543,7 +1576,7 @@ cache.
 * (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size) (? address))
   These rules are used to shift call frames on the stack to maintain
 proper tail recursion.  ADDRESS specifies where to start pushing the
-frame.  It should be a pointer into the used portion of the stack, ie.
+frame.  It should be a pointer into the used portion of the stack, i.e.
 point to a higher address.
 
 * (INVOCATION-PREFIX:DYNAMIC-LINK (? frame-size) (? address-1) (? address-2))
@@ -1610,8 +1643,9 @@ to translate on machines where the programmer is given no control over
 the caches.  
 
 On machines where the control is minimal or flushing is expensive
-(ie., there is a single instruction or OS call to flush the complete
-caches or synchronize both caches), a solution is possible: 
+(i.e., there is a single instruction or operating-system call to flush
+the complete caches or synchronize both caches), a solution is
+possible:
 
 This rule can generate code to invoke an out-of-line routine.  The
 routine can manage a large pool of pre-allocated closures, and
@@ -1657,14 +1691,14 @@ given to COMPILE-SCODE, and generates its entry code.  This code
 initializes the executing compiled code block.  The initialization
 consists of storing the environment with respect to which the
 expression is evaluated into the environment slot of the compiled code
-block (labelled by ENV-LABEL), and invoking the linker to link in the
+block (labeled by ENV-LABEL), and invoking the linker to link in the
 executing compiled code block.
 
 The linker (a runtime library utility) expects three arguments:
-  The address of the first word of the compiled code block, labelled
+  The address of the first word of the compiled code block, labeled
 by the value of *BLOCK-LABEL* during the compilation.
   The address of the first linker section in the constants area of the
-compiled code block, labelled by FREE-LABEL.
+compiled code block, labeled by FREE-LABEL.
   The number of linker sections in the compiled code block (N-SECTIONS).
 
 * (GENERATE/REMOTE-LINK label env-offset free-offset n-sections)
@@ -1687,7 +1721,7 @@ constants section of a compiled code block.  The constants section
 includes:
   - The constant objects referenced by the code.
   - The read variable caches used by the code.
-  - The write vaiable caches used by the code.
+  - The write variable caches used by the code.
   - The execute variable caches used by the code.
   - A slot for the debugging information generated by the compiler.
   - A slot for the environment where the code is linked.  
@@ -1824,7 +1858,7 @@ receives an index but leaves the appropriate return address in the
 first argument's location.  INVOKE-INTERFACE-JSB can be written by
 using INVOKE-INTERFACE (and SCHEME-TO-INTERFACE), but given the
 frequency of this type of call, it is often written in terms of an
-alternate entry point to the runtime library (eg.
+alternate entry point to the runtime library (e.g.
 SCHEME-TO-INTERFACE-JSB).
 
 An example of a more complicated call to the runtime library is
@@ -1871,7 +1905,7 @@ facilities:
 
 * condition codes.  Arithmetic instructions compute condition codes
 that are stored in hardware registers.  These hardware registers may
-be targetted explicitly by the programmer or implicitly by the
+be targeted explicitly by the programmer or implicitly by the
 hardware.  Conditional branch instructions determine whether to branch
 or not depending on the contents of the condition registers at the
 the branch instruction is executed.  These condition registers may be
@@ -1881,10 +1915,10 @@ named explicitly by the instructions, or assumed implicitly.
 instructions that compare two values (or a value against 0) and branch
 depending on the comparison.  The results of the comparison are not
 stored in special or explicit registers, since they are used
-immediately, byt the instruction itself, to branch to the desired
+immediately, by the instruction itself, to branch to the desired
 target.
 
-Liar accomodates both models for branching instructions.
+Liar accommodates both models for branching instructions.
 Predicate rules generate code that precede the actual branches, and
 then invoke the procedure SET-CURRENT-BRANCHES! informing it of the
 code to generate to branch to the target.
@@ -1900,14 +1934,14 @@ generation, and it is therefore not known when the predicate rule is
 fired which of the two possible linearizations will be chosen.
 
 Thus on an architecture with condition codes, the rule will return the
-code that performs the comparison, targetting the appropriate
+code that performs the comparison, targeting the appropriate
 condition-code registers (if they are not implicit), and the arguments
 to SET-CURRENT-BRANCHES! will just generate the conditional-branch
 instructions that use the generated condition codes.
 
 On an architecture with compare-and-branch instructions, the code
 returned by the rule body will perform any work needed before the
-compare-and-branch instrucions, and the arguments to
+compare-and-branch instructions, and the arguments to
 SET-CURRENT-BRANCHES! will generate the compare-and-branch
 instructions.
 
@@ -1992,17 +2026,6 @@ branch for the alternative linearization.
 
 ==> Overflow tests should be done differently in the compiler to avoid
 this problem.
-
-	5.5 Writing rewriting rules.
-
-*** MISSING: Describe the RTL rewriter and what it does (already done,
-sort of).
-Describe the (rtl) primitives on top of which it is written.
-Suggest looking at the 68000 and the Spectrum versions.
-
-	5.6 Writing assembler rules.
-
-*** MISSING: Anything here?
 
 		6. Building and testing the compiler.
 
@@ -2157,13 +2180,13 @@ A good order to try them is
 
 The programs in the first list test various aspects of code generation.
 The programs in the first list test the handling of various dynamic
-conditions (ie. error recovery).
+conditions (i.e. error recovery).
 The programs in the third list are somewhat larger, and register
 allocation bugs, etc., are more likely to show up in them.
 
 A good idea at the beginning is to turn COMPILER:GENERATE-RTL-FILES?
 and COMPILER:GENERATE-LAP-FILES? on and compare them for plausibility.
-If you've ported the disassembler as well, you should try
+If you have ported the disassembler as well, you should try
 disassembling some files and comparing them to then input LAP.  They
 won't be identical, but they should be similar.
 
@@ -2176,7 +2199,7 @@ after loading the file.
 	6.4 Compiling the compiler
 
 The real test of the compiler comes when it is used to compile itself
-and the runtime system.  Recompiling the system is a slow process,
+and the runtime system.  Re-compiling the system is a slow process,
 that can take a few hours even with a compiled compiler on a fast
 machine.  Compiling the compiler with an interpreted compiler would
 probably take days.
@@ -2207,7 +2230,7 @@ to generate .moc files.  The .moc files can be translated to .psb
 files on the Vax.  These .psb files can in turn be translated to .moc
 files on the Sparc, and you can generate the final .com files by using
 CROSS-COMPILE-BIN-FILE-END define in compiler/base/crsend.  Note that
-compiler/base/crsend can be loaded on a plain runtime system (ie.
+compiler/base/crsend can be loaded on a plain runtime system (i.e.
 without SF or a compiler).  You will probably find the following
 idioms useful:
     (for-each cross-compile-bin-file (directory-read "<some dir>/*.bin"))
@@ -2246,10 +2269,10 @@ compiler on a new machine by distributing the cross-compilation job.
 Note that the compiler (and the cross-compiler) use a lot of memory
 while running, and that virtual memory is really no substitute for
 physical memory.  You may want to increase your physical memory limit
-on those systems where this can be controlled (eg. under BSD use the
+on those systems where this can be controlled (e.g. under BSD use the
 ``limit'' command).  If your machines don't have much physical memory,
-or it is too painful to increase your limit (ie. you have to recompile
-or relink the kernel), you may want to use microcode/bchscheme instead
+or it is too painful to increase your limit (i.e. you have to re-compile
+or re-link the kernel), you may want to use microcode/bchscheme instead
 of microcode/scheme.  Bchscheme uses a disk file for the spare heap,
 rather than a region of memory, putting the available memory to use at
 all times.
@@ -2260,7 +2283,7 @@ Once you have a compiled compiler, you should run the same test suite
 that you ran with the interpreted compiler.  Once you have some degree
 of confidence that the compiled compiler works, you should make sure
 that it can correctly compile itself and the runtime system.  This
-recompilation can manifest second-order compiler bugs, that is, bugs
+re-compilation can manifest second-order compiler bugs, that is, bugs
 in the compiler that cause it to compile parts of itself incorrectly
 without crashing, so that programs compiled by this
 incorrectly-compiled compiler fail even though these programs did not
@@ -2268,15 +2291,15 @@ fail when compiled by the original compiler.
 
 Of course, you can never really tell if the compiler has compiled
 itself successfully.  You can only tell that it is not obviously wrong
-(ie. it did not crash).  Furthermore, there could be higher-order bugs
-that would take many recompilations to find.  However, if the binaries
-produced by two successive recompilations are identical, further
-recompilations would keep producing identical binaries and no
+(i.e. it did not crash).  Furthermore, there could be higher-order bugs
+that would take many re-compilations to find.  However, if the binaries
+produced by two successive re-compilations are identical, further
+re-compilations would keep producing identical binaries and no
 additional bugs will be found this way.  Moreover, if the compiler
-and system survive a couple of recompilations, the compiler is likely
+and system survive a couple of re-compilations, the compiler is likely
 to be able to compile correctly most programs.
 
-To run this compiler convergence test, you need to recompile the
+To run this compiler convergence test, you need to re-compile the
 compiler.  In order to do this, you need to move the .com files from
 the source directories so that COMPILE-DIRECTORY and
 RECOMPILE-DIRECTORY will not skip all the files (they avoid compiling
@@ -2291,10 +2314,10 @@ compiler.
 If you generated the stage1 compiled compiler by running the compiler
 interpreted, the new .com files should match the stage1 .com files.
 If you generated the stage1 compiler by cross-compilation, they will
-not.  The cross-compiler turns compiler:COMPILE-BY-PROCEDURES? off,
+not.  The cross-compiler turns COMPILER:COMPILE-BY-PROCEDURES? off,
 while the default setting is on.  In the latter case, you want to
-generate one more stage to check for convergence, ie. execute ``make
-stage2'' in each source directory, and recompile once more.
+generate one more stage to check for convergence, i.e. execute ``make
+stage2'' in each source directory, and re-compile once more.
 
 Once you have two stages that you think should have identical
 binaries, you can use COMPARE-COM-FILES, defined in
@@ -2309,7 +2332,7 @@ compiler/base/STAGE2.
 If nothing is printed, the binaries are identical.  Otherwise some
 description of the differences is printed.  COMPARE-COM-FILES does not
 check for isomorphism of Scode objects, so any sources that reference
-Scode constants (eg. runtime/advice.scm) will show some differences
+Scode constants (e.g. runtime/advice.scm) will show some differences
 that can safely be ignored.  Generally, differences in constants can
 be ignored, but length and code differences should be understood.  The
 code in question can be disassembled to determine whether the
@@ -2320,8 +2343,8 @@ differences are real or not.
 While testing the compiler, in addition to checking for the correct
 operation of the compiled code, you should also watch out for crashes
 and other forms of unexpected failure.  In particular, hardware traps
-(eg.  segmentation violations, illegal instructions) occurring during
-the recompilation process are a good clue that there is a problem
+(e.g.  segmentation violations, illegal instructions) occurring during
+the re-compilation process are a good clue that there is a problem
 somewhere.
 
 The worst bugs to track are interrupt related or garbage-collection
@@ -2330,7 +2353,7 @@ points, and are very hard to reproduce.  A common source of this kind
 of bug is a problem in the rules for procedure headers.  Make sure
 that the rules for the various kinds of procedure headers generate the
 desired code, and that the desired code operates correctly.  You can
-test this explicitly by using an assembly-language debugger (eg. gdb,
+test this explicitly by using an assembly-language debugger (e.g. gdb,
 adb) to set breakpoints at the entry points of various kinds of
 procedures.  When the breakpoints are reached, you can bump the Free
 pointer to a value larger than MemTop, so that the interrupt branch
@@ -2354,10 +2377,23 @@ compiled binaries.  When loading the compiler, .bin files will be used
 for those files for which the corresponding .com file does not exist.
 Thus you can move .com files in and out of the appropriate
 directories, reload, and test again.  Once you determine the procedure
-in which the bug occurs, recompiling the module and examining the
+in which the bug occurs, re-compiling the module and examining the
 resulting RTL and LAP programs should lead to identification of the
 bug.
 
 		7. Bibliography
 
-*** MISSING.
+1. "Efficient Stack Allocation for Tail-Recursive Languages" by Chris
+Hanson, in Proceedings of the 1990 ACM Conference on Lisp and
+Functional Programming.
+
+2. "Free Variables and First-Class Environments" by James S. Miller
+and Guillermo J. Rozas, to appear in Lisp and Symbolic Computation,
+March 1991.
+
+3. "MIT Scheme User's Manual for Scheme Release 7.1" by Chris Hanson,
+distributed with MIT CScheme version 7.1.
+
+4. "MIT Scheme Reference Manual for Scheme Release 7.1" by Chris
+Hanson, distributed with MIT CScheme version 7.1.
+
