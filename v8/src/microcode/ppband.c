@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.30 1988/02/06 20:37:50 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.31 1988/02/10 15:42:58 jinx Exp $
  *
  * Dumps Scheme FASL in user-readable form .
  */
@@ -79,10 +79,7 @@ Close_Dump_File()
   exit(1);
 }
 
-#define Reloc_or_Load_Debug true
 #define INHIBIT_COMPILED_VERSION_CHECK
-
-#include "fasl.h"
 #include "load.c"
 
 #ifdef Heap_In_Low_Memory
@@ -374,6 +371,7 @@ main(argc, argv)
 	      argv[0]);
       exit(1);
     }
+    print_fasl_information();
     printf("Dumped object (relocated) at 0x%lx\n", Relocate(Dumped_Object));
   }
   else

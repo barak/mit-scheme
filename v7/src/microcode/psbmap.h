@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbmap.h,v 9.25 1987/11/23 04:55:56 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbmap.h,v 9.26 1988/02/10 15:44:07 jinx Rel $
  *
  * This file contains macros and declarations for Bintopsb.c
  * and Psbtobin.c
@@ -41,9 +41,9 @@ MIT in each case. */
    from the included files.
 */
 
-#include <stdio.h>
 #define fast register
 
+#include <stdio.h>
 #include "config.h"
 #include "object.h"
 #include "bignum.h"
@@ -60,7 +60,7 @@ extern double frexp(), ldexp();
 #include "missing.c"
 #endif
 
-#define PORTABLE_VERSION	4
+#define PORTABLE_VERSION	5
 
 /* Number of objects which, when traced recursively, point at all other
    objects dumped.  Currently only the dumped object.
@@ -113,12 +113,14 @@ extern double frexp(), ldexp();
 #define NULL_NMV_P	(1 << 1)
 #define COMPILED_P	(1 << 2)
 #define NMV_P		(1 << 3)
+#define BAND_P		(1 << 4)
 
 #define MAKE_FLAGS()							\
 ((compact_p ? COMPACT_P : 0)	|					\
  (null_nmv_p ? NULL_NMV_P : 0)	|					\
  (compiled_p ? COMPILED_P : 0)	|					\
- (nmv_p ? NMV_P : 0))
+ (nmv_p ? NMV_P : 0)		|					\
+ (band_p ? BAND_P : 0))
 
 #define READ_FLAGS(f)							\
 {									\
@@ -126,6 +128,7 @@ extern double frexp(), ldexp();
   null_nmv_p  = ((f) & NULL_NMV_P);					\
   compiled_p = ((f) & COMPILED_P);					\
   nmv_p = ((f) & NMV_P);						\
+  band_p = ((f) & BAND_P);						\
 }
 
 /*
@@ -153,185 +156,99 @@ static Boolean nmv_p = false;
 static Pointer *Memory_Base;
 #endif
 
-static FILE *Input_File, *Output_File;
+static long
+  compiler_processor_type = 0,
+  compiler_interface_version = 0;
 
-static char *Program_Name;
+static Pointer
+  compiler_utilities = NIL;
 
-/* Argument List Parsing */
+/* Utilities */
 
-struct Option_Struct
-{
-  char *name;
-  Boolean value;
-  Boolean *ptr;
-};
+static char
+  *input_file_name = "-",
+  *output_file_name = "-";
+
+FILE *input_file, *output_file;
 
 Boolean
 strequal(s1, s2)
-     fast char *s1, *s2;
+     register char *s1, *s2;
 {
-  while (*s1 != '\0')
+  for ( ; *s1 != '\0'; s1++, s2++)
   {
-    if (*s1++ != *s2++)
+    if (*s1 != *s2)
     {
-      return false;
+      return (false);
     }
   }
   return (*s2 == '\0');
 }
-
-char *
-Find_Options(argc, argv, Noptions, Options)
-     int argc;
-     char **argv;
-     int Noptions;
-     struct Option_Struct Options[];
+
+void
+setup_io()
 {
-  for ( ; --argc >= 0; argv++)
+  if (strequal(input_file_name, "-"))
   {
-    char *this;
-    int n;
-
-    this = *argv;
-    for (n = 0;
-	 ((n < Noptions) && (!strequal(this, Options[n].name)));
-	 n++)
-    {};
-    if (n >= Noptions)
+    input_file = stdin;
+  }
+  else
+  {
+    input_file = fopen(input_file_name, "r");
+    if (input_file == ((FILE *) NULL))
     {
-      return (this);
+      fprintf(stderr, "%s: failed to open %s for input.\n",
+	      input_file_name);
+      exit(1);
     }
-    *(Options[n].ptr) = Options[n].value;
   }
-  return (NULL);
-}
-
-/* Usage information */
 
-void
-Print_Options(n, options, where)
-     int n;
-     struct Option_Struct *options;
-     FILE *where;
-{
-  if (--n < 0)
+  if (strequal(output_file_name, "-"))
   {
-    return;
+    output_file = stdout;
   }
-  fprintf(where, "[%s]", options->name);
-  options += 1;
-  for (; --n >= 0; options += 1)
+  else
   {
-    fprintf(where, " [%s]", options->name);
+    output_file = fopen(output_file_name, "w");
+    if (output_file == ((FILE *) NULL))
+    {
+      fprintf(stderr, "%s: failed to open %s for output.\n",
+	      output_file_name);
+      fclose(input_file);
+      exit(1);
+    }
   }
   return;
 }
 
-void
-Print_Usage_and_Exit(noptions, options, io_options)
-     int noptions;
-     struct Option_Struct *options;
-     char *io_options;
-{
-  fprintf(stderr, "usage: %s%s%s",
-	  Program_Name,
-	  (((io_options == NULL) ||
-	    (io_options[0] == '\0')) ? "" : " "),
-	  io_options);
-  if (noptions != 0)
-  {
-    putc(' ', stderr);
-    Print_Options(noptions, options, stderr);
-  }
-  putc('\n', stderr);
-  exit(1);
-}
-
-/* Top level of program */
-
-/* When debugging force arguments on command line */
-
-#ifdef DEBUG
-#undef unix
-#endif
-
-#ifdef unix
-
-/* On unix use io redirection */
-
-void
-Setup_Program(argc, argv, Noptions, Options)
-     int argc;
-     char *argv[];
-     int Noptions;
-     struct Option_Struct *Options;
-{
-  Program_Name = argv[0];
-  Input_File = stdin;
-  Output_File = stdout;
-  if (((argc - 1) > Noptions) ||
-      (Find_Options((argc - 1), &argv[1], Noptions, Options) != NULL))
-  {
-    Print_Usage_and_Exit(Noptions, Options, "");
-  }
-  return;
-}
-
-#define quit exit
-
-#else /* not unix */
-
-/* Otherwise use command line arguments */
-
-void
-Setup_Program(argc, argv, Noptions, Options)
-     int argc;
-     char *argv[];
-     int Noptions;
-     struct Option_Struct *Options;
-{
-  Program_Name = argv[0];
-  if ((argc < 3) ||
-      ((argc - 3) > Noptions) ||
-      (Find_Options((argc - 3), &argv[3], Noptions, Options) != NULL))
-  {
-    Print_Usage_and_Exit(Noptions, Options, "input_file output_file");
-  }
-  Input_File = ((strequal(argv[1], "-")) ?
-		stdin :
-		fopen(argv[1], "r"));
-  if (Input_File == NULL)
-  {
-    perror("Open failed.");
-    exit(1);
-  }
-  Output_File = ((strequal(argv[2], "-")) ?
-		 stdout :
-		 fopen(argv[2], "w"));
-  if (Output_File == NULL)
-  {
-    perror("Open failed.");
-    fclose(Input_File);
-    exit(1);
-  }
-  fprintf(stderr, "%s: Reading from %s, writing to %s.\n",
-          Program_Name, argv[1], argv[2]);
-  return;
-}
-
 void
 quit(code)
      int code;
 {
-  fclose(Input_File);
-  fclose(Output_File);
-  /* VMS brain dammage */
+  fclose(input_file);
+  fclose(output_file);
+#ifdef vms
+  /* This assumes that it is only invoked with 0 in tail recursive psn. */
   if (code != 0)
   {
     exit(code);
   }
-  return;
+  else
+  {
+    return;
+  }
+#else /* not vms */
+  exit(code);
+#endif /*vms */
 }
+
+/* Include the command line parser */
 
-#endif /* unix */
+#define boolean Boolean
+#include "comlin.c"
 
+#define INPUT_KEYWORD()						\
+KEYWORD("input", &input_file_name, STRING_KYWRD, SFRMT, NULL)
+
+#define OUTPUT_KEYWORD()					\
+KEYWORD("output", &output_file_name, STRING_KYWRD, SFRMT, NULL)

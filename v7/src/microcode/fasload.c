@@ -30,23 +30,18 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.33 1988/02/06 20:40:36 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.34 1988/02/10 15:43:35 jinx Exp $
 
    The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
    string) name of a file to load.  It is called as a primitive, and
    returns a single object read in.
  */
-
+
 #include "scheme.h"
 #include "primitive.h"
 #include "gccode.h"
 #include "trap.h"
-
-#define CCheck_or_Reloc_Debug Or2(Consistency_Check, Reloc_Debug)
-#define Reloc_or_Load_Debug   Or2(Reloc_Debug, File_Load_Debug)
-
-#include "fasl.h"
 #include "load.c"
 
 long
@@ -56,7 +51,7 @@ read_file_start(name)
   long value, heap_length;
   Boolean file_opened;
 
-  if (Type_Code(name) != TC_CHARACTER_STRING)
+  if (OBJECT_TYPE(name) != TC_CHARACTER_STRING)
   {
     return (ERR_ARG_1_WRONG_TYPE);
   }
@@ -91,12 +86,11 @@ read_file_start(name)
       case FASL_FILE_BAD_INTERFACE:
 	return (ERR_FASLOAD_COMPILED_MISMATCH);
     }
-  }
-  
-  if (File_Load_Debug)
+  }  
+
+  if (Or2(Reloc_Debug, File_Load_Debug))
   {
-    printf("\nMachine type %d, Version %d, Subversion %d\n",
-           Machine_Type, Version, Sub_Version);
+    print_fasl_information();
   }
 
   if (!Test_Pure_Space_Top(Free_Constant + Const_Count))
@@ -127,7 +121,7 @@ read_file_end()
   Align_Float(Free);
 #endif
 
-  if (Load_Data(Heap_Count, ((char *) Free)) != Heap_Count)
+  if ((Load_Data(Heap_Count, ((char *) Free))) != Heap_Count)
   {
     Close_Dump_File();
     Primitive_Error(ERR_IO_ERROR);
@@ -135,7 +129,7 @@ read_file_end()
   NORMALIZE_REGION(((char *) Free), Heap_Count);
   Free += Heap_Count;
 
-  if (Load_Data(Const_Count, ((char *) Free_Constant)) != Const_Count)
+  if ((Load_Data(Const_Count, ((char *) Free_Constant))) != Const_Count)
   {
     Close_Dump_File();
     Primitive_Error(ERR_IO_ERROR);
@@ -144,7 +138,7 @@ read_file_end()
   Free_Constant += Const_Count;
 
   table = Free;
-  if (Load_Data(Primitive_Table_Size, ((char *) Free)) !=
+  if ((Load_Data(Primitive_Table_Size, ((char *) Free))) !=
       Primitive_Table_Size)
   {
     Close_Dump_File();

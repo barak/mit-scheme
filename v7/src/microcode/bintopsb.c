@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.32 1988/01/04 18:58:17 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.33 1988/02/10 15:41:50 jinx Exp $
  *
  * This File contains the code to translate internal format binary
  * files to portable format.
@@ -39,11 +39,10 @@ MIT in each case. */
 
 /* IO definitions */
 
-#define Internal_File Input_File
-#define Portable_File Output_File
-
 #include "psbmap.h"
 #include "trap.h"
+#define internal_file input_file
+#define portable_file output_file
 
 long
 Load_Data(Count, To_Where)
@@ -52,13 +51,11 @@ Load_Data(Count, To_Where)
 {
   extern int fread();
 
-  return (fread(To_Where, sizeof(Pointer), Count, Internal_File));
+  return (fread(To_Where, sizeof(Pointer), Count, internal_file));
 }
 
-#define Reloc_or_Load_Debug false
-
-#include "fasl.h"
 #define INHIBIT_FASL_VERSION_CHECK
+#define INHIBIT_COMPILED_VERSION_CHECK
 #include "load.c"
 #include "bltdef.h"
 
@@ -79,7 +76,8 @@ extern int strlen();
 
 /* This is in some libraries but not others */
 
-static char punctuation[] = "'\",<.>/?;:{}[]|`~=+-_()*&^%$#@!";
+static char
+  punctuation[] = "'\",<.>/?;:{}[]|`~=+-_()*&^%$#@!";
 
 Boolean
 ispunct(c)
@@ -110,11 +108,12 @@ ispunct(c)
 
 static Boolean
   shuffle_bytes_p = false,
+  allow_nmv_p = false,
   upgrade_traps_p = false,
   upgrade_primitives_p = false,
   upgrade_lengths_p = false,
   allow_compiled_p = false,
-  allow_nmv_p = false;
+  upgrade_compiled_p = false;
 
 static long
   Heap_Relocation, Constant_Relocation,
@@ -124,7 +123,8 @@ static long
 static Pointer
   *Mem_Base,
   *Free_Objects, *Free_Cobjects,
-  *compiled_entry_table, *compiled_entry_pointer, *compiled_entry_table_end,
+  *compiled_entry_table, *compiled_entry_pointer,
+  *compiled_entry_table_end,
   *primitive_table, *primitive_table_end;
 
 static long
@@ -136,7 +136,7 @@ static long
 
 #define OUT(s)								\
 {									\
-  fprintf(Portable_File, (s));						\
+  fprintf(portable_file, (s));						\
   break;								\
 }
 
@@ -158,15 +158,15 @@ print_a_char(c, name)
     default:
     if ((isalpha(c)) || (isdigit(c)) || (ispunct(c)))
     {
-      putc(c, Portable_File);
+      putc(c, portable_file);
     }
     else
     {
       fprintf(stderr,
 	      "%s: %s: File may not be portable: c = 0x%x\n",
-	      Program_Name, name, ((int) c));
+	      program_name, name, ((int) c));
       /* This does not follow C conventions, but eliminates ambiguity */
-      fprintf(Portable_File, "\X%x ", ((int) c));
+      fprintf(portable_file, "\X%x ", ((int) c));
     }
   }
   return;
@@ -177,7 +177,7 @@ print_a_char(c, name)
   Old_Address += (Rel);							\
   Old_Contents = *Old_Address;						\
 									\
-  if (Type_Code(Old_Contents) == TC_BROKEN_HEART)			\
+  if (OBJECT_TYPE(Old_Contents) == TC_BROKEN_HEART)			\
   {									\
     Mem_Base[(Scn)] = Make_New_Pointer((Code), Old_Contents);		\
   }									\
@@ -264,23 +264,23 @@ print_a_fixnum(val)
   {
     temp = temp >> 1;
   }
-  fprintf(Portable_File, "%02x %c ",
+  fprintf(portable_file, "%02x %c ",
 	  TC_FIXNUM,
 	  (val < 0 ? '-' : '+'));
   if (val == 0)
   {
-    fprintf(Portable_File, "0\n");
+    fprintf(portable_file, "0\n");
   }
   else
   {
-    fprintf(Portable_File, "%ld ", size_in_bits);
+    fprintf(portable_file, "%ld ", size_in_bits);
     temp = ((val < 0) ? -val : val);
     while (temp != 0)
     {
-      fprintf(Portable_File, "%01lx", (temp & 0xf));
+      fprintf(portable_file, "%01lx", (temp & 0xf));
       temp = temp >> 4;
     }
-    fprintf(Portable_File, "\n");
+    fprintf(portable_file, "\n");
   }
   return;
 }
@@ -290,7 +290,7 @@ print_a_string_internal(len, string)
      fast long len;
      fast char *string;
 {
-  fprintf(Portable_File, "%ld ", len);
+  fprintf(portable_file, "%ld ", len);
   if (shuffle_bytes_p)
   {
     while(len > 0)
@@ -319,7 +319,7 @@ print_a_string_internal(len, string)
       print_a_char(*string++, "print_a_string");
     }
   }
-  putc('\n', Portable_File);
+  putc('\n', portable_file);
   return;
 }
 
@@ -333,7 +333,7 @@ print_a_string(from)
   maxlen = pointer_to_char((Get_Integer(*from++)) - 1);
   len = STRING_LENGTH_TO_LONG(*from++);
 
-  fprintf(Portable_File,
+  fprintf(portable_file,
 	  "%02x %ld ",
 	  TC_CHARACTER_STRING,
 	  (compact_p ? len : maxlen));
@@ -347,7 +347,7 @@ print_a_primitive(arity, length, name)
      long arity, length;
      char *name;
 {
-  fprintf(Portable_File, "%ld ", arity);
+  fprintf(portable_file, "%ld ", arity);
   print_a_string_internal(length, name);
   return;
 }
@@ -364,7 +364,7 @@ print_a_bignum(from)
   temp = LEN(the_number);
   if (temp == 0) 
   {
-    fprintf(Portable_File, "%02x + 0\n",
+    fprintf(portable_file, "%02x + 0\n",
 	    (compact_p ? TC_FIXNUM : TC_BIG_FIXNUM));
   }
   else
@@ -379,7 +379,7 @@ print_a_bignum(from)
       temp = temp >> 1;
     }
 
-    fprintf(Portable_File, "%02x %c %ld ",
+    fprintf(portable_file, "%02x %c %ld ",
 	    (compact_p ? TC_FIXNUM : TC_BIG_FIXNUM),
 	    (NEG_BIGNUM(the_number) ? '-' : '+'),
 	    size_in_bits);
@@ -400,17 +400,17 @@ print_a_bignum(from)
 	   size_in_bits > 3;
 	   size_in_bits -= 4)
       {
-	fprintf(Portable_File, "%01lx", (temp & 0xf));
+	fprintf(portable_file, "%01lx", (temp & 0xf));
 	temp = temp >> 4;
       }
     }
     if (size_in_bits > 0)
     {
-      fprintf(Portable_File, "%01lx\n", (temp & 0xf));
+      fprintf(portable_file, "%01lx\n", (temp & 0xf));
     }
     else
     {
-      fprintf(Portable_File, "\n");
+      fprintf(portable_file, "\n");
     }
   }
   return;
@@ -428,11 +428,11 @@ print_a_bit_string(from)
 
   the_bit_string = Make_Pointer(TC_BIT_STRING, from);
   bits_remaining = bit_string_length(the_bit_string);
-  fprintf(Portable_File, "%02x %ld", TC_BIT_STRING, bits_remaining);
+  fprintf(portable_file, "%02x %ld", TC_BIT_STRING, bits_remaining);
 
   if (bits_remaining != 0)
   {
-    fprintf(Portable_File, " ");
+    fprintf(portable_file, " ");
     scan = bit_string_low_ptr(the_bit_string);
     for (leftover_bits = 0;
 	 bits_remaining > 0;
@@ -452,7 +452,7 @@ print_a_bit_string(from)
 	leftover_bits += ((bits_remaining > POINTER_LENGTH) ?
 			  (POINTER_LENGTH - 4) :
 			  (bits_remaining - 4));
-	fprintf(Portable_File, "%01lx", (accumulator & 0xf));
+	fprintf(portable_file, "%01lx", (accumulator & 0xf));
       }
       else
       {
@@ -463,16 +463,16 @@ print_a_bit_string(from)
 
       for(accumulator = next_word; leftover_bits >= 4; leftover_bits -= 4)
       {
-	fprintf(Portable_File, "%01lx", (accumulator & 0xf));
+	fprintf(portable_file, "%01lx", (accumulator & 0xf));
 	accumulator = accumulator >> 4;
       }
     }
     if (leftover_bits != 0)
     {
-      fprintf(Portable_File, "%01lx", (accumulator & 0xf));
+      fprintf(portable_file, "%01lx", (accumulator & 0xf));
     }
   }
-  fprintf(Portable_File, "\n");
+  fprintf(portable_file, "\n");
   return;
 }
 
@@ -485,12 +485,12 @@ print_a_flonum(val)
   int expt;
   extern double frexp();
 
-  fprintf(Portable_File, "%02x %c ",
+  fprintf(portable_file, "%02x %c ",
 	  TC_BIG_FLONUM,
 	  ((val < 0.0) ? '-' : '+'));
   if (val == 0.0)
   {
-    fprintf(Portable_File, "0\n");
+    fprintf(portable_file, "0\n");
     return;
   }
   mant = frexp(((val < 0.0) ? -val : val), &expt);
@@ -504,7 +504,7 @@ print_a_flonum(val)
     if (temp >= 1.0)
       temp -= 1.0;
   }
-  fprintf(Portable_File, "%ld %ld ", expt, size_in_bits);
+  fprintf(portable_file, "%ld %ld ", expt, size_in_bits);
 
   for (size_in_bits = hex_digits(size_in_bits);
        size_in_bits > 0;
@@ -523,9 +523,9 @@ print_a_flonum(val)
 	digit += 1;
       }
     }
-    fprintf(Portable_File, "%01x", digit);
+    fprintf(portable_file, "%01x", digit);
   }
-  putc('\n', Portable_File);
+  putc('\n', portable_file);
   return;
 }
 
@@ -536,14 +536,15 @@ print_a_flonum(val)
   Old_Address += (Rel);							\
   Old_Contents = *Old_Address;						\
 									\
-  if (Type_Code(Old_Contents)  == TC_BROKEN_HEART)			\
+  if (OBJECT_TYPE(Old_Contents)  == TC_BROKEN_HEART)			\
   {									\
-    Mem_Base[(Scn)] = Make_New_Pointer(Type_Code(This), Old_Contents);	\
+    Mem_Base[(Scn)] = Make_New_Pointer(OBJECT_TYPE(This),		\
+				       Old_Contents);			\
   }									\
   else									\
   {									\
     *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Fre));		\
-    Mem_Base[(Scn)] = Make_Non_Pointer(Type_Code(This), (Fre));		\
+    Mem_Base[(Scn)] = Make_Non_Pointer(OBJECT_TYPE(This), (Fre));	\
     Mem_Base[(Fre)++] = Old_Contents;					\
   }									\
 }
@@ -553,14 +554,15 @@ print_a_flonum(val)
   Old_Address += (Rel);							\
   Old_Contents = *Old_Address;						\
 									\
-  if (Type_Code(Old_Contents)  == TC_BROKEN_HEART)			\
+  if (OBJECT_TYPE(Old_Contents)  == TC_BROKEN_HEART)			\
   {									\
-    Mem_Base[(Scn)] = Make_New_Pointer(Type_Code(This), Old_Contents);	\
+    Mem_Base[(Scn)] = Make_New_Pointer(OBJECT_TYPE(This),		\
+				       Old_Contents);			\
   }									\
   else									\
   {									\
     *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Fre));		\
-    Mem_Base[(Scn)] = Make_Non_Pointer(Type_Code(This), (Fre));		\
+    Mem_Base[(Scn)] = Make_Non_Pointer(OBJECT_TYPE(This), (Fre));	\
     Mem_Base[(Fre)++] = Old_Contents;					\
     Mem_Base[(Fre)++] = *Old_Address++;					\
   }									\
@@ -571,14 +573,15 @@ print_a_flonum(val)
   Old_Address += (Rel);							\
   Old_Contents = *Old_Address;						\
 									\
-  if (Type_Code(Old_Contents)  == TC_BROKEN_HEART)			\
+  if (OBJECT_TYPE(Old_Contents)  == TC_BROKEN_HEART)			\
   {									\
-    Mem_Base[(Scn)] = Make_New_Pointer(Type_Code(This), Old_Contents);	\
+    Mem_Base[(Scn)] = Make_New_Pointer(OBJECT_TYPE(This),		\
+				       Old_Contents);			\
   }									\
   else									\
   {									\
     *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Fre));		\
-    Mem_Base[(Scn)] = Make_Non_Pointer(Type_Code(This), (Fre));		\
+    Mem_Base[(Scn)] = Make_Non_Pointer(OBJECT_TYPE(This), (Fre));	\
     Mem_Base[(Fre)++] = Old_Contents;					\
     Mem_Base[(Fre)++] = *Old_Address++;					\
     Mem_Base[(Fre)++] = *Old_Address++;					\
@@ -590,14 +593,15 @@ print_a_flonum(val)
   Old_Address += (Rel);							\
   Old_Contents = *Old_Address;						\
 									\
-  if (Type_Code(Old_Contents)  == TC_BROKEN_HEART)			\
+  if (OBJECT_TYPE(Old_Contents)  == TC_BROKEN_HEART)			\
   {									\
-    Mem_Base[(Scn)] = Make_New_Pointer(Type_Code(This), Old_Contents);	\
+    Mem_Base[(Scn)] = Make_New_Pointer(OBJECT_TYPE(This),		\
+				       Old_Contents);			\
   }									\
   else									\
   {									\
     *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Fre));		\
-    Mem_Base[(Scn)] = Make_Non_Pointer(Type_Code(This), (Fre));		\
+    Mem_Base[(Scn)] = Make_Non_Pointer(OBJECT_TYPE(This), (Fre));	\
     Mem_Base[(Fre)++] = Old_Contents;					\
     Mem_Base[(Fre)++] = *Old_Address++;					\
     Mem_Base[(Fre)++] = *Old_Address++;					\
@@ -635,7 +639,7 @@ print_a_flonum(val)
   }									\
 }
 
-#define Do_Compiled_Entry(COde, Rel, Fre, Scn, Obj, FObj)		\
+#define Do_Compiled_Entry(Code, Rel, Fre, Scn, Obj, FObj)		\
 {									\
   long offset;								\
   Pointer *saved;							\
@@ -672,65 +676,119 @@ print_a_flonum(val)
 
 #define Do_Pointer(Scn, Action)						\
 {									\
+  long the_datum;							\
+									\
   Old_Address = Get_Pointer(This);					\
-  if (Datum(This) < Const_Base)						\
+  the_datum = OBJECT_DATUM(This);					\
+  if ((the_datum >= Heap_Base) &&					\
+      (the_datum < Dumped_Heap_Top))					\
   {									\
     Action(HEAP_CODE, Heap_Relocation, Free,				\
 	   Scn, Objects, Free_Objects);					\
   }									\
-  else if (Datum(This) < Dumped_Constant_Top)				\
+									\
+  /*									\
+									\
+    Currently constant space is not supported				\
+									\
+  else if ((the_datum >= Const_Base) &&					\
+	   (the_datum < Dumped_Constant_Top))				\
   {									\
     Action(CONSTANT_CODE, Constant_Relocation, Free_Constant,		\
 	   Scn, Constant_Objects, Free_Cobjects);			\
   }									\
+									\
+  */									\
+									\
   else									\
   {									\
-    fprintf(stderr,							\
-	    "%s: File is not portable: Pointer to stack.\n",		\
-	    Program_Name);						\
-    quit(1);								\
+    out_of_range_pointer(This);						\
   }									\
   (Scn) += 1;								\
   break;								\
 }
 
-/* Primitive upgrading code. */
-
-#define PRIMITIVE_UPGRADE_SPACE 2048
-static Pointer *internal_renumber_table;
-static Pointer *external_renumber_table;
-static Pointer *external_prim_name_table;
-static Boolean found_ext_prims = false;
+void
+out_of_range_pointer(ptr)
+     Pointer ptr;
+{
+  fprintf(stderr,
+	  "%s: The input file is not portable: Out of range pointer.\n",
+	  program_name);
+  fprintf(stderr, "Heap_Base =  0x%lx;\tHeap_Top = 0x%lx\n",
+	  Heap_Base, Dumped_Heap_Top);
+  fprintf(stderr, "Const_Base = 0x%lx;\tConst_Top = 0x%lx\n",
+	  Const_Base, Dumped_Constant_Top);
+  fprintf(stderr, "ptr = 0x%02x|0x%lx\n",
+	  OBJECT_TYPE(ptr), OBJECT_DATUM(ptr));
+  quit(1);
+}
 
 Pointer *
 relocate(object)
      Pointer object;
 {
+  long the_datum;
   Pointer *result;
-  result = (Get_Pointer(object) + ((Datum(object) < Const_Base) ?
-				   Heap_Relocation :
-				   Constant_Relocation));
+
+  result = Get_Pointer(object);
+  the_datum = OBJECT_DATUM(object);
+
+  if ((the_datum >= Heap_Base) &&
+      (the_datum < Dumped_Heap_Top))
+  {
+    result += Heap_Relocation;
+  }
+
+#if false
+
+  /* Currently constant space is not supported */
+
+  else if (( the_datum >= Const_Base) &&
+	   (the_datum < Dumped_Constant_Top))
+  {
+    result += Constant_Relocation;
+  }
+
+#endif /* false */
+
+  else
+  {
+    out_of_range_pointer(object);
+  }
   return (result);
 }
+
+/* Primitive upgrading code. */
+
+#define PRIMITIVE_UPGRADE_SPACE 2048
+
+static Pointer
+  *internal_renumber_table,
+  *external_renumber_table,
+  *external_prim_name_table;
+
+static Boolean
+  found_ext_prims = false;
 
 Pointer
 upgrade_primitive(prim)
      Pointer prim;
 {
-  long datum, type, new_type, code;
+  long the_datum, the_type, new_type, code;
   Pointer new;
 
-  datum = OBJECT_DATUM(prim);
-  type = OBJECT_TYPE(prim);
-  if (type != TC_PRIMITIVE_EXTERNAL)
+  the_datum = OBJECT_DATUM(prim);
+  the_type = OBJECT_TYPE(prim);
+  if (the_type != TC_PRIMITIVE_EXTERNAL)
   {
-    code = datum;
-    new_type = type;
+    code = the_datum;
+    new_type = the_type;
   }
   else
   {
     found_ext_prims = true;
-    code = (datum + (MAX_BUILTIN_PRIMITIVE + 1));
+    code = (the_datum + (MAX_BUILTIN_PRIMITIVE + 1));
     new_type = TC_PRIMITIVE;
   }
 
@@ -746,15 +804,16 @@ upgrade_primitive(prim)
     internal_renumber_table[code] = new;
     external_renumber_table[Primitive_Table_Length] = prim;
     Primitive_Table_Length += 1;
-    if (type == TC_PRIMITIVE_EXTERNAL)
+    if (the_type == TC_PRIMITIVE_EXTERNAL)
     {
       NPChars +=
-	STRING_LENGTH_TO_LONG((((Pointer *) (external_prim_name_table[datum]))
+	STRING_LENGTH_TO_LONG((((Pointer *)
+				(external_prim_name_table[the_datum]))
 			       [STRING_LENGTH]));
     }
     else
     {
-      NPChars += strlen(builtin_prim_name_table[datum]);
+      NPChars += strlen(builtin_prim_name_table[the_datum]);
     }
     return (new);
   }
@@ -801,10 +860,10 @@ setup_primitive_upgrade(Heap)
   length += (MAX_BUILTIN_PRIMITIVE + 1);
   if (length > PRIMITIVE_UPGRADE_SPACE)
   {
-    fprintf(stderr, "%s: Too many primitives.\n", Program_Name);
+    fprintf(stderr, "%s: Too many primitives.\n", program_name);
     fprintf(stderr,
 	    "Increase PRIMITIVE_UPGRADE_SPACE and recompile %s.\n",
-	    Program_Name);
+	    program_name);
     quit(1);
   }
   for (count = 0; count < length; count += 1)
@@ -833,7 +892,8 @@ Process_Area(Code, Area, Bound, Obj, FObj)
     This = Mem_Base[*Area];
 
 #ifdef PRIMITIVE_EXTERNAL_REUSED
-    if (upgrade_primitives_p && (Type_Code(This) == TC_PRIMITIVE_EXTERNAL))
+    if (upgrade_primitives_p &&
+	(OBJECT_TYPE(This) == TC_PRIMITIVE_EXTERNAL))
     {
       Mem_Base[*Area] = upgrade_primitive(This);
       *Area += 1;
@@ -875,7 +935,7 @@ Process_Area(Code, Area, Bound, Obj, FObj)
 	else if (!allow_nmv_p)
 	{
 	  fprintf(stderr, "%s: File is not portable: NMH found\n",
-		  Program_Name);
+		  program_name);
 	}
 	*Area += (1 + OBJECT_DATUM(This));
 	break;
@@ -885,7 +945,7 @@ Process_Area(Code, Area, Bound, Obj, FObj)
 	if (OBJECT_DATUM(This) != 0)
 	{
 	  fprintf(stderr, "%s: Broken Heart found in scan.\n",
-		  Program_Name);
+		  program_name);
 	  quit(1);
 	}
 	*Area += 1;
@@ -897,7 +957,7 @@ Process_Area(Code, Area, Bound, Obj, FObj)
 	{
 	  fprintf(stderr,
 		  "%s: File contains compiled code.\n",
-		  Program_Name);
+		  program_name);
 	  quit(1);
 	}
 	Do_Pointer(*Area, Do_Compiled_Entry);
@@ -905,7 +965,7 @@ Process_Area(Code, Area, Bound, Obj, FObj)
       case TC_STACK_ENVIRONMENT:
 	fprintf(stderr,
 		"%s: File contains stack environments.\n",
-		Program_Name);
+		program_name);
 	quit(1);
 
       case TC_FIXNUM:
@@ -930,7 +990,7 @@ Process_Area(Code, Area, Bound, Obj, FObj)
       {
 	long kind;
 
-	kind = Datum(This);
+	kind = OBJECT_DATUM(This);
 
 	if (upgrade_traps_p)
 	{
@@ -949,7 +1009,7 @@ Process_Area(Code, Area, Bound, Obj, FObj)
 	  }
 	  fprintf(stderr,
 		  "%s: Bad old unassigned object. 0x%x.\n",
-		  Program_Name, This);
+		  program_name, This);
 	  quit(1);
 	}
 	if (kind <= TRAP_MAX_IMMEDIATE)
@@ -987,14 +1047,14 @@ Process_Area(Code, Area, Bound, Obj, FObj)
 	{
 	  fprintf(stderr,
 		  "%s: Cannot upgrade environments.\n",
-		  Program_Name);
+		  program_name);
 	  quit(1);
 	}
 	/* Fall through */
 
       case TC_FUTURE:
       case_simple_Vector:
-	if (Type_Code(This) == TC_BIT_STRING)
+	if (OBJECT_TYPE(This) == TC_BIT_STRING)
 	{
 	  Do_Pointer(*Area, Do_Bit_String);
 	}
@@ -1006,7 +1066,7 @@ Process_Area(Code, Area, Bound, Obj, FObj)
       default:
       Bad_Type:
 	fprintf(stderr, "%s: Unknown Type Code 0x%x found.\n",
-		Program_Name, Type_Code(This));
+		program_name, OBJECT_TYPE(This));
 	quit(1);
       }
   }
@@ -1021,7 +1081,7 @@ print_external_objects(from, count)
 {
   while (--count >= 0)
   {
-    switch(Type_Code(*from))
+    switch(OBJECT_TYPE(*from))
     {
       case TC_FIXNUM:
       {
@@ -1053,7 +1113,7 @@ print_external_objects(from, count)
 	break;
 
       case TC_CHARACTER:
-	fprintf(Portable_File, "%02x %03x\n",
+	fprintf(portable_file, "%02x %03x\n",
 		TC_CHARACTER, (*from & MASK_EXTNDD_CHAR));
 	from += 1;
 	break;
@@ -1061,7 +1121,7 @@ print_external_objects(from, count)
       default:
 	fprintf(stderr,
 		"%s: Bad Object to print externally %lx\n",
-		Program_Name, *from);
+		program_name, *from);
 	quit(1);
     }
   }
@@ -1072,38 +1132,38 @@ void
 print_objects(from, to)
      fast Pointer *from, *to;
 {
-  fast long datum, type;
+  fast long the_datum, the_type;
 
   while(from < to)
   {
 
-    type = OBJECT_TYPE(*from);
-    datum = OBJECT_DATUM(*from);
+    the_type = OBJECT_TYPE(*from);
+    the_datum = OBJECT_DATUM(*from);
     from += 1;
 
-    if (type == TC_MANIFEST_NM_VECTOR)
+    if (the_type == TC_MANIFEST_NM_VECTOR)
     {
-      fprintf(Portable_File, "%02x %lx\n", type, datum);
-      while (--datum >= 0)
+      fprintf(portable_file, "%02x %lx\n", the_type, the_datum);
+      while (--the_datum >= 0)
       {
-	fprintf(Portable_File, "%lx\n", ((unsigned long) *from++));
+	fprintf(portable_file, "%lx\n", ((unsigned long) *from++));
       }
     }
-    else if (type == TC_COMPILED_EXPRESSION)
+    else if (the_type == TC_COMPILED_EXPRESSION)
     {
       Pointer base;
       long offset;
 
-      Sign_Extend(compiled_entry_table[datum], offset);
-      base = compiled_entry_table[datum + 1];
+      Sign_Extend(compiled_entry_table[the_datum], offset);
+      base = compiled_entry_table[the_datum + 1];
 
-      fprintf(Portable_File, "%02x %lx %02x %lx\n",
+      fprintf(portable_file, "%02x %lx %02x %lx\n",
 	      TC_COMPILED_EXPRESSION, offset,
 	      OBJECT_TYPE(base), OBJECT_DATUM(base));
     }
     else
     {
-      fprintf(Portable_File, "%02x %lx\n", type, datum);
+      fprintf(portable_file, "%02x %lx\n", the_type, the_datum);
     }
   }
   return;
@@ -1125,7 +1185,7 @@ when(what, message)
   if (what)
   {
     fprintf(stderr, "%s: Inconsistency: %s!\n",
-	    Program_Name, (message));
+	    program_name, (message));
     quit(1);
   }
   return;
@@ -1133,8 +1193,8 @@ when(what, message)
 
 #define PRINT_HEADER(name, format, obj)					\
 {									\
-  fprintf(Portable_File, (format), (obj));				\
-  fprintf(Portable_File, "\n");						\
+  fprintf(portable_file, (format), (obj));				\
+  fprintf(portable_file, "\n");						\
   fprintf(stderr, "%s: ", (name));					\
   fprintf(stderr, (format), (obj));					\
   fprintf(stderr, "\n");						\
@@ -1148,8 +1208,8 @@ when(what, message)
 
 #define PRINT_HEADER(name, format, obj)					\
 {									\
-  fprintf(Portable_File, (format), (obj));				\
-  fprintf(Portable_File, "\n");						\
+  fprintf(portable_file, (format), (obj));				\
+  fprintf(portable_file, "\n");						\
 }
 
 #endif /* DEBUG */
@@ -1164,11 +1224,11 @@ do_it()
 
   /* Load the Data */
 
-  if (!Read_Header())
+  if (Read_Header() != FASL_FILE_FINE)
   {
     fprintf(stderr,
-	    "%s: Input file does not appear to be in FASL format.\n",
-	    Program_Name);
+	    "%s: Input file does not appear to be in an appropriate format.\n",
+	    program_name);
     quit(1);
   }
 
@@ -1179,7 +1239,7 @@ do_it()
       ((Machine_Type != FASL_INTERNAL_FORMAT) &&
        (!shuffle_bytes_p)))
   {
-    fprintf(stderr, "%s:\n", Program_Name);
+    fprintf(stderr, "%s:\n", program_name);
     fprintf(stderr,
 	    "FASL File Version %ld Subversion %ld Machine Type %ld\n",
 	    Version, Sub_Version , Machine_Type);
@@ -1188,23 +1248,56 @@ do_it()
 	    FASL_READ_VERSION, FASL_READ_SUBVERSION, FASL_INTERNAL_FORMAT);
     quit(1);
   }
+
+  if ((((compiler_processor_type != 0) &&
+	(dumped_processor_type != 0) &&
+	(compiler_processor_type != dumped_processor_type)) ||
+       ((compiler_interface_version != 0) &&
+	(dumped_interface_version != 0) &&
+	(compiler_interface_version != dumped_interface_version))) &&
+      (!upgrade_compiled_p))
+    {
+      fprintf(stderr, "\nread_file:\n");
+      fprintf(stderr,
+	      "FASL File: compiled code interface %4d; processor %4d.\n",
+	      dumped_interface_version, dumped_processor_type);
+      fprintf(stderr,
+	      "Expected:  compiled code interface %4d; processor %4d.\n",
+	      compiler_interface_version, compiler_processor_type);
+      quit(1);
+    }
+  if (compiler_processor_type != 0)
+  {
+    dumped_processor_type = compiler_processor_type;
+  }
+  if (compiler_interface_version != 0)
+  {
+    dumped_interface_version = compiler_interface_version;
+  }
 
-  /* Constant Space not currently supported */
+  /* Constant Space and bands not currently supported */
+
+  if (band_p)
+  {
+    fprintf(stderr, "%s: Input file is a band.\n", program_name);
+    quit(1);
+  }
 
   if (Const_Count != 0)
   {
     fprintf(stderr,
 	    "%s: Input file has a constant space area.\n",
-	    Program_Name);
+	    program_name);
     quit(1);
   }
 
+  allow_compiled_p = (allow_compiled_p || upgrade_compiled_p);
   allow_nmv_p = (allow_nmv_p || allow_compiled_p);
   if (null_nmv_p && allow_nmv_p)
   {
     fprintf(stderr,
 	    "%s: NMVs are both allowed and to be nulled out!\n",
-	    Program_Name);
+	    program_name);
     quit(1);
   }
 
@@ -1216,39 +1309,6 @@ do_it()
   upgrade_traps_p = (Sub_Version < FASL_REFERENCE_TRAP);
   upgrade_primitives_p = (Sub_Version < FASL_MERGED_PRIMITIVES);
   upgrade_lengths_p = upgrade_primitives_p;
-
-  {
-    long Size;
-
-    /* This is way larger than needed, but... what the hell? */
-
-    Size = ((3 * (Heap_Count + Const_Count)) +
-	    (NROOTS + 1) +
-	    (upgrade_primitives_p ?
-	     (3 * PRIMITIVE_UPGRADE_SPACE) :
-	     Primitive_Table_Size) +
-	    (allow_compiled_p ?
-	     (2 * (Heap_Count + Const_Count)) :
-	     0));
-
-    Allocate_Heap_Space(Size + HEAP_BUFFER_SPACE);
-
-    if (Heap == NULL)
-    {
-      fprintf(stderr,
-	      "%s: Memory Allocation Failed.  Size = %ld Scheme Pointers\n",
-	      Program_Name, Size);
-      quit(1);
-    }
-  }
-
-  Heap += HEAP_BUFFER_SPACE;
-  Initial_Align_Float(Heap);
-  Load_Data(Heap_Count, &Heap[0]);
-  Load_Data(Const_Count, &Heap[Heap_Count]);
-  Load_Data(Primitive_Table_Size, &Heap[Heap_Count + Const_Count]);
-  Heap_Relocation = &Heap[0] - Get_Pointer(Heap_Base);
-  Constant_Relocation = &Heap[Heap_Count] - Get_Pointer(Const_Base);
 
   DEBUGGING(fprintf(stderr,
 		    "Dumped Heap Base = 0x%08x\n",
@@ -1270,7 +1330,39 @@ do_it()
 		    "Constant Count = %6d\n",
 		    Const_Count));
 
-  /* Determine primitive information. */
+  {
+    long Size;
+
+    /* This is way larger than needed, but... what the hell? */
+
+    Size = ((3 * (Heap_Count + Const_Count)) +
+	    (NROOTS + 1) +
+	    (upgrade_primitives_p ?
+	     (3 * PRIMITIVE_UPGRADE_SPACE) :
+	     Primitive_Table_Size) +
+	    (allow_compiled_p ?
+	     (2 * (Heap_Count + Const_Count)) :
+	     0));
+
+    Allocate_Heap_Space(Size + HEAP_BUFFER_SPACE);
+
+    if (Heap == NULL)
+    {
+      fprintf(stderr,
+	      "%s: Memory Allocation Failed.  Size = %ld Scheme Pointers\n",
+	      program_name, Size);
+      quit(1);
+    }
+  }
+
+  Heap += HEAP_BUFFER_SPACE;
+  Initial_Align_Float(Heap);
+  Load_Data(Heap_Count, &Heap[0]);
+  Load_Data(Const_Count, &Heap[Heap_Count]);
+  Heap_Relocation = ((&Heap[0]) - (Get_Pointer(Heap_Base)));
+  Constant_Relocation = ((&Heap[Heap_Count]) - (Get_Pointer(Const_Base)));
+
+  /* Setup compiled code and primitive tables. */
 
   compiled_entry_table = &Heap[Heap_Count + Const_Count];
   compiled_entry_pointer = compiled_entry_table;
@@ -1291,6 +1383,7 @@ do_it()
     fast Pointer *table;
     fast long count, char_count;
 
+    Load_Data(Primitive_Table_Size, primitive_table);
     for (char_count = 0,
 	 count = Primitive_Table_Length,
 	 table = primitive_table;
@@ -1369,7 +1462,7 @@ do_it()
 
   if (found_ext_prims)
   {
-    fprintf(stderr, "%s:\n", Program_Name);
+    fprintf(stderr, "%s:\n", program_name);
     fprintf(stderr, "NOTE: The arity of some primitives is not known.\n");
     fprintf(stderr, "      The portable file has %ld as their arity.\n",
 	    UNKNOWN_PRIMITIVE_ARITY);
@@ -1410,6 +1503,20 @@ do_it()
 
   PRINT_HEADER("Number of primitives", "%ld", Primitive_Table_Length);
   PRINT_HEADER("Number of characters in primitives", "%ld", NPChars);
+
+  if (!compiled_p)
+  {
+    dumped_processor_type = 0;
+    dumped_interface_version = 0;
+  }
+
+  PRINT_HEADER("CPU type", "%ld", dumped_processor_type);
+  PRINT_HEADER("Compiled code interface version", "%ld",
+	       dumped_interface_version);
+#if false
+  PRINT_HEADER("Compiler utilities vector", "%ld",
+	       OBJECT_DATUM(dumped_utilities));
+#endif
 
   /* External Objects */
   
@@ -1440,31 +1547,31 @@ do_it()
   {
     Pointer obj;
     fast Pointer *table;
-    fast long count, datum;
+    fast long count, the_datum;
 
     for (count = Primitive_Table_Length,
 	 table = external_renumber_table;
 	 --count >= 0;)
     {
       obj = *table++;
-      datum = OBJECT_DATUM(obj);
+      the_datum = OBJECT_DATUM(obj);
       if (OBJECT_TYPE(obj) == TC_PRIMITIVE_EXTERNAL)
       {
 	Pointer *strobj;
 
-	strobj = ((Pointer *) (external_prim_name_table[datum]));
+	strobj = ((Pointer *) (external_prim_name_table[the_datum]));
 	print_a_primitive(((long) UNKNOWN_PRIMITIVE_ARITY),
 			  (STRING_LENGTH_TO_LONG(strobj[STRING_LENGTH])),
 			  ((char *) &strobj[STRING_CHARS]));
       }
       else
       {
-	char *string;
+	char *str;
 
-	string = builtin_prim_name_table[datum];
-	print_a_primitive(((long) builtin_prim_arity_table[datum]),
-			  ((long) strlen(string)),
-			  string);
+	str = builtin_prim_name_table[the_datum];
+	print_a_primitive(((long) builtin_prim_arity_table[the_datum]),
+			  ((long) strlen(str)),
+			  str);
       }
     }
   }
@@ -1490,22 +1597,33 @@ do_it()
 
 /* Top Level */
 
+Boolean ci_version_sup_p, ci_processor_sup_p;
+
 /* The boolean value here is what value to store when the option is present. */
 
-static struct Option_Struct Options[] =
-    {{"Do_Not_Compact", false, &compact_p},
-     {"Null_Out_NMVs", true, &null_nmv_p},
-     {"Swap_Bytes", true, &shuffle_bytes_p},
-     {"Allow_Compiled", true, &allow_compiled_p},
-     {"Allow_NMVs", true, &allow_nmv_p}};
-
-static int Noptions = 5;
+static struct keyword_struct
+  options[] = {
+    KEYWORD("swap_bytes", &shuffle_bytes_p, BOOLEAN_KYWRD, BFRMT, NULL),
+    KEYWORD("compact", &compact_p, BOOLEAN_KYWRD, BFRMT, NULL),
+    KEYWORD("null_nmv", &null_nmv_p, BOOLEAN_KYWRD, BFRMT, NULL),
+    KEYWORD("allow_nmv", &allow_nmv_p, BOOLEAN_KYWRD, BFRMT, NULL),
+    KEYWORD("allow_cc", &allow_compiled_p, BOOLEAN_KYWRD, BFRMT, NULL),
+    KEYWORD("upgrade_cc", &upgrade_compiled_p, BOOLEAN_KYWRD, BFRMT, NULL),
+    KEYWORD("ci_version", &compiler_interface_version, INT_KYWRD, "%ld",
+	    &ci_version_sup_p),
+    KEYWORD("ci_processor", &compiler_processor_type, INT_KYWRD, "%ld",
+	    &ci_processor_sup_p),
+    OUTPUT_KEYWORD(),
+    INPUT_KEYWORD(),
+    END_KEYWORD()
+    };
 
 main(argc, argv)
      int argc;
      char *argv[];
 {
-  Setup_Program(argc, argv, Noptions, Options);
+  parse_keywords(argc, argv, options, false);
+  setup_io();
   do_it();
   quit(0);
 }

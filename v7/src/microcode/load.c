@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/load.c,v 9.25 1988/02/06 20:41:11 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/load.c,v 9.26 1988/02/10 15:43:53 jinx Rel $
  *
  * This file contains common code for reading internal
  * format binary files.
@@ -68,18 +68,54 @@ static Boolean
   band_p;
 
 static long
-  Version, Sub_Version, Machine_Type,
-  Dumped_Object,
+  Machine_Type, Version, Sub_Version,
+  Dumped_Object, Dumped_Stack_Top,
   Heap_Base, Heap_Count,
   Const_Base, Const_Count,
   Dumped_Heap_Top, Dumped_Constant_Top,
-  Dumped_Stack_Top,
   Primitive_Table_Size, Primitive_Table_Length,
   dumped_processor_type, dumped_interface_version;
 
 static Pointer
   Ext_Prim_Vector,
   dumped_utilities;
+
+void
+print_fasl_information()
+{
+  printf("FASL File Information:\n\n");
+  printf("Machine = %ld; Version = %ld; Subversion = %ld\n",
+	 Machine_Type, Version, Sub_Version);
+  if ((dumped_processor_type != 0) || (dumped_interface_version != 0))
+  {
+    printf("Compiled code interface version = %ld; Processor type = %ld\n",
+	   dumped_interface_version, dumped_processor_type);
+  }
+  if (band_p)
+  {
+    printf("The file contains a dumped image (band).\n");
+  }
+
+  printf("\nRelocation Information:\n\n");
+  printf("Heap Count = %ld; Heap Base = 0x%lx; Heap Top = 0x%lx\n",
+	 Heap_Count, Heap_Base, Dumped_Heap_Top);
+  printf("Const Count = %ld; Const Base = 0x%lx; Const Top = 0x%lx\n",
+	 Const_Count, Const_Base, Dumped_Constant_Top);
+  printf("Stack Top = 0x%lx\n", Dumped_Stack_Top);
+
+  printf("\nDumped Objects:\n\n");
+  printf("Dumped object at 0x%lx (as read from file)\n", Dumped_Object); 
+  printf("Compiled code utilities vector = 0x%lx\n", dumped_utilities);
+  if (Ext_Prim_Vector != NIL)
+  {
+    printf("External primitives vector = 0x%lx\n", Ext_Prim_Vector);
+  }
+  else
+  {
+    printf("Length of primitive table = %ld\n", Primitive_Table_Length);
+  }
+  return;
+}
 
 long
 Read_Header()
@@ -148,32 +184,6 @@ Read_Header()
     dumped_processor_type = CI_PROCESSOR(temp);
     dumped_interface_version = CI_VERSION(temp);
     dumped_utilities = Buffer[FASL_Offset_Ut_Base];
-  }
-
-  if (Reloc_or_Load_Debug)
-  {
-    printf("FASL File Information:\n\n");
-    printf("Machine = %ld; Version = %ld; Subversion = %ld\n",
-	   Machine_Type, Version, Sub_Version);
-    printf("Dumped processor type = %ld; Dumped interface version = %ld\n",
-	   dumped_processor_type, dumped_interface_version);
-    if (band_p)
-    {
-      printf("The file contains a dumped image (band).\n");
-    }
-
-    printf("\nRelocation Information:\n\n");
-    printf("Heap Count = %ld; Heap Base = 0x%lx; Dumped Heap Top = 0x%lx\n",
-           Heap_Count, Heap_Base, Dumped_Heap_Top);
-    printf("Const Count = %ld; Const Base = 0x%lx, Dumped Constant Top = 0x%lx\n",
-           Const_Count, Const_Base, Dumped_Constant_Top);
-    printf("Dumped Stack Top = 0x%lx, Ext Prim Vector = 0x%lx\n",
-	   Dumped_Stack_Top, Ext_Prim_Vector);
-
-    printf("\nDumped Objects:\n\n");
-    printf("Length of primitive table = %ld\n", Primitive_Table_Length);
-    printf("Dumped utilities = 0x%lx\n", dumped_utilities);
-    printf("Dumped Object (as read from file) = 0x%lx\n", Dumped_Object); 
   }
 
 #ifndef INHIBIT_FASL_VERSION_CHECK

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.31 1988/01/04 18:55:54 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.32 1988/02/10 15:43:12 jinx Exp $
  *
  * This File contains the code to translate portable format binary
  * files to internal format.
@@ -39,12 +39,12 @@ MIT in each case. */
 
 /* Cheap renames */
 
-#define Portable_File Input_File
-#define Internal_File Output_File
-
 #include "psbmap.h"
+#define portable_file input_file
+#define internal_file output_file
 
 static Boolean
+  band_p = false;
   allow_compiled_p = false,
   allow_nmv_p = false;
 
@@ -71,7 +71,8 @@ Write_Data(Count, From_Where)
 {
   extern int fwrite();
 
-  return (fwrite(((char *) From_Where), sizeof(Pointer), Count, Internal_File));
+  return (fwrite(((char *) From_Where), sizeof(Pointer),
+		 Count, internal_file));
 }
 
 #include "fasl.h"
@@ -83,9 +84,9 @@ inconsistency()
   /* Provide some context (2 lines). */
   char yow[100];
 
-  fgets(&yow[0], 100, Portable_File);
+  fgets(&yow[0], 100, portable_file);
   fprintf(stderr, "%s\n", &yow[0]);
-  fgets(&yow[0], 100, Portable_File);
+  fgets(&yow[0], 100, portable_file);
   fprintf(stderr, "%s\n", &yow[0]);
 
   quit(1);
@@ -99,12 +100,12 @@ read_a_char()
 {
   fast char C;
 
-  C = getc(Portable_File);
+  C = getc(portable_file);
   if (C != '\\')
   {
     OUT(C);
   }
-  C = getc(Portable_File);
+  C = getc(portable_file);
   switch(C)
   {
     case 'n':  OUT('\n');
@@ -118,9 +119,9 @@ read_a_char()
 
       fprintf(stderr,
 	      "%s: File is not Portable.  Character Code Found.\n",
-	      Program_Name);
-      fscanf(Portable_File, "%ld", &Code);
-      getc(Portable_File);			/* Space */
+	      program_name);
+      fscanf(portable_file, "%ld", &Code);
+      getc(portable_file);			/* Space */
       OUT(Code);
     }
     case '\\': OUT('\\');
@@ -134,11 +135,11 @@ read_a_string_internal(To, maxlen)
      long maxlen;
 {
   long ilen, Pointer_Count;
-  fast char *string;
+  fast char *str;
   fast long len;
 
-  string = ((char *) (&To[STRING_CHARS]));
-  fscanf(Portable_File, "%ld", &ilen);
+  str = ((char *) (&To[STRING_CHARS]));
+  fscanf(portable_file, "%ld", &ilen);
   len = ilen;
 
   if (maxlen == -1)
@@ -157,12 +158,12 @@ read_a_string_internal(To, maxlen)
 
   /* Space */
 
-  getc(Portable_File);
+  getc(portable_file);
   while (--len >= 0)
   {
-    *string++ = ((char) read_a_char());
+    *str++ = ((char) read_a_char());
   }
-  *string = '\0';
+  *str = '\0';
   return (To + Pointer_Count);
 }
 
@@ -173,7 +174,7 @@ read_a_string(To, Slot)
   long maxlen;
 
   *Slot = Make_Pointer(TC_CHARACTER_STRING, To);
-  fscanf(Portable_File, "%ld", &maxlen);
+  fscanf(portable_file, "%ld", &maxlen);
   return (read_a_string_internal(To, maxlen));
 }
 
@@ -190,7 +191,7 @@ read_a_string(To, Slot)
 
 #define read_hex_digit(var)						\
 {									\
-  fscanf(Portable_File, "%1lx", &var);					\
+  fscanf(portable_file, "%1lx", &var);					\
 }
 
 #else
@@ -208,7 +209,7 @@ read_hex_digit_procedure()
   long digit;
   int c;
 
-  while ((c = fgetc(Portable_File)) == ' ')
+  while ((c = fgetc(portable_file)) == ' ')
   {};
   digit = ((c >= 'a') ? (c - 'a' + 10)
 	   : ((c >= 'A') ? (c - 'A' + 10)
@@ -228,9 +229,9 @@ read_an_integer(The_Type, To, Slot)
   Boolean negative;
   long size_in_bits;
 
-  getc(Portable_File);				/* Space */
-  negative = ((getc(Portable_File)) == '-');
-  fscanf(Portable_File, "%ld", &size_in_bits);
+  getc(portable_file);				/* Space */
+  negative = ((getc(portable_file)) == '-');
+  fscanf(portable_file, "%ld", &size_in_bits);
   if ((size_in_bits <= fixnum_to_bits) &&
       (The_Type == TC_FIXNUM))
   {
@@ -276,7 +277,7 @@ read_an_integer(The_Type, To, Slot)
     {
       fprintf(stderr,
 	      "%s: Fixnum too large, coercing to bignum.\n",
-	      Program_Name);
+	      program_name);
     }
     size = bits_to_bigdigit(size_in_bits);
     ndigits = hex_digits(size_in_bits);
@@ -312,7 +313,7 @@ read_a_bit_string(To, Slot)
   long size_in_bits, size_in_words;
   Pointer the_bit_string;
 
-  fscanf(Portable_File, "%ld", &size_in_bits);
+  fscanf(portable_file, "%ld", &size_in_bits);
   size_in_words = (1 + bits_to_pointers (size_in_bits));
 
   the_bit_string = Make_Pointer(TC_BIT_STRING, To);
@@ -393,11 +394,11 @@ read_a_flonum()
   long size_in_bits, exponent;
   fast double Result;
 
-  getc(Portable_File);				/* Space */
-  negative = ((getc(Portable_File)) == '-');
+  getc(portable_file);				/* Space */
+  negative = ((getc(portable_file)) == '-');
   VMS_BUG(exponent = 0);
   VMS_BUG(size_in_bits = 0);
-  fscanf(Portable_File, "%ld %ld", &exponent, &size_in_bits);
+  fscanf(portable_file, "%ld %ld", &exponent, &size_in_bits);
   if (size_in_bits == 0)
   {
     Result = 0.0;
@@ -407,11 +408,11 @@ read_a_flonum()
   {
     /* Skip over mantissa */
 
-    while (getc(Portable_File) != '\n')
+    while (getc(portable_file) != '\n')
     {};
     fprintf(stderr,
 	    "%s: Floating point exponent too %s!\n",
-	    Program_Name,
+	    program_name,
 	    ((exponent < 0) ? "small" : "large"));
     Result = ((exponent < 0) ? dflmin() : dflmax());
   }
@@ -425,9 +426,9 @@ read_a_flonum()
     {
       fprintf(stderr,
 	      "%s: Some precision may be lost.",
-	      Program_Name);
+	      program_name);
     }
-    getc(Portable_File);			/* Space */
+    getc(portable_file);			/* Space */
     for (ndigits = hex_digits(size_in_bits),
 	 Result = 0.0,
 	 Normalization = (1.0 / 16.0);
@@ -456,7 +457,7 @@ Read_External(N, Table, To)
 
   while (Table < Until)
   {
-    fscanf(Portable_File, "%2x", &The_Type);
+    fscanf(portable_file, "%2x", &The_Type);
     switch(The_Type)
     {
       case TC_CHARACTER_STRING:
@@ -476,9 +477,9 @@ Read_External(N, Table, To)
       {
 	long the_char_code;
 
-	getc(Portable_File);	/* Space */
+	getc(portable_file);	/* Space */
 	VMS_BUG(the_char_code = 0);
-	fscanf( Portable_File, "%3lx", &the_char_code);
+	fscanf( portable_file, "%3lx", &the_char_code);
 	*Table++ = Make_Non_Pointer( TC_CHARACTER, the_char_code);
 	continue;
       }
@@ -498,7 +499,7 @@ Read_External(N, Table, To)
       default:
 	fprintf(stderr,
 		"%s: Unknown external object found; Type = 0x%02x\n",
-		Program_Name, The_Type);
+		program_name, The_Type);
 	inconsistency();
 	/*NOTREACHED*/
     }
@@ -552,7 +553,7 @@ Relocate_Objects(From, N, disp)
       default:
 	fprintf(stderr,
 		"%s: Unknown External Object Reference with Type 0x%02x",
-		Program_Name,
+		program_name,
 		Type_Code(*From));
 	inconsistency();
     }
@@ -610,7 +611,7 @@ Read_Pointers_and_Relocate(N, To)
   {
     VMS_BUG(The_Type = 0);
     VMS_BUG(The_Datum = 0);
-    fscanf(Portable_File, "%2x %lx", &The_Type, &The_Datum);
+    fscanf(portable_file, "%2x %lx", &The_Type, &The_Datum);
     switch(The_Type)
     {
       case CONSTANT_CODE:
@@ -631,7 +632,7 @@ Read_Pointers_and_Relocate(N, To)
 	  while (--count >= 0)
 	  {
 	    VMS_BUG(*To = 0);
-	    fscanf(Portable_File, "%lx", To++);
+	    fscanf(portable_file, "%lx", To++);
 	  }
 	}
 	continue;
@@ -641,7 +642,7 @@ Read_Pointers_and_Relocate(N, To)
 	Pointer *temp;
 	long base_type, base_datum;
 
-	fscanf(Portable_File, "%02x %lx", &base_type, &base_datum);
+	fscanf(portable_file, "%02x %lx", &base_type, &base_datum);
 	temp = Relocate(base_datum);
 	*To++ = Make_Pointer(base_type,
 			     ((Pointer *) (&(((char *) temp)[The_Datum]))));
@@ -651,7 +652,7 @@ Read_Pointers_and_Relocate(N, To)
       case TC_BROKEN_HEART:
 	if (The_Datum != 0)
 	{
-	  fprintf(stderr, "%s: Broken Heart Found\n", Program_Name);
+	  fprintf(stderr, "%s: Broken Heart Found\n", program_name);
 	  inconsistency();
 	}
 	/* fall through */
@@ -694,7 +695,7 @@ read_primitives(how_many, where)
 
   while (--how_many >= 0)
   {
-    fscanf(Portable_File, "%ld", &arity);
+    fscanf(portable_file, "%ld", &arity);
     if (arity == ((long) UNKNOWN_PRIMITIVE_ARITY))
     {
       primitive_warn = true;
@@ -784,7 +785,7 @@ when(what, message)
   if (what)
   {
     fprintf(stderr, "%s: Inconsistency: %s!\n",
-	    Program_Name, (message));
+	    program_name, (message));
     quit(1);
   }
   return;
@@ -792,7 +793,7 @@ when(what, message)
 
 #define READ_HEADER(string, format, value)				\
 {									\
- fscanf(Input_File, format, &(value));					\
+ fscanf(portable_file, format, &(value));				\
  fprintf(stderr, "%s: ", (string));					\
  fprintf(stderr, (format), (value));					\
  fprintf(stderr, "\n");							\
@@ -806,11 +807,21 @@ when(what, message)
 
 #define READ_HEADER(string, format, value)				\
 {									\
-  fscanf(Input_File, format, &(value));					\
+  if (fscanf(portable_file, format, &(value)) == EOF)			\
+  {									\
+    short_header_read();						\
+  }									\
 }
 
 #endif /* DEBUG */
 
+void
+short_header_read()
+{
+  fprintf(stderr, "%s: Header is not complete!\n", program_name);
+  quit(1);
+}
+
 long
 Read_Header_and_Allocate()
 {
@@ -826,6 +837,7 @@ Read_Header_and_Allocate()
 
   if (Portable_Version != PORTABLE_VERSION)
   {
+    fprintf(stderr, "%s: Portable version mismatch:\n", program_name);
     fprintf(stderr, "Portable File Version %4d\n", Portable_Version);
     fprintf(stderr, "Expected:     Version %4d\n", PORTABLE_VERSION);
     quit(1);
@@ -838,11 +850,12 @@ Read_Header_and_Allocate()
   if ((Version != FASL_FORMAT_VERSION)		||
       (Sub_Version != FASL_SUBVERSION))
   {
+    fprintf(stderr, "%s: Binary version mismatch:\n", program_name);
     fprintf(stderr,
-	    "Portable File Version %4d Subversion %4d Binary Version %4d\n",
+	    "Portable File Version %4d; Binary Version %4d; Subversion %4d\n",
 	    Portable_Version, Version, Sub_Version);
     fprintf(stderr,
-	    "Expected:     Version %4d Subversion %4d Binary Version %4d\n",
+	    "Expected:     Version %4d; Binary Version %4d; Subversion %4d\n",
 	    PORTABLE_VERSION, FASL_FORMAT_VERSION, FASL_SUBVERSION);
     quit(1);
   }
@@ -856,18 +869,18 @@ Read_Header_and_Allocate()
   {
     if (compiled_p)
     {
-      fprintf(stderr,
-	      "%s: Portable file contains \"invalid\" compiled code.\n",
-	      Program_Name);
+      fprintf(stderr, "%s: %s\n", program_name,
+	      "Portable file contains \"non-portable\" compiled code.");
     }
     else
     {
-      fprintf(stderr,
-	      "%s: Portable file contains \"random\" non-marked vectors.\n",
-	      Program_Name);
+      fprintf(stderr, "%s: %s\n", program_name,
+	      "Portable file contains \"unexpected\" non-marked vectors.");
     }
-    fprintf(stderr, "Portable File Machine %4d\n", Machine);
-    fprintf(stderr, "Expected:     Machine %4d\n", FASL_INTERNAL_FORMAT);
+    fprintf(stderr, "Machine specified in the portable file: %4d\n",
+	    Machine);
+    fprintf(stderr, "Machine Expected:                       %4d\n",
+	    FASL_INTERNAL_FORMAT);
     quit(1);
   }
 
@@ -896,6 +909,13 @@ Read_Header_and_Allocate()
   READ_HEADER("Primitive Table Length", "%ld", Primitive_Table_Length);
   READ_HEADER("Number of characters in primitives", "%ld", NPChars);
   
+  READ_HEADER("CPU type", "%ld", compiler_processor_type);
+  READ_HEADER("Compiled code interface version", "%ld",
+	      compiler_interface_version);
+#if false
+  READ_HEADER("Compiler utilities vector", "%ld", compiler_utilities);
+#endif
+
   Size = (6 +						/* SNMV */
 	  HEAP_BUFFER_SPACE +
 	  Heap_Count + Heap_Objects +
@@ -916,7 +936,7 @@ Read_Header_and_Allocate()
   {
     fprintf(stderr,
 	    "%s: Memory Allocation Failed.  Size = %ld Scheme Pointers\n",
-	    Program_Name, Size);
+	    program_name, Size);
     quit(1);
   }
   Heap += HEAP_BUFFER_SPACE;
@@ -1004,7 +1024,7 @@ do_it()
 
   if (primitive_warn)
   {
-    fprintf(stderr, "%s:\n", Program_Name);
+    fprintf(stderr, "%s:\n", program_name);
     fprintf(stderr,
 	    "NOTE: The binary file contains primitives with unknown arity.\n");
   }
@@ -1043,7 +1063,8 @@ do_it()
 			  (Free - Heap_Base), Heap_Base,
 			  0, Stack_Top,
 			  primitive_table, Primitive_Table_Length,
-			  ((long) (primitive_table_end - primitive_table)));
+			  ((long) (primitive_table_end - primitive_table)),
+			  compiled_p, band_p);
     }
     else
     {
@@ -1068,12 +1089,13 @@ do_it()
 			  (Free - Heap_Base), Heap_Base,
 			  Total_Length, (Pure_Base - 2),
 			  primitive_table, Primitive_Table_Length,
-			  ((long) (primitive_table_end - primitive_table)));
+			  ((long) (primitive_table_end - primitive_table)),
+			  compiled_p, band_p);
     }
   }
   if (!result)
   {
-    fprintf(stderr, "%s: Error writing the output file.\n", Program_Name);
+    fprintf(stderr, "%s: Error writing the output file.\n", program_name);
     quit(1);
   }
   return;
@@ -1081,17 +1103,21 @@ do_it()
 
 /* Top level */
 
-static struct Option_Struct Options[] =
-    {{"Allow_Compiled", true, &allow_compiled_p},
-     {"Allow_NMVs", true, &allow_nmv_p}};
-
-static int Noptions = 2;
+static struct keyword_struct
+  options[] = {
+    KEYWORD("allow_nmv", &allow_nmv_p, BOOLEAN_KYWRD, BFRMT, NULL),
+    KEYWORD("allow_cc", &allow_compiled_p, BOOLEAN_KYWRD, BFRMT, NULL),
+    OUTPUT_KEYWORD(),
+    INPUT_KEYWORD(),
+    END_KEYWORD()
+    };
 
 main(argc, argv)
      int argc;
      char *argv[];
 {
-  Setup_Program(argc, argv, Noptions, Options);
+  parse_keywords(argc, argv, options, false);
+  setup_io();
   do_it();
   quit(0);
 }
