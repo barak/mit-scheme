@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.8 1989/04/18 16:30:11 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.9 1989/10/14 15:48:39 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -319,9 +319,11 @@ MIT in each case. |#
 (define (syntax/or . expressions)
   (expand-disjunction expressions))
 
-(define (syntax/cond clause . rest)
+(define (syntax/cond . clauses)
   (define (loop clause rest)
-    (cond ((eq? (car clause) 'ELSE)
+    (cond ((not (pair? clause))
+	   (syntax-error "Bad COND clause" clause))
+	  ((eq? (car clause) 'ELSE)
 	   (if (not (null? rest))
 	       (syntax-error "ELSE not last clause" rest))
 	   (syntax-sequence (cdr clause)))
@@ -352,7 +354,8 @@ MIT in each case. |#
 	undefined-conditional-branch
 	(loop (car rest) (cdr rest))))
 
-  (loop clause rest))
+  (next clauses))
+
 ;;;; Procedures
 
 (define (syntax/lambda pattern . body)
