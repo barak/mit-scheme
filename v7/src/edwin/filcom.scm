@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.196 1998/11/18 03:42:26 cph Exp $
+;;;	$Id: filcom.scm,v 1.197 1998/12/09 02:51:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -364,6 +364,25 @@ Argument means don't offer to use auto-save file."
 	    (message
 	     "Auto-save off in this buffer till you do M-x auto-save-mode.")
 	    (select-buffer buffer)))))))
+
+(define-command insert-filename
+  "Interactively read a file name and insert it at point.
+The file name is normally inserted using Scheme syntax,
+but see the variable insert-filename-format."
+  "FInsert filename"
+  (lambda (filename)
+    (insert-string ((ref-variable insert-filename-format) filename)
+		   (current-point))))
+
+(define-variable insert-filename-format
+  "Defines the format used by \[insert-filename].
+The value of this variable must be a procedure of one argument.
+The procedure is called with the filename as an argument,
+and returns the string that is inserted into the buffer."
+  write-to-string
+  (lambda (object)
+    (and (procedure? object)
+	 (procedure-arity-valid? object 1))))
 
 (define-command save-buffer
   "Save current buffer in visited file if modified.  Versions described below.
@@ -610,6 +629,8 @@ If a file with the new name already exists, confirmation is requested first."
 			": Permission denied"))
       (set-buffer-default-directory! buffer directory))))
 
+;;;; Encryption
+
 (define-command encrypt-file
   "Encrypt a file with the blowfish encryption algorithm.
 Prompts for the plaintext and ciphertext filenames.

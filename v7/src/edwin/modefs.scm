@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: modefs.scm,v 1.151 1998/01/20 18:40:46 adams Exp $
+;;;	$Id: modefs.scm,v 1.152 1998/12/09 02:51:45 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-1998 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -237,6 +237,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental #\c-m-w 'append-next-kill)
 (define-key 'fundamental #\c-m-rubout 'backward-kill-sexp)
 
+(define-key 'fundamental '(#\c-c #\c-i) 'insert-filename)
 (define-key 'fundamental '(#\c-c #\c-s) 'repl)
 
 (define-key 'fundamental '(#\c-h #\a) 'command-apropos)
