@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.11 1990/02/14 00:20:38 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.12 1990/02/14 01:56:12 cph Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -114,7 +114,7 @@ MIT in each case. |#
   (list-head (list-tail list start) (- end start)))
 
 #|
-;; This version does not detect circularity
+;; These versions do not detect circularity
 
 (define (list? object)
   (let loop ((object object))
@@ -122,6 +122,14 @@ MIT in each case. |#
 	true
 	(and (pair? object)
 	     (loop (cdr object))))))
+
+(define (alist? object)
+  (if (null? object)
+      true
+      (and (pair? object)
+	   (pair? (car object))
+	   (alist? (cdr object)))))
+
 |#
 
 (define (list? obj)
@@ -147,11 +155,16 @@ MIT in each case. |#
   (phase-1 obj obj))
 
 (define (alist? object)
-  (if (null? object)
-      true
-      (and (pair? object)
-	   (pair? (car object))
-	   (alist? (cdr object)))))
+  (let loop ((l1 object) (l2 object))
+    (if (pair? l1)
+	(and (pair? (car l1))
+	     (let ((l1 (cdr l1)))
+	       (and (not (eq? l1 l2))
+		    (if (pair? l1)
+			(and (pair? (car l1))
+			     (loop (cdr l1) (cdr l2)))
+			(null? l1)))))
+	(null? l1))))
 
 (define (list-copy items)
   (let loop ((items items))
