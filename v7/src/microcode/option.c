@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.5 1990/11/15 10:34:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.6 1990/11/27 22:12:20 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -39,6 +39,7 @@ MIT in each case. */
 #include <sys/stat.h>
 #include "ansidecl.h"
 #include "obstack.h"
+#include "osenv.h"
 
 extern char * getenv ();
 extern void free ();
@@ -49,6 +50,9 @@ extern int access ();
 extern struct obstack scratch_obstack;
 extern CONST char * scheme_program_name;
 extern void EXFUN (termination_init_error, (void));
+
+#define FILE_ABSOLUTE(filename) (((filename) [0]) == '/')
+#define FILE_READABLE(filename) ((access ((filename), 4)) >= 0)
 
 static int option_summary;
 static int option_large_sizes;
@@ -536,10 +540,31 @@ DEFUN (standard_numeric_option, (option, optval, variable, defval),
   return (defval);
 }
 
+static CONST char *
+DEFUN_VOID (get_wd)
+{
+  CONST char * wd = (OS_working_dir_pathname ());
+  unsigned int len = (strlen (wd));
+  if ((wd [len - 1]) == '/')
+    len -= 1;
+  {
+    char * result = (xmalloc (len + 1));
+    char * scan_result = result;
+    CONST char * scan_wd = wd;
+    CONST char * end_wd = (scan_wd + len);
+    while (scan_wd < end_wd)
+      (*scan_result++) = (*scan_wd++);
+    (*scan_result) = '\0';
+    return (result);
+  }
+}
+
 static CONST char **
 DEFUN (parse_path_string, (path), CONST char * path)
 {
   CONST char * start = path;
+  CONST char * wd = 0;
+  unsigned int lwd;
   while (1)
     {
       CONST char * scan = start;
@@ -556,23 +581,50 @@ DEFUN (parse_path_string, (path), CONST char * path)
       if ((start < end) && ((* (end - 1)) == '/'))
 	end -= 1;
       if (end == start)
-	obstack_ptr_grow ((&scratch_obstack), (string_copy (".")));
+	{
+	  if (wd == 0)
+	    {
+	      wd = (get_wd ());
+	      lwd = (strlen (wd));
+	    }
+	  obstack_ptr_grow ((&scratch_obstack), (string_copy (wd)));
+	}
       else
 	{
-	  char * element = (xmalloc ((end - start) + 1));
+	  int absolute = (FILE_ABSOLUTE (start));
+	  if ((!absolute) && (wd == 0))
+	    {
+	      wd = (get_wd ());
+	      lwd = (strlen (wd));
+	    }
 	  {
-	    CONST char * s1 = start;
-	    char * s2 = element;
-	    while (s1 < end)
-	      (*s2++) = (*s1++);
-	    (*s2) = '\0';
+	    char * element =
+	      (xmalloc ((absolute ? 0 : (lwd + 1)) + (end - start) + 1));
+	    char * scan_element = element;
+	    if (!absolute)
+	      {
+		CONST char * s = wd;
+		CONST char * e = (wd + lwd);
+		while (s < e)
+		  (*scan_element++) = (*s++);
+		(*scan_element++) = '/';
+	      }
+	    {
+	      CONST char * s = start;
+	      while (s < end)
+		(*scan_element++) = (*s++);
+	    }
+	    (*scan_element) = '\0';
+	    obstack_ptr_grow ((&scratch_obstack), element);
 	  }
-	  obstack_ptr_grow ((&scratch_obstack), element);
 	}
       if ((* (scan - 1)) == '\0')
 	break;
+      start = scan;
     }
   obstack_ptr_grow ((&scratch_obstack), 0);
+  if (wd != 0)
+    xfree (wd);
   {
     unsigned int n_bytes = (obstack_object_size (&scratch_obstack));
     CONST char ** elements = (obstack_finish (&scratch_obstack));
@@ -601,9 +653,6 @@ DEFUN (free_parsed_path, (path), CONST char ** path)
   xfree (path);
 }
 
-#define FILE_ABSOLUTE(filename) (((filename) [0]) == '/')
-#define FILE_READABLE(filename) ((access ((filename), 4)) >= 0)
-
 static CONST char *
 DEFUN (search_path_for_file, (option, filename, default_p),
        CONST char * option AND
