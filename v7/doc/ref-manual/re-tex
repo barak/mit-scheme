@@ -1,0 +1,22 @@
+#!/bin/sh
+
+
+tex scheme.texinfo
+texindex scheme.cp
+texindex scheme.fn
+texindex scheme.ky
+texindex scheme.pg
+texindex scheme.tp
+texindex scheme.vr
+
+tex scheme.texinfo
+texindex scheme.cp
+texindex scheme.fn
+texindex scheme.ky
+texindex scheme.pg
+texindex scheme.tp
+texindex scheme.vr
+
+tex scheme.texinfo
+
+# hopefully by now all the references have reached their correct pages
