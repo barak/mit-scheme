@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.65 2004/10/01 01:52:52 cph Exp $
+$Id: global.scm,v 14.66 2004/10/01 02:14:55 cph Exp $
 
 Copyright 1988,1989,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1998,2000,2001,2003,2004 Massachusetts Institute of Technology
@@ -112,6 +112,10 @@ USA.
 
 (define-integrable (system-hunk3-cons type cxr0 cxr1 cxr2)
   (object-new-type type (hunk3-cons cxr0 cxr1 cxr2)))
+
+(define (with-limited-interrupts limit-mask procedure)
+  (with-interrupt-mask (fix:and limit-mask (get-interrupt-enables))
+    procedure))
 
 (define (object-component-binder get-component set-component!)
   (lambda (object new-value thunk)
