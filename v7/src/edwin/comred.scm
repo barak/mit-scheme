@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comred.scm,v 1.104 1993/08/19 22:43:36 cph Exp $
+;;;	$Id: comred.scm,v 1.105 1993/08/25 02:32:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -425,7 +425,9 @@
       ((#\n)
        (prompting (prompt-for-number prompt false)))
       ((#\N)
-       (prefix (or (command-argument) (prompt-for-number prompt false))))
+       (prefix
+	(or (command-argument-value (command-argument))
+	    (prompt-for-number prompt false))))
       ((#\p)
        (prefix (or (command-argument-value (command-argument)) 1)))
       ((#\P)
