@@ -1,7 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/machin.scm,v 1.5 1991/10/25 00:13:12 cph Exp $
-$MC68020-Header: machin.scm,v 4.22 90/05/03 15:17:20 GMT jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/machin.scm,v 1.6 1991/10/25 12:24:32 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -39,7 +38,7 @@ MIT in each case. |#
 
 ;;;; Architecture Parameters
 
-(define use-pre/post-increment? true)
+(define use-pre/post-increment? false)
 (define endianness 'LITTLE)
 (define-integrable addressing-granularity 8)
 (define-integrable scheme-object-width 32)
