@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxproc.c,v 1.26 2000/12/05 21:23:49 cph Exp $
+$Id: uxproc.c,v 1.27 2001/05/03 20:14:51 cph Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 #include "ux.h"
@@ -684,21 +685,34 @@ DEFUN (stop_signal_handler, (signo), int signo)
 
 #ifdef HAVE_TERMIOS_H
 
-#ifndef IUCLC
 /* POSIX.1 doesn't require (or even mention) these symbols, but we
    must disable them if they are present. */
-#define IUCLC 0
-#define OLCUC 0
-#define NLDLY 0
-#define CRDLY 0
-#define TABDLY 0
-#define BSDLY 0
-#define VTDLY 0
-#define FFDLY 0
+#ifndef IUCLC
+#  define IUCLC 0
 #endif
-
+#ifndef OLCUC
+#  define OLCUC 0
+#endif
+#ifndef NLDLY
+#  define NLDLY 0
+#endif
+#ifndef CRDLY
+#  define CRDLY 0
+#endif
+#ifndef TABDLY
+#  define TABDLY 0
+#endif
+#ifndef BSDLY
+#  define BSDLY 0
+#endif
+#ifndef VTDLY
+#  define VTDLY 0
+#endif
+#ifndef FFDLY
+#  define FFDLY 0
+#endif
 #ifndef ONLCR
-#define ONLCR 0
+#  define ONLCR 0
 #endif
 
 static int
