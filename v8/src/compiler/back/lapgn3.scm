@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgn3.scm,v 1.2 1994/11/26 19:13:50 adams Exp $
+$Id: lapgn3.scm,v 1.3 1994/11/26 19:59:00 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -241,4 +241,5 @@ MIT in each case. |#
 (define (compiled-code-block/write-profile-count block count value)
   block
   count
+  value
   0)
