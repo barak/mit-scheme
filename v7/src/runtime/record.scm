@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.47 2003/04/25 03:27:55 cph Exp $
+$Id: record.scm,v 1.48 2004/11/17 05:42:22 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
-Copyright 1997,2002,2003 Massachusetts Institute of Technology
+Copyright 1997,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -362,8 +362,7 @@ USA.
 			     (symbol? (car kl))
 			     (pair? (cdr kl))))
 		   (if (not (null? kl))
-		       (error:wrong-type-argument keyword-list "keyword list"
-						  constructor)))
+		       (error:not-keyword-list keyword-list constructor)))
 		(let ((i (record-type-field-index record-type (car kl) #t)))
 		  (if (not (vector-ref seen? i))
 		      (begin
@@ -601,7 +600,7 @@ USA.
 	    (do ((args arguments (cddr args)))
 		((not (pair? args)))
 	      (if (not (pair? (cdr args)))
-		  (error "Keyword list does not have even length:" arguments))
+		  (error:not-keyword-list arguments #f))
 	      (let ((field-name (car args)))
 		(let loop ((i 0))
 		  (if (not (fix:< i n))

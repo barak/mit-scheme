@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.41 2004/11/17 05:24:11 cph Exp $
+$Id: list.scm,v 14.42 2004/11/17 05:42:14 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,2000 Massachusetts Institute of Technology
@@ -998,6 +998,55 @@ USA.
 	       (lose)))
 	  ((null? alist) alist)
 	  (else (lose)))))
+
+;;;; Keyword lists
+
+(define (keyword-list? object)
+  (let loop ((l1 object) (l2 object))
+    (if (pair? l1)
+	(and (symbol? (car l1))
+	     (pair? (cdr l1))
+	     (not (eq? (cdr l1) l2))
+	     (loop (cdr (cdr l1)) (cdr l1)))
+	(null? l1))))
+
+(define (guarantee-keyword-list object caller)
+  (if (not (keyword-list? object))
+      (error:not-keyword-list object caller)))
+
+(define (error:not-keyword-list object caller)
+  (error:wrong-type-argument object "keyword list" caller))
+
+(define (restricted-keyword-list? object keywords)
+  (let loop ((l1 object) (l2 object))
+    (if (pair? l1)
+	(and (memq (car l1) keywords)
+	     (pair? (cdr l1))
+	     (not (eq? (cdr l1) l2))
+	     (loop (cdr (cdr l1)) (cdr l1)))
+	(null? l1))))
+
+(define (guarantee-restricted-keyword-list object caller)
+  (if (not (restricted-keyword-list? object))
+      (error:not-restricted-keyword-list object caller)))
+
+(define (error:not-restricted-keyword-list object caller)
+  (error:wrong-type-argument object "restricted keyword list" caller))
+
+(define (get-keyword-value klist key default)
+  (let ((lose (lambda () (error:not-keyword-list klist 'GET-KEYWORD-VALUE))))
+    (let loop ((klist klist))
+      (if (pair? klist)
+	  (begin
+	    (if (not (pair? (cdr klist)))
+		(lose))
+	    (if (eq? (car klist) key)
+		(cadr klist)
+		(loop (cddr klist))))
+	  (begin
+	    (if (not (null? klist))
+		(lose))
+	    default)))))
 
 ;;;; Lastness and Segments
 
