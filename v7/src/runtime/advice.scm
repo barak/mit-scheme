@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 14.5 1989/12/14 23:05:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 14.6 1990/09/07 00:46:02 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,6 +36,65 @@ MIT in each case. |#
 ;;; package: (runtime advice)
 
 (declare (usual-integrations))
+
+(define entry-advice-population)
+(define exit-advice-population)
+
+(define particular-entry-advisor)
+(define particular-exit-advisor)
+(define particular-both-advisor)
+(define particular-entry-unadvisor)
+(define particular-exit-unadvisor)
+(define particular-both-unadvisor)
+
+(define primitive-trace-entry)
+(define primitive-trace-exit)
+(define primitive-trace-both)
+
+(define primitive-untrace)
+(define primitive-untrace-entry)
+(define primitive-untrace-exit)
+
+(define primitive-break-entry)
+(define primitive-break-exit)
+(define primitive-break-both)
+
+(define primitive-unbreak)
+(define primitive-unbreak-entry)
+(define primitive-unbreak-exit)
+
+(define advice)
+(define entry-advice)
+(define exit-advice)
+
+(define advise-entry)
+(define advise-exit)
+
+(define wrap-entry-unadvisor)
+(define wrap-exit-unadvisor)
+(define wrap-both-unadvisor)
+
+(define unadvise)
+(define unadvise-entry)
+(define unadvise-exit)
+
+(define untrace)
+(define untrace-entry)
+(define untrace-exit)
+
+(define unbreak)
+(define unbreak-entry)
+(define unbreak-exit)
+
+(define trace-entry)
+(define trace-exit)
+(define trace-both)
+(define trace)
+
+(define break-entry)
+(define break-exit)
+(define break-both)
+(define break)
 
 (define (initialize-package!)
   (set! entry-advice-population (make-population))
@@ -98,12 +157,10 @@ MIT in each case. |#
   (set! break-entry (wrap-advisor primitive-break-entry))
   (set! break-exit (wrap-advisor primitive-break-exit))
   (set! break-both (wrap-advisor primitive-break-both))
-  (set! break break-both))
+  (set! break break-both)
+  unspecific)
 
 ;;;; Advice Wrappers
-
-(define entry-advice-population)
-(define exit-advice-population)
 
 (define the-arguments)
 (define the-procedure)
@@ -118,8 +175,8 @@ MIT in each case. |#
 (define (*result*)
   the-result)
 
-(define (add-lambda-advice! lambda advice-transformation)
-  (lambda-wrap-body! lambda
+(define (add-lambda-advice! *lambda advice-transformation)
+  (lambda-wrap-body! *lambda
     (lambda (body state receiver)
       (if (null? state)
 	  (receiver (make-advice-hook)
@@ -127,25 +184,25 @@ MIT in each case. |#
 	  (receiver body
 		    (advice-transformation (car state) (cdr state) cons))))))
 
-(define (remove-lambda-advice! lambda advice-transformation)
-  (lambda-advice lambda
+(define (remove-lambda-advice! *lambda advice-transformation)
+  (lambda-advice *lambda
     (lambda (entry-advice exit-advice)
       (advice-transformation entry-advice exit-advice
 	(lambda (new-entry-advice new-exit-advice)
 	  (if (and (null? new-entry-advice) (null? new-exit-advice))
-	      (lambda-unwrap-body! lambda)
-	      (lambda-wrap-body! lambda
+	      (lambda-unwrap-body! *lambda)
+	      (lambda-wrap-body! *lambda
 		(lambda (body state receiver)
 		  state
 		  (receiver body
 			    (cons new-entry-advice new-exit-advice))))))))))
 
-(define (lambda-advice lambda receiver)
-  (lambda-wrapper-components lambda
+(define (lambda-advice *lambda receiver)
+  (lambda-wrapper-components *lambda
     (lambda (original-body state)
       original-body
       (if (null? state)
-	  (error "Procedure has no advice -- LAMBDA-ADVICE" lambda))
+	  (error "Procedure has no advice -- LAMBDA-ADVICE" *lambda))
       (receiver (car state) (cdr state)))))
 
 (define (make-advice-hook)
@@ -204,49 +261,49 @@ MIT in each case. |#
 
 ;;;; Primitive Advisors
 
-(define (primitive-advice lambda)
-  (lambda-advice lambda list))
+(define (primitive-advice *lambda)
+  (lambda-advice *lambda list))
 
-(define (primitive-entry-advice lambda)
-  (lambda-advice lambda
+(define (primitive-entry-advice *lambda)
+  (lambda-advice *lambda
     (lambda (entry-advice exit-advice)
       exit-advice
       entry-advice)))
 
-(define (primitive-exit-advice lambda)
-  (lambda-advice lambda
+(define (primitive-exit-advice *lambda)
+  (lambda-advice *lambda
     (lambda (entry-advice exit-advice)
       entry-advice
       exit-advice)))
 
-(define (primitive-advise-entry lambda advice)
-  (add-lambda-advice! lambda
+(define (primitive-advise-entry *lambda advice)
+  (add-lambda-advice! *lambda
     (lambda (entry-advice exit-advice receiver)
       (receiver (if (memq advice entry-advice)
 		    entry-advice
-		    (begin (add-to-population! entry-advice-population lambda)
+		    (begin (add-to-population! entry-advice-population *lambda)
 			   (cons advice entry-advice)))
 		exit-advice))))
 
-(define (primitive-advise-exit lambda advice)
-  (add-lambda-advice! lambda
+(define (primitive-advise-exit *lambda advice)
+  (add-lambda-advice! *lambda
     (lambda (entry-advice exit-advice receiver)
       (receiver entry-advice
 		(if (memq advice exit-advice)
 		    exit-advice
-		    (begin (add-to-population! exit-advice-population lambda)
+		    (begin (add-to-population! exit-advice-population *lambda)
 			   (append! exit-advice (list advice))))))))
 
-(define ((primitive-advise-both new-entry-advice new-exit-advice) lambda)
-  (add-lambda-advice! lambda
+(define ((primitive-advise-both new-entry-advice new-exit-advice) *lambda)
+  (add-lambda-advice! *lambda
     (lambda (entry-advice exit-advice receiver)
       (receiver (if (memq new-entry-advice entry-advice)
 		    entry-advice
-		    (begin (add-to-population! entry-advice-population lambda)
+		    (begin (add-to-population! entry-advice-population *lambda)
 			   (cons new-entry-advice entry-advice)))
 		(if (memq new-exit-advice exit-advice)
 		    exit-advice
-		    (begin (add-to-population! exit-advice-population lambda)
+		    (begin (add-to-population! exit-advice-population *lambda)
 			   (append! exit-advice (list new-exit-advice))))))))
 
 (define (eq?-adjoin object list)
@@ -254,63 +311,56 @@ MIT in each case. |#
       list
       (cons object list)))
 
-(define (primitive-unadvise-entire-entry lambda)
-  (remove-lambda-advice! lambda
+(define (primitive-unadvise-entire-entry *lambda)
+  (remove-lambda-advice! *lambda
     (lambda (entry-advice exit-advice receiver)
       entry-advice
       (receiver '() exit-advice)))
-  (remove-from-population! entry-advice-population lambda))
+  (remove-from-population! entry-advice-population *lambda))
 
-(define (primitive-unadvise-entire-exit lambda)
-  (remove-lambda-advice! lambda
+(define (primitive-unadvise-entire-exit *lambda)
+  (remove-lambda-advice! *lambda
     (lambda (entry-advice exit-advice receiver)
       exit-advice
       (receiver entry-advice '())))
-  (remove-from-population! exit-advice-population lambda))
+  (remove-from-population! exit-advice-population *lambda))
 
-(define (primitive-unadvise-entire-lambda lambda)
-  (lambda-unwrap-body! lambda)
-  (remove-from-population! entry-advice-population lambda)
-  (remove-from-population! exit-advice-population lambda))
+(define (primitive-unadvise-entire-lambda *lambda)
+  (lambda-unwrap-body! *lambda)
+  (remove-from-population! entry-advice-population *lambda)
+  (remove-from-population! exit-advice-population *lambda))
 
-(define ((primitive-unadvise-entry advice) lambda)
-  (remove-lambda-advice! lambda
+(define ((primitive-unadvise-entry advice) *lambda)
+  (remove-lambda-advice! *lambda
     (lambda (entry-advice exit-advice receiver)
       (let ((new-entry-advice (delq! advice entry-advice)))
 	(if (null? new-entry-advice)
-	    (remove-from-population! entry-advice-population lambda))
+	    (remove-from-population! entry-advice-population *lambda))
 	(receiver new-entry-advice exit-advice)))))
 
-(define ((primitive-unadvise-exit advice) lambda)
-  (remove-lambda-advice! lambda
+(define ((primitive-unadvise-exit advice) *lambda)
+  (remove-lambda-advice! *lambda
     (lambda (entry-advice exit-advice receiver)
       (let ((new-exit-advice (delq! advice exit-advice)))
 	(if (null? new-exit-advice)
-	    (remove-from-population! exit-advice-population lambda))
+	    (remove-from-population! exit-advice-population *lambda))
 	(receiver entry-advice new-exit-advice)))))
 
-(define ((primitive-unadvise-both old-entry-advice old-exit-advice) lambda)
-  (remove-lambda-advice! lambda
+(define ((primitive-unadvise-both old-entry-advice old-exit-advice) *lambda)
+  (remove-lambda-advice! *lambda
     (lambda (entry-advice exit-advice receiver)
       (let ((new-entry-advice (delq! old-entry-advice entry-advice))
 	    (new-exit-advice (delq! old-exit-advice exit-advice)))
 	(if (null? new-entry-advice)
-	    (remove-from-population! entry-advice-population lambda))
+	    (remove-from-population! entry-advice-population *lambda))
 	(if (null? new-exit-advice)
-	    (remove-from-population! exit-advice-population lambda))
+	    (remove-from-population! exit-advice-population *lambda))
 	(receiver new-entry-advice new-exit-advice)))))
 
-(define (((particular-advisor advisor) advice) lambda)
-  (advisor lambda advice))
-
-(define particular-entry-advisor)
-(define particular-exit-advisor)
-(define particular-both-advisor)
-(define particular-entry-unadvisor)
-(define particular-exit-unadvisor)
-(define particular-both-unadvisor)
+(define (((particular-advisor advisor) advice) *lambda)
+  (advisor *lambda advice))
 
-;;;; Trace
+;;;; Trace and Break
 
 (define (trace-entry-advice procedure arguments environment)
   environment
@@ -363,15 +413,6 @@ MIT in each case. |#
 		  (newline)
 		  (write-string "          ...]"))))))))
 
-(define primitive-trace-entry)
-(define primitive-trace-exit)
-(define primitive-trace-both)
-(define primitive-untrace)
-(define primitive-untrace-entry)
-(define primitive-untrace-exit)
-
-;;;; Break
-
 (define (break-rep environment message . info)
   (breakpoint (cmdl-message/append
 	       (cmdl-message/active (lambda () (apply trace-display info)))
@@ -389,18 +430,11 @@ MIT in each case. |#
 	      (the-result result))
     (break-rep environment "Breakpoint on exit" procedure arguments result))
   result)
-
-(define primitive-break-entry)
-(define primitive-break-exit)
-(define primitive-break-both)
-(define primitive-unbreak)
-(define primitive-unbreak-entry)
-(define primitive-unbreak-exit)
 
 ;;;; Top Level Wrappers
 
 (define (find-internal-lambda procedure path)
-  (define (find-lambda lambda path)
+  (define (find-lambda *lambda path)
     (define (loop elements)
       (cond ((null? elements)
 	     (error "Couldn't find internal definition" path))
@@ -416,8 +450,8 @@ MIT in each case. |#
 	     (loop (cdr elements)))))
 
     (if (null? path)
-	lambda
-	(lambda-components lambda
+	*lambda
+	(lambda-components *lambda
 	  (lambda (name required optional rest auxiliary declarations body)
 	    name required optional rest declarations
 	    (if (memq (car path) auxiliary)
@@ -432,17 +466,10 @@ MIT in each case. |#
 (define ((wrap-advice-extractor extractor) procedure . path)
   (list-copy (extractor (find-internal-lambda procedure path))))
 
-(define advice)
-(define entry-advice)
-(define exit-advice)
-
 (define ((wrap-general-advisor advisor) procedure advice . path)
   (advisor (find-internal-lambda procedure path) advice)
   unspecific)
 
-(define advise-entry)
-(define advise-exit)
-
 (define (((wrap-unadvisor map-over-population) unadvisor) . procedure&path)
   (if (null? procedure&path)
       (map-over-population unadvisor)
@@ -450,28 +477,6 @@ MIT in each case. |#
 				       (cdr procedure&path))))
   unspecific)
 
-(define wrap-entry-unadvisor)
-(define wrap-exit-unadvisor)
-(define wrap-both-unadvisor)
-(define unadvise)
-(define unadvise-entry)
-(define unadvise-exit)
-(define untrace)
-(define untrace-entry)
-(define untrace-exit)
-(define unbreak)
-(define unbreak-entry)
-(define unbreak-exit)
-
 (define ((wrap-advisor advisor) procedure . path)
   (advisor (find-internal-lambda procedure path))
   unspecific)
-
-(define trace-entry)
-(define trace-exit)
-(define trace-both)
-(define trace)
-(define break-entry)
-(define break-exit)
-(define break-both)
-(define break)
