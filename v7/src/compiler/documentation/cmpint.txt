@@ -1,6 +1,6 @@
 -*- Text -*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpint.txt,v 1.6 1991/01/16 16:11:05 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpint.txt,v 1.7 1991/01/23 18:56:21 jinx Exp $
 
 	Remarks:
 
@@ -738,7 +738,7 @@ above example, it would extract the entry point of the sort procedure
 when given the address of the jump instruction (labelled as
 sort-uuo-link).
 
-=> STORE_EXECUTE_CACHE_CODE is the inverse of this, ie. when given a
+=> STORE_EXECUTE_CACHE_ADDRESS is the inverse of this, ie. when given a
 target entry point and the address of an execute cache entry, it
 stores the entry point there.  In the above example, given a new entry
 point for sort, and sort-uuo-link, it would modify the jump
