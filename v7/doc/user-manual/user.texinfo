@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.60 1999/07/16 18:08:15 cph Exp $
+@comment $Id: user.texinfo,v 1.61 1999/07/16 18:08:54 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -266,7 +266,7 @@ OS/2 2.1 or later.
 
 The Scheme files use about 20 megabytes of disk space when installed.
 After installation, you can reduce the amount of disk space required by
-deleting some files (@pxref{Image Files for OS/2 Installation}).
+deleting some files (@pxref{Optional Configuration}).
 
 MIT Scheme requires a fair amount of RAM to run well.  We haven't
 tried running this on any machine with less than 36 megabytes, so we
