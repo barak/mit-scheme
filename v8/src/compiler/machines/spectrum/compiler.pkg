@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.12 1995/07/27 14:20:23 adams Exp $
+$Id: compiler.pkg,v 1.13 1995/08/08 16:21:25 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -156,7 +156,9 @@ MIT in each case. |#
 	  *procedure-result?*
 	  )
   (export (compiler midend)
-	  *kmp-output-abbreviated?*
+	  *output-prefix*
+	  compiler-phase
+	  compiler-subphase
 	  with-kmp-output-port
 	  compile-recursively/new)
   (export (compiler rtl-generator)
