@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 15.25 1996/09/28 18:29:11 cph Exp $
+$Id: make.scm,v 15.26 1998/01/23 00:23:08 cph Exp $
 
-Copyright (c) 1991-95 Massachusetts Institute of Technology
+Copyright (c) 1991-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,7 +39,8 @@ MIT in each case. |#
 (package/system-loader "6001" '() 'QUERY)
 (let ((edwin (->environment '(edwin))))
   (load "edextra" edwin)
-  (if (eq? 'UNIX microcode-id/operating-system)
+  (if (and (eq? 'UNIX microcode-id/operating-system)
+	   (string-ci=? "HP-UX" microcode-id/operating-system-variant))
       (load "floppy" edwin)))
 ((access initialize-package! (->environment '(student scode-rewriting))))
 (add-system! (make-system "6.001" 15 23 '()))
