@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndblk.scm,v 4.3 1987/12/31 08:50:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndblk.scm,v 4.4 1988/01/02 19:12:14 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -177,14 +177,16 @@ MIT in each case. |#
 (define (find-block/parent-procedure block)
   (enumeration-case block-type (block-type block)
     ((STACK)
-     (let ((parent (block-parent block)))
-       (if parent
-	   (enumeration-case block-type (block-type parent)
-	     ((STACK) internal-block/parent-locative)
-	     ((CLOSURE) stack-block/closure-parent-locative)
-	     ((IC) stack-block/static-link-locative)
-	     (else (error "Illegal procedure parent" parent)))
-	   (error "Block has no parent" block))))
+     (if (procedure/closure? (block-procedure block))
+	 stack-block/closure-parent-locative
+	 (let ((parent (block-parent block)))
+	   (if parent
+	       (enumeration-case block-type (block-type parent)
+		 ((STACK) internal-block/parent-locative)
+		 ((IC) stack-block/static-link-locative)
+		 ((CLOSURE) (error "Closure parent of open procedure" block))
+		 (else (error "Illegal procedure parent" parent)))
+	       (error "Block has no parent" block)))))
     ((CLOSURE) closure-block/parent-locative)
     ((CONTINUATION) continuation-block/parent-locative)
     (else (error "Illegal parent block type" block))))
