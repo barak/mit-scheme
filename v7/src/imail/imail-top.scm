@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.173 2000/06/19 22:06:24 cph Exp $
+;;; $Id: imail-top.scm,v 1.174 2000/06/19 22:15:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1855,41 +1855,35 @@ Negative argument means search in reverse."
   (let ((folder (selected-folder #f buffer))
 	(message (selected-message #f buffer)))
     (and folder
-	 (let ((status (folder-connection-status folder)))
+	 (let ((n (folder-length folder)))
 	   (string-append
-	    (if (eq? status 'NO-SERVER)
-		""
-		(string-append " " (symbol->string status)))
-	    (if (and message (message-attached? message folder))
-		(let ((index (message-index message)))
-		  (if index
-		      (let ((n (folder-length folder)))
-			(string-append
-			 " "
-			 (number->string (+ 1 index))
-			 "/"
-			 (number->string n)
-			 (let loop ((i 0) (unseen 0))
-			   (if (< i n)
-			       (loop (+ i 1)
-				     (if (message-unseen?
-					  (get-message folder i))
-					 (+ unseen 1)
-					 unseen))
-			       (if (> unseen 0)
-				   (string-append " ("
-						  (number->string unseen)
-						  " unseen)")
-				   "")))
-			 (let ((flags
-				(flags-delete "seen" (message-flags message))))
-			   (if (pair? flags)
-			       (string-append
-				" "
-				(decorated-string-append "" "," "" flags))
-			       ""))))
-		      " 0/0"))
-		""))))))
+	    (let ((status (folder-connection-status folder)))
+	      (if (eq? status 'NO-SERVER)
+		  ""
+		  (string-append " " (symbol->string status))))
+	    " "
+	    (let ((index
+		   (and message
+			(message-attached? message folder)
+			(message-index message))))
+	      (cond (index (number->string (+ 1 index)))
+		    ((> n 0) "??")
+		    (else "0")))
+	    "/"
+	    (number->string n)
+	    (let loop ((i 0) (unseen 0))
+	      (cond ((< i n)
+		     (loop (+ i 1)
+			   (if (message-unseen? (get-message folder i))
+			       (+ unseen 1)
+			       unseen)))
+		    ((> unseen 0)
+		     (string-append " (" (number->string unseen) " unseen)"))
+		    (else "")))
+	    (let ((flags (flags-delete "seen" (message-flags message))))
+	      (if (pair? flags)
+		  (string-append " " (decorated-string-append "" "," "" flags))
+		  "")))))))
 
 ;;;; Probe-folder thread
 
