@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2sock.c,v 1.2 1996/05/17 17:26:03 cph Exp $
+$Id: os2sock.c,v 1.3 1996/05/18 06:10:25 cph Exp $
 
 Copyright (c) 1990-96 Massachusetts Institute of Technology
 
@@ -95,7 +95,9 @@ OS_open_tcp_stream_socket (char * host, int port)
   int s;
   struct sockaddr_in address;
 
+  transaction_begin ();
   VALUE_SOCKET_CALL (socket, (PF_INET, SOCK_STREAM, 0), s);
+  socket_close_on_abort (s);
   memset ((&address), 0, (sizeof (address)));
   (address . sin_family) = AF_INET;
   memcpy ((& (address . sin_addr)), host, (sizeof (struct in_addr)));
@@ -113,7 +115,9 @@ OS_open_unix_stream_socket (const char * filename)
   int s;
   struct sockaddr_un address;
 
+  transaction_begin ();
   VALUE_SOCKET_CALL (socket, (PF_OS2, SOCK_STREAM, 0), s);
+  socket_close_on_abort (s);
   memset ((&address), 0, (sizeof (address)));
   (address . sun_family) = AF_OS2;
   strncpy ((address . sun_path), filename, (sizeof (address . sun_path)));
@@ -161,7 +165,9 @@ OS_open_server_socket (unsigned int port, int arg_number)
 	&& (port >= (1 << (CHAR_BIT * nb_port))))
       error_bad_range_arg (arg_number);
   }
+  transaction_begin ();
   VALUE_SOCKET_CALL (socket, (PF_INET, SOCK_STREAM, 0), s);
+  socket_close_on_abort (s);
   memset ((&address), 0, (sizeof (address)));
   (address . sin_family) = AF_INET;
   (address . sin_addr . s_addr) = INADDR_ANY;
@@ -181,6 +187,7 @@ OS_server_connection_accept (Tchannel channel,
   static struct sockaddr_in address;
   int s;
 
+  transaction_begin ();
   while (1)
     {
       int address_length = (sizeof (struct sockaddr_in));
@@ -195,6 +202,7 @@ OS_server_connection_accept (Tchannel channel,
 	OS2_error_system_call ((sock_errno ()), syscall_accept);
       deliver_pending_interrupts ();
     }
+  socket_close_on_abort (s);
   if (peer_host != 0)
     memcpy (peer_host, (& (address . sin_addr)), (sizeof (struct in_addr)));
   if (peer_port != 0)
@@ -205,17 +213,13 @@ OS_server_connection_accept (Tchannel channel,
 static Tchannel
 initialize_stream_socket (int s, enum channel_type type)
 {
-  transaction_begin ();
-  socket_close_on_abort (s);
-  {
-    Tchannel channel = (OS2_allocate_channel ());
-    OS2_initialize_channel (channel, s, (CHANNEL_READ | CHANNEL_WRITE), type);
-    OS2_start_channel_thread (channel,
-			      stream_socket_reader,
-			      stream_socket_operator);
-    transaction_commit ();
-    return (channel);
-  }
+  Tchannel channel = (OS2_allocate_channel ());
+  OS2_initialize_channel (channel, s, (CHANNEL_READ | CHANNEL_WRITE), type);
+  OS2_start_channel_thread (channel,
+			    stream_socket_reader,
+			    stream_socket_operator);
+  transaction_commit ();
+  return (channel);
 }
 
 static msg_t *
