@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Id: i386.m4,v 1.38 1995/10/05 03:32:24 cph Exp $
+###	$Id: i386.m4,v 1.39 1995/10/06 06:27:44 cph Exp $
 ###
 ###	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ###
@@ -365,8 +365,8 @@ allocate_word(C_Extra_Segment_Selector)
 define_data(C_Stack_Segment_Selector)
 allocate_word(C_Stack_Segment_Selector)
 
-IF_WINNT(`define(RETF,`db	0cbh')')
-IF_LINUX_ELF(`define(RETF,`.byte	0xcb')')
+IF_WINNT(`define(LRET,`db	0cbh')')
+IF_LINUX_ELF(`define(LRET,`lret')')
 
 IF_WINNT(`define(SEGMENT_DELTA,`EDR(winnt_address_delta)')')
 IF_LINUX_ELF(`define(SEGMENT_DELTA,`IMM(0x08000000)')')
@@ -520,7 +520,7 @@ ifdef(`HACK_SEGMENT_REGS',
 	OP(mov,w)	TW(EDR(C_Code_Segment_Selector),REG(ax))
 	OP(push,l)	REG(eax)
 	OP(push,l)	EDR(Scheme_Transfer_Address)
-	RETF
+	LRET
 
 cross_segment_transfer_point:
 ifdef(`USE_STRUCS',`
@@ -605,7 +605,7 @@ ifdef(`HACK_SEGMENT_REGS',
 
 	OP(sub,l)	TW(SEGMENT_DELTA,REG(edx))	# Entry point to new space
 	OP(xor,l)	TW(REG(ecx),REG(ecx))		# Setup cross-segment jump
-	OP(mov,w)	TW(EDR(Scheme_Code_Segment_Selector),REG(ecx))
+	OP(mov,w)	TW(EDR(Scheme_Code_Segment_Selector),REG(cx))
 
 	OP(mov,w)	TW(REG(ds),REG(ax))		# Store C ds in es,
 	OP(mov,w)	TW(REG(ax),REG(es))		#  unused by Scheme.
@@ -619,7 +619,7 @@ ifdef(`HACK_SEGMENT_REGS',
 	OP(mov,l)	TW(REG(eax),REG(ecx))		# Preserve if used
 	OP(and,l)	TW(rmask,REG(ecx))		# Restore potential dynamic link
 	OP(mov,l)	TW(REG(ecx),LOF(REGBLOCK_DLINK(),regs))
-	RETF						# Perform cross-segment jump
+	LRET						# Perform cross-segment jump
 ',
 `	OP(mov,l)	TW(EDR(Free),rfree)		# Free pointer = %edi
 	OP(mov,l)	TW(LOF(REGBLOCK_VAL(),regs),REG(eax)) # Value/dynamic link
