@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.25 1991/12/10 23:30:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.26 1992/03/25 21:58:07 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,6 +48,8 @@ MIT in each case. |#
   (set! *unparse-primitives-by-name?* false)
   (set! *unparse-uninterned-symbols-by-name?* false)
   (set! *unparse-with-maximum-readability?* false)
+  (set! *unparse-disambiguate-null-as-itself?* true)
+  (set! *unparse-compound-procedure-names?* true)
   (set! system-global-unparser-table (make-system-global-unparser-table))
   (set-current-unparser-table! system-global-unparser-table))
 
@@ -58,6 +60,8 @@ MIT in each case. |#
 (define *unparse-primitives-by-name?*)
 (define *unparse-uninterned-symbols-by-name?*)
 (define *unparse-with-maximum-readability?*)
+(define *unparse-disambiguate-null-as-itself?*)
+(define *unparse-compound-procedure-names?*)
 (define system-global-unparser-table)
 (define *current-unparser-table*)
 
@@ -273,12 +277,17 @@ MIT in each case. |#
     (SEQUENCE-3 . SEQUENCE)))
 
 (define (unparse/null object)
-  (cond ((eq? object '()) (*unparse-string "()"))
-	((eq? object #F) (*unparse-string "#F"))
-	(else (unparse/default object))))
+  (if (eq? object '())
+      (if (and (eq? object #f)
+	       (not *unparse-disambiguate-null-as-itself?*))
+	  (*unparse-string "#f")
+	  (*unparse-string "()"))
+      (if (eq? object #f)
+	  (*unparse-string "#f")
+	  (unparse/default object))))
 
 (define (unparse/true object)
-  (cond ((eq? object true) (*unparse-string "#T"))
+  (cond ((eq? object #t) (*unparse-string "#t"))
 	((undefined-value? object) (*unparse-string "#[undefined-value]"))
 	((eq? object lambda-optional-tag) (*unparse-string "#!optional"))
 	((eq? object lambda-rest-tag) (*unparse-string "#!rest"))
@@ -484,7 +493,8 @@ MIT in each case. |#
     (lambda-components* (procedure-lambda procedure)
       (lambda (name required optional rest body)
 	required optional rest body
-	(and (not (eq? name lambda-tag:unnamed))
+	(and *unparse-compound-procedure-names?*
+	     (not (eq? name lambda-tag:unnamed))
 	     (lambda () (*unparse-object name)))))))
 
 (define (unparse/primitive-procedure procedure)
@@ -520,7 +530,7 @@ MIT in each case. |#
 		 (begin
 		   (if name
 		       (*unparse-char #\Space))
-		   (*unparse-object (pathname-name (->pathname filename)))
+		   (*unparse-object (pathname-name filename))
 		   (if block-number
 		       (begin
 			 (*unparse-char #\Space)

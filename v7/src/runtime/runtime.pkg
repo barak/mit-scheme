@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.138 1992/03/20 05:17:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.139 1992/03/25 21:58:21 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -1727,6 +1727,7 @@ MIT in each case. |#
 	  repl/start
 	  repl/syntax-table
 	  repl:allow-restart-notifications?
+	  repl:write-result-hash-numbers?
 	  repl?
 	  restart
 	  set-cmdl/state!
@@ -2266,6 +2267,10 @@ MIT in each case. |#
   (files "unpars")
   (parent ())
   (export ()
+	  *unparse-compound-procedure-names?*
+	  *unparse-disambiguate-null-as-itself?*
+	  *unparse-primitives-by-name?*
+	  *unparse-uninterned-symbols-by-name?*
 	  *unparse-with-maximum-readability?*
 	  *unparser-list-breadth-limit*
 	  *unparser-list-depth-limit*

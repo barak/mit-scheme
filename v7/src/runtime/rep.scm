@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.25 1992/03/20 05:17:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.26 1992/03/25 21:57:48 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -37,8 +37,8 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define repl:allow-restart-notifications?
-  true)
+(define repl:allow-restart-notifications? true)
+(define repl:write-result-hash-numbers? true)
 
 (define (initialize-package!)
   (set! *nearest-cmdl* false)
@@ -369,7 +369,8 @@ MIT in each case. |#
 (define (default/repl-write repl object)
   (port/write-result (cmdl/port repl)
 		     object
-		     (and (object-pointer? object)
+		     (and repl:write-result-hash-numbers?
+			  (object-pointer? object)
 			  (not (interned-symbol? object))
 			  (not (number? object))
 			  (object-hash object))))
