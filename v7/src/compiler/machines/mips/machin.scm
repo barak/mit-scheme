@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/machin.scm,v 1.3 1991/06/17 21:21:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/machin.scm,v 1.4 1991/08/14 20:55:14 cph Exp $
 $MC68020-Header: machin.scm,v 4.22 90/05/03 15:17:20 GMT jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
@@ -386,6 +386,7 @@ MIT in each case. |#
 
 (define compiler:primitives-with-no-open-coding
   '(DIVIDE-FIXNUM GCD-FIXNUM FIXNUM-QUOTIENT FIXNUM-REMAINDER
+    FIXNUM-NOT FIXNUM-AND FIXNUM-ANDC FIXNUM-OR FIXNUM-XOR FIXNUM-LSH
     INTEGER-QUOTIENT INTEGER-REMAINDER &/ QUOTIENT REMAINDER
     FLONUM-SIN FLONUM-COS FLONUM-TAN FLONUM-ASIN FLONUM-ACOS
     FLONUM-ATAN FLONUM-EXP FLONUM-LOG FLONUM-TRUNCATE FLONUM-ROUND
