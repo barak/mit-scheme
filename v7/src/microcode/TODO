@@ -1,5 +1,5 @@
 -*-Text-*-
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/TODO,v 1.1 1993/10/29 23:00:51 nick Exp $
+$Id: TODO,v 1.2 2000/03/21 04:30:50 cph Exp $
 
 	Things to do to the C microcode:
 

@@ -1,6 +1,6 @@
 /* -*- C -*- */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/test-c.c,v 1.3 1992/02/14 18:57:27 jinx Exp $ */
+/* $Id: test-c.c,v 1.4 2000/03/21 04:29:53 cph Exp $ */
 
 #include <stdio.h>
 
