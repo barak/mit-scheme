@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.53 1996/10/10 10:28:22 cph Exp $
+;;;	$Id: rmail.scm,v 1.54 1996/12/01 17:19:06 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
@@ -211,14 +211,15 @@ together with two commands to return to regular RMAIL:
   (if (null? (ref-variable rmail-primary-inbox-list))
       (set-variable! rmail-primary-inbox-list
 		     (os/rmail-primary-inbox-list
-		      (list
-		       (let ((server
-			      (and (ref-variable rmail-pop-procedure)
-				   (ref-variable rmail-primary-pop-server))))
-			 (if server
-			     (string-append "pop:" server)
-			     (string-append rmail-spool-directory
-					    (current-user-name))))))))
+		      (let ((server
+			     (and (ref-variable rmail-pop-procedure)
+				  (ref-variable rmail-primary-pop-server))))
+			(cond (server
+			       (list (string-append "pop:" server)))
+			      (rmail-spool-directory
+			       (list (string-append rmail-spool-directory
+						    (current-user-name))))
+			      (else '()))))))
   (if (not (ref-variable rmail-dont-reply-to-names))
       (set-variable!
        rmail-dont-reply-to-names
