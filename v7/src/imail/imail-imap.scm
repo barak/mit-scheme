@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.87 2000/05/23 20:19:04 cph Exp $
+;;; $Id: imail-imap.scm,v 1.88 2000/05/23 21:39:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -978,7 +978,7 @@
 (define (imap:command:append connection mailbox flags time text)
   (imap:command:no-response connection 'APPEND mailbox
 			    (and (pair? flags) flags)
-			    (imap:universal-time->date-time time)
+			    (and time (imap:universal-time->date-time time))
 			    (cons 'LITERAL text)))
 
 (define (imap:command:search connection . key-plist)
