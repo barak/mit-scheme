@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.18 1992/06/01 16:50:47 u6001 Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.19 1992/08/27 06:39:46 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -204,7 +204,7 @@ or #F meaning no limit."
 		((if (ref-variable debugger-split-window?)
 		     select-buffer-other-window
 		     select-buffer)
-		 (continuation-browser condition)))
+		 (continuation-browser-buffer condition)))
 	      (message error-type-name " error")))
 	(abort-current-command))))
 
@@ -212,7 +212,7 @@ or #F meaning no limit."
   "Invoke the continuation-browser on CONTINUATION."
   "XBrowse Continuation"
   (lambda (continuation)
-    (let ((buffer (continuation-browser continuation)))
+    (let ((buffer (continuation-browser-buffer continuation)))
       ((if (ref-variable debugger-split-window?)
 	   select-buffer-other-window
 	   select-buffer)
@@ -223,7 +223,7 @@ or #F meaning no limit."
 
 ;;;; Main Entry
 
-(define (continuation-browser object)
+(define (continuation-browser-buffer object)
   (let ((buffers (find-debugger-buffers)))
     (if (and (not (null? buffers))
 	     (null? (cdr buffers))
