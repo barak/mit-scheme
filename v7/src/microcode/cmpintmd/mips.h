@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: mips.h,v 1.18 1993/06/24 04:09:34 gjr Exp $
+$Id: mips.h,v 1.19 1994/01/08 16:57:21 gjr Exp $
 
-Copyright (c) 1989-1993 Massachusetts Institute of Technology
+Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -50,13 +50,6 @@ MIT in each case. */
 
 #include <sys/cachectl.h>
 
-/* This assumes a write-through cache.  Otherwise BCACHE should be used,
-   and PUSH_D_CACHE_REGION should be separated and use DCACHE.
- */
-
-#define ICACHEFLUSH(addr, nbytes)					\
-  cacheflush ((addr), (nbytes), ICACHE)
-
 #else /* not _IRIX4 */
 #ifdef sonyrisc
 
@@ -66,8 +59,8 @@ MIT in each case. */
 
 extern void syscall ();
 
-#define ICACHEFLUSH(addr, nbytes)					\
-  syscall (SYS_sysmips, FLUSH_CACHE, (addr), (nbytes), ICACHE)
+#define cacheflush(addr, nbytes, cache)					\
+  syscall (SYS_sysmips, FLUSH_CACHE, (addr), (nbytes), cache)
 
 #else /* not sonyrisc */
 
@@ -88,8 +81,6 @@ extern void syscall();
   syscall (SYS_sysmips, MIPS_CACHEFLUSH, (addr), (nbytes), (cache))
 
 #endif /* not 0 */
-
-#define ICACHEFLUSH(addr, nbytes) cacheflush ((addr), (nbytes), ICACHE)
 
 #endif /* not sonyrisc */
 #endif /* not _IRIX4 */
@@ -345,10 +336,11 @@ do {									\
 #define STORE_TRAMPOLINE_ENTRY(entry_address, index)			\
 { unsigned long *PC;							\
   PC = ((unsigned long *) (entry_address));				\
-  *PC++ = ADDI(COMP_REG_TEMPORARY, COMP_REG_SCHEME_TO_INTERFACE, -96);	\
-  *PC++ = JALR(COMP_REG_LINKAGE, COMP_REG_TEMPORARY);			\
-  *PC = ADDI(COMP_REG_TRAMP_INDEX, 0, (4*index));			\
+  PC[0] = ADDI(COMP_REG_TEMPORARY, COMP_REG_SCHEME_TO_INTERFACE, -96);	\
+  PC[1] = JALR(COMP_REG_LINKAGE, COMP_REG_TEMPORARY);			\
+  PC[2] = ADDI(COMP_REG_TRAMP_INDEX, 0, (4*index));			\
   /* assumes index fits in 16 bits */					\
+  cacheflush (PC, (3 * sizeof (unsigned long)), BCACHE);		\
 }
 
 /* Execute cache entries.
@@ -469,17 +461,11 @@ do {									\
 
 #define FLUSH_I_CACHE() do						\
 {									\
-  ICACHEFLUSH (Heap_Bottom,						\
-	       ((sizeof(SCHEME_OBJECT)) *				\
-		(Heap_Top - Heap_Bottom)));				\
-  ICACHEFLUSH (Constant_Space,						\
-	       ((sizeof(SCHEME_OBJECT)) *				\
-		(Constant_Top - Constant_Space)));			\
-  ICACHEFLUSH (Stack_Pointer,						\
-	       ((sizeof(SCHEME_OBJECT)) *				\
-		(Stack_Top - Stack_Pointer)));				\
+  cacheflush (Constant_Space,						\
+	      (((unsigned long) Heap_Top)				\
+	       - ((unsigned long) Constant_Space)),			\
+	      BCACHE);							\
 } while (0)
-
 
 /* This flushes a region of the I-cache.
    It is used after updating an execute cache while running.
@@ -488,18 +474,24 @@ do {									\
 
 #define FLUSH_I_CACHE_REGION(address, nwords) do			\
 {									\
-  ICACHEFLUSH ((address), ((sizeof (long)) * (nwords)));		\
+  cacheflush ((address), ((sizeof (long)) * (nwords)), BCACHE);		\
 } while (0)
 
-#define PUSH_D_CACHE_REGION FLUSH_I_CACHE_REGION
-
-/* The following is misnamed.
-   It should really be called STORE_BACK_D_CACHE.
-   Neither the R2000 nor the R3000 systems have them.
-   I don't know about the R4000 or R6000.
+/* This guarantees that a newly-written section of address space
+   has its values propagated to main memory so that i-stream fetches
+   will see the new values.
+   The first and last byte are flushed from the i-cache in case
+   the written region overlaps with already-executed areas.
  */
 
-/* #define SPLIT_CACHES */
+#define PUSH_D_CACHE_REGION(address, nwords) do				\
+{									\
+  unsigned long _addr = ((unsigned long) (address));			\
+  unsigned long _nbytes = ((sizeof (long)) * (nwords));			\
+  cacheflush (_addr, _nbytes, DCACHE);					\
+  cacheflush (_addr, 1, ICACHE);					\
+  cacheflush ((_addr + (_nbytes - 1)), 1, ICACHE);			\
+} while (0)
 
 #ifdef IN_CMPINT_C
 
