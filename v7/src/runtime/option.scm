@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.25 1993/11/02 20:13:09 adams Exp $
+$Id: option.scm,v 14.26 1993/11/13 02:21:31 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -36,27 +36,35 @@ MIT in each case. |#
 ;;; package: (runtime options)
 
 (declare (usual-integrations))
-
+
 (define (load-option name)
   (let ((entry (assq name options)))
     (if (not entry)
 	(error "Unknown option name" name))
     (if (not (memq name loaded-options))
-	(let ((directory (library-directory-pathname "options")))
+	(let ((directory (delay (library-directory-pathname "options"))))
 	  (for-each
 	   (lambda (descriptor)
 	     (let ((environment
 		    (package/environment (find-package (car descriptor)))))
-	       (for-each (lambda (filename)
-			   (let ((path (merge-pathnames filename directory)))
-			     (with-working-directory-pathname
-			      (directory-pathname path)
-			      (lambda ()
-				(load path
-				      environment
-				      syntax-table/system-internal
-				      true)))))
-			 (cddr descriptor))
+	       (for-each
+		(lambda (filename)
+		  (cond (((ucode-primitive initialize-c-compiled-block 1)
+			  (string-append "runtime_" filename))
+			 => (lambda (obj)
+			      (purify obj)
+			      (scode-eval obj environment)))
+			(else
+			 (let ((path
+				(merge-pathnames filename (force directory))))
+			   (with-working-directory-pathname
+			     (directory-pathname path)
+			     (lambda ()
+			       (load path
+				     environment
+				     syntax-table/system-internal
+				     true)))))))
+		(cddr descriptor))
 	       (eval (cadr descriptor) environment)))
 	   (cdr entry))
 	  (set! loaded-options (cons name loaded-options))))
@@ -86,3 +94,16 @@ MIT in each case. |#
 
 (define loaded-options
   '())
+
+(define (declare-shared-library shared-library thunk)
+  (let ((thunk-valid?
+	 (lambda (thunk)
+	   (not (condition? (ignore-errors thunk))))))
+    (add-event-receiver!
+     event:after-restore
+     (lambda ()
+       (if (not (thunk-valid? thunk))
+	   (fluid-let ((load/suppress-loading-message? true))
+	     (load (merge-pathnames
+		    (library-directory-pathname "shared")
+		    shared-library))))))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.212 1993/11/03 03:31:17 adams Exp $
+$Id: runtime.pkg,v 14.213 1993/11/13 02:21:39 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -1437,6 +1437,7 @@ MIT in each case. |#
   (files "option")
   (parent ())
   (export ()
+	  declare-shared-library
 	  load-option))
 
 (define-package (runtime parser)
