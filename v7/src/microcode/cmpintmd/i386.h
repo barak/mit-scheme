@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.1 1992/01/21 00:08:14 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.2 1992/01/22 04:19:13 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -106,24 +106,22 @@ This is one byte longer than otherwise, but...
 EAX (0)		Unassigned
 ECX (1)		Unassigned
 EDX (2)		Unassigned
-EBX (3)		Value register
+EBX (3)		Unassigned
 
 ESP (4)		Stack Pointer
 EBP (5)		Register Mask
 ESI (6)		Pointer to register block, etc.
 EDI (7)		Free Pointer
 
-The dynamic link is not stored in a processor register.  A slot in the
-register array must be reserved for it.
-
-Note: Perhaps the value register should also be stored in the register
-array.
+The dynamic link and value "registers" are not processor registers.
+Slots in the register array must be reserved for them.
 
 The Free Pointer is EDI because EDI is the implicit base register for
 the memory-to-memory move instructions, and the string store
 instruction.  Perhaps we can make use of it.
 
-The register mask is not in EBP, its natural register, because (EBP)
+The pointer to register block is not held in EBP (the processor's
+"frame" register is typically used) because its most common use, (EBP)
 (address syllable for memory memtop) takes more bytes than (ESI).
 
 	Encodings and layout of various control features:
