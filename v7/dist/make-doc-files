@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# $Id: make-doc-files,v 1.13 2000/12/24 04:04:01 cph Exp $
+# $Id: make-doc-files,v 1.14 2001/01/08 20:52:15 cph Exp $
 #
-# Copyright (c) 2000 Massachusetts Institute of Technology
+# Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,10 +18,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
+. /scheme/v7/dist/release-prefix
+
 INSTALL="install"
 INSTALL_DATA="${INSTALL} -m 644"
 DOCDIR="/scheme/v7/doc"
-PREFIX=`/scheme/v7/dist/release-prefix`
+PREFIX=`get_release_prefix`
+TAG=`get_release_tag`
 TLDIR="`pwd`/${PREFIX}"
 
 rm -rf ${TLDIR}
@@ -59,12 +62,11 @@ done
 
 (
     cd ${TLDIR}
-    cvs -d /scheme/cvsroot checkout -P -d doc v7/doc
+    cvs -d /scheme/cvsroot export -r ${TAG} -d doc v7/doc
     cd doc
     autoconf
 )
 ${INSTALL_DATA} ${DOCDIR}/ChangeLog ${TLDIR}/doc/.
-find ${TLDIR} -type d -name CVS -print|xargs rm -rf
 make_tarfile texinfo
 
 rm -rf ${TLDIR}

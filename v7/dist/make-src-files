@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# $Id: make-src-files,v 1.14 2000/12/25 06:20:43 cph Exp $
+# $Id: make-src-files,v 1.15 2001/01/08 20:52:17 cph Exp $
 #
-# Copyright (c) 2000 Massachusetts Institute of Technology
+# Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,21 +18,32 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
+. /scheme/v7/dist/release-prefix
+
 INSTALL="install"
 INSTALL_DATA="${INSTALL} -m 644"
-PREFIX=`/scheme/v7/dist/release-prefix`
+PREFIX=`get_release_prefix`
+TAG=`get_release_tag`
+
 rm -rf ${PREFIX}
 mkdir ${PREFIX}
 DESTINATION="${PREFIX}/src"
 
 (
+    cd /scheme/v7/src/runtime
+    TAG_STATUS="`cvs status -v version.scm | fgrep ${TAG}`"
+    if [ -z "${TAG_STATUS}" ]; then
+	cvs rtag ${TAG} v7/doc v7/src
+    fi
+)
+
+(
     cd ${PREFIX}
-    cvs -d /scheme/cvsroot checkout -P -d src v7/src
+    cvs -d /scheme/cvsroot export -r ${TAG} -d src v7/src
     cd src
     ./Setup.sh
 )
 
-find ${DESTINATION} -type d -name CVS -print | xargs rm -rf
 find ${DESTINATION} -type f -print | xargs chmod g-w
 find ${DESTINATION} -type d -print | xargs chmod g-w
 
