@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.1 1995/01/10 20:52:36 adams Exp $
+$Id: decls.scm,v 1.2 1995/04/06 18:15:39 ssmith Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -348,7 +348,7 @@ MIT in each case. |#
 			      "rulrew")
 	     (filename/append "midend"
 			      "alpha" "applicat" "assconv" "cleanup"
-			      "closconv" "compat" "copier" "cpsconv"
+			      "closconv" "coerce" "compat" "copier" "cpsconv"
 			      "dataflow" "dbgstr" "debug" "earlyrew"
 			      "envconv" "expand" "fakeprim" "graph"
 			      "indexify" "inlate" "lamlift" "laterew"
