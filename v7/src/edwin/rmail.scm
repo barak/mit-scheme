@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.43 1995/09/13 04:28:04 cph Exp $
+;;;	$Id: rmail.scm,v 1.44 1995/10/12 22:44:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -557,7 +557,8 @@ The procedure must return the name of the file in which the mail is
 stored.  If there is no mail, this file must exist but be empty.
 
 A value of #F means there is no mechanism to get POP mail."
-  #f)
+  #f
+  (lambda (object) (or (not object) (procedure? object))))
 
 (define-variable rmail-primary-pop-server
   "The host name of a POP server to use as a default, or #F.
@@ -587,7 +588,8 @@ The password field can take on several values.  A string is the
 password to use.  The symbol 'PROMPT-ONCE means to prompt the first
 time the password is needed, saving the password and reusing it
 subsequently.  The symbol 'PROMPT-ALWAYS means to prompt each time
-that the password is needed.
+that the password is needed.  A list (FILE <filename>) means that the
+password is in the file <filename>.
 
 This variable is ignored if rmail-pop-procedure is #F."
   '()
@@ -599,8 +601,15 @@ This variable is ignored if rmail-pop-procedure is #F."
 		  (= 3 (length object))
 		  (string? (car object))
 		  (string? (cadr object))
-		  (or (string? (caddr object))
-		      (memq (caddr object) '(PROMPT-ONCE PROMPT-ALWAYS)))))))))
+		  (let ((password (caddr object)))
+		    (or (string? password)
+			(memq password '(PROMPT-ONCE PROMPT-ALWAYS))
+			(and (pair? password)
+			     (eq? 'FILE (car password))
+			     (pair? (cdr password))
+			     (or (string? (cadr password))
+				 (pathname? (cadr password)))
+			     (null? (cddr password)))))))))))
 
 (define (get-mail-from-pop-server server insert buffer)
   (let ((procedure (ref-variable rmail-pop-procedure buffer)))
@@ -634,18 +643,22 @@ This variable is ignored if rmail-pop-procedure is #F."
     (if entry
 	(let ((user-name (cadr entry))
 	      (password (caddr entry)))
-	  (case password
-	    ((PROMPT-ONCE)
-	     (let ((password (get-saved-pop-server-password server user-name)))
-	       (if password
-		   (values user-name password #f)
-		   (values user-name
-			   (prompt-for-pop-server-password server)
-			   #t))))
-	    ((PROMPT-ALWAYS)
-	     (values user-name (prompt-for-pop-server-password server) #f))
-	    (else
-	     (values user-name password #f))))
+	  (cond ((or (string? password)
+		     (and (pair? password) (eq? 'FILE (car password))))
+		 (values user-name password #f))
+		((eq? 'PROMPT-ONCE password)
+		 (let ((password
+			(get-saved-pop-server-password server user-name)))
+		   (if password
+		       (values user-name password #f)
+		       (values user-name
+			       (prompt-for-pop-server-password server)
+			       #t))))
+		((eq? 'PROMPT-ALWAYS password)
+		 (values user-name (prompt-for-pop-server-password server) #f))
+		(else
+		 (error "Illegal password value in rmail-pop-accounts entry:"
+			password))))
 	(let ((user-name
 	       (prompt-for-string
 		(string-append "User name for POP server " server)
