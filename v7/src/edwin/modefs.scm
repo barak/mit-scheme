@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: modefs.scm,v 1.144 1993/09/01 18:02:14 gjr Exp $
+;;;	$Id: modefs.scm,v 1.145 1994/03/08 20:33:26 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-1993 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -178,6 +178,8 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental #\m-m 'back-to-indentation)
 (define-key 'fundamental #\m-q 'fill-paragraph)
 (define-key 'fundamental #\m-r 'move-to-window-line)
+;; This should only be bound in NT/Windows:
+(define-key 'fundamental #\m-S 'resize-screen)
 (define-key 'fundamental #\m-t 'transpose-words)
 (define-key 'fundamental #\m-u 'upcase-word)
 (define-key 'fundamental #\m-v 'scroll-down)
@@ -228,7 +230,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental #\c-m-v 'scroll-other-window)
 (define-key 'fundamental #\c-m-w 'append-next-kill)
 (define-key 'fundamental #\c-m-rubout 'backward-kill-sexp)
-
+
 (define-key 'fundamental '(#\c-c #\c-s) 'repl)
 
 (define-key 'fundamental '(#\c-h #\a) 'command-apropos)
@@ -243,7 +245,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental '(#\c-h #\t) 'help-with-tutorial)
 (define-key 'fundamental '(#\c-h #\v) 'describe-variable)
 (define-key 'fundamental '(#\c-h #\w) 'where-is)
-
+
 (define-key 'fundamental '(#\c-x #\c-\[) 'repeat-complex-command)
 (define-key 'fundamental '(#\c-x #\c-b) 'list-buffers)
 (define-key 'fundamental '(#\c-x #\c-c) 'save-buffers-kill-scheme)
@@ -255,7 +257,10 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental '(#\c-x #\c-n) 'set-goal-column)
 (define-key 'fundamental '(#\c-x #\c-o) 'delete-blank-lines)
 (define-key 'fundamental '(#\c-x #\c-p) 'mark-page)
-(define-key 'fundamental '(#\c-x #\c-q) 'toggle-read-only)
+(define-key 'fundamental '(#\c-x #\c-q)
+  (if (string-table-get editor-commands "vc-toggle-read-only")
+      'vc-toggle-read-only
+      'toggle-read-only))
 (define-key 'fundamental '(#\c-x #\c-s) 'save-buffer)
 (define-key 'fundamental '(#\c-x #\c-t) 'transpose-lines)
 (define-key 'fundamental '(#\c-x #\c-u) 'upcase-region)
@@ -301,13 +306,19 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental '(#\c-x #\q) 'kbd-macro-query)
 (define-key 'fundamental '(#\c-x #\r) 'copy-rectangle-to-register)
 (define-key 'fundamental '(#\c-x #\s) 'save-some-buffers)
-;;(define-key 'fundamental '(#\c-x #\t) 'transpose-regions)
 (define-key 'fundamental '(#\c-x #\u) 'undo)
+(define-prefix-key 'fundamental '(#\c-x #\v))
+(define-key 'fundamental '(#\c-x #\v #\c) 'vc-cancel-version)
+(define-key 'fundamental '(#\c-x #\v #\h) 'vc-insert-headers)
+(define-key 'fundamental '(#\c-x #\v #\i) 'vc-register)
+(define-key 'fundamental '(#\c-x #\v #\l) 'vc-print-log)
+(define-key 'fundamental '(#\c-x #\v #\u) 'vc-revert-buffer)
+(define-key 'fundamental '(#\c-x #\v #\v) 'vc-next-action)
+(define-key 'fundamental '(#\c-x #\v #\=) 'vc-diff)
+(define-key 'fundamental '(#\c-x #\v #\~) 'vc-version-other-window)
 (define-key 'fundamental '(#\c-x #\w) 'widen)
 (define-key 'fundamental '(#\c-x #\x) 'copy-to-register)
 (define-key 'fundamental '(#\c-x #\z) 'suspend-edwin)
 (define-key 'fundamental '(#\c-x #\{) 'shrink-window-horizontally)
 (define-key 'fundamental '(#\c-x #\}) 'enlarge-window-horizontally)
 (define-key 'fundamental '(#\c-x #\rubout) 'backward-kill-sentence)
-;; This should only be bound in NT/Windows
-(define-key 'fundamental #\m-S 'resize-screen)
