@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.14 2003/02/14 18:28:38 cph Exp $
+$Id: xml-output.scm,v 1.15 2003/03/01 16:52:53 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -53,20 +53,19 @@ USA.
 	    (xml-document-misc-3 document)))
 
 (define-method write-xml ((declaration xml-declaration-rtd) port)
-  (write-string "<?xml" port)
-  (write-xml-attributes
-   (append (list (cons (xml-intern "version")
-		       (xml-declaration-version declaration)))
-	   (if (xml-declaration-encoding declaration)
-	       (list (cons (xml-intern "encoding")
-			   (xml-declaration-encoding declaration)))
-	       '())
-	   (if (xml-declaration-standalone declaration)
-	       (list (cons (xml-intern "standalone")
-			   (xml-declaration-standalone declaration)))
-	       '()))
-   2
-   port)
+  (write-string "<?xml version=\"" port)
+  (write-string (xml-declaration-version declaration) port)
+  (write-string "\"" port)
+  (if (xml-declaration-encoding declaration)
+      (begin
+	(write-string " encoding=\"" port)
+	(write-string (xml-declaration-encoding declaration) port)
+	(write-string "\"" port)))
+  (if (xml-declaration-standalone declaration)
+      (begin
+	(write-string " standalone=\"" port)
+	(write-string (xml-declaration-standalone declaration) port)
+	(write-string "\"" port)))
   (write-string "?>" port))
 
 (define-method write-xml ((element xml-element-rtd) port)
@@ -97,12 +96,6 @@ USA.
   (write-xml-name (xml-processing-instructions-name pi) port)
   (write-string (xml-processing-instructions-text pi) port)
   (write-string "?>" port))
-
-(define-method write-xml ((element xml-uninterpreted-rtd) port)
-  ;; **** There's a quoting problem here -- char data that gets
-  ;; bundled into this must be quoted prior to combination with other
-  ;; elements.
-  (write-string (xml-uninterpreted-text element) port))
 
 (define-method write-xml ((dtd xml-dtd-rtd) port)
   ;;root external internal
@@ -131,7 +124,7 @@ USA.
   (write-string " " port)
   (let ((type (xml-!element-content-type decl)))
     (cond ((symbol? type)
-	   (write-xml-name type port))
+	   (write-string (string-upcase (symbol-name type)) port))
 	  ((and (pair? type) (eq? (car type) 'MIX))
 	   (write-string "(#PCDATA" port)
 	   (if (pair? (cdr type))
@@ -193,7 +186,7 @@ USA.
 	   (write-string " " port)
 	   (let ((type (cadr definition)))
 	     (cond ((symbol? type)
-		    (write-xml-name type port))
+		    (write-string (string-upcase (symbol-name type)) port))
 		   ((and (pair? type) (eq? (car type) 'NOTATION))
 		    (write-string "NOTATION (" port)
 		    (if (pair? (cdr type))
@@ -218,14 +211,16 @@ USA.
 		    (error "Malformed !ATTLIST type:" type))))
 	   (write-string " " port)
 	   (let ((default (caddr definition)))
-	     (cond ((symbol? default)
-		    (write-xml-name default port))
-		   ((and (pair? default) (eq? (car default) 'DEFAULT))
-		    (write-xml-string (cadr default) port))
-		   ((and (pair? default) (symbol? (car default)))
-		    (write-xml-name (car default) port)
+	     (cond ((eq? default 'REQUIRED)
+		    (write-string "#REQUIRED" port))
+		   ((eq? default 'IMPLIED)
+		    (write-string "#IMPLIED" port))
+		   ((and (pair? default) (eq? (car default) 'FIXED))
+		    (write-string "#FIXED" port)
 		    (write-string " " port)
-		    (write-xml-string (cadr default) port))
+		    (write-xml-attribute-value (cdr default) port))
+		   ((and (pair? default) (eq? (car default) 'DEFAULT))
+		    (write-xml-attribute-value (cdr default) port))
 		   (else
 		    (error "Malformed !ATTLIST default:" default)))))))
     (if (pair? definitions)
@@ -245,9 +240,7 @@ USA.
   (let ((indent (output-port/column port)))
     (write-xml-name (xml-!entity-name decl) port)
     (write-string " " port)
-    (if (xml-external-id? (xml-!entity-value decl))
-	(write-xml-external-id (xml-!entity-value decl) indent port)
-	(write-entity-value (xml-!entity-value decl) port))
+    (write-entity-value (xml-!entity-value decl) indent port)
     (write-string ">" port)))
 
 (define-method write-xml ((decl xml-unparsed-!entity-rtd) port)
@@ -266,9 +259,7 @@ USA.
     (write-string "% " port)
     (write-xml-name (xml-parameter-!entity-name decl) port)
     (write-string " " port)
-    (if (xml-external-id? (xml-parameter-!entity-value decl))
-	(write-xml-external-id (xml-parameter-!entity-value decl) indent port)
-	(write-entity-value (xml-parameter-!entity-value decl) port))
+    (write-entity-value (xml-parameter-!entity-value decl) indent port)
     (write-string ">" port)))
 
 (define-method write-xml ((decl xml-!notation-rtd) port)
@@ -280,26 +271,25 @@ USA.
     (write-string ">" port)))
 
 (define-method write-xml ((string <string>) port)
-  (let ((end (string-length string)))
-    (do ((i 0 (fix:+ i 1)))
-	((fix:= i end))
-      (let ((char (string-ref string i)))
-	(cond ((char=? char #\<)
-	       (write-string "&lt;" port))
-	      ((char=? char #\&)
-	       (write-string "&amp;" port))
-	      (else
-	       (write-char char port)))))))
+  (write-escaped-string string
+			'((#\< . "&lt;")
+			  (#\& . "&amp;"))
+			port))
+
+(define-method write-xml ((ref xml-entity-ref-rtd) port)
+  (write-string "&" port)
+  (write-xml-name (xml-entity-ref-name ref) port)
+  (write-string ";" port))
+
+(define-method write-xml ((ref xml-parameter-entity-ref-rtd) port)
+  (write-string "%" port)
+  (write-xml-name (xml-parameter-entity-ref-name ref) port)
+  (write-string ";" port))
 
-(define (write-xml-name name port)
-  (write-string (symbol-name name) port))
-
-(define (xml-name-columns name)
-  (string-length (symbol-name name)))
-
 (define (write-xml-attributes attributes suffix-cols port)
   (let ((start-col (output-port/column port)))
-    (if (and (pair? attributes)
+    (if (and start-col
+	     (pair? attributes)
 	     (pair? (cdr attributes))
 	     (>= (+ start-col
 		    (xml-attributes-columns attributes)
@@ -326,79 +316,122 @@ USA.
 
 (define (write-xml-attribute attribute port)
   (write-xml-name (car attribute) port)
-  (write-string "=" port)
-  (write-xml-string (cdr attribute) port))
+  (write-char #\= port)
+  (write-xml-attribute-value (cdr attribute) port))
+
+(define (write-xml-attribute-value value port)
+  (write-char #\" port)
+  (for-each (lambda (item)
+	      (if (string? item)
+		  (write-xml-string item port)
+		  (write-xml item port)))
+	    value)
+  (write-char #\" port))
 
 (define (xml-attribute-columns attribute)
   (+ (xml-name-columns (car attribute))
      1
-     (xml-string-columns (cdr attribute))))
+     (let loop ((items (cdr attribute)) (n 2))
+       (if (pair? items)
+	   (loop (cdr items)
+		 (+ n
+		    (if (string? (car items))
+			(xml-string-columns (car items))
+			(+ (xml-name-columns (xml-entity-ref-name (car items)))
+			   2))))
+	   n))))
 
 (define (write-xml-string string port)
-  (let ((quote-char (if (string-find-next-char string #\") #\' #\"))
-	(end (string-length string)))
-    (write-char quote-char port)
-    (do ((i 0 (fix:+ i 1)))
-	((fix:= i end))
-      (let ((char (string-ref string i)))
-	(cond ((char=? char quote-char)
-	       (write-string (if (char=? char #\") "&quot;" "&apos;") port))
-	      ((char=? char #\<)
-	       (write-string "&lt;" port))
-	      ((char=? char #\&)
-	       (write-string "&amp;" port))
-	      (else
-	       (write-char char port)))))
-    (write-char quote-char port)))
+  (write-escaped-string string
+			'((#\" . "&quot;")
+			  (#\< . "&lt;")
+			  (#\& . "&amp;"))
+			port))
 
 (define (xml-string-columns string)
-  (let ((quote-char (if (string-find-next-char string #\") #\' #\"))
-	(end (string-length string)))
-    (let loop ((i 0) (n-cols 2))
-      (if (fix:= i end)
-	  n-cols
-	  (loop (fix:+ i 1)
-		(+ n-cols
-		   (let ((char (string-ref string i)))
-		     (cond ((char=? char quote-char) 6)
-			   ((char=? char #\<) 4)
-			   ((char=? char #\&) 5)
-			   (else 1)))))))))
+  (let ((n (utf8-string-length string)))
+    (for-each-utf8-char string
+      (lambda (char)
+	(set! n
+	      (fix:+ n
+		     (case char
+		       ((#\") 5)
+		       ((#\<) 3)
+		       ((#\&) 4)
+		       (else 0))))
+	unspecific))
+    n))
 
-(define (write-entity-value string port)
-  (let ((quote-char (if (string-find-next-char string #\") #\' #\"))
-	(end (string-length string)))
-    (write-char quote-char port)
-    (do ((i 0 (fix:+ i 1)))
-	((fix:= i end))
-      (let ((char (string-ref string i)))
-	(cond ((char=? char quote-char)
-	       (write-string (if (char=? char #\") "&quot;" "&apos;") port))
-	      ((char=? char #\%)
-	       (write-string "&#37;" port))
-	      (else
-	       (write-char char port)))))
-    (write-char quote-char port)))
+(define (write-xml-name name port)
+  (write-string (symbol-name name) port))
+
+(define (xml-name-columns name)
+  (utf8-string-length (symbol-name name)))
+
+(define (write-entity-value value indent port)
+  (if (xml-external-id? value)
+      (write-xml-external-id value indent port)
+      (begin
+	(write-char #\" port)
+	(for-each
+	 (lambda (item)
+	   (if (string? item)
+	       (write-escaped-string item
+				     '((#\" . "&quot;")
+				       (#\& . "&amp;")
+				       (#\% . "&#37;"))
+				     port)
+	       (write-xml item port)))
+	 value)
+	(write-char #\" port))))
 
 (define (write-xml-external-id id indent port)
-  (if (xml-external-id-id id)
-      (begin
-	(write-indent indent port)
-	(write-string "PUBLIC " port)
-	(write-xml-string (xml-external-id-id id) port)
-	(write-indent indent port)
-	(write-xml-string (xml-external-id-uri id) port))
-      (begin
-	(write-string "SYSTEM" port)
-	(write-string " " port)
-	(write-xml-string (xml-external-id-uri id) port))))
+  (let ((quoted-string
+	 (lambda (string)
+	   (write-char #\" port)
+	   (write-xml-string string port)
+	   (write-char #\" port))))
+    (if (xml-external-id-id id)
+	(begin
+	  (write-indent indent port)
+	  (write-string "PUBLIC " port)
+	  (quoted-string (xml-external-id-id id))
+	  (if (xml-external-id-uri id)
+	      (begin
+		(write-indent indent port)
+		(quoted-string (xml-external-id-uri id)))))
+	(begin
+	  (write-indent indent port)
+	  (write-string "SYSTEM" port)
+	  (write-string " " port)
+	  (quoted-string (xml-external-id-uri id))))))
 
 (define (write-indent n port)
-  (newline port)
-  (let ((q.r (integer-divide n 8)))
-    (do ((i 0 (fix:+ i 1)))
-	((fix:= i (car q.r)))
-      (write-char #\tab port))
-    (do ((i 0 (fix:+ i 1)))
-	((fix:= i (cdr q.r)))
-      (write-char #\space port))))
+  (if n
+      (begin
+	(newline port)
+	(let ((q.r (integer-divide n 8)))
+	  (do ((i 0 (fix:+ i 1)))
+	      ((fix:= i (car q.r)))
+	    (write-char #\tab port))
+	  (do ((i 0 (fix:+ i 1)))
+	      ((fix:= i (cdr q.r)))
+	    (write-char #\space port))))
+      (write-char #\space port)))
+
+(define (write-escaped-string string escapes port)
+  (for-each-utf8-char string
+    (lambda (char)
+      (let ((e (assq char escapes)))
+	(if e
+	    (write-string (cdr e) port)
+	    (write-utf8-char char port))))))
+
+(define (for-each-utf8-char string procedure)
+  (let ((port (open-input-string string)))
+    (let loop ()
+      (let ((char (read-utf8-char port)))
+	(if (not (eof-object? char))
+	    (begin
+	      (procedure char)
+	      (loop)))))))

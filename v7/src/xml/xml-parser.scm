@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.21 2003/02/14 18:28:38 cph Exp $
+$Id: xml-parser.scm,v 1.22 2003/03/01 16:53:16 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -50,38 +50,33 @@ USA.
 			    "."))
 	 irritants))
 
+(define (coalesce-elements v)
+  (list->vector (coalesce-strings! (vector->list v))))
+
 (define (coalesce-strings! elements)
   (do ((elements elements (cdr elements)))
       ((not (pair? elements)))
-    (if (and (string? (car elements))
-	     (pair? (cdr elements))
-	     (string? (cadr elements)))
-	(begin
+    (if (string? (car elements))
+	(do ()
+	    ((not (and (pair? (cdr elements))
+		       (string? (cadr elements)))))
 	  (set-car! elements
 		    (string-append (car elements)
 				   (cadr elements)))
 	  (set-cdr! elements (cddr elements)))))
   elements)
 
-(define (coalesce-elements elements)
-  (if (there-exists? elements xml-uninterpreted?)
-      (make-xml-uninterpreted
-       (apply string-append
-	      (map (lambda (element)
-		     (if (xml-uninterpreted? element)
-			 (xml-uninterpreted-text element)
-			 element))
-		   elements)))
-      (apply string-append elements)))
-
-(define (parse-coalesced-element parser elements description ptr)
-  (let ((value (coalesce-elements elements)))
-    (if (string? value)
-	(let ((v (parser (string->parser-buffer value))))
-	  (if (not v)
-	      (perror ptr (string-append "Malformed " description) value))
-	  v)
-	(vector value))))
+(define (parse-coalesced-element parser v description ptr)
+  (let ((v (coalesce-elements v)))
+    (if (and (fix:= (vector-length v) 1)
+	     (string? (vector-ref v 0)))
+	(let ((v* (parser (string->parser-buffer (vector-ref v 0)))))
+	  (if (not v*)
+	      (perror ptr
+		      (string-append "Malformed " description)
+		      (vector-ref v 0)))
+	  v*)
+	v)))
 
 (define (string-parser description alphabet)
   (let ((a1 (alphabet- alphabet (string->alphabet "\"")))
@@ -182,15 +177,18 @@ USA.
   (xml-declaration-parser "XML text declaration" #f))
 
 (define (transform-declaration attributes allow-standalone? p)
+  (if (not (for-all? attributes
+	     (lambda (attribute)
+	       (and (pair? (cdr attribute))
+		    (string? (cadr attribute))
+		    (null? (cddr attribute))))))
+      (perror p "XML declaration can't contain entity refs" attributes))
   (let ((finish
 	 (lambda (version encoding standalone)
-	   (if (not (and (string? version)
-			 (match-xml-version (string->parser-buffer version))))
+	   (if (not (match-xml-version (string->parser-buffer version)))
 	       (perror p "Malformed XML version" version))
 	   (if (and encoding
-		    (not (and (string? encoding)
-			      (match-encoding
-			       (string->parser-buffer encoding)))))
+		    (not (match-encoding (string->parser-buffer encoding))))
 	       (perror p "Malformed encoding attribute" encoding))
 	   (if standalone
 	       (begin
@@ -203,14 +201,14 @@ USA.
 	   (make-xml-declaration version encoding standalone))))
     (let loop
 	((attributes attributes)
-	 (names '("version" "encoding" "standalone"))
+	 (names '(version encoding standalone))
 	 (results '()))
       (if (pair? names)
 	  (if (pair? attributes)
-	      (if (string=? (symbol-name (caar attributes)) (car names))
+	      (if (eq? (caar attributes) (car names))
 		  (loop (cdr attributes)
 			(cdr names)
-			(cons (cdar attributes) results))
+			(cons (cadar attributes) results))
 		  (loop attributes
 			(cdr names)
 			(cons #f results)))
@@ -254,7 +252,7 @@ USA.
 				       (vector-ref v 0) (vector-ref v* 0)))
 			   (let ((contents
 				  (coalesce-strings!
-				   (list-transform-negative
+				   (delete-matching-items!
 				       (vector->list elements)
 				     (lambda (element)
 				       (and (string? element)
@@ -279,7 +277,7 @@ USA.
   (*parser
    (top-level
     (bracket "start tag"
-	(seq (noise (string "<")) parse-name)
+	(seq "<" parse-name)
 	(match (alt (string ">") (string "/>")))
       parse-attribute-list))))
 
@@ -337,6 +335,34 @@ USA.
 
 (define parse-cdata-section		;[18,19,20,21]
   (bracketed-region-parser "CDATA section" "<![CDATA[" "]]>"))
+
+;;;; Names
+
+(define parse-required-name
+  (*parser (require-success "Malformed XML name" parse-name)))
+
+(define parse-name			;[5]
+  (*parser (map xml-intern (match match-name))))
+
+(define (match-name buffer)
+  (and (match-utf8-char-in-alphabet buffer alphabet:name-initial)
+       (let loop ()
+	 (if (match-utf8-char-in-alphabet buffer alphabet:name-subsequent)
+	     (loop)
+	     #t))))
+
+(define parse-required-name-token
+  (*parser (require-success "Malformed XML name token" parse-name-token)))
+
+(define parse-name-token		;[7]
+  (*parser (map xml-intern (match match-name-token))))
+
+(define (match-name-token buffer)
+  (and (match-utf8-char-in-alphabet buffer alphabet:name-subsequent)
+       (let loop ()
+	 (if (match-utf8-char-in-alphabet buffer alphabet:name-subsequent)
+	     (loop)
+	     #t))))
 
 ;;;; Processing instructions
 
@@ -392,54 +418,35 @@ USA.
 	 (xml-comment? object)
 	 (xml-processing-instructions? object)))))
 
-;;;; Names and references
-
-(define parse-required-name
-  (*parser (require-success "Malformed XML name" parse-name)))
-
-(define parse-name			;[5]
-  (*parser (map xml-intern (match match-name))))
-
-(define (match-name buffer)
-  (and (match-utf8-char-in-alphabet buffer alphabet:name-initial)
-       (let loop ()
-	 (if (match-utf8-char-in-alphabet buffer alphabet:name-subsequent)
-	     (loop)
-	     #t))))
-
-(define parse-required-name-token
-  (*parser (require-success "Malformed XML name token" parse-name-token)))
-
-(define parse-name-token		;[7]
-  (*parser (map xml-intern (match match-name-token))))
-
-(define (match-name-token buffer)
-  (and (match-utf8-char-in-alphabet buffer alphabet:name-subsequent)
-       (let loop ()
-	 (if (match-utf8-char-in-alphabet buffer alphabet:name-subsequent)
-	     (loop)
-	     #t))))
+;;;; References
 
 (define parse-char-reference		;[66]
   (let ((make-ref
 	 (lambda (s r p)
 	   (let ((n (string->number s r)))
-	     (if (not (code-point-in-alphabet? n alphabet:xml-char))
-		 (perror p "Disallowed Unicode code point" n))
-	     (code-point->utf8-string n)))))
+	     (if (not (unicode-code-point? n))
+		 (perror p "Invalid code point" n))
+	     (let ((char (integer->char n)))
+	       (if (not (char-in-alphabet? char alphabet:xml-char))
+		   (perror p "Disallowed Unicode character" char))
+	       (call-with-output-string
+		 (lambda (port)
+		   (write-utf8-char char port))))))))
     (*parser
      (with-pointer p
        (sbracket "character reference" "&#" ";"
 	 (alt (map (lambda (s) (make-ref s 10 p))
 		   (match (+ (alphabet alphabet:numeric))))
-	      (seq (noise (string "x"))
+	      (seq "x"
 		   (map (lambda (s) (make-ref s 16 p))
 			(match (+ (char-set "0-9a-fA-f")))))))))))
 
 (define parse-reference			;[67]
   (*parser
    (alt parse-char-reference
-	parse-entity-reference)))
+	(with-pointer p
+	  (transform (lambda (v) (dereference-entity (vector-ref v 0) #t p))
+	    parse-entity-reference-name)))))
 
 (define parse-reference-deferred
   (*parser
@@ -451,12 +458,10 @@ USA.
 	      match-name)
 	 (string ";")))))
 
-(define parse-entity-reference		;[68]
+(define parse-entity-reference-name	;[68]
   (*parser
-   (with-pointer p
-     (transform (lambda (v) (dereference-entity (vector-ref v 0) p))
-       (sbracket "entity reference" "&" ";"
-	 parse-required-name)))))
+   (sbracket "entity reference" "&" ";"
+     parse-required-name)))
 
 (define parse-entity-reference-deferred
   (*parser (match (seq (string "&") match-name (string ";")))))
@@ -490,8 +495,7 @@ USA.
      (seq S
 	  parse-name
 	  S?
-	  (require-success "Missing attribute separator"
-	    (noise (string "=")))
+	  (require-success "Missing attribute separator" "=")
 	  S?
 	  parse-attribute-value))))
 
@@ -499,7 +503,11 @@ USA.
   (let ((a1 (alphabet- alphabet (string->alphabet "\"")))
 	(a2 (alphabet- alphabet (string->alphabet "'"))))
     (*parser
-     (encapsulate (lambda (v) (coalesce-elements (vector->list v)))
+     (encapsulate (lambda (v)
+		    (let ((elements (vector->list v)))
+		      (if (null? elements)
+			  (list "")
+			  (coalesce-strings! elements))))
        (alt (sbracket "attribute value" "\"" "\""
 	      (* (alt (match (+ (alphabet a1)))
 		      parse-reference)))
@@ -520,39 +528,67 @@ USA.
 	 (attribute-value-parser alphabet:char-data
 				 parse-reference-deferred)))
     (*parser
-     (with-pointer p
-       (map (lambda (value) (normalize-attribute-value value p))
-	    (require-success "Malformed attribute value"
-	      parser))))))
+     (map normalize-attribute-value
+	  (require-success "Malformed attribute value"
+	    parser)))))
 
 ;;;; Normalization
 
-(define (normalize-attribute-value value p)
-  (call-with-output-string
-   (lambda (port)
-     (let normalize-value ((value value))
-       (if (string? value)
-	   (let ((buffer
-		  (string->parser-buffer (normalize-line-endings value))))
-	     (let loop ()
-	       (let ((char (peek-parser-buffer-char buffer)))
-		 (cond ((not char)
-			unspecific)
-		       ((or (char=? char #\tab)
-			    (char=? char #\newline))
-			(write-char #\space port)
-			(read-parser-buffer-char buffer)
-			(loop))
-		       ((char=? char #\&)
-			(normalize-value
-			 (vector-ref (parse-reference buffer)
-				     0))
-			(loop))
-		       (else
-			(write-char char port)
-			(read-parser-buffer-char buffer)
-			(loop))))))
-	   (perror p "Reference to external entity in attribute"))))))
+(define (normalize-attribute-value elements)
+  ;; The spec also says that non-CDATA values must have further
+  ;; processing: leading and trailing spaces are removed, and
+  ;; sequences of spaces are collapsed.
+  (coalesce-strings!
+   (reverse!
+    (let loop ((elements elements) (result '()))
+      (if (pair? elements)
+	  (let ((element (car elements))
+		(elements (cdr elements)))
+	    (if (string? element)
+		(let ((buffer
+		       (string->parser-buffer
+			(normalize-line-endings element))))
+		  (let normalize-string
+		      ((port (open-output-string))
+		       (result result))
+		    (let* ((p (get-parser-buffer-pointer buffer))
+			   (char (read-parser-buffer-char buffer)))
+		      (case char
+			((#f)
+			 (loop elements
+			       (cons (get-output-string port) result)))
+			((#\tab #\newline #\return)
+			 (write-char #\space port)
+			 (normalize-string port result))
+			((#\&)
+			 (set-parser-buffer-pointer! buffer p)
+			 (let ((v (parse-char-reference buffer)))
+			   (if v
+			       (begin
+				 (write-string (vector-ref v 0) port)
+				 (normalize-string port result))
+			       (normalize-string
+				(open-output-string)
+				(let ((name
+				       (vector-ref
+					(parse-entity-reference-name buffer)
+					0))
+				      (result
+				       (cons (get-output-string port) result)))
+				  (let ((value
+					 (vector-ref
+					  (dereference-entity name #f p)
+					  0)))
+				    (if (string? value)
+					(expand-entity-value name p
+					  (lambda ()
+					    (loop (list value) result)))
+					(cons value result))))))))
+			(else
+			 (write-char char port)
+			 (normalize-string port result))))))
+		(loop elements (cons element result))))
+	  result)))))
 
 (define (trim-attribute-whitespace string)
   (call-with-output-string
@@ -636,19 +672,18 @@ USA.
     entity))
 
 (define (dereference-parameter-entity name)
-  (let ((value
+  (let ((elements
 	 (and (not (eq? *parameter-entities* 'STOP))
 	      (let ((entity (find-parameter-entity name)))
 		(and entity
 		     (xml-parameter-!entity-value entity))))))
-    (if (or (string? value)
-	    (xml-uninterpreted? value))
-	value
+    (if (and (string? (car elements))
+	     (null? (cdr elements)))
+	(car elements)
 	(begin
 	  (set! *parameter-entities* 'STOP)
 	  (set! *general-entities* 'STOP)
-	  (make-xml-uninterpreted
-	   (string-append "%" (symbol-name name) ";"))))))
+	  (make-xml-parameter-entity-ref name)))))
 
 (define (find-parameter-entity name)
   (let loop ((entities *parameter-entities*))
@@ -661,9 +696,9 @@ USA.
 
 ;;;; General parsed entities
 
-(define (dereference-entity name p)
+(define (dereference-entity name expand? p)
   (if (eq? *general-entities* 'STOP)
-      (uninterpreted-entity name)
+      (vector (make-xml-entity-ref name))
       (begin
 	(if (assq name *entity-expansion-nesting*)
 	    (perror p "Circular entity reference" name))
@@ -672,24 +707,32 @@ USA.
 	      (begin
 		(if (xml-unparsed-!entity? entity)
 		    (perror p "Reference to unparsed entity" name))
-		(let ((value (xml-!entity-value entity)))
-		  (cond ((string? value) (expand-entity-value name value p))
-			((xml-uninterpreted? value) (vector value))
-			(else (uninterpreted-entity name)))))
+		(let ((elements (xml-!entity-value entity)))
+		  (if (and (string? (car elements))
+			   (null? (cdr elements)))
+		      (if expand?
+			  (expand-entity-value-string name (car elements) p)
+			  (vector (car elements)))
+		      (vector (make-xml-entity-ref name)))))
 	      (begin
 		(if (or *standalone?* *internal-dtd?*)
 		    (perror p "Reference to undefined entity" name))
-		(uninterpreted-entity name)))))))
+		(vector (make-xml-entity-ref name))))))))
 
-(define (expand-entity-value name value p)
-  (let ((buffer (string->parser-buffer value)))
-    (let ((v
-	   (fluid-let ((*entity-expansion-nesting*
-			(cons (cons name p) *entity-expansion-nesting*)))
-	     (parse-content buffer))))
-      (if (or (not v) (peek-parser-buffer-char buffer))
-	  (perror p "Malformed entity reference" value))
-      v)))
+(define (expand-entity-value-string name string p)
+  (let ((v
+	 (expand-entity-value name p
+	   (lambda ()
+	     ((*parser (complete parse-content))
+	      (string->parser-buffer string))))))
+    (if (not v)
+	(perror p "Malformed entity reference" string))
+    v))
+
+(define (expand-entity-value name p thunk)
+  (fluid-let ((*entity-expansion-nesting*
+	       (cons (cons name p) *entity-expansion-nesting*)))
+    (thunk)))
 
 (define (find-entity name)
   (let loop ((entities *general-entities*))
@@ -701,15 +744,12 @@ USA.
 	     (car entities)
 	     (loop (cdr entities))))))
 
-(define (uninterpreted-entity name)
-  (vector (make-xml-uninterpreted (string-append "&" (symbol-name name) ";"))))
-
 (define (predefined-entities)
-  (list (make-xml-!entity (xml-intern "lt") "&#60;")
-	(make-xml-!entity (xml-intern "gt") ">")
-	(make-xml-!entity (xml-intern "amp") "&#38;")
-	(make-xml-!entity (xml-intern "quot") "\"")
-	(make-xml-!entity (xml-intern "apos") "'")))
+  (list (make-xml-!entity 'lt '("&#60;"))
+	(make-xml-!entity 'gt '(">"))
+	(make-xml-!entity 'amp '("&#38;"))
+	(make-xml-!entity 'quot '("\""))
+	(make-xml-!entity 'apos '("'"))))
 
 (define *general-entities*)
 (define *entity-expansion-nesting* '())
@@ -759,11 +799,15 @@ USA.
    (alt (with-pointer p
 	  (transform
 	      (lambda (v)
-		(parse-coalesced-element parse-external-subset-decl
-					 (list " " (vector-ref v 0) " ")
-					 "parameter-entity value"
-					 p))
-	       parse-parameter-entity-reference))
+		(let ((value (vector-ref v 0)))
+		  (if (string? value)
+		      (parse-coalesced-element parse-external-subset-decl
+					       (vector
+						(string-append " " value " "))
+					       "parameter-entity value"
+					       p)
+		      v)))
+	    parse-parameter-entity-reference))
 	S)))
 
 (define parse-internal-markup-decl	;[29]
@@ -784,16 +828,10 @@ USA.
 		  S?
 		  (alt (encapsulate (lambda (v) (cons 'ALT (vector->list v)))
 			 (seq parse-cp
-			      (+ (seq S?
-				      (noise (string "|"))
-				      S?
-				      parse-cp))))
+			      (+ (seq S? "|" S? parse-cp))))
 		       (encapsulate (lambda (v) (cons 'SEQ (vector->list v)))
 			 (seq parse-cp
-			      (* (seq S?
-				      (noise (string ","))
-				      S?
-				      parse-cp)))))
+			      (* (seq S? "," S? parse-cp)))))
 		  S?)
 		(? (match (char-set "?*+")))))))
 
@@ -819,22 +857,18 @@ USA.
 	 parse-required-name
 	 S
 	 ;;[46]
-	 (alt (map xml-intern (match (string "EMPTY")))
-	      (map xml-intern (match (string "ANY")))
+	 (alt (map intern (match (string "EMPTY")))
+	      (map intern (match (string "ANY")))
 	      ;;[51]
 	      (encapsulate (lambda (v) (cons 'MIX (vector->list v)))
 		(with-pointer p
-		  (seq (noise (string "("))
+		  (seq "("
 		       S?
-		       (noise (string "#PCDATA"))
-		       (alt (seq S?
-				 (noise (string ")")))
-			    (seq (* (seq S?
-					 (noise (string "|"))
-					 S?
-					 parse-required-name))
+		       "#PCDATA"
+		       (alt (seq S? ")")
+			    (seq (* (seq S? "|" S? parse-required-name))
 				 S?
-				 (noise (string ")*")))
+				 ")*")
 
 			    (sexp
 			     (lambda (buffer)
@@ -856,7 +890,7 @@ USA.
 			(type (vector-ref v 1))
 			(default (vector-ref v 2)))
 		    (list name type
-			  (if (and (not (eq? type (xml-intern "CDATA")))
+			  (if (and (not (eq? type 'CDATA))
 				   (pair? default))
 			      (list (car default)
 				    (trim-attribute-whitespace (cadr default)))
@@ -864,54 +898,53 @@ USA.
 	      (seq S
 		   parse-name
 		   S
-		   ;;[54,57]
-		   (alt (map xml-intern
-			     ;;[55,56]
-			     (alt (match (string "CDATA"))
-				  (match (string "IDREFS"))
-				  (match (string "IDREF"))
-				  (match (string "ID"))
-				  (match (string "ENTITY"))
-				  (match (string "ENTITIES"))
-				  (match (string "NMTOKENS"))
-				  (match (string "NMTOKEN"))))
-			;;[58]
-			(encapsulate
-			    (lambda (v)
-			      (cons 'NOTATION (vector->list v)))
-			  (bracket "notation type"
-			      (noise (seq (string "NOTATION") S (string "(")))
-			      (noise (string ")"))
-			    S?
-			    parse-required-name
-			    (* (seq (noise (seq S? (string "|") S?))
-				    parse-required-name))
-			    S?))
-			;;[59]
-			(encapsulate
-			    (lambda (v)
-			      (cons 'ENUMERATED (vector->list v)))
-			  (sbracket "enumerated type" "(" ")"
-			    S?
-			    parse-required-name-token
-			    (* (seq S?
-				    (noise (string "|"))
-				    S?
-				    parse-required-name-token))
-			    S?)))
+		   parse-!attlist-type
 		   S
-		   ;;[60]
-		   (alt (map xml-intern
-			     (alt (match (string "#REQUIRED"))
-				  (match (string "#IMPLIED"))))
-			(encapsulate vector->list
-			  (seq (map xml-intern
-				    (match (string "#FIXED")))
-			       S
-			       parse-attribute-value))
-			(map (lambda (v) (list 'DEFAULT v))
-			     parse-attribute-value))))))
+		   parse-!attlist-default))))
        S?))))
+
+(define parse-!attlist-type		;[54,57]
+  (*parser
+   (alt (map intern
+	     ;;[55,56]
+	     (alt (match (string "CDATA"))
+		  (match (string "IDREFS"))
+		  (match (string "IDREF"))
+		  (match (string "ID"))
+		  (match (string "ENTITY"))
+		  (match (string "ENTITIES"))
+		  (match (string "NMTOKENS"))
+		  (match (string "NMTOKEN"))))
+	;;[58]
+	(encapsulate (lambda (v) (cons 'NOTATION (vector->list v)))
+	  (bracket "notation type"
+	      (noise (seq (string "NOTATION") S (string "(")))
+	      ")"
+	    S?
+	    parse-required-name
+	    (* (seq S? "|" S? parse-required-name))
+	    S?))
+	;;[59]
+	(encapsulate (lambda (v) (cons 'ENUMERATED (vector->list v)))
+	  (sbracket "enumerated type" "(" ")"
+	    S?
+	    parse-required-name-token
+	    (* (seq S? "|" S? parse-required-name-token))
+	    S?)))))
+
+(define parse-!attlist-default		;[60]
+  (*parser
+   (alt (seq "#"
+	     (map intern
+		  (alt (match (string "REQUIRED"))
+		       (match (string "IMPLIED")))))
+	(encapsulate (lambda (v) (cons (vector-ref v 0) (vector-ref v 1)))
+	  (seq "#"
+	       (map intern (match (string "FIXED")))
+	       S
+	       parse-attribute-value))
+	(encapsulate (lambda (v) (cons 'DEFAULT (vector-ref v 0)))
+	  parse-attribute-value))))
 
 (define parse-!entity			;[70,71,72,73,74,76]
   (*parser
@@ -920,7 +953,7 @@ USA.
      (alt (encapsulate
 	      (lambda (v)
 		(make-parameter-entity (vector-ref v 0) (vector-ref v 1)))
-	    (seq (noise (string "%"))
+	    (seq "%"
 		 S
 		 parse-required-name
 		 S
@@ -937,10 +970,7 @@ USA.
 		 S
 		 (alt parse-entity-value
 		      (seq parse-external-id
-			   (? (seq S
-				   (noise (string "NDATA"))
-				   S
-				   parse-required-name)))))))
+			   (? (seq S "NDATA" S parse-required-name)))))))
      S?)))
 
 (define parse-!notation			;[82,83]
@@ -954,7 +984,7 @@ USA.
        (alt parse-external-id
 	    (encapsulate
 		(lambda (v) (make-xml-external-id (vector-ref v 0) #f))
-	      (seq (noise (string "PUBLIC"))
+	      (seq "PUBLIC"
 		   S
 		   parse-public-id-literal)))
        S?))))
@@ -965,13 +995,13 @@ USA.
      (alt (encapsulate
 	      (lambda (v)
 		(make-external-id #f (vector-ref v 0) p))
-	    (seq (noise (string "SYSTEM"))
+	    (seq "SYSTEM"
 		 S
 		 parse-system-literal))
 	  (encapsulate
 	      (lambda (v)
 		(make-external-id (vector-ref v 0) (vector-ref v 1) p))
-	    (seq (noise (string "PUBLIC"))
+	    (seq "PUBLIC"
 		 S
 		 parse-public-id-literal
 		 S
@@ -1008,10 +1038,7 @@ USA.
        (with-pointer p
 	 (transform
 	     (lambda (v)
-	       (parse-coalesced-element parse-decl
-					(vector->list v)
-					"markup declaration"
-					p))
+	       (parse-coalesced-element parse-decl v "markup declaration" p))
 	   (seq
 	    (match prefix)
 	    (require-success "Malformed markup declaration"
@@ -1096,7 +1123,7 @@ USA.
      (transform
 	 (lambda (v)
 	   (parse-coalesced-element parse-conditional-section
-				    (vector->list v)
+				    v
 				    "conditional section"
 				    p))
        (bracket "parameterized conditional section"

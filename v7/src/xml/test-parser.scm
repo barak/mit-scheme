@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: test-parser.scm,v 1.9 2003/02/14 18:28:38 cph Exp $
+$Id: test-parser.scm,v 1.10 2003/03/01 16:52:10 cph Exp $
 
 Copyright 2001 Massachusetts Institute of Technology
 
@@ -23,33 +23,12 @@ USA.
 
 |#
 
-(define (test-parser pathname)
-  (call-with-input-file pathname
-    (lambda (port)
-      (parse-xml-document (input-port->parser-buffer port)))))
-
-(define (test-directory directory)
-  (map (lambda (pathname)
-	 (write-string ";")
-	 (write-string (file-namestring pathname))
-	 (write-string ":\t")
-	 (let ((v (ignore-errors (lambda () (test-parser pathname)))))
-	   (cond ((not v)
-		  (write-string "No match."))
-		 ((condition? v)
-		  (write-condition-report v (current-output-port)))
-		 (else
-		  (write-string "Parsed: ")
-		  (write v)))
-	   (newline)
-	   v))
-       (directory-read
-	(merge-pathnames "*.xml" (pathname-as-directory directory)))))
-
-(define (run-xml-tests root)
+(define (run-xml-tests #!optional root)
   (let ((root
 	 (merge-pathnames "xmlconf/xmltest/"
-			  (pathname-as-directory root))))
+			  (if (default-object? root)
+			      "~/xml/"
+			      (pathname-as-directory root)))))
     (for-each (lambda (dir)
 		(newline)
 		(write-string ";")
@@ -60,16 +39,48 @@ USA.
 			   "invalid"
 			   "not-wf/sa" "not-wf/ext-sa" "not-wf/not-sa"))))
 
-(define (run-output-tests root output)
+(define (test-directory directory)
+  (map (lambda (pathname)
+	 (write-string ";")
+	 (write-string (file-namestring pathname))
+	 (write-string ":\t")
+	 (let ((v (ignore-errors (lambda () (read-xml-file pathname)))))
+	   (cond ((not v)
+		  (write-string "No match."))
+		 ((condition? v)
+		  (write-condition-report v (current-output-port)))
+		 (else
+		  (let ((s (ignore-errors (lambda () (xml->string v)))))
+		    (if (condition? s)
+			(begin
+			  (write-string "Can't write: ")
+			  (write-condition-report s (current-output-port)))
+			(let ((x (ignore-errors (lambda () (string->xml s)))))
+			  (if (condition? x)
+			      (begin
+				(write-string "Can't re-read: ")
+				(write-condition-report x
+							(current-output-port)))
+			      (begin
+				(write-string "Parsed: ")
+				(write v))))))))
+	   (newline)
+	   v))
+       (directory-read
+	(merge-pathnames "*.xml" (pathname-as-directory directory)))))
+
+(define (run-output-tests output #!optional root)
   (let ((root
 	 (merge-pathnames "xmlconf/xmltest/"
-			  (pathname-as-directory root)))
+			  (if (default-object? root)
+			      "~/xml/"
+			      (pathname-as-directory root))))
 	(output (pathname-as-directory output)))
     (for-each (lambda (pathname)
 		(write-string ";")
 		(write-string (file-namestring pathname))
 		(write-string ":\t")
-		(let ((v (ignore-errors (lambda () (test-parser pathname)))))
+		(let ((v (ignore-errors (lambda () (read-xml-file pathname)))))
 		  (cond ((not v)
 			 (write-string "No match.")
 			 (newline))

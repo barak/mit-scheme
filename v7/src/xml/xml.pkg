@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.16 2003/02/14 18:28:38 cph Exp $
+$Id: xml.pkg,v 1.17 2003/03/01 16:52:30 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -45,10 +45,11 @@ USA.
 	  make-xml-document
 	  make-xml-dtd
 	  make-xml-element
+	  make-xml-entity-ref
 	  make-xml-external-id
 	  make-xml-parameter-!entity
+	  make-xml-parameter-entity-ref
 	  make-xml-processing-instructions
-	  make-xml-uninterpreted
 	  make-xml-unparsed-!entity
 	  set-xml-!attlist-definitions!
 	  set-xml-!attlist-name!
@@ -74,13 +75,14 @@ USA.
 	  set-xml-element-attributes!
 	  set-xml-element-contents!
 	  set-xml-element-name!
+	  set-xml-entity-ref-name!
 	  set-xml-external-id-id!
 	  set-xml-external-id-uri!
 	  set-xml-parameter-!entity-name!
 	  set-xml-parameter-!entity-value!
+	  set-xml-parameter-entity-ref-name!
 	  set-xml-processing-instructions-name!
 	  set-xml-processing-instructions-text!
-	  set-xml-uninterpreted-text!
 	  set-xml-unparsed-!entity-id!
 	  set-xml-unparsed-!entity-name!
 	  set-xml-unparsed-!entity-notation!
@@ -126,27 +128,33 @@ USA.
 	  xml-element-name
 	  xml-element-rtd
 	  xml-element?
+	  xml-entity-ref-name
+	  xml-entity-ref-rtd
+	  xml-entity-ref?
 	  xml-external-id-id
 	  xml-external-id-rtd
 	  xml-external-id-uri
 	  xml-external-id?
 	  xml-intern
+	  xml-name?
+	  xml-nmtoken?
 	  xml-parameter-!entity-name
 	  xml-parameter-!entity-rtd
 	  xml-parameter-!entity-value
 	  xml-parameter-!entity?
+	  xml-parameter-entity-ref-name
+	  xml-parameter-entity-ref-rtd
+	  xml-parameter-entity-ref?
 	  xml-processing-instructions-name
 	  xml-processing-instructions-rtd
 	  xml-processing-instructions-text
 	  xml-processing-instructions?
-	  xml-uninterpreted-rtd
-	  xml-uninterpreted-text
-	  xml-uninterpreted?
 	  xml-unparsed-!entity-id
 	  xml-unparsed-!entity-name
 	  xml-unparsed-!entity-notation
 	  xml-unparsed-!entity-rtd
-	  xml-unparsed-!entity?))
+	  xml-unparsed-!entity?
+	  xml-whitespace-string?))
 
 (define-package (runtime xml parser)
   (files "xml-chars" "xml-parser")
@@ -157,7 +165,10 @@ USA.
 	  read-xml
 	  read-xml-file
 	  string->xml
-	  substring->xml))
+	  substring->xml)
+  (export (runtime xml structure)
+	  alphabet:name-initial
+	  alphabet:name-subsequent))
 
 (define-package (runtime xml output)
   (files "xml-output")
