@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: schmod.scm,v 1.65 2003/02/19 17:11:07 cph Exp $
+$Id: schmod.scm,v 1.66 2003/02/25 18:35:12 cph Exp $
 
 Copyright 1986,1989,1990,1991,1992,1998 Massachusetts Institute of Technology
 Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -181,7 +181,7 @@ The following commands evaluate Scheme expressions:
 	       DELETE-MATCHING-ITEMS! FIND-MATCHING-ITEM
 	       LIST-TRANSFORM-POSITIVE LIST-TRANSFORM-NEGATIVE
 	       LIST-SEARCH-POSITIVE LIST-SEARCH-NEGATIVE
-	       FOR-ALL? THERE-EXISTS? LIST-OF-TYPE?)
+	       FOR-ALL? THERE-EXISTS? LIST-OF-TYPE? VECTOR-OF-TYPE?)
 	    (2 WITH-SIMPLE-RESTART BIND-CONDITION-HANDLER)
 	    (3 MAKE-CONDITION-TYPE)
 	    (4 WITH-RESTART)))
