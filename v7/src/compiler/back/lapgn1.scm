@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.28 1987/04/24 14:17:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.29 1987/05/07 04:39:55 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -41,6 +41,7 @@ MIT in each case. |#
 (define *code-object-entry*)
 (define *current-rnode*)
 (define *dead-registers*)
+(define *continuation-queue*)
 
 (define (generate-lap quotations procedures continuations receiver)
   (with-new-node-marks
@@ -49,16 +50,17 @@ MIT in each case. |#
 		 (*interned-constants* '())
 		 (*block-start-label* (generate-label))
 		 (*code-object-label*)
-		 (*code-object-entry*))
+		 (*code-object-entry*)
+		 (*continuation-queue* (make-queue)))
        (for-each (lambda (quotation)
 		   (cgen-entry quotation quotation-rtl-entry))
 		 quotations)
        (for-each (lambda (procedure)
 		   (cgen-entry procedure procedure-rtl-entry))
 		 procedures)
-       (for-each (lambda (continuation)
-		   (cgen-entry continuation continuation-rtl-entry))
-		 continuations)
+       (queue-map! *continuation-queue*
+	 (lambda (continuation)
+	   (cgen-entry continuation continuation-rtl-entry)))
        (receiver *interned-constants* *block-start-label*)))))
 
 (define (cgen-entry object extract-entry)
@@ -67,11 +69,8 @@ MIT in each case. |#
     (set! *code-object-entry* rnode)
     (cgen-rnode rnode)))
 
-(define *cgen-rules*
-  '())
-
-(define *assign-rules*
-  '())
+(define *cgen-rules* '())
+(define *assign-rules* '())
 
 (define (add-statement-rule! pattern result-procedure)
   (let ((result (cons pattern result-procedure)))
@@ -91,17 +90,28 @@ MIT in each case. |#
   pattern)
 
 (define (cgen-rnode rnode)
-  (define (cgen-right-node edge)
-    (let ((next (edge-next-node edge)))
-      (if (and next (not (node-marked? next)))
-	  (begin (if (node-previous>1? next)
-		     (let ((snode (statement->snode '(NOOP))))
-		       (set-rnode-lap! snode
-				       (clear-map-instructions
-					(rnode-register-map rnode)))
-		       (node-mark! snode)
-		       (edge-insert-snode! edge snode)))
-		 (cgen-rnode next)))))
+  (let ((offset (cgen-rnode-1 rnode)))
+    (define (cgen-right-node edge)
+      (let ((next (edge-next-node edge)))
+	(if next
+	    (begin
+	      (record-rnode-frame-pointer-offset! next offset)
+	      (if (not (node-marked? next))
+		  (begin (if (node-previous>1? next)
+			     (let ((snode (statement->snode '(NOOP))))
+			       (set-rnode-lap! snode
+					       (clear-map-instructions
+						(rnode-register-map rnode)))
+			       (node-mark! snode)
+			       (edge-insert-snode! edge snode)))
+			 (cgen-rnode next)))))))
+    (if (rtl-snode? rnode)
+	(cgen-right-node (snode-next-edge rnode))
+	(begin (cgen-right-node (pnode-consequent-edge rnode))
+	       (cgen-right-node (pnode-alternative-edge rnode))))))
+
+(define (cgen-rnode-1 rnode)
+  ;; This procedure is coded out of line to facilitate debugging.
   (node-mark! rnode)
   ;; LOOP is for easy restart while debugging.
   (let loop ()
@@ -117,19 +127,18 @@ MIT in each case. |#
 		      (*dead-registers* (rnode-dead-registers rnode))
 		      (*register-map* (rnode-input-register-map rnode))
 		      (*prefix-instructions* '())
-		      (*needed-registers* '()))
+		      (*needed-registers* '())
+		      (*frame-pointer-offset*
+		       (rnode-frame-pointer-offset rnode)))
 	    (let ((instructions (match-result)))
 	      (set-rnode-lap! rnode
 			      (append! *prefix-instructions* instructions)))
 	    (delete-dead-registers!)
-	    (set-rnode-register-map! rnode *register-map*))
+	    (set-rnode-register-map! rnode *register-map*)
+	    *frame-pointer-offset*)
 	  (begin (error "CGEN-RNODE: No matching rules" (rnode-rtl rnode))
-		 (loop)))))
-  (if (rtl-snode? rnode)
-      (cgen-right-node (snode-next-edge rnode))
-      (begin (cgen-right-node (pnode-consequent-edge rnode))
-	     (cgen-right-node (pnode-alternative-edge rnode)))))
-
+		 (loop))))))
+
 (define (rnode-input-register-map rnode)
   (if (or (eq? rnode *code-object-entry*)
 	  (not (node-previous=1? rnode)))
@@ -326,4 +335,60 @@ MIT in each case. |#
 
 (define-integrable (set-current-branches! consequent alternative)
   (set-rtl-pnode-consequent-lap-generator! *current-rnode* consequent)
+  (set-rtl-pnode-alternative-lap-generator! *current-rnode* alternative))
+
+;;;; Frame Pointer
+
+(define *frame-pointer-offset*)
+
+(define (disable-frame-pointer-offset! instructions)
+  (set! *frame-pointer-offset* false)
+  instructions)
+
+(define (enable-frame-pointer-offset! offset)
+  (if (not offset) (error "Null frame-pointer offset"))
+  (set! *frame-pointer-offset* offset))
+
+(define (record-push! instructions)
+  (if *frame-pointer-offset*
+      (set! *frame-pointer-offset* (1+ *frame-pointer-offset*)))
+  instructions)
+
+(define (record-pop!)
+  (if *frame-pointer-offset*
+      (set! *frame-pointer-offset* (-1+ *frame-pointer-offset*))))
+
+(define (decrement-frame-pointer-offset! n instructions)
+  (if *frame-pointer-offset*
+      (set! *frame-pointer-offset*
+	    (and (<= n *frame-pointer-offset*) (- *frame-pointer-offset* n))))
+  instructions)
+
+(define (guarantee-frame-pointer-offset!)
+  (if (not *frame-pointer-offset*) (error "Frame pointer not initialized")))
+
+(define (increment-frame-pointer-offset! n instructions)
+  (guarantee-frame-pointer-offset!)
+  (set! *frame-pointer-offset* (+ *frame-pointer-offset* n))
+  instructions)
+
+(define (frame-pointer-offset)
+  (guarantee-frame-pointer-offset!)
+  *frame-pointer-offset*)
+
+(define (record-continuation-frame-pointer-offset! continuation)
+  (guarantee-frame-pointer-offset!)
+  (if (continuation-frame-pointer-offset continuation)
+      (if (not (= (continuation-frame-pointer-offset continuation)
+		  *frame-pointer-offset*))
+	  (error "Continuation frame-pointer offset mismatch" continuation
+		 *frame-pointer-offset*))
+      (set-continuation-frame-pointer-offset! continuation
+					      *frame-pointer-offset*))
+  (enqueue! *continuation-queue* continuation))
+
+(define (record-rnode-frame-pointer-offset! rnode offset)
+  (if (rnode-frame-pointer-offset rnode)
+      (if (not (and offset (= (rnode-frame-pointer-offset rnode) offset)))
+	  (error "RNode frame-pointer offset mismatch" rnode offset))
   pattern)

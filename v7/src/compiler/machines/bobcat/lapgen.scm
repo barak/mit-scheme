@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.158 1987/04/27 14:21:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.159 1987/05/07 04:40:16 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -168,14 +168,16 @@ MIT in each case. |#
   (memq (car expression) '(A D)))
 
 (define (indirect-reference! register offset)
-  (offset-reference
-   (if (machine-register? register)
-       register
-       (or (register-alias register false)
-	   ;; This means that someone has written an address out
-	   ;; to memory, something that should never happen.
-	   (error "Needed to load indirect register!" register)))
-   offset))
+  (if (= register regnum:frame-pointer)
+      (offset-reference regnum:stack-pointer (+ offset (frame-pointer-offset)))
+      (offset-reference
+       (if (machine-register? register)
+	   register
+	   (or (register-alias register false)
+	       ;; This means that someone has written an address out
+	       ;; to memory, something that should never happen.
+	       (error "Needed to load indirect register!" register)))
+       offset)))
 
 (define (coerce->any register)
   (if (machine-register? register)
@@ -243,8 +245,13 @@ MIT in each case. |#
 ;;; happened after the assignment.
 
 (define-rule statement
+  (ASSIGN (REGISTER 12) (REGISTER 15))
+  (enable-frame-pointer-offset! 0)
+  '())
+
+(define-rule statement
   (ASSIGN (REGISTER 15) (OFFSET-ADDRESS (REGISTER 15) (? n)))
-  (increment-anl 7 n))
+  (decrement-frame-pointer-offset! n (increment-anl 7 n)))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OFFSET-ADDRESS (REGISTER 15) (? n)))
@@ -253,10 +260,12 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (REGISTER 15) (REGISTER (? source)))
-  `((MOVE L ,(coerce->any source) (A 7))))
+  (disable-frame-pointer-offset!
+   `((MOVE L ,(coerce->any source) (A 7)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (CONSTANT (? source)))
+  (QUALIFIER (pseudo-register? target))
   `(,(load-constant source (coerce->any target))))
 
 (define-rule statement
@@ -276,7 +285,7 @@ MIT in each case. |#
   (QUALIFIER (pseudo-register? target))
   (let ((target (move-to-alias-register! source 'DATA target)))
     `((RO L L (& 8) ,target))))
-
+
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OFFSET (REGISTER (? address)) (? offset)))
   (QUALIFIER (pseudo-register? target))
@@ -288,21 +297,22 @@ MIT in each case. |#
     ;; requires that we first mask it.
     `((MOVE L ,source
 	    ,(register-reference (allocate-alias-register! target 'DATA))))))
-
+
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (POST-INCREMENT (REGISTER 15) 1))
+  (QUALIFIER (pseudo-register? target))
+  (record-pop!)
   (let ((target* (coerce->any target)))
-    (if (pseudo-register? target)
-	(delete-dead-registers!))
+    (delete-dead-registers!)
     `((MOVE L (@A+ 7) ,target*))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? datum))))
+  (QUALIFIER (pseudo-register? target))
   (let ((target* (coerce->any target))
 	(datum (coerce->any datum)))
-    (if (pseudo-register? target)
-	(delete-dead-registers!))
+    (delete-dead-registers!)
     (if (register-expression? target*)
 	`((MOVE L ,datum ,reg:temp)
 	  (MOVE B (& ,type) ,reg:temp)
@@ -325,6 +335,7 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (POST-INCREMENT (REGISTER 15) 1))
+  (record-pop!)
   `((MOVE L (@A+ 7) ,(indirect-reference! a n))))
 
 (define-rule statement
@@ -370,42 +381,55 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (CONSTANT (? object)))
-  `(,(load-constant object '(@-A 7))))
+  (record-push!
+   `(,(load-constant object '(@-A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (UNASSIGNED))
-  `(,(load-non-pointer type-code:unassigned 0 '(@-A 7))))
+  (record-push!
+   `(,(load-non-pointer type-code:unassigned 0 '(@-A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (REGISTER (? r)))
-  `((MOVE L ,(coerce->any r) (@-A 7))))
+  (record-push!
+   (if (= r regnum:frame-pointer)
+       `((PEA ,(offset-reference regnum:stack-pointer (frame-pointer-offset)))
+	 (MOVE B (& ,type-code:stack-environment) (@A 7)))
+       `((MOVE L ,(coerce->any r) (@-A 7))))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
 	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? r))))
-  `((MOVE L ,(coerce->any r) (@-A 7))
-    (MOVE B (& ,type) (@A 7))))
+  (record-push!
+   `((MOVE L ,(coerce->any r) (@-A 7))
+     (MOVE B (& ,type) (@A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (OFFSET (REGISTER (? r)) (? n)))
-  `((MOVE L ,(indirect-reference! r n) (@-A 7))))
+  (record-push!
+   `((MOVE L ,(indirect-reference! r n) (@-A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
-	  (OFFSET-ADDRESS (REGISTER 15) (? n)))
-  `((PEA ,(offset-reference a7 n))
-    (MOVE B (& ,type-code:stack-environment) (@A 7))))
+	  (OFFSET-ADDRESS (REGISTER 12) (? n)))
+  (record-push!
+   `((PEA ,(offset-reference regnum:stack-pointer
+			     (+ n (frame-pointer-offset))))
+     (MOVE B (& ,type-code:stack-environment) (@A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
 	  (ENTRY:CONTINUATION (? continuation)))
-  `((PEA (@PCR ,(continuation-label continuation)))
-    (MOVE B (& ,type-code:return-address) (@A 7))))
+  (record-continuation-frame-pointer-offset! continuation)
+  (record-push!
+   `((PEA (@PCR ,(continuation-label continuation)))
+     (MOVE B (& ,type-code:return-address) (@A 7)))))
 
 ;;;; Predicates
 
 (define-rule predicate
   (TRUE-TEST (REGISTER (? register)))
+  (QUALIFIER (pseudo-register? register))
   (set-standard-branches! 'NE)
   `(,(test-non-pointer (ucode-type false) 0 (coerce->any register))))
 
@@ -432,6 +456,7 @@ MIT in each case. |#
 
 (define-rule predicate
   (UNASSIGNED-TEST (REGISTER (? register)))
+  (QUALIFIER (pseudo-register? register))
   (set-standard-branches! 'EQ)
   `(,(test-non-pointer (ucode-type unassigned) 0 (coerce->any register))))
 
@@ -445,66 +470,74 @@ MIT in each case. |#
 
 (define-rule statement
   (INVOCATION:APPLY (? number-pushed) (? prefix) (? continuation))
-  `(,@(generate-invocation-prefix prefix)
-    ,(load-dnw number-pushed 0)
-    (JMP ,entry:compiler-apply)))
+  (disable-frame-pointer-offset!
+   `(,@(generate-invocation-prefix prefix)
+     ,(load-dnw number-pushed 0)
+     (JMP ,entry:compiler-apply))))
 
 (define-rule statement
   (INVOCATION:JUMP (? n)
 		   (APPLY-CLOSURE (? frame-size) (? receiver-offset))
 		   (? continuation) (? procedure))
-  `(,@(clear-map!)
-    ,@(apply-closure-sequence frame-size receiver-offset
-			      (procedure-label procedure))))
+  (disable-frame-pointer-offset!
+   `(,@(clear-map!)
+     ,@(apply-closure-sequence frame-size receiver-offset
+			       (procedure-label procedure)))))
 
 (define-rule statement
   (INVOCATION:JUMP (? n)
 		   (APPLY-STACK (? frame-size) (? receiver-offset)
 				(? n-levels))
 		   (? continuation) (? procedure))
-  `(,@(clear-map!)
-    ,@(apply-stack-sequence frame-size receiver-offset n-levels
-			    (procedure-label procedure))))
+  (disable-frame-pointer-offset!
+   `(,@(clear-map!)
+     ,@(apply-stack-sequence frame-size receiver-offset n-levels
+			     (procedure-label procedure)))))
 
 (define-rule statement
   (INVOCATION:JUMP (? number-pushed) (? prefix) (? continuation) (? procedure))
   (QUALIFIER (not (memq (car prefix) '(APPLY-CLOSURE APPLY-STACK))))
-  `(,@(generate-invocation-prefix prefix)
-    (BRA L (@PCR ,(procedure-label procedure)))))
+  (disable-frame-pointer-offset!
+   `(,@(generate-invocation-prefix prefix)
+     (BRA L (@PCR ,(procedure-label procedure))))))
 
 (define-rule statement
   (INVOCATION:LEXPR (? number-pushed) (? prefix) (? continuation)
 		    (? procedure))
-  `(,@(generate-invocation-prefix prefix)
-    ,(load-dnw number-pushed 0)
-    (BRA L (@PCR ,(procedure-label procedure)))))
+  (disable-frame-pointer-offset!
+   `(,@(generate-invocation-prefix prefix)
+     ,(load-dnw number-pushed 0)
+     (BRA L (@PCR ,(procedure-label procedure))))))
 
 (define-rule statement
   (INVOCATION:LOOKUP (? number-pushed) (? prefix) (? continuation)
 		     (? environment) (? name))
-  (let ((set-environment (expression->machine-register! environment d4)))
-    (delete-dead-registers!)
-    `(,@set-environment
-      ,@(generate-invocation-prefix prefix)
-      ,(load-constant name '(D 5))
-      (MOVE W (& ,(1+ number-pushed)) (D 0))
-      (JMP ,entry:compiler-lookup-apply))))
+  (disable-frame-pointer-offset!
+   (let ((set-environment (expression->machine-register! environment d4)))
+     (delete-dead-registers!)
+     `(,@set-environment
+       ,@(generate-invocation-prefix prefix)
+       ,(load-constant name '(D 5))
+       (MOVE W (& ,(1+ number-pushed)) (D 0))
+       (JMP ,entry:compiler-lookup-apply)))))
 
 (define-rule statement
   (INVOCATION:PRIMITIVE (? number-pushed) (? prefix) (? continuation)
 			(? primitive))
-  `(,@(generate-invocation-prefix prefix)
-    ,@(if (eq? primitive compiled-error-procedure)
-	  `(,(load-dnw (1+ number-pushed) 0)
-	    (JMP ,entry:compiler-error))
-	  `(,(load-dnw (primitive-datum primitive) 6)
-	    (JMP ,entry:compiler-primitive-apply)))))
+  (disable-frame-pointer-offset!
+   `(,@(generate-invocation-prefix prefix)
+     ,@(if (eq? primitive compiled-error-procedure)
+	   `(,(load-dnw (1+ number-pushed) 0)
+	     (JMP ,entry:compiler-error))
+	   `(,(load-dnw (primitive-datum primitive) 6)
+	     (JMP ,entry:compiler-primitive-apply))))))
 
 (define-rule statement
   (RETURN)
-  `(,@(clear-map!)
-    (CLR B (@A 7))
-    (RTS)))
+  (disable-frame-pointer-offset!
+   `(,@(clear-map!)
+     (CLR B (@A 7))
+     (RTS))))
 
 (define (generate-invocation-prefix prefix)
   `(,@(clear-map!)
@@ -584,19 +617,21 @@ MIT in each case. |#
 
 (define-rule statement
   (INTERPRETER-CALL:ENCLOSE (? number-pushed))
-  `((MOVE L (A 5) ,reg:enclose-result)
-    (MOVE B (& ,(ucode-type vector)) ,reg:enclose-result)
-    ,(load-non-pointer (ucode-type manifest-vector) number-pushed
-		       '(@A+ 5))
-    ,@(generate-n-times number-pushed 5 '(MOVE L (@A+ 7) (@A+ 5))
-	(lambda (generator)
-	  `(,@(clear-registers! d0)
-	    ,@(generator 0)))))
+  (decrement-frame-pointer-offset! number-pushed
+    `((MOVE L (A 5) ,reg:enclose-result)
+      (MOVE B (& ,(ucode-type vector)) ,reg:enclose-result)
+      ,(load-non-pointer (ucode-type manifest-vector) number-pushed
+			 '(@A+ 5))
+      ,@(generate-n-times number-pushed 5 '(MOVE L (@A+ 7) (@A+ 5))
+	  (lambda (generator)
+	    `(,@(clear-registers! d0)
+	      ,@(generator 0)))))
 #| Alternate sequence which minimizes code size.
-  `(,@(clear-registers! a0 a1 d0)
-    (MOVE W (& ,number-pushed) (D 0))
-    (JSR ,entry:compiler-enclose))|#
-  )
+    `(,@(clear-registers! a0 a1 d0)
+      (MOVE W (& ,number-pushed) (D 0))
+      (JSR ,entry:compiler-enclose))
+|#
+    ))
 
 (define-rule statement
   (INTERPRETER-CALL:DEFINE (? environment) (? name) (? value))
@@ -628,8 +663,8 @@ MIT in each case. |#
 
 (define-rule statement
   (INTERPRETER-CALL:SET! (? environment) (? name)
-			   (CONS-POINTER (CONSTANT (? type))
-					 (REGISTER (? datum))))
+			 (CONS-POINTER (CONSTANT (? type))
+				       (REGISTER (? datum))))
   (assignment-call:cons-pointer entry:compiler-set! environment name type
 				datum))
 
@@ -659,10 +694,11 @@ MIT in each case. |#
 
 (define-rule statement
   (PROCEDURE-HEAP-CHECK (? procedure))
-  (let ((gc-label (generate-label)))
-    `(,@(procedure-header procedure gc-label)
-      (CMP L ,reg:compiled-memtop (A 5))
-      (B GE S (@PCR ,gc-label)))))
+  (disable-frame-pointer-offset!
+   (let ((gc-label (generate-label)))
+     `(,@(procedure-header procedure gc-label)
+       (CMP L ,reg:compiled-memtop (A 5))
+       (B GE S (@PCR ,gc-label))))))
 
 ;;; Note: do not change the MOVE.W in the setup-lexpr call to a MOVEQ.
 ;;; The setup-lexpr code assumes a fixed calling sequence to compute
@@ -672,17 +708,20 @@ MIT in each case. |#
 
 (define-rule statement
   (SETUP-LEXPR (? procedure))
-  `(,@(procedure-header procedure false)
-    (MOVE W
-	  (& ,(+ (length (procedure-required procedure))
-		 (length (procedure-optional procedure))
-		 (if (procedure/closure? procedure) 1 0)))
-	  (D 1))
-    (MOVEQ (& ,(if (procedure-rest procedure) 1 0)) (D 2))
-    (JSR , entry:compiler-setup-lexpr)))
+  (disable-frame-pointer-offset!
+   `(,@(procedure-header procedure false)
+     (MOVE W
+	   (& ,(+ (length (procedure-required procedure))
+		  (length (procedure-optional procedure))
+		  (if (procedure/closure? procedure) 1 0)))
+	   (D 1))
+     (MOVEQ (& ,(if (procedure-rest procedure) 1 0)) (D 2))
+     (JSR , entry:compiler-setup-lexpr))))
 
 (define-rule statement
   (CONTINUATION-HEAP-CHECK (? continuation))
+  (enable-frame-pointer-offset!
+   (continuation-frame-pointer-offset continuation))
   (let ((gc-label (generate-label))
 	(internal-label (continuation-label continuation)))
     `((LABEL ,gc-label)
@@ -731,33 +770,38 @@ MIT in each case. |#
 
 (define-rule statement
   (MESSAGE-RECEIVER:CLOSURE (? frame-size))
-  `((MOVE L (& ,(* frame-size 4)) (@-A 7))))
+  (record-push!
+   `((MOVE L (& ,(* frame-size 4)) (@-A 7)))))
 
 (define-rule statement
   (MESSAGE-RECEIVER:STACK (? frame-size))
-  `((MOVE L (& ,(+ #x00100000 (* frame-size 4))) (@-A 7))))
+  (record-push!
+   `((MOVE L (& ,(+ #x00100000 (* frame-size 4))) (@-A 7)))))
 
 (define-rule statement
   (MESSAGE-RECEIVER:SUBPROBLEM (? continuation))
-  `((PEA (@PCR ,(continuation-label continuation)))
-    (MOVE B (& ,type-code:return-address) (@A 7))
-    (MOVE L (& #x00200000) (@-A 7))))
+  (record-continuation-frame-pointer-offset! continuation)
+  (increment-frame-pointer-offset! 2
+    `((PEA (@PCR ,(continuation-label continuation)))
+      (MOVE B (& ,type-code:return-address) (@A 7))
+      (MOVE L (& #x00200000) (@-A 7)))))
 
 (define (apply-closure-sequence frame-size receiver-offset label)
   `(,(load-dnw frame-size 1)
-    (LEA (@AO 7 ,(* receiver-offset 4)) (A 0))
+    (LEA (@AO 7 ,(* (+ receiver-offset (frame-pointer-offset)) 4)) (A 0))
     (LEA (@PCR ,label) (A 1))
     (JMP ,popper:apply-closure)))
 
 (define (apply-stack-sequence frame-size receiver-offset n-levels label)
   `((MOVEQ (& ,n-levels) (D 0))
     ,(load-dnw frame-size 1)
-    (LEA (@AO 7 ,(* receiver-offset 4)) (A 0))
+    (LEA (@AO 7 ,(* (+ receiver-offset (frame-pointer-offset)) 4)) (A 0))
     (LEA (@PCR ,label) (A 1))
     (JMP ,popper:apply-stack)))
 
 (define-rule statement
   (MESSAGE-SENDER:VALUE (? receiver-offset))
-  `(,@(clear-map!)
-    ,@(increment-anl 7 receiver-offset)
+  (disable-frame-pointer-offset!
+   `(,@(clear-map!)
+     ,@(increment-anl 7 (+ receiver-offset (frame-pointer-offset)))
 (define popper:value '(@AO 6 #x01E8))
