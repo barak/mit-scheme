@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.43 1992/07/31 15:46:19 jinx Exp $
+$Id: infutl.scm,v 1.44 1992/09/22 20:13:23 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -96,10 +96,12 @@ MIT in each case. |#
   (let ((pathname (merge-pathnames filename)))
     (if (file-exists? pathname)
 	(fasload-loader (->namestring pathname))
-	(find-alternate-file-type pathname
-				  `(("inf" . ,fasload-loader)
-				    ("bif" . ,fasload-loader)
-				    ("bci" . ,compressed-loader))))))
+	(find-alternate-file-type
+	 pathname
+	 `(("inf" . ,fasload-loader)
+	   ("bif" . ,fasload-loader)
+	   ("bci" . ,(lambda (pathname)
+		       (compressed-loader pathname "bif"))))))))
 
 (define (memoize-debugging-info! block dbg-info)
   (without-interrupts
@@ -401,7 +403,7 @@ MIT in each case. |#
 			    (loop (cdr types))))))))))
     (and pathname
 	 (if (equal? "bcs" (pathname-type pathname))
-	     (compressed-loader pathname)
+	     (compressed-loader pathname "bsm")
 	     (fasload-loader pathname)))))
 
 (define (process-bsym-filename name)
@@ -568,7 +570,7 @@ MIT in each case. |#
         (lambda (condition) condition (if-fail false))
         (lambda () (fasload filename true))))))
 
-(define (compressed-loader compressed-filename)
+(define (compressed-loader compressed-filename uncompressed-type)
   (let ((core
 	 (lambda (uncompressed-filename)
 	   (call-with-current-continuation
@@ -584,7 +586,8 @@ MIT in each case. |#
 	 core
 	 (lambda (temp-file)
 	   (let ((result (core temp-file)))
-	     (let ((new-file (pathname-new-type compressed-filename "bif"))
+	     (let ((new-file
+		    (pathname-new-type compressed-filename uncompressed-type))
 		   (dir (directory-pathname-as-file compressed-filename)))
 	       (if (file-writable? dir)
 		   (begin
