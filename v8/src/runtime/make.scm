@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.45 1993/03/07 20:56:21 cph Exp $
+$Id: make.scm,v 14.46 1993/06/09 05:47:01 jawilson Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -243,7 +243,7 @@ MIT in each case. |#
 	       bin-file)))))
 
 (define (file->object filename purify? optional?)
-  (let* ((block-name (string-append "LiarC_" filename))
+  (let* ((block-name (string-append "runtime_" filename))
 	 (value (initialize-c-compiled-block block-name)))
     (cond (value
 	   (tty-write-char newline-char)
