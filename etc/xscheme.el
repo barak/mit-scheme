@@ -1,5 +1,5 @@
 ;; Run Scheme under Emacs
-;; Copyright (C) 1986-93 Free Software Foundation, Inc.
+;; Copyright (C) 1986-94 Free Software Foundation, Inc.
 
 ;; This file is part of GNU Emacs.
 
@@ -20,7 +20,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.32 1993/11/16 15:58:23 gjr Exp $
+;;; $Id: xscheme.el,v 1.33 1994/03/24 17:54:43 cph Exp $
 
 (require 'scheme)
 
@@ -340,7 +340,7 @@ with no args, if that value is non-nil.
 	    (if (eq (process-filter process) 'xscheme-process-filter)
 		(set-process-filter process (car previous-state)))
 	    (if (eq (process-sentinel process) 'xscheme-process-sentinel)
-		(set-process-sentinel process (cdr previous-state))))))))	
+		(set-process-sentinel process (cdr previous-state))))))))
 
 (defun scheme-interaction-mode-initialize ()
   (use-local-map scheme-interaction-mode-map)
@@ -348,11 +348,19 @@ with no args, if that value is non-nil.
   (setq mode-name "Scheme Interaction"))
 
 (defun scheme-interaction-mode-commands (keymap)
-  (define-key keymap "\C-c\C-m" 'xscheme-send-current-line)
-  (define-key keymap "\C-c\C-p" 'xscheme-send-proceed)
-  (define-key keymap "\C-c\C-y" 'xscheme-yank)
-  (define-key keymap "\ep" 'xscheme-yank-pop)
-  (define-key keymap "\en" 'xscheme-yank-push))
+  (let ((entries scheme-interaction-mode-commands-alist))
+    (while entries
+      (define-key keymap
+	(car (car entries))
+	(car (cdr (car entries))))
+      (setq entries (cdr entries)))))
+
+(defvar scheme-interaction-mode-commands-alist
+  '(("\C-c\C-m" xscheme-send-current-line)
+    ("\C-c\C-p" xscheme-send-proceed)
+    ("\C-c\C-y" xscheme-yank)
+    ("\ep" xscheme-yank-pop)
+    ("\en" xscheme-yank-push)))
 
 (defvar scheme-interaction-mode-map nil)
 (if (not scheme-interaction-mode-map)
@@ -473,7 +481,9 @@ The strings are concatenated and terminated by a newline."
 (defun xscheme-insert-expression (string)
   (setq xscheme-expressions-ring (cons string xscheme-expressions-ring))
   (if (> (length xscheme-expressions-ring) xscheme-expressions-ring-max)
-      (setcdr (nthcdr (1- xscheme-expressions-ring-max) xscheme-expressions-ring) nil))
+      (setcdr (nthcdr (1- xscheme-expressions-ring-max)
+		      xscheme-expressions-ring)
+	      nil))
   (setq xscheme-expressions-ring-yank-pointer xscheme-expressions-ring))
 
 (defun xscheme-rotate-yank-pointer (arg)
@@ -483,8 +493,11 @@ The strings are concatenated and terminated by a newline."
     (if (zerop length)
 	(error "Scheme expression ring is empty")
       (setq xscheme-expressions-ring-yank-pointer
-	    (let ((index (% (+ arg (- length (length xscheme-expressions-ring-yank-pointer)))
-			    length)))
+	    (let ((index
+		   (% (+ arg
+			 (- length
+			    (length xscheme-expressions-ring-yank-pointer)))
+		      length)))
 	    (nthcdr (if (< index 0)
 			(+ index length)
 		      index)
@@ -861,10 +874,12 @@ When called, the current buffer will be the Scheme process-buffer.")
 	  (if running-p "?" "no process")))
 
 (defun xscheme-process-filter (proc string)
-  (save-excursion
-    (set-buffer (process-buffer proc))
-    (let ((xscheme-filter-input string))
-      (while xscheme-filter-input
+  (let ((xscheme-filter-input string)
+	(call-noexcursion nil))
+    (while xscheme-filter-input
+      (setq call-noexcursion nil)
+      (save-excursion
+	(set-buffer (process-buffer proc))
 	(cond ((eq xscheme-process-filter-state 'idle)
 	       (let ((start (string-match "\e" xscheme-filter-input)))
 		 (if start
@@ -898,14 +913,21 @@ When called, the current buffer will be the Scheme process-buffer.")
 		       (setq xscheme-filter-input
 			     (substring xscheme-filter-input (1+ start)))
 		       (setq xscheme-process-filter-state 'idle)
-		       (funcall xscheme-string-receiver string))
+		       (if (listp xscheme-string-receiver)
+			   (progn
+			     (setq xscheme-string-receiver
+				   (car xscheme-string-receiver))
+			     (setq call-noexcursion string))
+			 (funcall xscheme-string-receiver string)))
 		   (progn
 		     (setq xscheme-string-accumulator
 			   (concat xscheme-string-accumulator
 				   xscheme-filter-input))
 		     (setq xscheme-filter-input nil)))))
 	      (t
-	       (error "Scheme process filter -- bad state")))))))
+	       (error "Scheme process filter -- bad state"))))
+      (if call-noexcursion
+	  (funcall xscheme-string-receiver call-noexcursion)))))
 
 ;;;; Process Filter Output
 
@@ -973,7 +995,9 @@ When called, the current buffer will be the Scheme process-buffer.")
 ;;;; Process Filter Operations
 
 (defvar xscheme-process-filter-alist
-  '((?D xscheme-enter-debugger-mode
+  '((?A xscheme-eval
+	xscheme-process-filter:string-action-noexcursion)
+    (?D xscheme-enter-debugger-mode
 	xscheme-process-filter:string-action)
     (?E xscheme-eval
 	xscheme-process-filter:string-action)
@@ -982,6 +1006,8 @@ When called, the current buffer will be the Scheme process-buffer.")
     (?R xscheme-enter-interaction-mode
 	xscheme-process-filter:simple-action)
     (?b xscheme-start-gc
+	xscheme-process-filter:simple-action)
+    (?c xscheme-unsolicited-read-char
 	xscheme-process-filter:simple-action)
     (?e xscheme-finish-gc
 	xscheme-process-filter:simple-action)
@@ -1006,8 +1032,6 @@ When called, the current buffer will be the Scheme process-buffer.")
     (?w xscheme-cd
 	xscheme-process-filter:string-action)
     (?z xscheme-display-process-buffer
-	xscheme-process-filter:simple-action)
-    (?c xscheme-unsolicited-read-char
 	xscheme-process-filter:simple-action))
   "Table used to decide how to handle process filter commands.
 Value is a list of entries, each entry is a list of three items.
@@ -1031,6 +1055,9 @@ the remaining input.")
   (setq xscheme-string-receiver action)
   (setq xscheme-string-accumulator "")
   (setq xscheme-process-filter-state 'reading-string))
+
+(defun xscheme-process-filter:string-action-noexcursion (action)
+  (xscheme-process-filter:string-action (cons action nil)))
 
 (defconst xscheme-runlight:running "run"
   "The character displayed when the Scheme process is running.")
