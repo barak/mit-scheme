@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.2 1988/06/13 11:58:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.3 1988/07/22 22:53:14 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -421,7 +421,7 @@ MIT in each case. |#
       (define-error-handler error-type 'INTERNAL-APPLY true
 	(lambda (condition-type frame)
 	  (make-error-condition condition-type
-				(internal-apply-frame/operator frame)
+				(list (internal-apply-frame/operator frame))
 				repl-environment))))
 
     (define (define-operand-handler error-type irritant #!optional filter)
