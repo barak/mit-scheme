@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.99 1987/03/19 00:46:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.100 1987/03/20 05:14:46 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -134,8 +134,7 @@ MIT in each case. |#
 		     (stack-pointer-adjust!
 		      (rtl:address-number address))))))))))
 
-(define (noop statement)
-  'DONE)
+(define (noop statement) 'DONE)
 
 (define (trivial-action volatile? insert-source!)
   (if (not volatile?) (insert-source!)))
@@ -182,12 +181,22 @@ MIT in each case. |#
 (define-stack-trasher 'SETUP-CLOSURE-LEXPR)
 (define-stack-trasher 'SETUP-STACK-LEXPR)
 (define-stack-trasher 'MESSAGE-SENDER:VALUE)
+
+(define-cse-method 'INTERPRETER-CALL:ENCLOSE
+  (lambda (statement)
+    (let ((n (rtl:interpreter-call:enclose-size statement)))
+      (stack-region-invalidate! 0 n)
+      (stack-pointer-adjust! n))
+    (expression-invalidate! (interpreter-register:enclose))))
 
 (define (define-lookup-method type get-environment set-environment! register)
   (define-cse-method type
     (lambda (statement)
       (expression-replace! get-environment set-environment! statement
-	(normal-action (lambda () (expression-invalidate! (register))))))))
+	(normal-action
+	 (lambda ()
+	   (expression-invalidate! (register))
+	   (non-object-invalidate!)))))))
 
 (define-lookup-method 'INTERPRETER-CALL:ACCESS
   rtl:interpreter-call:access-environment
@@ -209,13 +218,6 @@ MIT in each case. |#
   rtl:set-interpreter-call:unbound?-environment!
   interpreter-register:unbound?)
 
-(define-cse-method 'INTERPRETER-CALL:ENCLOSE
-  (lambda (statement)
-    (let ((n (rtl:interpreter-call:enclose-size statement)))
-      (stack-region-invalidate! 0 n)
-      (stack-pointer-adjust! n))
-    (expression-invalidate! (interpreter-register:enclose))))
-
 (define (define-assignment-method type
 	  get-environment set-environment!
 	  get-value set-value!)
@@ -223,7 +225,10 @@ MIT in each case. |#
     (lambda (statement)
       (expression-replace! get-value set-value! statement trivial-action)
       (expression-replace! get-environment set-environment! statement
-	(normal-action (lambda () (memory-invalidate! true)))))))
+	(normal-action
+	 (lambda ()
+	   (memory-invalidate! true)
+	   (non-object-invalidate!)))))))
 
 (define-assignment-method 'INTERPRETER-CALL:DEFINE
   rtl:interpreter-call:define-environment
@@ -352,6 +357,11 @@ MIT in each case. |#
 (define (memory-invalidate! variable?)
   (hash-table-delete-class!
    (if variable? element-address-varies? element-in-memory?)))
+
+(define (non-object-invalidate!)
+  (hash-table-delete-class!
+   (lambda (element)
+     (expression-not-object? (element-expression element)))))
 
 (define (element-address-varies? element)
   (expression-address-varies? (element-expression element)))
