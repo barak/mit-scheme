@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 1.3 1993/10/26 20:00:55 gjr Exp $
+$Id: rulflo.scm,v 1.4 1993/10/28 04:45:40 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -41,7 +41,7 @@ MIT in each case. |#
   ;; convert a floating-point number to a flonum object
   (ASSIGN (REGISTER (? target))
 	  (FLOAT->OBJECT (REGISTER (? source))))
-  (let ((source (standard-source! source 'double)))
+  (let ((source (standard-source! source 'DOUBLE)))
     (let ((target (standard-target! target 'SCHEME_OBJECT)))
       (LAP "INLINE_DOUBLE_TO_FLONUM (" ,source ", " ,target ");\n\t"))))
 
@@ -49,7 +49,7 @@ MIT in each case. |#
   ;; convert a flonum object to a floating-point number
   (ASSIGN (REGISTER (? target)) (OBJECT->FLOAT (REGISTER (? source))))
   (let ((source (standard-source! source 'SCHEME_OBJECT)))
-    (let ((target (standard-target! target 'double)))
+    (let ((target (standard-target! target 'DOUBLE)))
       (LAP ,target " = (FLONUM_TO_DOUBLE (" ,source "));\n\t"))))
 
 ;;;; Floating-point vector support
@@ -61,7 +61,7 @@ MIT in each case. |#
   (standard-unary-conversion
    base 'DOUBLE*
    target 'DOUBLE
-   (lambda (target base)
+   (lambda (base target)
      (LAP ,target " = " ,base "[" ,offset "];\n\t"))))
   
 (define-rule statement
@@ -78,7 +78,7 @@ MIT in each case. |#
   (standard-binary-conversion
    base 'DOUBLE*
    index 'LONG
-   target 'DOUBLE*
+   target 'DOUBLE
    (lambda (base index target)
      (LAP ,target " = " ,base "[" ,index "];\n\t"))))
 
@@ -90,18 +90,18 @@ MIT in each case. |#
 	(index (standard-source! index 'LONG)))
     (LAP ,base "[" ,index "] = " ,source ";\n\t")))
 
-; this can't possibly be right
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (FLOAT-OFFSET (OFFSET-ADDRESS (REGISTER (? base))
 					(MACHINE-CONSTANT (? w-offset)))
 			(MACHINE-CONSTANT (? f-offset))))
-  (let* ((base (standard-source! base 'SCHEME_OBJECT*))
-	 (target (standard-target! target 'DOUBLE)))
-    (LAP ,target
-	 " = &((double *) & (" ,base "[" ,w-offset "]))[" ,f-offset "];\n\t")))
+  (standard-unary-conversion
+   base 'SCHEME_OBJECT*
+   target 'DOUBLE
+   (lambda (base target)
+     (LAP ,target
+	  " = ((double *) &" ,base "[" ,w-offset "])[" ,f-offset "];\n\t"))))
 
-; this can't possibly be right
 (define-rule statement
   (ASSIGN (FLOAT-OFFSET (OFFSET-ADDRESS (REGISTER (? base))
 					(MACHINE-CONSTANT (? w-offset)))
@@ -109,32 +109,32 @@ MIT in each case. |#
 	  (REGISTER (? source)))
   (let ((base (standard-source! base 'SCHEME_OBJECT*))
 	(source (standard-source! source 'DOUBLE)))
-    (LAP "((double *) & (" ,base "[" ,w-offset "]))[" ,f-offset "]"
-	 " = " ,source ";\n\t")))
+    (LAP "((double *) &" ,base "[" ,w-offset "])[" ,f-offset "] = "
+	 ,source ";\n\t")))
 
-; this can't possibly be right
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (FLOAT-OFFSET (OFFSET-ADDRESS (REGISTER (? base))
 					(MACHINE-CONSTANT (? w-offset)))
 			(REGISTER (? index))))
-  (let* ((base (standard-source! base 'SCHEME_OBJECT*))
-	 (index (standard-source! index 'LONG))
-	 (target (standard-target! target 'DOUBLE)))
-    (LAP ,target
-	 " = &((double *) & (" ,base "[" ,w-offset "]))[" ,index "];\n\t")))
+  (standard-binary-conversion
+   base 'SCHEME_OBJECT*
+   index 'LONG
+   target 'DOUBLE
+   (lambda (base index target)
+     (LAP ,target
+	  " = ((double *) &" ,base "[" ,w-offset "])[" ,index "];\n\t"))))
 
-; this can't possibly be right
 (define-rule statement
   (ASSIGN (FLOAT-OFFSET (OFFSET-ADDRESS (REGISTER (? base))
 					(MACHINE-CONSTANT (? w-offset)))
 			(REGISTER (? index)))
 	  (REGISTER (? source)))
-  (let* ((base (standard-source! base 'SCHEME_OBJECT*))
-	 (index (standard-source! index 'LONG))
-	 (source (standard-source! source 'DOUBLE)))
-    (LAP "((double *) & (" ,base "[" ,w-offset "]))[" ,index "]"
-	 " = " ,source ";\n\t")))
+  (let ((base (standard-source! base 'SCHEME_OBJECT*))
+	(index (standard-source! index 'LONG))
+	(source (standard-source! source 'DOUBLE)))
+    (LAP "((double *) &" ,base "[" ,w-offset "])[" ,index "] = "
+	 ,source ";\n\t")))
 
 ;;;; Flonum Arithmetic
 
@@ -188,8 +188,8 @@ MIT in each case. |#
 			 (REGISTER (? source2))
 			 (? overflow?)))
   overflow?				;ignore
-  (let ((source1 (standard-source! source1 'double))
-	(source2 (standard-source! source2 'double)))
+  (let ((source1 (standard-source! source1 'DOUBLE))
+	(source2 (standard-source! source2 'DOUBLE)))
     ((flonum-2-args/operator operation)
      (standard-target! target 'DOUBLE)
      source1
@@ -227,7 +227,7 @@ MIT in each case. |#
 	     ((FLONUM-NEGATIVE?) " < ")
 	     ((FLONUM-POSITIVE?) " > ")
 	     (else (error "unknown flonum predicate" predicate)))
-	   (standard-source! source 'double)
+	   (standard-source! source 'DOUBLE)
 	   "0.0"))
 
 (define-rule predicate
@@ -239,5 +239,5 @@ MIT in each case. |#
 	     ((FLONUM-LESS?) " < ")
 	     ((FLONUM-GREATER?) " > ")
 	     (else (error "unknown flonum predicate" predicate)))
-	   (standard-source! source1 'double)
-	   (standard-source! source2 'double)))
+	   (standard-source! source1 'DOUBLE)
+	   (standard-source! source2 'DOUBLE)))
