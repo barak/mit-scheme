@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/paths.scm,v 1.9 1991/05/07 20:22:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/paths.scm,v 1.10 1991/07/16 21:00:02 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -36,27 +36,31 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (edwin-binary-directory)
-  (system-library-directory-pathname
-   (merge-pathnames (string->pathname "autoload")
-		    (pathname-as-directory (string->pathname "edwin")))))
-
-(define (edwin-info-directory)
-  (system-library-directory-pathname
-   (merge-pathnames (string->pathname "info")
-		    (pathname-as-directory (string->pathname "edwin")))))
-
-(define (edwin-etc-directory)
-  (system-library-directory-pathname
-   (merge-pathnames (string->pathname "etc")
-		    (pathname-as-directory (string->pathname "edwin")))))
+(define edwin-library-directory-pathname
+  (let ((directory (pathname-as-directory (string->pathname "edwin"))))
+    (lambda (name)
+      (let ((pathname
+	     (system-library-directory-pathname
+	      (merge-pathnames (->pathname name) directory))))
+	(if (not pathname)
+	    (error "Can't find edwin library directory:" name))
+	pathname))))
 
 (define (edwin-etc-pathname filename)
   (let ((pathname
 	 (merge-pathnames (->pathname filename) (edwin-etc-directory))))
     (if (not (file-exists? pathname))
-	(editor-error "Unable to find file: " (pathname->string pathname)))
+	(error "Unable to find file:" (pathname->string pathname)))
     pathname))
+
+(define (edwin-binary-directory)
+  (edwin-library-directory-pathname "autoload"))
+
+(define (edwin-info-directory)
+  (edwin-library-directory-pathname "info"))
+
+(define (edwin-etc-directory)
+  (edwin-library-directory-pathname "etc"))
 
 (define (edwin-tutorial-pathname)
   (edwin-etc-pathname "TUTORIAL"))
