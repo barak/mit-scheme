@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: tximod.scm,v 1.22 2000/02/29 02:41:26 cph Exp $
+;;; $Id: tximod.scm,v 1.23 2000/02/29 02:47:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1987-2000 Massachusetts Institute of Technology
 ;;;
@@ -67,15 +67,6 @@ commands to save keystrokes.
 			 buffer)
     (event-distributor/invoke! (ref-variable texinfo-mode-hook buffer)
 			       buffer)))
-
-(define-variable texinfo-mode-abbrev-table
-  "Mode-specific abbrev table for Texinfo."
-  (make-abbrev-table)
-  abbrev-table?)
-
-(define-variable texinfo-mode-hook
-  "An event distributor that is invoked when entering Texinfo mode."
-  (make-event-distributor))
 
 (define texinfo-mode:syntax-table (make-syntax-table))
 (modify-syntax-entry! texinfo-mode:syntax-table #\" " ")

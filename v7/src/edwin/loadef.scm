@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: loadef.scm,v 1.40 1999/05/04 17:47:49 cph Exp $
+;;; $Id: loadef.scm,v 1.41 2000/02/29 02:47:15 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -54,6 +54,11 @@
 (define-autoload-command 'midas-mode 'MIDAS-MODE
   "Enter Midas mode.")
 
+(define-variable midas-mode-abbrev-table
+  "Mode-specific abbrev table for assembly code."
+  (make-abbrev-table)
+  abbrev-table?)
+
 (define-variable midas-mode-hook
   "An event distributor that is invoked when entering Midas mode."
   (make-event-distributor))
@@ -66,6 +71,11 @@
 
 (define-autoload-command 'pascal-mode 'PASCAL-MODE
   "Enter Pascal mode.")
+
+(define-variable pascal-mode-abbrev-table
+  "Mode-specific abbrev table for Pascal code."
+  (make-abbrev-table)
+  abbrev-table?)
 
 (define-variable pascal-mode-hook
   "An event distributor that is invoked when entering Pascal mode."
@@ -100,6 +110,11 @@ commands to save keystrokes.")
 
 (define-autoload-command 'texinfo-mode 'TEXINFO-MODE
   "Make the current mode be Texinfo mode.")
+
+(define-variable texinfo-mode-abbrev-table
+  "Mode-specific abbrev table for Texinfo."
+  (make-abbrev-table)
+  abbrev-table?)
 
 (define-variable texinfo-mode-hook
   "An event distributor that is invoked when entering Texinfo mode."
@@ -226,6 +241,11 @@ is open the that server, its buffer is selected.")
 (define-autoload-command 'verilog-mode 'VERILOG-MODE
   "Enter Verilog mode.")
 
+(define-variable verilog-mode-abbrev-table
+  "Mode-specific abbrev table for Verilog code."
+  (make-abbrev-table)
+  abbrev-table?)
+
 (define-variable verilog-mode-hook
   "An event distributor that is invoked when entering Verilog mode."
   (make-event-distributor))
@@ -248,6 +268,11 @@ is open the that server, its buffer is selected.")
 
 (define-autoload-command 'vhdl-mode 'VHDL-MODE
   "Enter VHDL mode.")
+
+(define-variable vhdl-mode-abbrev-table
+  "Mode-specific abbrev table for VHDL code."
+  (make-abbrev-table)
+  abbrev-table?)
 
 (define-variable vhdl-mode-hook
   "An event distributor that is invoked when entering VHDL mode."

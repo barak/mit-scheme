@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: pasmod.scm,v 1.48 2000/02/29 02:41:21 cph Exp $
+;;; $Id: pasmod.scm,v 1.49 2000/02/29 02:47:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -50,15 +50,6 @@
 			 (ref-variable pascal-mode-abbrev-table buffer)
 			 buffer)
     (event-distributor/invoke! (ref-variable pascal-mode-hook buffer) buffer)))
-
-(define-variable pascal-mode-abbrev-table
-  "Mode-specific abbrev table for Pascal code."
-  (make-abbrev-table)
-  abbrev-table?)
-
-(define-variable pascal-mode-hook
-  "An event distributor that is invoked when entering Pascal mode."
-  (make-event-distributor))
 
 (define pascal-mode:syntax-table (make-syntax-table))
 (modify-syntax-entry! pascal-mode:syntax-table #\( "()1 ")

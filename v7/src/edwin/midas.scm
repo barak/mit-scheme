@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: midas.scm,v 1.19 2000/02/29 02:41:18 cph Exp $
+;;; $Id: midas.scm,v 1.20 2000/02/29 02:47:44 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -44,15 +44,6 @@
 			 (ref-variable midas-mode-abbrev-table buffer)
 			 buffer)
     (event-distributor/invoke! (ref-variable midas-mode-hook buffer) buffer)))
-
-(define-variable midas-mode-abbrev-table
-  "Mode-specific abbrev table for assembly code."
-  (make-abbrev-table)
-  abbrev-table?)
-
-(define-variable midas-mode-hook
-  "An event distributor that is invoked when entering Midas mode."
-  (make-event-distributor))
 
 (define midas-mode:syntax-table (make-syntax-table))
 (modify-syntax-entry! midas-mode:syntax-table #\; "<   ")

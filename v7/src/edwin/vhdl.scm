@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vhdl.scm,v 1.6 2000/02/29 02:41:32 cph Exp $
+;;; $Id: vhdl.scm,v 1.7 2000/02/29 02:47:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1997-2000 Massachusetts Institute of Technology
 ;;;
@@ -55,15 +55,6 @@
 			 buffer)
     (event-distributor/invoke! (ref-variable vhdl-mode-hook buffer)
 			       buffer)))
-
-(define-variable vhdl-mode-abbrev-table
-  "Mode-specific abbrev table for VHDL code."
-  (make-abbrev-table)
-  abbrev-table?)
-
-(define-variable vhdl-mode-hook
-  "An event distributor that is invoked when entering VHDL mode."
-  (make-event-distributor))
 
 (define vhdl-mode:syntax-table
   (let ((syntax-table (make-syntax-table)))
