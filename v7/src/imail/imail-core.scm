@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.67 2000/05/17 19:11:11 cph Exp $
+;;; $Id: imail-core.scm,v 1.68 2000/05/17 20:52:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -370,7 +370,7 @@
 (define (detach-message! message)
   (set-message-folder! message #f)
   (message-modified! message))
-
+
 (define-generic message-internal-time (message))
 (define-method message-internal-time ((message <message>))
   (let loop ((headers (get-all-header-fields message "received")) (winner #f))
@@ -384,9 +384,19 @@
 	    (loop (cdr headers)
 		  (if (or (not winner) (< time winner)) time winner))))
 	(or winner
-	    (let ((date (get-first-header-field-value message "date" #f)))
-	      (and date
-		   (string->universal-time date)))))))
+	    (message-time message)))))
+
+(define (message-time message)
+  (let ((date (get-first-header-field-value message "date" #f)))
+    (and date
+	 (let ((t
+		(ignore-errors
+		 (lambda ()
+		   (string->universal-time
+		    (rfc822:tokens->string
+		     (rfc822:strip-comments (rfc822:string->tokens date))))))))
+	   (and (not (condition? t))
+		t)))))
 
 ;;;; Message Navigation
 
