@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.37 2001/03/16 20:17:48 cph Exp $
+$Id: option.scm,v 14.38 2001/10/10 05:10:33 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -28,9 +28,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (load-option name #!optional no-error?)
   (let ((no-error? (and (not (default-object? no-error?)) no-error?)))
 
-    (define (find-option)
-      (cond ((assq name *options*) => load-entry)
-	    ((force* *parent*) => search-parent)
+    (define (find-option options parent)
+      (cond ((assq name options) => load-entry)
+	    ((force* parent) => search-parent)
 	    ((not no-error?) (error "Unknown option name:" name))
 	    (else #f)))
 
@@ -40,14 +40,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       name)
 
     (define (search-parent file)
-      (fluid-let ((*options* '())
-		  (*parent* #f))
-	(fluid-let ((load/suppress-loading-message? #t))
-	  (load-latest (merge-pathnames file (library-directory-pathname ""))
-		       (make-load-environment)
-		       system-global-syntax-table
-		       #f))
-	(find-option)))
+      (call-with-values
+	  (lambda ()
+	    (fluid-let ((*options* '())
+			(*parent* #f))
+	      (fluid-let ((load/suppress-loading-message? #t))
+		(load-latest (merge-pathnames file
+					      (library-directory-pathname ""))
+			     (make-load-environment)
+			     system-global-syntax-table
+			     #f))
+	      (values *options* *parent*)))
+	find-option))
 
     (define (make-load-environment)
       (eval '(LET () (THE-ENVIRONMENT)) system-global-environment))
@@ -55,7 +59,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     (fluid-let ((*parser-canonicalize-symbols?* #t))
       (if (memq name loaded-options)
 	  name
-	  (find-option)))))
+	  (find-option *options* *parent*)))))
 
 (define (define-load-option name . loaders)
   (set! *options* (cons (cons name loaders) *options*))
