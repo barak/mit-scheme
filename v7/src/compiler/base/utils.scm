@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.16 1990/06/27 14:06:35 jinx Rel $
+$Id: utils.scm,v 4.17 1992/10/24 21:30:18 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Compiler Utilities
+;; package: (compiler)
 
 (declare (usual-integrations))
 
@@ -66,6 +67,8 @@ MIT in each case. |#
 	  (else
 	   (loop (cdr items) passed (cons (car items) failed))))))
 
+(define *label-separator* "-")		; Not integrable!!!
+
 (define (generate-label #!optional prefix)
   (if (default-object? prefix) (set! prefix 'LABEL))
   (string->uninterned-symbol
@@ -76,7 +79,7 @@ MIT in each case. |#
 	   ((eq? prefix lambda-tag:make-environment) 'MAKE-ENVIRONMENT)
 	   ((eq? prefix lambda-tag:fluid-let) 'FLUID-LET)
 	   (else prefix)))
-    "-"
+    *label-separator*
     (number->string (generate-label-number)))))
 
 (define *current-label-number*)
