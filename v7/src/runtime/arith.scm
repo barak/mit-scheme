@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.53 2003/01/01 05:38:22 cph Exp $
+$Id: arith.scm,v 1.54 2003/01/02 01:54:32 cph Exp $
 
 Copyright (c) 1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright (c) 1994,1995,1996,1997,1999 Massachusetts Institute of Technology
@@ -1797,10 +1797,10 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
     ((define-guarantee
        (sc-macro-transformer
 	(lambda (form environment)
-	  `(DEFINE (,(symbol-append 'GUARANTEE- (car form)) OBJECT OPERATOR)
-	     (IF (NOT (,(symbol-append (car form) '?) OBJECT))
+	  `(DEFINE (,(symbol-append 'GUARANTEE- (cadr form)) OBJECT OPERATOR)
+	     (IF (NOT (,(symbol-append (cadr form) '?) OBJECT))
 		 (ERROR:WRONG-TYPE-ARGUMENT OBJECT
-					    ,(close-syntax (cadr form)
+					    ,(close-syntax (caddr form)
 							   environment)
 					    OPERATOR))
 	     OBJECT)))))
