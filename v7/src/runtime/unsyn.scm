@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.3 1988/08/05 20:49:43 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.4 1989/08/04 02:38:19 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -58,7 +58,8 @@ MIT in each case. |#
 			     (SEQUENCE ,unsyntax-SEQUENCE-object)
 			     (THE-ENVIRONMENT ,unsyntax-THE-ENVIRONMENT-object)
 			     (UNASSIGNED? ,unsyntax-UNASSIGNED?-object)
-			     (VARIABLE ,unsyntax-VARIABLE-object)))))
+			     (VARIABLE ,unsyntax-VARIABLE-object))))
+  unspecific)
 
 (define (unsyntax scode)
   (unsyntax-object
@@ -110,10 +111,7 @@ MIT in each case. |#
 (define (unsyntax-ASSIGNMENT-object assignment)
   (assignment-components assignment
     (lambda (name value)
-      `(SET! ,name
-	     ,@(if (unassigned-reference-trap? value)
-		   '()
-		   `(,(unsyntax-object value)))))))
+      `(SET! ,name ,@(unexpand-binding-value value)))))
 
 (define (unexpand-definition name value)
   (if (lambda? value)
@@ -264,52 +262,80 @@ MIT in each case. |#
 ;;;; Combinations
 
 (define (unsyntax-COMBINATION-object combination)
-  (combination-components combination
-    (lambda (operator operands)
-      (let ((ordinary-combination
-	     (lambda ()
-	       (cons (unsyntax-object operator)
-		     (unsyntax-objects operands)))))
-	(cond ((and (or (eq? operator cons)
-			(absolute-reference-to? operator 'CONS))
-		    (= (length operands) 2)
-		    (delay? (cadr operands)))
-	       `(CONS-STREAM ,(unsyntax-object (car operands))
-			     ,(unsyntax-object
-			       (delay-expression (cadr operands)))))
-	      ((absolute-reference-to? operator 'BREAKPOINT-PROCEDURE)
-	       (unsyntax-error-like-form operands 'BKPT))
-	      ((lambda? operator)
-	       (lambda-components** operator
-		 (lambda (name required optional rest body)
-		   (if (and (null? optional)
-			    (null? rest))
-		       (cond ((or (eq? name lambda-tag:unnamed)
-				  (eq? name lambda-tag:let))
-			      `(LET ,(unsyntax-let-bindings required operands)
-				 ,@(unsyntax-sequence body)))
-			     ((eq? name lambda-tag:fluid-let)
-			      (unsyntax/fluid-let required
-						  operands
-						  body
-						  ordinary-combination))
-			     ((and (eq? name lambda-tag:make-environment)
-				   (the-environment?
-				    (car (last-pair (sequence-actions body)))))
-			      `(MAKE-ENVIRONMENT
-				 ,@(unsyntax-objects
-				    (except-last-pair
-				     (sequence-actions body)))))
-			     (else (ordinary-combination)))
-		       (ordinary-combination)))))
-	      (else
-	       (ordinary-combination)))))))
+  (rewrite-named-let
+   (combination-components combination
+     (lambda (operator operands)
+       (let ((ordinary-combination
+	      (lambda ()
+		`(,(unsyntax-object operator) ,@(unsyntax-objects operands)))))
+	 (cond ((and (or (eq? operator cons)
+			 (absolute-reference-to? operator 'CONS))
+		     (= (length operands) 2)
+		     (delay? (cadr operands)))
+		`(CONS-STREAM ,(unsyntax-object (car operands))
+			      ,(unsyntax-object
+				(delay-expression (cadr operands)))))
+	       ((absolute-reference-to? operator 'BREAKPOINT-PROCEDURE)
+		(unsyntax-error-like-form operands 'BKPT))
+	       ((lambda? operator)
+		(lambda-components** operator
+		  (lambda (name required optional rest body)
+		    (if (and (null? optional)
+			     (null? rest))
+			(cond ((or (eq? name lambda-tag:unnamed)
+				   (eq? name lambda-tag:let))
+			       `(LET ,(unsyntax-let-bindings required operands)
+				  ,@(unsyntax-sequence body)))
+			      ((eq? name lambda-tag:fluid-let)
+			       (unsyntax/fluid-let required
+						   operands
+						   body
+						   ordinary-combination))
+			      ((and (eq? name lambda-tag:make-environment)
+				    (the-environment?
+				     (car
+				      (last-pair (sequence-actions body)))))
+			       `(MAKE-ENVIRONMENT
+				  ,@(unsyntax-objects
+				     (except-last-pair
+				      (sequence-actions body)))))
+			      (else (ordinary-combination)))
+			(ordinary-combination)))))
+	       (else
+		(ordinary-combination))))))))
 
 (define (unsyntax-let-bindings names values)
   (map unsyntax-let-binding names values))
 
 (define (unsyntax-let-binding name value)
-  `(,name ,@(unexpand-binding-value value)))
+  `(,name ,@(unexpand-binding-value value)))
+
+(define (rewrite-named-let expression)
+  (if (and (pair? expression)
+	   (let ((expression (car expression)))
+	     (and (list? expression)
+		  (= 4 (length expression))
+		  (eq? 'LET (car expression))
+		  (eq? '() (cadr expression))
+		  (symbol? (cadddr expression))
+		  (let ((definition (caddr expression)))
+		    (and (pair? definition)
+			 (eq? 'DEFINE (car definition))
+			 (pair? (cadr definition))
+			 (eq? (caadr definition) (cadddr expression))
+			 (list? (cdadr definition))
+			 (for-all? (cdadr definition) symbol?))))))
+      `(LET ,(cadddr (car expression))
+	 ,(map (lambda (name value)
+		 `(,name
+		   ,@(if (unassigned-reference-trap? value)
+			 '()
+			 `(,value))))
+	       (cdadr (caddr (car expression)))
+	       (cdr expression))
+	 ,@(cddr (caddr (car expression))))
+      expression))
+
 (define (unsyntax-ERROR-COMBINATION-object combination)
   (unsyntax-error-like-form (combination-operands combination) 'ERROR))
 
