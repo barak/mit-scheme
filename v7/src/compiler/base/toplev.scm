@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.41 1992/05/26 20:12:48 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.42 1992/05/27 02:09:00 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -68,7 +68,7 @@ MIT in each case. |#
 	    (lambda (lap-output-port)
 	      (compile-scode/internal
 	       (compiler-fasload input-pathname)
-	       (pathname-new-type output-pathname "binf")
+	       (pathname-new-type output-pathname "inf")
 	       rtl-output-port
 	       lap-output-port)))))))
   unspecific)
