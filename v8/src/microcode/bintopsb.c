@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bintopsb.c,v 9.64 1994/01/06 19:51:22 gjr Exp $
+$Id: bintopsb.c,v 9.65 1994/01/12 00:30:20 gjr Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -184,6 +184,23 @@ static long
   NBitstrs, NBBits,
   NStrings, NChars,
   NPChars, NCChars;
+
+#define NO_ALIGNMENT(index) do { } while (0)
+
+#ifdef FLOATING_ALIGNMENT
+#define INDEX_ALIGN_FLOAT(index) do					\
+{									\
+  while (((((unsigned long) (& Mem_Base[(index) + 1]))			\
+	   - ((unsigned long) (& Mem_Base[0])))				\
+	  & FLOATING_ALIGNMENT)						\
+	 != 0)								\
+    Mem_Base[(index)++] = SHARP_F;					\
+} while (0)
+#endif /* FLOATING_ALIGNMENT */
+
+#ifndef INDEX_ALIGN_FLOAT
+#define INDEX_ALIGN_FLOAT NO_ALIGNMENT
+#endif /* INDEX_ALIGN_FLOAT */
 
 #define OUT(s)								\
 {									\
@@ -737,25 +754,37 @@ DEFUN (print_a_flonum, (src), SCHEME_OBJECT * src)
     (Mem_Base [(Fre)++]) = (*Old_Address++);				\
 } while (0)
 
-#define DO_VECTOR(Code, Rel, Fre, Scn, Obj, FObj) do			\
-{									\
-  Old_Address += (Rel);							\
-  Old_Contents = (*Old_Address);					\
-  if (BROKEN_HEART_P (Old_Contents))					\
-    (Mem_Base [(Scn)]) =						\
-      (MAKE_OBJECT_FROM_OBJECTS (This, Old_Contents));			\
-  else									\
-    {									\
-      (Mem_Base [(Scn)]) = (OBJECT_NEW_DATUM (This, (Fre)));		\
-      COPY_VECTOR (Fre);						\
-    }									\
-} while (0)
-
 /* This is a hack to get the cross compiler to work
    accross different endianness.
 */
 
-#define DO_INVERTED_BLOCK(Code, Rel, Fre, Scn, Obj, FObj) do		\
+#define COPY_INVERTED_VECTOR(Fre) do					\
+{									\
+  fast long len1, len2;							\
+  SCHEME_OBJECT * Saved;						\
+									\
+  len1 = (OBJECT_DATUM (Old_Contents));					\
+  (*Old_Address++) = (MAKE_BROKEN_HEART (Fre));				\
+  (Mem_Base [(Fre)++]) = Old_Contents;					\
+  if ((OBJECT_TYPE (* Old_Address)) != TC_MANIFEST_NM_VECTOR)		\
+  {									\
+    fprintf (stderr, "%s: Bad compiled code block found.\n",		\
+	     program_name);						\
+    quit (1);								\
+  }									\
+  len2 = (OBJECT_DATUM (*Old_Address));					\
+  (Mem_Base [(Fre)++]) = (*Old_Address++);				\
+  Old_Address += len2;							\
+  Saved = Old_Address;							\
+  len1 -= (len2 + 1);							\
+  while ((len2--) > 0)							\
+    (Mem_Base [(Fre)++]) = (*--Old_Address);				\
+  Old_Address = Saved;							\
+  while ((len1--) > 0)							\
+    (Mem_Base [(Fre)++]) = (*Old_Address++);				\
+} while (0)
+
+#define DO_VECTOR_2(aligner, copier, Code, Rel, Fre, Scn, Obj, FObj) do	\
 {									\
   Old_Address += (Rel);							\
   Old_Contents = (*Old_Address);					\
@@ -764,30 +793,19 @@ DEFUN (print_a_flonum, (src), SCHEME_OBJECT * src)
       (MAKE_OBJECT_FROM_OBJECTS (This, Old_Contents));			\
   else									\
     {									\
-      fast long len1, len2;						\
-      SCHEME_OBJECT * Saved;						\
+      aligner (Fre);							\
       (Mem_Base [(Scn)]) = (OBJECT_NEW_DATUM (This, (Fre)));		\
-      len1 = (OBJECT_DATUM (Old_Contents));				\
-      (*Old_Address++) = (MAKE_BROKEN_HEART (Fre));			\
-      (Mem_Base [(Fre)++]) = Old_Contents;				\
-      if ((OBJECT_TYPE (*Old_Address)) != TC_MANIFEST_NM_VECTOR)	\
-	{								\
-	  fprintf (stderr, "%s: Bad compiled code block found.\n",	\
-		   program_name);					\
-	  quit (1);							\
-	}								\
-      len2 = (OBJECT_DATUM (*Old_Address));				\
-      (Mem_Base [(Fre)++]) = (*Old_Address++);				\
-      Old_Address += len2;						\
-      Saved = Old_Address;						\
-      len1 -= (len2 + 1);						\
-      while ((len2--) > 0)						\
-	(Mem_Base [(Fre)++]) = (*--Old_Address);			\
-      Old_Address = Saved;						\
-      while ((len1--) > 0)						\
-	(Mem_Base [(Fre)++]) = (*Old_Address++);			\
+      copier (Fre);							\
     }									\
 } while (0)
+
+#define DO_VECTOR(Code, Rel, Fre, Scn, Obj, FObj)			\
+  DO_VECTOR_2 (NO_ALIGNMENT, COPY_VECTOR,				\
+	       Code, Rel, Fre, Scn, Obj, FObj)
+
+#define DO_INVERTED_BLOCK(Code, Rel, Fre, Scn, Obj, FObj)		\
+  DO_VECTOR_2 (NO_ALIGNMENT, COPY_INVERTED_VECTOR,			\
+	       Code, Rel, Fre, Scn, Obj, FObj)
 
 #ifdef HAS_COMPILER_SUPPORT
 
@@ -811,33 +829,32 @@ DEFUN (print_a_flonum, (src), SCHEME_OBJECT * src)
       (MAKE_OBJECT_FROM_OBJECTS (This, Old_Contents));			\
   else									\
   {									\
+    INDEX_ALIGN_FLOAT (Fre);						\
     (*compiled_entry_pointer++) =					\
       (MAKE_OBJECT_FROM_OBJECTS (This, (Fre)));				\
     copy (Fre);								\
   }									\
 } while (0)
 
+#define DO_COMPILED_BLOCK(Code, Rel, Fre, Scn, Obj, FObj)		\
+  DO_VECTOR_2 (INDEX_ALIGN_FLOAT, COPY_VECTOR,				\
+	       Code, Rel, Fre, Scn, Obj, FObj)
+
+#define DO_INVERTED_COMPILED_BLOCK(Code, Rel, Fre, Scn, Obj, FObj)	\
+  DO_VECTOR_2 (INDEX_ALIGN_FLOAT, COPY_INVERTED_VECTOR,			\
+	       Code, Rel, Fre, Scn, Obj, FObj)
+
+#define DO_C_COMPILED_BLOCK(Code, Rel, Fre, Scn, Obj, FObj)		\
+  DO_VECTOR_2 (INDEX_ALIGN_FLOAT, COPY_C_COMPILED_BLOCK,		\
+	       Code, Rel, Fre, Scn, Obj, FObj)
+
 #define DO_COMPILED_ENTRY(Code, Rel, Fre, Scn, Obj, FObj)		\
-  DO_ENTRY_INTERNAL(CHAR_OFFSET, COPY_VECTOR,				\
-		    Code, Rel, Fre, Scn, Obj, FObj)
+  DO_ENTRY_INTERNAL (CHAR_OFFSET, COPY_VECTOR,				\
+		     Code, Rel, Fre, Scn, Obj, FObj)
 
 #define DO_C_COMPILED_ENTRY(Code, Rel, Fre, Scn, Obj, FObj)		\
-  DO_ENTRY_INTERNAL(OBJ_OFFSET, COPY_C_COMPILED_BLOCK,			\
-		    Code, Rel, Fre, Scn, Obj, FObj)
-
-#define DO_C_COMPILED_BLOCK(Code, Rel, Fre, Scn, Obj, FObj) do		\
-{									\
-  Old_Address += (Rel);							\
-  Old_Contents = (* Old_Address);					\
-  if (BROKEN_HEART_P (Old_Contents))					\
-    (Mem_Base [(Scn)]) =						\
-      (MAKE_OBJECT_FROM_OBJECTS (This, Old_Contents));			\
-  else									\
-  {									\
-    (Mem_Base [(Scn)]) = (OBJECT_NEW_DATUM (This, (Fre)));		\
-    COPY_C_COMPILED_BLOCK (Fre);					\
-  }									\
-} while (0)
+  DO_ENTRY_INTERNAL (OBJ_OFFSET, COPY_C_COMPILED_BLOCK,			\
+		     Code, Rel, Fre, Scn, Obj, FObj)
 
 /* This depends on the fact that a compiled code block has an NMV
    header in the first or second words.
@@ -891,28 +908,31 @@ DEFUN (copy_c_compiled_block, (Fre, Old_Contents, Old_Address),
 {									\
   Fre = copy_c_compiled_block (Fre, Old_Contents, Old_Address);		\
 } while (0)
-
+
 #else /* no HAS_COMPILER_SUPPORT */
 
-#define DO_COMPILED_ENTRY(Code, Rel, Fre, Scn, Obj, FObj) do		\
+#define COMPILER_BAD_STMT(name) do					\
 {									\
-  fprintf								\
-    (stderr,								\
-     "%s: Invoking DO_COMPILED_ENTRY with no compiler support!\n",	\
-     program_name);							\
+  fprintf (stderr,							\
+	   "%s: Invoking %s with no compiler support!\n",		\
+	   program_name, name);						\
   quit (1);								\
 } while (0)
 
-#define DO_C_COMPILED_ENTRY DO_COMPILED_ENTRY
+#define DO_COMPILED_ENTRY(Code, Rel, Fre, Scn, Obj, FObj)		\
+  COMPILER_BAD_STMT ("DO_COMPILED_ENTRY")
 
-#define DO_C_COMPILED_BLOCK(Code, Rel, Fre, Scn, Obj, FObj) do		\
-{									\
-  fprintf								\
-    (stderr,								\
-     "%s: Invoking DO_C_COMPILED_BLOCK with no compiler support!\n",	\
-     program_name);							\
-  quit (1);								\
-} while (0)
+#define DO_COMPILED_BLOCK(Code, Rel, Fre, Scn, Obj, FObj)		\
+  COMPILER_BAD_STMT ("DO_COMPILED_BLOCK")
+
+#define DO_INVERTED_COMPILED_BLOCK(Code, Rel, Fre, Scn, Obj, FObj)	\
+  COMPILER_BAD_STMT ("DO_INVERTED_COMPILED_BLOCK")
+
+#define DO_C_COMPILED_ENTRY(Code, Rel, Fre, Scn, Obj, FObj)		\
+  COMPILER_BAD_STMT ("DO_C_COMPILED_ENTRY")
+
+#define  DO_C_COMPILED_BLOCK(Code, Rel, Fre, Scn, Obj, FObj)
+  COMPILER_BAD_STMT ("DO_C_COMPILED_BLOCK")
 
 #endif /* HAS_COMPILER_SUPPORT */
 
@@ -1356,9 +1376,9 @@ DEFUN (Process_Area, (Code, Area, Bound, Obj, FObj),
 	else if (c_compiled_p)
 	  DO_POINTER (*Area, DO_C_COMPILED_BLOCK);
 	else if (endian_invert_p)
-	  DO_POINTER (*Area, DO_INVERTED_BLOCK);
+	  DO_POINTER (*Area, DO_INVERTED_COMPILED_BLOCK);
 	else
-	  DO_POINTER (*Area, DO_VECTOR);
+	  DO_POINTER (*Area, DO_COMPILED_BLOCK);
 	break;
 
       case_compiled_entry_point:
@@ -1999,17 +2019,35 @@ DEFUN_VOID (do_it)
 
       /* This is way larger than needed, but... what the hell? */
 
-      Size = ((2 * (TRAP_MAX_IMMEDIATE + 1))
-	      + (2 * ((FLOATING_ALIGNMENT + 1) / (sizeof (SCHEME_OBJECT))))
+      Size = (
+	      /* All pointers must have datum > TRAP_MAX_IMMEDIATE */
+	        (2 * (TRAP_MAX_IMMEDIATE + 1))
+	      /* Floating alignment of Heap and Constant Space
+		 in incoming image, and of output arenas.
+	       */
+	      + (5 * ((FLOATING_ALIGNMENT + 1) / (sizeof (SCHEME_OBJECT))))
+	      /* Space taken by incoming image. */
 	      + (Heap_Count + Const_Count)
+	      /* We don't know the partition of the outgoing image,
+		 so, make each of the areas large enough:
+		 Heap pointers and external heap objects,
+		 Constant pointers and external constant objects,
+		 Pure pointers and exteranl pure objects
+	       */
 	      + (2 * (Heap_Count + (2 * Const_Count)))
+	      /* Space for the roots */
 	      + (NROOTS + 1)
+	      /* Space for the primitive table, or space to upgrade */
 	      + (upgrade_primitives_p
 		 ? (3 * PRIMITIVE_UPGRADE_SPACE)
-		 : Primitive_Table_Size) +
-	      (allow_compiled_p
-	       ? (2 + ((c_compiled_p ? 4 : 2) * (Heap_Count + Const_Count)))
-	       : 0)
+		 : Primitive_Table_Size)
+	      /* Everything might be compiled code blocks, requiring
+		 extra tables to map entries to objects, and block alignment
+	       */
+	      + (allow_compiled_p
+		 ? (2 + ((c_compiled_p ? 5 : 3) * (Heap_Count + Const_Count)))
+		 : 0)
+	      /* C code IDs */
 	      + C_Code_Table_Size);
 
       ALLOCATE_HEAP_SPACE (Size,
@@ -2125,7 +2163,11 @@ DEFUN_VOID (do_it)
     NBits = NBBits = NChars = 0;
 
     Heap_Start = (NROOTS + (TRAP_MAX_IMMEDIATE + 1));
-    Heap_Objects_Start = (Heap_Start + Heap_Count);
+    INDEX_ALIGN_FLOAT (Heap_Start);
+    Heap_Objects_Start = (Heap_Start
+			  + (allow_compiled_p
+			     ? (2 * Heap_Count)
+			     : Heap_Count));
     if (! band_p)
       dumped_utilities = SHARP_F;
     Mem_Base[(Heap_Start - NROOTS) + 0] = dumped_utilities;
@@ -2150,19 +2192,27 @@ DEFUN_VOID (do_it)
     Objects = 0;
 
     Constant_Start = (Heap_Objects_Start + Heap_Count);
-    Constant_Objects_Start = (Constant_Start + Const_Count);
+    INDEX_ALIGN_FLOAT (Constant_Start);
+    Constant_Objects_Start = (Constant_Start
+			      + (allow_compiled_p
+				 ? (2 * Const_Count)
+				 : Const_Count));
     Scan_Constant = Constant_Start;
     Free_Constant = Constant_Start;
     Free_Cobjects = &Mem_Base[Constant_Objects_Start];
     Constant_Objects = 0;
 
     Pure_Start = (Constant_Objects_Start + Const_Count);
-    Pure_Objects_Start = (Pure_Start + Const_Count);
+    INDEX_ALIGN_FLOAT (Pure_Start);
+    Pure_Objects_Start = (Pure_Start
+			  + (allow_compiled_p
+			     ? (2 * Const_Count)
+			     : Const_Count));
     Scan_Pure = Pure_Start;
     Free_Pure = Pure_Start;
     Free_Pobjects = &Mem_Base[Pure_Objects_Start];
     Pure_Objects = 0;
-
+
     if (Const_Count == 0)
       DO_AREA (HEAP_CODE, Scan, Free, Objects, Free_Objects);
     else
@@ -2199,7 +2249,7 @@ DEFUN_VOID (do_it)
     WHEN (((Free_Cobjects - &Mem_Base[Pure_Objects_Start])
 	   > Const_Count),
 	  "Free_Cobjects overran Pure Object Space");
-
+
     /* Output the data */
 
     if (found_ext_prims)
@@ -2211,7 +2261,45 @@ DEFUN_VOID (do_it)
       fprintf (stderr, "      You may want to fix this by hand.\n");
     }
 
-    /* Header */
+    if (! compiled_p)
+    {
+      dumped_processor_type = 0;
+      dumped_interface_version = 0;
+    }
+
+    /* Header:
+			     Portable Version
+				      Machine
+				      Version
+				  Sub Version
+					Flags
+				   Heap Count
+				    Heap Base
+				 Heap Objects
+			       Constant Count
+				Constant Base
+			     Constant Objects
+				   Pure Count
+				    Pure Base
+				 Pure Objects
+			      & Dumped Object
+			 Maximum Stack Offset
+			    Number of flonums
+			   Number of integers
+		   Number of bits in integers
+			Number of bit strings
+		Number of bits in bit strings
+		  Number of character strings
+	      Number of characters in strings
+			 Number of primitives
+	   Number of characters in primitives
+				     CPU type
+	      Compiled code interface version
+		    Compiler utilities vector
+		      Number of C code blocks
+	Number of characters in C code blocks
+		 Number of reserved C entries
+     */
 
     WRITE_HEADER ("Portable Version", "%ld", PORTABLE_VERSION);
     WRITE_HEADER ("Machine", "%ld", FASL_INTERNAL_FORMAT);
@@ -2232,7 +2320,7 @@ DEFUN_VOID (do_it)
     WRITE_HEADER ("Pure Objects", "%ld", Pure_Objects);
 
     WRITE_HEADER ("& Dumped Object", "%ld",
-		  (OBJECT_DATUM (Mem_Base[(TRAP_MAX_IMMEDIATE + 1) + 1])));
+		  (OBJECT_DATUM (Mem_Base[(Heap_Start - NROOTS) + 1])));
     WRITE_HEADER ("Maximum Stack Offset", "%ld", Max_Stack_Offset);
 
     WRITE_HEADER ("Number of flonums", "%ld", NFlonums);
@@ -2246,18 +2334,12 @@ DEFUN_VOID (do_it)
     WRITE_HEADER ("Number of primitives", "%ld", Primitive_Table_Length);
     WRITE_HEADER ("Number of characters in primitives", "%ld", NPChars);
 
-    if (! compiled_p)
-    {
-      dumped_processor_type = 0;
-      dumped_interface_version = 0;
-    }
-
     WRITE_HEADER ("CPU type", "%ld", dumped_processor_type);
     WRITE_HEADER ("Compiled code interface version", "%ld",
 		  dumped_interface_version);
     if (allow_bands_p)
       WRITE_HEADER ("Compiler utilities vector", "%ld",
-		    (OBJECT_DATUM (Mem_Base[(TRAP_MAX_IMMEDIATE + 1) + 0])));
+		    (OBJECT_DATUM (Mem_Base[(Heap_Start - NROOTS) + 0])));
     else
       WRITE_HEADER ("Compiler utilities vector", "%ld", 0);
 
@@ -2265,13 +2347,13 @@ DEFUN_VOID (do_it)
     WRITE_HEADER ("Number of characters in C code blocks", "%ld", NCChars);
     WRITE_HEADER ("Number of reserved C entries", "%ld",
 		  (OBJECT_DATUM (c_code_table[0])));
-
+
     /* Binary Objects */
 
     print_binary_objects (&Mem_Base[Pure_Objects_Start], Pure_Objects);
     print_binary_objects (&Mem_Base[Constant_Objects_Start], Constant_Objects);
     print_binary_objects (&Mem_Base[Heap_Objects_Start], Objects);
-
+
     /* Normal Objects: pointers, simple non-pointers (e.g. SHARP_F) */
 
     print_objects (&Mem_Base[Pure_Start], &Mem_Base[Free_Pure]);

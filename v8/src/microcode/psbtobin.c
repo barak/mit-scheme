@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: psbtobin.c,v 9.55 1993/11/16 04:49:56 gjr Exp $
+$Id: psbtobin.c,v 9.56 1994/01/12 00:30:57 gjr Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -63,9 +63,12 @@ static long
 
 static SCHEME_OBJECT
   * Heap, * Constant_Space, * Constant_Top, * Stack_Top,
-  * Heap_Base, * Heap_Table, * Heap_Object_Limit, * Free,
-  * Const_Base, * Const_Table, * Const_Object_Limit, * Free_Const,
-  * Pure_Base, * Pure_Table, * Pure_Object_Limit, * Free_Pure;
+  * Heap_Base, * Heap_Table, * Heap_Object_Limit,
+  * Heap_Pointers, * Free,
+  * Const_Base, * Const_Table, * Const_Object_Limit,
+  * Const_Pointers, * Free_Const,
+  * Pure_Base, * Pure_Table, * Pure_Object_Limit,
+  * Pure_Pointers, * Free_Pure;
 
 static long
 DEFUN (Write_Data, (Count, From_Where),
@@ -775,13 +778,13 @@ DEFUN (relocation_error, (addr), long addr)
   long _addr = (Addr);							\
 									\
   if ((_addr >= Dumped_Heap_Base) && (_addr < Dumped_Heap_Limit))	\
-    (Where) = &Heap_Object_Limit[_addr - Dumped_Heap_Base];		\
+    (Where) = &Heap_Pointers[_addr - Dumped_Heap_Base];			\
   else if ((_addr >= Dumped_Const_Base)					\
 	   && (_addr < Dumped_Const_Limit))				\
-    (Where) = &Const_Object_Limit[_addr - Dumped_Const_Base];		\
+    (Where) = &Const_Pointers[_addr - Dumped_Const_Base];		\
   else if ((_addr >= Dumped_Pure_Base)					\
 	   && (_addr < Dumped_Pure_Limit))				\
-    (Where) = &Pure_Object_Limit[_addr - Dumped_Pure_Base];		\
+    (Where) = &Pure_Pointers[_addr - Dumped_Pure_Base];			\
   else									\
     (void) relocation_error (_addr);					\
 } while (0)
@@ -790,11 +793,11 @@ DEFUN (relocation_error, (addr), long addr)
 
 #define Relocate(Addr)							\
 ((((Addr) >= Dumped_Heap_Base) && ((Addr) < Dumped_Heap_Limit))		\
- ? &Heap_Object_Limit[(Addr) - Dumped_Heap_Base]			\
+ ? &Heap_Pointers[(Addr) - Dumped_Heap_Base]				\
  : ((((Addr) >= Dumped_Const_Base) && ((Addr) < Dumped_Const_Limit))	\
-    ? &Const_Object_Limit[(Addr) - Dumped_Const_Base]			\
+    ? &Const_Pointers[(Addr) - Dumped_Const_Base]			\
     : ((((Addr) >= Dumped_Pure_Base) && ((Addr) < Dumped_Pure_Limit))	\
-       ? &Pure_Object_Limit[(Addr) - Dumped_Pure_Base]			\
+       ? &Pure_Pointers[(Addr) - Dumped_Pure_Base]			\
        : ((relocation_error (Addr)), ((SCHEME_OBJECT *) NULL)))))
 
 #else
@@ -1101,6 +1104,42 @@ DEFUN_VOID (short_header_read)
   quit (1);
 }
 
+/* Header:
+
+			     Portable Version
+				      Machine
+				      Version
+				  Sub Version
+					Flags
+				   Heap Count
+				    Heap Base
+				 Heap Objects
+			       Constant Count
+				Constant Base
+			     Constant Objects
+				   Pure Count
+				    Pure Base
+				 Pure Objects
+			      & Dumped Object
+			 Maximum Stack Offset
+			    Number of flonums
+			   Number of integers
+		   Number of bits in integers
+			Number of bit strings
+		Number of bits in bit strings
+		  Number of character strings
+	      Number of characters in strings
+			 Number of primitives
+	   Number of characters in primitives
+				     CPU type
+	      Compiled code interface version
+		    Compiler utilities vector
+		      Number of C code blocks
+	Number of characters in C code blocks
+		 Number of reserved C entries
+
+  */
+
 static SCHEME_OBJECT * Lowest_Allocated_Address, * Highest_Allocated_Address;
 
 static long
@@ -1226,21 +1265,34 @@ DEFUN_VOID (Read_Header_and_Allocate)
   if (Max_Stack_Offset > initial_delta)
     initial_delta = Max_Stack_Offset;
 
-  Size = (6						/* SNMV */
-	  + (2 * ((FLOATING_ALIGNMENT + 1) / (sizeof (SCHEME_OBJECT))))
+  Size = (
+	  /* SNMV headers for constant and pure space */
+	  6
+	  /* Float alignment of the different arenas */
+	  + (5 * ((FLOATING_ALIGNMENT + 1) / (sizeof (SCHEME_OBJECT))))
+	  /* All pointers must have datum greater than this */
 	  + initial_delta
+	  /* Incoming heap */
 	  + (Heap_Count + Heap_Objects)
+	  /* Incoming constant space */
 	  + (Const_Count + Const_Objects)
+	  /* Incoming pure space */
 	  + (Pure_Count + Pure_Objects)
+	  /* Maximum space taken up by flonums */
 	  + (flonum_to_pointer (NFlonums))
+	  /* Maximum space taken up by integers */
 	  + ((NIntegers * (2 + (BYTES_TO_WORDS (sizeof (bignum_digit_type)))))
 	     + (BYTES_TO_WORDS (BIGNUM_BITS_TO_DIGITS (NBits))))
+	  /* Maximum space taken up by strings */
 	  + ((NStrings * (1 + STRING_CHARS))
 	     + (char_to_pointer (NChars)))
+	  /* Maximum space taken up by bit strings */
 	  + ((NBitstrs * (1 + BIT_STRING_FIRST_WORD))
 	     + (BIT_STRING_LENGTH_TO_GC_LENGTH (NBBits)))
+	  /* space taken by the primitive table */
 	  + ((Primitive_Table_Length * (2 + STRING_CHARS))
 	     + (char_to_pointer (NPChars)))
+	  /* Space taken up by the C code block IDs */
 	  + (1 + (2 * C_Code_Table_Length) + (char_to_pointer (NCChars))));
 
   ALLOCATE_HEAP_SPACE (Size,
@@ -1290,54 +1342,56 @@ DEFUN_VOID (do_it)
     Pure_Base = &Constant_Space[2];
     Pure_Object_Limit
       = (Read_External (Pure_Objects, Pure_Table, Pure_Base));
+    Pure_Pointers = Pure_Object_Limit;
+    ALIGN_FLOAT (Pure_Pointers);
 
     XDEBUGGING (print_external_objects ("Pure", Pure_Table, Pure_Objects));
     DEBUGGING (fprintf (stderr, "Pure_Base: 0x%x\n", Pure_Base));
-    DEBUGGING (fprintf (stderr, "Pure_Object_Limit: 0x%x\n",
-			Pure_Object_Limit));
+    DEBUGGING (fprintf (stderr, "Pure_Pointers: 0x%x\n", Pure_Pointers));
 
-    Const_Base = &Pure_Object_Limit[Pure_Count + 2];
+    Const_Base = &Pure_Pointers[Pure_Count + 2];
     Const_Object_Limit
       = (Read_External (Const_Objects, Const_Table, Const_Base));
+    Const_Pointers = Const_Object_Limit;
+    ALIGN_FLOAT (Const_Pointers);
 
     XDEBUGGING (print_external_objects ("Constant", Const_Table,
 					Const_Objects));
     DEBUGGING (fprintf (stderr, "Const_Base: 0x%x\n", Const_Base));
-    DEBUGGING (fprintf (stderr, "Const_Object_Limit: 0x%x\n",
-			Const_Object_Limit));
+    DEBUGGING (fprintf (stderr, "Const_Pointers: 0x%x\n", Const_Pointers));
 
-    Constant_Top = &Const_Object_Limit[Const_Count + 2];
+    Constant_Top = &Const_Pointers[Const_Count + 2];
 
     Heap_Base = Constant_Top;
     ALIGN_FLOAT (Heap_Base);
     Heap_Object_Limit
       = (Read_External (Heap_Objects, Heap_Table, Heap_Base));
+    Heap_Pointers = Heap_Object_Limit;
+    ALIGN_FLOAT (Heap_Pointers);
 
     XDEBUGGING (print_external_objects ("Heap", Heap_Table, Heap_Objects));
     DEBUGGING (fprintf (stderr, "Heap_Base: 0x%x\n", Heap_Base));
-    DEBUGGING (fprintf (stderr, "Heap_Object_Limit: 0x%x\n",
-			Heap_Object_Limit));
+    DEBUGGING (fprintf (stderr, "Heap_Pointers: 0x%x\n", Heap_Pointers));
 
-    primitive_table = &Heap_Object_Limit[Heap_Count];
+    primitive_table = &Heap_Pointers[Heap_Count];
 
     WHEN ((primitive_table > &Heap[Size]), "primitive_table overran memory.");
 
     /* Read the normal objects */
 
-    Free_Pure = (Read_Pointers_and_Relocate (Pure_Count, Pure_Object_Limit));
+    Free_Pure = (Read_Pointers_and_Relocate (Pure_Count, Pure_Pointers));
     WHEN ((Free_Pure > (Const_Base - 2)),
 	  "Free_Pure overran Const_Base");
     WHEN ((Free_Pure < (Const_Base - 2)),
 	  "Free_Pure did not reach Const_Base");
 
-    Free_Const = (Read_Pointers_and_Relocate (Const_Count,
-					      Const_Object_Limit));
+    Free_Const = (Read_Pointers_and_Relocate (Const_Count, Const_Pointers));
     WHEN ((Free_Const > (Constant_Top - 2)),
 	  "Free_Const overran Constant_Top");
     WHEN ((Free_Const < (Constant_Top - 2)),
 	  "Free_Const did not reach Constant_Top");
 
-    Free = (Read_Pointers_and_Relocate (Heap_Count, Heap_Object_Limit));
+    Free = (Read_Pointers_and_Relocate (Heap_Count, Heap_Pointers));
 
     WHEN ((Free > primitive_table), "Free overran primitive_table");
     WHEN ((Free < primitive_table), "Free did not reach primitive_table");
