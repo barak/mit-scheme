@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dossys.c,v 1.2 1992/09/15 20:35:37 jinx Exp $
+$Id: dossys.c,v 1.3 1992/09/17 13:31:53 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -392,9 +392,7 @@ struct rm_interrupt
 
 #pragma ZTC align
 
-/* It only needs 128! */
-
-#define RETURN_BUFFER_SIZE 256
+#define RETURN_BUFFER_SIZE 128
 
 int
 DOS_canonicalize_filename (char * aliased, char * direct)
