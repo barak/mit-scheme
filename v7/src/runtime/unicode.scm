@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unicode.scm,v 1.1 2001/11/11 05:58:04 cph Exp $
+;;; $Id: unicode.scm,v 1.2 2001/11/21 01:27:52 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -130,7 +130,7 @@
 	(values low '()))))
 
 (define (well-formed-code-points-list? items)
-  (or (not (pair? items))
+  (if (pair? items)
       (and (well-formed-item? (car items))
 	   (let loop ((a (car items)) (items (cdr items)))
 	     (or (not (pair? items))
@@ -139,7 +139,8 @@
 		   (and (well-formed-item? b)
 			(< (if (pair? a) (cdr a) a)
 			   (if (pair? b) (car b) b))
-			(loop b items))))))))
+			(loop b items))))))
+      (null? items)))
 
 (define (well-formed-item? item)
   (if (pair? item)
