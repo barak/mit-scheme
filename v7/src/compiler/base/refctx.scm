@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/refctx.scm,v 1.1 1988/12/12 21:32:12 cph Rel $
+$Id: refctx.scm,v 1.2 1992/12/08 04:18:47 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -66,6 +66,7 @@ MIT in each case. |#
   "reference-context")
 
 (define-structure (reference-context
+		   (type vector)
 		   (named reference-context-tag)
 		   (constructor make-reference-context (block))
 		   (conc-name reference-context/))
