@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: inlate.scm,v 1.5 1995/07/08 15:01:34 adams Exp $
+$Id: inlate.scm,v 1.6 1995/08/18 23:54:03 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -38,19 +38,19 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (inlate/top-level scode)
-  (inlate/remember (inlate/scode scode)
-		   (new-dbg-expression/make scode)))
+  (inlate/remember (inlate/scode scode #F)
+		   (new-dbg-expression/make scode #F)))
 
 (define-macro (define-inlator scode-type components . body)
   (let ((proc-name (symbol-append 'INLATE/ scode-type))
 	(destructor (symbol-append scode-type '-COMPONENTS)))
-    `(define ,proc-name
-       (let ((handler (lambda ,components ,@body)))
-	 (named-lambda (,proc-name form)
-	   (inlate/remember (,destructor form handler)
-			    (new-dbg-expression/make form)))))))
+    `(DEFINE ,proc-name
+       (NAMED-LAMBDA (,proc-name FORM OUTER-FORM)
+	 (LET ((HANDLER (LAMBDA ,components ,@body)))
+	   (INLATE/REMEMBER (,destructor FORM HANDLER)
+			    (NEW-DBG-EXPRESSION/MAKE FORM OUTER-FORM)))))))
 
-(define (inlate/sequence+ form)
+(define (inlate/sequence+ form outer-form)
   ;; Kludge
   (if (not (open-block? form))
       (inlate/sequence form)
@@ -59,11 +59,13 @@ MIT in each case. |#
 	 (if (sequence? form*)
 	     (beginnify
 	      (inlate/map-declarations
-	       (map inlate/scode (sequence-actions form*))))
-	     (inlate/scode form*)))
-       (new-dbg-expression/make form))))
+	       (map (lambda (action) (inlate/scode action form))
+		    (sequence-actions form*))))
+	     (inlate/scode form* form)))
+       (new-dbg-expression/make form outer-form))))
 
-(define (inlate/constant object)
+(define (inlate/constant object outer-form)
+  outer-form
   `(QUOTE ,(if (unassigned-reference-trap? object) %unassigned object)))
 
 (define (inlate/map-declarations exprs)
@@ -80,15 +82,16 @@ MIT in each case. |#
   `(LOOKUP ,name))
 
 (define-inlator ASSIGNMENT (name svalue)
-  `(SET! ,name ,(inlate/scode svalue)))
+  `(SET! ,name ,(inlate/scode svalue form)))
 
 (define-inlator DEFINITION (name svalue)
-  `(DEFINE ,name ,(inlate/scode svalue)))
+  `(DEFINE ,name ,(inlate/scode svalue form)))
 
 (define-inlator THE-ENVIRONMENT ()
   `(THE-ENVIRONMENT))
 
-(define (inlate/lambda form)
+(define (inlate/lambda form outer-form)
+  outer-form				; ignored
   (lambda-components form
     (lambda (name req opt rest aux decls sbody)
       name				; Not used
@@ -105,7 +108,7 @@ MIT in each case. |#
 			  (cons '#!AUX aux))))
 	     (new
 	      `(LAMBDA ,(cons (new-continuation-variable) lambda-list)
-		 ,(let ((body (inlate/scode sbody)))
+		 ,(let ((body (inlate/scode sbody #F)))
 		    (if (null? decls)
 			body
 			(beginnify
@@ -134,8 +137,8 @@ MIT in each case. |#
 |#
 
 (define-inlator IN-PACKAGE (environment expression)
-  `(IN-PACKAGE ,(inlate/scode environment)
-     ,(inlate/scode expression)))
+  `(IN-PACKAGE ,(inlate/scode environment form)
+     ,(inlate/scode expression #F)))
 
 (define-inlator COMBINATION (rator rands)
   (let-syntax ((ucode-primitive
@@ -153,31 +156,34 @@ MIT in each case. |#
 	       (not (null? (cdr rands)))
 	       (symbol? (cadr rands)))
 	  `(UNASSIGNED? ,(cadr rands))
-	  `(CALL ,(inlate/scode rator)
+	  `(CALL ,(inlate/scode rator form)
 		 (QUOTE #F)		; continuation
-		 ,@(map inlate/scode rands))))))
+		 ,@(map (lambda (rand) (inlate/scode rand form))
+			rands))))))
 
 (define-inlator COMMENT (text body)
   text					; ignored
-  (inlate/scode body))
+  (inlate/scode body form))
 
 (define-inlator SEQUENCE (actions)
-  (beginnify (map inlate/scode actions)))
+  (beginnify
+   (map (lambda (action) (inlate/scode action form))
+	actions)))
      
 (define-inlator CONDITIONAL (pred conseq alt)
-  `(IF ,(inlate/scode pred)
-       ,(inlate/scode conseq)
-       ,(inlate/scode alt)))
+  `(IF ,(inlate/scode pred form)
+       ,(inlate/scode conseq form)
+       ,(inlate/scode alt form)))
 
 (define-inlator DISJUNCTION (pred alt)
-  `(OR ,(inlate/scode pred)
-       ,(inlate/scode alt)))
+  `(OR ,(inlate/scode pred form)
+       ,(inlate/scode alt form)))
 
 (define-inlator ACCESS (environment name)
-  `(ACCESS ,name ,(inlate/scode environment)))
+  `(ACCESS ,name ,(inlate/scode environment form)))
 
 (define-inlator DELAY (expression)
-  `(DELAY ,(inlate/scode expression)))
+  `(DELAY ,(inlate/scode expression form)))
 
 (define inlate/scode
   (let ((dispatch-vector
@@ -187,8 +193,8 @@ MIT in each case. |#
 	((dispatch-entry
 	  (macro (type handler)
 	    `(VECTOR-SET! DISPATCH-VECTOR ,(microcode-type type)
-			  (LAMBDA (EXPR)
-			    (,handler EXPR))))))
+			  (LAMBDA (EXPR OUTER-FORM)
+			    (,handler EXPR OUTER-FORM))))))
 
       (let-syntax
 	  ((dispatch-entries
@@ -220,9 +226,10 @@ MIT in each case. |#
 	(dispatch-entries (lambda lexpr extended-lambda) inlate/lambda)
 	(dispatch-entries (sequence-2 sequence-3) inlate/sequence+))
 
-      (named-lambda (inlate/expression expression)
+      (named-lambda (inlate/expression expression outer-form)
 	((vector-ref dispatch-vector (object-type expression))
-	 expression)))))
+	 expression
+	 outer-form)))))
 
 ;; Utilities
 

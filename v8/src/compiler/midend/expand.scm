@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: expand.scm,v 1.5 1995/04/29 00:57:30 adams Exp $
+$Id: expand.scm,v 1.6 1995/08/18 23:53:47 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -97,7 +97,8 @@ MIT in each case. |#
 	 (expand/remember*
 	  new-form
 	  (new-dbg-expression/make2 false
-				    (new-dbg-procedure/block info))))))
+				    (new-dbg-procedure/block info)
+				    (new-dbg-procedure/outer info))))))
 
 (define-expander LET (bindings body)
   (expand/let* expand/letify bindings body))

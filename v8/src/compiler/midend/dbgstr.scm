@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgstr.scm,v 1.16 1995/07/27 14:25:55 adams Exp $
+$Id: dbgstr.scm,v 1.17 1995/08/18 23:53:54 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -41,8 +41,8 @@ MIT in each case. |#
       ((ucode-primitive string->symbol)
        "#[(runtime compiler-info)new-dbg-expression]"))
      (conc-name new-dbg-expression/)
-     (constructor new-dbg-expression/make (source-code))
-     (constructor new-dbg-expression/make2 (source-code block))
+     (constructor new-dbg-expression/make (source-code outer))
+     (constructor new-dbg-expression/make2 (source-code block outer))
      (print-procedure
       (standard-unparser-method 'NEW-DBG-EXPRESSION
 	(lambda (expr port)
@@ -50,12 +50,14 @@ MIT in each case. |#
 	  (display (new-dbg-expression/source-code expr) port)))))
   (block false read-only false)
   (label false)
-  (source-code false))
+  (source-code false)			; SCode
+  (outer false))			; SCode countaining form, or #F
 
 
 (define (new-dbg-expression/new-block dbg-expr block*)
   (new-dbg-expression/make2 (new-dbg-expression/source-code dbg-expr)
-			    block*))
+			    block*
+			    (new-dbg-expression/outer dbg-expr)))
 
 (define-structure
     (new-dbg-procedure
@@ -211,20 +213,29 @@ MIT in each case. |#
 		  element)))))
 
 (define (new-dbg-continuation->old-dbg-continuation label frame-size new-info)
-  frame-size
+  frame-size				; ignored
   (and new-info
-       (new-dbg-continuation/outer new-info)
+       ;;(new-dbg-continuation/outer new-info)
        (new-dbg-continuation/inner new-info)
-       (let ((aggregate
-	      (new-dbg-expression/source-code
-	       (new-dbg-continuation/outer new-info)))
-	     (element
-	      (new-dbg-expression/source-code
-	       (new-dbg-continuation/inner new-info))))	     
-	 (set-new-dbg-continuation/label! new-info label)
-	 (set-new-dbg-continuation/outer! new-info aggregate)
-	 (set-new-dbg-continuation/inner! new-info element)
-	 new-info)))
+       (let* ((element
+	       (new-dbg-expression/source-code
+		(new-dbg-continuation/inner new-info)))
+	      (aggregate
+	       ;; This condition is true when a user level form has internal
+	       ;; invisible continuations
+	       (if (or (not (new-dbg-continuation/outer new-info))
+		       (eq? (new-dbg-continuation/outer new-info)
+			    (new-dbg-continuation/inner new-info)))
+		   (new-dbg-expression/outer
+		    (new-dbg-continuation/inner new-info))
+		   (new-dbg-expression/source-code
+		    (new-dbg-continuation/outer new-info)))))
+	 (and aggregate
+	      (begin
+		(set-new-dbg-continuation/label! new-info label)
+		(set-new-dbg-continuation/outer! new-info aggregate)
+		(set-new-dbg-continuation/inner! new-info element)
+		new-info)))))
 
 
 (define (new-dbg-form/block object)
