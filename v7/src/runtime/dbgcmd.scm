@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.8 1990/09/11 20:43:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.9 1990/09/12 02:47:19 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -132,7 +132,14 @@ MIT in each case. |#
       prompt))))
 
 (define (debug/eval expression environment)
-  (leaving-command-loop (lambda () (eval expression environment))))
+  (leaving-command-loop
+   (lambda ()
+     (eval expression environment))))
+
+(define (debug/scode-eval expression environment)
+  (leaving-command-loop
+   (lambda ()
+     (extended-scode-eval expression environment))))
 
 (define (debug/where environment)
   (leaving-command-loop

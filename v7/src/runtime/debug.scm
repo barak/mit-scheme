@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.19 1990/09/11 20:44:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.20 1990/09/12 02:47:02 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -61,8 +61,10 @@ MIT in each case. |#
 	     (write-string (if (= n 1) "is" "are"))
 	     (write-string " ")
 	     (if (> n debugger:count-subproblems-limit)
-		 (write-string "more than "))
-	     (write n)
+		 (begin
+		   (write-string "more than ")
+		   (write debugger:count-subproblems-limit))
+		 (write n))
 	     (write-string " subproblem")
 	     (if (not (= n 1))
 		 (write-string "s")))
@@ -652,19 +654,18 @@ MIT in each case. |#
 	       (lambda (value)
 		 ((stack-frame->continuation next) value))))
 	  (let ((value
-		 (debug/eval
-		  (let ((expression
-			 (prompt-for-expression
-			  (string-append
-			   "Expression to EVALUATE and CONTINUE with"
-			   (if invalid-expression?
-			       ""
-			       " ($ to retry)")))))
-		    (if (and (not invalid-expression?)
-			     (eq? expression '$))
-			(unsyntax (dstate/expression dstate))
-			expression))
-		  environment)))
+		 (let ((expression
+			(prompt-for-expression
+			 (string-append
+			  "Expression to EVALUATE and CONTINUE with"
+			  (if invalid-expression?
+			      ""
+			      " ($ to retry)")))))
+		   (if (and (not invalid-expression?)
+			    (eq? expression '$))
+		       (debug/scode-eval (dstate/expression dstate)
+					 environment)
+		       (debug/eval expression environment)))))
 	    (if debugger:print-return-values?
 		(begin
 		  (newline)
