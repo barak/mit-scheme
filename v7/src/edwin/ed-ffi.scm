@@ -51,6 +51,8 @@
 	       edwin-syntax-table)
     ("comman"  (edwin)
 	       edwin-syntax-table)
+    ("compile" (edwin)
+	       edwin-syntax-table)
     ("comred"  (edwin command-reader)
 	       edwin-syntax-table)
     ("comtab"  (edwin comtab)
