@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.9 1995/04/09 23:28:20 cph Exp $
+;;;	$Id: os2.scm,v 1.10 1995/04/10 20:22:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -265,7 +265,9 @@ Includes the new backup.  Must be > 0."
 		 (merge-pathnames (string-append "#tmp#" (number->string i))
 				  directory)))
 	    (if (allocate-temporary-file pathname)
-		pathname
+		(begin
+		  (deallocate-temporary-file pathname)
+		  pathname)
 		(loop (+ i 1))))))
       (os/auto-save-pathname pathname #f)))
 
@@ -334,12 +336,6 @@ Includes the new backup.  Must be > 0."
 
 (define (os/set-file-modes-writable! pathname)
   (set-file-modes! pathname (fix:andc (file-modes pathname) #x0001)))
-
-(define (os/sendmail-program)
-  "sendmail.exe")
-
-(define (os/rmail-pop-procedure)
-  #f)
 
 ;;;; Dired customization
 
@@ -432,39 +428,42 @@ Includes the new backup.  Must be > 0."
 	  '()))))
 
 (define (os/find-program program default-directory)
-  (or (let* ((types '("exe" "cmd"))
-	     (try
-	      (lambda (pathname)
-		(let ((type (pathname-type pathname)))
-		  (if type
-		      (and (member type types)
-			   (file-exists? pathname)
-			   (->namestring pathname))
-		      (let loop ((types types))
-			(and (not (null? types))
-			     (let ((p
-				    (pathname-new-type pathname (car types))))
-			       (if (file-exists? p)
-				   (->namestring p)
-				   (loop (cdr types)))))))))))
-	(cond ((pathname-absolute? program)
-	       (try program))
-	      ((not default-directory)
-	       (let loop ((path (ref-variable exec-path)))
-		 (and (not (null? path))
-		      (or (and (pathname-absolute? (car path))
-			       (try (merge-pathnames program (car path))))
-			  (loop (cdr path))))))
-	      (else
-	       (let ((default-directory (merge-pathnames default-directory)))
-		 (let loop ((path (ref-variable exec-path)))
-		   (and (not (null? path))
-			(or (try (merge-pathnames
-				  program
-				  (merge-pathnames (car path)
-						   default-directory)))
-			    (loop (cdr path)))))))))
+  (or (os2/find-program program (ref-variable exec-path) default-directory)
       (error "Can't find program:" (->namestring program))))
+
+(define (os2/find-program program exec-path default-directory)
+  (let* ((types '("exe" "cmd"))
+	 (try
+	  (lambda (pathname)
+	    (let ((type (pathname-type pathname)))
+	      (if type
+		  (and (member type types)
+		       (file-exists? pathname)
+		       (->namestring pathname))
+		  (let loop ((types types))
+		    (and (not (null? types))
+			 (let ((p
+				(pathname-new-type pathname (car types))))
+			   (if (file-exists? p)
+			       (->namestring p)
+			       (loop (cdr types)))))))))))
+    (cond ((pathname-absolute? program)
+	   (try program))
+	  ((not default-directory)
+	   (let loop ((path exec-path))
+	     (and (not (null? path))
+		  (or (and (pathname-absolute? (car path))
+			   (try (merge-pathnames program (car path))))
+		      (loop (cdr path))))))
+	  (else
+	   (let ((default-directory (merge-pathnames default-directory)))
+	     (let loop ((path exec-path))
+	       (and (not (null? path))
+		    (or (try (merge-pathnames
+			      program
+			      (merge-pathnames (car path)
+					       default-directory)))
+			(loop (cdr path))))))))))
 
 (define (os/shell-file-name)
   (or (get-environment-variable "SHELL")
@@ -560,6 +559,47 @@ filename suffix \".gz\"."
 			    "[unknown]"
 			    write-compressed-file
 			    (list region pathname))))
+
+;;;; Mail Customization
+
+(define (os/sendmail-program)
+  "sendmail")
+
+(define (os/rmail-pop-procedure)
+  (and (os2/find-program "popclient" (ref-variable exec-path) #f)
+       (lambda (server user-name password directory)
+	 (os2-pop-client server user-name password directory))))
+
+(define (os2-pop-client server user-name password directory)
+  (let ((target
+	 (->namestring
+	  (merge-pathnames (if (os2/fs-long-filenames? directory)
+			       ".popmail"
+			       "popmail.tmp")
+			   directory))))
+    (let ((buffer (temporary-buffer "*popclient*")))
+      (let ((status.reason
+	     (run-synchronous-process #f (buffer-end buffer) #f #f
+				      "popclient"
+				      (if (ref-variable rmail-pop-delete)
+					  "-3"
+					  "-3 -k")
+				      "-u" user-name
+				      "-p" password
+				      "-o" target
+				      server)))
+	(if (not (and (eq? 'EXITED (car status.reason))
+		      (memv (cdr status.reason) '(0 1))))
+	    (begin
+	      (pop-up-buffer buffer)
+	      (error "Error getting mail from POP server:" status.reason)))))
+    target))
+
+(define-variable rmail-pop-delete
+  "If true, messages are deleted from the POP server after being retrieved.
+Otherwise, messages remain on the server and will be re-fetched later."
+  #t
+  boolean?)
 
 ;;;; Generic Stuff
 ;;; These definitions are OS-independent and references to them should
