@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.17 1999/02/24 21:36:17 cph Exp $
+$Id: fileio.scm,v 1.18 1999/03/26 01:53:08 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -226,13 +226,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (if remaining
 	  (let ((result (make-string remaining)))
 	    (let ((n (fill-buffer result)))
-	      (if (< n remaining)
+	      (if (fix:< n remaining)
 		  (substring result 0 n)
 		  result)))
-	  (apply string-append
-		 (let loop ()
-		   (let ((string (make-string input-buffer-size)))
-		     (let ((n (fill-buffer string)))
-		       (cond ((zero? n) '())
-			     ((< n remaining) (list (substring string 0 n)))
-			     (else (cons string (loop))))))))))))
+	  (let loop ((strings '()))
+	    (let ((string (make-string input-buffer-size)))
+	      (let ((n (fill-buffer string)))
+		(if (fix:< n input-buffer-size)
+		    (apply string-append
+			   (reverse! (cons (substring string 0 n) strings)))
+		    (loop (cons string strings))))))))))
