@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.1 1988/06/13 11:46:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.2 1988/07/11 23:50:59 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -224,9 +224,13 @@ MIT in each case. |#
   (let ((port
 	 (if (default-object? port)
 	     (current-input-port)
-	     (guarantee-input-port port))))
-    (if (not (and (integer? interval) (>= interval 0)))
-	(error "Bad interval" interval))
+	     (guarantee-input-port port)))
+	(interval
+	 (if (default-object? interval)
+	     0
+	     (begin
+	       (if (not (and (integer? interval) (>= interval 0)))
+		   (error "Bad interval" interval))	       interval))))
     (input-port/char-ready? port interval)))
 
 (define (peek-char #!optional port)
