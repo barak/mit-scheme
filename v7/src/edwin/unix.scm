@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.3 1989/04/15 00:53:52 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.4 1989/04/20 08:19:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -219,10 +219,26 @@ Includes the new backup.  Must be > 0"
 	result)))
 
 (define (os/directory-list-completions directory prefix)
-  (let loop
-      ((name ((ucode-primitive open-directory) directory))
-       (result '()))
-    (if name
-	(loop ((ucode-primitive directory-read))
-	      (if (string-prefix? prefix name) (cons name result) result))
-	result)))
+  (if (string-null? prefix)
+      (os/directory-list directory)
+      (let loop
+	  ((name ((ucode-primitive open-directory) directory))
+	   (result '()))
+	(if name
+	    (loop ((ucode-primitive directory-read))
+		  (if (string-prefix? prefix name) (cons name result) result))
+	    result))))
+(define-integrable os/file-directory?
+  (ucode-primitive file-directory?))
+
+(define-integrable (os/make-filename directory filename)
+  (string-append directory filename))
+
+(define-integrable (os/filename-as-directory filename)
+  (string-append filename "/"))
+
+(define (os/completion-ignored-extensions)
+  (list-copy
+   '(".o" ".elc" "~" ".bin" ".lbin" ".fasl"
+     ".dvi" ".toc" ".log" ".aux"
+     ".lof" ".blg" ".bbl" ".glo" ".idx" ".lot")))
