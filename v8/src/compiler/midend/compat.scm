@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compat.scm,v 1.12 1995/08/19 16:09:45 adams Exp $
+$Id: compat.scm,v 1.13 1995/09/01 21:35:49 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -166,10 +166,10 @@ MIT in each case. |#
 	((rewrite-operator/compat? (quote/text rator))
 	 => (lambda (handler)
 	      (handler env form rator cont rands)))
-	#| Hooks into the compiler interface, when they must tail
-	into another computation, are now called with the default
-	(args. in registers) calling convention.  This is not a
-	problem because they have fixed arity. |#
+	;; Hooks into the compiler interface, when they must tail into another
+        ;; computation, are now called with the default (args. in
+        ;; registers) calling convention.  This is not a problem
+        ;; because they have fixed low arity.
 	((and (operator/satisfies? (quote/text rator) '(OUT-OF-LINE-HOOK))
 	      (not (operator/satisfies? (quote/text rator)
 					'(SPECIAL-INTERFACE)))
@@ -635,17 +635,32 @@ MIT in each case. |#
 		      ,@(compat/expr* env rands))))))
 
 
-(let ((known-operator->primitive
-       (lambda (env form rator cont rands)
-	 form				; ignored
-	 (compat/->stack-closure
-	  env cont (cddr rands)
-	  (lambda (cont*)
-	    `(CALL ,(compat/remember `(QUOTE ,%primitive-apply/compatible)
-				     rator)
-		   ,cont*
-		   ,(compat/expr env (car rands)) ; Primitive
-		   ,(compat/expr env (cadr rands)))))))) ; Arity
+(let ()
+  (define (known-operator->primitive env form rator cont rands)
+    form				; ignored
+    (let ((quote-arity      (first rands))
+	  (quote-primitive  (second rands)))
+      (let ((arity      (quote/text quote-arity))
+	    (primitive  (quote/text quote-primitive)))
+	(if (and (primitive-procedure? primitive)
+		 (exact-nonnegative-integer? arity)
+		 (eqv? arity (primitive-procedure-arity primitive)))
+	    (compat/->stack-closure
+	     env cont (cddr rands)
+	     (lambda (cont*)
+	       `(CALL (QUOTE ,%primitive-apply/compatible)
+		      ,cont*
+		      ,quote-arity
+		      ,quote-primitive)))
+	    ;; If the procedure it is not a primitive of the purported arity
+	    ;; then invoking it with %internal-apply will generate a runtime
+	    ;; error.
+	    (compat/expr env
+			 (compat/remember
+			  `(CALL (QUOTE ,%internal-apply)
+				 ,cont
+				 ,@rands)
+			  form))))))
 
   ;; Because these are reflected into the standard C coded primitives,
   ;; there's no reason to target the machine registers -- they'd wind
