@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typedb.scm,v 1.7 1996/07/20 18:30:14 adams Exp $
+$Id: typedb.scm,v 1.8 1996/07/22 17:49:20 adams Exp $
 
 Copyright (c) 1996 Massachusetts Institute of Technology
 
@@ -68,12 +68,26 @@ MIT in each case. |#
 	(procedure-type (list type:string type:string) type:boolean
 			'effect-sensitive effect:string-set!)))
   '(STRING<?    STRING=?    STRING>?    STRING<=?    STRING>=?
-    STRING-CI<? STRING-CI=? STRING-CI>? STRING-CI<=? STRING-CI>=?))
+    STRING-CI<? STRING-CI=? STRING-CI>? STRING-CI<=? STRING-CI>=?
+    STRING-PREFIX?     STRING-SUFFIX?
+    STRING-PREFIX-CI?  STRING-SUFFIX-CI?))
 
 (define-operator-type 'SUBSTRING?
   (procedure-type (list type:string type:string)
 		  (type:or type:false type:fixnum>=0)
 		  'effect-sensitive effect:string-set!))
+
+(define-operator-type 'STRING-APPEND
+  (procedure-type type:string
+		  type:string
+		  'effect-sensitive effect:string-set!
+		  'effect effect:allocation))
+
+(define-operator-type 'STRING-COPY
+  (procedure-type type:string
+		  type:string
+		  'effect-sensitive effect:string-set!
+		  'effect effect:allocation))
 
 
 ;; The following error:* procedures have return type empty, which means
@@ -135,16 +149,35 @@ MIT in each case. |#
 			    'effect-insensitive
 			    'effect effect:set-cdr!))
 
+(define-operator-type (make-primitive-procedure 'LENGTH)
+  (primitive-procedure-type (list type:list) type:fixnum>=0
+			    'effect-free
+			    'effect-sensitive (effect:union effect:set-car!
+							    effect:set-cdr!)))
+
 (define-operator-type (make-primitive-procedure 'SYSTEM-VECTOR-SIZE)
   (primitive-procedure-type (list type:any) type:vector-length
 			    'function))
 
-;; Note: before the VECTOR definition is useful, we need to change typerew to
-;; handle rest lists:
 (define-operator-type (make-primitive-procedure 'VECTOR)
   (primitive-procedure-type type:any type:vector
 			    'effect-insensitive
 			    'effect effect:allocation))
+
+(define-operator-type (make-primitive-procedure 'VECTOR-CONS)
+  (primitive-procedure-type (list type:vector-length type:any)  type:vector
+			    'effect-insensitive
+			    'effect  effect:allocation))
+
+(define-operator-type %vector-cons
+  (primitive-procedure-type (list type:vector-length type:any)  type:vector
+			    'effect-insensitive
+			    'effect  effect:allocation))
+
+(define-operator-type 'MAKE-VECTOR
+  (procedure-type (cons* type:vector-length   type:any)  type:vector
+		  'effect-insensitive
+		  'effect  effect:allocation))
 
 (define-operator-type (make-primitive-procedure 'VECTOR-LENGTH)
   (primitive-procedure-type (list type:vector) type:vector-length
@@ -153,6 +186,27 @@ MIT in each case. |#
 (define-operator-type (make-primitive-procedure '%RECORD-LENGTH)
   (primitive-procedure-type (list type:%record) type:vector-length
 			    'function))
+
+(define-operator-type 'STRING
+  (procedure-type type:any	; should be charatcer but it doesn't check.
+		  type:string
+		  'effect-insensitive
+		  'effect effect:allocation))
+
+(define-operator-type (make-primitive-procedure 'STRING-ALLOCATE)
+  (primitive-procedure-type (list type:string-length)  type:string
+			    'effect-insensitive
+			    'effect  effect:allocation))
+
+(define-operator-type %string-allocate
+  (primitive-procedure-type (list type:string-length)  type:string
+			    'effect-insensitive
+			    'effect  effect:allocation))
+
+(define-operator-type 'MAKE-STRING
+  (procedure-type (cons* type:string-length  type:character)  type:string
+		  'effect-insensitive
+		  'effect  effect:allocation))
 
 (define-operator-type (make-primitive-procedure 'STRING-LENGTH)
   (primitive-procedure-type (list type:string) type:string-length
