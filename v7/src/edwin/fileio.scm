@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.116 1993/01/23 06:55:45 cph Exp $
+;;;	$Id: fileio.scm,v 1.117 1993/04/27 09:18:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -155,10 +155,10 @@ Each procedure is called with three arguments:
 	      (lambda ()
 		(prepare-gap-for-insert! group index length)))))
 	(let ((n
-	       (channel-read channel
-			     (group-text group)
-			     index
-			     (+ index length))))
+	       (channel-read-block channel
+				   (group-text group)
+				   index
+				   (+ index length))))
 	  (without-interrupts
 	    (lambda ()
 	      (let ((gap-start* (fix:+ index n)))
