@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.16 1991/05/10 05:50:04 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.17 1991/11/19 19:44:15 markf Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -158,6 +158,22 @@
 	  (if (>= number (vector-length up-buttons))
 	      (set! up-buttons (vector-grow up-buttons (1+ number))))
 	  (%make-button up-buttons number false))))
+
+(define (make-modified-button modifier button-number up-or-down)
+  (let ((button
+	 (+ button-number
+	    (case modifier
+	      ((shift) 5)
+	      ((control) 10)
+	      ((meta) 20)
+	      (else (error "make-modified-button: Bad button modifier"
+			   modifier))))))
+    (cond ((eq? up-or-down 'DOWN)
+	   (make-down-button button))
+	  ((eq? up-or-down 'UP)
+	   (make-up-button button))
+	  (else (error "make-modified-button: Must specify UP or DOWN"
+		       up-or-down)))))
 
 (define button?
   (record-predicate button-record-type))
