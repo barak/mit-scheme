@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: curren.scm,v 1.109 1993/08/16 08:04:34 cph Exp $
+;;;	$Id: curren.scm,v 1.110 1993/10/11 11:37:49 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -506,6 +506,16 @@ The buffer is guaranteed to be selected at that time."
 
 (define (current-column)
   (mark-column (current-point)))
+
+(define (save-excursion thunk)
+  (let ((point (mark-left-inserting-copy (current-point)))
+	(mark (mark-right-inserting-copy (current-mark))))
+    (thunk)
+    (let ((buffer (mark-buffer point)))
+      (if (buffer-alive? buffer)
+	  (begin
+	    (set-buffer-point! buffer point)
+	    (set-buffer-mark! buffer mark))))))
 
 ;;;; Mark and Region
 
