@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: syntax.scm,v 1.78 1996/04/23 23:25:03 cph Exp $
+;;;	$Id: syntax.scm,v 1.79 1997/03/03 23:03:00 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -380,6 +380,12 @@ a comment ending."
 
 (define (parse-state-in-comment? state)
   (memv (parse-state-comment-state state) '(1 3 5 7)))
+
+(define (in-char-syntax-structure? state)
+  (or (parse-state-in-comment? state)
+      (parse-state-in-string? state)
+      (parse-state-quoted? state)
+      (not (= (parse-state-depth state) 0))))
 
 (define (forward-to-sexp-start mark end)
   (parse-state-location (parse-partial-sexp mark end 0 #t)))

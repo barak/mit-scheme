@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: regexp.scm,v 1.67 1996/04/24 01:20:21 cph Exp $
+;;;	$Id: regexp.scm,v 1.68 1997/03/03 23:04:13 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -366,3 +366,16 @@
 				 case-fold
 				 syntax-table
 				 string start end)))
+
+(define (regexp-group alternatives)
+  (let ((alternatives
+	 (list-transform-positive alternatives identity-procedure)))
+    (if (null? alternatives)
+	"\\(\\)"
+	(apply string-append
+	       (cons "\\("
+		     (let loop ((alternatives alternatives))
+		       (cons (car alternatives)
+			     (if (null? (cdr alternatives))
+				 (list "\\)")
+				 (cons "\\|" (loop (cdr alternatives)))))))))))
