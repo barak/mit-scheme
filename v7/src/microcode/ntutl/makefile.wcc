@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile.wcc,v 1.7 1997/06/26 06:56:24 cph Exp $
+###     $Id: makefile.wcc,v 1.8 1997/08/23 02:48:18 cph Exp $
 ###
 ###     Copyright (c) 1992-97 Massachusetts Institute of Technology
 ###
@@ -505,7 +505,7 @@ NT_DEPENDENCIES = oscond.h ansidecl.h posixtyp.h intext.h &
 		   dstack.h os.h osscheme.h nt.h ntapi.h ntsys.h syscall.h
 ntenv.obj : ntenv.c scheme.tch osenv.h ntscreen.h $(NT_DEPENDENCIES)
 ntfile.obj : ntfile.c osfile.h osio.h ntio.h $(NT_DEPENDENCIES)
-ntfs.obj : ntfs.c osfs.h $(NT_DEPENDENCIES)
+ntfs.obj : ntfs.c ntfs.h osfs.h $(NT_DEPENDENCIES)
 ntio.obj : ntio.c osio.h ntio.h ntscreen.h $(NT_DEPENDENCIES)
 nttop.obj : nttop.c ostop.h nttop.h osctty.h errors.h option.h &
 	$(NT_DEPENDENCIES)
@@ -519,7 +519,7 @@ ntgui.obj : ntgui.c ntdialog.h ntgui.h ntscreen.h $(NT_DEPENDENCIES) scheme.tch
 ntasutl.obj : ntasutl.asm
 ntkbutl.obj : ntkbutl.asm
 prntenv.obj : prntenv.c $(NT_DEPENDENCIES)
-prntfs.obj : prntfs.c $(NT_DEPENDENCIES) scheme.tch prims.h osfs.h
+prntfs.obj : prntfs.c ntfs.h $(NT_DEPENDENCIES) scheme.tch prims.h osfs.h
 prntio.obj : prntio.c $(NT_DEPENDENCIES) scheme.tch prims.h ntio.h osio.h &
 	syscall.h ntapi.h ntscreen.h
 
