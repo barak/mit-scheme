@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.104 2000/06/19 05:00:47 cph Exp $
+;;; $Id: imail-core.scm,v 1.105 2000/06/19 22:06:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -684,13 +684,9 @@
 	 (string-trim (header-field-value header)))))
 
 (define (get-all-header-field-values headers name)
-  (let ((headers (get-all-header-fields headers name)))
-    (and (pair? headers)
-	 (decorated-string-append
-	  "" ", " ""
-	  (map (lambda (header)
-		 (string-trim (header-field-value header)))
-	       headers)))))
+  (map (lambda (header)
+	 (string-trim (header-field-value header)))
+       (get-all-header-fields headers name)))
 
 (define (header-field-name? object)
   (and (string? object)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.172 2000/06/19 20:27:37 cph Exp $
+;;; $Id: imail-top.scm,v 1.173 2000/06/19 22:06:24 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1075,22 +1075,26 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 (define (imail-reply-headers message cc?)
   (let ((resent-reply-to
 	 (get-last-header-field-value message "resent-reply-to" #f))
-	(from (get-first-header-field-value message "from" #f)))
+	(from (get-first-header-field-value message "from" #f))
+	(concat
+	 (lambda (strings)
+	   (and (pair? strings)
+		(decorated-string-append "" ", " "" strings)))))
     `(("To"
        ,(rfc822:canonicalize-address-string
 	 (or resent-reply-to
-	     (get-all-header-field-values message "reply-to")
+	     (concat (get-all-header-field-values message "reply-to"))
 	     from)))
       ("CC"
        ,(and cc?
 	     (let ((to
 		    (if resent-reply-to
 			(get-last-header-field-value message "resent-to" #f)
-			(get-all-header-field-values message "to")))
+			(concat (get-all-header-field-values message "to"))))
 		   (cc
 		    (if resent-reply-to
 			(get-last-header-field-value message "resent-cc" #f)
-			(get-all-header-field-values message "cc"))))
+			(concat (get-all-header-field-values message "cc")))))
 	       (let ((cc
 		      (if (and to cc)
 			  (string-append to ", " cc)
@@ -1124,7 +1128,7 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 	  (if (ref-variable imail-reply-with-re)
 	      (string-append "Re: " subject)
 	      subject))))))
-
+
 (define (imail-dont-reply-to addresses)
   (let ((pattern
 	 (re-compile-pattern
