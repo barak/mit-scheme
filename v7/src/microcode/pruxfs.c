@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.36 1989/09/20 23:12:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.37 1989/12/08 01:49:51 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -308,7 +308,7 @@ file_symlink_p (filename)
 #endif /* S_IFLNK */
 
 DEFINE_PRIMITIVE ("FILE-SYMLINK?", Prim_file_symlink_p, 1, 1,
-  "Returns #T if the argument file name is a symbolic link;\n\
+  "If FILENAME is a symbolic link, returns its contents;\n\
 otherwise returns #F.")
 {
   PRIMITIVE_HEADER (1);
@@ -338,6 +338,7 @@ otherwise returns #F.")
 
    The filemodestring stuff was gobbled from GNU Emacs. */
 
+static SCHEME_OBJECT file_attributes_internal ();
 static void filemodestring ();
 static void rwx ();
 static void setst ();
@@ -355,17 +356,33 @@ is a vector of 10 items (see the reference manual for details).  Otherwise\n\
 the result is #F.")
 {
   struct stat stat_result;
-  extern SCHEME_OBJECT allocate_marked_vector ();
-  SCHEME_OBJECT result;
-  extern SCHEME_OBJECT allocate_string ();
-  SCHEME_OBJECT modes;
   PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (((lstat ((STRING_ARG (1)), (& stat_result))) < 0)
+     ? SHARP_F
+     : (file_attributes_internal (& stat_result)));
+}
 
-  if ((lstat ((STRING_ARG (1)), (& stat_result))) < 0)
-    PRIMITIVE_RETURN (SHARP_F);
-  result = (allocate_marked_vector (TC_VECTOR, 10, true));
-  modes = (allocate_string (10));
-  switch ((stat_result . st_mode) & S_IFMT)
+DEFINE_PRIMITIVE ("FILE-ATTRIBUTES-INDIRECT", Prim_file_attributes_indirect, 1, 1,
+  "Like FILE-ATTRIBUTES except that it indirects through symbolic links.")
+{
+  struct stat stat_result;
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (((stat ((STRING_ARG (1)), (& stat_result))) < 0)
+     ? SHARP_F
+     : (file_attributes_internal (& stat_result)));
+}
+
+static SCHEME_OBJECT
+file_attributes_internal (stat_result)
+     struct stat * stat_result;
+{
+  extern SCHEME_OBJECT allocate_marked_vector ();
+  extern SCHEME_OBJECT allocate_string ();
+  SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 10, true));
+  SCHEME_OBJECT modes = (allocate_string (10));
+  switch ((stat_result -> st_mode) & S_IFMT)
     {
     case S_IFDIR:
       VECTOR_SET (result, 0, SHARP_T);
@@ -379,17 +396,17 @@ the result is #F.")
       VECTOR_SET (result, 0, SHARP_F);
       break;
     }
-  VECTOR_SET (result, 1, (LONG_TO_UNSIGNED_FIXNUM (stat_result . st_nlink)));
-  VECTOR_SET (result, 2, (LONG_TO_UNSIGNED_FIXNUM (stat_result . st_uid)));
-  VECTOR_SET (result, 3, (LONG_TO_UNSIGNED_FIXNUM (stat_result . st_gid)));
-  VECTOR_SET (result, 4, (long_to_integer (stat_result . st_atime)));
-  VECTOR_SET (result, 5, (long_to_integer (stat_result . st_mtime)));
-  VECTOR_SET (result, 6, (long_to_integer (stat_result . st_ctime)));
-  VECTOR_SET (result, 7, (long_to_integer (stat_result . st_size)));
-  filemodestring ((& stat_result), (STRING_LOC (modes, 0)));
+  VECTOR_SET (result, 1, (long_to_integer (stat_result -> st_nlink)));
+  VECTOR_SET (result, 2, (long_to_integer (stat_result -> st_uid)));
+  VECTOR_SET (result, 3, (long_to_integer (stat_result -> st_gid)));
+  VECTOR_SET (result, 4, (long_to_integer (stat_result -> st_atime)));
+  VECTOR_SET (result, 5, (long_to_integer (stat_result -> st_mtime)));
+  VECTOR_SET (result, 6, (long_to_integer (stat_result -> st_ctime)));
+  VECTOR_SET (result, 7, (long_to_integer (stat_result -> st_size)));
+  filemodestring (stat_result, (STRING_LOC (modes, 0)));
   VECTOR_SET (result, 8, modes);
-  VECTOR_SET (result, 9, (LONG_TO_UNSIGNED_FIXNUM (stat_result . st_ino)));
-  PRIMITIVE_RETURN (result);
+  VECTOR_SET (result, 9, (long_to_integer (stat_result -> st_ino)));
+  return (result);
 }
 
 /* filemodestring - set file attribute data
