@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.3 1988/07/14 07:40:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.4 1989/03/06 19:57:44 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -207,10 +207,14 @@ MIT in each case. |#
 (define-integrable (current-input-port)
   *current-input-port*)
 
+(define (set-current-input-port! port)
+  (guarantee-input-port port)
+  (set! *current-input-port* port)
+  unspecific)
+
 (define (with-input-from-port port thunk)
-  (if (not (input-port? port)) (error "Bad input port" port))
-  (fluid-let ((*current-input-port* port))
-    (thunk)))
+  (guarantee-input-port port)
+  (fluid-let ((*current-input-port* port)) (thunk)))
 
 (define (with-input-from-file input-specifier thunk)
   (let ((new-port (open-input-file input-specifier))
