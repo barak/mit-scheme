@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.292 1991/04/02 19:55:19 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.293 1991/04/03 04:00:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -774,6 +774,7 @@
   (if (%window-start-line-mark window)
       (clear-start-mark! window))
   (%set-window-point-moved?! window false)
+  (%set-window-saved-screen! window false)
   (%clear-window-incremental-redisplay-state! window))
 
 (define (%clear-window-incremental-redisplay-state! window)
@@ -790,7 +791,6 @@
 	(%set-window-current-start-mark! window false)
 	(mark-temporary! (%window-current-end-mark window))
 	(%set-window-current-end-mark! window false)))
-  (%set-window-saved-screen! window false)
   (%clear-window-outstanding-changes! window))
 
 (define-integrable (%clear-window-outstanding-changes! window)
@@ -1084,9 +1084,7 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
 	(without-interrupts
 	 (lambda ()
 	   (%set-window-override-string! window false)
-	   (update-blank-inferior! window true)
-	   (update-cursor! window)
-	   (window-needs-redisplay! window))))))
+	   (buffer-window/redraw! window))))))
 
 (define (update-override-string! window screen x-start y-start xl xu yl yu)
   ;; This should probably update like any other string, paying
