@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/sf.sf,v 4.5 1989/10/26 06:28:11 cph Rel $
+$Id: sf.sf,v 4.6 1995/01/06 18:36:33 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,10 +52,7 @@ MIT in each case. |#
   (sf-conditionally "lsets")
   (sf-directory "."))
 
-;; Guarantee that the package modeller is loaded.
-(if (not (name->package '(CROSS-REFERENCE)))
-    (with-working-directory-pathname "../cref" (lambda () (load "make"))))
-
+(load-option 'CREF)
 (cref/generate-constructors "sf")
-(sf "sf.con" "sf.bcon")
-(sf "sf.ldr" "sf.bldr")
+(sf "sf.con")
+(sf "sf.ldr")

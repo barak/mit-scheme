@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.12 1993/09/01 00:10:28 cph Exp $
+$Id: toplev.scm,v 4.13 1995/01/06 18:36:24 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -165,7 +165,10 @@ MIT in each case. |#
 		    (let ((input-type (pathname-type input-path)))
 		      (if (and (string? input-type)
 			       (not (string=? "scm" input-type)))
-			  (string-append "b" input-type)
+			  (string-append "b"
+					 (if (> (string-length input-type) 2)
+					     (string-head input-type 2)
+					     input-type))
 			  "bin")))))
 	      (if bin-string
 		  (merge-pathnames bin-string bin-path)
