@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 1.2 1987/07/08 22:09:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 1.3 1987/07/16 10:12:01 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -73,10 +73,11 @@ MIT in each case. |#
 	,(load-non-pointer (ucode-type manifest-vector) number-pushed
 			   (INST-EA (@A+ 5)))
      
-	,@(generate-n-times number-pushed 5
-			    (INST (MOV L (@A+ 7) (@A+ 5)))
-			    (lambda (generator)
-			      (generator (allocate-temporary-register! 'DATA)))))
+	,@(generate-n-times
+	   number-pushed 5
+	   (lambda () (INST (MOV L (@A+ 7) (@A+ 5))))
+	   (lambda (generator)
+	     (generator (allocate-temporary-register! 'DATA)))))
    #| Alternate sequence which minimizes code size. ;
    DO NOT USE THIS!  The `clear-registers!' call does not distinguish between
    registers containing objects and registers containing unboxed things, and

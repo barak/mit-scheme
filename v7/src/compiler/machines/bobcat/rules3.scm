@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.8 1987/07/15 21:34:24 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.9 1987/07/16 10:11:23 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -67,7 +67,7 @@ MIT in each case. |#
   (QUALIFIER (not (memq (car prefix) '(APPLY-CLOSURE APPLY-STACK))))
   (disable-frame-pointer-offset!
    (LAP ,@(generate-invocation-prefix prefix '())
-	(BRA L (@PCR ,label)))))
+	(BRA U (@PCR ,label)))))
 
 (define-rule statement
   (INVOCATION:LEXPR (? number-pushed) (? prefix) (? continuation)
@@ -75,7 +75,7 @@ MIT in each case. |#
   (disable-frame-pointer-offset!
    (LAP ,@(generate-invocation-prefix prefix '())
 	,(load-dnw number-pushed 0)
-	(BRA L (@PCR ,label)))))
+	(BRA U (@PCR ,label)))))
 
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size) (? prefix) (? continuation)
@@ -117,13 +117,13 @@ MIT in each case. |#
   (disable-frame-pointer-offset!
    (LAP ,@(generate-invocation-prefix prefix '())
 	,(load-dnw frame-size 0)
-	(MOVE L (@PCR ,(free-uuo-link-label name)) (D 1))
-	(MOVE L (D 1) (@-A 7))
+	(MOV L (@PCR ,(free-uuo-link-label name)) (D 1))
+	(MOV L (D 1) (@-A 7))
 	(AND L (D 7) (D 1))
-	(MOVE L (D 1) (A 1))
-	(MOVE L (@A 1) (D 1))
+	(MOV L (D 1) (A 1))
+	(MOV L (@A 1) (D 1))
 	(AND L (D 7) (D 1))
-	(MOVE L (D 1) (A 0))
+	(MOV L (D 1) (A 0))
 	(JMP (@A 0)))))
 
 (define-rule statement
@@ -148,6 +148,17 @@ MIT in each case. |#
 	     (else
 	      (error "bad prefix type" prefix))))))
 
+(define (generate-invocation-prefix:apply-closure frame-size receiver-offset)
+  (let ((label (generate-label)))
+    (LAP ,@(apply-closure-sequence frame-size receiver-offset label)
+	 (LABEL ,label))))
+
+(define (generate-invocation-prefix:apply-stack frame-size receiver-offset
+						n-levels)
+  (let ((label (generate-label)))
+    (LAP ,@(apply-stack-sequence frame-size receiver-offset n-levels label)
+	 (LABEL ,label))))
+
 (define (generate-invocation-prefix:move-frame-up frame-size how-far)
   (cond ((zero? how-far)
 	 (LAP))
@@ -160,9 +171,11 @@ MIT in each case. |#
 	 (if (= how-far 1)
 	     (LAP (MOV L (@AO 7 4) (@AO 7 8))
 		  (MOV L (@A+ 7) (@A 7)))
-	     (let ((i (INST (MOVE L (@A+ 7) ,(offset-reference a7 (-1+ how-far))))))
-	       (LAP ,(copy-instruction-sequence i)
-		    ,i
+	     (let ((i (lambda ()
+			(INST (MOV L (@A+ 7)
+				   ,(offset-reference a7 (-1+ how-far)))))))
+	       (LAP ,(i)
+		    ,(i)
 		    ,@(increment-anl 7 (- how-far 2))))))
 	(else
 	 (let ((temp-0 (allocate-temporary-register! 'ADDRESS))
@@ -171,24 +184,15 @@ MIT in each case. |#
 		     ,(register-reference temp-0))
 		(LEA ,(offset-reference a7 (+ frame-size how-far))
 		     ,(register-reference temp-1))
-		,@(generate-n-times frame-size 5
-				    (INST (MOV L
-					       (@-A ,(- temp-0 8))
-					       (@-A ,(- temp-1 8))))
-				    (lambda (generator)
-				      (generator (allocate-temporary-register! 'DATA))))
+		,@(generate-n-times
+		   frame-size 5
+		   (lambda ()
+		     (INST (MOV L
+				(@-A ,(- temp-0 8))
+				(@-A ,(- temp-1 8)))))
+		   (lambda (generator)
+		     (generator (allocate-temporary-register! 'DATA))))
 		(MOV L ,(register-reference temp-1) (A 7)))))))
-
-(define (generate-invocation-prefix:apply-closure frame-size receiver-offset)
-  (let ((label (generate-label)))
-    (LAP ,@(apply-closure-sequence frame-size receiver-offset label)
-	 (LABEL ,label))))
-
-(define (generate-invocation-prefix:apply-stack frame-size receiver-offset
-						n-levels)
-  (let ((label (generate-label)))
-    (LAP ,@(apply-stack-sequence frame-size receiver-offset n-levels label)
-	 (LABEL ,label))))
 
 ;;; This is invoked by the top level of the LAP GENERATOR.
 
@@ -250,7 +254,7 @@ MIT in each case. |#
    (let ((gc-label (generate-label)))
      (LAP ,@(procedure-header (label->procedure label) gc-label)
 	  (CMP L ,reg:compiled-memtop (A 5))
-	  (B GE S (@PCR ,gc-label))))))
+	  (B GE B (@PCR ,gc-label))))))
 
 ;;; Note: do not change the MOVE.W in the setup-lexpr call to a MOVEQ.
 ;;; The setup-lexpr code assumes a fixed calling sequence to compute
@@ -280,7 +284,7 @@ MIT in each case. |#
 	 (JSR ,entry:compiler-interrupt-continuation)
 	 ,@(make-external-label internal-label)
 	 (CMP L ,reg:compiled-memtop (A 5))
-	 (B GE S (@PCR ,gc-label)))))
+	 (B GE B (@PCR ,gc-label)))))
 
 (define (procedure-header procedure gc-label)
   (let ((internal-label (procedure-label procedure))
@@ -296,14 +300,14 @@ MIT in each case. |#
 		     ,@(make-external-label external-label)
 		     ,(test-dnw required 0)
 		     ,@(cond ((procedure-rest procedure)
-			      (LAP (B GE S (@PCR ,internal-label))))
+			      (LAP (B GE B (@PCR ,internal-label))))
 			     ((zero? optional)
-			      (LAP (B EQ S (@PCR ,internal-label))))
+			      (LAP (B EQ B (@PCR ,internal-label))))
 			     (else
 			      (let ((wna-label (generate-label)))
-				(LAP (B LT S (@PCR ,wna-label))
+				(LAP (B LT B (@PCR ,wna-label))
 				     ,(test-dnw (+ required optional) 0)
-				     (B LE S (@PCR ,internal-label))
+				     (B LE B (@PCR ,internal-label))
 				     (LABEL ,wna-label)))))
 		     (JMP ,entry:compiler-wrong-number-of-arguments))))
 	     (else (LAP)))
