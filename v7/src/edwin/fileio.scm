@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.101 1991/05/16 23:13:21 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.102 1991/09/17 14:05:09 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -218,9 +218,11 @@ after you find a file.  If you explicitly request such a scan with
 			  (pathname-name-string (buffer-pathname buffer)))))
 		    (parse-local-variables buffer start end)))))))))
 
+(define edwin-environment (->environment '(edwin)))
+
 (define (evaluate sexp)
-  (scode-eval (syntax sexp system-global-syntax-table)
-	      system-global-environment))
+  (scode-eval (syntax sexp edwin-syntax-table)
+	      edwin-environment))
 
 (define (parse-local-variables buffer start end)
   (let ((prefix (extract-string (line-start start 0) start))
