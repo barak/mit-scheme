@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.101 2000/01/18 02:52:58 cph Exp $
+$Id: boot.c,v 9.102 2000/01/18 04:25:49 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -94,7 +94,7 @@ DEFUN (usage, (error_string), CONST char * error_string)
 
 #define FILE_READABLE(filename) ((access ((filename), 4)) >= 0)
 
-
+int
 DEFUN (main_name, (argc, argv),
        int argc AND CONST char ** argv)
 {
