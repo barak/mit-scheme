@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxdir.scm,v 14.6 1991/07/17 08:55:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxdir.scm,v 14.7 1991/07/19 04:42:26 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -49,9 +49,9 @@ MIT in each case. |#
 		   (pathname-type pattern)
 		   (pathname-version pattern))
 	       pattern
-	       (make-pathname (pathname-host pathname)
-			      (pathname-device pathname)
-			      (pathname-directory pathname)
+	       (make-pathname (pathname-host pattern)
+			      (pathname-device pattern)
+			      (pathname-directory pattern)
 			      'WILD 'WILD 'WILD)))))
     (let ((directory-path (pathname-directory-path pattern)))
       (let ((pathnames (generate-directory-pathnames directory-path)))
