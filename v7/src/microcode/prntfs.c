@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prntfs.c,v 1.11 1997/02/20 05:26:20 cph Exp $
+$Id: prntfs.c,v 1.12 1997/06/19 05:17:14 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -69,6 +69,9 @@ static void close_file_handle (HANDLE);
 
 enum get_file_info_result { gfi_ok, gfi_not_found, gfi_not_accessible };
 
+static enum get_file_info_result get_file_info_from_dir
+  (const char *, BY_HANDLE_FILE_INFORMATION *);
+
 static enum get_file_info_result
 get_file_info (const char * namestring, BY_HANDLE_FILE_INFORMATION * info)
 {
@@ -79,7 +82,7 @@ get_file_info (const char * namestring, BY_HANDLE_FILE_INFORMATION * info)
       if (STAT_NOT_FOUND_P (code))
 	return (gfi_not_found);
       if (STAT_NOT_ACCESSIBLE_P (code))
-	return (gfi_not_accessible);
+	return (get_file_info_from_dir (namestring, info));
       NT_error_api_call (code, apicall_CreateFile);
     }
   if (!GetFileInformationByHandle (hfile, info))
@@ -93,6 +96,38 @@ get_file_info (const char * namestring, BY_HANDLE_FILE_INFORMATION * info)
       NT_error_api_call (code, apicall_GetFileInformationByHandle);
     }
   close_file_handle (hfile);
+  return (gfi_ok);
+}
+
+/* Incredible kludge.  Some files (e.g. \pagefile.sys) cannot be
+   accessed by the usual technique, but much of the same information
+   is available by reading the directory.  More M$ bullshit.  */
+static enum get_file_info_result
+get_file_info_from_dir (const char * namestring,
+			BY_HANDLE_FILE_INFORMATION * info)
+{
+  WIN32_FIND_DATA fi;
+  HANDLE handle = (FindFirstFile (namestring, (&fi)));
+  if (handle == INVALID_HANDLE_VALUE)
+    {
+      DWORD code = (GetLastError ());
+      if (STAT_NOT_FOUND_P (code))
+	return (gfi_not_found);
+      if (STAT_NOT_ACCESSIBLE_P (code))
+	return (gfi_not_accessible);
+      NT_error_api_call (code, apicall_FindFirstFile);
+    }
+  FindClose (handle);
+  (info -> dwFileAttributes) = (fi . dwFileAttributes);
+  (info -> ftCreationTime) = (fi . ftCreationTime);
+  (info -> ftLastAccessTime) = (fi . ftLastAccessTime);
+  (info -> ftLastWriteTime) = (fi . ftLastWriteTime);
+  (info -> dwVolumeSerialNumber) = 0;
+  (info -> nFileSizeHigh) = (fi . nFileSizeHigh);
+  (info -> nFileSizeLow) = (fi . nFileSizeLow);
+  (info -> nNumberOfLinks) = 1;
+  (info -> nFileIndexHigh) = 0;
+  (info -> nFileIndexLow) = 0;
   return (gfi_ok);
 }
 
@@ -210,14 +245,25 @@ DEFINE_PRIMITIVE ("SET-FILE-TIMES!", Prim_set_file_times, 3, 3,
 The second and third arguments are the respective times.\n\
 The file must exist and you must be the owner.")
 {
+  const char * filename;
+  DWORD attributes;
+  int disable_ro;
   HANDLE hfile;
   FILETIME atime;
   FILETIME mtime;
   PRIMITIVE_HEADER (3);
 
+  filename = (STRING_ARG (1));
+  attributes = (GetFileAttributes (filename));
+  disable_ro
+    = ((attributes != 0xFFFFFFFF)
+       && ((attributes & FILE_ATTRIBUTE_READONLY) != 0));
+  if (disable_ro)
+    STD_BOOL_API_CALL (SetFileAttributes,
+		       (filename, (attributes & (~FILE_ATTRIBUTE_READONLY))));
   STD_HANDLE_API_CALL
     (hfile,
-     CreateFile, ((STRING_ARG (1)),
+     CreateFile, (filename,
 		  GENERIC_WRITE,
 		  FILE_SHARE_READ,
 		  0,
@@ -232,6 +278,8 @@ The file must exist and you must be the owner.")
       (void) CloseHandle (hfile);
       NT_error_api_call (code, apicall_SetFileTime);
     }
+  if (disable_ro)
+    STD_BOOL_API_CALL (SetFileAttributes, (filename, attributes));
   close_file_handle (hfile);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
