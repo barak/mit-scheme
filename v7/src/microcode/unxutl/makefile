@@ -1,34 +1,42 @@
 #
 # Makefile for MIT CScheme microcode.
 #
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/makefile,v 1.11 1990/12/11 23:36:17 cph Rel $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/makefile,v 1.12 1991/07/24 02:25:00 cph Exp $
 #
 CPP = cc -E
 MAKE = make  # BSD doesn't have it as a default.
 
 all: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} all
+.PHONY: all
 
 scheme: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} scheme
+.PHONY: scheme
 
 xscheme: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} xscheme
+.PHONY: xscheme
 
 bchscheme: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} bchscheme
+.PHONY: bchscheme
 
 Psbtobin: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} Psbtobin
+.PHONY: Psbtobin
 
 Bintopsb: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} Bintopsb
+.PHONY: Bintopsb
 
 Ppband: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} Ppband
+.PHONY: Ppband
 
 install: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} install
+.PHONY: install
 
 # If you have a problem with cc -E here, changing
 # the definition of CPP above may fix it.
