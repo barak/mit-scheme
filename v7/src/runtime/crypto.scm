@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: crypto.scm,v 14.2 2000/04/10 19:01:28 cph Exp $
+$Id: crypto.scm,v 14.3 2000/04/10 19:04:17 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -138,7 +138,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				    passphrase))
 
 (define (mhash-available?)
-  (implemented-primitive-procedure? mhash-update))
+  (implemented-primitive-procedure? (ucode-primitive mhash 4)))
 
 (define (mhash-file hash-type filename)
   (call-with-binary-input-file filename
