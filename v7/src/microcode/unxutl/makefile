@@ -1,3 +1,8 @@
+#
+# Makefile for MIT CScheme microcode.
+#
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/makefile,v 1.2 1989/07/26 03:55:44 cph Exp $
+#
 CPP = cc -E
 MAKE = make  # BSD doesn't have it as a default.
 
@@ -25,6 +30,11 @@ Bintopsb: xmakefile dobintopsb
 
 dobintopsb:
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} Bintopsb
+
+Breakup: xmakefile dobreakup
+
+dobreakup:
+	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} Breakup
 
 Ppband: xmakefile doppband
 
