@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.9 1993/11/29 23:24:36 cph Exp $
+$Id: random.scm,v 14.10 1994/04/19 18:42:54 cph Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,7 +37,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-;;; A "subtract-with-carry" RNG, based on the algorithm from "A New
+;;; A "subtract-with-borrow" RNG, based on the algorithm from "A New
 ;;; Class of Random Number Generators", George Marsaglia and Arif
 ;;; Zaman, The Annals of Applied Probability, Vol. 1, No. 3, 1991.
 
@@ -62,7 +62,7 @@ MIT in each case. |#
   (if (not (and (real? modulus) (< 0 modulus)))
       (error:wrong-type-argument modulus "positive real" 'RANDOM))
   (let ((element
-	 (get-next-element
+	 (flo:random-unit
 	  (guarantee-random-state (if (default-object? state) #f state)
 				  'RANDOM))))
     ;; Kludge: an exact integer modulus means that result is an exact
@@ -74,24 +74,24 @@ MIT in each case. |#
 	  (else
 	   (* (inexact->exact element) modulus)))))
 
-(define (get-next-element state)
+(define (flo:random-unit state)
   (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
     (let ((index (random-state-index state))
 	  (vector (random-state-vector state)))
-      (let ((element (vector-ref vector index)))
+      (let ((element (flo:vector-ref vector index)))
 	(let ((difference
-	       (flo:- (flo:- (vector-ref vector
-					 (if (fix:< (fix:- index s) 0)
-					     (fix:+ (fix:- index s) r)
-					     (fix:- index s)))
+	       (flo:- (flo:- (flo:vector-ref vector
+					     (if (fix:< (fix:- index s) 0)
+						 (fix:+ (fix:- index s) r)
+						 (fix:- index s)))
 			     element)
 		      (random-state-borrow state))))
 	  (if (flo:< difference 0.)
 	      (begin
-		(vector-set! vector index (flo:+ difference b.))
+		(flo:vector-set! vector index (flo:+ difference b.))
 		(set-random-state-borrow! state 1.))
 	      (begin
-		(vector-set! vector index difference)
+		(flo:vector-set! vector index difference)
 		(set-random-state-borrow! state 0.)))
 	  (set-random-state-index! state
 				   (if (fix:= (fix:+ index 1) r)
@@ -105,11 +105,8 @@ MIT in each case. |#
     (if (or (eq? #t state) (exact-integer? state))
 	(initial-random-state
 	 (congruential-rng (+ (real-time-clock) 123456789)))
-	(let ((state (guarantee-random-state state 'MAKE-RANDOM-STATE)))
-	  (%make-random-state
-	   (random-state-index state)
-	   (random-state-borrow state)
-	   (vector-copy (random-state-vector state)))))))
+	(copy-random-state
+	 (guarantee-random-state state 'MAKE-RANDOM-STATE)))))
 
 (define (initial-random-state generate-random-seed)
   ;; The numbers returned by GENERATE-RANDOM-SEED are not critical.
@@ -117,21 +114,21 @@ MIT in each case. |#
   ;; sequences produce reasonable results, although some sequences
   ;; might require a small number of initial generation steps to get
   ;; them into the main cycle.  (See the article for details.)
-  (let ((seeds (make-vector r)))
+  (let ((seeds (flo:vector-cons r)))
     (let fill ()
       (do ((i 0 (fix:+ i 1)))
 	  ((fix:= i r))
-	(vector-set! seeds i (exact->inexact (generate-random-seed b))))
+	(flo:vector-set! seeds i (exact->inexact (generate-random-seed b))))
       ;; Disallow cases with all seeds either 0 or b-1, since they can
       ;; get locked in trivial cycles.
       (if (or (let loop ((i 0))
 		(or (fix:= i r)
-		    (and (flo:= (vector-ref seeds i) 0.)
+		    (and (flo:= (flo:vector-ref seeds i) 0.)
 			 (loop (fix:+ i 1)))))
 	      (let ((b-1 (flo:- b. 1.)))
 		(let loop ((i 0))
 		  (or (fix:= i r)
-		      (and (flo:= (vector-ref seeds i) b-1)
+		      (and (flo:= (flo:vector-ref seeds i) b-1)
 			   (loop (fix:+ i 1)))))))
 	  (fill)))
     (%make-random-state 0 0. seeds)))
@@ -150,6 +147,19 @@ MIT in each case. |#
   index
   borrow
   vector)
+
+(define (copy-random-state state)
+  (%make-random-state (random-state-index state)
+		      (random-state-borrow state)
+		      (flo:vector-copy (random-state-vector state))))
+
+(define (flo:vector-copy vector)
+  (let ((n (flo:vector-length vector)))
+    (let ((result (flo:vector-cons n)))
+      (do ((i 0 (fix:+ i 1)))
+	  ((fix:= i n))
+	(flo:vector-set! result i (flo:vector-ref vector i)))
+      result)))
 
 (define (guarantee-random-state state procedure)
   (if state
