@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.12 2000/12/07 22:20:57 cph Exp $
+# $Id: Makefile,v 1.13 2000/12/07 22:52:51 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -42,7 +42,7 @@ tags TAGS:
 	    ( cd $${SUBDIR} && $(MAKE) $@ ) || exit 1; \
 	done
 
-mostlyclean clean distclean:
+mostlyclean: mostlyclean-extra
 	@for SUBDIR in $(SUBDIRS); do \
 	    if test -e $${SUBDIR}/Makefile; then \
 		echo "making $@ in $${SUBDIR}"; \
@@ -50,7 +50,35 @@ mostlyclean clean distclean:
 	    fi; \
 	done
 
-maintainer-clean:
+mostlyclean-extra:
+	@if test -d runtime-check && test -e runtime-check/Makefile; then \
+	    echo "making $@ in runtime-check"; \
+	    ( cd runtime-check && $(MAKE) mostlyclean ); \
+	fi
+
+clean: clean-extra
+	@for SUBDIR in $(SUBDIRS); do \
+	    if test -e $${SUBDIR}/Makefile; then \
+		echo "making $@ in $${SUBDIR}"; \
+		( cd $${SUBDIR} && $(MAKE) $@ ); \
+	    fi; \
+	done
+
+clean-extra: mostlyclean-extra
+	rm lib/*.com
+
+distclean: distclean-extra
+	@for SUBDIR in $(SUBDIRS); do \
+	    if test -e $${SUBDIR}/Makefile; then \
+		echo "making $@ in $${SUBDIR}"; \
+		( cd $${SUBDIR} && $(MAKE) $@ ); \
+	    fi; \
+	done
+
+distclean-extra: clean-extra
+	rm -rf runtime-check lib
+
+maintainer-clean: maintainer-clean-extra
 	@for SUBDIR in $(SCHEME_SUBDIRS); do \
 	    if test -e $${SUBDIR}/Makefile; then \
 		echo "making $@ in $${SUBDIR}"; \
@@ -59,4 +87,8 @@ maintainer-clean:
 	done
 	( cd microcode && ./Mclean.sh )
 
-.PHONY: all setup tags TAGS mostlyclean clean distclean maintainer-clean
+maintainer-clean-extra: distclean-extra
+
+.PHONY: all setup tags TAGS
+.PHONY: mostlyclean mostlyclean-extra clean clean-extra
+.PHONY: distclean distclean-extra maintainer-clean maintainer-clean-extra
