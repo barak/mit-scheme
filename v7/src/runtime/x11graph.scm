@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.1 1989/06/22 23:58:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.2 1989/06/23 21:35:19 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -113,8 +113,10 @@ MIT in each case. |#
 	   (set-mouse-shape ,x-window-set-mouse-shape)
 	   (starbase-filename ,x-window-starbase-filename)
 	   (unmap-window ,x-window-unmap))))
-  (add-event-receiver! event:before-exit x-close-all-displays)
-  unspecific)
+  (add-event-receiver! event:before-exit
+    (lambda ()
+      (if (implemented-primitive-procedure? x-close-all-displays)
+	  (x-close-all-displays))))  unspecific)
 
 (define x-graphics-device-type)
 
