@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/artutl.c,v 1.7 1992/01/15 02:23:59 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/artutl.c,v 1.8 1992/01/20 16:09:23 jinx Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -140,7 +140,7 @@ DEFUN (bignum_to_flonum, (bignum), fast SCHEME_OBJECT bignum)
 Boolean
 DEFUN (flonum_integer_p, (x), SCHEME_OBJECT x)
 {
-  extern double modf ();
+  extern double EXFUN (modf, (double, double *));
   double iptr;
   return ((modf ((FLONUM_TO_DOUBLE (x)), (&iptr))) == 0);
 }
@@ -148,14 +148,14 @@ DEFUN (flonum_integer_p, (x), SCHEME_OBJECT x)
 SCHEME_OBJECT
 DEFUN (flonum_floor, (x), SCHEME_OBJECT x)
 {
-  extern double floor ();
+  extern double EXFUN (floor, (double));
   return (double_to_flonum (floor (FLONUM_TO_DOUBLE (x))));
 }
 
 SCHEME_OBJECT
 DEFUN (flonum_ceiling, (x), SCHEME_OBJECT x)
 {
-  extern double ceil ();
+  extern double EXFUN (ceil, (double));
   return (double_to_flonum (ceil (FLONUM_TO_DOUBLE (x))));
 }
 
@@ -172,7 +172,7 @@ DEFUN (flonum_round,
 SCHEME_OBJECT
 DEFUN (flonum_normalize, (x), SCHEME_OBJECT x)
 {
-  extern double frexp ();
+  extern double EXFUN (frexp, (double, int *));
   int exponent;
   double significand = (frexp ((FLONUM_TO_DOUBLE (x)), (&exponent)));
   return (cons ((double_to_flonum (significand)),
@@ -182,7 +182,7 @@ DEFUN (flonum_normalize, (x), SCHEME_OBJECT x)
 SCHEME_OBJECT
 DEFUN (flonum_denormalize, (x, e), SCHEME_OBJECT x AND SCHEME_OBJECT e)
 {
-  extern double ldexp ();
+  extern double EXFUN (ldexp, (double, int));
   return (double_to_flonum (ldexp ((FLONUM_TO_DOUBLE (x)),
 				   ((int) (integer_to_long (e))))));
 }
@@ -283,7 +283,7 @@ DEFUN (integer_subtract_1, (n), SCHEME_OBJECT n)
 SCHEME_OBJECT
 DEFUN (integer_multiply, (n, m), SCHEME_OBJECT n AND SCHEME_OBJECT m)
 {
-  extern SCHEME_OBJECT Mul ();
+  extern SCHEME_OBJECT EXFUN (Mul, (SCHEME_OBJECT, SCHEME_OBJECT));
   fast SCHEME_OBJECT result;
   return
     ((FIXNUM_P (n))

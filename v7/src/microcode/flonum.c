@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.37 1992/01/15 02:22:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.38 1992/01/20 16:10:51 jinx Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -214,6 +214,7 @@ DEFINE_PRIMITIVE ("FLONUM?", Prim_flonum_p, 1, 1, 0)
 
 DEFINE_PRIMITIVE ("FLONUM-INTEGER?", Prim_flonum_integer_p, 1, 1, 0)
 {
+  extern Boolean EXFUN (flonum_integer_p, (SCHEME_OBJECT));
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, FLONUM_P);
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (flonum_integer_p (ARG_REF (1))));

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.c,v 9.31 1991/10/29 22:55:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.c,v 9.32 1992/01/20 16:06:21 jinx Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -112,7 +112,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-ARITY", Prim_primitive_procedure_arity, 1
   CHECK_ARG (1, PRIMITIVE_P);
   {
     fast SCHEME_OBJECT primitive = (ARG_REF (1));
-    extern long primitive_to_arity ();
+    extern long EXFUN (primitive_to_arity, (SCHEME_OBJECT));
     if ((PRIMITIVE_NUMBER (primitive)) >= (NUMBER_OF_PRIMITIVES ()))
       error_bad_range_arg (1);
     PRIMITIVE_RETURN (LONG_TO_FIXNUM (primitive_to_arity (primitive)));
@@ -129,7 +129,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-DOCUMENTATION", Prim_primitive_procedure_
     if ((PRIMITIVE_NUMBER (primitive)) >= (NUMBER_OF_PRIMITIVES ()))
       error_bad_range_arg (1);
     {
-      extern char * primitive_to_documentation ();
+      extern char * EXFUN (primitive_to_documentation, (SCHEME_OBJECT));
       fast char * answer = (primitive_to_documentation (primitive));
       PRIMITIVE_RETURN
 	((answer == ((char *) 0))
@@ -160,7 +160,7 @@ DEFINE_PRIMITIVE ("GET-PRIMITIVE-NAME", Prim_get_primitive_name, 1, 1,
       error_wrong_type_arg (1);
     {
       fast long number = (PRIMITIVE_NUMBER (primitive));
-      extern SCHEME_OBJECT primitive_name ();
+      extern SCHEME_OBJECT EXFUN (primitive_name, (int));
       if ((number < 0) || (number >= NUMBER_OF_PRIMITIVES()))
 	error_bad_range_arg (1);
       PRIMITIVE_RETURN (primitive_name (number));
@@ -178,7 +178,8 @@ whether the corresponding primitive is implemented or not.")
 {
   fast SCHEME_OBJECT name;
   fast SCHEME_OBJECT arity_arg;
-  extern SCHEME_OBJECT find_primitive ();
+  extern SCHEME_OBJECT EXFUN
+    (find_primitive, (SCHEME_OBJECT, Boolean, Boolean, int));
   Boolean intern_p, allow_p;
   long arity;
   PRIMITIVE_HEADER (2);
