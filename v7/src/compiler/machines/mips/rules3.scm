@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules3.scm,v 1.6 1991/07/25 02:46:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules3.scm,v 1.7 1991/07/25 08:43:10 cph Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.30 1991/05/07 13:45:31 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
@@ -254,6 +254,11 @@ MIT in each case. |#
   (generate/move-frame-up frame-size
     (lambda (reg)
       (add-immediate (* 4 offset) (standard-source! base) reg))))
+
+(define (generate/move-frame-up frame-size destination-generator)
+  (let ((temp (standard-temporary!)))
+    (LAP ,@(destination-generator temp)
+	 ,@(generate/move-frame-up* frame-size temp))))
 
 ;;; DYNAMIC-LINK instructions have a <frame-size>, <new frame end>,
 ;;; and <current dynamic link> as arguments.  They pop the stack by
@@ -270,19 +275,14 @@ MIT in each case. |#
   (if (and (zero? frame-size)
 	   (= source regnum:stack-pointer))
       (LAP)
-      (let ((env-reg (standard-move-to-temporary! source)))
+      (let ((env-reg (standard-move-to-temporary! source))
+	    (label (generate-label)))
 	(LAP (SLTU ,regnum:assembler-temp ,env-reg ,regnum:dynamic-link)
-	     (BNE 0 ,regnum:assembler-temp (@PCO 8))
-	     (NOP)			; +0: DELAY SLOT
-	     (ADD ,env-reg 0		; +4: Skipped instruction
-		  ,regnum:dynamic-link) 
-	     ,@(generate/move-frame-up*	; +8: here
-		frame-size env-reg)))))
-
-(define (generate/move-frame-up frame-size destination-generator)
-  (let ((temp (standard-temporary!)))
-    (LAP ,@(destination-generator temp)
-	 ,@(generate/move-frame-up* frame-size temp))))
+	     (BNE 0 ,regnum:assembler-temp (@PCR ,label))
+	     (NOP)
+	     (ADD ,env-reg 0 ,regnum:dynamic-link)
+	     (LABEL ,label)
+	     ,@(generate/move-frame-up* frame-size env-reg)))))
 
 (define (generate/move-frame-up* frame-size destination)
   ;; Destination is guaranteed to be a machine register number; that
@@ -297,46 +297,46 @@ MIT in each case. |#
 		   (ADDI ,destination ,destination -4)
 		   (SW ,temp (OFFSET 0 ,destination)))))
 	   (else
-	    (generate/move-frame-up** frame-size destination)))
+	    (let ((from (standard-temporary!))
+		  (temp1 (standard-temporary!))
+		  (temp2 (standard-temporary!)))
+	      (LAP ,@(add-immediate (* 4 frame-size) regnum:stack-pointer from)
+		   ,@(if (<= frame-size 3)
+			 ;; This code can handle any number > 1
+			 ;; (handled above), but we restrict it to 3
+			 ;; for space reasons.
+			 (let loop ((n frame-size))
+			   (case n
+			     ((0)
+			      (LAP))
+			     ((3)
+			      (let ((temp3 (standard-temporary!)))
+				(LAP (LW ,temp1 (OFFSET -4 ,from))
+				     (LW ,temp2 (OFFSET -8 ,from))
+				     (LW ,temp3 (OFFSET -12 ,from))
+				     (ADDI ,from ,from -12)
+				     (SW ,temp1 (OFFSET -4 ,destination))
+				     (SW ,temp2 (OFFSET -8 ,destination))
+				     (SW ,temp3 (OFFSET -12 ,destination))
+				     (ADDI ,destination ,destination -12))))
+			     (else
+			      (LAP (LW ,temp1 (OFFSET -4 ,from))
+				   (LW ,temp2 (OFFSET -8 ,from))
+				   (ADDI ,from ,from -8)
+				   (SW ,temp1 (OFFSET  -4 ,destination))
+				   (SW ,temp2 (OFFSET -8 ,destination))
+				   (ADDI ,destination ,destination -8)
+				   ,@(loop (- n 2))))))
+			 (let ((label (generate-label)))
+			   (LAP ,@(load-immediate frame-size temp2)
+				(LABEL ,label)
+				(LW ,temp1 (OFFSET -4 ,from))
+				(ADDI ,from ,from -4)
+				(ADDI ,temp2 ,temp2 -1)
+				(ADDI ,destination ,destination -4)
+				(BNE ,temp2 0 (@PCR ,label))
+				(SW ,temp1 (OFFSET 0 ,destination)))))))))
        (ADD ,regnum:stack-pointer 0 ,destination)))
-
-(define (generate/move-frame-up** frame-size dest)
-  (let ((from (standard-temporary!))
-	(temp1 (standard-temporary!))
-	(temp2 (standard-temporary!)))
-    (LAP ,@(add-immediate (* 4 frame-size) regnum:stack-pointer from)
-	 ,@(if (<= frame-size 3)
-	       ;; This code can handle any number > 1 (handled above),
-	       ;; but we restrict it to 3 for space reasons.
-	       (let loop ((n frame-size))
-		 (case n
-		   ((0)
-		    (LAP))
-		   ((3)
-		    (let ((temp3 (standard-temporary!)))
-		      (LAP (LW ,temp1 (OFFSET -4 ,from))
-			   (LW ,temp2 (OFFSET -8 ,from))
-			   (LW ,temp3 (OFFSET -12 ,from))
-			   (ADDI ,from ,from -12)
-			   (SW ,temp1 (OFFSET -4 ,dest))
-			   (SW ,temp2 (OFFSET -8 ,dest))
-			   (SW ,temp3 (OFFSET -12 ,dest))
-			   (ADDI ,dest ,dest -12))))
-		   (else
-		    (LAP (LW ,temp1 (OFFSET -4 ,from))
-			 (LW ,temp2 (OFFSET -8 ,from))
-			 (ADDI ,from ,from -8)
-			 (SW ,temp1 (OFFSET  -4 ,dest))
-			 (SW ,temp2 (OFFSET -8 ,dest))
-			 (ADDI ,dest ,dest -8)
-			 ,@(loop (- n 2))))))
-	       (LAP ,@(load-immediate frame-size temp2)
-		    (LW ,temp1 (OFFSET -4 ,from)) ; -20
-		    (ADDI ,from ,from -4)	 ; -16
-		    (ADDI ,temp2 ,temp2 -1)	 ; -12
-		    (ADDI ,dest ,dest -4)	 ; -8
-		    (BNE ,temp2 0 (@PCO -20))	 ; -4
-		    (SW ,temp1 (OFFSET 0 ,dest)))))))
 
 ;;;; External Labels
 
