@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile,v 1.21 1998/04/16 06:06:51 cph Exp $
+###     $Id: makefile,v 1.22 1998/04/18 05:36:15 cph Exp $
 ###
 ###     Copyright (c) 1992-98 Massachusetts Institute of Technology
 ###
@@ -57,12 +57,17 @@ USER_LIBS =
 ASFLAGS = /bt=nt /d1 /fpi /fp3 /mf /zq
 AS = wasm
 
+!IFDEF NODEBUG
+cflags = $(cflags) -Ox
+!ELSE
+cflags = $(cflags) -Zi -Od
+!ENDIF
 cflags = $(cflags) $(cvarsmt) /DMIT_SCHEME /DGUI=1 /I.
 
 all: scheme.exe bchschem.exe bintopsb.exe psbtobin.exe
 
 .c.obj:
-	$(cc) $(cflags) $(cdebug) -c $*.c
+	$(cc) $(cflags) -c $*.c
 
 .asm.obj:
 	$(AS) $(ASFLAGS) $*.asm
@@ -287,13 +292,14 @@ SCHEME_LIB = $(USER_LIBS) md5.lib blowfish.lib gdbm.lib
 scheme: scheme.exe
 
 scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) scheme32.obj ntgui.res
-	$(link) $(linkdebug) $(guiflags) -out:scheme.exe \
-	$(OBJECTS) $(SCHEME_OBJECTS) scheme32.obj $(guilibsmt) $(SCHEME_LIB) \
-	ntgui.res
+	$(link) $(linkdebug) $(guiflags) /base:0x4000000 /fixed /map \
+	-out:scheme.exe $(OBJECTS) $(SCHEME_OBJECTS) scheme32.obj \
+	$(guilibsmt) $(SCHEME_LIB) ntgui.res
 
 bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) scheme32.obj
-	$(link) $(linkdebug) $(guiflags) -out:bchschem.exe \
-	$(BCHOBJECTS) $(SCHEME_OBJECTS) scheme32.obj $(guilibsmt) $(SCHEME_LIB)
+	$(link) $(linkdebug) $(guiflags) /base:0x4000000 /fixed /map \
+	-out:bchschem.exe $(BCHOBJECTS) $(SCHEME_OBJECTS) scheme32.obj \
+	$(guilibsmt) $(SCHEME_LIB) ntgui.res
 
 scheme32.obj : scheme32.c ntscmlib.h
 
