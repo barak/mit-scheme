@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.1 1989/06/21 10:18:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.2 1989/06/23 04:34:49 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -219,7 +219,7 @@ x_default_attributes (display, resource_name, attributes)
   {
     char * font_name;
 
-    font_name = (XGetDefault (display, resource_name, "BodyFont"));
+    font_name = (XGetDefault (display, resource_name, "Font"));
     if (font_name == ((char *) 0))
       font_name = "9x15";
     (attributes -> font) = (XLoadQueryFont (display, font_name));
@@ -231,7 +231,7 @@ x_default_attributes (display, resource_name, attributes)
 
     s = (XGetDefault (display, resource_name, "BorderWidth"));
     (attributes -> border_width) = ((s == ((char *) 0)) ? 2 : (atoi (s)));
-    s = (XGetDefault (display, resource_name, "InternalBorderWidth"));
+    s = (XGetDefault (display, resource_name, "InternalBorder"));
     (attributes -> internal_border_width) =
       ((s == ((char *) 0)) ? 4 : (atoi (s)));
   }
@@ -244,11 +244,11 @@ x_default_attributes (display, resource_name, attributes)
     (attributes -> foreground_pixel) =
       (x_default_color (display, resource_name, "Foreground", black_pixel));
     (attributes -> border_pixel) =
-      (x_default_color (display, resource_name, "Border", black_pixel));
+      (x_default_color (display, resource_name, "BorderColor", black_pixel));
     (attributes -> cursor_pixel) =
-      (x_default_color (display, resource_name, "Cursor", black_pixel));
+      (x_default_color (display, resource_name, "CursorColor", black_pixel));
     (attributes -> mouse_pixel) =
-      (x_default_color (display, resource_name, "Mouse", black_pixel));
+      (x_default_color (display, resource_name, "pointerColor", black_pixel));
   }
   return;
 }
