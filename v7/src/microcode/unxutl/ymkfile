@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.68 1993/06/24 06:49:03 gjr Exp $
+$Id: ymkfile,v 1.69 1993/06/24 18:09:03 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -282,7 +282,7 @@ compinit.h : $(COMPILED_SOURCES) liarc.tch xmkfile
 	fgrep DECLARE_COMPILED_CODE liarc.tch $(COMPILED_SOURCES) | \
 	sed -e 's/.*:/  /' -e 's/)/);' > $@
 
-$(COMPILED_OBJECTS) : liarc.tch
+foo $(COMPILED_OBJECTS) : liarc.tch
 liarc.tch: liarc.h $(LIARC_HEAD_FILES)
 	@echo "#** Generating" $@ because of $?
 	rm -f $@
