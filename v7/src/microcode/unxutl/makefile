@@ -1,7 +1,7 @@
 #
 # Makefile for MIT CScheme microcode.
 #
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/makefile,v 1.16 1991/11/04 17:43:12 jinx Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/makefile,v 1.17 1992/03/17 21:58:14 cph Exp $
 #
 CPP = cc -E
 MAKE = make  # BSD doesn't have it as a default.
@@ -59,8 +59,8 @@ xmakefile: ymakefile ymake.script ymake.local cf.h s.h m.h
 	rm -f junk.c
 
 clean remove:
-	rm -f *.o *.touch xmakefile
-	rm -f scheme xscheme bchscheme scm6003 kitscheme scmLYN
+	rm -f *.o *.s *.touch xmakefile
+	rm -f scheme xscheme bchscheme bchdrn scm6003 kitscheme scmLYN
 	rm -f Findprim Bintopsb Psbtobin Breakup Wsize Ppband
 	rm -f hard-params limits.h float.h
 	rm -f usrdef.c bchdef.c usr6003.c usrkit.c usrLYN.c
