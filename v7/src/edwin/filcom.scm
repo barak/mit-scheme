@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.211 2000/04/10 04:03:37 cph Exp $
+;;; $Id: filcom.scm,v 1.212 2000/12/04 03:09:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -55,7 +55,13 @@ May create a window, or reuse one."
   "Find file FILENAME, select its buffer, kill previous buffer.
 If the current buffer now contains an empty file that you just visited
 \(presumably by mistake), use this command to visit the file you really want."
-  "FFind alternate file"
+  (lambda ()
+    (list
+     (prompt-for-existing-file
+      "Find alternate file"
+      (let ((pathname (buffer-pathname (selected-buffer))))
+	(and pathname
+	     (list pathname))))))
   (lambda (filename)
     (let ((buffer (selected-buffer)))
       (let ((do-it
