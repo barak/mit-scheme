@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.9 1989/08/17 16:02:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.10 1989/08/18 19:10:01 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -169,13 +169,7 @@ MIT in each case. |#
 	     (let ((scode
 		    (fasload/internal true-pathname
 				      load/suppress-loading-message?)))
-	       (if purify?
-		   (purify
-		    (or (and (comment? scode)
-			     (let ((text (comment-text scode)))
-			       (and (dbg-info-vector? text)
-				    (dbg-info-vector/purification-root text))))
-			scode)))
+	       (if purify? (purify (load/purification-root scode)))
 	       scode)
 	     (if (eq? environment default-object)
 		 (nearest-repl/environment)
@@ -191,6 +185,14 @@ MIT in each case. |#
 		  (lambda ()
 		    (write-stream (value-stream)
 				  (lambda (value) value false))))))))))
+
+(define (load/purification-root scode)
+  (or (and (comment? scode)
+	   (let ((text (comment-text scode)))
+	     (and (dbg-info-vector? text)
+		  (dbg-info-vector/purification-root text))))
+      scode))
+
 (define (read-stream port)
   (parse-objects port
 		 (current-parser-table)
