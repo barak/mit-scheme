@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme32.c,v 1.1 1993/07/27 20:53:58 gjr Exp $
+$Id: scheme32.c,v 1.2 1993/08/03 22:27:42 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -109,6 +109,8 @@ win32_flush_async_timer (void * state)
   struct win32_timer_closure_s * timer_closure
     = ((struct win32_timer_closure_s *) state);
   
+  if (timer_closure == ((struct win32_timer_closure_s *) NULL))
+    return;
   if (timer_closure->timer_id != 0)
     (void) timeKillEvent (timer_closure->timer_id);
   
