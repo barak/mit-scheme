@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.14 1995/04/17 18:48:35 adams Exp $
+$Id: cleanup.scm,v 1.15 1995/04/20 03:23:02 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -580,10 +580,13 @@ MIT in each case. |#
 	 (default))))
 
 (define (cleanup/rename renames token)
-  (let ((place (cleanup/env/lookup renames token)))
-    (if (not place)
-	token
-	(lookup/name place))))
+  (let loop ((bindings renames))
+    (cond ((not (pair? bindings))
+	   token)
+	  ((eq? token (cleanup/binding/name (car bindings)))
+	   (lookup/name (cleanup/binding/value (car bindings))))
+	  (else
+	   (loop (cdr bindings))))))
 
 (define (cleanup/renamings env names)
   (map (lambda (name)
