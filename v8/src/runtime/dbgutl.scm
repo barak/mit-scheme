@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/dbgutl.scm,v 14.15 1992/02/08 15:03:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/dbgutl.scm,v 14.16 1992/02/13 18:51:54 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -45,7 +45,7 @@ MIT in each case. |#
 	      (begin
 		(write-string "a " port)
 		(write-string (string-upcase rename) port)
-		(write-string " special form") port)
+		(write-string " special form" port))
 	      (begin
 		(write-string "the procedure: " port)
 		(write-dbg-upcase-name name port))))
