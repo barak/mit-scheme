@@ -7,4 +7,4 @@
 
 (sf (directory-read "$scheme/runtime/*.scm"))
 
-(sf (directory-read "$scheme/sf/*.scm"))
+(load "$scheme/sf/sfsf.scm" system-global-environment)
