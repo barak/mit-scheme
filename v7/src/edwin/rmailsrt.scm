@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsrt.scm,v 1.2 1991/08/13 02:31:22 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsrt.scm,v 1.3 1991/08/26 21:47:48 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -195,9 +195,9 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
     ;;
     ;; added [ ]+ to the regexp to handle date string put out
     ;; by hx.lcs.mit.edu (they use 2 spaces instead of 1)
-      (if (re-match-string-forward
+      (if (re-search-string-forward
 	   (re-compile-pattern
-	    ".*\\([0-9]+\\) \\([^ ,]+\\) \\([0-9]+\\)[ ]+\\([0-9:]+\\)" true)
+	    "\\([0-9]+\\) \\([^ ,]+\\) \\([0-9]+\\)[ ]+\\([0-9:]+\\)" true)
 	   true false date)
 	  (string-append
 	   ;; Year
@@ -236,23 +236,26 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 
 (define mail-strip-quoted-names
   (lambda (address)
+    (display address)
+    (newline)
     (let ((pos))
-      (if (re-match-string-forward (re-compile-pattern "\\`[ \t\n]*" true)
+      (if (re-search-string-forward (re-compile-pattern "\\`[ \t\n]*" true)
 				   true false address)
 	  (set! address (string-tail address (re-match-end-index 0))))
       ;; strip surrounding whitespace
-      (if (re-match-string-forward (re-compile-pattern "[ \t\n]*\\'" true)
+      (if (re-search-string-forward (re-compile-pattern "[ \t\n]*\\'" true)
 				   true false address)
 	  (set! address (string-head address (re-match-start-index 0))))
-     (let loop ()
+      (let loop ()
        (let ((the-pattern 
 	      (re-compile-pattern
 	       "[ \t]*(\\([^)\"\\]\\|\\\\.\\|\\\\\n\\)*)" true)))
-	 (set! pos (re-match-string-forward the-pattern true false address))
+	 (set! pos (re-search-string-forward the-pattern true false address))
 	 (if pos
 	     (begin
-	       (set! address (mail-string-address 
-			      address pos
+	       (set! address (mail-string-delete
+			      address 
+			      (re-match-start-index 0)
 			      (re-match-end-index 0)))
 	       (loop)))))
      ;; strip `quoted' names (This is supposed to hack `"Foo Bar" <bar@host>')
@@ -279,7 +282,7 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 	      (re-compile-pattern
 	       "\\(,\\|\\`\\)[^,]*<\\([^>,]*>\\)"
 	       true)))
-	 (set! pos (re-match-string-forward the-pattern true false address))
+	 (set! pos (re-search-string-forward the-pattern true false address))
 	 (if pos
 	     (let ((junk-beg (re-match-end-index 1))
 		   (junk-end (re-match-start-index 2))
