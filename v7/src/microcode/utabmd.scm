@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: utabmd.scm,v 9.78 2001/03/08 17:15:49 cph Exp $
+;;; $Id: utabmd.scm,v 9.79 2001/09/25 05:42:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1987-2001 Massachusetts Institute of Technology
 ;;;
@@ -16,8 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-;;;
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Machine Dependent Type Tables
 
@@ -579,114 +579,13 @@
 
 (vector-set! (get-fixed-objects-vector)
 	     #x09 ;(fixed-objects-vector-slot 'SYSTEM-CALL-NAMES)
-	     (let ((prim (ucode-primitive microcode-system-call-names 0)))
-	       (if (implemented-primitive-procedure? prim)
-		   (prim)
-		   ;; For compatibility with older microcodes:
-		   '#(ACCEPT
-		      BIND
-		      CHDIR
-		      CHMOD
-		      CLOSE
-		      CONNECT
-		      FCNTL-GETFL
-		      FCNTL-SETFL
-		      FORK
-		      FSTAT
-		      FTRUNCATE
-		      GETCWD
-		      GETHOSTNAME
-		      GETTIMEOFDAY
-		      IOCTL-TIOCGPGRP
-		      IOCTL-TIOCSIGSEND
-		      KILL
-		      LINK
-		      LISTEN
-		      LOCALTIME
-		      LSEEK
-		      MALLOC
-		      MKDIR
-		      OPEN
-		      OPENDIR
-		      PAUSE
-		      PIPE
-		      READ
-		      READLINK
-		      REALLOC
-		      RENAME
-		      RMDIR
-		      SELECT
-		      SETITIMER
-		      SETPGID
-		      SIGHOLD
-		      SIGPROCMASK
-		      SIGSUSPEND
-		      SLEEP
-		      SOCKET
-		      SYMLINK
-		      TCDRAIN
-		      TCFLUSH
-		      TCGETPGRP
-		      TCSETPGRP
-		      TERMINAL-GET-STATE
-		      TERMINAL-SET-STATE
-		      TIME
-		      TIMES
-		      UNLINK
-		      UTIME
-		      VFORK
-		      WRITE
-		      STAT
-		      LSTAT
-		      MKTIME
-		      DYNAMIC-LOAD))))
-
+	     ((ucode-primitive microcode-system-call-names 0)))
+
 ;;; [] System-call errors
 
 (vector-set! (get-fixed-objects-vector)
 	     #x0A ;(fixed-objects-vector-slot 'SYSTEM-CALL-ERRORS)
-	     (let ((prim (ucode-primitive microcode-system-error-names 0)))
-	       (if (implemented-primitive-procedure? prim)
-		   (prim)
-		   ;; For compatibility with older microcodes:
-		   '#(UNKNOWN
-		      ARG-LIST-TOO-LONG
-		      BAD-ADDRESS
-		      BAD-FILE-DESCRIPTOR
-		      BROKEN-PIPE
-		      DIRECTORY-NOT-EMPTY
-		      DOMAIN-ERROR
-		      EXEC-FORMAT-ERROR
-		      FILE-EXISTS
-		      FILE-TOO-LARGE
-		      FILENAME-TOO-LONG
-		      FUNCTION-NOT-IMPLEMENTED
-		      IMPROPER-LINK
-		      INAPPROPRIATE-IO-CONTROL-OPERATION
-		      INTERRUPTED-FUNCTION-CALL
-		      INVALID-ARGUMENT
-		      INVALID-SEEK
-		      IO-ERROR
-		      IS-A-DIRECTORY
-		      NO-CHILD-PROCESSES
-		      NO-LOCKS-AVAILABLE
-		      NO-SPACE-LEFT-ON-DEVICE
-		      NO-SUCH-DEVICE
-		      NO-SUCH-DEVICE-OR-ADDRESS
-		      NO-SUCH-FILE-OR-DIRECTORY
-		      NO-SUCH-PROCESS
-		      NOT-A-DIRECTORY
-		      NOT-ENOUGH-SPACE
-		      OPERATION-NOT-PERMITTED
-		      PERMISSION-DENIED
-		      READ-ONLY-FILE-SYSTEM
-		      RESOURCE-BUSY
-		      RESOURCE-DEADLOCK-AVOIDED
-		      RESOURCE-TEMPORARILY-UNAVAILABLE
-		      RESULT-TOO-LARGE
-		      TOO-MANY-LINKS
-		      TOO-MANY-OPEN-FILES
-		      TOO-MANY-OPEN-FILES))))
+	     ((ucode-primitive microcode-system-error-names 0)))
 
 ;;; [] Identification
 
@@ -707,4 +606,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Id: utabmd.scm,v 9.78 2001/03/08 17:15:49 cph Exp $"
+"$Id: utabmd.scm,v 9.79 2001/09/25 05:42:04 cph Exp $"
