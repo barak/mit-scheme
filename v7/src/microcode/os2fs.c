@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2fs.c,v 1.8 1996/02/24 13:25:16 cph Exp $
+$Id: os2fs.c,v 1.9 1998/03/29 08:34:32 cph Exp $
 
-Copyright (c) 1994-96 Massachusetts Institute of Technology
+Copyright (c) 1994-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -351,10 +351,23 @@ OS_directory_open (const char * search_pattern)
   }
   (s -> handle) = HDIR_CREATE;
   (s -> count) = 1;
-  STD_API_CALL
-    (dos_find_first,
-     (pattern, (& (s -> handle)), FILE_ANY, (& (s -> info)),
-      (sizeof (s -> info)), (& (s -> count)), FIL_STANDARD));
+  while (1)
+    {
+      APIRET rc
+	= (dos_find_first
+	   (pattern, (& (s -> handle)), FILE_ANY, (& (s -> info)),
+	    (sizeof (s -> info)), (& (s -> count)), FIL_STANDARD));
+      if (rc == NO_ERROR)
+	break;
+      if (rc == ERROR_NO_MORE_FILES)
+	{
+	  (s -> handle) = HDIR_CREATE;
+	  (s -> count) = 0;
+	  break;
+	}
+      if (rc != ERROR_INTERRUPT)
+	OS2_error_system_call (rc, syscall_dos_find_first);
+    }
   transaction_commit ();
   return (index);
 }
@@ -410,7 +423,8 @@ void
 OS_directory_close (unsigned int index)
 {
   dir_search_state * s = (REFERENCE_DIR_SEARCH_STATE (index));
-  STD_API_CALL (dos_find_close, (s -> handle));
+  if ((s -> handle) != HDIR_CREATE)
+    STD_API_CALL (dos_find_close, (s -> handle));
   DEALLOCATE_DIR_SEARCH_STATE (s);
 }
 
