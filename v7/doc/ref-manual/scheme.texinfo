@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.19 1993/09/24 20:06:54 adams Exp $
+@comment $Id: scheme.texinfo,v 1.20 1993/09/30 22:42:06 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -6787,6 +6787,7 @@ are reduced in a left-associative fashion.  For example:
 (reduce + 0 '(1 2))                     @result{}  3
 (reduce + 0 '(1))                       @result{}  1
 (reduce + 0 '())                        @result{}  0
+(reduce + 0 '(foo))                     @result{}  foo
 (reduce list '() '(1 2 3 4))            @result{}  (((1 2) 3) 4)
 @end group
 @end example
@@ -6799,6 +6800,57 @@ Like @code{reduce} except that it is right-associative.
 (reduce-right list '() '(1 2 3 4))      @result{}  (1 (2 (3 4)))
 @end example
 @end deffn
+
+@deffn {procedure+} fold-right procedure initial list
+Combines all of the elements of @var{list} using the binary operations
+@var{procedure}.  Unlike @code{reduce} and @code{reduce-right},
+@var{initial} is always used:
+
+@example
+(fold-right + 0 '(1 2 3 4))             @result{}  10
+(fold-right + 0 '(foo))                 @error{} Illegal datum
+(fold-right list '() '(1 2 3 4))        @result{}  (1 (2 (3 (4 ()))))
+@end example
+
+@code{Fold-right} has interesting properties because it establishes a
+homomorphism between (@code{cons},@code{()}) and
+(@var{procedure},@var{initial}).  It can be thought of as replacing the
+pairs in the spine of the list with @var{procedure} and replacing the
+@code{()} at the end with @var{initial}.  Many the classical list
+processing procedures can be expressed in terms of @code{fold-right}, at
+least for the simple versions that take a fixed number of arguments.
+
+@example
+(define (copy-list list) (fold-right cons '() list))
+
+(define (append list1 list2) (fold-right cons list2 list1))
+
+(define (map p list) 
+  (fold-right (lambda (x r) (cons (p x) r)) '() list))
+
+(define (reverse items)
+  (fold-right (lambda (x r) (append r (list x))) '() items))
+@end example
+@end defn
+
+@deffn {procedure+} fold-left procedure initial list
+Combines all the elements of @var{list} using the binary procedure
+@var{procedure}.  Elements are combined starting with @var{initial} and
+then the elements of @var{list} from left to right.  Whereas
+@code{fold-right} is recursive in nature, capturing the essence of
+@code{car}-ing down a list and then computing a result, @var{fold-left}
+is iterative in nature, combining the elements as the list is traversed.
+
+@example
+(fold-left list '() '(1 2 3 4))         @result{}  ((((() 1) 2) 3) 4)
+
+(define (length list) (fold-left 1+ 0 list))
+
+(define (reverse items)
+  (fold-left (lambda (x y) (cons y x)) () items))
+@end example
+@end defn
+
 
 @deffn {procedure+} there-exists? list predicate
 @var{Predicate} must be a procedure of one argument.  Applies
