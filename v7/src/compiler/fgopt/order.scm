@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.9 1988/11/01 04:52:18 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.10 1988/12/12 21:51:58 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -36,28 +36,42 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package (subproblem-ordering)
+(define (subproblem-ordering parallels)
+  (for-each
+   (lambda (parallel)
+     (let ((previous-edges (node-previous-edges parallel))
+	   (next-edge (snode-next-edge parallel)))
+       (let ((rest
+	      (or (edge-next-node next-edge)
+		  (error "PARALLEL node missing next" parallel))))
+	 (edges-disconnect-right! previous-edges)
+	 (edge-disconnect! next-edge)
+	 (edges-connect-right!
+	  previous-edges
+	  (order-subproblems/application (parallel-application-node parallel)
+					 (parallel-subproblems parallel)
+					 rest)))))
+   parallels))
 
-(define-export (subproblem-ordering parallels)
-  (for-each (lambda (parallel)
-	      (let ((previous-edges (node-previous-edges parallel))
-		    (next-edge (snode-next-edge parallel)))
-		(let ((rest
-		       (or (edge-next-node next-edge)
-			   (error "PARALLEL node missing next" parallel))))
-		  (edges-disconnect-right! previous-edges)
-		  (edge-disconnect! next-edge)
-		  (edges-connect-right!
-		   previous-edges
-		   (parallel-replacement-node parallel rest)))))
-	    parallels))
+(define (order-subproblems/application application subproblems rest)
+  (case (application-type application)
+    ((COMBINATION)
+     ((if (combination/inline? application)
+	  order-subproblems/inline
+	  order-subproblems/out-of-line)
+      application subproblems rest))
+    ((RETURN)
+     (linearize-subproblems! continuation-type/effect subproblems rest))
+    (else
+     (error "Unknown application type" application))))
 
-(define (parallel-replacement-node parallel rest)
-  (transmit-values
-      (order-subproblems/application (parallel-application-node parallel)
-				     (parallel-subproblems parallel))
-    (lambda (subproblems suffix)
-      (linearize-subproblems subproblems (scfg*node->node! suffix rest)))))
+(define (linearize-subproblems! continuation-type subproblems rest)
+  (set-subproblem-types! subproblems continuation-type)
+  (linearize-subproblems subproblems rest))
+
+(define (linearize-subproblem! continuation-type subproblem rest)
+  (set-subproblem-type! subproblem continuation-type)
+  (linearize-subproblem subproblem rest))
 
 (define (linearize-subproblems subproblems rest)
   (let loop ((subproblems subproblems))
@@ -87,168 +101,198 @@ MIT in each case. |#
 	  (if (eq? continuation-type/effect
 		   (virtual-continuation/type continuation))
 	      (make-null-cfg)
-	      (make-virtual-return (virtual-continuation/block continuation)
+	      (make-virtual-return (virtual-continuation/context continuation)
 				   continuation
 				   (subproblem-rvalue subproblem)))
 	  rest)))))
 
-(define (order-subproblems/application application subproblems)
-  (case (application-type application)
-    ((COMBINATION)
-     (if (combination/inline? application)
-	 (order-subproblems/combination/inline application subproblems)
-	 (return-2 (order-subproblems/combination/out-of-line application
-							      subproblems)
-		   (make-null-cfg))))
-    ((RETURN)
-     (set-subproblem-types! subproblems continuation-type/effect)
-     (return-2 subproblems (make-null-cfg)))
-    (else
-     (error "Unknown application type" application))))
-
-(define (order-subproblems/combination/inline combination subproblems)
-  (let ((inliner (combination/inliner combination)))
-    (let ((operands
+(define (order-subproblems/inline combination subproblems rest)
+  (let ((inliner (combination/inliner combination))
+	(context (combination/context combination)))
+    (let ((operator (car subproblems))
+	  (operands
 	   (list-filter-indices (cdr subproblems) (inliner/operands inliner))))
       (set-inliner/operands! inliner operands)
-      (order-subproblems/inline (car subproblems) operands))))
+      (linearize-subproblem!
+       continuation-type/effect
+       operator
+       (with-values
+	   (lambda ()
+	     (discriminate-items operands subproblem-simple?))
+	 (lambda (simple complex)
+	   (if (null? complex)
+	       (begin
+		 (inline-subproblem-types! context
+					   simple
+					   continuation-type/register)
+		 (linearize-subproblems simple rest))
+	       (let ((push-set (cdr complex))
+		     (value-set (cons (car complex) simple)))
+		 (inline-subproblem-types! context
+					   push-set
+					   continuation-type/push)
+		 (inline-subproblem-types! context
+					   value-set
+					   continuation-type/register)
+		 (linearize-subproblems
+		  push-set
+		  (linearize-subproblems
+		   value-set
+		   (scfg*node->node!
+		    (scfg*->scfg!
+		     (reverse!
+		      (map (lambda (subproblem)
+			     (let ((continuation
+				    (subproblem-continuation subproblem)))
+			       (if (eq? (continuation*/type continuation)
+					continuation-type/effect)
+				   (make-null-cfg)
+				   (make-pop continuation))))
+			   push-set)))
+		    rest)))))))))))
 
-(define (order-subproblems/inline operator operands)
-  (set-subproblem-type! operator continuation-type/effect)
-  (transmit-values (discriminate-items operands subproblem-simple?)
-    (lambda (simple complex)
-      (if (null? complex)
+(define (inline-subproblem-types! context subproblems continuation-type)
+  (for-each
+   (lambda (subproblem)
+     (set-subproblem-type!
+      subproblem
+      (if (let ((rvalue (subproblem-rvalue subproblem)))
+	    (or (rvalue-known-constant? rvalue)
+		(and (rvalue/reference? rvalue)
+		     (not (variable/value-variable? (reference-lvalue rvalue)))
+		     (reference-to-known-location? rvalue))))
 	  (begin
-	    (inline-subproblem-types! simple continuation-type/register)
-	    (return-2 (cons operator operands) (make-null-cfg)))
-	  (let ((push-set (cdr complex))
-		(value-set (cons (car complex) simple)))
-	    (inline-subproblem-types! push-set continuation-type/push)
-	    (inline-subproblem-types! value-set continuation-type/register)
-	    (return-2 (cons operator (append! push-set value-set))
-		      (scfg*->scfg!
-		       (reverse!
-			(map (lambda (subproblem)
-			       (make-pop (subproblem-continuation subproblem)))
-			     push-set)))))))))
-
-(define (inline-subproblem-types! subproblems continuation-type)
-  (for-each (lambda (subproblem)
-	      (set-subproblem-type!
-	       subproblem
-	       (if (let ((rvalue (subproblem-rvalue subproblem)))
-		     (or (rvalue-known-constant? rvalue)
-			 (and (rvalue/reference? rvalue)
-			      (not (variable/value-variable?
-				    (reference-lvalue rvalue)))
-			      (reference-to-known-location? rvalue))))
-		   continuation-type/effect
-		   continuation-type)))
-	    subproblems))
+	    (update-subproblem-contexts! context subproblem)
+	    continuation-type/effect)
+	  continuation-type)))
+   subproblems))
 
-(define (order-subproblems/combination/out-of-line combination subproblems)
-  (let ((subproblems
-	 (order-subproblems/out-of-line
-	  (combination/block combination)
-	  (car subproblems)
-	  (cdr subproblems)
-	  (or (rvalue-known-value (combination/operator combination))
-	      (combination/model combination)))))
-    (set-combination/frame-size!
-     combination
-     (let loop ((subproblems subproblems) (accumulator 0))
-       (if (null? subproblems)
-	   accumulator
-	   (loop (cdr subproblems)
-		 (if (eq? (subproblem-type (car subproblems))
-			  continuation-type/push)
-		     (1+ accumulator)
-		     accumulator)))))
-    subproblems))
+(define (order-subproblems/out-of-line combination subproblems rest)
+  (with-values
+      (combination-ordering
+       (combination/context combination)
+       (car subproblems)
+       (cdr subproblems)
+       (combination/model combination))
+    (lambda (effect-subproblems non-effect-subproblems)
+      (set-combination/frame-size! combination (length non-effect-subproblems))
+      (linearize-subproblems!
+       continuation-type/effect
+       effect-subproblems
+       (order-subproblems/maybe-overwrite-block
+	combination non-effect-subproblems rest
+	(lambda ()
+	  (linearize-subproblems! continuation-type/push
+				  non-effect-subproblems
+				  rest)))))))
 
-(define (order-subproblems/out-of-line block operator operands model)
-  (set-subproblem-type! operator (operator-type (subproblem-rvalue operator)))
-  (if (and model (rvalue/procedure? model))
-      (let ((rest
-	     (cond ((not (stack-block? (procedure-block model)))
-		    (standard-combination-ordering operator operands))
-		   ((procedure-always-known-operator? model)
-		    ;; At this point, the following should be true.
-		    ;; (procedure-interface-optimizible? model)
-		    (optimized-combination-ordering block
-						    operator
-						    operands
-						    model))
-		   (else
-		    (known-combination-ordering block operator
-						operands model)))))
-	(if (procedure/open? model)
-	    (generate/static-link block model rest)
-	    rest))
-      (standard-combination-ordering operator operands)))
+(define (combination-ordering context operator operands model)
+  (let ((standard
+	 (lambda ()
+	   (handle-operator context
+			    operator
+			    (operator-needed? (subproblem-rvalue operator))
+			    '()
+			    (reverse operands))))
+	(optimized
+	 (lambda ()
+	   (optimized-combination-ordering context operator operands model)))
+	(known
+	 (lambda ()
+	   (known-combination-ordering context operator operands model))))
+    (if (and model (rvalue/procedure? model))
+	(let ((model-block (procedure-block model)))
+	  (if (not (stack-block? model-block))
+	      standard
+	      (let ((thunk
+		     (cond
+
+		      ;; At this point, the following should be true.
+		      ;; (procedure-interface-optimizible? model)
+		      ((procedure-always-known-operator? model) optimized)
+
+		      ;; The behavior of known lexpr closures should
+		      ;; be improved at least when the listification
+		      ;; is trivial (0 or 1 args).
+		      ((procedure-rest model) standard)
+
+		      (else known))))
+		(if (and (procedure/open? model)
+			 (stack-block/static-link? model-block))
+		    (lambda ()
+		      (with-values thunk
+			(lambda (effect-subproblems non-effect-subproblems)
+			  (values
+			   effect-subproblems
+			   (cons (new-subproblem context
+						 (block-parent model-block))
+				 non-effect-subproblems)))))
+		    thunk))))
+	standard)))
 
-(define (optimized-combination-ordering block operator operands callee)
-  (transmit-values (sort-subproblems/out-of-line operands callee)
-    (lambda (prefix integrated non-integrated)
-      (set-subproblem-types! integrated continuation-type/effect)
-      (set-subproblem-types! non-integrated continuation-type/push)
-      (push-unassigned block
-		       prefix
-		       (append! integrated non-integrated (list operator))))))
+(define (optimized-combination-ordering context operator operands callee)
+  (with-values
+      (lambda ()
+	(sort-subproblems/out-of-line operands callee))
+    (lambda (n-unassigned integrated non-integrated)
+      (handle-operator
+       context
+       operator
+       (operator-needed? (subproblem-rvalue operator))
+       integrated
+       (make-unassigned-subproblems context n-unassigned non-integrated)))))
 
-(define (standard-combination-ordering operator operands)
-  (set-subproblem-types! operands continuation-type/push)
-  (reverse (cons operator operands)))
-
-(define (known-combination-ordering block operator operands procedure)
+(define (known-combination-ordering context operator operands procedure)
   (if (and (not (procedure/closure? procedure))
 	   (not (procedure-virtual-closure? procedure)))
       (error "known-combination-ordering: known non-closure" procedure))
-  ;; The behavior of known lexpr closures should be improved
-  ;; at least when the listification is trivial (0 or 1 args).
-  (if (procedure-rest procedure)
-      (standard-combination-ordering operator operands)
+  (handle-operator
+   context
+   operator
+   (or (not (rvalue-known-value (subproblem-rvalue operator)))
+       (and (procedure/closure? procedure)
+	    (closure-procedure-needs-operator? procedure)))
+   '()
+   (make-unassigned-subproblems
+    context
+    (let ((n-supplied (length operands))
+	  (n-required
+	   (length (cdr (procedure-original-required procedure))))
+	  (n-optional (length (procedure-original-optional procedure))))
+      (let ((n-expected (+ n-required n-optional)))
+	(if (or (< n-supplied n-required) (> n-supplied n-expected))
+	    (error
+	     "known-combination-ordering: wrong number of arguments"
+	     procedure n-supplied n-expected))
+	(- n-expected n-supplied)))
+    (reverse operands))))
+
+(define (handle-operator context operator operator-needed? effect non-effect)
+  (if operator-needed?
+      (values effect (append! non-effect (list operator)))
       (begin
-	(set-subproblem-types! operands continuation-type/push)
-	(set-subproblem-type!
-	 operator
-	 (if (or (not (rvalue-known-value (subproblem-rvalue operator)))
-		 (and (procedure/closure? procedure)
-		      (closure-procedure-needs-operator? procedure)))
-	     continuation-type/push
-	     continuation-type/effect))
-	(push-unassigned block
-			 (known-combination/number-of-unassigned operands
-								 procedure)
-			 (reverse (cons operator operands))))))
+	(update-subproblem-contexts! context operator)
+	(values (cons operator effect) non-effect))))
 
-(define (known-combination/number-of-unassigned operands procedure)
-  (let ((n-supplied (length operands))
-	(n-required (length (cdr (procedure-original-required procedure))))
-	(n-optional (length (procedure-original-optional procedure))))
-    (let ((n-expected (+ n-required n-optional)))
-      (if (or (< n-supplied n-required) (> n-supplied n-expected))
-	  (error "known-combination-ordering: wrong number of arguments"
-		 procedure n-supplied n-expected))
-      (- n-expected n-supplied))))
-
-(define (generate/static-link block procedure rest)
-  (if (stack-block/static-link? (procedure-block procedure))
-      (cons (make-push block (block-parent (procedure-block procedure))) rest)
-      rest))
-
-(define (push-unassigned block n rest)
+(define (make-unassigned-subproblems context n rest)
   (let ((unassigned (make-constant (make-unassigned-reference-trap))))
     (let loop ((n n) (rest rest))
       (if (zero? n)
 	  rest
 	  (loop (-1+ n)
-		(cons (make-push block unassigned) rest))))))
+		(cons (new-subproblem context unassigned) rest))))))
 
-(define (make-push block rvalue)
-  (make-subproblem (make-null-cfg)
-		   (virtual-continuation/make block continuation-type/push)
-		   rvalue))
+(define (new-subproblem context rvalue)
+  (let ((subproblem
+	 (make-subproblem
+	  (make-null-cfg)
+	  (virtual-continuation/make
+	   (make-reference-context (reference-context/block context))
+	   continuation-type/value)
+	  rvalue)))
+    (new-subproblem/compute-simplicity! subproblem)
+    (new-subproblem/compute-free-variables! subproblem)
+    subproblem))
 
 (define (set-subproblem-types! subproblems type)
   (for-each (lambda (subproblem)
@@ -256,11 +300,12 @@ MIT in each case. |#
 	    subproblems))
 
 (define (sort-subproblems/out-of-line all-subproblems callee)
-  (transmit-values
-      (sort-integrated (cdr (procedure-original-required callee))
-		       all-subproblems
-		       '()
-		       '())
+  (with-values
+      (lambda ()
+	(sort-integrated (cdr (procedure-original-required callee))
+			 all-subproblems
+			 '()
+			 '()))
     (lambda (required subproblems integrated non-integrated)
       (let ((unassigned-count 0))
 	(if (not (null? required))
@@ -274,46 +319,47 @@ MIT in each case. |#
 	      ;; required parameters, but they better not be integrated
 	      ;; if they are not always provided!
 	      (set! unassigned-count (length required))))
-	(transmit-values
-	 (sort-integrated (procedure-original-optional callee)
-			  subproblems
-			  integrated
-			  non-integrated)
-	 (lambda (optional subproblems integrated non-integrated)
-	   (let ((rest (procedure-original-rest callee)))
-	     (cond ((not (null? optional))
-		    (return-3 (if rest
-				  0	; unassigned-count might work too
-				  ;; In this case the caller will
-				  ;; make slots for the optionals.
-				  (+ unassigned-count (length optional)))
-			      integrated
-			      non-integrated))
-		   ((and (not (null? subproblems)) (not rest))
-		    (error "sort-subproblems/out-of-line: Too many arguments"
-			   callee all-subproblems)
-		    ;; This is a wrong number of arguments case, so
-		    ;; the code we generate will not be any good.
-		    ;; The extra arguments are dropped!
-		    ;; Note that in this case unassigned-count should be 0,
-		    ;; since we cannot have both too many and too few arguments
-		    ;; simultaneously.
-		    (return-3 unassigned-count
-			      integrated
-			      non-integrated))
-		   ((and rest (lvalue-integrated? rest))
-		    (return-3 unassigned-count
-			      (append! (reverse subproblems) integrated)
-			      non-integrated))
-		   (else
-		    (return-3 unassigned-count
-			      integrated
-			      (append! (reverse subproblems)
-				       non-integrated)))))))))))
+	(with-values
+	    (lambda ()
+	      (sort-integrated (procedure-original-optional callee)
+			       subproblems
+			       integrated
+			       non-integrated))
+	  (lambda (optional subproblems integrated non-integrated)
+	    (let ((rest (procedure-original-rest callee)))
+	      (cond ((not (null? optional))
+		     (values (if rest
+				 0	; unassigned-count might work too
+				 ;; In this case the caller will
+				 ;; make slots for the optionals.
+				 (+ unassigned-count (length optional)))
+			     integrated
+			     non-integrated))
+		    ((and (not (null? subproblems)) (not rest))
+		     (error "sort-subproblems/out-of-line: Too many arguments"
+			    callee all-subproblems)
+		     ;; This is a wrong number of arguments case, so
+		     ;; the code we generate will not be any good.
+		     ;; The extra arguments are dropped!  Note that in
+		     ;; this case unassigned-count should be 0, since
+		     ;; we cannot have both too many and too few
+		     ;; arguments simultaneously.
+		     (values unassigned-count
+			     integrated
+			     non-integrated))
+		    ((and rest (lvalue-integrated? rest))
+		     (values unassigned-count
+			     (append! (reverse subproblems) integrated)
+			     non-integrated))
+		    (else
+		     (values unassigned-count
+			     integrated
+			     (append! (reverse subproblems)
+				      non-integrated)))))))))))
 
 (define (sort-integrated lvalues subproblems integrated non-integrated)
   (cond ((or (null? lvalues) (null? subproblems))
-	 (return-4 lvalues subproblems integrated non-integrated))
+	 (values lvalues subproblems integrated non-integrated))
 	((lvalue-integrated? (car lvalues))
 	 (sort-integrated (cdr lvalues)
 			  (cdr subproblems)
@@ -325,31 +371,42 @@ MIT in each case. |#
 			  integrated
 			  (cons (car subproblems) non-integrated)))))
 
-(define (operator-type operator)
+(define (operator-needed? operator)
   (let ((callee (rvalue-known-value operator)))
     (cond ((not callee)
-	   (if (and (reference? operator)
-		    (not (reference-to-known-location? operator)))
-	       continuation-type/effect
-	       continuation-type/apply))
+	   (or (not (reference? operator))
+	       (reference-to-known-location? operator)))
 	  ((rvalue/constant? callee)
-	   (if (normal-primitive-procedure? (constant-value callee))
-	       continuation-type/effect
-	       continuation-type/apply))
+	   (not (normal-primitive-procedure? (constant-value callee))))
 	  ((rvalue/procedure? callee)
 	   (case (procedure/type callee)
-	     ((OPEN-EXTERNAL OPEN-INTERNAL) continuation-type/effect)
-	     ((CLOSURE)
-	      (if (and (procedure/trivial-closure? callee)
-		       (not (procedure-rest callee)))
-		  continuation-type/effect
-		  continuation-type/apply))
-	     ((IC) continuation-type/apply)
+	     ((OPEN-EXTERNAL OPEN-INTERNAL) false)
+	     ((TRIVIAL-CLOSURE) (procedure-rest callee))
+	     ((CLOSURE IC) true)
 	     (else (error "Unknown procedure type" callee))))
 	  (else
-	   continuation-type/apply))))
+	   true))))
 
-(define-integrable continuation-type/apply
-  continuation-type/push)
+(define (update-subproblem-contexts! context subproblem)
+  (if (not (subproblem-canonical? subproblem))
+      (update-rvalue-contexts! context (subproblem-rvalue subproblem))))
 
-)
+(define (update-rvalue-contexts! context rvalue)
+  (let ((check-old
+	 (lambda (context*)
+	   (if (not (eq? (reference-context/block context)
+			 (reference-context/block context*)))
+	       (error "mismatched reference contexts" context context*))
+	   (not (eq? context context*)))))
+    (enumeration-case rvalue-type (tagged-vector/index rvalue)
+      ((REFERENCE)
+       (if (check-old (reference-context rvalue))
+	   (set-reference-context! rvalue context)))
+      ((UNASSIGNED-TEST)
+       (if (check-old (unassigned-test-context rvalue))
+	   (set-unassigned-test-context! rvalue context)))
+      ((PROCEDURE)
+       (if (let ((context* (procedure-closure-context rvalue)))
+	     (and (reference-context? context*)
+		  (check-old context*)))
+	   (set-procedure-closure-context! rvalue context))))))
