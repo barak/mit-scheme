@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.2 2001/10/04 16:52:18 cph Exp $
+;;; $Id: load.scm,v 1.3 2001/11/05 20:19:05 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -20,6 +20,8 @@
 ;;; 02111-1307, USA.
 
 (load-option '*PARSER)
+(load-option 'REGULAR-EXPRESSION)
+(load-option 'SOS)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (package/system-loader "xml" '() 'QUERY)))
