@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: chrset.scm,v 14.9 2000/04/11 18:17:49 cph Exp $
+$Id: chrset.scm,v 14.10 2000/04/12 00:37:20 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -128,6 +128,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define char-set:newline)
 
 (define (initialize-package!)
+  (set! char-set:not-01 (ascii-range->char-set #x02 #x100))
   (set! char-set:upper-case (ascii-range->char-set #x41 #x5B))
   (set! char-set:lower-case (ascii-range->char-set #x61 #x7B))
   (set! char-set:numeric (ascii-range->char-set #x30 #x3A))
@@ -142,7 +143,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(char-set-union char-set:alphabetic char-set:numeric))
   (set! char-set:standard
 	(char-set-union char-set:graphic (char-set char:newline)))
-  (set! char-set:not-01 (ascii-range->char-set #x02 #x100))
   (set! char-set:newline (char-set char:newline))
   unspecific)
 
