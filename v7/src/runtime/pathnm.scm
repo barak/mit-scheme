@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.21 1992/08/12 08:50:05 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.22 1992/08/12 09:31:41 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -586,7 +586,7 @@ these rules:
     (make-host-type index name
 		    fail fail fail fail fail
 		    fail fail fail fail fail
-		    fail)))
+		    fail fail)))
 
 (define available-host-types
   '())
