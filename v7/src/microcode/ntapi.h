@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntapi.h,v 1.15 2003/02/14 18:28:20 cph Exp $
+$Id: ntapi.h,v 1.16 2003/07/12 03:22:08 cph Exp $
 
-Copyright (c) 1997, 1999, 2002 Massachusetts Institute of Technology
+Copyright 1997,1999,2000,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -84,11 +84,13 @@ enum syscall_names
   apicall_connect,
   apicall_gethostbyname,
   apicall_gethostname,
+  apicall_getsockopt,
   apicall_ioctlsocket,
   apicall_listen,
   apicall_recv,
   apicall_select,
   apicall_send,
+  apicall_setsockopt,
   apicall_socket,
 
   /* C Library's unix-style procedures: */
@@ -943,11 +945,13 @@ static char * syscall_names_table [] =
   "connect",
   "get-host-by-name",
   "get-host-name",
+  "get-socket-option",
   "ioctl-socket",
   "listen",
   "recv",
   "send",
   "select",
+  "set-socket-option",
   "socket",
 
   /* C Library's unix-style procedures: */
