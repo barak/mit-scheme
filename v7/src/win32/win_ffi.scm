@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: win_ffi.scm,v 1.11 2003/02/14 18:28:35 cph Exp $
+$Id: win_ffi.scm,v 1.12 2003/03/29 05:54:59 cph Exp $
 
-Copyright (c) 1993, 1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1993,1994,1998,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -107,17 +107,18 @@ USA.
 	    ((14) (call-case 14))
 	    ((15) (call-case 15))
 	    (else
-	     (lambda args
-	       (if (= (length args) arg-count)
-		   (result-type
-		    (apply %call-foreign-function
-			   (module-entry/machine-address module-entry)
-			   (map (lambda (f x) (f x)) arg-types args)))
-		   ((access error system-global-environment)
-                    "Wrong arg count for foreign function" 
-		    name
-		    (length args)
-		    (list 'requires arg-count))))))))
+	     (lambda (module-entry)
+	       (lambda args
+		 (if (= (length args) arg-count)
+		     (result-type
+		      (apply %call-foreign-function
+			     (module-entry/machine-address module-entry)
+			     (map (lambda (f x) (f x)) arg-types args)))
+		     ((access error system-global-environment)
+		      "Wrong arg count for foreign function" 
+		      name
+		      (length args)
+		      (list 'requires arg-count)))))))))
     (parameterize-with-module-entry procedure lib name)))
   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
