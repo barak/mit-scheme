@@ -1,6 +1,6 @@
 ;;; -*-Midas-*-
 ;;;
-;;;	$Id: doskbutl.asm,v 1.5 1992/09/06 16:24:10 jinx Exp $
+;;;	$Id: doskbutl.asm,v 1.6 1992/09/30 03:55:47 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -168,33 +168,20 @@ kbd_isr:
 	push	bx
 	and	bx,3fh			; Drop fncn
 
-	test	al,7h			; Ctrl or shift set?
-	jne	do_shifted
-	test	al,40h			; CAPS set?
-	jne	do_caps
-
-do_unshifted:
-	push	si
-	mov	si,word ptr cs:unshifted_table_offset
-	mov	bl,byte ptr cs:[bx+si]
-	pop	si
-	jmp	merge
-
-do_shifted:
 	push	si
 	mov	si,word ptr cs:shifted_table_offset
-	mov	bl,byte ptr cs:[bx+si]
-	pop	si
-	jmp	merge
+	test	al,7h			; Ctrl or shift set?
+	jne	do_fetch
 
-do_caps:
-	push	si
 	mov	si,word ptr cs:caps_table_offset
-	mov	bl,byte ptr cs:[bx+si]
-	pop	si
-;	jmp	merge
+	test	al,40h			; CAPS set?
+	jne	do_fetch
 
-merge:
+	mov	si,word ptr cs:unshifted_table_offset
+
+do_fetch:
+	mov	bl,byte ptr cs:[bx+si]	; Fetch translated byte.
+	pop	si
 	cmp	bl,0			; No translation?
 	je	abort_translation
 	; bt	al,2h			; Control set?
