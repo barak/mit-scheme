@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.11 1990/04/09 14:52:57 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.12 1990/04/09 15:10:07 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -355,7 +355,7 @@ typedef unsigned short format_word;
 
 #ifndef FLUSH_I_CACHE
 
-#define FLUSH_I_CACHE ()						\
+#define FLUSH_I_CACHE()							\
 do {									\
 } while (0)
 
