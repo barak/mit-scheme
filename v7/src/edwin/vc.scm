@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.65 2000/04/07 19:57:55 cph Exp $
+;;; $Id: vc.scm,v 1.66 2000/04/07 20:02:28 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -1058,7 +1058,7 @@ There is a special command, `*l', to mark all files currently locked.
     (let ((comment (buffer-string log-buffer))
 	  (parent-buffer (chase-parent-buffer log-buffer)))
       (comint-record-input vc-comment-ring comment)
-      (if (buffer-alive? log-buffer)
+      (if (buffer-alive? parent-buffer)
 	  (begin
 	    ;; Save any changes the user might have made while editing
 	    ;; the comment.
@@ -1079,13 +1079,14 @@ There is a special command, `*l', to mark all files currently locked.
 	  (if (ref-variable vc-delete-logbuf-window log-buffer)
 	      (kill-buffer log-buffer)
 	      (bury-buffer log-buffer)))
-      (let ((window (weak-car window)))
+      (let ((window (weak-car window))
+	    (buffer (weak-car buffer)))
 	(if (and window (window-live? window))
-	    (begin
-	      (select-window window)
-	      (let ((buffer (weak-car buffer)))
-		(if (and buffer (buffer-alive? buffer))
-		    (select-buffer-in-window buffer window #f))))))
+	    (select-window window))
+	(if (and buffer (buffer-alive? buffer))
+	    (if (and window (window-live? window))
+		(select-buffer-in-window buffer window #f)
+		(select-buffer buffer))))
       ;; Do the log operation.
       (finish-entry comment))
     (if after (after))))
