@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.34 1995/04/09 22:33:06 cph Exp $
+;;;	$Id: rmail.scm,v 1.35 1995/04/09 23:07:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -1362,7 +1362,7 @@ buffer visiting that file."
 		     (fetch-first-field "from" start (header-end start end)))
 		    "unknown")
 		" "
-		(unix/file-time->string (get-time))
+		(file-time->string (current-file-time))
 		"\n")
 	       start)))
 	  (append-to-file (buffer-region buffer) pathname false)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.21 1995/04/09 22:33:23 cph Exp $
+;;;	$Id: sendmail.scm,v 1.22 1995/04/09 23:06:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -123,9 +123,7 @@ variable is false, it is ignored."
 
 (define-variable sendmail-program
   "Filename of sendmail program."
-  (if (file-exists? "/usr/lib/sendmail")
-      "/usr/lib/sendmail"
-      "fakemail")
+  (os/sendmail-program)
   string?)
 
 (define-variable send-mail-procedure
@@ -550,7 +548,7 @@ Numeric argument means justify as well."
       (insert-string "From " end)
       (insert-string (current-user-name) end)
       (insert-string " " end)
-      (insert-string (unix/file-time->string (get-time)) end)
+      (insert-string (file-time->string (current-file-time)) end)
       (insert-newline end)
       (insert-region (buffer-start mail-buffer)
 		     (buffer-end mail-buffer)

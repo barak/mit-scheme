@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.21 1995/04/09 22:33:18 cph Exp $
+;;;	$Id: dos.scm,v 1.22 1995/04/09 23:06:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ;;;
@@ -407,8 +407,8 @@ Includes the new backup.  Must be > 0."
 (define (generate-dired-entry! file point)
   (define (file-attributes/ls-time-string attr)
     ;; Swap year around to the start
-    (let ((time-string ((ucode-primitive file-time->string 1)
-			(file-attributes/modification-time attr))))
+    (let ((time-string
+	   (file-time->string (file-attributes/modification-time attr))))
       (if (string? time-string)
 	  (or (let ((len (string-length time-string)))
 		(and (fix:> len 5) ;; Grap the space char as well
@@ -464,3 +464,6 @@ Includes the new backup.  Must be > 0."
 
 (define (os/set-file-modes-writable! pathname)
   (set-file-modes! pathname #o777))
+
+(define (os/sendmail-program)
+  "sendmail.exe")

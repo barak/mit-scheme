@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.7 1995/02/14 00:29:13 cph Exp $
+;;;	$Id: os2.scm,v 1.8 1995/04/09 23:06:25 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -334,6 +334,9 @@ Includes the new backup.  Must be > 0."
 
 (define (os/set-file-modes-writable! pathname)
   (set-file-modes! pathname (fix:andc (file-modes pathname) #x0001)))
+
+(define (os/sendmail-program)
+  "sendmail.exe")
 
 ;;;; Dired customization
 
@@ -370,13 +373,13 @@ Includes the new backup.  Must be > 0."
 		   (lambda (time)
 		     (let ((time (quotient time #x200000)))
 		       (+ (* (quotient time 16) 12) (remainder time 16))))))
-	      (let ((now (nmonths (os2/current-file-time))))
+	      (let ((now (nmonths (current-file-time))))
 		(lambda (entry)
 		  (insert-string
 		   (let ((name (car entry))
 			 (attr (cdr entry)))
 		     (let ((time (file-attributes/modification-time attr)))
-		       (let ((time-string (os2/file-time->string time)))
+		       (let ((time-string (file-time->string time)))
 			 (string-append
 			  (file-attributes/mode-string attr)
 			  " "

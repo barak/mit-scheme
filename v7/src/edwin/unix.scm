@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.45 1995/01/23 20:06:07 cph Exp $
+;;;	$Id: unix.scm,v 1.46 1995/04/09 23:06:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -682,3 +682,8 @@ Value is a list of strings."
 
 (define (os/set-file-modes-writable! pathname)
   (set-file-modes! pathname #o777))
+
+(define (os/sendmail-program)
+  (if (file-exists? "/usr/lib/sendmail")
+      "/usr/lib/sendmail"
+      "fakemail"))
