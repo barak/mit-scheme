@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.143 1991/04/23 06:22:52 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.144 1991/04/24 00:42:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -198,7 +198,7 @@ The buffer is guaranteed to be deselected at that time."
   (group-unclipped-region (buffer-group buffer)))
 
 (define-integrable (buffer-widen! buffer)
-  (group-un-clip! (buffer-group buffer)))
+  (group-widen! (buffer-group buffer)))
 
 (define-integrable (buffer-length buffer)
   (group-length (buffer-group buffer)))
