@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.62 1993/08/12 07:40:36 cph Exp $
+;;;	$Id: intmod.scm,v 1.63 1993/08/12 08:27:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -519,7 +519,13 @@ If this is an error, the debugger examines the error condition."
       (bind-condition-handler (list condition-type:error)
 	  evaluation-error-handler
 	(lambda ()
-	  (for-each (lambda (expression) (enqueue! queue expression))
+	  (for-each (let ((context
+			   (if (eq? (group-buffer (region-group region))
+				    buffer)
+			       'REPL-BUFFER
+			       'OTHER-BUFFER)))
+		      (lambda (expression)
+			(enqueue! queue (cons expression context))))
 		    (read-expressions-from-region region))))
       (if (not (queue-empty? queue))
 	  (end-input-wait port)))))
@@ -537,7 +543,7 @@ If this is an error, the debugger examines the error condition."
     (let ((end (buffer-end buffer)))
       (set-buffer-point! buffer end)
       (move-mark-to! (port/mark port) end))
-    (enqueue! (port/expression-queue port) expression)
+    (enqueue! (port/expression-queue port) (cons expression 'EXPRESSION))
     (end-input-wait port)))
 
 (define (inferior-repl-eval-ok? buffer)
@@ -599,6 +605,7 @@ If this is an error, the debugger examines the error condition."
 		    (make-ring (ref-variable comint-input-ring-size))
 		    (make-queue)
 		    false
+		    false
 		    (make-queue)
 		    '()
 		    (register-inferior-thread!
@@ -615,6 +622,7 @@ If this is an error, the debugger examines the error condition."
   (mark false read-only true)
   (input-ring false read-only true)
   (expression-queue false read-only true)
+  current-queue-element
   command-char
   (output-queue false read-only true)
   output-strings
@@ -634,6 +642,12 @@ If this is an error, the debugger examines the error condition."
 
 (define-integrable (port/expression-queue port)
   (interface-port-state/expression-queue (port/state port)))
+
+(define-integrable (port/current-queue-element port)
+  (interface-port-state/current-queue-element (port/state port)))
+
+(define-integrable (set-port/current-queue-element! port element)
+  (set-interface-port-state/current-queue-element! (port/state port) element))
 
 (define-integrable (port/command-char port)
   (interface-port-state/command-char (port/state port)))
@@ -752,17 +766,24 @@ If this is an error, the debugger examines the error condition."
 (define read-expression
   (let ((empty (cons '() '())))
     (lambda (port level)
-      (let ((mode (ref-mode-object inferior-repl))
-	    (ready?
-	     (lambda (port)
-	       (not (queue-empty? (port/expression-queue port))))))
-	(let loop ()
-	  (let ((expression (dequeue! (port/expression-queue port) empty)))
-	    (if (eq? expression empty)
-		(begin
-		  (wait-for-input port level mode ready?)
-		  (loop))
-		expression)))))))
+      (let ((queue (port/expression-queue port)))
+	(let ((mode (ref-mode-object inferior-repl))
+	      (ready? (lambda (port) (not (queue-empty? queue)))))
+	  (let loop ()
+	    (let ((element (dequeue! queue empty)))
+	      (if (eq? element empty)
+		  (begin
+		    (wait-for-input port level mode ready?)
+		    (loop))
+		  (begin
+		    (set-port/current-queue-element! port element)
+		    (car element))))))))))
+
+(define (operation/current-expression-context port expression)
+  (let ((element (port/current-queue-element port)))
+    (and (pair? element)
+	 (eq? (car element) expression)
+	 (cdr element))))
 
 ;;; Debugger
 
@@ -930,5 +951,6 @@ If this is an error, the debugger examines the error condition."
      (SET-DEFAULT-SYNTAX-TABLE ,operation/set-default-syntax-table)
      (PEEK-CHAR ,operation/peek-char)
      (READ-CHAR ,operation/read-char)
-     (READ ,operation/read))
+     (READ ,operation/read)
+     (CURRENT-EXPRESSION-CONTEXT ,operation/current-expression-context))
    false))
