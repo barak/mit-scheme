@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 4.45 1993/07/01 03:24:03 gjr Exp $
+$Id: rulfix.scm,v 4.46 1993/08/12 05:33:14 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -474,10 +474,15 @@ MIT in each case. |#
   fixnum-methods/2-args/register*constant
   (lambda (constant ovflw?)
     (let ((factor (abs constant)))
+      #|
       (or (integer-log-base-2? factor)
 	  (and (<= factor 64)
 	       (or (not ovflw?)
-		   (<= factor (expt 2 scheme-type-width)))))))
+		   (<= factor (expt 2 scheme-type-width)))))
+      |#
+      (or (not ovflw?)
+	  (<= factor 64)
+	  (integer-log-base-2? factor))))
 
   (lambda (tgt src constant overflow?)
     (guarantee-signed-fixnum constant)
