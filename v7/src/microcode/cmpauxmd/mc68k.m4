@@ -1,8 +1,8 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.21 1991/11/15 22:31:39 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.22 1992/02/11 22:19:55 cph Exp $
 ###
-###	Copyright (c) 1989-1991 Massachusetts Institute of Technology
+###	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ###
 ###	This material was developed by the Scheme project at the
 ###	Massachusetts Institute of Technology, Department of
@@ -416,19 +416,17 @@ define_debugging_label(shortcircuit_apply)
 	EXTRACT_TYPE_CODE((%sp),%d0)	# Get procedure type
 	mov.l	(%sp)+,%d1		# Get procedure
 	COMPARE_TYPE_CODE(%d0,tc_compiled_entry)
-	bne.b	shortcircuit_apply_2
-	and.l	rmask,%d1		# Extract entry point
-	mov.l	%d1,%a0
-	mov.b	-3(%a0),%d1		# Extract the frame size
-	ext.w	%d1
-	cmp.w	%d2,%d1			# Is the frame size right?
+	bne.b	shortcircuit_apply_1
+	mov.l	%d1,%d3			# Extract entry point
+	and.l	rmask,%d3
+	mov.l	%d3,%a0
+	mov.b	-3(%a0),%d3		# Extract the frame size
+	ext.w	%d3
+	cmp.w	%d2,%d3			# Is the frame size right?
 	bne.b	shortcircuit_apply_1
 	jmp	(%a0)			# Invoke
 
 define_debugging_label(shortcircuit_apply_1)
-	mov.l	-4(%sp),%d1		# Recover the type code
-					# Fall through
-define_debugging_label(shortcircuit_apply_2)
 	call_utility(apply)
 
 ### Optimized versions of shortcircuit_apply for 0-7 arguments.
@@ -439,17 +437,15 @@ define_debugging_label(shortcircuit_apply_size_$1)
 	EXTRACT_TYPE_CODE((%sp),%d0)	# Get procedure type
 	mov.l	(%sp)+,%d1		# Get procedure
 	COMPARE_TYPE_CODE(%d0,tc_compiled_entry)
-	bne.b	shortcircuit_apply_size_$1_2
-	and.l	rmask,%d1		# Extract entry point
-	mov.l	%d1,%a0
+	bne.b	shortcircuit_apply_size_$1_1
+	mov.l	%d1,%d3			# Extract entry point
+	and.l	rmask,%d3
+	mov.l	%d3,%a0
 	cmp.b	-3(%a0),&$1		# Is the frame size right?
 	bne.b	shortcircuit_apply_size_$1_1
 	jmp	(%a0)			# Invoke
 
 define_debugging_label(shortcircuit_apply_size_$1_1)
-	mov.l	-4(%sp),%d1		# Recover the type code
-					# Fall through
-define_debugging_label(shortcircuit_apply_size_$1_2)
 	movq	&$1,%d2			# initialize frame size
 	call_utility(apply)')
 
