@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 5.3 1987/01/12 17:20:13 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 5.4 1987/01/13 19:33:08 cph Exp $ */
 
 /* String primitives. */
 
@@ -255,15 +255,14 @@ Built_In_Primitive (Prim_Vector_8b_Find_Previous_Char, 4,
 Built_In_Primitive(Prim_Vector_8b_Find_Next_Char_Ci, 4,
 		   "VECTOR-8B-FIND-NEXT-CHAR-CI")
 {
-  char char1, char2;
+  char char1;
   vector_8b_substring_prefix ();
 
   scan = (string_pointer (Arg1, start));
-  char1 = Real_To_Upper (ascii);
+  char1 = (char_upcase (ascii));
   while (start < end)
     {
-      char2 = (*scan++);
-      if ((Real_To_Upper (char2)) == char1)
+      if ((char_upcase (*scan++)) == char1)
 	return (Make_Unsigned_Fixnum( start));
       start += 1;
     }
@@ -273,15 +272,14 @@ Built_In_Primitive(Prim_Vector_8b_Find_Next_Char_Ci, 4,
 Built_In_Primitive(Prim_Vector_8b_Find_Previous_Char_Ci, 4,
 		   "VECTOR-8B-FIND-PREVIOUS-CHAR-CI")
 {
-  char char1, char2;
+  char char1;
   vector_8b_substring_prefix ();
 
   scan = (string_pointer (Arg1, end));
-  char1 = Real_To_Upper (ascii);
+  char1 = (char_upcase (ascii));
   while (end-- > start)
     {
-      char2 = (*--scan);
-      if ((Real_To_Upper (char2)) == char1)
+      if ((char_upcase (*--scan)) == char1)
 	return (Make_Unsigned_Fixnum (end));
     }
   return (NIL);
@@ -381,7 +379,7 @@ Built_In_Primitive(Prim_Substring_Ci_Equal, 6, "SUBSTRING-CI=?")
   substring_equal_prefix ();
 
   while (length-- > 0)
-    if ((Real_To_Upper (*scan1++)) != (Real_To_Upper (*scan2++)))
+    if ((char_upcase (*scan1++)) != (char_upcase (*scan2++)))
       return (NIL);
   return (TRUTH);
 }
@@ -424,7 +422,7 @@ Built_In_Primitive(Prim_Substring_Upcase, 3, "SUBSTRING-UPCASE!")
   substring_modification_prefix ();
 
   while (length-- > 0)
-    *scan++ = (Real_To_Upper (*scan));
+    *scan++ = (char_upcase (*scan));
   return (NIL);
 }
 
@@ -433,7 +431,7 @@ Built_In_Primitive(Prim_Substring_Downcase, 3, "SUBSTRING-DOWNCASE!")
   substring_modification_prefix ();
 
   while (length-- > 0)
-    *scan++ = (Real_To_Lower (*scan));
+    *scan++ = (char_downcase (*scan));
   return (NIL);
 }
 
@@ -460,7 +458,7 @@ Built_In_Primitive (Prim_Substring_Match_Forward_Ci, 6,
   substring_match_prefix (start1, start2);
 
   while (unmatched-- > 0)
-    if ((Real_To_Upper (*scan1++)) != (Real_To_Upper (*scan2++)))
+    if ((char_upcase (*scan1++)) != (char_upcase (*scan2++)))
       return (Make_Unsigned_Fixnum (length - (unmatched + 1)));
   return (Make_Unsigned_Fixnum (length));
 }
@@ -482,7 +480,7 @@ Built_In_Primitive(Prim_Substring_Match_Backward_Ci, 6,
   substring_match_prefix (end1, end2);
 
   while (unmatched-- > 0)
-    if ((Real_To_Upper (*--scan1)) != (Real_To_Upper (*--scan2)))
+    if ((char_upcase (*--scan1)) != (char_upcase (*--scan2)))
       return (Make_Unsigned_Fixnum (length - (unmatched + 1)));
   return (Make_Unsigned_Fixnum (length));
 }

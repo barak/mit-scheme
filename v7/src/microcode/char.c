@@ -30,13 +30,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/char.c,v 5.2 1987/01/12 17:08:12 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/char.c,v 5.3 1987/01/13 19:33:40 cph Exp $ */
 
 /* Character primitives. */
 
 #include "scheme.h"
 #include "primitive.h"
 #include "character.h"
+#include <ctype.h>
 
 #define define_ascii_character_guarantee(procedure_name, wta, bra) \
 long								\
@@ -190,12 +191,28 @@ Built_In_Primitive (Prim_Integer_To_Char, 1, "INTEGER->CHAR")
 		       (guarantee_index_arg_1 (Arg1, MAX_EXTNDD_CHAR))));
 }
 
+long
+char_downcase (c)
+     long c;
+{
+  c = (char_to_long (c));
+  return ((isupper (c)) ? ((c - 'A') + 'a') : c);
+}
+
+long
+char_upcase (c)
+     long c;
+{
+  c = (char_to_long (c));
+  return ((islower (c)) ? ((c - 'a') + 'A') : c);
+}
+
 Built_In_Primitive (Prim_Char_Downcase, 1, "CHAR-DOWNCASE")
 {
   Primitive_1_Arg ();
 
   guarantee_character_arg_1 ();
-  return (make_char ((char_bits (Arg1)), (Real_To_Lower (char_code (Arg1)))));
+  return (make_char ((char_bits (Arg1)), (char_downcase (char_code (Arg1)))));
 }
 
 Built_In_Primitive (Prim_Char_Upcase, 1, "CHAR-UPCASE")
@@ -203,7 +220,7 @@ Built_In_Primitive (Prim_Char_Upcase, 1, "CHAR-UPCASE")
   Primitive_1_Arg ();
 
   guarantee_character_arg_1 ();
-  return (make_char ((char_bits (Arg1)), (Real_To_Upper (char_code (Arg1)))));
+  return (make_char ((char_bits (Arg1)), (char_upcase (char_code (Arg1)))));
 }
 
 Built_In_Primitive (Prim_Ascii_To_Char, 1, "ASCII->CHAR")
@@ -262,7 +279,7 @@ mit_ascii_to_ascii (mit_ascii)
     {
       if ((bucky_bits & CHAR_BITS_CONTROL) != 0)
 	{
-	  code = (Real_To_Upper (code) & (~ 0100));
+	  code = (char_upcase (code) & (~ 0100));
 	  if (!ascii_control_p (code))
 	    return (NOT_ASCII);
 	}
