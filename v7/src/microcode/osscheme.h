@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osscheme.h,v 1.5 1992/02/04 00:35:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osscheme.h,v 1.6 1992/02/04 00:48:55 jinx Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -35,6 +35,7 @@ MIT in each case. */
 #ifndef SCM_OSSCHEME_H
 #define SCM_OSSCHEME_H
 
+#include <stdio.h>
 #include "os.h"
 
 extern Tchannel EXFUN (arg_channel, (int arg_number));
