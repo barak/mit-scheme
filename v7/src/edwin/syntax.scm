@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: syntax.scm,v 1.84 1999/05/13 03:06:47 cph Exp $
+;;; $Id: syntax.scm,v 1.85 2000/02/25 14:21:11 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -32,6 +32,9 @@
 
 (define (group-syntax-table-entries group)
   (char-syntax-table/entries (group-syntax-table group)))
+
+(define (char-syntax char)
+  (char->syntax-code (ref-variable syntax-table) char))
 
 (define-command describe-syntax
   "Describe the syntax specifications in the syntax table.

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: comred.scm,v 1.114 1999/01/28 03:59:45 cph Exp $
+;;; $Id: comred.scm,v 1.115 2000/02/25 14:26:56 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -263,9 +263,11 @@
       (cond ((or *executing-keyboard-macro?* *command-argument*)
 	     (normal))
 	    ((and (char? *command-key*)
-		  (or (eq? command (ref-command-object self-insert-command))
-		      (and (eq? command (ref-command-object &auto-fill-space))
-			   (not (auto-fill-break? point)))
+		  (or (and (eq? command
+				(ref-command-object self-insert-command))
+			   (not (and (or (char=? #\space *command-key*)
+					 (char=? #\newline *command-key*))
+				     (auto-fill-break? point))))
 		      (command-argument-self-insert? command)))
 	     (let ((non-undo-count *non-undo-count*))
 	       (if (or (fix:= non-undo-count 0)

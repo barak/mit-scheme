@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: basic.scm,v 1.133 2000/02/25 14:20:56 cph Exp $
+;;; $Id: basic.scm,v 1.134 2000/02/25 14:23:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -41,7 +41,8 @@ Whichever character you type to run this command is inserted."
 		 (eqv? #\w (char-syntax (extract-left-char))))
 	    ((ref-command expand-abbrev)))
 	(insert-chars char n)
-	(if (and (or (char=? #\space char)
+	(if (and allow-auto-fill?
+		 (or (char=? #\space char)
 		     (char=? #\newline char))
 		 (current-minor-mode? (ref-mode-object auto-fill)))
 	    (auto-fill-break)))))
