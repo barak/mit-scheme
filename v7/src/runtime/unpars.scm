@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 13.48 1987/06/25 22:23:32 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 13.49 1987/06/25 22:27:53 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -122,7 +122,8 @@
   (*unparse-string (symbol->string symbol)))
 
 (define-type 'INTERNED-SYMBOL
-  *unparse-symbol)
+  (lambda (symbol)
+    (*unparse-symbol symbol)))
 
 (define-type 'UNINTERNED-SYMBOL
   (lambda (symbol)
