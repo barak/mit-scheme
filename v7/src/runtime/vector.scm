@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/vector.scm,v 14.2 1988/12/30 06:43:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/vector.scm,v 14.3 1989/06/06 22:30:26 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,8 +37,6 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-;;; Standard Procedures
-
 (define-primitives
  vector-length vector-ref vector-set!
  list->vector vector subvector->list
@@ -67,57 +65,6 @@ MIT in each case. |#
 
 (define (vector-tail vector start)
   (subvector vector start (vector-length vector)))
-#|
-;;; Nonstandard Primitives
-
-(let-syntax ((check-type
-	      (let ((type (microcode-type 'VECTOR)))
-		(macro (object)
-		  `(IF (NOT (OBJECT-TYPE? ,type ,object))
-		       (ERROR "Wrong type argument" ,object)))))
-	     (check-target
-	      (macro (object index)
-		`(BEGIN (CHECK-TYPE ,object)
-			(IF (NOT (AND (NOT (NEGATIVE? ,index))
-				      (<= ,index (VECTOR-LENGTH ,object))))
-			    (ERROR "Index out of range" ,index)))))
-	     (check-subvector
-	      (macro (object start end)
-		`(BEGIN (CHECK-TYPE ,object)
-			(IF (NOT (AND (NOT (NEGATIVE? ,start))
-				      (<= ,start ,end)
-				      (<= ,end (VECTOR-LENGTH ,object))))
-			    (ERROR "Indices out of range" ,start ,end))))))
-
-(define (subvector-move-right! vector1 start1 end1 vector2 start2)
-  (define (loop index1 index2)
-    (if (<= start1 index1)
-	(begin (vector-set! vector2 index2 (vector-ref vector1 index1))
-	       (loop (-1+ index1) (-1+ index2)))))
-  (check-subvector vector1 start1 end1)
-  (check-target vector2 start2)
-  (loop (-1+ end1) (-1+ (+ start2 (- end1 start1)))))
-
-(define (subvector-move-left! vector1 start1 end1 vector2 start2)
-  (define (loop index1 index2)
-    (if (< index1 end1)
-	(begin (vector-set! vector2 index2 (vector-ref vector1 index1))
-	       (loop (1+ index1) (1+ index2)))))
-  (check-subvector vector1 start1 end1)
-  (check-target vector2 start2)
-  (loop start1 start2))
-
-(define (subvector-fill! vector start end value)
-  (define (loop index)
-    (if (< index end)
-	(begin (vector-set! vector index value)
-	       (loop (1+ index)))))
-  (check-subvector vector start end)
-  (loop start))
-
-)|#
-
-;;; Nonstandard Procedures
 
 (define (vector-copy vector)
   (let ((length (vector-length vector)))
@@ -125,40 +72,37 @@ MIT in each case. |#
       (subvector-move-right! vector 0 length new-vector 0)
       new-vector)))
 
-(define (make-initialized-vector length initialization)
-  (let ((vector (make-vector length)))
-    (define (loop n)
-      (if (= n length)
-	  vector
-	  (begin (vector-set! vector n (initialization n))
-		 (loop (1+ n)))))
-    (loop 0)))
-
-(define (vector-map vector procedure)
-  (let ((length (vector-length vector)))
-    (if (zero? length)
-	vector
-	(let ((result (make-vector length)))
-	  (define (loop i)
-	    (vector-set! result i (procedure (vector-ref vector i)))
-	    (if (zero? i)
-		result
-		(loop (-1+ i))))
-	  (loop (-1+ length))))))
-
 (define (vector-grow vector length)
   (let ((new-vector (make-vector length)))
     (subvector-move-right! vector 0 (vector-length vector) new-vector 0)
     new-vector))
 
-(define-integrable (vector-first vector) (vector-ref vector 0))
-(define-integrable (vector-second vector) (vector-ref vector 1))
-(define-integrable (vector-third vector) (vector-ref vector 2))
-(define-integrable (vector-fourth vector) (vector-ref vector 3))
-(define-integrable (vector-fifth vector) (vector-ref vector 4))
-(define-integrable (vector-sixth vector) (vector-ref vector 5))
-(define-integrable (vector-seventh vector) (vector-ref vector 6))
-(define-integrable (vector-eighth vector) (vector-ref vector 7))
+(define (make-initialized-vector length initialization)
+  (let ((vector (make-vector length)))
+    (let loop ((index 0))
+      (if (< index length)
+	  (begin
+	    (vector-set! vector index (initialization index))
+	    (loop (1+ index)))))
+    vector))
+
+(define (vector-map vector procedure)
+  (let ((length (vector-length vector)))
+    (if (zero? length)
+	vector
+	(let ((result (make-vector length)))
+	  (let loop ((index 0))
+	    (vector-set! result index (procedure (vector-ref vector index)))
+	    (if (< index length)
+		(loop (1+ index))))))))
+
+(define (for-each-vector-element vector procedure)
+  (let ((length (vector-length vector)))
+    (let loop ((index 0))
+      (if (< index length)
+	  (begin
+	    (procedure (vector-ref vector index))
+	    (loop (1+ index)))))))
 
 (define (subvector-find-next-element vector start end item)
   (let loop ((index start))
@@ -179,3 +123,11 @@ MIT in each case. |#
 
 (define-integrable (vector-find-previous-element vector item)
   (subvector-find-previous-element vector 0 (vector-length vector) item))
+(define-integrable (vector-first vector) (vector-ref vector 0))
+(define-integrable (vector-second vector) (vector-ref vector 1))
+(define-integrable (vector-third vector) (vector-ref vector 2))
+(define-integrable (vector-fourth vector) (vector-ref vector 3))
+(define-integrable (vector-fifth vector) (vector-ref vector 4))
+(define-integrable (vector-sixth vector) (vector-ref vector 5))
+(define-integrable (vector-seventh vector) (vector-ref vector 6))
+(define-integrable (vector-eighth vector) (vector-ref vector 7))
