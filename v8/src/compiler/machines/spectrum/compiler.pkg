@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.1 1994/11/19 02:09:58 adams Exp $
+$Id: compiler.pkg,v 1.2 1994/11/29 02:33:42 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -95,6 +95,7 @@ MIT in each case. |#
 	  compiler:generate-rtl-files?
 	  compiler:generate-stack-checks?
 	  compiler:generate-type-checks?
+	  compiler:generate-profiling-instructions?
 	  compiler:implicit-self-static?
 	  compiler:intersperse-rtl-in-lap?
 	  compiler:noisy?
@@ -152,14 +153,6 @@ MIT in each case. |#
 	 "base/asstop")
   (parent (compiler))
   (export ()
-	  ;; New stuff
-	  cbf/new
-	  cf/new
-	  compile-bin-file/new
-	  compile-expression/new
-	  compile-procedure/new
-	  compile-scode/new
-	  ;; End of new stuff
 	  cbf
 	  cf
 	  compile-bin-file
@@ -584,6 +577,7 @@ MIT in each case. |#
 	  lap:syntax-instruction)
   (export (compiler top-level)
 	  *block-associations*
+	  *block-profiles*
 	  *interned-assignments*
 	  *interned-constants*
 	  *interned-global-links*
@@ -592,6 +586,8 @@ MIT in each case. |#
 	  *interned-variables*
 	  *next-constant*
 	  generate-lap)
+  (export (compiler assembler)
+	  profile-info/insert-info!)
   (import (scode-optimizer expansion)
 	  scode->scode-expander))
 
@@ -627,7 +623,8 @@ MIT in each case. |#
   (parent (compiler))
   (import (compiler lap-syntaxer)
 	  entry->address
-	  invert-condition)
+	  invert-condition
+	  hook:compiler-profile-count)
   (export (compiler lap-syntaxer)
 	  lap:mark-preferred-branch!)
   (export (compiler top-level)
@@ -698,6 +695,15 @@ MIT in each case. |#
 	 "midend/split"
 	 "midend/widen")
   (parent (compiler))
+  (import (runtime compiler-info)
+	  make-dbg-expression
+	  make-dbg-procedure
+	  make-dbg-continuation
+	  make-dbg-block
+	  set-dbg-block/procedure!
+	  make-dbg-variable
+	  dbg-variable/value
+	  set-dbg-variable/value!)
   (export (compiler top-level)
 	  kmp/pp kmp/ppp
 	  *envconv/compile-by-procedures?*
