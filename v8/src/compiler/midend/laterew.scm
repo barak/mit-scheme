@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: laterew.scm,v 1.9 1995/08/10 13:41:21 adams Exp $
+$Id: laterew.scm,v 1.10 1995/08/16 20:13:18 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -358,6 +358,29 @@ MIT in each case. |#
       ;;   ((MAKE))))
       (else
        (case operation
-	 ((READ)	`(CALL ',vector-ref '#F ,cell ,(index)))
-	 ((WRITE)	`(CALL ',vector-set! '#F ,cell ,(index) ,value/s))
+	 ((READ)	`(CALL ',%vector-ref '#F ,cell ,(index)))
+	 ((WRITE)	`(CALL ',%vector-set! '#F ,cell ,(index) ,value/s))
 	 ((MAKE)	`(CALL ',%vector '#F ,@value/s)))))))
+
+(define-rewrite/late %vector-check
+  (let ((vector-tag (machine-tag 'VECTOR)))
+    (lambda (rands)
+      (let ((cont   (first rands))
+	    (vec    (second rands))
+	    (index  (third rands)))
+	cont
+	`(IF (CALL (QUOTE ,object-type?) '#F (QUOTE ,vector-tag) ,vec)
+	     (CALL (QUOTE ,%word-less-than-unsigned?) '#F
+		   ,index
+		   (CALL ',%vector-length '#F ,vec))
+	     '#F)))))
+
+(define-rewrite/late %vector-check/index
+  (lambda (rands)
+    (let ((cont   (first rands))
+	  (vec    (second rands))
+	  (index  (third rands)))
+      cont
+      `(CALL (QUOTE ,%word-less-than-unsigned?) '#F
+	     ,index
+	     (CALL ',%vector-length '#F ,vec)))))
