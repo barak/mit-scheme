@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.10 2001/12/20 21:45:24 cph Exp $
+$Id: rules3.scm,v 1.11 2002/02/16 06:34:31 cph Exp $
 
-Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -166,15 +166,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-special-primitive-invocation
-       (lambda (name)
-	 `(DEFINE-RULE STATEMENT
-	    (INVOCATION:SPECIAL-PRIMITIVE
-	     (? FRAME-SIZE)
-	     (? CONTINUATION)
-	     ,(make-primitive-procedure name true))
-	    FRAME-SIZE CONTINUATION
-	    (invoke-special-primitive
-	     ,(symbol-append 'CODE:COMPILER- name))))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  (let ((name (cadr form)))
+	    `(DEFINE-RULE STATEMENT
+	       (INVOCATION:SPECIAL-PRIMITIVE
+		(? FRAME-SIZE)
+		(? CONTINUATION)
+		,(make-primitive-procedure name #t))
+	       FRAME-SIZE CONTINUATION
+	       (INVOKE-SPECIAL-PRIMITIVE
+		,(close-syntax (symbol-append 'CODE:COMPILER- name)
+			       environment))))))))
   (define-special-primitive-invocation &+)
   (define-special-primitive-invocation &-)
   (define-special-primitive-invocation &*)

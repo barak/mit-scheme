@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.4 2001/12/20 21:45:24 cph Exp $
+$Id: rulfix.scm,v 1.5 2002/02/16 06:37:29 cph Exp $
 
-Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -165,12 +165,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((binary-fixnum
-      (lambda (name instr)
-	`(define-arithmetic-method ',name fixnum-methods/2-args
-	   (lambda (tgt src1 src2 overflow?)
-	     (if overflow? (no-overflow-branches!))
-	     (LAP ,',tgt " = (" ,',src1 ,instr ,',src2 ");\n\t"))))))	
-
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (let ((name (cadr form))
+	       (instr (caddr form)))
+	   `(DEFINE-ARITHMETIC-METHOD ',name FIXNUM-METHODS/2-ARGS
+	      (LAMBDA (TGT SRC1 SRC2 OVERFLOW?)
+		(IF OVERFLOW? (NO-OVERFLOW-BRANCHES!))
+		(LAP ,',tgt " = (" ,',src1 ,instr ,',src2 ");\n\t"))))))))
   (binary-fixnum FIXNUM-AND	" & ")
   (binary-fixnum FIXNUM-OR	" | ")
   (binary-fixnum FIXNUM-XOR	" ^ ")
@@ -178,13 +181,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((binary-fixnum
-      (lambda (name instr)
-	`(define-arithmetic-method ',name fixnum-methods/2-args
-	   (lambda (tgt src1 src2 overflow?)
-	     (if overflow? (no-overflow-branches!))
-	     (LAP ,',tgt
-		  " = (" ,instr " (" ,',src1 ", " ,',src2 "));\n\t"))))))
-
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (let ((name (cadr form))
+	       (instr (caddr form)))
+	   `(DEFINE-ARITHMETIC-METHOD ',name FIXNUM-METHODS/2-ARGS
+	      (LAMBDA (TGT SRC1 SRC2 OVERFLOW?)
+		(IF OVERFLOW? (NO-OVERFLOW-BRANCHES!))
+		(LAP ,',tgt
+		     " = (" ,instr " (" ,',src1 ", " ,',src2 "));\n\t"))))))))
   (binary-fixnum FIXNUM-REMAINDER "FIXNUM_REMAINDER")
   (binary-fixnum FIXNUM-LSH "FIXNUM_LSH"))
 
@@ -410,14 +416,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((binary-fixnum
-      (lambda (name instr)
-	`(define-arithmetic-method ',name
-	   fixnum-methods/2-args/register*constant
-	   (lambda (tgt src1 constant overflow?)
-	     (if overflow? (no-overflow-branches!))
-	     (LAP ,',tgt " = (" ,',src1 ,instr ,',(longify constant)
-		  ");\n\t"))))))
-
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (let ((name (cadr form))
+	       (instr (caddr form)))
+	   `(DEFINE-ARITHMETIC-METHOD ',name
+	      FIXNUM-METHODS/2-ARGS/REGISTER*CONSTANT
+	      (LAMBDA (TGT SRC1 CONSTANT OVERFLOW?)
+		(IF OVERFLOW? (NO-OVERFLOW-BRANCHES!))
+		(LAP ,',tgt " = (" ,',src1 ,instr ,',(longify constant)
+		     ");\n\t"))))))))
   (binary-fixnum FIXNUM-AND	" & ")
   (binary-fixnum FIXNUM-OR	" | ")
   (binary-fixnum FIXNUM-XOR	" ^ ")

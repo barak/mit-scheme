@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 1.6 2001/12/20 21:45:24 cph Exp $
+$Id: rulflo.scm,v 1.7 2002/02/16 06:38:35 cph Exp $
 
-Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -191,11 +191,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-flonum-operation
-       (lambda (primitive-name opcode)
-	 `(define-arithmetic-method ',primitive-name flonum-methods/2-args
-	    (lambda (target source1 source2)
-	      (LAP ,',target " = (" ,',source1 ,opcode ,',source2
-		   ");\n\t"))))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  `(DEFINE-ARITHMETIC-METHOD ',(cadr form) FLONUM-METHODS/2-ARGS
+	     (LAMBDA (TARGET SOURCE1 SOURCE2)
+	       (LAP ,',target " = (" ,',source1 ,(caddr form) ,',source2
+		    ");\n\t")))))))
   (define-flonum-operation flonum-add " + ")
   (define-flonum-operation flonum-subtract " - ")
   (define-flonum-operation flonum-multiply " * ")
