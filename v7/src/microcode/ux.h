@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.23 1991/06/15 00:40:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.24 1991/08/12 22:16:02 markf Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -74,6 +74,7 @@ enum syscall_names
   syscall_fstat,
   syscall_ftruncate,
   syscall_getcwd,
+  syscall_gethostname,
   syscall_gettimeofday,
   syscall_ioctl_TIOCGPGRP,
   syscall_ioctl_TIOCSIGSEND,
@@ -679,6 +680,7 @@ extern char * EXFUN (getlogin, (void));
 #define UX_getegid getegid
 #define UX_geteuid geteuid
 #define UX_getgrgid getgrgid
+#define UX_gethostname gethostname
 #define UX_getlogin getlogin
 #define UX_getpid getpid
 #define UX_getpwnam getpwnam
@@ -705,6 +707,7 @@ extern char * EXFUN (getlogin, (void));
 extern PTR EXFUN (malloc, (unsigned int size));
 extern PTR EXFUN (realloc, (PTR ptr, unsigned int size));
 extern CONST char * EXFUN (getenv, (CONST char * name));
+extern int EXFUN (gethostname, (char * name, unsigned int size));
 
 #ifdef HAVE_FCNTL
 #define UX_fcntl fcntl

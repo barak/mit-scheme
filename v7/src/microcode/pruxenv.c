@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxenv.c,v 1.1 1990/06/20 19:38:41 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxenv.c,v 1.2 1991/08/12 22:15:40 markf Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -37,6 +37,13 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #include "ux.h"
+
+#ifdef HAVE_SOCKETS
+#include "uxsock.h"
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#endif
 
 extern char ** environ;
 
@@ -137,5 +144,42 @@ DEFINE_PRIMITIVE ("UNIX-ENVIRONMENT", Prim_unix_environment_alist, 0, 0,
 	(*scan_result++) = (char_pointer_to_string (*scan++));
       PRIMITIVE_RETURN (result);
     }
+  }
+}
+
+#define HOSTNAMESIZE 1024
+
+DEFINE_PRIMITIVE ("FULL-HOSTNAME", Prim_full_hostname, 0, 0,
+  "Returns the full hostname (including domain if available) as a string.")
+{
+  PRIMITIVE_HEADER (0);
+  {
+    char this_host_name[HOSTNAMESIZE];
+#ifdef HAVE_SOCKETS
+    struct hostent *gethostbyname(char *);
+    struct hostent *this_host_entry;
+#endif
+    STD_VOID_SYSTEM_CALL (syscall_gethostname,
+			  UX_gethostname (this_host_name, HOSTNAMESIZE));
+
+#ifdef HAVE_SOCKETS
+    this_host_entry = gethostbyname (this_host_name);
+    PRIMITIVE_RETURN (char_pointer_to_string (this_host_entry->h_name));
+#else
+    PRIMITIVE_RETURN (char_pointer_to_string (this_host_name));
+#endif
+  }
+}
+
+DEFINE_PRIMITIVE ("HOSTNAME", Prim_hostname, 0, 0,
+  "Returns the hostname of the machine as a string.")
+{
+  PRIMITIVE_HEADER (0);
+  {
+    char this_host_name[HOSTNAMESIZE];
+
+    STD_VOID_SYSTEM_CALL (syscall_gethostname,
+			  UX_gethostname (this_host_name, HOSTNAMESIZE));
+    PRIMITIVE_RETURN (char_pointer_to_string (this_host_name));
   }
 }
