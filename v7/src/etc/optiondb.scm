@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.1 2000/10/16 18:00:55 cph Exp $
+$Id: optiondb.scm,v 1.2 2000/10/16 18:16:24 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -39,9 +39,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		       ((test "make") "make")
 		       ((test "load") "load")
 		       (else (error "Can't find loader.")))))))))))
-
-(define-load-option 'CREF
-  (guarded-system-loader '(cross-reference) "cref"))
 
 (define-load-option 'SOS
   (guarded-system-loader '(runtime object-system) "sos"))
