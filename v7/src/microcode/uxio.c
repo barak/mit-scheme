@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.23 1993/03/10 17:55:43 cph Exp $
+$Id: uxio.c,v 1.24 1993/03/15 18:36:18 cph Exp $
 
 Copyright (c) 1990-93 Massachusetts Institute of Technology
 
@@ -429,10 +429,11 @@ DEFUN (UX_select_registry_test, (input_fds, output_fds, blockp),
 #ifdef HAVE_SELECT
   while (1)
     {
-      SELECT_TYPE readable = (* ((SELECT_TYPE *) input_fds));
+      SELECT_TYPE readable;
       int status_change_p = 0;
       int nfds;
   
+      readable = (* ((SELECT_TYPE *) input_fds));
       INTERRUPTABLE_EXTENT
 	(nfds,
 	 ((status_change_p = (UX_process_any_status_change ()))
@@ -504,7 +505,8 @@ DEFUN (OS_channel_unregister, (channel), Tchannel channel)
 enum select_input
 DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
 {
-  SELECT_TYPE readable = input_descriptors;
+  SELECT_TYPE readable;
+  readable = input_descriptors;
   FD_SET (fd, (&readable));
   {
     enum select_input s =
