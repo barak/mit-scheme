@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.22 1998/05/31 03:19:56 cph Exp $
+$Id: ntprm.scm,v 1.23 1998/09/06 04:45:15 cph Exp $
 
 Copyright (c) 1992-98 Massachusetts Institute of Technology
 
@@ -42,8 +42,28 @@ MIT in each case. |#
    (->namestring (merge-pathnames filename))))
 
 (define (file-symbolic-link? filename)
-  filename				; ignored
-  false)
+  ((ucode-primitive file-symlink? 1)
+   (->namestring (merge-pathnames filename))))
+
+(define (file-access filename amode)
+  ((ucode-primitive file-access 2)
+   (->namestring (merge-pathnames filename))
+   amode))
+
+(define (file-readable? filename)
+  (file-access filename 4))
+
+(define (file-writable? filename)
+  ((ucode-primitive file-access 2)
+   (let ((pathname (merge-pathnames filename)))
+     (let ((filename (->namestring pathname)))
+       (if ((ucode-primitive file-exists? 1) filename)
+	   filename
+	   (directory-namestring pathname))))
+   2))
+
+(define (file-executable? filename)
+  (file-access filename 1))
 
 (define (file-modes filename)
   ((ucode-primitive file-modes 1) (->namestring (merge-pathnames filename))))
@@ -62,61 +82,6 @@ MIT in each case. |#
 (define-integrable nt-file-mode/temporary  #x100)
 (define-integrable nt-file-mode/compressed #x800)
 
-(define (file-access filename amode)
-  ((ucode-primitive file-access 2) (->namestring (merge-pathnames filename))
-				   amode))
-
-;; upwards compatability
-(define dos/file-access file-access)
-
-(define (file-readable? filename)
-  (file-access filename 4))
-
-(define (file-writable? filename)
-  (let ((pathname (merge-pathnames filename)))
-    (let ((filename (->namestring pathname)))
-      (or ((ucode-primitive file-access 2) filename 2)
-	  (and (not ((ucode-primitive file-exists? 1) filename))
-	       ((ucode-primitive file-access 2)
-		(directory-namestring pathname)
-		2))))))
-
-(define (temporary-file-pathname #!optional directory)
-  (let ((root
-	 (merge-pathnames "_scm_tmp"
-			  (if (or (default-object? directory) (not directory))
-			      (temporary-directory-pathname)
-			      (pathname-as-directory directory)))))
-    (let loop ((ext 0))
-      (let ((pathname (pathname-new-type root (number->string ext))))
-	(if (allocate-temporary-file pathname)
-	    pathname
-	    (begin
-	      (if (> ext 999)
-		  (error "Can't find unique temporary pathname:" root))
-	      (loop (+ ext 1))))))))
-
-(define (temporary-directory-pathname)
-  (let ((try-directory
-	 (lambda (directory)
-	   (let ((directory
-		  (pathname-as-directory (merge-pathnames directory))))
-	     (and (file-directory? directory)
-		  (file-writable? directory)
-		  directory)))))
-    (let ((try-variable
-	   (lambda (name)
-	     (let ((value (get-environment-variable name)))
-	       (and value
-		    (try-directory value))))))
-      (or (try-variable "TEMP")
-	  (try-variable "TMP")
-	  (try-directory "/tmp")
-	  (try-directory "c:/")
-	  (try-directory ".")
-	  (try-directory "/")
-	  (error "Can't find temporary directory.")))))
-
 (define (file-attributes filename)
   ((ucode-primitive file-attributes 1)
    (->namestring (merge-pathnames filename))))
@@ -142,7 +107,7 @@ MIT in each case. |#
   (let ((attr (file-attributes namestring)))
     (and attr
 	 (file-attributes/length attr))))
-
+
 (define (file-modification-time filename)
   ((ucode-primitive file-mod-time 1)
    (->namestring (merge-pathnames filename))))
@@ -171,6 +136,10 @@ MIT in each case. |#
 
 (define (file-time->universal-time time) (+ time epoch))
 (define (universal-time->file-time time) (- time epoch))
+
+(define (file-touch filename)
+  ((ucode-primitive file-touch 1)
+   (->namestring (merge-pathnames filename))))
 
 (define get-environment-variable)
 (define set-environment-variable!)
@@ -180,9 +149,9 @@ MIT in each case. |#
 (let ((environment-variables '())
       (environment-defaults '()))
 
-  ;; Kludge: since getenv returns false for unbound,
+  ;; Kludge: since getenv returns #f for unbound,
   ;; that can also be the marker for a deleted variable
-  (define-integrable *variable-deleted* false)
+  (define-integrable *variable-deleted* #f)
 
   (define (env-error proc var)
     (error "Variable must be a string:" var proc))
@@ -241,7 +210,7 @@ MIT in each case. |#
 			 (cons (cons var val) environment-defaults))))
 	    (default-variable! var val))))
 
-)				; End LET
+  )
 
 (define current-user-name)
 (define current-home-directory)
@@ -329,15 +298,11 @@ MIT in each case. |#
 		(let ((rootdir (%system-root-directory)))
 		  (or (trydir (merge-pathnames user-name rootdir))
 		      rootdir)))))))
-
+
 (define dos/user-home-directory user-home-directory)
 (define dos/current-user-name current-user-name)
 (define dos/current-home-directory current-home-directory)
-
-(define (file-touch filename)
-  ((ucode-primitive file-touch 1)
-   (->namestring (merge-pathnames filename))))
-
+
 (define (make-directory name)
   ((ucode-primitive directory-make 1)
    (->namestring (directory-pathname-as-file (merge-pathnames name)))))
@@ -345,6 +310,42 @@ MIT in each case. |#
 (define (delete-directory name)
   ((ucode-primitive directory-delete 1)
    (->namestring (directory-pathname-as-file (merge-pathnames name)))))
+
+(define (temporary-file-pathname #!optional directory)
+  (let ((root
+	 (merge-pathnames "_scm_tmp"
+			  (if (or (default-object? directory) (not directory))
+			      (temporary-directory-pathname)
+			      (pathname-as-directory directory)))))
+    (let loop ((ext 0))
+      (let ((pathname (pathname-new-type root (number->string ext))))
+	(if (allocate-temporary-file pathname)
+	    pathname
+	    (begin
+	      (if (> ext 999)
+		  (error "Can't find unique temporary pathname:" root))
+	      (loop (+ ext 1))))))))
+
+(define (temporary-directory-pathname)
+  (let ((try-directory
+	 (lambda (directory)
+	   (let ((directory
+		  (pathname-as-directory (merge-pathnames directory))))
+	     (and (file-directory? directory)
+		  (file-writable? directory)
+		  directory)))))
+    (let ((try-variable
+	   (lambda (name)
+	     (let ((value (get-environment-variable name)))
+	       (and value
+		    (try-directory value))))))
+      (or (try-variable "TEMP")
+	  (try-variable "TMP")
+	  (try-directory "/tmp")
+	  (try-directory "c:/")
+	  (try-directory ".")
+	  (try-directory "/")
+	  (error "Can't find temporary directory.")))))
 
 (define (os/file-end-of-line-translation pathname)
   (if (let ((type (dos/fs-drive-type pathname)))
