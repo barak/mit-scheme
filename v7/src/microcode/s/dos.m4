@@ -1,7 +1,9 @@
 #!/bin/csh -f
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/dos.m4,v 1.3 1992/08/24 15:18:30 jinx Exp $
+###
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/dos.m4,v 1.4 1992/08/24 15:19:02 jinx Exp $
+###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
-
+###
 ####	Postprocessing to get valid dos assembly language from cmpaux-i386.m4
 
 set tmpfil = "m4.tmp"
