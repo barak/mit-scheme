@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.54 1998/04/30 21:28:12 cph Exp $
+$Id: global.scm,v 14.55 1998/04/30 21:30:52 cph Exp $
 
-Copyright (c) 1988-1996 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
