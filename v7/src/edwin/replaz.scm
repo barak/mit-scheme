@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.76 1991/09/25 18:36:03 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.77 1992/04/09 18:13:05 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -239,40 +239,3 @@ C-R to enter recursive edit, C-W to delete match and recursive edit,
       (if query?
 	  (query-loop point)
 	  (replacement-loop point)))))
-
-;;;; Occurrence Commands
-
-(define-command count-matches
-  "Print the number of occurrences of a given regexp following point."
-  "sHow many matches for (regexp)"
-  (lambda (regexp)
-    (let* ((start (current-point))
-	   (end (group-end start)))
-      (let loop ((start start) (n 0))
-	(let ((mark (re-search-forward regexp start end)))
-	  (if (not mark)
-	      (message (write-to-string n) " occurrences")
-	      (loop mark (1+ n))))))))
-
-(define-command list-matching-lines
-  "Show all lines following point containing a match for a given regexp.
-The argument, if given, is the number of context lines to show
- on either side of each line; this defaults to zero."
-  "sList matching lines (regexp)\nP"
-  (lambda (regexp argument)
-    (let ((argument (or argument 0)))
-      (let ((end (group-end (current-point)))
-	    (-arg (- argument))
-	    (1+arg (1+ argument)))
-	(with-output-to-temporary-buffer "*Occur*"
-	  (lambda ()
-	    (define (loop start)
-	      (let ((mark (re-search-forward regexp start end)))
-		(if mark
-		    (begin (write-string
-			    (extract-string (line-start mark -arg)
-					    (line-start mark 1+arg)))
-			   (write-string "--------")
-			   (newline)
-			   (loop (line-start mark 1))))))
-	    (loop (current-point))))))))

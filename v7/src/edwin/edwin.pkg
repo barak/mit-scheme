@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.86 1992/04/09 17:22:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.87 1992/04/09 18:12:50 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -1043,6 +1043,7 @@ MIT in each case. |#
 	  edwin-command$flush-lines
 	  edwin-command$how-many
 	  edwin-command$keep-lines
+	  edwin-command$list-matching-lines
 	  edwin-command$occur
 	  edwin-command$occur-mode-goto-occurrence
 	  edwin-mode$occur
