@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/win32/module.scm,v 1.1 1993/09/20 01:13:04 adams Exp $
+$Id: module.scm,v 1.2 1993/11/10 21:36:46 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -104,21 +104,17 @@ MIT in each case. |#
     
 
 (define (unload-module! module #!optional free?)
-  (case (module/handle module)
-    ((unloaded bogus)
-     unspecific)
-    (else
-     (let ((free? (if (default-object? free?) #t free?)))
-       (without-interrupts
-	(lambda ()
-	  (if free?
-	      (free-library (module/handle module)))
-	  (set-module/handle! module 'unloaded)
-	  (set-cell-contents! (module/finalization-info module) #f)
-	  (protection-list/for-each-info
-	   (lambda (entry)
-	     (set-module-entry/address! entry #f))
-	   (module/entries module))))))))
+  (let ((free? (if (default-object? free?) #t free?)))
+    (without-interrupts
+     (lambda ()
+       (if (and free? (number? (module/handle module)))
+	   (free-library (module/handle module)))
+       (set-module/handle! module 'unloaded)
+       (set-cell-contents! (module/finalization-info module) #f)
+       (protection-list/for-each-info
+	(lambda (entry)
+	  (set-module-entry/address! entry #f))
+	(module/entries module))))))
 
 (define (load-module! module)
   (case (module/handle module)
@@ -171,8 +167,7 @@ MIT in each case. |#
       (module-entry/attempt-linkage entry)))
 
 (define (module-entry/attempt-linkage entry)
-  (let* ((module  (module-entry/module entry))
-	 (handle  (module/handle module)))
+  (let* ((module  (module-entry/module entry)))
     (if (eq? (module/handle module) 'unloaded)
 	(load-module! module))
     (let ((address (module-entry/address entry)))
