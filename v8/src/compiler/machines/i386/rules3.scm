@@ -1,6 +1,6 @@
-t#| -*-Scheme-*-
+#| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.9 1995/01/20 20:17:29 ssmith Exp $
+$Id: rules3.scm,v 1.10 1995/01/20 22:45:55 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -40,7 +40,7 @@ MIT in each case. |#
 ;;;; Invocations
 
 (define-integrable (clear-continuation-type-code)
-  (LAP (AND W (@R ,regnum:stack-pointer) (R ,regnum:datum-mask))))
+  (LAP (AND W (@R ,regnum:stack-pointer) ,datum-mask-value)))
 
 (define-rule statement
   (POP-RETURN)
@@ -809,7 +809,7 @@ MIT in each case. |#
 	   (lambda (pc-label prefix)
 	     (LAP ,@prefix
 		  (MOV W (R ,edx) (@RO W ,eax (- ,code-block-label ,pc-label)))
-		  (AND W (R ,edx) (R ,regnum:datum-mask))
+		  (AND W (R ,edx) ,datum-mask-value)
 		  (LEA (R ,ebx) (@RO W ,edx ,free-ref-offset))
 		  (MOV W (R ,ecx) ,reg:environment)
 		  (MOV W (@RO W ,edx ,environment-offset) (R ,ecx))
@@ -843,31 +843,31 @@ MIT in each case. |#
 		   (XOR W (R ,ebx) (R ,ebx))
 		   (MOV B (R ,ebx) (@ROI B ,eax (- ,bytes ,pc-label) ,ecx 1))
 		   ;; address of vector
-		   (AND W (R ,edx) (R ,regnum:datum-mask))
+		   (AND W (R ,edx) ,datum-mask-value)
 		   ;; Store n-sections in arg
 		   (MOV W ,reg:utility-arg-4 (R ,ebx))
 		   ;; vector-ref -> cc block
 		   (MOV W (R ,edx) (@ROI B ,edx 4 ,ecx 4))
 		   ;; address of cc-block
-		   (AND W (R ,edx) (R ,regnum:datum-mask))
+		   (AND W (R ,edx) ,datum-mask-value)
 		   ;; cc-block length
 		   (MOV W (R ,ebx) (@R ,edx))
 		   ;; Get environment
 		   (MOV W (R ,ecx) ,reg:environment)
 		   ;; Eliminate length tags
-		   (AND W (R ,ebx) (R ,regnum:datum-mask))
+		   (AND W (R ,ebx) ,datum-mask-value)
 		   ;; Store environment
 		   (MOV W (@RI ,edx ,ebx 4) (R ,ecx))
 		   ;; Get NMV header
 		   (MOV W (R ,ecx) (@RO B ,edx 4))
 		   ;; Eliminate NMV tag
-		   (AND W (R ,ecx) (R ,regnum:datum-mask))
+		   (AND W (R ,ecx) ,datum-mask-value)
 		   ;; Address of first free reference
 		   (LEA (R ,ebx) (@ROI B ,edx 8 ,ecx 4))
 		   ;; Invoke linker
 		   ,@(invoke-hook/call entry:compiler-link)
 		   ,@(make-external-label (continuation-code-word false)
-					 (generate-label))		   
+					  (generate-label))		   
 		   ;; Increment counter and loop
 		   (INC W (@R ,esp))
 		   (CMP W (@R ,esp) (& ,n-blocks))

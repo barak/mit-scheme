@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.5 1995/01/20 20:15:59 ssmith Exp $
+$Id: lapgen.scm,v 1.6 1995/01/20 22:45:36 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -39,13 +39,22 @@ MIT in each case. |#
 
 ;;;; Register-Allocator Interface
 
-(define available-machine-registers
-  ;; esp holds the the stack pointer
-  ;; ebp holds the pointer mask
-  ;; esi holds the register array pointer
-  ;; edi holds the free pointer
-  ;; fr7 is not used so that we can always push on the stack once.
-  (list eax ecx edx ebx fr0 fr1 fr2 fr3 fr4 fr5 fr6))
+(define available-machine-registers)
+
+(if use-ebp-as-mask?
+    (set! available-machine-registers
+      ;; esp holds the the stack pointer
+      ;; ebp holds the pointer mask
+      ;; esi holds the register array pointer
+      ;; edi holds the free pointer
+      ;; fr7 is not used so that we can always push on the stack once.
+      (list eax ecx edx ebx fr0 fr1 fr2 fr3 fr4 fr5 fr6))
+    (set! available-machine-registers
+      ;; esp holds the the stack pointer
+      ;; esi holds the register array pointer
+      ;; edi holds the free pointer
+      ;; fr7 is not used so that we can always push on the stack once.
+      (list eax ecx edx ebx ebp fr0 fr1 fr2 fr3 fr4 fr5 fr6)))
 
 (define-integrable (sort-machine-registers registers)
   registers)
@@ -509,7 +518,7 @@ MIT in each case. |#
   (LAP (SHR W ,target (& ,scheme-datum-width))))
 
 (define (object->datum target)
-  (LAP (AND W ,target (R ,regnum:datum-mask))))
+  (LAP (AND W ,target ,datum-mask-value)))
 
 (define (object->address target)
   (declare (integrate-operator object->datum))
@@ -721,14 +730,11 @@ MIT in each case. |#
       (error "To must be a fixnum and from must be a fixnum or #f" from to)
       (cond ((eqv? from to)
 	     (LAP))
-	    ((false? from)
-	     (if (= to 0)
-		 (LAP (AND W (R ,reg) (R ,regnum:datum-mask)))
-		 (LAP (AND W (R ,reg) (R ,regnum:datum-mask))
-		      (OR W (R ,reg) (& ,(fix:lsh to scheme-type-width))))))
 	    ((eqv? (fix:or from to)
 		   to)
 	     (LAP (OR W (R ,reg) (& ,(fix:lsh to scheme-type-width)))))
 	    (else
-	     (LAP (AND W (R ,reg) (R ,regnum:datum-mask))
-		  (OR W (R ,reg) (& ,(fix:lsh to scheme-type-width))))))))
+	     (if (= to 0)
+		 (LAP (AND W (R ,reg) ,datum-mask-value))
+		 (LAP (AND W (R ,reg) ,datum-mask-value)
+		      (OR W (R ,reg) (& ,(fix:lsh to scheme-type-width)))))))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.6 1995/01/20 20:16:50 ssmith Exp $
+$Id: machin.scm,v 1.7 1995/01/20 22:45:45 ssmith Exp $
 
 Copyright (c) 1992-1995 Massachusetts Institute of Technology
 
@@ -161,6 +161,10 @@ MIT in each case. |#
 
 ;;;; Machine registers
 
+;; This gives us an extra scratch register
+(define use-ebp-as-mask? #f)
+
+
 (define eax 0)				; acumulator
 (define ecx 1)				; counter register
 (define edx 2)				; multiplication high-half target
@@ -187,30 +191,58 @@ MIT in each case. |#
 (define number-of-temporary-registers 256)
 
 (define-integrable regnum:stack-pointer esp)
-(define-integrable regnum:datum-mask ebp)
+
+    
+
 (define-integrable regnum:regs-pointer esi)
 (define-integrable regnum:free-pointer edi)
 (define-integrable regnum:hook eax)
 (define-integrable regnum:first-arg ecx)
 (define-integrable regnum:second-arg edx)
 
+(define datum-mask-value)
+(define regnum:datum-mask)
+
+(if use-ebp-as-mask?
+    (begin
+      (set! regnum:datum-mask ebp)
+      (set! datum-mask-value `(R ,ebp)))
+    (set! datum-mask-value `(& ,(- (expt 2 scheme-datum-width) 1))))
+
 (define-integrable (machine-register-known-value register)
   register				; ignored
   false)
 
-(define (machine-register-value-class register)
-  (cond ((<= eax register ebx)
-	 value-class=object)
-	((= register regnum:datum-mask)
-	 value-class=immediate)
-	((or (= register regnum:stack-pointer)
-	     (= register regnum:free-pointer)
-	     (= register regnum:regs-pointer))
-	 value-class=address)
-	((<= fr0 register fr7)
-	 value-class=float)
-	(else
-	 (error "illegal machine register" register))))
+(define machine-register-value-class)
+
+(if use-ebp-as-mask?
+    (set! machine-register-value-class
+	  (lambda (register)
+	    (cond ((<= eax register ebx)
+		   value-class=object)
+		  ((= register regnum:datum-mask)
+		   value-class=immediate)
+		  ((or (= register regnum:stack-pointer)
+		       (= register regnum:free-pointer)
+		       (= register regnum:regs-pointer))
+		   value-class=address)
+		  ((<= fr0 register fr7)
+		   value-class=float)
+		  (else
+		   (error "illegal machine register" register)))))
+    (set! machine-register-value-class
+	  (lambda (register)
+	    (cond ((or (<= eax register ebx)
+		       (= ebp register))
+		   value-class=object)
+		  ((or (= register regnum:stack-pointer)
+		       (= register regnum:free-pointer)
+		       (= register regnum:regs-pointer))
+		   value-class=address)
+		  ((<= fr0 register fr7)
+		   value-class=float)
+		  (else
+		   (error "illegal machine register" register))))))
 
 (define *rtlgen/argument-registers*
   (vector ecx edx))
