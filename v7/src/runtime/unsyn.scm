@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.1 1988/06/13 11:59:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.2 1988/06/14 14:45:31 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -171,10 +171,6 @@ MIT in each case. |#
   object
   `(THE-ENVIRONMENT))
 
-(define (unsyntax-MAKE-ENVIRONMENT names values body)
-  names values
-  `(MAKE-ENVIRONMENT ,@(except-last-pair (unsyntax-sequence body))))
-
 (define (unsyntax-DISJUNCTION-object object)
   `(OR ,@(disjunction-components object unexpand-disjunction)))
 
@@ -300,10 +296,13 @@ MIT in each case. |#
 						  operands
 						  body
 						  ordinary-combination))
-			     ((eq? name lambda-tag:make-environment)
-			      (unsyntax-make-environment required
-							 operands
-							 body))
+			     ((and (eq? name lambda-tag:make-environment)
+				   (the-environment?
+				    (car (last-pair (sequence-actions body)))))
+			      `(MAKE-ENVIRONMENT
+				 ,@(unsyntax-objects
+				    (except-last-pair
+				     (sequence-actions body)))))
 			     (else (ordinary-combination)))
 		       (ordinary-combination)))))
 	      (else
