@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.140 2001/05/29 20:36:34 cph Exp $
+;;; $Id: imail-core.scm,v 1.141 2001/06/03 01:22:31 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -472,13 +472,14 @@
 ;; -------------------------------------------------------------------
 ;; Close RESOURCE, freeing up connections, memory, etc.  Subsequent use
 ;; of the resource must work, but may incur a significant time or space
-;; penalty.
+;; penalty.  Optional argument NO-DEFER? means that the resource must
+;; be closed immediately, and not deferred.
 
-(define (close-resource resource)
+(define (close-resource resource #!optional no-defer?)
   (save-resource resource)
-  (%close-resource resource))
+  (%close-resource resource (if (default-object? no-defer?) #f no-defer?)))
 
-(define-generic %close-resource (resource))
+(define-generic %close-resource (resource no-defer?))
 
 ;; -------------------------------------------------------------------
 ;; Return the number of messages in FOLDER.

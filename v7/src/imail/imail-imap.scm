@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.175 2001/06/01 02:20:53 cph Exp $
+;;; $Id: imail-imap.scm,v 1.176 2001/06/03 01:22:45 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -622,7 +622,7 @@
 		  (lambda ()
 		    (guarantee-imap-connection-open connection)
 		    (let ((v (receiver connection)))
-		      (maybe-close-imap-connection connection 1)
+		      (maybe-close-imap-connection connection 1 #f)
 		      v))
 		  (lambda ()
 		    (decrement-connection-reference-count! connection)))))
@@ -669,15 +669,17 @@
 	(close-port port)))
   (reset-imap-connection connection))
 
-(define (maybe-close-imap-connection connection min-count)
+(define (maybe-close-imap-connection connection min-count no-defer?)
   (if (= (imap-connection-reference-count connection) min-count)
-      (if (search-imap-connections
-	   (let ((url (imap-connection-url connection)))
-	     (lambda (connection*)
-	       (and (not (eq? connection* connection))
-		    (compatible-imap-urls? (imap-connection-url connection*)
-					   url)
-		    0))))
+      (if (or no-defer?
+	      (search-imap-connections
+	       (let ((url (imap-connection-url connection)))
+		 (lambda (connection*)
+		   (and (not (eq? connection* connection))
+			(compatible-imap-urls?
+			 (imap-connection-url connection*)
+			 url)
+			0)))))
 	  (close-imap-connection-cleanly connection)
 	  (defer-closing-of-connection connection))))
 
@@ -1481,7 +1483,10 @@
     (guarantee-imap-folder-open folder)
     folder))
 
-(define-method %close-resource ((folder <imap-folder>))
+(define-method %close-resource ((folder <imap-folder>) no-defer?)
+  (close-imap-folder folder no-defer?))
+
+(define (close-imap-folder folder no-defer?)
   (let ((connection
 	 (without-interrupts
 	  (lambda ()
@@ -1494,7 +1499,7 @@
 	      connection)))))
     (if connection
 	(begin
-	  (maybe-close-imap-connection connection 0)
+	  (maybe-close-imap-connection connection 0 no-defer?)
 	  (object-modified! folder 'STATUS)))))
 
 (define-method %get-message ((folder <imap-folder>) index)
@@ -1553,8 +1558,8 @@
 (define-method %open-resource ((url <imap-container-url>))
   (make-imap-container url))
 
-(define-method %close-resource ((container <imap-container>))
-  container
+(define-method %close-resource ((container <imap-container>) no-defer?)
+  container no-defer?
   unspecific)
 
 (define-method save-resource ((container <imap-container>))
