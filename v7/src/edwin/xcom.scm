@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xcom.scm,v 1.17 2000/12/01 06:17:00 cph Exp $
+;;; $Id: xcom.scm,v 1.18 2001/07/02 01:45:27 cph Exp $
 ;;;
-;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,15 +16,15 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-;;;
-;;;
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; X Commands
 
 (declare (usual-integrations))
 
 (define-primitives
+  (x-set-default-font 2)
   (x-window-clear 1)
   (x-window-lower 1)
   (x-window-raise 1)
@@ -94,6 +94,12 @@
 	(if (not (x-window-set-font xterm font))
 	    (editor-error "Unknown font name: " font))
 	(xterm-set-size xterm x-size y-size)))))
+
+(define-command set-default-font
+  "Set text font to be used in new frames."
+  "sSet default font"
+  (lambda (font)
+    (x-set-default-font (screen-display (selected-screen)) font)))
 
 (define-command set-border-width
   "Set border width of selected frame to WIDTH."
@@ -219,7 +225,7 @@ When called interactively, completion is available on the input."
 		index)
 	       (else
 		(loop (1+ index)))))))))
-
+
 (define mouse-cursor-shapes
   '#("X-cursor"
      "arrow"
@@ -298,7 +304,6 @@ When called interactively, completion is available on the input."
      "ur-angle"
      "watch"
      "xterm"))
-
 
 ;;;; Mouse Commands
 ;;; (For compatibility with old code.)
