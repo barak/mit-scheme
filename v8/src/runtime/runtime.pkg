@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.247 1995/02/24 00:35:44 cph Exp $
+$Id: runtime.pkg,v 14.248 1995/03/01 21:58:07 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -3009,6 +3009,7 @@ MIT in each case. |#
           wt-tree/split>
           wt-tree/subset?
           wt-tree/union
+          wt-tree/union-merge
           wt-tree?))
 
 (define-package (runtime apropos)
