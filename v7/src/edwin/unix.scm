@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.6 1989/04/28 22:54:18 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.7 1989/08/04 03:17:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -215,24 +215,40 @@ Includes the new backup.  Must be > 0"
   (let ((lend (line-end lstart 0)))
     (char-search-backward #\Space lend lstart 'LIMIT)    (make-region (re-match-end 0) lend)))
 
+(define (os/dired-sort-pathnames pathnames)
+  (sort pathnames
+    (lambda (x y)
+      (string<? (pathname-name-string x) (pathname-name-string y)))))
+
 (define (os/directory-list directory)
-  (let loop
-      ((name ((ucode-primitive open-directory) directory))
-       (result '()))
-    (if name
-	(loop ((ucode-primitive directory-read)) (cons name result))
-	result)))
+  (dynamic-wind
+   (lambda () unspecific)
+   (lambda ()
+     (let loop
+	 ((name ((ucode-primitive open-directory 1) directory))
+	  (result '()))
+       (if name
+	   (loop ((ucode-primitive directory-read 0)) (cons name result))
+	   result)))
+   (ucode-primitive directory-close 0)))
 
 (define (os/directory-list-completions directory prefix)
   (if (string-null? prefix)
       (os/directory-list directory)
-      (let loop
-	  ((name ((ucode-primitive open-directory) directory))
-	   (result '()))
-	(if name
-	    (loop ((ucode-primitive directory-read))
-		  (if (string-prefix? prefix name) (cons name result) result))
-	    result))))
+      (dynamic-wind
+       (lambda () unspecific)
+       (lambda ()
+	 (let loop
+	     ((name ((ucode-primitive open-directory 1) directory))
+	      (result '()))
+	   (if name
+	       (loop ((ucode-primitive directory-read 0))
+		     (if (string-prefix? prefix name)
+			 (cons name result)
+			 result))
+	       result)))
+       (ucode-primitive directory-close 0))))
+
 (define-integrable os/file-directory?
   (ucode-primitive file-directory?))
 

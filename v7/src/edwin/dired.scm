@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.102 1989/04/28 22:49:16 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.103 1989/08/04 03:17:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -91,7 +91,7 @@ Type `h' after entering dired for more info."
      (string-append "Reading directory "
 		    (pathname->string pathname)
 		    "..."))
-    (let ((pathnames (directory-read pathname)))
+    (let ((pathnames (read&sort-directory pathname)))
       (let ((lines (map os/make-dired-line pathnames))
 	    (point (buffer-point buffer)))
 	(append-message "done")
@@ -308,7 +308,7 @@ C-] -- abort Dired; this is like \\[kill-buffer] on this buffer."
      (string-append "Reading directory "
 		    directory
 		    "..."))
-    (let ((pathnames (directory-read directory)))
+    (let ((pathnames (read&sort-directory directory)))
       (append-message "done")
       (with-output-to-temporary-buffer "*Directory*"
 	(lambda ()
@@ -329,3 +329,6 @@ C-] -- abort Dired; this is like \\[kill-buffer] on this buffer."
 		(else
 		 (write-strings-densely
 		  (map pathname-name-string pathnames)))))))))
+
+(define (read&sort-directory pathname)
+  (or/dired-sort-pathnames (directory-read pathname false)))
