@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.58 1990/11/14 10:58:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.59 1990/11/27 19:17:05 cph Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -375,8 +375,8 @@ typedef unsigned long SCHEME_OBJECT;
 #endif /* not sun */
 #endif /* not sequent */
 
-/* These are really OS-dependent.  They are correct for the sequent,
-   but we don't know about any other 386 systems. */
+/* These are really OS-dependent.  They are correct for the sequent
+   and for SYSV3, but we don't know about other 386 systems. */
 #define HEAP_IN_LOW_MEMORY
 #define HAS_FLOOR
 #define HAS_FREXP
