@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 4.37 1993/01/13 00:18:40 cph Exp $
+$Id: rules3.scm,v 4.38 1993/02/19 17:48:51 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -157,7 +157,7 @@ MIT in each case. |#
 		(LAP ,@(load-dnl frame-size 1)
 		     (JMP ,entry:compiler-error)))
 	       ((eq? primitive (ucode-primitive set-interrupt-enables! 1))
-		(LAP (JMP ,entry:set-interrupt-enables)))
+		(LAP (JMP ,entry:compiler-set-interrupt-enables)))
 	       (else
 		(let ((arity (primitive-procedure-arity primitive)))
 		  (cond ((not (negative? arity))
