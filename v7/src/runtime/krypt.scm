@@ -32,9 +32,9 @@
       (if (fix:< i ts)
 	  (begin
 	    (let ((s (key/state-table key)))
-	      (let* ((j (fix:remainder (fix:+ j 1 
-					  (vector-ref s i)
-					  (char->ascii (string-ref kbuf k))) ts))
+	      (let* ((j (fix:remainder (fix:+ (fix:+ j 1)
+					      (fix:+ (vector-ref s i)
+						     (char->ascii (string-ref kbuf k)))) ts))
 		     (t (vector-ref s i)))
 		(vector-set! s i (vector-ref s j))
 		(vector-set! s j t)
@@ -58,7 +58,7 @@
 			     (ascii->char 
 			      (fix:xor (char->ascii (string-ref buf k))
 				       (vector-ref s (fix:remainder 
-						      (fix:+ 1 (vector-ref s i) 
+						      (fix:+ (fix:1+ (vector-ref s i))
 							     (vector-ref s j)) ts)))))
 #|
 		(let ((buf-k-bitstr
@@ -121,14 +121,14 @@
 	      (set! checksum (+ checksum 
 				(apply + (map char->ascii (string->list current-block)))))
 	      (rcm key1 (string-length current-block) current-block)
-	      (set! output-string (string-append output-string current-block))
-	      (loop new-rest))
+	      (loop new-rest (cons current-block output-string-list)))
 	    (begin
 	      (set! checksum (+ checksum 
 				(apply + (map char->ascii (string->list rest)))))
 	      (rcm key1 (string-length rest) rest)
-	      (set! output-string (string-append output-string rest)))))
-      (let ((check-char (ascii->char (modulo (- checksum) 256))))
+	      (set! output-string 
+		    (apply string-append (cons output-string (reverse (cons rest output-string-list))))))))
+      (let ((check-char (ascii->char (modulo (fix:- 0 checksum) 256))))
 	(let ((cc-string (char->string check-char)))
 	  (rcm key1 1 cc-string)
 	  (set! output-string (string-append output-string cc-string))))
