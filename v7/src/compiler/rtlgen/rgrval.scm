@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.2 1987/12/30 07:10:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.3 1987/12/30 09:10:36 cph Exp $
 #| -*-Scheme-*-
 Copyright (c) 1987 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.2 1987/12/30 07:10:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.3 1987/12/30 09:10:36 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -204,7 +204,7 @@ promotional, or sales literature without prior written consent from
   ;; IC procedures have their entry points linked into their headers
   ;; at load time by the linker.
   (let ((header
-	 (scode/make-lambda (variable-name (procedure-name procedure))
+	 (scode/make-lambda (procedure-name procedure)
 			    (map variable-name
 				 (procedure-required-arguments procedure))
 			    (map variable-name (procedure-optional procedure))
