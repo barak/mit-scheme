@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.46 1995/09/11 19:05:26 cph Exp $
+$Id: error.scm,v 14.47 1995/09/11 20:52:26 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -889,7 +889,7 @@ MIT in each case. |#
 
   (set! condition-type:illegal-pathname-component
 	(make-condition-type 'ILLEGAL-PATHNAME-COMPONENT
-	    condition-type:wrong-type-datum
+	    condition-type:wrong-type-datum '()
 	  (lambda (condition port)
 	    (write-string "The object " port)
 	    (write (access-condition condition 'DATUM) port)
