@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: urtrap.scm,v 14.15 2003/02/14 18:28:34 cph Exp $
+$Id: urtrap.scm,v 14.16 2004/08/14 05:51:46 cph Exp $
 
-Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1988,1993,2001,2002,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,8 +30,7 @@ USA.
 
 (define-structure (reference-trap
 		   (type vector)
-		   (named ((ucode-primitive string->symbol)
-			   "#[(runtime reference-trap)reference-trap]"))
+		   (named '|#[(runtime reference-trap)reference-trap]|)
 		   (print-procedure
 		    (standard-unparser-method 'REFERENCE-TRAP
 		      (lambda (trap port)
@@ -52,7 +51,7 @@ USA.
   (if (primitive-object-type? (ucode-type reference-trap) (getter))
       (let ((index (object-datum (getter))))
 	(if (<= index trap-max-immediate)
-	    (make-reference-trap index #f)
+	    (make-immediate-reference-trap index)
 	    (make-reference-trap (primitive-object-ref (getter) 0)
 				 (primitive-object-ref (getter) 1))))
       (getter)))
@@ -78,9 +77,18 @@ USA.
     ((14) 'COMPILER-CACHED)
     ((15) 'MACRO)
     (else #f)))
+
+(define (make-immediate-reference-trap kind)
+  (or (vector-ref cached-traps kind)
+      (let ((trap (make-reference-trap kind #f)))
+	(vector-set! cached-traps kind trap)
+	trap)))
+
+(define cached-traps
+  (make-vector trap-max-immediate #f))
 
 (define (make-unassigned-reference-trap)
-  (make-reference-trap 0 #f))
+  (make-immediate-reference-trap 0))
 
 (define (unassigned-reference-trap? object)
   (and (reference-trap? object)
@@ -94,7 +102,7 @@ USA.
        (fix:= 0 (object-datum (getter)))))
 
 (define (make-unbound-reference-trap)
-  (make-reference-trap 2 #f))
+  (make-immediate-reference-trap 2))
 
 (define (unbound-reference-trap? object)
   (and (reference-trap? object)
