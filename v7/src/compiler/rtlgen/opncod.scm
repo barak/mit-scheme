@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.3 1987/12/31 08:50:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.4 1988/03/31 21:35:23 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -105,6 +105,11 @@ MIT in each case. |#
       (let ((value (rvalue-known-value rvalue)))
 	(cond ((and value (rvalue/constant? value))
 	       (rtl:make-constant (constant-value value)))
+	      ((and value
+		    (rvalue/procedure? value)
+		    (procedure/closure? value)
+		    (procedure/trivial-closure? value))
+	       (make-trivial-closure-cons value))
 	      ((and (rvalue/reference? rvalue)
 		    (not (variable/value-variable? (reference-lvalue rvalue)))
 		    (reference-to-known-location? rvalue))
