@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.33 1997/05/27 07:30:31 cph Exp $
+;;;	$Id: snr.scm,v 1.34 1997/05/27 19:35:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -4082,7 +4082,8 @@ With prefix arg, replaces the file with the list information."
 (define (news-group:number-of-articles group)
   (let ((estimate (news-group:estimated-n-articles group)))
     (and estimate
-	 (if (news-group:reader-hook group)
+	 (if (and (news-group:reader-hook group)
+		  (news-group:server-has-articles? group))
 	     (let ((n-seen
 		    (count-ranges
 		     (news-group:guarantee-ranges-deleted group))))
