@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosterm.c,v 1.5 1990/11/05 11:55:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosterm.c,v 1.6 1990/11/08 11:05:26 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -79,6 +79,12 @@ DEFINE_PRIMITIVE ("BAUD-RATE->INDEX", Prim_baud_rate_to_index, 1, 1, 0)
       error_bad_range_arg (1);
     PRIMITIVE_RETURN (long_to_integer (index));
   }
+}
+
+DEFINE_PRIMITIVE ("OS-JOB-CONTROL?", Prim_os_job_control_p, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (OS_job_control_p ()));
 }
 
 DEFINE_PRIMITIVE ("TERMINAL-GET-STATE", Prim_terminal_get_state, 1, 1, 0)
@@ -178,8 +184,7 @@ DEFINE_PRIMITIVE ("TERMINAL-DRAIN-OUTPUT", Prim_terminal_drain_output, 1, 1,
 
 DEFINE_PRIMITIVE ("OPEN-PTY-MASTER", Prim_open_pty_master, 0, 0,
   "Open a PTY master, returning the master's channel and the slave's name.\n\
-The result is a pair whose car is a channel and whose cdr is a filename.\n\
-If no PTY can be opened, #F is returned.")
+Returns a vector #(CHANNEL MASTER-NAME SLAVE-NAME).")
 {
   PRIMITIVE_HEADER (0);
   {
@@ -187,27 +192,68 @@ If no PTY can be opened, #F is returned.")
     CONST char * master_name;
     CONST char * slave_name =
       (OS_open_pty_master ((&channel), (&master_name)));
-    if (slave_name == 0)
-      PRIMITIVE_RETURN (SHARP_F);
+    transaction_begin ();
+    OS_channel_close_on_abort (channel);
     {
       SCHEME_OBJECT vector = (allocate_marked_vector (TC_VECTOR, 3, 1));
       VECTOR_SET (vector, 0, (long_to_integer (channel)));
       VECTOR_SET (vector, 1, (char_pointer_to_string (master_name)));
       VECTOR_SET (vector, 2, (char_pointer_to_string (slave_name)));
+      transaction_commit ();
       PRIMITIVE_RETURN (vector);
     }
   }
+}
+
+static Tchannel
+DEFUN (arg_pty_master, (arg), unsigned int arg)
+{
+  Tchannel channel = (arg_channel (1));
+  if ((OS_channel_type (channel)) != channel_type_pty_master)
+    error_bad_range_arg (1);
+  return (channel);
 }
 
 DEFINE_PRIMITIVE ("PTY-MASTER-SEND-SIGNAL", Prim_pty_master_send_signal, 2, 2,
   "Send a signal to PTY-MASTER; second arg says which one.")
 {
   PRIMITIVE_HEADER (2);
-  {
-    Tchannel channel = (arg_channel (1));
-    if ((OS_channel_type (channel)) != channel_type_pty_master)
-      error_bad_range_arg (1);
-    OS_pty_master_send_signal (channel, (arg_nonnegative_integer (2)));
-  }
+  OS_pty_master_send_signal ((arg_pty_master (1)),
+			     (arg_nonnegative_integer (2)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("PTY-MASTER-KILL", Prim_pty_master_kill, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  OS_pty_master_kill (arg_pty_master (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("PTY-MASTER-STOP", Prim_pty_master_stop, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  OS_pty_master_stop (arg_pty_master (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("PTY-MASTER-CONTINUE", Prim_pty_master_continue, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  OS_pty_master_continue (arg_pty_master (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("PTY-MASTER-INTERRUPT", Prim_pty_master_interrupt, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  OS_pty_master_interrupt (arg_pty_master (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("PTY-MASTER-QUIT", Prim_pty_master_quit, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  OS_pty_master_quit (arg_pty_master (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
