@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapopt.scm,v 1.5 1993/02/14 22:14:09 gjr Exp $
+$Id: lapopt.scm,v 1.6 1993/02/14 22:33:18 gjr Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -42,7 +42,7 @@ MIT in each case. |#
 (define (classify-instruction instr)
   ;; returns: type target source-1 source-2
   ;; This needs the following:
-  ;; - Base modification (LDWM/STWM)
+  ;; - Loads with base modification (LDWM)
   ;; - Third source (indexed loads)
   ;; - Floats
   (let ((opcode (car instr)))
@@ -82,6 +82,13 @@ MIT in each case. |#
 		   false
 		   (list-ref instr 2)
 		   (cadddr (list-ref instr 3))))
+	  ((memq opcode '(STWM))
+	   ;; source1 (offset n m target/source)
+	   (let ((base (cadddr (list-ref instr 3))))
+	     (values 'MEMORY
+		     base
+		     (list-ref instr 2)
+		     base)))	   
 	  ((memq opcode '(LDI LDIL))
 	   ;; immed target
 	   (values 'ALU
@@ -294,7 +301,7 @@ MIT in each case. |#
 	   (let* ((next (find-or-label (cdr instrs)))
 		  (next* (and next (find-non-label (cdr next)))))
 	     (if (and next
-		      (memq (instruction-type (car next)) '(MEMORY ALU))
+		      (memq (instruction-type (car next)) '(ALU MEMORY))
 		      (not (skips? (car next)))
 		      (or (not next*)
 			  (not (skips? (car next*)))))
