@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.11 1993/11/23 19:30:20 gjr Exp $
+$Id: ctop.scm,v 1.12 1993/11/29 19:14:52 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -54,11 +54,36 @@ MIT in each case. |#
 	(write-string (cdr pair) port)))
     (if compiler:invoke-c-compiler? (c-compile pathname))))
 
-(define (compiled-scode->procedure compiled-scode environment)
-  ;; This could compile to a file, c-compile it, and then load it.
-  environment				; ignored
-  (error "compiled-scode->procedure: Not yet implemented"
-	 compiled-scode))
+(define (compiler-output->procedure compiler-output environment)
+  (finish-c-compilation
+   compiler-output
+   (lambda (shared-library-pathname)
+     (load shared-library-pathname environment))))
+
+(define (compiler-output->compiled-expression compiler-output)
+  (finish-c-compilation
+   compiler-output
+   (lambda (pathname)
+     (let* ((handle ((ucode-primitive load-object-file 1)
+		     (->namestring pathname)))
+	    (cth ((ucode-primitive object-lookup-symbol 3)
+		  handle "dload_initialize_file" 0)))
+       (if (not cth)
+	   (error "compiler-output->compiled-expression:"
+		  "Cannot find init procedure"
+		  pathname))
+       ((ucode-primitive initialize-c-compiled-block 1)
+	((ucode-primitive address-to-string 1)
+	 ((ucode-primitive invoke-c-thunk 1)
+	  cth)))))))
+
+(define (compile-scode/internal/hook action)
+  (if (not (eq? *info-output-filename* 'KEEP))
+      (action)
+      (fluid-let ((*info-output-filename*
+		   (pathname-new-type (compiler-temporary-file-pathname)
+				      "inf")))
+	(action))))
 
 (define (cross-compile-bin-file input . more)
   input more				; ignored
@@ -66,6 +91,37 @@ MIT in each case. |#
 
 (define (optimize-linear-lap lap-program)
   lap-program)
+
+(define (compiler-temporary-file-pathname)
+  (let ((pathname (temporary-file-pathname)))
+    (if (file-exists? pathname)
+	(delete-file pathname))
+    (if (pathname-type pathname)
+	(pathname-new-name
+	 (pathname-new-type pathname false)
+	 (string-append (pathname-name pathname)
+			"_"
+			(pathname-type pathname)))
+	pathname)))
+
+(define (finish-c-compilation compiler-output action)
+  (let* ((file (compiler-temporary-file-pathname))
+	 (filec (pathname-new-type file "c")))
+    (dynamic-wind
+     (lambda () false)
+     (lambda ()
+       (fluid-let ((compiler:invoke-c-compiler? true))
+	 (compiler-file-output compiler-output filec)
+	 (action (pathname-new-type file (c-output-extension)))))
+     (lambda ()
+       (for-each (lambda (type)
+		   (let ((f (pathname-new-type file type)))
+		     (if (file-exists? f)
+			 (delete-file f))))
+		 (list "c" "o"
+		       ;; Can't delete this because it is mapped...
+		       ;; (c-output-extension)
+		       ))))))
 
 (define (c-compile pathname)
   ;; Some c compilers do not leave the output file in the same place.
@@ -85,14 +141,18 @@ MIT in each case. |#
 		       (error "compiler: C compiler/linker failed"))
 		   |#
 		   result))))
-	  (newline)
-	  (display ";Compiling ")
-	  (display source)
+	  (if compiler:noisy?
+	      (begin
+		(newline)
+		(display ";Compiling ")
+		(display source)))
 	  (call/cc* (append (c-compiler-switches) (list source)))
 	  (set! *call/cc-c-compiler* (c-linker-name))
-	  (newline)
-	  (display ";Linking ")
-	  (display object)
+	  (if compiler:noisy?
+	      (begin
+		(newline)
+		(display ";Linking ")
+		(display object)))
 	  (call/cc* (append (list "-o")
 			    (list
 			     (enough-namestring
@@ -341,16 +401,22 @@ MIT in each case. |#
      (with-values
 	 (lambda ()
 	   (stringify
-	    (if (eq? pathname 'RECURSIVE)
-		(string-append "_"
-			       (number->string *recursive-compilation-number*))
+	    (if (not (zero? *recursive-compilation-number*))
+		(string-append
+		 "_"
+		 (number->string *recursive-compilation-number*))
 		"")
 	    (last-reference *start-label*)
 	    (last-reference *lap*)
-	    (if (eq? pathname 'RECURSIVE)
-		(cons *info-output-filename*
-		      *recursive-compilation-number*)
-		pathname)))
+	    (cond ((eq? pathname 'RECURSIVE)
+		   (cons *info-output-filename*
+			 *recursive-compilation-number*))
+		  ((eq? pathname 'KEEP)
+		   (if (zero? *recursive-compilation-number*)
+		       "foo.bar"
+		       (cons "foo.bar" *recursive-compilation-number*)))
+		  (else
+		   pathname))))
        (lambda (code-name data-name ntags labels code)
 	 (set! *C-code-name* code-name)
 	 (set! *C-data-name* data-name)
