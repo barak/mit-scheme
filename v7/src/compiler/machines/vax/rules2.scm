@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules2.scm,v 4.1 1988/01/05 15:59:31 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules2.scm,v 4.2 1988/03/21 21:47:00 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -74,8 +74,7 @@ MIT in each case. |#
   (TYPE-TEST (OBJECT->TYPE (OFFSET (REGISTER (? register)) (? offset))) 
 	     (? type))
   (set-standard-branches! 'EQLU)
-  (LAP ,(test-non-pointer (ucode-type unassigned) 0 
-			  (coerce->any register))))
+  (LAP ,(test-byte type (bump-type (indirect-reference! register offset)))))
   
 (define-rule predicate
   (UNASSIGNED-TEST (REGISTER (? register)))
