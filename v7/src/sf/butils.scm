@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/butils.scm,v 4.1 1988/06/13 12:29:01 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/butils.scm,v 4.2 1989/08/17 15:54:13 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -90,16 +90,16 @@ MIT in each case. |#
   (set! sf-directory? (directory-processor "scm" "bin" show-pathname))
   (set! compile-directory? (directory-processor "bin" "com" show-pathname)))
 
-(define (sf-conditionally filename)
+(define (sf-conditionally filename #!optional echo-up-to-date?)
   (let ((kernel
 	 (lambda (filename)
-	   (if (file-processed? filename "scm" "bin")
-	       (begin
-		 (newline)
-		 (write-string "Syntax file: ")
-		 (write filename)
-		 (write-string " is up to date"))
-	       (sf filename)))))    (if (pair? filename)
+	   (cond ((not (file-processed? filename "scm" "bin"))
+		  (sf filename))
+		 ((or (default-object? echo-up-to-date?) echo-up-to-date?)		  (newline)
+		  (write-string "Syntax file: ")
+		  (write filename)
+		  (write-string " is up to date"))))))
+    (if (pair? filename)
 	(for-each kernel filename)
 	(kernel filename))))
 
