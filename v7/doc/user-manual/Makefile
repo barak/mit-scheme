@@ -1,5 +1,5 @@
 
-# $Id: Makefile,v 1.2 2000/07/10 22:04:23 cph Exp $
+# $Id: Makefile,v 1.3 2000/07/10 22:06:01 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -36,3 +36,13 @@ user.info: user.texinfo
 
 html/user_toc.html: user.texinfo
 	(cd html;make)
+
+AUX_SUFFIXES = aux log toc
+INDEX_SUFFIXES = cp fn ky pg tp vr
+
+clean:
+	rm -f user.ps user.dvi user.pdf user*.info
+	rm -f $(addprefix user.,$(AUX_SUFFIXES))
+	rm -f $(addprefix user.,$(INDEX_SUFFIXES))
+	rm -f $(addsuffix s,$(addprefix user.,$(INDEX_SUFFIXES)))
+	$(MAKE) -C html $@
