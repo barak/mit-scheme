@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: nntp.scm,v 1.19 1998/06/21 09:05:17 cph Exp $
+;;;	$Id: nntp.scm,v 1.20 1998/12/29 04:07:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-98 Massachusetts Institute of Technology
 ;;;
@@ -482,7 +482,8 @@
   (%estimated-n-articles #f)
   (%first-article #f)
   (%last-article #f)
-  (reader-hook #f))
+  (reader-hook #f)
+  (%use-gdbm? 'UNDECIDED))
 
 (define (make-news-group connection name)
   (or (find-news-group connection name)
@@ -519,7 +520,7 @@
 
 (define (news-group:last-article group)
   (and (news-group:active? group) (news-group:%last-article group)))
-
+
 (define (news-group:update-server-info! group)
   (set-news-group:server-info!
    group
@@ -547,6 +548,13 @@
       (vector (news-group:%estimated-n-articles group)
 	      (news-group:%first-article group)
 	      (news-group:%last-article group))))
+
+(define (news-group:use-gdbm? group type)
+  (and (gdbm-available?)
+       (memq type (news-group:%use-gdbm? group))))
+
+(define (set-news-group:use-gdbm! group types)
+  (set-news-group:%use-gdbm?! group types))
 
 ;;;; Header Cache
 
@@ -629,7 +637,7 @@
     (lambda (headers numbers)
       (cond ((null? numbers)
 	     headers)
-	    ((gdbm-available?)
+	    ((news-group:use-gdbm? group 'HEADERS)
 	     (news-group:headers-gdbm group numbers headers ignore?))
 	    (else
 	     (news-group:headers-no-gdbm group numbers headers ignore?))))))
@@ -710,7 +718,7 @@
     (if gdbf
 	(if (eq? 'UNAVAILABLE gdbf) #f gdbf)
 	(let ((gdbf
-	       (and (gdbm-available?)
+	       (and (news-group:use-gdbm? group 'HEADERS)
 		    (let ((pathname
 			   (news-group:header-gdbf-pathname group)))
 		      (guarantee-init-file-directory pathname)
@@ -788,7 +796,7 @@
     (if gdbf
 	(if (eq? 'UNAVAILABLE gdbf) #f gdbf)
 	(let ((gdbf
-	       (and (gdbm-available?)
+	       (and (news-group:use-gdbm? group 'BODIES)
 		    (let ((pathname
 			   (news-group:body-gdbf-pathname group)))
 		      (guarantee-init-file-directory pathname)
@@ -825,7 +833,7 @@
 	(nntp-body-command (news-group:connection group)
 			   (news-header:message-id header)
 			   port))))
-
+
 (define (news-header:pre-read-body header)
   (let ((group (news-header:group header)))
     (let ((gdbf (news-group:body-gdbf group #t)))
@@ -865,7 +873,7 @@
 	     datum)))))
 
 (define (news-group:purge-pre-read-headers group predicate)
-  (if (gdbm-available?)
+  (if (news-group:use-gdbm? group 'HEADERS)
       (if (eq? predicate 'ALL)
 	  (begin
 	    (set-news-group:%header-gdbf! group #f)

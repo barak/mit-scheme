@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.227 1998/12/29 02:35:29 cph Exp $
+$Id: edwin.pkg,v 1.228 1998/12/29 04:08:17 cph Exp $
 
 Copyright (c) 1989-98 Massachusetts Institute of Technology
 
@@ -1747,6 +1747,7 @@ MIT in each case. |#
 	  edwin-variable$news-group-keep-seen-headers
 	  edwin-variable$news-group-mode-hook
 	  edwin-variable$news-group-show-author-name
+	  edwin-variable$news-group-show-cache-policy
 	  edwin-variable$news-group-show-context-headers
 	  edwin-variable$news-group-show-seen-headers
 	  edwin-variable$news-hide-groups
@@ -1804,6 +1805,7 @@ MIT in each case. |#
 	  news-group:server
 	  news-group:server-info
 	  news-group:update-server-info!
+	  news-group:use-gdbm?
 	  news-group?
 	  news-header:<
 	  news-header:field-value
@@ -1844,6 +1846,7 @@ MIT in each case. |#
 	  organize-headers-into-threads
 	  set-news-group:reader-hook!
 	  set-news-group:server-info!
+	  set-news-group:use-gdbm!
 	  set-news-header:reader-hook!
 	  set-news-thread:reader-hook!
 	  set-nntp-connection:reader-hook!
