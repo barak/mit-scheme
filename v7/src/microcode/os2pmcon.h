@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.h,v 1.1 1995/10/30 07:58:12 cph Exp $
+$Id: os2pmcon.h,v 1.2 1995/11/04 01:40:09 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -50,3 +50,20 @@ MIT in each case. */
 #define IDM_FONT	30
 
 #define IDM_ABOUT	40
+
+#define IDI_BCH		10
+#define IDI_COFFEE	11	
+#define IDI_CONSES	12	
+#define IDI_EDWIN	13	
+#define IDI_ENVIR1	14	
+#define IDI_GRAPHICS	15	
+#define IDI_LAMBDA	16	
+#define IDI_LAMBDA2	17	
+#define IDI_LIAR1	18	
+#define IDI_LIAR2	19	
+#define IDI_LIAR3	20	
+#define IDI_MINCER	21	
+#define IDI_SHIELD1	22	
+#define IDI_SHIELD2	23	
+#define IDI_SHIELD3	24	
+#define IDI_SHIELD4	25	
