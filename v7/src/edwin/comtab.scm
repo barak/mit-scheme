@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: comtab.scm,v 1.69 1999/01/02 06:11:34 cph Exp $
+;;; $Id: comtab.scm,v 1.70 2001/01/06 03:00:04 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -28,13 +28,18 @@
 
 (define (comtab-get comtab key)
   (let ((vector (comtab-vector comtab)))
-    (if (and (vector? vector)
-	     (char? key)
-	     (< (char->integer key) (vector-length vector)))
-	(vector-ref vector (char->integer key))
-	(let ((entry (assq key (comtab-alist comtab))))
-	  (and entry
-	       (cdr entry))))))
+    (let ((try
+	   (lambda (key)
+	     (if (and (vector? vector)
+		      (char? key)
+		      (< (char->integer key) (vector-length vector)))
+		 (vector-ref vector (char->integer key))
+		 (let ((entry (assq key (comtab-alist comtab))))
+		   (and entry
+			(cdr entry)))))))
+      (if (and (char? key) (char-upper-case? (char-base key)))
+	  (or (try key) (try (char-downcase key)))
+	  (try key)))))
 
 (define (comtab-put! comtab key datum)
   (cond ((not datum)
@@ -280,14 +285,7 @@
   (let* ((comtab (car comtabs))
 	 (put!
 	  (lambda (key)
-	    (comtab-put! comtab (remap-alias-key key) datum)
-	    ;; Defining a lower-case character defines the
-	    ;; corresponding upper-case character to be an alias if not
-	    ;; already defined.
-	    (if (and (char? key) (char-lower-case? key))
-		(let ((key* (char-upcase key)))
-		  (if (not (lookup-key comtabs key*))
-		      (comtab-put! comtab key* (cons comtab key))))))))
+	    (comtab-put! comtab (remap-alias-key key) datum))))
     (cond ((or (key? key) (button? key))
 	   (put! key))
 	  ((char-set? key)
@@ -304,32 +302,20 @@
   key)
 
 (define (comtab-alist* comtab)
-  (let ((alist
-	 (let ((vector (comtab-vector comtab))
-	       (alist (comtab-alist comtab)))
-	   (if (vector? vector)
-	       (let ((end (vector-length vector)))
-		 (let loop ((index 0))
-		   (if (< index end)
-		       (let ((datum (vector-ref vector index)))
-			 (if datum
-			     (cons (cons (integer->char index) datum)
-				   (loop (+ index 1)))
-			     (loop (+ index 1))))
-		       alist)))
-	       alist))))
-    (list-transform-negative alist
-      (lambda (entry)
-	(let ((key (car entry)))
-	  (and (char? key)
-	       (char-upper-case? (char-base key))
-	       (let ((datum (cdr entry)))
-		 (or (and (comtab-alias? datum)
-			  (eq? comtab (car datum))
-			  (eqv? (char-downcase key) (cdr datum)))
-		     (let ((entry* (assv (char-downcase key) alist)))
-		       (and entry*
-			    (equal? datum (cdr entry*))))))))))))
+  (let ((vector (comtab-vector comtab))
+	(alist (comtab-alist comtab)))
+    (if (vector? vector)
+	(let ((end (vector-length vector)))
+	  (let loop ((index 0) (alist alist))
+	    (if (fix:< index end)
+		(loop (fix:+ index 1)
+		      (let ((datum (vector-ref vector index)))
+			(if datum
+			    (cons (cons (integer->char index) datum)
+				  alist)
+			    alist)))
+		alist)))
+	alist)))
 
 (define (comtab->alist comtab)
   (let loop ((prefix '()) (comtab comtab))
