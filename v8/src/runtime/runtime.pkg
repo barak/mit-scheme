@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.19 1988/10/07 08:53:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.20 1988/10/12 06:23:00 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -1080,19 +1080,20 @@ MIT in each case. |#
   (file-case os-type
     ((unix) "unxpar")
     ((vms) "vmspar")
-    (else))
+    (else "unkpar"))
   (parent ())
   (export ()
-	  parse-pathname
-	  pathname-as-directory))
+	  pathname-as-directory)
+  (export (runtime pathname)
+	  parse-pathname))
 
 (define-package (runtime pathname-unparser)
   (file-case os-type
     ((unix) "unxunp")
     ((vms) "vmsunp")
-    (else))
+    (else "unkunp"))
   (parent ())
-  (export ()
+  (export (runtime pathname)
 	  pathname-unparse
 	  pathname-unparse-name))
 
