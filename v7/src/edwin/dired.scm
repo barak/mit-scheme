@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dired.scm,v 1.187 2001/06/02 21:50:06 cph Exp $
+;;; $Id: dired.scm,v 1.188 2001/06/03 01:48:32 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -926,7 +926,8 @@ Actions controlled by variables list-directory-brief-switches
 (define (for-each-dired-mark buffer procedure)
   (for-each (lambda (file)
 	      (procedure (car file))
-	      (dired-mark-1 (cdr file) #\space))
+	      (dired-mark-1 (cdr file) #\space)
+	      (update-screens! #f))
 	    (dired-marked-files buffer)))
 
 (define (dired-change-files verb argument procedure)
