@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: fixobj.h,v 9.36 1993/11/08 20:38:05 cph Exp $
+$Id: fixobj.h,v 9.37 1994/03/25 01:02:05 gjr Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -123,6 +123,21 @@ MIT in each case. */
 #define PC_Sample_Prob_Comp_Table	0x3D /* Sure looked compiled ?! */
 #define PC_Sample_UFO_Table		0x3E /* Invalid ENV at sample time  */
 
-#define COMPILED_CODE_BKPT_HANDLER	0x3F
+#define COMPILED_CODE_BKPT_HANDLER	0x3F /* Procedure to invoke when
+						compiled code hits a
+						breakpoint.
+					      */
 
-#define NFixed_Objects			0x40
+#define GC_WABBIT_DESCRIPTOR		0x40 /* #F or a vector of 4 elements:
+						- A boolean flag
+						- A vector of objects to find
+						- A vector to fill with
+						  references.
+						- A boolean flag = do you want
+						  a vector of all obj heads
+						  returned in this slot. If so,
+						  slot 0 will be a boolean flag
+						  indicating if there may be more.
+					      */
+
+#define NFixed_Objects			0x41
