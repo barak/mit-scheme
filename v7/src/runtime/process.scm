@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.7 1991/03/07 04:30:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.8 1991/03/08 03:13:15 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -195,17 +195,15 @@ MIT in each case. |#
 	  (else (convert-subprocess-status process status)))))))
 
 (define (convert-subprocess-status process status)
-  (let ((get-reason
-	 (lambda (status)
-	   (cons status
-		 ((ucode-primitive process-reason 1)
-		  (subprocess-index process))))))
-    (case status
-      ((0) 'RUNNING)
-      ((1) (get-reason 'STOPPED))
-      ((2) (get-reason 'EXITED))
-      ((3) (get-reason 'SIGNALLED))
-      (else (error "Illegal process status:" status)))))
+  (case status
+    ((0) 'RUNNING)
+    ((1) 'STOPPED)
+    ((2) 'EXITED)
+    ((3) 'SIGNALLED)
+    (else (error "Illegal process status:" status))))
+
+(define (subprocess-exit-reason process)
+  ((ucode-primitive process-reason 1) (subprocess-index process)))
 
 (define (subprocess-job-control-status process)
   (let ((n
