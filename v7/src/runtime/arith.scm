@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.25 1992/09/21 19:06:40 cph Exp $
+$Id: arith.scm,v 1.26 1993/02/01 01:31:05 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -529,7 +529,7 @@ MIT in each case. |#
   (rat:binary-operator u/u* v/v*
     (lambda (u v)
       (if (int:zero? v)
-	  (error:divide-by-zero '/ (list u v))
+	  (error:divide-by-zero '/ (list u/u* v/v*))
 	  (rat:sign-correction u v
 	    (lambda (u v)
 	      (let ((d (int:gcd u v)))
@@ -542,11 +542,13 @@ MIT in each case. |#
 	    (make-rational (int:* (int:quotient u d) v*)
 			   (int:quotient v d))))))
     (lambda (u u* v)
-      (rat:sign-correction u v
-	(lambda (u v)
-	  (let ((d (int:gcd u v)))
-	    (make-rational (int:quotient u d)
-			   (int:* u* (int:quotient v d)))))))
+      (if (int:zero? v)
+	  (error:divide-by-zero '/ (list u/u* v/v*))
+	  (rat:sign-correction u v
+	    (lambda (u v)
+	      (let ((d (int:gcd u v)))
+		(make-rational (int:quotient u d)
+			       (int:* u* (int:quotient v d))))))))
     (lambda (u u* v v*)
       (let ((d1 (int:gcd u v))
 	    (d2
