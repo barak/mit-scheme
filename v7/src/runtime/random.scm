@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.5 1993/02/09 00:25:45 cph Exp $
+$Id: random.scm,v 14.6 1993/02/10 22:29:57 cph Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -127,7 +127,7 @@ MIT in each case. |#
       ;; get locked in trivial cycles.
       (if (or (let loop ((i 0))
 		(or (fix:= i r)
-		    (and (flo:= (vector-ref seeds i) 0)
+		    (and (flo:= (vector-ref seeds i) 0.)
 			 (loop (fix:+ i 1)))))
 	      (let ((b-1 (flo:- b. 1.)))
 		(let loop ((i 0))
