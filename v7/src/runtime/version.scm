@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/version.scm,v 14.6 1988/06/21 05:51:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/version.scm,v 14.7 1988/06/22 21:25:16 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -40,4 +40,4 @@ MIT in each case. |#
 (define (initialize-package!)
   (add-identification!
    "Microcode" microcode-id/version microcode-id/modification)
-  (add-identification! "Runtime" 14 6))
+  (add-identification! "Runtime" 14 7))

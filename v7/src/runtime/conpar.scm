@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.3 1988/06/21 04:21:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.4 1988/06/22 21:24:16 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -321,7 +321,15 @@ MIT in each case. |#
 
 (define (parser/restore-dynamic-state type elements state)
   (make-restore-frame type elements state
-		      (vector-ref elements 0)
+		      ;; Possible problem: the dynamic state really
+		      ;; consists of all of the state spaces in
+		      ;; existence.  Probably we should have some
+		      ;; mechanism for keeping track of them all.
+		      (let ((dynamic-state (vector-ref elements 0)))
+			(if (eq? system-state-space
+				 (state-point/space dynamic-state))
+			    dynamic-state
+			    (parser-state/dynamic-state state)))
 		      (parser-state/fluid-bindings state)
 		      (parser-state/interrupt-mask state)
 		      (parser-state/history state)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.6 1988/06/22 21:09:42 jrm Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.7 1988/06/22 21:23:58 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -1426,6 +1426,9 @@ MIT in each case. |#
 	  set-current-dynamic-state!
 	  set-fluid-bindings!
 	  translate-to-state-point)
+  (export (runtime continuation-parser)
+	  state-point/space
+	  system-state-space)
   (initialization (initialize-package!)))
 
 (define-package (runtime stream)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/wind.scm,v 14.1 1988/06/13 12:00:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/wind.scm,v 14.2 1988/06/22 21:24:34 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -58,6 +58,21 @@ MIT in each case. |#
 		 (fixed-objects-vector-slot 'STATE-SPACE-ROOT)
 		 (current-dynamic-state))
     ((ucode-primitive set-fixed-objects-vector!) fixed-objects)))
+
+(define-structure (state-point (type vector)
+			       (initial-offset 1)
+			       (constructor false)
+			       (conc-name state-point/))
+  (before-thunk false read-only true)
+  (after-thunk false read-only true)
+  (nearer-point false read-only true)
+  (distance-to-root false read-only true))
+
+(define (state-point/space point)
+  (let ((next (state-point/nearer-point point)))
+    (if (positive? (state-point/distance-to-root point))
+	(state-point/space next)
+	next)))
 
 (define-primitives
   execute-at-new-state-point
