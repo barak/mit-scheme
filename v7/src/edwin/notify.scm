@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: notify.scm,v 1.18 1999/01/02 06:11:34 cph Exp $
+;;; $Id: notify.scm,v 1.19 2001/01/06 02:36:20 cph Exp $
 ;;;
-;;; Copyright (c) 1992-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1992-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -110,6 +110,17 @@ Ignored if notify-show-mail is false."
       (ref-variable notify-mail-present)
       (ref-variable notify-mail-not-present)))
 
+(define (notifier:set-mail-string! string)
+  ;; STRING is either #F, meaning use the internal mail notifier, or a
+  ;; string.  A null string means no mail, and a non-null string means
+  ;; new mail is available.
+  (without-interrupts
+   (lambda ()
+     (set! override-notifier-mail-string string)
+     (if (not notifier-thread-registration)
+	 (set-variable! global-mode-string string #f))
+     (global-window-modeline-event!))))
+
 (define-variable notify-interval
   "How often the notifier updates the modeline, in seconds."
   60
@@ -122,7 +133,12 @@ Ignored if notify-show-mail is false."
 
 (define (notifier:get-string window)
   window
-  (string-append-separated notifier-element-string notifier-mail-string))
+  (string-append-separated notifier-element-string
+			   (if override-notifier-mail-string
+			       (if (string-null? override-notifier-mail-string)
+				   (ref-variable notify-mail-not-present)
+				   (ref-variable notify-mail-present))
+			       notifier-mail-string)))
 
 (define (update-notifier-strings! element mail)
   (set! notifier-element-string element)
@@ -131,6 +147,7 @@ Ignored if notify-show-mail is false."
 
 (define notifier-element-string "")
 (define notifier-mail-string "")
+(define override-notifier-mail-string #f)
 (define mail-notify-hook-installed? #f)
 (define current-notifier-thread #f)
 (define notifier-thread-registration #f)
@@ -205,5 +222,5 @@ which can show various things including time, load average, and mail status."
 	     (deregister-inferior-thread! notifier-thread-registration)
 	     (set! notifier-thread-registration #f)))
        unspecific))
-    (set-variable! global-mode-string "")
-    (update-notifier-strings! "" "")))
+    (update-notifier-strings! "" "")
+    (set-variable! global-mode-string override-notifier-mail-string #f)))
