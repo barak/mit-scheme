@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.192 2001/11/06 05:01:50 cph Exp $
+;;; $Id: imail-imap.scm,v 1.193 2001/11/18 04:53:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1623,6 +1623,7 @@
   (let ((if-not-locked (if (default-object? if-not-locked) #f if-not-locked))
 	(pathname (imap-folder-lock-pathname folder))
 	(locked? #f))
+    (guarantee-init-file-directory pathname)
     (dynamic-wind
      (lambda () unspecific)
      (lambda ()
@@ -1656,7 +1657,10 @@
 (define (message-item-pathname message keyword)
   (init-file-specifier->pathname
    `(,@(imap-message-cache-specifier message)
-     ,(if (symbol? keyword) (symbol-name keyword) keyword))))
+     ,(encode-cache-namestring
+       (if (symbol? keyword)
+	   (symbol-name keyword)
+	   keyword)))))
 
 (define (imap-message-cache-pathname message)
   (pathname-as-directory
@@ -1680,9 +1684,9 @@
   (let ((url (resource-locator folder)))
     (list "imail-cache"
 	  (string-append (encode-cache-namestring (imap-url-user-id url))
-			 "@"
+			 "_"
 			 (string-downcase (imap-url-host url))
-			 ":"
+			 "_"
 			 (number->string (imap-url-port url)))
 	  (encode-cache-namestring (imap-url-mailbox url)))))
 
@@ -1698,7 +1702,7 @@
 		  ((char=? char #\/)
 		   (write-char #\. port))
 		  (else
-		   (write-char #\= port)
+		   (write-char #\% port)
 		   (let ((n (char->integer char)))
 		     (if (fix:< n #x10)
 			 (write-char #\0 port))
