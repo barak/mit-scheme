@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/termcap.scm,v 1.3 1992/05/28 18:38:27 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/termcap.scm,v 1.4 1992/08/27 06:33:40 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -135,7 +135,8 @@ MIT in each case. |#
       (let ((x-size (output-port/x-size console-output-port))
 	    (y-size (output-port/y-size console-output-port)))
 	(make-ansi-terminal-description x-size y-size))
-      (and (termcap-initialize terminal-type-name)
+      (and (implemented-primitive-procedure? termcap-initialize)
+	   (termcap-initialize terminal-type-name)
 	   (let ((supdup? (string=? terminal-type-name "supdup"))
 		 (tn-standout-marker-width (termcap-get-number "sg"))
 		 (ts-cursor-down
