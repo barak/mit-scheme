@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: bufwiu.scm,v 1.31 1999/01/02 06:11:34 cph Exp $
+;;; $Id: bufwiu.scm,v 1.32 2000/02/28 22:50:37 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -438,9 +438,6 @@
       ((%window-debug-trace window) 'window window
 				    'direct-output-insert-char! char))
   (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (group-insert-char! (%window-group window)
-			(%window-point-index window)
-			char)
     (let ((x-start (inferior-x-start (%window-cursor-inferior window)))
 	  (y-start (inferior-y-start (%window-cursor-inferior window))))
       (screen-direct-output-char

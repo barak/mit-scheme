@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: modefs.scm,v 1.156 2000/02/24 01:32:14 cph Exp $
+;;; $Id: modefs.scm,v 1.157 2000/02/28 22:51:02 cph Exp $
 ;;;
 ;;; Copyright (c) 1985, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -124,6 +124,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental #\m-space 'just-one-space)
 (define-key 'fundamental #\m-! 'shell-command)
 (define-key 'fundamental #\m-% 'query-replace)
+(define-key 'fundamental #\m-\' 'abbrev-prefix-mark)
 (define-key 'fundamental #\m-, 'tags-loop-continue)
 (define-key 'fundamental #\m-- 'auto-argument)
 (define-key 'fundamental #\m-. 'find-tag)
@@ -235,6 +236,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental '(#\c-h #\v) 'describe-variable)
 (define-key 'fundamental '(#\c-h #\w) 'where-is)
 
+(define-key 'fundamental '(#\c-x #\') 'expand-abbrev)
 (define-key 'fundamental '(#\c-x #\c-\[) 'repeat-complex-command)
 (define-key 'fundamental '(#\c-x #\c-b) 'list-buffers)
 (define-key 'fundamental '(#\c-x #\c-c) 'save-buffers-kill-scheme)
@@ -283,11 +285,23 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental '(#\c-x #\5 #\f) 'find-file-other-frame)
 (define-key 'fundamental '(#\c-x #\5 #\m) 'mail-other-frame)
 (define-key 'fundamental '(#\c-x #\5 #\o) 'other-frame)
+
 (define-key 'fundamental '(#\c-x #\;) 'set-comment-column)
 (define-key 'fundamental '(#\c-x #\=) 'what-cursor-position)
 (define-key 'fundamental '(#\c-x #\[) 'backward-page)
 (define-key 'fundamental '(#\c-x #\]) 'forward-page)
 (define-key 'fundamental '(#\c-x #\^) 'enlarge-window)
+(define-prefix-key 'fundamental '(#\c-x #\a))
+(define-key 'fundamental '(#\c-x #\a #\') 'expand-abbrev)
+(define-key 'fundamental '(#\c-x #\a #\+) 'add-mode-abbrev)
+(define-key 'fundamental '(#\c-x #\a #\-) 'inverse-add-global-abbrev)
+(define-key 'fundamental '(#\c-x #\a #\c-a) 'add-mode-abbrev)
+(define-key 'fundamental '(#\c-x #\a #\e) 'expand-abbrev)
+(define-key 'fundamental '(#\c-x #\a #\g) 'add-global-abbrev)
+(define-prefix-key 'fundamental '(#\c-x #\a #\i))
+(define-key 'fundamental '(#\c-x #\a #\i #\g) 'inverse-add-global-abbrev)
+(define-key 'fundamental '(#\c-x #\a #\i #\l) 'inverse-add-mode-abbrev)
+(define-key 'fundamental '(#\c-x #\a #\l) 'add-mode-abbrev)
 (define-key 'fundamental '(#\c-x #\b) 'switch-to-buffer)
 (define-key 'fundamental '(#\c-x #\c) 'save-buffers-kill-edwin)
 (define-key 'fundamental '(#\c-x #\d) 'dired)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.67 2000/01/10 04:00:22 cph Exp $
+$Id: decls.scm,v 1.68 2000/02/28 22:51:28 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -103,7 +103,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (loop (cdr files) (cons (car files) includes)))))
     (for-each (lambda (filename)
 		(apply sf-edwin filename includes))
-	      '("argred"
+	      '("abbrev"
+		"argred"
 		"artdebug"
 		"autold"
 		"autosv"

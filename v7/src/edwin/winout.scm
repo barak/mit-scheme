@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: winout.scm,v 1.13 1999/02/24 21:35:58 cph Exp $
+;;;$Id: winout.scm,v 1.14 2000/02/28 22:50:27 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -56,6 +56,7 @@
 			     (char=? (string-ref image 0) char)))
 		      ;; above 3 expressions replace (char-graphic? char)
 		      (< (1+ (window-point-x window)) (window-x-size window)))
+		 (region-insert-char! point char)
 		 (window-direct-output-insert-char! window char))
 		(else
 		 (region-insert-char! point char)))

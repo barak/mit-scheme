@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.68 1999/10/07 17:06:20 cph Exp $
+$Id: edwin.ldr,v 1.69 2000/02/28 22:51:21 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -200,6 +200,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    ((OS/2) (load "diros2" env))
 	    ((NT) (load "dirw32" env))))
 
+	(load "abbrev" environment)
 	(load "argred" (->environment '(EDWIN COMMAND-ARGUMENT)))
 	(load "autold" environment)
 	(load "autosv" environment)

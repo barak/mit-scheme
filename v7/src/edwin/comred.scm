@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: comred.scm,v 1.115 2000/02/25 14:26:56 cph Exp $
+;;; $Id: comred.scm,v 1.116 2000/02/28 22:50:03 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -263,11 +263,7 @@
       (cond ((or *executing-keyboard-macro?* *command-argument*)
 	     (normal))
 	    ((and (char? *command-key*)
-		  (or (and (eq? command
-				(ref-command-object self-insert-command))
-			   (not (and (or (char=? #\space *command-key*)
-					 (char=? #\newline *command-key*))
-				     (auto-fill-break? point))))
+		  (or (eq? command (ref-command-object self-insert-command))
 		      (command-argument-self-insert? command)))
 	     (let ((non-undo-count *non-undo-count*))
 	       (if (or (fix:= non-undo-count 0)
@@ -288,8 +284,12 @@
 			  (and (fix:= (string-length image) 1)
 			       (char=? (string-ref image 0) key)))
 			(fix:< point-x (fix:- (window-x-size window) 1)))
-		   (window-direct-output-insert-char! window key)
-		   (region-insert-char! point key))))
+		   (if (self-insert key 1 #t)
+		       (begin
+			 (set! *non-undo-count* 0)
+			 (undo-boundary! point))
+		       (window-direct-output-insert-char! window key))
+		   (normal))))
 	    ((eq? command (ref-command-object forward-char))
 	     (if (and (not (window-needs-redisplay? window))
 		      (not (group-end? point))

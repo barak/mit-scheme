@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.207 2000/02/28 20:01:12 cph Exp $
+;;; $Id: filcom.scm,v 1.208 2000/02/28 22:51:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -444,9 +444,6 @@ With argument, saves all with no questions."
     (let ((abbrevs-saved? (maybe-save-abbrevs no-confirmation?)))
       (if (and (null? buffers) (not abbrevs-saved?))
 	  (message "(No files need saving)")))))
-
-;; **** placeholder
-(define (maybe-save-abbrevs no-confirmation?) no-confirmation? #f)
 
 (define-variable-per-buffer buffer-offer-save
   "True in a buffer means offer to save the buffer on exit

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.48 1999/10/07 17:00:40 cph Exp $
+$Id: ed-ffi.scm,v 1.49 2000/02/28 22:51:24 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,7 +24,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;; This list must be kept in alphabetical order by filename.
 
 (standard-scheme-find-file-initialization
- '#(("ansi"	(edwin screen console-screen)
+ '#(("abbrev"	(edwin)
+		edwin-syntax-table)
+    ("ansi"	(edwin screen console-screen)
 		syntax-table/system-internal)
     ("argred"	(edwin command-argument)
 		edwin-syntax-table)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: basic.scm,v 1.135 2000/02/25 14:28:52 cph Exp $
+;;; $Id: basic.scm,v 1.136 2000/02/28 22:50:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -33,23 +33,28 @@ Whichever character you type to run this command is inserted."
       (self-insert char n #t))))
 
 (define (self-insert char n allow-auto-fill?)
-  (if (> n 0)
-      (begin
-	(if (and (current-minor-mode? (ref-mode-object abbrev))
-		 (not (char=? #\w (char-syntax char)))
-		 (buffer-writable? (selected-buffer))
-		 (eqv? #\w (char-syntax (extract-left-char))))
-	    ((ref-command expand-abbrev)))
-	(insert-chars char n)
-	(if (and allow-auto-fill?
-		 (or (char=? #\space char)
-		     (char=? #\newline char))
-		 (current-minor-mode? (ref-mode-object auto-fill)))
-	    (auto-fill-break)))))
-
-;;; Placeholders:
-(define-minor-mode abbrev "Abbrev" "")
-(define-command expand-abbrev "" () (lambda () unspecific))
+  (and (> n 0)
+       (let ((point (current-point))
+	     (hairy? #f))
+	 (if (and (not (group-start? point))
+		  (buffer-minor-mode? (mark-buffer point)
+				      (ref-mode-object abbrev))
+		  (not (char=? #\w (char-syntax char)))
+		  (char=? #\w (char-syntax (extract-left-char point))))
+	     (let ((t (group-modified-tick (mark-group point))))
+	       ((ref-command expand-abbrev) point)
+	       (if (not (fix:= t (group-modified-tick (mark-group point))))
+		   (set! hairy? #t))))
+	 (insert-chars char n)
+	 (if (and allow-auto-fill?
+		  (or (char=? #\space char)
+		      (char=? #\newline char))
+		  (current-minor-mode? (ref-mode-object auto-fill)))
+	     (let ((t (group-modified-tick (mark-group point))))
+	       (auto-fill-break)
+	       (if (not (fix:= t (group-modified-tick (mark-group point))))
+		   (set! hairy? #t))))
+	 hairy?)))
 
 (define (read-quoted-char prompt-string)
   (let ((read-ascii-char
