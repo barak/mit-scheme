@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/compiler.pkg,v 1.35 1992/05/26 20:21:42 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/compiler.pkg,v 1.36 1992/07/20 22:11:58 cph Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/comp.pkg,v 1.32 1991/05/06 23:09:24 jinx Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -159,6 +159,11 @@ MIT in each case. |#
 	  compile-bin-file
 	  compile-procedure
 	  compile-scode
+	  compiler:dump-bci-file
+	  compiler:dump-bci/bcs-files
+	  compiler:dump-bif/bsm-files
+	  compiler:dump-inf-file
+	  compiler:dump-info-file
 	  compiler:reset!
 	  cross-compile-bin-file
 	  cross-compile-bin-file-end)
@@ -180,7 +185,7 @@ MIT in each case. |#
 	  *rtl-graphs*)
   (import (runtime compiler-info)
 	  make-dbg-info-vector
-	  inf-structure->bif/bsm)
+	  split-inf-structure!)
   (import (runtime unparser)
 	  *unparse-uninterned-symbols-by-name?*))
 

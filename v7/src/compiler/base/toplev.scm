@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.43 1992/06/12 01:43:14 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.44 1992/07/20 22:12:22 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1124,6 +1124,46 @@ MIT in each case. |#
 
 ;;; Various ways of dumping an info file
 
+(define (compiler:dump-inf-file binf pathname)
+  (fasdump binf pathname true)
+  (announce-info-files pathname))
+
+(define (compiler:dump-bif/bsm-files binf pathname)
+  (let ((bif-path (pathname-new-type pathname "bif"))
+	(bsm-path (pathname-new-type pathname "bsm")))
+    (let ((bsm (split-inf-structure! binf bsm-path)))
+      (fasdump binf bif-path true)
+      (fasdump bsm bsm-path true))
+    (announce-info-files bif-path bsm-path)))
+  
+(define (compiler:dump-bci/bcs-files binf pathname)
+  (load-option 'COMPRESS)
+  (let ((bci-path (pathname-new-type pathname "bci"))
+	(bcs-path (pathname-new-type pathname "bcs")))
+    (let ((bsm (split-inf-structure! binf bcs-path)))
+      (call-with-temporary-filename
+	(lambda (bif-name)
+	  (let ((bif-path (merge-pathnames bif-name bci-path)))
+	    (fasdump binf bif-path true)
+	    (compress bif-path bci-path))))
+      (call-with-temporary-filename
+	(lambda (bsm-name)
+	  (let ((bsm-path (merge-pathnames bsm-name bcs-path)))
+	    (fasdump bsm bsm-path true)
+	    (compress bsm-path bcs-path)))))
+    (announce-info-files bci-path bcs-path)))
+  
+(define (compiler:dump-bci-file binf pathname)
+  (load-option 'COMPRESS)
+  (let ((bci-path (pathname-new-type pathname "bci")))
+    (split-inf-structure! binf false)
+    (call-with-temporary-filename
+      (lambda (bif-name)
+	(let ((bif-path (merge-pathnames bif-name bci-path)))
+	  (fasdump binf bif-path true)
+	  (compress bif-path bci-path))))
+    (announce-info-files bci-path)))
+
 (define (announce-info-files . files)
   (if compiler:noisy?
       (let ((port (nearest-cmdl/port)))
@@ -1137,42 +1177,8 @@ MIT in each case. |#
 		(write-string " dumped ")
 		(loop (cdr files))))))))
 
-(define (compiler:dump-inf-file binf pathname)
-  (fasdump binf pathname true)
-  (announce-info-files pathname))
-  
-(define (compiler:dump-bif/bsm-files binf pathname)
-  (let ((bif-path (pathname-new-type pathname "bif"))
-	(bsm-path (pathname-new-type pathname "bsm")))
-    (inf-structure->bif/bsm binf bif-path bsm-path)
-    (announce-info-files bif-path bsm-path)))
-  
-(define (compiler:dump-bci/bcs-files binf pathname)
-  (let ((bci-path (pathname-new-type pathname "bci"))
-	(bcs-path (pathname-new-type pathname "bcs")))
-    (load-option 'COMPRESS)
-    (call-with-temporary-filename
-      (lambda (bif-name)
-	(let ((bif-path (merge-pathnames bif-name)))
-	  (call-with-temporary-filename
-            (lambda (bsm-name)
-	      (let ((bsm-path (merge-pathnames bsm-name)))
-		(inf-structure->bif/bsm binf bif-path bsm-path)
-		(compress bif-path bci-path)
-		(compress bsm-path bcs-path)
-		(announce-info-files bci-path bcs-path)))))))))
-
-(define (compiler:dump-bci-file binf pathname)
-  (let ((bci-path (pathname-new-type pathname "bci")))
-    (load-option 'COMPRESS)
-    (call-with-temporary-filename
-      (lambda (bif-name)
-	(let ((bif-path (merge-pathnames bif-name)))
-	  (inf-structure->bif/bsm binf bif-path false)
-	  (compress bif-path bci-path)
-	  (announce-info-files bci-path))))))
-
-(define compiler:dump-info-file compiler:dump-bci-file)
+(define compiler:dump-info-file
+  compiler:dump-bci-file)
 
 (define (phase/link)
   (compiler-phase "Linkification"

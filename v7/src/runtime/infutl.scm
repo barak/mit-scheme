@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.41 1992/05/28 22:59:09 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.42 1992/07/20 22:09:28 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -386,17 +386,27 @@ MIT in each case. |#
 	 false)))
 
 (define (read-bsm-file name)
-  (let ((pathname (merge-pathnames (process-bsym-filename name))))
-    (if (file-exists? pathname)
-	(fasload-loader pathname)
-	(find-alternate-file-type pathname
-				  `(("bsm" . ,fasload-loader)
-				    ("bcs" . ,compressed-loader))))))
+  (let ((pathname
+	 (let ((pathname (merge-pathnames (process-bsym-filename name))))
+	   (if (file-exists? pathname)
+	       pathname
+	       (let loop ((types '("bsm" "bcs")))
+		 (and (not (null? types))
+		      (let ((pathname
+			     (pathname-new-type pathname (car types))))
+			(if (file-exists? pathname)
+			    pathname
+			    (loop (cdr types))))))))))
+    (and pathname
+	 (if (equal? "bcs" (pathname-type pathname))
+	     (compressed-loader pathname)
+	     (fasload-loader pathname)))))
 
 (define (process-bsym-filename name)
   (rewrite-directory (merge-pathnames name)))
 
-;;; The conversion hack.
+
+;;;; Splitting of info structures
 
 (define (inf->bif/bsm inffile)
   (let* ((infpath (merge-pathnames inffile))
@@ -406,34 +416,36 @@ MIT in each case. |#
       (inf-structure->bif/bsm binf bifpath bsmpath))))
 
 (define (inf-structure->bif/bsm binf bifpath bsmpath)
-  (let* ((bifpath (merge-pathnames bifpath))
-	 (bsmpath (and bsmpath (merge-pathnames bsmpath)))
-	 (bsmname (and bsmpath (->namestring bsmpath))))
+  (let ((bifpath (merge-pathnames bifpath))
+	(bsmpath (and bsmpath (merge-pathnames bsmpath))))
+    (let ((bsm (split-inf-structure! binf bsmpath)))
+      (fasdump binf bifpath true)
+      (if bsmpath
+	  (fasdump bsm bsmpath true)))))
+
+(define (split-inf-structure! binf bsmpath)
+  (let ((bsmname (and bsmpath (->namestring bsmpath))))
     (cond ((dbg-info? binf)
 	   (let ((labels (dbg-info/labels/desc binf)))
 	     (set-dbg-info/labels/desc! binf bsmname)
-	     (fasdump binf bifpath true)
-	     (if bsmpath
-		 (fasdump labels bsmpath true))))
+	     labels))
 	  ((vector? binf)
-	   (let ((bsm (make-vector (vector-length binf))))
-	     (let loop ((pos 0))
-	       (if (fix:= pos (vector-length bsm))
-		   (begin
-		     (fasdump binf bifpath true)
-		     (if bsmpath
-			 (fasdump bsm bsmpath true)))
-		   (let ((dbg-info (vector-ref binf pos)))
-		     (let ((labels (dbg-info/labels/desc dbg-info)))
-		       (vector-set! bsm pos labels)
-		       (set-dbg-info/labels/desc!
-			dbg-info
-			(and bsmname (cons bsmname pos)))
-		       (loop (fix:1+ pos))))))))
+	   (let ((n (vector-length binf)))
+	     (let ((bsm (make-vector n)))
+	       (do ((i 0 (fix:+ i 1)))
+		   ((fix:= i n))
+		 (let ((dbg-info (vector-ref binf i)))
+		   (let ((labels (dbg-info/labels/desc dbg-info)))
+		     (vector-set! bsm i labels)
+		     (set-dbg-info/labels/desc!
+		      dbg-info
+		      (and bsmname (cons bsmname i))))))
+	       bsm)))
 	  (else 
-	   (error "Unknown inf format" binf)))))
-
-;;; UNCOMPRESS: A simple extractor for compressed binary info files.
+	   (error "Unknown inf format:" binf)))))
+
+;;;; UNCOMPRESS
+;;;  A simple extractor for compressed binary info files.
 
 (define (uncompress-ports input-port output-port #!optional buffer-size)
   (define-integrable window-size 4096)
