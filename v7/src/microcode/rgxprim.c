@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/rgxprim.c,v 1.5 1987/11/23 05:18:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/rgxprim.c,v 1.6 1987/12/09 21:37:43 jrm Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -100,7 +100,7 @@ DEFINE_PRIMITIVE ("RE-CHAR-SET-ADJOIN!", Prim_re_char_set_adjoin, 2)
   PRIMITIVE_HEADER (2);
 
   CHECK_ARG (1, RE_CHAR_SET_P);
-  ascii = (arg_ascii_char (2));
+  ascii = (arg_ascii_integer (2));
   (* (string_pointer ((ARG_REF (1)), (ascii / ASCII_LENGTH)))) |=
     (1 << (ascii % ASCII_LENGTH));
   PRIMITIVE_RETURN (NIL);
