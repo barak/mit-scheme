@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: special-forms.texi,v 1.1 2003/04/15 03:30:15 cph Exp $
+@c $Id: special-forms.texi,v 1.2 2003/04/25 20:40:22 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -1262,7 +1262,7 @@ Often, no options are required, so a simple call to
 (define-structure foo a b c)
 @end example
 
-This defines a type descriptor @code{foo}, a constructor
+This defines a type descriptor @code{rtd:foo}, a constructor
 @code{make-foo}, a predicate @code{foo?}, accessors @code{foo-a},
 @code{foo-b}, and @code{foo-c}, and modifiers @code{set-foo-a!},
 @code{set-foo-b!}, and @code{set-foo-c!}.
@@ -1272,8 +1272,8 @@ the following (using the simple call above as an example):
 
 @table @asis
 @item type descriptor
-The name of the type descriptor is the same as the name of the
-structure, e.g.@: @samp{foo}.  The type descriptor satisfies the
+The name of the type descriptor is @code{"rtd:"} followed by the name of
+the structure, e.g.@: @samp{rtd:foo}.  The type descriptor satisfies the
 predicate @code{record-type?}.
 
 @item constructor
@@ -1379,7 +1379,7 @@ instances are records, this option has the same effect as calling
 This option controls the definition of constructor procedures.  These
 constructor procedures are called ``@sc{boa} constructors'', for ``By
 Order of Arguments'', because the arguments to the constructor specify
-the initial contents the structure's slots by the order in which they
+the initial contents of the structure's slots by the order in which they
 are given.  This is as opposed to ``keyword constructors'', which
 specify the initial contents using keywords, and in which the order of
 arguments is irrelevant.
@@ -1744,6 +1744,24 @@ use of the macro.
 @code{let*} and @code{define}, but they bind syntactic keywords to macro
 transformers instead of binding variables to locations that contain
 values.
+
+Any argument named @var{transformer-spec} must be a macro-transformer
+expression, which is one of the following:
+
+@itemize @bullet
+@item
+A macro transformer defined by the pattern language and denoted by the
+syntactic keyword @code{syntax-rules}.
+
+@item
+A macro transformer defined by one of the low-level mechanisms and
+denoted by one of the syntactic keywords @code{sc-macro-transformer},
+@code{rsc-macro-transformer}, or @code{er-macro-transformer}.
+
+@item
+A syntactic keyword bound in the enclosing environment.  This is used
+to bind another name to an existing macro transformer.
+@end itemize
 
 @deffn {special form} let-syntax bindings expression expression @dots{}
 @var{Bindings} should have the form
