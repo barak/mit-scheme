@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/mermap.scm,v 1.2 1988/11/07 23:24:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/mermap.scm,v 1.3 1988/12/15 17:04:47 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -44,33 +44,30 @@ MIT in each case. |#
 	 (reduce add-weighted-entries
 		 '()
 		 (if (not weights)
-		     (map (lambda (map)
-			    (map->weighted-entries map 1))
-			  maps)
+		     (map (lambda (map) (map->weighted-entries map 1)) maps)
 		     (map map->weighted-entries maps weights)))))
     (for-each eliminate-unlikely-aliases! entries)
     (eliminate-conflicting-aliases! entries)
     (weighted-entries->map entries)))
 
-(define (weighted-entries->map entries)
-  (let loop
-      ((entries entries)
-       (map-entries '())
-       (map-registers available-machine-registers))
-    (if (null? entries)
-	(make-register-map (reverse! map-entries)
-			   (sort-machine-registers map-registers))
-	(let ((aliases (map car (vector-ref (car entries) 2))))
-	  (if (null? aliases)
-	      (loop (cdr entries) map-entries map-registers)
-	      (loop (cdr entries)
-		    (cons (make-map-entry
-			   (vector-ref (car entries) 0)
-			   (positive? (vector-ref (car entries) 1))
-			   aliases)
-			  map-entries)
-		    (eqv-set-difference map-registers aliases)))))))
-
+(define (eliminate-unlikely-aliases! entry)
+  (let ((home-weight (vector-ref entry 1))
+	(alias-weights (vector-ref entry 2)))
+    (let ((maximum (max home-weight (apply max (map cdr alias-weights)))))
+      (if (not (= home-weight maximum))
+	  (vector-set! entry 1 0))
+      ;; Keep only the aliases with the maximum weights.  Furthermore,
+      ;; keep only one alias of a given type.
+      (vector-set! entry 2
+		   (list-transform-positive alias-weights
+		     (let ((types '()))
+		       (lambda (alias-weight)
+			 (and (= (cdr alias-weight) maximum)
+			      (let ((type (register-type (car alias-weight))))
+				(and (not (memq type types))
+				     (begin (set! types (cons type types))
+					    true)))))))))))
+
 (define (eliminate-conflicting-aliases! entries)
   (for-each (lambda (conflicting-alias)
 	      (let ((homes (cdr conflicting-alias)))
@@ -108,18 +105,6 @@ MIT in each case. |#
     (list-transform-negative alist
       (lambda (alist-entry)
 	(null? (cddr alist-entry))))))
-
-(define (eliminate-unlikely-aliases! entry)
-  (let ((home-weight (vector-ref entry 1))
-	(alias-weights (vector-ref entry 2)))
-    (let ((maximum (max home-weight (apply max (map cdr alias-weights)))))
-      (if (not (= home-weight maximum))
-	  (vector-set! entry 1 0))
-      (vector-set! entry 2
-		   ((list-deletor!
-		     (lambda (alias-weight)
-		       (not (= (cdr alias-weight) maximum))))
-		    alias-weights)))))
 
 (define (map->weighted-entries register-map weight)
   (map (lambda (entry)
@@ -166,3 +151,22 @@ MIT in each case. |#
 
 (define find-weighted-entry
   (association-procedure eqv? (lambda (entry) (vector-ref entry 0))))
+
+(define (weighted-entries->map entries)
+  (let loop
+      ((entries entries)
+       (map-entries '())
+       (map-registers available-machine-registers))
+    (if (null? entries)
+	(make-register-map (reverse! map-entries)
+			   (sort-machine-registers map-registers))
+	(let ((aliases (map car (vector-ref (car entries) 2))))
+	  (if (null? aliases)
+	      (loop (cdr entries) map-entries map-registers)
+	      (loop (cdr entries)
+		    (cons (make-map-entry
+			   (vector-ref (car entries) 0)
+			   (positive? (vector-ref (car entries) 1))
+			   aliases)
+			  map-entries)
+		    (eqv-set-difference map-registers aliases)))))))
