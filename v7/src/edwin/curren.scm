@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: curren.scm,v 1.133 2000/10/26 04:47:56 cph Exp $
+;;; $Id: curren.scm,v 1.134 2000/10/26 05:06:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -40,20 +40,25 @@
   (let ((display-type (current-display-type)))
     (if (not (display-type/multiple-screens? display-type))
 	(error "display doesn't support multiple screens" display-type))
-    (without-interrupts
-     (lambda ()
-       (let ((screen (display-type/make-screen display-type make-screen-args)))
-	 (initialize-screen-root-window! screen
-					 (editor-bufferset current-editor)
-					 buffer)
-	 (set-editor-screens! current-editor
-			      (append! (editor-screens current-editor)
-				       (list screen)))
-	 (event-distributor/invoke!
-	  (variable-default-value (ref-variable-object frame-creation-hook))
-	  screen)
-	 (update-screen! screen #f)
-	 screen)))))
+    (let ((screen
+	   (without-interrupts
+	    (lambda ()
+	      (let ((screen
+		     (display-type/make-screen display-type make-screen-args)))
+		(initialize-screen-root-window!
+		 screen
+		 (editor-bufferset current-editor)
+		 buffer)
+		(set-editor-screens! current-editor
+				     (append! (editor-screens current-editor)
+					      (list screen)))
+		(event-distributor/invoke!
+		 (ref-variable frame-creation-hook #f)
+		 screen)
+		(update-screen! screen #f)
+		screen)))))
+      (maybe-select-buffer-layout (screen-window0 screen) buffer)
+      screen)))
 
 (define-variable frame-creation-hook
   "An event distributor that is invoked when a frame is created.
@@ -469,8 +474,8 @@ The frame is guaranteed to be deselected at that time."
 	       (change-selected-buffer window buffer record?
 		 (lambda ()
 		   (set-window-buffer! window buffer)))
-	       (set-window-buffer! window buffer))
-	   (maybe-select-buffer-layout window buffer))))))
+	       (set-window-buffer! window buffer))))))
+  (maybe-select-buffer-layout window buffer))
 
 (define (change-selected-buffer window buffer record? selection-thunk)
   (change-local-bindings! (selected-buffer) buffer selection-thunk)
