@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.27 1999/07/31 18:39:29 cph Exp $
+$Id: string.scm,v 14.28 1999/12/31 04:44:46 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -282,23 +282,40 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (burst-string string delimiter allow-runs?)
   (guarantee-string string 'BURST-STRING)
-  (if (not (char? delimiter))
-      (error:wrong-type-argument delimiter "character" 'BURST-STRING))
   (let ((end (string-length string)))
-    (let loop ((start 0) (index 0) (result '()))
-      (cond ((fix:= index end)
-	     (reverse!
-	      (if (and allow-runs? (fix:= start index))
-		  result
-		  (cons (substring string start index) result))))
-	    ((char=? delimiter (string-ref string index))
-	     (loop (fix:+ index 1)
-		   (fix:+ index 1)
-		   (if (and allow-runs? (fix:= start index))
-		       result
-		       (cons (substring string start index) result))))
-	    (else
-	     (loop start (fix:+ index 1) result))))))
+    (cond ((char? delimiter)
+	   (let loop ((start 0) (index 0) (result '()))
+	     (cond ((fix:= index end)
+		    (reverse!
+		     (if (and allow-runs? (fix:= start index))
+			 result
+			 (cons (substring string start index) result))))
+		   ((char=? delimiter (string-ref string index))
+		    (loop (fix:+ index 1)
+			  (fix:+ index 1)
+			  (if (and allow-runs? (fix:= start index))
+			      result
+			      (cons (substring string start index) result))))
+		   (else
+		    (loop start (fix:+ index 1) result)))))
+	  ((char-set? delimiter)
+	   (let loop ((start 0) (index 0) (result '()))
+	     (cond ((fix:= index end)
+		    (reverse!
+		     (if (and allow-runs? (fix:= start index))
+			 result
+			 (cons (substring string start index) result))))
+		   ((char-set-member? delimiter (string-ref string index))
+		    (loop (fix:+ index 1)
+			  (fix:+ index 1)
+			  (if (and allow-runs? (fix:= start index))
+			      result
+			      (cons (substring string start index) result))))
+		   (else
+		    (loop start (fix:+ index 1) result)))))
+	  (else
+	   (error:wrong-type-argument delimiter "character or character set"
+				      'BURST-STRING)))))
 
 (define (reverse-string string)
   (guarantee-string string 'REVERSE-STRING)
