@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme32.c,v 1.14 1997/04/02 07:44:09 cph Exp $
+$Id: scheme32.c,v 1.15 1997/06/26 06:55:29 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -166,7 +166,7 @@ win32_install_async_timer (void ** state_ptr,
   (scm_timer -> grab_int_regs) = grab_int_regs;
   (scm_timer -> release_int_regs) = release_int_regs;
   exit_timer_thread = 0;
-  if (_beginthreadex (0, 0, timer_thread_proc, scm_timer, 0, (&id)))
+  if (_beginthreadex (0, 0x2000, timer_thread_proc, scm_timer, 0, (&id)))
     {
       (*state_ptr) = scm_timer;
       return (WIN32_ASYNC_TIMER_OK);
