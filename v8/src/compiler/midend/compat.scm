@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compat.scm,v 1.4 1994/11/26 00:24:08 jmiller Exp $
+$Id: compat.scm,v 1.5 1995/02/14 00:58:08 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -93,12 +93,12 @@ MIT in each case. |#
 (define-macro (define-compatibility-rewrite keyword bindings . body)
   (let ((proc-name (symbol-append 'COMPAT/ keyword)))
     (call-with-values
-     (lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
-     (lambda (names code)
-       `(define ,proc-name
-	  (let ((handler (lambda ,(cons (car bindings) names) ,@body)))
-	    (named-lambda (,proc-name env form)
-	      (compat/remember ,code form))))))))
+	(lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
+      (lambda (names code)
+	`(DEFINE ,proc-name
+	   (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
+	     (NAMED-LAMBDA (,proc-name ENV FORM)
+	       (COMPAT/REMEMBER ,code FORM))))))))
 
 (define-compatibility-rewrite LOOKUP (env name)
   (let ((place (assq name env)))
@@ -156,8 +156,7 @@ MIT in each case. |#
 	   ,(compat/expr env cont)
 	   ,@(compat/expr* env rands)))
 
-  (cond ((or (not (pair? rator))
-	     (not (eq? (car rator) 'QUOTE)))
+  (cond ((not (QUOTE/? rator))
 	 (possibly-pass-some-args-on-stack))
 	((rewrite-operator/compat? (quote/text rator))
 	 => (lambda (handler)
@@ -165,13 +164,12 @@ MIT in each case. |#
 	#| Hooks into the compiler interface, when they must tail
 	into another computation, are now called with the default
 	(args. in registers) calling convention.  This is not a
-	problem because they have fixed arity.
+	problem because they have fixed arity. |#
 	((and (operator/satisfies? (quote/text rator) '(OUT-OF-LINE-HOOK))
 	      (not (operator/satisfies? (quote/text rator)
 					'(SPECIAL-INTERFACE)))
 	      (not (equal? cont '(QUOTE #F))))
 	 (compat/out-of-line env rator cont rands))
-	|#
 	(else
 	 (dont-split-cookie-call))))
 
@@ -395,8 +393,7 @@ MIT in each case. |#
 	   (QUOTE #F)
 	   ,(compat/expr env
 			 (let ((vector-arg  (first rands)))
-			   (if (and (pair? vector-arg)
-				    (eq? (car vector-arg) 'QUOTE))
+			   (if (QUOTE/? vector-arg)
 			       (cond ((assq (quote/text vector-arg) env)
 				      => (lambda (old.new)
 					   `(QUOTE ,(second old.new))))
@@ -592,6 +589,28 @@ MIT in each case. |#
 	  (CALL/%stack-closure-ref? cont))
       'ok
       (internal-error "Unexpected continuation to out-of-line hook" cont)))
+
+
+(define (compat/out-of-line env rator cont rands)
+  ;; We should not get complex continuations for the out-of-line operators,
+  ;; but we do, so we have to cope.
+  (define (normal)
+    `(CALL ,(compat/expr env rator)
+	   ,(compat/expr env cont)
+	   ,@(compat/expr* env rands)))
+  (cond ((QUOTE/? cont) (normal))
+	((LOOKUP/? cont)  (normal))
+	((CALL/%stack-closure-ref? cont) (normal))
+	(else
+	 (if compiler:guru?
+	     (internal-warning "Unexpected continuation for hook"
+			       `(CALL ,rator ,cont ,@rands)))
+	 `(CALL (QUOTE ,%invoke-continuation)
+		,(compat/expr env cont)
+		(CALL ,(compat/expr env rator)
+		      (QUOTE #F)
+		      ,@(compat/expr* env rands))))))
+
 
 (let ((known-operator->primitive
        (lambda (env rator cont rands)
