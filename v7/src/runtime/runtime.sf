@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.sf,v 14.4 1989/10/26 06:47:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.sf,v 14.5 1990/01/10 13:13:45 cph Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,6 +39,6 @@ MIT in each case. |#
 (if (not (name->package '(CROSS-REFERENCE)))
     (with-working-directory-pathname "../cref" (lambda () (load "make"))))
 
-(cref/generate-constructors "runtim")
+(cref/generate-all "runtim")
 (sf "runtim.con" "runtim.bcon")
 (sf "runtim.ldr" "runtim.bldr")
