@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sample.c,v 9.22 1988/08/15 20:54:38 cph Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sample.c,v 9.23 1989/08/22 18:08:48 cph Exp $ */
 
 /* This file is intended to help you find out how to write primitives.
    Many concepts needed to write primitives can be found by looking
@@ -86,15 +86,8 @@ DEFINE_PRIMITIVE ("RETURN-SHARP-F", Prim_return_sharp_f, 0, 0, 0)
    primitive procedure that when called with no arguments, will return
    #F.  */
 
-/* Three macros are available for you to access the arguments to the
-   primitives.  Primitive_N_Args(), where N is between 0 and 3
-   inclusive binds Arg1 through ArgN to the arguments passed to the
-   primitive.  They may also do some other initialization, so unless
-   you REALLY know what you are doing, you should use them in your
-   code.  An important thing to note is that since Primitive_N_Args
-   may allocate variables, its use MUST come before any code in the
-   body of the C procedure.  For example, here is a primitive that
-   takes one argument and returns it. */
+/* Here's another example that shows the use of the `ARG_REF' macro to
+   get one of the arguments to the primitive: */
 
 DEFINE_PRIMITIVE ("IDENTITY", Prim_identity, 1, 1, 0)
 {
@@ -209,12 +202,12 @@ DEFINE_PRIMITIVE ("3+", Prim_add_3, 1, 1, 0)
   PRIMITIVE_HEADER (1);
 
   flag = (Scheme_Integer_To_C_Integer ((ARG_REF (1)), (&value)));
-  if (flag == PRIM_DONE)
-    PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (value + 3));
-  /* If flag is not equal to PRIM_DONE, then it is one of two
-     errors.  We can signal either error by calling Primitive_Error
-     with that error code.  */
-  Primitive_Error (flag);
+  if (flag != PRIM_DONE)
+    /* If flag is not equal to PRIM_DONE, then it is one of two
+       errors.  We can signal either error by calling
+       `signal_error_from_primitive' with that error code.  */
+    signal_error_from_primitive (flag);
+  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (value + 3));
 }
 
 /* See "fixnum.c" for more fixnum primitive examples.  "float.c" gives
