@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile.wcc,v 1.14 2000/12/03 05:40:08 cph Exp $
+###     $Id: makefile.wcc,v 1.15 2000/12/03 05:43:40 cph Exp $
 ###
 ###     Copyright (c) 1992-2000 Massachusetts Institute of Technology
 ###
@@ -345,6 +345,8 @@ clean : .SYMBOLIC
 	-del *.res
 	-del *.err
 	-del *.sym
+	-del *.map
+	-del usrdef.c bchdef.c
 
 unconfig : .SYMBOLIC
 	-del cmpauxmd.asm
