@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.33 1995/11/10 23:49:18 cph Exp $
+;;;	$Id: dos.scm,v 1.34 1996/02/28 16:42:39 adams Exp $
 ;;;
 ;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ;;;
@@ -103,9 +103,76 @@
        ((ucode-primitive set-working-directory-pathname! 1) outside)
        (set-working-directory-pathname! outside)
        (start-thread-timer)))))
+
+(define cut-and-paste-active? #T)
 
-(define (os/interprogram-cut string push?) string push? unspecific)
-(define (os/interprogram-paste) #f)
+(define (os/interprogram-cut string push?)
+  push?
+  (if cut-and-paste-active?
+      (win32-clipboard-write-text
+       (let ((string (convert-newline-to-crlf string)))
+	 ;; Some programs can't handle strings over 64k.
+	 (if (fix:< (string-length string) #x10000) string "")))))
+
+(define (os/interprogram-paste)
+  (if cut-and-paste-active?
+      (let ((text (win32-clipboard-read-text)))
+	(and text
+	     (convert-crlf-to-newline text)))))
+
+(define (convert-newline-to-crlf string)
+  (let ((end (string-length string)))
+    (let ((n-newlines
+	   (let loop ((start 0) (n-newlines 0))
+	     (let ((newline
+		    (substring-find-next-char string start end #\newline)))
+	       (if newline
+		   (loop (fix:+ newline 1) (fix:+ n-newlines 1))
+		   n-newlines)))))
+      (if (fix:= n-newlines 0)
+	  string
+	  (let ((copy (make-string (fix:+ end n-newlines))))
+	    (let loop ((start 0) (cindex 0))
+	      (let ((newline
+		     (substring-find-next-char string start end #\newline)))
+		(if newline
+		    (begin
+		      (%substring-move! string start newline copy cindex)
+		      (let ((cindex (fix:+ cindex (fix:- newline start))))
+			(string-set! copy cindex #\return)
+			(string-set! copy (fix:+ cindex 1) #\newline)
+			(loop (fix:+ newline 1) (fix:+ cindex 2))))
+		    (%substring-move! string start end copy cindex))))
+	    copy)))))
+
+(define (convert-crlf-to-newline string)
+  (let ((end (string-length string)))
+    (let ((n-crlfs
+	   (let loop ((start 0) (n-crlfs 0))
+	     (let ((cr
+		    (substring-find-next-char string start end #\return)))
+	       (if (and cr
+			(not (fix:= (fix:+ cr 1) end))
+			(char=? (string-ref string (fix:+ cr 1)) #\linefeed))
+		   (loop (fix:+ cr 2) (fix:+ n-crlfs 1))
+		   n-crlfs)))))
+      (if (fix:= n-crlfs 0)
+	  string
+	  (let ((copy (make-string (fix:- end n-crlfs))))
+	    (let loop ((start 0) (cindex 0))
+	      (let ((cr
+		     (substring-find-next-char string start end #\return)))
+		(if (not cr)
+		    (%substring-move! string start end copy cindex)
+		    (let ((cr
+			   (if (and (not (fix:= (fix:+ cr 1) end))
+				    (char=? (string-ref string (fix:+ cr 1))
+					    #\linefeed))
+			       cr
+			       (fix:+ cr 1))))
+		      (%substring-move! string start cr copy cindex)
+		      (loop (fix:+ cr 1) (fix:+ cindex (fix:- cr start)))))))
+	    copy)))))
 
 (define (os/read-file-methods) '())
 (define (os/write-file-methods) '())
