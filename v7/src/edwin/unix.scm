@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.26 1992/04/29 21:23:37 bal Exp $
+;;;	$Id: unix.scm,v 1.27 1992/09/23 23:05:15 jinx Exp $
 ;;;
-;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-1992 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -279,7 +279,6 @@ Includes the new backup.  Must be > 0."
 	  (substring filename (+ index 1) end)
 	  filename))))
 
-
 (define unix/encoding-pathname-types
   '("Z"))
 
@@ -356,7 +355,6 @@ Includes the new backup.  Must be > 0."
   ;; code was originally doing.
   (and (string? filename)
        (string-find-next-char filename #\#)))
-       
 
 (define (os/read-file-methods)
   (list maybe-read-compressed-file
@@ -485,4 +483,48 @@ filename suffix \".KY\"."
 	(write-string the-encrypted-file)))))
 
 ;;; End of encrypted files
+
+;;;; Dired customization
 
+(define-variable dired-listing-switches
+  "Switches passed to ls for dired.  MUST contain the 'l' option.
+CANNOT contain the 'F' option."
+  "-al"
+  string?)
+
+(define-variable list-directory-brief-switches
+  "Switches for list-directory to pass to `ls' for brief listing,"
+  "-CF"
+  string?)
+
+(define-variable list-directory-verbose-switches
+  "Switches for list-directory to pass to `ls' for verbose listing,"
+  "-l"
+  string?)
+
+(define (read-directory pathname switches mark)
+  (let ((directory (directory-pathname pathname)))
+    (if (file-directory? pathname)
+	(run-synchronous-process false mark directory false
+				 (find-program "ls" false)
+				 switches
+				 (->namestring pathname))
+	(shell-command false mark directory false
+		       (string-append "ls "
+				      switches
+				      " "
+				      (file-namestring pathname))))))
+
+(define (insert-dired-entry! pathname directory lstart)
+  (let ((start (mark-right-inserting lstart)))
+    (run-synchronous-process false lstart directory false
+			     (find-program "ls" directory)
+			     "-d"
+			     (ref-variable dired-listing-switches)
+			     (->namestring pathname))
+    (insert-string "  " start)
+    (let ((start (mark-right-inserting (dired-filename-start start))))
+      (insert-string
+       (file-namestring
+	(extract-and-delete-string start (line-end start 0)))
+       start))))

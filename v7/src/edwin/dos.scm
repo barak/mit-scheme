@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dos.scm,v 1.2 1992/06/04 03:08:17 mhwu Exp $
+;;;	$Id: dos.scm,v 1.3 1992/09/23 23:05:22 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -83,7 +83,6 @@ Includes the new backup.  Must be > 0."
   2
   (lambda (n) (and (exact-integer? n) (> n 0))))
 
-
 (define os/directory-char-set (char-set #\\ #\/))
 
 (define (os/trim-pathname-string string)
@@ -251,7 +250,6 @@ Includes the new backup.  Must be > 0."
 			   '())))
 		    (no-versions)))))))))
 
-
 (define (os/directory-list-completions directory prefix)
   (define (->directory-namestring s)
     (->namestring (pathname-as-directory (->pathname s))))
@@ -359,7 +357,6 @@ Includes the new backup.  Must be > 0."
      ("txt" . text)
      ("y" . c))))
 
-
 (define (os/init-file-name)
   (let* ((home (dos/current-home-directory))
 	 (user-init-file (merge-pathnames "edwin.ini" home)))
@@ -380,4 +377,65 @@ Includes the new backup.  Must be > 0."
 (define (os/read-file-methods) '())
 
 (define (os/write-file-methods) '())
+
+;;;; Dired customization
 
+(define-variable dired-listing-switches
+  "Dired listing format -- Ignored under DOS."
+  #f
+  false?)
+
+(define-variable list-directory-brief-switches
+  "list-directory brief listing format -- Ignored under DOS."
+  #f
+  false?)
+
+(define-variable list-directory-verbose-switches
+  "list-directory verbose listing format -- Ignored under DOS."
+  #f
+  false?)
+
+(define (read-directory pathname switches mark)
+  (let ((directory (directory-pathname pathname)))
+    (if (file-directory? pathname)
+	(let ((dir (->namestring (pathname-as-directory pathname))))
+	  (generate-dired-listing! (string-append dir "*.*") mark))
+	(generate-dired-listing! pathname mark))))
+
+(define (insert-dired-entry! pathname directory lstart)
+  directory				; ignored
+  (let ((start (mark-left-inserting lstart)))
+    (insert-string "  " start)
+    (generate-dired-entry! pathname start)))
+
+;;;; Scheme version of ls
+
+(define (generate-dired-listing! pathname point)
+  (let ((files (directory-read (->namestring (merge-pathnames pathname)))))
+    (for-each (lambda (file) (generate-dired-entry! file point))
+	      files)))
+
+(define (generate-dired-entry! file point)
+  (define (file-attributes/ls-time-string attr)
+    ;; Swap year around to the start
+    (let ((time-string ((ucode-primitive file-time->string 1)
+			(file-attributes/modification-time attr))))
+      (if (string? time-string)
+	  (or (let ((len (string-length time-string)))
+		(and (fix:> len 5) ;; Grap the space char as well
+		     (string-append (substring time-string (fix:- len 5) len)
+				    " "
+				    (substring time-string 0 (fix:- len 5)))))
+	      ""))))
+
+  (let ((name (file-namestring file)) (attr (file-attributes file)))
+    (let ((entry (string-append
+		  (string-pad-right	; Mode string
+		   (file-attributes/mode-string attr) 12 #\Space)
+		  (string-pad-left    ; Length
+		   (number->string (file-attributes/length attr)) 10 #\Space)
+		  (string-pad-right   ; Mod time
+		   (file-attributes/ls-time-string attr) 26 #\Space)
+		  name)))
+      (insert-string entry point)
+      (insert-newline point))))
