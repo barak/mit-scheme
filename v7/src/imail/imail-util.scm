@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.4 2000/01/19 20:58:46 cph Exp $
+;;; $Id: imail-util.scm,v 1.5 2000/02/03 04:48:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -112,15 +112,14 @@
 
 (define (string->lines string)
   (let ((lines (burst-string string #\newline #f)))
-    (if (string-null? (car (last-pair lines)))
-	(except-last-pair! lines)
-	lines)))
+    (if (pair? (cdr lines))
+	(let loop ((prev lines) (this (cdr lines)))
+	  (cond ((pair? (cdr this)) (loop this (cdr this)))
+		((string-null? (car this)) (set-cdr! prev (cdr this))))))
+    lines))
 
 (define (lines->string lines)
-  (apply string-append
-	 (map (lambda (line)
-		(string-append line "\n"))
-	      lines)))
+  (suffixed-append lines "\n"))
 
 (define (short-name->pathname name)
   (merge-pathnames name (current-home-directory)))
@@ -143,16 +142,80 @@
   (write-char #\: port)
   (write-string value port)
   (newline port))
-
+
 (define (separated-append tokens separator)
+  (cond ((not (pair? tokens)) "")
+	((not (pair? (cdr tokens))) (car tokens))
+	(else
+	 (let ((string
+		(make-string
+		 (let ((ns (string-length separator)))
+		   (do ((tokens (cdr tokens) (cdr tokens))
+			(count (string-length (car tokens))
+			       (fix:+ count
+				      (fix:+ (string-length (car tokens))
+					     ns))))
+		       ((not (pair? tokens)) count))))))
+	   (let loop
+	       ((tokens (cdr tokens))
+		(index (copy (car tokens) 0)))
+	     (if (pair? tokens)
+		 (loop (cdr tokens)
+		       (string-move! (car tokens)
+				     string
+				     (string-move! separator string index)))))
+	   string))))
+
+(define (suffixed-append tokens suffix)
   (if (pair? tokens)
-      (if (pair? (cdr tokens))
-	  (let loop ((tokens (cdr tokens)) (tokens* (list (car tokens))))
-	    (if (pair? tokens)
-		(loop (cdr tokens) (cons* (car tokens) separator tokens*))
-		(apply string-append (reverse! tokens*))))
-	  (car tokens))
+      (let ((string
+	     (make-string
+	      (let ((ns (string-length suffix)))
+		(do ((tokens tokens (cdr tokens))
+		     (count 0
+			    (fix:+ count
+				   (fix:+ (string-length (car tokens)) ns))))
+		    ((not (pair? tokens)) count))))))
+	(let loop ((tokens (cdr tokens)) (index 0))
+	  (if (pair? tokens)
+	      (loop (cdr tokens)
+		    (string-move! suffix
+				  string
+				  (string-move! (car tokens) string index)))))
+	string)
       ""))
+
+(define (prefixed-append tokens prefix)
+  (if (pair? tokens)
+      (let ((string
+	     (make-string
+	      (let ((ns (string-length prefix)))
+		(do ((tokens tokens (cdr tokens))
+		     (count 0
+			    (fix:+ count
+				   (fix:+ (string-length (car tokens)) ns))))
+		    ((not (pair? tokens)) count))))))
+	(let loop ((tokens (cdr tokens)) (index 0))
+	  (if (pair? tokens)
+	      (loop (cdr tokens)
+		    (string-move! (car tokens)
+				  string
+				  (string-move! prefix string index)))))
+	string)
+      ""))
+
+(define (string-move! from to index)
+  (let ((end (string-length from)))
+    (if (fix:< end 32)
+	;; When transferring less than 32 bytes, it's faster to do
+	;; inline than to call the primitive.
+	(let loop ((fi 0) (ti index))
+	  (if (fix:= fi end)
+	      ti
+	      (begin
+		(string-set! to ti (string-ref from fi))
+		(loop (fix:+ fi 1) (fix:+ ti 1)))))
+	(substring-move-left! from 0 end to index))))
 
 (define (read-lines port)
   (source->list (lambda () (read-line port))))
