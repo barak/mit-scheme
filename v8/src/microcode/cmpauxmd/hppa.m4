@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.22 1992/09/22 21:59:29 cph Exp $
+;;;	$Id: hppa.m4,v 1.23 1992/10/31 23:35:19 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -546,9 +546,9 @@ fixnum_remainder
 	XOR,<	26,1,0					; skip if signs !=
 	B,N	fixnum_remainder_done
 	COMB,=,N	0,1,fixnum_remainder_done
-	COMCLR,>	26,0,0				; skip if arg1 > 0
-	SUB,TR	1,25,1					; result -= arg2
-	ADD	1,25,1					; result += arg2
+	XOR,<	26,25,0					; skip if signs !=
+	ADD,TR	1,25,1					; result += arg2
+	SUB	1,25,1					; result -= arg2
 ;;
 fixnum_remainder_done
 	ZDEP    1,FIXNUM_POS,FIXNUM_LENGTH,26		; make into fixnum
