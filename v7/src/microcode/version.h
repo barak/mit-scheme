@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: version.h,v 11.151 1995/11/04 05:59:35 cph Exp $
+$Id: version.h,v 11.152 1996/04/23 20:59:45 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,7 +37,7 @@ MIT in each case. */
 /* Scheme system release version */
 
 #ifndef RELEASE
-#define RELEASE		"7.4.2"
+#define RELEASE		"7.4.3 (alpha)"
 #endif
 
 /* Microcode release version */
@@ -46,5 +46,5 @@ MIT in each case. */
 #define VERSION		11
 #endif
 #ifndef SUBVERSION
-#define SUBVERSION	151
+#define SUBVERSION	152
 #endif
