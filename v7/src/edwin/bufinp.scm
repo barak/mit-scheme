@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufinp.scm,v 1.2 1989/04/28 22:47:26 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufinp.scm,v 1.3 1990/11/09 08:56:14 cph Rel $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -85,9 +85,10 @@
 (define (operation/peek-char port)
   (let ((state (input-port/state port)))
     (let ((current-index (buffer-input-port-state/current-index state)))
-      (and (< current-index (buffer-input-port-state/end-index state))
-	   (group-right-char (buffer-input-port-state/group state)
-			     current-index)))))
+      (if (< current-index (buffer-input-port-state/end-index state))
+	  (group-right-char (buffer-input-port-state/group state)
+			    current-index)
+	  (make-eof-object port)))))
 
 (define (operation/discard-char port)
   (let ((state (input-port/state port)))
@@ -98,13 +99,14 @@
 (define (operation/read-char port)
   (let ((state (input-port/state port)))
     (let ((current-index (buffer-input-port-state/current-index state)))
-      (and (< current-index (buffer-input-port-state/end-index state))
-	   (let ((char
-		  (group-right-char (buffer-input-port-state/group state)
-				    current-index)))
-	     (set-buffer-input-port-state/current-index! state
-							 (1+ current-index))
-	     char)))))
+      (if (< current-index (buffer-input-port-state/end-index state))
+	  (let ((char
+		 (group-right-char (buffer-input-port-state/group state)
+				   current-index)))
+	    (set-buffer-input-port-state/current-index! state
+							(1+ current-index))
+	    char)
+	  (make-eof-object port)))))
 
 (define (operation/read-string port delimiters)
   (let ((state (input-port/state port)))
@@ -112,7 +114,7 @@
 	  (end-index (buffer-input-port-state/end-index state))
 	  (group (buffer-input-port-state/group state)))
       (if (>= current-index end-index)
-	  ""
+	  (make-eof-object port)
 	  (let ((new-index
 		 (or (%find-next-char-in-set group current-index end-index
 					     delimiters)
