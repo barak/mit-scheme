@@ -1,0 +1,1546 @@
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.1 1988/06/13 12:07:50 cph Exp $
+
+Copyright (c) 1988 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
+
+;;;; Runtime System Packaging
+
+(define-package ()
+  (files "bitstr"
+	 "boole"
+	 "boot"
+	 "equals"
+	 "fixart"
+	 "global"
+	 "lambdx"
+	 "queue"
+	 "sfile"
+	 "string"
+	 "udata"
+	 "vector")
+  (file-case sort-type
+    ((merge-sort) "msort")
+    ((quick-sort) "qsort")
+    (else))
+  (file-case os-type
+    ((unix) "unxpth")
+    ((vms) "vmspth")
+    (else "unkpth")))
+
+(define-package (package)
+  ;; The information appearing here must be duplicated in the cold load
+  ;; sequence.  If you change this package make sure to edit that also.
+  (files "packag")
+  (parent ())
+  (export ()
+	  find-package
+	  name->package
+	  package/add-child!
+	  package/child
+	  package/children
+	  package/environment
+	  package/name
+	  package/parent
+	  package/reference
+	  package/system-loader
+	  package?
+	  system-global-package)
+  (initialization (initialize-package!)))
+
+(define-package (runtime)
+  (files "version")
+  (parent ())
+  (initialization (initialize-package!)))
+
+(define-package (runtime 1d-property)
+  (files "prop1d")
+  (parent ())
+  (export ()	  1d-table/get
+	  1d-table/lookup
+	  1d-table/put!
+	  1d-table/remove!
+	  1d-table?
+	  make-1d-table)
+  (initialization (initialize-package!)))
+
+(define-package (runtime 2d-property)
+  (files "prop2d")
+  (parent ())
+  (export ()
+	  2d-get
+	  2d-get-alist-x
+	  2d-get-alist-y
+	  2d-put!
+	  2d-remove!)
+  (initialization (initialize-package!)))
+
+(define-package (runtime advice)
+  (files "advice")
+  (parent ())
+  (export ()
+	  *args*
+	  *proc*
+	  *result*
+	  advice
+	  advise-entry
+	  advise-exit
+	  break
+	  break-both
+	  break-entry
+	  break-exit
+	  entry-advice
+	  exit-advice
+	  trace
+	  trace-both
+	  trace-entry
+	  trace-exit
+	  unadvise
+	  unadvise-entry
+	  unadvise-exit
+	  unbreak
+	  unbreak-entry
+	  unbreak-exit
+	  untrace
+	  untrace-entry
+	  untrace-exit)
+  (initialization (initialize-package!)))
+
+(define-package (runtime character)
+  (files "char")
+  (parent ())
+  (export ()
+	  ascii->char
+	  char->ascii
+	  char->digit
+	  char->integer
+	  char->name
+	  char-ascii?
+	  char-bits
+	  char-bits-limit
+	  char-ci<=?
+	  char-ci<?
+	  char-ci=?
+	  char-ci>=?
+	  char-ci>?
+	  char-code
+	  char-code-limit
+	  char-downcase
+	  char-integer-limit
+	  char-upcase
+	  char<=?
+	  char<?
+	  char=?
+	  char>=?
+	  char>?
+	  char?
+	  chars->ascii
+	  code->char
+	  digit->char
+	  integer->char
+	  make-char
+	  name->char)
+  (initialization (initialize-package!)))
+
+(define-package (runtime character-set)
+  (files "chrset")
+  (parent ())
+  (export ()
+	  ascii-range->char-set
+	  char-alphabetic?
+	  char-alphanumeric?
+	  char-graphic?
+	  char-lower-case?
+	  char-numeric?
+	  char-set
+	  char-set-difference
+	  char-set-intersection
+	  char-set-invert
+	  char-set-member?
+	  char-set-members
+	  char-set-union
+	  char-set:alphabetic
+	  char-set:alphanumeric
+	  char-set:graphic
+	  char-set:lower-case
+	  char-set:not-whitespace
+	  char-set:numeric
+	  char-set:standard
+	  char-set:upper-case
+	  char-set:whitespace
+	  char-set?
+	  char-standard?
+	  char-upper-case?
+	  char-whitespace?
+	  chars->char-set
+	  predicate->char-set)
+  (initialization (initialize-package!)))
+
+(define-package (runtime console-input)
+  (files "ttyin")
+  (parent ())
+  (export ()
+	  console-input-port)
+  (export (runtime emacs-interface)
+	  hook/read-char-immediate
+	  hook/read-finish
+	  hook/read-start)
+  (initialization (initialize-package!)))
+
+(define-package (runtime console-output)
+  (files "ttyout")
+  (parent ())
+  (export ()
+	  console-output-port)
+  (initialization (initialize-package!)))
+
+(define-package (runtime continuation)
+  (files "contin")
+  (parent ())
+  (export ()
+	  call-with-current-continuation
+	  continuation/control-point
+	  continuation/dynamic-state
+	  continuation/fluid-bindings
+	  continuation/type
+	  continuation?
+	  guarantee-continuation
+	  make-continuation
+	  non-reentrant-call-with-current-continuation
+	  within-continuation))
+
+(define-package (runtime continuation-parser)
+  (files "conpar")
+  (parent ())
+  (export ()
+	  continuation->stack-frame
+	  continuation/first-subproblem
+	  microcode-return/code->type
+	  stack-frame->continuation
+	  stack-frame-type/code
+	  stack-frame-type/properties
+	  stack-frame-type/subproblem?
+	  stack-frame-type?
+	  stack-frame/dynamic-state
+	  stack-frame/elements
+	  stack-frame/fluid-bindings
+	  stack-frame/interrupt-mask
+	  stack-frame/length
+	  stack-frame/next
+	  stack-frame/next-subproblem
+	  stack-frame/properties
+	  stack-frame/reductions
+	  stack-frame/ref
+	  stack-frame/return-code
+	  stack-frame/skip-non-subproblems
+	  stack-frame/subproblem?
+	  stack-frame/type
+	  stack-frame?)
+  (initialization (initialize-package!)))
+
+(define-package (runtime control-point)
+  (files "cpoint")
+  (parent ())
+  (export ()
+	  control-point/element-stream
+	  control-point/history
+	  control-point/interrupt-mask
+	  control-point/next-control-point
+	  control-point/previous-history-control-point
+	  control-point/previous-history-offset
+	  control-point/reusable?
+	  control-point/unused-length
+	  control-point?
+	  make-control-point))
+
+(define-package (runtime date/time)
+  (files "datime")
+  (parent ())
+  (export ()
+	  decoded-time/date-string
+	  decoded-time/day
+	  decoded-time/hour
+	  decoded-time/minute
+	  decoded-time/month
+	  decoded-time/second
+	  decoded-time/time-string
+	  decoded-time/year
+	  get-decoded-time))
+
+(define-package (runtime debugger)
+  (files "debug")
+  (parent (runtime debugger-command-loop))
+  (export ()
+	  debug)
+  (initialization (initialize-package!)))
+
+(define-package (runtime debugger-command-loop)
+  (files "dbgcmd")
+  (parent ())
+  (initialization (initialize-package!)))
+
+(define-package (runtime debugger-utilities)
+  (files "dbgutl")
+  (parent (runtime debugger-command-loop))
+  (export (runtime debugger-command-loop)
+	  debug/read-eval-print-1
+	  environment-name
+	  print-user-friendly-name
+	  show-frame
+	  special-name?)
+  (initialization (initialize-package!)))
+
+(define-package (runtime debugging-info)
+  (files "framex")
+  (parent ())
+  (export ()
+	  debugging-info/compiled-code?
+	  debugging-info/evaluated-object-value
+	  debugging-info/evaluated-object?
+	  debugging-info/undefined-environment?
+	  debugging-info/undefined-expression?
+	  stack-frame/debugging-info)
+  (initialization (initialize-package!)))
+
+(define-package (runtime defstruct)
+  (files "defstr")
+  (parent ())
+  (export ()
+	  named-structure/description
+	  named-structure?)
+  (initialization (initialize-package!)))
+
+(define-package (runtime directory)
+  (file-case os-type
+    ((unix) "unxdir")
+    (else "unkdir"))
+  (parent ())
+  (export ()
+	  directory-read)
+  (initialization (initialize-package!)))
+
+(define-package (runtime emacs-interface)
+  (files "emacs")
+  (parent ())
+  (initialization (initialize-package!)))
+
+(define-package (runtime environment)
+  (files "uenvir")
+  (parent ())
+  (export ()
+	  environment-arguments
+	  environment-bindings
+	  environment-has-parent?
+	  environment-parent
+	  environment-procedure
+	  environment?
+	  remove-environment-parent!
+	  set-environment-parent!))
+
+(define-package (runtime environment-inspector)
+  (files "where")
+  (parent (runtime debugger-command-loop))
+  (export ()
+	  where)
+  (initialization (initialize-package!)))
+
+(define-package (runtime error-handler)
+  (files "error")
+  (parent ())
+  (export ()
+	  bind-condition-handler
+	  cmdl-message/error
+	  condition-type/dependencies
+	  condition-type/error?
+	  condition-type/message
+	  condition-type/properties
+	  condition-type:error
+	  condition-type?
+	  condition/continuation
+	  condition/dependencies
+	  condition/error?
+	  condition/irritants
+	  condition/message
+	  condition/properties
+	  condition/type
+	  condition?
+	  error-condition
+	  error-continuation
+	  error-irritant
+	  error-irritant/noise
+	  error-irritant/noise-value
+	  error-irritant/noise?
+	  error-irritants
+	  error-irritants/sans-noise
+	  error-message
+	  error-type:vanilla
+	  error-type?
+	  error?
+	  format-error-message
+	  guarantee-condition
+	  guarantee-condition-type
+	  make-condition
+	  make-condition-type
+	  make-error-type
+	  signal-condition
+	  signal-error
+	  standard-error-handler
+	  warn)
+  (export (runtime rep)
+	  default/error-handler
+	  hook/error-handler)
+  (export (runtime emacs-interface)
+	  hook/error-decision)
+  (initialization (initialize-package!)))
+
+(define-package (runtime event-distributor)
+  (files "events")
+  (parent ())
+  (export ()
+	  add-event-receiver!
+	  event-distributor/invoke!
+	  event-distributor?
+	  make-event-distributor
+	  remove-event-receiver!)
+  (initialization (initialize-package!)))
+
+(define-package (runtime file-input)
+  (files "filein")
+  (parent ())
+  (export ()
+	  open-input-file)
+  (export (runtime load)
+	  open-input-file/internal)
+  (initialization (initialize-package!)))
+
+(define-package (runtime file-output)
+  (files "filout")
+  (parent ())
+  (export ()
+	  open-output-file)
+  (initialization (initialize-package!)))
+
+(define-package (runtime garbage-collector)
+  (files "gc")
+  (parent ())
+  (export ()
+	  constant-space/in-use	  gc-flip
+	  purify
+	  set-gc-safety-margin!)
+  (export (runtime gc-statistics)
+	  hook/gc-finish
+	  hook/gc-start)
+  (export (runtime emacs-interface)
+	  hook/gc-finish
+	  hook/gc-start)
+  (initialization (initialize-package!)))
+
+(define-package (runtime gc-daemons)
+  (files "gcdemn")
+  (parent ())
+  (export ()
+	  add-gc-daemon!
+	  add-secondary-gc-daemon!
+	  trigger-secondary-gc-daemons!)
+  (initialization (initialize-package!)))
+
+(define-package (runtime gc-notification)
+  (files "gcnote")
+  (parent ())
+  (export ()
+	  gc-statistic->string
+	  print-gc-statistics
+	  toggle-gc-notification!))
+(define-package (runtime gc-statistics)
+  (files "gcstat")
+  (parent ())
+  (export ()
+	  gc-history-mode
+	  gc-statistic/heap-left
+	  gc-statistic/last-gc-end
+	  gc-statistic/last-gc-start
+	  gc-statistic/meter
+	  gc-statistic/this-gc-end
+	  gc-statistic/this-gc-start
+	  gc-statistics
+	  gctime)
+  (export (runtime gc-notification)
+	  default/record-statistic!
+	  hook/record-statistic!)
+  (initialization (initialize-package!)))
+
+(define-package (runtime gensym)
+  (files "gensym")
+  (parent ())
+  (export ()
+	  generate-uninterned-symbol)
+  (initialization (initialize-package!)))
+
+(define-package (runtime global-database)
+  (files "gdatab")
+  (parent ())
+  (export ()
+	  add-unparser-special-object!
+	  add-unparser-special-pair!
+	  event:after-restart
+	  event:after-restore
+	  unparse-with-brackets
+	  unparser/set-tagged-pair-method!
+	  unparser/set-tagged-vector-method!
+	  unparser/tagged-pair-method
+	  unparser/tagged-vector-method)
+  (initialization (initialize-package!)))
+
+(define-package (runtime hash)
+  (files "hash")
+  (parent ())
+  (export ()
+	  hash
+	  object-hash
+	  object-unhash
+	  unhash
+	  valid-hash-number?)
+  (initialization (initialize-package!)))
+
+(define-package (runtime history)
+  (files "histry")
+  (parent ())
+  (export ()
+	  with-new-history)
+  (export (runtime continuation-parser)
+	  history-reductions
+	  history-superproblem
+	  history-transform
+	  history-untransform)
+  (initialization (initialize-package!)))
+
+(define-package (runtime input-port)
+  (files "input")
+  (parent ())
+  (export ()
+	  call-with-input-file
+	  char-ready?
+	  close-input-port
+	  current-input-port
+	  eof-object?
+	  guarantee-input-port
+	  input-port/char-ready?
+	  input-port/copy
+	  input-port/custom-operation
+	  input-port/discard-char
+	  input-port/discard-chars
+	  input-port/operation/char-ready?
+	  input-port/operation/discard-char
+	  input-port/operation/discard-chars
+	  input-port/operation/peek-char
+	  input-port/operation/peek-char-immediate
+	  input-port/operation/read-char
+	  input-port/operation/read-char-immediate
+	  input-port/operation/read-finish!
+	  input-port/operation/read-start!
+	  input-port/operation/read-string
+	  input-port/peek-char
+	  input-port/peek-char-immediate
+	  input-port/read-char
+	  input-port/read-char-immediate
+	  input-port/read-finish!
+	  input-port/read-start!
+	  input-port/read-string
+	  input-port/state
+	  input-port?
+	  make-eof-object
+	  make-input-port
+	  peek-char
+	  read
+	  read-char
+	  read-char-no-hang
+	  read-string
+	  set-input-port/state!
+	  with-input-from-file
+	  with-input-from-port)
+  (initialization (initialize-package!)))
+
+(define-package (runtime interrupt-handler)
+  (files "intrpt")
+  (parent ())
+  (export ()
+	  timer-interrupt
+	  with-external-interrupts-handler)
+  (export (runtime emacs-interface)
+	  hook/^g-interrupt)
+  (initialization (initialize-package!)))
+
+(define-package (runtime lambda-abstraction)
+  (files "lambda")
+  (parent ())
+  (export ()
+	  block-declaration?
+	  block-declaration-text
+	  lambda?
+	  lambda-body
+	  lambda-bound
+	  lambda-components
+	  make-block-declaration
+	  make-lambda
+	  set-lambda-body!)
+  (export (runtime advice)
+	  lambda-unwrap-body!
+	  lambda-wrap-body!
+	  lambda-wrapper-components)
+  (export (runtime environment)
+	  internal-lambda?)
+  (export (runtime syntaxer)
+	  make-block-declaration)
+  (export (runtime debugger-utilities)
+	  lambda-tag:internal-lambda
+	  lambda-tag:internal-lexpr)
+  (initialization (initialize-package!)))
+
+(define-package (runtime list)
+  (files "list")
+  (parent ())
+  (export ()
+	  alist-copy
+	  alist?
+	  append
+	  append!
+	  assoc
+	  association-procedure
+	  assq
+	  assv
+	  caaaar
+	  caaadr
+	  caaar
+	  caadar
+	  caaddr
+	  caadr
+	  caar
+	  cadaar
+	  cadadr
+	  cadar
+	  caddar
+	  cadddr
+	  caddr
+	  cadr
+	  car
+	  cdaaar
+	  cdaadr
+	  cdaar
+	  cdadar
+	  cdaddr
+	  cdadr
+	  cdar
+	  cddaar
+	  cddadr
+	  cddar
+	  cdddar
+	  cddddr
+	  cdddr
+	  cddr
+	  cdr
+	  circular-list
+	  cons
+	  cons*
+	  del-assoc
+	  del-assoc!
+	  del-assq
+	  del-assq!
+	  del-assv
+	  del-assv!
+	  delete
+	  delete!
+	  delete-association-procedure
+	  delete-member-procedure
+	  delq
+	  delq!
+	  delv
+	  delv!
+	  eighth
+	  except-last-pair
+	  except-last-pair!
+	  fifth
+	  first
+	  for-each
+	  fourth
+	  general-car-cdr
+	  last-pair
+	  length
+	  list
+	  list-copy
+	  list-deletor
+	  list-deletor!
+	  list-head
+	  list-ref
+	  list-search-negative
+	  list-search-positive
+	  list-tail
+	  list-transform-negative
+	  list-transform-positive
+	  list?
+	  make-list
+	  make-circular-list
+	  map
+	  map*
+	  mapcan
+	  mapcan*
+	  member
+	  member-procedure
+	  memq
+	  memv
+	  ninth
+	  null?
+	  pair?
+	  reduce
+	  reverse
+	  reverse!
+	  second
+	  set-car!
+	  set-cdr!
+	  seventh
+	  sixth
+	  sublist
+	  tenth
+	  third
+	  tree-copy
+	  weak-car
+	  weak-cdr
+	  weak-cons
+	  weak-pair/car?
+	  weak-pair?
+	  weak-set-car!
+	  weak-set-cdr!)
+  (initialization (initialize-package!)))
+
+(define-package (runtime load)
+  (files "load")
+  (parent ())
+  (export ()
+	  fasload
+	  fasload/default-types
+	  load
+	  load-noisily
+	  load-noisily?
+	  load/default-types
+	  read-file)
+  (initialization (initialize-package!)))
+
+(define-package (runtime macros)
+  (files "macros")
+  (parent ())
+  (initialization (initialize-package!)))
+
+(define-package (runtime microcode-errors)
+  (files "uerror")
+  (parent (runtime error-handler))
+  (export ()
+	  error-type:anomalous
+	  error-type:bad-range-argument
+	  error-type:failed-argument-coercion
+	  error-type:fasdump
+	  error-type:fasload
+	  error-type:illegal-argument
+	  error-type:missing-handler
+	  error-type:open-file
+	  error-type:random-internal
+	  error-type:wrong-type-argument
+	  microcode-error-type)
+  (initialization (initialize-package!)))
+
+(define-package (runtime microcode-tables)
+  (files "utabs")
+  (parent ())
+  (export ()
+	  char:newline
+	  fixed-object/code->name
+	  fixed-object/code-limit
+	  fixed-object/name->code
+	  fixed-objects-item
+	  fixed-objects-vector-slot
+	  microcode-error/code->name
+	  microcode-error/code-limit
+	  microcode-error/name->code
+	  microcode-id/floating-exponent-bits	  microcode-id/floating-mantissa-bits
+	  microcode-id/modification
+	  microcode-id/operating-system-name
+	  microcode-id/operating-system-variant
+	  microcode-id/release-string
+	  microcode-id/stack-type
+	  microcode-id/tty-x-size
+	  microcode-id/tty-y-size
+	  microcode-id/version
+	  microcode-identification-item
+	  microcode-identification-vector-slot
+	  microcode-object/unassigned
+	  microcode-return/code->name
+	  microcode-return/code-limit
+	  microcode-return/name->code
+	  microcode-termination/code->name
+	  microcode-termination/code-limit
+	  microcode-termination/name->code
+	  microcode-type/code->name
+	  microcode-type/code-limit
+	  microcode-type/name->code)
+  (export (runtime save/restore)
+	  read-microcode-tables!)
+  (initialization (initialize-package!)))
+
+(define-package (runtime number)
+  (files "narith")
+  (parent ())
+  (export ()
+	  *
+	  +
+	  -
+	  -1+
+	  /
+	  1+
+	  <
+	  <=
+	  =
+	  >
+	  >=
+	  abs
+	  acos
+	  angle
+	  asin
+	  atan
+	  ceiling
+	  complex?
+	  cos	  even?
+	  exact->inexact
+	  exact?
+	  exp
+	  expt
+	  floor
+	  gcd
+	  imag-part
+	  inexact->exact
+	  inexact?
+	  integer-divide
+	  integer-divide-quotient
+	  integer-divide-remainder
+	  integer-expt	  integer?
+	  lcm
+	  log
+	  magnitude
+	  make-polar
+	  make-rectangular
+	  max
+	  min
+	  modulo
+	  negative?
+	  number?
+	  odd?
+	  positive?
+	  quotient
+	  rational?
+	  real-part
+	  real?
+	  remainder
+	  round
+	  sin
+	  sqrt
+	  tan
+	  truncate
+	  zero?)
+  (initialization (initialize-package!)))
+(define-package (runtime number-parser)
+  (files "numpar")
+  (parent ())
+  (export ()
+	  string->number))
+
+(define-package (runtime number-unparser)
+  (files "numunp")
+  (parent ())
+  (export ()
+	  number->string)
+  (initialization (initialize-package!)))
+(define-package (runtime output-port)
+  (files "output")
+  (parent ())
+  (export ()
+	  beep
+	  call-with-output-file
+	  clear
+	  close-output-port
+	  current-output-port
+	  display
+	  guarantee-output-port
+	  make-output-port
+	  newline
+	  output-port/copy
+	  output-port/custom-operation
+	  output-port/flush-output
+	  output-port/operation/flush-output
+	  output-port/operation/write-char
+	  output-port/operation/write-string
+	  output-port/state
+	  output-port/write-char
+	  output-port/write-string
+	  output-port/x-size
+	  output-port?
+	  set-output-port/state!
+	  with-output-to-file
+	  with-output-to-port
+	  write
+	  write-char
+	  write-line
+	  write-string)
+  (initialization (initialize-package!)))
+
+(define-package (runtime parser)
+  (files "parse")
+  (parent ())
+  (export ()
+	  *parser-radix*
+	  parse-object
+	  parse-objects
+	  system-global-parser-table)
+  (export (runtime character)
+	  char-set/atom-delimiters)
+  (export (runtime input-port)
+	  parse-object/internal)
+  (export (runtime syntaxer)
+	  lambda-optional-tag
+	  lambda-rest-tag)
+  (export (runtime macros)
+	  lambda-optional-tag)
+  (export (runtime unsyntaxer)
+	  lambda-optional-tag)
+  (initialization (initialize-package!)))
+
+(define-package (runtime parser-table)
+  (files "partab")
+  (parent ())
+  (export ()
+	  current-parser-table
+	  guarantee-parser-table
+	  make-parser-table
+	  parser-table/copy
+	  parser-table/entry
+	  parser-table/set-entry!
+	  parser-table?
+	  set-current-parser-table!
+	  with-current-parser-table)
+  (export (runtime parser)
+	  parser-table/collect-list
+	  parser-table/collect-list-special
+	  parser-table/parse-object
+	  parser-table/parse-object-special)
+  (initialization (initialize-package!)))
+
+(define-package (runtime pathname)
+  (files "pathnm")
+  (parent ())
+  (export ()
+	  ->pathname
+	  canonicalize-input-filename
+	  canonicalize-output-filename
+	  file-exists?
+	  init-file-truename
+	  make-pathname
+	  merge-pathnames
+	  pathname->absolute-pathname
+	  pathname->input-truename
+	  pathname->output-truename
+	  pathname->string
+	  pathname-absolute?
+	  pathname-components
+	  pathname-copy
+	  pathname-default
+	  pathname-default-device
+	  pathname-default-directory
+	  pathname-default-host
+	  pathname-default-name
+	  pathname-default-type
+	  pathname-default-version
+	  pathname-device
+	  pathname-directory
+	  pathname-directory-path
+	  pathname-directory-string
+	  pathname-host
+	  pathname-name
+	  pathname-name-path
+	  pathname-name-string
+	  pathname-new-device
+	  pathname-new-directory
+	  pathname-new-host
+	  pathname-new-name
+	  pathname-new-type
+	  pathname-new-version	  pathname-type
+	  pathname-version
+	  pathname?
+	  string->pathname)  (export (runtime pathname-parser)
+	  simplify-directory))
+
+(define-package (runtime pathname-parser)
+  (file-case os-type
+    ((unix) "unxpar")
+    ((vms) "vmspar")
+    (else))
+  (parent ())
+  (export ()
+	  parse-pathname
+	  pathname-as-directory))
+
+(define-package (runtime pathname-unparser)
+  (file-case os-type
+    ((unix) "unxunp")
+    ((vms) "vmsunp")
+    (else))
+  (parent ())
+  (export ()
+	  pathname-unparse
+	  pathname-unparse-name))
+
+(define-package (runtime population)
+  (files "poplat")
+  (parent ())
+  (export ()
+	  add-to-population!
+	  exists-an-inhabitant?
+	  for-all-inhabitants?
+	  make-population
+	  map-over-population
+	  map-over-population!
+	  population?
+	  remove-from-population!)
+  (initialization (initialize-package!)))
+
+(define-package (runtime pretty-printer)
+  (files "pp")
+  (parent ())
+  (export ()
+	  pp)  (initialization (initialize-package!)))
+
+(define-package (runtime primitive-io)
+  (files "io")
+  (parent ())
+  (export ()
+	  close-all-open-files)
+  (export (runtime file-input)
+	  channel-name
+	  close-physical-channel
+	  open-input-channel)
+  (export (runtime file-output)
+	  channel-name
+	  close-physical-channel
+	  open-output-channel)
+  (initialization (initialize-package!)))
+
+(define-package (runtime random-number)
+  (files "random")
+  (parent ())
+  (export ()
+	  random
+	  randomize)
+  (initialization (initialize-package!)))
+
+(define-package (runtime reference-trap)
+  (files "urtrap")
+  (parent ())
+  (export ()
+	  make-unassigned-reference-trap
+	  make-unbound-reference-trap
+	  map-reference-trap
+	  reference-trap-kind
+	  reference-trap-kind-name
+	  reference-trap?
+	  unassigned-reference-trap?
+	  unbound-reference-trap?
+	  unmap-reference-trap))
+
+(define-package (runtime rep)
+  (files "rep")
+  (parent ())
+  (export ()
+	  %ge
+	  %gst
+	  %in
+	  %out
+	  %ve
+	  %vst
+	  ->environment
+	  abort->nearest
+	  abort->previous
+	  abort->top-level
+	  abort-to-nearest-driver
+	  abort-to-previous-driver
+	  abort-to-top-level-driver
+	  breakpoint
+	  breakpoint-procedure
+	  cmdl-interrupt/abort-nearest
+	  cmdl-interrupt/abort-previous
+	  cmdl-interrupt/abort-top-level
+	  cmdl-interrupt/abort-top-level/reset?
+	  cmdl-interrupt/breakpoint
+	  cmdl-message/active
+	  cmdl-message/append
+	  cmdl-message/null
+	  cmdl-message/standard
+	  cmdl-message/strings
+	  cmdl-message/value
+	  cmdl/base
+	  cmdl/continuation
+	  cmdl/driver
+	  cmdl/input-port
+	  cmdl/level
+	  cmdl/output-port
+	  cmdl/parent
+	  cmdl/proceed-continuation
+	  cmdl/state
+	  cmdl?
+	  current-proceed-continuation
+	  ge
+	  gst
+	  in
+	  initial-top-level-repl
+	  make-cmdl
+	  make-repl
+	  nearest-cmdl
+	  nearest-repl
+	  out
+	  proceed
+	  prompt-for-command-char
+	  prompt-for-confirmation
+	  prompt-for-expression
+	  push-cmdl
+	  push-repl
+	  re
+	  read-eval-print
+	  repl-history/read
+	  repl-history/record!
+	  repl-history/size
+	  repl/base
+	  repl/environment
+	  repl/parent
+	  repl/printer-history
+	  repl/prompt
+	  repl/reader-history
+	  repl/syntax-table
+	  repl?
+	  set-cmdl/continuation!
+	  set-cmdl/input-port!
+	  set-cmdl/output-port!
+	  set-cmdl/state!
+	  set-repl/environment!
+	  set-repl/printer-history!
+	  set-repl/prompt!
+	  set-repl/reader-history!
+	  set-repl/syntax-table!
+	  standard-repl-environment
+	  standard-repl-syntax-table
+	  ve
+	  vst
+	  with-proceed-point
+	  with-standard-proceed-point)
+  (export (runtime load)
+	  hook/repl-eval
+	  hook/repl-write)
+  (export (runtime emacs-interface)
+	  hook/cmdl-message
+	  hook/cmdl-prompt
+	  hook/prompt-for-confirmation
+	  hook/prompt-for-expression
+	  hook/read-command-char
+	  hook/repl-environment
+	  hook/repl-read
+	  hook/repl-write)
+  (export (runtime debugger-command-loop)
+	  hook/repl-environment)
+  (initialization (initialize-package!)))
+
+(define-package (runtime save/restore)
+  (files "savres")
+  (parent ())
+  (export ()
+	  disk-restore
+	  disk-save
+	  dump-world
+	  identify-world)
+  (initialization (initialize-package!)))
+
+(define-package (runtime scode)
+  (files "scode")
+  (parent ())
+  (export ()
+	  absolute-reference-name
+	  absolute-reference-to?
+	  absolute-reference?
+	  access-components
+	  access-environment
+	  access-name
+	  access?
+	  assignment-components
+	  assignment-components-with-variable
+	  assignment-name
+	  assignment-value
+	  assignment-variable
+	  assignment?
+	  comment-components
+	  comment-expression
+	  comment-text
+	  comment?
+	  declaration-components
+	  declaration-expression
+	  declaration-text
+	  declaration?
+	  definition-components
+	  definition-name
+	  definition-value
+	  definition?
+	  delay-components
+	  delay-expression
+	  delay?
+	  in-package-components
+	  in-package-environment
+	  in-package-expression
+	  in-package?
+	  intern
+	  make-absolute-reference
+	  make-access
+	  make-assignment
+	  make-assignment-from-variable
+	  make-comment
+	  make-declaration
+	  make-definition
+	  make-delay
+	  make-in-package
+	  make-named-tag
+	  make-quotation
+	  make-the-environment
+	  make-variable
+	  quotation-expression
+	  quotation?
+	  scode-constant?
+	  set-comment-expression!
+	  set-comment-text!
+	  set-declaration-expression!
+	  set-declaration-text!
+	  string->symbol
+	  string->uninterned-symbol
+	  symbol->string
+	  symbol?
+	  the-environment?
+	  variable-components
+	  variable-name
+	  variable?)
+  (initialization (initialize-package!)))
+
+(define-package (runtime scode-combinator)
+  (files "scomb")
+  (parent ())
+  (export ()
+	  combination-components
+	  combination-operands
+	  combination-operator
+	  combination-size
+	  combination?
+	  conditional-alternative
+	  conditional-components
+	  conditional-consequent
+	  conditional-predicate
+	  conditional?
+	  disjunction-alternative
+	  disjunction-components
+	  disjunction-predicate
+	  disjunction?
+	  make-combination
+	  make-conditional
+	  make-disjunction
+	  make-sequence
+	  make-unassigned?
+	  sequence-actions
+	  sequence-components
+	  sequence?
+	  unassigned?-components
+	  unassigned?-name
+	  unassigned??
+	  undefined-conditional-branch)
+  (initialization (initialize-package!)))
+
+(define-package (runtime scode-data)
+  (files "sdata")
+  (parent ())
+  (export (runtime lambda-abstraction)
+	  &pair-car
+	  &pair-cdr
+	  &pair-set-car!
+	  &pair-set-cdr!
+	  &triple-first
+	  &triple-second
+	  &triple-set-first!
+	  &triple-set-second!
+	  &triple-set-third!
+	  &triple-third
+	  &typed-pair-cons
+	  &typed-triple-cons)
+  (export (runtime scode)
+	  &pair-car
+	  &pair-cdr
+	  &pair-set-car!
+	  &pair-set-cdr!
+	  &singleton-element
+	  &typed-pair-cons
+	  &typed-singleton-cons)
+  (export (runtime scode-combinator)
+	  &pair-car
+	  &pair-cdr
+	  &pair-set-car!
+	  &pair-set-cdr!
+	  &subvector->list
+	  &triple-first
+	  &triple-second
+	  &triple-set-first!
+	  &triple-set-second!
+	  &triple-set-third!
+	  &triple-third
+	  &typed-pair-cons
+	  &typed-triple-cons
+	  &typed-vector-cons
+	  &vector-length
+	  &vector-ref)
+  (export (runtime scode-scan)
+	  &pair-car
+	  &pair-cdr
+	  &pair-set-car!
+	  &pair-set-cdr!
+	  &triple-first
+	  &triple-second
+	  &triple-set-first!
+	  &triple-set-second!
+	  &triple-set-third!
+	  &triple-third
+	  &typed-pair-cons
+	  &typed-triple-cons))
+
+(define-package (runtime scode-scan)
+  (files "scan")
+  (parent ())
+  (export ()
+	  make-open-block
+	  open-block-components
+	  open-block?
+	  scan-defines
+	  unscan-defines)
+  (initialization (initialize-package!)))
+
+(define-package (runtime scode-walker)
+  (files "codwlk")
+  (parent ())
+  (export ()
+	  make-scode-walker
+	  scode-walk
+	  scode-walker?)
+  (initialization (initialize-package!)))
+
+(define-package (runtime state-space)
+  (files "wind")
+  (parent ())
+  (export ()
+	  current-dynamic-state
+	  dynamic-wind
+	  execute-at-new-state-point
+	  get-fluid-bindings
+	  make-state-space
+	  set-current-dynamic-state!
+	  set-fluid-bindings!
+	  translate-to-state-point)
+  (initialization (initialize-package!)))
+
+(define-package (runtime stream)
+  (files "stream")
+  (parent ())
+  (export ()
+	  empty-stream?
+	  head
+	  list->stream
+	  prime-numbers-stream
+	  stream
+	  stream->list
+	  stream-car
+	  stream-cdr
+	  stream-length
+	  stream-map
+	  stream-null?
+	  stream-pair?
+	  stream-ref
+	  stream-tail
+	  tail
+	  the-empty-stream)
+  (initialization (initialize-package!)))
+
+(define-package (runtime string-input)
+  (files "strnin")
+  (parent ())
+  (export ()
+	  string->input-port
+	  with-input-from-string)
+  (initialization (initialize-package!)))
+
+(define-package (runtime string-output)
+  (files "strout")
+  (parent ())
+  (export ()
+	  with-output-to-string)
+  (initialization (initialize-package!)))
+
+(define-package (runtime syntax-table)
+  (files "syntab")
+  (parent ())
+  (export ()
+	  guarantee-syntax-table
+	  make-syntax-table
+	  syntax-table-define
+	  syntax-table-ref
+	  syntax-table/copy
+	  syntax-table/define
+	  syntax-table/extend
+	  syntax-table/parent
+	  syntax-table/ref
+	  syntax-table?))
+
+(define-package (runtime syntaxer)
+  (files "syntax")
+  (parent ())
+  (export ()
+	  lambda-tag:fluid-let
+	  lambda-tag:let
+	  lambda-tag:make-environment
+	  lambda-tag:unnamed
+	  make-syntax-closure
+	  syntax
+	  syntax*
+	  syntax-closure/expression
+	  syntax-closure?
+	  system-global-syntax-table
+	  user-initial-syntax-table)
+  (export (runtime defstruct)
+	  parse-lambda-list)
+  (initialization (initialize-package!)))
+
+(define-package (runtime system)
+  (files "system")
+  (parent ())
+  (export ()
+	  add-system!
+	  for-each-system!
+	  load-system!
+	  make-system
+	  system/identification-string
+	  system/modification
+	  system/name
+	  system/version))
+
+(define-package (runtime system-clock)
+  (files "sysclk")
+  (parent ())
+  (export ()
+	  internal-time/seconds->ticks
+	  internal-time/ticks->seconds
+	  measure-interval
+	  process-time-clock
+	  real-time-clock
+	  runtime
+	  system-clock)
+  (export (runtime gc-statistics)
+	  increment-non-runtime!)
+  (initialization (initialize-package!)))
+
+(define-package (runtime system-macros)
+  (files "sysmac")
+  (parent ())
+  (export ()
+	  syntax-table/system-internal)
+  (initialization (initialize-package!)))
+
+(define-package (runtime truncated-string-output)
+  (files "strott")
+  (parent ())
+  (export ()
+	  with-output-to-truncated-string)
+  (initialization (initialize-package!)))
+
+(define-package (runtime unparser)
+  (files "unpars")
+  (parent ())
+  (export ()	  *unparser-list-breadth-limit*
+	  *unparser-list-depth-limit*
+	  *unparser-radix*
+	  current-unparser-table
+	  guarantee-unparser-state
+	  guarantee-unparser-table
+	  make-unparser-state
+	  make-unparser-table
+	  system-global-unparser-table
+	  unparse-char
+	  unparse-object
+	  unparse-string
+	  unparser-state/list-depth
+	  unparser-state/port
+	  unparser-state/slashify?
+	  unparser-state/unparser-table
+	  unparser-state?
+	  unparser-table/copy
+	  unparser-table/entry
+	  unparser-table/set-entry!
+	  unparser-table?
+	  user-object-type)
+  (export (runtime output-port)
+	  unparse-object/internal)
+  (export (runtime pretty-printer)
+	  unparse-list/unparser
+	  unparse-vector/unparser)
+  (initialization (initialize-package!)))
+
+(define-package (runtime unsyntaxer)
+  (files "unsyn")
+  (parent ())
+  (export ()
+	  unsyntax
+	  unsyntax-lambda-list)
+  (initialization (initialize-package!)))
+
+(define-package (runtime working-directory)
+  (file-case os-type
+    ((unix) "unxcwd")
+    ((vms) "vmscwd")
+    (else "unkcwd"))
+  (files "wrkdir")
+  (parent ())
+  (export ()
+	  set-working-directory-pathname!
+	  with-working-directory-pathname
+	  working-directory-pathname)
+  (export (runtime emacs-interface)
+	  hook/set-working-directory-pathname!)
+  (initialization (initialize-package!)))
