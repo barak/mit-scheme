@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.18 1987/07/30 07:05:33 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.19 1987/07/30 21:27:21 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -60,7 +60,8 @@ MIT in each case. |#
 	   directives1))))
 
 (define-export (lap:syntax-instruction instruction)
-  (if (memq (car instruction) '(EQUATE SCHEME-OBJECT ENTRY-POINT LABEL))
+  (if (memq (car instruction)
+	    '(EQUATE SCHEME-OBJECT ENTRY-POINT LABEL BLOCK-OFFSET))
       (directive->instruction-sequence instruction)
       (let ((match-result (instruction-lookup instruction)))
 	(or (and match-result

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syerly.scm,v 1.2 1987/07/01 20:47:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syerly.scm,v 1.3 1987/07/30 21:27:11 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -62,7 +62,7 @@ MIT in each case. |#
 	     ((eq? (car instruction) 'UNQUOTE)
 	      (if-not-expanded))
 	     ((memq (car instruction)
-		    '(EQUATE SCHEME-OBJECT ENTRY-POINT LABEL))
+		    '(EQUATE SCHEME-OBJECT ENTRY-POINT LABEL BLOCK-OFFSET))
 	      (if-expanded
 	       (scode/make-combination
 		(scode/make-variable  'DIRECTIVE->INSTRUCTION-SEQUENCE)

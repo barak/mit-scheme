@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.4 1987/07/30 07:05:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.5 1987/07/30 21:26:59 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -140,12 +140,23 @@ MIT in each case. |#
 
 (define (assemble-directives! block directives block-length)
 
-  (define (loop directives dir-stack pc pc-stack position)
+  (define (loop directives dir-stack pc pc-stack position last-blabel blabel)
 
     (define (actual-bits bits l)
       (let ((np (- position l)))
 	(bit-string-insert! bits block np)
-	(loop (cdr directives) dir-stack (+ pc l) pc-stack np)))
+	(loop (cdr directives) dir-stack (+ pc l) pc-stack np
+	      last-blabel blabel)))
+
+    (define (block-offset offset last-blabel blabel)
+      (let ((np (- position block-offset-width)))
+	(bit-string-insert!
+	 (block-offset->bit-string offset (eq? blabel *start-label*))
+	 block np)
+	(loop (cdr directives) dir-stack
+	      (+ pc block-offset-width)
+	      pc-stack np
+	      last-blabel blabel)))
 
     (define (evaluation handler expression l)
       (actual-bits (handler
@@ -159,18 +170,21 @@ MIT in each case. |#
 	   (let ((this (car directives)))
 	     (case (vector-ref this 0)
 	       ((LABEL)
-		(loop (cdr directives) dir-stack pc pc-stack position))
+		(loop (cdr directives) dir-stack pc pc-stack position
+		      last-blabel blabel))
 	       ((TICK)
 		(loop (cdr directives) dir-stack
 		      pc
 		      (if (vector-ref this 1)
 			  (cons (->machine-pc pc) pc-stack)
 			  (cdr pc-stack))
-		      position))
+		      position
+		      last-blabel blabel))
 	       ((FIXED-WIDTH-GROUP)
 		(loop (vector-ref this 2) (cons (cdr directives) dir-stack)
 		      pc pc-stack
-		      position))
+		      position
+		      last-blabel blabel))
 	       ((CONSTANT)
 		(let ((bs (vector-ref this 1)))
 		  (actual-bits bs (bit-string-length bs))))
@@ -183,15 +197,24 @@ MIT in each case. |#
 		  (evaluation (variable-handler-wrapper (selector/handler sel))
 			      (vector-ref this 1)
 			      (selector/length sel))))
+	       ((BLOCK-OFFSET)
+		(let* ((label (vector-ref this 1))
+		       (offset (evaluate `(- ,label ,blabel) '())))
+		  (if (> offset maximum-block-offset)
+		      (block-offset (evaluate `(- ,label ,last-blabel) '())
+				    label last-blabel)
+		      (block-offset offset label blabel))))
 	       (else
 		(error "assemble-directives!: Unknown directive" this)))))
 	  ((not (null? dir-stack))
-	   (loop (car dir-stack) (cdr dir-stack) pc pc-stack position))
+	   (loop (car dir-stack) (cdr dir-stack) pc pc-stack position
+		 last-blabel blabel))
 	  ((not (= (+ block-length starting-pc) (+ pc position)))
 	   (error "assemble-directives!: phase error"
 		  block-length pc position))
 	  (else (assemble-objects! block))))
-  (loop directives '() starting-pc '() block-length))
+  (loop directives '() starting-pc '() block-length
+	*start-label* *start-label*))
 
 ;;;; Input conversion
 
@@ -261,6 +284,10 @@ MIT in each case. |#
 		     ((CONSTANT)
 		      (process-fixed-width (list->vector this)
 					   (bit-string-length (cadr this))))
+
+		     ((BLOCK-OFFSET)
+		      (process-fixed-width (list->vector this)
+					   block-offset-width))
 
 		     ((EVALUATION)
 		      (process-fixed-width (list->vector this)
