@@ -37,7 +37,7 @@
 
 ;;;; Compiler Utilities
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.75 1986/12/17 08:02:18 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.76 1986/12/18 06:12:29 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -227,29 +227,42 @@
 
 ;;;; Set Operations
 
-(define (set-adjoin element set)
+(define (eq-set-adjoin element set)
   (if (memq element set)
       set
       (cons element set)))
 
-(define (set-delete set item)
+(define (eqv-set-adjoin element set)
+  (if (memv element set)
+      set
+      (cons element set)))
+
+(define (eq-set-delete set item)
   (define (loop set)
-    (cond ((null? set)
-	   '())
-	  ((eq? (car set) item)
-	   (cdr set))
-	  (else
-	   (cons (car set) (loop (cdr set))))))
+    (cond ((null? set) '())
+	  ((eq? (car set) item) (cdr set))
+	  (else (cons (car set) (loop (cdr set))))))
   (loop set))
 
-(define (set-substitute set old new)
+(define (eqv-set-delete set item)
   (define (loop set)
-    (cond ((null? set)
-	   (error "SET-SUBSTITUTE: Missing item" old))
-	  ((eq? (car set) old)
-	   (cons new (cdr set)))
-	  (else
-	   (cons (car set) (loop (cdr set))))))
+    (cond ((null? set) '())
+	  ((eqv? (car set) item) (cdr set))
+	  (else (cons (car set) (loop (cdr set))))))
+  (loop set))
+
+(define (eq-set-substitute set old new)
+  (define (loop set)
+    (cond ((null? set) '())
+	  ((eq? (car set) old) (cons new (cdr set)))
+	  (else (cons (car set) (loop (cdr set))))))
+  (loop set))
+
+(define (eqv-set-substitute set old new)
+  (define (loop set)
+    (cond ((null? set) '())
+	  ((eqv? (car set) old) (cons new (cdr set)))
+	  (else (cons (car set) (loop (cdr set))))))
   (loop set))
 
 (define (set-search set procedure)
@@ -258,25 +271,45 @@
 	 (or (procedure (car items))
 	     (loop (cdr items)))))
   (loop set))
+
+;;; The dataflow analyzer assumes that
+;;; (eq? (list-tail (eq-set-union x y) n) y) for some n.
 
-(define set-union
-  (let ()
-    (define (loop x y)
-      (if (null? x)
-	  y
-	  (loop (cdr x)
-		(if (memq (car x) y)
-		    y
-		    (cons (car x) y)))))
-    (named-lambda (set-union x y)
-      (if (null? y)
-	  x
-	  (loop x y)))))
+(define (eq-set-union x y)
+  (if (null? y)
+      x
+      (let loop ((x x) (y y))
+	(if (null? x)
+	    y
+	    (loop (cdr x)
+		  (if (memq (car x) y)
+		      y
+		      (cons (car x) y)))))))
 
-(define (set-difference set1 set2)
-  (cond ((null? set1) '())
-	((memq (car set1) set2) (set-difference (cdr set1) set2))
-	(else (cons (car set1) (set-difference (cdr set1) set2)))))
+(define (eqv-set-union x y)
+  (if (null? y)
+      x
+      (let loop ((x x) (y y))
+	(if (null? x)
+	    y
+	    (loop (cdr x)
+		  (if (memv (car x) y)
+		      y
+		      (cons (car x) y)))))))
+
+(define (eq-set-difference x y)
+  (define (loop x)
+    (cond ((null? x) '())
+	  ((memq (car x) y) (loop (cdr x)))
+	  (else (cons (car x) (loop (cdr x))))))
+  (loop x))
+
+(define (eqv-set-difference x y)
+  (define (loop x)
+    (cond ((null? x) '())
+	  ((memv (car x) y) (loop (cdr x)))
+	  (else (cons (car x) (loop (cdr x))))))
+  (loop x))
 
 ;;;; SCode Interface
 

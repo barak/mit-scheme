@@ -37,7 +37,7 @@
 
 ;;;; LAP Code Generation
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.18 1986/12/15 05:26:52 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.19 1986/12/18 06:10:31 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -261,7 +261,7 @@
 
 (define (delete-machine-register! register)
   (set! *register-map* (delete-machine-register *register-map* register))
-  (set! *needed-registers* (set-delete *needed-registers* register)))
+  (set! *needed-registers* (eqv-set-delete *needed-registers* register)))
 
 (package (delete-pseudo-register! delete-dead-registers!)
   (define-export (delete-pseudo-register! register)
@@ -271,7 +271,7 @@
     (set! *dead-registers* '()))
   (define (delete-registers! map aliases)
     (set! *register-map* map)
-    (set! *needed-registers* (set-difference *needed-registers* aliases))))
+    (set! *needed-registers* (eqv-set-difference *needed-registers* aliases))))
 
 (define *next-constant*)
 (define *interned-constants*)

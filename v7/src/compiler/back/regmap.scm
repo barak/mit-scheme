@@ -37,7 +37,7 @@
 
 ;;;; Register Allocator
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 1.85 1986/12/15 05:27:32 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 1.86 1986/12/18 06:10:51 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -152,13 +152,13 @@ REGISTER-RENUMBERs are equal.
   (cons entry (map-entries map)))
 
 (define-integrable (map-entries:delete map entry)
-  (set-delete (map-entries map) entry))
+  (eq-set-delete (map-entries map) entry))
 
 (define-integrable (map-entries:delete* map entries)
-  (set-difference (map-entries map) entries))
+  (eq-set-difference (map-entries map) entries))
 
 (define-integrable (map-entries:replace map old new)
-  (set-substitute (map-entries map) old new))
+  (eq-set-substitute (map-entries map) old new))
 
 (define-integrable (map-registers:add map register)
   (sort-machine-registers (cons register (map-registers map))))
@@ -167,7 +167,7 @@ REGISTER-RENUMBERs are equal.
   (sort-machine-registers (append registers (map-registers map))))
 
 (define-integrable (map-registers:delete map register)
-  (set-delete (map-registers map) register))
+  (eqv-set-delete (map-registers map) register))
 
 ;;;; Map Entry
 
@@ -197,7 +197,7 @@ REGISTER-RENUMBERs are equal.
 (define (map-entry:delete-alias entry alias)
   (make-map-entry (map-entry-home entry)
 		  (map-entry-saved-into-home? entry)
-		  (set-delete (map-entry-aliases entry) alias)))
+		  (eq-set-delete (map-entry-aliases entry) alias)))
 
 (define (map-entry=? entry entry*)
   (and (map-entry-home entry)
@@ -513,8 +513,8 @@ REGISTER-RENUMBERs are equal.
 		(append! (register->register-transfer (car input-aliases)
 						      (car output-aliases))
 			 (loop (cdr output-aliases)))))
-	  (loop (set-difference (map-entry-aliases (cdar entries))
-				input-aliases)))))
+	  (loop (eqv-set-difference (map-entry-aliases (cdar entries))
+				    input-aliases)))))
   loop)
 
 (define (output-loop map entries)
