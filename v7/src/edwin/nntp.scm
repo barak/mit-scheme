@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: nntp.scm,v 1.14 1997/03/31 20:54:59 cph Exp $
+;;;	$Id: nntp.scm,v 1.15 1997/11/01 19:33:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -78,12 +78,9 @@
 			"... ")))
     (message msg)
     (let ((port
-	   (let ((channel
-		  (open-tcp-stream-socket-channel
-		   (nntp-connection:server connection)
-		   "nntp"))
-		 (size nntp-socket-buffer-size))
-	     (make-generic-i/o-port channel channel size size "\r\n"))))
+	   (open-tcp-stream-socket (nntp-connection:server connection)
+				   "nntp"
+				   nntp-socket-buffer-size)))
       (set-nntp-connection:port! connection port)
       (set-nntp-connection:banner! connection (input-port/read-line port)))
     (set-nntp-connection:current-group! connection #f)
