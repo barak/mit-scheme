@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: savres.scm,v 14.40 2003/01/02 02:02:41 cph Exp $
+$Id: savres.scm,v 14.41 2003/01/03 01:37:53 cph Exp $
 
 Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright (c) 1995,1998,1999,2000,2001 Massachusetts Institute of Technology
@@ -165,11 +165,11 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.")
 	  (write-string " at " port)
 	  (write-string (decoded-time/time-string time-world-saved) port)
 	  (newline port)))
-    (write-strings-as-table (map get-subsystem-identification-string
-				 (get-subsystem-names))
-			    port
-			    #t
-			    1
-			    "  "
-			    " || "
-			    "")))
+    (write-strings-in-columns (map get-subsystem-identification-string
+				   (get-subsystem-names))
+			      port
+			      #t
+			      1
+			      "  "
+			      " || "
+			      "")))

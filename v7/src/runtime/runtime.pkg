@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.420 2003/01/02 01:52:27 cph Exp $
+$Id: runtime.pkg,v 14.421 2003/01/03 01:37:45 cph Exp $
 
 Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright (c) 1993,1994,1995,1996,1997 Massachusetts Institute of Technology
@@ -1915,7 +1915,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  write-char
 	  write-line
 	  write-string
-	  write-strings-as-table
+	  write-strings-in-columns
 	  write-substring))
 
 (define-package (runtime interrupt-handler)

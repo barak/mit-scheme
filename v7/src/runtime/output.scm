@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: output.scm,v 14.28 2003/01/03 01:35:55 cph Exp $
+$Id: output.scm,v 14.29 2003/01/03 01:37:38 cph Exp $
 
 Copyright (c) 1986,1987,1988,1989,1990 Massachusetts Institute of Technology
 Copyright (c) 1991,1992,1993,1999,2001 Massachusetts Institute of Technology
@@ -172,16 +172,16 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 ;;;; Tabular output
 
-(define (write-strings-as-table strings port row-major? min-minor
-				left-margin col-sep right-margin)
+(define (write-strings-in-columns strings port row-major? min-minor
+				  left-margin col-sep right-margin)
   (if (not (list-of-type? strings string?))
       (error:wrong-type-argument strings "list of strings"
-				 'WRITE-STRINGS-AS-TABLE))
-  (guarantee-output-port port 'WRITE-STRINGS-AS-TABLE)
-  (guarantee-exact-positive-integer min-minor 'WRITE-STRINGS-AS-TABLE)
-  (guarantee-string left-margin 'WRITE-STRINGS-AS-TABLE)
-  (guarantee-string col-sep 'WRITE-STRINGS-AS-TABLE)
-  (guarantee-string right-margin 'WRITE-STRINGS-AS-TABLE)
+				 'WRITE-STRINGS-IN-COLUMNS))
+  (guarantee-output-port port 'WRITE-STRINGS-IN-COLUMNS)
+  (guarantee-exact-positive-integer min-minor 'WRITE-STRINGS-IN-COLUMNS)
+  (guarantee-string left-margin 'WRITE-STRINGS-IN-COLUMNS)
+  (guarantee-string col-sep 'WRITE-STRINGS-IN-COLUMNS)
+  (guarantee-string right-margin 'WRITE-STRINGS-IN-COLUMNS)
   (let ((n-strings (length strings))
 	(max-width (output-port/x-size port))
 	(lm-width (string-length left-margin))
