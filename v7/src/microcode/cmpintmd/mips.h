@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mips.h,v 1.1 1990/04/01 20:14:51 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mips.h,v 1.2 1990/04/09 14:44:18 jinx Exp $
  *
  * Compiled code interface macros.
  *
@@ -41,6 +41,23 @@ MIT in each case. */
 
 #ifndef CMPINT2_H_INCLUDED
 #define CMPINT2_H_INCLUDED
+
+#include <sys/syscall.h>
+#include <sys/sysmips.h>
+#include <mips/cachectl.h>
+#if 0
+
+/* advertised, but not provided */
+extern void cacheflush();
+
+#else
+
+extern void syscall();
+
+#define cacheflush(addr,nbytes,cache)					\
+  syscall(SYS_sysmips, MIPS_CACHEFLUSH, (addr), (nbytes), (cache))
+
+#endif
 
 #define COMPILER_NONE_TYPE			0
 #define COMPILER_MC68020_TYPE			1
@@ -280,7 +297,7 @@ procedures and continuations differ from closures) */
    code to jump to the destination address.  Before linkage, the cache
    contains the callee's name instead of the jump code.
 
-   On MIPS: 4 instructions, the last being a NO-OP (ADDI with
+   On MIPS: 2 instructions, the last being a NO-OP (ADDI with
    destination 0) containing a fixnum representing the number of
    arguments in the lower 16 bits.
  */
@@ -325,11 +342,17 @@ procedures and continuations differ from closures) */
   EXTRACT_ABSOLUTE_ADDRESS(target, address);				\
 }
 
-/* This is the inverse of EXTRACT_EXECUTE_CACHE_ADDRESS. */
+/* This is the inverse of EXTRACT_EXECUTE_CACHE_ADDRESS.
+   On the MIPS it must flush the I-cache, but there is no
+   need to flush the ADDI instruction, which is a NOP.
+ */
 
 #define STORE_EXECUTE_CACHE_ADDRESS(address, entry)			\
 {									\
-  STORE_ABSOLUTE_ADDRESS(entry, address);				\
+  STORE_ABSOLUTE_ADDRESS (entry, address);				\
+  cacheflush (address,							\
+	      ((sizeof (long)) * (EXECUTE_CACHE_ENTRY_SIZE - 1)),	\
+	      ICACHE);							\
 }
 
 /* This stores the fixed part of the instructions leaving the
@@ -342,9 +365,35 @@ procedures and continuations differ from closures) */
  */
 
 #define STORE_EXECUTE_CACHE_CODE(address)				\
-{  char *opcode_addr = ((char *) (address))+7;				\
-   *opcode_addr = ADDI_OPCODE<<2;					\
+{									\
+  char *opcode_addr;							\
+									\
+  opcode_addr = (((char *) (address)) + 7);				\
+  *opcode_addr = (ADDI_OPCODE << 2);					\
 }
+
+/* This flushed the I-cache after a GC or disk-restore.
+   It's needed because the GC has moved code around, and closures
+   and execute cache cells have absolute addresses that the
+   processor might have old copies of.
+ */
+
+#define FLUSH_I_CACHE()							\
+do									\
+{									\
+  cacheflush (Heap_Bottom,						\
+	      ((sizeof(SCHEME_OBJECT)) *				\
+	       (Heap_Top - Heap_Bottom)),				\
+	      ICACHE);							\
+  cacheflush (Constant_Space,						\
+	      ((sizeof(SCHEME_OBJECT)) *				\
+	       (Constant_Top - Constant_Space)),			\
+	      ICACHE);							\
+  cacheflush (Stack_Pointer,						\
+	      ((sizeof(SCHEME_OBJECT)) *				\
+	       (Stack_Top - Stack_Pointer)),				\
+	      ICACHE);							\
+} while (0)
 
 /* Derived parameters and macros.
 

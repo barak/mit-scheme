@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.11 1990/04/09 14:52:57 jinx Exp $
+
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.10 1990/04/03 00:04:44 jinx Exp $
+/*
 
 Utilities to relocate compiled code in garbage collection-like processes. 
 
@@ -350,4 +352,13 @@ typedef unsigned short format_word;
   (GC_NO_COMPILER_STMT ())
 
 #endif /* HAS_COMPILER_SUPPORT */
+
+#ifndef FLUSH_I_CACHE
+
+#define FLUSH_I_CACHE ()						\
+do {									\
+} while (0)
+
+#endif /* FLUSH_I_CACHE */
+
 #endif /* CMPGC_H_INCLUDED */

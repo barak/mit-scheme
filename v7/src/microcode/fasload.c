@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.51 1990/02/13 16:11:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.52 1990/04/09 14:49:59 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -817,8 +817,10 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   /* Reset implementation state paramenters */
 
   INITIALIZE_INTERRUPTS();
-  Initialize_Stack();
-  Set_Pure_Top();
+  Initialize_Stack ();
+  Set_Pure_Top(); 
+  SET_MEMTOP (Heap_Top - GC_Reserve);
+
   cutl = MEMORY_REF (result, 1);
   if (cutl != SHARP_F)
   {
@@ -849,6 +851,8 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   History = Make_Dummy_History();
   Prev_Restore_History_Stacklet = NULL;
   Prev_Restore_History_Offset = 0;
+
+  FLUSH_I_CACHE ();
 
   end_band_load(true, false);
   Band_Load_Hook();
