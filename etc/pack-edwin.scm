@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pack-edwin.scm,v 1.6 1993/08/22 17:51:49 gjr Exp $
+$Id: pack-edwin.scm,v 1.7 1993/09/04 00:50:39 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -60,6 +60,7 @@ MIT in each case. |#
 		    "search.com"
 		    "image.com"
 		    "comman.com"
+		    "docstr.com"
 		    "comtab.com"
 		    "modes.com"
 		    "buffer.com"
