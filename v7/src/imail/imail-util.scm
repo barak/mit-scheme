@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.24 2000/05/22 03:01:30 cph Exp $
+;;; $Id: imail-util.scm,v 1.25 2000/05/23 03:55:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -238,6 +238,12 @@
 		   ((9) "G")
 		   ((12) "T")))))))))
 
+(define (exact-nonnegative-integer-digits n)
+  (let loop ((j 1) (k 10))
+    (if (< n k)
+	j
+	(loop (+ j 1) (* k 10)))))
+
 (define (burst-comma-list-string string)
   (list-transform-negative (map string-trim (burst-string string #\, #f))
     string-null?))

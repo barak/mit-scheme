@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.14 2000/05/19 21:10:20 cph Exp $
+;;; $Id: imail-summary.scm,v 1.15 2000/05/23 03:55:06 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -195,11 +195,7 @@ The recipients are specified as a comma-separated list of names."
 	     (if (< i end)
 		 (loop (+ i 1) (cons (get-message folder i) messages))
 		 (reverse! messages))))
-	  (index-digits
-	   (let loop ((n 1) (k 10))
-	     (if (< end k)
-		 n
-		 (loop (+ n 1) (* k 10)))))
+	  (index-digits (exact-nonnegative-integer-digits (- end 1)))
 	  (show-date? (ref-variable imail-summary-show-date buffer))
 	  (subject-width (imail-summary-subject-width buffer)))
       (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
