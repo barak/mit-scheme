@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/mul.c,v 9.32 1992/02/03 23:33:05 jinx Exp $
+$Id: mul.c,v 9.33 1993/02/15 03:39:48 gjr Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -204,10 +204,12 @@ static long Fixnum_Range[2] = {SMALLEST_FIXNUM , BIGGEST_FIXNUM};
 
 #ifndef MUL_HANDLED
 
-#define HALF_WORD_SIZE	((sizeof(long)*CHAR_BIT)/2)
-#define HALF_WORD_MASK	(1<<HALF_WORD_SIZE)-1
-#define MAX_MIDDLE	(1<<((DATUM_LENGTH-1)-HALF_WORD_SIZE))
-#define MAX_FIXNUM	(1<<DATUM_LENGTH)
+#define ONE		((unsigned long) 1)
+
+#define HALF_WORD_SIZE	(((sizeof (long)) * CHAR_BIT) / 2)
+#define HALF_WORD_MASK	((ONE << HALF_WORD_SIZE) - 1)
+#define MAX_MIDDLE	(ONE << ((DATUM_LENGTH - 1) - HALF_WORD_SIZE))
+#define MAX_FIXNUM	(ONE << DATUM_LENGTH)
 #define	ABS(x)		(((x) < 0) ? -(x) : (x))
 
 SCHEME_OBJECT
