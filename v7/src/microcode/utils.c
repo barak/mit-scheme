@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.64 1993/09/15 01:05:28 gjr Exp $
+$Id: utils.c,v 9.65 1994/09/29 15:54:27 adams Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -1080,6 +1080,7 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
        AND SCHEME_OBJECT * argvec)
 {
   SCHEME_OBJECT primitive, prim_lexpr, * sp, result;
+  SCHEME_OBJECT * callers_last_return_code;
 
 #ifdef i386
   extern void * C_Frame_Pointer, * C_Stack_Pointer;
@@ -1094,6 +1095,7 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
   {  
     primitive = (Regs [REGBLOCK_PRIMITIVE]);
     prim_lexpr = (Regs [REGBLOCK_LEXPR_ACTUALS]);
+    callers_last_return_code = last_return_code;
 
     if (! (PRIMITIVE_P (primitive)))
       abort_to_interpreter (ERR_CANNOT_RECURSE);
@@ -1124,6 +1126,7 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
       signal_error_from_primitive (ERR_STACK_HAS_SLIPPED);
       /*NOTREACHED*/
 
+    last_return_code = callers_last_return_code;
     Regs [REGBLOCK_LEXPR_ACTUALS] = prim_lexpr;
     Regs [REGBLOCK_PRIMITIVE] = primitive;
   }
