@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.17 1996/10/02 18:58:10 cph Exp $
+$Id: ntgui.c,v 1.18 1996/10/07 18:01:36 cph Exp $
 
 Copyright (c) 1993-96 Massachusetts Institute of Technology
 
@@ -102,7 +102,6 @@ WinMain (HANDLE hInst, HANDLE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
 }
 #endif
 
-
 BOOL
 DEFUN (InitApplication, (hInstance), HANDLE hInstance)
 {
@@ -141,8 +140,6 @@ DEFUN (InitInstance, (hInstance, nCmdShow), HANDLE hInstance AND int nCmdShow)
     //return  TRUE;
 }
 
-
-
 //void
 //DEFUN_VOID (nt_gui_default_poll)
 //{
@@ -168,7 +165,6 @@ DEFUN (InitInstance, (hInstance, nCmdShow), HANDLE hInstance AND int nCmdShow)
 //   outf_console("\002");  outf_flush_console();
 //#endif
 //}
-
 
 //extern BOOL MIT_TranslateMessage (CONST MSG *);
 
@@ -240,9 +236,8 @@ nt_gui_high_priority_poll (void)
   return;
 }
 
-DEFINE_PRIMITIVE ("MICROCODE-POLL-INTERRUPT-HANDLER",
-                  Prim_microcode_poll_interrupt_handler, 2, 2,
-		  "NT High-priority timer interrupt handler for Windows I/O.")
+DEFINE_PRIMITIVE ("MICROCODE-POLL-INTERRUPT-HANDLER", Prim_microcode_poll_interrupt_handler, 2, 2,
+  "NT High-priority timer interrupt handler for Windows I/O.")
 {
 #ifndef USE_WM_TIMER
   extern void low_level_timer_tick (void);
@@ -266,8 +261,7 @@ DEFINE_PRIMITIVE ("MICROCODE-POLL-INTERRUPT-HANDLER",
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("NT-DEFAULT-POLL-GUI", Prim_nt_default_poll_gui, 2, 2,
-"")
+DEFINE_PRIMITIVE ("NT-DEFAULT-POLL-GUI", Prim_nt_default_poll_gui, 2, 2, 0)
 {
   PRIMITIVE_HEADER(2)
   {
@@ -350,9 +344,7 @@ C_to_Scheme_WndProc (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     return  scheme_object_to_windows_object (result);
 }
 
-
-DEFINE_PRIMITIVE ("GET-SCHEME-WINDOW-PROCEDURE", Prim_get_scheme_window_procedure, 1, 1,
-"")
+DEFINE_PRIMITIVE ("GET-SCHEME-WINDOW-PROCEDURE", Prim_get_scheme_window_procedure, 1, 1, 0)
 {
   PRIMITIVE_HEADER(1);
   {
@@ -376,11 +368,9 @@ DEFINE_PRIMITIVE ("GET-SCHEME-WINDOW-PROCEDURE", Prim_get_scheme_window_procedur
     The procedure must be a purified first.
 */
 
-
 static SCHEME_OBJECT general_scheme_wndproc = SHARP_F;
 
-DEFINE_PRIMITIVE ("GET-GENERAL-SCHEME-WNDPROC",
-Prim_get_general_scheme_wndproc, 0, 0, "")
+DEFINE_PRIMITIVE ("GET-GENERAL-SCHEME-WNDPROC", Prim_get_general_scheme_wndproc, 0, 0, 0)
 {
   PRIMITIVE_HEADER(0);
   {
@@ -388,8 +378,7 @@ Prim_get_general_scheme_wndproc, 0, 0, "")
   }
 }
 
-DEFINE_PRIMITIVE ("SET-GENERAL-SCHEME-WNDPROC",
-Prim_set_general_scheme_wndproc, 1, 1, "")
+DEFINE_PRIMITIVE ("SET-GENERAL-SCHEME-WNDPROC", Prim_set_general_scheme_wndproc, 1, 1, 0)
 {
   PRIMITIVE_HEADER(1);
   {
@@ -400,7 +389,6 @@ Prim_set_general_scheme_wndproc, 1, 1, "")
     PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }
-
 
 LRESULT CALLBACK
 C_to_Scheme_WndProc_2 (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -420,7 +408,6 @@ C_to_Scheme_WndProc_2 (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     return  scheme_object_to_windows_object (result);
 }
 
-
 /***************************************************************************/
 
 void
@@ -430,15 +417,14 @@ failed_foreign_function (void)
 }
 
 DEFINE_PRIMITIVE ("GET-HANDLE", Prim_get_handle, 1, 1,
-"(id)\n"
-"Returns an otherwise hard to get global C variable\n"
-"id	entity\n"
-"0	instance handle\n"
-"1	master tty handle\n"
-"2	C to Scheme windows procedure address\n"
-"3	C to Scheme windows procedure address (eta version)\n"
-"4	failed-foreign-function address\n"
-)
+  "(id)\n"
+  "Returns an otherwise hard to get global C variable\n"
+  "id	entity\n"
+  "0	instance handle\n"
+  "1	master tty handle\n"
+  "2	C to Scheme windows procedure address\n"
+  "3	C to Scheme windows procedure address (eta version)\n"
+  "4	failed-foreign-function address\n")
 {
   PRIMITIVE_HEADER(1);
   {
@@ -456,8 +442,6 @@ DEFINE_PRIMITIVE ("GET-HANDLE", Prim_get_handle, 1, 1,
   }
 }
 
-
-
 static unsigned long
 DEFUN (arg_ulong_default, (arg_number, def),
        int arg_number AND unsigned long def)
@@ -470,19 +454,18 @@ DEFUN (arg_ulong_default, (arg_number, def),
   return  integer_to_ulong (object);
 }
 
-
 DEFINE_PRIMITIVE ("WIN:CREATE-WINDOW", Prim_create_window, 10, 10,
-"class-name\n"
-"window-name\n"
-"style\n"
-"X\n"
-"Y\n"
-"width\n"
-"height\n"
-"parent\n"
-"menu\n"
-"(instance omitted)\n"
-"lpParam: (lambda (hwnd message wparam lparam)). [think about MDI later]\n")
+  "class-name\n"
+  "window-name\n"
+  "style\n"
+  "X\n"
+  "Y\n"
+  "width\n"
+  "height\n"
+  "parent\n"
+  "menu\n"
+  "(instance omitted)\n"
+  "lpParam: (lambda (hwnd message wparam lparam)). [think about MDI later]\n")
 {
     LPSTR  class_name;
     LPSTR  window_name;
@@ -513,8 +496,7 @@ DEFINE_PRIMITIVE ("WIN:CREATE-WINDOW", Prim_create_window, 10, 10,
     return  ulong_to_integer ((unsigned long) result);
 }
 
-
-DEFINE_PRIMITIVE ("WIN:DEF-WINDOW-PROC", Prim_def_window_proc, 4, 4, "")
+DEFINE_PRIMITIVE ("WIN:DEF-WINDOW-PROC", Prim_def_window_proc, 4, 4, 0)
 {
     //outf_console ("\001");
     return
@@ -526,15 +508,13 @@ DEFINE_PRIMITIVE ("WIN:DEF-WINDOW-PROC", Prim_def_window_proc, 4, 4, "")
 	  ((LPARAM) (scheme_object_to_windows_object (ARG_REF (4))))));
 }
 
-
-DEFINE_PRIMITIVE ("REGISTER-CLASS",
-     Prim__register_class, 10, 10,
-"(style wndproc clsExtra wndExtra hInstance hIcon hCursor\n"
-"                hBackground menu-name class-name)\n\n"
-
-"cursor     = 32512(arrow), 32513(ibeam), 32514(hourglass) 32515(cross), 32516(uparrow)\n"
-"background = 0 (white_brush)\n"
-)
+DEFINE_PRIMITIVE ("REGISTER-CLASS", Prim__register_class, 10, 10,
+  "(style wndproc clsExtra wndExtra hInstance hIcon hCursor\n"
+  "                hBackground menu-name class-name)\n"
+  "\n"
+  "cursor     = 32512(arrow), 32513(ibeam), 32514(hourglass),\n"
+  "             32515(cross), 32516(uparrow)\n"
+  "background = 0 (white_brush)\n")
 {
     // should lift background and cursor
     WNDCLASS wc;
@@ -557,7 +537,7 @@ DEFINE_PRIMITIVE ("REGISTER-CLASS",
     PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT(rc));
 }
 
-DEFINE_PRIMITIVE ("APPLY_1", Prim_apply_1_xyz, 2, 2, "")
+DEFINE_PRIMITIVE ("APPLY_1", Prim_apply_1_xyz, 2, 2, 0)
 {
     SCHEME_OBJECT  proc, arg, result;
     PRIMITIVE_HEADER (2);
@@ -574,9 +554,8 @@ DEFINE_PRIMITIVE ("APPLY_1", Prim_apply_1_xyz, 2, 2, "")
 /* Primitive versions of library stuff					*/
 /************************************************************************/
 
-
 DEFINE_PRIMITIVE ("NT:GET-MODULE-HANDLE", Prim_get_module_handle, 1, 1,
-"(string) -> handle")
+  "(string) -> handle")
 {
     HANDLE it;
 
@@ -588,7 +567,7 @@ DEFINE_PRIMITIVE ("NT:GET-MODULE-HANDLE", Prim_get_module_handle, 1, 1,
 }
 
 DEFINE_PRIMITIVE ("NT:LOAD-LIBRARY", Prim_nt_load_library, 1, 1,
-"(string) -> handle")
+  "(string) -> handle")
 {
     HANDLE it;
 
@@ -600,7 +579,7 @@ DEFINE_PRIMITIVE ("NT:LOAD-LIBRARY", Prim_nt_load_library, 1, 1,
 }
 
 DEFINE_PRIMITIVE ("NT:FREE-LIBRARY", Prim_nt_free_library, 1, 1,
-"(library-module-handle) -> bool")
+  "(library-module-handle) -> bool")
 {
     HANDLE handle;
     BOOL   result;
@@ -613,7 +592,7 @@ DEFINE_PRIMITIVE ("NT:FREE-LIBRARY", Prim_nt_free_library, 1, 1,
 }
 
 DEFINE_PRIMITIVE ("NT:GET-PROC-ADDRESS", Prim_nt_get_proc_address, 2, 2,
-"(handle string/integer) -> address")
+  "(handle string/integer) -> address")
 {
     HMODULE  module;
     LPSTR    function_name;
@@ -635,7 +614,7 @@ DEFINE_PRIMITIVE ("NT:GET-PROC-ADDRESS", Prim_nt_get_proc_address, 2, 2,
 }
 
 DEFINE_PRIMITIVE ("NT:SEND-MESSAGE", Prim_send_message, 4, 4,
-"(handle message wparam lparam)")
+  "(handle message wparam lparam)")
 {
     HWND    hwnd;
     UINT    message;
@@ -667,8 +646,7 @@ DEFINE_PRIMITIVE ("NT:SEND-MESSAGE", Prim_send_message, 4, 4,
 //   return  f(a);
 //}
 //
-//DEFINE_PRIMITIVE ("CALL-FF-1", Prim_call_ff_1, 2, 2,
-//"")
+//DEFINE_PRIMITIVE ("CALL-FF-1", Prim_call_ff_1, 2, 2, 0)
 //{
 //    long  result;
 //    long (* WINAPI f)(long);
@@ -685,15 +663,17 @@ DEFINE_PRIMITIVE ("NT:SEND-MESSAGE", Prim_send_message, 4, 4,
 //    return  f(a1,a2);
 //}
 //
-//DEFINE_PRIMITIVE ("CALL-FF-2", Prim_call_ff_2, 3, 3,
-//"")
+//DEFINE_PRIMITIVE ("CALL-FF-2", Prim_call_ff_2, 3, 3, 0)
 //{
 //    long (* WINAPI f)(long,long);
 //
 //    PRIMITIVE_HEADER (3);
 //
 //    f =  arg_integer (1);
-//    PRIMITIVE_RETURN (long_to_integer (fudge_call_2 (f, call_ff_arg (ARG_REF(2)), call_ff_arg (ARG_REF(3)))));
+//    PRIMITIVE_RETURN
+//      (long_to_integer (fudge_call_2 (f,
+//				      call_ff_arg (ARG_REF(2)),
+//				      call_ff_arg (ARG_REF(3)))));
 //}
 //
 //static long fudge_call_3 (long (* WINAPI f)(long,long,long),
@@ -702,8 +682,7 @@ DEFINE_PRIMITIVE ("NT:SEND-MESSAGE", Prim_send_message, 4, 4,
 //    return  f(a1,a2,a3);
 //}
 //
-//DEFINE_PRIMITIVE ("CALL-FF-3", Prim_call_ff_3, 4, 4,
-//"")
+//DEFINE_PRIMITIVE ("CALL-FF-3", Prim_call_ff_3, 4, 4, 0)
 //{
 //    long (*f)(long,long,long);
 //    long result;
@@ -711,14 +690,16 @@ DEFINE_PRIMITIVE ("NT:SEND-MESSAGE", Prim_send_message, 4, 4,
 //    PRIMITIVE_HEADER (4);
 //
 //    f =  arg_integer (1);
-//    result = fudge_call_3 (f, call_ff_arg(ARG_REF(2)), call_ff_arg(ARG_REF(3)), call_ff_arg(ARG_REF(4)));
+//    result = fudge_call_3 (f,
+//			   call_ff_arg(ARG_REF(2)),
+//			   call_ff_arg(ARG_REF(3)),
+//			   call_ff_arg(ARG_REF(4)));
 //    PRIMITIVE_RETURN (long_to_integer (result));
 //}
 
 static SCHEME_OBJECT
 call_ff_really (void)
 {
-
   {
     /*  use a struct for locals that live across the foreign function call
         so that their position in the stack is the right end of the stack
@@ -811,9 +792,8 @@ DEFINE_PRIMITIVE ("CALL-FF", Prim_call_ff, 0, LEXPR, 0)
 //
 
 DEFINE_PRIMITIVE ("INT32-OFFSET-REF", Prim_int32_offset_ref, 2, 2,
-"(mem-addr byte-offset)\n"
-"Fetch 32 bit signed long from memory (a string)"
-)
+  "(mem-addr byte-offset)\n"
+  "Fetch 32 bit signed long from memory (a string)")
 {
     PRIMITIVE_HEADER (2);
     {
@@ -827,9 +807,8 @@ DEFINE_PRIMITIVE ("INT32-OFFSET-REF", Prim_int32_offset_ref, 2, 2,
 }
 
 DEFINE_PRIMITIVE ("INT32-OFFSET-SET!", Prim_int32_offset_set, 3, 3,
-"(mem-addr byte-offset 32-bit-value)\n"
-"Set 32 bit signed long from memory (integer address or vector data)"
-)
+  "(mem-addr byte-offset 32-bit-value)\n"
+  "Set 32 bit signed long from memory (integer address or vector data)")
 {
     PRIMITIVE_HEADER (3);
     {
@@ -845,11 +824,9 @@ DEFINE_PRIMITIVE ("INT32-OFFSET-SET!", Prim_int32_offset_set, 3, 3,
     PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-
 DEFINE_PRIMITIVE ("UINT32-OFFSET-REF", Prim_uint32_offset_ref, 2, 2,
-"(mem-addr byte-offset)\n"
-"Fetch 32 bit unsigned long from memory (a string)"
-)
+  "(mem-addr byte-offset)\n"
+  "Fetch 32 bit unsigned long from memory (a string)")
 {
     PRIMITIVE_HEADER (2);
     {
@@ -858,14 +835,14 @@ DEFINE_PRIMITIVE ("UINT32-OFFSET-REF", Prim_uint32_offset_ref, 2, 2,
       CHECK_ARG (1, STRING_P);
       base = (unsigned long*) STRING_LOC (ARG_REF(1), 0);
       offset  = arg_integer (2);
-      PRIMITIVE_RETURN ( ulong_to_integer(* (unsigned long*) (((char*)base)+offset) ) );
+      PRIMITIVE_RETURN
+	(ulong_to_integer(* (unsigned long*) (((char*)base)+offset)));
     }
 }
 
 DEFINE_PRIMITIVE ("UINT32-OFFSET-SET!", Prim_uint32_offset_set, 3, 3,
-"(mem-addr byte-offset 32-bit-value)\n"
-"Set 32 bit unsigned long at offset from memory"
-)
+  "(mem-addr byte-offset 32-bit-value)\n"
+  "Set 32 bit unsigned long at offset from memory")
 {
     PRIMITIVE_HEADER (3);
     {
@@ -1007,7 +984,6 @@ DEFUN (AskUser, (buf, len), char * buf AND int len)
 #define LONG_TO_INTEGER_WORDS   (4)
 #define MAX_EVENT_STORAGE  (8 * LONG_TO_INTEGER_WORDS  + (8 + 1))
 
-
 static SCHEME_OBJECT
 parse_event (SCREEN_EVENT *event)
 {
@@ -1026,9 +1002,12 @@ parse_event (SCREEN_EVENT *event)
       result = allocate_marked_vector (TC_VECTOR, 7, 1);
       VECTOR_SET (result, 0, long_to_integer (SCREEN_EVENT_TYPE_KEY));
       VECTOR_SET (result, 1, long_to_integer (event->event.key.repeat_count));
-      VECTOR_SET (result, 2, long_to_integer (event->event.key.virtual_keycode));
-      VECTOR_SET (result, 3, long_to_integer (event->event.key.virtual_scancode));
-      VECTOR_SET (result, 4, long_to_integer (event->event.key.control_key_state));
+      VECTOR_SET (result, 2,
+		  long_to_integer (event->event.key.virtual_keycode));
+      VECTOR_SET (result, 3,
+		  long_to_integer (event->event.key.virtual_scancode));
+      VECTOR_SET (result, 4,
+		  long_to_integer (event->event.key.control_key_state));
       VECTOR_SET (result, 5, long_to_integer ((int) event->event.key.ch));
       VECTOR_SET (result, 6, long_to_integer (event->event.key.key_down));
       return  result;
@@ -1038,11 +1017,15 @@ parse_event (SCREEN_EVENT *event)
       VECTOR_SET (result, 0, long_to_integer (SCREEN_EVENT_TYPE_MOUSE));
       VECTOR_SET (result, 1, long_to_integer (event->event.mouse.row));
       VECTOR_SET (result, 2, long_to_integer (event->event.mouse.column));
-      VECTOR_SET (result, 3, long_to_integer (event->event.mouse.control_key_state));
-      VECTOR_SET (result, 4, long_to_integer (event->event.mouse.button_state));
+      VECTOR_SET (result, 3,
+		  long_to_integer (event->event.mouse.control_key_state));
+      VECTOR_SET (result, 4,
+		  long_to_integer (event->event.mouse.button_state));
       VECTOR_SET (result, 5, long_to_integer ((int) event->event.mouse.up));
-      VECTOR_SET (result, 6, long_to_integer ((int) event->event.mouse.mouse_moved));
-      VECTOR_SET (result, 7, long_to_integer (event->event.mouse.double_click));
+      VECTOR_SET (result, 6,
+		  long_to_integer ((int) event->event.mouse.mouse_moved));
+      VECTOR_SET (result, 7,
+		  long_to_integer (event->event.mouse.double_click));
       return  result;
 
     case SCREEN_EVENT_TYPE_CLOSE:
@@ -1055,9 +1038,8 @@ parse_event (SCREEN_EVENT *event)
     }
 }
 
-
 DEFINE_PRIMITIVE ("WIN32-SCREEN-GET-EVENT", Prim_win32_screen_get_event, 1, 1,
-		  "(handle)")
+  "(handle)")
 {
   PRIMITIVE_HEADER (1);
   {
@@ -1074,7 +1056,7 @@ DEFINE_PRIMITIVE ("WIN32-SCREEN-GET-EVENT", Prim_win32_screen_get_event, 1, 1,
 }
 
 //DEFINE_PRIMITIVE ("NT-PEEK-EVENT", Prim_NT_peek_event, 1, 1,
-//		  "(nt-peek-event handle)")
+//  "(nt-peek-event handle)")
 //{
 //  PRIMITIVE_HEADER (1);
 //  {
@@ -1089,13 +1071,11 @@ DEFINE_PRIMITIVE ("WIN32-SCREEN-GET-EVENT", Prim_win32_screen_get_event, 1, 1,
 //  }
 //}
 
-
 //Primitives for Edwin Screens
 #define GETSCREEN( x ) ((SCREEN) GetWindowLong( x, 0 ))
 
-DEFINE_PRIMITIVE ("WIN32-SCREEN-CLEAR-RECTANGLE!",
-		  Prim_win32_screen_clear_rectangle, 6, 6, 
- "(hwnd xl xh yl yh attribute)")
+DEFINE_PRIMITIVE ("WIN32-SCREEN-CLEAR-RECTANGLE!", Prim_win32_screen_clear_rectangle, 6, 6,
+  "(hwnd xl xh yl yh attribute)")
 {
   PRIMITIVE_HEADER (6);
   {
@@ -1110,9 +1090,7 @@ DEFINE_PRIMITIVE ("WIN32-SCREEN-CLEAR-RECTANGLE!",
   }
 }
 
-
-DEFINE_PRIMITIVE ("WIN32-SCREEN-INVALIDATE-RECT!",
-		  Prim_win32_screen_invalidate_rect, 5, 5, 0)
+DEFINE_PRIMITIVE ("WIN32-SCREEN-INVALIDATE-RECT!", Prim_win32_screen_invalidate_rect, 5, 5, 0)
 {
   PRIMITIVE_HEADER (5);
   {
@@ -1128,8 +1106,7 @@ DEFINE_PRIMITIVE ("WIN32-SCREEN-INVALIDATE-RECT!",
   }
 }
 
-DEFINE_PRIMITIVE ("WIN32-SCREEN-VERTICAL-SCROLL!",
-  Prim_win32_screen_vertical_scroll, 6, 6,
+DEFINE_PRIMITIVE ("WIN32-SCREEN-VERTICAL-SCROLL!", Prim_win32_screen_vertical_scroll, 6, 6,
   "(handle xl xu yl yu amount)")
 {
   PRIMITIVE_HEADER (6);
@@ -1144,9 +1121,7 @@ DEFINE_PRIMITIVE ("WIN32-SCREEN-VERTICAL-SCROLL!",
   }
 }
 
-
-DEFINE_PRIMITIVE ("WIN32-SCREEN-WRITE-CHAR!",
-		  Prim_win32_screen_write_char, 5, 5,
+DEFINE_PRIMITIVE ("WIN32-SCREEN-WRITE-CHAR!", Prim_win32_screen_write_char, 5, 5,
   "(handle x y char attribute)")
 {
   PRIMITIVE_HEADER (5);
@@ -1163,9 +1138,7 @@ DEFINE_PRIMITIVE ("WIN32-SCREEN-WRITE-CHAR!",
   }
 }
 
-
-DEFINE_PRIMITIVE ("WIN32-SCREEN-WRITE-SUBSTRING!",
-		  Prim_win32_screen_write_substring, 7, 7,
+DEFINE_PRIMITIVE ("WIN32-SCREEN-WRITE-SUBSTRING!", Prim_win32_screen_write_substring, 7, 7,
  "(handle x y string start end attribute)")
 {
   PRIMITIVE_HEADER (7);
@@ -1190,10 +1163,8 @@ DEFINE_PRIMITIVE ("WIN32-SCREEN-WRITE-SUBSTRING!",
   }
 }
 
-
-DEFINE_PRIMITIVE ("WIN32-SCREEN-MOVE-CURSOR!",
-		  Prim_win32_screen_move_cursor, 3, 3,
-		  "(handle x y)")
+DEFINE_PRIMITIVE ("WIN32-SCREEN-MOVE-CURSOR!", Prim_win32_screen_move_cursor, 3, 3,
+  "(handle x y)")
 {
   PRIMITIVE_HEADER (3);
   {
@@ -1205,24 +1176,50 @@ DEFINE_PRIMITIVE ("WIN32-SCREEN-MOVE-CURSOR!",
   }
 }
 
+DEFINE_PRIMITIVE ("WIN32-SCREEN-CHAR-DIMENSIONS",  Prim_win32_screen_char_dimensions, 1, 1,
+  "(handle)\n\
+Returns pair (width . height).")
+{
+  PRIMITIVE_HEADER (1);
+  {
+    HWND handle = ((HWND) (arg_integer (1)));
+    int xchar;
+    int ychar;
+    screen_char_dimensions (handle, (&xchar), (&ychar));
+    PRIMITIVE_RETURN
+      (cons ((long_to_integer (xchar)), (long_to_integer (ychar))));
+  }
+}
 
 DEFINE_PRIMITIVE ("WIN32-SCREEN-SIZE",  Prim_win32_screen_size, 1, 1,
   "(handle)\n\
-   Returns pair (width . height)")
+Returns pair (width . height).")
 {
   PRIMITIVE_HEADER (1);
   {
     HWND handle = (HWND) arg_integer (1);
     int width=0, height=0;
     Screen_GetSize (handle, &height, &width);
-
-    PRIMITIVE_RETURN (cons (long_to_integer (width), long_to_integer (height)));
+    PRIMITIVE_RETURN
+      (cons (long_to_integer (width), long_to_integer (height)));
   }
 }
 
+DEFINE_PRIMITIVE ("WIN32-SET-SCREEN-SIZE",  Prim_win32_set_screen_size, 3, 3,
+  "(handle width height)")
+{
+  PRIMITIVE_HEADER (3);
+  {
+    HWND handle = ((HWND) (arg_integer (1)));
+    int xchar;
+    int ychar;
+    screen_char_dimensions (handle, (&xchar), (&ychar));
+    PRIMITIVE_RETURN
+      (cons ((long_to_integer (xchar)), (long_to_integer (ychar))));
+  }
+}
 
-DEFINE_PRIMITIVE ("WIN32-SCREEN-CREATE!",
-		  Prim_win32_screen_create, 2, 2,
+DEFINE_PRIMITIVE ("WIN32-SCREEN-CREATE!", Prim_win32_screen_create, 2, 2,
   "(parent-handle modes)")
 {
   PRIMITIVE_HEADER (2);
@@ -1239,10 +1236,8 @@ DEFINE_PRIMITIVE ("WIN32-SCREEN-CREATE!",
   }
 }
 
-
-DEFINE_PRIMITIVE ("WIN32-SCREEN-SHOW-CURSOR!",
-		  Prim_win32_screen_show_cursor, 2, 2,
-		  "(handle show?)")
+DEFINE_PRIMITIVE ("WIN32-SCREEN-SHOW-CURSOR!", Prim_win32_screen_show_cursor, 2, 2,
+  "(handle show?)")
 {
   PRIMITIVE_HEADER (2);
   {
@@ -1252,10 +1247,8 @@ DEFINE_PRIMITIVE ("WIN32-SCREEN-SHOW-CURSOR!",
   }
 }
 
-
-DEFINE_PRIMITIVE ("WIN32-SCREEN-SET-ICON!",
-		  Prim_win32_screen_set_icon, 2, 2,
-		  "(screen-handle icon-handle)")
+DEFINE_PRIMITIVE ("WIN32-SCREEN-SET-ICON!", Prim_win32_screen_set_icon, 2, 2,
+  "(screen-handle icon-handle)")
 {
   PRIMITIVE_HEADER (2);
   {
@@ -1265,11 +1258,8 @@ DEFINE_PRIMITIVE ("WIN32-SCREEN-SET-ICON!",
   }
 }
 
-
-
-DEFINE_PRIMITIVE ("WIN32-SCREEN-CURRENT-FOCUS",
-		  Prim_win32_screen_current_focus, 0, 0,
-		  "() -> hwnd")
+DEFINE_PRIMITIVE ("WIN32-SCREEN-CURRENT-FOCUS", Prim_win32_screen_current_focus, 0, 0,
+  "() -> hwnd")
 {
   PRIMITIVE_HEADER (0);
   {
@@ -1277,11 +1267,8 @@ DEFINE_PRIMITIVE ("WIN32-SCREEN-CURRENT-FOCUS",
   }
 }
 
-
-
-DEFINE_PRIMITIVE ("WIN32-SCREEN-SET-DEFAULT-FONT!",
-		  Prim_win32_screen_set_default_font, 1, 1,
-		  "(font-name)")
+DEFINE_PRIMITIVE ("WIN32-SCREEN-SET-DEFAULT-FONT!", Prim_win32_screen_set_default_font, 1, 1,
+  "(font-name)")
 {
   PRIMITIVE_HEADER (1);
   {
@@ -1290,9 +1277,8 @@ DEFINE_PRIMITIVE ("WIN32-SCREEN-SET-DEFAULT-FONT!",
   }
 }
 
-DEFINE_PRIMITIVE ("WIN32-SCREEN-SET-FONT!",
-		  Prim_win32_screen_set_font, 2, 2,
-		  "(screen-handle font-name)")
+DEFINE_PRIMITIVE ("WIN32-SCREEN-SET-FONT!", Prim_win32_screen_set_font, 2, 2,
+  "(screen-handle font-name)")
 {
   PRIMITIVE_HEADER (2);
   {
@@ -1303,9 +1289,8 @@ DEFINE_PRIMITIVE ("WIN32-SCREEN-SET-FONT!",
   }
 }
 
-DEFINE_PRIMITIVE ("WIN32-SCREEN-SET-FOREGROUND-COLOR!",
-		  Prim_win32_screen_set_foreground_color, 2, 2,
-		  "(screen-handle rgb)")
+DEFINE_PRIMITIVE ("WIN32-SCREEN-SET-FOREGROUND-COLOR!", Prim_win32_screen_set_foreground_color, 2, 2,
+  "(screen-handle rgb)")
 {
   PRIMITIVE_HEADER (2);
   {
@@ -1316,9 +1301,8 @@ DEFINE_PRIMITIVE ("WIN32-SCREEN-SET-FOREGROUND-COLOR!",
   }
 }
 
-DEFINE_PRIMITIVE ("WIN32-SCREEN-SET-BACKGROUND-COLOR!",
-		  Prim_win32_screen_set_background_color, 2, 2,
-		  "(screen-handle rgb)")
+DEFINE_PRIMITIVE ("WIN32-SCREEN-SET-BACKGROUND-COLOR!", Prim_win32_screen_set_background_color, 2, 2,
+  "(screen-handle rgb)")
 {
   PRIMITIVE_HEADER (2);
   {
