@@ -37,7 +37,7 @@
 
 ;;;; Compiler CFG Datatypes
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.35 1986/12/17 19:32:18 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.36 1986/12/18 03:37:04 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -94,7 +94,7 @@
 			     (cons combination (vnode-combinations value)))
     (snode->scfg combination)))
 
-(define-snode continuation block entry delta generator rtl-frame label)
+(define-snode continuation block &entry delta generator rtl-frame label)
 (define *continuations*)
 
 (define-integrable (make-continuation block entry delta generator)
@@ -103,6 +103,9 @@
 		     generator false (generate-label 'CONTINUATION))))
     (set! *continuations* (cons continuation *continuations*))
     continuation))
+
+(define-integrable (continuation-entry continuation)
+  (entry-holder-next (continuation-&entry continuation)))
 
 (define-integrable (continuation-rtl continuation)
   (sframe->scfg (continuation-rtl-frame continuation)))
