@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.11 2003/07/03 04:33:50 cph Exp $
+$Id: unicode.scm,v 1.12 2003/07/29 04:16:20 cph Exp $
 
 Copyright 2001,2003 Massachusetts Institute of Technology
 
@@ -89,10 +89,10 @@ USA.
 			  0
 			  (GUARANTEE-SUBSTRING-START-INDEX
 			   ,start ,(list-ref form 3) ,caller))))
-		,@(map (lambda (expr)
-			 (make-syntactic-closure environment
-			     (list (list-ref form 2) (list-ref form 3))
-			   expr))
+		,@(map (let ((excludes
+			      (list (list-ref form 2) (list-ref form 3))))
+			 (lambda (expr)
+			   (make-syntactic-closure environment excludes expr)))
 		       (list-tail form 5)))))
 	 (ill-formed-syntax form)))))
 
@@ -106,6 +106,15 @@ USA.
 					 caller))
 	  (loop start* (fix:+ n 1)))
 	n)))
+
+(define (encoded-string-valid? string start end validate-char)
+  (let loop ((start start))
+    (if (fix:< start end)
+	(let ((start* (validate-char string start end)))
+	  (if start*
+	      (loop start*)
+	      #f))
+	#t)))
 
 (define (read-byte port)
   (let ((char (read-char port)))
@@ -874,17 +883,53 @@ USA.
   (with-substring-args string start end caller
     (encoded-string-length string start end type caller
       (lambda (string start end)
+	(validate-utf32-char string start end combiner)))))
 
-	(define-integrable (n i)
-	  (vector-8b-ref string (fix:+ start i)))
+(define (utf32-string-valid? string #!optional start end)
+  (if (host-big-endian?)
+      (%utf32-string-valid? string
+			    (if (default-object? start) #f start)
+			    (if (default-object? end) #f end)
+			    utf32-be-bytes->code-point
+			    'UTF32-STRING-VALID?)
+      (%utf32-string-valid? string
+			    (if (default-object? start) #f start)
+			    (if (default-object? end) #f end)
+			    utf32-le-bytes->code-point
+			    'UTF32-STRING-VALID?)))
 
-	(if (fix:< start end)
-	    (let ((start* (fix:+ start 4)))
-	      (and (fix:<= start* end)
-		   (let ((pt (combiner (n 0) (n 1) (n 2) (n 3))))
-		     (and (unicode-code-point? pt)
-			  start*))))
-	    start)))))
+(define (utf32-be-string-valid? string #!optional start end)
+  (%utf32-string-valid? string
+			(if (default-object? start) #f start)
+			(if (default-object? end) #f end)
+			utf32-be-bytes->code-point
+			'UTF32-BE-STRING-VALID?))
+
+(define (utf32-le-string-valid? string #!optional start end)
+  (%utf32-string-valid? string
+			(if (default-object? start) #f start)
+			(if (default-object? end) #f end)
+			utf32-le-bytes->code-point
+			'UTF32-LE-STRING-VALID?))
+
+(define (%utf32-string-valid? string start end combiner caller)
+  (with-substring-args string start end caller
+    (encoded-string-valid? string start end
+      (lambda (string start end)
+	(validate-utf32-char string start end combiner)))))
+
+(define (validate-utf32-char string start end combiner)
+
+  (define-integrable (n i)
+    (vector-8b-ref string (fix:+ start i)))
+
+  (if (fix:< start end)
+      (let ((start* (fix:+ start 4)))
+	(and (fix:<= start* end)
+	     (let ((pt (combiner (n 0) (n 1) (n 2) (n 3))))
+	       (and (unicode-code-point? pt)
+		    start*))))
+      start))
 
 ;;;; UTF-16 representation
 
@@ -1051,23 +1096,59 @@ USA.
   (with-substring-args string start end caller
     (encoded-string-length string start end type caller
       (lambda (string start end)
+	(validate-utf16-char string start end combiner)))))
 
-	(define-integrable (n i)
-	  (vector-8b-ref string (fix:+ start i)))
+(define (utf16-string-valid? string #!optional start end)
+  (if (host-big-endian?)
+      (%utf16-string-valid? string
+			    (if (default-object? start) #f start)
+			    (if (default-object? end) #f end)
+			    be-bytes->digit16
+			    'UTF16-STRING-VALID?)
+      (%utf16-string-valid? string
+			    (if (default-object? start) #f start)
+			    (if (default-object? end) #f end)
+			    le-bytes->digit16
+			    'UTF16-STRING-VALID?)))
 
-	(if (fix:< start end)
-	    (and (fix:<= (fix:+ start 2) end)
-		 (let ((d0 (combiner (n 0) (n 1))))
-		   (if (high-surrogate? d0)
-		       (and (fix:<= (fix:+ start 4) end)
-			    (let ((d1 (combiner (n 2) (n 3))))
-			      (and (low-surrogate? d1)
-				   (let ((pt (combine-surrogates d0 d1)))
-				     (and (unicode-code-point? pt)
-					  (fix:+ start 4))))))
-		       (and (unicode-code-point? d0)
-			    (fix:+ start 2)))))
-	    start)))))
+(define (utf16-be-string-valid? string #!optional start end)
+  (%utf16-string-valid? string
+			(if (default-object? start) #f start)
+			(if (default-object? end) #f end)
+			be-bytes->digit16
+			'UTF16-BE-STRING-VALID?))
+
+(define (utf16-le-string-valid? string #!optional start end)
+  (%utf16-string-valid? string
+			(if (default-object? start) #f start)
+			(if (default-object? end) #f end)
+			le-bytes->digit16
+			'UTF16-LE-STRING-VALID?))
+
+(define (%utf16-string-valid? string start end combiner caller)
+  (with-substring-args string start end caller
+    (encoded-string-valid? string start end
+      (lambda (string start end)
+	(validate-utf16-char string start end combiner)))))
+
+(define (validate-utf16-char string start end combiner)
+
+  (define-integrable (n i)
+    (vector-8b-ref string (fix:+ start i)))
+
+  (if (fix:< start end)
+      (and (fix:<= (fix:+ start 2) end)
+	   (let ((d0 (combiner (n 0) (n 1))))
+	     (if (high-surrogate? d0)
+		 (and (fix:<= (fix:+ start 4) end)
+		      (let ((d1 (combiner (n 2) (n 3))))
+			(and (low-surrogate? d1)
+			     (let ((pt (combine-surrogates d0 d1)))
+			       (and (unicode-code-point? pt)
+				    (fix:+ start 4))))))
+		 (and (unicode-code-point? d0)
+		      (fix:+ start 2)))))
+      start))
 
 (define-integrable (be-bytes->digit16 b0 b1)
   (fix:or (fix:lsh b0 8) b1))
@@ -1182,42 +1263,48 @@ USA.
 	       (begin
 		 (%write-utf8-char char output)
 		 (loop)))))))))
-
+
 (define (utf8-string-length string #!optional start end)
   (with-substring-args string start end 'UTF8-STRING-LENGTH
     (encoded-string-length string start end "8" 'UTF8-STRING-LENGTH
-      (lambda (string start end)
+			   validate-utf8-char)))
 
-	(define-integrable (check-byte i)
-	  (%valid-trailer? (n i)))
+(define (utf8-string-valid? string #!optional start end)
+  (with-substring-args string start end 'UTF8-STRING-VALID?
+    (encoded-string-valid? string start end validate-utf8-char)))
+
+(define (validate-utf8-char string start end)
 
-	(define-integrable (n i)
-	  (vector-8b-ref string (fix:+ start i)))
+  (define-integrable (check-byte i)
+    (%valid-trailer? (n i)))
 
-	(if (fix:< start end)
-	    (let ((b0 (vector-8b-ref string start)))
-	      (cond ((fix:< b0 #x80)
-		     (fix:+ start 1))
-		    ((fix:< b0 #xE0)
-		     (and (fix:<= (fix:+ start 2) end)
-			  (check-byte 1)
-			  (%vs2 b0)
-			  (fix:+ start 2)))
-		    ((fix:< b0 #xF0)
-		     (and (fix:<= (fix:+ start 3) end)
-			  (check-byte 1)
-			  (check-byte 2)
-			  (%vs3 b0 (n 1))
-			  (fix:+ start 3)))
-		    ((fix:< b0 #xF8)
-		     (and (fix:<= (fix:+ start 4) end)
-			  (check-byte 1)
-			  (%vs4 b0 (n 1))
-			  (check-byte 2)
-			  (check-byte 3)
-			  (fix:+ start 4)))
-		    (else #f)))
-	    start)))))
+  (define-integrable (n i)
+    (vector-8b-ref string (fix:+ start i)))
+
+  (if (fix:< start end)
+      (let ((b0 (vector-8b-ref string start)))
+	(cond ((fix:< b0 #x80)
+	       (fix:+ start 1))
+	      ((fix:< b0 #xE0)
+	       (and (fix:<= (fix:+ start 2) end)
+		    (check-byte 1)
+		    (%vs2 b0)
+		    (fix:+ start 2)))
+	      ((fix:< b0 #xF0)
+	       (and (fix:<= (fix:+ start 3) end)
+		    (check-byte 1)
+		    (check-byte 2)
+		    (%vs3 b0 (n 1))
+		    (fix:+ start 3)))
+	      ((fix:< b0 #xF8)
+	       (and (fix:<= (fix:+ start 4) end)
+		    (check-byte 1)
+		    (%vs4 b0 (n 1))
+		    (check-byte 2)
+		    (check-byte 3)
+		    (fix:+ start 4)))
+	      (else #f)))
+      start))
 
 (define-integrable (%vc2 b0)
   (if (not (%vs2 b0))
