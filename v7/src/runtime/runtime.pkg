@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.415 2002/11/20 19:46:22 cph Exp $
+$Id: runtime.pkg,v 14.416 2002/12/07 21:37:07 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -1331,6 +1331,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  interpreter-environment?
 	  (make-null-interpreter-environment make-root-top-level-environment)
 	  make-root-top-level-environment
+	  make-top-level-environment
 	  system-global-environment?
 	  (top-level-environment? interpreter-environment?))
   (export (runtime advice)

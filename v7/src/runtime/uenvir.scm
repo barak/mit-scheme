@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.58 2002/11/20 19:46:23 cph Exp $
+$Id: uenvir.scm,v 14.59 2002/12/07 21:36:44 cph Exp $
 
 Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -417,18 +417,24 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define (extend-top-level-environment environment #!optional names values)
   (if (not (interpreter-environment? environment))
       (illegal-environment environment 'EXTEND-TOP-LEVEL-ENVIRONMENT))
-  (%extend-top-level-environment
-   environment
-   (if (default-object? names) '() names)
-   (if (default-object? values) 'DEFAULT values)
-   'EXTEND-TOP-LEVEL-ENVIRONMENT))
+  (%extend-top-level-environment environment
+				 (if (default-object? names) '() names)
+				 (if (default-object? values) 'DEFAULT values)
+				 'EXTEND-TOP-LEVEL-ENVIRONMENT))
+
+(define (make-top-level-environment #!optional names values)
+  (%extend-top-level-environment system-global-environment
+				 (if (default-object? names) '() names)
+				 (if (default-object? values) 'DEFAULT values)
+				 'MAKE-TOP-LEVEL-ENVIRONMENT))
 
 (define (make-root-top-level-environment #!optional names values)
-  (%extend-top-level-environment
-   (object-new-type (object-type #f) (fix:xor (object-datum #f) 1))
-   (if (default-object? names) '() names)
-   (if (default-object? values) 'DEFAULT values)
-   'MAKE-ROOT-TOP-LEVEL-ENVIRONMENT))
+  (%extend-top-level-environment (object-new-type (object-type #f)
+						  (fix:xor (object-datum #f)
+							   1))
+				 (if (default-object? names) '() names)
+				 (if (default-object? values) 'DEFAULT values)
+				 'MAKE-ROOT-TOP-LEVEL-ENVIRONMENT))
 
 (define (%extend-top-level-environment environment names values procedure)
   (if (not (list-of-type? names symbol?))
