@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.75 2000/05/22 20:22:39 cph Exp $
+;;; $Id: imail-imap.scm,v 1.76 2000/05/22 20:28:03 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -362,9 +362,6 @@
     (if port
 	(close-port port)))
   (reset-imap-connection connection))
-
-(define (imap-connection-open? connection)
-  (imap-connection-port connection))
 
 (define (imap-connection-server-type connection)
   (let ((greeting (imap-connection-greeting connection)))
@@ -805,8 +802,9 @@
 	  #t))))
 
 (define-method %close-folder ((folder <imap-folder>))
-  (maybe-close-imap-connection (imap-folder-connection folder))
-  (set-imap-connection-folder! connection #f))
+  (let ((connection (imap-folder-connection folder)))
+    (maybe-close-imap-connection connection)
+    (set-imap-connection-folder! connection #f)))
 
 (define-method folder-length ((folder <imap-folder>))
   (guarantee-imap-folder-open folder)
