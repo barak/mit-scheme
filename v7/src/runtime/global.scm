@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.41 1992/09/14 23:08:42 cph Exp $
+$Id: global.scm,v 14.42 1992/09/14 23:11:54 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -210,10 +210,11 @@ MIT in each case. |#
 (define (quit)
   (hook/quit))
 
-(define (default/quit)
+(define (%quit)
   (with-absolutely-no-interrupts (ucode-primitive halt))
   unspecific)
 
+(define default/quit %quit)
 (define hook/quit default/quit)
 
 (define syntaxer/default-environment
