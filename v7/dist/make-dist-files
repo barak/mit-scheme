@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-dist-files,v 1.16 2001/03/10 02:34:20 cph Exp $
+# $Id: make-dist-files,v 1.17 2001/03/10 02:40:21 cph Exp $
 #
 # Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
@@ -218,8 +218,8 @@ for TYPE in html info pdf ps; do
     make_doc_file "zip -r" "${IMAGE_ROOT}" "zip"
     case "${TYPE}" in
     html | pdf)
-	rm -rf "${IMAGE_ROOT}"
-	mv -f "${IMAGE_DIR}" .
+	rm -rf "${TL_DIR}/${IMAGE_ROOT}"
+	mv -f "${IMAGE_DIR}" "${TL_DIR}/."
 	;;
     esac
 done
