@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.h,v 9.46 2002/07/02 20:50:08 cph Exp $
+$Id: interp.h,v 9.47 2002/07/03 02:36:58 cph Exp $
 
 Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
@@ -20,13 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
 */
 
-/* Macros used by the interpreter and some utilities. */
-
-extern void EXFUN (abort_to_interpreter, (int argument));
-extern int EXFUN (abort_to_interpreter_argument, (void));
+/* Definitions used by the interpreter and some utilities. */
 
-#define Regs		Registers
-
 #define env_register (Registers[REGBLOCK_ENV])
 #define val_register (Registers[REGBLOCK_VAL])
 #define exp_register (Registers[REGBLOCK_EXPR])
@@ -61,7 +56,7 @@ extern int EXFUN (abort_to_interpreter_argument, (void));
   history_register = APFI_saved_history;				\
 }
 
-/* Internal_Will_Push is in stack.h. */
+/* Stack manipulation */
 
 #ifdef ENABLE_DEBUGGING_TOOLS
 
@@ -81,18 +76,17 @@ extern int EXFUN (abort_to_interpreter_argument, (void));
 
 #else
 
-#define Will_Push(N)			Internal_Will_Push(N)
+#define Will_Push Internal_Will_Push
 #define Pushed()
 
 #endif
 
-/*
-  N in Will_Eventually_Push is the maximum contiguous (single return code)
-  amount that this operation may take.  On the average case it may use less.
-  M in Finished_Eventual_Pushing is the amount not yet pushed.
- */
+/* N in Will_Eventually_Push is the maximum contiguous (single return
+   code) amount that this operation may take.  On the average case it
+   may use less.  M in Finished_Eventual_Pushing is the amount not yet
+   pushed.  */
 
-#define Will_Eventually_Push(N)		Internal_Will_Push(N)
+#define Will_Eventually_Push Internal_Will_Push
 #define Finished_Eventual_Pushing(M)
 
 /* Primitive stack operations:
@@ -107,11 +101,8 @@ extern int EXFUN (abort_to_interpreter_argument, (void));
 #define STACK_LOCATIVE_REFERENCE(locative, offset) ((locative) [(offset)])
 #define STACK_LOCATIVE_DIFFERENCE(x, y) ((x) - (y))
 
-#define STACK_LOCATIVE_PUSH(locative)					\
-  (* (STACK_LOCATIVE_DECREMENT (locative)))
-
-#define STACK_LOCATIVE_POP(locative)					\
-  (* (STACK_LOCATIVE_INCREMENT (locative)))
+#define STACK_LOCATIVE_PUSH(locative) (* (STACK_LOCATIVE_DECREMENT (locative)))
+#define STACK_LOCATIVE_POP(locative) (* (STACK_LOCATIVE_INCREMENT (locative)))
 
 #define STACK_PUSH(object) (STACK_LOCATIVE_PUSH (sp_register)) = (object)
 #define STACK_POP() (STACK_LOCATIVE_POP (sp_register))
@@ -126,30 +117,26 @@ extern int EXFUN (abort_to_interpreter_argument, (void));
 
 #else
 
-extern SCHEME_OBJECT EXFUN
-  (primitive_apply_internal, (SCHEME_OBJECT primitive));
 #define PRIMITIVE_APPLY(loc, primitive)					\
   (loc) = (primitive_apply_internal (primitive))
+extern SCHEME_OBJECT EXFUN (primitive_apply_internal, (SCHEME_OBJECT));
 
 #endif
 
 #define PRIMITIVE_APPLY_INTERNAL(loc, primitive)			\
 {									\
   (Registers[REGBLOCK_PRIMITIVE]) = (primitive);			\
-  {									\
-    /* Save the dynamic-stack position. */				\
-    PTR PRIMITIVE_APPLY_INTERNAL_position = dstack_position;		\
-    (loc) =								\
-      ((* (Primitive_Procedure_Table [PRIMITIVE_NUMBER (primitive)]))	\
+  PTR PRIMITIVE_APPLY_INTERNAL_position = dstack_position;		\
+  (loc)									\
+    = ((* (Primitive_Procedure_Table [PRIMITIVE_NUMBER (primitive)]))	\
        ());								\
-    /* If the primitive failed to unwind the dynamic stack, lose. */	\
-    if (PRIMITIVE_APPLY_INTERNAL_position != dstack_position)		\
-      {									\
-	outf_fatal ("\nPrimitive slipped the dynamic stack: %s\n",	\
-		    (PRIMITIVE_NAME (primitive)));			\
-	Microcode_Termination (TERM_EXIT);				\
-      }									\
-  }									\
+  /* If the primitive failed to unwind the dynamic stack, lose. */	\
+  if (PRIMITIVE_APPLY_INTERNAL_position != dstack_position)		\
+    {									\
+      outf_fatal ("\nPrimitive slipped the dynamic stack: %s\n",	\
+		  (PRIMITIVE_NAME (primitive)));			\
+      Microcode_Termination (TERM_EXIT);				\
+    }									\
   (Registers[REGBLOCK_PRIMITIVE]) = SHARP_F;				\
 }
 
@@ -170,6 +157,9 @@ struct interpreter_state_s
 #define interpreter_catch_env interpreter_state->catch_env
 #define interpreter_throw_argument interpreter_state->throw_argument
 #define NULL_INTERPRETER_STATE ((interpreter_state_t) NULL)
+
+extern void EXFUN (abort_to_interpreter, (int argument));
+extern int EXFUN (abort_to_interpreter_argument, (void));
 
 extern interpreter_state_t interpreter_state;
 extern void EXFUN (bind_interpreter_state, (interpreter_state_t));
