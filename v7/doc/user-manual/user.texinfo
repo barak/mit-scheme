@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.75 2000/07/21 18:26:43 cph Exp $
+@comment $Id: user.texinfo,v 1.76 2000/07/21 18:37:28 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -29,7 +29,7 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.74
+@subtitle Edition 1.75
 @subtitle for Scheme Release 7.5
 @subtitle 21 July 2000
 @author by Stephen Adams
@@ -4705,12 +4705,12 @@ These are the changes since release 7.5.0:
 
 @itemize @bullet
 @item
-Release 7.5.9 adds the @sc{imail} mail reader; @sc{imail} is a new
-@sc{rmail}-like mail reader that supports @sc{imap} and @sc{mime}.
-Edwin's mail-sending support has also been enhanced to understand
-@sc{mime}, so that it is now possible to send @sc{mime} attachments.
-Numerous changes to the runtime system and to Edwin have been made to
-support these changes.
+Release 7.5.9 adds the @acronym{IMAIL} mail reader; @acronym{IMAIL} is a
+new Rmail-like mail reader that supports @acronym{IMAP} and
+@acronym{MIME}.  Edwin's mail-sending support has also been enhanced to
+understand @acronym{MIME}, so that it is now possible to send
+@acronym{MIME} attachments.  Numerous changes to the runtime system and
+to Edwin have been made to support these changes.
 
 Additional changes:
 
@@ -4726,13 +4726,13 @@ In Edwin, M-x vc-version-other-window now defaults the version if
 unspecified.
 
 @item
-STRING->DECODED-TIME (and consequently other procedures that convert
-RFC-822 time strings) now accepts two-digit years, pivoting around 1970.
-This is a crock, but we have seen recent email messages utilizing such
-strings.
+@code{string->decoded-time} (and consequently other procedures that
+convert @acronym{RFC-822} time strings) now accepts two-digit years,
+pivoting around 1970.  This is a crock, but we have seen recent email
+messages utilizing such strings.
 
 @item
-New procedure SET-STRING-MAXIMUM-LENGTH!.
+New procedure @code{set-string-maximum-length!}.
 @end itemize
 
 @item
@@ -4762,9 +4762,9 @@ this release provides new procedures @code{flo:<=}, @code{flo:>=},
 @code{flo:max} and @code{flo:min}.
 
 @item
-Release 7.5.4 fixes some bugs in the @sc{sos} object instantiation code
-(reported by Joe Marshall).  It also includes several improvements to
-Edwin: implementation of abbrevs; implementation of adaptive fill;
+Release 7.5.4 fixes some bugs in the @acronym{SOS} object instantiation
+code (reported by Joe Marshall).  It also includes several improvements
+to Edwin: implementation of abbrevs; implementation of adaptive fill;
 change incremental search to terminate on @key{RET} rather than
 @key{ESC}; show mode-specific key bindings in @kbd{C-h m}.
 
@@ -4796,9 +4796,9 @@ MIT Scheme has been re-released under the GNU General Public License.
 
 @item
 With this release we no longer support Windows 3.1 or any form of
-@sc{dos}.  The only supported Microsoft operating systems are Windows
-95, Windows 98, and Windows NT.  We have tested on Windows 95, Windows
-98, and Windows NT 4.0.
+@acronym{DOS}.  The only supported Microsoft operating systems are
+Windows 95, Windows 98, and Windows NT.  We have tested on Windows 95,
+Windows 98, and Windows NT 4.0.
 
 @item
 Although there have been no significant changes to the compiler, there
@@ -4807,8 +4807,8 @@ structures that make compiled code in this release incompatible with
 that from the previous release.
 
 @item
-@sc{sos} object-oriented programming extensions are now included in the
-base release.  They are not loaded by default; evaluate
+@acronym{SOS} object-oriented programming extensions are now included in
+the base release.  They are not loaded by default; evaluate
 @code{(load-option 'sos)} to load them.
 
 @item
@@ -4929,9 +4929,9 @@ was necessary to translate them to network order by hand.
 
 @item
 @code{open-tcp-stream-socket} and @code{open-unix-stream-socket} now
-return one @sc{i/o} port rather than an input port and an output port.
-@sc{tcp} sockets now use @code{"\r\n"} end-of-line marker regardless of
-the operating system.
+return one @acronym{I/O} port rather than an input port and an output
+port.  @acronym{TCP} sockets now use @code{"\r\n"} end-of-line marker
+regardless of the operating system.
 
 @item
 Under Linux, Scheme now detects various foreign filesystems such as
@@ -4961,10 +4961,10 @@ streams, and dropping pointers to streams as soon as possible.
 
 @item
 Transcripts (i.e.@: @code{transcript-on}) are now local to a particular
-@sc{repl}.  This is usually relevant only when using Edwin, where there
-can be several @sc{repl} buffers.  Previously transcripts only recorded
-activity on the Scheme console, and ignored any other @sc{repl}s,
-including Edwin @sc{repl} buffers.
+@acronym{REPL}.  This is usually relevant only when using Edwin, where
+there can be several @acronym{REPL} buffers.  Previously transcripts
+only recorded activity on the Scheme console, and ignored any other
+@acronym{REPL}s, including Edwin @acronym{REPL} buffers.
 
 @item
 @code{bkpt} is no longer a macro.  Instead, it extracts an environment
@@ -4976,7 +4976,7 @@ visiting the wrong environment.
 
 @item
 Under X11, the BackSpace keysym is treated as Delete, as long as
-BackSpace is bound to @sc{ascii} backspace.
+BackSpace is bound to @acronym{ASCII} backspace.
 
 @item
 The @file{hppacach} program knows how to find kernel files for HP-UX
@@ -5002,15 +5002,17 @@ correctly.
 @item
 A new undocumented generic-procedure dispatch mechanism and its
 associated tagged data structures provides a high-performance substrate
-for building @sc{clos}-like object-oriented programming systems.  This
-mechanism has been fully integrated into the existing record and
-@code{defstruct} code.  The @sc{sos} system (which @emph{is} documented)
-has been added as a load option to allow writing object-oriented code.
+for building @acronym{CLOS}-like object-oriented programming systems.
+This mechanism has been fully integrated into the existing record and
+@code{defstruct} code.  The @acronym{SOS} system (which @emph{is}
+documented) has been added as a load option to allow writing
+object-oriented code.
 
 @item
-Undocumented interfaces now provide support for @code{gdbm}, @sc{md5}
-checksums, and blowfish encryption.  The blowfish encryption is disabled
-by default, but we may later distribute a key to enable it.
+Undocumented interfaces now provide support for @code{gdbm},
+@acronym{MD5} checksums, and blowfish encryption.  The blowfish
+encryption is disabled by default, but we may later distribute a key to
+enable it.
 
 @end itemize
 
@@ -5022,10 +5024,10 @@ These changes affect only Edwin:
 @itemize @bullet
 
 @item
-The following are new language modes: @sc{html}, Java, @sc{php},
-Verilog, @sc{vhdl}.  Some of these modes are pretty sketchy, consisting
-of little more than syntax and indentation -- they are not to be
-confused with the more powerful modes provided by Emacs.
+The following are new language modes: @acronym{HTML}, Java,
+@acronym{PHP}, Verilog, @acronym{VHDL}.  Some of these modes are pretty
+sketchy, consisting of little more than syntax and indentation -- they
+are not to be confused with the more powerful modes provided by Emacs.
 
 @item
 Edwin can read and write files compressed with @code{bzip2},
@@ -5034,7 +5036,7 @@ encrypted with blowfish (but this is currently disabled due to export
 restrictions).
 
 @item
-On PC systems, compressed files, encrypted files, and @sc{rmail} files
+On PC systems, compressed files, encrypted files, and Rmail files
 do not have line translation; they are stored in Scheme's native format
 (i.e.@: with newlines as line terminators).
 
@@ -5072,9 +5074,9 @@ deletes output from the previous command.  This works similarly to the
 corresponding command in shell buffers.
 
 @item
-Errors in the @sc{repl} buffer now prompt in the @sc{repl} buffer
-itself, rather than in the minibuffer as previously.  The new prompts
-are less intrusive.
+Errors in the @acronym{REPL} buffer now prompt in the @acronym{REPL}
+buffer itself, rather than in the minibuffer as previously.  The new
+prompts are less intrusive.
 
 @item
 The evaluation commands now permit the evaluation environment to be set
@@ -5084,10 +5086,10 @@ package doesn't exist, the global environment is used instead.
 
 @item
 The command @code{repl} now treats its argument differently, simplifying
-the creation of multiple inferior @sc{repl} buffers.  A new command
+the creation of multiple inferior @acronym{REPL} buffers.  A new command
 @code{set-inferior-repl-buffer} associates a Scheme buffer with an
-arbitrary inferior @sc{repl} buffer, so that evaluation commands in that
-Scheme buffer use the specified @sc{repl} buffer.
+arbitrary inferior @acronym{REPL} buffer, so that evaluation commands in
+that Scheme buffer use the specified @acronym{REPL} buffer.
 
 @item
 Info now supports the variable @code{info-directory-list}, which works
@@ -5117,7 +5119,7 @@ other frames when finding resources.  The new X resource name for these
 secondary frames is @code{edwinSecondary}.
 
 @item
-Sending mail is now supported through a direct @sc{smtp} interface.
+Sending mail is now supported through a direct @acronym{SMTP} interface.
 This interface will work on any operating system that supports sockets
 (all of the systems we current distribute for).  See the variables
 @code{mail-relay-host} and @code{smtp-require-valid-recipients}.
