@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.57 2000/05/17 19:24:09 cph Exp $
+;;; $Id: imail-top.scm,v 1.58 2000/05/17 20:52:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -131,31 +131,6 @@ May be called with an IMAIL folder URL as argument;
   (call-with-pass-phrase (string-append "Password for user " user-id
 					" on host " host)
 			 receiver))
-
-(define (associate-imail-with-buffer buffer folder message)
-  (without-interrupts
-   (lambda ()
-     (buffer-put! buffer 'IMAIL-FOLDER folder)
-     (buffer-put! buffer 'IMAIL-MESSAGE message)
-     (store-property! folder 'BUFFER buffer)
-     (set-buffer-default-directory!
-      buffer
-      (if (file-folder? folder)
-	  (directory-pathname (file-folder-pathname folder))
-	  (user-homedir-pathname)))
-     (add-event-receiver! (folder-modification-event folder)
-       (lambda (folder)
-	 (maybe-add-command-suffix! notice-folder-modifications folder))))))
-
-(define (imail-folder->buffer folder error?)
-  (or (let ((buffer (get-property folder 'BUFFER #f)))
-	(and buffer
-	     (if (buffer-alive? buffer)
-		 buffer
-		 (begin
-		   (remove-property! folder 'BUFFER)
-		   #f))))
-      (and error? (error:bad-range-argument folder 'IMAIL-FOLDER->BUFFER))))
 
 (define (notice-folder-modifications folder)
   (let ((buffer (imail-folder->buffer folder #f)))
@@ -494,34 +469,53 @@ With prefix argument N moves backward N messages with these flags."
 	(message-seen message))
     (imail-update-mode-line! buffer)))
 
-(define (selected-message #!optional error? buffer)
-  (or (let ((buffer
-	     (if (or (default-object? buffer) (not buffer))
-		 (selected-buffer)
-		 buffer)))
-	(let ((method (buffer-get buffer 'IMAIL-MESSAGE-METHOD #f)))
-	  (if method
-	      (method buffer)
-	      (let ((message (buffer-get buffer 'IMAIL-MESSAGE 'UNKNOWN)))
-		(if (eq? message 'UNKNOWN)
-		    (error "IMAIL-MESSAGE property not bound:" buffer))
-		(and message
-		     (let ((folder (selected-folder #f buffer)))
-		       (if (message-attached? message folder)
-			   message
-			   (let ((message
-				  (let ((index
-					 (and folder
-					      (message-detached? message)
-					      (message-index message))))
-				    (and index
-					 (< index (folder-length folder))
-					 (get-message folder index)))))
-			     (buffer-put! buffer 'IMAIL-MESSAGE message)
-			     message))))))))
-      (and (if (default-object? error?) #t error?)
-	   (error "No selected IMAIL message."))))
+(define (associate-imail-with-buffer buffer folder message)
+  (without-interrupts
+   (lambda ()
+     (buffer-put! buffer 'IMAIL-FOLDER folder)
+     (buffer-put! buffer 'IMAIL-MESSAGE message)
+     (store-property! folder 'BUFFER buffer)
+     (set-buffer-default-directory!
+      buffer
+      (if (file-folder? folder)
+	  (directory-pathname (file-folder-pathname folder))
+	  (user-homedir-pathname)))
+     (add-event-receiver! (folder-modification-event folder)
+       (lambda (folder)
+	 (maybe-add-command-suffix! notice-folder-modifications folder)))
+     (add-kill-buffer-hook buffer delete-associated-buffers))))
 
+(define (delete-associated-buffers folder-buffer)
+  (for-each kill-buffer
+	    (buffer-get folder-buffer 'IMAIL-ASSOCIATED-BUFFERS '())))
+
+(define (associate-buffer-with-imail-buffer folder-buffer buffer)
+  (without-interrupts
+   (lambda ()
+     (buffer-put! buffer 'IMAIL-FOLDER-BUFFER folder-buffer)
+     (let ((buffers (buffer-get folder-buffer 'IMAIL-ASSOCIATED-BUFFERS '())))
+       (if (not (memq buffer buffers))
+	   (buffer-put! folder-buffer 'IMAIL-ASSOCIATED-BUFFERS
+			(cons buffer buffers))))
+     (add-kill-buffer-hook buffer dissociate-buffer-from-imail-buffer))))
+
+(define (dissociate-buffer-from-imail-buffer buffer)
+  (without-interrupts
+   (lambda ()
+     (let ((folder-buffer (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)))
+       (if folder-buffer
+	   (begin
+	     (buffer-remove! buffer 'IMAIL-FOLDER-BUFFER)
+	     (buffer-put! folder-buffer 'IMAIL-ASSOCIATED-BUFFERS
+			  (delq! buffer
+				 (buffer-get folder-buffer
+					     'IMAIL-ASSOCIATED-BUFFERS
+					     '())))))))))
+
+(define (chase-imail-buffer buffer)
+  (or (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)
+      buffer))
+
 (define (selected-folder #!optional error? buffer)
   (let ((buffer
 	 (chase-imail-buffer
@@ -535,11 +529,44 @@ With prefix argument N moves backward N messages with these flags."
 	  (and (if (default-object? error?) #t error?)
 	       (error:bad-range-argument buffer 'SELECTED-FOLDER))))))
 
-(define (chase-imail-buffer buffer)
-  (let ((buffer* (buffer-get buffer 'IMAIL-BUFFER-REDIRECT #f)))
-    (if buffer*
-	(chase-imail-buffer buffer*)
-	buffer)))
+(define (imail-folder->buffer folder error?)
+  (or (let ((buffer (get-property folder 'BUFFER #f)))
+	(and buffer
+	     (if (buffer-alive? buffer)
+		 buffer
+		 (begin
+		   (remove-property! folder 'BUFFER)
+		   #f))))
+      (and error? (error:bad-range-argument folder 'IMAIL-FOLDER->BUFFER))))
+
+(define (selected-message #!optional error? buffer)
+  (or (let ((buffer
+	     (if (or (default-object? buffer) (not buffer))
+		 (selected-buffer)
+		 buffer)))
+	(let ((method (buffer-get buffer 'IMAIL-MESSAGE-METHOD #f)))
+	  (if method
+	      (method buffer)
+	      (let ((buffer (chase-imail-buffer buffer)))
+		(let ((message (buffer-get buffer 'IMAIL-MESSAGE 'UNKNOWN)))
+		  (if (eq? message 'UNKNOWN)
+		      (error "IMAIL-MESSAGE property not bound:" buffer))
+		  (and message
+		       (let ((folder (selected-folder #f buffer)))
+			 (if (message-attached? message folder)
+			     message
+			     (let ((message
+				    (let ((index
+					   (and folder
+						(message-detached? message)
+						(message-index message))))
+				      (and index
+					   (< index (folder-length folder))
+					   (get-message folder index)))))
+			       (buffer-put! buffer 'IMAIL-MESSAGE message)
+			       message)))))))))
+      (and (if (default-object? error?) #t error?)
+	   (error "No selected IMAIL message."))))
 
 (define (imail-update-mode-line! buffer)
   (local-set-variable! mode-line-process
