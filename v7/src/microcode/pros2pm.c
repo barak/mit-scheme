@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pros2pm.c,v 1.18 1995/11/04 02:43:47 cph Exp $
+$Id: pros2pm.c,v 1.19 1997/01/01 10:09:20 cph Exp $
 
-Copyright (c) 1994-95 Massachusetts Institute of Technology
+Copyright (c) 1994-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -148,7 +148,8 @@ DEFINE_PRIMITIVE ("OS2WIN-OPEN", Prim_OS2_window_open, 2, 2, 0)
 					(OS2_qid_twin (qid_argument (1))),
 					(FCF_TITLEBAR | FCF_SYSMENU
 					 | FCF_SHELLPOSITION | FCF_SIZEBORDER
-					 | FCF_MINMAX | FCF_TASKLIST),
+					 | FCF_MINMAX | FCF_TASKLIST
+					 | FCF_NOBYTEALIGN),
 					NULLHANDLE,
 					1,
 					0,

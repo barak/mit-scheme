@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.21 1996/03/20 23:51:49 cph Exp $
+$Id: os2pmcon.c,v 1.22 1997/01/01 10:10:34 cph Exp $
 
-Copyright (c) 1994-96 Massachusetts Institute of Technology
+Copyright (c) 1994-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -164,7 +164,7 @@ OS2_initialize_pm_console (void)
       = (OS2_window_open (console_pm_qid, remote,
 			  (FCF_TITLEBAR | FCF_SYSMENU
 			   | FCF_SHELLPOSITION | FCF_SIZEBORDER
-			   | FCF_MINMAX | FCF_TASKLIST
+			   | FCF_MINMAX | FCF_TASKLIST | FCF_NOBYTEALIGN
 			   | FCF_MENU | FCF_ACCELTABLE | FCF_ICON),
 			  NULLHANDLE,
 			  ID_PMCON_RESOURCES,
