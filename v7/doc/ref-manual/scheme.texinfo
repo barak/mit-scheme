@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.21 1993/10/05 16:30:12 adams Exp $
+@comment $Id: scheme.texinfo,v 1.22 1993/10/13 01:33:49 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -105,7 +105,7 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.16 alpha
+@subtitle Edition 1.22 alpha
 @subtitle for Scheme Release 7.2
 @subtitle 2 August 1993
 @author by Chris Hanson
@@ -328,6 +328,13 @@ Associations
 * Hash Tables::                 Hash Tables
 * Hashing::                     Hashing
 
+Hash Tables
+
+* Construction of Hash Tables::  
+* Basic Hash Table Operations::  
+* Resizing of Hash Tables::     
+* Low-Level Hash Table Operations::  
+
 Procedures
 
 * Procedure Operations::        Procedure Operations
@@ -391,11 +398,17 @@ Graphics
 * Characteristics of Graphics Output::  Characteristics of Graphics Output
 * Buffering of Graphics Output::  Buffering of Graphics Output
 * Clipping of Graphics Output::  Clipping of Graphics Output
+* Images::                      Images
 * Custom Graphics Operations::  Custom Graphics Operations
-* Win32 Graphics::              Graphics in MS Windows and Windows NT
+* Win32 Graphics::              Graphics on Microsoft Windows and Windows NT
 * X Graphics::                  X Graphics
 * Starbase Graphics::           Starbase Graphics
 * Pictures::                    Pictures (MIT 6.001 implementation only)
+
+Win32 Graphics
+
+* Win32 Graphics Type::         Win32 Graphics Type
+* Custom Operations for Win32 Graphics::  Custom Operations for Win32 Graphics Devices
 
 X Graphics
 
@@ -8696,8 +8709,14 @@ entries for @var{y-key} exist.
 
 @cindex hash table
 Hash tables are a fast, powerful mechanism for storing large numbers of
-associations.  MIT Scheme's hash tables feature automatic growth,
+associations.  MIT Scheme's hash tables feature automatic resizing,
 customizable growth parameters, and customizable hash functions.
+
+The average times for the insertion, deletion, and lookup operations on
+a hash table are bounded by a constant.  The space required by the table
+is linearly propertional to the number of associations in the table; in
+the current implementation the constant of proportionality is
+approximately four words per association.
 
 @cindex run-time-loadable option
 @cindex option, run-time-loadable
@@ -8712,98 +8731,116 @@ hash tables, execute
 @noindent
 once before calling any of the procedures defined here.
 
-@deffn {procedure+} make-object-hash-table [k]
+@menu
+* Construction of Hash Tables::  
+* Basic Hash Table Operations::  
+* Resizing of Hash Tables::     
+* Low-Level Hash Table Operations::  
+@end menu
+
+@node Construction of Hash Tables, Basic Hash Table Operations,  , Hash Tables
+@subsection Construction of Hash Tables
+
+@cindex construction, of hash table
+The next few procedures are hash-table constructors.  All hash table
+constructors are procedures that accept one optional argument,
+@var{initial-size}, and return a newly allocated hash table.  If
+@var{initial-size} is given, it must be an exact non-negative integer or
+@code{#f}.  The meaning of @var{initial-size} is discussed below
+(@pxref{Resizing of Hash Tables}).
+
+@cindex equivalence predicate, of hash table
+@cindex strongly held keys, of hash table
+@cindex weakly held keys, of hash table
+Hash tables are normally characterized by two things: the equivalence
+predicate that is used to compare keys, and whether or not the table
+allows its keys to be reclaimed by the garbage collector.  If a table
+prevents its keys from being reclaimed by the garbage collector, it is
+said to hold its keys @dfn{strongly}; otherwise it holds its keys
+@dfn{weakly}.
+
+@deffn {procedure+} make-eq-hash-table [initial-size]
 @findex eq?
 Returns a newly allocated hash table that accepts arbitrary objects as
-keys, and uses @code{eq?} to compare the keys.  The keys are weakly
-held, i.e.@: the hash table does not protect them from being reclaimed
-by the garbage collector.  @var{K} specifies the initial usable size of
-the hash table, and defaults to 10 if not specified.  The entries of the
-hash table are weak pairs whose car field is the @var{key} and whose cdr
-field is the @var{datum}.
+keys, and compares those keys with @code{eq?}.  The keys are held
+weakly.
 @end deffn
 
-@deffn {procedure+} make-string-hash-table [k]
+@deffn {procedure+} make-eqv-hash-table [initial-size]
+@findex eqv?
+Returns a newly allocated hash table that accepts arbitrary objects as
+keys, and compares those keys with @code{eqv?}.  The keys are held
+weakly, except that booleans, characters, and numbers are held strongly.
+@end deffn
+
+@deffn {procedure+} make-equal-hash-table [initial-size]
+@findex equal?
+Returns a newly allocated hash table that accepts arbitrary objects as
+keys, and compares those keys with @code{equal?}.  The keys are held
+strongly.
+@end deffn
+
+@deffn {procedure+} make-string-hash-table [initial-size]
 @findex string=?
-Returns a newly allocated hash table that accepts strings as keys, and
-compares them with @code{string=?}.  The keys are strongly held, i.e.@:
-while in the hash table they will not be reclaimed by the garbage
-collector.  @var{K} specifies the initial usable size of the hash table,
-and defaults to 10 if not specified.  The entries of the hash table are
-ordinary pairs whose car field is the @var{key} and whose cdr field is
-the @var{datum}.
+Returns a newly allocated hash table that accepts character strings as
+keys, and compares them with @code{string=?}.  The keys are held
+strongly.
 @end deffn
 
-@deffn {procedure+} make-symbol-hash-table [k]
-@findex eq?
-Returns a newly allocated hash table that accepts symbols as keys, and
-compares them with @code{eq?}.  The keys are strongly held, i.e.@: while
-in the hash table they will not be reclaimed by the garbage collector.
-@var{K} specifies the initial usable size of the hash table, and
-defaults to 10 if not specified.  The entries of the hash table are
-ordinary pairs whose car field is the @var{key} and whose cdr field is
-the @var{datum}.
+@deffn {procedure+} make-symbol-hash-table [initial-size]
+This procedure is the same as @code{make-eq-hash-table}.  It is provided
+only for compatibility with old code.
 @end deffn
 
-@deffn {procedure+} hash-table? object
-@cindex type predicate, for hash table
-Returns @code{#t} if @var{object} is a hash table, otherwise returns
-@code{#f}.
+@deffn {procedure+} make-object-hash-table [initial-size]
+This procedure is the same as @code{make-eqv-hash-table}.  It is
+provided only for compatibility with old code.
 @end deffn
 
-@deffn {procedure+} hash-table/put! hash-table key datum
-Associates @var{datum} with @var{key} in @var{hash-table} and returns an
-unspecified result.
+The next two procedures are used to create new hash-table constructors.
+All of the above hash table constructors, with the exception of
+@code{make-eqv-hash-table}, could have been created by calls to these
+``constructor-constructors''; see the examples below.
+
+@cindex hashing, of key in hash table
+@cindex modulus, of hashing procedure
+Each of these procedures accepts two arguments and returns a hash-table
+constructor.  The @var{key=?} argument is an equivalence predicate for
+the keys of the hash table.  The @var{key-hash} argument is a procedure
+that computes a hash number.  Specifically, @var{key-hash} accepts two
+arguments, a key and an exact positive integer (the @dfn{modulus}), and
+returns an exact non-negative integer that is less than the modulus.
+
+@deffn {procedure+} strong-hash-table/constructor key-hash key=?
+The hash-table constructors returned by this procedure hold their keys
+strongly.
 @end deffn
 
-@deffn {procedure+} hash-table/remove! hash-table key
-If @var{hash-table} has an association for @var{key}, removes it.
-Returns an unspecified result.
+@deffn {procedure+} weak-hash-table/constructor key-hash key=?
+The hash-table constructors returned by this procedure hold their keys
+weakly.
 @end deffn
 
-@deffn {procedure+} hash-table/clear! hash-table
-Removes all associations in @var{hash-table} and returns an unspecified
-result.
-@end deffn
+Some examples showing how some standard hash-table constructors could have
+been defined:
 
-@deffn {procedure+} hash-table/get hash-table key default
-Returns the @var{datum} associated with @var{key} in @var{hash-table}.
-If there is no association for @var{key}, @var{default} is returned.
-@end deffn
-
-@deffn {procedure+} hash-table/lookup hash-table key if-found if-not-found
-@var{If-found} must be a procedure of one argument, and
-@var{if-not-found} must be a procedure of no arguments.  If
-@var{hash-table} contains an association for @var{key}, @var{if-found}
-is invoked on the @var{datum} of the association.  Otherwise,
-@var{if-not-found} is invoked with no arguments.  In either case, the
-result yielded by the invoked procedure is returned as the result of
-@code{hash-table/lookup}.
-@end deffn
-
-@deffn {procedure+} hash-table/for-each hash-table procedure
-@var{Procedure} must be a procedure of two arguments.  Invokes
-@var{procedure} once for each association in @var{hash-table}, passing
-the association's @var{key} and @var{datum} as arguments, in that order.
-Returns an unspecified result.  @var{Procedure} must not modify
-@var{hash-table}, with one exception: it is permitted to call
-@code{hash-table/remove!} to remove the entry being processed.
-@end deffn
-
-@deffn {procedure+} hash-table/entries-list hash-table
-Returns a newly allocated list of the entries in @var{hash-table}.  The
-elements of the list are usually either pairs or weak pairs, depending
-on the type of hash table.
-@end deffn
-
-@deffn {procedure+} hash-table/entries-vector hash-table
-Returns a newly allocated vector of the entries in @var{hash-table}.
-Equivalent to
-
+@findex hash
+@findex modulo
+@findex string-hash-mod
+@findex string=?
 @example
-(list->vector (hash-table/entries-list @var{hash-table}))
+(define make-eq-hash-table
+  (weak-hash-table/constructor
+   (lambda (object modulus) (modulo (hash object) modulus))
+   eq?))
+
+(define make-string-hash-table
+  (strong-hash-table/constructor string-hash-mod string=?))
 @end example
-@end deffn
+
+The following procedure is sometimes useful in conjunction with weak
+hash tables.  Normally it is not needed, because such hash tables clean
+themselves automatically as they are used.
 
 @deffn {procedure+} hash-table/clean! hash-table
 If @var{hash-table} is a type of hash table that holds its @var{key}s
@@ -8813,101 +8850,155 @@ collector.  Otherwise, this procedure does nothing.  In either case, it
 returns an unspecified result.
 @end deffn
 
-@deffn {procedure+} hash-table/constructor key-hash key=? make-entry entry-valid? entry-key entry-value set-entry-value!
-Returns a constructor procedure for a hash table.  The returned
-procedure accepts one optional argument @var{k}, which specifies the
-initial usable size of the table, and returns a newly allocated hash
-table; @code{k} defaults to @code{10} if not supplied.  The arguments to
-@code{hash-table/constructor} define the characteristics of the hash
-table as follows:
+@node Basic Hash Table Operations, Resizing of Hash Tables, Construction of Hash Tables, Hash Tables
+@subsection Basic Hash Table Operations
 
-@table @var
-@item key-hash
-The hashing function.  A procedure that accepts two arguments, a
-@var{key} and an exact positive integer (the hash modulus), and returns
-an exact non-negative integer that is less than the second argument.
-Examples: @code{string-hash-mod}, @code{symbol-hash-mod}.
-@findex string-hash-mod
-@findex symbol-hash-mod
+The procedures described in this section are the basic operations on
+hash tables.  They provide the functionality most often needed by
+programmers.  Subsequent sections describe other operations that provide
+additional functionality needed by some applications.
 
-@item key=?
-A equivalence predicate that accepts two @var{key} arguments and is true
-if they are the same key.  Examples: @code{eq?}, @code{string=?}.
-@findex eq?
-@findex string=?
-
-@item make-entry
-A procedure that accepts a @var{key} and a @var{datum} as arguments and
-returns an entry.  Typically @code{cons} or @code{weak-cons}.
-@findex cons
-@findex weak-cons
-
-@item entry-valid?
-A procedure that accepts an entry and returns @code{#f} only if the
-entry's @var{key} has been reclaimed by the garbage collector.  For
-example, if entries are weak pairs, this should be
-@code{weak-pair/car?}.  Instead of a procedure, this may be @code{#t},
-which is equivalent to @code{(lambda (entry) #t)}.
-@findex weak-pair/car?
-
-@item entry-key
-A procedure that accepts an entry as an argument and returns the entry's
-@var{key}.  Typically @code{car} or @code{weak-car}.
-@findex car
-@findex weak-car
-
-@item entry-value
-A procedure that accepts an entry as an argument and returns the entry's
-@var{datum}.  Typically @code{cdr} or @code{weak-cdr}.
-@findex cdr
-@findex weak-cdr
-
-@item set-entry-value!
-A procedure that accepts an entry and an object as arguments, modifies
-the entry's @var{datum} to be the object, and returns an unspecified
-result.  Typically @code{set-cdr!} or @code{weak-set-cdr!}.
-@findex set-cdr!
-@findex weak-set-cdr!
-@end table
+@deffn {procedure+} hash-table? object
+@cindex type predicate, for hash table
+Returns @code{#t} if @var{object} is a hash table, otherwise returns
+@code{#f}.
 @end deffn
 
-@deffn {procedure+} hash-table/key-hash hash-table
-@deffnx {procedure+} hash-table/key=? hash-table
-@deffnx {procedure+} hash-table/make-entry hash-table
-@deffnx {procedure+} hash-table/entry-valid? hash-table
-@deffnx {procedure+} hash-table/entry-key hash-table
-@deffnx {procedure+} hash-table/entry-value hash-table
-@deffnx {procedure+} hash-table/set-entry-value! hash-table
-Each of these procedures corresponds to the respective argument of
-@code{hash-table/constructor}.  When called, these procedures return the
-value of the argument that was used to construct @var{hash-table}.
+@deffn {procedure+} hash-table/put! hash-table key datum
+Associates @var{datum} with @var{key} in @var{hash-table} and returns an
+unspecified result.  The average time required by this operation is
+bounded by a constant.
 @end deffn
 
-Two parameters control the growth of a hash table, the @dfn{rehash
-threshold} and the @dfn{rehash size}.
+@deffn {procedure+} hash-table/get hash-table key default
+Returns the datum associated with @var{key} in @var{hash-table}.  If
+there is no association for @var{key}, @var{default} is returned.  The
+average time required by this operation is bounded by a constant.
+@end deffn
 
-@cindex rehash threshold, of hash table (defn)
-@cindex usable size, of hash table (defn)
-@cindex physical size, of hash table (defn)
+@deffn {procedure+} hash-table/remove! hash-table key
+If @var{hash-table} has an association for @var{key}, removes it.
+Returns an unspecified result.  The average time required by this
+operation is bounded by a constant.
+@end deffn
+
+@deffn {procedure+} hash-table/clear! hash-table
+Removes all associations in @var{hash-table} and returns an unspecified
+result.  The average and worst-case times required by this operation are
+bounded by a constant.
+@end deffn
+
+@deffn {procedure+} hash-table/count hash-table
+Returns the number of associations in @var{hash-table} as an exact
+non-negative integer.  The average and worst-case times required by this
+operation are bounded by a constant.
+@end deffn
+
+@deffn {procedure+} hash-table->alist hash-table
+Returns the contents of @var{hash-table} as a newly allocated alist.
+Each element of the alist is a pair @code{(@var{key} . @var{datum})}
+where @var{key} is one of the keys of @var{hash-table}, and @var{datum}
+is its associated datum.  The average and worst-case times required by
+this operation are proportional to the number of associations in the
+table.
+@end deffn
+
+@deffn {procedure+} hash-table/key-list hash-table
+Returns a newly allocated list of the keys in @var{hash-table}.  The
+average and worst-case times required by this operation are proportional
+to the number of associations in the table.
+@end deffn
+
+@deffn {procedure+} hash-table/datum-list hash-table
+Returns a newly allocated list of the datums in @var{hash-table}.  Each
+element of the list corresponds to one of the associations in
+@var{hash-table}, so if the table contains multiple associations with
+the same datum, so will this list.  The average and worst-case times
+required by this operation are proportional to the number of
+associations in the table.
+@end deffn
+
+@deffn {procedure+} hash-table/for-each hash-table procedure
+@var{Procedure} must be a procedure of two arguments.  Invokes
+@var{procedure} once for each association in @var{hash-table}, passing
+the association's @var{key} and @var{datum} as arguments, in that order.
+Returns an unspecified result.  @var{Procedure} must not modify
+@var{hash-table}, with one exception: it is permitted to call
+@code{hash-table/remove!} to remove the association being processed.
+@end deffn
+
+The following procedure is an alternate form of @code{hash-table/get}
+that is useful in some situations.  Usually, @code{hash-table/get} is
+preferable because it is faster.
+
+@deffn {procedure+} hash-table/lookup hash-table key if-found if-not-found
+@var{If-found} must be a procedure of one argument, and
+@var{if-not-found} must be a procedure of no arguments.  If
+@var{hash-table} contains an association for @var{key}, @var{if-found}
+is invoked on the @var{datum} of the association.  Otherwise,
+@var{if-not-found} is invoked with no arguments.  In either case, the
+result yielded by the invoked procedure is returned as the result of
+@code{hash-table/lookup}.  The average time required by this operation
+is bounded by a constant.
+@end deffn
+
+@node Resizing of Hash Tables, Low-Level Hash Table Operations, Basic Hash Table Operations, Hash Tables
+@subsection Resizing of Hash Tables
+
+@cindex resizing, of hash table
 @cindex size, of hash table (defn)
-The @dfn{rehash threshold} is a real number, between zero exclusive and
-one inclusive, that specifies how full the hash table can get before it
-must grow.  In other words it is the ratio between a hash table's
-@dfn{usable size} and its @dfn{physical size}.  If the number of entries
-in the table exceeds this fraction of the table's physical size, the
-table is grown to a larger size.  The default rehash threshold of a
-newly constructed hash table is @code{1}, but this can be changed with
-@code{set-hash-table/rehash-threshold!}.
+Normally, hash tables automatically resize themselves according to need.
+Because of this, the programmer need not be concerned with management of
+the table's size.  However, some limited control over the table's size
+is provided, which will be discussed below.  This discussion involves
+two concepts, @dfn{usable size} and @dfn{physical size}, which we will
+now define.
 
-@deffn {procedure+} hash-table/rehash-threshold hash-table
-Returns the rehash threshold of @var{hash-table}.
-@end deffn
+@cindex usable size, of hash table (defn)
+The @dfn{usable size} of a hash table is the number of associations that
+the table can hold at a given time.  If the number of associations in
+the table exceeds the usable size, the table will automatically grow,
+increasing the usable size to a new value that is sufficient to hold the
+associations.
 
-@deffn {procedure+} set-hash-table/rehash-threshold! hash-table x
-@var{X} must be a real number between zero exclusive and one inclusive.
-Sets the rehash threshold of @var{hash-table} to @var{x} and returns an
-unspecified result.
-@end deffn
+@cindex physical size, of hash table (defn)
+The @dfn{physical size} is an abstract measure of a hash table that
+specifies how much space is allocated to hold the associations of the
+table.  The physical size is always greater than or equal to the usable
+size.  The physical size is not interesting in itself; it is interesting
+only for its effect on the performance of the hash table.  While the
+average performance of a hash-table lookup is bounded by a constant, the
+worst-case performance is not.  For a table containing a given number of
+associations, increasing the physical size of the table decreases the
+probability that worse-than-average performance will occur.
+
+The programmer's can control the size of a hash table by means of three
+parameters:
+
+@itemize @bullet
+@item
+The table's @var{initial size} may be specified when the table is
+created.
+
+@item
+Each table has a @dfn{rehash size} that specifies how the size of the
+table is changed when it is necessary to grow or shrink the table.
+
+@item
+Each table has a @dfn{rehash threshold} that specifies the relationship
+of the table's physical size to its usable size.
+@end itemize
+
+@cindex initial size, of hash table
+If the programmer knows that the table will initially contain a
+specific number of items, @var{initial-size} can be given when the table
+is created.  If @var{initial-size} is an exact non-negative integer, it
+specifies the initial usable size of the hash table; the table will not
+change size until the number of items in the table exceeds
+@var{initial-size}, after which the table will resize itself
+automatically in the usual way.  Otherwise, if @var{initial-size} is not
+given or is @code{#f}, the table is initialized to an unspecified size
+and automatic resizing is immediately enabled.
 
 @cindex rehash size, of hash table (defn)
 The @dfn{rehash size} specifies how much to increase the usable size of
@@ -8919,6 +9010,38 @@ the rehash size.  The default rehash size of a newly constructed hash
 table is @code{2.0}, but this can be changed with
 @code{set-hash-table/rehash-size!}.
 
+@strong{Note well:} The use of an exact positive integer for a rehash
+size is almost always undesirable; this option is provided solely for
+compatibility with the Common Lisp hash-table mechanism.  The reason for
+this has to do with the time penalty for resizing the hash table.  The
+time needed to resize a hash table is proportional to the number of
+associations in the table.  If the table grows by an amount proportional
+to the number of associations, then the resizing cost is @dfn{amortized}
+across the insertions required to fill the table to the point where it
+needs to grow again.  Since the cost of resizing and the increase in
+size are both proportional to the number of associations, the
+@dfn{amortized cost} of an insertion operation is still bounded by a
+constant.  However, if the table grows by a constant amount, regardless
+of the usable size, this is not true: the amortized cost of an insertion
+is not bounded by a constant.  Thus, using a constant rehash size means
+that the average cost of an insertion increases proportionally with the
+number of associations in the hash table.
+
+@cindex rehash threshold, of hash table (defn)
+The @dfn{rehash threshold} is a real number, between zero exclusive and
+one inclusive, that specifies the ratio between a hash table's usable
+size and its physical size.  The default rehash threshold of a newly
+constructed hash table is @code{1}, but this can be changed with
+@code{set-hash-table/rehash-threshold!}.  Decreasing the rehash
+threshold increases the physical size of the table for a given usable
+size.
+
+@deffn {procedure+} hash-table/size hash-table
+Returns the usable size of @var{hash-table} as an exact positive
+integer.  This is the number of associations that @var{hash-table} can
+hold before it will grow.
+@end deffn
+
 @deffn {procedure+} hash-table/rehash-size hash-table
 Returns the rehash size of @var{hash-table}.
 @end deffn
@@ -8926,19 +9049,118 @@ Returns the rehash size of @var{hash-table}.
 @deffn {procedure+} set-hash-table/rehash-size! hash-table x
 @var{X} must be either an exact positive integer, or a real number that
 is greater than one.  Sets the rehash size of @var{hash-table} to
-@var{x} and returns an unspecified result.
+@var{x} and returns an unspecified result.  This operation adjusts the
+``shrink threshold'' of the table; the table might shrink if the number
+of associations is less than the new threshold.
 @end deffn
 
-@deffn {procedure+} hash-table/size hash-table
-Returns the usable size of @var{hash-table} as an exact positive
-integer.  This is the number of entries that @var{hash-table} can hold
-before it must grow.
+@deffn {procedure+} hash-table/rehash-threshold hash-table
+Returns the rehash threshold of @var{hash-table}.
 @end deffn
 
-@deffn {procedure+} hash-table/count hash-table
-Returns the number of entries in @var{hash-table} as an exact
-non-negative integer.  This is always less than or equal to the usable
-size of @var{hash-table}.
+@deffn {procedure+} set-hash-table/rehash-threshold! hash-table x
+@var{X} must be a real number between zero exclusive and one inclusive.
+Sets the rehash threshold of @var{hash-table} to @var{x} and returns an
+unspecified result.  This operation does not change the usable size of
+the table, but it usually changes the physical size of the table, which
+causes the associations to be rehashed.
+@end deffn
+
+@node Low-Level Hash Table Operations,  , Resizing of Hash Tables, Hash Tables
+@subsection Low-Level Hash Table Operations
+
+The procedures in this section allow the programmer to control some of
+the internal structure of a hash table.  Normally, hash tables maintain
+associations between keys and datums using pairs or weak pairs.  These
+procedures allow the programmer to specify the use of some other data
+structure to maintain the association.  In this section, the data
+structure that represents an association in a hash table is called an
+@dfn{entry}.
+
+@deffn {procedure+} hash-table/constructor key-hash key=? make-entry entry-valid? entry-key entry-value set-entry-value!
+Creates and returns a hash-table constructor procedure
+(@pxref{Construction of Hash Tables}).  The arguments to
+@code{hash-table/constructor} define the characteristics of the hash
+table as follows:
+
+@table @var
+@item key-hash
+The hashing function.  A procedure that accepts two arguments, a key and
+an exact positive integer (the @dfn{modulus}), and returns an exact
+non-negative integer that is less than the modulus.
+
+@item key=?
+A equivalence predicate that accepts two keys and is true iff they are
+the same key.
+
+@item make-entry
+A procedure that accepts a key and a datum as arguments and returns an
+entry.
+
+@item entry-valid?
+A procedure that accepts an entry and returns @code{#f} iff the entry's
+key has been reclaimed by the garbage collector.  Instead of a
+procedure, this may be @code{#t}, which is equivalent to @code{(lambda
+(entry) #t)}.
+@findex weak-pair/car?
+
+@item entry-key
+A procedure that accepts an entry as an argument and returns the entry's
+key.
+
+@item entry-value
+A procedure that accepts an entry as an argument and returns the entry's
+datum.
+
+@item set-entry-value!
+A procedure that accepts an entry and an object as arguments, modifies
+the entry's @var{datum} to be the object, and returns an unspecified
+result.
+@end table
+
+For example, here is how the constructors for ordinary hash tables could
+be defined:
+
+@example
+(define (strong-hash-table/constructor key-hash key=?)
+  (hash-table/constructor key-hash key=? cons #t car cdr set-cdr!))
+
+(define (weak-hash-table/constructor key-hash key=?)
+  (hash-table/constructor key-hash key=? weak-cons weak-pair/car?
+                          weak-car weak-cdr weak-set-cdr!))
+@end example
+@end deffn
+
+@deffn {procedure+} hash-table/key-hash hash-table
+@deffnx {procedure+} hash-table/key=? hash-table
+@deffnx {procedure+} hash-table/make-entry hash-table
+@deffnx {procedure+} hash-table/entry-valid? hash-table
+@deffnx {procedure+} hash-table/entry-key hash-table
+@deffnx {procedure+} hash-table/entry-value hash-table
+@deffnx {procedure+} hash-table/set-entry-value! hash-table
+Each of these procedures corresponds to an argument of
+@code{hash-table/constructor}.  When called, each procedure returns the
+value of the corresponding argument that was used to construct
+@var{hash-table}.
+@end deffn
+
+The following procedures return the contents of a hash table as a
+collection of entries.  While the data structure holding the entries is
+newly allocated, the entries themselves are not copied.  Since hash
+table operations can modify these entries, the entries should be copied
+if it is desired to keep them while continuing to modify the table.
+
+@deffn {procedure+} hash-table/entries-list hash-table
+Returns a newly allocated list of the entries in @var{hash-table}.
+@end deffn
+
+@deffn {procedure+} hash-table/entries-vector hash-table
+Returns a newly allocated vector of the entries in @var{hash-table}.
+Equivalent to
+
+@example
+(list->vector (hash-table/entries-list @var{hash-table}))
+@end example
 @end deffn
 
 @node Hashing,  , Hash Tables, Associations
@@ -12337,8 +12559,8 @@ operations, such as control of colors.
 * Characteristics of Graphics Output::  Characteristics of Graphics Output
 * Buffering of Graphics Output::  Buffering of Graphics Output
 * Clipping of Graphics Output::  Clipping of Graphics Output
-* Custom Graphics Operations::  Custom Graphics Operations
 * Images::                      Images
+* Custom Graphics Operations::  Custom Graphics Operations
 * Win32 Graphics::              Graphics on Microsoft Windows and Windows NT
 * X Graphics::                  X Graphics
 * Starbase Graphics::           Starbase Graphics
@@ -12665,7 +12887,7 @@ operation has no effect for devices that do not support buffering, or if
 buffering is disabled for the device.
 @end deffn
 
-@node Clipping of Graphics Output, Custom Graphics Operations, Buffering of Graphics Output, Graphics
+@node Clipping of Graphics Output, Images, Buffering of Graphics Output, Graphics
 @section Clipping of Graphics Output
 @cindex graphics, clipping
 @cindex clipping, of graphics
@@ -12697,7 +12919,7 @@ graphics output is clipped to the virtual coordinate limits of the
 device.
 @end deffn
 
-@node Images, Win32 Graphics, Custom Graphics Operations, Graphics
+@node Images, Custom Graphics Operations, Clipping of Graphics Output, Graphics
 @section Images
 @cindex graphics, images
 @cindex images, graphics
@@ -12780,7 +13002,7 @@ filled from left to right.  There must be at least
 width(image)*height(image) bytes in @var{bytes}.
 @end deffn
 
-@node Custom Graphics Operations, Images, Clipping of Graphics Output, Graphics
+@node Custom Graphics Operations, Win32 Graphics, Images, Graphics
 @section Custom Graphics Operations
 @cindex custom operations, on graphics device
 @cindex graphics, custom operations
@@ -12808,7 +13030,7 @@ For information on the custom operations for a particular device, see
 the documentation for its type.
 @end deffn
 
-@node Win32 Graphics, X Graphics, Images, Graphics
+@node Win32 Graphics, X Graphics, Custom Graphics Operations, Graphics
 @section Win32 Graphics
 @cindex Win32 graphics
 
@@ -12828,7 +13050,7 @@ the click of a mouse button.
 
 
 @menu
-* Win32 Graphics Type::        Win32 Graphics Type
+* Win32 Graphics Type::         Win32 Graphics Type
 * Custom Operations for Win32 Graphics::  Custom Operations for Win32 Graphics Devices
 @end menu
 
@@ -12882,7 +13104,7 @@ If no palette is specified then the @code{standard} palette is used.
 
 
 
-@node Custom Operations for Win32 Graphics,  , Win32 Graphics Type , Win32 Graphics
+@node Custom Operations for Win32 Graphics,  , Win32 Graphics Type, Win32 Graphics
 @subsection Custom Operations for Win32 Graphics
 
 Custom operations are invoked using the procedure
