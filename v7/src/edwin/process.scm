@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.23 1992/03/24 22:52:02 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.24 1992/05/12 02:43:41 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -530,10 +530,12 @@ after the listing is made.)"
 				 (loop)
 				 status)))))))
 		 (begin
-		   (group-write-to-channel (region-group input-region)
-					   (region-start-index input-region)
-					   (region-end-index input-region)
-					   (subprocess-output-channel process))
+		   (let ((channel (subprocess-output-channel process)))
+		     (group-write-to-channel (region-group input-region)
+					     (region-start-index input-region)
+					     (region-end-index input-region)
+					     channel)
+		     (channel-close channel))
 		   (subprocess-wait process)))))))
       (begin
 	(channel-close (subprocess-output-channel process))
