@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: io.texi,v 1.6 2004/10/12 23:33:27 cph Exp $
+@c $Id: io.texi,v 1.7 2004/10/14 03:53:45 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -30,7 +30,7 @@ implementation of custom ports and high-performance @acronym{I/O}.
 * Port Primitives::             
 * Parser Buffers::              
 * Parser Language::             
-* XML Parser::                  
+* XML Support::                 
 @end menu
 
 @node Ports, File Ports, Input/Output, Input/Output
@@ -2109,7 +2109,7 @@ Returns the character or line index, respectively, of @var{pointer}.
 Both indexes are zero-based.
 @end deffn
 
-@node Parser Language, XML Parser, Parser Buffers, Input/Output
+@node Parser Language, XML Support, Parser Buffers, Input/Output
 @section Parser Language
 
 @cindex Parser language
@@ -2802,8 +2802,8 @@ procedure.  @var{Table} must satisfy @code{parser-macros?}, and
 @var{thunk} must be a procedure of no arguments.
 @end deffn
 
-@node XML Parser,  , Parser Language, Input/Output
-@section XML Parser
+@node XML Support,  , Parser Language, Input/Output
+@section XML Support
 
 @cindex XML parser
 @cindex parser, XML
@@ -2850,7 +2850,7 @@ once before compiling any code that uses it.
 @end menu
 
 
-@node XML Input, XML Output, XML Parser, XML Parser
+@node XML Input, XML Output, XML Support, XML Support
 @subsection XML Input
 
 The primary entry point for the @acronym{XML} parser is @code{read-xml},
@@ -2914,89 +2914,261 @@ It is roughly equivalent to
 @end deffn
 
 
-
-@node XML Output, XML Names, XML Input, XML Parser
+@node XML Output, XML Names, XML Input, XML Support
 @subsection XML Output
 
-@deffn procedure write-xml xml-document port
+The following procedures serialize @acronym{XML} document records into
+character sequences.  All are virtually identical except for the way
+that the character sequence is represented.
+
+Each procedure will accept either an @code{xml-document} record or any
+of the other @acronym{XML} record types.  This makes it possible to
+write fragments of @acronym{XML} documents, although you should keep in
+mind that such fragments aren't documents and won't generally be
+accepted by any @acronym{XML} parser.
+
+If the @var{xml} being written is an @code{xml-document} record, the
+procedures @code{write-xml} and @code{write-xml-file} will look for a
+contained @code{xml-declaration} record and its @code{encoding}
+attribute.  If the @code{encoding} is a supported value, the output will
+be encoded as specified; otherwise it will be encoded as
+@acronym{UTF-8}.
+
+@deffn procedure write-xml xml port
+Write @var{xml} to @var{port}.  Note that character encoding will only
+be done if @var{port} supports it.
 @end deffn
 
-@deffn procedure write-xml-file xml-document pathname
-@end deffn
+@deffn procedure write-xml-file xml pathname
+Write @var{xml} to the file specified by @var{pathname}.  Roughly
+equivalent to
 
-@deffn procedure xml->string xml
+@example
+@group
+(define (write-xml-file xml pathname)
+  (call-with-output-file pathname
+    (lambda (port)
+      (write-xml xml port))))
+@end group
+@end example
 @end deffn
 
 @deffn procedure xml->wide-string xml
+Convert @var{xml} to a wide string.  No character encoding is used,
+since wide strings can represent all characters without encoding.
+Roughly equivalent to
+
+@example
+@group
+(define (xml->wide-string xml)
+  (call-with-wide-output-string
+   (lambda (port)
+     (write-xml xml port))))
+@end group
+@end example
+@end deffn
+
+@deffn procedure xml->string xml
+Convert @var{xml} to a character string encoded as @acronym{UTF-8}.
+Roughly equivalent to
+
+@example
+@group
+(define (xml->string xml)
+  (wide-string->utf8-string (xml->wide-string xml)))
+@end group
+@end example
 @end deffn
 
 
-
-@node XML Names, XML Structure, XML Output, XML Parser
+@node XML Names, XML Structure, XML Output, XML Support
 @subsection XML Names
 
+@cindex XML Names
+MIT/GNU Scheme implements @acronym{XML} names in a slightly complex way.
+Unfortunately, this complexity is a direct consequence of the definition
+of @acronym{XML} names rather than a mis-feature of this implementation.
+
+The reason that @acronym{XML} names are complex is that @acronym{XML}
+namespace support, which was added after @acronym{XML} was standardized,
+is not very well integrated with the core @acronym{XML} definition.  The
+most obvious problem is that names can't have associated namespaces when
+they appear in the @acronym{DTD} of a document, even if the body of the
+document uses them.  Consequently, it must be possible to compare
+non-associated names with associated names.
+
+@cindex Internationalized Resource Identifier
+@cindex IRI, of XML name
+@cindex qname, of XML name
+An @acronym{XML} name consists of two parts: the @dfn{qname}, which is a
+symbol, possibly including a namespace prefix; and the
+@dfn{Internationalized Resource Identifier} (@acronym{IRI}), which
+identifies an optional namespace.
+
 @deffn procedure make-xml-name qname iri
+Creates and returns an @acronym{XML} name.  @var{Qname} must be a symbol
+whose name satisfies @code{string-is-xml-name?}.  @var{Iri} must be an
+@code{xml-namespace-iri} record.  The returned value is an @acronym{XML}
+name that satisfies @code{xml-name?}.
+
+If @var{iri} is the @dfn{null} namespace (satisfies
+@code{null-xml-name-prefix?}), the returned value is a symbol equivalent
+to @var{qname}.  This means that an ordinary symbol can be used as an
+@acronym{XML} name when there is no namespace associated with the name.
+
+For convenience, @var{qname} may be a string, in which case it is
+converted to a symbol using @code{make-xml-qname}.
+
+For convenience, @var{iri} may be a string, in which case it is
+converted to an @code{xml-namespace-iri} record using
+@code{make-xml-namespace-iri}.
 @end deffn
 
 @deffn procedure xml-name? object
+Returns @code{#t} if @var{object} is an @acronym{XML} name, and
+@code{#f} otherwise.
 @end deffn
 
 @deffn procedure xml-name-qname xml-name
+Returns the @dfn{qname} of @var{xml-name} as a symbol.
 @end deffn
 
 @deffn procedure xml-name-iri xml-name
+Returns the @dfn{IRI} of @var{xml-name} as an @code{xml-namespace-iri}
+record.
 @end deffn
 
 @deffn procedure xml-name-string xml-name
+Returns the @dfn{qname} of @var{xml-name} as a string.  Equivalent to
+
+@example
+(symbol-name (xml-name-qname @var{xml-name}))
+@end example
 @end deffn
 
+@cindex prefix, of XML name
+@cindex local part, of XML name
+The next two procedures get the @dfn{prefix} and @dfn{local part} of an
+@acronym{XML} name, respectively.  The prefix of an @acronym{XML} name
+is the part of the qname to the left of the colon, while the local part
+is the part of the qname to the right of the colon.  If there is no
+colon in the qname, the local part is the entire qname, and the prefix
+is the null symbol (i.e.@: @code{||}).
+
 @deffn procedure xml-name-prefix xml-name
+Returns the @dfn{prefix} of @var{xml-name} as a symbol.
 @end deffn
 
 @deffn procedure xml-name-local xml-name
+Returns the @dfn{local part} of @var{xml-name} as a symbol.
 @end deffn
+
+@cindex comparison, of XML names
+@cindex equality, of XML names
+The next procedure compares two @acronym{XML} names for equality.  The
+rules for equality are slightly complex, in order to permit comparing
+names in the @acronym{DTD} with names in the document body.  So, if both
+of the names have non-null namespace @acronym{IRI}s, then the names are
+equal if and only if their local parts are equal and their
+@acronym{IRI}s are equal.  (The prefixes of the names are not considered
+in this case.)  Otherwise, the names are equal if and only if their
+qnames are equal.
 
 @deffn procedure xml-name=? xml-name-1 xml-name-2
+Returns @code{#t} if @var{xml-name-1} and @var{xml-name-2} are the same
+name, and @code{#f} otherwise.
 @end deffn
 
+These next procedures define the data abstraction for qnames.  While
+qnames are represented as symbols, only symbols whose names satisfy
+@code{string-is-xml-name?} are qnames.
 
 @deffn procedure make-xml-qname string
+@var{String} must satisfy @code{string-is-xml-name?}.  Returns the qname
+corresponding to @var{string} (the symbol whose name is @var{string}).
 @end deffn
 
 @deffn procedure xml-qname? object
+Returns @code{#t} if @var{object} is a qname, otherwise returns
+@code{#f}.
 @end deffn
 
-@deffn procedure xml-qname-string xml-qname
+@deffn procedure xml-qname-string qname
+Returns a newly allocated string that is a copy of @var{qname}'s string.
+Roughly equivalent to @code{symbol->string}.
 @end deffn
 
-@deffn procedure xml-qname-prefix xml-qname
+@deffn procedure xml-qname-prefix qname
+Returns the prefix of @var{qname} as a symbol.
 @end deffn
 
-@deffn procedure xml-qname-local xml-qname
+@deffn procedure xml-qname-local qname
+Returns the local part of @var{qname} as a symbol.
 @end deffn
 
+The prefix of a qname or @acronym{XML} name may be absent if there is no
+colon in the name.  The absent, or null, prefix is abstracted by the
+next two procedures.  Note that the null prefix is a symbol, just like
+non-null prefixes.
 
 @deffn procedure null-xml-name-prefix
+Returns the null prefix.
 @end deffn
 
 @deffn procedure null-xml-name-prefix? object
+Returns @code{#t} if @var{object} is the null prefix, otherwise returns
+@code{#f}.
 @end deffn
 
+These next procedures define the data abstraction for namespace
+@acronym{IRI}s.  Conceptually, an @acronym{IRI} is a string with a
+particular syntax, but this implementation uses an abstract
+representation that speeds up type and equality testing.  Two
+@acronym{IRI}s are tested for equality using @code{eq?}.
 
 @deffn procedure make-xml-namespace-iri string
+@var{String} must be a syntactically valid @acronym{IRI} encoded in
+@acronym{UTF-8}.  Returns the corresponding @acronym{IRI}.
 @end deffn
 
 @deffn procedure xml-namespace-iri? object
+Returns @code{#t} if @var{object} is an @acronym{IRI} record, otherwise
+returns @code{#f}.
 @end deffn
 
-@deffn procedure xml-namespace-iri-string xml-namespace-iri
+@deffn procedure xml-namespace-iri-string iri
+@var{Iri} must satisfy @code{xml-namespace-iri?}.  Returns a newly
+allocated string that is a copy of the string used to create @var{iri}.
 @end deffn
+
+The @acronym{IRI} of an @acronym{XML} name may be null if there is no
+namespace associated with the name.  The null @acronym{IRI} is
+abstracted by the following two procedures.  Note that the null
+@acronym{IRI} satisfies the predicate @code{xml-namespace-iri?}.
 
 @deffn procedure null-xml-namespace-iri
+Returns the null @acronym{IRI} record.
 @end deffn
 
 @deffn procedure null-xml-namespace-iri? object
+Returns @code{#t} if @var{object} is the null @acronym{IRI} record,
+otherwise returns @code{#f}.
 @end deffn
+
+The following values are two distinguished @acronym{IRI} records.
+
+@defvr variable xml-iri
+@code{xml-iri} is the @acronym{IRI} reserved for use by the
+@acronym{XML} recommendation.  This @acronym{IRI} must be used with the
+@code{xml} prefix.
+@end defvr
+
+@defvr variable xmlns-iri
+@code{xmlns-iri} is the @acronym{IRI} reserved for use by the
+@acronym{XML} namespace recommendation.  This @acronym{IRI} must be used
+with the @code{xmlns} prefix.
+@end defvr
+
 
 
 @deffn procedure make-xml-nmtoken string
@@ -3007,13 +3179,6 @@ It is roughly equivalent to
 
 @deffn procedure xml-nmtoken-string xml-nmtoken
 @end deffn
-
-
-@defvr variable xml-iri
-@end defvr
-
-@defvr variable xmlns-iri
-@end defvr
 
 
 @deffn procedure string-is-xml-name? string
@@ -3030,7 +3195,7 @@ It is roughly equivalent to
 @end deffn
 
 
-@node XML Structure,  , XML Names, XML Parser
+@node XML Structure,  , XML Names, XML Support
 @subsection XML Structure
 
 The output from the @acronym{XML} parser and the input to the
