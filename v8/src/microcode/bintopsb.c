@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.43 1989/11/30 05:32:10 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.44 1990/01/22 19:16:44 jinx Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -443,7 +443,7 @@ print_a_bignum (bignum)
 	    accumulator = (*scan++);
 	    fprintf (portable_file, "%01lx",
 		     (carry |
-		      ((accumulator && ((1 << diff_bits) - 1)) <<
+		      ((accumulator & ((1 << diff_bits) - 1)) <<
 		       bits_in_digit)));
 	    length_in_bits -= 4;
 	    bits_in_digit = (BIGNUM_DIGIT_LENGTH - diff_bits);
