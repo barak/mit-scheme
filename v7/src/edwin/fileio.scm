@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.104 1992/01/09 17:46:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.105 1992/01/13 19:17:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -48,11 +48,6 @@
 
 ;;;; Input
 
-(define-variable read-file-message
-  "If true, messages are displayed when files are read into the editor."
-  false
-  boolean?)
-
 (define (read-buffer buffer pathname visit?)
   (set-buffer-writeable! buffer)
   (let ((truename
@@ -63,7 +58,7 @@
 	  ;; Set modified so that file supercession check isn't done.
 	  (set-group-modified! (buffer-group buffer) true)
 	  (region-delete! (buffer-unclipped-region buffer))
-	  (%insert-file (buffer-start buffer) truename)
+	  (%insert-file (buffer-start buffer) truename visit?)
 	  (set-buffer-point! buffer (buffer-start buffer))))
     (if visit?
 	(begin
@@ -85,18 +80,45 @@
        (lambda (condition)
 	 condition
 	 (editor-error "File " (->namestring filename) " not found"))
-     (lambda () (->truename filename)))))
+     (lambda ()
+       (->truename filename)))
+   false))
+
+(define-variable read-file-message
+  "If true, messages are displayed when files are read into the editor."
+  false
+  boolean?)
 
-(define (%insert-file mark truename)
-  (if (ref-variable read-file-message)
-      (let ((msg
-	     (string-append "Reading file \""
-			    (->namestring truename)
-			    "\"...")))
-	(temporary-message msg)
-	(group-insert-file! (mark-group mark) (mark-index mark) truename)
-	(temporary-message msg "done"))
-      (group-insert-file! (mark-group mark) (mark-index mark) truename)))
+(define-variable read-file-methods
+  "List of procedures to be called before reading a file into a buffer.
+The procedures are called in order; if one of them returns true the file
+is considered already read and the rest are not called.
+Each procedure is called with three arguments:
+ the pathname of the file to be read,
+ the mark at which the file's contents should be inserted, and
+ a flag that is true iff the buffer being filled is visiting the file."
+  (os/read-file-methods)
+  list?)
+
+(define (%insert-file mark truename visit?)
+  (let ((do-it
+	 (lambda ()
+	   (let loop ((methods (ref-variable read-file-methods mark)))
+	     (cond ((null? methods)
+		    (group-insert-file! (mark-group mark)
+					(mark-index mark)
+					truename))
+		   ((not ((car methods) truename mark visit?))
+		    (loop (cdr methods))))))))
+    (if (ref-variable read-file-message)
+	(let ((msg
+	       (string-append "Reading file \""
+			      (->namestring truename)
+			      "\"...")))
+	  (temporary-message msg)
+	  (do-it)
+	  (temporary-message msg "done"))
+	(do-it))))
 
 (define (group-insert-file! group index truename)
   (let ((channel (file-open-input-channel (->namestring truename))))
@@ -152,7 +174,7 @@
   (let ((entry
 	 (let ((pathname (buffer-pathname buffer)))
 	   (and pathname
-		(let ((type (pathname-type pathname)))
+		(let ((type (os/pathname-type-for-mode pathname)))
 		  (and (string? type)
 		       (assoc-string-ci
 			type
@@ -345,10 +367,27 @@ Otherwise asks confirmation."
 
 (define-variable write-file-hooks
   "List of procedures to be called before writing out a buffer to a file.
-If one of them returns non-false, the file is considered already written
+If one of them returns true, the file is considered already written
 and the rest are not called."
   '()
   list?)
+
+(define-variable write-file-methods
+  "List of procedures to be called before writing a region to a file.
+The procedures are called in order; if one of them returns true the file
+is considered already written and the rest are not called.
+Each procedure is called with three arguments:
+ the region that should be written to the file,
+ the pathname of the file to be written, and
+ a flag that is true iff the buffer being written is visiting the file."
+  (os/write-file-methods)
+  list?)
+
+(define-variable enable-emacs-write-file-message
+  "If true, generate Emacs-style message when writing files.
+Otherwise, a message is written both before and after long file writes."
+  false
+  boolean?)
 
 (define (write-buffer-interactive buffer backup-mode)
   (let ((pathname (buffer-pathname buffer)))
@@ -418,50 +457,53 @@ and the rest are not called."
 		  (catch-file-errors
 		   (lambda () unspecific)
 		   (lambda () (set-file-modes! pathname modes))))))))))
-
+
 (define (verify-visited-file-modification-time? buffer)
   (let ((truename (buffer-truename buffer))
 	(buffer-time (buffer-modification-time buffer)))
     (or (not truename)
 	(not buffer-time)
 	(let ((file-time (file-modification-time truename)))
-	  (and file-time
-	       (< (abs (- buffer-time file-time)) 2))))))
+	  (and file-time (< (abs (- buffer-time file-time)) 2))))))
 
 (define-integrable (clear-visited-file-modification-time! buffer)
   (set-buffer-modification-time! buffer false))
-
+
 (define (write-buffer buffer)
   (let ((truename
 	 (->pathname
 	  (write-region (buffer-unclipped-region buffer)
 			(buffer-pathname buffer)
-			true))))
+			'VISIT))))
     (set-buffer-truename! buffer truename)
     (delete-auto-save-file! buffer)
     (set-buffer-save-length! buffer)
     (buffer-not-modified! buffer)
     (set-buffer-modification-time! buffer (file-modification-time truename))))
-
-(define-variable enable-emacs-write-file-message
-  "If true, generate Emacs-style message when writing files.
-Otherwise, a message is written both before and after long file writes."
-  false
-  boolean?)
 
-(define (write-region region filename message?)
-  (write-region* region filename message? group-write-to-file))
+(define (write-region region pathname message?)
+  (write-region* region pathname message? false))
 
-(define (append-to-file region filename message?)
-  (write-region* region filename message? group-append-to-file))
+(define (append-to-file region pathname message?)
+  (write-region* region pathname message? true))
 
-(define (write-region* region filename message? group-write-to-file)
-  (let ((filename (->namestring filename))
+(define (write-region* region pathname message? append?)
+  (let ((filename (->namestring pathname))
+	(group (region-group region))
 	(start (region-start-index region))
 	(end (region-end-index region)))
     (let ((do-it
-	   (lambda ()
-	     (group-write-to-file (region-group region) start end filename))))
+	   (if append?
+	       (lambda ()
+		 (group-append-to-file group start end filename))
+	       (lambda ()
+		 (let ((visit? (eq? 'VISIT message?)))
+		   (let loop
+		       ((methods (ref-variable write-file-methods group)))
+		     (cond ((null? methods)
+			    (group-write-to-file group start end filename))
+			   ((not ((car methods) region pathname visit?))
+			    (loop (cdr methods))))))))))
       (cond ((not message?)
 	     (do-it))
 	    ((or (ref-variable enable-emacs-write-file-message)
