@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: system.scm,v 14.11 1998/02/12 06:03:15 cph Exp $
+$Id: system.scm,v 14.12 1998/02/12 06:08:47 cph Exp $
 
 Copyright (c) 1988-98 Massachusetts Institute of Technology
 
@@ -80,7 +80,13 @@ MIT in each case. |#
 	    (loop entries (cdr entries))))))
 
 (define (get-subsystem-names)
-  (map car subsystem-identifications))
+  (map (lambda (entry)
+	 (let ((s (car entry)))
+	   (let ((i (string-find-next-char s #\space)))
+	     (if i
+		 (string-head s i)
+		 s))))
+       subsystem-identifications))
 
 (define (get-subsystem-version name)
   (let ((entry (find-entry name)))
