@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookup.h,v 9.53 2001/07/31 03:11:52 cph Exp $
+$Id: lookup.h,v 9.54 2001/08/02 04:30:12 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -35,12 +35,16 @@ extern long variable_unassigned_p
   (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT *);
 extern long variable_unbound_p
   (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT *);
+extern long variable_unreferenceable_p
+  (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT *);
 extern long assign_variable
   (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT *);
 extern long define_variable
   (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT);
 extern long link_variable
   (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT);
+extern long unbind_variable
+  (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT *);
 
 extern trap_kind_t get_trap_kind (SCHEME_OBJECT);
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: sdata.h,v 9.36 2001/08/01 02:17:31 cph Exp $
+$Id: sdata.h,v 9.37 2001/08/02 04:30:16 cph Exp $
 
 Copyright (c) 1987-1989, 1999, 2001 Massachusetts Institute of Technology
 
@@ -282,6 +282,12 @@ USA.
 
 #define GET_FRAME_EXTENSION_PROCEDURE(extension)			\
   (MEMORY_REF ((extension), ENV_EXTENSION_PROCEDURE))
+
+#define SET_FRAME_EXTENSION_PROCEDURE(extension, procedure)		\
+  MEMORY_SET ((extension), ENV_EXTENSION_PROCEDURE, (procedure))
+
+#define SET_FRAME_EXTENSION_PARENT_FRAME(extension, frame)		\
+  MEMORY_SET ((extension), ENV_EXTENSION_PARENT_FRAME, (frame))
 
 /* EXTENDED_FIXNUM
  * Not used in the C version.  On the 68000 this is used for 24-bit
@@ -453,27 +459,22 @@ USA.
 #define SET_CACHE_CLONE(cache, clone)					\
   MEMORY_SET ((cache), TRAP_EXTENSION_CLONE, (clone))
 
-#define GET_CACHE_REFERENCES(cache)					\
+#define GET_CACHE_REFERENCES_OBJECT(cache)				\
   (MEMORY_REF ((cache), TRAP_EXTENSION_REFERENCES))
 
 
-#define GET_CACHE_REFERENCES_LOOKUP(references)				\
-  (MEMORY_REF ((references), CACHE_REFERENCES_LOOKUP))
+#define GET_CACHE_REFERENCES(cache, kind)				\
+  (MEMORY_LOC ((MEMORY_REF ((cache), TRAP_EXTENSION_REFERENCES)),	\
+	       (kind)))
 
-#define SET_CACHE_REFERENCES_LOOKUP(references, list)			\
-  MEMORY_SET ((references), CACHE_REFERENCES_LOOKUP, (list)))
+#define GET_CACHE_LOOKUP_REFERENCES(cache)				\
+  (GET_CACHE_REFERENCES ((cache), CACHE_REFERENCES_LOOKUP))
 
-#define GET_CACHE_REFERENCES_ASSIGNMENT(references)			\
-  (MEMORY_REF ((references), CACHE_REFERENCES_ASSIGNMENT))
+#define GET_CACHE_ASSIGNMENT_REFERENCES(cache)				\
+  (GET_CACHE_REFERENCES ((cache), CACHE_REFERENCES_ASSIGNMENT))
 
-#define SET_CACHE_REFERENCES_ASSIGNMENT(references, list)		\
-  MEMORY_SET ((references), CACHE_REFERENCES_ASSIGNMENT, (list)))
-
-#define GET_CACHE_REFERENCES_OPERATOR(references)			\
-  (MEMORY_REF ((references), CACHE_REFERENCES_OPERATOR))
-
-#define SET_CACHE_REFERENCES_OPERATOR(references, list)			\
-  MEMORY_SET ((references), CACHE_REFERENCES_OPERATOR, (list)))
+#define GET_CACHE_OPERATOR_REFERENCES(cache)				\
+  (GET_CACHE_REFERENCES ((cache), CACHE_REFERENCES_OPERATOR))
 
 
 #define GET_CACHE_REFERENCE_BLOCK(reference)				\

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookprm.c,v 1.13 2001/07/31 03:11:42 cph Exp $
+$Id: lookprm.c,v 1.14 2001/08/02 04:30:03 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -152,64 +152,37 @@ variable lookup error (unbound or unassigned).")
   PRIMITIVE_HEADER (2);
   {
     SCHEME_OBJECT value;
-    long result = (lookup_variable ((ARG_REF (1)), (ARG_REF (2)), (&value)));
-    switch (result)
-      {
-      case ERR_UNASSIGNED_VARIABLE:
-      case ERR_UNBOUND_VARIABLE:
-	PRIMITIVE_RETURN(SHARP_T);
-
-      case PRIM_DONE:
-	PRIMITIVE_RETURN (SHARP_F);
-
-      case PRIM_INTERRUPT:
-	signal_interrupt_from_primitive ();
-
-      default:
-	signal_error_from_primitive (result);
-      }
+    STD_LOOKUP
+      (variable_unreferenceable_p ((ARG_REF (1)), (ARG_REF (2)), (&value)));
+    PRIMITIVE_RETURN (value);
   }
-  PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
-/* This code returns #t if it succeeds, or the following errors
-   (besides type and range errors) with the following meanings:
-
-   - ERR_UNBOUND_VARIABLE:
-      <symbol> is unbound in <env2>.
-
-   - ERR_BAD_SET:
-      <symbol> is bound locally in <env1>.
-
-   - ERR_BAD_FRAME:
-      Inconsistency in the code.  Bad value found.
-
-   - ILLEGAL_REFERENCE_TRAP:
-      A bad reference trap was found.
-
-   *UNDEFINE*: If undefine is ever implemented, the code below may be
-   affected.  It will have to be rethought.
-
-   NOTE: The following procedure and extract_or_create_cache have NOT
-   been parallelized.  They need thinking.  */
 
 DEFINE_PRIMITIVE ("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3, 3,
 		  "(ENV1 ENV2 SYMBOL)\n
-SYMBOL must be locally undefined in ENV1, and defined in ENV2.\n
-It defines SYMBOL in ENV1 and makes it share its value cell with\n
-SYMBOL in ENV2.")
+SYMBOL must be bound in ENV2.  Creates a new binding for SYMBOL in ENV1,\n
+such that the bindings in ENV1 and ENV2 share the same value cell.\n
+If SYMBOL is already bound in ENV1, the existing binding is modified.")
 {
   PRIMITIVE_HEADER (3);
   CHECK_ARG (1, ENVIRONMENT_P);
   CHECK_ARG (2, ENVIRONMENT_P);
   CHECK_ARG (3, SYMBOL_P);
+  STD_LOOKUP (link_variable ((ARG_REF (1)), (ARG_REF (2)), (ARG_REF (3))));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("UNBIND-VARIABLE", Prim_unbind_variable, 2, 2,
+		  "(ENVIRONMENT SYMBOL)\n
+Unbind the variable SYMBOL in ENVIRONMENT.\n
+Returns #F if the variable was not previously bound, otherwise #T.")
+{
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (1, ENVIRONMENT_P);
+  CHECK_ARG (2, SYMBOL_P);
   {
-    long result
-      = (link_variable ((ARG_REF (1)), (ARG_REF (2)), (ARG_REF (3))));
-    if (result == PRIM_INTERRUPT)
-      signal_interrupt_from_primitive ();
-    if (result != PRIM_DONE)
-      signal_error_from_primitive (result);
-    PRIMITIVE_RETURN (SHARP_T);
+    SCHEME_OBJECT value;
+    STD_LOOKUP (unbind_variable ((ARG_REF (1)), (ARG_REF (2)), (&value)));
+    PRIMITIVE_RETURN (value);
   }
 }
