@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.23 2000/01/18 05:10:32 cph Exp $
+$Id: uxsock.c,v 1.24 2000/10/01 02:18:55 cph Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -30,6 +30,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #ifdef HAVE_UNIX_SOCKETS
 #include <sys/un.h>
 #endif
+
+#ifdef HAVE_SELECT
+#include <sys/time.h>
+#include <sys/types.h>
+#else
+#ifdef HAVE_POLL
+#include <sys/poll.h>
+#endif
+#endif
+
 #include "uxsock.h"
 #include "uxio.h"
 #include "prims.h"
@@ -40,6 +50,8 @@ extern struct servent * EXFUN (getservbyname, (CONST char *, CONST char *));
 extern struct hostent * EXFUN (gethostbyname, (CONST char *));
 extern char * EXFUN (strncpy, (char *, CONST char *, size_t));
 #endif
+
+static void do_connect (int, struct sockaddr *, socklen_t);
 
 Tchannel
 DEFUN (OS_open_tcp_stream_socket, (host, port), char * host AND int port)
@@ -62,18 +74,69 @@ DEFUN (OS_open_tcp_stream_socket, (host, port), char * host AND int port)
 	(*scan++) = (*host++);
     }
     (address . sin_port) = port;
-    while ((UX_connect (s,
-			((struct sockaddr *) (& address)),
-			(sizeof (address))))
-	   < 0)
-      {
-	if (errno != EINTR)
-	  error_system_call (errno, syscall_connect);
-	deliver_pending_interrupts ();
-      }
+    do_connect (s, ((struct sockaddr *) (&address)), (sizeof (address)));
   }
   transaction_commit ();
   return (channel);
+}
+
+static void
+do_connect (int s, struct sockaddr * address, socklen_t addr_len)
+{
+  if ((UX_connect (s, address, addr_len)) < 0)
+    {
+      if (errno != EINTR)
+	error_system_call (errno, syscall_connect);
+      while (1)
+	{
+	  deliver_pending_interrupts ();
+	  /* Yuk; lots of hair because connect can't be restarted.
+	     Instead, we must wait for the connection to finish, then
+	     examine the SO_ERROR socket option.  */
+#ifdef HAVE_SELECT
+	  {
+	    fd_set readers;
+	    fd_set writers;
+	    int result;
+
+	    FD_ZERO (&readers);
+	    FD_SET (s, (&readers));
+	    writers = readers;
+	    result = (UX_select ((s + 1), (&readers), (&writers), 0, 0));
+	    if ((result > 0)
+		&& ((FD_ISSET (s, (&readers))) || (FD_ISSET (s, (&writers)))))
+	      break;
+	    if ((result < 0) && (errno != EINTR))
+	      error_system_call (errno, syscall_select);
+	  }
+#else /* not HAVE_SELECT */
+#ifdef HAVE_POLL
+	  {
+	    struct pollfd fds;
+	    int nfds;
+
+	    (fds . fd) = s;
+	    (fds . events) = (POLLIN | POLLOUT);
+	    nfds = (poll (fds, 1, 0));
+	    if ((nfds > 0) && (((fds . revents) & (POLLIN | POLLOUT)) != 0))
+	      break;
+	    if ((nfds < 0) && (errno != EINTR))
+	      error_system_call (errno, syscall_select);
+	  }
+#else /* not HAVE_POLL */
+	  error_system_call (errno, syscall_connect);
+	  break;
+#endif /* not HAVE_POLL */
+#endif /* not HAVE_SELECT */
+	}
+      {
+	int error;
+	socklen_t len = (sizeof (error));
+	if (((getsockopt (s, SOL_SOCKET, SO_ERROR, (&error), (&len))) < 0)
+	    || (error != 0))
+	  error_system_call (error, syscall_connect);
+      }
+    }
 }
 
 int
@@ -174,15 +237,7 @@ DEFUN (OS_open_unix_stream_socket, (filename), CONST char * filename)
     struct sockaddr_un address;
     (address . sun_family) = AF_UNIX;
     strncpy ((address . sun_path), filename, (sizeof (address . sun_path)));
-    while ((UX_connect (s,
-			((struct sockaddr *) (& address)),
-			(sizeof (address))))
-	   < 0)
-      {
-	if (errno != EINTR)
-	  error_system_call (errno, syscall_connect);
-	deliver_pending_interrupts ();
-      }
+    do_connect (s, ((struct sockaddr *) (&address)), (sizeof (address)));
   }
   transaction_commit ();
   return (channel);
@@ -193,7 +248,7 @@ DEFUN (OS_open_unix_stream_socket, (filename), CONST char * filename)
 }
 
 #ifndef SOCKET_LISTEN_BACKLOG
-#define SOCKET_LISTEN_BACKLOG 5
+#define SOCKET_LISTEN_BACKLOG 1024
 #endif
 
 Tchannel
@@ -232,26 +287,27 @@ DEFUN (OS_server_connection_accept, (channel, peer_host, peer_port),
   static struct sockaddr_in address;
   int address_length = (sizeof (struct sockaddr_in));
   int s;
-
-  while ((s = (UX_accept ((CHANNEL_DESCRIPTOR (channel)),
-			  ((struct sockaddr *) (& address)),
-			  (&address_length))))
-	 < 0)
-  {
-    if (errno != EINTR)
+  while (1)
     {
+      s = (UX_accept ((CHANNEL_DESCRIPTOR (channel)),
+		      ((struct sockaddr *) (&address)),
+		      (&address_length)));
+      if (s >= 0)
+	break;
+      if (errno != EINTR)
+	{
 #ifdef EAGAIN
-      if (errno == EAGAIN)
-	return (NO_CHANNEL);
+	  if (errno == EAGAIN)
+	    return (NO_CHANNEL);
 #endif
 #ifdef EWOULDBLOCK
-      if (errno == EWOULDBLOCK)
-	return (NO_CHANNEL);
+	  if (errno == EWOULDBLOCK)
+	    return (NO_CHANNEL);
 #endif
-      error_system_call (errno, syscall_accept);
+	  error_system_call (errno, syscall_accept);
+	}
+      deliver_pending_interrupts ();
     }
-    deliver_pending_interrupts ();
-  }
   if (peer_host != 0)
     {
       char * scan = ((char *) (& (address . sin_addr)));
