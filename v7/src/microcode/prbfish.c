@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prbfish.c,v 1.1 1997/06/09 07:43:36 cph Exp $
+$Id: prbfish.c,v 1.2 1997/06/09 21:17:48 cph Exp $
 
 Copyright (c) 1997 Massachusetts Institute of Technology
 
@@ -41,7 +41,7 @@ MIT in each case. */
 /* This interface uses the Blowfish library from SSLeay.  */
 
 DEFINE_PRIMITIVE ("BLOWFISH-SET-KEY", Prim_blowfish_set_key, 1, 1,
-  "(STRING)
+  "(STRING)\n\
 Generate a Blowfish key from STRING.\n\
 STRING must be 72 bytes or less in length.\n\
 For text-string keys, use MD5 on the text, and pass the digest here.")
@@ -112,7 +112,7 @@ Returned value is a string of the same length as INPUT.")
 }
 
 DEFINE_PRIMITIVE ("BLOWFISH-CFB64", Prim_blowfish_cfb64, 5, 5,
-  "(INPUT KEY INIT-VECTOR NUM ENCRYPT?)
+  "(INPUT KEY INIT-VECTOR NUM ENCRYPT?)\n\
 Apply Blowfish in Cipher FeedBack mode.\n\
 INPUT is an arbitrary string.\n\
 KEY is a Blowfish key.\n\

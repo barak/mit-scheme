@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prmd5.c,v 1.1 1997/06/09 07:43:23 cph Exp $
+$Id: prmd5.c,v 1.2 1997/06/09 21:17:11 cph Exp $
 
 Copyright (c) 1997 Massachusetts Institute of Technology
 
@@ -39,7 +39,7 @@ MIT in each case. */
 #include <md5.h>
 
 DEFINE_PRIMITIVE ("MD5", Prim_md5, 1, 1,
-  "(STRING)
+  "(STRING)\n\
 Generate an MD5 digest of string.\n\
 The digest is returned as a 16-byte string.")
 {
