@@ -1,6 +1,6 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Id: config,v 1.21 1993/10/26 17:19:05 gjr Exp $
+# $Id: config,v 1.22 1993/10/26 23:08:54 gjr Exp $
 # Modelled on the configuration script for GNU CC
 # The section between lines is the copyright prefix from the GNU CC config.
 #----------------------------------------------------------------------
@@ -269,7 +269,6 @@ perform()
 	(echo "Links are now set up for use with a $machine." ; \
          echo "Remember to edit file cf.h before using make.") \
 		| tee config.out
-	exit 0;
 }
 
 usage()
@@ -286,7 +285,7 @@ usage()
 	then
 		cat config.out
 	fi
-	exit 1
+	exit 1;
 }
 
 
@@ -297,12 +296,16 @@ remove=rm
 hard_link=ln
 symbolic_link='ln -s'
 copy=cp
+move=mv
+edit=sed
 
 #for Test
 #remove="echo rm"
 #hard_link="echo ln"
 #symbolic_link="echo ln -s"
 #copy="echo cp"
+#move="echo mv"
+#edif="echo sed"
 
 cmpint_file=nothing_special
 cmpaux_file=nothing_special
@@ -313,10 +316,12 @@ case $# in
 1)
 	discriminate $*
 	perform $*
+	exit 0
 	;;
 
 2)
 	case $1 in
+
 	-C-back-end | -c-back-end)
 		shift
 		discriminate $*
@@ -324,12 +329,19 @@ case $# in
 		cmpaux_file=c.c
 		cmpaux_target=cmpauxmd.c
 		perform $*
+		$move cf.h cf-orig.h
+		$edit 's/C_BACK_END 0/C_BACK_END 1/' <cf-orig.h >cf.h
+		$remove cf-orig.h
+		exit 0
 		;;
+
 	-native-back-end)
 		shift
 		discriminate $*
 		perform $*
+		exit 0
 		;;
+
 	*)
 		usage
 		;;
