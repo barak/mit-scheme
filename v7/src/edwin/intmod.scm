@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: intmod.scm,v 1.101 1999/10/23 03:02:22 cph Exp $
+;;; $Id: intmod.scm,v 1.102 1999/10/23 03:16:22 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -112,7 +112,7 @@ With two C-u's, creates a new REPL buffer with a new evaluation environment.
 	     (signal-thread-event editor-thread
 	       (lambda ()
 		 (unwind-inferior-repl-buffer buffer))))))))))
-
+
 (define (make-init-message message)
   (if message
       (cmdl-message/append cmdl-message/init-inferior message)
@@ -129,7 +129,7 @@ With two C-u's, creates a new REPL buffer with a new evaluation environment.
 
 (define (inferior-repl/quit)
   unspecific)
-
+
 (define (current-repl-buffer buffer)
   (let ((buffer (current-repl-buffer* buffer)))
     (if (not buffer)
@@ -158,7 +158,7 @@ With two C-u's, creates a new REPL buffer with a new evaluation environment.
 (define (initialize-inferior-repls!)
   (set! repl-buffers '())
   unspecific)
-
+
 (define (wait-for-input port mode ready? level)
   (signal-thread-event editor-thread
     (lambda ()
@@ -184,7 +184,13 @@ With two C-u's, creates a new REPL buffer with a new evaluation environment.
 
 (define (standard-prompt-spacing port)
   (fresh-line port)
-  (newline port)
+  (enqueue-output-operation!
+   port
+   (lambda (mark transcript?)
+     transcript?
+     (if (not (group-start? mark))
+	 (insert-newline mark))
+     #t))
   (enqueue-output-operation! port
     (lambda (mark transcript?)
       transcript?
