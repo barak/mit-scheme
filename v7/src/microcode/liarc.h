@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.11 1993/11/13 03:20:21 gjr Exp $
+$Id: liarc.h,v 1.12 1993/11/13 03:46:40 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -42,7 +42,7 @@ MIT in each case. */
 #endif
 
 #ifndef MIT_SCHEME
-#defien MIT_SCHEME
+#define MIT_SCHEME
 #endif
 
 #ifndef NATIVE_CODE_IS_C
