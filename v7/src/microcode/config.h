@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.84 1994/06/28 19:46:25 cph Exp $
+$Id: config.h,v 9.85 1994/11/28 04:06:33 cph Exp $
 
 Copyright (c) 1987-94 Massachusetts Institute of Technology
 
@@ -442,6 +442,11 @@ extern unsigned long winnt_address_delta;
 #define ADDR_TO_SCHEME_ADDR(caddr) (ADDRESS_TO_DATUM (caddr))
 
 #endif /* WINNT && !WINNT_RAW_ADDRESSES */
+
+#ifdef _OS2
+#define EXIT_SCHEME_DECLARATIONS extern void OS2_exit_scheme (int)
+#define EXIT_SCHEME OS2_exit_scheme
+#endif
 
 #endif /* i386 */
 
