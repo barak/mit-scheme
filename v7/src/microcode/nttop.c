@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.34 2003/03/29 05:45:02 cph Exp $
+$Id: nttop.c,v 1.35 2004/03/09 06:26:50 cph Exp $
 
-Copyright 1993,1997,1998,2000,2003 Massachusetts Institute of Technology
+Copyright 1993,1997,1998,2000,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -266,7 +266,7 @@ NT_preallocate_heap (void)
     = (VirtualAlloc ((largest.BaseAddress),
 		     NT_heap_size,
 		     MEM_RESERVE,
-		     PAGE_READWRITE));
+		     PAGE_EXECUTE_READWRITE));
   if (NT_heap_base == 0)
     NT_heap_error = (GetLastError ());
 }
@@ -287,7 +287,7 @@ NT_allocate_heap (unsigned long size, unsigned long * handle)
 	    = (VirtualAlloc (start,
 			     size,
 			     (MEM_RESERVE | MEM_COMMIT),
-			     PAGE_READWRITE));
+			     PAGE_EXECUTE_READWRITE));
 	  if (base != 0)
 	    break;
 	}
@@ -301,7 +301,7 @@ NT_allocate_heap (unsigned long size, unsigned long * handle)
 	= (VirtualAlloc (NT_heap_base,
 			 size2,
 			 MEM_COMMIT,
-			 PAGE_READWRITE));
+			 PAGE_EXECUTE_READWRITE));
       (* handle) = size2;
       return ((char *) base);
     }
