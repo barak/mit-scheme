@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.31 2004/02/16 05:37:53 cph Exp $
+$Id: port.scm,v 1.32 2004/02/24 20:35:44 cph Exp $
 
 Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
@@ -678,31 +678,61 @@ USA.
 (define (error:not-i/o-port port caller)
   (error:wrong-type-argument port "I/O port" caller))
 
+(define-integrable (guarantee-8-bit-char char)
+  (if (fix:>= (char->integer char) #x100)
+      (error:not-8-bit-char char)))
+
 (define (port/coding port)
   (let ((operation (port/operation port 'CODING)))
     (if operation
 	(operation port)
-	#f)))
+	'TEXT)))
 
 (define (port/set-coding port name)
   (let ((operation (port/operation port 'SET-CODING)))
     (if operation
 	(operation port name))))
 
+(define (port/known-coding? port name)
+  (let ((operation (port/operation port 'KNOWN-CODING?)))
+    (if operation
+	(operation port name)
+	(memq name default-codings))))
+
+(define (port/known-codings port)
+  (let ((operation (port/operation port 'KNOWN-CODINGS)))
+    (if operation
+	(operation port)
+	(list-copy default-codings))))
+
+(define default-codings
+  '(TEXT BINARY))
+
 (define (port/line-ending port)
   (let ((operation (port/operation port 'LINE-ENDING)))
     (if operation
 	(operation port)
-	#f)))
+	'TEXT)))
 
 (define (port/set-line-ending port name)
   (let ((operation (port/operation port 'SET-LINE-ENDING)))
     (if operation
 	(operation port name))))
 
-(define-integrable (guarantee-8-bit-char char)
-  (if (fix:>= (char->integer char) #x100)
-      (error:not-8-bit-char char)))
+(define (port/known-line-ending? port name)
+  (let ((operation (port/operation port 'KNOWN-LINE-ENDING?)))
+    (if operation
+	(operation port name)
+	(memq name default-line-endings))))
+
+(define (port/known-line-endings port)
+  (let ((operation (port/operation port 'KNOWN-LINE-ENDINGS)))
+    (if operation
+	(operation port)
+	(list-copy default-line-endings))))
+
+(define default-line-endings
+  '(TEXT BINARY NEWLINE))
 
 ;;;; Special Operations
 

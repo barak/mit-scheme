@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.481 2004/02/24 05:51:12 cph Exp $
+$Id: runtime.pkg,v 14.482 2004/02/24 20:35:48 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -1824,6 +1824,10 @@ USA.
 	  port/input-blocking-mode
 	  port/input-channel
 	  port/input-terminal-mode
+	  port/known-coding?
+	  port/known-codings
+	  port/known-line-ending?
+	  port/known-line-endings
 	  port/line-ending
 	  port/operation
 	  port/operation-names

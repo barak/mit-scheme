@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.26 2004/02/24 04:23:12 cph Exp $
+$Id: genio.scm,v 1.27 2004/02/24 20:35:32 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004 Massachusetts Institute of Technology
@@ -95,6 +95,10 @@ USA.
 	(other-operations
 	 `((CLOSE ,generic-io/close)
 	   (CODING ,generic-io/coding)
+	   (KNOWN-CODING? ,generic-io/known-coding?)
+	   (KNOWN-CODINGS ,generic-io/known-codings)
+	   (KNOWN-LINE-ENDING? ,generic-io/known-line-ending?)
+	   (KNOWN-LINE-ENDINGS ,generic-io/known-line-endings)
 	   (LINE-ENDING ,generic-io/line-ending)
 	   (SET-CODING ,generic-io/set-coding)
 	   (SET-LINE-ENDING ,generic-io/set-line-ending)
@@ -280,7 +284,7 @@ USA.
 	 (write (generic-io/output-channel port) output-port))
 	(else
 	 (write-string " for channel" output-port))))
-
+
 (define (generic-io/coding port)
   (gstate-coding (port/state port)))
 
@@ -293,6 +297,17 @@ USA.
       (if ob
 	  (set-output-buffer-coding! ob name)))
     (set-gstate-coding! state name)))
+
+(define (generic-io/known-coding? port coding)
+  (and (if (input-port? port) (known-input-coding? coding) #t)
+       (if (output-port? port) (known-output-coding? coding) #t)))
+
+(define (generic-io/known-codings port)
+  (cond ((i/o-port? port)
+	 (eq-intersection (known-input-codings)
+			  (known-output-codings)))
+	((input-port? port) (known-input-codings))
+	(else (known-output-codings))))
 
 (define (generic-io/line-ending port)
   (gstate-line-ending (port/state port)))
@@ -311,14 +326,33 @@ USA.
 	   (line-ending (output-buffer-channel ob) name #t))))
     (set-gstate-line-ending! state name)))
 
+(define (generic-io/known-line-ending? port line-ending)
+  (and (if (input-port? port) (known-input-line-ending? line-ending) #t)
+       (if (output-port? port) (known-output-line-ending? line-ending) #t)))
+
+(define (generic-io/known-line-endings port)
+  (cond ((i/o-port? port)
+	 (eq-intersection (known-input-line-endings)
+			  (known-output-line-endings)))
+	((input-port? port) (known-input-line-endings))
+	(else (known-output-line-endings))))
+
 (define (line-ending channel name for-output?)
   (guarantee-symbol name #f)
   (if (or (eq? name 'TEXT)
-	  (and for-output? (input-line-ending? name)))
+	  (and for-output?
+	       (known-input-line-ending? name)
+	       (not (known-output-line-ending? name))))
       (if (eq? 'TCP-STREAM-SOCKET (channel-type channel))
 	  'CRLF
 	  (default-line-ending))
       name))
+
+(define (eq-intersection a b)
+  (let loop ((a a))
+    (cond ((not (pair? a)) '())
+	  ((memq (car a) b) (cons (car a) (loop (cdr a))))
+	  (else (loop (cdr a))))))
 
 ;;;; Name maps
 
@@ -330,10 +364,13 @@ USA.
 	 (let ((sing (cadr form)))
 	   (let ((plur (symbol-append sing 'S))
 		 (proc (symbol-append 'DEFINE- sing)))
-	     (let ((rev (symbol-append plur '-REVERSE)))
+	     (let ((rev (symbol-append plur '-REVERSE))
+		   (aliases (symbol-append sing '-ALIASES))
+		   (aproc (symbol-append proc '-ALIAS)))
 	       `(BEGIN
 		  (DEFINE ,plur '())
 		  (DEFINE ,rev)
+		  (DEFINE ,aliases '())
 		  (DEFINE (,proc NAME ,sing)
 		    (SET! ,plur (CONS (CONS NAME ,sing) ,plur))
 		    NAME)
@@ -342,20 +379,56 @@ USA.
 		      (IF OLD
 			  (HASH-TABLE/REMOVE! ,rev OLD)))
 		    (HASH-TABLE/PUT! ,plur NAME ,sing))
+		  (DEFINE (,aproc NAME ALIAS)
+		    (SET! ,aliases (CONS (CONS NAME ALIAS) ,aliases))
+		    NAME)
+		  (DEFINE (,(symbol-append aproc '/POST-BOOT) NAME ALIAS)
+		    (HASH-TABLE/PUT! ,aliases NAME ALIAS))
 		  (DEFINE (,(symbol-append 'NAME-> sing) NAME)
 		    (LET LOOP ((NAME NAME))
-		      (LET ((,sing (HASH-TABLE/GET ,plur NAME #F)))
-			(IF (NOT ,sing)
-			    (ERROR:BAD-RANGE-ARGUMENT NAME #F))
-			(if (SYMBOL? ,sing)
-			    (LOOP ,sing)
-			    ,sing))))))))
+		      (LET ((ALIAS (HASH-TABLE/GET ,aliases NAME #F)))
+			(COND ((SYMBOL? ALIAS) (LOOP ALIAS))
+			      ((PROCEDURE? ALIAS) (LOOP (ALIAS)))
+			      ((HASH-TABLE/GET ,plur NAME #F))
+			      (else (ERROR:BAD-RANGE-ARGUMENT NAME #F))))))))))
 	 (ill-formed-syntax form)))))
 
 (define-name-map decoder)
 (define-name-map encoder)
 (define-name-map normalizer)
 (define-name-map denormalizer)
+
+(define (known-input-coding? name)
+  (or (hash-table/get decoder-aliases name #f)
+      (hash-table/get decoders name #f)))
+
+(define (known-input-codings)
+  (append (hash-table/key-list decoder-aliases)
+	  (hash-table/key-list decoders)))
+
+(define (known-output-coding? name)
+  (or (hash-table/get encoder-aliases name #f)
+      (hash-table/get encoders name #f)))
+
+(define (known-output-codings)
+  (append (hash-table/key-list encoder-aliases)
+	  (hash-table/key-list encoders)))
+
+(define (known-input-line-ending? name)
+  (or (hash-table/get normalizer-aliases name #f)
+      (hash-table/get normalizers name #f)))
+
+(define (known-input-line-endings)
+  (append (hash-table/key-list normalizer-aliases)
+	  (hash-table/key-list normalizers)))
+
+(define (known-output-line-ending? name)
+  (or (hash-table/get denormalizer-aliases name #f)
+      (hash-table/get denormalizers name #f)))
+
+(define (known-output-line-endings)
+  (append (hash-table/key-list denormalizer-aliases)
+	  (hash-table/key-list denormalizers)))
 
 (define (initialize-name-maps!)
   (let ((convert-reverse
@@ -380,12 +453,16 @@ USA.
 	     (if (syntax-match? '(SYMBOL) (cdr form))
 		 (let ((sing (cadr form)))
 		   (let ((plur (symbol-append sing 'S))
+			 (aliases (symbol-append sing '-ALIASES))
 			 (proc (symbol-append 'DEFINE- sing)))
-		     `(BEGIN
-			(SET! ,(symbol-append plur '-REVERSE)
-			      (CONVERT-REVERSE ,plur))
-			(SET! ,plur (CONVERT-FORWARD ,plur))
-			(SET! ,proc ,(symbol-append proc '/POST-BOOT)))))
+		     (let ((aproc (symbol-append proc '-ALIAS)))
+		       `(BEGIN
+			  (SET! ,(symbol-append plur '-REVERSE)
+				(CONVERT-REVERSE ,plur))
+			  (SET! ,plur (CONVERT-FORWARD ,plur))
+			  (SET! ,proc ,(symbol-append proc '/POST-BOOT))
+			  (SET! ,aliases (CONVERT-FORWARD ,aliases))
+			  (SET! ,aproc ,(symbol-append aproc '/POST-BOOT))))))
 		 (ill-formed-syntax form))))))
       (initialize-name-map decoder)
       (initialize-name-map encoder)
@@ -769,10 +846,12 @@ USA.
     (vector-8b-set! (output-buffer-bytes ob) (output-buffer-start ob) cp)
     1))
 
-(define-decoder 'BINARY 'ISO-8859-1)
-(define-encoder 'BINARY 'ISO-8859-1)
-(define-decoder 'TEXT 'ISO-8859-1)
-(define-encoder 'TEXT 'ISO-8859-1)
+(define-decoder-alias 'BINARY 'ISO-8859-1)
+(define-encoder-alias 'BINARY 'ISO-8859-1)
+(define-decoder-alias 'TEXT 'ISO-8859-1)
+(define-encoder-alias 'TEXT 'ISO-8859-1)
+(define-decoder-alias 'US-ASCII 'ISO-8859-1)
+(define-encoder-alias 'ASCII 'ISO-8859-1)
 
 (define-syntax define-iso-8859-map
   (sc-macro-transformer
@@ -1197,6 +1276,12 @@ USA.
   (or (fix:= (fix:and #xF800 n) #xD800)
       (fix:= (fix:and #xFFFE n) #xFFFE)))
 
+(define-decoder-alias 'UTF-16
+  (lambda ()
+    (if (host-big-endian?)
+	'UTF-16BE
+	'UTF-16LE)))
+
 (define-decoder 'UTF-16BE
   (lambda (ib)
     (decode-utf-16 ib be-bytes->digit16)))
@@ -1267,6 +1352,12 @@ USA.
 		 (extract n1 #x3FF 0))
 	 #x10000))
 
+(define-decoder-alias 'UTF-32
+  (lambda ()
+    (if (host-big-endian?)
+	'UTF-32BE
+	'UTF-32LE)))
+
 (define-decoder 'UTF-32BE
   (lambda (ib)
     (let ((bv (input-buffer-bytes ib))
@@ -1331,10 +1422,10 @@ USA.
   (lambda (ob char)
     (encode-char ob char)))
 
-(define-normalizer 'LF 'NEWLINE)
-(define-denormalizer 'LF 'NEWLINE)
-(define-normalizer 'BINARY 'NEWLINE)
-(define-denormalizer 'BINARY 'NEWLINE)
+(define-normalizer-alias 'LF 'NEWLINE)
+(define-denormalizer-alias 'LF 'NEWLINE)
+(define-normalizer-alias 'BINARY 'NEWLINE)
+(define-denormalizer-alias 'BINARY 'NEWLINE)
 
 (define-normalizer 'CR
   (lambda (ib)
@@ -1373,10 +1464,6 @@ USA.
 	  (encode-char ob #\U+000A))
 	(encode-char ob char))))
 
-(define-integrable (input-line-ending? name)
-  (or (eq? name 'XML-1.0)
-      (eq? name 'XML-1.1)))
-
 (define-normalizer 'XML-1.0
   (lambda (ib)
     (let* ((bs0 (input-buffer-start ib))
