@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: wttree.scm,v 1.5 1994/11/14 18:51:26 adams Exp $
+$Id: wttree.scm,v 1.6 1994/11/14 19:06:20 adams Exp $
 
 Copyright (c) 1993-94 Massachusetts Institute of Technology
 
@@ -30,13 +30,13 @@ provide any services, by way of maintenance, update, or otherwise.
 there shall be no use of the name of the Massachusetts Institute of
 Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
-MIT in each case. |#
+MIT in each case.
 
-#|
+
 Copyright (c) 1993-1994 Stephen Adams
 
-Any copy of this software must include this copyright notice in full.
-This is a derived work based on the following reference:
+This program was written by Stephen Adams, based on the following
+reference:
 
   Stephen Adams, Implemeting Sets Efficiently in a Functional
      Language, CSTR 92-10, Department of Electronics and Computer
@@ -103,10 +103,6 @@ This is a derived work based on the following reference:
   (if (empty? node) 0  (node/w node)))
 
 (define-integrable (node/singleton k v) (make-node k v empty empty 1))
-
-(define-integrable (with-node node receiver)
-  (receiver (node/k node) (node/v node)
-	    (node/l node) (node/r node) (node/w node)))
 
 (define-integrable (with-n-node node receiver)
   (receiver (node/k node) (node/v node) (node/l node) (node/r node)))
@@ -230,7 +226,8 @@ This is a derived work based on the following reference:
 	(loop node index))))
 
 (define (error:empty owner)
-  ((access error #F) "Operation requires non-empty tree:" owner))
+  ((access error system-global-environment)
+   "Operation requires non-empty tree:" owner))
 
 
 (define (make-wt-tree-type key<?)
@@ -239,14 +236,11 @@ This is a derived work based on the following reference:
 
   (define-integrable (key>? x y)  (key<? y x))
 
-  ;  (define (node/find k node)
-  ;    (cond ((empty? node)  node)
-  ;	  ((key<? k (node/k node))   (node/find k (node/l node)))
-  ;	  ((key>? k (node/k node))   (node/find k (node/r node)))
-  ;	  (else   node)))
-
   (define (node/find k node)
-    ;; returns either the node or #f
+    ;; returns either the node or #f.
+    ;; Loop takes D comparisons (D is the depth of the tree) rather than the
+    ;; traditional compare-low, compare-high which takes on average
+    ;; 1.5(D-1) comparisons
     (define (loop this best)
       (cond ((empty? this)  best)
 	    ((key<? k (node/k this))   (loop (node/l this) best))
