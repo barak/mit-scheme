@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.58 2001/03/19 22:14:47 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.59 2001/03/19 22:26:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -125,7 +125,7 @@
     (lambda (port)
       (set-rmail-folder-header-fields! folder (read-rmail-prolog port))
       (let loop ((line #f) (index 0) (messages '()))
-	(if (= 0 (remainder index 10))
+	(if (= 0 (remainder index 100))
 	    (imail-ui:progress-meter index #f))
 	(call-with-values (lambda () (read-rmail-message folder port line))
 	  (lambda (message line)
