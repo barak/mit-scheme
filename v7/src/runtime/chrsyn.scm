@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: chrsyn.scm,v 1.3 2000/11/20 13:25:41 cph Exp $
+;;; $Id: chrsyn.scm,v 1.4 2001/09/24 03:00:56 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Character-Syntax Tables
 ;;; package: (runtime char-syntax)
@@ -61,8 +62,8 @@
 
 (define (initialize-package!)
   (let ((table
-	 (%make-char-syntax-table
-	  (make-vector 256 (string->char-syntax "")))))
+	  (%make-char-syntax-table
+	   (make-vector 256 (string->char-syntax "")))))
     (set-char-syntax! table char-set:alphanumeric "w")
     (set-char-syntax! table #\$ "w")
     (set-char-syntax! table #\% "w")
@@ -76,6 +77,27 @@
     (set-char-syntax! table #\\ "\\")
     (set-char-syntax! table (string->char-set "_-+*/&|<>=") "_")
     (set-char-syntax! table (string->char-set ".,;:?!#@~^'`") ".")
+
+    ;; Use ISO-8859-1 for characters in upper half.
+    (let ((iso-setter
+	   (lambda (string)
+	     (lambda (entry)
+	       (if (pair? entry)
+		   (do ((i (car entry) (+ i 1)))
+		       ((> i (cadr entry)))
+		     (set-char-syntax! table (integer->char i) string))
+		   (set-char-syntax! table (integer->char entry) string))))))
+      (for-each (iso-setter "w")
+		'((162 165) 168 170 175 (178 180) 182 (184 186)
+			    (192 214) (216 246) (248 254) 255))
+      (for-each (iso-setter "_")
+		'(166 169 (172 174) (176 177) 181 183 (188 190) 215 247))
+      (for-each (iso-setter ".")
+		'(161 167 191)))
+    (set-char-syntax! table 160 " ")
+    (set-char-syntax! table 171 (string #\( (integer->char 187)))
+    (set-char-syntax! table 187 (string #\) (integer->char 171)))
+
     (set! standard-char-syntax-table table)
     unspecific))
 
