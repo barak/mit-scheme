@@ -1,0 +1,240 @@
+#!/bin/csh -f
+
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/rebuild,v 1.1 1991/08/16 21:34:31 arthur Exp $
+
+# Arguments: runtimeversion compilerversion edwinversion
+# The versions can be omitted, and if they are, the current version
+# as determined by the appropriate RCS file (e.g. runtime/version.scm)
+# is built.
+# If a version is the string "none", the corresponding band is not built,
+# nor is the corresponding subsystem recompiled.
+# If either the compiler or edwin are re-built, the combined (c+e) band
+# is re-built as well.
+# This script silently ignores additional arguments.
+
+# Stage 1: Choose architecture and directories
+
+hp9000s300
+if ("$status" == 0) then
+  set root="/scheme/300"
+endif
+hp9000s800
+if ("$status" == 0) then
+  set root="/scheme/800"
+endif
+
+
+# Stage 2: Write re-compilation script
+
+set script="$root/tmp/build.$$"
+rm -f "$script"
+
+echo \(begin\  > $script
+
+if ("$1" != "none") then
+  if (("$1" == "") || ("$1" == "next")) then
+    set runver=`rcsversion /scheme/src/runtime/version.scm`
+  else
+    set runver="$1"
+  endif
+  echo "### Making runtime system version $runver..."
+  set runtime="$root/lib/BACKUP/runtime-$runver.Z"
+  echo \(load\ \"runtim.sf\"\)\ \(load\ \"runtim.cbf\"\) >> $script
+else
+  set runtime=""
+endif
+
+if ("$2" != "none") then
+  if (("$2" == "") || ("$2" == "next")) then
+    set compver=`rcsversion /scheme/src/compiler/machines/bobcat/make.scm`
+  else
+    set compver="$2"
+  endif
+  echo "### Making compiler version $compver..."
+  set complr="$root/lib/BACKUP/complr-$compver.Z"
+  echo \(cd\ \"../sf\"\)\ \(load\ \"sf.sf\"\)\ \(load\ \"sf.cbf\"\) >> $script
+  echo \(cd\ \"../cref\"\)\ \(load\ \"cref.sf\"\)\ \(load\ \"cref.cbf\"\) >> $script
+  echo \(cd\ \"../compiler\"\)\ \(load\ \"comp.sf\"\)\ \(load\ \"comp.cbf\"\) >> $script
+else
+  set complr=""
+endif
+
+if ("$3" != "none") then
+  if (("$3" == "") || ("$3" == "next")) then
+    set edver=`rcsversion /scheme/src/edwin/make.scm`
+  else
+    set edver="$3"
+  endif
+  echo "### Making edwin version $edver..."
+  set edwin="$root/lib/BACKUP/edwin-$edver.Z"
+  echo \(cd\ \"../edwin\"\)\ \(load\ \"edwin.sf\"\)\ \(load\ \"edwin.cbf\"\) >> $script
+else
+  set edwin=""
+endif
+
+echo \(write-line\ \'\(finished\ recompilation\ \)\) >>$script
+echo \(\%exit\)\) >>$script
+
+if (("$runtime" == "") && ("$complr" == "") && ("$edwin" == "")) then
+  echo "### No systems to rebuild."
+  rm -f $script
+  exit 0
+endif
+
+# Stage 3: Re-compile sources
+
+cd $root/runtime
+scheme -compiler <$script
+
+set result="$status"
+rm -f $script
+
+if ("$result" != 0) then
+  echo "### Recompilation failed."
+  exit "$result"
+endif
+
+
+# Stage 4: Re-build bands in staging area
+
+if ("$runtime" != "") then
+  cd $root/runtime
+  rm -f ../tmp/runtime.com
+  scheme -large -fasl make.com <<*END*
+(begin
+  (disk-save "../tmp/runtime.com")
+  (write-line '(saved runtime band))
+  (%exit))
+*END*
+  set result="$status"
+  if ("$result" != 0) then
+    echo "### Re-building the runtime system failed."
+    rm -f ../tmp/runtime.com
+    exit "$result"
+  endif
+  set runband="$root/tmp/runtime.com"
+  set band="-band $runband"
+else
+  set runband=""
+  set band=""
+endif
+
+
+if ("$complr" != "") then
+  cd $root/sf
+  rm -f ../tmp/complr.com
+  scheme -large $band <<*END*
+(begin
+  (load "make.com")
+  (cd "../compiler")
+  (load "make.com")
+  (disk-save "../tmp/complr.com")
+  (write-line '(saved compiler band))
+  (%exit))
+*END*
+  set result="$status"
+  if ("$result" != 0) then
+    echo "### Re-building the compiler failed."
+    rm -f ../tmp/runtime.com ../tmp/complr.com
+    exit "$result"
+  endif
+  set compband="$root/tmp/complr.com"
+  set cband="-band $compband"
+else
+  set compband=""
+  set cband=""
+endif
+
+
+if ("$edwin" != "") then
+  cd $root/edwin
+  rm -f ../tmp/edwin.com
+  scheme -large $band <<*END*
+(begin
+  (load "make.com")
+  (disk-save "../tmp/edwin.com")
+  (write-line '(saved edwin band))
+  (%exit))
+*END*
+  set result="$status"
+  if ("$result" != 0) then
+    echo "### Re-building edwin failed."
+    rm -f ../tmp/runtime.com ../tmp/complr.com ../tmp/edwin.com
+    exit "$result"
+  endif
+  set edband="$root/tmp/edwin.com"
+else
+  set edband=""
+endif
+
+
+if (("$edwin" != "") || ("$complr" != 0)) then
+  cd $root/edwin
+  rm -f ../tmp/c+e.com
+  scheme -constant 2000 -heap 2000 -compiler $cband <<*END*
+(begin
+  (load "make.com")
+  (disk-save "../tmp/c+e.com")
+  (write-line '(saved c+e band))
+  (%exit))
+*END*
+  set result="$status"
+  if ("$result" != 0) then
+    echo "### Re-building c+e failed."
+    set fullband=""
+  else
+    set fullband="$root/tmp/c+e.com"
+  endif
+else
+  set fullband=""
+endif
+
+
+# Stage 5: Install bands
+
+if ("$runtime" != "") then
+  set backup=`nextver $runtime`
+  if ("$backup" != "$runtime") then
+    echo "###" mv -f "$runtime" "$backup"
+    mv -f "$runtime" "$backup"
+  endif
+  echo "### compress <$runband >$runtime"
+  compress <$runband >$runtime
+  chmod a-w $runtime
+  echo "###" mv -f "$runband" /usr/local/lib/mit-scheme/runtime.com
+  mv -f "$runband" /usr/local/lib/mit-scheme/runtime.com
+endif
+
+if ("$complr" != "") then
+  set backup=`nextver $complr`
+  if ("$backup" != "$complr") then
+    mv -f "$complr" "$backup"
+    echo "###" mv -f "$complr" "$backup"
+  endif
+  echo "### compress <$compband >$complr"
+  compress <$compband >$complr
+  chmod a-w $complr
+  echo "###" mv -f "$compband" /usr/local/lib/mit-scheme/compiler.com
+  mv -f "$compband" /usr/local/lib/mit-scheme/compiler.com
+endif
+
+if ("$edwin" != "") then
+  set backup=`nextver $edwin`
+  if ("$backup" != "$edwin") then
+    mv -f "$edwin" "$backup"
+    echo "###" mv -f "$edwin" "$backup"
+  endif
+  echo "### compress <$edband >$edwin"
+  compress <$edband >$edwin
+  chmod a-w $edwin
+  echo "###" mv -f "$edband" /usr/local/lib/mit-scheme/edwin.com
+  mv -f "$edband" /usr/local/lib/mit-scheme/edwin.com
+endif
+
+if ("$fullband" != "") then
+  echo "###" mv -f "$fullband" /usr/local/lib/mit-scheme/c+e.com
+  mv -f "$fullband" /usr/local/lib/mit-scheme/c+e.com
+endif
+
+echo "### Done."
+exit 0
