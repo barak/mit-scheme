@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.52 2003/12/29 07:38:23 uid67408 Exp $
+$Id: xml-parser.scm,v 1.53 2004/01/11 05:25:57 cph Exp $
 
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -345,36 +345,40 @@ USA.
 ;;;; Other markup
 
 (define (bracketed-region-parser description start end)
-  (let ((parser (terminated-region-parser description alphabet:xml-char end)))
+  (let ((parser
+	 (terminated-region-parser description alphabet:xml-char #t end)))
     (*parser (sbracket description start end parser))))
 
-(define (terminated-region-parser description alphabet . ends)
-  (let ((matcher (apply terminated-region-matcher description alphabet ends)))
+(define (terminated-region-parser description alphabet must-match? end)
+  (let ((matcher
+	 (terminated-region-matcher description alphabet must-match? end)))
     (*parser (map normalize-line-endings (match matcher)))))
 
-(define (terminated-region-matcher description alphabet . ends)
+(define (terminated-region-matcher description alphabet must-match? . ends)
   description
   (lambda (buffer)
     (let loop ()
-      (if (there-exists? ends
-	    (lambda (end)
-	      (match-parser-buffer-string-no-advance buffer end)))
-	  #t
-	  (begin
-	    (if (not (match-utf8-char-in-alphabet buffer alphabet))
-		(let ((p (get-parser-buffer-pointer buffer))
-		      (c (peek-parser-buffer-char buffer)))
-		  ;; Not quite right -- we should be getting the next
-		  ;; UTF-8 character, but this gets the next byte.
-		  (if c
-		      (perror p "Illegal character" c)
-		      (perror p "Unexpected EOF"))))
-	    (loop))))))
+      (cond ((there-exists? ends
+	       (lambda (end)
+		 (match-parser-buffer-string-no-advance buffer end)))
+	     #t)
+	    ((match-utf8-char-in-alphabet buffer alphabet)
+	     (loop))
+	    (must-match?
+	     (let ((p (get-parser-buffer-pointer buffer))
+		   (c (peek-parser-buffer-char buffer)))
+	       ;; Not quite right -- we should be getting the next
+	       ;; UTF-8 character, but this gets the next byte.
+	       (if c
+		   (perror p "Illegal character" c)
+		   (perror p "Unexpected EOF"))))
+	    (else #t)))))
 
 (define parse-char-data			;[14]
   (let ((parse-body
 	 (terminated-region-parser "character data"
 				   alphabet:char-data
+				   #f
 				   "]]>")))
     (*parser
      (transform (lambda (v)
@@ -385,7 +389,7 @@ USA.
 
 (define parse-comment			;[15]
   (let ((parse-body
-	 (terminated-region-parser "comment" alphabet:xml-char "--")))
+	 (terminated-region-parser "comment" alphabet:xml-char #t "--")))
     (*parser
      (encapsulate
 	 (lambda (v)
@@ -516,7 +520,7 @@ USA.
 	(start "<?")
 	(end "?>"))
     (let ((parse-body
-	   (terminated-region-parser description alphabet:xml-char end)))
+	   (terminated-region-parser description alphabet:xml-char #t end)))
       (*parser
        (with-pointer p
 	 (transform
@@ -1288,7 +1292,7 @@ USA.
 		match-!ignore)))))
 
 (define match-!ignore			;[65]
-  (terminated-region-matcher "ignore section" alphabet:xml-char
+  (terminated-region-matcher "ignore section" alphabet:xml-char #t
 			     conditional-start conditional-end))
 
 (define parse-parameterized-conditional
