@@ -1,17 +1,18 @@
 \input texinfo @c -*-texinfo-*-
-@comment $Id: scheme.texinfo,v 1.131 2004/10/17 02:11:43 cph Exp $
-@comment %**start of header (This is for running Texinfo on a region.)
+@comment $Id: scheme.texinfo,v 1.132 2004/10/17 03:06:14 cph Exp $
+@comment %**start of header
 @setfilename mit-scheme-ref
 @set EDITION 1.102
 @set VERSION 7.7.91
 @set UPDATED 2004-10-16
 @settitle MIT/GNU Scheme @value{VERSION}
+@comment %**end of header
+@setchapternewpage odd
+@finalout
+
 @syncodeindex vr fn
 @syncodeindex pg fn
 @syncodeindex tp fn
-@comment %**end of header (This is for running Texinfo on a region.)
-@setchapternewpage odd
-@finalout
 
 @copying
 This file documents MIT/GNU Scheme @value{VERSION}.
@@ -60,7 +61,9 @@ Software Foundation raise funds for GNU development.''
 @insertcopying
 @end titlepage
 
-@summarycontents
+@ifnothtml
+@shortcontents
+@end ifnothtml
 @contents
 
 @ifnottex
@@ -94,6 +97,7 @@ Software Foundation raise funds for GNU development.''
 * Binding Index::               
 * Concept Index::               
 
+@ifnothtml
 @detailmenu
  --- The Detailed Node Listing ---
 
@@ -448,6 +452,7 @@ Device Independent Bitmap Utilities
 * Other parts of the DIB Utilities implementation::  
 
 @end detailmenu
+@end ifnothtml
 @end menu
 
 @include acknowledgements.texi
