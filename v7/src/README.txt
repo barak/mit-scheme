@@ -1,6 +1,6 @@
 Structure and construction of the MIT/GNU Scheme source tree
 
-$Id: README.txt,v 1.3 2003/02/14 18:48:11 cph Exp $
+$Id: README.txt,v 1.4 2004/12/07 04:54:47 cph Exp $
 
 Directories
 ===========
@@ -23,11 +23,15 @@ The core subsystem consists of these directories:
   common operations; the alternate binaries have type-checking
   enabled.
 
-* "sos" contains the code for the SOS object-oriented programming
+* "sos" contains the SOS object-oriented programming extension.
+
+* "star-parser" contains the pattern-matching parser language
   extension.
 
 * "win32" contains extra parts of the run-time library that are
   specific to the Microsoft Windows platform.
+
+* "xml" contains support for XML and XHTML I/O.
 
 The compiler subsystem consists of these three directories:
 
@@ -63,6 +67,15 @@ These are miscellaneous extras:
 * "rcs" is a parser for RCS files.  It also contains a program for
   generating merged log files, in RCS or ChangeLog format, for
   directory trees under RCS or CVS control.
+
+* "ssp" is an implementation of "Scheme Server Pages" that supports
+  server-side web programming.  It works in conjunction with Apache
+  and mod-lisp.
+
+* "xdoc" is a web-programming document language, used at MIT for an
+  experimental electronics circuit course during spring term 2004.
+  This language is no longer in active use and will not be supported.
+  But it is a good example of "ssp" usage.
 
 These directories are no longer actively in use and the code they
 contain may not work:
