@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.26 1990/05/03 15:06:40 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.27 1991/05/06 22:38:06 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -58,7 +58,8 @@ MIT in each case. |#
   
 
 (define (construct-graph scode)
-  (fluid-let ((*virtual-continuations* '()))
+  (fluid-let ((*virtual-continuations* '())
+	      (*global-variables* '()))
     (let ((block (make-block false 'EXPRESSION)))
       (let ((continuation (make-continuation-variable block)))
 	(let ((expression
@@ -309,23 +310,24 @@ MIT in each case. |#
       (make-subproblem/canonical (make-return block continuation rvalue)
 				 continuation)))
 
-(define (generate/variable block continuation context expression)
-  context				; ignored
-  (continue/rvalue block
-		   continuation
-		   (make-reference block
-				   (find-name block
-					      (scode/variable-name expression))
-				   false)))
+(define-integrable (make-variable-generator extract-name safe?)
+  (lambda (block continuation context expression)
+    context				; ignored
+    (continue/rvalue block
+		     continuation
+		     (make-reference block
+				     (find-name block
+						(extract-name expression))
+				     safe?))))
 
-(define (generate/safe-variable block continuation context expression)
-  context				; ignored
-  (continue/rvalue
-   block
-   continuation
-   (make-reference block
-		   (find-name block (scode/safe-variable-name expression))
-		   true)))
+(define generate/variable
+  (make-variable-generator scode/variable-name false))
+
+(define generate/safe-variable
+  (make-variable-generator scode/safe-variable-name true))
+
+(define generate/global-variable
+  (make-variable-generator scode/global-variable-name false))
 
 (define-integrable (scode/make-safe-variable name)
   (cons safe-variable-tag name))
@@ -335,6 +337,17 @@ MIT in each case. |#
 
 (define safe-variable-tag
   "safe-variable")
+
+;; This is a kludge.
+
+(define *global-variables*)
+
+(define (scode/global-variable-name absolute-reference)
+  (let ((name (scode/absolute-reference-name absolute-reference)))
+    (or (assq name *global-variables*)
+	(let ((pair (cons name '*GLOBAL*)))
+	  (set! *global-variables* (cons pair *global-variables*))
+	  pair))))
 
 (define (generate/unassigned? block continuation context expression)
   (if (continuation/predicate? continuation)
@@ -580,14 +593,18 @@ MIT in each case. |#
 						       expression
 						       0)
 		     (lambda (continuation*)
-		       (if (scode/lambda? operator)
-			   (generate/lambda*
-			    block continuation*
-			    context (context/unconditional context)
-			    operator (continuation/known-type continuation)
-			    false)
-			   (generate/expression block continuation*
-						context operator))))
+		       (cond ((scode/lambda? operator)
+			      (generate/lambda*
+			       block continuation*
+			       context (context/unconditional context)
+			       operator (continuation/known-type continuation)
+			       false))
+			     ((scode/absolute-reference? operator)
+			      (generate/global-variable block continuation*
+							context operator))
+			     (else
+			      (generate/expression block continuation*
+						   context operator)))))
 		    (let loop ((operands operands) (index 1))
 		      (if (null? operands)
 			  '()
