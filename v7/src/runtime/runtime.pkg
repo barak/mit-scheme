@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.3 1988/06/16 06:37:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.4 1988/06/21 05:50:40 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -286,6 +286,7 @@ MIT in each case. |#
 	  continuation/first-subproblem
 	  microcode-return/code->type
 	  stack-frame->continuation
+	  stack-frame-type/address
 	  stack-frame-type/code
 	  stack-frame-type/properties
 	  stack-frame-type/subproblem?
@@ -420,19 +421,22 @@ MIT in each case. |#
   (export ()
 	  bind-condition-handler
 	  cmdl-message/error
-	  condition-type/dependencies
+	  condition-type/generalizations
 	  condition-type/error?
-	  condition-type/message
+	  condition-type/internal?
 	  condition-type/properties
+	  condition-type/reporter
 	  condition-type:error
 	  condition-type?
 	  condition/continuation
-	  condition/dependencies
+	  condition/generalizations
 	  condition/error?
 	  condition/irritants
-	  condition/message
 	  condition/properties
+	  condition/report-string
+	  condition/reporter
 	  condition/type
+	  condition/write-report
 	  condition?
 	  error-condition
 	  error-continuation
