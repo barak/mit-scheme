@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/const.h,v 9.30 1989/03/27 23:14:42 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/const.h,v 9.31 1989/05/24 05:32:23 jinx Exp $
  *
  * Named constants used throughout the interpreter
  *
@@ -166,8 +166,8 @@ MIT in each case. */
 #define REGBLOCK_EXPR			5
 #define REGBLOCK_RETURN			6
 #define REGBLOCK_LEXPR_ACTUALS		7
-#define REGBLOCK_MINIMUM_LENGTH		8
-#define REGBLOCK_PRIMITIVE		9
+#define REGBLOCK_PRIMITIVE		8
+#define REGBLOCK_MINIMUM_LENGTH		9
 
 /* Codes specifying how to start scheme at boot time. */
 
