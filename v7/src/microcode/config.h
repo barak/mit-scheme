@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.77 1992/09/26 03:27:21 cph Exp $
+$Id: config.h,v 9.78 1993/02/06 05:33:20 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -256,29 +256,6 @@ typedef unsigned long SCHEME_OBJECT;
 #endif /* not vms */
 #endif /* vax */
 
-#if defined(hpux) || defined(__hpux)
-
-#define HAS_FLOOR
-#define HAS_FREXP
-#define HAS_MODF
-
-#if defined(hp9000s300) || defined(__hp9000s300)
-#if defined(hp9000s400) || defined(__hp9000s400)
-#define MACHINE_TYPE		"hp9000s400"
-#else
-#define MACHINE_TYPE		"hp9000s300"
-#endif
-#ifdef MC68010
-#define FASL_INTERNAL_FORMAT	FASL_68000
-#else
-#define FASL_INTERNAL_FORMAT	FASL_68020
-#define HAS_COMPILER_SUPPORT
-#endif
-#define b32
-#define HEAP_IN_LOW_MEMORY
-#define TYPE_CODE_LENGTH	6
-#endif /* hp9000s300 */
-
 #if defined(hp9000s800) || defined(__hp9000s800)
 #if defined(hp9000s700) || defined(__hp9000s700)
 #define MACHINE_TYPE		"hp9000s700"
@@ -290,6 +267,10 @@ typedef unsigned long SCHEME_OBJECT;
 #define TYPE_CODE_LENGTH	6
 #define FLOATING_ALIGNMENT	0x7
 #define b32
+
+#define HAS_FLOOR
+#define HAS_FREXP
+#define HAS_MODF
 
 /* Heap resides in data space, pointed at by space register 5.
    Short pointers must have their high two bits set to 01 so that
@@ -313,6 +294,28 @@ typedef unsigned long SCHEME_OBJECT;
 
 #endif /* hp9000s800 */
 
+#if defined(hp9000s300) || defined(__hp9000s300)
+#if defined(hp9000s400) || defined(__hp9000s400)
+#define MACHINE_TYPE		"hp9000s400"
+#else
+#define MACHINE_TYPE		"hp9000s300"
+#endif
+#ifdef MC68010
+#define FASL_INTERNAL_FORMAT	FASL_68000
+#else
+#define FASL_INTERNAL_FORMAT	FASL_68020
+#define HAS_COMPILER_SUPPORT
+#endif
+#define b32
+#define HEAP_IN_LOW_MEMORY
+#define TYPE_CODE_LENGTH	6
+
+#define HAS_FLOOR
+#define HAS_FREXP
+#define HAS_MODF
+
+#endif /* hp9000s300 */
+
 #ifdef hp9000s500
 #define MACHINE_TYPE		"hp9000s500"
 #define FASL_INTERNAL_FORMAT 	FASL_HP_9000_500
@@ -328,9 +331,11 @@ typedef unsigned long SCHEME_OBJECT;
 #define Or2(x, y)	((x) ? true : (y))
 #define Or3(x, y, z)	((x) ? true : ((y) ? true : (z)))
 
-#endif /* hp9000s500 */
+#define HAS_FLOOR
+#define HAS_FREXP
+#define HAS_MODF
 
-#endif /* hpux */
+#endif /* hp9000s500 */
 
 #ifdef sparc
 #define MACHINE_TYPE		"sun4"
