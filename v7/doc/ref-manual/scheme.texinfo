@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.86 2000/01/04 05:25:04 cph Exp $
+@comment $Id: scheme.texinfo,v 1.87 2000/01/05 02:43:21 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -95,9 +95,9 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.86
+@subtitle Edition 1.87
 @subtitle for Scheme Release 7.5
-@subtitle 3 January 2000
+@subtitle 4 January 2000
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -14665,19 +14665,24 @@ If @var{procedure} escapes from its continuation, and the file still
 exists, it is deleted.
 @end deffn
 
-@deffn {procedure+} temporary-file-pathname
+@deffn {procedure+} temporary-file-pathname [directory]
 Creates a new empty temporary file and returns a pathname referring to
 it.  The temporary file is created with Scheme's default permissions, so
 barring unusual circumstances it can be opened for input and/or output
 without error.  The temporary file will remain in existence until
 explicitly deleted.  If the file still exists when the Scheme process
 terminates, it will be deleted.
+
+If @var{directory} is specified, the temporary file will be stored
+there.  If it is not specified, or if it is @code{#f}, the temporary
+file will be stored in the directory returned by
+@code{temporary-directory-pathname}.
 @end deffn
 
 @deffn {procedure+} temporary-directory-pathname
 Returns the pathname of an existing directory that can be used to store
 temporary files.  These directory names are tried, in order, until a
-writable directory is found:
+writeable directory is found:
 
 @itemize @bullet
 @item
@@ -14723,9 +14728,9 @@ Returns @code{#t} if @var{filename} names a file that can be opened for
 input; i.e.@: a @dfn{readable} file.  Otherwise returns @code{#f}.
 @end deffn
 
-@deffn {procedure+} file-writable? filename
+@deffn {procedure+} file-writeable? filename
 Returns @code{#t} if @var{filename} names a file that can be opened for
-output; i.e.@: a @dfn{writable} file.  Otherwise returns @code{#f}.
+output; i.e.@: a @dfn{writeable} file.  Otherwise returns @code{#f}.
 @end deffn
 
 @deffn {procedure+} file-executable? filename
@@ -14740,7 +14745,7 @@ extensions @file{.exe}, @file{.com}, or @file{.bat}.
 @deffn {procedure+} file-access filename mode
 @var{Mode} must be an exact integer between @code{0} and @code{7}
 inclusive; it is a bitwise-encoded predicate selector with @code{1}
-meaning ``executable'', @code{2} meaning ``writable'', and @code{4}
+meaning ``executable'', @code{2} meaning ``writeable'', and @code{4}
 meaning ``readable''.  @code{file-access} returns @code{#t} if
 @var{filename} exists and satisfies the predicates selected by
 @var{mode}.  For example, if @var{mode} is @code{5}, then @var{filename}
