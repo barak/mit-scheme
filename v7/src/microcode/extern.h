@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: extern.h,v 9.57 2000/12/05 21:23:44 cph Exp $
+$Id: extern.h,v 9.58 2001/03/08 17:01:55 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -209,9 +209,14 @@ extern SCHEME_OBJECT EXFUN (hunk3_cons,
 extern SCHEME_OBJECT EXFUN (allocate_non_marked_vector, (int, long, Boolean));
 extern SCHEME_OBJECT EXFUN (allocate_marked_vector, (int, long, Boolean));
 extern SCHEME_OBJECT EXFUN (make_vector, (long, SCHEME_OBJECT, Boolean));
-extern SCHEME_OBJECT EXFUN (allocate_string, (long));
-extern SCHEME_OBJECT EXFUN (memory_to_string, (long, unsigned char *));
+extern SCHEME_OBJECT EXFUN (allocate_string, (unsigned long));
+extern SCHEME_OBJECT EXFUN (allocate_string_no_gc, (unsigned long));
+extern SCHEME_OBJECT EXFUN
+  (memory_to_string, (unsigned long, unsigned char *));
+extern SCHEME_OBJECT EXFUN
+  (memory_to_string_no_gc, (unsigned long, unsigned char *));
 extern SCHEME_OBJECT EXFUN (char_pointer_to_string, (unsigned char *));
+extern SCHEME_OBJECT EXFUN (char_pointer_to_string_no_gc, (unsigned char *));
 
 /* Random and OS utilities */
 extern Boolean EXFUN (Restore_History, (SCHEME_OBJECT));
