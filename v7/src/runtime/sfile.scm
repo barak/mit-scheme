@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.16 1995/02/07 23:56:33 cph Exp $
+$Id: sfile.scm,v 14.17 1995/04/09 22:57:42 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -147,3 +147,6 @@ MIT in each case. |#
        (vector-set! objects slot
 		    (delete! filename (vector-ref objects slot)))
        ((ucode-primitive set-fixed-objects-vector! 1) objects)))))
+
+(define (current-file-time)
+  (call-with-temporary-file-pathname file-modification-time))

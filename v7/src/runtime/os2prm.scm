@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.8 1995/04/09 22:32:10 cph Exp $
+$Id: os2prm.scm,v 1.9 1995/04/09 22:57:49 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -104,7 +104,7 @@ MIT in each case. |#
    access-time
    modification-time))
 
-(define (os2/file-time->string time)
+(define (file-time->string time)
   (let* ((twosecs (remainder time 32))
 	 (time    (quotient  time 32))
 	 (minutes (remainder time 64))
@@ -130,9 +130,6 @@ MIT in each case. |#
 		   (string-pad-left (number->string (* twosecs 2)) 2 #\0)
 		   " "
 		   (number->string (+ 1980 year)))))
-
-(define (os2/current-file-time)
-  (call-with-temporary-file-pathname file-modification-time))
 
 (define (file-attributes filename)
   ((ucode-primitive file-info 1)

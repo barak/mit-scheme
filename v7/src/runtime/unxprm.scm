@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.34 1995/04/09 22:32:18 cph Exp $
+$Id: unxprm.scm,v 1.35 1995/04/09 22:58:09 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -230,18 +230,19 @@ MIT in each case. |#
 (define-integrable current-user-name
   (ucode-primitive current-user-name 0))
 
+(define-integrable file-time->string
+  (ucode-primitive file-time->string 1))
+
 (define unix/user-home-directory user-home-directory)
 (define unix/current-home-directory current-home-directory)
 (define unix/current-user-name current-user-name)
+(define unix/file-time->string file-time->string)
 
 (define-integrable unix/current-uid
   (ucode-primitive current-uid 0))
 
 (define-integrable unix/current-gid
   (ucode-primitive current-gid 0))
-
-(define-integrable unix/file-time->string
-  (ucode-primitive file-time->string 1))
 
 (define (unix/uid->string uid)
   (or ((ucode-primitive uid->string 1) uid)
