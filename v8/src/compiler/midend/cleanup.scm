@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.7 1995/02/11 01:59:38 adams Exp $
+$Id: cleanup.scm,v 1.8 1995/02/21 06:33:13 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -126,18 +126,36 @@ MIT in each case. |#
 
 (define-cleanup-handler CALL (env rator cont #!rest rands)
   (define (default)
-    (let* ((rator* (cleanup/expr env rator))
-	   (result
-	    `(CALL ,rator*
-		   ,(cleanup/expr env cont)
-		   ,@(cleanup/expr* env rands))))
-      (and compiler:guru?
-	   (QUOTE/? rator*)
-	   (for-all? (cddr result) QUOTE/?)
-	   (hash-table/get *cleanup/delta-rewriters* (QUOTE/text rator*) 'BAD)
-	   (internal-warning "Missed delta:" result))
-      result))
-  (cond ((LAMBDA/? rator)
+    `(CALL ,(cleanup/expr env rator)
+	   ,(cleanup/expr env cont)
+	   ,@(cleanup/expr* env rands)))
+  (cond ((QUOTE/? rator)
+	 (let ((rator-name  (quote/text rator))
+	       (cont*   (cleanup/expr env cont))
+	       (rands*  (cleanup/expr* env rands)))
+	   (define (default)
+	     `(CALL (QUOTE ,rator-name) ,cont* ,@rands*))
+	   (define (use-result result)
+	     (if (equal? cont* '(QUOTE #F))
+		 result
+		 `(CALL (QUOTE ,%invoke-continuation) ,cont* ,result)))
+	   (with-values
+	       (lambda ()
+		 (cond ((eq? rator-name %invoke-remote-cache)
+			(let ((descriptor (quote/text (car rands*))))
+			  (values (first descriptor)
+				  (second descriptor)
+				  (cddr rands*))))
+		       (else
+			(values rator-name (length rands*) rands*))))
+	     (lambda (operator arity rands**)
+	       (cond ((cleanup/rewrite? operator arity)
+		      => (lambda (handler)
+			   (cond ((apply handler rands**)
+				  => use-result)
+				 (else (default)))))
+		     (else (default)))))))
+	((LAMBDA/? rator)
          (let ((lambda-list (lambda/formals rator))
                (lambda-body (lambda/body rator)))
            (define (generate env let-names let-values)
@@ -147,84 +165,133 @@ MIT in each case. |#
               env
               (cleanup/bindify let-names let-values)
               lambda-body))
-	 #|(define (build-call-lambda/try1 new-cont-var body closure)
-	     `(CALL (LAMBDA (,new-cont-var) ,body) ,closure))
+	   #|(define (build-call-lambda/try1 new-cont-var body closure)	;
+	   `(CALL (LAMBDA (,new-cont-var) ,body) ,closure))
 	 |#
-	   (define (build-call-lambda/try2 new-cont-var body closure)
-	     ;; We can further reduce one special case: when the body is an
-             ;; invoke-continuation and the stack closure is a real
-             ;; continuation (not just a push)
-	     (if (and (CALL/%invoke-continuation? body)
-		      (LOOKUP/? (CALL/%invoke-continuation/cont body))
-		      (eq? new-cont-var
-			   (LOOKUP/name (CALL/%invoke-continuation/cont body)))
-		      (CALL/%make-stack-closure? closure)
-		      (LAMBDA/?
-		       (CALL/%make-stack-closure/lambda-expression closure)))
-		 `(CALL (QUOTE ,%invoke-continuation)
-			,closure
-			,@(CALL/%invoke-continuation/values body))
-		 (let ((new-lambda  `(LAMBDA (,new-cont-var) ,body)))
-		   (cleanup/remember new-lambda rator)
-		   `(CALL ,new-lambda ,closure))))
-           (if (call/%make-stack-closure? cont)
-               ;; Cannot substitute a make-stack-closure because both pushing
-	       ;; and poping have to be kept in the right order.
-               (let* ((old-cont-var (car lambda-list))
-                      (new-cont-var (variable/rename old-cont-var))
-                      (new-env `((,old-cont-var (LOOKUP ,new-cont-var))
-                                 ,@env)))
-		 (build-call-lambda/try2
-		  new-cont-var
-		  (generate new-env (cdr lambda-list) rands)
-		  (cleanup/expr env cont)))
-               (generate env lambda-list (cons cont rands)))))
-        ((not *flush-closure-calls?*)
-         (default))
-        (else
-         (let ((call* (default)))
-           (cond ((form/match cleanup/call-closure-pattern call*)
-                  => (lambda (result)
-                       (cleanup/call/maybe-flush-closure call*
-                                                         env
-                                                         result)))
-                 ((form/match cleanup/call-trivial-pattern call*)
-                  => (lambda (result)
-                       (let ((lam-expr
-                              (cadr (assq cleanup/?lam-expr result)))
-                             (rands
-                              (cadr (assq cleanup/?rands result)))
-                             (cont
-                              (cadr (assq cleanup/?cont result))))
-                         (cleanup/expr env
-                                       `(CALL ,lam-expr ,cont ,@rands)))))
-                 (else
-                  call*))))))
+	 (define (build-call-lambda/try2 new-cont-var body closure)
+	   ;; We can further reduce one special case: when the body is an
+	   ;; invoke-continuation and the stack closure is a real
+	   ;; continuation (not just a push)
+	   (if (and (CALL/%invoke-continuation? body)
+		    (LOOKUP/? (CALL/%invoke-continuation/cont body))
+		    (eq? new-cont-var
+			 (LOOKUP/name (CALL/%invoke-continuation/cont body)))
+		    (CALL/%make-stack-closure? closure)
+		    (LAMBDA/?
+		     (CALL/%make-stack-closure/lambda-expression closure)))
+	       `(CALL (QUOTE ,%invoke-continuation)
+		      ,closure
+		      ,@(CALL/%invoke-continuation/values body))
+	       (let ((new-lambda  `(LAMBDA (,new-cont-var) ,body)))
+		 (cleanup/remember new-lambda rator)
+		 `(CALL ,new-lambda ,closure))))
+	 (if (call/%make-stack-closure? cont)
+	     ;; Cannot substitute a make-stack-closure because both pushing
+	     ;; and poping have to be kept in the right order.
+	     (let* ((old-cont-var (car lambda-list))
+		    (new-cont-var (variable/rename old-cont-var))
+		    (new-env `((,old-cont-var (LOOKUP ,new-cont-var))
+			       ,@env)))
+	       (build-call-lambda/try2
+		new-cont-var
+		(generate new-env (cdr lambda-list) rands)
+		(cleanup/expr env cont)))
+	     (generate env lambda-list (cons cont rands)))))
+  ((not *flush-closure-calls?*)
+   (default))
+  (else
+   (let ((call* (default)))
+     (cond ((form/match cleanup/call-closure-pattern call*)
+	    => (lambda (result)
+		 (cleanup/call/maybe-flush-closure call*
+						   env
+						   result)))
+	   ((form/match cleanup/call-trivial-pattern call*)
+	    => (lambda (result)
+		 (let ((lam-expr
+			(cadr (assq cleanup/?lam-expr result)))
+		       (rands
+			(cadr (assq cleanup/?rands result)))
+		       (cont
+			(cadr (assq cleanup/?cont result))))
+		   (cleanup/expr env
+				 `(CALL ,lam-expr ,cont ,@rands)))))
+	   (else
+	    call*))))))
 
 
-(define *cleanup/delta-rewriters* (make-eq-hash-table))
-(for-each (lambda (item)
-	    (hash-table/put! *cleanup/delta-rewriters* item #F))
-	  (list cons
-		%cons
-		%fetch-continuation
-		%fetch-environment
-		%fetch-stack-closure
-		get-fixed-objects-vector
-		%make-cell
-		%make-read-variable-cache
-		%make-write-variable-cache
-		%make-operator-variable-cache
-		%make-remote-operator-variable-cache
-		%primitive-apply
-		vector
-		%vector
-		%vector-cons
-		%floating-vector-cons
-		set-interrupt-enables!
-		string-allocate
-		%string-allocate
-		%vector-index))
+(define *cleanup/rewriters* (make-eq-hash-table))
+
+(define (cleanup/rewrite? name arity)
+  (cond ((hash-table/get *cleanup/rewriters* name #F)
+	 => (lambda (alist)
+	      (cond ((assq arity alist) => cdr)
+		    (else  #F))))
+	(else  #F)))
+
+(define (define-cleanup-rewrite name arity handler)
+  (let ((slot  (hash-table/get *cleanup/rewriters* name '())))
+    (hash-table/put! *cleanup/rewriters*
+		     name
+		     (cons (cons arity handler) slot)))
+  name)
+
+(let ()
+  ;; Arithmetic constant folding
+  (define (quote-unmapped v)
+    `(QUOTE ,(unmap-careful v)))
+
+  (define (unary name op)
+    (define-cleanup-rewrite name 1
+      (lambda (expr)
+	(let  ((value (form/number? expr)))
+	  (and value
+	       (let ((result  (op value)))
+		 (and result
+		      (quote-unmapped result))))))))
+
+  (define (careful-binary name op)
+    (define-cleanup-rewrite name 2
+      (lambda (expr1 expr2)
+	(let ((value1  (form/number? expr1)))
+	  (and value1
+	       (let ((value2  (form/number? expr2)))
+		 (and value2
+		      (let ((result  (op value1 value2)))
+			(and result
+			     (quote-unmapped result))))))))))
+
+  (define (binary name op)
+    (define-cleanup-rewrite name 2
+      (lambda (expr1 expr2)
+	(let ((value1  (form/number? expr1)))
+	  (and value1
+	       (let ((value2  (form/number? expr2)))
+		 (and value2
+		      `(QUOTE ,(op value1 value2)))))))))
+
+  (unary 'SQRT sqrt)
+  (unary 'EXP  exp)
+  (unary 'LOG  log)
+  (unary 'SIN  sin)
+  (unary 'COS  cos)
+  (unary 'TAN  tan)
+  (unary 'ASIN asin)
+  (unary 'ACOS acos)
+
+  (binary 'EXPT expt)
+  (binary (make-primitive-procedure '&+) +)
+  (binary (make-primitive-procedure '&-) -)
+  (binary (make-primitive-procedure '&*) *)
+  (binary (make-primitive-procedure '&<) <)
+  (binary (make-primitive-procedure '&=) =)
+  (binary (make-primitive-procedure '&>) >)
+
+  (careful-binary (make-primitive-procedure '&/) careful//)
+  (careful-binary (make-primitive-procedure 'QUOTIENT) careful/quotient)
+  (careful-binary (make-primitive-procedure 'REMAINDER) careful/remainder)
+)
+
 
 (define (cleanup/call/maybe-flush-closure call* env match-result)
   (let ((lambda-expr    (cadr (assq cleanup/?lam-expr match-result)))
@@ -287,11 +354,6 @@ MIT in each case. |#
 	       (QUOTE #F)
 	       ,cleanup/?lam-expr)
 	 ,@cleanup/?rands))
-
-#|
-(define cleanup/continuation-call-pattern
-  `(CALL (QUOTE ,%make-stack-closure) . ,cleanup/?rest))
-|#
 
 (define (cleanup/closure-refs form var-name)
   ;; (values self-refs ordinary-refs)
@@ -466,27 +528,15 @@ MIT in each case. |#
   (if (not (pair? expr))
       (illegal expr))
   (case (car expr)
-    ((QUOTE)
-     (cleanup/quote env expr))
-    ((LOOKUP)
-     (cleanup/lookup env expr))
-    ((LAMBDA)
-     (cleanup/lambda env expr))
-    ((LET)
-     (cleanup/let env expr))
-    ((DECLARE)
-     (cleanup/declare env expr))
-    ((CALL)
-     (cleanup/call env expr))
-    ((BEGIN)
-     (cleanup/begin env expr))
-    ((IF)
-     (cleanup/if env expr))
-    ((LETREC)
-     (cleanup/letrec env expr))
-    ((SET! UNASSIGNED? OR DELAY
-      ACCESS DEFINE IN-PACKAGE THE-ENVIRONMENT)
-     (no-longer-legal expr))
+    ((QUOTE)    (cleanup/quote env expr))
+    ((LOOKUP)   (cleanup/lookup env expr))
+    ((LAMBDA)   (cleanup/lambda env expr))
+    ((LET)      (cleanup/let env expr))
+    ((DECLARE)  (cleanup/declare env expr))
+    ((CALL)     (cleanup/call env expr))
+    ((BEGIN)    (cleanup/begin env expr))
+    ((IF)       (cleanup/if env expr))
+    ((LETREC)   (cleanup/letrec env expr))
     (else
      (illegal expr))))
 
