@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppacach.c,v 1.9 1993/06/24 05:41:02 gjr Exp $
+$Id: hppacach.c,v 1.10 1996/11/13 22:09:05 adams Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -60,7 +60,8 @@ MIT in each case. */
 
 /* File that contains the symbol table for the kernel */
 
-#define KERNEL_FILE		"/hp-ux"
+#define KERNEL_FILE1		"/hp-ux"
+#define KERNEL_FILE2		"/stand/vmunix"
 
 /* File where the kernel image lives */
 
@@ -115,8 +116,9 @@ read_nlist (kloc)
 {
   DEBUGGING (printf ("reading nlist...\n"));
 
-  if ((nlist (KERNEL_FILE, nl)) != 0)
-    io_lose ("read_nlist", "failed on %s", KERNEL_FILE);
+  if ((nlist (KERNEL_FILE1, nl)) != 0)
+    if ((nlist (KERNEL_FILE2, nl)) != 0)
+      io_lose ("read_nlist", "failed on %s and %s", KERNEL_FILE1, KERNEL_FILE2);
 
   DEBUGGING (printf ("reading nlist done.\n"));
 
