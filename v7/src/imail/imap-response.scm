@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.30 2000/05/29 04:39:03 cph Exp $
+;;; $Id: imap-response.scm,v 1.31 2000/05/30 04:02:27 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -269,46 +269,76 @@
 		     (lose))))
 	      (else (lose)))))))
 
-(define *read-literal-progress-hook* #f)
-
-(define (imap:read-literal-progress-hook procedure thunk)
-  (fluid-let ((*read-literal-progress-hook* procedure))
-    (thunk)))
-
 (define (read-literal port)
+  (let ((output (make-accumulator-output-port)))
+    (read-literal-internal port
+      (lambda (string start end)
+	(write-substring string start end output)))
+    (get-output-from-accumulator output)))
+
+(define (read-literal-internal port handler)
+  (let ((n (read-literal-length port))
+	(b1 (make-string 4096))
+	(b2 (make-string 4096)))
+    (let loop ((i 0))
+      (if (fix:< i n)
+	  (call-with-values
+	      (lambda ()
+		(read-and-translate port (fix:min 4096 (fix:- n i)) b1 b2))
+	    (lambda (n-read n-written)
+	      (if (fix:= 0 n-read)
+		  (error "Premature EOF:" port))
+	      (let ((i (fix:+ i n-read)))
+		(if (and *read-literal-progress-hook* (fix:<= i n))
+		    (*read-literal-progress-hook* i n))
+		(handler b2 0 n-written)
+		(loop i))))))))
+
+(define (read-literal-length port)
   (discard-known-char #\{ port)
   (let ((n (read-number port)))
     (discard-known-char #\} port)
     (discard-known-char #\return port)
     (discard-known-char #\linefeed port)
-    (let ((s (make-string n)))
-      (let loop ((start 0))
-	(if (fix:< start n)
-	    (let ((m
-		   (read-substring!-internal s
-					     start
-					     (fix:min (fix:+ start 4096) n)
-					     port)))
-	      (if (fix:= m 0)
-		  (error "Premature EOF:" port))
-	      (let ((start (fix:+ start m)))
-		(if (and *read-literal-progress-hook*
-			 (fix:> start 0)
-			 (fix:<= start n))
-		    (*read-literal-progress-hook* start n))
-		(loop start)))))
-      (let ((n* (translate-line-endings!:network->scheme s 0 n)))
-	(if (fix:< n* n)
-	    (set-string-maximum-length! s n*)))
-      s)))
+    n))
 
-(define (translate-line-endings!:network->scheme string start end)
-  (let loop ((start start) (end end))
-    (let ((i (substring-search-forward "\r\n" string start end)))
-      (if i
-	  (loop (fix:+ i 1)
-		(substring-move! string (fix:+ i 1) end string i))
-	  end))))
+(define (read-and-translate port n-to-read b1 b2)
+  (let ((n-read (read-substring!-internal b1 0 n-to-read port)))
+    (let loop ((i1 0) (i2 0))
+      (cond ((fix:= i1 n-read)
+	     (values n-read i2))
+	    ((char=? #\return (string-ref b1 i1))
+	     (let ((i1 (fix:+ i1 1)))
+	       (if (fix:= i1 n-read)
+		   (values (let ((char (peek-char port)))
+			     (cond ((eof-object? char)
+				    (string-set! b2 i2 #\return)
+				    i1)
+				   ((char=? #\linefeed char)
+				    (read-char port)
+				    (string-set! b2 i2 #\newline)
+				    (fix:+ i1 1))
+				   (else
+				    (string-set! b2 i2 #\return)
+				    i1)))
+			   (fix:+ i2 1))
+		   (loop (if (char=? #\linefeed (string-ref b1 i1))
+			     (begin
+			       (string-set! b2 i2 #\newline)
+			       (fix:+ i1 1))
+			     (begin
+			       (string-set! b2 i2 #\return)
+			       i1))
+			 (fix:+ i2 1)))))
+	    (else
+	     (string-set! b2 i2 (string-ref b1 i1))
+	     (loop (fix:+ i1 1) (fix:+ i2 1)))))))
+
+(define (imap:read-literal-progress-hook procedure thunk)
+  (fluid-let ((*read-literal-progress-hook* procedure))
+    (thunk)))
+
+(define *read-literal-progress-hook* #f)
 
 (define (read-list port #!optional read-item)
   (read-closed-list #\( #\)
