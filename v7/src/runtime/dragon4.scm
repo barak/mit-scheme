@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dragon4.scm,v 1.12 1997/07/26 07:39:07 cph Exp $
+$Id: dragon4.scm,v 1.13 1997/07/28 18:19:05 adams Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -95,7 +95,9 @@ not much different to numbers within a few orders of magnitude of 1.
   (let ((k+1 (+ k 1)))
     (let ((k+1-l (- k+1 (string-length digits)))
 	  (n (flo:significand-digits radix)))
-      (cond ((< k+1-l (- n))
+      (cond ((zero? (string-length digits))
+	     (string-copy "0."))
+	    ((< k+1-l (- n))
 	     (scientific-output digits k radix 0))
 	    ((negative? k)
 	     (string-append "." (make-string (- k+1) #\0) digits))
@@ -118,7 +120,9 @@ not much different to numbers within a few orders of magnitude of 1.
   (let ((l (string-length digits))
 	(i (+ kr 1))
 	(exponent (int:->string (- k kr) radix)))
-    (cond ((< l i)
+    (cond ((= l 0)
+	   (string-append "0e" exponent))
+	  ((< l i)
 	   (string-append digits (make-string (- i l) #\0) "e" exponent))
 	  ((= l i)
 	   (string-append digits "e" exponent))
@@ -242,7 +246,10 @@ not much different to numbers within a few orders of magnitude of 1.
 			(loop k s m- m+ round-up?)
 			(values k r s m- m+ cutoff round-up?)))))))
 	  (case cutoff-mode
-	    ((NORMAL)   (values k r s m- m+ k round-up?))
+	    ((NORMAL)
+	     (values k r s m- m+
+		     (- k (flo:significand-digits radix) 2) ; i.e. ignore cutoff
+		     round-up?))
 	    ((ABSOLUTE) (cutoff-adjust cutoff))
 	    ((RELATIVE) (cutoff-adjust (+ k cutoff)))
 	    (else (error:wrong-type-datum cutoff-mode #f))))
@@ -256,7 +263,7 @@ not much different to numbers within a few orders of magnitude of 1.
   (define (scale r s m+)
     (let ((est-k
 	   (ceiling->exact (- (* (+ e p -1) (/ (flo:log 2.) (log radix)))
-			      1e-9))))	; fudge factor ensures K bever too big
+			      1e-9))))	; fudge factor ensures K never too big
       (if (< est-k 0)
 	  (let ((factor (expt-radix radix (- est-k))))
 	    (let loop ((k est-k)
@@ -284,3 +291,72 @@ not much different to numbers within a few orders of magnitude of 1.
 	       (< exponent (vector-length v)))
 	  (vector-ref v exponent)
 	  (rat:expt base exponent)))))
+
+#|  Test code.  Re-run after changing anything.
+
+(define (test)
+  (define (try n settings . expecteds)
+    (let ((got (fluid-let ((flonum-unparser-cutoff settings))
+		 (number->string (exact->inexact n)))))
+      (if (member got expecteds)
+	  (set! successes (+ successes 1))
+	  (begin
+	    (set! failures (+ failures 1))
+	    (display "\nTest failed ") (write n) (display " ") (write settings)
+	    (display "\n  expected:")
+	    (for-each (lambda (s) (display " ") (write s))
+	      expecteds)
+	    (display "\n       got: ")  (write got)))))
+
+  (define failures 0)
+  (define successes 0)
+
+  ;; From the MIT Scheme Reference Manual:
+  (try (* 4 (atan 1 1))     '(relative 5)              "3.1416")
+  (try (* 4000 (atan 1 1))  '(relative 5)              "3141.6")
+  (try (* 4000 (atan 1 1))  '(relative 5 scientific)   "3.1416e3")
+  (try (* 40000 (atan 1 1)) '(relative 5 scientific)   "3.1416e4")
+  (try (* 40000 (atan 1 1)) '(relative 5 engineering)  "31.416e3")
+  (try (* 4 (atan 1 1))     '(absolute 5)              "3.14159")
+  (try (* 4000 (atan 1 1))  '(absolute 5)              "3141.59265")
+  (try (* 4e10 (atan 1 1))  '(absolute -4)             "31415930000.")
+  (try (* 4e10 (atan 1 1))  '(absolute -4 scientific)  "3.141593e10")
+  (try (* 4e10 (atan 1 1))  '(absolute -4 engineering) "31.41593e9")
+  (try (* 4e10 (atan 1 1))  '(absolute -5)             "31415900000.")
+
+  ;; Harder tests:
+  (try 0.          'normal  "0.")
+  (try 0.0123456   'normal  ".0123456")
+  (try 0.000123456 'normal  ".000123456")
+
+  (try 1/3       '(relative 4) ".3333")
+  (try 2/3       '(relative 4) ".6667")
+
+  (try 12345.67   '(absolute  1 normal) "12345.7")
+  (try 12345.67   '(absolute -4 normal) "10000.")
+  (try 4999.      '(absolute -4 normal) "0.")
+  (try 5001.      '(absolute -4 normal) "10000.")
+
+  (try 12345.67   '(absolute  1 scientific) "1.23457e4")
+  (try 12345.67   '(absolute -4 scientific) "1e4")
+  (try 4999.      '(absolute -4 scientific) "0." "0e4" "0e3")
+  (try 5001.      '(absolute -4 scientific) "1e4")
+
+  (try 12345.67   '(absolute  1 engineering) "12.3457e3")
+  (try 12345.67   '(absolute -4 engineering) "10e3")
+  (try 4999.      '(absolute -4 engineering) "0." "0e3")
+  (try 5001.      '(absolute -4 engineering) "10e3")
+  (try 5001.      '(absolute -5 engineering) "0." "0e3")
+  (try 5001.      '(absolute -6 engineering) "0." "0e3")
+  (try -5001.     '(absolute -6 engineering) "0." "-0e3")
+
+  (try 0.00499   '(absolute  2 normal) "0." ".00")  ; "0." would be prefereable
+
+  (try 0.00500   '(absolute  2 normal) ".01") ; (rounds up in binary)
+  (try 0.00501   '(absolute  2 normal) ".01")
+  (try 0.00499   '(absolute -3 normal) "0.")
+
+
+  (display "\n\nSuccesses: ") (display successes)  
+  (display "    Failures: ") (display failures))
+|#
