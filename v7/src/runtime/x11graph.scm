@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.50 2000/04/10 18:32:39 cph Exp $
+$Id: x11graph.scm,v 1.51 2001/02/11 00:09:07 cph Exp $
 
-Copyright (c) 1989-2000 Massachusetts Institute of Technology
+Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,16 +26,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (declare (integrate-external "graphics"))
 
 (define-primitives
-  (x-open-display 1)
-  (x-close-display 1)
   (x-close-all-displays 0)
-  (x-close-window 1)
   (x-display-descriptor 1)
-  (x-display-flush 1)
   (x-display-get-default 3)
   (x-display-process-events 2)
   (x-font-structure 2)
-  (x-get-visual-info 10)
   (x-window-beep 1)
   (x-window-clear 1)
   (x-window-colormap 1)
@@ -197,7 +192,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (starbase-filename ,x-graphics/starbase-filename)
 	   (visual-info ,x-graphics/visual-info)
 	   (withdraw-window ,x-graphics/withdraw-window))))
-  (set! display-finalizer (make-gc-finalizer x-close-display))
+  (set! display-finalizer
+	(make-gc-finalizer (ucode-primitive x-close-display 1)))
   (initialize-image-datatype)
   (initialize-colormap-datatype))
 
@@ -220,7 +216,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			(write (x-display/name display) port)))))
   (name #f read-only #t)
   xd
-  (window-finalizer (make-gc-finalizer x-close-window) read-only #t)
+  (window-finalizer (make-gc-finalizer (ucode-primitive x-close-window 1))
+		    read-only #t)
   (event-queue (make-queue))
   (properties (make-1d-table) read-only #t))
 
@@ -241,7 +238,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (or (search-gc-finalizer display-finalizer
 	  (lambda (display)
 	    (string=? (x-display/name display) name)))
-	(let ((xd (x-open-display name)))
+	(let ((xd ((ucode-primitive x-open-display 1) name)))
 	  (if (not xd)
 	      (error "Unable to open display:" name))
 	  (let ((display (make-x-display name xd)))
@@ -532,47 +529,68 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (values 0 (- (x-window-y-size xw) 1) (- (x-window-x-size xw) 1) 0)))
 
 (define (x-graphics/drag-cursor device x y)
-  (x-graphics-drag-cursor (x-graphics-device/xw device) x y))
+  (x-graphics-drag-cursor (x-graphics-device/xw device)
+			  (->flonum x)
+			  (->flonum y)))
 
 (define (x-graphics/draw-line device x-start y-start x-end y-end)
   (x-graphics-draw-line (x-graphics-device/xw device)
-			x-start y-start x-end y-end))
+			(->flonum x-start)
+			(->flonum y-start)
+			(->flonum x-end)
+			(->flonum y-end)))
 
 (define (x-graphics/draw-lines device xv yv)
   (x-graphics-draw-lines (x-graphics-device/xw device) xv yv))
 
 (define (x-graphics/draw-point device x y)
-  (x-graphics-draw-point (x-graphics-device/xw device) x y))
+  (x-graphics-draw-point (x-graphics-device/xw device)
+			 (->flonum x)
+			 (->flonum y)))
 
 (define (x-graphics/draw-points device xv yv)
   (x-graphics-draw-points (x-graphics-device/xw device) xv yv))
 
 (define (x-graphics/draw-text device x y string)
-  (x-graphics-draw-string (x-graphics-device/xw device) x y string))
+  (x-graphics-draw-string (x-graphics-device/xw device)
+			  (->flonum x)
+			  (->flonum y)
+			  string))
 
 (define (x-graphics/draw-text-opaque device x y string)
-  (x-graphics-draw-image-string (x-graphics-device/xw device) x y string))
+  (x-graphics-draw-image-string (x-graphics-device/xw device)
+				(->flonum x)
+				(->flonum y)
+				string))
 
 (define (x-graphics/flush device)
   (if (and x-graphics:auto-raise?
 	   (x-graphics-device/mapped? device)
 	   (not (eq? 'UNOBSCURED (x-graphics-device/visibility device))))
       (x-graphics/raise-window device))
-  (x-display-flush (x-graphics-device/xd device)))
+  ((ucode-primitive x-display-flush 1) (x-graphics-device/xd device)))
 
 (define (x-graphics/move-cursor device x y)
-  (x-graphics-move-cursor (x-graphics-device/xw device) x y))
+  (x-graphics-move-cursor (x-graphics-device/xw device)
+			  (->flonum x)
+			  (->flonum y)))
 
 (define (x-graphics/reset-clip-rectangle device)
   (x-graphics-reset-clip-rectangle (x-graphics-device/xw device)))
-
+
 (define (x-graphics/set-clip-rectangle device x-left y-bottom x-right y-top)
   (x-graphics-set-clip-rectangle (x-graphics-device/xw device)
-				 x-left y-bottom x-right y-top))
+				 (->flonum x-left)
+				 (->flonum y-bottom)
+				 (->flonum x-right)
+				 (->flonum y-top)))
 
 (define (x-graphics/set-coordinate-limits device x-left y-bottom x-right y-top)
   (x-graphics-set-vdc-extent (x-graphics-device/xw device)
-			     x-left y-bottom x-right y-top))
+			     (->flonum x-left)
+			     (->flonum y-bottom)
+			     (->flonum x-right)
+			     (->flonum y-top)))
 
 (define (x-graphics/set-drawing-mode device mode)
   (x-graphics-set-function (x-graphics-device/xw device) mode))
@@ -596,7 +614,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 						"\014\001\002\001"
 						"\011\001\002\001\002\001")
 					     (- line-style 1)))))))
-
+
 ;;;; Appearance Operations
 
 (define (x-graphics/set-background-color device color)
@@ -622,35 +640,54 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (x-graphics/set-mouse-shape device shape)
   (x-window-set-mouse-shape (x-graphics-device/xw device) shape))
-
+
 ;;;; Miscellaneous Operations
 
-(define (x-graphics/draw-arc
-	 device
-	 x y radius-x radius-y angle-start angle-sweep fill?)
+(define (x-graphics/draw-arc device x y radius-x radius-y
+			     angle-start angle-sweep fill?)
   (x-graphics-draw-arc (x-graphics-device/xw device)
-		       x y radius-x radius-y angle-start angle-sweep fill?))
+		       (->flonum x)
+		       (->flonum y)
+		       (->flonum radius-x)
+		       (->flonum radius-y)
+		       (->flonum angle-start)
+		       (->flonum angle-sweep)
+		       fill?))
    
 (define (x-graphics/draw-circle device x y radius)
   (x-graphics-draw-arc (x-graphics-device/xw device)
-		       x y radius radius 0 360 #F))
+		       (->flonum x)
+		       (->flonum y)
+		       (->flonum radius)
+		       (->flonum radius)
+		       0.
+		       360.
+		       #f))
    
 (define (x-graphics/fill-circle device x y radius)
   (x-graphics-draw-arc (x-graphics-device/xw device)
-		       x y radius radius 0 360 #T))
+		       (->flonum x)
+		       (->flonum y)
+		       (->flonum radius)
+		       (->flonum radius)
+		       0.
+		       360.
+		       #t))
    
 (define (x-graphics/fill-polygon device point-vector)
-  (x-graphics-fill-polygon (x-graphics-device/xw device) point-vector))
+  (x-graphics-fill-polygon (x-graphics-device/xw device)
+			   (vector-map ->flonum point-vector)))
    
-(define (x-graphics/copy-area device
-			      source-x-left source-y-top
-			      width height
+(define (x-graphics/copy-area device source-x-left source-y-top width height
 			      destination-x-left destination-y-top)
   (let ((xw (x-graphics-device/xw device)))
     (x-graphics-copy-area xw xw
-			  source-x-left source-y-top
-			  width height
-			  destination-x-left destination-y-top)))
+			  (->flonum source-x-left)
+			  (->flonum source-y-top)
+			  (->flonum width)
+			  (->flonum height)
+			  (->flonum destination-x-left)
+			  (->flonum destination-y-top))))
 
 (define (x-graphics/get-default device resource-name class-name)
   (x-display-get-default (x-graphics-device/xd device)
@@ -812,14 +849,24 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (x-set-pixel-in-image (x-image/descriptor image) x y value))
 
 (define (x-image/draw image window-x window-y)
-  (x-display-image (x-image/descriptor image) 0 0
-		   (x-image/window image) window-x window-y
-		   (x-image/width image) (x-image/height image)))
+  (x-display-image (x-image/descriptor image)
+		   0
+		   0
+		   (x-image/window image)
+		   (->flonum window-x)
+		   (->flonum window-y)
+		   (x-image/width image)
+		   (x-image/height image)))
 
 (define (x-image/draw-subimage image x y width height window-x window-y)
-  (x-display-image (x-image/descriptor image) x y
-		   (x-image/window image) window-x window-y
-		   width height))
+  (x-display-image (x-image/descriptor image)
+		   x
+		   y
+		   (x-image/window image)
+		   (->flonum window-x)
+		   (->flonum window-y)
+		   width
+		   height))
 
 (define (x-image/fill-from-byte-vector image byte-vector)
   (x-bytes-into-image byte-vector (x-image/descriptor image)))
@@ -841,18 +888,28 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (x-image/height (image/descriptor image)))
 
 (define (x-graphics-image/draw device x y image)
-  (let* ((x-image  (image/descriptor image))
-	 (w        (x-image/width x-image))
-	 (h        (x-image/height x-image)))
-    (x-display-image (x-image/descriptor x-image) 0 0
-		     (x-graphics-device/xw device) x y
-		     w h)))
+  (let* ((x-image (image/descriptor image))
+	 (w (x-image/width x-image))
+	 (h (x-image/height x-image)))
+    (x-display-image (x-image/descriptor x-image)
+		     0
+		     0
+		     (x-graphics-device/xw device)
+		     (->flonum x)
+		     (->flonum y)
+		     w
+		     h)))
 
 (define (x-graphics-image/draw-subimage device x y image im-x im-y w h)
   (let ((x-image  (image/descriptor image)))
-    (x-display-image (x-image/descriptor x-image) im-x im-y
-		     (x-graphics-device/xw device) x y
-		     w h)))
+    (x-display-image (x-image/descriptor x-image)
+		     im-x
+		     im-y
+		     (x-graphics-device/xw device)
+		     (->flonum x)
+		     (->flonum y)
+		     w
+		     h)))
 
 (define (x-graphics-image/fill-from-byte-vector image byte-vector)
   (x-image/fill-from-byte-vector (image/descriptor image) byte-vector))
@@ -921,7 +978,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (x-window-depth (x-graphics-device/xw device)))
 
 (define (x-graphics/visual-info device)
-  (x-get-visual-info (x-graphics-device/xw device) #f #f #f #f #f #f #f #f #f))
+  ((ucode-primitive x-get-visual-info 10) (x-graphics-device/xw device)
+					  #f #f #f #f #f #f #f #f #f))
 
 (define-structure (visual-info (type vector) (conc-name x-visual-info/))
   (visual #f read-only #t)
