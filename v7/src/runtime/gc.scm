@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 14.1 1988/06/13 11:45:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 14.2 1989/03/29 02:45:39 jinx Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -64,8 +64,9 @@ MIT in each case. |#
   (set-interrupt-enables! interrupt-enables))
 
 (define (condition-handler/hardware-trap escape-code)
-  escape-code
-  (hook/hardware-trap))
+  ((ucode-primitive set-trap-state!)
+   ((ucode-primitive set-trap-state!) 2)) ; Ask.
+  (hook/hardware-trap escape-code))
 
 (define hook/gc-flip)
 (define hook/purify)
@@ -117,7 +118,8 @@ MIT in each case. |#
 (define (default/stack-overflow)
   (abort "maximum recursion depth exceeded"))
 
-(define (default/hardware-trap)
+(define (default/hardware-trap escape-code)
+  escape-code
   (abort "the hardware trapped"))
 
 (define pure-space-queue)

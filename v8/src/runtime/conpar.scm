@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/conpar.scm,v 14.6 1989/01/07 00:24:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/conpar.scm,v 14.7 1989/03/29 02:45:15 jinx Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -197,8 +197,7 @@ MIT in each case. |#
 
 (define (make-frame type elements state element-stream n-elements)
   (let ((history-subproblem?
-	 (and (stack-frame-type/subproblem? type)
-	      (not (eq? type stack-frame-type/compiled-return-address))))
+	 (stack-frame-type/history-subproblem? type))
 	(history (parser-state/history state))
 	(previous-history-offset (parser-state/previous-history-offset state))
 	(previous-history-control-point
@@ -307,7 +306,32 @@ MIT in each case. |#
       (if frame-size
 	  (1+ frame-size)
 	  (stack-address->index (element-stream/ref stream 1) offset)))))
-;;;; Parsers
+(define (verify paranoia-index stream offset)
+  (or (zero? paranoia-index)
+      (stream-null? stream)
+      (let* ((type (return-address->stack-frame-type
+		    (element-stream/head stream)))
+	     (length
+	      (let ((length (stack-frame-type/length type)))
+		(if (integer? length)
+		    length
+		    (length stream offset))))
+	     (ltail (stream-tail* stream length)))
+	(and ltail
+	     (return-address? (element-stream/head ltail))
+	     (verify (-1+ paranoia-index)
+		     ltail
+		     (+ offset length))))))
+
+(define (stream-tail* stream n)
+  (cond ((or (zero? n) (stream-null? stream))
+	 stream)
+	((stream-pair? stream)
+	 (stream-tail* (stream-cdr stream) (-1+ n)))
+	(else
+	 (error "stream-tail*: not a proper stream" stream))))	   
+
+;;;; Parsers
 
 (define (parser/standard-next type elements state)
   (make-frame type
@@ -386,10 +410,13 @@ MIT in each case. |#
 
 (define-structure (stack-frame-type
 		   (constructor make-stack-frame-type
-				(code subproblem? length parser))
+				(code subproblem?
+				      history-subproblem?
+				      length parser))
 		   (conc-name stack-frame-type/))
   (code false read-only true)
   (subproblem? false read-only true)
+  (history-subproblem? false read-only true)
   (properties (make-1d-table) read-only true)
   (length false read-only true)
   (parser false read-only true))
@@ -420,33 +447,50 @@ MIT in each case. |#
   (set! return-address/reenter-compiled-code
 	(make-return-address (microcode-return 'REENTER-COMPILED-CODE)))
   (set! stack-frame-types (make-stack-frame-types))
+  (set! stack-frame-type/hardware-trap
+	(vector-ref stack-frame-types (microcode-return 'HARDWARE-TRAP)))
   (set! stack-frame-type/compiled-return-address
 	(make-stack-frame-type false
 			       true
+			       false
 			       length/compiled-return-address
 			       parser/standard-next))
   (set! stack-frame-type/return-to-interpreter
 	(make-stack-frame-type false
 			       false
+			       false
 			       1
 			       parser/standard-next))
+  (set! word-size
+	(let ((initial (system-vector-length (make-bit-string 1 #f))))
+	  (let loop ((size 2))
+	    (if (= (system-vector-length (make-bit-string size #f))
+		   initial)
+		(loop (1+ size))
+		(-1+ size)))))
   unspecific)
 
 (define stack-frame-types)
 (define stack-frame-type/compiled-return-address)
 (define stack-frame-type/return-to-interpreter)
+(define stack-frame-type/hardware-trap)
 
 (define (make-stack-frame-types)
   (let ((types (make-vector (microcode-return/code-limit) false)))
 
-    (define (stack-frame-type name subproblem? length parser)
+    (define (stack-frame-type name subproblem?
+			      history-subproblem?
+			      length parser)
       (let ((code (microcode-return name)))
 	(vector-set! types
 		     code
-		     (make-stack-frame-type code subproblem? length parser))))
+		     (make-stack-frame-type code subproblem?
+					    history-subproblem?
+					    length parser))))
 
     (define (standard-frame name length #!optional parser)
       (stack-frame-type name
+			false
 			false
 			length
 			(if (default-object? parser)
@@ -455,6 +499,7 @@ MIT in each case. |#
 
     (define (standard-subproblem name length)
       (stack-frame-type name
+			true
 			true
 			length
 			parser/standard-next))
@@ -508,7 +553,7 @@ MIT in each case. |#
     (standard-subproblem 'COMPILER-DEFINITION-RESTART 5)
     (standard-subproblem 'COMPILER-ASSIGNMENT-TRAP-RESTART 5)
     (standard-subproblem 'MOVE-TO-ADJACENT-POINT 6)
-
+
     (standard-subproblem 'COMBINATION-SAVE-VALUE length/combination-save-value)
     (standard-subproblem 'REPEAT-PRIMITIVE length/repeat-primitive)
 
@@ -522,4 +567,156 @@ MIT in each case. |#
     (let ((length (length/application-frame 4 0)))
       (standard-subproblem 'COMPILER-LOOKUP-APPLY-TRAP-RESTART length)
       (standard-subproblem 'COMPILER-OPERATOR-LOOKUP-TRAP-RESTART length))
+    (stack-frame-type 'HARDWARE-TRAP
+		      true
+		      false
+		      length/hardware-trap
+		      parser/standard-next)
+
     types))
+
+;;;; Hardware trap parsing
+
+(define-integrable hardware-trap/frame-size 8)
+
+(define-integrable hardware-trap/signal-index 1)
+(define-integrable hardware-trap/signal-name-index 2)
+(define-integrable hardware-trap/stack-index 3)
+(define-integrable hardware-trap/state-index 4)
+(define-integrable hardware-trap/pc-info1-index 5)
+(define-integrable hardware-trap/pc-info2-index 6)
+(define-integrable hardware-trap/extra-info-index 7)
+
+(define (length/hardware-trap stream offset)
+  (let ((state (element-stream/ref stream hardware-trap/state-index))
+	(stack-recovered?
+	 (element-stream/ref stream hardware-trap/stack-index)))
+    (if (not stack-recovered?)
+	hardware-trap/frame-size
+	(let ((after-header (stream-tail stream hardware-trap/frame-size)))
+	  (case state
+	    ((1)			;primitive
+	     (let* ((primitive
+		     (element-stream/ref stream hardware-trap/pc-info1-index))
+		    (arity (primitive-procedure-arity primitive))
+		    (nargs
+		     (if (negative? arity)
+			 (element-stream/ref stream hardware-trap/pc-info2-index)
+			 arity)))
+	       (if (return-address? (element-stream/ref after-header nargs))
+		   (+ hardware-trap/frame-size nargs)
+		   (- (heuristic (stream-tail after-header nargs)
+				 (+ hardware-trap/frame-size nargs offset))
+		      offset))))
+	    ((0 2 3)			;unknown, cc, or probably cc
+	     (- (heuristic after-header (+ hardware-trap/frame-size offset))
+		offset))
+	    (else
+	     (error "length/hardware-trap: Unknown state" state)))))))
+
+(define (heuristic stream offset)
+  (if (or (stream-null? stream)
+	  (and (return-address? (element-stream/head stream))
+	       (verify 2 stream offset)))
+      offset
+      (heuristic (stream-cdr stream) (1+ offset))))
+
+(define (guarantee-hardware-trap-frame frame)
+  (if (or (not (stack-frame? frame))
+	  (not (eq? (stack-frame/type frame)
+		    stack-frame-type/hardware-trap)))
+      (error "guarantee-hardware-trap-frame: invalid" frame)))
+
+(define word-size)
+
+(define (print-register block index name)
+  (let ((value
+	 (let ((bit-string (bit-string-allocate word-size)))
+	   (read-bits! block (* word-size (1+ index)) bit-string)
+	   (bit-string->unsigned-integer bit-string))))
+    (newline)
+    (write-string "  ")
+    (write-string name)
+    (write-string " = ")
+    (write-string (number->string value '(HEUR (RADIX X))))))
+
+(define (hardware-trap-frame/print-registers frame)
+  (guarantee-hardware-trap-frame frame)
+  (let ((block (stack-frame/ref frame hardware-trap/extra-info-index)))
+    (if block
+	(let ((nregs (- (system-vector-length block) 2)))
+	  (print-register block 0 "pc")
+	  (print-register block 1 "sp")
+	  (let loop ((i 0))
+	    (if (< i nregs)
+		(begin
+		  (print-register block (+ 2 i)
+				  (string-append "register "
+						 (number->string i)))
+		  (loop (1+ i)))))))))
+
+(define (hardware-trap-frame/print-stack frame)
+  (guarantee-hardware-trap-frame frame)
+  (let ((elements
+	 (let ((elements (stack-frame/elements frame)))
+	   (subvector->list elements
+			    hardware-trap/frame-size
+			    (vector-length elements)))))
+    (if (null? elements)
+	(begin
+	  (newline)
+	  (write-string ";; Empty stack"))
+	(begin
+	  (newline)
+	  (write-string ";; Bottom of the stack")
+	  (for-each (lambda (element)
+		      (newline)
+		      (write-string "  ")
+		      (write element))
+		    (reverse elements))
+	  (newline)
+	  (write-string ";; Top of the stack")))))
+
+(define (hardware-trap-frame/describe frame long?)
+  (guarantee-hardware-trap-frame frame)
+  (let ((name (stack-frame/ref frame hardware-trap/signal-name-index))
+	(state (stack-frame/ref frame hardware-trap/state-index)))
+    (if name
+	(begin
+	  (write-string "Hardware trap ")
+	  (write-string name))
+	(write-string "User microcode reset"))
+    (if long?
+	(case state
+	  ((0)				; unknown
+	   (write-string " at an unknown location."))
+	  ((1)				; primitive
+	   (write-string " within ")
+	   (write (stack-frame/ref frame hardware-trap/pc-info1-index)))
+	  ((2)				; compiled code
+	   (write-string " at offset ")
+	   (write-string
+	    (number->string (stack-frame/ref frame
+					     hardware-trap/pc-info2-index)
+			    '(HEUR (RADIX X))))	   (newline)
+	   (write-string "within ")
+	   (let ((block (stack-frame/ref frame hardware-trap/pc-info1-index)))
+	     (write block)
+	     (let loop ((info (compiled-code-block/debugging-info block)))
+	       (cond ((null? info)
+		      false)
+		     ((string? info)
+		      (begin
+			(write-string " (")
+			(write-string info)
+			(write-string ")")))
+		     ((not (pair? info))
+		      false)
+		     ((string? (car info))
+		      (loop (car info)))
+		     (else
+		      (loop (cdr info)))))))
+	  ((3)
+	   (write-string " at an unknown compiled code location."))
+	  (else
+	   (error "hardware-trap/describe: Unknown state" state))))))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.6 1989/02/28 16:49:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.7 1989/03/29 02:45:28 jinx Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,11 +48,20 @@ MIT in each case. |#
 				       condition-reporter/default)))
 	    (set-car! generalizations result)
 	    result)))
+  (set! condition-type:microcode-asynchronous
+	(make-condition-type '() "Microcode asynchronous"))
+  (set! condition-type:hardware-trap
+	(make-condition-type (list condition-type:microcode-asynchronous)
+			     "Hardware trap"))
+  (set! condition-type:user-microcode-reset
+	(make-condition-type (list condition-type:microcode-asynchronous)
+			     "User microcode reset"))
   (set! error-type:vanilla
 	(make-condition-type (list condition-type:error)
 			     condition-reporter/default))
   (set! hook/error-handler default/error-handler)
   (set! hook/error-decision default/error-decision)
+  (set! hook/hardware-trap recover/hardware-trap)
   (let ((fixed-objects (get-fixed-objects-vector)))
     (vector-set! fixed-objects
 		 (fixed-objects-vector-slot 'ERROR-PROCEDURE)
@@ -71,6 +80,20 @@ MIT in each case. |#
   (with-proceed-point proceed-value-filter
     (lambda ()
       (simple-error repl-environment message irritants))))
+
+(define (recover/hardware-trap name)
+  (call-with-current-continuation
+   (lambda (trap-continuation)
+     (signal-error
+      (make-condition
+       (if name
+	   condition-type:hardware-trap
+	   condition-type:user-microcode-reset)
+       (if name
+	   (list (error-irritant/noise " ")
+		 (error-irritant/noise name))
+	   '())
+       trap-continuation)))))
 
 ;;; (PROCEED) means retry error expression, (PROCEED value) means
 ;;; return VALUE as the value of the error subproblem.
@@ -316,6 +339,9 @@ MIT in each case. |#
        (condition-type/error? object)))
 
 (define condition-type:error)
+(define condition-type:microcode-asynchronous)
+(define condition-type:hardware-trap)
+(define condition-type:user-microcode-reset)
 
 ;;;; Condition Instances
 

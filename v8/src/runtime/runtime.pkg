@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.31 1989/03/14 09:33:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.32 1989/03/29 02:45:43 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -311,7 +311,11 @@ MIT in each case. |#
 	  stack-frame/skip-non-subproblems
 	  stack-frame/subproblem?
 	  stack-frame/type
-	  stack-frame?)
+	  stack-frame?
+	  hardware-trap-frame/describe
+	  hardware-trap-frame/print-stack
+	  hardware-trap-frame/print-registers
+	  )
   (initialization (initialize-package!)))
 
 (define-package (runtime control-point)
@@ -379,6 +383,7 @@ MIT in each case. |#
 	  debugging-info/evaluated-object?
 	  debugging-info/undefined-environment?
 	  debugging-info/undefined-expression?
+	  debugging-info/noise
 	  stack-frame/debugging-info)
   (initialization (initialize-package!)))
 
@@ -537,6 +542,8 @@ MIT in each case. |#
   (export (runtime emacs-interface)
 	  hook/gc-finish
 	  hook/gc-start)
+  (export (runtime error-handler)
+	  hook/hardware-trap)
   (initialization (initialize-package!)))
 
 (define-package (runtime gc-daemons)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.10 1989/01/06 23:01:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.11 1989/03/29 02:45:22 jinx Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -84,6 +84,8 @@ MIT in each case. |#
 	   "Enter WHERE on the current environment")
       (#\X ,internal-command
 	   "Create a read eval print loop in the debugger environment")
+      (#\Y ,frame-command
+	   "Display the current stack frame")
       (#\Z ,return-command
 	   "Return (continue with) an expression after evaluating it")
       )))
@@ -159,15 +161,22 @@ MIT in each case. |#
 	(print-expression current-expression))
       (begin
 	(newline)
-	(write-string
-	 (if (stack-frame/compiled-code? current-subproblem)
-	     "Compiled code expression"
-	     "Expression"))
-	(if (invalid-expression? current-expression)
-	    (write-string " unknown")
-	    (begin
-	      (write-string " (from stack):")
-	      (print-expression current-expression))))))
+	(cond ((not (invalid-expression? current-expression))
+	       (write-string
+		(if (stack-frame/compiled-code? current-subproblem)
+		    "Compiled code expression (from stack):"
+		    "Expression (from stack):"))
+	       (print-expression current-expression))
+	      ((or (not (debugging-info/undefined-expression?
+			 current-expression))
+		   (not (debugging-info/noise current-expression)))
+	       (write-string
+		(if (stack-frame/compiled-code? current-subproblem)
+		    "Compiled code expression unknown"
+		    "Expression unknown")))
+	      (else
+	       (write-string
+		((debugging-info/noise current-expression) true)))))))
 
 (define (stack-frame/compiled-code? frame)
   (compiled-return-address? (stack-frame/return-address frame)))
@@ -210,14 +219,18 @@ MIT in each case. |#
 				   environment-arguments-truncation)))))))))
 
 (define (pretty-print-current-expression)
-  (cond ((debugging-info/undefined-expression? current-expression)
-	 (newline)
-	 (write-string ";undefined expression"))
-	((debugging-info/compiled-code? current-expression)
+  (cond ((debugging-info/compiled-code? current-expression)
 	 (newline)
 	 (write-string ";compiled code"))
+	((not (debugging-info/undefined-expression? current-expression))
+	 (print-expression current-expression))
+	((debugging-info/noise current-expression)
+	 (newline)
+	 (write-string ";")
+	 (write-string ((debugging-info/noise current-expression) false)))
 	(else
-	 (print-expression current-expression))))
+	 (newline)
+	 (write-string ";undefined expression"))))
 
 (define (pretty-print-environment-procedure)
   (with-current-environment
@@ -294,13 +307,19 @@ MIT in each case. |#
     20))
   (write-string "    ")
   (write-string
-   (cond ((debugging-info/undefined-expression? expression)
-	  ";undefined expression")
-	 ((debugging-info/compiled-code? expression)
+   (cond ((debugging-info/compiled-code? expression)
 	  ";compiled code")
-	 (else
+	 ((not (debugging-info/undefined-expression? expression))
 	  (output-to-string 50
-			    (lambda () (write-sexp (unsyntax expression))))))))
+			    (lambda () (write-sexp (unsyntax expression)))))
+	 ((debugging-info/noise current-expression)
+	  (output-to-string
+	   50
+	   (lambda ()
+	     (write-string ((debugging-info/noise current-expression)
+			    false)))))
+	 (else
+	  ";undefined expression"))))
 
 (define (write-sexp sexp)
   (fluid-let ((*unparse-primitives-by-name?* true))
@@ -505,7 +524,8 @@ MIT in each case. |#
 			 "Eval-in-env-->"))
 
 (define (eval-in-current-environment)
-  (with-current-environment debug/read-eval-print-1))
+  (debug/read-eval-print-1
+   (get-evaluation-environment interpreter-environment?)))
 
 (define (enter-where-command)
   (with-current-environment debug/where))
@@ -586,7 +606,14 @@ MIT in each case. |#
 (define (internal-command)
   (debug/read-eval-print (->environment '(runtime debugger))
 			 "You are now in the debugger environment"
-			 "Debugger-->"))
+			 "Debugger-->"))
+(define (frame-command)
+  (write-string "Stack frame ")
+  (write current-subproblem)
+  (write-string " :")
+  (newline)
+  (for-each pp (named-structure/description current-subproblem)))
+
 ;;;; Reduction and subproblem motion low-level
 
 (define (set-current-subproblem! stack-frame previous-frames

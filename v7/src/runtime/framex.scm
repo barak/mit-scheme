@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/framex.scm,v 14.4 1989/01/06 21:00:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/framex.scm,v 14.5 1989/03/29 02:45:33 jinx Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,23 +37,40 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (stack-frame/debugging-info frame)
-  (let ((method
-	 (1d-table/get (stack-frame-type/properties (stack-frame/type frame))
-		       method-tag
-		       false)))
-    (if (not method)
-	(error "STACK-FRAME/DEBUGGING-INFO: missing method" frame))
-    (method frame)))
+(define (debugging-info/undefined-expression? expression)
+  (or (eq? expression undefined-expression)
+      (and (pair? expression)
+	   (eq? (car expression) undefined-expression))))
 
-(define-integrable (debugging-info/undefined-expression? expression)
-  (eq? expression undefined-expression))
+(define-integrable (debugging-info/noise expression)
+  (cdr expression))
+
+(define-integrable (make-debugging-info/noise noise)
+  (cons undefined-expression noise))
 
 (define-integrable (debugging-info/undefined-environment? environment)
   (eq? environment undefined-environment))
 
 (define-integrable (debugging-info/compiled-code? expression)
   (eq? expression compiled-code))
+
+(define (stack-frame/debugging-info frame)
+  (let ((method
+	 (1d-table/get (stack-frame-type/properties (stack-frame/type frame))
+		       method-tag
+		       false)))
+    (if (not method)
+	;; (error "STACK-FRAME/DEBUGGING-INFO: missing method" frame)
+	(values (make-debugging-info/noise
+		 (lambda (long?)
+		   (with-output-to-string
+		     (lambda ()
+		       (display "Unknown (methodless) ")
+		       (write frame)
+		       (if long?
+			   (po frame))))))
+		undefined-environment)
+	(method frame))))
 
 (define (make-evaluated-object object)
   (if (scode-constant? object)
@@ -160,6 +177,15 @@ MIT in each case. |#
 	  (cons (make-evaluated-object (stack-frame/ref frame index))
 		(loop (1+ index)))
 	  '()))))
+
+(define (method/hardware-trap frame)
+  (values (make-debugging-info/noise (hardware-trap-noise frame))
+	  undefined-environment))
+
+(define ((hardware-trap-noise frame) long?)
+  (with-output-to-string
+    (lambda ()
+      (hardware-trap-frame/describe frame long?))))
 
 (define (initialize-package!)
   (for-each (lambda (entry)
@@ -253,7 +279,10 @@ MIT in each case. |#
 
 	    (,method/compiler-lookup-apply-trap-restart
 	     COMPILER-LOOKUP-APPLY-TRAP-RESTART
-	     COMPILER-OPERATOR-LOOKUP-TRAP-RESTART)))
+	     COMPILER-OPERATOR-LOOKUP-TRAP-RESTART)
+
+	    (,method/hardware-trap
+	     HARDWARE-TRAP)))
   (1d-table/put!
    (stack-frame-type/properties stack-frame-type/compiled-return-address)
    method-tag
