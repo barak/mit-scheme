@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.12 1999/02/16 05:14:46 cph Exp $
+$Id: genio.scm,v 1.13 1999/02/16 05:38:34 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -49,6 +49,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 `((BUFFERED-OUTPUT-CHARS ,operation/buffered-output-chars)
 	   (CLOSE-OUTPUT ,operation/close-output)
 	   (FLUSH-OUTPUT ,operation/flush-output)
+	   (FRESH-LINE ,operation/fresh-line)
 	   (OUTPUT-BLOCKING-MODE ,operation/output-blocking-mode)
 	   (OUTPUT-BUFFER-SIZE ,operation/output-buffer-size)
 	   (OUTPUT-CHANNEL ,operation/output-channel)
@@ -226,6 +227,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (operation/write-substring port string start end)
   (output-buffer/write-substring-block (port/output-buffer port)
 				       string start end))
+
+(define (operation/fresh-line port)
+  (if (not (output-buffer/line-start? (port/output-buffer port)))
+      (operation/write-char port #\newline)))
 
 (define (operation/output-buffer-size port)
   (output-buffer/size (port/output-buffer port)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.57 1999/02/16 05:25:17 cph Exp $
+$Id: io.scm,v 14.58 1999/02/16 05:38:22 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -576,7 +576,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   position
   line-translation			; string that newline maps to
   logical-size
-  closed?)
+  closed?
+  line-start?)
 
 (define (output-buffer-sizes translation buffer-size)
   (let ((logical-size
@@ -609,7 +610,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			     0
 			     translation
 			     logical-size
-			     #f)))))
+			     #f
+			     #t)))))
 
 (define (output-buffer/close buffer associated-buffer)
   (output-buffer/drain-block buffer)
@@ -691,9 +693,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			    (output-buffer/string buffer) posn)
       (set-output-buffer/position! buffer (fix:+ posn (fix:- end start)))))
 
-  (cond ((output-buffer/closed? buffer)
-	 (error:bad-range-argument buffer 'OUTPUT-BUFFER/WRITE-SUBSTRING))
-	((not (output-buffer/string buffer))
+  (if (output-buffer/closed? buffer)
+      (error:bad-range-argument buffer 'OUTPUT-BUFFER/WRITE-SUBSTRING))
+  (if (fix:< start end)
+      (set-output-buffer/line-start?!
+       buffer
+       (char=? #\newline (string-ref string (fix:- end 1)))))
+  (cond ((not (output-buffer/string buffer))
 	 (if (fix:= start end)
 	     0
 	     (or (channel-write (output-buffer/channel buffer)

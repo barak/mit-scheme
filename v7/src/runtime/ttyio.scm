@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ttyio.scm,v 1.6 1999/01/02 06:19:10 cph Exp $
+$Id: ttyio.scm,v 1.7 1999/02/16 05:39:29 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -42,6 +42,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	     (DISCARD-CHAR ,operation/read-char)
 	     (DISCRETIONARY-FLUSH-OUTPUT ,operation/discretionary-flush-output)
 	     (FLUSH-OUTPUT ,operation/flush-output)
+	     (FRESH-LINE ,operation/fresh-line)
 	     (INPUT-BLOCKING-MODE ,operation/input-blocking-mode)
 	     (INPUT-BUFFER-SIZE ,operation/input-buffer-size)
 	     (INPUT-CHANNEL ,operation/input-channel)
@@ -179,6 +180,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				       string start end)
   (if transcript-port
       (output-port/write-substring transcript-port string start end)))
+
+(define (operation/fresh-line port)
+  (if (not (output-buffer/line-start? (port/output-buffer port)))
+      (operation/write-char port #\newline)))
 
 (define (operation/flush-output port)
   (output-buffer/drain-block (port/output-buffer port))

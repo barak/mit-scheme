@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.14 1999/02/16 00:49:52 cph Exp $
+$Id: fileio.scm,v 1.15 1999/02/16 05:39:07 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -51,6 +51,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 `((BUFFERED-OUTPUT-CHARS ,operation/buffered-output-chars)
 	   (CLOSE-OUTPUT ,operation/close-output)
 	   (FLUSH-OUTPUT ,operation/flush-output)
+	   (FRESH-LINE ,operation/fresh-line)
 	   (OUTPUT-BLOCKING-MODE ,operation/output-blocking-mode)
 	   (OUTPUT-BUFFER-SIZE ,operation/output-buffer-size)
 	   (OUTPUT-CHANNEL ,operation/output-channel)
@@ -69,16 +70,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (set! input-file-template
 	  (make-input-port (append input-operations
 				   other-operations)
-			   false))
+			   #f))
     (set! output-file-template
 	  (make-output-port (append output-operations
 				    other-operations)
-			    false))
+			    #f))
     (set! i/o-file-template
 	  (make-i/o-port (append input-operations
 				 output-operations
 				 other-operations)
-			 false)))
+			 #f)))
   unspecific)
 
 (define input-file-template)
@@ -98,7 +99,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (make-input-buffer channel
 			       input-buffer-size
 			       (pathname-newline-translation pathname))
-	    false
+	    #f
 	    pathname))))
     (set-channel-port! channel port)
     port))
@@ -114,7 +115,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (port/copy
 	   output-file-template
 	   (make-file-state
-	    false
+	    #f
 	    (make-output-buffer channel
 				output-buffer-size
 				(pathname-newline-translation pathname))
@@ -148,8 +149,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (port/copy input-file-template
 		     (make-file-state (make-input-buffer channel
 							 input-buffer-size
-							 false)
-				      false
+							 #f)
+				      #f
 				      pathname))))
     (set-channel-port! channel port)
     port))
@@ -163,10 +164,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(file-open-output-channel filename))))
 	 (port
 	  (port/copy output-file-template
-		     (make-file-state false
+		     (make-file-state #f
 				      (make-output-buffer channel
 							  output-buffer-size
-							  false)
+							  #f)
 				      pathname))))
     (set-channel-port! channel port)
     port))
@@ -178,10 +179,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (port/copy i/o-file-template
 		     (make-file-state (make-input-buffer channel
 							 input-buffer-size
-							 false)
+							 #f)
 				      (make-output-buffer channel
 							  output-buffer-size
-							  false)
+							  #f)
 				      pathname))))
     (set-channel-port! channel port)
     port))
@@ -230,9 +231,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			      (conc-name file-state/))
   ;; First two elements of this vector are required by the generic
   ;; I/O port operations.
-  (input-buffer false read-only true)
-  (output-buffer false read-only true)
-  (pathname false read-only true))
+  (input-buffer #f read-only #t)
+  (output-buffer #f read-only #t)
+  (pathname #f read-only #t))
 
 (define (operation/length port)
   (channel-file-length (operation/input-channel port)))
