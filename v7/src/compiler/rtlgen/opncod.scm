@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.58 1993/01/12 10:44:20 cph Exp $
+$Id: opncod.scm,v 4.59 1993/02/02 06:02:46 jawilson Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -314,7 +314,8 @@ MIT in each case. |#
 	(let ((error-cfg
 	       (if (combination/reduction? combination)
 		   (let ((scfg
-			  (generate-primitive primitive-name '() false false)))
+			  (generate-primitive primitive-name (length expressions)
+					      '() false false)))
 		     (make-scfg (cfg-entry-node scfg) '()))
 		   (with-values
 		       (lambda ()
@@ -323,6 +324,7 @@ MIT in each case. |#
 		     (lambda (label setup cleanup)
 		       (scfg-append!
 			(generate-primitive primitive-name
+					    (length expressions)
 					    expressions
 					    setup
 					    label)
@@ -343,6 +345,7 @@ MIT in each case. |#
 		       (let ((scfg
 			      (scfg*scfg->scfg!
 			       (generate-primitive primitive-name
+						   (length expressions)
 						   expressions
 						   setup
 						   label)
@@ -357,7 +360,7 @@ MIT in each case. |#
 				  (loop (cdr checks))
 				  error-cfg)))))))
 
-(define (generate-primitive name argument-expressions
+(define (generate-primitive name nargs argument-expressions
 			    continuation-setup continuation-label)
   (scfg*scfg->scfg!
    (if continuation-label
@@ -373,7 +376,7 @@ MIT in each case. |#
    (let ((primitive (make-primitive-procedure name true)))
      ((or (special-primitive-handler primitive)
 	  rtl:make-invocation:primitive)
-      (1+ (length argument-expressions))
+      (1+ nargs)
       continuation-label
       primitive))))
 
@@ -1423,14 +1426,14 @@ MIT in each case. |#
 (define (generic-default generic-op combination expressions predicate? finish)
   (lambda ()
     (if (combination/reduction? combination)
-	(let ((scfg (generate-primitive generic-op '() false false)))
+	(let ((scfg (generate-primitive generic-op (length expressions) '() false false)))
 	  (make-scfg (cfg-entry-node scfg) '()))
 	(with-values
 	    (lambda ()
 	      (generate-continuation-entry (combination/context combination)))
 	  (lambda (label setup cleanup)
 	    (scfg-append!
-	     (generate-primitive generic-op expressions setup label)
+	     (generate-primitive generic-op (length expressions) expressions setup label)
 	     cleanup
 	     (if predicate?
 		 (finish (rtl:make-true-test (rtl:make-fetch register:value)))
