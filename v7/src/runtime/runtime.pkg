@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.273 1996/10/09 15:43:00 cph Exp $
+$Id: runtime.pkg,v 14.274 1997/01/05 23:45:13 cph Exp $
 
-Copyright (c) 1988-96 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -472,7 +472,8 @@ MIT in each case. |#
   (file-case os-type
     ((unix) "unxdir")
     ((dos) "dosdir")
-    ((os/2 nt) "os2dir")
+    ((os/2) "os2dir")
+    ((nt) "ntdir")
     ;;(else "unkdir")
     (else))
   (parent ())
@@ -1791,6 +1792,8 @@ MIT in each case. |#
 	  have-select?)
   (export (runtime thread)
 	  have-select?)
+  (export (runtime directory)
+	  directory-channel/descriptor)
   (initialization (initialize-package!)))
 
 (define-package (runtime program-copier)

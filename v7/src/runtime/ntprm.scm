@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.10 1997/01/02 04:37:46 cph Exp $
+$Id: ntprm.scm,v 1.11 1997/01/05 23:43:59 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -121,20 +121,20 @@ MIT in each case. |#
 (define file-attributes-direct file-attributes)
 (define file-attributes-indirect file-attributes)
 
-(define-structure (file-attributes
-		   (type vector)
-		   (constructor false)
-		   (conc-name file-attributes/))
-  (type false read-only true)
-  (n-links false read-only true)
-  (uid false read-only true)
-  (gid false read-only true)
-  (access-time false read-only true)
-  (modification-time false read-only true)
-  (change-time false read-only true)
-  (length false read-only true)
-  (mode-string false read-only true)
-  (inode-number false read-only true))
+(define-structure (file-attributes (type vector)
+				   (constructor #f)
+				   (conc-name file-attributes/))
+  (type #f read-only #t)
+  (n-links #f read-only #t)
+  (uid #f read-only #t)
+  (gid #f read-only #t)
+  (access-time #f read-only #t)
+  (modification-time #f read-only #t)
+  (change-time #f read-only #t)
+  (length #f read-only #t)
+  (mode-string #f read-only #t)
+  (inode-number #f read-only #t)
+  (modes #f read-only #t))
 
 (define (file-length namestring)
   (let ((attr (file-attributes namestring)))
