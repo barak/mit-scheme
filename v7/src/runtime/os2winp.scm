@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2winp.scm,v 1.5 1995/02/21 23:13:58 cph Exp $
+$Id: os2winp.scm,v 1.6 1995/05/02 20:58:41 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -38,6 +38,8 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define-primitives
+  (os2-clipboard-read-text 0)
+  (os2-clipboard-write-text 1)
   (os2pm-synchronize 0)
   (os2ps-bitblt 6)
   (os2ps-clear 5)
