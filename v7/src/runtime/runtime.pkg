@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.407 2002/02/03 03:38:56 cph Exp $
+$Id: runtime.pkg,v 14.408 2002/02/12 00:30:51 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -1322,6 +1322,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  environment-reference-type
 	  environment-safe-lookup
 	  environment?
+	  (extend-ic-environment extend-interpreter-environment)
 	  extend-interpreter-environment
 	  guarantee-environment
 	  ic-environment?
@@ -3759,6 +3760,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  parse-mit-lambda-list
 	  r4rs-lambda-list?
 	  sc-macro-transformer->expander
+	  reverse-syntactic-environments
 	  rsc-macro-transformer->expander
 	  strip-syntactic-closures
 	  syntactic-closure-rtd

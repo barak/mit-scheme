@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.84 2002/02/03 03:38:56 cph Exp $
+$Id: make.scm,v 14.85 2002/02/12 00:30:39 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -49,6 +49,8 @@ USA.
 	   val)))))
 
 (define system-global-environment #f)
+;; This simplifies upgrading to new macros:
+(define system-global-syntax-table system-global-environment)
 
 ;; *MAKE-ENVIRONMENT is referred to by compiled code.  It must go
 ;; before the uses of the-environment later, and after apply above.

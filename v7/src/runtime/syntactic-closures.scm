@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: syntactic-closures.scm,v 14.2 2002/02/08 17:31:58 cph Exp $
+;;; $Id: syntactic-closures.scm,v 14.3 2002/02/12 00:30:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -1182,3 +1182,8 @@
   (let ((state (make-rename-state)))
     (lambda (identifier)
       (rename-identifier identifier state))))
+
+(define (reverse-syntactic-environments environment procedure)
+  (capture-syntactic-environment
+   (lambda (closing-environment)
+     (close-syntax (procedure closing-environment) environment))))
