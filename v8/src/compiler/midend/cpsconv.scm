@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cpsconv.scm,v 1.9 1995/04/28 00:01:21 adams Exp $
+$Id: cpsconv.scm,v 1.10 1995/04/28 00:29:13 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -456,7 +456,11 @@ MIT in each case. |#
     ((NAMED)
      `(LOOKUP ,(cpsconv/cont/field1 cont)))
     ((VALUE)
-     (let ((value (cpsconv/new-name 'VALUE)))
+     (let ((value (cpsconv/new-name 'VALUE))
+	   (scode
+	    (new-dbg-expression/expr
+	     (new-dbg-continuation/inner (cpsconv/cont/dbg-cont cont)))))
+       (dbg-info/remember scode `(LOOKUP ,value))
        (cpsconv/remember*
 	`(LAMBDA (,(cpsconv/new-ignored-continuation) ,value)
 	   (CALL (LOOKUP ,(cpsconv/cont/field1 cont))
@@ -464,7 +468,11 @@ MIT in each case. |#
 		 (LOOKUP ,value)))
 	(cpsconv/cont/dbg-cont cont))))
     ((PREDICATE)
-     (let ((value (cpsconv/new-name 'VALUE)))
+     (let ((value (cpsconv/new-name 'VALUE))
+	   (scode
+	    (new-dbg-expression/expr
+	     (new-dbg-continuation/inner (cpsconv/cont/dbg-cont cont)))))
+       (dbg-info/remember scode `(LOOKUP ,value))
        (cpsconv/remember*
 	`(LAMBDA (,(cpsconv/new-ignored-continuation) ,value)
 	   (IF (LOOKUP ,value)
