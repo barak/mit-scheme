@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.32 1990/07/19 19:11:32 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.33 1991/02/16 07:54:26 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -48,6 +48,16 @@ arg_fixnum (n)
   if (! (FIXNUM_P (argument)))
     error_wrong_type_arg (n);
   return (FIXNUM_TO_LONG (argument));
+}
+
+static long
+arg_unsigned_fixnum (n)
+     int n;
+{
+  fast SCHEME_OBJECT argument = (ARG_REF (n));
+  if (! (FIXNUM_P (argument)))
+    error_wrong_type_arg (n);
+  return (UNSIGNED_FIXNUM_TO_LONG (argument));
 }
 
 /* Predicates */
@@ -257,8 +267,8 @@ do									\
 									\
   PRIMITIVE_HEADER (2);							\
 									\
-  x = (arg_fixnum (1));							\
-  y = (arg_fixnum (2));							\
+  x = (arg_unsigned_fixnum (1));					\
+  y = (arg_unsigned_fixnum (2));					\
 									\
   z = (x operation y);							\
   return (LONG_TO_FIXNUM (z));						\
@@ -295,7 +305,7 @@ DEFINE_PRIMITIVE ("FIXNUM-NOT", Prim_fixnum_not, 1, 1, 0)
 
   PRIMITIVE_HEADER (1);
 
-  x = (arg_fixnum (1));
+  x = (arg_unsigned_fixnum (1));
 
   z = (~ (x));
   return (LONG_TO_FIXNUM (z));
@@ -308,7 +318,7 @@ DEFINE_PRIMITIVE ("FIXNUM-LSH", Prim_fixnum_lsh, 2, 2, 0)
 
   PRIMITIVE_HEADER (2);
 
-  x = (arg_fixnum (1));
+  x = (arg_unsigned_fixnum (1));
   y = (arg_fixnum (2));
 
   if (y < 0)
