@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.5 1989/06/21 10:39:07 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.6 1989/08/03 01:34:32 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -381,6 +381,7 @@ MIT in each case. |#
 	  keyboard-peek-char
 	  keyboard-read-char
 	  message
+	  message-args->string
 	  reset-command-prompt!
 	  set-command-prompt!
 	  set-editor-input-port!
