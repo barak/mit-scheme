@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 4.3 1988/08/31 10:12:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 4.4 1988/09/07 06:20:33 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -81,12 +81,15 @@ MIT in each case. |#
 			  live-at-entry
 			  live-at-exit
 			  register-map
-			  label))))
+			  label
+			  continuations))))
   (set-vector-tag-description!
    sblock-tag
    (lambda (sblock)
      (append! ((vector-tag-description snode-tag) sblock)
-	      (bblock-describe sblock))))
+	      (bblock-describe sblock)
+	      (descriptor-list sblock
+			       continuation))))
   (set-vector-tag-description!
    pblock-tag
    (lambda (pblock)
