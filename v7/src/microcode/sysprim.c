@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: sysprim.c,v 9.42 1996/10/02 18:58:56 cph Exp $
+$Id: sysprim.c,v 9.43 1998/10/23 05:34:16 cph Exp $
 
-Copyright (c) 1987-96 Massachusetts Institute of Technology
+Copyright (c) 1987-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -167,4 +167,9 @@ DEFINE_PRIMITIVE ("GC-SPACE-STATUS", Prim_gc_space_status, 0, 0, 0)
   VECTOR_SET (result, 11, (CONVERT_ADDRESS (stack_high)));
 #endif /* USE_STACKLETS */
   PRIMITIVE_RETURN (result);
+}
+
+DEFINE_PRIMITIVE ("SCHEME-PROGRAM-NAME", Prim_scheme_program_name, 0, 0, 0)
+{
+  PRIMITIVE_RETURN (char_pointer_to_string (scheme_program_name));
 }
