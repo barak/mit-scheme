@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.13 1993/10/27 22:19:14 gjr Exp $
+$Id: uxsock.c,v 1.14 1996/05/18 06:09:25 cph Exp $
 
-Copyright (c) 1990-1993 Massachusetts Institute of Technology
+Copyright (c) 1990-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -57,8 +57,13 @@ Tchannel
 DEFUN (OS_open_tcp_stream_socket, (host, port), char * host AND int port)
 {
   int s;
+  Tchannel channel;
+
+  transaction_begin ();
   STD_UINT_SYSTEM_CALL
     (syscall_socket, s, (UX_socket (AF_INET, SOCK_STREAM, 0)));
+  MAKE_CHANNEL (s, channel_type_tcp_stream_socket, channel =);
+  OS_channel_close_on_abort (channel);
   {
     struct sockaddr_in address;
     (address . sin_family) = AF_INET;
@@ -69,12 +74,18 @@ DEFUN (OS_open_tcp_stream_socket, (host, port), char * host AND int port)
 	(*scan++) = (*host++);
     }
     (address . sin_port) = port;
-    STD_VOID_SYSTEM_CALL
-      (syscall_connect, (UX_connect (s,
-				     ((struct sockaddr *) (& address)),
-				     (sizeof (address)))));
+    while ((UX_connect (s,
+			((struct sockaddr *) (& address)),
+			(sizeof (address))))
+	   < 0)
+      {
+	if (errno != EINTR)
+	  error_system_call (errno, syscall_connect);
+	deliver_pending_interrupts ();
+      }
   }
-  MAKE_CHANNEL (s, channel_type_tcp_stream_socket, return);
+  transaction_commit ();
+  return (channel);
 }
 
 int
@@ -116,18 +127,29 @@ DEFUN (OS_open_unix_stream_socket, (filename), CONST char * filename)
 #ifdef HAVE_UNIX_SOCKETS
   int s;
   extern char * EXFUN (strncpy, (char *, CONST char *, size_t));
+  Tchannel channel;
+
+  transaction_begin ();
   STD_UINT_SYSTEM_CALL
     (syscall_socket, s, (UX_socket (AF_UNIX, SOCK_STREAM, 0)));
+  MAKE_CHANNEL (s, channel_type_unix_stream_socket, channel =);
+  OS_channel_close_on_abort (channel);
   {
     struct sockaddr_un address;
     (address . sun_family) = AF_UNIX;
     strncpy ((address . sun_path), filename, (sizeof (address . sun_path)));
-    STD_VOID_SYSTEM_CALL
-      (syscall_connect, (UX_connect (s,
-				     ((struct sockaddr *) (& address)),
-				     (sizeof (address)))));
+    while ((UX_connect (s,
+			((struct sockaddr *) (& address)),
+			(sizeof (address))))
+	   < 0)
+      {
+	if (errno != EINTR)
+	  error_system_call (errno, syscall_connect);
+	deliver_pending_interrupts ();
+      }
   }
-  MAKE_CHANNEL (s, channel_type_unix_stream_socket, return);
+  transaction_commit ();
+  return (channel);
 #else /* not HAVE_UNIX_SOCKETS */
   error_unimplemented_primitive ();
   return (NO_CHANNEL);
@@ -192,6 +214,7 @@ DEFUN (OS_server_connection_accept, (channel, peer_host, peer_port),
 #endif
       error_system_call (errno, syscall_accept);
     }
+    deliver_pending_interrupts ();
   }
   if (peer_host != 0)
     {
