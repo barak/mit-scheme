@@ -223,6 +223,8 @@
 	       syntax-table/system-internal)
     ("tximod"  (edwin)
 	       edwin-syntax-table)
+    ("txtprp"  (edwin text-props)
+	       edwin-syntax-table)
     ("undo"    (edwin undo)
 	       edwin-syntax-table)
     ("unix"    (edwin)

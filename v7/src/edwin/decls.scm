@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.46 1993/02/25 05:50:39 gjr Exp $
+$Id: decls.scm,v 1.47 1993/08/09 19:36:39 jawilson Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -199,6 +199,7 @@ MIT in each case. |#
 		"things"
 		"tparse"
 		"tximod"
+		"txtprp"
 		"undo"
 		"unix"
 		"wincom"
