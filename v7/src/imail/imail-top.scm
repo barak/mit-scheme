@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.190 2000/06/26 19:02:23 cph Exp $
+;;; $Id: imail-top.scm,v 1.191 2000/06/26 19:07:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -827,17 +827,20 @@ With prefix argument, prompt even when point is on an attachment."
 		       (cons (mime-attachment-name (car i.m) #t)
 			     i.m))
 		     (buffer-mime-info (mark-buffer mark))))))
-	  (if (null? alist)
-	      (editor-error "This message has no attachments."))
-	  (prompt-for-alist-value prompt
-				  alist
-				  (and info
-				       (let loop ((alist alist))
-					 (if (pair? alist)
-					     (if (eq? (cadar alist) info)
-						 (caar alist)
-						 (loop (cdr alist))))))
-				  #f)))))
+	  (if (pair? alist)
+	      (if (and (pair? (cdr alist)) (not always-prompt?))
+		  (prompt-for-alist-value prompt
+					  alist
+					  (and info
+					       (let loop ((alist alist))
+						 (if (pair? alist)
+						     (if (eq? (cadar alist)
+							      info)
+							 (caar alist)
+							 (loop (cdr alist))))))
+					  #f)
+		  (cdar alist))
+	      (editor-error "This message has no attachments."))))))
 
 (define (uniquify-mime-attachment-names alist)
   (let loop ((alist alist) (converted '()))
