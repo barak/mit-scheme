@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.11 1987/03/19 00:53:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.12 1987/03/20 05:29:33 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -45,11 +45,11 @@ MIT in each case. |#
 	     '(SYSTEM-GLOBAL-ENVIRONMENT)
 	     '(
 	       (SYSTEM-GLOBAL-ENVIRONMENT
-		"base/macros"		;compiler syntax
 		"base/pbs"		;bit-string read/write syntax
 		)
 
 	       (COMPILER-PACKAGE
+		"base/macros"		;compiler syntax
 		"base/decls"		;declarations
 ;		"machines/bobcat/decls"	;more declarations
 
@@ -136,7 +136,7 @@ MIT in each case. |#
       (define :version)
       (define :modification)
 
-      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.11 1987/03/19 00:53:59 cph Exp $"
+      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.12 1987/03/20 05:29:33 cph Exp $"
 	(lambda (filename version date time author state)
 	  (set! :version (car version))
 	  (set! :modification (cadr version))))))
@@ -144,5 +144,4 @@ MIT in each case. |#
   (add-system! compiler-system))
 
 (%ge compiler-package)
-(%gst (access compiler-syntax-table compiler-package))
 (%gst (access compiler-syntax-table compiler-package))
