@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 15.17 1992/09/10 07:32:50 cph Exp $
+$Id: make.scm,v 15.18 1992/09/14 23:14:05 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -52,5 +52,7 @@ MIT in each case. |#
 (set! (access write-result:undefined-value-is-special?
 	      (->environment '(runtime user-interface)))
       false)
+(set! hook/exit (lambda (integer) integer (warn "EXIT has been disabled.")))
+(set! hook/quit (lambda () (warn "QUIT has been disabled.")))
 
 (ge '(student))
