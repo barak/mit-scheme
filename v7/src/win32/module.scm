@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: module.scm,v 1.2 1993/11/10 21:36:46 adams Exp $
+$Id: module.scm,v 1.3 1993/12/01 03:08:03 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -136,8 +136,8 @@ MIT in each case. |#
 
 (define (mark-modules-as-unloaded!)
   (protection-list/for-each
-    (lambda (module) (unload-module! module #f))    
-    *modules*))
+   (lambda (module) (unload-module! module #f))    
+   *modules*))
 
 ;;
 ;;-------------------------------------
@@ -218,6 +218,12 @@ MIT in each case. |#
 ;;----------------------------------------------------------------------
 ;;
 
+(define (when-microcode-supports-win32 thunk)
+  ;; This is for wrapping event:after-restore procedures so that a windows
+  ;; band will restore into a DOS only microcode.
+  (lambda ()
+    (if (implemented-primitive-procedure? (ucode-primitive nt:load-library 1))
+	(thunk))))
 
 (define (initialize-module-package!)
   (set! *modules*
@@ -228,5 +234,6 @@ MIT in each case. |#
       ;;     (free-library (cell-contents handle))))
       (lambda (handle-cell) handle-cell)
       ))
-  (add-event-receiver! event:after-restore mark-modules-as-unloaded!)
+  (add-event-receiver! event:after-restore
+		       (when-microcode-supports-win32 mark-modules-as-unloaded!))
 )

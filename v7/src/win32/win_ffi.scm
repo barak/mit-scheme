@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: win_ffi.scm,v 1.2 1993/11/10 21:41:48 adams Exp $
+$Id: win_ffi.scm,v 1.3 1993/12/01 03:08:03 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -378,7 +378,6 @@ MIT in each case. |#
 ;;  (make-windows-procedure kernel32.dll "SetLastError" void-result int-arg))
     
 (define close-window)
-(define create-rect-rgn)
 (define create-round-rect-rgn)
 (define create-window-ex)
 (define dispatch-message)
@@ -432,11 +431,6 @@ MIT in each case. |#
 	(create-round-rect-rgn (left int) (top int) (right int) (bottom int)
 			       (widthellipse int)(heightellipse int))
       hrgn gdi32.dll "CreateRoundRectRgn"))
-
-  (set! create-rect-rgn
-     (windows-procedure
-	 (create-rect-rgn (left int) (top int) (right int) (bottom int))
-       hrgn gdi32.dll "CreateRectRgn"))
 
   (set! pt-in-region
     (windows-procedure (pt-in-region (hrgn hrgn) (x int) (y int))
@@ -508,7 +502,9 @@ MIT in each case. |#
   (purify general-scheme-wndproc)
   (flush-purification-queue!)
   (install-general-scheme-wndproc!)
-  (add-event-receiver! event:after-restore install-general-scheme-wndproc!)
+  (add-event-receiver!
+    event:after-restore
+    (when-microcode-supports-win32 install-general-scheme-wndproc!))
   (create-windows-procedures!)
 
   (initialize-wndproc-registry)

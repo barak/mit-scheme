@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: wt_user.scm,v 1.2 1993/11/10 21:43:04 adams Exp $
+$Id: wt_user.scm,v 1.3 1993/12/01 03:08:03 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -136,7 +136,7 @@ MIT in each case. |#
   (int32-offset-set! (paintstruct/mem r) 20 v))
 (define-integrable (set-paintstruct/f-restore! r v)
   (byte-offset-set! (paintstruct/mem r) 24 (bool->int v)))
-(define-integrable (set-paintstruct/f-erase! r v)
+(define-integrable (set-paintstruct/f-inc-update! r v)
   (byte-offset-set! (paintstruct/mem r) 28 (bool->int v)))
 
 (define (make-paintstruct)

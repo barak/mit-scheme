@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.2 1993/11/10 21:38:05 adams Exp $
+$Id: graphics.scm,v 1.3 1993/12/01 03:08:03 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -659,8 +659,8 @@ MIT in each case. |#
 
 (define (->color spec)
   (cond ((integer? spec)
-	 (if (< spec 0x02000000)
-	     (+ spec 0x02000000)
+	 (if (< spec #x02000000)
+	     (+ spec #x02000000)
 	     spec))
         ((and (vector? spec) (= (vector-length spec) 3))
 	  (rgb (vector-ref spec 0) (vector-ref spec 1) (vector-ref spec 2)))
@@ -854,7 +854,6 @@ MIT in each case. |#
     (register-class (+) (get-handle 3) 0 0 hInstance
                     hIcon 32515 NULL_BRUSH 0 "SCHEME-GRAPHICS")))
 
-
 (define (initialize-package!)
   (set! win32-graphics-device-type
 	(make-graphics-device-type
@@ -909,7 +908,8 @@ MIT in each case. |#
     (lambda (pair) (win32-graphics/define-color #f (car pair) (cdr pair)))
     initial-color-definitions)
   (register-graphics-window-class)
-  (add-event-receiver! event:after-restore register-graphics-window-class)
+  (add-event-receiver! event:after-restore
+		       (when-microcode-supports-win32 register-graphics-window-class))
   (register-graphics-device-type 'win32 win32-graphics-device-type)
   unspecific)
 
