@@ -1,5 +1,5 @@
 
-# $Id: Makefile.in,v 2.1 2000/12/08 21:01:23 cph Exp $
+# $Id: Makefile.in,v 2.2 2000/12/19 21:14:35 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -106,7 +106,9 @@ maintainer-clean: distclean
 # makefile in the top-level documentation directory.
 
 install-info: sos.info
+	-rm -f $(DESTDIR)$(infodir)/sos.info*
 	$(INSTALL_DATA) sos.info* $(DESTDIR)$(infodir)/.
+	gzip -v $(DESTDIR)$(infodir)/sos.info*
 
 install-html: sos.html
 	$(INSTALL_DATA) sos*.html $(DESTDIR)$(htmldir)/.

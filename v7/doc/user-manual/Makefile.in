@@ -1,5 +1,5 @@
 
-# $Id: Makefile.in,v 1.1 2000/12/08 21:01:23 cph Exp $
+# $Id: Makefile.in,v 1.2 2000/12/19 21:14:24 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -106,7 +106,9 @@ maintainer-clean: distclean
 # makefile in the top-level documentation directory.
 
 install-info: user.info
+	-rm -f $(DESTDIR)$(infodir)/user.info*
 	$(INSTALL_DATA) user.info* $(DESTDIR)$(infodir)/.
+	gzip -v $(DESTDIR)$(infodir)/user.info*
 
 install-html: user.html
 	$(INSTALL_DATA) user*.html $(DESTDIR)$(htmldir)/.

@@ -1,5 +1,5 @@
 
-# $Id: Makefile.in,v 1.1 2000/12/08 21:01:23 cph Exp $
+# $Id: Makefile.in,v 1.2 2000/12/19 21:14:40 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -106,7 +106,9 @@ maintainer-clean: distclean
 # makefile in the top-level documentation directory.
 
 install-info: scheme.info
+	-rm -f $(DESTDIR)$(infodir)/scheme.info*
 	$(INSTALL_DATA) scheme.info* $(DESTDIR)$(infodir)/.
+	gzip -v $(DESTDIR)$(infodir)/scheme.info*
 
 install-html: scheme.html
 	$(INSTALL_DATA) scheme*.html $(DESTDIR)$(htmldir)/.
