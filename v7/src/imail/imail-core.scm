@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.3 2000/01/07 23:14:07 cph Exp $
+;;; $Id: imail-core.scm,v 1.4 2000/01/13 22:14:48 cph Exp $
 ;;;
-;;; Copyright (c) 1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -49,10 +49,9 @@
 (define (make-url protocol body)
   (string->url (string-append protocol ":" body)))
 
-(define (->url object)
-  (cond ((url? object) object)
-	((string? object) (string->url object))
-	(else (error:wrong-type-argument object "URL" '->URL))))
+(define-generic ->url (object))
+(define-method ->url ((url <url>)) url)
+(define-method ->url ((string <string>)) (string->url string))
 
 (define (string->url string)
   (or (hash-table/get saved-urls string #f)
@@ -84,18 +83,19 @@
 
 (define url-protocol-parsers
   (make-string-hash-table))
-
+
 (define (get-memoized-folder url)
   (let ((folder (hash-table/get memoized-folders url #f)))
     (and folder
-	 (if (%folder-valid? folder)
-	     folder
-	     (begin
-	       (unmemoize-folder url)
-	       #f)))))
+	 (let ((folder (weak-car folder)))
+	   (if (and folder (%folder-valid? folder))
+	       folder
+	       (begin
+		 (unmemoize-folder url)
+		 #f))))))
 
 (define (memoize-folder folder)
-  (hash-table/put! memoized-folders (folder-url folder) folder)
+  (hash-table/put! memoized-folders (folder-url folder) (weak-cons folder #f))
   folder)
 
 (define (unmemoize-folder url)
@@ -200,6 +200,9 @@
 ;; Return the URL of FOLDER.
 (define-generic folder-url (folder))
 
+(define-method ->url ((folder <folder>))
+  (folder-url folder))
+
 ;; Return #T if FOLDER represents a real folder, i.e. has a
 ;; corresponding file or server entry.
 (define (folder-valid? folder)
@@ -269,6 +272,9 @@
   (%write-folder folder (folder-url folder)))
 
 ;; Write the contents of FOLDER to URL.
+(define (write-folder folder url)
+  (%write-folder folder (->url url)))
+
 (define-generic %write-folder (folder url))
 
 ;; [These are IMAP commands that appear to be designed to support
@@ -324,6 +330,14 @@
 		 (cons (car headers) headers*)
 		 flags
 		 properties)))))
+
+(define (maybe-strip-imail-headers strip? headers)
+  (if strip?
+      (list-transform-negative headers
+	(lambda (header)
+	  (or (header-field->message-flags header)
+	      (header-field->message-property header))))
+      headers))
 
 ;;;; Message flags
 
