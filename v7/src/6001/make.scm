@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 15.23 1995/02/24 00:38:28 cph Exp $
+$Id: make.scm,v 15.24 1996/09/27 23:06:22 cph Exp $
 
 Copyright (c) 1991-95 Massachusetts Institute of Technology
 
@@ -60,8 +60,7 @@ MIT in each case. |#
 (set! user-initial-environment (->environment '(student)))
 
 (in-package (->environment '(edwin))
-  (set! student-root-directory
-	(merge-pathnames "/users/u6001/" (user-homedir-pathname)))
+  (set! student-root-directory (user-homedir-pathname))
   (set! student-work-directory
 	(merge-pathnames "work/" student-root-directory))
   (set! pset-directory (merge-pathnames "psets/" student-root-directory))
