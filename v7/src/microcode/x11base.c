@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.12 1990/08/16 20:05:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.13 1990/09/11 05:16:14 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -685,23 +685,23 @@ x_event_to_scheme_event (event)
   switch (event -> type) {
 
   case ConfigureNotify:
-    return (MAKE_EVENT (EVENT_TYPE_CONFIGURE, xw_index, EMPTY_LIST));
+    return (MAKE_EVENT (EVENT_TYPE_CONFIGURE, xw_index, SHARP_F));
     break;
 
   case MapNotify:
-    return (MAKE_EVENT (EVENT_TYPE_MAP, xw_index, EMPTY_LIST));
+    return (MAKE_EVENT (EVENT_TYPE_MAP, xw_index, SHARP_F));
     break;
 
   case UnmapNotify:
-    return (MAKE_EVENT (EVENT_TYPE_UNMAP, xw_index, EMPTY_LIST));
+    return (MAKE_EVENT (EVENT_TYPE_UNMAP, xw_index, SHARP_F));
     break;
 
   case Expose:
-    return (MAKE_EVENT (EVENT_TYPE_EXPOSE, xw_index, EMPTY_LIST));
+    return (MAKE_EVENT (EVENT_TYPE_EXPOSE, xw_index, SHARP_F));
     break;
 
   case GraphicsExpose:
-    return (MAKE_EVENT (EVENT_TYPE_GRAPHICS_EXPOSE, xw_index, EMPTY_LIST));
+    return (MAKE_EVENT (EVENT_TYPE_GRAPHICS_EXPOSE, xw_index, SHARP_F));
     break;
 
   case KeyPress:
@@ -752,23 +752,23 @@ x_event_to_scheme_event (event)
     break;
 
   case NoExpose:
-    return (MAKE_EVENT (EVENT_TYPE_NO_EXPOSE, xw_index, EMPTY_LIST));
+    return (MAKE_EVENT (EVENT_TYPE_NO_EXPOSE, xw_index, SHARP_F));
     break;
 
   case EnterNotify:
-    return (MAKE_EVENT (EVENT_TYPE_ENTER, xw_index, EMPTY_LIST));
+    return (MAKE_EVENT (EVENT_TYPE_ENTER, xw_index, SHARP_F));
     break;
 
   case LeaveNotify:
-    return (MAKE_EVENT (EVENT_TYPE_LEAVE, xw_index, EMPTY_LIST));
+    return (MAKE_EVENT (EVENT_TYPE_LEAVE, xw_index, SHARP_F));
     break;
 
   case FocusIn:
-    return (MAKE_EVENT (EVENT_TYPE_FOCUS_IN, xw_index, EMPTY_LIST));
+    return (MAKE_EVENT (EVENT_TYPE_FOCUS_IN, xw_index, SHARP_F));
     break;
 
   case FocusOut:
-    return (MAKE_EVENT (EVENT_TYPE_FOCUS_OUT, xw_index, EMPTY_LIST));
+    return (MAKE_EVENT (EVENT_TYPE_FOCUS_OUT, xw_index, SHARP_F));
     break;
 
   case MotionNotify:
@@ -782,11 +782,11 @@ x_event_to_scheme_event (event)
 			   cons (LONG_TO_UNSIGNED_FIXNUM (pointer_y),
 				 EMPTY_LIST))));
     }
-    return (MAKE_EVENT (EVENT_TYPE_MOTION, xw_index, EMPTY_LIST));
+    return (MAKE_EVENT (EVENT_TYPE_MOTION, xw_index, SHARP_F));
     break;
 
   default:
-    return (MAKE_EVENT (EVENT_TYPE_UNKNOWN, xw_index, EMPTY_LIST));
+    return (MAKE_EVENT (EVENT_TYPE_UNKNOWN, xw_index, SHARP_F));
     break;
   }
 }
@@ -844,7 +844,7 @@ dependent on the EVENT-TYPE.")
 
   any_events = x_dequeue_global_event (& event);
   if (!any_events) {
-    PRIMITIVE_RETURN (EMPTY_LIST);
+    PRIMITIVE_RETURN (SHARP_F);
   }
   PRIMITIVE_RETURN (x_event_to_scheme_event (& event));
 }
@@ -864,7 +864,7 @@ EVENT-TYPE.")
 
   any_events = x_dequeue_global_event (& event);
   if (!any_events) {
-    return (EMPTY_LIST);
+    return (SHARP_F);
   }
   event_list = cons (x_event_to_scheme_event (& event), EMPTY_LIST);
   event_list_tail = event_list;
