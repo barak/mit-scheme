@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulrew.scm,v 1.3 1992/03/03 21:33:34 cph Exp $
+$Id: rulrew.scm,v 1.4 1992/12/23 18:14:20 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -83,7 +83,8 @@ MIT in each case. |#
   (rtl:make-cons-non-pointer
    type
    (rtl:make-machine-constant
-    (careful-object-datum (rtl:object->datum-expression datum)))))
+    (careful-object-datum
+     (rtl:constant-value (rtl:object->datum-expression datum))))))
 
 (define-rule rewriting
   (OBJECT->TYPE (REGISTER (? source register-known-value)))
@@ -93,7 +94,8 @@ MIT in each case. |#
 (define-rule rewriting
   (OBJECT->DATUM (REGISTER (? source register-known-value)))
   (QUALIFIER (rtl:constant-non-pointer? source))
-  (rtl:make-machine-constant (careful-object-datum source)))
+  (rtl:make-machine-constant
+   (careful-object-datum (rtl:constant-value source))))
 
 (define (rtl:constant-non-pointer? expression)
   (and (rtl:constant? expression)
