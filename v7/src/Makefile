@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.14 2000/12/07 22:55:13 cph Exp $
+# $Id: Makefile,v 1.15 2000/12/07 22:56:18 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -65,7 +65,7 @@ clean: clean-extra
 	done
 
 clean-extra: mostlyclean-extra
-	rm lib/*.com
+	-rm -f lib/*.com
 
 distclean: distclean-extra
 	@for SUBDIR in $(SUBDIRS); do \
