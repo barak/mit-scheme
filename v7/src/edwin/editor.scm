@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: editor.scm,v 1.232 1993/10/26 00:37:58 cph Exp $
+;;;	$Id: editor.scm,v 1.233 1993/10/27 23:29:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -482,6 +482,15 @@ This does not affect editor errors or evaluation errors."
 	  (cons (system-pair-cons (ucode-type weak-cons) thread flags)
 		inferior-threads))
     flags))
+
+(define (deregister-inferior-thread! flags)
+  (let loop ((threads inferior-threads))
+    (if (pair? threads)
+	(if (eq? flags (system-pair-cdr (car threads)))
+	    (begin
+	      (system-pair-set-car! (car threads) #f)
+	      (system-pair-set-cdr! (car threads) #f))
+	    (loop (cdr threads))))))
 
 (define (inferior-thread-output! flags)
   (without-interrupts (lambda () (inferior-thread-output!/unsafe flags))))

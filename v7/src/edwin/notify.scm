@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: notify.scm,v 1.11 1993/08/10 06:50:48 cph Exp $
+;;;	$Id: notify.scm,v 1.12 1993/10/27 23:29:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -48,7 +48,7 @@
 
 (define-variable notify-show-time
   "If true, the notifier displays the current time."
-  true
+  #t
   boolean?)
 
 (define (notifier:time)
@@ -65,7 +65,7 @@
 
 (define-variable notify-show-date
   "If true, the notifier displays the current date."
-  false
+  #f
   boolean?)
 
 (define (notifier:date)
@@ -81,13 +81,13 @@
 
 (define-variable notify-show-load
   "If true, the notifier displays the load average."
-  false
+  #f
   boolean?)
 
 (define (notifier:load-average)
   (let ((temporary-buffer (temporary-buffer "*uptime*")))
     (let ((start (buffer-start temporary-buffer)))
-      (shell-command false start false false "uptime")
+      (shell-command #f start #f #f "uptime")
       (let ((result
 	     (if (re-search-forward
 		  ".*load average:[ ]*\\([0-9.]*\\),"
@@ -101,7 +101,7 @@
 
 (define-variable notify-show-mail
   "If true, the notifier displays your mail status."
-  true
+  #t
   boolean?)
 
 (define-variable notify-mail-present
@@ -140,6 +140,23 @@ Ignored if notify-show-mail is false."
   (list (cons (ref-variable-object notify-show-date) notifier:date)
 	(cons (ref-variable-object notify-show-time) notifier:time)
 	(cons (ref-variable-object notify-show-load) notifier:load-average)))
+
+(define (update-notify-string! string)
+  (set-variable! notify-string
+		 (if (or (string-null? (ref-variable global-mode-string))
+			 (string-null? string))
+		     string
+		     (string-append " " string)))
+  (global-window-modeline-event!))
+
+(define-variable notify-string
+  "This is an internal variable.  Don't change it."
+  ""
+  string?)
+
+(define mail-notify-hook-installed? #f)
+(define current-notifier-thread #f)
+(define notifier-thread-registration #f)
 
 (define-command run-notifier
   "Run the notifier.
@@ -157,14 +174,14 @@ which can show various things including time, load average, and mail status."
 	      (if (ref-variable notify-show-mail)
 		  (ref-variable notify-mail-not-present)
 		  ""))))
-	  (set! mail-notify-hook-installed? true)
+	  (set! mail-notify-hook-installed? #t)
 	  unspecific))
     ((ref-command kill-notifier))
     (let ((thread
 	   (create-thread
 	    editor-thread-root-continuation
 	    (lambda ()
-	      (do () (false)
+	      (do () (#f)
 		(inferior-thread-output! notifier-thread-registration)
 		(sleep-current-thread
 		 (* 1000 (ref-variable notify-interval))))))))
@@ -189,32 +206,25 @@ which can show various things including time, load average, and mail status."
 	    (ref-variable notify-show-mail))
        (notifier:mail-present)
        ""))
-  true)
+  #t)
 
 (define-command kill-notifier
   "Kill the current notifier, if any."
   ()
   (lambda ()
-    (if (and current-notifier-thread
-	     (not (thread-dead? current-notifier-thread)))
-	(signal-thread-event current-notifier-thread
-			     (lambda () (exit-current-thread unspecific))))
+    (without-interrupts
+     (lambda ()
+       (if current-notifier-thread
+	   (begin
+	     (if (not (thread-dead? current-notifier-thread))
+		 (signal-thread-event current-notifier-thread
+		   (lambda ()
+		     (exit-current-thread unspecific))))
+	     (set! current-notifier-thread #f)))
+       (if notifier-thread-registration
+	   (begin
+	     (deregister-inferior-thread! notifier-thread-registration)
+	     (set! notifier-thread-registration #f)))
+       unspecific))
     (set-variable! global-mode-string "")
     (update-notify-string! "")))
-
-(define (update-notify-string! string)
-  (set-variable! notify-string
-		 (if (or (string-null? (ref-variable global-mode-string))
-			 (string-null? string))
-		     string
-		     (string-append " " string)))
-  (global-window-modeline-event!))
-
-(define-variable notify-string
-  "This is an internal variable.  Don't change it."
-  ""
-  string?)
-
-(define mail-notify-hook-installed? false)
-(define current-notifier-thread false)
-(define notifier-thread-registration)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.75 1993/10/27 23:01:46 cph Exp $
+;;;	$Id: intmod.scm,v 1.76 1993/10/27 23:29:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -242,15 +242,17 @@ REPL uses current evaluation environment."
 (define (unwind-inferior-repl-buffer buffer)
   (without-interrupts
    (lambda ()
-     (buffer-remove! buffer 'INTERFACE-PORT)
-     (if (memq buffer repl-buffers)
-	 (begin
-	   (if (eq? buffer (global-run-light-buffer))
-	       (set-global-run-light! #f))
-	   (set! repl-buffers (delq! buffer repl-buffers))
-	   (let ((buffer (global-run-light-buffer)))
-	     (if buffer
-		 (set-global-run-light! (local-run-light buffer)))))))))
+     (let ((port (buffer-interface-port buffer)))
+       (if port
+	   (begin
+	     (deregister-inferior-thread! (port/output-registration port))
+	     (if (eq? buffer (global-run-light-buffer))
+		 (set-global-run-light! #f))
+	     (set! repl-buffers (delq! buffer repl-buffers))
+	     (let ((buffer (global-run-light-buffer)))
+	       (if buffer
+		   (set-global-run-light! (local-run-light buffer))))
+	     (buffer-remove! buffer 'INTERFACE-PORT)))))))
 
 (define (set-run-light! buffer run?)
   (let ((value (if run? "eval" "listen")))
