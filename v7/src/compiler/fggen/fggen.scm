@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.12 1988/12/12 21:51:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.13 1988/12/19 20:27:47 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -724,8 +724,23 @@ MIT in each case. |#
    block
    continuation
    (scode/make-combination
-    (ucode-primitive car)
-    (list (list (scode/quotation-expression expression))))))
+    (ucode-primitive system-pair-car)
+    (list (make-constant-quotation expression)))))
+
+(define (generate/constant-quotation block continuation expression)
+  (continue/rvalue-constant
+   block
+   continuation
+   (make-constant (scode/constant-quotation-expression expression))))
+
+(define-integrable (scode/make-constant-quotation name)
+  (cons constant-quotation-tag name))
+
+(define-integrable (scode/constant-quotation-expression expression)
+  (cdr expression))
+
+(define constant-quotation-tag
+  "constant-quotation")
 
 ;;;; Dispatcher
 
@@ -758,9 +773,12 @@ MIT in each case. |#
 		    (generate/combination block continuation expression))))))
 	(generate/pair
 	 (lambda (block continuation expression)
-	   (if (eq? (car expression) safe-variable-tag)
-	       (generate/safe-variable block continuation expression)
-	       (generate/constant block continuation expression)))))
+	   (cond ((eq? (car expression) safe-variable-tag)
+		  (generate/safe-variable block continuation expression))
+		 ((eq? (car expression) constant-quotation-tag)
+		  (generate/constant-quotation block continuation expression))
+		 (else
+		  (generate/constant block continuation expression))))))
 
     (let-syntax
 	((dispatch-entry
