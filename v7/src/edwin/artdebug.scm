@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.7 1991/07/19 00:38:18 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.8 1991/07/19 04:19:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -44,6 +44,8 @@
 
 ;;;; Continuation Browser
 
+(declare (usual-integrations))
+
 #| TO DO
 
 Make environment browsing mode; the debugger mode can be a superset of
@@ -114,56 +116,48 @@ and contract subproblems and reductions.
 
 |#
 
-(declare (usual-integrations))
-
 (define-variable debugger-quit-on-return?
-  "True iff debugger should automatically quit when it executing a
-\"return\" command."
+  "True means quit debugger when executing a \"return\" command."
   true
   boolean?)
 
 (define-variable debugger-quit-on-restart?
-  "True iff debugger should automatically quit when it executing a
-\"restart\" command."
+  "True means quit debugger when executing a \"restart\" command."
   true
   boolean?)
 
 (define-variable debugger-open-markers?
-  "True iff debugger should automatically insert newlines between reduction and
-subproblem marker lines."
+  "True means newlines are inserted between marker lines."
   true
   boolean?)
 
 (define-variable debugger-verbose-mode?
-  "True iff debugger should display extra information without the user requesting
-it."
+  "True means display extra information without the user requesting it."
   true
   boolean?)
 
 (define-variable debugger-automatically-expand-reductions?
-  "True iff debugger should automatically insert reductions when reduction motion
-commands are used in a subproblem where reductions don't already appear."
+  "True says to insert reductions when reduction motion commands are used
+in a subproblem whose reductions aren't already inserted."
   true
   boolean?)
 
 (define-variable debugger-max-subproblems
-  "Maximum number of subproblems displayed when debugger starts, or false if
-there is no limit."
+  "Maximum number of subproblems displayed when debugger starts,
+or #F meaning no limit."
   10
   (lambda (number)
     (or (not number)
-	(and (exact-nonnegative-integer? number)
+	(and (exact-integer? number)
 	     (positive? number)))))
 
 (define-variable debugger-hide-system-code?
-  "The debugger will, on startup, show subproblems in system code only
-if this variable is false."
+  "True means don't show subproblems created by the runtime system."
   true
   boolean?)
 
 (define-variable debugger-show-help-message?
-  "The debugger will include a help message in its buffer only if this
-variable is true."
+  "True means show a help message in the debugger buffer."
   true
   boolean?)
 
@@ -171,7 +165,7 @@ variable is true."
 (define in-debugger-evaluation? false)
 
 (define-variable debugger-debug-evaluations?
-  "True iff evaluation errors in the debugger buffer should start new debuggers."
+  "True means evaluation errors in a debugger buffer start new debuggers."
   false
   boolean?)
 
@@ -209,7 +203,8 @@ variable is true."
 
 The error that started the debugger is:
 "))
-			 (write-condition-report condition (current-output-port))
+			 (write-condition-report condition
+						 (current-output-port))
 			 (newline)
 			 (buffer-not-modified! buffer)))))))))))
 
@@ -224,8 +219,9 @@ The error that started the debugger is:
 (define-integrable (buffer-dstate buffer)
   (buffer-get buffer 'DEBUG-STATE))
 
-(define more-subproblems-message "\nThere are more subproblems below this one.")
-
+(define more-subproblems-message
+  "\nThere are more subproblems below this one.")
+
 (define (continuation-browser object)
   (message "Starting debugger...")
   (let ((buffer (new-buffer "*debug*"))
@@ -272,14 +268,12 @@ The error that started the debugger is:
       (let ((point (forward-one-subproblem (buffer-start buffer))))
 	(set-buffer-point! buffer point)
 	(if (ref-variable debugger-verbose-mode? buffer)
-	    ;(print-subproblem-or-reduction (current-point) (debug-dstate (current-point)))
-	    (invoke-debugger-command command/print-subproblem-or-reduction point)
-	    )
+	    (invoke-debugger-command command/print-subproblem-or-reduction point))
 	(push-buffer-mark! buffer point)
 	(buffer-not-modified! buffer)
 	(temporary-message "Starting debugger...done")
 	buffer))))
-
+
 (define (count-subproblems dstate)
   (do ((i 0 (1+ i))
        (subproblem (dstate/subproblem dstate)
@@ -302,6 +296,7 @@ The error that started the debugger is:
 				     (1+ level))))))))
 
 (define (system-expression? expression)
+  expression				;ignore
   #f)
 
 (define (print-reductions mark)
@@ -334,8 +329,9 @@ The error that started the debugger is:
     (let ((pad-width (max 0 (- 74 (string-length level-identification)))))
       (write-string level-identification)
       (write-string " --- ")
-      (write-string (string-pad-right (string-append string " ") pad-width #\-)))))
-
+      (write-string
+       (string-pad-right (string-append string " ") pad-width #\-)))))
+
 (define (max-reduction-number frame)
   (max 0 (-1+ (improper-list-length (stack-frame/reductions frame)))))
 
@@ -360,10 +356,11 @@ The error that started the debugger is:
 	 (else
 	  ";undefined expression")))
   (if (ref-variable debugger-verbose-mode?)
-      (begin (newline)
-	     (if (environment? environment)
-		 (show-environment-name environment)
-		 (write-string "There is no environment stored for this frame."))))
+      (begin
+	(newline)
+	(if (environment? environment)
+	    (show-environment-name environment)
+	    (write-string "There is no environment stored for this frame."))))
   (if (ref-variable debugger-open-markers?)
       (newline)))
 
@@ -383,7 +380,8 @@ The error that started the debugger is:
 	  (newline)
 	  (if (environment? environment)
 	      (show-environment-name environment)
-	      (write-string "There is no environment stored for this frame.")))))
+	      (write-string
+	       "There is no environment stored for this frame.")))))
   (if (ref-variable debugger-open-markers?)
       (newline)))
 
@@ -462,7 +460,7 @@ The error that started the debugger is:
 	  (message "Automatically expanding reductions...")
 	  (print-reductions mark)
 	  (temporary-message "Automatically expanding reductions...done")))))
-
+
 (define (above-subproblem-boundary? mark)
   (let ((next-reduction (find-next-reduction-marker mark))
 	(next-subproblem (find-next-subproblem-marker mark)))
@@ -508,10 +506,12 @@ The error that started the debugger is:
 			(newline)
 			(let ((subproblem (nth-subproblem buffer (1+ number))))
 			  (with-values
-			      (lambda () (stack-frame/debugging-info subproblem))
+			      (lambda ()
+				(stack-frame/debugging-info subproblem))
 			    (lambda (expression environment subexpression)
 			      subexpression
-			      (message "Automatically expanding subproblems...")
+			      (message
+			       "Automatically expanding subproblems...")
 			      (print-subproblem-level
 			       (1+ number)
 			       subproblem
@@ -540,7 +540,7 @@ The error that started the debugger is:
 	      (line-end level-top -1)
 	      (editor-error "Cannot move beyond top level")))
 	(editor-error "Cannot move beyond top level"))))
-
+
 (define (backward-one-subproblem start)
   (backward-one-level start find-previous-subproblem-marker))
 (define (backward-one-reduction start)
@@ -608,7 +608,7 @@ The error that started the debugger is:
   (set-dstate/environment-list!
    dstate
    (list (reduction-environment (dstate/reduction dstate)))))
-
+
 ;; UGLY BECAUSE IT MUTATES THE DSTATE.
 
 (define (debug-dstate mark)
@@ -737,12 +737,13 @@ expanded, move the point to one of the reductions."
   (lambda ()
     (let ((cp (current-point)))
       (if (reductions-expanded? cp)
-	  (temporary-message "Reductions for this subproblem already expanded.")
+	  (temporary-message
+	   "Reductions for this subproblem already expanded.")
 	  (with-output-to-mark
 	    cp
 	    (lambda ()
 	      (print-reductions (current-point))))))))
-
+
 (define-command continuation-browser-goto
   "Move to an arbitrary subproblem.
 Prompt for the subproblem number if not given as an argument."
@@ -887,8 +888,9 @@ Miscellany
 		       scheme-interaction-output-wrapper)
   (local-set-variable! comint-input-ring
 		       (make-ring (ref-variable comint-input-ring-size)))
-  (local-set-variable! transcript-output-wrapper debug-interaction-output-wrapper))
-
+  (local-set-variable! transcript-output-wrapper
+		       debug-interaction-output-wrapper))
+
 (define (debug-interaction-output-wrapper thunk)
   (with-output-to-current-point
    (lambda ()
@@ -899,7 +901,7 @@ Miscellany
 	(fresh-lines 2)
 	(^G-signal))
       thunk))))
-
+
 ;; Disable EVAL-CURRENT-BUFFER in Debugger Mode; it is inherited from
 ;; Interaction mode but does not make sense here:
 
