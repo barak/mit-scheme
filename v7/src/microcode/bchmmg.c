@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.79 1993/08/22 22:38:59 gjr Exp $
+$Id: bchmmg.c,v 9.80 1993/09/03 18:35:46 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -201,6 +201,8 @@ DEFUN (io_error_always_abort, (operation_name, noise),
   return (1);
 }
 
+#ifndef WINNT
+
 extern char EXFUN (userio_choose_option,
 		   (CONST char *, CONST char *, CONST char **));
 extern int EXFUN (userio_confirm, (CONST char *));
@@ -250,11 +252,7 @@ DEFUN (io_error_retry_p, (operation_name, noise),
 	/*NOTREACHED*/
 
       case 'S':
-#ifdef WINNT
-        Sleep (1000);
-#else
 	sleep (60);
-#endif
 	/* fall through */
 
       case 'R':
@@ -263,6 +261,37 @@ DEFUN (io_error_retry_p, (operation_name, noise),
     }
   }
 }
+
+#else /* WINNT */
+#include <windows.h>
+
+int 
+DEFUN (io_error_retry_p, (operation_name, noise),
+       char * operation_name AND char * noise)
+{
+  char buf[512];
+  extern HANDLE master_tty_window;
+
+  sprintf (&buf[0],
+	   "%s: GC file error (code = %d) when manipulating %s.\n"
+	   "Choose an option (Cancel = Exit Scheme)",
+	   operation_name, (GetLastError ()), noise);
+  switch (MessageBox (master_tty_window,
+		      &buf[0],
+		      "MIT Scheme garbage-collection problem description",
+		      (MB_ICONSTOP | MB_ABORTRETRYIGNORE | MB_APPLMODAL)))
+  {
+    case IDABORT:
+      return (1);
+
+    case IDRETRY:
+      return (0);
+
+    case IDIGNORE:
+      Microcode_Termination (TERM_EXIT);
+  }
+}
+#endif /* WINNT */
 
 static int
 DEFUN (verify_write, (position, size, success),
