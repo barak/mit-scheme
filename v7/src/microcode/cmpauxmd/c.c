@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: c.c,v 1.9 1993/10/30 18:11:31 gjr Exp $
+$Id: c.c,v 1.10 1993/11/01 15:27:42 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 #include "liarc.h"
+#include "prims.h"
 #include "bignum.h"
 #include "bitstr.h"
 
@@ -63,7 +64,7 @@ SCHEME_OBJECT EXFUN ((* (constructor_kludge [10])), ()) =
 };
 
 #endif /* BUG_GCC_LONG_CALLS */
-
+
 extern char * interface_to_C_hook;
 extern void EXFUN (C_to_interface, (PTR));
 extern void EXFUN (interface_initialize, (void));
@@ -90,15 +91,22 @@ struct compiled_block_s
   unsigned long dispatch;
   data_block constructor;
 };
-
+
 int pc_zero_bits;
 char * interface_to_C_hook;
-#define PSEUDO_STATIC
-PSEUDO_STATIC struct compiled_block_s * compiled_blocks;
-PSEUDO_STATIC struct compiled_entry_s * compiled_entries;
-PSEUDO_STATIC unsigned long max_compiled_entries, compiled_entries_size;
-PSEUDO_STATIC unsigned long max_compiled_blocks, compiled_blocks_size;
-static SCHEME_OBJECT dummy_entry = ((SCHEME_OBJECT) -1L);
+#define PSEUDO_STATIC /* static */
+PSEUDO_STATIC struct compiled_block_s *
+  compiled_blocks = ((struct compiled_block_s *) NULL);
+PSEUDO_STATIC struct compiled_entry_s *
+  compiled_entries = ((struct compiled_entry_s *) NULL);
+PSEUDO_STATIC unsigned long
+  max_compiled_entries = 0,
+  compiled_entries_size = 0;
+PSEUDO_STATIC unsigned long
+  max_compiled_blocks = 0,
+  compiled_blocks_size = 0;
+static SCHEME_OBJECT
+  dummy_entry = ((SCHEME_OBJECT) -1L);
 void
   * scheme_hooks_low = NULL,
   * scheme_hooks_high = NULL;
@@ -163,10 +171,17 @@ DEFUN_VOID (interface_initialize)
   }
   pc_zero_bits = i;  
 
+  if (compiled_entries != ((struct compiled_entry_s *) NULL))
+    free (compiled_entries);
+  if (compiled_blocks != ((struct compiled_block_s *) NULL))
+    free (compiled_blocks);
+  
   interface_to_C_hook = ((char *) &dummy_entry);
   max_compiled_entries = 0;
   compiled_entries_size = 0;
   compiled_entries = ((struct compiled_entry_s *) NULL);
+  max_compiled_blocks = 0;
+  compiled_blocks_size = 0;
   compiled_blocks = ((struct compiled_block_s *) NULL);
   
   if (((declare_compiled_code ("#trampoline_code_block",
@@ -323,6 +338,9 @@ DEFUN (initialize_C_compiled_block, (argno, name),
 	  (compiled_blocks[slot].dispatch));
 }
 
+#define C_COUNT_TRANSFERS
+unsigned long c_to_interface_transfers = 0;
+
 void
 DEFUN (C_to_interface, (in_entry), PTR in_entry)
 {
@@ -332,6 +350,10 @@ DEFUN (C_to_interface, (in_entry), PTR in_entry)
   while (1)
   {
     unsigned long entry_index = (* ((unsigned long *) entry));
+
+#ifdef C_COUNT_TRANSFERS
+    c_to_interface_transfers += 1;
+#endif /* C_COUNT_TRANSFERS */
 
     if (entry_index < ((unsigned long) max_compiled_entries))
       entry = ((* (compiled_entries[entry_index].code))
@@ -347,6 +369,19 @@ DEFUN (C_to_interface, (in_entry), PTR in_entry)
       return;
     }
   }
+}
+
+DEFINE_PRIMITIVE ("SWAP-C-COUNTER!", Prim_swap_c_counter, 1, 1,
+		  "(new-value)\n\
+Set the C transfer counter to new-value.  Return the old value.")
+{
+  unsigned long new_counter, old_counter;
+  PRIMITIVE_HEADER (1);
+
+  new_counter = (arg_integer (1));
+  old_counter = c_to_interface_transfers;
+  c_to_interface_transfers = new_counter;
+  PRIMITIVE_RETURN (ulong_to_integer (old_counter));
 }
 
 typedef SCHEME_OBJECT * EXFUN
