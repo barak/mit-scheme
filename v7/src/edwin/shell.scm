@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: shell.scm,v 1.20 1999/08/20 20:35:42 cph Exp $
+$Id: shell.scm,v 1.21 1999/08/24 02:59:37 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -157,7 +157,7 @@ Otherwise, one argument `-i' is passed to the shell."
 		   (let ((eoc
 			  (let ((r (match command start)))
 			    (and r
-				 (re-match-end-index r)))))
+				 (re-match-end-index 0 r)))))
 		     (cond ((not eoc) #f)
 			   ((match "\\s *\\(\;\\|$\\)" eoc) "")
 			   ((match "\\s +\\([^ \t\;]+\\)\\s *\\(\;\\|$\\)" eoc)
