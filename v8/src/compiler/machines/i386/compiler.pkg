@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.2 1995/10/25 19:27:35 ssmith Exp $
+$Id: compiler.pkg,v 1.3 1995/10/25 19:49:37 ssmith Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -428,7 +428,8 @@ MIT in each case. |#
 	 "machines/i386/inerly"	;Early binding version
 	 "machines/i386/instr1"	;I386 instruction utilities
 	 "machines/i386/instr2"	;I386 instructions
-	 "machines/i386/instr3"	;  "        "
+	 "machines/i386/instrf"	;  "        "
+	 "machines/i386/insutl" ;  "        "
 	 )
   (parent (compiler))
   (export (compiler)
