@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.83 2000/05/22 15:07:55 cph Exp $
+;;; $Id: imail-core.scm,v 1.84 2000/05/22 19:44:44 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -296,6 +296,15 @@
       (memoize-folder (%open-folder url))))
 
 (define-generic %open-folder (url))
+
+(define (with-open-folder url thunk)
+  (let ((folder (get-memoized-folder url)))
+    (if folder
+	(thunk)
+	(let ((folder (%open-folder url)))
+	  (let ((v (thunk)))
+	    (close-folder folder)
+	    v)))))
 
 ;; -------------------------------------------------------------------
 ;; Close FOLDER, freeing up connections, memory, etc.  Subsequent use
