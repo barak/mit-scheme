@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: macros.scm,v 1.57 1992/11/16 22:41:07 cph Exp $
+;;;	$Id: macros.scm,v 1.58 1992/11/17 21:37:49 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -76,7 +76,7 @@
 	  (if (null? slot-names)
 	      '()
 	      (cons `(DEFINE-INTEGRABLE ,(car slot-names) ,n)
-		    (slot-loop (cdr slot-names) (1+ n)))))
+		    (slot-loop (cdr slot-names) (+ n 1)))))
 
 	(define (selector-loop selector-names n)
 	  (if (null? selector-names)
@@ -84,12 +84,12 @@
 	      (cons `(DEFINE-INTEGRABLE
 		       (,(car selector-names) ,structure-name)
 		       (VECTOR-REF ,structure-name ,n))
-		    (selector-loop (cdr selector-names) (1+ n)))))
+		    (selector-loop (cdr selector-names) (+ n 1)))))
 
 	`(BEGIN (DEFINE ,tag-name ,name)
 		(DEFINE (,constructor-name)
 		  (LET ((,structure-name
-			 (MAKE-VECTOR ,(1+ (length slots)) '())))
+			 (MAKE-VECTOR ,(+ (length slots) 1) '())))
 		    (VECTOR-SET! ,structure-name 0 ,tag-name)
 		    ,structure-name))
 		(DEFINE (,predicate-name OBJECT)
@@ -99,6 +99,13 @@
 		(UNPARSER/SET-TAGGED-VECTOR-METHOD!
 		 ,tag-name
 		 (UNPARSER/STANDARD-METHOD ',structure-name))
+		(NAMED-STRUCTURE/SET-TAG-DESCRIPTION!
+		 ,tag-name
+		 (LAMBDA (OBJECT)
+		   (LIST ,@(map (lambda (slot selector-name)
+				  `(LIST ',slot (,selector-name OBJECT)))
+				slots
+				selector-names))))
 		,@(slot-loop slot-names 1)
 		,@(selector-loop selector-names 1))))))
 
