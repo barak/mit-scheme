@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.47 1993/08/09 19:36:39 jawilson Exp $
+$Id: decls.scm,v 1.48 1993/09/03 04:41:21 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -135,6 +135,7 @@ MIT in each case. |#
 		"debuge"
 		"dired"
 		"dirunx"
+		"docstr"
 		"dos"
 		"doscom"
 		"dosproc"

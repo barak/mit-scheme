@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.128 1993/09/01 18:12:59 gjr Exp $
+$Id: edwin.pkg,v 1.129 1993/09/03 04:41:30 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -54,6 +54,7 @@ MIT in each case. |#
 	 "search"
 	 "image"
 	 "comman"
+	 "docstr"
 	 "modes"
 	 "buffer"
 	 "bufset"
