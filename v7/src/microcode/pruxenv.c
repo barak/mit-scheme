@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pruxenv.c,v 1.15 1993/11/06 21:21:12 cph Exp $
+$Id: pruxenv.c,v 1.16 1995/07/27 00:37:51 adams Exp $
 
-Copyright (c) 1990-1993 Massachusetts Institute of Technology
+Copyright (c) 1990-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -249,3 +249,18 @@ DEFINE_PRIMITIVE ("HOSTNAME", Prim_hostname, 0, 0,
 #endif
   }
 }
+
+
+
+
+DEFINE_PRIMITIVE ("INSTRUCTION-ADDRESS->COMPILED-CODE-BLOCK",
+		  Prim_instruction_address_to_compiled_code_block, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+      extern SCHEME_OBJECT find_ccblock();
+      long the_pc = (long) OBJECT_ADDRESS(ARG_REF(1));
+      PRIMITIVE_RETURN (find_ccblock(the_pc));
+  }
+}
+
