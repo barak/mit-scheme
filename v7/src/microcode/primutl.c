@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: primutl.c,v 9.59 1992/09/24 01:35:49 cph Exp $
+$Id: primutl.c,v 9.60 1993/06/24 18:11:30 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -331,8 +331,8 @@ DEFUN (search_for_primitive,
        AND Boolean intern_p AND Boolean allow_p
        AND int arity)
 {
-  long i, Max, old_arity;
-  SCHEME_OBJECT *Next;
+  long i, max, old_arity;
+  SCHEME_OBJECT * next;
 
   i = (primitive_name_to_code (((char *) c_name),
 			       &Primitive_Name_Table[0],
@@ -341,42 +341,36 @@ DEFUN (search_for_primitive,
   {
     old_arity = Primitive_Arity_Table[i];
     if ((arity == UNKNOWN_PRIMITIVE_ARITY) || (arity == old_arity))
-    {
       return (MAKE_PRIMITIVE_OBJECT (0, i));
-    }
     else
-    {
       return (LONG_TO_FIXNUM (old_arity));
-    }
   }
   /* Search the undefined primitives table if allowed. */
 
   if (!allow_p)
-  {
     return (SHARP_F);
-  }
 
   /* The vector should be sorted for faster comparison. */
 
-  Max = (NUMBER_OF_UNDEFINED_PRIMITIVES ());
-  if (Max > 0)
+  max = (NUMBER_OF_UNDEFINED_PRIMITIVES ());
+  if (max > 0)
   {
-    Next = MEMORY_LOC (Undefined_Primitives, 2);
+    next = (MEMORY_LOC (Undefined_Primitives, 2));
 
-    for (i = 1; i <= Max; i++)
+    for (i = 1; i <= max; i++)
     {
       SCHEME_OBJECT temp;
 
-      temp = *Next++;
+      temp = *next++;
       if (strcmp_ci (((char *) c_name), ((char *) (STRING_LOC (temp, 0))))
 	  == 0)
       {
 	if (arity != UNKNOWN_PRIMITIVE_ARITY)
 	{
-	  temp = VECTOR_REF (Undefined_Primitives_Arity, i);
+	  temp = (VECTOR_REF (Undefined_Primitives_Arity, i));
 	  if (temp == SHARP_F)
-	    VECTOR_SET
-	      (Undefined_Primitives_Arity, i, (LONG_TO_FIXNUM (arity)));
+	    VECTOR_SET (Undefined_Primitives_Arity, i,
+			(LONG_TO_FIXNUM (arity)));
 	  else
 	  {
 	    old_arity = FIXNUM_TO_LONG (temp);
@@ -384,7 +378,8 @@ DEFUN (search_for_primitive,
 	      return (temp);
 	  }
 	}
-	return (MAKE_PRIMITIVE_OBJECT((MAX_PRIMITIVE + i), (MAX_PRIMITIVE + 1)));
+	return (MAKE_PRIMITIVE_OBJECT((MAX_PRIMITIVE + i),
+				      (MAX_PRIMITIVE + 1)));
       }
     }
   }
@@ -400,50 +395,55 @@ DEFUN (search_for_primitive,
   if (scheme_name == SHARP_F)
     scheme_name = (char_pointer_to_string (c_name));
 
-  if ((Max % CHUNK_SIZE) == 0)
-    {
-      if (Max > 0)
-	Next = (MEMORY_LOC (Undefined_Primitives, 2));
-      Undefined_Primitives =
-	(allocate_marked_vector (TC_VECTOR, (Max + CHUNK_SIZE + 1), true));
-      FAST_VECTOR_SET
-	(Undefined_Primitives, 0, (LONG_TO_UNSIGNED_FIXNUM (Max + 1)));
-      for (i = 0; (i < Max); i += 1)
-	FAST_VECTOR_SET
-	  (Undefined_Primitives, (i + 1), (MEMORY_FETCH (*Next++)));
-      FAST_VECTOR_SET (Undefined_Primitives, (Max + 1), scheme_name);
-      for (i = 1; (i < CHUNK_SIZE); i += 1)
-	FAST_VECTOR_SET (Undefined_Primitives, (i + Max + 1), SHARP_F);
+  if ((max % CHUNK_SIZE) == 0)
+  {
+    long new_max = (max + 1);
+    SCHEME_OBJECT new_prims, new_arities;
 
-      if (Max > 0)
-	Next = (MEMORY_LOC (Undefined_Primitives_Arity, 2));
-      Undefined_Primitives_Arity =
-	(allocate_marked_vector (TC_VECTOR, (Max + CHUNK_SIZE + 1), true));
-      FAST_VECTOR_SET (Undefined_Primitives_Arity, 0, SHARP_F);
-      for (i = 0; (i < Max); i += 1)
-	FAST_VECTOR_SET
-	  (Undefined_Primitives_Arity, (i + 1), (MEMORY_FETCH (*Next++)));
-      FAST_VECTOR_SET
-	(Undefined_Primitives_Arity,
-	 (Max + 1),
-	 ((arity != UNKNOWN_PRIMITIVE_ARITY)
-	  ? (LONG_TO_FIXNUM (arity))
-	  : SHARP_F));
-      for (i = 1; (i < CHUNK_SIZE); i += 1)
-	FAST_VECTOR_SET (Undefined_Primitives_Arity, (i + Max + 1), SHARP_F);
+    if (max > 0)
+      next = (MEMORY_LOC (Undefined_Primitives, 2));
+    new_prims =
+      (allocate_marked_vector (TC_VECTOR, (new_max + CHUNK_SIZE), true));
+    FAST_VECTOR_SET
+      (new_prims, 0, (LONG_TO_UNSIGNED_FIXNUM (new_max)));
+    for (i = 1; (i < new_max); i += 1)
+      FAST_VECTOR_SET (new_prims, i, (MEMORY_FETCH (*next++)));
+    FAST_VECTOR_SET (new_prims, new_max, scheme_name);
+    for (i = 1; (i < CHUNK_SIZE); i += 1)
+      FAST_VECTOR_SET (new_prims, (i + new_max), SHARP_F);
 
-      Max += 1;
-    }
+    if (max > 0)
+      next = (MEMORY_LOC (Undefined_Primitives_Arity, 2));
+    new_arities =
+      (allocate_marked_vector (TC_VECTOR, (new_max + CHUNK_SIZE), true));
+    FAST_VECTOR_SET (new_arities, 0, SHARP_F);
+    for (i = 1; (i < new_max); i += 1)
+      FAST_VECTOR_SET (new_arities, i, (MEMORY_FETCH (*next++)));
+    FAST_VECTOR_SET (new_arities,
+		     new_max,
+		     ((arity != UNKNOWN_PRIMITIVE_ARITY)
+		      ? (LONG_TO_FIXNUM (arity))
+		      : SHARP_F));
+    for (i = 1; (i < CHUNK_SIZE); i += 1)
+      FAST_VECTOR_SET (new_arities, (i + new_max), SHARP_F);
+
+    Undefined_Primitives = new_prims;
+    Undefined_Primitives_Arity = new_arities;
+    max = new_max;
+  }
   else
   {
-    Max += 1;
-    VECTOR_SET (Undefined_Primitives, Max, scheme_name);
+    long new_max = (max + 1);
+    VECTOR_SET (Undefined_Primitives, new_max, scheme_name);
+    /* SHARP_F inserted in slot when vector was initialized above. */
     if (arity != UNKNOWN_PRIMITIVE_ARITY)
-      VECTOR_SET (Undefined_Primitives_Arity, Max, (LONG_TO_FIXNUM (arity)));
+      VECTOR_SET (Undefined_Primitives_Arity, new_max,
+		  (LONG_TO_FIXNUM (arity)));
 
-    VECTOR_SET (Undefined_Primitives, 0, (LONG_TO_UNSIGNED_FIXNUM(Max)));
+    VECTOR_SET (Undefined_Primitives, 0, (LONG_TO_UNSIGNED_FIXNUM (new_max)));
+    max = new_max;
   }
-  return (MAKE_PRIMITIVE_OBJECT ((MAX_PRIMITIVE + Max), (MAX_PRIMITIVE + 1)));
+  return (MAKE_PRIMITIVE_OBJECT ((MAX_PRIMITIVE + max), (MAX_PRIMITIVE + 1)));
 }
 
 /* Dumping and loading primitive object references. */
