@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.19 1988/11/04 11:11:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.20 1988/11/04 22:37:44 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -144,8 +144,8 @@ MIT in each case. |#
   (generator expressions
     (lambda (pcfg)
       (let ((temporary (rtl:make-pseudo-register)))
-	;; Force assignment to be made first.
-	(let ((consequent 
+	;; Force assignments to be made first.
+	(let ((consequent
 	       (rtl:make-assignment temporary (rtl:make-constant true)))
 	      (alternative
 	       (rtl:make-assignment temporary (rtl:make-constant false))))
@@ -307,18 +307,14 @@ MIT in each case. |#
       (1+ (length arg-list))
       continuation-label
       primitive))))
-		  
+
 (define (generate-type-test type expression)
   (let ((mu-type (microcode-type type)))
     (if (rtl:constant? expression)
-	(if (eq? mu-type
-		 (object-type
-		  (rtl:constant-value expression)))
+	(if (eq? mu-type (object-type (rtl:constant-value expression)))
 	    (make-true-pcfg)
 	    (make-false-pcfg))
-	(rtl:make-type-test
-	 (rtl:make-object->type expression)
-	 mu-type))))
+	(rtl:make-type-test (rtl:make-object->type expression) mu-type))))
 
 ;;;; Open Coders
 
@@ -479,7 +475,7 @@ MIT in each case. |#
 		(return-2 (open-code/memory-ref index) '(0)))))))
     (define/ref
       '(CAR SYSTEM-PAIR-CAR CELL-CONTENTS SYSTEM-HUNK3-CXR0) 0)
-    (define/ref 
+    (define/ref
       '(CDR SYSTEM-PAIR-CDR SYSTEM-HUNK3-CXR1) 1)
     (define/ref 'SYSTEM-HUNK3-CXR2 2))
 
@@ -601,7 +597,6 @@ MIT in each case. |#
 	     (return-2 (open-code/vector-set name)
 		       '(0 1 2))))))
    '(VECTOR-SET! #| SYSTEM-VECTOR-SET! |#)))
-
 
 (let ((define-fixnum-2-args
 	(lambda (fixnum-operator)
@@ -673,166 +668,164 @@ MIT in each case. |#
 
 ;;; Generic arithmetic
 
-(define generate-generic-binary
-  (lambda (expression finish #!optional is-pred?)
-    (let ((continuation-entry (generate-continuation-entry))
-	  (generic-op (rtl:generic-binary-operator expression))
-	  (fix-op (generic->fixnum-op
-		   (rtl:generic-binary-operator expression)))
-	  (flo-op (generic->floatnum-op
-		   (rtl:generic-binary-operator expression)))
-	  (op1 (rtl:generic-binary-operand-1 expression))
-	  (op2 (rtl:generic-binary-operand-2 expression)))
-      (let* ((give-it-up
-	      (scfg-append!
-	       (generate-primitive
-		generic-op
-		(cddr expression)
-		(rtl:continuation-entry-continuation
-		 (rinst-rtl
-		  (bblock-instructions
-		   (cfg-entry-node continuation-entry)))))
-	       continuation-entry
-	       (if (or (default-object? is-pred?)
-		       (not is-pred?))
-		   (expression-simplify-for-statement
-		    (rtl:make-fetch register:value)
-		    finish)
-		   (finish
-		    (rtl:make-true-test
-		     (rtl:make-fetch register:value))))))
-	     (generic-flonum
-	      ;; For now we will just call the generic op.
-	      ;; When we have open coded flonums, we will
-	      ;; stick that stuff here.
-	      give-it-up)
-	     (generic-3
-	      ;; op1 is a flonum, op2 is not
+(define (generate-generic-binary expression finish is-pred?)
+  (let ((continuation-entry (generate-continuation-entry))
+	(generic-op (rtl:generic-binary-operator expression))
+	(fix-op
+	 (generic->fixnum-op (rtl:generic-binary-operator expression)))
+	(flo-op
+	 (generic->floatnum-op (rtl:generic-binary-operator expression)))
+	(op1 (rtl:generic-binary-operand-1 expression))
+	(op2 (rtl:generic-binary-operand-2 expression)))
+    (let* ((give-it-up
+	    (scfg-append!
+	     (generate-primitive
+	      generic-op
+	      (cddr expression)
+	      (rtl:continuation-entry-continuation
+	       (rinst-rtl
+		(bblock-instructions
+		 (cfg-entry-node continuation-entry)))))
+	     continuation-entry
+	     (if is-pred?
+		 (finish
+		  (rtl:make-true-test (rtl:make-fetch register:value)))
+		 (expression-simplify-for-statement
+		  (rtl:make-fetch register:value)
+		  finish))))
+	   (generic-flonum
+	    ;; For now we will just call the generic op.
+	    ;; When we have open coded flonums, we will
+	    ;; stick that stuff here.
+	    give-it-up)
+	   (generic-3
+	    ;; op1 is a flonum, op2 is not
+	    (pcfg*scfg->scfg!
+	     (generate-type-test 'FIXNUM op2)
+	     ;; Whem we have open coded flonums we
+	     ;; will convert op2 to a float and do a
+	     ;; floating op.
+	     generic-flonum
+	     give-it-up))
+	   (generic-2
+	    ;; op1 is a fixnum, op2 is not
+	    (if compiler:open-code-flonum-checks?
+		(pcfg*scfg->scfg!
+		 (generate-type-test 'FLONUM op2)
+		 ;; Whem we have open coded flonums we
+		 ;; will convert op1 to a float and do a
+		 ;; floating op.
+		 generic-flonum
+		 give-it-up)
+		give-it-up))
+	   (generic-1
+	    ;; op1 is not a fixnum, op2 unknown
+	    (if compiler:open-code-flonum-checks?
+		(pcfg*scfg->scfg!
+		 (generate-type-test 'FLONUM op1)
+		 (pcfg*scfg->scfg!
+		  (generate-type-test 'FLONUM op2)
+		  ;; For now we will just call the generic op.
+		  ;; When we have open coded flonums, we will
+		  ;; stick that stuff here.
+		  generic-flonum
+		  generic-3)
+		 give-it-up)
+		give-it-up)))
+      (if is-pred?
+	  (if (eq? fix-op 'EQUAL-FIXNUM?)
+	      ;; This produces significantly better code.
 	      (pcfg*scfg->scfg!
-	       (generate-type-test 'fixnum op2)
-	       ;; Whem we have open coded flonums we
-	       ;; will convert op2 to a float and do a
-	       ;; floating op.
-	       generic-flonum
-	       give-it-up))
-	     (generic-2
-	      ;; op1 is a fixnum, op2 is not
-	      (if compiler:open-code-flonum-checks?
-		  (pcfg*scfg->scfg!
-		   (generate-type-test 'flonum op2)
-		   ;; Whem we have open coded flonums we
-		   ;; will convert op1 to a float and do a
-		   ;; floating op.
-		   generic-flonum
-		   give-it-up)
-		  give-it-up))
-	     (generic-1
-	      ;; op1 is not a fixnum, op2 unknown
-	      (if compiler:open-code-flonum-checks?
-		  (pcfg*scfg->scfg!
-		   (generate-type-test 'flonum op1)
-		   (pcfg*scfg->scfg!
-		    (generate-type-test 'flonum op2)
-		    ;; For now we will just call the generic op.
-		    ;; When we have open coded flonums, we will
-		    ;; stick that stuff here.
-		    generic-flonum
-		    generic-3)
-		   give-it-up)
-		  give-it-up)))
-	(if (or (default-object? is-pred?)
-		(not is-pred?))
-	    (pcfg*scfg->scfg!
-	     (generate-type-test 'fixnum op1)
-	     (pcfg*scfg->scfg!
-	      (generate-type-test 'fixnum op2)
-	      (load-temporary-register scfg*scfg->scfg!
-				       (rtl:make-fixnum-2-args
-					fix-op
-					(rtl:make-object->fixnum op1)
-					(rtl:make-object->fixnum op2))
-		(lambda (fix-temp)
-		  (pcfg*scfg->scfg!
-		   (rtl:make-overflow-test)
-		   give-it-up
-		   (finish (rtl:make-fixnum->object fix-temp)))))
-	      generic-2)
-	     generic-1)
-	    (pcfg*scfg->scfg!
-	     (generate-type-test 'fixnum op1)
-	     (pcfg*scfg->scfg!
-	      (generate-type-test 'fixnum op2)
-	      (finish
-	       (rtl:make-fixnum-pred-2-args
-		fix-op
-		(rtl:make-object->fixnum op1)
-		(rtl:make-object->fixnum op2)))
-	      generic-2)
-	     generic-1))))))
+	       (rtl:make-eq-test op1 op2)
+	       (finish (make-true-pcfg))
+	       generic-1)
+	      (pcfg*scfg->scfg!
+	       (generate-type-test 'FIXNUM op1)
+	       (pcfg*scfg->scfg!
+		(generate-type-test 'FIXNUM op2)
+		(finish
+		 (rtl:make-fixnum-pred-2-args
+		  fix-op
+		  (rtl:make-object->fixnum op1)
+		  (rtl:make-object->fixnum op2)))
+		generic-2)
+	       generic-1))
+	  (pcfg*scfg->scfg!
+	   (generate-type-test 'FIXNUM op1)
+	   (pcfg*scfg->scfg!
+	    (generate-type-test 'FIXNUM op2)
+	    (load-temporary-register scfg*scfg->scfg!
+				     (rtl:make-fixnum-2-args
+				      fix-op
+				      (rtl:make-object->fixnum op1)
+				      (rtl:make-object->fixnum op2))
+	      (lambda (fix-temp)
+		(pcfg*scfg->scfg!
+		 (rtl:make-overflow-test)
+		 give-it-up
+		 (finish (rtl:make-fixnum->object fix-temp)))))
+	    generic-2)
+	   generic-1)))))
 
-(define generate-generic-unary
-  (lambda (expression finish #!optional is-pred?)
-    (let ((continuation-entry (generate-continuation-entry))
-	  (generic-op (rtl:generic-unary-operator expression))
-	  (fix-op (generic->fixnum-op
-		   (rtl:generic-unary-operator expression)))
-	  (flo-op (generic->floatnum-op
-		   (rtl:generic-unary-operator expression)))
-	  (op (rtl:generic-unary-operand expression)))
-      (let* ((give-it-up
-	      (scfg-append!
-	       (generate-primitive
-		generic-op
-		(cddr expression)
-		(rtl:continuation-entry-continuation
-		 (rinst-rtl
-		  (bblock-instructions
-		   (cfg-entry-node continuation-entry)))))
-	       continuation-entry
-	       (if (or (default-object? is-pred?)
-		       (not is-pred?))
-		   (expression-simplify-for-statement
-		    (rtl:make-fetch register:value)
-		    finish)
-		   (finish
-		    (rtl:make-true-test
-		     (rtl:make-fetch register:value))))))
-	     (generic-flonum
-	      ;; For now we will just call the generic op.
-	      ;; When we have open coded flonums, we will
-	      ;; stick that stuff here.
-	      give-it-up))
-	(if (or (default-object? is-pred?)
-		(not is-pred?))
-	    (pcfg*scfg->scfg!
-	     (generate-type-test 'fixnum op)
-	     (load-temporary-register scfg*scfg->scfg!
-				      (rtl:make-fixnum-1-arg
-				       fix-op
-				       (rtl:make-object->fixnum op))
-	       (lambda (fix-temp)
-		 (pcfg*scfg->scfg!
-		  (rtl:make-overflow-test)
-		  give-it-up
-		  (finish (rtl:make-fixnum->object fix-temp)))))
-	     (if compiler:open-code-flonum-checks?
-		 (pcfg*scfg->scfg!
-		  (generate-type-test 'flonum op)
-		  generic-flonum
-		  give-it-up)
-		 give-it-up))
-	    (pcfg*scfg->scfg!
-	     (generate-type-test 'fixnum op)
-	     (finish
-	      (rtl:make-fixnum-pred-1-arg
-	      fix-op
-	      (rtl:make-object->fixnum op)))
-	     (if compiler:open-code-flonum-checks?
-		 (pcfg*scfg->scfg!
-		  (generate-type-test 'flonum op)
-		  generic-flonum
-		  give-it-up)
-		 give-it-up)))))))
+(define (generate-generic-unary expression finish is-pred?)
+  (let ((continuation-entry (generate-continuation-entry))
+	(generic-op (rtl:generic-unary-operator expression))
+	(fix-op (generic->fixnum-op
+		 (rtl:generic-unary-operator expression)))
+	(flo-op (generic->floatnum-op
+		 (rtl:generic-unary-operator expression)))
+	(op (rtl:generic-unary-operand expression)))
+    (let* ((give-it-up
+	    (scfg-append!
+	     (generate-primitive
+	      generic-op
+	      (cddr expression)
+	      (rtl:continuation-entry-continuation
+	       (rinst-rtl
+		(bblock-instructions
+		 (cfg-entry-node continuation-entry)))))
+	     continuation-entry
+	     (if is-pred?
+		 (finish
+		  (rtl:make-true-test (rtl:make-fetch register:value)))
+		 (expression-simplify-for-statement
+		  (rtl:make-fetch register:value)
+		  finish))))
+	   (generic-flonum
+	    ;; For now we will just call the generic op.
+	    ;; When we have open coded flonums, we will
+	    ;; stick that stuff here.
+	    give-it-up))
+      (if is-pred?
+	  (pcfg*scfg->scfg!
+	   (generate-type-test 'FIXNUM op)
+	   (finish
+	    (rtl:make-fixnum-pred-1-arg
+	    fix-op
+	    (rtl:make-object->fixnum op)))
+	   (if compiler:open-code-flonum-checks?
+	       (pcfg*scfg->scfg!
+		(generate-type-test 'FLONUM op)
+		generic-flonum
+		give-it-up)
+	       give-it-up))
+	  (pcfg*scfg->scfg!
+	   (generate-type-test 'FIXNUM op)
+	   (load-temporary-register scfg*scfg->scfg!
+				    (rtl:make-fixnum-1-arg
+				     fix-op
+				     (rtl:make-object->fixnum op))
+	     (lambda (fix-temp)
+	       (pcfg*scfg->scfg!
+		(rtl:make-overflow-test)
+		give-it-up
+		(finish (rtl:make-fixnum->object fix-temp)))))
+	   (if compiler:open-code-flonum-checks?
+	       (pcfg*scfg->scfg!
+		(generate-type-test 'FLONUM op)
+		generic-flonum
+		give-it-up)
+	       give-it-up))))))
 
 (define (generic->fixnum-op generic-op)
   (case generic-op
@@ -867,77 +860,61 @@ MIT in each case. |#
 		 generic-op))))
 
 
-(let ((define-generic-binary
-	(lambda (generic-op)
-	  (define-open-coder/value generic-op
-	    (lambda (operands)
-	      operands
-	      (return-2
-		(lambda (expressions finish)
-		  (generate-generic-binary
-		   (rtl:make-generic-binary
-			   generic-op
-			   (car expressions)
-			   (cadr expressions))
-		   finish))
-		'(0 1)))))))
-  (for-each
-   define-generic-binary
-   '(&+ &- &*)))
+(for-each (lambda (generic-op)
+	    (define-open-coder/value generic-op
+	      (lambda (operands)
+		operands
+		(return-2
+		  (lambda (expressions finish)
+		    (generate-generic-binary
+		     (rtl:make-generic-binary generic-op
+					      (car expressions)
+					      (cadr expressions))
+		     finish
+		     false))
+		  '(0 1)))))
+	  '(&+ &- &*))
 
-(let ((define-generic-unary
-	(lambda (generic-op)
-	  (define-open-coder/value generic-op
-	    (lambda (operand)
-	      operand
-	      (return-2
-		(lambda (expression finish)
-		  (generate-generic-unary
-		   (rtl:make-generic-unary
-		    generic-op
-		    (car expression))
-		   finish))
-		'(0)))))))
-  (for-each
-   define-generic-unary
-   '(1+ -1+)))
+(for-each (lambda (generic-op)
+	    (define-open-coder/value generic-op
+	      (lambda (operand)
+		operand
+		(return-2
+		  (lambda (expression finish)
+		    (generate-generic-unary
+		     (rtl:make-generic-unary generic-op (car expression))
+		     finish
+		     false))
+		  '(0)))))
+	  '(1+ -1+))
 
-(let ((define-generic-binary-pred
-	(lambda (generic-op)
-	  (define-open-coder/predicate generic-op
-	    (lambda (operands)
-	      operands
-	      (return-2
-		(lambda (expressions finish)
-		  (generate-generic-binary
-		   (rtl:make-generic-binary
-			   generic-op
-			   (car expressions)
-			   (cadr expressions))
-		   finish
-		   'PREDICATE))
-		'(0 1)))))))
-  (for-each
-   define-generic-binary-pred
-   '(&= &< &>)))
+(for-each (lambda (generic-op)
+	    (define-open-coder/predicate generic-op
+	      (lambda (operands)
+		operands
+		(return-2
+		  (lambda (expressions finish)
+		    (generate-generic-binary
+		     (rtl:make-generic-binary generic-op
+					      (car expressions)
+					      (cadr expressions))
+		     finish
+		     true))
+		  '(0 1)))))
+	  '(&= &< &>))
 
-(let ((define-generic-unary-pred
-	(lambda (generic-op)
-	  (define-open-coder/predicate generic-op
-	    (lambda (operand)
-	      operand
-	      (return-2
-		(lambda (expression finish)
-		  (generate-generic-unary
-		   (rtl:make-generic-unary
-			   generic-op
-			   (car expression))
-		   finish
-		   'PREDICATE))
-		'(0)))))))
-  (for-each
-   define-generic-unary-pred
-   '(zero? positive? negative?)))
+(for-each (lambda (generic-op)
+	    (define-open-coder/predicate generic-op
+	      (lambda (operand)
+		operand
+		(return-2
+		  (lambda (expression finish)
+		    (generate-generic-unary
+		     (rtl:make-generic-unary generic-op (car expression))
+		     finish
+		     true))
+		  '(0)))))
+	  '(zero? positive? negative?))
 
 ;;; Character open-coding
 
