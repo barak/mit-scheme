@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.5 1992/09/02 16:27:52 jinx Exp $
+$Id: thread.scm,v 1.6 1992/09/17 00:57:07 jinx Exp $
 
 Copyright (c) 1991-1992 Massachusetts Institute of Technology
 
@@ -114,6 +114,7 @@ MIT in each case. |#
   (set! last-running-thread false)
   (set! timer-records false)
   (set! timer-interval 100)
+  (set! last-real-time false)
   (let ((thread (make-thread)))
     (set-thread/continuation! thread false)
     (thread-running thread)
@@ -368,13 +369,14 @@ MIT in each case. |#
 
 ;;;; Timer Events
 
+(define last-real-time)
 (define timer-records)
 (define timer-interval)
 
 (define-structure (timer-record
 		   (type vector)
 		   (conc-name timer-record/))
-  (time false read-only true)
+  (time false read-only false)
   (thread false read-only true)
   next
   delivered?)
@@ -398,8 +400,19 @@ MIT in each case. |#
       (if (not block-events?)
 	  (unblock-thread-events)))))
 
-(define-integrable (deliver-timer-events)
+(define (deliver-timer-events)
   (let ((time (real-time-clock)))
+    ;; The following is bogus, but better than dropping the
+    ;; interrupts at all when the real-time timer wraps around.
+    (if (and last-real-time (< time last-real-time))
+	(let update ((record timer-records))
+	  (if record
+	      (begin
+		(set-timer-record/time!
+		 record
+		 (- (timer-record/time record) last-real-time))
+		(update (timer-record/next record))))))
+    (set! last-real-time time)
     (let loop ((record timer-records))
       (if (or (not record) (< time (timer-record/time record)))
 	  (set! timer-records record)
