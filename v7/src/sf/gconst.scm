@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 4.15 1992/12/02 19:36:26 cph Exp $
+$Id: gconst.scm,v 4.16 1993/06/29 23:22:30 cph Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -169,9 +169,9 @@ MIT in each case. |#
     INTEGER->CHAR
     INTEGER-DIVIDE-QUOTIENT
     INTEGER-DIVIDE-REMAINDER
+    INTERRUPT-BIT/AFTER-GC
     INTERRUPT-BIT/GC
     INTERRUPT-BIT/GLOBAL-1
-    INTERRUPT-BIT/GLOBAL-2
     INTERRUPT-BIT/GLOBAL-3
     INTERRUPT-BIT/GLOBAL-GC
     INTERRUPT-BIT/KBD
@@ -181,6 +181,7 @@ MIT in each case. |#
     INTERRUPT-MASK/ALL
     INTERRUPT-MASK/GC-OK
     INTERRUPT-MASK/NONE
+    INTERRUPT-MASK/TIMER-OK
     LAMBDA-TAG:FLUID-LET
     LAMBDA-TAG:LET
     LAMBDA-TAG:MAKE-ENVIRONMENT
