@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: process.scm,v 1.56 1999/02/16 00:39:29 cph Exp $
+;;; $Id: process.scm,v 1.57 1999/09/14 20:18:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-1999 Massachusetts Institute of Technology
 ;;;
@@ -238,11 +238,11 @@ Initialized from the SHELL environment variable."
 	      (if (null? (car queue))
 		  (set-cdr! queue '()))
 	      (let ((output?
-		     (if (poll-process-for-output process) #t output?)))
+		     (if (poll-process-for-output process #t) #t output?)))
 		(set-interrupt-enables! interrupt-mask)
 		(loop output?))))))))
 
-(define (poll-process-for-output process)
+(define (poll-process-for-output process do-status?)
   (and (let ((channel (subprocess-input-channel (process-subprocess process))))
 	 (and channel
 	      (channel-open? channel)))
@@ -253,20 +253,26 @@ Initialized from the SHELL environment variable."
 		(lambda ()
 		  (deregister-process-input process)
 		  (close-port port)
-		  (%update-global-notification-tick)
-		  (if (poll-process-for-status-change process)
-		      (set! output? #t)))))
+		  (if do-status?
+		      (begin
+			(%update-global-notification-tick)
+			(if (poll-process-for-status-change process)
+			    (set! output? #t)))))))
 	   (let loop ()
-	     (if (process-runnable? process)
-		 (let ((n (input-port/read-string! port buffer)))
-		   (if n
-		       (if (fix:= n 0)
-			   (close-input)
-			   (begin
-			     (if (output-substring process buffer n)
-				 (set! output? #t))
-			     (loop)))))
-		 (close-input))))
+	     (let ((n
+		    (call-with-current-continuation
+		     (lambda (k)
+		       (bind-condition-handler (list condition-type:port-error)
+			   (lambda (condition) condition (k 0))
+			 (lambda ()
+			   (input-port/read-string! port buffer)))))))
+	       (if n
+		   (if (fix:= n 0)
+		       (close-input)
+		       (begin
+			 (if (output-substring process buffer n)
+			     (set! output? #t))
+			 (loop)))))))
 	 output?)))
 
 (define (process-send-eof process)
@@ -323,6 +329,7 @@ Initialized from the SHELL environment variable."
 				      (process-exit-reason process)))))
 
 (define (perform-status-notification process status reason)
+  (poll-process-for-output process #f)
   (let ((value (%perform-status-notification process status reason)))
     (if (and (or (eq? 'EXITED status)
 		 (eq? 'SIGNALLED status))
