@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: conpkg.scm,v 1.13 2001/08/20 21:02:35 cph Exp $
+$Id: conpkg.scm,v 1.14 2001/09/28 00:38:32 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -63,17 +63,16 @@ USA.
 		  (eq? (link/owner link) package)))))))
 
 (define (package-structure<? x y)
-  (cond ((package/topological<? x y) true)
-	((package/topological<? y x) false)
+  (cond ((package/topological<? x y) #t)
+	((package/topological<? y x) #f)
 	(else (package<? x y))))
 
 (define (package/topological<? x y)
   (and (not (eq? x y))
        (let loop ((y (package/parent y)))
-	 (and y
-	      (not (eq? y 'UNKNOWN))
+	 (and (package? y)
 	      (if (eq? x y)
-		  true
+		  #t
 		  (loop (package/parent y)))))))
 
 (define (package->external package extension?)
@@ -82,7 +81,7 @@ USA.
       (vector (package/name package)
 	      (let loop ((package package))
 		(let ((parent (package/parent package)))
-		  (if (and parent (not (eq? parent 'UNKNOWN)))
+		  (if (package? parent)
 		      (cons (package/name parent) (loop parent))
 		      '())))
 	      (list->vector

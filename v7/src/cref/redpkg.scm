@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.18 2001/08/20 21:02:41 cph Exp $
+$Id: redpkg.scm,v 1.19 2001/09/28 00:38:05 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -126,9 +126,9 @@ USA.
 		   (type vector)
 		   (constructor make-analysis-cache (pathname time data))
 		   (conc-name analysis-cache/))
-  (pathname false read-only true)
-  (time false)
-  (data false))
+  (pathname #f read-only #t)
+  (time #f)
+  (data #f))
 
 (define (cache-file-analyses! pmodel)
   (let ((pathname (pathname-new-type (pmodel/pathname pmodel) "fre"))
@@ -541,7 +541,7 @@ USA.
 (define (package-lookup package name)
   (let package-loop ((package package))
     (or (package/find-binding package name)
-	(and (package/parent package)
+	(and (package? (package/parent package))
 	     (package-loop (package/parent package))))))
 
 (define (name->package packages name)

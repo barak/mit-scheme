@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: forpkg.scm,v 1.9 1999/01/02 06:11:34 cph Exp $
+$Id: forpkg.scm,v 1.10 2001/09/28 00:38:21 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Package Model Formatter
@@ -45,7 +46,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(indentation "  ")
 	(width 79)
 	(packages (pmodel/packages pmodel))
-	(output? false))
+	(output? #f))
     (let ((free-references
 	   (append-map! (lambda (package)
 			  (list-transform-negative
@@ -54,9 +55,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			packages)))
       (if (not (null? free-references))
 	  (begin
-	    (format-references port indentation width "Free References" false
+	    (format-references port indentation width "Free References" #f
 	      (sort free-references reference<?))
-	    (set! output? true))))
+	    (set! output? #t))))
     (with-values (lambda () (get-value-cells/unusual packages))
       (lambda (undefined multiple)
 	(if (not (null? undefined))
@@ -65,7 +66,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		  (output-port/write-string port "\f\n"))
 	      (format-value-cells port indentation width "Undefined Bindings"
 				  undefined)
-	    (set! output? true)))
+	    (set! output? #t)))
 	(if (not (null? multiple))
 	    (begin
 	      (if output?
@@ -73,12 +74,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (format-value-cells port indentation width
 				  "Bindings with Multiple Definitions"
 				  multiple)
-	      (set! output? true)))))
+	      (set! output? #t)))))
     output?))
 
 (define (format-package port indentation width package)
   (write-package-name "Package" package port)
-  (if (package/parent package)
+  (if (package? (package/parent package))
       (write-package-name "Parent" (package/parent package) port))
   (format-package/files port indentation width package)
   (let ((classes
@@ -111,7 +112,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (write-label label port)
   (for-each (lambda (binding)
 	      (format-expressions
-	       port indentation width false
+	       port indentation width #f
 	       (string-append
 		(binding/name-string binding)
 		" "
