@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.12 1995/05/10 21:15:57 cph Exp $
+$Id: os2pm.c,v 1.13 1995/05/10 21:27:03 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -967,8 +967,8 @@ OS2_initialize_pm_thread (void)
 #else
 
 #define simple_transaction OS2_send_message
-#define simple_reply(qid)						\
-									\
+#define simple_reply(qid)
+
 #endif
 
 static void
