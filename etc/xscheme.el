@@ -1,5 +1,5 @@
 ;; Run Scheme under Emacs
-;; Copyright (C) 1986, 1987, 1989, 1990, 1991 Free Software Foundation, Inc.
+;; Copyright (C) 1986-93 Free Software Foundation, Inc.
 
 ;; This file is part of GNU Emacs.
 
@@ -20,7 +20,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.30 1993/01/29 12:54:51 gjr Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.31 1993/10/16 05:57:46 cph Exp $
 
 (require 'scheme)
 
@@ -1110,24 +1110,15 @@ the remaining input.")
   (xscheme-guarantee-newlines 2))
 
 (defun xscheme-coerce-prompt (string)
-  (if (string-match "^[0-9]+ " string)
+  (if (string-match "^[0-9]+ \\[[^]]+\\] " string)
       (let ((end (match-end 0)))
-	(concat (substring string 0 end)
-		(let ((prompt (substring string end)))
-		  (let ((entry (assoc prompt xscheme-prompt-alist)))
-		    (if entry
-			(cdr entry)
-			prompt)))))
+	(let ((prompt (substring string end)))
+	  (xscheme-process-filter-output prompt)
+	  (if (and (> (length prompt) 0)
+		   (not (= (aref prompt (- (length prompt) 1)) ? )))
+	      (xscheme-process-filter-output " "))
+	  (substring string 0 (- end 1))))
       string))
-
-(defvar xscheme-prompt-alist
-  '(("[Normal REPL]" . "[Evaluator]")
-    ("[Error REPL]" . "[Evaluator]")
-    ("[Breakpoint REPL]" . "[Evaluator]")
-    ("[Debugger REPL]" . "[Evaluator]")
-    ("[Visiting environment]" . "[Evaluator]")
-    ("[Environment Inspector]" . "[Where]"))
-  "An alist which maps the Scheme command interpreter type to a print string.")
 
 (defun xscheme-cd (directory-string)
   (save-excursion
