@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: envconv.scm,v 1.8 1995/04/29 00:55:01 adams Exp $
+$Id: envconv.scm,v 1.9 1995/05/11 16:13:54 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -93,14 +93,14 @@ MIT in each case. |#
 (define-macro (define-environment-converter keyword bindings . body)
   (let ((proc-name (symbol-append 'ENVCONV/ keyword)))
     (call-with-values
-     (lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
-     (lambda (names code)
-       `(define ,proc-name
-	  (let ((handler (lambda ,(cons (car bindings) names) ,@body)))
-	    (named-lambda (,proc-name env form)
-	      (envconv/remember ,code
-				form
-				(envconv/env/block env)))))))))
+	(lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
+      (lambda (names code)
+	`(DEFINE ,proc-name
+	   (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
+	     (NAMED-LAMBDA (,proc-name ENV FORM)
+	       (ENVCONV/REMEMBER ,code
+				 FORM
+				 (ENVCONV/ENV/BLOCK ENV)))))))))
 
 
 ;;;; Environment-sensitive forms
