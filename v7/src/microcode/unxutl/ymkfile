@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.34 1990/11/15 23:20:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.35 1990/11/21 07:01:03 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -323,6 +323,7 @@ osscheme.c \
 ostty.c \
 prim.c \
 primutl.c \
+prmcon.c \
 ptrvec.c \
 purify.c \
 purutl.c \
@@ -403,6 +404,7 @@ osscheme.o \
 ostty.o \
 prim.o \
 primutl.o \
+prmcon.o \
 ptrvec.o \
 purutl.o \
 regex.o \
@@ -570,7 +572,7 @@ lint.out : $(SOURCES) $(SCHEME_SOURCES) $(CSRC) usrdef.c $(HEAD_FILES)
 /* "foo" prevents syntax error when USER_PRIM_OBJECTS is empty. */
 foo $(USER_PRIM_OBJECTS) : $(HEAD_FILES)
 
-interp.o : scheme.touch locks.h trap.h lookup.h history.h cmpint.h zones.h
+interp.o : scheme.touch locks.h trap.h lookup.h history.h cmpint.h zones.h prmcon.h
 hooks.o : scheme.touch prims.h winder.h history.h
 utils.o : scheme.touch prims.h winder.h history.h cmpint.h
 primutl.o : scheme.touch prims.h prename.h
@@ -580,8 +582,8 @@ hunk.o list.o step.o vector.o sysprim.o daemon.o prim.o extern.o : \
 
 lookup.o debug.o intern.o : scheme.touch prims.h lookup.h trap.h locks.h
 
-fasload.o : scheme.touch prims.h osfile.h osio.h $(GC_HEAD_FILES) \
-	trap.h option.h load.c fasl.h
+fasload.o : scheme.touch prims.h osscheme.h osfile.h osio.h $(GC_HEAD_FILES) \
+	trap.h option.h prmcon.h load.c fasl.h
 fasdump.o : scheme.touch prims.h osio.h osfile.h osfs.h $(GC_HEAD_FILES) \
 	trap.h lookup.h fasl.h dump.c
 
@@ -616,7 +618,8 @@ rgxprim.o : scheme.touch prims.h edwin.h syntax.h regex.h
 
 Bintopsb.o : psbmap.touch trap.h limits.h fasl.h load.c bltdef.h
 Psbtobin.o : psbmap.touch float.h fasl.h dump.c
-Ppband.o : config.h types.h const.h object.h sdata.h fasl.h load.c
+Ppband.o : ansidecl.h config.h errors.h types.h const.h object.h \
+        $(GC_HEAD_FILES) sdata.h load.c fasl.h
 
 dmpwrld.o : scheme.touch prims.h ux.h osfs.h \
 	unexec.c unexhp9k800.c getpagesize.h
@@ -668,3 +671,6 @@ prosio.o : osio.h
 prosproc.o : osproc.h
 prosterm.o : osterm.h osio.h
 prostty.o : ostty.h osctty.h ossig.h osfile.h osio.h
+
+prmcon.o : scheme.touch prims.h prmcon.h
+
