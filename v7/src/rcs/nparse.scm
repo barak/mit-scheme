@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: nparse.scm,v 1.2 1999/01/02 06:11:34 cph Exp $
+$Id: nparse.scm,v 1.3 2000/11/28 18:06:24 cph Exp $
 
-Copyright (c) 1991, 1999 Massachusetts Institute of Technology
+Copyright (c) 1991, 1999, 2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -42,17 +42,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (if text? (parse-deltatexts line-port (eq? true text?)) '()))
 	   (num->delta (make-delta-map deltas deltatexts text?)))
       (make-rcstext (and (vector-ref admin 0)
-			 (num->delta (vector-ref admin 0)))
+			 (num->delta (vector-ref admin 0) #t))
 		    (and (vector-ref admin 1)
-			 (num->delta (vector-ref admin 1)))
+			 (num->delta (vector-ref admin 1) #t))
 		    (vector-ref admin 2)
 		    (map (lambda (element)
 			   (cons (car element)
-				 (num->delta (cdr element))))
+				 (num->delta (cdr element) #f)))
 			 (vector-ref admin 3))
 		    (map (lambda (element)
 			   (cons (car element)
-				 (num->delta (cdr element))))
+				 (num->delta (cdr element) #t)))
 			 (vector-ref admin 4))
 		    (vector-ref admin 5)
 		    (vector-ref admin 6)
@@ -85,9 +85,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		    (set-delta/text! delta (vector-ref deltatext 2)))))
 	      deltatexts)
     (let ((num->delta
-	   (lambda (key)
+	   (lambda (key error?)
 	     (let ((delta (hash-table/get table key false)))
-	       (if (not delta)
+	       (if (and (not delta) error?)
 		   (error "unknown delta number" key))
 	       delta))))
       (hash-table/for-each table
@@ -98,11 +98,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (let loop ((branches (delta/branches delta)))
 	    (if (pair? branches)
 		(begin
-		  (set-car! branches (num->delta (car branches)))
+		  (set-car! branches (num->delta (car branches) #t))
 		  (loop (cdr branches)))))
 	  (let ((next (delta/next delta)))
 	    (if next
-		(set-delta/next! delta (num->delta next))))))
+		(set-delta/next! delta (num->delta next #t))))))
       num->delta)))
 
 (define (parse-admin line-port)
