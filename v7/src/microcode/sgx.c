@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgx.c,v 1.1 1988/07/15 09:04:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgx.c,v 1.2 1988/07/16 07:19:41 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -139,6 +139,7 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-OPEN-WINDOW", Prim_x_graphics_open_window, 5)
 		    BlackPixmap));
   if (window == 0)
     error_external_return ();
+  XStoreName (window, "scheme-graphics");
   XFlush ();
   (filename [0]) = '\0';
   raster_state = 0;
@@ -166,6 +167,7 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-CLOSE-WINDOW", Prim_x_graphics_close_window, 0)
 static void
 close_window ()
 {
+  sb_close_device ();
   if ((filename [0]) != '\0')
     {
       XhpDestroy (filename);

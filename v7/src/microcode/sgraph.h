@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph.h,v 1.3 1988/07/15 09:03:46 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph.h,v 1.4 1988/07/16 07:19:59 cph Rel $ */
 
 #include <starbase.c.h>
 
@@ -57,6 +57,8 @@ extern float sb_ymin;
 extern float sb_ymax;
 extern float sb_zmin;
 extern float sb_zmax;
+
+extern void sb_close_device ();
 
 /* Generic dispatch of coordinates. No BIGNUM support yet. */
 
