@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.65 1996/07/01 23:27:18 cph Exp $
+$Id: ux.h,v 1.66 1997/05/01 01:23:43 cph Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -90,6 +90,24 @@ extern int EXFUN (kill, (pid_t, int));
 #  define EMULATE_SYSCONF
 #  define NO_BAUD_CONVERSION
 #  define SYSTEM_VARIANT "386BSD"
+#endif
+
+#ifdef __FreeBSD__
+#  include <sys/ioctl.h>
+#  define EMULATE_FPATHCONF
+#  define EMULATE_SYSCONF
+#  define NO_BAUD_CONVERSION
+#  define SYSTEM_VARIANT "FreeBSD"
+#endif
+
+#ifdef __bsdi__			/* works on bsdi 3.0 */
+#  define LSEEK_DECLARED
+#  define SELECT_DECLARED
+#  include <sys/ioctl.h>
+#  define EMULATE_FPATHCONF
+#  define EMULATE_SYSCONF
+#  define NO_BAUD_CONVERSION
+#  define SYSTEM_VARIANT "BSDI BSD/OS"
 #endif
 
 /* no longer needed */

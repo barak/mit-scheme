@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: oscond.h,v 1.22 1996/07/01 23:25:27 cph Exp $
+$Id: oscond.h,v 1.23 1997/05/01 01:21:20 cph Exp $
 
-Copyright (c) 1990-96 Massachusetts Institute of Technology
+Copyright (c) 1990-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,10 +41,18 @@ MIT in each case. */
 /* _POSIX is assumed to be independent of all operating-system and
    machine specification macros.  */
 
-#if defined(__osf__) || defined(_AIX) || defined(__linux)
+#if defined(__osf__) || defined(_AIX) || defined(__linux) || defined(__bsdi__) || defined(_ULTRIX) || defined(__FreeBSD__)
 #  define _POSIX
 #  define _BSD4_3
 #endif
+
+/* From Garrett Wollman <wollman@lcs.mit.edu>:
+   __FreeBSD__ == 1 means version 1.x
+   __FreeBSD__ == 2 means there is an <osreldate.h> and __FreeBSD_version
+   from that header is a release date.
+   __FreeBSD__ == 3 means there is an <osreldate.h> and __FreeBSD_version
+   is a large integer which is not a date (sigh) but which is related to
+   the version number (i.e, it's totally pointless).  */
 
 #if defined(__hpux) && !defined(hpux)
 #define hpux
@@ -142,11 +150,6 @@ MIT in each case. */
 #endif
 
 #endif /* _NEXTOS */
-
-#if defined(_ULTRIX)
-#define _POSIX
-#define _BSD4_3
-#endif
 
 #if defined(_SUNOS3) || defined(_SUNOS4)
 #define _SUNOS
