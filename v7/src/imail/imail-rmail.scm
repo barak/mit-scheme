@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.46 2000/06/30 02:57:22 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.47 2000/06/30 02:59:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -26,7 +26,6 @@
 
 (define-class <rmail-url> (<file-url>))
 (define-url-protocol "rmail" <rmail-url>)
-(define-file-url-completers <rmail-url>)
 
 (define make-rmail-url
   (let ((constructor (instance-constructor <rmail-url> '(PATHNAME))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.49 2000/06/23 19:29:41 cph Exp $
+;;; $Id: imail-file.scm,v 1.50 2000/06/30 02:59:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -42,25 +42,25 @@
 (define-method url-exists? ((url <file-url>))
   (file-exists? (file-url-pathname url)))
 
-(define (define-file-url-completers class)
-  (define-method %url-complete-string
-      ((string <string>) (default-url class)
-			 if-unique if-not-unique if-not-found)
-    (pathname-complete-string
-     (merge-pathnames string (file-url-pathname default-url))
-     (lambda (pathname) pathname #t)
-     (lambda (string)
-       (if-unique (->namestring string)))
-     (lambda (prefix get-completions)
-       (if-not-unique (->namestring prefix)
-		      (lambda () (map ->namestring (get-completions)))))
-     if-not-found))
-  (define-method %url-string-completions
-      ((string <string>) (default-url class))
-    (map ->namestring
-	 (pathname-completions-list
-	  (merge-pathnames string (file-url-pathname default-url))
-	  (lambda (pathname) pathname #t)))))
+(define-method %url-complete-string
+    ((string <string>) (default-url <file-url>)
+		       if-unique if-not-unique if-not-found)
+  (pathname-complete-string
+   (merge-pathnames string (file-url-pathname default-url))
+   (lambda (pathname) pathname #t)
+   (lambda (string)
+     (if-unique (->namestring string)))
+   (lambda (prefix get-completions)
+     (if-not-unique (->namestring prefix)
+		    (lambda () (map ->namestring (get-completions)))))
+   if-not-found))
+
+(define-method %url-string-completions
+    ((string <string>) (default-url <file-url>))
+  (map ->namestring
+       (pathname-completions-list
+	(merge-pathnames string (file-url-pathname default-url))
+	(lambda (pathname) pathname #t))))
 
 ;;;; Server operations
 

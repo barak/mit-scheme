@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.35 2000/06/30 02:57:23 cph Exp $
+;;; $Id: imail-umail.scm,v 1.36 2000/06/30 02:59:57 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -26,7 +26,6 @@
 
 (define-class <umail-url> (<file-url>))
 (define-url-protocol "umail" <umail-url>)
-(define-file-url-completers <umail-url>)
 
 (define make-umail-url
   (let ((constructor (instance-constructor <umail-url> '(PATHNAME))))
