@@ -1,6 +1,6 @@
 Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.10 1991/02/27 15:15:02 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.11 1991/02/27 21:31:43 jinx Exp $
 
 
 			LIAR PORTING GUIDE
@@ -1033,22 +1033,21 @@ The following ports use the following syntax for describing
 instructions in machine language:
 
 - Spectrum and MIPS:
-(LONG (<width 1> <value 1> <coercion type 1>)
-      (<width 2> <value 2> <coercion type 2>)
-      ...	
-      (<width n> <value n> <coercion type n>))
+    (LONG (<width 1> <value 1> <coercion type 1>)
+	  (<width 2> <value 2> <coercion type 2>)
+	  ...	
+	  (<width n> <value n> <coercion type n>))
 where all the widths must add up to an even multiple of 32.
 
 - Vax:
 Instructions descriptions are made of arbitrary sequences of the
 following field descriptors:
-(BYTE (<width 1> <value 1> <coercion type 1>)
-      (<width 2> <value 2> <coercion type 2>)
-      ...	
-      (<width n> <value n> <coercion type n>))
-(OPERAND <size> <value>)
-(DISPLACEMENT (<width> <value>)
-
+    (BYTE (<width 1> <value 1> <coercion type 1>)
+	  (<width 2> <value 2> <coercion type 2>)
+	  ...	
+	  (<width n> <value n> <coercion type n>))
+    (OPERAND <size> <value>)
+    (DISPLACEMENT (<width> <value>))
 The total width of each of these field descriptors must add up to a
 multiple of 8.
 BYTE is used primarily for instruction opcodes.
@@ -1056,41 +1055,41 @@ OPERAND is used for general addressing modes.
 DISPLACEMENT is used for PC-relative branch displacements.
 
 - MC68020:
-(WORD (<width 1> <value 1> <coercion type 1> <size 1>)
-      (<width 2> <value 2> <coercion type 2> <size 2>)
-      ...	
-      (<width n> <value n> <coercion type n> <size 3>))
+    (WORD (<width 1> <value 1> <coercion type 1> <size 1>)
+	  (<width 2> <value 2> <coercion type 2> <size 2>)
+	  ...	
+	  (<width n> <value n> <coercion type n> <size 3>))
 where all the widths must add up to an even multiple of 16.
 Size refers to immediate operands to be encoded in the instruction,
 and are omitted when irrelevant.
 
-Typically, missing coercion types imply ordinary unsigned coercion.
+A missing coercion type means that the ordinary unsigned coercion (for
+the corresponding number of bits) should be used.
 
-In addition, each of these ports provides a VARIABLE-WIDTH syntax for
-specifying instructions whose final format must be determined by the
-branch tensioning algorithm in the bit assembler.  The syntax of these
-instructions is typically
-(VARIABLE-WIDTH (<name> <expression>)
-  ((<low 1> <high 1>)
-   <instruction specifier 1>)
-  ((<low 2> <high 2>)
-   <instruction specifier 2>)
-  ...
-  ((() ())
-   <instruction specifier n>))
-
+Additionally, each of these ports provides a syntax for specifying
+instructions whose final format must be determined by the branch
+tensioning algorithm in the bit assembler.  The syntax of these
+instructions is usually
+    (VARIABLE-WIDTH (<name> <expression>)
+      ((<low-1> <high-1>)
+       <instruction-specifier-1>)
+      ((<low-2> <high-2>)
+       <instruction-specifier-2>)
+      ...
+      ((() ())
+       <instruction-specifier-n>))
 Each instruction specifier is an ordinary (ie. not VARIABLE-WIDTH)
 instruction specifier.  NAME is a variable to be bound to the
-bit-assembly-time value of EXPRESSION.  Each of the ranges <low
-1>-<high 1> <low 2>-<high 2>, etc. must be properly included in the
+bit-assembly-time value of EXPRESSION.  Each of the ranges
+<low-1>-<high-1> <low-2>-<high-2>, etc. must be properly nested in the
 next, and () specifies no bound.  The final format chosen is that
 corresponding to the lowest numbered range containing the value of
-EXPRESSION.  Successive instruction specifiers must yield
+<expression>.  Successive instruction specifiers must yield
 instructions of non-decreasing lengths for the branch tensioner to
-work correctly.
+work correctly.  Note that the MC68020 port uses GROWING-WORD instead
+of VARIABLE-WIDTH as the keyword for this syntax.
 
-==> The 68k port uses the keyword GROWING-WORD instead of
-VARIABLE-WIDTH.  This should probably be changed.
+==> This should probably be changed.
 
 * inerly.scm:
 	This file provides alternative expanders for the port-specific
@@ -1137,6 +1136,11 @@ has not been generalized, and currently each port has its own
 disassembler, often duplicating information contained in the
 assembler.
 
+The disassembler is not necessary for the operation of the compiler
+proper.  It is, however, a good debugging tool.  You can bring the
+compiler up without a disassembler by providing stubs for the
+procedures referenced in dassm2.
+
 * dassm1.scm:
 	This file contains the top-level of the disassembler.  It is
 not machine-dependent, and should probably be moved to another directory.
@@ -1175,17 +1179,161 @@ instead of the assembler rule data base.
 
 		5. All about rules
 
-*** This section needs to be written.  What follows is a list of
-topics that need to be addressed:
+There are three subsystems in Liar that use rule-based languages.
+They are the RTL simplifier, LAPGEN (RTL->LAP translation), and the
+assembler.  The assembler need not be rule-basede, since it is
+machine independent, but given the availability of the rule language
+facility, this may be the easiest way to write it.
 
-- Syntax of rules.  transformers, qualifiers, variables, etc.
+	5.1 Rule syntax
+
+The assembler rules use a somewhat different syntax from the rest and
+will be described later.
+
+The rest of the rules are defined in the following way:
+
+    (DEFINE-RULE <rule-database>
+      <rule pattern>
+      <qualifier>				; optional
+      <rule body>)
+
+* <rule-database> is an expression evaluating to a rule database.  
+It should be one of STATEMENT, PREDICATE, or REWRITING.
+
+* <rule pattern> is a list that represents the pattern to match.
+Variables in the pattern are written by using the ``?'' syntax.
+For example,
+
+- (hello) matches the constant list (hello)
+
+- (? thing) matches anything, and THING is bound in <qualifier and
+<rule body> to whatever was matched.
+
+- (hello (? person)) matches a list of two elements whose first
+element is the symbol HELLO, and whose second element can be anything.
+The variable PERSON will be bound in <qualifier> and <rule body> and
+will have as its value the second element of the list matched.
+Thus it would match (hello bill) and PERSON would be the symbol BILL,
+(hello (bill rozas)) would match and PERSON would be the list (BILL ROZAS).
+
+- (hello . (? person)) matches a list of one or more elements whose
+first element is the symbol HELLO.  PERSON is bound to the rest of the
+list.
+Thus (hello my dog likes frankfurters) would match and PERSON would be
+(MY DOG LIKES FRANKFURTERS).  (hello (my dog)) would match, and PERSON
+would be ((MY DOG)).
+
+Variable syntax is further described below.
+
+* <qualifier> is (QUALIFIER <expression>) where <expression> evaluates
+to a boolean and further filters matches.  If the qualifier expression
+evaluates to false, the rule is not fired.  Otherwise it is.
+For example,
+    (DEFINE-RULE <some database>
+      (multiple (? number) (? divisor))
+      (QUALIFIER (and (number? number)
+		      (number? divisor)
+		      (zero? (remainder number divisor))))
+      <rule body>)
+will match (MULTIPLE 14 7) and (MULTIPLE 36 4), but not (MULTIPLE 2)
+(MULTIPLE 14 2 3), (MULTIPLE FOO 3), or (HELLO 14 7).
+Note that rules need not have qualifiers
+
+* <rule body> is an arbitrary Lisp expression whose value is the
+translation determined by the rule.  It will typically use the
+variables bound by ``?'' to perform the translation.  The statement
+and predicate rules use the LAP macro to generate sequences of
+assembly language instructions.
+
+The assembler rules use the following syntax:
+
+    (DEFINE-INSTRUCTION <opcode>
+      (<pattern1>
+       <qualifier1>				; optional
+       <body1>)
+      (<pattern2>
+       <qualifier2>				; optional
+       <body2>)
+      ...
+      )
+
+Where <opcode> is the name of the instruction, and the patterns will
+be matched against the cdr of lists whose car is <opcode>.  
+The <patterns>, <qualifiers>, and <bodies> are as in the RTL rules,
+except that there are typically no qualifiers, and the bodies are
+typically written in a special syntax defined in
+compiler/machines/port/insmac.scm and described in section 4.4.
+
+For example,
+    (DEFINE-INSTRUCTION ADD
+      (((R (? target)) (R (? reg1)) (R (? reg2)))
+       (WORD (6 #x24)
+	     (5 ,target)
+	     (5 ,reg1)
+	     (5 ,reg2)
+	     (11 0)))
+      (((R (? target)) (R (? reg)) (& (? constant)))
+       (WORD (6 #x23)
+	     (5 ,target)
+	     (5 ,reg)
+	     (16 ,constant SIGNED))))
+would match (ADD (R 1) (R 2) (R 3)) and (ADD (R 7) (R 22) (& 257)),
+firing the corresponding body.
+
+The bodies are defined in terms of the WORD syntax defined in
+insmac.scm, and the ``commas'' used with the pattern variables in the
+rule bodies are a consequence of the WORD syntax.
+
+	5.2 Rule variable syntax.
+
+Although the simple variable syntax shown together with qualifiers is
+sufficient for all purposes, variable syntax provides some convenience
+for common cases in the form of additional syntax.  Moreover, the
+early matcher (used when COMPILER:ENABLE-EXPANSION-DECLARATIONS? is
+true) cannot currently handle qualifiers but can handle all the
+additional variable syntax, which can supplant qualifiers in most
+cases.  The early matcher is used only on the assembler rules, so if
+you want to use it, you only need to use the restricted language when
+writing those rules.
+
+The complete variable syntax is as follows:
+
+* (? <name>)  This syntax matches anything in that position of the
+potential instance, and binds <name> to the sub-structure matched.
+
+* (? <name> <transform>) This syntax matches anything in that position
+of the potential instance as long as <transform> returns non-false on
+the sub-structure matched.  <name> is bound to the result returned by
+<transform>.  For example,
+    (? q (lambda (obj) (and (number? obj) (* 2 obj))))
+will match 2, and Q will be bound to 4, but will not match FOO.
+
+* (? <name1> <transform> <name2>)  <name1> and <transform> have the same
+meaning as in the previous syntax, and this syntax matches exactly the
+same objects, but provides the additional convenience of binding
+<name2> to the sub-structure matched, before the transformation.
+For example,
+    (? q (lambda (obj)
+	   (and (pair? obj) 
+		(number? (car obj))
+		(- (car obj) 23)))
+       z)
+will match (2 . HELLO), Q will be bound to -21, and Z will be bound to
+(2 . HELLO), and will not match 34 or (HELLO . 2).
+
+==> The pattern parser seems to understand (?@ <name>) as well, but
+this syntax is used nowhere.  The early parser does not understand it.
+Should it be flushed?
+
+	5.3 Writing statement rules.
+
+*** MISSING:
 
 Get CPH to help with the LAPGEN rules.
 - Closures, multi closures, uuo-link calls, and block-linking.  Other
 hairy stuff in rules3.  Rules4 and part of rules3 should go away, they
 are fossils.  On the other hand, they are easy to take care of because
 of the portable runtime library.
-- Branches, condition codes, set-current-branches!, etc.
 - You need multiplication by 4 rules in order to get variable-offset
 vector-ref and vector-set! to work, even if there are no other
 multiplication rules.
@@ -1198,11 +1346,22 @@ case.
 allocating the target register.  This is done by the usual utilities.
   - describe the common utilities for reusing and 2/3 operand opcodes.
 
-- Describe the RTL rewriter and what it does.
-  Suggest looking at the 68000 and the Spectrum versions.
-
 - How to interface to the runtime library.  How to write
 special-purpose optimized entries.
+
+	5.4 Writing predicate rules.
+
+*** MISSING: Branches, condition codes, set-current-branches!, etc.
+
+	5.5 Writing rewriting rules.
+
+*** MISSING: Describe the RTL rewriter and what it does.
+In particular, describe the primitives on top of which it is written.
+Suggest looking at the 68000 and the Spectrum versions.
+
+	5.6 Writing assembler rules.
+
+*** MISSING: Anything here?
 
 		6. Building and testing the compiler.
 
