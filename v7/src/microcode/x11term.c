@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.13 1990/10/25 21:34:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.14 1990/11/14 17:05:25 cph Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -195,7 +195,7 @@ DEFUN (xterm_y_coordinate_map, (xw, y), struct xwindow * xw AND unsigned int y)
 }
 
 static void
-DEFUN (xterm_copy_map_line, (xw, x_start, x_end, y1, y2),
+DEFUN (xterm_copy_map_line, (xw, x_start, x_end, y_from, y_to),
        struct xwindow * xw AND
        unsigned int x_start AND
        unsigned int x_end AND

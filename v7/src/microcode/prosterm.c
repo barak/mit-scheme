@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosterm.c,v 1.6 1990/11/08 11:05:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosterm.c,v 1.7 1990/11/14 16:59:18 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -67,7 +67,7 @@ DEFINE_PRIMITIVE ("BAUD-INDEX->RATE", Prim_baud_index_to_rate, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    (long_to_integer (OS_baud_index_to_rate [arg_baud_index (1)]));
+    (long_to_integer (OS_baud_index_to_rate (arg_baud_index (1))));
 }
 
 DEFINE_PRIMITIVE ("BAUD-RATE->INDEX", Prim_baud_rate_to_index, 1, 1, 0)

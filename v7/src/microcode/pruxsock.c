@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxsock.c,v 1.2 1990/11/08 11:06:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxsock.c,v 1.3 1990/11/14 17:01:59 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -139,7 +139,7 @@ DEFINE_PRIMITIVE ("TCP-SERVER-CONNECTION-ACCEPT", Prim_tcp_server_connection_acc
   "Poll SERVER-SOCKET for a connection.\n\
 If a connection is available, it is opened and returned.\n\
 Otherwise, if SERVER-SOCKET is non-blocking, returns #F.\n\
-Second argument PEER-ADDRESS, if not #F, must be a host address string.
+Second argument PEER-ADDRESS, if not #F, must be a host address string.\n\
 It is filled with the peer's address if given.")
 {
   PRIMITIVE_HEADER (2);
