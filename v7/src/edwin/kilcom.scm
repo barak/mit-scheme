@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: kilcom.scm,v 1.66 1995/05/02 21:47:43 cph Exp $
+;;;	$Id: kilcom.scm,v 1.67 1995/05/02 22:30:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -223,10 +223,10 @@ The command \\[yank] can retrieve it from there.
 		   (string-append string (car kill-ring)))))
 	  (set-car! kill-ring string)
 	  (set-variable! kill-ring-yank-pointer kill-ring)
-	  (os/interprogram-cut string))))
+	  (os/interprogram-cut string #f))))
     (lambda ()
       (kill-ring-save-1 string)
-      (os/interprogram-cut string)))
+      (os/interprogram-cut string #t)))
   (set-command-message! append-next-kill-tag))
 
 (define (kill-ring-save-1 string)
