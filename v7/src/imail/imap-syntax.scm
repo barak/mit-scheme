@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-syntax.scm,v 1.12 2000/07/05 00:20:36 cph Exp $
+;;; $Id: imap-syntax.scm,v 1.13 2000/07/05 01:04:01 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -406,7 +406,8 @@
 			     j
 			     (encode-mailbox-name-1 string index index* s j))))
 		    (string-set! s j #\-)
-		    (loop index* (fix:+ j 1))))))))
+		    (loop index* (fix:+ j 1)))))
+	      (substring-move! string start end s j))))
       s)))
 
 (define (imap:decode-mailbox-name string #!optional start end)
@@ -446,7 +447,7 @@
 		       (substring-find-next-char string (fix:+ index 1) end
 						 #\-)))
 		  (if (not index*) (lose))
-		  (let ((j (substring-move! string start end s j))
+		  (let ((j (substring-move! string start index s j))
 			(m (fix:- index* index)))
 		    (if (fix:= m 1)
 			(begin
@@ -458,7 +459,8 @@
 						     index*
 						     s
 						     j
-						     lose))))))))
+						     lose)))))
+		(substring-move! string start end s j))))
 	s))))
 
 (define (encode-mailbox-name-1 string start end s j)
