@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.20 1988/11/04 22:37:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.21 1988/11/05 03:03:05 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -733,23 +733,20 @@ MIT in each case. |#
 		 give-it-up)
 		give-it-up)))
       (if is-pred?
-	  (if (eq? fix-op 'EQUAL-FIXNUM?)
-	      ;; This produces significantly better code.
-	      (pcfg*scfg->scfg!
-	       (rtl:make-eq-test op1 op2)
-	       (finish (make-true-pcfg))
-	       generic-1)
-	      (pcfg*scfg->scfg!
-	       (generate-type-test 'FIXNUM op1)
-	       (pcfg*scfg->scfg!
-		(generate-type-test 'FIXNUM op2)
-		(finish
+	  (pcfg*scfg->scfg!
+	   (generate-type-test 'FIXNUM op1)
+	   (pcfg*scfg->scfg!
+	    (generate-type-test 'FIXNUM op2)
+	    (finish
+	     (if (eq? fix-op 'EQUAL-FIXNUM?)
+		 ;; This produces better code.
+		 (rtl:make-eq-test op1 op2)
 		 (rtl:make-fixnum-pred-2-args
 		  fix-op
 		  (rtl:make-object->fixnum op1)
-		  (rtl:make-object->fixnum op2)))
-		generic-2)
-	       generic-1))
+		  (rtl:make-object->fixnum op2))))
+	    generic-2)
+	   generic-1)
 	  (pcfg*scfg->scfg!
 	   (generate-type-test 'FIXNUM op1)
 	   (pcfg*scfg->scfg!
