@@ -1,9 +1,6 @@
-d3 1
-a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.16 1990/05/03 15:11:58 jinx Exp $
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.16 1990/05/03 15:11:58 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.17 1990/08/24 20:19:59 jinx Rel $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -367,28 +364,41 @@ MIT in each case. |#
 		  (code (load-closure-parent (block-parent block) false)))
 	       (if (null? entries)
 		   code
+		   (loop
+		    (cdr entries)
+		    (scfg*scfg->scfg!
+		     (rtl:make-assignment
+		      (rtl:locative-offset closure-locative
+					   (cdar entries))
+		      (let* ((variable (caar entries))
+			     (value (lvalue-known-value variable)))
+			(cond
+			 ;; Paranoia.
+			 ((and value
+			       (rvalue/procedure? value)
+			       (procedure/trivial-or-virtual? value)
+			       (error "known ignorable procedure"
+				      value variable))
+			  (make-trivial-closure-cons value))
+			 ((and (eq? value
 				    (reference-context/procedure context))
-		   (loop (cdr entries)
-			 (scfg*scfg->scfg!
-			  (rtl:make-assignment
-			   (rtl:locative-offset closure-locative
-						(cdar entries))
-			   (let* ((variable (caar entries))
-				  (value (lvalue-known-value variable)))
-			     (cond
-			      ;; Paranoia.
-			      ((and value
-				    (rvalue/procedure? value)
-				    (procedure/trivial-or-virtual? value)
-				    (error "known ignorable procedure"
-					   value variable))
-			       (make-trivial-closure-cons value))
-			      ((eq? value
+			       (bypass-closure-reference? value))
+			  (rtl:make-fetch
+			   (block-closure-locative context)))
+			 (else
+			  (find-closure-variable context variable)))))
+		     code)))))
 	    (else
-			       (rtl:make-fetch
-				(block-closure-locative context)))
-			      (else
-			       (find-closure-variable context variable)))))
-			  code)))))
 	     (error "Unknown block type" block))))))
-	     (error "Unknown block type" block))))))
+
+(define (bypass-closure-reference? procedure)
+  ;; This checks whether the closure object at the top of the stack
+  ;; is the same as the value of a variable bound to the closure.
+  ;; It typically is, but is not on the 68k if the closure is not the
+  ;; first entry of the shared closure because the closure-for-environment
+  ;; is always the canonical entry point.
+  (let* ((closure-block (procedure-closing-block procedure))
+	 (shared-block (block-shared-block closure-block)))
+    (zero? (closure-environment-adjustment
+	    (block-number-of-entries shared-block)
+	    (closure-block-entry-number closure-block)))))

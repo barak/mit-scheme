@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/offset.scm,v 4.7 1990/05/03 15:09:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/offset.scm,v 4.8 1990/08/24 20:20:30 jinx Rel $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -58,18 +58,26 @@ MIT in each case. |#
 			     (continuation/offset procedure)))
 	      (begin
 		(for-each
-		 (lambda (value)
+		 (lambda (value name)
 		   (cond ((and (rvalue/procedure? value)
 			       (not (procedure-continuation? value)))
 			  (let ((context (procedure-closure-context value)))
 			    (if (reference-context? context)
-				(update-reference-context/offset! context 0)))
+				(let ((closing-block
+				       (procedure-closing-block value)))
+				  (if (eq? closing-block
+					   (block-shared-block closing-block))
+				      (update-reference-context/offset! context
+									0)
+				      (update-reference-context/fake-offset!
+				       context name)))))
 			  (walk-rvalue value 0))
 			 ((rvalue/block? value)
 			  (enqueue-grafted-procedures! value))
 			 (else
 			  (walk-rvalue value 0))))
-		 (procedure-values procedure))
+		 (procedure-values procedure)
+		 (procedure-names procedure))
 		(walk-next (procedure-entry-node procedure) 0)))))
        ;; This is a kludge.  If the procedure hasn't been encountered
        ;; elsewhere, tag it as closed when the letrec was done.
@@ -114,7 +122,17 @@ MIT in each case. |#
 
 (define (update-reference-context/offset! context offset)
   (let ((offset* (reference-context/offset context)))
-    (cond ((not offset*)	   (set-reference-context/offset! context offset))
+    (cond ((not offset*)
+	   (set-reference-context/offset! context offset))
+	  ((not (= offset offset*))
+	   (error "mismatched offsets" context)))))
+
+(define (update-reference-context/fake-offset! context name)
+  (let ((offset (- -1 (variable-normal-offset name)))
+	(offset* (reference-context/offset context)))
+    (cond ((or (not offset*)
+	       (zero? offset*))
+	   (set-reference-context/offset! context offset))
 	  ((not (= offset offset*))
 	   (error "mismatched offsets" context)))))
 
