@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.30 1991/04/21 00:50:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.31 1991/04/24 00:54:47 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -156,6 +156,7 @@ MIT in each case. |#
 	  group-delete!
 	  group-delete-left-char!
 	  group-delete-right-char!
+	  group-extract-and-delete-string!
 	  group-extract-string
 	  group-insert-char!
 	  group-insert-string!
