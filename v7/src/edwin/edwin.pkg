@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.122 1993/08/02 03:06:33 cph Exp $
+$Id: edwin.pkg,v 1.123 1993/08/02 23:54:24 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -423,6 +423,7 @@ MIT in each case. |#
 	  last-command-key
 	  override-next-command!
 	  read-and-dispatch-on-key
+	  return-to-command-loop
 	  set-command-argument!
 	  set-command-message!
 	  set-current-command!

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comred.scm,v 1.99 1993/08/02 03:06:32 cph Exp $
+;;;	$Id: comred.scm,v 1.100 1993/08/02 23:54:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -69,9 +69,9 @@
   (do ((init init #f)) (#f)
     (with-keyboard-macro-disabled
      (lambda ()
-       (bind-abort-current-command #t
-	 (lambda ()
-	   (command-reader init)))))))
+       (bind-condition-handler (list condition-type:abort-current-command)
+	   handle-abort-condition
+	 (lambda () (command-reader init)))))))
 
 (define (command-reader #!optional initialization)
   (fluid-let ((*last-command* false)
@@ -85,54 +85,64 @@
     (bind-condition-handler (list condition-type:editor-error)
 	editor-error-handler
       (lambda ()
-	(if (and (not (default-object? initialization)) initialization)
-	    (bind-abort-current-command #f
-	      (lambda ()
-		(reset-command-state!)
-		(initialization))))
-	(do () (false)
-	  (bind-abort-current-command #f
-	    (lambda ()
-	      (do () (false)
-		(reset-command-state!)
-		(if (queue-empty? command-reader-override-queue)
-		    (let ((input
-			   (with-editor-interrupts-disabled keyboard-read)))
-		      (if (input-event? input)
-			  (apply-input-event input)
-			  (begin
-			    (set! *command-key* input)
-			    (clear-message)
-			    (set-command-prompt!
-			     (if (not (command-argument))
-				 (key-name input)
-				 (string-append-separated
-				  (command-argument-prompt)
-				  (key-name input))))
-			    (let ((window (current-window)))
-			      (%dispatch-on-command
-			       window
-			       (comtab-entry (buffer-comtabs
-					      (window-buffer window))
-					     input)
-			       false)))))
-		    ((dequeue! command-reader-override-queue)))))))))))
+	(bind-condition-handler (list condition-type:abort-current-command)
+	    (lambda (condition)
+	      (if (not (condition/^G? condition))
+		  (handle-abort-condition condition)))
+	  (lambda ()
+	    (if (and (not (default-object? initialization)) initialization)
+		(bind-abort-editor-command
+		 (lambda ()
+		   (reset-command-state!)
+		   (initialization))))
+	    (do () (false)
+	      (bind-abort-editor-command
+	       (lambda ()
+		 (do () (false)
+		   (reset-command-state!)
+		   (if (queue-empty? command-reader-override-queue)
+		       (let ((input
+			      (with-editor-interrupts-disabled keyboard-read)))
+			 (if (input-event? input)
+			     (apply-input-event input)
+			     (begin
+			       (set! *command-key* input)
+			       (clear-message)
+			       (set-command-prompt!
+				(if (not (command-argument))
+				    (key-name input)
+				    (string-append-separated
+				     (command-argument-prompt)
+				     (key-name input))))
+			       (let ((window (current-window)))
+				 (%dispatch-on-command
+				  window
+				  (comtab-entry (buffer-comtabs
+						 (window-buffer window))
+						input)
+				  false)))))
+		       ((dequeue! command-reader-override-queue)))))))))))))
 
-(define (bind-abort-current-command handle-^G? thunk)
+(define (bind-abort-editor-command thunk)
   (call-with-current-continuation
    (lambda (continuation)
-     (bind-condition-handler (list condition-type:abort-current-command)
-	 (lambda (condition)
-	   (if (or handle-^G? (not (condition/^G? condition)))
-	       (let ((input (abort-current-command/input condition)))
-		 (within-continuation continuation
-		   (lambda ()
-		     (if (input-event? input)
-			 (begin
-			   (reset-command-state!)
-			   (apply-input-event input)))
-		     'ABORT)))))
-       thunk))))
+     (bind-restart 'ABORT-EDITOR-COMMAND "Return to the editor command loop."
+	 (lambda (#!optional input)
+	   (within-continuation continuation
+	     (lambda ()
+	       (if (and (not (default-object? input)) (input-event? input))
+		   (begin
+		     (reset-command-state!)
+		     (apply-input-event input))))))
+       (lambda (restart) restart (thunk))))))
+
+(define (handle-abort-condition condition)
+  (return-to-command-loop (abort-current-command/input condition)))
+
+(define (return-to-command-loop input)
+  (let ((restart (find-restart 'ABORT-EDITOR-COMMAND)))
+    (if (not restart) (error "Missing ABORT-EDITOR-COMMAND restart."))
+    (invoke-restart restart input)))
 
 (define (reset-command-state!)
   (set! *last-command* *command*)

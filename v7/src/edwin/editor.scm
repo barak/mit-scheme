@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: editor.scm,v 1.228 1993/08/02 03:06:32 cph Exp $
+;;;	$Id: editor.scm,v 1.229 1993/08/02 23:54:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -290,7 +290,7 @@ with the contents of the startup message."
 	(else
 	 (editor-beep)
 	 (message (condition/report-string condition))
-	 (abort-current-command))))
+	 (return-to-command-loop #f))))
 
 (define-variable debug-on-internal-error
   "True means enter debugger if error is signalled while the editor is running.
@@ -325,15 +325,11 @@ This does not affect editor errors or evaluation errors."
 	(let ((strings (editor-error-strings condition)))
 	  (if (not (null? strings))
 	      (apply message strings)))
-	(abort-current-command))))
+	(return-to-command-loop #f))))
 
 (define-variable debug-on-editor-error
   "True means signal Scheme error when an editor error occurs."
   false)
-
-(define (%editor-error)
-  (editor-beep)
-  (abort-current-command))
 
 (define condition-type:abort-current-command
   (make-condition-type 'ABORT-CURRENT-COMMAND #f '(INPUT)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debug.scm,v 1.3 1992/08/20 22:21:33 cph Exp $
+;;;	$Id: debug.scm,v 1.4 1993/08/02 23:54:19 cph Exp $
 ;;;
-;;;	Copyright (c) 1992 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -768,7 +768,7 @@ Set this variable to #F to disable this abbreviation."
 	      (fluid-let ((starting-debugger? true))
 		(select-continuation-browser-buffer condition))
 	      (message error-type-name " error")))
-	(abort-current-command))))
+	(return-to-command-loop #f))))
 
 (define starting-debugger? false)
 
