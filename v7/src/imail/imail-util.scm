@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.22 2000/05/20 20:08:37 cph Exp $
+;;; $Id: imail-util.scm,v 1.23 2000/05/21 00:03:32 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -292,7 +292,7 @@
 
 (define (derived-broken-pipe? condition)
   (and (eq? (condition/type condition) condition-type:derived-port-error)
-       (broken-pipe? (derived-condition condition))))
+       (broken-pipe? (derived-port-condition condition))))
 
 (define derived-port-condition
   (condition-accessor condition-type:derived-port-error 'CONDITION))
@@ -384,8 +384,9 @@
 	     (cond ((not (pair? pathnames))
 		    (if-not-found))
 		   ((pair? (cdr pathnames))
-		    (if-not-unique (string-greatest-common-prefix
-				    (map ->namestring pathnames))
+		    (if-not-unique (->pathname
+				    (string-greatest-common-prefix
+				     (map ->namestring pathnames)))
 				   (lambda () pathnames)))
 		   ((string-null? (file-namestring (car pathnames)))
 		    (if-directory (car pathnames)))
