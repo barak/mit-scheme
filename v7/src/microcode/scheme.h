@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme.h,v 9.35 1993/06/24 06:22:01 gjr Exp $
+$Id: scheme.h,v 9.36 1993/08/30 16:11:01 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -37,6 +37,9 @@ MIT in each case. */
 
 /* Certain debuggers cannot really deal with variables in registers.
    When debugging, NO_REGISTERS can be defined. */
+
+#ifndef SCM_SCHEME_H
+#define SCM_SCHEME_H
 
 #ifdef NO_REGISTERS
 #define fast
@@ -99,3 +102,4 @@ MIT in each case. */
 #include "error: floating point radix not 2!  Arithmetic won't work."
 #endif
 
+#endif /* SCM_SCHEME_H */
