@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dossig.c,v 1.6 1992/09/18 05:53:55 jinx Exp $
+$Id: dossig.c,v 1.7 1992/09/19 19:06:16 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -909,6 +909,13 @@ DEFUN (DPMI_stack_fault_handler, (trapno, trapcode, scp),
        unsigned trapno AND unsigned trapcode AND struct sigcontext * scp)
 {
   Scheme_Stack_Segment_Selector = scheme_ds;
+  if ((scp->sc_ss == scheme_ss)
+      && (scp->sc_esp < (((unsigned long) Stack_Guard) + 0x1000)))
+  {
+    scp->sc_ss = scheme_ds;
+    REQUEST_INTERRUPT (INT_Stack_Overflow);
+    return;
+  }
   trap_handler ("hardware exception", ((int) trapno), trapcode, scp);
   /*NOTREACHED*/
 }
