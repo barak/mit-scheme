@@ -1,8 +1,8 @@
 ### -*-Midas-*-
 ###
-###	$Id: i386.m4,v 1.28 1992/09/18 05:52:35 jinx Exp $
+###	$Id: i386.m4,v 1.29 1993/06/24 08:05:20 gjr Exp $
 ###
-###	Copyright (c) 1992 Massachusetts Institute of Technology
+###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
 ###	This material was developed by the Scheme project at the
 ###	Massachusetts Institute of Technology, Department of
@@ -310,12 +310,14 @@ allocate_longword(C_Frame_Pointer)
 define_data(i387_presence)
 allocate_longword(i387_presence)
 
-ifdef(`DOS',
+ifdef(`WINNT',
+`	extrn _RegistersPtr:dword',
+`ifdef(`DOS',
 `use_external_data(Registers)',
 `define_data(Regstart)
 allocate_space(Regstart,128)
 define_data(Registers)
-allocate_space(Registers,eval(REGBLOCK_SIZE_IN_OBJECTS*4))')
+allocate_space(Registers,eval(REGBLOCK_SIZE_IN_OBJECTS*4))')')
 
 DECLARE_CODE_SEGMENT()
 declare_alignment(2)
@@ -377,7 +379,9 @@ define_c_label(C_to_interface)
 	OP(mov,l)	TW(REG(esp),EDR(C_Stack_Pointer))
 							# Register block = %esi
 
-	OP(lea,l)	TW(ABS(EDR(Registers)),regs)
+	ifdef(`WINNT',
+	`mov	esi,dword ptr _RegistersPtr',	
+	`OP(lea,l)	TW(ABS(EDR(Registers)),regs)')
 	jmp	external_code_reference(interface_to_scheme)
 
 define_c_label(asm_trampoline_to_interface)
@@ -412,8 +416,10 @@ IFDOS(`	OP(mov,w)	TW(EDR(C_Stack_Segment_Selector),REG(ss))')	# Swap stack segme
 define_debugging_label(scheme_to_interface_return)
 	OP(add,l)	TW(IMM(16),REG(esp))		# Pop utility args
 
-IFDOS(`	OP(mov,l)	TW(LOF(4,REG(eax)),REG(edx))
-	OP(mov,l)	TW(IND(REG(eax)),REG(eax))')
+	ifdef(`WINNT',
+	`',
+`IFDOS(`OP(mov,l)	TW(LOF(4,REG(eax)),REG(edx))
+	OP(mov,l)	TW(IND(REG(eax)),REG(eax))')')
 
 	jmp	IJMP(REG(eax))				# Invoke handler
 
