@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gpio.c,v 1.5 1990/07/13 21:47:33 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gpio.c,v 1.6 1990/07/16 23:17:21 jinx Exp $ */
 
 /* Scheme primitives for GPIO */
 
@@ -71,6 +71,11 @@ DEFINE_PRIMITIVE ("GPIO-OPEN", Prim_gpio_open, 1, 1, 0)
   /* Guarantee exclusive access. */
   io_lock (gpio_channel);
 
+#if 1
+  /* Map into address space. */
+  io_burst (gpio_channel, 1);
+#endif
+
   /* Set data width to 16 bits. */
   io_width_ctl (gpio_channel, 16);
   
@@ -86,8 +91,12 @@ DEFINE_PRIMITIVE ("GPIO-CLOSE", Prim_gpio_close, 1, 1, 0)
 
   gpio_channel = (UNSIGNED_FIXNUM_ARG (1));
 
+#if 1
+  io_burst (gpio_channel, 0);
+#endif
+
   io_unlock (gpio_channel);
-  close ( gpio_channel );
+  close (gpio_channel);
   
   PRIMITIVE_RETURN( long_to_integer( gpio_channel ));
 }
