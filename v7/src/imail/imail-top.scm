@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.246 2001/05/24 00:20:07 cph Exp $
+;;; $Id: imail-top.scm,v 1.247 2001/05/24 00:26:32 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1350,7 +1350,6 @@ The folder's type may not be changed."
     (let ((from
 	   (maybe-prompt-for-folder "Rename folder"
 				    'HISTORY 'IMAIL-RENAME-FOLDER-SOURCE
-				    'HISTORY-INDEX 0
 				    'REQUIRE-MATCH? #t)))
       (list from
 	    (prompt-for-folder "Rename folder to"
@@ -1371,7 +1370,6 @@ If it doesn't exist, it is created first."
 	   (maybe-prompt-for-selectable-folder
 	    "Copy folder"
 	    'HISTORY 'IMAIL-COPY-FOLDER-SOURCE
-	    'HISTORY-INDEX 0
 	    'REQUIRE-MATCH? #t)))
       (list from
 	    (prompt-for-folder
