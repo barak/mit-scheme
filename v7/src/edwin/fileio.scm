@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.162 2003/09/24 01:57:48 cph Exp $
+$Id: fileio.scm,v 1.163 2003/09/24 04:47:57 cph Exp $
 
 Copyright 1986,1989,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1997,1999,2000,2001,2002 Massachusetts Institute of Technology
@@ -361,9 +361,7 @@ and the cdrs of which are major modes."
      ("xhtml" . html)
      ("xml" . html)
      ("xsl" . html)
-     ("y" . c)
-     ,@(os/file-type-to-major-mode)))
-  
+     ("y" . c)))
   string->mode-alist?)
 
 ;;;; Local Variable Initialization
