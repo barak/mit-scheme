@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rexp.scm,v 1.20 2002/12/19 21:31:29 cph Exp $
+$Id: rexp.scm,v 1.21 2002/12/19 21:35:34 cph Exp $
 
 Copyright (c) 2000, 2001, 2002 Massachusetts Institute of Technology
 
@@ -186,10 +186,11 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 		 ((*) (string-append (rexp-arg) "*"))
 		 ((+) (string-append (rexp-arg) "+"))
 		 ((CASE-FOLD)
-		  (let ((arg (one-arg)))
-		    (cond ((string? arg) (case-fold-string arg))
-			  ((char-set? arg) (case-fold-char-set arg))
-			  (else (lose)))))
+		  (rexp->regexp
+		   (let ((arg (one-arg)))
+		     (cond ((string? arg) (case-fold-string arg))
+			   ((char-set? arg) (case-fold-char-set arg))
+			   (else (lose))))))
 		 ((ANY-CHAR) ".")
 		 ((LINE-START) "^")
 		 ((LINE-END) "$")
@@ -205,7 +206,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 		 ((NOT-SYNTAX-CHAR) (string-append "\\S" (syntax-type)))
 		 (else (lose))))))
 	  (else (lose)))))
-
+
 (define (case-fold-string s)
   (let ((end (string-length s)))
     (let loop ((start 0) (parts '()))
@@ -228,8 +229,9 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (let loop ((chars (char-set-members c)) (chars* '()))
     (if (pair? chars)
 	(loop (cdr chars)
-	      (let ((c (car chars)))
-		(if (char-alphabetic? c)
-		    (cons* (char-upcase c) (char-downcase c) chars*)
-		    chars*)))
+	      (if (char-alphabetic? (car chars))
+		  (cons* (char-upcase (car chars))
+			 (char-downcase (car chars))
+			 chars*)
+		  chars*))
 	(apply char-set chars*))))
