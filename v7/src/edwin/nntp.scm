@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: nntp.scm,v 1.17 1997/11/13 08:01:59 cph Exp $
+;;;	$Id: nntp.scm,v 1.18 1998/02/23 05:37:47 cph Exp $
 ;;;
-;;;	Copyright (c) 1995-97 Massachusetts Institute of Technology
+;;;	Copyright (c) 1995-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -1492,14 +1492,26 @@
 	((NONE)
 	 (hash-table/put! table header 'PENDING)
 	 (let ((result
-		(reduce unionq
-			'()
-			(let ((headers (step header)))
-			  (cons headers (map loop headers))))))
+		(reduce
+		 unionq
+		 '()
+		 (let ((headers (step header)))
+		   (cons headers
+			 (map (lambda (header*)
+				(let ((result (loop header*)))
+				  (if (eq? 'CYCLE result)
+				      (begin
+					(if (eq? step news-header:followups)
+					    (unlink-headers! header header*)
+					    (unlink-headers! header* header))
+					'())
+				      result)))
+			      headers))))))
 	   (hash-table/put! table header result)
 	   result))
 	((PENDING)
-	 (error "Cycle detected in header graph:" header))
+	 ;;(error "Cycle detected in header graph:" header)
+	 'CYCLE)
 	(else cache)))))
 
 (define (reset-caches! tables header)
