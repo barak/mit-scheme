@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.27 1992/01/15 17:18:23 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.28 1992/02/04 22:44:38 jinx Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -81,7 +81,18 @@ typedef unsigned short format_word;
    pointers.  We don't want that for the assembly language entry points.
  */
 
-#define C_FUNC_PTR_IS_CLOSURE
+#ifdef __GNUC__
+#  if (__GNUC__ < 2)
+#    define C_FUNC_PTR_IS_CLOSURE
+#  else
+#    include "Fix cmpint-hppa.h to define C_FUNC_PTR_IS_CLOSURE if necessary"
+#  endif
+#else /* Assume HP C -- Test for HP-UX >= 8.0 */
+#  include <magic.h>
+#  ifdef SHL_MAGIC
+#    define C_FUNC_PTR_IS_CLOSURE
+#  endif
+#endif
 
 /* Utilities for manipulating absolute subroutine calls.
    On the PA the absolute address is "smeared out" over two
@@ -724,8 +735,6 @@ DEFUN (assemble_17, (inst), union ble_inst inst)
   return off.value;
 }
 
-#include <magic.h>
-
 PTR *
 DEFUN (transform_procedure_table, (table_length, old_table),
        long table_length AND PTR * old_table)
@@ -744,18 +753,19 @@ DEFUN (transform_procedure_table, (table_length, old_table),
 
   for (counter = 0; counter < table_length; counter++)
   {
-    /* Test for HP-UX >= 8.0 */
-
-#if defined(SHL_MAGIC) && !defined(__GNUC__)
+#ifdef C_FUNC_PTR_IS_CLOSURE
     char * C_closure, * blp;
     long offset;
+
+    /* This is correct for HP C for HP-UX >= 8.0.
+       Is it also correct for GCC 2?
+     */
 
     C_closure = ((char *) (old_table [counter]));
     blp = (* ((char **) (C_closure - 2)));
     blp = ((char *) (((unsigned long) blp) & ~3));
     offset = (assemble_17 (* ((union ble_inst *) blp)));
     new_table[counter] = ((PTR) ((blp + 8) + offset));
-    
 #else
     new_table[counter] = ((PTR) (old_table [counter]));
 #endif
