@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/conpar.scm,v 14.12 1990/01/29 22:34:18 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/conpar.scm,v 14.13 1990/04/12 22:54:21 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -518,6 +518,7 @@ MIT in each case. |#
     (standard-frame 'JOIN-STACKLETS 2)
     (standard-frame 'POP-RETURN-ERROR 2)
     (standard-frame 'REENTER-COMPILED-CODE 2)
+    (standard-frame 'RESTORE-VALUE 2)
     (standard-frame 'COMPILER-INTERRUPT-RESTART 3)
     (standard-frame 'COMPILER-LINK-CACHES-RESTART 8)
 
@@ -526,7 +527,6 @@ MIT in each case. |#
     (standard-subproblem 'PRIMITIVE-COMBINATION-1-APPLY 2)
     (standard-subproblem 'FORCE-SNAP-THUNK 2)
     (standard-subproblem 'GC-CHECK 2)
-    (standard-subproblem 'RESTORE-VALUE 2)
     (standard-subproblem 'ASSIGNMENT-CONTINUE 3)
     (standard-subproblem 'DEFINITION-CONTINUE 3)
     (standard-subproblem 'SEQUENCE-2-SECOND 3)
