@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.23 1995/08/06 22:26:35 adams Exp $
+$Id: cleanup.scm,v 1.24 1995/08/10 19:21:58 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -262,20 +262,21 @@ MIT in each case. |#
 	   `(CALL ,new-lambda ,closure)))))
 
 
-(define *cleanup/rewriters* (make-eq-hash-table))
+(define *cleanup/rewriters* (make-monotonic-strong-eq-hash-table))
 
 (define (cleanup/rewrite? name arity)
-  (cond ((hash-table/get *cleanup/rewriters* name #F)
+  (cond ((monotonic-strong-eq-hash-table/get *cleanup/rewriters* name #F)
 	 => (lambda (alist)
 	      (cond ((assq arity alist) => cdr)
 		    (else  #F))))
 	(else  #F)))
 
 (define (define-cleanup-rewrite name arity handler)
-  (let ((slot  (hash-table/get *cleanup/rewriters* name '())))
-    (hash-table/put! *cleanup/rewriters*
-		     name
-		     (cons (cons arity handler) slot)))
+  (let ((slot
+	 (monotonic-strong-eq-hash-table/get *cleanup/rewriters* name '())))
+    (monotonic-strong-eq-hash-table/put! *cleanup/rewriters*
+					 name
+					 (cons (cons arity handler) slot)))
   name)
 
 
