@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.54 1989/06/21 10:31:07 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.55 1989/06/21 11:55:22 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -88,10 +88,15 @@
 
 (define (comtab-entry comtabs key)
   (let ((continue
-	 (lambda ()
-	   (cond ((null? (cdr comtabs)) (if (button? key) false bad-command))
-		 ((comtab? (cadr comtabs)) (comtab-entry (cdr comtabs) key))
-		 (else (cadr comtabs))))))
+	 (if (button? key)
+	     (lambda ()
+	       (and (not (null? (cdr comtabs)))
+		    (comtab? (cadr comtabs))
+		    (comtab-entry (cdr comtabs) key)))
+	     (lambda ()
+	       (cond ((null? (cdr comtabs)) bad-command)
+		     ((comtab? (cadr comtabs)) (comtab-entry (cdr comtabs) key))
+		     (else (cadr comtabs)))))))
     (let ((try
 	   (lambda (key alist)
 	     (let ((entry (assq key alist)))
