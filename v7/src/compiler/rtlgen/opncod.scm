@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.38 1990/06/26 22:16:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.39 1990/07/15 22:59:25 jinx Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -838,7 +838,8 @@ MIT in each case. |#
 	    FIXNUM-ANDC
 	    FIXNUM-AND
 	    FIXNUM-OR
-	    FIXNUM-XOR))
+	    FIXNUM-XOR
+	    FIXNUM-LSH))
 
 (for-each (lambda (fixnum-operator)
 	    (define-open-coder/value fixnum-operator
@@ -853,7 +854,9 @@ MIT in each case. |#
 		    false))))
 	       '(0)
 	       false)))
-	  '(ONE-PLUS-FIXNUM MINUS-ONE-PLUS-FIXNUM FIXNUM-NOT))
+	  '(ONE-PLUS-FIXNUM
+	    MINUS-ONE-PLUS-FIXNUM
+	    FIXNUM-NOT))
 
 (for-each (lambda (fixnum-pred)
 	    (define-open-coder/predicate fixnum-pred
