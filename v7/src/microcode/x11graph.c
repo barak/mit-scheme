@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.12 1991/07/03 16:15:46 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.13 1991/07/03 16:55:39 markf Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -520,10 +520,10 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-SET-DASHES", Prim_x_graphics_set_dashes, 3, 3, 0)
 }
 
 DEFINE_PRIMITIVE ("X-CREATE-IMAGE", Prim_x_create_image, 3, 3,
-  " Arguments: Window, width, height
-    Returns:   A Scheme image
-
-    The window is used to find the Display, Visual, and Depth
+  " Arguments: Window, width, height\
+    Returns:   A Scheme image\
+\
+    The window is used to find the Display, Visual, and Depth\
     information needed to crate an XImage structure.")
 {
   extern allocate_x_image ();
@@ -564,7 +564,7 @@ DEFINE_PRIMITIVE ("X-CREATE-IMAGE", Prim_x_create_image, 3, 3,
 }
 
 DEFINE_PRIMITIVE ("X-BYTES-INTO-IMAGE", Prim_x_bytes_into_image, 2, 2,
-  "Stick the bytes from the vector-8b (first arg) into the x_image
+  "Stick the bytes from the vector-8b (first arg) into the x_image/
 (second arg).")
 {
   PRIMITIVE_HEADER (2);
