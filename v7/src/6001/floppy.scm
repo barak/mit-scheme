@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.18 1996/10/04 19:30:23 cph Exp $
+$Id: floppy.scm,v 1.19 1997/03/04 06:45:17 cph Exp $
 
-Copyright (c) 1992-96 Massachusetts Institute of Technology
+Copyright (c) 1992-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -639,8 +639,7 @@ M-x rename-file, or use the `r' command in Dired.")
       (let ((offset (time-zone-offset)))
 	(let loop
 	    ((start
-	      (if (re-match-substring-forward leader-pattern false false
-					      string start end)
+	      (if (re-substring-match leader-pattern string start end)
 		  (re-match-end-index 0)
 		  start)))
 	  (if (= start end)
@@ -668,8 +667,7 @@ M-x rename-file, or use the `r' command in Dired.")
 			 "/dev/rfd:/\\(.+\\) *$")
 	  false)))
     (lambda (string start end offset)
-      (if (not (re-match-substring-forward line-pattern false false
-					   string start end))
+      (if (not (re-substring-match line-pattern string start end))
 	  (error "Line doesn't match dosls -l pattern:"
 		 (substring string start end)))
       (let ((month (extract-string-match string 1))
