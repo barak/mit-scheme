@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.215 1992/02/17 22:00:58 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.216 1992/02/18 14:09:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -193,17 +193,6 @@ with the contents of the startup message."
    (lambda ()
      (if edwin-editor
 	 (begin
-	   ;; Restore the default bindings of all of the local
-	   ;; variables in the current buffer.
-	   (let ((buffer
-		  (window-buffer
-		   (screen-selected-window
-		    (editor-selected-screen edwin-editor)))))
-	     (for-each (lambda (binding)
-			 (%%set-variable-value! (car binding)
-						(cdr binding)))
-		       (buffer-local-bindings buffer))
-	     (vector-set! buffer buffer-index:local-bindings '()))
 	   (for-each (lambda (screen)
 		       (screen-discard! screen))
 		     (editor-screens edwin-editor))
