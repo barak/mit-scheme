@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.17 1989/09/05 22:34:16 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.18 1989/11/30 16:07:41 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -139,7 +139,7 @@ MIT in each case. |#
 (define-integrable fp6 22)
 (define-integrable fp7 23)
 (define-integrable number-of-machine-registers 24)
-(define-integrable number-of-temporary-registers 50)
+(define-integrable number-of-temporary-registers 256)
 
 (define-integrable regnum:dynamic-link a4)
 (define-integrable regnum:free-pointer a5)

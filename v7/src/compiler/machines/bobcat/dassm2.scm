@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.14 1989/10/26 07:37:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.15 1989/11/30 16:06:49 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -59,9 +59,12 @@ MIT in each case. |#
 		  (arity (read-unsigned-integer (+ offset 6) 16)))
 	      (case opcode
 		((#x4ef9)		; JMP <value>.L
+		 ;; *** This should learn how to decode
+		 ;; the new trampolines. ***
 		 (vector 'COMPILED
 			 (read-procedure (+ offset 2))
 			 arity))
+		#|
 		((#x4eb9)		; JSR <value>.L
 		 (let* ((new-block
 			 (compiled-code-address->block
@@ -92,6 +95,7 @@ MIT in each case. |#
 		      (error
 		       "disassembler/read-procedure-cache: Unknown offset"
 		       offset block index)))))
+		|#
 		(else
 		 (error "disassembler/read-procedure-cache: Unknown opcode"
 			opcode block index))))))))
@@ -230,18 +234,18 @@ MIT in each case. |#
 (define make-address-register)
 (define make-address-offset)
 (define interpreter-register?)
+
 (let ()
 
 #|
-
 (define (register-maker assignments)
   (lambda (mode register)
     (list mode
 	  (if disassembler/symbolize-output?
 	      (cdr (assq register assignments))
 	      register))))
-
 |#
+
 (set! make-data-register
   (lambda (mode register)
     (list mode
@@ -318,44 +322,32 @@ MIT in each case. |#
   6)
 
 (define interpreter-register-assignments
-  (let ()
+  (let* ((first-entry (* 4 16))
+	 (first-temp (+ first-entry (* 8 40))))
     (define (make-entries index names)
       (if (null? names)
 	  '()
 	  (cons `(,index . (ENTRY ,(car names)))
-		(make-entries (+ index 6) (cdr names)))))
+		(make-entries (+ index 8) (cdr names)))))
     `(;; Interpreter registers
       (0  . (REGISTER MEMORY-TOP))
       (4  . (REGISTER STACK-GUARD))
       (8  . (REGISTER VALUE))
       (12 . (REGISTER ENVIRONMENT))
       (16 . (REGISTER TEMPORARY))
-      ;; Old compiled code temporaries
-      ;; Retained for compatibility with old compiled code and should
-      ;; eventually be flushed.
-      ,@(let loop ((index 40) (i 0))
-	  (if (= i 50)
-	      '()
-	      (cons `(,index . (OLD TEMPORARY ,i))
-		    (loop (+ index 4) (1+ i)))))
       ;; Interpreter entry points
       ,@(make-entries
-	 #x012c
-	 '(link error apply
-		lexpr-apply primitive-apply primitive-lexpr-apply
-		cache-reference-apply lookup-apply
-		interrupt-continuation interrupt-ic-procedure
-		interrupt-procedure interrupt-closure
-		lookup safe-lookup set! access unassigned? unbound? define
-		reference-trap safe-reference-trap assignment-trap
-		unassigned?-trap
-		&+ &- &* &/ &= &< &> 1+ -1+ zero? positive? negative?))
+	 first-entry
+	 '(scheme-to-interface
+	   scheme-to-interface-jsr
+	   trampoline-to-interface
+	   shortcircuit-apply))
       ;; Compiled code temporaries
-      ,@(let loop ((index 720) (i 0))
-	  (if (= i 300)
+      ,@(let loop ((i 0) (index first-temp))
+	  (if (= i 256)
 	      '()
 	      (cons `(,index . (TEMPORARY ,i))
-		    (loop (+ index 12) (1+ i))))))))
+		    (loop (1+ i) (+ index 12))))))))
 )
 
 (define (make-pc-relative thunk)

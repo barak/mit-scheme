@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.22 1989/10/26 07:37:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.23 1989/11/30 16:05:44 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -62,7 +62,9 @@ MIT in each case. |#
   (machine-register->memory source (pseudo-register-home target)))
 
 (define-integrable (pseudo-register-offset register)
-  (+ 180 (* 3 (register-renumber register))))
+  ;; Offset into register block for temporary registers
+  (+ (+ (* 16 4) (* 40 8))
+     (* 3 (register-renumber register))))
 
 (define-integrable (pseudo-register-home register)
   (offset-reference regnum:regs-pointer
@@ -109,6 +111,14 @@ MIT in each case. |#
 
 )
 
+(define (load-dnl n d)
+  (cond ((zero? n)
+	 (INST (CLR L (D ,d))))
+	((<= -128 n 127)
+	 (INST (MOVEQ (& ,n) (D ,d))))
+	(else
+	 (INST (MOV L (& ,n) (D ,d))))))
+
 (define (load-dnw n d)
   (cond ((zero? n)
 	 (INST (CLR W (D ,d))))
@@ -822,7 +832,34 @@ MIT in each case. |#
   block-start-label
   (LAP (ENTRY-POINT ,label)
        ,@(make-external-label expression-code-word label)))
+
+(define-integrable reg:compiled-memtop (INST-EA (@A 6)))
+(define-integrable reg:environment (INST-EA (@AO 6 #x000C)))
+(define-integrable reg:temp (INST-EA (@AO 6 #x0010)))
+(define-integrable reg:lexpr-primitive-arity (INST-EA (@AO 6 #x001C)))
 
+(let-syntax ((define-codes
+	       (macro (start . names)
+		 (define (loop names index)
+		   (if (null? names)
+		       '()
+		       (cons `(DEFINE-INTEGRABLE
+				,(symbol-append 'CODE:COMPILER-
+						(car names))
+				,index)
+			     (loop (cdr names) (1+ index)))))
+		 `(BEGIN ,@(loop names start)))))
+  (define-codes #x012
+    primitive-apply primitive-lexpr-apply
+    apply error lexpr-apply link
+    interrupt-closure interrupt-dlink interrupt-procedure 
+    interrupt-continuation interrupt-ic-procedure
+    assignment-trap cache-reference-apply
+    reference-trap safe-reference-trap unassigned?-trap
+    -1+ &/ &= &> 1+ &< &- &* negative? &+ positive? zero?
+    access lookup safe-lookup unassigned? unbound?
+    set! define lookup-apply))
+
 (let-syntax ((define-entries
 	       (macro (start . names)
 		 (define (loop names index)
@@ -832,24 +869,31 @@ MIT in each case. |#
 				,(symbol-append 'ENTRY:COMPILER-
 						(car names))
 				(INST-EA (@AO 6 ,index)))
-			     (loop (cdr names) (+ index 6)))))
+			     (loop (cdr names) (+ index 8)))))
 		 `(BEGIN ,@(loop names start)))))
-  (define-entries #x012c
-    link error apply
-    lexpr-apply primitive-apply primitive-lexpr-apply
-    cache-reference-apply lookup-apply
-    interrupt-continuation interrupt-ic-procedure
-    interrupt-procedure interrupt-closure
-    lookup safe-lookup set! access unassigned? unbound? define
-    reference-trap safe-reference-trap assignment-trap unassigned?-trap
-    &+ &- &* &/ &= &< &> 1+ -1+ zero? positive? negative?))
+  (define-entries #x40
+    scheme-to-interface			; Main entry point (only one necessary)
+    scheme-to-interface-jsr		; Used by rules4, for convenience
+    trampoline-to-interface		; Used by trampolines, for convenience
+    shortcircuit-apply			; Used by rules3, for speed
+    ))
 
-(define-integrable reg:compiled-memtop (INST-EA (@A 6)))
-(define-integrable reg:environment (INST-EA (@AO 6 #x000C)))
-(define-integrable reg:temp (INST-EA (@AO 6 #x0010)))
-(define-integrable reg:enclose-result (INST-EA (@AO 6 #x0014)))
-(define-integrable reg:lexpr-primitive-arity (INST-EA (@AO 6 #x001C)))
+(define-integrable (invoke-interface code)
+  (LAP ,(load-dnw code 0)
+       (JMP ,entry:compiler-scheme-to-interface)))
 
-(define-integrable popper:apply-closure (INST-EA (@AO 6 #x0168)))
-(define-integrable popper:apply-stack (INST-EA (@AO 6 #x01A8)))
-(define-integrable popper:value (INST-EA (@AO 6 #x01E8)))
+#|
+;; If the entry point scheme-to-interface-jsr were not available,
+;; this code should replace the definition below.
+;; The others can be handled similarly.
+
+(define-integrable (invoke-interface-jsr code)
+  (LAP ,(load-dnw code 0)
+       (LEA (@PCO 12) (A 0))
+       (MOV L (A 0) (D 1))
+       (JMP ,entry:compiler-scheme-to-interface)))
+|#
+
+(define-integrable (invoke-interface-jsr code)
+  (LAP ,(load-dnw code 0)
+       (JSR ,entry:compiler-scheme-to-interface-jsr)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.18 1989/10/26 07:38:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.19 1989/11/30 16:06:05 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -53,8 +53,8 @@ MIT in each case. |#
   (INVOCATION:APPLY (? frame-size) (? continuation))
   continuation
   (LAP ,@(clear-map!)
-       ,(load-dnw frame-size 0)
-       (JMP ,entry:compiler-apply)))
+       ,(load-dnl frame-size 2)
+       (JMP ,entry:compiler-shortcircuit-apply)))
 
 (define-rule statement
   (INVOCATION:JUMP (? frame-size) (? continuation) (? label))
@@ -74,19 +74,20 @@ MIT in each case. |#
   (INVOCATION:LEXPR (? number-pushed) (? continuation) (? label))
   continuation
   (LAP ,@(clear-map!)
-       ,(load-dnw number-pushed 0)
+       ,(load-dnl number-pushed 2)
        (LEA (@PCR ,label) (A 0))
-       (JMP ,entry:compiler-lexpr-apply)))
+       (MOV L (A 0) (D 1))
+       ,@(invoke-interface code:compiler-lexpr-apply)))
 
 (define-rule statement
   (INVOCATION:COMPUTED-LEXPR (? number-pushed) (? continuation))
   continuation
   ;; It expects the procedure at the top of the stack
   (LAP ,@(clear-map!)
-       ,(load-dnw number-pushed 0)
+       ,(load-dnl number-pushed 2)
        ,(clear-continuation-type-code)
-       (MOV L (@A+ 7) (A 0))
-       (JMP ,entry:compiler-lexpr-apply)))
+       (MOV L (@A+ 7) (D 1))
+       ,@(invoke-interface code:compiler-lexpr-apply)))
 
 (define-rule statement
   (INVOCATION:UUO-LINK (? frame-size) (? continuation) (? name))
@@ -102,46 +103,48 @@ MIT in each case. |#
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size) (? continuation) (? extension))
   continuation
-  (let ((set-extension (expression->machine-register! extension a3)))
+  (let ((set-extension (expression->machine-register! extension d1)))
     (delete-dead-registers!)
     (LAP ,@set-extension
 	 ,@(clear-map!)
-	 ,(load-dnw frame-size 0)
+	 ,(load-dnl frame-size 3)
 	 (LEA (@PCR ,*block-label*) (A 1))
-	 (JMP ,entry:compiler-cache-reference-apply))))
+	 (MOV L (A 1) (D 2))
+	 ,@(invoke-interface code:compiler-cache-reference-apply))))
 
 (define-rule statement
   (INVOCATION:LOOKUP (? frame-size) (? continuation) (? environment) (? name))
   continuation
-  (let ((set-environment (expression->machine-register! environment d4)))
+  (let ((set-environment (expression->machine-register! environment d1)))
     (delete-dead-registers!)
     (LAP ,@set-environment
 	 ,@(clear-map!)
-	 ,(load-constant name (INST-EA (D 5)))
-	 ,(load-dnw frame-size 0)
-	 (JMP ,entry:compiler-lookup-apply))))
+	 ,(load-constant name (INST-EA (D 2)))
+	 ,(load-dnl frame-size 3)
+	 ,@(invoke-interface code:compiler-lookup-apply))))
 
 (define-rule statement
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
   continuation
   (LAP ,@(clear-map!)
        ,@(if (eq? primitive compiled-error-procedure)
-	     (LAP ,(load-dnw frame-size 0)
-		  (JMP ,entry:compiler-error))
+	     (LAP ,(load-dnl frame-size 1)
+		  ,@(invoke-interface code:compiler-error))
 	     (let ((arity (primitive-procedure-arity primitive)))
 	       (cond ((not (negative? arity))
-		      (LAP (MOV L (@PCR ,(constant->label primitive)) (D 6))
-			   (JMP ,entry:compiler-primitive-apply)))
+		      (LAP (MOV L (@PCR ,(constant->label primitive)) (D 1))
+			   ,@(invoke-interface code:compiler-primitive-apply)))
 		     ((= arity -1)
 		      (LAP (MOV L (& ,(-1+ frame-size))
 				,reg:lexpr-primitive-arity)
-			   (MOV L (@PCR ,(constant->label primitive)) (D 6))
-			   (JMP ,entry:compiler-primitive-lexpr-apply)))
+			   (MOV L (@PCR ,(constant->label primitive)) (D 1))
+			   ,@(invoke-interface
+			      code:compiler-primitive-lexr-apply)))
 		     (else
 		      ;; Unknown primitive arity.  Go through apply.
-		      (LAP ,(load-dnw frame-size 0)
-			   (MOV L (@PCR ,(constant->label primitive)) (@-A 7))
-			   (JMP ,entry:compiler-apply))))))))
+		      (LAP ,(load-dnl frame-size 2)
+			   (MOV L (@PCR ,(constant->label primitive)) (D 1))
+			   ,@(invoke-interface code:compiler-apply))))))))
 
 (let-syntax
     ((define-special-primitive-invocation
@@ -154,9 +157,9 @@ MIT in each case. |#
 	    frame-size continuation
 	    ,(list 'LAP
 		   (list 'UNQUOTE-SPLICING '(clear-map!))
-		   (list 'JMP
-			 (list 'UNQUOTE
-			       (symbol-append 'ENTRY:COMPILER- name))))))))
+		   (list 'UNQUOTE-SPLICING
+			 `(INVOKE-INTERFACE ,(symbol-append 'CODE:COMPILER-
+							    name))))))))
   (define-special-primitive-invocation &+)
   (define-special-primitive-invocation &-)
   (define-special-primitive-invocation &*)
@@ -337,11 +340,19 @@ MIT in each case. |#
 ;;; contain a valid dynamic link, but the gc handler determines that
 ;;; and saves it as appropriate.
 
-(define-integrable (simple-procedure-header code-word label
-					    entry:compiler-interrupt)
-  (let ((gc-label (generate-label)))
+(define-integrable (simple-procedure-header code-word label code)
+  (let ((gc-label (generate-label)))    
     (LAP (LABEL ,gc-label)
-	 (JSR ,entry:compiler-interrupt)
+	 ,@(invoke-interface-jsr code)
+	 ,@(make-external-label code-word label)
+	 (CMP L ,reg:compiled-memtop (A 5))
+	 (B GE B (@PCR ,gc-label)))))
+
+(define-integrable (dlink-procedure-header code-word label)
+  (let ((gc-label (generate-label)))    
+    (LAP (LABEL ,gc-label)
+	 (MOV L (A 4) (D 2))		; Dynamic link -> D2
+	 ,@(invoke-interface-jsr code:compiler-interrupt-dlink)
 	 ,@(make-external-label code-word label)
 	 (CMP L ,reg:compiled-memtop (A 5))
 	 (B GE B (@PCR ,gc-label)))))
@@ -355,7 +366,7 @@ MIT in each case. |#
   (CONTINUATION-HEADER (? internal-label))
   (simple-procedure-header (continuation-code-word internal-label)
 			   internal-label
-			   entry:compiler-interrupt-continuation))
+			   code:compiler-interrupt-continuation))
 
 (define-rule statement
   (IC-PROCEDURE-HEADER (? internal-label))
@@ -366,16 +377,20 @@ MIT in each case. |#
      (EQUATE ,external-label ,internal-label)
      ,@(simple-procedure-header expression-code-word
 				internal-label
-				entry:compiler-interrupt-ic-procedure)))))
+				code:compiler-interrupt-ic-procedure)))))
 
 (define-rule statement
   (OPEN-PROCEDURE-HEADER (? internal-label))
-  (LAP (EQUATE ,(rtl-procedure/external-label
-		 (label->object internal-label))
-	       ,internal-label)
-       ,@(simple-procedure-header internal-entry-code-word
-				  internal-label
-				  entry:compiler-interrupt-procedure)))
+  (let ((rtl-proc (label->object internal-label)))
+    (LAP
+     (EQUATE ,(rtl-procedure/external-label rtl-proc) ,internal-label)
+     ,@((if (rtl-procedure/dynamic-link? rtl-proc)
+	    dlink-procedure-header 
+	    (lambda (code-word label)
+	      (simple-procedure-header code-word label
+				       code:compiler-interrupt-procedure)))
+	internal-entry-code-word
+	internal-label))))
 
 (define-rule statement
   (PROCEDURE-HEADER (? internal-label) (? min) (? max))
@@ -384,7 +399,7 @@ MIT in each case. |#
 	       ,internal-label)
        ,@(simple-procedure-header (make-procedure-code-word min max)
 				  internal-label
-				  entry:compiler-interrupt-procedure)))
+				  code:compiler-interrupt-procedure)))
 
 ;;;; Closures.  These two statements are intertwined:
 
@@ -397,7 +412,7 @@ MIT in each case. |#
     (let ((gc-label (generate-label))
 	  (external-label (rtl-procedure/external-label procedure)))
       (LAP (LABEL ,gc-label)
-	   (JMP ,entry:compiler-interrupt-closure)
+	   ,@(invoke-interface code:compiler-interrupt-closure)
 	   ,@(make-external-label internal-entry-code-word external-label)
 	   (ADD UL (& ,magic-closure-constant) (@A 7))
 	   (LABEL ,internal-label)
@@ -448,9 +463,11 @@ MIT in each case. |#
   (LAP (LEA (@PCR ,environment-label) (A 0))
        (MOV L ,reg:environment (@A 0))
        (LEA (@PCR ,*block-label*) (A 0))
-       (LEA (@PCR ,free-ref-label) (A 1))
-       ,(load-dnw n-sections 0)
-       (JSR ,entry:compiler-link)
+       (MOV L (A 0) (D 2))
+       (LEA (@PCR ,free-ref-label) (A 0))
+       (MOV L (A 0) (D 3))
+       ,(load-dnl n-sections 4)
+       ,@(invoke-interface-jsr code:compiler-link)
        ,@(make-external-label (continuation-code-word false)
 			      (generate-label))))
 
@@ -466,14 +483,15 @@ MIT in each case. |#
 				((D 0) L 1) Z
 				(0 N))
 			  (A 1)))))))
-    (LAP (MOV L (@PCR ,code-block-label) (D 0))
-	 (AND L ,mask-reference (D 0))
-	 (MOV L (D 0) (A 0))
+    (LAP (MOV L (@PCR ,code-block-label) (D 2))
+	 (AND L ,mask-reference (D 2))
+	 (MOV L (D 2) (A 0))
 	 ,(load-offset environment-offset)
 	 (MOV L ,reg:environment (@A 1))
 	 ,(load-offset free-ref-offset)
-	 ,(load-dnw n-sections 0)
-	 (JSR ,entry:compiler-link)
+	 (MOV L (A 1) (D 3))
+	 ,(load-dnl n-sections 4)
+	 ,@(invoke-interface-jsr code:compiler-link)
 	 ,@(make-external-label (continuation-code-word false)
 				(generate-label)))))
 
