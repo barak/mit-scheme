@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.7 2000/07/11 22:06:07 cph Exp $
+@comment $Id: imail.texinfo,v 1.8 2000/07/12 04:06:30 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -491,7 +491,6 @@ specified.
 * Navigation::                  
 * Deleting Messages::           
 * Multiple Folders::            
-* Copying Messages::            
 * MIME Support::                
 * Flags::                       
 * Sending Replies::             
@@ -678,26 +677,147 @@ A deleted message has the @samp{deleted} flag, and as a result
 deleted.  In fact, deleting or undeleting a message is nothing more than
 adding or removing this flag.  @xref{Flags}.
 
-@node Multiple Folders, Copying Messages, Deleting Messages, Commands
+@node Multiple Folders, MIME Support, Deleting Messages, Commands
 @section Multiple Folders
 
+@cindex primary folder
+@cindex folder, primary
+@acronym{IMAIL} operates by default on your @dfn{primary folder}, which
+is the folder named @samp{inbox} on your @acronym{IMAP} server.  Your
+incoming mail is placed in that folder by your system's mail-delivery
+software.  Whenever it has an open connection to the server,
+@acronym{IMAIL} notices new mail and brings it to your attention by
+modifying the Edwin mode line.  You can also have other folders and edit
+them with @acronym{IMAIL}.  You can move messages into them with
+explicit @acronym{IMAIL} commands.@footnote{While Emacs Rmail
+additionally supports the ability to retrieve mail from ``system
+inboxes'' on your local computer (usually
+@file{/var/spool/mail/@var{USER}} on unix systems), @acronym{IMAIL} does
+not.  @acronym{IMAIL} only supports incoming mail when it is delivered
+to an @acronym{IMAP} server.}
+
+One major difference between a file-based mail reader like Rmail and an
+@acronym{IMAP} mail reader like @acronym{IMAIL} is that file-based mail
+readers do not need to provide commands to manipulate mail files (as
+opposed to mail messages).  This is because ordinary file-system
+commands already provide the ability to copy, delete, and rename such
+files.  This isn't the case for @acronym{IMAP} mail readers.
+Consequently @acronym{IMAIL} provides a basic set of commands for
+manipulating folders.@footnote{We plan to implement a Dired-like folder
+browser in the future.}
+
+@table @kbd
+@item i @var{URL} @key{RET}
+Read the folder named @var{URL} and run @acronym{IMAIL} on it
+(@code{imail-input}).
+
+@item g
+Get new mail for the current folder (@code{imail-get-new-mail}).
+
+@item C-u g @var{URL} @key{RET}
+Read the folder named @var{URL} and append all of its messages to the
+current folder (@code{imail-input-from-folder}).
+
+@item o @var{URL} @key{RET}
+Copy the current message into the folder named @var{URL}
+(@code{imail-output}).
+
+@item C @var{URL1} @key{RET} @var{URL2} @key{RET}
+Copy the folder named @var{URL1} to @var{URL2}
+(@code{imail-copy-folder}).
+
+@item D @var{URL} @key{RET}
+Delete the folder named @var{URL} (@code{imail-delete-folder}).
+
+@item R @var{URL1} @key{RET} @var{URL2} @key{RET}
+Rename the folder named @var{URL1} to be @var{URL2}
+(@code{imail-rename-folder}).
+
+@item + @var{URL} @key{RET}
+Create a folder named @var{URL} (@code{imail-create-folder}).
+@end table
+
+@kindex i
+@findex imail-input
+To run @acronym{IMAIL} on a folder other than your primary folder, you
+may use the @kbd{i} (@code{imail-input}) command in @acronym{IMAIL}.
+This visits the folder in @acronym{IMAIL} mode.  You can use @kbd{M-x
+rmail-input} even when not in @acronym{IMAIL}.
+
+@kindex g
+@findex imail-get-new-mail
+The @kbd{g} (@code{imail-get-new-mail}) command gets new mail for the
+current @acronym{IMAIL} folder, and if there is new mail, moves to the
+first unseen message.  This command works only on @acronym{IMAP}
+folders; it does nothing on file-based folders.  Normally this command
+isn't needed since @acronym{IMAIL} periodically checks for new mail in
+all @acronym{IMAP} folders, but it is occasionally useful to force
+@acronym{IMAIL} to get new mail immediately rather than waiting for the
+next periodic mail check.  The command @kbd{M-x imail} has the same
+effect as @code{imail-get-new-mail} if the primary folder is already
+open in a buffer.
+
+@findex imail-input-from-folder
+To copy messages from another folder into the current folder, give the
+@kbd{g} key a numeric argument, as in @kbd{C-u g}.  This runs the
+command @code{imail-input-from-folder}, which reads a @acronym{URL} and
+copies all the messages from the specified folder into the current one.
+The messages are appended to the current folder, in the same order that
+they appear in the specified folder.
+
+@kindex o
+@findex imail-output
+@vindex imail-delete-after-output
+The @kbd{o} (@code{imail-output}) command copies the current message
+into a folder that you specify as a @acronym{URL}.  If the target folder
+doesn't exist, it is created first; in any case, the copied message is
+appended to the end of the folder.  The current message is flagged as
+@samp{filed}.  If the variable @code{imail-delete-after-output} is true,
+the message is also marked as deleted.
+
+@kindex C
+@findex imail-copy-folder
+The @kbd{C} (@code{imail-copy-folder}) command copies an entire folder
+from one place to another.  You specify two @acronym{URL}s, the source
+and the target, and all of the messages from the source folder are
+copied verbatim to the target folder.  The source folder is not changed.
+The target folder is created if it doesn't exist.  If the target folder
+does exist, the source folder's messages are appended to it.
+
+Note that all of the commands that copy messages between folders will
+work whether the folders are the same type or not.  In particular,
+messages in @acronym{IMAP} folders can be copied to file folders, and
+vice versa.  You can copy messages between two file folders in different
+formats, or between two different @acronym{IMAP} servers.
+@acronym{IMAIL} doesn't care; it translates as needed.
+
+@kindex D
+@findex imail-delete-folder
+The @kbd{D} (@code{imail-delete-folder}) command deletes a specified
+folder.  All of the messages in the folder, and the folder itself, are
+deleted.  You will be prompted to confirm before any deletion is done.
+
+@kindex R
+@findex imail-rename-folder
+The @kbd{R} (@code{imail-rename-folder}) command renames a specified
+folder.  You are prompted for two @acronym{URL}s, the old name and the
+new one.  At present, this command only works in limited circumstances,
+specifically, when moving a folder from one place to another on a single
+@acronym{IMAP} server, or when moving a file folder from one place to
+another within the same file system.  The rename operation fails if the
+new name is already in use.
+
+@kindex +
+@findex imail-create-folder
+The @kbd{+} (@code{imail-create-folder}) command creates a new, empty
+folder.  It prompts for a @acronym{URL}, and signals an error if the
+name is already in use.  This command is rarely used since the
+message-copying commands automatically create folders as needed.
+
 @example
-(@code{imail-create-folder})
-(@code{imail-delete-folder})
-(@code{imail-input})
-(@code{imail-rename-folder})
 @end example
 
-@node Copying Messages, MIME Support, Multiple Folders, Commands
-@section Copying Messages
-
-@example
-(@code{imail-copy-folder})
-(@code{imail-input-from-folder})
-(@code{imail-output})
-@end example
-
-@node MIME Support, Flags, Copying Messages, Commands
+@node MIME Support, Flags, Multiple Folders, Commands
 @section MIME Support
 
 @example
@@ -785,7 +905,7 @@ by undeletion commands (@pxref{Deleting Messages}).
 
 @item filed
 Means the message has been copied to another folder.  Assigned by the
-message-copying commands (@pxref{Copying Messages}).
+message-copying commands (@pxref{Multiple Folders}).
 
 @item answered
 Means you have mailed an answer to the message.  Assigned by the @kbd{r}
@@ -1063,7 +1183,6 @@ folder and switching to another buffer.
 @example
 (@code{imail-bury})
 (@code{imail-disconnect})
-(@code{imail-get-new-mail})
 (@code{imail-quit})
 (@code{imail-save-folder})
 (@code{imail-toggle-header})
