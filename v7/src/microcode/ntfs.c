@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.4 1993/07/21 06:02:28 gjr Exp $
+$Id: ntfs.c,v 1.5 1993/07/30 06:23:56 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -148,10 +148,15 @@ DEFUN (OS_directory_delete, (name), CONST char * name)
   STD_VOID_SYSTEM_CALL (syscall_rmdir, (RemoveDirectory (name)));
 }
 
-/* This is such that directory open does not return the first file */
 #define DIR_UNALLOCATED (-1L)
+
+/* This is used to cache the result of _findfirst because directory open
+   does not return the first file.
+ */
+
 typedef struct DIR_struct
-{ struct _finddata_t entry;
+{
+  struct _finddata_t entry;
   long handle;         /* may be DIR_UNALLOCATED */
   char pathname[256];
 } DIR;
@@ -244,13 +249,17 @@ DEFUN (OS_directory_open, (name), CONST char * name)
   if (dir == 0)
     error_system_call (ENOMEM, syscall_malloc);
 
-  if (dos_pathname_as_filename(name, filename))
-    sprintf(searchname, "%s*.*", filename);
+  if (dos_pathname_as_filename (name, filename))
+    sprintf (searchname, "%s*.*", filename);
   else
-    sprintf(searchname, "%s\\*.*", filename);
+    sprintf (searchname, "%s\\*.*", filename);
 
-  dir->handle = _findfirst(searchname, &(dir->entry));
-  if (dir->handle == DIR_UNALLOCATED  || (dir->entry.attrib & _A_SUBDIR)== 0)
+  dir->handle = _findfirst (searchname, &(dir->entry));
+  if ((dir->handle == DIR_UNALLOCATED)
+#if 0
+      || ((dir->entry.attrib & _A_SUBDIR) == 0)
+#endif
+      )
     error_system_call (errno, syscall_opendir);
 
   return (allocate_directory_pointer (dir));
@@ -264,9 +273,8 @@ DEFUN (OS_directory_read, (index), unsigned int index)
     return 0;
 
   Get_Directory_Entry_Name(dir->entry, dir->pathname);
-  if ( _findnext(dir->handle, &(dir->entry))) {
-  	dir->handle = DIR_UNALLOCATED;
-  }
+  if (_findnext (dir->handle, &(dir->entry)))
+    dir->handle = DIR_UNALLOCATED;
   return (dir -> pathname);
 }
 
@@ -283,12 +291,11 @@ void
 DEFUN (OS_directory_close, (index), unsigned int index)
 { DIR * dir = REFERENCE_DIRECTORY (index);
 
-  if (dir) {
+  if (dir)
+  {
     if (dir->handle != DIR_UNALLOCATED)
-      _findclose(dir->handle);
+      _findclose (dir->handle);
     free(dir);
   }
   DEALLOCATE_DIRECTORY (index);
 }
-
-
