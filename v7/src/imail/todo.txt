@@ -1,8 +1,11 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.22 2000/05/18 22:11:16 cph Exp $
+$Id: todo.txt,v 1.23 2000/05/19 04:16:47 cph Exp $
 
 Bug fixes
 ---------
+
+* Password should be cached s.t. it can be shared between connections
+  with compatible URLs.  Right now it is per-connection.
 
 * Implement operations for IMAP: FOLDER-VALID?.
 
