@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.52 1989/04/28 22:48:47 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.53 1989/06/20 16:20:48 markf Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -49,12 +49,15 @@
 (define-structure (comtab (constructor make-comtab ()))
   (dispatch-alists (cons '() '()) read-only true))
 
-(define (set-comtab-entry! alists char command)
-  (let ((char (remap-alias-char char)))
-    (let ((entry (assq char (cdr alists))))
+(define (set-comtab-entry! alists char-or-button command)
+  (let ((char-or-button
+	 (if (char? char-or-button)
+	     (remap-alias-char char-or-button)
+	     char-or-button)))
+    (let ((entry (assq char-or-button (cdr alists))))
       (if entry
 	  (set-cdr! entry command)
-	  (set-cdr! alists (cons (cons char command) (cdr alists))))))
+	  (set-cdr! alists (cons (cons char-or-button command) (cdr alists))))))
   unspecific)
 
 (define (make-prefix-char! alists char alists*)
@@ -65,7 +68,7 @@
 	  (set-car! alists (cons (cons char alists*) (car alists))))))
   unspecific)
 
-(define (comtab-lookup-prefix comtabs char receiver #!optional if-undefined)
+(define (comtab-lookup-prefix comtabs char-or-button receiver #!optional if-undefined)
   (define (loop char->alist chars)
     (let ((entry (assq (remap-alias-char (car chars)) char->alist)))
       (if entry
@@ -75,24 +78,30 @@
 	  (if (default-object? if-undefined)
 	      (error "Not a prefix character" (car chars))
 	      (if-undefined)))))
-  (cond ((char? char)
-	 (receiver (comtab-dispatch-alists (car comtabs)) char))
-	((pair? char)
-	 (if (null? (cdr char))
-	     (receiver (comtab-dispatch-alists (car comtabs)) (car char))
-	     (loop (car (comtab-dispatch-alists (car comtabs))) char)))
+  (cond ((or (char? char-or-button)
+	     (button? char-or-button))
+	 (receiver (comtab-dispatch-alists (car comtabs)) char-or-button))
+	((pair? char-or-button)
+	 (if (null? (cdr char-or-button))
+	     (receiver (comtab-dispatch-alists (car comtabs)) (car char-or-button))
+	     (loop (car (comtab-dispatch-alists (car comtabs))) char-or-button)))
 	(else
-	 (error "Unrecognizable character" char))))
+	 (error "Unrecognizable character" char-or-button))))
 
-(define (comtab-entry comtabs xchar)
+(define (comtab-entry comtabs xchar-or-button)
   (let ((continue
 	 (lambda ()
 	   (cond ((null? (cdr comtabs)) bad-command)
-		 ((comtab? (cadr comtabs)) (comtab-entry (cdr comtabs) xchar))
+		 ((comtab? (cadr comtabs)) (comtab-entry (cdr comtabs) xchar-or-button))
 		 (else (cadr comtabs))))))
-    (comtab-lookup-prefix comtabs xchar
-      (lambda (alists char)
-	(let ((entry (assq (remap-alias-char char) (cdr alists))))
+    (comtab-lookup-prefix comtabs xchar-or-button
+      (lambda (alists char-or-button)
+	(let ((entry (assq
+		      (if (or (char? char-or-button)
+			      (pair? char-or-button))
+			  (remap-alias-char char-or-button)
+			  char-or-button)
+		      (cdr alists))))
 	  (if entry
 	      (cdr entry)
 	      (continue))))
@@ -113,17 +122,19 @@
 		   (comtab? (cadr comtabs))
 		   (prefix-char-list? (cdr comtabs) chars)))))))
 
-(define (define-key mode-name char command-name)
+(define (define-key mode-name char-or-button command-name)
   (let ((comtabs (mode-comtabs (name->mode mode-name)))
 	(command (name->command command-name)))
-    (cond ((or (char? char) (pair? char))
-	   (%define-key comtabs char command))
-	  ((char-set? char)
+    (cond ((or (char? char-or-button)
+	       (pair? char-or-button)
+	       (button? char-or-button))
+	   (%define-key comtabs char-or-button command))
+	  ((char-set? char-or-button)
 	   (for-each (lambda (char) (%define-key comtabs char command))
-		     (char-set-members char)))
+		     (char-set-members char-or-button)))
 	  (else
-	   (error "not a character" char))))
-  char)
+	   (error "not a character or button" char-or-button))))
+  char-or-button)
 
 (define (%define-key comtabs xchar command)
   (comtab-lookup-prefix comtabs xchar
