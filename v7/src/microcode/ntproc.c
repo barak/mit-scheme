@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntproc.c,v 1.5 1997/10/25 07:38:45 cph Exp $
+$Id: ntproc.c,v 1.6 1998/01/08 06:06:14 cph Exp $
 
-Copyright (c) 1997 Massachusetts Institute of Technology
+Copyright (c) 1997-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -93,6 +93,14 @@ static CRITICAL_SECTION process_table_lock;
    a random non-zero value.  */
 #define TERMINATE_PROCESS_EXIT_CODE 0xFF
 
+#undef TRACE_NTPROC
+#ifdef TRACE_NTPROC
+FILE * trace_file;
+#ifndef TRACE_NTPROC_FILENAME
+#define TRACE_NTPROC_FILENAME "nttrace.out"
+#endif
+#endif
+
 static void lock_process_table (void);
 static void lock_process_table_1 (void *);
 static HANDLE stdio_handle (DWORD, Tchannel, enum process_channel_type);
@@ -107,6 +115,9 @@ static void process_death (Tprocess);
 void
 NT_initialize_processes (void)
 {
+#ifdef TRACE_NTPROC
+  trace_file = (fopen (TRACE_NTPROC_FILENAME, "w"));
+#endif
   OS_process_table_size = NT_DEFAULT_PROCESS_TABLE_SIZE;
   process_table = (OS_malloc (OS_process_table_size * (sizeof (process_t))));
   {
@@ -205,6 +216,10 @@ NT_make_subprocess (const char * filename,
   transaction_commit ();
   STD_BOOL_API_CALL (CloseHandle, ((PROCESS_HANDLES (child)) . hThread));
   ((PROCESS_HANDLES (child)) . hThread) = INVALID_HANDLE_VALUE;
+#ifdef TRACE_NTPROC
+  fprintf (trace_file, "Subprocess created: id=0x%x\n", (PROCESS_ID (child)));
+  fflush (trace_file);
+#endif
   return (child);
 }
 
@@ -341,12 +356,25 @@ OS_process_jc_status (Tprocess process)
 int
 OS_process_status_sync (Tprocess process)
 {
+#ifdef TRACE_NTPROC
+  fprintf (trace_file, "OS_process_status_sync: id=0x%x\n",
+	   (PROCESS_ID (process)));
+  fflush (trace_file);
+#endif
   transaction_begin ();
   lock_process_table ();
   {
     int result = ((PROCESS_TICK (process)) != (PROCESS_SYNC_TICK (process)));
     if (result)
-      PROCESS_STATUS_SYNC (process);
+      {
+#ifdef TRACE_NTPROC
+	fprintf (trace_file, "(status=0x%x raw_status=0x%x)\n",
+		 (PROCESS_STATUS (process)),
+		 (PROCESS_RAW_STATUS (process)));
+	fflush (trace_file);
+#endif
+	PROCESS_STATUS_SYNC (process);
+      }
     transaction_commit ();
     return (result);
   }
@@ -355,12 +383,22 @@ OS_process_status_sync (Tprocess process)
 int
 OS_process_status_sync_all (void)
 {
+#ifdef TRACE_NTPROC
+  fprintf (trace_file, "OS_process_status_sync_all\n");
+  fflush (trace_file);
+#endif
   transaction_begin ();
   lock_process_table ();
   {
     int result = (process_tick != sync_tick);
     if (result)
-      sync_tick = process_tick;
+      {
+#ifdef TRACE_NTPROC
+	fprintf (trace_file, "(status change)\n");
+	fflush (trace_file);
+#endif
+	sync_tick = process_tick;
+      }
     transaction_commit ();
     return (result);
   }
@@ -369,6 +407,12 @@ OS_process_status_sync_all (void)
 enum process_status
 OS_process_status (Tprocess process)
 {
+#ifdef TRACE_NTPROC
+  fprintf (trace_file, "OS_process_status: id=0x%x status=0x%x\n",
+	   (PROCESS_ID (process)),
+	   (PROCESS_STATUS (process)));
+  fflush (trace_file);
+#endif
   return (PROCESS_STATUS (process));
 }
 
@@ -387,6 +431,10 @@ OS_process_send_signal (Tprocess process, int sig)
 void
 OS_process_kill (Tprocess process)
 {
+#ifdef TRACE_NTPROC
+  fprintf (trace_file, "OS_process_kill: id=0x%x\n", (PROCESS_ID (process)));
+  fflush (trace_file);
+#endif
   if (NT_windows_type == wintype_nt)
     {
       HWND hwnd = (find_child_console (PROCESS_ID (process)));
@@ -396,12 +444,20 @@ OS_process_kill (Tprocess process)
 	  return;
 	}
     }
+#ifdef TRACE_NTPROC
+  fprintf (trace_file, "(using TerminateProcess)\n");
+  fflush (trace_file);
+#endif
   if (!TerminateProcess ((PROCESS_HANDLE (process)),
 			 TERMINATE_PROCESS_EXIT_CODE))
     {
       DWORD code = (GetLastError ());
       if (code != ERROR_ACCESS_DENIED)
 	NT_error_api_call ((GetLastError ()), apicall_TerminateProcess);
+#ifdef TRACE_NTPROC
+      fprintf (trace_file, "(ERROR_ACCESS_DENIED)\n");
+      fflush (trace_file);
+#endif
     }
 }
 
@@ -421,6 +477,11 @@ OS_process_interrupt (Tprocess process)
   /* BYTE keyboard_state [256]; */
   HWND foreground_window;
 
+#ifdef TRACE_NTPROC
+  fprintf (trace_file, "OS_process_interrupt: id=0x%x\n",
+	   (PROCESS_ID (process)));
+  fflush (trace_file);
+#endif
   hwnd = (find_child_console (PROCESS_ID (process)));
   if (hwnd == INVALID_HANDLE_VALUE)
     return;
@@ -496,27 +557,45 @@ OS_process_wait (Tprocess process)
 static void
 process_wait_1 (Tprocess process, DWORD interval)
 {
+#ifdef TRACE_NTPROC
+  fprintf (trace_file, "process_wait_1: id=0x%x raw_status=0x%x\n",
+	   (PROCESS_ID (process)),
+	   (PROCESS_RAW_STATUS (process)));
+  fflush (trace_file);
+#endif
   if ((PROCESS_RAW_STATUS (process)) == process_status_running)
-    switch (MsgWaitForMultipleObjects (1,
-				       (& (PROCESS_HANDLE (process))),
-				       FALSE,
-				       interval,
-				       QS_ALLINPUT))
-      {
-      case WAIT_OBJECT_0:
-	process_death (process);
-	break;
-      case WAIT_FAILED:
-	NT_error_api_call ((GetLastError ()),
-			   apicall_MsgWaitForMultipleObjects);
-	break;
-      }
+    {
+      DWORD code
+	= (MsgWaitForMultipleObjects (1,
+				      (& (PROCESS_HANDLE (process))),
+				      FALSE,
+				      interval,
+				      QS_ALLINPUT));
+#ifdef TRACE_NTPROC
+      fprintf (trace_file, "(wait result = 0x%x)\n", code);
+      fflush (trace_file);
+#endif
+      switch (code)
+	{
+	case WAIT_OBJECT_0:
+	  process_death (process);
+	  break;
+	case WAIT_FAILED:
+	  NT_error_api_call ((GetLastError ()),
+			     apicall_MsgWaitForMultipleObjects);
+	  break;
+	}
+    }
 }
 
 int
 OS_process_any_status_change (void)
 {
   Tprocess process;
+#ifdef TRACE_NTPROC
+  fprintf (trace_file, "OS_process_any_status_change\n");
+  fflush (trace_file);
+#endif
   for (process = 0; (process < OS_process_table_size); process += 1)
     if ((PROCESS_RAW_STATUS (process)) == process_status_running)
       switch (WaitForSingleObject ((PROCESS_HANDLE (process)), 0))
@@ -529,6 +608,13 @@ OS_process_any_status_change (void)
 			     apicall_MsgWaitForMultipleObjects);
 	  break;
 	}
+#ifdef TRACE_NTPROC
+  if (process_tick != sync_tick)
+    {
+      fprintf (trace_file, "(status change)\n");
+      fflush (trace_file);
+    }
+#endif
   return (process_tick != sync_tick);
 }
 
@@ -536,8 +622,16 @@ static void
 process_death (Tprocess process)
 {
   DWORD exit_code;
+#ifdef TRACE_NTPROC
+  fprintf (trace_file, "process_death: id=0x%x\n", (PROCESS_ID (process)));
+  fflush (trace_file);
+#endif
   STD_BOOL_API_CALL
     (GetExitCodeProcess, ((PROCESS_HANDLE (process)), (&exit_code)));
+#ifdef TRACE_NTPROC
+  fprintf (trace_file, "(exit_code = 0x%x)\n", exit_code);
+  fflush (trace_file);
+#endif
   GRAB_PROCESS_TABLE ();
   (PROCESS_RAW_STATUS (process))
     = ((exit_code == STATUS_CONTROL_C_EXIT)
