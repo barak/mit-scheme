@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insutl.scm,v 1.1 1992/02/08 18:15:49 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insutl.scm,v 1.2 1992/02/09 03:45:36 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -39,10 +39,13 @@ MIT in each case. |#
 (define-integrable (fits-in-signed-byte? value)
   (and (>= value -128) (< value 128)))
 
-(define (full-word-value value)
-  (and (not (fits-in-signed-byte? value))
+(define (sign-extended-byte value)
+  (and (fits-in-signed-byte? value)
        value))
 
-(define (sign-extensible-value value)
-  (and (fits-in-signed-byte? value)
+(define-integrable (fits-in-unsigned-byte? value)
+  (and (>= value 0) (< value 128)))
+
+(define (zero-extended-byte value)
+  (and (fits-in-unsigned-byte? value)
        value))
