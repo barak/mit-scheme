@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xterm.scm,v 1.64 2000/11/30 06:27:01 cph Exp $
+;;; $Id: xterm.scm,v 1.65 2000/12/01 06:16:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -109,7 +109,7 @@
 ;; selection-clear, selection-notify, selection-request, and
 ;; property-notify.
 (define-integrable event-mask #x7de57)
-
+
 (define-structure (xterm-screen-state
 		   (constructor make-xterm-screen-state (xterm display))
 		   (conc-name xterm-screen-state/))
@@ -118,10 +118,13 @@
   (redisplay-flag #t)
   (selected? #t)
   (name #f)
-  (icon-name #f))
+  (icon-name #f)
+  (x-visibility 'VISIBLE)
+  (mapped? #f)
+  (unexposed? #t))
 
 (define screen-list)
-
+
 (define (make-xterm-screen #!optional geometry)
   ;; Don't map the window until all of the data structures are in
   ;; place.  This guarantees that no events will be missed.
@@ -152,8 +155,7 @@
 			(xterm-x-size xterm)
 			(xterm-y-size xterm))))
       (set! screen-list (cons screen screen-list))
-      ;; See below for details of this next line.
-      (set-screen-visibility! screen (list 'UNMAPPED))
+      (update-visibility! screen)
       (x-window-map xterm)
       (x-window-flush xterm)
       screen)))
@@ -193,39 +195,53 @@
 ;;; According to the Xlib manual, we're not allowed to draw anything
 ;;; on the window until the first Expose event arrives.  The manual
 ;;; says nothing about the relationship between this event and the
-;;; MapNotify event associated with that mapping.  So, we do this as
-;;; follows.  While we are waiting for the Expose event, the screen's
-;;; VISIBILITY is a list whose single element is the symbol that would
-;;; normally be the VISIBILITY.  Other events that normally change
-;;; VISIBILITY instead change the list element.  Because the
-;;; VISIBILITY is not one of the recognized flags, the screen
-;;; abstraction assumes that the window is not visible and will not
-;;; draw on it.  When the Expose event comes along, we set the
-;;; VISIBILITY to whatever the list's element is.  Thus we won't draw
-;;; anything until both a MapNotify and an Expose event are received,
-;;; and the order in which they are received is unimportant.
+;;; MapNotify event associated with that mapping.  We use the fields
+;;; UNEXPOSED? and MAPPED? to track the arrival of those events.
+;;; The screen's visibility remains 'UNMAPPED until both have arrived.
+;;; Meanwhile, X-VISIBILITY tracks Visibility events.  When the window
+;;; is both exposed and mapped, VISIBILITY reflects X-VISIBILITY.
 
-(define (%screen-visibility screen)
-  (let ((visibility (screen-visibility screen)))
-    (if (pair? visibility)
-	(car visibility)
-	visibility)))
+(define-integrable (screen-x-visibility screen)
+  (xterm-screen-state/x-visibility (screen-state screen)))
 
-(define (%set-screen-visibility! screen flag)
-  (let ((visibility (screen-visibility screen)))
-    (if (pair? visibility)
-	(set-car! visibility flag)
-	(set-screen-visibility! screen flag))))
+(define (set-screen-x-visibility! screen flag)
+  (set-xterm-screen-state/x-visibility! (screen-state screen) flag)
+  (update-visibility! screen))
+
+(define-integrable (screen-mapped? screen)
+  (xterm-screen-state/mapped? (screen-state screen)))
+
+(define (set-screen-mapped?! screen flag)
+  (set-xterm-screen-state/mapped?! (screen-state screen) flag)
+  (update-visibility! screen))
+
+(define-integrable (screen-unexposed? screen)
+  (xterm-screen-state/unexposed? (screen-state screen)))
+
+(define-integrable (set-screen-unexposed?! screen items)
+  (set-xterm-screen-state/unexposed?! (screen-state screen) items))
+
+(define-integrable (screen-exposed? screen)
+  (not (screen-unexposed? screen)))
 
 (define (note-xterm-exposed xterm)
   (let ((screen (xterm->screen xterm)))
     (if screen
-	(let ((visibility (screen-visibility screen)))
-	  (if (pair? visibility)
+	(let ((unexposed? (screen-unexposed? screen)))
+	  (if unexposed?
 	      (begin
-		(set-screen-visibility! screen (car visibility))
-		(for-each (lambda (procedure) (procedure screen))
-			  (reverse (cdr visibility)))))))))
+		(set-screen-unexposed?! screen #f)
+		(update-visibility! screen)
+		(if (eq? 'ENTERED unexposed?)
+		    (xterm-screen/enter! screen))))))))
+
+(define (update-visibility! screen)
+  (if (not (screen-deleted? screen))
+      (set-screen-visibility! screen
+			      (if (and (screen-mapped? screen)
+				       (screen-exposed? screen))
+				  (screen-x-visibility screen)
+				  'UNMAPPED))))
 
 (define-integrable (screen-xterm screen)
   (xterm-screen-state/xterm (screen-state screen)))
@@ -307,13 +323,8 @@
   (set-screen-redisplay-flag! screen #t))
 
 (define (xterm-screen/enter! screen)
-  (if (pair? (screen-visibility screen))
-      (without-interrupts
-       (lambda ()
-	 (if (not (memq xterm-screen/enter! (cdr (screen-visibility screen))))
-	     (set-cdr! (screen-visibility screen)
-		       (cons xterm-screen/enter!
-			     (cdr (screen-visibility screen)))))))
+  (if (screen-unexposed? screen)
+      (set-screen-unexposed?! screen 'ENTERED)
       (begin
 	(set-screen-selected?! screen #t)
 	(let ((xterm (screen-xterm screen)))
@@ -325,12 +336,9 @@
 (define (xterm-screen/grab-focus! screen)
   (and last-focus-time
        (not (screen-deleted? screen))
-       (let ((xterm (screen-xterm screen)))
-	 (if (eq? (screen-visibility screen) 'UNMAPPED)
-	     (begin
-	       (x-window-map xterm)
-	       (x-window-flush xterm)))
-	 (x-window-set-input-focus xterm last-focus-time)
+       (screen-mapped? screen)
+       (begin
+	 (x-window-set-input-focus (screen-xterm screen) last-focus-time)
 	 #t)))
 
 (define (xterm-screen/exit! screen)
@@ -379,21 +387,6 @@
 
 ;;;; Event Handling
 
-(define x-screen-auto-raise
-  #f)
-
-(define-integrable (maybe-raise-screen)
-  (if x-screen-auto-raise
-      (let ((screen (selected-screen)))
-	(let ((xterm (screen-xterm screen)))
-	  (case (screen-visibility screen)
-	    ((OBSCURED PARTIALLY-OBSCURED)
-	     (x-window-raise xterm))
-	    ((UNMAPPED)
-	     (x-window-map xterm)
-	     (x-window-flush xterm)
-	     (x-window-raise xterm)))))))
-
 (define (get-xterm-input-operations)
   (let ((display x-display-data)
 	(queue x-display-events)
@@ -408,7 +401,6 @@
 	     (set! end (string-length string))
 	     (set! start end)
 	     (cond ((fix:= end 0)
-		    (maybe-raise-screen)
 		    (x-make-special-key (vector-ref event 4)
 					(vector-ref event 3)))
 		   ((fix:= end 1)
@@ -422,9 +414,7 @@
 			  (begin
 			    (signal-interrupt!)
 			    #f)
-			  (begin
-			    (maybe-raise-screen)
-			    char))))
+			  char)))
 		   (else
 		    (let ((i
 			   (and signal-interrupts?
@@ -436,11 +426,9 @@
 			    (and (fix:< start end)
 				 (let ((result (string-ref string start)))
 				   (set! start (fix:+ start 1))
-				   (maybe-raise-screen)
 				   result)))
 			  (begin
 			    (set! start 1)
-			    (maybe-raise-screen)
 			    (string-ref string 0)))))))))
       (let ((process-event
 	     (lambda (event)
@@ -733,7 +721,7 @@
     event
     (and (not (screen-deleted? screen))
 	 (begin
-	   (%set-screen-visibility! screen 'VISIBLE)
+	   (set-screen-mapped?! screen #t)
 	   (screen-force-update screen)
 	   (make-input-event 'UPDATE update-screen! screen #f)))))
 
@@ -741,23 +729,21 @@
   (lambda (screen event)
     event
     (if (not (screen-deleted? screen))
-	(%set-screen-visibility! screen 'UNMAPPED))
+	(set-screen-mapped?! screen #f))
     #f))
 
 (define-event-handler event-type:visibility
   (lambda (screen event)
-    (let ((old-visibility (%screen-visibility screen)))
-      (and (not (eq? old-visibility 'DELETED))
-	   (begin
-	     (case (vector-ref event 2)
-	       ((0) (%set-screen-visibility! screen 'VISIBLE))
-	       ((1) (%set-screen-visibility! screen 'PARTIALLY-OBSCURED))
-	       ((2) (%set-screen-visibility! screen 'OBSCURED)))
-	     (and (or (eq? old-visibility 'UNMAPPED)
-		      (eq? old-visibility 'OBSCURED))
-		  (begin
-		    (screen-force-update screen)
-		    (make-input-event 'UPDATE update-screen! screen #f))))))))
+    (and (not (screen-deleted? screen))
+	 (let ((old-visibility (screen-x-visibility screen)))
+	   (case (vector-ref event 2)
+	     ((0) (set-screen-x-visibility! screen 'VISIBLE))
+	     ((1) (set-screen-x-visibility! screen 'PARTIALLY-OBSCURED))
+	     ((2) (set-screen-x-visibility! screen 'OBSCURED)))
+	   (and (eq? old-visibility 'OBSCURED)
+		(begin
+		  (screen-force-update screen)
+		  (make-input-event 'UPDATE update-screen! screen #f)))))))
 
 (define-event-handler event-type:take-focus
   (lambda (screen event)

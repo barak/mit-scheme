@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xcom.scm,v 1.16 1999/01/02 06:11:34 cph Exp $
+;;; $Id: xcom.scm,v 1.17 2000/12/01 06:17:00 cph Exp $
 ;;;
-;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -199,19 +199,6 @@ Used only if `frame-icon-name-format' is non-false."
   "Lower the selected frame so that it does not obscure other windows."
   ()
   (lambda () (x-window-lower (current-xterm))))
-
-(define-command auto-raise-mode
-  "Toggle auto-raise mode.
-With argument, turn auto-raise mode on if argument is positive.
-When auto-raise mode is on, typing in a frame causes it to be raised."
-  "P"
-  (lambda (argument)
-    (set! x-screen-auto-raise
-	  (let ((argument (command-argument-value argument)))
-	    (if argument
-		(> argument 0)
-		(not x-screen-auto-raise))))
-    (message "Auto-raise " (if x-screen-auto-raise "enabled" "disabled"))))
 
 (define-command set-mouse-shape
   "Set mouse cursor shape for selected frame to SHAPE.
@@ -329,7 +316,6 @@ When called interactively, completion is available on the input."
   (copy set-font)
   (copy set-border-width)
   (copy set-internal-border-width)
-  (copy auto-raise-mode)
   (copy set-mouse-shape)
   (copy mouse-select)
   (copy mouse-keep-one-window)
