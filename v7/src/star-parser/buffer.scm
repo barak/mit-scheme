@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.6 2001/06/30 03:21:23 cph Exp $
+;;; $Id: buffer.scm,v 1.7 2001/07/05 18:51:23 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -199,7 +199,7 @@
 		  BUFFER STRING START END)
 	   (LET ((N (FIX:- END START)))
 	     (AND (GUARANTEE-BUFFER-CHARS BUFFER N)
-		  (,(intern (string-append "char" suffix "=?"))
+		  (,(intern (string-append "substring" suffix "=?"))
 		   STRING START END
 		   (PARSER-BUFFER-STRING BUFFER)
 		   (PARSER-BUFFER-INDEX BUFFER)
