@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: frag.scm,v 1.3 1995/04/01 16:54:25 adams Exp $
+$Id: frag.scm,v 1.4 1995/04/20 03:24:29 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -196,7 +196,7 @@ MIT in each case. |#
 
 
 (define (specialize/enqueue-lambda! form)
-  (pp `(queue-lambda: ,form))
+  (a:pp `(queue-lambda: ,form))
   (if (not (LAMBDA/? form))
       (internal-error "not a lambda:" form))
   (queue/enqueue! *lambda-queue* form))
@@ -225,7 +225,8 @@ MIT in each case. |#
 
 (define-specializer LAMBDA (lambda-list body)
   (let ((env*
-	 (map* env (lambda (name) (cons name `(LOOKUP ,name)))
+	 (map* env
+	       (lambda (name) (cons name `(LOOKUP ,name)))
 	       (lambda-list->names lambda-list))))
     (specialize/expr! env* body))
   (if (hairy-lambda-list? lambda-list)
@@ -343,10 +344,10 @@ MIT in each case. |#
 			      (cdr names*)
 			      rands))
 	       (body*   (form/copy body)))
-	  (pp `(,id old-body: ,body))
-	  (pp `(,id parameter-placeholders: ,@ph*))
+	  (a:pp `(,id old-body: ,body))
+	  (a:pp `(,id parameter-placeholders: ,@ph*))
 	  (specialize/expr! env* body*)
-	  (pp `(,id new-body: ,body*))
+	  (a:pp `(,id new-body: ,body*))
 	  (cond ((QUOTE/? body*)
 		 (form/rewrite! form body*))
 		((PLACEHOLDER-QUOTE/? body*)
@@ -367,29 +368,29 @@ MIT in each case. |#
 				 (cond ((null? rs)
 					(map (lambda (p)
 					       (lookup/name (cdr (assq p env*))))
-				           placeholders))
+					     placeholders))
 				       ((substitute/2? (car rs))
-					(pp `(elide-arg: ,(car fs) ,(car rs)))
+					(a:pp `(elide-arg: ,(car fs) ,(car rs)))
 					(loop (cdr rs) (cdr fs)))
 				       (else
 					(cons (car fs) (loop (cdr rs) (cdr fs)))))))))
-		   (pp `(,id parameter-placeholders: ,placeholders))
-		   (pp `(,id rands: ,rands names*: ,names*))
-		   (pp `(,id new-formals: ,new-formals))
+		   (a:pp `(,id parameter-placeholders: ,placeholders))
+		   (a:pp `(,id rands: ,rands names*: ,names*))
+		   (a:pp `(,id new-formals: ,new-formals))
 		   (form/rewrite! form
 		     `(CALL (LOOKUP ,procedure-name)
 			    '#F
 			    ,@actuals))
-		   (pp `(call: ,form))
+		   (a:pp `(call: ,form))
 		   (remember-specialization!
 		    info
 		    procedure-name
 		    `(LAMBDA ,new-formals ,body*))))))
-	(pp `(declined: ,rands)))))
+	(a:pp `(declined: ,rands)))))
 
 
 (define (remember-specialization! info proc-name lam-expr)
-  (pp `(remember-specialization! ,info ,proc-name ,lam-expr))
+  (a:pp `(remember-specialization! ,info ,proc-name ,lam-expr))
   (let ((letrec-form  (specializer/info/letrec info)))
     (set-car! (cdr letrec-form)
 	      (cons (list proc-name lam-expr)
@@ -401,7 +402,7 @@ MIT in each case. |#
   (let walk ((form form) (ps '()))
     (cond ((PLACEHOLDER-QUOTE/? form)
 	   (let ((placeholder  (placeholder-quote/object form)))
-	     (cond ((placeholder/name placeholder)
+	     (cond ((symbol? (placeholder/name placeholder))
 		    ;; named placeholder: rewrite as lookup.
 		    (let ((pair  (assq placeholder env)))
 		      (if (not pair)
@@ -409,6 +410,13 @@ MIT in each case. |#
 		      (set-placeholder/name-used?! placeholder #T)
 		      (form/rewrite! form (cdr pair))
 		      (if (memq placeholder ps) ps (cons placeholder ps))))
+		   ((pair? (placeholder/name placeholder))
+		    ;; An expression residual: substitute & recurse
+		    (set-placeholder/name-used?! placeholder #T)
+		    (form/rewrite! form
+		      (tree-copy (placeholder/name placeholder)))
+		    (walk form
+			  (if (memq placeholder ps) ps (cons placeholder ps))))
 		   ((placeholder? (placeholder/value placeholder))
 		    ;; unnamed placeholder: a `constructed' residual
 		    (nasty-residual placeholder))
@@ -416,7 +424,8 @@ MIT in each case. |#
 		    (nasty-residual placeholder))
 		   (else
 		    (form/rewrite! form
-		      `(QUOTE ,(placeholder/value placeholder)))))))
+		      `(QUOTE ,(placeholder/value placeholder)))
+		    ps))))
 	  ((QUOTE/? form) ps)
 	  ((LOOKUP/? form) ps)
 	  ((LAMBDA/? form) (walk (lambda/body form) ps))
@@ -512,6 +521,7 @@ MIT in each case. |#
     (let walk ((expr program*))
       ;; Find all interesting lambdas and keeping LETREC bindings.
       (cond ((LETREC/? expr)
+	     (walk (letrec/body expr))
 	     (for-each
 		 (lambda (binding)
 		   (hash-table/put! *specialization-table*
@@ -521,12 +531,11 @@ MIT in each case. |#
 				     (cadr binding)
 				     expr))
 		   (walk (cadr binding)))
-	       (letrec/bindings expr))
-	     (walk (letrec/body expr)))
+	       (letrec/bindings expr)))
 	    ((LET/? expr)
+	     (walk (let/body expr))
 	     (for-each (lambda (binding) (walk (cadr binding)))
-	       (let/bindings expr))
-	     (walk (let/body expr)))
+	       (let/bindings expr)))
 	    ((QUOTE/? expr))
 	    ((LOOKUP/? expr))
 	    ((LAMBDA/? expr)
@@ -534,11 +543,15 @@ MIT in each case. |#
 		 (specialize/enqueue-lambda! expr))
 	     (walk (lambda/body expr)))
 	    (else (for-each walk (cdr expr)))))
-    (queue/drain! *lambda-queue* arity/specialize-lambda!)
+    ;;(queue/drain! *lambda-queue* arity/specialize-lambda!)
+    (if (not (eq? (car (queue/tail *lambda-queue*)) '*HEAD*))
+	(arity/specialize-lambda! (car (queue/tail *lambda-queue*))))
     program*))
 
 
 ;;; Search the specialization space.
+;;
+;;  Idea:
 ;;
 ;;  Generate a specialization for all |optional|+1 defaultings.  If there
 ;;  is no #!rest argument we are done.
@@ -551,10 +564,11 @@ MIT in each case. |#
 ;;  specializations.
 
 (define (nasty-residual placeholder)
-  placeholder
-  (internal-error "Nasty residual" placeholder))
+  (if *arity/failure*
+      (*arity/failure* placeholder)
+      (internal-error "Nasty residual & no handler" placeholder)))
 
-(define *arity/failure*)
+(define *arity/failure* #F)
 
 (define (arity/specialize-lambda! form)
   (let ((body    (lambda/body form))
@@ -562,41 +576,66 @@ MIT in each case. |#
     (call-with-values
 	(lambda () (lambda-list/parse formals))
       (lambda (required optional rest aux)
-	;; required includes continuation.
-	(pp 'specialize-lambda:)
-	(pp form)
+	;; REQUIRED includes continuation.
+	
+	(a:pp 'specialize-lambda:)
+	(a:pp form)
 	(let* ((specializations '())
 	       (low   (length required))
 	       (high  (if rest
-			  (+ low (length optional) 4)
+			  120 ;; (+ low (length optional) 4)
 			  (+ low (length optional)))))
+	  (define (done)
+	    (arity/rewrite-arity-dispatched-procedure!
+	     form '(QUOTE default) low specializations)
+	    (a:pp `(transfomed-procedure: ,form)))
+	  (define (failed)
+	    'failed)
 	  (let loop ((arity low))
-	    (if (<= arity high)
-		(let ((new-lambda
-		       (arity/generate-specialization
-			required optional rest body arity #F)))
-		  (set! specializations (cons new-lambda specializations))
-		  (loop (+ arity 1)))))
-	  (form/rewrite! form
-	    `(CALL ',%make-entity
-		   '#F
-		   'default
-		   (CALL ',%vector
-			 '#F
-			 ',%arity-dispatcher-tag
-			 ,@(make-list (- low 1) '(QUOTE #F))
-			 ,@(reverse specializations))))
-	  (pp `(transfomed-procedure: ,form)))))))
+	    (let ((new-lambda
+		   (call-with-current-continuation
+		    (lambda (k)
+		      (set! *arity/failure* k)
+		      (arity/generate-specialization
+		       required optional rest body arity #F)))))
+	      (cond ((LAMBDA/? new-lambda)
+		     (set! specializations
+			   (cons new-lambda specializations))
+		     (if (= arity high)
+			 (done)
+			 (loop (+ arity 1))))
+		    ((< arity (+ low (length optional)))
+		     ;; Could not even do #!OPTIONALs
+		     (failed))
+		    (else
+		     (internal-warning "Bag out " new-lambda)
+		     (failed))))))))))
+
+
+
+(define (arity/rewrite-arity-dispatched-procedure!
+	 form default low specializations)
+  (sample/1 '(arity/dispatched-procedures histogram)
+	    (length specializations))
+  (form/rewrite! form
+    `(CALL ',%make-entity
+	   '#F
+	   ,default
+	   (CALL ',%vector
+		 '#F
+		 ',%arity-dispatcher-tag
+		 ,@(make-list (- low 1) '(QUOTE #F))
+		 ,@(reverse specializations)))))
 
 
 (define (arity/generate-specialization required optional rest body arity rest?)
   ;; ARITY is at least enough to satisfy the REQUIREDs
   ;; returns either (1) a new LAMBDA expression or (2) a
   (define (generate new-ll env)
-    (pp '----------)
-    (pp `(lambda-list: ,new-ll env: ,env))
+    (a:pp '----------)
+    (a:pp `(lambda-list: ,new-ll env: ,env))
     (let ((body  (form/copy body)))
-      (pp `(before: ,body))
+      (a:pp `(before: ,body))
       (specialize/expr! env body)
       (remove-placeholders! env body)
       `(LAMBDA ,new-ll ,body)))
@@ -664,7 +703,6 @@ MIT in each case. |#
 		     (+ position 1))))))))
 
 
-
 (define *specializer/rewriters* (make-eq-hash-table))
 
 (define (specializer/rewrite? operator)
@@ -713,10 +751,13 @@ MIT in each case. |#
 
 (define-specializer-rewriter %unassigned?
   (lambda (form arg)
-    (pp form)
+    (a:pp form)
     (cond ((PLACEHOLDER-QUOTE/? arg)
 	   (let ((ph (placeholder-quote/object arg)))
 	     ;; This rewrites `unknown' placeholders to booleans too:
 	     (form/rewrite! form
 	       `(QUOTE ,(eq? (placeholder/value ph) %unassigned)))))
 	  (else unspecific))))
+
+
+(define a:pp pp)
