@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.38 1990/04/04 18:52:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.39 1990/04/12 22:51:15 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -523,7 +523,7 @@ Otherwise it returns a unix error string.")
   PRIMITIVE_RETURN (file_touch (STRING_ARG (1)));
 }
 
-#define N_RETRIES 1
+#define N_RETRIES 5
 
 static SCHEME_OBJECT
 file_touch (filename)
@@ -544,6 +544,10 @@ file_touch (filename)
   extern int write ();
 
 #if 0
+/*
+  IMPORTANT: Don't turn this code on without examining the code below
+  carefully. The code below has changed since this stuff was last enabled!
+ */
 #ifdef bsd
   extern long time ();
   long current_time;
@@ -560,26 +564,45 @@ file_touch (filename)
 
   for (count = 0; true; count += 1)
   {
-    /* CASE 1: create the file if it doesn't exist. */
-    result = (stat (filename, (& file_status)));
-    if (result == 0)
-      break;
-    /* Use O_EXCL to prevent overwriting existing file.  This
-       prevents lossage when `stat' fails because of access or I/O
-       errors.  */
+    /* Use O_EXCL to prevent overwriting existing file.
+     */
     fd = (open (filename, (O_RDWR | O_CREAT | O_EXCL), 0666));
     if (fd >= 0)
     {
       ret_val = SHARP_T;
       goto zero_length_file;
     }
-    else if ((errno != EEXIST) || (count >= N_RETRIES))
+    else if (errno == EEXIST)
+    {
+      fd = (open (filename, O_RDWR, 0666));
+      if (fd >= 0)
+      {
+	break;
+      }
+      else if ((errno != ENOENT) || (count >= N_RETRIES))
+      {
+	return (system_error_message ("open"));
+      }
+      /* The file disappeared between both opens.
+	 Go around the loop again.
+	 */
+    }
+    else if (count >= N_RETRIES)
     {
       return (system_error_message ("open"));
     }
   }
 
+  result = fstat(fd, &file_status);
+  if (result != 0)
+    return(system_error_message("fstat"));
+
 #if 0
+/*
+  IMPORTANT: Don't turn this code on without examining the code below
+  carefully. The code below has changed since this stuff was last enabled!
+ */
+
   /* Disable this code -- this is subject to clock skew problems
      when the file is on an NFS server.  */
 
@@ -604,17 +627,14 @@ file_touch (filename)
 
 #endif /* hpux */
 #endif /* bsd */
-#endif /* 0 */
 
   /* utime (utimes) has failed, or does not exist.  Instead, open the
      file, read one byte, and write it back in place.  */
 
+#endif /* 0 */
+
   if (((file_status . st_mode) & S_IFMT) != S_IFREG)
     return (char_pointer_to_string ("can only touch regular files"));
-
-  fd = (open (filename, O_RDWR, 0666));
-  if (fd < 0)
-    return (system_error_message ("open"));
 
   /* CASE 3: file length of 0 needs special treatment. */
   if ((file_status . st_size) == 0)
@@ -655,7 +675,10 @@ file_touch (filename)
 	    }
 	}
       if ((ftruncate (fd, 0)) != 0)
+      {
+	(void) close(fd);
 	return (system_error_message ("ftruncate"));
+      }
       if ((close (fd)) != 0)
 	return (system_error_message ("close"));
       return (ret_val);
