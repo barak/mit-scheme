@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: javamode.scm,v 1.6 1999/10/07 17:16:00 cph Exp $
+;;; $Id: javamode.scm,v 1.7 1999/10/08 04:38:49 cph Exp $
 ;;;
 ;;; Copyright (c) 1998-1999 Massachusetts Institute of Technology
 ;;;
@@ -82,14 +82,18 @@ This is just like C mode, except that
 	(max (+ (mark-column (horizontal-space-start mark)) 1)
 	     column))))
 
-(define-major-mode php java "PHP"
+(define-major-mode php c "PHP"
   "Major mode for editing PHP code.
 This is just like C mode, except that
-  (1) comments begin with // and end at the end of line,
-  (2) c-continued-brace-offset defaults to -2 instead of 0, and
-  (3) $ is a symbol constituent rather than a word constituent."
+  (1) comments begin with // and end at the end of line, and
+  (2) $ is a symbol constituent rather than a word constituent."
   (lambda (buffer)
     (local-set-variable! syntax-table php-syntax-table buffer)
+    (local-set-variable! syntax-ignore-comments-backwards #f buffer)
+    (local-set-variable! comment-locator-hook java-comment-locate buffer)
+    (local-set-variable! comment-indent-hook java-comment-indentation buffer)
+    (local-set-variable! comment-start "// " buffer)
+    (local-set-variable! comment-end "" buffer)
     (event-distributor/invoke! (ref-variable php-mode-hook buffer) buffer)))
 
 (define-command PHP-mode
