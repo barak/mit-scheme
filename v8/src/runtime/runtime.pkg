@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.118 1991/08/29 21:14:53 sybok Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.119 1991/08/29 21:47:26 sybok Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1480,7 +1480,7 @@ MIT in each case. |#
   (initialization (initialize-package!)))
 
 (define-package (runtime primitive-io)
-  (files "io")
+  (files "io") 
   (parent ())
   (export ()
 	  channel-blocking
