@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.24 1995/10/25 02:19:44 cph Exp $
+;;;	$Id: os2.scm,v 1.25 1995/10/25 03:25:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -331,7 +331,7 @@ filename suffix \".gz\"."
   "sendmail")
 
 (define (os/rmail-pop-procedure)
-  (and (os2/find-program "popclient" (ref-variable exec-path) #f)
+  (and (dos/find-program "popclient" (ref-variable exec-path) #f)
        (lambda (server user-name password directory)
 	 (os2-pop-client server user-name password directory))))
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dosfile.scm,v 1.1 1995/10/25 02:18:54 cph Exp $
+;;;	$Id: dosfile.scm,v 1.2 1995/10/25 03:26:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -269,7 +269,8 @@ Includes the new backup.  Must be > 0."
 	(pathname-new-type pathname "sav"))))
 
 (define (dos/buffer-long-name buffer)
-  (if (string-ci=? "hpfs" (car (os/fs-drive-type directory)))
+  (if (string-ci=? "hpfs"
+		   (car (os/fs-drive-type (buffer-default-directory buffer))))
       (dos/buffer-hpfs-name buffer)
       (buffer-name buffer)))
 
