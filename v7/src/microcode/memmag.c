@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.48 1993/03/10 17:19:58 cph Exp $
+$Id: memmag.c,v 9.49 1993/03/11 19:53:49 cph Exp $
 
 Copyright (c) 1987-93 Massachusetts Institute of Technology
 
@@ -409,6 +409,8 @@ DEFUN_VOID (GC)
 	    Microcode_Termination (TERM_BROKEN_HEART);
 	  }
       }
+      gc_objects_referencing = SHARP_F;
+      gc_object_referenced = SHARP_F;
     }
 #endif
 
