@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml.scm,v 1.3 2004/07/15 18:25:07 cph Exp $
+$Id: xhtml.scm,v 1.4 2004/07/15 19:50:43 cph Exp $
 
 Copyright 2002,2003,2004 Massachusetts Institute of Technology
 
@@ -73,8 +73,7 @@ USA.
   (letrec
       ((scan-item
 	(lambda (item tail)
-	  (cond ((xml-content-item? item) (cons item tail))
-		((pair? item) (scan-list item tail))
+	  (cond ((pair? item) (scan-list item tail))
 		((or (not item) (null? item)) tail)
 		(else (cons (convert-html-string-value item) tail)))))
        (scan-list
@@ -87,13 +86,6 @@ USA.
 		    (error:wrong-type-datum items "list"))
 		tail)))))
     (scan-item item '())))
-
-(define (convert-html-string-value value)
-  (cond ((xml-content-item? value) value)
-	((symbol? value) (symbol-name value))
-	((number? value) (number->string value))
-	((xml-namespace-iri? value) (xml-namespace-iri-string value))
-	(else (error:wrong-type-datum value "string value"))))
 
 (define-standard-element a)
 (define-standard-element abbr)
@@ -210,6 +202,35 @@ USA.
 		(else
 		 (error "Unknown item passed to html-attrs:" item))))
 	'())))
+
+(define (convert-html-string-value value)
+  (cond ((xml-content-item? value) value)
+	((symbol? value) (symbol-name value))
+	((number? value) (number->string value))
+	((xml-namespace-iri? value) (xml-namespace-iri-string value))
+	((list-of-type? value xml-nmtoken?) (nmtokens->string value))
+	(else (error:wrong-type-datum value "string value"))))
+
+(define (nmtokens->string nmtokens)
+  (if (pair? nmtokens)
+      (let ((nmtoken-length
+	     (lambda (nmtoken)
+	       (string-length (symbol-name nmtoken)))))
+	(let ((s
+	       (make-string
+		(let loop ((nmtokens nmtokens) (n 0))
+		  (let ((n (fix:+ n (nmtoken-length (car nmtokens)))))
+		    (if (pair? (cdr nmtokens))
+			(loop (cdr nmtokens) (fix:+ n 1))
+			n))))))
+	  (let loop ((nmtokens nmtokens) (index 0))
+	    (string-move! (symbol-name (car nmtokens)) s index)
+	    (if (pair? (cdr nmtokens))
+		(let ((index (fix:+ index (nmtoken-length (car nmtokens)))))
+		  (string-set! s index #\space)
+		  (loop (cdr nmtokens) (fix:+ index 1)))))
+	  s))
+      (make-string 0)))
 
 (define (html:href iri . contents)
   (apply html:a
