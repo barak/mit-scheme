@@ -1,20 +1,19 @@
 Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.5 1991/02/23 15:00:19 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.6 1991/02/23 21:13:18 jinx Exp $
 
 
-			LIAR INTERNALS AND PORTING GUIDE
-			       (Very Preliminary)
+	LIAR PORTING GUIDE AND PARTIAL INTERNALS DOCUMENTATION
 
 
 Notes: 
 
 This porting guide applies to Liar version 4.78, but most of the
 relevant information has not changed for a while, nor is it likely to
-change in a while.
+change in a while in major ways.
 
-Text preceded with ==> is meant mostly for the compiler developers,
-and text preceded *** is meant for the people writing this document.
+Text tagged by ==> is meant mostly for the compiler developers, and
+text tagged by *** is meant for the people writing this document.
 
 For questions on Liar not covered by this document, or questions about
 this document, contact liar-implementors@zurich.ai.mit.edu .
@@ -26,13 +25,14 @@ this document, contact liar-implementors@zurich.ai.mit.edu .
 Liar is the work of many people.  The current version is mostly the
 effort of Chris Hanson and Bill Rozas, with significant contributions
 from Mark Friedman.  Arthur Gleckler, Brian LaMacchia, Jim Miller,
-and Henry Wu have also helped develop Liar.
+and Henry Wu have also contributed to the current version of Liar.
+Many other people have offered suggestions and criticisms.
 
-The new Liar may never have existed if it had not been for the efforts
-and help of the now-extinct BBN Butterfly Lisp group that included Don
-Allen, Seth Steinberg, Larry Stabile, and Anthony Courtemanche.  Don
-Allen, in particular, babysat computers to painstakingly bootstrap the
-first version of the new Liar.
+The current Liar may never have existed had it not been for the
+efforts and help of the now-extinct BBN Butterfly Lisp group.  That
+group included Don Allen, Seth Steinberg, Larry Stabile, and Anthony
+Courtemanche.  Don Allen, in particular, babysat computers to
+painstakingly bootstrap the first version of the then new Liar.
 
 Many of the ideas and algorithms used in Liar, and in particular at
 the RTL level, are taken from the GNU C compiler, written by Richard
@@ -61,7 +61,7 @@ subpasses.  Many of the subpasses do not manipulate the whole code
 graph, but instead follow threads that link the relevant parts of the
 graph.
 
-Compile-Scode is the main entry point to Liar, although CF is the
+COMPILE-SCODE is the main entry point to Liar, although CF is the
 usual entry point.  CF uses COMPILE-SCODE, and assumes that the code
 has been syntaxed by SF producing a .bin file, and dumps the resulting
 compiled code into a .com file.
@@ -146,8 +146,8 @@ and debugging of the compiler and assembler.
 	0.2. Directory structure for Liar
 
 The directory structure loosely reflects the pass structure of the
-compiler.  compiler/machines/port/comp.pkg lists the packages and the
-files that they include.
+compiler.  compiler/machines/port/comp.pkg declares the packages and
+the files that constitute them.
 
 compiler/back:
 	This directory contains the machine-independent portion of the
@@ -302,23 +302,26 @@ not-too-far future.
 
 - Liar assumes that it is cheap to compute overflow conditions on
 integer arithmetic operations.  Generic arithmetic primitives have the
-common fixnum case open-coded, and the overflow and non-fixnum cases
-coded out of line, but this depends on the ability of the code to
-detect overflow conditions cheaply.  This is not true of some modern
-machines, notably the MIPS R3000 processor.  If your  processor does
-not detect such conditions, you may have to emulate what the port to
-the MIPS processor does.
+frequent fixnum (small integer) case open-coded, and the overflow and
+non-fixnum cases coded out of line, but this depends on the ability of
+the code to detect overflow conditions cheaply.  This is not true of
+some modern machines, notably MIPS processors.  If your processor does
+not detect such conditions, you may have to use code similar to that
+used in the MIPS port.
 
 - Liar assumes that extracting, inserting, and comparing bit-fields is
 relatively cheap.  The current object representation for Liar
 (compatible with the interpreter) consists of using a number (6-8) of
 bits in the most significant bit positions of a word as a type tag,
-and the rest as the datum, typically an encoded address.  Not only
+and the rest as the datum, usually an encoded address.  Not only
 must extracting, comparing, and inserting these tags be cheap, but
 decoding the address must be cheap as well.  These operations are
 relatively cheap on architectures with bit-field instructions, but
 more expensive if they must be emulated with bitwise boolean
-operations and shifts, as on the MIPS R3000.
+operations and shifts, as on the MIPS R3000.  Note that decoding the
+address may include inserting segment bits in some of the positions
+where the tag is placed, further increasing the dependency on cheap
+bit-field manipulation.
 
 C. Emulating an existing port.
 
@@ -342,22 +345,24 @@ architectures like the NS32000, and perhaps even the IBM 370.
 addressing modes, and bit-field instructions, you may want to start by
 looking at the Spectrum (HP Precision Architecture) port.  This is
 probably a good starting point for the Motorola 88000 and for the IBM
-RS6000 architectures.
+RS/6000.
 
-- If you have a bare-bones RISC processor, similar to a MIPS
-R2000/R3000 processor, you may want to start from this port.  Since
-the MIPS R2000 is a minimalist architecture, it should almost subsume
-all other RISCs, and may well be a good starting point for all of
-them.  This is probably a good starting point for the Sparc
-architecture.  Note that the MIPS port was done by starting from the
-Spectrum port.
+- If you have a bare-bones RISC processor, similar to a MIPS R3000
+processor, you may want to start from this port.  Since the MIPS R3000
+is a minimalist architecture, it almost subsumes all other RISCs, and
+may well be a good starting point for all of them.  This is probably a
+good starting point for the Sparc.  Note that the MIPS port used the
+Spectrum port as its model.
 
 - If you have a machine significantly different from those listed
 above, you are out of luck and will have to write a port from scratch.
+In particular, a port to an Intel 386/486 would use some of the
+concepts and code from ports to ther CISCs, but due to the reduced
+register set, would probably have to redo all the register allocation.
 
 Of course, no architecture is identical to any other, so you may want
-to mix and match ideas from many of the ports already finished, and it
-is probably a good idea for you to compare how the various ports solve
+to mix and match ideas from many of the ports already done, and it is
+probably a good idea for you to compare how the various ports solve
 the various problems.
 
 		3. Compiler operation, RTL rules and LAP rules.
@@ -373,23 +378,23 @@ generated for a given program will vary from machine to machine.
 The RTL can vary in the following ways:
 
 - RTL is a language for manipulating the contents of conceptual
-registers.  RTL registers are divided into `pseudo registers' and
-`machine registers'.  Machine registers represent physical hardware
+registers.  RTL registers are divided into ``pseudo-registers'' and
+``machine registers''.  Machine registers represent physical hardware
 registers, some of which have been reserved by the port to hold useful
-quantities (stack pointer, value register, etc.)  while pseudo
-registers represent quantities that will need physical registers or
-memory locations to hold them in the final translation.  In order to
-make the RTL more homogenous, the registers are not distinguished
-syntactically in the RTL, but are instead distinguished by the value
-range.  Machine registers are represented as the N lowest numbered RTL
-registers (where N is the number of hardware registers), and all
-others are pseudo registers. Since some RTL instructions explicitly
-mention machine registers and these (and their numbers) vary from
-architecture to architecture, the register numbers in an RTL program
-will vary depending on the back end in use.  Note that all pseudo
-registers are equivalent, and all can hold arbitrary Scheme objects,
-while machine registers can be further divided into separate classes
-(eg. address, data, and floating-point registers).
+quantities (stack pointer, value register, etc.)  while
+pseudo-registers represent quantities that will need physical
+registers or memory locations to hold them in the final translation.
+In order to make the RTL more homogenous, the registers are not
+distinguished syntactically in the RTL, but are instead distinguished
+by their value range.  Machine registers are represented as the N
+lowest numbered RTL registers (where N is the number of hardware
+registers), and all others are pseudo-registers. Since some RTL
+instructions explicitly mention machine registers and these (and their
+numbers) vary from architecture to architecture, the register numbers
+in an RTL program will vary depending on the back end in use.  Note
+that all pseudo-registers are equivalent, and all can hold arbitrary
+Scheme objects, while machine registers can be further divided into
+separate classes (eg. address, data, and floating-point registers).
 
 - RTL assumes only a load-store architecture, but can accommodate
 architectures that allow memory operands and rich addressing modes.
@@ -398,41 +403,41 @@ complex expressions.  These expressions may represent multiple memory
 indirections or other operations.  An RTL simplifier runs over this
 initial RTL, assigning these intermediate quantities to new pseudo
 registers and rewriting the original statements to manipulate the
-original and new pseudo registers.  Typically this simplification
-results in a sequence of assignments to pseudo registers with single
+original and new pseudo-registers.  Typically this simplification
+results in a sequence of assignments to pseudo-registers with single
 operations per assignment and where the only memory operations are
-load and store.  However, this simplification is modulated by the
-port.  The port supplies a set of rewriting rules to the simplifier
-that causes the simplifier to leave more complex expressions in place,
-or to be simplified in different ways, depending on the availability
-of memory operands or richer addressing modes.  Since these rules
-vary from port to port, the final RTL differs for the different ports.
+load and store.  However, this simplification pass is controlled by
+the port.  The port supplies a set of rewriting rules to the
+simplifier that causes the simplifier to leave more complex
+expressions untouched, or to be simplified in different ways,
+depending on the availability of memory operands or richer addressing
+modes.  Since these rules vary from port to port, the final RTL
+differs for the different ports.
 
 - The open coding of Scheme primitives is port-dependent.  On some
-machines, for example, there is no integer multiply instruction, and
-it may not be advantageous to open code the primitive that multiplies.
-The RTL for a particular program may reflect the set of primitive
-operations that the back end for the port can open code.
+machines, for example, there is no instruction to multiply integers,
+and it may not be advantageous to open code the multiplication
+primitive.  The RTL for a particular program may reflect the set of
+primitive operations that the back end for the port can open code.
 
-
-The RTL program is represented as a control flow-graph where each of
-the nodes has an associated list of RTL statements.  The edges in the
-graph correspond to conditional and unconditional branches in the
-code, and include a low-level predicate used to choose between the
+The resulting RTL program is represented as a control flow-graph where
+each of the nodes has an associated list of RTL statements.  The edges
+in the graph correspond to conditional and unconditional branches in
+the code, and include a low-level predicate used to choose between the
 alternatives.  Linearization of the graph does not occur at the RTL
 level, but at the LAP level.  There is a debugging RTL linearizer used
 by the RTL output routine.
 
-Besides assignments and tests, the RTL has some higher level concepts
-that correspond to procedure headers, continuation (return address)
-headers, etc.  Thus an RTL program is made mostly of register to
-register operation statements, a few conditional tests, and a few
-higher-level glue statements.
+Besides assignments and tests, the RTL has some higher level
+statements that correspond to procedure headers, continuation (return
+address) headers, etc.  Thus an RTL program is made mostly of register
+to register operation statements, a few conditional tests, and a few
+higher-level "glue" statements.
 
 Once a program has been translated to RTL, the RTL code is optimized
-in a machine-independent way by minimizing the number of RTL pseudo
-registers used, removing redundant subexpressions, eliminating dead
-code, and various other techniques.
+in a machine-independent way by minimizing the number of RTL
+<pseudo-registers used, removing redundant subexpressions, eliminating
+dead code, and various other techniques.
 
 The RTL program is then translated into a Lisp-format
 assembly-language program (LAP).  Hardware register allocation occurs
@@ -442,17 +447,17 @@ but does not currently accomodate register pairs (this is why floating
 point operations are not currently open coded on the Vax).
 
 The register allocator works by considering unused machine registers
-(those not reserved by the port) to be a cache for the pseudo
-registers.  Thus a particular pseudo register may map into multiple
-machine registers of different types, and these aliases are
-invalidated as the pseudo registers are written or the corresponding
+(those not reserved by the port) to be a cache for the
+pseudo-registers.  Thus a particular pseudo-register may map into
+multiple machine registers of different types, and these aliases are
+invalidated as the pseudo-registers are written or the corresponding
 machine registers reused.  Thus the most basic facility that the
 register allocator provides is a utility to allocate an alias of a
-particular type for a given pseudo register.
+particular type for a given pseudo-register.
 
 The port defines the types and numbers of machine registers and the
 subset that is available for allocation, and the register allocator
-manages the associations between the pseudo registers and their
+manages the associations between the pseudo-registers and their
 aliases and the set of free machine registers.  The register allocator
 also automatically spills the contents of machine registers to memory
 when pressed for machine registers, and reloads the values when
@@ -488,7 +493,7 @@ alternatives).
 Since most of the RTL rules generate almost fixed assembly language,
 where the only difference is the register numbers, most of the LAP to
 bits translation can be done when the compiler is compiled.  A
-compiler switch, `compiler:enable-expansion-declarations?' allows this
+compiler switch, ``compiler:enable-expansion-declarations?'' allows this
 process to take place.  This mechanism has not been used for a while,
 however, because the resulting compiler was, although somewhat faster,
 considerably bigger.
@@ -504,52 +509,47 @@ manipulation.
 The following switches are of especial importance to the back end
 writer:
 
-compiler:compile-by-procedures?
-	This switch controls whether the compiler should compile each
-top-level lambda expression independently or compile the whole input
-program (or file) as a block.  It is usually set to true, but must be
-set to false for cross-compilation.  The cross-compiler does this
-automatically.
+* compiler:compile-by-procedures? This switch controls whether the
+compiler should compile each top-level lambda expression independently
+or compile the whole input program (or file) as a block.  It is
+usually set to true, but must be set to false for cross-compilation.
+The cross-compiler does this automatically.
 
-compiler:open-code-primitives?
-	This switch controls whether Liar will open code (inline code)
-MIT Scheme primitives.  It is usually set to true and should probably
-be left that way.  On the other hand, it is possible to do a lot less
-work in porting the compiler by not providing the open coding of
-primitives and turning this switch off.  Note that some of the
-primitives are open coded by the machine-independent portion of the
-compiler, since they depend only on structural information, and not on
-the details of the particular architecture.  In other words, CAR,
-CONS, and many others can be open-coded in a port-independent way
-since their open codings are performed directly in the RTL.  Turning
-this switch to false would prevent the compiler from open coding these
-primitives as well.
+* compiler:open-code-primitives? This switch controls whether Liar
+will open code (inline code) MIT Scheme primitives.  It is usually set
+to true and should probably be left that way.  On the other hand, it
+is possible to do a lot less work in porting the compiler by not
+providing the open coding of primitives and turning this switch off.
+Note that some of the primitives are open coded by the
+machine-independent portion of the compiler, since they depend only on
+structural information, and not on the details of the particular
+architecture.  In other words, CAR, CONS, and many others can be
+open-coded in a port-independent way since their open codings are
+performed directly in the RTL.  Turning this switch to false would
+prevent the compiler from open coding these primitives as well.
 
-compiler:generate-rtl-files?
-compiler:generate-lap-files?
-	These are mostly compiler debugging switches.  They control
-whether the compiler will issue .rtl and .lap files for every file
-compiled.  The .rtl file will contain the RTL for the program, and the
-.lap file will contain the input to the assembler.  Their usual value
-is false.
+* compiler:generate-rtl-files? and compiler:generate-lap-files? These
+are mostly compiler debugging switches.  They control whether the
+compiler will issue .rtl and .lap files for every file compiled.  The
+.rtl file will contain the RTL for the program, and the .lap file will
+contain the input to the assembler.  Their usual value is false.
 
-compiler:open-code-floating-point-arithmetic?
-	This switch is defined in compiler/machines/port/machin.scm
-and determines whether floating point primitives can and should be
-open coded by the compiler or not.  If the port provides open codings
-for them, it should be set to true, otherwise to false.
+* compiler:open-code-floating-point-arithmetic? This switch is
+defined in compiler/machines/port/machin.scm and determines whether
+floating point primitives can and should be open coded by the compiler
+or not.  If the port provides open codings for them, it should be set
+to true, otherwise to false.
 
-compiler:primitives-with-no-open-coding
-	This parameter is defined in compiler/machines/port/machin.scm.
-It contains a list of primitive names that the port cannot open code.
+* compiler:primitives-with-no-open-coding This parameter is defined in
+compiler/machines/port/machin.scm.  It contains a list of primitive
+names that the port cannot open code.
 
-==> These last two parameters should probably be combined and their
-sense inverted, ie. there should be a
-compiler:primitives-with-known-open-codings parameter that would
-replace both of the above.  This has the advantage that if the RTL
-level is taught how to deal with additional primitives, but not all
-ports have open codings for them, there is no need to change the
-various machin.scm files.
+==> These last two parameters should probably be combined and
+inverted, ie. compiler:primitives-with-open-codings should replace
+both of the above.  This has the advantage that if the RTL level is
+taught how to deal with additional primitives, but not all ports have
+open codings for them, there is no need to change the various
+machin.scm files.
 
 		4. Description of the files in compiler/machines/port.
 
@@ -575,7 +575,7 @@ The new $ Header $ line would be used by RCS to keep track of the
 versions of your port and the others could be used to find updates to
 the originals that would make updating your port easier.
 
-	Compiler building files:
+	4.1 Compiler building files:
 
 * comp.pkg:
 	This file describes the Scheme package structure of the
@@ -642,7 +642,7 @@ machine-independent dependency management code, and the actual
 declaration of the dependencies for each port.  This would allow us to
 share more of the code, and make the task of rewriting it less daunting.
 
-	Miscellaneous files:
+	4.2 Miscellaneous files:
 
 * rgspcm.scm:
 	This file declares a set of primitives that can be coded by
@@ -686,21 +686,21 @@ address to point past this number of bits.  Again, the compiler has
 not been ported to any machine where this value is not 8.
 
 - scheme-object-width: How many bits are taken up by a Scheme object.
-This should be the number of bits in a C `unsigned long', since Scheme
+This should be the number of bits in a C ``unsigned long'', since Scheme
 objects are declared as such by the portable runtime library.
 
 - scheme-type-width: How many bits at the most-significant end of a
-Scheme object are taken up by the type tag.  Note that the definition
-in the microcode must match this one.  This number is currently 6 for
-systems with a compiler and 8 for systems without one.
+Scheme object are taken up by the type tag.  The value of
+TYPE_CODE_LENGTH in the microcode must match this value.  The value is
+currently 6 for systems with a compiler and 8 for systems without one.
 
 - flonum-size: This is the ceiling of the ratio of the size of a C
-`double' to the size of a C `unsigned long'.  It reflects how many
+``double'' to the size of a C ``unsigned long''.  It reflects how many
 Scheme units of memory (measured in Scheme objects) the data in a
 Scheme floating point object will take.
 
 - float-alignment: This value defines the bit-alignment constraints
-for a C `double'.  It must be a multiple of scheme-object-width.  If
+for a C ``double''.  It must be a multiple of scheme-object-width.  If
 floating point values can only be stored at even long-word addresses,
 for example, this value should be twice scheme-object-width.
 
@@ -715,7 +715,7 @@ others, but is specified as a constant due to a shortcoming of the
 compiler pre-processing system (expt is not constant-folded).  Use the
 commented-out expression to derive the value for your port.  Note that
 all values that should be derived but are instead specified as
-constants are tagged by a comment containing `***'.
+constants are tagged by a comment containing ``***''.
 
 - stack->memory-offset: This procedure is provided to accomodate
 stacks that grow in either direction, but we have not tested any port
@@ -777,12 +777,12 @@ dealing with the assembly language interface.
 ie. one greater than the number assigned to the last machine register.
 
 - number-of-temporary-registers is the number of reserved memory
-locations used for storing the contents of spilled pseudo registers.
-
+locations used for storing the contents of spilled pseudo-registers.
+
 Liar requires certain fixed locations to hold various implementation
 variables such as the stack pointer, the free memory pointer, the
-pointer to the runtime library and interpreter's "register" array, and
-the dynamic link "register".  Typically each of these locations is a
+pointer to the runtime library and interpreter's ``register'' array, and
+the dynamic link ``register''.  Typically each of these locations is a
 fixed machine register.  In addition, typically a processor register
 is reserved for returning values and another for holding a bit-mask
 used to clear type tags from objects (the pointer or datum mask).  All
@@ -792,10 +792,10 @@ of these registers should be given additional symbolic names.
 seem that the datum mask is a known value, but...  Currently all the
 ports seem to have the same definition.
 
-The contents of pseudo registers are divided into various classes to
+The contents of pseudo-registers are divided into various classes to
 allow some consistency checking.  Some machine registers always
-contain values in a fixed class (eg. floating point registers and
-the register holding the datum mask).
+contain values in a fixed class (eg. floating point registers and the
+register holding the datum mask).
 
 - machine-register-value-class is a procedure that maps a register to
 its inherent value class.  The main value classes are
@@ -821,7 +821,7 @@ special RTL registers that have been allocated to fixed registers, and
 false otherwise.
 
 - rtl:interpreter-register? should return the long-word offset in the
-runtime library's memory "register" array for those special RTL
+runtime library's memory ``register'' array for those special RTL
 registers not allocated to fixed registers, and false otherwise.
 
 - rtl:interpreter-register->offset errors when the special RTL
@@ -840,7 +840,7 @@ instructions can be used instead.
 compiler:primitives-with-no-open-coding have been described in the
 section on compiler switches and parameters.
 
-	LAPGEN files:
+	4.3 LAPGEN files:
 
 The following files control the RTL -> LAP translation.  They define
 the rules used by the pattern matcher to perform the translation, and
@@ -935,7 +935,7 @@ manipulating flonums (floating point data in boxed form).  The rules
 handle boxing and unboxing of flonums, arithmetic on them, and
 comparison predicates.
 
-	Assembler files:
+	4.4 Assembler files:
 
 * assmd.scm:
 	This file defines the following machine-dependent parameters
@@ -974,12 +974,12 @@ encoded value of this offset.
 block of instructions, and constructs the non-marked-vector header
 that must precede the instructions in memory in order to prevent the
 garbage collector from examining the data as Scheme objects.  This
-header is just an "object" whose type tag is manifest-nm-vector
+header is just an ``object'' whose type tag is manifest-nm-vector
 (TC_MANIFEST_NM_VECTOR in the microcode) and whose datum is the size
 in long-words (excluding the header itself).
 
 The following three parameters define how instruction fields are to be
-assembled in memory depending on the "endianness" (byte ordering) of
+assembled in memory depending on the ``endianness'' (byte ordering) of
 the architecture.  You should be able to use the MC68020 (big endian)
 or the Vax (little endian) version.
 
@@ -991,16 +991,119 @@ specified position, and returns the new bit position at which the
 immediately following instruction field should be inserted.
 
 * coerce.scm:
-
-* inerly.scm:
-
+	This file defines a set of coercion procedures.  These
+procedures are used to fill fields in instructions.  Each coercion
+procedure checks the range of its argument and produces a bit string
+of the appropriate length encoding the argument.  Most coercions will
+coerce their signed or unsigned argument into a bit string of the
+required fixed length.
+
 * insmac.scm:
+	This file defines port-specific syntax used in the assembler,
+and the procedure PARSE-INSTRUCTION, invoked by the syntax expander
+for DEFINE-INSTRUCTION to parse the body of each of the instruction
+rules.  This code is typically complex and you are encouraged to
+emulate one of the existing ports in order to reuse its code.
+
+The following ports use the following syntax for describing
+instructions in machine language:
+
+- Spectrum and MIPS:
+(LONG (<width 1> <value 1> <coercion type 1>)
+      (<width 2> <value 2> <coercion type 2>)
+      ...	
+      (<width n> <value n> <coercion type n>))
+where all the widths must add up to an even multiple of 32.
+
+- Vax:
+Instructions descriptions are made of arbitrary sequences of the
+following field descriptors:
+(BYTE (<width 1> <value 1> <coercion type 1>)
+      (<width 2> <value 2> <coercion type 2>)
+      ...	
+      (<width n> <value n> <coercion type n>))
+(OPERAND <size> <value>)
+(DISPLACEMENT (<width> <value>)
+
+The total width of each of these field descriptors must add up to a
+multiple of 8.
+BYTE is used primarily for instruction opcodes.
+OPERAND is used for general addressing modes.
+DISPLACEMENT is used for PC-relative branch displacements.
+
+- MC68020:
+(WORD (<width 1> <value 1> <coercion type 1> <size 1>)
+      (<width 2> <value 2> <coercion type 2> <size 2>)
+      ...	
+      (<width n> <value n> <coercion type n> <size 3>))
+where all the widths must add up to an even multiple of 16.
+Size refers to immediate operands to be encoded in the instruction,
+and are omitted when irrelevant.
+
+Typically, missing coercion types imply ordinary unsigned coercion.
+
+In addition, each of these ports provides a VARIABLE-WIDTH syntax for
+specifying instructions whose final format must be determined by the
+branch tensioning algorithm in the bit assembler.  The syntax of these
+instructions is typically
+(VARIABLE-WIDTH (<name> <expression>)
+  ((<low 1> <high 1>)
+   <instruction specifier 1>)
+  ((<low 2> <high 2>)
+   <instruction specifier 2>)
+  ...
+  ((() ())
+   <instruction specifier n>))
+
+Each instruction specifier is an ordinary (ie. not VARIABLE-WIDTH)
+instruction specifier.  NAME is a variable to be bound to the
+bit-assembly-time value of EXPRESSION.  Each of the ranges <low
+1>-<high 1> <low 2>-<high 2>, etc. must be properly included in the
+next, and () specifies no bound.  The final format chosen is that
+corresponding to the lowest numbered range containing the value of
+EXPRESSION.  Successive instruction specifiers must yield
+instructions of non-decreasing lengths for the branch tensioner to
+work correctly.
+
+==> The 68k port uses the keyword GROWING-WORD instead of
+VARIABLE-WIDTH.  This should probably be changed.
+
+* inerly.scm:
+	This file provides alternative expanders for the port-specific
+syntax.  This alternative expanders are used when the assembly
+language that appears in the RTL rules is assembled (early) at
+compiler pre-processing time.  That is, the procedures defined in this
+file are only used if COMPILER:ENABLE-EXPANSION-DECLARATIONS? is set
+to true.  If you reuse the code in insmac.scm from another port, you
+should be able to reuse the inerly.scm file from the same port.
+Alternatively, you can write a dummy version of this code and require
+COMPILER:ENABLE-EXPANSION-DECLARATIONS? to be always false.  This
+switch defaults to false, currently.  The Spectrum and MIPS versions
+currently have dummy versions of this code.
 
 * insutl.scm:
+	This file defines port-specific rule qualifiers and
+transformers.  It is often used to define addressing-mode filters and
+handling procedures for architectures with general addressing modes.
+This file does not exist in the Spectrum port because all the relevant
+code has been placed in instr1.scm, and the MIPS port has no
+port-specific qualifiers and transformers.  Qualifiers and
+transformers are described further in the chapter on the syntax of
+translation rules.
 
 * instr<n>.scm:
+	These files define the instruction set of the architecture by
+using the syntax defined in insmac.scm and inerly.scm.  There can be
+as many of these files or as few as desired by whoever writes the
+assembler.  They are usually split according to the size of the files
+or along the divisions in the architecture manual.  Not all
+instructions in the architecture need to be listed here -- only those
+actually used by the back end in the RTL rules and utility procedures.
+Priviledged/supervisory instructions, BCD (binary coded decimal)
+instructions, COBOL-style EDIT instructions, etc., can probably be
+safely ignored.
 
-	Disassembler files:
+	4.5 Disassembler files:
 
 * dassm1.scm:
 
@@ -1018,6 +1121,7 @@ been written.
 Include my upgraded test suite in the compiler directory, and perhaps
 some scripts that do the testing.
 
+
 		6. How to build a compiler once it has been
 preliminarly tested.  
 Cross compiling.
@@ -1025,6 +1129,7 @@ Spreading the computation over a bunch of machines.
 Testing for convergence by doing stages and comparing binaries.
 Common bugs.  interrupts, dlinks, register allocation bus, and bugs
 in the interface.
+
 
 		7. How to write RTL rules and use the register allocator.
 Get CPH to help with this.
@@ -1046,6 +1151,7 @@ allocating the target register.  This is done by the usual utilities.
 		8. How to use the RTL rewriter to improve the output
 code.
 - Suggest looking at the 68000 and the Spectrum versions.
+
 
 		9. How to interface to the runtime library.  How to
 write special-purpose optimized entries.
