@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.26 2003/07/25 23:05:57 cph Exp $
+$Id: xml-parser.scm,v 1.27 2003/07/27 03:06:41 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -72,10 +72,6 @@ USA.
     (*parser
      (alt (sbracket description "\"" "\"" (match (* (alphabet a1))))
 	  (sbracket description "'" "'" (match (* (alphabet a2))))))))
-
-(define alphabet:alphabetic (char-set->alphabet char-set:alphabetic))
-(define alphabet:numeric (char-set->alphabet char-set:numeric))
-(define alphabet:alphanumeric (char-set->alphabet char-set:alphanumeric))
 
 ;;;; Top level
 
@@ -216,15 +212,15 @@ USA.
 		(finish (caddr results) (cadr results) (car results))))))))
 
 (define match-xml-version		;[26]
-  (let ((a (alphabet+ alphabet:alphanumeric (string->alphabet "_.:-"))))
-    (*matcher (complete (+ (alphabet a))))))
+  (let ((cs (char-set-union char-set:alphanumeric (string->char-set "_.:-"))))
+    (*matcher (complete (+ (char-set cs))))))
 
 (define match-encoding			;[81]
-  (let ((a (alphabet+ alphabet:alphanumeric (string->alphabet "_.-"))))
+  (let ((cs (char-set-union char-set:alphanumeric (string->char-set "_.-"))))
     (*matcher
      (complete
-      (seq (alphabet alphabet:alphabetic)
-	   (* (alphabet a)))))))
+      (seq (char-set char-set:alphabetic)
+	   (* (char-set cs)))))))
 
 ;;;; Elements
 
@@ -430,10 +426,16 @@ USA.
      (with-pointer p
        (sbracket "character reference" "&#" ";"
 	 (alt (map (lambda (s) (make-ref s 10 p))
-		   (match (+ (alphabet alphabet:numeric))))
+		   (match match-decimal))
 	      (seq "x"
 		   (map (lambda (s) (make-ref s 16 p))
-			(match (+ (char-set "0-9a-fA-f")))))))))))
+			(match match-hexadecimal)))))))))
+
+(define match-decimal
+  (*matcher (+ (char-set char-set:numeric))))
+
+(define match-hexadecimal
+  (*matcher (+ (char-set (char-set "0-9a-fA-f")))))
 
 (define parse-reference			;[67]
   (*parser
@@ -447,8 +449,8 @@ USA.
    (match
     (seq (string "&")
 	 (alt (seq (string "#")
-		   (alt (+ (alphabet alphabet:numeric))
-			(seq (string "x") (+ (char-set "0-9a-fA-f")))))
+		   (alt match-decimal
+			(seq (string "x") match-hexadecimal)))
 	      match-name)
 	 (string ";")))))
 
@@ -660,15 +662,15 @@ USA.
 
 (define (make-parameter-entity name value)
   (let ((entity (make-xml-parameter-!entity name value)))
-    (if (and (not (eq? *parameter-entities* 'STOP))
-	     (not (find-parameter-entity name)))
+    (if (not (or (eq? *parameter-entities* 'STOP)
+		 (find-parameter-entity name)))
 	(set! *parameter-entities* (cons entity *parameter-entities*)))
     entity))
 
 (define (make-entity name value)
   (let ((entity (make-xml-!entity name value)))
-    (if (and (not (eq? *general-entities* 'STOP))
-	     (not (find-entity name)))
+    (if (not (or (eq? *general-entities* 'STOP)
+		 (find-entity name)))
 	(set! *general-entities* (cons entity *general-entities*)))
     entity))
 
@@ -1033,8 +1035,10 @@ USA.
 
 (define parse-public-id-literal		;[12,13]
   (string-parser "public-ID literal"
-		 (alphabet+ alphabet:alphanumeric
-			    (string->alphabet " \r\n-'()+,./:=?;!*#@$_%"))))
+		 (char-set->alphabet
+		  (char-set-union
+		   char-set:alphanumeric
+		   (string->char-set " \r\n-'()+,./:=?;!*#@$_%")))))
 
 ;;;; External subset
 
