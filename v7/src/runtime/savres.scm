@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: savres.scm,v 14.31 1999/04/07 04:09:06 cph Exp $
+$Id: savres.scm,v 14.32 2000/03/01 23:45:56 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;; package: (runtime save/restore)
 
 (declare (usual-integrations))
-
+
 ;;; (DISK-SAVE  filename #!optional identify)
 ;;; (DUMP-WORLD filename #!optional identify)
 ;;; Saves a world image in FILENAME.  IDENTIFY has the following meaning:
@@ -43,8 +43,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define disk-save)
 (define dump-world)
-(define *within-restore-window?* false)
-
+(define *within-restore-window?* #f)
+
 (define (setup-image save-image)
   (lambda (filename #!optional identify)
     (let ((identify
@@ -55,10 +55,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        filename
        (lambda ()
 	 (set! time-world-saved time)
-	 (if (string? identify) unspecific false))
+	 (if (string? identify) unspecific #f))
        (lambda ()
 	 (set! time-world-saved time)
-	 (fluid-let ((*within-restore-window?* true))
+	 (fluid-let ((*within-restore-window?* #t))
 	   (event-distributor/invoke! event:after-restore))
 	 (start-thread-timer)
 	 (cond ((string? identify)
@@ -69,10 +69,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		   (identify-world (cmdl/port cmdl))
 		   (event-distributor/invoke! event:after-restart))))
 	       ((not identify)
-		true)
+		#t)
 	       (else
 		(event-distributor/invoke! event:after-restart)
-		true)))))))
+		#t)))))))
 
 (define (disk-save/kernel filename after-suspend after-restore)
   (let ((filename (->namestring (merge-pathnames filename))))
@@ -152,10 +152,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (write-string " at " port)
 	  (write-string (decoded-time/time-string time-world-saved) port)))
     (newline port)
-    (write-string "  Release " port)
-    (write-string microcode-id/release-string port)
     (for-each (lambda (name)
-		(newline port)
 		(write-string "  " port)
-		(write-string (get-subsystem-identification-string name) port))
+		(write-string (get-subsystem-identification-string name) port)
+		(newline port))
 	      (get-subsystem-names))))
