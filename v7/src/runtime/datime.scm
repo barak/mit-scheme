@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.26 2000/05/15 17:39:28 cph Exp $
+$Id: datime.scm,v 14.27 2000/05/15 18:14:45 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -326,8 +326,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    " "
    (number->string (decoded-time/year dt))))
 
-(define (ctime-string->decoded-time string)
-  (let ((lose (lambda () (error "Ill-formed ctime() string:" string))))
+(define (ctime-string->decoded-time string #!optional zone)
+  (let ((zone (if (default-object? zone) #f zone))
+	(lose (lambda () (error "Ill-formed ctime() string:" string))))
+    (if (and zone (not (time-zone? zone)))
+	(error:wrong-type-argument zone "time zone"
+				   'CTIME-STRING->DECODED-TIME))
     (let ((tokens (burst-string string #\space #t)))
       (if (not (fix:= 5 (length tokens)))
 	  (lose))
@@ -344,7 +348,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				 (lose))
 			     (if (< n 100)
 				 (+ 1900 n)
-				 n)))))))
+				 n))
+			   time-zone)))))
 
 (define (universal-time->local-ctime-string time)
   (decoded-time->ctime-string (universal-time->local-decoded-time time)))
@@ -352,8 +357,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (universal-time->global-ctime-string time)
   (decoded-time->ctime-string (universal-time->global-decoded-time time)))
 
-(define (ctime-string->universal-time string)
-  (decoded-time->universal-time (ctime-string->decoded-time string)))
+(define (ctime-string->universal-time string #!optional zone)
+  (decoded-time->universal-time
+   (ctime-string->decoded-time string (if (default-object? zone) #f zone))))
 
 (define (file-time->local-ctime-string time)
   (decoded-time->ctime-string (file-time->local-decoded-time time)))
@@ -361,8 +367,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (file-time->global-ctime-string time)
   (decoded-time->ctime-string (file-time->global-decoded-time time)))
 
-(define (ctime-string->file-time string)
-  (decoded-time->file-time (ctime-string->decoded-time string)))
+(define (ctime-string->file-time string #!optional zone)
+  (decoded-time->file-time
+   (ctime-string->decoded-time string (if (default-object? zone) #f zone))))
 
 (define (month/max-days month)
   (guarantee-month month 'MONTH/MAX-DAYS)
