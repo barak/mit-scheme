@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 1.1 1987/03/19 00:44:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 1.2 1987/04/12 00:21:39 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -60,8 +60,7 @@ MIT in each case. |#
 (define-rtl-statement continuation-heap-check rtl: continuation)
 (define-rtl-statement procedure-heap-check rtl: procedure)
 (define-rtl-statement return rtl:)
-(define-rtl-statement setup-closure-lexpr rtl: procedure)
-(define-rtl-statement setup-stack-lexpr rtl: procedure)
+(define-rtl-statement setup-lexpr rtl: procedure)
 
 (define-rtl-statement interpreter-call:access % environment name)
 (define-rtl-statement interpreter-call:define % environment name value)

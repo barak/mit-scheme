@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.7 1987/03/19 00:47:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.8 1987/04/12 00:22:37 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -211,7 +211,7 @@ MIT in each case. |#
 		(let ((operator (combination-known-operator combination)))
 		  (and operator
 		       (procedure? operator)
-		       (stack-procedure? operator))))
+		       (procedure/open-internal? operator))))
 	   (finish offset
 		   (rtl:message-receiver-size:subproblem)
 		   rtl:make-message-receiver:subproblem
@@ -223,58 +223,61 @@ MIT in each case. |#
   ((let ((operator (combination-known-operator combination)))
      (cond ((normal-primitive-constant? operator) make-call:primitive)
 	   ((or (not operator) (not (procedure? operator))) make-call:unknown)
-	   ((ic-procedure? operator) make-call:ic)
-	   ((closure-procedure? operator) make-call:closure)
-	   ((stack-procedure? operator)
-	    (let ((block (combination-block combination)))
-	      (cond ((stack-block? block) make-call:stack-with-link)
-		    ((ic-block? block)
-		     (error "IC procedure calling stack procedure"
-			    combination))
-		    (else (error "Unknown caller type" block)))))
-	   (else (error "Unknown callee type" operator))))
+	   (else
+	    (case (procedure/type operator)
+	      ((OPEN-INTERNAL) make-call:stack-with-link)
+	      ((OPEN-EXTERNAL) make-call:open-external)
+	      ((CLOSURE) make-call:closure)
+	      ((IC) make-call:ic)
+	      (else (error "Unknown callee type" operator))))))
    combination offset invocation-prefix:null continuation))
 
 ;;;; Reductions
 
 (define (combination:reduction combination offset)
-  (let ((operator (combination-known-operator combination))
+  (let ((callee (combination-known-operator combination))
 	(block (combination-block combination)))
-    (define (choose-generator ic closure stack)
-      ((cond ((ic-block? block) ic)
-	     ((closure-procedure-block? block) closure)
-	     ((stack-procedure-block? block) stack)
-	     (else (error "Unknown caller type" block)))
+    (define (choose-generator ic external internal)
+      ((let ((caller (block-procedure block)))
+	 (cond ((or (not caller) (procedure/ic? caller)) ic)
+	       ((procedure/external? caller) external)
+	       (else internal)))
        combination offset))
-    (cond ((normal-primitive-constant? operator)
+    (cond ((normal-primitive-constant? callee)
 	   (choose-generator reduction:ic->primitive
-			     reduction:closure->primitive
-			     reduction:stack->primitive))
-	  ((or (not operator)
-	       (not (procedure? operator)))
+			     reduction:external->primitive
+			     reduction:internal->primitive))
+	  ((or (not callee)
+	       (not (procedure? callee)))
 	   (choose-generator reduction:ic->unknown
-			     reduction:closure->unknown
-			     reduction:stack->unknown))
-	  ((ic-procedure? operator)
-	   (choose-generator reduction:ic->ic
-			     reduction:closure->ic
-			     reduction:stack->ic))
-	  ((closure-procedure? operator)
-	   (choose-generator reduction:ic->closure
-			     reduction:closure->closure
-			     reduction:stack->closure))
-	  ((stack-procedure? operator)
-	   (choose-generator reduction:ic->stack
-			     reduction:closure->stack
-			     (let ((block* (procedure-block operator)))
-			       (cond ((block-child? block block*)
-				      reduction:stack->child)
-				     ((block-sibling? block block*)
-				      reduction:stack->sibling)
-				     (else
-				      reduction:stack->ancestor)))))
-	  (else (error "Unknown callee type" operator)))))
-
+			     reduction:external->unknown
+			     reduction:internal->unknown))
+	  (else
+	   (case (procedure/type callee)
+	     ((IC)
+	      (choose-generator reduction:ic->ic
+				reduction:external->ic
+				reduction:internal->ic))
+	     ((CLOSURE)
+	      (choose-generator reduction:ic->closure
+				reduction:external->closure
+				reduction:internal->closure))
+	     ((OPEN-EXTERNAL)
+	      (choose-generator reduction:ic->open-external
+				reduction:external->open-external
+				reduction:internal->open-external))
+	     ((OPEN-INTERNAL)
+	      (choose-generator reduction:ic->child
+				reduction:external->child
+				(let ((block* (procedure-block callee)))
+				  (cond ((block-child? block block*)
+					 reduction:internal->child)
+					((block-sibling? block block*)
+					 reduction:internal->sibling)
+					(else
+					 reduction:internal->ancestor)))))
+	     (else (error "Unknown callee type" callee)))))))
+
 (define (reduction:ic->unknown combination offset)
   (make-call:unknown combination offset invocation-prefix:null false))
 
@@ -286,58 +289,67 @@ MIT in each case. |#
 
 (define (reduction:ic->closure combination offset)
   (make-call:closure combination offset invocation-prefix:null false))
-
-(define (reduction:ic->stack combination offset)
-  ;; The callee must be a child of the caller, but in that case it
-  ;; should be a closure -- so this is a logic error.
-  (error "IC procedure calling stack procedure" combination))
 
-(define (reduction:closure->unknown combination offset)
+(define (reduction:ic->open-external combination offset)
+  (make-call:open-external combination offset invocation-prefix:null false))
+
+(define (reduction:ic->child combination offset)
+  (error "Calling internal procedure from IC procedure"))
+
+(define (reduction:external->unknown combination offset)
   (make-call:unknown combination offset invocation-prefix:move-frame-up false))
 
-(define (reduction:closure->ic combination offset)
+(define (reduction:external->ic combination offset)
   (make-call:ic combination offset invocation-prefix:move-frame-up false))
 
-(define (reduction:closure->primitive combination offset)
+(define (reduction:external->primitive combination offset)
   (make-call:primitive combination offset invocation-prefix:move-frame-up
 		       false))
 
-(define (reduction:closure->closure combination offset)
+(define (reduction:external->closure combination offset)
   (make-call:closure combination offset invocation-prefix:move-frame-up false))
 
-(define (reduction:closure->stack combination offset)
-  ;; The callee is known to be a child of the caller because the
-  ;; analyzer prohibits the other cases.
+(define (reduction:external->open-external combination offset)
+  (make-call:open-external combination offset invocation-prefix:move-frame-up
+			   false))
+
+(define (reduction:external->child combination offset)
   (make-call:child combination offset
 		   rtl:make-message-receiver:closure
 		   rtl:message-receiver-size:closure))
-
-(define (reduction:stack->unknown combination offset)
-  (make-call:unknown combination offset invocation-prefix:stack->closure
+
+(define (reduction:internal->unknown combination offset)
+  (make-call:unknown combination offset invocation-prefix:internal->closure
 		     false))
 
-(define (reduction:stack->ic combination offset)
-  (make-call:ic combination offset invocation-prefix:stack->closure false))
+(define (reduction:internal->ic combination offset)
+  (make-call:ic combination offset invocation-prefix:internal->closure false))
 
-(define (reduction:stack->primitive combination offset)
-  (make-call:primitive combination offset invocation-prefix:stack->closure
+(define (reduction:internal->primitive combination offset)
+  (make-call:primitive combination offset invocation-prefix:internal->closure
 		       false))
 
-(define (reduction:stack->closure combination offset)
-  (make-call:closure combination offset invocation-prefix:stack->closure
+(define (reduction:internal->closure combination offset)
+  (make-call:closure combination offset invocation-prefix:internal->closure
 		     false))
 
-(define (reduction:stack->child combination offset)
+(define (reduction:internal->open-external combination offset)
+  (make-call:open-external combination offset
+			   invocation-prefix:internal->closure
+			   false))
+
+(define (reduction:internal->child combination offset)
   (make-call:child combination offset
 		   rtl:make-message-receiver:stack
 		   rtl:message-receiver-size:stack))
 
-(define (reduction:stack->sibling combination offset)
-  (make-call:stack combination offset invocation-prefix:stack->sibling false))
+(define (reduction:internal->sibling combination offset)
+  (make-call:stack combination offset invocation-prefix:internal->sibling
+		   false))
 
-(define (reduction:stack->ancestor combination offset)
+(define (reduction:internal->ancestor combination offset)
   (make-call:stack-with-link combination offset
-			     invocation-prefix:stack->ancestor false))
+			     invocation-prefix:internal->ancestor false))
 
 ;;;; Calls
 
@@ -387,16 +399,26 @@ MIT in each case. |#
 
 (define (make-call:closure combination offset invocation-prefix continuation)
   (make-call:push-operator combination offset
-    (lambda (number-pushed)
-      (let ((operator (combination-known-operator combination)))
-	((if (procedure-rest operator)
-	     rtl:make-invocation:lexpr
-	     rtl:make-invocation:jump)
-	 number-pushed
-	 (invocation-prefix combination number-pushed)
-	 continuation
-	 operator)))))
+    (external-call combination invocation-prefix continuation)))
 
+(define (make-call:open-external combination offset invocation-prefix
+				 continuation)
+  (scfg*node->node!
+   (rtl:make-push (rtl:make-fetch register:environment))
+   (make-call:dont-push-operator combination offset
+     (external-call combination invocation-prefix continuation))))
+
+(define (external-call combination invocation-prefix continuation)
+  (lambda (number-pushed)
+    (let ((operator (combination-known-operator combination)))
+      ((if (procedure-rest operator)
+	   rtl:make-invocation:lexpr
+	   rtl:make-invocation:jump)
+       number-pushed
+       (invocation-prefix combination number-pushed)
+       continuation
+       operator))))
+
 (package (make-call:stack make-call:stack-with-link make-call:child)
 
 (define-export (make-call:stack combination offset invocation-prefix
@@ -449,14 +471,14 @@ MIT in each case. |#
   `(MOVE-FRAME-UP ,number-pushed
 		  ,(block-frame-size (combination-block combination))))
 
-(define (invocation-prefix:stack->closure combination number-pushed)
+(define (invocation-prefix:internal->closure combination number-pushed)
   ;; The message sender will shift the new stack frame down to the
   ;; correct position when it is done, then reset the stack pointer.
   `(APPLY-CLOSURE ,number-pushed
 		  ,(+ number-pushed
 		      (block-frame-size (combination-block combination)))))
 
-(define (invocation-prefix:stack->ancestor combination number-pushed)
+(define (invocation-prefix:internal->ancestor combination number-pushed)
   (let ((block (combination-block combination)))
     `(APPLY-STACK ,number-pushed
 		  ,(+ number-pushed (block-frame-size block))
@@ -466,7 +488,7 @@ MIT in each case. |#
 		     (procedure-block
 		      (combination-known-operator combination)))))))
 
-(define (invocation-prefix:stack->sibling combination number-pushed)
+(define (invocation-prefix:internal->sibling combination number-pushed)
    `(MOVE-FRAME-UP ,number-pushed
 		   ;; -1+ means reuse the existing static link.
 		   ,(-1+ (block-frame-size (combination-block combination)))))
@@ -500,9 +522,8 @@ MIT in each case. |#
 	    (let ((n-parameters (+ (length (procedure-required operator))
 				   (length (procedure-optional operator)))))
 	      (let ((delta (- n-parameters n-operands)))
-		(scfg*scfg->scfg!
-		 (scfg*->scfg! (push-n-unassigned delta))
-		 (finish n-parameters (+ offset delta)))))
+		(scfg*scfg->scfg! (scfg*->scfg! (push-n-unassigned delta))
+				  (finish n-parameters (+ offset delta)))))
 	    (finish n-operands offset))))))
 
 (define (push-n-unassigned n)
@@ -515,8 +536,7 @@ MIT in each case. |#
   (generate:subproblem subproblem offset
     (lambda (offset)
       (scfg*node->node!
-       (rvalue->sexpression (subproblem-value subproblem) offset
-			    rtl:make-push)
+       (rvalue->sexpression (subproblem-value subproblem) offset rtl:make-push)
        (receiver (1+ offset))))))
 
 (define-export make-call:dont-push-operator

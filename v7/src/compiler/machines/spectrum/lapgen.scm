@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 1.136 1987/03/19 00:55:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 1.137 1987/04/12 00:25:26 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -962,7 +962,7 @@ MIT in each case. |#
 
 (define (procedure-header procedure)
   (let ((internal-label (procedure-label procedure)))
-    (append! (if (closure-procedure? procedure)
+    (append! (if (procedure/closure? procedure)
 		 (let ((required (1+ (length (procedure-required procedure))))
 		       (optional (length (procedure-optional procedure)))
 		       (label (procedure-external-label procedure)))

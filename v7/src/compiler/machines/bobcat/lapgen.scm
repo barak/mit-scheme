@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.155 1987/03/20 05:16:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.156 1987/04/12 00:24:56 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -653,24 +653,19 @@ MIT in each case. |#
       (CMP L ,reg:compiled-memtop (A 5))
       (B GE S (@PCR ,gc-label)))))
 
-(define-rule statement
-  (SETUP-CLOSURE-LEXPR (? procedure))
-  (lexpr-header procedure 1))
-
-(define-rule statement
-  (SETUP-STACK-LEXPR (? procedure))
-  (lexpr-header procedure 0))
-
 ;;; Note: do not change the MOVE.W in the setup-lexpr call to a MOVEQ.
 ;;; The setup-lexpr code assumes a fixed calling sequence to compute
-;;; the GC address if that is needed.
+;;; the GC address if that is needed.  This could be changed so that
+;;; the microcode determined how far to back up based on the argument,
+;;; or by examining the calling sequence.
 
-(define (lexpr-header procedure extra)
+(define-rule statement
+  (SETUP-LEXPR (? procedure))
   `(,@(procedure-header procedure false)
     (MOVE W
 	  (& ,(+ (length (procedure-required procedure))
 		 (length (procedure-optional procedure))
-		 extra))
+		 (if (procedure/closure? procedure) 1 0)))
 	  (D 1))
     (MOVEQ (& ,(if (procedure-rest procedure) 1 0)) (D 2))
     (JSR , entry:compiler-setup-lexpr)))
@@ -687,7 +682,7 @@ MIT in each case. |#
 
 (define (procedure-header procedure gc-label)
   (let ((internal-label (procedure-label procedure)))
-    (append! (if (closure-procedure? procedure)
+    (append! (if (procedure/closure? procedure)
 		 (let ((required (1+ (length (procedure-required procedure))))
 		       (optional (length (procedure-optional procedure)))
 		       (label (procedure-external-label procedure)))

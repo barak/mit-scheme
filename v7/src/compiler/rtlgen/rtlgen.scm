@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.7 1987/03/20 05:25:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.8 1987/04/12 00:22:55 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -47,18 +47,7 @@ MIT in each case. |#
 		    quotation
 		    (generate:top-level (quotation-fg-entry quotation))))
 		 quotations)
-       (for-each
-	(lambda (procedure)
-	  (set-procedure-rtl-entry!
-	   procedure
-	   (scfg*node->node!
-	    ((cond ((ic-procedure? procedure) generate:ic-procedure)
-		   ((closure-procedure? procedure) generate:closure-procedure)
-		   ((stack-procedure? procedure) generate:stack-procedure)
-		   (else (error "Unknown procedure type" procedure)))
-	     procedure)
-	    (generate:top-level (procedure-fg-entry procedure)))))
-	procedures)
+       (for-each generate:procedure procedures)
        (for-each (lambda (rnode)
 		   (node-property-remove! rnode generate:node))
 		 *nodes*)))))
@@ -91,24 +80,22 @@ MIT in each case. |#
 (define-integrable (generate:next-is-null? next rest-generator)
   (and (not next) (not rest-generator)))
 
-(define (generate:ic-procedure procedure)
-  (make-null-cfg))
-
-(define (generate:closure-procedure procedure)
-  (scfg*scfg->scfg! (if (or (not (null? (procedure-optional procedure)))
-			    (procedure-rest procedure))
-			((if (closure-procedure-needs-operator? procedure)
-			     rtl:make-setup-closure-lexpr
-			     rtl:make-setup-stack-lexpr)
-			 procedure)
-			(rtl:make-procedure-heap-check procedure))
-		    (setup-stack-frame procedure)))
-
-(define (generate:stack-procedure procedure)
-  (scfg*scfg->scfg! (if (procedure-rest procedure)
-			(rtl:make-setup-stack-lexpr procedure)
-			(rtl:make-procedure-heap-check procedure))
-		    (setup-stack-frame procedure)))
+(define (generate:procedure procedure)
+  (set-procedure-rtl-entry!
+   procedure
+   (let ((body (generate:top-level (procedure-fg-entry procedure))))
+     (if (procedure/ic? procedure)
+	 body
+	 (scfg*node->node!
+	  (scfg*scfg->scfg!
+	   ((if (or (procedure-rest procedure)
+		    (and (procedure/closure? procedure)
+			 (not (null? (procedure-optional procedure)))))
+		rtl:make-setup-lexpr
+		rtl:make-procedure-heap-check)
+	    procedure)
+	   (setup-stack-frame procedure))
+	  body)))))
 
 (define (setup-stack-frame procedure)
   (let ((block (procedure-block procedure)))
@@ -125,15 +112,6 @@ MIT in each case. |#
 	     (rtl:make-cell-cons (rtl:make-fetch locative))))
 	  (make-null-cfg)))
 
-    (define (close-letrec-procedures names values)
-      (scfg*->scfg!
-       (map (lambda (name value)
-	      (if (and (procedure? value)
-		       (closure-procedure? value))
-		  (letrec-close block name value)
-		  (make-null-cfg)))
-	    names values)))
-
     (let ((names (procedure-names procedure))
 	  (values (procedure-values procedure)))
       (scfg-append! (setup-bindings names values '())
@@ -144,7 +122,13 @@ MIT in each case. |#
 		      (if rest
 			  (cellify-variable rest)
 			  (make-null-cfg)))
-		    (close-letrec-procedures names values)))))
+		    (scfg*->scfg!
+		     (map (lambda (name value)
+			    (if (and (procedure? value)
+				     (procedure/closure? value))
+				(letrec-close block name value)
+				(make-null-cfg)))
+			  names values))))))
 
 (define (setup-bindings names values pushes)
   (if (null? names)
@@ -159,12 +143,15 @@ MIT in each case. |#
   (cond ((constant? value)
 	 (rtl:make-constant (constant-value value)))
 	((procedure? value)
-	 (cond ((closure-procedure? value)
-		(make-closure-cons value (rtl:make-constant '())))
-	       ((ic-procedure? value)
-		(make-ic-cons value))
-	       (else
-		(error "Bad letrec procedure value" value))))
+	 (case (procedure/type value)
+	   ((CLOSURE)
+	    (make-closure-cons value (rtl:make-constant '())))
+	   ((IC)
+	    (make-ic-cons value))
+	   ((OPEN-EXTERNAL OPEN-INTERNAL)
+	    (error "Letrec value is open procedure" value))
+	   (else
+	    (error "Unknown procedure type" value))))
 	(else
 	 (error "Unknown letrec binding value" value))))
 
@@ -246,33 +233,6 @@ MIT in each case. |#
 				   expression))))))
 		      (generate:next next offset rest-generator))))
 
-(define (assignment:value-register block rvalue next offset
-				   rest-generator rvalue->sexpression)
-  (if (not (generate:next-is-null? next rest-generator))
-      (error "Return node has next"))
-  (scfg*node->node!
-   (scfg*scfg->scfg! (if (value-temporary? rvalue)
-			 (make-null-cfg)
-			 (rvalue->sexpression rvalue offset
-			   (lambda (expression)
-			     (rtl:make-assignment register:value expression))))
-		     (if (stack-procedure-block? block)
-			 (rtl:make-message-sender:value
-			  (+ offset (block-frame-size block)))
-			 (scfg-append!
-			  (if (closure-procedure-block? block)
-			      (rtl:make-pop-frame (block-frame-size block))
-			      (make-null-cfg))
-			  (rtl:make-return))))
-   (generate:next next offset rest-generator)))
-
-(define-assignment value-ignore-tag
-  (lambda (block value-ignore rvalue next offset rest-generator
-		 rvalue->sexpression)
-    (if (not (generate:next-is-null? next rest-generator))
-	(error "Return node has next"))
-    (generate:next next offset rest-generator)))
-
 (define-assignment temporary-tag
   (lambda (block temporary rvalue next offset rest-generator
 		 rvalue->sexpression)
@@ -290,6 +250,33 @@ MIT in each case. |#
 				  rest-generator rvalue->sexpression))
       (else
        (error "Unknown temporary type" temporary)))))
+
+(define (assignment:value-register block rvalue next offset
+				   rest-generator rvalue->sexpression)
+  (if (not (generate:next-is-null? next rest-generator))
+      (error "Return node has next"))
+  (scfg*node->node!
+   (scfg*scfg->scfg! (if (value-temporary? rvalue)
+			 (make-null-cfg)
+			 (rvalue->sexpression rvalue offset
+			   (lambda (expression)
+			     (rtl:make-assignment register:value expression))))
+		     (if (stack-block? block)
+			 (if (stack-parent? block)
+			     (rtl:make-message-sender:value
+			      (+ offset (block-frame-size block)))
+			     (scfg*scfg->scfg!
+			      (rtl:make-pop-frame (block-frame-size block))
+			      (rtl:make-return)))
+			 (rtl:make-return)))
+   (generate:next next offset rest-generator)))
+
+(define-assignment value-ignore-tag
+  (lambda (block value-ignore rvalue next offset rest-generator
+		 rvalue->sexpression)
+    (if (not (generate:next-is-null? next rest-generator))
+	(error "Return node has next"))
+    (generate:next next offset rest-generator)))
 
 ;;;; Predicates
 
@@ -400,14 +387,17 @@ MIT in each case. |#
 
 (define-rvalue->expression procedure-tag
   (lambda (procedure offset scfg-append! receiver)
-    (cond ((ic-procedure? procedure) (receiver (make-ic-cons procedure)))
-	  ((closure-procedure? procedure)
-	   (make-closure-environment procedure offset scfg-append!
-	     (lambda (environment)
-	       (receiver (make-closure-cons procedure environment)))))
-	  ((stack-procedure? procedure)
-	   (error "RVALUE->EXPRESSION: Stack procedure reference" procedure))
-	  (else (error "Unknown procedure type" procedure)))))
+    (case (procedure/type procedure)
+      ((CLOSURE)
+       (make-closure-environment procedure offset scfg-append!
+	 (lambda (environment)
+	   (receiver (make-closure-cons procedure environment)))))
+      ((IC)
+       (receiver (make-ic-cons procedure)))
+      ((OPEN-EXTERNAL OPEN-INTERNAL)
+       (error "Reference to open procedure" procedure))
+      (else
+       (error "Unknown procedure type" procedure)))))
 
 (define (make-ic-cons procedure)
   ;; IC procedures have their entry points linked into their headers

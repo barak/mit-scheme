@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.100 1987/03/20 05:14:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.101 1987/04/12 00:22:23 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -178,8 +178,7 @@ MIT in each case. |#
   (stack-invalidate!)
   (stack-pointer-invalidate!))
 
-(define-stack-trasher 'SETUP-CLOSURE-LEXPR)
-(define-stack-trasher 'SETUP-STACK-LEXPR)
+(define-stack-trasher 'SETUP-LEXPR)
 (define-stack-trasher 'MESSAGE-SENDER:VALUE)
 
 (define-cse-method 'INTERPRETER-CALL:ENCLOSE
