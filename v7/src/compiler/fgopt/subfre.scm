@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/subfre.scm,v 1.1 1988/12/12 21:32:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/subfre.scm,v 1.2 1989/04/03 22:03:55 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -76,7 +76,7 @@ MIT in each case. |#
     ((APPLICATION)
      (walk-next
       (snode-next node)
-      (eq-set-union (walk-rvalue (application-operator node))
+      (eq-set-union (walk-operator (application-operator node))
 		    (map-union walk-rvalue (application-operands node)))))
     ((VIRTUAL-RETURN)
      (walk-next
@@ -93,12 +93,12 @@ MIT in each case. |#
     ((ASSIGNMENT)
      (walk-next
       (snode-next node)
-      (eq-set-union (walk-lvalue (assignment-lvalue node))
+      (eq-set-union (walk-lvalue (assignment-lvalue node) walk-rvalue)
 		    (walk-rvalue (assignment-rvalue node)))))
     ((DEFINITION)
      (walk-next
       (snode-next node)
-      (eq-set-union (walk-lvalue (definition-lvalue node))
+      (eq-set-union (walk-lvalue (definition-lvalue node) walk-rvalue)
 		    (walk-rvalue (definition-rvalue node)))))
     ((TRUE-TEST)
      (walk-next (pnode-consequent node)
@@ -114,9 +114,23 @@ MIT in each case. |#
 	(loop (cdr items)
 	      (eq-set-union (procedure (car items)) set)))))
 
+(define (walk-operator rvalue)
+  (enumeration-case rvalue-type (tagged-vector/index rvalue)
+    ((REFERENCE) (walk-lvalue (reference-lvalue rvalue) walk-operator))
+    ((PROCEDURE)
+     (if (procedure-continuation? rvalue)
+	 (walk-next (continuation/entry-node rvalue) '())
+	 (map-union (lambda (procedure)
+		      (list-transform-negative
+			  (block-free-variables (procedure-block procedure))
+			lvalue-integrated?))
+		    (eq-set-union (list rvalue)
+				  (procedure-callees rvalue)))))
+    (else '())))
+
 (define (walk-rvalue rvalue)
   (enumeration-case rvalue-type (tagged-vector/index rvalue)
-    ((REFERENCE) (walk-lvalue (reference-lvalue rvalue)))
+    ((REFERENCE) (walk-lvalue (reference-lvalue rvalue) walk-rvalue))
     ((PROCEDURE)
      (if (procedure-continuation? rvalue)
 	 (walk-next (continuation/entry-node rvalue) '())
@@ -125,7 +139,7 @@ MIT in each case. |#
 	   lvalue-integrated?)))
     (else '())))
 
-(define (walk-lvalue lvalue)
+(define (walk-lvalue lvalue walk-rvalue)
   (let ((value (lvalue-known-value lvalue)))
     (cond ((not value) (list lvalue))
 	  ((lvalue-integrated? lvalue) (walk-rvalue value))
