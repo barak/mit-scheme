@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.27 1987/04/29 13:19:32 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.28 1987/05/15 18:20:45 cph Exp $
 
 (declare (usual-integrations))
 
@@ -457,7 +457,7 @@
 	       SYSTEM-PAIR-CDR				;$87
 	       SYSTEM-PAIR-SET-CAR!			;$88
 	       SYSTEM-PAIR-SET-CDR!			;$89
-	       #F					;$8A
+	       STRING-HASH-MOD				;$8A
 	       #F					;$8B
 	       SET-CELL-CONTENTS!			;$8C
 	       &MAKE-OBJECT				;$8D
@@ -854,4 +854,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.27 1987/04/29 13:19:32 cph Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.28 1987/05/15 18:20:45 cph Exp $"

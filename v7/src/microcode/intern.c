@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.40 1987/05/11 17:52:27 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.41 1987/05/15 18:19:45 cph Rel $
 
    Utilities for manipulating symbols. 
  */
@@ -241,7 +241,7 @@ Built_In_Primitive(Prim_Intern_Character_List, 1,
 
   return string_to_symbol(list_to_string(Arg1));
 }
-
+
 /* (STRING-HASH STRING)
    Return a hash value for a string.  This uses the hashing
    algorithm used for interning symbols.  It is intended for use by
@@ -255,6 +255,16 @@ Built_In_Primitive(Prim_String_Hash, 1, "STRING-HASH", 0x83)
   return Hash(Arg1);
 }
 
+Built_In_Primitive (Prim_string_hash_mod, 2, "STRING-HASH-MOD", 0x8A)
+{
+  Primitive_2_Args ();
+  CHECK_ARG (1, STRING_P);
+
+  return
+    (MAKE_UNSIGNED_FIXNUM
+     ((scheme_string_hash (Arg1)) % (arg_nonnegative_integer (2))));
+}
+
 /* (CHARACTER-LIST-HASH LIST)
    Takes a list of ASCII codes for characters and returns a hash
    code for them.  This uses the hashing function used to intern
