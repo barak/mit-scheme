@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.98 1992/03/13 12:01:04 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.99 1992/03/13 23:58:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -160,8 +160,9 @@
 (define (window-screen window)
   (editor-frame-screen (window-root-window window)))
 
-(define-integrable (screen-visible? screen)
-  (eq? 'VISIBLE (screen-visibility screen)))
+(define (screen-visible? screen)
+  (or (eq? 'VISIBLE (screen-visibility screen))
+      (eq? 'PARTIALLY-OBSCURED (screen-visibility screen))))
 
 (define-integrable (screen-deleted? screen)
   (eq? 'DELETED (screen-visibility screen)))
