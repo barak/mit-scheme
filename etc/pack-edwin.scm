@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pack-edwin.scm,v 1.7 1993/09/04 00:50:39 gjr Exp $
+$Id: pack-edwin.scm,v 1.8 1993/10/16 17:56:21 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -38,6 +38,7 @@ MIT in each case. |#
   (pack-binaries output
                  '(("/scheme/edwin"
 		    "make.com"
+		    "/scheme/lib/options/rbtree.com"
 		    "edwin.bcon"
 		    "edwin.bldr"
 		    "edwin.bad"
