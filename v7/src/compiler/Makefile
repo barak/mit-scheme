@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.15 2000/12/06 02:58:24 cph Exp $
+# $Id: Makefile,v 1.16 2000/12/06 03:01:20 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -44,7 +44,7 @@ mostlyclean:
 	    echo "making $@ in $${SUBDIR}"; \
 	    (cd $${SUBDIR} && rm -f *.bin *.ext *.com *.bci); \
 	done
-	if test -d machine/.; then \
+	@if test -d machine/.; then \
 	    echo "making $@ in machine"; \
 	    (cd machine && rm -f *.bin *.ext *.com *.bci); \
 	fi
