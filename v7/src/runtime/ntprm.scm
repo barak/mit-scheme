@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.35 2001/03/21 05:39:50 cph Exp $
+$Id: ntprm.scm,v 1.36 2001/05/09 03:17:05 cph Exp $
 
 Copyright (c) 1992-2001 Massachusetts Institute of Technology
 
@@ -16,8 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Miscellaneous Win32 Primitives
@@ -25,36 +25,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (declare (usual-integrations))
 
-(define (file-directory? filename)
-  ((ucode-primitive file-directory? 1)
-   (->namestring (merge-pathnames filename))))
-
-(define (file-symbolic-link? filename)
-  ((ucode-primitive file-symlink? 1)
-   (->namestring (merge-pathnames filename))))
-
-(define (file-access filename amode)
-  ((ucode-primitive file-access 2)
-   (->namestring (merge-pathnames filename))
-   amode))
-
-(define (file-readable? filename)
-  (file-access filename 4))
-
-(define (file-writeable? filename)
-  ((ucode-primitive file-access 2)
-   (let ((pathname (merge-pathnames filename)))
-     (let ((filename (->namestring pathname)))
-       (if ((ucode-primitive file-exists? 1) filename)
-	   filename
-	   (directory-namestring pathname))))
-   2))
-;; upwards compatability
-(define file-writable? file-writeable?)
-
-(define (file-executable? filename)
-  (file-access filename 1))
-
 (define (file-modes filename)
   ((ucode-primitive file-modes 1) (->namestring (merge-pathnames filename))))
 
@@ -136,10 +106,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (file-time->universal-time time) (+ time epoch))
 (define (universal-time->file-time time) (- time epoch))
-
-(define (file-touch filename)
-  ((ucode-primitive file-touch 1)
-   (->namestring (merge-pathnames filename))))
 
 (define get-environment-variable)
 (define set-environment-variable!)
@@ -291,14 +257,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define dos/current-user-name current-user-name)
 (define dos/current-home-directory current-home-directory)
 
-(define (make-directory name)
-  ((ucode-primitive directory-make 1)
-   (->namestring (directory-pathname-as-file (merge-pathnames name)))))
-
-(define (delete-directory name)
-  ((ucode-primitive directory-delete 1)
-   (->namestring (directory-pathname-as-file (merge-pathnames name)))))
-
 (define (temporary-file-pathname #!optional directory)
   (let ((root
 	 (merge-pathnames "_scm_tmp"

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.23 1999/12/21 18:50:47 cph Exp $
+$Id: sfile.scm,v 14.24 2001/05/09 03:17:11 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Simple File Operations
@@ -41,6 +42,69 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	result)))
 
 (define file-exists? file-exists-indirect?)
+
+(define file-type-direct)
+(define file-type-indirect)
+(let ((make-file-type
+       (lambda (procedure)
+	 (lambda (filename)
+	   (let ((n (procedure (->namestring (merge-pathnames filename)))))
+	     (and n
+		  (let ((types
+			 '#(REGULAR
+			    DIRECTORY
+			    UNIX-SYMBOLIC-LINK
+			    UNIX-CHARACTER-DEVICE
+			    UNIX-BLOCK-DEVICE
+			    UNIX-NAMED-PIPE
+			    UNIX-SOCKET
+			    OS2-NAMED-PIPE
+			    WIN32-NAMED_PIPE)))
+		    (if (fix:< n (vector-length types))
+			(vector-ref types n)
+			'UNKNOWN))))))))
+  (set! file-type-direct
+	(make-file-type (ucode-primitive file-type-direct 1)))
+  (set! file-type-indirect
+	(make-file-type (ucode-primitive file-type-indirect 1))))
+
+(define (file-directory? filename)
+  (eq? 'DIRECTORY (file-type-indirect filename)))
+
+(define (file-symbolic-link? filename)
+  (eq? 'UNIX-SYMBOLIC-LINK (file-type-direct filename)))
+
+(define (file-access filename amode)
+  ((ucode-primitive file-access 2)
+   (->namestring (merge-pathnames filename))
+   amode))
+
+(define (file-readable? filename)
+  (file-access filename 4))
+
+(define (file-writeable? filename)
+  ((ucode-primitive file-access 2)
+   (let ((pathname (merge-pathnames filename)))
+     (let ((filename (->namestring pathname)))
+       (if ((ucode-primitive file-exists? 1) filename)
+	   filename
+	   (directory-namestring pathname))))
+   2))
+(define file-writable? file-writeable?) ;upwards compatability
+
+(define (file-executable? filename)
+  (file-access filename 1))
+
+(define (file-touch filename)
+  ((ucode-primitive file-touch 1) (->namestring (merge-pathnames filename))))
+
+(define (make-directory name)
+  ((ucode-primitive directory-make 1)
+   (->namestring (directory-pathname-as-file (merge-pathnames name)))))
+
+(define (delete-directory name)
+  ((ucode-primitive directory-delete 1)
+   (->namestring (directory-pathname-as-file (merge-pathnames name)))))
 
 (define (rename-file from to)
   ((ucode-primitive file-rename) (->namestring (merge-pathnames from))
