@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.38 1994/11/20 00:57:29 cph Exp $
+$Id: option.c,v 1.39 1994/11/27 23:05:09 cph Exp $
 
 Copyright (c) 1990-94 Massachusetts Institute of Technology
 
@@ -86,7 +86,7 @@ extern void EXFUN (termination_init_error, (void));
 #  define FILE_ABSOLUTE(filename) (((filename) [0]) == SUB_DIRECTORY_DELIMITER)
 #endif
 
-#define FILE_READABLE(filename) ((OS_file_access ((filename), 4)) >= 0)
+#define FILE_READABLE(filename) (OS_file_access ((filename), 4))
 
 static int option_summary;
 static int option_large_sizes;
