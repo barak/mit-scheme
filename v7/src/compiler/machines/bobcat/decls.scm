@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.22 1987/08/07 17:44:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.23 1987/08/23 03:34:41 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -107,11 +107,13 @@ MIT in each case. |#
 				  filenames/dependency-chain/base)
 
 (file-dependency/integration/chain
- (filename/append "machines/bobcat" "dassm1" "infutl"))
+ (append (filename/append "machines/bobcat" "dassm1")
+	 (filename/append "base" "infutl")))
 
 (file-dependency/integration/join
  (filename/append "machines/bobcat" "dassm2" "dassm3")
- (filename/append "machines/bobcat" "dassm1" "infutl"))
+ (append (filename/append "machines/bobcat" "dassm1")
+	 (filename/append "base" "infutl")))
 
 ;;;; Lap level integration and expansion dependencies
 
