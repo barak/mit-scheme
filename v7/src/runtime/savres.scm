@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.14 1990/08/16 08:41:51 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.15 1990/11/14 13:27:28 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -52,7 +52,8 @@ MIT in each case. |#
 (define (initialize-package!)
   (set! disk-save (setup-image disk-save/kernel))
   (set! dump-world (setup-image dump-world/kernel))
-  unspecific)
+  (set! hook/process-command-line default/process-command-line)
+  (add-event-receiver! event:after-restart process-command-line))
 
 (define disk-save)
 (define dump-world)
@@ -86,6 +87,22 @@ MIT in each case. |#
 	       (else
 		(event-distributor/invoke! event:after-restart)
 		true)))))))
+
+(define-primitives
+  (get-unused-command-line 0))
+
+(define (process-command-line)
+  (let ((unused-command-line
+	 (and (implemented-primitive-procedure? get-unused-command-line)
+	      (get-unused-command-line))))
+    (if unused-command-line
+	(hook/process-command-line unused-command-line))))
+
+(define hook/process-command-line)
+
+(define (default/process-command-line unused-command-line)
+  (if (positive? (vector-length unused-command-line))
+      (warn "unused command-line arguments" unused-command-line)))
 
 (define (disk-save/kernel filename after-suspend after-restore)
   ((without-interrupts
