@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: laterew.scm,v 1.10 1995/08/16 20:13:18 adams Exp $
+$Id: laterew.scm,v 1.11 1995/08/19 01:32:59 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -46,8 +46,8 @@ MIT in each case. |#
 	(lambda () (%matchup bindings '(handler) '(cdr form)))
       (lambda (names code)
 	`(DEFINE ,proc-name
-	   (LET ((HANDLER (LAMBDA ,names ,@body)))
-	     (NAMED-LAMBDA (,proc-name FORM)
+	   (NAMED-LAMBDA (,proc-name FORM)
+	     (LET ((HANDLER (LAMBDA ,names ,@body)))
 	       (LATEREW/REMEMBER ,code FORM))))))))
 
 (define-late-rewriter LOOKUP (name)
@@ -89,7 +89,7 @@ MIT in each case. |#
   (cond ((and (QUOTE/? rator)
 	      (rewrite-operator/late? (quote/text rator)))
 	 => (lambda (handler)
-	      (handler (laterew/expr* rands))))
+	      (handler form (laterew/expr* rands))))
 	(else
 	 `(CALL ,(laterew/expr rator)
 		,@(laterew/expr* rands)))))
@@ -138,7 +138,7 @@ MIT in each case. |#
 			     (LOOKUP ,name)
 			     (QUOTE ,(n-bits constant-rand)))
 		      `(QUOTE #F))))
-	       #|
+	       #|			;
 	       ;; Always open code as %small-fixnum?
 	       ;; So that generic arithmetic can be
 	       ;; recognized=>optimized at the RTL level
@@ -156,7 +156,8 @@ MIT in each case. |#
 			 (QUOTE #F)
 			 (LOOKUP ,name)
 			 (QUOTE ,n-bits)))))))
-    (lambda (rands)
+    (lambda (form rands)
+      (define (equivalent form*) (laterew/remember form* form))
       (let ((cont (first rands))
 	    (x    (second rands))
 	    (y    (third rands)))
@@ -197,10 +198,11 @@ MIT in each case. |#
 					       (QUOTE #f)
 					       (QUOTE ,x-value)
 					       (LOOKUP ,y-name)))
-				      (CALL (QUOTE ,%genop)
-					    ,cont
-					    (QUOTE ,x-value)
-					    (LOOKUP ,y-name)))))))))
+				      ,(equivalent
+					`(CALL (QUOTE ,%genop)
+					       ,cont
+					       (QUOTE ,x-value)
+					       (LOOKUP ,y-name))))))))))
 		
 		((form/number? y)
 		 => (lambda (y-value)
@@ -212,10 +214,11 @@ MIT in each case. |#
 					(QUOTE #f)
 					(LOOKUP ,x-name)
 					(QUOTE ,y-value)))
-			       (CALL (QUOTE ,%genop)
-				     ,cont
-				     (LOOKUP ,x-name)
-				     (QUOTE ,y-value)))))))
+			       ,(equivalent
+				 `(CALL (QUOTE ,%genop)
+					,cont
+					(LOOKUP ,x-name)
+					(QUOTE ,y-value))))))))
 		(right-sided?
 		 `(CALL (QUOTE ,%genop) ,cont ,x ,y))
                 (else
@@ -230,10 +233,11 @@ MIT in each case. |#
 				   (QUOTE #F)
 				   (LOOKUP ,x-name)
 				   (LOOKUP ,y-name)))
-			  (CALL (QUOTE ,%genop)
-				,cont
-				(LOOKUP ,x-name)
-				(LOOKUP ,y-name))))))))))))
+			  ,(equivelent
+			    `(CALL (QUOTE ,%genop)
+				   ,cont
+				   (LOOKUP ,x-name)
+				   (LOOKUP ,y-name)))))))))))))
 
 (define *late-rewritten-operators* (make-eq-hash-table))
 

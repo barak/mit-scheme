@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: earlyrew.scm,v 1.12 1995/08/16 18:16:35 adams Exp $
+$Id: earlyrew.scm,v 1.13 1995/08/19 01:33:51 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -51,8 +51,9 @@ MIT in each case. |#
 	(lambda () (%matchup bindings '(handler) '(cdr form)))
       (lambda (names code)
 	`(DEFINE ,proc-name
-	   (LET ((HANDLER (LAMBDA ,names ,@body)))
-	     (NAMED-LAMBDA (,proc-name FORM)
+	   (NAMED-LAMBDA (,proc-name FORM)
+	     ;; FORM is in scope in handler
+	     (LET ((HANDLER (LAMBDA ,names ,@body)))
 	       (EARLYREW/REMEMBER ,code FORM))))))))
 
 (define-early-rewriter LOOKUP (name)
@@ -73,7 +74,7 @@ MIT in each case. |#
 	      (if (not (equal? cont '(QUOTE #F)))
 		  (internal-error "Early rewrite done after CPS conversion?"
 				  cont))
-	      (apply handler (earlyrew/expr* rands))))
+	      (apply handler form (earlyrew/expr* rands))))
 	(else
 	 (default))))
 
@@ -129,6 +130,9 @@ MIT in each case. |#
 (define (earlyrew/remember new old)
   (code-rewrite/remember new old))
 
+(define (earlyrew/remember* new old)
+  (code-rewrite/remember new old))
+
 (define (earlyrew/new-name prefix)
   (new-variable prefix))
 
@@ -145,8 +149,8 @@ MIT in each case. |#
 		       (make-primitive-procedure operator-name-or-object))
 		   handler))
 
-(define (earlyrew/nothing-special x y)
-  x y					; ignored
+(define (earlyrew/nothing-special form x y)
+  form x y				; ignored
   false)
 
 (define (earlyrew/binaryop op &op-name %fixop %genop n-bits
@@ -175,7 +179,7 @@ MIT in each case. |#
 		  machine-fixnum?
 		  (lambda (value)
 		    (small-fixnum? value n-bits)))))
-    (lambda (x y)
+    (lambda (form x y)
       (cond ((form/number? x)
 	     => (lambda (x-value)
 		  (cond ((form/number? y)
@@ -184,7 +188,7 @@ MIT in each case. |#
 				     (QUOTE #F)
 				     (QUOTE ,x-value)
 				     (QUOTE ,y-value))))
-			((optimize-x x-value y))
+			((optimize-x form x-value y))
 			((not (test x-value))
 			 `(CALL (QUOTE ,%genop)
 				(QUOTE #F)
@@ -216,7 +220,7 @@ MIT in each case. |#
 
 	    ((form/number? y)
 	     => (lambda (y-value)
-		  (cond ((optimize-y x y-value))
+		  (cond ((optimize-y form x y-value))
 			((not (test y-value))
 			 `(CALL (QUOTE ,%genop)
 				(QUOTE #F)
@@ -261,11 +265,13 @@ MIT in each case. |#
 
 (define-rewrite/early '&+
   (earlyrew/binaryop + '&+ fix:+ %+ 1
-		     (lambda (x-value y)
+		     (lambda (form x-value y)
+		       form		; ignored
 		       (and (zero? x-value)
 			    (exact? x-value)
 			    y))
-		     (lambda (x y-value)
+		     (lambda (form x y-value)
+		       form		; ignored
 		       (and (zero? y-value)
 			    (exact? y-value)
 			    x))))
@@ -273,7 +279,8 @@ MIT in each case. |#
 (define-rewrite/early '&-
   (earlyrew/binaryop - '&- fix:- %- 1
 		     earlyrew/nothing-special
-		     (lambda (x y-value)
+		     (lambda (form x y-value)
+		       form		;ignored
 		       (and (zero? y-value)
 			    (exact? y-value)
 			    x))))
@@ -283,27 +290,29 @@ MIT in each case. |#
   ;; When dividing by -1 it can only overflow when the value is the
   ;; most negative fixnum (-2^(word-size-1))
   (earlyrew/binaryop careful/quotient 'QUOTIENT fix:quotient %quotient 1
-		     (lambda (x-value y)
-		       y		; ignored
+		     (lambda (form x-value y)
+		       form y		; ignored
 		       (and (zero? x-value) `(QUOTE 0)))
-		     (lambda (x y-value)
+		     (lambda (form x y-value)
+		       form		; ignored
 		       (cond ((zero? y-value)
 			      (user-error "quotient: Division by zero"
 					  x y-value))
 			     ((= y-value 1)
 			      x)
 			     ((= y-value -1)
-			      (earlyrew/negate x))
+			      (earlyrew/negate form x))
 			     (else
 			      false)))
 		     true))
 		     
 (define-rewrite/early 'REMAINDER
   (earlyrew/binaryop careful/remainder 'REMAINDER fix:remainder %remainder 0
-		     (lambda (x-value y)
-		       y		; ignored
+		     (lambda (form x-value y)
+		       form y		; ignored
 		       (and (zero? x-value) `(QUOTE 0)))
-		     (lambda (x y-value)
+		     (lambda (form x y-value)
+		       form		; ignored
 		       (cond ((zero? y-value)
 			      (user-error "remainder: Division by zero"
 					  x y-value))
@@ -315,7 +324,7 @@ MIT in each case. |#
 
 (define earlyrew/negate
   (let ((&- (make-primitive-procedure '&-)))
-    (lambda (z)
+    (lambda (form z)
       ;; z is assumed to be non-constant
       (if *earlyrew-expand-genarith?*
 	  (let ((z-name (earlyrew/new-name 'Z)))
@@ -338,14 +347,17 @@ MIT in each case. |#
 (define-rewrite/early '&*
   (let ((&* (make-primitive-procedure '&*)))
 
-    (define (by-zero expression zero-value)
-      (if *earlyrew/maximize-exactness?*
-	  `(IF (CALL (QUOTE ,eq?) (QUOTE #F) ,expression (QUOTE 0))
-	       (QUOTE 0)
-	       (QUOTE 0.0))
-	  `(BEGIN ,expression (QUOTE ,zero-value))))
+    (lambda (form x y)
+      (define (equivalent form*)
+	(earlyrew/remember* form* form))
 
-    (lambda (x y)
+      (define (by-zero expression zero-value)
+	(if *earlyrew/maximize-exactness?*
+	    `(IF (CALL (QUOTE ,eq?) (QUOTE #F) ,expression (QUOTE 0))
+		 ,(equivalent `(QUOTE 0))
+		 ,(equivalent `(QUOTE 0.0)))
+	    `(BEGIN ,expression ,(equivalent `(QUOTE ,zero-value)))))
+
       (define (unexpanded)
 	`(CALL (QUOTE ,&*) (QUOTE #F) ,x ,y))
       (define (out-of-line)
@@ -360,7 +372,7 @@ MIT in each case. |#
 			((eqv? x-value 1) 
 			 y)
 			((eqv? x-value -1)
-			 (earlyrew/negate y))
+			 (earlyrew/negate form y))
 			((good-factor? x-value)
 			 (if (not *earlyrew-expand-genarith?*)
 			     (unexpanded)
@@ -390,7 +402,7 @@ MIT in each case. |#
 			((eqv? y-value 1)
 			 x)
 			((eqv? y-value -1)
-			 (earlyrew/negate x))
+			 (earlyrew/negate form x))
 			((good-factor? y-value)
 			 (if (not *earlyrew-expand-genarith?*)
 			     (unexpanded)
@@ -422,7 +434,7 @@ MIT in each case. |#
 (define-rewrite/early '&> (earlyrew/binaryop > '&> fix:> %> 1))
 
 (define-rewrite/early '&/
-  (lambda (x y)
+  (lambda (form x y)
     (define (out-of-line x y)
       `(CALL (QUOTE ,%/) (QUOTE #F) ,x ,y))
     (cond ((form/number? x)
@@ -444,7 +456,7 @@ MIT in each case. |#
 		      ((= y-value 1)
 		       x)
 		      ((= y-value -1)
-		       (earlyrew/negate x))
+		       (earlyrew/negate form x))
 		      (else
 		       (out-of-line x y)))))
 	  (else
@@ -455,14 +467,15 @@ MIT in each case. |#
 (let ((unary-rewrite
        (lambda (binary-name rand2)
 	 (let ((binary-operation (make-primitive-procedure binary-name)))
-	   (lambda (rand1)
+	   (lambda (form rand1)
 	     ((rewrite-operator/early? binary-operation)
+	      form
 	      rand1
 	      `(QUOTE ,rand2))))))
       (special-rewrite
        (lambda (binary-name rand2)
 	 (let ((binary-operation (make-primitive-procedure binary-name)))
-	   (lambda (rand1)
+	   (lambda (form rand1)
 	     `(CALL (QUOTE ,binary-operation)
 		    (QUOTE #F)
 		    ,rand1
@@ -470,7 +483,7 @@ MIT in each case. |#
       (special-rewrite/left
        (lambda (binary-name rand1)
 	 (let ((binary-operation (make-primitive-procedure binary-name)))
-	   (lambda (rand2)
+	   (lambda (form rand2)
 	     `(CALL (QUOTE ,binary-operation)
 		    (QUOTE #F)
 		    (QUOTE ,rand1)
@@ -507,7 +520,7 @@ MIT in each case. |#
 (define-rewrite/early 'FLONUM-ABS
   (let ((flo:> (make-primitive-procedure 'FLONUM-GREATER?))
 	(flo:- (make-primitive-procedure 'FLONUM-SUBTRACT)))
-    (lambda (x)
+    (lambda (form x)
       (let ((x-name (earlyrew/new-name 'X)))
 	(bind x-name x
 	      `(IF (CALL (QUOTE ,flo:>) (QUOTE #F) (QUOTE 0.) (LOOKUP ,x-name))
@@ -521,7 +534,7 @@ MIT in each case. |#
 (let ((allocation-rewriter
        (lambda (name out-of-line limit)
 	 (let ((primitive (make-primitive-procedure name)))
-	   (lambda (size)
+	   (lambda (form size)
 	     (define (default)
 	       `(CALL (QUOTE ,out-of-line) (QUOTE #F) ,size))
 	     (cond ((form/number? size)
@@ -544,7 +557,7 @@ MIT in each case. |#
 
 (define-rewrite/early 'VECTOR-CONS
   (let ((primitive (make-primitive-procedure 'VECTOR-CONS)))
-    (lambda (size fill)
+    (lambda (form size fill)
       (define (default)
 	`(CALL (QUOTE ,%vector-cons) (QUOTE #F) ,size ,fill))
       (cond ((form/number? size)
@@ -560,8 +573,11 @@ MIT in each case. |#
 				 %check/full %check/index
 				 %unchecked)
   (let ((object-tag (machine-tag object-tag-name)))
-    (lambda (vec index #!optional value)
-      
+    (lambda (form vec index #!optional value)
+
+      (define (equivalent form*)
+	(earlyrew/remember* form* form))
+
       (define (bind+ name value body)
 	(if name (bind name value body) body))
 
@@ -585,23 +601,24 @@ MIT in each case. |#
 		       (else #F)))
 		(unchecked
 		 (lambda ()
-		   `(CALL (QUOTE ,%unchecked) (QUOTE #F)
-			  (LOOKUP ,vec-name)
-			  (LOOKUP ,idx-name)
-			  ,@extra)))
+		   (equivalent `(CALL (QUOTE ,%unchecked) (QUOTE #F)
+				      (LOOKUP ,vec-name)
+				      (LOOKUP ,idx-name)
+				      ,@extra))))
 		(primitive-call
 		 (lambda ()
-		   `(CALL (QUOTE ,primitive) (QUOTE #F)
-			  (LOOKUP ,vec-name)
-			  (LOOKUP ,idx-name)
-			  ,@extra))))
+		   (equivalent `(CALL (QUOTE ,primitive) (QUOTE #F)
+				      (LOOKUP ,vec-name)
+				      (LOOKUP ,idx-name)
+				      ,@extra)))))
 	    (bind vec-name vec
 		  (bind idx-name index
 			(bind+ val-name (or (default-object? value) value)
 			       (if test
-				   `(IF ,test
-					,(unchecked)
-					,(primitive-call))
+				   (equivalent
+				    `(IF ,test
+					 ,(unchecked)
+					 ,(primitive-call)))
 				   (unchecked)))))))))))
 
 (define-rewrite/early 'VECTOR-REF
@@ -616,14 +633,18 @@ MIT in each case. |#
 
 (define (early/make-cxr primitive %unchecked)
   (let ((prim-pair? (make-primitive-procedure 'PAIR?)))
-    (lambda (text)
+    (lambda (form arg-text)
+      (define (equivalent form*) (earlyrew/remember* form* form))
       (if compiler:generate-type-checks?
 	  (let ((text-name  (earlyrew/new-name 'OBJECT)))
-	    (bind text-name text
-		  `(IF (CALL ',prim-pair? '#F (LOOKUP ,text-name))
-		       (CALL ',%unchecked '#F (LOOKUP ,text-name))
-		       (CALL ',primitive  '#F (LOOKUP ,text-name)))))
-	  `(CALL ',%unchecked '#F ,text)))))
+	    (bind text-name arg-text
+		  (equivalent
+		   `(IF (CALL ',prim-pair? '#F (LOOKUP ,text-name))
+			,(equivalent
+			  `(CALL ',%unchecked '#F (LOOKUP ,text-name)))
+			,(equivalent
+			  `(CALL ',primitive  '#F (LOOKUP ,text-name)))))))
+	  `(CALL ',%unchecked '#F ,arg-text)))))
 
 (define early/car (early/make-cxr (make-primitive-procedure 'CAR) %car))
 (define early/cdr (early/make-cxr (make-primitive-procedure 'CDR) %cdr))
@@ -635,7 +656,8 @@ MIT in each case. |#
   (let ((prim-general-car-cdr (make-primitive-procedure 'GENERAL-CAR-CDR))
         (prim-car             (make-primitive-procedure 'CAR))
         (prim-cdr             (make-primitive-procedure 'CDR)))
-    (lambda (term pattern)
+    (lambda (form term pattern)
+      (define (equivalent form*) (earlyrew/remember* form* form))
       (define (default)
 	`(CALL (QUOTE ,prim-general-car-cdr) (QUOTE #f) ,term ,pattern))
       (cond ((form/number? pattern)
@@ -646,8 +668,10 @@ MIT in each case. |#
 			(if (= num 1)
 			    text
 			    (walk-bits (quotient num 2)
-				       ((if (odd? num) early/car early/cdr)
-					text))))
+				       (equivalent
+					((if (odd? num) early/car early/cdr)
+					 form
+					 text)))))
 		      (default))))
 	    (else (default))))))
 
@@ -659,7 +683,7 @@ MIT in each case. |#
 		     (cons (cons arity handler) slot))))
 
 (define-rewrite/early %invoke-remote-cache 
-  (lambda (descriptor operator-cache . values)
+  (lambda (form descriptor operator-cache . values)
     (define (default values)
       `(CALL (QUOTE ,%invoke-remote-cache)
 	     (QUOTE #f)
@@ -673,14 +697,14 @@ MIT in each case. |#
 	     => (lambda (alist)
 		  (cond ((assq arity alist)
 			 => (lambda (arity.handler)
-			      (apply (cdr arity.handler) default values)))
+			      (apply (cdr arity.handler) form default values)))
 			(else (default values)))))
 	    (else
 	     (default values))))))
 
 
 (define-rewrite/early/global 'SQRT 1
-  (lambda (default arg)
+  (lambda (form default arg)
     (cond ((form/number? arg)
 	   => (lambda (number)
 		`(QUOTE ,(sqrt number))))
@@ -691,7 +715,7 @@ MIT in each case. |#
 (define-rewrite/early/global 'EXPT 2
   (let ((&* (make-primitive-procedure '&*))
 	(max-multiplies 3))
-    (lambda (default* base exponent)
+    (lambda (form default* base exponent)
       (define (default)
 	(default* (list base exponent)))
       (define (make-product x y)

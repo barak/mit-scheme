@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgred.scm,v 1.13 1995/08/18 21:52:42 adams Exp $
+$Id: dbgred.scm,v 1.14 1995/08/19 01:34:04 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -212,6 +212,10 @@ reachable.
   (dbg-reduce/expr* env actions))
 
 (define-dbg-reducer CALL (rator cont #!rest rands)
+  ;; For now just copy dbg expressions for CALLs.  Either they will be
+  ;; dropped or used to create DBG-CONTINUATIONS for preservation type
+  ;; calls.
+  (code-rewrite/remember*! form (code-rewrite/original-form/previous form))
   (dbg-reduce/expr env rator)
   (dbg-reduce/expr env cont)
   (dbg-reduce/expr* env rands))
