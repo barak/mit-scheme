@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.23 1989/11/30 16:05:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.24 1989/12/05 20:39:58 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -289,10 +289,8 @@ MIT in each case. |#
 (define (indirect-byte-reference! register offset)
   (byte-offset-reference (allocate-indirection-register! register) offset))
 
-(define (allocate-indirection-register! register)
-  (if (machine-register? register)
-      register
-      (preferred-address-register register)))
+(define-integrable (allocate-indirection-register! register)
+  (guarantee-alias-register! register 'ADDRESS))
 
 (define (code-object-label-initialize code-object)
   code-object
@@ -794,11 +792,6 @@ MIT in each case. |#
 	     (MOV L ,temp-ref ,(register-reference target)))
 	(LAP (CLR L ,(register-reference target))
 	     (MOV B ,source ,(register-reference target))))))
-
-(define (indirect-register register)
-  (if (machine-register? register)
-      register
-      (register-alias register false)))
 
 ;;;; Registers/Entries
 
