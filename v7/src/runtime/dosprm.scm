@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.10 1992/09/17 00:41:34 jinx Exp $
+$Id: dosprm.scm,v 1.11 1992/09/17 00:47:35 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -97,16 +97,15 @@ MIT in each case. |#
 					(delete-file name))))))))
 	      (find-eligible-directory (cdr eligible-directories)))))))
 
-(define (file-attributes-direct filename)
+(define (file-attributes filename)
   ((ucode-primitive file-attributes)
    (->namestring (merge-pathnames filename))))
 
-(define (file-attributes-indirect filename)
-  ((ucode-primitive file-attributes-indirect)
-   (->namestring (merge-pathnames filename))))
+(define file-attributes-direct
+  file-attributes)
 
-(define file-attributes
-  file-attributes-direct)
+(define file-attributes-indirect
+  file-attributes)
 
 (define-structure (file-attributes
 		   (type vector)
@@ -123,16 +122,15 @@ MIT in each case. |#
   (mode-string false read-only true)
   (inode-number false read-only true))
 
-(define (file-modification-time-direct filename)
+(define (file-modification-time filename)
   ((ucode-primitive file-mod-time 1)
    (->namestring (merge-pathnames filename))))
 
-(define (file-modification-time-indirect filename)
-  ((ucode-primitive file-mod-time-indirect 1)
-   (->namestring (merge-pathnames filename))))
+(define file-modification-time-direct
+  file-modification-time)
 
-(define file-modification-time
-  file-modification-time-indirect)
+(define file-modification-time-indirect
+  file-modification-time)
 
 ;; These are obviously incorrect, but there is no alternative.
 ;; DOS only keeps track of modification times.
