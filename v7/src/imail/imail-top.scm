@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.33 2000/05/04 19:03:38 cph Exp $
+;;; $Id: imail-top.scm,v 1.34 2000/05/04 22:20:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -103,11 +103,14 @@ May be called with an IMAIL folder URL as argument;
 		(->url (or url-string (ref-variable imail-primary-folder))))
 	       (folder (open-folder url)))
 	  (select-buffer
-	   (or (imail-folder->buffer folder #f)
-	       (let ((buffer (new-buffer (folder-presentation-name folder))))
-		 (associate-imail-folder-with-buffer folder buffer)
-		 (select-message folder (first-unseen-message folder) #t)
-		 buffer))))))))
+	   (let ((buffer
+		  (or (imail-folder->buffer folder #f)
+		      (let ((buffer
+			     (new-buffer (folder-presentation-name folder))))
+			(associate-imail-folder-with-buffer folder buffer)
+			buffer))))
+	     (select-message folder (first-unseen-message folder) #t)
+	     buffer)))))))
 
 (define (imail-authenticator host user-id receiver)
   (call-with-pass-phrase (string-append "Password for user " user-id
@@ -424,8 +427,6 @@ With prefix argument N moves backward N messages with these flags."
 		(error:wrong-type-argument selector "message selector"
 					   'SELECT-MESSAGE))))
 	(full-headers? (if (default-object? full-headers?) #f full-headers?)))
-    (if message
-	(message-seen message))
     (if (or (if (default-object? force?) #f force?)
 	    (not (eq? message (buffer-get buffer 'IMAIL-MESSAGE 'UNDEFINED))))
 	(begin
@@ -449,6 +450,8 @@ With prefix argument N moves backward N messages with these flags."
 	    (mark-temporary! mark))
 	  (set-buffer-point! buffer (buffer-start buffer))
 	  (set-buffer-major-mode! buffer (ref-mode-object imail))))
+    (if message
+	(message-seen message))
     (imail-update-mode-line! buffer)))
 
 (define (selected-message #!optional error? buffer)
@@ -456,9 +459,7 @@ With prefix argument N moves backward N messages with these flags."
 	 (if (or (default-object? buffer) (not buffer))
 	     (selected-buffer)
 	     buffer)))
-    (let ((message (buffer-get buffer 'IMAIL-MESSAGE 'UNKNOWN)))
-      (if (eq? 'UNKNOWN message)
-	  (error "IMAIL-MESSAGE property not bound:" buffer))
+    (let ((message (buffer-get buffer 'IMAIL-MESSAGE #f)))
       (or message
 	  (and (if (default-object? error?) #t error?)
 	       (error "No selected IMAIL message."))))))
