@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.38 2004/01/09 21:12:16 cph Exp $
+$Id: list.scm,v 14.39 2004/11/17 04:20:46 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,2000 Massachusetts Institute of Technology
@@ -743,14 +743,16 @@ USA.
 	      (error:wrong-type-argument items "list" 'FIND-MATCHING-ITEM))
 	  #f))))
 
-(define list-transform-positive keep-matching-items)
-(define list-transform-negative delete-matching-items)
-(define list-search-positive find-matching-item)
-
-(define (list-search-negative items predicate)
-  (find-matching-item items
-    (lambda (item)
-      (not (predicate item)))))
+(define (find-non-matching-item items predicate)
+  (let loop ((items* items))
+    (if (pair? items*)
+	(if (predicate (car items*))
+	    (loop (cdr items*))
+	    (car items*))
+	(begin
+	  (if (not (null? items*))
+	      (error:wrong-type-argument items "list" 'FIND-MATCHING-ITEM))
+	  #f))))
 
 (define (delete-matching-items! items predicate)
   (letrec

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.507 2004/11/04 03:00:38 cph Exp $
+$Id: runtime.pkg,v 14.508 2004/11/17 04:20:57 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -2043,6 +2043,10 @@ USA.
   (files "list")
   (parent (runtime))
   (export ()
+	  (list-search-negative find-non-matching-item)
+	  (list-search-positive find-matching-item)
+	  (list-transform-negative delete-matching-items)
+	  (list-transform-positive keep-matching-items)
 	  add-member-procedure
 	  alist-copy
 	  alist?
@@ -2110,6 +2114,7 @@ USA.
 	  except-last-pair!
 	  fifth
 	  find-matching-item
+	  find-non-matching-item
 	  first
 	  fold-left
 	  fold-right
@@ -2134,11 +2139,7 @@ USA.
 	  list-of-type?
 	  list-of-type?->length
 	  list-ref
-	  list-search-negative
-	  list-search-positive
 	  list-tail
-	  list-transform-negative
-	  list-transform-positive
 	  list?
 	  list?->length
 	  make-circular-list
