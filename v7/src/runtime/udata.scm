@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.9 1989/06/13 21:57:05 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.10 1989/08/03 23:07:15 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -144,6 +144,12 @@ MIT in each case. |#
 (define-integrable (compiled-closure/ref closure index)
   ;; 68020 specific -- must be rewritten in compiler interface.
   ((ucode-primitive primitive-object-ref 2) closure (+ 2 index)))
+
+(define-integrable (compiled-closure/set! closure index value)
+  ;; 68020 specific -- must be rewritten in compiler interface.
+  ((ucode-primitive primitive-object-set! 3) closure (+ 2 index) value)
+  unspecific)
+
 ;;; These are now pretty useless.
 
 (define (compiled-procedure-entry procedure)
