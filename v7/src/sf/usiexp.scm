@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.27 1993/12/22 14:27:18 adams Exp $
+$Id: usiexp.scm,v 4.28 1993/12/22 14:41:17 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -466,8 +466,8 @@ MIT in each case. |#
 	(if-expanded (make-type-test expr block (type-proc) (car operands)))
 	(if-not-expanded))))
 
-;; DO NOT make the following integrable! they are required to be procedures
-;; for re-tagging
+;; DO NOT make the following integrable! they are required to be changable
+;; to allow syntaxing to a different tag set
 
 (define ucode-type/character (ucode-type character))
 (define ucode-type/cell (ucode-type cell))
