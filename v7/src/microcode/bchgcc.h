@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.49 1992/06/04 13:10:04 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.50 1992/06/04 14:42:38 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -103,10 +103,12 @@ extern int EXFUN (io_error_always_abort, (char *, char *));
 
 /* IO_PAGE_SIZE must be a power of 2! */
 
-#ifdef DEV_BSIZE
-#define IO_PAGE_SIZE DEV_BSIZE
-#else
-#define IO_PAGE_SIZE 8192
+#ifndef IO_PAGE_SIZE
+#  ifdef DEV_BSIZE
+#    define IO_PAGE_SIZE DEV_BSIZE
+#  else
+#    define IO_PAGE_SIZE 8192
+#  endif
 #endif
 
 #define ALIGN_DOWN_TO_IO_PAGE(addr)					\
