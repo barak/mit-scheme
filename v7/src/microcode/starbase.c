@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/starbase.c,v 1.1 1989/06/21 10:22:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/starbase.c,v 1.2 1989/06/21 11:46:20 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -137,8 +137,8 @@ DEFINE_PRIMITIVE ("STARBASE-FLUSH", Prim_starbase_flush, 1, 1, 0)
 }
 
 DEFINE_PRIMITIVE ("STARBASE-CLEAR", Prim_starbase_clear, 1, 1,
-  "(STARBASE-CLEAR DEVICE)
-Clear the graphics section of the screen.
+  "(STARBASE-CLEAR DEVICE)\n\
+Clear the graphics section of the screen.\n\
 Uses the Starbase CLEAR_VIEW_SURFACE procedure.")
 {
   PRIMITIVE_HEADER (1);
@@ -148,9 +148,9 @@ Uses the Starbase CLEAR_VIEW_SURFACE procedure.")
 }
 
 DEFINE_PRIMITIVE ("STARBASE-DRAW-POINT", Prim_starbase_draw_point, 3, 3,
-  "(STARBASE-DRAW-POINT DEVICE X Y)
-Draw one point at the given coordinates.
-Subsequently move the graphics cursor to those coordinates.
+  "(STARBASE-DRAW-POINT DEVICE X Y)\n\
+Draw one point at the given coordinates.\n\
+Subsequently move the graphics cursor to those coordinates.\n\
 Uses the starbase procedures `move2d' and `draw2d'.")
 {
   int descriptor;
@@ -166,8 +166,8 @@ Uses the starbase procedures `move2d' and `draw2d'.")
 }
 
 DEFINE_PRIMITIVE ("STARBASE-MOVE-CURSOR", Prim_starbase_move_cursor, 3, 3,
-  "(STARBASE-MOVE-CURSOR DEVICE X Y)
-Move the graphics cursor to the given coordinates.
+  "(STARBASE-MOVE-CURSOR DEVICE X Y)\n\
+Move the graphics cursor to the given coordinates.\n\
 Uses the starbase procedure `move2d'.")
 {
   int descriptor;
@@ -182,9 +182,9 @@ Uses the starbase procedure `move2d'.")
 }
 
 DEFINE_PRIMITIVE ("STARBASE-DRAG-CURSOR", Prim_starbase_drag_cursor, 3, 3,
-  "(STARBASE-DRAG-CURSOR DEVICE X Y)
-Draw a line from the graphics cursor to the given coordinates.
-Subsequently move the graphics cursor to those coordinates.
+  "(STARBASE-DRAG-CURSOR DEVICE X Y)\n\
+Draw a line from the graphics cursor to the given coordinates.\n\
+Subsequently move the graphics cursor to those coordinates.\n\
 Uses the starbase procedure `draw2d'.")
 {
   int descriptor;
@@ -199,9 +199,9 @@ Uses the starbase procedure `draw2d'.")
 }
 
 DEFINE_PRIMITIVE ("STARBASE-DRAW-LINE", Prim_starbase_draw_line, 5, 5,
-  "(STARBASE-DRAW-LINE DEVICE X-START Y-START X-END Y-END)
-Draw a line from the start coordinates to the end coordinates.
-Subsequently move the graphics cursor to the end coordinates.
+  "(STARBASE-DRAW-LINE DEVICE X-START Y-START X-END Y-END)\n\
+Draw a line from the start coordinates to the end coordinates.\n\
+Subsequently move the graphics cursor to the end coordinates.\n\
 Uses the starbase procedures `move2d' and `draw2d'.")
 {
   int descriptor;
@@ -219,9 +219,9 @@ Uses the starbase procedures `move2d' and `draw2d'.")
 }
 
 DEFINE_PRIMITIVE ("STARBASE-SET-LINE-STYLE", Prim_starbase_set_line_style, 2, 2,
-  "(STARBASE-SET-LINE-STYLE DEVICE STYLE)
-Changes the line drawing style.
-The STYLE argument is an integer in the range 0-7 inclusive.
+  "(STARBASE-SET-LINE-STYLE DEVICE STYLE)\n\
+Changes the line drawing style.\n\
+The STYLE argument is an integer in the range 0-7 inclusive.\n\
 See the description of the starbase procedure `line_type'.")
 {
   PRIMITIVE_HEADER (2);
@@ -231,9 +231,9 @@ See the description of the starbase procedure `line_type'.")
 }
 
 DEFINE_PRIMITIVE ("STARBASE-SET-DRAWING-MODE", Prim_starbase_set_drawing_mode, 2, 2,
-  "(STARBASE-SET-DRAWING-MODE DEVICE MODE)
-Changes the replacement rule used when drawing.
-The MODE argument is an integer in the range 0-15 inclusive.
+  "(STARBASE-SET-DRAWING-MODE DEVICE MODE)\n\
+Changes the replacement rule used when drawing.\n\
+The MODE argument is an integer in the range 0-15 inclusive.\n\
 See the description of the starbase procedure `drawing_mode'.")
 {
   PRIMITIVE_HEADER (2);
@@ -280,7 +280,7 @@ DEFINE_PRIMITIVE ("STARBASE-SET-VDC-EXTENT", Prim_starbase_set_vdc_extent, 5, 5,
 }
 
 DEFINE_PRIMITIVE ("STARBASE-RESET-CLIP-RECTANGLE", Prim_starbase_reset_clip_rectangle, 1, 1,
-  "(STARBASE-RESET-CLIP-RECTANGLE DEVICE)
+  "(STARBASE-RESET-CLIP-RECTANGLE DEVICE)\n\
 Undo the clip rectangle.  Subsequently, clipping is not affected by it.")
 {
   int descriptor;
@@ -293,7 +293,7 @@ Undo the clip rectangle.  Subsequently, clipping is not affected by it.")
 }
 
 DEFINE_PRIMITIVE ("STARBASE-SET-CLIP-RECTANGLE", Prim_starbase_set_clip_rectangle, 5, 5,
-  "(STARBASE-SET-CLIP-RECTANGLE X-LEFT Y-BOTTOM X-RIGHT Y-TOP)
+  "(STARBASE-SET-CLIP-RECTANGLE X-LEFT Y-BOTTOM X-RIGHT Y-TOP)\n\
 Restrict the graphics drawing primitives to the area in the given rectangle.")
 {
   int descriptor;
@@ -385,9 +385,9 @@ DEFINE_PRIMITIVE ("STARBASE-COLOR-MAP-SIZE", Prim_starbase_color_map_size, 1, 1,
 }
 
 DEFINE_PRIMITIVE ("STARBASE-DEFINE-COLOR", Prim_starbase_define_color, 5, 5,
-  "(STARBASE-DEFINE-COLOR COLOR-INDEX RED GREEN BLUE)
-COLOR-INDEX must be a valid index for the current device's color map.
-RED, GREEN, and BLUE must be numbers between 0 and 1 inclusive.
+  "(STARBASE-DEFINE-COLOR COLOR-INDEX RED GREEN BLUE)\n\
+COLOR-INDEX must be a valid index for the current device's color map.\n\
+RED, GREEN, and BLUE must be numbers between 0 and 1 inclusive.\n\
 Changes the color map, defining COLOR-INDEX to be the given RGB color.")
 {
   int descriptor;
@@ -407,9 +407,9 @@ Changes the color map, defining COLOR-INDEX to be the given RGB color.")
 }
 
 DEFINE_PRIMITIVE ("STARBASE-SET-LINE-COLOR", Prim_starbase_set_line_color, 2, 2,
-  "(STARBASE-SET-LINE-COLOR DEVICE COLOR-INDEX)
-COLOR-INDEX must be a valid index for the current device's color map.
-Changes the color used for drawing most things.
+  "(STARBASE-SET-LINE-COLOR DEVICE COLOR-INDEX)\n\
+COLOR-INDEX must be a valid index for the current device's color map.\n\
+Changes the color used for drawing most things.\n\
 Does not take effect until the next starbase output operation.")
 {
   int descriptor;
@@ -426,9 +426,9 @@ Does not take effect until the next starbase output operation.")
 static void print_graphics ();
 
 DEFINE_PRIMITIVE ("STARBASE-WRITE-IMAGE-FILE", Prim_starbase_write_image_file, 3, 3,
-  "(STARBASE-WRITE-IMAGE-FILE DEVICE FILENAME INVERT?)
-Write a file containing an image of the DEVICE's screen, in a format
-suitable for printing on an HP laserjet printer.
+  "(STARBASE-WRITE-IMAGE-FILE DEVICE FILENAME INVERT?)\n\
+Write a file containing an image of the DEVICE's screen, in a format\n\
+suitable for printing on an HP laserjet printer.\n\
 If INVERT? is not #F, invert black and white in the output.")
 {
   PRIMITIVE_HEADER (3);

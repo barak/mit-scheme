@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/starbasx.c,v 1.1 1989/06/21 10:22:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/starbasx.c,v 1.2 1989/06/21 11:46:12 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -40,7 +40,7 @@ MIT in each case. */
 #include <starbase.c.h>
 
 DEFINE_PRIMITIVE ("X11-WINDOW-STARBASE-FILENAME", Prim_x11_window_starbase_filename, 1, 1,
-  "Given a window, returns the name of a file which can be opened
+  "Given a window, returns the name of a file which can be opened\n\
 as a Starbase graphics device.")
 {
   struct xwindow * xw;

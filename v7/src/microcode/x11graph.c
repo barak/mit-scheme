@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.1 1989/06/21 10:18:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.2 1989/06/21 11:44:39 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -257,7 +257,7 @@ process_events (xw)
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-SET-VDC-EXTENT", Prim_x_graphics_set_vdc_extent, 5, 5,
-  "(X-GRAPHICS-SET-VDC-EXTENT WINDOW X-MIN Y-MIN X-MAX Y-MAX)
+  "(X-GRAPHICS-SET-VDC-EXTENT WINDOW X-MIN Y-MIN X-MAX Y-MAX)\n\
 Set the virtual device coordinates to the given values.")
 {
   struct xwindow * xw;
@@ -309,7 +309,7 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-RESET-CLIP-RECTANGLE", Prim_x_graphics_reset_clip_
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-SET-CLIP-RECTANGLE", Prim_x_graphics_set_clip_rectangle, 5, 5,
-  "(X-GRAPHICS-SET-CLIP-RECTANGLE WINDOW X-LEFT Y-BOTTOM X-RIGHT Y-TOP)
+  "(X-GRAPHICS-SET-CLIP-RECTANGLE WINDOW X-LEFT Y-BOTTOM X-RIGHT Y-TOP)\n\
 Set the clip rectangle to the given coordinates.")
 {
   struct xwindow * xw;
@@ -366,9 +366,9 @@ wm_set_size_hint (xw, flags, x, y)
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-OPEN-WINDOW", Prim_x_graphics_open_window, 3, 3,
-  "(X-GRAPHICS-OPEN-WINDOW DISPLAY GEOMETRY SUPPRESS-MAP?)
-Open a window on DISPLAY using GEOMETRY.
-If GEOMETRY is false map window interactively.
+  "(X-GRAPHICS-OPEN-WINDOW DISPLAY GEOMETRY SUPPRESS-MAP?)\n\
+Open a window on DISPLAY using GEOMETRY.\n\
+If GEOMETRY is false map window interactively.\n\
 If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
 {
   Display * display;
@@ -470,8 +470,8 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-DRAW-LINE", Prim_x_graphics_draw_line, 5, 5,
-  "(X-GRAPHICS-DRAW-LINE WINDOW X-START Y-START X-END Y-END)
-Draw a line from the start coordinates to the end coordinates.
+  "(X-GRAPHICS-DRAW-LINE WINDOW X-START Y-START X-END Y-END)\n\
+Draw a line from the start coordinates to the end coordinates.\n\
 Subsequently move the graphics cursor to the end coordinates.")
 {
   struct xwindow * xw;
@@ -498,7 +498,7 @@ Subsequently move the graphics cursor to the end coordinates.")
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-MOVE-CURSOR", Prim_x_graphics_move_cursor, 3, 3,
-  "(X-GRAPHICS-MOVE-CURSOR WINDOW X Y)
+  "(X-GRAPHICS-MOVE-CURSOR WINDOW X Y)\n\
 Move the graphics cursor to the given coordinates.")
 {
   struct xwindow * xw;
@@ -511,8 +511,8 @@ Move the graphics cursor to the given coordinates.")
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-DRAG-CURSOR", Prim_x_graphics_drag_cursor, 3, 3,
-  "(X-GRAPHICS-DRAG-CURSOR WINDOW X Y)
-Draw a line from the graphics cursor to the given coordinates.
+  "(X-GRAPHICS-DRAG-CURSOR WINDOW X Y)\n\
+Draw a line from the graphics cursor to the given coordinates.\n\
 Subsequently move the graphics cursor to those coordinates.")
 {
   struct xwindow * xw;
@@ -539,8 +539,8 @@ Subsequently move the graphics cursor to those coordinates.")
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-DRAW-POINT", Prim_x_graphics_draw_point, 3, 3,
-  "(X-GRAPHICS-DRAW-POINT WINDOW X Y)
-Draw one point at the given coordinates.
+  "(X-GRAPHICS-DRAW-POINT WINDOW X Y)\n\
+Draw one point at the given coordinates.\n\
 Subsequently move the graphics cursor to those coordinates.")
 {
   struct xwindow * xw;
@@ -559,7 +559,7 @@ Subsequently move the graphics cursor to those coordinates.")
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-DRAW-STRING", Prim_x_graphics_draw_string, 4, 4,
-  "(X-GRAPHICS-DRAW-STRING WINDOW X Y STRING)
+  "(X-GRAPHICS-DRAW-STRING WINDOW X Y STRING)\n\
 Draw characters in the current font at the given coordinates.")
 {
   struct xwindow * xw;
