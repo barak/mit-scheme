@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.10 1993/07/01 03:24:59 gjr Exp $
+$Id: rulrew.scm,v 1.11 1993/07/07 19:21:26 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -269,6 +269,34 @@ MIT in each case. |#
 (define-rule rewriting
   (FLOAT-OFFSET (REGISTER (? base register-known-value))
 		(MACHINE-CONSTANT 0))
-  (QUALIFIER (rtl:float-offset-address? base))
+  (QUALIFIER (rtl:simple-float-offset-address? base))
   (rtl:make-float-offset (rtl:float-offset-address-base base)
 			 (rtl:float-offset-address-offset base)))
+
+;; This is here to avoid generating things like
+;;
+;; (float-offset (offset-address (object->address (constant #(foo bar baz gack)))
+;; 			         (machine-constant 1))
+;; 	         (register 84))
+;;
+;; since the offset-address subexpression is constant, and therefore
+;; known!
+
+(define (rtl:simple-float-offset-address? expr)
+  (and (rtl:float-offset-address? expr)
+       (let ((offset (rtl:float-offset-address-offset expr)))
+	 (or (rtl:machine-constant? offset)
+	     (rtl:register? offset)
+	     (and (rtl:object->datum? offset)
+		  (rtl:register? (rtl:object->datum-expression offset)))))
+       (let ((base (rtl:float-offset-address-base expr)))
+	 (or (rtl:register? base)
+	     (and (rtl:offset-address? base)
+		  (let ((base* (rtl:offset-address-base base))
+			(offset* (rtl:offset-address-offset base)))
+		    (and (rtl:machine-constant? offset*)
+			 (or (rtl:register? base*)
+			     (and (rtl:object->address? base*)
+				  (rtl:register?
+				   (rtl:object->address-expression
+				    base*)))))))))))
