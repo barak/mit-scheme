@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osproc.h,v 1.6 1992/02/11 23:01:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osproc.h,v 1.7 1992/03/26 10:54:49 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -88,8 +88,8 @@ extern enum process_jc_status scheme_jc_status;
 extern Tprocess EXFUN
   (OS_make_subprocess,
    (CONST char * filename,
-    CONST char ** argv,
-    char ** env,
+    char * CONST * argv,
+    char * CONST * env,
     CONST char * working_directory,
     enum process_ctty_type ctty_type,
     char * ctty_name,

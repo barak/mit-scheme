@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.13 1992/02/11 23:16:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.14 1992/03/26 10:54:40 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -239,8 +239,8 @@ DEFUN (OS_make_subprocess,
 	channel_out_type, channel_out,
 	channel_err_type, channel_err),
        CONST char * filename AND
-       CONST char ** argv AND
-       char ** envp AND
+       char * CONST * argv AND
+       char * CONST * envp AND
        CONST char * working_directory AND
        enum process_ctty_type ctty_type AND
        char * ctty_name AND
