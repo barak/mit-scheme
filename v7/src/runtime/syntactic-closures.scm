@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: syntactic-closures.scm,v 14.13 2003/02/14 18:28:34 cph Exp $
+$Id: syntactic-closures.scm,v 14.14 2003/03/07 21:10:12 cph Exp $
 
-Copyright 1989-1991, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -278,39 +278,26 @@ USA.
 
 ;;;; Syntactic Closures
  
-(define syntactic-closure-rtd
-  (make-record-type "syntactic-closure" '(ENVIRONMENT FREE-NAMES FORM)))
+(define-record-type <syntactic-closure>
+    (%make-syntactic-closure environment free-names form)
+    syntactic-closure?
+  (environment syntactic-closure/environment)
+  (free-names syntactic-closure/free-names)
+  (form syntactic-closure/form))
 
-(define make-syntactic-closure
-  (let ((constructor
-	 (record-constructor syntactic-closure-rtd
-			     '(ENVIRONMENT FREE-NAMES FORM))))
-    (lambda (environment free-names form)
-      (guarantee-syntactic-environment environment 'MAKE-SYNTACTIC-CLOSURE)
-      (if (not (list-of-type? free-names identifier?))
-	  (error:wrong-type-argument free-names "list of identifiers"
-				     'MAKE-SYNTACTIC-CLOSURE))
-      (if (or (memq form free-names)	;LOOKUP-IDENTIFIER assumes this.
-	      (and (syntactic-closure? form)
-		   (null? (syntactic-closure/free-names form))
-		   (not (identifier? (syntactic-closure/form form))))
-	      (not (or (syntactic-closure? form)
-		       (pair? form)
-		       (symbol? form))))
-	  form
-	  (constructor environment free-names form)))))
-
-(define syntactic-closure?
-  (record-predicate syntactic-closure-rtd))
-
-(define syntactic-closure/environment
-  (record-accessor syntactic-closure-rtd 'ENVIRONMENT))
-
-(define syntactic-closure/free-names
-  (record-accessor syntactic-closure-rtd 'FREE-NAMES))
-
-(define syntactic-closure/form
-  (record-accessor syntactic-closure-rtd 'FORM))
+(define (make-syntactic-closure environment free-names form)
+  (guarantee-syntactic-environment environment 'MAKE-SYNTACTIC-CLOSURE)
+  (guarantee-list-of-type free-names identifier?
+			  "list of identifiers" 'MAKE-SYNTACTIC-CLOSURE)
+  (if (or (memq form free-names)	;LOOKUP-IDENTIFIER assumes this.
+	  (and (syntactic-closure? form)
+	       (null? (syntactic-closure/free-names form))
+	       (not (identifier? (syntactic-closure/form form))))
+	  (not (or (syntactic-closure? form)
+		   (pair? form)
+		   (symbol? form))))
+      form
+      (%make-syntactic-closure environment free-names form)))
 
 (define (strip-syntactic-closures object)
   (if (let loop ((object object))
@@ -463,14 +450,12 @@ USA.
 ;;; prevent illegal use of definitions) and to seal off environments
 ;;; used in magic keywords.
 
-(define null-syntactic-environment-rtd
-  (make-record-type "null-syntactic-environment" '()))
+(define-record-type <null-syntactic-environment>
+    (%make-null-syntactic-environment)
+    null-syntactic-environment?)
 
 (define null-syntactic-environment
-  ((record-constructor null-syntactic-environment-rtd '())))
-
-(define null-syntactic-environment?
-  (record-predicate null-syntactic-environment-rtd))
+  (%make-null-syntactic-environment))
 
 (define (null-syntactic-environment/lookup environment name)
   environment
@@ -511,33 +496,21 @@ USA.
 ;;; Top-level syntactic environments represent top-level environments.
 ;;; They are always layered over a real syntactic environment.
 
-(define top-level-syntactic-environment-rtd
-  (make-record-type "top-level-syntactic-environment" '(PARENT BOUND)))
+(define-record-type <top-level-syntactic-environment>
+    (%make-top-level-syntactic-environment parent bound)
+    top-level-syntactic-environment?
+  (parent top-level-syntactic-environment/parent)
+  (bound top-level-syntactic-environment/bound
+	 set-top-level-syntactic-environment/bound!))
 
-(define make-top-level-syntactic-environment
-  (let ((constructor
-	 (record-constructor top-level-syntactic-environment-rtd
-			     '(PARENT BOUND))))
-    (lambda (parent)
-      (guarantee-syntactic-environment parent
-				       'MAKE-TOP-LEVEL-SYNTACTIC-ENVIRONMENT)
-      (if (not (or (syntactic-environment/top-level? parent)
-		   (null-syntactic-environment? parent)))
-	  (error:bad-range-argument parent "top-level syntactic environment"
-				    'MAKE-TOP-LEVEL-SYNTACTIC-ENVIRONMENT))
-      (constructor parent '()))))
-
-(define top-level-syntactic-environment?
-  (record-predicate top-level-syntactic-environment-rtd))
-
-(define top-level-syntactic-environment/parent
-  (record-accessor top-level-syntactic-environment-rtd 'PARENT))
-
-(define top-level-syntactic-environment/bound
-  (record-accessor top-level-syntactic-environment-rtd 'BOUND))
-
-(define set-top-level-syntactic-environment/bound!
-  (record-modifier top-level-syntactic-environment-rtd 'BOUND))
+(define (make-top-level-syntactic-environment parent)
+  (guarantee-syntactic-environment parent
+				   'MAKE-TOP-LEVEL-SYNTACTIC-ENVIRONMENT)
+  (if (not (or (syntactic-environment/top-level? parent)
+	       (null-syntactic-environment? parent)))
+      (error:bad-range-argument parent "top-level syntactic environment"
+				'MAKE-TOP-LEVEL-SYNTACTIC-ENVIRONMENT))
+  (%make-top-level-syntactic-environment parent '()))
 
 (define (top-level-syntactic-environment/lookup environment name)
   (let ((binding
@@ -568,39 +541,19 @@ USA.
 ;;; Internal syntactic environments represent environments created by
 ;;; procedure application.
 
-(define internal-syntactic-environment-rtd
-  (make-record-type "internal-syntactic-environment"
-		    '(PARENT BOUND FREE RENAME-STATE)))
+(define-record-type <internal-syntactic-environment>
+    (%make-internal-syntactic-environment parent bound free rename-state)
+    internal-syntactic-environment?
+  (parent internal-syntactic-environment/parent)
+  (bound internal-syntactic-environment/bound
+	 set-internal-syntactic-environment/bound!)
+  (free internal-syntactic-environment/free
+	set-internal-syntactic-environment/free!)
+  (rename-state internal-syntactic-environment/rename-state))
 
-(define make-internal-syntactic-environment
-  (let ((constructor
-	 (record-constructor internal-syntactic-environment-rtd
-			     '(PARENT BOUND FREE RENAME-STATE))))
-    (lambda (parent)
-      (guarantee-syntactic-environment parent
-				       'MAKE-INTERNAL-SYNTACTIC-ENVIRONMENT)
-      (constructor parent '() '() (make-rename-id)))))
-
-(define internal-syntactic-environment?
-  (record-predicate internal-syntactic-environment-rtd))
-
-(define internal-syntactic-environment/parent
-  (record-accessor internal-syntactic-environment-rtd 'PARENT))
-
-(define internal-syntactic-environment/bound
-  (record-accessor internal-syntactic-environment-rtd 'BOUND))
-
-(define set-internal-syntactic-environment/bound!
-  (record-modifier internal-syntactic-environment-rtd 'BOUND))
-
-(define internal-syntactic-environment/free
-  (record-accessor internal-syntactic-environment-rtd 'FREE))
-
-(define set-internal-syntactic-environment/free!
-  (record-modifier internal-syntactic-environment-rtd 'FREE))
-
-(define internal-syntactic-environment/rename-state
-  (record-accessor internal-syntactic-environment-rtd 'RENAME-STATE))
+(define (make-internal-syntactic-environment parent)
+  (guarantee-syntactic-environment parent 'MAKE-INTERNAL-SYNTACTIC-ENVIRONMENT)
+  (%make-internal-syntactic-environment parent '() '() (make-rename-id)))
 
 (define (internal-syntactic-environment/lookup environment name)
   (let ((binding
@@ -646,31 +599,24 @@ USA.
 ;;; Filtered syntactic environments are used to implement syntactic
 ;;; closures that have free names.
 
-(define filtered-syntactic-environment-rtd
-  (make-record-type "filtered-syntactic-environment"
-		    '(NAMES NAMES-ENVIRONMENT ELSE-ENVIRONMENT)))
+(define-record-type <filtered-syntactic-environment>
+    (%make-filtered-syntactic-environment names
+					  names-environment
+					  else-environment)
+    filtered-syntactic-environment?
+  (names filtered-syntactic-environment/names)
+  (names-environment filtered-syntactic-environment/names-environment)
+  (else-environment filtered-syntactic-environment/else-environment))
 
-(define make-filtered-syntactic-environment
-  (let ((constructor
-	 (record-constructor filtered-syntactic-environment-rtd
-			     '(NAMES NAMES-ENVIRONMENT ELSE-ENVIRONMENT))))
-    (lambda (names names-environment else-environment)
-      (if (or (null? names)
-	      (eq? names-environment else-environment))
-	  else-environment
-	  (constructor names names-environment else-environment)))))
-
-(define filtered-syntactic-environment?
-  (record-predicate filtered-syntactic-environment-rtd))
-
-(define filtered-syntactic-environment/names
-  (record-accessor filtered-syntactic-environment-rtd 'NAMES))
-
-(define filtered-syntactic-environment/names-environment
-  (record-accessor filtered-syntactic-environment-rtd 'NAMES-ENVIRONMENT))
-
-(define filtered-syntactic-environment/else-environment
-  (record-accessor filtered-syntactic-environment-rtd 'ELSE-ENVIRONMENT))
+(define (make-filtered-syntactic-environment names
+					     names-environment
+					     else-environment)
+  (if (or (null? names)
+	  (eq? names-environment else-environment))
+      else-environment
+      (%make-filtered-syntactic-environment names
+					    names-environment
+					    else-environment)))
 
 (define (filtered-syntactic-environment/lookup environment name)
   (syntactic-environment/lookup

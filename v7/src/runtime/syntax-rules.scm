@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax-rules.scm,v 14.5 2003/02/14 18:28:34 cph Exp $
+$Id: syntax-rules.scm,v 14.6 2003/03/07 21:13:29 cph Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -292,35 +292,15 @@ USA.
       x
       `(,(rename 'APPEND) ,x ,y)))
 
-(define sid-type
-  (make-record-type "sid" '(NAME EXPRESSION CONTROL OUTPUT-EXPRESSION)))
+(define-record-type <sid>
+    (make-sid name expression control)
+    sid?
+  (name sid-name)
+  (expression sid-expression)
+  (control sid-control)
+  (output-expression sid-output-expression set-sid-output-expression!))
 
-(define make-sid
-  (record-constructor sid-type '(NAME EXPRESSION CONTROL)))
-
-(define sid-name
-  (record-accessor sid-type 'NAME))
-
-(define sid-expression
-  (record-accessor sid-type 'EXPRESSION))
-
-(define sid-control
-  (record-accessor sid-type 'CONTROL))
-
-(define sid-output-expression
-  (record-accessor sid-type 'OUTPUT-EXPRESSION))
-
-(define set-sid-output-expression!
-  (record-updater sid-type 'OUTPUT-EXPRESSION))
-
-(define ellipsis-type
-  (make-record-type "ellipsis" '(SIDS)))
-
-(define make-ellipsis
-  (record-constructor ellipsis-type '(SIDS)))
-
-(define ellipsis-sids
-  (record-accessor ellipsis-type 'SIDS))
-
-(define set-ellipsis-sids!
-  (record-updater ellipsis-type 'SIDS))
+(define-record-type <ellipsis>
+    (make-ellipsis sids)
+    ellipsis?
+  (sids ellipsis-sids set-ellipsis-sids!))
