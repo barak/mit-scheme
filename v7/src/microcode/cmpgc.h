@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.6 1989/11/01 18:54:12 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.7 1989/11/06 17:37:30 jinx Exp $
    $MC68020-Header: cmp68kgc.h,v 9.30 89/03/27 23:14:31 GMT jinx Exp $
 
 Utilities to relocate compiled code in garbage collection-like processes. 
@@ -236,6 +236,13 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 #define READ_OPERATOR_LINKAGE_COUNT(header)				\
   (EXECUTE_CACHE_COUNT_TO_ENTRIES((header) & 0xffff))
   
+#define MAKE_LINKAGE_SECTION_HEADER(kind, count)			\
+  (MAKE_OBJECT(TC_LINKAGE_SECTION,					\
+	       ((kind) |						\
+		(((kind) == OPERATOR_LINKAGE_KIND) ?			\
+		 (EXECUTE_CACHE_ENTRIES_TO_COUNT(count)) :		\
+		 (count)))))
+
 /* This takes into account the 1 added by the main loop of the
    relocators.
  */
