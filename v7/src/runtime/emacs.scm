@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 13.46 1987/09/24 06:27:43 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 13.47 1987/10/09 14:41:00 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -137,7 +137,8 @@
 	(let loop ()
 	  (if (not (char=? (primitive-read-char-immediate) #\C-@))
 	      (loop)))
-	(transmit-signal #\g)))
+	(if (= (char->ascii #\G) interrupt-char)
+	    (transmit-signal #\g))))
   true)
 
 (define primitive-read-char-ready?
