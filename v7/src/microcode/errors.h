@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.37 1991/01/24 04:40:51 cph Exp $
+$Id: errors.h,v 9.38 1993/02/23 02:38:22 gjr Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -103,13 +103,16 @@ MIT in each case. */
 #define ERR_FASLOAD_BAND			0x39
 #define ERR_FASLOAD_COMPILED_MISMATCH		0x3A
 #define ERR_UNKNOWN_PRIMITIVE_CONTINUATION	0x3B
+#define ERR_ILLEGAL_CONTINUATION		0x3C
+#define ERR_STACK_HAS_SLIPPED			0x3D
+#define ERR_CANNOT_RECURSE			0x3E
 
 /*
   If you add any error codes here, add them to
   the table below and to utabmd.scm as well.
  */
 
-#define MAX_ERROR				0x3B
+#define MAX_ERROR				0x3E
 
 #define ERROR_NAME_TABLE						\
 {									\
@@ -172,7 +175,10 @@ MIT in each case. */
 /* 0x38 */		"FASDUMP-ENVIRONMENT",				\
 /* 0x39 */		"FASLOAD-BAND",					\
 /* 0x3A */		"FASLOAD-COMPILED-MISMATCH",			\
-/* 0x3B */		"UNKNOWN-PRIMITIVE-CONTINUATION"		\
+/* 0x3B */		"UNKNOWN-PRIMITIVE-CONTINUATION",		\
+/* 0x3C */		"ILLEGAL-CONTINUATION",				\
+/* 0x3D */		"STACK-HAS-SLIPPED",				\
+/* 0x3E */		"CANNOT-RECURSE"				\
 }
 
 /* Termination codes: the interpreter halts on these */

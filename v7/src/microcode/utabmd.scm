@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: utabmd.scm,v 9.65 1993/01/12 19:50:08 gjr Exp $
+;;; $Id: utabmd.scm,v 9.66 1993/02/23 02:38:17 gjr Exp $
 ;;;
-;;;	Copyright (c) 1987-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987-1993 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -539,6 +539,9 @@
 	       FASLOAD-BAND				;39
 	       FASLOAD-COMPILED-MISMATCH		;3A
 	       UNKNOWN-PRIMITIVE-CONTINUATION		;3B
+	       ILLEGAL-CONTINUATION			;3C
+	       STACK-HAS-SLIPPED			;3D
+	       CANNOT-RECURSE				;3E
 	       ))
 
 ;;; [] Terminations
@@ -699,4 +702,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Id: utabmd.scm,v 9.65 1993/01/12 19:50:08 gjr Exp $"
+"$Id: utabmd.scm,v 9.66 1993/02/23 02:38:17 gjr Exp $"
