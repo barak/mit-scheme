@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mips.h,v 1.9 1991/07/12 23:15:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mips.h,v 1.10 1991/11/25 13:35:42 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -179,8 +179,8 @@ typedef unsigned short format_word;
 /* Skip over this many BYTES to bypass the GC check code (ordinary
 procedures and continuations differ from closures) */
 
-#define ENTRY_SKIPPED_CHECK_OFFSET 	8
-#define CLOSURE_SKIPPED_CHECK_OFFSET 	32
+#define ENTRY_SKIPPED_CHECK_OFFSET 	12
+#define CLOSURE_SKIPPED_CHECK_OFFSET 	28
 
 /* The length of the GC recovery code that precedes an entry.
    On the MIPS a "addi, jalr, addi" instruction sequence.
@@ -198,10 +198,9 @@ procedures and continuations differ from closures) */
   For a closure
 
   LUI	$at,TC_CLOSURE		; temp <- closure tag
-  AND	31,QUAD,31		; 31 <- mask out top bits
-  OR	31,31,$at	        ; 31 <- tagged value
-  SW	31,-4(SP)		; push closure
-  ADDI  SP,SP,-4
+  XOR	31,31,$at	        ; 31 <- tagged value
+  ADDI  SP,SP,-4		; push closure
+  SW	31,-4(SP)
   SLT	$at,FREE,MEMTOP
   BEQ	$at,0,interrupt
   LW	MEMTOP,REG_BLOCK
