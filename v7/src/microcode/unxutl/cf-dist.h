@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/cf-dist.h,v 1.1 1989/07/18 22:32:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/cf-dist.h,v 1.2 1989/07/24 21:08:15 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -47,3 +47,14 @@ MIT in each case. */
 
 /* Define HAVE_X_WINDOWS if you want to use the X window system.  */
 #define HAVE_X_WINDOWS
+
+/* Some useful compilation options:
+   -DCOMPILE_HISTORY		turns on history recording mechanism
+   -DENABLE_DEBUGGING_TOOLS	turns on microcode debugging tools
+   -DUSE_STACKLETS		selects heap-allocated stack
+   -DCOMPILE_FUTURES		turns on parallel processing features
+   -DFUTURE_LOGGING		???
+   -DCOMPILE_STEPPER		enables single-stepper (currently broken)
+   */
+
+#define C_SWITCH_FEATURES -DCOMPILE_HISTORY
