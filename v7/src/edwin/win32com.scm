@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: win32com.scm,v 1.6 1996/05/03 06:58:59 cph Exp $
+;;;	$Id: win32com.scm,v 1.7 1996/10/07 18:19:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -104,15 +104,14 @@ When called interactively, completion is available on the input."
   (lambda (font)
     ((ucode-primitive win32-screen-set-default-font! 1) font)))
 
-;; Missing functionality in win32-screen.
-;;(define-command set-frame-size
-;;  "Set size of current frame to WIDTH x HEIGHT."
-;;  "nFrame width (chars)\nnFrame height (chars)"
-;;  (lambda (width height)
-;;    (win32-screen/set-size! (selected-screen) (max 2 width) (max 2 height))))
+(define-command set-frame-size
+  "Set size of editor frame to WIDTH x HEIGHT."
+  "nFrame width (chars)\nnFrame height (chars)"
+  (lambda (width height)
+    (win32-screen/set-size! (selected-screen) (max 2 width) (max 2 height))))
 
 (define-command set-frame-position
-  "Set position of current frame to (X,Y)."
+  "Set position of editor frame to (X,Y)."
   "nFrame X position (pels)\nnFrame Y position (pels)"
   (lambda (x y)
     (win32-screen/set-position! (selected-screen) x y)))
@@ -122,14 +121,14 @@ When called interactively, completion is available on the input."
   ()
   (lambda ()
     (let ((screen (selected-screen)))
-      (call-with-values (lambda () (win32-screen/get-position screen))
-	(lambda (x y r b)
+      (call-with-values (lambda () (win32-screen/get-client-size screen))
+	(lambda (width height)
 	  (message "Frame is "
 		   (screen-x-size screen)
 		   " chars wide and "
 		   (screen-y-size screen)
 		   " chars high ("
-		   (- r x) "x" (- b y)
+		   width "x" height
 		   " pels)"))))))
 
 (define-command show-frame-position

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.197 1996/05/14 01:50:03 cph Exp $
+$Id: edwin.pkg,v 1.198 1996/10/07 18:20:31 cph Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -1157,8 +1157,12 @@ MIT in each case. |#
     (files "win32")
     (parent (edwin screen))
     (import (win32)
+	    adjust-window-rect
 	    destroy-window
+	    get-client-rect
 	    get-handle
+	    get-menu
+	    get-system-metrics
 	    get-window-rect
 	    load-icon
 	    make-rect
@@ -1174,11 +1178,18 @@ MIT in each case. |#
 	    set-window-text
 	    show-window
 	    sleep
+	    sm_cxframe
+	    sm_cycaption
+	    sm_cyframe
+	    sm_cymenu
 	    sw_showminnoactive
+	    swp_nomove
 	    swp_nosize
 	    swp_nozorder
-	    update-window)
+	    update-window
+	    ws_overlappedwindow)
     (export (edwin win-commands)
+	    win32-screen/get-client-size
 	    win32-screen/get-position
 	    win32-screen/set-background-color!
 	    win32-screen/set-font!
@@ -1211,6 +1222,7 @@ MIT in each case. |#
 	    edwin-command$set-font
 	    edwin-command$set-foreground-color
 	    edwin-command$set-frame-position
+	    edwin-command$set-frame-size
 	    edwin-command$set-icon
 	    edwin-command$show-frame-position
 	    edwin-command$show-frame-size)
