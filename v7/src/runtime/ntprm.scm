@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.20 1997/12/30 01:25:40 cph Exp $
+$Id: ntprm.scm,v 1.21 1998/01/08 05:56:11 cph Exp $
 
-Copyright (c) 1992-97 Massachusetts Institute of Technology
+Copyright (c) 1992-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -378,7 +378,8 @@ MIT in each case. |#
   ;; version, even if the VFAT driver is being used to provide long file names.
   (let* ((volume-info (nt-volume-info pathname))
 	 (fs-type     (nt-volume-info/file-system-name volume-info)))
-    (cond ((string-ci=? fs-type "VFAT")
+    (cond ((or (string-ci=? fs-type "VFAT")
+	       (string-ci=? fs-type "FAT32"))
 	   'VFAT)			; ``kind of''
 	  ((string-ci=? fs-type "FAT")
 	   #F)
