@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2top.c,v 1.1 1994/11/28 03:43:01 cph Exp $
+$Id: os2top.c,v 1.2 1994/11/28 03:50:17 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -61,7 +61,6 @@ OS_under_emacs_p (void)
 void
 OS_initialize (void)
 {
-  transaction_initialize ();
   initialize_locks ();
   OS2_initialize_message_queues ();
   OS2_initialize_scheme_thread ();

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.14 1994/10/08 05:34:05 cph Exp $
+$Id: uxtop.c,v 1.15 1994/11/28 03:51:01 cph Exp $
 
 Copyright (c) 1990-94 Massachusetts Institute of Technology
 
@@ -76,8 +76,6 @@ DEFUN_VOID (OS_under_emacs_p)
 void
 DEFUN_VOID (OS_initialize)
 {
-  dstack_initialize ();
-  transaction_initialize ();
   initialize_interruptable_extent ();
   {
     interactive =

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dostop.c,v 1.9 1994/10/08 05:35:46 cph Exp $
+$Id: dostop.c,v 1.10 1994/11/28 03:50:47 cph Exp $
 
 Copyright (c) 1992-94 Massachusetts Institute of Technology
 
@@ -78,8 +78,6 @@ DEFUN_VOID (OS_under_emacs_p)
 void
 DEFUN_VOID (OS_initialize)
 {
-  dstack_initialize ();
-  transaction_initialize ();
   interactive = 1;
   
   DOS_initialize_channels ();

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.90 1994/10/04 22:02:19 cph Exp $
+$Id: boot.c,v 9.91 1994/11/28 03:49:45 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -117,6 +117,8 @@ DEFUN (main_name, (argc, argv),
   scheme_program_name = (argv[0]);
   initial_C_stack_pointer = ((PTR) (&argc));
   obstack_init (&scratch_obstack);
+  dstack_initialize ();
+  transaction_initialize ();
   reload_saved_string = 0;
   reload_saved_string_length = 0;
   read_command_line_options (argc, argv);

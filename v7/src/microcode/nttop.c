@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.12 1994/10/08 05:35:58 cph Exp $
+$Id: nttop.c,v 1.13 1994/11/28 03:50:32 cph Exp $
 
 Copyright (c) 1993-94 Massachusetts Institute of Technology
 
@@ -71,8 +71,6 @@ DEFUN_VOID (OS_under_emacs_p)
 void
 DEFUN_VOID (OS_initialize)
 {
-  dstack_initialize ();
-  transaction_initialize ();
   interactive = 1;
 
   NT_gui_init ();
