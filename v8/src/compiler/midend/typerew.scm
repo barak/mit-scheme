@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.11 1996/07/17 20:48:42 adams Exp $
+$Id: typerew.scm,v 1.12 1996/07/17 21:37:45 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -1454,6 +1454,16 @@ MIT in each case. |#
 
   (define-typerew-binary-variants-replacement-method &/
     type:flonum           type:flonum           type:flonum   flo:/))
+
+(define-typerew-binary-variants-type-method %/
+  type:number           type:number           type:number
+  effect:none
+  type:flonum           type:flonum           type:flonum
+  type:inexact-number   type:number           type:inexact-number
+  type:number           type:inexact-number   type:inexact-number)
+
+(define-typerew-binary-variants-replacement-method %/
+  type:flonum           type:flonum           type:flonum   flo:/)
 
 (let* ((type:fixnum-not-0 (type:except type:fixnum type:exact-zero))
        (type:fixnum-not-0/-1
