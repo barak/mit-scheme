@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dossig.c,v 1.13 1992/11/23 04:15:07 gjr Exp $
+$Id: dossig.c,v 1.14 1992/11/23 04:25:50 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -1141,7 +1141,7 @@ DEFUN_VOID (DOS_install_interrupts)
   dos_boolean x32_p = (under_X32_p ());
   dos_boolean dpmi_p = (under_DPMI_p ());
   
-  if (x32_p && (featured_enabled_p ("MITSCHEME_X32_INTERRUPTS")))
+  if (x32_p && (feature_enabled_p ("MITSCHEME_X32_INTERRUPTS")))
   {
     extern void EXFUN (X32_asm_initialize, (void));
     extern int EXFUN (X32_lock_scheme_microcode, (void));
@@ -1196,7 +1196,7 @@ DEFUN_VOID (DOS_install_interrupts)
     }
   }
 
-  else if (featured_enabled_p ("MITSCHEME_DOSX_INTERRUPTS"))
+  else if (feature_enabled_p ("MITSCHEME_DOSX_INTERRUPTS"))
   {
     scm_int_intercept (DOS_INTVECT_USER_TIMER_TICK, 
 		       bios_timer_handler, 
