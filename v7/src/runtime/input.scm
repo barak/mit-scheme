@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.44 1987/06/15 18:09:02 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.45 1987/06/16 22:43:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -380,10 +380,9 @@
 (define (:read-string delimiters)
   (and (< start end)
        (let ((index
-	      (substring-find-next-char-in-set string start end delimiters)))
-	 (if index
-	     (substring string (set! start index) index)
-	     (substring string start end)))))
+	      (or (substring-find-next-char-in-set string start end delimiters)
+		  end)))
+	 (substring string (set! start index) index))))
 
 (define (:discard-chars delimiters)
   (if (< start end)
