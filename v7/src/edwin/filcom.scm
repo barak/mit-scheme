@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.180 1994/12/19 19:40:32 cph Exp $
+;;;	$Id: filcom.scm,v 1.181 1995/01/06 01:06:09 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -232,9 +232,18 @@ invocation."
 	    (define-variable-local-value! buffer
 		(ref-variable-object scheme-environment)
 	      (cadr entry))
-	    (define-variable-local-value! buffer
-		(ref-variable-object scheme-syntax-table)
-	      (caddr entry)))))))
+	    (if (and (eq? 'DEFAULT (ref-variable scheme-environment buffer))
+		     (not (eq? 'default (cadr entry))))
+		(begin
+		  (message "Ignoring bad evaluation environment: "
+			   (cadr entry))
+		  (editor-beep)
+		  (define-variable-local-value! buffer
+		      (ref-variable-object scheme-syntax-table)
+		    'DEFAULT))
+		(define-variable-local-value! buffer
+		    (ref-variable-object scheme-syntax-table)
+		  (caddr entry))))))))
 
 (define (find-file-revert buffer)
   (if (not (verify-visited-file-modification-time? buffer))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: evlcom.scm,v 1.50 1994/09/16 20:19:23 cph Exp $
+;;;	$Id: evlcom.scm,v 1.51 1995/01/06 01:05:56 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -54,7 +54,17 @@
 If 'DEFAULT, use the default (REP loop) environment."
   'DEFAULT
   #f
-  (lambda (object) (if (eq? 'DEFAULT object) object (->environment object))))
+  (lambda (object)
+    (if (eq? 'DEFAULT object)
+	object
+	(call-with-current-continuation
+	 (lambda (k)
+	   (bind-condition-handler (list condition-type:error)
+	       (lambda (condition)
+		 condition
+		 (k 'DEFAULT))
+	     (lambda ()
+	       (->environment object))))))))
 
 (define-variable scheme-syntax-table
   "The syntax table used by the evaluation commands, or #F.
@@ -97,7 +107,7 @@ If #F, use the default (REP loop) syntax-table."
 This does not affect editor errors."
   #t
   boolean?)
-
+
 (define-variable evaluation-input-recorder
   "A procedure that receives each input region before evaluation.
 If #F, disables input recording."
@@ -126,7 +136,7 @@ Also, the inferior REPL's run light appears in all Scheme mode buffers.
 Otherwise, expressions are evaluated directly by the commands."
   #t
   boolean?)
-
+
 (define-variable transcript-buffer-name
   "Name of evaluation transcript buffer.
 This can also be a buffer object."
@@ -401,12 +411,13 @@ may be available.  The following commands are special to this mode:
 	   (nearest-repl/syntax-table))
 	  ((scheme-syntax-table? syntax-table)
 	   syntax-table)
-	  ((and (symbol? syntax-table)
-		(not (lexical-unreferenceable? environment syntax-table))
-		(let ((syntax-table
-		       (lexical-reference environment syntax-table)))
-		  (and (scheme-syntax-table? syntax-table)
-		       syntax-table))))
+	  ((symbol? syntax-table)
+	   (or (and (not (lexical-unreferenceable? environment syntax-table))
+		    (let ((syntax-table
+			   (lexical-reference environment syntax-table)))
+		      (and (scheme-syntax-table? syntax-table)
+			   syntax-table)))
+	       (nearest-repl/syntax-table)))
 	  (else
 	   (editor-error "Illegal syntax table: " syntax-table)))))
 
