@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.3 1988/06/15 16:04:05 jrm Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.4 1988/08/01 23:07:27 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -302,7 +302,9 @@ that you cannot just vector-ref into.
 (define (procedure? object)
   (or (compound-procedure? object)
       (primitive-procedure? object)
-      (compiled-procedure? object)))
+      (compiled-procedure? object)
+      (and (object-type? (ucode-type entity) object)
+	   (procedure? (system-pair-car object)))))
 
 (define-integrable (procedure-lambda procedure)
   (compound-procedure-lambda (guarantee-compound-procedure procedure)))
