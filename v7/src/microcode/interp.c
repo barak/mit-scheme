@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.27 1987/06/09 18:48:44 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.28 1987/06/19 15:53:44 jinx Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -879,13 +879,13 @@ Pop_Return:
       define_compiler_restart (RC_COMP_UUO_LINK_TRAP_RESTART,
 			       comp_uuo_link_trap_restart)
 
-      define_compiler_restart (RC_COMP_CACHE_REFERENCE_APPLY_RESTART,
+      define_compiler_restart (RC_COMP_CACHE_REF_APPLY_RESTART,
 			       comp_cache_reference_apply_restart)
 
-      define_compiler_restart (RC_COMP_SAFE_REFERENCE_TRAP_RESTART,
+      define_compiler_restart (RC_COMP_SAFE_REF_TRAP_RESTART,
 			       comp_safe_reference_trap_restart)
 
-      define_compiler_restart (RC_COMP_UNASSIGNED_P_TRAP_RESTART,
+      define_compiler_restart (RC_COMP_UNASSIGNED_TRAP_RESTART,
 			       comp_unassigned_p_trap_restart)
 
     case RC_REENTER_COMPILED_CODE:

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.28 1987/06/18 22:12:42 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.29 1987/06/19 15:53:28 jinx Rel $
  *
  * This file contains the configuration information and the information
  * given on the command line on Unix.
@@ -247,7 +247,8 @@ typedef unsigned long Pointer;
 
 #ifdef vms
 
-#define VMS_VERSION 4.5
+#define VMS_VERSION		4
+#define VMS_SUBVERSION		5
 
 /* Name conflict in VMS with system variable */
 #define Free			Free_Register
