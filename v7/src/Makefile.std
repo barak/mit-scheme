@@ -1,4 +1,4 @@
-# $Id: Makefile.std,v 1.9 2000/12/08 04:49:34 cph Exp $
+# $Id: Makefile.std,v 1.10 2000/12/08 06:04:32 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -29,11 +29,11 @@ all:
 setup:
 	./Setup.sh
 
-tags TAGS:
-	etags *.scm
-
 mostlyclean clean distclean maintainer-clean:
 	./Clean.sh $@
+
+tags TAGS:
+	./Tags.sh
 
 stage1:
 	./Stage.sh make 1
@@ -53,5 +53,5 @@ stage3:
 unstage3:
 	./Stage.sh unmake 3
 
-.PHONY: all setup tags TAGS mostlyclean clean distclean maintainer-clean
+.PHONY: all setup mostlyclean clean distclean maintainer-clean tags TAGS
 .PHONY: stage1 unstage1 stage2 unstage2 stage3 unstage3

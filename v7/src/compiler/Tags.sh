@@ -1,4 +1,6 @@
-# $Id: Makefile,v 1.18 2000/12/08 06:04:32 cph Exp $
+#!/bin/sh
+#
+# $Id: Tags.sh,v 1.1 2000/12/08 06:04:32 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -16,23 +18,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-SHELL = /bin/sh
+# Utility to make TAGS file for the MIT Scheme compiler directory.
+# The working directory must be the compiler directory.
 
-SUBDIRS = 6001 compiler cref edwin imail microcode \
-	  rcs runtime runtime-check sf sos win32
-
-all:
-	( cd microcode && $(MAKE) $@ )
-	scheme -compiler -heap 4000 < etc/compile.scm
-	etc/build-bands.sh
-
-setup:
-	./Setup.sh $(SUBDIRS)
-
-mostlyclean clean distclean maintainer-clean:
-	./Clean.sh $@ $(SUBDIRS)
-
-tags TAGS:
-	./Tags.sh $(SUBDIRS)
-
-.PHONY: all setup mostlyclean clean distclean maintainer-clean tags TAGS
+etags back/*.scm base/*.scm fggen/*.scm fgopt/*.scm machine/*.scm \
+      rtlbase/*.scm rtlgen/*.scm rtlopt/*.scm

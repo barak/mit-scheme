@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.2 2000/12/08 05:27:27 cph Exp $
+# $Id: Clean.sh,v 1.3 2000/12/08 06:04:32 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -37,7 +37,7 @@ case "${1}" in
 mostlyclean | clean | distclean)
     ;;
 maintainer-clean)
-    for FN in .edwin-ffi Clean.sh Makefile Setup.sh Stage.sh; do
+    for FN in .edwin-ffi Clean.sh Makefile Setup.sh Stage.sh Tags.sh; do
 	if [ -L ${FN} ]; then
 	    echo "rm ${FN}"
 	    rm ${FN}
