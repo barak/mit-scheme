@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: io.texi,v 1.4 2004/01/16 20:47:22 cph Exp $
+@c $Id: io.texi,v 1.5 2004/02/06 18:15:40 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -617,7 +617,7 @@ character, or to end of file if no terminating character was found.
 terminating character, as a newly allocated string.
 
 This procedure ignores the blocking mode of the port, blocking
-unconditionally until it sees either a delimiter or eof of file.  If end
+unconditionally until it sees either a delimiter or end of file.  If end
 of file is encountered before any characters are read, an end-of-file
 object is returned.
 
