@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.77 2001/03/08 18:23:55 cph Exp $
+$Id: utils.c,v 9.78 2001/03/08 18:24:30 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -387,7 +387,7 @@ DEFUN (error_in_system_call, (err, name),
   VECTOR_SET (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
   VECTOR_SET (v, 1, (LONG_TO_UNSIGNED_FIXNUM ((unsigned int) err)));
   VECTOR_SET (v, 2, (LONG_TO_UNSIGNED_FIXNUM ((unsigned int) name)));
-  error_argument = argument;
+  error_argument = v;
   signal_error_from_primitive (ERR_IN_SYSTEM_CALL);
   /*NOTREACHED*/
 }
