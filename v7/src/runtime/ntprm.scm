@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.26 1999/01/29 22:46:39 cph Exp $
+$Id: ntprm.scm,v 1.27 1999/02/01 03:42:09 cph Exp $
 
 Copyright (c) 1992-1999 Massachusetts Institute of Technology
 
@@ -655,7 +655,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		  (cdr analyses))))
       result)))
 
-(define (os/find-program program default-directory #!optional error? exec-path)
+(define (os/find-program program default-directory #!optional exec-path error?)
   (let ((namestring
 	 (let* ((exec-path
 		 (if (default-object? exec-path)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.39 1999/01/29 22:46:46 cph Exp $
+$Id: os2prm.scm,v 1.40 1999/02/01 03:42:01 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -517,7 +517,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (loop (cdr strings) (fix:+ (fix:+ index n) 1)))))
     result))
 
-(define (os/find-program program default-directory #!optional error? exec-path)
+(define (os/find-program program default-directory #!optional exec-path error?)
   (let ((namestring
 	 (let* ((exec-path
 		 (if (default-object? exec-path)

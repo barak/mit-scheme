@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.52 1999/01/29 22:47:14 cph Exp $
+$Id: unxprm.scm,v 1.53 1999/02/01 03:42:13 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -462,7 +462,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    filename arguments environment working-directory
    ctty stdin stdout stderr))
 
-(define (os/find-program program default-directory #!optional error? exec-path)
+(define (os/find-program program default-directory #!optional exec-path error?)
   (let ((namestring
 	 (let ((exec-path
 		(if (default-object? exec-path)
