@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.13 1988/10/28 17:47:53 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.14 1988/11/02 21:55:33 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -39,8 +39,10 @@ MIT in each case. |#
 ;;;; Basic machine instructions
 
 (define (reference->register-transfer source target)
-  (if (and (effective-address/register? source)
-	   (= (lap:ea-operand-1 source) target))
+  (if (or (and (effective-address/data-register? source)
+	       (= (lap:ea-operand-1 source) target))
+	  (and (effective-address/address-register? source)
+	       (= (+ 8 (lap:ea-operand-1 source)) target)))
       (LAP)
       (LAP (MOV L ,source ,(register-reference target)))))
 
