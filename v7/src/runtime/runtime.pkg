@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.42 1989/07/13 18:38:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.43 1989/08/03 23:08:55 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -417,6 +417,8 @@ MIT in each case. |#
   (parent ())
   (export ()
 	  environment-arguments
+	  environment-assign!
+	  environment-assignable?
 	  environment-bindings
 	  environment-bound-names
 	  environment-bound?
@@ -428,6 +430,7 @@ MIT in each case. |#
 	  environment?
 	  ic-environment?
 	  interpreter-environment?
+	  make-null-interpreter-environment
 	  system-global-environment?)
   (export (runtime advice)
 	  ic-environment/arguments
@@ -504,6 +507,13 @@ MIT in each case. |#
 	  event-distributor?
 	  make-event-distributor
 	  remove-event-receiver!)
+  (initialization (initialize-package!)))
+
+(define-package (runtime extended-scode-eval)
+  (files "xeval")
+  (parent ())
+  (export ()
+	  extended-scode-eval)
   (initialization (initialize-package!)))
 
 (define-package (runtime file-input)
@@ -1110,7 +1120,9 @@ MIT in each case. |#
 	  pathname-new-version	  pathname-type
 	  pathname-version
 	  pathname?
-	  string->pathname)  (export (runtime pathname-parser)
+	  string->pathname
+	  system-library-directory-pathname)
+  (export (runtime pathname-parser)
 	  simplify-directory))
 
 (define-package (runtime pathname-parser)
