@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 4.25 2002/02/08 03:55:01 cph Exp $
+$Id: macros.scm,v 4.26 2002/02/09 05:43:15 cph Exp $
 
 Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -43,25 +43,25 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
      (if (syntax-match? '((* IDENTIFIER) * EXPRESSION) (cdr form))
 	 (let ((names (cadr form))
 	       (body (cddr form)))
-	   `(,(make-syntactic-closure environment '() 'BEGIN)
+	   `(,(close-syntax 'BEGIN environment)
 	     ,@(map (let ((r-define
-			   (make-syntactic-closure environment '() 'DEFINE)))
+			   (close-syntax 'DEFINE environment)))
 		      (lambda (name)
 			`(,r-define ,name)))
 		    names)
-	     (,(make-syntactic-closure environment '() 'LET) () ,@body)))
+	     (,(close-syntax 'LET environment) () ,@body)))
 	 (ill-formed-syntax form)))))
 
 (define-syntax define-export
   (rsc-macro-transformer
    (lambda (form environment)
      (cond ((syntax-match? '(IDENTIFIER EXPRESSION) (cdr form))
-	    `(,(make-syntactic-closure environment '() 'SET!)
+	    `(,(close-syntax 'SET! environment)
 	      ,@(cdr form)))
 	   ((syntax-match? '((IDENTIFIER . MIT-BVL) + EXPRESSION) (cdr form))
-	    `(,(make-syntactic-closure environment '() 'SET!)
+	    `(,(close-syntax 'SET! environment)
 	      ,(caadr form)
-	      (,(make-syntactic-closure environment '() 'NAMED-LAMBDA)
+	      (,(close-syntax 'NAMED-LAMBDA environment)
 	       ,@(cdr form))))
 	   (else
 	    (ill-formed-syntax form))))))

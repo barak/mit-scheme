@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: clsmac.scm,v 1.8 2002/02/03 03:38:54 cph Exp $
+;;; $Id: clsmac.scm,v 1.9 2002/02/09 05:37:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989, 1999, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -44,9 +44,9 @@
 			    (name->class (identifier->symbol superclass)))
 		       variables)
 	   ;; Load-time definition.
-	   `(,(make-syntactic-closure environment '() 'DEFINE)
+	   `(,(close-syntax 'DEFINE environment)
 	     ,name
-	     (,(make-syntactic-closure environment '() 'MAKE-CLASS)
+	     (,(close-syntax 'MAKE-CLASS environment)
 	      ',(identifier->symbol name)
 	      ,superclass
 	      ',variables)))
@@ -57,7 +57,7 @@
    (lambda (form environment)
      (let ((finish
 	    (lambda (name operation expression)
-	      `(,(make-syntactic-closure environment '() 'CLASS-METHOD-DEFINE)
+	      `(,(close-syntax 'CLASS-METHOD-DEFINE environment)
 		,name
 		',operation
 		,expression))))
@@ -69,10 +69,9 @@
 		   (identifier? (cadr (caddr form))))
 	      (finish (cadr form)
 		      (car (caddr form))
-		      `(,(make-syntactic-closure environment '() 'NAMED-LAMBDA)
+		      `(,(close-syntax 'NAMED-LAMBDA environment)
 			,(caddr form)
-			(,(make-syntactic-closure environment '()
-			    'WITH-INSTANCE-VARIABLES)
+			(,(close-syntax 'WITH-INSTANCE-VARIABLES environment)
 			 ,(cadr form)
 			 ,(cadr (caddr form))
 			 ()
@@ -96,8 +95,7 @@
 	     (compile/subexpression self environment history select-caddr)
 	     free-names
 	     (compile/subexpression
-	      `(,(make-syntactic-closure system-global-environment '() 'BEGIN)
-		,@body)
+	      `(,(close-syntax 'BEGIN system-global-environment) ,@body)
 	      environment
 	      history
 	      select-cddddr)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.38 2002/02/03 03:38:55 cph Exp $
+$Id: defstr.scm,v 14.39 2002/02/09 05:40:39 cph Exp $
 
 Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -303,7 +303,7 @@ differences:
   (close (parser-context/name context) context))
 
 (define (close name context)
-  (make-syntactic-closure (parser-context/environment context) '() name))
+  (close-syntax name (parser-context/environment context)))
 
 (define (apply-option-transformers options context)
   (let loop ((options options))
@@ -679,8 +679,8 @@ differences:
 ;;;; Code Generation
 
 (define (absolute name context)
-  (make-syntactic-closure (parser-context/closing-environment context) '()
-    `(ACCESS ,name #F)))
+  (close-syntax `(ACCESS ,name #F)
+		(parser-context/closing-environment context)))
 
 (define (accessor-definitions structure)
   (let ((context (structure/context structure)))

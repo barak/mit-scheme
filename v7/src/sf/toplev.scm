@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.23 2002/02/03 03:38:58 cph Exp $
+$Id: toplev.scm,v 4.24 2002/02/09 05:41:31 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -270,9 +270,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (mark-phase "Syntax")
   (syntax* (if (null? declarations)
 	       s-expressions
-	       (cons (cons (make-syntactic-closure system-global-environment
-			       '()
-			     'DECLARE)
+	       (cons (cons (close-syntax 'DECLARE system-global-environment)
 			   declarations)
 		     s-expressions))
 	   environment))

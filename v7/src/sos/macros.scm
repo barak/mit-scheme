@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: macros.scm,v 1.13 2002/02/03 03:38:58 cph Exp $
+;;; $Id: macros.scm,v 1.14 2002/02/09 05:42:02 cph Exp $
 ;;;
 ;;; Copyright (c) 1993-2002 Massachusetts Institute of Technology
 ;;;
@@ -431,8 +431,7 @@
 		   body))))
 	(values body
 		(let ((l
-		       (syntax `(,(make-syntactic-closure environment '()
-				    'LAMBDA)
+		       (syntax `(,(close-syntax 'LAMBDA environment)
 				 (CALL-NEXT-METHOD)
 				 ,@body)
 			       instance-environment)))
