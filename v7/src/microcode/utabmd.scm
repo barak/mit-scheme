@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: utabmd.scm,v 9.69 1993/08/28 05:44:07 gjr Exp $
+;;; $Id: utabmd.scm,v 9.70 1993/08/28 21:17:23 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1987-1993 Massachusetts Institute of Technology
 ;;;
@@ -109,6 +109,17 @@
 	       GENERIC-TRAMPOLINE-REMAINDER 		;31
 	       GENERIC-TRAMPOLINE-MODULO 		;32
 	       ARITY-DISPATCHER-TAG			;33
+	       PC-Sample/Builtin-Table			;34
+	       PC-Sample/Utility-Table			;35
+	       PC-Sample/Primitive-Table		;36
+	       PC-Sample/Code-Block-Table		;37
+	       PC-Sample/Purified-Code-Block-Block-Buffer  ;38
+	       PC-Sample/Purified-Code-Block-Offset-Buffer ;39
+	       PC-Sample/Heathen-Code-Block-Block-Buffer   ;3A
+	       PC-Sample/Heathen-Code-Block-Offset-Buffer  ;3B
+	       PC-Sample/Interp-Proc-Buffer		;3C
+	       PC-Sample/Prob-Comp-Table		;3D
+	       PC-Sample/UFO-Table			;3E
 	       ))
 
 ;;; [] Types
@@ -703,4 +714,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Id: utabmd.scm,v 9.69 1993/08/28 05:44:07 gjr Exp $"
+"$Id: utabmd.scm,v 9.70 1993/08/28 21:17:23 gjr Exp $"
