@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.4 1988/04/15 02:08:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.5 1988/06/14 08:55:55 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -36,53 +36,70 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(define (initialize-package!)
+  (set! source-filenames
+	(mapcan (lambda (subdirectory)
+		  (map (lambda (pathname)
+			 (string-append subdirectory
+					"/"
+					(pathname-name pathname)))
+		       (directory-read
+			(string-append subdirectory
+				       "/"
+				       source-file-expression))))
+		'("back" "base" "fggen" "fgopt" "rtlbase" "rtlgen" "rtlopt"
+			 "machines/bobcat")))
+  (set! source-hash
+	(make/hash-table
+	 101
+	 string-hash-mod
+	 (lambda (filename source-node)
+	   (string=? filename (source-node/filename source-node)))
+	 make/source-node))
+  (set! source-nodes
+	(map (lambda (filename)
+	       (hash-table/intern! source-hash
+				   filename
+				   identity-procedure
+				   identity-procedure))
+	     source-filenames))
+  (initialize/syntax-dependencies!)
+  (initialize/integration-dependencies!)
+  (initialize/expansion-dependencies!)
+  (source-nodes/rank!))
+
+(define source-file-expression "*.bin")
+(define source-filenames)
+(define source-hash)
+(define source-nodes)
+(define source-nodes/by-rank)
+(define source-nodes/circular-dependencies)
+
+(define (filename/append directory . names)
+  (map (lambda (name) (string-append directory "/" name)) names))
+
 (define-structure (source-node
 		   (conc-name source-node/)
 		   (constructor make/source-node (filename)))
   (filename false read-only true)
+  (pathname (string->pathname filename) read-only true)
   (forward-links '())
   (backward-links '())
   (forward-closure '())
   (backward-closure '())
   (dependencies '())
-  (rank false))
-
-(define source-filenames
-  (let ((load-env (the-environment)))
-    (mapcan (lambda (subdirectory)
-	      (map (lambda (pathname)
-		     (string-append subdirectory "/" (pathname-name pathname)))
-		   (directory-read
-		    (string-append
-		     subdirectory
-		     (if (lexical-unbound? load-env
-					   'SOURCE-FILE-EXPRESSION)
-			 "/*.bin"
-			 source-file-expression)))))
-	    '("back" "base" "fggen" "fgopt" "rtlbase" "rtlgen" "rtlopt"
-		     "machines/bobcat"))))
-
-(define source-hash
-  (make/hash-table 101
-		   string-hash-mod
-		   (lambda (filename source-node)
-		     (string=? filename (source-node/filename source-node)))
-		   make/source-node))
-
-(define source-nodes
-  (map (lambda (filename)
-	 (hash-table/intern! source-hash
-			     filename
-			     identity-procedure
-			     identity-procedure))
-       source-filenames))
+  (dependents '())
+  (rank false)
+  (syntax-table false)
+  (declarations '())
+  (modification-time false))
 
 (define (filename->source-node filename)
   (hash-table/lookup source-hash
 		     filename
 		     identity-procedure
 		     (lambda () (error "Unknown source file" filename))))
-
+
 (define (source-node/link! node dependency)
   (if (not (memq dependency (source-node/backward-links node)))
       (begin
@@ -110,23 +127,16 @@ MIT in each case. |#
 		    (source-node/close! node dependency))
 		  (source-node/forward-closure node)))))
 
-(define (source-files-by-rank)
-  (source-nodes/rank! source-nodes)
-  (map source-node/filename (source-nodes/sort-by-rank source-nodes)))
+;;;; Rank
 
-(define (source-files-with-circular-dependencies)
-  (map source-node/filename
-       (list-transform-positive source-nodes
-	 (lambda (node)
-	   (memq node (source-node/backward-closure node))))))
-
-(define source-nodes/rank!)
-(let ()
-
-(set! source-nodes/rank!
-  (lambda (nodes)
-    (compute-dependencies! nodes)
-    (compute-ranks! nodes)))
+(define (source-nodes/rank!)
+  (compute-dependencies! source-nodes)
+  (compute-ranks! source-nodes)
+  (set! source-nodes/by-rank (source-nodes/sort-by-rank source-nodes))
+  (set! source-nodes/circular-dependencies
+	(list-transform-positive source-nodes/by-rank
+	  (lambda (node)
+	    (memq node (source-node/backward-closure node))))))
 
 (define (compute-dependencies! nodes)
   (for-each (lambda (node)
@@ -134,7 +144,12 @@ MIT in each case. |#
 	       node
 	       (list-transform-negative (source-node/backward-closure node)
 		 (lambda (node*)
-		   (memq node (source-node/backward-closure node*))))))
+		   (memq node (source-node/backward-closure node*)))))
+	      (set-source-node/dependents!
+	       node
+	       (list-transform-negative (source-node/forward-closure node)
+		 (lambda (node*)
+		   (memq node (source-node/forward-closure node*))))))
 	    nodes))
 
 (define (compute-ranks! nodes)
@@ -159,266 +174,337 @@ MIT in each case. |#
 	  (and rank*
 	       (loop (cdr nodes) (max rank rank*)))))))
 
-)
-
 (define (source-nodes/sort-by-rank nodes)
   (sort nodes (lambda (x y) (< (source-node/rank x) (source-node/rank y)))))
 
-(define (file-dependency/syntax/join filenames dependency)
-  (for-each (lambda (filename)
-	      (sf/set-file-syntax-table! filename dependency))
-	    filenames))
+;;;; File Syntaxer
 
-(define (define-integration-dependencies directory name directory* . names)
-  (file-dependency/integration/make (string-append directory "/" name)
-				    (apply filename/append directory* names)))
-
-(define (file-dependency/integration/join filenames dependencies)
-  (for-each (lambda (filename)
-	      (file-dependency/integration/make filename dependencies))
-	    filenames))
-
-(define (file-dependency/integration/make filename dependencies)
-  (let ((node (filename->source-node filename)))
-    (for-each (lambda (dependency)
-		(let ((node* (filename->source-node dependency)))
-		  (if (not (eq? node node*))
-		      (source-node/link! node node*))))
-	      dependencies)))
-
-(define (finish-integration-dependencies!)
+(define (syntax-files!)
+  (for-each
+   (lambda (node)
+     (set-source-node/modification-time!
+      node
+      (let ((source (modification-time node "scm"))
+	    (binary (modification-time node "bin")))
+	(if (not source)
+	    (error "Missing source file" (source-node/filename node)))
+	(and binary (< source binary) binary))))
+   source-nodes)
   (if compiler:enable-integration-declarations?
-      (for-each (lambda (node)
-		  (let ((links (source-node/backward-links node)))
-		    (if (not (null? links))
-			(sf/add-file-declarations!
-			 (source-node/filename node)
-			 `((INTEGRATE-EXTERNAL
-			    ,@(map (lambda (node*)
-				     (filename->absolute-pathname
-				      (source-node/filename node*)))
-				   links)))))))
-		source-nodes)))
+      (begin
+	(for-each
+	 (lambda (node)
+	   (let ((time (source-node/modification-time node)))
+	     (if (and time
+		      (there-exists? (source-node/dependencies node)
+			(lambda (node)
+			  (let ((time* (source-node/modification-time node)))
+			    (or (not time*)
+				(> time* time))))))
+		 (set-source-node/modification-time! node false))))
+	 source-nodes)
+	(for-each
+	 (lambda (node)
+	   (if (not (source-node/modification-time node))
+	       (for-each (lambda (node)
+			   (set-source-node/modification-time! node false))
+			 (source-node/dependents node))))
+	 source-nodes)))
+  (for-each source-node/syntax! source-nodes/circular-dependencies)
+  (for-each source-node/syntax! source-nodes/by-rank))
 
-(define (file-dependency/expansion/join filenames expansions)
-  (if compiler:enable-expansion-declarations?
-      (for-each (lambda (filename)
-		  (sf/add-file-declarations!
-		   filename
-		   `((EXPAND-OPERATOR ,@expansions))))
-		filenames)))
+(define (source-node/syntax! node)
+  (if (not (source-node/modification-time node))
+      (with-values
+	  (lambda ()
+	    (sf/pathname-defaulting (source-node/pathname node) "" false))
+	(lambda (input-pathname bin-pathname spec-pathname)
+	  (sf/internal
+	   input-pathname bin-pathname spec-pathname
+	   (source-node/syntax-table node)
+	   ((if compiler:enable-integration-declarations?
+		identity-procedure
+		(lambda (declarations)
+		  (list-transform-negative declarations
+		    integration-declaration?)))
+	    ((if compiler:enable-expansion-declarations?
+		 identity-procedure
+		 (lambda (declarations)
+		   (list-transform-negative declarations
+		     expansion-declaration?)))
+	     (source-node/declarations node))))))))
 
-(define (filename/append directory . names)
-  (map (lambda (name) (string-append directory "/" name)) names))
-
-(define (filename->absolute-pathname filename)
-  (pathname->absolute-pathname (->pathname filename)))
+(define-integrable (modification-time node type)
+  (file-modification-time
+   (pathname-new-type (source-node/pathname node) type)))
 
 ;;;; Syntax dependencies
 
-(file-dependency/syntax/join
- (append (filename/append "base"
-			  "blocks" "cfg1" "cfg2" "cfg3" "contin" "ctypes"
-			  "debug" "enumer" "infgen" "infutl" "lvalue" "object"
-			  "pmerly" "proced" "queue" "rvalue" "scode" "sets"
-			  "subprb" "switch" "toplev" "utils")
-	 (filename/append "back"
-			  "asmmac" "bittop" "bitutl" "insseq" "lapgn1" "lapgn2"
-			  "lapgn3" "linear" "regmap" "symtab" "syntax")
-	 (filename/append "machines/bobcat"
-			  "insmac" "machin" "rgspcm")
-	 (filename/append "fggen"
-			  "declar" "fggen" "canon")
-	 (filename/append "fgopt"
-			  "blktyp" "closan" "conect" "contan" "desenv" "folcon"
-			  "offset" "operan" "order" "outer" "simapp" "simple")
-	 (filename/append "rtlbase"
-			  "regset" "rgraph" "rtlcfg" "rtlcon" "rtlexp" "rtline"
-			  "rtlobj" "rtlreg" "rtlty1" "rtlty2")
-	 (filename/append "rtlgen"
-			  "fndblk" "opncod" "rgcomb" "rgproc" "rgretn" "rgrval"
-			  "rgstmt" "rtlgen")
-	 (filename/append "rtlopt"
-			  "ralloc" "rcse1" "rcse2" "rcseep" "rcseht" "rcserq"
-			  "rcsesr" "rdeath" "rdebug" "rlife"))
- compiler-syntax-table)
-
-(file-dependency/syntax/join
- (filename/append "machines/bobcat"
-		  "lapgen" "rules1" "rules2" "rules3" "rules4")
- lap-generator-syntax-table)
-
-(file-dependency/syntax/join
- (filename/append "machines/bobcat"
-		  "insutl" "instr1" "instr2" "instr3" "instr4")
- assembler-syntax-table)
+(define (initialize/syntax-dependencies!)
+  (let ((file-dependency/syntax/join
+	 (lambda (filenames syntax-table)
+	   (for-each (lambda (filename)
+		       (set-source-node/syntax-table!
+			(filename->source-node filename)
+			syntax-table))
+		     filenames))))
+    (file-dependency/syntax/join
+     (append (filename/append "base"
+			      "blocks" "cfg1" "cfg2" "cfg3" "contin" "ctypes"
+			      "debug" "enumer" "infnew" "infutl" "lvalue"
+			      "object" "pmerly" "proced" "rvalue"
+			      "scode" "sets" "subprb" "switch" "toplev" "utils"
+			      )
+	     (filename/append "back"
+			      "asmmac" "bittop" "bitutl" "insseq" "lapgn1"
+			      "lapgn2" "lapgn3" "linear" "regmap" "symtab"
+			      "syntax")
+	     (filename/append "machines/bobcat"
+			      "insmac" "machin" "rgspcm")
+	     (filename/append "fggen"
+			      "declar" "fggen" "canon")
+	     (filename/append "fgopt"
+			      "blktyp" "closan" "conect" "contan" "desenv"
+			      "folcon" "offset" "operan" "order" "outer"
+			      "simapp" "simple")
+	     (filename/append "rtlbase"
+			      "regset" "rgraph" "rtlcfg" "rtlcon" "rtlexp"
+			      "rtline" "rtlobj" "rtlreg" "rtlty1" "rtlty2")
+	     (filename/append "rtlgen"
+			      "fndblk" "opncod" "rgcomb" "rgproc" "rgretn"
+			      "rgrval" "rgstmt" "rtlgen")
+	     (filename/append "rtlopt"
+			      "ralloc" "rcse1" "rcse2" "rcseep" "rcseht"
+			      "rcserq" "rcsesr" "rdeath" "rdebug" "rlife"))
+     compiler-syntax-table)
+    (file-dependency/syntax/join
+     (filename/append "machines/bobcat"
+		      "lapgen" "rules1" "rules2" "rules3" "rules4")
+     lap-generator-syntax-table)
+    (file-dependency/syntax/join
+     (filename/append "machines/bobcat"
+		      "insutl" "instr1" "instr2" "instr3" "instr4")
+     assembler-syntax-table)))
 
 ;;;; Integration Dependencies
 
-(define-integration-dependencies "base" "object" "base" "enumer")
-(define-integration-dependencies "base" "enumer" "base" "object")
-(define-integration-dependencies "base" "utils" "base" "scode")
-(define-integration-dependencies "base" "cfg1" "base" "object")
-(define-integration-dependencies "base" "cfg2" "base" "cfg1" "cfg3" "object")
-(define-integration-dependencies "base" "cfg3" "base" "cfg1" "cfg2")
-(define-integration-dependencies "base" "ctypes" "base"
-  "blocks" "cfg1" "cfg2" "cfg3" "contin" "lvalue" "object" "subprb")
-(define-integration-dependencies "base" "rvalue" "base"
-  "blocks" "cfg1" "cfg2" "cfg3" "enumer" "lvalue" "object" "utils")
-(define-integration-dependencies "base" "lvalue" "base"
-  "blocks" "object" "proced" "rvalue" "utils")
-(define-integration-dependencies "base" "blocks" "base"
-  "enumer" "lvalue" "object" "proced" "rvalue" "scode")
-(define-integration-dependencies "base" "proced" "base"
-  "blocks" "cfg1" "cfg2" "cfg3" "contin" "enumer" "lvalue" "object" "rvalue"
-  "utils")
-(define-integration-dependencies "base" "contin" "base"
-  "blocks" "cfg3" "ctypes")
-(define-integration-dependencies "base" "subprb" "base"
-  "cfg3" "contin" "enumer" "object" "proced")
-(define-integration-dependencies "base" "infnew" "base" "infutl")
+(define (initialize/integration-dependencies!)
+  (let ((front-end-base
+	 (filename/append "base"
+			  "blocks" "cfg1" "cfg2" "cfg3" "contin" "ctypes"
+			  "enumer" "lvalue" "object" "proced" "rvalue"
+			  "scode" "subprb" "utils"))
+	(bobcat-base
+	 (filename/append "machines/bobcat" "machin"))
+	(rtl-base
+	 (filename/append "rtlbase"
+			  "regset" "rgraph" "rtlcfg" "rtlcon" "rtlexp" "rtlobj"
+			  "rtlreg" "rtlty1" "rtlty2"))
+	(cse-base
+	 (filename/append "rtlopt"
+			  "rcse1" "rcse2" "rcseep" "rcseht" "rcserq" "rcsesr"))
+	(instruction-base
+	 (append (filename/append "back" "insseq")
+		 (filename/append "machines/bobcat" "assmd" "machin")))
+	(lapgen-base
+	 (append (filename/append "back" "lapgn2" "lapgn3" "regmap")
+		 (filename/append "machines/bobcat" "lapgen")))
+	(assembler-base
+	 (append (filename/append "back" "bitutl" "symtab")
+		 (filename/append "machines/bobcat" "insutl")))
+	(lapgen-body
+	 (append
+	  (filename/append "back" "lapgn1" "syntax")
+	  (filename/append "machines/bobcat"
+			   "rules1" "rules2" "rules3" "rules4")))
+	(assembler-body
+	 (append
+	  (filename/append "back" "bittop")
+	  (filename/append "machines/bobcat"
+			   "instr1" "instr2" "instr3" "instr4"))))
 
-(define front-end-base
-  (filename/append "base"
-		   "blocks" "cfg1" "cfg2" "cfg3" "contin" "ctypes" "enumer"
-		   "lvalue" "object" "proced" "queue" "rvalue" "scode"
-		   "subprb" "utils"))
+    (define (file-dependency/integration/join filenames dependencies)
+      (for-each (lambda (filename)
+		  (file-dependency/integration/make filename dependencies))
+		filenames))
 
-(define-integration-dependencies "machines/bobcat" "machin" "rtlbase"
-  "rtlreg" "rtlty1" "rtlty2")
+    (define (file-dependency/integration/make filename dependencies)
+      (let ((node (filename->source-node filename)))
+	(for-each (lambda (dependency)
+		    (let ((node* (filename->source-node dependency)))
+		      (if (not (eq? node node*))
+			  (source-node/link! node node*))))
+		  dependencies)))
 
-(define bobcat-base
-  (filename/append "machines/bobcat" "machin"))
-
-(define-integration-dependencies "rtlbase" "regset" "base")
-(define-integration-dependencies "rtlbase" "rgraph" "base" "cfg1" "cfg2")
-(define-integration-dependencies "rtlbase" "rgraph" "machines/bobcat" "machin")
-(define-integration-dependencies "rtlbase" "rtlcfg" "base"
-  "cfg1" "cfg2" "cfg3")
-(define-integration-dependencies "rtlbase" "rtlcon" "base" "cfg3" "utils")
-(define-integration-dependencies "rtlbase" "rtlcon" "machines/bobcat" "machin")
-(define-integration-dependencies "rtlbase" "rtlexp" "base" "utils")
-(define-integration-dependencies "rtlbase" "rtlexp" "rtlbase" "rtlreg")
-(define-integration-dependencies "rtlbase" "rtline" "base" "cfg1" "cfg2")
-(define-integration-dependencies "rtlbase" "rtline" "rtlbase"
-  "rtlcfg" "rtlty2")
-(define-integration-dependencies "rtlbase" "rtlobj" "base"
-  "cfg1" "object" "utils")
-(define-integration-dependencies "rtlbase" "rtlreg" "machines/bobcat" "machin")
-(define-integration-dependencies "rtlbase" "rtlreg" "rtlbase"
-  "rgraph" "rtlty1")
-(define-integration-dependencies "rtlbase" "rtlty1" "rtlbase" "rtlcfg")
-(define-integration-dependencies "rtlbase" "rtlty2" "base" "scode")
-(define-integration-dependencies "rtlbase" "rtlty2" "machines/bobcat" "machin")
-(define-integration-dependencies "rtlbase" "rtlty2" "rtlbase" "rtlty1")
+    (define (define-integration-dependencies directory name directory* . names)
+      (file-dependency/integration/make
+       (string-append directory "/" name)
+       (apply filename/append directory* names)))
 
-(define rtl-base
-  (filename/append "rtlbase"
-		   "regset" "rgraph" "rtlcfg" "rtlcon" "rtlexp" "rtlobj"
-		   "rtlreg" "rtlty1" "rtlty2"))
-
-(file-dependency/integration/join
- (append
-  (filename/append "fggen"
-		   "declar" "fggen")	; "canon" needs no integrations
-  (filename/append "fgopt"
-		   "blktyp" "closan" "conect" "contan" "desenv" "folcon"
-		   "offset" "operan" "order" "outer" "simapp" "simple"))
- (append front-end-base bobcat-base))
+    (define-integration-dependencies "base" "object" "base" "enumer")
+    (define-integration-dependencies "base" "enumer" "base" "object")
+    (define-integration-dependencies "base" "utils" "base" "scode")
+    (define-integration-dependencies "base" "cfg1" "base" "object")
+    (define-integration-dependencies "base" "cfg2" "base"
+      "cfg1" "cfg3" "object")
+    (define-integration-dependencies "base" "cfg3" "base" "cfg1" "cfg2")
+    (define-integration-dependencies "base" "ctypes" "base"
+      "blocks" "cfg1" "cfg2" "cfg3" "contin" "lvalue" "object" "subprb")
+    (define-integration-dependencies "base" "rvalue" "base"
+      "blocks" "cfg1" "cfg2" "cfg3" "enumer" "lvalue" "object" "utils")
+    (define-integration-dependencies "base" "lvalue" "base"
+      "blocks" "object" "proced" "rvalue" "utils")
+    (define-integration-dependencies "base" "blocks" "base"
+      "enumer" "lvalue" "object" "proced" "rvalue" "scode")
+    (define-integration-dependencies "base" "proced" "base"
+      "blocks" "cfg1" "cfg2" "cfg3" "contin" "enumer" "lvalue" "object"
+      "rvalue" "utils")
+    (define-integration-dependencies "base" "contin" "base"
+      "blocks" "cfg3" "ctypes")
+    (define-integration-dependencies "base" "subprb" "base"
+      "cfg3" "contin" "enumer" "object" "proced")
+    (define-integration-dependencies "base" "infnew" "base" "infutl")
 
-(file-dependency/integration/join
- (filename/append "rtlgen"
-		  "fndblk" "opncod" "rgcomb" "rgproc" "rgretn" "rgrval"
-		  "rgstmt" "rtlgen")
- (append front-end-base bobcat-base rtl-base))
+    (define-integration-dependencies "machines/bobcat" "machin" "rtlbase"
+      "rtlreg" "rtlty1" "rtlty2")
 
-(define cse-base
-  (filename/append "rtlopt"
-		   "rcse1" "rcse2" "rcseep" "rcseht" "rcserq" "rcsesr"))
+    (define-integration-dependencies "rtlbase" "regset" "base")
+    (define-integration-dependencies "rtlbase" "rgraph" "base" "cfg1" "cfg2")
+    (define-integration-dependencies "rtlbase" "rgraph" "machines/bobcat"
+      "machin")
+    (define-integration-dependencies "rtlbase" "rtlcfg" "base"
+      "cfg1" "cfg2" "cfg3")
+    (define-integration-dependencies "rtlbase" "rtlcon" "base" "cfg3" "utils")
+    (define-integration-dependencies "rtlbase" "rtlcon" "machines/bobcat"
+      "machin")
+    (define-integration-dependencies "rtlbase" "rtlexp" "base" "utils")
+    (define-integration-dependencies "rtlbase" "rtlexp" "rtlbase" "rtlreg")
+    (define-integration-dependencies "rtlbase" "rtline" "base" "cfg1" "cfg2")
+    (define-integration-dependencies "rtlbase" "rtline" "rtlbase"
+      "rtlcfg" "rtlty2")
+    (define-integration-dependencies "rtlbase" "rtlobj" "base"
+      "cfg1" "object" "utils")
+    (define-integration-dependencies "rtlbase" "rtlreg" "machines/bobcat"
+      "machin")
+    (define-integration-dependencies "rtlbase" "rtlreg" "rtlbase"
+      "rgraph" "rtlty1")
+    (define-integration-dependencies "rtlbase" "rtlty1" "rtlbase" "rtlcfg")
+    (define-integration-dependencies "rtlbase" "rtlty2" "base" "scode")
+    (define-integration-dependencies "rtlbase" "rtlty2" "machines/bobcat"
+      "machin")
+    (define-integration-dependencies "rtlbase" "rtlty2" "rtlbase" "rtlty1")
+    (file-dependency/integration/join
+     (append
+      (filename/append "fggen"
+		       "declar" "fggen") ; "canon" needs no integrations
+      (filename/append "fgopt"
+		       "blktyp" "closan" "conect" "contan" "desenv" "folcon"
+		       "offset" "operan" "order" "outer" "simapp" "simple"))
+     (append front-end-base bobcat-base))
 
-(file-dependency/integration/join
- (append cse-base
-	 (filename/append "rtlopt" "ralloc" "rdeath" "rdebug" "rlife"))
- (append bobcat-base rtl-base))
+    (file-dependency/integration/join
+     (filename/append "rtlgen"
+		      "fndblk" "opncod" "rgcomb" "rgproc" "rgretn" "rgrval"
+		      "rgstmt" "rtlgen")
+     (append front-end-base bobcat-base rtl-base))
 
-(file-dependency/integration/join cse-base cse-base)
+    (file-dependency/integration/join
+     (append cse-base
+	     (filename/append "rtlopt" "ralloc" "rdeath" "rdebug" "rlife"))
+     (append bobcat-base rtl-base))
 
-(define-integration-dependencies "rtlopt" "rcseht" "base" "object")
-(define-integration-dependencies "rtlopt" "rcserq" "base" "object")
-(define-integration-dependencies "rtlopt" "rlife"  "base" "cfg2")
-
-(define instruction-base
-  (append (filename/append "back" "insseq")
-	  (filename/append "machines/bobcat" "assmd" "machin")))
+    (file-dependency/integration/join cse-base cse-base)
 
-(define lapgen-base
-  (append (filename/append "back" "lapgn2" "lapgn3" "regmap")
-	  (filename/append "machines/bobcat" "lapgen")))
+    (define-integration-dependencies "rtlopt" "rcseht" "base" "object")
+    (define-integration-dependencies "rtlopt" "rcserq" "base" "object")
+    (define-integration-dependencies "rtlopt" "rlife"  "base" "cfg2")
 
-(define assembler-base
-  (append (filename/append "back" "bitutl" "symtab")
-	  (filename/append "machines/bobcat" "insutl")))
+    (file-dependency/integration/join
+     (append instruction-base
+	     lapgen-base
+	     lapgen-body
+	     assembler-base
+	     assembler-body
+	     (filename/append "back" "linear" "syerly"))
+     instruction-base)
+    (file-dependency/integration/join (append lapgen-base lapgen-body)
+				      lapgen-base)
 
-(define lapgen-body
-  (append
-   (filename/append "back" "lapgn1" "syntax")
-   (filename/append "machines/bobcat" "rules1" "rules2" "rules3" "rules4")))
+    (file-dependency/integration/join (append assembler-base assembler-body)
+				      assembler-base)
 
-(define assembler-body
-  (append
-   (filename/append "back" "bittop")
-   (filename/append "machines/bobcat" "instr1" "instr2" "instr3" "instr4")))
+    (define-integration-dependencies "back" "lapgn1" "base"
+      "cfg1" "cfg2" "utils")
+    (define-integration-dependencies "back" "lapgn1" "rtlbase"
+      "regset" "rgraph" "rtlcfg")
+    (define-integration-dependencies "back" "lapgn2" "rtlbase" "rtlreg")
+    (define-integration-dependencies "back" "lapgn3" "rtlbase" "rtlcfg")
+    (define-integration-dependencies "back" "linear" "base" "cfg1" "cfg2")
+    (define-integration-dependencies "back" "linear" "rtlbase" "rtlcfg")
+    (define-integration-dependencies "back" "regmap" "base" "utils")
+    (define-integration-dependencies "back" "symtab" "base" "utils"))
 
-(file-dependency/integration/join
- (append instruction-base
-	 lapgen-base
-	 lapgen-body
-	 assembler-base
-	 assembler-body
-	 (filename/append "back" "linear" "syerly"))
- instruction-base)
+(for-each (lambda (node)
+	    (let ((links (source-node/backward-links node)))
+	      (if (not (null? links))
+		  (set-source-node/declarations!
+		   node
+		   (cons (make-integration-declaration
+			  (source-node/pathname node)
+			  (map source-node/pathname links))
+			 (source-node/declarations node))))))
+	  source-nodes))
 
-(file-dependency/integration/join (append lapgen-base lapgen-body) lapgen-base)
+(define (make-integration-declaration pathname integration-dependencies)
+  `(INTEGRATE-EXTERNAL
+    ,@(map (let ((default
+		  (make-pathname
+		   false
+		   false
+		   (make-list (length (pathname-directory pathname)) 'UP)
+		   false
+		   false
+		   false)))
+	     (lambda (pathname)
+	       (merge-pathnames pathname default)))
+	   integration-dependencies)))
 
-(file-dependency/integration/join (append assembler-base assembler-body)
-				  assembler-base)
-
-(define-integration-dependencies "back" "lapgn1" "base" "cfg1" "cfg2" "utils")
-(define-integration-dependencies "back" "lapgn1" "rtlbase"
-  "regset" "rgraph" "rtlcfg")
-(define-integration-dependencies "back" "lapgn2" "rtlbase" "rtlreg")
-(define-integration-dependencies "back" "lapgn3" "rtlbase" "rtlcfg")
-(define-integration-dependencies "back" "linear" "base" "cfg1" "cfg2")
-(define-integration-dependencies "back" "linear" "rtlbase" "rtlcfg")
-(define-integration-dependencies "back" "regmap" "base" "utils")
-(define-integration-dependencies "back" "symtab" "base" "utils")
+(define-integrable (integration-declaration? declaration)
+  (eq? (car declaration) 'INTEGRATE-EXTERNAL))
 
 ;;;; Expansion Dependencies
 
-(file-dependency/expansion/join
- (filename/append "machines/bobcat"
-		  "lapgen" "rules1" "rules2" "rules3" "rules4")
- '((LAP:SYNTAX-INSTRUCTION
-    (ACCESS LAP:SYNTAX-INSTRUCTION-EXPANDER LAP-SYNTAX-PACKAGE
-	    COMPILER-PACKAGE))
-   (INSTRUCTION->INSTRUCTION-SEQUENCE
-    (ACCESS INSTRUCTION->INSTRUCTION-SEQUENCE-EXPANDER LAP-SYNTAX-PACKAGE
-	    COMPILER-PACKAGE))
-   (SYNTAX-EVALUATION
-    (ACCESS SYNTAX-EVALUATION-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
-   (CONS-SYNTAX
-    (ACCESS CONS-SYNTAX-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
-   (OPTIMIZE-GROUP-EARLY
-    (ACCESS OPTIMIZE-GROUP-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
-   (EA-KEYWORD-EARLY
-    (ACCESS EA-KEYWORD-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
-   (EA-MODE-EARLY
-    (ACCESS EA-MODE-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
-   (EA-REGISTER-EARLY
-    (ACCESS EA-REGISTER-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
-   (EA-EXTENSION-EARLY
-    (ACCESS EA-EXTENSION-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
-   (EA-CATEGORIES-EARLY
-    (ACCESS EA-CATEGORIES-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))))
+(define (initialize/expansion-dependencies!)
+  (let ((file-dependency/expansion/join
+	 (lambda (filenames expansions)
+	   (for-each (lambda (filename)
+		       (let ((node (filename->source-node filename)))
+			 (set-source-node/declarations!
+			  node
+			  (cons (make-expansion-declaration expansions)
+				(source-node/declarations node)))))
+		     filenames))))
+    (file-dependency/expansion/join
+     (filename/append "machines/bobcat"
+		      "lapgen" "rules1" "rules2" "rules3" "rules4")
+     (map (lambda (entry)
+	    `(,(car entry)
+	      (PACKAGE/REFERENCE (FIND-PACKAGE '(COMPILER LAP-SYNTAXER))
+				 ',(cadr entry))))
+	  '((LAP:SYNTAX-INSTRUCTION LAP:SYNTAX-INSTRUCTION-EXPANDER)
+	    (INSTRUCTION->INSTRUCTION-SEQUENCE
+	     INSTRUCTION->INSTRUCTION-SEQUENCE-EXPANDER)
+	    (SYNTAX-EVALUATION SYNTAX-EVALUATION-EXPANDER)
+	    (CONS-SYNTAX CONS-SYNTAX-EXPANDER)
+	    (OPTIMIZE-GROUP-EARLY OPTIMIZE-GROUP-EXPANDER)
+	    (EA-KEYWORD-EARLY EA-KEYWORD-EXPANDER)
+	    (EA-MODE-EARLY EA-MODE-EXPANDER)
+	    (EA-REGISTER-EARLY EA-REGISTER-EXPANDER)
+	    (EA-EXTENSION-EARLY EA-EXTENSION-EXPANDER)
+	    (EA-CATEGORIES-EARLY EA-CATEGORIES-EXPANDER))))))
 
-(finish-integration-dependencies!)
+(define-integrable (make-expansion-declaration expansions)
+  `(EXPAND-OPERATOR ,@expansions))
+
+(define-integrable (expansion-declaration? declaration)
+  (eq? (car declaration) 'EXPAND-OPERATOR))
