@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulrew.scm,v 1.7 1992/02/17 22:35:54 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulrew.scm,v 1.8 1992/02/18 21:57:31 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rulrew.scm,v 1.4 1991/10/25 06:50:06 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -116,16 +116,15 @@ MIT in each case. |#
 		     (offset* (rtl:offset-number base)))
 		 (and (= (rtl:register-number base*) address)
 		      (= offset* offset)))))))
-  (let ((target (rtl:make-offset address offset)))
+  (let ((target (let ((base (rtl:byte-offset-address-base source)))
+		  (if (rtl:register? base)
+		      (register-known-value (rtl:register-number base))
+		      base))))
     (list 'ASSIGN
 	  target
-	  (rtl:make-byte-offset-address
-	   target
-	   (rtl:byte-offset-address-number
-	    (let ((base (rtl:byte-offset-address-base source)))
-	      (if (rtl:register? base)
-		  (register-known-value (rtl:register-number base))
-		  base)))))))
+	  (rtl:make-byte-offset-address target
+					(rtl:byte-offset-address-number
+					 source)))))
 
 (define-rule rewriting
   (EQ-TEST (? source) (REGISTER (? comparand register-known-value)))
