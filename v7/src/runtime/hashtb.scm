@@ -1,6 +1,6 @@
-~#| -*-Scheme-*-
+#| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.13 1993/10/19 07:16:22 cph Exp $
+$Id: hashtb.scm,v 1.14 1993/10/19 08:17:39 cph Exp $
 
 Copyright (c) 1990-93 Massachusetts Institute of Technology
 
