@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookprm.c,v 1.18 2001/12/23 18:28:52 cph Exp $
+$Id: lookprm.c,v 1.19 2001/12/23 18:33:08 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -136,10 +136,10 @@ binding of SYMBOL within ENVIRONMENT.  The following values are defined:\n\
 	PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (3));
       case PRIM_INTERRUPT:
 	signal_interrupt_from_primitive ();
-	break;
+	PRIMITIVE_RETURN (UNSPECIFIC);
       default:
 	signal_error_from_primitive (result);
-	break;
+	PRIMITIVE_RETURN (UNSPECIFIC);
       }
   }
 }
@@ -148,7 +148,7 @@ DEFINE_PRIMITIVE ("SAFE-LEXICAL-REFERENCE", Prim_safe_lexical_reference, 2, 2,
 		  "(ENVIRONMENT SYMBOL)\n\
 Looks up SYMBOL in ENVIRONMENT and returns its value.\n\
 If the variable is unbound, signals an error.\n\
-If the variable is unassigned or holds a macro transformer,
+If the variable is unassigned or holds a macro transformer,\n\
  returns the appropriate trap object.")
 {
   PRIMITIVE_HEADER (2);
@@ -166,10 +166,10 @@ If the variable is unassigned or holds a macro transformer,
 	PRIMITIVE_RETURN (UNASSIGNED_OBJECT);
       case PRIM_INTERRUPT:
 	signal_interrupt_from_primitive ();
-	break;
+	PRIMITIVE_RETURN (UNSPECIFIC);
       default:
 	signal_error_from_primitive (result);
-	break;
+	PRIMITIVE_RETURN (UNSPECIFIC);
       }
   }
 }
