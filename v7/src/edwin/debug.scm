@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 1.65 2003/02/14 18:28:11 cph Exp $
+$Id: debug.scm,v 1.66 2003/03/07 19:34:48 cph Exp $
 
 Copyright 1992,1993,1994,1995,1996,1997 Massachusetts Institute of Technology
 Copyright 1998,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -77,61 +77,46 @@ USA.
 
 ;;;; Browsers
 
-(define browser-rtd
-  (make-record-type
-   "browser"
-   '(
-     ;; The browser's buffer.
-     BUFFER
+(define-record-type <browser>
+    (%make-browser buffer object name lines selected-line buffers properties)
+    browser?
 
-     ;; The object being browsed.
-     OBJECT
+  ;; The browser's buffer.
+  (buffer browser/buffer)
 
-     ;; Name of this browser, a string.  Not necessarily unique.
-     NAME
+  ;; The object being browsed.
+  (object browser/object)
 
-     ;; Vector of BLINE objects, sorted in order of increasing INDEX.
-     LINES
+  ;; Name of this browser, a string.  Not necessarily unique.
+  (name browser/name)
 
-     ;; The current selected BLINE object.
-     SELECTED-LINE
+  ;; Vector of BLINE objects, sorted in order of increasing INDEX.
+  (lines browser/lines set-browser/lines!)
 
-     ;; List of buffers associated with this browser.
-     BUFFERS
+  ;; The current selected BLINE object.
+  (selected-line browser/selected-line set-browser/selected-line!)
 
-     PROPERTIES)))
+  ;; List of buffers associated with this browser.
+  (buffers browser/buffers set-browser/buffers!)
 
-(define browser? (record-predicate browser-rtd))
-(define browser/buffer (record-accessor browser-rtd 'BUFFER))
-(define browser/object (record-accessor browser-rtd 'OBJECT))
-(define browser/lines (record-accessor browser-rtd 'LINES))
-(define set-browser/lines! (record-modifier browser-rtd 'LINES))
-(define browser/selected-line (record-accessor browser-rtd 'SELECTED-LINE))
-(define set-browser/selected-line!
-  (record-modifier browser-rtd 'SELECTED-LINE))
-(define browser/name (record-accessor browser-rtd 'NAME))
-(define browser/buffers (record-accessor browser-rtd 'BUFFERS))
-(define set-browser/buffers! (record-modifier browser-rtd 'BUFFERS))
-(define browser/properties (record-accessor browser-rtd 'PROPERTIES))
+  (properties browser/properties))
 
-(define make-browser
-  (let ((constructor (record-constructor browser-rtd)))
-    (lambda (name mode object)
-      (let ((buffer (new-buffer name)))
-	(buffer-reset! buffer)
-	(set-buffer-read-only! buffer)
-	(set-buffer-major-mode! buffer mode)
-	(add-kill-buffer-hook buffer kill-browser-buffer)
-	(let ((browser
-	       (constructor buffer
-			    object
-			    name
-			    (vector)
-			    #f
-			    '()
-			    (make-1d-table))))
-	  (buffer-put! buffer 'BROWSER browser)
-	  browser)))))
+(define (make-browser name mode object)
+  (let ((buffer (new-buffer name)))
+    (buffer-reset! buffer)
+    (set-buffer-read-only! buffer)
+    (set-buffer-major-mode! buffer mode)
+    (add-kill-buffer-hook buffer kill-browser-buffer)
+    (let ((browser
+	   (%make-browser buffer
+			  object
+			  name
+			  (vector)
+			  #f
+			  '()
+			  (make-1d-table))))
+      (buffer-put! buffer 'BROWSER browser)
+      browser)))
 
 (define (kill-browser-buffer buffer)
   (let ((browser (buffer-get buffer 'BROWSER)))
@@ -562,75 +547,61 @@ USA.
 
 ;;;; Browser Lines
 
-(define bline-rtd
-  (make-record-type
-   "browser-line"
-   '(
-     ;; Index of this bline within browser lines vector.  #F if line
-     ;; is invisible.
-     INDEX
+(define-record-type <browser-line>
+    (%make-bline start-mark object type parent depth next prev offset
+		 properties)
+    bline?
 
-     ;; Line start within browser buffer.  #F if line is invisible.
-     START-MARK
+  ;; Index of this bline within browser lines vector.  #F if line is
+  ;; invisible.
+  (index bline/index set-bline/index!)
 
-     ;; Object that this line represents.
-     OBJECT
+  ;; Line start within browser buffer.  #F if line is invisible.
+  (start-mark bline/start-mark set-bline/start-mark!)
 
-     ;; Type of OBJECT.  This type is specific to the browser; it
-     ;; tells the browser how to manipulate OBJECT.
-     TYPE
+  ;; Object that this line represents.
+  (object bline/object)
 
-     ;; BLINE representing the object that this object is a component
-     ;; of, or #F if none.
-     PARENT
+  ;; Type of OBJECT.  This type is specific to the browser; it tells
+  ;; the browser how to manipulate OBJECT.
+  (type bline/type)
 
-     ;; Nonnegative integer indicating the depth of this object in
-     ;; the component nesting.
-     DEPTH
+  ;; BLINE representing the object that this object is a component of,
+  ;; or #F if none.
+  (parent bline/parent)
 
-     ;; BLINEs representing the objects that are adjacent to this one
-     ;; in the component ordering, or #F if none.
-     NEXT
-     PREV
+  ;; Nonnegative integer indicating the depth of this object in the
+  ;; component nesting.
+  (depth bline/depth)
 
-     ;; Nonnegative integer indicating the position of this object in
-     ;; the component ordering.
-     OFFSET
+  ;; BLINEs representing the objects that are adjacent to this one in
+  ;; the component ordering, or #F if none.
+  (next bline/next set-bline/next!)
+  (prev bline/prev)
 
-     PROPERTIES)))
+  ;; Nonnegative integer indicating the position of this object in the
+  ;; component ordering.
+  (offset bline/offset)
 
-(define bline? (record-predicate bline-rtd))
-(define bline/index (record-accessor bline-rtd 'INDEX))
-(define set-bline/index! (record-modifier bline-rtd 'INDEX))
-(define bline/start-mark (record-accessor bline-rtd 'START-MARK))
-(define set-bline/start-mark! (record-modifier bline-rtd 'START-MARK))
-(define bline/object (record-accessor bline-rtd 'OBJECT))
-(define bline/type (record-accessor bline-rtd 'TYPE))
-(define bline/parent (record-accessor bline-rtd 'PARENT))
-(define bline/depth (record-accessor bline-rtd 'DEPTH))
-(define bline/next (record-accessor bline-rtd 'NEXT))
-(define bline/prev (record-accessor bline-rtd 'PREV))
-(define bline/offset (record-accessor bline-rtd 'OFFSET))
-(define bline/properties (record-accessor bline-rtd 'PROPERTIES))
+  (properties bline/properties))
+
+(define (make-bline object type parent prev)
+  (let ((bline
+	 (%make-bline #f
+		      object
+		      type
+		      parent
+		      (if parent (+ (bline/depth parent) 1) 0)
+		      #f
+		      prev
+		      (if prev (+ (bline/offset prev) 1) 0)
+		      (make-1d-table))))
+    (if prev
+	(set-bline/next! prev bline))
+    bline))
 
 (define (bline/browser bline)
   (buffer-browser (mark-buffer (bline/start-mark bline))))
-
-(define make-bline
-  (let ((constructor
-	 (record-constructor
-	  bline-rtd
-	  '(START-MARK OBJECT TYPE PARENT DEPTH NEXT PREV OFFSET PROPERTIES)))
-	(set-bline/next! (record-modifier bline-rtd 'NEXT)))
-    (lambda (object type parent prev)
-      (let ((bline
-	     (constructor #f object type
-			  parent (if parent (+ (bline/depth parent) 1) 0)
-			  #f prev (if prev (+ (bline/offset prev) 1) 0)
-			  (make-1d-table))))
-	(if prev
-	    (set-bline/next! prev bline))
-	bline))))
 
 ;;;; Browser Line Editing
 
@@ -747,56 +718,38 @@ USA.
 
 ;;;; Browser Line Types
 
-(define bline-type-rtd
-  (make-record-type
-   "browser-element-type"
-   '(
-     ;; Procedure that is called to generate the browser line that
-     ;; represents this object.  Two arguments: BLINE and PORT.  The
-     ;; summary of BLINE is written to PORT.  The summary should fit
-     ;; on one line; PORT will limit the number of characters that can
-     ;; be printed so that it fits.
-     WRITE-SUMMARY
+(define-record-type <browser-line-type>
+    (%make-bline-type write-summary write-description selection-mark
+		      properties)
+    bline-type?
 
-     ;; Procedure that is called to generate a full description of the
-     ;; object.  Two arguments: BLINE and PORT.  This description may
-     ;; use multiple lines; it will be presented in its own buffer, so
-     ;; the presentation style is not very constrained.  This
-     ;; component may be #F to indicate that the object is not
-     ;; normally viewed.
-     WRITE-DESCRIPTION
+  ;; Procedure that is called to generate the browser line that
+  ;; represents this object.  Two arguments: BLINE and PORT.  The
+  ;; summary of BLINE is written to PORT.  The summary should fit on
+  ;; one line; PORT will limit the number of characters that can be
+  ;; printed so that it fits.
+  (write-summary bline-type/write-summary)
 
-     ;; Procedure that generates the standard mark at which the point
-     ;; should be placed when this object is selected.  One argument:
-     ;; BLINE.  This component may be a nonnegative exact integer
-     ;; meaning an offset from the START-MARK of the bline.
-     SELECTION-MARK
+  ;; Procedure that is called to generate a full description of the
+  ;; object.  Two arguments: BLINE and PORT.  This description may use
+  ;; multiple lines; it will be presented in its own buffer, so the
+  ;; presentation style is not very constrained.  This component may
+  ;; be #F to indicate that the object is not normally viewed.
+  (write-description bline-type/write-description)
 
-     PROPERTIES
-     )))
+  ;; Procedure that generates the standard mark at which the point
+  ;; should be placed when this object is selected.  One argument:
+  ;; BLINE.  This component may be a nonnegative exact integer meaning
+  ;; an offset from the START-MARK of the bline.
+  (selection-mark bline-type/selection-mark)
 
-(define bline-type/write-summary
-  (record-accessor bline-type-rtd 'WRITE-SUMMARY))
+  (properties bline-type/properties))
 
-(define bline-type/write-description
-  (record-accessor bline-type-rtd 'WRITE-DESCRIPTION))
-
-(define bline-type/selection-mark
-  (record-accessor bline-type-rtd 'SELECTION-MARK))
-
-(define bline-type/properties
-  (record-accessor bline-type-rtd 'PROPERTIES))
-
-(define make-bline-type
-  (let ((constructor
-	 (record-constructor
-	  bline-type-rtd
-	  '(WRITE-SUMMARY WRITE-DESCRIPTION SELECTION-MARK PROPERTIES))))
-    (lambda (write-summary write-description selection-mark)
-      (constructor write-summary
-		   write-description
-		   selection-mark
-		   (make-1d-table)))))
+(define (make-bline-type write-summary write-description selection-mark)
+  (%make-bline-type write-summary
+		    write-description
+		    selection-mark
+		    (make-1d-table)))
 
 (define (make-continuation-bline expander parent prev)
   (make-bline expander bline-type:continuation-line parent prev))
@@ -1274,41 +1227,27 @@ it has been renamed, it will not be deleted automatically.")
 		   (list (make-continuation-bline continue #f prev)))
 		  (else (continue))))))))
 
-(define subproblem-rtd
-  (make-record-type
-   "subproblem"
-   '(STACK-FRAME EXPRESSION ENVIRONMENT SUBEXPRESSION NUMBER)))
+(define-record-type <subproblem>
+    (make-subproblem stack-frame expression environment subexpression number)
+    subproblem?
+  (stack-frame subproblem/stack-frame)
+  (expression subproblem/expression)
+  (environment subproblem/environment)
+  (subexpression subproblem/subexpression)
+  (number subproblem/number))
 
-(define subproblem? (record-predicate subproblem-rtd))
-(define subproblem/stack-frame (record-accessor subproblem-rtd 'STACK-FRAME))
-(define subproblem/expression (record-accessor subproblem-rtd 'EXPRESSION))
-(define subproblem/environment (record-accessor subproblem-rtd 'ENVIRONMENT))
-(define subproblem/subexpression
-  (record-accessor subproblem-rtd 'SUBEXPRESSION))
-(define subproblem/number (record-accessor subproblem-rtd 'NUMBER))
+(define (stack-frame->subproblem frame number)
+  (receive (expression environment subexpression)
+      (stack-frame/debugging-info frame)
+    (make-subproblem frame expression environment subexpression number)))
 
-(define stack-frame->subproblem
-  (let ((constructor
-	 (record-constructor
-	  subproblem-rtd
-	  '(STACK-FRAME EXPRESSION ENVIRONMENT SUBEXPRESSION NUMBER))))
-    (lambda (frame number)
-      (with-values (lambda () (stack-frame/debugging-info frame))
-	(lambda (expression environment subexpression)
-	  (constructor frame expression environment subexpression number))))))
-
-(define reduction-rtd
-  (make-record-type "reduction" '(SUBPROBLEM EXPRESSION ENVIRONMENT NUMBER)))
-
-(define reduction? (record-predicate reduction-rtd))
-(define reduction/subproblem (record-accessor reduction-rtd 'SUBPROBLEM))
-(define reduction/expression (record-accessor reduction-rtd 'EXPRESSION))
-(define reduction/environment (record-accessor reduction-rtd 'ENVIRONMENT))
-(define reduction/number (record-accessor reduction-rtd 'NUMBER))
-
-(define make-reduction
-  (record-constructor reduction-rtd
-		      '(SUBPROBLEM EXPRESSION ENVIRONMENT NUMBER)))
+(define-record-type <reduction>
+    (make-reduction subproblem expression environment number)
+    reduction?
+  (subproblem reduction/subproblem)
+  (expression reduction/expression)
+  (environment reduction/environment)
+  (number reduction/number))
 
 (define (subproblem/reductions subproblem)
   (let ((frame (subproblem/stack-frame subproblem)))
