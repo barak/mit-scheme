@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.12 2003/07/29 04:16:20 cph Exp $
+$Id: unicode.scm,v 1.13 2003/08/03 05:54:34 cph Exp $
 
 Copyright 2001,2003 Massachusetts Institute of Technology
 
@@ -102,7 +102,9 @@ USA.
 	(let ((start* (validate-char string start end)))
 	  (if (not start*)
 	      (error:wrong-type-argument string
-					 (string-append "UTF-" type " string")
+					 (string-append "a UTF-"
+							type
+							" string")
 					 caller))
 	  (loop start* (fix:+ n 1)))
 	n)))
@@ -145,7 +147,7 @@ USA.
       (error:not-wide-char object caller)))
 
 (define (error:not-wide-char object caller)
-  (error:wrong-type-argument object "Unicode character" caller))
+  (error:wrong-type-argument object "a Unicode character" caller))
 
 (define (unicode-code-point? object)
   (and (index-fixnum? object)
@@ -158,7 +160,7 @@ USA.
       (error:not-unicode-code-point object caller)))
 
 (define (error:not-unicode-code-point object caller)
-  (error:wrong-type-argument object "Unicode code point" caller))
+  (error:wrong-type-argument object "a Unicode code point" caller))
 
 (define-integrable (illegal-code? pt)
   (or (fix:= #xD800 (fix:and #xF800 pt))
@@ -176,7 +178,7 @@ USA.
       (error:not-alphabet object caller)))
 
 (define (error:not-alphabet object caller)
-  (error:wrong-type-argument object "Unicode alphabet" caller))
+  (error:wrong-type-argument object "a Unicode alphabet" caller))
 
 (define-integrable (make-alphabet-low)
   (make-string #x100 (integer->char 0)))
@@ -239,7 +241,7 @@ USA.
       (error:not-well-formed-code-point-list object caller)))
 
 (define (error:not-well-formed-code-point-list object caller)
-  (error:wrong-type-argument object "Unicode code-point list" caller))
+  (error:wrong-type-argument object "a Unicode code-point list" caller))
 
 (define (code-points->alphabet items)
   (guarantee-well-formed-code-point-list items 'CODE-POINTS->ALPHABET)
@@ -372,7 +374,7 @@ USA.
       (error:not-8-bit-alphabet object caller)))
 
 (define (error:not-8-bit-alphabet object caller)
-  (error:wrong-type-argument object "8-bit alphabet" caller))
+  (error:wrong-type-argument object "an 8-bit alphabet" caller))
 
 (define (char-set->alphabet char-set)
   (guarantee-char-set char-set 'CHAR-SET->ALPHABET)
@@ -541,7 +543,7 @@ USA.
       (error:not-wide-string object caller)))
 
 (define (error:not-wide-string object caller)
-  (error:wrong-type-argument object "Unicode string" caller))
+  (error:wrong-type-argument object "a Unicode string" caller))
 
 (define (make-wide-string length #!optional char)
   (%make-wide-string
@@ -589,7 +591,7 @@ USA.
       (error:not-wide-string-index index caller)))
 
 (define (error:not-wide-string-index index caller)
-  (error:wrong-type-argument index "Unicode string index" caller))
+  (error:wrong-type-argument index "a Unicode string index" caller))
 
 (define (open-wide-output-string)
   (make-port ws-output-port-type (make-ws-output-state)))
