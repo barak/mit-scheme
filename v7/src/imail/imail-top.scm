@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.208 2000/07/05 18:07:04 cph Exp $
+;;; $Id: imail-top.scm,v 1.209 2000/07/05 22:38:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1037,6 +1037,9 @@ While composing the reply, use \\[mail-yank-original] to yank the
 (define (imail-mailer-version-string generic)
   (string-append "IMAIL/" (get-subsystem-version-string "IMAIL")
 		 "; " generic))
+
+(if (not global-mailer-version-string)
+    (set! global-mailer-version-string imail-mailer-version-string))
 
 (define-command imail-forward
   "Forward the current message to another user.
