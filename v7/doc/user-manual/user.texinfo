@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.54 1999/02/26 04:09:41 cph Exp $
+@comment $Id: user.texinfo,v 1.55 1999/02/26 05:39:41 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -41,9 +41,9 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.54
+@subtitle Edition 1.55
 @subtitle for Scheme Release 7.5
-@subtitle 25 February 1999
+@subtitle 26 February 1999
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -120,11 +120,19 @@ OS/2 or Windows.  Thus we consider a PC to be a system with a
 drive letters, @sc{cr-lf} line termination, and (potentially) the
 hideous 8.3 short filenames.
 
+@cindex Web site
 @cindex FTP site
-The primary distribution site for this software is the @sc{ftp} server
-@samp{swiss-ftp.ai.mit.edu}.  Although our software is distributed from
-other sites and in other media, the complete distribution and the most
-recent release is always available at our site.
+The primary distribution site for this software is
+
+@example
+http://www-swiss.ai.mit.edu/scheme-home.html
+ftp://swiss-ftp.ai.mit.edu/pub
+@end example
+
+@noindent
+Although our software is distributed from other sites and in other
+media, the complete distribution and the most recent release is always
+available at our site.
 
 @cindex bugs, reporting
 @cindex reporting bugs
@@ -226,7 +234,7 @@ variable in the shell script.
 
 @item
 For many systems, a standard place to put executable files is the
-directory @file{/usr/local/bin}.  If this is true for your system, we
+directory@* @file{/usr/local/bin}.  If this is true for your system, we
 suggest installing the executables there.  Otherwise, you probably
 have some other directory that serves the same purpose; edit
 @file{install.sh} and change the definition of the shell variable
@@ -308,7 +316,7 @@ argument.  Normally the database file name is
 @file{/usr/local/lib/mit-scheme/hppacach.mod}, but if you install Scheme
 in a non-standard place it will be different.  For example, if you
 install Scheme as @file{/usr/foo/mit-scheme/}, the database file is
-called @file{/usr/foo/mit-scheme/hppacach.mod}.
+called@* @file{/usr/foo/mit-scheme/hppacach.mod}.
 
 @item
 Assuming that Scheme is installed in the normal place, update the
@@ -471,7 +479,7 @@ to win.
 You may move the @file{lib\} directory anywhere you like.  You may
 rename it to anything you like.  (Here at MIT, we use
 @file{c:\scheme\lib}.)  After you have chosen where it will be located,
-set the @samp{MITSCHEME_LIBRARY_PATH} environment variable in
+set the @code{MITSCHEME_LIBRARY_PATH} environment variable in
 @file{config.sys} to be that location.
 
 For example, if you decide to store the directory as @file{c:\schdata},
@@ -486,17 +494,17 @@ SET MITSCHEME_LIBRARY_PATH=C:\SCHDATA
 order for the changes to take effect.)
 
 You can override the setting of this environment variable with the
-@samp{-library} command-line option to Scheme, for example:
+@code{-library} command-line option to Scheme, for example:
 
 @example
 scheme -library d:\scheme\lib
 @end example
 
 @noindent
-If you supply a @samp{-library} option, it is not necessary to have the
+If you supply a @code{-library} option, it is not necessary to have the
 environment variable defined.  For example, instead of editing
 @file{config.sys}, you might create a @file{.cmd} file to invoke Scheme
-and pass it the @samp{-library} option automatically.
+and pass it the @code{-library} option automatically.
 
 @item
 @emph{Optional:} Move the @file{doc\} directory anywhere you like, or
@@ -554,12 +562,12 @@ command-line option.
 @item
 @file{compiler.com} contains the basic runtime environment and the Liar
 native-code compiler.  This is the image file that is loaded when Scheme
-is started with the @samp{-compiler} command-line option.
+is started with the @code{-compiler} command-line option.
 
 @item
 @file{edwin.com} contains the basic runtime environment and the Edwin
 text editor.  This is the image file that is loaded when Scheme is
-started with the @samp{-edwin} command-line option.
+started with the @code{-edwin} command-line option.
 
 @item
 @file{all.com} contains the basic runtime environment, the Liar
@@ -596,14 +604,14 @@ large and detailed document for writing programs.
 
 @item
 @file{console.txt} describes the procedures that can be used to control
-the appearance of the console window (i.e. Scheme's main window).
+the appearance of the console window (i.e.@: Scheme's main window).
 @end itemize
 
 @noindent
 Note: the User's Manual and Reference Manual are available in other
 forms, specifically: as PostScript files and as GNU Info files.  These
 alternate forms of documentation may be obtained from our @sc{ftp} site,
-@file{swiss-ftp.ai.mit.edu}.
+@file{ftp://swiss-ftp.ai.mit.edu}.
 
 @node Environment Variables for OS/2 Installation,  , Documentation for OS/2 Installation, OS/2 Installation
 @subsection Environment Variables
@@ -623,7 +631,7 @@ necessary to reboot OS/2 before the changes will take effect.
 @findex MITSCHEME_LIBRARY_PATH
 says where to find Scheme's data files.  This is the only required
 environment variable (but is not required when Scheme is invoked with
-the @samp{-library} command-line option).
+the @code{-library} command-line option).
 
 @example
 SET MITSCHEME_LIBRARY_PATH=C:\SCHEME\LIB
@@ -634,7 +642,7 @@ SET MITSCHEME_LIBRARY_PATH=C:\SCHEME\LIB
 tells Scheme where to find debugging information for the runtime system.
 The default value for this environment variable is a subdirectory
 @file{src\} located in the directory specified by
-@samp{MITSCHEME_LIBRARY_PATH}.
+@code{MITSCHEME_LIBRARY_PATH}.
 
 @example
 SET MITSCHEME_INF_DIRECTORY=C:\SCHEME\LIB\SRC
@@ -807,7 +815,7 @@ These installation instructions.
 @item bin\
 The executable programs @file{scheme.exe} and @file{bchschem.exe}, the
 libraries @file{scheme16.dll}, @file{scheme31.dll} and
-@file{scheme32.dll}, and the libraries @file{dibutils.dll} and
+@file{scheme32.dll}, and the libraries@* @file{dibutils.dll} and
 @file{pmgrpapi.dll}.
 
 @item doc\
@@ -869,7 +877,7 @@ image file is a collection of Scheme programs and data that has been
 combined into a single file.  @file{.com} files are not MSDOS or Windows
 programs so do not try to run them.
 
-@file{lib\compiler.com} contains the runtime system (i.e.@* standard
+@file{lib\compiler.com} contains the runtime system (i.e.@: standard
 Scheme definitions) plus the native code compiler.  @file{lib\edwin.com}
 contains the runtime system plus the Edwin editor.  @file{lib\all.com}
 contains the runtime system, the compiler and Edwin.
@@ -929,7 +937,7 @@ to win.
 You may move the @file{lib\} directory anywhere you like.  You may
 rename it to anything you like.  (Here at MIT, we use
 @file{c:\scheme\lib}.)  After you have chosen where it will be located,
-set the @samp{MITSCHEME_LIBRARY_PATH} environment variable to be that
+set the @code{MITSCHEME_LIBRARY_PATH} environment variable to be that
 location.
 
 For example, if you decide to store the directory as @file{d:\schdata},
@@ -949,18 +957,18 @@ On Windows NT, environment variables can be set by editing
 @file{autoexec.bat} or by using the `System' item in the Control Panel.
 
 
-You can override the setting of @samp{MITSCHEME_LIBRARY_PATH} with the
-@samp{-library} command-line option to Scheme, for example:
+You can override the setting of @code{MITSCHEME_LIBRARY_PATH} with the
+@code{-library} option to Scheme, for example:
 
 @example
 scheme -library d:\schdata
 @end example
 
 @noindent
-If you always supply a @samp{-library} option, it is not necessary to
+If you always supply a @code{-library} option, it is not necessary to
 have the environment variable defined.  For example, instead of editing
 @file{autoexec.bat}, you might create a @file{.bat} file or a shortcut
-(icon) to invoke Scheme and pass it the @samp{-library} option
+(icon) to invoke Scheme and pass it the @code{-library} option
 automatically.
 
 @item
@@ -1113,8 +1121,8 @@ opaque form, something like this:
 #[compiled-procedure 13 ("pp" #x2) #xF #x646BF7]
 @end example
 
-Debugging information files can be installed in another place.@* In this
-case the @samp{MITSCHEME_INF_DIRECTORY} environment variable should be
+Debugging information files can be installed in another place.  In this
+case the @code{MITSCHEME_INF_DIRECTORY} environment variable should be
 set to the directory path where you unzipped the @file{.zip} files.
 
 @end enumerate
@@ -1196,7 +1204,7 @@ and @samp{Student} is the @sc{sicp} compatibility package.
 
 @cindex compiler, starting
 If the compiler is supported for your machine, you can invoke it by
-giving Scheme the @samp{-compiler} option:
+giving Scheme the @code{-compiler} option:
 
 @example
 scheme -compiler
@@ -1227,7 +1235,7 @@ run Edwin or the compiler with its default memory parameters (it will
 print something like ``Not enough memory for this configuration'' and
 halt when started), so you can write a shell script (Unix), @file{.bat}
 file (Windows), or @file{.cmd} file (OS/2) that will invoke Scheme with
-the appropriate @samp{-heap} and other parameters.
+the appropriate @code{-heap} and other parameters.
 
 @item
 @cindex init file
@@ -1245,8 +1253,8 @@ your home directory into the Edwin environment.  This file is called
 You can use both of these files to define new procedures or commands, or
 to change defaults in the system.
 
-The @samp{-no-init-file} command-line option causes Scheme to ignore the
-@file{.scheme.init} file (@pxref{Command-Line Options}).
+The @code{-no-init-file} command-line option causes Scheme to ignore
+the@* @file{.scheme.init} file (@pxref{Command-Line Options}).
 
 @item
 @dfn{Environment variables}.  Most microcode parameters, and some
@@ -1333,7 +1341,7 @@ Scheme will dynamically adjust the proportion of the total that is used
 for constant space; the stack and extra microcode storage is not
 included in this adjustment.  Previous versions of MIT Scheme needed to
 be told the amount of constant space that was required when loading
-bands with the @samp{-band} option.  Dynamic adjustment of the heap and
+bands with the @code{-band} option.  Dynamic adjustment of the heap and
 constant space avoids this problem; now all that is required is that the
 total space be sufficient.
 
@@ -1367,7 +1375,7 @@ name.  If @var{filename} is an absolute pathname (on Unix, this means it
 starts with @samp{/}), then no search occurs --- @var{filename} is
 tested for readability and then used directly.  If this option isn't
 given, the filename is the value of the environment variable
-@samp{MITSCHEME_BAND}, or if that isn't defined, @file{runtime.com}; in
+@code{MITSCHEME_BAND}, or if that isn't defined, @file{runtime.com}; in
 these cases the library directories are searched, but not the working
 directory.
 
@@ -1375,24 +1383,24 @@ directory.
 @findex -compiler
 @findex MITSCHEME_COMPILER_BAND
 This option specifies defaults appropriate for loading the compiler.  It
-specifies the use of large sizes, exactly like @samp{-large}; if the
-@samp{-band} option is also specified, that is the only effect of this
+specifies the use of large sizes, exactly like @code{-large}; if the
+@code{-band} option is also specified, that is the only effect of this
 option.  Otherwise, the default band's filename is the value of the
-environment variable @samp{MITSCHEME_COMPILER_BAND}, if defined, or
+environment variable @code{MITSCHEME_COMPILER_BAND}, if defined, or
 @file{compiler.com}; the library directories are searched to locate this
-file.  Note that the @samp{-compiler} option is available only on
+file.  Note that the @code{-compiler} option is available only on
 machines with compiled-code support.
 
 @item -edwin
 @findex -edwin
 @findex MITSCHEME_EDWIN_BAND
 This option specifies defaults appropriate for loading the editor.  It
-specifies the use of large sizes, exactly like @samp{-large}; if the
-@samp{-band} option is also specified, that is the only effect of this
+specifies the use of large sizes, exactly like @code{-large}; if the
+@code{-band} option is also specified, that is the only effect of this
 option.  Otherwise, the default band's filename is the value of the
-environment variable @samp{MITSCHEME_EDWIN_BAND}, if defined, or
+environment variable @code{MITSCHEME_EDWIN_BAND}, if defined, or
 @file{edwin.com}; the library directories are searched to locate this
-file.  Note that the @samp{-edwin} option is available only on machines
+file.  Note that the @code{-edwin} option is available only on machines
 with compiled-code support.
 
 @item -large
@@ -1429,8 +1437,8 @@ MITSCHEME_SMALL_STACK
 @noindent
 There are reasonable built-in defaults for all of these environment
 variables, should any of them be undefined.  Note that any or all of the
-defaults can be individually overridden by the @samp{-heap},
-@samp{-constant}, and @samp{-stack} options.
+defaults can be individually overridden by the @code{-heap},
+@code{-constant}, and @code{-stack} options.
 
 @findex print-gc-statistics
 Note: the Scheme expression @samp{(print-gc-statistics)} shows how much
@@ -1501,7 +1509,7 @@ This option is ignored under non-Unix operating systems.
 Sets the library search path to @var{path}.  This is a
 list of directories that is searched to find various library files, such
 as bands.  If this option is not given, the value of the environment
-variable @samp{MITSCHEME_LIBRARY_PATH} is used; if that isn't defined,
+variable @code{MITSCHEME_LIBRARY_PATH} is used; if that isn't defined,
 the default is used.
 
 On Unix, the elements of the list are separated by colons, and the
@@ -1518,11 +1526,11 @@ microcode tables are information that informs the runtime system about
 the microcode's structure).  @var{Filename} is searched for in the
 working directory and the library directories.  If this option isn't
 given, the filename is the value of the environment variable
-@samp{MITSCHEME_UTABMD_FILE}, or if that isn't defined,
+@code{MITSCHEME_UTABMD_FILE}, or if that isn't defined,
 @file{utabmd.bin}; in these cases the library directories are searched,
 but not the working directory.
 
-@samp{-utab} is an alternate name for the @samp{-utabmd} option; at most
+@code{-utab} is an alternate name for the @code{-utabmd} option; at most
 one of these options may be given.
 
 @item -fasl @var{filename}
@@ -1530,7 +1538,7 @@ one of these options may be given.
 Specifies that a @dfn{cold load} should be performed, using
 @var{filename} as the initial file to be loaded.  If this option isn't
 given, a normal load is performed instead.  This option may not be used
-together with the @samp{-band} option.  This option is useful only for
+together with the @code{-band} option.  This option is useful only for
 maintenance and development of the MIT Scheme runtime system.
 @end table
 
@@ -1545,7 +1553,7 @@ command-line options, all of which specify parameters affecting how
 @findex MITSCHEME_GC_DIRECTORY
 Specifies that @var{directory} should be used to create files for
 garbage collection.  If the option is not given, the value of
-environment variable @samp{MITSCHEME_GC_DIRECTORY} is used instead, and
+environment variable @code{MITSCHEME_GC_DIRECTORY} is used instead, and
 if that is not defined, @file{/tmp} is used.
 
 @item -gc-file @var{filename}
@@ -1554,11 +1562,11 @@ if that is not defined, @file{/tmp} is used.
 @findex MITSCHEME_GC_FILE
 Specifies that @var{filename} should be used for garbage collection.  If
 the option is not given, the value of environment variable
-@samp{MITSCHEME_GC_FILE} is used, and if this is not defined, a unique
+@code{MITSCHEME_GC_FILE} is used, and if this is not defined, a unique
 filename is generated in the directory specified with
-@samp{-gc-directory}.
+@code{-gc-directory}.
 
-@samp{-gcfile} is an alias for @samp{-gc-file}; at most one of these
+@code{-gcfile} is an alias for @code{-gc-file}; at most one of these
 options should be specified.
 
 @item -gc-keep
@@ -1572,37 +1580,37 @@ by this invocation of Scheme, and this option is not set.
 @findex -gc-start-position
 @findex MITSCHEME_GC_START_POSITION
 Specifies the first byte position in @sc{gc} file at which the Scheme
-process can write.  If not given, the value of the environment variable
-@samp{MITSCHEME_GC_START_POSITION} is used, and if that is not defined,
-@samp{0} is used, meaning the beginning of the file.  The area of the
-file used (and locked if possible) is the region between
-@samp{-gc-start-position} and @samp{-gc-end-position}.
+process can write.  If not given, the value of the environment
+variable @code{MITSCHEME_GC_START_POSITION} is used, and if that is
+not defined, @samp{0} is used, meaning the beginning of the file.  The
+area of the file used (and locked if possible) is the region between
+@code{-gc-start-position} and @code{-gc-end-position}.
 
 @item -gc-end-position @var{number}
 @findex -gc-end-position
 @findex MITSCHEME_GC_END_POSITION
 Specifies the last byte position in @sc{gc} file at which the Scheme
-process can write.  If not given, the value of the environment variable
-@samp{MITSCHEME_GC_END_POSITION} is used, and if that is not defined,
-the sum of the start position (as specified by
-@samp{-gc-start-position}) and the heap size is used.  The area of the
+process can write.  If not given, the value of the environment
+variable @code{MITSCHEME_GC_END_POSITION} is used, and if that is not
+defined, the sum of the start position (as specified by
+@code{-gc-start-position}) and the heap size is used.  The area of the
 file used (and locked if possible) is the region between
-@samp{-gc-start-position} and @samp{-gc-end-position}.
+@code{-gc-start-position} and @code{-gc-end-position}.
 
 @item -gc-window-size @var{blocks}
 @findex -gc-window-size
 @findex MITSCHEME_GC_WINDOW_SIZE
 Specifies the size of the windows into new space during garbage
 collection.  If this option is not given, the value of environment
-variable @samp{MITSCHEME_GC_WINDOW_SIZE} is used instead, and if that is
-not defined, the value 16 is used.
+variable @code{MITSCHEME_GC_WINDOW_SIZE} is used instead, and if that
+is not defined, the value 16 is used.
 @end table
 
 @noindent
 The following command-line options are only used by an experimental
-version of @file{bchscheme} that uses Unix System V-style shared memory,
-and then only if the @file{gcdrone} program is installed in the library
-directory.
+version of@* @file{bchscheme} that uses Unix System V-style shared
+memory, and then only if the @file{gcdrone} program is installed in the
+library directory.
 
 @table @code
 @item -gc-drone @var{program}
@@ -1610,7 +1618,7 @@ directory.
 @findex MITSCHEME_GC_DRONE
 Specifies that @var{program} should be used as the drone program for
 overlapped @sc{i/o} during garbage collection.  If the option is not
-given, the value of environment variable @samp{MITSCHEME_GC_DRONE} is
+given, the value of environment variable @code{MITSCHEME_GC_DRONE} is
 used instead, and if that is not defined, @file{gcdrone} is used.
 
 @item -gc-read-overlap @var{n}
@@ -1618,7 +1626,7 @@ used instead, and if that is not defined, @file{gcdrone} is used.
 @findex MITSCHEME_GC_READ_OVERLAP
 Specifies that Scheme should delegate at most @var{n} simultaneous disk
 read operations during garbage collection.  If the option is not given,
-the value of environment variable @samp{MITSCHEME_GC_READ_OVERLAP} is
+the value of environment variable @code{MITSCHEME_GC_READ_OVERLAP} is
 used instead, and if that is not defined, @samp{0} is used, disabling
 overlapped reads.
 
@@ -1627,7 +1635,7 @@ overlapped reads.
 @findex MITSCHEME_GC_WRITE_OVERLAP
 Specifies that Scheme should delegate at most @var{n} simultaneous disk
 write operations during garbage collection.  If the option is not given,
-the value of environment variable @samp{MITSCHEME_GC_WRITE_OVERLAP} is
+the value of environment variable @code{MITSCHEME_GC_WRITE_OVERLAP} is
 used instead, and if that is not defined, @samp{0} is used, disabling
 overlapped writes.
 @end table
@@ -1653,7 +1661,7 @@ this file is never written.} This file is a world image containing the
 complete state of the Scheme process; restoring this file continues the
 computation that Scheme was performing at the time the file was written.
 
-Normally this file is never written, but the @samp{-suspend-file} option
+Normally this file is never written, but the @code{-suspend-file} option
 enables writing of this file.
 
 @item -eval
@@ -1706,39 +1714,39 @@ executable C programs called @file{scheme} and @file{bchscheme} under
 Unix, and @file{scheme.exe} and @file{bchschem.exe} on the PC).
 
 @table @asis
-@item @samp{MITSCHEME_BAND} (default: @file{runtime.com} on the library path)
+@item @code{MITSCHEME_BAND} (default: @file{runtime.com} on the library path)
 @findex MITSCHEME_BAND
-The initial band to be loaded.  Overridden by @samp{-band},
-@samp{-compiler}, or @samp{-edwin}.
+The initial band to be loaded.  Overridden by @code{-band},
+@code{-compiler}, or @code{-edwin}.
 
 @item @code{MITSCHEME_COMPILER_BAND} (default: @file{compiler.com} on the library path)
 @findex MITSCHEME_COMPILER_BAND
-The initial band to be loaded if the @samp{-compiler} option is given.
-Overridden by @samp{-band}.
+The initial band to be loaded if the @code{-compiler} option is given.
+Overridden by @code{-band}.
 
 @item @code{MITSCHEME_EDWIN_BAND} (default: @file{edwin.com} on the library path)
 @findex MITSCHEME_EDWIN_BAND
-The initial band to be loaded if the @samp{-edwin} option is given.
-Overridden by @samp{-band}.
+The initial band to be loaded if the @code{-edwin} option is given.
+Overridden by @code{-band}.
 
 @item @code{MITSCHEME_LARGE_CONSTANT} (default: @samp{1000})
 @findex MITSCHEME_LARGE_CONSTANT
-The size of constant space, in 1024-word blocks, if the @samp{-large},
-@samp{-compiler}, or @samp{-edwin} options are given.  Overridden by
-@samp{-constant}.  Note: default depends on machine; on most machines it
+The size of constant space, in 1024-word blocks, if the @code{-large},
+@code{-compiler}, or @code{-edwin} options are given.  Overridden by
+@code{-constant}.  Note: default depends on machine; on most machines it
 is larger than @samp{1000}.
 
 @item @code{MITSCHEME_LARGE_HEAP} (default: @samp{1000})
 @findex MITSCHEME_LARGE_HEAP
-The size of the heap, in 1024-word blocks, if the @samp{-large},
-@samp{-compiler}, or @samp{-edwin} options are given.  Overridden by
-@samp{-heap}.
+The size of the heap, in 1024-word blocks, if the @code{-large},
+@code{-compiler}, or @code{-edwin} options are given.  Overridden by
+@code{-heap}.
 
 @item @code{MITSCHEME_LARGE_STACK} (default: @samp{100})
 @findex MITSCHEME_LARGE_STACK
-The size of the stack, in 1024-word blocks, if the @samp{-large},
-@samp{-compiler}, or @samp{-edwin} options are given.  Overridden by
-@samp{-stack}.
+The size of the stack, in 1024-word blocks, if the @code{-large},
+@code{-compiler}, or @code{-edwin} options are given.  Overridden by
+@code{-stack}.
 
 @item @code{MITSCHEME_LIBRARY_PATH}
 @findex MITSCHEME_LIBRARY_PATH
@@ -1752,26 +1760,26 @@ On PC systems the list is semi-colon separated with the default
 @item @code{MITSCHEME_SMALL_CONSTANT} (default: @samp{450})
 @findex MITSCHEME_SMALL_CONSTANT
 The size of constant space, in 1024-word blocks, if the size options are
-not given.  Overridden by @samp{-constant}, @samp{-large},
-@samp{-compiler}, or @samp{-edwin}.  Note: default depends on machine;
+not given.  Overridden by @code{-constant}, @code{-large},
+@code{-compiler}, or @code{-edwin}.  Note: default depends on machine;
 on most machines it is larger than @samp{450}.
 
 @item @code{MITSCHEME_SMALL_HEAP} (default: @samp{250})
 @findex MITSCHEME_SMALL_HEAP
 The size of the heap, in 1024-word blocks, if the size options are not
-given.  Overridden by @samp{-heap}, @samp{-large}, @samp{-compiler}, or
-@samp{-edwin}.
+given.  Overridden by @code{-heap}, @code{-large}, @code{-compiler}, or
+@code{-edwin}.
 
 @item @code{MITSCHEME_SMALL_STACK} (default: @samp{100})
 @findex MITSCHEME_SMALL_STACK
 The size of the stack, in 1024-word blocks, if the size options are not
-given.  Overridden by @samp{-stack}, @samp{-large}, @samp{-compiler}, or
-@samp{-edwin}.
+given.  Overridden by @code{-stack}, @code{-large}, @code{-compiler}, or
+@code{-edwin}.
 
 @item @code{MITSCHEME_UTABMD_FILE} (default: @file{utabmd.bin} in the library path)
 @findex MITSCHEME_UTABMD_FILE
-The file containing the microcode tables.  Overridden by @samp{-utabmd}
-and @samp{-utab}.  It is only necessary when re-building
+The file containing the microcode tables.  Overridden by @code{-utabmd}
+and @code{-utab}.  It is only necessary when re-building
 @file{runtime.com}.
 @end table
 
@@ -1785,28 +1793,28 @@ These environment variables are referred to by @file{bchscheme}
 @item @code{MITSCHEME_GC_DIRECTORY} (default: @file{/tmp})
 @findex MITSCHEME_GC_DIRECTORY
 The directory in which @sc{gc} files are written.  Overridden by
-@samp{-gc-directory}.
+@code{-gc-directory}.
 
 @item @code{MITSCHEME_GC_FILE} (default: @file{GCXXXXXX})
 @findex MITSCHEME_GC_FILE
 The name of the file to use for garbage collection.  If it ends in 6 Xs,
 the Xs are replaced by a letter and process id of the scheme process,
-thus generating a unique name.  Overridden by @samp{-gc-file}.
+thus generating a unique name.  Overridden by @code{-gc-file}.
 
 @item @code{MITSCHEME_GC_START_POSITION} (default: @samp{0})
 @findex MITSCHEME_GC_START_POSITION
 The first position in the @sc{gc} file to use.  Overridden by
-@samp{-gc-start-position}.
+@code{-gc-start-position}.
 
 @item @code{MITSCHEME_GC_END_POSITION} (default: @var{start-position}+@var{heap-size})
 @findex MITSCHEME_GC_END_POSITION
 The last position in the @sc{gc} file to use.  Overridden by
-@samp{-gc-end-position}.
+@code{-gc-end-position}.
 
 @item @code{MITSCHEME_GC_WINDOW_SIZE} (default: @samp{16})
 @findex MITSCHEME_GC_WINDOW_SIZE
 The size in blocks of windows into new space (in the @sc{gc} file).@*
-Overridden by @samp{-gc-window-size}.
+Overridden by @code{-gc-window-size}.
 @end table
 
 @noindent
@@ -1818,17 +1826,17 @@ then only if the @file{gcdrone} program is installed:
 @item @code{MITSCHEME_GC_DRONE} (default: @file{gcdrone})
 @findex MITSCHEME_GC_DRONE
 The program to use as the @sc{i/o} drone during garbage collection.@*
-Overridden by @samp{-gc-drone}.
+Overridden by @code{-gc-drone}.
 
 @item @code{MITSCHEME_GC_READ_OVERLAP} (default: @samp{0})
 @findex MITSCHEME_GC_READ_OVERLAP
 The maximum number of simultaneous read operations.@*
-Overridden by @samp{-gc-read-overlap}.
+Overridden by @code{-gc-read-overlap}.
 
 @item @code{MITSCHEME_GC_WRITE_OVERLAP} (default: @samp{0})
 @findex MITSCHEME_GC_WRITE_OVERLAP
 The maximum number of simultaneous write operations.@*
-Overridden by @samp{-gc-write-overlap}.
+Overridden by @code{-gc-write-overlap}.
 @end table
 
 @node Runtime Environment Variables, Edwin Environment Variables, Bchscheme Environment Variables, Environment Variables
@@ -1887,20 +1895,17 @@ strings.
 
 @item @code{ESHELL}
 @findex ESHELL
-Unix and OS/2 only.
 Filename of the shell program to use in shell buffers.  If not defined,
 @samp{SHELL} is used instead.
 
 @item @code{SHELL} (default: @file{/bin/sh} (Unix), @file{cmd.exe} (OS/2))
 @findex SHELL
-Unix and OS/2 only.
 Filename of the shell program to use in shell buffers and when executing
 shell commands.  Used to initialize the @code{shell-path-name} editor
 variable.
 
 @item @code{PATH}
 @findex PATH
-Unix and OS/2 only.
 Used to initialize the @code{exec-path} editor variable, which is
 subsequently used for finding programs to be run as subprocesses.
 
@@ -1947,7 +1952,7 @@ Thus the fonts tend to be 20-50% smaller than you might expect.
 You should specifiy only fixed-width fonts as variable width fonts are
 not drawn correctly.
 
-Once in Edwin, the font can be changed with the @samp{set-font} and
+Once in Edwin, the font can be changed with the @samp{set-font} and@*
 @samp{set-default-font} commands.
 
 @item @code{MITSCHEME_GEOMETRY} (default: @samp{-1,-1,-1,-1})
@@ -1971,7 +1976,7 @@ text color.  The color is specified as hex blue, green and red values
 @item @code{MITSCHEME_BACKGROUND} (default: according to desktop color scheme)
 @findex MITSCHEME_BACKGROUND
 A value specifying the window background color.  See
-@samp{MITSCHEME_FOREGROUND}.
+@code{MITSCHEME_FOREGROUND}.
 
 @item @code{HOMEDRIVE}
 @itemx @code{HOMEPATH}
@@ -2056,8 +2061,8 @@ Include absolute pathnames to @file{scheme.exe} and @file{bchscheme.exe}
 in the icon @var{Command line}.
 
 @item
-I you specify the @samp{-library} command line option then you do not
-have to worry about the @samp{MITSCHEME_LIBRARY_PATH} environment
+I you specify the @code{-library} command-line option then you do not
+have to worry about the @code{MITSCHEME_LIBRARY_PATH} environment
 variable.
 
 @item
@@ -2526,7 +2531,7 @@ All pathnames are interpreted relative to a working directory, which is
 initialized when Scheme is started.  The working directory can be
 obtained by calling the procedure @code{pwd} or modified by calling the
 procedure @code{cd}; see the reference manual for details.  Files may be
-loaded when Scheme first starts; see the @samp{-load} command-line
+loaded when Scheme first starts; see the @code{-load} command-line
 option for details.
 
 @deffn {procedure+} load-option symbol [no-error?]
@@ -2560,9 +2565,8 @@ Code to step through the evaluation of Scheme expressions.
 Undocumented.  Used by the Edwin command @kbd{M-x step-expression}.
 
 @item subprocess
-Code to run other programs as subprocesses of the Scheme process;
-implemented under Unix and OS/2 only.  Undocumented, but used
-extensively by Edwin.
+Code to run other programs as subprocesses of the Scheme process.
+Undocumented, but used extensively by Edwin.
 
 @item wt-tree
 The weight-balanced tree data type.  Documented in the Reference Manual.
@@ -2626,7 +2630,7 @@ init file.
 @end deffn
 
 @findex disk-restore
-To restore a saved band, give the @samp{-band} option when starting
+To restore a saved band, give the @code{-band} option when starting
 Scheme.  Alternatively, evaluate @code{(disk-restore @var{filename})},
 which will destroy the current world, replacing it with the saved world.
 The argument to @code{disk-restore} may be omitted, in which case it
@@ -2645,7 +2649,7 @@ expression does not evaluate to @code{#f}:
 Note: when restoring a saved band, the Scheme executable must be
 configured with a large enough constant space and heap to hold the
 band's contents.  If you attempt to restore a band using the
-@samp{-band} option, and the band is too large, Scheme will write an
+@code{-band} option, and the band is too large, Scheme will write an
 error message that tells you the appropriate command-line options needed
 to load that band.  If you attempt restore a too-large band using
 @code{disk-restore}, Scheme will signal an error, but will not provide
@@ -2733,8 +2737,8 @@ collector.  The information is printed to the current output port.
 Shows how much space is ``in use'' and how much is ``free'', separately
 for the heap and constant space.  The amounts are shown in words, and
 also in 1024-word blocks; the block figures make it convenient to use
-these numbers to adjust the arguments given to the @samp{-heap} and
-@samp{-constant} command-line options.  Following the allocation
+these numbers to adjust the arguments given to the @code{-heap} and
+@code{-constant} command-line options.  Following the allocation
 figures, information about the most recent 8 garbage collections is
 shown, in the same format as a @sc{gc} notification.
 
@@ -2747,8 +2751,10 @@ determine the size of live storage is to subtract the value of
 @samp{(gc-flip)} from the size of the heap.  The size of the heap can be
 determined by adding the ``in use'' and ``free'' figures reported by
 @code{print-gc-statistics}.
+@end deffn
 
 @example
+@group
 (print-gc-statistics)
 constant in use:   534121 words =   521 blocks +  617 words
 constant free:        128 words =     0 blocks +  128 words
@@ -2756,8 +2762,8 @@ heap in use:        34845 words =    34 blocks +   29 words
 heap free:         205530 words =   200 blocks +  730 words
 GC #1: took: 0.13 (81%) CPU time, 0.15 (1%) real time; free: 207210
 ;No value
+@end group
 @end example
-@end deffn
 
 @deffn {procedure+} set-gc-notification! [on?]
 Controls whether the user is notified of garbage collections.  If
@@ -2778,7 +2784,7 @@ collection should be a substantial proportion of the heap size.  If the
 percentage CPU time is consistently high (over 20%), you should consider
 running with a larger heap.  A rough rule of thumb to halve the @sc{gc}
 overhead is to take the amount of free storage, divide by 1000, and add
-this figure to the current value used for the @samp{-heap} command-line
+this figure to the current value used for the @code{-heap} command-line
 option.  Unfortunately there is no way to adjust the heap size without
 restarting Scheme.
 @end deffn
@@ -2826,7 +2832,7 @@ binary form.  If @var{destination} is not given, as in
 @file{foo.com} will be loaded rather than @file{foo.scm}.
 
 If @var{destination} is given, it says where the output files should go.
-If this argument is a directory, they go in that directory, e.g.:
+If this argument is a directory, they go in that directory, e.g.@::
 
 @example
 (cf "foo" "../bar/")
@@ -3342,8 +3348,10 @@ Replacements:
 
 @example
 @group
-(apply @var{f} @var{x} @var{y} @var{z} @var{w}) @expansion{} ((access apply ()) @var{f} (cons @var{x} (cons @var{y} (cons @var{z} @var{w}))))
-(apply @var{f} @var{x} @var{y}) @expansion{} ((access apply ()) @var{f} (cons @var{x} @var{y}))
+(apply @var{f} @var{x} @var{y} @var{z} @var{w})
+   @expansion{} ((access apply ()) @var{f} (cons @var{x} (cons @var{y} (cons @var{z} @var{w}))))
+(apply @var{f} @var{x} @var{y})
+   @expansion{} ((access apply ()) @var{f} (cons @var{x} @var{y}))
 (apply @var{f} @var{x}) @expansion{} (apply @var{f} @var{x})
 (apply @var{f}) @expansion{} (apply @var{f})
 (apply) @expansion{} (apply)
@@ -3645,7 +3653,7 @@ coherent) or must signal an error.  For example, the assignment
 
 will cause the system to go to each compiled procedure that calls
 @code{newline} and update its execute cache to call the new procedure.
-Obviously you want to avoid updating hundreds of of execute caches in a
+Obviously you want to avoid updating hundreds of execute caches in a
 critical loop.  Using @code{fluid-let} to temporarily redefine a
 procedure has the same inefficiency (but twice!).
 
@@ -3653,7 +3661,7 @@ To behave correctly in all situations, each variable reference or
 assignment must check for the reference traps.
 
 Sometimes you can prove that the variable (a) will always be bound, (b)
-will always be assigned and (c) there will never be any compiled calls
+will never be unassigned and (c) there will never be any compiled calls
 to that variable.  The compiler can't prove this because it assumes that
 other, independently compiled, files might be loaded that invalidate
 these assumptions.
@@ -3667,7 +3675,7 @@ If any of the @var{variables} is unbound or unassigned then a variable
 reference will yield a reference-trap object rather than signaling an
 error.  This declaration is relatively safe: the worst that can happen
 is that a reference-trap object finds its way into a data structure
-(e.g. a list) or into interpreted code, in which case it will probably
+(e.g.@: a list) or into interpreted code, in which case it will probably
 cause some `unrelated' variable to mysteriously become unbound or
 unassigned.
 @end deffn
@@ -3700,7 +3708,7 @@ These expressions name sets of variables. @code{all} is the set of all
 variables, @code{none} is the empty set, @code{free} is all of the
 variables bound outside the current block, @code{bound} is all of the
 variables bound in the current block and @code{assigned} is all of the
-variables for which there exists an assignment (i.e.@ @code{set!}).
+variables for which there exists an assignment (i.e.@: @code{set!}).
 @end deffn
 
 @deffn {variable-specification} union set1 set2
@@ -3959,7 +3967,7 @@ exact or inexact too.  Also, the current implementation of
 Pitfall 3:
 A great deal of care has to be taken with the standard math procedures.
 For example, when called with a flonum, both @code{sqrt} and @code{asin}
-can return a complex number (e.g -1.5).
+can return a complex number (e.g@: with argument @code{-1.5}).
 @c
 @c @node Miscellaneous,  , Flonum arithmetic, Efficiency Tips
 @c @subsection Miscellaneous
@@ -3989,7 +3997,7 @@ can return a complex number (e.g -1.5).
 @node Debugging, GNU Emacs Interface, Compiling Programs, Top
 @chapter Debugging
 
-@strong{This chapter is out of date and will be revised}.
+@strong{This chapter is out of date and will eventually be revised}.
 
 This chapter is adapted from @cite{Don't Panic: A 6.001 User's Guide to
 the Chipmunk System}, by Arthur A. Gleckler.
@@ -4509,7 +4517,7 @@ To invoke Scheme from Emacs, use @kbd{M-x run-scheme}, which is defined
 when either of the libraries @file{scheme} or @file{xscheme} is loaded.
 You may give @code{run-scheme} a prefix argument, in which case it will
 allow you to edit the command line that is used to invoke Scheme.
-@emph{Do not} remove the @samp{-emacs} option!
+@emph{Do not} remove the @code{-emacs} option!
 
 @emph{Note carefully:} In Emacs 19, the @code{run-scheme} command
 exists, but is different from the one described here!  In order to get
@@ -4580,7 +4588,7 @@ Evaluates the current region (@code{xscheme-send-region}).
 @item C-x C-e
 @kindex C-x C-e
 @findex xscheme-send-previous-expression
-Evaluates the expression to the left of point
+Evaluates the expression to the left of point@*
 (@code{xscheme-send-previous-expression}).  This is also bound to
 @kbd{@key{ESC} @key{RET}}.
 
@@ -4652,7 +4660,7 @@ customization of Edwin.
 @section Starting Edwin
 
 To use Edwin, start Scheme with a world image containing Edwin (for
-example by giving the @samp{-edwin} command-line option), then call the
+example by giving the @code{-edwin} command-line option), then call the
 procedure @code{edit}:
 
 @deffn {procedure+} edit
@@ -4696,7 +4704,7 @@ used instead.  In other words, the following are equivalent:
 
 @noindent
 On the other hand, if @var{arg}s are given, they are used to update
-code@code{create-editor-args}, making the following equivalent:
+@code{create-editor-args}, making the following equivalent:
 
 @example
 @group
@@ -4872,9 +4880,9 @@ Changes to Edwin:
 @item
 Cut and paste between Edwin and the system's clipboard (in X11, the
 ``selection'' mechanism) is now supported.  This support is directly
-integrated into the kill and yank commands: killing some text (e.g.
+integrated into the kill and yank commands: killing some text (e.g.@:
 @kbd{C-w}, @kbd{C-k}, @kbd{C-M-k}) stores that text into the clipboard;
-yanking text (e.g. @kbd{C-y}, @kbd{M-y}) inserts text from the
+yanking text (e.g.@: @kbd{C-y}, @kbd{M-y}) inserts text from the
 clipboard.  This support is transparent in that it has no effect on
 Edwin except when some other program puts text into the clipboard.
 
@@ -4973,7 +4981,7 @@ black.
 
 @item
 The default window font family and size is now selectable by the
-environment variable @samp{MITSCHEME_FONT}.
+environment variable @code{MITSCHEME_FONT}.
 
 @item
 @code{process-time-clock} now returns the process time, rather than the
@@ -5045,7 +5053,7 @@ Compilation of the microcode is supported using IBM Visual Age C++,
 Watcom C/C++, or @sc{emx/gcc}.
 
 @item
-Unix file systems are supported specially, e.g. Linux @code{ext2} or
+Unix file systems are supported specially, e.g.@: Linux @code{ext2} or
 Unix @sc{nfs}.  End-of-line translation is not done for files on such
 file systems, so that the files are read and written properly.
 
@@ -5114,8 +5122,8 @@ with the record abstraction.
 @code{call-with-current-continuation} is now properly tail-recursive.
 
 @item
-New command-line switch @samp{-no-suspend-file} prevents the generation
-of @file{scheme_suspend} files.
+New command-line switch @code{-no-suspend-file} prevents the generation
+of@* @file{scheme_suspend} files.
 
 @item
 Uncompression of compiled-code debugging information is now memoized
@@ -5194,7 +5202,7 @@ Emacs 19 tags support (multiple tags files, inclusion)
 
 @item
 Edwin compression/uncompression commands changed to use @code{gzip}
-instead of @code{compress}.
+instead of@* @code{compress}.
 
 @item
 Edwin now has text-properties mechanism that permits implementation
@@ -5578,7 +5586,7 @@ Windows implementation.
   describe-syntax
   disable-command
   disassemble
-  display-time                          @r{(}run-notifier @r{is similar)}
+  display-time                  @r{(}run-notifier @r{is similar)}
   dissociated-press
   doctor
   edit-abbrevs
@@ -5595,20 +5603,20 @@ Windows implementation.
   expand-region-abbrevs
   flush-lines
   fortran-mode
-  global-set-key                        (set-key is similar)
+  global-set-key                @r{(}set-key @r{is similar)}
   grep
   hanoi
-  indent-c-exp                          c-indent-expression
+  indent-c-exp                  c-indent-expression
   insert-abbrevs
-  insert-kbd-macro                      write-kbd-macro
+  insert-kbd-macro              write-kbd-macro
   insert-parentheses
   inverse-add-global-abbrev
   inverse-add-mode-abbrev
 * keep-lines
   kill-all-abbrevs
-  latex-mode                            Note: BAL has one
-  lisp-complete-symbol                  (scheme-complete-variable is similar)
-  lisp-interaction-mode                 (inferior-repl-mode is similar)
+  latex-mode                    Note: BAL has one
+  lisp-complete-symbol          @r{(}scheme-complete-variable @r{is similar)}
+  lisp-interaction-mode         @r{(}inferior-repl-mode @r{is similar)}
   lisp-mode
   lisp-send-defun
   list-abbrevs
@@ -5638,7 +5646,7 @@ Windows implementation.
   read-abbrev-file
   recover-file
   run-lisp
-  save-buffers-kill-emacs               save-buffers-kill-scheme
+  save-buffers-kill-emacs       save-buffers-kill-scheme
   set-gosmacs-bindings
 * shell-command
 * shell-command-on-region
@@ -5646,7 +5654,7 @@ Windows implementation.
   spell-region
   spell-string
   spell-word
-  suspend-emacs                         suspend-scheme
+  suspend-emacs                 suspend-scheme
   tab-to-tab-stop
   tags-apropos
   tex-mode
@@ -5678,17 +5686,17 @@ but not under Windows.
   c-tab-always-indent
   comment-start-skip
 * compile-command
-  completion-ignore-case                @r{(not documented)}
+  completion-ignore-case        @r{(not documented)}
   ctl-arrow
-  debug-on-error                        debug-on-editor-error
-                                        debug-on-internal-error
-                                        debug-on-evaluation-error
-                                        @r{are similar, but more specific}
+  debug-on-error                debug-on-editor-error
+                                debug-on-internal-error
+                                debug-on-evaluation-error
+                                @r{are similar, but more specific}
   debug-on-quit
   default-directory
   default-major-mode
   echo-keystrokes
-  initial-major-mode                    @r{Scheme variable} initial-buffer-mode
+  initial-major-mode            @r{Scheme variable} initial-buffer-mode
   insert-default-directory
   inverse-video
   kill-ring-max
@@ -5696,14 +5704,14 @@ but not under Windows.
 * lpr-switches
   major-mode
   mark-ring
-  mark-ring-max                         mark-ring-maximum
+  mark-ring-max                 mark-ring-maximum
   meta-flag
   no-redraw-on-recenter
   save-abbrevs
   selective-display-ellipses
 * shell-file-name
   tab-stop-list
-  tags-file-name                        @r{(}tags-table-pathname@r{ is similar)}
+  tags-file-name                @r{(}tags-table-pathname@r{ is similar)}
   track-eol
   visible-bell
 @end example
