@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.3 1988/03/14 19:38:06 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.4 1988/04/22 16:28:23 markf Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -76,12 +76,46 @@ MIT in each case. |#
     ;; move.l reg,d(reg) = 16
     ;; move.b d(reg),reg = 12
     ((OBJECT->TYPE) 28)
+    ;; lsl.l #8,reg = 4
+    ;; asr.l #8,reg = 6
+    ((OBJECT->FIXNUM) 10)
     ((OFFSET) 16)			;move.l d(reg),reg
     ((OFFSET-ADDRESS) 8)		;lea d(an),reg
     ((POST-INCREMENT) 12)		;move.l (reg)+,reg
     ((PRE-INCREMENT) 14)		;move.l -(reg),reg
     ((REGISTER) 4)			;move.l reg,reg
     ((UNASSIGNED) 12)			;move.l #data,reg
+    ((FIXNUM-2-ARGS)
+     (case (rtl:fixnum-2-args-operator expression)
+       ;; move.l reg,reg = 3
+       ;; add.l  reg,reg = 3
+       ;; and.l  d7,reg  = 3
+       ;; or.l   #x01AFFFFF,reg = 8
+       ((PLUS-FIXNUM) 17)
+       ;; move.l reg,reg = 3
+       ;; muls.l reg,reg = 49
+       ;; and.l  d7,reg  = 3
+       ;; or.l   #x01AFFFFF,reg = 8
+       ((MULTIPLY-FIXNUM) 63)
+       ;; move.l reg,reg = 3
+       ;; sub.l  reg,reg = 3
+       ;; and.l  d7,reg  = 3
+       ;; or.l   #x01AFFFFF,reg = 8
+       ((MINUS-FIXNUM) 17)
+       (else (error "rtl:expression-cost - unknown fixnum operator" expression))))
+    ((FIXNUM-1-ARG)
+     (case (rtl:fixnum-1-arg-operator expression)
+       ;; move.l reg,reg = 3
+       ;; addq.l #1,reg = 3
+       ;; and.l  d7,reg  = 3
+       ;; or.l   #x01AFFFFF,reg = 8
+       ((ONE-PLUS-FIXNUM) 17)
+       ;; move.l reg,reg = 3
+       ;; subq.l #1,reg = 3
+       ;; and.l  d7,reg  = 3
+       ;; or.l   #x01AFFFFF,reg = 8
+       ((MINUS-ONE-PLUS-FIXNUM) 17)
+       (else (error "rtl:expression-cost - unknown fixnum operator" expression))))
     (else (error "Unknown expression type" expression))))
 
 (define (rtl:machine-register? rtl-register)
@@ -129,6 +163,7 @@ MIT in each case. |#
 (define-integrable a6 14)
 (define-integrable a7 15)
 (define number-of-machine-registers 16)
+(define number-of-temporary-registers 50)
 
 (define-integrable regnum:dynamic-link a4)
 (define-integrable regnum:free-pointer a5)
