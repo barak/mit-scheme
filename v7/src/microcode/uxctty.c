@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxctty.c,v 1.8 1991/06/15 00:40:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxctty.c,v 1.9 1992/02/12 12:07:49 cph Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -66,6 +66,7 @@ struct terminal_state_recording
   int fd;
   int recorded_p;
   Ttty_state state;
+  int flags;
 };
 
 static struct terminal_state_recording outside_ctty_state;
@@ -77,13 +78,72 @@ static struct terminal_state_recording inside_stdout_state;
 
 static void EXFUN (ctty_update_interrupt_chars, (void));
 
+static int
+DEFUN (get_terminal_state, (fd, s), int fd AND Ttty_state s)
+{
+  while (1)
+    {
+      int scr = (UX_terminal_get_state (fd, s));
+      if ((scr >= 0) || (errno != EINTR))
+	return (scr);
+    }
+}
+
+static int
+DEFUN (set_terminal_state, (fd, s), int fd AND Ttty_state s)
+{
+  while (1)
+    {
+      int scr = (UX_terminal_set_state (fd, s));
+      if ((scr >= 0) || (errno != EINTR))
+	return (scr);
+    }
+}
+
+
+static int
+DEFUN (get_flags, (fd, flags), int fd AND int * flags)
+{
+#ifdef FCNTL_NONBLOCK
+  while (1)
+    {
+      int scr = (UX_fcntl (fd, F_GETFL, 0));
+      if (scr >= 0)
+	{
+	  (*flags) = scr;
+	  return (0);
+	}
+      if (errno != EINTR)
+	return (-1);
+    }
+#else
+  return (0);
+#endif
+}
+
+static int
+DEFUN (set_flags, (fd, flags), int fd AND int * flags)
+{
+#ifdef FCNTL_NONBLOCK
+  while (1)
+    {
+      int scr = (UX_fcntl (fd, F_SETFL, (*flags)));
+      if ((scr >= 0) || (errno != EINTR))
+	return (scr);
+    }
+#else
+  return (0);
+#endif
+}
+
 static void
 DEFUN (save_external_state, (s), struct terminal_state_recording * s)
 {
   (s -> recorded_p) =
     (scheme_in_foreground
      && (isatty (s -> fd))
-     && ((UX_terminal_get_state ((s -> fd), (& (s -> state)))) >= 0));
+     && ((get_terminal_state ((s -> fd), (& (s -> state)))) >= 0)
+     && ((get_flags ((s -> fd), (& (s -> flags)))) >= 0));
 }
 
 static void
@@ -91,7 +151,8 @@ DEFUN (restore_external_state, (s), struct terminal_state_recording * s)
 {
   if (s -> recorded_p)
     {
-      UX_terminal_set_state ((s -> fd), (& (s -> state)));
+      set_terminal_state ((s -> fd), (& (s -> state)));
+      set_flags ((s -> fd), (& (s -> flags)));
       (s -> recorded_p) = 0;
     }
 }
@@ -106,7 +167,8 @@ DEFUN (save_internal_state, (s, es),
      the internal state, if any. */
   if (es -> recorded_p)
     (s -> recorded_p) =
-      ((UX_terminal_get_state ((s -> fd), (& (s -> state)))) >= 0);
+      (((get_terminal_state ((s -> fd), (& (s -> state)))) >= 0)
+       && ((get_flags ((s -> fd), (& (s -> flags)))) >= 0));
 }
 
 static void
@@ -128,7 +190,10 @@ DEFUN (restore_internal_state, (s, es),
   if (s -> recorded_p)
     {
       if (es -> recorded_p)
-	UX_terminal_set_state ((s -> fd), (& (s -> state)));
+	{
+	  set_terminal_state ((s -> fd), (& (s -> state)));
+	  set_flags ((s -> fd), (& (s -> flags)));
+	}
       (s -> recorded_p) = 0;
     }
 }
@@ -256,7 +321,7 @@ static void
 DEFUN (ctty_get_interrupt_chars, (ic), Tinterrupt_chars * ic)
 {
   Ttty_state s;
-  if ((UX_terminal_get_state (ctty_fildes, (&s))) == 0)
+  if ((get_terminal_state (ctty_fildes, (&s))) == 0)
     {
 #ifdef HAVE_TERMIOS
       (ic -> quit) = ((s . tio . c_cc) [VQUIT]);
@@ -322,7 +387,7 @@ static void
 DEFUN (ctty_set_interrupt_chars, (ic), Tinterrupt_chars * ic)
 {
   Ttty_state s;
-  if ((UX_terminal_get_state (ctty_fildes, (&s))) == 0)
+  if ((get_terminal_state (ctty_fildes, (&s))) == 0)
     {
 #ifdef HAVE_TERMIOS
       ((s . tio . c_cc) [VQUIT]) = (ic -> quit);
@@ -360,7 +425,7 @@ DEFUN (ctty_set_interrupt_chars, (ic), Tinterrupt_chars * ic)
 #endif /* HAVE_BSD_TTY_DRIVER */
 #endif /* HAVE_TERMIO */
 #endif /* HAVE_TERMIOS */
-      UX_terminal_set_state (ctty_fildes, (&s));
+      set_terminal_state (ctty_fildes, (&s));
     }
 }
 
