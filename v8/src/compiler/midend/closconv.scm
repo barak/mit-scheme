@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: closconv.scm,v 1.2 1994/11/22 03:48:40 adams Exp $
+$Id: closconv.scm,v 1.3 1994/11/22 19:50:34 gjr Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -183,17 +183,13 @@ MIT in each case. |#
 (define (closconv/remember new old)
   (code-rewrite/remember new old))
 
-(define (closconv/split new old)
-  ;; The old code is being duplicated in the output, so the debugging
-  ;; information must understand the split.
-  (let ((old* (code-rewrite/original-form old)))
-    (if old*
-	(code-rewrite/remember*
-	 new
-	 (if (new-dbg-procedure? old*)
-	     (new-dbg-procedure/copy old*)
-	     old*)))
-    new))
+(define (closconv/remember* new old)
+  (code-rewrite/remember* new (code-rewrite/original-form old))
+  new)
+
+(define (closconv/remember*! new old)
+  (code-rewrite/remember*! new (code-rewrite/original-form old))
+  new)
 
 (define (closconv/new-name prefix)
   (new-variable prefix))
@@ -514,8 +510,8 @@ MIT in each case. |#
 (define (closconv/rewrite/lambda/trivial! env)
   (closconv/maybe-lift! env
 			(let ((form (closconv/env/form env)))
-			  (closconv/split (form/preserve form)
-					  form))
+			  (closconv/remember* (form/preserve form)
+					      form))
 			closconv/closure/make-trivial))
 
 (define (closconv/verify-binding binding)
@@ -576,7 +572,7 @@ MIT in each case. |#
       ;; Convert to closure and maybe lift to top level
       (closconv/maybe-lift!
        env
-       (closconv/split
+       (closconv/remember*
 	(closconv/closure/make-handler closure-name
 				       (cadr form)
 				       (caddr form)
@@ -618,11 +614,14 @@ MIT in each case. |#
      ;; eq? results!
      (for-each
       (lambda (binding)
-	(for-each (lambda (ref)
-		    (let ((ref* (form/preserve ref)))
-		      (form/rewrite! ref
-				     (closconv/closure/make-trivial ref*))))
-		  (closconv/binding/ordinary-refs binding)))
+	(let ((val-form
+	       (closconv/env/form (closconv/binding/value binding))))
+	  (for-each (lambda (ref)
+		      (let* ((ref* (form/preserve ref))
+			     (new (closconv/closure/make-trivial ref*)))
+			(form/rewrite! ref new)
+			(closconv/remember*! ref val-form)))
+		    (closconv/binding/ordinary-refs binding))))
       trivial)
      (let* ((envs (lmap closconv/binding/value closed))
 	    (circular
