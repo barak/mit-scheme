@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.24 1987/02/07 15:23:37 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.25 1987/02/07 15:29:41 jinx Exp $
  *
  * This file contains the code to support startup of
  * the SCHEME interpreter.
@@ -504,6 +504,8 @@ long Err, Micro_Error;
       printf("Return code not implemented.\n"); break;
     case TERM_NO_SPACE:
       printf("Not enough memory.\n"); break;
+    case TERM_SIGNAL:
+      printf("Unhandled signal received.\n"); break;
     default: printf("Termination code 0x%x.\n", Err);
   }
   if ((Trace_On_Error) && (Err != TERM_HALT))

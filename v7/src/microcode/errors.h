@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.22 1987/02/02 15:18:06 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.23 1987/02/07 15:28:03 jinx Exp $
  *
  * Error and termination code declarations.  This must correspond
  * to UTABMD.SCM
@@ -124,3 +124,4 @@ MIT in each case. */
 #define TERM_COMPILER_DEATH			0x13
 #define TERM_GC_OUT_OF_SPACE			0x14
 #define TERM_NO_SPACE				0x15
+#define TERM_SIGNAL				0x16
