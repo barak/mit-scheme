@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.1 1988/06/13 12:07:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.2 1988/06/15 18:24:01 jrm Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -202,6 +202,48 @@ MIT in each case. |#
 	  char-whitespace?
 	  chars->char-set
 	  predicate->char-set)
+  (initialization (initialize-package!)))
+
+(define-package (runtime compiler-info)
+  (files "infutl")
+  (parent ())
+  (export ()
+	  compiler-info?
+	  make-compiler-info
+	  compiler-info-procedures
+	  compiler-info-continuations
+	  compiler-info-labels
+
+	  label-info?
+	  make-label-info
+	  label-info-name
+	  label-info-offset
+	  label-info-external?
+	  
+	  *compiler-info/load-on-demand?*
+	  compiler-info/with-on-demand-loading
+	  compiler-info/without-on-demand-loading
+	  flush-compiler-info!
+
+	  make-sorted-vector
+	  sorted-vector/vector
+	  sorted-vector/find-element
+	  sorted-vector/lookup
+	  sorted-vector/find-indices
+	  sorted-vector/there-exists?
+	  sorted-vector/for-each
+
+	  block-symbol-table
+	  compiled-code-block->pathstring
+	  compiled-code-block->info
+
+	  compiled-entry->name
+	  compiled-entry->pathname
+	  compiled-entry->compiler-info
+	  compiled-entry->block-and-offset
+	  compiled-entry->block-and-offset-indirect
+	  info-file
+	  )
   (initialization (initialize-package!)))
 
 (define-package (runtime console-input)
