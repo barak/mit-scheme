@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.23 1997/12/23 05:16:15 cph Exp $
+$Id: edextra.scm,v 1.24 1998/01/03 18:12:52 cph Exp $
 
-Copyright (c) 1992-97 Massachusetts Institute of Technology
+Copyright (c) 1992-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,6 +40,14 @@ MIT in each case. |#
 (define student-work-directory)
 (define pset-directory)
 (define pset-list-file)
+(define command-line-student-directory #f)
+
+(set-command-line-parser! "-student" 
+  (lambda (command-line)
+    (let ((name (cadr command-line)))
+      (if (file-directory? name)
+	  (set! command-line-student-directory (->pathname name)))
+      (values (cddr command-line) #F))))
 
 (set! standard-editor-initialization
       (let ((usual standard-editor-initialization))
@@ -49,11 +57,16 @@ MIT in each case. |#
 
 (define (standard-login-initialization)
   (set! student-root-directory
-	(let ((6001-dir (get-environment-variable "MITSCHEME_6001_DIRECTORY")))
-	  (if (and 6001-dir (file-directory? 6001-dir))
-	      (pathname-as-directory 6001-dir)
-	      "~u6001/")))
-  (set! student-work-directory "~/work/")
+	(if (and command-line-student-directory
+		 (file-directory? command-line-student-directory))
+	    (pathname-as-directory command-line-student-directory)
+	    (let ((6001-dir
+		   (get-environment-variable "MITSCHEME_6001_DIRECTORY")))
+	      (if (and 6001-dir (file-directory? 6001-dir))
+		  (pathname-as-directory 6001-dir)
+		  "~u6001/"))))
+  (set! student-work-directory
+	(merge-pathnames "work/" student-root-directory))
   (if (not (file-directory? student-root-directory))
       (set! student-root-directory (user-homedir-pathname)))
   (if (not (file-directory? student-work-directory))
