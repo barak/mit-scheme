@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.113 1993/01/10 10:54:41 cph Exp $
+$Id: edwin.pkg,v 1.114 1993/01/12 19:06:35 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -1000,6 +1000,8 @@ MIT in each case. |#
 (define-package (edwin sendmail)
   (files "sendmail")
   (parent (edwin))
+  (import (runtime date/time)
+	  get-time)
   (export (edwin)
 	  edwin-command$mail
 	  edwin-command$mail-bcc
@@ -1042,6 +1044,8 @@ MIT in each case. |#
 	 "rmailsrt"
 	 "rmailsum")
   (parent (edwin))
+  (import (runtime date/time)
+	  get-time)
   (export (edwin)
 	  edwin-command$rmail
 	  edwin-command$rmail-delete-backward
