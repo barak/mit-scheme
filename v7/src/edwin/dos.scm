@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.45 1997/10/26 01:35:43 cph Exp $
+;;;	$Id: dos.scm,v 1.46 1997/12/30 21:19:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-97 Massachusetts Institute of Technology
 ;;;
@@ -46,7 +46,7 @@
 
 (declare (usual-integrations))
 
-(define dos/windows-type
+(define (dos/windows-type)
   (cond ((string-prefix? "Microsoft Windows NT"
 			 microcode-id/operating-system-variant)
 	 'WINNT)
@@ -58,8 +58,8 @@
 	 'WIN31)
 	(else #f)))
 
-(define dos/default-shell-file-name
-  (if (eq? 'WINNT dos/windows-type)
+(define (dos/default-shell-file-name)
+  (if (eq? 'WINNT (dos/windows-type))
       "cmd.exe"
       "command.com"))
 

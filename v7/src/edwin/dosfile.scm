@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dosfile.scm,v 1.13 1997/11/01 07:33:44 cph Exp $
+;;;	$Id: dosfile.scm,v 1.14 1997/12/30 21:19:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-97 Massachusetts Institute of Technology
 ;;;
@@ -516,7 +516,7 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
 (define (os/shell-file-name)
   (or (get-environment-variable "SHELL")
       (get-environment-variable "COMSPEC")
-      dos/default-shell-file-name))
+      (dos/default-shell-file-name)))
 
 (define (os/shell-name pathname)
   (if (member (pathname-type pathname) dos/executable-pathname-types)
