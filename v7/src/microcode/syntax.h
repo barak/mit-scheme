@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.h,v 1.3 1988/08/15 20:56:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.h,v 1.4 1989/05/01 19:38:49 cph Exp $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,13 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 /* Definitions for Edwin syntax tables. */
+
+/* NOTE: This program was created by translation from the syntax table
+code of GNU Emacs; it was translated from the original C to 68000
+assembly language (in 1986), and then translated back from 68000
+assembly language to C (in 1987).  Users should be aware that the GNU
+GENERAL PUBLIC LICENSE may apply to this code.  A copy of that license
+should have been included along with this file. */
 
 /* CODE is the syntax code for the character. */
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.12 1989/04/15 00:15:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.13 1989/05/01 19:38:42 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -32,8 +32,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* Primitives to support Edwin syntax tables, word and list parsing.
-   Translated from GNU Emacs. */
+/* Primitives to support Edwin syntax tables, word and list parsing. */
+
+/* NOTE: This program was created by translation from the syntax table
+code of GNU Emacs; it was translated from the original C to 68000
+assembly language (in 1986), and then translated back from 68000
+assembly language to C (in 1987).  Users should be aware that the GNU
+GENERAL PUBLIC LICENSE may apply to this code.  A copy of that license
+should have been included along with this file. */
 
 #include "scheme.h"
 #include "prims.h"

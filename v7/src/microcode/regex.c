@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.7 1988/08/15 20:53:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.8 1989/05/01 19:38:27 cph Rel $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,8 +32,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* Regular expression matching and search.
-   Translated from GNU Emacs. */
+/* Regular expression matching and search. */
+
+/* NOTE: This program was created by translation from the regular
+expression code of GNU Emacs; it was translated from the original C to
+68000 assembly language (in 1986), and then translated back from 68000
+assembly language to C (in 1987).  Users should be aware that the GNU
+GENERAL PUBLIC LICENSE may apply to this code.  A copy of that license
+should have been included along with this file. */
 
 #include "scheme.h"
 #include "char.h"
