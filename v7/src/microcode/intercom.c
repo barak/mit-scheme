@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/intercom.c,v 9.25 1988/08/15 20:49:47 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/intercom.c,v 9.26 1989/05/31 01:50:26 jinx Rel $
  *
  * Single-processor simulation of locking, propagating, and
  * communicating stuff.
@@ -65,8 +65,9 @@ MIT in each case. */
 DEFINE_PRIMITIVE ("GLOBAL-INTERRUPT", Prim_send_global_interrupt, 3, 3, 0)
 {
   long Saved_Zone, Which_Level;
-  
   Primitive_3_Args();
+
+  PRIMITIVE_CANONICALIZE_CONTEXT();
   Arg_1_Type(TC_FIXNUM);
   Range_Check(Which_Level, Arg1, 0, 3, ERR_ARG_1_BAD_RANGE);
   Save_Time_Zone(Zone_Global_Int);
@@ -192,9 +193,11 @@ DEFINE_PRIMITIVE ("PEEK-AT-WORK-QUEUE", Prim_peek_queue, 0, 0, 0)
 DEFINE_PRIMITIVE ("GET-WORK", Prim_get_work, 1, 1, 0)
 {
   Pointer Get_Work();
+  Pointer result;
   Primitive_1_Arg();
 
-  PRIMITIVE_RETURN(Get_Work(Arg1));
+  result = Get_Work(Arg1);
+  PRIMITIVE_RETURN(result);
 }
 
 Pointer Get_Work(Arg1)
@@ -203,13 +206,14 @@ Pointer Get_Work(Arg1)
   Pointer The_Queue, Queue_Head, Result, The_Prim;
 
   /* This gets this primitive's code which is in the expression register. */
-  The_Prim = Fetch_Expression();
+  The_Prim = Regs[REGBLOCK_PRIMITIVE];
   The_Queue = Get_Fixed_Obj_Slot(The_Work_Queue);
   if (The_Queue != NIL)
   {
     Queue_Head = Vector_Ref(The_Queue, CONS_CAR);
   }
   if ((The_Queue == NIL) || (Queue_Head == NIL))
+  {
     if (Arg1 == NIL)
     {
       printf("\nNo work available, but some has been requested!\n");
@@ -217,6 +221,7 @@ Pointer Get_Work(Arg1)
     }
     else
     {
+      PRIMITIVE_CANONICALIZE_CONTEXT();
       Pop_Primitive_Frame(1);
      Will_Push(2 * (STACK_ENV_EXTRA_SLOTS + 1) + 1 + CONTINUATION_SIZE);
       Push(NIL);	/* Upon return, no hope if there is no work */
@@ -229,6 +234,7 @@ Pointer Get_Work(Arg1)
       Push(STACK_FRAME_HEADER);
      Pushed();
       PRIMITIVE_ABORT(PRIM_APPLY);
+    }
   }
   Result = Vector_Ref(Queue_Head, CONS_CAR);
   Queue_Head = Vector_Ref(Queue_Head, CONS_CDR);
@@ -337,6 +343,7 @@ DEFINE_PRIMITIVE ("MASTER-GC-LOOP", Prim_master_gc, 1, 1, 0)
   extern Pointer make_primitive();
   Primitive_1_Arg();
 
+  PRIMITIVE_CANONICALIZE_CONTEXT();
   if (gc_prim == NIL)
   {
     gc_prim = make_primitive("GARBAGE-COLLECT");

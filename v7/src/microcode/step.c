@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/step.c,v 9.25 1988/08/15 20:55:24 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/step.c,v 9.26 1989/05/31 01:51:02 jinx Rel $
  *
  * Support for the stepper
  */
@@ -85,6 +85,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-EVAL-STEP", Prim_eval_step, 3, 3, 0)
 {
   Primitive_3_Args();
 
+  PRIMITIVE_CANONICALIZE_CONTEXT();
   Install_Traps(Arg3, false);
   Pop_Primitive_Frame(3);
   Store_Expression(Arg1);
@@ -109,6 +110,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-APPLY-STEP", Prim_apply_step, 3, 3, 0)
   long Number_Of_Args, i;
   Primitive_3_Args();
 
+  PRIMITIVE_CANONICALIZE_CONTEXT();
   Arg_3_Type(TC_HUNK3);
   Number_Of_Args = 0;
   Next_From_Slot = Arg2;

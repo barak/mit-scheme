@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/const.h,v 9.31 1989/05/24 05:32:23 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/const.h,v 9.32 1989/05/31 01:49:52 jinx Exp $
  *
  * Named constants used throughout the interpreter
  *
@@ -121,6 +121,7 @@ MIT in each case. */
 #define PRIM_POP_RETURN			-7
 #define PRIM_TOUCH			-8
 #define PRIM_APPLY_INTERRUPT		-9
+#define PRIM_REENTER			-10
 
 #define ABORT_NAME_TABLE						\
 {									\
@@ -132,7 +133,8 @@ MIT in each case. */
   /* -6 */	"NO-TRAP_APPLY",					\
   /* -7 */	"POP-RETURN",						\
   /* -8 */	"TOUCH",						\
-  /* -9 */	"APPLY-INTERRUPT"					\
+  /* -9 */	"APPLY-INTERRUPT",					\
+  /* -10 */	"REENTER"						\
 }
 
 /* Some numbers of parameters which mean something special */

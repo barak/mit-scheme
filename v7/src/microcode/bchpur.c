@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.42 1989/03/27 23:14:03 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.43 1989/05/31 01:49:47 jinx Exp $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -490,6 +490,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
   Pointer result;
   Primitive_3_Args();
 
+  PRIMITIVE_CANONICALIZE_CONTEXT();
   if ((Arg2 != SHARP_T) && (Arg2 != SHARP_F))
     Primitive_Error(ERR_ARG_2_WRONG_TYPE);
   Arg_3_Type(TC_FIXNUM);

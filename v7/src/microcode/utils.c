@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.41 1989/05/24 15:11:28 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.42 1989/05/31 01:51:07 jinx Rel $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -210,6 +210,41 @@ Back_Out_Of_Primitive ()
   Store_Expression(NIL);
   Regs[REGBLOCK_PRIMITIVE] = NIL;
   return;
+}
+
+/*
+  canonicalize_primitive_context should be used by "unsafe" primitives
+  to guarantee that their execution context is the expected one, ie.
+  they are called from the interpreter.
+  If they are called from compiled code, they should abort to the
+  interpreter and reenter.
+  Note: This is called only from the macro PRIMITIVE_CANONICALIZE_CONTEXT,
+  so that the work can be divided between them if it is an issue.
+ */
+
+extern void canonicalize_primitive_context();
+
+void
+canonicalize_primitive_context()
+{
+  long nargs;
+  Pointer primitive;
+
+  primitive = Regs[REGBLOCK_PRIMITIVE];
+  if (OBJECT_TYPE(primitive) != TC_PRIMITIVE)
+  {
+    fprintf(stderr,
+	    "\ncanonicalize_primitive_context invoked when not in primitive!\n");
+    Microcode_Termination(TERM_BAD_BACK_OUT);
+  }
+  nargs = PRIMITIVE_N_ARGUMENTS(primitive);
+  if ((OBJECT_TYPE(Stack_Ref(nargs))) != TC_COMPILED_ENTRY)
+  {
+    return;
+  }
+  /* The primitive has been invoked from compiled code. */
+  PRIMITIVE_ABORT(PRIM_REENTER);
+  /*NOTREACHED*/
 }
 
 /* Useful error procedures */
@@ -933,6 +968,12 @@ Find_State_Space (State_Point)
 	 at the root, indicating that the microcode variable rather
 	 than the state space contains the current state space
 	 location.
+
+   NOTE: This procedure is invoked both by primitives and the interpreter
+   itself.  As such, it is using the pun that PRIMITIVE_ABORT is just a
+   (non-local) return to the interpreter.  This should be cleaned up.
+   NOTE: Any primitive that invokes this procedure must do a
+   PRIMITIVE_CANONICALIZE_CONTEXT() first!
 */
 
 void
@@ -1030,7 +1071,11 @@ Pointer
 Compiler_Get_Fixed_Objects()
 {
   if (Valid_Fixed_Obj_Vector())
+  {
     return (Get_Fixed_Obj_Slot(Me_Myself));
+  }
   else
+  {
     return (NIL);
+  }
 }

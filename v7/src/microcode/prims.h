@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.33 1988/08/15 20:53:04 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.34 1989/05/31 01:50:51 jinx Rel $ */
 
 /* This file contains some macros for defining primitives,
    for argument type or value checking, and for accessing
@@ -66,6 +66,13 @@ Pointer fn_name ()
 #define PRIMITIVE_RETURN(value)	return (value)
 
 #define PRIMITIVE_ABORT(action)	longjmp(*Back_To_Eval, (action))
+
+extern void canonicalize_primitive_context();
+
+#define PRIMITIVE_CANONICALIZE_CONTEXT()				\
+{									\
+  canonicalize_primitive_context();					\
+}
 
 /* Preambles for primitive procedures.  These store the arguments into
  * local variables for fast access.

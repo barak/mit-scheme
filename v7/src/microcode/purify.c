@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.37 1989/03/27 23:15:46 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.38 1989/05/31 01:50:57 jinx Exp $
  *
  * This file contains the code that copies objects into pure
  * and constant space.
@@ -504,6 +504,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
   Pointer Object, Lost_Objects, Purify_Result, Daemon;
   Primitive_3_Args();
 
+  PRIMITIVE_CANONICALIZE_CONTEXT();
   Save_Time_Zone(Zone_Purify);
   if ((Arg2 != SHARP_T) && (Arg2 != NIL))
     Primitive_Error(ERR_ARG_2_WRONG_TYPE);

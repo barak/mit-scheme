@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.29 1988/09/29 04:58:22 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.30 1989/05/31 01:50:09 jinx Rel $
  *
  * This file contains hooks and handles for the new fluid bindings
  * scheme for multiprocessors.
@@ -78,6 +78,7 @@ DEFINE_PRIMITIVE ("WITH-SAVED-FLUID-BINDINGS", Prim_with_saved_fluid_bindings, 1
 {
   Primitive_1_Arg();
 
+  PRIMITIVE_CANONICALIZE_CONTEXT();
   Pop_Primitive_Frame(1);
 
   /* Save previous fluid bindings for later restore */
@@ -90,6 +91,7 @@ DEFINE_PRIMITIVE ("WITH-SAVED-FLUID-BINDINGS", Prim_with_saved_fluid_bindings, 1
   Push(STACK_FRAME_HEADER);
  Pushed();
   PRIMITIVE_ABORT(PRIM_APPLY);
+  /*NOTREACHED*/
 }
 
 /* Utilities for the primitives below. */

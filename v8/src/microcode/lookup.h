@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.h,v 9.41 1988/09/29 05:02:21 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.h,v 9.42 1989/05/31 01:50:41 jinx Rel $ */
 
 /* Macros and declarations for the variable lookup code. */
 
@@ -267,6 +267,14 @@ label:									\
 /* Macros and exports for incremental definition and hooks. */
 
 extern long extend_frame();
+
+/* Definition recaches eagerly by default. */
+
+#ifndef DEFINITION_RECACHES_LAZILY
+#ifndef DEFINITION_RECACHES_EAGERLY
+#define DEFINITION_RECACHES_EAGERLY
+#endif
+#endif
 
 #ifndef DEFINITION_RECACHES_EAGERLY
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.36 1989/03/27 23:15:41 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.37 1989/05/31 01:50:46 jinx Exp $ */
 
 /* Memory management top level.
 
@@ -383,6 +383,7 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
   Pointer GC_Daemon_Proc;
   Primitive_1_Arg();
 
+  PRIMITIVE_CANONICALIZE_CONTEXT();
   Arg_1_Type(TC_FIXNUM);
   if (Free > Heap_Top)
   {

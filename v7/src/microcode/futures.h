@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/futures.h,v 9.24 1988/08/15 20:47:48 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/futures.h,v 9.25 1989/05/31 01:50:14 jinx Rel $
  *
  * This file contains macros useful for dealing with futures
  */
@@ -123,6 +123,9 @@ MIT in each case. */
 
    ASSUMPTION: The SYMBOL slot of a VARIABLE does NOT contain a future, nor
    do the cached lexical address slots.
+
+   ASSUMPTION: Environment structure, which is created only by the
+   interpreter, never contains FUTUREs on its spine.
 
    ASSUMPTION: History objects are never created using futures.
 

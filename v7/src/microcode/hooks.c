@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.35 1989/03/27 23:15:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.36 1989/05/31 01:50:19 jinx Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -51,7 +51,7 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
 {
   fast Pointer scan_list, *scan_stack;
   fast long number_of_args, i;
-#ifdef butterfly
+#ifdef PARALLEL_PROCESSOR
   Pointer *saved_stack_pointer;
 #endif
   Primitive_2_Args();
@@ -67,11 +67,13 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
      list into a linear (vector-like) form, so as to avoid the
      overhead of traversing the list twice.  Unfortunately, the
      overhead of maintaining this other form (e.g. PRIMITIVE_GC_If_Needed)
-     is sufficiently high that it probably makes up for the time saved. */
+     is sufficiently high that it probably makes up for the time saved.
+   */
 
+  PRIMITIVE_CANONICALIZE_CONTEXT();
   Touch_In_Primitive( Arg2, scan_list);
   number_of_args = 0;
-  while (Type_Code( scan_list) == TC_LIST)
+  while (OBJECT_TYPE( scan_list) == TC_LIST)
   {
     number_of_args += 1;
     Touch_In_Primitive( Vector_Ref( scan_list, CONS_CDR), scan_list);
@@ -90,7 +92,7 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
   Pop_Primitive_Frame( 2);
 
  Will_Push( (number_of_args + STACK_ENV_EXTRA_SLOTS + 1));
-#ifdef butterfly
+#ifdef PARALLEL_PROCESSOR
   saved_stack_pointer = Stack_Pointer;
 #endif
   scan_stack = Simulate_Pushing (number_of_args);
@@ -99,9 +101,9 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
   Touch_In_Primitive (Arg2, scan_list);
   while (i > 0)
   {
-#ifdef butterfly
+#ifdef PARALLEL_PROCESSOR
     /* Check for abominable case of someone bashing the arg list. */
-    if (Type_Code( scan_list) != TC_LIST)
+    if (OBJECT_TYPE( scan_list) != TC_LIST)
     {
       Stack_Pointer = saved_stack_pointer;
       signal_error_from_primitive (ERR_ARG_2_BAD_RANGE);
@@ -239,6 +241,7 @@ DEFINE_PRIMITIVE ("CALL-WITH-CURRENT-CONTINUATION", Prim_catch, 1, 1, 0)
   Pointer Control_Point;
   Primitive_1_Arg ();
 
+  PRIMITIVE_CANONICALIZE_CONTEXT();
   CWCC (RC_RESTORE_HISTORY);
   Vector_Set (Control_Point, STACKLET_REUSE_FLAG, NIL);
   PRIMITIVE_ABORT (PRIM_APPLY);
@@ -249,6 +252,8 @@ DEFINE_PRIMITIVE ("NON-REENTRANT-CALL-WITH-CURRENT-CONTINUATION", Prim_non_reent
 {
   Pointer Control_Point;
   Primitive_1_Arg ();
+
+  PRIMITIVE_CANONICALIZE_CONTEXT();
 
 #ifdef USE_STACKLETS
 
@@ -305,6 +310,7 @@ DEFINE_PRIMITIVE ("ERROR-PROCEDURE", Prim_error_procedure, 3, 3, 0)
 {
   Primitive_3_Args();
 
+  PRIMITIVE_CANONICALIZE_CONTEXT();
   /*
     This is done outside the Will_Push because the space for it
     is guaranteed by the interpreter before it gets here.
@@ -364,6 +370,7 @@ DEFINE_PRIMITIVE ("FORCE", Prim_force, 1, 1, 0)
     case FIXNUM_ZERO:
       {
 	/* New-style thunk used by compiled code. */
+	PRIMITIVE_CANONICALIZE_CONTEXT();
 	Pop_Primitive_Frame (1);
        Will_Push (CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 1);
 	Store_Return (RC_SNAP_NEED_THUNK);
@@ -379,6 +386,7 @@ DEFINE_PRIMITIVE ("FORCE", Prim_force, 1, 1, 0)
     default:
       {
 	/* Old-style thunk used by interpreted code. */
+	PRIMITIVE_CANONICALIZE_CONTEXT();
 	Pop_Primitive_Frame (1);
        Will_Push (CONTINUATION_SIZE);
 	Store_Return (RC_SNAP_NEED_THUNK);
@@ -405,6 +413,7 @@ DEFINE_PRIMITIVE ("EXECUTE-AT-NEW-STATE-POINT", Prim_execute_at_new_point, 4, 4,
   Pointer New_Point, Old_Point;
   Primitive_4_Args();
 
+  PRIMITIVE_CANONICALIZE_CONTEXT();
   guarantee_state_point();
   if (Arg1 == NIL)
     Old_Point = Current_State_Point;
@@ -542,7 +551,8 @@ DEFINE_PRIMITIVE ("SCODE-EVAL", Prim_scode_eval, 2, 2, 0)
 {
   Primitive_2_Args();
 
-  if (Type_Code(Arg2) != GLOBAL_ENV)
+  PRIMITIVE_CANONICALIZE_CONTEXT();
+  if (OBJECT_TYPE(Arg2) != GLOBAL_ENV)
     Arg_2_Type(TC_ENVIRONMENT);
   Pop_Primitive_Frame(2);
   Store_Env(Arg2);
@@ -625,6 +635,7 @@ DEFINE_PRIMITIVE ("SET-CURRENT-HISTORY!", Prim_set_current_history, 1, 1, 0)
 {
   Primitive_1_Arg();
 
+  PRIMITIVE_CANONICALIZE_CONTEXT();
   if (!(HUNK3_P(Arg1)))
     error_wrong_type_arg (1);
 
@@ -679,6 +690,7 @@ DEFINE_PRIMITIVE ("TRANSLATE-TO-STATE-POINT", Prim_translate_to_point, 1, 1, 0)
 {
   Primitive_1_Arg();
 
+  PRIMITIVE_CANONICALIZE_CONTEXT();
   Arg_1_Type(TC_VECTOR);
   if (Vector_Ref(Arg1, STATE_POINT_TAG) != Get_Fixed_Obj_Slot(State_Point_Tag))
     signal_error_from_primitive(ERR_ARG_1_WRONG_TYPE);
@@ -701,6 +713,7 @@ DEFINE_PRIMITIVE ("WITH-HISTORY-DISABLED", Prim_with_history_disabled, 1, 1, 0)
   Pointer *First_Rib, *Rib, *Second_Rib;
   Primitive_1_Arg();
 
+  PRIMITIVE_CANONICALIZE_CONTEXT();
   /* Remove one reduction from the history before saving it */
   First_Rib = Get_Pointer(History[HIST_RIB]);
   Second_Rib = Get_Pointer(First_Rib[RIB_NEXT_REDUCTION]);
@@ -734,6 +747,7 @@ DEFINE_PRIMITIVE ("WITH-INTERRUPT-MASK", Prim_with_interrupt_mask, 2, 2, 0)
   Pointer mask;
   Primitive_2_Args();
 
+  PRIMITIVE_CANONICALIZE_CONTEXT();
   Arg_1_Type(TC_FIXNUM);
   Pop_Primitive_Frame(2);
   mask = MAKE_SIGNED_FIXNUM(FETCH_INTERRUPT_MASK());
@@ -759,6 +773,7 @@ DEFINE_PRIMITIVE ("WITH-INTERRUPTS-REDUCED", Prim_with_interrupts_reduced, 2, 2,
   long new_interrupt_mask, old_interrupt_mask;
   Primitive_2_Args();
 
+  PRIMITIVE_CANONICALIZE_CONTEXT();
   Arg_1_Type(TC_FIXNUM);
   Pop_Primitive_Frame(2);
   mask = MAKE_SIGNED_FIXNUM(FETCH_INTERRUPT_MASK());
@@ -795,6 +810,7 @@ DEFINE_PRIMITIVE ("WITHIN-CONTROL-POINT", Prim_within_control_point, 2, 2, 0)
 {
   Primitive_2_Args();
 
+  PRIMITIVE_CANONICALIZE_CONTEXT();
   Arg_1_Type(TC_CONTROL_POINT);
   Our_Throw(false, Arg1);
   Within_Stacklet_Backout();

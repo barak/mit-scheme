@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.28 1988/10/21 00:12:33 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.29 1989/05/31 01:49:57 jinx Rel $
  *
  * This file contains a primitive to dump an executable version of Scheme.
  * It uses unexec.c from GNU Emacs.
@@ -189,6 +189,7 @@ DEFINE_PRIMITIVE ("DUMP-WORLD", Prim_dump_world, 1, 1, 0)
   long Buflen;
   Primitive_1_Arg();
 
+  PRIMITIVE_CANONICALIZE_CONTEXT();
   Arg_1_Type(TC_CHARACTER_STRING);
 
   if (there_are_open_files())

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.39 1989/03/27 23:14:58 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.40 1989/05/31 01:50:02 jinx Exp $
 
    The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
@@ -737,6 +737,7 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   Boolean load_file_failed;
   Primitive_1_Arg();
 
+  PRIMITIVE_CANONICALIZE_CONTEXT();
   saved_free = Free;
   Free = Heap_Bottom;
   saved_memtop = MemTop;

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.49 1989/03/28 20:39:19 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.50 1989/05/31 01:50:31 jinx Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -454,6 +454,12 @@ Repeat_Dispatch:
       PROCEED_AFTER_PRIMITIVE();
     case CODE_MAP(PRIM_POP_RETURN):
       goto Pop_Return;
+
+    case PRIM_REENTER:
+      BACK_OUT_AFTER_PRIMITIVE();
+      LOG_FUTURES();
+    case CODE_MAP(PRIM_REENTER):
+      goto Perform_Application;
 
     case PRIM_TOUCH:
     {
@@ -463,9 +469,8 @@ Repeat_Dispatch:
       BACK_OUT_AFTER_PRIMITIVE();
       Val = temp;
       LOG_FUTURES();
-      /* fall through */
     }
-
+    /* fall through */
     case CODE_MAP(PRIM_TOUCH):
       TOUCH_SETUP(Val);
       goto Internal_Apply;
