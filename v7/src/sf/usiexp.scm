@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.28 1993/12/22 14:41:17 adams Exp $
+$Id: usiexp.scm,v 4.30 1993/12/22 14:50:37 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; SCode Optimizer: Usual Integrations: Combination Expansions
-;; package: (scode-optimizer expansion)
+;;; package: (scode-optimizer expansion)
 
 (declare (usual-integrations)
 	 (integrate-external "object"))
@@ -459,51 +459,20 @@ MIT in each case. |#
 			 operands))
       (if-not-expanded)))
 
-(define (type-test-expansion type-proc)
+(define (type-test-expansion type)
   (lambda (expr operands if-expanded if-not-expanded block)
     (if (and (pair? operands)
 	     (null? (cdr operands)))
-	(if-expanded (make-type-test expr block (type-proc) (car operands)))
+	(if-expanded (make-type-test expr block type (car operands)))
 	(if-not-expanded))))
 
-;; DO NOT make the following integrable! they are required to be changable
-;; to allow syntaxing to a different tag set
-
-(define ucode-type/character (ucode-type character))
-(define ucode-type/cell (ucode-type cell))
-(define ucode-type/vector (ucode-type vector))
-(define ucode-type/record (ucode-type record))
-(define ucode-type/weak-cons (ucode-type weak-cons))
-(define ucode-type/recnum (ucode-type recnum))
-(define ucode-type/ratnum (ucode-type ratnum))
-(define ucode-type/big-fixnum (ucode-type big-fixnum))
-(define ucode-type/fixnum (ucode-type fixnum))
-(define ucode-type/positive-fixnum (ucode-type positive-fixnum))
-(define ucode-type/negative-fixnum (ucode-type negative-fixnum))
-(define ucode-type/big-flonum (ucode-type big-flonum))
-
-(define char?-expansion (type-test-expansion (lambda()ucode-type/character)))
-(define cell?-expansion (type-test-expansion (lambda()ucode-type/cell)))
-(define vector?-expansion (type-test-expansion (lambda()ucode-type/vector)))
-(define %record?-expansion (type-test-expansion (lambda()ucode-type/record)))
-(define weak-pair?-expansion (type-test-expansion (lambda()ucode-type/weak-cons)))
-(define flo:flonum?-expansion (type-test-expansion (lambda()ucode-type/big-flonum)))
-(define fix:fixnum?-expansion (type-test-expansion (lambda()ucode-type/fixnum)))
-
-;; for +ve & -ve fixnums?
-;(define (fix:fixnum?-expansion expr operands if-expanded if-not-expanded block)
-;  (let ((pos-tag  ucode-type/positive-fixnum)
-;	(neg-tag  ucode-type/negative-fixnum))
-;    (if (and (pair? operands)
-;	     (null? (cdr operands)))
-;	(if-expanded
-;	 (if (eq? pos-tag neg-tag)
-;	     (make-type-test false block pos-tag (car operands))
-;	     (make-disjunction
-;	      expr
-;	      (make-type-test false block pos-tag (car operands))
-;	      (make-type-test false block neg-tag (car operands)))))
-;	(if-not-expanded))))
+(define char?-expansion (type-test-expansion (ucode-type character)))
+(define cell?-expansion (type-test-expansion (ucode-type cell)))
+(define vector?-expansion (type-test-expansion (ucode-type vector)))
+(define %record?-expansion (type-test-expansion (ucode-type record)))
+(define weak-pair?-expansion (type-test-expansion (ucode-type weak-cons)))
+(define flo:flonum?-expansion (type-test-expansion (ucode-type big-flonum)))
+(define fix:fixnum?-expansion (type-test-expansion (ucode-type fixnum)))
 
 (define (exact-integer?-expansion expr operands if-expanded if-not-expanded
 				  block)
@@ -512,8 +481,8 @@ MIT in each case. |#
       (if-expanded
        (make-disjunction
 	expr
-	(make-type-test false block ucode-type/fixnum (car operands))
-	(make-type-test false block ucode-type/big-fixnum (car operands))))
+	(make-type-test false block (ucode-type fixnum) (car operands))
+	(make-type-test false block (ucode-type big-fixnum) (car operands))))
       (if-not-expanded)))
 
 (define (exact-rational?-expansion expr operands if-expanded if-not-expanded
@@ -523,9 +492,9 @@ MIT in each case. |#
       (if-expanded
        (make-disjunction
 	expr
-	(make-type-test false block ucode-type/fixnum (car operands))
-	(make-type-test false block ucode-type/big-fixnum (car operands))
-	(make-type-test false block ucode-type/ratnum (car operands))))
+	(make-type-test false block (ucode-type fixnum) (car operands))
+	(make-type-test false block (ucode-type big-fixnum) (car operands))
+	(make-type-test false block (ucode-type ratnum) (car operands))))
       (if-not-expanded)))
 
 (define (complex?-expansion expr operands if-expanded if-not-expanded block)
@@ -534,11 +503,11 @@ MIT in each case. |#
       (if-expanded
        (make-disjunction
 	expr
-	(make-type-test false block ucode-type/fixnum (car operands))
-	(make-type-test false block ucode-type/big-fixnum (car operands))
-	(make-type-test false block ucode-type/ratnum (car operands))
-	(make-type-test false block ucode-type/big-flonum (car operands))
-	(make-type-test false block ucode-type/recnum (car operands))))
+	(make-type-test false block (ucode-type fixnum) (car operands))
+	(make-type-test false block (ucode-type big-fixnum) (car operands))
+	(make-type-test false block (ucode-type ratnum) (car operands))
+	(make-type-test false block (ucode-type big-flonum) (car operands))
+	(make-type-test false block (ucode-type recnum) (car operands))))
       (if-not-expanded)))
 
 (define (make-disjunction expr . clauses)
