@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.54 1995/09/27 16:23:56 cph Exp $
+;;;	$Id: unix.scm,v 1.55 1995/09/28 06:08:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -320,9 +320,13 @@ Includes the new backup.  Must be > 0."
 	   (string-suffix? extension filename)))))
 
 (define (os/completion-ignored-extensions)
-  (append '(".o" ".elc" ".bin" ".lbin" ".fasl"
-		 ".dvi" ".toc" ".log" ".aux"
-		 ".lof" ".blg" ".bbl" ".glo" ".idx" ".lot")
+  (append (list ".bin" ".com" ".ext"
+		".inf" ".bif" ".bsm" ".bci" ".bcs"
+		".psb" ".moc" ".fni"
+		".bco" ".bld" ".bad" ".glo" ".fre"
+		".o" ".elc" ".bin" ".lbin" ".fasl"
+		".dvi" ".toc" ".log" ".aux"
+		".lof" ".blg" ".bbl" ".glo" ".idx" ".lot")
 	  (list-copy unix/backup-suffixes)))
 
 (define-variable completion-ignored-extensions
