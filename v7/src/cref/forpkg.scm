@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/forpkg.scm,v 1.3 1988/12/23 21:38:51 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/forpkg.scm,v 1.4 1989/07/20 22:30:29 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -40,7 +40,8 @@ MIT in each case. |#
 (define (format-packages pmodel)
   (let ((indentation "  ")
 	(width 79)
-	(root-package (pmodel/root-package pmodel))	(packages (pmodel/packages pmodel)))
+	#|(root-package (pmodel/root-package pmodel))|#
+	(packages (pmodel/packages pmodel)))
     (let ((free-references
 	   (mapcan (lambda (package)
 		     (list-transform-negative
