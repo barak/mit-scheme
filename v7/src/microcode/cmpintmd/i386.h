@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.8 1992/02/15 14:16:30 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.9 1992/02/16 00:10:40 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -168,13 +168,13 @@ entry	0		CALL opcode		0xE8
 - Trampoline encoding:
 
 entry	0		MOV	AL,code		0xB0, code-byte
-	2		CALL	n(ESI)		0xFF 0x96 n-longword
+	2		LCALL	n(ESI)		0xFF 0x9e n-longword
 	8		<trampoline dependent storage>
 
 
 - GC & interrupt check at procedure/continuation entry:
 
-gc_lab	-7		CALL	n(ESI)		0xFF 0x56 n-byte
+gc_lab	-7		LCALL	n(ESI)		0xFF 0x5e n-byte
 	-4		<type/arity info>
 	-2		<gc offset>
 entry	0		CMP	EDI,(ESI)	0x39 0x3e
@@ -185,7 +185,7 @@ entry	0		CMP	EDI,(ESI)	0x39 0x3e
 - GC & interrupt check at closure entry:
 
 gc_lab	-11		ADD	(ESP),&offset	0x83 0x04 0x24 offset-byte
-  	-7		JMP	n(ESI)		0xFF 0x66 n-byte
+  	-7		LJMP	n(ESI)		0xFF 0x6e n-byte
 	-4		<type/arity info>
 	-2		<gc offset>
 entry	0		ADD	(ESP),&magic	0x81 0x04 0x24 magic-longword
@@ -326,8 +326,8 @@ do {									\
 									\
   *PC++ = 0xb0;			/* MOV	AL,byte */			\
   *PC++ = (index);		/* byte value */			\
-  *PC++ = 0xff;			/* CALL */				\
-  *PC++ = 0x96;			/* /2 disp32(ESI) */			\
+  *PC++ = 0xff;			/* LCALL */				\
+  *PC++ = 0x9e;			/* /3 disp32(ESI) */			\
   (* ((unsigned long *) PC)) = ESI_TRAMPOLINE_TO_INTERFACE_OFFSET;	\
 } while (0)
 
@@ -355,18 +355,27 @@ do {									\
 
 #ifdef IN_CMPINT_C
 
+#ifdef _MACH_UNIX
+#  include <mach.h>
+#  define VM_PROT_SCHEME (VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE)
+#endif /* _MACH_UNIX */
+
 long i386_pc_displacement_relocation = 0;
 
 #define ASM_RESET_HOOK i386_reset_hook
 
+/* This assumes that the layout in memory of a far pointer has the
+   segment index as the most significant half word.
+ */
+
 #define SETUP_REGISTER(hook) do						\
 {									\
   extern void hook ();							\
-  unsigned short * far_pointer =					\
-    ((unsigned short *) (esi_value + offset));				\
+  unsigned long * far_pointer =						\
+    ((unsigned long *) (esi_value + offset));				\
 									\
-  *far_pointer++ = code_segment;					\
-  (* ((unsigned long *) far_pointer)) = ((unsigned long) hook);		\
+  *far_pointer++ = ((unsigned long) hook);				\
+  *far_pointer = ((unsigned long) code_segment);			\
   offset += (COMPILER_HOOK_SIZE * (sizeof (SCHEME_OBJECT)));		\
 } while (0)
 
@@ -395,8 +404,10 @@ DEFUN_VOID (i386_reset_hook)
   SETUP_REGISTER (asm_interrupt_continuation);		/* 4 */
   SETUP_REGISTER (asm_interrupt_closure);		/* 5 */
   SETUP_REGISTER (asm_interrupt_dlink);			/* 6 */
-
+
 #if 0
+  /* For now. */
+
   SETUP_REGISTER (asm_primitive_apply);			/* 7 */
   SETUP_REGISTER (asm_primitive_lexpr_apply);		/* 8 */
 
@@ -435,6 +446,55 @@ DEFUN_VOID (i386_reset_hook)
   SETUP_REGISTER (asm_error);				/* 37 */
   SETUP_REGISTER (asm_primitive_error);			/* 38 */
 #endif
+
+#ifdef _MACH_UNIX
+  {
+    vm_address_t addr;
+    vm_size_t size;
+    vm_prot_t prot;
+    vm_prot_t max_prot;
+    vm_inherit_t inheritance;
+    boolean_t shared;
+    port_t object;
+    vm_offset_t offset;
+
+    addr = ((vm_address_t) Heap);
+    if ((vm_region ((task_self ()), &addr, &size, &prot, &max_prot,
+		    &inheritance, &shared, &object, &offset))
+	!= KERN_SUCCESS)
+    {
+      fprintf (stderr, "compiler_reset: vm_region() failed.\n");
+      Microcode_Termination (TERM_EXIT);
+      /*NOTREACHED*/
+    }
+    if ((prot & VM_PROT_SCHEME) != VM_PROT_SCHEME)
+    {
+      if ((max_prot & VM_PROT_SCHEME) != VM_PROT_SCHEME)
+      {
+	fprintf (stderr,
+		 "compiler_reset: inadequate protection for Heap.\n");
+	fprintf (stderr, "maximum = 0x%lx; desired = 0x%lx\n",
+		 ((unsigned long) (max_prot & VM_PROT_SCHEME)),
+		 ((unsigned long) VM_PROT_SCHEME));
+	Microcode_Termination (TERM_EXIT);
+	/*NOTREACHED*/
+      }
+      if ((vm_protect ((task_self ()), ((vm_address_t) Heap),
+		       (((char *) Constant_Top) - ((char *) Heap)),
+		       0, VM_PROT_SCHEME))
+	  != KERN_SUCCESS)
+      {
+	fprintf (stderr,
+		 "compiler_reset: unable to change protection for Heap.\n");
+	fprintf (stderr, "actual = 0x%lx; desired = 0x%lx\n",
+		 ((unsigned long) (prot & VM_PROT_SCHEME)),
+		 ((unsigned long) VM_PROT_SCHEME));
+	Microcode_Termination (TERM_EXIT);
+	/*NOTREACHED*/
+      }
+    }
+  }
+#endif /* _MACH_UNIX */
 
   return;
 }
