@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/datime.scm,v 14.1 1988/06/13 11:43:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/datime.scm,v 14.2 1989/02/28 17:05:50 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -69,7 +69,7 @@ MIT in each case. |#
 
 (define (zellers-congruence day month year)
   (let ((qr (integer-divide year 100)))
-    (let ((month (modulo (- month 2) 12))
+    (let ((month (1+ (modulo (- month 3) 12)))
 	  (year (integer-divide-remainder qr))
 	  (century (integer-divide-quotient qr)))
       (modulo (-1+ (- (+ day
