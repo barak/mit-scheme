@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules3.scm,v 1.8 1991/08/21 04:14:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules3.scm,v 1.9 1991/08/23 09:15:03 cph Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.30 1991/05/07 13:45:31 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
@@ -197,12 +197,14 @@ MIT in each case. |#
 
 ;;;; Invocation Prefixes
 
-;;; MOVE-FRAME-UP size address
-;;;
-;;; Moves up the last <size> words of the stack so that the first of
-;;; these words is at location <address>, and resets the stack pointer
-;;; to the last of these words.  That is, it pops off all the words
-;;; between <address> and TOS+/-<size>.
+;;; (INVOCATION-PREFIX:MOVE-FRAME-UP frame-size address)
+
+;;; Move the topmost <frame-size> words of the stack downward so that
+;;; the bottommost of these words is at location <address>, and set
+;;; the stack pointer to the topmost of the moved words.  That is,
+;;; discard the words between <address> and SP+<frame-size>, close the
+;;; resulting gap by shifting down the words from above the gap, and
+;;; adjust SP to point to the new topmost word.
 
 (define-rule statement
   ;; Move up 0 words back to top of stack : a No-Op
@@ -229,7 +231,7 @@ MIT in each case. |#
 	   (add-immediate how-far regnum:stack-pointer regnum:stack-pointer))
 	  ((= frame-size 1)
 	   (let ((temp (standard-temporary!)))
-	     (LAP (LW ,temp (OFFSET ,how-far ,regnum:stack-pointer))
+	     (LAP (LW ,temp (OFFSET 0 ,regnum:stack-pointer))
 		  (ADDI ,regnum:stack-pointer ,regnum:stack-pointer ,how-far)
 		  (STW ,temp (OFFSET 0 ,regnum:stack-pointer)))))
 	  ((= frame-size 2)
