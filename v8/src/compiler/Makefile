@@ -1,5 +1,5 @@
 #
-# $Id: Makefile,v 1.1 1995/07/29 14:45:30 adams Exp $
+# $Id: Makefile,v 1.2 1995/07/29 14:48:14 adams Exp $
 #
 # Makefile for Scheme compiler
 # This makefile supports some utilities for the compiler.
@@ -7,8 +7,7 @@
 # written in Scheme.
 #
 
-SOURCES = back/foo base/foo fggen/foo fgopt/foo\
-	machine/foo rtlbase/foo rtlgen/foo rtlopt/foo
+SOURCES = back/foo base/foo machine/foo midend/foo rtlbase/foo rtlopt/foo
 SUBDIRS = $(SOURCES:foo=)
 
 SHELL = /bin/sh
@@ -17,8 +16,8 @@ all:
 	echo "No ALL action"
 
 tags:
-	etags back/*.scm base/*.scm fggen/*.scm fgopt/*.scm \
-	machines/*/*.scm rtlbase/*.scm rtlgen/*.scm rtlopt/*.scm
+	etags back/*.scm base/*.scm \
+	machines/*/*.scm midend/*.scm rtlbase/*.scm rtlopt/*.scm
 
 index:
 	rm -f INDEX
@@ -28,7 +27,7 @@ listing:
 	prlist comp.pkg $(SOURCES:foo=*.scm)
 
 locked:
-	for subdir in . back base fggen fgopt rtlbase rtlgen rtlopt machines/*; \
+	for subdir in . back base midend rtlbase rtlopt machines/*; \
 	do \
 	rlog -L -R $${subdir}/RCS/*,v ; \
 	done
