@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.10 1990/04/10 15:53:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.11 1990/05/10 19:25:33 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -186,19 +186,21 @@ MIT in each case. |#
 	    (syntax-expressions (cdr expressions)))))
 
 (define (syntax-sequence original-expressions)
+  (make-scode-sequence (syntax-sequence-internal original-expressions)))
+
+(define (syntax-sequence-internal original-expressions)
   (if (null? original-expressions)
       (syntax-error "no subforms in sequence")
-      (make-scode-sequence
-       (let process ((expressions original-expressions))
-	 (cond ((pair? expressions)
-		;; Force eval order.  This is required so that special
-		;; forms such as `define-syntax' work correctly.
-		(let ((first (syntax-expression (car expressions))))
-		  (cons first (process (cdr expressions)))))
-	       ((null? expressions)
-		'())
-	       (else
-		(syntax-error "bad sequence" original-expressions)))))))
+      (let process ((expressions original-expressions))
+	(cond ((pair? expressions)
+	       ;; Force eval order.  This is required so that special
+	       ;; forms such as `define-syntax' work correctly.
+	       (let ((first (syntax-expression (car expressions))))
+		 (cons first (process (cdr expressions)))))
+	      ((null? expressions)
+	       '())
+	      (else
+	       (syntax-error "bad sequence" original-expressions))))))
 
 (define (syntax-bindings bindings receiver)
   (if (not (list? bindings))
@@ -303,7 +305,7 @@ MIT in each case. |#
 
 (define (syntax/in-package environment . body)
   (make-in-package (syntax-expression environment)
-		   (syntax-sequence body)))
+		   (make-sequence (syntax-sequence-internal body))))
 
 (define (syntax/delay expression)
   (make-delay (syntax-expression expression)))
