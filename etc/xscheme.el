@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.17 1988/04/28 18:52:03 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.18 1988/06/07 16:43:10 cph Exp $
 
 (require 'scheme)
 
@@ -733,6 +733,8 @@ When called, the current buffer will be the Scheme process-buffer.")
     (?s xscheme-enter-input-wait
 	xscheme-process-filter:simple-action)
     (?v xscheme-write-value
+	xscheme-process-filter:string-action)
+    (?w cd
 	xscheme-process-filter:string-action)
     (?z xscheme-display-process-buffer
 	xscheme-process-filter:simple-action)
