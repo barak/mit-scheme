@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: crypto.scm,v 14.1 2000/04/10 03:32:32 cph Exp $
+$Id: crypto.scm,v 14.2 2000/04/10 19:01:28 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -26,126 +26,116 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; The mhash library
 
-(define mhash-types)
-(define mhash-get-block-size)
-(define mhash-init)
-(define mhash-hmac-init)
-(let ((%mhash-count (ucode-primitive mhash_count 0))
-      (%mhash-get-block-size (ucode-primitive mhash_get_block_size 1))
-      (%mhash-get-hash-name (ucode-primitive mhash_get_hash_name 1))
-      (%mhash-get-hash-pblock (ucode-primitive mhash_get_hash_pblock 1))
-      (%mhash-init (ucode-primitive mhash_init 1))
-      (%mhash-hmac-init (ucode-primitive mhash_hmac_init 3)))
-  (let* ((names #f)
-	 (guarantee-names
-	  (lambda ()
-	    (if (not names)
-		(let ((n (%mhash-count)))
-		  (let ((v (make-vector n)))
-		    (do ((i 0 (fix:+ i 1)))
-			((fix:= i n))
-		      (vector-set!
-		       v i (intern (%mhash-get-hash-name i))))
-		    (set! names v))))))
-	 (hash-name->id
-	  (lambda (name procedure)
-	    (guarantee-names)
-	    (let ((n (vector-length names)))
-	      (let loop ((i 0))
-		(if (fix:< i n)
-		    (if (eq? name (vector-ref names i))
-			i
-			(loop (fix:+ i 1)))
-		    (error:bad-range-argument name procedure)))))))
-    (set! mhash-types
-	  (lambda ()
-	    (guarantee-names)
-	    (vector->list names)))
-    (set! mhash-get-block-size
-	  (lambda (name)
-	    (%mhash-get-block-size
-	     (hash-name->id name 'MHASH-GET-BLOCK-SIZE))))
-    (set! mhash-init
-	  (lambda (name)
-	    (%mhash-init (hash-name->id name 'MHASH-INIT))))
-    (set! mhash-hmac-init
-	  (lambda (name key)
-	    (let ((id (hash-name->id name 'MHASH-INIT)))
-	      (%mhash-hmac-init id key (%mhash-get-hash-pblock id)))))))
+(define mhash-algorithm-names)
+(define mhash-contexts)
+(define mhash-hmac-contexts)
 
-(define mhash-update (ucode-primitive mhash 4))
-(define mhash-end (ucode-primitive mhash_end 1))
-(define mhash-hmac-end (ucode-primitive mhash_hmac_end 1))
+(define (mhash-name->id name procedure)
+  (let ((n (vector-length mhash-algorithm-names)))
+    (let loop ((i 0))
+      (if (fix:< i n)
+	  (if (eq? name (vector-ref mhash-algorithm-names i))
+	      i
+	      (loop (fix:+ i 1)))
+	  (error:bad-range-argument name procedure)))))
+
+(define-structure mhash-context (index #f read-only #t))
+(define-structure mhash-hmac-context (index #f read-only #t))
+
+(define (guarantee-mhash-context object procedure)
+  (if (not (mhash-context? object))
+      (error:wrong-type-argument object "mhash context" procedure)))
+
+(define (guarantee-mhash-hmac-context object procedure)
+  (if (not (mhash-hmac-context? object))
+      (error:wrong-type-argument object "mhash HMAC context" procedure)))
+
+(define (mhash-types)
+  (vector->list mhash-algorithm-names))
+
+(define (mhash-get-block-size name)
+  ((ucode-primitive mhash_get_block_size 1)
+   (mhash-name->id name 'MHASH-GET-BLOCK-SIZE)))
+
+(define (mhash-init name)
+  (let ((id (mhash-name->id name 'MHASH-INIT)))
+    (without-interrupts
+     (lambda ()
+       (let ((index ((ucode-primitive mhash_init 1) id)))
+	 (if (not index)
+	     (error "Unable to allocate mhash context:" name))
+	 (let ((context (make-mhash-context index)))
+	   (add-to-gc-finalizer! mhash-contexts context index)
+	   context))))))
+
+(define (mhash-update context string start end)
+  (guarantee-mhash-context context 'MHASH-UPDATE)
+  ((ucode-primitive mhash 4) (mhash-context-index context) string start end))
+
+(define (mhash-end context)
+  (guarantee-mhash-context context 'MHASH-END)
+  (remove-from-gc-finalizer! mhash-contexts context))
+
+(define (mhash-hmac-init name key)
+  (let* ((id (mhash-name->id name 'MHASH-INIT))
+	 (pblock ((ucode-primitive mhash_get_hash_pblock 1) id)))
+    (without-interrupts
+     (lambda ()
+       (let ((index ((ucode-primitive mhash_hmac_init 3) id key pblock)))
+	 (if (not index)
+	     (error "Unable to allocate mhash HMAC context:" name))
+	 (let ((context (make-mhash-hmac-context index)))
+	   (add-to-gc-finalizer! mhash-hmac-contexts context index)
+	   context))))))
+
+(define (mhash-hmac-update context string start end)
+  (guarantee-mhash-hmac-context context 'MHASH-HMAC-UPDATE)
+  ((ucode-primitive mhash 4) (mhash-hmac-context-index context)
+			     string start end))
+
+(define (mhash-hmac-end context)
+  (guarantee-mhash-hmac-context context 'MHASH-HMAC-END)
+  (remove-from-gc-finalizer! mhash-hmac-contexts context))
 
-(define mhash-keygen-types)
-(define mhash-keygen-uses-salt?)
-(define mhash-keygen-uses-count?)
-(define mhash-keygen-uses-hash-algorithm)
-(define mhash-keygen-salt-size)
-(define mhash-keygen-max-key-size)
-(define mhash-keygen)
-(let ((%mhash-keygen-count (ucode-primitive mhash_keygen_count 0))
-      (%mhash-get-keygen-name (ucode-primitive mhash_get_keygen_name 1))
-      (%mhash-keygen-uses-salt (ucode-primitive mhash_keygen_uses_salt 1))
-      (%mhash-keygen-uses-count (ucode-primitive mhash_keygen_uses_count 1))
-      (%mhash-keygen-uses-hash-algorithm
-       (ucode-primitive mhash_keygen_uses_hash_algorithm 1))
-      (%mhash-get-keygen-salt-size
-       (ucode-primitive mhash_get_keygen_salt_size 1))
-      (%mhash-get-keygen-max-key-size
-       (ucode-primitive mhash_get_keygen_max_key_size 1))
-      (%mhash-keygen (ucode-primitive mhash_keygen 4)))
-  (let* ((names #f)
-	 (guarantee-names
-	  (lambda ()
-	    (if (not names)
-		(let ((n (%mhash-keygen-count)))
-		  (let ((v (make-vector n)))
-		    (do ((i 0 (fix:+ i 1)))
-			((fix:= i n))
-		      (vector-set!
-		       v i (intern (%mhash-get-keygen-name i))))
-		    (set! names v))))))
-	 (keygen-name->id
-	  (lambda (name procedure)
-	    (guarantee-names)
-	    (let ((n (vector-length names)))
-	      (let loop ((i 0))
-		(if (fix:< i n)
-		    (if (eq? name (vector-ref names i))
-			i
-			(loop (fix:+ i 1)))
-		    (error:bad-range-argument name procedure)))))))
-    (set! mhash-keygen-types
-	  (lambda ()
-	    (guarantee-names)
-	    (vector->list names)))
-    (set! mhash-keygen-uses-salt?
-	  (lambda (name)
-	    (%mhash-keygen-uses-salt
-	     (keygen-name->id name 'MHASH-KEYGEN-USES-SALT?))))
-    (set! mhash-keygen-uses-count?
-	  (lambda (name)
-	    (%mhash-keygen-uses-count
-	     (keygen-name->id name 'MHASH-KEYGEN-USES-COUNT?))))
-    (set! mhash-keygen-uses-hash-algorithm
-	  (lambda (name)
-	    (%mhash-keygen-uses-hash-algorithm
-	     (keygen-name->id name 'MHASH-KEYGEN-USES-HASH-ALGORITHM))))
-    (set! mhash-keygen-salt-size
-	  (lambda (name)
-	    (%mhash-get-keygen-salt-size
-	     (keygen-name->id name 'MHASH-KEYGEN-SALT-SIZE))))
-    (set! mhash-keygen-max-key-size
-	  (lambda (name)
-	    (%mhash-get-keygen-max-key-size
-	     (keygen-name->id name 'MHASH-KEYGEN-MAX-KEY-SIZE))))
-    (set! mhash-keygen
-	  (lambda (name parameters keyword passphrase)
-	    (%mhash-keygen (keygen-name->id name 'MHASH-KEYGEN)
-			   parameters
-			   keyword
-			   passphrase)))))
+(define mhash-keygen-names)
+
+(define (keygen-name->id name procedure)
+  (let ((n (vector-length mhash-keygen-names)))
+    (let loop ((i 0))
+      (if (fix:< i n)
+	  (if (eq? name (vector-ref mhash-keygen-names i))
+	      i
+	      (loop (fix:+ i 1)))
+	  (error:bad-range-argument name procedure)))))
+
+(define (mhash-keygen-types)
+  (vector->list mhash-keygen-names))
+
+(define (mhash-keygen-uses-salt? name)
+  ((ucode-primitive mhash_keygen_uses_salt 1)
+   (keygen-name->id name 'MHASH-KEYGEN-USES-SALT?)))
+
+(define (mhash-keygen-uses-count? name)
+  ((ucode-primitive mhash_keygen_uses_count 1)
+   (keygen-name->id name 'MHASH-KEYGEN-USES-COUNT?)))
+
+(define (mhash-keygen-uses-hash-algorithm name)
+  ((ucode-primitive mhash_keygen_uses_hash_algorithm 1)
+   (keygen-name->id name 'MHASH-KEYGEN-USES-HASH-ALGORITHM)))
+
+(define (mhash-keygen-salt-size name)
+  ((ucode-primitive mhash_get_keygen_salt_size 1)
+   (keygen-name->id name 'MHASH-KEYGEN-SALT-SIZE)))
+
+(define (mhash-keygen-max-key-size name)
+  ((ucode-primitive mhash_get_keygen_max_key_size 1)
+   (keygen-name->id name 'MHASH-KEYGEN-MAX-KEY-SIZE)))
+
+(define (mhash-keygen name parameters keyword passphrase)
+  ((ucode-primitive mhash_keygen 4) (keygen-name->id name 'MHASH-KEYGEN)
+				    parameters
+				    keyword
+				    passphrase))
 
 (define (mhash-available?)
   (implemented-primitive-procedure? mhash-update))
@@ -235,3 +225,26 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define md5-sum->number mhash-sum->number)
 (define md5-sum->hexadecimal mhash-sum->hexadecimal)
+
+(define (initialize-package!)
+  (set! mhash-algorithm-names
+	(let ((n ((ucode-primitive mhash_count 0))))
+	  (let ((v (make-vector n)))
+	    (do ((i 0 (fix:+ i 1)))
+		((fix:= i n))
+	      (vector-set!
+	       v i (intern ((ucode-primitive mhash_get_hash_name 1) i))))
+	    v)))
+  (set! mhash-contexts
+	(make-gc-finalizer (ucode-primitive mhash_end 1)))
+  (set! mhash-hmac-contexts
+	(make-gc-finalizer (ucode-primitive mhash_hmac_end 1)))
+  (set! mhash-keygen-names
+	(let ((n ((ucode-primitive mhash_keygen_count 0))))
+	  (let ((v (make-vector n)))
+	    (do ((i 0 (fix:+ i 1)))
+		((fix:= i n))
+	      (vector-set!
+	       v i (intern ((ucode-primitive mhash_get_keygen_name 1) i))))
+	    v)))
+  unspecific)

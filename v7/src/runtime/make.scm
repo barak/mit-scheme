@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.64 2000/04/10 18:32:35 cph Exp $
+$Id: make.scm,v 14.65 2000/04/10 19:01:30 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -477,6 +477,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    (RUNTIME DEBUGGER)
    ;; Misc (e.g., version)
    (RUNTIME)
+   (RUNTIME CRYPTO)
    ;; Graphics.  The last type initialized is the default for
    ;; MAKE-GRAPHICS-DEVICE, only the types that are valid for the
    ;; operating system are actually loaded and initialized.
