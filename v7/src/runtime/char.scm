@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/char.scm,v 14.2 1988/10/15 17:19:05 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/char.scm,v 14.3 1991/08/28 13:36:30 jinx Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -103,52 +103,61 @@ MIT in each case. |#
   (set! backslash-char (ascii->char #x5C)))
 
 (define named-codes
-  '(("Backspace" . #x08)
+  '(
+    ;; Some are aliases for previous definitions, and will not appear
+    ;; as output.
+
+    ("Backspace" . #x08)
     ("Tab" . #x09)
     ("Linefeed" . #x0A)
+    ("Newline" . #x0A)
     ("Page" . #x0C)
     ("Return" . #x0D)
     ("Call" . #x1A)
     ("Altmode" . #x1B)
+    ("Escape" . #x1B)
     ("Backnext" . #x1F)
     ("Space" . #x20)
     ("Rubout" . #x7F)
 
-    ;; ASCII codes.  Some of these are aliases for previous
-    ;; definitions, and will not appear as output.
-    ("NUL" . #x00)
-    ("SOH" . #x01)
-    ("STX" . #x02)
-    ("ETX" . #x03)
-    ("EOT" . #x04)
-    ("ENQ" . #x05)
-    ("ACK" . #x06)
-    ("BEL" . #x07)
-    ("BS" . #x08)
-    ("HT" . #x09)
-    ("LF" . #x0A)
-    ("VT" . #x0B)
-    ("FF" . #x0C)
-    ("CR" . #x0D)
-    ("SO" . #x0E)
-    ("SI" . #x0F)
-    ("DLE" . #x10)
-    ("DC1" . #x11)
-    ("DC2" . #x12)
-    ("DC3" . #x13)
-    ("DC4" . #x14)
-    ("NAK" . #x15)
-    ("SYN" . #x16)
-    ("ETB" . #x17)
-    ("CAN" . #x18)
-    ("EM" . #x19)
-    ("SUB" . #x1A)
-    ("ESC" . #x1B)
-    ("FS" . #x1C)
-    ("GS" . #x1D)
-    ("RS" . #x1E)
-    ("US" . #x1F)
-    ("DEL" . #x7F)
+    ;; ASCII codes
+
+    ("NUL" . #x0)			; ^@
+    ("SOH" . #x1)			; ^A
+    ("STX" . #x2)			; ^B
+    ("ETX" . #x3)			; ^C
+    ("EOT" . #x4)			; ^D
+    ("ENQ" . #x5)			; ^E
+    ("ACK" . #x6)			; ^F
+    ("BEL" . #x7)			; ^G
+    ("BS" . #x8)			; ^H <Backspace>
+    ("HT" . #x9)			; ^I <Tab>
+    ("LF" . #xA)			; ^J <Linefeed> <Newline>
+    ("NL" . #xA)			; ^J <Linefeed> <Newline>
+    ("VT" . #xB)			; ^K
+    ("FF" . #xC)			; ^L <Page>
+    ("NP" . #xC)			; ^L <Page>
+    ("CR" . #xD)			; ^M <Return>
+    ("SO" . #xE)			; ^N
+    ("SI" . #xF)			; ^O
+    ("DLE" . #x10)			; ^P
+    ("DC1" . #x11)			; ^Q
+    ("DC2" . #x12)			; ^R
+    ("DC3" . #x13)			; ^S
+    ("DC4" . #x14)			; ^T
+    ("NAK" . #x15)			; ^U
+    ("SYN" . #x16)			; ^V
+    ("ETB" . #x17)			; ^W
+    ("CAN" . #x18)			; ^X
+    ("EM" . #x19)			; ^Y
+    ("SUB" . #x1A)			; ^Z <Call>
+    ("ESC" . #x1B)			; ^[ <Altmode> <Escape>
+    ("FS" . #x1C)			; ^\
+    ("GS" . #x1D)			; ^]
+    ("RS" . #x1E)			; ^^
+    ("US" . #x1F)			; ^_ <Backnext>
+    ("SP" . #x20)			; <Space>
+    ("DEL" . #x7F)			; ^? <Rubout>
     ))
 
 (define named-bits
