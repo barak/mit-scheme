@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: prompt.scm,v 1.179 1999/01/28 06:15:40 cph Exp $
+;;; $Id: prompt.scm,v 1.180 1999/01/28 06:25:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -326,7 +326,7 @@
   (confirm-completion? #f)
   (case-insensitive-completion? #f)
   (history 'MINIBUFFER-DEFAULT)
-  (history-index 0))
+  (history-index -1))
 
 (define (parse-prompt-options option-structure options)
   (let loop ((options options))
@@ -438,14 +438,18 @@
     (history->default-string options)))
 
 (define (history->default-string options)
-  (let ((history (options/history options))
-	(index (options/history-index options)))
+  (let ((history (options/history options)))
     (if (and (not (options/default-string options))
 	     (not (memq 'DEFAULT-STRING (options/seen options)))
 	     (let ((length (history-length history)))
 	       (and (> length 0)
-		    (< index length))))
-	(set-options/default-string! options (history-item history index)))))
+		    (< (options/history-index options) length))))
+	(begin
+	  (if (< (options/history-index options) 0)
+	      (set-options/history-index! options 0))
+	  (set-options/default-string!
+	   options
+	   (history-item history (options/history-index options)))))))
 
 ;;;; String Prompt Modes
 
