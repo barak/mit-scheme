@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: modefs.scm,v 1.153 1999/01/02 06:11:34 cph Exp $
+;;; $Id: modefs.scm,v 1.154 1999/01/14 20:49:11 cph Exp $
 ;;;
 ;;; Copyright (c) 1985, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -328,7 +328,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental (make-special-key 'right 1) 'forward-word)
 
 ;; PC bindings:
-(define-key 'fundamental (make-special-key 'home 0) 'home-cursor)
+(define-key 'fundamental (make-special-key 'home 0) 'beginning-of-line)
 (define-key 'fundamental (make-special-key 'end 0) 'end-of-line)
 (define-key 'fundamental (make-special-key 'delete 0) 'delete-char)
 (define-key 'fundamental (make-special-key 'page-up 0) 'scroll-down)
