@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.19 1992/07/07 00:44:54 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.20 1992/09/05 03:07:07 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -135,6 +135,24 @@ MIT in each case. |#
 
 (define file-modification-time
   file-modification-time-indirect)
+
+(define (file-access-time-direct filename)
+  ((ucode-primitive file-access-time 1)
+   (->namestring (merge-pathnames filename))))
+
+(define (file-access-time-indirect filename)
+  ((ucode-primitive file-access-time-indirect 1)
+   (->namestring (merge-pathnames filename))))
+
+(define file-access-time
+  file-access-time-indirect)
+
+(define (set-file-times! filename access-time modification-time)
+  (let ((filename (->namestring (merge-pathnames filename))))
+    ((ucode-primitive set-file-times!)
+     filename
+     (or access-time (file-access-time-direct filename))
+     (or modification-time (file-modification-time-direct filename)))))
 
 (define get-environment-variable)
 (define set-environment-variable!)
