@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.13 1993/08/17 21:32:21 cph Exp $
+;;;	$Id: debug.scm,v 1.14 1993/08/23 01:51:40 jbank Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -369,19 +369,20 @@
 ;;;an inferior repl is started below the other descriptions.
 (define (bline/description-buffer bline)
   (let* ((system? 
-	 (and (subproblem? (bline/object bline))
-	      (system-frame? (subproblem/stack-frame (bline/object bline)))))
-	(buffer
-	 (1d-table/get (bline/properties bline) 'DESCRIPTION-BUFFER false))
-	(get-environment 
-	 (1d-table/get (bline-type/properties (bline/type bline))
-		       'GET-ENVIRONMENT
-		       false))
-	(environment (if (and get-environment (not system?))
+	  (and (subproblem? (bline/object bline))
+	       (system-frame? (subproblem/stack-frame (bline/object bline)))))
+	 (buffer
+	  (1d-table/get (bline/properties bline) 'DESCRIPTION-BUFFER false))
+	 (get-environment 
+	  (1d-table/get (bline-type/properties (bline/type bline))
+			'GET-ENVIRONMENT
+			false))
+	 (env-exists? (if (and get-environment (not system?))
 			  (let ((environment* (get-environment bline)))
-			    (if (environment? environment*)
-				environment*
-				#f))
+			    (environment? environment*))
+			  #f))
+	 (environment (if env-exists?
+			  (get-environment bline)
 			  #f)))
     (if (and buffer (buffer-alive? buffer))
 	buffer
@@ -393,7 +394,7 @@
 		 (call-with-output-mark (buffer-start buffer)
 					(lambda (port)
 					  (write-description bline port)
-					   (if environment
+					  (if env-exists?
 					      (write-string "\n;EVALUATION may occur below in the environment of the selected frame.\n" port))))
 		 (set-buffer-point! buffer (buffer-start buffer))
 		 (1d-table/put! (bline/properties bline)
@@ -401,7 +402,7 @@
 				buffer)
 		 (read-only-between (buffer-start buffer) (buffer-end buffer))	 
 		 (buffer-not-modified! buffer)
-		 (if environment
+		 (if env-exists?
 		     (start-inferior-repl!
 		      buffer
 		      environment
