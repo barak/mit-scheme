@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.7 2004/10/30 05:18:33 cph Exp $
+$Id: mod-lisp.scm,v 1.8 2004/10/31 00:01:26 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -670,7 +670,7 @@ USA.
   *root-dir*)
 
 (define (http-request-user-name)
-  (http-message-user-name *current-response*))
+  (http-message-user-name *current-request*))
 
 (define (http-message-user-name message)
   (let ((auth (http-message-header message 'authorization)))
