@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.65 1989/03/14 08:03:01 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.66 1989/04/23 23:30:47 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -78,13 +78,6 @@
 ;;; create.  Conversely, temporary marks do not remain valid when
 ;;; their group is modified.  They are intended for local use when it
 ;;; is known that the group will remain unchanged.
-
-;;; The implementation of marks is different from previous
-;;; implementations.  In particular, it is not possible to tell
-;;; whether a mark is temporary or permanent.  Instead, a "caller
-;;; saves"-like convention is used.  Whenever any given mark needs to
-;;; be permanent, one merely calls a procedure which "permanentizes"
-;;; it.  All marks are created temporary by default.
 
 ;;;; Groups
 
@@ -129,7 +122,7 @@
     (vector-set! group group-index:modified? false)
     (vector-set! group group-index:point (%make-permanent-mark group 0 true))
     group))
-
+
 (define (group-length group)
   (- (string-length (group-text group)) (group-gap-length group)))
 
@@ -153,27 +146,28 @@
   (vector-set! group group-index:read-only? false)
   unspecific)
 
+(define-integrable (set-group-marks! group marks)
+  (vector-set! group group-index:marks marks)
+  unspecific)
+
 (define (group-region group)
   (%make-region (group-start-mark group) (group-end-mark group)))
-
+
 (define (group-position->index group position)
-  (cond ((> position (group-gap-end group))
-	 (- position (group-gap-length group)))
-	((> position (group-gap-start group))
-	 (group-gap-start group))
-	(else
-	 position)))
+  (if (> position (group-gap-end group))
+      (- position (group-gap-length group))
+      (let ((start (group-gap-start group)))
+	(if (> position start)
+	    start
+	    position))))
 
 (define (group-index->position group index left-inserting?)
-  (cond ((> index (group-gap-start group))
-	 (+ index (group-gap-length group)))
-	((= index (group-gap-start group))
-	 (if left-inserting?
-	     (group-gap-end group)
-	     (group-gap-start group)))
-	(else
-	 index)))
-
+  (let ((start (group-gap-start group)))
+    (cond ((< index start) index)
+	  ((> index start) (+ index (group-gap-length group)))
+	  (left-inserting? (group-gap-end group))
+	  (else start))))
+
 (define-integrable (set-group-undo-data! group undo-data)
   (vector-set! group group-index:undo-data undo-data)
   unspecific)
@@ -265,36 +259,33 @@
 
 ;;;; Marks
 
-(define-named-structure "Mark"
-  group position left-inserting?)
+(define-structure (mark
+		   (constructor %make-mark)
+		   (print-procedure
+		    (unparser/standard-method 'MARK
+		      (lambda (state mark)
+			(unparse-string state "index: ")
+			(unparse-object state (mark-index mark))
+			(unparse-string state " position: ")
+			(unparse-object state (mark-position mark))))))
+  (group false read-only true)
+  (position false)
+  (left-inserting? false read-only true))
 
-(define (guarantee-mark mark procedure-name)
-  (if (not (mark? mark)) (error "not a mark" mark procedure-name)))
+(define (guarantee-mark mark)
+  (if (not (mark? mark)) (error "not a mark" mark))
+  mark)
 
 (define-integrable (make-mark group index)
   (%make-temporary-mark group index true))
 
-(define-integrable (%make-permanent-mark group index left-inserting?)
-  (mark-permanent! (%make-temporary-mark group index left-inserting?)))
-
 (define (%make-temporary-mark group index left-inserting?)
-  (%%make-mark group 
-	       (group-index->position group index left-inserting?)
-	       left-inserting?))
+  (%make-mark group
+	      (group-index->position group index left-inserting?)
+	      left-inserting?))
 
-(define-integrable (%%make-mark group position left-inserting?)
-  (let ((mark (%make-mark)))
-    (vector-set! mark mark-index:group group)
-    (vector-set! mark mark-index:position position)
-    (vector-set! mark mark-index:left-inserting? left-inserting?)
-    mark))
-
-(define (mark-index mark)
+(define-integrable (mark-index mark)
   (group-position->index (mark-group mark) (mark-position mark)))
-
-(define-integrable (%set-mark-position! mark position)
-  (vector-set! mark mark-index:position position)
-  unspecific)
 
 (define-integrable (mark~ mark1 mark2)
   (eq? (mark-group mark1) (mark-group mark2)))
@@ -302,67 +293,33 @@
 (define-integrable (mark/~ mark1 mark2)
   (not (mark~ mark1 mark2)))
 
-(define (mark-right-inserting mark)
-  (mark-permanent!
-   (if (mark-left-inserting? mark)
-       (%make-temporary-mark (mark-group mark) (mark-index mark) false)
-       mark)))
+;;; Strictly speaking, the order predicates should be comparing the
+;;; indexes of the marks.  But this implementation is faster and will
+;;; only fail when marks are used improperly.
 
-(define (mark-left-inserting mark)
-  (mark-permanent!
-   (if (mark-left-inserting? mark)
-       mark
-       (%make-temporary-mark (mark-group mark) (mark-index mark) true))))
-
-;;; The marks list is cleaned every time that FOR-EACH-MARK! is
-;;; called.  It may be necessary to do this a little more often.
-
-(define (mark-permanent! mark)
-  (let ((group (mark-group mark)))
-    (let ((marks (group-marks group)))
-      (if (not (weak-memq mark marks))
-	  (vector-set! group group-index:marks (weak-cons mark marks)))))
-  mark)
-
-(define (for-each-mark group procedure)
-  (let loop
-      ((marks (group-marks group))
-       (set-holder!
-	(lambda (new-marks) (vector-set! group group-index:marks new-marks))))
-    (if (not (null? marks))
-	(loop (weak-cdr marks)
-	      (let ((mark (weak-car marks)))
-		(if mark
-		    (begin
-		      (procedure mark)
-		      (lambda (new-cdr) (weak-set-cdr! marks new-cdr)))
-		    (begin
-		      (set-holder! (weak-cdr marks))
-		      set-holder!)))))))
-
-(define (mark= mark1 mark2)
+(define-integrable (mark= mark1 mark2)
   (and (mark~ mark1 mark2)
-       (= (mark-index mark1) (mark-index mark2))))
+       (= (mark-position mark1) (mark-position mark2))))
 
-(define (mark/= mark1 mark2)
+(define-integrable (mark/= mark1 mark2)
   (and (mark~ mark1 mark2)
-       (not (= (mark-index mark1) (mark-index mark2)))))
+       (not (= (mark-position mark1) (mark-position mark2)))))
 
-(define (mark< mark1 mark2)
+(define-integrable (mark< mark1 mark2)
   (and (mark~ mark1 mark2)
-       (< (mark-index mark1) (mark-index mark2))))
+       (< (mark-position mark1) (mark-position mark2))))
 
-(define (mark<= mark1 mark2)
+(define-integrable (mark<= mark1 mark2)
   (and (mark~ mark1 mark2)
-       (<= (mark-index mark1) (mark-index mark2))))
+       (<= (mark-position mark1) (mark-position mark2))))
 
-(define (mark> mark1 mark2)
+(define-integrable (mark> mark1 mark2)
   (and (mark~ mark1 mark2)
-       (> (mark-index mark1) (mark-index mark2))))
+       (> (mark-position mark1) (mark-position mark2))))
 
-(define (mark>= mark1 mark2)
+(define-integrable (mark>= mark1 mark2)
   (and (mark~ mark1 mark2)
-       (>= (mark-index mark1) (mark-index mark2))))
+       (>= (mark-position mark1) (mark-position mark2))))
 
 (define-integrable (group-start mark)
   (group-start-mark (mark-group mark)))
@@ -370,12 +327,157 @@
 (define-integrable (group-end mark)
   (group-end-mark (mark-group mark)))
 
-(define (group-start? mark)
-  (group-start-index? (mark-group mark) (mark-index mark)))
+(define-integrable (group-start? mark)
+  (<= (mark-position mark) (mark-position (group-start mark))))
 
-(define (group-end? mark)
-  (group-end-index? (mark-group mark) (mark-index mark)))
+(define-integrable (group-end? mark)
+  (>= (mark-position mark) (mark-position (group-end mark))))
+
+(define (mark-right-inserting mark)
+  (let ((group (mark-group mark)))
+    (%%make-permanent-mark group
+			   (let ((position (mark-position mark)))
+			     (if (and (mark-left-inserting? mark)
+				      (= position (group-gap-end group)))
+				 (group-gap-start group)
+				 position))
+			   false)))
 
+(define (mark-left-inserting mark)
+  (let ((group (mark-group mark)))
+    (%%make-permanent-mark group
+			   (let ((position (mark-position mark)))
+			     (if (and (not (mark-left-inserting? mark))
+				      (= position (group-gap-start group)))
+				 (group-gap-end group)
+				 position))
+			   true)))
+
+(define-integrable (%make-permanent-mark group index left-inserting?)
+  (%%make-permanent-mark group
+			 (group-index->position group index left-inserting?)
+			 left-inserting?))
+
+(define recycle-permanent-marks?
+  false)
+
+(define (%%make-permanent-mark group position left-inserting?)
+  (or (and recycle-permanent-marks?
+	   (find-permanent-mark group position left-inserting?))
+      (let ((mark (%make-mark group position left-inserting?)))
+	(set-group-marks! group
+			  (system-pair-cons (ucode-type weak-cons)
+					    mark
+					    (group-marks group)))
+	mark)))
+
+(define (mark-permanent! mark)
+  (let ((group (mark-group mark)))
+    (or (if recycle-permanent-marks?
+	    (find-permanent-mark group
+				 (mark-position mark)
+				 (mark-left-inserting? mark))
+	    (let ((tail (weak-memq mark (group-marks group))))
+	      (and tail (car tail))))
+	(begin
+	  (set-group-marks! group
+			    (system-pair-cons (ucode-type weak-cons)
+					      mark
+					      (group-marks group)))
+	  mark))))
+
+;;; Here is a simple algorithm that is haired up the wazoo for speed.
+
+(define (find-permanent-mark group position left-inserting?)
+
+  (define (scan-head marks)
+    (if (null? marks)
+	(begin
+	  (set-group-marks! group '())
+	  false)
+	(let ((mark (system-pair-car marks)))
+	  (cond ((not mark)
+		 (scan-head (system-pair-cdr marks)))
+		((and (if (mark-left-inserting? mark)
+			  left-inserting?
+			  (not left-inserting?))
+		      (= (mark-position mark) position))
+		 mark)
+		(else
+		 (set-group-marks! group marks)
+		 (scan-tail marks (system-pair-cdr marks)))))))
+
+  (define (scan-tail previous marks)
+    (and (not (null? marks))
+	 (let ((mark (system-pair-car marks)))
+	   (cond ((not mark)
+		  (skip-nulls previous (system-pair-cdr marks)))
+		 ((and (if (mark-left-inserting? mark)
+			   left-inserting?
+			   (not left-inserting?))
+		       (= (mark-position mark) position))
+		  mark)
+		 (else
+		  (scan-tail marks (system-pair-cdr marks)))))))
+
+  (define (skip-nulls previous marks)
+    (if (null? marks)
+	(begin
+	  (system-pair-set-cdr! previous '())
+	  false)
+	(let ((mark (system-pair-car marks)))
+	  (if (not mark)
+	      (skip-nulls previous (system-pair-cdr marks))
+	      (begin
+		(system-pair-set-cdr! previous marks)
+		(if (and (if (mark-left-inserting? mark)
+			     left-inserting?
+			     (not left-inserting?))
+			 (= (mark-position mark) position))
+		    mark
+		    (scan-tail marks (system-pair-cdr marks))))))))
+
+  (scan-head (group-marks group)))
+
+(define (for-each-mark group procedure)
+
+  (define (scan-head marks)
+    (if (null? marks)
+	(set-group-marks! group '())
+	(let ((mark (system-pair-car marks))
+	      (rest (system-pair-cdr marks)))
+	  (if mark
+	      (begin
+		(set-group-marks! group marks)
+		(procedure mark)
+		(scan-tail marks rest))
+	      (scan-head rest)))))
+
+  (define (scan-tail previous marks)
+    (if (not (null? marks))
+	(let ((mark (system-pair-car marks))
+	      (rest (system-pair-cdr marks)))
+	  (if mark
+	      (begin
+		(procedure mark)
+		(scan-tail marks rest))
+	      (skip-nulls previous rest)))))
+
+  (define (skip-nulls previous marks)
+    (if (null? marks)
+	(begin
+	  (system-pair-set-cdr! previous '())
+	  unspecific)
+	(let ((mark (system-pair-car marks))
+	      (rest (system-pair-cdr marks)))
+	  (if mark
+	      (begin
+		(system-pair-set-cdr! previous marks)
+		(procedure mark)
+		(scan-tail marks rest))
+	      (skip-nulls previous rest)))))
+
+  (scan-head (group-marks group)))
 ;;;; Regions
 
 (define-integrable %make-region cons)
