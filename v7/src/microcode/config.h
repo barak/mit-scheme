@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.78 1993/02/06 05:33:20 gjr Exp $
+$Id: config.h,v 9.79 1993/06/15 19:04:55 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -590,6 +590,13 @@ extern void * alpha_heap_malloc (long);
 #define HAS_FREXP
 #endif /* apollo */
 
+#ifdef NATIVE_CODE_IS_C
+#  define HAS_COMPILER_SUPPORT
+#  ifndef TYPE_CODE_LENGTH
+#    define TYPE_CODE_LENGTH 6
+#  endif
+#endif
+
 /* Make sure that some definition applies.  If this error occurs, and
    the parameters of the configuration are unknown, try the Wsize
    program.  */
@@ -604,7 +611,7 @@ extern void * alpha_heap_malloc (long);
 #endif
 
 #ifndef TYPE_CODE_LENGTH
-#define TYPE_CODE_LENGTH 8
+#  define TYPE_CODE_LENGTH 8
 #endif
 
 /* The GNU C compiler does not have any of these bugs. */
