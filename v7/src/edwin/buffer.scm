@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: buffer.scm,v 1.160 1992/11/17 21:31:20 cph Exp $
+;;;	$Id: buffer.scm,v 1.161 1993/01/09 09:38:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -81,7 +81,7 @@ The buffer is guaranteed to be deselected at that time."
 
 (define (make-buffer name mode directory)
   (let ((buffer (%make-buffer)))
-    (let ((group (make-group (string-copy "") buffer)))
+    (let ((group (make-group buffer)))
       (vector-set! buffer buffer-index:name name)
       (vector-set! buffer buffer-index:group group)
       (add-group-clip-daemon! group (buffer-clip-daemon buffer))

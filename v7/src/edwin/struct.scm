@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: struct.scm,v 1.82 1993/01/09 01:16:20 cph Exp $
+;;;	$Id: struct.scm,v 1.83 1993/01/09 09:41:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -107,20 +107,19 @@
   modified?
   point
   buffer
-  )
+  shrink-length)
 
-(define (make-group string buffer)
-  (let ((group (%make-group))
-	(n (string-length string)))
-    (vector-set! group group-index:text string)
-    (vector-set! group group-index:gap-start n)
-    (vector-set! group group-index:gap-length 0)
-    (vector-set! group group-index:gap-end n)
+(define (make-group buffer)
+  (let ((group (%make-group)))
+    (vector-set! group group-index:text (string-allocate group-minimum-length))
+    (vector-set! group group-index:gap-start 0)
+    (vector-set! group group-index:gap-length group-minimum-length)
+    (vector-set! group group-index:gap-end 0)
     (vector-set! group group-index:marks '())
     (let ((start (make-permanent-mark group 0 false)))
       (vector-set! group group-index:start-mark start)
       (vector-set! group group-index:display-start start))
-    (let ((end (make-permanent-mark group n true)))
+    (let ((end (make-permanent-mark group 0 true)))
       (vector-set! group group-index:end-mark end)
       (vector-set! group group-index:display-end end))
     (vector-set! group group-index:read-only? false)
@@ -132,6 +131,7 @@
     (vector-set! group group-index:modified? false)
     (vector-set! group group-index:point (make-permanent-mark group 0 true))
     (vector-set! group group-index:buffer buffer)
+    (vector-set! group group-index:shrink-length false)
     group))
 
 (define (group-length group)
