@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/operan.scm,v 4.2 1987/12/30 06:44:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/operan.scm,v 4.3 1988/08/18 01:36:20 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -80,19 +80,26 @@ MIT in each case. |#
 
 (define (analyze/continuation continuation)
   (and (not (continuation/passed-out? continuation))
-       (let ((returns (continuation/returns continuation))
-	     (combinations (continuation/combinations continuation)))
-	 (and (or (not (null? returns))
-		  (not (null? combinations)))
-	      (for-all? returns
-		(lambda (return)
-		  (eq? (rvalue-known-value (return/operator return))
-		       continuation)))
-	      (for-all? combinations
-		(lambda (combination)
-		  (eq? (rvalue-known-value
-			(combination/continuation combination))
-		       continuation)))))))
+       (3-logic/and
+	(for-some? (continuation/returns continuation)
+	  (lambda (return)
+	    (eq? (rvalue-known-value (return/operator return))
+		 continuation)))
+	(for-some? (continuation/combinations continuation)
+	  (lambda (combination)
+	    (eq? (rvalue-known-value (combination/continuation combination))
+		 continuation))))))
+
+(define (for-some? items predicate)
+  (let loop ((items items) (default false))
+    (cond ((null? items) 'ALWAYS)
+	  ((predicate (car items)) (loop (cdr items) 'SOMETIMES))
+	  (else default))))
+
+(define (3-logic/and x y)
+  (cond ((and (eq? x 'ALWAYS) (eq? y 'ALWAYS)) 'ALWAYS)
+	((and (not x) (not y)) false)
+	(else 'SOMETIMES)))
 
 (define (analyze/procedure procedure)
   (and (not (procedure-passed-out? procedure))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/offset.scm,v 4.3 1988/06/14 08:35:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/offset.scm,v 4.4 1988/08/18 01:36:00 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -98,6 +98,10 @@ MIT in each case. |#
 	    (enumeration-case continuation-type
 		(virtual-continuation/type operator)
 	      ((EFFECT)
+	       (if (rvalue/continuation? operand)
+		   (begin
+		     (set-continuation/offset! operand offset)
+		     (enqueue-procedure! operand)))
 	       offset)
 	      ((REGISTER VALUE)
 	       (walk-rvalue operand)

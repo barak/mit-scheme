@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.5 1988/06/14 08:43:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.6 1988/08/18 01:37:23 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -131,31 +131,34 @@ MIT in each case. |#
 	    (if (continuation/avoid-check? continuation)
 		(rtl:make-continuation-entry label)
 		(rtl:make-continuation-header label))
-	    (generate/continuation-entry/ic-block continuation)
-	    (if (block/dynamic-link?
-		 (continuation/closing-block continuation))
-		(rtl:make-pop-link)
-		(make-null-cfg))
+	    (generate/continuation-entry/pop-extra continuation)
 	    (enumeration-case continuation-type
 		(continuation/type continuation)
 	      ((PUSH)
-	       (scfg*scfg->scfg!
-		(rtl:make-push (rtl:make-fetch register:value))
-		(generate/node node)))
+	       (rtl:make-push (rtl:make-fetch register:value)))
 	      ((REGISTER)
-	       (scfg*scfg->scfg!
-		(rtl:make-assignment (continuation/register continuation)
-				     (rtl:make-fetch register:value))
-		(generate/node node)))
+	       (rtl:make-assignment (continuation/register continuation)
+				    (rtl:make-fetch register:value)))
+	      ((VALUE)
+	       (if (continuation/ever-known-operator? continuation)
+		   (rtl:make-assignment (continuation/register continuation)
+					(rtl:make-fetch register:value))
+		   (make-null-cfg)))
 	      (else
-	       (generate/node node))))))
+	       (make-null-cfg)))
+	    (generate/node node))))
       (lambda (rgraph entry-edge)
 	(make-rtl-continuation rgraph label entry-edge)))))
 
-(define (generate/continuation-entry/ic-block continuation)
-  (if (ic-block? (continuation/closing-block continuation))
-      (rtl:make-pop register:environment)
-      (make-null-cfg)))
+(define (generate/continuation-entry/pop-extra continuation)
+  (let ((block (continuation/closing-block continuation)))
+    (if (ic-block? block)
+	(rtl:make-pop register:environment)
+	(make-null-cfg))
+    (if (and (not (continuation/always-known-operator? continuation))
+	     (block/dynamic-link? block))
+	(rtl:make-pop-link)
+	(make-null-cfg)))))
 
 (define (generate/node node)
   (let ((memoization (cfg-node-get node memoization-tag)))

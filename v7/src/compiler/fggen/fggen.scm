@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.8 1988/08/11 20:13:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.9 1988/08/18 01:35:15 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -158,9 +158,11 @@ MIT in each case. |#
 				   generator)
   (if (virtual-continuation? continuation)
       (let ((continuation (virtual-continuation/reify! continuation)))
-	(scfg*value->value! (make-push block continuation)
-			    (generator continuation)))
-      (generator continuation)))
+	(let ((push (make-push block continuation)))
+	  (scfg*value->value! push
+			      (generator (cfg-entry-node push)
+					 continuation))))
+      (generator false continuation)))
 
 (define (make-subproblem/canonical prefix continuation)
   (make-subproblem prefix
@@ -464,7 +466,8 @@ MIT in each case. |#
 			(with-reified-continuation block
 						   continuation
 						   scfg*subproblem->subproblem!
-			  (lambda (continuation)
+			  (lambda (push continuation)
+			    push	;ignore
 			    (finish continuation
 			      (lambda (predicate consequent alternative)
 				(make-subproblem/canonical
@@ -478,7 +481,7 @@ MIT in each case. |#
   (scode/combination-components expression
     (lambda (operator operands)
       (let ((make-combination
-	     (lambda (continuation)
+	     (lambda (push continuation)
 	       (make-combination
 		block
 		(continuation-reference block continuation)
@@ -487,18 +490,19 @@ MIT in each case. |#
 		       (generate/subproblem/value block
 						  continuation
 						  expression))
-		     operands)))))
+		     operands)
+		push))))
 	((continuation/case continuation
-	   (lambda () (make-combination continuation))
+	   (lambda () (make-combination false continuation))
 	   (lambda ()
 	     (if (variable? continuation)
 		 (make-combination continuation)
 		 (with-reified-continuation block
 					    continuation
 					    scfg*scfg->scfg!
-		   (lambda (continuation)
+		   (lambda (push continuation)
 		     (make-scfg
-		      (cfg-entry-node (make-combination continuation))
+		      (cfg-entry-node (make-combination push continuation))
 		      (continuation/next-hooks continuation))))))
 	   (lambda ()
 	     (if (eq? not operator)
@@ -506,19 +510,20 @@ MIT in each case. |#
 		  (generate/expression block continuation (car operands)))		 (with-reified-continuation block
 					    continuation
 					    scfg*pcfg->pcfg!
-		   (lambda (continuation)
+		   (lambda (push continuation)
 		     (scfg*pcfg->pcfg!
 		      (make-scfg
-		       (cfg-entry-node (make-combination continuation))
+		       (cfg-entry-node (make-combination push continuation))
 		       (continuation/next-hooks continuation))
 		      (make-true-test (continuation/rvalue continuation)))))))
 	   (lambda ()
 	     (with-reified-continuation block
 					continuation
 					scfg*subproblem->subproblem!
-	       (lambda (continuation)
-		 (make-subproblem/canonical (make-combination continuation)
-					    continuation))))))))))
+	       (lambda (push continuation)
+		 (make-subproblem/canonical
+		  (make-combination push continuation)
+		  continuation))))))))))
 
 (define (generate/operator block continuation operator)
   (wrapper/subproblem/value block continuation

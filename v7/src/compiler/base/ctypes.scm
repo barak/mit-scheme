@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.4 1988/07/16 20:54:39 hal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.5 1988/08/18 01:34:48 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -47,14 +47,16 @@ MIT in each case. |#
   (operators		;used in simulate-application
    arguments)		;used in outer-analysis
   operand-values	;set by outer-analysis, used by identify-closure-limits
+  continuation-push
   )
 
 (define *applications*)
 
-(define (make-application type block operator operands)
+(define (make-application type block operator operands continuation-push)
   (let ((application
 	 (make-snode application-tag
-		     type block operator operands false '() '())))
+		     type block operator operands false '() '()
+		     continuation-push)))
     (set! *applications* (cons application *applications*))
     (add-block-application! block application)
     (if (rvalue/reference? operator)
@@ -88,13 +90,15 @@ MIT in each case. |#
     (set! *parallels* (cons parallel *parallels*))
     (snode->scfg parallel)))
 
-(define (make-combination block continuation operator operands)
+(define (make-combination block continuation operator operands
+			  continuation-push)
   (let ((application
 	 (make-application 'COMBINATION
 			   block
 			   (subproblem-rvalue operator)
 			   (cons continuation
-				 (map subproblem-rvalue operands)))))
+				 (map subproblem-rvalue operands))
+			   continuation-push)))
     (scfg*scfg->scfg!
      (make-parallel (cfg-entry-node application) (cons operator operands))
      application)))
@@ -109,6 +113,7 @@ MIT in each case. |#
 (define-integrable combination/frame-size application-operand-values)
 (define-integrable set-combination/frame-size! set-application-operand-values!)
 (define-integrable combination/inline? combination/inliner)
+(define-integrable combination/continuation-push application-continuation-push)
 
 (define-integrable (combination/continuation combination)
   (car (application-operands combination)))
@@ -133,7 +138,7 @@ MIT in each case. |#
     (set-application-operands! combination (list rvalue))))
 
 (define-integrable (make-return block continuation rvalue)
-  (make-application 'RETURN block continuation (list rvalue)))
+  (make-application 'RETURN block continuation (list rvalue) false))
 
 (define-integrable (application/return? application)
   (eq? (application-type application) 'RETURN))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/contin.scm,v 4.3 1988/06/14 08:31:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/contin.scm,v 4.4 1988/08/18 01:34:39 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -73,7 +73,7 @@ MIT in each case. |#
 (define-integrable continuation/label procedure-label)
 (define-integrable continuation/returns procedure-applications)
 (define-integrable set-continuation/returns! set-procedure-applications!)
-(define-integrable continuation/always-known-operator?
+(define-integrable continuation/ever-known-operator?
   procedure-always-known-operator?)
 (define-integrable continuation/offset procedure-closure-offset)
 (define-integrable set-continuation/offset! set-procedure-closure-offset!)
@@ -85,6 +85,9 @@ MIT in each case. |#
       (let ((register (rtl:make-pseudo-register)))
 	(set-procedure-register! continuation register)
 	register)))
+
+(define-integrable (continuation/always-known-operator? continuation)
+  (eq? (continuation/ever-known-operator? continuation) 'ALWAYS))
 
 (define-integrable (continuation/parameter continuation)
   (car (procedure-original-required continuation)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.4 1988/06/14 08:43:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.5 1988/08/18 01:37:14 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -150,8 +150,7 @@ MIT in each case. |#
 	 (begin
 	   (enqueue-continuation! continuation)
 	   (scfg*scfg->scfg!
-	    (if (and (stack-block? closing-block)
-		     (stack-block/dynamic-link? closing-block))
+	    (if (block/dynamic-link? closing-block)
 		(rtl:make-push-link)
 		(make-null-cfg))
 	    (rtl:make-push-return (continuation/label continuation))))))))

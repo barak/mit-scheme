@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/conect.scm,v 4.1 1987/12/30 06:47:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/conect.scm,v 4.2 1988/08/18 01:35:41 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -48,7 +48,7 @@ MIT in each case. |#
 
 (define (procedure-direct-linked? procedure)
   (if (procedure-continuation? procedure)
-      (continuation/always-known-operator? procedure)
+      (continuation/ever-known-operator? procedure)
       (procedure-inline-code? procedure)))
 
 (define (walk-node node color)
@@ -92,8 +92,7 @@ MIT in each case. |#
 
 (define (walk-continuation continuation color)
   (let ((rvalue (rvalue-known-value continuation)))
-    (if (and rvalue
-	     (continuation/always-known-operator? rvalue))
+    (if rvalue
 	(walk-node (continuation/entry-node rvalue) color))))
 
 )

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgretn.scm,v 4.3 1988/06/14 08:42:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgretn.scm,v 4.4 1988/08/18 01:37:05 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -39,11 +39,13 @@ MIT in each case. |#
 (define (generate/return return)
   (generate/return* (return/block return)
 		    (return/operator return)
+		    false
 		    (trivial-return-operand (return/operand return))
 		    (node/offset return)))
 
 (define (generate/trivial-return block operator operand offset)
-  (generate/return* block operator (trivial-return-operand operand) offset))
+  (generate/return* block operator false (trivial-return-operand operand)
+		    offset))
 
 (define (trivial-return-operand operand)
   (make-return-operand
@@ -66,13 +68,13 @@ MIT in each case. |#
 
 (package (generate/return*)
 
-(define-export (generate/return* block operator operand offset)
+(define-export (generate/return* block operator not-on-stack? operand offset)
   (let ((continuation (rvalue-known-value operator)))
-    (if (and continuation
-	     (continuation/always-known-operator? continuation))
+    (if continuation
 	((method-table-lookup simple-methods (continuation/type continuation))
 	 block
 	 operator
+	 not-on-stack?
 	 operand
 	 offset
 	 continuation)
@@ -93,14 +95,14 @@ MIT in each case. |#
   (make-method-table continuation-types false))
 
 (define-method-table-entry 'EFFECT simple-methods
-  (lambda (block operator operand offset continuation)
+  (lambda (block operator not-on-stack? operand offset continuation)
     (scfg-append!
      (effect-prefix operand offset)
-     (common-prefix block operator offset continuation)
+     (common-prefix block operator not-on-stack? offset continuation)
      (generate/node (continuation/entry-node continuation)))))
 
 (define-method-table-entries '(REGISTER VALUE) simple-methods
-  (lambda (block operator operand offset continuation)
+  (lambda (block operator not-on-stack? operand offset continuation)
     (scfg-append!
      (if (lvalue-integrated? (continuation/parameter continuation))
 	 (effect-prefix operand offset)
@@ -109,23 +111,25 @@ MIT in each case. |#
 	  (lambda (expression)
 	    (rtl:make-assignment (continuation/register continuation)
 				 expression))))
-     (common-prefix block operator offset continuation)
+     (common-prefix block operator not-on-stack? offset continuation)
      (generate/node (continuation/entry-node continuation)))))
 
 (define-method-table-entry 'PUSH simple-methods
-  (lambda (block operator operand offset continuation)
+  (lambda (block operator not-on-stack? operand offset continuation)
     (scfg*scfg->scfg!
-     (let ((prefix (common-prefix block operator offset continuation)))
+     (let ((prefix
+	    (common-prefix block operator not-on-stack? offset continuation)))
        (if (cfg-null? prefix)
 	   ((return-operand/value-generator operand) offset rtl:make-push)
 	   (use-temporary-register operand offset prefix rtl:make-push)))
      (generate/node (continuation/entry-node continuation)))))
 
 (define-method-table-entry 'PREDICATE simple-methods
-  (lambda (block operator operand offset continuation)
+  (lambda (block operator not-on-stack? operand offset continuation)
     (let ((node (continuation/entry-node continuation))
 	  (value (return-operand/known-value operand))
-	  (prefix (common-prefix block operator offset continuation)))
+	  (prefix
+	   (common-prefix block operator not-on-stack? offset continuation)))
       (if value
 	  (scfg-append!
 	   (effect-prefix operand offset)
@@ -180,9 +184,11 @@ MIT in each case. |#
 (define-integrable (effect-prefix operand offset)
   ((return-operand/effect-generator operand) offset))
 
-(define (common-prefix block operator offset continuation)
-  (scfg*scfg->scfg!
-   (return-operator/pop-frames block operator offset 0)
-   (generate/continuation-entry/ic-block continuation)))
+(define (common-prefix block operator not-on-stack? offset continuation)
+  (if not-on-stack?
+      (return-operator/pop-frames block operator offset 0)
+      (scfg*scfg->scfg!
+       (return-operator/pop-frames block operator offset 1)
+       (generate/continuation-entry/pop-extra continuation))))
 
 )

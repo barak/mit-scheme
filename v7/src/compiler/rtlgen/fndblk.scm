@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndblk.scm,v 4.7 1988/06/14 08:42:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndblk.scm,v 4.8 1988/08/18 01:36:46 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -40,7 +40,7 @@ MIT in each case. |#
   (if (variable/value-variable? variable)
       (if-compiler
        (let ((continuation (block-procedure start-block)))
-	 (if (continuation/always-known-operator? continuation)
+	 (if (continuation/ever-known-operator? continuation)
 	     (continuation/register continuation)
 	     register:value)))
       (find-variable-internal start-block variable offset
