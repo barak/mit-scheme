@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.95 2002/12/29 00:20:34 cph Exp $
+@comment $Id: user.texinfo,v 1.96 2002/12/30 03:37:45 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -25,7 +25,7 @@ This file documents the use of MIT Scheme.
 Copyright @copyright{} 1991-2002 Massachusetts Institute of Technology
 
 Permission is granted to copy, distribute and/or modify this document
-under the terms of the GNU Free Documentation License, Version 1.1 or
+under the terms of the GNU Free Documentation License, Version 1.2 or
 any later version published by the Free Software Foundation; with no
 Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
 Texts.  A copy of the license is included in the section entitled "GNU
@@ -36,7 +36,7 @@ Free Documentation License".
 @title{MIT Scheme User's Manual}
 @subtitle Edition 1.90
 @subtitle for Scheme Release 7.7.1
-@subtitle 28 December 2002
+@subtitle 29 December 2002
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -47,7 +47,7 @@ Free Documentation License".
 Copyright @copyright{} 1991-2002 Massachusetts Institute of Technology
 
 Permission is granted to copy, distribute and/or modify this document
-under the terms of the GNU Free Documentation License, Version 1.1 or
+under the terms of the GNU Free Documentation License, Version 1.2 or
 any later version published by the Free Software Foundation; with no
 Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
 Texts.  A copy of the license is included in the section entitled "GNU
