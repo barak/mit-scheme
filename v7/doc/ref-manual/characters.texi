@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: characters.texi,v 1.2 2003/06/20 06:50:14 cph Exp $
+@c $Id: characters.texi,v 1.3 2003/07/04 01:45:36 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -712,7 +712,13 @@ sets of Unicode code points (similar to the @code{char-set}
 abstraction).
 @end itemize
 
-@node Wide Strings
+@menu
+* Wide Strings::                
+* Unicode Representations::     
+* Alphabets::                   
+@end menu
+
+@node Wide Strings, Unicode Representations, Unicode, Unicode
 @subsection Wide Strings
 
 @cindex Wide string
@@ -802,7 +808,7 @@ accumulated output is returned as a wide string.  This is equivalent to:
 @end example
 @end deffn
 
-@node Unicode Representations
+@node Unicode Representations, Alphabets, Wide Strings, Unicode
 @subsection Unicode Representations
 
 @cindex Unicode external representations
@@ -874,7 +880,11 @@ representation and written to @var{port} as a stream of bytes.
 @deffnx procedure utf32-be-string->wide-string string [start [end]]
 @deffnx procedure utf32-le-string->wide-string string [start [end]]
 @deffnx procedure utf32-string->wide-string string [start [end]]
-Each of these procedures converts a byte vector to a wide string.
+Each of these procedures converts a byte vector to a wide string,
+treating @var{string} as a stream of bytes encoded in the corresponding
+@samp{utfNN} representation.  The arguments @var{start} and @var{end}
+allow specification of a substring; they default to zero and
+@var{string}'s length, respectively.
 @end deffn
 
 @deffn procedure utf8-string-length string [start [end]]
@@ -884,6 +894,11 @@ Each of these procedures converts a byte vector to a wide string.
 @deffnx procedure utf32-be-string-length string [start [end]]
 @deffnx procedure utf32-le-string-length string [start [end]]
 @deffnx procedure utf32-string-length string [start [end]]
+Each of these procedures counts the number of Unicode characters in a
+byte vector, treating @var{string} as a stream of bytes encoded in the
+corresponding @samp{utfNN} representation.  The arguments @var{start}
+and @var{end} allow specification of a substring; they default to zero
+and @var{string}'s length, respectively.
 @end deffn
 
 @deffn procedure wide-string->utf8-string string [start [end]]
@@ -893,9 +908,14 @@ Each of these procedures converts a byte vector to a wide string.
 @deffnx procedure wide-string->utf32-be-string string [start [end]]
 @deffnx procedure wide-string->utf32-le-string string [start [end]]
 @deffnx procedure wide-string->utf32-string string [start [end]]
+Each of these procedures converts a wide string to a stream of bytes
+encoded in the corresponding @samp{utfNN} representation, and returns
+that stream as a byte vector.  The arguments @var{start}
+and @var{end} allow specification of a substring; they default to zero
+and @var{string}'s length, respectively.
 @end deffn
 
-@node Alphabets
+@node Alphabets,  , Unicode Representations, Unicode
 @subsection Alphabets
 
 @cindex Alphabet, Unicode
