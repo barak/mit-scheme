@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.5 1989/01/06 21:00:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.6 1989/04/15 01:27:00 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
