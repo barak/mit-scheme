@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.49 1989/08/15 13:20:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.50 1989/08/17 14:51:12 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -223,7 +223,10 @@ MIT in each case. |#
 	  compiled-procedure/lambda
 	  discard-debugging-info!
 	  load-debugging-info-on-demand?)
-  (export (runtime load)	  fasload/update-debugging-info!)
+  (export (runtime load)
+	  dbg-info-vector/purification-root
+	  dbg-info-vector?
+	  fasload/update-debugging-info!)
   (export (runtime debugger-command-loop)
 	  special-form-procedure-name?)
   (export (runtime environment)

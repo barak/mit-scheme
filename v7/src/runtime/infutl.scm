@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.9 1989/08/15 13:19:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.10 1989/08/17 14:51:05 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -72,11 +72,13 @@ MIT in each case. |#
 	 (let ((binf (read-binf-file descriptor)))
 	   (and binf (dbg-info? binf) binf)))	((and (pair? descriptor)
 	      (string? (car descriptor))
-	      (integer? (cdr descriptor)))
+	      (integer? (cdr descriptor))
+	      (not (negative? (cdr descriptor))))
 	 (let ((binf (read-binf-file (car descriptor))))
 	   (and binf
-		(dbg-info-vector? binf)
-		(vector-ref (dbg-info-vector/items binf) (cdr descriptor)))))
+		(vector? binf)
+		(< (cdr descriptor) (vector-length binf))
+		(vector-ref binf (cdr descriptor)))))
 	(else
 	 false)))
 
@@ -137,7 +139,7 @@ MIT in each case. |#
 		 false)))))))
 
 (define load-debugging-info-on-demand?
-  true)
+  false)
 
 (define (compiled-entry/block entry)
   (if (compiled-closure? entry)
@@ -153,17 +155,32 @@ MIT in each case. |#
   (let loop
       ((info
 	(compiled-code-block/debugging-info (compiled-entry/block entry))))
-    (cond ((string? info)
-	   info)
-	  ((pair? info)
-	   (cond ((string? (car info)) (car info))
-		 ((dbg-info? (car info)) (loop (cdr info)))
-		 (else false)))
-	  (else
-	   false))))
-
+    (cond ((string? info) info)
+	  ((not (pair? info)) false)
+	  ((string? (car info)) (car info))
+	  ((dbg-info? (car info)) (loop (cdr info)))
+	  (else false))))
 (define (dbg-labels/find-offset labels offset)
   (vector-binary-search labels < dbg-label/offset offset))
+
+(define (dbg-info-vector/blocks-vector info)
+  (let ((items (dbg-info-vector/items info)))
+    (cond ((vector? items) items)
+	  ((and (pair? items)
+		(pair? (cdr items))
+		(vector? (cadr items)))
+	   (cadr items))
+	  (else (error "Illegal dbg-info-vector" info)))))
+
+(define (dbg-info-vector/purification-root info)
+  (let ((items (dbg-info-vector/items info)))
+    (cond ((vector? items) false)
+	  ((and (pair? items)
+		(eq? (car items) 'COMPILED-BY-PROCEDURES)
+		(pair? (cdr items))
+		(pair? (cddr items)))
+	   (caddr items))
+	  (else (error "Illegal dbg-info-vector" info)))))
 
 (define (fasload/update-debugging-info! value com-pathname)
   (let ((process-block
@@ -179,12 +196,13 @@ MIT in each case. |#
 						     com-pathname))))))))
     (cond ((compiled-code-address? value)
 	   (process-block (compiled-code-address->block value)))
-	  ((comment? value)
-	   (let ((text (comment-text value)))
-	     (if (dbg-info-vector? text)
-		 (for-each
-		  process-block
-		  (vector->list (dbg-info-vector/items text)))))))))
+	  ((and (comment? value)
+		(dbg-info-vector? (comment-text value)))
+	   (for-each
+	    process-block
+	    (vector->list
+	     (dbg-info-vector/blocks-vector (comment-text value))))))))
+
 (define (process-binf-filename binf-filename com-pathname)
   (pathname->string
    (rewrite-directory

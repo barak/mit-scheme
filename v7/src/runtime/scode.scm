@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.5 1989/04/18 16:30:05 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.6 1989/08/17 14:51:17 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -45,7 +45,11 @@ MIT in each case. |#
 (define scode-constant/type-vector)
 
 (define (scode-constant? object)
-  (vector-ref scode-constant/type-vector (object-type object)))
+  (if (vector-ref scode-constant/type-vector (object-type object))
+      true
+      (and (compiled-code-address? object)
+	   (not (eq? (compiled-entry-type object) 'COMPILED-EXPRESSION)))))
+
 (define (make-scode-constant/type-vector)
   (let ((type-vector (make-vector (microcode-type/code-limit) false)))
     (for-each (lambda (name)
