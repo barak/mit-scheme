@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.4 1994/11/25 23:05:40 adams Exp $
+$Id: midend.scm,v 1.5 1994/12/05 21:34:20 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -87,7 +87,7 @@ MIT in each case. |#
 	(if *announce-phases?*
 	    (begin
 	      (newline)
-	      (write-string ";; Phase ")
+	      (write-string "    Phase ")
 	      (write this-phase)
 	      (if (memq this-phase *phases-to-omit*)
 		  (write-string " omitted (see *phases-to-omit*)"))))
@@ -381,3 +381,23 @@ MIT in each case. |#
 
 (define (unimplemented name)
   (internal-error "Unimplemented procedure" name))
+
+
+(define (compiler:debug #!optional what)
+  "
+ (compiler:debug #F)
+ (compiler:debug)
+ (compiler:debug '(phase-names...))"
+
+  (set! compiler:generate-kmp-files? #T)
+  (set! compiler:generate-rtl-files? #T)
+  (set! compiler:generate-lap-files? #T)
+
+  (cond ((default-object? what))
+        ((equal? what '#F)
+	 (set! compiler:generate-kmp-files? #F)
+	 (set! compiler:generate-rtl-files? #F)
+	 (set! compiler:generate-lap-files? #F))
+        (else
+	 (set! *phases-to-show* what))))
+
