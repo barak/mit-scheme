@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mit-syntax.scm,v 14.18 2003/03/14 01:11:36 cph Exp $
+$Id: mit-syntax.scm,v 14.19 2003/04/17 02:52:08 cph Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -37,19 +37,19 @@ USA.
   (lambda (form environment definition-environment history)
     definition-environment		;ignore
     (syntax-check '(KEYWORD EXPRESSION) form history)
-    (expression->transformer-item (classify/subexpression (cadr form)
-							  environment
-							  history
-							  select-cadr)
-				  environment
-				  history
-				  transformer->expander-name
-				  transformer->expander)))
+    (expression->keyword-value-item (classify/subexpression (cadr form)
+							    environment
+							    history
+							    select-cadr)
+				    environment
+				    history
+				    transformer->expander-name
+				    transformer->expander)))
 
-(define (expression->transformer-item item environment history
-				      transformer->expander-name
-				      transformer->expander)
-  (make-transformer-item
+(define (expression->keyword-value-item item environment history
+					transformer->expander-name
+					transformer->expander)
+  (make-keyword-value-item
    (transformer->expander
     (transformer-eval (compile-item/expression item)
 		      (syntactic-environment->environment environment))
@@ -257,20 +257,11 @@ USA.
 		  history))
 
 (define (syntactic-binding-theory environment name item history)
-  (let ((item
-	 (if (expression-item? item)
-	     ;; Kludge to support old syntax -- treat procedure
-	     ;; argument as non-hygienic transformer.
-	     (expression->transformer-item
-	      item environment history
-	      'NON-HYGIENIC-MACRO-TRANSFORMER->EXPANDER
-	      non-hygienic-macro-transformer->expander)
-	     item)))
-    (if (not (keyword-item? item))
-	(let ((history (item/history item)))
-	  (syntax-error history "Syntactic binding value must be a keyword:"
-			(history/original-form history))))
-    (overloaded-binding-theory environment name item history)))
+  (if (not (keyword-item? item))
+      (let ((history (item/history item)))
+	(syntax-error history "Syntactic binding value must be a keyword:"
+		      (history/original-form history))))
+  (overloaded-binding-theory environment name item history))
 
 (define (variable-binding-theory environment name item history)
   (if (keyword-item? item)
@@ -286,7 +277,7 @@ USA.
 				      name
 				      (item/new-history item #f))
 	;; User-defined macros at top level are preserved in the output.
-	(if (and (transformer-item? item)
+	(if (and (keyword-value-item? item)
 		 (syntactic-environment/top-level? environment))
 	    (make-binding-item history name item)
 	    (make-null-binding-item history)))

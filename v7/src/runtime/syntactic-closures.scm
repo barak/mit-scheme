@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntactic-closures.scm,v 14.15 2003/03/08 02:07:18 cph Exp $
+$Id: syntactic-closures.scm,v 14.16 2003/04/17 02:52:16 cph Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -69,10 +69,10 @@ USA.
   (if (binding-item? item)
       (let ((name (binding-item/name item))
 	    (value (binding-item/value item)))
-	(if (transformer-item? value)
+	(if (keyword-value-item? value)
 	    (output/top-level-syntax-definition
 	     name
-	     (compile-item/expression (transformer-item/expression value)))
+	     (compile-item/expression (keyword-value-item/expression value)))
 	    (output/top-level-definition
 	     name
 	     (compile-item/expression value))))
@@ -132,7 +132,14 @@ USA.
 
 (define (classify/form form environment definition-environment history)
   (cond ((identifier? form)
-	 (item/new-history (lookup-identifier environment form) history))
+	 (let ((item
+		(item/new-history (lookup-identifier environment form)
+				  history)))
+	   (if (keyword-item? item)
+	       (make-keyword-ref-item (strip-keyword-value-item item)
+				      form
+				      history)
+	       item)))
 	((syntactic-closure? form)
 	 (let ((form (syntactic-closure/form form))
 	       (environment
@@ -148,8 +155,9 @@ USA.
 						     history))))
 	((pair? form)
 	 (let ((item
-		(classify/subexpression (car form) environment history
-					select-car)))
+		(strip-keyword-value-item
+		 (classify/subexpression (car form) environment history
+					 select-car))))
 	   (cond ((classifier-item? item)
 		  ((classifier-item/classifier item) form
 						     environment
@@ -159,12 +167,6 @@ USA.
 		  (classify/compiler item form environment history))
 		 ((expander-item? item)
 		  (classify/expander item
-				     form
-				     environment
-				     definition-environment
-				     history))
-		 ((transformer-item? item)
-		  (classify/expander (transformer-item/expander item)
 				     form
 				     environment
 				     definition-environment
@@ -275,6 +277,11 @@ USA.
 		  declarations
 		  (cons (car items) items*)))
 	(values (reverse! declarations) (reverse! items*)))))
+
+(define (strip-keyword-value-item item)
+  (if (keyword-value-item? item)
+      (keyword-value-item/item item)
+      item))
 
 ;;;; Syntactic Closures
  
@@ -710,7 +717,7 @@ USA.
   (or (classifier-item? item)
       (compiler-item? item)
       (expander-item? item)
-      (transformer-item? item)))
+      (keyword-value-item? item)))
 
 (define (make-keyword-type name fields)
   (make-item-type name fields keyword-item-compiler))
@@ -758,20 +765,30 @@ USA.
   (item-accessor <expander-item> 'ENVIRONMENT))
 
 
-(define <transformer-item>
-  (make-keyword-type "transformer-item" '(EXPANDER EXPRESSION)))
+(define <keyword-value-item>
+  (make-keyword-type "keyword-value-item" '(ITEM EXPRESSION)))
 
-(define make-transformer-item
-  (keyword-constructor <transformer-item> '(EXPANDER EXPRESSION)))
+(define make-keyword-value-item
+  (keyword-constructor <keyword-value-item> '(ITEM EXPRESSION)))
 
-(define transformer-item?
-  (item-predicate <transformer-item>))
+(define keyword-value-item?
+  (item-predicate <keyword-value-item>))
 
-(define transformer-item/expander
-  (item-accessor <transformer-item> 'EXPANDER))
+(define keyword-value-item/item
+  (item-accessor <keyword-value-item> 'ITEM))
 
-(define transformer-item/expression
-  (item-accessor <transformer-item> 'EXPRESSION))
+(define keyword-value-item/expression
+  (item-accessor <keyword-value-item> 'EXPRESSION))
+
+(define (make-keyword-ref-item item identifier history)
+  (make-keyword-value-item item
+    (make-expression-item history
+      (let ((name (identifier->symbol identifier)))
+	(lambda ()
+	  (output/combination
+	   (output/access-reference 'SYNTACTIC-KEYWORD->ITEM
+				    system-global-environment)
+	   (list name (output/the-environment))))))))
 
 ;;; Variable items represent run-time variables.
 
@@ -865,7 +882,7 @@ USA.
      (map (lambda (item)
 	    (if (binding-item? item)
 		(let ((value (binding-item/value item)))
-		  (if (transformer-item? value)
+		  (if (keyword-value-item? value)
 		      (output/sequence '())
 		      (output/definition (binding-item/name item)
 					 (compile-item/expression value))))

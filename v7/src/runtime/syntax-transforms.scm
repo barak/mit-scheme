@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax-transforms.scm,v 14.6 2003/03/08 02:07:26 cph Exp $
+$Id: syntax-transforms.scm,v 14.7 2003/04/17 02:52:20 cph Exp $
 
 Copyright 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 
@@ -97,3 +97,9 @@ USA.
 			(make-syntactic-closure environment '()
 			  (apply transformer (cdr form))))
 		      closing-environment))
+
+(define (syntactic-keyword->item keyword environment)
+  (let ((item (environment-lookup-macro environment keyword)))
+    (if (not item)
+	(error:bad-range-argument keyword 'SYNTACTIC-KEYWORD->ITEM))
+    item))
