@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.11 1995/02/11 01:56:55 adams Exp $
+$Id: utils.scm,v 1.12 1995/02/11 02:47:34 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -542,41 +542,42 @@ Example use of FORM/COPY-TRANSFORMING:
 (define (form/simple&side-effect-insensitive? operand)
   (form/satisfies? operand '(SIMPLE SIDE-EFFECT-INSENSITIVE)))
 
-(define (form/simple? form)
-  (and (pair? form)
-       (case (car form)
-	 ((LOOKUP QUOTE LAMBDA) true)
-	 ((IF)
-	  (and (form/simple&side-effect-free? (if/predicate form))
-	       (form/simple&side-effect-free? (if/consequent form))
-	       (form/simple&side-effect-free? (if/alternate form))))
-	 ((CALL)
-	  (let ((rator (call/operator form)))
-	    (and (QUOTE/? rator)
-		 (operator/satisfies? (quote/text rator) '(SIMPLE))
-		 (for-all? (call/cont-and-operands form)
-		   form/simple&side-effect-free?))))
-	 (else false))))
+
+(define ((form/head-operator-test predicate) form)
+  (let walk ((form form))
+    (and (pair? form)
+	 (case (car form)
+	   ((LOOKUP QUOTE LAMBDA) true)
+	   ((IF)
+	    (and (form/simple&side-effect-free? (if/predicate form))
+		 (walk (if/consequent form))
+		 (walk (if/alternate form))))
+	   ((CALL)
+	    (let ((rator (call/operator form)))
+	      (and (QUOTE/? rator)
+		   (predicate (quote/text rator))
+		   (for-all? (call/cont-and-operands form)
+		     form/simple&side-effect-free?))))
+	   (else false)))))
+
+(define (simple-operator? rator)
+  (operator/satisfies? rator '(SIMPLE)))
 
 (define (pseudo-simple-operator? rator)
   (or (operator/satisfies? rator '(SIMPLE))
       (operator/satisfies? rator '(OUT-OF-LINE-HOOK))))
 
-(define (form/pseudo-simple? form)
-  (and (pair? form)
-       (case (car form)
-	 ((LOOKUP QUOTE LAMBDA) true)
-	 ((IF)
-	  (and (form/simple&side-effect-free? (cadr form))
-	       (form/simple&side-effect-free? (caddr form))
-	       (form/simple&side-effect-free? (caddr form))))
-	 ((CALL)
-	  (let ((rator (call/operator form)))
-	    (and (QUOTE/? rator)
-		 (pseudo-simple-operator? (quote/text rator))
-		 (for-all? (call/cont-and-operands form)
-		   form/simple&side-effect-free?))))
-	 (else false))))
+(define form/simple?
+  (form/head-operator-test simple-operator?))
+
+(define form/pseudo-simple?
+  (form/head-operator-test pseudo-simple-operator?))
+
+(define form/pseudo-simple&side-effect-free?
+  (form/head-operator-test
+   (lambda (rator)
+     (and (pseudo-simple-operator? rator)
+	  (operator/satisfies? rator '(SIDE-EFFECT-FREE))))))
 
 (define (binding-context-type keyword context bindings)
   (if (or (eq? keyword 'LETREC)
