@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 1.4 1987/05/29 17:54:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 1.5 1987/06/01 16:06:11 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -112,7 +112,8 @@ MIT in each case. |#
     (let ((cell (rtl:make-fetch temp)))
       (let ((contents (rtl:make-fetch cell)))
 	(let ((n1 (rtl:make-assignment temp (rtl:make-variable-cache name)))
-	      (n2 (rtl:make-type-test contents (ucode-type reference-trap)))
+	      (n2 (rtl:make-type-test (rtl:make-object->type contents)
+				      (ucode-type reference-trap)))
 	      (n3 (rtl:make-unassigned-test contents))
 	      (n4 (rtl:make-assignment cell value))
 	      (n5 (rtl:make-interpreter-call:cache-assignment cell value)))
