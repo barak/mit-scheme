@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.71 2000/05/22 19:16:47 cph Exp $
+;;; $Id: imail-imap.scm,v 1.72 2000/05/22 19:29:43 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -635,14 +635,13 @@
 (define-generic imap-message-uid (message))
 (define-generic imap-message-length (message))
 
-(define (imap-message-connection message)
-  (imap-folder-connection (message-folder message)))
-
 (define-method set-message-flags! ((message <imap-message>) flags)
-  (imap:command:uid-store-flags (imap-message-connection message)
-				(imap-message-uid message)
-				(map imail-flag->imap-flag
-				     (flags-delete "\\recent" flags))))
+  (with-imap-message-open message
+    (lambda (connection)
+      (imap:command:uid-store-flags connection
+				    (imap-message-uid message)
+				    (map imail-flag->imap-flag
+					 (flags-delete "\\recent" flags))))))
 
 (define (imap-flag->imail-flag flag)
   (case flag
@@ -658,14 +657,26 @@
 	(else (intern flag))))
 
 (define-method message-internal-time ((message <imap-message>))
-  (imap:response:fetch-attribute
-   (imap:command:fetch (imap-message-connection message)
-		       (message-index message)
-		       '(INTERNALDATE))
-   'INTERNALDATE))
+  (with-imap-message-open message
+    (lambda (connection)
+      (imap:response:fetch-attribute
+       (imap:command:uid-fetch connection
+			       (imap-message-uid message)
+			       '(INTERNALDATE))
+       'INTERNALDATE))))
 
 (define-method message-length ((message <imap-message>))
-  (imap-message-length message))
+  (with-imap-message-open message
+    (lambda (connection)
+      connection
+      (imap-message-length message))))
+
+(define (with-imap-message-open message receiver)
+  (let ((folder (message-folder message)))
+    (if folder
+	(begin
+	  (guarantee-imap-folder-open folder)
+	  (receiver (imap-folder-connection folder))))))
 
 ;;; These reflectors are needed to guarantee that we read the
 ;;; appropriate information from the server.  Normally most message
@@ -678,23 +689,25 @@
       (initpred (slot-initpred <imap-message> 'UID)))
   (define-method imap-message-uid ((message <imap-message>))
     (if (not (initpred message))
-	(let ((connection (imap-message-connection message))
-	      (index (message-index message)))
-	  (let ((suffix
-		 (string-append " UID for message "
-				(number->string (+ index 1)))))
-	    ((imail-message-wrapper "Reading" suffix)
-	     (lambda ()
-	       (imap:command:fetch connection index '(UID))
-	       (if (not (initpred message))
-		   (begin
-		     ;; Still don't have the goods.  Send a NOOP, in
-		     ;; case the server is holding it back because it
-		     ;; also needs to send an EXPUNGE.
-		     (imap:command:noop connection)
-		     (if (not (initpred message))
-			 (error
-			  (string-append "Unable to obtain" suffix))))))))))
+	(with-imap-message-open message
+	  (lambda (connection)
+	    (let ((index (message-index message)))
+	      (let ((suffix
+		     (string-append " UID for message "
+				    (number->string (+ index 1)))))
+		((imail-message-wrapper "Reading" suffix)
+		 (lambda ()
+		   (imap:command:fetch connection index '(UID))
+		   (if (not (initpred message))
+		       (begin
+			 ;; Still don't have the goods.  Send a NOOP, in
+			 ;; case the server is holding it back because it
+			 ;; also needs to send an EXPUNGE.
+			 (imap:command:noop connection)
+			 (if (not (initpred message))
+			     (error
+			      (string-append "Unable to obtain"
+					     suffix))))))))))))
     (accessor message)))
 
 (define (guarantee-headers-initialized message initpred)
@@ -706,18 +719,21 @@
 
 (define (guarantee-slot-initialized message initpred noun keywords)
   (if (not (initpred message))
-      (let ((connection (imap-message-connection message))
-	    (uid (imap-message-uid message)))
-	(let ((suffix
-	       (string-append " " noun " for message "
-			      (number->string (+ (message-index message) 1)))))
-	  ((imail-message-wrapper "Reading" suffix)
-	   (lambda ()
-	     (imap:read-literal-progress-hook imail-progress-meter
+      (with-imap-message-open message
+	(lambda (connection)
+	  (let ((uid (imap-message-uid message)))
+	    (let ((suffix
+		   (string-append
+		    " " noun " for message "
+		    (number->string (+ (message-index message) 1)))))
+	      ((imail-message-wrapper "Reading" suffix)
 	       (lambda ()
-		 (imap:command:uid-fetch connection uid keywords)
-		 (if (not (initpred message))
-		     (error (string-append "Unable to obtain" suffix)))))))))))
+		 (imap:read-literal-progress-hook imail-progress-meter
+		   (lambda ()
+		     (imap:command:uid-fetch connection uid keywords)
+		     (if (not (initpred message))
+			 (error
+			  (string-append "Unable to obtain" suffix)))))))))))))
 
 (let ((reflector
        (lambda (generic-procedure slot-name guarantee)
@@ -778,12 +794,14 @@
     (if (let ((url* (folder-url folder)))
 	  (and (imap-url? url*)
 	       (compatible-imap-urls? url url*)))
-	(let ((connection (imap-folder-connection folder)))
-	  (maybe-create connection
-	    (lambda ()
-	      (imap:command:uid-copy connection
-				     (imap-message-uid message)
-				     (imap-url-mailbox url)))))
+	(begin
+	  (guarantee-imap-folder-open folder)
+	  (let ((connection (imap-folder-connection folder)))
+	    (maybe-create connection
+	      (lambda ()
+		(imap:command:uid-copy connection
+				       (imap-message-uid message)
+				       (imap-url-mailbox url))))))
 	(with-open-imap-connection url
 	  (lambda (connection)
 	    (maybe-create connection
