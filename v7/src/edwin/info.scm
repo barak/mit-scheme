@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.110 1992/04/16 22:29:16 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.111 1992/06/10 18:03:59 sybok Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -395,13 +395,20 @@ except for \\[info-cease-edit] to return to Info."
        (menu-item-name
 	(make-mark
 	 (mark-group menu)
-	 (let ((current-item (current-menu-item (current-point))))
-	   (if current-item
-	       (prompt-for-alist-value "Menu item"
-				       (collect-menu-items menu)
-				       (menu-item-name current-item))
-	       (prompt-for-alist-value "Menu item"
-				       (collect-menu-items menu))))))))))
+	 (let ((item-alist (collect-menu-items menu)))
+	   (let ((current-entry
+		  (let ((current-item (current-menu-item (current-point))))
+		    (and current-item
+			 (let ((current-index (mark-index current-item)))
+			   (list-search-positive item-alist
+			     (lambda (entry)
+			       (= current-index (cdr entry)))))))))
+	     (if current-entry
+		 (prompt-for-alist-value "Menu item"
+					 item-alist
+					 (car current-entry))
+		 (prompt-for-alist-value "Menu item"
+					 item-alist))))))))))
 
 (define (nth-menu-item n)
   (lambda ()
