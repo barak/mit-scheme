@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.39 2000/01/12 23:50:54 cph Exp $
+$Id: ntscreen.c,v 1.40 2000/01/13 05:07:14 cph Exp $
 
 Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
@@ -659,7 +659,7 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	 SizeScreen (hWnd, HIWORD(lParam), LOWORD(lParam));
        break;
 
-       HANDLE_MSG (hWnd, WM_WINDOWPOSCHANGING, handle_window_pos_changing);
+     HANDLE_MSG (hWnd, WM_WINDOWPOSCHANGING, handle_window_pos_changing);
 
      case WM_HSCROLL:
        ScrollScreenHorz (hWnd, LOWORD(wParam), HIWORD(wParam));
@@ -753,8 +753,8 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
        {
 	 extern void catatonia_trigger (void);
 	 catatonia_trigger ();
-	 break;
        }
+       break;
 
      case WM_CLOSE:
        {
@@ -1657,7 +1657,7 @@ SetScreenFocus (HWND hWnd)
    if (NULL == screen)  return  FALSE;
 
    screen_focus = screen;
-   CreateCaret (hWnd, NULL, max(screen->xChar/4,2), screen->yChar);
+   CreateCaret (hWnd, NULL, screen->xChar, screen->yChar);
    if (screen->cursor_visible)
       ShowCaret (hWnd);
 
@@ -1978,12 +1978,29 @@ make_key_event (HWND handle, WPARAM wparam, LPARAM lparam, int ch)
   SCREEN_EVENT * event;
   unsigned int modifiers = (get_modifiers ());
 
-  /* If the unmodified key is bound to a command, send the command.  */
-  if (modifiers == 0)
+  /* Translate the Backspace key to the Delete character.  */
+  if ((ch == 0x08) && (wparam == VK_BACK))
+    ch = ASCII_DEL;
+
+  /* If the unmodified key is bound to a command, send the command.
+     Extra hair here is due to need to handle control characters.  */
+  if (((modifiers & SCREEN_ALT_PRESSED) == 0)
+      && (((modifiers & SCREEN_CONTROL_PRESSED) == 0)
+	  || (('A' <= ch) && (ch <= 'Z'))
+	  || (('a' <= ch) && (ch <= 'z'))
+	  || (ch == '@') || (ch == '[') || (ch == '\\')
+	  || (ch == ']') || (ch == '^') || (ch == '_')))
     {
-      int i;
+      int ch2 = ch;
+      unsigned int i;
+      if ((modifiers & SCREEN_CONTROL_PRESSED) != 0)
+	{
+	  if (('a' <= ch) && (ch <= 'z'))
+	    ch2 -= ('a' - 'A');
+	  ch2 -= '@';
+	}
       for (i = 0; (i < (screen -> n_bindings)); i += 1)
-	if ((((screen -> bindings) [i]) . key) == ch)
+	if ((((screen -> bindings) [i]) . key) == ch2)
 	  {
 	    if (SendMessage
 		(handle,
@@ -1998,10 +2015,6 @@ make_key_event (HWND handle, WPARAM wparam, LPARAM lparam, int ch)
 
   if ((ch == (-1)) && (((screen -> mode_flags) & SCREEN_MODE_VK_KEYS) == 0))
     return;
-
-  /* Translate the Backspace key to the Delete character.  */
-  if ((ch == 0x08) && (wparam == VK_BACK))
-    ch = ASCII_DEL;
 
   event = (allocate_event (screen, SCREEN_EVENT_TYPE_KEY));
   if (!event) return;
