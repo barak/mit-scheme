@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11graph.c,v 1.39 1998/01/05 06:22:47 cph Exp $
+$Id: x11graph.c,v 1.40 1998/11/05 01:10:11 cph Exp $
 
 Copyright (c) 1989-98 Massachusetts Institute of Technology
 
@@ -37,6 +37,8 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #include "x11.h"
+#include "float.h"
+#include <math.h>
 
 #define RESOURCE_NAME "schemeGraphics"
 #define RESOURCE_CLASS "SchemeGraphics"
@@ -68,36 +70,59 @@ struct gw_extra
 #define ROUND_FLOAT(flonum)						\
   ((int) (((flonum) >= 0.0) ? ((flonum) + 0.5) : ((flonum) - 0.5)))
 
-#define X_COORDINATE(virtual_device_x,xw) (ROUND_FLOAT(((XW_X_SLOPE (xw)) * (virtual_device_x - (XW_X_LEFT (xw))))))
+#define X_COORDINATE(virtual_device_x, xw, direction)			\
+  (((XW_X_SLOPE (xw)) == FLT_MAX)					\
+   ? ((direction <= 0) ? 0 : ((int) ((XW_X_SIZE (xw)) - 1)))		\
+   : (ROUND_FLOAT							\
+      (((XW_X_SLOPE (xw)) * (virtual_device_x - (XW_X_LEFT (xw)))))))
 
-#define Y_COORDINATE(virtual_device_y,xw) (((int) ((XW_Y_SIZE (xw)) - 1)) + (ROUND_FLOAT ((XW_Y_SLOPE (xw)) * (virtual_device_y - (XW_Y_BOTTOM (xw))))))
+#define Y_COORDINATE(virtual_device_y, xw, direction)			\
+  (((XW_Y_SLOPE (xw)) == FLT_MAX)					\
+   ? ((direction <= 0) ? ((int) ((XW_Y_SIZE (xw)) - 1)) : 0)		\
+   : (((int) ((XW_Y_SIZE (xw)) - 1))					\
+      + (ROUND_FLOAT							\
+	 ((XW_Y_SLOPE (xw)) * (virtual_device_y - (XW_Y_BOTTOM (xw)))))))
+
+#define X_LENGTH(virtual_length, xw)					\
+  (((XW_X_SLOPE (xw)) == 0.0)						\
+   ? 0									\
+   : ((XW_X_SLOPE (xw)) == FLT_MAX)					\
+   ? ((int) ((XW_X_SIZE (xw)) - 1))					\
+   : (ROUND_FLOAT ((fabs (XW_X_SLOPE (xw))) * (virtual_length))))
+
+#define Y_LENGTH(virtual_length, xw)					\
+  (((XW_Y_SLOPE (xw)) == 0.0)						\
+   ? 0									\
+   : ((XW_Y_SLOPE (xw)) == FLT_MAX)					\
+   ? ((int) ((XW_Y_SIZE (xw)) - 1))					\
+   : (ROUND_FLOAT ((fabs (XW_Y_SLOPE (xw))) * (virtual_length))))
 
 static int
-DEFUN (arg_x_coordinate, (arg, xw),
+DEFUN (arg_x_coordinate, (arg, xw, direction),
        unsigned int arg AND
-       struct xwindow * xw)
+       struct xwindow * xw AND
+       int direction)
 {
-  float virtual_device_x = (arg_real_number (arg));
-  float device_x = ((XW_X_SLOPE (xw)) * (virtual_device_x - (XW_X_LEFT (xw))));
-  return (ROUND_FLOAT (device_x));
+  return (X_COORDINATE (((float) (arg_real_number (arg))), xw, direction));
 }
 
 static int
-DEFUN (arg_y_coordinate, (arg, xw),
+DEFUN (arg_y_coordinate, (arg, xw, direction),
        unsigned int arg AND
-       struct xwindow * xw)
+       struct xwindow * xw AND
+       int direction)
 {
-  float virtual_device_y = (arg_real_number (arg));
-  float device_y =
-    ((XW_Y_SLOPE (xw)) * (virtual_device_y - (XW_Y_BOTTOM (xw))));
-  return (((int) ((XW_Y_SIZE (xw)) - 1)) + (ROUND_FLOAT (device_y)));
+  return (Y_COORDINATE (((float) (arg_real_number (arg))), xw, direction));
 }
 
 static SCHEME_OBJECT
 DEFUN (x_coordinate_map, (xw, x), struct xwindow * xw AND unsigned int x)
 {
   return
-    (FLOAT_TO_FLONUM ((((float) x) / (XW_X_SLOPE (xw))) + (XW_X_LEFT (xw))));
+    (FLOAT_TO_FLONUM
+     ((((XW_X_SLOPE (xw)) == 0.0) || ((XW_X_SLOPE (xw)) == FLT_MAX))
+      ? (XW_X_LEFT (xw))
+      : ((((float) x) / (XW_X_SLOPE (xw))) + (XW_X_LEFT (xw)))));
 }
 
 static SCHEME_OBJECT
@@ -105,8 +130,10 @@ DEFUN (y_coordinate_map, (xw, y), struct xwindow * xw AND unsigned int y)
 {
   return
     (FLOAT_TO_FLONUM
-     (((((float) y) - ((XW_Y_SIZE (xw)) - 1)) / (XW_Y_SLOPE (xw)))
-        + (XW_Y_BOTTOM (xw))));
+     ((((XW_Y_SLOPE (xw)) == 0.0) || ((XW_Y_SLOPE (xw)) == FLT_MAX))
+      ? (XW_Y_BOTTOM (xw))
+      : (((((float) y) - ((XW_Y_SIZE (xw)) - 1)) / (XW_Y_SLOPE (xw)))
+	 + (XW_Y_BOTTOM (xw)))));
 }
 
 static void
@@ -170,12 +197,20 @@ DEFUN (reset_virtual_device_coordinates, (xw), struct xwindow * xw)
 {
   /* Note that the expression ((XW_c_SIZE (xw)) - 1) guarantees that
      both limits of the device coordinates will be inside the window. */
-  (XW_X_SLOPE (xw)) =
-    (((float) ((XW_X_SIZE (xw)) - 1)) /
-     ((XW_X_RIGHT (xw)) - (XW_X_LEFT (xw))));
-  (XW_Y_SLOPE (xw)) =
-    (((float) ((XW_Y_SIZE (xw)) - 1)) /
-     ((XW_Y_BOTTOM (xw)) - (XW_Y_TOP (xw))));
+  (XW_X_SLOPE (xw))
+    = (((XW_X_RIGHT (xw)) == (XW_X_LEFT (xw)))
+       ? FLT_MAX
+       : ((XW_X_SIZE (xw)) <= 1)
+       ? 0.0
+       : (((float) ((XW_X_SIZE (xw)) - 1))
+	  / ((XW_X_RIGHT (xw)) - (XW_X_LEFT (xw)))));
+  (XW_Y_SLOPE (xw))
+    = (((XW_Y_BOTTOM (xw)) == (XW_Y_TOP (xw)))
+       ? FLT_MAX
+       : ((XW_Y_SIZE (xw)) <= 1)
+       ? 0.0
+       : (((float) ((XW_Y_SIZE (xw)) - 1))
+	  / ((XW_Y_BOTTOM (xw)) - (XW_Y_TOP (xw)))));
   reset_clip_rectangle (xw);
 }
 
@@ -229,10 +264,10 @@ Set the clip rectangle to the given coordinates.")
     struct xwindow * xw = (x_window_arg (1));
     set_clip_rectangle
       (xw,
-       (arg_x_coordinate (2, xw)),
-       (arg_y_coordinate (3, xw)),
-       (arg_x_coordinate (4, xw)),
-       (arg_y_coordinate (5, xw)));
+       (arg_x_coordinate (2, xw, -1)),
+       (arg_y_coordinate (3, xw, -1)),
+       (arg_x_coordinate (4, xw, 1)),
+       (arg_y_coordinate (5, xw, 1)));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -390,15 +425,15 @@ Subsequently move the graphics cursor to the end coordinates.")
   PRIMITIVE_HEADER (5);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int new_x_cursor = (arg_x_coordinate (4, xw));
-    unsigned int new_y_cursor = (arg_y_coordinate (5, xw));
+    unsigned int new_x_cursor = (arg_x_coordinate (4, xw, 0));
+    unsigned int new_y_cursor = (arg_y_coordinate (5, xw, 0));
     unsigned int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
     XDrawLine
       ((XW_DISPLAY (xw)),
        (XW_WINDOW (xw)),
        (XW_NORMAL_GC (xw)),
-       (internal_border_width + (arg_x_coordinate (2, xw))),
-       (internal_border_width + (arg_y_coordinate (3, xw))),
+       (internal_border_width + (arg_x_coordinate (2, xw, 0))),
+       (internal_border_width + (arg_y_coordinate (3, xw, 0))),
        (internal_border_width + new_x_cursor),
        (internal_border_width + new_y_cursor));
     (XW_X_CURSOR (xw)) = new_x_cursor;
@@ -414,8 +449,8 @@ Move the graphics cursor to the given coordinates.")
   PRIMITIVE_HEADER (3);
   {
     struct xwindow * xw = (x_window_arg (1));
-    (XW_X_CURSOR (xw)) = (arg_x_coordinate (2, xw));
-    (XW_Y_CURSOR (xw)) = (arg_y_coordinate (3, xw));
+    (XW_X_CURSOR (xw)) = (arg_x_coordinate (2, xw, 0));
+    (XW_Y_CURSOR (xw)) = (arg_y_coordinate (3, xw, 0));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -428,8 +463,8 @@ Subsequently move the graphics cursor to those coordinates.")
   PRIMITIVE_HEADER (3);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int new_x_cursor = (arg_x_coordinate (2, xw));
-    unsigned int new_y_cursor = (arg_y_coordinate (3, xw));
+    unsigned int new_x_cursor = (arg_x_coordinate (2, xw, 0));
+    unsigned int new_y_cursor = (arg_y_coordinate (3, xw, 0));
     unsigned int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
     XDrawLine
       ((XW_DISPLAY (xw)),
@@ -458,8 +493,8 @@ Subsequently move the graphics cursor to those coordinates.")
       ((XW_DISPLAY (xw)),
        (XW_WINDOW (xw)),
        (XW_NORMAL_GC (xw)),
-       (internal_border_width + (arg_x_coordinate (2, xw))),
-       (internal_border_width + (arg_y_coordinate (3, xw))));
+       (internal_border_width + (arg_x_coordinate (2, xw, 0))),
+       (internal_border_width + (arg_y_coordinate (3, xw, 0))));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -486,10 +521,10 @@ If FILL? is true, the arc is filled.")
      * right and Y increasing top to bottom.  If we are wrong then we
      * have to flip the axes and adjust the angles */
  
-    int x1 = X_COORDINATE (virtual_device_x - radius_x,  xw);
-    int x2 = X_COORDINATE (virtual_device_x + radius_x,  xw);
-    int y1 = Y_COORDINATE (virtual_device_y + radius_y,  xw);
-    int y2 = Y_COORDINATE (virtual_device_y - radius_y,  xw);
+    int x1 = (X_COORDINATE (virtual_device_x - radius_x,  xw, 0));
+    int x2 = (X_COORDINATE (virtual_device_x + radius_x,  xw, 0));
+    int y1 = (Y_COORDINATE (virtual_device_y + radius_y,  xw, 0));
+    int y2 = (Y_COORDINATE (virtual_device_y - radius_y,  xw, 0));
     int width, height;
     int angle1 = ((int)(angle_start * 64)) % (64*360);
     int angle2 = ((int)(angle_sweep * 64));
@@ -599,8 +634,8 @@ transparent background.")
       ((XW_DISPLAY (xw)),
        (XW_WINDOW (xw)),
        (XW_NORMAL_GC (xw)),
-       (internal_border_width + (arg_x_coordinate (2, xw))),
-       (internal_border_width + (arg_y_coordinate (3, xw))),
+       (internal_border_width + (arg_x_coordinate (2, xw, 0))),
+       (internal_border_width + (arg_y_coordinate (3, xw, 0))),
        s,
        (STRING_LENGTH (ARG_REF (4))));
   }
@@ -622,8 +657,8 @@ solid background.")
       ((XW_DISPLAY (xw)),
        (XW_WINDOW (xw)),
        (XW_NORMAL_GC (xw)),
-       (internal_border_width + (arg_x_coordinate (2, xw))),
-       (internal_border_width + (arg_y_coordinate (3, xw))),
+       (internal_border_width + (arg_x_coordinate (2, xw, 0))),
+       (internal_border_width + (arg_y_coordinate (3, xw, 0))),
        s,
        (STRING_LENGTH (ARG_REF (4))));
   }
@@ -670,11 +705,8 @@ DEFUN (floating_vector_point_args, (xw, x_index, y_index, return_n_points),
     unsigned int border = (XW_INTERNAL_BORDER_WIDTH (xw));
     while (scan_x < end_x)
       {
-	double coord = ((XW_X_SLOPE (xw)) * ((*scan_x++) - (XW_X_LEFT (xw))));
-	(scan_points -> x) = (border + (ROUND_FLOAT (coord)));
-	coord = ((XW_Y_SLOPE (xw)) * ((*scan_y++) - (XW_Y_BOTTOM (xw))));
-	(scan_points -> y) =
-	  (border + ((int) ((XW_Y_SIZE (xw)) - 1)) + (ROUND_FLOAT (coord)));
+	(scan_points -> x) = (border + (X_COORDINATE ((*scan_x++), xw, 0)));
+	(scan_points -> y) = (border + (X_COORDINATE ((*scan_y++), xw, 0)));
 	scan_points += 1;
       }
     (*return_n_points) = n_points;
@@ -792,10 +824,6 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-COPY-AREA", Prim_x_graphics_copy_area, 8, 8, 0)
       = (XW_INTERNAL_BORDER_WIDTH (source_xw));
     unsigned int destination_internal_border_width
       = (XW_INTERNAL_BORDER_WIDTH (destination_xw));
-    float device_width
-      = ((XW_X_SLOPE (source_xw)) * (arg_real_number (5)));
-    float device_height
-      = ((XW_Y_SLOPE (source_xw)) * (arg_real_number (6)));
     Display *source_display = XW_DISPLAY (source_xw);
     Display *destination_display = XW_DISPLAY (destination_xw);
     if (source_display != destination_display)
@@ -805,15 +833,15 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-COPY-AREA", Prim_x_graphics_copy_area, 8, 8, 0)
 	       (XW_WINDOW (destination_xw)),
 	       (XW_NORMAL_GC (source_xw)),
 	       (source_internal_border_width
-		+ (arg_x_coordinate (3, source_xw))),
+		+ (arg_x_coordinate (3, source_xw, -1))),
 	       (source_internal_border_width
-		+ (arg_y_coordinate (4, source_xw))),
-	       (ROUND_FLOAT (device_width)),
-	       (ROUND_FLOAT (device_height)),
+		+ (arg_y_coordinate (4, source_xw, 1))),
+	       (X_LENGTH ((arg_real_number (5)), source_xw)),
+	       (Y_LENGTH ((arg_real_number (6)), source_xw)),
 	       (destination_internal_border_width
-		+ (arg_x_coordinate (7, destination_xw))),
+		+ (arg_x_coordinate (7, destination_xw, -1))),
 	       (destination_internal_border_width
-		+ (arg_y_coordinate (8, destination_xw))));
+		+ (arg_y_coordinate (8, destination_xw, 1))));
     PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }
@@ -839,22 +867,15 @@ DEFUN (x_polygon_vector_arg, (xw, argno),
 	coord = (*scan++);
 	if (! ((REAL_P (coord)) && (real_number_to_double_p (coord))))
 	  error_bad_range_arg (argno);
-	{
-	  double dx =
-	    ((XW_X_SLOPE (xw))
-	     * ((real_number_to_double (coord)) - (XW_X_LEFT (xw))));
-	  (scan_result -> x) = (border + (ROUND_FLOAT (dx)));
-	}
+	(scan_result -> x)
+	  = (border
+	     + (X_COORDINATE ((real_number_to_double (coord)), xw, 0)));
 	coord = (*scan++);
 	if (! ((REAL_P (coord)) && (real_number_to_double_p (coord))))
 	  error_bad_range_arg (argno);
-	{
-	  double dy =
-	    ((XW_Y_SLOPE (xw))
-	     * ((real_number_to_double (coord)) - (XW_Y_BOTTOM (xw))));
-	  (scan_result -> y) =
-	    (border + ((XW_Y_SIZE (xw)) - 1) + (ROUND_FLOAT (dy)));
-	}
+	(scan_result -> y)
+	  = (border
+	     + (Y_COORDINATE ((real_number_to_double (coord)), xw, 0)));
 	scan_result += 1;
       }
     return (result);
@@ -1067,8 +1088,8 @@ IMAGE is drawn on WINDOW by calling XPutImage.")
     XPutImage
       ((XW_DISPLAY (xw)),(XW_WINDOW (xw)),(XW_NORMAL_GC (xw)),
        image, x_offset, y_offset,
-       (arg_x_coordinate (5, xw)),
-       (arg_y_coordinate (6, xw)),
+       (arg_x_coordinate (5, xw, -1)),
+       (arg_y_coordinate (6, xw, 1)),
        (arg_index_integer (7, ((image_width - x_offset) + 1))),
        (arg_index_integer (8, ((image_height - y_offset) + 1))));
     PRIMITIVE_RETURN (UNSPECIFIC);
