@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/cinden.scm,v 1.6 1991/10/29 13:44:22 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/cinden.scm,v 1.7 1992/01/09 23:10:12 markf Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -249,7 +249,11 @@ This is in addition to c-continued-statement-offset."
 
 (define (skip-comments&labels start end)
   (let ((gend (group-end start)))
-    (let loop ((mark start) (colon-line-end 0))
+    ;; There was an bug here where COLON-LINE-END was initialized
+    ;; to 0. I have initialized it to what seems to be the obvious
+    ;; thing. It seems to work, but I really have no idea whether
+    ;; it is correct. -markf
+    (let loop ((mark start) (colon-line-end (line-end start 0)))
       (let ((mark (whitespace-end mark gend)))
 	(cond ((mark>= mark end)
 	       false)
