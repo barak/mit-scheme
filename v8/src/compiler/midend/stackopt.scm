@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stackopt.scm,v 1.8 1995/04/14 04:34:10 adams Exp $
+$Id: stackopt.scm,v 1.9 1995/07/07 19:29:33 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -500,7 +500,7 @@ End of Big Note A |#
   ;; the value expressions to match the new order.
   (for-each stackopt/rewrite! (stackopt/model/children model))
   (let* ((frame* (stackopt/model/frame model))
-	 (frame (vector-copy frame*))
+	 (frame (vector-copy frame*))	; copy so we can see mutations
 	 (form (stackopt/model/form model)))
     (stackopt/update-frame! model)
     (if (and form (not (equal? frame* frame)))
@@ -515,12 +515,38 @@ End of Big Note A |#
 			     (stackopt/inconsistency model))
 			 (cdr place)))
 		     (vector->list frame*))))
+	  (stackopt/rewrite-dbg-frames! (stackopt/model/name model) frame*)
 	  (form/rewrite! form
-	   `(CALL ,(call/operator form)
-		  ,(call/continuation form)
-		  ,(call/%make-stack-closure/lambda-expression form)
-		  ,(call/%make-stack-closure/vector form)
-		  ,@values*))))))
+	    `(CALL ,(call/operator form)
+		   ,(call/continuation form)
+		   ,(call/%make-stack-closure/lambda-expression form)
+		   ,(call/%make-stack-closure/vector form)
+		   ,@values*))))))
+
+(define (stackopt/rewrite-dbg-frames! frame-var new-vector)
+  (dbg-info/for-all-dbg-expressions!
+   (lambda (expr)
+     (match expr
+       ((CALL ',%stack-closure-ref
+	      '#F
+	      (LOOKUP ?frame)
+	      (CALL ',%vector-index '#F ?quoted-vector '_)
+	      '_)
+	(eq? frame frame-var)
+	=> (pp `(,expr ,frame-vector ,new-vector))
+	(form/rewrite! quoted-vector
+	  `(QUOTE ,new-vector)))))))
+
+(define (stackopt/rewrite-dbg-frames! frame-var new-vector)
+  (dbg-info/for-all-dbg-expressions!
+   (lambda (expr)
+     (if (and (call/%stack-closure-ref? expr)
+	      (eq? (lookup/name (call/%stack-closure-ref/closure expr))
+		   frame-var))
+	 (let* ((ix-expr (call/%stack-closure-ref/offset expr))
+		(quoted-vector (call/%vector-index/vector ix-expr)))
+	   (form/rewrite! quoted-vector
+	     `(QUOTE ,new-vector)))))))
 
 (define (stackopt/rearrange! model wired)
   (define (arrange-locally! model)
