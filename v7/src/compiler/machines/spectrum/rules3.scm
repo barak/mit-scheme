@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 4.33 1992/09/12 00:16:46 cph Exp $
+$Id: rules3.scm,v 4.34 1992/09/26 04:13:26 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -429,21 +429,21 @@ MIT in each case. |#
 	 ,@(interrupt-check gc-label))))
 
 (define (interrupt-check gc-label)
-  ;; When the microcode decides that it is not going to signal the
-  ;; interrupt immediately, it resumes execution at the second
-  ;; instruction after the entry point.  It is important that the
-  ;; interrupt-check code be designed to take this into account.
-  (if (not compiler:generate-stack-checks?)
+  (if (not (eq? 'OUT-OF-LINE compiler:generate-stack-checks?))
       (LAP (COMB (>=) ,regnum:free-pointer ,regnum:memtop-pointer
 		 (@PCR ,gc-label))
-	   ;; Microcode resumes here:
-	   (LDW () ,reg:memtop ,regnum:memtop-pointer))
+	   (LDW () ,reg:memtop ,regnum:memtop-pointer)
+	   ,@(if compiler:generate-stack-checks?
+		 (LAP (LDW () ,reg:stack-guard ,regnum:addil-result)
+		      (COMB (<=) ,regnum:stack-pointer ,regnum:addil-result
+			    (@PCR ,gc-label))
+		      (NOP ()))
+		 (LAP)))
       (let ((label (generate-label)))
 	(LAP (BLE ()
 		  (OFFSET ,hook:compiler-stack-and-interrupt-check
 			  4
 			  ,regnum:scheme-to-interface-ble))
-	     ;; Microcode resumes here:
 	     ;; Assumes that (<= #x-2000 (- ,gc-label ,label) #x1fff)
 	     ;; otherwise this assembles to two instructions, and it
 	     ;; won't fit in the branch-delay slot.
