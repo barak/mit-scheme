@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.27 1993/12/08 17:36:14 jmiller Exp $
+$Id: option.scm,v 14.28 1994/03/28 06:14:42 ziggy Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -86,10 +86,12 @@ MIT in each case. |#
     (DOSPROCESS (() #F "dosproc"))
     (FORMAT ((RUNTIME FORMAT) (INITIALIZE-PACKAGE!) "format"))
     (HASH-TABLE ((RUNTIME HASH-TABLE) (INITIALIZE-PACKAGE!) "hashtb"))
+    (HEADHUNT (() #F "../wabbit/load"))	; wabbit = headhunt [ziggy]
     (KRYPT ((RUNTIME KRYPT) #F "krypt"))
-    (PC-SAMPLE (() #F "../pcsample/make"))
+    (PC-SAMPLE (() #F "../pcsample/load"))
     (RB-TREE ((runtime rb-tree) #F "rbtree"))
     (SWAT (() #F "../swat/load"))
+    (WABBIT (() #F "../wabbit/load"))
     (WT-TREE ((runtime wt-tree) #F "wttree"))
     (SUBPROCESS ((RUNTIME SUBPROCESS) (INITIALIZE-PACKAGE!) "process"))))
 
