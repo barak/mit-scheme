@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: win32.pkg,v 1.8 1996/03/21 16:44:43 adams Exp $
+$Id: win32.pkg,v 1.9 1996/10/07 18:17:08 cph Exp $
 
 Copyright (c) 1993-96 Massachusetts Institute of Technology
 
@@ -61,7 +61,9 @@ MIT in each case. |#
 	  module-entry/attempt-linkage
           start-message-polling-thread
 	  win32-clipboard-read-text
-	  win32-clipboard-write-text)
+	  win32-clipboard-write-text
+	  win32-screen-height
+	  win32-screen-width)
   (initialization (initialize-package!))
 )
 

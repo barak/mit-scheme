@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: clipbrd.scm,v 1.1 1996/02/28 16:29:56 adams Exp $
+;;;	$Id: clipbrd.scm,v 1.2 1996/10/07 18:17:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -41,9 +41,8 @@
 ;;; the GNU GENERAL PUBLIC LICENSE may apply to these parts.  A copy
 ;;; of that license should have been included along with this file.
 
-;;;; Clipboard access
-
-
+;;;; Miscellaneous Win32 Facilities
+
 (define (win32-clipboard-write-text s)
   (let ((clip? (open-clipboard 0)))
     (and clip?
@@ -76,3 +75,9 @@
 		 (let ((end (vector-8b-find-next-char s 0 maxlen 0)))
 		   (set-string-length! s end))
 		 s))))))
+
+(define (win32-screen-width)
+  (get-system-metrics SM_CXSCREEN))
+
+(define (win32-screen-height)
+  (get-system-metrics SM_CYSCREEN))

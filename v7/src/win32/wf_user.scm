@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: wf_user.scm,v 1.6 1996/03/21 16:44:57 adams Exp $
+$Id: wf_user.scm,v 1.7 1996/10/07 18:17:03 cph Exp $
 
 Copyright (c) 1993-96 Massachusetts Institute of Technology
 
@@ -36,8 +36,8 @@ MIT in each case. |#
 ;;; package: (win32)
 
 (declare (usual-integrations))
-
-
+
+(define  adjust-window-rect)
 (define  append-menu)
 (define  arc)
 (define  begin-paint)
@@ -64,6 +64,7 @@ MIT in each case. |#
 (define  ellipse)
 (define  enable-menu-item)
 (define  end-paint)
+(define  get-client-rect)
 (define  get-clipboard-data)
 (define  get-dc)
 (define  get-device-caps)
@@ -128,13 +129,13 @@ MIT in each case. |#
 (define  track-popup-menu)
 (define  update-colors)
 (define  update-window)
-
-   
+
 (define (init-wf_user!)
 
   (set!  arc
     (windows-procedure
-	(Arc (hdc hdc) (leftrect int) (toprect int) (rightrect int) (bottomrect int)
+	(Arc (hdc hdc)
+	     (leftrect int) (toprect int) (rightrect int) (bottomrect int)
 	     (xstartarc int) (ystartarc int) (xendarc int) (yendarc int))
       bool gdi32.dll "Arc"))
 
@@ -238,7 +239,7 @@ MIT in each case. |#
 
   (set!  get-device-caps
     (windows-procedure (get-device-caps (hdc hdc) (index int))
-      int user32.dll "GetDeviceCaps"))
+      int gdi32.dll "GetDeviceCaps"))
 
   (set!  get-focus
     (windows-procedure (get-focus) hwnd user32.dll "SetFocus"))
@@ -296,6 +297,16 @@ MIT in each case. |#
   (set!  get-system-metrics
     (windows-procedure (get-system-metrics (index int))
       int user32.dll "GetSystemMetrics"))
+
+  (set!  adjust-window-rect
+    (windows-procedure (adjust-window-rect (rect rect)
+					   (style dword)
+					   (menu? bool))
+      bool user32.dll "AdjustWindowRect"))
+
+  (set!  get-client-rect
+    (windows-procedure (get-client-rect (window hwnd) (rect rect))
+      bool user32.dll "GetClientRect"))
 
   (set!  get-window-rect
     (windows-procedure (get-window-rect (window hwnd) (rect rect))
