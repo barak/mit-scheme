@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 4.2 1988/08/09 19:59:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 4.3 1988/09/22 18:42:57 jrm Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -821,11 +821,22 @@ forms are simply removed.
 
 (set! combination/optimizing-make
   (lambda (operator operands)
-    (cond ((and (foldable-operator? operator)
-		(foldable-constants? operands))
+    (cond (
 	   ;; fold constants
+	   (and (foldable-operator? operator)
+		(foldable-constants? operands))
 	   (constant/make (apply (constant/value operator)
 				 (map foldable-constant-value operands))))
+
+	  ;; (force (delay x)) ==> x
+	  ((and (constant? operator)
+		(primitive-procedure? (constant/value operator))
+		(eq? (constant/value operator) 
+		     (make-primitive-procedure 'FORCE))
+		(eq? (length operands) 1)
+		(delay? (car operands)))
+	   (delay/expression (car operands)))
+
 	  ((and (procedure? operator)
 		(null? (procedure/optional operator))
 		(not (procedure/rest operator))
