@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2sock.c,v 1.11 1999/08/13 18:29:34 cph Exp $
+$Id: os2sock.c,v 1.12 1999/08/13 18:47:57 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -179,7 +179,8 @@ OS_canonical_host_name (const char * host_name)
 const char *
 OS_get_host_by_address (const char * host_addr)
 {
-  struct hostent * entry = (gethostbyaddr (host_addr));
+  struct hostent * entry
+    = (gethostbyaddr (host_addr, , (OS_host_address_length ()), AF_INET));
   if (entry == 0)
     return (0);
   {

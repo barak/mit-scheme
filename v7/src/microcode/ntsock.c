@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsock.c,v 1.6 1999/08/13 18:29:38 cph Exp $
+$Id: ntsock.c,v 1.7 1999/08/13 18:47:52 cph Exp $
 
 Copyright (c) 1997-1999 Massachusetts Institute of Technology
 
@@ -161,7 +161,8 @@ OS_canonical_host_name (const char * host_name)
 const char *
 OS_get_host_by_address (const char * host_addr)
 {
-  struct hostent * entry = (gethostbyaddr (host_addr));
+  struct hostent * entry
+    = (gethostbyaddr (host_addr, , (OS_host_address_length ()), AF_INET));
   if (entry == 0)
     return (0);
   {

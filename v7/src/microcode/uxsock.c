@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.20 1999/08/13 18:43:05 cph Exp $
+$Id: uxsock.c,v 1.21 1999/08/13 18:47:49 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -146,7 +146,8 @@ DEFUN (OS_canonical_host_name, (host_name), CONST char * host_name)
 CONST char *
 DEFUN (OS_get_host_by_address, (host_addr), CONST char * host_addr)
 {
-  struct hostent * entry = (gethostbyaddr (host_addr, AF_INET));
+  struct hostent * entry
+    = (gethostbyaddr (host_addr, (OS_host_address_length ()), AF_INET));
   if (entry == 0)
     return (0);
   {
