@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.30 2000/04/13 22:18:09 cph Exp $
+$Id: string.scm,v 14.31 2000/04/13 22:21:01 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -424,7 +424,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (substring-lower-case? string start end)
   (guarantee-substring string start end 'SUBSTRING-LOWER-CASE?)
   (%substring-lower-case? string start end))
-  
+
 (define (%substring-lower-case? string start end)
   (let find-lower ((start start))
     (and (fix:< start end)
@@ -925,7 +925,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;; menaingful message. Structuring the code this way significantly
 ;; reduces code bloat from large integrated procedures.
 
-
 (define-integrable (guarantee-string object procedure)
   (if (not (string? object))
       (error:wrong-type-argument object "string" procedure)))
@@ -947,7 +946,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (guarantee-index/string/fail object procedure)
   (error:wrong-type-argument object "valid string index"
 			     procedure))
-
 
 (define-integrable (guarantee-substring string start end procedure)
   (if (not (and (string? string)
