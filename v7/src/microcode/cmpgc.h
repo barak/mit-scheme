@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpgc.h,v 1.22 1992/08/30 14:02:59 jinx Exp $
+$Id: cmpgc.h,v 1.23 1993/03/23 22:34:54 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -109,7 +109,7 @@ else
     offset_word = (COMPILED_ENTRY_OFFSET_WORD(var));			\
     var = ((SCHEME_OBJECT *)						\
 	   (((char *) (var)) -						\
-	    (OFFSET_WORD_TO_BYTE_OFFSET(offset_word))));		\
+	    ((long) (OFFSET_WORD_TO_BYTE_OFFSET(offset_word)))));	\
   } while (OFFSET_WORD_CONTINUATION_P(offset_word));			\
 }
 
