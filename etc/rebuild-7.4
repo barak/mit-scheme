@@ -1,6 +1,6 @@
 #!/bin/csh -f
 
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/rebuild-7.4,v 1.10 1992/11/30 01:06:23 gjr Exp $
+# $Id: rebuild-7.4,v 1.11 1993/04/29 06:42:04 cph Exp $
 
 # Arguments: runtimeversion compilerversion edwinversion 6001version
 
@@ -296,44 +296,44 @@ endif
 onintr -
 
 if ("$runtime" != "") then
-  set backup=`nextver $runtime.Z`
-  if ("$backup" != "$runtime.Z") then
-    echo "###" mv -f "$runtime.Z" "$backup"
-    mv -f "$runtime.Z" "$backup"
+  set backup=`nextver $runtime.z`
+  if ("$backup" != "$runtime.z") then
+    echo "###" mv -f "$runtime.z" "$backup"
+    mv -f "$runtime.z" "$backup"
   endif
-  echo "### compress <$runband >$runtime.Z"
+  echo "### gzip $runtime"
   cpx $runband $runtime
-  compress $runtime
-  chmod a-w $runtime.Z
+  gzip $runtime
+  chmod a-w $runtime.z
   echo "###" mv -f "$runband" "$root/lib/runtime.com"
   mv -f "$runband" "$root/lib/runtime.com"
 endif
 
 if ("$complr" != "") then
-  set backup=`nextver $complr.Z`
-  if ("$backup" != "$complr.Z") then
-    echo "###" mv -f "$complr.Z" "$backup"
-    mv -f "$complr.Z" "$backup"
+  set backup=`nextver $complr.z`
+  if ("$backup" != "$complr.z") then
+    echo "###" mv -f "$complr.z" "$backup"
+    mv -f "$complr.z" "$backup"
   endif
-  echo "### compress <$compband >$complr.Z"
+  echo "### gzip $complr"
   cpx $compband $complr
-  compress $complr
-  chmod a-w $complr.Z
+  gzip $complr
+  chmod a-w $complr.z
   echo "###" mv -f "$compband" "$root/lib/compiler.com"
   mv -f "$compband" "$root/lib/compiler.com"
 endif
 
 if ("$edwin" != "") then
 # Don't save this -- CPH
-#  set backup=`nextver $edwin.Z`
-#  if ("$backup" != "$edwin.Z") then
-#    echo "###" mv -f "$edwin.Z" "$backup"
-#    mv -f "$edwin.Z" "$backup"
+#  set backup=`nextver $edwin.z`
+#  if ("$backup" != "$edwin.z") then
+#    echo "###" mv -f "$edwin.z" "$backup"
+#    mv -f "$edwin.z" "$backup"
 #  endif
-#  echo "### compress <$edwinband >$edwin.Z"
+#  echo "### gzip $edwin"
 #  cpx $edwinband $edwin
-#  compress $edwin
-#  chmod a-w $edwin.Z
+#  gzip $edwin
+#  chmod a-w $edwin.z
   echo "###" mv -f "$edwinband" "$root/lib/edwin.com"
   mv -f "$edwinband" "$root/lib/edwin.com"
 endif
@@ -345,15 +345,15 @@ endif
 
 if ("$student" != "") then
 # Don't save this -- CPH
-#  set backup=`nextver $student.Z`
-#  if ("$backup" != "$student.Z") then
-#    echo "###" mv -f "$student.Z" "$backup"
-#    mv -f "$student.Z" "$backup"
+#  set backup=`nextver $student.z`
+#  if ("$backup" != "$student.z") then
+#    echo "###" mv -f "$student.z" "$backup"
+#    mv -f "$student.z" "$backup"
 #  endif
-#  echo "### compress <$studband >$student.Z"
+#  echo "### gzip $student"
 #  cpx $studband $student
-#  compress $student
-#  chmod a-w $student.Z
+#  gzip $student
+#  chmod a-w $student.z
   echo "###" mv -f "$studband" "$root/lib/6001.com"
   mv -f "$studband" "$root/lib/6001.com"
 endif
