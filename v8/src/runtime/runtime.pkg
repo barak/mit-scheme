@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.183 1993/07/01 23:07:57 cph Exp $
+$Id: runtime.pkg,v 14.184 1993/07/07 20:01:39 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -1689,6 +1689,8 @@ MIT in each case. |#
   (export (runtime microcode-errors)
 	  port-error-test)
   (export (runtime x-graphics)
+	  have-select?)
+  (export (runtime thread)
 	  have-select?)
   (initialization (initialize-package!)))
 

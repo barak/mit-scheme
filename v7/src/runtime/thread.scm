@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.15 1993/07/01 23:08:04 cph Exp $
+$Id: thread.scm,v 1.16 1993/07/07 20:01:27 gjr Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -387,7 +387,7 @@ MIT in each case. |#
   next)
 
 (define (initialize-input-blocking)
-  (set! input-registry (make-select-registry))
+  (set! input-registry (and have-select? (make-select-registry)))
   (set! input-registrations #f)
   unspecific)
 
