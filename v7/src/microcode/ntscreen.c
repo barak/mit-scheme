@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.14 1993/09/03 18:01:28 gjr Exp $
+$Id: ntscreen.c,v 1.15 1993/09/04 07:06:52 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -34,6 +34,7 @@ MIT in each case. */
 
 #include <stdlib.h>
 #include "ntscreen.h"
+#include "ntgui.h"
 //#include "screen.rh"
 /* Allow conditionalization for underlying OS. */
 extern BOOL win32_under_win32s_p (void);
@@ -628,6 +629,13 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       case WM_DESTROY:
          DestroyScreenInfo (hWnd);
          break ;
+
+      case WM_CATATONIC:
+      {
+	extern void catatonia_trigger (void);
+	catatonia_trigger ();
+	break;
+      }
 
       case WM_CLOSE:
       {

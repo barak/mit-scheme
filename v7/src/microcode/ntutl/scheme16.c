@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme16.c,v 1.4 1993/08/24 04:53:32 gjr Exp $
+$Id: scheme16.c,v 1.5 1993/09/04 06:59:59 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -305,18 +305,20 @@ MK_FP (unsigned short seg, unsigned short off)
 
 static WORD htimer = 0;
 static unsigned long timer_index = 0;
-
 static WORD (FAR PASCAL * KillSystemTimer) (WORD htimer);
 
 static struct ntw16lib_itimer_s
 {
   struct ntw16lib_itimer_s FAR * next;
+  unsigned long index;
   unsigned long FAR * base;
   unsigned long memtop_off;
   unsigned long int_code_off;
   unsigned long int_mask_off;
   unsigned long bit_mask;
-  unsigned long index;
+  unsigned long ctr_off;
+  UINT message;
+  HWND window;
   UINT selector;
   HGLOBAL ghan;
 } FAR * async_timers = ((struct ntw16lib_itimer_s FAR *) NULL);
@@ -333,17 +335,28 @@ scheme_asynctimer (void)
 	 & scm_timer->bit_mask)
 	!= 0)
       scm_timer->base[scm_timer->memtop_off] = ((unsigned long) -1L);
+    scm_timer->base[scm_timer->ctr_off] += 1L;
+    if ((scm_timer->base[scm_timer->ctr_off]
+	 > scm_timer->base[scm_timer->ctr_off + 1])
+	&& (scm_timer->base[scm_timer->ctr_off + 1] != 0))
+    {
+      PostMessage (scm_timer->window,
+		   scm_timer->message,
+		   ((WPARAM) 0),
+		   ((LPARAM) 0));
+      scm_timer->base[scm_timer->ctr_off] = 0L;
+    }
     scm_timer = scm_timer->next;
   }
   return;
 }
-
+
 static void
 scheme_asynctimer_end (void)
 {
   return;
 }
-
+
 static void
 possibly_uninstall_async_handler (void)
 {
@@ -475,14 +488,17 @@ win16_install_timer (struct ntw32lib_itimer_s FAR * buf)
     return (WIN32_ASYNC_TIMER_NOLDT);
   }
 
-  scm_timer->ghan = ghan;
+  scm_timer->next = async_timers;
+  scm_timer->index = timer_index++;
   scm_timer->base = (MK_FP (scm_timer->selector, (FP_OFF (buf->base))));
   scm_timer->memtop_off = buf->memtop_off;
   scm_timer->int_code_off = buf->int_code_off;
   scm_timer->int_mask_off = buf->int_mask_off;
   scm_timer->bit_mask = buf->bit_mask;
-  scm_timer->index = timer_index++;
-  scm_timer->next = async_timers;
+  scm_timer->ctr_off = buf->ctr_off;
+  scm_timer->message = ((UINT) buf->message);
+  scm_timer->window = ((HWND) buf->window);
+  scm_timer->ghan = ghan;
 
   buf->handle = scm_timer->index;
   async_timers = scm_timer;

@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.11 1993/09/03 17:50:09 gjr Exp $
+###	$Id: makefile,v 1.12 1993/09/04 06:59:05 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
@@ -413,16 +413,17 @@ NT_DEPENDENCIES = oscond.h ansidecl.h posixtyp.h intext.h \
 ntenv.obj : scheme.tch osenv.h ntscreen.h $(NT_DEPENDENCIES)
 ntfile.obj : osfile.h osio.h ntio.h $(NT_DEPENDENCIES)
 ntfs.obj : osfs.h $(NT_DEPENDENCIES)
-ntio.obj : osio.h ntio.h $(NT_DEPENDENCIES)
+ntio.obj : osio.h ntio.h ntscreen.h $(NT_DEPENDENCIES)
 nttop.obj : ostop.h nttop.h osctty.h errors.h option.h $(NT_DEPENDENCIES)
 nttty.obj : ostty.h osenv.h osio.h ntio.h osterm.h ntterm.h $(NT_DEPENDENCIES)
-ntsig.obj : ossig.h osctty.h ostty.h critsec.h $(NT_DEPENDENCIES) ntscmlib.h
+ntsig.obj : ossig.h osctty.h ostty.h critsec.h \
+	$(NT_DEPENDENCIES) ntgui.h ntio.h ntscmlib.h ntscreen.h
 nttrap.obj: nttrap.h ntscmlib.h $(GC_HEAD_FILES) $(NT_DEPENDENCIES)
 ntsys.obj: ntsys.h
-ntgui.obj : ntgui.c ntdialog.h ntscreen.h $(NT_DEPENDENCIES) scheme.tch
+ntgui.obj : ntgui.c ntdialog.h ntgui.h ntscreen.h $(NT_DEPENDENCIES) scheme.tch
 ntasutl.obj : ntasutl.asm
 ntkbutl.obj : ntkbutl.asm
-ntscreen.obj : ntscreen.c ntscreen.h
+ntscreen.obj : ntscreen.c ntgui.h ntscreen.h
 prntenv.obj : $(NT_DEPENDENCIES)
 prntfs.obj : $(NT_DEPENDENCIES) scheme.tch prims.h osfs.h
 prntio.obj : $(NT_DEPENDENCIES) scheme.tch prims.h ntio.h osio.h syscall.h

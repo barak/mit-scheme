@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme31.c,v 1.3 1993/08/24 04:51:20 gjr Exp $
+$Id: scheme31.c,v 1.4 1993/09/04 07:00:37 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -167,12 +167,15 @@ win32_unlock_memory_area (LPVOID area, unsigned long size)
 }
 
 UINT
-win32_install_async_timer (unsigned long * base,
+win32_install_async_timer (void ** state_ptr,
+			   unsigned long * base,
 			   unsigned long memtop_off,
 			   unsigned long int_code_off,
 			   unsigned long int_mask_off,
 			   unsigned long bit_mask,
-			   void ** state_ptr)
+			   unsigned long ctr_off,
+			   unsigned long message,
+			   HWND window)
 {
   struct ntw32lib_itimer_s param;
   LPVOID translation[2];
@@ -183,6 +186,9 @@ win32_install_async_timer (unsigned long * base,
   param.int_code_off = ((SCM_ULONG) int_code_off);
   param.int_mask_off = ((SCM_ULONG) int_mask_off);
   param.bit_mask = ((SCM_ULONG) bit_mask);
+  param.ctr_off = ((SCM_ULONG) ctr_off);
+  param.message = ((SCM_ULONG) message);
+  param.window = ((SCM_ULONG) window);
 
   translation[0] = ((LPVOID) & param.base);
   translation[1] = ((LPVOID) NULL);

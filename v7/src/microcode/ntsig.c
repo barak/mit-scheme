@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsig.c,v 1.9 1993/09/03 18:02:29 gjr Exp $
+$Id: ntsig.c,v 1.10 1993/09/04 07:08:22 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -38,17 +38,18 @@ MIT in each case. */
 */
 
 #include "scheme.h"
-#include "nt.h"
-#include <signal.h>
+#include "critsec.h"
 #include "ossig.h"
 #include "osctty.h"
 #include "ostty.h"
-#include "critsec.h"
-#include "ntsys.h"
+#include "nt.h"
+#include "ntgui.h"
 #include "ntio.h"
-#include "extern.h"
-#include "ntscreen.h"
 #include "ntscmlib.h"
+#include "ntscreen.h"
+#include "ntsys.h"
+
+extern HANDLE master_tty_window;
 
 /* Signal mask manipulation */
 
@@ -156,7 +157,6 @@ master_tty_interrupt (HWND tty, WORD command)
 static void
 DEFUN_VOID (update_interrupt_characters)
 {
-  extern HANDLE master_tty_window;
   int i;
 
   for (i = 0; i < KB_INT_TABLE_SIZE; i++)
@@ -402,29 +402,32 @@ DEFUN_VOID (OS_restartable_exit)
   return;
 }
 
-/* Timer interrupt */
+/* System-level timer interrupt */
 
-/* Why does this raise INT_Timer as well?
-   We could request an synchronous Windows timer that would trigger
-   the timer interrupt bit.  -- This does not seem to work!
-
-   INT_Global_GC: High-priority Windows polling interrupt.
+/* INT_Global_GC: High-priority Windows polling interrupt.
    INT_Global_1:  Windows polling interrupt.
-   INT_Timer:     Thread-switch timer interrupt.
  */
+
+#define CATATONIA_PERIOD	60000	/* msec */
+#define ASYNC_TIMER_PERIOD	50	/* msec */
 
 static void * timer_state = ((void *) NULL);
 
 static char *
 DEFUN_VOID (install_timer)
 {
-  switch (win32_install_async_timer (&Registers[0],
+  Registers[REGBLOCK_CATATONIA_COUNTER] = 0;
+  Registers[REGBLOCK_CATATONIA_LIMIT]
+    = (CATATONIA_PERIOD / ASYNC_TIMER_PERIOD);
+  switch (win32_install_async_timer (&timer_state,
+				     &Registers[0],
 				     REGBLOCK_MEMTOP,
 				     REGBLOCK_INT_CODE,
 				     REGBLOCK_INT_MASK,
-				     (INT_Global_GC
-				      | INT_Global_1),
-				     &timer_state))
+				     (INT_Global_GC | INT_Global_1),
+				     REGBLOCK_CATATONIA_COUNTER,
+				     WM_CATATONIC,
+				     master_tty_window))
   {
     case WIN32_ASYNC_TIMER_OK:
       return (NULL);

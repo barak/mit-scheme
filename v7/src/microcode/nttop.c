@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.9 1993/09/03 18:04:32 gjr Exp $
+$Id: nttop.c,v 1.10 1993/09/04 07:08:54 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -33,7 +33,6 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 #include "nt.h"
-#include "ntgui.h"
 #include "nttop.h"
 #include "osctty.h"
 #include "prims.h"
@@ -43,6 +42,7 @@ MIT in each case. */
 
 extern void EXFUN (execute_reload_cleanups, (void));
 
+extern void EXFUN (NT_gui_init, (void));
 extern void EXFUN (NT_initialize_channels, (void));
 extern void EXFUN (NT_initialize_directory_reader, (void));
 extern void EXFUN (NT_initialize_signals, (void));

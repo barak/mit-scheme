@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme32.c,v 1.4 1993/09/03 17:50:59 gjr Exp $
+$Id: scheme32.c,v 1.5 1993/09/04 07:01:12 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -90,6 +90,9 @@ struct win32_timer_closure_s
   unsigned long int_code_off;
   unsigned long int_mask_off;
   unsigned long bit_mask;
+  unsigned long ctr_off;
+  unsigned long message;
+  HWND window;
 };
 
 static void _stdcall
@@ -103,6 +106,17 @@ win32_nt_timer_tick (UINT wID, UINT wMsg, DWORD dwUser, DWORD dw1, DWORD dw2)
        & timer_closure->bit_mask)
       != 0)
     timer_closure->block[timer_closure->memtop_off] = ((unsigned long) -1);
+  timer_closure->block[timer_closure->ctr_off] += 1;
+  if ((timer_closure->block[timer_closure->ctr_off]
+       > timer_closure->block[timer_closure->ctr_off + 1])
+      && (timer_closure->block[timer_closure->ctr_off + 1] != 0))
+  {
+    PostMessage (timer_closure->window,
+		 timer_closure->message,
+		 ((WPARAM) 0),
+		 ((LPARAM) 0));
+    timer_closure->block[timer_closure->ctr_off] = 0;
+  }
   return;
 }
 
@@ -126,12 +140,15 @@ win32_flush_async_timer (void * state)
 }
 
 UINT
-win32_install_async_timer (unsigned long * block,
+win32_install_async_timer (void ** state_ptr,
+			   unsigned long * block,
 			   unsigned long memtop_off,
 			   unsigned long int_code_off,
 			   unsigned long int_mask_off,
 			   unsigned long bit_mask,
-			   void ** state_ptr)
+			   unsigned long ctr_off,
+			   unsigned long message,
+			   HWND window)
 {
   TIMECAPS tc;
   UINT wTimerRes;
@@ -152,12 +169,15 @@ win32_install_async_timer (unsigned long * block,
   if (timer_closure == ((struct win32_timer_closure_s *) NULL))
     return (WIN32_ASYNC_TIMER_NOMEM);
 
+  timer_closure->timer_id = 0;
   timer_closure->block = block;
   timer_closure->memtop_off = memtop_off;
   timer_closure->int_code_off = int_code_off;
   timer_closure->int_mask_off = int_mask_off;
   timer_closure->bit_mask = bit_mask;
-  timer_closure->timer_id = 0;
+  timer_closure->ctr_off = ctr_off;
+  timer_closure->message = message;
+  timer_closure->window = window;
 
   if ((! (VirtualLock (((void *) timer_closure),
 		       (sizeof (struct win32_timer_closure_s)))))

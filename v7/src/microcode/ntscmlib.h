@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscmlib.h,v 1.2 1993/08/21 03:38:52 gjr Exp $
+$Id: ntscmlib.h,v 1.3 1993/09/04 07:01:36 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -70,12 +70,16 @@ extern void
 			    unsigned long);		/* size */
 
 extern UINT
-  win32_install_async_timer (unsigned long *,		/* regs */
+  win32_install_async_timer (void **,			/* timer state */
+			     unsigned long *,		/* regs */
 			     unsigned long,		/* memtop off */
 			     unsigned long,		/* int_code off */
 			     unsigned long,		/* int_mask off */
 			     unsigned long,		/* mask */
-			     void **);			/* timer state */
+			     unsigned long, 		/* ctr_off */
+			     unsigned long,		/* message */
+			     HWND);			/* window */
+
 extern void
   win32_flush_async_timer (void *);
 
@@ -136,12 +140,15 @@ struct ntw32lib_vulock_s
 #define NTW32LIB_INSTALL_TIMER		3
 struct ntw32lib_itimer_s
 {
+  SCM_ULONG handle;		/* ->32 */
   SCM_ULPTR base;		/* ->16 */
   SCM_ULONG memtop_off;		/* ->16 */
   SCM_ULONG int_code_off;	/* ->16 */
   SCM_ULONG int_mask_off;	/* ->16 */
   SCM_ULONG bit_mask;		/* ->16 */
-  SCM_ULONG handle;		/* ->32 */
+  SCM_ULONG ctr_off;		/* ->16 */
+  SCM_ULONG message;		/* ->16 */
+  SCM_ULONG window;		/* ->16 */
 };
 
 #define NTW32LIB_FLUSH_TIMER		4

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.h,v 1.7 1993/09/03 17:57:40 gjr Exp $
+$Id: ntscreen.h,v 1.8 1993/09/04 07:06:11 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -166,7 +166,7 @@ BOOL  Screen_PeekEvent (HANDLE, SCREEN_EVENT *);
 //---------------------------------------------------------------------------
 
 #ifndef SCREEN_COMMAND_FIRST
-#define SCREEN_COMMAND_FIRST	WM_USER
+#define SCREEN_COMMAND_FIRST	(WM_USER + 10)
 #endif
 
 #define SCREEN_WRITE		(SCREEN_COMMAND_FIRST+0)

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.8 1993/09/03 17:56:44 gjr Exp $
+$Id: ntgui.c,v 1.9 1993/09/04 07:03:43 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -32,15 +32,15 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-#include "scheme.h"
-#include "prims.h"
-#include "nt.h"
-#include "os.h"
-#include "ntgui.h"
-#include "ntscreen.h"
-#include "ntdialog.h"
 #include <string.h>
 #include <stdarg.h>
+#include "scheme.h"
+#include "prims.h"
+#include "os.h"
+#include "nt.h"
+#include "ntdialog.h"
+#include "ntgui.h"
+#include "ntscreen.h"
 
 extern /*static*/ HANDLE  ghInstance = 0;
 
@@ -189,21 +189,35 @@ DEFUN_VOID (nt_gui_default_poll)
 }
 
 extern HANDLE master_tty_window;
+extern void catatonia_trigger (void);
+
+void
+catatonia_trigger (void)
+{
+  if ((MessageBox (master_tty_window,
+		   "Scheme appears to have become catatonic.\n"
+		   "OK to kill it?",
+		   "MIT Scheme",
+		   (MB_ICONSTOP | MB_OKCANCEL)))
+      == IDOK)
+  {
+    extern void termination_normal (int);
+    termination_normal (0);
+  }
+  else
+  {
+    Registers[REGBLOCK_CATATONIA_COUNTER] = 0;
+    return;
+  }
+}
 
 static void
 nt_gui_high_priority_poll (void)
 {
   MSG close_msg;
 
-  if (PeekMessage (&close_msg,
-		   master_tty_window,
-#if 0
-		   WM_HOTKEY,
-		   (WM_HOTKEY + 1),
-#else
-		   WM_CLOSE,
-		   (WM_CLOSE + 1),
-#endif
+  if (PeekMessage (&close_msg, master_tty_window,
+		   WM_CATATONIC, (WM_CATATONIC + 1),
 		   PM_REMOVE))
   {
     MIT_TranslateMessage (&close_msg);
@@ -211,7 +225,7 @@ nt_gui_high_priority_poll (void)
   }
   return;
 }
-
+
 DEFINE_PRIMITIVE ("MICROCODE-POLL-INTERRUPT-HANDLER",
                   Prim_microcode_poll_interrupt_handler, 2, 2,
 		  "NT High-priority timer interrupt handler for Windows I/O.")
@@ -228,6 +242,7 @@ DEFINE_PRIMITIVE ("MICROCODE-POLL-INTERRUPT-HANDLER",
   }
   else
   {
+    Registers[REGBLOCK_CATATONIA_COUNTER] = 0;
     nt_gui_default_poll ();
 #ifndef USE_WM_TIMER
     low_level_timer_tick ();
@@ -246,6 +261,8 @@ DEFINE_PRIMITIVE ("NT-DEFAULT-POLL-GUI", Prim_nt_default_poll_gui, 2, 2,
     PRIMITIVE_RETURN  (UNSPECIFIC);
   }
 }
+
+extern void EXFUN (NT_gui_init, (void));
 
 void
 DEFUN_VOID (NT_gui_init)

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.h,v 1.3 1993/06/24 02:14:39 gjr Exp $
+$Id: ntgui.h,v 1.4 1993/09/04 07:04:23 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -35,8 +35,6 @@ MIT in each case. */
 #ifndef SCM_NTGUI_H
 #define SCM_NTGUI_H
 
-void EXFUN (NT_gui_init, (void));
-
 #define IDM_NEW            100
 #define IDM_OPEN           101
 #define IDM_SAVE           102
@@ -55,5 +53,13 @@ void EXFUN (NT_gui_init, (void));
 #define IDM_HELPHELP       302
 #define IDM_ABOUT          303
 #define IDM_EMERGENCYKILL  400
+
+#ifndef REGBLOCK_CATATONIA_COUNTER
+/* They must be contiguous, with counter being lower. */
+# define REGBLOCK_CATATONIA_COUNTER REGBLOCK_MINIMUM_LENGTH
+# define REGBLOCK_CATATONIA_LIMIT   (REGBLOCK_MINIMUM_LENGTH + 1)
+#endif
+
+#define WM_CATATONIC (WM_USER)
 
 #endif /* SCM_NTGUI_H */
