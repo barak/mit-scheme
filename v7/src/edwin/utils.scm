@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: utils.scm,v 1.31 1993/01/20 10:35:53 cph Exp $
+;;;	$Id: utils.scm,v 1.32 1993/08/20 18:53:41 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -64,7 +64,7 @@
 	    (write-string "Unable" port)))
       (write-string " to allocate " port)
       (write (access-condition condition 'N-WORDS) port)
-      (write-string " of storage." port))))
+      (write-string " words of storage." port))))
 
 (define error:allocation-failure
   (condition-signaller condition-type:allocation-failure
