@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/window.scm,v 1.155 1992/03/13 10:52:40 cph Exp $
+;;;	$Id: window.scm,v 1.156 1996/05/14 01:24:18 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -220,33 +220,31 @@
   (let loop ((inferiors inferiors))
     (if (null? inferiors)
 	true
-	(and (or (not (or display-style
-			  (inferior-needs-redisplay? (car inferiors))))
-		 (update-inferior! (car inferiors) screen x-start y-start
-				   xl xu yl yu display-style updater))
+	(and (update-inferior! (car inferiors) screen x-start y-start
+			       xl xu yl yu display-style updater)
 	     (loop (cdr inferiors))))))
 
 (define (update-inferior! inferior screen x-start y-start xl xu yl yu
 			  display-style updater)
-  ;; Assumes (OR DISPLAY-STYLE (INFERIOR-NEEDS-REDISPLAY? INFERIOR))
-  (let ((window (inferior-window inferior))
-	(xi (inferior-x-start inferior))
-	(yi (inferior-y-start inferior)))
-    (and (or (not xi)
-	     (clip-window-region-1 (fix:- xl xi)
-				   (fix:- xu xi)
-				   (window-x-size window)
-	       (lambda (xl xu)
-		 (clip-window-region-1 (fix:- yl yi)
-				       (fix:- yu yi)
-				       (window-y-size window)
-		   (lambda (yl yu)
-		     (updater window
-			      screen (fix:+ x-start xi) (fix:+ y-start yi)
-			      xl xu yl yu display-style))))))
-	 (begin
-	   (set-car! (inferior-redisplay-flags inferior) false)
-	   true))))
+  (or (not (or display-style (inferior-needs-redisplay? inferior)))
+      (let ((window (inferior-window inferior))
+	    (xi (inferior-x-start inferior))
+	    (yi (inferior-y-start inferior)))
+	(and (or (not xi)
+		 (clip-window-region-1 (fix:- xl xi)
+				       (fix:- xu xi)
+				       (window-x-size window)
+		   (lambda (xl xu)
+		     (clip-window-region-1 (fix:- yl yi)
+					   (fix:- yu yi)
+					   (window-y-size window)
+		       (lambda (yl yu)
+			 (updater window
+				  screen (fix:+ x-start xi) (fix:+ y-start yi)
+				  xl xu yl yu display-style))))))
+	     (begin
+	       (set-car! (inferior-redisplay-flags inferior) #f)
+	       #t)))))
 
 (declare (integrate-operator clip-window-region-1))
 (define (clip-window-region-1 al au bs receiver)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwin.scm,v 1.304 1995/02/16 22:45:37 cph Exp $
+;;;	$Id: bufwin.scm,v 1.305 1996/05/14 01:24:10 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -762,17 +762,13 @@
   (if (%window-override-string window)
       (update-override-string! window screen x-start y-start xl xu yl yu)
       (update-outlines! window))
-  (let ((inferior (%window-blank-inferior window)))
-    (if (or display-style (inferior-needs-redisplay? inferior))
-	(update-inferior! inferior screen x-start y-start
-			  xl xu yl yu display-style
-			  blank-window:update-display!)))
-  (let ((inferior (%window-cursor-inferior window)))
-    (if (or display-style (inferior-needs-redisplay? inferior))
-	(update-inferior! inferior screen x-start y-start
-			  xl xu yl yu display-style
-			  cursor-window:update-display!)))
-  true)
+  (update-inferior! (%window-blank-inferior window) screen x-start y-start
+		    xl xu yl yu display-style
+		    blank-window:update-display!)
+  (update-inferior! (%window-cursor-inferior window) screen x-start y-start
+		    xl xu yl yu display-style
+		    cursor-window:update-display!)
+  #t)
 
 (define (buffer-window/redraw! window)
   (if (%window-debug-trace window)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: buffrm.scm,v 1.50 1994/09/08 20:34:04 adams Exp $
+;;;	$Id: buffrm.scm,v 1.51 1996/05/14 01:24:05 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -88,20 +88,17 @@
 (define-method buffer-frame (:update-display! window screen x-start y-start
 					      xl xu yl yu display-style)
   ;; Assumes that interrupts are disabled.
-  (if (or display-style (inferior-needs-redisplay? text-inferior))
-      (update-inferior! text-inferior screen x-start y-start
-			xl xu yl yu display-style
-			buffer-window:update-display!))
-  (if (and modeline-inferior
-	   (or display-style (inferior-needs-redisplay? modeline-inferior)))
+  (update-inferior! text-inferior screen x-start y-start
+		    xl xu yl yu display-style
+		    buffer-window:update-display!)
+  (if modeline-inferior
       (update-inferior! modeline-inferior screen x-start y-start
 			xl xu yl yu display-style
 			modeline-window:update-display!))
-  (if (or display-style (inferior-needs-redisplay? border-inferior))
-      (update-inferior! border-inferior screen x-start y-start
-			xl xu yl yu display-style
-			vertical-border-window:update-display!))
-  true)
+  (update-inferior! border-inferior screen x-start y-start
+		    xl xu yl yu display-style
+		    vertical-border-window:update-display!)
+  #t)
 
 (define (initial-modeline! frame modeline?)
   ;; **** Kludge: The text-inferior will generate modeline events, so
