@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.11 1997/05/15 00:18:35 cph Exp $
+$Id: graphics.scm,v 1.12 1997/05/15 03:11:58 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -340,6 +340,38 @@ MIT in each case. |#
   (create-palette pal)
 )
 
+(define (external-palette? object)
+  (and (vector? object)
+       (let ((l (vector-length object)))
+	 (and (<= 2 l 256)
+	      (let loop ((i 0))
+		(or (= i l)
+		    (and (let ((elt (vector-ref object i)))
+			   (and (exact-nonnegative-integer? elt)
+				(< elt #x100000000)))
+			 (loop (+ i 1)))))))))
+
+(define (convert-palette external)
+  (let ((s (make-string (+ 4 (* 4 256))))
+	(n-entries (vector-length external)))
+    (vector-8b-set! s 0 #x00)
+    (vector-8b-set! s 1 #x03)
+    (vector-8b-set! s 2 (fix:and #xFF n-entries))
+    (vector-8b-set! s 3 (fix:and #xFF (fix:lsh n-entries -8)))
+    (do ((i 0 (fix:+ i 1))
+	 (j 4 (fix:+ j 4)))
+	((fix:= i n-entries))
+      (let ((elt (vector-ref external i)))
+	(let ((rgb (remainder elt #x1000000))
+	      (bits (quotient elt #x1000000)))
+	  (vector-8b-set! s j (fix:and #xFF elt))
+	  (vector-8b-set! s (fix:+ j 1) (fix:and #xFF (fix:lsh elt -8)))
+	  (vector-8b-set! s (fix:+ j 2) (fix:and #xFF (fix:lsh elt -16)))
+	  (vector-8b-set! s (fix:+ j 3)
+			  (if (or (fix:= 0 rgb) (fix:= #xFFFFFF rgb))
+			      0
+			      bits)))))
+    (create-palette s)))
 
 (define (client-width->window-width w)
   (+ w (* 2 (get-system-metrics SM_CXFRAME))))
@@ -353,17 +385,17 @@ MIT in each case. |#
 (define device-protection-list)
 
 (define (win32-graphics/open descriptor->device 
-			     #!optional width height palette-kind)
+			     #!optional width height palette)
   (let* ((width   (if (default-object? width)  512 width))
          (height  (if (default-object? height) 512 height))
 	 (palette
-	    (cond ((default-object? palette-kind)    (make-standard-palette))
-		  ((eq? palette-kind 'grayscale)     (make-grayscale-palette))
-		  ((eq? palette-kind 'grayscale-128) 
-		                                 (make-grayscale-128-palette))
-		  ((eq? palette-kind 'standard)      (make-standard-palette))
-		  ((eq? palette-kind 'system)        #f)
-		  (else  #f)))
+	  (cond ((default-object? palette) (make-standard-palette))
+		((eq? palette 'GRAYSCALE) (make-grayscale-palette))
+		((eq? palette 'GRAYSCALE-128) (make-grayscale-128-palette))
+		((eq? palette 'STANDARD) (make-standard-palette))
+		((eq? palette 'SYSTEM) #f)
+		((external-palette? palette) (convert-palette palette))
+		(else #f)))
          (descriptor (make-win32-device width height palette))
 	 (wndproc    (make-scheme-graphics-wndproc descriptor))
          (w
@@ -382,7 +414,6 @@ MIT in each case. |#
     (let ((device (descriptor->device descriptor)))
       (protection-list/add! device-protection-list device descriptor)
       device)))
-
 
 (define (win32-device/select-pen window)
   (let* ((hdc      (win32-device/hdc window))
@@ -678,7 +709,8 @@ MIT in each case. |#
 (define color-table)
 
 (define (win32/define-color name spec)
-  (set! color-table (cons (cons name (win32/find-color spec)) color-table)))
+  (set! color-table (cons (cons name (win32/find-color spec)) color-table))
+  unspecific)
 
 (define (win32/find-color spec)
   (define (rgb r g b)
@@ -690,13 +722,23 @@ MIT in each case. |#
       (rgb (string->number (substring spec    1 pos1) 16)
 	   (string->number (substring spec pos1 pos2) 16)
 	   (string->number (substring spec pos2 pos3) 16))))
-  (cond ((integer? spec)
+  (define (dim? x)
+    (and (exact-nonnegative-integer? x)
+	 (<= x #x100)))
+  (cond ((and (exact-nonnegative-integer? spec) (<= spec #x1000000))
 	 spec)
-        ((and (vector? spec) (= (vector-length spec) 3))
+        ((and (vector? spec)
+	      (= 3 (vector-length spec))
+	      (dim? (vector-ref spec 0))
+	      (dim? (vector-ref spec 1))
+	      (dim? (vector-ref spec 2)))
 	 (rgb (vector-ref spec 0) (vector-ref spec 1) (vector-ref spec 2)))
-        ((and (list? spec) (= (length spec) 3))
+        ((and (list? spec)
+	      (= 3 (length spec))
+	      (for-all? spec dim?))
 	 (rgb (list-ref spec 0) (list-ref spec 1) (list-ref spec 2)))
-	((and (string? spec) (= (string-length spec) 7)
+	((and (string? spec)
+	      (= 7 (string-length spec))
 	      (char=? (string-ref spec 0) #\#))
 	 (rgb-hex spec 2))
 	((string? spec)
