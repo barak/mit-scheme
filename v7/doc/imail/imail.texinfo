@@ -2,15 +2,15 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.5 2000/07/11 02:50:44 cph Exp $
+@comment $Id: imail.texinfo,v 1.6 2000/07/11 21:04:28 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
 @comment %**end of header (This is for running Texinfo on a region.)
-@setchapternewpage odd
-@syncodeindex vr cp
-@syncodeindex fn cp
-@syncodeindex ky cp
+@setchapternewpage on
+@headings double
+@syncodeindex pg cp
+@syncodeindex tp cp
 
 @ifinfo
 This file documents the use of MIT Scheme.
@@ -27,12 +27,11 @@ Free Documentation License".
 
 @titlepage
 @title{IMAIL User's Manual}
-@subtitle Edition 0.2
-@subtitle 10 July 2000
+@subtitle Edition 0.3 for IMAIL Version 1.4
+@subtitle 11 July 2000
 @author by Chris Hanson
 
 @page
-
 @vskip 0pt plus 1filll
 Copyright @copyright{} 2000 Massachusetts Institute of Technology
 
@@ -44,14 +43,14 @@ Texts.  A copy of the license is included in the section entitled "GNU
 Free Documentation License".
 @end titlepage
 
+@ifnottex
 @node Top, Introduction, (dir), (dir)
+@top IMAIL
 
-@ifinfo
-This Info file is the user's guide for the @sc{imail} email reader, a
-part of MIT Scheme.  It describes how to use @sc{imail}, what features
-it provides for viewing and editing email, and how to customize its
-optional behavior.
-@end ifinfo
+@acronym{IMAIL} is an email-reading program for MIT Scheme.  This manual
+describes how to use @acronym{IMAIL}, what features it provides for
+viewing and editing email, and how to customize its optional behavior.
+@end ifnottex
 
 @menu
 * Introduction::                
@@ -59,66 +58,72 @@ optional behavior.
 * Concepts::                    
 * Commands::                    
 * Variables::                   
-* Index::                       
+* GNU Free Documentation License::  
+* Key Index::                   
+* Command Index::               
+* Variable Index::              
+* Concept Index::               
 @end menu
 
 @node Introduction, Getting Started, Top, Top
 @chapter Introduction
 
 @cindex Internet Message Access Protocol
-@cindex @sc{imap}
-@cindex @sc{rfc} 2060
-@sc{imail} is a program for reading electronic mail.  It uses the
-@dfn{Internet Message Access Protocol} (@sc{imap})
-(@uref{http://@-www.ietf.org/@-rfc/@-rfc2060.txt, @sc{rfc} 2060}) to
-access mail that is stored on a server, from which @sc{imail} fetches
-individual messages on demand.  The server may have many different
-@dfn{folders} in which messages are stored, arranged in a hierarchical
-structure like that of a file system.  Messages are easily moved or
-copied from one folder to another.
+@cindex IMAP
+@cindex RFC 2060
+@acronym{IMAIL} is a program for reading electronic mail.  It uses the
+@dfn{Internet Message Access Protocol} (@acronym{IMAP},
+@uref{http://www.ietf.org/rfc/rfc2060.txt, , @acronym{RFC} 2060}) to
+access mail that is stored on a server, from which @acronym{IMAIL}
+fetches individual messages on demand.  The server may have many
+different @dfn{folders} in which messages are stored, arranged in a
+hierarchical structure like that of a file system.  Messages are easily
+moved or copied from one folder to another.
 
 @cindex Multipurpose Internet Mail Extensions
-@cindex @sc{mime}
-@cindex @sc{rfc} 2045
-@sc{imap} also supports the @dfn{Multipurpose Internet Mail Extensions}
-(@sc{mime}) (@uref{http://@-www.ietf.org/@-rfc/@-rfc2045.txt, @sc{rfc}
-2045}), which allows the sending and receiving of @dfn{attachments}.
-The @sc{imap} protocol supports this by allowing you to fetch some parts
-of a mail message while leaving others on the server.  So, for example,
-if you receive a message containing a large attachment, it is possible
-to view the text of the message without waiting for the attachment to be
-fetched from the server; the attachment is fetched only if you want to
-view or save it.  If you aren't interested in the attachment, you can
-delete the message without ever fetching it from the server.
+@cindex MIME
+@cindex RFC 2045
+@acronym{IMAP} also supports the @dfn{Multipurpose Internet Mail
+Extensions} (@acronym{MIME}, @uref{http://www.ietf.org/rfc/rfc2045.txt,
+, @acronym{RFC} 2045}), which facilitate the sending and receiving of
+@dfn{attachments}.  The @acronym{IMAP} protocol supports this by
+allowing you to fetch some parts of a mail message while leaving others
+on the server.  So, for example, if you receive a message containing a
+large attachment, it is possible to view the text of the message without
+waiting for the attachment to be fetched from the server; the attachment
+is fetched only if you want to view or save it.  If you aren't
+interested in the attachment, you can delete the message without ever
+fetching it from the server.
 
 @cindex Rmail
-In addition to these features, @sc{imail} provides a user interface very
-similar to that of the Emacs Rmail mail reader (@pxref{Rmail, Rmail,
-Rmail, emacs-e20, GNU Emacs Manual}).  @sc{imail} supports most of the
-same commands and has most of the same key bindings as Rmail.
-@sc{imail} is primarily intended to be an Rmail replacement for people
-who wish to read their mail using an @sc{imap} server.  @sc{imail} can
-also read and write Rmail files and unix mail (mbox) files, and provides
-the ability to copy messages from such a file to an @sc{imap} folder, or
-vice versa; this greatly simplifies the transition from Rmail to
-@sc{imail} for those of us who have large amounts of mail stored in
-files.
+In addition to these features, @acronym{IMAIL} provides a user interface
+very similar to that of the Emacs Rmail mail reader (@pxref{Rmail,
+Rmail, Rmail, emacs-e20, the GNU Emacs Manual}).  @acronym{IMAIL}
+supports most of the same commands and has most of the same key bindings
+as Rmail.  @acronym{IMAIL} is primarily intended to be an Rmail
+replacement for people who wish to read their mail using an
+@acronym{IMAP} server.  @acronym{IMAIL} can also read and write Rmail
+files and unix mail (mbox) files, and provides the ability to copy
+messages from such a file to an @acronym{IMAP} folder, or vice versa;
+this greatly simplifies the transition from Rmail to @acronym{IMAIL} for
+those of us who have large amounts of mail stored in files.
 
 @node Getting Started, Concepts, Introduction, Top
 @chapter Getting Started
 
-At present, @sc{imail} has only a very simple mechanism for connecting
-to an @sc{imap} server: it makes an unencrypted connection to the
-server, and logs in with a user name and a password.  In the near
-future, we will implement @sc{cram-md5} authentication.  However, we
-have no plans to offer encryption for the connection.
-
-Here at MIT, we connect to our server using
-@uref{http://@-www.stunnel.org/, stunnel} to provide end-to-end
+@cindex RFC 2095
+At present, @acronym{IMAIL} has only a very simple mechanism for
+connecting to an @acronym{IMAP} server: it makes an unencrypted
+connection to the server, and logs in with a user name and a password.
+In the near future, we will implement @acronym{CRAM-MD5} authentication
+(defined in @uref{http://www.ietf.org/rfc/rfc2095.txt, , @acronym{RFC}
+2095}).  However, we have no plans to implement data-stream encryption
+for the connection.@footnote{Here at MIT, we connect to our server using
+@uref{http://www.stunnel.org/, @command{stunnel}} to provide end-to-end
 encryption.  This provides connection security without the need to
-integrate the encryption into the client or the server.
+integrate the encryption into the client or the server.}
 
-To use @sc{imail}, you must create an Edwin init file, called
+To use @acronym{IMAIL}, you must create an Edwin init file, called
 @file{~/.edwin} on unix machines or @file{edwin.ini} on Windows or OS/2
 machines.  This file contains arbitrary Scheme expressions that are
 evaluated in the Edwin environment when Edwin is started.  In addition
@@ -130,7 +135,7 @@ following expression:
 @end example
 
 @noindent
-Next, you must tell Edwin where to find your @sc{imap} server, by
+Next, you must tell Edwin where to find your @acronym{IMAP} server, by
 setting some variables; the expression to do this must follow the call
 to @code{load-option}.  Here is an example:
 
@@ -145,24 +150,26 @@ to @code{load-option}.  Here is an example:
 Note that this is syntactically similar to Scheme's @code{set!} special
 form, but that it modifies the value of an Edwin editor variable rather
 than a Scheme variable.  There are several other variables that control
-how @sc{imail} connects to the server.  @xref{Variables}, for a complete
-list.  By default, @sc{imail} tries to connect to @samp{localhost} using
-port @code{143}, and to log in using the user name that you are logged
-in as.  This is the right default if you are using stunnel on the
-client.
+how @acronym{IMAIL} connects to the server.  @xref{Variables}, for a
+complete list.  By default, @acronym{IMAIL} tries to connect to
+@samp{localhost} using port @code{143}, and to log in using the user
+name that you are logged in as.  This is the right default if you are
+using stunnel on the client.
 
+@findex load-file
 After you are finished creating the init file, you can either restart
 Edwin, or you can load the file using @kbd{M-x load-file}.  At this
-point, you are ready to run @sc{imail}.  To start @sc{imail} and read
-the mail in the @samp{inbox} folder on your @sc{imap} server, type
-@kbd{M-x imail}.
+point, you are ready to run @acronym{IMAIL}.  To start @acronym{IMAIL}
+and read the mail in the @samp{inbox} folder on your @acronym{IMAP}
+server, type @kbd{M-x imail}.
 
 @node Concepts, Commands, Getting Started, Top
 @chapter Concepts
 
-To use @sc{imail} effectively, it is helpful to know the terminology and
-understand the concepts underlying @sc{imail}'s design.  Here we will
-introduce you to messages, folders, @sc{url}s, and server connections.
+To use @acronym{IMAIL} effectively, it is helpful to know the
+terminology and understand the concepts underlying @acronym{IMAIL}'s
+design.  Here we will introduce you to messages, folders,
+@acronym{URL}s, and server connections.
 
 @menu
 * Messages::                    
@@ -176,80 +183,81 @@ introduce you to messages, folders, @sc{url}s, and server connections.
 
 @cindex message
 @cindex email message
-@cindex @sc{rfc} 821
-@cindex @sc{rfc} 822
-@cindex @sc{smtp}
+@cindex RFC 821
+@cindex RFC 822
+@cindex SMTP
 A @dfn{message}, or @dfn{email message}, is the basic unit of electronic
 mail.  The format of a message is defined by
-@uref{http://@-www.ietf.org/@-rfc/@-rfc0822.txt, @sc{rfc} 822}.  Nearly
+@uref{http://www.ietf.org/rfc/rfc0822.txt, , @acronym{RFC} 822}.  Nearly
 all email messages are transmitted over the internet, which means that
-the contents of such messages are further constrained by the @sc{smtp}
-protocol that is used for internet message transmission, as defined in
-@uref{http://@-www.ietf.org/@-rfc/@-rfc0821.txt, @sc{rfc} 821}.
-
-In brief, the primary constraints on an email message is that it may
-contain only printable @sc{us-ascii} characters, and that lines of text
-in the message may not exceed 1000 characters, @emph{including} the
-carriage-return/linefeed pair at the end of each line.
+the contents of such messages are further constrained by the
+@acronym{SMTP} protocol that is used for internet message transmission,
+as defined in @uref{http://www.ietf.org/rfc/rfc0821.txt, , @acronym{RFC}
+821}.
 
 @cindex Multipurpose Internet Mail Extensions
-@cindex @sc{mime}
-@cindex @sc{rfc} 2045
-These constraints are fairly strict, and do not permit messages to
-contain text in other languages, or to contain non-textual data such as
-images.  The @dfn{Multipurpose Internet Mail Extensions} (@sc{mime})
-(@uref{http://@-www.ietf.org/@-rfc/@-rfc2045.txt, @sc{rfc} 2045})
-provide a way to encode other kinds of text and data so that they can be
-carried in an email message.  Most modern email software supports the
-@sc{mime} standard, with some notable exceptions, including particularly
-Emacs Rmail.
+@cindex MIME
+@cindex RFC 2045
+In brief, the primary constraints on an email message is that it may
+contain only printable @acronym{US-ASCII} characters, and that lines of
+text in the message may not exceed 1000 characters, @emph{including} the
+carriage-return/linefeed pair at the end of each line.  These
+constraints are fairly strict, and do not permit messages to contain
+text in languages other than English, or to contain non-textual data
+such as images.  The @dfn{Multipurpose Internet Mail Extensions}
+(@acronym{MIME}, @uref{http://www.ietf.org/rfc/rfc2045.txt, ,
+@acronym{RFC} 2045}) provide a way to encode other kinds of text and
+data so that they can be carried in an email message.  Most modern email
+software supports the @acronym{MIME} standard, with some notable
+exceptions, including particularly Emacs Rmail.
 
 @node Folders, URLs, Messages, Concepts
 @section Folders
 
 @cindex folder
 Another important concept is a means for grouping messages together.
-All email software provides some means for doing this, and @sc{imail} is
-no exception.  @sc{imail} provides objects called @dfn{folders}.  A
-folder is just a container that holds an arbitrary number of email
-messages.  Messages can be added to a folder, deleted from a folder,
-and moved or copied from one folder to another.
+All email software provides some means for doing this, and
+@acronym{IMAIL} is no exception.  @acronym{IMAIL} provides objects
+called @dfn{folders}.  A folder is just a container that holds an
+arbitrary number of email messages.  Messages can be added to a folder,
+deleted from a folder, and moved or copied from one folder to another.
 
 @cindex Rmail file
-@cindex @sc{babyl} file
+@cindex BABYL file
 @cindex unix mailbox file
 @cindex mbox file
-@cindex @sc{imap} mailbox
+@cindex IMAP mailbox
 @cindex folder type
 @cindex type of folder
-In @sc{imail}, the concept of the folder is used to embrace different
-grouping mechanisms.  This is because @sc{imail} provides a uniform
-means for accessing different kinds of email systems.  In particular,
-@sc{imail} supports access to Emacs Rmail files (also known as
-@sc{babyl} files, for historical reasons), to unix mailbox files
-(sometimes called @dfn{mbox} files), and to @sc{imap} mailboxes.  Each
-of these grouping mechanisms, although implemented very differently, is
-viewed as a folder by @sc{imail}.  With some exceptions, each of these
-different @dfn{types} of folder are treated exactly the same by
-@sc{imail}.  Finally, because @sc{imail} is extensible, other types of
-folders may be supported in the future.
+In @acronym{IMAIL}, the concept of the folder is used to embrace
+different grouping mechanisms.  This is because @acronym{IMAIL} provides
+a uniform means for accessing different kinds of email systems.  In
+particular, @acronym{IMAIL} supports access to Emacs Rmail files (also
+known as BABYL files, for historical reasons), to unix mailbox files
+(sometimes called @dfn{mbox} files), and to @acronym{IMAP} mailboxes.
+Each of these grouping mechanisms, although implemented very
+differently, is viewed as a folder by @acronym{IMAIL}.  With some
+exceptions, each of these different @dfn{types} of folder are treated
+exactly the same by @acronym{IMAIL}.  Finally, because @acronym{IMAIL}
+is extensible, other types of folders may be supported in the future.
 
 @node URLs, Server Connections, Folders, Concepts
 @section URLs
 
 @cindex Uniform Resource Locator
-@cindex @sc{url}
-@cindex @sc{rfc} 1738
-@cindex @sc{rfc} 2396
+@cindex URL
+@cindex RFC 1738
+@cindex RFC 2396
 In email software like Rmail, where mail is stored in files, filenames
-are used to refer to groups of messages.  Since @sc{imail} folders often
-aren't files, it is necessary to use a more general kind of reference
-for folders.  To this end, @sc{imail} uses @dfn{Uniform Resource
-Locators} (@sc{url}s) to refer to folders.@footnote{@sc{url}s are
-defined in @uref{http://@-www.ietf.org/@-rfc/@-rfc1738.txt, @sc{rfc}
-1738} and @uref{http://@-www.ietf.org/@-rfc/@-rfc2396.txt, @sc{rfc}
-2396}.} @sc{imail} currently supports two kinds of @sc{url}s: @sc{imap}
-@sc{url}s and file @sc{url}s.
+are used to refer to groups of messages.  Since @acronym{IMAIL} folders
+often aren't files, it is necessary to use a more general kind of
+reference for folders.  To this end, @acronym{IMAIL} uses @dfn{Uniform
+Resource Locators} (@acronym{URL}s) to refer to
+folders.@footnote{@acronym{URL}s are defined in
+@uref{http://www.ietf.org/rfc/rfc1738.txt, , @acronym{RFC} 1738} and
+@uref{http://www.ietf.org/rfc/rfc2396.txt, , @acronym{RFC} 2396}.}
+@acronym{IMAIL} currently supports two kinds of @acronym{URL}s:
+@acronym{IMAP} @acronym{URL}s and file @acronym{URL}s.
 
 @menu
 * IMAP URLs::                   
@@ -259,13 +267,13 @@ defined in @uref{http://@-www.ietf.org/@-rfc/@-rfc1738.txt, @sc{rfc}
 @node IMAP URLs, File URLs, URLs, URLs
 @subsection IMAP URLs
 
-@cindex @sc{imap} @sc{url}
-@cindex @sc{url}, @sc{imap}
-The first kind of @sc{url} is an @sc{imap} @sc{url},@footnote{The syntax
-for @sc{imap} @sc{url}s is defined by
-@uref{http://@-www.ietf.org/@-rfc/@-rfc2192.txt, @sc{rfc} 2192}, except
-that @sc{imail} uses only a subset of the defined syntax.} which looks
-like this:
+@cindex IMAP URL
+@cindex URL, IMAP
+The first kind of @acronym{URL} is an @acronym{IMAP}
+@acronym{URL},@footnote{The syntax for @acronym{IMAP} @acronym{URL}s is
+defined by @uref{http://www.ietf.org/rfc/rfc2192.txt, , @acronym{RFC}
+2192}, except that @acronym{IMAIL} uses only a subset of the defined
+syntax.} which looks like this:
 
 @example
 imap://@var{uname}@@@var{hostname}:@var{port}/@var{mailbox}
@@ -273,19 +281,20 @@ imap://@var{uname}@@@var{hostname}:@var{port}/@var{mailbox}
 
 @noindent
 In this syntax, the parts @samp{@var{uname}@@} and @samp{:@var{port}}
-are optional.  @var{Hostname} is the internet host name or @sc{ip}
-address of the @sc{imap} server.  @var{Uname} is the user name that
+are optional.  @var{Hostname} is the internet host name or @acronym{IP}
+address of the @acronym{IMAP} server.  @var{Uname} is the user name that
 identifies the account to be accessed on the server; this defaults to
-your user name.  @var{Port} is the server's @sc{ip} port; this defaults
-to @code{143} and is normally not specified.
+your user name.  @var{Port} is the server's @acronym{IP} port; this
+defaults to @code{143} and is normally not specified.
 
 @cindex hierarchical mailbox
-@var{Mailbox} specifies the @sc{imap} mailbox (or folder, in
-@sc{imail}'s terminology) that is being referred to.  Since most
-@sc{imap} servers support hierarchical mailboxes, @var{mailbox} is a
-structured component indicating the location of the folder in the
-hierarchy, much like filenames or @sc{http} @sc{url}s.  Here are some
-examples of @sc{imap} @sc{url}s showing different mailbox paths:
+@var{Mailbox} specifies the @acronym{IMAP} mailbox (or folder, in
+@acronym{IMAIL}'s terminology) that is being referred to.  Since most
+@acronym{IMAP} servers support hierarchical mailboxes, @var{mailbox} is
+a structured component indicating the location of the folder in the
+hierarchy, much like filenames or @acronym{HTTP} @acronym{URL}s.  Here
+are some examples of @acronym{IMAP} @acronym{URL}s showing different
+mailbox paths:
 
 @example
 imap://localhost/inbox
@@ -295,46 +304,48 @@ imap://localhost/inbox/sysadmin/equipment
 
 @noindent
 @cindex inbox
-@cindex primary @sc{imap} mailbox
-Here you see several interesting properties of @sc{imap} mailboxes.  The
-first @sc{url} refers to the primary @sc{imap} mailbox for this account,
-called the @dfn{inbox}.  All @sc{imap} servers must support this
-mailbox, which is always called @samp{inbox}; the name is not case
-sensitive and may be typed in any combination of upper or lower case
-letters.  However, case sensitivity for names other than @samp{inbox} is
-undefined by @sc{imap}, so @sc{imail} treats all other names as if they
-were case sensitive.
+@cindex primary IMAP mailbox
+Here you see several interesting properties of @acronym{IMAP} mailboxes.
+The first @acronym{URL} refers to the primary @acronym{IMAP} mailbox for
+this account, called the @dfn{inbox}.  All @acronym{IMAP} servers must
+support this mailbox, which is always called @samp{inbox}; the name is
+not case sensitive and may be typed in any combination of upper or lower
+case letters.  However, case sensitivity for names other than
+@samp{inbox} is undefined by @acronym{IMAP}, so @acronym{IMAIL} treats
+all other names as if they were case sensitive.
 
-@cindex heirarchical @sc{imap} mailbox
-The second and third @sc{url}s show how hierarchically-nested mailboxes
-are referred to: by writing the components of the path, separated by
-slashes.  Note that @sc{imap} does not require particular path-separator
-characters for hierarchical names, and in fact different @sc{imap}
-servers use different separators.  However, @sc{imail} @emph{always}
-uses the forward-slash character as a separator, and translates to the
-server's character as needed.@footnote{This is in opposition to
-@uref{http://@-www.ietf.org/@-rfc/@-rfc2192.txt, @sc{rfc} 2192}, which
+@cindex heirarchical IMAP mailbox
+The second and third @acronym{URL}s show how hierarchically-nested
+mailboxes are referred to: by writing the components of the path,
+separated by slashes.  Note that @acronym{IMAP} does not require
+particular path-separator characters for hierarchical names, and in fact
+different @acronym{IMAP} servers use different separators.  However,
+@acronym{IMAIL} @emph{always} uses the forward-slash character as a
+separator, and translates to the server's character as
+needed.@footnote{This is in opposition to
+@uref{http://www.ietf.org/rfc/rfc2192.txt, , @acronym{RFC} 2192}, which
 specifies use of the server-specific separator.
-@uref{http://@-www.ietf.org/@-rfc/@-rfc2396.txt, @sc{rfc} 2396} and
-@uref{http://@-www.ietf.org/@-rfc/@-rfc2718.txt, @sc{rfc} 2718} provide
+@uref{http://www.ietf.org/rfc/rfc2396.txt, , @acronym{RFC} 2396} and
+@uref{http://www.ietf.org/rfc/rfc2718.txt, , @acronym{RFC} 2718} provide
 compelling arguments against this design.}
 
 @cindex Cyrus
-Another thing to note about these examples is that @sc{imap}, unlike
-most file systems, allows a folder to contain messages @emph{and} to
-have subfolders.  This includes the @samp{inbox} folder, as shown here.
-At least one server (@uref{http://@-asg.web.cmu.edu/cyrus/, Cyrus}) puts
-@emph{all} subfolders for a user account under @samp{inbox}, but this is
-not required by @sc{imap} and is not generally true.
+Another thing to note about these examples is that @acronym{IMAP},
+unlike most file systems, allows a folder to contain messages @emph{and}
+to have subfolders.  This includes the @samp{inbox} folder, as shown
+here.  At least one server (@uref{http://asg.web.cmu.edu/cyrus/, ,
+Cyrus}) puts @emph{all} subfolders for a user account under
+@samp{inbox}, but this is not required by @acronym{IMAP} and is not
+generally true.
 
 @node File URLs,  , IMAP URLs, URLs
 @subsection File URLs
 
-There are two other @sc{url} types supported by @sc{imail}: Rmail
-@sc{url}s and unix mailbox @sc{url}s.  Both of these use the same
-syntax, which is exactly the same as the @samp{file:} @sc{url}
-syntax,@footnote{File @sc{url}s are defined in
-@uref{http://@-www.ietf.org/@-rfc/@-rfc1738.txt, @sc{rfc} 1738}.} as
+There are two other @acronym{URL} types supported by @acronym{IMAIL}:
+Rmail @acronym{URL}s and unix mailbox @acronym{URL}s.  Both of these use
+the same syntax, which is exactly the same as the @samp{file:}
+@acronym{URL} syntax,@footnote{File @acronym{URL}s are defined in
+@uref{http://www.ietf.org/rfc/rfc1738.txt, , @acronym{RFC} 1738}.} as
 follows:
 
 @example
@@ -346,15 +357,16 @@ umail://@var{hostname}/@var{pathname}
 
 @noindent
 Here @var{hostname} refers to the host on which the file (folder)
-resides.  Since @sc{imail} supports only files on the local file system,
-@var{hostname} must be @samp{localhost}; it may also be omitted, as in
+resides.  Since @acronym{IMAIL} supports only files on the local file
+system, @var{hostname} must be @samp{localhost}; it may also be omitted,
+as in
 
 @example
 rmail:///@var{pathname}
 @end example
 
 @noindent
-@sc{imail} also supports a non-standard abbreviation:
+@acronym{IMAIL} also supports a non-standard abbreviation:
 
 @example
 rmail:/@var{pathname}
@@ -366,33 +378,33 @@ file.  (In the future, this design may be changed to use the
 @samp{file:} prefix for both types, and determine the file's type from
 its content.)
 
-As specified by the @sc{url} standard, @var{pathname} is a
+As specified by the @acronym{URL} standard, @var{pathname} is a
 slash-separated sequence of path components, where unusual characters
 appearing in the components, such as the space character, are specially
-encoded.  However, @sc{imail} will accept nearly any character in a
+encoded.  However, @acronym{IMAIL} will accept nearly any character in a
 component, and encode it if required; with few exceptions you can type
-any pathname without encoding.  @sc{imail} always displays @sc{url}s
-with proper encoding.
+any pathname without encoding.  @acronym{IMAIL} always displays
+@acronym{URL}s with proper encoding.
 
 In practice, this means that most unix filenames are written verbatim,
 with exceptions for special characters, and with the leading slash
-omitted.  However, @sc{dos}-style filenames, as used by Windows and
+omitted.  However, @acronym{DOS}-style filenames, as used by Windows and
 OS/2, must be specially rewritten to conform to this style.
 
-The rewriting rules for @sc{dos} file @sc{url}s are not specified by the
-standard, so consequently @sc{imail} defines its own rules for this
-encoding, as follows.  A @sc{dos} filename is encoded by replacing all
-of the backslash characters with forward-slash characters, and by
-encoding unusual characters in the path components.  Finally, the drive
-letter is prefixed to the path with an additional forward-slash
-separator.  So for, example, the filename
+The rewriting rules for @acronym{DOS} file @acronym{URL}s are not
+specified by the standard, so consequently @acronym{IMAIL} defines its
+own rules for this encoding, as follows.  A @acronym{DOS} filename is
+encoded by replacing all of the backslash characters with forward-slash
+characters, and by encoding unusual characters in the path components.
+Finally, the drive letter is prefixed to the path with an additional
+forward-slash separator.  So for, example, the filename
 
 @example
 C:\My Documents\Mail\My Mail.rmail
 @end example
 
 @noindent
-becomes the @sc{url}
+becomes the @acronym{URL}
 
 @example
 rmail://localhost/C:/My%20Documents/Mail/My%20Mail.rmail
@@ -401,13 +413,13 @@ rmail://localhost/C:/My%20Documents/Mail/My%20Mail.rmail
 @ifset dontsetme
 @itemize @bullet
 @item
-@sc{mime} entity
+@acronym{MIME} entity
 
 @item
-@sc{imap} extensions: @sc{uidplus}, @sc{namespace}
+@acronym{IMAP} extensions: UIDPLUS, NAMESPACE
 
 @item
-differences between Rmail and @sc{imail}: narrowed buffer versus
+differences between Rmail and @acronym{IMAIL}: narrowed buffer versus
 individual messages; no editing commands, flags vs. labels.
 @end itemize
 @end ifset
@@ -417,60 +429,63 @@ individual messages; no editing commands, flags vs. labels.
 
 @cindex connection state
 Unlike a file folder, in which the folder's contents are always
-available, access to an @sc{imap} folder requires an active network
-connection to the @sc{imap} server.  This adds an additional layer of
-complexity to the mail-reading process, which is reflected in the
-@dfn{connection state} of an @sc{imap} folder.
+available, access to an @acronym{IMAP} folder requires an active network
+connection to the @acronym{IMAP} server.  This adds an additional layer
+of complexity to the mail-reading process, which is reflected in the
+@dfn{connection state} of an @acronym{IMAP} folder.
 
 @cindex online state
 @cindex offline state
 @cindex online mode
 @cindex offline mode
 @cindex disconnected mode
-An @sc{imap} folder can be in one of two states: @dfn{online}, meaning
-that there is an established network connection between @sc{imail} and
-the @sc{imap} server, and @dfn{offline} when there is not.  @sc{imail}
-is, at present, a very simple @sc{imap} mail reader: it must be online
-to read and manipulate mail messages.  Mail readers that have this
-property are said to operate in @dfn{online mode}.@footnote{@sc{imap}
-also supports two other modes of operation, called @dfn{offline mode}
-and @dfn{disconnected mode}; at present @sc{imail} can not operate in
-these alternate modes.} Do not confuse the online @emph{state} with
-online @emph{mode}.  When we refer to online or offline in this
-document, it always means the corresponding @emph{state}.
+An @acronym{IMAP} folder can be in one of two states: @dfn{online},
+meaning that there is an established network connection between
+@acronym{IMAIL} and the @acronym{IMAP} server, and @dfn{offline} when
+there is not.  @acronym{IMAIL} is, at present, a very simple
+@acronym{IMAP} mail reader: it must be online to read and manipulate
+mail messages.  Mail readers that have this property are said to operate
+in @dfn{online mode}.@footnote{@acronym{IMAP} also supports two other
+modes of operation, called @dfn{offline mode} and @dfn{disconnected
+mode}; at present @acronym{IMAIL} can not operate in these alternate
+modes.} Do not confuse the online @emph{state} with online @emph{mode}.
+When we refer to online or offline in this document, it always means the
+corresponding @emph{state}.
 
-When an @sc{imap} folder is selected in an @sc{imail} buffer, the
-modeline for that buffer shows either @samp{online} or @samp{offline} to
-indicate the folder's connection state.  Normally, an @sc{imap} folder
-goes online when it is first selected, and stays online indefinitely
-until it is explicitly disconnected.@footnote{Although @sc{imap} servers
-are allowed to disconnect mail readers that are inactive for long
-periods of time, @sc{imail} silently keeps the connection open by
-periodically transmitting commands to the server.} Commands that break
-the connection are explicitly pointed out in their descriptions below;
-most other commands will force an @sc{imap} folder into the online state
-if it is offline.
+When an @acronym{IMAP} folder is selected in an @acronym{IMAIL} buffer,
+the modeline for that buffer shows either @samp{online} or
+@samp{offline} to indicate the folder's connection state.  Normally, an
+@acronym{IMAP} folder goes online when it is first selected, and stays
+online indefinitely until it is explicitly
+disconnected.@footnote{Although @acronym{IMAP} servers are allowed to
+disconnect mail readers that are inactive for long periods of time,
+@acronym{IMAIL} silently keeps the connection open by periodically
+transmitting commands to the server.} Commands that break the connection
+are explicitly pointed out in their descriptions below; most other
+commands will force an @acronym{IMAP} folder into the online state if it
+is offline.
 
 @node Commands, Variables, Concepts, Top
 @chapter Commands
 
-@sc{imail} provides a rich set of commands for manipulating messages.
-Like Rmail, most of these commands are bound to letter keys.
+@acronym{IMAIL} provides a rich set of commands for manipulating
+messages.  Like Rmail, most of these commands are bound to letter keys.
 
+@findex imail
 The most important command is @kbd{M-x imail}, which is used to start
-@sc{imail}.  With no arguments, @kbd{M-x imail} reads the primary
+@acronym{IMAIL}.  With no arguments, @kbd{M-x imail} reads the primary
 folder, selects the first unseen message in the folder, then selects the
-folder's buffer.  If the primary folder is an @sc{imap} folder, @kbd{M-x
-imail} will connect to the server and check for new mail.  If @kbd{M-x
-imail} is given a prefix argument, it will prompt for the @sc{url} of a
-folder rather than reading the primary folder.
+folder's buffer.  If the primary folder is an @acronym{IMAP} folder,
+@kbd{M-x imail} will connect to the server and check for new mail.  If
+@kbd{M-x imail} is given a prefix argument, it will prompt for the
+@acronym{URL} of a folder rather than reading the primary folder.
 
-The buffer that shows a message in an @sc{imail} folder is put in
-@code{IMAIL} mode, which is a special mode in which most letter commands
-are defined to have special meanings.  Where possible, the letters
-chosen for these commands are the same as those for the corresponding
-Rmail commands.  The command keys specified in this chapter are for
-@code{IMAIL} mode, unless otherwise specified.
+The @acronym{IMAIL} message buffer is put in @code{IMAIL} mode, a
+special mode in which most letter commands are defined to have special
+meanings.  Where possible, the letters chosen for these commands are the
+same as those for the corresponding Rmail commands.  The command keys
+specified in this chapter are for @code{IMAIL} mode, unless otherwise
+specified.
 
 @menu
 * Navigation::                  
@@ -488,81 +503,442 @@ Rmail commands.  The command keys specified in this chapter are for
 @node Navigation, Deleting Messages, Commands, Commands
 @section Navigation
 
-@example
-imail-first-message
-imail-first-unseen-message
-imail-last-message
-imail-next-message
-imail-next-same-subject
-imail-next-undeleted-message
-imail-previous-message
-imail-previous-same-subject
-imail-previous-undeleted-message
-imail-select-message
-@end example
+The most basic thing to do with a message is to read it.  The way to do
+this in @acronym{IMAIL} is to @dfn{select} the message.  The usual
+practice is to move sequentially through the folder, since this is the
+order of receipt of messages.  When you enter @acronym{IMAIL}, you are
+positioned at the first message that you have not yet seen (that is, the
+first one that has the @samp{unseen} flag; @pxref{Flags}).  Move forward
+to see the other new messages; move backward to reexamine old messages.
+
+@table @kbd
+@item n
+Move to the next nondeleted message, skipping any intervening deleted
+messages (@code{imail-next-undeleted-message}).
+@item p
+Move to the previous nondeleted message
+(@code{imail-previous-undeleted-message}).
+@item M-n
+Move to the next message, including deleted messages
+(@code{imail-next-message}).
+@item M-p
+Move to the previous message, including deleted messages
+(@code{imail-previous-message}).
+@item j
+Move to the first message.  With argument @var{n}, move to
+message number @var{n} (@code{imail-select-message}).
+@item >
+Move to the last message (@code{imail-last-message}).
+@item <
+Move to the first message (@code{imail-first-message}).
+@item M-u
+Move to the first unseen message (@code{imail-first-unseen-message}).
+@item M-s @var{string} @key{RET}
+Move to the next message containing a match for @var{string}
+(@code{imail-search}).
+@item M-- M-s @var{string} @key{RET}
+Move to the previous message containing a match for @var{string}.
+@item C-c C-n
+Move to the next message with the same subject
+(@code{imail-next-same-subject}).
+@item C-c C-p
+Move to the previous message with the same subject
+(@code{imail-previous-same-subject}).
+@end table
+
+@kindex n
+@kindex p
+@kindex M-n
+@kindex M-p
+@findex imail-next-undeleted-message
+@findex imail-previous-undeleted-message
+@findex imail-next-message
+@findex imail-previous-message
+@kbd{n} and @kbd{p} are the usual way of moving among messages in
+@acronym{IMAIL}.  They move through the messages sequentially, but skip
+over deleted messages, which is usually what you want to do.  Their
+command definitions are named @code{imail-next-undeleted-message} and
+@code{imail-previous-undeleted-message}.  If you do not want to skip
+deleted messages---for example, if you want to move to a message to
+undelete it---use the variants @kbd{M-n} and @kbd{M-p}
+(@code{imail-next-message} and @code{imail-previous-message}).  A
+numeric argument to any of these commands serves as a repeat count.
+
+In @acronym{IMAIL}, you can specify a numeric argument by typing just
+the digits.  You don't need to type @kbd{C-u} first.
+
+@kindex M-s
+@findex imail-search
+@cindex searching in IMAIL
+The @kbd{M-s} (@code{imail-search}) command is @acronym{IMAIL}'s version
+of search.  The usual incremental search command @kbd{C-s} works in
+@acronym{IMAIL}, but it searches only within the current message.  The
+purpose of @kbd{M-s} is to search for another message.  It reads a
+string nonincrementally, then searches starting at the beginning of the
+following message for a match.  It then selects that message.  If
+@var{string} is empty, @kbd{M-s} reuses the string used the previous
+time.
+
+To search backward in the folder for another message, give @kbd{M-s} a
+negative argument.  In @acronym{IMAIL} you can do this with @kbd{- M-s}.
+
+It is also possible to search for a message based on flags.
+@xref{Flags}.
+
+@kindex C-c C-n
+@kindex C-c C-p
+@findex imail-next-same-subject
+@findex imail-previous-same-subject
+To find the next message with the same subject as the current message,
+use @kbd{C-c C-n} (@code{imail-next-same-subject}).  This is useful for
+following the thread of an email conversation.  @kbd{C-c C-p}
+(@code{imail-previous-same-subject}) finds the previous message with the
+same subject.
+
+@kindex j
+@kindex >
+@kindex <
+@findex imail-show-message
+@findex imail-last-message
+@findex imail-first-message
+To move to a message specified by absolute message number, use @kbd{j}
+(@code{imail-show-message}) with the message number as argument.  With
+no argument, @kbd{j} selects the first message.  @kbd{<}
+(@code{imail-first-message}) also selects the first message.  @kbd{>}
+(@code{imail-last-message}) selects the last message.
 
 @node Deleting Messages, Multiple Folders, Navigation, Commands
 @section Deleting Messages
 
-@example
-imail-delete-backward
-imail-delete-forward
-imail-delete-message
-imail-expunge
-imail-undelete-backward
-imail-undelete-forward
-imail-undelete-previous-message
-@end example
+@cindex deletion
+When you no longer need to keep a message, you can @dfn{delete} it.
+This flags it as ignorable, and some @acronym{IMAIL} commands pretend it
+is no longer present; but it still has its place in the @acronym{IMAIL}
+folder, and still has its message number.
+
+@cindex expunging
+@dfn{Expunging} the @acronym{IMAIL} folder actually removes the deleted
+messages.  The remaining messages are renumbered consecutively.
+Expunging is the only action that changes the message number of any
+message.
+
+@table @kbd
+@item d
+Delete the current message, and move to the next nondeleted message
+(@code{imail-delete-forward}).
+@item C-d
+Delete the current message, and move to the previous nondeleted
+message (@code{imail-delete-backward}).
+@item u
+Undelete the current message, or move back to a deleted message and
+undelete it (@code{imail-undelete-previous-message}).
+@item x
+Expunge the @acronym{IMAIL} folder (@code{imail-expunge}).
+@end table
+
+@kindex d
+@kindex C-d
+@findex imail-delete-forward
+@findex imail-delete-backward
+There are two @acronym{IMAIL} commands for deleting messages.  Both
+delete the current message and select another message.  @kbd{d}
+(@code{imail-delete-forward}) moves to the following message, skipping
+messages already deleted, while @kbd{C-d} (@code{imail-delete-backward})
+moves to the previous nondeleted message.  If there is no nondeleted
+message to move to in the specified direction, the message that was just
+deleted remains current.  A numeric argument to either command reverses
+the direction of motion after deletion.
+
+@cindex undeletion
+@kindex x
+@findex imail-expunge
+@kindex u
+@findex imail-undelete-previous-message
+To make all the deleted messages finally vanish from the @acronym{IMAIL}
+folder, type @kbd{x} (@code{imail-expunge}).  Until you do this, you can
+still @dfn{undelete} the deleted messages.  The undeletion command,
+@kbd{u} (@code{imail-undelete-previous-message}), is designed to cancel
+the effect of a @kbd{d} command in most cases.  It undeletes the current
+message if the current message is deleted.  Otherwise it moves backward
+to previous messages until a deleted message is found, and undeletes
+that message.
+
+You can usually undo a @kbd{d} with a @kbd{u} because the @kbd{u} moves
+back to and undeletes the message that the @kbd{d} deleted.  But this
+does not work when the @kbd{d} skips a few already-deleted messages that
+follow the message being deleted; then the @kbd{u} command undeletes the
+last of the messages that were skipped.  There is no clean way to avoid
+this problem.  However, by repeating the @kbd{u} command, you can
+eventually get back to the message that you intend to undelete.  You can
+also select a particular deleted message with the @kbd{M-p} command,
+then type @kbd{u} to undelete it.
+
+A deleted message has the @samp{deleted} flag, and as a result
+@samp{deleted} appears in the mode line when the current message is
+deleted.  In fact, deleting or undeleting a message is nothing more than
+adding or removing this flag.  @xref{Flags}.
 
 @node Multiple Folders, Copying Messages, Deleting Messages, Commands
 @section Multiple Folders
 
 @example
-imail-create-folder
-imail-delete-folder
-imail-input
-imail-rename-folder
+(@code{imail-create-folder})
+(@code{imail-delete-folder})
+(@code{imail-input})
+(@code{imail-rename-folder})
 @end example
 
 @node Copying Messages, MIME Support, Multiple Folders, Commands
 @section Copying Messages
 
 @example
-imail-copy-folder
-imail-input-from-folder
-imail-output
+(@code{imail-copy-folder})
+(@code{imail-input-from-folder})
+(@code{imail-output})
 @end example
 
 @node MIME Support, Flags, Copying Messages, Commands
 @section MIME Support
 
 @example
-imail-mouse-save-mime-entity
-imail-save-attachment
-imail-save-mime-entity
-imail-toggle-mime-entity
+(@code{imail-mouse-save-mime-entity})
+(@code{imail-save-attachment})
+(@code{imail-save-mime-entity})
+(@code{imail-toggle-mime-entity})
 @end example
 
 @node Flags, Sending Replies, MIME Support, Commands
 @section Flags
 
-@example
-imail-add-flag
-imail-kill-flag
-imail-next-flagged-message
-imail-previous-flagged-message
-@end example
+@cindex flags
+Each message can have various @dfn{flags} assigned to it as a means of
+classification.  Each flag has a name; different names are different
+flags.  Any given flag is either present or absent on a particular
+message.  A few flag names have standard meanings and are given to
+messages automatically by @acronym{IMAIL} when appropriate.  All other
+flags are assigned only by users.
+
+@table @kbd
+@item a @var{flag} @key{RET}
+Assign the flag @var{flag} to the current message (@code{imail-add-flag}).
+@item k @var{flag} @key{RET}
+Remove the flag @var{flag} from the current message (@code{imail-kill-flag}).
+@item C-M-n @var{flags} @key{RET}
+Move to the next message that has one of the flags @var{flags}
+(@code{imail-next-flagged-message}).
+@item C-M-p @var{flags} @key{RET}
+Move to the previous message that has one of the flags @var{flags}
+(@code{imail-previous-flagged-message}).
+@item C-M-l @var{flags} @key{RET}
+Make a summary of all messages containing any of the flags @var{flags}
+(@code{imail-summary-by-flags}).
+@end table
+
+@kindex a
+@kindex k
+@findex imail-add-flag
+@findex imail-kill-flag
+The @kbd{a} (@code{imail-add-flag}) and @kbd{k} (@code{imail-kill-flag})
+commands allow you to assign or remove any flag on the current message.
+If the @var{flag} argument is empty, it means to assign or remove the
+same flag most recently assigned or removed.
+
+Once you have given messages flags to classify them as you wish, there
+are two ways to use the flags: in moving and in summaries.
+
+@kindex C-M-n
+@kindex C-M-p
+@findex imail-next-flagged-message
+@findex imail-previous-flagged-message
+The command @kbd{C-M-n @var{flags} @key{RET}}
+(@code{imail-next-flagged-message}) moves to the next message that has
+one of the flags @var{flags}.  The argument @var{flags} specifies one or
+more flag names, separated by commas.  @kbd{C-M-p}
+(@code{imail-previous-flagged-message}) is similar, but moves backwards
+to previous messages.  A numeric argument to either command serves as a
+repeat count.
+
+The command @kbd{C-M-l @var{flags} @key{RET}}
+(@code{imail-summary-by-flags}) displays a summary containing only the
+messages that have at least one of a specified set of flags.  The
+argument @var{flags} is one or more flag names, separated by commas.
+@xref{Summaries}, for information on summaries.
+
+If the @var{flags} argument to @kbd{C-M-n}, @kbd{C-M-p} or @kbd{C-M-l}
+is empty, it means to use the last set of flags specified for any of
+these commands.
+
+Some flags such as @samp{deleted} and @samp{filed} have built-in
+meanings and are assigned to or removed from messages automatically at
+appropriate times.  Here is a list of built-in flags:
+
+@table @samp
+@item seen
+Means the message has been selected, implying that the user has seen it.
+Assigned to a message when it is selected by the user.  When you start
+@acronym{IMAIL}, it initially shows the first message that lacks this
+flag.
+
+@item deleted
+Means the message is deleted.  Assigned by deletion commands and removed
+by undeletion commands (@pxref{Deleting Messages}).
+
+@item filed
+Means the message has been copied to another folder.  Assigned by the
+message-copying commands (@pxref{Copying Messages}).
+
+@item answered
+Means you have mailed an answer to the message.  Assigned by the @kbd{r}
+command (@code{imail-reply}).  @xref{Sending Replies}.
+
+@item forwarded
+Means you have forwarded the message.  Assigned by the @kbd{f} command
+(@code{imail-forward}).  @xref{Sending Replies}.
+
+@item resent
+Means you have resent the message.  Assigned by the command @kbd{C-u f}
+(@code{imail-resend}).  @xref{Sending Replies}.
+@end table
+
+All other flags are assigned or removed only by the user, and have no
+standard meaning.
 
 @node Sending Replies, Summaries, Flags, Commands
 @section Sending Replies
 
-@example
-imail-continue
-imail-forward
-imail-mail
-imail-reply
-imail-resend
-@end example
+@acronym{IMAIL} has several commands that use Mail mode to send outgoing
+mail.  What this section documents are the special commands of
+@acronym{IMAIL} for entering Mail mode.  Note that the usual keys for
+sending mail---@kbd{C-x m}, @kbd{C-x 4 m}, and @kbd{C-x 5 m}---are
+available in @acronym{IMAIL} mode and work just as they usually do.
+
+@table @kbd
+@item m
+Send a message (@code{imail-mail}).
+@item c
+Continue editing the already started outgoing message (@code{imail-continue}).
+@item r
+Send a reply to the current @acronym{IMAIL} message (@code{imail-reply}).
+@item f
+Forward the current message to other users (@code{imail-forward}).
+@item C-u f
+Resend the current message to other users (@code{imail-resend}).
+@ifset dontsetme
+@item M-m
+Try sending a bounced message a second time (@code{imail-retry-failure}).
+@end ifset
+@end table
+
+@kindex r
+@findex imail-reply
+@cindex reply to a message
+The most common reason to send a message while in @acronym{IMAIL} is to
+reply to the message you are reading.  To do this, type @kbd{r}
+(@code{imail-reply}).  This displays the @samp{*mail*} buffer in another
+window, much like @kbd{C-x 4 m}, but preinitializes the @samp{Subject},
+@samp{To}, @samp{CC} and @samp{In-reply-to} header fields based on the
+message you are replying to.  The @samp{To} field starts out as the
+address of the person who sent the message you received, and the
+@samp{CC} field starts out with all the other recipients of that
+message.
+
+@vindex imail-dont-reply-to-names
+You can exclude certain recipients from being placed automatically in
+the @samp{CC}, using the variable @code{imail-dont-reply-to-names}.  Its
+value should be a regular expression (as a string); any recipient that
+the regular expression matches is excluded from the @samp{CC} field.
+The default value matches your own name, and any name starting with
+@samp{info-}.  (Those names are excluded because there is a convention
+of using them for large mailing lists to broadcast announcements.)
+
+To omit the @samp{CC} field completely for a particular reply, enter
+the reply command with a numeric argument: @kbd{C-u r} or @kbd{1 r}.
+
+Once the @samp{*mail*} buffer has been initialized, editing and sending
+the mail goes as usual.  You can edit the presupplied header fields if
+they are not right for you.  You can also use the commands of Mail mode,
+including @kbd{C-c C-y} which yanks in the message that you are replying
+to.  You can switch to the @acronym{IMAIL} buffer, select a different
+message there, switch back, and yank the new current message.
+
+@ifset dontsetme
+@kindex M-m
+@findex imail-retry-failure
+@cindex retrying a failed message
+@vindex imail-retry-ignored-headers
+Sometimes a message does not reach its destination.  Mailers usually
+send the failed message back to you, enclosed in a @dfn{failure
+message}.  The @acronym{IMAIL} command @kbd{M-m} (@code{imail-retry-failure})
+prepares to send the same message a second time: it sets up a
+@samp{*mail*} buffer with the same text and header fields as before.  If
+you type @kbd{C-c C-c} right away, you send the message again exactly
+the same as the first time.  Alternatively, you can edit the text or
+headers and then send it.  The variable
+@code{imail-retry-ignored-headers}, in the same format as
+@code{imail-ignored-headers} (@pxref{Rmail Display}), controls which
+headers are stripped from the failed message when retrying it; it
+defaults to @code{nil}.
+@end ifset
+
+@kindex f
+@findex imail-forward
+@cindex forwarding a message
+Another frequent reason to send mail in @acronym{IMAIL} is to
+@dfn{forward} the current message to other users.  @kbd{f}
+(@code{imail-forward}) makes this easy by preinitializing the
+@samp{*mail*} buffer with the current message as a @acronym{MIME}
+attachment, and a subject designating a forwarded message.  All you have
+to do is fill in the recipients and send.  When you forward a message,
+recipients get a message which is ``from'' you, and which has the
+original message in its contents.
+
+@vindex imail-forward-using-mime
+By default, forwarded messages are sent as @acronym{MIME} attachments,
+which allows @acronym{MIME}-aware mail readers to recognize that the
+attachment is a mail message and to specially present it.  However, this
+means that such forwarded messages appear more complex when viewed in
+mail readers that do not understand @acronym{MIME}.  @acronym{IMAIL}
+deliberately minimizes the amount of encoding overhead used for
+@acronym{MIME}-forwarded messages, but some people prefer not to use
+@acronym{MIME} at all.  For that reason, @acronym{IMAIL} allows you to
+turn off this feature, so that forwarded messages are included in the
+main body of the message (as Rmail does).  To do this, set the variable
+@code{imail-forward-using-mime} to @code{#f}.
+
+@vindex imail-forward-all-headers
+Normally, when @acronym{IMAIL} forwards a message, it sends only a few
+of the message's header fields.  In particular, it sends only those
+header fields that you see when viewing the message in @acronym{IMAIL}.
+Sometimes it is desirable to send @emph{all} of the message's header
+fields; @acronym{IMAIL} provides two ways to do this.  First, if you
+want to send all of the header fields for a particular message, use
+@code{imail-forward} with a negative argument, like this: @kbd{- f}.
+Alternatively, you can set the variable @code{imail-forward-all-headers}
+to @code{#t}, which will cause @emph{all} forwarded messages to retain
+all of their header fields.
+
+@findex imail-resend
+@dfn{Resending} is an alternative similar to forwarding; the difference
+is that resending sends a message that is ``from'' the original sender,
+just as it reached you---with a few added header fields
+@samp{Resent-from} and @samp{Resent-to} to indicate that it came via
+you.  To resend a message in @acronym{IMAIL}, use @kbd{C-u f}.  (@kbd{f}
+runs @code{imail-forward}, which is programmed to invoke
+@code{imail-resend} if you provide a numeric argument.)
+
+@kindex m
+@findex imail-mail
+The @kbd{m} (@code{imail-mail}) command is used to start editing an
+outgoing message that is not a reply.  It leaves the header fields
+empty.  Its only difference from @kbd{C-x 4 m} is that it makes the
+@acronym{IMAIL} buffer accessible for @kbd{C-c C-y}, just as @kbd{r}
+does.  Thus, @kbd{m} can be used to reply to or forward a message.
+
+@kindex c
+@findex imail-continue
+The @kbd{c} (@code{imail-continue}) command resumes editing the
+@samp{*mail*} buffer, to finish editing an outgoing message you were
+already composing, or to alter a message you have sent.
 
 @node Summaries, Other Commands, Sending Replies, Commands
 @section Summaries
@@ -571,25 +947,396 @@ imail-resend
 @section Other Commands
 
 @example
-imail-bury
-imail-disconnect
-imail-get-new-mail
-imail-quit
-imail-save-folder
-imail-search
-imail-toggle-header
-imail-toggle-message
+(@code{imail-bury})
+(@code{imail-disconnect})
+(@code{imail-get-new-mail})
+(@code{imail-quit})
+(@code{imail-save-folder})
+(@code{imail-toggle-header})
+(@code{imail-toggle-message})
 @end example
 
 @node Differences between IMAIL and Rmail,  , Other Commands, Commands
 @section Differences between IMAIL and Rmail
 
-@node Variables, Index, Commands, Top
+@node Variables, GNU Free Documentation License, Commands, Top
 @chapter Variables
 
-@node Index,  , Variables, Top
-@unnumbered Index
+@node GNU Free Documentation License, Key Index, Variables, Top
+@unnumbered GNU Free Documentation License
 
+@format
+		GNU Free Documentation License
+		   Version 1.1, March 2000
+
+ Copyright (C) 2000  Free Software Foundation, Inc.
+     59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ Everyone is permitted to copy and distribute verbatim copies
+ of this license document, but changing it is not allowed.
+
+
+0. PREAMBLE
+
+The purpose of this License is to make a manual, textbook, or other
+written document "free" in the sense of freedom: to assure everyone
+the effective freedom to copy and redistribute it, with or without
+modifying it, either commercially or noncommercially.  Secondarily,
+this License preserves for the author and publisher a way to get
+credit for their work, while not being considered responsible for
+modifications made by others.
+
+This License is a kind of "copyleft", which means that derivative
+works of the document must themselves be free in the same sense.  It
+complements the GNU General Public License, which is a copyleft
+license designed for free software.
+
+We have designed this License in order to use it for manuals for free
+software, because free software needs free documentation: a free
+program should come with manuals providing the same freedoms that the
+software does.  But this License is not limited to software manuals;
+it can be used for any textual work, regardless of subject matter or
+whether it is published as a printed book.  We recommend this License
+principally for works whose purpose is instruction or reference.
+
+
+1. APPLICABILITY AND DEFINITIONS
+
+This License applies to any manual or other work that contains a
+notice placed by the copyright holder saying it can be distributed
+under the terms of this License.  The "Document", below, refers to any
+such manual or work.  Any member of the public is a licensee, and is
+addressed as "you".
+
+A "Modified Version" of the Document means any work containing the
+Document or a portion of it, either copied verbatim, or with
+modifications and/or translated into another language.
+
+A "Secondary Section" is a named appendix or a front-matter section of
+the Document that deals exclusively with the relationship of the
+publishers or authors of the Document to the Document's overall subject
+(or to related matters) and contains nothing that could fall directly
+within that overall subject.  (For example, if the Document is in part a
+textbook of mathematics, a Secondary Section may not explain any
+mathematics.)  The relationship could be a matter of historical
+connection with the subject or with related matters, or of legal,
+commercial, philosophical, ethical or political position regarding
+them.
+
+The "Invariant Sections" are certain Secondary Sections whose titles
+are designated, as being those of Invariant Sections, in the notice
+that says that the Document is released under this License.
+
+The "Cover Texts" are certain short passages of text that are listed,
+as Front-Cover Texts or Back-Cover Texts, in the notice that says that
+the Document is released under this License.
+
+A "Transparent" copy of the Document means a machine-readable copy,
+represented in a format whose specification is available to the
+general public, whose contents can be viewed and edited directly and
+straightforwardly with generic text editors or (for images composed of
+pixels) generic paint programs or (for drawings) some widely available
+drawing editor, and that is suitable for input to text formatters or
+for automatic translation to a variety of formats suitable for input
+to text formatters.  A copy made in an otherwise Transparent file
+format whose markup has been designed to thwart or discourage
+subsequent modification by readers is not Transparent.  A copy that is
+not "Transparent" is called "Opaque".
+
+Examples of suitable formats for Transparent copies include plain
+ASCII without markup, Texinfo input format, LaTeX input format, SGML
+or XML using a publicly available DTD, and standard-conforming simple
+HTML designed for human modification.  Opaque formats include
+PostScript, PDF, proprietary formats that can be read and edited only
+by proprietary word processors, SGML or XML for which the DTD and/or
+processing tools are not generally available, and the
+machine-generated HTML produced by some word processors for output
+purposes only.
+
+The "Title Page" means, for a printed book, the title page itself,
+plus such following pages as are needed to hold, legibly, the material
+this License requires to appear in the title page.  For works in
+formats which do not have any title page as such, "Title Page" means
+the text near the most prominent appearance of the work's title,
+preceding the beginning of the body of the text.
+
+
+2. VERBATIM COPYING
+
+You may copy and distribute the Document in any medium, either
+commercially or noncommercially, provided that this License, the
+copyright notices, and the license notice saying this License applies
+to the Document are reproduced in all copies, and that you add no other
+conditions whatsoever to those of this License.  You may not use
+technical measures to obstruct or control the reading or further
+copying of the copies you make or distribute.  However, you may accept
+compensation in exchange for copies.  If you distribute a large enough
+number of copies you must also follow the conditions in section 3.
+
+You may also lend copies, under the same conditions stated above, and
+you may publicly display copies.
+
+
+3. COPYING IN QUANTITY
+
+If you publish printed copies of the Document numbering more than 100,
+and the Document's license notice requires Cover Texts, you must enclose
+the copies in covers that carry, clearly and legibly, all these Cover
+Texts: Front-Cover Texts on the front cover, and Back-Cover Texts on
+the back cover.  Both covers must also clearly and legibly identify
+you as the publisher of these copies.  The front cover must present
+the full title with all words of the title equally prominent and
+visible.  You may add other material on the covers in addition.
+Copying with changes limited to the covers, as long as they preserve
+the title of the Document and satisfy these conditions, can be treated
+as verbatim copying in other respects.
+
+If the required texts for either cover are too voluminous to fit
+legibly, you should put the first ones listed (as many as fit
+reasonably) on the actual cover, and continue the rest onto adjacent
+pages.
+
+If you publish or distribute Opaque copies of the Document numbering
+more than 100, you must either include a machine-readable Transparent
+copy along with each Opaque copy, or state in or with each Opaque copy
+a publicly-accessible computer-network location containing a complete
+Transparent copy of the Document, free of added material, which the
+general network-using public has access to download anonymously at no
+charge using public-standard network protocols.  If you use the latter
+option, you must take reasonably prudent steps, when you begin
+distribution of Opaque copies in quantity, to ensure that this
+Transparent copy will remain thus accessible at the stated location
+until at least one year after the last time you distribute an Opaque
+copy (directly or through your agents or retailers) of that edition to
+the public.
+
+It is requested, but not required, that you contact the authors of the
+Document well before redistributing any large number of copies, to give
+them a chance to provide you with an updated version of the Document.
+
+
+4. MODIFICATIONS
+
+You may copy and distribute a Modified Version of the Document under
+the conditions of sections 2 and 3 above, provided that you release
+the Modified Version under precisely this License, with the Modified
+Version filling the role of the Document, thus licensing distribution
+and modification of the Modified Version to whoever possesses a copy
+of it.  In addition, you must do these things in the Modified Version:
+
+A. Use in the Title Page (and on the covers, if any) a title distinct
+   from that of the Document, and from those of previous versions
+   (which should, if there were any, be listed in the History section
+   of the Document).  You may use the same title as a previous version
+   if the original publisher of that version gives permission.
+B. List on the Title Page, as authors, one or more persons or entities
+   responsible for authorship of the modifications in the Modified
+   Version, together with at least five of the principal authors of the
+   Document (all of its principal authors, if it has less than five).
+C. State on the Title page the name of the publisher of the
+   Modified Version, as the publisher.
+D. Preserve all the copyright notices of the Document.
+E. Add an appropriate copyright notice for your modifications
+   adjacent to the other copyright notices.
+F. Include, immediately after the copyright notices, a license notice
+   giving the public permission to use the Modified Version under the
+   terms of this License, in the form shown in the Addendum below.
+G. Preserve in that license notice the full lists of Invariant Sections
+   and required Cover Texts given in the Document's license notice.
+H. Include an unaltered copy of this License.
+I. Preserve the section entitled "History", and its title, and add to
+   it an item stating at least the title, year, new authors, and
+   publisher of the Modified Version as given on the Title Page.  If
+   there is no section entitled "History" in the Document, create one
+   stating the title, year, authors, and publisher of the Document as
+   given on its Title Page, then add an item describing the Modified
+   Version as stated in the previous sentence.
+J. Preserve the network location, if any, given in the Document for
+   public access to a Transparent copy of the Document, and likewise
+   the network locations given in the Document for previous versions
+   it was based on.  These may be placed in the "History" section.
+   You may omit a network location for a work that was published at
+   least four years before the Document itself, or if the original
+   publisher of the version it refers to gives permission.
+K. In any section entitled "Acknowledgements" or "Dedications",
+   preserve the section's title, and preserve in the section all the
+   substance and tone of each of the contributor acknowledgements
+   and/or dedications given therein.
+L. Preserve all the Invariant Sections of the Document,
+   unaltered in their text and in their titles.  Section numbers
+   or the equivalent are not considered part of the section titles.
+M. Delete any section entitled "Endorsements".  Such a section
+   may not be included in the Modified Version.
+N. Do not retitle any existing section as "Endorsements"
+   or to conflict in title with any Invariant Section.
+
+If the Modified Version includes new front-matter sections or
+appendices that qualify as Secondary Sections and contain no material
+copied from the Document, you may at your option designate some or all
+of these sections as invariant.  To do this, add their titles to the
+list of Invariant Sections in the Modified Version's license notice.
+These titles must be distinct from any other section titles.
+
+You may add a section entitled "Endorsements", provided it contains
+nothing but endorsements of your Modified Version by various
+parties--for example, statements of peer review or that the text has
+been approved by an organization as the authoritative definition of a
+standard.
+
+You may add a passage of up to five words as a Front-Cover Text, and a
+passage of up to 25 words as a Back-Cover Text, to the end of the list
+of Cover Texts in the Modified Version.  Only one passage of
+Front-Cover Text and one of Back-Cover Text may be added by (or
+through arrangements made by) any one entity.  If the Document already
+includes a cover text for the same cover, previously added by you or
+by arrangement made by the same entity you are acting on behalf of,
+you may not add another; but you may replace the old one, on explicit
+permission from the previous publisher that added the old one.
+
+The author(s) and publisher(s) of the Document do not by this License
+give permission to use their names for publicity for or to assert or
+imply endorsement of any Modified Version.
+
+
+5. COMBINING DOCUMENTS
+
+You may combine the Document with other documents released under this
+License, under the terms defined in section 4 above for modified
+versions, provided that you include in the combination all of the
+Invariant Sections of all of the original documents, unmodified, and
+list them all as Invariant Sections of your combined work in its
+license notice.
+
+The combined work need only contain one copy of this License, and
+multiple identical Invariant Sections may be replaced with a single
+copy.  If there are multiple Invariant Sections with the same name but
+different contents, make the title of each such section unique by
+adding at the end of it, in parentheses, the name of the original
+author or publisher of that section if known, or else a unique number.
+Make the same adjustment to the section titles in the list of
+Invariant Sections in the license notice of the combined work.
+
+In the combination, you must combine any sections entitled "History"
+in the various original documents, forming one section entitled
+"History"; likewise combine any sections entitled "Acknowledgements",
+and any sections entitled "Dedications".  You must delete all sections
+entitled "Endorsements."
+
+
+6. COLLECTIONS OF DOCUMENTS
+
+You may make a collection consisting of the Document and other documents
+released under this License, and replace the individual copies of this
+License in the various documents with a single copy that is included in
+the collection, provided that you follow the rules of this License for
+verbatim copying of each of the documents in all other respects.
+
+You may extract a single document from such a collection, and distribute
+it individually under this License, provided you insert a copy of this
+License into the extracted document, and follow this License in all
+other respects regarding verbatim copying of that document.
+
+
+7. AGGREGATION WITH INDEPENDENT WORKS
+
+A compilation of the Document or its derivatives with other separate
+and independent documents or works, in or on a volume of a storage or
+distribution medium, does not as a whole count as a Modified Version
+of the Document, provided no compilation copyright is claimed for the
+compilation.  Such a compilation is called an "aggregate", and this
+License does not apply to the other self-contained works thus compiled
+with the Document, on account of their being thus compiled, if they
+are not themselves derivative works of the Document.
+
+If the Cover Text requirement of section 3 is applicable to these
+copies of the Document, then if the Document is less than one quarter
+of the entire aggregate, the Document's Cover Texts may be placed on
+covers that surround only the Document within the aggregate.
+Otherwise they must appear on covers around the whole aggregate.
+
+
+8. TRANSLATION
+
+Translation is considered a kind of modification, so you may
+distribute translations of the Document under the terms of section 4.
+Replacing Invariant Sections with translations requires special
+permission from their copyright holders, but you may include
+translations of some or all Invariant Sections in addition to the
+original versions of these Invariant Sections.  You may include a
+translation of this License provided that you also include the
+original English version of this License.  In case of a disagreement
+between the translation and the original English version of this
+License, the original English version will prevail.
+
+
+9. TERMINATION
+
+You may not copy, modify, sublicense, or distribute the Document except
+as expressly provided for under this License.  Any other attempt to
+copy, modify, sublicense or distribute the Document is void, and will
+automatically terminate your rights under this License.  However,
+parties who have received copies, or rights, from you under this
+License will not have their licenses terminated so long as such
+parties remain in full compliance.
+
+
+10. FUTURE REVISIONS OF THIS LICENSE
+
+The Free Software Foundation may publish new, revised versions
+of the GNU Free Documentation License from time to time.  Such new
+versions will be similar in spirit to the present version, but may
+differ in detail to address new problems or concerns.  See
+http://www.gnu.org/copyleft/.
+
+Each version of the License is given a distinguishing version number.
+If the Document specifies that a particular numbered version of this
+License "or any later version" applies to it, you have the option of
+following the terms and conditions either of that specified version or
+of any later version that has been published (not as a draft) by the
+Free Software Foundation.  If the Document does not specify a version
+number of this License, you may choose any version ever published (not
+as a draft) by the Free Software Foundation.
+
+
+ADDENDUM: How to use this License for your documents
+
+To use this License in a document you have written, include a copy of
+the License in the document and put the following copyright and
+license notices just after the title page:
+
+      Copyright (c)  YEAR  YOUR NAME.
+      Permission is granted to copy, distribute and/or modify this document
+      under the terms of the GNU Free Documentation License, Version 1.1
+      or any later version published by the Free Software Foundation;
+      with the Invariant Sections being LIST THEIR TITLES, with the
+      Front-Cover Texts being LIST, and with the Back-Cover Texts being LIST.
+      A copy of the license is included in the section entitled "GNU
+      Free Documentation License".
+
+If you have no Invariant Sections, write "with no Invariant Sections"
+instead of saying which ones are invariant.  If you have no
+Front-Cover Texts, write "no Front-Cover Texts" instead of
+"Front-Cover Texts being LIST"; likewise for Back-Cover Texts.
+
+If your document contains nontrivial examples of program code, we
+recommend releasing these examples in parallel under your choice of
+free software license, such as the GNU General Public License,
+to permit their use in free software.
+@end format
+
+@node Key Index, Command Index, GNU Free Documentation License, Top
+@unnumbered Key Index
+@printindex ky
+
+@node Command Index, Variable Index, Key Index, Top
+@unnumbered Command Index
+@printindex fn
+
+@node Variable Index, Concept Index, Command Index, Top
+@unnumbered Variable Index
+@printindex vr
+
+@node Concept Index,  , Variable Index, Top
+@unnumbered Concept Index
 @printindex cp
 
 @contents
