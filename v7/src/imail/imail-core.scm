@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.6 2000/01/14 18:10:08 cph Exp $
+;;; $Id: imail-core.scm,v 1.7 2000/01/14 19:20:32 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -369,7 +369,7 @@
       (error:wrong-type-argument object "message flag" procedure)))
 
 (define standard-message-flags
-  '(DELETED ANSWERED SEEN FILED FORWARDED EDITED RESENT))
+  '(ANSWERED DELETED EDITED FILED FORWARDED RESENT SEEN))
 
 (define (message-flags->header-field flags)
   (make-header-field
