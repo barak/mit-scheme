@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.17 1991/07/02 18:41:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.18 1992/02/03 23:47:06 jinx Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -119,7 +119,7 @@ DEFUN (set_terminal_state, (channel, s), Tchannel channel AND Ttty_state * s)
        (UX_terminal_set_state ((CHANNEL_DESCRIPTOR (channel)), s)));
 }
 
-unsigned int
+unsigned long
 DEFUN (terminal_state_get_ospeed, (s), Ttty_state * s)
 {
 #ifdef HAVE_TERMIOS
@@ -135,7 +135,7 @@ DEFUN (terminal_state_get_ospeed, (s), Ttty_state * s)
 #endif /* not HAVE_TERMIOS */
 }
 
-unsigned int
+unsigned long
 DEFUN (terminal_state_get_ispeed, (s), Ttty_state * s)
 {
 #ifdef HAVE_TERMIOS
@@ -328,7 +328,7 @@ DEFUN (terminal_state_buffered, (s, channel),
 #endif /* HAVE_TERMIOS or HAVE_TERMIO */
 }
 
-unsigned int
+unsigned long
 DEFUN (OS_terminal_get_ispeed, (channel), Tchannel channel)
 {
   Ttty_state s;
@@ -336,7 +336,7 @@ DEFUN (OS_terminal_get_ispeed, (channel), Tchannel channel)
   return (terminal_state_get_ispeed (&s));
 }
 
-unsigned int
+unsigned long
 DEFUN (OS_terminal_get_ospeed, (channel), Tchannel channel)
 {
   Ttty_state s;
