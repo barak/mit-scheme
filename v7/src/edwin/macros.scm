@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.46 1989/04/28 22:51:16 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.47 1989/06/19 22:46:06 markf Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -214,3 +214,28 @@
   (cond ((symbol? name) name)
 	((string? name) (intern (string-replace name #\Space #\-)))
 	(else (error "illegal name" name))))
+
+(syntax-table-define edwin-syntax-table 'VALUES-LET
+  (lambda (bindings . forms)
+    (define (transform/binding binding forms)
+      (if (or (not (pair? binding))
+	      (not (pair? (cdr binding))))
+	  (error "values-let: bad binding clause"
+		 binding)
+	  `(WITH-VALUES
+	       (LAMBDA () ,(cadr binding))
+	     (LAMBDA (,@(car binding))
+	       ,@forms))))
+    (define (transform/values-let bindings forms)
+      (transform/binding
+       (car bindings)
+       (if (null? (cdr bindings))
+	   forms
+	   (list
+	    (transform/values-let (cdr bindings)
+				  forms)))))
+    (if (not (pair? bindings))
+	(error "values-let: missing bindings"
+	       (cons bindings forms))
+	(transform/values-let bindings
+			      forms))))
