@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/folcon.scm,v 4.6 1988/12/15 17:25:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/folcon.scm,v 4.7 1988/12/19 20:23:28 cph Rel $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -36,9 +36,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package (fold-constants)
-
-(define-export (fold-constants lvalues applications)
+(define (fold-constants lvalues applications)
   #|
   ;; This is needed only if we use the version of eliminate-known-nodes
   ;; commented out below.
@@ -148,10 +146,7 @@ MIT in each case. |#
     (and (constant-foldable-operator? operator)
 	 ;; (rvalue-known? continuation)
 	 ;; (uni-continuation? (rvalue-known-value continuation))
-	 (for-all? operands
-		   (lambda (val)
-		     (and (rvalue-known-constant? val)
-			  (object-immutable? (rvalue-constant-value val)))))
+	 (for-all? operands rvalue-known-constant?)
 	 (let ((op (constant-foldable-operator-value operator)))
 	   (and (or (arity-correct? op (length operands))
 		    (begin
@@ -223,5 +218,3 @@ MIT in each case. |#
     (and (>= n (car arity))
 	 (or (null? (cdr arity))
 	     (<= n (cdr arity))))))
-
-)
