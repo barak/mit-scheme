@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.21 2000/06/15 19:13:23 cph Exp $
+;;; $Id: imail-summary.scm,v 1.22 2000/06/16 17:56:10 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -346,112 +346,6 @@ SUBJECT is a string of regexps separated by commas."
 	  (string-head s i)
 	  s))))
 
-;;;; IMAIL Summary mode
-
-(define-major-mode imail-summary imail "IMAIL Summary"
-  "Major mode in effect in IMAIL summary buffer.
-Each line summarizes a single mail message.
-The columns describing the message are, left to right:
-
-1. Several flag characters, each indicating whether the message is
-   marked with the corresponding flag.  The characters are, in order,
-   `D' (deleted), `U' (not seen), `A' (answered), `R' (resent or
-   forwarded), and `F' (filed).
-
-2. The message index number.
-
-3. The approximate length of the message in bytes.  Large messages are
-   abbreviated using the standard metric suffixes (`k'=1,000,
-   `M'=1,000,000, etc.)  The length includes all of the header fields,
-   including those that aren't normally shown.  (In IMAP folders, the
-   length is slightly higher because it counts line endings as two
-   characters whereas Edwin counts them as one.)
-
-4. The date the message was sent, abbreviated by the day and month.
-   The date field is optional; see imail-summary-show-date.
-
-5. The subject line from the message, truncated if it is too long to
-   fit in the available space.  The width of the subject area is
-   controlled by the variable imail-summary-subject-width.
-
-6. The sender of the message, from the message's `From:' header.
-
-Additional variables controlling this mode:
-
-imail-summary-pop-up-message       keep message buffer visible
-imail-summary-highlight-message    highlight line for current message
-imail-summary-show-date            show date message sent
-imail-summary-subject-width        width of subject field
-
-The commands in this buffer are mostly the same as those for IMAIL
-mode (the mode used by the buffer that shows the message contents),
-with some additions to make navigation more natural.
-
-\\{imail-summary}"
-  (lambda (buffer)
-    (buffer-put! buffer 'REVERT-BUFFER-METHOD imail-summary-revert-buffer)
-    (remove-kill-buffer-hook buffer imail-kill-buffer)
-    (local-set-variable! truncate-lines #t buffer)
-    (local-set-variable! mode-line-process
-			 (list ": "
-			       (buffer-get buffer
-					   'IMAIL-SUMMARY-DESCRIPTION
-					   "All"))
-			 buffer)
-    (event-distributor/invoke! (ref-variable imail-summary-mode-hook buffer)
-			       buffer)))
-
-(define-variable imail-summary-mode-hook
-  "An event distributor that is invoked when entering IMAIL Summary mode."
-  (make-event-distributor))
-
-(define (imail-summary-revert-buffer buffer dont-use-auto-save? dont-confirm?)
-  dont-use-auto-save?
-  (if (or dont-confirm? (prompt-for-yes-or-no? "Revert summary buffer"))
-      (rebuild-imail-summary-buffer buffer)))
-
-(define-key 'imail-summary #\space	'imail-summary-select-message)
-(define-key 'imail-summary #\rubout	'imail-undelete-previous-message)
-(define-key 'imail-summary #\c-n	'imail-next-message)
-(define-key 'imail-summary #\c-p	'imail-previous-message)
-(define-key 'imail-summary #\.		'undefined)
-(define-key 'imail-summary #\u		'imail-undelete-forward)
-(define-key 'imail-summary #\m-<	'imail-first-message)
-(define-key 'imail-summary #\m->	'imail-last-message)
-
-(define-key 'imail-summary (make-special-key 'down 0) '(imail-summary . #\c-n))
-(define-key 'imail-summary (make-special-key 'up 0) '(imail-summary . #\c-p))
-
-(define-key 'imail-summary button1-down 'imail-summary-mouse-select-message)
-(define-key 'imail-summary button4-down '(imail-summary . #\c-p))
-(define-key 'imail-summary button5-down '(imail-summary . #\c-n))
-
-(define-command imail-summary-select-message
-  "Select the message that point is on and show it in another window."
-  ()
-  (lambda ()
-    (select-message (selected-folder)
-		    (or (selected-message #f)
-			(editor-error "No message on this line."))
-		    #t)
-    (imail-summary-pop-up-message-buffer (selected-buffer))))
-
-(define-command imail-summary-mouse-select-message
-  "Select the message that mouse is on and show it in another window."
-  ()
-  (lambda ()
-    (let ((button-event (current-button-event)))
-      (let ((window (button-event/window button-event)))
-	(select-window window)
-	(set-current-point!
-	 (line-start (or (window-coordinates->mark
-			  window
-			  (button-event/x button-event)
-			  (button-event/y button-event))
-			 (buffer-end (window-buffer window)))
-		     0))))
-    ((ref-command imail-summary-select-message))))
-
 ;;;; Navigation
 
 (define (imail-summary-navigators buffer)
@@ -605,3 +499,109 @@ with some additions to make navigation more natural.
 	       (mark>= last (imail-summary-first-line buffer)))
 	  last
 	  end))))
+
+;;;; IMAIL Summary mode
+
+(define-major-mode imail-summary imail "IMAIL Summary"
+  "Major mode in effect in IMAIL summary buffer.
+Each line summarizes a single mail message.
+The columns describing the message are, left to right:
+
+1. Several flag characters, each indicating whether the message is
+   marked with the corresponding flag.  The characters are, in order,
+   `D' (deleted), `U' (unseen), `A' (answered), `R' (re-sent or
+   forwarded), and `F' (filed).
+
+2. The message index number.
+
+3. The approximate length of the message in bytes.  Large messages are
+   abbreviated using the standard metric suffixes (`k'=1,000,
+   `M'=1,000,000, etc.)  The length includes all of the header fields,
+   including those that aren't normally shown.  (In IMAP folders, the
+   length is slightly higher because the server counts line endings as
+   two characters whereas Edwin counts them as one.)
+
+4. The date the message was sent, abbreviated by the day and month.
+   The date field is optional; see imail-summary-show-date.
+
+5. The subject line from the message, truncated if it is too long to
+   fit in the available space.  The width of the subject area is
+   controlled by the variable imail-summary-subject-width.
+
+6. The sender of the message, from the message's `From:' header.
+
+Additional variables controlling this mode:
+
+imail-summary-pop-up-message       keep message buffer visible
+imail-summary-highlight-message    highlight line for current message
+imail-summary-show-date            show date message sent
+imail-summary-subject-width        width of subject field
+
+The commands in this buffer are mostly the same as those for IMAIL
+mode (the mode used by the buffer that shows the message contents),
+with some additions to make navigation more natural.
+
+\\{imail-summary}"
+  (lambda (buffer)
+    (buffer-put! buffer 'REVERT-BUFFER-METHOD imail-summary-revert-buffer)
+    (remove-kill-buffer-hook buffer imail-kill-buffer)
+    (local-set-variable! truncate-lines #t buffer)
+    (local-set-variable! mode-line-process
+			 (list ": "
+			       (buffer-get buffer
+					   'IMAIL-SUMMARY-DESCRIPTION
+					   "All"))
+			 buffer)
+    (event-distributor/invoke! (ref-variable imail-summary-mode-hook buffer)
+			       buffer)))
+
+(define-variable imail-summary-mode-hook
+  "An event distributor that is invoked when entering IMAIL Summary mode."
+  (make-event-distributor))
+
+(define (imail-summary-revert-buffer buffer dont-use-auto-save? dont-confirm?)
+  dont-use-auto-save?
+  (if (or dont-confirm? (prompt-for-yes-or-no? "Revert summary buffer"))
+      (rebuild-imail-summary-buffer buffer)))
+
+(define-key 'imail-summary #\space	'imail-summary-select-message)
+(define-key 'imail-summary #\rubout	'imail-undelete-previous-message)
+(define-key 'imail-summary #\c-n	'imail-next-message)
+(define-key 'imail-summary #\c-p	'imail-previous-message)
+(define-key 'imail-summary #\.		'undefined)
+(define-key 'imail-summary #\u		'imail-undelete-forward)
+(define-key 'imail-summary #\m-<	'imail-first-message)
+(define-key 'imail-summary #\m->	'imail-last-message)
+
+(define-key 'imail-summary (make-special-key 'down 0) '(imail-summary . #\c-n))
+(define-key 'imail-summary (make-special-key 'up 0) '(imail-summary . #\c-p))
+
+(define-key 'imail-summary button1-down 'imail-summary-mouse-select-message)
+(define-key 'imail-summary button4-down '(imail-summary . #\c-p))
+(define-key 'imail-summary button5-down '(imail-summary . #\c-n))
+
+(define-command imail-summary-select-message
+  "Select the message that point is on and show it in another window."
+  ()
+  (lambda ()
+    (select-message (selected-folder)
+		    (or (selected-message #f)
+			(editor-error "No message on this line."))
+		    #t)
+    (imail-summary-pop-up-message-buffer (selected-buffer))))
+
+(define-command imail-summary-mouse-select-message
+  "Select the message that mouse is on and show it in another window."
+  ()
+  (lambda ()
+    (let ((button-event (current-button-event)))
+      (let ((window (button-event/window button-event)))
+	(select-window window)
+	(set-current-point!
+	 (line-start (or (window-coordinates->mark
+			  window
+			  (button-event/x button-event)
+			  (button-event/y button-event))
+			 (buffer-end (window-buffer window)))
+		     0))))
+    ((ref-command imail-summary-select-message))))
