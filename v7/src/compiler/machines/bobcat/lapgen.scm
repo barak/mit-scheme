@@ -37,7 +37,7 @@
 
 ;;;; RTL Rules for 68020
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.147 1987/01/09 19:42:20 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.148 1987/01/09 20:16:35 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access lap-generator-syntax-table compiler-package)
@@ -235,8 +235,7 @@
 (define reg:compiled-memtop '(@A 6))
 
 (define popper:apply-closure '(@AO 6 #x0168))
-(define popper:apply-stack '(@AO 6 #x01C8))
-(define popper:value '(@AO 6 #x0228))
+(define popper:apply-stack '(@AO 6 #x01E8))
 
 ;;;; Transfers to Registers
 
