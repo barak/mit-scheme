@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.7 1989/03/29 02:45:15 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.8 1989/08/08 01:26:05 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -306,7 +306,8 @@ MIT in each case. |#
       (if frame-size
 	  (1+ frame-size)
 	  (stack-address->index (element-stream/ref stream 1) offset)))))
-(define (verify paranoia-index stream offset)
+
+(define (verify paranoia-index stream offset)
   (or (zero? paranoia-index)
       (stream-null? stream)
       (let* ((type (return-address->stack-frame-type
