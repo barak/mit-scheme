@@ -1,5 +1,5 @@
 
-# $Id: Makefile,v 1.1 2000/07/09 01:19:11 cph Exp $
+# $Id: Makefile,v 1.2 2000/07/09 01:36:07 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -33,3 +33,13 @@ imail.info: imail.texinfo
 
 html/imail_toc.html: imail.texinfo
 	(cd html;make)
+
+AUX_SUFFIXES = aux log toc
+INDEX_SUFFIXES = cp fn ky pg tp vr
+
+clean:
+	rm -f imail.ps imail.dvi imail*.info
+	rm -f $(addprefix imail.,$(AUX_SUFFIXES))
+	rm -f $(addprefix imail.,$(INDEX_SUFFIXES))
+	rm -f $(addsuffix s,$(addprefix imail.,$(INDEX_SUFFIXES)))
+	$(MAKE) -C html $@

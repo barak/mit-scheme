@@ -1,5 +1,5 @@
 
-# $Id: Makefile,v 1.1 2000/07/09 01:23:07 cph Exp $
+# $Id: Makefile,v 1.2 2000/07/09 01:36:12 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -20,5 +20,8 @@
 all:	imail_toc.html
 
 imail_toc.html:	../imail.texinfo
-	-rm -rf *.html
+	rm -rf *.html
 	texi2html -split_chapter ../imail.texinfo
+
+clean:
+	rm -rf *.html
