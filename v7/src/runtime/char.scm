@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.11 2001/09/24 03:44:56 cph Exp $
+$Id: char.scm,v 14.12 2001/09/24 05:24:55 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -134,20 +134,32 @@ USA.
 
 (define (char-ci>=? x y)
   (fix:>= (char-ci->integer x) (char-ci->integer y)))
-
+
 (define (char-downcase char)
   (guarantee-char char 'CHAR-DOWNCASE)
-  (let ((n (%char-code char)))
-    (if (fix:< n 256)
-	(%make-char (vector-8b-ref downcase-table n) (%char-bits char))
-	char)))
+  (%char-downcase char))
+
+(define (%char-downcase char)
+  (if (fix:< (%char-code char) 256)
+      (%%char-downcase char)
+      char))
+
+(define-integrable (%%char-downcase char)
+  (%make-char (vector-8b-ref downcase-table (%char-code char))
+	      (%char-bits char)))
 
 (define (char-upcase char)
   (guarantee-char char 'CHAR-UPCASE)
-  (let ((n (%char-code char)))
-    (if (fix:< n 256)
-	(%make-char (vector-8b-ref upcase-table n) (%char-bits char))
-	char)))
+  (%char-upcase char))
+
+(define (%char-upcase char)
+  (if (fix:< (%char-code char) 256)
+      (%%char-upcase char)
+      char))
+
+(define-integrable (%%char-upcase char)
+  (%make-char (vector-8b-ref upcase-table (%char-code char))
+	      (%char-bits char)))
 
 (define downcase-table)
 (define upcase-table)

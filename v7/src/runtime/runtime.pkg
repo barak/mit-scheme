@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.374 2001/08/17 12:50:52 cph Exp $
+$Id: runtime.pkg,v 14.375 2001/09/24 05:24:45 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -305,6 +305,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  integer->char
 	  make-char
 	  name->char)
+  (export (runtime string)
+	  %%char-downcase
+	  %%char-upcase)
   (initialization (initialize-package!)))
 
 (define-package (runtime character-set)

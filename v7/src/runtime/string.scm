@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.43 2001/06/15 20:38:46 cph Exp $
+$Id: string.scm,v 14.44 2001/09/24 05:24:31 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -43,44 +43,28 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   string-allocate string? string-ref string-set!
   string-length set-string-length!
   string-maximum-length set-string-maximum-length!
-  substring=? substring-ci=? substring<?
+  substring=? substring<?
   substring-move-right! substring-move-left!
   substring-match-forward substring-match-backward
-  substring-match-forward-ci substring-match-backward-ci
-  substring-upcase! substring-downcase! string-hash string-hash-mod
-
-  vector-8b-ref vector-8b-set! vector-8b-fill!
-  vector-8b-find-next-char vector-8b-find-previous-char
-  vector-8b-find-next-char-ci vector-8b-find-previous-char-ci)
+  string-hash string-hash-mod
+  vector-8b-ref vector-8b-set! vector-8b-fill!)
 
 ;;; Character Covers
 
 (define-integrable (substring-fill! string start end char)
   (vector-8b-fill! string start end (char->ascii char)))
 
-(define-integrable (substring-find-next-char string start end char)
-  (vector-8b-find-next-char string start end (char->ascii char)))
+(define-integrable (vector-8b-find-next-char string start end ascii)
+  (substring-find-next-char string start end (ascii->char ascii)))
 
-(define-integrable (substring-find-previous-char string start end char)
-  (vector-8b-find-previous-char string start end (char->ascii char)))
+(define-integrable (vector-8b-find-previous-char string start end ascii)
+  (substring-find-previous-char string start end (ascii->char ascii)))
 
-(define-integrable (substring-find-next-char-ci string start end char)
-  (vector-8b-find-next-char-ci string start end (char->ascii char)))
+(define-integrable (vector-8b-find-next-char-ci string start end ascii)
+  (substring-find-next-char-ci string start end (ascii->char ascii)))
 
-(define-integrable (substring-find-previous-char-ci string start end char)
-  (vector-8b-find-previous-char-ci string start end (char->ascii char)))
-
-;;; Special, not implemented in microcode.
-
-(define (substring-ci<? string1 start1 end1 string2 start2 end2)
-  (let ((match (substring-match-forward-ci string1 start1 end1
-					   string2 start2 end2))
-	(len1 (fix:- end1 start1))
-	(len2 (fix:- end2 start2)))
-    (and (not (fix:= match len2))
-	 (or (fix:= match len1)
-	     (char-ci<? (string-ref string1 (fix:+ match start1))
-			(string-ref string2 (fix:+ match start2)))))))
+(define-integrable (vector-8b-find-previous-char-ci string start end ascii)
+  (substring-find-previous-char-ci string start end (ascii->char ascii)))
 
 ;;; Substring Covers
 
@@ -100,7 +84,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	       string2 0 (string-length string2)))
 
 (define (string-ci<? string1 string2)
-  (guarantee-2-strings string1 string2 'STRING-ci<?)
+  (guarantee-2-strings string1 string2 'STRING-CI<?)
   (substring-ci<? string1 0 (string-length string1)
 		  string2 0 (string-length string2)))
 
@@ -508,12 +492,21 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (string-upcase string)
   (let ((string (string-copy string)))
-    (substring-upcase! string 0 (string-length string))
+    (%substring-upcase! string 0 (string-length string))
     string))
 
 (define (string-upcase! string)
   (guarantee-string string 'STRING-UPCASE!)
-  (substring-upcase! string 0 (string-length string)))
+  (%substring-upcase! string 0 (string-length string)))
+
+(define (substring-upcase! string start end)
+  (guarantee-substring string start end 'SUBSTRING-UPCASE!)
+  (%substring-upcase! string start end))
+
+(define (%substring-upcase! string start end)
+  (do ((i start (fix:+ i 1)))
+      ((fix:= i end))
+    (string-set! string i (%%char-upcase (string-ref string i)))))
 
 (define (string-lower-case? string)
   (guarantee-string string 'STRING-LOWER-CASE?)
@@ -543,6 +536,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (string-downcase! string)
   (guarantee-string string 'STRING-DOWNCASE!)
   (substring-downcase! string 0 (string-length string)))
+
+(define (substring-downcase! string start end)
+  (guarantee-substring string start end 'SUBSTRING-DOWNCASE!)
+  (%substring-downcase! string start end))
+
+(define (%substring-downcase! string start end)
+  (do ((i start (fix:+ i 1)))
+      ((fix:= i end))
+    (string-set! string i (%%char-downcase (string-ref string i)))))
 
 (define (string-capitalized? string)
   (guarantee-string string 'STRING-CAPITALIZED?)
@@ -733,6 +735,52 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 					     string2 start2 end2)
 		length))))
 
+(define (substring-ci=? string1 start1 end1 string2 start2 end2)
+  (guarantee-2-substrings string1 start1 end1
+			  string2 start2 end2
+			  'SUBSTRING-CI=?)
+  (and (fix:= (fix:- end1 start1) (fix:- end2 start2))
+       (let loop ((i1 start1) (i2 start2))
+	 (or (fix:= i1 end1)
+	     (and (char-ci=? (string-ref string1 i1) (string-ref string2 i2))
+		  (loop (fix:+ i1 1) (fix:+ i2 1)))))))
+
+(define (substring-ci<? string1 start1 end1 string2 start2 end2)
+  (guarantee-2-substrings string1 start1 end1
+			  string2 start2 end2
+			  'SUBSTRING-CI<?)
+  (let loop ((i1 start1) (i2 start2))
+    (and (not (fix:= i2 end2))
+	 (or (fix:= i1 end1)
+	     (let ((c1 (string-ref string1 i1))
+		   (c2 (string-ref string2 i2)))
+	       (or (char-ci<? c1 c2)
+		   (and (char-ci=? c1 c2)
+			(loop (fix:+ i1 1) (fix:+ i2 1)))))))))
+
+(define (substring-match-forward-ci string1 start1 end1 string2 start2 end2)
+  (guarantee-2-substrings string1 start1 end1
+			  string2 start2 end2
+			  'SUBSTRING-MATCH-FORWARD-CI)
+  (let loop ((i1 start1) (i2 start2))
+    (if (or (fix:= i1 end1)
+	    (fix:= i2 end2)
+	    (not (char-ci=? (string-ref string1 i1) (string-ref string2 i2))))
+	(fix:- i1 start1)
+	(loop (fix:+ i1 1) (fix:+ i2 1)))))
+
+(define (substring-match-backward-ci string1 start1 end1 string2 start2 end2)
+  (guarantee-2-substrings string1 start1 end1
+			  string2 start2 end2
+			  'SUBSTRING-MATCH-BACKWARD-CI)
+  (let loop ((i1 end1) (i2 end2))
+    (if (or (fix:= i1 start1)
+	    (fix:= i2 start2)
+	    (not (char-ci=? (string-ref string1 (fix:- i1 1))
+			    (string-ref string2 (fix:- i2 1)))))
+	(fix:- end1 i1)
+	(loop (fix:- i1 1) (fix:- i2 1)))))
+
 ;;;; Trim/Pad
 
 (define (string-trim-left string #!optional char-set)
@@ -797,6 +845,52 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		  (substring-fill! result 0 i char))
 		(%substring-move! string 0 length result i)))
 	  result))))
+
+;;;; Char Search
+
+(define (substring-find-next-char string start end char)
+  (guarantee-substring string start end 'SUBSTRING-FIND-NEXT-CHAR)
+  (%substring-find-next-char string start end char))
+
+(define (%substring-find-next-char string start end char)
+  (let loop ((i start))
+    (cond ((fix:= i end) #f)
+	  ((char=? (string-ref string i) char) i)
+	  (else (loop (fix:+ i 1))))))
+
+(define (substring-find-previous-char string start end char)
+  (guarantee-substring string start end 'SUBSTRING-FIND-PREVIOUS-CHAR)
+  (%substring-find-previous-char string start end char))
+
+(define (%substring-find-previous-char string start end char)
+  (if (fix:= start end)
+      #f
+      (let loop ((i (fix:- end 1)))
+	(cond ((char=? (string-ref string i) char) i)
+	      ((fix:= start i) #f)
+	      (else (loop (fix:- i 1)))))))
+
+(define (substring-find-next-char-ci string start end char)
+  (guarantee-substring string start end 'SUBSTRING-FIND-NEXT-CHAR-CI)
+  (%substring-find-next-char-ci string start end char))
+
+(define (%substring-find-next-char-ci string start end char)
+  (let loop ((i start))
+    (cond ((fix:= i end) #f)
+	  ((char-ci=? (string-ref string i) char) i)
+	  (else (loop (fix:+ i 1))))))
+
+(define (substring-find-previous-char-ci string start end char)
+  (guarantee-substring string start end 'SUBSTRING-FIND-PREVIOUS-CHAR-CI)
+  (%substring-find-previous-char-ci string start end char))
+
+(define (%substring-find-previous-char-ci string start end char)
+  (if (fix:= start end)
+      #f
+      (let loop ((i (fix:- end 1)))
+	(cond ((char-ci=? (string-ref string i) char) i)
+	      ((fix:= start i) #f)
+	      (else (loop (fix:- i 1)))))))
 
 ;;;; String Search
 
