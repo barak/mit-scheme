@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.57 2000/04/01 05:14:00 cph Exp $
+;;; $Id: vc.scm,v 1.58 2000/04/01 05:16:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -549,13 +549,13 @@ merge in the changes into your working copy."
 	     (if (there-exists? files
 		   (lambda (file)
 		     (let ((master (file-vc-master (car file) #f)))
-		       (or (not master)
-			   (if (cvs-master? master)
-			       (memq (cvs-status master)
-				     '(LOCALLY-MODIFIED
-				       LOCALLY-ADDED
-				       LOCALLY-REMOVED))
-			       (vc-backend-locking-user master #f))))))
+		       (and master
+			    (if (cvs-master? master)
+				(memq (cvs-status master)
+				      '(LOCALLY-MODIFIED
+					LOCALLY-ADDED
+					LOCALLY-REMOVED))
+				(vc-backend-locking-user master #f))))))
 		 #f
 		 "")
 	     (lambda (comment)
