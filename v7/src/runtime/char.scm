@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.18 2003/04/25 03:09:14 cph Exp $
+$Id: char.scm,v 14.19 2003/07/25 23:03:57 cph Exp $
 
 Copyright 1986,1987,1988,1991,1995,1997 Massachusetts Institute of Technology
 Copyright 1998,2001,2003 Massachusetts Institute of Technology
@@ -58,7 +58,7 @@ USA.
 
 (define (code->char code)
   (guarantee-limited-index-fixnum code char-code-limit 'CODE->CHAR)
-  (%make-char code 0))
+  (integer->char code))
 
 (define (char-code char)
   (guarantee-char char 'CHAR-CODE)
@@ -276,7 +276,7 @@ USA.
 	(bits (char-bits char)))
     (string-append
      (bucky-bits->prefix bits)
-     (let ((base-char (code->char code)))
+     (let ((base-char (if (fix:= 0 bits) char (integer->char code))))
        (cond ((<-map- named-codes code))
 	     ((and (if (default-object? slashify?) #f slashify?)
 		   (not (fix:= 0 bits))
