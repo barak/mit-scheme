@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.50 1993/11/29 19:04:31 gjr Exp $
+$Id: toplev.scm,v 4.51 1993/11/29 19:10:21 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -149,7 +149,7 @@ MIT in each case. |#
 (define (compile-procedure procedure #!optional keep-debugging-info?)
   (compiler-output->procedure
    (compile-scode/no-file
-    scode
+    (procedure-lambda scode)
     (and (or (default-object? keep-debugging-info?)
 	     keep-debugging-info?)
 	 'KEEP))
