@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.20 1994/10/28 05:58:22 jawilson Exp $
+$Id: hashtb.scm,v 1.21 1995/04/30 15:09:15 adams Exp $
 
-Copyright (c) 1990-94 Massachusetts Institute of Technology
+Copyright (c) 1990-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -688,20 +688,24 @@ MIT in each case. |#
 (define (compute-key-hash table key)
   (let ((key-hash (table-key-hash table)))
     (if (table-rehash-after-gc? table)
-	(let ((interrupt-mask (set-interrupt-enables! interrupt-mask/none)))
-	  (let loop ()
-	    (if (table-needs-rehash? table)
-		(begin
+	(let ((hash (key-hash key (vector-length (table-buckets table)))))
+	  (if (not (table-needs-rehash? table))
+	      hash
+	      (let ((interrupt-mask
+		     (set-interrupt-enables! interrupt-mask/none)))
+		(let loop ()
 		  (rehash-table! table)
 		  (if (< (table-count table) (table-shrink-size table))
 		      (begin
 			(set-interrupt-enables! interrupt-mask/gc-ok)
 			(shrink-table! table)
 			(set-interrupt-enables! interrupt-mask/none)
-			(loop))))))
-	  (let ((hash (key-hash key (vector-length (table-buckets table)))))
-	    (set-interrupt-enables! interrupt-mask)
-	    hash))
+			(if (table-needs-rehash? table)
+			    (loop)))))
+		(let ((hash
+		       (key-hash key (vector-length (table-buckets table)))))
+		  (set-interrupt-enables! interrupt-mask)
+		  hash))))
 	(key-hash key (vector-length (table-buckets table))))))
 
 (define-integrable (eq-hash-mod key modulus)
