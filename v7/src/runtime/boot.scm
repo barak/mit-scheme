@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: boot.scm,v 14.18 2004/10/01 02:47:41 cph Exp $
+$Id: boot.scm,v 14.19 2004/11/18 18:15:59 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
 Copyright 1993,1996,2001,2004 Massachusetts Institute of Technology
@@ -116,3 +116,9 @@ USA.
 
 (define-integrable (future? object)
   ((ucode-primitive object-type? 2) (ucode-type future) object))
+
+(define-integrable (default-object? object)
+  (eq? object (default-object)))
+
+(define-integrable (default-object)
+  (object-new-type (ucode-type constant) 7))

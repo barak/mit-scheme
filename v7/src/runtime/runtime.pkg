@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.511 2004/11/17 05:42:33 cph Exp $
+$Id: runtime.pkg,v 14.512 2004/11/18 18:16:08 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -137,6 +137,8 @@ USA.
   (files "boot")
   (parent (runtime))
   (export ()
+	  default-object
+	  default-object?
 	  future?
 	  get-next-constant
 	  interrupt-bit/after-gc

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: version.scm,v 14.218 2004/10/12 22:42:49 cph Exp $
+$Id: version.scm,v 14.219 2004/11/18 18:16:13 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
@@ -34,7 +34,7 @@ USA.
   (add-subsystem-identification! "Release" '(7 7 91))
   (snarf-microcode-version!)
   (add-event-receiver! event:after-restore snarf-microcode-version!)
-  (add-subsystem-identification! "Runtime" '(15 5)))
+  (add-subsystem-identification! "Runtime" '(15 6)))
 
 (define (snarf-microcode-version!)
   (add-subsystem-identification! "Microcode"

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mit-syntax.scm,v 14.21 2004/09/14 01:37:16 cph Exp $
+$Id: mit-syntax.scm,v 14.22 2004/11/18 18:16:04 cph Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 Copyright 2004 Massachusetts Institute of Technology
@@ -863,18 +863,6 @@ USA.
        (syntax-check '(KEYWORD EXPRESSION EXPRESSION) form history)
        `(,(rename 'CONS) ,(cadr form)
 			 (,(rename 'DELAY) ,(caddr form)))))))
-
-(define-compiler 'DEFAULT-OBJECT? system-global-environment
-  (lambda (form environment history)
-    (syntax-check '(KEYWORD IDENTIFIER) form history)
-    (let ((item
-	   (classify/subexpression (cadr form)
-				   environment
-				   history
-				   select-cadr)))
-      (if (not (variable-item? item))
-	  (syntax-error history "Variable required in this context:" form))
-      (output/unassigned-test (variable-item/name item)))))
 
 (define-er-macro-transformer 'DEFINE-INTEGRABLE system-global-environment
   (lambda (form rename compare)
