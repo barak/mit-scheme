@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxproc.c,v 1.18 1993/11/23 03:30:24 cph Exp $
+$Id: uxproc.c,v 1.19 1996/03/11 20:38:24 cph Exp $
 
-Copyright (c) 1990-93 Massachusetts Institute of Technology
+Copyright (c) 1990-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,6 +47,7 @@ extern void EXFUN
 extern void EXFUN ((*stop_signal_hook), (int signo));
 extern void EXFUN (stop_signal_default, (int signo));
 extern int EXFUN (OS_ctty_fd, (void));
+extern void EXFUN (UX_initialize_child_signals, (void));
 
 static void EXFUN (subprocess_death, (pid_t pid, wait_status_t * status));
 static void EXFUN (stop_signal_handler, (int signo));
@@ -412,21 +413,8 @@ DEFUN (OS_make_subprocess,
       }
   }
 
-  /* Force the signal mask to be empty. */
-#ifdef HAVE_POSIX_SIGNALS
-  {
-    sigset_t empty_mask;
-    UX_sigemptyset (&empty_mask);
-    UX_sigprocmask (SIG_SETMASK, (&empty_mask), 0);
-  }
-#else
-#ifdef HAVE_SYSV3_SIGNALS
-  /* We could do something more here, but it is hard to enumerate all
-     the possible signals.  Instead, just release SIGCHLD, which we
-     know was held above before the child was spawned. */
-  UX_sigrelse (SIGCHLD);
-#endif
-#endif
+  /* Put the signal mask and handlers in a normal state.  */
+  UX_initialize_child_signals ();
 
   /* Start the process. */
   execve (filename, argv, envp);

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxsig.c,v 1.31 1994/05/03 08:01:16 cph Exp $
+$Id: uxsig.c,v 1.32 1996/03/11 20:38:29 cph Exp $
 
-Copyright (c) 1990-94 Massachusetts Institute of Technology
+Copyright (c) 1990-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -690,6 +690,32 @@ DEFUN_VOID (UX_initialize_signals)
 	scan += 1;
       }
   }
+}
+
+/* Initialize the signals in a child subprocess.  */
+
+void
+DEFUN_VOID (UX_initialize_child_signals)
+{
+  /* Force the signal mask to be empty. */
+#ifdef HAVE_POSIX_SIGNALS
+  {
+    sigset_t empty_mask;
+    UX_sigemptyset (&empty_mask);
+    UX_sigprocmask (SIG_SETMASK, (&empty_mask), 0);
+  }
+#else
+#ifdef HAVE_SYSV3_SIGNALS
+  /* We could do something more here, but it is hard to enumerate all
+     the possible signals.  Instead, just release SIGCHLD, which we
+     know was held before the child was spawned. */
+  UX_sigrelse (SIGCHLD);
+#endif
+#endif
+
+  /* SIGPIPE was ignored above; we must set it back to the default
+     because some programs depend on this.  */
+  INSTALL_HANDLER (SIGPIPE, SIG_DFL);
 }
 
 /* Interactive Interrupt Handler */
