@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: lspcom.scm,v 1.159 1999/05/13 03:06:42 cph Exp $
+;;; $Id: lspcom.scm,v 1.160 2002/10/01 02:39:19 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-1999, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Lisp Commands
 
@@ -168,7 +169,8 @@ If this would place point off screen, nothing happens."
     (reposition-window-top (current-definition-start))))
 
 (define (current-definition-start)
-  (this-definition-start (current-point)))
+  (or (this-definition-start (current-point))
+      (error "Not inside a definition.")))
 
 (define (this-definition-start mark)
   (let ((start (line-start mark 0)))
