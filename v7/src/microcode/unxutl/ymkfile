@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.47 1991/08/15 22:39:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.48 1991/08/23 22:46:34 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -35,6 +35,7 @@ MIT in each case. */
 #include "cf.h"
 
 #undef unix
+#undef vax
 
 #ifndef SOURCES_SYSTEM
 #define SOURCES_SYSTEM
