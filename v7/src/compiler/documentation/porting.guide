@@ -1,23 +1,44 @@
 Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.6 1991/02/23 21:13:18 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.7 1991/02/24 02:09:38 jinx Exp $
 
 
-	LIAR PORTING GUIDE AND PARTIAL INTERNALS DOCUMENTATION
+		LIAR PORTING GUIDE
 
 
 Notes: 
 
 This porting guide applies to Liar version 4.78, but most of the
 relevant information has not changed for a while, nor is it likely to
-change in a while in major ways.
+change in major ways any time soon.
 
-Text tagged by ==> is meant mostly for the compiler developers, and
-text tagged by *** is meant for the people writing this document.
+This is an early version of this document, and the order of
+presentation leaves a lot to be desired.  In particular, the document
+does not follow a monotonic progression, but is instead organized in a
+dictionary-like or graph-like manner.  We recommed that you read
+through the whole document twice since some important details,
+apparently omitted, may have their explanation later on in the
+document.  When reading the document for the second time, you will
+have an idea of where this other information is to be found, if it is
+at all present.  We have attempted to insert sufficient forward
+pointers to make the first reading bearable, but we may have missed
+some.
+
+This document implicitly assumes that you are trying to build the
+compiler under Unix.  The only compiler sources that depend on Unix
+are the sources that contain the pathnames of other files.
+The syntax could easily be changed for other file systems.
+This document uses Unix pathname syntax and assumes a hierarchical
+file system, but it should easy to map these directories to a
+different file system.
 
 For questions on Liar not covered by this document, or questions about
 this document, contact liar-implementors@zurich.ai.mit.edu .
 
+Text tagged by ==> is intended primarily for the compiler developers,
+and text tagged by *** is meant for the people writing this document.
+
+Good luck!
 
 
 		Acknowledgments
@@ -40,8 +61,7 @@ Stallman and many others.
 
 This document was written by Bill Rozas, with modifications and hints
 from the people listed above.
-
-
+
 		0. Introduction and a brief walk through Liar.
 
 Liar translates Scode as produced by the procedure SYNTAX, or by the
@@ -60,7 +80,7 @@ Liar is a multi-pass compiler, where each major pass has multiple
 subpasses.  Many of the subpasses do not manipulate the whole code
 graph, but instead follow threads that link the relevant parts of the
 graph.
-
+
 COMPILE-SCODE is the main entry point to Liar, although CF is the
 usual entry point.  CF uses COMPILE-SCODE, and assumes that the code
 has been syntaxed by SF producing a .bin file, and dumps the resulting
@@ -88,7 +108,7 @@ compiled code uses at runtime.
 compiler/toplev.scm contains the top-level calls of the compiler and
 its pass structure.
 
-	0.1.  Package structure for Liar
+	0.1.  Liar's package structure
 
 The package structure of the compiler reflects the pass structure.
 The package structure is specified in compiler/machines/port/comp.pkg.
@@ -143,7 +163,7 @@ by ASSEMBLER and performs branch-tensioning on the result.
 ordinary compiler operation, but is useful for low-level debugging,
 and debugging of the compiler and assembler.
 
-	0.2. Directory structure for Liar
+	0.2. Liar's sources' directory structure
 
 The directory structure loosely reflects the pass structure of the
 compiler.  compiler/machines/port/comp.pkg declares the packages and
@@ -256,7 +276,7 @@ document.
 
 		2. Preliminary Observations
 
-A. Constraints on architectures to which Liar can be ported:
+	2.1. Constraints on architectures to which Liar can be ported:
 
 - Liar assumes that the target machine has an address space that is
 flat enough that all Scheme objects can be addressed uniformly.  In
@@ -284,7 +304,8 @@ probably also hard to port Liar to an Intel 386/486 because of the
 small number of registers and the fact that most of them are special
 to some common instructions.
 
-B. Some implementation decisions that may make your job harder:
+	2.2. Some implementation decisions that may make your job
+harder:
 
 - Liar generates code that passes arguments to procedures on a stack.
 This decision especially affects the performance on load-store
@@ -323,7 +344,7 @@ address may include inserting segment bits in some of the positions
 where the tag is placed, further increasing the dependency on cheap
 bit-field manipulation.
 
-C. Emulating an existing port.
+	2.3. Emulating an existing port.
 
 The simplest way to port Liar is to find an architecture to which Liar
 has already been ported that is sufficiently similar to the desired
@@ -365,7 +386,7 @@ to mix and match ideas from many of the ports already done, and it is
 probably a good idea for you to compare how the various ports solve
 the various problems.
 
-		3. Compiler operation, RTL rules and LAP rules.
+		3. Compiler operation, LAPGEN rules and ASSEMBLER rules.
 
 The front end of the compiler translates Scode into a flow-graph that
 is then translated into RTL.  The back end does machine-independent
@@ -490,7 +511,7 @@ minimize the size of the resulting encoding (to tension branches, i.e.
 to choose the smallest encoding that will do the job when there are
 alternatives).
 
-Since most of the RTL rules generate almost fixed assembly language,
+Since most of the LAPGEN rules generate almost fixed assembly language,
 where the only difference is the register numbers, most of the LAP to
 bits translation can be done when the compiler is compiled.  A
 compiler switch, ``compiler:enable-expansion-declarations?'' allows this
@@ -551,13 +572,15 @@ taught how to deal with additional primitives, but not all ports have
 open codings for them, there is no need to change the various
 machin.scm files.
 
-		4. Description of the files in compiler/machines/port.
+		4. Description of the port-specific files
 
 The following is the list of files that usually appears in the port
 directory.  The files can be organized differently for each port, but
 it is probably easiest if the same pattern is kept.  In particular,
-the best way to write most is by editting appropriately the files from
-an existing port.
+the best way to write most is by editting the corresponding files from
+an existing port.  Keeping the structure identical will make writing
+decls.scm, comp.pkg, and comp.sf straightforward, and will make future
+updates easier to track.
 
 A useful thing to do when writing new port files is to keep
 track of the original version from which you started, and
@@ -624,7 +647,7 @@ to obtain the maximum effect from the integrations (mostly because of
 transitive steps).
 - Expansions: Certain procedures can be expanded at compiler
 pre-processing time into accumulations of simpler calls.  This is how
-the assembly language in the RTL rules can be translated into bits at
+the assembly language in the LAPGEN rules can be translated into bits at
 compiler pre-processing time.  The files that define the
 pre-processing-time expansion functions must be loaded in order to
 process those files that use the procedures that can be expanded.
@@ -854,9 +877,9 @@ memory requirements of the compiler.  The partition can be done in a
 different way, but is probably best left as uniform as possible
 between the different ports to facilitate comparison and updating.
 
-The RTL->LAP rules are separated into two different data bases.  The
-larger is the statement data base, used to translate whole RTL
-instructions.  The smaller is the predicate data base, used to
+The LAPGEN (RTL->LAP) rules are separated into two different data
+bases.  The larger is the statement data base, used to translate whole
+RTL instructions.  The smaller is the predicate data base, used to
 translate decisions to branch between the RTL basic blocks.
 
 * lapgen.scm:
@@ -1071,7 +1094,7 @@ VARIABLE-WIDTH.  This should probably be changed.
 * inerly.scm:
 	This file provides alternative expanders for the port-specific
 syntax.  This alternative expanders are used when the assembly
-language that appears in the RTL rules is assembled (early) at
+language that appears in the LAPGEN rules is assembled (early) at
 compiler pre-processing time.  That is, the procedures defined in this
 file are only used if COMPILER:ENABLE-EXPANSION-DECLARATIONS? is set
 to true.  If you reuse the code in insmac.scm from another port, you
@@ -1098,41 +1121,65 @@ as many of these files or as few as desired by whoever writes the
 assembler.  They are usually split according to the size of the files
 or along the divisions in the architecture manual.  Not all
 instructions in the architecture need to be listed here -- only those
-actually used by the back end in the RTL rules and utility procedures.
+actually used by the back end in the LAPGEN rules and utility procedures.
 Priviledged/supervisory instructions, BCD (binary coded decimal)
 instructions, COBOL-style EDIT instructions, etc., can probably be
 safely ignored.
 
 	4.5 Disassembler files:
 
+	The disassembler is almost completely machine dependent.  For
+many machines, a reasonable disassembler could be derived from the
+description of the instruction set used to assemble programs.  The Vax
+disassembler, is essentially constructed this way.  Unfortunately this
+has not been generalized, and currently each port has its own
+disassembler, often duplicating information contained in the
+assembler.
+
 * dassm1.scm:
+	This file contains the top-level of the disassembler.  It is
+not machine-dependent, and should probably be moved to another directory.
+==> Is back the right place for this?
 
 * dassm2.scm:
+	This file contains various utilities for the disassembler.  In
+particular, it contains the code for
+compiled-code-block/bytes-per-object
+compiled-code-block/objects-per-procedure-cache
+compiled-code-block/objects-per-variable-cache
+==> Should these not be in machin.scm?  In particular, the first two
+have corresponding definitions there.
+disassembler/read-variable-cache
+disassembler/read-procedure-cache
+disassembler/instructions
+disassembler/instructions/null?
+disassembler/instructions/read
+and the state machine to heuristically disassemble offsets, etc.
+*** Describe all of these.
 
 * dassm3.scm:
+	This file contains the code to disassemble one instruction at
+a time.  It is completely machine dependent at the time, and any old
+way of doing it is fine.
 
 * dinstr<n>.scm:
+	In the VAX port, these are copies (or links) to the
+instr<n>.scm files.  They are processed with a different syntax table
+to construct the disassembler tables instead of the assembler tables.
 
 * dsyn.scm:
+	In the VAX port, this file provides the alternative expansion
+of DEFINE-INSTRUCTION used to construct the disassembler tables
+instead of the assembler rule data base.
 
-		5. How to test the compiler once the port files have
-been written.
-?? How to test the assembler by using LAP->CODE .
-Include my upgraded test suite in the compiler directory, and perhaps
-some scripts that do the testing.
+		5. All about rules
 
+*** This section needs to be written.  What follows is a list of
+topics that need to be addressed. ***
 
-		6. How to build a compiler once it has been
-preliminarly tested.  
-Cross compiling.
-Spreading the computation over a bunch of machines.
-Testing for convergence by doing stages and comparing binaries.
-Common bugs.  interrupts, dlinks, register allocation bus, and bugs
-in the interface.
+- Syntax of rules.  transformers, qualifiers, variables, etc.
 
-
-		7. How to write RTL rules and use the register allocator.
-Get CPH to help with this.
+Get CPH to help with the LAPGEN rules.
 - Closures, multi closures, uuo-link calls, and block-linking.  Other
 hairy stuff in rules3.  Rules4 and part of rules3 should go away, they
 are fossils.  On the other hand, they are easy to take care of because
@@ -1147,11 +1194,126 @@ case.
 allocating the target register.  This is done by the usual utilities.
   - describe the common utilities for reusing and 2/3 operand opcodes.
 
+- Describe the RTL rewriter and what it does.
+  Suggest looking at the 68000 and the Spectrum versions.
 
-		8. How to use the RTL rewriter to improve the output
-code.
-- Suggest looking at the 68000 and the Spectrum versions.
+- How to interface to the runtime library.  How to write
+special-purpose optimized entries.
+
+		6. Building and testing the compiler.
 
+Once the port files have been written, you are ready to build and test
+the compiler.  The first step is to build an interpreted compiler and
+run simple programs.  Most simple bugs will be caught by this.
 
-		9. How to interface to the runtime library.  How to
-write special-purpose optimized entries.
+	6.1 Re-building scheme
+
+You need to build a version of the microcode with the compiled code
+interface (portable runtime library) in it.  Besides writing
+cmpint-port.h and cmpaux-port.m4, you will need to do the following:
+
+- Copy (or link) cmpint-port.h to cmpint2.h.
+
+- Modify m.h to use 6-bit-long type tags (rather than the default 8)
+if you did not do this when you installed the microcode.  Note that if
+you do this, you will not be able to load .bin files created with 6
+bit type tags.  You can overcome this problem by using the original
+.psb files again to regenerate the .bin files, or using a version of
+Bintopsb compiled with 8-bit tags to generate new .psb files, and a
+version of Psbtobin compiled with 6-bit tags to generate the new .bin
+files.  Alternatively, you can try to bring the whole compiler up
+using 8 bit tags, but you may run out of address space.  The simplest
+way to specify 6-bit type tags is to add a definition of
+C_SWITCH_MACHINE that includes -DTYPE_CODE_LENGTH=6 .  Be sure to add
+any m4 switches that you may need so that the assembly language will
+agree on the number of tag bits if it needs it at all.  If your
+version of m4 does not support command-line definitions, you can use
+the s/ultrix.m4 script to overcome this problem.  Look at the m/vax.h
+and s/ultrix.h files for m4-related definitions.
+==> We should just switch the default to 6 bits and be done with it.
+
+- Modify ymakefile to include the a processor dependent section that
+lists the cmpint-port.h and cmpaux-port.m4 files.  You can emulate the
+version for any other compiler port.  It is especially important that
+the microcode sources be compiled with HAS_COMPILER_SUPPORT defined.
+
+- Remove (or save elsewhere) all the .o files and scheme, the linked
+scheme microcode.
+
+- Do "make scheme" or "make xmakefile;make -f xmakefile scheme" to
+generate a new linked microcode.
+
+Once you have a new linked microcode, you need to regenerate the
+runtime system image files even if you have not changed the length of
+the type tags.  This is done as follows:
+
+- Re-generate a runtime.com (actually runtime.bin) image file by
+invoking scheme with the options "-large -fasl make.bin" while
+connected to the runtime directory, and then typing
+  (disk-save "<lib directory pathname>/runtime.com")
+at the Scheme prompt.
+
+- You should probably also generate a runtime+sf.com file by typing
+  (begin
+    (cd "<sf directory pathname>")
+    (load "make")
+    (disk-save "<lib directory pathname>/runtime+sf.com"))
+at the Scheme prompt.
+
+You also need to have a working version of cref.  This can be done by
+invoking scheme with the options "-band runtime+sf.com", and then
+typing
+  (begin
+     (cd "<cref directory pathname>")
+     (load "cref.sf"))
+at the Scheme prompt.
+
+If this errors because of the lack of a "runtim.glob" file, try it
+again after executing
+  (begin
+     (cd "<runtime directory pathname>")
+     (load "runtim.sf"))
+	
+	6.2 Building an interpreted compiler
+
+Once you have a new microcode, compatible runtime system, and ready
+cref, you can pre-process the compiler as follows:
+
+- Copy (or link) comp.pkg, comp.sf, and comp.cbf from the
+compiler/machines/port directory to the compiler directory.
+
+- Invoke scheme with the "-band runtime+sf.com" option, and then execute
+  (begin
+     (cd "<compiler directory pathname>")
+     (load "comp.sf"))
+This will take quite a while, and pre-process some of the files twice.
+At the end of this process, you should have a .bin file for each of
+the .scm files, a .ext file for some of them, and a bunch of
+additional files in the compiler directory (comp.con, comp.ldr,
+comp.bcon, comp.bldr, comp.glob, comp.free, comp.cref).
+
+It is a good idea to look at the comp.cref file.  This is a
+cross-reference of the compiler and may lead you to find typos or
+other small mistakes.  The first section of the cref file (labeled
+"Free References:") lists all variables that are not defined in the
+compiler or the runtime system.  The only variables that should be in
+this list are SF, and SF/PATHNAME-DEFAULTING.  The "Undefined
+Bindings:" section lists those variables defined in the runtime system
+and referenced freely by the compiler sources.  The remainder of the
+cref file lists the compiler packages and the cross reference of the
+procedures defined by it.
+
+*** Here ***
+
+*** Notes: ***
+
+Include my upgraded test suite in the compiler directory, and perhaps
+some scripts that do the testing.
+Cross compiling.
+Spreading the computation over a bunch of machines.
+Testing for convergence by doing stages and comparing binaries.
+Common bugs.  interrupts, dlinks, register allocation bus, and bugs
+in the interface.
+
+*** Should I mention how to test the assembler by using LAP->CODE?
+
