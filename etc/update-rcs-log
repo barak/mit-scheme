@@ -1,6 +1,8 @@
 #!/bin/sh
 #
 #	Update RCS.log file in background.  no arguments
+#
+#	Currently being run daily from adams's crontab
 
 PATH=/usr/contrib/bin:/usr/local/bin:/usr/bin:/bin
 export PATH
