@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosprm.scm,v 1.5 1992/05/28 23:18:18 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosprm.scm,v 1.6 1992/05/28 23:31:22 mhwu Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -207,4 +207,6 @@ MIT in each case. |#
 
 ;;; Queues after-restart daemon to clean up environment space
 
-(add-event-receiver! event:after-restart reset-environment-variables!)
+(define (initialize-system-primitives!)
+  (add-event-receiver! event:after-restart reset-environment-variables!))
+  

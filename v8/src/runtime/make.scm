@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.35 1992/04/11 23:48:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.36 1992/05/28 23:32:16 mhwu Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -385,6 +385,7 @@ MIT in each case. |#
    (RUNTIME EMACS-INTERFACE)))
 
 (package-initialize '(RUNTIME CONTINUATION-PARSER) 'INITIALIZE-SPECIAL-FRAMES! false)
+(package-initialize '() 'INITIALIZE-SYSTEM-PRIMITIVES! false)
 
 (let ((filename (map-filename "site")))
   (if (file-exists? filename)
