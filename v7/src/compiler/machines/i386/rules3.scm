@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.16 1992/02/17 04:41:04 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.17 1992/02/17 22:34:45 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -153,6 +153,7 @@ MIT in each case. |#
   continuation				; ignored
   (let-syntax ((invoke
 		(macro (code entry)
+		  entry			; ignored (for now)
 		  `(invoke-interface ,code))))
     (if (eq? primitive compiled-error-procedure)
 	(LAP ,@(clear-map!)
@@ -293,12 +294,12 @@ MIT in each case. |#
 	    (label (generate-label 'MOVE-LOOP)))
 	(LAP (LEA (R ,reg)
 		  ,(byte-offset-reference reg (* -4 frame-size)))
-	     (MOV W (R ,ctr) (& (-1+ frame-size)))
+	     (MOV W (R ,ctr) (& ,(-1+ frame-size)))
 	     (LABEL ,label)
 	     (MOV W ,temp (@RI 4 ,ctr 4))
 	     (MOV W (@RI ,reg ,ctr 4) ,temp)
-	     (DEC W ,ctr)
-	     (JGE (PCR ,label))
+	     (DEC W (R ,ctr))
+	     (JGE (@PCR ,label))
 	     (MOV W (R 4) (R ,reg))))))
 
 ;;;; External Labels
@@ -466,7 +467,7 @@ MIT in each case. |#
 		 (MOV W (@RO B ,regnum:free-pointer -4) ,temp)
 		 ,@(if (null? rest)
 		       (LAP)
-		       (LAP (ADD W (R ,regnum:free-pointer) 10)
+		       (LAP (ADD W (R ,regnum:free-pointer) (& 10))
 			    ,@(generate-entries rest (+ 10 offset)))))))
 
 	(LAP (MOV W (@R ,regnum:free-pointer)
