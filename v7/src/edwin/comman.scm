@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comman.scm,v 1.72 1993/09/02 03:34:20 gjr Exp $
+$Id: comman.scm,v 1.73 1993/09/02 20:10:03 gjr Exp $
 
 Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 
@@ -340,7 +340,7 @@ of that license should have been included along with this file.
 	       (begin
 		 (set! *doc-string-channel*
 		       (file-open-input-channel
-			(->namestring *external-doc-strings-file*)))
+			(->namestring doc-strings)))
 		 unspecific))))))
 
 (add-event-receiver! event:after-restart
