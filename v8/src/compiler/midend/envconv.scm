@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: envconv.scm,v 1.3 1994/11/25 23:01:56 jmiller Exp $
+$Id: envconv.scm,v 1.4 1994/11/26 00:23:24 jmiller Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -142,7 +142,8 @@ MIT in each case. |#
 (define (envconv/lambda* context* env lambda-list body)
   (envconv/binding-body context*
 			env
-			(lambda-list->names lambda-list)
+			;; Ignore continuation
+			(cdr (lambda-list->names lambda-list)) 
 			body
 			(lambda (body*)
 			  `(LAMBDA ,lambda-list
