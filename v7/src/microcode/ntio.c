@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.8 1993/09/01 18:42:20 gjr Exp $
+$Id: ntio.c,v 1.9 1993/09/01 19:36:28 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -138,7 +138,7 @@ DEFUN (channel_close_on_abort_1, (cp), PTR cp)
 void
 DEFUN (OS_channel_close_on_abort, (channel), Tchannel channel)
 {
-  Tchannel * cp = (dstack_alloc (sizeof (Tchannel)));
+  Tchannel * cp = ((Tchannel *) (dstack_alloc (sizeof (Tchannel))));
   (*cp) = (channel);
   transaction_record_action (tat_abort, channel_close_on_abort_1, cp);
   return;
@@ -267,7 +267,7 @@ DEFUN (raw_write, (fd, buffer, nbytes),
   size_t _size = (size);						\
   int _written;								\
   _written = raw_write ((fd), (buffer), (_size));			\
-  if (_size != _written)						\
+  if (_size != ((size_t) _written))					\
     return ((_written < 0) ? -1 : (so_far) + _written);			\
 } while (0)
 
@@ -594,10 +594,10 @@ DEFUN_VOID (NT_initialize_channels)
 
   master_tty_window = Screen_Create (NULL, "MIT Scheme", SW_SHOWNORMAL);
 
-  if (win32s_under_win32s_p ())
-    OS_have_select = 0;
+  if (win32_under_win32s_p ())
+    OS_have_select_p = 0;
   else
-    OS_have_select = 1;
+    OS_have_select_p = 1;
   OS_channel_table_size = (NT_SC_OPEN_MAX ());
   channel_table =
     (NT_malloc (OS_channel_table_size * (sizeof (struct channel))));
