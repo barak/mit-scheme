@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: struct.scm,v 1.94 2001/05/22 16:16:34 cph Exp $
+;;; $Id: struct.scm,v 1.95 2001/05/24 18:57:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1985, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -206,10 +206,7 @@
 	       (else
 		(error:wrong-type-argument group "text group"
 					   'WITHOUT-TEXT-CLIPPED)))))
-    (with-group-text-clipped! group
-			      (group-absolute-start group)
-			      (group-absolute-end group)
-			      thunk)))
+    (with-group-text-clipped! group 0 (group-length group) thunk)))
 
 (define (text-clip start end)
   (if (not (mark<= start end))
