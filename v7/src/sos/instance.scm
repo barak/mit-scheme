@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: instance.scm,v 1.6 1997/06/25 03:52:41 cph Exp $
+;;; $Id: instance.scm,v 1.7 1997/07/10 06:35:34 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -43,14 +43,14 @@
 ;;; requires them to appear before their first reference.
 
 (define-macro (constructor-case n low high generator . generator-args)
+  ;; Assumes that (< LOW HIGH).
   (let loop ((low low) (high high))
-    (if (< low high)
-	(let ((mid (quotient (+ high low) 2)))
-	  (if (= mid low)
-	      `(,generator ,@generator-args ,low)
-	      `(IF (< ,n ,mid)
-		   ,(loop low mid)
-		   ,(loop mid high)))))))
+    (let ((mid (quotient (+ high low) 2)))
+      (if (= mid low)
+	  `(,generator ,@generator-args ,low)
+	  `(IF (< ,n ,mid)
+	       ,(loop low mid)
+	       ,(loop mid high))))))
 
 (define-macro (instance-constructor-1 n-slots)
   `(IF N-INIT-ARGS
@@ -178,7 +178,8 @@
 	    (initialization
 	     (instance-constructor-3 (fix:= n-slots) n-slots
 				     ((initialization instance))
-				     ())
+				     ()))
+	    (else
 	     (instance-constructor-3 (fix:= n-slots) n-slots () ()))))))
 
 (define-macro (make-initialization-1 if-n)
