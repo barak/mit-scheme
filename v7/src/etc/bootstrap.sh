@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: bootstrap.sh,v 1.3 2000/10/16 18:43:42 cph Exp $
+# $Id: bootstrap.sh,v 1.4 2000/10/16 19:29:00 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -68,8 +68,8 @@ fi
 # Compile the C code.
 (
     cd microcode
-    unxutl/config "${cname}"
-    make
+    [ -f cf.h ] || unxutl/config "${cname}"
+    [ -x scheme ] || make
 )
 
 # Compile the Scheme code.
@@ -78,16 +78,15 @@ fi
 # Build the lib directory.
 rm -rf lib
 mkdir lib
-mkdir edwin
-mkdir edwin/etc
-mkdir edwin/info
+mkdir lib/edwin
+mkdir lib/edwin/etc
+mkdir lib/edwin/info
 cp -p etc/optiondb.scm lib/.
 (
     cd lib
     ln -s .. SRC
     ln -s SRC/runtime options
-    ln -s ../../edwin edwin/autoload
-    ln -s ../cref .
+    ln -s ../SRC/edwin edwin/autoload
 )
 
 cp -p microcode/utabmd.bin lib/.
