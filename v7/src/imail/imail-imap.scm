@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.165 2001/05/27 05:05:54 cph Exp $
+;;; $Id: imail-imap.scm,v 1.166 2001/05/28 02:10:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -356,10 +356,7 @@
 
 (define (imap-mailbox-delimiter url mailbox)
   (let* ((slash (string-find-next-char mailbox #\/))
-	 (root
-	  (if slash
-	      (string-head mailbox (fix:+ slash 1))
-	      mailbox))
+	 (root (if slash (string-head mailbox slash) mailbox))
 	 (key (imap-url-new-mailbox url (if slash root ""))))
     (let ((delimiter (hash-table/get imap-delimiters-table key 'UNKNOWN)))
       (if (eq? delimiter 'UNKNOWN)
