@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.7 1990/11/28 20:32:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.8 1990/12/01 00:06:43 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -654,7 +654,7 @@ DEFUN (free_parsed_path, (path), CONST char ** path)
   xfree (path);
 }
 
-static CONST char *
+CONST char *
 DEFUN (search_path_for_file, (option, filename, default_p),
        CONST char * option AND
        CONST char * filename AND
@@ -669,10 +669,11 @@ DEFUN (search_path_for_file, (option, filename, default_p),
       CONST char * fullname;
       if (directory == 0)
 	{
-	  fprintf (stderr, "%s: can't find readable %s for %s option.\n",
-		   scheme_program_name,
-		   (default_p ? "default" : "file"),
-		   option);
+	  fprintf (stderr, "%s: can't find readable %s",
+		   scheme_program_name, (default_p ? "default" : "file"));
+	  if (option != 0)
+	    fprintf (stderr, " for %s option", option);
+	  fprintf (stderr, ".\n");
 	  fprintf (stderr, "    searched for file %s in these directories:\n",
 		   filename);
 	  if (!default_p)

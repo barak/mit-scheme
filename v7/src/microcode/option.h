@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.h,v 1.1 1990/11/13 08:46:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.h,v 1.2 1990/12/01 00:06:31 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -61,5 +61,8 @@ extern unsigned int option_constant_size;
 extern unsigned int option_stack_size;
 
 extern void EXFUN (read_command_line_options, (int argc, CONST char ** argv));
+extern CONST char * EXFUN
+  (search_path_for_file,
+   (CONST char * option, CONST char * filename, int default_p));
 
 #endif /* SCM_OPTION_H */
