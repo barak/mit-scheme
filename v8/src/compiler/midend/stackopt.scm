@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stackopt.scm,v 1.5 1995/03/12 05:48:16 adams Exp $
+$Id: stackopt.scm,v 1.6 1995/04/06 19:00:44 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -240,8 +240,7 @@ End of Big Note A |#
 	   (first (call/%make-stack-closure/values cont))
 	   '() ))
 	(receiver-of-rator+cont+rands rator cont rands))))
-
-
+
 (define (stackopt/expr state expr)
   (if (not (pair? expr))
       (illegal expr))
@@ -259,13 +258,13 @@ End of Big Note A |#
      (illegal expr))))
 
 (define (stackopt/expr* state exprs)
-  (lmap (lambda (expr)
-	  (stackopt/expr state expr))
-	exprs))
+  (map (lambda (expr)
+	 (stackopt/expr state expr))
+       exprs))
 
 (define (stackopt/remember new old)
   (code-rewrite/remember new old))
-
+
 (define stackopt/?lambda-list (->pattern-variable 'LAMBDA-LIST))
 (define stackopt/?frame-name (->pattern-variable 'FRAME-VECTOR-NAME))
 (define stackopt/?frame-vector (->pattern-variable 'FRAME-VECTOR))
@@ -305,8 +304,7 @@ End of Big Note A |#
     (set-stackopt/model/form! model #F)
     (stackopt/reorder! model)
     form*))
-
-
+
 (define (stackopt/call/can-see-both-frames state handler match-result)
 
   (define (first-mismatch v1 v2)
@@ -361,7 +359,7 @@ End of Big Note A |#
 	    (wire-from! cont-model cont-frame-vector mismatch)
 	    (set-stackopt/model/form! cont-model #F)))
       (stackopt/%call state call-model form*))))
-
+
 (define (stackopt/call/terminal state cont)
   ;; Handler for CONT being the "push" %make-stack-closure (i.e. with
   ;; anything other than a LAMBDA expression)
@@ -375,7 +373,7 @@ End of Big Note A |#
 			 (QUOTE ,frame-vector)
 			 ,@(stackopt/expr* false real-rands))))
       (stackopt/%call state model form*))))
-
+
 (define (stackopt/%call state model form*)
   (set-stackopt/model/form! model form*)
   (if (not state)
@@ -418,7 +416,7 @@ End of Big Note A |#
 		  (vector-length (stackopt/model/frame model))
 		  (stackopt/model/children model)))))
   (stackopt/rewrite! model))
-
+
 (define (stackopt/rewrite! model)
   ;; Rewrite the form for this model and those for all of its children
   ;; by calculating the new order of names in the frame and reordering
@@ -555,8 +553,7 @@ End of Big Note A |#
   (define (find-wired model models*)
     ;; Return the first model in MODELS* which has already decided on
     ;; a binding for one of the unwired variables in MODEL and for
-    ;; which that same binding slot is available in MODEL; otherwise
-    ;; #F.
+    ;; which that same binding slot is available in MODEL; otherwise #F.
     (and (not (null? models*))
 	 (let ((model* (car models*)))
 	   (or (list-search-positive (stackopt/model/wired model*)
@@ -564,7 +561,7 @@ End of Big Note A |#
 		   (and (memq (car wired*) (stackopt/model/unwired model))
 			(stackopt/free-index? model (cdr wired*)))))
 	       (find-wired model (cdr models*))))))
-
+
   (define (pick-to-wire model)
     ;; Assigns an unwired variable to a free index at random.
     (cons (pick-random (stackopt/model/unwired model))
@@ -592,7 +589,7 @@ End of Big Note A |#
 			     (pick-to-wire model))))
 		   (propagate model (car to-wire) (cdr to-wire))
 		   (phase-1)))))))
-
+
   (define (phase-1)
     ;; For all of the models that have only one free slot available,
     ;; wire their first unwired variable to that slot and propagate
@@ -611,7 +608,7 @@ End of Big Note A |#
 	    (phase-1)))))
 
   (phase-1))
-
+
 (define (stackopt/update-frame! model)
   ;; Calculate offsets for all elements in this model's frame by first
   ;; using the wired offsets and then filling in order from the
@@ -646,7 +643,7 @@ End of Big Note A |#
   (let ((len (vector-length (stackopt/model/frame model))))
     (and (< index len)
 	 (not (rassq index (stackopt/model/wired model))))))
-
+
 (define (stackopt/free-indices model)
   ;; Return a list of all offsets in the frame that aren't currently
   ;; in use for a wired value.
@@ -668,12 +665,12 @@ End of Big Note A |#
 (define (stackopt/wire! model pairs)
   ;; Each element of PAIRS is (<var> . <offset>)
   (let ((wired* (append pairs (stackopt/model/wired model)))
-	(unwired* (delq* (lmap car pairs)
+	(unwired* (delq* (map car pairs)
 			 (stackopt/model/unwired model))))
     (set-stackopt/model/wired! model wired*)
     (set-stackopt/model/unwired! model unwired*)
     (set-stackopt/model/n-unwired! model (length unwired*))))
-
+
 (define (stackopt/inconsistency model)
   (internal-error "Inconsistent wiring" model))
 
@@ -762,7 +759,7 @@ End of Big Note A |#
 	 (let ((wired (stackopt/model/wired model)))
 	   (if (not wired)
 	       pairs
-	       (let ((nogood (lmap cdr wired)))
+	       (let ((nogood (map cdr wired)))
 		 (append-map
 		  (lambda (pair)
 		    (let* ((name (car pair))
@@ -775,18 +772,17 @@ End of Big Note A |#
 					; Anywhere but the wired locations
 			    ((memq (cdr place) (cadr pair))
 			     (list (list name (list (cdr place)))))
-					; Wired location is free, so
-					; that's it
+					; Wired location is free, so that's it
 			    (else '())))) ; Wired but slot's not free
 		  pairs))))
 	 (stackopt/model/children model))))
-
+  
   (call-with-values
       (lambda ()
 	(list-split (walk model
-			  (lmap (lambda (common)
-				  (list common (iota sup-index)))
-				common))
+			  (map (lambda (common)
+				 (list common (iota sup-index)))
+			       common))
 		    (lambda (pair)
 		      (referenced-continuation-variable? (car pair)))))
     (lambda (cont-variables rest)
@@ -808,7 +804,7 @@ End of Big Note A |#
 	    (else
 	     (stackopt/constrain* (cons (list (car (car cont-variables)) '(0))
 					rest)))))))
-
+
 (define (stackopt/constrain* pairs)
   ;; PAIRS maps names to possible stack offset locations
   ;; Returns a mapping from names to fixed stack offsets.  This may
@@ -820,9 +816,9 @@ End of Big Note A |#
 		      (null? (cdr (cadr pair))))))
     (lambda (wired free)
       ;; WIRED variables now have no other place they can go
-      (let loop ((wired (lmap (lambda (pair)
-				(cons (car pair) (car (cadr pair))))
-			      wired))
+      (let loop ((wired (map (lambda (pair)
+			       (cons (car pair) (car (cadr pair))))
+			     wired))
 		 (free free))
 	(if (null? free)
 	    wired
