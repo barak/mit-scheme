@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 13.48 1987/06/05 16:28:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 13.49 1987/06/05 18:02:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -203,17 +203,10 @@
 	  '()
 	  (split-list files 20
 	    (lambda (head tail)
-	      (fasload-files head
-		(lambda (expressions pure constant)
-		  (if (not (null? pure))
-		      (begin (newline)
-			     (write-string "Purify")
-			     (purify (list->vector pure) true)))
-		  (if (not (null? constant))
-		      (begin (newline)
-			     (write-string "Constantify")
-			     (purify (list->vector constant) false)))
-		  (append! expressions (loop tail))))))))
+	      (newline)
+	      (write-string "Purify")
+	      (purify (list->vector head) true)
+	      (append! head (loop tail))))))
     (let ((files (format-files-list (access :files-lists system) compiled?)))
       (set! (access :files system)
 	    (map (lambda (file) (pathname->string (car file))) files))
@@ -227,30 +220,13 @@
       (write-string "Done"))
     (add-system! system)
     *the-non-printing-object*))
-
+
 (define (split-list list n receiver)
   (if (or (not (pair? list)) (zero? n))
       (receiver '() list)
       (split-list (cdr list) (-1+ n)
 	(lambda (head tail)
 	  (receiver (cons (car list) head) tail)))))
-
-(define (fasload-files filenames receiver)
-  (if (null? filenames)
-      (receiver '() '() '())
-      (fasload-files (cdr filenames)
-	(lambda (expressions pure constant)
-	  (let ((scode (fasload (car filenames))))
-	    (if (primitive-type? type-code/compiled-expression scode)
-		(receiver (cons scode expressions)
-			  pure
-			  (cons scode constant))
-		(receiver (cons scode expressions)
-			  (cons scode pure)
-			  constant)))))))
-
-(define type-code/compiled-expression
-  (microcode-type 'COMPILED-EXPRESSION))
 
 (define (format-files-list files-lists compiled?)
   (mapcan (lambda (files-list)
