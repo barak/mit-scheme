@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/const.h,v 9.38 1991/07/18 16:03:38 markf Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/const.h,v 9.39 1991/07/24 02:26:55 cph Exp $
  *
  * Named constants used throughout the interpreter
  *
@@ -140,7 +140,7 @@ MIT in each case. */
   /* -7 */	"POP-RETURN",						\
   /* -8 */	"TOUCH",						\
   /* -9 */	"APPLY-INTERRUPT",					\
-  /* -10 */	"REENTER"						\
+  /* -10 */	"REENTER",						\
   /* -11 */	"NO-TRAP-POP-RETURN"					\
 }
 
