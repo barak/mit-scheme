@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: psbmap.h,v 9.39 1993/06/24 06:15:32 gjr Exp $
+$Id: psbmap.h,v 9.40 1993/11/07 01:39:01 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -32,9 +32,10 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* This file contains macros and declarations for "Bintopsb.c"
-   and "Psbtobin.c". */
-
+/* This file contains macros and declarations for "bintopsb.c"
+   and "psbtobin.c". 
+ */
+
 #ifndef PSBMAP_H_INCLUDED
 #define PSBMAP_H_INCLUDED
 
@@ -42,6 +43,7 @@ MIT in each case. */
    from the included files.
 */
 
+#define WINNT_RAW_ADDRESSES
 #define fast register
 
 #include <stdio.h>
@@ -56,20 +58,26 @@ MIT in each case. */
 #include "sdata.h"
 #include "const.h"
 #include "gccode.h"
+#include "cmptype.h"
 #define boolean Boolean
 #include "comlin.h"
 
+#ifndef COMPILER_PROCESSOR_TYPE
+#define COMPILER_PROCESSOR_TYPE COMPILER_NONE_TYPE
+#endif
+
 extern double
   EXFUN (frexp, (double, int *)),
   EXFUN (ldexp, (double, int));
 
-#define PORTABLE_VERSION	5
+#define PORTABLE_VERSION	6
 
 /* Number of objects which, when traced recursively, point at all other
-   objects dumped.  Currently only the dumped object.
+   objects dumped.
+   Currently the dumped object, and the compiler utilities.
  */
 
-#define NROOTS			1
+#define NROOTS			2
 
 /* Types to recognize external object references.  Any occurrence of these
    (which are external types and thus handled separately) means a reference
@@ -78,6 +86,7 @@ extern double
 
 #define CONSTANT_CODE			TC_FIXNUM
 #define HEAP_CODE			TC_CHARACTER
+#define PURE_CODE			TC_BIG_FIXNUM
 
 #define fixnum_to_bits			FIXNUM_LENGTH
 #define hex_digits(nbits)		(((nbits) + 3) / 4)
@@ -125,22 +134,25 @@ extern double
 #define COMPILED_P	(1 << 2)
 #define NMV_P		(1 << 3)
 #define BAND_P		(1 << 4)
+#define C_CODE_P	(1 << 5)
 
 #define MAKE_FLAGS()							\
-((compact_p ? COMPACT_P : 0)	|					\
- (null_nmv_p ? NULL_NMV_P : 0)	|					\
- (compiled_p ? COMPILED_P : 0)	|					\
- (nmv_p ? NMV_P : 0)		|					\
- (band_p ? BAND_P : 0))
+(  (compact_p ? COMPACT_P : 0)						\
+ | (null_nmv_p ? NULL_NMV_P : 0)					\
+ | (compiled_p ? COMPILED_P : 0)					\
+ | (nmv_p ? NMV_P : 0)							\
+ | (band_p ? BAND_P : 0)						\
+ | (c_compiled_p ? C_CODE_P : 0))
 
-#define READ_FLAGS(f)							\
+#define READ_FLAGS(f) do						\
 {									\
   compact_p = ((f) & COMPACT_P);					\
   null_nmv_p  = ((f) & NULL_NMV_P);					\
   compiled_p = ((f) & COMPILED_P);					\
   nmv_p = ((f) & NMV_P);						\
   band_p = ((f) & BAND_P);						\
-}
+  c_compiled_p = ((f) & C_CODE_P);					\
+} while (0)
 
 /*
   If true, make all integers fixnums if possible, and all strings as
@@ -161,6 +173,17 @@ static Boolean compiled_p = false;
 
 static Boolean nmv_p = false;
 
+#define TC_C_COMPILED_TAG			TC_MANIFEST_CLOSURE
+#define C_COMPILED_FAKE_NMV			0
+#define C_COMPILED_ENTRY_FORMAT			1
+#define C_COMPILED_ENTRY_CODE			2
+#define C_COMPILED_CLOSURE_HEADER		3
+#define C_COMPILED_MULTI_CLOSURE_HEADER		4
+#define C_COMPILED_LINKAGE_HEADER		5
+#define C_COMPILED_RAW_QUAD			6
+#define C_COMPILED_EXECUTE_ENTRY		7
+#define C_COMPILED_EXECUTE_ARITY		8
+
 /* Global data */
 
 #ifndef HEAP_IN_LOW_MEMORY
@@ -168,7 +191,7 @@ SCHEME_OBJECT * memory_base;
 #endif
 
 static long
-  compiler_processor_type = 0,
+  compiler_processor_type = COMPILER_PROCESSOR_TYPE,
   compiler_interface_version = 0;
 
 static SCHEME_OBJECT
@@ -182,27 +205,21 @@ static char
 
 FILE *input_file, *output_file;
 
-Boolean
+static Boolean
 DEFUN (strequal, (s1, s2), register char * s1 AND register char * s2)
 {
   for ( ; *s1 != '\0'; s1++, s2++)
-  {
     if (*s1 != *s2)
-    {
       return (false);
-    }
-  }
   return (*s2 == '\0');
 }
-
-void
+
+static void
 DEFUN (setup_io, (input_mode, output_mode),
        CONST char * input_mode AND CONST char * output_mode)
 {
   if (strequal (input_file_name, "-"))
-  {
     input_file = stdin;
-  }
   else
   {
     input_file = (fopen (input_file_name, input_mode));
@@ -215,9 +232,7 @@ DEFUN (setup_io, (input_mode, output_mode),
   }
 
   if (strequal (output_file_name, "-"))
-  {
     output_file = stdout;
-  }
   else
   {
     output_file = (fopen (output_file_name, output_mode));
@@ -232,7 +247,7 @@ DEFUN (setup_io, (input_mode, output_mode),
   return;
 }
 
-void
+static void
 DEFUN (quit, (code), int code)
 {
   fclose(input_file);
@@ -240,18 +255,29 @@ DEFUN (quit, (code), int code)
 #ifdef vms
   /* This assumes that it is only invoked with 0 in tail recursive psn. */
   if (code != 0)
-  {
     exit(code);
-  }
   else
-  {
     return;
-  }
 #else /* not vms */
   exit(code);
 #endif /*vms */
 }
 
+#ifndef TERM_COMPILER_DEATH
+#define TERM_COMPILER_DEATH 0
+#endif
+
+void
+DEFUN (gc_death, (code, message, scan, free),
+       long code
+       AND char * message
+       AND SCHEME_OBJECT * scan
+       AND SCHEME_OBJECT * free)
+{
+  fprintf (stderr, "%s: %s\n", program_name, message);
+  quit (1);
+}
+
 /* Include the command line parser */
 
 #include "comlin.c"

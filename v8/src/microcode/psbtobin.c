@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: psbtobin.c,v 9.50 1993/10/14 19:17:26 gjr Exp $
+$Id: psbtobin.c,v 9.51 1993/11/07 01:39:13 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -49,25 +49,25 @@ MIT in each case. */
 static Boolean
   band_p = false,
   allow_compiled_p = false,
-  allow_nmv_p = false;
+  allow_nmv_p = false,
+  warn_portable_p = true,
+  c_compiled_p = false;
 
 static long
-  Dumped_Object_Addr,
-  Dumped_Heap_Base, Heap_Objects, Heap_Count,
-  Dumped_Constant_Base, Constant_Objects, Constant_Count,
-  Dumped_Pure_Base, Pure_Objects, Pure_Count,
-  Primitive_Table_Length;
+  Dumped_Object_Addr, Dumped_Compiler_Utilities,
+  Dumped_Heap_Base, Dumped_Heap_Limit, Heap_Objects, Heap_Count,
+  Dumped_Const_Base, Dumped_Const_Limit, Const_Objects, Const_Count,
+  Dumped_Pure_Base, Dumped_Pure_Limit, Pure_Objects, Pure_Count,
+  Primitive_Table_Length, Max_Stack_Offset,
+  C_Code_Table_Length, C_Code_Reserved_Entries;
 
 static SCHEME_OBJECT
-  *Heap,
-  *Heap_Base, *Heap_Table, *Heap_Object_Base, *Free,
-  *Constant_Base, *Constant_Table,
-  *Constant_Object_Base, *Free_Constant,
-  *Pure_Base, *Pure_Table, *Pure_Object_Base, *Free_Pure,
-  *primitive_table, *primitive_table_end,
-  *Stack_Top;
+  * Heap, * Constant_Space, * Constant_Top, * Stack_Top,
+  * Heap_Base, * Heap_Table, * Heap_Object_Limit, * Free,
+  * Const_Base, * Const_Table, * Const_Object_Limit, * Free_Const,
+  * Pure_Base, * Pure_Table, * Pure_Object_Limit, * Free_Pure;
 
-long
+static long
 DEFUN (Write_Data, (Count, From_Where),
        long Count AND
        SCHEME_OBJECT *From_Where)
@@ -80,8 +80,20 @@ DEFUN (Write_Data, (Count, From_Where),
 
 #include "fasl.h"
 #include "dump.c"
+
+#ifndef MAKE_FORMAT_WORD
+#define MAKE_FORMAT_WORD(h,l) 0
+#endif
+
+#ifndef WRITE_LABEL_DESCRIPTOR
+#define WRITE_LABEL_DESCRIPTOR(e,f,o) do { } while (0)
+#endif
+
+#ifndef MAKE_LINKAGE_SECTION_HEADER
+#define MAKE_LINKAGE_SECTION_HEADER(kind,count)	0
+#endif
 
-void
+static void
 DEFUN_VOID (inconsistency)
 {
   /* Provide some context (2 lines). */
@@ -98,7 +110,7 @@ DEFUN_VOID (inconsistency)
 
 #define OUT(c)	return ((long) ((c) & UCHAR_MAX))
 
-long
+static long
 DEFUN_VOID (read_a_char)
 {
   fast char C;
@@ -122,9 +134,13 @@ DEFUN_VOID (read_a_char)
     {
       long Code;
 
-      fprintf (stderr,
-	       "%s: File is not Portable.  Character Code Found.\n",
-	       program_name);
+      if (warn_portable_p)
+      {
+	warn_portable_p = false;
+	fprintf (stderr,
+		 "%s: File is not Portable.  Character Code Found.\n",
+		 program_name);
+      }
       fscanf (portable_file, "%ld", &Code);
       getc (portable_file);			/* Space */
       OUT (Code);
@@ -133,10 +149,27 @@ DEFUN_VOID (read_a_char)
   }
 }
 
-SCHEME_OBJECT *
+static SCHEME_OBJECT *
+DEFUN (read_a_char_pointer, (to), SCHEME_OBJECT * to)
+{
+  long len, maxlen;
+  char * str;
+
+  fscanf (portable_file, "%ld", &len);
+
+  maxlen = (len + 1);		/* null terminated */
+  str = ((char *) to);
+  getc (portable_file);		/* space */
+
+  while (--len >= 0)
+    *str++ = ((char) (read_a_char ()));
+  *str = '\0';
+  return (to + (BYTES_TO_WORDS (maxlen)));
+}
+
+static SCHEME_OBJECT *
 DEFUN (read_a_string_internal, (To, maxlen),
-       SCHEME_OBJECT *To AND
-       long maxlen)
+       SCHEME_OBJECT * To AND long maxlen)
 {
   long ilen, Pointer_Count;
   fast char *str;
@@ -147,15 +180,13 @@ DEFUN (read_a_string_internal, (To, maxlen),
   len = ilen;
 
   if (maxlen == -1)
-  {
     maxlen = len;
-  }
 
   /* Null terminated */
 
   maxlen += 1;
 
-  Pointer_Count = STRING_CHARS + (char_to_pointer (maxlen));
+  Pointer_Count = (STRING_CHARS + (char_to_pointer (maxlen)));
   To[STRING_HEADER] =
     (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (Pointer_Count - 1)));
   To[STRING_LENGTH_INDEX] = ((SCHEME_OBJECT) len);
@@ -164,17 +195,14 @@ DEFUN (read_a_string_internal, (To, maxlen),
 
   getc (portable_file);
   while (--len >= 0)
-  {
-    *str++ = ((char) read_a_char ());
-  }
+    *str++ = ((char) (read_a_char ()));
   *str = '\0';
   return (To + Pointer_Count);
 }
 
-SCHEME_OBJECT *
+static SCHEME_OBJECT *
 DEFUN (read_a_string, (To, Slot),
-       SCHEME_OBJECT *To AND
-       SCHEME_OBJECT *Slot)
+       SCHEME_OBJECT * To AND SCHEME_OBJECT * Slot)
 {
   long maxlen;
 
@@ -225,11 +253,9 @@ read_hex_digit_procedure ()
 
 #endif
 
-SCHEME_OBJECT *
+static SCHEME_OBJECT *
 DEFUN (read_an_integer, (The_Type, To, Slot),
-       int The_Type AND
-       SCHEME_OBJECT *To AND
-       SCHEME_OBJECT *Slot)
+       int The_Type AND SCHEME_OBJECT * To AND SCHEME_OBJECT * Slot)
 {
   Boolean negative;
   fast long length_in_bits;
@@ -241,8 +267,8 @@ DEFUN (read_an_integer, (The_Type, To, Slot),
     fscanf (portable_file, "%ld", (&l));
     length_in_bits = l;
   }
-  if ((length_in_bits <= fixnum_to_bits) &&
-      (The_Type == TC_FIXNUM))
+  if ((length_in_bits <= fixnum_to_bits)
+      && (The_Type == TC_FIXNUM))
   {
     /* The most negative fixnum is handled in the bignum case */
     fast long Value = 0;
@@ -262,9 +288,8 @@ DEFUN (read_an_integer, (The_Type, To, Slot),
       }
     }
     if (negative)
-    {
       Value = -Value;
-    }
+
     *Slot = (LONG_TO_FIXNUM (Value));
     return (To);
   }
@@ -321,15 +346,15 @@ DEFUN (read_an_integer, (The_Type, To, Slot),
 	      accumulator = (hex_digit >> bits_in_digit);
 	      position = (4 - bits_in_digit);
 	      length_in_bits -= 4;
-	      if (length_in_bits >= BIGNUM_DIGIT_LENGTH)
+	      if (length_in_bits <= 0)
+	      {
+		(*scan) = accumulator;
+		break;
+	      }
+	      else if (length_in_bits >= BIGNUM_DIGIT_LENGTH)
 		bits_in_digit = BIGNUM_DIGIT_LENGTH;
-	      else if (length_in_bits > 0)
-		bits_in_digit = length_in_bits;
 	      else
-		{
-		  (*scan) = accumulator;
-		  break;
-		}
+		bits_in_digit = length_in_bits;
 	    }
 	}
       (*To) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, gc_length));
@@ -353,11 +378,17 @@ DEFUN (read_an_integer, (The_Type, To, Slot),
       }
     }
 }
-
+
 SCHEME_OBJECT *
+DEFUN (read_a_bignum, (The_Type, To, Slot),
+       int The_Type AND SCHEME_OBJECT * To AND SCHEME_OBJECT * Slot)
+{
+  return (read_an_integer (The_Type, To, Slot));
+}
+
+static SCHEME_OBJECT *
 DEFUN (read_a_bit_string, (To, Slot),
-       SCHEME_OBJECT *To AND
-       SCHEME_OBJECT *Slot)
+       SCHEME_OBJECT * To AND SCHEME_OBJECT * Slot)
 {
   long size_in_bits, size_in_words;
   SCHEME_OBJECT the_bit_string;
@@ -419,43 +450,36 @@ static double the_max = 0.0;
 #define dflmin()	0.0	/* Cop out */
 #define dflmax()	((the_max == 0.0) ? (compute_max ()) : the_max)
 
-double
+static double
 DEFUN_VOID (compute_max)
 {
   fast double Result;
   fast int expt;
 
   Result = 0.0;
-  for (expt = DBL_MAX_EXP;
-       expt != 0;
-       expt >>= 1)
-  {
+  for (expt = DBL_MAX_EXP; expt != 0; expt >>= 1)
     Result += (ldexp (1.0, expt));
-  }
   the_max = Result;
   return (Result);
 }
 
-long
-DEFUN (read_signed_decimal, (stream),
-       fast FILE *stream)
+static long
+DEFUN (read_signed_decimal, (stream), fast FILE * stream)
 {
   fast int c = (getc (stream));
   fast long result = (-1);
   int negative_p = 0;
   while (c == ' ')
-  {
     c = (getc (stream));
-  }
-  if (c == '-')
+
+  if (c == '+')
+    c = (getc (stream));
+  else if (c == '-')
   {
     negative_p = 1;
     c = (getc (stream));
   }
-  else if (c == '+')
-  {
-    c = (getc (stream));
-  }
+
   if ((c >= '0') && (c <= '9'))
   {
     result = (c - '0');
@@ -467,9 +491,8 @@ DEFUN (read_signed_decimal, (stream),
     }
   }
   if (c != EOF)
-  {
     ungetc (c, stream);
-  }
+
   if (result == (-1))
   {
     fprintf (stderr, "%s: Unable to read expected decimal integer\n",
@@ -479,7 +502,7 @@ DEFUN (read_signed_decimal, (stream),
   return (negative_p ? (-result) : result);
 }
 
-double
+static double
 DEFUN_VOID (read_a_flonum)
 {
   Boolean negative;
@@ -492,25 +515,22 @@ DEFUN_VOID (read_a_flonum)
   /* Hair here because portable file format incorrect for flonum 0. */
   exponent = (read_signed_decimal (portable_file));
   if (exponent == 0)
-    {
-      int c = (getc (portable_file));
-      if (c == '\n')
-      {
-	return (0);
-      }
-      ungetc (c, portable_file);
-    }
+  {
+    int c = (getc (portable_file));
+    if (c == '\n')
+      return (0);
+    ungetc (c, portable_file);
+  }
   size_in_bits = (read_signed_decimal (portable_file));
   if (size_in_bits == 0)
-  {
     return (0);
-  }
+
   if ((exponent > DBL_MAX_EXP) || (exponent < DBL_MIN_EXP))
   {
     /* Skip over mantissa */
 
     while ((getc (portable_file)) != '\n')
-    {};
+      ;
     fprintf (stderr,
 	     "%s: Floating point exponent too %s!\n",
 	     program_name,
@@ -524,11 +544,9 @@ DEFUN_VOID (read_a_flonum)
     long digit;
 
     if (size_in_bits > DBL_MANT_DIG)
-    {
       fprintf (stderr,
 	       "%s: Some precision may be lost.",
 	       program_name);
-    }
     getc (portable_file);			/* Space */
     for (ndigits = (hex_digits (size_in_bits)),
 	 Result = 0.0,
@@ -542,17 +560,16 @@ DEFUN_VOID (read_a_flonum)
     Result = (ldexp (Result, ((int) exponent)));
   }
   if (negative)
-  {
     Result = -Result;
-  }
+
   return (Result);
 }
 
-SCHEME_OBJECT *
+static SCHEME_OBJECT *
 DEFUN (Read_External, (N, Table, To),
-       long N AND
-       fast SCHEME_OBJECT *Table AND
-       SCHEME_OBJECT *To)
+       long N
+       AND fast SCHEME_OBJECT * Table
+       AND SCHEME_OBJECT * To)
 {
   fast SCHEME_OBJECT *Until = &Table[N];
   int The_Type;
@@ -571,8 +588,11 @@ DEFUN (Read_External, (N, Table, To),
 	continue;
 
       case TC_FIXNUM:
-      case TC_BIG_FIXNUM:
 	To = (read_an_integer (The_Type, To, Table++));
+	continue;
+	
+      case TC_BIG_FIXNUM:
+	To = (read_a_bignum (The_Type, To, Table++));
 	continue;
 
       case TC_CHARACTER:
@@ -609,232 +629,17 @@ DEFUN (Read_External, (N, Table, To),
   return (To);
 }
 
-#if FALSE
+#define DEBUG 0
 
-void
-DEFUN (Move_Memory, (From, N, To),
-       fast SCHEME_OBJECT *From AND
-       long N AND
-       SCHEME_OBJECT *To)
+#if (DEBUG > 2)
 
-{
-  fast SCHEME_OBJECT *Until;
-
-  Until = &From[N];
-  while (From < Until)
-  {
-    *To++ = *From++;
-  }
-  return;
-}
-
-#endif
-
-#if FALSE
-
-/* This appears to be a fossil. */
-
-void
-DEFUN (Relocate_Objects, (from, how_many, disp),
-       fast SCHEME_OBJECT *from AND
-       long how_many AND
-       fast long disp)
-{
-  fast SCHEME_OBJECT *Until;
-
-  Until = &from[how_many];
-  while (from < Until)
-  {
-    switch (OBJECT_TYPE (*from))
-    {
-      case TC_FIXNUM:
-      case TC_CHARACTER:
-        from += 1;
-        break;
-
-      case TC_BIG_FIXNUM:
-      case TC_BIG_FLONUM:
-      case TC_CHARACTER_STRING:
-	*from++ =
-	  (OBJECT_NEW_DATUM ((*from), (disp + (OBJECT_DATUM (*from)))));
-	break;
-
-      default:
-	fprintf (stderr,
-		 "%s: Unknown External Object Reference with Type 0x%02x",
-		 program_name,
-		 (OBJECT_TYPE (*from)));
-	inconsistency ();
-    }
-  }
-  return;
-}
-
-#endif
-
-#define Relocate_Into(Where, Addr)					\
-{									\
-  if ((Addr) < Dumped_Pure_Base)					\
-  {									\
-    (Where) = &Heap_Object_Base[(Addr) - Dumped_Heap_Base];		\
-  }									\
-  else if ((Addr) < Dumped_Constant_Base)				\
-  {									\
-    (Where) = &Pure_Base[(Addr) - Dumped_Pure_Base];			\
-  }									\
-  else									\
-  {									\
-    (Where) = &Constant_Base[(Addr) - Dumped_Constant_Base];		\
-  }									\
-}
-
-#ifndef Conditional_Bug
-
-#define Relocate(Addr)							\
-(((Addr) < Dumped_Pure_Base) ?						\
- &Heap_Object_Base[(Addr) - Dumped_Heap_Base] :				\
- (((Addr) < Dumped_Constant_Base) ?					\
-  &Pure_Base[(Addr) - Dumped_Pure_Base] :				\
-  &Constant_Base[(Addr) - Dumped_Constant_Base]))
-
-#else
-
-static SCHEME_OBJECT *Relocate_Temp;
-
-#define Relocate(Addr)							\
-  (Relocate_Into (Relocate_Temp, Addr), Relocate_Temp)
-
-#endif
-
-SCHEME_OBJECT *
-DEFUN (Read_Pointers_and_Relocate, (how_many, to),
-       fast long how_many AND
-       fast SCHEME_OBJECT *to)
-{
-  int The_Type;
-  long The_Datum;
-
-#if FALSE
-  ALIGN_FLOAT (to);
-#endif
-
-  while ((--how_many) >= 0)
-  {
-    VMS_BUG (The_Type = 0);
-    VMS_BUG (The_Datum = 0);
-    fscanf (portable_file, "%2x %lx", &The_Type, &The_Datum);
-    switch (The_Type)
-    {
-      case CONSTANT_CODE:
-	*to++ = Constant_Table[The_Datum];
-	continue;
-
-      case HEAP_CODE:
-	*to++ = Heap_Table[The_Datum];
-	continue;
-
-      case TC_MANIFEST_NM_VECTOR:
-	*to++ = (MAKE_OBJECT (The_Type, The_Datum));
-        {
-	  fast long count;
-
-	  count = The_Datum;
-	  how_many -= count;
-	  while (--count >= 0)
-	  {
-	    VMS_BUG (*to = 0);
-	    fscanf (portable_file, "%lx", to++);
-	  }
-	}
-	continue;
-
-      case TC_COMPILED_ENTRY:
-      {
-	SCHEME_OBJECT *temp;
-	long base_type, base_datum;
-
-	fscanf (portable_file, "%02x %lx", &base_type, &base_datum);
-	temp = (Relocate (base_datum));
-	*to++ =
-	  (MAKE_POINTER_OBJECT
-	   (base_type, ((SCHEME_OBJECT *) (&(((char *) temp)[The_Datum])))));
-	break;
-      }
-
-      case TC_BROKEN_HEART:
-	if (The_Datum != 0)
-	{
-	  fprintf (stderr, "%s: Broken Heart found.\n", program_name);
-	  inconsistency ();
-	}
-	/* fall through */
-
-      case TC_PCOMB0:
-      case TC_PRIMITIVE:
-      case TC_MANIFEST_SPECIAL_NM_VECTOR:
-      case_simple_Non_Pointer:
-	*to++ = (MAKE_OBJECT (The_Type, The_Datum));
-	continue;
-
-      case TC_MANIFEST_CLOSURE:
-      case TC_LINKAGE_SECTION:
-      {
-	fprintf (stderr, "%s: File contains linked compiled code.\n",
-		 program_name);
-	inconsistency ();
-      }
-
-      case TC_REFERENCE_TRAP:
-	if (The_Datum <= TRAP_MAX_IMMEDIATE)
-	{
-	  *to++ = (MAKE_OBJECT (The_Type, The_Datum));
-	  continue;
-	}
-	/* It is a pointer, fall through. */
-
-      default:
-	/* Should be stricter */
-	*to++ = (MAKE_POINTER_OBJECT (The_Type, Relocate (The_Datum)));
-	continue;
-    }
-  }
-#if FALSE
-  ALIGN_FLOAT (to);
-#endif
-  return (to);
-}
-
-static Boolean primitive_warn = false;
-
-SCHEME_OBJECT *
-DEFUN (read_primitives, (how_many, where),
-       fast long how_many AND
-       fast SCHEME_OBJECT *where)
-{
-  long arity;
-
-  while (--how_many >= 0)
-  {
-    fscanf (portable_file, "%ld", &arity);
-    if (arity == ((long) UNKNOWN_PRIMITIVE_ARITY))
-    {
-      primitive_warn = true;
-    }
-    *where++ = (LONG_TO_FIXNUM (arity));
-    where = (read_a_string_internal (where, ((long) -1)));
-  }
-  return (where);
-}
-
-#ifdef DEBUG
-
-void
+static void
 DEFUN (print_external_objects, (area_name, Table, N),
-       char *area_name AND
-       fast SCHEME_OBJECT *Table AND
-       fast long N)
+       char * area_name
+       AND fast SCHEME_OBJECT * Table
+       AND fast long N)
 {
-  fast SCHEME_OBJECT *Table_End = &Table[N];
+  fast SCHEME_OBJECT * Table_End = &Table[N];
 
   fprintf (stderr, "%s External Objects:\n", area_name);
   fprintf (stderr, "Table = 0x%x; N = %d\n", Table, N);
@@ -890,76 +695,421 @@ DEFUN (print_external_objects, (area_name, Table, N),
   return;
 }
 
-#define DEBUGGING(action)		action
+#endif /* DEBUG > 1 */
+
+#if (DEBUG > 0)
 
 #define WHEN(condition, message)	when (condition, message)
 
-void
-DEFUN (when, (what, message),
-       Boolean what AND
-       char *message)
+static void
+DEFUN (when, (what, message), Boolean what AND char * message)
 {
   if (what)
   {
     fprintf (stderr, "%s: Inconsistency: %s!\n",
 	     program_name, (message));
-    quit (1);
+    inconsistency ();
   }
   return;
 }
 
-#define READ_HEADER(string, format, value)				\
+#else /* DEBUG <= 0 */
+
+#define WHEN(what, message) do { } while (0)
+
+#endif /* DEBUG > 0 */
+
+#if (DEBUG > 1)
+
+#define DEBUGGING(action)		action
+
+#define READ_HEADER_FAILURE(string) do					\
 {									\
- fscanf (portable_file, format, &(value));				\
- fprintf (stderr, "%s: ", (string));					\
- fprintf (stderr, (format), (value));					\
- fprintf (stderr, "\n");						\
+  fprintf (stderr, "Unable to read header field \"%s\".\n", (string));	\
+} while (0)
+
+#define READ_HEADER_SUCCESS(string, format, value) do			\
+{									\
+  fprintf (stderr, "%s: ", (string));					\
+  fprintf (stderr, (format), (value));					\
+  fprintf (stderr, "\n");						\
+} while (0)
+
+#else /* DEBUG <= 1 */
+
+#define DEBUGGING(action) do { } while (0)
+
+#define READ_HEADER_FAILURE(s) do { } while (0)
+#define READ_HEADER_SUCCESS(s,f,v) do { } while (0)
+
+#endif /* DEBUG > 0 */
+
+#if (DEBUG > 2)
+
+#define XDEBUGGING(action) DEBUGGING(action)
+
+#else /* DEBUG <= 2 */
+
+#define XDEBUGGING(action) do { } while (0)
+
+#endif /* DEBUG > 2 */
+
+void
+relocation_error (long addr)
+{
+  fprintf (stderr, "%s: Out of range address %d.\n",
+	   program_name, addr);
+  inconsistency ();
+  /*NOTREACHED*/
 }
 
-#else /* not DEBUG */
+#define Relocate_Into(Where, Addr) do					\
+{									\
+  long _addr = (Addr);							\
+									\
+  if ((_addr >= Dumped_Heap_Base) && (_addr < Dumped_Heap_Limit))	\
+    (Where) = &Heap_Object_Limit[_addr - Dumped_Heap_Base];		\
+  else if ((_addr >= Dumped_Const_Base)					\
+	   && (_addr < Dumped_Const_Limit))				\
+    (Where) = &Const_Object_Limit[_addr - Dumped_Const_Base];		\
+  else if ((_addr >= Dumped_Pure_Base)					\
+	   && (_addr < Dumped_Pure_Limit))				\
+    (Where) = &Pure_Object_Limit[_addr - Dumped_Pure_Base];		\
+  else									\
+    (void) relocation_error (_addr);					\
+} while (0)
 
-#define DEBUGGING(action)
+#ifndef Conditional_Bug
 
-#define WHEN(what, message)
+#define Relocate(Addr)							\
+((((Addr) >= Dumped_Heap_Base) && ((Addr) < Dumped_Heap_Limit))		\
+ ? &Heap_Object_Limit[(Addr) - Dumped_Heap_Base]			\
+ : ((((Addr) >= Dumped_Const_Base) && ((Addr) < Dumped_Const_Limit))	\
+    ? &Const_Object_Limit[(Addr) - Dumped_Const_Base]			\
+    : ((((Addr) >= Dumped_Pure_Base) && ((Addr) < Dumped_Pure_Limit))	\
+       ? &Pure_Object_Limit[(Addr) - Dumped_Pure_Base]			\
+       : ((relocation_error (Addr)), ((SCHEME_OBJECT *) NULL)))))
 
-#define READ_HEADER(string, format, value)				\
+#else
+
+static SCHEME_OBJECT * Relocate_Temp;
+
+#define Relocate(Addr)							\
+  (Relocate_Into (Relocate_Temp, Addr), Relocate_Temp)
+
+#endif
+
+static SCHEME_OBJECT *
+DEFUN (Read_Pointers_and_Relocate, (how_many, to),
+       fast long how_many AND fast SCHEME_OBJECT * to)
+{
+  int The_Type;
+  long The_Datum;
+
+  while ((--how_many) >= 0)
+  {
+    VMS_BUG (The_Type = 0);
+    VMS_BUG (The_Datum = 0);
+    fscanf (portable_file, "%2x %lx", &The_Type, &The_Datum);
+    switch (The_Type)
+    {
+      case CONSTANT_CODE:
+        WHEN (((The_Datum < 0) || (The_Datum >= Const_Objects)),
+	      "CONSTANT_CODE too large");
+	*to++ = Const_Table[The_Datum];
+	continue;
+
+      case HEAP_CODE:
+        WHEN (((The_Datum < 0) || (The_Datum >= Heap_Objects)),
+	      "HEAP_CODE too large");
+	*to++ = Heap_Table[The_Datum];
+	continue;
+	
+      case PURE_CODE:
+        WHEN (((The_Datum < 0) || (The_Datum >= Pure_Objects)),
+	      "PURE_CODE too large");
+	*to++ = Pure_Table[The_Datum];
+	continue;
+
+      case TC_MANIFEST_NM_VECTOR:
+	*to++ = (MAKE_OBJECT (The_Type, The_Datum));
+        {
+	  fast long count;
+
+	  count = The_Datum;
+	  how_many -= count;
+	  while (--count >= 0)
+	  {
+	    VMS_BUG (*to = 0);
+	    fscanf (portable_file, "%lx", to++);
+	  }
+	}
+	continue;
+
+      case TC_BROKEN_HEART:
+	if (The_Datum != 0)
+	{
+	  fprintf (stderr, "%s: Broken Heart found.\n", program_name);
+	  inconsistency ();
+	}
+	/* fall through */
+
+      case TC_PCOMB0:
+      case TC_PRIMITIVE:
+      case TC_MANIFEST_SPECIAL_NM_VECTOR:
+      case_simple_Non_Pointer:
+	*to++ = (MAKE_OBJECT (The_Type, The_Datum));
+	continue;
+
+      case TC_COMPILED_ENTRY:
+      {
+	SCHEME_OBJECT * temp, * entry_addr;
+	long base_type, base_datum;
+
+	fscanf (portable_file, "%02x %lx", &base_type, &base_datum);
+	temp = (Relocate (base_datum));
+	if (c_compiled_p)
+	  entry_addr = &temp[The_Datum];
+	else
+	  entry_addr = ((SCHEME_OBJECT *) (&(((char *) temp) [The_Datum])));
+	*to++ = (MAKE_POINTER_OBJECT (base_type, entry_addr));
+	continue;
+      }
+
+      case TC_C_COMPILED_TAG:
+      {
+	if (! c_compiled_p)
+	{
+	  fprintf (stderr, "%s: C-compiled code descriptors found.\n",
+		   program_name);
+	  inconsistency ();
+	}
+	switch (The_Datum)
+	{
+	  case C_COMPILED_FAKE_NMV:
+	  {
+	    long nmv_length;
+
+	    VMS_BUG (nmv_length = 0);
+	    fscanf (portable_file, "%lx", &nmv_length);
+	    *to++ = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, nmv_length));
+	    continue;
+	  }
+
+	  case C_COMPILED_ENTRY_FORMAT:
+	  {
+	    long low_byte, high_byte, offset, format;
+
+	    VMS_BUG (low_byte = 0);
+	    VMS_BUG (high_byte = 0);
+	    VMS_BUG (offset = 0);
+	    fscanf (portable_file, "%ld %ld %lx",
+		    &low_byte, &high_byte, &offset);
+	    format = (MAKE_FORMAT_WORD (high_byte, low_byte));
+	    to += 1;
+	    WRITE_LABEL_DESCRIPTOR (to, format, offset);
+	    continue;
+	  }
+
+	  case C_COMPILED_ENTRY_CODE:
+	  {
+	    long entry_number;
+
+	    VMS_BUG (entry_number = 0);
+	    fscanf (portable_file, "%lx", &entry_number);
+	    *to++ = ((SCHEME_OBJECT) entry_number);
+	    continue;
+	  }
+
+	  case C_COMPILED_CLOSURE_HEADER:
+	  {
+	    long header_datum;
+
+	    VMS_BUG (header_datum = 0);
+	    fscanf (portable_file, "%lx", &header_datum);
+	    *to++ = (MAKE_OBJECT (TC_MANIFEST_CLOSURE, header_datum));
+	    continue;
+	  }
+
+	  case C_COMPILED_MULTI_CLOSURE_HEADER:
+	  {
+	    long nentries;
+
+	    VMS_BUG (nentries = 0);
+	    fscanf (portable_file, "%lx", &nentries);
+	    to += 1;
+	    WRITE_LABEL_DESCRIPTOR (to, nentries, 0);
+	    continue;
+	  }
+
+	  case C_COMPILED_LINKAGE_HEADER:
+	  {
+	    long kind, count;
+
+	    VMS_BUG (kind = 0);
+	    VMS_BUG (count = 0);
+	    fscanf (portable_file, "%lx %lx", &kind, &count);
+	    *to++ = (MAKE_LINKAGE_SECTION_HEADER (kind, count));
+	    continue;
+	  }
+
+	  case C_COMPILED_RAW_QUAD:
+	  {
+	    long quad_datum;
+
+	    VMS_BUG (quad_datum = 0);
+	    fscanf (portable_file, "%lx", &quad_datum);
+	    *to++ = (ADDR_TO_SCHEME_ADDR (Relocate (quad_datum)));
+	    continue;
+	  }
+
+	  case C_COMPILED_EXECUTE_ENTRY:
+	  {
+	    long offset, block_base;
+	    SCHEME_OBJECT * temp;
+
+	    VMS_BUG (offset = 0);
+	    VMS_BUG (block_base = 0);
+	    fscanf (portable_file, "%lx %lx", &offset, &block_base);
+	    temp = (Relocate (block_base));
+	    *to++ = (ADDR_TO_SCHEME_ADDR (&temp[offset]));
+	    continue;
+	  }
+
+	  case C_COMPILED_EXECUTE_ARITY:
+	  {
+	    long arity;
+
+	    VMS_BUG (arity = 0);
+	    fscanf (portable_file, "%lx", &arity);
+	    *to++ = ((SCHEME_OBJECT) arity);
+	    continue;
+	  }
+
+	  default:
+	  {
+	    fprintf (stderr, "%s: Unknown C compiled tag found.\n",
+		     program_name);
+	    inconsistency ();
+	  }
+	}
+	continue;
+      }
+
+      case TC_STACK_ENVIRONMENT:
+	*to++ = (MAKE_POINTER_OBJECT (The_Type, (Stack_Top - The_Datum)));
+	continue;
+	
+      case TC_REFERENCE_TRAP:
+	if (The_Datum <= TRAP_MAX_IMMEDIATE)
+	{
+	  *to++ = (MAKE_OBJECT (The_Type, The_Datum));
+	  continue;
+	}
+	/* It is a pointer, fall through. */
+
+      default:
+	/* Should be stricter */
+	*to++ = (MAKE_POINTER_OBJECT (The_Type, (Relocate (The_Datum))));
+	continue;
+    }
+  }
+  return (to);
+}
+
+static Boolean primitive_warn = false;
+
+static SCHEME_OBJECT *
+DEFUN (read_primitives, (how_many, where),
+       fast long how_many
+       AND fast SCHEME_OBJECT * where)
+{
+  long arity;
+
+  while (--how_many >= 0)
+  {
+    fscanf (portable_file, "%ld", &arity);
+    if (arity == ((long) UNKNOWN_PRIMITIVE_ARITY))
+      primitive_warn = true;
+    *where++ = (LONG_TO_FIXNUM (arity));
+    where = (read_a_string_internal (where, ((long) -1)));
+  }
+  return (where);
+}
+
+static SCHEME_OBJECT *
+DEFUN (read_c_code_blocks, (nreserved, length, area),
+       long nreserved AND long length AND SCHEME_OBJECT * area)
+{
+  if (length != 0)
+  {
+    *area++ = (LONG_TO_FIXNUM (nreserved));
+    while (--length >= 0)
+    {
+      long nentries;
+
+      fscanf (portable_file, "%ld", &nentries);
+      *area++ = (LONG_TO_FIXNUM (nentries));
+      area = (read_a_char_pointer (area));
+    }
+  }
+  return (area);
+}
+
+#define READ_HEADER_NO_ERROR(string, format, value, flag) do		\
 {									\
   if (fscanf (portable_file, format, &(value)) == EOF)			\
   {									\
+    (flag) = (false);							\
+    READ_HEADER_FAILURE (string);					\
+  }									\
+  else									\
+  {									\
+    (flag) = (true);							\
+    READ_HEADER_SUCCESS (string, format, value);			\
+  }									\
+} while (0)
+
+#define READ_HEADER(string, format, value) do				\
+{									\
+  if (fscanf (portable_file, format, &(value)) == EOF)			\
+  {									\
+    READ_HEADER_FAILURE (string);					\
     short_header_read ();						\
   }									\
-}
+  else									\
+    READ_HEADER_SUCCESS (string, format, value);			\
+} while (0)
 
-#endif /* DEBUG */
-
-void
+static void
 DEFUN_VOID (short_header_read)
 {
   fprintf (stderr, "%s: Header is not complete!\n", program_name);
   quit (1);
 }
-
+
 static SCHEME_OBJECT * Lowest_Allocated_Address, * Highest_Allocated_Address;
 
-long
+static long
 DEFUN_VOID (Read_Header_and_Allocate)
 {
+  Boolean ok;
+
   long
     Portable_Version, Machine,
     Version, Sub_Version, Flags,
     NFlonums, NIntegers, NBits,
     NBitstrs, NBBits, NStrings, NChars,
-    NPChars,
-    Size;
+    NPChars, NCChars, Size, initial_delta;
 
-#if FALSE
-  READ_HEADER ("Portable Version", "%ld", Portable_Version);
-#else
-  if (fscanf (portable_file, "%ld", &Portable_Version) == EOF)
-  {
+  /* We don't use READ_HEADER here because it is not an error if
+     there is no first word.
+     .bin (and .psb) files can contain multiple objects.
+   */
+
+  READ_HEADER_NO_ERROR ("Portable Version", "%ld", Portable_Version, ok);
+  if (! ok)
     return (-1);
-  }
-#endif
 
   if (Portable_Version != PORTABLE_VERSION)
   {
@@ -989,24 +1139,31 @@ DEFUN_VOID (Read_Header_and_Allocate)
   READ_HEADER ("Flags", "%ld", Flags);
   READ_FLAGS (Flags);
 
-  if (((compiled_p && (! allow_compiled_p)) ||
-       (nmv_p && (! allow_nmv_p))) &&
-      (Machine != FASL_INTERNAL_FORMAT))
+  if (((compiled_p && (! allow_compiled_p))
+       || (nmv_p && (! allow_nmv_p)))
+      && (Machine != FASL_INTERNAL_FORMAT))
   {
     if (compiled_p)
-    {
       fprintf (stderr, "%s: %s\n", program_name,
 	       "Portable file contains \"non-portable\" compiled code.");
-    }
     else
-    {
       fprintf (stderr, "%s: %s\n", program_name,
 	       "Portable file contains \"unexpected\" non-marked vectors.");
-    }
     fprintf (stderr, "Machine specified in the portable file: %4d\n",
 	     Machine);
     fprintf (stderr, "Machine Expected:                       %4d\n",
 	     FASL_INTERNAL_FORMAT);
+    quit (1);
+  }
+
+  if (compiled_p
+      && c_compiled_p
+      && (COMPILER_PROCESSOR_TYPE != COMPILER_LOSING_C_TYPE))
+  {
+    fprintf (stderr,
+	     "Portable file contains descriptors for code compiled to C.\n");
+    fprintf (stderr,
+	     "The microcode is not configured to handle such code.\n");
     quit (1);
   }
 
@@ -1014,15 +1171,16 @@ DEFUN_VOID (Read_Header_and_Allocate)
   READ_HEADER ("Dumped Heap Base", "%ld", Dumped_Heap_Base);
   READ_HEADER ("Heap Objects", "%ld", Heap_Objects);
 
-  READ_HEADER ("Constant Count", "%ld", Constant_Count);
-  READ_HEADER ("Dumped Constant Base", "%ld", Dumped_Constant_Base);
-  READ_HEADER ("Constant Objects", "%ld", Constant_Objects);
+  READ_HEADER ("Constant Count", "%ld", Const_Count);
+  READ_HEADER ("Dumped Constant Base", "%ld", Dumped_Const_Base);
+  READ_HEADER ("Constant Objects", "%ld", Const_Objects);
 
   READ_HEADER ("Pure Count", "%ld", Pure_Count);
   READ_HEADER ("Dumped Pure Base", "%ld", Dumped_Pure_Base);
   READ_HEADER ("Pure Objects", "%ld", Pure_Objects);
 
   READ_HEADER ("& Dumped Object", "%ld", Dumped_Object_Addr);
+  READ_HEADER ("Max Stack Offset", "%ld", Max_Stack_Offset);
 
   READ_HEADER ("Number of flonums", "%ld", NFlonums);
   READ_HEADER ("Number of integers", "%ld", NIntegers);
@@ -1038,24 +1196,36 @@ DEFUN_VOID (Read_Header_and_Allocate)
   READ_HEADER ("CPU type", "%ld", compiler_processor_type);
   READ_HEADER ("Compiled code interface version", "%ld",
 	       compiler_interface_version);
-#if FALSE
-  READ_HEADER ("Compiler utilities vector", "%ld", compiler_utilities);
-#endif
+  READ_HEADER ("Compiler utilities vector", "%ld", Dumped_Compiler_Utilities);
 
-  Size = (6 +						/* SNMV */
-	  (TRAP_MAX_IMMEDIATE + 1) +
-	  Heap_Count + Heap_Objects +
-	  Constant_Count + Constant_Objects +
-	  Pure_Count + Pure_Objects +
-	  flonum_to_pointer (NFlonums) +
-	  ((NIntegers * (2 + (BYTES_TO_WORDS (sizeof (bignum_digit_type))))) +
-	   (BYTES_TO_WORDS (BIGNUM_BITS_TO_DIGITS (NBits)))) +
-	  ((NStrings * (1 + STRING_CHARS)) +
-	   (char_to_pointer (NChars))) +
-	  ((NBitstrs * (1 + BIT_STRING_FIRST_WORD)) +
-	   (BIT_STRING_LENGTH_TO_GC_LENGTH (NBBits))) +
-	  ((Primitive_Table_Length * (2 + STRING_CHARS)) +
-	   (char_to_pointer (NPChars))));
+  READ_HEADER ("Number of C code blocks", "%ld", C_Code_Table_Length);
+  READ_HEADER ("Number of characters in C code blocks", "%ld", NCChars);
+  READ_HEADER ("Number of reserved C entries", "%ld", C_Code_Reserved_Entries);
+
+  Dumped_Heap_Limit = Dumped_Heap_Base + Heap_Count;
+  Dumped_Const_Limit = Dumped_Const_Base + Const_Count;
+  Dumped_Pure_Limit = Dumped_Pure_Base + Pure_Count;
+
+  initial_delta = (TRAP_MAX_IMMEDIATE + 1);
+  if (Max_Stack_Offset > initial_delta)
+    initial_delta = Max_Stack_Offset;
+
+  Size = (6						/* SNMV */
+	  + (2 * ((FLOATING_ALIGNMENT + 1) / (sizeof (SCHEME_OBJECT))))
+	  + initial_delta
+	  + (Heap_Count + Heap_Objects)
+	  + (Const_Count + Const_Objects)
+	  + (Pure_Count + Pure_Objects)
+	  + (flonum_to_pointer (NFlonums))
+	  + ((NIntegers * (2 + (BYTES_TO_WORDS (sizeof (bignum_digit_type)))))
+	     + (BYTES_TO_WORDS (BIGNUM_BITS_TO_DIGITS (NBits))))
+	  + ((NStrings * (1 + STRING_CHARS))
+	     + (char_to_pointer (NChars)))
+	  + ((NBitstrs * (1 + BIT_STRING_FIRST_WORD))
+	     + (BIT_STRING_LENGTH_TO_GC_LENGTH (NBBits)))
+	  + ((Primitive_Table_Length * (2 + STRING_CHARS))
+	     + (char_to_pointer (NPChars)))
+	  + (1 + (2 * C_Code_Table_Length) + (char_to_pointer (NCChars))));
 
   ALLOCATE_HEAP_SPACE (Size,
 		       Lowest_Allocated_Address,
@@ -1067,112 +1237,121 @@ DEFUN_VOID (Read_Header_and_Allocate)
 	     program_name, Size);
     quit (1);
   }
-  Heap = (Lowest_Allocated_Address + (TRAP_MAX_IMMEDIATE + 1));
-  return (Size - (TRAP_MAX_IMMEDIATE + 1));
+  Heap = (Lowest_Allocated_Address + initial_delta);
+  return (Size - initial_delta);
 }
 
-void
+static void
 DEFUN_VOID (do_it)
 {
   while (1)
   {
-    SCHEME_OBJECT *primitive_table_end;
+    SCHEME_OBJECT
+      * primitive_table, * primitive_table_end,
+      * c_code_table, * c_code_table_end,
+      * Dumped_Object;
     Boolean result;
     long Size;
 
     Size = (Read_Header_and_Allocate ());
     if (Size < 0)
-    {
       return;
-    }
 
-    Stack_Top = &Heap[Size];
+    if (band_p)
+      warn_portable_p = false;
+    Stack_Top = Heap;
     DEBUGGING (fprintf (stderr, "Stack_Top: 0x%x\n", Stack_Top));
 
-    Heap_Table = &Heap[0];
-    Heap_Base = &Heap_Table[Heap_Objects];
-    ALIGN_FLOAT (Heap_Base);
-    Heap_Object_Base =
-      Read_External (Heap_Objects, Heap_Table, Heap_Base);
-    DEBUGGING (print_external_objects ("Heap", Heap_Table, Heap_Objects));
-    DEBUGGING (fprintf (stderr, "Heap_Base: 0x%x\n", Heap_Base));
-    DEBUGGING (fprintf (stderr, "Heap_Object_Base: 0x%x\n", Heap_Object_Base));
+    Heap_Table = &Heap[Size - Heap_Objects];
+    Const_Table = &Heap_Table[- Const_Objects];
+    Pure_Table = &Const_Table[- Pure_Objects];
 
-    /* The various 2s below are for SNMV headers. */
+    /* The various 2s below are for SNMV headers in constant/pure markers. */
 
-    Pure_Table = &Heap_Object_Base[Heap_Count];
-    Pure_Base = &Pure_Table[Pure_Objects + 2];
-    Pure_Object_Base =
-      Read_External (Pure_Objects, Pure_Table, Pure_Base);
-    DEBUGGING (print_external_objects ("Pure", Pure_Table, Pure_Objects));
+    Constant_Space = &Heap[0];
+    ALIGN_FLOAT (Constant_Space);
+    
+    Pure_Base = &Constant_Space[2];
+    Pure_Object_Limit
+      = (Read_External (Pure_Objects, Pure_Table, Pure_Base));
+
+    XDEBUGGING (print_external_objects ("Pure", Pure_Table, Pure_Objects));
     DEBUGGING (fprintf (stderr, "Pure_Base: 0x%x\n", Pure_Base));
-    DEBUGGING (fprintf (stderr, "Pure_Object_Base: 0x%x\n", Pure_Object_Base));
+    DEBUGGING (fprintf (stderr, "Pure_Object_Limit: 0x%x\n",
+			Pure_Object_Limit));
 
-    Constant_Table = &Heap[Size - Constant_Objects];
-    Constant_Base = &Pure_Object_Base[Pure_Count + 2];
-    Constant_Object_Base =
-      Read_External (Constant_Objects, Constant_Table, Constant_Base);
-    DEBUGGING (print_external_objects ("Constant",
-				       Constant_Table,
-				       Constant_Objects));
-    DEBUGGING (fprintf (stderr, "Constant_Base: 0x%x\n", Constant_Base));
-    DEBUGGING (fprintf (stderr, "Constant_Object_Base: 0x%x\n",
-			Constant_Object_Base));
+    Const_Base = &Pure_Object_Limit[Pure_Count + 2];
+    Const_Object_Limit
+      = (Read_External (Const_Objects, Const_Table, Const_Base));
 
-    primitive_table = &Constant_Object_Base[Constant_Count + 2];
+    XDEBUGGING (print_external_objects ("Constant", Const_Table,
+					Const_Objects));
+    DEBUGGING (fprintf (stderr, "Const_Base: 0x%x\n", Const_Base));
+    DEBUGGING (fprintf (stderr, "Const_Object_Limit: 0x%x\n",
+			Const_Object_Limit));
 
-    WHEN ((primitive_table > Constant_Table),
-	  "primitive_table overran Constant_Table");
+    Constant_Top = &Const_Object_Limit[Const_Count + 2];
+
+    Heap_Base = Constant_Top;
+    ALIGN_FLOAT (Heap_Base);
+    Heap_Object_Limit
+      = (Read_External (Heap_Objects, Heap_Table, Heap_Base));
+
+    XDEBUGGING (print_external_objects ("Heap", Heap_Table, Heap_Objects));
+    DEBUGGING (fprintf (stderr, "Heap_Base: 0x%x\n", Heap_Base));
+    DEBUGGING (fprintf (stderr, "Heap_Object_Limit: 0x%x\n",
+			Heap_Object_Limit));
+
+    primitive_table = &Heap_Object_Limit[Heap_Count];
+
+    WHEN ((primitive_table > &Heap[Size]), "primitive_table overran memory.");
 
     /* Read the normal objects */
 
-    Free =
-      Read_Pointers_and_Relocate (Heap_Count, Heap_Object_Base);
+    Free_Pure = (Read_Pointers_and_Relocate (Pure_Count, Pure_Object_Limit));
+    WHEN ((Free_Pure > (Const_Base - 2)),
+	  "Free_Pure overran Const_Base");
+    WHEN ((Free_Pure < (Const_Base - 2)),
+	  "Free_Pure did not reach Const_Base");
 
-    WHEN ((Free > Pure_Table),
-	  "Free overran Pure_Table");
-    WHEN ((Free < Pure_Table),
-	  "Free did not reach Pure_Table");
+    Free_Const = (Read_Pointers_and_Relocate (Const_Count,
+					      Const_Object_Limit));
+    WHEN ((Free_Const > (Constant_Top - 2)),
+	  "Free_Const overran Constant_Top");
+    WHEN ((Free_Const < (Constant_Top - 2)),
+	  "Free_Const did not reach Constant_Top");
 
-    Free_Pure =
-      Read_Pointers_and_Relocate (Pure_Count, Pure_Object_Base);
+    Free = (Read_Pointers_and_Relocate (Heap_Count, Heap_Object_Limit));
 
-    WHEN ((Free_Pure > (Constant_Base - 2)),
-	  "Free_Pure overran Constant_Base");
-    WHEN ((Free_Pure < (Constant_Base - 2)),
-	  "Free_Pure did not reach Constant_Base");
+    WHEN ((Free > primitive_table), "Free overran primitive_table");
+    WHEN ((Free < primitive_table), "Free did not reach primitive_table");
 
-    Free_Constant =
-      Read_Pointers_and_Relocate (Constant_Count, Constant_Object_Base);
-
-    WHEN ((Free_Constant > (primitive_table - 2)),
-	  "Free_Constant overran primitive_table");
-    WHEN ((Free_Constant < (primitive_table - 2)),
-	  "Free_Constant did not reach primitive_table");
-
-    primitive_table_end =
-      read_primitives (Primitive_Table_Length, primitive_table);
-
-    /*
-      primitive_table_end can be well below Constant_Table, since
-      the memory allocation is conservative (it rounds up), and all
-      the slack ends up between them.
-      */
-
-    WHEN ((primitive_table_end > Constant_Table),
-	  "primitive_table_end overran Constant_Table");
+    primitive_table_end
+      = (read_primitives (Primitive_Table_Length, primitive_table));
 
     if (primitive_warn)
     {
       fprintf (stderr, "%s:\n", program_name);
-      fprintf (stderr,
-	       "NOTE: The binary file contains primitives with unknown arity.\n");
+      fprintf
+	(stderr,
+	 "NOTE: The binary file contains primitives with unknown arity.\n");
     }
 
-    /* Dump the objects */
+    c_code_table = primitive_table_end;
+    c_code_table_end
+      = (read_c_code_blocks (C_Code_Reserved_Entries,
+			     C_Code_Table_Length,
+			     c_code_table));
 
-  {
-    SCHEME_OBJECT *Dumped_Object;
+    WHEN ((c_code_table_end > Pure_Table),
+	  "c_code_table_end overran Pure_Table");
+    /*
+      c_code_table_end can be well below Pure_Table, since
+      the memory allocation is conservative (it rounds up), and all
+      the slack ends up between them.
+      */
+
+    /* Dump the objects */
 
     Relocate_Into (Dumped_Object, Dumped_Object_Addr);
 
@@ -1185,10 +1364,10 @@ DEFUN_VOID (do_it)
 			Pure_Base, (Free_Pure - Pure_Base)));
     DEBUGGING (fprintf (stderr,
 			"Constant Space = 0x%x; Constant Count = %d\n",
-			Constant_Base, (Free_Constant - Constant_Base)));
+			Const_Base, (Free_Const - Const_Base)));
     DEBUGGING (fprintf (stderr,
 			"& Dumped Object = 0x%x; Dumped Object = 0x%x\n",
-			Dumped_Object, *Dumped_Object));
+			Dumped_Object, * Dumped_Object));
     DEBUGGING (fprintf (stderr, "Primitive_Table_Length = %ld; ",
 			Primitive_Table_Length));
     DEBUGGING (fprintf (stderr, "Primitive_Table_Size = %ld\n",
@@ -1196,43 +1375,40 @@ DEFUN_VOID (do_it)
 
     /* Is there a Pure/Constant block? */
 
-    if ((Constant_Objects == 0) && (Constant_Count == 0) &&
-	(Pure_Objects == 0) && (Pure_Count == 0))
-    {
-      result = Write_File (Dumped_Object,
-			   (Free - Heap_Base), Heap_Base,
-			   0, Stack_Top,
-			   primitive_table, Primitive_Table_Length,
-			   ((long) (primitive_table_end - primitive_table)),
-			   compiled_p, band_p);
-    }
+    if ((Const_Objects == 0) && (Const_Count == 0)
+	&& (Pure_Objects == 0) && (Pure_Count == 0))
+      result = (Write_File (Dumped_Object,
+			    (Free - Heap_Base), Heap_Base,
+			    0, Stack_Top,
+			    primitive_table, Primitive_Table_Length,
+			    ((long) (primitive_table_end - primitive_table)),
+			    c_code_table, C_Code_Table_Length,
+			    ((long) (c_code_table_end - c_code_table)),
+			    compiled_p, band_p));
     else
     {
       long Pure_Length, Total_Length;
 
-      Pure_Length = (Constant_Base - Pure_Base) + 1;
-      Total_Length = (Free_Constant - Pure_Base) + 4;
-      Pure_Base[-2] =
-	MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, (Pure_Length - 1));
-      Pure_Base[-1] =
-	MAKE_OBJECT (PURE_PART, Total_Length);
-      Constant_Base[-2] =
-	MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
-      Constant_Base[-1] =
-	MAKE_OBJECT (CONSTANT_PART, (Pure_Length - 1));
-      Free_Constant[0] =
-	MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
-      Free_Constant[1] =
-	MAKE_OBJECT (END_OF_BLOCK, Total_Length);
+      Pure_Length = ((Const_Base - Pure_Base) + 1);
+      Total_Length = ((Constant_Top - Pure_Base) + 1);
+      Pure_Base[-2] = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR,
+				    Pure_Length));
+      Pure_Base[-1] = (MAKE_OBJECT (PURE_PART, Total_Length));
+      Const_Base[-2] = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
+      Const_Base[-1] = (MAKE_OBJECT (CONSTANT_PART, Pure_Length));
+      Free_Const[0] = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
+      Free_Const[1] = (MAKE_OBJECT (END_OF_BLOCK, Total_Length));
 
       result = (Write_File (Dumped_Object,
 			    (Free - Heap_Base), Heap_Base,
-			    Total_Length, (Pure_Base - 2),
+			    (Total_Length + 1), (Pure_Base - 2),
 			    primitive_table, Primitive_Table_Length,
 			    ((long) (primitive_table_end - primitive_table)),
+			    c_code_table, C_Code_Table_Length,
+			    ((long) (c_code_table_end - c_code_table)),
 			    compiled_p, band_p));
     }
-  }
+
     if (!result)
     {
       fprintf (stderr, "%s: Error writing the output file.\n", program_name);
@@ -1264,10 +1440,9 @@ DEFUN (main, (argc, argv),
 {
   parse_keywords (argc, argv, options, false);
   if (help_sup_p && help_p)
-  {
     print_usage_and_exit (options, 0);
     /*NOTREACHED*/
-  }
+
   allow_nmv_p = (allow_nmv_p || allow_compiled_p);
 
   setup_io ("r", "wb");
