@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.9 1993/10/12 07:29:15 cph Exp $
+$Id: compiler.pkg,v 1.10 1993/11/12 20:49:05 jmiller Exp $
 
 Copyright (c) 1992-1993 Digital Equipment Corporation (D.E.C.)
 
@@ -497,7 +497,8 @@ case.
   (files "rtlgen/rgcomb")
   (parent (compiler rtl-generator))
   (export (compiler rtl-generator)
-	  generate/combination)
+	  generate/combination
+	  rtl:bump-closure)
   (export (compiler rtl-generator combination/inline)
 	  generate/invocation-prefix))
 
