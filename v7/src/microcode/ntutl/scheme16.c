@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme16.c,v 1.9 1997/01/01 22:58:15 cph Exp $
+$Id: scheme16.c,v 1.10 1997/01/02 07:07:13 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -355,11 +355,11 @@ scheme_asynctimer (void)
       if (((INTERRUPT_CODE (scm_timer)) & (INTERRUPT_MASK (scm_timer)))
 	  != 0L)
 	{
+	  (MEMTOP (scm_timer)) = ((unsigned long) -1L);
 	  PostMessage ((scm_timer -> window),
 		       (scm_timer -> interrupt_message),
 		       ((WPARAM) 0),
 		       ((LPARAM) 0));
-	  (MEMTOP (scm_timer)) = ((unsigned long) -1L);
 	}
       (CATATONIA_COUNTER (scm_timer)) += 1L;
       if (((CATATONIA_COUNTER (scm_timer)) > (CATATONIA_LIMIT (scm_timer)))
@@ -367,11 +367,11 @@ scheme_asynctimer (void)
 	{
 	  if ((CATATONIA_FLAG (scm_timer)) == 0L)
 	    {
+	      (CATATONIA_FLAG (scm_timer)) = 1L;
 	      PostMessage ((scm_timer -> window),
 			   (scm_timer -> catatonia_message),
 			   ((WPARAM) 0),
 			   ((LPARAM) 0));
-	      (CATATONIA_FLAG (scm_timer)) = 1L;
 	    }
 	  (CATATONIA_COUNTER (scm_timer)) = 0L;
 	}

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme32.c,v 1.12 1997/01/01 22:58:18 cph Exp $
+$Id: scheme32.c,v 1.13 1997/01/02 07:07:19 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -160,13 +160,13 @@ win32_nt_timer_tick (UINT wID, UINT wMsg, DWORD dwUser, DWORD dw1, DWORD dw2)
   (INTERRUPT_CODE (scm_timer)) |= (scm_timer -> bit_mask);
   if (((INTERRUPT_CODE (scm_timer)) & (INTERRUPT_MASK (scm_timer))) != 0L)
     {
+      (MEMTOP (scm_timer)) = ((unsigned long) -1L);
       /* Post an interrupt message to the window.  This forces it to
 	 wake up and exit MsgWaitForMultipleObjects if needed.  */
       PostMessage ((scm_timer -> window),
 		   (scm_timer -> interrupt_message),
 		   ((WPARAM) 0),
 		   ((LPARAM) 0));
-      (MEMTOP (scm_timer)) = ((unsigned long) -1L);
     }
   (CATATONIA_COUNTER (scm_timer)) += 1L;
   if (((CATATONIA_COUNTER (scm_timer)) > (CATATONIA_LIMIT (scm_timer)))
@@ -174,11 +174,11 @@ win32_nt_timer_tick (UINT wID, UINT wMsg, DWORD dwUser, DWORD dw1, DWORD dw2)
     {
       if ((CATATONIA_FLAG (scm_timer)) == 0L)
 	{
+	  (CATATONIA_FLAG (scm_timer)) = 1L;
 	  PostMessage ((scm_timer -> window),
 		       (scm_timer -> catatonia_message),
 		       ((WPARAM) 0),
 		       ((LPARAM) 0));
-	  (CATATONIA_FLAG (scm_timer)) = 1L;
 	}
       (CATATONIA_COUNTER (scm_timer)) = 0L;
     }
