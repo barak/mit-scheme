@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.37 1987/06/18 21:14:55 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.38 1987/06/22 20:19:58 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -521,61 +521,83 @@ long Err, Micro_Error;
 
 /* Microcode_Termination, continued */
 
+  putchar ('\n');
   switch(Err)
   { case TERM_BAD_PRIMITIVE:
-      printf("\nBad primitive invoked.\n"); break;
+      printf("Bad primitive invoked.");
+      break;
     case TERM_BAD_PRIMITIVE_DURING_ERROR:
-      printf("Error during unknown primitive.\n"); break;
+      printf("Error during unknown primitive.");
+      break;
     case TERM_BAD_ROOT:
-      printf("Band file isn't a control point.\n"); break;
+      printf("Band file isn't a control point.");
+      break;
     case TERM_BAD_STACK:
-      printf("Control stack messed up.\n"); break;
+      printf("Control stack messed up.");
+      break;
     case TERM_BROKEN_HEART:
-      printf("Broken heart encountered.\n"); break;
+      printf("Broken heart encountered.");
+      break;
     case TERM_COMPILER_DEATH:
-      printf("Mismatch between compiled code and compiled code support.\n");
+      printf("Mismatch between compiled code and compiled code support.");
       break;
     case TERM_DISK_RESTORE:
-      printf("Unrecoverable error while loading a band.\n");
+      printf("Unrecoverable error while loading a band.");
       break;
     case TERM_EOF:
-      printf("\nEnd of input stream reached.\n"); break;
+      printf("End of input stream reached.");
+      break;
     case TERM_END_OF_COMPUTATION:
       Print_Expression(Val, "End of computation; final result");
-      printf("\n");
       break;
     case TERM_EXIT:
-      printf("Inconsistency detected.\n"); break;
+      printf("Inconsistency detected.");
+      break;
     case TERM_GC_OUT_OF_SPACE:
-      printf("Out of space after GC.  Needed %d, have %d\n",
+      printf("Out of space after GC.  Needed %d, have %d",
 	     Get_Integer(Fetch_Expression()), Space_Before_GC());
       break;
     case TERM_HALT:
-      printf("User halt code.\n"); value = 0; break;
+      printf("User halt code.");
+      value = 0;
+      break;
     case TERM_INVALID_TYPE_CODE:
-      printf("Bad Type: check GC_Type map.\n"); break;
+      printf("Bad Type: check GC_Type map.");
+      break;
     case TERM_NO_ERROR_HANDLER:
-      printf("\nNo handler for error code: %d\n", Micro_Error); break;
+      printf("No handler for error code: %d", Micro_Error);
+      break;
     case TERM_NO_INTERRUPT_HANDLER:
-      printf("No interrupt handler.\n"); break;
+      printf("No interrupt handler.");
+      break;
     case TERM_NON_EXISTENT_CONTINUATION:
-      printf("No such return code 0x%08x.\n", Fetch_Return()); break;
+      printf("No such return code 0x%08x.", Fetch_Return());
+      break;
     case TERM_NON_POINTER_RELOCATION:
-      printf("Non pointer relocation!?\n"); break;
+      printf("Non pointer relocation!?");
+      break;
     case TERM_STACK_ALLOCATION_FAILED:
-      printf("No space for stack!?\n"); break;
+      printf("No space for stack!?");
+      break;
     case TERM_STACK_OVERFLOW:
-      printf("Recursion depth exceeded.\n"); break;
+      printf("Recursion depth exceeded.");
+      break;
     case TERM_TERM_HANDLER:
-      printf("Termination handler returned.\n"); break;
+      printf("Termination handler returned.");
+      break;
     case TERM_UNIMPLEMENTED_CONTINUATION:
-      printf("Return code not implemented.\n"); break;
+      printf("Return code not implemented.");
+      break;
     case TERM_NO_SPACE:
-      printf("Not enough memory.\n"); break;
+      printf("Not enough memory.");
+      break;
     case TERM_SIGNAL:
-      printf("Unhandled signal received.\n"); break;
-    default: printf("Termination code 0x%x.\n", Err);
+      printf("Unhandled signal received.");
+      break;
+    default:
+      printf("Termination code 0x%x.", Err);
   }
+  putchar ('\n');
   if ((Trace_On_Error) && (Err != TERM_HALT))
   { printf( "\n\nStack trace:\n\n");
     Back_Trace();
@@ -586,4 +608,3 @@ long Err, Micro_Error;
   Exit_Hook();
   Exit_Scheme(value);
 }
-
