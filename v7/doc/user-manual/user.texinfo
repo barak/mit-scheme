@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.19 1993/12/16 00:04:04 adams Exp $
+@comment $Id: user.texinfo,v 1.20 1993/12/16 22:44:12 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -387,10 +387,10 @@ The following files are distributed:
 
 @example
 BIN.ZIP         @r{Scheme binaries for Windows 3.1/Windows NT}
-DOSBIN.ZIP      @r{Scheme binaries for PC-DOS}
+DOSBIN.ZIP      @r{Scheme binaries for DOS}
 LIB.ZIP         @r{Smaller files from Scheme library}
 RUNTIME.ZIP     @r{@file{runtime.com} band}
-RUNNOFLO.ZIP    @r{@file{runtime.com} band for machines with no FP hardware}
+RUNNOFLO.ZIP    @r{@file{runtime.com} band for DOS machines with no FP hardware}
 EDDEL.ZIP       @r{@file{eddel.com}: a kit to build @file{edwin.com} band}
 COMPDEL.ZIP     @r{@file{compdel.com}: a kit to build @file{compiler.com} band}
 
@@ -412,6 +412,21 @@ WIN32S.ZIP      @r{Win32s installation floppy from Microsoft}
 INSTALL.TXT     @r{These instructions}
 UNZIP.EXE       @r{Program to unpack the @file{.zip} files}
 @end example
+
+
+Minimal installation on Windows NT requires: @file{BIN.ZIP},
+@file{LIB.ZIP} and @file{RUNTIME.ZIP}.
+
+For the Edwin editor and the native code compiler add @file{EDDEL.ZIP}
+and @file{COMPDEL.ZIP} repectively.
+
+Any configuration for Windows 3.1 is the same as for Windows NT except
+that Win32S also needs to be installed.
+
+For DOS the minimal installation comprises @file{DOSBIN.ZIP},
+@file{LIB.ZIP} and one of @file{RUNTIME.ZIP} or @file{RUNNOFLO.ZIP}.
+
+
 
 
 @node PC Installation,  , Manifest, PC Operating Systems
@@ -2097,7 +2112,7 @@ The maximum number of simultaneous write operations.  Overridden by
 @subsection Environment variables for PC versions
 
 These environment variables only make sense to the Windows,
-Windows NT, or MS-DOS versions of MIT Scheme.
+Windows NT, or DOS versions of MIT Scheme.
 
 @table @asis
 @item @code{MITSCHEME_DPMI_EXT_KBD} (default: @samp{false})
