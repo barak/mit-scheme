@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: buffer.scm,v 1.190 2003/02/14 18:28:11 cph Exp $
+$Id: buffer.scm,v 1.191 2005/03/31 18:59:05 cph Exp $
 
 Copyright 1986,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1998,1999,2000 Massachusetts Institute of Technology
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -243,11 +243,13 @@ The buffer is guaranteed to be deselected at that time."
   (set-buffer-alist! buffer (del-assq! key (buffer-alist buffer))))
 
 (define (->buffer object)
-  (cond ((buffer? object) object)
-	((and (mark? object) (mark-buffer object)))
-	((and (group? object) (group-buffer object)))
-	((window? object) (window-buffer object))
-	(else (error "can't coerce to buffer:" object))))
+  (or (cond ((buffer? object) object)
+	    ((mark? object) (mark-buffer object))
+	    ((group? object) (group-buffer object))
+	    ((region? object) (mark-buffer (region-start object)))
+	    ((window? object) (window-buffer object))
+	    (else (error:wrong-type-argument object "buffer" '->BUFFER)))
+      (error:bad-range-argument object '->BUFFER)))
 
 ;;;; Modification Flags
 
