@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: wttree.scm,v 1.2 1993/11/03 03:46:30 adams Exp $
+$Id: wttree.scm,v 1.3 1994/01/12 00:18:06 adams Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -220,7 +220,7 @@ MIT in each case. |#
 	(loop node index))))
 
 (define (error:empty owner)
-  ((access error ()) "Operation requires non-empty tree:" owner))
+  ((access error #F) "Operation requires non-empty tree:" owner))
 
 
 (define (make-wt-tree-type key<?)
