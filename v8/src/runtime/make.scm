@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.47 1993/06/25 21:08:16 gjr Exp $
+$Id: make.scm,v 14.48 1993/08/30 19:57:13 ziggy Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -461,7 +461,9 @@ MIT in each case. |#
    (RUNTIME ENVIRONMENT-INSPECTOR)
    (RUNTIME DEBUGGING-INFO)
    (RUNTIME DEBUGGER)
+   ;; Misc (e.g., version)
    (RUNTIME)
+   ;; Graphics
    (RUNTIME X-GRAPHICS)
    (RUNTIME STARBASE-GRAPHICS)
    ;; Emacs -- last because it installs hooks everywhere which must be initted.
