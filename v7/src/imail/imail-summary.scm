@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.43 2001/09/14 02:07:00 cph Exp $
+;;; $Id: imail-summary.scm,v 1.44 2001/09/14 17:19:15 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -240,7 +240,7 @@ SUBJECT is a string of regexps separated by commas."
 	   (let ((message (car parameters)))
 	     (if message
 		 (imail-summary-select-message buffer message))))
-	  ((EXPUNGE INCREASE-LENGTH SET-LENGTH PERMUTED)
+	  ((EXPUNGE INCREASE-LENGTH SET-LENGTH REORDERED)
 	   (maybe-add-command-suffix! rebuild-imail-summary-buffer buffer))))))
 
 ;;;; Summary content generation

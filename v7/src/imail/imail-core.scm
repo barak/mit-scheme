@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.145 2001/09/14 02:06:39 cph Exp $
+;;; $Id: imail-core.scm,v 1.146 2001/09/14 17:19:02 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -398,14 +398,14 @@
   (url-base-name (resource-locator resource)))
 
 (define-class <folder> (<resource>)
-  (permutation define accessor
-	       initial-value #f))
+  (order define accessor
+	 initial-value #f))
 
-(define set-folder-permutation!
-  (let ((modifier (slot-modifier <folder> 'PERMUTATION)))
-    (lambda (folder permutation)
-      (modifier folder permutation)
-      (object-modified! folder 'PERMUTED))))
+(define set-folder-order!
+  (let ((modifier (slot-modifier <folder> 'ORDER)))
+    (lambda (folder order)
+      (modifier folder order)
+      (object-modified! folder 'REORDERED))))
 
 (define-class <container> (<resource>))
 
@@ -514,11 +514,7 @@
   (guarantee-index index 'GET-MESSAGE)
   (if (not (< index (folder-length folder)))
       (error:bad-range-argument index 'GET-MESSAGE))
-  (%get-message folder
-		(let ((permutation (folder-permutation folder)))
-		  (if permutation
-		      (permute-index permutation folder index)
-		      index))))
+  (%get-message folder (map-folder-index folder index)))
 
 (define-generic %get-message (folder index))
 
@@ -619,12 +615,9 @@
 (define (message-index message)
   (let ((index (%message-index message))
 	(folder (message-folder message)))
-    (let ((permutation
-	   (and folder
-		(folder-permutation folder))))
-      (if permutation
-	  (unpermute-index permutation folder index)
-	  index))))
+    (if folder
+	(unmap-folder-index folder index)
+	index)))
 
 (define %set-message-flags!
   (let ((modifier (slot-modifier <message> 'FLAGS)))
@@ -670,7 +663,7 @@
   (let ((end (folder-length folder)))
     (let loop
 	((start
-	  (if (folder-permutation folder)
+	  (if (folder-order folder)
 	      0
 	      (first-unseen-message-index folder))))
       (and (< start end)
@@ -719,34 +712,42 @@
 		     message
 		     (loop index)))))))))
 
-;;;; Folder permutations
+;;;; Folder orders
 
-(define-structure (folder-permutation
-		   (type-descriptor folder-permutation-rtd)
-		   (constructor make-folder-permutation (predicate)))
+(define-structure (folder-order
+		   (type-descriptor folder-order-rtd)
+		   (constructor make-folder-order (predicate)))
   (predicate #f read-only #t)
   (forward #f)
   (reverse #f)
   (modification-count -1))
 
-(define (permute-index permutation folder index)
-  (guarantee-valid-permutation permutation folder)
-  (let ((v (folder-permutation-forward permutation)))
-    (if (fix:< index (vector-length v))
-	(vector-ref v index)
+(define (map-folder-index folder index)
+  (let ((order (folder-order folder)))
+    (if order
+	(begin
+	  (memoize-folder-order order folder)
+	  (let ((v (folder-order-forward order)))
+	    (if (fix:< index (vector-length v))
+		(vector-ref v index)
+		index)))
 	index)))
 
-(define (unpermute-index permutation folder index)
-  (guarantee-valid-permutation permutation folder)
-  (let ((v (folder-permutation-reverse permutation)))
-    (if (fix:< index (vector-length v))
-	(vector-ref v index)
+(define (unmap-folder-index folder index)
+  (let ((order (folder-order folder)))
+    (if order
+	(begin
+	  (memoize-folder-order order folder)
+	  (let ((v (folder-order-reverse order)))
+	    (if (fix:< index (vector-length v))
+		(vector-ref v index)
+		index)))
 	index)))
 
-(define (guarantee-valid-permutation permutation folder)
+(define (memoize-folder-order order folder)
   (let loop ()
     (let ((count (object-modification-count folder)))
-      (if (not (= (folder-permutation-modification-count permutation) count))
+      (if (not (= (folder-order-modification-count order) count))
 	  (begin
 	    (let ((n (folder-length folder)))
 	      (let ((vf (make-vector n))
@@ -754,15 +755,15 @@
 		(do ((i 0 (fix:+ i 1)))
 		    ((fix:= i n))
 		  (vector-set! vf i (%get-message folder i)))
-		(sort! vf (folder-permutation-predicate permutation))
+		(sort! vf (folder-order-predicate order))
 		(do ((i 0 (fix:+ i 1)))
 		    ((fix:= i n))
 		  (let ((j (%message-index (vector-ref vf i))))
 		    (vector-set! vf i j)
 		    (vector-set! vr j i)))
-		(set-folder-permutation-forward! permutation vf)
-		(set-folder-permutation-reverse! permutation vr)))
-	    (set-folder-permutation-modification-count! permutation count)
+		(set-folder-order-forward! order vf)
+		(set-folder-order-reverse! order vr)))
+	    (set-folder-order-modification-count! order count)
 	    (loop))))))
 
 ;;;; Message flags
