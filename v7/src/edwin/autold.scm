@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.40 1989/03/15 19:08:39 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.41 1989/04/05 18:11:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -170,17 +170,15 @@
 ;;;; Loading
 
 (define (load-edwin-file filename package #!optional purify?)
-  (temporary-message "Loading file \""
-		     (pathname->string (->pathname filename))
-		     "\"")
-  (let ((scode (fasload filename true)))
-    (if (or (default-object? purify?) purify?) (purify scode))
-    (scode-eval scode (->environment package)))
-  (append-message " -- done"))
+  (let ((pathname
+	 (merge-pathnames (->pathname filename) edwin-binary-directory)))    (temporary-message "Loading file \"" (pathname->string pathname) "\"")
+    (let ((scode (fasload pathname true)))
+      (if (or (default-object? purify?) purify?) (purify scode))
+      (scode-eval scode (->environment package))))  (append-message " -- done"))
 
 (define-variable "Load File Default"
   "Pathname given as default for \\[Load File]."
-  (merge-pathnames (string->pathname "FOO.BIN.0") edwin-binary-directory))
+  edwin-binary-directory)
 
 (define-command ("Load File" argument)
   "Load an Edwin binary file.
