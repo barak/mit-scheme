@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.32 1999/04/24 04:40:14 cph Exp $
+$Id: ntprm.scm,v 1.33 2000/01/05 02:40:09 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (file-readable? filename)
   (file-access filename 4))
 
-(define (file-writable? filename)
+(define (file-writeable? filename)
   ((ucode-primitive file-access 2)
    (let ((pathname (merge-pathnames filename)))
      (let ((filename (->namestring pathname)))
@@ -48,6 +48,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   filename
 	   (directory-namestring pathname))))
    2))
+;; upwards compatability
+(define file-writable? file-writeable?)
 
 (define (file-executable? filename)
   (file-access filename 1))
@@ -229,7 +231,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      (%users-directory
       (lambda ()
 	(trydir (get-environment-variable "USERDIR")))))
-
   (set! current-user-name
 	(lambda ()
 	  (or (%current-user-name)
@@ -240,7 +241,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(and homedir
 		     (pathname-name (directory-pathname-as-file homedir))))
 	      (error "Unable to determine current user name."))))
-
   (set! current-home-directory
 	(lambda ()
 	  (or (%current-home-directory)
@@ -257,7 +257,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      (or (and user-name
 			       (trydir (merge-pathnames user-name rootdir)))
 			  rootdir)))))))
-
   (set! user-home-directory
 	(lambda (user-name)
 	  (let ((homedir (%current-home-directory)))
@@ -316,7 +315,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (let ((directory
 		  (pathname-as-directory (merge-pathnames directory))))
 	     (and (file-directory? directory)
-		  (file-writable? directory)
+		  (file-writeable? directory)
 		  directory)))))
     (let ((try-variable
 	   (lambda (name)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.44 1999/12/27 20:44:21 cph Exp $
+$Id: os2prm.scm,v 1.45 2000/01/05 02:40:20 cph Exp $
 
-Copyright (c) 1994-1999 Massachusetts Institute of Technology
+Copyright (c) 1994-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (file-readable? filename)
   (file-access filename 4))
 
-(define (file-writable? filename)
+(define (file-writeable? filename)
   ((ucode-primitive file-access 2)
    (let ((pathname (merge-pathnames filename)))
      (let ((filename (->namestring pathname)))
@@ -48,6 +48,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   filename
 	   (directory-namestring pathname))))
    2))
+;; upwards compatability
+(define file-writable? file-writeable?)
 
 (define (file-executable? filename)
   (file-access filename 1))
@@ -183,7 +185,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (let ((directory
 		  (pathname-as-directory (merge-pathnames directory))))
 	     (and (file-directory? directory)
-		  (file-writable? directory)
+		  (file-writeable? directory)
 		  directory)))))
     (let ((try-variable
 	   (lambda (name)

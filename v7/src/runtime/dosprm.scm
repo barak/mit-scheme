@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.42 1999/04/07 04:09:01 cph Exp $
+$Id: dosprm.scm,v 1.43 2000/01/05 02:40:31 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -45,14 +45,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   ((ucode-primitive file-access 2)
    (->namestring (merge-pathnames filename))
    amode))
-
 ;; upwards compatability
 (define dos/file-access file-access)
 
 (define (file-readable? filename)
   (file-access filename 4))
 
-(define (file-writable? filename)
+(define (file-writeable? filename)
   (let ((pathname (merge-pathnames filename)))
     (let ((filename (->namestring pathname)))
       (or ((ucode-primitive file-access 2) filename 2)
@@ -60,6 +59,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       ((ucode-primitive file-access 2)
 		(directory-namestring pathname)
 		2))))))
+;; upwards compatability
+(define file-writable? file-writeable?)
 
 (define (temporary-file-pathname #!optional directory)
   (let ((root
@@ -82,7 +83,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (let ((directory
 		  (pathname-as-directory (merge-pathnames directory))))
 	     (and (file-directory? directory)
-		  (file-writable? directory)
+		  (file-writeable? directory)
 		  directory)))))
     (let ((try-variable
 	   (lambda (name)

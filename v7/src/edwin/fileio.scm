@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fileio.scm,v 1.148 1999/12/22 02:48:27 cph Exp $
+;;; $Id: fileio.scm,v 1.149 2000/01/05 02:41:26 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -503,8 +503,8 @@ Otherwise, a message is written both before and after long file writes."
 
 (define (write-buffer-interactive buffer backup-mode)
   (let ((pathname (buffer-pathname buffer)))
-    (let ((writable? (file-writable? pathname)))
-      (if (or writable?
+    (let ((writeable? (file-writeable? pathname)))
+      (if (or writeable?
 	      (prompt-for-yes-or-no?
 	       (string-append "File "
 			      (file-namestring pathname)
@@ -548,7 +548,7 @@ Otherwise, a message is written both before and after long file writes."
 				  (clear-visited-file-modification-time!
 				   buffer))))))))
 		    (else
-		     (if (and (not writable?)
+		     (if (and (not writeable?)
 			      (not modes)
 			      (file-exists? pathname))
 			 (bind-condition-handler

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.58 1999/12/21 19:25:33 cph Exp $
+$Id: unxprm.scm,v 1.59 2000/01/05 02:39:21 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -41,17 +41,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    modes))
 
 (define (file-access filename amode)
-  ((ucode-primitive file-access 2)
-   (->namestring (merge-pathnames filename))
-   amode))
-
-;; upwards compatability
-(define unix/file-access file-access)
+  ((ucode-primitive file-access 2) (->namestring (merge-pathnames filename))
+				   amode))
+(define unix/file-access file-access)	;upwards compatability
 
 (define (file-readable? filename)
   (file-access filename 4))
 
-(define (file-writable? filename)
+(define (file-writeable? filename)
   ((ucode-primitive file-access 2)
    (let ((pathname (merge-pathnames filename)))
      (let ((filename (->namestring pathname)))
@@ -59,6 +56,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   filename
 	   (directory-namestring pathname))))
    2))
+(define file-writable? file-writeable?)	;upwards compatability
 
 (define (file-executable? filename)
   (file-access filename 1))
@@ -91,7 +89,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (let ((directory
 		  (pathname-as-directory (merge-pathnames directory))))
 	     (and (file-directory? directory)
-		  (file-writable? directory)
+		  (file-writeable? directory)
 		  directory)))))
     (let ((try-variable
 	   (lambda (name)
@@ -242,11 +240,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define unix/current-home-directory current-home-directory)
 (define unix/current-user-name current-user-name)
 
-(define-integrable unix/current-uid
-  (ucode-primitive current-uid 0))
-
-(define-integrable unix/current-gid
-  (ucode-primitive current-gid 0))
+(define-integrable unix/current-uid (ucode-primitive current-uid 0))
+(define-integrable unix/current-gid (ucode-primitive current-gid 0))
+(define-integrable unix/current-pid (ucode-primitive current-pid 0))
 
 (define (unix/uid->string uid)
   (or ((ucode-primitive uid->string 1) uid)
@@ -255,9 +251,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (unix/gid->string gid)
   (or ((ucode-primitive gid->string 1) gid)
       (number->string gid 10)))
-
-(define-integrable unix/current-pid
-  (ucode-primitive current-pid 0))
 
 (define (unix/system string)
   (let ((wd-inside (->namestring (working-directory-pathname)))

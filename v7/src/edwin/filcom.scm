@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.204 1999/08/10 16:54:34 cph Exp $
+;;; $Id: filcom.scm,v 1.205 2000/01/05 02:41:55 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -123,7 +123,7 @@ invocation."
 (define (after-find-file buffer error? warn?)
   (let ((pathname (or (buffer-truename buffer) (buffer-pathname buffer))))
     (let ((buffer-read-only?
-	   (not (file-test-no-errors file-writable? pathname))))
+	   (not (file-test-no-errors file-writeable? pathname))))
       (if buffer-read-only?
 	  (set-buffer-read-only! buffer)
 	  (set-buffer-writable! buffer))
