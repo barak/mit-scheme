@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: curren.scm,v 1.126 2000/05/23 02:10:13 cph Exp $
+;;; $Id: curren.scm,v 1.127 2000/10/25 05:07:27 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -395,10 +395,10 @@ The frame is guaranteed to be deselected at that time."
 	       (get-buffer-hooks buffer 'RENAME-BUFFER-HOOKS))
      (bufferset-rename-buffer (current-bufferset) buffer new-name))))
 
-(define-integrable (add-rename-buffer-hook buffer hook)
+(define (add-rename-buffer-hook buffer hook)
   (add-buffer-hook buffer 'RENAME-BUFFER-HOOKS hook))
 
-(define-integrable (remove-rename-buffer-hook buffer hook)
+(define (remove-rename-buffer-hook buffer hook)
   (remove-buffer-hook buffer 'RENAME-BUFFER-HOOKS hook))
 
 (define (kill-buffer buffer)
@@ -423,10 +423,10 @@ The frame is guaranteed to be deselected at that time."
 		 (select-buffer-in-window new-buffer (car windows) #f)
 		 (loop (cdr windows) new-buffer)))))))
 
-(define-integrable (add-kill-buffer-hook buffer hook)
+(define (add-kill-buffer-hook buffer hook)
   (add-buffer-hook buffer 'KILL-BUFFER-HOOKS hook))
 
-(define-integrable (remove-kill-buffer-hook buffer hook)
+(define (remove-kill-buffer-hook buffer hook)
   (remove-buffer-hook buffer 'KILL-BUFFER-HOOKS hook))
 
 (define (add-buffer-hook buffer key hook)
@@ -439,7 +439,7 @@ The frame is guaranteed to be deselected at that time."
 (define (remove-buffer-hook buffer key hook)
   (buffer-put! buffer key (delq! hook (get-buffer-hooks buffer key))))
 
-(define-integrable (get-buffer-hooks buffer key)
+(define (get-buffer-hooks buffer key)
   (or (buffer-get buffer key) '()))
 
 (define (select-buffer buffer)
@@ -459,21 +459,34 @@ The frame is guaranteed to be deselected at that time."
 	 (set-window-buffer! window buffer)))))
 
 (define (change-selected-buffer window buffer record? selection-thunk)
-  (change-local-bindings! (selected-buffer) buffer selection-thunk)
-  (set-buffer-point! buffer (window-point window))
-  (if record?
-      (bufferset-select-buffer! (current-bufferset) buffer))
-  (for-each (lambda (hook) (hook buffer window))
-	    (get-buffer-hooks buffer 'SELECT-BUFFER-HOOKS))
-  (if (not (minibuffer? buffer))
-      (event-distributor/invoke! (ref-variable select-buffer-hook #f)
-				 buffer
-				 window)))
+  (let ((finish-selection
+	 (lambda ()
+	   (change-local-bindings! (selected-buffer) buffer selection-thunk)
+	   (set-buffer-point! buffer (window-point window))
+	   (if record?
+	       (bufferset-select-buffer! (current-bufferset) buffer))
+	   (for-each (lambda (hook) (hook buffer window))
+		     (get-buffer-hooks buffer 'SELECT-BUFFER-HOOKS))
+	   (if (not (minibuffer? buffer))
+	       (event-distributor/invoke! (ref-variable select-buffer-hook #f)
+					  buffer
+					  window)))))
+    (let loop ((hooks (get-buffer-hooks buffer 'PRE-SELECT-BUFFER-HOOKS)))
+      (if (pair? hooks)
+	  ((car hooks) buffer window finish-selection
+		       (lambda () (loop (cdr hooks))))
+	  (finish-selection)))))
 
-(define-integrable (add-select-buffer-hook buffer hook)
+(define (add-pre-select-buffer-hook buffer hook)
+  (add-buffer-hook buffer 'PRE-SELECT-BUFFER-HOOKS hook))
+
+(define (remove-pre-select-buffer-hook buffer hook)
+  (remove-buffer-hook buffer 'PRE-SELECT-BUFFER-HOOKS hook))
+
+(define (add-select-buffer-hook buffer hook)
   (add-buffer-hook buffer 'SELECT-BUFFER-HOOKS hook))
 
-(define-integrable (remove-select-buffer-hook buffer hook)
+(define (remove-select-buffer-hook buffer hook)
   (remove-buffer-hook buffer 'SELECT-BUFFER-HOOKS hook))
 
 (define-variable select-buffer-hook
