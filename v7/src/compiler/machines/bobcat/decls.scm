@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.15 1988/11/05 22:34:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.16 1988/11/07 13:53:43 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -523,6 +523,7 @@ MIT in each case. |#
     (define-integration-dependencies "back" "lapgn3" "rtlbase" "rtlcfg")
     (define-integration-dependencies "back" "linear" "base" "cfg1" "cfg2")
     (define-integration-dependencies "back" "linear" "rtlbase" "rtlcfg")
+    (define-integration-dependencies "back" "mermap" "back" "regmap")
     (define-integration-dependencies "back" "regmap" "base" "utils")
     (define-integration-dependencies "back" "symtab" "base" "utils"))
 
