@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.100 1991/05/02 01:14:50 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.101 1991/05/10 05:00:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -222,28 +222,28 @@ means scroll one screenful down."
 	(message (if (group-end? point)
 		     ""
 		     (let ((char (mark-right-char point)))
-		       (string-append "Char: " (char-name char)
-				      " (0"
-				      (number->string (char->ascii char)
-						      '(HEUR (RADIX O S)
-							     (EXACTNESS S)))
-				      ") ")))
-		 "point=" (write-to-string position)
-		 " of " (write-to-string total)
+		       (let ((n (char->ascii char)))
+			 (string-append "Char: " (char-name char)
+					" ("
+					(if (zero? n) "" "0")
+					(number->string n 8)
+					") "))))
+		 "point=" (+ position 1)
+		 " of " total
 		 "("
-		 (write-to-string (if (zero? total)
-				      0
-				      (integer-round (* 100 position) total)))
+		 (if (zero? total)
+		     0
+		     (integer-round (* 100 position) total))
 		 "%) "
 		 (let ((group (mark-group point)))
 		   (let ((start (group-start-index group))
 			 (end (group-end-index group)))
 		     (if (and (zero? start) (= end total))
 			 ""
-			 (string-append "<" (write-to-string start)
-					" - " (write-to-string end)
+			 (string-append "<" (number->string start)
+					" - " (number->string end)
 					"> "))))
-		 "x=" (write-to-string (mark-column point)))))))
+		 "x=" (mark-column point))))))
 
 ;;;; Multiple Windows
 
