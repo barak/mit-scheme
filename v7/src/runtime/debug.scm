@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.8 1989/01/06 20:59:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.9 1989/01/06 22:25:08 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -163,8 +163,7 @@ MIT in each case. |#
 	 (if (stack-frame/compiled-code? current-subproblem)
 	     "Compiled code expression"
 	     "Expression"))
-	(if (or (debugging-info/undefined-expression? current-expression)
-		(debugging-info/compiled-code? current-expression))
+	(if (invalid-expression? current-expression)
 	    (write-string " unknown")
 	    (begin
 	      (write-string " (from stack):")
@@ -476,14 +475,12 @@ MIT in each case. |#
 	 (show-current-frame-1 true))))
 
 (define (enter-read-eval-print-loop)
-  (with-rep-environment
-   (lambda (environment)
-     (debug/read-eval-print environment
-			    "You are now in the desired environment"
-			    "Eval-in-env-->"))))
+  (debug/read-eval-print (get-evaluation-environment interpreter-environment?)
+			 "You are now in the desired environment"
+			 "Eval-in-env-->"))
 
 (define (eval-in-current-environment)
-  (with-rep-environment debug/read-eval-print-1))
+  (with-current-environment debug/read-eval-print-1))
 
 (define (enter-where-command)
   (with-current-environment debug/where))
@@ -528,37 +525,40 @@ MIT in each case. |#
 (define (return-command)
   (let ((next (stack-frame/next-subproblem current-subproblem)))
     (if next
-	(with-rep-environment
-	 (lambda (environment)
-	   (let ((value
-		  (debug/eval
-		   (let ((expression
-			  (prompt-for-expression
-			   "Expression to EVALUATE and CONTINUE with ($ to retry): ")))
-		     (if (eq? expression '$)
-			 (unsyntax current-expression)
-			 expression))
-		   environment)))
-	     (if print-return-values?
-		 (begin
-		   (newline)
-		   (write-string "That evaluates to:")
-		   (newline)
-		   (write value)
-		   (if (prompt-for-confirmation "Confirm: ") (next value)))
-		 (next value)))))
+	(let ((invalid-expression? (invalid-expression? current-expression))
+	      (environment (get-evaluation-environment environment?)))
+	  (let ((value
+		 (debug/eval
+		  (let ((expression
+			 (prompt-for-expression
+			  (string-append
+			   "Expression to EVALUATE and CONTINUE with"
+			   (if invalid-expression?
+			       ""
+			       " ($ to retry)")
+			   ": "))))
+		    (if (and (not invalid-expression?)
+			     (eq? expression '$))
+			(unsyntax current-expression)
+			expression))
+		  environment)))
+	    (if print-return-values?
+		(begin
+		  (newline)
+		  (write-string "That evaluates to:")
+		  (newline)
+		  (write value)
+		  (if (prompt-for-confirmation "Confirm: ") (next value)))
+		(next value))))
 	(begin
 	  (beep)
 	  (newline)
 	  (write-string "Can't continue!!!")))))
 
 (define (internal-command)
-  (debug/read-eval-print user-debug-environment
+  (debug/read-eval-print (->environment '(runtime debugger))
 			 "You are now in the debugger environment"
-			 "Debugger-->"))
-(define user-debug-environment
-  (the-environment))
-
+			 "Debugger-->"))
 ;;;; Reduction and subproblem motion low-level
 
 (define (set-current-subproblem! stack-frame previous-frames
@@ -619,21 +619,25 @@ MIT in each case. |#
   (eq? (list-tail reductions (dotted-list-length reductions))
        reduction-wrap-around-tag))
 
+(define (invalid-expression? expression)
+  (or (debugging-info/undefined-expression? expression)
+      (debugging-info/compiled-code? expression)))
+
 (define (with-current-environment receiver)
   (if (pair? environment-list)
       (receiver (car environment-list))
       (print-undefined-environment)))
 
-(define (with-rep-environment receiver)
+(define (get-evaluation-environment predicate)
   (if (and (pair? environment-list)
-	   (interpreter-environment? (car environment-list)))
-      (receiver (car environment-list))
+	   (predicate (car environment-list)))      (car environment-list)
       (begin
 	(newline)
 	(write-string "Cannot evaluate in current environment")
 	(newline)
 	(write-string "Using the read-eval-print environment instead")
-	(receiver (nearest-repl/environment)))))
+	(newline)
+	(nearest-repl/environment))))
 
 (define (print-undefined-environment)
   (beep)
