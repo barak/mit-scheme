@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.6 1992/02/04 00:58:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.7 1992/02/05 05:03:48 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -92,6 +92,16 @@ MIT in each case. |#
 	 (target (flonum-target! target)))
     (LAP ,@(object->address source)
 	 (FLD D (@RO ,source 4))
+	 (FSTP D (ST ,(1+ target))))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (OBJECT->FLOAT (CONSTANT (? value))))
+  (QUALIFIER (or (= value 0.) (= value 1.)))
+  (let ((target (flonum-target! target)))
+    (LAP ,@(if (= value 0.)
+	       (LAP (FLDZ))
+	       (LAP (FLD1)))
 	 (FSTP D (ST ,(1+ target))))))
 
 ;;;; Flonum Arithmetic

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulrew.scm,v 1.1 1992/02/05 04:54:39 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulrew.scm,v 1.2 1992/02/05 05:03:36 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rulrew.scm,v 1.4 1991/10/25 06:50:06 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -184,11 +184,19 @@ MIT in each case. |#
 		     (predicate n)))))))
 
 (define-rule rewriting
+  (OBJECT->FLOAT (REGISTER (? operand register-known-value)))
+  (QUALIFIER
+   (rtl:constant-flonum-test operand
+			     (lambda (v)
+			       (or (flo:zero? v) (flo:one? v)))))
+  (rtl:make-object->float operand))
+
+(define-rule rewriting
   (FLONUM-2-ARGS FLONUM-SUBTRACT
 		 (REGISTER (? operand-1 register-known-value))
 		 (? operand-2)
 		 (? overflow?))
-  (QUALIFIER (rtl:constant-flonum-test operand-1 zero?))
+  (QUALIFIER (rtl:constant-flonum-test operand-1 flo:zero?))
   (rtl:make-flonum-2-args 'FLONUM-SUBTRACT operand-1 operand-2 overflow?))
 
 (define-rule rewriting
@@ -199,7 +207,7 @@ MIT in each case. |#
   (QUALIFIER
    (and (memq operation
 	      '(FLONUM-ADD FLONUM-SUBTRACT FLONUM-MULTIPLY FLONUM-DIVIDE))
-	(rtl:constant-flonum-test operand-1 one?)))
+	(rtl:constant-flonum-test operand-1 flo:one?)))
   (rtl:make-flonum-2-args operation operand-1 operand-2 overflow?))
 
 (define-rule rewriting
@@ -210,21 +218,21 @@ MIT in each case. |#
   (QUALIFIER
    (and (memq operation
 	      '(FLONUM-ADD FLONUM-SUBTRACT FLONUM-MULTIPLY FLONUM-DIVIDE))
-	(rtl:constant-flonum-test operand-2 one?)))
+	(rtl:constant-flonum-test operand-2 flo:one?)))
   (rtl:make-flonum-2-args operation operand-1 operand-2 overflow?))
 
 (define-rule rewriting
   (FLONUM-PRED-2-ARGS (? predicate)
 		      (? operand-1)
 		      (REGISTER (? operand-2 register-known-value)))
-  (QUALIFIER (rtl:constant-flonum-test operand-2 zero?))
+  (QUALIFIER (rtl:constant-flonum-test operand-2 flo:zero?))
   (list 'FLONUM-PRED-2-ARGS predicate operand-1 operand-2))
 
 (define-rule rewriting
   (FLONUM-PRED-2-ARGS (? predicate)
 		      (REGISTER (? operand-1 register-known-value))
 		      (? operand-2))
-  (QUALIFIER (rtl:constant-flonum-test operand-1 zero?))
+  (QUALIFIER (rtl:constant-flonum-test operand-1 flo:zero?))
   (list 'FLONUM-PRED-2-ARGS predicate operand-1 operand-2))
 
 ;; acos (x) = atan ((sqrt (1 - x^2)) / x)
@@ -263,5 +271,5 @@ MIT in each case. |#
 		(and (flo:flonum? n)
 		     (predicate n)))))))
 
-(define (one? value)
-  (= value 1))
+(define (flo:one? value)
+  (flo:= value 1.))
