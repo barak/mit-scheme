@@ -1,7 +1,7 @@
 #
 # Makefile for MIT CScheme microcode.
 #
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/makefile,v 1.9 1990/06/12 17:32:29 jinx Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/makefile,v 1.10 1990/06/21 19:59:16 cph Exp $
 #
 CPP = cc -E
 MAKE = make  # BSD doesn't have it as a default.
@@ -70,6 +70,3 @@ locked:
 getpagesize.h : pagesize.h
 	rm -f getpagesize.h
 	cp pagesize.h getpagesize.h
-
-.DEFAULT : xmakefile
-	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} $@
