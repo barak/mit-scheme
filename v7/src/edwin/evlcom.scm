@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: evlcom.scm,v 1.55 1998/03/08 07:26:07 cph Exp $
+;;;	$Id: evlcom.scm,v 1.56 1998/04/30 22:15:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -55,7 +55,7 @@ If 'DEFAULT, use the default (REP loop) environment."
   'DEFAULT
   #f
   (lambda (object)
-    (if (eq? 'DEFAULT object)
+    (if (or (eq? 'DEFAULT object) (name->package object))
 	object
 	(call-with-current-continuation
 	 (lambda (k)
@@ -254,17 +254,13 @@ Has no effect if evaluate-in-inferior-repl is false."
   "Make ENVIRONMENT the current evaluation environment."
   "XSet environment"
   (lambda (environment)
-    (define-variable-local-value! (current-buffer)
-	(ref-variable-object scheme-environment)
-      environment)))
+    (local-set-variable! scheme-environment environment)))
 
 (define-command set-syntax-table
   "Make SYNTAX-TABLE the current syntax table."
   "XSet syntax table"
   (lambda (syntax-table)
-    (define-variable-local-value! (current-buffer)
-	(ref-variable-object scheme-syntax-table)
-      syntax-table)))
+    (local-set-variable! scheme-syntax-table syntax-table)))
 
 (define-command set-default-environment
   "Make ENVIRONMENT the default evaluation environment."
@@ -331,15 +327,13 @@ Has no effect if evaluate-in-inferior-repl is false."
       (if (eq? default-type 'VISIBLE-DEFAULT)
 	  'INVISIBLE-DEFAULT
 	  default-type)
-      (let ((environment (evaluation-environment #f)))
+      (let ((environment (ref-variable scheme-environment)))
 	(lambda (buffer)
 	  (set-buffer-major-mode! buffer
 				  (ref-mode-object prompt-for-expression))
 	  ;; This sets up the correct environment in the typein buffer
 	  ;; so that completion of variables works right.
-	  (define-variable-local-value! buffer
-	      (ref-variable-object scheme-environment)
-	    environment)))))))
+	  (local-set-variable! scheme-environment environment buffer)))))))
 
 (define (read-from-string string)
   (bind-condition-handler (list condition-type:error) evaluation-error-handler
@@ -399,19 +393,31 @@ may be available.  The following commands are special to this mode:
 	      (cons expression (loop))))))))
 
 (define (evaluation-environment buffer)
-  (let* ((buffer (or buffer (current-buffer)))
-	 (environment (ref-variable scheme-environment buffer)))
-    (cond ((not (eq? 'DEFAULT environment))
-	   environment)
-	  ((ref-variable evaluate-in-inferior-repl buffer)
-	   (ref-variable scheme-environment (current-repl-buffer buffer)))
-	  (else
-	   (nearest-repl/environment)))))
+  (let ((buffer (or buffer (current-buffer)))
+	(non-default
+	 (lambda (object)
+	   (if (environment? object)
+	       object
+	       (let ((package (name->package object)))
+		 (if (not package)
+		     (editor-error "Package not loaded: " object))
+		 (package/environment package))))))
+    (let ((environment (ref-variable scheme-environment buffer)))
+      (if (eq? 'DEFAULT environment)
+	  (if (ref-variable evaluate-in-inferior-repl buffer)
+	      (let ((environment
+		     (ref-variable scheme-environment
+				   (current-repl-buffer buffer))))
+		(if (eq? 'DEFAULT environment)
+		    (nearest-repl/environment)
+		    (non-default environment)))
+	      (nearest-repl/environment))
+	  (non-default environment)))))
 
 (define (evaluation-syntax-table buffer environment)
   (let ((syntax-table (ref-variable scheme-syntax-table buffer)))
     (cond ((or (not syntax-table) (eq? 'DEFAULT syntax-table))
-	   (nearest-repl/syntax-table))
+	   (environment-syntax-table environment))
 	  ((scheme-syntax-table? syntax-table)
 	   syntax-table)
 	  ((symbol? syntax-table)
@@ -420,7 +426,7 @@ may be available.  The following commands are special to this mode:
 			   (lexical-reference environment syntax-table)))
 		      (and (scheme-syntax-table? syntax-table)
 			   syntax-table)))
-	       (nearest-repl/syntax-table)))
+	       (editor-error "Undefined syntax table: " syntax-table)))
 	  (else
 	   (editor-error "Illegal syntax table: " syntax-table)))))
 
@@ -592,16 +598,11 @@ Set by Scheme evaluation code to update the mode line."
 	      (if (ref-variable transcript-buffer-read-only)
 		  (set-buffer-read-only! buffer))
 	      (if (ref-variable transcript-disable-evaluation)
-		  (define-variable-local-value! buffer
-		      (ref-variable-object disable-evaluation-commands)
-		    #t)
+		  (local-set-variable! disable-evaluation-commands #t buffer)
 		  (if (eq? (buffer-major-mode buffer)
 			   (ref-mode-object scheme))
 		      (begin
-			(define-variable-local-value! buffer
-			    (ref-variable-object evaluate-in-inferior-repl)
-			  #f)
-			(define-variable-local-value! buffer
-			    (ref-variable-object run-light)
-			  #f))))
+			(local-set-variable! evaluate-in-inferior-repl #f
+					     buffer)
+			(local-set-variable! run-light #f buffer))))
 	      buffer)))))
