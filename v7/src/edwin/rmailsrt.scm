@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsrt.scm,v 1.4 1991/09/10 21:33:30 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsrt.scm,v 1.5 1991/11/04 19:40:43 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -222,7 +222,7 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 		  (substring date
 			     (re-match-start-index 1)
 			     (re-match-end-index 1))))
-	     (string-pad-left day 2))
+	     (string-pad-left day 2 #\0))
 	   ;; Time
 	   (substring date (re-match-start-index 4) (re-match-end-index 4)))
       ;; Cannot understand DATE string.
