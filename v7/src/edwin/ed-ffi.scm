@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.32 1993/09/03 04:41:44 cph Exp $
+$Id: ed-ffi.scm,v 1.33 1994/03/08 20:33:02 cph Exp $
 
-Copyright (c) 1990-93 Massachusetts Institute of Technology
+Copyright (c) 1990-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,6 +45,8 @@ of that license should have been included along with this file.
 (standard-scheme-find-file-initialization
  '#(("argred"  (edwin command-argument)
 	       edwin-syntax-table)
+    ("artdebug" (edwin debugger)
+		edwin-syntax-table)
     ("autold"  (edwin)
 	       edwin-syntax-table)
     ("autosv"  (edwin)
@@ -85,6 +87,8 @@ of that license should have been included along with this file.
 	       syntax-table/system-internal)
     ("clsmac"  (edwin class-macros)
 	       syntax-table/system-internal)
+    ("comhst"  (edwin)
+	       edwin-syntax-table)
     ("comint"  (edwin)
 	       edwin-syntax-table)
     ("comman"  (edwin)
@@ -99,11 +103,15 @@ of that license should have been included along with this file.
 	       class-syntax-table)
     ("curren"  (edwin)
 	       edwin-syntax-table)
+    ("dabbrev" (edwin)
+	       edwin-syntax-table)
     ("debug"   (edwin debugger)
 	       edwin-syntax-table)
     ("debuge"  (edwin)
 	       edwin-syntax-table)
     ("dired"   (edwin dired)
+	       edwin-syntax-table)
+    ("dirunx"  (edwin dired)
 	       edwin-syntax-table)
     ("display" (edwin display-type)
 	       syntax-table/system-internal)
@@ -195,8 +203,10 @@ of that license should have been included along with this file.
 	       edwin-syntax-table)
     ("prompt"  (edwin prompt)
 	       edwin-syntax-table)
-    ("rcs"     (edwin rcs)
-	       edwin-syntax-table)
+    #|("rcs"     (edwin rcs)
+	       edwin-syntax-table)|#
+    ("rcsparse" (edwin rcs-parse)
+	       syntax-table/system-internal)
     ("reccom"  (edwin rectangle)
 	       edwin-syntax-table)
     ("regcom"  (edwin register-command)
@@ -273,6 +283,8 @@ of that license should have been included along with this file.
 	       syntax-table/system-internal)
     ("utlwin"  (edwin window)
 	       class-syntax-table)
+    ("vc"      (edwin vc)
+	       edwin-syntax-table)
     ("wincom"  (edwin)
 	       edwin-syntax-table)
     ("window"  (edwin window)
@@ -285,5 +297,7 @@ of that license should have been included along with this file.
 	       edwin-syntax-table)
     ("xform"   (edwin class-macros transform-instance-variables)
 	       syntax-table/system-internal)
+    ("xmodef"  (edwin)
+	       edwin-syntax-table)
     ("xterm"   (edwin screen x-screen)
 	       syntax-table/system-internal)))

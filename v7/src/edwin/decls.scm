@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.49 1993/09/04 00:49:57 gjr Exp $
+$Id: decls.scm,v 1.50 1994/03/08 20:32:54 cph Exp $
 
-Copyright (c) 1989-1993 Massachusetts Institute of Technology
+Copyright (c) 1989-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -91,6 +91,7 @@ MIT in each case. |#
 	      "make"
 	      "nvector"
 	      "paths"
+	      "rcsparse"
 	      "rename"
 	      "rgxcmp"
 	      "ring"
@@ -175,7 +176,7 @@ MIT in each case. |#
 		"print"
 		"process"
 		"prompt"
-		"rcs"
+		;;"rcs"
 		"reccom"
 		"regcom"
 		"regexp"
@@ -204,6 +205,7 @@ MIT in each case. |#
 		"txtprp"
 		"undo"
 		"unix"
+		"vc"
 		"wincom"
 		"winout"
 		"xcom"
