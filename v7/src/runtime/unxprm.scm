@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.22 1992/09/18 16:35:32 jinx Exp $
+$Id: unxprm.scm,v 1.23 1993/01/12 19:01:28 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -220,9 +220,6 @@ MIT in each case. |#
 
 (define-integrable unix/current-gid
   (ucode-primitive current-gid 0))
-
-(define-integrable unix/current-file-time
-  (ucode-primitive current-file-time 0))
 
 (define-integrable unix/file-time->string
   (ucode-primitive file-time->string 1))
