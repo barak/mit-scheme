@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pack-compiler.scm,v 1.2 1992/08/29 12:09:40 jinx Exp $
+$Id: pack-compiler.scm,v 1.3 1992/10/20 01:41:38 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -102,6 +102,7 @@ MIT in each case. |#
 		    "base\\macros.com"
 		    "machines\\i386\\decls.com"
 		    "base\\toplev.com"
+		    "base\\asstop.com"
 		    "base\\crstop.com"
 		    "base\\debug.com"
 		    "base\\pmlook.com"
