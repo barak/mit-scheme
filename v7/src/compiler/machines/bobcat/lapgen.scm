@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.154 1987/03/19 00:53:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.155 1987/03/20 05:16:16 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -334,6 +334,10 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (CONSTANT (? object)))
   `(,(load-constant object '(@A+ 5))))
+
+(define-rule statement
+  (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (UNASSIGNED))
+  `(,(load-non-pointer type-code:unassigned 0 '(@A+ 5))))
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (REGISTER (? r)))
