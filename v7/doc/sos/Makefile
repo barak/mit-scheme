@@ -1,5 +1,5 @@
 
-# $Id: Makefile,v 2.4 2000/07/21 18:25:09 cph Exp $
+# $Id: Makefile,v 2.5 2000/07/26 03:02:51 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -23,13 +23,13 @@ sos.ps: sos.dvi
 	dvips -o $@ $^
 
 sos.dvi: sos.texinfo gfdl.texinfo
-	texi2dvi $^
+	texi2dvi sos.texinfo
 
 sos.pdf: sos.texinfo gfdl.texinfo
-	texi2pdf $^
+	texi2pdf sos.texinfo
 
 sos.info: sos.texinfo gfdl.texinfo
-	makeinfo $^
+	makeinfo sos.texinfo
 	rm -f /usr/local/lib/mit-scheme/edwin/info/sos.info*
 	cpx sos.info* /usr/local/lib/mit-scheme/edwin/info/.
 	gzip -v /usr/local/lib/mit-scheme/edwin/info/sos.info*

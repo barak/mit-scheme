@@ -1,5 +1,5 @@
 
-# $Id: Makefile,v 1.8 2000/07/21 18:10:18 cph Exp $
+# $Id: Makefile,v 1.9 2000/07/26 03:01:55 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -23,13 +23,13 @@ imail.ps: imail.dvi
 	dvips -o $@ $^
 
 imail.dvi: imail.texinfo gfdl.texinfo
-	texi2dvi $^
+	texi2dvi imail.texinfo
 
 imail.pdf: imail.texinfo gfdl.texinfo
-	texi2pdf $^
+	texi2pdf imail.texinfo
 
 imail.info: imail.texinfo gfdl.texinfo
-	makeinfo $^
+	makeinfo imail.texinfo
 	rm -f /usr/local/lib/mit-scheme/edwin/info/imail.info*
 	cpx imail.info* /usr/local/lib/mit-scheme/edwin/info/.
 	gzip -v /usr/local/lib/mit-scheme/edwin/info/imail.info*
