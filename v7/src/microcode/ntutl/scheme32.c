@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme32.c,v 1.9 1996/03/23 19:23:47 adams Exp $
+$Id: scheme32.c,v 1.10 1996/04/09 20:09:04 adams Exp $
 
 Copyright (c) 1993-96 Massachusetts Institute of Technology
 
@@ -37,6 +37,7 @@ MIT in each case. */
  */
 
 #include "ntscmlib.h"
+#include <stdlib.h>
 #include <mmsystem.h>
 
 static BOOL
