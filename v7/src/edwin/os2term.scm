@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2term.scm,v 1.17 1996/05/14 05:42:46 cph Exp $
+;;;	$Id: os2term.scm,v 1.18 1996/09/26 23:20:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -954,11 +954,14 @@
 		     (= y-size (screen-y-size screen))))
 	   (lambda ()
 	     (let ((size (fix:* x-size y-size)))
-	       (set-screen-char-map! screen (make-string size #\space))
-	       (set-screen-face-map!
-		screen
-		(make-vector size (screen-current-face screen))))
-	     (set-screen-size! screen x-size y-size))))))
+	       (let ((char-map (make-string size #\space))
+		     (face-map
+		      (make-vector size (screen-current-face screen))))
+		 (without-interrupts
+		  (lambda ()
+		    (set-screen-char-map! screen char-map)
+		    (set-screen-face-map! screen face-map)
+		    (set-screen-size! screen x-size y-size))))))))))
 
 (define-event-handler event-type:visibility
   (lambda (screen event)
