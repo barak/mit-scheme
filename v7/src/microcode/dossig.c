@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dossig.c,v 1.14 1992/11/23 04:25:50 gjr Exp $
+$Id: dossig.c,v 1.15 1992/11/23 04:41:17 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -576,7 +576,9 @@ interactive_interrupt:
 	  cc_t int_char;
 
 	  int_char = (DOS_interactive_interrupt_handler ());
-	  if (int_char != ((cc_t) 0))
+	  if (int_char == ((cc_t) 0))
+	    hard_attn_counter = 0;
+	  else
 	  {
 	    tty_set_next_interrupt_char ((int) int_char);
 	    interrupt_p = 1;
