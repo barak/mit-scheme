@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.255 2000/05/01 03:02:23 cph Exp $
+$Id: edwin.pkg,v 1.256 2000/05/08 17:34:51 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -398,6 +398,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (parent (edwin))
   (export (edwin)
 	  abort-current-command
+	  add-command-suffix!
 	  auto-argument-mode?
 	  command-argument
 	  command-history-list
@@ -415,6 +416,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  keyboard-keys-read
 	  last-command
 	  last-command-key
+	  maybe-add-command-suffix!
 	  override-next-command!
 	  read-and-dispatch-on-key
 	  return-to-command-loop

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: comred.scm,v 1.117 2000/02/29 01:34:55 cph Exp $
+;;; $Id: comred.scm,v 1.118 2000/05/08 17:34:43 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -34,11 +34,13 @@
 (define command-history)
 (define command-history-limit 30)
 (define command-reader-override-queue)
+(define *command-suffixes*)
 
 (define (initialize-command-reader!)
   (set! keyboard-keys-read 0)
   (set! command-history (make-circular-list command-history-limit false))
   (set! command-reader-override-queue (make-queue))
+  (set! *command-suffixes* #f)
   unspecific)
 
 (define (top-level-command-reader init)
@@ -74,7 +76,7 @@
 	    (do () (false)
 	      (bind-abort-editor-command
 	       (lambda ()
-		 (do () (false)
+		 (do () (#f)
 		   (reset-command-state!)
 		   (if (queue-empty? command-reader-override-queue)
 		       (let ((input (get-next-keyboard-char)))
@@ -206,6 +208,19 @@
 	  (if (eq? history command-history)
 	      '()
 	      (loop history))))))
+
+(define (add-command-suffix! suffix)
+  (if *command-suffixes*
+      (enqueue! *command-suffixes* suffix)
+      (suffix)))
+
+(define (maybe-add-command-suffix! suffix)
+  (if *command-suffixes*
+      (without-interrupts
+       (lambda ()
+	 (if (not (queued?/unsafe *command-suffixes* suffix))
+	     (enqueue!/unsafe *command-suffixes* suffix))))
+      (suffix)))
 
 ;;; The procedures for executing commands come in two flavors.  The
 ;;; difference is that the EXECUTE-foo procedures reset the command
@@ -259,7 +274,16 @@
 	     (set! *non-undo-count* 0)
 	     (if (not *command-argument*)
 		 (undo-boundary! point))
-	     (apply procedure (interactive-arguments command record?)))))
+	     (fluid-let ((*command-suffixes* (make-queue)))
+	       (let ((v
+		      (apply procedure
+			     (interactive-arguments command record?))))
+		 (let loop ()
+		   (if (not (queue-empty? *command-suffixes*))
+		       (begin
+			 ((dequeue! *command-suffixes*))
+			 (loop))))
+		 v)))))
       (cond ((or *executing-keyboard-macro?* *command-argument*)
 	     (normal))
 	    ((and (char? *command-key*)
