@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.44 2001/09/14 17:19:15 cph Exp $
+;;; $Id: imail-summary.scm,v 1.45 2001/09/20 17:45:26 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -487,9 +487,8 @@ SUBJECT is a string of regexps separated by commas."
    (string-append
     "[* ][D ][U ][A ][R ][F ] +\\([0-9]+\\)  +\\([0-9.]+[a-zA-Z ]\\)"
     (if (ref-variable imail-summary-show-date mark)
-	" \\([ 123][0-9] [a-zA-Z]+\\)"
-	"")
-    "  ")
+	" \\([ 123][0-9] [a-zA-Z]+  \\| +\\)"
+	"  "))
    (line-start mark 0)
    (line-end mark 0)
    #f))
