@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.21 1995/09/13 23:01:01 cph Exp $
+;;;	$Id: os2.scm,v 1.22 1995/10/03 21:14:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -651,33 +651,34 @@ filename suffix \".gz\"."
        (equal? "gz" (pathname-type pathname))))
 
 (define (read-compressed-file program pathname mark)
-  (let ((do-it
-	 (lambda ()
-	   (if (not (equal? '(EXITED . 0)
-			    (shell-command #f
-					   mark
-					   (directory-pathname pathname)
-					   #f
-					   (string-append
-					    program
-					    " < "
-					    (file-namestring pathname)))))
-	       (error:file-operation pathname
-				     program
-				     "file"
-				     "[unknown]"
-				     read-compressed-file
-				     (list pathname mark))))))
-    (if (ref-variable read-file-message mark)
-	(do-it)
-	(begin
-	  (temporary-message "Uncompressing file "
-			     (->namestring pathname)
-			     "...")
-	  (do-it)
-	  (append-message "done")))))
+  (temporary-message "Uncompressing file " (->namestring pathname) "...")
+  (let ((value
+	 (call-with-temporary-file-pathname
+	  (lambda (temporary)
+	    (if (not (equal? '(EXITED . 0)
+			     (shell-command #f #f
+					    (directory-pathname pathname)
+					    #f
+					    (string-append
+					     program
+					     " < "
+					     (file-namestring pathname)
+					     " > "
+					     (->namestring temporary)))))
+		(error:file-operation pathname
+				      program
+				      "file"
+				      "[unknown]"
+				      read-compressed-file
+				      (list pathname mark)))
+	    (group-insert-file! (mark-group mark)
+				(mark-index mark)
+				temporary)))))
+    (append-message "done")
+    value))
 
 (define (write-compressed-file program region pathname)
+  (temporary-message "Compressing file " (->namestring pathname) "...")
   (if (not (equal? '(EXITED . 0)
 		   (shell-command region
 				  #f
@@ -691,7 +692,8 @@ filename suffix \".gz\"."
 			    "file"
 			    "[unknown]"
 			    write-compressed-file
-			    (list region pathname))))
+			    (list region pathname)))
+  (append-message "done"))
 
 ;;;; Mail Customization
 
