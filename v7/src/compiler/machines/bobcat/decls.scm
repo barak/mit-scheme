@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.18 1988/12/13 13:03:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.19 1989/01/18 19:44:06 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -379,7 +379,7 @@ MIT in each case. |#
 	 (filename/append "machines/bobcat" "machin"))
 	(rtl-base
 	 (filename/append "rtlbase"
-			  "regset" "rgraph" "rtlcfg" "rtlcon" "rtlexp" "rtlobj"
+			  "regset" "rgraph" "rtlcfg" "rtlexp" "rtlobj"
 			  "rtlreg" "rtlty1" "rtlty2"))
 	(cse-base
 	 (filename/append "rtlopt"
