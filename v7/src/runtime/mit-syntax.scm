@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mit-syntax.scm,v 14.11 2003/02/12 19:39:52 cph Exp $
+$Id: mit-syntax.scm,v 14.12 2003/02/13 02:46:41 cph Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -405,7 +405,6 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 				 environment
 				 binding-environment
 				 body-environment
-				 body-environment
 				 history
 				 variable-binding-theory
 				 output/let))))))
@@ -452,7 +451,6 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 			 binding-environment
 			 binding-environment
 			 body-environment
-			 body-environment
 			 history
 			 variable-binding-theory
 			 output/letrec))))
@@ -467,6 +465,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 (define-classifier 'LET-SYNTAX system-global-environment
   (lambda (form environment definition-environment history)
+    definition-environment
     (syntax-check '(KEYWORD (* (IDENTIFIER EXPRESSION)) + FORM) form history)
     (let* ((binding-environment
 	    (make-internal-syntactic-environment environment))
@@ -476,7 +475,6 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 			 environment
 			 binding-environment
 			 body-environment
-			 definition-environment
 			 history
 			 syntactic-binding-theory
 			 output/let))))
@@ -488,6 +486,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 (define-classifier 'LETREC-SYNTAX system-global-environment
   (lambda (form environment definition-environment history)
+    definition-environment
     (syntax-check '(KEYWORD (* (IDENTIFIER EXPRESSION)) + FORM) form history)
     (let* ((binding-environment
 	    (make-internal-syntactic-environment environment))
@@ -503,7 +502,6 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 			 binding-environment
 			 binding-environment
 			 body-environment
-			 definition-environment
 			 history
 			 syntactic-binding-theory
 			 output/letrec))))
@@ -512,7 +510,6 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 			   value-environment
 			   binding-environment
 			   body-environment
-			   definition-environment
 			   history
 			   binding-theory
 			   output/let)
@@ -538,7 +535,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	 (body
 	  (classify/body (cddr form)
 			 body-environment
-			 definition-environment
+			 body-environment
 			 history
 			 select-cddr)))
     (if (eq? binding-theory syntactic-binding-theory)
