@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.60 2000/04/02 03:11:48 cph Exp $
+;;; $Id: vc.scm,v 1.61 2000/04/03 16:57:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -479,7 +479,7 @@ merge in the changes into your working copy."
 	       (lambda ()
 		 (let ((buffer (find-file-noselect workfile #t)))
 		   (if from-dired?
-		       (select-buffer-other-window buffer)
+		       (pop-up-buffer buffer #f #t)
 		       (select-buffer buffer))
 		   ;; If the file on disk is newer, then the user just
 		   ;; said no to rereading it.  So the user probably
