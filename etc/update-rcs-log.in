@@ -1,5 +1,5 @@
 ;; -*- Scheme -*-
-;; $Id: update-rcs-log.in,v 1.7 1995/11/28 16:44:45 adams Exp $
+;; $Id: update-rcs-log.in,v 1.8 1996/12/06 06:13:08 adams Exp $
 
 (begin
   (cd "/scheme/8.0/700/rcs")
@@ -9,4 +9,5 @@
     '("/scheme/etc"
       "/scheme/documentation/ref-manual"
       "/scheme/documentation/user-manual"
+      "/gunk/hlsim/SRC"
       )))
