@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.66 1993/09/01 22:10:59 gjr Exp $
+$Id: cmpint.c,v 1.67 1993/09/07 21:45:53 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -75,6 +75,7 @@ MIT in each case. */
 /* Macro imports */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "oscond.h"	/* Identify the operating system */
 #include "ansidecl.h"	/* Macros to support ANSI declarations */
 #include "dstack.h"	/* Dynamic-stack support */
@@ -701,6 +702,26 @@ DEFUN (comutil_apply_in_interpreter,
 {
   RETURN_TO_C (PRIM_APPLY);
 }
+
+#if (COMPILER_PROCESSOR_TYPE != COMPILER_I386_TYPE)
+
+# define RETURN_FROM_PRIMITIVE()					\
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()))
+
+#else /* i386 */
+
+static utility_result
+  EXFUN (compiler_interrupt_common, (SCHEME_ADDR, SCHEME_OBJECT));
+
+# define RETURN_FROM_PRIMITIVE() do					\
+{									\
+  if (((long) Free) >= ((long) (Registers[REGBLOCK_MEMTOP])))		\
+    return (compiler_interrupt_common (0, Val));			\
+  else									\
+    RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()));			\
+} while (0)
+
+#endif /* i386 */
 
 /*
   comutil_primitive_apply is used to invoked a C primitive.
@@ -721,7 +742,7 @@ DEFUN (comutil_primitive_apply,
 { 
   PRIMITIVE_APPLY (Val, primitive);
   POP_PRIMITIVE_FRAME (PRIMITIVE_ARITY (primitive));
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()));
+  RETURN_FROM_PRIMITIVE ();
 }
 
 /*
@@ -740,7 +761,7 @@ DEFUN (comutil_primitive_lexpr_apply,
 {
   PRIMITIVE_APPLY (Val, primitive);
   POP_PRIMITIVE_FRAME (((long) Regs[REGBLOCK_LEXPR_ACTUALS]));
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()));
+  RETURN_FROM_PRIMITIVE ();
 }
 
 /*
@@ -1240,6 +1261,9 @@ DEFUN (comutil_operator_primitive_trap,
   return (comutil_primitive_apply ((tramp_data[0]), 0, 0, 0));
 }
 
+extern SCHEME_OBJECT EXFUN (compiler_var_error,
+			    (SCHEME_OBJECT, SCHEME_OBJECT));
+
 /* The linker either couldn't find a binding or the binding was
    unassigned, unbound, or a deep-bound (parallel processor) fluid.
    This must report the correct name of the missing variable and the
