@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: syntax.scm,v 1.81 1998/06/28 20:09:26 cph Exp $
+;;;	$Id: syntax.scm,v 1.82 1998/06/28 20:31:57 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -97,11 +97,11 @@
     table))
 
 (define (make-syntax-table #!optional table)
-  (%make-syntax-table
-   (vector-copy
-    (syntax-table/entries (if (or (default-object? table) (not table))
-			      standard-syntax-table
-			      table)))))
+  (let ((table
+	 (if (or (default-object? table) (not table))
+	     standard-syntax-table
+	     table)))
+    (%make-syntax-table (vector-copy (syntax-table/entries table)))))
 
 (define (char->syntax-code syntax-table char)
   ((ucode-primitive char->syntax-code) (syntax-table/entries syntax-table)
