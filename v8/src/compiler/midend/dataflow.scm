@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dataflow.scm,v 1.3 1994/12/06 19:46:25 adams Exp $
+$Id: dataflow.scm,v 1.4 1994/12/15 01:33:01 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -71,6 +71,7 @@ MIT in each case. |#
          (graph        (make-graph program))
          (result-node  (dataflow/expr env graph program)))
     (fluid-let ((*node-count* (graph/node-count graph)))
+      (sample/1 '(dataflow/graph-size histogram) *node-count*)
       (if (and *maximum-node-count*
 	       (> *node-count* *maximum-node-count*))
 	  (begin
@@ -91,11 +92,12 @@ MIT in each case. |#
 	       (graph/initialize-links! graph)
 	       (graph/dataflow! graph)
 	       (graph/cleanup! graph)))
-       
+
 	    (graph/substitite-simple-constants
 	     graph graph/read-eqv?-preserving-constant?)
 	    (if (graph/interesting? graph)
 		(graph/display-statistics! graph))
+
 	    graph)))))
 
 (define (graph/interesting? g)
