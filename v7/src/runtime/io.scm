@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.75 2003/11/10 21:46:07 cph Exp $
+$Id: io.scm,v 14.76 2003/11/11 01:53:38 cph Exp $
 
 Copyright 1986,1987,1988,1990,1991,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1998,1999,2000,2001 Massachusetts Institute of Technology
@@ -72,7 +72,7 @@ USA.
   (let ((name ((ucode-primitive channel-type-name 1) descriptor)))
     (and name
 	 (intern name))))
-
+
 (define-integrable (channel-type=unknown? channel)
   (false? (channel-type channel)))
 
@@ -89,7 +89,10 @@ USA.
 	(eq? 'OS/2-CONSOLE type))))
 
 (define (channel-close channel)
-  (remove-from-gc-finalizer! open-channels channel))
+  (without-interrupts
+   (lambda ()
+     (if (channel-open? channel)
+	 (remove-from-gc-finalizer! open-channels channel)))))
 
 (define-integrable (channel-open? channel)
   (channel-descriptor channel))
