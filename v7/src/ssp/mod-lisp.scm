@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.22 2004/11/26 15:14:15 cph Exp $
+$Id: mod-lisp.scm,v 1.23 2004/12/07 18:21:42 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -481,7 +481,7 @@ USA.
 (define (add-header message keyword datum)
   (let ((new (list (cons keyword datum)))
 	(tail (http-message-headers-tail message)))
-    (if tail
+    (if (pair? tail)
 	(set-cdr! tail new)
 	(set-http-message-headers! message new))
     (set-http-message-headers-tail! message new)))
