@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.55 1999/02/23 21:34:01 cph Exp $
+$Id: rep.scm,v 14.56 2001/02/27 17:21:01 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -133,11 +133,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			  *working-directory-pathname*)
 			 (*default-pathname-defaults*
 			  *default-pathname-defaults*)
-			 (*current-input-port* port)
-			 (*current-output-port* port)
-			 (*notification-output-port* port)
-			 (*trace-output-port* port)
-			 (*interaction-i/o-port* port))
+			 (*current-input-port* #f)
+			 (*current-output-port* #f)
+			 (*notification-output-port* #f)
+			 (*trace-output-port* #f)
+			 (*interaction-i/o-port* #f))
 	       (let loop ((message message))
 		 (loop
 		  (bind-abort-restart cmdl
