@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/compiler.pkg,v 1.10 1992/08/05 23:38:55 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/compiler.pkg,v 1.11 1992/08/07 19:21:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -92,6 +92,7 @@ MIT in each case. |#
 	  compiler:implicit-self-static?
 	  compiler:intersperse-rtl-in-lap?
 	  compiler:noisy?
+	  compiler:open-code-floating-point-arithmetic?
 	  compiler:open-code-flonum-checks?
 	  compiler:open-code-primitives?
 	  compiler:optimize-environments?
@@ -161,7 +162,8 @@ MIT in each case. |#
 	  compile-scode
 	  compiler:reset!
 	  cross-compile-bin-file
-	  cross-compile-bin-file-end)
+	  cross-compile-bin-file-end
+	  lap->code)
   (export (compiler fg-generator)
 	  compile-recursively)
   (export (compiler rtl-generator)
