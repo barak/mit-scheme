@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rcse1.scm,v 1.2 1994/11/26 19:03:22 adams Exp $
+$Id: rcse1.scm,v 1.3 1996/07/24 04:03:51 adams Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1988-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -440,16 +440,32 @@ MIT in each case. |#
   (if (not volatile?)
       (insert-source!)))
 
+;; The trivial methods below test for a the register for the following
+;; reason: Expression costs cannot be made dependent on the context of
+;; the expression because the whole CSE mechanism expects each
+;; expression to have just one cost across all uses.  Thus it is not
+;; possible to say, for example, on many RICS machines, small
+;; constants are `free' in predicates, but not in stores.
+;;
+;; To solve the problem, we assume that the RTL is generated with register
+;; expressions wherever possible, and pre-cse-rewriting replaces those
+;; register expressions whenever it would be beneficial to hide the
+;; constants from CSE.  The register tests below prevent CSE from
+;; undoing the improvements.
+
 (define (define-trivial-one-arg-method type get set)
   (define-cse-method type
     (lambda (statement)
-      (expression-replace! get set statement trivial-action))))
+      (if (rtl:register? (get statement))
+	  (expression-replace! get set statement trivial-action)))))
 
 (define (define-trivial-two-arg-method type get-1 set-1 get-2 set-2)
   (define-cse-method type
     (lambda (statement)
-      (expression-replace! get-1 set-1 statement trivial-action)
-      (expression-replace! get-2 set-2 statement trivial-action))))
+      (if (rtl:register? (get-1 statement))
+	  (expression-replace! get-1 set-1 statement trivial-action))
+      (if (rtl:register? (get-2 statement))
+	  (expression-replace! get-2 set-2 statement trivial-action)))))
 
 (define-trivial-two-arg-method 'EQ-TEST
   rtl:eq-test-expression-1 rtl:set-eq-test-expression-1!
