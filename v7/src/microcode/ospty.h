@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ospty.h,v 1.1 1992/05/05 06:36:10 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ospty.h,v 1.2 1992/07/23 12:38:01 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -32,8 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-#ifndef SCM_OSTERM_H
-#define SCM_OSTERM_H
+#ifndef SCM_OSPTY_H
+#define SCM_OSPTY_H
 
 #include "os.h"
 
@@ -47,4 +47,4 @@ extern void EXFUN (OS_pty_master_interrupt, (Tchannel channel));
 extern void EXFUN (OS_pty_master_quit, (Tchannel channel));
 extern void EXFUN (OS_pty_master_hangup, (Tchannel channel));
 
-#endif /* SCM_OSTERM_H */
+#endif /* SCM_OSPTY_H */
