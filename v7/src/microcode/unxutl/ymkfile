@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.22 1990/04/17 19:16:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.23 1990/06/20 17:42:50 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -284,10 +284,10 @@ char.c \
 comutl.c \
 daemon.c \
 debug.c \
+error.c \
 extern.c \
 fasdump.c \
 fasload.c \
-fileio.c \
 fixnum.c \
 flonum.c \
 gcloop.c \
@@ -301,9 +301,12 @@ list.c \
 lookprm.c \
 lookup.c \
 memmag.c \
+obstack.c \
+osscheme.c \
+ostty.c \
 prim.c \
 primutl.c \
-process.c \
+ptrvec.c \
 purify.c \
 purutl.c \
 regex.c \
@@ -313,9 +316,40 @@ storage.c \
 string.c \
 syntax.c \
 sysprim.c \
-ttyio.c \
+term.c \
+transact.c \
 utils.c \
-vector.c
+vector.c \
+wind.c
+
+UNIX_SOURCES = \
+intext.c \
+ux.c \
+uxctty.c \
+uxenv.c \
+uxfile.c \
+uxfs.c \
+uxio.c \
+uxproc.c \
+uxsig.c \
+uxsock.c \
+uxterm.c \
+uxtop.c \
+uxtrap.c \
+uxtty.c \
+uxutil.c
+
+OS_PRIM_SOURCES = \
+prosenv.c \
+prosfile.c \
+prosfs.c \
+prosio.c \
+prosproc.c \
+prosterm.c \
+prostty.c \
+pruxenv.c \
+pruxfs.c \
+pruxsock.c
 
 HEAD_FILES = scheme.touch prims.h zones.h locks.h bignum.h \
 	$(GC_HEAD_FILES) trap.h lookup.h history.h cmpint.h
@@ -331,9 +365,9 @@ char.o \
 comutl.o \
 daemon.o \
 debug.o \
+error.o \
 extern.o \
 fasload.o \
-fileio.o \
 fixnum.o \
 flonum.o \
 generic.o \
@@ -345,9 +379,12 @@ intprm.o \
 list.o \
 lookprm.o \
 lookup.o \
+obstack.o \
+osscheme.o \
+ostty.o \
 prim.o \
 primutl.o \
-process.o \
+ptrvec.o \
 purutl.o \
 regex.o \
 rgxprim.o \
@@ -356,9 +393,40 @@ storage.o \
 string.o \
 syntax.o \
 sysprim.o \
-ttyio.o \
+term.o \
+transact.o \
 utils.o \
-vector.o
+vector.o \
+wind.o
+
+UNIX_OBJECTS = \
+intext.o \
+ux.o \
+uxctty.o \
+uxenv.o \
+uxfile.o \
+uxfs.o \
+uxio.o \
+uxproc.o \
+uxsig.o \
+uxsock.o \
+uxterm.o \
+uxtop.o \
+uxtrap.o \
+uxtty.o \
+uxutil.o
+
+OS_PRIM_OBJECTS = \
+prosenv.o \
+prosfile.o \
+prosfs.o \
+prosio.o \
+prosproc.o \
+prosterm.o \
+prostty.o \
+pruxenv.o \
+pruxfs.o \
+pruxsock.o
 
 STD_GC_OBJECTS = \
 fasdump.o \
@@ -372,8 +440,8 @@ bchgcl.o \
 bchmmg.o \
 bchpur.o
 
-OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) os.o
-BCHOBJECTS = $(CORE_OBJECTS) $(BCH_GC_OBJECTS) os.o
+OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJECTS)
+BCHOBJECTS = $(CORE_OBJECTS) $(BCH_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJECTS)
 
 /* Construction rules. */
 
@@ -424,33 +492,35 @@ install: scheme bchscheme
 /* The first two are for VMS. */
 
 usrdef.txt :
-	./make_vmslist usrdef.txt $(SCHEME_SOURCES) $(SOURCES)
+	./make_vmslist usrdef.txt $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES)
 
 vmsusrdef.c :
 	echo "$$ Findprim -o usrdef.c -l [-.vms]usrdef.txt"
 	$(CC) $(CFLAGS) -c usrdef.c
 
-usrdef.c : $(SCHEME_SOURCES) $(SOURCES) usrdef.touch Findprim xmakefile
+usrdef.c : $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xmakefile
 	@ECHO "#** Re-making" $@ because of $?
 	rm -f usrdef.c
-	./Findprim $(SCHEME_SOURCES) $(SOURCES) > usrdef.c
+	./Findprim $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrdef.c
 
 primitive_tables :
 	rm -f usrdef.c usrdef.o
 
-scheme.touch os.touch psbmap.touch usrdef.touch :
+scheme.touch psbmap.touch usrdef.touch :
 	@ECHO "#** Resetting" $@ because of $?
 	rm -f $@
-	touch $@
+	/* Create the file by opening rather than using `touch' program.
+	   Some versions of the `touch' program don't work well when the
+	   file server's clock is not synchronized with the client's. */
+	echo "touch" > $@
 
 #include "ymake.local"
 
 /* scheme.touch depends also on butterfly.h rename.c */
-scheme.touch : scheme.h config.h bkpt.h object.h scode.h sdata.h \
-	gc.h interp.h stack.h futures.h types.h errors.h returns.h \
-	const.h fixobj.h default.h extern.h prim.h intrpt.h float.h
-os.touch : os.c unix.c vms.c unknown.c scheme.touch zones.h \
-	process.h unixpro.c
+scheme.touch : scheme.h oscond.h ansidecl.h dstack.h obstack.h config.h \
+	bkpt.h object.h scode.h sdata.h gc.h interp.h stack.h futures.h \
+	types.h errors.h returns.h const.h fixobj.h default.h extern.h prim.h \
+	intrpt.h critsec.h float.h
 psbmap.touch : config.h object.h bignum.h bignumint.h bitstr.h types.h \
 	sdata.h const.h psbmap.h $(GC_HEAD_FILES) comlin.h comlin.c
 usrdef.touch : usrdef.h config.h object.h prim.h
@@ -494,21 +564,20 @@ fixnum.o : scheme.touch prims.h mul.c
 
 storage.o : scheme.touch gctype.c
 
-char.o fileio.o string.o ttyio.o : scheme.touch prims.h
+char.o string.o : scheme.touch prims.h
 
 boot.o : scheme.touch prims.h version.h paths.h
+term.o : scheme.touch
 
 compiler.o : config.h object.h sdata.h types.h errors.h const.h returns.h
-os.o : scheme.touch os.touch zones.h
 
-bchmmg.o bchgcl.o bchpur.o : scheme.touch prims.h bchgcc.h $(GC_HEAD_FILES)
-bchdmp.o : scheme.touch prims.h bchgcc.h $(GC_HEAD_FILES) fasl.h dump.c
+bchmmg.o bchgcl.o bchpur.o : scheme.touch prims.h bchgcc.h oscond.h $(GC_HEAD_FILES)
+bchdmp.o : scheme.touch prims.h bchgcc.h oscond.h $(GC_HEAD_FILES) fasl.h dump.c
 
 syntax.o : scheme.touch prims.h edwin.h syntax.h
 bitstr.o : scheme.touch prims.h bitstr.h
 regex.o : scheme.touch syntax.h regex.h
 rgxprim.o : scheme.touch prims.h edwin.h syntax.h regex.h
-unixprim.o : scheme.touch prims.h
 
 Bintopsb.o : psbmap.touch trap.h limits.h fasl.h load.c bltdef.h
 Psbtobin.o : psbmap.touch float.h fasl.h dump.c
@@ -535,4 +604,36 @@ cmpaux-hppa.s : cmpaux-hppa.m4
 cmpaux-mc68k.s : cmpaux-mc68k.m4
 cmpaux-vax.s : cmpaux-vax.m4
 
-process.c : scheme.touch process.h prims.h
+osscheme.o : scheme.touch posixtype.h os.h osscheme.h
+ostty.o : ansidecl.h posixtype.h os.h ostty.h osscheme.h
+
+error.o ptrvec.o transact.o : ansidecl.h dstack.h
+wind.o : ansidecl.h dstack.h obstack.h
+obstack.o : obstack.h
+
+$(UNIX_OBJECTS) pruxenv.o pruxfs.o pruxsock.o : oscond.h ansidecl.h \
+       posixtype.h intext.h dstack.h os.h osscheme.h ux.h
+uxctty.o : osctty.h
+uxenv.o : osenv.h
+uxfile.o : osfile.h osio.h uxio.h
+uxfs.o : osfs.h
+uxio.o : osio.h uxio.h
+uxproc.o : osproc.h uxproc.h
+uxsig.o : ossig.h osctty.h uxtrap.h uxutil.h critsec.h
+uxsock.o : uxsock.h
+uxterm.o : osterm.h uxterm.h osio.h uxio.h
+uxtop.o : ostop.h
+uxtrap.o : scheme.touch uxtrap.h
+uxtty.o : ostty.h osenv.h osterm.h uxterm.h
+uxutil.o : uxutil.h
+pruxfs.o : osfs.h
+pruxsock.o : uxsock.h
+
+$(OS_PRIM_OBJECTS) : scheme.touch prims.h posixtype.h os.h
+prosenv.o : osenv.h
+prosfile.o : osfile.h
+prosfs.o pruxfs.o : osfs.h
+prosio.o : osio.h
+prosproc.o : osproc.h
+prosterm.o : osterm.h osio.h
+prostty.o : ostty.h osctty.h ossig.h osfile.h osio.h

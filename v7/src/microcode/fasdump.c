@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.47 1990/01/31 05:01:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.48 1990/06/20 17:40:13 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -36,11 +36,22 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
+#include "osio.h"
+#include "osfile.h"
+#include "osfs.h"
 #define In_Fasdump
 #include "gccode.h"
 #include "trap.h"
 #include "lookup.h"
 #include "fasl.h"
+
+static Tchannel dump_channel;
+
+#define Write_Data(size, buffer)					\
+  ((OS_channel_write_dump_file						\
+    (dump_channel, (buffer), ((size) * (sizeof (SCHEME_OBJECT)))))	\
+   / (sizeof (SCHEME_OBJECT)))
+
 #include "dump.c"
 
 extern SCHEME_OBJECT
@@ -48,15 +59,12 @@ extern SCHEME_OBJECT
   *initialize_primitive_table(),
   *cons_primitive_table(),
   *cons_whole_primitive_table();
-
-extern Boolean
-  OS_file_remove();
 
 /* Some statics used freely in this file */
 
 static SCHEME_OBJECT *NewFree, *NewMemTop, *Fixup, *Orig_New_Free;
 static Boolean compiled_code_present_p;
-static unsigned char *dump_file_name = ((unsigned char *) NULL);
+static CONST char * dump_file_name = 0;
 
 /* FASDUMP:
 
@@ -329,7 +337,9 @@ Fasdump_Exit(code, close_p)
   fast SCHEME_OBJECT *Fixes;
 
   Fixes = Fixup;
-  result = ((close_p) ? (Close_Dump_File ()) : true);
+  if (close_p)
+    OS_channel_close_noerror (dump_channel);
+  result = true;
   while (Fixes != NewMemTop)
   {
     fast SCHEME_OBJECT *Fix_Address;
@@ -339,11 +349,9 @@ Fasdump_Exit(code, close_p)
   }
   Fixup = Fixes;
   if ((close_p) && ((!result) || (code != PRIM_DONE)))
-  {
-    result = ((OS_file_remove (dump_file_name)) && result);
-  }
-  dump_file_name = ((unsigned char *) NULL);
-  Fasdump_Exit_Hook();
+    OS_file_remove (dump_file_name);
+  dump_file_name = 0;
+  Fasdump_Exit_Hook ();
   if (!result)
   {
     signal_error_from_primitive (ERR_IO_ERROR);
@@ -402,7 +410,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
   {
     Primitive_GC (table_start - Free);
   }
-  dump_file_name = (STRING_LOC (File_Name, 0));
+  dump_file_name = ((CONST char *) (STRING_LOC (File_Name, 0)));
   Fasdump_Free_Calc(NewFree, NewMemTop, Orig_New_Free);
   Fixup = NewMemTop;
   ALIGN_FLOAT (NewFree);
@@ -447,10 +455,9 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
     {
       FASDUMP_INTERRUPT();
     }
-    if (! (Open_Dump_File (File_Name, WRITE_FLAG)))
-    {
+    dump_channel = (OS_open_dump_file (STRING_LOC (File_Name, 0)));
+    if (dump_channel == NO_CHANNEL)
       PRIMITIVE_RETURN (Fasdump_Exit (ERR_ARG_2_BAD_RANGE, false));
-    }
     result = Write_File(Addr_Of_New_Object, 0, 0,
 			Length, New_Object,
 			table_start, table_length,
@@ -469,10 +476,10 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
     {
       FASDUMP_INTERRUPT();
     }
-    if (! (Open_Dump_File (File_Name, WRITE_FLAG)))
-    {
+    dump_channel =
+      (OS_open_dump_file ((CONST char *) (STRING_LOC (File_Name, 0))));
+    if (dump_channel == NO_CHANNEL)
       PRIMITIVE_RETURN (Fasdump_Exit (ERR_ARG_2_BAD_RANGE, false));
-    }
     result = Write_File(New_Object,
 			Length, New_Object,
 			0, Constant_Space,
@@ -525,7 +532,10 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
   }
   else
   {
-    if (! (Open_Dump_File ((ARG_REF (2)), WRITE_FLAG)))
+    CONST char * filename = ((CONST char *) (STRING_LOC ((ARG_REF (2)), 0)));
+    dump_channel =
+      (OS_open_dump_file (filename));
+    if (dump_channel == NO_CHANNEL)
       error_bad_range_arg (2);
     result = Write_File((Free - 1),
 			((long) (Free - Heap_Bottom)), Heap_Bottom,
@@ -535,11 +545,9 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
 			((long) (table_end - table_start)),
 			(compiler_utilities != SHARP_F), true);
     /* The and is short-circuit, so it must be done in this order. */
-    result = ((Close_Dump_File ()) && result);
+    OS_channel_close_noerror (dump_channel);
     if (!result)
-    {
-      result = ((OS_file_remove (STRING_ARG (2))) && result);
-    }
+      OS_file_remove (filename);
   }
   Band_Dump_Exit_Hook ();
   Free = saved_free;

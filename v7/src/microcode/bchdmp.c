@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.49 1990/04/01 20:22:33 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.50 1990/06/20 17:38:05 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -38,11 +38,20 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
+#include "osfile.h"
 #include "trap.h"
 #include "lookup.h"		/* UNCOMPILED_VARIABLE */
 #define In_Fasdump
 #include "bchgcc.h"
 #include "fasl.h"
+
+static Tchannel dump_channel;
+
+#define Write_Data(size, buffer)					\
+  ((OS_channel_write_dump_file						\
+    (dump_channel, (buffer), ((size) * (sizeof (SCHEME_OBJECT)))))	\
+   / (sizeof (SCHEME_OBJECT)))
+
 #include "dump.c"
 
 extern SCHEME_OBJECT
@@ -727,7 +736,9 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
   }
   else
   {
-    if (! (Open_Dump_File ((ARG_REF (2)), WRITE_FLAG)))
+    unsigned char * filename = (STRING_LOC ((ARG_REF (2)), 0));
+    dump_channel = (OS_open_dump_file (filename));
+    if (dump_channel == NO_CHANNEL)
       error_bad_range_arg (2);
     result = Write_File((Free - 1),
 			((long) (Free - Heap_Bottom)), Heap_Bottom,
@@ -736,12 +747,9 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
 			table_start, table_length,
 			((long) (table_end - table_start)),
 			(compiler_utilities != SHARP_F), true);
-    /* The and is short-circuit, so it must be done in this order. */
-    result = ((Close_Dump_File ()) && result);
+    OS_channel_close_noerror (dump_channel);
     if (!result)
-    {
-      result = ((OS_file_remove (STRING_ARG (2))) && result);
-    }
+      OS_file_remove (filename);
   }
   Band_Dump_Exit_Hook ();
   Free = saved_free;

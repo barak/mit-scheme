@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.33 1989/09/20 23:12:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.34 1990/06/20 17:42:19 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,114 +37,29 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
-
-/* Interrupt primitives */
-
-DEFINE_PRIMITIVE ("CHECK-AND-CLEAN-UP-INPUT-CHANNEL", Prim_chk_and_cln_input_channel, 2, 2, 0)
-{
-  extern Boolean OS_tty_clean_interrupts();
-  PRIMITIVE_HEADER (2);
-
-  PRIMITIVE_RETURN
-    (BOOLEAN_TO_OBJECT
-     (OS_tty_clean_interrupts ((arg_nonnegative_integer (1)),
-				  (arg_nonnegative_integer (2)))));
-}
-
-DEFINE_PRIMITIVE ("GET-NEXT-INTERRUPT-CHARACTER", Prim_get_next_interrupt_char, 0, 0, 0)
-{
-  int result;
-  extern int OS_tty_next_interrupt_char();
-  PRIMITIVE_HEADER (0);
-
-  result = (OS_tty_next_interrupt_char ());
-  if (result == -1)
-    {
-      error_external_return ();
-      /*NOTREACHED*/
-    }
-  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (result));
-}
-
-/* Time primitives */
-
-DEFINE_PRIMITIVE ("SYSTEM-CLOCK", Prim_system_clock, 0, 0, 0)
-{
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (long_to_integer (OS_process_clock ()));
-}
-
-DEFINE_PRIMITIVE ("REAL-TIME-CLOCK", Prim_real_time_clock, 0, 0, 0)
-{
-  extern long OS_real_time_clock ();
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (long_to_integer (OS_real_time_clock ()));
-}
-
-DEFINE_PRIMITIVE ("SETUP-TIMER-INTERRUPT", Prim_setup_timer_interrupt, 2, 2, 0)
-{
-  extern void Clear_Int_Timer ();
-  extern void Set_Int_Timer ();
-  PRIMITIVE_HEADER (2);
-  if (((ARG_REF (1)) == SHARP_F) && ((ARG_REF (2)) == SHARP_F))
-    Clear_Int_Timer ();
-  else
-    Set_Int_Timer
-      ((arg_nonnegative_integer (1)), (arg_nonnegative_integer (2)));
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-/* Date and current time primitives */
-
-#define DATE_PRIMITIVE(OS_name)						\
-{									\
-  int result;								\
-  extern int OS_name ();						\
-  PRIMITIVE_HEADER (0);							\
-  result = (OS_name ());						\
-  PRIMITIVE_RETURN							\
-    ((result == -1) ? SHARP_F : (LONG_TO_UNSIGNED_FIXNUM (result)));	\
-}
-
-DEFINE_PRIMITIVE ("CURRENT-YEAR", Prim_current_year, 0, 0, 0)
-     DATE_PRIMITIVE (OS_Current_Year)
-
-DEFINE_PRIMITIVE ("CURRENT-MONTH", Prim_current_month, 0, 0, 0)
-     DATE_PRIMITIVE (OS_Current_Month)
-
-DEFINE_PRIMITIVE ("CURRENT-DAY", Prim_current_day, 0, 0, 0)
-     DATE_PRIMITIVE (OS_Current_Day)
-
-DEFINE_PRIMITIVE ("CURRENT-HOUR", Prim_current_hour, 0, 0, 0)
-     DATE_PRIMITIVE (OS_Current_Hour)
-
-DEFINE_PRIMITIVE ("CURRENT-MINUTE", Prim_current_minute, 0, 0, 0)
-     DATE_PRIMITIVE (OS_Current_Minute)
-
-DEFINE_PRIMITIVE ("CURRENT-SECOND", Prim_current_second, 0, 0, 0)
-     DATE_PRIMITIVE (OS_Current_Second)
+#include "ostty.h"
+#include "ostop.h"
 
 /* Pretty random primitives */
 
-/* (EXIT)
-   Halt SCHEME, with no intention of restarting. */
-
-DEFINE_PRIMITIVE ("EXIT", Prim_non_restartable_exit, 0, 0, 0)
+DEFINE_PRIMITIVE ("EXIT", Prim_non_restartable_exit, 0, 0,
+  "Exit Scheme with no option to restart.")
 {
   PRIMITIVE_HEADER (0);
-
-  Microcode_Termination (TERM_HALT);
+  termination_normal ();
 }
 
-/* (HALT)
-   Halt Scheme in such a way that it can be restarted.
-   Not all operating systems support this. */
-
-DEFINE_PRIMITIVE ("HALT", Prim_restartable_exit, 0, 0, 0)
+DEFINE_PRIMITIVE ("HALT", Prim_restartable_exit, 0, 0,
+  "Exit Scheme, suspending it to that it can be restarted.")
 {
-  extern Boolean Restartable_Exit();
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (Restartable_Exit ()));
+  OS_restartable_exit ();
+}
+
+DEFINE_PRIMITIVE ("UNDER-EMACS?", Prim_under_emacs_p, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (OS_under_emacs_p ()));
 }
 
 /* (SET-RUN-LIGHT! OBJECT)
@@ -157,25 +72,13 @@ DEFINE_PRIMITIVE ("SET-RUN-LIGHT!", Prim_set_run_light, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 #ifdef RUN_LIGHT_IS_BEEP
-  {
-    extern void OS_tty_beep();
-
-    OS_tty_beep();
-    OS_tty_flush_output();
-    PRIMITIVE_RETURN (SHARP_T);
-  }
+  OS_tty_beep ();
+  PRIMITIVE_RETURN (SHARP_T);
 #else
   PRIMITIVE_RETURN (SHARP_F);
 #endif
 }
 
-DEFINE_PRIMITIVE ("UNDER-EMACS?", Prim_under_emacs_p, 0, 0, 0)
-{
-  extern Boolean OS_under_emacs_p ();
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (OS_under_emacs_p ()));
-}
-
 #define CONVERT_ADDRESS(address)					\
   (long_to_integer (ADDRESS_TO_DATUM (address)))
 
@@ -228,7 +131,7 @@ DEFINE_PRIMITIVE ("GC-SPACE-STATUS", Prim_gc_space_status, 0, 0, 0)
 #endif /* USE_STACKLETS */
   PRIMITIVE_RETURN (result);
 }
-
+
 DEFINE_PRIMITIVE ("SET-TRAP-STATE!", Prim_set_trap_state, 1, 1, 0)
 {
   long result;

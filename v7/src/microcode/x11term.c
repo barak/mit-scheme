@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.7 1989/11/11 19:13:10 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.8 1990/06/20 17:42:39 cph Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -575,13 +575,13 @@ DEFINE_PRIMITIVE ("XTERM-READ-CHARS", Prim_xterm_read_chars, 2, 2, 0)
 	  xterm_process_event (& event);
 	  continue;
 	}
-      status = ((int *) 0);
+      status = 0;
       nbytes =
-	(XLookupString ((& event),
+	(XLookupString (((XKeyEvent *) (&event)),
 			(& (copy_buffer [0])),
 			(sizeof (copy_buffer)),
-			(& keysym),
-			status));
+			(&keysym),
+			((XComposeStatus *) status)));
       if ((IsFunctionKey (keysym)) ||
 	  (IsCursorKey (keysym)) ||
 	  (IsKeypadKey (keysym)) ||

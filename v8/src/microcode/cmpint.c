@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.27 1990/04/23 02:35:00 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.28 1990/06/20 17:38:59 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -75,8 +75,10 @@ MIT in each case. */
 
 /* Macro imports */
 
-#include <setjmp.h>
 #include <stdio.h>
+#include "oscond.h"	/* Identify the operating system */
+#include "ansidecl.h"	/* Macros to support ANSI declarations */
+#include "dstack.h"	/* Dynamic-stack support */
 #include "config.h"     /* SCHEME_OBJECT type and machine dependencies */
 #include "types.h"      /* Needed by const.h */
 #include "const.h"      /* REGBLOCK_MINIMUM_LENGTH and PRIM_... codes */
@@ -89,7 +91,7 @@ MIT in each case. */
 #include "fixobj.h"	/* To find the error handlers */
 #include "stack.h"	/* Stacks and stacklets */
 #include "interp.h"     /* Interpreter state and primitive destructuring */
-#include "default.h"    /* Metering_Apply_Primitive */
+#include "default.h"    /* various definitions */
 #include "extern.h"	/* External decls (missing Cont_Debug, etc.) */
 #include "trap.h"       /* UNASSIGNED_OBJECT, TRAP_EXTENSION_TYPE */
 #include "prims.h"      /* LEXPR */
@@ -164,9 +166,6 @@ MAKE_POINTER_OBJECT(TC_COMPILED_ENTRY, ((SCHEME_OBJECT *) (entry)))
 (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, block_addr))
 
 /* Imports from the rest of the "microcode" */
-
-extern term_type
-  Microcode_Termination();
 
 extern long
   compiler_cache_operator(),
@@ -588,7 +587,6 @@ setup_lexpr_invocation (nactuals, nmax, entry_address)
     *local_free = EMPTY_LIST;
     return (PRIM_DONE);
   }
-
   else /* (delta > 0) */
   {
     /* The number of arguments passed is greater than the number of
@@ -688,8 +686,8 @@ comutil_primitive_apply (primitive, ignore_2, ignore_3, ignore_4)
      SCHEME_OBJECT primitive;
      long ignore_2, ignore_3, ignore_4;
 { 
-  Metering_Apply_Primitive (Val, primitive);
-  Pop_Primitive_Frame (PRIMITIVE_ARITY (primitive));
+  PRIMITIVE_APPLY (Val, primitive);
+  POP_PRIMITIVE_FRAME (PRIMITIVE_ARITY (primitive));
   RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()));
 }
 
@@ -706,8 +704,8 @@ comutil_primitive_lexpr_apply (primitive, ignore_2, ignore_3, ignore_4)
      SCHEME_OBJECT primitive;
      long ignore_2, ignore_3, ignore_4;
 {
-  Metering_Apply_Primitive (Val, primitive);
-  Pop_Primitive_Frame (((long) Regs[REGBLOCK_LEXPR_ACTUALS]));
+  PRIMITIVE_APPLY (Val, primitive);
+  POP_PRIMITIVE_FRAME (((long) Regs[REGBLOCK_LEXPR_ACTUALS]));
   RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()));
 }
 
@@ -749,7 +747,6 @@ comutil_apply (procedure, nactuals, ignore_3, ignore_4)
       nactuals += 1;
       goto callee_is_compiled;
     }
-
     case TC_PRIMITIVE:
     {
       /* This code depends on the fact that unimplemented
@@ -889,7 +886,6 @@ link_cc_block (block_address, offset, last_header_offset,
 
     block_address[last_header_offset] =
       (MAKE_LINKAGE_SECTION_HEADER (kind, total_count));
-
     for (offset += 1; ((--count) >= 0); offset += entry_size)
     {
       SCHEME_OBJECT name;
@@ -1134,7 +1130,6 @@ comutil_operator_lookup_trap (tramp_data, ignore_2, ignore_3, ignore_4)
   {
     return (comutil_apply (true_operator, nargs, 0, 0));
   }
-
   else /* Error or interrupt */
   {
     SCHEME_OBJECT trampoline, environment, name;
@@ -1172,7 +1167,7 @@ comp_op_lookup_trap_restart ()
 
   /* Discard name, env. and nargs */
 
-  Stack_Pointer = (Simulate_Popping (3));
+  Stack_Pointer = (STACK_LOC (3));
   old_trampoline = (OBJECT_ADDRESS (STACK_POP ()));
   code_block = ((TRAMPOLINE_STORAGE (old_trampoline))[1]);
   offset = (OBJECT_DATUM ((TRAMPOLINE_STORAGE (old_trampoline))[2]));
@@ -2097,7 +2092,6 @@ compiled_entry_type (entry, buffer)
   {
     kind = KIND_ILLEGAL;
   }
-
   else
   {
     switch (((unsigned long) max_arity) & 0xff)
@@ -2349,7 +2343,6 @@ make_uuo_link (procedure, extension, block, offset)
         return (PRIM_DONE);
       }
       nmin = (COMPILED_ENTRY_MINIMUM_ARITY (entry));
-
       if ((nmax > 1) && (nmin > 0) && (nmin <= nactuals) &&
           (nactuals <= TRAMPOLINE_TABLE_SIZE) &&
           (nmax <= (TRAMPOLINE_TABLE_SIZE + 1)))
@@ -2639,8 +2632,7 @@ extern SCHEME_OBJECT
 
 extern void
   store_variable_cache(),
-  compiled_entry_type(),
-  Microcode_Termination();
+  compiled_entry_type();
 
 SCHEME_OBJECT
   Registers[REGBLOCK_MINIMUM_LENGTH],

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.35 1989/09/25 16:51:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.36 1990/06/20 17:40:07 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,16 +36,31 @@ MIT in each case. */
 
 #ifdef ENABLE_DEBUGGING_TOOLS
 
-extern Boolean Eval_Debug, Hex_Input_Debug, Cont_Debug,
-               File_Load_Debug, Reloc_Debug, Intern_Debug,
-               Primitive_Debug, Define_Debug, Lookup_Debug, GC_Debug,
-               Upgrade_Debug, Trace_On_Error, Dump_Debug, Per_File,
-               Bignum_Debug, Fluids_Debug;
+extern Boolean Eval_Debug;
+extern Boolean Hex_Input_Debug;
+extern Boolean Cont_Debug;
+extern Boolean File_Load_Debug;
+extern Boolean Reloc_Debug;
+extern Boolean Intern_Debug;
+extern Boolean Primitive_Debug;
+extern Boolean Define_Debug;
+extern Boolean Lookup_Debug;
+extern Boolean GC_Debug;
+extern Boolean Upgrade_Debug;
+extern Boolean Trace_On_Error;
+extern Boolean Dump_Debug;
+extern Boolean Per_File;
+extern Boolean Bignum_Debug;
+extern Boolean Fluids_Debug;
 
 extern sp_record_list SP_List;
-extern void Pop_Return_Break_Point();
-extern int debug_slotno, debug_nslots, local_slotno, local_nslots,
-	   debug_circle[], local_circle[];
+extern void Pop_Return_Break_Point ();
+extern int debug_slotno;
+extern int debug_nslots;
+extern int local_slotno;
+extern int local_nslots;
+extern int debug_circle [];
+extern int local_circle [];
 
 #else /* not ENABLE_DEBUGGING_TOOLS */
 
@@ -90,19 +105,19 @@ extern SCHEME_OBJECT
  * Local_Heap_Base,	/* Per-processor CONSing area */
  * Heap,		/* Bottom of all heap space */
    Current_State_Point,	/* Dynamic state point */
-   Fluid_Bindings,	/* Fluid bindings AList */
+   Fluid_Bindings;	/* Fluid bindings AList */
+
+/* Address of the most recent return code in the stack.  This is
+   only meaningful while in compiled code.  *** This must be changed
+   when stacklets are used. *** */
+extern SCHEME_OBJECT * last_return_code;
 
-  /* Address of the most recent return code in the stack.  This is
-     only meaningful while in compiled code.  *** This must be changed
-     when stacklets are used. *** */
- * last_return_code,
-
-  /* Return code/address used by the compiled code interface to make
-     compiled code return to the interpreter.  */
-   return_to_interpreter;
+/* Return code/address used by the compiled code interface to make
+   compiled code return to the interpreter.  */
+extern SCHEME_OBJECT return_to_interpreter;
 
 extern Declare_Fixed_Objects ();
-
+
 extern long
   IntCode,		/* Interrupts requesting */
   IntEnb,		/* Interrupts enabled */
@@ -123,11 +138,6 @@ extern char
 
 extern int GC_Type_Map [];
 
-extern FILE * (Channels [FILE_CHANNELS]);
-extern Boolean Photo_Open;
-extern FILE * Photo_File_Handle;
-
-extern jmp_buf * Back_To_Eval;
 extern Boolean Trapping;
 extern SCHEME_OBJECT Old_Return_Code;
 extern SCHEME_OBJECT * Return_Hook_Address;
@@ -136,10 +146,10 @@ extern SCHEME_OBJECT * Prev_Restore_History_Stacklet;
 extern long Prev_Restore_History_Offset;
 
 extern int Saved_argc;
-extern char ** Saved_argv;
-
-extern char * OS_Name;
-extern char * OS_Variant;
+extern CONST char ** Saved_argv;
+extern CONST char * OS_Name;
+extern CONST char * OS_Variant;
+extern struct obstack scratch_obstack;
 
 extern long Heap_Size;
 extern long Constant_Size;
@@ -205,13 +215,10 @@ extern SCHEME_OBJECT memory_to_string ();
 extern SCHEME_OBJECT char_pointer_to_string ();
 
 /* Random and OS utilities */
-extern int Parse_Option ();
+extern int EXFUN (boolean_option_argument, (CONST char * name));
+extern CONST char * EXFUN (string_option_argument, (CONST char * name));
+extern long EXFUN (numeric_option_argument, (CONST char * name, long defval));
 extern Boolean Restore_History ();
-extern long OS_tty_x_size ();
-extern long OS_tty_y_size ();
-extern long OS_process_clock ();
-extern void OS_tty_flush_output ();
-extern void OS_reinitialize ();
 extern Boolean interpreter_applicable_p ();
 
 /* Memory management utilities */
@@ -221,7 +228,15 @@ extern Boolean Pure_Test ();
 
 /* Interpreter utilities */
 
-extern term_type Microcode_Termination ();
+extern void EXFUN (Microcode_Termination, (int code));
+extern void EXFUN (termination_normal, (void));
+extern void EXFUN (termination_end_of_computation, (void));
+extern void EXFUN (termination_trap, (void));
+extern void EXFUN (termination_no_error_handler, (void));
+extern void EXFUN (termination_gc_out_of_space, (void));
+extern void EXFUN (termination_eof, (void));
+extern void EXFUN (termination_signal, (CONST char * signal_name));
+
 extern void
   Interpret (),
   Do_Micro_Error (),
@@ -240,9 +255,10 @@ extern SCHEME_OBJECT Find_State_Space ();
 
 /* Debugging utilities */
 
+extern void EXFUN (debug_edit_flags, (void));
+
 extern void
   Back_Trace (),
-  Handle_Debug_Flags (),
   Show_Env (),
   Show_Pure (),
   Print_Return (),

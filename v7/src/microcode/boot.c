@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.60 1989/11/30 03:03:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.61 1990/06/20 17:38:38 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -87,189 +87,203 @@ for details.  They are created by defining a macro Command_Line_Args.
 #include <ctype.h>
 #endif
 
-#define STRING_SIZE	512
-#define BLOCKSIZE	1024
-#define blocks(n)	((n)*BLOCKSIZE)
-#define unblocks(n)	(((n) + (BLOCKSIZE - 1)) / BLOCKSIZE)
-#define MIN_HEAP_DELTA	50
+extern PTR EXFUN (malloc, (unsigned int size));
+extern void EXFUN (free, (PTR ptr));
 
-/* Utilities for command line parsing */
+int Saved_argc;
+CONST char ** Saved_argv;
+CONST char * OS_Name;
+CONST char * OS_Variant;
+struct obstack scratch_obstack;
 
-#define upcase(c) ((islower(c)) ? (toupper(c)) : c)
-
-void
-uppercase(to_where, from_where)
-     fast char *to_where, *from_where;
+PTR
+DEFUN (obstack_chunk_alloc, (size), unsigned int size)
 {
-  fast char c;
+  PTR result = (malloc (size));
+  if (result == 0)
+    {
+      fprintf (stderr, "\n%s: unable to allocate obstack chunk of %d bytes\n",
+	       (Saved_argv[0]), size);
+      fflush (stderr);
+      Microcode_Termination (TERM_EXIT);
+    }
+  return (result);
+}
 
-  while((c = *from_where++) != '\0')
-  {
-    *to_where++ = upcase(c);
-  }
-  *to_where = '\0';
-  return;
+#define obstack_chunk_free free
+
+#ifndef ENTRY_HOOK
+#define ENTRY_HOOK()
+#endif
+
+/* Declare the outermost critical section. */
+DECLARE_CRITICAL_SECTION ();
+
+#define BLOCKS_TO_BYTES(n) ((n) * 1024)
+
+static void
+DEFUN (usage, (error_string), CONST char * error_string)
+{
+  fprintf (stderr, "%s: %s\n\n", (Saved_argv[0]), error_string);
+  fflush (stderr);
+  exit (1);
 }
 
-int
-Parse_Option(opt_key, nargs, args, casep)
-     char *opt_key, **args;
-     Boolean casep;
-     int nargs;
-{
-  int i;
-  char key[STRING_SIZE], current[STRING_SIZE];
+/* Command Line Parsing */
 
-  if (casep)
-  {
-    uppercase(key, opt_key);
-  }
-  else
-  {
-    strcpy(key, opt_key);
-  }
-  for(i = 0; i < nargs; i++)
-  {
-    if (casep)
+static int
+DEFUN (string_compare_ci, (string1, string2),
+       CONST char * string1 AND
+       CONST char * string2)
+{
+  CONST char * scan1 = string1;
+  unsigned int length1 = (strlen (string1));
+  CONST char * scan2 = string2;
+  unsigned int length2 = (strlen (string2));
+  unsigned int length = ((length1 < length2) ? length1 : length2);
+  CONST char * end1 = (scan1 + length);
+  CONST char * end2 = (scan2 + length);
+  while ((scan1 < end1) && (scan2 < end2))
     {
-      uppercase(current, args[i]);
+      int c1 = (*scan1++);
+      int c2 = (*scan2++);
+      if (islower (c1))
+	{
+	  if (! (islower (c2)))
+	    c1 = (toupper (c1));
+	}
+      else
+	{
+	  if (islower (c2))
+	    c2 = (toupper (c2));
+	}
+      if (c1 != c2)
+	return ((c1 < c2) ? (-1) : 1);
     }
-    else
+  return
+    ((length1 == length2)
+     ? 0
+     : ((length1 < length2) ? (-1) : 1));
+}
+
+static int
+DEFUN (find_option_argument, (name), CONST char * name)
+{
+  CONST char ** scan = Saved_argv;
+  CONST char ** end = (scan + Saved_argc);
+  while (scan < end)
+    if ((string_compare_ci (name, (*scan++))) == 0)
+      return ((scan - Saved_argv) - 1);
+  return (-1);
+}
+
+int
+DEFUN (boolean_option_argument, (name), CONST char * name)
+{
+  return ((find_option_argument (name)) >= 0);
+}
+
+CONST char *
+DEFUN (string_option_argument, (name), CONST char * name)
+{
+  int position = (find_option_argument (name));
+  if (position == (Saved_argc - 1))
     {
-      strcpy(current, args[i]);
+      fprintf (stderr, "%s: %s option requires an argument name\n\n",
+	       (Saved_argv[0]), name);
+      fflush (stderr);
+      exit (1);
     }
-    if (strcmp(key, current) == 0)
-    {
-      return i;
-    }
-  }
-  return NOT_THERE;
+  return ((position < 0) ? 0 : (Saved_argv [position + 1]));
 }
 
 long
-Def_Number(key, nargs, args, def)
-     char *key, **args;
-     long def;
-     int nargs;
+DEFUN (numeric_option_argument, (name, defval),
+       CONST char * name AND
+       long defval)
 {
-  int position;
-
-  position = Parse_Option(key, nargs, args, true);
-  if ((position == NOT_THERE) || (position == (nargs-1)))
-  {
-    return def;
-  }
-  else
-  {
-    return atoi(args[position+1]);
-  }
+  CONST char * option = (string_option_argument (name));
+  return ((option == 0) ? defval : (atoi (option)));
 }
 
 /* Used to test whether it is a dumped executable version */
-
-extern Boolean Was_Scheme_Dumped;
 Boolean Was_Scheme_Dumped = false;
-Boolean inhibit_termination_messages;
 int Saved_Heap_Size;
 int Saved_Stack_Size;
 int Saved_Constant_Size;
 
-void
-usage(error_string)
-     char *error_string;
+static void
+DEFUN (find_image_parameters, (file_name, cold_load_p, supplied_p),
+       CONST char ** file_name AND
+       Boolean * cold_load_p AND
+       Boolean * supplied_p)
 {
-  fprintf(stderr, "%s: %s\n\n", Saved_argv[0], error_string);
-  exit(1);
-}
-
-void
-find_image_parameters(file_name, cold_load_p, supplied_p)
-     char **file_name;
-     Boolean *cold_load_p, *supplied_p;
-{
-  int position;
-  Boolean found_p;
-
-  found_p = false;
-  *supplied_p = false;
-  *cold_load_p = false;
-  *file_name = DEFAULT_BAND_NAME;
-
+  Boolean found_p = false;
+  (*supplied_p) = false;
+  (*cold_load_p) = false;
+  (*file_name) = DEFAULT_BAND_NAME;
   if (!Was_Scheme_Dumped)
-  {
-    Heap_Size = HEAP_SIZE;
-    Stack_Size = STACK_SIZE;
-    Constant_Size = CONSTANT_SIZE;
-  }
+    {
+      Heap_Size = HEAP_SIZE;
+      Stack_Size = STACK_SIZE;
+      Constant_Size = CONSTANT_SIZE;
+    }
   else
-  {
-    Saved_Heap_Size = Heap_Size;
-    Saved_Stack_Size = Stack_Size;
-    Saved_Constant_Size = Constant_Size;
-  }
-
+    {
+      Saved_Heap_Size = Heap_Size;
+      Saved_Stack_Size = Stack_Size;
+      Saved_Constant_Size = Constant_Size;
+    }
   /* This does not set found_p because the image spec. can be
      overridden by the options below.  It just sets different
-     defaults.
-   */
-
-  if ((position = Parse_Option("-compiler", Saved_argc, Saved_argv, true)) !=
-      NOT_THERE)
-  {
-    *supplied_p = true;
-    *file_name = DEFAULT_COMPILER_BAND;
-    Heap_Size = COMPILER_HEAP_SIZE;
-    Stack_Size = COMPILER_STACK_SIZE;
-    Constant_Size = COMPILER_CONSTANT_SIZE;
-  }
-
+     defaults. */
+  if (boolean_option_argument ("-compiler"))
+    {
+      (*supplied_p) = true;
+      (*file_name) = DEFAULT_COMPILER_BAND;
+      Heap_Size = COMPILER_HEAP_SIZE;
+      Stack_Size = COMPILER_STACK_SIZE;
+      Constant_Size = COMPILER_CONSTANT_SIZE;
+    }
   /* Exclusive image specs. */
-
-  if ((position = Parse_Option("-band", Saved_argc, Saved_argv, true)) !=
-      NOT_THERE)
   {
-    if (position == (Saved_argc - 1))
-      usage("-band option requires a file name");
-    if (found_p)
-      usage("Multiple image parameters specified!");
-    found_p = true;
-    *supplied_p = true;
-    *file_name = Saved_argv[position + 1];
+    CONST char * band_name = (string_option_argument ("-band"));
+    if (band_name != 0)
+      {
+	if (found_p)
+	  usage ("Multiple image parameters specified!");
+	found_p = true;
+	(*supplied_p) = true;
+	(*file_name) = band_name;
+      }
   }
-
-  if ((position = Parse_Option("-fasl", Saved_argc, Saved_argv, true)) !=
-      NOT_THERE)
   {
-    if (position == (Saved_argc - 1))
-      usage("-fasl option requires a file name");
-    if (found_p)
-      usage("Multiple image parameters specified!");
-    found_p = true;
-    *supplied_p = true;
-    *cold_load_p = true;
-    *file_name = Saved_argv[position + 1];
+    CONST char * fasl_name = (string_option_argument ("-fasl"));
+    if (fasl_name != 0)
+      {
+	if (found_p)
+	  usage ("Multiple image parameters specified!");
+	found_p = true;
+	(*supplied_p) = true;
+	(*cold_load_p) = true;
+	(*file_name) = fasl_name;
+      }
   }
-
-  Heap_Size =
-    Def_Number("-heap", Saved_argc, Saved_argv, Heap_Size);
-  Stack_Size =
-    Def_Number("-stack", Saved_argc, Saved_argv, Stack_Size);
-  Constant_Size =
-    Def_Number("-constant", Saved_argc, Saved_argv, Constant_Size);
-
-  if (Was_Scheme_Dumped &&
-      ((Heap_Size != Saved_Heap_Size)	||
-       (Stack_Size != Saved_Stack_Size)	||
-       (Constant_Size != Saved_Constant_Size)))
-  {
-    fprintf(stderr,
-	    "%s warning: Allocation parameters ignored.\n",
-	    Saved_argv[0]);
-    Heap_Size = Saved_Heap_Size;
-    Stack_Size = Saved_Stack_Size;
-    Constant_Size = Saved_Constant_Size;
-  }
-  return;
+  Heap_Size = (numeric_option_argument ("-heap", Heap_Size));
+  Stack_Size = (numeric_option_argument ("-stack", Stack_Size));
+  Constant_Size = (numeric_option_argument ("-constant", Constant_Size));
+  if (Was_Scheme_Dumped
+      && ((Heap_Size != Saved_Heap_Size)
+	  || (Stack_Size != Saved_Stack_Size)
+	  || (Constant_Size != Saved_Constant_Size)))
+    {
+      fprintf (stderr, "%s warning: Allocation parameters ignored.\n",
+	       (Saved_argv[0]));
+      fflush (stderr);
+      Heap_Size = Saved_Heap_Size;
+      Stack_Size = Saved_Stack_Size;
+      Constant_Size = Saved_Constant_Size;
+    }
 }
 
 /* Exit is done in a different way on some operating systems (eg. VMS)  */
@@ -278,29 +292,27 @@ Exit_Scheme_Declarations;
 
 forward void Start_Scheme ();
 forward void Enter_Interpreter ();
-extern void Clear_Memory(), Setup_Memory(), Reset_Memory();
-extern void OS_initialize ();
-
-/*
-  THE MAIN PROGRAM
- */
+extern void Clear_Memory ();
+extern void Setup_Memory ();
+PTR initial_C_stack_pointer;
 
 main_type
 main (argc, argv)
      int argc;
-     char ** argv;
+     CONST char ** argv;
 {
   Boolean cold_load_p, supplied_p;
-  char *file_name;
+  CONST char * file_name;
   extern void compiler_initialize ();
 
   Init_Exit_Scheme();
 
-  inhibit_termination_messages = false;
   Saved_argc = argc;
   Saved_argv = argv;
+  initial_C_stack_pointer = (&argc);
+  obstack_init (&scratch_obstack);
 
-  find_image_parameters(&file_name, &cold_load_p, &supplied_p);
+  find_image_parameters (&file_name, &cold_load_p, &supplied_p);
 
   if (Was_Scheme_Dumped)
   {
@@ -308,13 +320,14 @@ main (argc, argv)
     if (!supplied_p)
     {
       printf ("Scheme Microcode Version %d.%d\n", VERSION, SUBVERSION);
-      OS_initialize (true);
+      OS_initialize ();
       Enter_Interpreter ();
     }
     else
     {
-      Clear_Memory ((blocks (Heap_Size)), (blocks (Stack_Size)),
-		    (blocks (Constant_Size)));
+      Clear_Memory ((BLOCKS_TO_BYTES (Heap_Size)),
+		    (BLOCKS_TO_BYTES (Stack_Size)),
+		    (BLOCKS_TO_BYTES (Constant_Size)));
       /* We are reloading from scratch anyway. */
       Was_Scheme_Dumped = false;
       Start_Scheme ((cold_load_p ? BOOT_FASLOAD : BOOT_LOAD_BAND),
@@ -323,8 +336,9 @@ main (argc, argv)
   }
 
   Command_Line_Hook();
-  Setup_Memory ((blocks(Heap_Size)), (blocks(Stack_Size)),
-	       blocks(Constant_Size));
+  Setup_Memory ((BLOCKS_TO_BYTES (Heap_Size)),
+		(BLOCKS_TO_BYTES (Stack_Size)),
+		(BLOCKS_TO_BYTES (Constant_Size)));
   compiler_initialize ((long) cold_load_p);
   Start_Scheme ((cold_load_p ? BOOT_FASLOAD : BOOT_LOAD_BAND),
 		file_name);
@@ -429,40 +443,33 @@ make_fixed_objects_vector ()
 /* Boot Scheme */
 
 void
-Start_Scheme(Start_Prim, File_Name)
+Start_Scheme (Start_Prim, File_Name)
      int Start_Prim;
-     char *File_Name;
+     char * File_Name;
 {
-  extern SCHEME_OBJECT make_primitive();
+  extern SCHEME_OBJECT make_primitive ();
   SCHEME_OBJECT FName, Init_Prog, *Fasload_Call, prim;
   fast long i;
-  Boolean I_Am_Master;			/* Parallel processor test */
-
-  I_Am_Master = (Start_Prim != BOOT_GET_WORK);
+  /* Parallel processor test */
+  Boolean I_Am_Master = (Start_Prim != BOOT_GET_WORK);
   if (I_Am_Master)
-  {
-    printf("Scheme Microcode Version %d.%d\n", VERSION, SUBVERSION);
-  }
-  OS_initialize(I_Am_Master);
-  if (I_Am_Master)
-  {
-    for (i = 0; i < FILE_CHANNELS; i++)
     {
-      Channels[i] = NULL;
+      fprintf (stdout, "Scheme Microcode Version %d.%d\n", VERSION, SUBVERSION);
+      fflush (stdout);
     }
+  OS_initialize ();
+  if (I_Am_Master)
+  {
     Current_State_Point = SHARP_F;
     Fluid_Bindings = EMPTY_LIST;
-    Photo_Open = false;
     Init_Fixed_Objects ();
   }
-
-/* The initial program to execute is one of
+
+  /* The initial program to execute is one of
         (SCODE-EVAL (BINARY-FASLOAD <file-name>) SYSTEM-GLOBAL-ENVIRONMENT),
 	(LOAD-BAND <file-name>), or
 	((GET-WORK))
-	depending on the value of Start_Prim.
-*/
-
+     depending on the value of Start_Prim. */
   switch (Start_Prim)
   {
     case BOOT_FASLOAD:	/* (SCODE-EVAL (BINARY-FASLOAD <file>) GLOBAL-ENV) */
@@ -503,19 +510,13 @@ Start_Scheme(Start_Prim, File_Name)
       /*NOTREACHED*/
   }
 
-/* Start_Scheme continues on the next page */
-
-/* Start_Scheme, continued */
-
-	/* Setup registers */
-
+  /* Setup registers */
   INITIALIZE_INTERRUPTS();
   Env = MAKE_OBJECT (GLOBAL_ENV, 0);
   Trapping = false;
   Return_Hook_Address = NULL;
 
-	/* Give the interpreter something to chew on, and ... */
-
+  /* Give the interpreter something to chew on, and ... */
  Will_Push (CONTINUATION_SIZE);
   Store_Return (RC_END_OF_COMPUTATION);
   Store_Expression (SHARP_F);
@@ -524,14 +525,13 @@ Start_Scheme(Start_Prim, File_Name)
 
   Store_Expression (Init_Prog);
 
-	/* Go to it! */
-
+  /* Go to it! */
   if ((Stack_Pointer <= Stack_Guard) || (Free > MemTop))
   {
     fprintf (stderr, "Configuration won't hold initial data.\n");
     Microcode_Termination (TERM_EXIT);
   }
-  Entry_Hook();
+  ENTRY_HOOK ();
   Enter_Interpreter();
   /*NOTREACHED*/
 }
@@ -539,169 +539,10 @@ Start_Scheme(Start_Prim, File_Name)
 void
 Enter_Interpreter()
 {
-  jmp_buf Orig_Eval_Point;
-  Back_To_Eval = ((jmp_buf *) Orig_Eval_Point);
   Interpret (Was_Scheme_Dumped);
   fprintf (stderr, "\nThe interpreter returned to top level!\n");
   fflush (stderr);
   Microcode_Termination (TERM_EXIT);
-  /*NOTREACHED*/
-}
-
-void
-attempt_termination_backout (code)
-     long code;
-{
-  extern long death_blow;
-  SCHEME_OBJECT Term_Vector;
-  SCHEME_OBJECT Handler;
-
-  if ((WITHIN_CRITICAL_SECTION_P ()) ||
-      (code == TERM_HALT) ||
-      (! (Valid_Fixed_Obj_Vector ())))
-    return;
-
-  Term_Vector = (Get_Fixed_Obj_Slot (Termination_Proc_Vector));
-  if ((! (VECTOR_P (Term_Vector))) ||
-      ((VECTOR_LENGTH (Term_Vector)) <= code))
-    return;
-
-  Handler = (VECTOR_REF (Term_Vector, code));
-  if (Handler == SHARP_F)
-    return;
-
- Will_Push (CONTINUATION_SIZE +
-	    STACK_ENV_EXTRA_SLOTS +
-	    ((code == TERM_NO_ERROR_HANDLER) ? 5 : 4));
-  Store_Return (RC_HALT);
-  Store_Expression (LONG_TO_UNSIGNED_FIXNUM (code));
-  Save_Cont ();
-  if (code == TERM_NO_ERROR_HANDLER)
-  {
-    Push (LONG_TO_UNSIGNED_FIXNUM (death_blow));
-  }
-  Push (Val);			/* Arg 3 */
-  Push (Fetch_Env ());		/* Arg 2 */
-  Push (Fetch_Expression ());	/* Arg 1 */
-  Push (Handler);		/* The handler function */
-  Push (STACK_FRAME_HEADER + ((code == TERM_NO_ERROR_HANDLER) ? 4 : 3));
- Pushed ();
-  longjmp ((*Back_To_Eval), PRIM_NO_TRAP_APPLY);
-  /*NOTREACHED*/
-}
-
-term_type
-Microcode_Termination(code)
-     long code;
-{
-  extern long death_blow;
-  extern char *Term_Messages[];
-  Boolean abnormal_p;
-  long value;
-  extern void OS_quit ();
-
-  attempt_termination_backout(code);
-
-  if (! inhibit_termination_messages)
-  {
-    putchar('\n');
-    if ((code < 0) || (code > MAX_TERMINATION))
-      printf ("Unknown termination code 0x%x", code);
-    else
-      printf("%s", Term_Messages [code]);
-
-    if ((WITHIN_CRITICAL_SECTION_P()) &&
-	(code != TERM_HALT))
-    {
-      printf(" within critical section \"%s\"",
-	     CRITICAL_SECTION_NAME());
-    }
-    printf(".\n");
-  }
-
-  switch(code)
-  {
-    case TERM_HALT:
-      value = 0;
-      abnormal_p = false;
-      break;
-
-    case TERM_END_OF_COMPUTATION:
-      Print_Expression(Val, "Final result");
-      putchar('\n');
-      value = 0;
-      abnormal_p = false;
-      break;
-
-#ifdef unix
-    case TERM_SIGNAL:
-    {
-      extern int assassin_signal;
-      extern char * find_signal_name ();
-
-      if ((! inhibit_termination_messages) &&
-	  (assassin_signal != 0))
-	printf("Killed by %s.\n", (find_signal_name (assassin_signal)));
-      goto normal_termination;
-    }
-#endif
-
-    case TERM_TRAP:
-      /* This claims not to be abnormal so that the user will
-	 not be asked a second time about dumping core.
-       */
-      value = 1;
-      abnormal_p = false;
-      break;
-
-    case TERM_NO_ERROR_HANDLER:
-      /* This does not print a back trace because it was printed before
-	 getting here irrelevant of the state of Trace_On_Error.
-       */
-      value = 1;
-      abnormal_p = true;
-      if (death_blow == ERR_FASL_FILE_TOO_BIG)
-      {
-	extern void get_band_parameters();
-	long heap_size, const_size;
-
-	get_band_parameters(&heap_size, &const_size);
-	printf("Try again with values at least as large as\n");
-	printf("  -heap %d (%d + %d)\n",
-	       (MIN_HEAP_DELTA + unblocks(heap_size)),
-	       unblocks(heap_size), MIN_HEAP_DELTA);
-	printf("  -constant %d\n", unblocks(const_size));
-      }
-      break;
-
-    case TERM_NON_EXISTENT_CONTINUATION:
-      printf("Return code = 0x%lx\n", Fetch_Return());
-      goto normal_termination;
-
-    case TERM_GC_OUT_OF_SPACE:
-      printf("You are out of space at the end of a Garbage Collection!\n");
-      printf("Free = 0x%lx; MemTop = 0x%lx; Heap_Top = 0x%lx\n",
-	     Free, MemTop, Heap_Top);
-      printf("Words required = %ld; Words available = %ld\n",
-	     (MemTop - Free), GC_Space_Needed);
-      goto normal_termination;
-
-    default:
-    normal_termination:
-      value = 1;
-      abnormal_p = true;
-      if (Trace_On_Error)
-      {
-	printf("\n\n**** Stack trace ****\n\n");
-	Back_Trace(stdout);
-      }
-      break;
-  }
-  OS_tty_flush_output ();
-  OS_quit (code, abnormal_p);
-  Reset_Memory ();
-  Exit_Hook ();
-  Exit_Scheme (value);
   /*NOTREACHED*/
 }
 
@@ -797,52 +638,45 @@ DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_microcode_identify, 0, 0, 0)
 
 DEFINE_PRIMITIVE ("MICROCODE-TABLES-FILENAME", Prim_microcode_tables_filename, 0, 0, 0)
 {
-  fast char *From, *To;
-  char *Prefix, *Suffix;
-  fast long Count;
-  long position;
-  extern SCHEME_OBJECT allocate_string ();
-  SCHEME_OBJECT Result;
   PRIMITIVE_HEADER (0);
-  if ((((position = (Parse_Option ("-utabmd", Saved_argc, Saved_argv, true)))
-	!= NOT_THERE) &&
-       (position != (Saved_argc - 1))) ||
-      (((position = (Parse_Option ("-utab", Saved_argc, Saved_argv, true)))
-	!= NOT_THERE) &&
-       (position != (Saved_argc - 1))))
+  {
+    CONST char * file_name = (string_option_argument ("-utabmd"));
+    if (file_name == 0)
+      file_name = (string_option_argument ("-utab"));
+    if (file_name != 0)
+      PRIMITIVE_RETURN (char_pointer_to_string (file_name));
+  }
+  {
+    SCHEME_OBJECT result =
+      (allocate_string ((strlen (SCHEME_SOURCES_PATH))
+			+ (strlen (UCODE_TABLES_FILENAME))));
+    char * scan_result = ((char *) (STRING_LOC (result, 0)));
     {
-      Prefix = "";
-      Suffix = (Saved_argv [(position + 1)]);
+      CONST char * scan = SCHEME_SOURCES_PATH;
+      CONST char * end = (scan + (strlen (SCHEME_SOURCES_PATH)));
+      while (scan < end)
+	(*scan_result++) = (*scan++);
     }
-  else
     {
-      Prefix = SCHEME_SOURCES_PATH;
-      Suffix = UCODE_TABLES_FILENAME;
+      CONST char * scan = UCODE_TABLES_FILENAME;
+      CONST char * end = (scan + (strlen (UCODE_TABLES_FILENAME)));
+      while (scan < end)
+	(*scan_result++) = (*scan++);
     }
-  /* Find the length of the combined string, and allocate. */
-  Count = 0;
-  for (From = Prefix; ((*From++) != '\0'); )
-    Count += 1;
-  for (From = Suffix; ((*From++) != '\0'); )
-    Count += 1;
-  /* Append both substrings. */
-  Result = (allocate_string (Count));
-  To = ((char *) (STRING_LOC (Result, 0)));
-  for (From = (& (Prefix [0])); ((*From) != '\0'); )
-    (*To++) = (*From++);
-  for (From = (& (Suffix [0])); ((*From) != '\0'); )
-    (*To++) = (*From++);
-  PRIMITIVE_RETURN (Result);
+    PRIMITIVE_RETURN (result);
+  }
 }
 
 DEFINE_PRIMITIVE ("GET-COMMAND-LINE", Prim_get_command_line, 0, 0, 0)
 {
-  fast int i;
-  fast SCHEME_OBJECT result;
-  extern SCHEME_OBJECT allocate_marked_vector ();
   PRIMITIVE_HEADER (0);
-  result = (allocate_marked_vector (TC_VECTOR, Saved_argc, true));
-  for (i = 0; (i < Saved_argc); i += 1)
-    FAST_VECTOR_SET (result, i, (char_pointer_to_string (Saved_argv [i])));
-  PRIMITIVE_RETURN (result);
+  {
+    SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, Saved_argc, 1));
+    CONST char ** scan = Saved_argv;
+    CONST char ** end = (scan + Saved_argc);
+    SCHEME_OBJECT * scan_result = (VECTOR_LOC (result, 0));
+    while (scan < end)
+      (*scan_result++) = (char_pointer_to_string (*scan++));
+    PRIMITIVE_RETURN (result);
+  }
 }

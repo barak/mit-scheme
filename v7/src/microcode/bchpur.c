@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.49 1990/04/01 20:32:02 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.50 1990/06/20 17:38:26 cph Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -511,7 +511,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
     (*Free++) = purify_result;
     (*Free++) = words_free;
   }
-  Pop_Primitive_Frame(3);
+  POP_PRIMITIVE_FRAME (3);
   daemon = Get_Fixed_Obj_Slot(GC_Daemon);
   if (daemon == SHARP_F)
   {
@@ -525,8 +525,8 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
   Store_Expression(result);
   Store_Return(RC_NORMAL_GC_DONE);
   Save_Cont();
-  Push(daemon);
-  Push(STACK_FRAME_HEADER);
+  STACK_PUSH (daemon);
+  STACK_PUSH (STACK_FRAME_HEADER);
  Pushed();
   PRIMITIVE_ABORT(PRIM_APPLY);
   /*NOTREACHED*/

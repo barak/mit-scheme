@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.31 1989/09/24 15:13:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.32 1990/06/20 17:41:58 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -64,9 +64,12 @@ MIT in each case. */
 
 #define forward		extern	/* For forward references */
 
-#include <setjmp.h>
 #include <stdio.h>
 
+#include "oscond.h"	/* Identify the operating system */
+#include "ansidecl.h"	/* Macros to support ANSI declarations */
+#include "dstack.h"	/* Dynamic stack support package */
+#include "obstack.h"	/* Obstack package */
 #include "config.h"	/* Machine and OS configuration info */
 
 #ifdef SITE_INCLUDE_FILE
@@ -77,6 +80,7 @@ MIT in each case. */
 #include "const.h"	/* Various named constants */
 #include "object.h"	/* Scheme object representation */
 #include "intrpt.h"	/* Interrupt processing macros */
+#include "critsec.h"	/* Critical sections */
 #include "gc.h"		/* Memory management related macros */
 #include "scode.h"	/* Scheme scode representation */
 #include "sdata.h"	/* Scheme user data representation */

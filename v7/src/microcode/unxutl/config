@@ -1,6 +1,6 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/config,v 1.5 1990/02/07 21:31:56 jinx Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/config,v 1.6 1990/06/20 17:39:22 cph Exp $
 # Modelled on the configuration script for GNU CC
 #   Copyright (C) 1988 Free Software Foundation, Inc.
 
@@ -42,6 +42,7 @@ symbolic_link='ln -s'
 #hard_link="echo ln"
 #symbolic_link="echo ln -s"
 
+cmpint_file=nothing_special
 cmp_file=nothing_special
 
 case $# in
@@ -49,62 +50,76 @@ case $# in
 	machine=$1
 
 	case $machine in
-	vax)					# for vaxen running bsd
+	vax-bsd42)			# vaxen running 4.2BSD
 		system_file=bsd4-2
 		machine_file=vax
-		mfour_file=bsd
 		;;
-	vax-ultrix)				# for vaxen running ultrix
+	vax-bsd43)			# vaxen running 4.3BSD
+		system_file=bsd4-3
+		machine_file=vax
+		;;
+	vax-ultrix)			# vaxen running ultrix
 		system_file=ultrix
 		machine_file=vax
-		mfour_file=bsd
 		;;
-	mips-ultrix)
+	mips-ultrix | dec-3100 | pmax)
 		system_file=ultrix
 		machine_file=mips
-		mfour_file=bsd
+		cmpint_file=cmpint-mips.h
 		;;
-	hp9k300)
+	hp9k300 | bobcat)		# HP9000 series 300
 		system_file=hpux
 		machine_file=hp9k300
-		mfour_file=sysV
+		cmpint_file=cmpint-mc68k.h
 		;;
-	hp9k800)
+	hp9k800 | spectrum | hppa)	# HP9000 series 800
 		system_file=hpux
 		machine_file=hp9k800
-		mfour_file=sysV
+		cmpint_file=cmpint-hppa.h
 		;;
 	sun3)
-		system_file=bsd4-2
+		system_file=sunos4
 		machine_file=sun3
-		mfour_file=bsd
-		cmp_file=sun/cmp68020.s
-		cmp_link=cmp68020.s
+		cmpint_file=cmpint-mc68k.h
+		cmp_file=sun/cmpaux-mc68k.s
+		cmp_link=cmpaux-mc68k.s
 		;;
-	sun3-nfp)			# Sun3, No Floating Point
-		system_file=bsd4-2
+	sun3-os3)			# sun3, pre-4.0 sunos
+		system_file=sunos3
 		machine_file=sun3
-		mfour_file=bsd
-		cmp_file=sun-nfp/cmp68020.s
-		cmp_link=cmp68020.s
+		cmpint_file=cmpint-mc68k.h
+		cmp_file=sun/cmpaux-mc68k.s
+		cmp_link=cmpaux-mc68k.s
 		;;
-	sun4) 
-		system_file=bsd4-2 
+	sun3-nfp)			# sun3, No Floating Point
+		system_file=sunos4
+		machine_file=sun3
+		cmpint_file=cmpint-mc68k.h
+		cmp_file=sun-nfp/cmpaux-mc68k.s
+		cmp_link=cmpaux-mc68k.s
+		;;
+	sun3-os3-nfp)			# sun3, pre-4.0 sunos, No Floating Point
+		system_file=sunos3
+		machine_file=sun3
+		cmpint_file=cmpint-mc68k.h
+		cmp_file=sun-nfp/cmpaux-mc68k.s
+		cmp_link=cmpaux-mc68k.s
+		;;
+	sun4 | sparc) 
+		system_file=sunos4
 		machine_file=sun4 
-		mfour_file=bsd 
 		;; 
 	umax)				# Encore Multimax
 	    	system_file=umax
 		machine_file=umax
-		mfour_file=bsd
 		;;
 	*)
 		echo "$progname: unknown machine name: $machine"
 		exit 1
 	esac
 
-	files="s/${system_file}.h m/${machine_file}.h ${mfour_file}.macros"
-	links="s.h m.h m4.macros"
+	files="s/${system_file}.h m/${machine_file}.h"
+	links="s.h m.h"
 
 	while [ -n "$files" ]
 	do
@@ -132,6 +147,20 @@ case $# in
 		echo "Linked \`$link' to \`$file'."
 	done
 
+	case $cmpint_file in
+	nothing_special)
+		;;
+	*)
+		$symbolic_link $cmpint_file cmpint2.h 2>/dev/null || $hard_link $cmpint_file cmpint2.h
+		if [ ! -r cmpint2.h ]
+		then
+			echo "$progname: unable to link \`cmpint2.h' to \`$cmpint_file'."
+			exit 1
+		fi
+		echo "Linked \`cmpint2.h' to \`$cmpint_file'."
+		;;
+	esac
+
 	case $cmp_file in
 	nothing_special)
 		;;
@@ -153,8 +182,9 @@ case $# in
 	;;
 *)
 	echo "Usage: $progname machine"
-	echo -n "Where \`machine' is something like "
-	echo "\`vax', \`sun3', \`hp9k300', etc."
+	echo "Where \`machine' is one of:"
+	echo "vax-bsd42 vax-bsd43 vax-ultrix mips-ultrix hp9k300 hp9k800"
+	echo "sun3 sun3-nfp sun4 umax"
 	if [ -r config.status ]
 	then
 		cat config.status

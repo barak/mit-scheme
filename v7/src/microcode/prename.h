@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prename.h,v 1.3 1989/09/20 23:10:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prename.h,v 1.4 1990/06/20 17:41:41 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,32 +39,23 @@ static struct primitive_alias aliases [] =
     { "NULL?", "NOT" },
     { "FALSE?", "NOT" },
     { "PRIMITIVE-TYPE", "OBJECT-TYPE" },
-    { "PRIMITIVE-GC-TYPE", "PRIMITIVE-OBJECT-GC-TYPE" },
     { "PRIMITIVE-TYPE?", "OBJECT-TYPE?" },
-    { "PRIMITIVE-DATUM", "PRIMITIVE-OBJECT-DATUM" },
-    { "PRIMITIVE-SET-TYPE", "OBJECT-SET-TYPE" },
     { "&MAKE-OBJECT", "PRIMITIVE-OBJECT-SET-TYPE" },
     { "SYSTEM-MEMORY-REF", "PRIMITIVE-OBJECT-REF" },
-    { "SYSTEM-MEMORY-SET!", "PRIMITIVE-OBJECT-SET!" },
-    { "OBJECT-NEW-TYPE", "OBJECT-SET-TYPE" },
     { "PRIMITIVE-OBJECT-NEW-TYPE", "PRIMITIVE-OBJECT-SET-TYPE" },
-    { "SINE-FLONUM", "FLONUM-SIN" },
-    { "COSINE-FLONUM", "FLONUM-COS" },
-    { "ATAN-FLONUM", "FLONUM-ATAN" },
-    { "EXP-FLONUM", "FLONUM-EXP" },
-    { "LN-FLONUM", "FLONUM-LOG" },
-    { "SQRT-FLONUM", "FLONUM-SQRT" },
-    { "PLUS-FLONUM", "FLONUM-ADD" },
-    { "MINUS-FLONUM", "FLONUM-SUBTRACT" },
-    { "MULTIPLY-FLONUM", "FLONUM-MULTIPLY" },
-    { "DIVIDE-FLONUM", "FLONUM-DIVIDE" },
-    { "ZERO-FLONUM?", "FLONUM-ZERO?" },
-    { "POSITIVE-FLONUM?", "FLONUM-POSITIVE?" },
-    { "NEGATIVE-FLONUM?", "FLONUM-NEGATIVE?" },
-    { "EQUAL-FLONUM?", "FLONUM-EQUAL?" },
-    { "LESS-THAN-FLONUM?", "FLONUM-LESS?" },
-    { "GREATER-THAN-FLONUM?", "FLONUM-GREATER?" },
-    { "TRUNCATE-FLONUM", "FLONUM-TRUNCATE->EXACT" }
+    { "FILE-CLOSE-CHANNEL", "CHANNEL-CLOSE" },
+    { "PHOTO-OPEN", "TRANSCRIPT-ON" },
+    { "PHOTO-CLOSE", "TRANSCRIPT-OFF" },
+    { "GET-NEXT-INTERRUPT-CHARACTER", "TTY-NEXT-INTERRUPT-CHAR" },
+    { "CHECK-AND-CLEAN-UP-INPUT-CHANNEL", "TTY-CLEAN-INTERRUPTS" },
+    { "REMOVE-FILE", "FILE-REMOVE" },
+    { "RENAME-FILE", "FILE-RENAME" },
+    { "COPY-FILE", "FILE-COPY" },
+    { "MAKE-DIRECTORY", "DIRECTORY-MAKE" },
+    { "OPEN-DIRECTORY", "DIRECTORY-OPEN" },
+    { "SCREEN-X-SIZE", "TTY-X-SIZE" },
+    { "SCREEN-Y-SIZE", "TTY-Y-SIZE" },
+    { "FILE-SYMLINK?", "FILE-SOFT-LINK?" }
   };
 
-#define N_ALIASES 29
+#define N_ALIASES 20

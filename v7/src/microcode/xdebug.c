@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/xdebug.c,v 9.26 1989/09/20 23:13:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/xdebug.c,v 9.27 1990/06/20 17:42:45 cph Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -268,20 +268,18 @@ DEFINE_PRIMITIVE ("DEBUG-FIND-SYMBOL", Prim_debug_find_symbol, 1, 1, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-/* Primitives to give scheme a handle on utilities on this file. */
+/* Primitives to give scheme a handle on utilities in this file. */
 
-DEFINE_PRIMITIVE ("DEBUG-FLAGS", Prim_debug_flags, 0, 0, 0)
+DEFINE_PRIMITIVE ("DEBUG-EDIT-FLAGS", Prim_debug_edit_flags, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
-
-  Handle_Debug_Flags ();
+  debug_edit_flags ();
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("DEBUG-FIND-WHO-POINTS", Prim_debug_find_who_points, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
-
   PRIMITIVE_RETURN
     (Find_Who_Points
      ((ARG_REF (1)),
@@ -293,7 +291,6 @@ DEFINE_PRIMITIVE ("DEBUG-PRINT-MEMORY", Prim_debug_print_memory, 2, 2, 0)
 {
   SCHEME_OBJECT object;
   PRIMITIVE_HEADER (2);
-
   object = (ARG_REF (1));
   Print_Memory
     (((GC_Type_Non_Pointer (object))

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/const.h,v 9.35 1989/09/20 23:07:12 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/const.h,v 9.36 1990/06/20 17:39:29 cph Rel $
  *
  * Named constants used throughout the interpreter
  *
@@ -75,7 +75,6 @@ MIT in each case. */
 #endif /* SHARP_F */
 
 #define EMPTY_LIST SHARP_F
-#define NOT_THERE 		-1	/* Command line parser */
 
 /* Assorted sizes used in various places */
 

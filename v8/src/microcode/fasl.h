@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/fasl.h,v 9.30 1989/09/20 23:07:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/fasl.h,v 9.31 1990/06/20 17:40:19 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -36,9 +36,6 @@ MIT in each case. */
    The machine/opsys information is contained in config.h
    The processor and compiled code version information is
    contained in the appropriate cmp* file, or compiler.c */
-
-extern long Load_Data(), Write_Data();
-extern Boolean Open_Dump_File(), Close_Dump_File();
 
 /* FASL Version */
 
@@ -88,9 +85,6 @@ extern Boolean Open_Dump_File(), Close_Dump_File();
   MAKE_OBJECT (((Band_p) ? TC_TRUE : TC_NULL),			\
 		   (((Version) << (DATUM_LENGTH / 2)) |		\
 		    (Processor_Type)))
-
-#define WRITE_FLAG		1
-#define OPEN_FLAG		0
 
 /* "Memorable" FASL versions -- ones where we modified something
    and want to remain backwards compatible.

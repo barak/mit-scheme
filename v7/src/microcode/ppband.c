@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.37 1990/04/17 21:55:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.38 1990/06/20 17:37:59 cph Exp $
 
-Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,7 +43,7 @@ MIT in each case. */
 #include "sdata.h"
 
 #define fast register
-
+
 /* These are needed by load.c */
 
 static SCHEME_OBJECT * memory_base;
@@ -56,37 +56,16 @@ Load_Data(Count, To_Where)
   return (fread (To_Where, (sizeof (SCHEME_OBJECT)), Count, stdin));
 }
 
-long
-Write_Data()
-{
-  fprintf(stderr, "Write_Data called\n");
-  exit(1);
-}
-
-Boolean
-Open_Dump_File()
-{
-  fprintf(stderr, "Open_Dump_File called\n");
-  exit(1);
-}
-
-Boolean
-Close_Dump_File()
-{
-  fprintf(stderr, "Close_Dump_File called\n");
-  exit(1);
-}
-
 #define INHIBIT_COMPILED_VERSION_CHECK
 #include "load.c"
-
+
 #ifdef HEAP_IN_LOW_MEMORY
-#ifdef spectrum
+#ifdef hp9000s800
 #define File_To_Pointer(P)						\
   ((((long) (P)) & DATUM_MASK) / sizeof(SCHEME_OBJECT))
 #else
 #define File_To_Pointer(P) ((P) / sizeof(SCHEME_OBJECT))
-#endif /* spectrum */
+#endif /* hp9000s800 */
 #else
 #define File_To_Pointer(P) (P)
 #endif

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.30 1989/09/20 23:07:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.31 1990/06/20 17:40:00 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,7 +51,7 @@ MIT in each case. */
 #define UNEXEC_AVAILABLE
 #endif
 
-#ifdef hp9000s200
+#ifdef hp9000s300
 #define UNEXEC_AVAILABLE
 #define ADJUST_EXEC_HEADER   						\
   hdr.a_magic = ((ohdr.a_magic.file_type == OLDMAGIC.file_type) ?	\
@@ -107,7 +107,7 @@ MIT in each case. */
 (((((unsigned) &etext) - 1) & ~SEGMENT_MASK) + (SEGMENT_MASK + 1))
 #endif
 
-#ifdef hpux
+#ifdef _HPUX
 #define USG
 #define HPUX
 #endif
@@ -214,7 +214,7 @@ DEFINE_PRIMITIVE ("DUMP-WORLD", Prim_dump_world, 1, 1, 0)
   Was_Scheme_Dumped = true;
   Val = SHARP_T;
   OS_quit (TERM_HALT, false);
-  Pop_Primitive_Frame(1);
+  POP_PRIMITIVE_FRAME (1);
 
   /* Dump! */
 
@@ -239,7 +239,7 @@ DEFINE_PRIMITIVE ("DUMP-WORLD", Prim_dump_world, 1, 1, 0)
 
   if (Result != 0)
     {
-      Push (ARG_REF (1));	/* Since popped above */
+      STACK_PUSH (ARG_REF (1));	/* Since popped above */
       error_external_return ();
     }
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.44 1989/09/20 23:12:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.45 1990/06/20 17:42:27 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -115,10 +115,10 @@ Passed_Checks:	/* This label may be used in Global_Interrupt_Hook */
  * the currently enabled interrupts.
  */
 
-  Push(LONG_TO_FIXNUM(FETCH_INTERRUPT_MASK()));
-  Push(LONG_TO_FIXNUM(The_Int_Code));
-  Push(Handler);
-  Push(STACK_FRAME_HEADER + 2);
+  STACK_PUSH (LONG_TO_FIXNUM(FETCH_INTERRUPT_MASK()));
+  STACK_PUSH (LONG_TO_FIXNUM(The_Int_Code));
+  STACK_PUSH (Handler);
+  STACK_PUSH (STACK_FRAME_HEADER + 2);
  Pushed();
   /* Turn off interrupts */
   SET_INTERRUPT_MASK(New_Int_Enb);
@@ -156,7 +156,7 @@ error_death (code, message)
   err_print (code, stderr);
   fprintf (stderr, "\n**** Stack Trace ****\n\n");
   Back_Trace (stderr);
-  Microcode_Termination (TERM_NO_ERROR_HANDLER);
+  termination_no_error_handler ();
   /*NOTREACHED*/
 }
 
@@ -189,10 +189,10 @@ Back_Out_Of_Primitive ()
       Microcode_Termination (TERM_BAD_BACK_OUT);
     }
   nargs = (PRIMITIVE_N_ARGUMENTS (primitive));
-  if (COMPILED_CODE_ADDRESS_P (Stack_Ref (nargs)))
+  if (COMPILED_CODE_ADDRESS_P (STACK_REF (nargs)))
     compiler_apply_procedure (nargs);
-  Push (primitive);
-  Push (STACK_FRAME_HEADER + nargs);
+  STACK_PUSH (primitive);
+  STACK_PUSH (STACK_FRAME_HEADER + nargs);
   Store_Env (MAKE_OBJECT (GLOBAL_ENV, END_OF_CHAIN));
   Val = SHARP_F;
   Store_Return (RC_INTERNAL_APPLY);
@@ -226,7 +226,7 @@ canonicalize_primitive_context ()
       Microcode_Termination (TERM_BAD_BACK_OUT);
     }
   nargs = (PRIMITIVE_N_ARGUMENTS (primitive));
-  if (! (COMPILED_CODE_ADDRESS_P (Stack_Ref (nargs))))
+  if (! (COMPILED_CODE_ADDRESS_P (STACK_REF (nargs))))
     return;
   /* The primitive has been invoked from compiled code. */
   PRIMITIVE_ABORT (PRIM_REENTER);
@@ -527,7 +527,7 @@ Do_Micro_Error (Err, From_Pop_Return)
   }
   else
   {
-    Push(Fetch_Env());
+    STACK_PUSH (Fetch_Env());
   }
 
   Store_Return((From_Pop_Return) ?
@@ -542,19 +542,19 @@ Do_Micro_Error (Err, From_Pop_Return)
   Store_Expression(LONG_TO_FIXNUM(FETCH_INTERRUPT_MASK()));
   Save_Cont();
   /* Arg 2:     Int. mask */
-  Push(LONG_TO_FIXNUM(FETCH_INTERRUPT_MASK()));
+  STACK_PUSH (LONG_TO_FIXNUM(FETCH_INTERRUPT_MASK()));
   /* Arg 1:     Err. No   */
   if ((Err >= SMALLEST_FIXNUM) && (Err <= BIGGEST_FIXNUM))
   {
-    Push (LONG_TO_FIXNUM(Err));
+    STACK_PUSH (LONG_TO_FIXNUM(Err));
   }
   else
   {
-    Push (LONG_TO_UNSIGNED_FIXNUM (ERR_BAD_ERROR_CODE));
+    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (ERR_BAD_ERROR_CODE));
   }
   /* Procedure: Handler   */
-  Push(Handler);
-  Push(STACK_FRAME_HEADER + 2);
+  STACK_PUSH (Handler);
+  STACK_PUSH (STACK_FRAME_HEADER + 2);
  Pushed();
 
   /* Disable all interrupts */
@@ -713,46 +713,40 @@ Restore_History (Hist_Obj)
   return (true);
 }
 
-/* If a debugging version of the interpreter is made, then this
- * procedure is called to actually invoke a primitive.  When a
- * 'production' version is made, all of the consistency checks are
- * omitted and a macro from DEFAULT.H is used to directly code the
- * call to the primitive function.  This is only used in INTERPRET.C.
- */
+/* If a "debugging" version of the interpreter is made, then this
+   procedure is called to actually invoke a primitive.  When a
+   "production" version is made, all of the consistency checks are
+   omitted and a macro from "default.h" is used to directly code the
+   call to the primitive function. */
 
 #ifdef ENABLE_DEBUGGING_TOOLS
 
 SCHEME_OBJECT
-Apply_Primitive (primitive)
-     SCHEME_OBJECT primitive;
+DEFUN (primitive_apply_internal, (primitive), SCHEME_OBJECT primitive)
 {
-  SCHEME_OBJECT Result, *Saved_Stack;
-
+  SCHEME_OBJECT result;
   if (Primitive_Debug)
+    Print_Primitive (primitive);
   {
-    Print_Primitive(primitive);
-  }
-  Saved_Stack = Stack_Pointer;
-  INTERNAL_APPLY_PRIMITIVE(Result, primitive);
-  if (Saved_Stack != Stack_Pointer)
-  {
-
-    int NArgs;
-
-    NArgs = PRIMITIVE_N_ARGUMENTS(primitive);
-    Print_Expression(primitive, "Stack bad after ");
-    fprintf(stderr,
-	    "\nStack was 0x%x, now 0x%x, #args=%d.\n",
-            Saved_Stack, Stack_Pointer, NArgs);
-    Microcode_Termination(TERM_EXIT);
-    /*NOTREACHED*/
+    SCHEME_OBJECT * saved_stack = Stack_Pointer;
+    PRIMITIVE_APPLY_INTERNAL (result, primitive);
+    if (saved_stack != Stack_Pointer)
+      {
+	int arity = (PRIMITIVE_N_ARGUMENTS (primitive));
+	Print_Expression (primitive, "Stack bad after ");
+	fprintf (stderr, "\nStack was 0x%x, now 0x%x, #args=%d.\n",
+		 saved_stack, Stack_Pointer, arity);
+	fflush (stderr);
+	Microcode_Termination (TERM_EXIT);
+      }
   }
   if (Primitive_Debug)
-  {
-    Print_Expression(Result, "Primitive Result");
-    fprintf(stderr, "\n");
-  }
-  return (Result);
+    {
+      Print_Expression (result, "Primitive Result");
+      putc ('\n', stderr);
+      fflush (stderr);
+    }
+  return (result);
 }
 
 #endif /* ENABLE_DEBUGGING_TOOLS */
@@ -974,10 +968,10 @@ Translate_To_Point (Target)
   Store_Return(RC_RESTORE_INT_MASK);
   Store_Expression(LONG_TO_FIXNUM(FETCH_INTERRUPT_MASK()));
   Save_Cont();
-  Push(LONG_TO_UNSIGNED_FIXNUM((Distance - Merge_Depth)));
-  Push(Target);
-  Push(LONG_TO_UNSIGNED_FIXNUM((From_Depth - Merge_Depth)));
-  Push(Current_Location);
+  STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM((Distance - Merge_Depth)));
+  STACK_PUSH (Target);
+  STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM((From_Depth - Merge_Depth)));
+  STACK_PUSH (Current_Location);
   Store_Expression(State_Space);
   Store_Return(RC_MOVE_TO_ADJACENT_POINT);
   Save_Cont();

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.31 1989/09/20 23:08:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.32 1990/06/20 17:40:31 cph Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -64,15 +64,15 @@ DEFINE_PRIMITIVE ("WITH-SAVED-FLUID-BINDINGS", Prim_with_saved_fluid_bindings, 1
   {
     SCHEME_OBJECT thunk = (ARG_REF (1));
     PRIMITIVE_CANONICALIZE_CONTEXT ();
-    Pop_Primitive_Frame (1);
+    POP_PRIMITIVE_FRAME (1);
   Will_Push (CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 1);
     /* Save previous fluid bindings for later restore */
     Store_Expression (Fluid_Bindings);
     Store_Return (RC_RESTORE_FLUIDS);
     Save_Cont ();
     /* Invoke the thunk. */
-    Push (thunk);
-    Push (STACK_FRAME_HEADER);
+    STACK_PUSH (thunk);
+    STACK_PUSH (STACK_FRAME_HEADER);
   Pushed ();
     PRIMITIVE_ABORT (PRIM_APPLY);
     /*NOTREACHED*/

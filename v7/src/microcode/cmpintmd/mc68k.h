@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.13 1990/04/23 02:35:49 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.14 1990/06/20 17:38:53 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -232,10 +232,23 @@ extdo {									\
 
 #define SETUP_REGISTER(hook) do						\
 {									\
+  extern unsigned long hook;						\
+  (* ((unsigned short *) (a6_value + offset))) = 0x4ef9;		\
 #define SETUP_REGISTER(hook)						\
       (((unsigned short *) (a6_value + offset)) + 1))) =		\
-  extern void hook();							\
-									\
+    ((unsigned long) (&hook));						\
+  offset += (COMPILER_HOOK_SIZE * (sizeof (SCHEME_OBJECT)));		\
+} while (0)
+
+#else /* not CAST_FUNCTION_TO_INT_BUG */
+
+}
+{									\
+  extern void EXFUN (hook, (void));					\
+  (* ((unsigned short *) (a6_value + offset))) = 0x4ef9;		\
+#define SETUP_REGISTER(hook)						\
+      (((unsigned short *) (a6_value + offset)) + 1))) =		\
+	((unsigned long) hook);						\
   offset += (COMPILER_HOOK_SIZE * (sizeof (SCHEME_OBJECT)));		\
 } while (0)
 
@@ -243,6 +256,8 @@ extdo {									\
 
 }
 DEFUN_VOID (mc68k_reset_hook)
+{
+
 
 mc68k_reset_hook ()
   int offset = (COMPILER_REGBLOCK_N_FIXED * (sizeof (SCHEME_OBJECT)));

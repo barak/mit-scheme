@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.38 1990/02/13 16:00:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.39 1990/06/20 17:40:58 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -32,10 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/*
- * This file contains various hooks and handles which connect the
- * primitives with the main interpreter.
- */
+/* This file contains various hooks and handles that connect the
+   primitives with the main interpreter. */
 
 #include "scheme.h"
 #include "prims.h"
@@ -85,7 +83,7 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
   Primitive_GC_If_Needed
     (New_Stacklet_Size (number_of_args + STACK_ENV_EXTRA_SLOTS + 1));
 #endif
-  Pop_Primitive_Frame (2);
+  POP_PRIMITIVE_FRAME (2);
  Will_Push (number_of_args + STACK_ENV_EXTRA_SLOTS + 1);
 #ifdef LOSING_PARALLEL_PROCESSOR
   saved_stack_pointer = Stack_Pointer;
@@ -112,8 +110,8 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
 	TOUCH_IN_PRIMITIVE ((PAIR_CDR (scan_list)), scan_list);
       }
   }
-  Push (procedure);
-  Push (STACK_FRAME_HEADER + number_of_args);
+  STACK_PUSH (procedure);
+  STACK_PUSH (STACK_FRAME_HEADER + number_of_args);
  Pushed ();
   PRIMITIVE_ABORT (PRIM_APPLY);
   /*NOTREACHED*/
@@ -132,7 +130,7 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
 {									\
   SCHEME_OBJECT receiver = (receiver_expression);			\
   CWCC_1 ();								\
-  Pop_Primitive_Frame (1);						\
+  POP_PRIMITIVE_FRAME (1);						\
   if (Return_Hook_Address != NULL)					\
     {									\
       (* Return_Hook_Address) = Old_Return_Code;			\
@@ -155,9 +153,9 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
     CWCC_2 (control_point, reuse_flag);					\
     /* we just cleared the stack so there MUST be room */		\
     /* Will_Push(3); */							\
-    Push (control_point);						\
-    Push (receiver);							\
-    Push (STACK_FRAME_HEADER + 1);					\
+    STACK_PUSH (control_point);						\
+    STACK_PUSH (receiver);						\
+    STACK_PUSH (STACK_FRAME_HEADER + 1);				\
     /*  Pushed(); */							\
   }									\
 }
@@ -203,7 +201,7 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
     fast SCHEME_OBJECT * scan =						\
       (MEMORY_LOC ((target), STACKLET_HEADER_SIZE));			\
     while ((n_words--) > 0)						\
-      (*scan++) = (Pop ());						\
+      (*scan++) = (STACK_POP ());					\
   }									\
   if (Consistency_Check && (Stack_Pointer != Stack_Top))		\
     Microcode_Termination (TERM_BAD_STACK);				\
@@ -265,8 +263,8 @@ DEFINE_PRIMITIVE ("WITHIN-CONTROL-POINT", Prim_within_control_point, 2, 2, 0)
     Within_Stacklet_Backout ();
     Our_Throw_Part_2 ();
   Will_Push (STACK_ENV_EXTRA_SLOTS + 1);
-    Push (thunk);
-    Push (STACK_FRAME_HEADER);
+    STACK_PUSH (thunk);
+    STACK_PUSH (STACK_FRAME_HEADER);
   Pushed ();
   }
   PRIMITIVE_ABORT (PRIM_APPLY);
@@ -289,11 +287,11 @@ DEFINE_PRIMITIVE ("ERROR-PROCEDURE", Prim_error_procedure, 3, 3, 0)
   Will_Push (HISTORY_SIZE + STACK_ENV_EXTRA_SLOTS + 4);
     Stop_History ();
     /* Stepping should be cleared here! */
-    Push (environment);
-    Push (irritants);
-    Push (message);
-    Push (Get_Fixed_Obj_Slot (Error_Procedure));
-    Push (STACK_FRAME_HEADER + 3);
+    STACK_PUSH (environment);
+    STACK_PUSH (irritants);
+    STACK_PUSH (message);
+    STACK_PUSH (Get_Fixed_Obj_Slot (Error_Procedure));
+    STACK_PUSH (STACK_FRAME_HEADER + 3);
   Pushed ();
     PRIMITIVE_ABORT (PRIM_APPLY);
     /*NOTREACHED*/
@@ -308,7 +306,7 @@ DEFINE_PRIMITIVE ("SCODE-EVAL", Prim_scode_eval, 2, 2, 0)
   {
     fast SCHEME_OBJECT expression = (ARG_REF (1));
     fast SCHEME_OBJECT environment = (ARG_REF (2));
-    Pop_Primitive_Frame (2);
+    POP_PRIMITIVE_FRAME (2);
     Store_Env (environment);
     Store_Expression (expression);
   }
@@ -331,13 +329,13 @@ DEFINE_PRIMITIVE ("FORCE", Prim_force, 1, 1, 0)
 	{
 	  /* New-style thunk used by compiled code. */
 	  PRIMITIVE_CANONICALIZE_CONTEXT();
-	  Pop_Primitive_Frame (1);
+	  POP_PRIMITIVE_FRAME (1);
 	Will_Push (CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 1);
 	  Store_Return (RC_SNAP_NEED_THUNK);
 	  Store_Expression (thunk);
 	  Save_Cont ();
-	  Push (MEMORY_REF (thunk, THUNK_VALUE));
-	  Push (STACK_FRAME_HEADER);
+	  STACK_PUSH (MEMORY_REF (thunk, THUNK_VALUE));
+	  STACK_PUSH (STACK_FRAME_HEADER);
 	Pushed ();
 	  PRIMITIVE_ABORT (PRIM_APPLY);
 	  /*NOTREACHED*/
@@ -347,7 +345,7 @@ DEFINE_PRIMITIVE ("FORCE", Prim_force, 1, 1, 0)
 	{
 	  /* Old-style thunk used by interpreted code. */
 	  PRIMITIVE_CANONICALIZE_CONTEXT();
-	  Pop_Primitive_Frame (1);
+	  POP_PRIMITIVE_FRAME (1);
 	Will_Push (CONTINUATION_SIZE);
 	  Store_Return (RC_SNAP_NEED_THUNK);
 	  Store_Expression (thunk);
@@ -394,7 +392,7 @@ DEFINE_PRIMITIVE ("EXECUTE-AT-NEW-STATE-POINT", Prim_execute_at_new_point, 4, 4,
 	 STATE_POINT_DISTANCE_TO_ROOT,
 	 (1 + (FAST_MEMORY_REF (old_point, STATE_POINT_DISTANCE_TO_ROOT))));
 
-      Pop_Primitive_Frame (4);
+      POP_PRIMITIVE_FRAME (4);
     Will_Push((2 * CONTINUATION_SIZE) + (STACK_ENV_EXTRA_SLOTS + 1));
       /* Push a continuation to go back to the current state after the
 	 body is evaluated */
@@ -403,8 +401,8 @@ DEFINE_PRIMITIVE ("EXECUTE-AT-NEW-STATE-POINT", Prim_execute_at_new_point, 4, 4,
       Save_Cont ();
       /* Push a stack frame which will call the body after we have moved
 	 into the new state point */
-      Push (during_thunk);
-      Push (STACK_FRAME_HEADER);
+      STACK_PUSH (during_thunk);
+      STACK_PUSH (STACK_FRAME_HEADER);
       /* Push the continuation to go with the stack frame */
       Store_Expression (SHARP_F);
       Store_Return (RC_INTERNAL_APPLY);
@@ -423,7 +421,7 @@ DEFINE_PRIMITIVE ("TRANSLATE-TO-STATE-POINT", Prim_translate_to_point, 1, 1, 0)
   CHECK_ARG (1, STATE_POINT_P);
   {
     SCHEME_OBJECT state_point = (ARG_REF (1));
-    Pop_Primitive_Frame (1);
+    POP_PRIMITIVE_FRAME (1);
     Translate_To_Point (state_point);
     /*NOTREACHED*/
   }
@@ -555,14 +553,14 @@ DEFINE_PRIMITIVE ("WITH-INTERRUPT-MASK", Prim_with_interrupt_mask, 2, 2, 0)
     long new_mask = (INT_Mask & (arg_integer (1)));
     SCHEME_OBJECT thunk = (ARG_REF (2));
     SCHEME_OBJECT old_mask = (LONG_TO_FIXNUM (FETCH_INTERRUPT_MASK ()));
-    Pop_Primitive_Frame (2);
+    POP_PRIMITIVE_FRAME (2);
   Will_Push (CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 2);
     Store_Return (RC_RESTORE_INT_MASK);
     Store_Expression (old_mask);
     Save_Cont ();
-    Push (old_mask);
-    Push (thunk);
-    Push (STACK_FRAME_HEADER + 1);
+    STACK_PUSH (old_mask);
+    STACK_PUSH (thunk);
+    STACK_PUSH (STACK_FRAME_HEADER + 1);
   Pushed ();
     SET_INTERRUPT_MASK (new_mask);
     PRIMITIVE_ABORT (PRIM_APPLY);
@@ -578,14 +576,14 @@ DEFINE_PRIMITIVE ("WITH-INTERRUPTS-REDUCED", Prim_with_interrupts_reduced, 2, 2,
     long new_mask = (INT_Mask & (arg_integer (1)));
     SCHEME_OBJECT thunk = (ARG_REF (2));
     long old_mask = (FETCH_INTERRUPT_MASK ());
-    Pop_Primitive_Frame (2);
+    POP_PRIMITIVE_FRAME (2);
   Will_Push (CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 2);
     Store_Return (RC_RESTORE_INT_MASK);
     Store_Expression (old_mask);
     Save_Cont ();
-    Push (LONG_TO_FIXNUM (old_mask));
-    Push (thunk);
-    Push (STACK_FRAME_HEADER + 1);
+    STACK_PUSH (LONG_TO_FIXNUM (old_mask));
+    STACK_PUSH (thunk);
+    STACK_PUSH (STACK_FRAME_HEADER + 1);
   Pushed ();
     SET_INTERRUPT_MASK
       ((new_mask > old_mask) ? new_mask : (new_mask & old_mask));
@@ -616,7 +614,7 @@ DEFINE_PRIMITIVE ("SET-CURRENT-HISTORY!", Prim_set_current_history, 1, 1, 0)
 #else
   History = (OBJECT_ADDRESS (Get_Fixed_Obj_Slot (Dummy_History)));
 #endif
-  Pop_Primitive_Frame (1);
+  POP_PRIMITIVE_FRAME (1);
   PRIMITIVE_ABORT (PRIM_POP_RETURN);
   /*NOTREACHED*/
 }
@@ -650,11 +648,11 @@ DEFINE_PRIMITIVE ("WITH-HISTORY-DISABLED", Prim_with_history_disabled, 1, 1, 0)
 	    (MAKE_POINTER_OBJECT ((OBJECT_TYPE (History [HIST_RIB])), rib));
 	}
       }
-    Pop_Primitive_Frame (1);
+    POP_PRIMITIVE_FRAME (1);
     Stop_History ();
   Will_Push (STACK_ENV_EXTRA_SLOTS + 1);
-    Push (thunk);
-    Push (STACK_FRAME_HEADER);
+    STACK_PUSH (thunk);
+    STACK_PUSH (STACK_FRAME_HEADER);
   Pushed ();
     PRIMITIVE_ABORT (PRIM_APPLY);
     /*NOTREACHED*/

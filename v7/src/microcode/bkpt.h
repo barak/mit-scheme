@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.h,v 9.27 1989/09/20 23:06:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.h,v 9.28 1990/06/20 17:38:32 cph Rel $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,68 +37,38 @@ MIT in each case. */
    It "shadows" definitions in default.h */
 
 #ifdef ENABLE_DEBUGGING_TOOLS
-
-struct sp_record
-{ SCHEME_OBJECT *sp;
-  struct sp_record *next;
-};
-typedef struct sp_record *sp_record_list;
 
-#define sp_nil ((sp_record_list) NULL)
+struct sp_record
+{
+  SCHEME_OBJECT * sp;
+  struct sp_record * next;
+};
+
+typedef struct sp_record * sp_record_list;
+
 #define debug_maxslots 100
 
 #define Eval_Ucode_Hook()						\
 {									\
-  local_circle[local_slotno++] = Fetch_Expression();			\
-  if (local_slotno >= debug_maxslots) local_slotno = 0;			\
-  if (local_nslots < debug_maxslots) local_nslots++;			\
+  (local_circle [local_slotno++]) = (Fetch_Expression ());		\
+  if (local_slotno >= debug_maxslots)					\
+    local_slotno = 0;							\
+  if (local_nslots < debug_maxslots)					\
+    local_nslots += 1;							\
 }
 
 #define Pop_Return_Ucode_Hook()						\
 {									\
-  if (SP_List != sp_nil)						\
-  { Export_Registers();							\
-    Pop_Return_Break_Point();						\
-    Import_Registers();							\
+  if (SP_List != 0)							\
+  {									\
+    Export_Registers ();						\
+    Pop_Return_Break_Point ();						\
+    Import_Registers ();						\
   }									\
 }
 
 /* Not implemented yet */
 
 #define Apply_Ucode_Hook()
-
-/* For performance metering we note the time spent handling each
- * primitive.  This MIGHT help us figure out where all the time
- * goes.  It should make the time zone kludge obselete someday.
- */
 
-#if false
-/* This code disabled by SAS 6/24/86 */
-struct
-{
-  int nprims;
-  int primtime[1];
-} perfinfo_data;
-
-void Clear_Perfinfo_Data()
-{ int i;
-  perfinfo_data.nprims = MAX_PRIMITIVE + 1;
-  for (i = 0; i <= MAX_PRIMITIVE; i++)
-  {
-    perfinfo_data.primtime[i] = 0;
-  }
-}
-
-#define Metering_Apply_Primitive(Loc, prim)
-{
-  long Start_Time;
-
-  Start_Time = Sys_Clock();
-  APPLY_PRIMITIVE(Loc, prim);
-  perfinfo_data.primtime[PRIMITIVE_NUMBER(prim)] +=
-    (Sys_Clock() - Start_Time);
-  Set_Time_Zone(Zone_Working);
-}
-#endif
-#endif /* ifdef ENABLE_DEBUGGING_TOOLS */
-
+#endif /* ENABLE_DEBUGGING_TOOLS */

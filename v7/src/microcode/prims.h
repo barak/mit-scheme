@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.36 1989/09/20 23:10:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.37 1990/06/20 17:41:45 cph Rel $
 
-Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -55,7 +55,7 @@ SCHEME_OBJECT fn_name ()
 
 /* Primitives return by performing one of the following operations. */
 #define PRIMITIVE_RETURN(value)	return (value)
-#define PRIMITIVE_ABORT(action)	longjmp ((*Back_To_Eval), (action))
+#define PRIMITIVE_ABORT abort_to_interpreter
 
 extern void canonicalize_primitive_context ();
 #define PRIMITIVE_CANONICALIZE_CONTEXT canonicalize_primitive_context

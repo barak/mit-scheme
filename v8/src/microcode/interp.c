@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.55 1990/01/30 14:44:25 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.56 1990/06/20 17:41:10 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,6 +43,10 @@ MIT in each case. */
 #include "history.h"
 #include "cmpint.h"
 #include "zones.h"
+
+extern PTR EXFUN (obstack_chunk_alloc, (unsigned int size));
+extern void EXFUN (free, (PTR ptr));
+#define obstack_chunk_free free
 
 /* In order to make the interpreter tail recursive (i.e.
  * to avoid calling procedures and thus saving unnecessary
@@ -128,7 +132,7 @@ if (GC_Check(Amount))							\
 #define Prepare_Eval_Repeat()						\
 {									\
  Will_Push(CONTINUATION_SIZE+1);					\
-  Push(Fetch_Env());							\
+  STACK_PUSH (Fetch_Env());						\
   Store_Return(RC_EVAL_ERROR);						\
   Save_Cont();								\
  Pushed();								\
@@ -206,7 +210,7 @@ if (GC_Check(Amount))							\
 {									\
   fast SCHEME_OBJECT *Arg, Orig_Arg;					\
 									\
-  Arg = &(Stack_Ref((Arg_No - 1) + STACK_ENV_FIRST_ARG));		\
+  Arg = &(STACK_REF((Arg_No - 1) + STACK_ENV_FIRST_ARG));		\
   Orig_Arg = *Arg;							\
 									\
   if (OBJECT_TYPE (*Arg) != TC_FUTURE)					\
@@ -293,9 +297,9 @@ if (GC_Check(Amount))							\
       Store_Return(RC_RESTORE_VALUE);					\
       Store_Expression(Orig_Val);					\
       Save_Cont();							\
-      Push(Val);							\
-      Push(Get_Fixed_Obj_Slot(System_Scheduler));			\
-      Push(STACK_FRAME_HEADER + 1);					\
+      STACK_PUSH (Val);							\
+      STACK_PUSH (Get_Fixed_Obj_Slot(System_Scheduler));		\
+      STACK_PUSH (STACK_FRAME_HEADER + 1);				\
      Pushed();								\
       goto Internal_Apply;						\
     }									\
@@ -313,7 +317,7 @@ if (GC_Check(Amount))							\
   {									\
     Save_Cont();							\
    Will_Push(CONTINUATION_SIZE + 2);					\
-    Push(Val);								\
+    STACK_PUSH (Val);							\
     Save_Env();								\
     Store_Return(RC_REPEAT_DISPATCH);					\
     Store_Expression(LONG_TO_FIXNUM(CODE_MAP(Which_Way)));		\
@@ -386,6 +390,26 @@ if (GC_Check(Amount))							\
   The EVAL/APPLY ying/yang
  */
 
+static PTR interpreter_catch_dstack_position;
+static jmp_buf interpreter_catch_env;
+static int interpreter_throw_argument;
+
+void
+DEFUN (abort_to_interpreter, (argument), int argument)
+{
+  interpreter_throw_argument = argument;
+  dstack_set_position (interpreter_catch_dstack_position);
+  obstack_free ((&scratch_obstack), 0);
+  obstack_init (&scratch_obstack);
+  longjmp (interpreter_catch_env, argument);
+}
+
+int
+DEFUN_VOID (abort_to_interpreter_argument)
+{
+  return (interpreter_throw_argument);
+}
+
 void
 Interpret(dumped_p)
      Boolean dumped_p;
@@ -408,9 +432,10 @@ Interpret(dumped_p)
    * for operation.
    */
 
-  Which_Way = setjmp(*Back_To_Eval);
-  Set_Time_Zone(Zone_Working);
-  Import_Registers();
+  interpreter_catch_dstack_position = dstack_position;
+  Which_Way = (setjmp (interpreter_catch_env));
+  Set_Time_Zone (Zone_Working);
+  Import_Registers ();
 
 Repeat_Dispatch:
   switch (Which_Way)
@@ -566,10 +591,10 @@ Do_Expression:
   {
     Stop_Trapping ();
    Will_Push (4);
-    Push (Fetch_Env ());
-    Push (Fetch_Expression ());
-    Push (Fetch_Eval_Trapper ());
-    Push (STACK_FRAME_HEADER + 2);
+    STACK_PUSH (Fetch_Env ());
+    STACK_PUSH (Fetch_Expression ());
+    STACK_PUSH (Fetch_Eval_Trapper ());
+    STACK_PUSH (STACK_FRAME_HEADER + 2);
    Pushed ();
     goto Apply_Non_Trapping;
   }
@@ -644,13 +669,13 @@ Eval_Non_Trapping:
         Eval_GC_Check(New_Stacklet_Size(Array_Length + 1 + 1 + CONTINUATION_SIZE));
 #endif /* USE_STACKLETS */
        Will_Push(Array_Length + 1 + 1 + CONTINUATION_SIZE);
-	Stack_Pointer = Simulate_Pushing(Array_Length);
-        Push(MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, Array_Length));
+	Stack_Pointer = (STACK_LOC (- Array_Length));
+        STACK_PUSH (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, Array_Length));
 	/* The finger: last argument number */
        Pushed();
         if (Array_Length == 0)
 	{
-	  Push(STACK_FRAME_HEADER);   /* Frame size */
+	  STACK_PUSH (STACK_FRAME_HEADER);   /* Frame size */
           Do_Nth_Then(RC_COMB_APPLY_FUNCTION, COMB_FN_SLOT, {});
 	}
 	Save_Env();
@@ -731,9 +756,9 @@ Eval_Non_Trapping:
       }
       Prepare_Eval_Repeat();
      Will_Push(STACK_ENV_EXTRA_SLOTS+2);
-      Push(Fetch_Expression());	/* Arg: FUTURE object */
-      Push(Get_Fixed_Obj_Slot(System_Scheduler));
-      Push(STACK_FRAME_HEADER+1);
+      STACK_PUSH (Fetch_Expression());	/* Arg: FUTURE object */
+      STACK_PUSH (Get_Fixed_Obj_Slot(System_Scheduler));
+      STACK_PUSH (STACK_FRAME_HEADER+1);
      Pushed();
       goto Internal_Apply;
 #endif
@@ -912,7 +937,7 @@ Pop_Return:
   Restore_Cont();
   if (Consistency_Check &&
       (OBJECT_TYPE (Fetch_Return()) != TC_RETURN_CODE))
-  { Push(Val);			/* For possible stack trace */
+  { STACK_PUSH (Val);			/* For possible stack trace */
     Save_Cont();
     Export_Registers();
     Microcode_Termination(TERM_BAD_STACK);
@@ -932,15 +957,15 @@ Pop_Return:
   {
     case RC_COMB_1_PROCEDURE:
       Restore_Env();
-      Push(Val);                /* Arg. 1 */
-      Push(SHARP_F);                /* Operator */
-      Push(STACK_FRAME_HEADER + 1);
+      STACK_PUSH (Val);                /* Arg. 1 */
+      STACK_PUSH (SHARP_F);                /* Operator */
+      STACK_PUSH (STACK_FRAME_HEADER + 1);
      Finished_Eventual_Pushing(CONTINUATION_SIZE);
       Do_Another_Then(RC_COMB_APPLY_FUNCTION, COMB_1_FN);
 
     case RC_COMB_2_FIRST_OPERAND:
       Restore_Env();
-      Push(Val);
+      STACK_PUSH (Val);
       Save_Env();
       Do_Another_Then(RC_COMB_2_PROCEDURE, COMB_2_ARG_1);
 
@@ -950,9 +975,9 @@ Pop_Return:
 
     case RC_COMB_2_PROCEDURE:
       Restore_Env();
-      Push(Val);                /* Arg 1, just calculated */
-      Push(SHARP_F);		/* Function */
-      Push(STACK_FRAME_HEADER + 2);
+      STACK_PUSH (Val);                /* Arg 1, just calculated */
+      STACK_PUSH (SHARP_F);		/* Function */
+      STACK_PUSH (STACK_FRAME_HEADER + 2);
      Finished_Eventual_Pushing(CONTINUATION_SIZE);
       Do_Another_Then(RC_COMB_APPLY_FUNCTION, COMB_2_FN);
 
@@ -964,9 +989,9 @@ Pop_Return:
       {	long Arg_Number;
 
         Restore_Env();
-        Arg_Number = OBJECT_DATUM (Stack_Ref(STACK_COMB_FINGER))-1;
-        Stack_Ref(STACK_COMB_FIRST_ARG+Arg_Number) = Val;
-        Stack_Ref(STACK_COMB_FINGER) =
+        Arg_Number = OBJECT_DATUM (STACK_REF(STACK_COMB_FINGER))-1;
+        STACK_REF(STACK_COMB_FIRST_ARG+Arg_Number) = Val;
+        STACK_REF(STACK_COMB_FINGER) =
           MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, Arg_Number);
 	/* DO NOT count on the type code being NMVector here, since
 	   the stack parser may create them with #F here! */
@@ -975,7 +1000,7 @@ Pop_Return:
           Do_Another_Then(RC_COMB_SAVE_VALUE,
                           (COMB_ARG_1_SLOT - 1) + Arg_Number);
         }
-	Push(FAST_MEMORY_REF (Fetch_Expression(), 0)); /* Frame Size */
+	STACK_PUSH (FAST_MEMORY_REF (Fetch_Expression(), 0)); /* Frame Size */
         Do_Another_Then(RC_COMB_APPLY_FUNCTION, COMB_FN_SLOT);
       }
 
@@ -1064,11 +1089,11 @@ Pop_Return:
     case RC_END_OF_COMPUTATION:
       /* Signals bottom of stack */
       Export_Registers();
-      Microcode_Termination(TERM_END_OF_COMPUTATION);
+      termination_end_of_computation ();
 
     case RC_EVAL_ERROR:
       /* Should be called RC_REDO_EVALUATION. */
-      Store_Env(Pop());
+      Store_Env(STACK_POP ());
       Reduces_To(Fetch_Expression());
 
     case RC_EXECUTE_ACCESS_FINISH:
@@ -1328,13 +1353,13 @@ external_assignment_return:
 	  ((handler = (Get_Fixed_Obj_Slot(Trap_Handler))) == SHARP_F))
       {
 	fprintf(stderr, "There is no trap handler for recovery!\n");
-	Microcode_Termination(TERM_TRAP);
+	termination_trap ();
 	/*NOTREACHED*/
       }
      Will_Push(STACK_ENV_EXTRA_SLOTS + 2);
-      Push(info);
-      Push(handler);
-      Push(STACK_FRAME_HEADER + 1);
+      STACK_PUSH (info);
+      STACK_PUSH (handler);
+      STACK_PUSH (STACK_FRAME_HEADER + 1);
      Pushed();
       goto Internal_Apply;
     }
@@ -1358,14 +1383,14 @@ external_assignment_return:
 {									\
   Store_Expression (SHARP_F);						\
   Prepare_Pop_Return_Interrupt (RC_INTERNAL_APPLY_VAL,			\
-				(Stack_Ref (STACK_ENV_FUNCTION)));	\
+				(STACK_REF (STACK_ENV_FUNCTION)));	\
 }
 
 #define Apply_Error(N)							\
 {									\
   Store_Expression (SHARP_F);						\
   Store_Return (RC_INTERNAL_APPLY_VAL);					\
-  Val = (Stack_Ref (STACK_ENV_FUNCTION));				\
+  Val = (STACK_REF (STACK_ENV_FUNCTION));				\
   Pop_Return_Error (N);							\
 }
 
@@ -1376,7 +1401,7 @@ external_assignment_return:
     case RC_INTERNAL_APPLY_VAL:
 Internal_Apply_Val:
 
-       Stack_Ref (STACK_ENV_FUNCTION) = Val;
+       STACK_REF (STACK_ENV_FUNCTION) = Val;
 
     case RC_INTERNAL_APPLY:
 Internal_Apply:
@@ -1387,9 +1412,9 @@ Internal_Apply:
       {
 	long Count;
 
-	Count = (OBJECT_DATUM (Stack_Ref (STACK_ENV_HEADER)));
-        Top_Of_Stack() = (Fetch_Apply_Trapper ());
-        Push (STACK_FRAME_HEADER + Count);
+	Count = (OBJECT_DATUM (STACK_REF (STACK_ENV_HEADER)));
+        (* (STACK_LOC (0))) = (Fetch_Apply_Trapper ());
+        STACK_PUSH (STACK_FRAME_HEADER + Count);
         Stop_Trapping ();
       }
 
@@ -1411,7 +1436,7 @@ Perform_Application:
       {
         fast SCHEME_OBJECT Function;
 
-	Apply_Future_Check(Function, Stack_Ref(STACK_ENV_FUNCTION));
+	Apply_Future_Check(Function, STACK_REF(STACK_ENV_FUNCTION));
 
         switch(OBJECT_TYPE (Function))
         {
@@ -1428,9 +1453,9 @@ Perform_Application:
 	       of everything, including type code, etc.
 	     */
 
-	    nargs = Pop();
-	    Push(FAST_MEMORY_REF (Function, ENTITY_OPERATOR));
-	    Push(nargs + 1);
+	    nargs = (STACK_POP ());
+	    STACK_PUSH (FAST_MEMORY_REF (Function, ENTITY_OPERATOR));
+	    STACK_PUSH (nargs + 1);
 	    /* This must be done to prevent an infinite push loop by
 	       an entity whose handler is the entity itself or some
 	       other such loop.  Of course, it will die if stack overflow
@@ -1450,7 +1475,7 @@ Perform_Application:
 	  {
 	    fast long nargs;
 
-            nargs = OBJECT_DATUM (Pop());
+            nargs = OBJECT_DATUM (STACK_POP ());
 	    Function = FAST_MEMORY_REF (Function, PROCEDURE_LAMBDA_EXPR);
 
 	    {
@@ -1463,7 +1488,7 @@ Perform_Application:
 		  ((OBJECT_TYPE (Function) != TC_LEXPR) ||
 		  (nargs < VECTOR_LENGTH (formals))))
 	      {
-		Push(STACK_FRAME_HEADER + nargs - 1);
+		STACK_PUSH (STACK_FRAME_HEADER + nargs - 1);
 		Apply_Error(ERR_WRONG_NUMBER_OF_ARGUMENTS);
 	      }
 	    }
@@ -1476,7 +1501,7 @@ Perform_Application:
 
             if (GC_Check(nargs + 1))
             {
-	      Push(STACK_FRAME_HEADER + nargs - 1);
+	      STACK_PUSH (STACK_FRAME_HEADER + nargs - 1);
               Prepare_Apply_Interrupt ();
               Immediate_GC(nargs + 1);
             }
@@ -1488,7 +1513,7 @@ Perform_Application:
 	      Store_Env(MAKE_POINTER_OBJECT (TC_ENVIRONMENT, scan));
 	      *scan++ = MAKE_OBJECT (TC_MANIFEST_VECTOR, nargs);
 	      while(--nargs >= 0)
-		*scan++ = Pop();
+		*scan++ = (STACK_POP ());
 	      Free = scan;
 	      Reduces_To(FAST_MEMORY_REF (Function, LAMBDA_SCODE));
 	    }
@@ -1500,12 +1525,12 @@ Perform_Application:
 
           case TC_CONTROL_POINT:
 	  {
-            if (OBJECT_DATUM (Stack_Ref (STACK_ENV_HEADER)) !=
+            if (OBJECT_DATUM (STACK_REF (STACK_ENV_HEADER)) !=
                 STACK_ENV_FIRST_ARG)
 	    {
               Apply_Error(ERR_WRONG_NUMBER_OF_ARGUMENTS);
 	    }
-            Val = (Stack_Ref (STACK_ENV_FIRST_ARG));
+            Val = (STACK_REF (STACK_ENV_FIRST_ARG));
             Our_Throw(false, Function);
 	    Apply_Stacklet_Backout();
 	    Our_Throw_Part_2();
@@ -1535,7 +1560,7 @@ Perform_Application:
 
 	    /* Note that the first test below will fail for lexpr primitives. */
 
-	    nargs = ((OBJECT_DATUM (Stack_Ref(STACK_ENV_HEADER))) -
+	    nargs = ((OBJECT_DATUM (STACK_REF(STACK_ENV_HEADER))) -
 		     (STACK_ENV_FIRST_ARG - 1));
             if (nargs != PRIMITIVE_ARITY(Function))
 	    {
@@ -1546,14 +1571,12 @@ Perform_Application:
 	      Regs[REGBLOCK_LEXPR_ACTUALS] = ((SCHEME_OBJECT) nargs);
 	    }
 
-            Stack_Pointer = Simulate_Popping(STACK_ENV_FIRST_ARG);
-            Store_Expression(Function);
-
-	    Export_Regs_Before_Primitive();
-	    Metering_Apply_Primitive(Val, Function);
-	    Import_Regs_After_Primitive();
-
-	    Pop_Primitive_Frame(nargs);
+            Stack_Pointer = (STACK_LOC (STACK_ENV_FIRST_ARG));
+            Store_Expression (Function);
+	    EXPORT_REGS_BEFORE_PRIMITIVE ();
+	    PRIMITIVE_APPLY (Val, Function);
+	    IMPORT_REGS_AFTER_PRIMITIVE ();
+	    POP_PRIMITIVE_FRAME (nargs);
 	    if (Must_Report_References())
 	    {
 	      Store_Expression(Val);
@@ -1577,7 +1600,7 @@ Perform_Application:
 	    fast long i;
 	    fast SCHEME_OBJECT *scan;
 
-            nargs = OBJECT_DATUM (Pop()) - STACK_FRAME_HEADER;
+            nargs = OBJECT_DATUM (STACK_POP ()) - STACK_FRAME_HEADER;
 
 	    if (Eval_Debug)
 	    {
@@ -1598,7 +1621,7 @@ Perform_Application:
 
             if ((nargs < formals) || (!rest_flag && (nargs > params)))
             {
-	      Push(STACK_FRAME_HEADER + nargs);
+	      STACK_PUSH (STACK_FRAME_HEADER + nargs);
               Apply_Error(ERR_WRONG_NUMBER_OF_ARGUMENTS);
             }
 
@@ -1608,7 +1631,7 @@ Perform_Application:
 				     (2 * (nargs - params)) :
 				     0)))
             {
-	      Push(STACK_FRAME_HEADER + nargs);
+	      STACK_PUSH (STACK_FRAME_HEADER + nargs);
               Prepare_Apply_Interrupt ();
               Immediate_GC(size + 1 + ((nargs > params) ?
 				       (2 * (nargs - params)) :
@@ -1626,7 +1649,7 @@ Perform_Application:
 	    if (nargs <= params)
 	    {
 	      for (i = (nargs + 1); --i >= 0; )
-		*scan++ = Pop();
+		*scan++ = (STACK_POP ());
 	      for (i = (params - nargs); --i >= 0; )
 		*scan++ = UNASSIGNED_OBJECT;
 	      if (rest_flag)
@@ -1641,14 +1664,14 @@ Perform_Application:
 
 	      list = MAKE_POINTER_OBJECT (TC_LIST, (scan + size));
 	      for (i = (params + 1); --i >= 0; )
-		*scan++ = Pop();
+		*scan++ = (STACK_POP ());
 	      *scan++ = list;
 	      for (i = auxes; --i >= 0; )
 		*scan++ = UNASSIGNED_OBJECT;
 	      /* Now scan == OBJECT_ADDRESS (list) */
 	      for (i = (nargs - params); --i >= 0; )
 	      {
-		*scan++ = Pop();
+		*scan++ = (STACK_POP ());
 		*scan = MAKE_POINTER_OBJECT (TC_LIST, (scan + 1));
 		scan += 1;
 	      }
@@ -1666,7 +1689,7 @@ Perform_Application:
           case TC_COMPILED_ENTRY:
 	  {
 	    apply_compiled_setup(STACK_ENV_EXTRA_SLOTS +
-				 OBJECT_DATUM (Stack_Ref (STACK_ENV_HEADER)));
+				 OBJECT_DATUM (STACK_REF (STACK_ENV_HEADER)));
 	    Export_Registers();
 	    Which_Way = apply_compiled_procedure();
 
@@ -1684,7 +1707,7 @@ return_from_compiled_code:
 	    {
 	      compiler_apply_procedure
 		(STACK_ENV_EXTRA_SLOTS +
-		 OBJECT_DATUM (Stack_Ref (STACK_ENV_HEADER)));
+		 OBJECT_DATUM (STACK_REF (STACK_ENV_HEADER)));
 	      goto Internal_Apply;
 	    }
 
@@ -1774,17 +1797,17 @@ return_from_compiled_code:
       SCHEME_OBJECT Thunk, New_Location;
 
       From_Count =
-	(UNSIGNED_FIXNUM_TO_LONG (Stack_Ref (TRANSLATE_FROM_DISTANCE)));
+	(UNSIGNED_FIXNUM_TO_LONG (STACK_REF (TRANSLATE_FROM_DISTANCE)));
       if (From_Count != 0)
-      { SCHEME_OBJECT Current = Stack_Ref(TRANSLATE_FROM_POINT);
-	Stack_Ref(TRANSLATE_FROM_DISTANCE) =
+      { SCHEME_OBJECT Current = STACK_REF(TRANSLATE_FROM_POINT);
+	STACK_REF(TRANSLATE_FROM_DISTANCE) =
 	  (LONG_TO_UNSIGNED_FIXNUM (From_Count - 1));
 	Thunk = FAST_MEMORY_REF (Current, STATE_POINT_AFTER_THUNK);
 	New_Location = FAST_MEMORY_REF (Current, STATE_POINT_NEARER_POINT);
-	Stack_Ref(TRANSLATE_FROM_POINT) = New_Location;
+	STACK_REF(TRANSLATE_FROM_POINT) = New_Location;
 	if ((From_Count == 1) &&
-	    (Stack_Ref(TRANSLATE_TO_DISTANCE) == LONG_TO_UNSIGNED_FIXNUM(0)))
-	  Stack_Pointer = Simulate_Popping(4);
+	    (STACK_REF(TRANSLATE_TO_DISTANCE) == LONG_TO_UNSIGNED_FIXNUM(0)))
+	  Stack_Pointer = (STACK_LOC (4));
 	else Save_Cont();
       }
       else
@@ -1794,8 +1817,8 @@ return_from_compiled_code:
 	fast long i;
 
 	To_Count =
-	  (UNSIGNED_FIXNUM_TO_LONG (Stack_Ref (TRANSLATE_TO_DISTANCE)) -  1);
-	To_Location = Stack_Ref(TRANSLATE_TO_POINT);
+	  (UNSIGNED_FIXNUM_TO_LONG (STACK_REF (TRANSLATE_TO_DISTANCE)) -  1);
+	To_Location = STACK_REF(TRANSLATE_TO_POINT);
 	for (i = 0; i < To_Count; i++)
 	{
 	  To_Location =
@@ -1803,10 +1826,10 @@ return_from_compiled_code:
 	}
 	Thunk = FAST_MEMORY_REF (To_Location, STATE_POINT_BEFORE_THUNK);
 	New_Location = To_Location;
-	Stack_Ref(TRANSLATE_TO_DISTANCE) = LONG_TO_UNSIGNED_FIXNUM(To_Count);
+	STACK_REF(TRANSLATE_TO_DISTANCE) = LONG_TO_UNSIGNED_FIXNUM(To_Count);
 	if (To_Count == 0)
 	{
-	  Stack_Pointer = Simulate_Popping(4);
+	  Stack_Pointer = (STACK_LOC (4));
 	}
 	else
 	{
@@ -1823,8 +1846,8 @@ return_from_compiled_code:
 	Current_State_Point = New_Location;
       }
      Will_Push(2);
-      Push(Thunk);
-      Push(STACK_FRAME_HEADER);
+      STACK_PUSH (Thunk);
+      STACK_PUSH (STACK_FRAME_HEADER);
      Pushed();
       goto Internal_Apply;
     }
@@ -1836,9 +1859,9 @@ return_from_compiled_code:
     case RC_INVOKE_STACK_THREAD:
       /* Used for WITH_THREADED_STACK primitive */
      Will_Push(3);
-      Push(Val);        /* Value calculated by thunk */
-      Push(Fetch_Expression());
-      Push(STACK_FRAME_HEADER+1);
+      STACK_PUSH (Val);        /* Value calculated by thunk */
+      STACK_PUSH (Fetch_Expression());
+      STACK_PUSH (STACK_FRAME_HEADER+1);
      Pushed();
       goto Internal_Apply;
 
@@ -1857,9 +1880,7 @@ return_from_compiled_code:
 	GC_Space_Needed = 0;
       }
       if (GC_Check(GC_Space_Needed))
-      {
-	Microcode_Termination(TERM_GC_OUT_OF_SPACE);
-      }
+	termination_gc_out_of_space ();
       GC_Space_Needed = 0;
       EXIT_CRITICAL_SECTION ({ Save_Cont(); Export_Registers(); });
       End_GC_Hook();
@@ -1867,7 +1888,7 @@ return_from_compiled_code:
 
     case RC_PCOMB1_APPLY:
       End_Subproblem();
-      Push(Val);		/* Argument value */
+      STACK_PUSH (Val);		/* Argument value */
      Finished_Eventual_Pushing(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
       Store_Expression(FAST_MEMORY_REF (Fetch_Expression(), PCOMB1_FN_SLOT));
 
@@ -1880,9 +1901,9 @@ Primitive_Internal_Apply:
 	   We may have a non-contiguous frame. -- Jinx
 	 */
        Will_Push(3);
-        Push(Fetch_Expression());
-        Push(Fetch_Apply_Trapper());
-        Push(STACK_FRAME_HEADER + 1 +
+        STACK_PUSH (Fetch_Expression());
+        STACK_PUSH (Fetch_Apply_Trapper());
+        STACK_PUSH (STACK_FRAME_HEADER + 1 +
 	     PRIMITIVE_N_PARAMETERS(Fetch_Expression()));
        Pushed();
         Stop_Trapping();
@@ -1899,39 +1920,36 @@ Primitive_Internal_Apply:
        */
 
       {
-	fast SCHEME_OBJECT primitive;
-
-	primitive = Fetch_Expression();
-	Export_Regs_Before_Primitive();
-	Metering_Apply_Primitive(Val, primitive);
-	Import_Regs_After_Primitive();
-
-	Pop_Primitive_Frame(PRIMITIVE_ARITY(primitive));
-	if (Must_Report_References())
-	{
-	  Store_Expression(Val);
-	  Store_Return(RC_RESTORE_VALUE);
-	  Save_Cont();
-	  Call_Future_Logging();
-	}
+	fast SCHEME_OBJECT primitive = (Fetch_Expression ());
+	EXPORT_REGS_BEFORE_PRIMITIVE ();
+	PRIMITIVE_APPLY (Val, primitive);
+	IMPORT_REGS_AFTER_PRIMITIVE ();
+	POP_PRIMITIVE_FRAME (PRIMITIVE_ARITY (primitive));
+	if (Must_Report_References ())
+	  {
+	    Store_Expression (Val);
+	    Store_Return (RC_RESTORE_VALUE);
+	    Save_Cont ();
+	    Call_Future_Logging ();
+	  }
 	break;
       }
 
     case RC_PCOMB2_APPLY:
       End_Subproblem();
-      Push(Val);		/* Value of arg. 1 */
+      STACK_PUSH (Val);		/* Value of arg. 1 */
      Finished_Eventual_Pushing(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
       Store_Expression(FAST_MEMORY_REF (Fetch_Expression(), PCOMB2_FN_SLOT));
       goto Primitive_Internal_Apply;
 
     case RC_PCOMB2_DO_1:
       Restore_Env();
-      Push(Val);		/* Save value of arg. 2 */
+      STACK_PUSH (Val);		/* Save value of arg. 2 */
       Do_Another_Then(RC_PCOMB2_APPLY, PCOMB2_ARG_1_SLOT);
 
     case RC_PCOMB3_APPLY:
       End_Subproblem();
-      Push(Val);		/* Save value of arg. 1 */
+      STACK_PUSH (Val);		/* Save value of arg. 1 */
      Finished_Eventual_Pushing(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
       Store_Expression(FAST_MEMORY_REF (Fetch_Expression(), PCOMB3_FN_SLOT));
       goto Primitive_Internal_Apply;
@@ -1944,16 +1962,16 @@ Primitive_Internal_Apply:
     {
       SCHEME_OBJECT Temp;
 
-      Temp = Pop();		/* Value of arg. 3 */
+      Temp = (STACK_POP ());		/* Value of arg. 3 */
       Restore_Env();
-      Push(Temp);		/* Save arg. 3 again */
-      Push(Val);		/* Save arg. 2 */
+      STACK_PUSH (Temp);		/* Save arg. 3 again */
+      STACK_PUSH (Val);		/* Save arg. 2 */
       Do_Another_Then(RC_PCOMB3_APPLY, PCOMB3_ARG_1_SLOT);
     }
 
     case RC_PCOMB3_DO_2:
       Restore_Then_Save_Env();
-      Push(Val);		/* Save value of arg. 3 */
+      STACK_PUSH (Val);		/* Save value of arg. 3 */
       Do_Another_Then(RC_PCOMB3_DO_1, PCOMB3_ARG_2_SLOT);
 
     case RC_POP_RETURN_ERROR:
@@ -1994,8 +2012,8 @@ Primitive_Internal_Apply:
       Store_Return(RC_PURIFY_GC_2);
       Save_Cont();
      Will_Push(2);
-      Push(GC_Daemon_Proc);
-      Push(STACK_FRAME_HEADER);
+      STACK_PUSH (GC_Daemon_Proc);
+      STACK_PUSH (STACK_FRAME_HEADER);
      Pushed();
       goto Internal_Apply;
     }
@@ -2008,7 +2026,7 @@ Primitive_Internal_Apply:
     case RC_REPEAT_DISPATCH:
       Which_Way = (FIXNUM_TO_LONG (Fetch_Expression ()));
       Restore_Env();
-      Val = Pop();
+      Val = (STACK_POP ());
       Restore_Cont();
       goto Repeat_Dispatch;
 
@@ -2030,8 +2048,8 @@ Primitive_Internal_Apply:
     {
       SCHEME_OBJECT Stacklet;
 
-      Prev_Restore_History_Offset = OBJECT_DATUM (Pop());
-      Stacklet = Pop();
+      Prev_Restore_History_Offset = OBJECT_DATUM (STACK_POP ());
+      Stacklet = (STACK_POP ());
       History = OBJECT_ADDRESS (Fetch_Expression());
       if (Prev_Restore_History_Offset == 0)
       {
@@ -2069,8 +2087,8 @@ Primitive_Internal_Apply:
         Immediate_GC((Free > MemTop) ? 0 : ((MemTop-Free)+1));
       }
       Import_Registers();
-      Prev_Restore_History_Offset = OBJECT_DATUM (Pop());
-      Stacklet = Pop();
+      Prev_Restore_History_Offset = OBJECT_DATUM (STACK_POP ());
+      Stacklet = (STACK_POP ());
       if (Prev_Restore_History_Offset == 0)
 	Prev_Restore_History_Stacklet = NULL;
       else
@@ -2121,9 +2139,9 @@ Primitive_Internal_Apply:
       Save_Cont();
       Return_Hook_Address = NULL;
       Stop_Trapping();
-      Push(Val);
-      Push(Fetch_Return_Trapper());
-      Push(STACK_FRAME_HEADER+1);
+      STACK_PUSH (Val);
+      STACK_PUSH (Fetch_Return_Trapper());
+      STACK_PUSH (STACK_FRAME_HEADER+1);
      Pushed();
       goto Apply_Non_Trapping;
 

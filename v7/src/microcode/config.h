@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.54 1990/04/12 21:05:34 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.55 1990/06/20 17:39:15 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -321,8 +321,8 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #endif /* VMS */
 #endif /* vax */
 
-#ifdef hp9000s200	/* and s300, pretty indistinguishable */
-#define MACHINE_TYPE		"hp9000s200"
+#ifdef hp9000s300
+#define MACHINE_TYPE		"hp9000s300"
 #define HEAP_IN_LOW_MEMORY
 #define UNSIGNED_SHIFT
 #define CHAR_BIT		8
@@ -370,40 +370,60 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define Or3(x, y, z)	((x) ? true : ((y) ? true : (z)))
 #endif
 
-#ifdef sun
+#ifdef sun4
+#define MACHINE_TYPE		"sun4"
 #define HEAP_IN_LOW_MEMORY
 #define UNSIGNED_SHIFT
 #define CHAR_BIT		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
 #define BELL 			'\007'
-
+#define FASL_INTERNAL_FORMAT	FASL_SUN4
 /* #define FLONUM_EXPT_SIZE	10 */
 /* #define FLONUM_MANTISSA_BITS	53 */
 /* #define MAX_FLONUM_EXPONENT	1023 */
-
-#ifdef sun4
-#define MACHINE_TYPE		"sun4"
-#define FASL_INTERNAL_FORMAT	FASL_SUN4
 #define FLOATING_ALIGNMENT	0x7	/* Low 3 MBZ for float storage */
-#endif
-
-#ifdef sun3
-#define MACHINE_TYPE		"sun3"
-#define FASL_INTERNAL_FORMAT	FASL_68020
-#endif
-
-#ifndef FASL_INTERNAL_FORMAT
-#define MACHINE_TYPE		"sun2"
-#define FASL_INTERNAL_FORMAT	FASL_68000
-#endif
-
 #define HAS_FLOOR
 #define HAS_FREXP
 #define HAS_MODF
 #define HAVE_DOUBLE_TO_LONG_BUG
+#endif
 
-#endif /* sun */
+#ifdef sun3
+#define MACHINE_TYPE		"sun3"
+#define HEAP_IN_LOW_MEMORY
+#define UNSIGNED_SHIFT
+#define CHAR_BIT		8
+#define USHORT_SIZE		16
+#define ULONG_SIZE		32
+#define BELL 			'\007'
+#define FASL_INTERNAL_FORMAT	FASL_68020
+/* #define FLONUM_EXPT_SIZE	10 */
+/* #define FLONUM_MANTISSA_BITS	53 */
+/* #define MAX_FLONUM_EXPONENT	1023 */
+#define HAS_FLOOR
+#define HAS_FREXP
+#define HAS_MODF
+#define HAVE_DOUBLE_TO_LONG_BUG
+#endif
+
+#ifdef sun2
+#define MACHINE_TYPE		"sun2"
+#define HEAP_IN_LOW_MEMORY
+#define UNSIGNED_SHIFT
+#define CHAR_BIT		8
+#define USHORT_SIZE		16
+#define ULONG_SIZE		32
+#define BELL 			'\007'
+#define FASL_INTERNAL_FORMAT	FASL_68000
+/* #define FLONUM_EXPT_SIZE	10 */
+/* #define FLONUM_MANTISSA_BITS	53 */
+/* #define MAX_FLONUM_EXPONENT	1023 */
+#define HAS_FLOOR
+#define HAS_FREXP
+#define HAS_MODF
+#define HAVE_DOUBLE_TO_LONG_BUG
+#endif
 
 #ifdef butterfly
 #define MACHINE_TYPE		"butterfly"
@@ -500,7 +520,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define COMPILER_CONSTANT_SIZE	1300
 #endif
 
-#endif /* spectrum */
+#endif /* hp9000s800 */
 
 #ifdef umax
 #define MACHINE_TYPE		"umax"

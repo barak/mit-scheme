@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.45 1989/11/30 03:04:10 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.46 1990/06/20 17:42:13 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -73,32 +73,22 @@ long
   /* Used to signal microcode errors from compiled code. */
   compiled_code_error_code;
 
-Declare_Fixed_Objects();
-
-FILE *(Channels[FILE_CHANNELS]), *Photo_File_Handle;
-
-int Saved_argc;
-char **Saved_argv;
-char *OS_Name, *OS_Variant;
-
-Boolean Photo_Open;	/* Photo file open */
+Declare_Fixed_Objects ();
 
 Boolean Trapping;
 
-SCHEME_OBJECT Old_Return_Code, *Return_Hook_Address;
+SCHEME_OBJECT Old_Return_Code;
+SCHEME_OBJECT * Return_Hook_Address;
 
-SCHEME_OBJECT *Prev_Restore_History_Stacklet;
+SCHEME_OBJECT * Prev_Restore_History_Stacklet;
 long Prev_Restore_History_Offset;
 
-jmp_buf *Back_To_Eval; /* Buffer for set/longjmp */
-
-long Heap_Size, Constant_Size, Stack_Size;
-SCHEME_OBJECT *Highest_Allocated_Address;
-
+long Heap_Size;
+long Constant_Size;
+long Stack_Size;
+SCHEME_OBJECT * Highest_Allocated_Address;
 #ifndef HEAP_IN_LOW_MEMORY
-
 SCHEME_OBJECT * memory_base;
-
 #endif
 
                     /**********************/

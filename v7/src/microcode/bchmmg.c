@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.53 1990/04/09 14:46:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.54 1990/06/20 17:38:18 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -121,20 +121,13 @@ open_gc_file(size)
 
   (void) mktemp(gc_default_file_name);
   flags = GC_FILE_FLAGS;
-
-  position = Parse_Option("-gcfile", Saved_argc, Saved_argv, true);
-  if ((position != NOT_THERE) &&
-      (position != (Saved_argc - 1)))
-  {
-    gc_file_name = Saved_argv[position + 1];
-  }
-  else
-  {
-    gc_file_name = gc_default_file_name;
-    flags |= O_EXCL;
-  }
-
-  while(true)
+  gc_file_name = (string_option_argument ("-gcfile"));
+  if (gc_file_name == 0)
+    {
+      gc_file_name = gc_default_file_name;
+      flags |= O_EXCL;
+    }
+  while (1)
   {
     gc_file = open(gc_file_name, flags, GC_FILE_MASK);
     if (gc_file != -1)
@@ -158,7 +151,7 @@ open_gc_file(size)
 	    Saved_argv[0], gc_file_name);
     exit(1);
   }
-#ifdef hpux
+#ifdef _HPUX
   if (gc_file_name == gc_default_file_name)
   {
     extern prealloc();
@@ -884,16 +877,13 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
   PRIMITIVE_CANONICALIZE_CONTEXT ();
   new_gc_reserve = (arg_nonnegative_integer (1));
   if (Free > Heap_Top)
-  {
-    Microcode_Termination(TERM_GC_OUT_OF_SPACE);
-    /*NOTREACHED*/
-  }
+    termination_gc_out_of_space ();
   ENTER_CRITICAL_SECTION ("garbage collector");
   gc_counter += 1;
   GC_Reserve = new_gc_reserve;
   GC(EMPTY_LIST);
   CLEAR_INTERRUPT(INT_GC);
-  Pop_Primitive_Frame(1);
+  POP_PRIMITIVE_FRAME (1);
   GC_Daemon_Proc = Get_Fixed_Obj_Slot(GC_Daemon);
   RENAME_CRITICAL_SECTION ("garbage collector daemon");
   if (GC_Daemon_Proc == SHARP_F)
@@ -910,8 +900,8 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
   Store_Return(RC_NORMAL_GC_DONE);
   Store_Expression(LONG_TO_UNSIGNED_FIXNUM(MemTop - Free));
   Save_Cont();
-  Push(GC_Daemon_Proc);
-  Push(STACK_FRAME_HEADER);
+  STACK_PUSH (GC_Daemon_Proc);
+  STACK_PUSH (STACK_FRAME_HEADER);
  Pushed();
   PRIMITIVE_ABORT(PRIM_APPLY);
   /* The following comment is by courtesy of LINT, your friendly sponsor. */

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.32 1989/09/20 23:07:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.33 1990/06/20 17:39:53 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -77,7 +77,7 @@ MIT in each case. */
   (* (locative)) = (object);						\
 }
 #endif
-
+
 #ifndef USE_STACKLETS
 
 #define Absolute_Stack_Base Constant_Top
@@ -127,7 +127,7 @@ do									\
 #ifndef Exit_Scheme
 #define Exit_Scheme exit
 #endif
-
+
 /* Used in various places. */
 
 #ifndef Init_Fixed_Objects
@@ -140,18 +140,6 @@ do									\
   Fixed_Objects = New_Vector
 #endif
 
-#ifndef Entry_Hook
-#define Entry_Hook()
-#endif
-
-#ifndef Exit_Hook
-#define Exit_Hook()
-#endif
-
-#ifndef Sys_Clock
-#define Sys_Clock() ((OS_process_clock ()) * 10)
-#endif
-
 /* Used in debug.c */
 
 #ifndef Back_Trace_Entry_Hook
@@ -162,26 +150,6 @@ do									\
 #define Back_Trace_Exit_Hook()
 #endif
 
-#ifndef More_Debug_Flag_Cases
-#define More_Debug_Flag_Cases()
-#endif
-
-#ifndef Set_Flag_Hook
-#define Set_Flag_Hook()
-#endif
-
-#ifndef More_Debug_Flag_Names
-#define More_Debug_Flag_Names()
-#endif
-
-#ifndef LAST_SWITCH
-#define LAST_SWITCH		LAST_NORMAL_SWITCH
-#endif
-
-#ifndef debug_getdec
-#define debug_getdec normal_debug_getdec
-#endif
-
 /* Used in extern.h */
 
 #ifndef More_Debug_Flag_Externs
@@ -211,34 +179,8 @@ do									\
   NewFree = Unused_Heap;				\
   NewMemTop = Unused_Heap_Top
 #endif
-
-/* Used in fasload.c */
-
-#ifndef Open_File_Hook
-#define Open_File_Hook(ignore)
-#endif
-
-#ifndef Close_File_Hook
-#define Close_File_Hook()
-#endif
 
 /* Used in interpret.c */
-
-/* Primitive calling code. */
-
-#ifndef ENABLE_DEBUGGING_TOOLS
-#define APPLY_PRIMITIVE		INTERNAL_APPLY_PRIMITIVE
-#else
-extern SCHEME_OBJECT Apply_Primitive();
-#define APPLY_PRIMITIVE(Loc, N)						\
-{									\
-  Loc = Apply_Primitive(N);						\
-}
-#endif
-
-#ifndef Metering_Apply_Primitive
-#define Metering_Apply_Primitive APPLY_PRIMITIVE
-#endif
 
 #ifndef Eval_Ucode_Hook
 #define Eval_Ucode_Hook()
@@ -255,7 +197,7 @@ extern SCHEME_OBJECT Apply_Primitive();
 #ifndef End_GC_Hook
 #define End_GC_Hook()
 #endif
-
+
 /* Used in storage.c */
 
 #ifndef More_Debug_Flag_Allocs
@@ -271,7 +213,7 @@ extern SCHEME_OBJECT Apply_Primitive();
 #ifndef Error_Exit_Hook
 #define Error_Exit_Hook()
 #endif
-
+
 /* Common Lisp Hooks */
 
 #ifndef SITE_EXPRESSION_DISPATCH_HOOK

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.h,v 10.3 1989/09/20 23:06:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.h,v 10.4 1990/06/20 17:39:09 cph Rel $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,17 +43,11 @@ MIT in each case. */
 
 #define With_Stack_Gap(Gap_Size, Gap_Position, Code)			\
 {									\
-  SCHEME_OBJECT *Saved_Destination;					\
-  fast SCHEME_OBJECT *Destination;					\
-  fast long size_to_move;						\
-									\
-  size_to_move = (Gap_Position);					\
-  Destination = Simulate_Pushing(Gap_Size);				\
-  Saved_Destination = Destination;					\
-  while (--size_to_move >= 0)						\
-  {									\
-    Pop_Into(Destination, Pop());					\
-  }									\
+  fast long size_to_move = (Gap_Position);				\
+  fast SCHEME_OBJECT * Destination = (STACK_LOC (- (Gap_Size)));	\
+  SCHEME_OBJECT * Saved_Destination = Destination;			\
+  while ((--size_to_move) >= 0)						\
+    (STACK_LOCATIVE_POP (Destination)) = (STACK_POP ());		\
   Code;									\
   Stack_Pointer = Saved_Destination;					\
 }
@@ -68,12 +62,12 @@ MIT in each case. */
   fast SCHEME_OBJECT *Source;						\
 									\
   size_to_move = (Gap_Position);					\
-  Source = Simulate_Popping(size_to_move);				\
-  Stack_Pointer = Simulate_Popping((Gap_Size) + size_to_move);		\
+  Source = (STACK_LOC (size_to_move));					\
+  Stack_Pointer = (STACK_LOC ((Gap_Size) + size_to_move));		\
   extra_code;								\
   while (--size_to_move >= 0)						\
   {									\
-    Push(Push_From(Source));						\
+    STACK_PUSH (STACK_LOCATIVE_PUSH (Source));				\
   }									\
 }
 
@@ -94,21 +88,19 @@ MIT in each case. */
   long frame_size;							\
 									\
   frame_size = (nslots);						\
-  if (Stack_Ref(frame_size + CONTINUATION_RETURN_CODE) ==		\
+  if (STACK_REF(frame_size + CONTINUATION_RETURN_CODE) ==		\
       (MAKE_OBJECT (TC_RETURN_CODE, RC_REENTER_COMPILED_CODE)))		\
   {									\
     /* Merge compiled code segments on the stack. */			\
     Close_Stack_Gap (CONTINUATION_SIZE,					\
 		     frame_size,					\
 		   {							\
-		     long segment_size;					\
-									\
-		     segment_size =					\
+		     long segment_size =				\
 		       (OBJECT_DATUM					\
-			(Stack_Ref					\
+			(STACK_REF					\
 			 (CONTINUATION_EXPRESSION -			\
 			  CONTINUATION_SIZE)));				\
-		     last_return_code = Simulate_Popping(segment_size);	\
+		     last_return_code = (STACK_LOC (segment_size));	\
 		   });							\
     /* Undo the subproblem rotation. */					\
     Compiler_End_Subproblem();						\
@@ -120,8 +112,8 @@ MIT in each case. */
     With_Stack_Gap(1,							\
 		   frame_size,						\
 		 {							\
-		   last_return_code = &Top_Of_Stack();			\
-		   Push(return_to_interpreter);				\
+		   last_return_code = (STACK_LOC (0));			\
+		   STACK_PUSH (return_to_interpreter);			\
 		 });							\
   }									\
 }
@@ -132,7 +124,7 @@ MIT in each case. */
 
 #define execute_compiled_setup()					\
 {									\
-  if (Stack_Ref(CONTINUATION_RETURN_CODE) ==				\
+  if (STACK_REF(CONTINUATION_RETURN_CODE) ==				\
       (MAKE_OBJECT (TC_RETURN_CODE, RC_REENTER_COMPILED_CODE)))		\
   {									\
     /* Merge compiled code segments on the stack. */			\
@@ -140,7 +132,7 @@ MIT in each case. */
 									\
     Restore_Cont();							\
     segment_size = OBJECT_DATUM (Fetch_Expression());			\
-    last_return_code = Simulate_Popping(segment_size);			\
+    last_return_code = (STACK_LOC (segment_size));			\
     /* Undo the subproblem rotation. */					\
     Compiler_End_Subproblem();						\
   }									\
@@ -148,8 +140,8 @@ MIT in each case. */
   {									\
     /* Make a new compiled code segment on the stack. */		\
     /* History need not be hacked here. */				\
-    last_return_code = &Top_Of_Stack();					\
-    Push(return_to_interpreter);					\
+    last_return_code = (STACK_LOC (0));					\
+    STACK_PUSH (return_to_interpreter);					\
   }									\
 }
 
@@ -159,10 +151,8 @@ MIT in each case. */
 
 #define compiled_code_restart()						\
 {									\
-  long segment_size;							\
-									\
-  segment_size = OBJECT_DATUM (Fetch_Expression());			\
-  last_return_code = Simulate_Popping(segment_size);			\
+  long segment_size = OBJECT_DATUM (Fetch_Expression());		\
+  last_return_code = (STACK_LOC (segment_size));			\
   /* Undo the subproblem rotation. */					\
   Compiler_End_Subproblem();						\
 }
@@ -182,14 +172,12 @@ MIT in each case. */
 
 #define compiler_apply_procedure(nslots)				\
 {									\
-  long frame_size;							\
-									\
-  frame_size = (nslots);						\
-  if (Stack_Ref( frame_size) == return_to_interpreter)			\
+  long frame_size = (nslots);						\
+  if ((STACK_REF (frame_size)) == return_to_interpreter)		\
   {									\
     Close_Stack_Gap(1, frame_size, {});					\
     /* Set up the current rib. */					\
-    Compiler_New_Reduction();						\
+    Compiler_New_Reduction ();						\
   }									\
   else									\
     { /* Make a new interpreter segment which includes this frame. */	\
@@ -197,15 +185,15 @@ MIT in each case. */
 	(CONTINUATION_SIZE,						\
 	 frame_size,							\
 	 {								\
-	   long segment_size;						\
-									\
-	   segment_size = Stack_Distance(last_return_code);		\
-	   Store_Expression(LONG_TO_UNSIGNED_FIXNUM(segment_size));	\
-	   Store_Return(RC_REENTER_COMPILED_CODE);			\
-	   Save_Cont();							\
+	   long segment_size =						\
+	     (STACK_LOCATIVE_DIFFERENCE					\
+	      (last_return_code, (STACK_LOC (0))));			\
+	   Store_Expression (LONG_TO_UNSIGNED_FIXNUM (segment_size));	\
+	   Store_Return (RC_REENTER_COMPILED_CODE);			\
+	   Save_Cont ();						\
 	 });								\
       /* Rotate history to a new subproblem. */				\
-      Compiler_New_Subproblem();					\
+      Compiler_New_Subproblem ();					\
     }									\
 }
 
@@ -223,29 +211,27 @@ MIT in each case. */
 #define apply_compiled_backout()					\
 {									\
   compiler_apply_procedure(STACK_ENV_EXTRA_SLOTS +			\
-			   OBJECT_DATUM (Stack_Ref (STACK_ENV_HEADER)));\
+			   OBJECT_DATUM (STACK_REF (STACK_ENV_HEADER)));\
 }
 
 /* Backing out of eval. */
 
 #define execute_compiled_backout()					\
 {									\
-  if (Top_Of_Stack() == return_to_interpreter)				\
+  if ((STACK_REF (0)) == return_to_interpreter)				\
   {									\
-    Simulate_Popping(1);						\
     /* Set up the current rib. */					\
-    Compiler_New_Reduction();						\
+    Compiler_New_Reduction ();						\
   }									\
   else									\
   {									\
-    long segment_size;							\
-									\
-    segment_size = Stack_Distance(last_return_code);			\
-    Store_Expression(LONG_TO_UNSIGNED_FIXNUM(segment_size));		\
-    Store_Return(RC_REENTER_COMPILED_CODE);				\
-    Save_Cont();							\
+    long segment_size =							\
+      (STACK_LOCATIVE_DIFFERENCE (last_return_code, (STACK_LOC (0))));	\
+    Store_Expression (LONG_TO_UNSIGNED_FIXNUM (segment_size));		\
+    Store_Return (RC_REENTER_COMPILED_CODE);				\
+    Save_Cont ();							\
     /* Rotate history to a new subproblem. */				\
-    Compiler_New_Subproblem();						\
+    Compiler_New_Subproblem ();						\
   }									\
 }
 
@@ -263,12 +249,12 @@ MIT in each case. */
   long segment_size;							\
 									\
   Restore_Cont();							\
-  segment_size = Stack_Distance(last_return_code);			\
-  Store_Expression(LONG_TO_UNSIGNED_FIXNUM(segment_size));		\
+  segment_size =							\
+    (STACK_LOCATIVE_DIFFERENCE (last_return_code, (STACK_LOC (0))));	\
+  Store_Expression (LONG_TO_UNSIGNED_FIXNUM (segment_size));		\
   /* The Store_Return is a NOP, the Save_Cont is done by the code	\
-     that follows.							\
-   */									\
+     that follows. */							\
   /* Store_Return (OBJECT_DATUM (Fetch_Return ())); */			\
-  /* Save_Cont(); */							\
-  Compiler_New_Subproblem();						\
+  /* Save_Cont (); */							\
+  Compiler_New_Subproblem ();						\
 }

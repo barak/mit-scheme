@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/mul.c,v 9.28 1990/02/08 00:39:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/mul.c,v 9.29 1990/06/20 17:41:36 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -41,7 +41,7 @@ extern SCHEME_OBJECT Mul ();
 
 #if (TYPE_CODE_LENGTH == 8)
 
-#if defined(vax) && defined(bsd)
+#if defined(vax) && defined(_BSD)
 
 #define MUL_HANDLED
 
@@ -99,11 +99,11 @@ Mul (Arg1, Arg2)
      : SHARP_F);
 }
 
-#endif /* vax+bsd */
+#endif /* vax and _BSD */
 
-/* 68k family code.  Uses hp9000s200 conventions for the new compiler. */
+/* 68k family code.  Uses hp9000s300 conventions for the new compiler. */
 
-#if defined(hp9000s200) && !defined(old_cc) && !defined(__GNUC__)
+#if defined(hp9000s300) && !defined(old_cc) && !defined(__GNUC__)
 #define MUL_HANDLED
 
 /* The following constants are hard coded in the assembly language
@@ -197,7 +197,7 @@ static long Fixnum_Range[2] = {SMALLEST_FIXNUM , BIGGEST_FIXNUM};
 	asm("	data");
 
 #endif	/* not MC68020 */
-#endif  /* hp9000s200 */
+#endif  /* hp9000s300 */
 
 #endif /* (TYPE_CODE_LENGTH == 8) */
 

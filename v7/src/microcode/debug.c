@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.34 1989/09/20 23:07:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.35 1990/06/20 17:39:45 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -708,7 +708,7 @@ Print_One_Continuation_Frame (Temp)
 
   Print_Expression (Temp, "Return code");
   printf ("\n");
-  Expr = (Pop ());
+  Expr = (STACK_POP ());
   Print_Expression (Expr, "Expression");
   printf ("\n");
   if (((OBJECT_DATUM (Temp)) == RC_END_OF_COMPUTATION) ||
@@ -736,9 +736,9 @@ Back_Trace (where)
   Old_Stack = Stack_Pointer;
   while (true)
   {
-    if (Return_Hook_Address == &Top_Of_Stack())
+    if (Return_Hook_Address == (STACK_LOC (0)))
     {
-      Temp = Pop();
+      Temp = (STACK_POP ());
       if (Temp != MAKE_OBJECT (TC_RETURN_CODE, RC_RETURN_TRAP_POINT))
       {
         printf ("\n--> Return trap is missing here <--\n");
@@ -751,7 +751,7 @@ Back_Trace (where)
     }
     else
     {
-      Temp = Pop();
+      Temp = (STACK_POP ());
     }
     if ((OBJECT_TYPE (Temp)) == TC_RETURN_CODE)
     {
@@ -765,7 +765,7 @@ Back_Trace (where)
       Print_Expression(Temp, "  ...");
       if ((OBJECT_TYPE (Temp)) == TC_MANIFEST_NM_VECTOR)
       {
-	Stack_Pointer = Simulate_Popping(OBJECT_DATUM (Temp));
+	Stack_Pointer = (STACK_LOC (- (OBJECT_DATUM (Temp))));
         printf (" (skipping)");
       }
       printf ("\n");
@@ -831,7 +831,7 @@ Print_Primitive (primitive)
 
   for (i = 0; i < NArgs; i++)
   {
-    sprintf (buffer1, "Stack_Ref(%d)", i);
+    sprintf (buffer1, "STACK_REF (%d)", i);
     sprintf (buffer2, "...Arg %d", (i + 1));
     Print_Expression(buffer1, buffer2);
     printf ("\n");
@@ -839,11 +839,27 @@ Print_Primitive (primitive)
 }
 
 /* Code for interactively setting and clearing the interpreter
-   debugging flags.  Invoked via the "D" command to the ^B
-   handler or during each FASLOAD.
-*/
+   debugging flags.  Invoked via the "D" command to the ^C
+   handler or during each FASLOAD. */
 
 #ifdef ENABLE_DEBUGGING_TOOLS
+
+#ifndef MORE_DEBUG_FLAG_CASES
+#define MORE_DEBUG_FLAG_CASES()
+#endif
+
+#ifndef MORE_DEBUG_FLAG_NAMES
+#define MORE_DEBUG_FLAG_NAMES()
+#endif
+
+#ifndef SET_FLAG_HOOK
+#define SET_FLAG_HOOK()
+#endif
+
+#ifndef DEBUG_GETDEC
+#define DEBUG_GETDEC debug_getdec
+#endif
+
 #define D_EVAL			0
 #define D_HEX_INPUT		1
 #define D_FILE_LOAD		2
@@ -860,140 +876,141 @@ Print_Primitive (primitive)
 #define D_PER_FILE		13
 #define D_BIGNUM		14
 #define D_FLUIDS		15
-#define LAST_NORMAL_SWITCH	15
 
-Boolean *
-Find_Flag (Num)
-     int Num;
-{ switch (Num)
-  { case D_EVAL:	return &Eval_Debug;
-    case D_HEX_INPUT:	return &Hex_Input_Debug;
-    case D_FILE_LOAD:	return &File_Load_Debug;
-    case D_RELOC:	return &Reloc_Debug;
-    case D_INTERN: 	return &Intern_Debug;
-    case D_CONT:	return &Cont_Debug;
-    case D_PRIMITIVE:	return &Primitive_Debug;
-    case D_LOOKUP:	return &Lookup_Debug ;
-    case D_DEFINE:	return &Define_Debug;
-    case D_GC:		return &GC_Debug;
-    case D_UPGRADE:	return &Upgrade_Debug;
-    case D_DUMP:	return &Dump_Debug;
-    case D_TRACE_ON_ERROR: return &Trace_On_Error;
-    case D_PER_FILE:	return &Per_File;
-    case D_BIGNUM:      return &Bignum_Debug;
-    case D_FLUIDS:      return &Fluids_Debug;
-    More_Debug_Flag_Cases();
-    default:		show_flags(true); return NULL;
-  }
-}
-
-int
-set_flag (Num, Value)
-     int Num;
-     Boolean Value;
-{ Boolean *Flag = Find_Flag(Num);
-  if (Flag != NULL) *Flag = Value;
-  Set_Flag_Hook();
-}
+#ifndef LAST_SWITCH
+#define LAST_SWITCH D_FLUIDS
+#endif
 
-char *
-Flag_Name (Num)
-     int Num;
-{ switch(Num)
-  { case D_EVAL:            return "Eval_Debug";
-    case D_HEX_INPUT:	    return "Hex_Input_Debug";
-    case D_FILE_LOAD:	    return "File_Load_Debug";
-    case D_RELOC:	    return "Reloc_Debug";
-    case D_INTERN:	    return "Intern_Debug";
-    case D_CONT:	    return "Cont_Debug";
-    case D_PRIMITIVE:	    return "Primitive_Debug";
-    case D_LOOKUP:	    return "Lookup_Debug";
-    case D_DEFINE:	    return "Define_Debug";
-    case D_GC:		    return "GC_Debug";
-    case D_UPGRADE:	    return "Upgrade_Debug";
-    case D_DUMP:	    return "Dump_Debug";
-    case D_TRACE_ON_ERROR:  return "Trace_On_Error";
-    case D_PER_FILE:	    return "Per_File";
-    case D_BIGNUM:          return "Bignum_Debug";
-    case D_FLUIDS:	    return "Fluids_Debug";
-    More_Debug_Flag_Names();
-    default:		    return "Unknown Debug Flag";
-  }
-}
-
-int
-show_flags (All)
-     Boolean All;
-{ int i;
-  for (i=0; i <= LAST_SWITCH; i++)
-  { Boolean Value = *Find_Flag(i);
-    if (All || Value)
-    { printf ("Flag %d (%s) is %s.\n",
-             i, Flag_Name(i), Value? "set" : "clear");
+static Boolean *
+DEFUN (find_flag, (flag_number), int flag_number)
+{
+  switch (flag_number)
+    {
+    case D_EVAL:		return (&Eval_Debug);
+    case D_HEX_INPUT:		return (&Hex_Input_Debug);
+    case D_FILE_LOAD:		return (&File_Load_Debug);
+    case D_RELOC:		return (&Reloc_Debug);
+    case D_INTERN:		return (&Intern_Debug);
+    case D_CONT:		return (&Cont_Debug);
+    case D_PRIMITIVE:		return (&Primitive_Debug);
+    case D_LOOKUP:		return (&Lookup_Debug) ;
+    case D_DEFINE:		return (&Define_Debug);
+    case D_GC:			return (&GC_Debug);
+    case D_UPGRADE:		return (&Upgrade_Debug);
+    case D_DUMP:		return (&Dump_Debug);
+    case D_TRACE_ON_ERROR:	return (&Trace_On_Error);
+    case D_PER_FILE:		return (&Per_File);
+    case D_BIGNUM:		return (&Bignum_Debug);
+    case D_FLUIDS:		return (&Fluids_Debug);
+    MORE_DEBUG_FLAG_CASES ();
+    default:			return (0);
     }
-  }
 }
 
-extern int OS_tty_tyi();
+static char *
+DEFUN (flag_name, (flag_number), int flag_number)
+{
+  switch (flag_number)
+    {
+    case D_EVAL:		return ("Eval_Debug");
+    case D_HEX_INPUT:		return ("Hex_Input_Debug");
+    case D_FILE_LOAD:		return ("File_Load_Debug");
+    case D_RELOC:		return ("Reloc_Debug");
+    case D_INTERN:		return ("Intern_Debug");
+    case D_CONT:		return ("Cont_Debug");
+    case D_PRIMITIVE:		return ("Primitive_Debug");
+    case D_LOOKUP:		return ("Lookup_Debug");
+    case D_DEFINE:		return ("Define_Debug");
+    case D_GC:			return ("GC_Debug");
+    case D_UPGRADE:		return ("Upgrade_Debug");
+    case D_DUMP:		return ("Dump_Debug");
+    case D_TRACE_ON_ERROR:	return ("Trace_On_Error");
+    case D_PER_FILE:		return ("Per_File");
+    case D_BIGNUM:		return ("Bignum_Debug");
+    case D_FLUIDS:		return ("Fluids_Debug");
+    MORE_DEBUG_FLAG_NAMES ();
+    default:			return ("Unknown Debug Flag");
+    }
+}
 
-#define C_STRING_LENGTH 256
-
+static void
+DEFUN (show_flags, (all), int all)
+{
+  int i;
+  for (i = 0; (i <= LAST_SWITCH); i += 1)
+    {
+      int value = (* (find_flag (i)));
+      if (all || value)
+	fprintf (stdout, "Flag %d (%s) is %s.\n",
+		 i, (flag_name (i)), (Value ? "set" : "clear"));
+    }
+  fflush (stdout);
+}
+
+static int
+DEFUN (set_flag, (flag_number, value), int flag_number AND int value)
+{
+  Boolean * flag = (find_flag (flag_number));
+  if (flag == 0)
+    show_flags (1);
+  else
+    {
+      (*flag) = value;
+      SET_FLAG_HOOK (flag);
+    }
+}
+
+static int
+DEFUN (debug_getdec, (string), CONST char * string)
+{
+  int result;
+  sscanf (string, "%d", (&result));
+  return (result);
+}
+
 void
-Handle_Debug_Flags ()
-{ char c, input_string[C_STRING_LENGTH];
-  int Which, free;
-  Boolean interrupted;
-  show_flags(false);
-  while (true)
-  { interrupted = false;
-    printf ("Clear<number>, Set<number>, Done, ?, or Halt: ");
-    OS_tty_flush_output();
-
-    /* Considerably haired up to go through standard (safe) interface */
-
-    c = (char) OS_tty_tyi(false, &interrupted);
-    if (interrupted) return;
-    for (free = 0; free < C_STRING_LENGTH; free++)
-    { input_string[free] = OS_tty_tyi(false, &interrupted);
-      if (interrupted) return;
-      if (input_string[free] == '\n')
-      { input_string[free] = '\0';
-        break;
+DEFUN_VOID (debug_edit_flags)
+{
+  char input_line [256];
+  show_flags (0);
+  while (1)
+    {
+      fputs ("Clear<number>, Set<number>, Done, ?, or Halt: ", stdout);
+      fflush (stdout);
+      {
+	fgets (input_line, (sizeof (input_line)), stdin);
+	switch (input_line[0])
+	  {
+	   case 'c':
+	   case 'C':
+	     set_flag ((DEBUG_GETDEC (input_string)), 0);
+	     break;
+	   case 's':
+	   case 'S':
+	     set_flag ((DEBUG_GETDEC (input_string)), 1);
+	     break;
+	   case 'd':
+	   case 'D':
+	     return;
+	   case 'h':
+	   case 'H':
+	     termination_normal ();
+	   case '?':
+	   default:
+	     show_flags (1);
+	     break;
+	   }
       }
     }
-    switch (c)
-    { case 'c':
-      case 'C': Which=debug_getdec(input_string);
-                set_flag(Which, false);
-                break;
-      case 's':
-      case 'S': Which=debug_getdec(input_string);
-                set_flag(Which, true);
-                break;
-      case 'd':
-      case 'D': return;
-      case 'h':
-      case 'H': Microcode_Termination(TERM_HALT);
-
-      case '?':
-      default :	show_flags(true);
-                break;
-    }
-  }
 }
 
-int
-normal_debug_getdec (str)
-     int str;
-{ int Result;
-  sscanf(str, "%d", &Result);
-  return Result;
-}
+#else /* not ENABLE_DEBUGGING_TOOLS */
 
-#else /* ENABLE_DEBUGGING_TOOLS */
 void
-Handle_Debug_Flags ()
-{ fprintf (stderr, "Not a debugging version.  No flags to handle.\n");
-  return;
+DEFUN_VOID (debug_edit_flags)
+{
+  fprintf (stderr, "Not a debugging version.  No flags to handle.\n");
+  fflush (stderr);
 }
+
 #endif /* not ENABLE_DEBUGGING_TOOLS */

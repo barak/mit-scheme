@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.32 1989/09/20 23:09:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.33 1990/06/20 17:41:20 cph Rel $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,9 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 /* Macros used by the interpreter and some utilities. */
+
+extern void EXFUN (abort_to_interpreter, (int argument));
+extern int EXFUN (abort_to_interpreter_argument, (void));
 
                      /********************/
                      /* OPEN CODED RACKS */
@@ -80,8 +83,8 @@ MIT in each case. */
 #define Import_Val()
 #define Import_Registers_Except_Val()		Import_Registers()
 
-#define Import_Regs_After_Primitive()
-#define Export_Regs_Before_Primitive()		Export_Registers()
+#define IMPORT_REGS_AFTER_PRIMITIVE()
+#define EXPORT_REGS_BEFORE_PRIMITIVE Export_Registers
 
 #define Env		Regs[REGBLOCK_ENV]
 #define Val		Regs[REGBLOCK_VAL]
@@ -97,7 +100,7 @@ MIT in each case. */
   SCHEME_OBJECT *Will_Push_Limit;					\
 									\
   Internal_Will_Push((N));						\
-  Will_Push_Limit = Simulate_Pushing(N)
+  Will_Push_Limit = (STACK_LOC (- (N)))
 
 #define Pushed()							\
   if (Stack_Pointer < Will_Push_Limit)					\
@@ -144,20 +147,6 @@ MIT in each case. */
 #define STACK_POP() (STACK_LOCATIVE_POP (Stack_Pointer))
 #define STACK_LOC(offset) (STACK_LOCATIVE_OFFSET (Stack_Pointer, (offset)))
 #define STACK_REF(offset) (STACK_LOCATIVE_REFERENCE (Stack_Pointer, (offset)))
-
-/* Aliases */
-#define Push STACK_PUSH
-#define Pop STACK_POP
-#define Stack_Ref STACK_REF
-#define Simulate_Pushing(offset) (STACK_LOC (- (offset)))
-#define Simulate_Popping STACK_LOC
-
-#define Top_Of_Stack() (STACK_REF (0))
-#define Stack_Distance(previous_top_of_stack)				\
-  (STACK_LOCATIVE_DIFFERENCE (previous_top_of_stack, (STACK_LOC (0))))
-
-#define Push_From(SP) (STACK_LOCATIVE_PUSH (SP))
-#define Pop_Into(SP, object) (STACK_LOCATIVE_POP (SP)) = (object)
 
 /* Fetch from register */
 
@@ -172,23 +161,23 @@ MIT in each case. */
 #define Store_Return(P)							\
   Return = MAKE_OBJECT (TC_RETURN_CODE, (P))
 
-#define Save_Env()		Push(Env)
-#define Restore_Env()		Env = Pop()
-#define Restore_Then_Save_Env()	Env = Top_Of_Stack()
+#define Save_Env()		STACK_PUSH (Env)
+#define Restore_Env()		Env = (STACK_POP ())
+#define Restore_Then_Save_Env()	Env = (STACK_REF (0))
 
 /* Note: Save_Cont must match the definitions in sdata.h */
 
 #define Save_Cont()							\
 {									\
-  Push(Expression);							\
-  Push(Return);								\
-  Cont_Print();								\
+  STACK_PUSH (Expression);						\
+  STACK_PUSH (Return);							\
+  Cont_Print ();							\
 }
 
 #define Restore_Cont()							\
 {									\
-  Return = Pop();							\
-  Expression = Pop();							\
+  Return = (STACK_POP ());						\
+  Expression = (STACK_POP ());						\
   if (Cont_Debug)							\
   {									\
     Print_Return(RESTORE_CONT_RETURN_MESSAGE);				\
@@ -255,55 +244,53 @@ MIT in each case. */
  (PRIMITIVE_VIRTUAL_INDEX(primitive)))
 
 /* This will automagically cause an error if the primitive is
-   not implemented.
- */
+   not implemented. */
 
-#define INTERNAL_APPLY_PRIMITIVE(loc, primitive)			\
+#ifndef ENABLE_DEBUGGING_TOOLS
+
+#define PRIMITIVE_APPLY PRIMITIVE_APPLY_INTERNAL
+
+#else
+
+extern SCHEME_OBJECT EXFUN
+  (primitive_apply_internal, (SCHEME_OBJECT primitive));
+#define PRIMITIVE_APPLY(loc, primitive)					\
+  (loc) = (primitive_apply_internal (primitive))
+
+#endif
+
+extern char * EXFUN (primitive_to_name, (SCHEME_OBJECT primitive));
+extern long EXFUN (primitive_to_arity, (SCHEME_OBJECT primitive));
+extern long EXFUN (primitive_to_arguments, (SCHEME_OBJECT primitive));
+
+#define PRIMITIVE_APPLY_INTERNAL(loc, primitive)			\
 {									\
-  Regs[REGBLOCK_PRIMITIVE] = primitive;					\
-  loc =									\
-    ((*									\
-      (Primitive_Procedure_Table					\
-       [PRIMITIVE_TABLE_INDEX (primitive)]))				\
-     ());								\
-  Regs[REGBLOCK_PRIMITIVE] = SHARP_F;					\
+  (Regs[REGBLOCK_PRIMITIVE]) = (primitive);				\
+  {									\
+    /* Save the dynamic-stack position. */				\
+    PTR PRIMITIVE_APPLY_INTERNAL_position = dstack_position;		\
+    (loc) =								\
+      ((*								\
+	(Primitive_Procedure_Table					\
+	 [PRIMITIVE_TABLE_INDEX (primitive)]))				\
+       ());								\
+    /* If the primitive failed to unwind the dynamic stack, lose. */	\
+    if (PRIMITIVE_APPLY_INTERNAL_position != dstack_position)		\
+      {									\
+	fprintf (stderr, "\nPrimitive slipped the dynamic stack: %s\n",	\
+		 (primitive_to_name (primitive)));			\
+	fflush (stderr);						\
+	Microcode_Termination (TERM_EXIT);				\
+      }									\
+  }									\
+  (Regs[REGBLOCK_PRIMITIVE]) = SHARP_F;					\
 }
 
 /* This is only valid for implemented primitives. */
 
 #define PRIMITIVE_ARITY(primitive)					\
-(Primitive_Arity_Table[PRIMITIVE_TABLE_INDEX(primitive)])
+  (Primitive_Arity_Table [PRIMITIVE_TABLE_INDEX (primitive)])
 
-extern long primitive_to_arity();
-
-#define PRIMITIVE_N_PARAMETERS(primitive)				\
-  (primitive_to_arity(primitive))
-
-/* This is only valid during a primitive call. */
-
-extern long primitive_to_arguments();
-
-#define PRIMITIVE_N_ARGUMENTS(primitive)				\
-  (primitive_to_arguments(primitive))
-
-#define Pop_Primitive_Frame(NArgs)					\
-  Stack_Pointer = Simulate_Popping(NArgs)
-
-#define UNWIND_PROTECT(body_statement, cleanup_statement) do		\
-{									\
-  jmp_buf UNWIND_PROTECT_new_buf, *UNWIND_PROTECT_old_buf;		\
-  int UNWIND_PROTECT_value;						\
-									\
-  UNWIND_PROTECT_old_buf = Back_To_Eval;				\
-  Back_To_Eval = ((jmp_buf *) UNWIND_PROTECT_new_buf);			\
-  UNWIND_PROTECT_value = (setjmp (*Back_To_Eval));			\
-  if (UNWIND_PROTECT_value != 0)					\
-    {									\
-      Back_To_Eval = UNWIND_PROTECT_old_buf;				\
-      cleanup_statement;						\
-      longjmp ((*Back_To_Eval), UNWIND_PROTECT_value);			\
-    }									\
-  body_statement;							\
-  Back_To_Eval = UNWIND_PROTECT_old_buf;				\
-  cleanup_statement;							\
-} while (0)
+#define PRIMITIVE_N_PARAMETERS primitive_to_arity
+#define PRIMITIVE_N_ARGUMENTS primitive_to_arguments
+#define POP_PRIMITIVE_FRAME(arity) Stack_Pointer = (STACK_LOC (arity))

@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.12 1990/04/23 02:36:21 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.13 1990/06/20 17:38:46 cph Exp $
 ###
 ###	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ###
@@ -370,7 +370,10 @@ define_c_label(asm_primitive_apply)
 	switch_to_C_registers()
 	allocate_utility_result()
 	mov.l	%d1,-(%sp)		# only one argument
-	mov.l	extern_c_label(utility_table)+HEX(12)*4,%a0
+	ifdef(`SUNASM',
+	`lea	extern_c_label(utility_table),%a0
+	mov.l	HEX(12)*4(%a0),%a0',
+	`mov.l	extern_c_label(utility_table)+HEX(12)*4,%a0')
 	utility_call(1)                 # one argument
 
 	set	tc_compiled_entry,HEX(28)

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.27 1989/09/20 23:11:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.28 1990/06/20 17:42:03 cph Rel $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -141,9 +141,9 @@ Will_Push((2 * CONTINUATION_SIZE) + (STACK_ENV_EXTRA_SLOTS + 2));	\
   Store_Expression(SHARP_F);						\
   Store_Return(RC_END_OF_COMPUTATION);					\
   Save_Cont();								\
-  Push(Val);								\
-  Push(Previous_Stacklet);						\
-  Push(STACK_FRAME_HEADER + 1);						\
+  STACK_PUSH (Val);							\
+  STACK_PUSH (Previous_Stacklet);					\
+  STACK_PUSH (STACK_FRAME_HEADER + 1);					\
   Store_Return(RC_INTERNAL_APPLY);					\
   Save_Cont();								\
 Pushed()

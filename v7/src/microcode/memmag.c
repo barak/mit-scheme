@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.43 1990/04/09 14:45:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.44 1990/06/20 17:41:31 cph Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -419,7 +419,7 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
   GCFlip();
   GC();
   CLEAR_INTERRUPT(INT_GC);
-  Pop_Primitive_Frame(1);
+  POP_PRIMITIVE_FRAME (1);
   GC_Daemon_Proc = Get_Fixed_Obj_Slot(GC_Daemon);
   RENAME_CRITICAL_SECTION ("garbage collector daemon");
   if (GC_Daemon_Proc == SHARP_F)
@@ -436,8 +436,8 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
   Store_Return(RC_NORMAL_GC_DONE);
   Store_Expression(LONG_TO_UNSIGNED_FIXNUM(MemTop - Free));
   Save_Cont();
-  Push(GC_Daemon_Proc);
-  Push(STACK_FRAME_HEADER);
+  STACK_PUSH (GC_Daemon_Proc);
+  STACK_PUSH (STACK_FRAME_HEADER);
  Pushed();
   PRIMITIVE_ABORT(PRIM_APPLY);
   /* The following comment is by courtesy of LINT, your friendly sponsor. */

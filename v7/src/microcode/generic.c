@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.33 1990/01/12 15:20:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.34 1990/06/20 17:40:46 cph Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -39,8 +39,8 @@ MIT in each case. */
 {									\
   PRIMITIVE_CANONICALIZE_CONTEXT ();					\
  Will_Push (STACK_ENV_EXTRA_SLOTS + 1);					\
-  Push (Get_Fixed_Obj_Slot (slot));					\
-  Push (STACK_FRAME_HEADER + arity);					\
+  STACK_PUSH (Get_Fixed_Obj_Slot (slot));				\
+  STACK_PUSH (STACK_FRAME_HEADER + arity);				\
  Pushed ();								\
   PRIMITIVE_ABORT (PRIM_APPLY);						\
   /*NOTREACHED*/							\

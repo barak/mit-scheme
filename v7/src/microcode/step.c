@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/step.c,v 9.28 1990/06/20 17:42:08 cph Rel $
+
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,10 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/step.c,v 9.27 1989/09/20 23:11:47 cph Exp $
- *
- * Support for the stepper
- */
+/* Support for the stepper */
 
 #include "scheme.h"
 #include "prims.h"
@@ -66,9 +65,9 @@ Install_Traps(Hunk3, Return_Hook_Too)
        has the existing return code to be clobbered, since it was put
        there by Save_Cont.
     */
-    Return_Hook_Address = &Top_Of_Stack();
-    Old_Return_Code = Top_Of_Stack();
-    *Return_Hook_Address =
+    Return_Hook_Address = (STACK_LOC (0));
+    Old_Return_Code = (*Return_Hook_Address);
+    (*Return_Hook_Address) =
       (MAKE_OBJECT (TC_RETURN_CODE, RC_RETURN_TRAP_POINT));
   }
   return;
@@ -89,7 +88,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-EVAL-STEP", Prim_eval_step, 3, 3, 0)
     SCHEME_OBJECT environment = (ARG_REF (2));
     PRIMITIVE_CANONICALIZE_CONTEXT ();
     Install_Traps ((ARG_REF (3)), false);
-    Pop_Primitive_Frame (3);
+    POP_PRIMITIVE_FRAME (3);
     Store_Expression (expression);
     Store_Env (environment);
   }
@@ -127,7 +126,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-APPLY-STEP", Prim_apply_step, 3, 3, 0)
 	error_wrong_type_arg (2);
     }
     Install_Traps ((ARG_REF (3)), true);
-    Pop_Primitive_Frame (3);
+    POP_PRIMITIVE_FRAME (3);
     {
       fast SCHEME_OBJECT * scan_stack = (STACK_LOC (- number_of_args));
       fast SCHEME_OBJECT scan_list;
@@ -140,8 +139,8 @@ DEFINE_PRIMITIVE ("PRIMITIVE-APPLY-STEP", Prim_apply_step, 3, 3, 0)
 	  (*scan_stack++) = (PAIR_CAR (scan_list));
 	  TOUCH_IN_PRIMITIVE ((PAIR_CDR (scan_list)), scan_list);
 	}
-      Push (procedure);
-      Push (STACK_FRAME_HEADER + number_of_args);
+      STACK_PUSH (procedure);
+      STACK_PUSH (STACK_FRAME_HEADER + number_of_args);
     Pushed ();
     }
   }

@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.43 1990/06/20 17:41:52 cph Exp $
+
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,12 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.42 1989/11/26 17:38:52 jinx Exp $
- *
- * This file contains the code that copies objects into pure
- * and constant space.
- *
- */
+/* This file contains the code that copies objects into pure
+   and constant space. */
 
 #include "scheme.h"
 #include "prims.h"
@@ -521,7 +519,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
   GC_Reserve = new_gc_reserve;
   ENTER_CRITICAL_SECTION ("purify pass 1");
   Purify_Result = (Purify (Object, (ARG_REF (2))));
-  Pop_Primitive_Frame (3);
+  POP_PRIMITIVE_FRAME (3);
   Daemon = Get_Fixed_Obj_Slot(GC_Daemon);
   if (Daemon == SHARP_F)
   {
@@ -541,8 +539,8 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
   Store_Return(RC_PURIFY_GC_1);
  Will_Push(CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 1);
   Save_Cont();
-  Push(Daemon);
-  Push(STACK_FRAME_HEADER);
+  STACK_PUSH (Daemon);
+  STACK_PUSH (STACK_FRAME_HEADER);
  Pushed();
   PRIMITIVE_ABORT(PRIM_APPLY);
   /*NOTREACHED*/

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/daemon.c,v 9.27 1989/09/20 23:07:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/daemon.c,v 9.28 1990/06/20 17:39:39 cph Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -45,6 +45,7 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
+#include "osio.h"
 
 /* (CLOSE-LOST-OPEN-FILES file-list)
    file-list is an assq-like list where the associations are weak
@@ -55,30 +56,29 @@ MIT in each case. */
 
 DEFINE_PRIMITIVE ("CLOSE-LOST-OPEN-FILES", Prim_close_lost_open_files, 1, 1, 0)
 {
-  extern Boolean OS_file_close();
-  fast SCHEME_OBJECT *Smash, Cell, Weak_Cell, Value;
-  fast SCHEME_OBJECT file_list;
-  long channel_number;
   PRIMITIVE_HEADER (1);
-  file_list = (ARG_REF (1));
-  Value = SHARP_T;
-  for (Smash = PAIR_CDR_LOC (file_list), Cell = *Smash;
-       Cell != EMPTY_LIST;
-       Cell = *Smash)
   {
-    Weak_Cell = (FAST_PAIR_CAR (Cell));
-    if ((FAST_PAIR_CAR (Weak_Cell)) == SHARP_F)
+    SCHEME_OBJECT file_list = (ARG_REF (1));
+    SCHEME_OBJECT * smash = (PAIR_CDR_LOC (file_list));
+    SCHEME_OBJECT cell = (*smash);
+    while (cell != EMPTY_LIST)
       {
-	channel_number = (UNSIGNED_FIXNUM_TO_LONG (FAST_PAIR_CDR (Weak_Cell)));
-	if (!OS_file_close (Channels[channel_number]))
-	  Value = SHARP_F;
-	(Channels [channel_number]) = NULL;
-	(*Smash) = (FAST_PAIR_CDR (Cell));
+	SCHEME_OBJECT weak_cell = (FAST_PAIR_CAR (cell));
+	if ((FAST_PAIR_CAR (weak_cell)) == SHARP_F)
+	  {
+	    OS_channel_close
+	      (UNSIGNED_FIXNUM_TO_LONG (FAST_PAIR_CDR (weak_cell)));
+	    cell = (FAST_PAIR_CDR (cell));
+	    (*smash) = cell;
+	  }
+	else
+	  {
+	    smash = (PAIR_CDR_LOC (cell));
+	    cell = (*smash);
+	  }
       }
-    else
-      Smash = PAIR_CDR_LOC (Cell);
   }
-  PRIMITIVE_RETURN (Value);
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 /* Utilities for the rehash daemon below */

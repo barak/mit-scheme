@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/zones.h,v 9.23 1988/08/15 20:58:52 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/zones.h,v 9.24 1990/06/20 17:42:58 cph Rel $
  *
  * Metering stuff.
  * We break all times into time zones suitable for external analysis.
@@ -42,11 +42,12 @@ MIT in each case. */
 extern long New_Time, Old_Time, Time_Meters[], Current_Zone;
 
 #ifdef ENABLE_DEBUGGING_TOOLS
-#define Set_Time_Zone(Zone)	\
-{ New_Time = Sys_Clock();\
-  Time_Meters[Current_Zone] += New_Time-Old_Time;\
-  Old_Time = New_Time;\
-  Current_Zone = Zone;\
+#define Set_Time_Zone(Zone)						\
+{									\
+  New_Time = (OS_process_clock ());					\
+  Time_Meters[Current_Zone] += New_Time-Old_Time;			\
+  Old_Time = New_Time;							\
+  Current_Zone = Zone;							\
 }
 #else
 #define Set_Time_Zone(Zone) Current_Zone = Zone;

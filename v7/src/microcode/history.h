@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/history.h,v 9.25 1989/09/20 23:08:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/history.h,v 9.26 1990/06/20 17:40:53 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -69,12 +69,12 @@ MIT in each case. */
 
 #define Save_History(Return_Code)					\
 {									\
-  Push									\
+  STACK_PUSH								\
     ((Prev_Restore_History_Stacklet == NULL)				\
      ? SHARP_F								\
      : (MAKE_POINTER_OBJECT						\
 	(TC_CONTROL_POINT, Prev_Restore_History_Stacklet)));		\
-  Push (LONG_TO_UNSIGNED_FIXNUM (Prev_Restore_History_Offset));		\
+  STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (Prev_Restore_History_Offset));	\
   Store_Expression							\
     (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, History));		\
   Store_Return (Return_Code);						\

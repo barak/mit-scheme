@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.52 1990/04/09 14:49:59 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.53 1990/06/20 17:40:24 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -39,40 +39,51 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
+#include "osfile.h"
+#include "osio.h"
 #include "gccode.h"
 #include "trap.h"
+
+static Tchannel load_channel;
+
+#define Load_Data(size, buffer)						\
+  ((OS_channel_read_load_file						\
+    (load_channel, (buffer), ((size) * (sizeof (SCHEME_OBJECT)))))	\
+   / (sizeof (SCHEME_OBJECT)))
+
 #include "load.c"
+
+extern char * malloc ();
+
+extern char * Error_Names [];
+extern char * Abort_Names [];
+extern SCHEME_OBJECT * load_renumber_table;
+extern SCHEME_OBJECT compiler_utilities;
+
+extern SCHEME_OBJECT intern_symbol ();
+extern void install_primitive_table ();
+extern void compiler_reset_error ();
+extern void compiler_initialize ();
+extern void compiler_reset ();
+
+static void EXFUN (terminate_band_load, (PTR ap));
 
 static long failed_heap_length = -1;
 
-long
-read_file_start(name)
-     SCHEME_OBJECT name;
+static long
+DEFUN (read_file_start, (file_name), CONST char * file_name)
 {
   long value, heap_length;
-  Boolean file_opened;
 
-  if (OBJECT_TYPE (name) != TC_CHARACTER_STRING)
-  {
-    return (ERR_ARG_1_WRONG_TYPE);
-  }
-
-  file_opened = Open_Dump_File(name, OPEN_FLAG);
-
+  load_channel = (OS_open_load_file (file_name));
   if (Per_File)
-  {
-    Handle_Debug_Flags();
-  }
-
-  if (!file_opened)
-  {
-    return (ERR_ARG_1_BAD_RANGE);
-  }
-
-  value = Read_Header();
+    debug_edit_flags ();
+  if (load_channel == NO_CHANNEL)
+    error_bad_range_arg (1);
+  value = (Read_Header ());
   if (value != FASL_FILE_FINE)
   {
-    Close_Dump_File();
+    OS_channel_close_noerror (load_channel);
     switch (value)
     {
       /* These may want to be separated further. */
@@ -97,7 +108,7 @@ read_file_start(name)
   if (!Test_Pure_Space_Top(Free_Constant + Const_Count))
   {
     failed_heap_length = 0;
-    Close_Dump_File();
+    OS_channel_close_noerror (load_channel);
     return (ERR_FASL_FILE_TOO_BIG);
   }
 
@@ -111,13 +122,13 @@ read_file_start(name)
 	 The GC should be modified to do this right.
        */
       failed_heap_length = -1;
-      Close_Dump_File();
+      OS_channel_close_noerror (load_channel);
       return (ERR_FASL_FILE_TOO_BIG);
     }
     else
     {
       failed_heap_length = heap_length;
-      Close_Dump_File();
+      OS_channel_close_noerror (load_channel);
       Request_GC(heap_length);
       return (PRIM_INTERRUPT);
     }
@@ -126,14 +137,14 @@ read_file_start(name)
   return (PRIM_DONE);
 }
 
-SCHEME_OBJECT *
-read_file_end()
+static SCHEME_OBJECT *
+DEFUN_VOID (read_file_end)
 {
   SCHEME_OBJECT *table;
 
   if ((Load_Data(Heap_Count, ((char *) Free))) != Heap_Count)
   {
-    Close_Dump_File();
+    OS_channel_close_noerror (load_channel);
     signal_error_from_primitive (ERR_IO_ERROR);
   }
   NORMALIZE_REGION(((char *) Free), Heap_Count);
@@ -141,7 +152,7 @@ read_file_end()
 
   if ((Load_Data(Const_Count, ((char *) Free_Constant))) != Const_Count)
   {
-    Close_Dump_File();
+    OS_channel_close_noerror (load_channel);
     signal_error_from_primitive (ERR_IO_ERROR);
   }
   NORMALIZE_REGION(((char *) Free_Constant), Const_Count);
@@ -151,20 +162,14 @@ read_file_end()
   if ((Load_Data(Primitive_Table_Size, ((char *) Free))) !=
       Primitive_Table_Size)
   {
-    Close_Dump_File();
+    OS_channel_close_noerror (load_channel);
     signal_error_from_primitive (ERR_IO_ERROR);
   }
   NORMALIZE_REGION(((char *) table), Primitive_Table_Size);
   Free += Primitive_Table_Size;
 
-  if (Close_Dump_File())
-  {
-    return (table);
-  }
-  else
-  {
-    signal_error_from_primitive (ERR_IO_ERROR);
-  }
+  OS_channel_close_noerror (load_channel);
+  return (table);
 }
 
 /* Statics used by Relocate, below */
@@ -269,7 +274,6 @@ void
 Relocate_Block(Scan, Stop_At)
      fast SCHEME_OBJECT *Scan, *Stop_At;
 {
-  extern SCHEME_OBJECT *load_renumber_table;
   fast SCHEME_OBJECT Temp;
   fast long address;
 
@@ -442,17 +446,14 @@ check_primitive_numbers(table, length)
   return (true);
 }
 
-extern void get_band_parameters();
-
 void
-get_band_parameters(heap_size, const_size)
-     long *heap_size, *const_size;
+DEFUN (get_band_parameters, (heap_size, const_size),
+       long * heap_size AND
+       long * const_size)
 {
   /* This assumes we have just aborted out of a band load. */
-
-  *heap_size = Heap_Count;
-  *const_size = Const_Count;
-  return;
+  (*heap_size) = Heap_Count;
+  (*const_size) = Const_Count;
 }
 
 void
@@ -479,7 +480,6 @@ Intern_Block(Next_Pointer, Stop_At)
 	  SCHEME_OBJECT old_symbol = (*Next_Pointer);
 	  MEMORY_SET (old_symbol, SYMBOL_GLOBAL_VALUE, UNBOUND_OBJECT);
 	  {
-	    extern SCHEME_OBJECT intern_symbol ();
 	    SCHEME_OBJECT new_symbol = (intern_symbol (old_symbol));
 	    if (new_symbol != old_symbol)
 	      {
@@ -529,9 +529,6 @@ load_file(from_band_load)
     *Constant_End, *Orig_Constant,
     *temp, *primitive_table;
 
-  extern void install_primitive_table();
-  extern SCHEME_OBJECT *load_renumber_table;
-
   /* Read File */
 
 #ifdef ENABLE_DEBUGGING_TOOLS
@@ -565,8 +562,6 @@ load_file(from_band_load)
 
   if ((!band_p) && (dumped_utilities != SHARP_F))
   {
-    extern SCHEME_OBJECT compiler_utilities;
-
     if (compiler_utilities == SHARP_F)
     {
       signal_error_from_primitive (ERR_FASLOAD_COMPILED_MISMATCH);
@@ -651,24 +646,25 @@ load_file(from_band_load)
 
 DEFINE_PRIMITIVE ("BINARY-FASLOAD", Prim_binary_fasload, 1, 1, 0)
 {
-  long result;
   PRIMITIVE_HEADER (1);
-  result = (read_file_start (ARG_REF (1)));
-  if (band_p)
-    signal_error_from_primitive (ERR_FASLOAD_BAND);
-  if (result != PRIM_DONE)
-    {
-      if (result == PRIM_INTERRUPT)
-	signal_interrupt_from_primitive ();
-      else
-	signal_error_from_primitive (result);
-    }
+  {
+    long result = (read_file_start (STRING_ARG (1)));
+    if (band_p)
+      signal_error_from_primitive (ERR_FASLOAD_BAND);
+    if (result != PRIM_DONE)
+      {
+	if (result == PRIM_INTERRUPT)
+	  signal_interrupt_from_primitive ();
+	else
+	  signal_error_from_primitive (result);
+      }
+  }
   PRIMITIVE_RETURN (load_file (false));
 }
 
 /* Band loading. */
 
-static char *reload_band_name = ((char *) NULL);
+static char *reload_band_name = 0;
 
 
 /* (RELOAD-BAND-NAME)
@@ -687,8 +683,6 @@ DEFINE_PRIMITIVE ("RELOAD-BAND-NAME", Prim_reload_band_name, 0, 0, 0)
 
 /* Utility for load band below. */
 
-extern void compiler_reset_error();
-
 void
 compiler_reset_error()
 {
@@ -705,193 +699,135 @@ compiler_reset_error()
    however, be any file which can be loaded with BINARY-FASLOAD.
 */
 
-#ifndef start_band_load
-#define start_band_load()						\
+#ifndef START_BAND_LOAD
+#define START_BAND_LOAD()						\
 {									\
   ENTER_CRITICAL_SECTION ("band load");					\
 }
 #endif
 
-#ifndef end_band_load
-#define end_band_load(success, dying)					\
+#ifndef END_BAND_LOAD
+#define END_BAND_LOAD(success, dying)					\
 {									\
   if (success || dying)							\
-  {									\
-    extern Boolean OS_file_close();					\
-    int i;								\
-									\
-    for (i = 0; i < FILE_CHANNELS; i++)					\
-    {									\
-      if (Channels[i] != NULL)						\
-      {									\
-	OS_file_close(Channels[i]);					\
-	Channels[i] = NULL;						\
-      }									\
-    }									\
-  }									\
+    OS_channel_close_all ();						\
   EXIT_CRITICAL_SECTION ({});						\
 }
 #endif
-
+
 DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
 {
-  extern char * malloc ();
-  extern strcpy ();
-  extern free ();
-  extern void compiler_initialize ();
-  extern void compiler_reset ();
-  extern SCHEME_OBJECT compiler_utilities;
-  static void terminate_band_load ();
-  SCHEME_OBJECT
-    argument,
-    *saved_free,
-    *saved_memtop,
-    *saved_free_constant,
-    *saved_stack_pointer;
-  long temp, length;
-  SCHEME_OBJECT result, cutl;
-  char *band_name;
-  Boolean load_file_failed;
+  SCHEME_OBJECT result;
   PRIMITIVE_HEADER (1);
   PRIMITIVE_CANONICALIZE_CONTEXT ();
-  argument = (ARG_REF (1));
-  saved_free = Free;
-  Free = Heap_Bottom;
-  saved_memtop = MemTop;
-  SET_MEMTOP(Heap_Top);
-
-  start_band_load();
-
-  saved_free_constant = Free_Constant;
-  Free_Constant = Constant_Space;
-  saved_stack_pointer = Stack_Pointer;
-  Stack_Pointer = Highest_Allocated_Address;
-
-  temp = (read_file_start (argument));
-  if (temp != PRIM_DONE)
   {
-    Free = saved_free;
-    SET_MEMTOP(saved_memtop);
-    Free_Constant = saved_free_constant;
-    Stack_Pointer = saved_stack_pointer;
-    end_band_load(false, false);
-
-    if (temp == PRIM_INTERRUPT)
+    CONST char * file_name = (STRING_ARG (1));
+    SCHEME_OBJECT * saved_free = Free;
+    SCHEME_OBJECT * saved_memtop = MemTop;
+    SCHEME_OBJECT * saved_free_constant = Free_Constant;
+    SCHEME_OBJECT * saved_stack_pointer = Stack_Pointer;
+    Free = Heap_Bottom;
+    SET_MEMTOP (Heap_Top);
+    START_BAND_LOAD ();
+    Free_Constant = Constant_Space;
+    Stack_Pointer = Highest_Allocated_Address;
     {
-      signal_error_from_primitive (ERR_FASL_FILE_TOO_BIG);
+      long temp = (read_file_start (file_name));
+      if (temp != PRIM_DONE)
+	{
+	  Free = saved_free;
+	  SET_MEMTOP (saved_memtop);
+	  Free_Constant = saved_free_constant;
+	  Stack_Pointer = saved_stack_pointer;
+	  END_BAND_LOAD (false, false);
+	  signal_error_from_primitive
+	    ((temp == PRIM_INTERRUPT) ? ERR_FASL_FILE_TOO_BIG : temp);
+	}
     }
-    else
+    /* Point of no return. */
     {
-      signal_error_from_primitive (temp);
+      long length = ((strlen (file_name)) + 1);
+      char * band_name = (malloc (length));
+      if (band_name != 0)
+	strcpy (band_name, file_name);
+      transaction_begin ();
+      {
+	char ** ap = (dstack_alloc (sizeof (char *)));
+	(*ap) = band_name;
+	transaction_record_action (tat_abort, terminate_band_load, ap);
+      }
+      result = (load_file (true));
+      transaction_commit ();
+      if (reload_band_name != 0)
+	free (reload_band_name);
+      reload_band_name = band_name;
     }
   }
-
-  /* Point of no return. */
-
-  length = ((STRING_LENGTH (argument)) + 1); /* add 1 for \0 at end */
-  band_name = malloc(length);
-  if (band_name != ((char *) NULL))
-    strcpy (band_name, ((char *) (STRING_LOC (argument, 0))));
-
-  load_file_failed = true;
-
-  UNWIND_PROTECT({
-    		   result = load_file(true);
-		   load_file_failed = false;
-		 },
-	         {
-		   if (load_file_failed)
-		   {
-		     terminate_band_load(UNWIND_PROTECT_value,
-					 band_name);
-		     /*NOTREACHED*/
-		   }
-		 });
-
-  if (reload_band_name != ((char *) NULL))
-  {
-    free(reload_band_name);
-  }
-  reload_band_name = band_name;
-
   /* Reset implementation state paramenters */
-
-  INITIALIZE_INTERRUPTS();
+  INITIALIZE_INTERRUPTS ();
   Initialize_Stack ();
-  Set_Pure_Top(); 
+  Set_Pure_Top (); 
   SET_MEMTOP (Heap_Top - GC_Reserve);
-
-  cutl = MEMORY_REF (result, 1);
-  if (cutl != SHARP_F)
   {
-    compiler_utilities = cutl;
-    compiler_reset(cutl);
-  }
-  else
-  {
-    compiler_initialize(true);
+    SCHEME_OBJECT cutl = (MEMORY_REF (result, 1));
+    if (cutl != SHARP_F)
+      {
+	compiler_utilities = cutl;
+	compiler_reset (cutl);
+      }
+    else
+      compiler_initialize (true);
   }
   Restore_Fixed_Obj (SHARP_F);
   Fluid_Bindings = EMPTY_LIST;
   Current_State_Point = SHARP_F;
-
   /* Setup initial program */
-
   Store_Return (RC_END_OF_COMPUTATION);
   Store_Expression (SHARP_F);
   Save_Cont ();
-
-  Store_Expression(MEMORY_REF (result, 0));
-  Store_Env(MAKE_OBJECT (GLOBAL_ENV, GO_TO_GLOBAL));
-
+  Store_Expression (MEMORY_REF (result, 0));
+  Store_Env (MAKE_OBJECT (GLOBAL_ENV, GO_TO_GLOBAL));
   /* Clear various interpreter state parameters. */
-
   Trapping = false;
-  Return_Hook_Address = NULL;
-  History = Make_Dummy_History();
-  Prev_Restore_History_Stacklet = NULL;
+  Return_Hook_Address = 0;
+  History = (Make_Dummy_History ());
+  Prev_Restore_History_Stacklet = 0;
   Prev_Restore_History_Offset = 0;
-
   FLUSH_I_CACHE ();
-
-  end_band_load(true, false);
-  Band_Load_Hook();
-
+  END_BAND_LOAD (true, false);
+  Band_Load_Hook ();
   /* Return in a non-standard way. */
-
   PRIMITIVE_ABORT(PRIM_DO_EXPRESSION);
   /*NOTREACHED*/
 }
 
 static void
-terminate_band_load(abort_value, band_name)
-     int abort_value;
-     char *band_name;
+DEFUN (terminate_band_load, (ap), PTR ap)
 {
-  extern char
-    * Error_Names[],
-    * Abort_Names[];
-
-  if (abort_value > 0)
+  fputs ("\nload-band: ", stderr);
   {
-    fprintf(stderr,
-	    "\nload-band: Error %d (%s) past the point of no return.\n",
-	    abort_value, Error_Names[abort_value]);
+    int abort_value = (abort_to_interpreter_argument ());
+    if (abort_value > 0)
+      fprintf (stderr, "Error %d (%s)",
+	       abort_value,
+	       (Error_Names [abort_value]));
+    else
+      fprintf (stderr, "Abort %d (%s)",
+	       abort_value,
+	       (Abort_Names [(-abort_value) - 1]));
   }
-  else
+  fputs (" past the point of no return.\n", stderr);
   {
-    fprintf(stderr,
-	    "\nload-band: Abort %d (%s) past the point of no return.\n",
-	    abort_value, Abort_Names[(-abort_value)-1]);
+    char * band_name = (* ((char **) ap));
+    if (band_name != 0)
+      {
+	fprintf (stderr, "band-name = \"%s\".\n", band_name);
+	free (band_name);
+      }
   }
-
-  if (band_name != ((char *) NULL))
-  {
-    fprintf(stderr, "band-name = \"%s\".\n", band_name);
-    free(band_name);
-  }
-  end_band_load(false, true);
-  Microcode_Termination(TERM_DISK_RESTORE);
+  fflush (stderr);
+  END_BAND_LOAD (false, true);
+  Microcode_Termination (TERM_DISK_RESTORE);
   /*NOTREACHED*/
 }
 

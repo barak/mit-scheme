@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/intercom.c,v 9.28 1990/06/20 17:41:04 cph Rel $
+
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,11 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/intercom.c,v 9.27 1989/09/20 23:09:24 cph Exp $
- *
- * Single-processor simulation of locking, propagating, and
- * communicating stuff.
- */
+/* Single-processor simulation of locking, propagating, and
+   communicating stuff. */
 
 #include "scheme.h"
 #include "prims.h"
@@ -74,13 +73,13 @@ DEFINE_PRIMITIVE ("GLOBAL-INTERRUPT", Prim_send_global_interrupt, 3, 3, 0)
   work = (ARG_REF (2));		/* Why is this being ignored? -- CPH */
   test = (ARG_REF (3));
   Save_Time_Zone (Zone_Global_Int);
-  Pop_Primitive_Frame (3);
+  POP_PRIMITIVE_FRAME (3);
  Will_Push (CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 1);
   Store_Return (RC_FINISH_GLOBAL_INT);
   Store_Expression (LONG_TO_UNSIGNED_FIXNUM (Which_Level));
   Save_Cont ();
-  Push (test);
-  Push (STACK_FRAME_HEADER);
+  STACK_PUSH (test);
+  STACK_PUSH (STACK_FRAME_HEADER);
  Pushed ();
   Restore_Time_Zone ();
   PRIMITIVE_ABORT (PRIM_APPLY);
@@ -190,19 +189,19 @@ DEFINE_PRIMITIVE ("GET-WORK", Prim_get_work, 1, 1, 0)
 	    Microcode_Termination (TERM_EXIT);
 	  }
 	PRIMITIVE_CANONICALIZE_CONTEXT ();
-	Pop_Primitive_Frame (1);
+	POP_PRIMITIVE_FRAME (1);
       Will_Push ((2 * (STACK_ENV_EXTRA_SLOTS + 1)) + 1 + CONTINUATION_SIZE);
 	/* When the thunk returns, call the primitive again.
 	   If there's still no work, we lose. */
-	Push (SHARP_F);
-	Push (primitive);
-	Push (STACK_FRAME_HEADER + 1);
+	STACK_PUSH (SHARP_F);
+	STACK_PUSH (primitive);
+	STACK_PUSH (STACK_FRAME_HEADER + 1);
 	Store_Expression (SHARP_F);
 	Store_Return (RC_INTERNAL_APPLY);
 	Save_Cont ();
 	/* Invoke the thunk. */
-	Push (thunk);
-	Push (STACK_FRAME_HEADER);
+	STACK_PUSH (thunk);
+	STACK_PUSH (STACK_FRAME_HEADER);
       Pushed ();
 	PRIMITIVE_ABORT (PRIM_APPLY);
       }
@@ -254,7 +253,7 @@ DEFINE_PRIMITIVE ("ZERO-ZONES", Prim_zero_zones, 0, 0, 0)
     Time_Meters[i] = 0;
   }
 
-  Old_Time=Sys_Clock();
+  Old_Time = (OS_process_clock ());
 #endif
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -298,11 +297,11 @@ DEFINE_PRIMITIVE ("MASTER-GC-LOOP", Prim_master_gc, 1, 1, 0)
     gc_prim = (make_primitive ("GARBAGE-COLLECT"));
   {
     SCHEME_OBJECT argument = (ARG_REF (1));
-    Pop_Primitive_Frame (1);
+    POP_PRIMITIVE_FRAME (1);
   Will_Push (STACK_ENV_EXTRA_SLOTS + 2);
-    Push (argument);
-    Push (gc_prim);
-    Push (STACK_FRAME_HEADER + 1);
+    STACK_PUSH (argument);
+    STACK_PUSH (gc_prim);
+    STACK_PUSH (STACK_FRAME_HEADER + 1);
   Pushed ();
     PRIMITIVE_ABORT (PRIM_APPLY);
   }

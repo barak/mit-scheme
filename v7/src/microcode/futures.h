@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/futures.h,v 9.26 1989/09/20 23:08:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/futures.h,v 9.27 1990/06/20 17:40:37 cph Rel $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -157,9 +157,9 @@ MIT in each case. */
 {									\
   Save_Cont ();								\
  Will_Push (STACK_ENV_EXTRA_SLOTS + 2);					\
-  Push (object);							\
-  Push (Get_Fixed_Obj_Slot (System_Scheduler));				\
-  Push (STACK_FRAME_HEADER + 1);					\
+  STACK_PUSH (object);							\
+  STACK_PUSH (Get_Fixed_Obj_Slot (System_Scheduler));			\
+  STACK_PUSH (STACK_FRAME_HEADER + 1);					\
  Pushed ();								\
 }
 
@@ -208,9 +208,9 @@ MIT in each case. */
 #define Call_Future_Logging()						\
 {									\
  Will_Push (STACK_ENV_EXTRA_SLOTS + 2);					\
-  Push (Touched_Futures_Vector ());					\
-  Push (Get_Fixed_Obj_Slot (Future_Logger));				\
-  Push (STACK_FRAME_HEADER + 1);					\
+  STACK_PUSH (Touched_Futures_Vector ());				\
+  STACK_PUSH (Get_Fixed_Obj_Slot (Future_Logger));			\
+  STACK_PUSH (STACK_FRAME_HEADER + 1);					\
  Pushed ();								\
   (Touched_Futures_Vector ()) = SHARP_F;				\
   goto Apply_Non_Trapping;						\
