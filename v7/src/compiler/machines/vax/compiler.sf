@@ -1,0 +1,129 @@
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/compiler.sf,v 1.1 1989/05/17 20:32:50 jinx Exp $
+$MC68020-Header: comp.sf,v 1.7 88/12/15 17:02:14 GMT cph Exp $
+
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
+
+;;;; Script to incrementally syntax the compiler
+
+;; Guarantee that the package modeller is loaded.
+(if (not (name->package '(CROSS-REFERENCE)))
+    (with-working-directory-pathname "/scheme/cref" (lambda () (load "make"))))
+
+;; Guarantee that the compiler's package structure exists.
+(if (not (name->package '(COMPILER)))
+    (begin
+      ;; If there is no existing package constructor, generate one.
+      (if (not (file-exists? "machines/vax/comp.bcon"))
+	  (begin
+	    ((access cref/generate-trivial-constructor
+		     (->environment '(CROSS-REFERENCE)))
+	     "machines/vax/comp")
+	    (sf "machines/vax/comp.con" "comp.bcon")))
+      (load "machines/vax/comp.bcon")))
+
+;; Guarantee that the necessary syntactic transforms and optimizers
+;; are loaded.
+(if (lexical-unreferenceable? (->environment '(COMPILER)) 'SYNTAX-FILES!)
+    (let ((sf-and-load
+	   (lambda (files package)
+	     (sf-conditionally files)
+	     (for-each (lambda (file)
+			 (load (string-append file ".bin") package))
+		       files))))
+      (write-string "\n\n---- Loading compile-time files ----")
+      (sf-and-load '("base/switch" "base/hashtb") '(COMPILER))
+      (sf-and-load '("base/macros") '(COMPILER MACROS))
+      ((access initialize-package! (->environment '(COMPILER MACROS))))
+      (sf-and-load '("machines/vax/decls") '(COMPILER DECLARATIONS))
+      (let ((environment (->environment '(COMPILER DECLARATIONS))))
+	(set! (access source-file-expression environment) "*.scm")
+	((access initialize-package! environment)))
+      (sf-and-load '("base/pmlook") '(COMPILER PATTERN-MATCHER/LOOKUP))
+      (sf-and-load '("base/pmpars") '(COMPILER PATTERN-MATCHER/PARSER))
+      (sf-and-load '("machines/vax/assmd") '(COMPILER ASSEMBLER))
+      (sf-and-load '("back/syntax") '(COMPILER LAP-SYNTAXER))
+      (sf-and-load '("machines/vax/coerce" "back/asmmac"
+					   "machines/vax/insmac")
+		   '(COMPILER LAP-SYNTAXER))
+      (sf-and-load '("base/scode") '(COMPILER))
+      (sf-and-load '("base/pmerly") '(COMPILER PATTERN-MATCHER/EARLY))
+      (sf-and-load '("machines/vax/inerly" "back/syerly")
+		   '(COMPILER LAP-SYNTAXER))
+      (sf-and-load '("machines/vax/dsyn")
+		   '(COMPILER DISASSEMBLER MACROS))
+      ((access initialize-package!
+	       (->environment '(COMPILER DISASSEMBLER MACROS))))))
+
+;; Load the assembler instruction database.
+(in-package (->environment '(COMPILER LAP-SYNTAXER))
+  (if (and compiler:enable-expansion-declarations?
+	   (null? early-instructions))
+      (fluid-let ((load-noisily? false))
+	(for-each (lambda (name)
+		    (write-string "\nPre-loading instruction set from ")
+		    (write name)
+		    (load (string-append "machines/vax/" name ".scm")
+			  '(COMPILER LAP-SYNTAXER)
+			  early-syntax-table)
+		    (write-string " -- done"))
+		  '("insutl" "instr1" "instr2" "instr3")))))
+
+;; Resyntax any files that need it.
+((access syntax-files! (->environment '(COMPILER))))
+
+(define (link-file from to #!optional physical?)
+  ((make-primitive-procedure 'LINK-FILE)
+   (canonicalize-input-filename from)
+   (canonicalize-output-filename to)
+   (and (not (default-object? physical?)) physical?)))
+
+(define (unix-rename-file from to)
+  (if (file-exists? to)
+      (delete-file to))
+  (link-file from to true)
+  (delete-file from))
+
+;; Rebuild the package constructors and cref.
+(dynamic-wind
+ (lambda ()
+   (link-file "machines/vax/comp.pkg" "comp.pkg" true))
+ (lambda ()
+   (cref/generate-all "comp")
+   (unix-rename-file "comp.cref" "machines/vax/comp.cref")
+   (unix-rename-file "comp.con" "machines/vax/comp.con")
+   (unix-rename-file "comp.ldr" "machines/vax/comp.ldr")
+   (unix-rename-file "comp.glob" "machines/vax/comp.glob"))
+ (lambda ()
+   (delete-file "comp.pkg")))
+(sf "machines/vax/comp.con" "comp.bcon")
+(sf "machines/vax/comp.ldr" "comp.bldr")
