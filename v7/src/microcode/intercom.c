@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/intercom.c,v 9.22 1987/04/16 02:24:17 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/intercom.c,v 9.23 1987/07/07 21:02:14 cph Rel $
  *
  * Single-processor simulation of locking, propagating, and
  * communicating stuff.
@@ -117,6 +117,28 @@ Define_Primitive(Prim_Put_Work, 1, "PUT-WORK")
   return TRUTH;
 }
 
+Define_Primitive(Prim_Put_Work_In_Front, 1, "PUT-WORK-IN-FRONT")
+{ Pointer The_Queue, Queue_Head, New_Entry;
+  Primitive_1_Arg();
+
+  The_Queue = Get_Fixed_Obj_Slot(The_Work_Queue);
+  if (The_Queue==NIL)
+  { Primitive_GC_If_Needed(4);
+    The_Queue = Make_Pointer(TC_LIST, Free);
+    Set_Fixed_Obj_Slot(The_Work_Queue, The_Queue);
+    *Free++ = NIL;
+    *Free++ = NIL;
+  }
+  else Primitive_GC_If_Needed(2);
+
+  Queue_Head = Vector_Ref(The_Queue, CONS_CDR);
+  New_Entry = Make_Pointer(TC_WEAK_CONS, Free);
+  *Free++ = Arg1;
+  *Free++ = Queue_Head;
+  Vector_Set(The_Queue, CONS_CAR, New_Entry);
+  if (Queue_Head==NIL) Vector_Set(The_Queue, CONS_CDR, New_Entry);
+}
+
 Define_Primitive(Prim_Drain_Queue, 0, "DRAIN-WORK-QUEUE!")
 {
   Pointer The_Queue;
@@ -127,6 +149,26 @@ Define_Primitive(Prim_Drain_Queue, 0, "DRAIN-WORK-QUEUE!")
   return ((The_Queue != NIL) ?
 	  Vector_Ref(The_Queue, CONS_CAR) :
 	  NIL);
+}
+
+Define_Primitive(Prim_Peek_Queue, 0, "PEEK-AT-WORK-QUEUE")
+{ Pointer The_Queue, This_Cons, Last_Cons;
+  Primitive_0_Args();
+
+  The_Queue = Get_Fixed_Obj_Slot(The_Work_Queue);
+  if (The_Queue == NIL) return NIL;
+
+  Last_Cons = NIL;
+  for (The_Queue = Vector_Ref(The_Queue, CONS_CAR);
+       The_Queue != NIL;
+       The_Queue = Vector_Ref(The_Queue, CONS_CDR)) {
+    Primitive_GC_If_Needed(2);
+    This_Cons = Make_Pointer(TC_LIST, Free);
+    *Free++ = Vector_Ref(The_Queue, CONS_CAR);
+    *Free++ = Last_Cons;
+    Last_Cons = This_Cons; }
+
+  return This_Cons;
 }
 
 Define_Primitive(Prim_Await_Sync, 1, "AWAIT-SYNCHRONY")
