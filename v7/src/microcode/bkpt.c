@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bkpt.c,v 9.28 1993/06/24 07:07:04 gjr Exp $
+$Id: bkpt.c,v 9.29 1993/11/03 18:49:17 jmiller Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -37,9 +37,7 @@ MIT in each case. */
 
 #include "scheme.h"
 
-#ifndef ENABLE_DEBUGGING_TOOLS
-#include "Error: Not debugging but bkpt.c included"
-#endif
+#ifdef ENABLE_DEBUGGING_FLAGS
 
 #define sp_nil ((struct sp_record *) 0)
 
@@ -108,3 +106,7 @@ DEFUN_VOID (Pop_Return_Break_Point)
   SP_List = One_Before.next;
   return;
 }
+
+#else
+/* Not ENABLE_DEBUGGING_FLAGS */
+#endif

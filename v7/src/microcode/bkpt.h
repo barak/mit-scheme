@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bkpt.h,v 9.29 1993/06/24 07:07:06 gjr Exp $
+$Id: bkpt.h,v 9.30 1993/11/03 18:50:24 jmiller Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -36,7 +36,7 @@ MIT in each case. */
    Disabled when not debugging the interpreter.
    It "shadows" definitions in default.h */
 
-#ifdef ENABLE_DEBUGGING_TOOLS
+#ifdef ENABLE_DEBUGGING_FLAGS
 
 struct sp_record
 {
@@ -71,4 +71,4 @@ typedef struct sp_record * sp_record_list;
 
 #define Apply_Ucode_Hook()
 
-#endif /* ENABLE_DEBUGGING_TOOLS */
+#endif /* ENABLE_DEBUGGING_FLAGS */
