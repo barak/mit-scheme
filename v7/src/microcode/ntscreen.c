@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.24 1996/10/02 18:58:14 cph Exp $
+$Id: ntscreen.c,v 1.25 1996/10/07 17:59:56 cph Exp $
 
 Copyright (c) 1993-96 Massachusetts Institute of Technology
 
@@ -37,6 +37,7 @@ MIT in each case. */
 #include "nt.h"
 #include "ntscreen.h"
 #include "ntgui.h"
+#include <windowsx.h>
 
 // constant definitions
 
@@ -141,58 +142,65 @@ typedef struct tagSCREENINFO
 #define HEIGHT(screen) MAXROWS
 // macros ( for easier readability )
 
-
 #define GETSCREEN( x ) ((SCREEN) GetWindowLong( x, GWL_SCREEN ))
 #define SETSCREEN( x, y ) SetWindowLong( x, GWL_SCREEN, (LONG) y )
-
 
 // CRT mappings to NT API
 
 #define _fmemset   memset
 #define _fmemmove  memmove
 
+static LRESULT CreateScreenInfo (HWND);
+static VOID DestroyScreenInfo (HWND);
+static BOOL ResetScreen (SCREEN);
+extern BOOL KillScreenFocus (HWND);
+static VOID PaintScreen (HWND);
+//static VOID EraseScreen (HWND, HDC);
+static BOOL SetScreenFocus (HWND);
+static BOOL ScrollScreenHorz (HWND, WORD, WORD);
+static BOOL ScrollScreenVert (HWND, WORD, WORD);
+static BOOL SizeScreen (HWND, WORD, WORD);
+static BOOL handle_window_pos_changing (HWND, LPWINDOWPOS);
+static VOID ProcessScreenCharacter (HWND, int, DWORD);
+static BOOL Process_KeyDown (HWND, UINT, WPARAM, LPARAM);
+static VOID ProcessMouseButton (HWND, UINT, UINT, LONG, BOOL);
+static VOID ProcessCloseMessage (SCREEN);
+static BOOL WriteScreenBlock (HWND, LPSTR, int);
+static int  ReadScreen (SCREEN, char*, int);
+static VOID MoveScreenCursor (SCREEN);
+extern UINT ScreenPeekOrRead
+  (SCREEN, int count, SCREEN_EVENT* buffer, BOOL remove);
+static COMMAND_HANDLER ScreenSetCommand
+  (SCREEN, WORD cmd, COMMAND_HANDLER handler);
+static WORD ScreenSetBinding (SCREEN, char key, WORD command);
+static VOID GetMinMaxSizes(HWND,LPPOINT,LPPOINT);
+static BOOL AdjustedSize (SCREEN,int*,int*);
+extern VOID Screen_Clear (SCREEN,int);
+static BOOL SelectScreenFont (SCREEN, HWND);
+static BOOL SelectScreenBackColor (SCREEN, HWND);
 
-LRESULT CreateScreenInfo (HWND);
-VOID DestroyScreenInfo (HWND);
-BOOL ResetScreen (SCREEN);
-BOOL KillScreenFocus (HWND);
-VOID PaintScreen (HWND);
-//VOID EraseScreen (HWND, HDC);
-BOOL SetScreenFocus (HWND);
-BOOL ScrollScreenHorz (HWND, WORD, WORD);
-BOOL ScrollScreenVert (HWND, WORD, WORD);
-BOOL SizeScreen (HWND, WORD, WORD);
-VOID ProcessScreenCharacter (HWND, int, DWORD);
-BOOL Process_KeyDown (HWND, UINT, WPARAM, LPARAM);
-VOID ProcessMouseButton (HWND, UINT, UINT, LONG, BOOL);
-VOID ProcessCloseMessage (SCREEN);
-BOOL WriteScreenBlock (HWND, LPSTR, int);
-int  ReadScreen (SCREEN, char*, int);
-VOID MoveScreenCursor (SCREEN);
-UINT ScreenPeekOrRead (SCREEN, int count, SCREEN_EVENT* buffer, BOOL remove);
-COMMAND_HANDLER ScreenSetCommand (SCREEN, WORD cmd, COMMAND_HANDLER handler);
-WORD ScreenSetBinding (SCREEN, char key, WORD command);
-VOID GetMinMaxSizes(HWND,LPPOINT,LPPOINT);
-BOOL AdjustedSize(SCREEN,int*,int*);
-VOID Screen_Clear (SCREEN,int);
-BOOL SelectScreenFont (SCREEN, HWND);
-BOOL SelectScreenBackColor (SCREEN, HWND);
+static HFONT set_font_1 (char *, LOGFONT *);
+static BOOL parse_logfont (char *, LOGFONT *);
+static long points_to_logical_units (long);
+static ENUMLOGFONT * search_for_font (LOGFONT *);
+static int CALLBACK search_for_font_proc
+  (ENUMLOGFONT *, NEWTEXTMETRIC *, int, LPARAM);
 
-LRESULT ScreenCommand_ChooseFont (HWND, WORD);
-LRESULT ScreenCommand_ChooseBackColor (HWND, WORD);
+extern LRESULT ScreenCommand_ChooseFont (HWND, WORD);
+extern LRESULT ScreenCommand_ChooseBackColor (HWND, WORD);
 
-SCREEN_EVENT  *alloc_event (SCREEN, SCREEN_EVENT_TYPE); //may return NULL
-int  GetControlKeyState(void);
+static SCREEN_EVENT * alloc_event (SCREEN, SCREEN_EVENT_TYPE);
+static int GetControlKeyState (void);
 
 //void *xmalloc (int size);
 //void xfree (void*);
 #define xfree free
 #define xmalloc malloc
 
-LRESULT FAR CALLBACK ScreenWndProc (HWND, UINT, WPARAM, LPARAM);
+extern LRESULT FAR CALLBACK ScreenWndProc (HWND, UINT, WPARAM, LPARAM);
 
-VOID RegisterScreen (SCREEN);
-VOID UnregisterScreen (SCREEN);
+static VOID RegisterScreen (SCREEN);
+static VOID UnregisterScreen (SCREEN);
 
 //
 //  FILE GLOBAL VARIABLES
@@ -203,6 +211,54 @@ static  HICON   ghDefaultIcon;
 
 static  LOGFONT lfDefaultLogFont;
 
+static long
+screen_x_extra (SCREEN screen)
+{
+  return ((GetSystemMetrics (SM_CXFRAME)) * 2);
+}
+
+static long
+screen_y_extra (SCREEN screen)
+{
+  /* -1 here is magic: When the combination of cyframe*2 and cycaption
+     is 28, AdjustWindowRect indicates that it should be 27.  */
+  return (((GetSystemMetrics (SM_CYFRAME)) * 2)
+	  + ((GetSystemMetrics (SM_CYCAPTION)) - 1)
+	  + ((GetMenu (screen -> hWnd)) ? (GetSystemMetrics (SM_CYMENU)) : 0));
+}
+
+static long
+pixel_to_char_width (SCREEN screen, long pixel_width)
+{
+  return
+    (((pixel_width - (screen_x_extra (screen))) + (screen -> xOffset))
+     / (screen -> xChar));
+}
+
+static long
+pixel_to_char_height (SCREEN screen, long pixel_height)
+{
+  return
+    (((pixel_height - (screen_y_extra (screen))) + (screen -> yOffset))
+     / (screen -> yChar));
+}
+
+static long
+char_to_pixel_width (SCREEN screen, long char_width)
+{
+  return
+    (((char_width * (screen -> xChar)) - (screen -> xOffset))
+     + (screen_x_extra (screen)));
+}
+
+static long
+char_to_pixel_height (SCREEN screen, long char_height)
+{
+  return
+    (((char_height * (screen -> yChar)) - (screen -> yOffset))
+     + (screen_y_extra (screen)));
+}
+
 static void
 init_LOGFONT (LOGFONT *lf)
 {
@@ -210,15 +266,15 @@ init_LOGFONT (LOGFONT *lf)
     lf->lfWidth =          0 ;
     lf->lfEscapement =     0 ;
     lf->lfOrientation =    0 ;
-    lf->lfWeight =         400 ;  /* Normal */
+    lf->lfWeight =         FW_NORMAL ;
     lf->lfItalic =         0 ;
     lf->lfUnderline =      0 ;
     lf->lfStrikeOut =      0 ;
     lf->lfCharSet =        ANSI_CHARSET ;
-    lf->lfOutPrecision =   OUT_CHARACTER_PRECIS ;
-    lf->lfClipPrecision =  CLIP_CHARACTER_PRECIS ;
-    lf->lfQuality =        DRAFT_QUALITY ;
-    lf->lfPitchAndFamily = FIXED_PITCH | FF_MODERN ;
+    lf->lfOutPrecision =   OUT_RASTER_PRECIS ;
+    lf->lfClipPrecision =  CLIP_DEFAULT_PRECIS ;
+    lf->lfQuality =        PROOF_QUALITY ;
+    lf->lfPitchAndFamily = FIXED_PITCH | FF_DONTCARE ;
     lstrcpy (lf->lfFaceName, "");
 }
 
@@ -255,7 +311,6 @@ init_geometry (char *geom_symbol, int *params)
     params[ctr] = strtoul (token, NULL, 0);
   return  FALSE;
 }
-
 
 #ifdef WINDOWSLOSES
 
@@ -454,7 +509,8 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       case WM_CREATE:
       {
 	 LRESULT result = CreateScreenInfo (hWnd);
-	 ShowWindow (hWnd, ((int) ((LPCREATESTRUCT) lParam) -> lpCreateParams));
+	 ShowWindow (hWnd,
+		     ((int) ((LPCREATESTRUCT) lParam) -> lpCreateParams));
 	 UpdateWindow (hWnd);
 	 return  result;
       }
@@ -491,7 +547,7 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       case SCREEN_SETBINDING:
 	 return  (LRESULT)
 	   ScreenSetBinding(screen, LOBYTE(wParam), (WORD)lParam);
-        
+        
       case SCREEN_GETBINDING:
 	 return  (LRESULT)
 	   ScreenSetBinding(screen, LOBYTE(wParam), (WORD)-1);
@@ -578,6 +634,8 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	  SizeScreen (hWnd, HIWORD(lParam), LOWORD(lParam));
 	break ;
 
+      HANDLE_MSG (hWnd, WM_WINDOWPOSCHANGING, handle_window_pos_changing);
+
       case WM_HSCROLL:
 	 ScrollScreenHorz (hWnd, LOWORD(wParam), HIWORD(wParam));
 	 break ;
@@ -585,7 +643,7 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       case WM_VSCROLL:
 	 ScrollScreenVert (hWnd, LOWORD(wParam), HIWORD(wParam));
 	 break ;
-
+
       case WM_SYSKEYDOWN:
       case WM_KEYDOWN:
          if (IsIconic (hWnd)) goto use_default;
@@ -629,7 +687,9 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       case WM_SYSCHAR:
       case WM_CHAR:
          if (IsIconic (hWnd)) goto use_default;
-	 ProcessScreenCharacter (hWnd, LOBYTE (LOWORD(wParam)), (DWORD) lParam);
+	 ProcessScreenCharacter (hWnd,
+				 LOBYTE (LOWORD(wParam)),
+				 (DWORD) lParam);
 	 break ;
 
       case WM_SETFOCUS:
@@ -814,15 +874,16 @@ CreateScreenInfo (HWND hWnd)
    AppendMenu (hMenu, MF_SEPARATOR, 0, 0);
 // AppendMenu (hMenu, MF_STRING, IDM_SETTINGS, "&Settings...");
    AppendMenu (hMenu, MF_STRING, SCREEN_COMMAND_CHOOSEFONT, "&Font...");
-   AppendMenu (hMenu, MF_STRING, SCREEN_COMMAND_CHOOSEBACKCOLOR, "&Background...");
+   AppendMenu (hMenu, MF_STRING, SCREEN_COMMAND_CHOOSEBACKCOLOR,
+	       "&Background...");
     
    SendMessage (hWnd, SCREEN_SETCOMMAND,
 		SCREEN_COMMAND_CHOOSEFONT, (LPARAM)ScreenCommand_ChooseFont);
 // SendMessage (hWnd, SCREEN_SETBINDING, 6, SCREEN_COMMAND_CHOOSEFONT);
-   SendMessage (hWnd, SCREEN_SETCOMMAND,
-		SCREEN_COMMAND_CHOOSEBACKCOLOR, (LPARAM)ScreenCommand_ChooseBackColor);
+   SendMessage (hWnd, SCREEN_SETCOMMAND, SCREEN_COMMAND_CHOOSEBACKCOLOR,
+		(LPARAM)ScreenCommand_ChooseBackColor);
 // SendMessage (hWnd, SCREEN_SETBINDING, 7, SCREEN_COMMAND_CHOOSEBACKCOLOR);
-		  
+
    screen->n_chars = 0;
    screen->line_buffer = xmalloc (MAX_LINEINPUT + 1);
      
@@ -1027,7 +1088,7 @@ ResetScreen (SCREEN screen)
    
    if (screen->hFont)
      DeleteObject (screen->hFont);
-
+
    screen->hFont = CreateFontIndirect (&screen->lfFont);
 
    hDC = GetDC (hWnd);
@@ -1036,7 +1097,7 @@ ResetScreen (SCREEN screen)
    ReleaseDC (hWnd, hDC);
 
    screen->xChar = tm.tmAveCharWidth  ;
-   screen->yChar = tm.tmHeight + tm.tmExternalLeading ;
+   screen->yChar = tm.tmHeight /* + tm.tmExternalLeading */ ;
 
    // a slimy hack to make the caret the correct size: un- and re- focus
    if (screen->cursor_visible) {
@@ -1055,11 +1116,8 @@ ResetScreen (SCREEN screen)
    {
      int width, height;
      GetWindowRect (hWnd, &rcWindow);
-     width  = rcWindow.right - rcWindow.left;
-     height = (rcWindow.bottom - rcWindow.top
-	       - GetSystemMetrics(SM_CYCAPTION)
-	       - GetSystemMetrics(SM_CYFRAME)
-	       - (GetMenu(hWnd) ? GetSystemMetrics(SM_CYMENU) : 0));
+     width  = (rcWindow.right - rcWindow.left - (screen_x_extra (screen)));
+     height = (rcWindow.bottom - rcWindow.top - (screen_y_extra (screen)));
      if (AdjustedSize (screen, &width, &height))
        MoveWindow (hWnd, rcWindow.left, rcWindow.top, width, height, TRUE);
      else
@@ -1124,7 +1182,7 @@ Do_PaintScreen (HWND hWnd, SCREEN screen, HDC hDC, PAINTSTRUCT * ps)
   SetBkMode (hDC, OPAQUE);
   SetTextColor (hDC, screen->rgbFGColour);
   SetBkColor (hDC, screen->rgbBGColour);
-
+
   for (bias = ((nRow * MAXCOLS) + nCol),
        nVertPos = ((nRow * screen->yChar) - screen->yOffset);  
        nRow <= nEndRow;
@@ -1387,11 +1445,11 @@ SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
      }
    }
 
-   // Cause screen to be redrawn, but if we are under Edwin, dont bother as
-   // Edwin has to calculate the redisplay anyway.
-   // Well, we do bother otherwise we would have to clear the part of the screen
-   // that is not in a character box.
-   // if ((screen->mode_flags & SCREEN_MODE_EDWIN) == 0)
+   // Cause screen to be redrawn, but if we are under Edwin, dont
+   // bother as Edwin has to calculate the redisplay anyway.  Well, we
+   // do bother otherwise we would have to clear the part of the
+   // screen that is not in a character box.  if ((screen->mode_flags
+   // & SCREEN_MODE_EDWIN) == 0)
    {
      InvalidateRect (hWnd, NULL, TRUE);
    }
@@ -1399,6 +1457,32 @@ SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
    return  TRUE;
 
 } // end of SizeScreen
+
+static BOOL
+handle_window_pos_changing (HWND hwnd, LPWINDOWPOS wp)
+{
+  BOOL result = (FORWARD_WM_WINDOWPOSCHANGING (hwnd, wp, DefWindowProc));
+  if ((wp -> flags) & SWP_NOSIZE)
+    return (result);
+  {
+    SCREEN screen = (GETSCREEN (hwnd));
+    (wp -> cx)
+      = (char_to_pixel_width (screen,
+			      (pixel_to_char_width (screen, (wp -> cx)))));
+    (wp -> cy)
+      = (char_to_pixel_height (screen,
+			       (pixel_to_char_height (screen, (wp -> cy)))));
+  }
+  return (0);
+}
+
+void
+screen_char_dimensions (HWND hwnd, int * xchar, int * ychar)
+{
+  SCREEN screen = (GETSCREEN (hwnd));
+  (*xchar) = (screen -> xChar);
+  (*ychar) = (screen -> yChar);
+}
 
 //---------------------------------------------------------------------------
 //  BOOL ScrollScreenVert (HWND hWnd, WORD wScrollCmd, WORD wScrollPos )
@@ -1819,7 +1903,6 @@ ProcessScreenCharacter (HWND hWnd, int ch, DWORD lKeyData)
    make_key_event (screen, ch, 0, lKeyData);
 }
 
-
 static BOOL
 Process_KeyDown (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -1932,7 +2015,8 @@ ProcessCloseMessage (SCREEN screen)
 }
 
 static VOID
-ProcessMouseButton (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL up)
+ProcessMouseButton (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
+		    BOOL up)
 {
   SCREEN screen = GETSCREEN (hWnd) ;
   SCREEN_EVENT * event ;
@@ -1981,7 +2065,6 @@ ProcessMouseButton (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL up)
     event->event.mouse.double_click = 0;
   }
 }
-    
 
 /* Utilities for WriteScreenBlock */
 
@@ -2068,7 +2151,6 @@ clear_screen_rectangle (SCREEN screen,
   InvalidateRect (screen->hWnd, &rect, FALSE);
 }
 
-
 #define INIT_SCREEN_WRITE_CHAR_STATE(state) state.row = -1
 
 static VOID _fastcall
@@ -2121,7 +2203,6 @@ Screen_WriteCharUninterpreted (SCREEN screen, int ch,
 
   if (screen->column < 0)
     screen->column = 0;
-
 
   screen->chars[screen->row * MAXCOLS + screen->column] = ch;
   screen->attrs[screen->row * MAXCOLS + screen->column] =
@@ -2262,7 +2343,8 @@ scroll_screen_vertically (SCREEN screen,
 
 static VOID _fastcall
 scroll_screen_line_horizontally (SCREEN screen, int row,
-				 int lo_col_from, int hi_col_from, int lo_col_to)
+				 int lo_col_from, int hi_col_from,
+				 int lo_col_to)
 {
   RECT rect;
   int delta_col = (hi_col_from - lo_col_from);
@@ -2304,7 +2386,8 @@ screen_write_octal (SCREEN screen, unsigned char the_char,
 {
   Screen_WriteCharUninterpreted (screen, '\\', rectp);
   Screen_WriteCharUninterpreted (screen, ((the_char / 0100) + '0'), rectp);
-  Screen_WriteCharUninterpreted (screen, (((the_char % 0100) / 010) + '0'), rectp);
+  Screen_WriteCharUninterpreted (screen, (((the_char % 0100) / 010) + '0'),
+				 rectp);
   Screen_WriteCharUninterpreted (screen, ((the_char % 010) + '0'), rectp);
 }
 #endif /* PRETTY_PRINT_CHARS */
@@ -2401,7 +2484,7 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock_in, int nLength_in)
     case '\t':
       Screen_TAB (screen, &state);
       break;
-
+
     case ASCII_LF:
       if (screen->mode_flags & SCREEN_MODE_NEWLINE_CRS)
 	Screen_CR (screen);
@@ -2470,7 +2553,7 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock_in, int nLength_in)
 				(screen->row + 1), screen->width);
 	i += 2;         /* 1 added in for loop */
 	continue;
-
+
       case 'J':
 	/* Clear to bottom */
 	if (screen->column == 0)
@@ -2536,7 +2619,7 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock_in, int nLength_in)
 					 screen->column);
 	i += 2;
 	continue;
-
+
       case '@':
 	/* Insert char */
 	scroll_screen_line_horizontally (screen, screen->row,
@@ -2577,7 +2660,8 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock_in, int nLength_in)
 
 	    case 'A':
 	      /* Multi cursor up */
-	      relocate_cursor (screen, (screen->row - x_value), screen->column);
+	      relocate_cursor (screen, (screen->row - x_value), 
+			       screen->column);
 	      i = j; /* 1 added in for loop */
 	      continue;
 
@@ -2598,15 +2682,17 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock_in, int nLength_in)
 				      (screen->row + x_value), screen->width);
 	      i = j; /* 1 added in for loop */
 	      continue;
-
+
 	    case 'M':
 	      /* Multi delete line */
 	      scroll_screen_vertically (screen,
-					(screen->row + x_value), screen->column,
+					(screen->row + x_value),
+					screen->column,
 					screen->height, screen->width,
 					screen->row);
 	      clear_screen_rectangle (screen,
-				      (screen->height - x_value), screen->column,
+				      (screen->height - x_value),
+				      screen->column,
 				      screen->height, screen->width);
 	      i = j; /* 1 added in for loop */
 	      continue;
@@ -2614,7 +2700,8 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock_in, int nLength_in)
 	    case 'P':
 	      /* Multi delete char */
 	      scroll_screen_line_horizontally (screen, screen->row,
-					       (screen->column + x_value), screen->width,
+					       (screen->column + x_value),
+					       screen->width,
 					       screen->column);
 	      i = j; /* 1 added in for loop */
 	      continue;
@@ -2637,7 +2724,7 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock_in, int nLength_in)
 		continue;
 	      }
 	      goto use_default;
-
+
 	    case 'p':
 	      /* Not a real ANSI escape.  Modelled after aaa. */
 	      if ((j == (i + 3)) && (x_value < 2))
@@ -2654,7 +2741,8 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock_in, int nLength_in)
 		{
 		  screen->mode_flags &= (~ SCREEN_MODE_EDWIN);
 		  screen->mode_flags |= SCREEN_MODE_NEWLINE_CRS;
-		  screen->scroll_lines = (COMPUTE_SCROLL_LINES (screen->height));
+		  screen->scroll_lines
+		    = (COMPUTE_SCROLL_LINES (screen->height));
 		  SetWindowText (screen->hWnd, "MIT Scheme");
 		}
 		i = j;  /* 1 added in for loop */
@@ -2808,7 +2896,7 @@ ReadScreen_line_input (SCREEN screen, LPSTR buffer, int buflen)
 	   & SCREEN_ANY_ALT_KEY_MASK)
 	  != 0)
 	ch |= 0200;         
-	
+
       if (ch != 0)
 	buffered_key_command (screen, ch);
 	  
@@ -2868,7 +2956,7 @@ ReadScreen_raw (SCREEN screen, LPSTR buffer, int buflen)
 	   & SCREEN_ANY_ALT_KEY_MASK)
 	  != 0)
 	ch |= 0200;         
-	
+
       /* Store the character */
 
       buffer[position++] = ch;
@@ -3151,7 +3239,6 @@ Screen_SetAttributeDirect (SCREEN screen, SCREEN_ATTRIBUTE sa)
   screen->write_attribute = sa;
 }
 
-
 VOID
 Screen_WriteChar (HANDLE screen, char ch)
 {
@@ -3211,7 +3298,6 @@ Screen_Read (HANDLE hWnd, BOOL buffered_p, char * buffer, int buflen)
   return  result;
 }
 
-
 VOID
 Screen_GetSize (HWND hWnd, int *rows, int *columns)
 {
@@ -3252,88 +3338,198 @@ Enable_Cursor (SCREEN screen, BOOL show)
   }
 }
 
-
-HICON ScreenSetIcon(SCREEN screen, HICON hIcon)
+HICON
+ScreenSetIcon(SCREEN screen, HICON hIcon)
 {
   HICON  result = screen->hIcon;
   screen->hIcon = hIcon;
   return  result;
 }
-
-
-
-
-
-
-static BOOL
-parse_logfont (char *name, LOGFONT *lf)
-{
-  int i = 0, len, name_ended = 0;
-  char *start = name, *end = name;
-
-  while (1) {
-    while (*start==' ') start++;
-    if (*start==0) return  TRUE;
-    end = start;
-    while (*end!=' ' && *end!=0) end++;
-    len = end-start;
-    if ((*start>='0' && *start<='9') || *start=='-')
-      lf->lfHeight = atol(start), name_ended = 1;
-    else if (4==len && 0==_strnicmp(start, "bold", len))
-      lf->lfWeight = 700, name_ended = 1;
-    else if (6==len && 0==_strnicmp(start, "italic", len))
-      lf->lfItalic = TRUE, name_ended = 1;
-    else if (7==len && 0==_strnicmp(start, "regular", len))
-      lf->lfWeight = 400, lf->lfItalic = FALSE, name_ended = 1;
-    else if (9==len && 0==_strnicmp(start, "underline", len))
-      lf->lfUnderline = TRUE, name_ended = 1;
-    else if (9==len && 0==_strnicmp(start, "strikeout", len))
-      lf->lfStrikeOut = TRUE, name_ended = 1;
-    else if (LF_FACESIZE-i>len && !name_ended) {
-      if (i>0)
-	lf->lfFaceName[i++] = ' ';
-      while (start<end)
-	lf->lfFaceName[i++] = *start++;
-      lf->lfFaceName[i] = 0;
-    } else
-      return  FALSE;
-    start = end;
-  }
-}
-
-
-BOOL ScreenSetDefaultFont (char *description)
-{
-  /* modify default name & size, but undo characteristics */
-  LOGFONT lf = lfDefaultLogFont;
-  HFONT hFont;
-  lf.lfWeight = 400;
-  lf.lfItalic = lf.lfUnderline = lf.lfStrikeOut = FALSE;
-  if (! parse_logfont (description, &lf))
-    return  FALSE;
-  hFont = CreateFontIndirect (&lf);
-  if (hFont == NULL)
-    return  FALSE;
-  DeleteObject (hFont);
-  lfDefaultLogFont = lf;
-}
-
-BOOL ScreenSetFont (SCREEN screen, char *description)
+
+BOOL
+ScreenSetDefaultFont (char *description)
 {
   LOGFONT lf;
-  HFONT hFont;
-  init_LOGFONT (&lf);
-  if (! parse_logfont (description, &lf))
-    return  FALSE;
-  hFont = CreateFontIndirect (&lf);
-  if (hFont == NULL)
-    return  FALSE;
-  screen->hFont = hFont;
-  screen->lfFont = lf;
-  ResetScreen(screen);
-  return  TRUE;
+  HFONT hfont;
+
+  /* modify default name & size, but undo characteristics */
+  lf = lfDefaultLogFont;
+  (lf . lfWeight) = FW_NORMAL;
+  (lf . lfItalic) = FALSE;
+  (lf . lfUnderline) = FALSE;
+  (lf . lfStrikeOut) = FALSE;
+  hfont = (set_font_1 (description, (&lf)));
+  if (hfont == NULL)
+    return (FALSE);
+  else
+    {
+      DeleteObject (hfont);
+      lfDefaultLogFont = lf;
+      return (TRUE);
+    }
 }
 
+BOOL
+ScreenSetFont (SCREEN screen, char *description)
+{
+  LOGFONT lf;
+  HFONT hfont;
+
+  init_LOGFONT (&lf);
+  hfont = (set_font_1 (description, (&lf)));
+  if (hfont == NULL)
+    return (FALSE);
+  else
+    {
+      (screen -> hFont) = hfont;
+      (screen -> lfFont) = lf;
+      ResetScreen (screen);
+      return (TRUE);
+    }
+}
+
+static HFONT
+set_font_1 (char * description, LOGFONT * lf)
+{
+  HFONT hfont = NULL;
+  if (parse_logfont (description, lf))
+    {
+#if 0
+      ENUMLOGFONT * elf = (search_for_font (lf));
+      if (elf != 0)
+	free (elf);
+#endif
+      hfont = (CreateFontIndirect (lf));
+    }
+  return (hfont);
+}
+
+static BOOL
+parse_logfont (char * name, LOGFONT * lf)
+{
+  int i = 0;
+  int name_ended = 0;
+  int len;
+  char * start = name;
+  char * end = name;
+
+  while (1)
+    {
+      while ((*start) == ' ')
+	start += 1;
+      if ((*start) == '\0')
+	return (TRUE);
+      end = start;
+      while (((*end) != ' ') && ((*end) != 0))
+	end += 1;
+      len = (end - start);
+
+      if ((((*start) >= '0') && ((*start) <= '9')) || ((*start) == '-'))
+	{
+	  long points = (atol (start));
+	  (lf -> lfHeight) = (- (points_to_logical_units (points)));
+	  name_ended = 1;
+	}
+      else if ((len == 4) && ((_strnicmp (start, "bold", len)) == 0))
+	{
+	  (lf -> lfWeight) = FW_BOLD;
+	  name_ended = 1;
+	}
+      else if ((len == 6) && ((_strnicmp (start, "italic", len)) == 0))
+	{
+	  (lf -> lfItalic) = TRUE;
+	  name_ended = 1;
+	}
+      else if ((len == 7) && ((_strnicmp (start, "regular", len)) == 0))
+	{
+	  (lf -> lfWeight) = FW_NORMAL;
+	  (lf -> lfItalic) = FALSE;
+	  name_ended = 1;
+	}
+      else if ((len == 9) && ((_strnicmp (start, "underline", len)) == 0))
+	{
+	  (lf -> lfUnderline) = TRUE;
+	  name_ended = 1;
+	}
+      else if ((len == 9) && ((_strnicmp (start, "strikeout", len)) == 0))
+	{
+	  (lf -> lfStrikeOut) = TRUE;
+	  name_ended = 1;
+	}
+      else if ((len < (LF_FACESIZE - i)) && (!name_ended))
+	{
+	  if (i > 0)
+	    ((lf -> lfFaceName) [i++]) = ' ';
+	  while (start < end)
+	    ((lf -> lfFaceName) [i++]) = (*start++);
+	  ((lf -> lfFaceName) [i]) = '\0';
+	}
+      else
+	return (FALSE);
+      start = end;
+    }
+}
+
+static long
+points_to_logical_units (long points)
+{
+  HDC hdc = (CreateDC ("DISPLAY", NULL, NULL, NULL));
+  float pixels_per_inch_y = ((float) (GetDeviceCaps (hdc, LOGPIXELSY)));
+  float pixels = ((((float) points) / 72.0) * pixels_per_inch_y);
+  POINT pt;
+  (pt . x) = 0;
+  (pt . y) = ((int) (pixels * 10.0));
+  DPtoLP (hdc, (&pt), 1);
+  DeleteDC (hdc);
+  return ((pt . y) / 10);
+}
+
+struct enum_font_args
+{
+  LOGFONT * lf;
+  ENUMLOGFONT elf;
+};
+
+static ENUMLOGFONT *
+search_for_font (LOGFONT * lf)
+{
+  HDC hdc = (CreateDC ("DISPLAY", NULL, NULL, NULL));
+  struct enum_font_args args;
+  ENUMLOGFONT * result;
+  
+  (args . lf) = lf;
+  if (EnumFontFamilies (hdc,
+			(lf -> lfFaceName),
+			search_for_font_proc,
+			((LPARAM) (&args))))
+    result = 0;
+  else
+    {
+      result = (xmalloc (sizeof (ENUMLOGFONT)));
+      (*result) = (args . elf);
+    }
+  DeleteDC (hdc);
+  return (result);
+}
+
+static int CALLBACK
+search_for_font_proc (ENUMLOGFONT * elf, NEWTEXTMETRIC * ntm, int type,
+		      LPARAM a)
+{
+  struct enum_font_args * args = ((struct enum_font_args *) a);
+  if ((((elf -> elfLogFont) . lfHeight) == (args -> lf -> lfHeight))
+      && (((elf -> elfLogFont) . lfWeight) == (args -> lf -> lfWeight))
+      && (((elf -> elfLogFont) . lfItalic) == (args -> lf -> lfItalic))
+      && (((elf -> elfLogFont) . lfUnderline) == (args -> lf -> lfUnderline))
+      && (((elf -> elfLogFont) . lfStrikeOut) == (args -> lf -> lfStrikeOut)))
+    {
+      (args -> elf) = (*elf);
+      return (0);
+    }
+  else
+    return (1);
+}
+
 static BOOL
 change_colour (SCREEN screen, DWORD requested_colour, DWORD *colour_slot)
 {
@@ -3356,12 +3552,14 @@ change_colour (SCREEN screen, DWORD requested_colour, DWORD *colour_slot)
   return  TRUE;
 }
 
-BOOL ScreenSetForegroundColour (SCREEN screen, DWORD colour)
+BOOL
+ScreenSetForegroundColour (SCREEN screen, DWORD colour)
 {
   return  change_colour (screen, colour, &screen->rgbFGColour);
 }
 
-BOOL ScreenSetBackgroundColour (SCREEN screen, DWORD colour)
+BOOL
+ScreenSetBackgroundColour (SCREEN screen, DWORD colour)
 {
   return  change_colour (screen, colour, &screen->rgbBGColour);
 }
