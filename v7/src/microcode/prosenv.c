@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosenv.c,v 1.10 1993/08/28 22:46:39 gjr Exp $
+$Id: prosenv.c,v 1.11 1993/08/29 19:54:27 ziggy Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -174,7 +174,7 @@ Both arguments are in units of milliseconds.")
 }
 
 DEFINE_PRIMITIVE ("PROFILE-TIMER-CLEAR", Prim_profile_timer_clear, 0, 0,
-  "Turn off the PC sample timer.")
+  "Turn off the profile timer.")
 {
   PRIMITIVE_HEADER (0);
   OS_profile_timer_clear ();
@@ -182,7 +182,7 @@ DEFINE_PRIMITIVE ("PROFILE-TIMER-CLEAR", Prim_profile_timer_clear, 0, 0,
 }
 
 DEFINE_PRIMITIVE ("PROFILE-TIMER-SET", Prim_profile_timer_set, 2, 2,
-  "Set the PC sample timer.\n\
+  "Set the profile timer.\n\
 First arg FIRST says how long to wait until the first interrupt;\n\
 second arg INTERVAL says how long to wait between interrupts after that.\n\
 Both arguments are in units of milliseconds.")
