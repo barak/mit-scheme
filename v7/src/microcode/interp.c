@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.41 1988/03/13 15:52:28 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.42 1988/03/23 18:31:25 jrm Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -1379,7 +1379,7 @@ Perform_Application:
 	    Push(Fast_Vector_Ref(Function, ENTITY_OPERATOR));
 	    Push(nargs + 1);
 	    /* No interrupts, etc. */
-	    goto Perform_Application;
+	    goto Apply_Non_Trapping;
 	  }
 
 /* Interpret() continues on the next page */
