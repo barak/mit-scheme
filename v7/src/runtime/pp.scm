@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.18 1991/08/17 16:07:23 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.19 1991/08/21 16:57:02 jinx Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -64,12 +64,12 @@ MIT in each case. |#
 			    start-string end-string
 			    as-code? depth-limit
 			    breadth-limit)))
-  (object false read-only true)
-  (start-string "*=>" read-only true)
-  (end-string "<=*" read-only true)
-  (as-code? 'DEFAULT read-only true)
-  (depth-limit 'DEFAULT read-only true)
-  (breadth-limit 'DEFAULT read-only true))
+  (object false)
+  (start-string "*=>")
+  (end-string "<=*")
+  (as-code? 'DEFAULT)
+  (depth-limit 'DEFAULT)
+  (breadth-limit 'DEFAULT))
 
 (define *pp-named-lambda->define?* true)
 (define *pp-primitives-by-name* true)
