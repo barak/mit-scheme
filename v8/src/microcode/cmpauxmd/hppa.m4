@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpauxmd/hppa.m4,v 1.11 1991/05/02 06:12:10 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpauxmd/hppa.m4,v 1.12 1991/05/07 17:27:44 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -113,14 +113,26 @@ changecom(`;');;; -*-Midas-*-
 ;;;;	dp   = gr27; ret0 = gr28; ret1 = gr29; sp   = gr30; rp   = gr02
 
 changequote(",")
-define(ASM_DEBUG,0)
+define(HEX, "0x$1")
+define(ASM_DEBUG, 0)
 define(TC_LENGTH, ifdef("TYPE_CODE_LENGTH", TYPE_CODE_LENGTH, 8))
 define(QUAD_MASK, eval(2 ** (TC_LENGTH - 2)))
 define(LOW_TC_BIT, eval(TC_LENGTH - 1))
-define(FIXNUM_LENGTH, eval(32 - TC_LENGTH))
+define(DATUM_LENGTH, eval(32 - TC_LENGTH))
+define(FIXNUM_LENGTH, DATUM_LENGTH)
 define(FIXNUM_POS, eval(FIXNUM_LENGTH - 1))
 define(FIXNUM_BIT, eval(TC_LENGTH + 1))
-
+define(TC_START, eval(TC_LENGTH - 1))
+define(TC_FIXNUM, 0x1a)
+define(TC_FLONUM, 0x6)
+define(TC_CCENTRY, 0x28)
+define(TC_NMV, 0x27)
+define(FLONUM_VECTOR_HEADER, eval((TC_NMV * (2 ** DATUM_LENGTH)) + 2))
+define(TC_FALSE, 0)
+define(TC_TRUE, 0x8)
+define(SHARP_F, eval(TC_FALSE * (2 ** DATUM_LENGTH)))
+define(SHARP_T, eval(TC_TRUE * (2 ** DATUM_LENGTH)))
+
 	.SPACE  $TEXT$
 	.SUBSPA $CODE$,QUAD=0,ALIGN=8,ACCESS=44,CODE_ONLY
 C_to_interface
@@ -229,29 +241,105 @@ fixnum_remainder_hook
 fixnum_lsh_hook
 	B	fixnum_lsh+4
 	EXTRS	25,FIXNUM_POS,FIXNUM_LENGTH,25		; arg2
+
+generic_plus_hook
+	B	generic_plus+4
+	LDW	0(0,22),6		; arg1
 
+generic_subtract_hook
+	B	generic_subtract+4
+	LDW	0(0,22),6		; arg1
+
+generic_times_hook
+	B	generic_times+4
+	LDW	0(0,22),6		; arg1
+
+generic_divide_hook
+	B	generic_divide+4
+	LDW	0(0,22),6		; arg1
+
+generic_equal_hook
+	B	generic_equal+4
+	LDW	0(0,22),6		; arg1
+
+generic_less_hook
+	B	generic_less+4
+	LDW	0(0,22),6		; arg1
+
+generic_greater_hook
+	B	generic_greater+4
+	LDW	0(0,22),6		; arg1
+
+generic_increment_hook
+	B	generic_increment+4
+	LDW	0(0,22),6		; arg1
+
+generic_decrement_hook
+	B	generic_decrement+4
+	LDW	0(0,22),6		; arg1
+
+generic_zero_hook
+	B	generic_zero+4
+	LDW	0(0,22),6		; arg1
+
+generic_positive_hook
+	B	generic_positive+4
+	LDW	0(0,22),6		; arg1
+
+generic_negative_hook
+	B	generic_negative+4
+	LDW	0(0,22),6		; arg1
+
 no_hook
 ;;
 ;; Provide dummy trapping hooks in case a newver version of compiled
 ;; code that expects more hooks is run.
 ;;
-	BREAK	0,6
+	BREAK	0,18
 	NOP
-	BREAK	0,7
+	BREAK	0,19
 	NOP
-	BREAK	0,8
+	BREAK	0,20
 	NOP
-	BREAK	0,9
+	BREAK	0,21
 	NOP
-	BREAK	0,10
+	BREAK	0,22
 	NOP
-	BREAK	0,11
+	BREAK	0,23
 	NOP
-	BREAK	0,12
+	BREAK	0,24
 	NOP
-	BREAK	0,13
+	BREAK	0,25
 	NOP
-	BREAK	0,14
+	BREAK	0,26
+	NOP
+	BREAK	0,27
+	NOP
+	BREAK	0,28
+	NOP
+	BREAK	0,28
+	NOP
+	BREAK	0,29
+	NOP
+	BREAK	0,30
+	NOP
+	BREAK	0,31
+	NOP
+	BREAK	0,32
+	NOP
+	BREAK	0,33
+	NOP
+	BREAK	0,34
+	NOP
+	BREAK	0,35
+	NOP
+	BREAK	0,36
+	NOP
+	BREAK	0,37
+	NOP
+	BREAK	0,38
+	NOP
+	BREAK	0,39
 	NOP
 
 ifelse(ASM_DEBUG,1,"interface_break
@@ -442,6 +530,175 @@ fixnum_lsh_positive
 	BE	0(5,31)			; return	
 	COPY	0,25			; signal no overflow
 
+;;;; Generic arithmetic utilities.
+;;;  On entry the arguments are on the Scheme stack, and the return
+;;;  address immediately above them.
+
+define(define_generic_binary,
+"generic_$1
+	LDW	0(0,22),6		; arg1
+	LDW	4(0,22),8		; arg2
+	EXTRU	6,TC_START,TC_LENGTH,7	; type of arg1
+	EXTRU	8,TC_START,TC_LENGTH,9	; type of arg2
+	COMIB,<>,N	TC_FLONUM,7,generic_$1_one_unk
+	COMIB,<>,N	TC_FLONUM,9,generic_$1_two_unk
+	DEP	5,TC_START,TC_LENGTH,6	; data segment quadrant bits
+	FLDDS	4(0,6),4		; arg1 -> fr4
+	DEP	5,TC_START,TC_LENGTH,8	; data segment quadrant bits
+	FLDDS	4(0,8),5		; arg2 -> fr5
+	LDO	8(22),22		; pop args from stack
+	B	generic_flonum_result	; cons flonum and return
+	$3,DBL	4,5,4			; operate
+
+generic_$1_one_unk			; ~FLO * ??
+	COMIB,<>,N	TC_FLONUM,9,generic_$1_fail
+	COMICLR,=	TC_FIXNUM,7,0
+	B,N	generic_$1_fail
+	EXTRS	6,31,FIXNUM_LENGTH,6	; sign extend arg1
+	STW	6,0(0,21)		; put in memory to reload into fpcp
+	LDO	8(22),22		; pop args from stack
+	DEP	5,TC_START,TC_LENGTH,8	; data segment quadrant bits
+	FLDWS	0(0,21),4		; single precision int arg1 -> fr4
+	FLDDS	4(0,8),5		; arg2 -> fr5
+        FCNVXF,SGL,DBL  4,4		; convert to double float
+	B	generic_flonum_result	; cons flonum and return
+	$3,DBL	4,5,4			; operate
+	
+generic_$1_two_unk			; FLO * ~FLO
+	COMICLR,=	TC_FIXNUM,9,0
+	B,N	generic_$1_fail
+	EXTRS	8,31,FIXNUM_LENGTH,8	; sign extend arg2
+	STW	8,0(0,21)		; put in memory to reload into fpcp
+	LDO	8(22),22		; pop args from stack
+	DEP	5,TC_START,TC_LENGTH,6	; data segment quadrant bits
+	FLDWS	0(0,21),5		; single precision int arg2 -> fr5
+	FLDDS	4(0,6),4		; arg1 -> fr4
+        FCNVXF,SGL,DBL  5,5		; convert to double float
+	B	generic_flonum_result	; cons flonum and return
+	$3,DBL	4,5,4			; operate
+
+generic_$1_fail				; ?? * ??, out of line
+	B	scheme_to_interface
+	LDI	HEX($2),28		; operation code")
+
+generic_flonum_result			; expects data in fr4.
+	DEPI	4,31,3,21		; align free
+	COPY	21,2			; result (untagged)
+	LDWM	4(0,22),8		; return address
+	LDIL	L'FLONUM_VECTOR_HEADER,7
+	LDO	R'FLONUM_VECTOR_HEADER(7),7
+	STWM	7,4(0,21)		; vector header
+	DEPI	TC_FLONUM,TC_START,TC_LENGTH,2 ; tag flonum
+	DEP	5,TC_START,TC_LENGTH,8	; data segment quadrant bits
+	BLE	0(5,8)			; return!
+	FSTDS,MA	4,8(0,21)	; store floating data
+
+define(define_generic_binary_predicate,
+"generic_$1
+	LDW	0(0,22),6		; arg1
+	LDW	4(0,22),8		; arg2
+	EXTRU	6,TC_START,TC_LENGTH,7	; type of arg1
+	EXTRU	8,TC_START,TC_LENGTH,9	; type of arg2
+	COMIB,<>,N	TC_FLONUM,7,generic_$1_one_unk
+	COMIB,<>,N	TC_FLONUM,9,generic_$1_two_unk
+	DEP	5,TC_START,TC_LENGTH,6	; data segment quadrant bits
+	FLDDS	4(0,6),4		; arg1 -> fr4
+	DEP	5,TC_START,TC_LENGTH,8	; data segment quadrant bits
+	FLDDS	4(0,8),5		; arg2 -> fr5
+	LDO	8(22),22		; pop args from stack
+	B	generic_boolean_result	; cons answer and return
+	FCMP,DBL,$3	4,5		; compare
+
+generic_$1_one_unk			; ~FLO * ??
+	COMIB,<>,N	TC_FLONUM,9,generic_$1_fail
+	COMICLR,=	TC_FIXNUM,7,0
+	B,N	generic_$1_fail
+	EXTRS	6,31,FIXNUM_LENGTH,6	; sign extend arg1
+	STW	6,0(0,21)		; put in memory to reload into fpcp
+	LDO	8(22),22		; pop args from stack
+	DEP	5,TC_START,TC_LENGTH,8	; data segment quadrant bits
+	FLDWS	0(0,21),4		; single precision int arg1 -> fr4
+	FLDDS	4(0,8),5		; arg2 -> fr5
+        FCNVXF,SGL,DBL  4,4		; convert to double float
+	B	generic_boolean_result	; cons answer and return
+	FCMP,DBL,$3	4,5		; compare
+	
+generic_$1_two_unk			; FLO * ~FLO
+	COMICLR,=	TC_FIXNUM,9,0
+	B,N	generic_$1_fail
+	EXTRS	8,31,FIXNUM_LENGTH,8	; sign extend arg2
+	STW	8,0(0,21)		; put in memory to reload into fpcp
+	LDO	8(22),22		; pop args from stack
+	DEP	5,TC_START,TC_LENGTH,6	; data segment quadrant bits
+	FLDWS	0(0,21),5		; single precision int arg2 -> fr5
+	FLDDS	4(0,6),4		; arg1 -> fr4
+        FCNVXF,SGL,DBL  5,5		; convert to double float
+	B	generic_boolean_result	; cons answer and return
+	FCMP,DBL,$3	4,5		; compare
+
+generic_$1_fail				; ?? * ??, out of line
+	B	scheme_to_interface
+	LDI	HEX($2),28		; operation code")
+
+generic_boolean_result
+	LDWM	4(0,22),8		; return address
+	LDIL	L'SHARP_T,2
+	FTEST
+	LDIL	L'SHARP_F,2
+	DEP	5,TC_START,TC_LENGTH,8	; data segment quadrant bits
+	BLE,N	0(5,8)			; return!
+
+define(define_generic_unary,
+"generic_$1
+	LDW	0(0,22),6		; arg
+	EXTRU	6,TC_START,TC_LENGTH,7	; type of arg
+	COMIB,<>,N	TC_FLONUM,7,generic_$1_fail
+	LDI	1,7			; constant 1
+	STW	7,0(0,21)		; into memory
+	DEP	5,TC_START,TC_LENGTH,6	; data segment quadrant bits
+	LDO	4(22),22		; pop arg from stack
+	FLDWS	0(0,21),5		; 1 -> fr5
+	FLDDS	4(0,6),4		; arg -> fr4
+	FCNVXF,SGL,DBL	5,5		; convert to double float
+	B	generic_flonum_result	; cons flonum and return
+	$3,DBL	4,5,4			; operate
+
+generic_$1_fail
+	B	scheme_to_interface
+	LDI	HEX($2),28		; operation code")
+
+define(define_generic_unary_predicate,
+"generic_$1
+	LDW	0(0,22),6		; arg
+	EXTRU	6,TC_START,TC_LENGTH,7	; type of arg
+	COMIB,<>,N	TC_FLONUM,7,generic_$1_fail
+	DEP	5,TC_START,TC_LENGTH,6	; data segment quadrant bits
+	FLDDS	4(0,6),4		; arg -> fr4
+	LDO	4(22),22		; pop arg from stack
+	B	generic_boolean_result	; cons answer and return
+	FCMP,DBL,$3	4,0		; compare
+
+generic_$1_fail
+	B	scheme_to_interface
+	LDI	HEX($2),28		; operation code")
+
+define_generic_unary(decrement,22,FSUB)
+define_generic_binary(divide,23,FDIV)
+define_generic_binary_predicate(equal,24,=)
+define_generic_binary_predicate(greater,25,>)
+define_generic_unary(increment,26,FADD)
+define_generic_binary_predicate(less,27,<)
+define_generic_binary(subtract,28,FSUB)
+define_generic_binary(times,29,FMPY)
+define_generic_unary_predicate(negative,2a,<)
+define_generic_binary(plus,2b,FADD)
+define_generic_unary_predicate(positive,2c,>)
+define_generic_unary_predicate(zero,2d,=)
+
+;;;; Assembly language entry point used by utilities in cmpint.c
+;;;  to return to the interpreter.
+;;;  It returns from C_to_interface.
+
 interface_to_C
 	COPY	29,28			; Setup C value
         LDW     -132(0,30),2		; Restore return address
