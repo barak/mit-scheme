@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.35 2000/05/22 15:25:43 cph Exp $
+$Id: todo.txt,v 1.36 2000/05/22 19:50:15 cph Exp $
 
 Bug fixes
 ---------
@@ -9,9 +9,6 @@ Bug fixes
 
 * Login messages interfere with modeline when doing completion on IMAP
   URLs.
-
-* M-x imail-copy-message reopens the IMAP connection for each message
-  that it sends.
 
 * Implement operations for IMAP: URL-EXISTS?.
 
