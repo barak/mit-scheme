@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr3.scm,v 1.3 2001/12/20 21:45:25 cph Exp $
+$Id: instr3.scm,v 1.4 2002/02/22 04:12:12 cph Exp $
 
-Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,15 +26,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((float-instruction-3
-      (lambda (keyword major minor)
-	`(define-instruction ,keyword
-	   (((? destination) (? source1) (? source2))
-	    (LONG (2 2)
-		  (5 destination)
-		  (6 ,major)
-		  (5 source1)
-		  (9 ,minor)
-		  (5 source2)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? destination) (? source1) (? source2))
+	     (LONG (2 2)
+		   (5 destination)
+		   (6 ,(caddr form))
+		   (5 source1)
+		   (9 ,(cadddr form))
+		   (5 source2))))))))
   (float-instruction-3 fadds 52 65)
   (float-instruction-3 faddd 52 66)
   (float-instruction-3 faddq 52 67)
@@ -52,15 +54,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((float-instruction-cmp
-      (lambda (keyword major minor)
-	`(define-instruction ,keyword
-	   (((? source1) (? source2))
-	    (LONG (2 2)
-		  (5 0)
-		  (6 ,major)
-		  (5 source1)
-		  (9 ,minor)
-		  (5 source2)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? source1) (? source2))
+	     (LONG (2 2)
+		   (5 0)
+		   (6 ,(caddr form))
+		   (5 source1)
+		   (9 ,(cadddr form))
+		   (5 source2))))))))
   (float-instruction-cmp fcmps 53 #x51)
   (float-instruction-cmp fcmpd 53 #x52)
   (float-instruction-cmp fcmpq 53 #x53)
@@ -70,15 +74,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   
 (let-syntax
     ((float-instruction-2
-      (lambda (keyword major minor)
-	`(define-instruction ,keyword
-	   (((? destination) (? source))
-	    (LONG (2 2)
-		  (5 destination)
-		  (6 ,major)
-		  (5 0)
-		  (9 ,minor)
-		  (5 source)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? destination) (? source))
+	     (LONG (2 2)
+		   (5 destination)
+		   (6 ,(caddr form))
+		   (5 0)
+		   (9 ,(cadddr form))
+		   (5 source))))))))
   (float-instruction-2 fsqrts #x34 #x29)
   (float-instruction-2 fsqrtd #x34 #x2a)
   (float-instruction-2 fsqrtq #x34 #x2b)
@@ -103,6 +109,3 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   
   (float-instruction-2 fstod #x34 #xc7)
   (float-instruction-2 fstod #x34 #xcb))
-  
-  
-  

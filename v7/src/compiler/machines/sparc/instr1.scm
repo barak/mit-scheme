@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr1.scm,v 1.3 2001/12/20 21:45:25 cph Exp $
+$Id: instr1.scm,v 1.4 2002/02/22 04:08:15 cph Exp $
 
-Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -29,38 +29,40 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((arithmetic-immediate-instruction
-      (lambda (keyword opcode)
-	`(define-instruction ,keyword
-	   (((? destination) (? source) (? immediate))
-	    (VARIABLE-WIDTH (evaluated-immediate immediate)
-	      ((#x-2000 #x1fff)
-	       (LONG (2 2)
-		     (5 destination)
-		     (6 ,opcode)
-		     (5 source)
-		     (1 1)
-		     (13 evaluated-immediate SIGNED)))
-	      ((() ())
-	       ;; SETHI $1, top(immediate)
-	       ;; OR $1, bottom(immediate)
-	       ;; reg-op  $destination, $source, $1
-	       (LONG (2 0)
-		     (5 1)
-		     (3 4)
-		     (22 evaluated-immediate)	; SETHI
-		     (2 2)
-		     (5 1)
-		     (6 2)
-		     (5 1)
-		     (1 1)
-		     (13 evaluated-immediate SIGNED) ; OR
-		     (2 0)
-		     (5 destination)
-		     (6 ,opcode)
-		     (5 source)
-		     (1 0)
-		     (8 0)
-		     (5 1))))))))) ; reg-op
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? destination) (? source) (? immediate))
+	     (VARIABLE-WIDTH (evaluated-immediate immediate)
+	       ((#x-2000 #x1fff)
+		(LONG (2 2)
+		      (5 destination)
+		      (6 ,(caddr form))
+		      (5 source)
+		      (1 1)
+		      (13 evaluated-immediate SIGNED)))
+	       ((() ())
+		;; SETHI $1, top(immediate)
+		;; OR $1, bottom(immediate)
+		;; reg-op  $destination, $source, $1
+		(LONG (2 0)
+		      (5 1)
+		      (3 4)
+		      (22 evaluated-immediate)	; SETHI
+		      (2 2)
+		      (5 1)
+		      (6 2)
+		      (5 1)
+		      (1 1)
+		      (13 evaluated-immediate SIGNED) ; OR
+		      (2 0)
+		      (5 destination)
+		      (6 ,(caddr form))
+		      (5 source)
+		      (1 0)
+		      (8 0)
+		      (5 1)))))))))) ; reg-op
   (arithmetic-immediate-instruction addi 0)
   (arithmetic-immediate-instruction addcci 16)
   (arithmetic-immediate-instruction addxi 8)
@@ -127,17 +129,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((3-operand-instruction
-      (lambda (keyword opcode)
-	`(define-instruction ,keyword
-	   (((? destination) (? source-1) (? source-2))
-	    (LONG (2 2)
-		  (5 destination)
-		  (6 ,opcode)
-		  (5 source-1)
-		  (1 0)
-		  (8 0)
-		  (5 source-2)
-		  ))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? destination) (? source-1) (? source-2))
+	     (LONG (2 2)
+		   (5 destination)
+		   (6 ,(caddr form))
+		   (5 source-1)
+		   (1 0)
+		   (8 0)
+		   (5 source-2)
+		   )))))))
   (3-operand-instruction add 0)
   (3-operand-instruction addcc 16)
   (3-operand-instruction addx 8)
@@ -173,17 +177,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((shift-instruction-immediate
-      (lambda (keyword opcode)
-	`(define-instruction ,keyword
-	   (((? destination) (? source) (? amount))
-	    (LONG (2 2)
-		  (5 destination)
-		  (6 ,opcode)
-		  (5 source)
-		  (1 1)
-		  (8 0)
-		  (5 amount)
-		  ))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? destination) (? source) (? amount))
+	     (LONG (2 2)
+		   (5 destination)
+		   (6 ,(caddr form))
+		   (5 source)
+		   (1 1)
+		   (8 0)
+		   (5 amount)
+		   )))))))
   (shift-instruction-immediate sll 37)
   (shift-instruction-immediate srl 38)
   (shift-instruction-immediate sra 39))

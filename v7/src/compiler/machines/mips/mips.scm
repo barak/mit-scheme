@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: mips.scm,v 1.3 2001/12/20 21:45:25 cph Exp $
+$Id: mips.scm,v 1.4 2002/02/22 04:01:40 cph Exp $
 
-Copyright (c) 1987, 1989, 1990, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989-1990, 1999, 2001-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,22 +25,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (declare (usual-integrations))
 
 (let-syntax
-    ((opcodes (lambda (suffix names)
-       (let loop ((value 0)
-		  (names names)
-		  (result '()))
-	 (cond ((null? names) `(BEGIN ,@result))
-	       ((null? (car names)) (loop (+ value 1) (cdr names) result))
-	       (else
-		(loop (+ value 1) (cdr names)
-		      (cons 
-		       `(define-integrable
-			  ,(string->symbol
-			    (string-append (symbol->string (car names)) suffix))
-			  ,value)
-		       result))))))))
+    ((opcodes
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(BEGIN
+	    ,@(let loop ((names (caddr form)) (value 0))
+		(if (pair? names)
+		    (if (symbol? (car names))
+			(cons `(DEFINE-INTEGRABLE
+				 ,(symbol-append (car names) (cadr form))
+				 ,value)
+			      (loop (cdr names) (+ value 1)))
+			(loop (cdr names) (+ value 1)))
+		    '())))))))
   ; OP CODES
-  (opcodes "-op"
+  (opcodes '-OP
     (special bcond j    jal   beq  bne blez bgtz	; 0  - 7
      addi    addiu slti sltiu andi ori xori lui		; 8  - 15
      cop0    cop1  cop2 cop3  ()   ()  ()   ()		; 16 - 23
@@ -51,7 +51,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
      swc0    swc1  swc2 swc3  ()   ()  ()   ()))	; 56 - 63
 
   ; Special Function Codes
-  (opcodes "-funct"
+  (opcodes '-FUNCT
     (sll  ()    srl  sra  sllv    ()    srlv srav	; 0  - 7
      jr   jalr  ()   ()   syscall break ()   ()		; 8  - 15
      mfhi mthi  mflo mtlo ()      ()    ()   ()		; 16 - 23
@@ -62,14 +62,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
      ()   ()    ()   ()   ()      ()    ()   ()))	; 56 - 63
 
   ; Condition codes for BCOND
-  (opcodes "-cond"
+  (opcodes '-COND
     (bltz   bgez  () () () () () ()			; 0  - 7
      ()     ()    () () () () () ()			; 8  - 15
      bltzal bgezal  () () () () () ()			; 16 - 23
      ()     ()    () () () () () ()))			; 24 - 31
 
   ; Floating point function codes for use with COP1 instruction
-  (opcodes "f-op"
+  (opcodes 'F-OP
     (add   sub    mul   div   ()    abs   mov   neg	; 0  - 7
      ()    ()     ()    ()    ()    ()    ()    ()	; 8  - 15
      ()    ()     ()    ()    ()    ()    ()    ()	; 16 - 23

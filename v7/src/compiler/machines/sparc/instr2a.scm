@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr2a.scm,v 1.3 2001/12/20 21:45:25 cph Exp $
+$Id: instr2a.scm,v 1.4 2002/02/22 04:09:27 cph Exp $
 
-Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,61 +28,63 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((branch
-      (lambda (keyword annul condition)
-	`(define-instruction ,keyword
-	   (((@PCO (? offset)))
-	    (LONG (2 0)
-		  ,annul
-		  ,condition
-		  (3 2)
-		  (22 (quotient offset 4) SIGNED)))
-	   (((@PCR (? label)))
-	    (VARIABLE-WIDTH (offset `(/ (- ,label (+ *PC* 0)) 4))
-	      ((#x-400000 #x3fffff)
-	       (LONG (2 0)
-		     ,annul
-		     ,condition
-		     (3 2)
-		     (22 offset SIGNED)))
-	      ((() ())
-	       ;; B??a condition, yyy
-	       ;; JMPL xxx, $0
-	       ;; yyy: SETHI $1, high(offset)
-	       ;; OR $1, $1, low(offset)
-	       ;; JMPL $1,$0
-	       ;; xxx: fall through
-	       (LONG (2 0)
-		     (1 1)		; set anull bit, the JMPL is cancelled
-					; on a taken branch
-		     ,condition
-		     (3 2)
-		     (22 2 SIGNED)	; B??condition, yyy
-		     (2 2)
-		     (5 0)
-		     (6 #x38)
-		     (5 0)
-		     (1 1)
-		     (13 16 SIGNED)	; JMPL xxx, $0
-		     (2 0)
-		     (5 1)
-		     (3 4)
-		     (22 (high-bits (* offset 4)) SIGNED)
-					; SETHI $1, high22(offset)
-		     (2 2)
-		     (5 1)
-		     (6 2)
-		     (5 1)
-		     (1 1)
-		     (13 (low-bits (* offset 4)) SIGNED)
-					; OR $1, $1, low10(offset)
-		     (2 2)
-		     (5 0)
-		     (6 #x38)
-		     (5 1)
-		     (1 0)
-		     (8 0)
-		     (5 0)		; JMPL $1,$0
-		     ))))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((@PCO (? offset)))
+	     (LONG (2 0)
+		   ,(caddr form)
+		   ,(cadddr form)
+		   (3 2)
+		   (22 (quotient offset 4) SIGNED)))
+	    (((@PCR (? label)))
+	     (VARIABLE-WIDTH (offset `(/ (- ,label (+ *PC* 0)) 4))
+	       ((#x-400000 #x3fffff)
+		(LONG (2 0)
+		      ,(caddr form)
+		      ,(cadddr form)
+		      (3 2)
+		      (22 offset SIGNED)))
+	       ((() ())
+		;; B??a condition, yyy
+		;; JMPL xxx, $0
+		;; yyy: SETHI $1, high(offset)
+		;; OR $1, $1, low(offset)
+		;; JMPL $1,$0
+		;; xxx: fall through
+		(LONG (2 0)
+		      (1 1)		; set anull bit, the JMPL is cancelled
+					 ; on a taken branch
+		      ,(cadddr form)
+		      (3 2)
+		      (22 2 SIGNED)	; B??condition, yyy
+		      (2 2)
+		      (5 0)
+		      (6 #x38)
+		      (5 0)
+		      (1 1)
+		      (13 16 SIGNED)	; JMPL xxx, $0
+		      (2 0)
+		      (5 1)
+		      (3 4)
+		      (22 (high-bits (* offset 4)) SIGNED)
+					 ; SETHI $1, high22(offset)
+		      (2 2)
+		      (5 1)
+		      (6 2)
+		      (5 1)
+		      (1 1)
+		      (13 (low-bits (* offset 4)) SIGNED)
+					 ; OR $1, $1, low10(offset)
+		      (2 2)
+		      (5 0)
+		      (6 #x38)
+		      (5 1)
+		      (1 0)
+		      (8 0)
+		      (5 0)		; JMPL $1,$0
+		      )))))))))
   (branch ba  (1 0) (4 8))
   (branch bn  (1 0) (4 0))
   (branch bne (1 0) (4 9))

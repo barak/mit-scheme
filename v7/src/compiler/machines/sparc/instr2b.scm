@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr2b.scm,v 1.3 2001/12/20 21:45:25 cph Exp $
+$Id: instr2b.scm,v 1.4 2002/02/22 04:10:12 cph Exp $
 
-Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,40 +28,42 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((load/store-instruction
-      (lambda (keyword opcode)
-	`(define-instruction ,keyword
-	   (((? source/dest-reg) (OFFSET (? offset-ls) (? base-reg)))
-	    (VARIABLE-WIDTH (delta offset-ls)
-              ((#x-fff #xfff)
-	       (LONG (2 3)
-		     (5 source/dest-reg)
-		     (6 ,opcode)
-		     (5 base-reg)
-		     (1 1)
-		     (13 delta SIGNED)))
-	      ((() ())
-	       ;; SETHI  1, %hi(offset)
-	       ;; OR     1, 1, %lo(offset)
-	       ;; LD     source/dest-reg,1,base-reg
-	       (LONG (2 0)		; SETHI
-		     (5 1)
-		     (3 4)
-		     (22 (high-bits delta))
-		     
-		     (2 2)		; OR
-		     (5 1)
-		     (6 2)
-		     (5 1)
-		     (1 1)
-		     (13 (low-bits delta))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? source/dest-reg) (OFFSET (? offset-ls) (? base-reg)))
+	     (VARIABLE-WIDTH (delta offset-ls)
+	       ((#x-fff #xfff)
+		(LONG (2 3)
+		      (5 source/dest-reg)
+		      (6 ,(caddr form))
+		      (5 base-reg)
+		      (1 1)
+		      (13 delta SIGNED)))
+	       ((() ())
+		;; SETHI  1, %hi(offset)
+		;; OR     1, 1, %lo(offset)
+		;; LD     source/dest-reg,1,base-reg
+		(LONG (2 0)		; SETHI
+		      (5 1)
+		      (3 4)
+		      (22 (high-bits delta))
 
-		     (2 3)		; LD
-		     (5 source/dest-reg)
-		     (6 ,opcode)
-		     (5 1)
-		     (1 0)
-		     (8 0)
-		     (5 base-reg)))))))))
+		      (2 2)		; OR
+		      (5 1)
+		      (6 2)
+		      (5 1)
+		      (1 1)
+		      (13 (low-bits delta))
+
+		      (2 3)		; LD
+		      (5 source/dest-reg)
+		      (6 ,(caddr form))
+		      (5 1)
+		      (1 0)
+		      (8 0)
+		      (5 base-reg))))))))))
   (load/store-instruction ldsb 9)
   (load/store-instruction ldsh 10)
   (load/store-instruction ldub 1)
