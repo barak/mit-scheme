@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.30 1991/05/07 13:45:31 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -668,7 +668,7 @@ long-word aligned and there is no need for shuffling.
      ,@(ea+=constant reg:closure-space (- 0 total-size))
      (B GE B (@PCR ,label))
      ;; End of optional code.
-     ,@(MC68040/allocate-closure size)
+     ,@(MC68040/allocate-closure total-size)
      (LABEL ,label)
      ,@(recvr 0))))
 

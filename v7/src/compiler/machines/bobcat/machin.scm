@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.24 1991/03/24 23:53:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.25 1991/05/28 19:14:36 jinx Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -176,7 +176,7 @@ MIT in each case. |#
 
 ;;;; Closure choices
 
-(define-integrable MC68K/closure-format 'MC68020) ; or MC68040
+(define-integrable MC68K/closure-format 'MC68040) ; or MC68020
 
 (let-syntax ((define/format-dependent
 	       (macro (name)
@@ -241,6 +241,8 @@ MIT in each case. |#
 (define-integrable number-of-machine-registers 24)
 (define-integrable number-of-temporary-registers 256)
 
+(define-integrable regnum:return-value d6)
+(define-integrable regnum:pointer-mask d7)
 (define-integrable regnum:dynamic-link a4)
 (define-integrable regnum:free-pointer a5)
 (define-integrable regnum:regs-pointer a6)
@@ -275,12 +277,11 @@ MIT in each case. |#
   (rtl:make-machine-register d0))
 
 (define (interpreter-value-register)
-  (rtl:make-offset (interpreter-regs-pointer) 2))
+  (rtl:make-machine-register regnum:return-value))
 
 (define (interpreter-value-register? expression)
-  (and (rtl:offset? expression)
-       (interpreter-regs-pointer? (rtl:offset-base expression))
-       (= 2 (rtl:offset-number expression))))
+  (and (rtl:register? expression)
+       (= (rtl:register-number expression) regnum:return-value)))
 
 (define (interpreter-environment-register)
   (rtl:make-offset (interpreter-regs-pointer) 3))
@@ -320,23 +321,30 @@ MIT in each case. |#
 
 (define (rtl:machine-register? rtl-register)
   (case rtl-register
-    ((STACK-POINTER) (interpreter-stack-pointer))
-    ((DYNAMIC-LINK) (interpreter-dynamic-link))
-    ((INTERPRETER-CALL-RESULT:ACCESS) (interpreter-register:access))
+    ((STACK-POINTER)
+     (interpreter-stack-pointer))
+    ((DYNAMIC-LINK)
+     (interpreter-dynamic-link))
+    ((VALUE)
+     (interpreter-value-register))
+    ((INTERPRETER-CALL-RESULT:ACCESS)
+     (interpreter-register:access))
     ((INTERPRETER-CALL-RESULT:CACHE-REFERENCE)
      (interpreter-register:cache-reference))
     ((INTERPRETER-CALL-RESULT:CACHE-UNASSIGNED?)
      (interpreter-register:cache-unassigned?))
-    ((INTERPRETER-CALL-RESULT:LOOKUP) (interpreter-register:lookup))
-    ((INTERPRETER-CALL-RESULT:UNASSIGNED?) (interpreter-register:unassigned?))
-    ((INTERPRETER-CALL-RESULT:UNBOUND?) (interpreter-register:unbound?))
+    ((INTERPRETER-CALL-RESULT:LOOKUP)
+     (interpreter-register:lookup))
+    ((INTERPRETER-CALL-RESULT:UNASSIGNED?)
+     (interpreter-register:unassigned?))
+    ((INTERPRETER-CALL-RESULT:UNBOUND?)
+     (interpreter-register:unbound?))
     (else false)))
 
 (define (rtl:interpreter-register? rtl-register)
   (case rtl-register
     ((MEMORY-TOP) 0)
     ((STACK-GUARD) 1)
-    ((VALUE) 2)
     ((ENVIRONMENT) 3)
     ((TEMPORARY) 4)
     (else false)))

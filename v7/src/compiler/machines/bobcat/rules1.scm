@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.34 1991/01/23 21:34:30 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.35 1991/05/28 19:14:47 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -77,47 +77,77 @@ MIT in each case. |#
       (LAP (OR UL (& ,(make-non-pointer-literal type 0)) ,target)))))
 
 (define (load-static-link target source n suffix)
-  (if (and (zero? n) (not suffix))
-      (assign-register->register target source)
-      (let ((non-reusable
-	     (cond ((not suffix)
-		    (lambda ()
-		      (let ((source (allocate-indirection-register! source)))
-			(delete-dead-registers!)
-			(let ((target (allocate-alias-register! target
-								'ADDRESS)))
-			  (if (eqv? source target)
-			      (increment-machine-register target n)
-			      (LAP (LEA ,(byte-offset-reference source n)
-					,(register-reference target))))))))
-		   ((<= -128 n 127)
-		    (lambda ()
-		      (let ((source (register-reference source)))
-			(delete-dead-registers!)
-			(let ((target (reference-target-alias! target 'DATA)))
-			  (LAP (MOVEQ (& ,n) ,target)
-			       (ADD L ,source ,target))))))
-		   (else
-		    (lambda ()
-		      (let ((source (indirect-byte-reference! source n)))
-			(delete-dead-registers!)
-			(let ((temp (reference-temporary-register! 'ADDRESS)))
-			  (let ((target (reference-target-alias! target
-								 'DATA)))
-			    (LAP (LEA ,source ,temp)
-				 (MOV L ,temp ,target)
-				 ,@(suffix target))))))))))
-	(if (machine-register? source)
-	    (non-reusable)
-	    (reuse-pseudo-register-alias! source 'DATA
-	      (lambda (reusable-alias)
-		(delete-dead-registers!)
-		(add-pseudo-register-alias! target reusable-alias)
-		(LAP ,@(increment-machine-register reusable-alias n)
-		     ,@(if suffix
-			   (suffix (register-reference reusable-alias))
-			   (LAP))))
-	      non-reusable)))))
+  (cond ((and (not suffix) (zero? n))
+	 (assign-register->register target source))
+	((machine-register? target)
+	 (let ((do-data
+		(lambda (target)
+		  (let ((source
+			 (standard-register-reference source false true)))
+		    (LAP (MOV L ,source ,target)
+			 ,@(ea+=constant target n)
+			 ,@(if suffix
+			       (suffix target)
+			       (LAP)))))))
+	   (case (register-type target)
+	     ((ADDRESS)
+	      (if (not suffix)
+		  (let ((source (allocate-indirection-register! source)))
+		    (LAP (LEA ,(byte-offset-reference source n)
+			      ,(register-reference target))))
+		  (let ((temp (reference-temporary-register! 'DATA)))
+		    (LAP ,(do-data temp)
+			 (MOV L ,temp ,(register-reference target))))))
+	     ((DATA)
+	      (do-data (register-reference target)))
+	     (else
+	      (error "load-static-link: Unknown register type"
+		     (register-type target))))))
+	(else
+	 (let ((non-reusable
+		(cond ((not suffix)
+		       (lambda ()
+			 (let ((source
+				(allocate-indirection-register! source)))
+			   (delete-dead-registers!)
+			   (let ((target (allocate-alias-register! target
+								   'ADDRESS)))
+			     (if (eqv? source target)
+				 (increment-machine-register target n)
+				 (LAP (LEA ,(byte-offset-reference source n)
+					   ,(register-reference target))))))))
+		      ((<= -128 n 127)
+		       (lambda ()
+			 (let ((source (register-reference source)))
+			   (delete-dead-registers!)
+			   (let ((target
+				  (reference-target-alias! target 'DATA)))
+			     (LAP (MOVEQ (& ,n) ,target)
+				  (ADD L ,source ,target)
+				  ,@(suffix target))))))
+		      (else
+		       (lambda ()
+			 (let ((source (indirect-byte-reference! source n)))
+			   (delete-dead-registers!)
+			   (let ((temp
+				  (reference-temporary-register! 'ADDRESS)))
+			     (let ((target (reference-target-alias! target
+								    'DATA)))
+			       (LAP (LEA ,source ,temp)
+				    (MOV L ,temp ,target)
+				    ,@(suffix target))))))))))
+	   (if (machine-register? source)
+	       (non-reusable)
+	       (reuse-pseudo-register-alias!
+		source 'DATA
+		(lambda (reusable-alias)
+		  (delete-dead-registers!)
+		  (add-pseudo-register-alias! target reusable-alias)
+		  (LAP ,@(increment-machine-register reusable-alias n)
+		       ,@(if suffix
+			     (suffix (register-reference reusable-alias))
+			     (LAP))))
+		non-reusable))))))
 
 (define (assign-register->register target source)
   (standard-move-to-target! source (register-type target) target)

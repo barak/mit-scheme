@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.41 1991/05/06 23:05:51 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.42 1991/05/28 19:14:26 jinx Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -63,7 +63,7 @@ MIT in each case. |#
   registers)
 
 (define available-machine-registers
-  (list d0 d1 d2 d3 d4 d5 d6
+  (list d0 d1 d2 d3 d4 d5 ;; d6 is now compiled code val
 	a0 a1 a2 a3
 	fp0 fp1 fp2 fp3 fp4 fp5 fp6 fp7))
 
@@ -112,7 +112,7 @@ MIT in each case. |#
 
 (define-integrable (pseudo-register-offset register)
   ;; Offset into register block for temporary registers
-  (+ (+ (* 16 4) (* 40 8))
+  (+ (+ (* 16 4) (* 80 8))
      (* 3 (register-renumber register))))
 
 (define (pseudo-float? register)
@@ -998,6 +998,9 @@ MIT in each case. |#
 ;;;; CHAR->ASCII rules
 
 (define (coerce->any/byte-reference register)
+  #|
+  ;; This does not guarantee that the data is in a
+  ;; D register, and A registers are no good.
   (if (machine-register? register)
       (register-reference register)
       (let ((alias (register-alias register false)))
@@ -1005,7 +1008,18 @@ MIT in each case. |#
 	    (register-reference alias)
 	    (indirect-char/ascii-reference!
 	     regnum:regs-pointer
-	     (pseudo-register-offset register))))))
+	     (pseudo-register-offset register)))))
+  |#
+  (let ((alias (register-alias register 'DATA)))
+    (cond (alias
+	   (register-reference alias))
+	  ((register-alias register false)
+	   (reference-alias-register! register 'DATA))
+	  (else
+	   ;; Must be in home.
+	   (indirect-char/ascii-reference!
+	    regnum:regs-pointer
+	    (pseudo-register-offset register))))))
 
 (define (indirect-char/ascii-reference! register offset)
   (indirect-byte-reference! register (+ (* offset 4) 3)))
