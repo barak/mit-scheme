@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/version.h,v 9.60 1987/06/01 16:59:52 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/version.h,v 9.61 1987/06/02 00:17:51 jinx Exp $
 
 This file contains version information for the microcode. */
 
@@ -46,7 +46,7 @@ This file contains version information for the microcode. */
 #define VERSION		9
 #endif
 #ifndef SUBVERSION
-#define SUBVERSION	60
+#define SUBVERSION	61
 #endif
 
 #ifndef UCODE_TABLES_FILENAME

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.28 1987/04/16 02:06:42 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.29 1987/06/02 00:16:25 jinx Exp $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -40,119 +40,30 @@ MIT in each case. */
 #include "scheme.h"
 #include "bchgcc.h"
 
-/* Some utility macros */
-
-#define copy_cell()							\
-{ *To++ = *Old;								\
-}
-
-#define copy_pair()							\
-{ *To++ = *Old++;							\
-  *To++ = *Old;								\
-}
-
-#define copy_weak_pair()						\
-{ long Car_Type;							\
-									\
-  Car_Type = Type_Code(*Old);						\
-  *To++ = Make_New_Pointer(TC_NULL, *Old);				\
-  Old += 1;								\
-  *To++ = *Old;								\
-  *Old = Make_New_Pointer(Car_Type, Weak_Chain);			\
-  Weak_Chain = Temp;							\
-}
-
-#define copy_triple()							\
-{ *To++ = *Old++;							\
-  *To++ = *Old++;							\
-  *To++ = *Old;								\
-}
-
-#define copy_quadruple()						\
-{ *To++ = *Old++;							\
-  *To++ = *Old++;							\
-  *To++ = *Old++;							\
-  *To++ = *Old;								\
-}
-
-/* Transporting vectors is done in 3 parts:
-   - Finish filling the current free buffer, dump it, and get a new one.
-   - Dump the middle of the vector directly by bufferfulls.
-   - Copy the end of the vector to the new buffer.
-   The last piece of code is the only one executed when the vector does
-   not overflow the current buffer.
-*/
-
-#define copy_vector()							\
-{ Pointer *Saved_Scan = Scan;						\
-  unsigned long real_length = 1 + Get_Integer(*Old);			\
-									\
-  To_Address += real_length;						\
-  Scan = To + real_length;						\
-  if (Scan >= free_buffer_top)						\
-  { unsigned long overflow;						\
-									\
-    overflow = Scan - free_buffer_top;					\
-    while (To != free_buffer_top) *To++ = *Old++;			\
-    To = dump_and_reset_free_buffer(0);					\
-    real_length = (overflow / GC_DISK_BUFFER_SIZE);			\
-    if (real_length > 0) dump_free_directly(Old, real_length);		\
-    Old += (real_length * GC_DISK_BUFFER_SIZE);				\
-    Scan = To + (overflow % GC_DISK_BUFFER_SIZE);			\
-  }									\
-  while (To != Scan) *To++ = *Old++;					\
-  Scan = Saved_Scan;							\
-}
-
-#define relocate_normal_setup()						\
-{									\
-  Old = Get_Pointer(Temp);						\
-  if (Old >= Low_Constant) continue;					\
-  if (Type_Code(*Old) == TC_BROKEN_HEART)				\
-  { *Scan = Make_New_Pointer(Type_Code(Temp), *Old);			\
-    continue;								\
-  }									\
-  New_Address = Make_Broken_Heart(C_To_Scheme(To_Address));		\
-}
-
-#define relocate_normal_transport(copy_code, length)			\
-{ copy_code;								\
-  To_Address += (length);						\
-  if (To >= free_buffer_top)						\
-    To = dump_and_reset_free_buffer(To - free_buffer_top);		\
-}
-
-#define relocate_normal_end()						\
-{ *Get_Pointer(Temp) = New_Address;					\
-  *Scan = Make_New_Pointer(Type_Code(Temp), New_Address);		\
-  continue;								\
-}
-
-#define relocate_normal_pointer(copy_code, length)			\
-{ relocate_normal_setup();						\
-  relocate_normal_transport(copy_code, length);				\
-  relocate_normal_end();						\
-}
-
-Pointer
-*GCLoop(Scan, To_ptr, To_Address_ptr)
-fast Pointer *Scan;
-Pointer **To_ptr, **To_Address_ptr;
-{ fast Pointer *To, *Old, Temp, *Low_Constant, *To_Address, New_Address;
+Pointer *
+GCLoop(Scan, To_ptr, To_Address_ptr)
+     fast Pointer *Scan;
+     Pointer **To_ptr, **To_Address_ptr;
+{
+  fast Pointer *To, *Old, Temp, *Low_Constant, *To_Address, New_Address;
 
   To = *To_ptr;
   To_Address = *To_Address_ptr;
   Low_Constant = Constant_Space;
 
   for ( ; Scan != To; Scan++)
-  { Temp = *Scan;
+  {
+    Temp = *Scan;
     Switch_by_GC_Type(Temp)
-    { case TC_BROKEN_HEART:
+    {
+      case TC_BROKEN_HEART:
         if (Scan != (Get_Pointer(Temp)))
-	{ fprintf(stderr, "GC: Broken heart in scan.\n");
+	{
+	  fprintf(stderr, "\nGC: Broken heart in scan.\n");
 	  Microcode_Termination(TERM_BROKEN_HEART);
 	}
-	if (Scan != scan_buffer_top) goto end_gcloop;
+	if (Scan != scan_buffer_top)
+	  goto end_gcloop;
 	/* The -1 is here because of the Scan++ in the for header. */
 	Scan = dump_and_reload_scan_buffer(0) - 1;
 	continue;
@@ -165,27 +76,27 @@ Pointer **To_ptr, **To_Address_ptr;
 	if (Scan < scan_buffer_top)
 	  break;
 	else
-	{ unsigned long overflow;
+	{
+	  unsigned long overflow;
+
 	  /* The + & -1 are here because of the Scan++ in the for header. */
 	  overflow = (Scan - scan_buffer_top) + 1;
 	  Scan = ((dump_and_reload_scan_buffer(overflow / GC_DISK_BUFFER_SIZE) +
 		   (overflow % GC_DISK_BUFFER_SIZE)) - 1);
 	  break;
 	}
-
+
       case_Non_Pointer:
 	break;
 
       case_compiled_entry_point:
 	Old = Get_Pointer(Temp);
-	if (Old >= Low_Constant) continue;
-	Old = Get_Compiled_Block(Old);
-	if (Type_Code(*Old) == TC_BROKEN_HEART) 
-	{ *Scan = Relocate_Compiled(Temp, Get_Pointer(*Old), Old);
+	if (Old >= Low_Constant)
 	  continue;
-	}
-	else
-	{ Pointer *Saved_Old = Old;
+	Compiled_BH(true, continue);
+	{
+	  Pointer *Saved_Old = Old;
+
 	  New_Address = Make_Broken_Heart(C_To_Scheme(To_Address));
 	  copy_vector();
 	  *Saved_Old = New_Address;
@@ -212,7 +123,7 @@ Pointer **To_ptr, **To_Address_ptr;
 
       case_Quadruple:
 	relocate_normal_pointer(copy_quadruple(), 4);
-
+
 #ifdef FLOATING_ALIGNMENT
       case TC_BIG_FLONUM:
 	/* This must be fixed. */
@@ -229,7 +140,8 @@ Pointer **To_ptr, **To_Address_ptr;
 
       case TC_FUTURE:
 	relocate_normal_setup();
-	if (!(Future_Spliceable(Temp))) goto Move_Vector;
+	if (!(Future_Spliceable(Temp)))
+	  goto Move_Vector;
 	*Scan = Future_Value(Temp);
 	Scan -= 1;
 	continue;
@@ -239,7 +151,7 @@ Pointer **To_ptr, **To_Address_ptr;
 
       default:
 	fprintf(stderr,
-		"GCLoop: Bad type code = 0x%02x\n",
+		"\nGCLoop: Bad type code = 0x%02x\n",
 		Type_Code(Temp));
 	Invalid_Type_Code();
       }

@@ -30,19 +30,20 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.22 1987/04/03 00:11:11 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.23 1987/06/02 00:17:13 jinx Exp $
  *
  * This file contains common code for dumping internal format binary files.
  */
 
 #include "fasl.h"
 
-Write_File(Heap_Count, Heap_Relocation, Dumped_Object,
-           Constant_Count, Constant_Relocation, Prim_Exts)
-Pointer *Heap_Relocation, *Dumped_Object,
-        *Constant_Relocation, *Prim_Exts;
-long Heap_Count, Constant_Count;
-{ Pointer Buffer[FASL_HEADER_LENGTH];
+void
+prepare_dump_header(Buffer, Heap_Count, Heap_Relocation, Dumped_Object,
+		    Constant_Count, Constant_Relocation, Prim_Exts)
+     Pointer *Buffer, *Heap_Relocation, *Dumped_Object,
+             *Constant_Relocation, *Prim_Exts;
+     long Heap_Count, Constant_Count;
+{
   long i;
 
 #ifdef DEBUG
@@ -76,10 +77,24 @@ long Heap_Count, Constant_Count;
 #endif
   Buffer[FASL_Offset_Ext_Loc] = 
     Make_Pointer(TC_BROKEN_HEART, Prim_Exts);
-  for (i=FASL_Offset_First_Free; i < FASL_HEADER_LENGTH; i++)
+  for (i = FASL_Offset_First_Free; i < FASL_HEADER_LENGTH; i++)
     Buffer[i] = NIL;
-  Write_Data(FASL_HEADER_LENGTH, (char *) Buffer);
-  if (Heap_Count != 0) Write_Data(Heap_Count, (char *) Heap_Relocation);
+  return;
+}
+
+Write_File(Heap_Count, Heap_Relocation, Dumped_Object,
+           Constant_Count, Constant_Relocation, Prim_Exts)
+     Pointer *Heap_Relocation, *Dumped_Object,
+             *Constant_Relocation, *Prim_Exts;
+     long Heap_Count, Constant_Count;
+{
+  Pointer Buffer[FASL_HEADER_LENGTH];
+
+  prepare_dump_header(Buffer,Heap_Count, Heap_Relocation, Dumped_Object,
+		      Constant_Count, Constant_Relocation, Prim_Exts);
+  Write_Data(FASL_HEADER_LENGTH, ((char *) Buffer));
+  if (Heap_Count != 0)
+    Write_Data(Heap_Count, ((char *) Heap_Relocation));
   if (Constant_Count != 0)
-     Write_Data(Constant_Count, (char *) Constant_Relocation);
+    Write_Data(Constant_Count, ((char *) Constant_Relocation));
 }

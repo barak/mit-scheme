@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.26 1987/04/16 02:27:53 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.27 1987/06/02 00:17:36 jinx Exp $
  *
  * This file contains the code that copies objects into pure
  * and constant space.
@@ -68,20 +68,25 @@ if (Type_Code(*Old) == TC_BROKEN_HEART) continue;
 Real_Transport_Vector();					\
 *Get_Pointer(Temp) = New_Address
 
-Pointer *PurifyLoop(Scan, To_Pointer, GC_Mode)
-fast Pointer *Scan;
-Pointer **To_Pointer;
-int GC_Mode;
-{ fast Pointer *To, *Old, Temp, *Low_Constant, New_Address;
+Pointer *
+PurifyLoop(Scan, To_Pointer, GC_Mode)
+     fast Pointer *Scan;
+     Pointer **To_Pointer;
+     int GC_Mode;
+{
+  fast Pointer *To, *Old, Temp, *Low_Constant, New_Address;
 
   To = *To_Pointer;
   Low_Constant = Constant_Space;
   for ( ; Scan != To; Scan++)
-  { Temp = *Scan;
+  {
+    Temp = *Scan;
     Switch_by_GC_Type(Temp)
-    { case TC_BROKEN_HEART:
+    {
+      case TC_BROKEN_HEART:
         if (Scan == (Get_Pointer(Temp)))
-	{ *To_Pointer = To;
+	{
+	  *To_Pointer = To;
 	  return Scan;
 	}
         fprintf(stderr, "Purify: Broken heart in scan.\n");
@@ -96,7 +101,8 @@ int GC_Mode;
 	break;
 
       case_compiled_entry_point:
-	if (GC_Mode == PURE_COPY) break;
+	if (GC_Mode == PURE_COPY)
+	  break;
 	Purify_Pointer(Setup_Internal(false,
 				      Transport_Compiled(),
 				      Compiled_BH(false, continue)));
@@ -125,7 +131,8 @@ int GC_Mode;
       case TC_INTERNED_SYMBOL:
       case TC_UNINTERNED_SYMBOL:
 	if (GC_Mode == PURE_COPY)
-        { Temp = Vector_Ref(Temp, SYMBOL_NAME);
+        {
+	  Temp = Vector_Ref(Temp, SYMBOL_NAME);
 	  Purify_Pointer(Setup_Internal(false,
 					Transport_Vector_Indirect(),
 					Indirect_BH(false)));
@@ -283,14 +290,17 @@ Pointer Object, Purify_Object;
 
 Pointer Purify_Pass_2(Info)
 Pointer Info;
-{ long Length = Get_Integer(Fast_Vector_Ref(Info, Purify_Length));
+{
+  long Length;
   Boolean Purify_Object;
   Pointer *New_Object, Relocated_Object, *Result, Answer;
   long Pure_Length, Recomputed_Length;
 
+  Length = Get_Integer(Fast_Vector_Ref(Info, Purify_Length));
   if (Fast_Vector_Ref(Info, Purify_Really_Pure) == NIL)
     Purify_Object =  false;
-  else Purify_Object = true;
+  else
+    Purify_Object = true;
   Relocated_Object = *Heap_Bottom;
   if (!Test_Pure_Space_Top(Free_Constant+Length+6))
     return NIL;
@@ -299,20 +309,26 @@ Pointer Info;
   *Free_Constant++ = NIL;	/* Will hold pure space header */
   *Free_Constant++ = Relocated_Object;
   if (Purify_Object)
-  { Result = PurifyLoop(New_Object+1, &Free_Constant, PURE_COPY);
+  {
+    Result = PurifyLoop(New_Object+1, &Free_Constant, PURE_COPY);
+
     if (Free_Constant != Result)
-    { fprintf(stderr, "\Purify: Pure Copy ended too early.\n");
+    {
+      fprintf(stderr, "\nPurify: Pure Copy ended too early.\n");
       Microcode_Termination(TERM_BROKEN_HEART);
     }
     Pure_Length = (Free_Constant-New_Object) + 1;
   }
-  else Pure_Length = 3;
+  else
+    Pure_Length = 3;
   *Free_Constant++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
   *Free_Constant++ = Make_Non_Pointer(CONSTANT_PART, Pure_Length);
   if (Purify_Object)
-  { Result = PurifyLoop(New_Object + 1, &Free_Constant, CONSTANT_COPY);
+  {
+    Result = PurifyLoop(New_Object + 1, &Free_Constant, CONSTANT_COPY);
     if (Result != Free_Constant)
-    { fprintf(stderr, "\Purify: Constant Copy ended too early.\n");
+    {
+      fprintf(stderr, "\nPurify: Pure Copy ended too early.\n");
       Microcode_Termination(TERM_BROKEN_HEART);
     }
   }
@@ -322,9 +338,11 @@ Pointer Info;
 /* Purify_Pass_2, continued */
 
   else
-  { Result = GCLoop(New_Object + 1, &Free_Constant);
+  {
+    Result = GCLoop(New_Object + 1, &Free_Constant);
     if (Result != Free_Constant)
-    { fprintf(stderr, "\Purify: Constant Copy ended too early.\n");
+    {
+      fprintf(stderr, "\nPurify: Constant Copy ended too early.\n");
       Microcode_Termination(TERM_BROKEN_HEART);
     }
   }
@@ -332,7 +350,9 @@ Pointer Info;
   *Free_Constant++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
   *Free_Constant++ = Make_Non_Pointer(END_OF_BLOCK, Recomputed_Length+5);
   if (Length > Recomputed_Length)
-  { printf("Purify phase error %x, %x\n", Length, Recomputed_Length);
+  {
+    fprintf(stderr, "\nPurify phase error %x, %x\n",
+	    Length, Recomputed_Length);
     Microcode_Termination(TERM_EXIT);
   }
   *New_Object++ =
@@ -344,24 +364,23 @@ Pointer Info;
 }
 
 /* (PRIMITIVE-PURIFY OBJECT PURE?)
-      Copy an object from the heap into constant space.  This requires
-      a spare heap, and is tricky to use -- it should only be used
-      through the wrapper provided in the Scheme runtime system.
+   Copy an object from the heap into constant space.  This requires
+   a spare heap, and is tricky to use -- it should only be used
+   through the wrapper provided in the Scheme runtime system.
 
-      To purify an object we just copy it into Pure Space in two
-      parts with the appropriate headers and footers.  The actual
-      copying is done by PurifyLoop above.  If we run out of room
-      SCHEME crashes.
+   To purify an object we just copy it into Pure Space in two
+   parts with the appropriate headers and footers.  The actual
+   copying is done by PurifyLoop above.
 
-      Once the copy is complete we run a full GC which handles the
-      broken hearts which now point into pure space.  On a 
-      multiprocessor, this primitive uses the master-gc-loop and it
-      should only be used as one would use master-gc-loop i.e. with
-      everyone else halted.
+   Once the copy is complete we run a full GC which handles the
+   broken hearts which now point into pure space.  On a 
+   multiprocessor, this primitive uses the master-gc-loop and it
+   should only be used as one would use master-gc-loop i.e. with
+   everyone else halted.
 
-      This primitive does not return normally.  It always escapes into
-      the interpreter because some of its cached registers (eg. History)
-      have changed.
+   This primitive does not return normally.  It always escapes into
+   the interpreter because some of its cached registers (eg. History)
+   have changed.
 */
 
 Built_In_Primitive(Prim_Primitive_Purify, 2, "PRIMITIVE-PURIFY", 0xB4)
@@ -385,7 +404,7 @@ Built_In_Primitive(Prim_Primitive_Purify, 2, "PRIMITIVE-PURIFY", 0xB4)
   if (Daemon == NIL)
   {
     Val = Purify_Pass_2(Purify_Result);
-    longjmp( *Back_To_Eval, PRIM_POP_RETURN);
+    PRIMITIVE_ABORT(PRIM_POP_RETURN);
     /*NOTREACHED*/
   }
   Store_Expression(Purify_Result);
@@ -395,5 +414,6 @@ Built_In_Primitive(Prim_Primitive_Purify, 2, "PRIMITIVE-PURIFY", 0xB4)
   Push(Daemon);
   Push(STACK_FRAME_HEADER);
  Pushed();
-  longjmp(*Back_To_Eval, PRIM_APPLY); /*NOTREACHED*/
+  PRIMITIVE_ABORT(PRIM_APPLY);
+  /*NOTREACHED*/
 }

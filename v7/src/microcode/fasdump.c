@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.26 1987/05/29 02:22:19 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.27 1987/06/02 00:17:22 jinx Exp $
 
    This file contains code for fasdump and dump-band.
 */
@@ -61,15 +61,13 @@ Pointer *NewFree, *NewMemTop, *Fixup, *Orig_New_Free;
    heap.
 
    FASDUMP is called with three arguments:
-   Argument 1: Base of spare heap
-   Argument 2: Top of spare heap
-   Argument 3: Hunk 3, #<Object to dump | File name | Flag>
+   Argument 1: Object to dump.
+   Argument 2: File name.
+   Argument 3: Flag.
                where the flag is #!true for a dump into constant
                space at reload time, () for a dump into heap.
 
-   As with Purify, dumping an object for reloading into constant space
-   requires dividing it into pure and constant parts and building a
-   standard Pure/Constant block.
+   Currently flag is ignored.	       
 */
 
 /* 
@@ -251,7 +249,7 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
   { if (!DumpLoop(New_Object, PURE_COPY))
     {
       Fasdump_Exit();
-      return NIL;
+      PRIMITIVE_RETURN(NIL);
     }
     /* Can't align.
        Align_Float(NewFree);
@@ -262,7 +260,7 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
     if (!DumpLoop(New_Object, CONSTANT_COPY))
     {
       Fasdump_Exit();
-      return NIL;
+      PRIMITIVE_RETURN(NIL);
     }
     Length =  NewFree-New_Object+2;
     *NewFree++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
@@ -280,7 +278,7 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
   { if (!DumpLoop(New_Object, NORMAL_GC))
     {
       Fasdump_Exit();
-      return NIL;
+      PRIMITIVE_RETURN(NIL);
     }
     /* Aligning might screw up some of the counters.
        Align_Float(NewFree);
@@ -290,7 +288,7 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
                0, Constant_Space, New_Object+1);
   }
   Fasdump_Exit();
-  return TRUTH;
+  PRIMITIVE_RETURN(TRUTH);
 }
 
 /* (DUMP-BAND PROCEDURE FILE-NAME)
@@ -335,5 +333,5 @@ Built_In_Primitive(Prim_Band_Dump, 2, "DUMP-BAND", 0xB7)
              ((long) (Free_Constant-Constant_Space)),
 	     Constant_Space, Free-1);
   fclose(File_Handle);
-  return TRUTH;
+  PRIMITIVE_RETURN(TRUTH);
 }

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.29 1987/04/21 14:54:50 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.30 1987/06/02 00:16:36 jinx Exp $ */
 
 /* Memory management top level.  Garbage collection to disk.
 
@@ -60,7 +60,6 @@ MIT in each case. */
 #include "scheme.h"
 #include "primitive.h"
 #include "bchgcc.h"
-#include <fcntl.h>
 
 /* Exports */
 
@@ -97,14 +96,14 @@ extern void Clear_Memory(), Setup_Memory(), Reset_Memory();
 
 static long scan_position, free_position;
 static Pointer *gc_disk_buffer_1, *gc_disk_buffer_2;
-Pointer *scan_buffer_top, *scan_buffer_bottom, *scan_buffer;
-Pointer *free_buffer_top, *free_buffer_bottom, *free_buffer;
+Pointer *scan_buffer_top, *scan_buffer_bottom;
+Pointer *free_buffer_top, *free_buffer_bottom;
 
 /* Hacking the gc file */
 
 extern char *mktemp();
 
-static int gc_file;
+int gc_file;
 static char *gc_file_name;
 static char gc_default_file_name[FILE_NAME_LENGTH] = GC_DEFAULT_FILE_NAME;
 
@@ -115,7 +114,7 @@ open_gc_file()
   int flags;
 
   (void) mktemp(gc_default_file_name);
-  flags = (O_RDWR | O_CREAT | O_SYNCIO);
+  flags = GC_FILE_FLAGS;
 
   position = Parse_Option("-gcfile", Saved_argc, Saved_argv, true);
   if ((position != NOT_THERE) &&
@@ -303,7 +302,6 @@ reload_scan_buffer()
   {
     scan_buffer_bottom = free_buffer_bottom;
     scan_buffer_top = free_buffer_top;
-    scan_buffer = scan_buffer_bottom;
     return;
   }
   scan_buffer_bottom = ((free_buffer_bottom == gc_disk_buffer_1) ?
@@ -316,31 +314,37 @@ reload_scan_buffer()
   return;
 }
 
-void
+Pointer *
 initialize_scan_buffer()
 {
   scan_position = 0;
   reload_scan_buffer();
-  scan_buffer = scan_buffer_bottom;
-  return;
+  return scan_buffer_bottom;
 }
 
 /* This hacks the scan buffer also so that Scan is always below
    scan_buffer_top until the scan buffer is initialized.
 */
-void
+Pointer *
 initialize_free_buffer()
 {
   free_position = 0;
   free_buffer_bottom = gc_disk_buffer_1;
   free_buffer_top = free_buffer_bottom + GC_DISK_BUFFER_SIZE;
-  free_buffer = free_buffer_bottom;
   scan_position = -1;
   scan_buffer_bottom = gc_disk_buffer_2;
   scan_buffer_top = scan_buffer_bottom + GC_DISK_BUFFER_SIZE;
-  return;
+  return free_buffer_bottom;
 }
 
+void
+end_transport()
+{
+  dump_buffer(scan_buffer_bottom, &scan_position, 1, "scan");
+  free_position = scan_position;
+  return;
+}
+
 Pointer *
 dump_and_reload_scan_buffer(number_to_skip)
      long number_to_skip;
@@ -537,18 +541,18 @@ Fix_Weak_Chain()
 void
 GC()
 {
-  Pointer *Root, *Result, *end_of_constant_area,
-  	  The_Precious_Objects, *Root2;
+  static Pointer *Root, *Result, *end_of_constant_area,
+  		 The_Precious_Objects, *Root2, *free_buffer;
 
-  initialize_free_buffer();
+  free_buffer = initialize_free_buffer();
   Free = Heap_Bottom;
   Set_Mem_Top(Heap_Top - GC_Reserve);
   Weak_Chain = NIL;
 
   /* Save the microcode registers so that they can be relocated */
+
   Terminate_Old_Stacklet();
   Terminate_Constant_Space(end_of_constant_area);
-
   Root = Free;
   The_Precious_Objects = Get_Fixed_Obj_Slot(Precious_Objects);
   Set_Fixed_Obj_Slot(Precious_Objects, NIL);
@@ -567,8 +571,9 @@ GC()
   Free += (free_buffer - free_buffer_bottom);
   if (free_buffer >= free_buffer_top)
     free_buffer = dump_and_reset_free_buffer(free_buffer - free_buffer_top);
-
+
   /* The 4 step GC */
+
   Result = GCLoop(Constant_Space, &free_buffer, &Free);
   if (Result != end_of_constant_area)
   {
@@ -576,19 +581,21 @@ GC()
     Microcode_Termination(TERM_EXIT);
     /*NOTREACHED*/
   }
-  initialize_scan_buffer();
-  Result = GCLoop(scan_buffer, &free_buffer, &Free);
+
+  Result = GCLoop(initialize_scan_buffer(), &free_buffer, &Free);
   if (free_buffer != Result)
   {
     fprintf(stderr, "\nGC-1: Heap Scan ended too early.\n");
     Microcode_Termination(TERM_EXIT);
     /*NOTREACHED*/
   }
+
   Root2 = Free;
   *free_buffer++ = The_Precious_Objects;
   Free += (free_buffer - Result);
   if (free_buffer >= free_buffer_top)
     free_buffer = dump_and_reset_free_buffer(free_buffer - free_buffer_top);
+
   Result = GCLoop(Result, &free_buffer, &Free);
   if (free_buffer != Result)
   {
@@ -596,8 +603,9 @@ GC()
     Microcode_Termination(TERM_EXIT);
     /*NOTREACHED*/
   }
-  dump_buffer(scan_buffer_bottom, &scan_position, 1, "scan");
-  free_position = scan_position;
+
+  end_transport();
+
   Fix_Weak_Chain();
   load_buffer(0, Heap_Bottom,
 	      ((Free - Heap_Bottom) * sizeof(Pointer)),
