@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sort.scm,v 1.2 1992/11/20 18:23:27 cph Exp $
+;;;	$Id: sort.scm,v 1.3 1992/11/20 19:10:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -103,7 +103,7 @@
 	    (next-element (cdar unsorted-list)
 			  (cdr sorted-list)
 			  (cdr unsorted-list)))))
-    (mark-temporary! delete-end)))
+    (mark-temporary! insert-mark)))
 
 (define (sort-textual-comparison start1 end1 start2 end2)
   (string<? (extract-string start1 end1)
