@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.65 1993/06/08 04:09:38 gjr Exp $
+$Id: ymkfile,v 1.66 1993/06/09 20:32:08 jawilson Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -247,6 +247,44 @@ cmpaux-alpha.o : cmpaux-alpha.s
 cmpaux-alpha.s : cmpaux-alpha.m4 xmakefile
 
 #endif /* PROC_TYPE_ALPHA */
+
+#if (PROC_TYPE == PROC_TYPE_LIARC)
+#define PROC_TYPE_KNOWN
+
+#include "ymake.cclist"
+
+COMPILED_OBJECTS = $(COMPILED_SOURCES:.c=.o)
+
+MACHINE_SWITCHES = -DNATIVE_CODE_IS_C
+MACHINE_SOURCES = cmpint.c cmpaux-C.c compinit.c $(COMPILED_SOURCES)
+MACHINE_OBJECTS = cmpint.o cmpaux-C.o compinit.o $(COMPILED_OBJECTS)
+GC_HEAD_FILES = gccode.h cmpgc.h cmpint-C.h
+LIARC_HEAD_FILES = \
+ansidecl.h \
+config.h \
+default.h \
+object.h \
+sdata.h \
+types.h \
+errors.h \
+const.h \
+interp.h \
+prim.h \
+$(GC_HEAD_FILES)
+cmpaux-C.o : cmpaux-C.c liarc.touch bignum.h
+compinit.o : compinit.c liarc.touch compinit.h
+compinit.h : $(COMPILED_SOURCES) xmakefile
+	@echo "#*** Generating" $@ "because of" $?
+	rm -f $@
+	fgrep DECLARE_COMPILED_CODE $(COMPILED_SOURCES) | \
+	sed -e 's/.*:/  /' -e 's/)/);' > $@
+
+$(COMPILED_OBJECTS) : liarc.touch
+liarc.touch: liarc.h $(LIARC_HEAD_FILES)
+	@echo "#** Generating" $@ because of $?
+	touch liarc.touch
+
+#endif /* PROC_TYPE_LIARC */
 
 #ifndef PROC_TYPE_KNOWN
 MACHINE_SWITCHES =

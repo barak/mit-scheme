@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.21 1991/10/29 22:55:11 jinx Exp $
+$Id: comutl.c,v 1.22 1993/06/09 20:34:39 jawilson Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -138,4 +138,23 @@ DEFINE_PRIMITIVE ("COMPILED-CLOSURE->ENTRY", Prim_compiled_closure_to_entry, 1, 
   if (! (((entry_type [0]) == 0) && (compiled_entry_closure_p (closure))))
     error_bad_range_arg (1);
   PRIMITIVE_RETURN (compiled_closure_to_entry (closure));
+}
+
+/* This is only meaningful for the C back end. */
+
+DEFINE_PRIMITIVE ("INITIALIZE-C-COMPILED-BLOCK", Prim_initialize_C_compiled_block, 1, 1,
+  "Given the tag of a compiled object, return the object.")
+{
+#ifdef NATIVE_CODE_IS_C
+  extern SCHEME_OBJECT * EXFUN (initialize_C_compiled_block, (int, char *));
+  SCHEME_OBJECT * block, val;
+  
+  block = (initialize_C_compiled_block (1, (STRING_ARG (1))));
+  val = ((block == ((SCHEME_OBJECT *) NULL))
+	 ? SHARP_F
+	 : (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY, block)));
+  PRIMITIVE_RETURN (val);
+#else
+  PRIMITIVE_RETURN (SHARP_F);
+#endif
 }
