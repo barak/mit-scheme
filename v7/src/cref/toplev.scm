@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.15 2001/08/16 20:46:15 cph Exp $
+$Id: toplev.scm,v 1.16 2001/12/17 17:40:58 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -59,18 +59,31 @@ USA.
      (write-external-descriptions pathname pmodel changes?))))
 
 (define (write-external-descriptions pathname pmodel changes?)
-  (if (or changes? (not (file-processed? pathname "pkg" "pkd")))
-      (fasdump (construct-external-descriptions pmodel)
-	       (pathname-new-type pathname "pkd"))))
+  (let ((package-set (package-set-pathname pathname)))
+    (if (or changes?
+	    (not (file-modification-time<?
+		  (pathname-default-type pathname "pkg")
+		  package-set)))
+	(fasdump (construct-external-descriptions pmodel) package-set))))
 
 (define (write-cref pathname pmodel changes?)
-  (if (or changes? (not (file-processed? pathname "pkg" "crf")))
-      (with-output-to-file (pathname-new-type pathname "crf")
-	(lambda ()
-	  (format-packages pmodel)))))
+  (let ((cref-pathname
+	 (pathname-new-type (package-set-pathname pathname) "crf")))
+    (if (or changes?
+	    (not (file-modification-time<?
+		  (pathname-default-type pathname "pkg")
+		  cref-pathname)))
+	(with-output-to-file cref-pathname
+	  (lambda ()
+	    (format-packages pmodel))))))
 
 (define (write-cref-unusual pathname pmodel changes?)
-  (if (or changes? (not (file-processed? pathname "pkg" "crf")))
-      (with-output-to-file (pathname-new-type pathname "crf")
-	(lambda ()
-	  (format-packages-unusual pmodel)))))
+  (let ((cref-pathname
+	 (pathname-new-type (package-set-pathname pathname) "crf")))
+    (if (or changes?
+	    (not (file-modification-time<?
+		  (pathname-default-type pathname "pkg")
+		  cref-pathname)))
+	(with-output-to-file cref-pathname
+	  (lambda ()
+	    (format-packages-unusual pmodel))))))

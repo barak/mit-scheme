@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.4 2001/09/25 18:10:57 cph Exp $
+# $Id: Clean.sh,v 1.5 2001/12/17 17:40:58 cph Exp $
 #
 # Copyright (c) 2000, 2001 Massachusetts Institute of Technology
 #
@@ -29,7 +29,7 @@ fi
 
 ../etc/Clean.sh "${1}" rm-bin rm-com rm-pkg
 
-echo "rm -f edwinunx.* edwinw32.* edwinos2.* edwin.bld"
-rm -f edwinunx.* edwinw32.* edwinos2.* edwin.bld
+echo "rm -f edwin-unx.* edwin-w32.* edwin-os2.* edwin.bld"
+rm -f edwin-unx.* edwin-w32.* edwin-os2.* edwin.bld
 
 exit 0

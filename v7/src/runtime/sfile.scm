@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.30 2001/07/17 02:08:50 cph Exp $
+$Id: sfile.scm,v 14.31 2001/12/17 17:40:59 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -163,6 +163,18 @@ USA.
 	    (begin
 	      (directory-channel-close channel)
 	      result))))))
+
+(define (file-processed? filename input-type output-type)
+  (file-modification-time<?
+   (pathname-default-type filename input-type)
+   (pathname-new-type filename output-type)))
+
+(define (file-modification-time<? source target)
+  (let ((source (file-modification-time-indirect source)))
+    (and source
+	 (let ((target (file-modification-time-indirect target)))
+	   (and target
+		(<= source target))))))
 
 (define (call-with-temporary-filename receiver)
   (call-with-temporary-file-pathname

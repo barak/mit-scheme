@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.39 2001/09/25 05:11:11 cph Exp $
+$Id: make.scm,v 4.40 2001/12/17 17:40:59 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -35,4 +35,4 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
        (load-package-set "sf")))
     ((package/reference (find-package '(SCODE-OPTIMIZER))
 			'USUAL-INTEGRATIONS/CACHE!))))
-(add-subsystem-identification! "SF" '(4 38))
+(add-subsystem-identification! "SF" '(4 39))

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.4 2001/08/15 03:30:05 cph Exp $
+# $Id: Setup.sh,v 1.5 2001/12/17 17:40:59 cph Exp $
 #
 # Copyright (c) 2000, 2001 Massachusetts Institute of Technology
 #
@@ -36,6 +36,6 @@ for FNS in `cd ../runtime; ls *.scm`; do
     maybe_link ${FN} ../runtime/${FN}
 done
 
-maybe_link runtime.pkd ../runtime/runtime.pkd
+maybe_link runtime-unx.pkd ../runtime/runtime-unx.pkd
 
 exit 0

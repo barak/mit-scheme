@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 3.112 2001/12/17 04:42:01 cph Exp $
+$Id: make.scm,v 3.113 2001/12/17 17:40:58 cph Exp $
 
 Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
@@ -34,17 +34,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
      (lambda ()
        (declare-shared-library "edwin" (lambda () #t))
        (load-package-set "edwin"
-	 (let ((package-name
-		(case microcode-id/operating-system
-		  ((DOS) "edwindos")
-		  ((NT) "edwinw32")
-		  ((OS/2) "edwinos2")
-		  ((UNIX) "edwinunx")
-		  (else "edwinunk"))))
-	   `((os-type . ,microcode-id/operating-system)
-	     (rewrite-package-file-name
-	      . ,(lambda (pathname)
-		   (pathname-new-name pathname package-name)))
-	     (alternate-package-loader
-	      . ,(load "edwin.bld" system-global-environment)))))))))
+	 `((alternate-package-loader
+	    . ,(load "edwin.bld" system-global-environment))))))))
 (add-identification! "Edwin" 3 111)

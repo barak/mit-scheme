@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: edwin.sf,v 1.26 2001/08/16 19:08:46 cph Exp $
+;;; $Id: edwin.sf,v 1.27 2001/12/17 17:40:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2001 Massachusetts Institute of Technology
 ;;;
@@ -21,23 +21,11 @@
 
 (load-option 'CREF)
 
-(let ((package-name
-       (case microcode-id/operating-system
-	 ((DOS) "edwindos")
-	 ((NT) "edwinw32")
-	 ((OS/2) "edwinos2")
-	 ((UNIX) "edwinunx")
-	 (else "edwinunk"))))
-  (let ((new-filename (pathname-new-type package-name "pkg")))
-    (delete-file-no-errors new-filename)
-    (copy-file "edwin.pkg" new-filename))
-
 (if (not (name->package '(EDWIN)))
-    (begin
-      (if (not (file-exists? (pathname-new-type package-name "pkd")))
-	  (cref/generate-trivial-constructor package-name))
-      (construct-packages-from-file
-       (fasload (pathname-new-type package-name "pkd")))))
+    (let ((package-set (package-set-pathname "edwin")))
+      (if (not (file-exists? package-set))
+	  (cref/generate-trivial-constructor "edwin"))
+      (construct-packages-from-file (fasload package-set))))
 
 (if (lexical-unreferenceable? (->environment '(EDWIN CLASS-CONSTRUCTOR))
 			      'CLASS-DESCRIPTORS)
@@ -78,7 +66,5 @@
 
 (load "decls")
 
-(cref/generate-constructors package-name)
+(cref/generate-constructors "edwin")
 (sf-conditionally "edwin.ldr")
-
-)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.35 2001/09/25 05:11:31 cph Exp $
+$Id: packag.scm,v 14.36 2001/12/17 17:40:59 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -158,17 +158,13 @@ USA.
 		    package-name-tag
 		    system-global-package))
 
-(define system-loader/enable-query?
-  #f)
+(define system-loader/enable-query? #f)
 
 (define (load-package-set filename #!optional options load-interpreted?)
-  (let* ((options (if (default-object? options) '() options))
-	 (pathname
-	  (let ((rewrite (lookup-option 'REWRITE-PACKAGE-FILE-NAME options))
-		(pathname (pathname-new-type filename "pkd")))
-	    (if rewrite
-		(rewrite pathname)
-		pathname))))
+  (let ((pathname (package-set-pathname filename))
+	(options
+	 (cons (cons 'OS-TYPE microcode-id/operating-system)
+	       (if (default-object? options) '() options))))
     (with-working-directory-pathname (directory-pathname pathname)
       (lambda ()
 	(let ((file (fasload pathname)))
@@ -207,8 +203,19 @@ USA.
   ;; can end up being purified also.
   (flush-purification-queue!))
 
-(define package/system-loader
-  load-package-set)
+(define (package-set-pathname pathname)
+  (make-pathname (pathname-host pathname)
+		 (pathname-device pathname)
+		 (pathname-directory pathname)
+		 (string-append (pathname-name pathname)
+				"-"
+				(case microcode-id/operating-system
+				  ((NT) "w32")
+				  ((OS/2) "os2")
+				  ((UNIX) "unx")
+				  (else "unk")))
+		 "pkd"
+		 (pathname-version pathname)))
 
 (define (filename->compiled-object system component)
   (let ((prim (ucode-primitive initialize-c-compiled-block 1)))
@@ -217,22 +224,19 @@ USA.
 		 (let* ((p (->pathname component))
 			(d (pathname-directory p)))
 		   (string-append
-		    (if (pair? d)
-			(car (last-pair d))
-			system)
+		    (if (pair? d) (car (last-pair d)) system)
 		    "_"
-		    (string-replace (pathname-name p) ; kludge
-				    #\-
-				    #\_))))
+		    (string-replace (pathname-name p) #\- #\_))))
 		(value (prim name)))
-	   (if (or (not value)
-		   load/suppress-loading-message?)
+	   (if (or (not value) load/suppress-loading-message?)
 	       value
 	       (let ((port (notification-output-port)))
 		 (fresh-line port)
 		 (write-string ";Initialized " port)
 		 (write name port)
 		 value))))))
+
+(define package/system-loader load-package-set)
 
 (define-structure (package-file (type vector)
 				(conc-name package-file/))

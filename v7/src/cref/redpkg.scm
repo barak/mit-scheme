@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.22 2001/11/27 02:53:22 cph Exp $
+$Id: redpkg.scm,v 1.23 2001/12/17 17:40:58 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -39,9 +39,8 @@ USA.
 		(cons
 		 (->namestring pathname)
 		 (let ((pathname
-			(pathname-new-type (merge-pathnames pathname
-							    model-pathname)
-					   "pkd")))
+			(package-set-pathname
+			 (merge-pathnames pathname model-pathname))))
 		   (if (file-exists? pathname)
 		       (let ((contents (fasload pathname)))
 			 (if (package-file? contents)
@@ -131,7 +130,9 @@ USA.
   (data #f))
 
 (define (cache-file-analyses! pmodel)
-  (let ((pathname (pathname-new-type (pmodel/pathname pmodel) "fre"))
+  (let ((pathname
+	 (pathname-new-type (package-set-pathname (pmodel/pathname pmodel))
+			    "fre"))
 	(changes? (list #f)))
     (let ((result
 	   (let ((caches (if (file-exists? pathname) (fasload pathname) '())))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.93 2001/11/06 04:45:45 cph Exp $
+;;; $Id: imail.pkg,v 1.94 2001/12/17 17:40:58 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -23,7 +23,7 @@
 
 (global-definitions "../runtime/runtime")
 (global-definitions "../sos/sos")
-(global-definitions "../edwin/edwinunx")
+(global-definitions "../edwin/edwin")
 (global-definitions "../star-parser/parser")
 
 (define-package (runtime url)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.72 2001/08/17 12:51:00 cph Exp $
+$Id: make.scm,v 14.73 2001/12/17 17:40:58 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -298,6 +298,7 @@ USA.
   (export 'LOAD-PACKAGE-SET)
   (export 'LOAD-PACKAGES-FROM-FILE)
   (export 'NAME->PACKAGE)
+  (export 'PACKAGE-SET-PATHNAME)
   (export 'PACKAGE/ADD-CHILD!)
   (export 'PACKAGE/CHILD)
   (export 'PACKAGE/CHILDREN)
@@ -316,9 +317,15 @@ USA.
 			 environment-for-package name))))
   (import 'CONSTRUCT-PACKAGES-FROM-FILE)
   (import 'LOAD-PACKAGES-FROM-FILE))
-(define packages-file (fasload "runtime.pkd" #f))
+(define packages-file
+  (fasload (case os-name
+	     ((NT) "runtime-w32.pkd")
+	     ((OS/2) "runtime-os2.pkd")
+	     ((UNIX) "runtime-unx.pkd")
+	     (else "runtime-unk.pkd"))
+	   #f))
 (construct-packages-from-file packages-file)
-
+
 ;;; Global databases.  Load, then initialize.
 (let ((files1
        '(("gcdemn" . (RUNTIME GC-DAEMONS))

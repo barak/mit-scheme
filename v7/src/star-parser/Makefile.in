@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.1 2001/10/04 17:10:27 cph Exp $
+# $Id: Makefile.in,v 1.2 2001/12/17 17:40:59 cph Exp $
 #
 # Copyright (c) 2001 Massachusetts Institute of Technology
 #
@@ -77,7 +77,7 @@ install:
 	$(mkinstalldirs) $(DESTDIR)$(PARSER_DIR)
 	$(INSTALL_DATA) *.com $(DESTDIR)$(PARSER_DIR)/.
 	$(INSTALL_DATA) *.bci $(DESTDIR)$(PARSER_DIR)/.
-	$(INSTALL_DATA) parser.pkd $(DESTDIR)$(PARSER_DIR)/.
+	$(INSTALL_DATA) parser-unx.pkd $(DESTDIR)$(PARSER_DIR)/.
 	$(INSTALL_DATA) $(srcdir)/load.scm $(DESTDIR)$(PARSER_DIR)/.
 
 .PHONY: all mostlyclean clean distclean maintainer-clean tags TAGS install

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.2 2001/08/15 03:34:18 cph Exp $
+# $Id: Clean.sh,v 1.3 2001/12/17 17:40:59 cph Exp $
 #
 # Copyright (c) 2000, 2001 Massachusetts Institute of Technology
 #
@@ -30,8 +30,8 @@ fi
 ../etc/Clean.sh "${1}" rm-com
 
 if [ "${1}" = "maintainer-clean" ]; then
-    echo "rm -f *.bin runtime.pkd"
-    rm -f *.bin runtime.pkd
+    echo "rm -f *.bin *.pkd"
+    rm -f *.bin *.pkd
 fi
 
 exit 0

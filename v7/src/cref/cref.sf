@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cref.sf,v 1.13 2001/08/15 02:59:46 cph Exp $
+$Id: cref.sf,v 1.14 2001/12/17 17:40:58 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -24,10 +24,11 @@ USA.
 (sf-conditionally "object")
 (sf-directory ".")
 
-(if (not (file-exists? "cref.pkd"))
-    (fasdump (load "triv.pkg") "cref.pkd"))
+(let ((package-set (package-set-pathname "cref")))
+  (if (not (file-exists? package-set))
+      (fasdump (load "triv.pkg") package-set)))
 
-(if (file-exists? "../runtime/runtime.pkd")
+(if (file-exists? (package-set-pathname "../runtime/runtime"))
     (begin
       (if (not (name->package '(CROSS-REFERENCE)))
 	  (load "make"))

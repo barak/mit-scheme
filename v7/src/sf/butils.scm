@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: butils.scm,v 4.10 1999/01/02 06:19:10 cph Exp $
+$Id: butils.scm,v 4.11 2001/12/17 17:40:59 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Build utilities
@@ -26,7 +27,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (directory-processor input-type output-type process-file)
   (let ((directory-read
 	 (let ((input-pattern
-		(make-pathname false false false 'WILD input-type 'NEWEST)))
+		(make-pathname #f #f #f 'WILD input-type 'NEWEST)))
 	   (lambda (directory)
 	     (directory-read
 	      (merge-pathnames
@@ -34,12 +35,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       input-pattern))))))
     (lambda (input-directory #!optional output-directory force?)
       (let ((output-directory
-	     (if (default-object? output-directory) false output-directory))
-	    (force? (if (default-object? force?) false force?))
+	     (if (default-object? output-directory) #f output-directory))
+	    (force? (if (default-object? force?) #f force?))
 	    (output-type (output-type)))
 	(for-each (lambda (pathname)
 		    (if (or force?
-			    (not (compare-file-modification-times
+			    (not (file-modification-time<?
 				  (pathname-default-type pathname input-type)
 				  (let ((output-pathname
 					 (pathname-new-type pathname
@@ -83,7 +84,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (write-string (enough-namestring pathname)))))
   (set! sf-directory? (directory-processor "scm" "bin" show-pathname))
   (set! compile-directory? (directory-processor "bin" "com" show-pathname)))
-
+
 (define (sf-conditionally filename #!optional echo-up-to-date?)
   (let ((kernel
 	 (lambda (filename)
@@ -91,7 +92,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       (lambda () (sf/pathname-defaulting filename #f #f))
 	     (lambda (input output spec)
 	       spec
-	       (cond ((not (compare-file-modification-times input output))
+	       (cond ((not (file-modification-time<? input output))
 		      (sf filename))
 		     ((and (not (default-object? echo-up-to-date?))
 			   echo-up-to-date?)
@@ -102,15 +103,3 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (if (pair? filename)
 	(for-each kernel filename)
 	(kernel filename))))
-
-(define (file-processed? filename input-type output-type)
-  (compare-file-modification-times
-   (pathname-default-type filename input-type)
-   (pathname-new-type filename output-type)))
-
-(define (compare-file-modification-times source target)
-  (let ((source (file-modification-time-indirect source)))
-    (and source
-	 (let ((target (file-modification-time-indirect target)))
-	   (and target
-		(<= source target))))))
