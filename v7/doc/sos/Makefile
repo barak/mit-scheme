@@ -1,5 +1,5 @@
 
-# $Id: Makefile,v 2.2 2000/07/10 22:18:04 cph Exp $
+# $Id: Makefile,v 2.3 2000/07/10 22:19:43 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -41,8 +41,8 @@ AUX_SUFFIXES = aux log toc
 INDEX_SUFFIXES = cp fn ky pg tp vr
 
 clean:
-	rm -f scheme.ps scheme.dvi scheme.pdf scheme.info*
-	rm -f $(addprefix scheme.,$(AUX_SUFFIXES))
-	rm -f $(addprefix scheme.,$(INDEX_SUFFIXES))
-	rm -f $(addsuffix s,$(addprefix scheme.,$(INDEX_SUFFIXES)))
+	rm -f sos.ps sos.dvi sos.pdf sos.info*
+	rm -f $(addprefix sos.,$(AUX_SUFFIXES))
+	rm -f $(addprefix sos.,$(INDEX_SUFFIXES))
+	rm -f $(addsuffix s,$(addprefix sos.,$(INDEX_SUFFIXES)))
 	$(MAKE) -C html $@
