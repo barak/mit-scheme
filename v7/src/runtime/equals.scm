@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/equals.scm,v 14.4 1991/11/04 20:28:41 cph Exp $
+$Id: equals.scm,v 14.5 1993/10/10 08:33:30 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,8 +47,8 @@ MIT in each case. |#
 	      (and (= x y)
 		   (boolean=? (exact? x) (exact? y)))
 	      (and (object-type? (ucode-type vector) y)
-		   (zero? (vector-length x))
-		   (zero? (vector-length y))))
+		   (fix:zero? (vector-length x))
+		   (fix:zero? (vector-length y))))
 	  (and (number? x)
 	       (number? y)
 	       (= x y)
@@ -57,14 +57,14 @@ MIT in each case. |#
 (define (equal? x y)
   (or (eq? x y)
       (if (object-type? (object-type x) y)
-	  (cond ((object-type? (ucode-type cell) y)
+	  (cond ((cell? y)
 		 (equal? (cell-contents x) (cell-contents y)))
-		((object-type? (ucode-type list) y)
+		((pair? y)
 		 (and (equal? (car x) (car y))
 		      (equal? (cdr x) (cdr y))))
-		((object-type? (ucode-type character-string) y)
+		((string? y)
 		 (string=? x y))
-		((object-type? (ucode-type vector-1b) y)
+		((bit-string? y)
 		 (bit-string=? x y))
 		((number? y)
 		 (and (= x y)
@@ -72,14 +72,14 @@ MIT in each case. |#
 		((pathname? x)
 		 (and (pathname? y)
 		      (pathname=? x y)))
-		((object-type? (ucode-type vector) y)
+		((vector? y)
 		 (let ((size (vector-length x)))
-		   (and (= size (vector-length y))
+		   (and (fix:= size (vector-length y))
 			(let loop ((index 0))
-			  (or (= index size)
+			  (or (fix:= index size)
 			      (and (equal? (vector-ref x index)
 					   (vector-ref y index))
-				   (loop (1+ index))))))))
+				   (loop (fix:+ index 1))))))))
 		(else false))
 	  (and (number? x)
 	       (number? y)
