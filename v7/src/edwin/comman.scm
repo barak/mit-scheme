@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: comman.scm,v 1.77 1993/10/18 23:19:30 cph Exp $
+$Id: comman.scm,v 1.78 1994/03/08 20:15:54 cph Exp $
 
-Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
+Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -196,3 +196,12 @@ of that license should have been included along with this file.
   (if (variable? object)
       object
       (name->variable object)))
+
+(define (variable-permanent-local! variable)
+  (hash-table/put! permanent-local-variables variable #t))
+
+(define (variable-permanent-local? variable)
+  (hash-table/get permanent-local-variables variable #f))
+
+(define permanent-local-variables
+  (make-eq-hash-table))
