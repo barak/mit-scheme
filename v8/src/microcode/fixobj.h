@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/fixobj.h,v 9.29 1991/01/24 04:32:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/fixobj.h,v 9.30 1991/05/05 00:29:26 jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -94,6 +94,12 @@ MIT in each case. */
 #define GENERIC_TRAMPOLINE_SUBTRACT	0x2D
 #define GENERIC_TRAMPOLINE_MULTIPLY	0x2E
 #define GENERIC_TRAMPOLINE_DIVIDE	0x2F
+#define GENERIC_TRAMPOLINE_QUOTIENT	0x30
+#define GENERIC_TRAMPOLINE_REMAINDER	0x31
+#define GENERIC_TRAMPOLINE_MODULO	0x32
 
-#define NFixed_Objects		0x30
+#define ARITY_DISPATCHER_TAG		0x33
+
+
+#define NFixed_Objects		0x34
 
