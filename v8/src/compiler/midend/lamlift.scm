@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lamlift.scm,v 1.2 1994/11/25 23:04:51 adams Exp $
+$Id: lamlift.scm,v 1.3 1995/02/09 04:15:32 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -692,7 +692,9 @@ MIT in each case. |#
 			(not (null? (cdr cont-vars))))
 		    (internal-error "Creating LAMBDA with non-unique continuation"
 				    env))
-		(append cont-vars other-vars)))))
+		(append cont-vars
+			(list-transform-negative other-vars
+			  ignored-continuation-variable?))))))
       ;; If this LAMBDA expression has a name, find all call sites and
       ;; rewrite to pass additional arguments
       (cond ((lamlift/env/binding env)
