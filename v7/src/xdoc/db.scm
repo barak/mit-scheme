@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: db.scm,v 1.1 2004/11/01 19:21:05 cph Exp $
+$Id: db.scm,v 1.2 2004/11/19 14:52:24 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -675,8 +675,6 @@ USA.
 	      " WHERE user_name = " (db-quote user-name)))
 
 (define (encrypt-password password)
-  (if (not (db-valid-password? password))
-      (error "Invalid password syntax:" password))
   (let ((pw-line
 	 (call-with-output-string
 	   (lambda (port)
