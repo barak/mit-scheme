@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: curren.scm,v 1.113 1995/02/07 23:51:22 cph Exp $
+;;;	$Id: curren.scm,v 1.114 1995/04/22 19:53:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -376,7 +376,7 @@ The screen is guaranteed to be deselected at that time."
     (if (and (not buffer)
 	     (not (default-object? error?))
 	     error?)
-	(editor-error "No buffer named" name))
+	(editor-error "No buffer named " name))
     buffer))
 
 (define (create-buffer name)
