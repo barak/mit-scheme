@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.26 2003/09/24 03:26:16 cph Exp $
+$Id: xml.pkg,v 1.27 2003/09/24 03:50:45 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -52,6 +52,7 @@ USA.
 	  <xml-processing-instructions>
 	  <xml-unparsed-!entity>
 	  guarantee-xml-name
+	  guarantee-xml-namespace-uri
 	  make-xml-!attlist
 	  make-xml-!element
 	  make-xml-!entity
@@ -63,7 +64,9 @@ USA.
 	  make-xml-element
 	  make-xml-entity-ref
 	  make-xml-external-id
+	  make-xml-name
 	  make-xml-name-hash-table
+	  make-xml-namespace-uri
 	  make-xml-parameter-!entity
 	  make-xml-parameter-entity-ref
 	  make-xml-processing-instructions
@@ -162,6 +165,8 @@ USA.
 	  xml-name-uri=?
 	  xml-name=?
 	  xml-name?
+	  xml-namespace-uri-string
+	  xml-namespace-uri?
 	  xml-nmtoken?
 	  xml-parameter-!entity-name
 	  xml-parameter-!entity-value

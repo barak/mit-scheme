@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.25 2003/09/24 03:26:23 cph Exp $
+$Id: xml-struct.scm,v 1.26 2003/09/24 03:50:48 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -51,35 +51,46 @@ USA.
 	   (string-is-xml-name? (symbol-name object)))
       (combo-name? object)))
 
-(define (guarantee-xml-name object caller)
+(define-integrable (guarantee-xml-name object caller)
   (if (not (xml-name? object))
       (error:not-xml-name object caller)))
 
 (define (error:not-xml-name object caller)
   (error:wrong-type-argument object "an XML name" caller))
 
+(define (make-xml-namespace-uri uri)
+  (if (namespace-uri-string? uri)
+      (string->symbol uri)
+      (begin
+	(if uri (guarantee-xml-namespace-uri uri 'MAKE-XML-NAMESPACE-URI))
+	uri)))
+
 (define (xml-namespace-uri? object)
   (and (interned-symbol? object)
-       (let ((string (symbol-name object)))
-	 (and (fix:> (string-length string) 0)
-	      (utf8-string-valid? string)))))
+       (namespace-uri-string? (symbol-name object))))
 
-(define (guarantee-xml-namespace-uri object caller)
+(define (namespace-uri-string? object)
+  (and (fix:> (string-length object) 0)
+       (utf8-string-valid? object)))
+
+(define-integrable (guarantee-xml-namespace-uri object caller)
   (if (not (xml-namespace-uri? object))
       (error:not-xml-namespace-uri object caller)))
 
 (define (error:not-xml-namespace-uri object caller)
   (error:wrong-type-argument object "an XML namespace URI" caller))
+
+(define (xml-namespace-uri-string uri)
+  (guarantee-xml-namespace-uri uri 'XML-NAMESPACE-URI-STRING)
+  (symbol->string uri))
 
-(define (xml-intern name #!optional uri)
-  (let ((uri (if (default-object? uri) #f uri))
-	(lose
+(define (xml-intern simple #!optional uri)
+  (make-xml-name simple (if (default-object? uri) #f uri)))
+
+(define (make-xml-name simple uri)
+  (let ((lose
 	 (lambda ()
-	   (error:wrong-type-argument string
-				      "an XML name string"
-				      'XML-INTERN))))
-    (if uri
-	(guarantee-xml-namespace-uri uri 'XML-INTERN))
+	   (error:wrong-type-argument simple "an XML name" 'MAKE-XML-NAME))))
     (receive (string symbol)
 	(cond ((symbol? name) (values (symbol-name name) name))
 	      ((string? name) (values name (string->symbol name)))
@@ -89,11 +100,12 @@ USA.
 	       symbol)
 	      ((eq? type 'NAME)
 	       (%make-xml-name symbol
-			       uri
+			       (make-xml-namespace-uri uri)
 			       (let ((c (string-find-next-char string #\:)))
 				 (if c
-				     (string->symbol
-				      (string-tail string (fix:+ c 1)))
+				     (substring->symbol string
+							(fix:+ c 1)
+							(string-length string))
 				     symbol))))
 	      (else (lose)))))))
 
