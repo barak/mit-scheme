@@ -1,8 +1,8 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpauxmd/hppa.m4,v 1.19 1992/02/05 01:44:36 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpauxmd/hppa.m4,v 1.20 1992/02/07 05:58:12 jinx Exp $
 ;;;
-;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-1992 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -298,30 +298,47 @@ generic_positive_hook
 generic_negative_hook
 	B	generic_negative+4
 	LDW	0(0,22),6		; arg1
-
-no_hook
+
+shortcircuit_apply_hook
+	B	shortcircuit_apply+4
+	EXTRU	26,5,6,24		; procedure type -> 24
+	
+shortcircuit_apply_1_hook
+	B	shortcircuit_apply_1+4
+	EXTRU	26,5,6,24		; procedure type -> 24
+	
+shortcircuit_apply_2_hook
+	B	shortcircuit_apply_2+4
+	EXTRU	26,5,6,24		; procedure type -> 24
+	
+shortcircuit_apply_3_hook
+	B	shortcircuit_apply_3+4
+	EXTRU	26,5,6,24		; procedure type -> 24
+	
+shortcircuit_apply_4_hook
+	B	shortcircuit_apply_4+4
+	EXTRU	26,5,6,24		; procedure type -> 24
+	
+shortcircuit_apply_5_hook
+	B	shortcircuit_apply_5+4
+	EXTRU	26,5,6,24		; procedure type -> 24
+	
+shortcircuit_apply_6_hook
+	B	shortcircuit_apply_6+4
+	EXTRU	26,5,6,24		; procedure type -> 24
+	
+shortcircuit_apply_7_hook
+	B	shortcircuit_apply_7+4
+	EXTRU	26,5,6,24		; procedure type -> 24
+	
+shortcircuit_apply_8_hook
+	B	shortcircuit_apply_8+4
+	EXTRU	26,5,6,24		; procedure type -> 24
 ;;
-;; Provide dummy trapping hooks in case a newver version of compiled
+;; Provide dummy trapping hooks in case a newer version of compiled
 ;; code that expects more hooks is run.
 ;;
-	BREAK	0,18
-	NOP
-	BREAK	0,19
-	NOP
-	BREAK	0,20
-	NOP
-	BREAK	0,21
-	NOP
-	BREAK	0,22
-	NOP
-	BREAK	0,23
-	NOP
-	BREAK	0,24
-	NOP
-	BREAK	0,25
-	NOP
-	BREAK	0,26
-	NOP
+no_hook
 	BREAK	0,27
 	NOP
 	BREAK	0,28
@@ -349,6 +366,26 @@ no_hook
 	BREAK	0,38
 	NOP
 	BREAK	0,39
+	NOP
+	BREAK	0,40
+	NOP
+	BREAK	0,41
+	NOP
+	BREAK	0,42
+	NOP
+	BREAK	0,43
+	NOP
+	BREAK	0,44
+	NOP
+	BREAK	0,45
+	NOP
+	BREAK	0,46
+	NOP
+	BREAK	0,47
+	NOP
+	BREAK	0,48
+	NOP
+	BREAK	0,49
 	NOP
 
 ifelse(ASM_DEBUG,1,"interface_break
@@ -708,6 +745,43 @@ define_generic_unary_predicate(negative,2a,<)
 define_generic_binary(plus,2b,FADD)
 define_generic_unary_predicate(positive,2c,>)
 define_generic_unary_predicate(zero,2d,=)
+
+;;;; Optimized procedure application for unknown procedures.
+;;;  Procedure in r26, arity (for shortcircuit-apply) in r25.
+
+shortcircuit_apply
+	EXTRU	26,5,6,24		; procedure type -> 24
+	COMICLR,=	TC_CCENTRY,24,0
+	B,N	shortcircuit_apply_lose
+	DEP	5,5,6,26		; procedure -> address
+	LDB	-3(0,26),23		; procedure's frame-size
+	COMB,<>,N	25,23,shortcircuit_apply_lose
+	BLE,N	0(5,26)			; invoke procedure
+
+define(define_shortcircuit_fixed,
+"shortcircuit_apply_$1
+	EXTRU	26,5,6,24		; procedure type -> 24
+	COMICLR,=	TC_CCENTRY,24,0
+	B	shortcircuit_apply_lose
+	LDI	$1,25
+	DEP	5,5,6,26		; procedure -> address
+	LDB	-3(0,26),23		; procedure's frame-size
+	COMB,<>,N	25,23,shortcircuit_apply_lose
+	BLE,N	0(5,26)			; invoke procedure")
+
+define_shortcircuit_fixed(1)
+define_shortcircuit_fixed(2)
+define_shortcircuit_fixed(3)
+define_shortcircuit_fixed(4)
+define_shortcircuit_fixed(5)
+define_shortcircuit_fixed(6)
+define_shortcircuit_fixed(7)
+define_shortcircuit_fixed(8)
+
+shortcircuit_apply_lose
+	DEP	24,5,6,26		; insert type back
+	B	scheme_to_interface
+	LDI	0x14,28
 
 ;;;; Assembly language entry point used by utilities in cmpint.c
 ;;;  to return to the interpreter.

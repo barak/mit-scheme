@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules3.scm,v 4.30 1991/05/07 17:54:14 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules3.scm,v 4.31 1992/02/07 05:58:22 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.30 1991/05/07 13:45:31 jinx Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -60,9 +60,28 @@ MIT in each case. |#
   (INVOCATION:APPLY (? frame-size) (? continuation))
   continuation				;ignore
   (LAP ,@(clear-map!)
-       ,@(load-immediate frame-size regnum:second-arg)
-       (LDWM () (OFFSET 4 0 22) ,regnum:first-arg) ; procedure
-       ,@(invoke-interface code:compiler-apply)))
+       ,@(case frame-size
+	   ((1) (LAP (BLE () (OFFSET ,hook:compiler-shortcircuit-apply-1 4
+				     ,regnum:scheme-to-interface-ble))))
+	   ((2) (LAP (BLE () (OFFSET ,hook:compiler-shortcircuit-apply-2 4
+				     ,regnum:scheme-to-interface-ble))))
+	   ((3) (LAP (BLE () (OFFSET ,hook:compiler-shortcircuit-apply-3 4
+				     ,regnum:scheme-to-interface-ble))))
+	   ((4) (LAP (BLE () (OFFSET ,hook:compiler-shortcircuit-apply-4 4
+				     ,regnum:scheme-to-interface-ble))))
+	   ((5) (LAP (BLE () (OFFSET ,hook:compiler-shortcircuit-apply-5 4
+				     ,regnum:scheme-to-interface-ble))))
+	   ((6) (LAP (BLE () (OFFSET ,hook:compiler-shortcircuit-apply-6 4
+				     ,regnum:scheme-to-interface-ble))))
+	   ((7) (LAP (BLE () (OFFSET ,hook:compiler-shortcircuit-apply-7 4
+				     ,regnum:scheme-to-interface-ble))))
+	   ((8) (LAP (BLE () (OFFSET ,hook:compiler-shortcircuit-apply-8 4
+				     ,regnum:scheme-to-interface-ble))))
+	   (else
+	    (LAP ,@(load-immediate frame-size regnum:second-arg)
+		 (BLE () (OFFSET ,hook:compiler-shortcircuit-apply 4
+				 ,regnum:scheme-to-interface-ble)))))
+       (LDWM () (OFFSET 4 0 22) ,regnum:first-arg)))
 
 (define-rule statement
   (INVOCATION:JUMP (? frame-size) (? continuation) (? label))

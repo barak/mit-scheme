@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 4.36 1991/05/07 17:44:02 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 4.37 1992/02/07 05:58:34 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.41 1991/05/06 23:05:51 jinx Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -576,7 +576,16 @@ MIT in each case. |#
     -1+
     zero?
     positive?
-    negative?))
+    negative?
+    shortcircuit-apply
+    shortcircuit-apply-1
+    shortcircuit-apply-2
+    shortcircuit-apply-3
+    shortcircuit-apply-4
+    shortcircuit-apply-5
+    shortcircuit-apply-6
+    shortcircuit-apply-7
+    shortcircuit-apply-8))
 
 (define (invoke-hook hook)
   (LAP (BLE () (OFFSET ,hook 4 ,regnum:scheme-to-interface-ble))
