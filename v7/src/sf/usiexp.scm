@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.10 1992/11/04 10:17:40 jinx Exp $
+$Id: usiexp.scm,v 4.11 1992/12/02 20:20:38 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -392,6 +392,7 @@ MIT in each case. |#
 
 (define char?-expansion (type-test-expansion (ucode-type character)))
 (define vector?-expansion (type-test-expansion (ucode-type vector)))
+(define %record?-expansion (type-test-expansion (ucode-type record)))
 (define weak-pair?-expansion (type-test-expansion (ucode-type weak-cons)))
 (define flo:flonum?-expansion (type-test-expansion (ucode-type big-flonum)))
 (define fix:fixnum?-expansion (type-test-expansion (ucode-type fixnum)))
@@ -445,6 +446,7 @@ MIT in each case. |#
 
 (define usual-integrations/expansion-names
   '(
+    %record?
     *
     +
     -
@@ -522,6 +524,7 @@ MIT in each case. |#
 
 (define usual-integrations/expansion-values
   (list
+   %record?-expansion
    *-expansion
    +-expansion
    --expansion

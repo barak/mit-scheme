@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.164 1992/12/02 19:44:11 cph Exp $
+$Id: runtime.pkg,v 14.165 1992/12/02 20:21:45 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -1693,6 +1693,7 @@ MIT in each case. |#
 	  %record-length
 	  %record-ref
 	  %record-set!
+	  %record?
 	  make-record-type
 	  record-accessor
 	  record-constructor
