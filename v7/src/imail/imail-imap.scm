@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.136 2000/06/30 19:05:47 cph Exp $
+;;; $Id: imail-imap.scm,v 1.137 2000/07/05 00:32:45 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -128,7 +128,8 @@
 			  (imap:response:namespace-personal response)))
 		     (and (pair? namespace)
 			  (car namespace)
-			  (let ((prefix (caar namespace))
+			  (let ((prefix
+				 (imap:decode-mailbox-name (caar namespace)))
 				(delimiter (cadar namespace)))
 			    (cond ((not delimiter)
 				   prefix)
@@ -234,7 +235,9 @@
 	 (lambda (response)
 	   (let ((flags (imap:response:list-flags response))
 		 (delimiter (imap:response:list-delimiter response))
-		 (mailbox (imap:response:list-mailbox response)))
+		 (mailbox
+		  (imap:decode-mailbox-name
+		   (imap:response:list-mailbox response))))
 	     (let ((mailbox*
 		    (if delimiter
 			(string-replace mailbox (string-ref delimiter 0) #\/)
@@ -283,7 +286,8 @@
 		(lambda (namespace)
 		  (let loop ((entries namespace))
 		    (and (pair? entries)
-			 (or (let ((prefix (caar entries))
+			 (or (let ((prefix
+				    (imap:decode-mailbox-name (caar entries)))
 				   (delimiter (cadar entries)))
 			       (if (and delimiter
 					(fix:= (string-length prefix) 6)
@@ -1280,19 +1284,21 @@
 (define (imap:command:select connection mailbox)
   ((imail-ui:message-wrapper "Select mailbox " mailbox)
    (lambda ()
-     (imap:command:no-response connection 'SELECT mailbox))))
+     (imap:command:no-response connection 'SELECT
+			       (imap:encode-mailbox-name mailbox)))))
 
 (define (imap:command:status connection mailbox items)
-  (imap:command:single-response imap:response:status? connection
-				'STATUS mailbox items))
+  (imap:command:single-response imap:response:status? connection 'STATUS
+				(imap:encode-mailbox-name mailbox)
+				items))
 
 (define (imap:command:fetch connection index items)
-  (imap:command:single-response imap:response:fetch? connection
-				'FETCH (+ index 1) items))
+  (imap:command:single-response imap:response:fetch? connection 'FETCH
+				(+ index 1) items))
 
 (define (imap:command:uid-fetch connection uid items)
-  (imap:command:single-response imap:response:fetch? connection
-				'UID 'FETCH uid items))
+  (imap:command:single-response imap:response:fetch? connection 'UID 'FETCH
+				uid items))
 
 (define (imap:command:fetch-range connection start end items)
   (imap:command:multiple-response
@@ -1302,7 +1308,7 @@
 		     ":"
 		     (if end (number->string end) "*"))
    items))
-
+
 (define (imap:command:uid-store-flags connection uid flags)
   (imap:command:no-response connection 'UID 'STORE uid 'FLAGS flags))
 
@@ -1318,19 +1324,25 @@
   (imap:command:no-response connection 'LOGOUT))
 
 (define (imap:command:create connection mailbox)
-  (imap:command:no-response connection 'CREATE mailbox))
+  (imap:command:no-response connection 'CREATE
+			    (imap:encode-mailbox-name mailbox)))
 
 (define (imap:command:delete connection mailbox)
-  (imap:command:no-response connection 'DELETE mailbox))
+  (imap:command:no-response connection 'DELETE
+			    (imap:encode-mailbox-name mailbox)))
 
 (define (imap:command:rename connection from to)
-  (imap:command:no-response connection 'RENAME from to))
+  (imap:command:no-response connection 'RENAME
+			    (imap:encode-mailbox-name from)
+			    (imap:encode-mailbox-name to)))
 
 (define (imap:command:uid-copy connection uid mailbox)
-  (imap:command:no-response connection 'UID 'COPY uid mailbox))
+  (imap:command:no-response connection 'UID 'COPY
+			    uid (imap:encode-mailbox-name mailbox)))
 
 (define (imap:command:append connection mailbox flags time text)
-  (imap:command:no-response connection 'APPEND mailbox
+  (imap:command:no-response connection 'APPEND
+			    (imap:encode-mailbox-name mailbox)
 			    (and (pair? flags) flags)
 			    (and time (imap:universal-time->date-time time))
 			    (cons 'LITERAL text)))
