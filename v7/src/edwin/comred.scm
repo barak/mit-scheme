@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: comred.scm,v 1.113 1999/01/02 06:11:34 cph Exp $
+;;; $Id: comred.scm,v 1.114 1999/01/28 03:59:45 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -436,7 +436,9 @@
       ((#\r)
        (varies (current-region) '(CURRENT-REGION)))
       ((#\s)
-       (prompting (or (prompt-for-string prompt false 'NULL-DEFAULT) "")))
+       (prompting
+	(or (prompt-for-string prompt #f 'DEFAULT-TYPE 'NULL-DEFAULT)
+	    "")))
       ((#\v)
        (prompting (variable-name (prompt-for-variable prompt))))
       ((#\x)

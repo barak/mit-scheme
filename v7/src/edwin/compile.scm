@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.5 1999/01/02 06:11:34 cph Exp $
+;;; $Id: compile.scm,v 1.6 1999/01/28 03:59:45 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-1999 Massachusetts Institute of Technology
 ;;;
@@ -33,7 +33,7 @@ with output going to the buffer *compilation*."
   (lambda ()
     (list (prompt-for-string "Compile command"
 			     (ref-variable compile-command)
-			     'INSERTED-DEFAULT)))
+			     'DEFAULT-TYPE 'INSERTED-DEFAULT)))
   (lambda (command)
     (set-variable! compile-command command)
     (run-compilation command)))
@@ -43,7 +43,7 @@ with output going to the buffer *compilation*."
   (lambda ()
     (list (prompt-for-string "Run grep (with args): "
 			     previous-grep-arguments
-			     'INSERTED-DEFAULT)))
+			     'DEFAULT-TYPE 'INSERTED-DEFAULT)))
   (lambda (command)
     (set! previous-grep-arguments command)
     (run-compilation (string-append "grep -n " command " /dev/null"))))

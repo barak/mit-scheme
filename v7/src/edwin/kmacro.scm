@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: kmacro.scm,v 1.41 1999/01/02 06:11:34 cph Exp $
+;;; $Id: kmacro.scm,v 1.42 1999/01/28 03:59:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1985, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -168,15 +168,14 @@ With argument, also record the keys it is bound to."
     (let ((name
 	   (prompt-for-string-table-name "Write keyboard macro"
 					 false
-					 'NO-DEFAULT
 					 named-keyboard-macros
-					 true)))
+					 'DEFAULT-TYPE 'NO-DEFAULT
+					 'REQUIRE-MATCH #t)))
       (let ((pathname
 	     (prompt-for-pathname (string-append "Write keyboard macro "
 						 name
 						 " to file")
-				  false
-				  false))
+				  #f))
 	    (buffer (temporary-buffer "*Write-Keyboard-Macro-temp*")))
 	(call-with-output-mark (buffer-point buffer)
 	  (lambda (port)

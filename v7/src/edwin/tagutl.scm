@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: tagutl.scm,v 1.56 1999/01/02 06:11:34 cph Exp $
+;;; $Id: tagutl.scm,v 1.57 1999/01/28 04:00:06 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -266,12 +266,12 @@ query-replace with the command \\[tags-loop-continue].
 
 See documentation of variable tags-file-pathnames."
   (lambda ()
-    (let ((source (prompt-for-string "Tags query replace (regexp)" false)))
+    (let ((source (prompt-for-string "Tags query replace (regexp)" #f)))
       (list source
 	    (prompt-for-string
 	     (string-append "Tags query replace " source " with")
-	     false
-	     'NULL-DEFAULT)
+	     #f
+	     'DEFAULT-TYPE 'NULL-DEFAULT)
 	    (command-argument))))
   (lambda (source target delimited)
     (set! tags-loop-continuation

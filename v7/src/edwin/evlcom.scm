@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: evlcom.scm,v 1.59 1999/01/02 06:11:34 cph Exp $
+;;; $Id: evlcom.scm,v 1.60 1999/01/28 03:59:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -272,44 +272,40 @@ Has no effect if evaluate-in-inferior-repl is false."
 
 ;;;; Expression Prompts
 
-(define (prompt-for-expression-value prompt #!optional default)
+(define (prompt-for-expression-value prompt #!optional default . options)
   (let ((buffer (current-buffer)))
-    (eval-with-history
-     buffer
-     (if (default-object? default)
-	 (prompt-for-expression prompt)
-	 (prompt-for-expression prompt
-				(if (or (symbol? default)
-					(pair? default)
-					(vector? default))
-				    `',default
-				    default)))
-     (evaluation-environment buffer))))
+    (eval-with-history buffer
+		       (apply prompt-for-expression
+			      prompt
+			      (cond ((default-object? default)
+				     default-object-kludge)
+				    ((or (symbol? default)
+					 (pair? default)
+					 (vector? default))
+				     `',default)
+				    (else default))
+			      options)
+		       (evaluation-environment buffer))))
 
-(define (prompt-for-expression prompt #!optional default-object default-type)
-  (let ((default-string
-	  (and (not (default-object? default-object))
-	       (write-to-string default-object)))
-	(default-type
-	  (if (default-object? default-type)
-	      'VISIBLE-DEFAULT
-	      default-type)))
-    (read-from-string
-     (prompt-for-string
-      (prompt-for-string/prompt prompt
-				(and (eq? default-type 'VISIBLE-DEFAULT)
-				     default-string))
-      default-string
-      (if (eq? default-type 'VISIBLE-DEFAULT)
-	  'INVISIBLE-DEFAULT
-	  default-type)
-      (let ((environment (ref-variable scheme-environment)))
-	(lambda (buffer)
-	  (set-buffer-major-mode! buffer
-				  (ref-mode-object prompt-for-expression))
-	  ;; This sets up the correct environment in the typein buffer
-	  ;; so that completion of variables works right.
-	  (local-set-variable! scheme-environment environment buffer)))))))
+(define (prompt-for-expression prompt #!optional default-object . options)
+  (read-from-string
+   (apply prompt-for-string
+	  prompt
+	  (and (not (or (default-object? default-object)
+			(eq? default-object-kludge default-object)))
+	       (write-to-string default-object))
+	  'MODE
+	  (let ((environment (ref-variable scheme-environment)))
+	    (lambda (buffer)
+	      (set-buffer-major-mode! buffer
+				      (ref-mode-object prompt-for-expression))
+	      ;; This sets up the correct environment in the typein buffer
+	      ;; so that completion of variables works right.
+	      (local-set-variable! scheme-environment environment buffer)))
+	  options)))
+
+(define default-object-kludge
+  (list 'DEFAULT-OBJECT-KLUDGE))
 
 (define (read-from-string string)
   (bind-condition-handler (list condition-type:error) evaluation-error-handler
@@ -317,12 +313,7 @@ Has no effect if evaluate-in-inferior-repl is false."
       (with-input-from-string string read))))
 
 (define-major-mode prompt-for-expression scheme #f
-  "Major mode for editing solicited input expressions.
-Depending on what is being solicited, either defaulting or completion
-may be available.  The following commands are special to this mode:
-
-\\[exit-minibuffer] terminates the input.
-\\[minibuffer-yank-default] yanks the default string, if there is one."
+  (mode-description (ref-mode-object minibuffer-local))
   (lambda (buffer)
     ;; This kludge prevents auto-fill from being turned on.  Probably
     ;; there is a better way to do this, but I can't think of one
@@ -331,8 +322,8 @@ may be available.  The following commands are special to this mode:
 		(disable-buffer-minor-mode! buffer mode))
 	      (buffer-minor-modes buffer))))
 
-(define-key 'prompt-for-expression #\return 'exit-minibuffer)
-(define-key 'prompt-for-expression #\c-m-y 'minibuffer-yank-default)
+(set-car! (mode-comtabs (ref-mode-object prompt-for-expression))
+	  (car (mode-comtabs (ref-mode-object minibuffer-local))))
 
 ;;;; Evaluation
 

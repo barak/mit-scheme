@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: snr.scm,v 1.50 1999/01/02 06:11:34 cph Exp $
+;;; $Id: snr.scm,v 1.51 1999/01/28 04:00:03 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-1999 Massachusetts Institute of Technology
 ;;;
@@ -870,7 +870,7 @@ Prompts for the News-group name, with completion."
       (string->group
        (let ((convert
 	      (lambda (vector) (map news-group:name (vector->list vector)))))
-	 (prompt-for-completed-string prompt default 'VISIBLE-DEFAULT
+	 (prompt-for-completed-string prompt default
 	   (lambda (string if-unique if-not-unique if-not-found)
 	     (ordered-vector-minimum-match (group-names) string (lambda (s) s)
 					   string-order (prefix-matcher string)
@@ -884,7 +884,7 @@ Prompts for the News-group name, with completion."
 	      (ordered-vector-matches (group-names) string (lambda (s) s)
 				      string-order (prefix-matcher string))))
 	   string->group
-	   #t #f))))))
+	   'REQUIRE-MATCH? #t))))))
 
 (define-command news-unsubscribe-group
   "Unsubscribe from the News group indicated by point.

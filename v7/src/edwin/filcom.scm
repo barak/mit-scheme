@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.198 1999/01/02 06:11:34 cph Exp $
+;;; $Id: filcom.scm,v 1.199 1999/01/28 03:59:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -401,7 +401,7 @@ If `trim-versions-without-asking' is false, system will query user
 	     buffer
 	     (prompt-for-pathname
 	      (string-append "Write buffer " (buffer-name buffer) " to file")
-	      false false)))
+	      #f)))
 	(if (and (ref-variable enable-emacs-write-file-message)
 		 (> (buffer-length buffer) 50000))
 	    (message "Saving file "
@@ -673,40 +673,42 @@ Prefix arg means treat the plaintext file as binary data."
 
 ;;;; Prompting
 
-(define (prompt-for-file prompt default)
+(define (prompt-for-file prompt default . options)
   (->namestring
-   (prompt-for-pathname* prompt default file-non-directory? false)))
+   (prompt-for-pathname* prompt default file-non-directory? options)))
 
-(define (prompt-for-existing-file prompt default)
+(define (prompt-for-existing-file prompt default . options)
   (->namestring
-   (prompt-for-pathname* prompt default file-non-directory? true)))
+   (prompt-for-pathname* prompt default file-non-directory?
+	  'REQUIRE-MATCH? #t
+	  options)))
 
 (define (file-non-directory? file)
   (and (file-exists? file)
        (not (file-directory? file))))
 
-(define (prompt-for-directory prompt default)
+(define (prompt-for-directory prompt default . options)
   (->namestring
    (let ((file-directory?
 	  (lambda (pathname)
 	    (and (not (pathname-wild? pathname))
 		 (file-directory? pathname)))))
      (let ((directory
-	    (prompt-for-pathname* prompt default file-directory? false)))
+	    (prompt-for-pathname* prompt default file-directory? options)))
        (if (file-test-no-errors file-directory? directory)
 	   (pathname-as-directory directory)
 	   directory)))))
 
-(define (prompt-for-existing-directory prompt default)
+(define (prompt-for-existing-directory prompt default . options)
   (->namestring
    (pathname-as-directory
-    (prompt-for-pathname* prompt default file-directory? true))))
+    (prompt-for-pathname* prompt default file-directory?
+			  (cons* 'REQUIRE-MATCH? #t options)))))
 
-(define (prompt-for-pathname prompt default require-match?)
-  (prompt-for-pathname* prompt default file-exists? require-match?))
+(define (prompt-for-pathname prompt default . options)
+  (prompt-for-pathname* prompt default file-exists? options))
 
-(define (prompt-for-pathname* prompt default
-			      verify-final-value? require-match?)
+(define (prompt-for-pathname* prompt default verify-final-value options)
   (let* ((directory
 	  (if default
 	      (directory-pathname
@@ -720,28 +722,27 @@ Prefix arg means treat the plaintext file as binary data."
 	       (car default)
 	       directory))))
     (prompt-string->pathname
-     (prompt-for-completed-string
-      prompt
-      insertion
-      'INSERTED-DEFAULT
-      (lambda (string if-unique if-not-unique if-not-found)
-	(filename-complete-string
-	 (prompt-string->pathname string insertion directory)
-	 (lambda (filename)
-	   (if-unique (os/pathname->display-string filename)))
-	 (lambda (prefix get-completions)
-	   (if-not-unique (os/pathname->display-string prefix)
-			  get-completions))
-	 if-not-found))
-      (lambda (string)
-	(filename-completions-list
-	 (prompt-string->pathname string insertion directory)))
-      (lambda (string)
-	(file-test-no-errors
-	 verify-final-value?
-	 (prompt-string->pathname string insertion directory)))
-      require-match?
-      #f)
+     (apply prompt-for-completed-string
+	    prompt
+	    insertion
+	    (lambda (string if-unique if-not-unique if-not-found)
+	      (filename-complete-string
+	       (prompt-string->pathname string insertion directory)
+	       (lambda (filename)
+		 (if-unique (os/pathname->display-string filename)))
+	       (lambda (prefix get-completions)
+		 (if-not-unique (os/pathname->display-string prefix)
+				get-completions))
+	       if-not-found))
+	    (lambda (string)
+	      (filename-completions-list
+	       (prompt-string->pathname string insertion directory)))
+	    (lambda (string)
+	      (file-test-no-errors
+	       verify-final-value
+	       (prompt-string->pathname string insertion directory)))
+	    'DEFAULT-TYPE 'INSERTED-DEFAULT
+	    options)
      insertion
      directory)))
 

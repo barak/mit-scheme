@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: replaz.scm,v 1.79 1999/01/02 06:11:34 cph Exp $
+;;; $Id: replaz.scm,v 1.80 1999/01/28 03:59:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -28,11 +28,11 @@
   boolean?)
 
 (define (replace-string-arguments name)
-  (let ((source (prompt-for-string name false)))
+  (let ((source (prompt-for-string name #f)))
     (list source
 	  (prompt-for-string (string-append name " " source " with")
-			     false
-			     'NULL-DEFAULT)
+			     #f
+			     'DEFAULT-TYPE 'NULL-DEFAULT)
 	  (command-argument))))
 
 (define-command replace-string

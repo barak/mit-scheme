@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dired.scm,v 1.168 1999/01/02 06:11:34 cph Exp $
+;;; $Id: dired.scm,v 1.169 1999/01/28 03:59:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -498,7 +498,7 @@ With a prefix argument you can edit the current listing switches instead."
 	 (lambda (switches)
 	   (prompt-for-string "Listing switches (must contain -l)"
 			      switches
-			      'INSERTED-DEFAULT)))
+			      'DEFAULT-TYPE 'INSERTED-DEFAULT)))
 	(dired-toggle-switch #\t))))
 
 (define (dired-toggle-switch switch)
@@ -616,8 +616,7 @@ When renaming multiple or marked files, you specify a directory."
 					     " "
 					     (file-namestring from)
 					     " to")
-			      from
-			      #f)))
+			      from)))
     (let ((condition
 	   (operation lstart from
 		      (if (file-directory? to)

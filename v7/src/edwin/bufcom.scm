@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: bufcom.scm,v 1.105 1999/01/02 06:11:34 cph Exp $
+;;; $Id: bufcom.scm,v 1.106 1999/01/28 03:59:44 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -286,11 +286,11 @@ When locked, the buffer's major mode may not be changed."
     (buffer-reset! buffer)
     buffer))
 
-(define (prompt-for-buffer prompt default-buffer)
+(define (prompt-for-buffer prompt default-buffer . options)
   (let ((name
-	 (prompt-for-buffer-name prompt
-				 default-buffer
-				 (not (ref-variable select-buffer-create)))))
+	 (apply prompt-for-buffer-name prompt default-buffer
+		'REQUIRE-MATCH? (not (ref-variable select-buffer-create))
+		options)))
     (or (find-buffer name)
 	(let loop ((hooks (ref-variable select-buffer-not-found-hooks)))
 	  (cond ((null? hooks)
@@ -317,15 +317,16 @@ This variable has no effect if select-buffer-create is false."
   '()
   list?)
 
-(define (prompt-for-existing-buffer prompt default-buffer)
-  (find-buffer (prompt-for-buffer-name prompt default-buffer true) #t))
+(define (prompt-for-existing-buffer prompt default-buffer . options)
+  (find-buffer (apply prompt-for-buffer-name prompt default-buffer
+		      'REQUIRE-MATCH? #t
+		      options)
+	       #t))
 
-(define (prompt-for-buffer-name prompt default-buffer require-match?)
-  (prompt-for-string-table-name prompt
-				(and default-buffer
-				     (buffer-name default-buffer))
-				(if default-buffer
-				    'VISIBLE-DEFAULT
-				    'NO-DEFAULT)
-				(buffer-names)
-				require-match?))
+(define (prompt-for-buffer-name prompt default-buffer . options)
+  (apply prompt-for-string-table-name
+	 prompt
+	 (and default-buffer (buffer-name default-buffer))
+	 (buffer-names)
+	 'DEFAULT-TYPE (if default-buffer 'VISIBLE-DEFAULT 'NO-DEFAULT)
+	 options))

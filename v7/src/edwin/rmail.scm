@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rmail.scm,v 1.59 1999/01/02 06:11:34 cph Exp $
+;;; $Id: rmail.scm,v 1.60 1999/01/28 03:59:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-1999 Massachusetts Institute of Technology
 ;;;
@@ -295,7 +295,7 @@ then performs rmail editing on that file,
 but does not copy any new mail into the file."
   (lambda ()
     (list (and (command-argument)
-	       (prompt-for-existing-file "Run rmail on RMAIL file" false))))
+	       (prompt-for-existing-file "Run rmail on RMAIL file" #f))))
   (lambda (filename)
     (rmail-find-file (or filename (ref-variable rmail-file-name)))
     (let ((mode (current-major-mode)))
@@ -1586,8 +1586,7 @@ buffer visiting that file."
    (let ((pathname
 	  (prompt-for-pathname
 	   (string-append prompt " (default " (file-namestring default) ")")
-	   (directory-pathname default)
-	   #f)))
+	   (directory-pathname default))))
      (if (file-directory? pathname)
 	 (merge-pathnames (file-pathname default)
 			  (pathname-as-directory pathname))
@@ -1930,12 +1929,11 @@ Completion is performed over known labels when reading."
 	 (prompt-for-string-table-name
 	  prompt
 	  rmail-last-label
-	  'VISIBLE-DEFAULT
 	  (alist->string-table
 	   (map list
 		(append! (map symbol->string attributes)
 			 (buffer-keywords (current-buffer)))))
-	  require-match?)))
+	  'REQUIRE-MATCH? require-match?)))
     (set! rmail-last-label label)
     label))
 

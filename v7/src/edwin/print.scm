@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: print.scm,v 1.17 1999/01/02 06:11:34 cph Exp $
+;;; $Id: print.scm,v 1.18 1999/01/28 03:59:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-1999 Massachusetts Institute of Technology
 ;;;
@@ -147,7 +147,7 @@ Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
 	   (let ((job-name
 		  (prompt-for-string "Name to print on title page"
 				     most-recent-name
-				     'INSERTED-DEFAULT)))
+				     'DEFAULT-TYPE 'INSERTED-DEFAULT)))
 	     (if (string-null? job-name)
 		 false
 		 (begin

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.232 1999/01/14 21:38:02 cph Exp $
+$Id: edwin.pkg,v 1.233 1999/01/28 03:59:49 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -453,14 +453,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  edwin-command$minibuffer-complete-word
 	  edwin-command$minibuffer-completion-help
 	  edwin-command$minibuffer-yank-default
-	  edwin-command$next-complex-command
-	  edwin-command$previous-complex-command
 	  edwin-command$repeat-complex-command
 	  edwin-mode$minibuffer-local
 	  edwin-mode$minibuffer-local-completion
 	  edwin-mode$minibuffer-local-must-match
 	  edwin-mode$minibuffer-local-yes-or-no
-	  edwin-mode$repeat-complex-command
 	  edwin-variable$enable-recursive-minibuffers
 	  edwin-variable$completion-auto-help
 	  initialize-typein!
