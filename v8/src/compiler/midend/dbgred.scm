@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dbgred.scm,v 1.4 1995/04/27 23:22:00 adams Exp $
+$Id: dbgred.scm,v 1.5 1995/05/05 12:57:56 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -146,22 +146,22 @@ MIT in each case. |#
   (if (not (pair? expr))
       (illegal expr))
   (case (car expr)
-    ((QUOTE)   (dbg-reduce/quote env expr))
-    ((LOOKUP)  (dbg-reduce/lookup env expr))
-    ((LAMBDA)  (dbg-reduce/lambda env expr))
-    ((LET)     (dbg-reduce/let env expr))
-    ((DECLARE) (dbg-reduce/declare env expr))
-    ((CALL)    (dbg-reduce/call env expr))
-    ((BEGIN)   (dbg-reduce/begin env expr))
-    ((IF)      (dbg-reduce/if env expr))
-    ((LETREC)  (dbg-reduce/letrec env expr))
+    ((QUOTE)    (dbg-reduce/quote env expr))
+    ((LOOKUP)   (dbg-reduce/lookup env expr))
+    ((LAMBDA)   (dbg-reduce/lambda env expr))
+    ((LET)      (dbg-reduce/let env expr))
+    ((DECLARE)  (dbg-reduce/declare env expr))
+    ((CALL)     (dbg-reduce/call env expr))
+    ((BEGIN)    (dbg-reduce/begin env expr))
+    ((IF)       (dbg-reduce/if env expr))
+    ((LETREC)   (dbg-reduce/letrec env expr))
     (else
      (illegal expr))))
 
 (define (dbg-reduce/expr* env exprs)
-  (lmap (lambda (expr)
-	  (dbg-reduce/expr env expr))
-	exprs))
+  (map (lambda (expr)
+	 (dbg-reduce/expr env expr))
+       exprs))
 
 (define-structure
     (dbg-reduce/env
