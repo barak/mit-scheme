@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/pack.scm,v 1.3 1992/05/22 21:09:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/pack.scm,v 1.4 1992/05/22 23:22:41 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -202,8 +202,10 @@ MIT in each case. |#
 			(if (and purify? (not (eq? purify? default-object)))
 			    (purify (load/purification-root scode)))
 			(extended-scode-eval scode env))))))))
-      (fluid-let ((load new-load))
-        (new-load (caar alist)))))
+      (fluid-let ((load new-load)
+		  (flush-purification-queue! (lambda () 'done)))
+        (new-load (caar alist))))
+    (flush-purification-queue!))
 
   (with-binary-input-file (->truename pathname)
     (lambda (channel)
