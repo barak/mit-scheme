@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.c,v 9.48 1992/01/15 04:29:05 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.c,v 9.49 1992/01/15 04:37:54 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -2583,7 +2583,7 @@ DEFUN (recache_uuo_links, (extension, old_value),
 {
   long EXFUN (update_uuo_links,
 	      (SCHEME_OBJECT, SCHEME_OBJECT,
-	       long ((*)(SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, long))))
+	       long ((*)(SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, long))));
 
   SCHEME_OBJECT value;
   long return_value;
