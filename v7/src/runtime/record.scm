@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.46 2003/03/14 20:38:39 cph Exp $
+$Id: record.scm,v 1.47 2003/04/25 03:27:55 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 1997,2002,2003 Massachusetts Institute of Technology
@@ -99,6 +99,8 @@ USA.
 		     (write-char #\space port)
 		     (write (dispatch-tag-contents tag) port))))
 		(else record-method))))))
+  (set! %set-record-type-default-inits!
+	%set-record-type-default-inits!/after-boot)
   (set! set-record-type-unparser-method!
 	set-record-type-unparser-method!/after-boot)
   (for-each (lambda (t.m)
@@ -196,23 +198,27 @@ USA.
     (guarantee-record-type record-type caller)
     (%set-record-type-default-inits! record-type default-inits caller)))
 
-(define (%set-record-type-default-inits! record-type default-inits caller)
-  (let ((v (%record-type-default-inits record-type))
-	(lose (lambda () (error:bad-range-argument default-inits caller))))
-    (if (not (fix:= (guarantee-list->length default-inits caller)
-		    (vector-length v)))
-	(lose))
-    (do ((values default-inits (cdr values))
-	 (i 0 (fix:+ i 1)))
-	((not (pair? values)))
-      (vector-set! v i
-		   (let ((init (car values)))
-		     (if init
-			 (begin
-			   (if (not (thunk? init))
-			       (lose))
-			   init)
-			 (lambda () #f)))))))
+(define %set-record-type-default-inits!
+  (lambda (record-type default-inits caller)
+    caller
+    (let ((v (%record-type-default-inits record-type)))
+      (do ((values default-inits (cdr values))
+	   (i 0 (fix:+ i 1)))
+	  ((not (pair? values)))
+	(vector-set! v i (car values))))))
+
+(define %set-record-type-default-inits!/after-boot
+  (named-lambda (%set-record-type-default-inits! record-type default-inits
+						 caller)
+    (let ((v (%record-type-default-inits record-type)))
+      (if (not (fix:= (guarantee-list-of-type->length
+		       default-inits thunk? "default initializers" caller)
+		      (vector-length v)))
+	  (error:bad-range-argument default-inits caller))
+      (do ((values default-inits (cdr values))
+	   (i 0 (fix:+ i 1)))
+	  ((not (pair? values)))
+	(vector-set! v i (car values))))))
 
 (define (record-type-default-value record-type field-name)
   ((vector-ref (%record-type-default-inits record-type)
