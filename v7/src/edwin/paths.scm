@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/paths.scm,v 1.1 1989/03/14 08:08:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/paths.scm,v 1.2 1989/04/05 18:21:57 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -37,7 +37,10 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define edwin-binary-directory
-  (string->pathname "/zu/cph/edwin/"))
+  (string->pathname "/zurich/scheme/edwin/"))
 
 (define edwin-info-directory
-  edwin-binary-directory)
+  (string->pathname "/emacs-device/emacs/info/"))
+
+(define edwin-tutorial-pathname
+  (string->pathname "/zurich/scheme/edwin/TUTORIAL"))
