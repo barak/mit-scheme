@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.70 2000/05/19 17:52:26 cph Exp $
+;;; $Id: imail-top.scm,v 1.71 2000/05/19 18:06:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -369,7 +369,7 @@ With prefix argument N, moves forward N non-deleted messages,
 or backward if N is negative."
   "p"
   (lambda (delta)
-    (move-relative delta message-undeleted? "undeleted message" #f)))
+    (move-relative-undeleted delta #f)))
 
 (define-command imail-previous-undeleted-message
   "Show previous non-deleted message.
@@ -424,6 +424,9 @@ With prefix argument N moves backward N messages with these flags."
 		     'DEFAULT-TYPE 'INSERTED-DEFAULT
 		     'HISTORY 'IMAIL-PROMPT-FOR-FLAGS
 		     'HISTORY-INDEX 0))
+
+(define (move-relative-undeleted delta operation)
+  (move-relative delta message-undeleted? "undeleted message" operation))
 
 (define (move-relative delta predicate noun operation)
   (if (not (= 0 delta))
@@ -667,21 +670,15 @@ With prefix argument N moves backward N messages with these flags."
   "Delete this message and move to next nondeleted one.
 Deleted messages stay in the file until the \\[imail-expunge] command is given."
   "p"
-  (lambda (n)
-    (do ((i 0 (+ i 1)))
-	((>= i n))
-      ((ref-command imail-delete-message))
-      ((ref-command imail-next-undeleted-message) 1))))
+  (lambda (delta)
+    (move-relative-undeleted delta delete-message)))
 
 (define-command imail-delete-backward
   "Delete this message and move to previous nondeleted one.
 Deleted messages stay in the file until the \\[imail-expunge] command is given."
   "p"
-  (lambda (n)
-    (do ((i 0 (+ i 1)))
-	((>= i n))
-      ((ref-command imail-delete-message))
-      ((ref-command imail-next-undeleted-message) -1))))
+  (lambda (delta)
+    ((ref-command imail-delete-forward) (- delta))))
 
 (define-command imail-undelete-previous-message
   "Back up to deleted message, select it, and undelete it."
@@ -769,21 +766,17 @@ Completion is performed over known flags when reading."
 			     'HISTORY-INDEX 0)
 	  (command-argument)))
   (lambda (url-string argument)
-    (let ((do-one
-	   (lambda ()
-	     (let ((message (selected-message)))
+    (let ((delete? (ref-variable imail-delete-after-output)))
+      (let ((output-message
+	     (lambda (message)
 	       (append-message message (imail-parse-partial-url url-string))
 	       (message-filed message)
-	       (cond ((ref-variable imail-delete-after-output)
-		      ((ref-command imail-delete-forward) 1))
-		     (argument
-		      ((ref-command imail-next-undeleted-message) 1)))))))
-      (if argument
-	  (let ((n (command-argument-value argument)))
-	    (do ((i 0 (+ i 1)))
-		((>= i n))
-	      (do-one)))
-	  (do-one)))))
+	       (if delete? (delete-message message))))
+	    (argument (or argument (and delete? 1))))
+	(if argument
+	    (move-relative-undeleted (command-argument-value argument)
+				     output-message)
+	    (output-message (selected-message)))))))
 
 (define-command imail-create-folder
   "Create a new folder with the specified name.
