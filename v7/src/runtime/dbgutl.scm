@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgutl.scm,v 14.19 2001/03/21 19:15:04 cph Exp $
+$Id: dbgutl.scm,v 14.20 2001/08/04 02:45:30 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -79,23 +79,21 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(write-string "----------------------------------------" port)
 	(newline port)
 	(show-frame environment depth true port)
-	(if (eq? true (environment-has-parent? environment))
+	(if (environment-has-parent? environment)
 	    (begin
 	      (newline port)
 	      (newline port)
-	      (loop (environment-parent environment) (1+ depth))))))))
+	      (loop (environment-parent environment) (+ depth 1))))))))
 
 (define (show-frame environment depth brief? port)
   (show-environment-name environment port)
   (if (not (negative? depth))
       (begin
-	(newline port)
 	(write-string "Depth (relative to initial environment): " port)
-	(write depth port)))
+	(write depth port)
+	(newline port)))
   (if (not (and (environment->package environment) brief?))
-      (begin
-	(newline port)
-	(show-environment-bindings environment brief? port))))
+      (show-environment-bindings environment brief? port)))
 
 (define (show-environment-name environment port)
   (write-string "Environment " port)
@@ -106,52 +104,56 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  (write (package/name package) port))
 	(begin
 	  (write-string "created by " port)
-	  (print-user-friendly-name environment port)))))
+	  (print-user-friendly-name environment port))))
+  (newline port))
 
 (define (show-environment-bindings environment brief? port)
-  (let ((names (environment-bound-names environment)))
-    (let ((n-bindings (length names))
+  (let ((bindings
+	 (sort (environment-bindings environment)
+	   (lambda (a b) (symbol<? (car a) (car b))))))
+    (let ((n-bindings (length bindings))
 	  (finish
-	   (lambda (names)
+	   (lambda (bindings)
 	     (newline port)
-	     (for-each (lambda (name)
-			 (print-binding name
-					(environment-lookup environment name)
-					port))
-		       names))))
-      (cond ((zero? n-bindings)
-	     (write-string " has no bindings" port))
+	     (for-each (lambda (binding)
+			 (print-binding binding port))
+		       bindings))))
+      (cond ((= n-bindings 0)
+	     (write-string " has no bindings" port)
+	     (newline port))
 	    ((and brief? (> n-bindings brief-bindings-limit))
 	     (write-string " has " port)
 	     (write n-bindings port)
 	     (write-string " bindings (first " port)
 	     (write brief-bindings-limit port)
 	     (write-string " shown):" port)
-	     (finish (list-head names brief-bindings-limit)))
+	     (newline port)
+	     (finish (list-head bindings brief-bindings-limit)))
 	    (else
 	     (write-string " has bindings:" port)
-	     (finish names))))))
+	     (newline port)
+	     (finish bindings))))))
 
 (define brief-bindings-limit
   16)
 
-(define (print-binding name value port)
-  (let ((x-size (output-port/x-size port)))
-    (newline port)
-    (write-string
+(define (print-binding binding port)
+  (write-string
+   (let ((x-size (- (output-port/x-size port) 1)))
      (let ((name
 	    (output-to-string (quotient x-size 2)
 	      (lambda ()
-		(write-dbg-name name (current-output-port))))))
-       (if (unassigned-reference-trap? value)
-	   (string-append name " is unassigned")
+		(write-dbg-name (car binding) (current-output-port))))))
+       (if (pair? (cdr binding))
 	   (let ((s (string-append name " = ")))
 	     (string-append
 	      s
 	      (output-to-string (max (- x-size (string-length s)) 0)
-		(lambda ()
-		  (write value)))))))
-     port)))
+				(lambda ()
+				  (write (cadr binding))))))
+	   (string-append name " is unassigned"))))
+   port)
+  (newline port))
 
 (define (debugger-failure port . objects)
   (port/debugger-failure port (message-arguments->string objects)))
