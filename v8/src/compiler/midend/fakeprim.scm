@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.25 1996/04/25 04:23:45 cph Exp $
+$Id: fakeprim.scm,v 1.26 1996/07/19 02:27:59 adams Exp $
 
 Copyright (c) 1994-96 Massachusetts Institute of Technology
 
@@ -1098,6 +1098,10 @@ MIT in each case. |#
        (make-primitive-procedure 'GET-INTERRUPT-ENABLES)
        (make-primitive-procedure 'PRIMITIVE-GET-FREE)
        (make-primitive-procedure 'PRIMITIVE-OBJECT-REF)))
+
+
+(define-operator-properties (make-primitive-procedure 'SET-INTERRUPT-ENABLES!)
+  (list '(OUT-OF-LINE-HOOK)))
 
 ;;(for-each
 ;; (lambda (simple-operator)

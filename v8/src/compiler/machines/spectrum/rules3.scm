@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.8 1995/03/13 07:01:27 adams Exp $
+$Id: rules3.scm,v 1.9 1996/07/19 02:27:48 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -250,13 +250,19 @@ MIT in each case. |#
   (define-optimized-primitive-invocation &=)
   (define-optimized-primitive-invocation &<)
   (define-optimized-primitive-invocation &>)
-  (define-old-optimized-primitive-invocation 1+)
-  (define-old-optimized-primitive-invocation -1+)
-  (define-old-optimized-primitive-invocation zero?)
-  (define-old-optimized-primitive-invocation positive?)
-  (define-old-optimized-primitive-invocation negative?)
+
+  ;; Defunct.
+  ;;(define-old-optimized-primitive-invocation 1+)
+  ;;(define-old-optimized-primitive-invocation -1+)
+  ;;(define-old-optimized-primitive-invocation zero?)
+  ;;(define-old-optimized-primitive-invocation positive?)
+  ;;(define-old-optimized-primitive-invocation negative?)
+
   (define-optimized-primitive-invocation quotient)
   (define-optimized-primitive-invocation remainder)
+
+  (define-optimized-primitive-invocation set-interrupt-enables!)
+
   (define-allocation-primitive vector-cons)
   (define-allocation-primitive string-allocate)
   (define-allocation-primitive floating-vector-cons))

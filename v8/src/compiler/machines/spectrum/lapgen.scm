@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.5 1995/08/06 19:24:46 adams Exp $
+$Id: lapgen.scm,v 1.6 1996/07/19 02:28:32 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -833,7 +833,8 @@ MIT in each case. |#
     remainder
     interpreter-call
     profile-count
-    profile-count/2))
+    profile-count/2
+    set-interrupt-enables!))
 
 ;; There is a NOP here because otherwise the return address would have 
 ;; to be adjusted by the hook code.  This gives more flexibility to the

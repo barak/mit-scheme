@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.2 1995/02/28 01:11:46 adams Exp $
+$Id: machin.scm,v 1.3 1996/07/19 02:28:11 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -552,7 +552,9 @@ MIT in each case. |#
   '(DIVIDE-FIXNUM GCD-FIXNUM &/ FLONUM-ROUND->EXACT
 		  FLONUM-TRUNCATE->EXACT FLONUM-FLOOR->EXACT
 		  FLONUM-CEILING->EXACT FLONUM-NORMALIZE
-		  FLONUM-DENORMALIZE FLONUM-EXPT))
+		  FLONUM-DENORMALIZE FLONUM-EXPT
+		  ;; SET-INTERRUPT-ENABLES!
+		  ))
 
 (define (generic->inline-data generic-op)
   (define (generic-additive-test constant)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.46 1996/04/26 18:14:04 cph Exp $
+$Id: rtlgen.scm,v 1.47 1996/07/19 02:27:15 adams Exp $
 
 Copyright (c) 1994-96 Massachusetts Institute of Technology
 
@@ -4283,7 +4283,9 @@ MIT in each case. |#
   (define-out-of-line-primitive %> '&> 2)
   (define-out-of-line-primitive %string-allocate 'STRING-ALLOCATE 1)
   (define-out-of-line-primitive %floating-vector-cons 'FLOATING-VECTOR-CONS 1)
-  (define-out-of-line-primitive %vector-cons 'VECTOR-CONS 2))
+  (define-out-of-line-primitive %vector-cons 'VECTOR-CONS 2)
+
+  (define-out-of-line-primitive 'SET-INTERRUPT-ENABLES! 'SET-INTERRUPT-ENABLES! 1))
 
 (let ((define-variable-ref
 	(lambda (operator safe?)
