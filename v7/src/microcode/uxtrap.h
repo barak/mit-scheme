@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.7 1991/06/15 00:41:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.8 1991/07/11 01:48:38 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -126,14 +126,6 @@ MIT in each case. */
 #define INITIALIZE_UX_SIGNAL_CODES()					\
 {									\
   DECLARE_UX_SIGNAL_CODE						\
-    (SIGFPE, (~ 0L), 12, "overflow trap");				\
-  DECLARE_UX_SIGNAL_CODE						\
-    (SIGFPE, (~ 0L), 13, "conditional trap");				\
-  DECLARE_UX_SIGNAL_CODE						\
-    (SIGFPE, (~ 0L), 22, "floating-point assist exception trap");	\
-  DECLARE_UX_SIGNAL_CODE						\
-    (SIGFPE, (~ 0L), 22, "floating-point assist emulation trap");	\
-  DECLARE_UX_SIGNAL_CODE						\
     (SIGILL, (~ 0L), 8, "illegal instruction trap");			\
   DECLARE_UX_SIGNAL_CODE						\
     (SIGILL, (~ 0L), 9, "break instruction trap");			\
@@ -141,6 +133,14 @@ MIT in each case. */
     (SIGILL, (~ 0L), 10, "privileged operation trap");			\
   DECLARE_UX_SIGNAL_CODE						\
     (SIGILL, (~ 0L), 11, "privileged register trap");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), 12, "overflow trap");				\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), 13, "conditional trap");				\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), 14, "floating-point assist exception trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), 22, "floating-point assist emulation trap");	\
 }
 
 #endif /* hp9000s800 */
