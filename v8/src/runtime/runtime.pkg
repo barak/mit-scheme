@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.279 1996/10/07 18:12:20 cph Exp $
+$Id: runtime.pkg,v 14.280 1996/10/09 15:43:24 cph Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -469,8 +469,8 @@ MIT in each case. |#
 (define-package (runtime directory)
   (file-case os-type
     ((unix) "unxdir")
-    ((dos nt) "dosdir")
-    ((os/2) "os2dir")
+    ((dos) "dosdir")
+    ((os/2 nt) "os2dir")
     ;;(else "unkdir")
     (else))
   (parent ())
