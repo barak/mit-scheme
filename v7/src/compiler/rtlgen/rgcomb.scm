@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -37,22 +37,22 @@
 
 ;;;; RTL Generation: Combinations
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.4 1986/12/22 23:52:13 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.5 1987/01/01 18:49:25 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
 
 (define-generator combination-tag
-  (lambda (combination offset)
+  (lambda (combination offset rest-generator)
     ((cond ((combination-constant? combination) combination:constant)
 	   ((let ((operator (combination-known-operator combination)))
 	      (and operator
 		   (normal-primitive-constant? operator)))
 	    combination:primitive)
 	   (else combination:normal))
-     combination offset)))
+     combination offset rest-generator)))
 
-(define (combination:normal combination offset)
+(define (combination:normal combination offset rest-generator)
   ;; For the time being, all close-coded combinations will return
   ;; their values in the value register.  If the value of a
   ;; combination is not a temporary, it is either a value-register
@@ -62,14 +62,13 @@
 	(let ((type* (temporary-type value)))
 	  (if type*
 	      (if (not (eq? 'VALUE type*))
-		  (error "COMBINATION:NORMAL: bad temporary type" type*))
+		  (error "COMBINATION:NORMAL: Bad temporary type" type*))
 	      (set-temporary-type! value 'VALUE)))))
-  ((if (generate:next-is-null? (snode-next combination))
-       combination:reduction
-       combination:subproblem)
-   combination offset))
+  (if (generate:next-is-null? (snode-next combination) rest-generator)
+      (combination:reduction combination offset)
+      (combination:subproblem combination offset rest-generator)))
 
-(define (combination:constant combination offset)
+(define (combination:constant combination offset rest-generator)
   (let ((value (combination-value combination))
 	(next (snode-next combination)))
     (cond ((or (value-register? value)
@@ -78,18 +77,20 @@
 				value
 				(combination-constant-value combination)
 				next
-				offset))
+				offset
+				rest-generator
+				rvalue->sexpression))
 	  ((value-ignore? value)
-	   (generate:next next))
+	   (generate:next next offset rest-generator))
 	  (else (error "Unknown combination value" value)))))
 
-(define (combination:primitive combination offset)
+(define (combination:primitive combination offset rest-generator)
   (let ((open-coder
 	 (assq (constant-value (combination-known-operator combination))
 	       primitive-open-coders)))
     (or (and open-coder
-	     ((cdr open-coder) combination offset))
-	(combination:normal combination offset))))
+	     ((cdr open-coder) combination offset rest-generator))
+	(combination:normal combination offset rest-generator))))
 
 (define (define-open-coder primitive open-coder)
   (let ((entry (assq primitive primitive-open-coders)))
@@ -104,61 +105,66 @@
   '())
 
 (define-open-coder pair?
-  (lambda (combination offset)
+  (lambda (combination offset rest-generator)
     (and (combination-compiled-for-predicate? combination)
-	 (open-code:type-test combination offset (ucode-type pair) 0))))
+	 (open-code:type-test combination offset rest-generator
+			      (ucode-type pair) 0))))
 
 (define-open-coder primitive-type?
-  (lambda (combination offset)
+  (lambda (combination offset rest-generator)
     (and (combination-compiled-for-predicate? combination)
 	 (operand->index combination 0
 	   (lambda (type)
-	     (open-code:type-test combination offset type 1))))))
+	     (open-code:type-test combination offset rest-generator
+				  type 1))))))
 
-(define (open-code:type-test combination offset type operand)
+(define (open-code:type-test combination offset rest-generator type operand)
   (let ((next (snode-next combination))
 	(operand (list-ref (combination-operands combination) operand)))
     (generate:subproblem operand offset
       (lambda (offset)
-	(pcfg*node->node!
-	 (rvalue->pexpression (subproblem-value operand) offset
-	   (lambda (expression)
-	     (rtl:make-type-test (rtl:make-object->type expression) type)))
-	 (generate:next (pnode-consequent next) offset)
-	 (generate:next (pnode-alternative next) offset))))))
+	(generate:predicate next offset rest-generator
+	  (rvalue->pexpression (subproblem-value operand) offset
+	    (lambda (expression)
+	      (rtl:make-type-test (rtl:make-object->type expression)
+				  type))))))))
+
+(define-integrable (combination-compiled-for-predicate? combination)
+  (eq? 'PREDICATE (combination-compilation-type combination)))
 
 (define-open-coder car
-  (lambda (combination offset)
-    (open-code:memory-reference combination offset 0)))
+  (lambda (combination offset rest-generator)
+    (open-code:memory-reference combination offset rest-generator 0)))
 
 (define-open-coder cdr
-  (lambda (combination offset)
-    (open-code:memory-reference combination offset 1)))
+  (lambda (combination offset rest-generator)
+    (open-code:memory-reference combination offset rest-generator 1)))
 
 (define-open-coder cell-contents
-  (lambda (combination offset)
-    (open-code:memory-reference combination offset 0)))
+  (lambda (combination offset rest-generator)
+    (open-code:memory-reference combination offset rest-generator 0)))
 
 (define-open-coder vector-length
-  (lambda (combination offset)
-    (open-code-expression-1 combination offset
+  (lambda (combination offset rest-generator)
+    (open-code-expression-1 combination offset rest-generator
       (lambda (operand)
 	(rtl:make-cons-pointer
 	 (rtl:make-constant (ucode-type fixnum))
 	 (rtl:make-fetch (rtl:locative-offset operand 0)))))))
 
 (define-open-coder vector-ref
-  (lambda (combination offset)
+  (lambda (combination offset rest-generator)
     (operand->index combination 1
       (lambda (index)
-	(open-code:memory-reference combination offset index)))))
+	(open-code:memory-reference combination offset rest-generator
+				    index)))))
 
 (define (open-code:memory-reference combination offset index)
-  (open-code-expression-1 combination offset
+  (open-code-expression-1 combination offset rest-generator
     (lambda (operand)
       (rtl:make-fetch (rtl:locative-offset operand index)))))
 
-(define (open-code-expression-1 combination offset receiver)
+(define (open-code-expression-1 combination offset rest-generator receiver)
   (let ((operand (car (combination-operands combination))))
     (generate:subproblem operand offset
       (lambda (offset)
@@ -167,6 +173,7 @@
 			     (subproblem-value operand)
 			     (snode-next combination)
 			     offset
+			     rest-generator
 			     (lambda (rvalue offset receiver*)
 			       (rvalue->sexpression rvalue offset
 				 (lambda (expression)
@@ -179,13 +186,10 @@
 	   (and (integer? value)
 		(not (negative? value))
 		(receiver value))))))
-
-(define-integrable (combination-compiled-for-predicate? combination)
-  (eq? 'PREDICATE (combination-compilation-type combination)))
 
 ;;;; Subproblems
 
-(define (combination:subproblem combination offset)
+(define (combination:subproblem combination offset rest-generator)
   (let ((block (combination-block combination))
 	(finish
 	 (lambda (offset delta call-prefix continuation-prefix)
@@ -196,7 +200,7 @@
 	       (scfg*scfg->scfg!
 		(rtl:make-continuation-heap-check continuation)
 		continuation-prefix)
-	       (generate:next (snode-next combination) offset)))
+	       (generate:next (snode-next combination) offset rest-generator)))
 	     (scfg*node->node! (call-prefix continuation)
 			       (combination:subproblem-body combination
 							    (+ offset delta)

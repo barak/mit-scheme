@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -37,73 +37,65 @@
 
 ;;;; RTL Generation
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.3 1986/12/21 19:34:56 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.4 1987/01/01 18:50:17 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
 
 (define *nodes*)
-(define *generate-next*)
 
 (define (generate-rtl quotations procedures)
   (with-new-node-marks
    (lambda ()
-     (fluid-let ((*nodes* '())
-		 (*generate-next* generate:null))
-       (for-each generate:quotation quotations)
-       (for-each generate:procedure procedures)
-       (for-each generate:remove-memo *nodes*)))))
+     (fluid-let ((*nodes* '()))
+       (for-each (lambda (quotation)
+		   (set-quotation-rtl-entry!
+		    quotation
+		    (generate:top-level (quotation-fg-entry quotation))))
+		 quotations)
+       (for-each
+	(lambda (procedure)
+	  (set-procedure-rtl-entry!
+	   procedure
+	   (scfg*node->node!
+	    ((cond ((ic-procedure? procedure) generate:ic-procedure)
+		   ((closure-procedure? procedure) generate:closure-procedure)
+		   ((stack-procedure? procedure) generate:stack-procedure)
+		   (else (error "Unknown procedure type" procedure)))
+	     procedure)
+	    (generate:top-level (procedure-fg-entry procedure)))))
+	procedures)
+       (for-each (lambda (rnode)
+		   (node-property-remove! rnode generate:node))
+		 *nodes*)))))
 
-(define (generate:null offset)
-  false)
+(define-integrable (generate:top-level expression)
+  (generate:node expression 0 false))
 
-(define-integrable (generate:next-is-null? next)
-  (and (not next)
-       (eq? *generate-next* generate:null)))
-
-(define (generate:subproblem subproblem offset generate-next)
+(define (generate:subproblem subproblem offset rest-generator)
   (let ((cfg (subproblem-cfg subproblem)))
     (if (cfg-null? cfg)
-	(generate-next offset)
-	(fluid-let ((*generate-next* generate-next))
-	  (generate:node (cfg-entry-node cfg) offset)))))
+	(and rest-generator (rest-generator offset))
+	(generate:node (cfg-entry-node cfg) offset rest-generator))))
 
-(define (generate:next node offset)
-  (cond ((not node) (*generate-next* offset))
+(define (generate:next node offset rest-generator)
+  (cond ((not node) (and rest-generator (rest-generator offset)))
 	((node-marked? node)
 	 (let ((memo (node-property-get node generate:node)))
 	   (if (not (= (car memo) offset))
 	       (error "Node entered at different offsets" node))
 	   (cdr memo)))
-	(else (generate:node node offset))))
+	(else (generate:node node offset rest-generator))))
 
-(define (generate:node node offset)
+(define (generate:node node offset rest-generator)
   (node-mark! node)
-  (let ((cfg ((vector-method node generate:node) node offset)))
+  (let ((cfg ((vector-method node generate:node) node offset rest-generator)))
     (node-property-put! node generate:node (cons offset cfg))
     (set! *nodes* (cons node *nodes*))
     cfg))
 
-(define (generate:remove-memo rnode)
-  (node-property-remove! rnode generate:node))
-
-(define (define-generator tag generator)
-  (define-vector-method tag generate:node generator))
-
-(define (generate:quotation quotation)
-  (set-quotation-rtl-entry! quotation
-			    (generate:node (quotation-fg-entry quotation) 0)))
-
-(define (generate:procedure procedure)
-  (set-procedure-rtl-entry!
-   procedure
-   (scfg*node->node!
-    ((cond ((ic-procedure? procedure) generate:ic-procedure)
-	   ((closure-procedure? procedure) generate:closure-procedure)
-	   ((stack-procedure? procedure) generate:stack-procedure)
-	   (else (error "Unknown procedure type" procedure)))
-     procedure)
-    (generate:node (procedure-fg-entry procedure) 0))))
+(define-integrable (generate:next-is-null? next rest-generator)
+  (and (not next) (not rest-generator)))
 
 (define (generate:ic-procedure procedure)
   (make-null-cfg))
@@ -158,8 +150,11 @@
 
 ;;;; Statements
 
+(define (define-generator tag generator)
+  (define-vector-method tag generate:node generator))
+
 (define-generator definition-tag
-  (lambda (definition offset)
+  (lambda (definition offset rest-generator)
     (scfg*node->node!
      (rvalue->sexpression (definition-rvalue definition) offset
        (lambda (expression)
@@ -170,27 +165,29 @@
 	     (error "Definition of compiled variable"))
 	   (lambda (environment name)
 	     (rtl:make-interpreter-call:define environment name expression)))))
-     (generate:next (snode-next definition) offset))))
+     (generate:next (snode-next definition) offset rest-generator))))
 
 (define-generator assignment-tag
-  (lambda (assignment offset)
+  (lambda (assignment offset rest-generator)
     (generate-assignment (assignment-block assignment)
 			 (assignment-lvalue assignment)
 			 (assignment-rvalue assignment)
 			 (snode-next assignment)
 			 offset
+			 rest-generator
 			 rvalue->sexpression)))
 
-(define (generate-assignment block lvalue rvalue next offset
+(define (generate-assignment block lvalue rvalue next offset rest-generator
 			     rvalue->sexpression)
   ((vector-method lvalue generate-assignment)
-   block lvalue rvalue next offset rvalue->sexpression))
+   block lvalue rvalue next offset rest-generator rvalue->sexpression))
 
 (define (define-assignment tag generator)
   (define-vector-method tag generate-assignment generator))
 
 (define-assignment variable-tag
-  (lambda (block variable rvalue next offset rvalue->sexpression)
+  (lambda (block variable rvalue next offset rest-generator
+		 rvalue->sexpression)
     (scfg*node->node! (if (integrated-vnode? variable)
 			  (make-null-cfg)
 			  (rvalue->sexpression rvalue offset
@@ -203,11 +200,12 @@
 				   environment
 				   (intern-scode-variable! block name)
 				   expression))))))
-		      (generate:next next offset))))
+		      (generate:next next offset rest-generator))))
 
 (define (assignment:value-register block value-register rvalue next offset
-				   rvalue->sexpression)
-  (if (not (generate:next-is-null? next)) (error "Return node has next"))
+				   rest-generator rvalue->sexpression)
+  (if (not (generate:next-is-null? next rest-generator))
+      (error "Return node has next"))
   (scfg*node->node!
    (scfg*scfg->scfg! (if (or (value-register? rvalue)
 			     (value-temporary? rvalue))
@@ -223,79 +221,85 @@
 			      (rtl:make-pop-frame (block-frame-size block))
 			      (make-null-cfg))
 			  (rtl:make-return))))
-   (generate:next next offset)))
+   (generate:next next offset rest-generator)))
 
 (define-assignment value-register-tag
   assignment:value-register)
 
 (define-assignment value-push-tag
-  (lambda (block value-push rvalue next offset rvalue->sexpression)
+  (lambda (block value-push rvalue next offset rest-generator
+		 rvalue->sexpression)
     (scfg*node->node! (rvalue->sexpression rvalue offset rtl:make-push)
-		      (generate:next next (1+ offset)))))
+		      (generate:next next (1+ offset) rest-generator))))
 
 (define-assignment value-ignore-tag
-  (lambda (block value-ignore rvalue next offset rvalue->sexpression)
-    (if (not (generate:next-is-null? next)) (error "Return node has next"))
-    false))
+  (lambda (block value-ignore rvalue next offset rest-generator
+		 rvalue->sexpression)
+    (if (not (generate:next-is-null? next rest-generator))
+	(error "Return node has next"))
+    (generate:next next offset rest-generator)))
 
 (define-assignment temporary-tag
-  (lambda (block temporary rvalue next offset rvalue->sexpression)
-    (let ((type (temporary-type temporary)))
-      (case type
-	((#F)
-	 (scfg*node->node!
-	  (if (integrated-vnode? temporary)
-	      (make-null-cfg)
-	      (rvalue->sexpression rvalue offset
-		(lambda (expression)
-		  (rtl:make-assignment temporary expression))))
-	  (generate:next next offset)))
-	((VALUE)
-	 (assignment:value-register block temporary rvalue next offset
-				    rvalue->sexpression))
-	(else
-	 (error "Unknown temporary type" type))))))
+  (lambda (block temporary rvalue next offset rest-generator
+		 rvalue->sexpression)
+    (case (temporary-type temporary)
+      ((#F)
+       (scfg*node->node!
+	(if (integrated-vnode? temporary)
+	    (make-null-cfg)
+	    (rvalue->sexpression rvalue offset
+	      (lambda (expression)
+		(rtl:make-assignment temporary expression))))
+	(generate:next next offset rest-generator)))
+      ((VALUE)
+       (assignment:value-register block temporary rvalue next offset
+				  rest-generator rvalue->sexpression))
+      (else
+       (error "Unknown temporary type" temporary)))))
 
 ;;;; Predicates
 
-(define-generator true-test-tag
-  (lambda (test offset)
-    (pcfg*node->node!
-     (let ((rvalue (true-test-rvalue test)))
-       (if (rvalue-known-constant? rvalue)
-	   (constant->pcfg (rvalue-constant-value rvalue))
-	   (rvalue->pexpression rvalue offset rtl:make-true-test)))
-     (generate:next (pnode-consequent test) offset)
-     (generate:next (pnode-alternative test) offset))))
+(define (define-predicate-generator tag node-generator)
+  (define-generator tag
+    (lambda (pnode offset rest-generator)
+      (generate:predicate pnode offset rest-generator
+			  (node-generator pnode offset)))))
 
-(define-generator unassigned-test-tag
-  (lambda (test offset)
-    (pcfg*node->node!
-     (find-variable (unassigned-test-block test)
-		    (unassigned-test-variable test)
-		    offset
-       (lambda (locative)
-	 (rtl:make-unassigned-test (rtl:make-fetch locative)))
-       (lambda (environment name)
-	 (scfg*pcfg->pcfg!
-	  (rtl:make-interpreter-call:unassigned? environment name)
-	  (rtl:make-true-test (rtl:interpreter-call-result:unassigned?)))))
-     (generate:next (pnode-consequent test) offset)
-     (generate:next (pnode-alternative test) offset))))
+(define (generate:predicate pnode offset rest-generator pcfg)
+  (pcfg*node->node!
+   pcfg
+   (generate:next (pnode-consequent pnode) offset rest-generator)
+   (generate:next (pnode-alternative pnode) offset rest-generator)))
 
-(define-generator unbound-test-tag
+(define-predicate-generator true-test-tag
   (lambda (test offset)
-    (pcfg*node->node!
-     (let ((variable (unbound-test-variable test)))
-       (if (ic-block? (variable-block variable))
-	   (scfg*pcfg->pcfg!
-	    (rtl:make-interpreter-call:unbound?
-	     (nearest-ic-block-expression (unbound-test-block test) offset)
-	     (variable-name variable))
-	    (rtl:make-true-test (rtl:interpreter-call-result:unbound?)))
-	   (make-false-pcfg)))
-     (generate:next (pnode-consequent test) offset)
-     (generate:next (pnode-alternative test) offset))))
+    (let ((rvalue (true-test-rvalue test)))
+      (if (rvalue-known-constant? rvalue)
+	  (constant->pcfg (rvalue-constant-value rvalue))
+	  (rvalue->pexpression rvalue offset rtl:make-true-test)))))
+
+(define-predicate-generator unassigned-test-tag
+  (lambda (test offset)
+    (find-variable (unassigned-test-block test)
+		   (unassigned-test-variable test)
+		   offset
+      (lambda (locative)
+	(rtl:make-unassigned-test (rtl:make-fetch locative)))
+      (lambda (environment name)
+	(scfg*pcfg->pcfg!
+	 (rtl:make-interpreter-call:unassigned? environment name)
+	 (rtl:make-true-test (rtl:interpreter-call-result:unassigned?)))))))
+
+(define-predicate-generator unbound-test-tag
+  (lambda (test offset)
+    (let ((variable (unbound-test-variable test)))
+      (if (ic-block? (variable-block variable))
+	  (scfg*pcfg->pcfg!
+	   (rtl:make-interpreter-call:unbound?
+	    (nearest-ic-block-expression (unbound-test-block test) offset)
+	    (variable-name variable))
+	   (rtl:make-true-test (rtl:interpreter-call-result:unbound?)))
+	  (make-false-pcfg)))))
 
 ;;;; Expressions
 
