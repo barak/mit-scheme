@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dstack.h,v 1.12 2004/01/07 04:43:29 cph Exp $
+$Id: dstack.h,v 1.13 2004/01/07 04:50:24 cph Exp $
 
-Copyright (C) 1990-1999 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1993,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
