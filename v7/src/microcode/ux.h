@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.57 1993/11/22 23:17:46 cph Exp $
+$Id: ux.h,v 1.58 1993/11/23 06:50:39 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -285,6 +285,8 @@ extern int EXFUN (kill, (pid_t, int));
 #ifdef _ULTRIX
 #define SYSTEM_VARIANT "Ultrix"
 #define HAVE_FTRUNCATE
+/* For now, they don't work */
+#undef HAVE_PTYS
 #endif
 
 #ifdef _NEXTOS
