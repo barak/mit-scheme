@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.47 1992/07/29 19:54:49 cph Exp $
+$Id: cmpint.c,v 1.48 1992/08/29 12:45:42 jinx Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -947,6 +947,11 @@ DEFUN (comutil_link,
        AND long sections)
 {
   long offset;
+
+#ifdef AUTOCLOBBER_BUG
+  block_address[OBJECT_DATUM(*block_address)] =
+    Registers[REGBLOCK_ENV];
+#endif
 
   offset = (constant_address - block_address);
 
@@ -2266,6 +2271,11 @@ DEFUN (store_uuo_link,
  */
 
 #define TRAMPOLINE_SIZE	(TRAMPOLINE_ENTRY_SIZE + 2)
+#ifdef AUTOCLOBBER_BUG
+#  define TC_TRAMPOLINE_HEADER	TC_FIXNUM
+#else
+#  define TC_TRAMPOLINE_HEADER	TC_MANIFEST_VECTOR
+#endif
 
 static long
 DEFUN (make_trampoline,
@@ -2288,7 +2298,7 @@ DEFUN (make_trampoline,
   local_free = Free;
   Free += (TRAMPOLINE_SIZE + size);
   block = local_free;
-  local_free[0] = (MAKE_OBJECT (TC_MANIFEST_VECTOR,
+  local_free[0] = (MAKE_OBJECT (TC_TRAMPOLINE_HEADER,
 				((TRAMPOLINE_SIZE - 1) + size)));
   local_free[1] = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,
 				TRAMPOLINE_ENTRY_SIZE));
