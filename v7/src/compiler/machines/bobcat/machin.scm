@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.8 1988/05/09 19:48:57 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.9 1988/05/19 15:32:53 markf Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -91,6 +91,9 @@ MIT in each case. |#
     ;; lsl.l #8,reg = 4
     ;; asr.l #8,reg = 6
     ((OBJECT->FIXNUM) 10)
+    ;; and.l d7,reg         = 3
+    ;; or.1  #x01AFFFFF,reg = 8
+    ((FIXNUM->OBJECT) 11)		
     ((OFFSET) 16)			;move.l d(reg),reg
     ((OFFSET-ADDRESS) 8)		;lea d(an),reg
     ((POST-INCREMENT) 12)		;move.l (reg)+,reg
@@ -101,32 +104,22 @@ MIT in each case. |#
      (case (rtl:fixnum-2-args-operator expression)
        ;; move.l reg,reg = 3
        ;; add.l  reg,reg = 3
-       ;; and.l  d7,reg  = 3
-       ;; or.l   #x01AFFFFF,reg = 8
-       ((PLUS-FIXNUM) 17)
+       ((PLUS-FIXNUM) 6)
        ;; move.l reg,reg = 3
        ;; muls.l reg,reg = 49
-       ;; and.l  d7,reg  = 3
-       ;; or.l   #x01AFFFFF,reg = 8
-       ((MULTIPLY-FIXNUM) 63)
+       ((MULTIPLY-FIXNUM) 52)
        ;; move.l reg,reg = 3
        ;; sub.l  reg,reg = 3
-       ;; and.l  d7,reg  = 3
-       ;; or.l   #x01AFFFFF,reg = 8
-       ((MINUS-FIXNUM) 17)
+       ((MINUS-FIXNUM) 6)
        (else (error "rtl:expression-cost - unknown fixnum operator" expression))))
     ((FIXNUM-1-ARG)
      (case (rtl:fixnum-1-arg-operator expression)
        ;; move.l reg,reg = 3
        ;; addq.l #1,reg = 3
-       ;; and.l  d7,reg  = 3
-       ;; or.l   #x01AFFFFF,reg = 8
-       ((ONE-PLUS-FIXNUM) 17)
+       ((ONE-PLUS-FIXNUM) 6)
        ;; move.l reg,reg = 3
        ;; subq.l #1,reg = 3
-       ;; and.l  d7,reg  = 3
-       ;; or.l   #x01AFFFFF,reg = 8
-       ((MINUS-ONE-PLUS-FIXNUM) 17)
+       ((MINUS-ONE-PLUS-FIXNUM) 6)
        (else (error "rtl:expression-cost - unknown fixnum operator" expression))))
     ;; The following are preliminary. Check with Jinx (mhwu)
     ((CHAR->ASCII) 4)
