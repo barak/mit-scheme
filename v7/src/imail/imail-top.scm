@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.66 2000/05/19 04:15:41 cph Exp $
+;;; $Id: imail-top.scm,v 1.67 2000/05/19 05:03:44 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -104,7 +104,10 @@ May be called with an IMAIL folder URL as argument;
  but does not copy any new mail into the folder."
   (lambda ()
     (list (and (command-argument)
-	       (prompt-for-string "Run IMAIL on folder" #f))))
+	       (prompt-for-string "Run IMAIL on folder" #f
+				  'DEFAULT-TYPE 'VISIBLE-DEFAULT
+				  'HISTORY 'IMAIL
+				  'HISTORY-INDEX 0))))
   (lambda (url-string)
     (let ((folder
 	   (open-folder
@@ -350,7 +353,7 @@ With prefix argument N, moves forward N messages,
 or backward if N is negative."
   "p"
   (lambda (delta)
-    (move-relative delta (lambda (message) message #t) "message")))
+    (move-relative delta #f "message" #f)))
 
 (define-command imail-previous-message
   "Show previous message whether deleted or not.
@@ -366,7 +369,7 @@ With prefix argument N, moves forward N non-deleted messages,
 or backward if N is negative."
   "p"
   (lambda (delta)
-    (move-relative delta message-undeleted? "undeleted message")))
+    (move-relative delta message-undeleted? "undeleted message" #f)))
 
 (define-command imail-previous-undeleted-message
   "Show previous non-deleted message.
@@ -400,7 +403,8 @@ With prefix argument N moves forward N messages with these flags."
 				    (if (fix:= 1 (length flags)) "" "s")
 				    " "
 				    (decorated-string-append "" ", " ""
-							     flags))))))
+							     flags))
+		     #f))))
 
 (define-command imail-previous-flagged-message
   "Show previous message with one of the flags FLAGS.
@@ -420,26 +424,28 @@ With prefix argument N moves backward N messages with these flags."
 			   'HISTORY 'IMAIL-NEXT-FLAGGED-MESSAGE
 			   'HISTORY-INDEX 0)))
 
-(define (move-relative delta predicate noun)
+(define (move-relative delta predicate noun operation)
   (if (not (= 0 delta))
       (call-with-values
 	  (lambda ()
 	    (if (< delta 0)
 		(values (- delta) previous-message "previous")
 		(values delta next-message "next")))
-	(lambda (delta step direction)
-	  (let loop
-	      ((delta delta)
-	       (msg (selected-message))
-	       (winner #f))
-	    (let ((next (step msg predicate)))
-	      (cond ((not next)
-		     (if winner (select-message (selected-folder) winner))
-		     (message "No " direction " " noun))
-		    ((= delta 1)
-		     (select-message (selected-folder) next))
-		    (else
-		     (loop (- delta 1) next next)))))))))
+	(lambda (n step direction)
+	  (let ((folder (selected-folder))
+		(msg (selected-message)))
+	    (if (and operation (> delta 0))
+		(operation msg))
+	    (let loop ((n n) (msg msg) (winner #f))
+	      (let ((next (step msg predicate)))
+		(cond ((not next)
+		       (if winner (select-message folder winner))
+		       (message "No " direction " " noun))
+		      ((= n 1)
+		       (select-message folder next))
+		      (else
+		       (if operation (operation next))
+		       (loop (- n 1) next next))))))))))
 
 (define (select-message folder selector #!optional force? full-headers?)
   (let ((buffer (imail-folder->buffer folder #t))
@@ -755,13 +761,28 @@ Completion is performed over known flags when reading."
 
 (define-command imail-output
   "Append this message to a specified folder."
-  "sOutput to folder"
-  (lambda (url-string)
-    (let ((message (selected-message)))
-      (append-message message (imail-parse-partial-url url-string))
-      (message-filed message)
-      (if (ref-variable imail-delete-after-output)
-	  ((ref-command imail-delete-forward) #f)))))
+  (lambda ()
+    (list (prompt-for-string "Output to folder" #f
+			     'DEFAULT-TYPE 'INSERTED-DEFAULT
+			     'HISTORY 'IMAIL-OUTPUT
+			     'HISTORY-INDEX 0)
+	  (command-argument)))
+  (lambda (url-string argument)
+    (let ((do-one
+	   (lambda ()
+	     (let ((message (selected-message)))
+	       (append-message message (imail-parse-partial-url url-string))
+	       (message-filed message)
+	       (cond ((ref-variable imail-delete-after-output)
+		      ((ref-command imail-delete-forward) 1))
+		     (argument
+		      ((ref-command imail-next-undeleted-message) 1)))))))
+      (if argument
+	  (let ((n (command-argument-value argument)))
+	    (do ((i 0 (+ i 1)))
+		((>= i n))
+	      (do-one)))
+	  (do-one)))))
 
 (define-command imail-create-folder
   "Create a new folder with the specified name.

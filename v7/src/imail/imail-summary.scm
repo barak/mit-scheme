@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.7 2000/05/18 21:27:59 cph Exp $
+;;; $Id: imail-summary.scm,v 1.8 2000/05/19 05:03:42 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -361,6 +361,7 @@ with some additions to make navigation more natural.
 (define-key 'imail-summary #\c-p	'imail-summary-previous-message)
 (define-key 'imail-summary #\.		'undefined)
 (define-key 'imail-summary #\q		'imail-summary-quit)
+(define-key 'imail-summary #\u		'imail-summary-undelete-forward)
 (define-key 'imail-summary #\m-<	'imail-select-message)
 (define-key 'imail-summary #\m->	'imail-last-message)
 
@@ -392,6 +393,14 @@ or forward if N is negative."
   "p"
   (lambda (delta)
     ((ref-command imail-summary-next-message) (- delta))))
+
+(define-command imail-summary-undelete-forward
+  "Undelete following message whether deleted or not.
+With prefix argument N, undeletes forward N messages,
+or backward if N is negative."
+  "p"
+  (lambda (delta)
+    (move-relative delta #f "message" undelete-message)))
 
 (define-command imail-summary-quit
   "Quit out of IMAIL."
