@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.69 1992/09/26 02:55:00 cph Exp $
+$Id: interp.c,v 9.70 1992/10/27 01:25:01 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -422,7 +422,7 @@ void
 DEFUN (Interpret, (dumped_p), Boolean dumped_p)
 {
   long Which_Way;
-  fast SCHEME_OBJECT *Reg_Block, *Reg_Stack_Pointer, *Reg_History;
+  fast SCHEME_OBJECT * Reg_Block, * Reg_Stack_Pointer, * Reg_History;
 
   extern long enter_compiled_expression();
   extern long apply_compiled_procedure();
@@ -1466,36 +1466,60 @@ Perform_Application:
       Apply_Ucode_Hook();
 
       {
-        fast SCHEME_OBJECT Function;
+        fast SCHEME_OBJECT Function, orig_proc;
 
-	Apply_Future_Check(Function, STACK_REF(STACK_ENV_FUNCTION));
+	Apply_Future_Check (Function, (STACK_REF (STACK_ENV_FUNCTION)));
+	orig_proc = Function;
 
-        switch(OBJECT_TYPE (Function))
+apply_dispatch:
+        switch (OBJECT_TYPE (Function))
         {
-
 	  case TC_ENTITY:
 	  {
-	    fast long nargs;
+	    fast long nargs, nactuals;
+	    SCHEME_OBJECT data;
 
 	    /* Will_Pushed ommited since frame must be contiguous.
 	       combination code must ensure one more slot.
 	     */
 
-	    /* This code assumes that adding 1 to nargs takes care
+	    /* This code assumes that adding 1 to nactuals takes care
 	       of everything, including type code, etc.
 	     */
 
 	    nargs = (STACK_POP ());
+	    nactuals = (OBJECT_DATUM (nargs));
+	    data = (MEMORY_REF (Function, ENTITY_DATA));
+	    if ((VECTOR_P (data))
+		&& (nactuals < (VECTOR_LENGTH (data)))
+		&& ((VECTOR_REF (data, nactuals)) != SHARP_F)
+		&& ((VECTOR_REF (data, 0))
+		    == (Get_Fixed_Obj_Slot (ARITY_DISPATCHER_TAG))))
+	    {
+	      SCHEME_OBJECT nproc = (VECTOR_REF (data, nactuals));
+
+	      if ((Function == orig_proc) && (nproc != Function))
+	      {
+		Function = nproc;
+		STACK_PUSH (nargs);
+		STACK_REF (STACK_ENV_FUNCTION) = nproc;
+		goto apply_dispatch;
+	      }
+	      else
+	      {
+		Function = orig_proc;
+		STACK_REF (STACK_ENV_FUNCTION - 1) = orig_proc;
+	      }
+	    }
+	    
 	    STACK_PUSH (FAST_MEMORY_REF (Function, ENTITY_OPERATOR));
 	    STACK_PUSH (nargs + 1);
 	    /* This must be done to prevent an infinite push loop by
 	       an entity whose handler is the entity itself or some
 	       other such loop.  Of course, it will die if stack overflow
 	       interrupts are disabled.
-	       This will not work in fscheme!  It has to be thought out
-	       carefully.
 	     */
-	    Stack_Check(Stack_Pointer);
+	    Stack_Check (Stack_Pointer);
 	    goto Internal_Apply;
 	  }
 
