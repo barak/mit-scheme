@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxfs.c,v 1.21 2001/05/09 03:15:14 cph Exp $
+$Id: uxfs.c,v 1.22 2002/11/19 16:56:44 cph Exp $
 
-Copyright (c) 1990-2001 Massachusetts Institute of Technology
+Copyright (c) 1990-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,7 +25,13 @@ USA.
 #include "osfile.h"
 #include "osio.h"
 
-#ifdef HAVE_STATFS
+/* Don't use statfs on unknown systems.  It is necessary to enumerate
+   the set of interesting results for the support to be useful.  */
+#if ! ((defined (__linux__)) || (defined (__HPUX__)))
+#  undef HAVE_STATFS
+#endif
+
+#ifdef HAVE_STATSF
 #  ifdef HAVE_SYS_VFS_H
      /* GNU/Linux */
 #    include <sys/vfs.h>
