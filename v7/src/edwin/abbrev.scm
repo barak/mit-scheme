@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: abbrev.scm,v 1.1 2000/02/28 22:50:55 cph Exp $
+;;; $Id: abbrev.scm,v 1.2 2000/02/29 01:34:47 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -420,7 +420,7 @@ and be replaced by its expansion."
   (lambda (argument)
     (let ((mode (ref-mode-object abbrev)))
       (if (if argument
-	      (> (command-argument-value argument) 0)
+	      (> (command-argument-numeric-value argument) 0)
 	      (not (current-minor-mode? mode)))
 	  (enable-current-minor-mode! mode)
 	  (disable-current-minor-mode! mode)))))

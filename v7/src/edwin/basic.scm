@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: basic.scm,v 1.136 2000/02/28 22:50:14 cph Exp $
+;;; $Id: basic.scm,v 1.137 2000/02/29 01:34:38 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -25,12 +25,12 @@
 (define-command self-insert-command
   "Insert the character you type.
 Whichever character you type to run this command is inserted."
-  "p"
-  (lambda (n)
+  "P"
+  (lambda (argument)
     (let ((char (last-command-key)))
       (if (not (char? char))
 	  (editor-error "self-insert-command only works on character keys."))
-      (self-insert char n #t))))
+      (self-insert char (command-argument-numeric-value argument) #t))))
 
 (define (self-insert char n allow-auto-fill?)
   (and (> n 0)
@@ -97,7 +97,7 @@ With an argument, inserts several newlines."
   "P"
   (lambda (argument)
     (let ((m* (mark-right-inserting (current-point))))
-      (insert-newlines (or (command-argument-value argument) 1))
+      (insert-newlines (command-argument-numeric-value argument))
       (set-current-point! m*))))
 
 (define-command narrow-to-region
