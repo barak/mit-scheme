@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.51 2000/01/06 04:34:37 cph Exp $
+$Id: option.c,v 1.52 2000/01/07 02:20:31 cph Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -28,12 +28,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "osfs.h"
 #include <sys/stat.h>
 
-#if ((defined (WINNT)) && (defined (__WATCOMC__)))
-#define USE_WINNT_NATIVE_IO
-#include "nt.h"
-#include "ntio.h"
-#endif
-
 extern char * getenv ();
 extern void free ();
 #define xfree(p) free ((PTR) (p))
@@ -44,6 +38,8 @@ extern int atoi ();
 #include <io.h>
 #include <string.h>
 #include <stdlib.h>
+#include "nt.h"
+#include "ntio.h"
 
 #else /* not WINNT */
 #ifdef _POSIX
@@ -1023,7 +1019,7 @@ DEFUN (read_band_header, (filename, header),
        CONST char * filename AND
        SCHEME_OBJECT * header)
 {
-#ifdef USE_WINNT_NATIVE_IO
+#ifdef WINNT
 
   HANDLE handle
     = (CreateFile (filename,
@@ -1046,7 +1042,7 @@ DEFUN (read_band_header, (filename, header),
   CloseHandle (handle);
   return (1);
 
-#else /* not USE_WINNT_NATIVE_IO */
+#else /* not WINNT */
 
   FILE * stream = (fopen (filename, "r"));
   if (stream == 0)
@@ -1060,7 +1056,7 @@ DEFUN (read_band_header, (filename, header),
   fclose (stream);
   return (1);
 
-#endif /* not USE_WINNT_NATIVE_IO */
+#endif /* not WINNT */
 }
 
 static int
