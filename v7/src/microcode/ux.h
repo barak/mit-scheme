@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.60 1993/11/24 09:04:09 gjr Exp $
+$Id: ux.h,v 1.61 1994/02/15 20:04:27 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -397,15 +397,35 @@ extern int EXFUN (kill, (pid_t, int));
 
 #include <stropts.h>
 
-#define PTY_DECLARATIONS						\
-  extern int EXFUN (grantpt, (int));					\
-  extern int EXFUN (unlockpt, (int));					\
-  extern char * EXFUN (ptsname, (int))
-
 #undef PTY_ITERATION
 
 #define PTY_MASTER_NAME_SPRINTF(master_name)				\
   sprintf ((master_name), "/dev/ptmx")
+
+#ifdef sonyrisc
+
+#define PTY_DECLARATIONS						\
+  extern int EXFUN (grantpt, (int));					\
+  extern int EXFUN (unlockpt, (int));					\
+  extern char * EXFUN (ptsname, (int));					\
+  extern void EXFUN (sony_block_sigchld, (void));			\
+  extern void EXFUN (sony_unblock_sigchld, (void))
+
+#define PTY_SLAVE_NAME_SPRINTF(slave_name, fd)				\
+{									\
+  sony_block_sigchld ();						\
+  grantpt (fd);								\
+  unlockpt (fd);							\
+  sprintf ((slave_name), "%s", (ptsname (fd)));				\
+  sony_unblock_sigchld ();						\
+}
+
+#else /* not sonyrisc */
+
+#define PTY_DECLARATIONS						\
+  extern int EXFUN (grantpt, (int));					\
+  extern int EXFUN (unlockpt, (int));					\
+  extern char * EXFUN (ptsname, (int))
 
 #define PTY_SLAVE_NAME_SPRINTF(slave_name, fd)				\
 {									\
@@ -413,6 +433,8 @@ extern int EXFUN (kill, (pid_t, int));
   unlockpt (fd);							\
   sprintf ((slave_name), "%s", (ptsname (fd)));				\
 }
+
+#endif /* not sonyrisc */
 
 /* Would be nice if HPUX and SYSV4 agreed on the name of this. */
 #define TIOCSIGSEND TIOCSIGNAL

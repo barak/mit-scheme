@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsig.c,v 1.28 1994/02/15 04:23:41 cph Exp $
+$Id: uxsig.c,v 1.29 1994/02/15 20:02:54 cph Exp $
 
 Copyright (c) 1990-94 Massachusetts Institute of Technology
 
@@ -167,7 +167,7 @@ DEFUN_VOID (unblock_signals)
 void
 DEFUN (deactivate_handler, (signo), int signo)
 {
-  INSTALL_HANDLER (signo, SIG_IGN) ;
+  INSTALL_HANDLER (signo, SIG_IGN);
 }
 
 void
@@ -175,7 +175,7 @@ DEFUN (activate_handler, (signo, handler),
        int signo AND
        Tsignal_handler handler)
 {
-  INSTALL_HANDLER (signo, handler) ;
+  INSTALL_HANDLER (signo, handler);
 }
 
 /* Signal Debugging */
@@ -211,44 +211,6 @@ DEFUN (record_signal_delivery, (signo), int signo)
 #define record_signal_delivery(signo)
 
 #endif /* not DEBUG_SIGNAL_DELIVERY */
-
-#if defined(sonyrisc) && defined(_SYSV4)
-/* Sony NEWS-OS 5.0.2 has a nasty bug because `sigaction' maintains a
-   table which contains the signal handlers, and passes
-   `sigaction_handler' to the kernel in place of any handler's
-   address.  Unfortunately, `signal' doesn't know about this table, so
-   it returns `sigaction_handler' as its value, which can subsequently
-   get passed back to `sigaction' and stored in the table.  Once
-   stored in the table, this causes an infinite recursion, which kills
-   the process (with SIGSEGV) when the stack exceeds the allowable
-   amount of virtual memory.
-
-   This problem would not be an issue, because Scheme deliberately
-   doesn't mix the use of `sigaction' with `signal', except that the
-   last release of 5.0.2 (baseline 31.1) calls `signal' from
-   `grantpt'.  So, the following patch overrides the built-in version
-   of `signal' with one that coexists safely with `sigaction'.  */
-
-Tsignal_handler
-DEFUN (signal, (signo, handler),
-       int signo AND
-       Tsignal_handler handler)
-{
-  struct sigaction act;
-  struct sigaction oact;
-
-  (act . sa_handler) = handler;
-  UX_sigemptyset (& (act . sa_mask));
-  (act . sa_flags) = (SA_RESETHAND | SA_NODEFER);
-  if (handler == SIG_IGN)
-    (act . sa_flags) |= SA_NOCLDWAIT;
-  if ((UX_sigaction (signo, (&act), (&oact))) < 0)
-    return (SIG_ERR);
-  else
-    return (oact . sa_handler);
-}
-
-#endif /* sonyrisc && _SYSV4 */
 
 /* Signal Descriptors */
 
@@ -426,31 +388,36 @@ DEFUN (echo_keyboard_interrupt, (c, dc), cc_t c AND cc_t dc)
   fflush (stdout);
 }
 
-static DEFUN_STD_HANDLER (sighnd_control_g,
-  {
-    echo_keyboard_interrupt ((OS_ctty_int_char ()), ALERT_CHAR);
-    tty_set_next_interrupt_char (CONTROL_G_INTERRUPT_CHAR);
-  })
+static
+DEFUN_STD_HANDLER (sighnd_control_g,
+{
+  echo_keyboard_interrupt ((OS_ctty_int_char ()), ALERT_CHAR);
+  tty_set_next_interrupt_char (CONTROL_G_INTERRUPT_CHAR);
+})
 
-static DEFUN_STD_HANDLER (sighnd_control_u,
-  {
-    tty_set_next_interrupt_char (CONTROL_U_INTERRUPT_CHAR);
-  })
+static
+DEFUN_STD_HANDLER (sighnd_control_u,
+{
+  tty_set_next_interrupt_char (CONTROL_U_INTERRUPT_CHAR);
+})
 
-static DEFUN_STD_HANDLER (sighnd_control_x,
-  {
-    tty_set_next_interrupt_char (CONTROL_X_INTERRUPT_CHAR);
-  })
+static
+DEFUN_STD_HANDLER (sighnd_control_x,
+{
+  tty_set_next_interrupt_char (CONTROL_X_INTERRUPT_CHAR);
+})
 
-static DEFUN_STD_HANDLER (sighnd_control_b,
-  {
-    tty_set_next_interrupt_char (CONTROL_B_INTERRUPT_CHAR);
-  })
+static
+DEFUN_STD_HANDLER (sighnd_control_b,
+{
+  tty_set_next_interrupt_char (CONTROL_B_INTERRUPT_CHAR);
+})
 
 static void EXFUN
   (interactive_interrupt_handler, (struct FULL_SIGCONTEXT * scp));
 
-static DEFUN_STD_HANDLER (sighnd_interactive,
+static
+DEFUN_STD_HANDLER (sighnd_interactive,
   (interactive_interrupt_handler (scp)))
 
 void
@@ -500,33 +467,34 @@ void EXFUN ((*stop_signal_hook), (int signo));
 #  define IF_POSIX_SIGNALS(code) do {} while (0)
 #endif
 
-static DEFUN_STD_HANDLER (sighnd_stop,
-  IF_POSIX_SIGNALS(
-  {
-    sigset_t old_mask;
-    sigset_t jc_mask;
+static
+DEFUN_STD_HANDLER (sighnd_stop,
+  IF_POSIX_SIGNALS (
+{
+  sigset_t old_mask;
+  sigset_t jc_mask;
 
-    if (! (UX_SC_JOB_CONTROL ()))
-      return;
-    /* Initialize the signal masks. */
-    UX_sigemptyset (&jc_mask);
-    UX_sigaddset ((&jc_mask), SIGTTOU);
-    UX_sigaddset ((&jc_mask), SIGTTIN);
-    UX_sigaddset ((&jc_mask), SIGTSTP);
-    UX_sigaddset ((&jc_mask), SIGSTOP);
-    UX_sigaddset ((&jc_mask), SIGCHLD);
+  if (! (UX_SC_JOB_CONTROL ()))
+    return;
+  /* Initialize the signal masks. */
+  UX_sigemptyset (&jc_mask);
+  UX_sigaddset ((&jc_mask), SIGTTOU);
+  UX_sigaddset ((&jc_mask), SIGTTIN);
+  UX_sigaddset ((&jc_mask), SIGTSTP);
+  UX_sigaddset ((&jc_mask), SIGSTOP);
+  UX_sigaddset ((&jc_mask), SIGCHLD);
 
-    /* Block the job-control signals. */
-    UX_sigprocmask (SIG_BLOCK, (&jc_mask), (&old_mask));
+  /* Block the job-control signals. */
+  UX_sigprocmask (SIG_BLOCK, (&jc_mask), (&old_mask));
 
-    if (stop_signal_hook == 0)
-      stop_signal_default (signo);
-    else
-      (*stop_signal_hook) (signo);
+  if (stop_signal_hook == 0)
+    stop_signal_default (signo);
+  else
+    (*stop_signal_hook) (signo);
 
-    /* Restore the signal mask to its original state. */
-    UX_sigprocmask (SIG_SETMASK, (&old_mask), 0);
-  }))
+  /* Restore the signal mask to its original state. */
+  UX_sigprocmask (SIG_SETMASK, (&old_mask), 0);
+}))
 
 void
 DEFUN_VOID (OS_restartable_exit)
@@ -534,45 +502,41 @@ DEFUN_VOID (OS_restartable_exit)
   stop_signal_default (SIGTSTP);
 }
 
-#ifdef HAVE_ITIMER
+static
+DEFUN_STD_HANDLER (sighnd_timer,
+{
+#ifndef HAVE_ITIMER
+  extern void EXFUN (reschedule_alarm, (void));
+  reschedule_alarm ();
+#endif
+  request_timer_interrupt ();
+})
 
-static DEFUN_STD_HANDLER (sighnd_timer,
-  {
-    request_timer_interrupt ();
-  })
-
-#else /* not HAVE_ITIMER */
-
-extern void EXFUN (reschedule_alarm, (void));
-
-static DEFUN_STD_HANDLER (sighnd_timer,
-  {
-    reschedule_alarm ();
-    request_timer_interrupt ();
-  })
-
-#endif /* HAVE_ITIMER */
-
-static DEFUN_STD_HANDLER (sighnd_save_then_terminate,
+static
+DEFUN_STD_HANDLER (sighnd_save_then_terminate,
   (request_suspend_interrupt ()))
 
-static DEFUN_STD_HANDLER (sighnd_terminate,
+static
+DEFUN_STD_HANDLER (sighnd_terminate,
   (termination_signal
    ((! (option_emacs_subprocess && (signo == SIGHUP)))
     ? (find_signal_name (signo))
     : 0)))
 
-static DEFUN_STD_HANDLER (sighnd_fpe,
-  {
-    if (executing_scheme_primitive_p ())
-      error_floating_point_exception ();
-    trap_handler ("floating-point exception", signo, info, scp);
-  })
+static
+DEFUN_STD_HANDLER (sighnd_fpe,
+{
+  if (executing_scheme_primitive_p ())
+    error_floating_point_exception ();
+  trap_handler ("floating-point exception", signo, info, scp);
+})
 
-static DEFUN_STD_HANDLER (sighnd_hardware_trap,
+static
+DEFUN_STD_HANDLER (sighnd_hardware_trap,
   (trap_handler ("hardware fault", signo, info, scp)))
 
-static DEFUN_STD_HANDLER (sighnd_software_trap,
+static
+DEFUN_STD_HANDLER (sighnd_software_trap,
   (trap_handler ("system software fault", signo, info, scp)))
 
 #ifdef HAVE_NICE
@@ -581,12 +545,13 @@ static DEFUN_STD_HANDLER (sighnd_software_trap,
 #define NICE_DELTA 5
 #endif
 
-static DEFUN_STD_HANDLER (sighnd_renice,
-  {
-    fprintf (stderr, "\n;;; Renicing! New nice value = %d\n",
-	     ((nice (NICE_DELTA)) + 20));
-    fflush (stderr);
-  })
+static
+DEFUN_STD_HANDLER (sighnd_renice,
+{
+  fprintf (stderr, "\n;;; Renicing! New nice value = %d\n",
+	   ((nice (NICE_DELTA)) + 20));
+  fflush (stderr);
+})
 
 #endif /* HAVE_NICE */
 
@@ -616,19 +581,20 @@ void EXFUN ((*subprocess_death_hook), (pid_t pid, wait_status_t * status));
 #define BREAK break
 #endif
 
-static DEFUN_STD_HANDLER (sighnd_dead_subprocess,
-  {
-    while (1)
-      {
-	wait_status_t status;
-	pid_t pid = (WAITPID (&status));
-	if (pid <= 0)
-	  break;
-	if (subprocess_death_hook != 0)
-	  (*subprocess_death_hook) (pid, (&status));
-	BREAK;
-      }
-  })
+static
+DEFUN_STD_HANDLER (sighnd_dead_subprocess,
+{
+  while (1)
+    {
+      wait_status_t status;
+      pid_t pid = (WAITPID (&status));
+      if (pid <= 0)
+	break;
+      if (subprocess_death_hook != 0)
+	(*subprocess_death_hook) (pid, (&status));
+      BREAK;
+    }
+})
 
 /* Signal Bindings */
 
@@ -646,7 +612,6 @@ DEFUN (bind_handler, (signo, handler),
       && ((handler != ((Tsignal_handler) sighnd_stop))
 	  || (UX_SC_JOB_CONTROL ())))
     INSTALL_HANDLER (signo, handler);
-  return;
 }
 
 void
@@ -1283,3 +1248,61 @@ DEFUN (vax_save_finish, (fp, pscp, scp),
 }
 
 #endif /* vax */
+
+#if defined(sonyrisc) && defined(_SYSV4)
+/* Sony NEWS-OS 5.0.2 has a nasty bug because `sigaction' maintains a
+   table which contains the signal handlers, and passes
+   `sigaction_handler' to the kernel in place of any handler's
+   address.  Unfortunately, `signal' doesn't know about this table, so
+   it returns `sigaction_handler' as its value, which can subsequently
+   get passed back to `sigaction' and stored in the table.  Once
+   stored in the table, this causes an infinite recursion, which kills
+   the process (with SIGSEGV) when the stack exceeds the allowable
+   amount of virtual memory.
+
+   This problem would not be an issue, because Scheme deliberately
+   doesn't mix the use of `sigaction' with `signal', except that the
+   last release of 5.0.2 (baseline 31.1) calls `signal' from
+   `grantpt'.  So, the following patch overrides the built-in version
+   of `signal' with one that coexists safely with `sigaction'.
+
+   This is not a "correct" implementation of `signal' -- it is one
+   that reinstalls the handlers using the same options that we do in
+   this file.  */
+
+Tsignal_handler
+DEFUN (signal, (signo, handler),
+       int signo AND
+       Tsignal_handler handler)
+{
+  struct sigaction act;
+  struct sigaction oact;
+
+  (act . sa_handler) = handler;
+  UX_sigemptyset (& (act . sa_mask));
+  (act . sa_flags) = (SA_RESETHAND | SA_NODEFER);
+  if (handler == SIG_IGN)
+    (act . sa_flags) |= SA_NOCLDWAIT;
+  if ((UX_sigaction (signo, (&act), (&oact))) < 0)
+    return (SIG_ERR);
+  else
+    return (oact . sa_handler);
+}
+
+/* It is best to reinstall the SIGCHLD handler after `grantpt' is
+   called because that guarantees that the flags are correct.  */
+
+void
+DEFUN_VOID (sony_block_sigchld)
+{
+  sighold (SIGCHLD);
+}
+
+void
+DEFUN_VOID (sony_unblock_sigchld)
+{
+  INSTALL_HANDLER (SIGCHLD, sighnd_dead_subprocess);
+  sigrelse (SIGCHLD);
+}
+
+#endif /* sonyrisc && _SYSV4 */
