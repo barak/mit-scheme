@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: image.scm,v 1.130 1993/01/12 10:50:40 cph Exp $
+;;;	$Id: image.scm,v 1.131 1993/10/16 12:17:49 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -178,8 +178,7 @@
 		  (substring-column->index text start gap-start
 					   start-column column tab-width)))
 	     (if (and (fix:< (vector-ref result 1) column)
-		      (not (char=? #\newline
-				   (string-ref text (vector-ref result 0)))))
+		      (fix:= (vector-ref result 0) gap-start))
 		 (let ((result
 			(substring-column->index text
 						 gap-end
