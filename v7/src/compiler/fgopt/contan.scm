@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/contan.scm,v 4.7 1988/12/15 17:24:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/contan.scm,v 4.8 1988/12/19 20:25:08 cph Rel $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -146,27 +146,29 @@ may change if call-with-current-continuation is handled specially.
        (cond ((not join) external)
 	     ((eq? join block) block)
 	     (else (block-farthest-uncommon-ancestor block join))))
-     (let ((lvalue (stack-block/continuation-lvalue external))
+     (let ((external-lvalue (stack-block/continuation-lvalue external))
 	   (ancestry (block-partial-ancestry block external)))
-       (eq-set-union
-	(eq-set-adjoin false (join-blocks lvalue external ancestry))
-	(with-new-lvalue-marks
-	 (lambda ()
-	   (define (loop lvalue)
-	     (lvalue-mark! lvalue)
-	     (if (lvalue/external-source? lvalue)
-		 (error "internal continuation is external source" lvalue))
-	     (eq-set-union
-	      (join-blocks lvalue external ancestry)
-	      (map-union next (lvalue-initial-backward-links lvalue))))
+       (with-new-lvalue-marks
+	(lambda ()
+	  (define (loop lvalue)
+	    (lvalue-mark! lvalue)
+	    (if (lvalue/external-source? lvalue)
+		(error "internal continuation is external source" lvalue))
+	    (eq-set-union
+	     (join-blocks lvalue external ancestry)
+	     (map-union next (lvalue-initial-backward-links lvalue))))
 
-	   (define (next lvalue)
-	     (if (lvalue-marked? lvalue)
-		 '()
-		 (loop lvalue)))
+	  (define (next lvalue)
+	    (cond ((lvalue-marked? lvalue)
+		   '())
+		  ((eq? lvalue external-lvalue)
+		   (lvalue-mark! lvalue)
+		   (eq-set-adjoin false
+				  (join-blocks lvalue external ancestry)))
+		  (else
+		   (loop lvalue))))
 
-	   (lvalue-mark! lvalue)
-	   (next (stack-block/continuation-lvalue block)))))))))
+	  (next (stack-block/continuation-lvalue block))))))))
 
 (define (join-blocks lvalue external ancestry)
   (map->eq-set
