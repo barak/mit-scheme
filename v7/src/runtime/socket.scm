@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.9 1997/11/01 07:31:40 cph Exp $
+$Id: socket.scm,v 1.10 1997/11/01 19:19:39 cph Exp $
 
 Copyright (c) 1990-97 Massachusetts Institute of Technology
 
@@ -37,15 +37,24 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (open-tcp-stream-socket host-name service)
-  (socket-ports (open-tcp-stream-socket-channel host-name service)))
+(define (open-tcp-stream-socket host-name service
+				#!optional buffer-size line-translation)
+  (socket-port (open-tcp-stream-socket-channel host-name service)
+	       (if (default-object? buffer-size) #f buffer-size)
+	       (if (default-object? line-translation) #f line-translation)))
 
-(define (open-unix-stream-socket filename)
-  (socket-ports (open-unix-stream-socket-channel filename)))
+(define (open-unix-stream-socket filename
+				#!optional buffer-size line-translation)
+  (socket-port (open-unix-stream-socket-channel filename)
+	       (if (default-object? buffer-size) #f buffer-size)
+	       (if (default-object? line-translation) #f line-translation)))
 
-(define (socket-ports channel)
-  (let ((port (make-generic-i/o-port channel channel 64 64)))
-    (values port port)))
+(define (socket-ports channel buffer-size line-translation)
+  (let ((buffer-size (or buffer-size 4096))
+	(line-translation (or line-translation 'DEFAULT)))
+    (make-generic-i/o-port channel channel
+			   buffer-size buffer-size
+			   line-translation line-translation)))
 
 (define (open-tcp-stream-socket-channel host-name service)
   (let ((host (vector-ref (get-host-by-name host-name) 0))
