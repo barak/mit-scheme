@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 4.29 2002/11/20 19:45:47 cph Exp $
+$Id: macros.scm,v 4.30 2003/02/13 02:39:03 cph Exp $
 
-Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
+Copyright 1993,1995,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -128,51 +129,51 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 			(DESCRIPTOR-LIST OBJECT ,type ,@slots)))))))
 	   (ill-formed-syntax form))))))
 
-(let-syntax
-    ((define-type-definition
-       (sc-macro-transformer
-	(lambda (form environment)
-	  (let ((name (cadr form))
-		(reserved (caddr form))
-		(enumeration (close-syntax (cadddr form) environment)))
-	    (let ((parent
-		   (close-syntax (symbol-append name '-TAG) environment)))
-	      `(define-syntax ,(symbol-append 'DEFINE- name)
-		 (sc-macro-transformer
-		  (let ((pattern
-			 `(SYMBOL * ,(lambda (x)
-				       (or (symbol? x)
-					   (and (pair? x)
-						(list-of-type? x symbol?)))))))
-		    (lambda (form environment)
-		      (if (syntax-match? pattern (cdr form))
-			  (let ((type (cadr form))
-				(slots (cddr form)))
-			    (let ((tag-name (symbol-append type '-TAG)))
-			      (let ((tag-ref
-				     (close-syntax tag-name environment)))
-				`(BEGIN
-				   (DEFINE ,tag-name
-				     (MAKE-VECTOR-TAG ,',parent ',type
-						      ,',enumeration))
-				   (DEFINE ,(symbol-append type '?)
-				     (TAGGED-VECTOR/PREDICATE ,tag-ref))
-				   (DEFINE-VECTOR-SLOTS ,type ,,reserved
-				     ,@slots)
-				   (SET-VECTOR-TAG-DESCRIPTION!
-				    ,tag-name
-				    (LAMBDA (OBJECT)
-				      (APPEND!
-				       ((VECTOR-TAG-DESCRIPTION ,',parent)
-					OBJECT)
-				       (DESCRIPTOR-LIST OBJECT
-							,type
-							,@slots))))))))
-			  (ill-formed-syntax form))))))))))))
-  (define-type-definition snode 5 #f)
-  (define-type-definition pnode 6 #f)
-  (define-type-definition rvalue 2 rvalue-types)
-  (define-type-definition lvalue 14 #f))
+(define-syntax define-type-definition
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (cadr form))
+	   (reserved (caddr form))
+	   (enumeration (close-syntax (cadddr form) environment)))
+       (let ((parent
+	      (close-syntax (symbol-append name '-TAG) environment)))
+	 `(define-syntax ,(symbol-append 'DEFINE- name)
+	    (sc-macro-transformer
+	     (let ((pattern
+		    `(SYMBOL * ,(lambda (x)
+				  (or (symbol? x)
+				      (and (pair? x)
+					   (list-of-type? x symbol?)))))))
+	       (lambda (form environment)
+		 (if (syntax-match? pattern (cdr form))
+		     (let ((type (cadr form))
+			   (slots (cddr form)))
+		       (let ((tag-name (symbol-append type '-TAG)))
+			 (let ((tag-ref
+				(close-syntax tag-name environment)))
+			   `(BEGIN
+			      (DEFINE ,tag-name
+				(MAKE-VECTOR-TAG ,',parent ',type
+						 ,',enumeration))
+			      (DEFINE ,(symbol-append type '?)
+				(TAGGED-VECTOR/PREDICATE ,tag-ref))
+			      (DEFINE-VECTOR-SLOTS ,type ,,reserved
+				,@slots)
+			      (SET-VECTOR-TAG-DESCRIPTION!
+			       ,tag-name
+			       (LAMBDA (OBJECT)
+				 (APPEND!
+				  ((VECTOR-TAG-DESCRIPTION ,',parent)
+				   OBJECT)
+				  (DESCRIPTOR-LIST OBJECT
+						   ,type
+						   ,@slots))))))))
+		     (ill-formed-syntax form)))))))))))
+
+(define-type-definition snode 5 #f)
+(define-type-definition pnode 6 #f)
+(define-type-definition rvalue 2 rvalue-types)
+(define-type-definition lvalue 14 #f)
 
 (define-syntax descriptor-list
   (sc-macro-transformer

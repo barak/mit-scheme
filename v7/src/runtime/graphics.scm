@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.22 2002/11/20 19:46:20 cph Exp $
+$Id: graphics.scm,v 1.23 2003/02/13 02:35:21 cph Exp $
 
-Copyright (c) 1989-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1989,1990,1992,1992,1993,1994 Massachusetts Institute of Technology
+Copyright 1995,1996,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -253,32 +254,32 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 		  (%make-graphics-device type descriptor)))
 	   arguments)))
 
-(let-syntax
-    ((define-graphics-operation
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (let ((name (cadr form)))
-	   `(DEFINE-INTEGRABLE
-	      (,(symbol-append 'GRAPHICS-DEVICE/OPERATION/ name) DEVICE)
-	      (,(close-syntax (symbol-append 'GRAPHICS-DEVICE-TYPE/OPERATION/
-					     name)
-			      environment)
-	       (GRAPHICS-DEVICE/TYPE DEVICE))))))))
-  (define-graphics-operation clear)
-  (define-graphics-operation close)
-  (define-graphics-operation coordinate-limits)
-  (define-graphics-operation device-coordinate-limits)
-  (define-graphics-operation drag-cursor)
-  (define-graphics-operation draw-line)
-  (define-graphics-operation draw-point)
-  (define-graphics-operation draw-text)
-  (define-graphics-operation flush)
-  (define-graphics-operation move-cursor)
-  (define-graphics-operation reset-clip-rectangle)
-  (define-graphics-operation set-clip-rectangle)
-  (define-graphics-operation set-coordinate-limits)
-  (define-graphics-operation set-drawing-mode)
-  (define-graphics-operation set-line-style))
+(define-syntax define-graphics-operation
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (cadr form)))
+       `(DEFINE-INTEGRABLE
+	  (,(symbol-append 'GRAPHICS-DEVICE/OPERATION/ name) DEVICE)
+	  (,(close-syntax (symbol-append 'GRAPHICS-DEVICE-TYPE/OPERATION/
+					 name)
+			  environment)
+	   (GRAPHICS-DEVICE/TYPE DEVICE)))))))
+
+(define-graphics-operation clear)
+(define-graphics-operation close)
+(define-graphics-operation coordinate-limits)
+(define-graphics-operation device-coordinate-limits)
+(define-graphics-operation drag-cursor)
+(define-graphics-operation draw-line)
+(define-graphics-operation draw-point)
+(define-graphics-operation draw-text)
+(define-graphics-operation flush)
+(define-graphics-operation move-cursor)
+(define-graphics-operation reset-clip-rectangle)
+(define-graphics-operation set-clip-rectangle)
+(define-graphics-operation set-coordinate-limits)
+(define-graphics-operation set-drawing-mode)
+(define-graphics-operation set-line-style)
 
 (define (graphics-operation device name . arguments)
   (let ((value
@@ -288,7 +289,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 		arguments)))
     (maybe-flush device)
     value))
-
+
 (define (graphics-enable-buffering device)
   (set-graphics-device/buffer?! device true))
 
@@ -306,7 +307,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 (define-integrable (graphics-flush device)
   ((graphics-device/operation/flush device) device))
-
+
 (define (graphics-device-coordinate-limits device)
   ((graphics-device/operation/device-coordinate-limits device) device))
 
@@ -342,7 +343,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   ((graphics-device/operation/set-drawing-mode device)
    device drawing-mode)
   (set-graphics-device/drawing-mode! device drawing-mode))
-
+
 (define-integrable line-style:solid 0)
 (define-integrable line-style:dash 1)
 (define-integrable line-style:dot 2)
@@ -364,7 +365,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define (graphics-set-line-style device line-style)
   ((graphics-device/operation/set-line-style device) device line-style)
   (set-graphics-device/line-style! device line-style))
-
+
 (define (graphics-clear device)
   ((graphics-device/operation/clear device) device)
   (maybe-flush device))
@@ -423,7 +424,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 		   (and error?
 			(error "Graphics type has no associated image type:"
 			       type))))))))
-
+
 (define (make-image-type operations)
   (let ((operations
 	 (map (lambda (entry)
@@ -454,7 +455,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	    (%make-image-type create destroy 
 			      width height 
 			      draw draw-subimage fill-from-byte-vector))))))
-
+
 (define-structure (image (conc-name image/) (constructor %make-image))
   type
   descriptor)

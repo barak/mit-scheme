@@ -1,25 +1,27 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: xcom.scm,v 1.22 2002/11/20 19:46:04 cph Exp $
-;;;
-;;; Copyright (c) 1989-2002 Massachusetts Institute of Technology
-;;;
-;;; This file is part of MIT Scheme.
-;;;
-;;; MIT Scheme is free software; you can redistribute it and/or modify
-;;; it under the terms of the GNU General Public License as published
-;;; by the Free Software Foundation; either version 2 of the License,
-;;; or (at your option) any later version.
-;;;
-;;; MIT Scheme is distributed in the hope that it will be useful, but
-;;; WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with MIT Scheme; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: xcom.scm,v 1.23 2003/02/13 02:37:28 cph Exp $
+
+Copyright 1989,1990,1994,1996,2000,2001 Massachusetts Institute of Technology
+Copyright 2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT Scheme.
+
+MIT Scheme is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+MIT Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT Scheme; if not, write to the Free Software Foundation,
+Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+|#
 
 ;;;; X Commands
 
@@ -215,125 +217,62 @@ When called interactively, completion is available on the input."
   (lambda ()
     (list (prompt-for-alist-value "Set mouse shape"
 				  (map (lambda (x) (cons x x))
-				       (vector->list mouse-cursor-shapes)))))
+				       mouse-cursor-shapes))))
   (lambda (shape)
     (x-window-set-mouse-shape
      (current-xterm)
-     (let ((end (vector-length mouse-cursor-shapes)))
-       (let loop ((index 0))
-	 (cond ((>= index end)
-		(error "Unknown shape name" shape))
-	       ((string-ci=? (vector-ref mouse-cursor-shapes index) shape)
-		index)
-	       (else
-		(loop (1+ index)))))))))
-
+     (let loop ((shapes mouse-cursor-shapes) (index 0))
+       (if (not (pair? shapes))
+	   (error "Unknown shape name:" shape))
+       (if (string-ci=? shape (car shapes))
+	   index
+	   (loop (cdr shapes) (fix:+ index 1)))))))
+
 (define mouse-cursor-shapes
-  '#("X-cursor"
-     "arrow"
-     "based-arrow-down"
-     "based-arrow-up"
-     "boat"
-     "bogosity"
-     "bottom-left-corner"
-     "bottom-right-corner"
-     "bottom-side"
-     "bottom-tee"
-     "box-spiral"
-     "center-ptr"
-     "circle"
-     "clock"
-     "coffee-mug"
-     "cross"
-     "cross-reverse"
-     "crosshair"
-     "diamond-cross"
-     "dot"
-     "dotbox"
-     "double-arrow"
-     "draft-large"
-     "draft-small"
-     "draped-box"
-     "exchange"
-     "fleur"
-     "gobbler"
-     "gumby"
-     "hand1"
-     "hand2"
-     "heart"
-     "icon"
-     "iron-cross"
-     "left-ptr"
-     "left-side"
-     "left-tee"
-     "leftbutton"
-     "ll-angle"
-     "lr-angle"
-     "man"
-     "middlebutton"
-     "mouse"
-     "pencil"
-     "pirate"
-     "plus"
-     "question-arrow"
-     "right-ptr"
-     "right-side"
-     "right-tee"
-     "rightbutton"
-     "rtl-logo"
-     "sailboat"
-     "sb-down-arrow"
-     "sb-h-double-arrow"
-     "sb-left-arrow"
-     "sb-right-arrow"
-     "sb-up-arrow"
-     "sb-v-double-arrow"
-     "shuttle"
-     "sizing"
-     "spider"
-     "spraycan"
-     "star"
-     "target"
-     "tcross"
-     "top-left-arrow"
-     "top-left-corner"
-     "top-right-corner"
-     "top-side"
-     "top-tee"
-     "trek"
-     "ul-angle"
-     "umbrella"
-     "ur-angle"
-     "watch"
-     "xterm"))
+  '("X-cursor" "arrow" "based-arrow-down" "based-arrow-up" "boat" "bogosity"
+	       "bottom-left-corner" "bottom-right-corner" "bottom-side"
+	       "bottom-tee" "box-spiral" "center-ptr" "circle" "clock"
+	       "coffee-mug" "cross" "cross-reverse" "crosshair" "diamond-cross"
+	       "dot" "dotbox" "double-arrow" "draft-large" "draft-small"
+	       "draped-box" "exchange" "fleur" "gobbler" "gumby" "hand1"
+	       "hand2" "heart" "icon" "iron-cross" "left-ptr" "left-side"
+	       "left-tee" "leftbutton" "ll-angle" "lr-angle" "man"
+	       "middlebutton" "mouse" "pencil" "pirate" "plus" "question-arrow"
+	       "right-ptr" "right-side" "right-tee" "rightbutton" "rtl-logo"
+	       "sailboat" "sb-down-arrow" "sb-h-double-arrow" "sb-left-arrow"
+	       "sb-right-arrow" "sb-up-arrow" "sb-v-double-arrow" "shuttle"
+	       "sizing" "spider" "spraycan" "star" "target" "tcross"
+	       "top-left-arrow" "top-left-corner" "top-right-corner"
+	       "top-side" "top-tee" "trek" "ul-angle" "umbrella" "ur-angle"
+	       "watch" "xterm"))
 
 ;;;; Mouse Commands
 ;;; (For compatibility with old code.)
 
-(let-syntax
-    ((copy
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (let ((name (cadr form)))
-	   `(DEFINE ,(symbol-append 'EDWIN-COMMAND$X- name)
-	      ,(close-syntax (symbol-append 'EDWIN-COMMAND$ name)
-			     environment)))))))
-  (copy set-foreground-color)
-  (copy set-background-color)
-  (copy set-border-color)
-  (copy set-cursor-color)
-  (copy set-mouse-color)
-  (copy set-font)
-  (copy set-border-width)
-  (copy set-internal-border-width)
-  (copy set-mouse-shape)
-  (copy mouse-select)
-  (copy mouse-keep-one-window)
-  (copy mouse-select-and-split)
-  (copy mouse-set-point)
-  (copy mouse-set-mark)
-  (copy mouse-show-event)
-  (copy mouse-ignore))
+(define-syntax define-old-mouse-command
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (cadr form)))
+       `(DEFINE ,(symbol-append 'EDWIN-COMMAND$X- name)
+	  ,(close-syntax (symbol-append 'EDWIN-COMMAND$ name)
+			 environment))))))
+
+(define-old-mouse-command set-foreground-color)
+(define-old-mouse-command set-background-color)
+(define-old-mouse-command set-border-color)
+(define-old-mouse-command set-cursor-color)
+(define-old-mouse-command set-mouse-color)
+(define-old-mouse-command set-font)
+(define-old-mouse-command set-border-width)
+(define-old-mouse-command set-internal-border-width)
+(define-old-mouse-command set-mouse-shape)
+(define-old-mouse-command mouse-select)
+(define-old-mouse-command mouse-keep-one-window)
+(define-old-mouse-command mouse-select-and-split)
+(define-old-mouse-command mouse-set-point)
+(define-old-mouse-command mouse-set-mark)
+(define-old-mouse-command mouse-show-event)
+(define-old-mouse-command mouse-ignore)
 
 (define edwin-command$x-set-size edwin-command$set-frame-size)
 (define edwin-command$x-set-position edwin-command$set-frame-position)
@@ -342,16 +281,16 @@ When called interactively, completion is available on the input."
 (define edwin-command$x-raise-screen edwin-command$raise-frame)
 (define edwin-command$x-lower-screen edwin-command$lower-frame)
 
-(let-syntax
-    ((copy
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (let ((name (cadr form)))
-	   `(DEFINE ,(symbol-append 'EDWIN-VARIABLE$X-SCREEN- name)
-	      ,(close-syntax (symbol-append 'EDWIN-VARIABLE$FRAME- name)
-			     environment)))))))
-  (copy icon-name-format)
-  (copy icon-name-length))
+(define-syntax define-old-screen-command
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (cadr form)))
+       `(DEFINE ,(symbol-append 'EDWIN-VARIABLE$X-SCREEN- name)
+	  ,(close-syntax (symbol-append 'EDWIN-VARIABLE$FRAME- name)
+			 environment))))))
+
+(define-old-screen-command icon-name-format)
+(define-old-screen-command icon-name-length)
 
 (define x-button1-down button1-down)
 (define x-button2-down button2-down)

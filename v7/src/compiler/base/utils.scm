@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 4.25 2002/11/20 19:45:48 cph Exp $
+$Id: utils.scm,v 4.26 2003/02/13 02:39:10 cph Exp $
 
-Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
+Copyright 1994,2001,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -109,7 +110,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
     (if (null? sets)
 	(eq-set-union set accum)
 	(loop (car sets) (cdr sets) (eq-set-union set accum)))))
-
+
 (package (transitive-closure enqueue-node! enqueue-nodes!)
 
 (define *queue*)
@@ -138,21 +139,22 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 ;;;; Type Codes
 
-(let-syntax ((define-type-code
-	       (sc-macro-transformer
-		(lambda (form environment)
-		  environment
-		  `(DEFINE-INTEGRABLE ,(symbol-append 'TYPE-CODE: (cadr form))
-		     ',(microcode-type (cadr form)))))))
-  (define-type-code lambda)
-  (define-type-code extended-lambda)
-  (define-type-code procedure)
-  (define-type-code extended-procedure)
-  (define-type-code cell)
-  (define-type-code environment)
-  (define-type-code unassigned)
-  (define-type-code stack-environment)
-  (define-type-code compiled-entry))
+(define-syntax define-type-code
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     `(DEFINE-INTEGRABLE ,(symbol-append 'TYPE-CODE: (cadr form))
+	',(microcode-type (cadr form))))))
+
+(define-type-code lambda)
+(define-type-code extended-lambda)
+(define-type-code procedure)
+(define-type-code extended-procedure)
+(define-type-code cell)
+(define-type-code environment)
+(define-type-code unassigned)
+(define-type-code stack-environment)
+(define-type-code compiled-entry)
 
 (define (scode/procedure-type-code *lambda)
   (cond ((object-type? type-code:lambda *lambda)
@@ -174,7 +176,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
       (let ((arity (primitive-procedure-arity primitive)))
 	(or (= arity -1)
 	    (= arity argument-count)))))
-
+
 ;;;; Special Compiler Support
 
 (define compiled-error-procedure
@@ -352,17 +354,9 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define procedure-object?
   (lexical-reference system-global-environment 'PROCEDURE?))
 
-;;!(define (careful-object-datum object)
-;;!  ;; This works correctly when cross-compiling.
-;;!  (if (and (object-type? (ucode-type fixnum) object)
-;;!	   (negative? object))
-;;!      (+ object unsigned-fixnum/upper-limit)
-;;!      (object-datum object)))
-
 (define (careful-object-datum object)
   ;; This works correctly when cross-compiling.
   (if (and (fix:fixnum? object)
 	   (negative? object))
       (+ object unsigned-fixnum/upper-limit)
       (object-datum object)))
-

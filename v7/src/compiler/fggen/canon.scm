@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: canon.scm,v 1.23 2002/11/20 19:45:49 cph Exp $
+$Id: canon.scm,v 1.24 2003/02/13 02:39:32 cph Exp $
 
-Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -505,37 +506,36 @@ ARBITRARY:	The expression may be executed more than once.  It
 
 ;;;; Hairier expressions
 
-(let-syntax
-    ((is-operator?
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (let ((value (close-syntax (cadr form) environment))
-	       (name (caddr form)))
-	   `(OR (EQ? ,value (UCODE-PRIMITIVE ,name))
-		(AND (SCODE/ABSOLUTE-REFERENCE? ,value)
-		     (EQ? (SCODE/ABSOLUTE-REFERENCE-NAME ,value) ',name))))))))
+(define-syntax is-operator?
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((value (close-syntax (cadr form) environment))
+	   (name (caddr form)))
+       `(OR (EQ? ,value (UCODE-PRIMITIVE ,name))
+	    (AND (SCODE/ABSOLUTE-REFERENCE? ,value)
+		 (EQ? (SCODE/ABSOLUTE-REFERENCE-NAME ,value) ',name)))))))
 
-  (define (canonicalize/combination expr bound context)
-    (scode/combination-components
-     expr
-     (lambda (operator operands)
-       (cond ((lambda? operator)
-	      (canonicalize/let operator operands bound context))
-	     ((and (is-operator? operator lexical-unassigned?)
-		   (scode/the-environment? (car operands))
-		   (symbol? (cadr operands)))
-	      (canonicalize/unassigned? (cadr operands) expr bound context))
-	     ((and (is-operator? operator error-procedure)
-		   (scode/the-environment? (caddr operands)))
-	      (canonicalize/error operator operands bound context))
-	     (else
-	      (canonicalize/combine-binary
-	       scode/make-combination
-	       (canonicalize/expression operator bound context)
-	       (combine-list
-		(map (lambda (op)
-		       (canonicalize/expression op bound context))
-		     operands)))))))))
+(define (canonicalize/combination expr bound context)
+  (scode/combination-components
+   expr
+   (lambda (operator operands)
+     (cond ((lambda? operator)
+	    (canonicalize/let operator operands bound context))
+	   ((and (is-operator? operator lexical-unassigned?)
+		 (scode/the-environment? (car operands))
+		 (symbol? (cadr operands)))
+	    (canonicalize/unassigned? (cadr operands) expr bound context))
+	   ((and (is-operator? operator error-procedure)
+		 (scode/the-environment? (caddr operands)))
+	    (canonicalize/error operator operands bound context))
+	   (else
+	    (canonicalize/combine-binary
+	     scode/make-combination
+	     (canonicalize/expression operator bound context)
+	     (combine-list
+	      (map (lambda (op)
+		     (canonicalize/expression op bound context))
+		   operands))))))))
 
 (define (canonicalize/unassigned? name expr bound context)
   (cond ((not (eq? context 'FIRST-CLASS))
@@ -595,7 +595,7 @@ ARBITRARY:	The expression may be executed more than once.  It
 		  (caddr text))
 		 false true false)
 		(make-canout expr true true false))))))))
-
+
 ;;;; Utility for hairy expressions
 
 (define (scode/make-evaluation exp env arbitrary? original-expression)

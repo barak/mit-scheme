@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: valclass.scm,v 1.6 2002/11/20 19:45:56 cph Exp $
+$Id: valclass.scm,v 1.7 2003/02/13 02:38:27 cph Exp $
 
-Copyright (c) 1989, 1990, 1999, 2002 Massachusetts Institute of Technology
+Copyright 1989,1990,1999,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -76,39 +76,39 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	(loop (car x) (cdr x) (cdr y))
 	join)))
 
-(let-syntax
-    ((define-value-class
-       (sc-macro-transformer
-	(lambda (form environment)
-	  (let ((name (cadr form))
-		(parent-name (caddr form)))
-	    (let* ((name->variable
-		    (lambda (name)
-		      (symbol-append 'VALUE-CLASS= name)))
-		   (variable (name->variable name))
-		   (var-ref (close-syntax variable environment)))
-	      `(BEGIN
-		 (DEFINE ,variable
-		   (MAKE-VALUE-CLASS
-		    ',name
-		    ,(if parent-name
-			 (close-syntax (name->variable parent-name)
-				       environment)
-			 `#F)))
-		 (DEFINE (,(symbol-append variable '?) CLASS)
-		   (VALUE-CLASS/ANCESTOR-OR-SELF? CLASS ,variable))
-		 (DEFINE (,(symbol-append 'REGISTER- variable '?) REGISTER)
-		   (VALUE-CLASS/ANCESTOR-OR-SELF?
-		    (REGISTER-VALUE-CLASS REGISTER)
-		    ,variable)))))))))
-  (define-value-class value #f)
-  (define-value-class float value)
-  (define-value-class word value)
-  (define-value-class object word)
-  (define-value-class unboxed word)
-  (define-value-class address unboxed)
-  (define-value-class immediate unboxed)
-  (define-value-class ascii immediate)
-  (define-value-class datum immediate)
-  (define-value-class fixnum immediate)
-  (define-value-class type immediate))
+(define-syntax define-value-class
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (cadr form))
+	   (parent-name (caddr form)))
+       (let* ((name->variable
+	       (lambda (name)
+		 (symbol-append 'VALUE-CLASS= name)))
+	      (variable (name->variable name))
+	      (var-ref (close-syntax variable environment)))
+	 `(BEGIN
+	    (DEFINE ,variable
+	      (MAKE-VALUE-CLASS
+	       ',name
+	       ,(if parent-name
+		    (close-syntax (name->variable parent-name)
+				  environment)
+		    `#F)))
+	    (DEFINE (,(symbol-append variable '?) CLASS)
+	      (VALUE-CLASS/ANCESTOR-OR-SELF? CLASS ,variable))
+	    (DEFINE (,(symbol-append 'REGISTER- variable '?) REGISTER)
+	      (VALUE-CLASS/ANCESTOR-OR-SELF?
+	       (REGISTER-VALUE-CLASS REGISTER)
+	       ,variable))))))))
+
+(define-value-class value #f)
+(define-value-class float value)
+(define-value-class word value)
+(define-value-class object word)
+(define-value-class unboxed word)
+(define-value-class address unboxed)
+(define-value-class immediate unboxed)
+(define-value-class ascii immediate)
+(define-value-class datum immediate)
+(define-value-class fixnum immediate)
+(define-value-class type immediate)

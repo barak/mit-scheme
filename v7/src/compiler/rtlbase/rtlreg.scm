@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: rtlreg.scm,v 4.10 2002/11/20 19:45:56 cph Exp $
+$Id: rtlreg.scm,v 4.11 2003/02/13 02:38:20 cph Exp $
 
-Copyright (c) 1987, 1988, 1990, 1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1987,1988,1990,1999,2001,2002 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -25,7 +26,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 ;;;; RTL Registers
 
 (declare (usual-integrations))
-
+
 (define *machine-register-map*)
 
 (define (initialize-machine-register-map!)
@@ -67,27 +68,27 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 		 (loop (1+ register)))))
     (loop number-of-machine-registers)))
 
-(let-syntax
-    ((define-register-references
-       (sc-macro-transformer
-	(lambda (form environment)
-	  (let ((slot (cadr form)))
-	    (let ((name (symbol-append 'REGISTER- slot)))
-	      (let ((vector
-		     `(,(close-syntax (symbol-append 'RGRAPH- name)
-				      environment)
-		       *CURRENT-RGRAPH*)))
-		`(BEGIN
-		   (DEFINE-INTEGRABLE (,name REGISTER)
-		     (VECTOR-REF ,vector REGISTER))
-		   (DEFINE-INTEGRABLE
-		     (,(symbol-append 'SET- name '!) REGISTER VALUE)
-		     (VECTOR-SET! ,vector REGISTER VALUE))))))))))
-  (define-register-references bblock)
-  (define-register-references n-refs)
-  (define-register-references n-deaths)
-  (define-register-references live-length)
-  (define-register-references renumber))
+(define-syntax define-register-references
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((slot (cadr form)))
+       (let ((name (symbol-append 'REGISTER- slot)))
+	 (let ((vector
+		`(,(close-syntax (symbol-append 'RGRAPH- name)
+				 environment)
+		  *CURRENT-RGRAPH*)))
+	   `(BEGIN
+	      (DEFINE-INTEGRABLE (,name REGISTER)
+		(VECTOR-REF ,vector REGISTER))
+	      (DEFINE-INTEGRABLE
+		(,(symbol-append 'SET- name '!) REGISTER VALUE)
+		(VECTOR-SET! ,vector REGISTER VALUE)))))))))
+
+(define-register-references bblock)
+(define-register-references n-refs)
+(define-register-references n-deaths)
+(define-register-references live-length)
+(define-register-references renumber)
 
 (define-integrable (reset-register-n-refs! register)
   (set-register-n-refs! register 0))

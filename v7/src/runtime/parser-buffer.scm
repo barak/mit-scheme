@@ -1,25 +1,26 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: parser-buffer.scm,v 1.5 2002/11/20 19:46:22 cph Exp $
-;;;
-;;; Copyright (c) 2001, 2002 Massachusetts Institute of Technology
-;;;
-;;; This file is part of MIT Scheme.
-;;;
-;;; MIT Scheme is free software; you can redistribute it and/or modify
-;;; it under the terms of the GNU General Public License as published
-;;; by the Free Software Foundation; either version 2 of the License,
-;;; or (at your option) any later version.
-;;;
-;;; MIT Scheme is distributed in the hope that it will be useful, but
-;;; WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with MIT Scheme; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: parser-buffer.scm,v 1.6 2003/02/13 02:35:37 cph Exp $
+
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT Scheme.
+
+MIT Scheme is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+MIT Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT Scheme; if not, write to the Free Software Foundation,
+Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+|#
 
 ;;;; Parser-buffer abstraction
 
@@ -143,38 +144,38 @@
        (string-ref (parser-buffer-string buffer)
 		   (fix:+ (parser-buffer-index buffer) index))))
 
-(let-syntax
-    ((char-matcher
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (let ((name (cadr form))
-	       (test
-		(make-syntactic-closure environment '(REFERENCE CHAR)
-		  (caddr form))))
-	   `(BEGIN
-	      (DEFINE (,(symbol-append 'MATCH-PARSER-BUFFER- name '-NO-ADVANCE)
-		       BUFFER REFERENCE)
-		(AND (GUARANTEE-BUFFER-CHARS BUFFER 1)
-		     (LET ((CHAR
-			    (STRING-REF (PARSER-BUFFER-STRING BUFFER)
-					(PARSER-BUFFER-INDEX BUFFER))))
-		       (DECLARE (INTEGRATE CHAR))
-		       ,test)))
-	      (DEFINE (,(symbol-append 'MATCH-PARSER-BUFFER- name)
-		       BUFFER REFERENCE)
-		(AND (GUARANTEE-BUFFER-CHARS BUFFER 1)
-		     (LET ((CHAR
-			    (STRING-REF (PARSER-BUFFER-STRING BUFFER)
-					(PARSER-BUFFER-INDEX BUFFER))))
-		       (AND ,test
-			    (BEGIN
-			      (INCREMENT-BUFFER-INDEX! BUFFER CHAR)
-			      #T)))))))))))
-  (char-matcher char (char=? char reference))
-  (char-matcher char-ci (char-ci=? char reference))
-  (char-matcher not-char (not (char=? char reference)))
-  (char-matcher not-char-ci (not (char-ci=? char reference)))
-  (char-matcher char-in-set (char-set-member? reference char)))
+(define-syntax char-matcher
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (cadr form))
+	   (test
+	    (make-syntactic-closure environment '(REFERENCE CHAR)
+	      (caddr form))))
+       `(BEGIN
+	  (DEFINE (,(symbol-append 'MATCH-PARSER-BUFFER- name '-NO-ADVANCE)
+		   BUFFER REFERENCE)
+	    (AND (GUARANTEE-BUFFER-CHARS BUFFER 1)
+		 (LET ((CHAR
+			(STRING-REF (PARSER-BUFFER-STRING BUFFER)
+				    (PARSER-BUFFER-INDEX BUFFER))))
+		   (DECLARE (INTEGRATE CHAR))
+		   ,test)))
+	  (DEFINE (,(symbol-append 'MATCH-PARSER-BUFFER- name)
+		   BUFFER REFERENCE)
+	    (AND (GUARANTEE-BUFFER-CHARS BUFFER 1)
+		 (LET ((CHAR
+			(STRING-REF (PARSER-BUFFER-STRING BUFFER)
+				    (PARSER-BUFFER-INDEX BUFFER))))
+		   (AND ,test
+			(BEGIN
+			  (INCREMENT-BUFFER-INDEX! BUFFER CHAR)
+			  #T))))))))))
+
+(char-matcher char (char=? char reference))
+(char-matcher char-ci (char-ci=? char reference))
+(char-matcher not-char (not (char=? char reference)))
+(char-matcher not-char-ci (not (char-ci=? char reference)))
+(char-matcher char-in-set (char-set-member? reference char))
 
 (define (match-utf8-char-in-alphabet buffer alphabet)
   (let ((p (get-parser-buffer-pointer buffer)))
@@ -189,68 +190,68 @@
 	  (set-parser-buffer-pointer! buffer p)
 	  #f))))
 
-(let-syntax
-    ((string-matcher
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (let ((suffix (cadr form)))
-	   `(DEFINE (,(intern
-		       (string-append "match-parser-buffer-string" suffix))
-		     BUFFER STRING)
-	      (,(close-syntax
-		 (intern
-		  (string-append "match-parser-buffer-substring" suffix))
-		 environment)
-	       BUFFER STRING 0 (STRING-LENGTH STRING))))))))
-  (string-matcher "")
-  (string-matcher "-ci")
-  (string-matcher "-no-advance")
-  (string-matcher "-ci-no-advance"))
+(define-syntax string-matcher
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((suffix (cadr form)))
+       `(DEFINE (,(intern
+		   (string-append "match-parser-buffer-string" suffix))
+		 BUFFER STRING)
+	  (,(close-syntax
+	     (intern
+	      (string-append "match-parser-buffer-substring" suffix))
+	     environment)
+	   BUFFER STRING 0 (STRING-LENGTH STRING)))))))
 
-(let-syntax
-    ((substring-matcher
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (let ((suffix (cadr form)))
-	   `(DEFINE (,(intern
-		       (string-append "match-parser-buffer-substring" suffix))
-		     BUFFER STRING START END)
-	      (LET ((N (FIX:- END START)))
-		(AND (GUARANTEE-BUFFER-CHARS BUFFER N)
-		     (,(close-syntax
-			(intern (string-append "substring" suffix "=?"))
-			environment)
-		      STRING START END
-		      (PARSER-BUFFER-STRING BUFFER)
-		      (PARSER-BUFFER-INDEX BUFFER)
-		      (FIX:+ (PARSER-BUFFER-INDEX BUFFER) N))
-		     (BEGIN
-		       (BUFFER-INDEX+N! BUFFER N)
-		       #T)))))))))
-  (substring-matcher "")
-  (substring-matcher "-ci"))
+(string-matcher "")
+(string-matcher "-ci")
+(string-matcher "-no-advance")
+(string-matcher "-ci-no-advance")
 
-(let-syntax
-    ((substring-matcher
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (let ((suffix (cadr form)))
-	   `(DEFINE (,(intern
-		       (string-append "match-parser-buffer-substring"
-				      suffix
-				      "-no-advance"))
-		     BUFFER STRING START END)
-	      (LET ((N (FIX:- END START)))
-		(AND (GUARANTEE-BUFFER-CHARS BUFFER N)
-		     (,(close-syntax
-			(intern (string-append "substring" suffix "=?"))
-			environment)
-		      STRING START END
-		      (PARSER-BUFFER-STRING BUFFER)
-		      (PARSER-BUFFER-INDEX BUFFER)
-		      (FIX:+ (PARSER-BUFFER-INDEX BUFFER) N))))))))))
-  (substring-matcher "")
-  (substring-matcher "-ci"))
+(define-syntax substring-matcher
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((suffix (cadr form)))
+       `(DEFINE (,(intern
+		   (string-append "match-parser-buffer-substring" suffix))
+		 BUFFER STRING START END)
+	  (LET ((N (FIX:- END START)))
+	    (AND (GUARANTEE-BUFFER-CHARS BUFFER N)
+		 (,(close-syntax
+		    (intern (string-append "substring" suffix "=?"))
+		    environment)
+		  STRING START END
+		  (PARSER-BUFFER-STRING BUFFER)
+		  (PARSER-BUFFER-INDEX BUFFER)
+		  (FIX:+ (PARSER-BUFFER-INDEX BUFFER) N))
+		 (BEGIN
+		   (BUFFER-INDEX+N! BUFFER N)
+		   #T))))))))
+
+(substring-matcher "")
+(substring-matcher "-ci")
+
+(define-syntax substring-matcher-no-advance
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((suffix (cadr form)))
+       `(DEFINE (,(intern
+		   (string-append "match-parser-buffer-substring"
+				  suffix
+				  "-no-advance"))
+		 BUFFER STRING START END)
+	  (LET ((N (FIX:- END START)))
+	    (AND (GUARANTEE-BUFFER-CHARS BUFFER N)
+		 (,(close-syntax
+		    (intern (string-append "substring" suffix "=?"))
+		    environment)
+		  STRING START END
+		  (PARSER-BUFFER-STRING BUFFER)
+		  (PARSER-BUFFER-INDEX BUFFER)
+		  (FIX:+ (PARSER-BUFFER-INDEX BUFFER) N)))))))))
+
+(substring-matcher-no-advance "")
+(substring-matcher-no-advance "-ci")
 
 (define-integrable (increment-buffer-index! buffer char)
   (set-parser-buffer-index! buffer (fix:+ (parser-buffer-index buffer) 1))

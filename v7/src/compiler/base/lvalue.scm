@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: lvalue.scm,v 4.26 2002/11/20 19:45:47 cph Exp $
+$Id: lvalue.scm,v 4.27 2003/02/13 02:38:56 cph Exp $
 
-Copyright (c) 1988-1990, 1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1990,1993,2001 Massachusetts Institute of Technology
+Copyright 2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -103,25 +104,25 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define-integrable (lvalue/variable? lvalue)
   (eq? (tagged-vector/tag lvalue) variable-tag))
 
-(let-syntax
-    ((define-named-variable
-      (sc-macro-transformer
-       (lambda (form environment)
-	 environment
-	 (let* ((name (cadr form))
-		(symbol
-		 (intern (string-append "#[" (symbol->string name) "]"))))
-	   `(BEGIN (DEFINE-INTEGRABLE
-		     (,(symbol-append 'MAKE- name '-VARIABLE) BLOCK)
-		     (MAKE-VARIABLE BLOCK ',symbol))
-		   (DEFINE-INTEGRABLE
-		     (,(symbol-append 'VARIABLE/ name '-VARIABLE?) LVALUE)
-		     (EQ? (VARIABLE-NAME LVALUE) ',symbol))
-		   (DEFINE (,(symbol-append name '-VARIABLE?) LVALUE)
-		     (AND (VARIABLE? LVALUE)
-			  (EQ? (VARIABLE-NAME LVALUE) ',symbol)))))))))
-  (define-named-variable continuation)
-  (define-named-variable value))
+(define-syntax define-named-variable
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (let* ((name (cadr form))
+	    (symbol
+	     (intern (string-append "#[" (symbol->string name) "]"))))
+       `(BEGIN (DEFINE-INTEGRABLE
+		 (,(symbol-append 'MAKE- name '-VARIABLE) BLOCK)
+		 (MAKE-VARIABLE BLOCK ',symbol))
+	       (DEFINE-INTEGRABLE
+		 (,(symbol-append 'VARIABLE/ name '-VARIABLE?) LVALUE)
+		 (EQ? (VARIABLE-NAME LVALUE) ',symbol))
+	       (DEFINE (,(symbol-append name '-VARIABLE?) LVALUE)
+		 (AND (VARIABLE? LVALUE)
+		      (EQ? (VARIABLE-NAME LVALUE) ',symbol))))))))
+
+(define-named-variable continuation)
+(define-named-variable value)
 
 (define (variable/register variable)
   (let ((maybe-delayed-register (variable-register variable)))

@@ -1,25 +1,28 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: buffer.scm,v 1.188 2002/11/20 19:45:58 cph Exp $
-;;;
-;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
-;;;
-;;; This file is part of MIT Scheme.
-;;;
-;;; MIT Scheme is free software; you can redistribute it and/or modify
-;;; it under the terms of the GNU General Public License as published
-;;; by the Free Software Foundation; either version 2 of the License,
-;;; or (at your option) any later version.
-;;;
-;;; MIT Scheme is distributed in the hope that it will be useful, but
-;;; WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with MIT Scheme; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: buffer.scm,v 1.189 2003/02/13 02:36:44 cph Exp $
+
+Copyright 1986,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1995,1996,1998,1999,2000 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT Scheme.
+
+MIT Scheme is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+MIT Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT Scheme; if not, write to the Free Software Foundation,
+Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+|#
 
 ;;;; Buffer Abstraction
 
@@ -46,19 +49,19 @@
   backed-up?
   modification-time)
 
-(let-syntax
-    ((rename
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (let ((slot-name (cadr form)))
-	   `(DEFINE-INTEGRABLE ,(symbol-append 'BUFFER- slot-name)
-	      ,(close-syntax (symbol-append 'BUFFER-% slot-name)
-			     environment)))))))
-  (rename name)
-  (rename default-directory)
-  (rename pathname)
-  (rename truename)
-  (rename save-length))
+(define-syntax rename-buffer-accessor
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((slot-name (cadr form)))
+       `(DEFINE-INTEGRABLE ,(symbol-append 'BUFFER- slot-name)
+	  ,(close-syntax (symbol-append 'BUFFER-% slot-name)
+			 environment))))))
+
+(rename-buffer-accessor name)
+(rename-buffer-accessor default-directory)
+(rename-buffer-accessor pathname)
+(rename-buffer-accessor truename)
+(rename-buffer-accessor save-length)
 
 (define-variable buffer-creation-hook
   "An event distributor that is invoked when a new buffer is created.

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: calias.scm,v 1.28 2003/01/10 18:52:09 cph Exp $
+$Id: calias.scm,v 1.29 2003/02/13 02:36:51 cph Exp $
 
 Copyright 1986,1989,1991,1992,1994,1995 Massachusetts Institute of Technology
 Copyright 1998,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -272,39 +272,40 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   intern-special-key)
 
 ;; Predefined special keys
-(let-syntax ((make-key
-	      (sc-macro-transformer
-	       (lambda (form environment)
-		 environment
-		 `(DEFINE ,(cadr form)
-		    (INTERN-SPECIAL-KEY ',(cadr form) 0))))))
-  (make-key backspace)
-  (make-key stop)
-  (make-key f1)
-  (make-key f2)
-  (make-key f3)
-  (make-key f4)
-  (make-key menu)
-  (make-key system)
-  (make-key user)
-  (make-key f5)
-  (make-key f6)
-  (make-key f7)
-  (make-key f8)
-  (make-key f9)
-  (make-key f10)
-  (make-key f11)
-  (make-key f12)
-  (make-key insertline)
-  (make-key deleteline)
-  (make-key insertchar)
-  (make-key deletechar)
-  (make-key home)
-  (make-key prior)
-  (make-key next)
-  (make-key up)
-  (make-key down)
-  (make-key left)
-  (make-key right)
-  (make-key select)
-  (make-key print))
+(define-syntax define-special-key
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     `(DEFINE ,(cadr form)
+	(INTERN-SPECIAL-KEY ',(cadr form) 0)))))
+
+(define-special-key backspace)
+(define-special-key stop)
+(define-special-key f1)
+(define-special-key f2)
+(define-special-key f3)
+(define-special-key f4)
+(define-special-key menu)
+(define-special-key system)
+(define-special-key user)
+(define-special-key f5)
+(define-special-key f6)
+(define-special-key f7)
+(define-special-key f8)
+(define-special-key f9)
+(define-special-key f10)
+(define-special-key f11)
+(define-special-key f12)
+(define-special-key insertline)
+(define-special-key deleteline)
+(define-special-key insertchar)
+(define-special-key deletechar)
+(define-special-key home)
+(define-special-key prior)
+(define-special-key next)
+(define-special-key up)
+(define-special-key down)
+(define-special-key left)
+(define-special-key right)
+(define-special-key select)
+(define-special-key print)

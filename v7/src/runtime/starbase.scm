@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: starbase.scm,v 1.18 2002/11/20 19:46:23 cph Exp $
+$Id: starbase.scm,v 1.19 2003/02/13 02:35:51 cph Exp $
 
-Copyright (c) 1989-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
+Copyright 1995,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -92,7 +93,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define-structure (starbase-graphics-descriptor
 		   (conc-name starbase-graphics-descriptor/)
 		   (constructor make-starbase-descriptor (identifier)))
-  (identifier false read-only true)
+  (identifier #f read-only #t)
   x-left
   y-bottom
   x-right
@@ -106,32 +107,32 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (starbase-graphics-descriptor/identifier
    (graphics-device/descriptor device)))
 
-(let-syntax
-    ((define-accessors-and-mutators
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (let ((name (cadr form)))
-	   `(BEGIN
-	      (DEFINE (,(symbol-append 'STARBASE-DEVICE/ name) DEVICE)
-		(,(close-syntax
-		   (symbol-append 'STARBASE-GRAPHICS-DESCRIPTOR/ name)
-		   environment)
-		 (GRAPHICS-DEVICE/DESCRIPTOR DEVICE)))
-	      (DEFINE
-		(,(symbol-append 'SET-STARBASE-DEVICE/ name '!) DEVICE VALUE)
-		(,(close-syntax
-		   (symbol-append 'SET-STARBASE-GRAPHICS-DESCRIPTOR/ name '!)
-		   environment)
-		 (GRAPHICS-DEVICE/DESCRIPTOR DEVICE)
-		 VALUE))))))))
-  (define-accessors-and-mutators x-left)
-  (define-accessors-and-mutators y-bottom)
-  (define-accessors-and-mutators x-right)
-  (define-accessors-and-mutators y-top)
-  (define-accessors-and-mutators text-height)
-  (define-accessors-and-mutators text-aspect)
-  (define-accessors-and-mutators text-slant)
-  (define-accessors-and-mutators text-rotation))
+(define-syntax define-accessors-and-mutators
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (cadr form)))
+       `(BEGIN
+	  (DEFINE (,(symbol-append 'STARBASE-DEVICE/ name) DEVICE)
+	    (,(close-syntax
+	       (symbol-append 'STARBASE-GRAPHICS-DESCRIPTOR/ name)
+	       environment)
+	     (GRAPHICS-DEVICE/DESCRIPTOR DEVICE)))
+	  (DEFINE
+	    (,(symbol-append 'SET-STARBASE-DEVICE/ name '!) DEVICE VALUE)
+	    (,(close-syntax
+	       (symbol-append 'SET-STARBASE-GRAPHICS-DESCRIPTOR/ name '!)
+	       environment)
+	     (GRAPHICS-DEVICE/DESCRIPTOR DEVICE)
+	     VALUE)))))))
+
+(define-accessors-and-mutators x-left)
+(define-accessors-and-mutators y-bottom)
+(define-accessors-and-mutators x-right)
+(define-accessors-and-mutators y-top)
+(define-accessors-and-mutators text-height)
+(define-accessors-and-mutators text-aspect)
+(define-accessors-and-mutators text-slant)
+(define-accessors-and-mutators text-rotation)
 
 (define (operation/available?)
   (implemented-primitive-procedure? starbase-open-device))
