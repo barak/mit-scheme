@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bitstr.c,v 9.52 1992/11/30 03:04:03 gjr Exp $
+$Id: bitstr.c,v 9.53 1995/01/24 00:17:25 cph Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -370,12 +370,10 @@ DEFINE_PRIMITIVE ("BIT-SUBSTRING-MOVE-RIGHT!", Prim_bit_substring_move_right_x, 
 
 #define MASKED_TRANSFER(source, destination, nbits, offset) do		\
 {									\
-  long mask;								\
-									\
-  mask = (ANY_MASK (nbits, offset));					\
-  (BIT_STRING_WORD (destination)) =					\
-    (((BIT_STRING_WORD (source)) & mask) |				\
-     ((BIT_STRING_WORD (destination)) & ~mask));			\
+  long mask = (ANY_MASK (nbits, offset));				\
+  (BIT_STRING_WORD (destination))					\
+    = (((BIT_STRING_WORD (source)) & mask)				\
+       | ((BIT_STRING_WORD (destination)) &~ mask));			\
 } while (0)
 
 /* This procedure copies bits from one place to another.
@@ -386,27 +384,26 @@ DEFINE_PRIMITIVE ("BIT-SUBSTRING-MOVE-RIGHT!", Prim_bit_substring_move_right_x, 
 void
 DEFUN (copy_bits,
        (source, source_offset, destination, destination_offset, nbits),
-       SCHEME_OBJECT * source AND long source_offset
-       AND SCHEME_OBJECT * destination AND long destination_offset
-       AND long nbits)
+       SCHEME_OBJECT * source AND
+       long source_offset AND
+       SCHEME_OBJECT * destination AND
+       long destination_offset AND
+       long nbits)
 {
-
-  /* This common case can be done very quickly, by splitting the
-     bit string into three parts.  Since the source and destination are
-     aligned relative to one another, the main body of bits can be
-     transferred as SCHEME_OBJECTs, and only the `head' and `tail' need be
-     treated specially. */
 
   if (nbits == 0)
     return;
 
+  /* This common case can be done very quickly, by splitting the
+     bit string into three parts.  Since the source and destination are
+     aligned relative to one another, the main body of bits can be
+     transferred as SCHEME_OBJECTs, and only the `head' and `tail' need be
+     treated specially.  */
   if (source_offset == destination_offset)
     {
       if (source_offset != 0)
 	{
-	  long head;
-
-	  head = (OBJECT_LENGTH - source_offset);
+	  long head = (OBJECT_LENGTH - source_offset);
 	  if (nbits <= head)
 	    {
 	      MASKED_TRANSFER (source, destination, nbits, (head - nbits));
@@ -414,197 +411,152 @@ DEFUN (copy_bits,
 	    }
 	  else
 	    {
-	      SCHEME_OBJECT temp;
-	      long mask;
-
-	      mask = (LOW_MASK (head));
-	      temp = (BIT_STRING_WORD (destination));
-	      (* (DEC_BIT_STRING_PTR (destination))) =
-		(((* (DEC_BIT_STRING_PTR (source))) & mask) |
-		 (temp & (~ mask)));
+	      long mask = (LOW_MASK (head));
+	      SCHEME_OBJECT temp = (BIT_STRING_WORD (destination));
+	      (* (DEC_BIT_STRING_PTR (destination)))
+		= (((* (DEC_BIT_STRING_PTR (source))) & mask)
+		   | (temp &~ mask));
 	      nbits -= head;
 	    }
 	}
-      if (nbits > 0)
+      while (nbits >= OBJECT_LENGTH)
 	{
-	  long nwords, tail;
-
-	  for (nwords = (nbits / OBJECT_LENGTH); (nwords > 0); nwords -= 1)
-	    (* (DEC_BIT_STRING_PTR (destination))) =
-	      (* (DEC_BIT_STRING_PTR (source)));
-
-	  tail = (nbits % OBJECT_LENGTH);
-	  if (tail > 0)
-	    MASKED_TRANSFER
-	      (source, destination, tail, (OBJECT_LENGTH - tail));
+	  (* (DEC_BIT_STRING_PTR (destination)))
+	    = (* (DEC_BIT_STRING_PTR (source)));
+	  nbits -= OBJECT_LENGTH;
 	}
+      if (nbits > 0)
+	MASKED_TRANSFER (source, destination, nbits, (OBJECT_LENGTH - nbits));
     }
 
   else if (source_offset < destination_offset)
     {
-      long offset1, offset2, head;
-
-      offset1 = (destination_offset - source_offset);
-      offset2 = (OBJECT_LENGTH - offset1);
-      head = (OBJECT_LENGTH - destination_offset);
-
+      long offset1 = (destination_offset - source_offset);
+      long offset2 = (OBJECT_LENGTH - offset1);
+      long head = (OBJECT_LENGTH - destination_offset);
       if (nbits <= head)
 	{
-	  long mask;
-
-	  mask = (ANY_MASK (nbits, (head - nbits)));
-	  (BIT_STRING_WORD (destination)) =
-	    ((((BIT_STRING_WORD (source)) >> offset1) & mask) |
-	     ((BIT_STRING_WORD (destination)) & ~mask));
+	  long mask = (ANY_MASK (nbits, (head - nbits)));
+	  (BIT_STRING_WORD (destination))
+	    = ((((BIT_STRING_WORD (source)) >> offset1) & mask)
+	       | ((BIT_STRING_WORD (destination)) &~ mask));
 	}
       else
 	{
-	  long mask1, mask2;
-
-	  { SCHEME_OBJECT temp;
-	    long mask;
-
-	    mask = (LOW_MASK (head));
-	    temp = (BIT_STRING_WORD (destination));
-	    (* (DEC_BIT_STRING_PTR (destination))) =
-	      ((((BIT_STRING_WORD (source)) >> offset1) & mask) |
-	       (temp & ~mask));
+	  long mask1 = (LOW_MASK (offset1));
+	  long mask2 = (LOW_MASK (offset2));
+	  {
+	    long mask = (LOW_MASK (head));
+	    SCHEME_OBJECT temp = (BIT_STRING_WORD (destination));
+	    (* (DEC_BIT_STRING_PTR (destination)))
+	      = ((((BIT_STRING_WORD (source)) >> offset1) & mask)
+		 | (temp &~ mask));
 	  }
-
 	  nbits -= head;
-	  mask1 = (LOW_MASK (offset1));
-	  mask2 = (LOW_MASK (offset2));
-
-	  {
-	    long nwords, i;
-
-	    for (nwords = (nbits / OBJECT_LENGTH); (nwords > 0); nwords -= 1)
-	      {
-		i = (((* (DEC_BIT_STRING_PTR (source))) & mask1) << offset2);
-		(* (DEC_BIT_STRING_PTR (destination))) =
-		  ((((BIT_STRING_WORD (source)) >> offset1) & mask2) | i);
-	      }
-	  }
-
-	  {
-	    long tail, dest_tail;
-
-	    tail = (nbits % OBJECT_LENGTH);
-	    dest_tail =
-	      ((BIT_STRING_WORD (destination)) &
-	       (LOW_MASK (OBJECT_LENGTH - tail)));
-	    if (tail <= offset1)
-	      {
-		(BIT_STRING_WORD (destination)) =
-		  ((((BIT_STRING_WORD (source)) &
-		     (ANY_MASK (tail, (offset1 - tail))))
-		    << offset2)
-		   | dest_tail);
-	      }
-	    else
-	      {
-		long i, j;
-
-		i = (((* (DEC_BIT_STRING_PTR (source))) & mask1) << offset2);
-		j = (tail - offset1);
-		(BIT_STRING_WORD (destination)) =
-		  ((((BIT_STRING_WORD (source)) &
-		     (ANY_MASK (j, (OBJECT_LENGTH - j))))
-		    >> offset1)
-		   | i | dest_tail);
-	      }
-	  }
+	  while (nbits >= OBJECT_LENGTH)
+	    {
+	      long i
+		= (((* (DEC_BIT_STRING_PTR (source))) & mask1) << offset2);
+	      (* (DEC_BIT_STRING_PTR (destination)))
+		= ((((BIT_STRING_WORD (source)) >> offset1) & mask2) | i);
+	      nbits -= OBJECT_LENGTH;
+	    }
+	  if (nbits > 0)
+	    {
+	      long dest_tail
+		= ((BIT_STRING_WORD (destination))
+		   & (LOW_MASK (OBJECT_LENGTH - nbits)));
+	      if (nbits <= offset1)
+		(BIT_STRING_WORD (destination))
+		  = ((((BIT_STRING_WORD (source))
+		       & (ANY_MASK (nbits, (offset1 - nbits))))
+		      << offset2)
+		     | dest_tail);
+	      else
+		{
+		  long i
+		    = (((* (DEC_BIT_STRING_PTR (source))) & mask1) << offset2);
+		  long j = (nbits - offset1);
+		  (BIT_STRING_WORD (destination))
+		    = ((((BIT_STRING_WORD (source))
+			 &
+			 (ANY_MASK (j, (OBJECT_LENGTH - j))))
+			>> offset1)
+		       | i
+		       | dest_tail);
+		}
+	    }
 	}
     }
 
   else				/* if (source_offset > destination_offset) */
     {
-      long offset1, offset2, head;
-
-      offset1 = (source_offset - destination_offset);
-      offset2 = (OBJECT_LENGTH - offset1);
-      head = (OBJECT_LENGTH - source_offset);
-
+      long offset1 = (source_offset - destination_offset);
+      long offset2 = (OBJECT_LENGTH - offset1);
+      long head = (OBJECT_LENGTH - source_offset);
       if (nbits <= head)
 	{
-	  long mask;
-
-	  mask = (ANY_MASK (nbits, (offset1 + (head - nbits))));
-	  (BIT_STRING_WORD (destination)) =
-	    ((((BIT_STRING_WORD (source)) << offset1) & mask) |
-	     ((BIT_STRING_WORD (destination)) & ~mask));
+	  long mask = (ANY_MASK (nbits, (offset1 + (head - nbits))));
+	  (BIT_STRING_WORD (destination))
+	    = ((((BIT_STRING_WORD (source)) << offset1) & mask)
+	       | ((BIT_STRING_WORD (destination)) &~ mask));
 	}
       else
 	{
-	  long dest_buffer, mask1, mask2;
-
+	  long mask1 = (LOW_MASK (offset1));
+	  long mask2 = (ANY_MASK (offset2, offset1));
+	  long dest_buffer;
 	  {
-	    long mask;
-
-	    mask = (ANY_MASK (head, offset1));
-	    dest_buffer =
-	      (((BIT_STRING_WORD (destination)) & ~mask)
-	       | (((* (DEC_BIT_STRING_PTR (source))) << offset1) & mask));
+	    long mask = (ANY_MASK (head, offset1));
+	    dest_buffer
+	      = (((BIT_STRING_WORD (destination)) &~ mask)
+		 | (((* (DEC_BIT_STRING_PTR (source))) << offset1) & mask));
 	  }
 	  nbits -= head;
-	  mask1 = (LOW_MASK (offset1));
-	  mask2 = (ANY_MASK (offset2, offset1));
-	  {
-	    long nwords;
-
-	    nwords = (nbits / OBJECT_LENGTH);
-	    if (nwords > 0)
+	  if (nbits >= OBJECT_LENGTH)
+	    {
 	      dest_buffer &= mask2;
-	    for (; (nwords > 0); nwords -= 1)
-	      {
-		(* (DEC_BIT_STRING_PTR (destination))) =
-		  (dest_buffer |
-		   (((BIT_STRING_WORD (source)) >> offset2) & mask1));
-		dest_buffer = ((* (DEC_BIT_STRING_PTR (source))) << offset1);
-	      }
-	  }
-
-	  {
-	    long tail;
-
-	    tail = (nbits % OBJECT_LENGTH);
-	    if (tail <= offset1)
-	      {
-		long mask;
-
-		mask = (ANY_MASK (tail, (offset1 - tail)));
-
-
-		/* This path through copy bits didn't work in certain
+	      while (nbits >= OBJECT_LENGTH)
+		{
+		  (* (DEC_BIT_STRING_PTR (destination)))
+		    = (dest_buffer
+		       | (((BIT_STRING_WORD (source)) >> offset2) & mask1));
+		  dest_buffer = ((* (DEC_BIT_STRING_PTR (source))) << offset1);
+		  nbits -= OBJECT_LENGTH;
+		}
+	    }
+	  if (nbits > 0)
+	    {
+	      if (nbits <= offset1)
+		{
+		  long mask = (ANY_MASK (nbits, (offset1 - nbits)));
+		  /* This path through copy bits didn't work in certain
 		   cases.  The line below seems to fix it.  This was an
 		   empirical test, and I don't understand it enough to
 		   tell if it is correct, but I think it is, and I did
 		   a few tests.  This is probably what is broken if you
 		   are here poking around trying to fix something.
-		   ~JRM
-		 */
-		dest_buffer &= (~ mask);
-
-		(BIT_STRING_WORD (destination)) =
-		  (dest_buffer |
-		   ((BIT_STRING_WORD (destination)) &
-		    (LOW_MASK (offset1 - tail))) |
-		   (((BIT_STRING_WORD (source)) >> offset2) &
-		    mask));
-	      }
-	    else
-	      {
-		long mask;
-
-		(* (DEC_BIT_STRING_PTR (destination))) =
-		  (dest_buffer |
-		   (((BIT_STRING_WORD (source)) >> offset2) & mask1));
-		mask = (LOW_MASK (OBJECT_LENGTH - tail));
-		(BIT_STRING_WORD (destination)) =
-		  (((BIT_STRING_WORD (destination)) & (~ mask)) |
-		   (((BIT_STRING_WORD (source)) << offset1) & mask));
-	      }
-	  }
+		   ~JRM */
+		  dest_buffer &=~ mask;
+		  (BIT_STRING_WORD (destination))
+		    = (dest_buffer
+		       | ((BIT_STRING_WORD (destination))
+			  & (LOW_MASK (offset1 - nbits)))
+		       | (((BIT_STRING_WORD (source)) >> offset2)
+			  & mask));
+		}
+	      else
+		{
+		  long mask;
+		  (* (DEC_BIT_STRING_PTR (destination)))
+		    = (dest_buffer
+		       | (((BIT_STRING_WORD (source)) >> offset2) & mask1));
+		  mask = (LOW_MASK (OBJECT_LENGTH - nbits));
+		  (BIT_STRING_WORD (destination))
+		    = (((BIT_STRING_WORD (destination)) &~ mask)
+		       | (((BIT_STRING_WORD (source)) << offset1) & mask));
+		}
+	    }
 	}
     }
 }
