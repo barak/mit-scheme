@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.31 1999/03/15 03:28:25 cph Exp $
+$Id: parse.scm,v 14.32 1999/05/14 22:15:47 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -49,7 +49,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
   (set! lambda-optional-tag (object-new-type (microcode-type 'CONSTANT) 3))
   (set! lambda-rest-tag (object-new-type (microcode-type 'CONSTANT) 4))
-  (set! lambda-auxiliary-tag `',(intern "#!aux"))
+  (set! lambda-auxiliary-tag (intern "#!aux"))
   (set! dot-symbol (intern "."))
   (set! named-objects
 	`((NULL . ,(list))
