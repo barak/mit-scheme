@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.75 2000/11/29 21:31:54 cph Exp $
+;;; $Id: vc.scm,v 1.76 2000/12/03 23:31:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -757,10 +757,30 @@ and two version designators specifying which versions to compare."
 	(vc-diff (current-vc-master #t) #f #f))))
 
 (define-command vc-version-diff
-  "For FILE, report diffs between two stored versions REV1 and REV2 of it.
-If FILE is a directory, generate diffs between versions for all registered
-files in or below it."
-  "FFile or directory to diff\nsOlder version\nsNewer version"
+  "Report diffs between two stored versions REV1 and REV2 of a file."
+  (lambda ()
+    (let* ((workfile
+	   (prompt-for-existing-file
+	    "File to diff"
+	    (let ((pathname (buffer-pathname (selected-buffer))))
+	      (and pathname
+		   (list pathname)))))
+	   (master (file-vc-master workfile #t))
+	   (revision (vc-backend-workfile-revision master)))
+      (call-with-values
+	  (lambda ()
+	    (let ((previous
+		   (and (not (vc-workfile-modified? master))
+			(previous-revision revision))))
+	      (if previous
+		  (values previous revision)
+		  (values revision #f))))
+	(lambda (default1 default2)
+	  (let* ((rev1 (prompt-for-string "Older version" default1))
+		 (rev2
+		  (prompt-for-string "Newer version" default2
+				     'DEFAULT-TYPE 'NULL-DEFAULT)))
+	    (list workfile rev1 rev2))))))
   (lambda (workfile rev1 rev2)
     (if (file-directory? workfile)
 	(editor-error "Directory diffs not yet supported.")
@@ -795,7 +815,7 @@ files in or below it."
 	    (set-vc-cvs-workfile-mtime-string! master tm tw modified?)
 	    modified?)))
       (vc-backend-diff master rev1 rev2 #f)))
-
+
 (define-command vc-version-other-window
   "Visit version REV of the current buffer in another window.
 If the current buffer is named `F', the version is named `F.~REV~'.
@@ -812,7 +832,7 @@ If `F.~REV~' already exists, it is used instead of being re-created."
       (if (not (file-exists? workfile))
 	  (vc-backend-checkout master revision #f workfile))
       (find-file-other-window workfile))))
-
+
 (define-command vc-insert-headers
   "Insert headers in a file for use with your version-control system.
 Headers are inserted at the start of the buffer."
@@ -1983,6 +2003,32 @@ the value of vc-log-mode-hook."
 
 (define (trunk-revision? revision)
   (re-string-match "\\`[0-9]+\\.[0-9]+\\'" revision))
+
+(define (branch-revision? revision)
+  (re-string-match "\\`[0-9]+\\(\\.[0-9]+\\.[0-9]+\\)*\\'" revision))
+
+(define (revision-branch-part revision)
+  (let ((regs (re-string-search-forward "\\.[0-9]+\\'" revision)))
+    (if (not regs)
+	(error:bad-range-argument revision 'BRANCH-PART))
+    (string-head revision (re-match-start-index 0 regs))))
+
+(define (revision-minor-part revision)
+  (let ((regs (re-string-search-forward "[0-9]+\\'" revision)))
+    (if (not regs)
+	(error:bad-range-argument revision 'BRANCH-PART))
+    (substring revision
+	       (re-match-start-index 0 regs)
+	       (re-match-end-index 0 regs))))
+
+(define (previous-revision revision)
+  (let ((branch (revision-branch-part revision))
+	(minor (string->number (revision-minor-part revision))))
+    (if (> minor 1)
+	(string-append branch "." (number->string (- minor 1)))
+	;; At the first minor number.  If on trunk, no obvious answer.
+	(and (branch-revision? revision)
+	     (revision-branch-part branch)))))
 
 (define (vc-get-revision revision? prompt)
   (and revision?
