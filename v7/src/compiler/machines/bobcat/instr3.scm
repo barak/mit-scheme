@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr3.scm,v 1.10 1987/07/08 22:07:19 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr3.scm,v 1.11 1987/07/16 10:13:36 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -39,60 +39,91 @@ MIT in each case. |#
 
 ;;;; Control Transfer
 
+;; The size U (unknown, undecided?) means that the assembler should
+;; choose the right size.  For the time being it is the same as W.
+
 (define-instruction B
-  (((? c cc) S (@PCO (? o)))
+  (((? c cc) B (@PCO (? o)))
    (WORD (4 #b0110)
 	 (4 c)
 	 (8 o SIGNED)))
 
-  (((? c cc) S (@PCR (? l)))
+  (((? c cc) B (@PCR (? l)))
    (WORD (4 #b0110)
 	 (4 c)
 	 (8 l SHORT-LABEL)))
 
-  (((? c cc) L (@PCO (? o)))
+  (((? c cc) W (@PCO (? o)))
    (WORD (4 #b0110)
 	 (4 c)
 	 (8 #b00000000))
    (immediate-word o))
 
-  (((? c cc) L (@PCR (? l)))
+  (((? c cc) W (@PCR (? l)))
+   (WORD (4 #b0110)
+	 (4 c)
+	 (8 #b00000000))
+   (relative-word l))
+
+  (((? c cc) U (@PCO (? o)))
+   (WORD (4 #b0110)
+	 (4 c)
+	 (8 #b00000000))
+   (immediate-word o))
+
+  (((? c cc) U (@PCR (? l)))
    (WORD (4 #b0110)
 	 (4 c)
 	 (8 #b00000000))
    (relative-word l)))
-
+
 (define-instruction BRA
-  ((S (@PCO (? o)))
+  ((B (@PCO (? o)))
    (WORD (8 #b01100000)
 	 (8 o SIGNED)))
 
-  ((S (@PCR (? l)))
+  ((B (@PCR (? l)))
    (WORD (8 #b01100000)
 	 (8 l SHORT-LABEL)))
 
-  ((L (@PCO (? o)))
+  ((W (@PCO (? o)))
    (WORD (16 #b0110000000000000))
    (immediate-word o))
 
-  ((L (@PCR (? l)))
+  ((W (@PCR (? l)))
+   (WORD (16 #b0110000000000000))
+   (relative-word l))
+
+  ((U (@PCO (? o)))
+   (WORD (16 #b0110000000000000))
+   (immediate-word o))
+
+  ((U (@PCR (? l)))
    (WORD (16 #b0110000000000000))
    (relative-word l)))
 
 (define-instruction BSR
-  ((S (@PCO (? o)))
+  ((B (@PCO (? o)))
    (WORD (8 #b01100001)
 	 (8 o SIGNED)))
 
-  ((S (@PCR (? o)))
+  ((B (@PCR (? o)))
    (WORD (8 #b01100001)
 	 (8 o SHORT-LABEL)))
 
-  ((L (@PCO (? o)))
+  ((W (@PCO (? o)))
    (WORD (16 #b0110000100000000))
    (immediate-word o))
 
-  ((L (@PCR (? l)))
+  ((W (@PCR (? l)))
+   (WORD (16 #b0110000100000000))
+   (relative-word l))
+
+  ((U (@PCO (? o)))
+   (WORD (16 #b0110000100000000))
+   (immediate-word o))
+
+  ((U (@PCR (? l)))
    (WORD (16 #b0110000100000000))
    (relative-word l)))
 
