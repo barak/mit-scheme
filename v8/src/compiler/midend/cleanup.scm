@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.5 1995/01/28 17:13:24 adams Exp $
+$Id: cleanup.scm,v 1.6 1995/02/02 05:01:54 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -210,11 +210,13 @@ MIT in each case. |#
 		%fetch-continuation
 		%fetch-environment
 		%fetch-stack-closure
+		get-fixed-objects-vector
 		%make-cell
 		%make-read-variable-cache
 		%make-write-variable-cache
 		%make-operator-variable-cache
 		%make-remote-operator-variable-cache
+		%primitive-apply
 		vector
 		%vector
 		%vector-cons
