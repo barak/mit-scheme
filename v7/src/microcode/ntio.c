@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.14 1997/01/02 05:21:38 cph Exp $
+$Id: ntio.c,v 1.15 1997/06/19 05:55:43 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -46,13 +46,42 @@ MIT in each case. */
 #ifndef fileno
 #define fileno(fp)	((fp)->_file)
 #endif
+
+static Tchannel channel_allocate (void);
 
+#ifndef NT_DEFAULT_CHANNEL_TABLE_SIZE
+#define NT_DEFAULT_CHANNEL_TABLE_SIZE 1024
+#endif
+
 size_t OS_channel_table_size;
 struct channel * channel_table;
 
 #ifndef GUI
   HANDLE STDIN_HANDLE,  STDOUT_HANDLE,  STDERR_HANDLE;
 #endif
+
+Tchannel
+NT_make_channel (HANDLE handle, enum channel_type type)
+{
+  Tchannel channel;
+  transaction_begin ();
+  NT_handle_close_on_abort (handle);
+  channel = (channel_allocate ());
+  NT_initialize_channel (channel, handle, type);
+  transaction_commit ();
+  return (channel);
+}
+
+void
+NT_initialize_channel (Tchannel channel, HANDLE handle, enum channel_type type)
+{
+  (CHANNEL_HANDLE (channel)) = handle;
+  (CHANNEL_TYPE (channel)) = type;
+  (CHANNEL_INTERNAL (channel)) = 0;
+  (CHANNEL_NONBLOCKING (channel)) = 0;
+  (CHANNEL_BUFFERED (channel)) = 1;
+  (CHANNEL_COOKED (channel)) = 0;
+}
 
 static void
 DEFUN_VOID (NT_channel_close_all)
@@ -78,8 +107,8 @@ NT_ctrl_handler (DWORD dwCtrlType)
 }
 #endif /* GUI */
 
-Tchannel
-DEFUN_VOID (channel_allocate)
+static Tchannel
+channel_allocate (void)
 {
   Tchannel channel = 0;
   while (1)
@@ -125,7 +154,6 @@ static void
 DEFUN (channel_close_on_abort_1, (cp), PTR cp)
 {
   OS_channel_close (* ((Tchannel *) cp));
-  return;
 }
 
 void
@@ -134,7 +162,20 @@ DEFUN (OS_channel_close_on_abort, (channel), Tchannel channel)
   Tchannel * cp = ((Tchannel *) (dstack_alloc (sizeof (Tchannel))));
   (*cp) = (channel);
   transaction_record_action (tat_abort, channel_close_on_abort_1, cp);
-  return;
+}
+
+static void
+NT_handle_close_on_abort_1 (void * hp)
+{
+  (void) CloseHandle (* ((HANDLE *) hp));
+}
+
+void
+NT_handle_close_on_abort (HANDLE h)
+{
+  HANDLE * hp = (dstack_alloc (sizeof (HANDLE)));
+  (*hp) = h;
+  transaction_record_action (tat_abort, NT_handle_close_on_abort_1, hp);
 }
 
 enum channel_type
@@ -577,7 +618,11 @@ DEFUN_VOID (NT_initialize_channels)
     OS_have_select_p = 0;
   else
     OS_have_select_p = 1;
-  OS_channel_table_size = (NT_SC_OPEN_MAX ());
+  /* The following API call boosts the number of available handles to
+     its maximum value.  This has no effect under NT, which does not
+     place a limit on the number of handles.  */
+  (void) SetHandleCount (255);
+  OS_channel_table_size = NT_DEFAULT_CHANNEL_TABLE_SIZE;
   channel_table = (malloc (OS_channel_table_size * (sizeof (struct channel))));
   if (channel_table == 0)
   {

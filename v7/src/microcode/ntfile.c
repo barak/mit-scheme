@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfile.c,v 1.8 1997/01/05 23:38:12 cph Exp $
+$Id: ntfile.c,v 1.9 1997/06/19 05:55:34 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -62,24 +62,24 @@ DEFUN (OS_open_handle, (hFile), HANDLE hFile)
   Tchannel channel;
   
 //  if (hFile == STDIN_HANDLE) {
-//    MAKE_CHANNEL (STDIN_HANDLE, channel_type_terminal, channel=);
+//    channel = (NT_make_channel (STDIN_HANDLE, channel_type_terminal));
 //    CHANNEL_COOKED(channel) = 1;
 //  }
 //
 //  else if (hFile == STDOUT_HANDLE) {
-//    MAKE_CHANNEL (STDOUT_HANDLE, channel_type_terminal, channel=);
+//    channel = (NT_make_channel (STDOUT_HANDLE, channel_type_terminal));
 //    CHANNEL_COOKED(channel) = 1;
 //  }
 //
 //  else if (hFile == STDERR_HANDLE) {
-//    MAKE_CHANNEL (STDERR_HANDLE, channel_type_terminal, channel=);
+//    channel = (NT_make_channel (STDERR_HANDLE, channel_type_terminal));
 //    CHANNEL_COOKED(channel) = 1;
 //  }
 
 //  else
   {
     type = handle_channel_type (hFile);
-    MAKE_CHANNEL (hFile, type, channel =);
+    channel = (NT_make_channel (hFile, type));
 
     /* Like Unix, all terminals initialize to cooked mode. */
     if (type == channel_type_terminal)
@@ -152,11 +152,11 @@ static Tchannel
 DEFUN (make_load_channel, (handle), HANDLE handle)
 {
   enum channel_type type = handle_channel_type (handle);
-  if ((type == channel_type_terminal)
-      || (type == channel_type_directory)
-      )
-    return (NO_CHANNEL);
-  MAKE_CHANNEL (handle, type, return);
+  return
+    (((type == channel_type_terminal)
+      || (type == channel_type_directory))
+     ? NO_CHANNEL
+     : (NT_make_channel (handle, type)));
 }
 
 Tchannel

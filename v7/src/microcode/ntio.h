@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntio.h,v 1.6 1994/11/14 00:54:27 cph Exp $
+$Id: ntio.h,v 1.7 1997/06/19 05:55:51 cph Exp $
 
-Copyright (c) 1992-94 Massachusetts Institute of Technology
+Copyright (c) 1992-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -60,20 +60,10 @@ struct channel
 #define CHANNEL_BUFFERED(channel) ((channel_table [(channel)]) . buffered)
 #define CHANNEL_COOKED(channel) ((channel_table [(channel)]) . cooked)
 
-#define MAKE_CHANNEL(descriptor, type, receiver)			\
-{									\
-  Tchannel MAKE_CHANNEL_temp = (channel_allocate ());			\
-  (CHANNEL_HANDLE (MAKE_CHANNEL_temp)) = (descriptor);			\
-  (CHANNEL_TYPE (MAKE_CHANNEL_temp)) = (type);				\
-  (CHANNEL_INTERNAL (MAKE_CHANNEL_temp)) = 0;				\
-  (CHANNEL_NONBLOCKING (MAKE_CHANNEL_temp)) = 0;			\
-  (CHANNEL_BUFFERED (MAKE_CHANNEL_temp)) = 1;				\
-  (CHANNEL_COOKED (MAKE_CHANNEL_temp)) = 0;				\
-  receiver (MAKE_CHANNEL_temp);						\
-}
-
 extern struct channel * channel_table;
-extern Tchannel EXFUN (channel_allocate, (void));
+extern Tchannel NT_make_channel (HANDLE, enum channel_type);
+extern void NT_initialize_channel (Tchannel, HANDLE, enum channel_type);
+extern void NT_handle_close_on_abort (HANDLE);
 
 #define BACKSPACE		'\b'
 #define SPACE			' '
