@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.60 2003/03/07 20:41:23 cph Exp $
+$Id: rep.scm,v 14.61 2003/03/21 17:51:03 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1998,1999,2001 Massachusetts Institute of Technology
@@ -218,6 +218,17 @@ USA.
     (if cmdl
 	(cmdl/level cmdl)
 	0)))
+
+(define (nearest-cmdl/batch-mode?)
+  (let ((cmdl *nearest-cmdl*))
+    (if cmdl
+	(cmdl/batch-mode? cmdl)
+	#f)))
+
+(define (cmdl/batch-mode? cmdl)
+  (and (= (cmdl/level cmdl) 1)
+       (implemented-primitive-procedure? (ucode-primitive batch-mode? 0))
+       ((ucode-primitive batch-mode? 0))))
 
 ;;;; Operations
 

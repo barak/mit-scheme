@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.18 2003/02/14 18:28:32 cph Exp $
+$Id: genio.scm,v 1.19 2003/03/21 17:50:58 cph Exp $
 
-Copyright (c) 1991-1999, 2002 Massachusetts Institute of Technology
+Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -217,11 +218,14 @@ USA.
 	  (else 'RAW))))
 
 (define (operation/set-input-terminal-mode port mode)
-  (case mode
-    ((COOKED) (terminal-cooked-input (operation/input-channel port)))
-    ((RAW) (terminal-raw-input (operation/input-channel port)))
-    ((#F) unspecific)
-    (else (error:wrong-type-datum mode "terminal mode"))))
+  (let ((channel (operation/input-channel port)))
+    (if (channel-type=terminal? channel)
+	(case mode
+	  ((COOKED) (terminal-cooked-input channel))
+	  ((RAW) (terminal-raw-input channel))
+	  ((#F) unspecific)
+	  (else (error:wrong-type-datum mode "terminal mode")))
+	unspecific)))
 
 (define (operation/flush-output port)
   (output-buffer/drain-block (port/output-buffer port)))
@@ -270,11 +274,14 @@ USA.
 	  (else 'RAW))))
 
 (define (operation/set-output-terminal-mode port mode)
-  (case mode
-    ((COOKED) (terminal-cooked-output (operation/output-channel port)))
-    ((RAW) (terminal-raw-output (operation/output-channel port)))
-    ((#F) unspecific)
-    (else (error:wrong-type-datum mode "terminal mode"))))
+  (let ((channel (operation/output-channel port)))
+    (if (channel-type=terminal? channel)
+	(case mode
+	  ((COOKED) (terminal-cooked-output (operation/output-channel port)))
+	  ((RAW) (terminal-raw-output (operation/output-channel port)))
+	  ((#F) unspecific)
+	  (else (error:wrong-type-datum mode "terminal mode")))
+	unspecific)))
 
 (define (operation/close port)
   (operation/close-input port)

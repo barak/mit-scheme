@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: savres.scm,v 14.43 2003/02/14 18:28:33 cph Exp $
+$Id: savres.scm,v 14.44 2003/03/21 17:51:14 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1995 Massachusetts Institute of Technology
 Copyright 1998,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -70,7 +70,8 @@ USA.
 		(set! world-identification identify)
 		(abort->top-level
 		 (lambda (cmdl)
-		   (identify-world (cmdl/port cmdl))
+		   (if (not (cmdl/batch-mode? cmdl))
+		       (identify-world (cmdl/port cmdl)))
 		   (event-distributor/invoke! event:after-restart))))
 	       ((not identify)
 		#t)

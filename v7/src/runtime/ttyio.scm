@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ttyio.scm,v 1.14 2003/02/14 18:28:34 cph Exp $
+$Id: ttyio.scm,v 1.15 2003/03/21 17:51:19 cph Exp $
 
-Copyright (c) 1991-1999 Massachusetts Institute of Technology
+Copyright 1991,1993,1996,1999,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -131,13 +131,17 @@ USA.
   (let ((char (input-buffer/read-char (port/input-buffer port))))
     (if (eof-object? char)
 	(signal-end-of-input port))
-    (if (and char (console-port-state/echo-input? (port/state port)))
+    (if (and char
+	     (not (nearest-cmdl/batch-mode?))
+	     (console-port-state/echo-input? (port/state port)))
 	(output-port/write-char port char))
     char))
 
 (define (signal-end-of-input port)
-  (fresh-line port)
-  (write-string "End of input stream reached" port)
+  (if (not (nearest-cmdl/batch-mode?))
+      (begin
+	(fresh-line port)
+	(write-string "End of input stream reached" port)))
   (%exit))
 
 (define (operation/read-finish port)
