@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.5 2001/06/26 21:28:54 cph Exp $
+;;; $Id: parser.scm,v 1.6 2001/06/26 21:29:41 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -128,16 +128,16 @@
 
 ;;;; Parsers
 
-(define-macro (define-parser form compiler-body)
+(define-macro (define-parser form . compiler-body)
   (let ((name (car form))
 	(parameters (cdr form)))
     (if (symbol? parameters)
 	`(DEFINE-PARSER-COMPILER ',name #F
 	   (LAMBDA (POINTERS IF-SUCCEED IF-FAIL ,parameters)
-	     ,compiler-body))
+	     ,@compiler-body))
 	`(DEFINE-PARSER-COMPILER ',name ,(length parameters)
 	   (LAMBDA (POINTERS IF-SUCCEED IF-FAIL ,@parameters)
-	     ,compiler-body)))))
+	     ,@compiler-body)))))
 
 (define (define-parser-compiler keyword arity compiler)
   (hash-table/put! parser-compilers keyword (cons arity compiler))
