@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.12 1988/12/06 18:49:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.13 1988/12/13 13:01:48 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -97,6 +97,21 @@ MIT in each case. |#
 	  compiler:package-optimization-level
 	  compiler:preserve-data-structures?
 	  compiler:show-subphases?))
+
+(define-package (compiler reference-contexts)
+  (files "base/refctx")
+  (parent (compiler))
+  (export (compiler)
+	  add-reference-context/adjacent-parents!
+	  initialize-reference-contexts!
+	  make-reference-context
+	  modify-reference-contexts!
+	  reference-context/adjacent-parent?
+	  reference-context/block
+	  reference-context/offset
+	  reference-context/procedure
+	  reference-context?
+	  set-reference-context/offset!))
 
 (define-package (compiler macros)
   (files "base/macros")
@@ -144,7 +159,7 @@ MIT in each case. |#
 	  *root-expression*
 	  *rtl-procedures*
 	  *rtl-graphs*))
-
+
 (define-package (compiler debug)
   (files "base/debug")
   (parent (compiler))
@@ -203,51 +218,89 @@ MIT in each case. |#
   (export (compiler top-level)
 	  canonicalize/top-level
 	  construct-graph))
-
+
 (define-package (compiler fg-optimizer)
-  (files "fgopt/simapp"			;simulate applications
-	 "fgopt/outer"			;outer analysis
+  (files "fgopt/outer"			;outer analysis
 	 "fgopt/folcon"			;fold constants
 	 "fgopt/operan"			;operator analysis
-	 "fgopt/closan"			;closure analysis
 	 "fgopt/envopt"			;environment optimization
-	 "fgopt/blktyp"			;environment type assignment
 	 "fgopt/sideff"			;side effect analysis
-	 "fgopt/contan"			;continuation analysis
-	 "fgopt/simple"			;simplicity analysis
-	 "fgopt/order"			;subproblem ordering
-	 "fgopt/conect"			;connectivity analysis
 	 "fgopt/desenv"			;environment design
-	 "fgopt/offset"			;compute node offsets
 	 )
   (parent (compiler))
   (export (compiler top-level)
 	  clear-call-graph!
 	  compute-call-graph!
-	  compute-node-offsets
-	  connectivity-analysis
-	  continuation-analysis
 	  design-environment-frames!
 	  fold-constants
-	  identify-closure-limits!
 	  operator-analysis
 	  outer-analysis
 	  optimize-environments!
-	  setup-block-types!
-	  side-effect-analysis
-	  simplicity-analysis
-	  simulate-application
-	  subproblem-ordering))
+	  side-effect-analysis))
 
+(define-package (compiler fg-optimizer closure-analysis)
+  (files "fgopt/closan")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) identify-closure-limits!))
+
+(define-package (compiler fg-optimizer continuation-analysis)
+  (files "fgopt/contan")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) continuation-analysis))
+
+(define-package (compiler fg-optimizer compute-node-offsets)
+  (files "fgopt/offset")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) compute-node-offsets))
+
+(define-package (compiler fg-optimizer connectivity-analysis)
+  (files "fgopt/conect")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) connectivity-analysis))
+
+(define-package (compiler fg-optimizer setup-block-types)
+  (files "fgopt/blktyp")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level)
+	  setup-block-types!
+	  setup-closure-contexts!))
+
+(define-package (compiler fg-optimizer simplicity-analysis)
+  (files "fgopt/simple")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) simplicity-analysis)
+  (export (compiler fg-optimizer subproblem-ordering)
+	  new-subproblem/compute-simplicity!))
+
+(define-package (compiler fg-optimizer simulate-application)
+  (files "fgopt/simapp")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) simulate-application))
+
+(define-package (compiler fg-optimizer subproblem-free-variables)
+  (files "fgopt/subfre")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) compute-subproblem-free-variables)
+  (export (compiler fg-optimizer subproblem-ordering)
+	  new-subproblem/compute-free-variables!))
+
+(define-package (compiler fg-optimizer subproblem-ordering)
+  (files "fgopt/order")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) subproblem-ordering))
+
+(define-package (compiler fg-optimizer subproblem-ordering reuse-frames)
+  (files "fgopt/reord" "fgopt/reuse")
+  (parent (compiler fg-optimizer subproblem-ordering))
+  (export (compiler top-level) setup-frame-adjustments)
+  (export (compiler fg-optimizer subproblem-ordering)
+	  order-subproblems/maybe-overwrite-block))
+
 (define-package (compiler rtl-generator)
   (files "rtlgen/rtlgen"		;RTL generator
 	 "rtlgen/rgproc"		;procedure headers
 	 "rtlgen/rgstmt"		;statements
-	 "rtlgen/rgrval"		;rvalues
-	 "rtlgen/rgcomb"		;combinations
-	 "rtlgen/rgretn"		;returns
-	 "rtlgen/fndblk"		;find blocks and variables
-	 "rtlgen/opncod"		;open-coded primitives
+	 "rtlgen/fndvar"		;find variables
 	 "machines/bobcat/rgspcm"	;special close-coded primitives
 	 "rtlbase/rtline"		;linearizer
 	 )
@@ -257,13 +310,51 @@ MIT in each case. |#
   (export (compiler top-level)
 	  generate/top-level
 	  linearize-rtl
-	  open-coding-analysis
 	  setup-bblock-continuations!)
   (export (compiler debug)
 	  linearize-rtl)
   (import (compiler top-level)
 	  label->object))
 
+(define-package (compiler rtl-generator combination/inline)
+  (files "rtlgen/opncod")
+  (parent (compiler rtl-generator))
+  (export (compiler rtl-generator)
+	  combination/inline)
+  (export (compiler top-level)
+	  open-coding-analysis))
+
+(define-package (compiler rtl-generator find-block)
+  (files "rtlgen/fndblk")
+  (parent (compiler rtl-generator))
+  (export (compiler rtl-generator)
+	  find-block))
+
+(define-package (compiler rtl-generator generate/rvalue)
+  (files "rtlgen/rgrval")
+  (parent (compiler rtl-generator))
+  (export (compiler rtl-generator)
+	  generate/rvalue
+	  load-closure-environment
+	  make-ic-cons
+	  make-non-trivial-closure-cons
+	  make-trivial-closure-cons))
+
+(define-package (compiler rtl-generator generate/combination)
+  (files "rtlgen/rgcomb")
+  (parent (compiler rtl-generator))
+  (export (compiler rtl-generator)
+	  generate/combination))
+
+(define-package (compiler rtl-generator generate/return)
+  (files "rtlgen/rgretn")
+  (parent (compiler rtl-generator))
+  (export (compiler rtl-generator)
+	  make-return-operand
+	  generate/return
+	  generate/return*
+	  generate/trivial-return))
+
 (define-package (compiler rtl-cse)
   (files "rtlopt/rcse1"			;RTL common subexpression eliminator
 	 "rtlopt/rcse2"
@@ -278,15 +369,19 @@ MIT in each case. |#
 
 (define-package (compiler rtl-optimizer)
   (files "rtlopt/rlife"			;RTL register lifetime analyzer
-	 "rtlopt/rdeath"		;RTL code compression
 	 "rtlopt/rdebug"		;RTL optimizer debugging output
 	 "rtlopt/ralloc"		;RTL register allocation
 	 )
   (parent (compiler))
   (export (compiler top-level)
-	  code-compression
 	  lifetime-analysis
 	  register-allocation))
+
+(define-package (compiler rtl-optimizer code-compression)
+  (files "rtlopt/rdeath")
+  (parent (compiler rtl-optimizer))
+  (export (compiler top-level)
+	  code-compression))
 
 (define-package (compiler debugging-information)
   (files "base/infnew")
@@ -297,7 +392,7 @@ MIT in each case. |#
 	  generation-phase2)
   (import (runtime compiler-info)
 	  compiler-entries-tag))
-
+
 (define-package (compiler lap-syntaxer)
   (files "back/lapgn1"			;LAP generator
 	 "back/lapgn2"			; "      "
@@ -341,7 +436,6 @@ MIT in each case. |#
   (files "back/linear")
   (parent (compiler lap-syntaxer))
   (export (compiler lap-syntaxer)
-	  map-lap
 	  linearize-bits
 	  bblock-linearize-bits)
   (export (compiler top-level)
