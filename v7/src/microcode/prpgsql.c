@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prpgsql.c,v 1.4 2003/06/08 04:37:57 cph Exp $
+$Id: prpgsql.c,v 1.5 2003/07/21 00:54:46 cph Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -140,7 +140,7 @@ DEFINE_PRIMITIVE ("PQ-RESULT-STATUS", Prim_pq_result_status, 1, 1, 0)
   RESULT_TO_UINT (PQresultStatus)
 
 DEFINE_PRIMITIVE ("PQ-RES-STATUS", Prim_pq_res_status, 1, 1, 0)
-  ONE_ARG (ARG_EXEC_STATUS, PQresStatus, ANY_TO_UINT)
+  ONE_ARG (ARG_EXEC_STATUS, PQresStatus, char_pointer_to_string)
 
 DEFINE_PRIMITIVE ("PQ-RESULT-ERROR-MESSAGE", Prim_pq_result_error_message,
 		  1, 1, 0)
