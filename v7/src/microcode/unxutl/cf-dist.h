@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: cf-dist.h,v 1.19 1993/11/09 16:11:44 gjr Exp $
+$Id: cf-dist.h,v 1.20 1994/06/28 19:05:14 cph Exp $
 
-Copyright (c) 1989-1993 Massachusetts Institute of Technology
+Copyright (c) 1989-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -90,7 +90,6 @@ MIT in each case. */
 /* Some compilation options:
    -DDISABLE_HISTORY		turns off history recording mechanism
    -DCOMPILE_STEPPER		turns on support for the stepper    
-    				Done by config.h
  */
 
 #define C_SWITCH_FEATURES
