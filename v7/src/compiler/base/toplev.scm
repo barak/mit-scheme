@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.16 1989/04/26 05:09:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.17 1989/05/08 23:12:14 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -175,17 +175,15 @@ MIT in each case. |#
 (define (cf input #!optional output)
   (let ((kernel
 	 (lambda (source-file)
-	     (let ((scode-file
-		    (merge-pathnames
-		     (make-pathname false false false false "bin" false)
-		     (->pathname source-file))))
+	   (with-values
+	       (lambda () (sf/pathname-defaulting source-file false false))
+	     (lambda (source-pathname bin-pathname spec-pathname)
 	       ;; Maybe this should be done only if scode-file
 	       ;; does not exist or is older than source-file.
-	       (sf source-file scode-file)
-	       (newline)
+	       (sf source-pathname bin-pathname spec-pathname)
 	       (if (default-object? output)
-		   (compile-bin-file scode-file)
-		   (compile-bin-file scode-file output))))))
+		   (compile-bin-file bin-pathname)
+		   (compile-bin-file bin-pathname output)))))))
     (if (pair? input)
 	(for-each kernel input)
 	(kernel input))))
