@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.40 1991/09/10 00:53:56 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.41 1991/10/29 22:34:01 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -43,43 +43,45 @@ MIT in each case. */
 #else
 #include <fcntl.h>
 #endif
+#include <sys/param.h>
 
 #define GC_FILE_FLAGS		(O_RDWR | O_CREAT) /* O_SYNCIO removed */
 #define GC_FILE_MASK		0644	/* Everyone reads, owner writes */
 
-/* These assume that gc_buffer_size is a power of 2! */
+/* IO_PAGE_SIZE must be a power of 2! */
 
-#define GC_BUFFER_BLOCK(size)						\
-  ((((size) + (gc_buffer_size - 1)) >> gc_buffer_shift) << gc_buffer_shift)
+#ifdef DEV_BSIZE
+#define IO_PAGE_SIZE DEV_BSIZE
+#else
+#define IO_PAGE_SIZE 8192
+#endif
 
-#define ALIGN_DOWN_TO_GC_BUFFER(addr)					\
-  (((unsigned long) (addr)) & gc_buffer_byte_mask)
+#define ALIGN_DOWN_TO_IO_PAGE(addr)					\
+  (((unsigned long) (addr)) & (~(IO_PAGE_SIZE - 1)))
 
-#define ALIGN_UP_TO_GC_BUFFER(addr)					\
-  (ALIGN_DOWN_TO_GC_BUFFER (((unsigned long) (addr)) + (gc_buffer_bytes - 1)))
+#define ALIGN_UP_TO_IO_PAGE(addr)					\
+  (ALIGN_DOWN_TO_IO_PAGE (((unsigned long) (addr)) + (IO_PAGE_SIZE - 1)))
 
-#define ALIGNED_TO_GC_BUFFER_P(addr)					\
-  (((unsigned long) (addr)) == (ALIGN_DOWN_TO_GC_BUFFER (addr)))
+#define ALIGNED_TO_IO_PAGE_P(addr)					\
+  (((unsigned long) (addr)) == (ALIGN_DOWN_TO_IO_PAGE (addr)))
 
 extern unsigned long
   gc_buffer_size,
   gc_buffer_bytes,
   gc_buffer_shift,
   gc_buffer_mask,
-  gc_buffer_byte_mask,
   gc_buffer_byte_shift;
 
 extern char
   gc_death_message_buffer[];
 
-extern int
-  gc_file;
-
 extern SCHEME_OBJECT
-  *scan_buffer_top,
-  *scan_buffer_bottom,
-  *free_buffer_top,
-  *free_buffer_bottom;
+  * scan_buffer_top,
+  * scan_buffer_bottom,
+  * free_buffer_top,
+  * free_buffer_bottom,
+  * weak_pair_stack_ptr,
+  * weak_pair_stack_limit;
 
 extern SCHEME_OBJECT
   * EXFUN (GCLoop, (SCHEME_OBJECT *, SCHEME_OBJECT **, SCHEME_OBJECT **)),
@@ -90,14 +92,19 @@ extern SCHEME_OBJECT
   * EXFUN (initialize_scan_buffer, (void));
 
 extern void
-  EXFUN (GC, (SCHEME_OBJECT)),
+  EXFUN (GC, (int)),
   EXFUN (end_transport, (Boolean *)),
-  EXFUN (load_buffer, (long, SCHEME_OBJECT *, long, char *)),
+  EXFUN (final_reload, (SCHEME_OBJECT *, unsigned long, char *)),
   EXFUN (extend_scan_buffer, (char *, SCHEME_OBJECT *)),
-  EXFUN (gc_death, (long, char *, SCHEME_OBJECT *, SCHEME_OBJECT *));
+  EXFUN (gc_death, (long, char *, SCHEME_OBJECT *, SCHEME_OBJECT *)),
+  EXFUN (restore_gc_file, (void)),
+  EXFUN (initialize_weak_pair_transport, (SCHEME_OBJECT *));
 
 extern char
   * EXFUN (end_scan_buffer_extension, (char *));
+
+extern int
+  EXFUN (swap_gc_file, (int));
 
 /* Some utility macros */
 
@@ -114,14 +121,31 @@ extern char
 
 #define copy_weak_pair()						\
 {									\
+  SCHEME_OBJECT weak_car;						\
   long car_type;							\
 									\
-  car_type = (OBJECT_TYPE (*Old));					\
-  *To++ = (OBJECT_NEW_TYPE (TC_NULL, *Old));				\
-  Old += 1;								\
-  *To++ = *Old;								\
-  *Old = (OBJECT_NEW_TYPE (car_type, Weak_Chain));			\
-  Weak_Chain = Temp;							\
+  weak_car = (*Old++);							\
+  car_type = (OBJECT_TYPE (weak_car));					\
+  if ((car_type == TC_NULL)						\
+      || ((OBJECT_ADDRESS (weak_car)) >= Constant_Space))		\
+  {									\
+    *To++ = weak_car;							\
+    *To++ = (*Old);							\
+  }									\
+  else if (weak_pair_stack_ptr > weak_pair_stack_limit)			\
+  {									\
+    *--weak_pair_stack_ptr = ((SCHEME_OBJECT) To_Address);		\
+    *--weak_pair_stack_ptr = weak_car;					\
+    *To++ = SHARP_F;							\
+    *To++ = (*Old);							\
+  }									\
+  else									\
+  {									\
+    *To++ = (OBJECT_NEW_TYPE (TC_NULL, weak_car));			\
+    *To++ = *Old;							\
+    *Old = (OBJECT_NEW_TYPE (car_type, Weak_Chain));			\
+    Weak_Chain = Temp;							\
+  }									\
 }
 
 #define copy_triple()							\

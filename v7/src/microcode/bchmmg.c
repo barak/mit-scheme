@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.64 1991/09/10 00:54:37 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.65 1991/10/29 22:33:13 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -31,13 +31,24 @@ there shall be no use of the name of the Massachusetts Institute of
 Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
+
+/* Memory management top level.  Garbage collection to disk. */
+
+#include "scheme.h"
+#include "prims.h"
+#include "bchgcc.h"
+#include "option.h"
+#include "limits.h"
+#include <sys/stat.h>
+#include "bchdrn.h"
+#define MILLISEC * 1000
 
 /* Memory management top level.  Garbage collection to disk.
 
    The algorithm is basically the same as for the 2 space collector,
    except that new space is on the disk, and there are two windows to
    it (the scan and free buffers).  The two windows are physically the
-   same whent they correspond to the same section of the disk.
+   same whent they correspond to the same section of the address space.
    There may be additional windows used to overlap I/O.
 
    For information on the 2 space collector, read the comments in the
@@ -49,6 +60,9 @@ MIT in each case. */
    - bchgcl.c: main garbage collector loop.		Replaces gcloop.c
    - bchpur.c: constant/pure space hacking.		Replaces purify.c
    - bchdmp.c: object & world image dumping.		Replaces fasdump.c
+   - bchdrn.h: header file for bchmmg.c and the bchdrn.c.
+   - bchdrn.c: stand-alone program used as an overlapped I/O drone.
+   - bchutl.c: utilities common to bchmmg.c and bchdrn.c.
 
    Problems with this implementation right now:
    - Purify kills Scheme if there is not enough space in constant space
@@ -56,44 +70,13 @@ MIT in each case. */
    - It only works on Unix (or systems which support Unix I/O calls).
    - Dumpworld does not work because the file is not closed at dump time or
      reopened at restart time.
-   - Command line supplied gc files are not locked, so two processes can try
-     to share them and get very confused.
-*/
+   - Command-line specified gc files are only locked in HP-UX, so two
+     processes can try to share them and get very confused.  In HP-UX
+     we use lockf(2).
 
-#include "scheme.h"
-#include "prims.h"
-#include "bchgcc.h"
-#include "option.h"
-#include "limits.h"
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-
-/* Exports */
-extern void EXFUN (Clear_Memory, (int, int, int));
-extern void EXFUN (Setup_Memory, (int, int, int));
-extern void EXFUN (Reset_Memory, (void));
-
-char *
-DEFUN (error_name, (code),
-       int code)
-{
-  extern int sys_nerr;
-  extern char *sys_errlist[];
-  static char buf[512];
-
-  if ((code >= 0) && (code <= sys_nerr))
-    sprintf (&buf[0], "%d, %s", code, sys_errlist[code]);
-  else
-    sprintf (&buf[0], "%d, unknown error", code);
-  return (&buf[0]);
-}
-
-/* 	Memory Allocation, sequential processor,
-	garbage collection to disk version:
-
+oo
    ------------------------------------------
-   |        GC Buffer Space                 |
+   |        GC Buffer Space                 | (not always contiguous)
    |                                        |
    ------------------------------------------
    |         Control Stack        ||        |
@@ -105,97 +88,1623 @@ DEFUN (error_name, (code),
    |          Heap Space                    |
    |                                        |
    ------------------------------------------
-
+0
    Each area has a pointer to its starting address and a pointer to
-   the next free cell.  The GC buffer space contains two equal size
-   buffers used during the garbage collection process.  Usually one is
-   the scan buffer and the other is the free buffer, and they are
-   dumped and loaded from disk as necessary.  Sometimes during the
-   garbage collection (especially at the beginning and at the end)
-   both buffers are identical, since transporting will occur into the
+   the next free cell.  The GC buffer space contains two (or more)
+   buffers used during the garbage collection process.  One is the
+   scan buffer and the other is the free buffer, and they are dumped
+   and loaded from disk as necessary.  At the beginning and at the end
+   a single buffer is used, since transporting will occur into the
    area being scanned.
 */
+
+/* Exports */
 
-int gc_file = -1;
+extern void EXFUN (Clear_Memory, (int, int, int));
+extern void EXFUN (Setup_Memory, (int, int, int));
+extern void EXFUN (Reset_Memory, (void));
+
+/* Imports */
+
+extern char * EXFUN (error_name, (int));
+extern int EXFUN (retrying_file_operation,
+		  (/* no prototype because (const char *) != (char *) */
+		   int (*)(),
+		   int, char *, long, long, char *, char *, long *,
+		   int (*)(char *, char *)));
 
 unsigned long
   gc_buffer_size,
   gc_buffer_bytes,
   gc_buffer_shift,
   gc_buffer_mask,
-  gc_buffer_byte_mask,
   gc_buffer_byte_shift;
 
 static unsigned long
   gc_extra_buffer_size,
   gc_buffer_overlap_bytes,
-  gc_buffer_remainder_bytes;
+  gc_buffer_remainder_bytes,
+  gc_total_buffer_size;
 
 SCHEME_OBJECT
-  * scan_buffer_top,
-  * scan_buffer_bottom,
-  * free_buffer_top,
-  * free_buffer_bottom;
+  * scan_buffer_top,		* scan_buffer_bottom,
+  * free_buffer_top,		* free_buffer_bottom;
+
+static char
+  * gc_file_name = ((char *) NULL),
+  gc_file_name_buffer[FILE_NAME_LENGTH];
+
+CONST char
+  * drone_file_name = ((char *) NULL);
+
+static int
+  keep_gc_file_p = 0,
+  gc_file = -1,
+  read_overlap = 0,
+  write_overlap = 0;
+
+static SCHEME_OBJECT
+  * aligned_heap;
 
 static Boolean
   can_dump_directly_p,
   extension_overlap_p;
 
 static long
+  scan_position,		free_position,
   current_disk_position,
-  scan_position,
-  free_position,
-  extension_overlap_length;
+  extension_overlap_length,
+  pre_read_position;
 
-static SCHEME_OBJECT
-  * gc_disk_buffer_1,
-  * gc_disk_buffer_2,
-  * aligned_heap;
+static unsigned long
+  read_queue_bitmask;
 
-static char
-  * gc_file_name,
-  gc_file_name_buffer[FILE_NAME_LENGTH];
+static struct buffer_info
+  * free_buffer,		* scan_buffer,
+  * next_scan_buffer;
 
-/* Hacking the gc file */
-
-void
-DEFUN_VOID (close_gc_file)
+static int
+DEFUN (always_one, (operation_name, noise),
+       char * operation_name AND char * noise)
 {
-  if ((gc_file != -1)
-      && ((close (gc_file)) == -1))
+  return (1);
+}
+
+static int 
+DEFUN (io_error_retry_p, (operation_name, noise),
+       char * operation_name AND char * noise)
+{
+  extern char EXFUN (userio_choose_option,
+		     (const char *, const char *, const char **));
+  extern int EXFUN (userio_confirm, (const char *));
+
+  static CONST char * retry_choices [] =
+    {
+      "A = abort the operation",
+      "E = exit scheme",
+      "K = kill scheme",
+      "Q = quit scheme",
+      "R = retry the operation",
+      "S = sleep for 1 minute and retry the operation",
+      "X = exit scheme",
+      0};
+
+  fprintf (stderr,
+	   "\n%s (%s): GC file error (errno = %s) when manipulating %s.\n",
+	   scheme_program_name, operation_name, (error_name (errno)), noise);
+  fflush (stderr);
+  while (1)
   {
+    switch (userio_choose_option
+	    ("Choose one of the following actions:",
+	     "Action -> ", retry_choices))
+    {
+      case 'A':
+	return (1);
+
+      case '\0':
+	/* IO problems, assume everything is scrod. */
+	fprintf
+	  (stderr,
+	   "%s (io_error_retry_p): Problems reading the keyboard; Exitting.\n",
+	   scheme_program_name);
+	fflush (stderr);
+	termination_eof ();
+	/*NOTREACHED*/
+
+      case 'E': case 'K': case 'Q': case 'X':
+	if (!(userio_confirm ("Kill Scheme (Y/N)? ")))
+	  continue;
+	Microcode_Termination (TERM_EXIT);
+	/*NOTREACHED*/
+
+      case 'S':
+	sleep (60);
+	/* fall through */
+
+      case 'R':
+      default:
+	return (0);
+    }
+  }
+}
+
+static int
+DEFUN (parameterization_termination, (kill_p, init_p),
+       int kill_p AND int init_p)
+{
+  fflush (stderr);
+  if (init_p)
+    termination_init_error ();			/*NOTREACHED*/
+  else if (kill_p)
+    Microcode_Termination (TERM_EXIT);		/*NOTREACHED*/
+  else
+    return (-1);
+}
+
+static void
+DEFUN (continue_running, (sig), int sig)
+{
+  signal (SIGCONT, continue_running);
+  return;
+}
+
+static void
+DEFUN (write_data, (from, position, nbytes, noise, success),
+       char * from AND long position AND long nbytes
+       AND char * noise AND Boolean * success)
+{
+  if (((retrying_file_operation (write,
+				 gc_file,
+				 from,
+				 position,
+				 nbytes,
+				 "write",
+				 noise,
+				 &current_disk_position,
+				 ((success == ((Boolean *) NULL))
+				  ? io_error_retry_p
+				  : always_one)))
+       == -1)
+      && (success != ((Boolean *) NULL)))
+    *success = false;
+  return;
+}
+
+static void
+DEFUN (load_data, (position, to, nbytes, noise, success),
+       long position AND char * to AND long nbytes
+       AND char * noise AND Boolean * success)
+{
+  (void) (retrying_file_operation (read,
+				   gc_file,
+				   to,
+				   position,
+				   nbytes,
+				   "read",
+				   noise,
+				   &current_disk_position,
+				   ((success == ((Boolean *) NULL))
+				    ? io_error_retry_p
+				    : always_one)));
+  return;
+}
+
+#define RECORD_GC_STATISTICS
+
+struct bch_GC_statistic
+{
+  char * name;
+  long * counter;
+};
+
+#ifdef RECORD_GC_STATISTICS
+
+static void EXFUN (statistics_clear, (void));
+static void EXFUN (statistics_print, (int, char *));
+
+#  define STATISTICS_INCR(name)			name += 1
+#  define STATISTICS_CLEAR()			statistics_clear ()
+#  define STATISTICS_PRINT(level, noise)	statistics_print (level, noise)
+
+#else
+
+static struct bch_GC_statistic all_gc_statistics[] =
+{ { "invalid last statistic",		((long *) NULL) } };
+
+#  define STATISTICS_INCR(name)			do { } while (0)
+#  define STATISTICS_CLEAR()			do { } while (0)
+#  define STATISTICS_PRINT(level, noise)	do { } while (0)
+
+#endif
+
+#ifdef HAVE_SYSV_SHARED_MEMORY
+
+#ifdef RECORD_GC_STATISTICS
+
+static long
+  reads_not_overlapped,
+  reads_overlapped,
+  reads_ready,
+  reads_queued,
+  reads_pending,
+  reads_overlapped_aborted,
+  reads_found_in_write_queue,
+  reads_found_ready,
+  read_wait_cycles,
+  writes_not_overlapped,
+  writes_overlapped,
+  writes_retried,
+  writes_not_deferred,
+  writes_restarted,
+  writes_retried,
+  writes_pending,
+  write_wait_cycles,
+  pre_reads_aborted,
+  pre_reads_ignored,
+  pre_reads_found_in_write_queue,
+  pre_reads_found_ready,
+  pre_reads_not_started,
+  pre_reads_started,
+  pre_reads_deferred,
+  pre_reads_restarted,
+  pre_reads_retried,
+  pre_reads_not_retried,
+  pre_reads_requeued_as_writes,
+  ready_buffers_enqueued,
+  ready_buffers_not_enqueued,
+  drone_wait_cycles,
+  drone_request_failures,
+  drones_found_dead,
+  sleeps_interrupted,  
+  await_io_cycles,
+  gc_start_time,
+  gc_end_transport_time,
+  gc_end_weak_update_time,
+  gc_start_reload_time,
+  gc_end_time;
+
+#define START_TRANSPORT_HOOK()						\
+  gc_start_time = ((long) (OS_real_time_clock ()))
+  
+#define END_TRANSPORT_HOOK()						\
+  gc_end_transport_time = ((long) (OS_real_time_clock ()))
+
+#define END_WEAK_UPDATE_HOOK()						\
+  gc_end_weak_update_time = ((long) (OS_real_time_clock ()))
+
+#define START_RELOAD_HOOK()						\
+  gc_start_reload_time = ((long) (OS_real_time_clock ()))
+
+#define END_GC_HOOK()							\
+  gc_end_time = ((long) (OS_real_time_clock ()))
+
+static struct bch_GC_statistic all_gc_statistics[] =
+{
+  { "reads not overlapped",		&reads_not_overlapped },
+  { "reads overlapped",			&reads_overlapped },
+  { "reads ready",			&reads_ready },
+  { "reads queued",			&reads_queued },
+  { "reads pending",			&reads_pending },
+  { "reads overlapped aborted",		&reads_overlapped_aborted },
+  { "reads found in write queue",	&reads_found_in_write_queue },
+  { "reads found ready",		&reads_found_ready },
+  { "read wait cycles",			&read_wait_cycles },
+  { "writes not overlapped",		&writes_not_overlapped },
+  { "writes overlapped",		&writes_overlapped },
+  { "writes retried",			&writes_retried },
+  { "writes not deferred",		&writes_not_deferred },
+  { "writes restarted",			&writes_restarted },
+  { "writes retried",			&writes_retried },
+  { "writes pending",			&writes_pending },
+  { "write wait cycles",		&write_wait_cycles },
+  { "pre-reads aborted",		&pre_reads_aborted },
+  { "pre-reads ignored",		&pre_reads_ignored },
+  { "pre-reads found in write queue",	&pre_reads_found_in_write_queue },
+  { "pre-reads found ready",		&pre_reads_found_ready },
+  { "pre-reads not started",		&pre_reads_not_started },
+  { "pre-reads started",		&pre_reads_started },
+  { "pre-reads deferred",		&pre_reads_deferred },
+  { "pre-reads restarted",		&pre_reads_restarted },
+  { "pre-reads retried",		&pre_reads_retried },
+  { "pre-reads not retried",		&pre_reads_not_retried },
+  { "pre-reads requeued as writes",	&pre_reads_requeued_as_writes },
+  { "ready buffers enqueued",		&ready_buffers_enqueued },
+  { "ready buffers not enqueued",	&ready_buffers_not_enqueued },
+  { "drone wait cycles",		&drone_wait_cycles },
+  { "drone request failures",		&drone_request_failures },
+  { "drones found dead",		&drones_found_dead },
+  { "sleeps interrupted",		&sleeps_interrupted },
+  { "cycles awaiting I/O completion",	&await_io_cycles },
+  { "time at gc start",			&gc_start_time },
+  { "time at end of transport",		&gc_end_transport_time },
+  { "time at end of weak update",	&gc_end_weak_update_time },
+  { "time at start of reload",		&gc_start_reload_time },
+  { "time at gc end",			&gc_end_time },
+  { "invalid last statistic",		((long *) NULL) }
+};
+
+#endif /* RECORD_GC_STATISTICS */
+
+/* The only hard limit on MAX_READ_OVERLAP is the number of bits
+   in a long (-1 ?) imposed by read_queue_bitmask.
+   There is no hard limit on MAX_WRITE_OVERLAP.
+   On the other hand, the explicit searches through the queues
+   will become slower as the numbers are increased.
+ */
+
+#define MAX_READ_OVERLAP	((sizeof (long)) * CHAR_BIT)
+#define MAX_WRITE_OVERLAP	MAX_READ_OVERLAP
+#define MAX_OVERLAPPED_RETRIES	2
+
+static char * shared_memory = ((char *) -1);
+static char * malloc_memory = ((char *) NULL);
+static int drones_initialized_p = 0;
+static int shmid = -1;
+static int n_gc_buffers, n_gc_drones, gc_next_buffer, gc_next_drone;
+static struct gc_queue_entry * gc_read_queue, * gc_write_queue;
+static struct drone_info * gc_drones;
+static struct buffer_info * gc_buffers;
+static pid_t my_pid, * wait_pid;
+
+static long default_sleep_period = 20 MILLISEC;
+
+#define GET_SLEEP_DELTA()	default_sleep_period
+#define SET_SLEEP_DELTA(value)	default_sleep_period = (value)
+
+static int
+DEFUN (sleep_on_pid, (microsec, pid),
+       unsigned int microsec AND pid_t pid)
+{
+  int dummy;
+  struct timeval timeout;
+  extern int EXFUN (select, (int, int *, int *, int *, struct timeval *));
+
+  dummy = 0;
+  timeout.tv_sec = 0;
+  timeout.tv_usec = microsec;
+
+  *wait_pid = pid;
+  dummy = (select (0, &dummy, &dummy, &dummy, &timeout));
+  *wait_pid = ((pid_t) 0);
+
+  if ((dummy == -1) && (errno == EINTR))
+    STATISTICS_INCR (sleeps_interrupted);
+
+  return (dummy);
+}
+
+#ifndef _SUNOS4
+#  define SYSV_SPRINTF sprintf
+#else
+/* Losing SunOS sprintf */
+
+#  define SYSV_SPRINTF sysV_sprintf
+
+static int
+DEFUN (sysV_sprintf, (string, format, value),
+       char * string AND char * format AND long value)
+{
+  sprintf (string, format, value);
+  return (strlen (string));
+}
+
+#endif /* _SUNOS4 */
+
+/* The following don't do a wait/waitpid because Scheme handles SIGCHLD. */
+
+static void
+DEFUN_VOID (kill_all_gc_drones)
+{
+  int count;
+  struct drone_info * drone;
+
+  for (count = 0, drone = gc_drones; count < n_gc_drones; count++, drone++)
+    (void) (kill (drone->DRONE_PID, SIGTERM));
+  return;
+}
+
+static int
+DEFUN (probe_gc_drone, (drone), struct drone_info * drone)
+{
+  int result;
+
+  if ((result = (kill ((drone->DRONE_PID), 0))) == -1)
+  {
+    if (errno != ESRCH)
+      (void) (kill ((drone->DRONE_PID), SIGTERM));
+    drone->state = drone_dead;
+  }
+  return (result == 0);
+}
+
+static void
+DEFUN (probe_all_gc_drones, (wait_p), int wait_p)
+{
+  int count, losing;
+  struct drone_info * drone;
+  static void EXFUN (handle_drone_death, (struct drone_info *));
+
+  do {
+    for (count = 0, losing = 0, drone = gc_drones;
+	 count < n_gc_drones;
+	 count++, drone++)
+    {
+      if (drone->state != drone_idle)
+      {
+	losing += 1;
+	if ((kill (drone->DRONE_PID, 0)) == -1)
+	{
+	  if (errno != ESRCH)
+	    (void) (kill (drone->DRONE_PID, SIGTERM));
+	  drone->state = drone_dead;
+	  handle_drone_death (drone);
+	}
+      }
+    }
+    if (wait_p && (losing != 0))
+    {
+      (void) (sleep_on_pid (default_sleep_period, ((pid_t) 0)));
+      STATISTICS_INCR (await_io_cycles);
+    }
+  } while (wait_p && (losing != 0));
+  return;
+}
+
+static void
+DEFUN (start_gc_drones, (first_drone, how_many, restarting),
+       int first_drone AND int how_many AND int restarting)
+{
+  pid_t pid;
+  long signal_mask;
+  char arguments[512];
+  struct drone_info *drone;
+  char
+    * shmid_string,		/* shared memory handle */
+    * tdron_string,		/* total number of drones */
+    * nbuf_string,		/* total number of buffers */
+    * bufsiz_string,		/* size of each buffer in bytes */
+    * sdron_string,		/* index of first drone to start */
+    * ndron_string;		/* number of drones to start */
+
+  shmid_string = &arguments[0];
+  tdron_string =
+    (shmid_string + (1 + (SYSV_SPRINTF (shmid_string, "%d", shmid))));
+  nbuf_string =
+    (tdron_string + (1 + (SYSV_SPRINTF (tdron_string, "%d", n_gc_drones))));
+  bufsiz_string =
+    (nbuf_string + (1 + (SYSV_SPRINTF (nbuf_string, "%d", n_gc_buffers))));
+  sdron_string =
+    (bufsiz_string
+     + (1 + (SYSV_SPRINTF (bufsiz_string, "%ld",
+			   (gc_total_buffer_size
+			    * (sizeof (SCHEME_OBJECT)))))));
+  ndron_string =
+    (sdron_string + (1 + (SYSV_SPRINTF (sdron_string, "%d", first_drone))));
+  (void) (SYSV_SPRINTF (ndron_string, "%d", how_many));
+
+  drone = (gc_drones + first_drone);
+  if (restarting && (drone->state != drone_dead))
+    (void) (kill (drone->DRONE_PID, SIGTERM));
+  drone->state = drone_not_ready;
+
+  if ((pid = (vfork ())) == 0)
+  {
+    execlp (drone_file_name, drone_file_name, gc_file_name, shmid_string,
+	    tdron_string, nbuf_string, bufsiz_string,
+	    sdron_string, ndron_string, (keep_gc_file_p ? "1" : "0"),
+	    ((char *) 0));
     fprintf (stderr,
-	     "%s: Problems closing GC file \"%s\".\n",
-	     scheme_program_name, gc_file_name);
+	     "\n%s (start_gc_drones): execlp (%s) failed (errno = %s).\n",
+	     scheme_program_name, drone_file_name, (error_name (errno)));
+    fflush (stderr);
+    drone->state = drone_dead;
+    (void) (kill ((getppid ()), SIGCONT));
+    _exit (1);
+  }
+  else if (pid == -1)
+  {
+    fprintf (stderr, "\n%s (start_gc_drones): vfork failed (errno = %s).\n",
+	     scheme_program_name, (error_name (errno)));
+    fflush (stderr);
+    drone->state = drone_dead;
+  }
+  else
+  {
+    signal_mask = (sigblock (sigmask (SIGCONT)));
+    if (drone->state == drone_not_ready)
+      sigpause (signal_mask);
+    sigsetmask (signal_mask);
+
+    if ((drone->state != drone_idle) && !restarting)
+    {
+      /* Do the wait only at startup since Scheme handles SIGCHLD
+	 for all children. */
+      ((void) (waitpid (pid, ((int *) 0), WNOHANG)));
+      drone->state = drone_dead;
+    }
   }
   return;
 }
 
+static int
+DEFUN (invoke_gc_drone,
+       (entry, operation, buffer, position, size),
+       struct gc_queue_entry * entry
+       AND enum drone_state operation
+       AND struct buffer_info * buffer
+       AND long position
+       AND long size)
+{
+  /* Drone is supposed to be idle. */
+
+  int result, drone_index;
+  struct drone_info * drone;
+  enum buffer_state old_state;
+
+  drone_index = (entry->drone_index);
+  drone = (gc_drones + drone_index);
+  drone->state = operation;
+  drone->buffer_index = buffer->index;
+  drone->entry_offset = (((char *) entry) - ((char *) drone));
+  
+  old_state = buffer->state;
+  buffer->state = ((operation == drone_reading)
+		   ? buffer_being_read
+		   : buffer_being_written);
+  buffer->position = position;
+  buffer->size = size;
+  entry->buffer = buffer;
+  entry->state = entry_busy;
+
+  if ((result = (kill (drone->DRONE_PID, SIGCONT))) == -1)
+  {
+    entry->state = entry_idle;
+    buffer->state = old_state;
+    drone->state = drone_dead;
+    if (errno != ESRCH)
+    {
+      fprintf
+	(stderr,
+	 "\n%s (invoke_gc_drone): kill (%d, SIGCONT) failed; errno = %s.\n",
+	 scheme_program_name, drone->DRONE_PID, (error_name (errno)));
+      fflush (stderr);
+    }
+    start_gc_drones (drone_index, 1, 1);
+  }
+  return (result != -1);
+}
+
+static int
+DEFUN (sysV_initialize, (first_time_p, size, r_overlap, w_overlap, drfnam),
+       int first_time_p
+       AND long size AND int r_overlap AND int w_overlap
+       AND CONST char * drfnam)
+{
+  static void EXFUN (open_gc_file, (long, int));
+
+  SCHEME_OBJECT * bufptr;
+  int cntr;
+  long buffer_space, shared_size, malloc_size, * drone_version;
+  struct buffer_info * buffer;
+
+  if (r_overlap < 0)
+    r_overlap = 0;
+  else if (r_overlap > MAX_READ_OVERLAP)
+    r_overlap = MAX_READ_OVERLAP;
+  read_overlap = r_overlap;
+
+  if (w_overlap < 0)
+    w_overlap = 0;
+  else if (w_overlap > MAX_WRITE_OVERLAP)
+    w_overlap = MAX_WRITE_OVERLAP;
+  write_overlap = w_overlap;
+
+  n_gc_drones = (read_overlap + write_overlap);
+  n_gc_buffers = (2 + n_gc_drones);
+
+  /* The second argument to open_gc_file should be (n_gc_drones == 0),
+     but we can't do this since we can change the number of drones.
+   */
+  if (first_time_p)
+    open_gc_file (size, 0);
+
+  buffer_space = (n_gc_buffers
+		  * (gc_total_buffer_size * (sizeof (SCHEME_OBJECT))));
+  shared_size =
+    (ALIGN_UP_TO_IO_PAGE (buffer_space
+			  + (n_gc_buffers * (sizeof (struct buffer_info)))
+			  + (n_gc_drones * (sizeof (struct drone_info)))
+			  + (sizeof (long))
+			  + (sizeof (long))
+			  + (r_overlap * (sizeof (struct gc_queue_entry)))
+			  + (w_overlap * (sizeof (struct gc_queue_entry)))
+			  + IO_PAGE_SIZE));
+
+  malloc_size = ((n_gc_drones == 0)
+		 ? shared_size
+		 : (first_time_p ? MALLOC_SPACE : 0));
+
+  if (malloc_size > 0)
+  {
+    malloc_memory = ((char *) (malloc (malloc_size)));
+    if (malloc_memory == ((char *) NULL))
+    {
+      fprintf
+	(stderr,
+	 "%s (sysV_initialize): Unable to allocate %d bytes (errno = %s).\n",
+	 scheme_program_name, malloc_size, (error_name (errno)));
+      return (parameterization_termination (1, first_time_p));
+    }
+  }
+
+  if (n_gc_drones == 0)
+    shared_memory = ((char *) (ALIGN_UP_TO_IO_PAGE (malloc_memory)));
+  else
+  {
+    if ((shmid = (shmget (IPC_PRIVATE, shared_size, 0600))) == -1)
+    {
+      fprintf
+	(stderr,
+	 "%s (sysV_initialize): shmget (-, %d, -) failed (errno = %s).\n",
+	 scheme_program_name, shared_size, (error_name (errno)));
+      fprintf (stderr,
+	       "\tUnable to allocate shared memory for drone processes.\n");
+      return (parameterization_termination (0, first_time_p));
+    }
+    shared_memory = (shmat (shmid, ATTACH_POINT, 0));
+    if (shared_memory == ((char *) -1))
+    {
+      int saved_errno = errno;
+
+      (void) (shmctl (shmid, IPC_RMID, 0));
+      shmid = -1;
+      fprintf
+	(stderr,
+	 "%s (sysV_initialize): shmat (%d, 0x%lx, 0) failed. (errno = %s).\n",
+	 scheme_program_name, shmid, shared_size, (error_name (saved_errno)));
+      fprintf (stderr,
+	       "\tUnable to attach shared memory for drone processes.\n");
+      return (parameterization_termination (0, first_time_p));
+    }
+    signal (SIGCONT, continue_running);
+  }
+
+  if (!(ALIGNED_TO_IO_PAGE_P (shared_memory)))
+  {
+    fprintf (stderr,
+	     "%s (sysV_initialize): buffer space is not aligned properly.\n",
+	     scheme_program_name);
+    fprintf (stderr,
+	     "\taddress = 0x%lx; IO_PAGE_SIZE = 0x%lx.\n",
+	     ((long) shared_memory), ((long) IO_PAGE_SIZE));
+    return (parameterization_termination (0, first_time_p));
+  }
+
+  if ((n_gc_drones != 0) && (malloc_size > 0)
+      && (malloc_memory != ((char *) NULL)))
+  {
+    free (malloc_memory);
+    malloc_memory = ((char *) NULL);
+  }
+
+  gc_buffers = ((struct buffer_info *) (shared_memory + buffer_space));
+  gc_drones = ((struct drone_info *) (gc_buffers + n_gc_buffers));
+  drone_version = ((long *) (gc_drones + n_gc_drones));
+  wait_pid = ((pid_t *) (drone_version + 1));
+  gc_read_queue = ((struct gc_queue_entry *) (drone_version + 2));
+  gc_write_queue = (gc_read_queue + r_overlap);
+
+  /* Initialize structures. */
+
+  gc_next_drone = 0;
+  gc_next_buffer = 0;
+
+  drone_file_name = ((char *) drfnam);
+  if ((drfnam != ((char *) NULL)) && (drfnam[0] != '/'))
+  {
+    CONST char * temp = (search_for_library_file (drfnam));
+    if (temp != ((char *) NULL))
+    {
+      drone_file_name = temp;
+      if (drfnam != option_gc_drone)
+	free (drfnam);
+    }
+  }
+
+  for (bufptr = ((SCHEME_OBJECT *) shared_memory), cntr = 0,
+       buffer = gc_buffers;
+       (cntr < n_gc_buffers);
+       bufptr = buffer->end, cntr++, buffer++)
+  {
+    buffer->index = cntr;
+    buffer->state = buffer_idle;
+    buffer->position = -1;
+    buffer->bottom = ((PTR) bufptr);
+    buffer->top = ((PTR) (bufptr + gc_buffer_size));
+    buffer->end = ((PTR) (bufptr + gc_total_buffer_size));
+  }
+
+  my_pid = (getpid ());
+  if (n_gc_drones == 0)
+    shared_memory = ((char *) -1);
+  else
+  {
+    struct gc_queue_entry * entry;
+    struct drone_info * drone;
+
+    *drone_version = DRONE_VERSION_NUMBER;
+
+    for (cntr = 0, entry = gc_read_queue; /* followed by gc_write_queue */
+	 cntr < (read_overlap + write_overlap);
+	 cntr++, entry++)
+    {
+      entry->index = cntr;
+      entry->state = entry_idle;
+      entry->retry_count = 0;
+    }
+
+    for (cntr = 0, drone = gc_drones; cntr < n_gc_drones; cntr++, drone++)
+    {
+      drone->index = cntr;
+      drone->state = drone_not_ready;
+    }
+
+    start_gc_drones (0, n_gc_drones, 0);
+    if (gc_drones->state != drone_idle)
+    {
+      fprintf (stderr,
+	       "%s (sysV_initialize): Problems starting up the GC drones%s.\n",
+	       scheme_program_name,
+	       ((*drone_version != DRONE_VERSION_NUMBER)
+		? " (wrong drone version)"
+		: ""));
+      return (parameterization_termination (0, first_time_p));
+    }
+    drones_initialized_p = 1;
+  }
+  return (0);
+}
+
+static void
+DEFUN (sysV_shutdown, (final_time_p), int final_time_p)
+{
+  static void EXFUN (close_gc_file, (int));
+
+  /* arg should be (n_gc_drones > 0), see sysV_initialize */
+  if (final_time_p)
+    close_gc_file (1);
+
+  if (malloc_memory != ((char *) NULL))
+  {
+    free (malloc_memory);
+    malloc_memory = ((char *) NULL);    
+  }
+
+  if ((n_gc_drones != 0) && (drones_initialized_p))
+  {
+    kill_all_gc_drones ();
+    drones_initialized_p = 0;
+  }
+
+  if ((shared_memory != ((char *) -1)) && ((shmdt (shared_memory)) == -1))
+  {
+    fprintf (stderr, "\n%s (sysV_shutdown): shmdt failed.  errno = %s.\n",
+	     scheme_program_name, (error_name (errno)));
+    fflush (stderr);
+  }
+  shared_memory = ((char *) -1);
+
+  if ((shmid != -1)
+      && (shmctl (shmid, IPC_RMID, ((struct shmid_ds *) 0))) == -1)
+  {
+    fprintf (stderr, "\n%s (sysV_shutdown): shmctl failed.  errno = %s.\n",
+	     scheme_program_name, (error_name (errno)));
+    fflush (stderr);
+  }
+  shmid = -1;
+
+  return;
+}
+
+static int
+DEFUN (find_idle_drone, (wait_p), int wait_p)
+{
+  int drone_index, next_drone_index, count = 0;
+  struct drone_info * drone;
+
+  drone_index = gc_next_drone;
+  while (1)
+  {
+    count += 1;
+    do
+    {
+      next_drone_index = (drone_index + 1);
+      if (next_drone_index >= n_gc_drones)
+	next_drone_index = 0;
+
+      drone = (gc_drones + drone_index);
+      switch (drone->state)
+      {
+      case drone_idle:
+	gc_next_drone = next_drone_index;
+	return (drone_index);
+
+      case drone_dead:
+	start_gc_drones (drone_index, 1, 1);
+	/* fall through, look at it on next pass. */
+
+      default:
+	break;	    
+      }
+      drone_index = next_drone_index;
+    } while (drone_index != gc_next_drone);
+
+    /* All the drones are busy... */
+
+    if (!wait_p)
+    {
+      STATISTICS_INCR (drone_request_failures);
+      return (-1);
+    }
+
+    if (count == 10)
+    {
+      probe_all_gc_drones (0);
+      count = 0;
+    }
+    else
+    {
+      (void) (sleep_on_pid (default_sleep_period, my_pid));
+      STATISTICS_INCR (drone_wait_cycles);
+    }
+  }
+}
+
+static void
+DEFUN (abort_gc_drone, (drone), struct drone_info * drone)
+{
+  int restart_p = 0;
+  long signal_mask = (sigblock (sigmask (SIGCONT)));
+
+  *wait_pid = drone->DRONE_PID;
+  if (drone->state != drone_idle)
+  {
+    if ((kill (drone->DRONE_PID, SIGQUIT)) == -1)
+      restart_p = 1;
+    else
+      sigpause (signal_mask);
+  }
+  *wait_pid = ((pid_t) 0);
+  (void) (sigsetmask (signal_mask));
+  if (restart_p)
+    start_gc_drones (drone->index, 1, 1);
+  return;
+}
+
+static struct gc_queue_entry *
+DEFUN (find_queue_entry, (queue, queue_size, position, drone_index),
+       struct gc_queue_entry * queue AND int queue_size
+       AND long position AND int drone_index)
+{
+  struct gc_queue_entry * entry; 
+  int cntr;
+
+  for (cntr = 0, entry = queue; cntr < queue_size; cntr++, entry++)
+  {
+    if ((entry->state != entry_idle)
+	&& (((entry->buffer)->position == position)
+	    || (entry->drone_index == drone_index)))
+      return (entry);
+  }
+  return ((struct gc_queue_entry *) NULL);
+}
+
+enum allocate_request
+{
+  request_read,
+  request_write,
+  request_ready
+};
+
+static struct gc_queue_entry *
+DEFUN (allocate_queue_entry, (queue, queue_size, position, request),
+       struct gc_queue_entry * queue AND int queue_size
+       AND long position AND enum allocate_request request)
+{
+  struct gc_queue_entry * entry; 
+  int cntr, queue_index;
+
+  /* Examine all entries for duplicates, ergo no `break' */
+
+  queue_index = -1;
+  for (cntr = 0, entry = queue; cntr < queue_size; cntr++, entry++)
+  {
+    if (entry->state == entry_idle)
+      queue_index = cntr;
+    else if ((entry->buffer)->position == position)
+      return (entry);
+    else if (entry->state == entry_error)
+    {
+      struct buffer_info * buffer = entry->buffer;
+
+      entry->retry_count += 1;
+      if (entry->retry_count <= MAX_OVERLAPPED_RETRIES)
+      {
+	if (request == request_write)
+	{
+	  do
+	    entry->drone_index = (find_idle_drone (1));
+	  while (!(invoke_gc_drone (entry, drone_writing, entry->buffer,
+				    buffer->position, buffer->size)));
+	  STATISTICS_INCR (writes_retried);
+	}
+	else
+	{
+	  entry->drone_index = (find_idle_drone (0));
+	  if ((entry->drone_index != -1)
+	      && (invoke_gc_drone (entry, drone_reading, entry->buffer,
+				   buffer->position, buffer->size)))
+	    STATISTICS_INCR (pre_reads_retried);
+	  else
+	    STATISTICS_INCR (pre_reads_not_retried);
+	}
+      }
+      else if (request == request_write)
+      {
+	STATISTICS_INCR (writes_not_deferred);
+	write_data (((char *) (buffer->bottom)),
+		    buffer->position, buffer->size,
+		    "a queued buffer", ((Boolean *) NULL));
+	buffer->state = buffer_idle;
+	entry->state = entry_idle;
+	entry->retry_count = 0;
+	queue_index = cntr;
+      }
+      else
+	/* If pre-reading, it will be taken care of later. */
+	STATISTICS_INCR (pre_reads_deferred);
+    }
+  }
+
+  if (queue_index == -1)
+  {
+    probe_all_gc_drones (0);
+    return ((struct gc_queue_entry *) NULL);
+  }
+
+  entry = (queue + queue_index);
+  entry->buffer = ((struct buffer_info *) NULL);
+  return (entry);
+}
+
+static struct buffer_info *
+DEFUN_VOID (find_idle_buffer)
+{
+  int next_buffer, new_next_buffer;
+  struct buffer_info *buffer;
+
+  next_buffer = gc_next_buffer;
+  do
+  {
+    new_next_buffer = (next_buffer + 1);
+    if (new_next_buffer >= n_gc_buffers)
+      new_next_buffer = 0;
+    buffer = (gc_buffers + next_buffer);
+    if (buffer->state == buffer_idle)
+    {
+      gc_next_buffer = new_next_buffer;
+      return (buffer);
+    }
+    next_buffer = new_next_buffer;
+  } while (next_buffer != gc_next_buffer);
+
+  fprintf (stderr, "\n%s (find_idle_buffer): All buffers are in use!\n",
+	   scheme_program_name);
+  fflush (stderr);
+  Microcode_Termination (TERM_GC_OUT_OF_SPACE);
+  /*NOTREACHED*/
+}
+
+static struct buffer_info * 
+DEFUN (find_ready_buffer, (position, size), long position AND long size)
+{
+  int next_buffer, new_next_buffer;
+  struct buffer_info *buffer;
+
+  next_buffer = gc_next_buffer;
+  do
+  {
+    new_next_buffer = (next_buffer + 1);
+    if (new_next_buffer >= n_gc_buffers)
+      new_next_buffer = 0;
+    buffer = (gc_buffers + next_buffer);
+    if ((buffer->state == buffer_idle) /* && (buffer->size == size) */
+	&& (buffer->position == position))
+    {
+      gc_next_buffer = new_next_buffer;
+      return (buffer);
+    }
+    next_buffer = new_next_buffer;
+  } while (next_buffer != gc_next_buffer);
+  return ((struct buffer_info *) NULL);
+}
+
+static struct buffer_info *
+DEFUN_VOID (get_gc_buffer)
+{
+  struct buffer_info * buffer;
+
+  buffer = (find_idle_buffer ());
+  buffer->state = buffer_busy;
+  return (buffer);
+}
+
+static struct buffer_info *
+DEFUN (read_buffer, (posn, size, noise),
+       long posn AND long size AND char * noise)
+{
+  struct gc_queue_entry * entry;
+  struct buffer_info * buffer;
+
+  if ((read_overlap != 0)
+      && ((entry = (find_queue_entry (gc_read_queue, read_overlap, posn, -2)))
+	  != ((struct gc_queue_entry *) NULL))
+      && ((buffer = entry->buffer) != ((struct buffer_info *) NULL)))
+  {
+    switch (buffer->state)
+    {
+      default:
+	fprintf (stderr, "\n%s (read_buffer %s): invalid state.\n",
+		 scheme_program_name, noise);
+	fprintf (stderr, "\tindex = %d; state = %d; position = 0x%lx.\n",
+		 buffer->index, buffer->state, posn);
+	fflush (stderr);
+	/* fall through */
+
+      case buffer_read_error:
+	/* Try synchronously, and complain then if the condition persists. */
+	break;
+
+      case buffer_being_read:
+      {
+	int count;
+	struct drone_info * drone = (gc_drones + entry->drone_index);
+
+	for (count = 1; (buffer->state == buffer_being_read) ; count++)
+	{
+	  if (count == 10)
+	  {
+	    if (probe_gc_drone (drone))
+	      count = 0;
+	    else
+	    {
+	      start_gc_drones (drone->index, 1, 1);
+	      goto buffer_failed;
+	    }
+	  }
+	  else
+	    (void) (sleep_on_pid (default_sleep_period, drone->DRONE_PID));
+	  STATISTICS_INCR (read_wait_cycles);
+	}
+
+	if (buffer->state != buffer_ready)
+	{
+buffer_failed:
+	  entry->state = entry_idle;
+	  entry->retry_count = 0;
+	  buffer->state = buffer_idle;
+	  buffer->position = -1;
+	  STATISTICS_INCR (reads_overlapped_aborted);
+	  break;
+	}
+	STATISTICS_INCR (reads_pending);
+	goto buffer_available;
+      }
+
+      case buffer_queued:
+	STATISTICS_INCR (reads_queued);
+	goto buffer_available;
+
+      case buffer_ready:
+	STATISTICS_INCR (reads_ready);
+
+buffer_available:
+	/* This should check size, but they are all the same. */
+	entry->state = entry_idle;
+	entry->retry_count = 0;
+	buffer->state = buffer_busy;
+	STATISTICS_INCR (reads_overlapped);
+	return (buffer);
+    }
+  }
+  else if ((write_overlap != 0)
+	   && ((entry = (find_queue_entry (gc_write_queue, write_overlap,
+					   posn, -2)))
+	       != ((struct gc_queue_entry *) NULL)))
+  {
+    int index;
+
+    /* This should check size, but they are all the same. */
+
+    entry->state = entry_idle;
+    entry->retry_count = 0;
+    buffer = entry->buffer;
+    index = entry->drone_index;
+    if (index != -1)
+      abort_gc_drone (gc_drones + index);
+    buffer->state = buffer_busy;
+    STATISTICS_INCR (reads_found_in_write_queue);
+    return (buffer);
+  }
+  else if ((buffer = (find_ready_buffer (posn, size)))
+	   != ((struct buffer_info *) NULL))
+  {
+    /* This should check size, but they are all the same. */
+
+    buffer->state = buffer_busy;
+    STATISTICS_INCR (reads_found_ready);
+    return (buffer);
+  }
+
+  /* (read_overlap == 0) or not pre-read. */
+  {
+    buffer = (find_idle_buffer ());
+
+    load_data (posn, ((char *) buffer->bottom), size,
+	       noise, ((Boolean *) NULL));
+    buffer->state = buffer_busy;
+    STATISTICS_INCR (reads_not_overlapped);
+    return (buffer);
+  }
+}
+
+static void
+DEFUN (write_buffer, (buffer, position, size, success, noise),
+       struct buffer_info * buffer AND long position
+       AND long size AND Boolean * success AND char * noise)
+{
+  if (write_overlap != 0)
+  {
+    struct gc_queue_entry * entry =
+      (allocate_queue_entry (gc_write_queue, write_overlap,
+			     position, request_write));
+
+    if (entry == ((struct gc_queue_entry *) NULL))
+    {
+      STATISTICS_INCR (writes_pending);
+      do
+      {
+	(void) (sleep_on_pid (default_sleep_period, my_pid));
+	entry =
+	  (allocate_queue_entry (gc_write_queue, write_overlap,
+				 position, request_write));
+	STATISTICS_INCR (write_wait_cycles);
+      } while (entry == ((struct gc_queue_entry *) NULL));
+    }
+    else if (entry->buffer != NULL)
+    {
+      int index;
+      struct buffer_info * old_buffer;
+
+      fprintf (stderr,
+	       "\n%s (write_buffer %s): duplicate write at 0x%lx.\n",
+	       scheme_program_name, noise, position);
+      fflush (stderr);
+      index = entry->drone_index;
+      if (index != -1)
+	abort_gc_drone (gc_drones + index);
+      old_buffer = entry->buffer;
+      old_buffer->state = buffer_idle;
+      entry->buffer = buffer;
+    }
+    do
+      entry->drone_index = (find_idle_drone (1));
+    while (!(invoke_gc_drone (entry, drone_writing, buffer, position, size)));
+    STATISTICS_INCR (writes_overlapped);
+    return;
+  }
+
+  STATISTICS_INCR (writes_not_overlapped);
+  write_data (((char *) buffer->bottom), position, size, noise, success);
+  buffer->state = buffer_idle;
+  return;
+}
+
+static void
+DEFUN (enqueue_buffer, (entry, buffer, position, size, state),
+       struct gc_queue_entry * entry AND struct buffer_info * buffer
+       AND long position AND long size AND enum buffer_state state)
+{
+  buffer->state = state;
+  buffer->position = position;
+  buffer->size = size;
+  entry->buffer = buffer;
+  entry->drone_index = -1;
+  entry->state = entry_busy;
+  return;
+}
+
+static void
+DEFUN (enqueue_ready_buffer, (buffer, position, size),
+       struct buffer_info * buffer AND long position AND long size)
+{
+  struct gc_queue_entry * entry;
+
+  if ((read_overlap == 0)
+      || ((entry = (allocate_queue_entry (gc_read_queue, read_overlap,
+					  position, request_ready)))
+	  == ((struct gc_queue_entry *) NULL)))
+  {
+    write_buffer (buffer, position, size, ((char *) NULL), "a ready buffer");
+    STATISTICS_INCR (ready_buffers_not_enqueued);
+    return;
+  }
+  if (entry->buffer != NULL)  
+  {
+    int index = entry->drone_index;
+    struct buffer_info * old_buffer = entry->buffer;
+
+    if (index != -1)
+      abort_gc_drone (gc_drones + index);
+    old_buffer->state = buffer_idle;
+    fprintf (stderr,
+	     "\n%s (enqueue_ready_buffer): Duplicate pre-read at 0x%lx.\n",
+	     scheme_program_name, old_buffer->position);
+    fflush (stderr);
+  }
+  enqueue_buffer (entry, buffer, position, size, buffer_queued);
+  STATISTICS_INCR (ready_buffers_enqueued);
+  return;
+}
+
+static void
+DEFUN (abort_pre_read, (position), long position)
+{
+  int index;
+  struct gc_queue_entry * entry;
+  struct buffer_info * buffer;
+  
+  entry = (find_queue_entry (gc_read_queue, read_overlap, position, -2));
+  if (entry == ((struct gc_queue_entry *) NULL))
+    return;
+  buffer = entry->buffer;
+  if (buffer->state == buffer_queued)
+  {
+    entry->state = entry_idle;
+    entry->retry_count = 0;
+    write_buffer (buffer, buffer->position, buffer->size,
+		  ((Boolean *) NULL), "a queued buffer");
+    STATISTICS_INCR (pre_reads_requeued_as_writes);
+    return;
+  }
+  index = entry->drone_index;
+  if (index != -1)
+    abort_gc_drone (gc_drones + index);
+  buffer->state = buffer_idle;
+  buffer->position = -1;
+  entry->state = entry_idle;
+  entry->retry_count = 0;
+  STATISTICS_INCR (pre_reads_aborted);
+  return;
+}
+
+static int
+DEFUN (pre_read_buffer, (position, size), long position AND long size)
+{
+  struct gc_queue_entry * rentry, * wentry;
+  struct buffer_info * buffer;
+
+  if (read_overlap == 0)
+    return (0);
+
+  /* Do this first, to guarantee that we can insert it in the queue.
+     Otherwise there is no point in aborting a write, etc.
+     It is not really allocated until enqueue_buffer or invoke_gc_drone.
+   */
+
+  rentry = (allocate_queue_entry (gc_read_queue, read_overlap,
+				  position, request_read));
+  if (rentry == ((struct gc_queue_entry *) NULL))
+  {
+    STATISTICS_INCR (pre_reads_ignored);
+    return (0);
+  }
+  else if (rentry->buffer != NULL)
+    /* Already being pre-read */
+    return (1);
+
+  if ((write_overlap != 0)
+      && ((wentry = (find_queue_entry (gc_write_queue, write_overlap,
+				       position, -2)))
+	  != ((struct gc_queue_entry *) NULL)))
+  {
+    int index = wentry->drone_index;
+
+    buffer = wentry->buffer;
+    if (index != -1)
+      abort_gc_drone (gc_drones + index);
+    wentry->state = entry_idle;
+    wentry->retry_count = 0;
+    enqueue_buffer (rentry, buffer, position, size, buffer_queued);
+    STATISTICS_INCR (pre_reads_found_in_write_queue);
+    return (1);
+  }
+  else if ((buffer = (find_ready_buffer (position, size)))
+	   != ((struct buffer_info *) NULL))
+  {
+    enqueue_buffer (rentry, buffer, position, size, buffer_ready);
+    STATISTICS_INCR (pre_reads_found_ready);
+    return (1);
+  }
+
+  if (((rentry->drone_index = (find_idle_drone (0))) == -1)
+      || (!(invoke_gc_drone (rentry, drone_reading, (find_idle_buffer ()),
+			     position, size))))
+  {
+    STATISTICS_INCR (pre_reads_not_started);
+    return (0);
+  }
+  STATISTICS_INCR (pre_reads_started);
+  return (1);
+}
+
+static void
+DEFUN (handle_drone_death, (drone), struct drone_info * drone)
+{
+  struct buffer_info * buffer;
+  struct gc_queue_entry * entry;
+
+  STATISTICS_INCR (drones_found_dead);
+  if ((entry = (find_queue_entry (gc_write_queue, write_overlap,
+				  -1, drone->index)))
+      != ((struct gc_queue_entry *) NULL))
+  {
+    buffer = entry->buffer;
+    entry->state = entry_idle;
+    entry->retry_count = 0;
+    if (buffer->state != buffer_idle)
+    {
+      write_buffer (buffer, buffer->position, buffer->size,
+		    ((Boolean *) NULL), "a queued buffer whose drone died");
+      STATISTICS_INCR (writes_restarted);
+    }
+  }
+  else if ((entry = (find_queue_entry (gc_read_queue, read_overlap,
+				       -1, drone->index)))
+	   != ((struct gc_queue_entry *) NULL))
+  {
+    buffer = entry->buffer;
+    if (buffer->state != buffer_ready)
+    {
+      entry->state = entry_idle;
+      entry->retry_count = 0;
+      buffer->state = buffer_idle;
+      STATISTICS_INCR (pre_reads_restarted);
+      (void) (pre_read_buffer (buffer->position, buffer->size));
+    }
+  }
+  return;
+}
+
+static void
+DEFUN (await_io_completion, (start_p), int start_p)
+{
+  int cntr;
+  struct buffer_info * buffer;
+  struct gc_queue_entry * entry;
+
+  if (n_gc_drones != 0)
+    probe_all_gc_drones (1);
+  if (start_p)
+  {
+    for (cntr = 0, buffer = gc_buffers; cntr < n_gc_buffers; cntr++, buffer++)
+    {
+      buffer->state = buffer_idle;
+      buffer->position = -1;
+    }
+    for (cntr = 0, entry = gc_read_queue; cntr < read_overlap; cntr++, entry++)
+      entry->state = entry_idle;
+    for (cntr = 0, entry = gc_write_queue; cntr < write_overlap;
+	 cntr++, entry++)
+      entry->state = entry_idle;
+  }
+  return;
+}
+
+#define CAN_RECONFIGURE_GC_BUFFERS	1
+
+#define GC_BUFFER_ALLOCATION(space)	0
+
+#define INITIALIZE_GC_BUFFERS(ft, start, size, ro, wo, gcd)		\
+ sysV_initialize (ft, size, ro, wo, gcd)
+
+#define RE_INITIALIZE_GC_BUFFERS(ft, start, size, ro, wo, gcd)		\
+ sysV_initialize (ft, size, ro, wo, gcd)
+
+#define BUFFER_SHUTDOWN(lt)		sysV_shutdown (lt)
+
+#define INITIALIZE_IO()			await_io_completion (1)
+#define AWAIT_IO_COMPLETION()		await_io_completion (0)
+
+#define INITIAL_SCAN_BUFFER()		free_buffer		/* NOP */
+#define INITIAL_FREE_BUFFER()		get_gc_buffer ()
+#define OTHER_BUFFER(buffer)		get_gc_buffer ()
+
+#define GC_BUFFER_BOTTOM(buffer) 	((SCHEME_OBJECT *) buffer->bottom)
+#define GC_BUFFER_TOP(buffer) 		((SCHEME_OBJECT *) buffer->top)
+
+#define READ_BUFFER			read_buffer
+#define DUMP_BUFFER			write_buffer
+#define PRE_READ_BUFFER			pre_read_buffer
+#define ABORT_PRE_READ			abort_pre_read
+#define ENQUEUE_READY_BUFFER		enqueue_ready_buffer
+
+#define LOAD_BUFFER(buffer, position, size, noise)			\
+  buffer = (read_buffer (position, size, noise))
+
+#endif /* HAVE_SYSV_SHARED_MEMORY */
+
+
+
+#ifndef GC_BUFFER_ALLOCATION
+
+static struct buffer_info
+  * gc_disk_buffer_1,
+  * gc_disk_buffer_2;
+
+#define CAN_RECONFIGURE_GC_BUFFERS	0
+
+#define GC_BUFFER_ALLOCATION(space)	space
+
+#define INITIALIZE_GC_BUFFERS(ft, start, size, ro, wo, gcd)		\
+do {									\
+  SCHEME_OBJECT * ptr = (start);					\
+									\
+  gc_disk_buffer_1 = ((struct buffer_info *) ptr);			\
+  gc_disk_buffer_2 = ((struct buffer_info *)				\
+		      (ptr + gc_total_buffer_size));			\
+  open_gc_file (size, 1);						\
+} while (0)
+
+#define BUFFER_SHUTDOWN(lt)	close_gc_file (0)
+
+#define INITILIZE_IO()		do { } while (0)
+#define AWAIT_IO_COMPLETION()	do { } while (0)
+
+#define INITIAL_SCAN_BUFFER()	gc_disk_buffer_2
+#define INITIAL_FREE_BUFFER()	gc_disk_buffer_1
+
+/* (gc_disk_buffer_1 - (gc_disk_buffer_2 - (buffer))) does not work
+   because scan_buffer is not initialized until after scanning
+   constant space.
+*/
+
+#define OTHER_BUFFER(buffer)	(((buffer) == gc_disk_buffer_1)		\
+				 ? gc_disk_buffer_2			\
+				 : gc_disk_buffer_1)
+
+#define GC_BUFFER_BOTTOM(buffer) ((SCHEME_OBJECT *) (buffer))
+#define GC_BUFFER_TOP(buffer) (((SCHEME_OBJECT *) (buffer)) + gc_buffer_size)
+
+static int
+DEFUN (catastrophic_failure, (name), char * name)
+{
+  fprintf (stderr,
+	   "\n%s: Procedure %s should never be called!\n",
+	   scheme_program_name, name);
+  fflush (stderr);
+  Microcode_Termination (TERM_EXIT);
+  /*NOTREACHED*/
+}
+
+#define GCDIE(m)			catastrophic_failure (m)
+
+#define RE_INITIALIZE_GC_BUFFERS(f,s,z,r,w,g)				\
+					GCDIE ("RE_INITIALIZE_GC_BUFFERS")
+#define READ_BUFFER(p,s,n)		GCDIE ("read_buffer")
+#define PRE_READ_BUFFER(p,s)		GCDIE ("pre_read_buffer")
+#define ABORT_PRE_READ(p)		GCDIE ("abort_pre_read")
+#define ENQUEUE_READY_BUFFER(b,p,s)	GCDIE ("enqueue_ready_buffer")
+
+#define LOAD_BUFFER(buffer, position, size, noise)			\
+  load_data (position, ((char *) buffer), size, noise, ((Boolean *) NULL))
+
+#define DUMP_BUFFER(buffer, position, size, successp, noise)		\
+  write_data (((char *) buffer), position, size, noise, successp)
+
+#endif /* GC_BUFFER_ALLOCATION */
+
+static int
+DEFUN (next_exponent_of_two, (value), int value)
+{
+  unsigned int power;
+  int exponent;
+
+  if (value < 0)
+    return (0);
+  
+  for (power = 1, exponent = 0;
+       power < ((unsigned int) value);
+       power = (power << 1), exponent += 1)
+    ;
+  return (exponent);
+}
+
+/* Hacking the gc file */
+
+static int
+  saved_gc_file = -1,
+  saved_read_overlap,
+  saved_write_overlap;
+
+int
+DEFUN (swap_gc_file, (fid), int fid)
+{
+  /* Do not use overlapped I/O for fasdump because the drone processes
+     will continue writing to the same old file!
+   */
+  saved_gc_file = gc_file;
+  saved_read_overlap = read_overlap;
+  saved_write_overlap = write_overlap;
+  gc_file = fid;
+  read_overlap = 0;
+  write_overlap = 0;
+  return (saved_gc_file);
+}
+
 void
-DEFUN (open_gc_file, (size), int size)
+DEFUN_VOID (restore_gc_file)
+{
+  gc_file = saved_gc_file;
+  read_overlap = saved_read_overlap;
+  write_overlap = saved_write_overlap;
+  saved_gc_file = -1;
+  return;
+}
+
+static void
+DEFUN (close_gc_file, (unlink_p), int unlink_p)
+{
+  if ((gc_file != -1) && ((close (gc_file)) == -1))
+  {
+    fprintf (stderr,
+	     "\n%s (close_gc_file): error: GC file = \"%s\"; errno = %s.\n",
+	     scheme_program_name, gc_file_name, (error_name (errno)));
+    fflush (stderr);
+  }
+  gc_file = -1;
+  if (!keep_gc_file_p && unlink_p)
+    unlink (gc_file_name);
+  gc_file_name = ((char *) NULL);
+  keep_gc_file_p = 0;
+  return;
+}
+
+#ifndef SEEK_SET
+#define SEEK_SET 0
+#endif
+
+static void
+DEFUN (open_gc_file, (size, unlink_p),
+       long size AND int unlink_p)
 {
   extern char * EXFUN (mktemp, (char *));
+  extern long EXFUN (lseek, (int, long, int));
   struct stat file_info;
   int position, flags;
   Boolean exists_p;
 
   gc_file_name = &gc_file_name_buffer[0];
   if (option_gc_file[0] == '/')
-  {
     strcpy (gc_file_name, option_gc_file);
-  }
   else
   {
     position = (strlen (option_gc_directory));
-    if ((position == 0)
-	|| (option_gc_directory[position - 1] != '/'))
-      sprintf (gc_file_name, "%s/%s",
-	       option_gc_directory,
-	        option_gc_file);
+    if ((position == 0) || (option_gc_directory[position - 1] != '/'))
+      sprintf (gc_file_name, "%s/%s", option_gc_directory, option_gc_file);
     else
-      sprintf (gc_file_name, "%s%s",
-	       option_gc_directory,
-	       option_gc_file);
+      sprintf (gc_file_name, "%s%s", option_gc_directory, option_gc_file);
   }
 
   /* mktemp supposedly only clobbers Xs from the end.
@@ -219,7 +1728,6 @@ DEFUN (open_gc_file, (size), int size)
     can_dump_directly_p = true;
     flags |= O_EXCL;
   }
-
   else
   {
     /* If it is S_IFCHR, it should determine the IO block
@@ -228,86 +1736,145 @@ DEFUN (open_gc_file, (size), int size)
        ustat(2) will do that for a mounted file system,
        but obviously, if a raw device file is used,
        there better not be a file system on the device or partition.
+       Does st_blksize give the correct value? -- Apparently not.
        */
 
     exists_p = true;
     if ((file_info.st_mode & S_IFMT) == S_IFCHR)
-    {
       can_dump_directly_p = false;
-    }
+
     else if (((file_info.st_mode & S_IFMT) != S_IFREG)
 	     && ((file_info.st_mode & S_IFMT) != S_IFBLK))
     {
       fprintf (stderr,
-	       "\
-%s: file \"%s\" cannot be used as a GC file (type = 0x%08x).\n",
+	       "%s (open_gc_file): file \"%s\" has unknown/bad type 0x%x.\n",
 	       scheme_program_name, gc_file_name,
 	       ((int) (file_info.st_mode & S_IFMT)));
+      fprintf
+	(stderr,
+	 "\tKnown types: S_IFREG (0x%x), S_IFBLK (0x%x), S_IFCHR (0x%x).\n",
+	 S_IFREG, S_IFBLK, S_IFCHR);
+      fflush (stderr);
       termination_init_error ();
+      /*NOTREACHED*/
     }
     else
-    {
       can_dump_directly_p = true;
-    }
   }
 
   gc_file = (open (gc_file_name, flags, GC_FILE_MASK));
   if (gc_file == -1)
   {
     fprintf (stderr,
-	     "%s: GC file \"%s\" cannot be opened (errno = %s); Aborting.\n",
+	     "%s (open_gc_file): open (\"%s\") failed (errno = %s).\n",
 	     scheme_program_name, gc_file_name, (error_name (errno)));
+    fflush (stderr);
     termination_init_error ();
+    /*NOTREACHED*/
   }
 
-#ifdef _HPUX
-  if (!exists_p)
-  {
-    extern int EXFUN (prealloc, (int, unsigned int));
-    extern long EXFUN (lseek, (int, long, int));
-
-    (void) (prealloc (gc_file, size));
-
-    if ((lseek (gc_file, 0, 0)) == -1)
-    {
-      fprintf (stderr,
-	       "%s: cannot position at start of GC file \"%s\"; Aborting.\n",
-	       scheme_program_name, gc_file_name);
-      termination_init_error ();
-    }
-  }
-#endif
-  if (!exists_p && !option_gc_keep)
+  keep_gc_file_p = (exists_p || option_gc_keep);
+  if (!keep_gc_file_p && unlink_p)
   {
     extern int EXFUN (unlink, (const char *));
 
     (void) (unlink (gc_file_name));
   }
+
+#ifdef HAVE_PREALLOC
+  if (!exists_p)
+  {
+    extern int EXFUN (prealloc, (int, unsigned int));
+
+    (void) (prealloc (gc_file, ((unsigned int) size)));
+
+    /* prealloc seems to move the file pointer.  Only done to
+       match the assignment to current_disk_position below.
+     */
+
+    if ((lseek (gc_file, 0, SEEK_SET)) == -1)
+    {
+      fprintf
+	(stderr,
+	 "%s (open_gc_file): lseek (\"%s\", 0) failed, (errno = %s).\n",
+	 scheme_program_name, gc_file_name, (error_name (errno)));
+      fflush (stderr);
+      termination_init_error ();
+      /*NOTREACHED*/
+    }
+  }
+#endif /* HAVE_PREALLOC */
+
+#ifdef F_TLOCK
+  if (exists_p)
+  {
+    extern int EXFUN (locfk, (int, int, long));
+
+    if ((lockf (gc_file, F_TLOCK, (sizeof (long)))) == -1)
+    {
+      fprintf (stderr,
+	       "%s (open_gc_file): lockf (\"%s\") failed (errno = %s).\n",
+	       scheme_program_name, gc_file_name, (error_name (errno)));
+      fprintf (stderr,
+	       "\tThe GC file is probably being used by another process.\n");
+      fflush (stderr);
+      termination_init_error ();
+      /*NOTREACHED*/
+    }
+  }
+#endif /* F_TLOCK */
+
+  /* Determine whether it is a seekable file. */
+
   current_disk_position = 0;
+
+  if (exists_p && ((file_info.st_mode & S_IFMT) == S_IFCHR))
+  {
+    int flags;
+    Boolean ignore;
+    static char message[] = "This is a test message to the GC file.\n";
+    char * buffer;
+  
+    buffer = ((char *) aligned_heap);
+    strcpy (buffer, &message[0]);
+    strncpy ((buffer + ((sizeof (message)) - 1)),
+	     buffer,
+	     (IO_PAGE_SIZE - (sizeof (message))));
+    (* (buffer + (IO_PAGE_SIZE - 1))) = '\n';
+
+    if ((flags = (fcntl (gc_file, F_GETFL, 0))) != -1)
+      (void) (fcntl (gc_file, F_SETFL, (flags | O_NONBLOCK)));
+
+    write_data (buffer,
+		((long) IO_PAGE_SIZE),
+		((long) IO_PAGE_SIZE),
+		"a test buffer (1)",
+		&ignore);
+    load_data (0L,
+	       (buffer + IO_PAGE_SIZE),
+	       ((long) (2 * IO_PAGE_SIZE)),
+	       "a test buffer (2)",
+	       &ignore);
+    if ((strncmp (buffer, (buffer + (2 * IO_PAGE_SIZE)), IO_PAGE_SIZE)) != 0)
+    {
+      fprintf (stderr,
+	       "\n%s (open_gc_file): \"%s\" is not a seek-able device.\n",
+	       scheme_program_name, gc_file_name);
+      fflush (stderr);
+      termination_init_error ();
+      /*NOTREACHED*/
+    }
+    if (flags != -1)
+      (void) (fcntl (gc_file, F_SETFL, (flags | O_NONBLOCK)));
+  }
   return;
 }
 
-int
-DEFUN (next_exponent_of_two, (value), int value)
-{
-  unsigned int power;
-  int exponent;
-
-  if (value < 0)
-    return (0);
-  
-  for (power = 1, exponent = 0;
-       power < ((unsigned int) value);
-       power = (power << 1), exponent += 1)
-    ;
-  return (exponent);
-}
-
 void
 DEFUN (Clear_Memory, (heap_size, stack_size, constant_space_size),
-       int heap_size AND
-       int stack_size AND
-       int constant_space_size)
+       int heap_size
+       AND int stack_size
+       AND int constant_space_size)
 {
   GC_Reserve = 4500;
   GC_Space_Needed = 0;
@@ -320,83 +1887,143 @@ DEFUN (Clear_Memory, (heap_size, stack_size, constant_space_size),
   SET_CONSTANT_TOP ();
   return;
 }
+
+void
+DEFUN_VOID (Reset_Memory)
+{
+  BUFFER_SHUTDOWN (1);
+  return;
+}
+
+#define BLOCK_TO_IO_SIZE(size)						\
+  ((ALIGN_UP_TO_IO_PAGE ((size) * (sizeof (SCHEME_OBJECT))))		\
+   / (sizeof (SCHEME_OBJECT)))
+
+static int saved_heap_size;
+
+static int
+DEFUN (set_gc_buffer_sizes, (new_buffer_shift), unsigned long new_buffer_shift)
+{
+  unsigned long
+    new_buffer_size, new_buffer_bytes, new_buffer_byte_shift,
+    new_buffer_overlap_bytes, new_extra_buffer_size;
+  
+  new_buffer_size = (1L << new_buffer_shift);
+  new_buffer_bytes = (new_buffer_size * (sizeof (SCHEME_OBJECT)));
+  if (!ALIGNED_TO_IO_PAGE_P (new_buffer_bytes))
+  {
+    fprintf (stderr,
+	     "%s (Setup_Memory): improper new_buffer_size.\n",
+	     scheme_program_name);
+    fprintf (stderr, "\tIO_PAGE_SIZE   = 0x%lx bytes.\n",
+	     ((long) IO_PAGE_SIZE));
+    fprintf (stderr, "\tgc_buffer_size = 0x%lx bytes = 0x%lx objects.\n",
+	     new_buffer_bytes, new_buffer_size);
+    fprintf (stderr, "\tIO_PAGE_SIZE should divide gc_buffer_size.\n");
+    return (-1);
+  }
+
+  new_buffer_byte_shift = (next_exponent_of_two (new_buffer_bytes));
+  if ((1L << new_buffer_byte_shift) != new_buffer_bytes)
+  {
+    fprintf
+      (stderr,
+       "%s (Setup_Memory): gc_buffer_bytes (= 0x%lx) is not a power of 2.\n",
+       scheme_program_name, new_buffer_bytes);
+    return (-1);
+  }
+
+  new_buffer_overlap_bytes = IO_PAGE_SIZE;
+  new_extra_buffer_size = (new_buffer_overlap_bytes / (sizeof (SCHEME_OBJECT)));
+  if ((new_extra_buffer_size * (sizeof (SCHEME_OBJECT))) != new_buffer_overlap_bytes)
+  {
+    fprintf (stderr, " %s (Setup_Memory): improper IO_PAGE_SIZE.\n",
+	     scheme_program_name);
+    fprintf (stderr,
+	     "\tIO_PAGE_SIZE = 0x%lx; (sizeof (SCHEME_OBJECT)) = 0x%lx.\n",
+	     ((long) IO_PAGE_SIZE), ((long) (sizeof (SCHEME_OBJECT))));
+    fprintf (stderr,
+	     "\t(sizeof (SCHEME_OBJECT)) should divide IO_PAGE_SIZE.\n");
+    return (-1);
+  }
+
+  gc_buffer_shift = new_buffer_shift;
+  gc_buffer_size = new_buffer_size;
+  gc_buffer_bytes = new_buffer_bytes;
+  gc_buffer_mask = (gc_buffer_size - 1);
+  gc_buffer_byte_shift = new_buffer_byte_shift;
+  gc_buffer_overlap_bytes = new_buffer_overlap_bytes;
+  gc_extra_buffer_size = new_extra_buffer_size;
+  gc_buffer_remainder_bytes = (gc_buffer_bytes - gc_buffer_overlap_bytes);
+  gc_total_buffer_size = (gc_buffer_size + gc_extra_buffer_size);
+  return (0);
+}
 
 void
 DEFUN (Setup_Memory, (heap_size, stack_size, constant_space_size),
-       int heap_size AND
-       int stack_size AND
-       int constant_space_size)
+       int heap_size
+       AND int stack_size
+       AND int constant_space_size)
 {
   SCHEME_OBJECT test_value;
-  int real_stack_size, fudge_space, exponent;
-  unsigned long gc_total_buffer_size;
+  int real_stack_size, fudge_space;
 
   /* Consistency check 1 */
   if (heap_size == 0)
   {
     fprintf (stderr,
-	     "%s: Configuration won't hold initial data.\n",
+	     "%s (Setup_Memory): Configuration won't hold initial data.\n",
 	     scheme_program_name);
+    fflush (stderr);
     termination_init_error ();
+    /*NOTREACHED*/
   }
 
   real_stack_size = (Stack_Allocation_Size (stack_size));
 
-  exponent = (next_exponent_of_two (option_gc_window_size));
-  gc_buffer_shift = (exponent + 10);		/* log(1024)/log(2) */
-  gc_buffer_size = (((unsigned long) 1) << gc_buffer_shift);
-  gc_buffer_bytes = (gc_buffer_size * (sizeof (SCHEME_OBJECT)));
-  gc_buffer_mask = (gc_buffer_size - 1);
-  gc_buffer_byte_mask = (~ (gc_buffer_bytes - 1));
-  gc_buffer_byte_shift = (next_exponent_of_two (gc_buffer_bytes));
-  if ((((unsigned long) 1) << gc_buffer_byte_shift) != gc_buffer_bytes)
-  {
-    fprintf (stderr,
-	     "%s: gc_buffer_bytes (= %ld) is not a power of 2!\n",
-	     scheme_program_name, gc_buffer_bytes);
-    termination_init_error ();    
-  }
+  /* add log(1024)/log(2) to exponent */
+  if ((set_gc_buffer_sizes (10 + (next_exponent_of_two
+				   (option_gc_window_size))))
+      != 0)
+    parameterization_termination (1, 1);
 
-  gc_extra_buffer_size = gc_buffer_size;
-  gc_buffer_overlap_bytes = (gc_extra_buffer_size * (sizeof (SCHEME_OBJECT)));
-  gc_buffer_remainder_bytes = (gc_buffer_bytes - gc_buffer_overlap_bytes);
-  gc_total_buffer_size = (gc_buffer_size + gc_extra_buffer_size);
+  /* Use multiples of IO_PAGE_SIZE. */
 
-  /* Use multiples of gc_buffer_size. */
-
-  fudge_space = (GC_BUFFER_BLOCK (HEAP_BUFFER_SPACE + 1));
-  heap_size = (GC_BUFFER_BLOCK (heap_size));
-  constant_space_size = (GC_BUFFER_BLOCK (constant_space_size));
-  real_stack_size = (GC_BUFFER_BLOCK (real_stack_size));
+  fudge_space = ((BLOCK_TO_IO_SIZE (HEAP_BUFFER_SPACE + 1))
+		 + (IO_PAGE_SIZE / (sizeof (SCHEME_OBJECT))));
+  heap_size = (BLOCK_TO_IO_SIZE (heap_size));
+  constant_space_size = (BLOCK_TO_IO_SIZE (constant_space_size));
+  real_stack_size = (BLOCK_TO_IO_SIZE (real_stack_size));
 
   /* Allocate. */
 
-  ALLOCATE_HEAP_SPACE (real_stack_size + heap_size
-		       + constant_space_size + (2 * gc_total_buffer_size)
-		       + fudge_space);
+  ALLOCATE_HEAP_SPACE (fudge_space + heap_size
+		       + constant_space_size + real_stack_size
+		       + (GC_BUFFER_ALLOCATION (2 * gc_total_buffer_size)));
 
   /* Consistency check 2 */
   if (Heap == NULL)
   {
     fprintf (stderr,
-	     "%s: Not enough memory for this configuration.\n",
+	     "%s (Setup_Memory): Not enough memory for this configuration.\n",
 	     scheme_program_name);
+    fflush (stderr);
     termination_init_error ();
+    /*NOTREACHED*/
   }
-
+
   Heap += HEAP_BUFFER_SPACE;
-  Heap = ((SCHEME_OBJECT *) (ALIGN_UP_TO_GC_BUFFER (Heap)));
-  Constant_Space = (Heap + heap_size);
-  gc_disk_buffer_1 = (Constant_Space + constant_space_size + real_stack_size);
-  gc_disk_buffer_2 = (gc_disk_buffer_1 + gc_total_buffer_size);
+  Heap = ((SCHEME_OBJECT *) (ALIGN_UP_TO_IO_PAGE (Heap)));
   aligned_heap = Heap;
+  Constant_Space = (Heap + heap_size);
 
   /*
      The two GC buffers are not included in the valid Scheme memory.
   */
 
-  Highest_Allocated_Address = (gc_disk_buffer_1 - 1);
-
+  Highest_Allocated_Address = ((Constant_Space + constant_space_size
+				+ real_stack_size) - 1);
+
   /* Consistency check 3 */
   test_value =
     (MAKE_POINTER_OBJECT (LAST_TYPE_CODE, Highest_Allocated_Address));
@@ -405,13 +2032,17 @@ DEFUN (Setup_Memory, (heap_size, stack_size, constant_space_size),
       ((OBJECT_ADDRESS (test_value)) != Highest_Allocated_Address))
   {
     fprintf (stderr,
-	     "%s: Largest address does not fit in datum field of object.\n",
+	     "\
+%s (Setup_Memory): Largest address does not fit in datum field of object.\n",
 	     scheme_program_name);
     fprintf (stderr,
 	     "\
 \tAllocate less space or re-configure without HEAP_IN_LOW_MEMORY.\n");
+    fflush (stderr);
     termination_init_error ();
+    /*NOTREACHED*/
   }
+
   /* This does not use INITIAL_ALIGN_HEAP because it would
      make Heap point to the previous GC_BUFFER frame.
      INITIAL_ALIGN_HEAP should have its phase changed so that it would
@@ -421,601 +2052,659 @@ DEFUN (Setup_Memory, (heap_size, stack_size, constant_space_size),
   ALIGN_FLOAT (Heap);
   ALIGN_FLOAT (Constant_Space);
   heap_size = (Constant_Space - Heap);
-  constant_space_size = ((Highest_Allocated_Address - Constant_Space) - real_stack_size);
+  constant_space_size = ((Highest_Allocated_Address - Constant_Space)
+			 - real_stack_size);
+  saved_heap_size = heap_size;
 
   Heap_Bottom = Heap;
   Clear_Memory (heap_size, stack_size, constant_space_size);
 
-  open_gc_file (heap_size * (sizeof (SCHEME_OBJECT)));
-  return;
-}
-
-void
-DEFUN_VOID (Reset_Memory)
-{
-  close_gc_file ();
-  return;
-}
-
-long
-DEFUN (gc_file_operation, (operation, ptr, arg, success, name, errmsg),
-       long EXFUN ((*operation), (int, long, long)) AND
-       long ptr AND
-       long arg AND
-       Boolean *success AND
-       CONST char * name AND
-       CONST char *errmsg)
-{
-  extern char EXFUN (userio_choose_option,
-		     (const char *, const char *, const char **));
-  static CONST char * retry_choices [] =
-    {
-      "K = kill scheme",
-      "Q = quit scheme",
-      "R = retry the operation",
-      "S = sleep for 1 minute and retry the operation",
-      "X = exit scheme",
-      0
-      };
-  long result;
-
-  while ((result = ((*operation) (gc_file, ptr, arg)))
-	 == -1)
-  {
-    if (success != ((Boolean *) NULL))
-    {
-      *success = false;
-      return (result);
-    }
-    fprintf (stderr, errmsg, scheme_program_name, name, (error_name (errno)));
-    switch (userio_choose_option
-	      ("Choose one of the following actions:",
-	       "Action -> ",
-	       retry_choices))
-    {
-      case '\0':
-        /* IO problems, assume everything is scrod. */
-        fprintf (stderr,
-		 "%s: Problems reading keyboard input -- exitting.\n",
-		 scheme_program_name);
-	/* fall through */
-
-      case 'K':
-      case 'Q':
-      case 'X':
-	Microcode_Termination (TERM_EXIT);
-	/*NOTREACHED*/
-
-      case 'S':
-	sleep (60);
-	/* fall through */
-
-      case 'R':
-      default:
-	break;
-    }
-  }
-  return (result);
-}
-
-#define DEFINE_LONG_VERSION(long_name, name, rettype, type1, type2)	\
-long									\
-DEFUN (long_name, (fd, param1, param2),					\
-       int fd AND							\
-       long param1 AND							\
-       long param2)							\
-{									\
-  extern rettype EXFUN (name, (int, type1, type2));			\
-									\
-  return ((long) (name (fd, ((type1) param1), ((type2) param2))));	\
-}
-
-DEFINE_LONG_VERSION(long_lseek, lseek, long, long, int)
-DEFINE_LONG_VERSION(long_read, read, int, char *, int)
-DEFINE_LONG_VERSION(long_write, write, int, char *, int)
-
-void
-DEFUN (dump_buffer, (from, position, nbuffers, name, success),
-       SCHEME_OBJECT *from AND
-       long *position AND
-       long nbuffers AND
-       char *name AND
-       Boolean *success)
-{
-  long total_bytes_to_write, bytes_to_write, bytes_written;
-  char *membuf;
-
-  if ((current_disk_position != *position)
-      && ((gc_file_operation (long_lseek, *position, 0, success, name, "\
-\n%s: Could not seek the GC file to write the %s buffer (errno = %s).\n"))
-	  == -1))
-    return;
-
-  total_bytes_to_write = (nbuffers << gc_buffer_byte_shift);
-  bytes_to_write = total_bytes_to_write;
-  membuf = ((char *) from);
-
-  while ((bytes_to_write > 0)
-	 && ((bytes_written
-	      = (gc_file_operation (long_write, ((long) membuf),
-				    bytes_to_write, success, name, "\
-\n%s: Could not write the %s buffer (errno = %s).\n")))
-	     != bytes_to_write))
-  {
-    if (bytes_written == -1)
-      return;
-
-    /* Short write, continue. */
-
-    membuf += bytes_written;
-    bytes_to_write -= bytes_written;
-  }
-
-  *position += total_bytes_to_write;
-  current_disk_position = *position;
+  INITIALIZE_GC_BUFFERS (1,
+			 (Highest_Allocated_Address + 1),
+			 (heap_size * (sizeof (SCHEME_OBJECT))),
+			 option_gc_read_overlap,
+			 option_gc_write_overlap,
+			 option_gc_drone);
   return;
 }
 
-void
-DEFUN (load_buffer, (position, to, nbytes, name),
-       long position AND
-       SCHEME_OBJECT *to AND
-       long nbytes AND
-       char *name)
+/* Utilities for the GC proper. */ 
+
+static void
+DEFUN (enqueue_free_buffer, (success), Boolean * success)
 {
-  long bytes_to_read, bytes_read;
-  char *membuf;
+  int diff;
 
-  if (current_disk_position != position)
+  diff = ((free_position - pre_read_position) >> gc_buffer_byte_shift);
+  if (diff >= read_overlap)
+    DUMP_BUFFER (free_buffer, free_position, gc_buffer_bytes,
+		  success, "the free buffer");
+  else
   {
-    (void) (gc_file_operation (long_lseek, position, 0,
-			       ((Boolean *) NULL), name, "\
-\n%s: Could not seek the GC file to read %s (errno = %s).\n"));
-    current_disk_position = position;
+    ENQUEUE_READY_BUFFER (free_buffer, free_position, gc_buffer_bytes);
+    read_queue_bitmask |= (1L << diff);
   }
-
-  bytes_to_read = nbytes;
-  membuf = ((char *) to);
-
-  while ((bytes_to_read > 0)
-	 && ((bytes_read
-	      = (gc_file_operation (long_read, ((long) membuf), bytes_to_read,
-				    ((Boolean *) NULL), name, "\
-\n%s: Could not read into %s (errno = %s).\n")))
-	     != bytes_to_read))
-  {
-    if (bytes_read <= 0)
-    {
-      fprintf (stderr,
-	       "\n%s: data to be read into %s has disappeared!\n",
-	       scheme_program_name, name);
-      Microcode_Termination (TERM_EXIT);
-    }
-
-    /* Short read, continue. */
-
-    membuf += bytes_read;
-    bytes_to_read -= bytes_read;
-  }
-
-  current_disk_position += nbytes;
   return;
 }
 
-void
-DEFUN_VOID (reload_scan_buffer)
+static void
+DEFUN_VOID (schedule_pre_reads)
 {
+  int cntr;
+  long position;
+  unsigned long bit;
+
+  if (pre_read_position == scan_position)
+  {
+    read_queue_bitmask = (read_queue_bitmask >> 1);
+    pre_read_position += gc_buffer_bytes;
+  }
+  for (cntr = 0, bit = 1L, position = pre_read_position;
+       ((cntr < read_overlap) && (position < free_position));
+       cntr++, bit = (bit << 1), position += gc_buffer_bytes)
+  {
+    if ((read_queue_bitmask & bit) != bit)
+      if (PRE_READ_BUFFER (position, gc_buffer_bytes))
+	read_queue_bitmask |= bit;
+  }
+  return;
+}
+
+static void
+DEFUN_VOID (abort_pre_reads)
+{
+  while (scan_position > pre_read_position)
+  {
+    ABORT_PRE_READ (pre_read_position);
+    pre_read_position += gc_buffer_bytes;
+    read_queue_bitmask = (read_queue_bitmask >> 1);
+  }
+  schedule_pre_reads ();
+  return;
+}
+
+static void
+DEFUN (reload_scan_buffer, (skip), int skip)
+{
+  scan_position += (skip << gc_buffer_byte_shift);
+
+  if ((read_overlap != 0) && (scan_position > pre_read_position))
+    abort_pre_reads ();
+
   if (scan_position == free_position)
   {
+    pre_read_position = (free_position + gc_buffer_bytes);
+    read_queue_bitmask = 0L;
+    scan_buffer = free_buffer;
     scan_buffer_bottom = free_buffer_bottom;
     scan_buffer_top = free_buffer_top;
     return;
   }
-  load_buffer (scan_position, scan_buffer_bottom, gc_buffer_bytes,
-	       "the scan buffer");
+  LOAD_BUFFER (scan_buffer, scan_position,
+	       gc_buffer_bytes, "the scan buffer");
+  scan_buffer_bottom = (GC_BUFFER_BOTTOM (scan_buffer));
+  scan_buffer_top = (GC_BUFFER_TOP (scan_buffer));
   *scan_buffer_top = (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, scan_buffer_top));
+  
+  if (read_overlap != 0)
+    schedule_pre_reads ();
   return;
+}
+
+SCHEME_OBJECT *
+DEFUN (dump_and_reload_scan_buffer, (number_to_skip, success),
+       long number_to_skip AND Boolean * success)
+{
+  DUMP_BUFFER (scan_buffer, scan_position, gc_buffer_bytes,
+		success, "the scan buffer");
+  reload_scan_buffer (1 + number_to_skip);
+  return (scan_buffer_bottom);
 }
 
 SCHEME_OBJECT *
-DEFUN_VOID (initialize_scan_buffer)
+DEFUN (dump_and_reset_free_buffer, (overflow, success),
+       fast long overflow AND Boolean * success)
 {
-  scan_position = 0;
-  scan_buffer_bottom = ((free_buffer_bottom == gc_disk_buffer_1) ?
-			gc_disk_buffer_2 :
-			gc_disk_buffer_1);
-  scan_buffer_top = (scan_buffer_bottom + gc_buffer_size);
-  reload_scan_buffer ();
-  return (scan_buffer_bottom);
-}
+  Boolean buffer_overlap_p, same_buffer_p;
+  fast SCHEME_OBJECT *into, *from;
 
-/* This hacks the scan buffer also so that Scan is always below
-   scan_buffer_top until the scan buffer is initialized.
-   Various parts of the garbage collector depend on scan_buffer_top
-   always pointing to a valid buffer.
-*/
-SCHEME_OBJECT *
-DEFUN_VOID (initialize_free_buffer)
-{
-  free_position = 0;
-  free_buffer_bottom = gc_disk_buffer_1;
-  free_buffer_top = (free_buffer_bottom + gc_buffer_size);
-  extension_overlap_p = false;
-  scan_position = -1;
-  scan_buffer_bottom = gc_disk_buffer_2;
-  scan_buffer_top = (scan_buffer_bottom + gc_buffer_size);
-  /* Force first write to do an lseek. */
-  current_disk_position = -1;
-  return (free_buffer_bottom);
-}
+  from = free_buffer_top;
+  buffer_overlap_p = extension_overlap_p;
+  same_buffer_p = (scan_buffer == free_buffer);
 
-void
-DEFUN (end_transport, (success), Boolean *success)
-{
-  dump_buffer (scan_buffer_bottom, &scan_position, 1, "scan", success);
-  free_position = scan_position;
-  return;
+  if (read_overlap > 0)
+  {
+    if (buffer_overlap_p)
+    {
+      extension_overlap_p = false;
+      next_scan_buffer = free_buffer;
+    }
+    else if (!same_buffer_p)
+      enqueue_free_buffer (success);
+  }
+  else if (!same_buffer_p)
+    DUMP_BUFFER (free_buffer, free_position, gc_buffer_bytes,
+		 success, "the free buffer");
+
+  /* Otherwise there is no need to dump now, it will be dumped
+     when scan is dumped.  Note that the next buffer may be dumped
+     before this one, but there should be no problem lseeking past the
+     end of file.
+   */
+
+  free_position += gc_buffer_bytes;
+  free_buffer = (OTHER_BUFFER (scan_buffer));
+  free_buffer_bottom = (GC_BUFFER_BOTTOM (free_buffer));
+  free_buffer_top = (GC_BUFFER_TOP (free_buffer));
+
+  for (into = free_buffer_bottom; --overflow >= 0; )
+    *into++ = *from++;
+
+  if (same_buffer_p && !buffer_overlap_p)
+    *scan_buffer_top =
+      (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, scan_buffer_top));
+  return (into);
 }
 
 /* These utilities are needed when pointers fall accross window boundaries.
 
    Between both they effectively do a dump_and_reload_scan_buffer, in two
    stages.
-
-   Having bcopy would be nice here.
 */
 
 void
 DEFUN (extend_scan_buffer, (to_where, current_free),
-       fast char *to_where AND
-       SCHEME_OBJECT *current_free)
+       fast char * to_where AND SCHEME_OBJECT * current_free)
 {
-  long new_scan_position;
+  fast char * source, * dest;
+  long new_scan_position = (scan_position + gc_buffer_bytes);
 
-  new_scan_position = (scan_position + gc_buffer_bytes);
-
-  /* Is there overlap?, ie. is the next bufferfull the one cached
+  /* Is there buffer overlap?, i.e. is the next bufferful the one cached
      in the free pointer window?
    */
 
-  if (new_scan_position == free_position)
+  dest = ((char *) scan_buffer_top);
+  extension_overlap_length = (to_where - dest);
+  extension_overlap_p = (new_scan_position == free_position);
+
+  if (extension_overlap_p)
   {
-    fast char *source, *dest;
     long temp;
 
-    extension_overlap_p = true;
     source = ((char *) free_buffer_bottom);
-    dest = ((char *) scan_buffer_top);
-    extension_overlap_length = (to_where - dest);
     temp = (((char *) current_free) - source);
     if (temp < extension_overlap_length)
     {
       /* This should only happen when Scan and Free are very close. */
       extension_overlap_length = temp;
     }
-
-    while (dest < to_where)
-    {
-      *dest++ = *source++;
-    }
+  }
+  else if (read_overlap == 0)
+  {
+    load_data (new_scan_position, dest, gc_buffer_overlap_bytes,
+	       "the next scan buffer", ((Boolean *) NULL));
+    return;
   }
   else
   {
-    extension_overlap_p = false;
-    load_buffer (new_scan_position, scan_buffer_top,
-		 gc_buffer_overlap_bytes, "the scan buffer");
+    LOAD_BUFFER (next_scan_buffer, new_scan_position,
+		 gc_buffer_bytes, "the next scan buffer");
+    source = ((char *) (GC_BUFFER_BOTTOM (next_scan_buffer)));
   }
+
+  while (dest < to_where)
+    *dest++ = *source++;
   return;
 }
-
+
 char *
-DEFUN (end_scan_buffer_extension, (to_relocate), char *to_relocate)
+DEFUN (end_scan_buffer_extension, (to_relocate), char * to_relocate)
 {
-  char *result;
-
-  dump_buffer (scan_buffer_bottom, &scan_position, 1, "scan",
-	       ((Boolean *) NULL));
-  if (!extension_overlap_p)
+  char * result;
+  if (extension_overlap_p)
   {
-    /* There was no overlap */
+    /* There was overlap between the scan buffer and the free buffer,
+       there may no longer be, but dump_and_reload_scan_buffer will
+       get us the correct next buffer.
+       The old scan buffer may be written, but the while loop below
+       will read storage contiguous to it (in the buffer extension).
+     */
+    SCHEME_OBJECT old, new;
+    fast char * source, * dest, * limit;
+
+    extension_overlap_p = false;
+    source = ((char *) scan_buffer_top);
+    old = (* ((SCHEME_OBJECT *) source));
+    limit = (source + extension_overlap_length);
+    dest = ((char *) (dump_and_reload_scan_buffer (0, ((Boolean *) NULL))));
+    /* The following is only necesary if we are reusing the scan buffer. */
+    new = (* scan_buffer_top);
+    (* ((SCHEME_OBJECT *) source)) = old;
+    result = (dest + (to_relocate - source));
+    while (source < limit)
+      *dest++ = *source++;
+    (* scan_buffer_top) = new;
+  }
+  else if (next_scan_buffer == ((struct buffer_info *) NULL))
+  {
+    /* There was no buffer overlap and no read overlap */
 
-    fast SCHEME_OBJECT *source, *dest, *limit;
+    fast SCHEME_OBJECT * source, * dest, * limit;
 
     source = scan_buffer_top;
+    limit = (source + gc_extra_buffer_size);
+
+    DUMP_BUFFER (scan_buffer, scan_position, gc_buffer_bytes,
+		 ((Boolean *) NULL), "the scan buffer");
+    scan_position += gc_buffer_bytes;
+
+    scan_buffer = (OTHER_BUFFER (free_buffer));
+    scan_buffer_bottom = (GC_BUFFER_BOTTOM (scan_buffer));
+    scan_buffer_top = (GC_BUFFER_TOP (scan_buffer));
+
     dest = scan_buffer_bottom;
-    limit = &source[gc_extra_buffer_size];
-    result = (((char *) scan_buffer_bottom) +
-	      (to_relocate - ((char *) scan_buffer_top)));
+    result = (((char *) dest) + (to_relocate - ((char *) source)));
 
     while (source < limit)
-    {
       *dest++ = *source++;
-    }
+
     if (gc_buffer_remainder_bytes != 0)
-    {
-      load_buffer ((scan_position + gc_buffer_overlap_bytes),
-		   dest,
-		   gc_buffer_remainder_bytes,
-		   "the scan buffer");
-    }
-    *scan_buffer_top =
+      load_data ((scan_position + gc_buffer_overlap_bytes),
+		 ((char *) dest), gc_buffer_remainder_bytes,
+		 "the scan buffer", ((Boolean *) NULL));
+
+    (* scan_buffer_top) =
       (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, scan_buffer_top));
   }
   else
   {
-    fast char *source, *dest, *limit;
+    /* There is overlap with the next bufferful (not the free bufferful). */
+
+    fast char * source, * dest, * limit;
 
     source = ((char *) scan_buffer_top);
     limit = (source + extension_overlap_length);
-
-    if (scan_position == free_position)
-    {
-      /* There was overlap, and there still is. */
-
-      dest = ((char *) free_buffer_bottom);
-      scan_buffer_bottom = free_buffer_bottom;
-      scan_buffer_top = free_buffer_top;
-    
-    }
-    else
-    {
-      /* There was overlap, but there no longer is. */
-
-      dest = ((char *) scan_buffer_bottom);
-
-      /* The following reads the old overlapped data, but will be aligned.
-	 The garbage read will be overwritten with the goodies below.
-       */
-
-      load_buffer (scan_position,
-		   ((SCHEME_OBJECT *) dest),
-		   gc_buffer_bytes,
-		   "the scan buffer");
-    }
-
+    dest = ((char *) (GC_BUFFER_BOTTOM (next_scan_buffer)));
     result = (dest + (to_relocate - source));
-    
+
     while (source < limit)
-    {
       *dest++ = *source++;
-    }
+    
+    DUMP_BUFFER (scan_buffer, scan_position, gc_buffer_bytes,
+		 ((Boolean *) NULL), "the scan buffer");
+    scan_position += gc_buffer_bytes;
 
-    if (scan_position != free_position)
-      *scan_buffer_top =
-	(MAKE_POINTER_OBJECT (TC_BROKEN_HEART, scan_buffer_top));
+    scan_buffer = next_scan_buffer;
+    next_scan_buffer = NULL;
+    scan_buffer_bottom = (GC_BUFFER_BOTTOM (scan_buffer));
+    scan_buffer_top = (GC_BUFFER_TOP (scan_buffer));
+    (* scan_buffer_top) =
+      (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, scan_buffer_top));
+    schedule_pre_reads ();
   }
-  extension_overlap_p = false;
   return (result);
 }
-
-SCHEME_OBJECT *
-DEFUN (dump_and_reload_scan_buffer, (number_to_skip, success),
-       long number_to_skip AND
-       Boolean *success)
-{
-  dump_buffer (scan_buffer_bottom, &scan_position, 1, "scan", success);
-  if (number_to_skip != 0)
-  {
-    scan_position += (number_to_skip << gc_buffer_byte_shift);
-  }
-  reload_scan_buffer ();
-  return (scan_buffer_bottom);
-}
 
-SCHEME_OBJECT *
-DEFUN (dump_and_reset_free_buffer, (overflow, success),
-       fast long overflow AND
-       Boolean *success)
-{
-  fast SCHEME_OBJECT *into, *from;
-
-  from = free_buffer_top;
-  if (free_buffer_bottom == scan_buffer_bottom)
-  {
-    /* No need to dump now, it will be dumped when scan is dumped.
-       Note that the next buffer may be dumped before this one,
-       but there is no problem lseeking past the end of file.
-     */
-    free_position += gc_buffer_bytes;
-    free_buffer_bottom = ((scan_buffer_bottom == gc_disk_buffer_1) ?
-			  gc_disk_buffer_2 :
-			  gc_disk_buffer_1);
-    free_buffer_top = (free_buffer_bottom + gc_buffer_size);
-  }
-  else
-  {
-    dump_buffer (free_buffer_bottom, &free_position, 1, "free", success);
-  }
-
-  for (into = free_buffer_bottom; --overflow >= 0; )
-    *into++ = *from++;
-
-  /* This need only be done when free_buffer_bottom was scan_buffer_bottom,
-     but it does not hurt otherwise unless we were in the
-     extend_scan_buffer/end_scan_buffer_extension window.
-     It must also be done after the for loop above.
-   */
-  if (!extension_overlap_p)
-    *scan_buffer_top =
-      (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, scan_buffer_top));
-  return (into);
-}
+/* This is used to avoid unnecessary copying when copying a large
+   non-marked area.
+ */
 
 SCHEME_OBJECT *
 DEFUN (dump_free_directly, (from, nbuffers, success),
-       fast SCHEME_OBJECT *from AND
-       fast long nbuffers AND
-       Boolean *success)
+       fast SCHEME_OBJECT * from
+       AND fast long nbuffers
+       AND Boolean * success)
 {
-  if (can_dump_directly_p || (ALIGNED_TO_GC_BUFFER_P (from)))
+  if (((read_overlap + write_overlap) == 0)
+      && (can_dump_directly_p || (ALIGNED_TO_IO_PAGE_P (from))))
   {
-    dump_buffer (from, &free_position, nbuffers, "free", success);
+    long byte_length = (nbuffers << gc_buffer_byte_shift);
+
+    write_data (((char *) from), free_position, byte_length,
+		"free buffers", success);
+    free_position += byte_length;
   }
   else
   {
-    /* We are writing to a raw (character) device special file,
-       and writes must be aligned.
-       We don't know the real alignment size, we'll use the GC buffer size.
-       This assumes that the free buffer has no valid data, so it can be
+    /* This assumes that the free buffer has no valid data, so it can be
        used as scratch.
+       This code is executed when there is I/O overlap, or when the
+       data is not aligned to be written to a raw (character) device.
      */
 
     while ((--nbuffers) >= 0)
     {
-      fast SCHEME_OBJECT *to, *bufend;
+      fast SCHEME_OBJECT * to, * bufend;
 
       for (to = free_buffer_bottom, bufend = free_buffer_top; to != bufend; )
 	*to++ = *from++;
 
-      dump_buffer (free_buffer_bottom, &free_position, 1, "free", success);
+      (void) (dump_and_reset_free_buffer (0, success));
     }
   }
   return (free_buffer_bottom);
 }
 
-static long current_buffer_position;
+#ifndef START_TRANSPORT_HOOK
+#define START_TRANSPORT_HOOK		do { } while (0)
+#endif
 
-void
-DEFUN_VOID (initialize_new_space_buffer)
-{
-  current_buffer_position = -1;
-  return;
-}
+#ifndef END_TRANSPORT_HOOK
+#define END_TRANSPORT_HOOK		do { } while (0)
+#endif
 
-void
-DEFUN_VOID (flush_new_space_buffer)
-{
-  if (current_buffer_position == -1)
-  {
-    return;
-  }
-  dump_buffer (gc_disk_buffer_1, &current_buffer_position,
-	       1, "weak pair buffer", NULL);
-  current_buffer_position = -1;
-  return;
-}
+#ifndef END_WEAK_UPDATE_HOOK
+#define END_WEAK_UPDATE_HOOK		do { } while (0)
+#endif
+
+#ifndef START_RELOAD_HOOK
+#define START_RELOAD_HOOK		do { } while (0)
+#endif
+
+#ifndef END_GC_HOOK
+#define END_GC_HOOK			do { } while (0)
+#endif
+
+/* This hacks the scan buffer also so that Scan is always below
+   scan_buffer_top until the scan buffer is initialized.
+   Various parts of the garbage collector depend on scan_buffer_top
+   having an aligned value.
+*/
 
 SCHEME_OBJECT *
-DEFUN (guarantee_in_memory, (addr), SCHEME_OBJECT *addr)
+DEFUN_VOID (initialize_free_buffer)
+{
+  STATISTICS_CLEAR ();
+  START_TRANSPORT_HOOK ();
+  read_queue_bitmask = 0L;
+  pre_read_position = 0L;
+  free_position = 0L;
+  INITIALIZE_IO ();
+  free_buffer = (INITIAL_FREE_BUFFER ());
+  free_buffer_bottom = (GC_BUFFER_BOTTOM (free_buffer));
+  free_buffer_top = (GC_BUFFER_TOP (free_buffer));
+  scan_position = -1L;
+  scan_buffer = NULL;
+  scan_buffer_bottom = NULL;
+  scan_buffer_top = (Highest_Allocated_Address + 2);
+  /* Force first write to do an lseek. */
+  current_disk_position = -1;
+  next_scan_buffer = NULL;
+  extension_overlap_p = false;
+  extension_overlap_length = 0;
+  return (free_buffer_bottom);
+}
+
+SCHEME_OBJECT *
+DEFUN_VOID (initialize_scan_buffer)
+{
+  scan_position = 0L;
+  scan_buffer = (INITIAL_SCAN_BUFFER ());
+  scan_buffer_bottom = (GC_BUFFER_BOTTOM (scan_buffer));
+  scan_buffer_top = (GC_BUFFER_TOP (scan_buffer));
+  reload_scan_buffer (0);
+  return (scan_buffer_bottom);
+}
+
+void
+DEFUN (end_transport, (success), Boolean * success)
+{
+  DUMP_BUFFER (scan_buffer, scan_position, gc_buffer_bytes,
+	       success, "the final scan buffer");
+  scan_position += gc_buffer_bytes;
+  free_position = scan_position;
+  END_TRANSPORT_HOOK ();
+  STATISTICS_PRINT (2, "after transport");
+  return;
+}
+
+void
+DEFUN (final_reload, (to, length, noise),
+       SCHEME_OBJECT * to AND unsigned long length AND char * noise)
+{
+  unsigned long byte_length;
+
+  byte_length = (ALIGN_UP_TO_IO_PAGE (length * (sizeof (SCHEME_OBJECT))));
+  END_WEAK_UPDATE_HOOK ();
+  AWAIT_IO_COMPLETION ();
+  START_RELOAD_HOOK ();
+  load_data (0L, ((char *) to), byte_length, noise, ((Boolean *) NULL));
+  END_GC_HOOK ();
+  STATISTICS_PRINT (1, "after final reload");
+  return;
+}
+
+static int
+  weak_buffer_pre_read_count;
+
+static long
+  weak_pair_buffer_position;
+
+static struct buffer_info
+  * weak_pair_buffer;
+
+static SCHEME_OBJECT
+  weak_pair_break;
+
+/* This procedure is not very smart.
+
+   It does not attempt to figure out whether the position being
+   requested is already being pre-read, nor does it look further down
+   the weak chain list for duplicate positions, to avoid early writes.
+
+   On the other hand, pre_read_buffer will ignore the request if it is
+   a duplicate, and will abort a pending write if a read for the same
+   position is requested.
+ */   
+
+static void
+DEFUN_VOID (pre_read_weak_pair_buffers)
+{
+  SCHEME_OBJECT next, * pair_addr, * obj_addr;
+  long position, last_position;
+
+  last_position = -1;
+  next = weak_pair_break;
+  while (next != EMPTY_LIST)
+  {
+    pair_addr = (OBJECT_ADDRESS (next));
+    obj_addr = (OBJECT_ADDRESS (*pair_addr++));
+    if (! (obj_addr >= Constant_Space))
+    {
+      position = (obj_addr - aligned_heap);
+      position = (position >> gc_buffer_shift);
+      position = (position << gc_buffer_byte_shift);
+      if ((position != last_position)
+	  && (position != weak_pair_buffer_position))
+      {
+	last_position = position;
+	if ((weak_buffer_pre_read_count >= read_overlap)
+	    || (!(PRE_READ_BUFFER (position, gc_buffer_bytes))))
+	  break;
+	weak_buffer_pre_read_count += 1;
+      }
+    }
+    next = (OBJECT_NEW_TYPE (TC_NULL, (*pair_addr)));
+  }
+  weak_pair_break = next;
+  return;
+}
+
+static void
+DEFUN (initialize_new_space_buffer, (chain), SCHEME_OBJECT chain)
+{
+  if (read_overlap == 0)
+  {
+    weak_pair_break = EMPTY_LIST;
+    weak_pair_buffer = (INITIAL_FREE_BUFFER ());
+    weak_pair_buffer_position = -1;
+  }
+  else
+  {
+    weak_pair_break = chain;
+    weak_pair_buffer = ((struct buffer_info *) NULL);
+    weak_pair_buffer_position = -1;
+    weak_buffer_pre_read_count = 0;
+    pre_read_weak_pair_buffers ();
+  }
+  return;
+}
+
+static void
+DEFUN_VOID (flush_new_space_buffer)
+{
+  if (weak_pair_buffer_position == -1)
+    return;
+  DUMP_BUFFER (weak_pair_buffer, weak_pair_buffer_position,
+	       gc_buffer_bytes, ((Boolean *) NULL),
+	       "the weak pair buffer");
+  weak_pair_buffer_position = -1;
+  return;
+}
+
+static SCHEME_OBJECT *
+DEFUN (guarantee_in_memory, (addr), SCHEME_OBJECT * addr)
 {
   long position, offset;
 
   if (addr >= Constant_Space)
-  {
     return (addr);
-  }
 
   position = (addr - aligned_heap);
   offset = (position & gc_buffer_mask);
   position = (position >> gc_buffer_shift);
   position = (position << gc_buffer_byte_shift);
-  if (position != current_buffer_position)
+  if (position != weak_pair_buffer_position)
   {
     flush_new_space_buffer ();
-    load_buffer (position, gc_disk_buffer_1,
-		 gc_buffer_bytes, "the weak pair buffer");
-    current_buffer_position = position;
-  }
-  return (&gc_disk_buffer_1[offset]);
-}
-
-/* For a description of the algorithm, see memmag.c.
-   This has been modified only to account for the fact that new space
-   is on disk.  Old space is in memory.
-*/
-
-SCHEME_OBJECT Weak_Chain;
-
-void
-DEFUN_VOID (Fix_Weak_Chain)
-{
-  fast SCHEME_OBJECT *Old_Weak_Cell, *Scan, Old_Car, Temp, *Old, *Low_Constant;
-
-  initialize_new_space_buffer ();
-  Low_Constant = Constant_Space;
-
-  while (Weak_Chain != EMPTY_LIST)
-  {
-    Old_Weak_Cell = (OBJECT_ADDRESS (Weak_Chain));
-    Scan = (guarantee_in_memory (OBJECT_ADDRESS (*Old_Weak_Cell++)));
-    Weak_Chain = *Old_Weak_Cell;
-    Old_Car = *Scan;
-    Temp = (MAKE_OBJECT_FROM_OBJECTS (Weak_Chain, Old_Car));
-    Weak_Chain = (OBJECT_NEW_TYPE (TC_NULL, Weak_Chain));
-
-    switch (GC_Type (Temp))
-    { case GC_Non_Pointer:
-        *Scan = Temp;
-	continue;
-
-      case GC_Special:
-	if ((OBJECT_TYPE (Temp)) != TC_REFERENCE_TRAP)
-	{
-	  /* No other special type makes sense here. */
-	  goto fail;
-	}
-	if ((OBJECT_DATUM (Temp)) <= TRAP_MAX_IMMEDIATE)
-	{
-	  *Scan = Temp;
-	  continue;
-	}
-	/* Otherwise, it is a pointer.  Fall through */
-
-      /* Normal pointer types, the broken heart is in the first word.
-         Note that most special types are treated normally here.
-	 The BH code updates *Scan if the object has been relocated.
-	 Otherwise it falls through and we replace it with a full SHARP_F.
-	 Eliminating this assignment would keep old data (pl. of datum).
-       */
-      case GC_Cell:
-      case GC_Pair:
-      case GC_Triple:
-      case GC_Quadruple:
-      case GC_Vector:
-	/* Old is still a pointer to old space */
-	Old = (OBJECT_ADDRESS (Old_Car));
-	if (Old >= Low_Constant)
-	{
-	  *Scan = Temp;
-	  continue;
-	}
-	if ((OBJECT_TYPE (*Old)) == TC_BROKEN_HEART)
-	{
-	  *Scan = (MAKE_OBJECT_FROM_OBJECTS (Temp, *Old));
-	  continue;
-	}
-	*Scan = SHARP_F;
-	continue;
-
-      case GC_Compiled:
-	/* Old is still a pointer to old space */
-	Old = (OBJECT_ADDRESS (Old_Car));
-	if (Old >= Low_Constant)
-	{
-	  *Scan = Temp;
-	  continue;
-	}
-	Compiled_BH (false, { *Scan = Temp; continue; });
-	*Scan = SHARP_F;
-	continue;
-
-      case GC_Undefined:
-	fprintf (stderr,
-		 "\n%s (Fix_Weak_Chain): Clearing bad object 0x%08lx.\n",
-		 scheme_program_name, Temp);
-	*Scan = SHARP_F;
-	continue;
-
-      default:			/* Non Marked Headers and Broken Hearts */
-      fail:
-        fprintf (stderr,
-		 "\n%s (Fix_Weak_Chain): Bad Object: 0x%08lx.\n",
-		 scheme_program_name, Temp);
-	Microcode_Termination (TERM_INVALID_TYPE_CODE);
-	/*NOTREACHED*/
+    LOAD_BUFFER (weak_pair_buffer, position, gc_buffer_bytes,
+		 "the weak pair buffer");
+    weak_pair_buffer_position = position;
+    if (weak_pair_break != EMPTY_LIST)
+    {
+      weak_buffer_pre_read_count -= 1;
+      pre_read_weak_pair_buffers ();
     }
   }
+  return ((GC_BUFFER_BOTTOM (weak_pair_buffer)) + offset);
+}
+
+/* For a description of the algorithm, see memmag.c and gccode.h.
+   This has been modified only to account for the fact that new space
+   is on disk.  Old space is in memory.
+   Note: Compiled_BH requires the names Temp and Old!
+*/
+
+static SCHEME_OBJECT
+DEFUN (update_weak_pointer, (Temp), SCHEME_OBJECT Temp)
+{
+  SCHEME_OBJECT * Old;
+
+  switch (GC_Type (Temp))
+  {
+    case GC_Non_Pointer:
+      return (Temp);
+  
+    case GC_Special:
+      if ((OBJECT_TYPE (Temp)) != TC_REFERENCE_TRAP)
+	/* No other special type makes sense here. */
+	goto fail;
+      if ((OBJECT_DATUM (Temp)) <= TRAP_MAX_IMMEDIATE)
+	return (Temp);
+      /* Otherwise, it is a pointer.  Fall through */
+
+    /* Normal pointer types, the broken heart is in the first word.
+       Note that most special types are treated normally here.
+       The BH code updates *Scan if the object has been relocated.
+       Otherwise it falls through and we replace it with a full SHARP_F.
+       Eliminating this assignment would keep old data (pl. of datum).
+     */
+    case GC_Cell:
+    case GC_Pair:
+    case GC_Triple:
+    case GC_Quadruple:
+    case GC_Vector:
+      Old = (OBJECT_ADDRESS (Temp));
+      if (Old >= Constant_Space)
+	return (Temp);
+
+      if ((OBJECT_TYPE (*Old)) == TC_BROKEN_HEART)
+	return (MAKE_OBJECT_FROM_OBJECTS (Temp, *Old));
+      else
+	return (SHARP_F);
+
+    case GC_Compiled:
+      Old = (OBJECT_ADDRESS (Temp));
+      if (Old >= Constant_Space)
+	return (Temp);
+      Compiled_BH (false, { return Temp; });
+      return (SHARP_F);
+
+    default:			/* Non Marked Headers and Broken Hearts */
+    case GC_Undefined:
+    fail:
+      fprintf (stderr,
+	       "\n%s (update_weak_pointer): Clearing bad object 0x%08lx.\n",
+	       scheme_program_name, Temp);
+      fflush (stderr);
+      return (SHARP_F);
+  }
+}
+
+SCHEME_OBJECT
+  Weak_Chain,
+  * weak_pair_stack_ptr,
+  * weak_pair_stack_limit;
+
+void
+DEFUN (initialize_weak_pair_transport, (limit), SCHEME_OBJECT * limit)
+{
+  Weak_Chain = EMPTY_LIST;
+  weak_pair_stack_ptr = Stack_Pointer;
+  weak_pair_stack_limit = (limit + 1); /* in case it's odd */
+  return;
+}
+
+void
+DEFUN_VOID (fix_weak_chain_1)
+{
+  fast SCHEME_OBJECT chain, * old_weak_cell, * scan, * ptr, * limit;
+
+  chain = Weak_Chain;
+  initialize_new_space_buffer (chain);
+
+  limit = Stack_Pointer;
+  for (ptr = weak_pair_stack_ptr; ptr < limit ; ptr += 2)
+    *ptr = (update_weak_pointer (*ptr));
+
+  while (chain != EMPTY_LIST)
+  {
+    old_weak_cell = (OBJECT_ADDRESS (Weak_Chain));
+    scan = (guarantee_in_memory (OBJECT_ADDRESS (*old_weak_cell++)));
+    Weak_Chain = (* old_weak_cell);
+    *scan = (update_weak_pointer
+	     (MAKE_OBJECT_FROM_OBJECTS (Weak_Chain, (* scan))));
+    Weak_Chain = (OBJECT_NEW_TYPE (TC_NULL, Weak_Chain));
+  }
   flush_new_space_buffer ();
+  Weak_Chain = chain;
+  return;
+}
+
+void
+DEFUN_VOID (fix_weak_chain_2)
+{
+  fast SCHEME_OBJECT * ptr, * limit, new_car, * addr;
+
+  limit = Stack_Pointer;
+  for (ptr = weak_pair_stack_ptr; ptr < limit ; )
+  {
+    new_car = *ptr++;
+    addr = ((SCHEME_OBJECT *) (*ptr++));
+    if (new_car != SHARP_F)
+      *addr = new_car;
+  }
+  weak_pair_stack_ptr = limit;
   return;
 }
 
@@ -1038,26 +2727,27 @@ DEFUN_VOID (Fix_Weak_Chain)
    - Finally it restores the microcode registers from the copies in
    new space.
 */
-
+
 void
-DEFUN (GC, (initial_weak_chain), SCHEME_OBJECT initial_weak_chain)
+DEFUN (GC, (weak_pair_transport_initialized_p),
+       int weak_pair_transport_initialized_p)
 {
   SCHEME_OBJECT
-    *root, *result, *end_of_constant_area,
-    the_precious_objects, *root2,
-    *free_buffer, *block_start, *initial_free_buffer;
+    * root, * result, * end_of_constant_area,
+    the_precious_objects, * root2,
+    * free_buffer, * block_start, * initial_free_buffer;
+
+  if (!weak_pair_transport_initialized_p)
+    initialize_weak_pair_transport (Free_Constant + 2);
 
   free_buffer = (initialize_free_buffer ());
   Free = Heap_Bottom;
   block_start = aligned_heap;
   if (block_start != Free)
-  {
     free_buffer += (Free - block_start);
-  }
   initial_free_buffer = free_buffer;
 
   SET_MEMTOP (Heap_Top - GC_Reserve);
-  Weak_Chain = initial_weak_chain;
 
   /* Save the microcode registers so that they can be relocated */
 
@@ -1078,14 +2768,15 @@ DEFUN (GC, (initial_weak_chain), SCHEME_OBJECT initial_weak_chain)
 		    SHARP_F :
 		    (MAKE_POINTER_OBJECT (TC_CONTROL_POINT,
 					  Prev_Restore_History_Stacklet)));
+
   *free_buffer++ = Current_State_Point;
   *free_buffer++ = Fluid_Bindings;
   Free += (free_buffer - initial_free_buffer);
+
   if (free_buffer >= free_buffer_top)
     free_buffer =
       (dump_and_reset_free_buffer ((free_buffer - free_buffer_top),
 				   NULL));
-
   /* The 4 step GC */
 
   result = (GCLoop (Constant_Space, &free_buffer, &Free));
@@ -1094,6 +2785,7 @@ DEFUN (GC, (initial_weak_chain), SCHEME_OBJECT initial_weak_chain)
     fprintf (stderr,
 	     "\n%s (GC): The Constant Space scan ended too early.\n",
 	     scheme_program_name);
+    fflush (stderr);
     Microcode_Termination (TERM_EXIT);
     /*NOTREACHED*/
   }
@@ -1106,10 +2798,11 @@ DEFUN (GC, (initial_weak_chain), SCHEME_OBJECT initial_weak_chain)
     fprintf (stderr,
 	     "\n%s (GC): The Heap scan ended too early.\n",
 	     scheme_program_name);
+    fflush (stderr);
     Microcode_Termination (TERM_EXIT);
     /*NOTREACHED*/
   }
-
+
   root2 = Free;
   *free_buffer++ = the_precious_objects;
   Free += (free_buffer - result);
@@ -1123,20 +2816,17 @@ DEFUN (GC, (initial_weak_chain), SCHEME_OBJECT initial_weak_chain)
     fprintf (stderr,
 	     "\n%s (GC): The Precious Object scan ended too early.\n",
 	     scheme_program_name);
+    fflush (stderr);
     Microcode_Termination (TERM_EXIT);
     /*NOTREACHED*/
   }
-
   end_transport (NULL);
-
-  Fix_Weak_Chain ();
+  fix_weak_chain_1 ();
 
   /* Load new space into memory. */
 
-  load_buffer (0, block_start,
-	       ((GC_BUFFER_BLOCK (Free - block_start))
-		* sizeof(SCHEME_OBJECT)),
-	       "new space");
+  final_reload (block_start, (Free - block_start), "new space");
+  fix_weak_chain_2 ();
 
   /* Make the microcode registers point to the copies in new-space. */
 
@@ -1148,7 +2838,7 @@ DEFUN (GC, (initial_weak_chain), SCHEME_OBJECT initial_weak_chain)
   History = (OBJECT_ADDRESS (*root++));
   Undefined_Primitives = *root++;
   Undefined_Primitives_Arity = *root++;
-
+
   Set_Current_Stacklet (*root);
   root += 1;
   if (*root == SHARP_F)
@@ -1157,9 +2847,7 @@ DEFUN (GC, (initial_weak_chain), SCHEME_OBJECT initial_weak_chain)
     root += 1;
   }
   else
-  {
     Prev_Restore_History_Stacklet = (OBJECT_ADDRESS (*root++));
-  }
   Current_State_Point = *root++;
   Fluid_Bindings = *root++;
   Free_Stacklets = NULL;
@@ -1167,7 +2855,7 @@ DEFUN (GC, (initial_weak_chain), SCHEME_OBJECT initial_weak_chain)
   CLEAR_INTERRUPT (INT_GC);
   return;
 }
-
+
 /* (GARBAGE-COLLECT SLACK)
    Requests a garbage collection leaving the specified amount of slack
    for the top of heap check on the next GC.  The primitive ends by invoking
@@ -1190,7 +2878,7 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
   ENTER_CRITICAL_SECTION ("garbage collector");
   gc_counter += 1;
   GC_Reserve = new_gc_reserve;
-  GC (EMPTY_LIST);
+  GC (0);
   POP_PRIMITIVE_FRAME (1);
   GC_Daemon_Proc = (Get_Fixed_Obj_Slot (GC_Daemon));
 
@@ -1215,4 +2903,242 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
   PRIMITIVE_ABORT (PRIM_APPLY);
   /* The following comment is by courtesy of LINT, your friendly sponsor. */
   /*NOTREACHED*/
+}
+
+static void
+DEFUN_VOID (statistics_clear)
+{
+  int cntr, arlen;
+  struct bch_GC_statistic * ptr;
+
+  arlen = (((sizeof (all_gc_statistics))
+	    / (sizeof (struct bch_GC_statistic)))
+	   - 1);
+  for (cntr = 0, ptr = &all_gc_statistics[0]; cntr < arlen; cntr++, ptr++)
+    (* (ptr->counter)) = 0;
+  return;
+}
+
+static int statistics_print_level = 0;
+
+static void
+DEFUN (statistics_print, (level, noise), int level AND char * noise)
+{
+  char format[30];
+  int cntr, arlen, len, name_len;
+  struct bch_GC_statistic * ptr;
+
+  if (level > statistics_print_level)
+    return;
+  arlen = (((sizeof (all_gc_statistics))
+	    / (sizeof (struct bch_GC_statistic)))
+	   - 1);
+  name_len = -1;
+  for (cntr = 0, ptr = &all_gc_statistics[0];
+       cntr < arlen;
+       cntr++, ptr++)
+    if ((* (ptr->counter)) != 0L)
+    {
+      len = (strlen (ptr->name));
+      if (len > name_len)
+	name_len = len;
+    }
+
+  if (name_len >= 0)
+  {
+    sprintf (&format[0], "\t%%-%ds : %%ld\n", name_len);
+
+    printf ("\nGC I/O statistics %s:\n", noise);
+    for (cntr = 0, ptr = &all_gc_statistics[0]; cntr < arlen; cntr++, ptr++)
+      if ((* (ptr->counter)) != 0L)
+	printf (&format[0], ptr->name, (* (ptr->counter)));
+    fflush (stdout);
+  }
+  return;
+}
+
+static SCHEME_OBJECT
+DEFUN_VOID (statistics_names)
+{
+  SCHEME_OBJECT vector, * scan;
+  struct bch_GC_statistic * ptr;
+  int len, cntr;
+
+  len = (((sizeof (all_gc_statistics))
+	  / (sizeof (struct bch_GC_statistic)))
+	 - 1);
+  if (len == 0)
+    return (SHARP_F);
+
+  vector = (allocate_marked_vector (TC_VECTOR, len, true));
+  for (cntr = 0, ptr = &all_gc_statistics[0], scan = (VECTOR_LOC (vector, 0));
+       cntr < len;
+       cntr++, ptr++)
+    *scan++ = (char_pointer_to_string ((unsigned char *) ptr->name));
+  return (vector);
+}
+
+static void
+DEFUN_VOID (statistics_read)
+{
+  SCHEME_OBJECT vector, *scan;
+  struct bch_GC_statistic * ptr;
+  int len, cntr;
+
+  len = (((sizeof (all_gc_statistics))
+	  / (sizeof (struct bch_GC_statistic)))
+	 - 1);
+  if (len == 0)
+    signal_error_from_primitive (ERR_UNDEFINED_PRIMITIVE);
+
+  vector = (VECTOR_ARG (1));
+  if (len != (VECTOR_LENGTH (vector)))
+    error_bad_range_arg (1);
+  
+  for (cntr = 0, ptr = &all_gc_statistics[0], scan = (VECTOR_LOC (vector, 0));
+       cntr < len;
+       cntr++, ptr++)
+    *scan++ = (long_to_integer (* (ptr->counter)));
+  return;
+}
+
+/* Additional primitives for statistics collection and
+   manipulation of parameters from Scheme
+ */
+
+DEFINE_PRIMITIVE ("BCHSCHEME-STATISTICS-NAMES", Prim_bchscheme_stat_names, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (statistics_names ());
+}
+
+DEFINE_PRIMITIVE ("BCHSCHEME-STATISTICS-READ!", Prim_bchscheme_read_stats, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  statistics_read ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+/* There are other parameters that could be set, especially the drone program
+   to run, and the file to gc from, but...
+ */
+
+#ifndef GET_SLEEP_DELTA
+#define GET_SLEEP_DELTA()	-1
+#define SET_SLEEP_DELTA(v)	do { } while (0)
+#endif
+
+#define N_PARAMS	6
+
+DEFINE_PRIMITIVE ("BCHSCHEME-PARAMETERS-GET", Prim_bchscheme_get_params, 0, 0, 0)
+{
+  SCHEME_OBJECT vector;
+  PRIMITIVE_HEADER (0);
+
+  vector = (allocate_marked_vector (TC_VECTOR, N_PARAMS, true));
+
+  VECTOR_SET (vector, 0,
+	      (long_to_integer ((long) CAN_RECONFIGURE_GC_BUFFERS)));
+  VECTOR_SET (vector, 1, (long_to_integer ((long) gc_buffer_size)));
+  VECTOR_SET (vector, 2, (long_to_integer ((long) read_overlap)));
+  VECTOR_SET (vector, 3, (long_to_integer ((long) write_overlap)));
+  VECTOR_SET (vector, 4, (long_to_integer ((long) (GET_SLEEP_DELTA ()))));
+  VECTOR_SET (vector, 5, (char_pointer_to_string
+			  ((unsigned char *) drone_file_name)));
+
+  PRIMITIVE_RETURN (vector);
+}
+
+static long
+DEFUN (bchscheme_long_parameter, (vector, index),
+       SCHEME_OBJECT vector AND int index)
+{
+  SCHEME_OBJECT temp;
+  long value;
+
+  temp = (VECTOR_REF (vector, index));
+  if ((! (INTEGER_P (temp))) || (! (integer_to_long_p (temp))))
+    error_bad_range_arg (1);
+  value = (integer_to_long (temp));
+  if (value < 0)
+    error_bad_range_arg (1);
+  return (value);
+}
+
+DEFINE_PRIMITIVE ("BCHSCHEME-PARAMETERS-SET!", Prim_bchscheme_set_params, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+
+#if (CAN_RECONFIGURE_GC_BUFFERS == 0)
+  signal_error_from_primitive (ERR_UNDEFINED_PRIMITIVE);
+  /*NOTREACHED*/
+#else
+
+  {
+    char * new_drone_ptr;
+    SCHEME_OBJECT vector, new_drone;
+    int power;
+    long
+      new_buffer_size, new_read_overlap,
+      new_write_overlap, new_sleep_period;
+
+    vector = (VECTOR_ARG (1));
+    if ((VECTOR_LENGTH (vector)) != N_PARAMS)
+      error_bad_range_arg (1);
+
+    /* Slot 0 ignored. */
+    new_buffer_size = (bchscheme_long_parameter (vector, 1));
+    new_read_overlap = (bchscheme_long_parameter (vector, 2));
+    new_write_overlap = (bchscheme_long_parameter (vector, 3));
+    new_sleep_period = (bchscheme_long_parameter (vector, 4));
+    new_drone = (VECTOR_REF (vector, 5));
+    if (! (STRING_P (new_drone)))
+      error_bad_range_arg (1);
+    if ((STRING_LENGTH (new_drone)) == 0)
+      new_drone_ptr = ((char *) NULL);
+    else
+    {
+      new_drone_ptr = ((char *) (malloc ((STRING_LENGTH (new_drone)) + 1)));
+      if (new_drone_ptr != ((char *) NULL))
+	strcpy (new_drone_ptr, ((char *) (STRING_LOC (new_drone, 0))));
+    }
+
+    power = (next_exponent_of_two (new_buffer_size));
+    if (((1L << power) != new_buffer_size)
+	|| ((set_gc_buffer_sizes (power)) != 0))
+      error_bad_range_arg (1);
+
+    BUFFER_SHUTDOWN (0);
+    SET_SLEEP_DELTA (new_sleep_period);
+    if ((drone_file_name != ((char *) NULL))
+	&& (drone_file_name != option_gc_drone))
+      free (drone_file_name);
+
+    if ((RE_INITIALIZE_GC_BUFFERS (0,
+				   (Highest_Allocated_Address + 1),
+				   (saved_heap_size
+				    * (sizeof (SCHEME_OBJECT))),
+				   new_read_overlap,
+				   new_write_overlap,
+				   new_drone_ptr)) == 0)
+      PRIMITIVE_RETURN (UNSPECIFIC);
+    else
+    {
+      BUFFER_SHUTDOWN (0);
+      if (new_drone_ptr != ((char *) NULL))
+	free (new_drone_ptr);
+
+      if ((RE_INITIALIZE_GC_BUFFERS (0,
+				     (Highest_Allocated_Address + 1),
+				     (saved_heap_size
+				      * (sizeof (SCHEME_OBJECT))),
+				     0, 0,
+				     option_gc_drone)) != 0)
+	Microcode_Termination (TERM_EXIT);
+      else
+	signal_error_from_primitive (ERR_EXTERNAL_RETURN);
+    }
+    /*NOTREACHED*/
+  }
+#endif (CAN_RECONFIGURE_GC_BUFFERS == 0)
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.56 1991/09/07 22:46:37 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.57 1991/10/29 22:35:36 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -223,7 +223,7 @@ DEFUN (fasdump_exit, (length), long length)
   Boolean result;
 
   Free = saved_free;
-  gc_file = real_gc_file;
+  restore_gc_file ();
 
 #if true
   {
@@ -255,8 +255,8 @@ next_buffer:
 
   while (fixes != fixup_buffer_end)
   {
-    fix_address = ((SCHEME_OBJECT *) (*fixes++)); /* Where it goes. */
-    *fix_address = *fixes++;		    /* Put it there. */
+    fix_address = ((SCHEME_OBJECT *) (*fixes++));	/* Where it goes. */
+    *fix_address = *fixes++;				/* Put it there. */
   }
 
   if (fixup_count >= 0)
@@ -321,7 +321,7 @@ DEFUN (dumploop, (Scan, To_ptr, To_Address_ptr),
 	{
 	  break;
 	}
-        if (Scan != (OBJECT_ADDRESS (Temp)))
+        if (Temp != (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Scan)))
 	{
 	  sprintf (gc_death_message_buffer,
 		   "purifyloop: broken heart (0x%lx) in scan",
@@ -642,8 +642,7 @@ DEFUN (dump_to_file, (root, fname),
 
   compiled_code_present_p = false;
   success = true;
-  real_gc_file = gc_file;
-  gc_file = dump_file;
+  real_gc_file = (swap_gc_file (dump_file));
   saved_free = Free;
   fixup = fixup_buffer_end;
   fixup_count = -1;
@@ -699,10 +698,11 @@ DEFUN (dump_to_file, (root, fname),
 
   tsize = (table_end - table_start);
   hlength = ((sizeof (SCHEME_OBJECT)) * tsize);
-  if (((lseek (gc_file,
+  if (((lseek (dump_file,
 	       ((sizeof (SCHEME_OBJECT)) * (length + FASL_HEADER_LENGTH)),
-	       0)) == -1) ||
-      ((write (gc_file, ((char *) &table_start[0]), hlength)) != hlength))
+	       0))
+       == -1)
+      || ((write (dump_file, ((char *) &table_start[0]), hlength)) != hlength))
   {
     fasdump_exit (0);
     return (SHARP_F);
@@ -712,8 +712,8 @@ DEFUN (dump_to_file, (root, fname),
   prepare_dump_header (header, dumped_object, length, dumped_object,
 		       0, Constant_Space, tlength, tsize,
 		       compiled_code_present_p, false);
-  if (((lseek (gc_file, 0, 0)) == -1) ||
-      ((write (gc_file, ((char *) &header[0]), hlength)) != hlength))
+  if (((lseek (dump_file, 0, 0)) == -1)
+      || ((write (dump_file, ((char *) &header[0]), hlength)) != hlength))
   {
     fasdump_exit (0);
     return (SHARP_F);

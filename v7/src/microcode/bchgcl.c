@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.42 1991/09/07 22:47:15 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.43 1991/10/29 22:35:51 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -57,7 +57,7 @@ DEFUN (GCLoop, (Scan, To_ptr, To_Address_ptr),
     Switch_by_GC_Type (Temp)
     {
       case TC_BROKEN_HEART:
-        if (Scan != (OBJECT_ADDRESS (Temp)))
+        if (Temp != (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Scan)))
 	{
 	  sprintf (gc_death_message_buffer,
 		   "gcloop: broken heart (0x%lx) in scan",
