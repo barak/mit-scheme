@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.2 1988/06/21 05:48:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.3 1988/06/21 05:53:08 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -344,6 +344,7 @@ MIT in each case. |#
 
 (define-integrable (condition/internal? condition)
   ;; For future expansion.
+  condition
   false)
 
 (define-integrable (condition/generalizations condition)
