@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml.scm,v 1.2 2004/07/12 19:08:32 cph Exp $
+$Id: xhtml.scm,v 1.3 2004/07/15 18:25:07 cph Exp $
 
 Copyright 2002,2003,2004 Massachusetts Institute of Technology
 
@@ -89,7 +89,8 @@ USA.
     (scan-item item '())))
 
 (define (convert-html-string-value value)
-  (cond ((symbol? value) (symbol-name value))
+  (cond ((xml-content-item? value) value)
+	((symbol? value) (symbol-name value))
 	((number? value) (number->string value))
 	((xml-namespace-iri? value) (xml-namespace-iri-string value))
 	(else (error:wrong-type-datum value "string value"))))
@@ -175,15 +176,8 @@ USA.
 
 (define (empty-element-constructor simple iri)
   (let ((name (make-xml-name simple iri)))
-    (lambda keyword-list
-      (make-xml-element name
-			(if (and (pair? keyword-list)
-				 (list-of-type? (car keyword-list)
-				   xml-attribute?)
-				 (null? (cdr keyword-list)))
-			    (car keyword-list)
-			    (apply html-attrs keyword-list))
-			'()))))
+    (lambda items
+      (make-xml-element name (apply html-attrs items) '()))))
 
 (define-empty-element br)
 (define-empty-element hr)
@@ -192,27 +186,30 @@ USA.
 (define-empty-element link)
 (define-empty-element meta)
 
-(define (html-attrs . keyword-list)
-  (let loop ((bindings keyword-list))
-    (if (and (pair? bindings)
-	     (xml-name? (car bindings))
-	     (pair? (cdr bindings)))
-	(let ((value (cadr bindings))
-	      (tail (loop (cddr bindings))))
-	  (if value
-	      (cons (make-xml-attribute
-		     (car bindings)
-		     (cond ((eq? value #t) (symbol-name (car bindings)))
-			   ((xml-char-data? value) value)
-			   (else (convert-html-string-value value))))
-		    tail)
-	      tail))
-	(begin
-	  (if (not (null? bindings))
-	      (error:wrong-type-argument keyword-list
-					 "keyword list"
-					 'HTML-ATTRS))
-	  '()))))
+(define (html-attrs . items)
+  (let loop ((items items))
+    (if (pair? items)
+	(let ((item (car items))
+	      (items (cdr items)))
+	  (cond ((and (xml-name? item)
+		      (pair? items))
+		 (let ((value (car items))
+		       (attrs (loop (cdr items))))
+		   (if value
+		       (cons (make-xml-attribute
+			      item
+			      (if (eq? value #t)
+				  (symbol-name item)
+				  (convert-html-string-value value)))
+			     attrs)
+		       attrs)))
+		((xml-attribute? item)
+		 (cons item (loop items)))
+		((list-of-type? item xml-attribute?)
+		 (append item (loop items)))
+		(else
+		 (error "Unknown item passed to html-attrs:" item))))
+	'())))
 
 (define (html:href iri . contents)
   (apply html:a
@@ -226,7 +223,7 @@ USA.
 	 contents))
 
 (define (html:id-ref tag . contents)
-  (apply href (string-append "#" tag) contents))
+  (apply html:href (string-append "#" tag) contents))
 
 (define (html:rel-link rel iri)
   (html:link 'rel rel
