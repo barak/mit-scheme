@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: instance.scm,v 1.5 1997/06/16 08:58:33 cph Exp $
+;;; $Id: instance.scm,v 1.6 1997/06/25 03:52:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -268,18 +268,18 @@
 (define (instance-class instance)
   (dispatch-tag-contents (tagged-vector-tag instance)))
 
-(define (instance-predicate class)
-  (if (not (class? class))
-      (error:wrong-type-argument class "class" 'INSTANCE-PREDICATE))
+(define (instance-predicate specializer)
+  (if (not (specializer? specializer))
+      (error:wrong-type-argument specializer "specializer"
+				 'INSTANCE-PREDICATE))
   (let ((predicate (make-generic-procedure 1)))
     (let ((add
 	   (lambda (c v)
 	     (add-method predicate
 			 (make-method (list c) (lambda (object) object v))))))
       (add <object> #f)
-      (add class #t))
+      (add specializer #t))
     predicate))
 
-(define (instance-of? object class)
-  (and (subclass? (object-class object) class)
-       #t))
+(define (instance-of? object specializer)
+  (subclass? (object-class object) specializer))
