@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: crypto.scm,v 14.6 2000/04/11 15:19:14 cph Exp $
+$Id: crypto.scm,v 14.7 2000/04/11 15:24:54 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -132,7 +132,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (error:wrong-type-argument type "mhash type" 'MHASH-KEYGEN))
   (let ((keyword (make-string (mhash-keygen-type-key-length type))))
     (if (not ((ucode-primitive mhash_keygen 4)
-	      (mhash-keygen-type-name type)
+	      (mhash-keygen-type-id type)
 	      (mhash-keygen-type-parameter-vector type)
 	      keyword
 	      passphrase))
@@ -140,7 +140,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     keyword))
 
 (define-structure (mhash-keygen-type (constructor %make-mhash-keygen-type))
-  (name #f read-only #t)
+  (id #f read-only #t)
   (key-length #f read-only #t)
   (parameter-vector #f read-only #t))
 
@@ -189,7 +189,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    ((fix:= i n))
 	  (vector-set! v i
 		       (mhash-name->id (car names) 'MAKE-MHASH-KEYGEN-TYPE)))
-	(%make-mhash-keygen-type name key-length v)))))
+	(%make-mhash-keygen-type (keygen-name->id name 'MAKE-MHASH-KEYGEN-TYPE)
+				 key-length
+				 v)))))
 
 (define (mhash-available?)
   (implemented-primitive-procedure? (ucode-primitive mhash 4)))
