@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.50 1988/08/15 20:43:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.51 1988/09/29 04:51:09 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -51,6 +51,7 @@ MIT in each case. */
 	  {-stack stack-size}
 	  {-constant constant-size}
 	  {-utabmd utab-filename} or {-utab utab-filename}
+	  {-recover}
           {other arguments ignored by the core microcode}
 
    with filespec either {-band band-name} or {-fasl file-name} or
@@ -89,9 +90,11 @@ for details.  They are created by defining a macro Command_Line_Args.
 #include <ctype.h>
 #endif
 
-#define STRING_SIZE 512
-#define BLOCKSIZE 1024
-#define blocks(n) ((n)*BLOCKSIZE)
+#define STRING_SIZE	512
+#define BLOCKSIZE	1024
+#define blocks(n)	((n)*BLOCKSIZE)
+#define unblocks(n)	(((n) + (BLOCKSIZE - 1)) / BLOCKSIZE)
+#define MIN_HEAP_DELTA	50
 
 /* Utilities for command line parsing */
 
@@ -167,8 +170,10 @@ Def_Number(key, nargs, args, def)
 
 /* Used to test whether it is a dumped executable version */
 
-extern Boolean Was_Scheme_Dumped;
-Boolean Was_Scheme_Dumped = false;
+extern Boolean Was_Scheme_Dumped, Recover_Automatically;
+Boolean
+  Was_Scheme_Dumped = false,
+  Recover_Automatically = false;
 
 int Saved_Heap_Size, Saved_Stack_Size, Saved_Constant_Size;
 
@@ -192,6 +197,9 @@ find_image_parameters(file_name, cold_load_p, supplied_p)
   *supplied_p = false;
   *cold_load_p = false;
   *file_name = DEFAULT_BAND_NAME;
+
+  Recover_Automatically =
+    (Parse_Option("-recover", Saved_argc, Saved_argv, true) != NOT_THERE);
 
   if (!Was_Scheme_Dumped)
   {
@@ -294,6 +302,7 @@ main(argc, argv)
 
   Saved_argc = argc;
   Saved_argv = argv;
+
   find_image_parameters(&file_name, &cold_load_p, &supplied_p);
 
   if (Was_Scheme_Dumped)
@@ -317,7 +326,6 @@ main(argc, argv)
   }
 
   Command_Line_Hook();
-	  
   Setup_Memory(blocks(Heap_Size), blocks(Stack_Size),
 	       blocks(Constant_Size));
   compiler_initialize((long) cold_load_p);
@@ -531,6 +539,7 @@ term_type
 Microcode_Termination(code)
      long code;
 {
+  extern long death_blow;
   extern char *Term_Messages[];
   Pointer Term_Vector;
   Boolean abnormal_p;
@@ -543,7 +552,6 @@ Microcode_Termination(code)
        TC_VECTOR) &&
       (Vector_Length(Term_Vector) > code))
   { 
-    extern long death_blow;
     Pointer Handler;
 
     Handler = User_Vector_Ref(Term_Vector, code);
@@ -596,6 +604,15 @@ Microcode_Termination(code)
       abnormal_p = false;
       break;
 
+    case TERM_SIGNAL:
+    {
+      extern char *assassin_signal;
+
+      if (assassin_signal != ((char *) NULL))
+	printf("Killed by %s.\n", assassin_signal);
+      goto normal_termination;
+    }
+
     case TERM_TRAP:
       /* This claims not to be abnormal so that the user will
 	 not be asked a second time about dumping core.
@@ -610,8 +627,20 @@ Microcode_Termination(code)
        */
       value = 1;
       abnormal_p = true;
-      break;
+      if (death_blow == ERR_FASL_FILE_TOO_BIG)
+      {
+	extern void get_band_parameters();
+	long heap_size, const_size;
 
+	get_band_parameters(&heap_size, &const_size);
+	printf("Try again with values at least as large as\n");
+	printf("  -heap %d (%d + %d)\n",
+	       (MIN_HEAP_DELTA + unblocks(heap_size)),
+	       unblocks(heap_size), MIN_HEAP_DELTA);
+	printf("  -constant %d\n", unblocks(const_size));
+      }
+      break;
+
     case TERM_NON_EXISTENT_CONTINUATION:
       printf("Return code = 0x%lx\n", Fetch_Return());
       goto normal_termination;
