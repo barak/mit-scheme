@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2dir.scm,v 1.2 1994/11/28 05:46:16 cph Exp $
+$Id: os2dir.scm,v 1.3 1994/12/19 21:08:45 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -37,29 +37,20 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define *expand-directory-prefixes?* true)
+(define *expand-directory-prefixes?* #t)
 
 (define (directory-read pattern #!optional sort?)
-  (if (if (default-object? sort?) true sort?)
+  (if (if (default-object? sort?) #t sort?)
       (sort (directory-read-nosort pattern) pathname<?)
       (directory-read-nosort pattern)))
 
 (define (directory-read-nosort pattern)
-  (let ((pattern
-	 (let ((pattern (merge-pathnames pattern)))
-	   (if (pathname-name pattern)
-	       pattern
-	       (make-pathname (pathname-host pattern)
-			      (pathname-device pattern)
-			      (pathname-directory pattern)
-			      'WILD
-			      'WILD
-			      (pathname-version pattern))))))
+  (let ((pattern (merge-pathnames pattern)))
     (map (let ((directory-path (directory-pathname pattern)))
 	   (lambda (pathname)
 	     (merge-pathnames pathname directory-path)))
 	 (let ((fnames (generate-directory-pathnames pattern)))
-	   (fluid-let ((*expand-directory-prefixes?* false))
+	   (fluid-let ((*expand-directory-prefixes?* #f))
 	     (map ->pathname fnames))))))
 
 (define (generate-directory-pathnames pathname)
