@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.3 1993/12/01 03:08:03 adams Exp $
+$Id: graphics.scm,v 1.4 1994/01/12 00:23:17 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -457,7 +457,8 @@ MIT in each case. |#
 	  (begin
 	    (invalidate-rect hwnd #f #f)
 	    unspecific)
-	  ((access error ()) "Attempt to use deleted Scheme Graphics window" window)))))
+	  ((access error system-global-environment)
+	   "Attempt to use deleted Scheme Graphics window" window)))))
 
 (define (win32-graphics/flush device)
   (win32-device/flush (graphics-device/descriptor device)))
@@ -668,16 +669,19 @@ MIT in each case. |#
 	  (rgb (list-ref spec 0) (list-ref spec 1) (list-ref spec 2)))
 	((and (string? spec) (> (string-length spec) 1)
 	      (char=? (string-ref spec 0) #\#))
-	  ((access error '()) "Cant do #rrggbb colors yet:" spec))
+	  ((access error system-global-environment)
+	   "Cant do #rrggbb colors yet:" spec))
 	((string? spec)
 	  (let  ((pair (list-search-positive
 			  color-table
 	                  (lambda (pair) (string-ci=? (car pair) spec)))))
 	    (if pair
 	        (cdr pair)
-		((access error ()) "Unknown color name:" spec))))
+		((access error system-global-environment)
+		 "Unknown color name:" spec))))
 	(else
-	  ((access error ()) "Illegal color" spec))))
+	  ((access error system-global-environment)
+	   "Illegal color" spec))))
 
 (define color-table)
 
@@ -827,7 +831,8 @@ MIT in each case. |#
 	(delete-dib dib))
     (if success?
 	unspecific
-	((access error ()) "Cannot save bitmap to" true-filename))))
+	((access error system-global-environment)
+	 "Cannot save bitmap to" true-filename))))
 
 (define (win32-graphics/load-bitmap device filename)
   (let* ((true-filename (bitmap-namestring filename))
@@ -842,7 +847,8 @@ MIT in each case. |#
 	    (win32-device/invalidate! window)
 	    (delete-dib dib)
 	    unspecific))
-	((access error ()) "Cannot load bitmap from" true-filename))))
+	((access error system-global-environment)
+	 "Cannot load bitmap from" true-filename))))
 
 ;;----------------------------------------------------------------------------
 ;;
