@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.18 1988/11/04 11:08:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.19 1988/11/04 11:11:12 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -475,8 +475,8 @@ MIT in each case. |#
 	  (lambda (name index)
 	    (define-open-coder/value name
 	      (lambda (operands)
-		(return-2 (open-code/memory-ref index)
-			  '(0)))))))
+		operands
+		(return-2 (open-code/memory-ref index) '(0)))))))
     (define/ref
       '(CAR SYSTEM-PAIR-CAR CELL-CONTENTS SYSTEM-HUNK3-CXR0) 0)
     (define/ref 
