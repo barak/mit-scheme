@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.13 2000/12/08 19:26:44 cph Exp $
+# $Id: Makefile.in,v 1.14 2000/12/19 20:47:21 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -95,9 +95,12 @@ install: all
 
 	( cd microcode; $(MAKE) $@ )
 
-	$(INSTALL_DATA) $(srcdir)/etc/optiondb.scm $(DESTDIR)$(AUXDIR)/.
+	$(INSTALL_DATA) $(srcdir)/lib/optiondb.scm $(DESTDIR)$(AUXDIR)/.
+	$(INSTALL_DATA) $(srcdir)/lib/*.com $(DESTDIR)$(AUXDIR)/.
+
 	$(INSTALL_DATA) $(srcdir)/etc/TUTORIAL $(DESTDIR)$(EDDIR)/etc/.
 	$(INSTALL_DATA) $(srcdir)/etc/mime.types $(DESTDIR)$(EDDIR)/etc/.
+
 	$(INSTALL_DATA) runtime/*.bci $(DESTDIR)$(AUXDIR)/SRC/runtime/.
 	$(INSTALL_DATA) edwin/*.bci $(DESTDIR)$(AUXDIR)/SRC/edwin/.
 
