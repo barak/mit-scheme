@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm3.scm,v 4.4 1988/05/10 19:53:41 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm3.scm,v 4.5 1988/05/14 16:20:17 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -228,7 +228,13 @@ MIT in each case. |#
 	       (if (not (= (extract *ir 0 6) #b111100))
 		   %TAS
 		   %ILLEGAL))))
-	(MOVEM-ea->registers (lambda () %MOVEM-ea->registers))
+	(MULL/DIVL/MOVEM-ea->registers
+	 (lambda ()
+	   (case (extract *ir 6 8)
+	     ((#b00) %MULL)
+	     ((#b01) %DIVL)
+	     ((#b11) %MOVEM-ea->registers)
+	     (else undefined-instruction))))
 	(all-the-rest
 	 (lambda ()
 	   ((vector-ref all-the-rest-dispatch (extract *ir 6 8)))))
@@ -247,7 +253,7 @@ MIT in each case. |#
 	    CHK/LEA
 	    TST/TAS/illegal
 	    CHK/LEA
-	    MOVEM-ea->registers
+	    MULL/DIVL/MOVEM-ea->registers
 	    CHK/LEA
 	    all-the-rest
 	    CHK/LEA)))
@@ -473,7 +479,6 @@ MIT in each case. |#
       (receiver 'D make-data-register)
       (receiver '@-A make-address-register)))
 
-
 (define %ADDX (binary-extended 'ADDX))
 (define %SUBX (binary-extended 'SUBX))
 
@@ -505,12 +510,38 @@ MIT in each case. |#
 
 (define ((%MUL/%DIV keyword))
   `(,keyword ,(decode-us (extract *ir 8 9))
+	     W
 	     ,(decode-ea-d 'W)
 	     ,(make-data-register 'D (extract *ir 9 12))))
 
 (define %MUL (%MUL/%DIV 'MUL))
 (define %DIV (%MUL/%DIV 'DIV))
 
+(define ((%MULL/%DIVL force-short? keyword1 keyword2))
+  (let ((next (get-word)))
+    (let ((dr (extract next 0 3))
+	  (dq (extract next 12 15)))
+      (cond ((= (extract next 10 11) #b1)
+	     `(,keyword1 ,(decode-us (extract next 11 12))
+			 L
+			 ,(decode-ea-d 'L)
+			 ,(make-data-register 'D dr)
+			 ,(make-data-register 'D dq)))
+	    ((or force-short? (= dr dq))
+	     `(,keyword1 ,(decode-us (extract next 11 12))
+			 L
+			 ,(decode-ea-d 'L)
+			 ,(make-data-register 'D dq)))
+	    (else
+	     `(,keyword2 ,(decode-us (extract next 11 12))
+			 L
+			 ,(decode-ea-d 'L)
+			 ,(make-data-register 'D dr)
+			 ,(make-data-register 'D dq)))))))
+
+(define %MULL (%MULL/%DIVL true 'MUL 'MULL))
+(define %DIVL (%MULL/%DIVL false 'DIV 'DIVL))
+
 (define (%EXG)
   (let ((mode (if (= (extract *ir 3 4) #b0) 'D 'A)))
     `(EXG (,mode ,(extract *ir 0 3))
@@ -525,7 +556,7 @@ MIT in each case. |#
       (bit-extract)
       (shift-rotate)))
 
-(define (shift/rotate)
+(define (shift-rotate)
   (let ((size (decode-bwl (extract *ir 6 8)))
 	(direction (decode-rl (extract *ir 8 9))))
     (if (null? size)
@@ -610,36 +641,46 @@ MIT in each case. |#
 ;;;; Effective Addressing
 
 (define (decode-ea-<D> register size)
+  size					; ignored
   (make-data-register 'D register))
 
 (define (decode-ea-<A> register size)
+  size					; ignored
   (make-address-register 'A register))
 
 (define (decode-ea-<b=>-A> register size)
+  size					; ignored
   (if (memq size '(W L))
       (make-address-register 'A register)
       (undefined-instruction)))
 
 (define (decode-ea-<@A> register size)
+  size					; ignored
   (make-address-register '@A register))
 
 (define (decode-ea-<@A+> register size)
+  size					; ignored
   (make-address-register '@A+ register))
 
 (define (decode-ea-<@-A> register size)
+  size					; ignored
   (make-address-register '@-A register))
 
 (define (decode-ea-<@AO> register size)
+  size					; ignored
   (make-address-offset register
 		       (bit-string->signed-integer (get-word))))
 
 (define (decode-ea-<W> size)
+  size					; ignored
   `(W ,(bit-string->signed-integer (get-word))))
 
 (define (decode-ea-<L> size)
+  size					; ignored
   `(L ,(bit-string->signed-integer (get-longword))))
 
 (define (decode-ea-<@PCO> size)
+  size					; ignored
   (make-pc-relative (lambda () (bit-string->signed-integer (get-word)))))
 
 (define (decode-ea-<&> size)
@@ -651,6 +692,7 @@ MIT in each case. |#
 ;;;; Extended 68020 effective addresses
 
 (define (decode-ea-<@AOX> register size)
+  size					; ignored
   (decode-ea-extension
    (lambda (d/a xr w/l scale brs irs bd od operation)
      (cond ((eq? (cadr bd) 'B)
@@ -677,6 +719,7 @@ MIT in each case. |#
 						       ,irs ,od))))))
 
 (define (decode-ea-<@PCOX> size)
+  size					; ignored
   (let ((base-offset *current-offset))
     (decode-ea-extension
      (lambda (d/a xr w/l scale brs irs bd od operation)
@@ -711,14 +754,18 @@ MIT in each case. |#
 		      ((1) '(0 N))
 		      ((2) `(,(fetch-immediate 'W) W))
 		      ((3) `(,(fetch-immediate 'L) L))
-		      (else (error "decode-ea-extension: bad bd-size"
-				   (extract extension 4 6))))))
+		      (else
+		       #| (error "decode-ea-extension: bad bd-size"
+		                 (extract extension 4 6)) |#
+		       (undefined-instruction)))))
 	    (receiver d/a xr w/l scale brs irs bd
 		      (case (if (> i/is 3) (- i/is 4) i/is)
 			((0 1) '(0 N))
 			((2) `(,(fetch-immediate 'W) W))
 			((3) `(,(fetch-immediate 'L) L))
-			(else (error "decode-ea-extension: bad i/is" i/is)))
+			(else
+			 #| (error "decode-ea-extension: bad i/is" i/is) |#
+			 (undefined-instruction)))
 		      (cond ((zero? i/is) #F)
 			    ((> i/is 3) 'POST)
 			    (else 'PRE))))))))
@@ -754,9 +801,11 @@ MIT in each case. |#
 	      '()))))
 
 (define (decode-ea-undefined register size)
+  register size				; ignored
   (undefined-instruction))
 
 (define (decode-ea-mode-7-undefined size)
+  size					; ignored
   (undefined-instruction))
 
 (define decode-ea-d
@@ -786,7 +835,6 @@ MIT in each case. |#
 		      decode-ea-<@PCO>
 		      decode-ea-<@PCOX>
 		      decode-ea-undefined))
-		       
 
 (define decode-ea-c
   (decode-ea-w/o-size decode-ea-undefined

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.4 1988/05/10 19:53:08 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.5 1988/05/14 16:19:24 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -41,8 +41,7 @@ MIT in each case. |#
 (set! disassembler/instructions
   (lambda (block start-offset end-offset symbol-table)
     (let loop ((offset start-offset) (state (disassembler/initial-state)))
-      (if (and end-offset
-	       (< offset end-offset))
+      (if (and end-offset (< offset end-offset))
 	  (disassemble-one-instruction block offset symbol-table state
 	    (lambda (offset* instruction state)
 	      (make-instruction offset
@@ -77,28 +76,34 @@ MIT in each case. |#
 	      (*ir)
 	      (*valid? true))
     (set! *ir (get-word))
-    ;; External label markers come in two parts:
-    ;; An entry type descriptor, and a gc offset.
-    (cond ((eq? state 'EXTERNAL-LABEL-OFFSET)
-	   (receiver *current-offset
-		     (make-dc 'W *ir)
-		     'INSTRUCTION))
-	  ((external-label-marker? symbol-table offset state)
-	   (receiver *current-offset
-		     (make-dc 'W *ir)
-		     'EXTERNAL-LABEL-OFFSET))
-	  (else
-	   (let* ((inst
-		   (((vector-ref opcode-dispatch (extract *ir 12 16)))))
-		  (instruction (if *valid? inst (make-dc 'W *ir))))
+    (let ((start-offset *current-offset))
+      ;; External label markers come in two parts:
+      ;; An entry type descriptor, and a gc offset.
+      (cond ((eq? state 'EXTERNAL-LABEL-OFFSET)
 	     (receiver *current-offset
-		       inst
-		       (disassembler/next-state inst state)))))))
+		       (make-dc 'W *ir)
+		       'INSTRUCTION))
+	    ((external-label-marker? symbol-table offset state)
+	     (receiver *current-offset
+		       (make-dc 'W *ir)
+		       'EXTERNAL-LABEL-OFFSET))
+	    (else
+	     (let ((instruction
+		    (((vector-ref opcode-dispatch (extract *ir 12 16))))))
+	       (if *valid?
+		   (receiver *current-offset
+			     instruction
+			     (disassembler/next-state instruction state))
+		   (let ((inst (make-dc 'W *ir)))
+		     (receiver start-offset
+			       inst
+			       (disassembler/next-state inst state))))))))))
 
 (define (disassembler/initial-state)
   'INSTRUCTION-NEXT)
 
 (define (disassembler/next-state instruction state)
+  state					; ignored
   (if (and disassembler/compiled-code-heuristics?
 	   (or (memq (car instruction) '(BRA JMP RTS))
 	       (and (eq? (car instruction) 'JSR)
@@ -139,6 +144,7 @@ MIT in each case. |#
   (let ((word (bit-string-allocate size-in-bits)))
     (with-interrupt-mask interrupt-mask-none
       (lambda (old)
+	old				; ignored
 	(read-bits! (if *block
 			(+ (primitive-datum *block) offset)
 			offset)
@@ -154,6 +160,8 @@ MIT in each case. |#
 (define interpreter-register?)
 (let ()
 
+#|
+
 (define (register-maker assignments)
   (lambda (mode register)
     (list mode
@@ -161,6 +169,7 @@ MIT in each case. |#
 	      (cdr (assq register assignments))
 	      register))))
 
+|#
 (set! make-data-register
   (lambda (mode register)
     (list mode
@@ -211,9 +220,11 @@ MIT in each case. |#
   (lambda (effective-address)
     (case (car effective-address)
       ((@AO)
-       (and (= (cadr effective-address) interpreter-register-pointer)
-	    (intepreter-register interpreter-register-pointer
-				 (caddr effective-address))))
+       (and (or (eq? (cadr effective-address) 'REGS-POINTER)
+		(and (number? (cadr effective-address))
+		     (= (cadr effective-address)
+			interpreter-register-pointer)))	    (interpreter-register interpreter-register-pointer
+				  (caddr effective-address))))
       ((REGISTER TEMPORARY ENTRY) effective-address)
       (else false))))
 
