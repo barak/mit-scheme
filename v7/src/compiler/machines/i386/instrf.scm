@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instrf.scm,v 1.1 1992/02/09 00:25:51 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instrf.scm,v 1.2 1992/02/09 15:01:39 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -240,8 +240,8 @@ MIT in each case. |#
 
 (define-trivial-instruction FNOP    #xd9 #xd0)
 (define-trivial-instruction FPATAN  #xd9 #xf3)
-(define-trivial-instruction FPREM   #xd9 #xf8)
-(define-trivial-instruction FPREM1  #xd9 #xf5)
+(define-trivial-instruction FPREM   #xd9 #xf8) ; truncating remainder
+(define-trivial-instruction FPREM1  #xd9 #xf5) ; IEEE remainder
 (define-trivial-instruction FPTAN   #xd9 #xf2)
 (define-trivial-instruction FRNDINT #xd9 #xfc)
 (define-trivial-instruction FSCALE  #xd9 #xfd)
