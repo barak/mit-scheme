@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.4 1993/10/26 17:23:08 gjr Exp $
+$Id: liarc.h,v 1.5 1993/10/27 00:57:26 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -58,8 +58,6 @@ MIT in each case. */
 
 /* #define USE_GLOBAL_VARIABLES */
 #define USE_SHORTCKT_JUMP
-
-typedef unsigned long ulong;
 
 extern PTR dstack_position;
 extern SCHEME_OBJECT * Free;
