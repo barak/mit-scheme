@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.1 1995/01/10 20:53:08 adams Exp $
+$Id: rulrew.scm,v 1.2 1995/01/11 20:53:51 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -377,3 +377,15 @@ MIT in each case. |#
 	  (rtl:register? sub)))))
 
 
+;; New rules added for Scheme 8.0
+
+(define-rule add-pre-cse-rewriting-rule!
+  (COERCE-VALUE-CLASS (? frob) (? class))
+  class					; ignored
+  (error "Unknown expression for " frob)
+  frob)
+
+(define-rule add-pre-cse-rewriting-rule!
+  (COERCE-VALUE-CLASS (REGISTER (? frob register-known-expression)) (? class))
+  class					; ignored
+  frob)
