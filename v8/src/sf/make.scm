@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/make.scm,v 3.5 1987/05/04 23:52:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/make.scm,v 3.6 1987/05/08 02:48:24 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -40,77 +40,64 @@ MIT in each case. |#
 (define sf)
 (define sf/set-file-syntax-table!)
 (define sf/add-file-declarations!)
-(load "$zcomp/base/load" system-global-environment)
 
-(load-system system-global-environment
-	     'PACKAGE/SCODE-OPTIMIZER
-	     '(SYSTEM-GLOBAL-ENVIRONMENT)
-	     '(
-	       (PACKAGE/SCODE-OPTIMIZER
-		"mvalue"		;Multiple Value Support
-		"eqsets"		;Set Data Abstraction
+(define package/scode-optimizer
+  (make-environment
+    (define package/top-level	(make-environment))
+    (define package/transform	(make-environment))
+    (define package/integrate	(make-environment))
+    (define package/cgen	(make-environment))
+    (define package/expansion	(make-environment))
+    (define package/declarations (make-environment))
+    (define package/copy	(make-environment))
+    (define package/free	(make-environment))
+    (define package/safe?	(make-environment))
+    (define package/change-type	(make-environment))))
 
-		"object"		;Data Structures
-		"emodel"		;Environment Model
-		"gconst"		;Global Primitives List
-		"usicon"		;Usual Integrations: Constants
-		"tables"		;Table Abstractions
-		"packag"		;Global packaging
-		)
-
-	       (PACKAGE/TOP-LEVEL
-		"toplev"		;Top Level
-		)
-
-	       (PACKAGE/TRANSFORM
-		"xform"			;SCode -> Internal
-		)
-
-	       (PACKAGE/INTEGRATE
-		"subst"			;Beta Substitution Optimizer
-		)
-
-	       (PACKAGE/CGEN
-		"cgen"			;Internal -> SCode
-		)
-
-	       (PACKAGE/EXPANSION
-		"usiexp"		;Usual Integrations: Expanders
-		)
-
-	       (PACKAGE/DECLARATIONS
-		"pardec"		;Declaration Parser
-		)
-
-	       (PACKAGE/COPY
-		"copy"			;Copy Expressions
-		)
-
-	       (PACKAGE/FREE
-		"free"			;Free Variable Analysis
-		)
-
-	       (PACKAGE/SAFE?
-		"safep"			;Safety Analysis
-		)
-
-	       (PACKAGE/CHANGE-TYPE
-		"chtype"		;Type interning
-		)
-
-	       ))
-
 (in-package package/scode-optimizer
-  (define integrations
-    "$zcomp/source/object")
 
   (define scode-optimizer/system
     (make-environment
       (define :name "SF")
       (define :version 3)
-      (define :modification 5)))
+      (define :modification 6)
+      (define :files)
 
-  (add-system! scode-optimizer/system)
+      (define :files-lists
+	(list
+	 (cons package/scode-optimizer
+	       '("mvalue.bin"		;Multiple Value Support
+		 "eqsets.bin"		;Set Data Abstraction
+		 "object.bin"		;Data Structures
+		 "emodel.bin"		;Environment Model
+		 "gconst.bin"		;Global Primitives List
+		 "usicon.bin"		;Usual Integrations: Constants
+		 "tables.bin"		;Table Abstractions
+		 "packag.bin"		;Global packaging
+		 ))
+	 (cons package/top-level
+	       '("toplev.bin"))		;Top Level
+	 (cons package/transform
+	       '("xform.bin"))		;SCode -> Internal
+	 (cons package/integrate
+	       '("subst.bin"))		;Beta Substitution Optimizer
+	 (cons package/cgen
+	       '("cgen.bin"))		;Internal -> SCode
+	 (cons package/expansion
+	       '("usiexp.bin"))		;Usual Integrations: Expanders
+	 (cons package/declarations
+	       '("pardec.bin"))		;Declaration Parser
+	 (cons package/copy
+	       '("copy.bin"))		;Copy Expressions
+	 (cons package/free
+	       '("free.bin"))		;Free Variable Analysis
+	 (cons package/safe?
+	       '("safep.bin"))		;Safety Analysis
+	 (cons package/change-type
+	       '("chtype.bin"))		;Type interning
+	 ))))
+
+  (load-system! scode-optimizer/system true)
 
   (scode-optimizer/initialize!))
 
