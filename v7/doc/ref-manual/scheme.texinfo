@@ -12204,13 +12204,6 @@ must be a string that is a font name known to the X server.  This
 operation does not affect text drawn prior to its invocation.
 @end defop
 
-@defop {operation+} x-graphics-device font-structure font-name
-Returns a Scheme equivalent of the X font structure for the font named
-@var{font-name}.  If the string @var{Font-name} does not name a font
-known to the X server, or names a 16-bit font, the function returns
-false.
-@end defop
-
 @defop {operation+} x-graphics-device set-mouse-shape shape-number
 Changes the shape of the mouse cursor.  @var{Shape-number} is an exact
 non-negative integer that is used as an index into the mouse-shape font;
@@ -12259,6 +12252,52 @@ driver.  Note that the default distribution of Scheme for HP computers
 does not include support for Starbase --- you must rebuild the microcode
 to get this support.
 @end defop
+
+@defop {operation+} x-graphics-device source-x-left source-y-top width height destination-x-left destination-y-top
+This operation copies the contents of the rectangle specified by
+@var{source-x-left}, @var{source-y-top}, @var{width}, and @{height} to
+the rectangle of the same dimensions at @var{destination-x-left} and
+@var{destination-y-top}.
+@end defop
+
+@defop {operation+} x-graphics-device font-structure font-name
+Returns a Scheme equivalent of the X font structure for the font named
+@var{font-name}.  If the string @var{Font-name} does not name a font
+known to the X server, or names a 16-bit font, @code{#f} is returned.
+The following procedures extract the components of the returned structure:
+@end defop
+
+@deffn {procedure+} x-font-structure/name
+@deffnx {procedure+} x-font-structure/direction
+@deffnx {procedure+} x-font-structure/all-chars-exist
+@deffnx {procedure+} x-font-structure/default-char
+@deffnx {procedure+} x-font-structure/min-bounds
+@deffnx {procedure+} x-font-structure/max-bounds
+@deffnx {procedure+} x-font-structure/start-index
+@deffnx {procedure+} x-font-structure/character-bounds
+@deffnx {procedure+} x-font-structure/max-ascent
+@deffnx {procedure+} x-font-structure/max-descent
+These procedures extract the components of the font description
+structure returned by the X graphics operation @code{font-structure}.
+A more complete description of these components appears in
+documentation of the @code{XLoadQueryFont} Xlib call.
+@code{Start-index} is the index of the first character available in the
+font.  The @code{min-bounds} and @code{max-bounds} components are
+structures of type @code{x-character-bounds}, and the
+@code{character-bounds} component is a vector of the same type.  The
+following procedures extract components of objects of type
+@code{x-character-bounds}:
+@end deffn
+
+@deffn {procedure+} x-character-bounds/lbearing
+@deffnx {procedure+} x-character-bounds/rbearing
+@deffnx {procedure+} x-character-bounds/width
+@deffnx {procedure+} x-character-bounds/ascent
+@deffnx {procedure+} x-character-bounds/descent
+These procedures extract components of objects of type
+@code{x-character-bounds}.  A more complete description of them appears
+in documentation of the @code{XLoadQueryFont} Xlib call.
+@end deffn
 
 @node Starbase Graphics,  , X Graphics, Graphics
 @section Starbase Graphics
