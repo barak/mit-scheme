@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sercom.scm,v 1.60 1991/08/06 15:39:42 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sercom.scm,v 1.61 1993/02/19 22:42:44 jawilson Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -43,6 +43,7 @@
 ;;;
 
 ;;;; Search Commands
+;;; package: (edwin)
 
 (declare (usual-integrations))
 
@@ -50,7 +51,9 @@
 
 (define-variable-per-buffer case-fold-search
   "True if searches should ignore case.
-Automatically becomes local when set in any fashion."
+Automatically becomes local when set in any fashion.
+If given a numeric arguemnt, most of the search commands will toggle
+this variable temporarily."
   true
   boolean?)
 
@@ -125,52 +128,74 @@ and the value is minus the number of lines."
 
 ;;;; String Search
 
+;;; these should print the numeric-argument when there is one
 (define (search-prompt prompt)
   (lambda ()
     (let ((string
 	   (prompt-for-string prompt (ref-variable search-last-string))))
       (set-variable! search-last-string string)
-      (list string))))
+      (list (command-argument) string))))
 
 (define (re-search-prompt prompt)
   (lambda ()
     (let ((regexp
 	   (prompt-for-string prompt (ref-variable search-last-regexp))))
       (set-variable! search-last-regexp regexp)
-      (list regexp))))
+      (list (command-argument) regexp))))
 
 (define (search-failure string)
   (editor-error "Search failed: " (write-to-string string)))
+
+(define (opposite-case-fold toggle-case-fold? thunk)
+  (if toggle-case-fold?
+      (let ((old))
+	(dynamic-wind
+	 (lambda ()
+	   (set! old (ref-variable case-fold-search))
+	   (set-variable! case-fold-search (not old)))
+	 thunk
+	 (lambda ()
+	   (set-variable! case-fold-search old))))
+      (thunk)))
 
 (define-command search-forward
   "Search forward from point for STRING.
 Set point to the end of the occurrence found."
   (search-prompt "Search")
-  (lambda (string)
-    (let ((point (current-point)))
-      (let ((mark (search-forward string point (group-end point))))
-	(if (not mark) (search-failure string))
-	(set-current-point! mark)))))
+  (lambda (toggle-case-fold? string)
+    (opposite-case-fold
+     toggle-case-fold?
+     (lambda ()
+       (let ((point (current-point)))
+	 (let ((mark (search-forward string point (group-end point))))
+	   (if (not mark) (search-failure string))
+	   (set-current-point! mark)))))))
 
 (define-command search-backward
   "Search backward from point for STRING.
 Set point to the beginning of the occurrence found."
   (search-prompt "Search backward")
-  (lambda (string)
-    (let ((point (current-point)))
-      (let ((mark (search-backward string point (group-start point))))
-	(if (not mark) (search-failure string))
-	(set-current-point! mark)))))
+  (lambda (toggle-case-fold? string)
+    (opposite-case-fold
+     toggle-case-fold?
+     (lambda ()
+       (let ((point (current-point)))
+	 (let ((mark (search-backward string point (group-start point))))
+	   (if (not mark) (search-failure string))
+	   (set-current-point! mark)))))))
 
 (define-command re-search-forward
   "Search forward from point for regular expression REGEXP.
 Set point to the end of the occurrence found."
   (re-search-prompt "RE search")
-  (lambda (regexp)
-    (let ((point (current-point)))
-      (let ((mark (re-search-forward regexp point (group-end point))))
-	(if (not mark) (search-failure regexp))
-	(set-current-point! mark)))))
+  (lambda (toggle-case-fold? regexp)
+    (opposite-case-fold
+     toggle-case-fold?
+     (lambda()
+       (let ((point (current-point)))
+	 (let ((mark (re-search-forward regexp point (group-end point))))
+	   (if (not mark) (search-failure regexp))
+	   (set-current-point! mark)))))))
 
 (define-command re-search-backward
   "Search backward from point for regular expression REGEXP.
@@ -178,11 +203,14 @@ Set point to the beginning of the occurrence found.
 The match found is the one starting last in the buffer
 and yet ending before the place of the origin of the search."
   (re-search-prompt "RE search backward")
-  (lambda (regexp)
-    (let ((point (current-point)))
-      (let ((mark (re-search-backward regexp point (group-start point))))
-	(if (not mark) (search-failure regexp))
-	(set-current-point! mark)))))
+  (lambda (toggle-case-fold? regexp)
+    (opposite-case-fold
+     toggle-case-fold?
+     (lambda ()
+       (let ((point (current-point)))
+	 (let ((mark (re-search-backward regexp point (group-start point))))
+	   (if (not mark) (search-failure regexp))
+	   (set-current-point! mark)))))))
 
 ;;;; Word Search
 
@@ -190,17 +218,19 @@ and yet ending before the place of the origin of the search."
   "Search forward from point for STRING, ignoring differences in punctuation.
 Set point to the end of the occurrence found."
   (search-prompt "Word search")
-  (lambda (string)
+  (lambda (toggle-case-fold? string)
     ((ref-command re-search-forward)
+     toggle-case-fold?
      (string->wordified-regexp string (ref-variable syntax-table)))))
-
+  
 (define-command word-search-backward
   "Search backward from point for STRING, ignoring differences in punctuation.
 Set point to the beginning of the occurrence found."
   (search-prompt "Word search backward")
-  (lambda (string)
-    ((ref-command re-search-backward)
-     (string->wordified-regexp string (ref-variable syntax-table)))))
+  (lambda (toggle-case-fold? string)
+     ((ref-command re-search-backward)
+      toggle-case-fold?
+      (string->wordified-regexp string (ref-variable syntax-table)))))
 
 (define (string->wordified-regexp string syntax-table)
   (apply
@@ -233,6 +263,8 @@ Set point to the beginning of the occurrence found."
 (define-command isearch-forward
   "Do incremental search forward.
 As you type characters, they add to the search string and are found.
+A numeric argument allows you to toggle case-fold-search but this
+ information is lost whenever you exit search, even if you do a C-s C-s.
 Type Delete to cancel characters from end of search string.
 Type ESC to exit, leaving point at location found.
 Type C-s to search again forward, C-r to search again backward.
@@ -246,32 +278,32 @@ The above special characters are mostly controlled by parameters;
 C-g while searching or when search has failed
  cancels input back to what has been found successfully.
 C-g when search is successful aborts and moves point to starting point."
-  ()
-  (lambda ()
-    (isearch true false)))
+  "P"
+  (lambda (toggle-case-fold?)
+    (opposite-case-fold toggle-case-fold? (lambda () (isearch true false)))))
 
 (define-command isearch-forward-regexp
   "Do incremental search forward for regular expression.
 Like ordinary incremental search except that your input
 is treated as a regexp.  See \\[isearch-forward] for more info."
-  ()
-  (lambda ()
-    (isearch true true)))
+  "P"
+  (lambda (toggle-case-fold?)
+    (opposite-case-fold toggle-case-fold? (lambda () (isearch true true)))))
 
 (define-command isearch-backward
   "Do incremental search backward.
 See \\[isearch-forward] for more information."
-  ()
-  (lambda ()
-    (isearch false false)))
+  "P"
+  (lambda (toggle-case-fold?)
+    (opposite-case-fold toggle-case-fold? (lambda () (isearch false false)))))
 
 (define-command isearch-backward-regexp
   "Do incremental search backward for regular expression.
 Like ordinary incremental search except that your input
 is treated as a regexp.  See \\[isearch-forward] for more info."
-  ()
-  (lambda ()
-    (isearch false true)))
+  "P"
+  (lambda (toggle-case-fold?)
+    (opposite-case-fold toggle-case-fold? (lambda () (isearch false true)))))
 
 ;;;; Character Search
 ;;;  (Courtesy of Jonathan Rees)
@@ -284,15 +316,15 @@ Special characters:
   C-s  searches forward for the current default.
   C-q  quotes the character to be searched for;
        this allows search for special characters."
-  ()
-  (lambda ()
-    (character-search true)))
+  "P"
+  (lambda (toggle-case-fold?)
+    (opposite-case-fold toggle-case-fold? (lambda () (character-search true)))))
 
 (define-command char-search-backward
   "Like \\[char-search-forward], but searches backwards."
-  ()
-  (lambda ()
-    (character-search false)))
+  "P"
+  (lambda (toggle-case-fold?)
+    (opposite-case-fold toggle-case-fold? (lambda () (character-search false)))))
 
 (define (character-search forward?)
   (let ((char (prompt-for-char "Character search")))
@@ -326,3 +358,8 @@ Special characters:
 	    (if mark
 		(set-current-point! mark)
 		(editor-failure)))))))
+
+;; Edwin Variables:
+;; scheme-environment: '(edwin)
+;; scheme-syntax-table: (access edwin-syntax-table (->environment '(edwin)))
+;; End:
