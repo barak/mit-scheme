@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: buffer.scm,v 1.159 1992/11/17 05:48:02 cph Exp $
+;;;	$Id: buffer.scm,v 1.160 1992/11/17 21:31:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -85,30 +85,37 @@ The buffer is guaranteed to be deselected at that time."
       (vector-set! buffer buffer-index:name name)
       (vector-set! buffer buffer-index:group group)
       (add-group-clip-daemon! group (buffer-clip-daemon buffer))
-      (if (not (minibuffer? buffer))
-	  (enable-group-undo! group))
-      (vector-set! buffer
-		   buffer-index:mark-ring
-		   (make-ring (ref-variable mark-ring-maximum)))
-      (ring-push! (buffer-mark-ring buffer) (group-start-mark group))
-      (vector-set! buffer buffer-index:modes (list mode))
-      (vector-set! buffer buffer-index:comtabs (mode-comtabs mode))
+      (%buffer-reset! buffer)
       (vector-set! buffer buffer-index:windows '())
       (vector-set! buffer buffer-index:display-start false)
       (vector-set! buffer buffer-index:default-directory directory)
-      (vector-set! buffer buffer-index:pathname false)
-      (vector-set! buffer buffer-index:truename false)
-      (vector-set! buffer buffer-index:alist '())
       (vector-set! buffer buffer-index:local-bindings '())
       (vector-set! buffer buffer-index:local-bindings-installed? false)
-      (vector-set! buffer buffer-index:auto-save-pathname false)
-      (vector-set! buffer buffer-index:auto-saved? false)
-      (vector-set! buffer buffer-index:save-length 0)
-      (vector-set! buffer buffer-index:backed-up? false)
-      (vector-set! buffer buffer-index:modification-time false)
-      (set-buffer-major-mode! buffer mode)
-      (event-distributor/invoke! (ref-variable buffer-creation-hook) buffer)
+      (%set-buffer-major-mode! buffer mode)
+      (event-distributor/invoke!
+       (variable-default-value (ref-variable-object buffer-creation-hook))
+       buffer)
       buffer)))
+
+(define (%buffer-reset! buffer)
+  (let ((group (buffer-group buffer)))
+    (disable-group-undo! group)
+    (if (not (minibuffer? buffer))
+	(enable-group-undo! group)))
+  (vector-set!
+   buffer
+   buffer-index:mark-ring
+   (make-ring
+    (variable-default-value (ref-variable-object mark-ring-maximum))))
+  (ring-push! (buffer-mark-ring buffer) (buffer-start buffer))
+  (vector-set! buffer buffer-index:pathname false)
+  (vector-set! buffer buffer-index:truename false)
+  (vector-set! buffer buffer-index:auto-save-pathname false)
+  (vector-set! buffer buffer-index:auto-saved? false)
+  (vector-set! buffer buffer-index:save-length 0)
+  (vector-set! buffer buffer-index:backed-up? false)
+  (vector-set! buffer buffer-index:modification-time false)
+  (vector-set! buffer buffer-index:alist '()))
 
 (define (buffer-modeline-event! buffer type)
   (let loop ((windows (buffer-windows buffer)))
@@ -119,21 +126,17 @@ The buffer is guaranteed to be deselected at that time."
 
 (define (buffer-reset! buffer)
   (set-buffer-writable! buffer)
+  (buffer-widen! buffer)
   (region-delete! (buffer-region buffer))
   (buffer-not-modified! buffer)
-  (let ((group (buffer-group buffer)))
-    (if (group-undo-data group)
-	(undo-done! (group-point group))))
-  (buffer-widen! buffer)
-  (set-buffer-major-mode! buffer (buffer-major-mode buffer))
   (without-interrupts
    (lambda ()
-     (vector-set! buffer buffer-index:pathname false)
-     (vector-set! buffer buffer-index:truename false)
-     (buffer-modeline-event! buffer 'BUFFER-PATHNAME)
-     (vector-set! buffer buffer-index:auto-save-pathname false)
-     (vector-set! buffer buffer-index:auto-saved? false)
-     (vector-set! buffer buffer-index:save-length 0))))
+     (undo-local-bindings! buffer)
+     (%buffer-reset! buffer)
+     (%set-buffer-major-mode!
+      buffer
+      (variable-default-value (ref-variable-object editor-default-mode)))
+     (buffer-modeline-event! buffer 'BUFFER-RESET))))
 
 (define (set-buffer-name! buffer name)
   (vector-set! buffer buffer-index:name name)
@@ -240,9 +243,6 @@ The buffer is guaranteed to be deselected at that time."
   (vector-set! buffer
 	       buffer-index:alist
 	       (del-assq! key (vector-ref buffer buffer-index:alist))))
-
-(define-integrable (reset-buffer-alist! buffer)
-  (vector-set! buffer buffer-index:alist '()))
 
 (define (->buffer object)
   (cond ((buffer? object) object)
@@ -464,22 +464,22 @@ The buffer is guaranteed to be deselected at that time."
       (editor-error "The major mode of this buffer is locked: " buffer))
   (without-interrupts
    (lambda ()
-     (let ((modes (buffer-modes buffer)))
-       (set-car! modes mode)
-       (set-cdr! modes '()))
-     (set-buffer-comtabs! buffer (mode-comtabs mode))
-     (vector-set! buffer buffer-index:alist '())
      (undo-local-bindings! buffer)
-     ((mode-initialization mode) buffer)
+     (%set-buffer-major-mode! buffer mode)
      (buffer-modeline-event! buffer 'BUFFER-MODES))))
 
-(define-integrable (buffer-minor-modes buffer)
-  (cdr (buffer-modes buffer)))
+(define (%set-buffer-major-mode! buffer mode)
+  (vector-set! buffer buffer-index:modes (list mode))
+  (vector-set! buffer buffer-index:comtabs (mode-comtabs mode))
+  ((mode-initialization mode) buffer))
+
+(define (buffer-minor-modes buffer)
+  (list-copy (cdr (buffer-modes buffer))))
 
 (define (buffer-minor-mode? buffer mode)
   (if (not (and (mode? mode) (not (mode-major? mode))))
       (error:wrong-type-argument mode "minor mode" 'BUFFER-MINOR-MODE?))
-  (memq mode (buffer-minor-modes buffer)))
+  (memq mode (cdr (buffer-modes buffer))))
 
 (define (enable-buffer-minor-mode! buffer mode)
   (if (not (minor-mode? mode))
