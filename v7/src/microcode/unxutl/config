@@ -1,6 +1,6 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Id: config,v 1.28 1993/11/09 16:11:39 gjr Exp $
+# $Id: config,v 1.29 1995/06/29 23:19:49 cph Exp $
 # Modelled on the configuration script for GNU CC
 # The section between lines is the copyright prefix from the GNU CC config.
 #----------------------------------------------------------------------
@@ -40,10 +40,10 @@ usage()
 	echo "Usage: $progname [-C-back-end | -native-back-end | -no-back-end] machine"
 	echo "Where \`machine' is one of:"
 	echo "alpha-osf alpha"
-	echo "mips-ultrix nws3250 sgi4d"
+	echo "mips-ultrix dec-3100 dec-5100 pmax nws3250 sgi4d"
 	echo "hp9k300 hp9k400 hp9k700 hp9k800 next"
 	echo "sun3 sun3-os3 sun3-nfp sun3-os3-nfp sun4 sparc"
-	echo "i386-sysv 386bsd umax"
+	echo "i386-sysv 386bsd umax i386-linux"
 	echo "vax-bsd42 vax-bsd43 vax-ultrix"
 	echo "rs6000"
 	if [ -r config.out ]
@@ -83,8 +83,14 @@ discriminate()
 		cmpint_file=mips.h
 		cmpaux_file=mips.m4
 		;;
- 	linux | 386bsd)
+ 	386bsd)
  		system_file=386bsd
+ 		machine_file=i386
+ 		cmpint_file=i386.h
+		cmpaux_file=i386.m4
+ 		;;
+ 	i386-linux)
+ 		system_file=linux
  		machine_file=i386
  		cmpint_file=i386.h
 		cmpaux_file=i386.m4
