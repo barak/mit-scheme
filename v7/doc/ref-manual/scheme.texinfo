@@ -12476,10 +12476,10 @@ result of applying @var{f} to the element's coordinates.
 @end deffn
 
 @deffn {procedure+} picture-map f picture @dots{}
-@var{F} must be a procedure, and each @var{picture} argument must have
-the same dimensions.  Returns a newly allocated picture, each element of
-which is obtained by calling @var{f}, passing it as arguments the
-corresponding element of each @var{picture} argument.  (Thus @var{f}
+@var{F} must be a procedure, and all of the @var{picture} arguments must
+have the same dimensions.  Returns a newly allocated picture, each
+element of which is obtained by calling @var{f}, passing it as arguments
+the corresponding element of each @var{picture} argument.  (Thus @var{f}
 must accept the same number of arguments as there are @var{picture}
 arguments to @code{picture-map}.)
 
@@ -12528,14 +12528,14 @@ an unspecified value.  @var{K} must be a real number and @var{I} and
 @node Displaying Pictures, Saving and Restoring Pictures, Manipulating Pictures, Pictures
 @subsection Displaying Pictures
 
-To display pictures, a scheme graphics window must first be created.
-Although, any scheme window may be used, the colormap will not be
-guaranteed to be correct for grey-scale pictures, therefore the
-recommended way of creating windows for displaying pictures is to use
-the @code{make-window} procedure.
+To display pictures, an X graphics window must first be created.
+Although any window may be used, the colormap will not be guaranteed to
+be correct for grey-scale pictures, therefore the recommended way of
+creating windows for displaying pictures is to use the
+@code{make-window} procedure.
 
 @deffn {procedure+} picture-display w picture [min [max]]
-Displays, in the window @var{w}, the largest integer scaling of
+Displays, in the graphics device @var{w}, the largest integer scaling of
 @var{picture} that can be contained in @var{w}.  If @var{min} and
 @var{max} are specified then the grey levels will be computed using
 these values as @var{picture}'s minimum and maximum values, otherwise
@@ -12544,9 +12544,9 @@ value returned by this procedure is unspecified.
 @end deffn
 
 @deffn {procedure+} make-window w h x y
-Returns a scheme graphics device of width @var{w}, height @var{h} and
-screen position @var{x},@var{y} (as would be given in an X geometry
-string) with a grey-scale colormap attached.
+Returns a graphics device of width @var{w}, height @var{h} and screen
+position @var{x},@var{y} (as would be given in an X geometry string)
+with a grey-scale colormap attached.
 @end deffn
 
 @node Saving and Restoring Pictures,  , Displaying Pictures, Pictures
