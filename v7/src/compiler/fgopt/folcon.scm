@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/folcon.scm,v 4.2 1987/12/30 06:44:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/folcon.scm,v 4.3 1988/11/06 13:55:39 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -75,7 +75,11 @@ MIT in each case. |#
 
 (define (delete-if-known! lvalue)
   (if (and (not (lvalue-known-value lvalue))
-	   (for-all? (lvalue-backward-links lvalue) lvalue-known-value))
+	   (for-all? (lvalue-backward-links lvalue)
+	     (lambda (lvalue*)
+	       (if (eq? lvalue lvalue*)
+		   true
+		   (lvalue-known-value lvalue*)))))
       (let ((value (car (lvalue-values lvalue))))
 	(for-each (lambda (lvalue*)
 		    (if (lvalue-mark-set? lvalue* 'KNOWABLE)
