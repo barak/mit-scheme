@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.26 2000/05/10 17:05:24 cph Exp $
+;;; $Id: imail-imap.scm,v 1.27 2000/05/10 17:23:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -593,7 +593,7 @@
       '()))
 
 (define (imap:command:store-flags connection index flags)
-  (imap:command:no-response connection 'STORE index 'FLAGS flags))
+  (imap:command:no-response connection 'STORE (+ index 1) 'FLAGS flags))
 
 (define (imap:command:expunge connection)
   ((imail-message-wrapper "Expunging messages")
