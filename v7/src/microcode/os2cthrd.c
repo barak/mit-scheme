@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2cthrd.c,v 1.8 1996/05/09 20:21:20 cph Exp $
+$Id: os2cthrd.c,v 1.9 1997/05/11 06:35:29 cph Exp $
 
-Copyright (c) 1994-96 Massachusetts Institute of Technology
+Copyright (c) 1994-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,7 +39,6 @@ MIT in each case. */
 static void run_channel_thread (void *);
 static void start_readahead_thread (channel_context_t *);
 static void send_readahead_ack (qid_t, enum readahead_ack_action);
-static msg_list_t * new_list (void);
 static msg_t * new_message (void);
 
 typedef struct
@@ -240,50 +239,18 @@ OS2_wait_for_readahead_ack (qid_t qid)
   return (action);
 }
 
-readahead_buffer_t *
-OS2_make_readahead_buffer (void)
-{
-  readahead_buffer_t * buffer = (OS_malloc (sizeof (readahead_buffer_t)));
-  (buffer -> head) = 0;
-  (buffer -> tail) = 0;
-  return (buffer);
-}
-
-int
-OS2_readahead_buffer_emptyp (readahead_buffer_t * buffer)
-{
-  return ((buffer -> head) == 0);
-}
-
 void
-OS2_readahead_buffer_insert (readahead_buffer_t * buffer, char c)
+OS2_readahead_buffer_insert (void * buffer, char c)
 {
-  if ((buffer -> head) == 0)
+  msg_t * last = (OS2_msg_fifo_last (buffer));
+  if ((last != 0) && ((SM_READAHEAD_SIZE (last)) < SM_READAHEAD_MAX))
+    ((SM_READAHEAD_DATA (last)) [(SM_READAHEAD_SIZE (last))++]) = c;
+  else
     {
-      msg_list_t * tail = (new_list ());
-      (buffer -> head) = tail;
-      (buffer -> tail) = tail;
+      msg_t * message = (new_message ());
+      ((SM_READAHEAD_DATA (message)) [(SM_READAHEAD_SIZE (message))++]) = c;
+      OS2_msg_fifo_insert (buffer, message);
     }
-  else if ((SM_READAHEAD_SIZE ((buffer -> tail) -> message))
-	   == SM_READAHEAD_MAX)
-    {
-      msg_list_t * tail = (new_list ());
-      ((buffer -> tail) -> next) = tail;
-      (buffer -> tail) = tail;
-    }
-  {
-    msg_t * message = ((buffer -> tail) -> message);
-    ((SM_READAHEAD_DATA (message)) [(SM_READAHEAD_SIZE (message))++]) = c;
-  }
-}
-
-static msg_list_t *
-new_list (void)
-{
-  msg_list_t * cell = (OS_malloc (sizeof (msg_list_t)));
-  (cell -> message) = (new_message ());
-  (cell -> next) = 0;
-  return (cell);
 }
 
 static msg_t *
@@ -293,29 +260,18 @@ new_message (void)
   (SM_READAHEAD_SIZE (message)) = 0;
   return (message);
 }
-
+
 char
-OS2_readahead_buffer_rubout (readahead_buffer_t * buffer)
+OS2_readahead_buffer_rubout (void * buffer)
 {
-  if ((buffer -> head) == 0)
+  msg_t * message = (OS2_msg_fifo_last (buffer));
+  if (message == 0)
     OS2_logic_error ("Rubout from empty readahead buffer.");
   {
-    msg_t * message = ((buffer -> tail) -> message);
     char c = ((SM_READAHEAD_DATA (message)) [--(SM_READAHEAD_SIZE (message))]);
     if ((SM_READAHEAD_SIZE (message)) == 0)
       {
-	msg_list_t * tail = (buffer -> tail);
-	msg_list_t * prev = (buffer -> head);
-	if (prev == tail)
-	  (buffer -> head) = 0;
-	else
-	  {
-	    while ((prev -> next) != tail)
-	      prev = (prev -> next);
-	    (prev -> next) = 0;
-	    (buffer -> tail) = prev;
-	  }
-	OS_free (tail);
+	OS2_msg_fifo_remove_last (buffer);
 	OS2_destroy_message (message);
       }
     return (c);
@@ -323,24 +279,8 @@ OS2_readahead_buffer_rubout (readahead_buffer_t * buffer)
 }
 
 msg_t *
-OS2_readahead_buffer_read (readahead_buffer_t * buffer)
+OS2_readahead_buffer_read (void * buffer)
 {
-  msg_list_t * head = (buffer -> head);
-  if (head == 0)
-    return (new_message ());
-  else
-    {
-      msg_t * message = (head -> message);
-      (buffer -> head) = (head -> next);
-      OS_free (head);
-      return (message);
-    }
-}
-
-msg_list_t *
-OS2_readahead_buffer_read_all (readahead_buffer_t * buffer)
-{
-  msg_list_t * head = (buffer -> head);
-  (buffer -> head) = 0;
-  return (head);
+  msg_t * message = (OS2_msg_fifo_remove (buffer));
+  return ((message == 0) ? (new_message ()) : message);
 }

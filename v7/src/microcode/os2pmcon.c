@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.22 1997/01/01 10:10:34 cph Exp $
+$Id: os2pmcon.c,v 1.23 1997/05/11 06:35:37 cph Exp $
 
 Copyright (c) 1994-97 Massachusetts Institute of Technology
 
@@ -48,7 +48,6 @@ static unsigned short cy2y (unsigned short, int);
 static unsigned short x2cx (short, int);
 static unsigned short y2cy (short, int);
 static void process_events (int);
-static void enqueue_pending_event (msg_t *);
 static void initialize_marked_region (short, short);
 static void update_marked_region (short, short);
 static void unmark_marked_region (void);
@@ -98,8 +97,7 @@ static unsigned short readahead_repeat;
 static char readahead_char;
 static const char * readahead_insert;
 static const char * readahead_insert_scan;
-static msg_list_t * pending_events_head;
-static msg_list_t * pending_events_tail;
+static void * pending_events;
 static tqueue_t * console_tqueue;
 static qid_t console_event_qid;
 static qid_t console_pm_qid;
@@ -153,7 +151,7 @@ OS2_initialize_pm_console (void)
     = (WinQuerySysPointer (HWND_DESKTOP, SPTR_TEXT, FALSE));
   readahead_repeat = 0;
   readahead_insert = 0;
-  pending_events_head = 0;
+  pending_events = (OS2_create_msg_fifo ());
   console_tqueue = (OS2_make_std_tqueue ());
   {
     qid_t remote;
@@ -336,7 +334,7 @@ process_events (int blockp)
 	      case WM_CHAR:
 	      case WM_CLOSE:
 	      postpone_event:
-		enqueue_pending_event (message);
+		OS2_msg_fifo_insert (pending_events, message);
 		message = 0;
 		if (blockp)
 		  return;
@@ -454,19 +452,6 @@ process_events (int blockp)
 	  break;
 	}
     }
-}
-
-static void
-enqueue_pending_event (msg_t * message)
-{
-  msg_list_t * element = (OS_malloc (sizeof (msg_list_t)));
-  (element -> message) = message;
-  (element -> next) = 0;
-  if (pending_events_head == 0)
-    pending_events_head = element;
-  else
-    (pending_events_tail -> next) = element;
-  pending_events_tail = element;
 }
 
 static void
@@ -909,16 +894,13 @@ OS2_pm_console_getch (void)
   if ((readahead_repeat == 0) && (readahead_insert == 0))
     while (1)
       {
-	process_events (pending_events_head == 0);
+	process_events (OS2_msg_fifo_emptyp (pending_events));
 	{
-	  msg_list_t * element = pending_events_head;
-	  msg_t * message = (element -> message);
+	  msg_t * message = (OS2_msg_fifo_remove (pending_events));
 	  ULONG msg = (SM_PM_EVENT_MSG (message));
 	  MPARAM mp1 = (SM_PM_EVENT_MP1 (message));
 	  MPARAM mp2 = (SM_PM_EVENT_MP2 (message));
-	  pending_events_head = (element -> next);
 	  OS2_destroy_message (message);
-	  OS_free (element);
 	  switch (msg)
 	    {
 	    case WM_CHAR:

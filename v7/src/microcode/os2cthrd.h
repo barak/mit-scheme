@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2cthrd.h,v 1.5 1996/05/09 20:21:30 cph Exp $
+$Id: os2cthrd.h,v 1.6 1997/05/11 06:35:23 cph Exp $
 
-Copyright (c) 1994-96 Massachusetts Institute of Technology
+Copyright (c) 1994-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -85,18 +85,15 @@ extern long OS2_channel_thread_read (Tchannel, char *, size_t);
 extern enum readahead_ack_action OS2_wait_for_readahead_ack (qid_t);
 extern void OS2_channel_thread_close (Tchannel);
 
-typedef struct
-{
-  msg_list_t * head;
-  msg_list_t * tail;
-} readahead_buffer_t;
+#define OS2_make_readahead_buffer OS2_create_msg_fifo
+#define OS2_readahead_buffer_emptyp OS2_msg_fifo_emptyp
 
-extern readahead_buffer_t * OS2_make_readahead_buffer (void);
-extern int OS2_readahead_buffer_emptyp (readahead_buffer_t *);
-extern void OS2_readahead_buffer_insert (readahead_buffer_t *, char);
-extern char OS2_readahead_buffer_rubout (readahead_buffer_t *);
+extern void OS2_readahead_buffer_insert (void *, char);
+extern char OS2_readahead_buffer_rubout (void *);
 extern msg_t * OS2_make_readahead (void);
-extern msg_t * OS2_readahead_buffer_read (readahead_buffer_t *);
-extern msg_list_t * OS2_readahead_buffer_read_all (readahead_buffer_t *);
+extern msg_t * OS2_readahead_buffer_read (void *);
+
+#define OS2_readahead_buffer_read_all(b)				\
+  ((msg_t **) (OS2_msg_fifo_remove_all (b)))
 
 #endif /* SCM_OS2CTHRD_H */

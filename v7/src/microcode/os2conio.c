@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2conio.c,v 1.8 1995/05/07 05:54:12 cph Exp $
+$Id: os2conio.c,v 1.9 1997/05/11 06:35:46 cph Exp $
 
-Copyright (c) 1994-95 Massachusetts Institute of Technology
+Copyright (c) 1994-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -91,7 +91,7 @@ static int input_buffered_p;
 static int output_cooked_p;
 static qid_t console_writer_qid;
 static channel_context_t * console_context;
-static readahead_buffer_t * line_buffer;
+static void * line_buffer;
 
 TID OS2_console_tid;
 
@@ -272,17 +272,20 @@ do_rubout (void)
 static void
 finish_line (void)
 {
-  msg_list_t * messages;
+  msg_t ** messages;
+  msg_t ** scan;
   grab_console_lock ();
   messages = (OS2_readahead_buffer_read_all (line_buffer));
   release_console_lock ();
-  while (messages != 0)
+  scan = messages;
+  while (1)
     {
-      msg_list_t * element = messages;
-      messages = (messages -> next);
-      send_readahead (element -> message);
-      OS_free (element);
+      msg_t * msg = (*scan++);
+      if (msg == 0)
+	break;
+      send_readahead (msg);
     }
+  OS_free (messages);
 }
 
 static void
@@ -345,17 +348,20 @@ console_operator (Tchannel channel, chop_t operation,
 static void
 flush_input (void)
 {
-  msg_list_t * messages;
+  msg_t ** messages;
+  msg_t ** scan;
   grab_console_lock ();
   messages = (OS2_readahead_buffer_read_all (line_buffer));
   release_console_lock ();
-  while (messages != 0)
+  scan = messages;
+  while (1)
     {
-      msg_list_t * element = messages;
-      messages = (messages -> next);
-      OS2_destroy_message (element -> message);
-      OS_free (element);
+      msg_t * msg = (*scan++);
+      if (msg == 0)
+	break;
+      OS2_destroy_message (msg);
     }
+  OS_free (messages);
 }
 
 static void

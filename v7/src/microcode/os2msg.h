@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2msg.h,v 1.13 1995/11/03 01:29:04 cph Exp $
+$Id: os2msg.h,v 1.14 1997/05/11 06:35:16 cph Exp $
 
-Copyright (c) 1994-95 Massachusetts Institute of Technology
+Copyright (c) 1994-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -175,6 +175,17 @@ extern void OS2_unread_message (qid_t, msg_t *);
 extern int OS2_tqueue_select (tqueue_t *, int);
 extern tqueue_t * OS2_make_std_tqueue (void);
 extern void OS2_close_std_tqueue (tqueue_t *);
+
+extern void * OS2_create_msg_fifo (void);
+void OS2_destroy_msg_fifo (void *);
+extern void OS2_msg_fifo_insert (void *, void *);
+extern void OS2_msg_fifo_insert_front (void *, void *);
+extern void * OS2_msg_fifo_remove (void *);
+extern void * OS2_msg_fifo_remove_last (void *);
+extern void ** OS2_msg_fifo_remove_all (void *);
+extern int OS2_msg_fifo_emptyp (void *);
+extern unsigned int OS2_msg_fifo_count (void *);
+extern void * OS2_msg_fifo_last (void *);
 
 #define MSG_LENGTH(m) (OS2_message_type_length (MSG_TYPE (m)))
 
@@ -182,12 +193,6 @@ extern void OS2_close_std_tqueue (tqueue_t *);
   OS2_set_message_type_length ((t), (sizeof (s)))
 
 #define OS2_create_message(type) OS2_create_message_1 ((type), 0)
-
-typedef struct msg_list_s
-{
-  msg_t * message;
-  struct msg_list_s * next;
-} msg_list_t;
 
 typedef struct
 {
