@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.86 2001/06/03 06:02:45 cph Exp $
+;;; $Id: imail.pkg,v 1.87 2001/06/04 17:42:49 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -361,19 +361,19 @@
   (export (edwin imail front-end)
 	  imail-browse-container)
   (export (edwin)
-	  edwin-command$imail-browser-backup-unmark
 	  edwin-command$imail-browser-do-copy
 	  edwin-command$imail-browser-do-delete
 	  edwin-command$imail-browser-do-flagged-delete
 	  edwin-command$imail-browser-do-rename
 	  edwin-command$imail-browser-flag-folder-deletion
-	  edwin-command$imail-browser-mark-folder
+	  edwin-command$imail-browser-mark
 	  edwin-command$imail-browser-mouse-toggle-container
 	  edwin-command$imail-browser-quit
 	  edwin-command$imail-browser-revert
 	  edwin-command$imail-browser-toggle-container
 	  edwin-command$imail-browser-unmark
 	  edwin-command$imail-browser-unmark-all-folders
+	  edwin-command$imail-browser-unmark-backward
 	  edwin-command$imail-browser-view-container
 	  edwin-command$imail-browser-view-selected-container
 	  edwin-command$imail-browser-view-selected-folder
