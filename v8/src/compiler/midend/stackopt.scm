@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stackopt.scm,v 1.13 1995/08/06 19:56:32 adams Exp $
+$Id: stackopt.scm,v 1.14 1996/07/30 18:23:53 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -165,9 +165,7 @@ End of Big Note A |#
 
 (define-stack-optimizer QUOTE (state object)
   state					; ignored
-  (if (eq? object %make-stack-closure)
-      (internal-error "Explicit make-stack-closure")
-      `(QUOTE ,object)))
+  `(QUOTE ,object))
 
 (define-stack-optimizer DECLARE (state #!rest anything)
   state					; ignored
@@ -219,56 +217,64 @@ End of Big Note A |#
 ;; particular frame variable.
 
 (define-stack-optimizer CALL (state rator cont #!rest rands)
-  (if (and (QUOTE/? rator)
-	   (eq? (quote/text rator) %stack-closure-ref))
-      (let ((var  (lookup/name (first rands))) ;rands = (closure offset 'name)
-	    (name (quote/text (third rands))))
-	(define (bad)
-	  (internal-error "Inconsistent %stack-closure-ref"
-			  (error-irritant/noise "\n; state: ") state
-			  (error-irritant/noise "\n; form:  ")
-			  `(CALL ,rator ,cont ,@rands)))
-	(define (good frame-vector)
-	  `(CALL ',%stack-closure-ref
-		 '#F
-		 (LOOKUP ,var)
-		 ',frame-vector
-		 ',name))
-	(cond ((and (not state) (eq? var *stackopt/lexical-stack-frame-name*))
-	       (good *stackopt/lexical-stack-frame-vector*))
-	      ((and state (eq? var (stackopt/model/name state)))
-	       (good (stackopt/model/frame state)))
-	      (else
-	       (bad))))
 
-      (with-letfied-nested-stack-closures
-       rator cont rands
-       (lambda (rator cont rands)
-	 (define (wrap lambda-special? cont*)
-	   `(CALL ,(if (and lambda-special?
-			    (LAMBDA/? rator)
-			    (null? rands)
-			    state)
-		       (fluid-let ((*stackopt/lexical-stack-frame-name*
-				    (stackopt/model/name state))
-				   (*stackopt/lexical-stack-frame-vector*
-				    (stackopt/model/frame state)))
-			 (stackopt/expr state rator))
+  (define (default)
+    (with-letfied-nested-stack-closures
+     rator cont rands
+     (lambda (rator cont rands)
+       (define (wrap lambda-special? cont*)
+	 `(CALL ,(if (and lambda-special?
+			  (LAMBDA/? rator)
+			  (null? rands)
+			  state)
+		     (fluid-let ((*stackopt/lexical-stack-frame-name*
+				  (stackopt/model/name state))
+				 (*stackopt/lexical-stack-frame-vector*
+				  (stackopt/model/frame state)))
 		       (stackopt/expr state rator))
-		  ,cont*
-		  ,@(stackopt/expr* state rands)))
-	 (cond ((form/match stackopt/cont-pattern cont)
-		=> (lambda (result)
-		     (wrap #T
-			   (stackopt/call/can-see-both-frames
-			    state
-			    (call/%make-stack-closure/lambda-expression cont)
-			    result))))
-	       ((call/%make-stack-closure? cont)
-		(wrap #T (stackopt/call/terminal state cont)))
-	       (else
-		(wrap #F (stackopt/expr state cont))))))))
+		     (stackopt/expr state rator))
+		,cont*
+		,@(stackopt/expr* state rands)))
+       (cond ((form/match stackopt/cont-pattern cont)
+	      => (lambda (result)
+		   (wrap #T
+			 (stackopt/call/can-see-both-frames
+			  state
+			  (call/%make-stack-closure/lambda-expression cont)
+			  result))))
+	     ((call/%make-stack-closure? cont)
+	      (wrap #T (stackopt/call/terminal state cont)))
+	     (else
+	      (wrap #F (stackopt/expr state cont)))))))
 
+  (define (fixup-vector)
+    (let ((var  (lookup/name (first rands))) ;rands = (closure offset 'name)
+	  (name (quote/text (third rands))))
+      (define (bad)
+	(internal-error "Inconsistent %stack-closure-ref"
+			(error-irritant/noise "\n; state: ") state
+			(error-irritant/noise "\n; form:  ")
+			`(CALL ,rator ,cont ,@rands)))
+      (define (good frame-vector)
+	`(CALL ',%stack-closure-ref
+	       '#F
+	       (LOOKUP ,var)
+	       ',frame-vector
+	       ',name))
+      (cond ((and (not state) (eq? var *stackopt/lexical-stack-frame-name*))
+	     (good *stackopt/lexical-stack-frame-vector*))
+	    ((and state (eq? var (stackopt/model/name state)))
+	     (good (stackopt/model/frame state)))
+	    (else
+	     (bad)))))
+
+  (if (QUOTE/? rator)
+      (cond ((eq? (quote/text rator) %stack-closure-ref)
+	     (fixup-vector))
+	    ((eq? (quote/text rator) %make-stack-closure)
+	     (internal-error "Explicit make-stack-closure") #F)
+	    (else (default)))
+      (default)))
 
 (define (with-letfied-nested-stack-closures rator cont rands
 					    receiver-of-rator+cont+rands)
