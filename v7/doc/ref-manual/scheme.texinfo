@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.25 1993/10/14 10:41:01 cph Exp $
+@comment $Id: scheme.texinfo,v 1.26 1993/10/16 05:31:51 jawilson Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -6684,6 +6684,15 @@ z                                       @result{}  (g h)
 These procedures return a newly allocated copy of @var{list} containing
 only the elements for which @var{predicate} is (respectively) true or
 false.  @var{Predicate} must be a procedure of one argument.
+
+@example
+@group
+
+(list-transform-positive '(1 2 3 4 5) odd?) @result{} (1 3 5)
+
+(list-transform-negative '(1 2 3 4 5) odd?) @result{} (2 4)
+@end group
+@end example
 @end deffn
 
 @deffn {procedure+} delq element list
