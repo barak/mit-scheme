@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: nt.h,v 1.5 1993/08/21 02:35:30 gjr Exp $
+$Id: nt.h,v 1.6 1997/01/01 22:57:19 cph Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -70,6 +70,7 @@ MIT in each case. */
 #include "osscheme.h"
 #include "ntsys.h"
 #include "syscall.h"
+#include "ntapi.h"
 #include <limits.h>
 #include <time.h>
 
@@ -142,88 +143,11 @@ MIT in each case. */
 extern char * EXFUN (getlogin, (void));
 #endif
 
-#define NT_abort abort
-#define NT_access access
-#define NT_alarm alarm
-#define NT_chdir chdir
-#define NT_chmod chmod
-#define NT_close close
-#define NT_ctime ctime
-#define NT_dup dup
-#define NT_free free
-#define NT_fstat fstat
-#define NT_getcwd getcwd
-#define NT_getenv getenv
-#define NT_getegid getegid
-#define NT_geteuid geteuid
-#define NT_getgrgid getgrgid
-#define NT_gethostname gethostname
-#define NT_getlogin getlogin
-#define NT_getpid getpid
-#define NT_getpwnam getpwnam
-#define NT_getpwuid getpwuid
-#define NT_ioctl ioctl
-#define NT_link link
-#define NT_localtime localtime
-#define NT_lseek lseek
-#define NT_malloc malloc
-#define NT_mkdir mkdir
-#define NT_mknod mknod
-#define NT_mktime mktime
-#define NT_open open
-#define NT_pause pause
-#define NT_pipe pipe
-#define NT_read read
-#define NT_realloc realloc
-#define NT_rename rename
-#define NT_rmdir RemoveDirectory
-#define NT_signal signal
-#define NT_sleep sleep
-#define NT_stat stat
-#define NT_system system
-#define NT_time time
-#define NT_unlink unlink
-#define NT_write write
-#define NT_wait wait
-
 #ifndef WINNT
 extern PTR EXFUN (malloc, (unsigned int size));
 extern PTR EXFUN (realloc, (PTR ptr, unsigned int size));
 extern int EXFUN (gethostname, (char * name, unsigned int size));
 #endif
-
-extern void EXFUN (NT_prim_check_errno, (enum syscall_names name));
-
-#define STD_VOID_SYSTEM_CALL(name, expression)				\
-{									\
-  while ((expression) < 0)						\
-    if (errno != EINTR)							\
-      error_system_call (errno, (name));				\
-}
-
-#define STD_BOOL_SYSTEM_CALL(name, expression)				\
-{									\
-  while (! (expression))						\
-      error_system_call ((GetLastError ()), (name));			\
-}
-
-#define STD_HANDLE_SYSTEM_CALL(name, result, expression)		\
-{									\
-  while (((result) = (expression)) ==  INVALID_HANDLE_VALUE)		\
-      error_system_call ((GetLastError ()), (name));			\
-}
-
-#define STD_UINT_SYSTEM_CALL(name, result, expression)			\
-{									\
-  while (((result) = (expression)) ==  0)				\
-      error_system_call (errno, (name));				\
-}
-
-#define STD_PTR_SYSTEM_CALL(name, result, expression)			\
-{									\
-  while (((result) = (expression)) == 0)				\
-      error_system_call (errno, (name));				\
-}
 
 #ifdef _NFILE
 #define NT_SC_OPEN_MAX() _NFILE
@@ -232,4 +156,3 @@ extern void EXFUN (NT_prim_check_errno, (enum syscall_names name));
 #endif
 
 #endif /* SCM_NT_H */
-

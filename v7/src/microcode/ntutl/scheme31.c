@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: scheme31.c,v 1.7 1996/03/23 19:24:08 adams Exp $
+$Id: scheme31.c,v 1.8 1997/01/01 22:58:17 cph Exp $
 
-Copyright (c) 1993-95 Massachusetts Institute of Technology
+Copyright (c) 1993-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -191,7 +191,8 @@ win32_install_async_timer (void ** state_ptr,
 			   long int_mask_off,
 			   unsigned long bit_mask,
 			   long ctr_off,
-			   unsigned long message,
+			   unsigned long ctr_message,
+			   unsigned long interrupt_message,
 			   HWND window)
 {
   struct ntw32lib_itimer_s param;
@@ -204,7 +205,8 @@ win32_install_async_timer (void ** state_ptr,
   param.int_mask_off = ((SCM_LONG) int_mask_off);
   param.bit_mask = ((SCM_ULONG) bit_mask);
   param.ctr_off = ((SCM_LONG) ctr_off);
-  param.message = ((SCM_ULONG) message);
+  param.ctr_message = ((SCM_ULONG) ctr_message);
+  param.interrupt_message = ((SCM_ULONG) interrupt_message);
   param.window = ((SCM_ULONG) window);
 
   translation[0] = ((LPVOID) & param.base);

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntsig.c,v 1.18 1996/10/02 18:58:19 cph Exp $
+$Id: ntsig.c,v 1.19 1997/01/01 22:57:30 cph Exp $
 
-Copyright (c) 1992-96 Massachusetts Institute of Technology
+Copyright (c) 1992-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -437,6 +437,7 @@ DEFUN_VOID (install_timer)
 	   (INT_Global_GC | INT_Global_1),
 	   catatonia_offset,
 	   WM_CATATONIC,
+	   WM_SCHEME_INTERRUPT,
 	   master_tty_window))
   {
     case WIN32_ASYNC_TIMER_OK:

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prntfs.c,v 1.8 1996/11/18 21:13:55 cph Exp $
+$Id: prntfs.c,v 1.9 1997/01/01 22:57:37 cph Exp $
 
-Copyright (c) 1993-96 Massachusetts Institute of Technology
+Copyright (c) 1993-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -77,10 +77,14 @@ static int
 get_file_info (const char * namestring, struct file_info * info)
 {
   HANDLE hfile = INVALID_HANDLE_VALUE;
+  enum syscall_names name;
   memset (info, 0, (sizeof (*info)));
   (info -> attributes) = (GetFileAttributes (namestring));
   if ((info -> attributes) == 0xFFFFFFFF)
-    goto error_return;
+    {
+      name = apicall_GetFileAttributes;
+      goto error_return;
+    }
   hfile = (create_file_for_info (namestring));
   if (hfile == INVALID_HANDLE_VALUE)
     return (0);
@@ -88,10 +92,16 @@ get_file_info (const char * namestring, struct file_info * info)
 		    (& (info -> ctime)),
 		    (& (info -> atime)),
 		    (& (info -> mtime))))
-    goto error_return;
+    {
+      name = apicall_GetFileTime;
+      goto error_return;
+    }
   (info -> llength) = (GetFileSize (hfile, (& (info -> hlength))));
   if ((info -> llength) == 0xFFFFFFFF)
-    goto error_return;
+    {
+      name = apicall_GetFileSize;
+      goto error_return;
+    }
   close_file_handle (hfile);
   return (1);
  error_return:
@@ -100,7 +110,7 @@ get_file_info (const char * namestring, struct file_info * info)
     if (hfile != INVALID_HANDLE_VALUE)
       (void) CloseHandle (hfile);
     if (!STAT_IGNORE_ERROR_P (code))
-      error_system_call (code, syscall_lstat);
+      NT_error_api_call (code, name);
     return (0);
   }
 }
@@ -120,7 +130,7 @@ create_file_for_info (const char * namestring)
     {
       DWORD code = (GetLastError ());
       if (!STAT_IGNORE_ERROR_P (code))
-	error_system_call (code, syscall_open);
+	NT_error_api_call (code, apicall_CreateFile);
     }
   return (hfile);
 }
@@ -128,8 +138,7 @@ create_file_for_info (const char * namestring)
 static void
 close_file_handle (HANDLE hfile)
 {
-  if (!CloseHandle (hfile))
-    error_system_call ((GetLastError ()), syscall_close);
+  STD_BOOL_API_CALL (CloseHandle, (hfile));
 }
 
 static double ut_zero = 0.0;
@@ -191,8 +200,8 @@ DEFINE_PRIMITIVE ("SET-FILE-MODES!", Prim_set_file_modes, 2, 2,
   "Set the mode bits of FILE to MODE.")
 {
   PRIMITIVE_HEADER (2);
-  if (!SetFileAttributes ((STRING_ARG (1)), (arg_ulong_integer (2))))
-    error_system_call ((GetLastError ()), syscall_chmod);
+  STD_BOOL_API_CALL
+    (SetFileAttributes, ((STRING_ARG (1)), (arg_ulong_integer (2))));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -216,23 +225,22 @@ The file must exist and you must be the owner.")
   FILETIME mtime;
   PRIMITIVE_HEADER (3);
 
-  hfile
-    = (CreateFile ((STRING_ARG (1)),
-		   GENERIC_WRITE,
-		   FILE_SHARE_READ,
-		   0,
-		   OPEN_EXISTING,
-		   FILE_ATTRIBUTE_NORMAL,
-		   NULL));
-  if (hfile == INVALID_HANDLE_VALUE)
-    error_system_call ((GetLastError ()), syscall_open);
+  STD_HANDLE_API_CALL
+    (hfile,
+     CreateFile, ((STRING_ARG (1)),
+		  GENERIC_WRITE,
+		  FILE_SHARE_READ,
+		  0,
+		  OPEN_EXISTING,
+		  FILE_ATTRIBUTE_NORMAL,
+		  NULL));
   unix_time_to_file_time ((arg_ulong_integer (2)), (&atime));
   unix_time_to_file_time ((arg_ulong_integer (3)), (&mtime));
   if (!SetFileTime (hfile, 0, (&atime), (&mtime)))
     {
       DWORD code = (GetLastError ());
       (void) CloseHandle (hfile);
-      error_system_call (code, syscall_utime);
+      NT_error_api_call (code, apicall_SetFileTime);
     }
   close_file_handle (hfile);
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -333,7 +341,7 @@ DEFUN (file_touch, (filename), CONST char * filename)
       {
 	count += 1;
 	/* Use O_EXCL to prevent overwriting existing file. */
-	fd = (NT_open (filename, (O_RDWR | O_CREAT | O_EXCL), MODE_REG));
+	fd = (open (filename, (O_RDWR | O_CREAT | O_EXCL), MODE_REG));
 	if (fd >= 0)
 	  {
 	    protect_fd (fd);
@@ -342,7 +350,7 @@ DEFUN (file_touch, (filename), CONST char * filename)
 	  }
 	if (errno == EEXIST)
 	  {
-	    fd = (NT_open (filename, O_RDWR, MODE_REG));
+	    fd = (open (filename, O_RDWR, MODE_REG));
 	    if (fd >= 0)
 	      {
 		protect_fd (fd);
@@ -352,12 +360,12 @@ DEFUN (file_touch, (filename), CONST char * filename)
 	      continue;
 	  }
 	if (count >= FILE_TOUCH_OPEN_TRIES)
-	  error_system_call (errno, syscall_open);
+	  NT_error_unix_call (errno, syscall_open);
       }
   }
   {
     struct stat file_status;
-    STD_VOID_SYSTEM_CALL (syscall_fstat, (NT_fstat (fd, (&file_status))));
+    STD_VOID_UNIX_CALL (fstat, (fd, (&file_status)));
     if (((file_status . st_mode) & S_IFMT) != S_IFREG)
       error_bad_range_arg (1);
     /* CASE 3: file length of 0 needs special treatment. */
@@ -365,15 +373,15 @@ DEFUN (file_touch, (filename), CONST char * filename)
      {
 	char buf [1];
 	(buf[0]) = '\0';
-	STD_VOID_SYSTEM_CALL (syscall_write, (NT_write (fd, buf, 1)));
+	STD_VOID_UNIX_CALL (write, (fd, buf, 1));
 #ifdef HAVE_TRUNCATE
-	STD_VOID_SYSTEM_CALL (syscall_ftruncate, (NT_ftruncate (fd, 0)));
+	STD_VOID_UNIX_CALL (ftruncate, (fd, 0));
 	transaction_commit ();
 #else /* not HAVE_TRUNCATE */
 	transaction_commit ();
-	fd = (NT_open (filename, (O_WRONLY | O_TRUNC), MODE_REG));
+	fd = (open (filename, (O_WRONLY | O_TRUNC), MODE_REG));
 	if (fd >= 0)
-	  STD_VOID_SYSTEM_CALL (syscall_close, (NT_close (fd)));
+	  STD_VOID_UNIX_CALL (close, (fd));
 #endif /* HAVE_TRUNCATE */
 	return (SHARP_F);
       }
@@ -382,11 +390,11 @@ DEFUN (file_touch, (filename), CONST char * filename)
   {
     char buf [1];
     int scr;
-    STD_UINT_SYSTEM_CALL (syscall_read, scr, (NT_read (fd, buf, 1)));
+    STD_UINT_UNIX_CALL (scr, read, (fd, buf, 1));
     if (scr > 0)
       {
-	STD_VOID_SYSTEM_CALL (syscall_lseek, (NT_lseek (fd, 0, SEEK_SET)));
-	STD_VOID_SYSTEM_CALL (syscall_write, (NT_write (fd, buf, 1)));
+	STD_VOID_UNIX_CALL (lseek, (fd, 0, SEEK_SET));
+	STD_VOID_UNIX_CALL (write, (fd, buf, 1));
       }
   }
   transaction_commit ();
@@ -396,8 +404,7 @@ DEFUN (file_touch, (filename), CONST char * filename)
 static void
 DEFUN (protect_fd_close, (ap), PTR ap)
 {
-  NT_close (* ((int *) ap));
-  return;
+  close (* ((int *) ap));
 }
 
 static void
@@ -466,7 +473,7 @@ DEFINE_PRIMITIVE ("NT-GET-FILE-ATTRIBUTES", Prim_NT_get_file_attributes, 1, 1, 0
       {
 	DWORD error_code = (GetLastError ());
 	if (!STAT_IGNORE_ERROR_P (error_code))
-	  error_system_call (error_code, syscall_stat);
+	  NT_error_api_call (error_code, apicall_GetFileAttributes);
 	PRIMITIVE_RETURN (SHARP_F);
       }
     PRIMITIVE_RETURN (ulong_to_integer (attributes));
@@ -476,8 +483,7 @@ DEFINE_PRIMITIVE ("NT-GET-FILE-ATTRIBUTES", Prim_NT_get_file_attributes, 1, 1, 0
 DEFINE_PRIMITIVE ("NT-SET-FILE-ATTRIBUTES", Prim_NT_set_file_attributes, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  STD_BOOL_SYSTEM_CALL
-    (syscall_chmod,
-     (SetFileAttributes ((STRING_ARG (1)), (arg_ulong_integer (2)))));
+  STD_BOOL_API_CALL
+    (SetFileAttributes, ((STRING_ARG (1)), (arg_ulong_integer (2))));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }

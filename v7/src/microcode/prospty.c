@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prospty.c,v 1.2 1993/06/24 07:09:28 gjr Exp $
+$Id: prospty.c,v 1.3 1997/01/01 22:57:41 cph Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -44,7 +44,7 @@ static Tchannel
 DEFUN (arg_pty_master, (arg), unsigned int arg)
 {
   Tchannel channel = (arg_channel (1));
-  if ((OS_channel_type (channel)) != channel_type_pty_master)
+  if ((OS_channel_type (channel)) != channel_type_unix_pty_master)
     error_bad_range_arg (1);
   return (channel);
 }

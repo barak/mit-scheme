@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.39 1996/07/02 21:13:29 cph Exp $
+$Id: uxio.c,v 1.40 1997/01/01 22:57:45 cph Exp $
 
-Copyright (c) 1990-96 Massachusetts Institute of Technology
+Copyright (c) 1990-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -193,7 +193,7 @@ DEFUN (OS_channel_read, (channel, buffer, nbytes),
 	/* This is needed for non-POSIX-ified master pseudo-terminal
 	   driver, which always returns EWOULDBLOCK, even to POSIX
 	   applications. */
-	if (CHANNEL_TYPE (channel) == channel_type_pty_master)
+	if (CHANNEL_TYPE (channel) == channel_type_unix_pty_master)
 	  {
 	    if (errno == EWOULDBLOCK)
 	      return (-1);
@@ -284,9 +284,9 @@ DEFUN (OS_make_pipe, (readerp, writerp),
   int pv [2];
   transaction_begin ();
   STD_VOID_SYSTEM_CALL (syscall_pipe, (UX_pipe (pv)));
-  MAKE_CHANNEL ((pv[0]), channel_type_pipe, (*readerp) =);
+  MAKE_CHANNEL ((pv[0]), channel_type_unix_pipe, (*readerp) =);
   OS_channel_close_on_abort (*readerp);
-  MAKE_CHANNEL ((pv[1]), channel_type_pipe, (*writerp) =);
+  MAKE_CHANNEL ((pv[1]), channel_type_unix_pipe, (*writerp) =);
   transaction_commit ();
 }
 

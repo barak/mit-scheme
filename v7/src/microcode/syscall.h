@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: syscall.h,v 1.9 1996/04/23 20:50:30 cph Exp $
+$Id: syscall.h,v 1.10 1997/01/01 22:57:42 cph Exp $
 
-Copyright (c) 1993-96 Massachusetts Institute of Technology
+Copyright (c) 1993-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,6 +48,13 @@ MIT in each case. */
 #undef DEFINE_OS2_SYSCALLS
 
 #else /* not _OS2 */
+#ifdef WINNT
+
+#define DEFINE_WIN32_SYSCALLS
+#include "ntapi.h"
+#undef DEFINE_WIN32_SYSCALLS
+
+#else /* not WINNT */
 
 enum syscall_names
 {
@@ -154,6 +161,7 @@ enum syserr_names
   syserr_too_many_open_files_in_system
 };
 
+#endif /* not WINNT */
 #endif /* not _OS2 */
 
 extern void EXFUN (error_in_system_call,

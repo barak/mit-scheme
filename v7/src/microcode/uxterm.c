@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxterm.c,v 1.24 1995/06/30 00:05:11 cph Exp $
+$Id: uxterm.c,v 1.25 1997/01/01 22:57:47 cph Exp $
 
-Copyright (c) 1990-1993 Massachusetts Institute of Technology
+Copyright (c) 1990-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -626,7 +626,7 @@ DEFUN (OS_open_pty_master, (master_fd, master_fname),
 	  goto retry_open;
 	}
       PTY_SLAVE_NAME_SPRINTF (slave_name, fd);
-      MAKE_CHANNEL (fd, channel_type_pty_master, (*master_fd) =);
+      MAKE_CHANNEL (fd, channel_type_unix_pty_master, (*master_fd) =);
       (*master_fname) = master_name;
       return (slave_name);
     }

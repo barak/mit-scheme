@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntfile.c,v 1.6 1996/10/02 18:58:07 cph Exp $
+$Id: ntfile.c,v 1.7 1997/01/01 22:57:22 cph Exp $
 
-Copyright (c) 1992-96 Massachusetts Institute of Technology
+Copyright (c) 1992-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -50,8 +50,8 @@ DEFUN (handle_channel_type, (hFile), HANDLE hFile)
     default:
     case  FILE_TYPE_UNKNOWN:	return  channel_type_unknown;
     case  FILE_TYPE_DISK:	return  channel_type_file;
-    case  FILE_TYPE_CHAR:	return  channel_type_character_device;
-    case  FILE_TYPE_PIPE:	return  channel_type_fifo;
+    case  FILE_TYPE_CHAR:	return  channel_type_win32_char;
+    case  FILE_TYPE_PIPE:	return  channel_type_win32_pipe;
   }
 }
 
@@ -93,9 +93,9 @@ DEFUN (OS_open_handle, (hFile), HANDLE hFile)
 Tchannel								\
 DEFUN (name, (filename), CONST char * filename)				\
 {									\
-  HANDLE  hFile;							\
-  STD_HANDLE_SYSTEM_CALL (syscall_open, hFile, CreateFile args);	\
-  return  OS_open_handle (hFile);					\
+  HANDLE hFile;								\
+  STD_HANDLE_API_CALL (hFile, CreateFile, args);			\
+  return (OS_open_handle (hFile));					\
 }
 
 // In the following we specify FILE_SHARE_READ | FILE_SHARE_WRITE
@@ -121,18 +121,20 @@ DEFUN_OPEN_FILE (OS_open_io_file,
 Tchannel
 DEFUN (OS_open_append_file, (filename), CONST char * filename)
 {
-  HANDLE    hFile;
-  STD_HANDLE_SYSTEM_CALL
-    (syscall_open, hFile,
-      CreateFile (filename,
+  HANDLE hFile;
+  STD_HANDLE_API_CALL
+    (hFile,
+     CreateFile, (filename,
 	          GENERIC_WRITE,
 		  FILE_SHARE_READ	/*sharing*/,
-		  0	/*security*/,
+		  0,			/*security*/
 		  OPEN_ALWAYS,
 		  FILE_ATTRIBUTE_NORMAL /*attributes&flags*/,
-		  0	/*Template*/));
-  SetFilePointer (hFile, 0, 0, FILE_END);
-  return  OS_open_handle (hFile);
+		  0			/*Template*/
+		  ));
+  if ((SetFilePointer (hFile, 0, 0, FILE_END)) == 0xFFFFFFFF)
+    NT_error_api_call ((GetLastError ()), apicall_SetFilePointer);
+  return (OS_open_handle (hFile));
 }
 
 #else
@@ -211,22 +213,26 @@ DEFUN (OS_open_dump_file, (filename), CONST char * filename)
 off_t
 DEFUN (OS_file_length, (channel), Tchannel channel)
 {
-  DWORD  result;
-  while ((result = GetFileSize (CHANNEL_HANDLE (channel), 0)) == 0xffffffffL
-         && GetLastError() != NO_ERROR)
-    error_system_call (GetLastError(), syscall_fstat);
-  
-  return  result;
+  DWORD result;
+  DWORD code;
+  while (1)
+    {
+      result = (GetFileSize ((CHANNEL_HANDLE (channel)), 0));
+      if (result != 0xFFFFFFFF)
+	return (result);
+      code = (GetLastError ());
+      if (code != NO_ERROR)
+	NT_error_api_call (code, apicall_GetFileSize);
+    }
 }
 
 off_t
 DEFUN (OS_file_position, (channel), Tchannel channel)
 {
-  off_t result;
-  STD_UINT_SYSTEM_CALL
-    (syscall_lseek,
-     result,
-     (_llseek (((HFILE) (CHANNEL_HANDLE (channel))), 0L, SEEK_CUR)));
+  off_t result
+    = (_llseek (((HFILE) (CHANNEL_HANDLE (channel))), 0L, SEEK_CUR));
+  if (result == 0)
+    NT_error_unix_call (errno, syscall_lseek);
   return (result);
 }
 
@@ -235,11 +241,10 @@ DEFUN (OS_file_set_position, (channel, position),
        Tchannel channel AND
        off_t position)
 {
-  LONG result;
-  STD_UINT_SYSTEM_CALL
-    (syscall_lseek,
-     result,
-     (_llseek (((HFILE) (CHANNEL_HANDLE (channel))), position, SEEK_SET)));
+  off_t result
+    = (_llseek (((HFILE) (CHANNEL_HANDLE (channel))), position, SEEK_SET));
+  if (result == 0)
+    NT_error_unix_call (errno, syscall_lseek);
   if (result != position)
     error_external_return ();
 }

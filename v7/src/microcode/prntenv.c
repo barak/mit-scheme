@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prntenv.c,v 1.5 1995/11/11 00:29:19 cph Exp $
+$Id: prntenv.c,v 1.6 1997/01/01 22:57:35 cph Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -63,7 +63,7 @@ The result is either a string (the variable's value),\n\
 {
   PRIMITIVE_HEADER (1);
   {
-    CONST char * variable_value = (NT_getenv (STRING_ARG (1)));
+    CONST char * variable_value = (getenv (STRING_ARG (1)));
     PRIMITIVE_RETURN
       ((variable_value == 0)
        ? SHARP_F

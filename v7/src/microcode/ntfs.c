@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.12 1996/10/09 15:40:15 cph Exp $
+$Id: ntfs.c,v 1.13 1997/01/01 22:57:24 cph Exp $
 
-Copyright (c) 1992-96 Massachusetts Institute of Technology
+Copyright (c) 1992-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,7 +51,7 @@ DEFUN (NT_read_file_status, (name, s),
 	continue;
       if ((errno == ENOENT) || (errno == ENOTDIR))
 	return (0);
-      error_system_call (errno, syscall_lstat);
+      NT_error_unix_call (errno, syscall_stat);
     }
   return (1);
 }
@@ -62,11 +62,8 @@ DEFUN (OS_file_existence_test, (name), char * name)
   struct stat s;
   char filename[128];
 
-  nt_pathname_as_filename(name, filename);
-
-  return
-    (((NT_stat (filename, (&s))) < 0)
-     ? file_doesnt_exist : file_does_exist);
+  nt_pathname_as_filename (name, filename);
+  return (((stat (filename, (&s))) < 0) ? file_doesnt_exist : file_does_exist);
 }
 
 int
@@ -75,7 +72,7 @@ DEFUN (OS_file_access, (name, mode), CONST char * name AND unsigned int mode)
   char filename[128];
 
   nt_pathname_as_filename (name, filename);
-  return ((NT_access (filename, mode)) == 0);
+  return ((access (filename, mode)) == 0);
 }
 
 int
@@ -85,8 +82,8 @@ DEFUN (OS_file_directory_p, (name), char * name)
   char filename[128];
 
   nt_pathname_as_filename(name, filename);
-  return (((NT_stat (filename, (&s))) == 0) &&
-	  (((s . st_mode) & S_IFMT) == S_IFDIR));
+  return (((stat (filename, (&s))) == 0)
+	  && (((s . st_mode) & S_IFMT) == S_IFDIR));
 }
 
 CONST char *
@@ -107,14 +104,14 @@ DEFUN (guarantee_writable, (name, errorp),
       if ((! ((error_code == ERROR_FILE_NOT_FOUND)
 	      || (error_code == ERROR_PATH_NOT_FOUND)))
 	  && errorp)
-	error_system_call (error_code, syscall_stat);
+	NT_error_api_call (error_code, apicall_GetFileAttributes);
     }
   else if ((attributes & FILE_ATTRIBUTE_READONLY) != 0)
     {
       if ((! (SetFileAttributes (name,
 				 (attributes &~ FILE_ATTRIBUTE_READONLY))))
 	  && errorp)
-	error_system_call ((GetLastError ()), syscall_chmod);
+	NT_error_api_call ((GetLastError ()), apicall_SetFileAttributes);
     }
 }
 
@@ -122,18 +119,18 @@ void
 DEFUN (OS_file_remove, (name), CONST char * name)
 {
   guarantee_writable (name, 1);
-  STD_VOID_SYSTEM_CALL (syscall_unlink, (NT_unlink (name)));
+  STD_VOID_UNIX_CALL (unlink, (name));
 }
 
 void
 DEFUN (OS_file_remove_link, (name), CONST char * name)
 {
   struct stat s;
-  if ((NT_stat (name, (&s)) == 0)
+  if ((stat (name, (&s)) == 0)
       && (((s . st_mode) & S_IFMT) == S_IFREG))
     {
       guarantee_writable (name, 0);
-      NT_unlink (name);
+      unlink (name);
     }
 }
 
@@ -143,7 +140,7 @@ DEFUN (OS_file_rename, (from, to),
        CONST char * to)
 {
   guarantee_writable (to, 1);
-  STD_BOOL_SYSTEM_CALL (syscall_rename, (MoveFile (from, to)));
+  STD_BOOL_API_CALL (MoveFile, (from, to));
 }
 
 void
@@ -152,9 +149,7 @@ DEFUN (OS_file_copy, (from, to),
        CONST char * to)
 {
   guarantee_writable (to, 1);
-  /* This system-call name is wrong, but there's no corresponding unix
-     operation, and I don't feel like customizing this for NT now.  */
-  STD_BOOL_SYSTEM_CALL (syscall_rename, (CopyFile (from, to, FALSE)));
+  STD_BOOL_API_CALL (CopyFile, (from, to, FALSE));
 }
 
 void
@@ -176,13 +171,13 @@ DEFUN (OS_file_link_soft, (from_name, to_name),
 void
 DEFUN (OS_directory_make, (name), CONST char * name)
 {
-  STD_VOID_SYSTEM_CALL (syscall_mkdir, (NT_mkdir (name)));
+  STD_VOID_UNIX_CALL (mkdir, (name));
 }
 
 void
 DEFUN (OS_directory_delete, (name), CONST char * name)
 {
-  STD_VOID_SYSTEM_CALL (syscall_rmdir, (NT_rmdir (name)));
+  STD_VOID_UNIX_CALL (rmdir, (name));
 }
 
 typedef struct nt_dir_struct
@@ -211,9 +206,7 @@ DEFUN (allocate_directory_pointer, (pointer), nt_dir * pointer)
 {
   if (n_directory_pointers == 0)
     {
-      nt_dir ** pointers = ((nt_dir **) (NT_malloc ((sizeof (nt_dir *)) * 4)));
-      if (pointers == 0)
-	error_system_call (ENOMEM, syscall_malloc);
+      nt_dir ** pointers = (OS_malloc ((sizeof (nt_dir *)) * 4));
       directory_pointers = pointers;
       n_directory_pointers = 4;
       {
@@ -238,12 +231,9 @@ DEFUN (allocate_directory_pointer, (pointer), nt_dir * pointer)
   {
     unsigned int result = n_directory_pointers;
     unsigned int n_pointers = (2 * n_directory_pointers);
-    nt_dir ** pointers =
-      ((nt_dir **)
-       (NT_realloc (((PTR) directory_pointers),
-		    ((sizeof (nt_dir *)) * n_pointers))));
-    if (pointers == 0)
-      error_system_call (ENOMEM, syscall_realloc);
+    nt_dir ** pointers
+      = (OS_realloc (((PTR) directory_pointers),
+		     ((sizeof (nt_dir *)) * n_pointers)));
     {
       nt_dir ** scan = (pointers + result);
       nt_dir ** end = (pointers + n_pointers);
@@ -273,9 +263,7 @@ unsigned int
 DEFUN (OS_directory_open, (name), CONST char * search_pattern)
 {
   char pattern [MAX_PATH];
-  nt_dir * dir = (malloc (sizeof (nt_dir)));
-  if (dir == 0)
-    error_system_call (ENOMEM, syscall_malloc);
+  nt_dir * dir = (OS_malloc (sizeof (nt_dir)));
   strcpy (pattern, search_pattern);
   {
     unsigned int len = (strlen (pattern));
@@ -286,7 +274,7 @@ DEFUN (OS_directory_open, (name), CONST char * search_pattern)
   if ((dir -> handle) == INVALID_HANDLE_VALUE)
     {
       free (dir);
-      error_system_call (errno, syscall_opendir);
+      NT_error_api_call ((GetLastError ()), apicall_FindFirstFile);
     }
   (dir -> more) = TRUE;
   return (allocate_directory_pointer (dir));

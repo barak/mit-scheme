@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntenv.c,v 1.14 1996/10/07 17:56:40 cph Exp $
+$Id: ntenv.c,v 1.15 1997/01/01 22:57:20 cph Exp $
 
-Copyright (c) 1992-96 Massachusetts Institute of Technology
+Copyright (c) 1992-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -70,7 +70,7 @@ void
 OS_decode_time (time_t t, struct time_structure * buffer)
 {
   struct tm * ts;
-  STD_PTR_SYSTEM_CALL (syscall_localtime, ts, (NT_localtime (&t)));
+  STD_PTR_UNIX_CALL (ts, localtime, (&t));
   (buffer -> year) = ((ts -> tm_year) + 1900);
   (buffer -> month) = ((ts -> tm_mon) + 1);
   (buffer -> day) = (ts -> tm_mday);
@@ -144,7 +144,7 @@ OS_encode_time (struct time_structure * buffer)
   (ts -> tm_min) = (buffer -> minute);
   (ts -> tm_sec) = (buffer -> second);
   (ts -> tm_isdst) = (buffer -> daylight_savings_time);
-  STD_UINT_SYSTEM_CALL (syscall_mktime, t, (NT_mktime (ts)));
+  STD_UINT_UNIX_CALL (t, mktime, (ts));
   /* mktime assumes its argument is local time, and converts it to
      UTC; if the specified time zone is different, adjust the result.  */
   if (((buffer -> time_zone) != INT_MAX)
@@ -288,7 +288,7 @@ DEFUN (set_timer, (timer_id, first, interval),
   if (timer->global_id == 0)
   {
     timer->next = timer_next_none;
-    error_system_call ((GetLastError ()), syscall_setitimer);
+    NT_error_api_call ((GetLastError ()), apicall_SetTimer);
   }
   return;
 }
@@ -409,30 +409,24 @@ DEFUN_VOID (OS_working_dir_pathname)
   }
   if (current_dir_path_size == 0)
     {
-      current_dir_path = (NT_malloc (1024));
-      if (current_dir_path == 0)
-	error_system_call (ENOMEM, syscall_malloc);
+      current_dir_path = (OS_malloc (1024));
       current_dir_path_size = 1024;
     }
   while (1)
     {
-      if ((NT_getcwd (current_dir_path, current_dir_path_size)) != 0)
+      if ((getcwd (current_dir_path, current_dir_path_size)) != 0)
       {
 	strlwr (current_dir_path);
 	return (current_dir_path);
       }
 #ifdef ERANGE
       if (errno != ERANGE)
-	error_system_call (errno, syscall_getcwd);
+	NT_error_unix_call (errno, syscall_getcwd);
 #endif
       current_dir_path_size *= 2;
       {
-	char * new_current_dir_path =
-	  (NT_realloc (current_dir_path, current_dir_path_size));
-	if (new_current_dir_path == 0)
-	  /* ANSI C requires `path' to be unchanged -- we may have to
-	     discard it for systems that don't behave thus. */
-	  error_system_call (ENOMEM, syscall_realloc);
+	char * new_current_dir_path
+	  = (OS_realloc (current_dir_path, current_dir_path_size));
 	current_dir_path = new_current_dir_path;
       }
     }
@@ -444,7 +438,7 @@ DEFUN (OS_set_working_dir_pathname, (name), char * name)
   size_t name_size = (strlen (name));
   char * filename = name;
 
-  STD_BOOL_SYSTEM_CALL (syscall_chdir, (SetCurrentDirectory (filename)));
+  STD_BOOL_API_CALL (SetCurrentDirectory, (filename));
 
   while (1)
   {
@@ -455,10 +449,8 @@ DEFUN (OS_set_working_dir_pathname, (name), char * name)
     }
     current_dir_path_size *= 2;
     {
-      char * new_current_dir_path =
-	(NT_realloc (current_dir_path, current_dir_path_size));
-      if (new_current_dir_path == 0)
-	error_system_call (ENOMEM, syscall_realloc);
+      char * new_current_dir_path
+	= (OS_realloc (current_dir_path, current_dir_path_size));
       current_dir_path = new_current_dir_path;
     }
   }

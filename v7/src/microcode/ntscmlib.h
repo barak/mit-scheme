@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntscmlib.h,v 1.6 1996/03/23 19:24:58 adams Exp $
+$Id: ntscmlib.h,v 1.7 1997/01/01 22:57:29 cph Exp $
 
-Copyright (c) 1993-96 Massachusetts Institute of Technology
+Copyright (c) 1993-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -73,12 +73,13 @@ typedef struct {
   UINT
     (__cdecl *install_async_timer) (void **,		/* timer state */
 				    unsigned long *,	/* regs */
-				    long,		/* memtop off */
-				    long,		/* int_code off */
-				    long,		/* int_mask off */
+				    long,		/* memtop_off */
+				    long,		/* int_code_off */
+				    long,		/* int_mask_off */
 				    unsigned long,	/* mask */
 				    long, 		/* ctr_off */
-				    unsigned long,	/* message */
+				    unsigned long,	/* catatonia_message */
+				    unsigned long,	/* interrupt_message */
 				    HWND);		/* window */
 
   void
@@ -154,7 +155,8 @@ struct ntw32lib_itimer_s
   SCM_LONG int_mask_off;	/* ->16 */
   SCM_ULONG bit_mask;		/* ->16 */
   SCM_LONG ctr_off;		/* ->16 */
-  SCM_ULONG message;		/* ->16 */
+  SCM_ULONG catatonia_message;	/* ->16 */
+  SCM_ULONG interrupt_message;	/* ->16 */
   SCM_ULONG window;		/* ->16 */
 };
 

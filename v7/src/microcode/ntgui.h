@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntgui.h,v 1.6 1993/09/11 02:45:56 gjr Exp $
+$Id: ntgui.h,v 1.7 1997/01/01 22:57:26 cph Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,5 +62,6 @@ MIT in each case. */
 #endif
 
 #define WM_CATATONIC (WM_USER)
+#define WM_SCHEME_INTERRUPT (WM_USER + 1)
 
 #endif /* SCM_NTGUI_H */

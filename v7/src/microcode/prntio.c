@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prntio.c,v 1.3 1996/10/02 18:58:40 cph Exp $
+$Id: prntio.c,v 1.4 1997/01/01 22:57:38 cph Exp $
 
-Copyright (c) 1993-96 Massachusetts Institute of Technology
+Copyright (c) 1993-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,7 +40,13 @@ MIT in each case. */
 #include "ntio.h"
 #include "nt.h"
 #include "ntscreen.h"
+#include "ntgui.h"
 #include "syscall.h"
+
+extern HANDLE master_tty_window;
+
+static HANDLE * to_win_hand_vec (int nhand, SCHEME_OBJECT *);
+static long wait_for_multiple_objects (DWORD, HANDLE *, DWORD, BOOL);
 
 DEFINE_PRIMITIVE ("CHANNEL-DESCRIPTOR", Prim_channel_descriptor, 1, 1, 0)
 {
@@ -49,62 +55,29 @@ DEFINE_PRIMITIVE ("CHANNEL-DESCRIPTOR", Prim_channel_descriptor, 1, 1, 0)
     (long_to_integer ((long) (CHANNEL_HANDLE (arg_channel (1)))));
 }
 
-static HANDLE *
-DEFUN (to_win_hand_vec, (nhand, schhands),
-       int nhand AND SCHEME_OBJECT * schhands)
-{
-  int ctr;
-  HANDLE * winhands;
-
-  if (nhand == 0)
-    return ((HANDLE *) NULL);
-  winhands = ((HANDLE *) (malloc (nhand * (sizeof (HANDLE)))));
-  if (winhands == ((HANDLE *) NULL))
-    error_system_call ((GetLastError ()), syscall_malloc);
-  for (ctr = 0; ctr < nhand; ctr++)
-    winhands[ctr] = ((HANDLE) (integer_to_long (schhands[ctr])));
-  return (winhands);
-}
-
-static SCHEME_OBJECT
-DEFUN (wait_result, (result, limit_object, limit_abandoned),
-       DWORD result AND int limit_object AND int limit_abandoned)
-{
-  if (result == WAIT_TIMEOUT)
-    return (FIXNUM_ZERO);
-  else if ((result >= WAIT_OBJECT_0)
-	   && (result <= (WAIT_OBJECT_0 + limit_object)))
-    return (long_to_integer ((result + 1) - WAIT_OBJECT_0));
-  else if ((result >= WAIT_ABANDONED_0)
-	   && (result <= (WAIT_ABANDONED_0 + limit_abandoned)))
-    return (long_to_integer (- ((long) ((result + 1) - WAIT_ABANDONED_0))));
-  else
-    error_system_call ((GetLastError ()), syscall_select);
-}
-
 DEFINE_PRIMITIVE ("NT:MSGWAITFORMULTIPLEOBJECTS", Prim_nt_msgwaitformultipleobjects, 4, 4, 0)
 {
-  extern HANDLE master_tty_window;
   PRIMITIVE_HEADER (4);
   {
     SCHEME_OBJECT schhands = (VECTOR_ARG (1));
     BOOL wait_for_all = (BOOLEAN_ARG (2));
-    int timeout = (arg_nonnegative_integer (3));
-    int mask = (arg_nonnegative_integer (4));
-    int nhand = (VECTOR_LENGTH (schhands));
+    DWORD timeout = (arg_ulong_integer (3));
+    DWORD mask = (arg_ulong_integer (4));
+    DWORD nhand = (VECTOR_LENGTH (schhands));
     HANDLE * handles;
     DWORD result;
 
-    if (Screen_PeekEvent (master_tty_window, ((SCREEN_EVENT *) NULL)))
-      return (long_to_integer (1 + nhand));
-
+    if (wait_for_all != FALSE)
+      error_bad_range_arg (2);
+    if (mask != QS_ALLINPUT)
+      error_bad_range_arg (4);
+    if (Screen_PeekEvent (master_tty_window, 0))
+      PRIMITIVE_RETURN (long_to_integer (nhand + 1));
     handles = (to_win_hand_vec (nhand, (VECTOR_LOC (schhands, 0))));
-    result = (MsgWaitForMultipleObjects (nhand, handles, wait_for_all,
-					 timeout, mask));
-
-    if (handles != ((HANDLE *) NULL))
+    result = (wait_for_multiple_objects (nhand, handles, timeout, TRUE));
+    if (handles != 0)
       free (handles);
-    PRIMITIVE_RETURN (wait_result (result, nhand, (nhand - 1)));
+    PRIMITIVE_RETURN (long_to_integer (result));
   }
 }
 
@@ -114,13 +87,66 @@ DEFINE_PRIMITIVE ("NT:WAITFORMULTIPLEOBJECTS", Prim_nt_waitformultipleobjects, 3
   {
     SCHEME_OBJECT schhands = (VECTOR_ARG (1));
     BOOL wait_for_all = (BOOLEAN_ARG (2));
-    int timeout = (arg_nonnegative_integer (3));
-    int nhand = (VECTOR_LENGTH (schhands));
-    HANDLE * handles = (to_win_hand_vec (nhand, (VECTOR_LOC (schhands, 0))));
-    DWORD result
-      = (WaitForMultipleObjects (nhand, handles, wait_for_all, timeout));
-    if (handles != ((HANDLE *) NULL))
+    DWORD timeout = (arg_ulong_integer (3));
+    DWORD nhand = (VECTOR_LENGTH (schhands));
+    HANDLE * handles;
+    DWORD result;
+
+    if (wait_for_all != FALSE)
+      error_bad_range_arg (2);
+    handles = (to_win_hand_vec (nhand, (VECTOR_LOC (schhands, 0))));
+    do
+      result = (wait_for_multiple_objects (nhand, handles, timeout, FALSE));
+    while ((result == (nhand + 1))
+	   && ((timeout == 0) || (timeout == INFINITE)));
+    if (handles != 0)
       free (handles);
-    PRIMITIVE_RETURN (wait_result (result, (nhand - 1), (nhand - 1)));
+    PRIMITIVE_RETURN (long_to_integer (result));
   }
+}
+
+static HANDLE *
+to_win_hand_vec (int nhand, SCHEME_OBJECT * schhands)
+{
+  int ctr;
+  HANDLE * winhands;
+
+  if (nhand == 0)
+    return (0);
+  winhands = (OS_malloc (nhand * (sizeof (HANDLE))));
+  for (ctr = 0; ctr < nhand; ctr++)
+    winhands[ctr] = ((HANDLE) (integer_to_long (schhands[ctr])));
+  return (winhands);
+}
+
+static long
+wait_for_multiple_objects (DWORD nhand, HANDLE * handles, DWORD timeout,
+			   BOOL msgp)
+{
+  DWORD result;
+  MSG m;
+  /* This is a kludge.  MsgWaitForMultipleObjects has a race
+     condition -- it ignores messages that are already queued.  So
+     check the queue as late as possible before the call, in order
+     to minimize the window in which we can get stuck waiting for
+     a message that has already arrived.  */
+  if (msgp && (PeekMessage ((&m), 0, 0, 0, PM_NOREMOVE)))
+    return (((m.message) == WM_SCHEME_INTERRUPT) ? (nhand + 2) : (nhand + 1));
+  result =
+    (MsgWaitForMultipleObjects (nhand, handles, FALSE, timeout, QS_ALLINPUT));
+  return
+    ((result == WAIT_TIMEOUT)
+     ? 0
+     : (result == (WAIT_OBJECT_0 + nhand))
+     ? (((!PeekMessage ((&m), 0, 0, 0, PM_NOREMOVE))
+	 || ((m.message) == WM_SCHEME_INTERRUPT))
+	? (nhand + 2)
+	: (nhand + 1))
+     : ((WAIT_OBJECT_0 <= result) && (result < (WAIT_OBJECT_0 + nhand)))
+     ? ((result - WAIT_OBJECT_0) + 1)
+     : ((WAIT_ABANDONED_0 <= result) && (result < (WAIT_ABANDONED_0 + nhand)))
+     ? (- ((long) ((result - WAIT_ABANDONED_0) + 1)))
+     : ((NT_error_api_call ((GetLastError ()),
+			    apicall_MsgWaitForMultipleObjects)),
+	0));
 }

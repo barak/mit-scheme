@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: scheme32.c,v 1.11 1996/10/02 19:00:09 cph Exp $
+$Id: scheme32.c,v 1.12 1997/01/01 22:58:18 cph Exp $
 
-Copyright (c) 1993-96 Massachusetts Institute of Technology
+Copyright (c) 1993-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,6 +39,8 @@ MIT in each case. */
 #include "ntscmlib.h"
 #include <stdlib.h>
 #include <mmsystem.h>
+
+static void __cdecl win32_flush_async_timer (void *);
 
 static BOOL __cdecl
 win32_under_win32s_p (void)
@@ -119,7 +121,8 @@ struct win32_timer_closure_s
   long int_mask_off;
   unsigned long bit_mask;
   long ctr_off;
-  unsigned long message;
+  unsigned long catatonia_message;
+  unsigned long interrupt_message;
   HWND window;
 };
 
@@ -131,53 +134,54 @@ struct win32_timer_closure_s
 #define __STDCALL __stdcall
 #endif
 
+#define INTERRUPT_CODE(scm_timer)					\
+  ((scm_timer -> base) [scm_timer -> int_code_off])
+
+#define INTERRUPT_MASK(scm_timer)					\
+  ((scm_timer -> base) [scm_timer -> int_mask_off])
+
+#define MEMTOP(scm_timer)						\
+  ((scm_timer -> base) [scm_timer -> memtop_off])
+
+#define CATATONIA_COUNTER(scm_timer)					\
+  ((scm_timer -> base) [scm_timer -> ctr_off])
+
+#define CATATONIA_LIMIT(scm_timer)					\
+  ((scm_timer -> base) [(scm_timer -> ctr_off) + 1])
+
+#define CATATONIA_FLAG(scm_timer)					\
+  ((scm_timer -> base) [(scm_timer -> ctr_off) + 2])
+
 static void __STDCALL
 win32_nt_timer_tick (UINT wID, UINT wMsg, DWORD dwUser, DWORD dw1, DWORD dw2)
 {
-  struct win32_timer_closure_s * scm_timer =
-    ((struct win32_timer_closure_s *) dwUser);
-
-  {
-    scm_timer->base[scm_timer->int_code_off] |= scm_timer->bit_mask;
-    if ((scm_timer->base[scm_timer->int_mask_off] & scm_timer->bit_mask)
-	!= 0L)
-      scm_timer->base[scm_timer->memtop_off] = ((unsigned long) -1L);
-    scm_timer->base[scm_timer->ctr_off] += 1L;
-    if ((scm_timer->base[scm_timer->ctr_off]
-	 > scm_timer->base[scm_timer->ctr_off + 1])
-	&& (scm_timer->base[scm_timer->ctr_off + 1] != 0L))
-    {
-      if (scm_timer->base[scm_timer->ctr_off + 2] == 0L)
-      {
-	PostMessage (scm_timer->window,
-		     scm_timer->message,
-		     ((WPARAM) 0),
-		     ((LPARAM) 0));
-	scm_timer->base[scm_timer->ctr_off + 2] = 1L;
-      }
-      scm_timer->base[scm_timer->ctr_off] = 0L;
-    }
-  }
-  return;
-}
-
-static void __cdecl
-win32_flush_async_timer (void * state)
-{
   struct win32_timer_closure_s * scm_timer
-    = ((struct win32_timer_closure_s *) state);
-  
-  if (scm_timer == ((struct win32_timer_closure_s *) NULL))
-    return;
-  if (scm_timer->timer_id != 0)
-    (void) timeKillEvent (scm_timer->timer_id);
-  
-  (void) VirtualUnlock (((void *) win32_nt_timer_tick),
-			(((char *) win32_flush_async_timer)
-			 - ((char *) win32_nt_timer_tick)));
-  (void) VirtualUnlock (scm_timer, (sizeof (struct win32_timer_closure_s)));
-  (void) free ((char *) scm_timer);
-  return;
+    = ((struct win32_timer_closure_s *) dwUser);
+  (INTERRUPT_CODE (scm_timer)) |= (scm_timer -> bit_mask);
+  if (((INTERRUPT_CODE (scm_timer)) & (INTERRUPT_MASK (scm_timer))) != 0L)
+    {
+      /* Post an interrupt message to the window.  This forces it to
+	 wake up and exit MsgWaitForMultipleObjects if needed.  */
+      PostMessage ((scm_timer -> window),
+		   (scm_timer -> interrupt_message),
+		   ((WPARAM) 0),
+		   ((LPARAM) 0));
+      (MEMTOP (scm_timer)) = ((unsigned long) -1L);
+    }
+  (CATATONIA_COUNTER (scm_timer)) += 1L;
+  if (((CATATONIA_COUNTER (scm_timer)) > (CATATONIA_LIMIT (scm_timer)))
+      && ((CATATONIA_LIMIT (scm_timer)) != 0L))
+    {
+      if ((CATATONIA_FLAG (scm_timer)) == 0L)
+	{
+	  PostMessage ((scm_timer -> window),
+		       (scm_timer -> catatonia_message),
+		       ((WPARAM) 0),
+		       ((LPARAM) 0));
+	  (CATATONIA_FLAG (scm_timer)) = 1L;
+	}
+      (CATATONIA_COUNTER (scm_timer)) = 0L;
+    }
 }
 
 static UINT __cdecl
@@ -188,7 +192,8 @@ win32_install_async_timer (void ** state_ptr,
 			   long int_mask_off,
 			   unsigned long bit_mask,
 			   long ctr_off,
-			   unsigned long message,
+			   unsigned long catatonia_message,
+			   unsigned long interrupt_message,
 			   HWND window)
 {
   TIMECAPS tc;
@@ -217,7 +222,8 @@ win32_install_async_timer (void ** state_ptr,
   scm_timer->int_mask_off = int_mask_off;
   scm_timer->bit_mask = bit_mask;
   scm_timer->ctr_off = ctr_off;
-  scm_timer->message = message;
+  scm_timer->catatonia_message = catatonia_message;
+  scm_timer->interrupt_message = interrupt_message;
   scm_timer->window = window;
 
   if ((! (VirtualLock (((void *) scm_timer),
@@ -245,6 +251,25 @@ win32_install_async_timer (void ** state_ptr,
 
   * state_ptr = ((void *) scm_timer);
   return (WIN32_ASYNC_TIMER_OK);
+}
+
+static void __cdecl
+win32_flush_async_timer (void * state)
+{
+  struct win32_timer_closure_s * scm_timer
+    = ((struct win32_timer_closure_s *) state);
+  
+  if (scm_timer == ((struct win32_timer_closure_s *) NULL))
+    return;
+  if (scm_timer->timer_id != 0)
+    (void) timeKillEvent (scm_timer->timer_id);
+  
+  (void) VirtualUnlock (((void *) win32_nt_timer_tick),
+			(((char *) win32_flush_async_timer)
+			 - ((char *) win32_nt_timer_tick)));
+  (void) VirtualUnlock (scm_timer, (sizeof (struct win32_timer_closure_s)));
+  (void) free ((char *) scm_timer);
+  return;
 }
 
 /* These are NOPs in this version. */

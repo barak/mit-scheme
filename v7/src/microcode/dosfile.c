@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dosfile.c,v 1.2 1993/06/24 07:08:03 gjr Exp $
+$Id: dosfile.c,v 1.3 1997/01/01 22:57:18 cph Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,12 +51,12 @@ DEFUN (fd_channel_type, (fd), int fd)
        : (type == S_IFCHR)
        ? ((isatty (fd))
 	  ? channel_type_terminal
-	  : channel_type_character_device)
+	  : channel_type_unix_character_device)
 #ifdef S_IFIFO
-       : (type == S_IFIFO) ? channel_type_fifo
+       : (type == S_IFIFO) ? channel_type_unix_fifo
 #endif
 #ifdef S_IFBLK
-       : (type == S_IFBLK) ? channel_type_block_device
+       : (type == S_IFBLK) ? channel_type_unix_block_device
 #endif
        : (type == S_IFDIR) ? channel_type_directory
        : channel_type_unknown);

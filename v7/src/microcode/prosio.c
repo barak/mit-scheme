@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prosio.c,v 1.13 1996/10/02 18:58:41 cph Exp $
+$Id: prosio.c,v 1.14 1997/01/01 22:57:40 cph Exp $
 
-Copyright (c) 1987-96 Massachusetts Institute of Technology
+Copyright (c) 1987-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -137,7 +137,9 @@ static char * channel_type_names [] =
   "unix-block-device",
   "os/2-console",
   "os/2-unnamed-pipe",
-  "os/2-named-pipe"
+  "os/2-named-pipe",
+  "win32-char",
+  "win32-pipe"
 };
 
 DEFINE_PRIMITIVE ("CHANNEL-TYPE-NAME", Prim_channel_type_name, 1, 1,

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.12 1996/03/23 19:25:04 adams Exp $
+$Id: ntio.c,v 1.13 1997/01/01 22:57:27 cph Exp $
 
-Copyright (c) 1992-96 Massachusetts Institute of Technology
+Copyright (c) 1992-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -103,8 +103,7 @@ DEFUN (OS_channel_close, (channel), Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
   {
-    STD_BOOL_SYSTEM_CALL
-      (syscall_close, (CloseHandle (CHANNEL_HANDLE (channel))));
+    STD_BOOL_API_CALL (CloseHandle, (CHANNEL_HANDLE (channel)));
     MARK_CHANNEL_CLOSED (channel);
   }
   return;
@@ -305,7 +304,7 @@ DEFUN (OS_channel_write, (channel, buffer, nbytes),
   while (1)
   {
     HANDLE  hFile;
-    DWORD   scr;
+    long    scr;
 
     hFile = CHANNEL_HANDLE(channel);
     scr = ((CHANNEL_COOKED (channel))
@@ -359,7 +358,17 @@ DEFUN (OS_make_pipe, (readerp, writerp),
        Tchannel * readerp AND
        Tchannel * writerp)
 {
-  return;
+/*
+  HANDLE hread;
+  HANDLE hwrite;
+  SECURITY_ATTRIBUTES sa;
+
+  (sa . nLength) = (sizeof (sa));
+  (sa . lpSecurityDescriptor) = 0;
+  (sa . bInheritHandle) = FALSE;
+
+  (CreatePipe ((&hread), (&hwrite), (&sa), 0))
+*/
 }
 
 int
@@ -523,7 +532,7 @@ extern void EXFUN (NT_restore_channels, (void));
 void
 DEFUN_VOID (NT_reset_channels)
 {
-  NT_free (channel_table);
+  free (channel_table);
   channel_table = 0;
   OS_channel_table_size = 0;
   return;
@@ -569,8 +578,7 @@ DEFUN_VOID (NT_initialize_channels)
   else
     OS_have_select_p = 1;
   OS_channel_table_size = (NT_SC_OPEN_MAX ());
-  channel_table =
-    (NT_malloc (OS_channel_table_size * (sizeof (struct channel))));
+  channel_table = (malloc (OS_channel_table_size * (sizeof (struct channel))));
   if (channel_table == 0)
   {
     outf_fatal ("\nUnable to allocate channel table.\n");

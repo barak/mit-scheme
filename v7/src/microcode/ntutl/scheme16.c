@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: scheme16.c,v 1.8 1996/03/23 19:24:27 adams Exp $
+$Id: scheme16.c,v 1.9 1997/01/01 22:58:15 cph Exp $
 
-Copyright (c) 1993-96 Massachusetts Institute of Technology
+Copyright (c) 1993-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -317,11 +317,30 @@ static struct ntw16lib_itimer_s
   long int_mask_off;
   unsigned long bit_mask;
   long ctr_off;
-  UINT message;
+  UINT catatonia_message;
+  UINT interrupt_message;
   HWND window;
   UINT selector;
   HGLOBAL ghan;
 } FAR * async_timers = ((struct ntw16lib_itimer_s FAR *) NULL);
+
+#define INTERRUPT_CODE(scm_timer)					\
+  ((scm_timer -> base) [scm_timer -> int_code_off])
+
+#define INTERRUPT_MASK(scm_timer)					\
+  ((scm_timer -> base) [scm_timer -> int_mask_off])
+
+#define MEMTOP(scm_timer)						\
+  ((scm_timer -> base) [scm_timer -> memtop_off])
+
+#define CATATONIA_COUNTER(scm_timer)					\
+  ((scm_timer -> base) [scm_timer -> ctr_off])
+
+#define CATATONIA_LIMIT(scm_timer)					\
+  ((scm_timer -> base) [(scm_timer -> ctr_off) + 1])
+
+#define CATATONIA_FLAG(scm_timer)					\
+  ((scm_timer -> base) [(scm_timer -> ctr_off) + 2])
 
 void FAR _export 
 scheme_asynctimer (void)
@@ -331,34 +350,37 @@ scheme_asynctimer (void)
   for (scm_timer = async_timers;
        scm_timer != ((struct ntw16lib_itimer_s FAR *) NULL);
        scm_timer = scm_timer->next)
-  {
-    scm_timer->base[scm_timer->int_code_off] |= scm_timer->bit_mask;
-    if ((scm_timer->base[scm_timer->int_mask_off] & scm_timer->bit_mask)
-	!= 0L)
-      scm_timer->base[scm_timer->memtop_off] = ((unsigned long) -1L);
-    scm_timer->base[scm_timer->ctr_off] += 1L;
-    if ((scm_timer->base[scm_timer->ctr_off]
-	 > scm_timer->base[scm_timer->ctr_off + 1])
-	&& (scm_timer->base[scm_timer->ctr_off + 1] != 0L))
     {
-      if (scm_timer->base[scm_timer->ctr_off + 2] == 0L)
-      {
-	PostMessage (scm_timer->window,
-		     scm_timer->message,
-		     ((WPARAM) 0),
-		     ((LPARAM) 0));
-	scm_timer->base[scm_timer->ctr_off + 2] = 1L;
-      }
-      scm_timer->base[scm_timer->ctr_off] = 0L;
+      (INTERRUPT_CODE (scm_timer)) |= (scm_timer -> bit_mask);
+      if (((INTERRUPT_CODE (scm_timer)) & (INTERRUPT_MASK (scm_timer)))
+	  != 0L)
+	{
+	  PostMessage ((scm_timer -> window),
+		       (scm_timer -> interrupt_message),
+		       ((WPARAM) 0),
+		       ((LPARAM) 0));
+	  (MEMTOP (scm_timer)) = ((unsigned long) -1L);
+	}
+      (CATATONIA_COUNTER (scm_timer)) += 1L;
+      if (((CATATONIA_COUNTER (scm_timer)) > (CATATONIA_LIMIT (scm_timer)))
+	  && ((CATATONIA_LIMIT (scm_timer)) != 0L))
+	{
+	  if ((CATATONIA_FLAG (scm_timer)) == 0L)
+	    {
+	      PostMessage ((scm_timer -> window),
+			   (scm_timer -> catatonia_message),
+			   ((WPARAM) 0),
+			   ((LPARAM) 0));
+	      (CATATONIA_FLAG (scm_timer)) = 1L;
+	    }
+	  (CATATONIA_COUNTER (scm_timer)) = 0L;
+	}
     }
-  }
-  return;
 }
 
 static void
 scheme_asynctimer_end (void)
 {
-  return;
 }
 
 static void
@@ -500,7 +522,8 @@ win16_install_timer (struct ntw32lib_itimer_s FAR * buf)
   scm_timer->int_mask_off = buf->int_mask_off;
   scm_timer->bit_mask = buf->bit_mask;
   scm_timer->ctr_off = buf->ctr_off;
-  scm_timer->message = ((UINT) buf->message);
+  scm_timer->catatonia_message = ((UINT) buf->catatonia_message);
+  scm_timer->interrupt_message = ((UINT) buf->interrupt_message);
   scm_timer->window = ((HWND) buf->window);
   scm_timer->ghan = ghan;
 
