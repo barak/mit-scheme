@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/cf-dist.h,v 1.11 1990/06/20 20:00:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/cf-dist.h,v 1.12 1990/11/14 10:59:26 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -66,16 +66,9 @@ MIT in each case. */
 /* #define HAVE_STARBASE_GRAPHICS */
 /* #define STARBASE_DEVICE_DRIVERS -ldd300h -ldd98700 -ldd98710 -ldd98556 */
 
-/* Some useful compilation options:
-   -DCOMPILE_HISTORY		turns on history recording mechanism
-   -DENABLE_DEBUGGING_TOOLS	turns on microcode debugging tools
-   -DUSE_STACKLETS		selects heap-allocated stack
-   -DCOMPILE_FUTURES		turns on parallel processing features
-   -DFUTURE_LOGGING		???
-   -DCOMPILE_STEPPER		enables single-stepper (currently broken)
-   */
-
-#define C_SWITCH_FEATURES -DCOMPILE_HISTORY
+/* Some compilation options:
+   -DDISABLE_HISTORY		turns off history recording mechanism */
+#define C_SWITCH_FEATURES
 
 /* The following two switches are mutually exclusive for most C compilers.
    An exception is the GNU C compiler. */

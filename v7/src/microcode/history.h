@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/history.h,v 9.26 1990/06/20 17:40:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/history.h,v 9.27 1990/11/14 10:57:45 cph Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -84,7 +84,7 @@ MIT in each case. */
 
 /* History manipulation in the interpreter. */
 
-#ifdef COMPILE_HISTORY
+#ifndef DISABLE_HISTORY
 
 #define New_Subproblem(expression, environment)				\
 {									\
@@ -124,18 +124,18 @@ MIT in each case. */
   History = (OBJECT_ADDRESS (History [HIST_PREV_SUBPROBLEM]));		\
 }
 
-#else /* not COMPILE_HISTORY */
+#else /* DISABLE_HISTORY */
 
 #define New_Subproblem(Expr, Env) {}
 #define Reuse_Subproblem(Expr, Env) {}
 #define New_Reduction(Expr, Env) {}
 #define End_Subproblem() {}
 
-#endif /* COMPILE_HISTORY */
+#endif /* DISABLE_HISTORY */
 
 /* History manipulation for the compiled code interface. */
 
-#ifdef COMPILE_HISTORY
+#ifndef DISABLE_HISTORY
 
 #define Compiler_New_Reduction()					\
 {									\
@@ -153,10 +153,10 @@ MIT in each case. */
 
 #define Compiler_End_Subproblem End_Subproblem
 
-#else /* not COMPILE_HISTORY */
+#else /* DISABLE_HISTORY */
 
 #define Compiler_New_Reduction()
 #define Compiler_New_Subproblem()
 #define Compiler_End_Subproblem()
 
-#endif /* COMPILE_HISTORY */
+#endif /* DISABLE_HISTORY */

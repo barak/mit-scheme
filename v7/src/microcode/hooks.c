@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.40 1990/11/13 08:44:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.41 1990/11/14 10:57:22 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -609,7 +609,7 @@ DEFINE_PRIMITIVE ("SET-CURRENT-HISTORY!", Prim_set_current_history, 1, 1, 0)
   PRIMITIVE_CANONICALIZE_CONTEXT ();
   CHECK_ARG (1, HUNK3_P);
   Val = (*History);
-#ifdef COMPILE_HISTORY
+#ifndef DISABLE_HISTORY
   History = (OBJECT_ADDRESS (ARG_REF (1)));
 #else
   History = (OBJECT_ADDRESS (Get_Fixed_Obj_Slot (Dummy_History)));
