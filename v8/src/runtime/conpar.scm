@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.29 1993/09/11 21:26:50 gjr Exp $
+$Id: conpar.scm,v 14.30 1993/09/23 03:36:13 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -337,28 +337,27 @@ MIT in each case. |#
     (cond ((fix:= code code/special-compiled/internal-apply)
 	   (parse/standard-next type elements state false false))
 	  ((fix:= code code/special-compiled/restore-interrupt-mask)
-	   (parser/%%stack-marker (parser-state/dynamic-state state)
-				  (vector-ref elements 2)
-				  type elements state))
+	   (parser/%stack-marker (parser-state/dynamic-state state)
+				 (vector-ref elements 2)
+				 stack-frame-type/stack-marker
+				 (vector-tail elements 1)
+				 state))
 	  ((fix:= code code/special-compiled/stack-marker)
-	   (parser/%stack-marker (vector-ref elements 2)
-				 (vector-ref elements 3)
-				 type elements state))
+	   (parser/stack-marker stack-frame-type/stack-marker
+				(vector-tail elements 1)
+				state))
 	  ((fix:= code code/special-compiled/compiled-code-bkpt)
 	   (parse/standard-next type elements state false false))
 	  (else
 	   (error "Unknown special compiled frame" code)))))
 
 (define (parser/stack-marker type elements state)
-  (parser/%stack-marker (vector-ref elements 1)
-			(vector-ref elements 2)
-			type elements state))
-
-(define (parser/%stack-marker marker marker2 type elements state)
-  (let ((continue
+  (let ((marker (vector-ref elements 1))
+	(marker2 (vector-ref elements 2))
+	(continue
 	 (lambda (dynamic-state interrupt-mask)
-	   (parser/%%stack-marker dynamic-state interrupt-mask
-				  type elements state))))
+	   (parser/%stack-marker dynamic-state interrupt-mask
+				 type elements state))))
     (cond ((eq? marker %translate-to-state-point)
 	   (continue (merge-dynamic-state (parser-state/dynamic-state state)
 					  marker2)
@@ -370,8 +369,8 @@ MIT in each case. |#
 	   (continue (parser-state/dynamic-state state)
 		     (parser-state/interrupt-mask state))))))
 
-(define (parser/%%stack-marker dynamic-state interrupt-mask
-			       type elements state)
+(define (parser/%stack-marker dynamic-state interrupt-mask
+			      type elements state)
   (parser/standard
    type
    elements
