@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.13 1995/02/16 13:19:38 adams Exp $
+$Id: rtlgen.scm,v 1.14 1995/02/28 01:44:55 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -738,13 +738,6 @@ MIT in each case. |#
   (if (rtlgen/heap-post-increment?)
       (rtlgen/heap-push!/post-increment elts)
       (rtlgen/heap-push!/bump-once elts)))
-
-(define (rtlgen/heap-push!/post-increment elts)
-  (let ((free (rtlgen/reference-to-free)))
-    (rtlgen/emit!
-     (map (lambda (elt)
-	    `(ASSIGN (POST-INCREMENT ,free 1) ,(rtlgen/->register elt)))
-	  elts))))
 
 (define (rtlgen/heap-push!/post-increment elts)
   (let ((free (rtlgen/reference-to-free)))
