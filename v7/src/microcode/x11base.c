@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.71 1998/01/29 05:48:38 cph Exp $
+$Id: x11base.c,v 1.72 1998/07/31 07:40:23 cph Exp $
 
 Copyright (c) 1989-98 Massachusetts Institute of Technology
 
@@ -996,6 +996,13 @@ DEFUN (key_event, (xw, event, type),
 		    (sizeof (copy_buffer)),
 		    (&keysym),
 		    (&compose_status)));
+  /* If the BackSpace keysym is received, and XLookupString has
+     translated it into ASCII backspace, substitute ASCII rubout
+     instead.  */
+  if ((keysym == XK_BackSpace)
+      && (nbytes == 1)
+      && ((copy_buffer[0]) == '\b'))
+    (copy_buffer[0]) = '\177';
   if (IsModifierKey (keysym))
     return (SHARP_F);
   else
