@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 1.23 2001/12/20 21:45:25 cph Exp $
+$Id: rulflo.scm,v 1.24 2001/12/23 17:20:58 cph Exp $
 
 Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
@@ -244,6 +244,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-flonum-operation
+      (non-hygienic-macro-transformer
        (lambda (primitive-name opcode)
 	 `(define-arithmetic-method ',primitive-name flonum-methods/1-arg
 	    (flonum-unary-operation/general
@@ -252,7 +253,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		   (LAP (,opcode))
 		   (LAP (FLD (ST ,', source))
 			(,opcode)
-			(FSTP (ST ,',(1+ target)))))))))))
+			(FSTP (ST ,',(1+ target))))))))))))
   (define-flonum-operation FLONUM-NEGATE FCHS)
   (define-flonum-operation FLONUM-ABS FABS)
   (define-flonum-operation FLONUM-SIN FSIN)
@@ -490,6 +491,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-flonum-operation
+      (non-hygienic-macro-transformer
        (lambda (primitive-name op1%2 op1%2p op2%1 op2%1p)
 	 `(begin
 	    (define-arithmetic-method ',primitive-name flonum-methods/2-args
@@ -534,7 +536,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			  (,op2%1p (ST ,',(1+ target)) (ST 0)))
 		     (LAP (FLD1)
 			  (,op2%1 (ST 0) (ST ,',(1+ source)))
-			  (FSTP (ST ,',(1+ target))))))))))))
+			  (FSTP (ST ,',(1+ target)))))))))))))
 
   (define-flonum-operation FLONUM-ADD FADD FADDP FADD FADDP)
   (define-flonum-operation FLONUM-SUBTRACT F%SUB F%SUBP F%SUBR F%SUBPR)

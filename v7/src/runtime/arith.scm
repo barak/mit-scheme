@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.47 2001/12/20 21:22:31 cph Exp $
+$Id: arith.scm,v 1.48 2001/12/23 17:20:59 cph Exp $
 
 Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
 
@@ -28,8 +28,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;;; Utilities
 
 (define-syntax copy
-  (lambda (x)
-    `(LOCAL-DECLARE ((INTEGRATE ,x)) ,x)))
+  (non-hygienic-macro-transformer
+   (lambda (x)
+     `(LOCAL-DECLARE ((INTEGRATE ,x)) ,x))))
 
 ;;;; Primitives
 
@@ -141,63 +142,69 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
   (let-syntax
       ((commutative
-	(lambda (name generic-binary identity primitive-binary)
-	  `(SET! ,name
-		 (MAKE-ENTITY
-		  (NAMED-LAMBDA (,name SELF . ZS)
-		    SELF		; ignored
-		    (REDUCE ,generic-binary ,identity ZS))
-		  (VECTOR (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
-			  (NAMED-LAMBDA (,(symbol-append 'NULLARY- name))
-			    ,identity)
-			  (NAMED-LAMBDA (,(symbol-append 'UNARY- name) Z)
-			    (IF (NOT (COMPLEX:COMPLEX? Z))
-				(ERROR:WRONG-TYPE-ARGUMENT Z FALSE ',name))
-			    Z)
-			  (NAMED-LAMBDA (,(symbol-append 'BINARY- name) Z1 Z2)
-			    ((UCODE-PRIMITIVE ,primitive-binary) Z1 Z2))))))))
+	(non-hygienic-macro-transformer
+	 (lambda (name generic-binary identity primitive-binary)
+	   `(SET! ,name
+		  (MAKE-ENTITY
+		   (NAMED-LAMBDA (,name SELF . ZS)
+		     SELF		; ignored
+		     (REDUCE ,generic-binary ,identity ZS))
+		   (VECTOR
+		    (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
+		    (NAMED-LAMBDA (,(symbol-append 'NULLARY- name))
+		      ,identity)
+		    (NAMED-LAMBDA (,(symbol-append 'UNARY- name) Z)
+		      (IF (NOT (COMPLEX:COMPLEX? Z))
+			  (ERROR:WRONG-TYPE-ARGUMENT Z FALSE ',name))
+		      Z)
+		    (NAMED-LAMBDA (,(symbol-append 'BINARY- name) Z1 Z2)
+		      ((UCODE-PRIMITIVE ,primitive-binary) Z1 Z2)))))))))
     (commutative + complex:+ 0 &+)
     (commutative * complex:* 1 &*))
 
   (let-syntax
       ((non-commutative
-	(lambda (name generic-unary generic-binary
-		     generic-inverse inverse-identity primitive-binary)
-	  `(SET! ,name
-		 (MAKE-ENTITY
-		  (NAMED-LAMBDA (,name SELF Z1 . ZS)
-		    SELF		; ignored
-		    (,generic-binary
-		     Z1
-		     (REDUCE ,generic-inverse ,inverse-identity ZS)))
-		  (VECTOR (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
-			  #F
-			  ,generic-unary
-			  (NAMED-LAMBDA (,(symbol-append 'BINARY- name) Z1 Z2)
-			    ((UCODE-PRIMITIVE ,primitive-binary) Z1 Z2))))))))
+	(non-hygienic-macro-transformer
+	 (lambda (name generic-unary generic-binary
+		      generic-inverse inverse-identity primitive-binary)
+	   `(SET! ,name
+		  (MAKE-ENTITY
+		   (NAMED-LAMBDA (,name SELF Z1 . ZS)
+		     SELF		; ignored
+		     (,generic-binary
+		      Z1
+		      (REDUCE ,generic-inverse ,inverse-identity ZS)))
+		   (VECTOR
+		    (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
+		    #F
+		    ,generic-unary
+		    (NAMED-LAMBDA (,(symbol-append 'BINARY- name) Z1 Z2)
+		      ((UCODE-PRIMITIVE ,primitive-binary) Z1 Z2)))))))))
     (non-commutative -  complex:negate  complex:-  complex:+  0  &-)
     (non-commutative /  complex:invert  complex:/  complex:*  1  &/))
 
   (let-syntax
       ((relational
-	(lambda (name generic-binary primitive-binary correct-type? negated?)
-	  `(SET! ,name
-		 (MAKE-ENTITY
-		  (NAMED-LAMBDA (,name SELF . ZS)
-		    SELF		; ignored
-		    (REDUCE-COMPARATOR ,generic-binary ZS ',name))
-		  (VECTOR
-		   (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
-		   (NAMED-LAMBDA (,(symbol-append 'NULLARY- name)) #T)
-		   (NAMED-LAMBDA (,(symbol-append 'UNARY- name) Z)
-		     (IF (NOT (,correct-type? Z))
-			 (ERROR:WRONG-TYPE-ARGUMENT Z FALSE ',name))
-		     #T)
-		   ,(if negated?
-			`(NAMED-LAMBDA (,(symbol-append 'BINARY- name) Z1 Z2)
-			   (NOT ((UCODE-PRIMITIVE ,primitive-binary) Z1 Z2)))
-			`(NAMED-LAMBDA (,(symbol-append 'BINARY- name) Z1 Z2)
-			   ((UCODE-PRIMITIVE ,primitive-binary) Z1 Z2)))))))))
+	(non-hygienic-macro-transformer
+	 (lambda (name generic-binary primitive-binary correct-type? negated?)
+	   `(SET! ,name
+		  (MAKE-ENTITY
+		   (NAMED-LAMBDA (,name SELF . ZS)
+		     SELF		; ignored
+		     (REDUCE-COMPARATOR ,generic-binary ZS ',name))
+		   (VECTOR
+		    (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
+		    (NAMED-LAMBDA (,(symbol-append 'NULLARY- name)) #T)
+		    (NAMED-LAMBDA (,(symbol-append 'UNARY- name) Z)
+		      (IF (NOT (,correct-type? Z))
+			  (ERROR:WRONG-TYPE-ARGUMENT Z FALSE ',name))
+		      #T)
+		    ,(if negated?
+			 `(NAMED-LAMBDA (,(symbol-append 'BINARY- name) Z1 Z2)
+			    (NOT ((UCODE-PRIMITIVE ,primitive-binary) Z1 Z2)))
+			 `(NAMED-LAMBDA (,(symbol-append 'BINARY- name) Z1 Z2)
+			    ((UCODE-PRIMITIVE ,primitive-binary)
+			     Z1 Z2))))))))))
     (relational =  complex:=  &=  complex:complex? #F)
     (relational <  complex:<  &<  complex:real?    #F)
     (relational >  complex:>  &>  complex:real?    #F)
@@ -206,20 +213,21 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
   (let-syntax
       ((max/min
-	(lambda (name generic-binary)
-	  `(SET! ,name
-		 (MAKE-ENTITY
-		  (NAMED-LAMBDA (,name SELF X . XS)
-		    SELF		; ignored
-		    (REDUCE-MAX/MIN ,generic-binary X XS ',name))
-		  (VECTOR
-		   (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
-		   #F
-		   (NAMED-LAMBDA (,(symbol-append 'UNARY- name) X)
-		     (IF (NOT (COMPLEX:REAL? X))
-			 (ERROR:WRONG-TYPE-ARGUMENT X FALSE ',name))
-		     X)
-		   ,generic-binary))))))
+	(non-hygienic-macro-transformer
+	 (lambda (name generic-binary)
+	   `(SET! ,name
+		  (MAKE-ENTITY
+		   (NAMED-LAMBDA (,name SELF X . XS)
+		     SELF		; ignored
+		     (REDUCE-MAX/MIN ,generic-binary X XS ',name))
+		   (VECTOR
+		    (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
+		    #F
+		    (NAMED-LAMBDA (,(symbol-append 'UNARY- name) X)
+		      (IF (NOT (COMPLEX:REAL? X))
+			  (ERROR:WRONG-TYPE-ARGUMENT X FALSE ',name))
+		      X)
+		    ,generic-binary)))))))
     (max/min max complex:max)
     (max/min min complex:min))
 
@@ -510,29 +518,30 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-addition-operator
-       (lambda (name int:op)
-	 `(define (,name u/u* v/v*)
-	    (rat:binary-operator u/u* v/v*
-	      ,int:op
-	      (lambda (u v v*)
-		(make-rational (,int:op (int:* u v*) v) v*))
-	      (lambda (u u* v)
-		(make-rational (,int:op u (int:* v u*)) u*))
-	      (lambda (u u* v v*)
-		(let ((d1 (int:gcd u* v*)))
-		  (if (int:= d1 1)
-		      (make-rational (,int:op (int:* u v*) (int:* v u*))
-				     (int:* u* v*))
-		      (let* ((u*/d1 (int:quotient u* d1))
-			     (t
-			      (,int:op (int:* u (int:quotient v* d1))
-				       (int:* v u*/d1))))
-			(if (int:zero? t)
-			    0 ;(make-rational 0 1)
-			    (let ((d2 (int:gcd t d1)))
-			      (make-rational
-			       (int:quotient t d2)
-			       (int:* u*/d1 (int:quotient v* d2))))))))))))))
+       (non-hygienic-macro-transformer
+	(lambda (name int:op)
+	  `(define (,name u/u* v/v*)
+	     (rat:binary-operator u/u* v/v*
+	       ,int:op
+	       (lambda (u v v*)
+		 (make-rational (,int:op (int:* u v*) v) v*))
+	       (lambda (u u* v)
+		 (make-rational (,int:op u (int:* v u*)) u*))
+	       (lambda (u u* v v*)
+		 (let ((d1 (int:gcd u* v*)))
+		   (if (int:= d1 1)
+		       (make-rational (,int:op (int:* u v*) (int:* v u*))
+				      (int:* u* v*))
+		       (let* ((u*/d1 (int:quotient u* d1))
+			      (t
+			       (,int:op (int:* u (int:quotient v* d1))
+					(int:* v u*/d1))))
+			 (if (int:zero? t)
+			     0 ;(make-rational 0 1)
+			     (let ((d2 (int:gcd t d1)))
+			       (make-rational
+				(int:quotient t d2)
+				(int:* u*/d1 (int:quotient v* d2)))))))))))))))
   (define-addition-operator rat:+ int:+)
   (define-addition-operator rat:- int:-))
 
@@ -669,13 +678,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-integer-coercion
-       (lambda (name operation-name coercion)
-	 `(DEFINE (,name Q)
-	    (COND ((RATNUM? Q)
-		   (,coercion (RATNUM-NUMERATOR Q) (RATNUM-DENOMINATOR Q)))
-		  ((INT:INTEGER? Q) Q)
-		  (ELSE
-		   (ERROR:WRONG-TYPE-ARGUMENT Q FALSE ',operation-name)))))))
+       (non-hygienic-macro-transformer
+	(lambda (name operation-name coercion)
+	  `(DEFINE (,name Q)
+	     (COND ((RATNUM? Q)
+		    (,coercion (RATNUM-NUMERATOR Q) (RATNUM-DENOMINATOR Q)))
+		   ((INT:INTEGER? Q) Q)
+		   (ELSE
+		    (ERROR:WRONG-TYPE-ARGUMENT Q FALSE ',operation-name))))))))
   (define-integer-coercion rat:floor floor int:floor)
   (define-integer-coercion rat:ceiling ceiling int:ceiling)
   (define-integer-coercion rat:truncate truncate int:quotient)
@@ -920,11 +930,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-standard-unary
-       (lambda (name flo:op rat:op)
-	 `(DEFINE (,name X)
-	    (IF (FLONUM? X)
-		(,flo:op X)
-		(,rat:op X))))))
+       (non-hygienic-macro-transformer
+	(lambda (name flo:op rat:op)
+	  `(DEFINE (,name X)
+	     (IF (FLONUM? X)
+		 (,flo:op X)
+		 (,rat:op X)))))))
   (define-standard-unary real:1+ (lambda (x) (flo:+ x flo:1)) (copy rat:1+))
   (define-standard-unary real:-1+ (lambda (x) (flo:- x flo:1)) (copy rat:-1+))
   (define-standard-unary real:negate flo:negate (copy rat:negate))
@@ -948,15 +959,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-standard-binary
-       (lambda (name flo:op rat:op)
-	 `(DEFINE (,name X Y)
-	    (IF (FLONUM? X)
-		(IF (FLONUM? Y)
-		    (,flo:op X Y)
-		    (,flo:op X (RAT:->INEXACT Y)))
-		(IF (FLONUM? Y)
-		    (,flo:op (RAT:->INEXACT X) Y)
-		    (,rat:op X Y)))))))
+       (non-hygienic-macro-transformer
+	(lambda (name flo:op rat:op)
+	  `(DEFINE (,name X Y)
+	     (IF (FLONUM? X)
+		 (IF (FLONUM? Y)
+		     (,flo:op X Y)
+		     (,flo:op X (RAT:->INEXACT Y)))
+		 (IF (FLONUM? Y)
+		     (,flo:op (RAT:->INEXACT X) Y)
+		     (,rat:op X Y))))))))
   (define-standard-binary real:+ flo:+ (copy rat:+))
   (define-standard-binary real:- flo:- (copy rat:-))
   (define-standard-binary real:rationalize
@@ -1032,6 +1044,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-integer-binary
+      (non-hygienic-macro-transformer
        (lambda (name operator-name operator)
 	 (let ((flo->int
 		(lambda (n)
@@ -1047,7 +1060,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 				  M)))
 		  (IF (FLONUM? M)
 		      (INT:->INEXACT (,operator N ,(flo->int 'M)))
-		      (,operator N M))))))))
+		      (,operator N M)))))))))
   (define-integer-binary real:quotient quotient int:quotient)
   (define-integer-binary real:remainder remainder int:remainder)
   (define-integer-binary real:modulo modulo int:modulo)
@@ -1060,21 +1073,23 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-rational-unary
+      (non-hygienic-macro-transformer
        (lambda (name operator)
 	 `(DEFINE (,name Q)
 	    (IF (FLONUM? Q)
 		(RAT:->INEXACT (,operator (FLO:->RATIONAL Q)))
-		(,operator Q))))))
+		(,operator Q)))))))
   (define-rational-unary real:numerator rat:numerator)
   (define-rational-unary real:denominator rat:denominator))
 
 (let-syntax
     ((define-transcendental-unary
+      (non-hygienic-macro-transformer
        (lambda (name hole? hole-value function)
 	 `(DEFINE (,name X)
 	    (IF (,hole? X)
 		,hole-value
-		(,function (REAL:->INEXACT X)))))))
+		(,function (REAL:->INEXACT X))))))))
   (define-transcendental-unary real:exp real:exact0= 1 flo:exp)
   (define-transcendental-unary real:log real:exact1= 0 flo:log)
   (define-transcendental-unary real:sin real:exact0= 0 flo:sin)

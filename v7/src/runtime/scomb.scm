@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: scomb.scm,v 14.17 2001/12/20 21:24:08 cph Exp $
+$Id: scomb.scm,v 14.18 2001/12/23 17:20:59 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -281,25 +281,26 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((combination-dispatch
-      (lambda (name combination case-0 case-1 case-2 case-n)
-	`(COND ((OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-0)
-			      ,combination)
-		,case-0)
-	       ((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION-1) ,combination)
-		    (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-1)
-				  ,combination))
-		,case-1)
-	       ((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION-2) ,combination)
-		    (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-2)
-				  ,combination))
-		,case-2)
-	       ((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION) ,combination)
-		    (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-3)
-				  ,combination))
-		,case-n)
-	       (ELSE
-		(ERROR:WRONG-TYPE-ARGUMENT ,combination "SCode combination"
-					   ',name))))))
+      (non-hygienic-macro-transformer
+       (lambda (name combination case-0 case-1 case-2 case-n)
+	 `(COND ((OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-0)
+			       ,combination)
+		 ,case-0)
+		((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION-1) ,combination)
+		     (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-1)
+				   ,combination))
+		 ,case-1)
+		((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION-2) ,combination)
+		     (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-2)
+				   ,combination))
+		 ,case-2)
+		((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION) ,combination)
+		     (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-3)
+				   ,combination))
+		 ,case-n)
+		(ELSE
+		 (ERROR:WRONG-TYPE-ARGUMENT ,combination "SCode combination"
+					    ',name)))))))
 
 (define (combination-size combination)
   (combination-dispatch combination-size combination

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.20 2001/02/27 17:20:35 cph Exp $
+$Id: port.scm,v 1.21 2001/12/23 17:20:59 cph Exp $
 
 Copyright (c) 1991-2001 Massachusetts Institute of Technology
 
@@ -189,9 +189,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (port-type/operation-names (port/type port)))
 
 (let-syntax ((define-port-operation
-	       (lambda (dir name)
-		 `(DEFINE (,(symbol-append dir '-PORT/OPERATION/ name) PORT)
-		    (,(symbol-append 'PORT-TYPE/ name) (PORT/TYPE PORT))))))
+	       (non-hygienic-macro-transformer
+		(lambda (dir name)
+		  `(DEFINE (,(symbol-append dir '-PORT/OPERATION/ name) PORT)
+		     (,(symbol-append 'PORT-TYPE/ name) (PORT/TYPE PORT)))))))
   (define-port-operation input char-ready?)
   (define-port-operation input peek-char)
   (define-port-operation input read-char)

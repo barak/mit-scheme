@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.8 2001/08/18 04:52:08 cph Exp $
+$Id: make.scm,v 1.9 2001/12/23 17:21:00 cph Exp $
 
 Copyright (c) 1993-1999, 2001 Massachusetts Institute of Technology
 
@@ -31,6 +31,5 @@ USA.
      (working-directory-pathname)
      (pathname-as-directory "win32")
      (lambda ()
-       (load "ffimacro")
        (load-package-set "win32")))))
 (add-identification! "Win32" 1 5)

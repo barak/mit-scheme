@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: calias.scm,v 1.22 2001/12/20 21:27:55 cph Exp $
+;;; $Id: calias.scm,v 1.23 2001/12/23 17:20:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -256,8 +256,9 @@
 
 ;; Predefined special keys
 (let-syntax ((make-key
-	      (lambda (name)
-		`(DEFINE ,name (INTERN-SPECIAL-KEY ',name 0)))))
+	      (non-hygienic-macro-transformer
+	       (lambda (name)
+		 `(DEFINE ,name (INTERN-SPECIAL-KEY ',name 0))))))
   (make-key backspace)
   (make-key stop)
   (make-key f1)

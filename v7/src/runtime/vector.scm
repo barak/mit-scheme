@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vector.scm,v 14.18 2001/12/20 21:23:45 cph Exp $
+$Id: vector.scm,v 14.19 2001/12/23 17:20:59 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -204,10 +204,11 @@ USA.
 
 (let-syntax
     ((iref
-      (lambda (name index)
-	`(DEFINE-INTEGRABLE (,name VECTOR)
-	   (GUARANTEE-VECTOR VECTOR 'SAFE-VECTOR-REF)
-	   (VECTOR-REF VECTOR ,index)))))
+      (non-hygienic-macro-transformer
+       (lambda (name index)
+	 `(DEFINE-INTEGRABLE (,name VECTOR)
+	    (GUARANTEE-VECTOR VECTOR 'SAFE-VECTOR-REF)
+	    (VECTOR-REF VECTOR ,index))))))
   (iref vector-first 0)
   (iref vector-second 1)
   (iref vector-third 2)

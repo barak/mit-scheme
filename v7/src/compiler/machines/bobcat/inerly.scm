@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: inerly.scm,v 1.10 2001/12/20 02:37:21 cph Exp $
+$Id: inerly.scm,v 1.11 2001/12/23 17:20:57 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -53,82 +53,84 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       (and (memq (car s1) s2)
 	   (eq-subset? (cdr s1) s2))))
 
-(syntax-table/define (->environment '(COMPILER))
-		     'DEFINE-EA-TRANSFORMER
-  (lambda (name . restrictions)
-    `(DEFINE-EARLY-TRANSFORMER ',name
-       (APPLY MAKE-EA-TRANSFORMER ',restrictions))))
+(define-syntax define-ea-transformer
+  (non-hygienic-macro-transformer
+   (lambda (name . restrictions)
+     `(DEFINE-EARLY-TRANSFORMER ',name
+	(APPLY MAKE-EA-TRANSFORMER ',restrictions)))))
 
-(syntax-table/define (->environment '(COMPILER))
-		     'DEFINE-SYMBOL-TRANSFORMER
-  (lambda (name . assoc)
-    `(DEFINE-EARLY-TRANSFORMER ',name (MAKE-SYMBOL-TRANSFORMER ',assoc))))
+(define-syntax define-symbol-transformer
+  (non-hygienic-macro-transformer
+   (lambda (name . assoc)
+     `(DEFINE-EARLY-TRANSFORMER ',name (MAKE-SYMBOL-TRANSFORMER ',assoc)))))
 
-(syntax-table/define (->environment '(COMPILER))
-		     'DEFINE-REG-LIST-TRANSFORMER
-  (lambda (name . assoc)
-    `(DEFINE-EARLY-TRANSFORMER ',name (MAKE-BIT-MASK-TRANSFORMER 16 ',assoc))))
+(define-syntax define-reg-list-transformer
+  (non-hygienic-macro-transformer
+   (lambda (name . assoc)
+     `(DEFINE-EARLY-TRANSFORMER ',name
+	(MAKE-BIT-MASK-TRANSFORMER 16 ',assoc)))))
 
 ;;;; Instruction and addressing mode macros
 
-(syntax-table/define (->environment '(COMPILER))
-		     'DEFINE-INSTRUCTION
-  (lambda (opcode . patterns)
-    `(SET! EARLY-INSTRUCTIONS
-	   (CONS
-	    (LIST ',opcode
-		  ,@(map (lambda (pattern)
-			   `(early-parse-rule
-			     ',(car pattern)
-			     (lambda (pat vars)
-			       (early-make-rule
-				pat
-				vars
-				(scode-quote
-				 (instruction->instruction-sequence
-				  ,(parse-instruction (cadr pattern)
-						      (cddr pattern)
-						      true)))))))
-			 patterns))
-		 EARLY-INSTRUCTIONS))))
+(define-syntax define-instruction
+  (non-hygienic-macro-transformer
+   (lambda (opcode . patterns)
+     `(SET! EARLY-INSTRUCTIONS
+	    (CONS
+	     (LIST ',opcode
+		   ,@(map (lambda (pattern)
+			    `(early-parse-rule
+			      ',(car pattern)
+			      (lambda (pat vars)
+				(early-make-rule
+				 pat
+				 vars
+				 (scode-quote
+				  (instruction->instruction-sequence
+				   ,(parse-instruction (cadr pattern)
+						       (cddr pattern)
+						       #t)))))))
+			  patterns))
+		  EARLY-INSTRUCTIONS)))))
 
-(syntax-table/define (->environment '(COMPILER))
-		     'EXTENSION-WORD
-  (lambda descriptors
-    (expand-descriptors descriptors
-      (lambda (instruction size source destination)
-	(if (or source destination)
-	    (error "EXTENSION-WORD: Source or destination used"))
-	(if (not (zero? (remainder size 16)))
-	    (error "EXTENSION-WORD: Extensions must be 16 bit multiples" size))
-	(optimize-group-syntax instruction true)))))
+(define-syntax extension-word
+  (non-hygienic-macro-transformer
+   (lambda descriptors
+     (expand-descriptors descriptors
+       (lambda (instruction size source destination)
+	 (if (or source destination)
+	     (error "EXTENSION-WORD: Source or destination used"))
+	 (if (not (zero? (remainder size 16)))
+	     (error "EXTENSION-WORD: Extensions must be 16 bit multiples"
+		    size))
+	 (optimize-group-syntax instruction true))))))
 
-(syntax-table/define (->environment '(COMPILER))
-		     'VARIABLE-EXTENSION
-  (lambda (binding . clauses)
-    (variable-width-expression-syntaxer
-     (car binding)
-     (cadr binding)
-     (map  (lambda (clause)
+(define-syntax variable-extension
+  (non-hygienic-macro-transformer
+   (lambda (binding . clauses)
+     (variable-width-expression-syntaxer
+      (car binding)
+      (cadr binding)
+      (map (lambda (clause)
 	     `((LIST ,(caddr clause))
 	       ,(cadr clause)		; Size
 	       ,@(car clause)))		; Range
-	  clauses))))
+	   clauses)))))
 
 ;;;; Early effective address assembly.
 
 ;;; *** NOTE: If this format changes, insutl.scm must also be changed! ***
 
-(syntax-table/define (->environment '(COMPILER))
-		     'DEFINE-EA-DATABASE
-  (lambda rules
-    `(SET! EARLY-EA-DATABASE
-	   (LIST
-	    ,@(map (lambda (rule)
-		     (if (null? (cdddr rule))
-			 (apply make-position-dependent-early rule)
-			 (apply make-position-independent-early rule)))
-		   rules)))))
+(define-syntax define-ea-database
+  (non-hygienic-macro-transformer
+   (lambda rules
+     `(SET! EARLY-EA-DATABASE
+	    (LIST
+	     ,@(map (lambda (rule)
+		      (if (null? (cdddr rule))
+			  (apply make-position-dependent-early rule)
+			  (apply make-position-independent-early rule)))
+		    rules))))))
 
 (define (make-ea-selector-expander late-name index)
   (scode->scode-expander

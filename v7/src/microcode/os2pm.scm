@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2pm.scm,v 1.9 2001/12/20 20:51:16 cph Exp $
+$Id: os2pm.scm,v 1.10 2001/12/23 17:20:59 cph Exp $
 
 Copyright (c) 1995-1999, 2001 Massachusetts Institute of Technology
 
@@ -52,36 +52,38 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;;; Syntax
 
 (define-syntax define-pm-procedure
-  (lambda (name . clauses)
-    (let ((external-name (if (pair? name) (car name) name))
-	  (internal-name (if (pair? name) (cadr name) name)))
-      `(BEGIN
-	 (HASH-TABLE/PUT! PM-PROCEDURES ',external-name
-	   (MAKE-PMP (TRANSLATE-NAME ',external-name)
-		     (TRANSLATE-NAME ',internal-name)
-		     ,(let ((clause (assq 'VALUE clauses)))
-			(if clause
-			    (let ((val (cadr clause)))
-			      (if (symbol? val)
-				  (if (eq? val 'SYNC)
-				      `',val
-				      `(TRANSLATE-TYPE/NAME
-					',`((ID ,val) ,val)))
-				  `(TRANSLATE-TYPE/NAME ',val)))
-			    '#F))
-		     ,(let ((args
-			     (let ((clause (assq 'ARGUMENTS clauses)))
-			       (if (not clause)
-				   (error "ARGUMENTS clause is required:" name))
-			       (cdr clause))))
-			`(CONS (TRANSLATE-TYPE/NAME
-				',(if (symbol? (car args))
-				      `((ID ,(car args)) ,(car args))
-				      (car args)))
-			       (LIST ,@(map (lambda (arg)
-					      `(TRANSLATE-TYPE/NAME ',arg))
-					    (cdr args)))))))
-	 ',external-name))))
+  (non-hygienic-macro-transformer
+   (lambda (name . clauses)
+     (let ((external-name (if (pair? name) (car name) name))
+	   (internal-name (if (pair? name) (cadr name) name)))
+       `(BEGIN
+	  (HASH-TABLE/PUT! PM-PROCEDURES ',external-name
+	    (MAKE-PMP (TRANSLATE-NAME ',external-name)
+		      (TRANSLATE-NAME ',internal-name)
+		      ,(let ((clause (assq 'VALUE clauses)))
+			 (if clause
+			     (let ((val (cadr clause)))
+			       (if (symbol? val)
+				   (if (eq? val 'SYNC)
+				       `',val
+				       `(TRANSLATE-TYPE/NAME
+					 ',`((ID ,val) ,val)))
+				   `(TRANSLATE-TYPE/NAME ',val)))
+			     '#F))
+		      ,(let ((args
+			      (let ((clause (assq 'ARGUMENTS clauses)))
+				(if (not clause)
+				    (error "ARGUMENTS clause is required:"
+					   name))
+				(cdr clause))))
+			 `(CONS (TRANSLATE-TYPE/NAME
+				 ',(if (symbol? (car args))
+				       `((ID ,(car args)) ,(car args))
+				       (car args)))
+				(LIST ,@(map (lambda (arg)
+					       `(TRANSLATE-TYPE/NAME ',arg))
+					     (cdr args)))))))
+	  ',external-name)))))
 
 (define (translate-type/name tn)
   (cond ((and (pair? tn)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.28 2001/12/20 21:23:31 cph Exp $
+$Id: list.scm,v 14.29 2001/12/23 17:20:59 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -547,54 +547,55 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((mapping-procedure
-      (lambda (name combiner initial-value procedure first rest)
-	`(BEGIN
-	   (DEFINE (MAP-1 L)
-	     (COND ((PAIR? L)
-		    (,combiner (,procedure (CAR L))
-			       (MAP-1 (CDR L))))
-		   ((NULL? L) ,initial-value)
-		   (ELSE (BAD-END))))
+      (non-hygienic-macro-transformer
+       (lambda (name combiner initial-value procedure first rest)
+	 `(BEGIN
+	    (DEFINE (MAP-1 L)
+	      (COND ((PAIR? L)
+		     (,combiner (,procedure (CAR L))
+				(MAP-1 (CDR L))))
+		    ((NULL? L) ,initial-value)
+		    (ELSE (BAD-END))))
 
-	   (DEFINE (MAP-2 L1 L2)
-	     (COND ((AND (PAIR? L1) (PAIR? L2))
-		    (,combiner (,procedure (CAR L1) (CAR L2))
-			       (MAP-2 (CDR L1) (CDR L2))))
-		   ((AND (NULL? L1) (NULL? L2)) ,initial-value)
-		   (ELSE (BAD-END))))
+	    (DEFINE (MAP-2 L1 L2)
+	      (COND ((AND (PAIR? L1) (PAIR? L2))
+		     (,combiner (,procedure (CAR L1) (CAR L2))
+				(MAP-2 (CDR L1) (CDR L2))))
+		    ((AND (NULL? L1) (NULL? L2)) ,initial-value)
+		    (ELSE (BAD-END))))
 
-	   (DEFINE (MAP-N LISTS)
-	     (LET N-LOOP ((LISTS LISTS))
-	       (IF (PAIR? (CAR LISTS))
-		   (DO ((LISTS LISTS (CDR LISTS))
-			(CARS '() (CONS (CAAR LISTS) CARS))
-			(CDRS '() (CONS (CDAR LISTS) CDRS)))
-		       ((NOT (PAIR? LISTS))
-			(,combiner (APPLY ,procedure (REVERSE! CARS))
-				   (N-LOOP (REVERSE! CDRS))))
-		     (IF (NOT (PAIR? (CAR LISTS)))
-			 (BAD-END)))
-		   (DO ((LISTS LISTS (CDR LISTS)))
-		       ((NOT (PAIR? LISTS)) ,initial-value)
-		     (IF (NOT (NULL? (CAR LISTS)))
-			 (BAD-END))))))
+	    (DEFINE (MAP-N LISTS)
+	      (LET N-LOOP ((LISTS LISTS))
+		(IF (PAIR? (CAR LISTS))
+		    (DO ((LISTS LISTS (CDR LISTS))
+			 (CARS '() (CONS (CAAR LISTS) CARS))
+			 (CDRS '() (CONS (CDAR LISTS) CDRS)))
+			((NOT (PAIR? LISTS))
+			 (,combiner (APPLY ,procedure (REVERSE! CARS))
+				    (N-LOOP (REVERSE! CDRS))))
+		      (IF (NOT (PAIR? (CAR LISTS)))
+			  (BAD-END)))
+		    (DO ((LISTS LISTS (CDR LISTS)))
+			((NOT (PAIR? LISTS)) ,initial-value)
+		      (IF (NOT (NULL? (CAR LISTS)))
+			  (BAD-END))))))
 
-	   (DEFINE (BAD-END)
-	     (DO ((LISTS (CONS ,first ,rest) (CDR LISTS)))
-		 ((NOT (PAIR? LISTS)))
-	       (IF (NOT (LIST? (CAR LISTS)))
-		   (ERROR:WRONG-TYPE-ARGUMENT (CAR LISTS) "list" ',name)))
-	     (LET ((N (LENGTH ,first)))
-	       (DO ((LISTS ,rest (CDR LISTS)))
-		   ((NOT (PAIR? LISTS)))
-		 (IF (NOT (= N (LENGTH (CAR LISTS))))
-		     (ERROR:BAD-RANGE-ARGUMENT (CAR LISTS) ',name)))))
+	    (DEFINE (BAD-END)
+	      (DO ((LISTS (CONS ,first ,rest) (CDR LISTS)))
+		  ((NOT (PAIR? LISTS)))
+		(IF (NOT (LIST? (CAR LISTS)))
+		    (ERROR:WRONG-TYPE-ARGUMENT (CAR LISTS) "list" ',name)))
+	      (LET ((N (LENGTH ,first)))
+		(DO ((LISTS ,rest (CDR LISTS)))
+		    ((NOT (PAIR? LISTS)))
+		  (IF (NOT (= N (LENGTH (CAR LISTS))))
+		      (ERROR:BAD-RANGE-ARGUMENT (CAR LISTS) ',name)))))
 
-	   (IF (PAIR? ,rest)
-	       (IF (PAIR? (CDR ,rest))
-		   (MAP-N (CONS ,first ,rest))
-		   (MAP-2 ,first (CAR ,rest)))
-	       (MAP-1 ,first))))))
+	    (IF (PAIR? ,rest)
+		(IF (PAIR? (CDR ,rest))
+		    (MAP-N (CONS ,first ,rest))
+		    (MAP-2 ,first (CAR ,rest)))
+		(MAP-1 ,first)))))))
 
 (define (for-each procedure first . rest)
   (mapping-procedure for-each begin unspecific procedure first rest))

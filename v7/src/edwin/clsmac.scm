@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: clsmac.scm,v 1.6 2001/12/21 18:41:10 cph Exp $
+;;;$Id: clsmac.scm,v 1.7 2001/12/23 17:20:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989, 1999, 2001 Massachusetts Institute of Technology
 ;;;
@@ -30,51 +30,56 @@
 ;;; ******************************************************************
 
 (define-syntax define-class
-  (lambda (name superclass variables)
-    (guarantee-symbol "Class name" name)
-    (if (not (null? superclass))
-	(guarantee-symbol "Class name" superclass))
-    ;; Compile-time definition.
-    (make-class name
-		(if (null? superclass) false (name->class superclass))
-		variables)
-    ;; Load-time definition.
-    `(DEFINE ,name
-       (MAKE-CLASS ',name
-		   ,(if (null? superclass) false superclass)
-		   ',variables))))
+  (non-hygienic-macro-transformer
+   (lambda (name superclass variables)
+     (guarantee-symbol "Class name" name)
+     (if (not (null? superclass))
+	 (guarantee-symbol "Class name" superclass))
+     ;; Compile-time definition.
+     (make-class name
+		 (if (null? superclass) false (name->class superclass))
+		 variables)
+     ;; Load-time definition.
+     `(DEFINE ,name
+	(MAKE-CLASS ',name
+		    ,(if (null? superclass) false superclass)
+		    ',variables)))))
 
 (define-syntax define-method
-  (lambda (class bvl . body)
-    (syntax-class-definition class bvl body
-      (lambda (name expression)
-	(make-syntax-closure
-	 (make-method-definition class name expression))))))
+  (non-hygienic-macro-transformer
+   (lambda (class bvl . body)
+     (syntax-class-definition class bvl body
+       (lambda (name expression)
+	 (make-syntax-closure
+	  (make-method-definition class name expression)))))))
 
 (define-syntax with-instance-variables
-  (lambda (class self free-names . body)
-    (guarantee-symbol "Self name" self)
-    (make-syntax-closure
-     (syntax-class-expression class self free-names body))))
+  (non-hygienic-macro-transformer
+   (lambda (class self free-names . body)
+     (guarantee-symbol "Self name" self)
+     (make-syntax-closure
+      (syntax-class-expression class self free-names body)))))
 
 (define-syntax =>
-  (lambda (object operation . arguments)
-    (guarantee-symbol "Operation name" operation)
-    (let ((obname (string->uninterned-symbol "object")))
-      `(LET ((,obname ,object))
-	 ((CLASS-METHODS/REF (OBJECT-METHODS ,obname) ',operation)
-	  ,obname
-	  ,@arguments)))))
+  (non-hygienic-macro-transformer
+   (lambda (object operation . arguments)
+     (guarantee-symbol "Operation name" operation)
+     (let ((obname (string->uninterned-symbol "object")))
+       `(LET ((,obname ,object))
+	  ((CLASS-METHODS/REF (OBJECT-METHODS ,obname) ',operation)
+	   ,obname
+	   ,@arguments))))))
 
 (define-syntax usual=>
-  (lambda (object operation . arguments)
-    (guarantee-symbol "Operation name" operation)
-    (if (not *class-name*)
-	(error "Not inside class expression: USUAL=>" operation))
-    `((CLASS-METHODS/REF (CLASS-METHODS (CLASS-SUPERCLASS ,*class-name*))
-			 ',operation)
-      ,object
-      ,@arguments)))
+  (non-hygienic-macro-transformer
+   (lambda (object operation . arguments)
+     (guarantee-symbol "Operation name" operation)
+     (if (not *class-name*)
+	 (error "Not inside class expression: USUAL=>" operation))
+     `((CLASS-METHODS/REF (CLASS-METHODS (CLASS-SUPERCLASS ,*class-name*))
+			  ',operation)
+       ,object
+       ,@arguments))))
 
 (define (syntax-class-definition class bvl body receiver)
   (parse-definition bvl body

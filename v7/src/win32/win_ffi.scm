@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: win_ffi.scm,v 1.7 2001/12/20 20:51:16 cph Exp $
+$Id: win_ffi.scm,v 1.8 2001/12/23 17:21:00 cph Exp $
 
 Copyright (c) 1993, 1999, 2001 Massachusetts Institute of Technology
 
@@ -46,7 +46,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
      hIcon hCursor background menu-name name))
 
 
-(define-integrable %call-foreign-function (ucode-primitive call-ff))
+(define-integrable %call-foreign-function
+  (ucode-primitive call-ff -1))
 
 (define (windows-procedure-argument-type-check-error type arg)
   ((access error system-global-environment)
@@ -54,8 +55,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 
 (define-syntax call-case
-  (lambda (n)
-    #|
+  (non-hygienic-macro-transformer
+   (lambda (n)
+     #|
     ;; Generate code like this:
     (lambda (module-entry)
 	(let ((arg1-type (list-ref arg-types 0))
@@ -66,31 +68,31 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			   (arg1-type arg1)
 			   (arg2-type arg2)))))))
     |#
-    (define (map-index f i n)
-      (if (<= i n)
-	  (cons (f i) (map-index f (1+ i) n))
-	  '()))
-    (define (->string thing)
-      (cond  ((string? thing)  thing)
-	     ((symbol? thing)  (symbol-name thing))
-	     ((number? thing)  (number->string thing))))
-    (define (concat . things)
-      (string->symbol (apply string-append (map ->string things))))
+     (define (map-index f i n)
+       (if (<= i n)
+	   (cons (f i) (map-index f (1+ i) n))
+	   '()))
+     (define (->string thing)
+       (cond  ((string? thing)  thing)
+	      ((symbol? thing)  (symbol-name thing))
+	      ((number? thing)  (number->string thing))))
+     (define (concat . things)
+       (string->symbol (apply string-append (map ->string things))))
 
-    (let* ((arg-names  (map-index (lambda (i) (concat "arg" i)) 1 n))
-	   (type-names (map-index (lambda (i) (concat "arg" i "-type")) 1 n))
-	   (indexes    (map-index identity-procedure 1 n))
-	   (type-binds (map (lambda (type-name index) 
-			      `(,type-name (list-ref arg-types ,(- index 1))))
-			    type-names indexes))
-	   (conversions (map list type-names arg-names)))
+     (let* ((arg-names  (map-index (lambda (i) (concat "arg" i)) 1 n))
+	    (type-names (map-index (lambda (i) (concat "arg" i "-type")) 1 n))
+	    (indexes    (map-index identity-procedure 1 n))
+	    (type-binds (map (lambda (type-name index) 
+			       `(,type-name (list-ref arg-types ,(- index 1))))
+			     type-names indexes))
+	    (conversions (map list type-names arg-names)))
 
-      `(lambda (module-entry)
-	 (let ,type-binds
-	     (lambda ,arg-names
-	       (result-type (%call-foreign-function
-			     (module-entry/machine-address module-entry)
-			     . ,conversions))))))))
+       `(lambda (module-entry)
+	  (let ,type-binds
+	      (lambda ,arg-names
+		(result-type (%call-foreign-function
+			      (module-entry/machine-address module-entry)
+			      . ,conversions)))))))))
 
 
 (define (make-windows-procedure lib name result-type . arg-types)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: macros.scm,v 1.11 2001/12/20 16:28:23 cph Exp $
+;;; $Id: macros.scm,v 1.12 2001/12/23 17:21:00 cph Exp $
 ;;;
 ;;; Copyright (c) 1993-2001 Massachusetts Institute of Technology
 ;;;
@@ -23,47 +23,49 @@
 
 (declare (usual-integrations))
 
-(define (transform:define-class name superclasses . slot-arguments)
-  (let ((lose
-	 (lambda (s a)
-	   (serror 'DEFINE-CLASS (string-append "Malformed " s ":") a))))
-    (call-with-values (lambda () (parse-define-class-name name lose))
-      (lambda (name post-definitions separator)
-	(if (not (list? superclasses))
-	    (lose "superclasses" superclasses))
-	(let ((pre-definitions
-	       (extract-generic-definitions! slot-arguments name separator
-					     lose)))
-	  `(BEGIN
-	     ,@pre-definitions
-	     (DEFINE ,name
-	       (,(make-absolute-reference 'MAKE-CLASS)
-		',name
-		(,(make-absolute-reference 'LIST) ,@superclasses)
-		(,(make-absolute-reference 'LIST)
-		 ,@(map
-		    (lambda (arg)
-		      (cond ((symbol? arg)
-			     `',arg)
-			    ((and (pair? arg)
-				  (symbol? (car arg))
-				  (list? (cdr arg)))
-			     `(,(make-absolute-reference 'LIST)
-			       ',(car arg)
-			       ,@(let loop ((plist (cdr arg)))
-				   (cond ((null? plist)
-					  '())
-					 ((and (symbol? (car plist))
-					       (pair? (cdr plist)))
-					  (cons* `',(car plist)
-						 (cadr plist)
-						 (loop (cddr plist))))
-					 (else
-					  (lose "slot argument" arg))))))
-			    (else
-			     (lose "slot argument" arg))))
-		    slot-arguments))))
-	     ,@post-definitions))))))
+(define-syntax define-class
+  (non-hygienic-macro-transformer
+   (lambda (name superclasses . slot-arguments)
+     (let ((lose
+	    (lambda (s a)
+	      (error (string-append "Malformed " s ":") a))))
+       (call-with-values (lambda () (parse-define-class-name name lose))
+	 (lambda (name post-definitions separator)
+	   (if (not (list? superclasses))
+	       (lose "superclasses" superclasses))
+	   (let ((pre-definitions
+		  (extract-generic-definitions! slot-arguments name separator
+						lose)))
+	     `(BEGIN
+		,@pre-definitions
+		(DEFINE ,name
+		  (,(make-absolute-reference 'MAKE-CLASS)
+		   ',name
+		   (,(make-absolute-reference 'LIST) ,@superclasses)
+		   (,(make-absolute-reference 'LIST)
+		    ,@(map
+		       (lambda (arg)
+			 (cond ((symbol? arg)
+				`',arg)
+			       ((and (pair? arg)
+				     (symbol? (car arg))
+				     (list? (cdr arg)))
+				`(,(make-absolute-reference 'LIST)
+				  ',(car arg)
+				  ,@(let loop ((plist (cdr arg)))
+				      (cond ((null? plist)
+					     '())
+					    ((and (symbol? (car plist))
+						  (pair? (cdr plist)))
+					     (cons* `',(car plist)
+						    (cadr plist)
+						    (loop (cddr plist))))
+					    (else
+					     (lose "slot argument" arg))))))
+			       (else
+				(lose "slot argument" arg))))
+		       slot-arguments))))
+		,@post-definitions))))))))
 
 (define (parse-define-class-name name lose)
   (call-with-values (lambda () (parse-define-class-name-1 name lose))
@@ -144,7 +146,7 @@
 	 (lose "class option" option))))
 
 (define (list-of-symbols? x)
-  (and (list? x) (for-all? x symbol?)))
+  (list-of-type? x symbol?))
 
 (define (optional? x)
   (or (null? x) (and (pair? x) (null? (cdr x)))))
@@ -154,6 +156,20 @@
 
 (define (default-constructor-name class-name)
   (intern (string-append "make-" (strip-angle-brackets class-name))))
+
+(define (make-named-lambda name required optional rest body)
+  (let ((bvl
+	 (append required
+		 (if (null? optional)
+		     '()
+		     `(#!OPTIONAL ,@optional))
+		 (or rest '()))))
+    (if name
+	`(NAMED-LAMBDA (,name ,@bvl) ,@body)
+	`(LAMBDA ,bvl ,@body))))
+
+(define (make-absolute-reference name)
+  `(ACCESS ,name #F))
 
 (define (extract-generic-definitions! slot-arguments name separator lose)
   (let ((definitions '()))
@@ -231,72 +247,76 @@
 	(substring s 1 (fix:- (string-length s) 1))
 	s)))
 
-(define (transform:define-generic name lambda-list)
-  (let ((mname 'DEFINE-GENERIC))
-    (if (not (symbol? name))
-	(serror mname "Malformed generic procedure name:" name))
-    (call-with-values (lambda () (parse-lambda-list lambda-list #f mname))
-      (lambda (required optional rest)
-	`(DEFINE ,name
-	   (,(make-absolute-reference 'MAKE-GENERIC-PROCEDURE)
-	    ',(let ((low (length required)))
-		(cond (rest (cons low #f))
-		      ((null? optional) low)
-		      (else (cons low (+ low (length optional))))))
-	    ',name))))))
+(define-syntax define-generic
+  (non-hygienic-macro-transformer
+   (lambda (name lambda-list)
+     (if (not (symbol? name))
+	 (error "Malformed generic procedure name:" name))
+     (call-with-values (lambda () (parse-lambda-list lambda-list #f))
+       (lambda (required optional rest)
+	 `(DEFINE ,name
+	    (,(make-absolute-reference 'MAKE-GENERIC-PROCEDURE)
+	     ',(let ((low (length required)))
+		 (cond (rest (cons low #f))
+		       ((null? optional) low)
+		       (else (cons low (+ low (length optional))))))
+	     ',name)))))))
 
-(define (transform:define-method name lambda-list . body)
-  (%transform:define-method name lambda-list body 'DEFINE-METHOD
-			    generate-method-definition))
+(define-syntax define-method
+  (non-hygienic-macro-transformer
+   (lambda (name lambda-list . body)
+     (transform-define-method name lambda-list body
+       (lambda (name required specializers optional rest body)
+	 `(,(make-absolute-reference 'ADD-METHOD)
+	   ,name
+	   ,(make-method-sexp name required optional rest specializers
+			      body)))))))
 
-(define (transform:define-computed-method name lambda-list . body)
-  (%transform:define-method name lambda-list body 'DEFINE-COMPUTED-METHOD
-			    generate-computed-method-definition))
+(define-syntax define-computed-method
+  (non-hygienic-macro-transformer
+   (lambda (name lambda-list . body)
+     (transform-define-method name lambda-list body
+       (lambda (name required specializers optional rest body)
+	 `(,(make-absolute-reference 'ADD-METHOD)
+	   ,name
+	   (,(make-absolute-reference 'MAKE-COMPUTED-METHOD)
+	    (,(make-absolute-reference 'LIST) ,@specializers)
+	    ,(make-named-lambda name required optional rest body))))))))
 
-(define (%transform:define-method name lambda-list body mname generator)
+(define (transform-define-method name lambda-list body generator)
   (if (not (symbol? name))
-      (serror mname "Malformed generic procedure name:" name))
-  (call-with-values (lambda () (parse-lambda-list lambda-list #t mname))
+      (error "Malformed generic procedure name:" name))
+  (call-with-values (lambda () (parse-lambda-list lambda-list #t))
     (lambda (required optional rest)
       (call-with-values (lambda () (extract-required-specializers required))
 	(lambda (required specializers)
 	  (generator name required specializers optional rest body))))))
 
-(define (generate-method-definition name required specializers optional rest
-				    body)
-  `(,(make-absolute-reference 'ADD-METHOD)
-    ,name
-    ,(make-method-sexp name required optional rest specializers body)))
+(define-syntax define-computed-emp
+  (non-hygienic-macro-transformer
+   (lambda (name key lambda-list . body)
+     (if (not (symbol? name))
+	 (error "Malformed generic procedure name:" name))
+     (call-with-values (lambda () (parse-lambda-list lambda-list #t))
+       (lambda (required optional rest)
+	 (call-with-values (lambda () (extract-required-specializers required))
+	   (lambda (required specializers)
+	     `(,(make-absolute-reference 'ADD-METHOD)
+	       ,name
+	       (,(make-absolute-reference 'MAKE-COMPUTED-EMP)
+		,key
+		(,(make-absolute-reference 'LIST) ,@specializers)
+		,(make-named-lambda name required optional rest body))))))))))
 
-(define (generate-computed-method-definition name required specializers
-					     optional rest body)
-  `(,(make-absolute-reference 'ADD-METHOD)
-    ,name
-    (,(make-absolute-reference 'MAKE-COMPUTED-METHOD)
-     (,(make-absolute-reference 'LIST) ,@specializers)
-     ,(make-named-lambda name required optional rest body))))
-
-(define (transform:define-computed-emp name key lambda-list . body)
-  (let ((mname 'DEFINE-COMPUTED-EMP))
-    (if (not (symbol? name))
-	(serror mname "Malformed generic procedure name:" name))
-    (call-with-values (lambda () (parse-lambda-list lambda-list #t mname))
-      (lambda (required optional rest)
-	(call-with-values (lambda () (extract-required-specializers required))
-	  (lambda (required specializers)
-	    `(,(make-absolute-reference 'ADD-METHOD)
-	      ,name
-	      (,(make-absolute-reference 'MAKE-COMPUTED-EMP)
-	       ,key
-	       (,(make-absolute-reference 'LIST) ,@specializers)
-	       ,(make-named-lambda name required optional rest body)))))))))
-
-(define (transform:method lambda-list . body)
-  (call-with-values (lambda () (parse-lambda-list lambda-list #t 'METHOD))
-    (lambda (required optional rest)
-      (call-with-values (lambda () (extract-required-specializers required))
-	(lambda (required specializers)
-	  (make-method-sexp #f required optional rest specializers body))))))
+(define-syntax method
+  (non-hygienic-macro-transformer
+   (lambda (lambda-list . body)
+     (call-with-values (lambda () (parse-lambda-list lambda-list #t))
+       (lambda (required optional rest)
+	 (call-with-values (lambda () (extract-required-specializers required))
+	   (lambda (required specializers)
+	     (make-method-sexp #f required optional rest specializers
+			       body))))))))
 
 (define (extract-required-specializers required)
   (let loop ((required required) (names '()) (specializers '()))
@@ -379,8 +399,7 @@
 		     (else
 		      (cons (car body) (loop (cdr body))))))))
 	(values body
-		(free-variable? 'CALL-NEXT-METHOD
-				(syntax* body))))))
+		(free-variable? 'CALL-NEXT-METHOD (syntax* body))))))
 
 (define free-variable?
   (letrec
@@ -445,8 +464,7 @@
        (illegal (lambda (expr) (error "Illegal expression:" expr))))
     do-expr))
 
-(define (parse-lambda-list lambda-list allow-specializers? specform)
-  specform
+(define (parse-lambda-list lambda-list allow-specializers?)
   (let ((required '())
 	(optional '())
 	(rest #f))
@@ -521,21 +539,3 @@
 	  (lambda (lambda-list)
 	    (error "Illegal parameter list element:" (car lambda-list)))))
       (parse-required lambda-list))))
-
-(define (make-named-lambda name required optional rest body)
-  (let ((bvl
-	 (append required
-		 (if (null? optional)
-		     '()
-		     `(#!OPTIONAL ,@optional))
-		 (or rest '()))))
-    (if name
-	`(NAMED-LAMBDA (,name ,@bvl) ,@body)
-	`(LAMBDA ,bvl ,@body))))
-
-(define (make-absolute-reference name)
-  `(ACCESS ,name #F))
-
-(define (serror procedure message . objects)
-  procedure
-  (apply error message objects))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.183 2001/12/20 21:27:52 cph Exp $
+;;; $Id: buffer.scm,v 1.184 2001/12/23 17:20:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -46,9 +46,10 @@
 
 (let-syntax
     ((rename
-      (lambda (slot-name)
-	`(DEFINE-INTEGRABLE ,(symbol-append 'BUFFER- slot-name)
-	   ,(symbol-append 'BUFFER-% slot-name)))))
+      (non-hygienic-macro-transformer
+       (lambda (slot-name)
+	 `(DEFINE-INTEGRABLE ,(symbol-append 'BUFFER- slot-name)
+	    ,(symbol-append 'BUFFER-% slot-name))))))
   (rename name)
   (rename default-directory)
   (rename pathname)

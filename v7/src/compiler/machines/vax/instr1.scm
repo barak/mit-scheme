@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: instr1.scm,v 1.8 2001/12/20 20:51:16 cph Exp $
+$Id: instr1.scm,v 1.9 2001/12/23 17:20:58 cph Exp $
 
 Copyright (c) 1987, 1989, 1999, 2001 Massachusetts Institute of Technology
 
@@ -59,10 +59,11 @@ opcodes are
 ;; Utility
 
 (define-syntax define-trivial-instruction
-  (lambda (mnemonic opcode)
-    `(define-instruction ,mnemonic
-       (()
-	(BYTE (8 ,opcode))))))
+  (non-hygienic-macro-transformer
+   (lambda (mnemonic opcode)
+     `(DEFINE-INSTRUCTION ,mnemonic
+	(()
+	 (BYTE (8 ,opcode)))))))
 
 ;; Pseudo ops
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.31 2001/12/20 21:28:04 cph Exp $
+$Id: tterm.scm,v 1.32 2001/12/23 17:20:58 cph Exp $
 
 Copyright (c) 1990-1999, 2001 Massachusetts Institute of Technology
 
@@ -442,17 +442,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (key-table false))
 
 (let-syntax ((define-accessor
+	      (non-hygienic-macro-transformer
 	       (lambda (name)
 		 `(DEFINE-INTEGRABLE (,(symbol-append 'SCREEN- name) SCREEN)
 		    (,(symbol-append 'TERMINAL-STATE/ name)
-		     (SCREEN-STATE SCREEN)))))
+		     (SCREEN-STATE SCREEN))))))
 	     (define-updater
+	      (non-hygienic-macro-transformer
 	       (lambda (name)
 		 `(DEFINE-INTEGRABLE
 		    (,(symbol-append 'SET-SCREEN- name '!) SCREEN ,name)
 		    (,(symbol-append 'SET-TERMINAL-STATE/ name '!)
 		     (SCREEN-STATE SCREEN)
-		     ,name)))))
+		     ,name))))))
   (define-accessor description)
   (define-accessor baud-rate-index)
   (define-accessor baud-rate)

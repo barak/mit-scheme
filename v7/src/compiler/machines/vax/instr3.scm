@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: instr3.scm,v 1.12 2001/12/20 21:45:25 cph Exp $
+$Id: instr3.scm,v 1.13 2001/12/23 17:20:58 cph Exp $
 
 Copyright (c) 1987, 1989, 1991, 1999, 2001 Massachusetts Institute of Technology
 
@@ -27,10 +27,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (declare (usual-integrations))
 
 (define-syntax define-trivial-instruction
-  (lambda (mnemonic opcode)
-    `(define-instruction ,mnemonic
-       (()
-	(BYTE (8 ,opcode))))))
+  (non-hygienic-macro-transformer
+   (lambda (mnemonic opcode)
+     `(DEFINE-INSTRUCTION ,mnemonic
+	(()
+	 (BYTE (8 ,opcode)))))))
 
 (define-instruction ASH
   ((L (? cnt ea-r-b) (? src ea-r-l) (? dst ea-w-l))

@@ -122,8 +122,9 @@ This is some debugging stuff for probing the space usage.
 (define (record-free-pointer trace)
   (if allow-free-trace?
       (let-syntax ((ucode-primitive
-		    (lambda arguments
-		      (apply make-primitive-procedure arguments))))
+		    (non-hygienic-macro-transformer
+		     (lambda arguments
+		       (apply make-primitive-procedure arguments)))))
 	(vector-set! (cdr trace)
 		     (car trace)
 		     ((ucode-primitive primitive-get-free 1) 26))
@@ -155,10 +156,11 @@ end of debugging stuff
   (restart-thread uitk-thread #T (lambda () (initial-thread-state 'go))))
 
 (let-syntax ((last-reference
-	      (lambda (variable)
-		`(let ((foo ,variable))
-		   (set! ,variable #F)
-		   foo))))
+	      (non-hygienic-macro-transformer
+	       (lambda (variable)
+		 `(let ((foo ,variable))
+		    (set! ,variable #F)
+		    foo)))))
 
   (define (uitk-thread-main-loop)
     (define (flush-all-displays)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.30 2001/12/20 20:51:16 cph Exp $
+;;; $Id: parser.scm,v 1.31 2001/12/23 17:21:00 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -71,18 +71,19 @@
       (hash-table/put! parser-preprocessors name procedure))
   name)
 
-(syntax-table/define system-global-environment 'DEFINE-*PARSER-MACRO
-  (lambda (bvl expression)
-    (cond ((symbol? bvl)
-	   `(DEFINE-*PARSER-EXPANDER ',bvl
-	      (LAMBDA ()
-		,expression)))
-	  ((named-lambda-bvl? bvl)
-	   `(DEFINE-*PARSER-EXPANDER ',(car bvl)
-	      (LAMBDA ,(cdr bvl)
-		,expression)))
-	  (else
-	   (error "Malformed bound-variable list:" bvl)))))
+(define-syntax define-*parser-macro
+  (non-hygienic-macro-transformer
+   (lambda (bvl expression)
+     (cond ((symbol? bvl)
+	    `(DEFINE-*PARSER-EXPANDER ',bvl
+	       (LAMBDA ()
+		 ,expression)))
+	   ((named-lambda-bvl? bvl)
+	    `(DEFINE-*PARSER-EXPANDER ',(car bvl)
+	       (LAMBDA ,(cdr bvl)
+		 ,expression)))
+	   (else
+	    (error "Malformed bound-variable list:" bvl))))))
 
 (define (define-*parser-expander name procedure)
   (define-parser-macro name
@@ -173,9 +174,10 @@
 
 ;;;; Compiler
 
-(syntax-table/define system-global-environment '*PARSER
-  (lambda (expression)
-    (generate-parser-code expression)))
+(define-syntax *parser
+  (non-hygienic-macro-transformer
+   (lambda (expression)
+     (generate-parser-code expression))))
 
 (define (generate-parser-code expression)
   (generate-external-procedure expression preprocess-parser-expression
@@ -217,13 +219,14 @@
 	   ,(delay-call kf)))))
 
 (define-syntax define-parser
-  (lambda (form . compiler-body)
-    (let ((name (car form))
-	  (parameters (cdr form)))
-      `(DEFINE-PARSER-COMPILER ',name
-	 ,(if (symbol? parameters) `#F (length parameters))
-	 (LAMBDA (POINTER KS KF . ,parameters)
-	   ,@compiler-body)))))
+  (non-hygienic-macro-transformer
+   (lambda (form . compiler-body)
+     (let ((name (car form))
+	   (parameters (cdr form)))
+       `(DEFINE-PARSER-COMPILER ',name
+	  ,(if (symbol? parameters) `#F (length parameters))
+	  (LAMBDA (POINTER KS KF . ,parameters)
+	    ,@compiler-body))))))
 
 (define (define-parser-compiler keyword arity compiler)
   (hash-table/put! parser-compilers keyword (cons arity compiler))

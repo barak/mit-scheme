@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: instance.scm,v 1.12 2001/12/20 20:51:16 cph Exp $
+;;; $Id: instance.scm,v 1.13 2001/12/23 17:20:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-2001 Massachusetts Institute of Technology
 ;;;
@@ -29,99 +29,106 @@
 ;;; requires them to appear before their first reference.
 
 (define-syntax constructor-case
-  (lambda (n low high generator . generator-args)
-    ;; Assumes that (< LOW HIGH).
-    (let loop ((low low) (high high))
-      (let ((mid (quotient (+ high low) 2)))
-	(if (= mid low)
-	    `(,generator ,@generator-args ,low)
-	    `(IF (< ,n ,mid)
-		 ,(loop low mid)
-		 ,(loop mid high)))))))
+  (non-hygienic-macro-transformer
+   (lambda (n low high generator . generator-args)
+     ;; Assumes that (< LOW HIGH).
+     (let loop ((low low) (high high))
+       (let ((mid (quotient (+ high low) 2)))
+	 (if (= mid low)
+	     `(,generator ,@generator-args ,low)
+	     `(IF (< ,n ,mid)
+		  ,(loop low mid)
+		  ,(loop mid high))))))))
 
 (define-syntax instance-constructor-1
-  (lambda (n-slots)
-    `(IF N-INIT-ARGS
-	 (IF (< N-INIT-ARGS 4)
-	     (CONSTRUCTOR-CASE N-INIT-ARGS 0 4 INSTANCE-CONSTRUCTOR-2 ,n-slots)
-	     (INSTANCE-CONSTRUCTOR-2 ,n-slots #F))
-	 (INSTANCE-CONSTRUCTOR-2 ,n-slots NO-INITIALIZE-INSTANCE))))
-
+  (non-hygienic-macro-transformer
+   (lambda (n-slots)
+     `(IF N-INIT-ARGS
+	  (IF (< N-INIT-ARGS 4)
+	      (CONSTRUCTOR-CASE N-INIT-ARGS 0 4 INSTANCE-CONSTRUCTOR-2
+				,n-slots)
+	      (INSTANCE-CONSTRUCTOR-2 ,n-slots #F))
+	  (INSTANCE-CONSTRUCTOR-2 ,n-slots NO-INITIALIZE-INSTANCE)))))
+
 (define-syntax instance-constructor-2
-  (lambda (n-slots n-init-args)
-    (let ((make-names
-	   (lambda (n prefix)
-	     (make-initialized-list n
-	       (lambda (index)
-		 (intern (string-append prefix (number->string index))))))))
-      (call-with-values
-	  (lambda ()
-	    (cond ((eq? 'NO-INITIALIZE-INSTANCE n-init-args)
-		   (values '() '()))
-		  (n-init-args
-		   (let ((ivs (make-names n-init-args "iv")))
-		     (values ivs `((INITIALIZE-INSTANCE INSTANCE ,@ivs)))))
-		  (else
-		   (values 'IVS `((APPLY INITIALIZE-INSTANCE INSTANCE IVS))))))
-	(lambda (ivs ixs)
-	  (let ((generator
-		 (lambda (initialization)
-		   (let ((sis (make-names n-slots "si"))
-			 (svs (make-names n-slots "sv")))
-		     (let ((l
-			    `(LAMBDA (,@svs . ,ivs)
-			       (LET ((INSTANCE
-				      (OBJECT-NEW-TYPE
-				       (UCODE-TYPE RECORD)
-				       (MAKE-VECTOR
-					INSTANCE-LENGTH
-					RECORD-SLOT-UNINITIALIZED))))
-				 (%RECORD-SET! INSTANCE 0 INSTANCE-TAG)
-				 ,@(map (lambda (index value)
-					  `(%RECORD-SET! INSTANCE
-							 ,index
-							 ,value))
-					sis
-					svs)
-				 ,@initialization
-				 ,@ixs
-				 INSTANCE))))
-		       (if (null? sis)
-			   l
-			   `(LET (,@(make-initialized-list n-slots
-				      (lambda (i)
-					`(,(list-ref sis i)
-					  (LIST-REF INDEXES ,i)))))
-			      ,l)))))))
-	    `(IF INITIALIZATION
-		 ,(generator '((INITIALIZATION INSTANCE)))
-		 ,(generator '()))))))))
+  (non-hygienic-macro-transformer
+   (lambda (n-slots n-init-args)
+     (let ((make-names
+	    (lambda (n prefix)
+	      (make-initialized-list n
+		(lambda (index)
+		  (intern (string-append prefix (number->string index))))))))
+       (call-with-values
+	   (lambda ()
+	     (cond ((eq? 'NO-INITIALIZE-INSTANCE n-init-args)
+		    (values '() '()))
+		   (n-init-args
+		    (let ((ivs (make-names n-init-args "iv")))
+		      (values ivs `((INITIALIZE-INSTANCE INSTANCE ,@ivs)))))
+		   (else
+		    (values 'IVS
+			    `((APPLY INITIALIZE-INSTANCE INSTANCE IVS))))))
+	 (lambda (ivs ixs)
+	   (let ((generator
+		  (lambda (initialization)
+		    (let ((sis (make-names n-slots "si"))
+			  (svs (make-names n-slots "sv")))
+		      (let ((l
+			     `(LAMBDA (,@svs . ,ivs)
+				(LET ((INSTANCE
+				       (OBJECT-NEW-TYPE
+					(UCODE-TYPE RECORD)
+					(MAKE-VECTOR
+					 INSTANCE-LENGTH
+					 RECORD-SLOT-UNINITIALIZED))))
+				  (%RECORD-SET! INSTANCE 0 INSTANCE-TAG)
+				  ,@(map (lambda (index value)
+					   `(%RECORD-SET! INSTANCE
+							  ,index
+							  ,value))
+					 sis
+					 svs)
+				  ,@initialization
+				  ,@ixs
+				  INSTANCE))))
+			(if (null? sis)
+			    l
+			    `(LET (,@(make-initialized-list n-slots
+				       (lambda (i)
+					 `(,(list-ref sis i)
+					   (LIST-REF INDEXES ,i)))))
+			       ,l)))))))
+	     `(IF INITIALIZATION
+		  ,(generator '((INITIALIZATION INSTANCE)))
+		  ,(generator '())))))))))
 
 (define-syntax ucode-type
-  (lambda arguments
-    (apply microcode-type arguments)))
+  (non-hygienic-macro-transformer
+   (lambda arguments
+     (apply microcode-type arguments))))
 
 (define-syntax instance-constructor-3
-  (lambda (test arity initialization ixs)
-    `(LETREC
-	 ((PROCEDURE
-	   (LAMBDA ARGS
-	     (IF (NOT (,@test (LENGTH ARGS)))
-		 (ERROR:WRONG-NUMBER-OF-ARGUMENTS PROCEDURE ,arity ARGS))
-	     (LET ((INSTANCE
-		    (OBJECT-NEW-TYPE
-		     (UCODE-TYPE RECORD)
-		     (MAKE-VECTOR INSTANCE-LENGTH
-				  RECORD-SLOT-UNINITIALIZED))))
-	       (%RECORD-SET! INSTANCE 0 INSTANCE-TAG)
-	       (DO ((INDEXES INDEXES (CDR INDEXES))
-		    (ARGS ARGS (CDR ARGS)))
-		   ((NULL? INDEXES)
-		    ,@initialization
-		    ,@ixs)
-		 (%RECORD-SET! INSTANCE (CAR INDEXES) (CAR ARGS)))
-	       INSTANCE))))
-       PROCEDURE)))
+  (non-hygienic-macro-transformer
+   (lambda (test arity initialization ixs)
+     `(LETREC
+	  ((PROCEDURE
+	    (LAMBDA ARGS
+	      (IF (NOT (,@test (LENGTH ARGS)))
+		  (ERROR:WRONG-NUMBER-OF-ARGUMENTS PROCEDURE ,arity ARGS))
+	      (LET ((INSTANCE
+		     (OBJECT-NEW-TYPE
+		      (UCODE-TYPE RECORD)
+		      (MAKE-VECTOR INSTANCE-LENGTH
+				   RECORD-SLOT-UNINITIALIZED))))
+		(%RECORD-SET! INSTANCE 0 INSTANCE-TAG)
+		(DO ((INDEXES INDEXES (CDR INDEXES))
+		     (ARGS ARGS (CDR ARGS)))
+		    ((NULL? INDEXES)
+		     ,@initialization
+		     ,@ixs)
+		  (%RECORD-SET! INSTANCE (CAR INDEXES) (CAR ARGS)))
+		INSTANCE))))
+	PROCEDURE))))
 
 (define (instance-constructor class slot-names #!optional init-arg-names)
   (if (not (subclass? class <instance>))
@@ -178,64 +185,66 @@
 	     (instance-constructor-3 (fix:= n-slots) n-slots () ()))))))
 
 (define-syntax make-initialization-1
-  (lambda (if-n)
-    `(IF (< IV-N 8)
-	 (CONSTRUCTOR-CASE IV-N 0 8 MAKE-INITIALIZATION-2 ,if-n)
-	 (MAKE-INITIALIZATION-2 ,if-n #F))))
+  (non-hygienic-macro-transformer
+   (lambda (if-n)
+     `(IF (< IV-N 8)
+	  (CONSTRUCTOR-CASE IV-N 0 8 MAKE-INITIALIZATION-2 ,if-n)
+	  (MAKE-INITIALIZATION-2 ,if-n #F)))))
 
 (define-syntax make-initialization-2
-  (lambda (if-n iv-n)
-    (if (and if-n iv-n)
-	(let ((generate
-	       (let ((make-names
-		      (lambda (n prefix)
-			(make-initialized-list n
-			  (lambda (index)
-			    (intern
-			     (string-append prefix
-					    (number->string index))))))))
-		 (lambda (n prefix isn vsn fv)
-		   (let ((is (make-names n (string-append prefix "i")))
-			 (vs (make-names n (string-append prefix "v"))))
-		     (values
-		      (append (make-initialized-list n
-				(lambda (i)
-				  `(,(list-ref is i) (LIST-REF ,isn ,i))))
-			      (make-initialized-list n
-				(lambda (i)
-				  `(,(list-ref vs i) (LIST-REF ,vsn ,i)))))
-		      (make-initialized-list n
-			(lambda (i)
-			  `(%RECORD-SET! INSTANCE
-					 ,(list-ref is i)
-					 ,(fv (list-ref vs i)))))))))))
+  (non-hygienic-macro-transformer
+   (lambda (if-n iv-n)
+     (if (and if-n iv-n)
+	 (let ((generate
+		(let ((make-names
+		       (lambda (n prefix)
+			 (make-initialized-list n
+			   (lambda (index)
+			     (intern
+			      (string-append prefix
+					     (number->string index))))))))
+		  (lambda (n prefix isn vsn fv)
+		    (let ((is (make-names n (string-append prefix "i")))
+			  (vs (make-names n (string-append prefix "v"))))
+		      (values
+		       (append (make-initialized-list n
+				 (lambda (i)
+				   `(,(list-ref is i) (LIST-REF ,isn ,i))))
+			       (make-initialized-list n
+				 (lambda (i)
+				   `(,(list-ref vs i) (LIST-REF ,vsn ,i)))))
+		       (make-initialized-list n
+			 (lambda (i)
+			   `(%RECORD-SET! INSTANCE
+					  ,(list-ref is i)
+					  ,(fv (list-ref vs i)))))))))))
 
-	(call-with-values
-	    (lambda ()
-	      (generate if-n "f" 'IF-INDEXES 'INITIALIZERS
-			(lambda (expr) `(,expr))))
-	  (lambda (if-bindings if-body)
-	    (call-with-values
-		(lambda ()
-		  (generate iv-n "v" 'IV-INDEXES 'INITIAL-VALUES
-			    (lambda (expr) expr)))
-	      (lambda (iv-bindings iv-body)
-		(if (and (null? if-bindings) (null? iv-bindings))
-		    '#F
-		    `(LET (,@if-bindings ,@iv-bindings)
-		       (LAMBDA (INSTANCE)
-			 ,@if-body
-			 ,@iv-body))))))))
-	`(LAMBDA (INSTANCE)
-	   (DO ((IS IF-INDEXES (CDR IS))
-		(VS INITIALIZERS (CDR VS)))
-	       ((NULL? IS) UNSPECIFIC)
-	     (%RECORD-SET! INSTANCE (CAR IS) ((CAR VS))))
-	   (DO ((IS IV-INDEXES (CDR IS))
-		(VS INITIAL-VALUES (CDR VS)))
-	       ((NULL? IS) UNSPECIFIC)
-	     (%RECORD-SET! INSTANCE (CAR IS) (CAR VS)))))))
-
+	 (call-with-values
+	     (lambda ()
+	       (generate if-n "f" 'IF-INDEXES 'INITIALIZERS
+			 (lambda (expr) `(,expr))))
+	   (lambda (if-bindings if-body)
+	     (call-with-values
+		 (lambda ()
+		   (generate iv-n "v" 'IV-INDEXES 'INITIAL-VALUES
+			     (lambda (expr) expr)))
+	       (lambda (iv-bindings iv-body)
+		 (if (and (null? if-bindings) (null? iv-bindings))
+		     '#F
+		     `(LET (,@if-bindings ,@iv-bindings)
+			(LAMBDA (INSTANCE)
+			  ,@if-body
+			  ,@iv-body))))))))
+	 `(LAMBDA (INSTANCE)
+	    (DO ((IS IF-INDEXES (CDR IS))
+		 (VS INITIALIZERS (CDR VS)))
+		((NULL? IS) UNSPECIFIC)
+	      (%RECORD-SET! INSTANCE (CAR IS) ((CAR VS))))
+	    (DO ((IS IV-INDEXES (CDR IS))
+		 (VS INITIAL-VALUES (CDR VS)))
+		((NULL? IS) UNSPECIFIC)
+	      (%RECORD-SET! INSTANCE (CAR IS) (CAR VS))))))))
+
 (define (make-initialization class arg-slots)
   (let ((if-slots
 	 (list-transform-positive (class-slots class)
@@ -256,7 +265,7 @@
       (if (< if-n 4)
 	  (constructor-case if-n 0 4 make-initialization-1)
 	  (make-initialization-1 #f)))))
-
+
 (define initialize-instance
   (make-generic-procedure '(1 . #F) 'INITIALIZE-INSTANCE))
 

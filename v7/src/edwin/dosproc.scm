@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dosproc.scm,v 1.6 2001/12/20 21:27:57 cph Exp $
+;;; $Id: dosproc.scm,v 1.7 2001/12/23 17:20:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-2001 Massachusetts Institute of Technology
 ;;;
@@ -42,8 +42,9 @@
     (editor-error "Processes not implemented" name process)))
 
 (let-syntax ((define-process-operation
+	      (non-hygienic-macro-transformer
 	       (lambda (name)
-		 `(define ,name (process-operation ',name)))))
+		 `(define ,name (process-operation ',name))))))
 
   (define-process-operation delete-process))
 

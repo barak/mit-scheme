@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: win32.sf,v 1.7 2001/12/19 21:55:37 cph Exp $
+$Id: win32.sf,v 1.8 2001/12/23 17:21:00 cph Exp $
 
 Copyright (c) 1993-1999, 2001 Massachusetts Institute of Technology
 
@@ -20,21 +20,29 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
 |#
 
-(fluid-let ((sf/default-syntax-table (->environment '(RUNTIME))))
+(load-option 'CREF)
+
+(if (not (name->package '(WIN32)))
+    (let ((package-set (package-set-pathname "win32")))
+      (if (not (file-exists? package-set))
+	  (cref/generate-trivial-constructor "win32"))
+      (construct-packages-from-file (fasload package-set))))
+
+(fluid-let ((sf/default-syntax-table (->environment '(WIN32))))
   (for-each
     (lambda (names)
       (sf/add-file-declarations! (car names)
 				 `((integrate-external . ,(cdr names)))))
-    '(("module"     "winuser" "wingdi" "wt_user")
-      ("graphics"   "winuser" "wingdi" "wt_user")
-      ("win_ffi"    "winuser" "wingdi" "wt_user")
-      ("wf_user"    "win_ffi" "wt_user")
-      ("dib"        "win_ffi")))
+    '(("module" "winuser" "wingdi" "wt_user")
+      ("graphics" "winuser" "wingdi" "wt_user")
+      ("win_ffi" "winuser" "wingdi" "wt_user")
+      ("wf_user" "win_ffi" "wt_user")
+      ("dib" "win_ffi")))
 
   (sf-conditionally "ffimacro")
   (if (not (file-modification-time<? "ffimacro.bin" "ffimacro.com"))
       (cbf "ffimacro"))
-  (load "ffimacro")
+  (load "ffimacro" '(WIN32 FFI-MACRO))
 
   (sf-conditionally "winuser")
   (sf-conditionally "wingdi")
@@ -42,5 +50,4 @@ USA.
   (sf-conditionally "win_ffi")
   (sf-directory "."))
 
-(load-option 'CREF)
 (cref/generate-constructors "win32")

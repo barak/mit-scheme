@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: macros.scm,v 1.69 2001/12/22 04:00:39 cph Exp $
+;;; $Id: macros.scm,v 1.70 2001/12/23 17:20:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999, 2001 Massachusetts Institute of Technology
 ;;;
@@ -26,49 +26,56 @@
 (define edwin-syntax-table (->environment '(EDWIN))) ;upwards compatibility
 
 (define-syntax define-command
-  (lambda (name description interactive procedure)
-    (let ((name (canonicalize-name name)))
-      (let ((scheme-name (command-name->scheme-name name)))
-	`(DEFINE ,scheme-name
-	   (MAKE-COMMAND ',name
-			 ,description
-			 ,(if (null? interactive)
-			      `'()
-			      interactive)
-			 ,(if (and (pair? procedure)
-				   (eq? 'LAMBDA (car procedure))
-				   (pair? (cdr procedure)))
-			      `(NAMED-LAMBDA (,scheme-name
-					      ,@(cadr procedure))
-				 ,@(cddr procedure))
-			      procedure)))))))
+  (non-hygienic-macro-transformer
+   (lambda (name description interactive procedure)
+     (let ((name (canonicalize-name name)))
+       (let ((scheme-name (command-name->scheme-name name)))
+	 `(DEFINE ,scheme-name
+	    (MAKE-COMMAND ',name
+			  ,description
+			  ,(if (null? interactive)
+			       `'()
+			       interactive)
+			  ,(if (and (pair? procedure)
+				    (eq? 'LAMBDA (car procedure))
+				    (pair? (cdr procedure)))
+			       `(NAMED-LAMBDA (,scheme-name
+					       ,@(cadr procedure))
+				  ,@(cddr procedure))
+			       procedure))))))))
 
 (define-syntax ref-command-object
-  (lambda (name)
-    (command-name->scheme-name (canonicalize-name name))))
+  (non-hygienic-macro-transformer
+   (lambda (name)
+     (command-name->scheme-name (canonicalize-name name)))))
 
 (define-syntax ref-command
-  (lambda (name)
-    `(COMMAND-PROCEDURE
-      ,(command-name->scheme-name (canonicalize-name name)))))
+  (non-hygienic-macro-transformer
+   (lambda (name)
+     `(COMMAND-PROCEDURE
+       ,(command-name->scheme-name (canonicalize-name name))))))
 
 (define-syntax command-defined?
-  (lambda (name)
-    (let ((variable-name (command-name->scheme-name (canonicalize-name name))))
-      `(LET ((_ENV (->ENVIRONMENT '(EDWIN))))
-	 (AND (ENVIRONMENT-BOUND? _ENV ',variable-name)
-	      (ENVIRONMENT-ASSIGNED? _ENV ',variable-name))))))
+  (non-hygienic-macro-transformer
+   (lambda (name)
+     (let ((variable-name
+	    (command-name->scheme-name (canonicalize-name name))))
+       `(LET ((_ENV (->ENVIRONMENT '(EDWIN))))
+	  (AND (ENVIRONMENT-BOUND? _ENV ',variable-name)
+	       (ENVIRONMENT-ASSIGNED? _ENV ',variable-name)))))))
 
 (define (command-name->scheme-name name)
   (symbol-append 'EDWIN-COMMAND$ name))
 
 (define-syntax define-variable
-  (lambda args
-    (apply (variable-definition #f) args)))
+  (non-hygienic-macro-transformer
+   (lambda args
+     (apply (variable-definition #f) args))))
 
 (define-syntax define-variable-per-buffer
-  (lambda args
-    (apply (variable-definition #t) args)))
+  (non-hygienic-macro-transformer
+   (lambda args
+     (apply (variable-definition #t) args))))
 
 (define (variable-definition buffer-local?)
   (lambda (name description #!optional value test normalization)
@@ -91,81 +98,90 @@
 		    ,normalization))))))))
 
 (define-syntax ref-variable-object
-  (lambda (name)
-    (variable-name->scheme-name (canonicalize-name name))))
+  (non-hygienic-macro-transformer
+   (lambda (name)
+     (variable-name->scheme-name (canonicalize-name name)))))
 
 (define-syntax ref-variable
-  (lambda (name #!optional buffer)
-    (let ((name (variable-name->scheme-name (canonicalize-name name))))
-      (if (default-object? buffer)
-	  `(VARIABLE-VALUE ,name)
-	  `(VARIABLE-LOCAL-VALUE ,buffer ,name)))))
+  (non-hygienic-macro-transformer
+   (lambda (name #!optional buffer)
+     (let ((name (variable-name->scheme-name (canonicalize-name name))))
+       (if (default-object? buffer)
+	   `(VARIABLE-VALUE ,name)
+	   `(VARIABLE-LOCAL-VALUE ,buffer ,name))))))
 
 (define-syntax set-variable!
-  (lambda (name #!optional value buffer)
-    (let ((name (variable-name->scheme-name (canonicalize-name name)))
-	  (value (if (default-object? value) '#F value)))
-      (if (default-object? buffer)
-	  `(SET-VARIABLE-VALUE! ,name ,value)
-	  `(SET-VARIABLE-LOCAL-VALUE! ,buffer ,name ,value)))))
+  (non-hygienic-macro-transformer
+   (lambda (name #!optional value buffer)
+     (let ((name (variable-name->scheme-name (canonicalize-name name)))
+	   (value (if (default-object? value) '#F value)))
+       (if (default-object? buffer)
+	   `(SET-VARIABLE-VALUE! ,name ,value)
+	   `(SET-VARIABLE-LOCAL-VALUE! ,buffer ,name ,value))))))
 
 (define-syntax local-set-variable!
-  (lambda (name #!optional value buffer)
-    `(DEFINE-VARIABLE-LOCAL-VALUE!
-      ,(if (default-object? buffer) '(CURRENT-BUFFER) buffer)
-      ,(variable-name->scheme-name (canonicalize-name name))
-      ,(if (default-object? value) '#F value))))
+  (non-hygienic-macro-transformer
+   (lambda (name #!optional value buffer)
+     `(DEFINE-VARIABLE-LOCAL-VALUE!
+       ,(if (default-object? buffer) '(CURRENT-BUFFER) buffer)
+       ,(variable-name->scheme-name (canonicalize-name name))
+       ,(if (default-object? value) '#F value)))))
 
 (define (variable-name->scheme-name name)
   (symbol-append 'EDWIN-VARIABLE$ name))
 
 (define-syntax define-major-mode
-  (lambda (name super-mode-name display-name description
-		#!optional initialization)
-    (let ((name (canonicalize-name name))
-	  (super-mode-name
-	   (and super-mode-name (canonicalize-name super-mode-name))))
-      `(DEFINE ,(mode-name->scheme-name name)
-	 (MAKE-MODE ',name
-		    #T
-		    ',(or display-name (symbol->string name))
-		    ,(if super-mode-name
-			 `(->MODE ',super-mode-name)
-			 `#F)
-		    ,description
-		    ,(let ((super-initialization
-			    (and super-mode-name
-				 `(MODE-INITIALIZATION
-				   ,(mode-name->scheme-name super-mode-name))))
-			   (initialization
-			    (and (not (default-object? initialization))
-				 initialization)))
-		       (cond (super-initialization
-			      `(LAMBDA (BUFFER)
-				 (,super-initialization BUFFER)
-				 ,@(if initialization
-				       `((,initialization BUFFER))
-				       `())))
-			     (initialization)
-			     (else `(LAMBDA (BUFFER) BUFFER UNSPECIFIC)))))))))
+  (non-hygienic-macro-transformer
+   (lambda (name super-mode-name display-name description
+		 #!optional initialization)
+     (let ((name (canonicalize-name name))
+	   (super-mode-name
+	    (and super-mode-name (canonicalize-name super-mode-name))))
+       `(DEFINE ,(mode-name->scheme-name name)
+	  (MAKE-MODE ',name
+		     #T
+		     ',(or display-name (symbol->string name))
+		     ,(if super-mode-name
+			  `(->MODE ',super-mode-name)
+			  `#F)
+		     ,description
+		     ,(let ((super-initialization
+			     (and super-mode-name
+				  `(MODE-INITIALIZATION
+				    ,(mode-name->scheme-name
+				      super-mode-name))))
+			    (initialization
+			     (and (not (default-object? initialization))
+				  initialization)))
+			(cond (super-initialization
+			       `(LAMBDA (BUFFER)
+				  (,super-initialization BUFFER)
+				  ,@(if initialization
+					`((,initialization BUFFER))
+					`())))
+			      (initialization)
+			      (else
+			       `(LAMBDA (BUFFER) BUFFER UNSPECIFIC))))))))))
 
 (define-syntax define-minor-mode
-  (lambda (name display-name description #!optional initialization)
-    (let ((name (canonicalize-name name)))
-      `(DEFINE ,(mode-name->scheme-name name)
-	 (MAKE-MODE ',name
-		    #F
-		    ',(or display-name (symbol->string name))
-		    #F
-		    ,description
-		    ,(if (and (not (default-object? initialization))
-			      initialization)
-			 initialization
-			 `(LAMBDA (BUFFER) BUFFER UNSPECIFIC)))))))
+  (non-hygienic-macro-transformer
+   (lambda (name display-name description #!optional initialization)
+     (let ((name (canonicalize-name name)))
+       `(DEFINE ,(mode-name->scheme-name name)
+	  (MAKE-MODE ',name
+		     #F
+		     ',(or display-name (symbol->string name))
+		     #F
+		     ,description
+		     ,(if (and (not (default-object? initialization))
+			       initialization)
+			  initialization
+			  `(LAMBDA (BUFFER) BUFFER UNSPECIFIC))))))))
 
 (define-syntax ref-mode-object
-  (lambda (name)
-    (mode-name->scheme-name (canonicalize-name name))))
+  (non-hygienic-macro-transformer
+   (lambda (name)
+     (mode-name->scheme-name (canonicalize-name name)))))
 
 (define (mode-name->scheme-name name)
   (symbol-append 'EDWIN-MODE$ name))

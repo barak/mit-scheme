@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: instr2.scm,v 1.8 2001/12/20 21:45:24 cph Exp $
+$Id: instr2.scm,v 1.9 2001/12/23 17:20:58 cph Exp $
 
 Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
 
@@ -27,29 +27,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;; i486 book.  Check against the appendices or the i386 book.
 
 (declare (usual-integrations))
-
-;; Utility
-
-(define-syntax define-trivial-instruction
-  (lambda (mnemonic opcode . extra)
-    `(define-instruction ,mnemonic
-       (()
-	(BYTE (8 ,opcode))
-	,@(map (lambda (extra)
-		 `(BYTE (8 ,extra)))
-	       extra)))))
 
 ;;;; Actual instructions
 
 (let-syntax
     ((define-load-segment
+      (non-hygienic-macro-transformer
        (lambda (mnemonic . bytes)
 	 `(define-instruction ,mnemonic
 	    (((R (? reg)) (? pointer mW))
 	     (BYTE ,@(map (lambda (byte)
 			    `(8 ,byte))
 			  bytes))
-	     (ModR/M reg pointer))))))
+	     (ModR/M reg pointer)))))))
 
   (define-load-segment LDS #xc5)
   (define-load-segment LSS #x0f #xb2)
@@ -65,6 +55,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-data-extension
+      (non-hygienic-macro-transformer
        (lambda (mnemonic opcode)
 	 `(define-instruction ,mnemonic
 	    ((B (R (? target)) (? source r/mB))
@@ -75,13 +66,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    ((H (R (? target)) (? source r/mW))
 	     (BYTE (8 #x0f)
 		   (8 ,(1+ opcode)))
-	     (ModR/M target source))))))
+	     (ModR/M target source)))))))
 
   (define-data-extension MOVSX #xbe)
   (define-data-extension MOVZX #xb6))
 
 (let-syntax
     ((define-unary
+      (non-hygienic-macro-transformer
        (lambda (mnemonic digit)
 	 `(define-instruction ,mnemonic
 	    ((W (? operand r/mW))
@@ -90,7 +82,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 	    ((B (? operand r/mB))
 	     (BYTE (8 #xf6))
-	     (ModR/M ,digit operand))))))
+	     (ModR/M ,digit operand)))))))
 
   (define-unary NEG 3)
   (define-unary NOT 2))
@@ -337,6 +329,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-rotate/shift
+      (non-hygienic-macro-transformer
        (lambda (mnemonic digit)
 	 `(define-instruction ,mnemonic
 	   ((W (? operand r/mW) (& 1))
@@ -363,7 +356,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 	   ((B (? operand r/mB) (R 1))
 	    (BYTE (8 #xd2))
-	    (ModR/M ,digit operand))))))
+	    (ModR/M ,digit operand)))))))
 
   (define-rotate/shift RCL 2)
   (define-rotate/shift RCR 3)
@@ -376,6 +369,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-double-shift
+      (non-hygienic-macro-transformer
        (lambda (mnemonic opcode)
 	 `(define-instruction ,mnemonic
 	    ((W (? target r/mW) (R (? source)) (& (? count)))
@@ -387,7 +381,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    ((W (? target r/mW) (R (? source)) (R 1))
 	     (BYTE (8 #x0f)
 		   (8 ,(1+ opcode)))
-	     (ModR/M target source))))))
+	     (ModR/M target source)))))))
 
   (define-double-shift SHLD #xa4)
   (define-double-shift SHRD #xac))
@@ -411,12 +405,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-setcc-instruction
+      (non-hygienic-macro-transformer
        (lambda (mnemonic opcode)
 	 `(define-instruction ,mnemonic
 	    (((? target r/mB))
 	     (BYTE (8 #x0f)
 		   (8 ,opcode))
-	     (ModR/M 0 target))))))		; 0?
+	     (ModR/M 0 target)))))))		; 0?
 
   (define-setcc-instruction SETA   #x97)
   (define-setcc-instruction SETAE  #x93)

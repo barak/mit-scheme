@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lvalue.scm,v 4.23 2001/12/20 21:45:23 cph Exp $
+$Id: lvalue.scm,v 4.24 2001/12/23 17:20:57 cph Exp $
 
 Copyright (c) 1988-1990, 1999, 2001 Massachusetts Institute of Technology
 
@@ -103,17 +103,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-named-variable
-      (lambda (name)
-	(let ((symbol (intern (string-append "#[" (symbol->string name) "]"))))
-	  `(BEGIN (DEFINE-INTEGRABLE
-		    (,(symbol-append 'MAKE- name '-VARIABLE) BLOCK)
-		    (MAKE-VARIABLE BLOCK ',symbol))
-		  (DEFINE-INTEGRABLE
-		    (,(symbol-append 'VARIABLE/ name '-VARIABLE?) LVALUE)
-		    (EQ? (VARIABLE-NAME LVALUE) ',symbol))
-		  (DEFINE (,(symbol-append name '-VARIABLE?) LVALUE)
-		    (AND (VARIABLE? LVALUE)
-			 (EQ? (VARIABLE-NAME LVALUE) ',symbol))))))))
+      (non-hygienic-macro-transformer
+       (lambda (name)
+	 (let ((symbol
+		(intern (string-append "#[" (symbol->string name) "]"))))
+	   `(BEGIN (DEFINE-INTEGRABLE
+		     (,(symbol-append 'MAKE- name '-VARIABLE) BLOCK)
+		     (MAKE-VARIABLE BLOCK ',symbol))
+		   (DEFINE-INTEGRABLE
+		     (,(symbol-append 'VARIABLE/ name '-VARIABLE?) LVALUE)
+		     (EQ? (VARIABLE-NAME LVALUE) ',symbol))
+		   (DEFINE (,(symbol-append name '-VARIABLE?) LVALUE)
+		     (AND (VARIABLE? LVALUE)
+			  (EQ? (VARIABLE-NAME LVALUE) ',symbol)))))))))
   (define-named-variable continuation)
   (define-named-variable value))
 

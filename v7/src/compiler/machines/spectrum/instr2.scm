@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: instr2.scm,v 1.9 2001/12/20 21:45:25 cph Exp $
+$Id: instr2.scm,v 1.10 2001/12/23 17:20:58 cph Exp $
 
 Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
 
@@ -536,15 +536,17 @@ branch-extend-nullify in instr1.
 		     (1  (branch-extend-disp disp) ASSEMBLE17:Z)))))))))
 
   (define-syntax defcond
-    (lambda (name opcode1 opcode2 opr1)
-      `(defccbranch ,name complaltfb ,opcode1 ,opcode2 ,opr1)))
+    (non-hygienic-macro-transformer
+     (lambda (name opcode1 opcode2 opr1)
+       `(defccbranch ,name complaltfb ,opcode1 ,opcode2 ,opr1))))
 
   (define-syntax defpseudo
-    (lambda (name opcode opr1)
-      `(defccbranch ,name complalb
-	 (TF-adjust ,opcode (cdr compl))
-	 (TF-adjust-inverted ,opcode (cdr compl))
-	 ,opr1)))
+    (non-hygienic-macro-transformer
+     (lambda (name opcode opr1)
+       `(defccbranch ,name complalb
+	  (TF-adjust ,opcode (cdr compl))
+	  (TF-adjust-inverted ,opcode (cdr compl))
+	  ,opr1))))
 
   (defcond COMBT #x20 #x22 (reg-1))
   (defcond COMBF #x22 #x20 (reg-1))
@@ -648,15 +650,17 @@ Note: Only those currently used by the code generator are implemented.
 		     (1  (branch-extend-disp disp) ASSEMBLE17:Z)))))))))
 
   (define-syntax defcond
-    (lambda (name opcode1 opcode2 opr1)
-      `(defccbranch ,name complaltf ,opcode1 ,opcode2 ,opr1)))
+    (non-hygienic-macro-transformer
+     (lambda (name opcode1 opcode2 opr1)
+       `(defccbranch ,name complaltf ,opcode1 ,opcode2 ,opr1))))
 
   (define-syntax defpseudo
-    (lambda (name opcode opr1)
-      `(defccbranch ,name complal
-	 (TF-adjust ,opcode compl)
-	 (TF-adjust-inverted ,opcode compl)
-	 ,opr1)))
+    (non-hygienic-macro-transformer
+     (lambda (name opcode opr1)
+       `(defccbranch ,name complal
+	  (TF-adjust ,opcode compl)
+	  (TF-adjust-inverted ,opcode compl)
+	  ,opr1))))
 
   (defcond COMIBTN #X21 #x23 (immed-5 right-signed))
   (defcond COMIBFN #X23 #x21 (immed-5 right-signed))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.54 2001/12/21 04:37:29 cph Exp $
+$Id: error.scm,v 14.55 2001/12/23 17:20:59 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -412,16 +412,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	     (loop (cdr restarts))))))
 
 (define-syntax restarts-default
-  (lambda (restarts name)
-    ;; This is a macro because DEFAULT-OBJECT? is.
-    `(COND ((OR (DEFAULT-OBJECT? ,restarts)
-		(EQ? 'BOUND-RESTARTS ,restarts))
-	    *BOUND-RESTARTS*)
-	   ((CONDITION? ,restarts)
-	    (%CONDITION/RESTARTS ,restarts))
-	   (ELSE
-	    (GUARANTEE-RESTARTS ,restarts ',name)
-	    ,restarts))))
+  (non-hygienic-macro-transformer
+   (lambda (restarts name)
+     ;; This is a macro because DEFAULT-OBJECT? is.
+     `(COND ((OR (DEFAULT-OBJECT? ,restarts)
+		 (EQ? 'BOUND-RESTARTS ,restarts))
+	     *BOUND-RESTARTS*)
+	    ((CONDITION? ,restarts)
+	     (%CONDITION/RESTARTS ,restarts))
+	    (ELSE
+	     (GUARANTEE-RESTARTS ,restarts ',name)
+	     ,restarts)))))
 
 (define (find-restart name #!optional restarts)
   (guarantee-symbol name 'FIND-RESTART)

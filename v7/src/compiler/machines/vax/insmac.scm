@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: insmac.scm,v 1.14 2001/12/19 21:39:30 cph Exp $
+$Id: insmac.scm,v 1.15 2001/12/23 17:20:58 cph Exp $
 
 Copyright (c) 1987, 1989, 1999, 2001 Massachusetts Institute of Technology
 
@@ -29,46 +29,43 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define ea-database-name
   'EA-DATABASE)
 
-(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
-		     'DEFINE-EA-DATABASE
-  (lambda rules
-    `(DEFINE ,ea-database-name
-       ,(compile-database rules
-	 (lambda (pattern actions)
-	   (let ((keyword (car pattern))
-		 (categories (car actions))
-		 (value (cdr actions)))
-	     (declare (integrate keyword categories value))
-	     `(MAKE-EFFECTIVE-ADDRESS
-	       ',keyword
-	       ',categories
-	       ,(process-fields value false))))))))
+(define-syntax define-ea-database
+  (non-hygienic-macro-transformer
+   (lambda rules
+     `(DEFINE ,ea-database-name
+	,(compile-database rules
+	  (lambda (pattern actions)
+	    (let ((keyword (car pattern))
+		  (categories (car actions))
+		  (value (cdr actions)))
+	      (declare (integrate keyword categories value))
+	      `(MAKE-EFFECTIVE-ADDRESS
+		',keyword
+		',categories
+		,(process-fields value false)))))))))
 
-(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
-		     'DEFINE-EA-TRANSFORMER
-  (lambda (name category type)
-    `(define (,name expression)
-       (let ((ea (process-ea expression ',type)))
-	 (and ea
-	      (memq ',category (ea-categories ea))
-	      ea)))))
+(define-syntax define-ea-transformer
+  (non-hygienic-macro-transformer
+   (lambda (name category type)
+     `(DEFINE (,name EXPRESSION)
+	(LET ((EA (PROCESS-EA EXPRESSION ',type)))
+	  (AND EA
+	       (MEMQ ',category (EA-CATEGORIES EA))
+	       EA))))))
 
-(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
-		     'DEFINE-SYMBOL-TRANSFORMER
-  (lambda (name . alist)
-    `(begin
-       (declare (integrate-operator ,name))
-       (define (,name symbol)
-	 (declare (integrate symbol))
-	 (let ((place (assq symbol ',alist)))
-	   (if (null? place)
-	       #F
-	       (cdr place)))))))
+(define-syntax define-symbol-transformer
+  (non-hygienic-macro-transformer
+   (lambda (name . alist)
+     `(DEFINE-INTEGRABLE (,name SYMBOL)
+	(LET ((PLACE (ASSQ SYMBOL ',alist)))
+	  (IF (PAIR? PLACE)
+	      (CDR PLACE)
+	      #F))))))
 
-(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
-		     'DEFINE-TRANSFORMER
-  (lambda (name value)
-    `(define ,name ,value)))
+(define-syntax define-transformer
+  (non-hygienic-macro-transformer
+   (lambda (name value)
+     `(DEFINE ,name ,value))))
 
 (define (parse-instruction opcode tail early?)
   (process-fields (cons opcode tail) early?))

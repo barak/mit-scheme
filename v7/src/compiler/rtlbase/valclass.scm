@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: valclass.scm,v 1.3 1999/01/02 06:06:43 cph Exp $
+$Id: valclass.scm,v 1.4 2001/12/23 17:20:58 cph Exp $
 
 Copyright (c) 1989, 1990, 1999 Massachusetts Institute of Technology
 
@@ -75,6 +75,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (let-syntax
     ((define-value-class
+      (non-hygienic-macro-transformer
        (lambda (name parent-name)
 	 (let* ((name->variable
 		 (lambda (name) (symbol-append 'VALUE-CLASS= name)))
@@ -90,7 +91,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (DEFINE
 		(,(symbol-append 'REGISTER- variable '?) REGISTER)
 		(VALUE-CLASS/ANCESTOR-OR-SELF? (REGISTER-VALUE-CLASS REGISTER)
-					       ,variable)))))))
+					       ,variable))))))))
 
 (define-value-class value #f)
 (define-value-class float value)

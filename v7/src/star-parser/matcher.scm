@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.27 2001/12/20 20:51:16 cph Exp $
+;;; $Id: matcher.scm,v 1.28 2001/12/23 17:21:00 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -74,18 +74,19 @@
       (hash-table/put! matcher-preprocessors name procedure))
   name)
 
-(syntax-table/define system-global-environment 'DEFINE-*MATCHER-MACRO
-  (lambda (bvl expression)
-    (cond ((symbol? bvl)
-	   `(DEFINE-*MATCHER-EXPANDER ',bvl
-	      (LAMBDA ()
-		,expression)))
-	  ((named-lambda-bvl? bvl)
-	   `(DEFINE-*MATCHER-EXPANDER ',(car bvl)
-	      (LAMBDA ,(cdr bvl)
-		,expression)))
-	  (else
-	   (error "Malformed bound-variable list:" bvl)))))
+(define-syntax define-*matcher-macro
+  (non-hygienic-macro-transformer
+   (lambda (bvl expression)
+     (cond ((symbol? bvl)
+	    `(DEFINE-*MATCHER-EXPANDER ',bvl
+	       (LAMBDA ()
+		 ,expression)))
+	   ((named-lambda-bvl? bvl)
+	    `(DEFINE-*MATCHER-EXPANDER ',(car bvl)
+	       (LAMBDA ,(cdr bvl)
+		 ,expression)))
+	   (else
+	    (error "Malformed bound-variable list:" bvl))))))
 
 (define (define-*matcher-expander name procedure)
   (define-matcher-macro name
@@ -184,9 +185,10 @@
 
 ;;;; Compiler
 
-(syntax-table/define system-global-environment '*MATCHER
-  (lambda (expression)
-    (generate-matcher-code expression)))
+(define-syntax *matcher
+  (non-hygienic-macro-transformer
+   (lambda (expression)
+     (generate-matcher-code expression))))
 
 (define (generate-matcher-code expression)
   (generate-external-procedure expression preprocess-matcher-expression
@@ -226,13 +228,14 @@
        ,(delay-call kf)))
 
 (define-syntax define-matcher
-  (lambda (form . compiler-body)
-    (let ((name (car form))
-	  (parameters (cdr form)))
-      `(DEFINE-MATCHER-COMPILER ',name
-	 ,(if (symbol? parameters) `#F (length parameters))
-	 (LAMBDA (POINTER KS KF . ,parameters)
-	   ,@compiler-body)))))
+  (non-hygienic-macro-transformer
+   (lambda (form . compiler-body)
+     (let ((name (car form))
+	   (parameters (cdr form)))
+       `(DEFINE-MATCHER-COMPILER ',name
+	  ,(if (symbol? parameters) `#F (length parameters))
+	  (LAMBDA (POINTER KS KF . ,parameters)
+	    ,@compiler-body))))))
 
 (define (define-matcher-compiler keyword arity compiler)
   (hash-table/put! matcher-compilers keyword (cons arity compiler))
@@ -242,10 +245,11 @@
   (make-eq-hash-table))
 
 (define-syntax define-atomic-matcher
-  (lambda (form test-expression)
-    `(DEFINE-MATCHER ,form
-       POINTER
-       (WRAP-EXTERNAL-MATCHER ,test-expression KS KF))))
+  (non-hygienic-macro-transformer
+   (lambda (form test-expression)
+     `(DEFINE-MATCHER ,form
+	POINTER
+	(WRAP-EXTERNAL-MATCHER ,test-expression KS KF)))))
 
 (define-atomic-matcher (char char)
   `(MATCH-PARSER-BUFFER-CHAR ,*buffer-name* (PROTECT ,char)))

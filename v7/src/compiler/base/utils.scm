@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 4.22 2001/12/20 21:45:23 cph Exp $
+$Id: utils.scm,v 4.23 2001/12/23 17:20:57 cph Exp $
 
 Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
 
@@ -137,10 +137,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;;; Type Codes
 
 (let-syntax ((define-type-code
+	      (non-hygienic-macro-transformer
 	       (lambda (var-name #!optional type-name)
 		 (if (default-object? type-name) (set! type-name var-name))
 		 `(DEFINE-INTEGRABLE ,(symbol-append 'TYPE-CODE: var-name)
-		    ',(microcode-type type-name)))))
+		    ',(microcode-type type-name))))))
   (define-type-code lambda)
   (define-type-code extended-lambda)
   (define-type-code procedure)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: canon.scm,v 1.19 2001/12/20 21:45:23 cph Exp $
+$Id: canon.scm,v 1.20 2001/12/23 17:20:57 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -504,11 +504,12 @@ ARBITRARY:	The expression may be executed more than once.  It
 ;;;; Hairier expressions
 
 (let-syntax ((is-operator?
-	      (lambda (value name)
-		`(or (eq? ,value (ucode-primitive ,name))
-		     (and (scode/absolute-reference? ,value)
-			  (eq? (scode/absolute-reference-name ,value)
-			       ',name))))))
+	      (non-hygienic-macro-transformer
+	       (lambda (value name)
+		 `(or (eq? ,value (ucode-primitive ,name))
+		      (and (scode/absolute-reference? ,value)
+			   (eq? (scode/absolute-reference-name ,value)
+				',name)))))))
 
   (define (canonicalize/combination expr bound context)
     (scode/combination-components
@@ -798,28 +799,33 @@ ARBITRARY:	The expression may be executed more than once.  It
 
     (let-syntax
 	((dispatch-entry
-	  (lambda (type handler)
-	    `(VECTOR-SET! DISPATCH-VECTOR ,(microcode-type type) ,handler)))
+	  (non-hygienic-macro-transformer
+	   (lambda (type handler)
+	     `(VECTOR-SET! DISPATCH-VECTOR ,(microcode-type type) ,handler))))
 
 	 (dispatch-entries
-	  (lambda (types handler)
-	    `(BEGIN ,@(map (lambda (type)
-			     `(DISPATCH-ENTRY ,type ,handler))
-			   types))))
+	  (non-hygienic-macro-transformer
+	   (lambda (types handler)
+	     `(BEGIN ,@(map (lambda (type)
+			      `(DISPATCH-ENTRY ,type ,handler))
+			    types)))))
 	 (standard-entry
-	  (lambda (name)
-	    `(DISPATCH-ENTRY ,name ,(symbol-append 'CANONICALIZE/ name))))
+	  (non-hygienic-macro-transformer
+	   (lambda (name)
+	     `(DISPATCH-ENTRY ,name ,(symbol-append 'CANONICALIZE/ name)))))
 
 	 (nary-entry
-	  (lambda (nary name)
-	    `(DISPATCH-ENTRY ,name
-			     (,(symbol-append 'CANONICALIZE/ nary)
-			      ,(symbol-append 'SCODE/ name '-COMPONENTS)
-			      ,(symbol-append 'SCODE/MAKE- name)))))
+	  (non-hygienic-macro-transformer
+	   (lambda (nary name)
+	     `(DISPATCH-ENTRY ,name
+			      (,(symbol-append 'CANONICALIZE/ nary)
+			       ,(symbol-append 'SCODE/ name '-COMPONENTS)
+			       ,(symbol-append 'SCODE/MAKE- name))))))
 
 	 (binary-entry
-	  (lambda (name)
-	    `(NARY-ENTRY binary ,name))))
+	  (non-hygienic-macro-transformer
+	   (lambda (name)
+	     `(NARY-ENTRY binary ,name)))))
 
       ;; quotations are treated as constants.
       (binary-entry access)

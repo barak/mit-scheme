@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 14.41 2001/12/20 20:51:16 cph Exp $
+$Id: debug.scm,v 14.42 2001/12/23 17:20:59 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -207,13 +207,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define command-set)
 
 (define-syntax define-command
-  (lambda (bvl . body)
-    (let ((dstate (cadr bvl))
-	  (port (caddr bvl)))
-      `(DEFINE (,(car bvl) #!OPTIONAL ,dstate ,port)
-	 (LET ((,dstate (IF (DEFAULT-OBJECT? ,dstate) *DSTATE* ,dstate))
-	       (,port (IF (DEFAULT-OBJECT? ,port) *PORT* ,port)))
-	   ,@body)))))
+  (non-hygienic-macro-transformer
+   (lambda (bvl . body)
+     (let ((dstate (cadr bvl))
+	   (port (caddr bvl)))
+       `(DEFINE (,(car bvl) #!OPTIONAL ,dstate ,port)
+	  (LET ((,dstate (IF (DEFAULT-OBJECT? ,dstate) *DSTATE* ,dstate))
+		(,port (IF (DEFAULT-OBJECT? ,port) *PORT* ,port)))
+	    ,@body))))))
 
 ;;;; Display commands
 

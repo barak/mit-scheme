@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xcom.scm,v 1.18 2001/07/02 01:45:27 cph Exp $
+;;; $Id: xcom.scm,v 1.19 2001/12/23 17:20:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -310,9 +310,10 @@ When called interactively, completion is available on the input."
 
 (let-syntax
     ((copy
-      (lambda (name)
-	`(DEFINE ,(symbol-append 'EDWIN-COMMAND$X- name)
-	   ,(symbol-append 'EDWIN-COMMAND$ name)))))
+      (non-hygienic-macro-transformer
+       (lambda (name)
+	 `(DEFINE ,(symbol-append 'EDWIN-COMMAND$X- name)
+	    ,(symbol-append 'EDWIN-COMMAND$ name))))))
   (copy set-foreground-color)
   (copy set-background-color)
   (copy set-border-color)
@@ -339,9 +340,10 @@ When called interactively, completion is available on the input."
 
 (let-syntax
     ((copy
-      (lambda (name)
-	`(DEFINE ,(symbol-append 'EDWIN-VARIABLE$X-SCREEN- name)
-	   ,(symbol-append 'EDWIN-VARIABLE$FRAME- name)))))
+      (non-hygienic-macro-transformer
+       (lambda (name)
+	 `(DEFINE ,(symbol-append 'EDWIN-VARIABLE$X-SCREEN- name)
+	    ,(symbol-append 'EDWIN-VARIABLE$FRAME- name))))))
   (copy icon-name-format)
   (copy icon-name-length))
 

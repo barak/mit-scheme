@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sysmac.scm,v 14.6 2001/12/21 18:22:44 cph Exp $
+$Id: sysmac.scm,v 14.7 2001/12/23 17:20:59 cph Exp $
 
 Copyright (c) 1988, 1999, 2001 Massachusetts Institute of Technology
 
@@ -26,28 +26,32 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (declare (usual-integrations))
 
 (define-syntax define-primitives
-  (let ((primitive-definition
-	 (lambda (variable-name primitive-args)
-	   `(DEFINE-INTEGRABLE ,variable-name
-	      ,(apply make-primitive-procedure primitive-args)))))
-    (lambda names
-      `(BEGIN ,@(map (lambda (name)
-		       (cond ((not (pair? name))
-			      (primitive-definition name (list name)))
-			     ((not (symbol? (cadr name)))
-			      (primitive-definition (car name) name))
-			     (else
-			      (primitive-definition (car name) (cdr name)))))
-		     names)))))
+  (non-hygienic-macro-transformer
+   (let ((primitive-definition
+	  (lambda (variable-name primitive-args)
+	    `(DEFINE-INTEGRABLE ,variable-name
+	       ,(apply make-primitive-procedure primitive-args)))))
+     (lambda names
+       `(BEGIN ,@(map (lambda (name)
+			(cond ((not (pair? name))
+			       (primitive-definition name (list name)))
+			      ((not (symbol? (cadr name)))
+			       (primitive-definition (car name) name))
+			      (else
+			       (primitive-definition (car name) (cdr name)))))
+		      names))))))
 
 (define-syntax ucode-type
-  (lambda arguments
-    (apply microcode-type arguments)))
+  (non-hygienic-macro-transformer
+   (lambda arguments
+     (apply microcode-type arguments))))
 
 (define-syntax ucode-primitive
-  (lambda arguments
-    (apply make-primitive-procedure arguments)))
+  (non-hygienic-macro-transformer
+   (lambda arguments
+     (apply make-primitive-procedure arguments))))
 
 (define-syntax ucode-return-address
-  (lambda arguments
-    (make-return-address (apply microcode-return arguments))))
+  (non-hygienic-macro-transformer
+   (lambda arguments
+     (make-return-address (apply microcode-return arguments)))))

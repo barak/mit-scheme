@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.45 2001/09/25 05:29:57 cph Exp $
+$Id: string.scm,v 14.46 2001/12/23 17:20:59 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -203,25 +203,27 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   ;; Calling the primitive is expensive, so avoid it for small copies.
   (let-syntax
       ((unrolled-move-left
-	(lambda (n)
-	  `(BEGIN
-	     (STRING-SET! STRING2 START2 (STRING-REF STRING1 START1))
-	     ,@(let loop ((i 1))
-		 (if (< i n)
-		     `((STRING-SET! STRING2 (FIX:+ START2 ,i)
-				    (STRING-REF STRING1 (FIX:+ START1 ,i)))
-		       ,@(loop (+ i 1)))
-		     '())))))
+	(non-hygienic-macro-transformer
+	 (lambda (n)
+	   `(BEGIN
+	      (STRING-SET! STRING2 START2 (STRING-REF STRING1 START1))
+	      ,@(let loop ((i 1))
+		  (if (< i n)
+		      `((STRING-SET! STRING2 (FIX:+ START2 ,i)
+				     (STRING-REF STRING1 (FIX:+ START1 ,i)))
+			,@(loop (+ i 1)))
+		      '()))))))
        (unrolled-move-right
-	(lambda (n)
-	  `(BEGIN
-	     ,@(let loop ((i 1))
-		 (if (< i n)
-		     `(,@(loop (+ i 1))
-		       (STRING-SET! STRING2 (FIX:+ START2 ,i)
-				    (STRING-REF STRING1 (FIX:+ START1 ,i))))
-		     '()))
-	     (STRING-SET! STRING2 START2 (STRING-REF STRING1 START1))))))
+	(non-hygienic-macro-transformer
+	 (lambda (n)
+	   `(BEGIN
+	      ,@(let loop ((i 1))
+		  (if (< i n)
+		      `(,@(loop (+ i 1))
+			(STRING-SET! STRING2 (FIX:+ START2 ,i)
+				     (STRING-REF STRING1 (FIX:+ START1 ,i))))
+		      '()))
+	      (STRING-SET! STRING2 START2 (STRING-REF STRING1 START1)))))))
     (let ((n (fix:- end1 start1)))
       (if (or (not (eq? string2 string1)) (fix:< start2 start1))
 	  (cond ((fix:> n 4)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: inerly.scm,v 1.9 2001/12/20 02:37:21 cph Exp $
+$Id: inerly.scm,v 1.10 2001/12/23 17:20:58 cph Exp $
 
 Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
 
@@ -28,26 +28,26 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define early-ea-database '())
 
-(syntax-table/define (->environment '(COMPILER))
-		     'DEFINE-INSTRUCTION
-  (lambda (opcode . patterns)
-    `(SET! EARLY-INSTRUCTIONS
-	   (CONS
-	    (LIST ',opcode
-		  ,@(map (lambda (pattern)
-			   `(EARLY-PARSE-RULE
-			     ',(car pattern)
-			     (LAMBDA (PAT VARS)
-			       (EARLY-MAKE-RULE
-				PAT
-				VARS
-				(SCODE-QUOTE
-				 (instruction->instruction-sequence
-				  ,(parse-instruction (cadr pattern)
-						      (cddr pattern)
-						      true)))))))
-			 patterns))
-		 EARLY-INSTRUCTIONS))))
+(define-syntax define-instruction
+  (non-hygienic-macro-transformer
+   (lambda (opcode . patterns)
+     `(SET! EARLY-INSTRUCTIONS
+	    (CONS
+	     (LIST ',opcode
+		   ,@(map (lambda (pattern)
+			    `(EARLY-PARSE-RULE
+			      ',(car pattern)
+			      (LAMBDA (PAT VARS)
+				(EARLY-MAKE-RULE
+				 PAT
+				 VARS
+				 (SCODE-QUOTE
+				  (instruction->instruction-sequence
+				   ,(parse-instruction (cadr pattern)
+						       (cddr pattern)
+						       #t)))))))
+			  patterns))
+		  EARLY-INSTRUCTIONS)))))
 
 ;;;; Transformers and utilities
 
@@ -56,23 +56,23 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(cons (cons name transformer)
 	      early-transformers)))
 
-(syntax-table/define (->environment '(COMPILER))
-		     'DEFINE-SYMBOL-TRANSFORMER
-  (lambda (name . assoc)
-    `(DEFINE-EARLY-TRANSFORMER ',name (MAKE-SYMBOL-TRANSFORMER ',assoc))))
+(define-syntax define-symbol-transformer
+  (non-hygienic-macro-transformer
+   (lambda (name . assoc)
+     `(DEFINE-EARLY-TRANSFORMER ',name (MAKE-SYMBOL-TRANSFORMER ',assoc)))))
 
 ;; *** Is this right? ***
 
-(syntax-table/define (->environment '(COMPILER))
-		     'DEFINE-TRANSFORMER
-  (lambda (name value)
-    `(DEFINE-EARLY-TRANSFORMER ',name ,value)))
+(define-syntax define-transformer
+  (non-hygienic-macro-transformer
+   (lambda (name value)
+     `(DEFINE-EARLY-TRANSFORMER ',name ,value))))
 
-(syntax-table/define (->environment '(COMPILER))
-		     'DEFINE-EA-TRANSFORMER
-  (lambda (name category type)
-    `(DEFINE-EARLY-TRANSFORMER ',name
-       (MAKE-EA-TRANSFORMER ',category ',type))))
+(define-syntax define-ea-transformer
+  (non-hygienic-macro-transformer
+   (lambda (name category type)
+     `(DEFINE-EARLY-TRANSFORMER ',name
+	(MAKE-EA-TRANSFORMER ',category ',type)))))
 
 (define (make-ea-transformer category type)
   type					; ignored
@@ -90,28 +90,28 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 ;;; *** NOTE: If this format changes, insutl.scm must also be changed! ***
 
-(syntax-table/define (->environment '(COMPILER))
-		     'DEFINE-EA-DATABASE
-  (lambda rules
-    `(SET! EARLY-EA-DATABASE
-       (LIST
-	,@(map (lambda (rule)
-		 (apply
-		  (lambda (pattern categories . fields)
-		    (let ((keyword (car pattern)))
-		      `(EARLY-PARSE-RULE
-			',pattern
-			(LAMBDA (PAT VARS)
-			  (LIST PAT
-				VARS
-				',categories
-				(SCODE-QUOTE
-				 (MAKE-EFFECTIVE-ADDRESS
-				  ',keyword
-				  ',categories
-				  ,(process-fields fields true))))))))
-		  rule))
-	       rules)))))
+(define-syntax define-ea-database
+  (non-hygienic-macro-transformer
+   (lambda rules
+     `(SET! EARLY-EA-DATABASE
+	(LIST
+	 ,@(map (lambda (rule)
+		  (apply
+		   (lambda (pattern categories . fields)
+		     (let ((keyword (car pattern)))
+		       `(EARLY-PARSE-RULE
+			 ',pattern
+			 (LAMBDA (PAT VARS)
+			   (LIST PAT
+				 VARS
+				 ',categories
+				 (SCODE-QUOTE
+				  (MAKE-EFFECTIVE-ADDRESS
+				   ',keyword
+				   ',categories
+				   ,(process-fields fields true))))))))
+		   rule))
+		rules))))))
 
 ;; This is super hairy because of immediate operands!
 ;; The index 2 here is the argument number to MAKE-EFFECTIVE-ADDRESS.

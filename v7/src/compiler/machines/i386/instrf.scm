@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: instrf.scm,v 1.16 2001/12/20 21:45:24 cph Exp $
+$Id: instrf.scm,v 1.17 2001/12/23 17:20:58 cph Exp $
 
 Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
 
@@ -25,6 +25,7 @@ along with this program; if not, write to the Free Software
 
 (let-syntax
     ((define-binary-flonum
+      (non-hygienic-macro-transformer
        (lambda (mnemonic pmnemonic imnemonic digit opcode1 opcode2)
 	 `(begin
 	    (define-instruction ,mnemonic
@@ -60,7 +61,7 @@ along with this program; if not, write to the Free Software
 
 	      ((H (? source mW))
 	       (BYTE (8 #xde))
-	       (ModR/M ,digit source)))))))
+	       (ModR/M ,digit source))))))))
 
   ;; The i486 book (and 387, etc.) has inconsistent instruction
   ;; descriptions and opcode assignments for FSUB and siblings,
@@ -87,15 +88,6 @@ along with this program; if not, write to the Free Software
   (define-binary-flonum FSUB   FSUBP   FISUB   4 #xe0 #xe8)
   (define-binary-flonum FSUBR  FSUBPR  FISUBR  5 #xe8 #xe0))
 
-(define-syntax define-trivial-instruction
-  (lambda (mnemonic opcode . extra)
-    `(define-instruction ,mnemonic
-       (()
-	(BYTE (8 ,opcode))
-	,@(map (lambda (extra)
-		 `(BYTE (8 ,extra)))
-	       extra)))))
-
 (define-trivial-instruction F2XM1 #xd9 #xf0)
 (define-trivial-instruction FABS  #xd9 #xe1)
 
@@ -115,6 +107,7 @@ along with this program; if not, write to the Free Software
 
 (let-syntax
     ((define-flonum-comparison
+      (non-hygienic-macro-transformer
        (lambda (mnemonic digit opcode)
 	 `(define-instruction ,mnemonic
 	    (((ST 0) (ST (? i)))
@@ -131,7 +124,7 @@ along with this program; if not, write to the Free Software
 
 	    ((S (? source mW))
 	     (BYTE (8 #xd8))
-	     (ModR/M ,digit source))))))
+	     (ModR/M ,digit source)))))))
 
   (define-flonum-comparison FCOM  2 #xd0)
   (define-flonum-comparison FCOMP 3 #xd8))
@@ -147,6 +140,7 @@ along with this program; if not, write to the Free Software
 
 (let-syntax
     ((define-flonum-integer-comparison
+      (non-hygienic-macro-transformer
        (lambda (mnemonic digit)
 	 `(define-instruction ,mnemonic
 	    ((L (? source mW))
@@ -155,13 +149,14 @@ along with this program; if not, write to the Free Software
 
 	    ((H (? source mW))
 	     (BYTE (8 #xde))
-	     (ModR/M ,digit source))))))
+	     (ModR/M ,digit source)))))))
 
   (define-flonum-integer-comparison FICOM  2)
   (define-flonum-integer-comparison FICOMP 3))
 
 (let-syntax
     ((define-flonum-integer-memory
+      (non-hygienic-macro-transformer
        (lambda (mnemonic digit1 digit2)
 	 `(define-instruction ,mnemonic
 	    ,@(if (not digit2)
@@ -176,7 +171,7 @@ along with this program; if not, write to the Free Software
 
 	    ((H (? source mW))
 	     (BYTE (8 #xdf))
-	     (ModR/M ,digit1 source))))))
+	     (ModR/M ,digit1 source)))))))
 
   (define-flonum-integer-memory FILD  0 5)
   (define-flonum-integer-memory FIST  2 #f)
@@ -188,6 +183,7 @@ along with this program; if not, write to the Free Software
 
 (let-syntax
     ((define-flonum-memory
+      (non-hygienic-macro-transformer
        (lambda (mnemonic digit1 digit2 opcode1 opcode2)
 	 `(define-instruction ,mnemonic
 	    (((ST (? i)))
@@ -206,7 +202,7 @@ along with this program; if not, write to the Free Software
 		  `()
 		  `(((X (? operand mW))
 		     (BYTE (8 #xdb))
-		     (ModR/M ,digit2 operand))))))))
+		     (ModR/M ,digit2 operand)))))))))
 
   (define-flonum-memory FLD  0 5  #xd9 #xc0)
   (define-flonum-memory FST  2 #f #xdd #xd0)
@@ -222,6 +218,7 @@ along with this program; if not, write to the Free Software
 
 (let-syntax
     ((define-flonum-state
+      (non-hygienic-macro-transformer
        (lambda (mnemonic opcode digit mnemonic2)
 	 `(begin
 	    ,@(if (not mnemonic2)
@@ -235,7 +232,7 @@ along with this program; if not, write to the Free Software
 	    (define-instruction ,mnemonic
 	      (((? source mW))
 	       (BYTE (8 ,opcode))
-	       (ModR/M ,digit source)))))))
+	       (ModR/M ,digit source))))))))
 
   (define-flonum-state FNLDCW  #xd9 5 FLDCW)
   (define-flonum-state FLDENV  #xd9 4 #f)
@@ -279,6 +276,7 @@ along with this program; if not, write to the Free Software
 
 (let-syntax
     ((define-binary-flonum
+      (non-hygienic-macro-transformer
        (lambda (mnemonic opcode1 opcode2)
 	 `(define-instruction ,mnemonic
 	    (((ST 0) (ST (? i)))
@@ -287,7 +285,7 @@ along with this program; if not, write to the Free Software
 
 	    (()
 	     (BYTE (8 ,opcode1)
-		   (8 (+ ,opcode2 1))))))))
+		   (8 (+ ,opcode2 1)))))))))
 
   (define-binary-flonum FUCOM  #xdd #xe0)
   (define-binary-flonum FUCOMP #xdd #xe8)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.81 2001/12/21 18:37:23 cph Exp $
+$Id: make.scm,v 14.82 2001/12/23 17:20:59 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -50,10 +50,16 @@ USA.
 
 (define system-global-environment #f)
 
+(define (non-hygienic-macro-transformer transformer)
+  transformer)
+
 ;; *MAKE-ENVIRONMENT is referred to by compiled code.  It must go
 ;; before the uses of the-environment later, and after apply above.
 (define (*make-environment parent names . values)
-  (let-syntax ((ucode-type (lambda (name) (microcode-type name))))
+  (let-syntax
+      ((ucode-type
+	(non-hygienic-macro-transformer
+	 (lambda (name) (microcode-type name)))))
     (system-list->vector
      (ucode-type environment)
      (cons (system-pair-cons (ucode-type procedure)
@@ -68,12 +74,14 @@ USA.
 			  (vector lambda-tag:unnamed))))
 
 (define-syntax ucode-primitive
-  (lambda arguments
-    (apply make-primitive-procedure arguments)))
+  (non-hygienic-macro-transformer
+   (lambda arguments
+     (apply make-primitive-procedure arguments))))
 
 (define-syntax ucode-type
-  (lambda (name)
-    (microcode-type name)))
+  (non-hygienic-macro-transformer
+   (lambda (name)
+     (microcode-type name))))
 
 (define-integrable + (ucode-primitive integer-add))
 (define-integrable - (ucode-primitive integer-subtract))

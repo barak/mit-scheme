@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgn3.scm,v 4.13 2001/12/20 21:45:23 cph Exp $
+$Id: lapgn3.scm,v 4.14 2001/12/23 17:20:57 cph Exp $
 
 Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
 
@@ -70,21 +70,23 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			 (read)))
 	    label)))))
 
-(let-syntax ((->label
-	      (lambda (find var #!optional suffix)
-		`(object->label ,find
-				(lambda () ,var)
-				(lambda (new)
-				  (declare (integrate new))
-				  (set! ,var new))
-				,(if (default-object? suffix)
-				     `(lambda (object)
-					object ; ignore
-					(allocate-named-label "OBJECT-"))
-				     `(lambda (object)
-					(allocate-named-label
-					 (string-append (symbol->string object)
-							,suffix))))))))
+(let-syntax
+    ((->label
+      (non-hygienic-macro-transformer
+       (lambda (find var #!optional suffix)
+	 `(object->label ,find
+			 (lambda () ,var)
+			 (lambda (new)
+			   (declare (integrate new))
+			   (set! ,var new))
+			 ,(if (default-object? suffix)
+			      `(lambda (object)
+				 object ; ignore
+				 (allocate-named-label "OBJECT-"))
+			      `(lambda (object)
+				 (allocate-named-label
+				  (string-append (symbol->string object)
+						 ,suffix)))))))))
 (define constant->label
   (->label warning-assoc *interned-constants*))
 

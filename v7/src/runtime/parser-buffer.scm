@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser-buffer.scm,v 1.1 2001/11/11 05:51:13 cph Exp $
+;;; $Id: parser-buffer.scm,v 1.2 2001/12/23 17:20:59 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -143,26 +143,27 @@
 
 (let-syntax
     ((char-matcher
-      (lambda (name test)
-	`(BEGIN
-	   (DEFINE (,(symbol-append 'MATCH-PARSER-BUFFER- name '-NO-ADVANCE)
-		    BUFFER REFERENCE)
-	     (AND (GUARANTEE-BUFFER-CHARS BUFFER 1)
-		  (LET ((CHAR
-			 (STRING-REF (PARSER-BUFFER-STRING BUFFER)
-				     (PARSER-BUFFER-INDEX BUFFER))))
-		    (DECLARE (INTEGRATE CHAR))
-		    ,test)))
-	   (DEFINE (,(symbol-append 'MATCH-PARSER-BUFFER- name)
-		    BUFFER REFERENCE)
-	     (AND (GUARANTEE-BUFFER-CHARS BUFFER 1)
-		  (LET ((CHAR
-			 (STRING-REF (PARSER-BUFFER-STRING BUFFER)
-				     (PARSER-BUFFER-INDEX BUFFER))))
-		    (AND ,test
-			 (BEGIN
-			   (INCREMENT-BUFFER-INDEX! BUFFER CHAR)
-			   #T)))))))))
+      (non-hygienic-macro-transformer
+       (lambda (name test)
+	 `(BEGIN
+	    (DEFINE (,(symbol-append 'MATCH-PARSER-BUFFER- name '-NO-ADVANCE)
+		     BUFFER REFERENCE)
+	      (AND (GUARANTEE-BUFFER-CHARS BUFFER 1)
+		   (LET ((CHAR
+			  (STRING-REF (PARSER-BUFFER-STRING BUFFER)
+				      (PARSER-BUFFER-INDEX BUFFER))))
+		     (DECLARE (INTEGRATE CHAR))
+		     ,test)))
+	    (DEFINE (,(symbol-append 'MATCH-PARSER-BUFFER- name)
+		     BUFFER REFERENCE)
+	      (AND (GUARANTEE-BUFFER-CHARS BUFFER 1)
+		   (LET ((CHAR
+			  (STRING-REF (PARSER-BUFFER-STRING BUFFER)
+				      (PARSER-BUFFER-INDEX BUFFER))))
+		     (AND ,test
+			  (BEGIN
+			    (INCREMENT-BUFFER-INDEX! BUFFER CHAR)
+			    #T))))))))))
   (char-matcher char (char=? char reference))
   (char-matcher char-ci (char-ci=? char reference))
   (char-matcher not-char (not (char=? char reference)))
@@ -184,14 +185,15 @@
 
 (let-syntax
     ((string-matcher
-      (lambda (suffix)
-	(let ((name
-	       (intern (string-append "match-parser-buffer-string" suffix)))
-	      (match-substring
-	       (intern
-		(string-append "match-parser-buffer-substring" suffix))))
-	  `(DEFINE (,name BUFFER STRING)
-	     (,match-substring BUFFER STRING 0 (STRING-LENGTH STRING)))))))
+      (non-hygienic-macro-transformer
+       (lambda (suffix)
+	 (let ((name
+		(intern (string-append "match-parser-buffer-string" suffix)))
+	       (match-substring
+		(intern
+		 (string-append "match-parser-buffer-substring" suffix))))
+	   `(DEFINE (,name BUFFER STRING)
+	      (,match-substring BUFFER STRING 0 (STRING-LENGTH STRING))))))))
   (string-matcher "")
   (string-matcher "-ci")
   (string-matcher "-no-advance")
@@ -199,38 +201,40 @@
 
 (let-syntax
     ((substring-matcher
-      (lambda (suffix)
-	`(DEFINE (,(intern
-		    (string-append "match-parser-buffer-substring" suffix))
-		  BUFFER STRING START END)
-	   (LET ((N (FIX:- END START)))
-	     (AND (GUARANTEE-BUFFER-CHARS BUFFER N)
-		  (,(intern (string-append "substring" suffix "=?"))
-		   STRING START END
-		   (PARSER-BUFFER-STRING BUFFER)
-		   (PARSER-BUFFER-INDEX BUFFER)
-		   (FIX:+ (PARSER-BUFFER-INDEX BUFFER) N))
-		  (BEGIN
-		    (BUFFER-INDEX+N! BUFFER N)
-		    #T)))))))
+      (non-hygienic-macro-transformer
+       (lambda (suffix)
+	 `(DEFINE (,(intern
+		     (string-append "match-parser-buffer-substring" suffix))
+		   BUFFER STRING START END)
+	    (LET ((N (FIX:- END START)))
+	      (AND (GUARANTEE-BUFFER-CHARS BUFFER N)
+		   (,(intern (string-append "substring" suffix "=?"))
+		    STRING START END
+		    (PARSER-BUFFER-STRING BUFFER)
+		    (PARSER-BUFFER-INDEX BUFFER)
+		    (FIX:+ (PARSER-BUFFER-INDEX BUFFER) N))
+		   (BEGIN
+		     (BUFFER-INDEX+N! BUFFER N)
+		     #T))))))))
   (substring-matcher "")
   (substring-matcher "-ci"))
 
 (let-syntax
     ((substring-matcher
-      (lambda (suffix)
-	`(DEFINE (,(intern
-		    (string-append "match-parser-buffer-substring"
-				   suffix
-				   "-no-advance"))
-		  BUFFER STRING START END)
-	   (LET ((N (FIX:- END START)))
-	     (AND (GUARANTEE-BUFFER-CHARS BUFFER N)
-		  (,(intern (string-append "substring" suffix "=?"))
-		   STRING START END
-		   (PARSER-BUFFER-STRING BUFFER)
-		   (PARSER-BUFFER-INDEX BUFFER)
-		   (FIX:+ (PARSER-BUFFER-INDEX BUFFER) N))))))))
+      (non-hygienic-macro-transformer
+       (lambda (suffix)
+	 `(DEFINE (,(intern
+		     (string-append "match-parser-buffer-substring"
+				    suffix
+				    "-no-advance"))
+		   BUFFER STRING START END)
+	    (LET ((N (FIX:- END START)))
+	      (AND (GUARANTEE-BUFFER-CHARS BUFFER N)
+		   (,(intern (string-append "substring" suffix "=?"))
+		    STRING START END
+		    (PARSER-BUFFER-STRING BUFFER)
+		    (PARSER-BUFFER-INDEX BUFFER)
+		    (FIX:+ (PARSER-BUFFER-INDEX BUFFER) N)))))))))
   (substring-matcher "")
   (substring-matcher "-ci"))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fggen.scm,v 4.34 2001/12/20 21:45:23 cph Exp $
+$Id: fggen.scm,v 4.35 2001/12/23 17:20:57 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -955,16 +955,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
     (let-syntax
 	((dispatch-entry
-	  (lambda (type handler)
-	    `(VECTOR-SET! DISPATCH-VECTOR ,(microcode-type type) ,handler)))
+	  (non-hygienic-macro-transformer
+	   (lambda (type handler)
+	     `(VECTOR-SET! DISPATCH-VECTOR ,(microcode-type type) ,handler))))
 	 (dispatch-entries
-	  (lambda (types handler)
-	    `(BEGIN ,@(map (lambda (type)
-			     `(DISPATCH-ENTRY ,type ,handler))
-			   types))))
+	  (non-hygienic-macro-transformer
+	   (lambda (types handler)
+	     `(BEGIN ,@(map (lambda (type)
+			      `(DISPATCH-ENTRY ,type ,handler))
+			    types)))))
 	 (standard-entry
-	  (lambda (name)
-	    `(DISPATCH-ENTRY ,name ,(symbol-append 'GENERATE/ name)))))
+	  (non-hygienic-macro-transformer
+	   (lambda (name)
+	     `(DISPATCH-ENTRY ,name ,(symbol-append 'GENERATE/ name))))))
       (standard-entry access)
       (standard-entry assignment)
       (standard-entry conditional)

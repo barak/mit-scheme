@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.18 2001/12/20 21:22:55 cph Exp $
+$Id: graphics.scm,v 1.19 2001/12/23 17:20:59 cph Exp $
 
 Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
 
@@ -253,11 +253,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-graphics-operation
+      (non-hygienic-macro-transformer
        (lambda (name)
 	 `(DEFINE-INTEGRABLE
 	    (,(symbol-append 'GRAPHICS-DEVICE/OPERATION/ name) DEVICE)
 	    (,(symbol-append 'GRAPHICS-DEVICE-TYPE/OPERATION/ name)
-	     (GRAPHICS-DEVICE/TYPE DEVICE))))))
+	     (GRAPHICS-DEVICE/TYPE DEVICE)))))))
   (define-graphics-operation clear)
   (define-graphics-operation close)
   (define-graphics-operation coordinate-limits)

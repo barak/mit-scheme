@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.29 2001/12/20 21:45:24 cph Exp $
+$Id: lapgen.scm,v 1.30 2001/12/23 17:20:58 cph Exp $
 
 Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
@@ -568,6 +568,7 @@ USA.
 
 
 (let-syntax ((define-codes
+	      (non-hygienic-macro-transformer
 	       (lambda (start . names)
 		 (define (loop names index)
 		   (if (null? names)
@@ -577,7 +578,7 @@ USA.
 						(car names))
 				,index)
 			     (loop (cdr names) (1+ index)))))
-		 `(BEGIN ,@(loop names start)))))
+		 `(BEGIN ,@(loop names start))))))
   (define-codes #x012
     primitive-apply primitive-lexpr-apply
     apply error lexpr-apply link
@@ -605,6 +606,7 @@ USA.
        ,@(invoke-hook/call entry:compiler-scheme-to-interface/call)))
 
 (let-syntax ((define-entries
+	      (non-hygienic-macro-transformer
 	       (lambda (start high . names)
 		 (define (loop names index high)
 		   (cond ((null? names)
@@ -619,7 +621,7 @@ USA.
 				   (byte-offset-reference regnum:regs-pointer
 							  ,index))
 				(loop (cdr names) (+ index 4) high)))))
-		 `(BEGIN ,@(loop names start high)))))
+		 `(BEGIN ,@(loop names start high))))))
   (define-entries #x40 #x80		; (* 16 4)
     scheme-to-interface			; Main entry point (only one necessary)
     scheme-to-interface/call		; Used by rules3&4, for convenience.

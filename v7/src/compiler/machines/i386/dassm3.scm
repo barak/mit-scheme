@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dassm3.scm,v 1.8 2001/12/20 21:45:24 cph Exp $
+$Id: dassm3.scm,v 1.9 2001/12/23 17:20:58 cph Exp $
 
 Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
 
@@ -438,9 +438,11 @@ USA.
 		  next)))))
 
 (define decode-fp
-  (let-syntax ((IN (lambda (body . bindings)
-		     `(LET ,bindings
-			  ,body))))
+  (let-syntax
+      ((IN
+	(non-hygienic-macro-transformer
+	 (lambda (body . bindings)
+	   `(LET ,bindings ,body)))))
     (IN
      (lambda (opcode-byte)
        (let* ((next (next-unsigned-byte))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: object.scm,v 4.11 2001/12/20 21:24:54 cph Exp $
+$Id: object.scm,v 4.12 2001/12/23 17:20:59 cph Exp $
 
 Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
 
@@ -65,6 +65,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-enumeration
+      (non-hygienic-macro-transformer
        (lambda (enumeration-name enumerand-names)
 	 `(BEGIN
 	    (DEFINE ,enumeration-name
@@ -73,7 +74,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		     `(DEFINE ,(symbol-append enumerand-name '/ENUMERAND)
 			(ENUMERATION/NAME->ENUMERAND ,enumeration-name
 						     ',enumerand-name)))
-		   enumerand-names)))))
+		   enumerand-names))))))
   (define-enumeration enumeration/random
     (block
      delayed-integration
@@ -120,6 +121,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-simple-type
+      (non-hygienic-macro-transformer
        (lambda (name slots #!optional scode?)
 	 `(DEFINE-STRUCTURE (,name (TYPE VECTOR)
 				   (NAMED ,(symbol-append name '/ENUMERAND))
@@ -128,7 +130,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    ,@(if (or (default-object? scode?) scode?)
 		  `((scode #f read-only #t))
 		  `())
-	    ,@slots))))
+	    ,@slots)))))
   (define-simple-type variable (block name flags) #F)
   (define-simple-type access (environment name))
   (define-simple-type assignment (block variable value))
@@ -165,6 +167,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-flag
+      (non-hygienic-macro-transformer
        (lambda (name tester setter)
 	 `(BEGIN
 	    (DEFINE (,tester VARIABLE)
@@ -173,7 +176,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	      (IF (NOT (MEMQ ',name (VARIABLE/FLAGS VARIABLE)))
 		  (SET-VARIABLE/FLAGS! VARIABLE
 				       (CONS ',name
-					     (VARIABLE/FLAGS VARIABLE)))))))))
+					     (VARIABLE/FLAGS VARIABLE))))))))))
   (define-flag SIDE-EFFECTED variable/side-effected variable/side-effect!)
   (define-flag REFERENCED    variable/referenced    variable/reference!)
   (define-flag INTEGRATED    variable/integrated    variable/integrated!)

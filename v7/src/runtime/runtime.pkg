@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.402 2001/12/22 03:19:19 cph Exp $
+$Id: runtime.pkg,v 14.403 2001/12/23 17:20:59 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -3759,11 +3759,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-package (runtime syntax-table)
   (files "syntab")
   (parent (runtime))
-  (export ()
-	  syntax-table/define)
   (export (runtime syntaxer)
 	  guarantee-syntax-table
 	  make-syntax-table
+	  syntax-table/define
 	  syntax-table/environment
 	  syntax-table/extend
 	  syntax-table/ref))

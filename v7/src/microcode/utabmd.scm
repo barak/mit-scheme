@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: utabmd.scm,v 9.81 2001/12/21 04:36:19 cph Exp $
+;;; $Id: utabmd.scm,v 9.82 2001/12/23 17:20:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1987-2001 Massachusetts Institute of Technology
 ;;;
@@ -575,8 +575,9 @@
 ;;; [] System-call names
 
 (define-syntax ucode-primitive
-  (lambda args
-    (apply make-primitive-procedure args)))
+  (non-hygienic-macro-transformer
+   (lambda args
+     (apply make-primitive-procedure args))))
 
 (vector-set! (get-fixed-objects-vector)
 	     #x09 ;(fixed-objects-vector-slot 'SYSTEM-CALL-NAMES)
@@ -607,4 +608,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Id: utabmd.scm,v 9.81 2001/12/21 04:36:19 cph Exp $"
+"$Id: utabmd.scm,v 9.82 2001/12/23 17:20:59 cph Exp $"

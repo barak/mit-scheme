@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: apply.scm,v 1.3 2001/12/20 21:22:05 cph Exp $
+$Id: apply.scm,v 1.4 2001/12/23 17:20:59 cph Exp $
 
 Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
 
@@ -34,25 +34,25 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     (error "apply: Improper argument list" a0))
 
   (let-syntax ((apply-dispatch&bind
-		(lambda (var clause . clauses)
-		  (if (null? clauses)
-		      (cadr clause)
-		      (let walk ((lv var)
-				 (clause clause)
-				 (clauses clauses))
-			`(if (not (pair? ,lv))
-			     (if (null? ,lv)
-				 ,(cadr clause)
-				 (fail))
-			     ,(if (null? (cdr clauses))
-				  (cadr (car clauses))
-				  (let ((lv* (generate-uninterned-symbol))
-					(av* (car clause)))
-				    `(let ((,lv* (cdr ,lv))
-					   (,av* (car ,lv)))
-				       ,(walk lv* (car clauses)
-					      (cdr clauses)))))))))))
-
+		(non-hygienic-macro-transformer
+		 (lambda (var clause . clauses)
+		   (if (null? clauses)
+		       (cadr clause)
+		       (let walk ((lv var)
+				  (clause clause)
+				  (clauses clauses))
+			 `(if (not (pair? ,lv))
+			      (if (null? ,lv)
+				  ,(cadr clause)
+				  (fail))
+			      ,(if (null? (cdr clauses))
+				   (cadr (car clauses))
+				   (let ((lv* (generate-uninterned-symbol))
+					 (av* (car clause)))
+				     `(let ((,lv* (cdr ,lv))
+					    (,av* (car ,lv)))
+					,(walk lv* (car clauses)
+					       (cdr clauses))))))))))))
     (apply-dispatch&bind a0
 			 (v0 (f))
 			 (v1 (f v0))
@@ -64,8 +64,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			 (v6 (f v0 v1 v2 v3 v4 v5))
 			 (v7 (f v0 v1 v2 v3 v4 v5 v6))
 			 |#
-			 (else
-			  ((ucode-primitive apply) f a0)))))
+			 (else ((ucode-primitive apply) f a0)))))
   
 (define (apply-entity-procedure self f . args)
   ;; This is safe because args is a newly-consed list

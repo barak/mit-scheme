@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: inerly.scm,v 1.5 2001/12/20 02:37:21 cph Exp $
+$Id: inerly.scm,v 1.6 2001/12/23 17:20:57 cph Exp $
 
 Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
@@ -25,23 +25,23 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (declare (usual-integrations))
 
-(syntax-table/define (->environment '(COMPILER))
-		     'DEFINE-INSTRUCTION
-  (lambda (opcode . patterns)
-    `(SET! EARLY-INSTRUCTIONS
-	   (CONS
-	    (LIST ',opcode
-		  ,@(map (lambda (pattern)
-			   `(early-parse-rule
-			     ',(car pattern)
-			     (lambda (pat vars)
-			       (early-make-rule
-				pat
-				vars
-				(scode-quote
-				 (instruction->instruction-sequence
-				  ,(parse-instruction (cadr pattern)
-						      (cddr pattern)
-						      true)))))))
-			 patterns))
-		 EARLY-INSTRUCTIONS))))
+(define-syntax define-instruction
+  (non-hygienic-macro-transformer
+   (lambda (opcode . patterns)
+     `(SET! EARLY-INSTRUCTIONS
+	    (CONS
+	     (LIST ',opcode
+		   ,@(map (lambda (pattern)
+			    `(early-parse-rule
+			      ',(car pattern)
+			      (lambda (pat vars)
+				(early-make-rule
+				 pat
+				 vars
+				 (scode-quote
+				  (instruction->instruction-sequence
+				   ,(parse-instruction (cadr pattern)
+						       (cddr pattern)
+						       #t)))))))
+			  patterns))
+		  EARLY-INSTRUCTIONS)))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.35 2001/12/21 18:37:18 cph Exp $
+$Id: defstr.scm,v 14.36 2001/12/23 17:20:59 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -71,31 +71,32 @@ differences:
 |#
 
 (define-syntax define-structure
-  (lambda (name-and-options . slot-descriptions)
-    (let ((structure
-	   (with-values
-	       (lambda ()
-		 (if (pair? name-and-options)
-		     (values (car name-and-options) (cdr name-and-options))
-		     (values name-and-options '())))
-	     (lambda (name options)
-	       (parse/options name
-			      options
-			      (map parse/slot-description
-				   slot-descriptions))))))
-      (do ((slots (structure/slots structure) (cdr slots))
-	   (index (if (structure/named? structure)
-		      (+ (structure/offset structure) 1)
-		      (structure/offset structure))
-		  (+ index 1)))
-	  ((null? slots))
-	(set-slot/index! (car slots) index))
-      `(BEGIN ,@(type-definitions structure)
-	      ,@(constructor-definitions structure)
-	      ,@(accessor-definitions structure)
-	      ,@(modifier-definitions structure)
-	      ,@(predicate-definitions structure)
-	      ,@(copier-definitions structure)))))
+  (non-hygienic-macro-transformer
+   (lambda (name-and-options . slot-descriptions)
+     (let ((structure
+	    (with-values
+		(lambda ()
+		  (if (pair? name-and-options)
+		      (values (car name-and-options) (cdr name-and-options))
+		      (values name-and-options '())))
+	      (lambda (name options)
+		(parse/options name
+			       options
+			       (map parse/slot-description
+				    slot-descriptions))))))
+       (do ((slots (structure/slots structure) (cdr slots))
+	    (index (if (structure/named? structure)
+		       (+ (structure/offset structure) 1)
+		       (structure/offset structure))
+		   (+ index 1)))
+	   ((null? slots))
+	 (set-slot/index! (car slots) index))
+       `(BEGIN ,@(type-definitions structure)
+	       ,@(constructor-definitions structure)
+	       ,@(accessor-definitions structure)
+	       ,@(modifier-definitions structure)
+	       ,@(predicate-definitions structure)
+	       ,@(copier-definitions structure))))))
 
 ;;;; Parse Options
 

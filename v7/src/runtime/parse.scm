@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.34 2001/12/20 20:51:16 cph Exp $
+$Id: parse.scm,v 14.35 2001/12/23 17:20:59 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -276,21 +276,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define *parser-current-position*)
 
 (define-syntax define-accretor
-  (lambda (param-list-1 param-list-2 . body)
-    (let ((real-param-list (if (number? param-list-1)
-			       param-list-2
-			       param-list-1))
-	  (real-body (if (number? param-list-1)
-			 body
-			 (cons param-list-2 body)))
-	  (offset (if (number? param-list-1)
-		      param-list-1
-		      0)))
-      `(DEFINE ,real-param-list
-	 (LET ((CORE (LAMBDA () ,@real-body)))
-	   (IF *PARSER-ASSOCIATE-POSITIONS?*
-	       (RECORDING-OBJECT-POSITION ,offset CORE)
-	       (CORE)))))))
+  (non-hygienic-macro-transformer
+   (lambda (param-list-1 param-list-2 . body)
+     (let ((real-param-list (if (number? param-list-1)
+				param-list-2
+				param-list-1))
+	   (real-body (if (number? param-list-1)
+			  body
+			  (cons param-list-2 body)))
+	   (offset (if (number? param-list-1)
+		       param-list-1
+		       0)))
+       `(DEFINE ,real-param-list
+	  (LET ((CORE (LAMBDA () ,@real-body)))
+	    (IF *PARSER-ASSOCIATE-POSITIONS?*
+		(RECORDING-OBJECT-POSITION ,offset CORE)
+		(CORE))))))))
 
 (define (current-position-getter port)
   (cond ((input-port/operation port 'POSITION)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: instr1.scm,v 1.14 2001/12/20 21:45:24 cph Exp $
+$Id: instr1.scm,v 1.15 2001/12/23 17:20:58 cph Exp $
 
 Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
 
@@ -28,17 +28,6 @@ USA.
 
 (declare (usual-integrations))
 
-;; Utility
-
-(define-syntax define-trivial-instruction
-  (lambda (mnemonic opcode . extra)
-    `(define-instruction ,mnemonic
-       (()
-	(BYTE (8 ,opcode))
-	,@(map (lambda (extra)
-		 `(BYTE (8 ,extra)))
-	       extra)))))
-
 ;;;; Pseudo ops
 
 (define-instruction BYTE
@@ -58,16 +47,17 @@ USA.
    (BYTE (32 value SIGNED)))
   ((U (? value))
    (BYTE (32 value UNSIGNED))))
-
+
 ;;;; Actual instructions
 
 (define-trivial-instruction AAA #x37)
 (define-trivial-instruction AAD #xd5 #x0a)
 (define-trivial-instruction AAM #xd4 #x0a)
 (define-trivial-instruction AAS #x3f)
-
+
 (let-syntax
     ((define-arithmetic-instruction
+      (non-hygienic-macro-transformer
        (lambda (mnemonic opcode digit)
 	 `(define-instruction ,mnemonic
 	    ((W (? target r/mW) (R (? source)))
@@ -126,11 +116,11 @@ USA.
 	     (BYTE (8 #x80))
 	     (ModR/M ,digit target)
 	     (BYTE (8 value SIGNED)))
-
+
 	    ((B (? target r/mB) (&U (? value)))
 	     (BYTE (8 #x80))
 	     (ModR/M ,digit target)
-	     (BYTE (8 value UNSIGNED)))))))
+	     (BYTE (8 value UNSIGNED))))))))
 
   (define-arithmetic-instruction ADC #x10 2)
   (define-arithmetic-instruction ADD #x00 0)
@@ -140,7 +130,7 @@ USA.
   (define-arithmetic-instruction SBB #x18 3)
   (define-arithmetic-instruction SUB #x28 5)
   (define-arithmetic-instruction XOR #x30 6))
-
+
 (define-instruction ARPL
   (((? target r/mW) (R (? source)))
    (BYTE (8 #x63))
@@ -170,6 +160,7 @@ USA.
 
 (let-syntax
     ((define-bit-test-instruction
+      (non-hygienic-macro-transformer
        (lambda (mnemonic opcode digit)
 	 `(define-instruction ,mnemonic
 	    (((? target r/mW) (& (? posn)))
@@ -181,7 +172,7 @@ USA.
 	    (((? target r/mW) (R (? posn)))
 	     (BYTE (8 #x0f)
 		   (8 ,opcode))
-	     (ModR/M posn target))))))
+	     (ModR/M posn target)))))))
 
   (define-bit-test-instruction BT  #xa3 4)
   (define-bit-test-instruction BTC #xbb 7)
@@ -224,13 +215,14 @@ USA.
 
 (let-syntax
     ((define-string-instruction
+      (non-hygienic-macro-transformer
        (lambda (mnemonic opcode)
 	 `(define-instruction ,mnemonic
 	    ((W)
 	     (BYTE (8 ,(1+ opcode))))
 
 	    ((B)
-	     (BYTE (8 ,opcode)))))))
+	     (BYTE (8 ,opcode))))))))
 
   (define-string-instruction CMPS #xa6)
   (define-string-instruction LODS #xac)
@@ -260,6 +252,7 @@ USA.
 
 (let-syntax
     ((define-inc/dec
+      (non-hygienic-macro-transformer
        (lambda (mnemonic digit opcode)
 	 `(define-instruction ,mnemonic
 	    ((W (R (? reg)))
@@ -271,13 +264,14 @@ USA.
 
 	    ((B (? target r/mB))
 	     (BYTE (8 #xfe))
-	     (ModR/M ,digit target))))))
+	     (ModR/M ,digit target)))))))
 
   (define-inc/dec DEC 1 #x48)
   (define-inc/dec INC 0 #x40))
 
 (let-syntax
     ((define-mul/div
+      (non-hygienic-macro-transformer
        (lambda (mnemonic digit)
 	 `(define-instruction ,mnemonic
 	    ((W (R 0) (? operand r/mW))
@@ -286,7 +280,7 @@ USA.
 
 	    ((B (R 0) (? operand r/mB))
 	     (BYTE (8 #xf6))
-	     (ModR/M ,digit operand))))))
+	     (ModR/M ,digit operand)))))))
 
   (define-mul/div DIV 6)
   (define-mul/div IDIV 7)
@@ -363,6 +357,7 @@ USA.
 
 (let-syntax
     ((define-jump-instruction
+      (non-hygienic-macro-transformer
        (lambda (mnemonic opcode1 opcode2)
 	 `(define-instruction ,mnemonic
 	    ;; This assumes that *ADDRESS-SIZE* is 4 (32-bit mode)
@@ -393,7 +388,7 @@ USA.
 	    ((W (@PCO (? displ)))
 	     (BYTE (8 #x0f)
 		   (8 ,opcode2))
-	     (IMMEDIATE displ ADDRESS))))))
+	     (IMMEDIATE displ ADDRESS)))))))
 
   (define-jump-instruction JA   #x77 #x87)
   (define-jump-instruction JAE  #x73 #x83)
@@ -428,6 +423,7 @@ USA.
   
 (let-syntax
     ((define-loop-instruction
+      (non-hygienic-macro-transformer
        (lambda (mnemonic opcode)
 	 `(define-instruction ,mnemonic
 	    ((B (@PCR (? dest)))
@@ -436,7 +432,7 @@ USA.
 
 	    ((B (@PCO (? displ)))
 	     (BYTE (8 ,opcode)
-		   (8 displ SIGNED)))))))
+		   (8 displ SIGNED))))))))
 
   (define-loop-instruction JCXZ   #xe3)
   (define-loop-instruction JECXZ  #xe3)
@@ -514,12 +510,13 @@ USA.
 
 (let-syntax
     ((define-load/store-state
+      (non-hygienic-macro-transformer
        (lambda (mnemonic opcode digit)
 	 `(define-instruction ,mnemonic
 	    (((? operand mW))
 	     (BYTE (8 #x0f)
 		   (8 ,opcode))
-	     (ModR/M ,digit operand))))))
+	     (ModR/M ,digit operand)))))))
 
   (define-load/store-state INVLPG #x01 7)	; 486 only
   (define-load/store-state LGDT   #x01 2)

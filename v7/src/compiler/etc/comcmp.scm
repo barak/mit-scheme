@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comcmp.scm,v 1.8 2001/12/20 20:51:15 cph Exp $
+$Id: comcmp.scm,v 1.9 2001/12/23 17:20:57 cph Exp $
 
 Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
 
@@ -28,8 +28,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     (set! compiled-code-block/bytes-per-object 4))
 
 (define-syntax ucode-type
-  (lambda (name)
-    (microcode-type name)))
+  (non-hygienic-macro-transformer
+   (lambda (name)
+     (microcode-type name))))
 
 (define comcmp:ignore-debugging-info? #t)
 (define comcmp:show-differing-blocks? #f)

@@ -21,14 +21,15 @@
 
 (let ((swat-env (extend-interpreter-environment system-global-environment)))
 
-  (package/add-child!  (find-package '())  'SWAT  swat-env)
+  (package/add-child! (find-package '()) 'SWAT swat-env)
 
-  (for-each (lambda (export)
-	      (environment-define swat-env export 'UNASSIGNED)
-	      (link-variables (package/environment (find-package '())) export
-			      swat-env export))
+  (for-each (lambda (name)
+	      (environment-define swat-env name 'UNASSIGNED)
+	      (link-variables system-global-environment name
+			      swat-env name))
     ;; All of SWAT's exported names.  This list need pruning
-    '(*-alert-structure-size-*
+    '(
+      *-alert-structure-size-*
       *-alert.function-*
       *-alert.reason-*
       *-canvasitem-structure-size-*
@@ -163,6 +164,37 @@
       ->xpixel
       ->xregion
       ->xwindow
+      ;;add-to-protection-list!
+      ;;canvas-flush-protect-list!
+      ;;canvas-protect-from-gc!
+      ;;canvas-unprotect-from-gc!
+      ;;clean-lost-protected-objects
+      ;;del-assq!
+      ;;del-assv!
+      ;;del-op!
+      ;;dequeue!
+      ;;display-protection-list
+      ;;enqueue!
+      ;;find-in-protection-list
+      ;;find-tk-protection-list
+      ;;find-tk-protection-list-from-number
+      ;;make-protection-list
+      ;;make-queue
+      ;;make-weak-del-op!
+      ;;make-weak-lookup
+      ;;protection-list-all-elements
+      ;;protection-list-referenced-elements
+      ;;queue?
+      ;;region-protection-list
+      ;;remove-from-protection-list!
+      ;;search-protection-list
+      ;;text-flush-protect-list!
+      ;;text-protect-from-gc!
+      ;;text-unprotect-from-gc!
+      ;;uiobj-protect-from-gc!
+      ;;uiobj-unprotect-from-gc!
+      ;;uitk-protection-list
+      ;;weak-delq!
       active-variable-value
       add-child!
       add-event-handler!
@@ -171,7 +203,6 @@
       add-to-agenda!
       add-to-canvas-item-group
       add-to-menu
-      ;;add-to-protection-list!
       add-vectors
       add-widget-list-for-display-number!
       after-delay
@@ -218,10 +249,7 @@
       box:event-propagator
       box:rearrange
       button-stretch
-      ;;canvas-flush-protect-list!
-      ;;canvas-protect-from-gc!
       canvas-stretch
-      ;;canvas-unprotect-from-gc!
       canvasitem-add-event-handler!
       canvasitem-ask-widget
       canvasitem.add-event-handler!-procedure
@@ -246,7 +274,6 @@
       choose-maximum-glue
       choose-minimum-glue
       clean-lost-celled-objects
-      ;;clean-lost-protected-objects
       cleanup-vanished-objects-for-display
       clear-counters!
       cleararea
@@ -290,18 +317,15 @@
       decode-unknown-event
       decode-window-attributes
       defer
-      ;;del-assq!
-      ;;del-assv!
-      ;;del-op!
+      define-constant			;macro
+      define-in-line			;macro
       delete-<interactor>!
       delete-menuitem!
-      ;;dequeue!
       destroy-all-sensitive-surfaces-from-display
       destroy-associated-tk-widgets
       destroy-registration
       destroy-sensitive-surface
       display->tk-widgets
-      ;;display-protection-list
       display/colormap-list
       display/default-root-window
       display/display
@@ -325,7 +349,6 @@
       empty-agenda?
       empty-queue?
       empty-segments?
-      ;;enqueue!
       ensure-graphics-context
       entry-height-stretch
       event!
@@ -346,13 +369,10 @@
       fillrectangle
       finalize-uitk-objects
       finalize-uitk-objects-later
-      ;;find-in-protection-list
       find-menu-record
       find-real-array-box-children
       find-sensitivity
       find-ss
-      ;;find-tk-protection-list
-      ;;find-tk-protection-list-from-number
       first-segment
       flush-display-hook
       flush-queued-output
@@ -483,8 +503,6 @@
       make-point
       make-point-event
       make-polygon-on-canvas
-      ;;make-protection-list
-      ;;make-queue
       make-radiobutton
       make-rect
       make-rectangle-event
@@ -528,8 +546,6 @@
       make-unfilled-rectangle
       make-unknown-event
       make-vbox
-      ;;make-weak-del-op!
-      ;;make-weak-lookup
       make-widget-on-canvas
       makexregion
       maybe-defer
@@ -572,10 +588,7 @@
       point=
       point?
       proc-with-transformed-args
-      ;;protection-list-all-elements
-      ;;protection-list-referenced-elements
       queue/pp
-      ;;queue?
       read-and-empty-agenda!
       read-and-empty-queue!
       read-queue-trace
@@ -587,11 +600,9 @@
       rectangle-overlaps-rectangle?
       rectangle-overlaps?
       rectangle=
-      ;;region-protection-list
       region/region
       remember-on-canvas!
       remove-child!
-      ;;remove-from-protection-list!
       reset-sensitivity!
       rest-segments
       restart-uitk
@@ -599,6 +610,8 @@
       rigid-glue?
       row-lists->col-lists
       run-queue-trace
+      scc-define-structure		;macro
+      scc-define-syntax			;macro
       screen-area=
       scrollable-canvas-canvas
       scrollable-canvas-hscroll
@@ -618,7 +631,6 @@
       scxl-wrapper.wrapped-object
       scxl-wrapper/pp
       scxl-wrapper?
-      ;;search-protection-list
       segment-queue
       segment-time
       segments
@@ -770,9 +782,6 @@
       swat-open-in-application
       swat:number->string
       tcl-global-eval
-      ;;text-flush-protect-list!
-      ;;text-protect-from-gc!
-      ;;text-unprotect-from-gc!
       texttag-add-event-handler!
       texttag-ask-widget
       texttag.add-event-handler!-procedure
@@ -860,12 +869,10 @@
       uiobj-get-desired-size
       uiobj-handle-event
       uiobj-point-within?
-      ;;uiobj-protect-from-gc!
       uiobj-rectangle-overlaps?
       uiobj-set-assigned-screen-area!
       uiobj-set-context!
       uiobj-set-used-screen-area!
-      ;;uiobj-unprotect-from-gc!
       uiobj-used-screen-area
       uiobjinternals
       uiobjinternals-index
@@ -891,7 +898,6 @@
       uiobjinternals.used-screen-area-procedure
       uiobjinternals/pp
       uiobjinternals?
-      ;;uitk-protection-list
       uitk-queue
       uitk-thread
       uitk-thread-main-loop
@@ -918,7 +924,6 @@
       valid-color-for-application?
       valid-color?
       valid-non-widget?
-      ;;weak-delq!
       when-idle!
       when-unreferenced
       widget->screen-area
@@ -999,7 +1004,8 @@
       xtranslatecoordinates
       xunionrectspecswithregion!
       xunionregion!
-      xunloadfont)))
+      xunloadfont
+      )))
 
 
 (with-working-directory-pathname

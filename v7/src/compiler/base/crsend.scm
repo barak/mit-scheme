@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: crsend.scm,v 1.11 2001/12/20 21:45:23 cph Exp $
+$Id: crsend.scm,v 1.12 2001/12/23 17:20:57 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -119,11 +119,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		   (with-absolutely-no-interrupts
 		     (lambda ()
 		       (let-syntax ((ucode-primitive
-				     (lambda (name)
-				       (make-primitive-procedure name)))
+				     (non-hygienic-macro-transformer
+				      (lambda (name)
+					(make-primitive-procedure name))))
 				    (ucode-type
-				     (lambda (name)
-				       (microcode-type name))))
+				     (non-hygienic-macro-transformer
+				      (lambda (name)
+					(microcode-type name)))))
 			 ((ucode-primitive PRIMITIVE-OBJECT-SET-TYPE)
 			  (ucode-type COMPILED-ENTRY)
 			  (make-non-pointer-object
@@ -144,11 +146,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (cross-link/finish-assembly code-block objects scheme-object-width)
   (let-syntax ((ucode-primitive
-		(lambda (name)
-		  (make-primitive-procedure name)))
+		(non-hygienic-macro-transformer
+		 (lambda (name)
+		   (make-primitive-procedure name))))
 	       (ucode-type
-		(lambda (name)
-		  (microcode-type name))))
+		(non-hygienic-macro-transformer
+		 (lambda (name)
+		   (microcode-type name)))))
     (let* ((bl (quotient (bit-string-length code-block)
 			 scheme-object-width))
 	   (non-pointer-length

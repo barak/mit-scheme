@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infstr.scm,v 1.12 2001/12/20 21:23:14 cph Exp $
+$Id: infstr.scm,v 1.13 2001/12/23 17:20:59 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -152,13 +152,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((dbg-block-name
-      (lambda (name)
-	(let ((symbol (symbol-append 'DBG-BLOCK-NAME/ name)))
-	  `(DEFINE-INTEGRABLE ,symbol
-	     ',((ucode-primitive string->symbol)
-		(string-append "#[(runtime compiler-info)"
-			       (string-downcase (symbol-name symbol))
-			       "]")))))))
+      (non-hygienic-macro-transformer
+       (lambda (name)
+	 (let ((symbol (symbol-append 'DBG-BLOCK-NAME/ name)))
+	   `(DEFINE-INTEGRABLE ,symbol
+	      ',((ucode-primitive string->symbol)
+		 (string-append "#[(runtime compiler-info)"
+				(string-downcase (symbol-name symbol))
+				"]"))))))))
   ;; Various names used in `layout' to identify things that wouldn't
   ;; otherwise have names.
   (dbg-block-name dynamic-link)

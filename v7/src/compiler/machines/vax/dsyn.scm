@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dsyn.scm,v 1.10 2001/12/21 18:28:31 cph Exp $
+$Id: dsyn.scm,v 1.11 2001/12/23 17:20:58 cph Exp $
 
 Copyright (c) 1987, 1989, 1999, 2001 Massachusetts Institute of Technology
 
@@ -35,12 +35,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   '(BYTE WORD LONG BUG B BR BSB))
 
 (define-syntax define-instruction
-  (lambda (name . patterns)
-    (if (memq name instructions-disassembled-specially)
-	''()
-	`(begin ,@(map (lambda (pattern)
-			 (process-instruction-definition name pattern))
-		       patterns)))))
+  (non-hygienic-macro-transformer
+   (lambda (name . patterns)
+     (if (memq name instructions-disassembled-specially)
+	 ''()
+	 `(begin ,@(map (lambda (pattern)
+			  (process-instruction-definition name pattern))
+			patterns))))))
 
 (define (process-instruction-definition name pattern)
   (let ((prefix (cons name (find-pattern-prefix (car pattern))))

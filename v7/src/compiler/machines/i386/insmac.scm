@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: insmac.scm,v 1.12 2001/12/19 21:39:30 cph Exp $
+$Id: insmac.scm,v 1.13 2001/12/23 17:20:58 cph Exp $
 
 Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
 
@@ -24,29 +24,39 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (declare (usual-integrations))
 
+(define-syntax define-trivial-instruction
+  (non-hygienic-macro-transformer
+   (lambda (mnemonic opcode . extra)
+     `(DEFINE-INSTRUCTION ,mnemonic
+	(()
+	 (BYTE (8 ,opcode))
+	 ,@(map (lambda (extra)
+		  `(BYTE (8 ,extra)))
+		extra))))))
+
 ;;;; Effective addressing
 
 (define ea-database-name
   'EA-DATABASE)
 
-(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
-		     'DEFINE-EA-DATABASE
-  (lambda rules
-    `(DEFINE ,ea-database-name
-       ,(compile-database rules
-			  (lambda (pattern actions)
-			    (let ((keyword (car pattern))
-				  (categories (car actions))
-				  (mode (cadr actions))
-				  (register (caddr actions))
-				  (tail (cdddr actions)))
-			      (declare (integrate keyword value))
-			      `(MAKE-EFFECTIVE-ADDRESS
-				',keyword
-				',categories
- 				,(integer-syntaxer mode 'UNSIGNED 2)
-				,(integer-syntaxer register 'UNSIGNED 3)
-				,(process-tail tail false))))))))
+(define-syntax define-ea-database
+  (non-hygienic-macro-transformer
+   (lambda rules
+     `(DEFINE ,ea-database-name
+	,(compile-database rules
+			   (lambda (pattern actions)
+			     (let ((keyword (car pattern))
+				   (categories (car actions))
+				   (mode (cadr actions))
+				   (register (caddr actions))
+				   (tail (cdddr actions)))
+			       (declare (integrate keyword value))
+			       `(MAKE-EFFECTIVE-ADDRESS
+				 ',keyword
+				 ',categories
+				 ,(integer-syntaxer mode 'UNSIGNED 2)
+				 ,(integer-syntaxer register 'UNSIGNED 3)
+				 ,(process-tail tail false)))))))))
 
 (define (process-tail tail early?)
   (if (null? tail)
@@ -55,20 +65,20 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 ;; This one is necessary to distinguish between r/mW mW, etc.
 
-(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
-		     'DEFINE-EA-TRANSFORMER
-  (lambda (name #!optional restriction)
-    (if (default-object? restriction)
-	`(define (,name expression)
-	   (let ((match-result (pattern-lookup ,ea-database-name expression)))
-	     (and match-result
-		  (match-result))))
-	`(define (,name expression)
-	   (let ((match-result (pattern-lookup ,ea-database-name expression)))
-	     (and match-result
-		  (let ((ea (match-result)))
-		    (and (memq ',restriction (ea/categories ea))
-			 ea))))))))
+(define-syntax define-ea-transformer
+  (non-hygienic-macro-transformer
+   (lambda (name #!optional restriction)
+     (if (default-object? restriction)
+	 `(DEFINE (,name EXPRESSION)
+	    (LET ((MATCH-RESULT (PATTERN-LOOKUP ,ea-database-name EXPRESSION)))
+	      (AND MATCH-RESULT
+		   (MATCH-RESULT))))
+	 `(DEFINE (,name EXPRESSION)
+	    (LET ((MATCH-RESULT (PATTERN-LOOKUP ,ea-database-name EXPRESSION)))
+	      (AND MATCH-RESULT
+		   (LET ((EA (MATCH-RESULT)))
+		     (AND (MEMQ ',restriction (EA/CATEGORIES EA))
+			  EA)))))))))
 
 ;; *** We can't really handle switching these right now. ***
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dassm1.scm,v 1.11 2001/12/20 21:45:24 cph Exp $
+$Id: dassm1.scm,v 1.12 2001/12/23 17:20:57 cph Exp $
 
 Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
@@ -145,7 +145,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(cond ((not (< index end)) 'DONE)
 	      ((object-type?
 		(let-syntax ((ucode-type
-			      (lambda (name) (microcode-type name))))
+			      (non-hygienic-macro-transformer
+			       (lambda (name) (microcode-type name)))))
 		  (ucode-type linkage-section))
 		(system-vector-ref block index))
 	       (loop (disassembler/write-linkage-section block

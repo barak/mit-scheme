@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.9 2001/12/20 06:38:18 cph Exp $
+;;; $Id: load.scm,v 1.10 2001/12/23 17:21:00 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-1999, 2001 Massachusetts Institute of Technology
 ;;;
@@ -23,17 +23,4 @@
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (load-package-set "sos")))
-(let ((install
-       (let ((environment (package/environment (find-package '(SOS MACROS)))))
-	 (lambda (mname tname)
-	   (syntax-table/define system-global-environment
-				mname
-				(environment-lookup environment tname))))))
-  (install 'DEFINE-CLASS 'TRANSFORM:DEFINE-CLASS)
-  (install 'DEFINE-GENERIC 'TRANSFORM:DEFINE-GENERIC)
-  (install 'DEFINE-METHOD 'TRANSFORM:DEFINE-METHOD)
-  (install 'DEFINE-COMPUTED-METHOD 'TRANSFORM:DEFINE-COMPUTED-METHOD)
-  (install 'DEFINE-COMPUTED-EMP 'TRANSFORM:DEFINE-COMPUTED-EMP)
-  ;;(install 'METHOD 'TRANSFORM:METHOD)
-  )
 (add-identification! "SOS" 1 6)

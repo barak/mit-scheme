@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: insmac.scm,v 1.128 2001/12/19 21:39:30 cph Exp $
+$Id: insmac.scm,v 1.129 2001/12/23 17:20:57 cph Exp $
 
 Copyright (c) 1988, 1990, 1999, 2001 Massachusetts Institute of Technology
 
@@ -29,39 +29,39 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define ea-database-name
   'EA-DATABASE)
 
-(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
-		     'DEFINE-EA-DATABASE
-  (lambda rules
-    `(DEFINE ,ea-database-name
-       ,(compile-database rules
-	 (lambda (pattern actions)
-	   (if (null? (cddr actions))
-	       (make-position-dependent pattern actions)
-	       (make-position-independent pattern actions)))))))
+(define-syntax define-ea-database
+  (non-hygienic-macro-transformer
+   (lambda rules
+     `(DEFINE ,ea-database-name
+	,(compile-database rules
+	  (lambda (pattern actions)
+	    (if (null? (cddr actions))
+		(make-position-dependent pattern actions)
+		(make-position-independent pattern actions))))))))
 
-(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
-		     'EXTENSION-WORD
-  (lambda descriptors
-    (expand-descriptors descriptors
-      (lambda (instruction size source destination)
-	(if (or source destination)
-	    (error "Source or destination used" 'EXTENSION-WORD)
-	    (if (zero? (remainder size 16))
-		(optimize-group-syntax instruction false)
-		(error "EXTENSION-WORD: Extensions must be 16 bit multiples"
-		       size)))))))
+(define-syntax extension-word
+  (non-hygienic-macro-transformer
+   (lambda descriptors
+     (expand-descriptors descriptors
+       (lambda (instruction size source destination)
+	 (if (or source destination)
+	     (error "Source or destination used" 'EXTENSION-WORD)
+	     (if (zero? (remainder size 16))
+		 (optimize-group-syntax instruction false)
+		 (error "EXTENSION-WORD: Extensions must be 16 bit multiples"
+			size))))))))
 
-(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
-		     'VARIABLE-EXTENSION
-  (lambda (binding . clauses)
-    (variable-width-expression-syntaxer
-     (car binding)
-     (cadr binding)
-     (map (lambda (clause)
-	    `((LIST ,(caddr clause))
-	      ,(cadr clause)
-	      ,@(car clause)))
-	  clauses))))
+(define-syntax variable-extension
+  (non-hygienic-macro-transformer
+   (lambda (binding . clauses)
+     (variable-width-expression-syntaxer
+      (car binding)
+      (cadr binding)
+      (map (lambda (clause)
+	     `((LIST ,(caddr clause))
+	       ,(cadr clause)
+	       ,@(car clause)))
+	   clauses)))))
 
 (define (make-position-independent pattern actions)
   (let ((keyword (car pattern))
@@ -118,61 +118,61 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 ;;;; Transformers
 
-(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
-		     'DEFINE-EA-TRANSFORMER
-  (lambda (name #!optional categories keywords)
-    (define (filter special generator extraction)
-      (define (multiple rem)
-	(if (null? rem)
-	    `()
-	    `(,(generator (car rem) 'temp)
-	      ,@(multiple (cdr rem)))))
+(define-syntax define-ea-transformer
+  (non-hygienic-macro-transformer
+   (lambda (name #!optional categories keywords)
+     (define (filter special generator extraction)
+       (define (multiple rem)
+	 (if (null? rem)
+	     `()
+	     `(,(generator (car rem) 'temp)
+	       ,@(multiple (cdr rem)))))
 
-      (cond ((null? special)
-	     `())
-	    ((null? (cdr special))
-	     `(,(generator (car special) extraction)))
-	    (else
-	     `((let ((temp ,extraction))
-		 (and ,@(multiple special)))))))
+       (cond ((null? special)
+	      `())
+	     ((null? (cdr special))
+	      `(,(generator (car special) extraction)))
+	     (else
+	      `((let ((temp ,extraction))
+		  (and ,@(multiple special)))))))
 
-    `(define (,name expression)
-       (let ((match-result (pattern-lookup ,ea-database-name expression)))
-	 (and match-result
-	      ,(if (default-object? categories)
-		    `(match-result)
-		    `(let ((ea (match-result)))
-		       (and ,@(filter categories
-				      (lambda (cat exp) `(memq ',cat ,exp))
-				      `(ea-categories ea))
-			    ,@(if (default-object? keywords)
-				  `()
-				  (filter keywords
-					  (lambda (key exp)
-					    `(not (eq? ',key ,exp)))
-					  `(ea-keyword ea)))
-			    ea))))))))
+     `(define (,name expression)
+	(let ((match-result (pattern-lookup ,ea-database-name expression)))
+	  (and match-result
+	       ,(if (default-object? categories)
+		     `(match-result)
+		     `(let ((ea (match-result)))
+			(and ,@(filter categories
+				       (lambda (cat exp) `(memq ',cat ,exp))
+				       `(ea-categories ea))
+			     ,@(if (default-object? keywords)
+				   `()
+				   (filter keywords
+					   (lambda (key exp)
+					     `(not (eq? ',key ,exp)))
+					   `(ea-keyword ea)))
+			     ea)))))))))
 
-(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
-		     'DEFINE-SYMBOL-TRANSFORMER
-  (lambda (name . alist)
-    `(begin
-       (declare (integrate-operator ,name))
-       (define (,name symbol)
-	 (declare (integrate symbol))
-	 (let ((place (assq symbol ',alist)))
-	   (if (null? place)
-	       #F
-	       (cdr place)))))))
+(define-syntax define-symbol-transformer
+  (non-hygienic-macro-transformer
+   (lambda (name . alist)
+     `(begin
+	(declare (integrate-operator ,name))
+	(define (,name symbol)
+	  (declare (integrate symbol))
+	  (let ((place (assq symbol ',alist)))
+	    (if (null? place)
+		#F
+		(cdr place))))))))
 
-(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
-		     'DEFINE-REG-LIST-TRANSFORMER
-  (lambda (name . alist)
-    `(begin
-       (declare (integrate-operator ,name))
-       (define (,name reg-list)
-	 (declare (integrate reg-list))
-	 (encode-register-list reg-list ',alist)))))
+(define-syntax define-reg-list-transformer
+  (non-hygienic-macro-transformer
+   (lambda (name . alist)
+     `(begin
+	(declare (integrate-operator ,name))
+	(define (,name reg-list)
+	  (declare (integrate reg-list))
+	  (encode-register-list reg-list ',alist))))))
 
 ;;;; Utility procedures
 

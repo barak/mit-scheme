@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ffimacro.scm,v 1.4 2001/12/20 06:45:48 cph Exp $
+$Id: ffimacro.scm,v 1.5 2001/12/23 17:21:00 cph Exp $
 
 Copyright (c) 1993, 1999, 2001 Massachusetts Institute of Technology
 
@@ -20,6 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 02111-1307, USA.
 |#
 
+(declare (usual-integrations))
+
 #|
 WINDOWS PROCEDURE TYPE SYSTEM
 
@@ -89,143 +91,136 @@ after the type checking but before the type conversion.  This allows
 extra consistency checks to be placed, especially checks that several
 arguments are mutualy consistent (e.g. an index into a buffer indexes
 to inside a string that is being used as the buffer).
-
 |#
+
+(define ffi-module-entry-variable  (string->symbol "[ffi entry]"))
+(define ffi-result-variable (string->symbol "[ffi result]"))
 
+(define (type->checker type)
+  (string->symbol (string-append (symbol-name type) ":check")))
 
-(let ()
+(define (type->converter type)
+  (string->symbol (string-append (symbol-name type) ":convert")))
 
-  (define ffi-module-entry-variable  (string->symbol "[ffi entry]"))
-  (define ffi-result-variable (string->symbol "[ffi result]"))
+(define (type->check&converter type)
+  (string->symbol (string-append (symbol-name type) ":check&convert")))
 
+(define (type->return-converter type)
+  (string->symbol (string-append (symbol-name type) ":return-convert")))
 
-  (define (type->checker type)
-    (string->symbol (string-append (symbol-name type) ":check")))
+(define (type->reverter type)
+  (string->symbol (string-append (symbol-name type) ":revert")))
 
-  (define (type->converter type)
-    (string->symbol (string-append (symbol-name type) ":convert")))
+(define-syntax windows-procedure
+  (non-hygienic-macro-transformer
+   (lambda (args return-type module entry-name . additional-specifications)
 
-  (define (type->check&converter type)
-    (string->symbol (string-append (symbol-name type) ":check&convert")))
+     (define (make-converted-name sym)
+       (string->symbol (string-append "[converted " (symbol-name sym) "]")))
 
-  (define (type->return-converter type)
-    (string->symbol (string-append (symbol-name type) ":return-convert")))
+     (define (make-check type arg)
+       `(if (not (,(type->checker type) ,arg))
+	    (windows-procedure-argument-type-check-error ',type ,arg)))
 
-  (define (type->reverter type)
-    (string->symbol (string-append (symbol-name type) ":revert")))
+     (define (make-conversion type arg)
+       `(,(type->converter type) ,arg))
 
+     (define (make-reversion type sym representation)
+       `(,(type->reverter type) ,sym ,representation))
 
-  (define  (expand/windows-procedure args return-type module entry-name
-				     . additional-specifications)
+     (define (make-return-conversion type expr)
+       `(,(type->return-converter type) ,expr))
 
-    (define (make-converted-name sym)
-      (string->symbol (string-append "[converted " (symbol-name sym) "]")))
-    
-    (define (make-check type arg)
-      `(if (not (,(type->checker type) ,arg))
-	   (windows-procedure-argument-type-check-error ',type ,arg)))
-    
-    (define (make-conversion type arg)
-      `(,(type->converter type) ,arg))
-    
-    (define (make-reversion type sym representation)
-      `(,(type->reverter type) ,sym ,representation))
-    
-    (define (make-return-conversion type expr)
-      `(,(type->return-converter type) ,expr))
+     (if  additional-specifications
+	  ;; expanded version:
+	  (let* ((procedure-name (car args))
+		 (arg-names    (map car (cdr args)))
+		 (arg-types    (map cadr (cdr args)))
+		 (cvt-names    (map make-converted-name arg-names))
+		 (checks       (map make-check arg-types arg-names))
+		 (conversions  (map (lambda (cvt-name arg-type arg-name)
+				      `(,cvt-name
+					,(make-conversion arg-type arg-name)))
+				    cvt-names arg-types arg-names))
+		 (reversions
+		  (map make-reversion arg-types arg-names cvt-names))
+		 (additional-checks
+		  (if (and (pair? additional-specifications)
+			   (symbol? (car additional-specifications)))
+		      (cdr additional-specifications)
+		      additional-specifications)))
 
-    (if  additional-specifications
-	;; expanded version:
-	(let* ((procedure-name (car args))
-	       (arg-names    (map car (cdr args)))
-	       (arg-types    (map cadr (cdr args)))
-	       (cvt-names    (map make-converted-name arg-names))
-	       (checks       (map make-check arg-types arg-names))
-	       (conversions  (map (lambda (cvt-name arg-type arg-name)
-				    `(,cvt-name
-				      ,(make-conversion arg-type arg-name)))
-				  cvt-names arg-types arg-names))
-	       (reversions (map make-reversion arg-types arg-names cvt-names))
-	       (additional-checks
-		(if (and (pair? additional-specifications)
-			 (symbol? (car additional-specifications)))
-		    (cdr additional-specifications)
-		    additional-specifications))
-	       )
-
-	  `((access parameterize-with-module-entry ())
-	     (lambda (,ffi-module-entry-variable)
-	       (named-lambda (,procedure-name . ,arg-names)
-		 ,@checks
-		 ,@additional-checks
-		 (let ,conversions
-		     (let ((,ffi-result-variable
-			    (%call-foreign-function
-			     (module-entry/machine-address
-			      ,ffi-module-entry-variable)
+	    `((access parameterize-with-module-entry ())
+	      (lambda (,ffi-module-entry-variable)
+		(named-lambda (,procedure-name . ,arg-names)
+		  ,@checks
+		  ,@additional-checks
+		  (let ,conversions
+		      (let ((,ffi-result-variable
+			     (%call-foreign-function
+			      (module-entry/machine-address
+			       ,ffi-module-entry-variable)
 			      . ,cvt-names)))
-		       ,@reversions
-		       ,(make-return-conversion return-type
-						ffi-result-variable)))))
-	     ,module ,entry-name))
+			,@reversions
+			,(make-return-conversion return-type
+						 ffi-result-variable)))))
+	      ,module ,entry-name))
 
-	;; closure version:
-	(let* ((arg-types     (map cadr (cdr args))))
-	  `(make-windows-procedure ,module ,entry-name
-	      ,(type->return-converter return-type)
-	      ,@(map type->check&converter arg-types)))))
+	  ;; closure version:
+	  (let* ((arg-types     (map cadr (cdr args))))
+	    `(make-windows-procedure ,module ,entry-name
+				     ,(type->return-converter return-type)
+				     ,@(map type->check&converter
+					    arg-types)))))))
+
+(define-syntax define-windows-type
+  (non-hygienic-macro-transformer
+   (lambda (name #!optional check convert return revert)
+     (let ((check    (if (default-object? check)   #f check))
+	   (convert  (if (default-object? convert) #f convert))
+	   (return   (if (default-object? return)  #f return))
+	   (revert   (if (default-object? revert)  #f revert)))
+       (let ((check    (or check   '(lambda (x) x #t)))
+	     (convert  (or convert '(lambda (x) x)))
+	     (return   (or return  '(lambda (x) x)))
+	     (revert   (or revert  '(lambda (x y) x y unspecific))))
+	 `(begin 
+	    (define-integrable (,(type->checker name) x)
+	      (,check x))
+	    (define-integrable (,(type->converter name) x)
+	      (,convert x))
+	    (define-integrable (,(type->check&converter name) x)
+	      (if (,(type->checker name) x)
+		  (,(type->converter name) x)
+		  (windows-procedure-argument-type-check-error ',name x)))
+	    (define-integrable (,(type->return-converter name) x)
+	      (,return x))
+	    (define-integrable (,(type->reverter name) x y)
+	      (,revert x y))))))))
 
 
-  (define (expand/define-windows-type  name
-				       #!optional check convert return revert)
-    (let ((check    (if (default-object? check)   #f check))
-	  (convert  (if (default-object? convert) #f convert))
-	  (return   (if (default-object? return)  #f return))
-	  (revert   (if (default-object? revert)  #f revert)))
-      (let ((check    (or check   '(lambda (x) x #t)))
-	    (convert  (or convert '(lambda (x) x)))
-	    (return   (or return  '(lambda (x) x)))
-	    (revert   (or revert  '(lambda (x y) x y unspecific))))
-	`(begin 
-	   (define-integrable (,(type->checker name) x)          (,check x))
-	   (define-integrable (,(type->converter name) x)        (,convert x))
-	   (define-integrable (,(type->check&converter name) x)
-	     (if (,(type->checker name) x)
-		 (,(type->converter name) x)
-		 (windows-procedure-argument-type-check-error ',name x)))
-	   (define-integrable (,(type->return-converter name) x) (,return x))
-	   (define-integrable (,(type->reverter name) x y) (,revert x y))))))
-
-
-  (define (expand/define-similar-windows-type
-	   name model
-	   #!optional check convert return revert)
-    (let ((check    (if (default-object? check)   #f check))
-	  (convert  (if (default-object? convert) #f convert))
-	  (return   (if (default-object? return)  #f return))
-	  (revert   (if (default-object? revert)  #f revert)))
-      ;; eta conversion below are deliberate to persuade integration to chain
-      (let ((check    (or check   (type->checker model)))
-	    (convert  (or convert (type->converter model)))
-	    (return   (or return  (type->return-converter model)))
-	    (revert   (or revert  (type->reverter model))))
-	`(begin
-	   (define-integrable (,(type->checker name) x)          (,check x))
-	   (define-integrable (,(type->converter name) x)        (,convert x))
-	   (define-integrable (,(type->check&converter name) x)
-	     (if (,(type->checker name) x)
-		 (,(type->converter name) x)
-		 (windows-procedure-argument-type-check-error ',name x)))
-	   (define-integrable (,(type->return-converter name) x) (,return x))
-	   (define-integrable (,(type->reverter name) x y) (,revert x y))))))
-
-  (syntax-table/define system-global-environment 'WINDOWS-PROCEDURE
-    expand/windows-procedure)
-
-  (syntax-table/define system-global-environment 'DEFINE-WINDOWS-TYPE
-    expand/define-windows-type)
-
-  (syntax-table/define system-global-environment 'DEFINE-SIMILAR-WINDOWS-TYPE
-    expand/define-similar-windows-type)
-
-)
+(define-syntax define-similar-windows-type
+  (non-hygienic-macro-transformer
+   (lambda (name model #!optional check convert return revert)
+     (let ((check    (if (default-object? check)   #f check))
+	   (convert  (if (default-object? convert) #f convert))
+	   (return   (if (default-object? return)  #f return))
+	   (revert   (if (default-object? revert)  #f revert)))
+       ;; eta conversion below are deliberate to persuade integration to chain
+       (let ((check    (or check   (type->checker model)))
+	     (convert  (or convert (type->converter model)))
+	     (return   (or return  (type->return-converter model)))
+	     (revert   (or revert  (type->reverter model))))
+	 `(begin
+	    (define-integrable (,(type->checker name) x)
+	      (,check x))
+	    (define-integrable (,(type->converter name) x)
+	      (,convert x))
+	    (define-integrable (,(type->check&converter name) x)
+	      (if (,(type->checker name) x)
+		  (,(type->converter name) x)
+		  (windows-procedure-argument-type-check-error ',name x)))
+	    (define-integrable (,(type->return-converter name) x)
+	      (,return x))
+	    (define-integrable (,(type->reverter name) x y)
+	      (,revert x y))))))))

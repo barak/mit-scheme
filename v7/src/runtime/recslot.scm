@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: recslot.scm,v 1.5 2001/12/20 20:51:16 cph Exp $
+;;; $Id: recslot.scm,v 1.6 2001/12/23 17:20:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-1999, 2001 Massachusetts Institute of Technology
 ;;;
@@ -45,12 +45,13 @@
 	   (%record-initpred index)))))
 
 (define-syntax generate-index-cases
-  (lambda (index limit expand-case)
-    `(CASE ,index
-       ,@(let loop ((i 1))
-	   (if (= i limit)
-	       `((ELSE (,expand-case ,index)))
-	       `(((,i) (,expand-case ,i)) ,@(loop (+ i 1))))))))
+  (non-hygienic-macro-transformer
+   (lambda (index limit expand-case)
+     `(CASE ,index
+	,@(let loop ((i 1))
+	    (if (= i limit)
+		`((ELSE (,expand-case ,index)))
+		`(((,i) (,expand-case ,i)) ,@(loop (+ i 1)))))))))
 
 (define (%record-accessor index)
   (generate-index-cases index 16

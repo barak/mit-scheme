@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: insmac.scm,v 1.4 2001/12/19 21:39:30 cph Exp $
+$Id: insmac.scm,v 1.5 2001/12/23 17:20:58 cph Exp $
 
 Copyright (c) 1988, 1989, 1990, 1999, 2001 Massachusetts Institute of Technology
 
@@ -26,22 +26,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 ;;;; Definition macros
 
-(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
-		     'DEFINE-SYMBOL-TRANSFORMER
-  (lambda (name . alist)
-    `(begin
-       (declare (integrate-operator ,name))
-       (define (,name symbol)
-	 (declare (integrate symbol))
-	 (let ((place (assq symbol ',alist)))
-	   (if (null? place)
-	       #F
-	       (cdr place)))))))
+(define-syntax define-symbol-transformer
+  (non-hygienic-macro-transformer
+   (lambda (name . alist)
+     `(DEFINE-INTEGRABLE (,name SYMBOL)
+	(LET ((PLACE (ASSQ SYMBOL ',alist)))
+	  (IF (PAIR? PLACE)
+	      (CDR PLACE)
+	      #F))))))
 
-(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
-		     'DEFINE-TRANSFORMER
-  (lambda (name value)
-    `(define ,name ,value)))
+(define-syntax define-transformer
+  (non-hygienic-macro-transformer
+   (lambda (name value)
+     `(DEFINE ,name ,value))))
 
 ;;;; Fixed width instruction parsing
 

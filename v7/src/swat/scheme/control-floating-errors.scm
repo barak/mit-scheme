@@ -20,13 +20,12 @@
 (declare (usual-integrations))
 
 (define-syntax deflap
-  (lambda (name . lap)
-    `(define ,name
-       (scode-eval
-	',((access lap->code (->environment '(compiler top-level)))
-	   name
-	   lap)
-	system-global-environment))))
+  (non-hygienic-macro-transformer
+   (lambda (name . lap)
+     `(DEFINE ,name
+	(SCODE-EVAL
+	 ',((access lap->code (->environment '(COMPILER TOP-LEVEL))) name lap)
+	 SYSTEM-GLOBAL-ENVIRONMENT)))))
 
 (define set-floating-error-mask!
   (let ()

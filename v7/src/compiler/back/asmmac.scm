@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: asmmac.scm,v 1.9 2001/12/19 21:39:29 cph Exp $
+$Id: asmmac.scm,v 1.10 2001/12/23 17:20:57 cph Exp $
 
 Copyright (c) 1988, 1990, 1999, 2001 Massachusetts Institute of Technology
 
@@ -24,17 +24,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (declare (usual-integrations))
 
-(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
-		     'DEFINE-INSTRUCTION
-  (lambda (keyword . rules)
-    `(ADD-INSTRUCTION!
-      ',keyword
-      ,(compile-database rules
-	 (lambda (pattern actions)
-	   pattern
-	   (if (null? actions)
-	       (error "DEFINE-INSTRUCTION: Too few forms")
-	       (parse-instruction (car actions) (cdr actions) false)))))))
+(define-syntax define-instruction
+  (non-hygienic-macro-transformer
+   (lambda (keyword . rules)
+     `(ADD-INSTRUCTION!
+       ',keyword
+       ,(compile-database rules
+	  (lambda (pattern actions)
+	    pattern
+	    (if (not (pair? actions))
+		(error "DEFINE-INSTRUCTION: Too few forms."))
+	    (parse-instruction (car actions) (cdr actions) #f)))))))
 
 (define (compile-database cases procedure)
   `(LIST

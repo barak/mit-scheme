@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: wt_user.scm,v 1.5 2001/12/20 16:13:19 cph Exp $
+$Id: wt_user.scm,v 1.6 2001/12/23 17:21:00 cph Exp $
 
 Copyright (c) 1993, 1999, 2001 Massachusetts Institute of Technology
 
@@ -19,6 +19,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 02111-1307, USA.
 |#
+
+(declare (usual-integrations))
 
 ;;
 ;; common win32 types

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: search.scm,v 1.152 2001/12/20 21:28:02 cph Exp $
+;;;$Id: search.scm,v 1.153 2001/12/23 17:20:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999, 2001 Massachusetts Institute of Technology
 ;;;
@@ -25,6 +25,7 @@
 
 (let-syntax
     ((define-forward-search
+      (non-hygienic-macro-transformer
        (lambda (name find-next)
 	 `(DEFINE (,name GROUP START END CHAR)
 	    ;; Assume (FIX:<= START END)
@@ -52,7 +53,7 @@
 					   CHAR)))
 			  (AND POSITION
 			       (FIX:- POSITION
-				      (GROUP-GAP-LENGTH GROUP)))))))))))
+				      (GROUP-GAP-LENGTH GROUP))))))))))))
 (define-forward-search group-find-next-char substring-find-next-char)
 (define-forward-search group-find-next-char-ci substring-find-next-char-ci)
 (define-forward-search group-find-next-char-in-set
@@ -60,6 +61,7 @@
 
 (let-syntax
     ((define-backward-search
+      (non-hygienic-macro-transformer
        (lambda (name find-previous)
 	 `(DEFINE (,name GROUP START END CHAR)
 	    ;; Assume (FIX:<= START END)
@@ -85,7 +87,7 @@
 			(,find-previous (GROUP-TEXT GROUP)
 					START
 					(GROUP-GAP-START GROUP)
-					CHAR))))))))
+					CHAR)))))))))
 (define-backward-search group-find-previous-char substring-find-previous-char)
 (define-backward-search group-find-previous-char-ci
   substring-find-previous-char-ci)
@@ -266,22 +268,24 @@
 	   (make-mark group index)))))
 
 (define-syntax default-end-mark
-  (lambda (start end)
-    `(IF (DEFAULT-OBJECT? ,end)
-	 (GROUP-END ,start)
-	 (BEGIN
-	   (IF (NOT (MARK<= ,start ,end))
-	       (ERROR "Marks incorrectly related:" ,start ,end))
-	   ,end))))
+  (non-hygienic-macro-transformer
+   (lambda (start end)
+     `(IF (DEFAULT-OBJECT? ,end)
+	  (GROUP-END ,start)
+	  (BEGIN
+	    (IF (NOT (MARK<= ,start ,end))
+		(ERROR "Marks incorrectly related:" ,start ,end))
+	    ,end)))))
 
 (define-syntax default-start-mark
-  (lambda (start end)
-    `(IF (DEFAULT-OBJECT? ,start)
-	 (GROUP-START ,end)
-	 (BEGIN
-	   (IF (NOT (MARK<= ,start ,end))
-	       (ERROR "Marks incorrectly related:" ,start ,end))
-	   ,start))))
+  (non-hygienic-macro-transformer
+   (lambda (start end)
+     `(IF (DEFAULT-OBJECT? ,start)
+	  (GROUP-START ,end)
+	  (BEGIN
+	    (IF (NOT (MARK<= ,start ,end))
+		(ERROR "Marks incorrectly related:" ,start ,end))
+	    ,start)))))
 
 (define (char-match-forward char start #!optional end case-fold-search)
   (and (mark< start (default-end-mark start end))

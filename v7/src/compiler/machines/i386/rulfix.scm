@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.32 2001/12/20 21:45:25 cph Exp $
+$Id: rulfix.scm,v 1.33 2001/12/23 17:20:58 cph Exp $
 
 Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
@@ -403,14 +403,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((binary-operation
-      (lambda (name instr commutative? idempotent?)
-	`(define-arithmetic-method ',name fixnum-methods/2-args
-	   (fixnum-2-args/standard
-	    ,commutative?
-	    (lambda (target source2)
-	      (if (and ,idempotent? (equal? target source2))
-		  (LAP)
-		  (LAP (,instr W ,',target ,',source2)))))))))
+      (non-hygienic-macro-transformer
+       (lambda (name instr commutative? idempotent?)
+	 `(define-arithmetic-method ',name fixnum-methods/2-args
+	    (fixnum-2-args/standard
+	     ,commutative?
+	     (lambda (target source2)
+	       (if (and ,idempotent? (equal? target source2))
+		   (LAP)
+		   (LAP (,instr W ,',target ,',source2))))))))))
 
   #| (binary-operation PLUS-FIXNUM ADD true false) |#
   (binary-operation MINUS-FIXNUM SUB false false)

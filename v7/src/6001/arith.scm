@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.7 2001/12/20 21:29:22 cph Exp $
+$Id: arith.scm,v 1.8 2001/12/23 17:20:57 cph Exp $
 
 Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
 
@@ -46,11 +46,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-standard-unary
+      (non-hygienic-macro-transformer
        (lambda (name flo:op int:op)
 	 `(DEFINE (,name X)
 	    (IF (FLONUM? X)
 		(,flo:op X)
-		(,int:op X))))))
+		(,int:op X)))))))
   (define-standard-unary rational? (lambda (x) x true) int:integer?)
   (define-standard-unary integer? flo:integer? int:integer?)
   (define-standard-unary exact? (lambda (x) x false)
@@ -77,6 +78,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-standard-binary
+      (non-hygienic-macro-transformer
        (lambda (name flo:op int:op)
 	 `(DEFINE (,name X Y)
 	    (IF (FLONUM? X)
@@ -85,7 +87,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		    (,flo:op X (INT:->FLONUM Y)))
 		(IF (FLONUM? Y)
 		    (,flo:op (INT:->FLONUM X) Y)
-		    (,int:op X Y)))))))
+		    (,int:op X Y))))))))
   (define-standard-binary real:+ flo:+ int:+)
   (define-standard-binary real:- flo:- int:-)
   (define-standard-binary rationalize
@@ -184,6 +186,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-integer-binary
+      (non-hygienic-macro-transformer
        (lambda (name operator)
 	 `(DEFINE (,name N M)
 	    (IF (FLONUM? N)
@@ -192,7 +195,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			    (IF (FLONUM? M) (FLO:->INTEGER M) M)))
 		(IF (FLONUM? M)
 		    (INT:->FLONUM (,operator N (FLO:->INTEGER M)))
-		    (,operator N M)))))))
+		    (,operator N M))))))))
   (define-integer-binary quotient int:quotient)
   (define-integer-binary remainder int:remainder)
   (define-integer-binary modulo int:modulo)
@@ -215,11 +218,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-transcendental-unary
+      (non-hygienic-macro-transformer
        (lambda (name hole? hole-value function)
 	 `(DEFINE (,name X)
 	    (IF (,hole? X)
 		,hole-value
-		(,function (REAL:->FLONUM X)))))))
+		(,function (REAL:->FLONUM X))))))))
   (define-transcendental-unary exp real:exact0= 1 flo:exp)
   (define-transcendental-unary log real:exact1= 0 flo:log)
   (define-transcendental-unary sin real:exact0= 0 flo:sin)

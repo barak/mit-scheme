@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.36 2001/12/20 21:45:24 cph Exp $
+$Id: rules3.scm,v 1.37 2001/12/23 17:20:58 cph Exp $
 
 Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
@@ -171,14 +171,15 @@ USA.
   continuation				; ignored
   ;;
   (let-syntax ((invoke
-		#|
-		(lambda (code entry)
-		  entry			; ignored (for now)
-		  `(invoke-interface ,code))
-		|#
-		(lambda (code entry)
-		  code			; ignored
-		  `(invoke-hook ,entry))))
+		(non-hygienic-macro-transformer
+		 #|
+		 (lambda (code entry)
+		   entry			; ignored (for now)
+		   `(invoke-interface ,code))
+		 |#
+		 (lambda (code entry)
+		   code			; ignored
+		   `(invoke-hook ,entry)))))
 
     (if (eq? primitive compiled-error-procedure)
 	(LAP ,@(clear-map!)
@@ -221,6 +222,7 @@ USA.
 
 (let-syntax
     ((define-special-primitive-invocation
+      (non-hygienic-macro-transformer
        (lambda (name)
 	 `(define-rule statement
 	    (INVOCATION:SPECIAL-PRIMITIVE
@@ -230,9 +232,10 @@ USA.
 	    frame-size continuation
 	    (expect-no-exit-interrupt-checks)
 	    (special-primitive-invocation
-	     ,(symbol-append 'CODE:COMPILER- name)))))
+	     ,(symbol-append 'CODE:COMPILER- name))))))
 
      (define-optimized-primitive-invocation
+      (non-hygienic-macro-transformer
        (lambda (name)
 	 `(define-rule statement
 	    (INVOCATION:SPECIAL-PRIMITIVE
@@ -242,14 +245,15 @@ USA.
 	    frame-size continuation
 	    (expect-no-exit-interrupt-checks)
 	    (optimized-primitive-invocation
-	     ,(symbol-append 'ENTRY:COMPILER- name))))))
+	     ,(symbol-append 'ENTRY:COMPILER- name)))))))
 
   (let-syntax ((define-primitive-invocation
+		(non-hygienic-macro-transformer
 		 (lambda (name)
 		   #|
 		   `(define-special-primitive-invocation ,name)
 		   |#
-		   `(define-optimized-primitive-invocation ,name))))
+		   `(define-optimized-primitive-invocation ,name)))))
 
     (define-primitive-invocation &+)
     (define-primitive-invocation &-)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: starbase.scm,v 1.14 2001/12/20 21:24:28 cph Exp $
+$Id: starbase.scm,v 1.15 2001/12/23 17:20:59 cph Exp $
 
 Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
 
@@ -106,6 +106,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-accessors-and-mutators
+      (non-hygienic-macro-transformer
        (lambda (name)
 	 `(BEGIN
 	    (DEFINE (,(symbol-append 'STARBASE-DEVICE/ name) DEVICE)
@@ -115,7 +116,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		     DEVICE VALUE)
 	      (,(symbol-append 'SET-STARBASE-GRAPHICS-DESCRIPTOR/ name '!)
 	       (GRAPHICS-DEVICE/DESCRIPTOR DEVICE)
-	       VALUE))))))
+	       VALUE)))))))
   (define-accessors-and-mutators x-left)
   (define-accessors-and-mutators y-bottom)
   (define-accessors-and-mutators x-right)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlreg.scm,v 4.7 2001/12/20 21:45:26 cph Exp $
+$Id: rtlreg.scm,v 4.8 2001/12/23 17:20:58 cph Exp $
 
 Copyright (c) 1987, 1988, 1990, 1999, 2001 Massachusetts Institute of Technology
 
@@ -67,6 +67,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-register-references
+      (non-hygienic-macro-transformer
        (lambda (slot)
 	 (let ((name (symbol-append 'REGISTER- slot)))
 	   (let ((vector `(,(symbol-append 'RGRAPH- name) *CURRENT-RGRAPH*)))
@@ -74,7 +75,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		       (VECTOR-REF ,vector REGISTER))
 		     (DEFINE-INTEGRABLE
 		       (,(symbol-append 'SET- name '!) REGISTER VALUE)
-		       (VECTOR-SET! ,vector REGISTER VALUE))))))))
+		       (VECTOR-SET! ,vector REGISTER VALUE)))))))))
   (define-register-references bblock)
   (define-register-references n-refs)
   (define-register-references n-deaths)

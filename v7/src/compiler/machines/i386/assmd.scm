@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: assmd.scm,v 1.4 2001/12/20 21:45:24 cph Exp $
+$Id: assmd.scm,v 1.5 2001/12/23 17:20:57 cph Exp $
 
 Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
 
@@ -24,7 +24,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (declare (usual-integrations))
 
-(let-syntax ((ucode-type (lambda (name) `',(microcode-type name))))
+(let-syntax
+    ((ucode-type
+      (non-hygienic-macro-transformer
+       (lambda (name) `',(microcode-type name)))))
 
 (define-integrable maximum-padding-length
   ;; Instructions can be any number of bytes long.

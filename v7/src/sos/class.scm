@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: class.scm,v 1.10 2001/12/20 21:25:19 cph Exp $
+;;; $Id: class.scm,v 1.11 2001/12/23 17:20:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-1999, 2001 Massachusetts Institute of Technology
 ;;;
@@ -273,8 +273,9 @@
 
 (let-syntax
     ((define-primitive-class
+      (non-hygienic-macro-transformer
        (lambda (name . superclasses)
-	 `(DEFINE ,name (MAKE-CLASS ',name (LIST ,@superclasses) '())))))
+	 `(DEFINE ,name (MAKE-CLASS ',name (LIST ,@superclasses) '()))))))
 
 (define-primitive-class <boolean> <object>)
 (define-primitive-class <char> <object>)
