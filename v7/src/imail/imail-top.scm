@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.103 2000/05/23 21:00:42 cph Exp $
+;;; $Id: imail-top.scm,v 1.104 2000/05/23 21:12:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -290,7 +290,7 @@ regardless of the folder type."
 (define (clean-imail-memoized-pass-phrases now retention-time)
   (if (> retention-time 0)
       (hash-table/for-each imail-memoized-pass-phrases
-	(let ((cutoff (- now retention-time)))
+	(let ((cutoff (- now (* retention-time 60))))
 	  (lambda (key datum)
 	    (if (<= (car datum) cutoff)
 		(hash-table/remove! imail-memoized-pass-phrases key)))))
@@ -362,6 +362,7 @@ Instead, these commands are available:
 \\[imail-input]	Append messages from a specified folder.
 \\[imail-output]       Output this message to a specified folder (append it).
 \\[imail-copy-messages]	Copy all messages in selected folder to another folder.
+\\[imail-copy-folder]	Copy all messages in specified folder to another folder.
 \\[imail-create-folder]	Create a new folder.  (Normally not needed
 	  as output commands create folders automatically.)
 \\[imail-delete-folder]	Delete an existing folder.
@@ -451,6 +452,7 @@ variable's documentation (using \\[describe-variable]) for details:
 (define-key 'imail #\i		'imail-input)
 (define-key 'imail #\o		'imail-output)
 (define-key 'imail #\m-o	'imail-copy-messages)
+(define-key 'imail #\m-c	'imail-copy-folder)
 (define-key 'imail #\+		'imail-create-folder)
 (define-key 'imail #\-		'imail-delete-folder)
 (define-key 'imail #\q		'imail-quit)
@@ -1139,24 +1141,42 @@ This command is meant to be used to move the contents of a folder
 				       'HISTORY 'IMAIL-OUTPUT
 				       'HISTORY-INDEX 0)))
   (lambda (url-string)
-    (let ((folder (selected-folder))
-	  (to (imail-parse-partial-url url-string)))
-      (with-open-connection to
-	(lambda ()
-	  (let ((n (folder-length folder)))
-	    (do ((i 0 (+ i 1)))
-		((= i n))
-	      ((message-wrapper #f
-				"Copying message "
-				(number->string (+ i 1))
-				"/"
-				(number->string n))
-	       (lambda () (append-message (get-message folder i) to))))
-	    (message (number->string n)
-		     " message"
-		     (if (= n 1) "" "s")
-		     " copied to "
-		     (url->string to))))))))
+    (copy-folder (selected-folder) (imail-parse-partial-url url-string))))
+
+(define-command imail-copy-folder
+  "Copy all messages from a specified folder to another folder.
+If the target folder exists, the messages are appended to it.
+If it doesn't exist, it is created first."
+  (lambda ()
+    (let ((from
+	   (prompt-for-imail-url-string "Copy folder"
+					'HISTORY 'IMAIL-COPY-FOLDER-SOURCE
+					'HISTORY-INDEX 0)))
+      (list from
+	    (prompt-for-imail-url-string "Copy messages to folder"
+					 'HISTORY 'IMAIL-COPY-FOLDER-TARGET
+					 'HISTORY-INDEX 0))))
+  (lambda (from to)
+    (copy-folder (open-folder (imail-parse-partial-url from))
+		 (imail-parse-partial-url to))))
+
+(define (copy-folder folder to)
+  (with-open-connection to
+    (lambda ()
+      (let ((n (folder-length folder)))
+	(do ((i 0 (+ i 1)))
+	    ((= i n))
+	  ((message-wrapper #f
+			    "Copying message "
+			    (number->string (+ i 1))
+			    "/"
+			    (number->string n))
+	   (lambda () (append-message (get-message folder i) to))))
+	(message (number->string n)
+		 " message"
+		 (if (= n 1) "" "s")
+		 " copied to "
+		 (url->string to))))))
 
 ;;;; Sending mail
 

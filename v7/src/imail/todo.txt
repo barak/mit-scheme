@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.47 2000/05/23 21:00:52 cph Exp $
+$Id: todo.txt,v 1.48 2000/05/23 21:13:25 cph Exp $
 
 Bug fixes
 ---------
@@ -50,8 +50,7 @@ New features
 
 * Optionally wrap long lines for presentation.
 
-* Add command to rename folders.  Add command to append all of the
-  messages from one folder to another.
+* Add command to rename folders.
 
 * Add mail notification in mode line, active across the editor as long
   as there is an IMAP connection open in some buffer.
