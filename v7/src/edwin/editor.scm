@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.222 1992/08/18 03:27:22 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.223 1992/08/27 06:43:24 jinx Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -142,16 +142,7 @@
                                         (car args))))
 			 (if name
                              (name->display-type name true)
-                             (let loop ((display-type-names '(CONSOLE X)))
-                               (if (null? display-type-names)
-                                   (error "can't find usable display type")
-                                   (let ((next (name->display-type 
-                                                 (car display-type-names)
-                                                 false)))
-                                     (if (and next 
-                                              (display-type/available? next))
-                                         next
-                                         (loop (cdr display-type-names))))))))
+			     (default-display-type '(CONSOLE))))
 		       (if (null? args)
 			   '()
 			   (cdr args))))
@@ -162,6 +153,29 @@
     (set! edwin-continuation false)
     unspecific))
 
+(define (default-display-type preferences)
+  (define (fail)
+    (error "can't find usable display type"))
+
+  (define (find-any)
+    (let ((types (editor-display-types)))
+      (if (null? types)
+	  (fail)
+	  (car types))))
+
+  (define (find-preferred display-type-names)
+    (if (null? display-type-names)
+	(find-any)
+	(let ((next (name->display-type 
+		     (car display-type-names)
+		     false)))
+	  (if (and next 
+		   (display-type/available? next))
+	      next
+	      (find-preferred (cdr display-type-names))))))
+
+  (find-preferred preferences))
+
 (define (standard-editor-initialization)
   (start-inferior-repl!
    (current-buffer)
