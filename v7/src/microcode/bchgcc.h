@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.38 1991/09/07 01:06:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.39 1991/09/07 22:46:14 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,39 +40,30 @@ MIT in each case. */
 #include <fcntl.h>
 #endif
 
-/* This should be fixed.
-   We need to change the definition of INITIAL_ALIGN_HEAP, and some
-   uses.
- */
+#define GC_FILE_FLAGS		(O_RDWR | O_CREAT) /* O_SYNCIO removed */
+#define GC_FILE_MASK		0644	/* Everyone reads, owner writes */
 
-/* All of these are in objects (SCHEME_OBJECT), not bytes. */
-
-#define GC_DISK_BUFFER_SIZE		16384			/* Used to be 1024 */
-#define GC_EXTRA_BUFFER_SIZE		GC_DISK_BUFFER_SIZE	/* Complete next bufferfull */
-#define GC_BUFFER_SPACE			(GC_DISK_BUFFER_SIZE + GC_EXTRA_BUFFER_SIZE)
-#define GC_BUFFER_BYTES			(GC_DISK_BUFFER_SIZE * sizeof(SCHEME_OBJECT))
-#define GC_BUFFER_OVERLAP_BYTES		(GC_EXTRA_BUFFER_SIZE * sizeof(SCHEME_OBJECT))
-#define GC_BUFFER_REMAINDER_BYTES	(GC_BUFFER_BYTES - GC_BUFFER_OVERLAP_BYTES)
-#define GC_FUDGE_SIZE			GC_EXTRA_BUFFER_SIZE
+/* These assume that gc_buffer_size is a power of 2! */
 
 #define GC_BUFFER_BLOCK(size)						\
-  (GC_DISK_BUFFER_SIZE							\
-   * (((size) + (GC_DISK_BUFFER_SIZE - 1)) / GC_DISK_BUFFER_SIZE))
-
-/* These assume that GC_BUFFER_BYTES is a power of 2! */
+  ((((size) + (gc_buffer_size - 1)) >> gc_buffer_shift) << gc_buffer_shift)
 
 #define ALIGN_DOWN_TO_GC_BUFFER(addr)					\
-  (((unsigned long) (addr)) & (~(GC_BUFFER_BYTES - 1)))
+  (((unsigned long) (addr)) & gc_buffer_byte_mask)
 
 #define ALIGN_UP_TO_GC_BUFFER(addr)					\
-  (ALIGN_DOWN_TO_GC_BUFFER (((unsigned long) (addr)) + (GC_BUFFER_BYTES - 1)))
+  (ALIGN_DOWN_TO_GC_BUFFER (((unsigned long) (addr)) + (gc_buffer_bytes - 1)))
 
 #define ALIGNED_TO_GC_BUFFER_P(addr)					\
   (((unsigned long) (addr)) == (ALIGN_DOWN_TO_GC_BUFFER (addr)))
 
-#define GC_FILE_FLAGS		(O_RDWR | O_CREAT) /* O_SYNCIO removed */
-#define GC_FILE_MASK		0644	/* Everyone reads, owner writes */
-#define GC_DEFAULT_FILE_NAME	"/tmp/GCXXXXXX"
+extern unsigned long
+  gc_buffer_size,
+  gc_buffer_bytes,
+  gc_buffer_shift,
+  gc_buffer_mask,
+  gc_buffer_byte_mask,
+  gc_buffer_byte_shift;
 
 extern char
   gc_death_message_buffer[];
@@ -119,13 +110,13 @@ extern char
 
 #define copy_weak_pair()						\
 {									\
-  long Car_Type;							\
+  long car_type;							\
 									\
-  Car_Type = OBJECT_TYPE (*Old);					\
+  car_type = (OBJECT_TYPE (*Old));					\
   *To++ = (OBJECT_NEW_TYPE (TC_NULL, *Old));				\
   Old += 1;								\
   *To++ = *Old;								\
-  *Old = (OBJECT_NEW_TYPE (Car_Type, Weak_Chain));			\
+  *Old = (OBJECT_NEW_TYPE (car_type, Weak_Chain));			\
   Weak_Chain = Temp;							\
 }
 
@@ -167,11 +158,11 @@ extern char
     while (To != free_buffer_top)					\
       *To++ = *Old++;							\
     To = (dump_and_reset_free_buffer (0, success));			\
-    real_length = (overflow / GC_DISK_BUFFER_SIZE);			\
+    real_length = (overflow >> gc_buffer_shift);			\
     if (real_length > 0)						\
       dump_free_directly (Old, real_length, success);			\
-    Old += (real_length * GC_DISK_BUFFER_SIZE);				\
-    Scan = To + (overflow % GC_DISK_BUFFER_SIZE);			\
+    Old += (real_length << gc_buffer_shift);				\
+    Scan = To + (overflow & gc_buffer_mask);				\
   }									\
   while (To != Scan)							\
     *To++ = *Old++;							\
@@ -182,10 +173,10 @@ extern char
 
 #define relocate_normal_setup()						\
 {									\
-  Old = OBJECT_ADDRESS (Temp);						\
+  Old = (OBJECT_ADDRESS (Temp));					\
   if (Old >= Low_Constant)						\
     continue;								\
-  if (OBJECT_TYPE (*Old) == TC_BROKEN_HEART)				\
+  if ((OBJECT_TYPE (*Old)) == TC_BROKEN_HEART)				\
   {									\
     *Scan = (MAKE_OBJECT_FROM_OBJECTS (Temp, *Old));			\
     continue;								\
@@ -199,22 +190,22 @@ extern char
   To_Address += (length);						\
   if (To >= free_buffer_top)						\
   {									\
-    To = dump_and_reset_free_buffer((To - free_buffer_top), NULL);	\
+    To = (dump_and_reset_free_buffer ((To - free_buffer_top), NULL));	\
   }									\
 }
 
 #define relocate_normal_end()						\
 {									\
-  *OBJECT_ADDRESS (Temp) = New_Address;					\
+  *(OBJECT_ADDRESS (Temp)) = New_Address;				\
   *Scan = (MAKE_OBJECT_FROM_OBJECTS (Temp, New_Address));		\
   continue;								\
 }
 
 #define relocate_normal_pointer(copy_code, length)			\
 {									\
-  relocate_normal_setup();						\
-  relocate_normal_transport(copy_code, length);				\
-  relocate_normal_end();						\
+  relocate_normal_setup ();						\
+  relocate_normal_transport (copy_code, length);			\
+  relocate_normal_end ();						\
 }
 
 #ifdef FLOATING_ALIGNMENT
@@ -230,8 +221,8 @@ do {									\
 
 #define relocate_flonum_setup()						\
 {									\
-  relocate_normal_setup();						\
-  FLOAT_ALIGN_FREE(To_Address, To);					\
+  relocate_normal_setup ();						\
+  FLOAT_ALIGN_FREE (To_Address, To);					\
   New_Address = (MAKE_BROKEN_HEART (To_Address));			\
 }
 
@@ -252,9 +243,9 @@ do {									\
   Old = ((SCHEME_OBJECT *) Temp);					\
   if (Old >= Low_Constant)						\
     continue;								\
-  if (OBJECT_TYPE (*Old) == TC_BROKEN_HEART)				\
+  if ((OBJECT_TYPE (*Old)) == TC_BROKEN_HEART)				\
   {									\
-    *Scan = ((SCHEME_OBJECT) OBJECT_ADDRESS (*Old));			\
+    *Scan = ((SCHEME_OBJECT) (OBJECT_ADDRESS (*Old)));			\
     continue;								\
   }									\
   New_Address = ((SCHEME_OBJECT) To_Address);				\
@@ -262,7 +253,7 @@ do {									\
 
 #define relocate_typeless_transport(copy_code, length)			\
 {									\
-  relocate_normal_transport(copy_code, length);				\
+  relocate_normal_transport (copy_code, length);			\
 }
 
 #define relocate_typeless_end()						\
@@ -274,26 +265,26 @@ do {									\
 
 #define relocate_typeless_pointer(copy_code, length)			\
 {									\
-  relocate_typeless_setup();						\
-  relocate_typeless_transport(copy_code, length);			\
-  relocate_typeless_end();						\
+  relocate_typeless_setup ();						\
+  relocate_typeless_transport (copy_code, length);			\
+  relocate_typeless_end ();						\
 }
 
 #define relocate_compiled_entry(in_gc_p)				\
 do {									\
-  Old = OBJECT_ADDRESS (Temp);						\
+  Old = (OBJECT_ADDRESS (Temp));					\
   if (Old >= Low_Constant)						\
     continue;								\
-  Compiled_BH(in_gc_p, continue);					\
+  Compiled_BH (in_gc_p, continue);					\
   {									\
     SCHEME_OBJECT *Saved_Old = Old;					\
 									\
     New_Address = (MAKE_BROKEN_HEART (To_Address));			\
-    copy_vector(NULL);							\
+    copy_vector (NULL);							\
     *Saved_Old = New_Address;						\
-    Temp = RELOCATE_COMPILED(Temp,					\
-			     OBJECT_ADDRESS (New_Address),		\
-			     Saved_Old);				\
+    Temp = (RELOCATE_COMPILED (Temp,					\
+			       (OBJECT_ADDRESS (New_Address)),		\
+			       Saved_Old));				\
     continue;								\
   }									\
 } while (0)
@@ -302,7 +293,7 @@ do {									\
 {									\
   Scan = ((SCHEME_OBJECT *) (word_ptr));				\
   EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);			\
-  relocate_compiled_entry(in_gc_p);					\
+  relocate_compiled_entry (in_gc_p);					\
   STORE_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);				\
 }
 
@@ -310,6 +301,6 @@ do {									\
 {									\
   Scan = ((SCHEME_OBJECT *) (word_ptr));				\
   EXTRACT_CLOSURE_ENTRY_ADDRESS (Temp, Scan);				\
-  relocate_compiled_entry(in_gc_p);					\
+  relocate_compiled_entry (in_gc_p);					\
   STORE_CLOSURE_ENTRY_ADDRESS (Temp, Scan);				\
 }
