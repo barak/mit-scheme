@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.40 1992/05/28 22:41:02 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.41 1992/05/28 22:59:09 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -273,10 +273,12 @@ MIT in each case. |#
 	   ;; into giving us a namestring that might contain uncanonicalized
 	   ;; characters in them.  This will break if the pathname abstraction
 	   ;; cares at all.
-	   (pathname-new-directory 
-	    pathname
-	    `(relative ,replacement ,@remaining-directories)))
-	 pathanme))))
+	   (pathname-new-device
+	    (pathname-new-directory 
+	     pathname
+	     `(relative ,replacement ,@remaining-directories))
+	    false))
+	 pathname))))
 
 (define (directory-prefix? x y)
   (and (pair? x)
