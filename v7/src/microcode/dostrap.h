@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dostrap.h,v 1.2 1993/06/24 07:08:14 gjr Exp $
+$Id: dostrap.h,v 1.3 1993/10/14 21:43:55 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and

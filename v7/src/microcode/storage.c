@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: storage.c,v 9.53 1993/10/14 19:21:51 gjr Exp $
+$Id: storage.c,v 9.54 1993/10/14 21:44:20 gjr Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and

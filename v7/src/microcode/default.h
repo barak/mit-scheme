@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: default.h,v 9.40 1993/10/14 19:19:55 gjr Exp $
+$Id: default.h,v 9.41 1993/10/14 21:43:15 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and

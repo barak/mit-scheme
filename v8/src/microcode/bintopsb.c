@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bintopsb.c,v 9.56 1993/10/14 19:16:56 gjr Exp $
+$Id: bintopsb.c,v 9.57 1993/10/14 21:42:22 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ppband.c,v 9.46 1993/10/14 19:16:32 gjr Exp $
+$Id: ppband.c,v 9.47 1993/10/14 21:42:03 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchgcl.c,v 9.47 1993/10/14 19:19:19 gjr Exp $
+$Id: bchgcl.c,v 9.48 1993/10/14 21:42:54 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
