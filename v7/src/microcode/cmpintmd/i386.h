@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.13 1992/02/19 18:59:48 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.14 1992/02/24 22:12:14 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -363,6 +363,10 @@ do {									\
   ((((SCHEME_OBJECT *) (tramp_entry)) - TRAMPOLINE_BLOCK_TO_ENTRY) +	\
    (2 + TRAMPOLINE_ENTRY_SIZE)) 
 
+/* These must aggree with cmpaux-i386.m4!
+   The register block is actually allocated there.
+ */
+
 #define COMPILER_REGBLOCK_N_FIXED		16
 
 #define COMPILER_REGBLOCK_N_HOOKS		80
@@ -373,6 +377,8 @@ do {									\
 
 #define COMPILER_REGBLOCK_EXTRA_SIZE					\
   (COMPILER_REGBLOCK_N_HOOKS * COMPILER_HOOK_SIZE)
+
+#define REGBLOCK_ALLOCATED_BY_INTERFACE
 
 #define ESI_TRAMPOLINE_TO_INTERFACE_OFFSET				\
   ((COMPILER_REGBLOCK_N_FIXED + (2 * COMPILER_HOOK_SIZE)) *		\
@@ -422,53 +428,56 @@ DEFUN_VOID (i386_reset_hook)
     Microcode_Termination (TERM_EXIT);
   }
   SETUP_REGISTER (asm_trampoline_to_interface);		/* 2 */
-
+
   SETUP_REGISTER (asm_interrupt_procedure);		/* 3 */
   SETUP_REGISTER (asm_interrupt_continuation);		/* 4 */
   SETUP_REGISTER (asm_interrupt_closure);		/* 5 */
   SETUP_REGISTER (asm_interrupt_dlink);			/* 6 */
-
-#if 0
-  /* For now. */
 
   SETUP_REGISTER (asm_primitive_apply);			/* 7 */
   SETUP_REGISTER (asm_primitive_lexpr_apply);		/* 8 */
-
   SETUP_REGISTER (asm_assignment_trap);			/* 9 */
   SETUP_REGISTER (asm_reference_trap);			/* 10 */
   SETUP_REGISTER (asm_safe_reference_trap);		/* 11 */
+  SETUP_REGISTER (asm_link);				/* 12 */
+  SETUP_REGISTER (asm_error);				/* 13 */
+  SETUP_REGISTER (asm_primitive_error);			/* 14 */
+  SETUP_REGISTER (asm_short_primitive_apply);		/* 15 */
 
-  SETUP_REGISTER (asm_generic_add);			/* 12 */
-  SETUP_REGISTER (asm_generic_subtract);		/* 13 */
-  SETUP_REGISTER (asm_generic_multiply);		/* 14 */
-  SETUP_REGISTER (asm_generic_divide);			/* 15 */
-  SETUP_REGISTER (asm_generic_equal);			/* 16 */
-  SETUP_REGISTER (asm_generic_less);			/* 17 */
-  SETUP_REGISTER (asm_generic_greater);			/* 18 */
-  SETUP_REGISTER (asm_generic_increment);		/* 19 */
-  SETUP_REGISTER (asm_generic_decrement);		/* 20 */
-  SETUP_REGISTER (asm_generic_zero);			/* 21 */
-  SETUP_REGISTER (asm_generic_positive);		/* 22 */
-  SETUP_REGISTER (asm_generic_negative);		/* 23 */
-  SETUP_REGISTER (asm_generic_quotient);		/* 24 */
-  SETUP_REGISTER (asm_generic_remainder);		/* 25 */
-  SETUP_REGISTER (asm_generic_modulo);			/* 26 */
+  /* This is a hack to make all the hooks be addressable
+     with byte offsets (instead of longword offsets).
+     The register block extends to negative offsets as well,
+     so all the following hooks are accessed with negative
+     offsets, and all fit in a byte.
+   */
 
-  SETUP_REGISTER (asm_shortcircuit_apply);		/* 27 */
-  SETUP_REGISTER (asm_shortcircuit_apply_size_1);	/* 28 */
-  SETUP_REGISTER (asm_shortcircuit_apply_size_2);	/* 29 */
-  SETUP_REGISTER (asm_shortcircuit_apply_size_3);	/* 30 */
-  SETUP_REGISTER (asm_shortcircuit_apply_size_4);	/* 31 */
-  SETUP_REGISTER (asm_shortcircuit_apply_size_5);	/* 32 */
-  SETUP_REGISTER (asm_shortcircuit_apply_size_6);	/* 33 */
-  SETUP_REGISTER (asm_shortcircuit_apply_size_7);	/* 34 */
-  SETUP_REGISTER (asm_shortcircuit_apply_size_8);	/* 35 */
+  offset    = -128;
 
-  /* Are these really necessary? */
-  SETUP_REGISTER (asm_link);				/* 36 */
-  SETUP_REGISTER (asm_error);				/* 37 */
-  SETUP_REGISTER (asm_primitive_error);			/* 38 */
-#endif
+  SETUP_REGISTER (asm_generic_add);			/* -32 */
+  SETUP_REGISTER (asm_generic_subtract);		/* -31 */
+  SETUP_REGISTER (asm_generic_multiply);		/* -30 */
+  SETUP_REGISTER (asm_generic_divide);			/* -29 */
+  SETUP_REGISTER (asm_generic_equal);			/* -28 */
+  SETUP_REGISTER (asm_generic_less);			/* -27 */
+  SETUP_REGISTER (asm_generic_greater);			/* -26 */
+  SETUP_REGISTER (asm_generic_increment);		/* -25 */
+  SETUP_REGISTER (asm_generic_decrement);		/* -24 */
+  SETUP_REGISTER (asm_generic_zero);			/* -23 */
+  SETUP_REGISTER (asm_generic_positive);		/* -22 */
+  SETUP_REGISTER (asm_generic_negative);		/* -21 */
+  SETUP_REGISTER (asm_generic_quotient);		/* -20 */
+  SETUP_REGISTER (asm_generic_remainder);		/* -19 */
+  SETUP_REGISTER (asm_generic_modulo);			/* -18 */
+
+  SETUP_REGISTER (asm_shortcircuit_apply);		/* -17 */
+  SETUP_REGISTER (asm_shortcircuit_apply_size_1);	/* -16 */
+  SETUP_REGISTER (asm_shortcircuit_apply_size_2);	/* -15 */
+  SETUP_REGISTER (asm_shortcircuit_apply_size_3);	/* -14 */
+  SETUP_REGISTER (asm_shortcircuit_apply_size_4);	/* -13 */
+  SETUP_REGISTER (asm_shortcircuit_apply_size_5);	/* -12 */
+  SETUP_REGISTER (asm_shortcircuit_apply_size_6);	/* -11 */
+  SETUP_REGISTER (asm_shortcircuit_apply_size_7);	/* -10 */
+  SETUP_REGISTER (asm_shortcircuit_apply_size_8);	/* -9 */
 
 #ifdef _MACH_UNIX
   {
