@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prdosfs.c,v 1.2 1992/09/15 20:35:31 jinx Exp $
+$Id: prdosfs.c,v 1.3 1992/09/17 00:45:29 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -83,16 +83,6 @@ DEFINE_PRIMITIVE ("FILE-MOD-TIME", Prim_file_mod_time, 1, 1, 0)
      ? (long_to_integer (s . st_mtime))
      : SHARP_F);
 }
-
-DEFINE_PRIMITIVE ("FILE-MOD-TIME-INDIRECT", Prim_file_mod_time_indirect, 1, 1, 0)
-{
-  struct stat s;
-  PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN
-    ((DOS_read_file_status ((STRING_ARG (1)), (&s)))
-     ? (long_to_integer (s . st_mtime))
-     : SHARP_F);
-}
 
 /* Returns a vector of 10 items:
 
@@ -126,10 +116,6 @@ DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1, 1,
 If the file exists and its status information is accessible, the result\n\
 is a vector of 10 items (see the reference manual for details).  Otherwise\n\
 the result is #F.")
-     FILE_ATTRIBUTES_PRIMITIVE (DOS_read_file_status)
-
-DEFINE_PRIMITIVE ("FILE-ATTRIBUTES-INDIRECT", Prim_file_attributes_indirect, 1, 1,
-  "Like FILE-ATTRIBUTES but indirect through symbolic links.")
      FILE_ATTRIBUTES_PRIMITIVE (DOS_read_file_status)
 
 static SCHEME_OBJECT
