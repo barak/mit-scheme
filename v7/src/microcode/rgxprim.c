@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: rgxprim.c,v 1.11 1997/01/02 05:21:41 cph Exp $
+$Id: rgxprim.c,v 1.12 1997/06/06 07:00:53 cph Exp $
 
 Copyright (c) 1987-97 Massachusetts Institute of Technology
 
@@ -39,6 +39,8 @@ MIT in each case. */
 #include "edwin.h"
 #include "syntax.h"
 #include "regex.h"
+
+extern int re_max_failures;
 
 #define RE_CHAR_SET_P(object)						\
   ((STRING_P (object)) &&						\
@@ -84,7 +86,7 @@ MIT in each case. */
 	}								\
       PRIMITIVE_RETURN (long_to_integer (result));			\
     }									\
-  else if ((result) == (-1))						\
+  else if (((result) == (-1)) || ((result) == (-4)))			\
     PRIMITIVE_RETURN (SHARP_F);						\
   else if ((result) == (-2))						\
     error_bad_range_arg (1);						\
@@ -161,6 +163,7 @@ DEFINE_PRIMITIVE ("RE-COMPILE-FASTMAP", Prim_re_compile_fastmap, 4, 4, 0)
   text_end = (STRING_LENGTH (ARG_REF (5)));				\
   if (match_end > text_end) error_bad_range_arg (7);			\
   if (match_start > match_end) error_bad_range_arg (6);			\
+  re_max_failures = 20000;						\
   re_buffer_initialize							\
     ((& buffer), (STRING_LOC ((ARG_REF (2)), 0)), (ARG_REF (3)),	\
      text, 0, text_end, text_end, text_end);				\
@@ -216,6 +219,7 @@ DEFINE_PRIMITIVE ("RE-SEARCH-SUBSTRING-BACKWARD", Prim_re_search_substr_backward
   if (match_start > match_end) error_bad_range_arg (6);			\
   if (match_end > text_end) error_bad_range_arg (7);			\
   if (match_start < text_start) error_bad_range_arg (6);		\
+  re_max_failures = 20000;						\
   re_buffer_initialize							\
     ((& buffer), (STRING_LOC ((ARG_REF (2)), 0)), (ARG_REF (3)),	\
      text, text_start, text_end, gap_start, (GROUP_GAP_END (group)));	\
