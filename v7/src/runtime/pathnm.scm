@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.2 1988/10/29 00:12:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.3 1989/04/05 04:27:38 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -347,7 +347,7 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
 (define (canonicalize-input-filename filename)
   (let ((pathname (->pathname filename)))
     (let ((truename (pathname->input-truename pathname)))
-      (if (not truename) (error "No such file" pathname))
+      (if (not truename) (error error-type:open-file pathname))
       (pathname->string truename))))
 
 (define (canonicalize-output-filename filename)
