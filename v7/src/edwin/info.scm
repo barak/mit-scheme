@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: info.scm,v 1.129 1998/03/08 07:13:33 cph Exp $
+;;;	$Id: info.scm,v 1.130 1998/03/11 22:06:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -776,6 +776,8 @@ The name may be an abbreviation of the reference name."
     (if (null? pathnames)
 	(editor-error "Can't find the Info directory node."))
     (read-buffer buffer (car pathnames) #t)
+    (set-variable! info-tag-table-start #f)
+    (set-variable! info-tag-table-end #f)
     (let ((submenus (append-map find-dir-node-menus (cdr pathnames))))
       (find-dir-node/insert-node-names buffer submenus)
       (for-each (lambda (submenu)
