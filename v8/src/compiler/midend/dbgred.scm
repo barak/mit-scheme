@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgred.scm,v 1.11 1995/08/03 23:28:21 adams Exp $
+$Id: dbgred.scm,v 1.12 1995/08/04 19:48:50 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -196,7 +196,7 @@ reachable.
 		  (let ((edge
 			 (dbg-red/node/add-edge! node `(CC-ENTRY . ,name))))
 		    (dbg-red/edge/statically-available! edge))
-		  (internal-warning "Node absent" node)))))
+		  (internal-warning "Node absent" name)))))
     bindings))
 
 (define-dbg-reducer IF (pred conseq alt)
@@ -424,11 +424,15 @@ reachable.
 
       (let walk ((expr expr))
 	(cond ((symbol? expr) (add-reference! expr))
-	      ((not (pair? expr)) unspecific)
 	      ((LOOKUP/? expr) (add-reference! (lookup/name expr)))
 	      ((QUOTE/? expr)  unspecific)
+	      ((dbg/stack-closure-ref? expr)
+	       (walk (vector-ref expr 1)))
+	      ((dbg/heap-closure-ref? expr)
+	       (walk (vector-ref expr 1)))
 	      ((CALL/? expr)
 	       (for-each walk (call/operands expr)))
+	      ((not (pair? expr)) unspecific)
 	      (else ;;(pp expr)
 		    unspecific))))
 
@@ -524,6 +528,7 @@ reachable.
 
 (define dbg-red/reconstruct-path
   (lambda (item graph env)
+
     (define (reconstruct-name item)
       (cond ((dbg-reduce/env/lookup env item)
 	     => (lambda (offset-or-name)
@@ -577,22 +582,20 @@ reachable.
 		 `((INTEGRATED . ,(quote/text expr)))))
 	    ((LOOKUP/? expr) (reconstruct-name (lookup/name expr)))
 	    ((symbol? expr)  (reconstruct-name expr))
-	    ((CALL/%stack-closure-ref? expr)
-	     (let ((frame   (call/%stack-closure-ref/closure expr))
-		   (offset  (call/%stack-closure-ref/offset expr)))
-	       (and (LOOKUP/? frame)
-		    (QUOTE/? offset)
-		    (eq? (lookup/name frame) (dbg-reduce/env/frame-name env))
-		    (list (dbgred/STACK (quote/text offset))))))
-	    ((CALL/%heap-closure-ref? expr)
-	     (let ((closure (call/%heap-closure-ref/closure expr))
-		   (offset  (call/%heap-closure-ref/offset expr)))
-	       (let ((closure-path (reconstruct-expression closure)))
-		 (and closure-path
-		      (QUOTE/? offset)
-		      (cons (dbgred/CLOSURE (+ (quote/text offset)
-					       (rtlgen/closure-first-offset)))
-			    closure-path)))))
+	    ((dbg/stack-closure-ref? expr)
+	     (let ((frame   (vector-ref expr 1))
+		   (offset
+		    (vector-index (vector-ref expr 2) (vector-ref expr 3))))
+	       (and (eq? frame (dbg-reduce/env/frame-name env))
+		    (list (dbgred/STACK offset)))))
+	    ((dbg/heap-closure-ref? expr)
+	     (let ((closure-path (reconstruct-expression (vector-ref expr 1)))
+		   (offset
+		    (vector-index (vector-ref expr 2) (vector-ref expr 3))))
+	       (and closure-path
+		    (cons (dbgred/CLOSURE (+ offset
+					     (rtlgen/closure-first-offset)))
+			  closure-path))))
 	    ((CALL/%multicell-ref? expr)
 	     (let ((cell-path
 		    (reconstruct-expression (call/%multicell-ref/cell expr)))
@@ -605,6 +608,9 @@ reachable.
 			   (vector-index (quote/text layout)
 					 (quote/text name)))
 			  cell-path))))
+	    ((or (CALL/%stack-closure-ref? expr)
+		 (CALL/%heap-closure-ref? expr))
+	     (internal-error "DBG expression should have been compressed" expr))
 	    ((and (pair? expr)
 		  (eq? (car expr) 'CC-ENTRY))
 	     (list expr))
@@ -720,30 +726,71 @@ reachable.
 ;; tracking of representation and naming changes for generating debugging
 ;; info.
 	 
+;; Compact representation of closure reference expressions
+
+(define (dbg/make-closure-ref op closure elements-vector name)
+  (vector op closure elements-vector name))
+
+(define (dbg/stack-closure-ref? thing)
+  (and (vector? thing)
+       (eq? (vector-ref thing 0) %stack-closure-ref)))
+
+(define (dbg/heap-closure-ref? thing)
+  (and (vector? thing)
+       (eq? (vector-ref thing 0) %heap-closure-ref)))
+
+(define (dbg-red/compress-expression form)
+  (define (compress-closure-ref op)
+    ;; (CALL '%*-closure-ref '#F <closure> <index> 'name)
+    (let* ((closure (dbg-red/compress-expression (fourth form)))
+	   (ix-expr (fifth form))
+	   (name (quote/text (sixth form))))
+      (vector op closure (if (QUOTE/? ix-expr)
+			     (quote/text ix-expr)
+			     (quote/text (CALL/%vector-index/vector ix-expr)))
+	      name)))
+
+  (define (compress-ordinary-call form)
+    (let ((exprs* (map dbg-red/compress-expression (call/operands form))))
+      (if (there-exists? exprs* false?)
+	  #F
+	  `(CALL ,(call/operator form) ,(call/continuation form) ,@exprs*))))
+
+  (cond ((QUOTE/? form) form)
+	((symbol? form) form)
+	((LOOKUP/? form) (lookup/name form))
+	((and (CALL/? form)
+	      (QUOTE/? (call/operator form)))
+	 (let ((op (quote/text (call/operator form))))
+	   (cond ((or (eq? op %stack-closure-ref)
+		      (eq? op %heap-closure-ref))
+		  (compress-closure-ref op))
+		 ((hash-table/get *dbg-forbidden-operators* op #F) #F)
+		 (else
+		  (compress-ordinary-call form)))))
+	(else #F)))
+
 (define *dbg-rewrites*)
 
 (define (dbg-info/make-rewrites)
   (cons 'HEAD '()))
 
-(define (dbg-info/remember from to)
+(define (dbg-info/remember from to*)
+  (define (good to)
+    (set-cdr! *dbg-rewrites*
+	      (cons (vector from to) (cdr *dbg-rewrites*))))
+  (cond ((continuation-variable? from))
+	((dbg/stack-closure-ref? to*) (good to*))
+	((dbg/heap-closure-ref? to*) (good to*))
+	(else
+	 (let ((to (dbg-red/compress-expression to*)))
+	   (cond ((eq? from to))
+		 ((false? to)
+		  #|(fluid-let ((*unparser-list-breadth-limit* 7)
+			      (*unparser-list-depth-limit* 6))
+		    (pp `(reject ,from ,to*)))|#)
+		 (else (good to)))))))
 
-  (let ((to (if (LOOKUP/? to) (lookup/name to) to)))
-    (define (good)
-      (set-cdr! *dbg-rewrites*
-		(cons (vector from to) (cdr *dbg-rewrites*))))
-
-    (cond ((eq? from to))
-	  ((CALL/? to)
-	   (if (QUOTE/? (call/operator to))
-	       (let ((op (quote/text (call/operator to))))
-		 (cond ((hash-table/get *dbg-forbidden-operators* op #F))
-		       ((hash-table/get dbg-reduce/equivalent-operators op #F)
-			(good))
-		       ((primitive-procedure? op))
-		       (else		; a fakeprim
-			(good))))))
-	  ((continuation-variable? from))
-	  (else (good)))))
 
 (define *dbg-forbidden-operators* (make-eq-hash-table))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stackopt.scm,v 1.11 1995/08/03 00:17:40 adams Exp $
+$Id: stackopt.scm,v 1.12 1995/08/04 19:45:23 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -119,7 +119,10 @@ End of Big Note A |#
 
 
 (define (stackopt/top-level program)
-  (stackopt/expr false program))
+  (fluid-let ((stackopt/dbg-refs (stackopt/get-dbg-refs)))
+    (stackopt/expr false program)))
+
+(define stackopt/dbg-refs) ; table from frame name to dbg info references
 
 (define-macro (define-stack-optimizer keyword bindings . body)
   (let ((proc-name (symbol-append 'STACKOPT/ keyword)))
@@ -369,6 +372,7 @@ End of Big Note A |#
   ;;Following test wrong: (lambda () (subproblem) (lambda (a1 ... a100) ...))
   ;;(if state
   ;;    (internal-error "Model exists at non-continuation lambda!" state))
+  state
   (let* ((frame-vector  (cadr (assq stackopt/?frame-vector match-result)))
 	 (frame-name    (cadr (assq stackopt/?frame-name match-result)))
 	 (model  (stackopt/model/make #F (vector-copy frame-vector) frame-name
@@ -524,16 +528,28 @@ End of Big Note A |#
 		   ,(call/%make-stack-closure/vector form)
 		   ,@values*))))))
 
+(define (stackopt/get-dbg-refs)
+  (let ((info (make-eq-hash-table)))
+    (define (walk expr)
+      (cond ((dbg/stack-closure-ref? expr)
+	     (let ((frame-var (vector-ref expr 1)))
+	       (hash-table/put!
+		info
+		frame-var
+		(cons expr
+		      (hash-table/get info frame-var '())))))
+	    ((dbg/heap-closure-ref? expr)
+	     (walk (vector-ref expr 1)))
+	    ((CALL/? expr)
+	     (for-each walk (call/operands expr)))
+	    (else unspecific)))
+    (dbg-info/for-all-dbg-expressions! walk)
+    info))
+
 (define (stackopt/rewrite-dbg-frames! frame-var new-vector)
-  (dbg-info/for-all-dbg-expressions!
-   (lambda (expr)
-     (if (and (call/%stack-closure-ref? expr)
-	      (eq? (lookup/name (call/%stack-closure-ref/closure expr))
-		   frame-var))
-	 (let* ((ix-expr (call/%stack-closure-ref/offset expr))
-		(quoted-vector (call/%vector-index/vector ix-expr)))
-	   (form/rewrite! quoted-vector
-	     `(QUOTE ,new-vector)))))))
+  (for-each (lambda (ref)
+	      (vector-set! ref 2 new-vector))
+    (hash-table/get stackopt/dbg-refs frame-var '())))
 
 (define (stackopt/rearrange! model wired)
   (define (arrange-locally! model)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: indexify.scm,v 1.4 1995/06/15 18:01:55 adams Exp $
+$Id: indexify.scm,v 1.5 1995/08/04 19:46:23 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -127,12 +127,17 @@ MIT in each case. |#
 
 (define (indexify/do-dbg-info!)
   (define (rewrite-indexifies! expr)
-    (cond ((QUOTE/? expr))
+    (cond ((dbg/stack-closure-ref? expr)
+	   (rewrite-indexifies! (vector-ref expr 1)))
+          ((dbg/heap-closure-ref? expr)
+	   (rewrite-indexifies! (vector-ref expr 1)))
+	  ((QUOTE/? expr))
 	  ((LOOKUP/? expr))
 	  ((and (CALL/? expr)
 		(QUOTE/? (call/operator expr))
 		(eq? %vector-index (quote/text (call/operator expr)))
 		(for-all? (call/cont-and-operands expr) QUOTE/?))
+	   (internal-error "%vector-index found in DBG info")
 	   (let ((rands (call/operands expr)))
 	     (form/rewrite! expr
 	       `(QUOTE ,(vector-index (QUOTE/text (first rands))

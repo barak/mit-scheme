@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: closconv.scm,v 1.8 1995/07/04 19:20:29 adams Exp $
+$Id: closconv.scm,v 1.9 1995/08/04 19:47:20 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -562,6 +562,9 @@ MIT in each case. |#
 			  (QUOTE ,closed-over-names)
 			  (QUOTE ,name))
 		    (QUOTE ,name)))
+	   (define (dbg-reference-expression)
+	     (dbg/make-closure-ref %closure-ref
+				   closure-name closed-over-names name))
 	   (define (self-reference-expression)
 	     `(LOOKUP ,closure-name))
 	   (define (rewrite-self-reference! ref)
@@ -572,7 +575,7 @@ MIT in each case. |#
 	   (dbg-info/remember name
 			      (if (eq? binding self-binding)
 				  (self-reference-expression)
-				  (reference-expression)))
+				  (dbg-reference-expression)))
 
 	   (for-each (if (eq? (car free-ref) self-binding)
 			 rewrite-self-reference!
