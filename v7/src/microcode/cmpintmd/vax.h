@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/vax.h,v 1.6 1992/09/26 02:54:54 cph Exp $
+$Id: vax.h,v 1.7 1992/11/18 05:03:16 gjr Exp $
 
 Copyright (c) 1991-1992 Massachusetts Institute of Technology
 
@@ -48,15 +48,20 @@ MIT in each case. */
 #define COMPILER_MC68020_TYPE			1
 #define COMPILER_VAX_TYPE			2
 #define COMPILER_SPECTRUM_TYPE			3
-#define COMPILER_MIPS_TYPE			4
+#define COMPILER_OLD_MIPS_TYPE			4
 #define COMPILER_MC68040_TYPE			5
 #define COMPILER_SPARC_TYPE			6
 #define COMPILER_RS6000_TYPE			7
 #define COMPILER_MC88K_TYPE			8
 #define COMPILER_I386_TYPE			9
 #define COMPILER_ALPHA_TYPE			10
+#define COMPILER_MIPS_TYPE			11
+#define COMPILER_LOSING_C_TYPE			12
 
 /* Machine parameters to be set by the user. */
+
+/* Until cmpaux-vax.m4 is updated. */
+#define CMPINT_USE_STRUCS
 
 /* Processor type.  Choose a number from the above list, or allocate your own. */
 
