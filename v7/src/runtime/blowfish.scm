@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: blowfish.scm,v 1.19 2000/04/10 03:33:37 cph Exp $
+$Id: blowfish.scm,v 1.20 2000/11/02 19:13:14 cph Exp $
 
 Copyright (c) 1997, 1999, 2000 Massachusetts Institute of Technology
 
@@ -24,79 +24,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (declare (usual-integrations))
 
-(define blowfish-available?)
-(define blowfish-set-key)
-(define blowfish-ecb)
-(define blowfish-cbc)
-(define blowfish-cfb64)
-(define blowfish-ofb64)
+(define blowfish-set-key (ucode-primitive blowfish-set-key 1))
+(define blowfish-ecb (ucode-primitive blowfish-ecb 4))
+(define blowfish-cbc (ucode-primitive blowfish-cbc-v2 5))
+(define blowfish-cfb64 (ucode-primitive blowfish-cfb64-substring-v2 9))
+(define blowfish-ofb64 (ucode-primitive blowfish-ofb64-substring 8))
 
-(let ((unlocked? 'UNKNOWN)
-      (key-sum "8074396df211ba2da12a872b6e84d7ce"))
+(define (blowfish-available?)
+  (implemented-primitive-procedure? blowfish-cfb64))
 
-  (define (check-key)
-    (initialize-key)
-    (if (not unlocked?)
-	(error "Blowfish support disabled in this implementation.")))
-
-  (define (initialize-key)
-    (if (eq? 'UNKNOWN unlocked?)
-	(set! unlocked?
-	      (and (md5-available?)
-		   (implemented-primitive-procedure?
-		    (ucode-primitive blowfish-cfb64-substring-v2 9))
-		   (let ((pathname
-			  (call-with-current-continuation
-			   (lambda (k)
-			     (bind-condition-handler
-				 (list condition-type:file-error)
-				 (lambda (condition)
-				   condition
-				   (k #f))
-			       (lambda ()
-				 (system-library-pathname "blowfish.key")))))))
-		     (and pathname
-			  (string=? key-sum
-				    (mhash-sum->hexadecimal
-				     (md5-file pathname)))))))))
-
-  (set! blowfish-available?
-	(lambda ()
-	  (initialize-key)
-	  unlocked?))
-
-  (set! blowfish-set-key
-	(lambda (string)
-	  (check-key)
-	  ((ucode-primitive blowfish-set-key 1) string)))
-
-  (set! blowfish-ecb
-	(lambda (input output key encrypt?)
-	  (check-key)
-	  ((ucode-primitive blowfish-ecb 4) input output key encrypt?)))
-
-  (set! blowfish-cbc
-	(lambda (input output key init-vector encrypt?)
-	  (check-key)
-	  ((ucode-primitive blowfish-cbc-v2 5)
-	   input output key init-vector encrypt?)))
-
-  (set! blowfish-cfb64
-	(lambda (input input-start input-end output output-start
-		       key init-vector num encrypt?)
-	  (check-key)
-	  ((ucode-primitive blowfish-cfb64-substring-v2 9)
-	   input input-start input-end output output-start
-	   key init-vector num encrypt?)))
-
-  (set! blowfish-ofb64
-	(lambda (input input-start input-end output output-start
-		       key init-vector num)
-	  (check-key)
-	  ((ucode-primitive blowfish-ofb64-substring 8)
-	   input input-start input-end output output-start
-	   key init-vector num))))
-
 (define (blowfish-encrypt-port input output key init-vector encrypt?)
   ;; Assumes that INPUT is in blocking mode.
   (let ((key (blowfish-set-key key))
