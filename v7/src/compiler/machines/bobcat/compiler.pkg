@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.5 1988/08/18 01:47:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.6 1988/08/22 22:20:08 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -292,6 +292,7 @@ MIT in each case. |#
 	 "machines/bobcat/instr4"	;  "        "	 )
   (parent (compiler))
   (export (compiler)
+	  lap-generator/match-rtl-instruction
 	  lap:make-entry-point
 	  lap:make-label-statement
 	  lap:make-unconditional-branch
