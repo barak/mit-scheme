@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.78 2000/11/28 18:46:21 cph Exp $
+@comment $Id: user.texinfo,v 1.79 2000/12/08 21:32:34 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -29,9 +29,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.78
+@subtitle Edition 1.79
 @subtitle for Scheme Release 7.5.11
-@subtitle 28 November 2000
+@subtitle 8 December 2000
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -227,7 +227,7 @@ scheme -library ~/mit-scheme
 @end example
 
 @item
-You should now be able to run MIT Scheme.  @xref{Running Scheme} for
+You should now be able to run MIT Scheme.  @xref{Running Scheme}, for
 more information.
 @end itemize
 
@@ -1403,13 +1403,13 @@ Once in Edwin, the font can be changed with the @code{set-font} and
 @item @code{MITSCHEME_GEOMETRY} (default: @samp{-1,-1,-1,-1})
 @findex MITSCHEME_GEOMETRY
 @cindex window position
-Four integers separated by
-commas or spaces that specify the placement and size of the MIT Scheme
-window as a @var{left,top,width,height} quadruple.  The units are screen
-pixels, and @samp{-1} means allow the system to choose this parameter.
-E.g.@:  @samp{-1,-1,500,300} places a 500 by 300 pixel window at some
-system-determined position on the screen.  The width and height include
-the window border and title.
+Four integers separated by commas or spaces that specify the placement
+and size of the MIT Scheme window as a
+@var{left},@var{top},@var{width},@var{height} quadruple.  The units are
+screen pixels, and @samp{-1} means allow the system to choose this
+parameter.  E.g.@: @samp{-1,-1,500,300} places a 500 by 300 pixel window
+at some system-determined position on the screen.  The width and height
+include the window border and title.
 
 @item @code{MITSCHEME_FOREGROUND} (default: according to desktop color scheme)
 @findex MITSCHEME_FOREGROUND
@@ -3246,7 +3246,7 @@ uncommon for numerical programs to spend over half of their time creating
 and garbage collecting the boxed flonums.
 
 Consider the following procedure for computing the distance of a point
-@var{(x,y)} from the origin.
+(@var{x},@var{y}) from the origin.
 
 @example
 @group
