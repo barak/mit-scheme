@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.51 1989/09/20 23:10:47 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.52 1989/09/21 22:48:51 cph Rel $
  *
  * This file contains the support routines for mapping primitive names
  * to numbers within the microcode.  Primitives are written in C
@@ -432,31 +432,31 @@ search_for_primitive(scheme_name, c_name, intern_p, allow_p, arity)
 	Next = (MEMORY_LOC (Undefined_Primitives, 2));
       Undefined_Primitives =
 	(allocate_marked_vector (TC_VECTOR, (Max + CHUNK_SIZE + 1), true));
-      FAST_MEMORY_SET
-	(Undefined_Primitives, 1, (LONG_TO_UNSIGNED_FIXNUM (Max + 1)));
+      FAST_VECTOR_SET
+	(Undefined_Primitives, 0, (LONG_TO_UNSIGNED_FIXNUM (Max + 1)));
       for (i = 0; (i < Max); i += 1)
-	FAST_MEMORY_SET
-	  (Undefined_Primitives, (i + 2), (MEMORY_FETCH (*Next++)));
-      FAST_MEMORY_SET (Undefined_Primitives, (Max + 2), scheme_name);
+	FAST_VECTOR_SET
+	  (Undefined_Primitives, (i + 1), (MEMORY_FETCH (*Next++)));
+      FAST_VECTOR_SET (Undefined_Primitives, (Max + 1), scheme_name);
       for (i = 1; (i < CHUNK_SIZE); i += 1)
-	FAST_MEMORY_SET (Undefined_Primitives, (i + Max + 2), SHARP_F);
+	FAST_VECTOR_SET (Undefined_Primitives, (i + Max + 1), SHARP_F);
 
       if (Max > 0)
 	Next = (MEMORY_LOC (Undefined_Primitives_Arity, 2));
       Undefined_Primitives_Arity =
 	(allocate_marked_vector (TC_VECTOR, (Max + CHUNK_SIZE + 1), true));
-      FAST_MEMORY_SET (Undefined_Primitives_Arity, 1, SHARP_F);
+      FAST_VECTOR_SET (Undefined_Primitives_Arity, 0, SHARP_F);
       for (i = 0; (i < Max); i += 1)
-	FAST_MEMORY_SET
-	  (Undefined_Primitives_Arity, (i + 2), (MEMORY_FETCH (*Next++)));
-      FAST_MEMORY_SET
+	FAST_VECTOR_SET
+	  (Undefined_Primitives_Arity, (i + 1), (MEMORY_FETCH (*Next++)));
+      FAST_VECTOR_SET
 	(Undefined_Primitives_Arity,
-	 (Max + 2),
+	 (Max + 1),
 	 ((arity != UNKNOWN_PRIMITIVE_ARITY)
 	  ? (LONG_TO_FIXNUM (arity))
 	  : SHARP_F));
       for (i = 1; (i < CHUNK_SIZE); i += 1)
-	FAST_MEMORY_SET (Undefined_Primitives, (i + Max + 2), SHARP_F);
+	FAST_VECTOR_SET (Undefined_Primitives_Arity, (i + Max + 1), SHARP_F);
 
       Max += 1;
     }
