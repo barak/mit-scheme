@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 3.83 1994/03/16 23:43:43 cph Exp $
+$Id: make.scm,v 3.84 1994/06/21 19:38:40 cph Exp $
 
 Copyright (c) 1989-94 Massachusetts Institute of Technology
 
@@ -36,14 +36,18 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-((access with-directory-rewriting-rule
-	 (->environment '(RUNTIME COMPILER-INFO)))
- (working-directory-pathname)
- (pathname-as-directory "edwin")
- (lambda ()
-   (declare-shared-library "edwin" (lambda () true))
-   (package/system-loader
-    "edwin"
-    `((os-type . ,(intern (microcode-identification-item 'OS-NAME-STRING))))
-    'QUERY)))
-(add-system! (make-system "Edwin" 3 83 '()))
+(with-working-directory-pathname
+    (directory-pathname (current-load-pathname))
+  (lambda ()
+    ((access with-directory-rewriting-rule
+	     (->environment '(RUNTIME COMPILER-INFO)))
+     (working-directory-pathname)
+     (pathname-as-directory "edwin")
+     (lambda ()
+       (declare-shared-library "edwin" (lambda () true))
+       (package/system-loader
+	"edwin"
+	`((os-type
+	   . ,(intern (microcode-identification-item 'OS-NAME-STRING))))
+	'QUERY)))))
+(add-system! (make-system "Edwin" 3 84 '()))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.29 1994/06/21 19:37:25 cph Exp $
+$Id: make.scm,v 4.30 1994/06/21 19:38:30 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -47,4 +47,4 @@ MIT in each case. |#
        (package/system-loader "sf" '() 'QUERY)))
     ((package/reference (find-package '(SCODE-OPTIMIZER))
 			'USUAL-INTEGRATIONS/CACHE!))))
-(add-system! (make-system "SF" 4 28 '()))
+(add-system! (make-system "SF" 4 30 '()))
