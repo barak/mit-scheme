@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.40 1999/02/24 05:59:09 cph Exp $
+$Id: conpar.scm,v 14.41 1999/02/24 21:23:31 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -382,6 +382,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (parse/standard-next type elements state #f #f))
 	  ((fix:= code code/special-compiled/restore-interrupt-mask)
 	   (parser/%stack-marker (parser-state/dynamic-state state)
+				 (parser-state/block-thread-events? state)
 				 (vector-ref elements 2)
 				 type elements state))
 	  ((fix:= code code/special-compiled/stack-marker)
@@ -466,37 +467,43 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (values (vector-ref elements 2) (vector-ref elements 3))))
     (lambda (marker-type marker-instance)
       (let ((continue
-	     (lambda (dynamic-state interrupt-mask)
-	       (parser/%stack-marker dynamic-state interrupt-mask
-				     type elements state))))
+	     (lambda (dynamic-state block-thread-events? interrupt-mask)
+	       (parser/%stack-marker dynamic-state block-thread-events?
+				     interrupt-mask type elements state))))
 	(cond ((eq? marker-type %translate-to-state-point)
 	       (continue (merge-dynamic-state
 			  (parser-state/dynamic-state state)
 			  marker-instance)
+			 (parser-state/block-thread-events? state)
 			 (parser-state/interrupt-mask state)))
 	      ((eq? marker-type set-interrupt-enables!)
 	       (continue (parser-state/dynamic-state state)
+			 (parser-state/block-thread-events? state)
 			 marker-instance))
+	      ((eq? marker-type with-thread-events-blocked)
+	       (continue (parser-state/dynamic-state state)
+			 marker-instance
+			 (parser-state/interrupt-mask state)))
 	      (else
 	       (continue (parser-state/dynamic-state state)
+			 (parser-state/block-thread-events? state)
 			 (parser-state/interrupt-mask state))))))))
 
-(define (parser/%stack-marker dynamic-state interrupt-mask
+(define (parser/%stack-marker dynamic-state block-thread-events? interrupt-mask
 			      type elements state)
   (parser/standard
    type
    elements
-   (make-parser-state
-    dynamic-state
-    (parser-state/block-thread-events? state)
-    interrupt-mask
-    (parser-state/history state)
-    (parser-state/previous-history-offset state)
-    (parser-state/previous-history-control-point state)
-    (parser-state/element-stream state)
-    (parser-state/n-elements state)
-    (parser-state/next-control-point state)
-    (parser-state/previous-type state))))
+   (make-parser-state dynamic-state
+		      block-thread-events?
+		      interrupt-mask
+		      (parser-state/history state)
+		      (parser-state/previous-history-offset state)
+		      (parser-state/previous-history-control-point state)
+		      (parser-state/element-stream state)
+		      (parser-state/n-elements state)
+		      (parser-state/next-control-point state)
+		      (parser-state/previous-type state))))
 
 (define (stack-frame/stack-marker? stack-frame)
   (or (%stack-frame/stack-marker? stack-frame)

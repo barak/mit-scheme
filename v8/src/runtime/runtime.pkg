@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.323 1999/02/24 05:59:23 cph Exp $
+$Id: runtime.pkg,v 14.324 1999/02/24 21:23:53 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -3229,6 +3229,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  unblock-thread-events
 	  unlock-thread-mutex
 	  with-create-thread-continuation
+	  with-thread-events-blocked
 	  with-thread-mutex-locked
 	  with-thread-timer-stopped
 	  yield-current-thread)

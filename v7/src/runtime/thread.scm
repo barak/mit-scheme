@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.30 1999/02/24 05:18:12 cph Exp $
+$Id: thread.scm,v 1.31 1999/02/24 21:23:27 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -643,6 +643,30 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (handle-thread-events thread)
 	 (set-thread/block-events?! thread #f))))))
 
+(define (with-thread-events-blocked thunk)
+  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (let ((thread first-running-thread))
+      (if thread
+	  (let ((block-events? (thread/block-events? thread)))
+	    (set-thread/block-events?! thread #t)
+	    (let ((value
+		   ((ucode-primitive with-stack-marker 3)
+		    (lambda ()
+		      (set-interrupt-enables! interrupt-mask)
+		      (let ((value (thunk)))
+			(set-interrupt-enables! interrupt-mask/gc-ok)
+			value))
+		    with-thread-events-blocked
+		    block-events?)))
+	      (let ((thread first-running-thread))
+		(if thread
+		    (set-thread/block-events?! thread block-events?)))
+	      (set-interrupt-enables! interrupt-mask)
+	      value))
+	  (begin
+	    (set-interrupt-enables! interrupt-mask)
+	    (thunk))))))
+
 (define (get-thread-event-block)
   (without-interrupts
    (lambda ()
@@ -657,7 +681,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      (let ((thread first-running-thread))
        (if thread
 	   (set-thread/block-events?! thread block?))))))
-
+
 (define (signal-thread-event thread event)
   (guarantee-thread thread signal-thread-event)
   (let ((self first-running-thread))
@@ -681,7 +705,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (if (and (not (thread/block-events? thread))
 	   (eq? 'WAITING (thread/execution-state thread)))
       (%thread-running thread)))
-
+
 (define (handle-thread-events thread)
   (let loop ((any-events? #f))
     (let ((event (ring/dequeue (thread/pending-events thread) #t)))
