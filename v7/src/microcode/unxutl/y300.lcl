@@ -1,6 +1,6 @@
 /* -*- C -*-
    Switzerland local additions to the makefile
-   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y300.lcl,v 1.13 1990/11/08 11:17:40 cph Exp $
+   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y300.lcl,v 1.14 1990/11/10 16:33:18 jinx Exp $
  */
 
 /* These extra files are for 6003.  They assume we're using HP-UX. */
@@ -18,12 +18,27 @@
    Vanilla scheme microcode + gpio primitives.
  */
 
+/* This is a kludge.  The real library is libdvio.a, but the gnu linker
+   does not like it because it defines _write but not __write, required
+   by printf and family.  Thus the linker loads write.o from the standard
+   library, and complains about a duplicate definition of _write!
+   libndvio.a is a copy of libdvio.a with __dup, ___fcntl, _ioctl, __open,
+   __read, and __write defined to the same values as the names with
+   only one underscore.
+*/
+
+#if 0
+#define LIB_DVIO -ldvio
+#else
+#define LIB_DVIO -lndvio
+#endif
+
 KIT_SOURCES = $(X_SOURCES) $(TERMCAP_SOURCES) $(GRAPHICS_SOURCES)\
 	SOURCES_SYSTEM SOURCES_MACHINE gpio.c dmpwrld.c
 KIT_OBJECTS = $(X_OBJECTS) $(TERMCAP_OBJECTS) $(GRAPHICS_OBJECTS)\
 	OBJECTS_SYSTEM OBJECTS_MACHINE gpio.o dmpwrld.o usrkit.o
 KIT_LIB = $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(TERMCAP_LIBS)\
-	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD -ldvio
+	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD LIB_DVIO
 
 /* Franklyn's personal scheme: 6003-like + Sgraph_xt. */
 
@@ -58,9 +73,13 @@ usr6003.c : $(6003_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim 
 kitscheme : $(OBJECTS) $(KIT_OBJECTS)
 	@ECHO "#** Re-linking" $@ because of $?
 	rm -f $@
-       gld $(LDFLAGS) -noinhibit-exec -o $@ /usr/local/lib/gcc-crt0.o \
-       $(OBJECTS) $(KIT_OBJECTS) $(KIT_LIB) \
-       /usr/local/lib/gcc-gnulib -lc /usr/local/lib/gcc-gnulib
+#if 1
+	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(KIT_OBJECTS) $(KIT_LIB)
+#else
+	gld $(LDFLAGS) -noinhibit-exec -o $@ /usr/local/lib/gcc-crt0.o \
+	$(OBJECTS) $(KIT_OBJECTS) $(KIT_LIB) \
+	/usr/local/lib/gcc-gnulib -lc /usr/local/lib/gcc-gnulib
+#endif
 
 usrkit.c : $(KIT_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xmakefile
 	@ECHO "#** Re-making" $@ because of $?
