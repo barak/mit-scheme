@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.12 1989/11/06 17:31:23 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.13 1989/11/06 22:03:29 jinx Exp $
  *
  * This file corresponds to
  * $COMPILER-Header: compiler.c,v 9.37 89/10/25 14:55:45 GMT jinx Exp $
@@ -520,7 +520,6 @@ open_gap (nactuals, delta)
   gap_location = STACK_LOC (delta);
   source_location = STACK_LOC (0);
   Stack_Pointer = gap_location;
-  nactuals -= 1;
   while ((--nactuals) > 0)
   {
     STACK_LOCATIVE_POP (gap_location) = STACK_LOCATIVE_POP (source_location);
@@ -528,7 +527,7 @@ open_gap (nactuals, delta)
   delta = (- delta);
   while ((--delta) >= 0)
   {
-    STACK_LOCATIVE_POP (source_location) = UNASSIGNED_OBJECT;
+    STACK_LOCATIVE_POP (gap_location) = UNASSIGNED_OBJECT;
   }
   return (source_location);
 }
@@ -910,8 +909,9 @@ link_cc_block (block_address, offset, last_header_offset,
         STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (offset - 1));
         STACK_PUSH (block);
 	STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (count + 1));
+	STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (total_count));
 
-        Store_Expression (LONG_TO_UNSIGNED_FIXNUM (total_count));
+        Store_Expression (SHARP_F);
         Store_Return (RC_COMP_LINK_CACHES_RESTART);
         Save_Cont ();
 
@@ -969,13 +969,15 @@ comutil_link (ret_add, block_address, constant_address, sections)
 C_TO_SCHEME long
 comp_link_caches_restart ()
 {
-  SCHEME_OBJECT block;
+  SCHEME_OBJECT block, environment;
   long original_count, offset, last_header_offset, sections, code;
   instruction *ret_add;
 
-  original_count = (OBJECT_DATUM (Fetch_Expression ()));
-  STACK_POP ();			/* Pop count, not needed */
+  original_count = (OBJECT_DATUM (STACK_POP()));
+  STACK_POP ();						/* Loop count, for debugger */
   block = (STACK_POP ());
+  environment = (compiled_block_environment (block));
+  Store_Env (environment);
   offset = (OBJECT_DATUM (STACK_POP ()));
   last_header_offset = (OBJECT_DATUM (STACK_POP ()));
   sections = (OBJECT_DATUM (STACK_POP ()));
@@ -1132,13 +1134,14 @@ comutil_operator_lookup_trap (tramp_data, ignore_2, ignore_3, ignore_4)
     environment = (compiled_block_environment (tramp_data[1]));
     name = (compiler_var_error ((tramp_data[0]), environment));
 
-    STACK_PUSH(ENTRY_TO_OBJECT(trampoline));
-    STACK_PUSH(LONG_TO_UNSIGNED_FIXNUM(nargs)); /* For debugger */
-    STACK_PUSH(environment);    /* For debugger */
-    Store_Expression(name);
-    Store_Return(RC_COMP_OP_REF_TRAP_RESTART);
-    Save_Cont();
-    RETURN_TO_C(code);
+    STACK_PUSH (ENTRY_TO_OBJECT(trampoline));
+    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM(nargs));	/* For debugger */
+    STACK_PUSH (environment);				/* For debugger */
+    STACK_PUSH (name);					/* For debugger */
+    Store_Expression (SHARP_F);
+    Store_Return (RC_COMP_OP_REF_TRAP_RESTART);
+    Save_Cont ();
+    RETURN_TO_C (code);
   }
 }
 
@@ -1155,9 +1158,9 @@ comp_op_lookup_trap_restart ()
   SCHEME_OBJECT *old_trampoline, code_block, new_procedure;
   long offset;
 
-  /* Discard env. and nargs */
+  /* Discard name, env. and nargs */
 
-  Stack_Pointer = (Simulate_Popping (2));
+  Stack_Pointer = (Simulate_Popping (3));
   old_trampoline = (OBJECT_ADDRESS (STACK_POP ()));
   code_block = ((TRAMPOLINE_STORAGE (old_trampoline))[1]);
   offset = (OBJECT_DATUM ((TRAMPOLINE_STORAGE (old_trampoline))[2]));
@@ -1355,6 +1358,7 @@ comutil_interrupt_closure (ignore_1, ignore_2, ignore_3, ignore_4)
   {
     /* Return to interpreter to handle interrupt */
     
+    STACK_PUSH (SHARP_F);
     Store_Expression (SHARP_F);
     Store_Return (RC_COMP_INTERRUPT_RESTART);
     Save_Cont ();
@@ -1378,7 +1382,8 @@ compiler_interrupt_common (entry_point, state)
   else
   {
     STACK_PUSH (ENTRY_TO_OBJECT (entry_point));
-    Store_Expression (state);
+    STACK_PUSH (state);
+    Store_Expression (SHARP_F);
     Store_Return (RC_COMP_INTERRUPT_RESTART);
     Save_Cont ();
     RETURN_TO_C (PRIM_INTERRUPT);
@@ -1428,8 +1433,11 @@ comutil_interrupt_ic_procedure (entry_point, ignore_2, ignore_3, ignore_4)
 C_TO_SCHEME long
 comp_interrupt_restart ()
 {
-  Store_Env (Fetch_Expression());
-  Val = (Fetch_Expression ());
+  SCHEME_OBJECT state;
+
+  state = (STACK_POP ());
+  Store_Env (state);
+  Val = state;
   return (C_to_interface ((instruction *) (OBJECT_ADDRESS (STACK_POP ()))));
 }
 
@@ -1463,7 +1471,8 @@ comutil_assignment_trap (return_address, extension_addr, value, ignore_4)
     environment = (compiled_block_environment (block));
     STACK_PUSH (environment);
     name = (compiler_var_error (extension, environment));
-    Store_Expression (name);
+    STACK_PUSH (name);
+    Store_Expression (SHARP_F);
     Store_Return (RC_COMP_ASSIGNMENT_TRAP_RESTART);
     Save_Cont ();
     RETURN_TO_C (code);
@@ -1477,7 +1486,7 @@ comp_assignment_trap_restart ()
   SCHEME_OBJECT name, environment, value;
   long code;
 
-  name = (Fetch_Expression ());
+  name = (STACK_POP ());
   environment = (STACK_POP ());
   value = (STACK_POP ());
   code = (Symbol_Lex_Set (environment, name, value));
@@ -1489,7 +1498,8 @@ comp_assignment_trap_restart ()
   {
     STACK_PUSH (value);
     STACK_PUSH (environment);
-    Store_Expression (name);
+    STACK_PUSH (name);
+    Store_Expression (SHARP_F);
     Store_Return (RC_COMP_ASSIGNMENT_TRAP_RESTART);
     Save_Cont ();
     return (code);
@@ -1521,7 +1531,8 @@ comutil_cache_lookup_apply (extension_addr, block_address, nactuals, ignore_4)
     environment = (compiled_block_environment (block));
     STACK_PUSH (environment);
     name = (compiler_var_error (extension, environment));
-    Store_Expression (name);
+    STACK_PUSH (name);
+    Store_Expression (SHARP_F);
     Store_Return (RC_COMP_CACHE_REF_APPLY_RESTART);
     Save_Cont ();
     RETURN_TO_C (code);
@@ -1535,7 +1546,7 @@ comp_cache_lookup_apply_restart ()
   SCHEME_OBJECT name, environment, block;
   long code;
 
-  name = (Fetch_Expression ());
+  name = (STACK_POP ());
   environment = (STACK_POP ());
   code = (Symbol_Lex_Ref (environment, name));
   if (code == PRIM_DONE)
@@ -1554,7 +1565,8 @@ comp_cache_lookup_apply_restart ()
   else
   {
     STACK_PUSH (environment);
-    Store_Expression (name);
+    STACK_PUSH (name);
+    Store_Expression (SHARP_F);
     Store_Return (RC_COMP_CACHE_REF_APPLY_RESTART);
     Save_Cont ();
     return (code);
@@ -1592,7 +1604,8 @@ name (return_address, extension_addr, ignore_3, ignore_4)		\
     environment = (compiled_block_environment (block));			\
     STACK_PUSH (environment);						\
     name = (compiler_var_error (extension, environment));		\
-    Store_Expression (name);						\
+    STACK_PUSH (name);							\
+    Store_Expression (SHARP_F);						\
     Store_Return (ret_code);						\
     Save_Cont ();							\
     RETURN_TO_C (code);							\
@@ -1616,7 +1629,8 @@ restart ()								\
   else									\
   {									\
     STACK_PUSH (environment);						\
-    Store_Expression (name);						\
+    STACK_PUSH (name);							\
+    Store_Expression (SHARP_F);						\
     Store_Return (ret_code);						\
     Save_Cont ();							\
     return (code);							\
@@ -1699,7 +1713,8 @@ util_name (ret_add, environment, variable, ignore_4)			\
   {									\
     STACK_PUSH (ENTRY_TO_OBJECT (ret_add));				\
     STACK_PUSH (variable);						\
-    Store_Expression (environment);					\
+    STACK_PUSH (environment);						\
+    Store_Expression (SHARP_F);						\
     Store_Return (ret_code);						\
     Save_Cont ();							\
     RETURN_TO_C (code);							\
@@ -1713,7 +1728,7 @@ restart_name ()								\
   SCHEME_OBJECT environment, variable;					\
   long code;								\
 									\
-  environment = (Fetch_Expression ());					\
+  environment = (STACK_POP ());						\
   variable = (STACK_POP ());						\
   code = (c_proc (environment, variable));				\
   if (code == PRIM_DONE)						\
@@ -1724,7 +1739,8 @@ restart_name ()								\
   else									\
   {									\
     STACK_PUSH (variable);						\
-    Store_Expression (environment);					\
+    STACK_PUSH (environment);						\
+    Store_Expression (SHARP_F);						\
     Store_Return (ret_code);						\
     Save_Cont ();							\
     return (code);							\
@@ -1750,7 +1766,8 @@ util_name (ret_add, environment, variable, value)			\
     STACK_PUSH (ENTRY_TO_OBJECT (ret_add));				\
     STACK_PUSH (value);							\
     STACK_PUSH (variable);						\
-    Store_Expression (environment);					\
+    STACK_PUSH (environment);						\
+    Store_Expression (SHARP_F);						\
     Store_Return (ret_code);						\
     Save_Cont ();							\
     RETURN_TO_C (code);							\
@@ -1777,7 +1794,8 @@ restart_name ()								\
   {									\
     STACK_PUSH (value);							\
     STACK_PUSH (variable);						\
-    Store_Expression (environment);					\
+    STACK_PUSH (environment);						\
+    Store_Expression (SHARP_F);						\
     Store_Return (ret_code);						\
     Save_Cont ();							\
     return (code);							\
@@ -1836,7 +1854,8 @@ comutil_lookup_apply (environment, variable, nactuals, ignore_4)
   {
     STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
     STACK_PUSH (variable);
-    Store_Expression (environment);
+    STACK_PUSH (environment);
+    Store_Expression (SHARP_F);
     Store_Return (RC_COMP_LOOKUP_APPLY_RESTART);
     Save_Cont ();
     RETURN_TO_C (code);
@@ -1850,7 +1869,7 @@ comp_lookup_apply_restart ()
   SCHEME_OBJECT environment, variable;
   long code;
 
-  environment = (Fetch_Expression ());
+  environment = (STACK_POP ());
   variable = (STACK_POP ());
   code = (Lex_Ref (environment, variable));
   if (code == PRIM_DONE)
@@ -1872,7 +1891,8 @@ comp_lookup_apply_restart ()
   else
   {
     STACK_PUSH (variable);
-    Store_Expression (environment);
+    STACK_PUSH (environment);
+    Store_Expression (SHARP_F);
     Store_Return (RC_COMP_LOOKUP_APPLY_RESTART);
     Save_Cont ();
     return (code);
