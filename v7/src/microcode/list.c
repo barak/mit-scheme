@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/list.c,v 9.29 1992/01/15 02:33:17 jinx Exp $
+$Id: list.c,v 9.30 1993/02/10 23:53:26 adams Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
