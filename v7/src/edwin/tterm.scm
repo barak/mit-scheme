@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.13 1992/02/18 00:17:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.14 1992/02/18 14:11:32 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -150,50 +150,49 @@ MIT in each case. |#
 	(pending-event false))
     (let ((read-event
 	   (lambda (block?)
-	     (let loop ()
-	       (if block?
-		   (channel-blocking channel)
-		   (channel-nonblocking channel))
-	       (let ((n
-		      (channel-select-then-read
-		       channel string 0 input-buffer-size)))
-		 (cond ((not n)
-			(if block? (error "#F returned from blocking read"))
-			false)
-		       ((fix:> n 0)
-			(set! start 0)
-			(set! end n)
-			(if transcript-port
-			    (output-port/write-substring
-			     transcript-port string 0 n))
-			(string-ref string 0))
-		       ((or (fix:= n event:process-output)
-			    (fix:= n event:process-status))
-			n)
-		       ((fix:= n event:interrupt)
-			(if inferior-thread-changes? n (loop)))
-		       ((fix:= n 0)
-			(error "Reached EOF in keyboard input."))
-		       (else
-			(error "Illegal return value:" n)))))))
-	  (process-pending-event
-	   (lambda ()
 	     (let ((event pending-event))
 	       (if event
 		   (begin
 		     (set! pending-event false)
-		     (process-change-event event)))))))
-      (let ((guarantee-input
-	     (lambda ()
+		     event)
+		   (let loop ()
+		     (if block?
+			 (channel-blocking channel)
+			 (channel-nonblocking channel))
+		     (let ((n
+			    (channel-select-then-read
+			     channel string 0 input-buffer-size)))
+		       (cond ((not n)
+			      (if block?
+				  (error "#F returned from blocking read"))
+			      false)
+			     ((fix:> n 0)
+			      (set! start 0)
+			      (set! end n)
+			      (if transcript-port
+				  (output-port/write-substring
+				   transcript-port string 0 n))
+			      (string-ref string 0))
+			     ((or (fix:= n event:process-output)
+				  (fix:= n event:process-status))
+			      n)
+			     ((fix:= n event:interrupt)
+			      (if inferior-thread-changes? n (loop)))
+			     ((fix:= n 0)
+			      (error "Reached EOF in keyboard input."))
+			     (else
+			      (error "Illegal return value:" n))))))))))
+      (let ((read-until-result
+	     (lambda (block?)
 	       (let loop ()
 		 (update-screens! false)
-		 (process-pending-event)
-		 (if (not (fix:< start end))
-		     (let ((event (read-event true)))
+		 (or (fix:< start end)
+		     (let ((event (read-event block?)))
 		       (if (fix:fixnum? event)
 			   (begin
 			     (process-change-event event)
-			     (loop)))))))))
+			     (loop))
+			   event)))))))
 	(values
 	 (lambda ()			;halt-update?
 	   (or pending-event
@@ -203,20 +202,12 @@ MIT in each case. |#
 		     (set! pending-event event))
 		 event)))
 	 (lambda ()			;peek-no-hang
-	   (process-pending-event)
-	   (let loop ()
-	     (or (fix:< start end)
-		 (let ((event (read-event false)))
-		   (if (fix:fixnum? event)
-		       (begin
-			 (process-change-event event)
-			 (loop))
-		       event)))))
+	   (read-until-result false))
 	 (lambda ()			;peek
-	   (guarantee-input)
+	   (read-until-result true)
 	   (string-ref string start))
 	 (lambda ()			;read
-	   (guarantee-input)
+	   (read-until-result true)
 	   (let ((char (string-ref string start)))
 	     (set! start (fix:+ start 1))
 	     char)))))))
@@ -227,15 +218,10 @@ MIT in each case. |#
 (define-integrable event:interrupt -4)
 
 (define (process-change-event event)
-  (if (cond ((fix:= event event:process-output)
-	     (accept-process-output))
-	    ((fix:= event event:process-status)
-	     (handle-process-status-changes))
-	    ((fix:= event event:interrupt)
-	     (accept-thread-output))
-	    (else
-	     (error "Illegal change event:" event)))
-      (update-screens! false)))
+  (cond ((fix:= event event:process-output) (accept-process-output))
+	((fix:= event event:process-status) (handle-process-status-changes))
+	((fix:= event event:interrupt) (accept-thread-output))
+	(else (error "Illegal change event:" event))))
 
 (define (signal-interrupt!)
   (signal-thread-event editor-thread
