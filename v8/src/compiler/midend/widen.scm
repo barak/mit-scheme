@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: widen.scm,v 1.3 1994/11/25 23:08:14 adams Exp $
+$Id: widen.scm,v 1.4 1994/12/15 01:41:42 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -795,6 +795,7 @@ MIT in each case. |#
   ;; Rewrite CODE after widening all references to the WIDENABLE closures.  The
   ;; widening is done by side-effecting CODE, and the rewritten CODE is
   ;; returned.
+  (sample/1 '(widen/widened-closures count) (length widenable))
   (for-every widenable
     (lambda (closure)
       ;; Mark the closures and all nodes at which the value arrives as
