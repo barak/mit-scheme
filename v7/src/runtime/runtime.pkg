@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.390 2001/12/19 05:22:04 cph Exp $
+$Id: runtime.pkg,v 14.391 2001/12/19 21:41:07 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -3809,8 +3809,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-package (runtime system-macros)
   (files "sysmac")
   (parent (runtime))
-  (export ()
-	  syntax-table/system-internal)
   (initialization (initialize-package!)))
 
 (define-package (runtime truncated-string-output)

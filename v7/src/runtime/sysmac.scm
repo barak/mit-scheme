@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sysmac.scm,v 14.4 2001/12/18 21:55:54 cph Exp $
+$Id: sysmac.scm,v 14.5 2001/12/19 21:41:14 cph Exp $
 
 Copyright (c) 1988, 1999, 2001 Massachusetts Institute of Technology
 
@@ -26,19 +26,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! syntax-table/system-internal (->environment '(RUNTIME)))
-  (set-environment-syntax-table! syntax-table/system-internal
-				 (make-syntax-table (->environment '())))
-  (for-each (lambda (entry)
-	      (syntax-table/define syntax-table/system-internal
-				   (car entry)
-				   (cadr entry)))
-	    `((DEFINE-PRIMITIVES ,transform/define-primitives)
-	      (UCODE-PRIMITIVE ,transform/ucode-primitive)
-	      (UCODE-RETURN-ADDRESS ,transform/ucode-return-address)
-	      (UCODE-TYPE ,transform/ucode-type))))
-
-(define syntax-table/system-internal)
+  (let ((environment (->environment '(RUNTIME))))
+    (set-environment-syntax-table! environment
+				   (make-syntax-table (->environment '())))
+    (for-each (lambda (entry)
+		(syntax-table/define environment (car entry) (cadr entry)))
+	      `((DEFINE-PRIMITIVES ,transform/define-primitives)
+		(UCODE-PRIMITIVE ,transform/ucode-primitive)
+		(UCODE-RETURN-ADDRESS ,transform/ucode-return-address)
+		(UCODE-TYPE ,transform/ucode-type)))))
 
 (define transform/define-primitives
   (let ((primitive-definition
