@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: symtab.scm,v 1.45 1993/10/12 07:27:12 cph Exp $
+$Id: symtab.scm,v 1.46 1993/12/08 09:20:56 gjr Exp $
 
-Copyright (c) 1987-93 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,8 +37,8 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (make-symbol-table)
-  (make-eq-hash-table))
+(define make-symbol-table
+  (strong-hash-table/constructor eq-hash-mod eq? #t))
 
 (define (symbol-table-define! table key value)
   (let ((binding (hash-table/get table key #f)))
