@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/posixtyp.h,v 1.4 1991/09/25 20:37:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/posixtyp.h,v 1.5 1992/02/27 18:41:09 mhwu Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -50,11 +50,13 @@ MIT in each case. */
 #define _MODE_T
 #define _NLINK_T
 #define _SIZE_T
+#define _OFF_T
 #endif
 
 #ifdef _BSD
 #define _UID_T
 #define _SIZE_T
+#define _OFF_T
 #endif
 
 #if defined(_SUNOS4) && defined(__sys_stdtypes_h)
@@ -64,6 +66,7 @@ MIT in each case. */
 #define _CLOCK_T
 #define _TIME_T
 #define _SIZE_T
+#define _OFF_T
 #define _CC_T
 #endif
 
@@ -71,6 +74,7 @@ MIT in each case. */
 #define _MODE_T
 #define _NLINK_T
 #define _PID_T
+#define _OFF_T
 #endif
 
 #endif
@@ -116,6 +120,11 @@ typedef long time_t;
 #ifndef _SIZE_T
 #define _SIZE_T
 typedef unsigned int size_t;
+#endif
+
+#ifndef _OFF_T
+#define _OFF_T
+typedef unsigned int off_t;
 #endif
 
 #ifndef _CC_T
