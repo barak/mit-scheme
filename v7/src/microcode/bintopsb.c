@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.27 1987/08/07 15:34:56 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.28 1987/09/21 21:54:48 jinx Rel $
  *
  * This File contains the code to translate internal format binary
  * files to portable format.
@@ -585,7 +585,7 @@ Process_Area(Code, Area, Bound, Obj, FObj)
 
       case TC_BROKEN_HEART:
 	/* [Broken Heart 0] is the cdr of fasdumped symbols. */
-	if (Get_Integer(This) != 0)
+	if (OBJECT_DATUM(This) != 0)
 	{
 	  fprintf(stderr, "%s: Broken Heart found in scan.\n",
 		  Program_Name);
@@ -594,6 +594,7 @@ Process_Area(Code, Area, Bound, Obj, FObj)
 	*Area += 1;
 	break;
 
+      case TC_STACK_ENVIRONMENT:
       case_compiled_entry_point:
 	fprintf(stderr,
 		"%s: File is not portable: Compiled code.\n",

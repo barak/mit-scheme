@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.29 1987/07/29 08:24:27 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.30 1987/09/21 21:55:47 jinx Rel $
 
    The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
@@ -235,9 +235,10 @@ Relocate_Block(Next_Pointer, Stop_At)
 
     Temp = *Next_Pointer;
     Switch_by_GC_Type(Temp)
-    { case TC_BROKEN_HEART:
+    {
+      case TC_BROKEN_HEART:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
-      case_Fasdump_Non_Pointer:
+      case_Fasload_Non_Pointer:
         Next_Pointer += 1;
 	break;
 	
@@ -263,8 +264,11 @@ Relocate_Block(Next_Pointer, Stop_At)
 	  break;
 	}
 	/* It is a pointer, fall through. */
+
+      case TC_STACK_ENVIRONMENT:
       case_compiled_entry_point:
-      	/* Compiled entry points work automagically. */
+      	/* Compiled entry points and stack environments work automagically. */
+
       default:
       {
 	fast long Next;

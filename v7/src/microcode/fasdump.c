@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.29 1987/06/18 21:15:11 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.30 1987/09/21 21:55:35 jinx Rel $
 
    This file contains code for fasdump and dump-band.
 */
@@ -46,6 +46,7 @@ MIT in each case. */
 extern Pointer Make_Prim_Exts();
 
 /* Some statics used freely in this file */
+
 Pointer *NewFree, *NewMemTop, *Fixup, *Orig_New_Free;
 
 /* FASDUMP:
@@ -92,21 +93,31 @@ Dump_Pointer(Fasdump_Setup_Pointer(Extra_Code, Normal_BH(false, continue)))
 
 #define FASDUMP_FIX_BUFFER 10
 
-Boolean DumpLoop(Scan, Dump_Mode)
-fast Pointer *Scan;
-int Dump_Mode;
-{ fast Pointer *To, *Old, Temp, New_Address, *Fixes;
+Boolean
+DumpLoop(Scan, Dump_Mode)
+     fast Pointer *Scan;
+     int Dump_Mode;
+{
+  fast Pointer *To, *Old, Temp, New_Address, *Fixes;
 
   To = NewFree;
   Fixes = Fixup;
 
   for ( ; Scan != To; Scan++)
-  { Temp = *Scan;
-
+  {
+    Temp = *Scan;
+
     Switch_by_GC_Type(Temp)
-    { case TC_BROKEN_HEART:
-        if (Datum(Temp) != 0)
-	{ fprintf(stderr, "\nDump: Broken heart in scan.\n");
+    {
+      case TC_PRIMITIVE_EXTERNAL:
+      case TC_STACK_ENVIRONMENT:
+      case_Fasload_Non_Pointer:
+	break;
+
+      case TC_BROKEN_HEART:
+        if (OBJECT_DATUM(Temp) != 0)
+	{
+	  fprintf(stderr, "\nDump: Broken heart in scan.\n");
 	  Microcode_Termination(TERM_BROKEN_HEART);
 	}
 	break;
@@ -114,12 +125,6 @@ int Dump_Mode;
       case TC_MANIFEST_NM_VECTOR:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
 	Scan += Get_Integer(Temp);
-	break;
-
-	/* This should really be case_Fasdump_Non_Pointer,
-	   and PRIMITIVE_EXTERNAL should be handled specially
-	 */
-      case_Non_Pointer:
 	break;
 
       case_compiled_entry_point:
@@ -130,12 +135,13 @@ int Dump_Mode;
 	Setup_Pointer_for_Dump(Transport_Cell());
 
       case TC_REFERENCE_TRAP:
-	if (Datum(Temp) <= TRAP_MAX_IMMEDIATE)
+	if (OBJECT_DATUM(Temp) <= TRAP_MAX_IMMEDIATE)
 	{
 	  /* It is a non pointer. */
 	  break;
 	}
 	/* Fall through. */
+
       case TC_WEAK_CONS:
       case_Fasdump_Pair:
 	Setup_Pointer_for_Dump(Transport_Pair());

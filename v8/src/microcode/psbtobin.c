@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.26 1987/08/07 15:34:27 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.27 1987/09/21 21:55:06 jinx Rel $
  *
  * This File contains the code to translate portable format binary
  * files to internal format.
@@ -124,12 +124,16 @@ read_a_string(To, Slot)
   string = ((char *) (&To[STRING_CHARS]));
   *Slot = Make_Pointer(TC_CHARACTER_STRING, To);
   fscanf(Portable_File, "%ld %ld", &maxlen, &len);
-  maxlen += 1;					/* Null terminated */
+
+  /* Null terminated */
+  maxlen += 1;
   Pointer_Count = STRING_CHARS + char_to_pointer(maxlen);
   To[STRING_HEADER] =
     Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, (Pointer_Count - 1));
   To[STRING_LENGTH] = Make_Non_Pointer(TC_FIXNUM, len);
-  getc(Portable_File);				/* Space */
+
+  /* Space */
+  getc(Portable_File);
   while (--len >= 0)
     *string++ = ((char) read_a_char());
   *string = '\0';
@@ -353,8 +357,8 @@ read_a_flonum()
   else if ((exponent > MAX_FLONUM_EXPONENT) ||
 	   (exponent < -MAX_FLONUM_EXPONENT))
   {
-
     /* Skip over mantissa */
+
     while (getc(Portable_File) != '\n') { };
     fprintf(stderr,
 	    "%s: Floating point exponent too %s!\n",
@@ -473,16 +477,20 @@ Relocate_Objects(From, N, disp)
 
   Until = &From[N];
   while (From < Until)
-  { switch(Type_Code(*From))
-    { case TC_FIXNUM:
+  {
+    switch(Type_Code(*From))
+    {
+      case TC_FIXNUM:
       case TC_CHARACTER:
         From += 1;
         break;
+
       case TC_BIG_FIXNUM:
       case TC_BIG_FLONUM:
       case TC_CHARACTER_STRING:
 	*From++ == Make_Object(Type_Code(*From), (disp + Datum(*From)));
 	break;
+
       default:
 	fprintf(stderr,
 		"%s: Unknown External Object Reference with Type 0x%02x",
@@ -534,7 +542,8 @@ Read_Pointers_and_Relocate(N, To)
     VMS_BUG(The_Datum = 0);
     fscanf(Portable_File, "%2x %lx", &The_Type, &The_Datum);
     switch(The_Type)
-    { case CONSTANT_CODE:
+    {
+      case CONSTANT_CODE:
 	*To++ = Constant_Table[The_Datum];
 	continue;
 	
@@ -607,8 +616,10 @@ Print_External_Objects(area_name, Table, N)
 
   for( ; Table < Table_End; Table++)
     switch (Type_Code(*Table))
-    { case TC_FIXNUM:
-      { long The_Number;
+    {
+      case TC_FIXNUM:
+      {
+	long The_Number;
 
 	Sign_Extend(*Table, The_Number);
         fprintf(stderr,

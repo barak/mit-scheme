@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.27 1987/08/16 15:48:31 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.28 1987/09/21 21:56:03 jinx Exp $
  *
  * This file contains the macros for use in code which does GC-like
  * loops over memory.  It is only included in a few files, unlike
@@ -53,17 +53,17 @@ MIT in each case. */
   case TC_THE_ENVIRONMENT:				\
   case TC_RETURN_CODE:					\
   case TC_PRIMITIVE:					\
-  case TC_PCOMB0:					\
-  case TC_STACK_ENVIRONMENT
+  case TC_PCOMB0
 
-#define case_Fasdump_Non_Pointer			\
- case TC_FIXNUM:					\
- case TC_CHARACTER:					\
- case_simple_Non_Pointer
+#define case_Fasload_Non_Pointer			\
+  case TC_FIXNUM:					\
+  case TC_CHARACTER:					\
+  case_simple_Non_Pointer
 
 #define case_Non_Pointer				\
- case TC_PRIMITIVE_EXTERNAL:				\
- case_Fasdump_Non_Pointer
+  case TC_PRIMITIVE_EXTERNAL:				\
+  case TC_STACK_ENVIRONMENT:				\
+  case_Fasload_Non_Pointer
 
 /* Missing Non Pointer types (must always be treated specially):
    TC_BROKEN_HEART

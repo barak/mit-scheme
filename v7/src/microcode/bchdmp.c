@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.33 1987/06/18 21:14:40 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.34 1987/09/21 21:55:23 jinx Rel $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -184,7 +184,7 @@ dumploop(Scan, To_ptr, To_Address_ptr)
     Switch_by_GC_Type(Temp)
     {
       case TC_BROKEN_HEART:
-        if (Datum(Temp) == 0)
+        if (OBJECT_DATUM(Temp) == 0)
 	  break;
         if (Scan != (Get_Pointer(Temp)))
 	{
@@ -218,10 +218,12 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 	    return false;
 	  break;
 	}
-
-      case_Non_Pointer:
-	break;
 
+      case TC_PRIMITIVE_EXTERNAL:
+      case TC_STACK_ENVIRONMENT:
+      case_Fasload_Non_Pointer:
+	break;
+
       case_compiled_entry_point:
 	Old = Get_Pointer(Temp);
 	Compiled_BH(true, continue);
@@ -242,12 +244,13 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 	fasdump_normal_pointer(copy_cell(), 1);
 
       case TC_REFERENCE_TRAP:
-	if (Datum(Temp) <= TRAP_MAX_IMMEDIATE)
+	if (OBJECT_DATUM(Temp) <= TRAP_MAX_IMMEDIATE)
 	{
 	  /* It is a non pointer. */
 	  break;
 	}
 	/* It is a pair, fall through. */
+
       case TC_WEAK_CONS:
       case_Fasdump_Pair:
 	fasdump_normal_pointer(copy_pair(), 2);
