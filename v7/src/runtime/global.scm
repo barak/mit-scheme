@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.21 1991/02/15 18:05:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.22 1991/04/18 22:34:31 markf Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -37,10 +37,13 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(define (initialize-package!)
+  (set! hook/scode-eval default/scode-eval))
+
 ;;;; Primitive Operators
 
 (define-primitives
-  scode-eval force error-procedure
+  force error-procedure
   set-interrupt-enables! enable-interrupts! with-interrupt-mask
   get-fixed-objects-vector with-history-disabled
   (primitive-procedure-arity 1)
@@ -100,6 +103,12 @@ MIT in each case. |#
 (define (eval expression environment)
   (extended-scode-eval (syntax expression system-global-syntax-table)
 		       environment))
+
+(define hook/scode-eval)
+(define default/scode-eval (ucode-primitive scode-eval))
+
+(define (scode-eval scode environment)
+  (hook/scode-eval scode environment))
 
 (define-integrable (system-hunk3-cons type cxr0 cxr1 cxr2)
   (object-new-type type (hunk3-cons cxr0 cxr1 cxr2)))
