@@ -6,7 +6,7 @@ rm -rf ${prefix}
 mkdir ${prefix}
 mkdir ${tldir}
 
-mans="ref-manual user-manual sos"
+mans="ref-manual user-manual sos imail"
 types="texinfo info dvi ps html"
 
 for type in ${types}
