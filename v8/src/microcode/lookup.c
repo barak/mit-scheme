@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.c,v 9.50 1992/02/03 23:32:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.c,v 9.51 1992/02/27 22:25:45 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -1364,16 +1364,16 @@ DEFUN (unassigned_p_transform, (reference_result), long reference_result)
       Val = SHARP_T;
       return (PRIM_DONE);
 
-    case ERR_UNBOUND_VARIABLE:
     case PRIM_DONE:
       Val = SHARP_F;
       return (PRIM_DONE);
 
+    case ERR_UNBOUND_VARIABLE:
     default:
       return (reference_result);
   }
 }
-
+
 extern long
   EXFUN (Symbol_Lex_unassigned_p, (SCHEME_OBJECT, SCHEME_OBJECT)),
   EXFUN (Symbol_Lex_unbound_p, (SCHEME_OBJECT, SCHEME_OBJECT));
