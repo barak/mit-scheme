@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.53 1991/08/21 18:12:25 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.54 1991/08/25 21:37:26 bal Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -902,9 +902,12 @@ MIT in each case. |#
 	  edwin-command$rmail-delete-message
 	  edwin-command$rmail-expunge
 	  edwin-command$rmail-get-new-mail
+	  edwin-command$rmail-input
 	  edwin-command$rmail-last-message
 	  edwin-command$rmail-next-message
 	  edwin-command$rmail-next-undeleted-message
+	  edwin-command$rmail-output
+	  edwin-command$rmail-output-to-rmail-file
 	  edwin-command$rmail-previous-message
 	  edwin-command$rmail-previous-undeleted-message
 	  edwin-command$rmail-reply
@@ -915,18 +918,24 @@ MIT in each case. |#
 	  edwin-command$rmail-sort-by-size-lines
 	  edwin-command$rmail-sort-by-subject
 	  edwin-command$rmail-summary
+	  edwin-command$rmail-summary-beginning-of-buffer
 	  edwin-command$rmail-summary-delete-message
 	  edwin-command$rmail-summary-delete-message-backward
 	  edwin-command$rmail-summary-delete-message-forward
 	  edwin-command$rmail-summary-exit
+	  edwin-command$rmail-summary-expunge
+	  edwin-command$rmail-summary-expunge-and-save
 	  edwin-command$rmail-summary-next-message
 	  edwin-command$rmail-summary-next-undeleted-message
+	  edwin-command$rmail-summary-output
+	  edwin-command$rmail-summary-output-to-rmail-file
 	  edwin-command$rmail-summary-previous-message
 	  edwin-command$rmail-summary-previous-undeleted-message
 	  edwin-command$rmail-summary-quit
 	  edwin-command$rmail-summary-scroll-message-down
 	  edwin-command$rmail-summary-scroll-message-up
 	  edwin-command$rmail-summary-show-message
+	  edwin-command$rmail-summary-toggle-header
 	  edwin-command$rmail-summary-undelete-message
 	  edwin-command$rmail-summary-undelete-message-backward
 	  edwin-command$rmail-summary-undelete-message-forward
