@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.47 2000/05/08 18:54:51 cph Exp $
+;;; $Id: imail-core.scm,v 1.48 2000/05/08 19:02:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -333,8 +333,10 @@
   (body define accessor)
   (flags define standard)
   (properties define standard)
-  (modification-count define standard initial-value 0)
-  (folder define standard initial-value #f)
+  (modification-count define standard
+		      initial-value 0)
+  (folder define standard
+	  initial-value #f)
   (index define standard))
 
 (define-method write-instance ((message <message>) port)
@@ -371,29 +373,28 @@
 	  (else
 	   (loop (cdr headers) (cons (car headers) headers*) flags
 		 properties)))))
-
+
 (define (make-attached-message folder headers body)
   (let ((message (make-detached-message headers body)))
     (attach-message! message folder)
     message))
 
-(define (attach-message message folder)
-  (let ((message
-	 (make-message (map copy-header-field (message-header-fields message))
-		       (message-body message)
-		       (list-copy (message-flags message))
-		       (alist-copy (message-properties message)))))
-    (attach-message! message folder)
-    message))
+(define (copy-message message)
+  (make-message (map copy-header-field (message-header-fields message))
+		(message-body message)
+		(list-copy (message-flags message))
+		(alist-copy (message-properties message))))
 
-(define (attach-message! message folder)
-  (guarantee-folder folder 'ATTACH-MESSAGE)
+(define (attach-message! message folder index)
+  (guarantee-folder folder 'ATTACH-MESSAGE!)
   (set-message-folder! message folder)
-  (set-message-index! message #f))
+  (set-message-index! message index)
+  (message-modified! message))
 
 (define (detach-message! message)
   (set-message-folder! message #f)
-  (set-message-index! message #f))
+  (set-message-index! message #f)
+  (message-modified! message))
 
 (define (message-modified! message)
   (without-interrupts

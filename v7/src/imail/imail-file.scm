@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.18 2000/05/08 18:51:43 cph Exp $
+;;; $Id: imail-file.scm,v 1.19 2000/05/08 19:02:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -98,7 +98,7 @@
   (list-ref (file-folder-messages folder) index))
 
 (define-method append-message ((folder <file-folder>) (message <message>))
-  (let ((message (attach-message message folder)))
+  (let ((message (copy-message message)))
     (without-interrupts
      (lambda ()
        (set-file-folder-messages!
@@ -110,13 +110,12 @@
 		  (if (pair? this)
 		      (loop this (cdr this) (fix:+ index 1))
 		      (begin
-			(set-message-index! message index)
+			(attach-message! message folder index)
 			(set-cdr! prev (list message)))))
 		messages)
 	      (begin
-		(set-message-index! message 0)
-		(list message)))))
-       (message-modified! message)))))
+		(attach-message! message folder 0)
+		(list message)))))))))
 
 (define-method expunge-deleted-messages ((folder <file-folder>))
   (without-interrupts
