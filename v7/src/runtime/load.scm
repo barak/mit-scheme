@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.8 1989/08/17 14:51:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.9 1989/08/17 16:02:55 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -144,6 +144,20 @@ MIT in each case. |#
 (define default-object
   "default-object")
 
+(define (find-true-pathname pathname default-types)
+  (or (let ((try
+	     (lambda (pathname)
+	       (pathname->input-truename
+		(pathname-default-version pathname 'NEWEST)))))
+	(if (pathname-type pathname)
+	    (try pathname)
+	    (or (pathname->input-truename pathname)
+		(let loop ((types default-types))
+		  (and (not (null? types))
+		       (or (try (pathname-new-type pathname (car types)))
+			   (loop (cdr types))))))))
+      (error "No such file" pathname)))
+
 (define (load/internal pathname true-pathname environment syntax-table
 		       purify? load-noisily?)
   (let ((true-filename (pathname->string true-pathname)))
@@ -167,29 +181,16 @@ MIT in each case. |#
 		 (nearest-repl/environment)
 		 environment)))
 	  (let ((value-stream
-		 (eval-stream (read-stream port) environment syntax-table)))
+		 (lambda ()
+		   (eval-stream (read-stream port) environment syntax-table))))
 	    (if load-noisily?
-		(write-stream value-stream
+		(write-stream (value-stream)
 			      (lambda (value)
 				(hook/repl-write (nearest-repl) value)))
 		(loading-message load/suppress-loading-message? true-filename
 		  (lambda ()
-		    (write-stream value-stream
+		    (write-stream (value-stream)
 				  (lambda (value) value false))))))))))
-
-(define (find-true-pathname pathname default-types)
-  (or (let ((try
-	     (lambda (pathname)
-	       (pathname->input-truename
-		(pathname-default-version pathname 'NEWEST)))))
-	(if (pathname-type pathname)
-	    (try pathname)
-	    (or (pathname->input-truename pathname)
-		(let loop ((types default-types))
-		  (and (not (null? types))
-		       (or (try (pathname-new-type pathname (car types)))
-			   (loop (cdr types))))))))
-      (error "No such file" pathname)))
 (define (read-stream port)
   (parse-objects port
 		 (current-parser-table)
