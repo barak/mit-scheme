@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.3 1989/11/27 18:16:04 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.4 1989/11/27 18:25:40 jinx Exp $
  *
  * Compiled code interface macros.
  *
@@ -143,7 +143,7 @@ typedef unsigned short format_word;
 /* Interrupt/GC polling. */
 
 /* Skip over this many BYTES to bypass the GC check code (ordinary
-procedures and continuations differ from closured procedures) */
+procedures and continuations differ from closures) */
 
 #define ENTRY_SKIPPED_CHECK_OFFSET 	4
 #define CLOSURE_SKIPPED_CHECK_OFFSET 	12
