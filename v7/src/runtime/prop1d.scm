@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/prop1d.scm,v 14.3 1989/06/06 22:28:51 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/prop1d.scm,v 14.4 1989/09/15 17:16:35 jinx Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -142,4 +142,21 @@ MIT in each case. |#
 		  (loop previous next result))
 		(loop alist
 		      next
-		      (cons (cons key (system-pair-cdr entry)) result))))))))
+		      (cons (cons (and (not (eq? key false-key)) key)
+				  (system-pair-cdr entry))
+			    result))))))))
+
+(define (1d-table/for-each proc table)
+  (let loop ((previous table) (alist (cdr table)))
+    (if (not (null? alist))
+	(let ((entry (car alist))
+	      (next (cdr alist)))
+	  (let ((key (system-pair-car entry)))
+	    (if key
+		(begin
+		  (proc (and (not (eq? key false-key)) key)
+			(system-pair-cdr entry))
+		  (loop alist next))
+		(begin
+		  (set-cdr! previous next)
+		  (loop previous next))))))))
