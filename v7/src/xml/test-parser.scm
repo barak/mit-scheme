@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: test-parser.scm,v 1.2 2001/07/10 05:30:21 cph Exp $
+;;; $Id: test-parser.scm,v 1.3 2001/07/10 17:50:14 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -26,10 +26,10 @@
 
 (define (test-directory directory)
   (map (lambda (pathname)
+	 (write-string ";")
+	 (write-string (file-namestring pathname))
+	 (write-string ":\t")
 	 (let ((v (ignore-errors (lambda () (test-parser pathname)))))
-	   (write-string ";")
-	   (write-string (file-namestring pathname))
-	   (write-string ":\t")
 	   (cond ((not v)
 		  (write-string "No match."))
 		 ((condition? v)

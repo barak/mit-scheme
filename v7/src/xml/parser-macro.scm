@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser-macro.scm,v 1.2 2001/07/10 05:30:19 cph Exp $
+;;; $Id: parser-macro.scm,v 1.3 2001/07/10 17:50:11 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -38,21 +38,16 @@
 		 (SEXP
 		  (LAMBDA (BUFFER)
 		    BUFFER
-		    (ERROR
+		    (PERROR
+		     ,v
 		     ,(if (string? description)
-			  (string-append "Unterminated " description " at")
-			  `(STRING-APPEND "Unterminated " ,description " at"))
-		     (PARSER-BUFFER-POSITION-STRING ,v)))))))))
+			  (string-append "Unterminated " description)
+			  `(STRING-APPEND "Unterminated "
+					  ,description))))))))))
 
 (define-*parser-macro (sbracket description open close . body)
   `(BRACKET ,description (NOISE (STRING ,open)) (NOISE (STRING ,close))
      ,@body))
 
 (define-*parser-macro (require-success message body)
-  `(ALT ,body
-	(SEXP
-	 (LAMBDA (BUFFER)
-	   (ERROR ,(if (string? message)
-		       (string-append message " at")
-		       `(STRING-APPEND ,message " at"))
-		  (PARSER-BUFFER-POSITION-STRING BUFFER))))))
+  `(ALT ,body (SEXP (LAMBDA (BUFFER) (PERROR BUFFER ,message)))))
