@@ -1,7 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/compiler.sf-big,v 1.2 1991/06/21 00:15:24 cph Exp $
-$MC68020-Header: comp.sf,v 1.11 89/08/28 18:33:37 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/compiler.sf-big,v 1.3 1991/10/25 13:00:11 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -108,6 +107,6 @@ MIT in each case. |#
 ((access syntax-files! (->environment '(COMPILER))))
 
 ;; Rebuild the package constructors and cref.
-(cref/generate-all "comp")
+(cref/generate-constructors "comp")
 (sf "comp.con" "comp.bcon")
 (sf "comp.ldr" "comp.bldr")
