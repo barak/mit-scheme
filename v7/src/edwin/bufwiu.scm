@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwiu.scm,v 1.26 1993/10/27 01:59:35 cph Exp $
+;;;	$Id: bufwiu.scm,v 1.27 1994/08/25 00:59:18 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -66,7 +66,7 @@
 		  ;; been updated to reflect these changes.
 		  (%set-window-modified-tick! window
 					      (group-modified-tick group))))
-	  (if (%window-start-line-mark window)
+	  (if (and start (%window-start-line-mark window))
 	      (begin
 		;; If this change affects START-MARK, invalidate it
 		;; and request a display update.
