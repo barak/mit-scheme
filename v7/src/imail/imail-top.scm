@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.176 2000/06/20 19:15:41 cph Exp $
+;;; $Id: imail-top.scm,v 1.177 2000/06/20 19:16:07 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -704,7 +704,7 @@ With prefix argument N, undeletes backward N messages,
 (define-command imail-add-flag
   "Add FLAG to flags associated with current IMAIL message.
 Completion is performed over known flags when reading.
-With prefix argument N, removes FLAG to next N messages,
+With prefix argument N, adds FLAG to next N messages,
  or previous -N if N is negative."
   (lambda ()
     (list (command-argument)
