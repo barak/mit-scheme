@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: input.scm,v 14.21 2002/11/20 19:46:20 cph Exp $
+$Id: input.scm,v 14.22 2003/01/01 02:25:33 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2002 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -74,7 +74,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define (char-ready? #!optional port interval)
   (input-port/char-ready? (if (default-object? port)
 			      (current-input-port)
-			      (guarantee-input-port port))
+			      (guarantee-input-port port 'CHAR-READY?))
 			  (if (default-object? interval)
 			      0
 			      (begin
@@ -88,7 +88,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-input-port)
-	     (guarantee-input-port port))))
+	     (guarantee-input-port port 'PEEK-CHAR))))
     (let loop ()
       (or (input-port/peek-char port)
 	  (loop)))))
@@ -97,7 +97,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-input-port)
-	     (guarantee-input-port port))))
+	     (guarantee-input-port port 'READ-CHAR))))
     (let loop ()
       (or (input-port/read-char port)
 	  (loop)))))
@@ -106,7 +106,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-input-port)
-	     (guarantee-input-port port))))
+	     (guarantee-input-port port 'READ-CHAR-NO-HANG))))
     (if (input-port/char-ready? port 0)
 	(input-port/read-char port)
 	(let ((eof? (port/operation port 'EOF?)))
@@ -117,13 +117,13 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define (read-string delimiters #!optional port)
   (input-port/read-string (if (default-object? port)
 			      (current-input-port)
-			      (guarantee-input-port port))
+			      (guarantee-input-port port 'READ-STRING))
 			  delimiters))
 
 (define (read #!optional port parser-table)
   (parse-object (if (default-object? port)
 		    (current-input-port)
-		    (guarantee-input-port port))
+		    (guarantee-input-port port 'READ))
 		(if (default-object? parser-table)
 		    (current-parser-table)
 		    parser-table)))
@@ -131,16 +131,16 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define (read-line #!optional port)
   (input-port/read-line (if (default-object? port)
 			    (current-input-port)
-			    (guarantee-input-port port))))
+			    (guarantee-input-port port 'READ-LINE))))
 
 (define (read-string! string #!optional port)
   (input-port/read-string! (if (default-object? port)
 			       (current-input-port)
-			       (guarantee-input-port port))
+			       (guarantee-input-port port 'READ-STRING!))
 			   string))
 
 (define (read-substring! string start end #!optional port)
   (input-port/read-substring! (if (default-object? port)
 				  (current-input-port)
-				  (guarantee-input-port port))
+				  (guarantee-input-port port 'READ-SUBSTRING!))
 			      string start end))

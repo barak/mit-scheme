@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.58 2002/11/20 19:46:19 cph Exp $
+$Id: error.scm,v 14.59 2003/01/01 02:26:37 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -1244,10 +1244,6 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define-integrable (guarantee-continuation object operator)
   (if (not (continuation? object))
       (error:wrong-type-argument object "continuation" operator)))
-
-(define-integrable (guarantee-output-port object operator)
-  (if (not (output-port? object))
-      (error:wrong-type-argument object "output port" operator)))
 
 (define-integrable (guarantee-condition-type object operator)
   (if (not (condition-type? object))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.24 2002/11/20 19:46:22 cph Exp $
+$Id: port.scm,v 1.25 2003/01/01 02:26:11 cph Exp $
 
 Copyright (c) 1991-2002 Massachusetts Institute of Technology
 
@@ -302,24 +302,24 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	 (and (port-type/supports-input? type)
 	      (port-type/supports-output? type)))))
 
-(define (guarantee-port port)
+(define (guarantee-port port procedure)
   (if (not (port? port))
-      (error:wrong-type-argument port "port" #f))
+      (error:wrong-type-argument port "port" procedure))
   port)
 
-(define (guarantee-input-port port)
+(define (guarantee-input-port port procedure)
   (if (not (input-port? port))
-      (error:wrong-type-argument port "input port" #f))
+      (error:wrong-type-argument port "input port" procedure))
   port)
 
-(define (guarantee-output-port port)
+(define (guarantee-output-port port procedure)
   (if (not (output-port? port))
-      (error:wrong-type-argument port "output port" #f))
+      (error:wrong-type-argument port "output port" procedure))
   port)
 
-(define (guarantee-i/o-port port)
+(define (guarantee-i/o-port port procedure)
   (if (not (i/o-port? port))
-      (error:wrong-type-argument port "I/O port" #f))
+      (error:wrong-type-argument port "I/O port" procedure))
   port)
 
 ;;;; Encapsulation
@@ -334,7 +334,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
        (encapsulated-port-state? (%port/state object))))
 
 (define (guarantee-encapsulated-port object procedure)
-  (guarantee-port object)
+  (guarantee-port object procedure)
   (if (not (encapsulated-port-state? (%port/state object)))
       (error:wrong-type-argument object "encapsulated port" procedure)))
 
@@ -351,7 +351,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (set-encapsulated-port-state/state! (%port/state port) state))
 
 (define (make-encapsulated-port port state rewrite-operation)
-  (guarantee-port port)
+  (guarantee-port port 'MAKE-ENCAPSULATED-PORT)
   (%make-port (let ((type (port/type port)))
 		(make-port-type
 		 (append-map
@@ -641,55 +641,65 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (or *current-input-port* (nearest-cmdl/port)))
 
 (define (set-current-input-port! port)
-  (set! *current-input-port* (guarantee-input-port port))
+  (set! *current-input-port*
+	(guarantee-input-port port 'SET-CURRENT-INPUT-PORT!))
   unspecific)
 
 (define (with-input-from-port port thunk)
-  (fluid-let ((*current-input-port* (guarantee-input-port port)))
+  (fluid-let ((*current-input-port*
+	       (guarantee-input-port port 'WITH-INPUT-FROM-PORT)))
     (thunk)))
 
 (define (current-output-port)
   (or *current-output-port* (nearest-cmdl/port)))
 
 (define (set-current-output-port! port)
-  (set! *current-output-port* (guarantee-output-port port))
+  (set! *current-output-port*
+	(guarantee-output-port port 'SET-CURRENT-OUTPUT-PORT!))
   unspecific)
 
 (define (with-output-to-port port thunk)
-  (fluid-let ((*current-output-port* (guarantee-output-port port)))
+  (fluid-let ((*current-output-port*
+	       (guarantee-output-port port 'WITH-OUTPUT-TO-PORT)))
     (thunk)))
 
 (define (notification-output-port)
   (or *notification-output-port* (nearest-cmdl/port)))
 
 (define (set-notification-output-port! port)
-  (set! *notification-output-port* (guarantee-output-port port))
+  (set! *notification-output-port*
+	(guarantee-output-port port 'SET-NOTIFICATION-OUTPUT-PORT!))
   unspecific)
 
 (define (with-notification-output-port port thunk)
-  (fluid-let ((*notification-output-port* (guarantee-output-port port)))
+  (fluid-let ((*notification-output-port*
+	       (guarantee-output-port port 'WITH-NOTIFICATION-OUTPUT-PORT)))
     (thunk)))
 
 (define (trace-output-port)
   (or *trace-output-port* (nearest-cmdl/port)))
 
 (define (set-trace-output-port! port)
-  (set! *trace-output-port* (guarantee-output-port port))
+  (set! *trace-output-port*
+	(guarantee-output-port port 'SET-TRACE-OUTPUT-PORT!))
   unspecific)
 
 (define (with-trace-output-port port thunk)
-  (fluid-let ((*trace-output-port* (guarantee-output-port port)))
+  (fluid-let ((*trace-output-port*
+	       (guarantee-output-port port 'WITH-TRACE-OUTPUT-PORT)))
     (thunk)))
 
 (define (interaction-i/o-port)
   (or *interaction-i/o-port* (nearest-cmdl/port)))
 
 (define (set-interaction-i/o-port! port)
-  (set! *interaction-i/o-port* (guarantee-i/o-port port))
+  (set! *interaction-i/o-port*
+	(guarantee-i/o-port port 'SET-INTERACTION-I/O-PORT!))
   unspecific)
 
 (define (with-interaction-i/o-port port thunk)
-  (fluid-let ((*interaction-i/o-port* (guarantee-i/o-port port)))
+  (fluid-let ((*interaction-i/o-port*
+	       (guarantee-i/o-port port 'WITH-INTERACTION-I/O-PORT)))
     (thunk)))
 
 (define standard-port-accessors

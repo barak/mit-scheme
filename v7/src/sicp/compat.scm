@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compat.scm,v 1.9 2002/11/20 19:46:25 cph Exp $
+$Id: compat.scm,v 1.10 2003/01/01 02:27:05 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -126,8 +126,8 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (let ((char
 	 (read-char
 	  (if (default-object? port)
-	      (current-output-port)
-	      (guarantee-output-port port)))))
+	      (current-input-port)
+	      (guarantee-input-port port 'TYI)))))
     (if (char? char)
 	(char->ascii char)
 	char)))
@@ -136,8 +136,8 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (let ((char
 	 (peek-char
 	  (if (default-object? port)
-	      (current-output-port)
-	      (guarantee-output-port port)))))
+	      (current-input-port)
+	      (guarantee-input-port port 'TYIPEEK)))))
     (if (char? char)
 	(char->ascii char)
 	char)))
@@ -146,7 +146,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (write-char (ascii->char ascii)
 	      (if (default-object? port)
 		  (current-output-port)
-		  (guarantee-output-port port))))
+		  (guarantee-output-port port 'TYO))))
 
 (define (print-depth #!optional newval)
   (let ((newval (if (default-object? newval) false newval)))

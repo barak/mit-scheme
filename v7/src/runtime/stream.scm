@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: stream.scm,v 14.13 2002/11/20 19:46:23 cph Exp $
+$Id: stream.scm,v 14.14 2003/01/01 02:26:49 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2002 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -233,7 +233,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	    #\{
 	    (if (default-object? port)
 		(current-output-port)
-		(guarantee-output-port port))))))
+		(guarantee-output-port port 'STREAM-WRITE))))))
 
 (define (list->stream list)
   (if (pair? list)

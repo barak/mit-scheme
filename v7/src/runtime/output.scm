@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: output.scm,v 14.25 2002/12/09 05:40:26 cph Exp $
+$Id: output.scm,v 14.26 2003/01/01 02:25:54 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -72,7 +72,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
-	     (guarantee-output-port port))))
+	     (guarantee-output-port port 'NEWLINE))))
     (output-port/write-char port #\newline)
     (output-port/discretionary-flush port)))
 
@@ -80,7 +80,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
-	     (guarantee-output-port port))))
+	     (guarantee-output-port port 'FRESH-LINE))))
     (output-port/fresh-line port)
     (output-port/discretionary-flush port)))
 
@@ -88,7 +88,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
-	     (guarantee-output-port port))))
+	     (guarantee-output-port port 'WRITE-CHAR))))
     (output-port/write-char port char)
     (output-port/discretionary-flush port)))
 
@@ -96,7 +96,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
-	     (guarantee-output-port port))))
+	     (guarantee-output-port port 'WRITE-STRING))))
     (output-port/write-string port string)
     (output-port/discretionary-flush port)))
 
@@ -104,7 +104,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
-	     (guarantee-output-port port))))
+	     (guarantee-output-port port 'WRITE-SUBSTRING))))
     (output-port/write-substring port string start end)
     (output-port/discretionary-flush port)))
 
@@ -113,7 +113,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
     (let ((port
 	   (if (default-object? port)
 	       (current-output-port)
-	       (guarantee-output-port port))))
+	       (guarantee-output-port port operation-name))))
       (let ((operation (port/operation port operation-name)))
 	(if operation
 	    (begin
@@ -127,7 +127,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
-	     (guarantee-output-port port)))
+	     (guarantee-output-port port 'DISPLAY)))
 	(unparser-table
 	 (if (default-object? unparser-table)
 	     (current-unparser-table)
@@ -141,7 +141,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
-	     (guarantee-output-port port)))
+	     (guarantee-output-port port 'WRITE)))
 	(unparser-table
 	 (if (default-object? unparser-table)
 	     (current-unparser-table)
@@ -153,7 +153,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
-	     (guarantee-output-port port)))
+	     (guarantee-output-port port 'WRITE-LINE)))
 	(unparser-table
 	 (if (default-object? unparser-table)
 	     (current-unparser-table)
@@ -166,4 +166,4 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (output-port/flush-output
    (if (default-object? port)
        (current-output-port)
-       (guarantee-output-port port))))
+       (guarantee-output-port port 'FLUSH-OUTPUT))))
