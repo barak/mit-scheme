@@ -1,6 +1,6 @@
 #!/bin/csh -f
 
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/rebuild-7.4,v 1.8 1992/01/29 23:42:50 arthur Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/rebuild-7.4,v 1.9 1992/07/30 06:43:34 cph Exp $
 
 # Arguments: runtimeversion compilerversion edwinversion 6001version
 
@@ -28,10 +28,12 @@
 hp9000s300
 if ("$status" == 0) then
   set root="/scheme/300"
+  set student_constant=""
 endif
 hp9000s800
 if ("$status" == 0) then
   set root="/scheme/700"
+  set student_constant=" -constant 2000"
 endif
 
 
@@ -264,8 +266,8 @@ if ("$student" != "") then
   echo "### cd $root/runtime-check"
   cd $root/runtime-check
   rm -f ../tmp/6001.com
-  echo "### scheme -large -fasl make.com -no-init-file"
-  scheme -large -fasl make.com -no-init-file <<*END*
+  echo "### scheme -large$student_constant -fasl make.com -no-init-file"
+  scheme -large$student_constant -fasl make.com -no-init-file <<*END*
 (begin
   (cd "../edwin")
   (load "make.com")
