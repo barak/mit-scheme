@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.145 1991/05/02 01:12:28 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.146 1991/05/04 22:02:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -377,12 +377,12 @@ The buffer is guaranteed to be deselected at that time."
 		 (%set-variable-value! variable (cdr binding)))))))))
 
 (define (variable-local-value buffer variable)
-  (let ((binding
-	 (and (not (buffer-local-bindings-installed? buffer))
-	      (search-local-bindings buffer variable))))
-    (if binding
-	(cdr binding)
-	(variable-value variable))))
+  (if (buffer-local-bindings-installed? buffer)
+      (variable-value variable)
+      (let ((binding (search-local-bindings buffer variable)))
+	(if binding
+	    (cdr binding)
+	    (variable-default-value variable)))))
 
 (define (set-variable-local-value! buffer variable value)
   (if (variable-buffer-local? variable)
