@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.45 1991/10/25 00:14:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.46 1992/03/11 09:30:50 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -858,20 +858,35 @@ MIT in each case. |#
 	  '(ONE-PLUS-FIXNUM
 	    MINUS-ONE-PLUS-FIXNUM
 	    FIXNUM-NOT))
-
-(for-each (lambda (fixnum-pred)
+
+(for-each (lambda (fixnum-pred first-zero second-zero)
 	    (define-open-coder/predicate fixnum-pred
 	      (simple-open-coder
 	       (lambda (combination expressions finish)
 		 combination
 		 (finish
-		  (rtl:make-fixnum-pred-2-args
-		   fixnum-pred
-		   (rtl:make-object->fixnum (car expressions))
-		   (rtl:make-object->fixnum (cadr expressions)))))
+		  (cond ((rtl:fixnum-zero? (car expressions))
+			 (rtl:make-fixnum-pred-1-arg
+			  first-zero
+			  (rtl:make-object->fixnum (cadr expressions))))
+			((rtl:fixnum-zero? (cadr expressions))
+			 (rtl:make-fixnum-pred-1-arg
+			  second-zero
+			  (rtl:make-object->fixnum (car expressions))))
+			(else
+			 (rtl:make-fixnum-pred-2-args
+			  fixnum-pred
+			  (rtl:make-object->fixnum (car expressions))
+			  (rtl:make-object->fixnum (cadr expressions)))))))
 	       '(0 1)
 	       false)))
-	  '(EQUAL-FIXNUM? LESS-THAN-FIXNUM? GREATER-THAN-FIXNUM?))
+	  '(EQUAL-FIXNUM? LESS-THAN-FIXNUM? GREATER-THAN-FIXNUM?)
+	  '(ZERO-FIXNUM? POSITIVE-FIXNUM? NEGATIVE-FIXNUM?)
+	  '(ZERO-FIXNUM? NEGATIVE-FIXNUM? POSITIVE-FIXNUM?))
+
+(define (rtl:fixnum-zero? expression)
+  (and (rtl:constant? expression)
+       (eqv? 0 (rtl:constant-value expression))))
 
 (for-each (lambda (fixnum-pred)
 	    (define-open-coder/predicate fixnum-pred
