@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-src-files,v 1.16 2001/02/24 03:10:21 cph Exp $
+# $Id: make-src-files,v 1.17 2001/03/02 18:07:32 cph Exp $
 #
 # Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
@@ -62,7 +62,7 @@ rm -f ${zipfile}
 rm -f ${ucfile}
 
 tar cvzf ${tarfile} ${PREFIX}
-tar cvzf ${ucfile} ${PREFIX}/src/microcode
+tar cvzf ${ucfile} ${PREFIX}/src/COPYING ${PREFIX}/src/microcode
 
 rm -rf ${PREFIX}/src/lib
 symlinks -rd ${PREFIX}
