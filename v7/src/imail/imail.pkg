@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.22 2000/04/28 16:14:15 cph Exp $
+;;; $Id: imail.pkg,v 1.23 2000/04/28 16:48:41 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -172,7 +172,8 @@
 	  imap:response:search?
 	  imap:response:status-response?
 	  imap:response:status?
-	  imap:response:tag))
+	  imap:response:tag
+	  trace-imap-server-responses?))
 
 (define-package (edwin imail)
   (files "imail-util"

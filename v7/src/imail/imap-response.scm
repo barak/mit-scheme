@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.8 2000/04/28 16:14:16 cph Exp $
+;;; $Id: imap-response.scm,v 1.9 2000/04/28 16:48:30 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -136,7 +136,7 @@
 		   (else
 		    (if (char=? #\space (peek-char-no-eof port))
 			(begin
-			  (read-char port)
+			  (discard-char port)
 			  (read-resp-text-tail port))
 			'())))))))
     (discard-known-char #\] port)
@@ -148,7 +148,7 @@
   (read-list port
     (lambda (port)
       (let ((x (intern (read-fetch-keyword port))))
-	(cons x
+	(list x
 	      (case x
 		((ENVELOPE)
 		 (discard-known-char #\space port)
@@ -157,13 +157,13 @@
 		 (read-flags-response port))
 		((INTERNALDATE)
 		 (discard-known-char #\space port)
-		 (list (read-quoted port)))
+		 (read-quoted port))
 		((RFC822 RFC822.HEADER RFC822.TEXT)
 		 (discard-known-char #\space port)
-		 (list (read-nstring port)))
+		 (read-nstring port))
 		((RFC822.SIZE)
 		 (discard-known-char #\space port)
-		 (list (read-number port)))
+		 (read-number port))
 		((BODY)
 		 (if (char=? #\[ (peek-char-no-eof port))
 		     (let ((section
@@ -172,7 +172,7 @@
 		       (cons section
 			     (if (char=? #\< (peek-char-no-eof port))
 				 (begin
-				   (read-char port)
+				   (discard-char port)
 				   (let ((n (read-number port)))
 				     (discard-known-char #\> port)
 				     (discard-known-char #\space port)
@@ -180,13 +180,13 @@
 				 (list (read-nstring port)))))
 		     (begin
 		       (discard-known-char #\space port)
-		       (list (read-generic port)))))
+		       (read-generic port))))
 		((BODYSTRUCTURE)
 		 (discard-known-char #\space port)
-		 (list (read-generic port)))
+		 (read-generic port))
 		((UID)
 		 (discard-known-char #\space port)
-		 (list (read-nz-number port)))
+		 (read-nz-number port))
 		(else
 		 (error "Illegal fetch keyword:" x))))))))
 
@@ -258,7 +258,7 @@
     (discard-known-char #\return port)
     (discard-known-char #\linefeed port)
     (let ((s (make-string n)))
-      (read-string! string port)
+      (read-string! s port)
       s)))
 
 (define (read-list port #!optional read-item)
@@ -270,17 +270,17 @@
   (discard-known-char open port)
   (if (char=? close (peek-char-no-eof port))
       (begin
-	(read-char port)
+	(discard-char port)
 	'())
       (let loop ((items (list (read-item port))))
 	(let ((char (peek-char-no-eof port)))
 	  (cond ((char=? char #\space)
-		 (read-char port)
+		 (discard-char port)
 		 (loop (cons (read-item port) items)))
 		((char=? char #\()
 		 (loop (cons (read-item port) items)))
 		((char=? char close)
-		 (read-char port)
+		 (discard-char port)
 		 (reverse! items))
 		(else
 		 (error "Illegal list delimiter:" char)))))))
@@ -289,7 +289,7 @@
   (let loop ((items '()))
     (let ((char (peek-char-no-eof port)))
       (cond ((char=? char #\space)
-	     (read-char port)
+	     (discard-char port)
 	     (loop (cons (read-item port) items)))
 	    ((char=? char #\return)
 	     (reverse! items))
@@ -307,7 +307,7 @@
   (intern
    (if (char=? #\* (peek-char-no-eof port))
        (begin
-	 (read-char port)
+	 (discard-char port)
 	 "\\*")
        (string-append "\\" (read-atom port)))))
 
@@ -315,7 +315,7 @@
   (intern
    (if (char=? #\\ (peek-char-no-eof port))
        (begin
-	 (read-char port)
+	 (discard-char port)
 	 (string-append "\\" (read-atom port)))
        (read-atom port))))
 
@@ -403,7 +403,7 @@
   (char-set #\]))
 
 (define (read-char-no-eof port)
-  (let ((char (read-char port)))
+  (let ((char (read-char-internal port)))
     (if (eof-object? char)
 	(error "Unexpected end of file:" port))
     char))
@@ -414,10 +414,22 @@
 	(error "Unexpected end of file:" port))
     char))
 
+(define (discard-char port)
+  (read-char-internal port)
+  unspecific)
+
 (define (discard-known-char char port)
   (let ((char* (read-char-no-eof port)))
     (if (not (char=? char char*))
 	(error "Wrong character read:" char* char))))
+
+(define (read-char-internal port)
+  (let ((char (read-char port)))
+    (if trace-imap-server-responses?
+	(write-char char))
+    char))
+
+(define trace-imap-server-responses? #f)
 
 (define (imap:response:bad? response) (eq? (car response) 'BAD))
 (define (imap:response:bye? response) (eq? (car response) 'BYE))
