@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.2 1989/11/27 03:31:40 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.3 1989/11/27 16:14:00 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -52,10 +52,10 @@ changecom(`;');;; -*-Midas-*-
 ;;;;	references.  On HPPA: gr0 (always 0), gr2 (return address),
 ;;;;	gr27 (global data pointer), and gr30 (stack pointer).
 ;;;;	- super temporaries, not preserved accross procedure calls and
-;;;;	always usable. On HPPA: gr1, gr15-gr26, gr28-29, gr31.
+;;;;	always usable. On HPPA: gr1, gr19-gr26, gr28-29, gr31.
 ;;;;	gr26-23 are argument registers, gr28-29 are return registers.
 ;;;;	- preserved registers saved by the callee if they are written.
-;;;;	On HPPA: gr3-gr14
+;;;;	On HPPA: gr3-gr18
 ;;;;
 ;;;;	3) Arguments, if passed on a stack, are popped by the caller
 ;;;;	or by the procedure return instruction (as on the VAX).  Thus
@@ -83,7 +83,10 @@ changecom(`;');;; -*-Midas-*-
 ;;;;	interface.  The interface is only called from the Scheme
 ;;;;	interpreter, which does not use floating point data.  Thus
 ;;;;	although the calling convention would require us to preserve
-;;;;	them, they contain garbage.
+;;;;	them, they contain garbage.  On HPPA: fr12-fr15 are
+;;;;	callee-saves registers, fr4-fr7 are parameter registers, and
+;;;;	fr8-fr11 are caller-saves registers.  fr0-fr3 are status
+;;;;	registers.
 ;;;;
 ;;;; Compiled Scheme code uses the following register convention.
 ;;;; Note that trampoline_to_interface and the register block are
@@ -113,24 +116,28 @@ define(LOW_TC_BIT, eval(TC_LENGTH - 1))
 	.SUBSPA	$CODE$,QUAD=0,ALIGN=8,ACCESS=44,CODE_ONLY
 C_to_interface
 	.PROC
-	.CALLINFO CALLER,FRAME=24,SAVE_RP
+	.CALLINFO CALLER,FRAME=28,SAVE_RP
 	.ENTRY
 	STW	2,-20(0,30)		; Save return address
-	STWM	3,104(30)		; Save first reg, allocate frame
-	STW	4,-100(30)		; Save the other regs
-	STW	5,-96(30)
-	STW	6,-92(30)
-	STW	7,-88(30)
-	STW	8,-84(30)
-	STW	9,-80(30)
-	STW	10,-76(30)
-	STW	11,-72(30)
-	STW	12,-68(30)
-	STW	13,-64(30)
-	STW	14,-60(30)
+	STWM	3,112(30)		; Save first reg, allocate frame
+	STW	4,-108(30)		; Save the other regs
+	STW	5,-104(30)
+	STW	6,-100(30)
+	STW	7,-96(30)
+	STW	8,-92(30)
+	STW	9,-88(30)
+	STW	10,-84(30)
+	STW	11,-80(30)
+	STW	12,-76(30)
+	STW	13,-72(30)
+	STW	14,-68(30)
+	STW	15,-64(30)
+	STW	16,-60(30)
+	STW	17,-56(30)
+	STW	18,-52(30)
 	ADDIL	L'Registers-$global$,27
 	LDO	R'Registers-$global$(1),4 ; Setup Regs
-	ADDI	QUAD_MASK,0,5
+	LDI	QUAD_MASK,5
 
 interface_to_scheme
 	LDW	8(0,4),28		; Copy val
@@ -163,21 +170,25 @@ scheme_to_interface
 
 interface_to_C
 	COPY	29,28			; Setup C value
-        LDW     -124(0,30),2		; Restore return address
-        LDW     -60(0,30),14		; Restore saved registers
-        LDW     -64(0,30),13
-        LDW     -68(0,30),12
-        LDW     -72(0,30),11
-        LDW     -76(0,30),10
-        LDW     -80(0,30),9
-        LDW     -84(0,30),8
-        LDW     -88(0,30),7
-        LDW     -92(0,30),6
-        LDW     -96(0,30),5
-        LDW     -100(0,30),4
+        LDW     -132(0,30),2		; Restore return address
+        LDW     -52(0,30),18		; Restore saved registers
+        LDW     -56(0,30),17
+        LDW     -60(0,30),16
+        LDW     -64(0,30),15
+        LDW     -68(0,30),14
+        LDW     -72(0,30),13
+        LDW     -76(0,30),12
+        LDW     -80(0,30),11
+        LDW     -84(0,30),10
+        LDW     -88(0,30),9
+        LDW     -92(0,30),8
+        LDW     -96(0,30),7
+        LDW     -100(0,30),6
+        LDW     -104(0,30),5
+        LDW     -108(0,30),4
         BV      0(2)			; Return
         .EXIT
-        LDWM    -104(0,30),3		; Restore last reg, pop frame
+        LDWM    -112(0,30),3		; Restore last reg, pop frame
         .PROCEND			;in=26;out=28;
 
         .SPACE  $TEXT$
