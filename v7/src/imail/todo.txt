@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.104 2000/06/30 03:10:02 cph Exp $
+$Id: todo.txt,v 1.105 2000/06/30 03:11:08 cph Exp $
 
 Bug fixes
 ---------
@@ -47,10 +47,6 @@ New features
   AVAILABLE-FOLDER-NAMES.
 
 * Generate file I/O messages when reading and writing file folders.
-
-* IMAIL must support I/O to compressed files (for my sake if no one
-  else).  A clean solution to this requires moving compressed-file
-  support to the runtime system.
 
 * Implement something closer to the IMAP COPY operation, e.g.
   APPEND-MESSAGES.
