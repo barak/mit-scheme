@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgstr.scm,v 1.10 1995/01/30 20:26:43 adams Exp $
+$Id: dbgstr.scm,v 1.11 1995/04/27 23:16:34 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -97,12 +97,13 @@ MIT in each case. |#
 	(lambda (var port)
 	  (write-char #\Space port)
 	  (write (new-dbg-variable/name var) port)
-	  (write-string " -> " port)
-	  (fluid-let ((*unparser-list-breadth-limit* 5)
-		      (*unparser-list-depth-limit*   3))
-	    (write (new-dbg-variable/expression var) port))))))
+	  ;;(write-string " -> " port)
+	  ;;(fluid-let ((*unparser-list-breadth-limit* 5)
+	  ;;	      (*unparser-list-depth-limit*   3))
+	  ;;  (write (new-dbg-variable/expression var) port))
+	  ))))
   (name false read-only true)
-  (expression `(lookup ,name) read-only true)
+  (expression #F read-only false)
   (block false read-only false)
   (extra false read-only false))
 
@@ -135,27 +136,27 @@ MIT in each case. |#
   (variables '() read-only false)
   (flattened false read-only false))
 
-(define (new-dbg-block/copy-transforming expression-copier block)
-  ;; Copy entire environmnet model structure whilst transforming the
-  ;; variable expressions.
-  (define (new-variables variables block*)
-    (map (lambda (variable)
-	   (new-dbg-variable/new-expression&block
-	    variable
-	    (expression-copier (new-dbg-variable/expression variable))
-	    block*))
-	 variables))
-  (let copy-block ((block block))
-    (and block
-	 (let ((block*  (new-dbg-block/%make
-			 (new-dbg-block/type block)
-			 (copy-block (new-dbg-block/parent block))
-			 '()
-			 (new-dbg-block/flattened block))))
-	   (set-new-dbg-block/variables!
-	    block*
-	    (new-variables (new-dbg-block/variables block) block*))
-	   block*))))
+;;(define (new-dbg-block/copy-transforming expression-copier block)
+;;  ;; Copy entire environment model structure whilst transforming the
+;;  ;; variable expressions.
+;;  (define (new-variables variables block*)
+;;    (map (lambda (variable)
+;;	   (new-dbg-variable/new-expression&block
+;;	    variable
+;;	    (expression-copier (new-dbg-variable/expression variable))
+;;	    block*))
+;;	 variables))
+;;  (let copy-block ((block block))
+;;    (and block
+;;	 (let ((block*  (new-dbg-block/%make
+;;			 (new-dbg-block/type block)
+;;			 (copy-block (new-dbg-block/parent block))
+;;			 '()
+;;			 (new-dbg-block/flattened block))))
+;;	   (set-new-dbg-block/variables!
+;;	    block*
+;;	    (new-variables (new-dbg-block/variables block) block*))
+;;	   block*))))
 
 
 
@@ -170,6 +171,8 @@ MIT in each case. |#
   (and new-info				; (lam-expr lambda-list block)
        (call-with-values
 	(lambda ()
+	  (if (not (new-dbg-procedure? new-info))
+	      (internal-error "Not a new-dbg-procedure" new-info))
 	  (lambda-list/parse (new-dbg-procedure/lambda-list new-info)))
 	(lambda (required optional rest aux)
 	  ;; This does not set the external label!
@@ -239,3 +242,26 @@ MIT in each case. |#
 	(else (internal-error "Not a dbg expression or procedure" object))))
   
 
+(define *dbg-rewrites*)
+
+(define (dbg-info/make-rewrites)
+  (cons 'HEAD '()))
+
+(define (dbg-info/remember from to)
+  (define (unconstructable? form)
+    (and (CALL/? form)
+	 (QUOTE/? (call/operator form))
+	 (hash-table/get *dbg-unconstructable-operators*
+			 (quote/text (call/operator form)) #F)))
+  (if (not (unconstructable? to))
+      (set-cdr! *dbg-rewrites* (cons (list from to) (cdr *dbg-rewrites*)))))
+
+(define *dbg-unconstructable-operators* (make-eq-hash-table))
+
+(let ((forbid
+       (lambda (operator)
+	 (hash-table/put! *dbg-unconstructable-operators* operator #T))))
+  (forbid %make-heap-closure)
+  (forbid CONS)
+  (forbid %cons)
+  (forbid %vector))
