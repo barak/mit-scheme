@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.171 1987/05/31 23:00:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.172 1987/06/01 11:21:41 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -151,13 +151,19 @@ MIT in each case. |#
   (let ((target (register-reference register)))
     (let ((result
 	   (case (car expression)
-	     ((REGISTER) `((MOVE L ,(coerce->any (cadr expression)) ,target)))
+	     ((REGISTER)
+	      `((MOVE L ,(coerce->any (cadr expression)) ,target)))
 	     ((OFFSET)
-	      `((MOVE L ,(indirect-reference! (cadadr expression)
-					      (caddr expression))
+	      `((MOVE L
+		      ,(indirect-reference! (cadadr expression)
+					    (caddr expression))
 		      ,target)))
-	     ((CONSTANT) `(,(load-constant (cadr expression) target)))
-	     (else (error "Bad expression type" (car expression))))))
+	     ((CONSTANT)
+	      `(,(load-constant (cadr expression) target)))
+	     ((UNASSIGNED)
+	      `(,(load-non-pointer type-code:unassigned 0 target)))
+	     (else
+	      (error "Unknown expression type" (car expression))))))
       (delete-machine-register! register)
       result)))
 
