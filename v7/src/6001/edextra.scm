@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.29 1999/09/11 03:26:06 cph Exp $
+$Id: edextra.scm,v 1.30 2000/03/23 22:35:30 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -370,7 +370,7 @@ option the file from the problem set will not be installed.
 
 (define (copy-ps-file from-file to-file)
   (let ((buffer (find-file-noselect from-file #t)))
-    (set-buffer-writable! buffer)
+    (set-buffer-writeable! buffer)
     (set-visited-pathname buffer to-file)
     (write-buffer buffer)))
 
