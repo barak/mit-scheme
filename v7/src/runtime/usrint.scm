@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.7 1993/10/16 07:32:34 cph Exp $
+$Id: usrint.scm,v 1.8 1993/10/16 10:10:39 cph Exp $
 
 Copyright (c) 1991-93 Massachusetts Institute of Technology
 
@@ -48,19 +48,21 @@ MIT in each case. |#
 
 (define (prompt-for-command-expression prompt #!optional port)
   (let ((prompt (canonicalize-prompt prompt " "))
-	(port (if (default-object? port) (nearest-cmdl/port) port)))
+	(port (if (default-object? port) (nearest-cmdl/port) port))
+	(level (nearest-cmdl/level)))
     (let ((operation (port/operation port 'PROMPT-FOR-COMMAND-EXPRESSION)))
       (if operation
-	  (operation port prompt)
-	  (default/prompt-for-command-expression port prompt)))))
+	  (operation port prompt level)
+	  (default/prompt-for-command-expression port prompt level)))))
 
-(define (default/prompt-for-command-expression port prompt)
+(define (default/prompt-for-command-expression port prompt level)
   (port/with-output-terminal-mode port 'COOKED
     (lambda ()
       (fresh-line port)
       (newline port)
-      (write-string prompt port)
+      (write level port)
       (write-string " " port)
+      (write-string prompt port)
       (flush-output port)))
   (port/with-input-terminal-mode port 'COOKED
     (lambda ()
@@ -74,8 +76,16 @@ MIT in each case. |#
 	  (operation port prompt)
 	  (default/prompt-for-expression port prompt)))))
 
-(define default/prompt-for-expression
-  default/prompt-for-command-expression)
+(define (default/prompt-for-expression port prompt)
+  (port/with-output-terminal-mode port 'COOKED
+    (lambda ()
+      (fresh-line port)
+      (newline port)
+      (write-string prompt port)
+      (flush-output port)))
+  (port/with-input-terminal-mode port 'COOKED
+    (lambda ()
+      (read port))))
 
 (define (prompt-for-evaluated-expression prompt #!optional environment port)
   (hook/repl-eval #f
@@ -90,19 +100,22 @@ MIT in each case. |#
 
 (define (prompt-for-command-char prompt #!optional port)
   (let ((prompt (canonicalize-prompt prompt " "))
-	(port (if (default-object? port) (nearest-cmdl/port) port)))
+	(port (if (default-object? port) (nearest-cmdl/port) port))
+	(level (nearest-cmdl/level)))
     (let ((operation (port/operation port 'PROMPT-FOR-COMMAND-CHAR)))
       (if operation
-	  (operation port prompt)
-	  (default/prompt-for-command-char port prompt)))))
+	  (operation port prompt level)
+	  (default/prompt-for-command-char port prompt level)))))
 
-(define (default/prompt-for-command-char port prompt)
+(define (default/prompt-for-command-char port prompt level)
   (port/with-output-terminal-mode port 'COOKED
     (lambda ()
       (port/with-input-terminal-mode port 'RAW
 	(lambda ()
 	  (fresh-line port)
 	  (newline port)
+	  (write level port)
+	  (write-string " " port)
 	  (write-string prompt port)
 	  (flush-output port)
 	  (let loop ()

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.16 1993/10/16 07:32:43 cph Exp $
+$Id: emacs.scm,v 14.17 1993/10/16 10:11:04 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -39,33 +39,27 @@ MIT in each case. |#
 
 ;;;; Prompting
 
-(define (emacs/prompt-for-command-expression port prompt)
-  (transmit-modeline-string port prompt)
+(define (emacs/prompt-for-command-expression port prompt level)
+  (transmit-modeline-string port prompt level)
   (transmit-signal port #\R)
   (read port))
 
-(define (emacs/prompt-for-command-char port prompt)
-  (transmit-modeline-string port prompt)
+(define (emacs/prompt-for-command-char port prompt level)
+  (transmit-modeline-string port prompt level)
   (transmit-signal-with-argument port #\D "")
   (transmit-signal port #\o)
   (read-char-internal port))
 
-(define (transmit-modeline-string port prompt)
+(define (transmit-modeline-string port prompt level)
   (transmit-signal-with-argument
    port
    #\p
-   (let ((prefix (string-append (number->string (nearest-cmdl/level)) " ")))
-     (string-append prefix
-		    (let ((prompt
-			   (string-trim-right
-			    (if (and (string-prefix? prefix prompt)
-				     (not (string=? prefix prompt)))
-				(string-tail prompt (string-length prefix))
-				prompt))))
-		      (let ((entry (assoc prompt cmdl-prompt-alist)))
-			(if entry
-			    (cadr entry)
-			    (string-append "[Evaluator] " prompt))))))))
+   (let ((prefix (number->string level))
+	 (prompt (string-trim prompt)))
+     (let ((entry (assoc prompt cmdl-prompt-alist)))
+       (if entry
+	   (string-append prefix " " (cadr entry))
+	   (string-append prefix " [Evaluator] " prompt))))))
 
 (define cmdl-prompt-alist
   '(("]=>" "[Evaluator]")

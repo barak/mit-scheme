@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.13 1991/11/26 07:05:04 cph Exp $
+$Id: dbgcmd.scm,v 14.14 1993/10/16 10:10:56 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -79,23 +79,22 @@ MIT in each case. |#
 	     (write-condition-report condition port)
 	     (continuation unspecific))
 	 (lambda ()
-	   (let ((command-set (vector-ref (cmdl/state cmdl) 0))
-		 (prompt
-		  (string-append (number->string (cmdl/level cmdl))
-				 " "
-				 (vector-ref (cmdl/state cmdl) 1)))
-		 (state (vector-ref (cmdl/state cmdl) 2)))
-	     (let loop ()
-	       (let ((entry
-		      (assv (char-upcase (prompt-for-command-char prompt port))
-			    (cdr command-set))))
-		 (if entry
-		     ((cadr entry) state port)
-		     (begin
-		       (beep port)
-		       (newline port)
-		       (write-string "Unknown command character" port)
-		       (loop)))))))))))
+	   (let ((state (cmdl/state cmdl)))
+	     (let ((command-set (vector-ref state 0))
+		   (prompt (vector-ref state 1))
+		   (state (vector-ref state 2)))
+	       (let loop ()
+		 (let ((entry
+			(assv (char-upcase
+			       (prompt-for-command-char prompt port))
+			      (cdr command-set))))
+		   (if entry
+		       ((cadr entry) state port)
+		       (begin
+			 (beep port)
+			 (newline port)
+			 (write-string "Unknown command character" port)
+			 (loop))))))))))))
   (cmdl-message/null))
 
 (define ((standard-help-command command-set) state port)
