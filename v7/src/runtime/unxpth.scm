@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unxpth.scm,v 14.23 1996/02/29 22:12:07 cph Exp $
+$Id: unxpth.scm,v 14.24 1997/11/11 12:45:49 cph Exp $
 
-Copyright (c) 1988-96 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -93,24 +93,30 @@ MIT in each case. |#
 			 (except-last-pair head)
 			 head)
 		     (cdr components))))))
-    (if (or (string-null? string)
-	    (not *expand-directory-prefixes?*))
-	components
-	(case (string-ref string 0)
-	  ((#\$)
-	   (let ((name (string-tail string 1)))
-	     (let ((value (get-environment-variable name)))
-	       (if (not value)
-		   (error "Unbound environment variable:" name))
-	       (replace-head value))))
-	  ((#\~)
-	   (replace-head
-	    (->namestring
-	     (let ((user-name (substring string 1 (string-length string))))
-	       (if (string-null? user-name)
-		   (current-home-directory)
-		   (user-home-directory user-name))))))
-	  (else components)))))
+    (let ((end (string-length string)))
+      (if (or (= 0 end)
+	      (not *expand-directory-prefixes?*))
+	  components
+	  (case (string-ref string 0)
+	    ((#\$)
+	     (if (= 1 end)
+		 components
+		 (let ((value
+			(get-environment-variable (substring string 1 end))))
+		   (if (not value)
+		       components
+		       (replace-head value)))))
+	    ((#\~)
+	     (let ((expansion
+		    (ignore-errors
+		     (lambda ()
+		       (if (= 1 end)
+			   (current-home-directory)
+			   (user-home-directory (substring string 1 end)))))))
+	       (if (condition? expansion)
+		   components
+		   (replace-head (->namestring expansion)))))
+	    (else components))))))
 
 (define (simplify-directory directory)
   (if (and (eq? (car directory) 'RELATIVE) (null? (cdr directory)))
