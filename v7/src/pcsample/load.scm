@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.2 1995/07/28 14:25:11 adams Exp $
+$Id: load.scm,v 1.3 1995/11/19 19:33:24 adams Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -98,6 +98,5 @@ MIT in each case. |#
 	      (pc-sample)
 	      (pc-sample interp-procs)
 	      (pc-sample code-blocks)
-	      (pc-sample display))))
-;;; fini
-
+	      (pc-sample display)
+	      (pc-sample zones))))
