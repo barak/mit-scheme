@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.21 1987/06/09 19:59:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.22 1987/06/13 19:41:12 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,26 +38,7 @@ MIT in each case. |#
 
 (set-working-directory-pathname! "$zcomp")
 ;(load "base/rcs" system-global-environment)
-
-(in-package system-global-environment
-  (define compiler-package
-    (make-environment
-      (define converter-package
-	(make-environment))
-      (define dataflow-package
-	(make-environment))
-      (define rtl-generator-package
-	(make-environment))
-      (define rtl-cse-package
-	(make-environment))
-      (define rtl-analyzer-package
-	(make-environment))
-      (define lap-generator-package
-	(make-environment))
-      (define lap-syntaxer-package
-	(make-environment))
-      (define lap-package
-	(make-environment)))))
+(load "base/pkging" system-global-environment)
 
 (in-package compiler-package
 
@@ -65,14 +46,15 @@ MIT in each case. |#
     (make-environment
       (define :name "Liar (Bobcat 68020)")
       (define :version 1)
-      (define :modification 21)
+      (define :modification 22)
       (define :files)
 
-;      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.21 1987/06/09 19:59:29 cph Exp $"
-;	(lambda (filename version date time author state)
-;	  (set! :version (car version))
-;	  (set! :modification (cadr version))))
-
+;      (parse-rcs-header
+;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.22 1987/06/13 19:41:12 cph Exp $"
+;       (lambda (filename version date time zone author state)
+;	 (set! :version (car version))
+;	 (set! :modification (cadr version))))
+
       (define :files-lists
 	(list
 	 (cons system-global-environment
@@ -150,9 +132,16 @@ MIT in each case. |#
 
 	 (cons lap-generator-package
 	       '("back-end/lapgen.bin"	;LAP generator.
-		 "back-end/regmap.bin"	;Hardware register allocator.
-		 "machines/bobcat/lapgen.bin" ;code generation rules.
 		 ))
+
+	 (cons (access register-allocator-package lap-generator-package)
+	       '("back-end/regmap.bin"	;Hardware register allocator.
+		 ))
+
+	 (cons lap-generator-package
+	       '("machines/bobcat/lapgen.bin" ;code generation rules.
+		 ))
+
 
 	 (cons lap-syntaxer-package
 	       '("back-end/syntax.bin"	;Generic syntax phase
