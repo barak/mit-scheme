@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.28 1997/08/08 21:29:38 cph Exp $
+$Id: parse.scm,v 14.29 1998/06/07 08:25:02 cph Exp $
 
-Copyright (c) 1988-97 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,7 +62,7 @@ MIT in each case. |#
 
   (set! lambda-optional-tag (object-new-type (microcode-type 'CONSTANT) 3))
   (set! lambda-rest-tag (object-new-type (microcode-type 'CONSTANT) 4))
-  (set! lambda-auxiliary-tag (intern "#!aux"))
+  (set! lambda-auxiliary-tag `',(intern "#!aux"))
   (set! dot-symbol (intern "."))
   (set! named-objects
 	`((NULL . ,(list))
