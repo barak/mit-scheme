@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.9 2000/01/20 05:33:13 cph Exp $
+;;; $Id: imail-top.scm,v 1.10 2000/01/20 17:47:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -23,13 +23,57 @@
 ;;; **** Redisplay issues: Many operations modify the modeline, e.g.
 ;;; changes to the flags list of a message.
 
+;;; **** Not yet implemented: FOLDER-MODIFIED?.
+
 (declare (usual-integrations))
 
-(define-variable imail-last-output-url
-  "Last URL used by \\[imail-output]."
-  "umail:xmail"
+(define-variable imail-dont-reply-to-names
+  "A regular expression specifying names to prune in replying to messages.
+#f means don't reply to yourself."
+  #f
+  string-or-false?)
+
+(define-variable imail-default-dont-reply-to-names
+  "A regular expression specifying part of the value of the default value of
+the variable `imail-dont-reply-to-names', for when the user does not set
+`imail-dont-reply-to-names' explicitly.  (The other part of the default
+value is the user's name.)
+It is useful to set this variable in the site customisation file."
+  "info-"
   string?)
 
+(define-variable imail-ignored-headers
+  "A regular expression matching header fields one would rather not see."
+  "^via:\\|^mail-from:\\|^origin:\\|^status:\\|^received:\\|^[a-z-]*message-id:\\|^summary-line:\\|^errors-to:"
+  string-or-false?)
+
+(define-variable imail-message-filter
+  "If not #f, is a filter procedure for new headers in IMAIL.
+Called with the start and end marks of the header as arguments."
+  #f
+  (lambda (object) (or (not object) (procedure? object))))
+
+(define-variable imail-delete-after-output
+  "True means automatically delete a message that is copied to a file."
+  #f
+  boolean?)
+
+(define-variable imail-reply-with-re
+  "True means prepend subject with Re: in replies."
+  #f
+  boolean?)
+
+(define-variable imail-user-name
+  "A user name to use when authenticating to a mail server.
+#f means use the default user name."
+  #f
+  string-or-false?)
+
+(define-variable imail-primary-folder
+  "URL for the primary folder that you read your mail from."
+  "rmail:RMAIL"
+  string?)
+
 (define-command imail
   "Read and edit incoming mail.
 May be called with an IMAIL folder URL as argument;
@@ -166,10 +210,6 @@ DEL	Scroll to previous screen of this message.
 	  Normally only reduced headers are shown.
 \\[imail-edit-current-message]	Edit the current message.  C-c C-c to return to IMAIL."
   (lambda (buffer)
-    ;;(local-set-variable! mode-line-modified "--- " buffer)
-    (local-set-variable! imail-last-output-url
-			 (ref-variable imail-last-output-url buffer)
-			 buffer)
     (buffer-put! buffer 'REVERT-BUFFER-METHOD imail-revert-buffer)
     (set-buffer-read-only! buffer)
     (disable-group-undo! (buffer-group buffer))
@@ -218,9 +258,6 @@ DEL	Scroll to previous screen of this message.
 (define-key 'imail #\q		'imail-quit)
 (define-key 'imail #\?		'describe-mode)
 (define-key 'imail #\w		'imail-edit-current-message)
-
-(define-key 'imail-edit '(#\c-c #\c-c)	'imail-cease-edit)
-(define-key 'imail-edit '(#\c-c #\c-])	'imail-abort-edit)
 
 (define (imail-revert-buffer buffer dont-use-auto-save? dont-confirm?)
   dont-use-auto-save?
@@ -293,7 +330,7 @@ With prefix argument N, moves forward N non-deleted messages,
 or backward if N is negative."
   "p"
   (lambda (delta)
-    (move-to-message delta message-undeleted? "undeleted message")))
+    (move-relative delta message-undeleted? "undeleted message")))
 
 (define-command imail-previous-undeleted-message
   "Show previous non-deleted message.
@@ -311,19 +348,15 @@ With prefix argument N moves forward N messages with these flags."
   (lambda ()
     (flagged-message-arguments "Move to next message with flags"))
   (lambda (n flags)
-    (let ((flags
-	   (if (string-null? flags)
-	       imail-last-multi-flags
-	       flags)))
-      (if (not flags)
-	  (editor-error "No flags to find have been previously specified."))
-      (set! imail-last-multi-flags flags)
-      (move-to-message n
-		       (lambda (message)
-			 (there-exists? flags
-			   (lambda (flag)
-			     (message-flagged? message flag))))
-		       (string-append "message with flags " flags)))))
+    (let ((flags (map string-trim (burst-string flags "," #f))))
+      (if (null? flags)
+	  (editor-error "No flags have been specified."))
+      (move-relative n
+		     (lambda (message)
+		       (there-exists? flags
+			 (lambda (flag)
+			   (message-flagged? message flag))))
+		     (string-append "message with flags " flags)))))
 
 (define-command imail-previous-flagged-message
   "Show previous message with one of the flags FLAGS.
@@ -357,14 +390,14 @@ With prefix argument N moves backward N messages with these flags."
 	       (winner #f))
 	    (let ((next (step message predicate)))
 	      (cond ((not next)
-		     (if winner (select-message folder winner))
+		     (if winner (select-message (selected-folder) winner))
 		     (message "No " direction " " noun))
 		    ((= delta 1)
-		     (select-message folder next))
+		     (select-message (selected-folder) next))
 		    (else
 		     (loop (- delta 1) next next)))))))))
 
-(define (select-message folder selector)
+(define (select-message folder selector #!optional force?)
   (let ((buffer (imail-folder->buffer folder))
 	(message
 	 (cond ((or (not selector) (message? selector))
@@ -376,10 +409,12 @@ With prefix argument N moves backward N messages with these flags."
 	       (else
 		(error:wrong-type-argument selector "message selector"
 					   'SELECT-MESSAGE)))))
-    (if (eq? message (buffer-get buffer 'IMAIL-MESSAGE #f))
-	(update-mode-line! buffer)
+    (if (and (not (if (default-object? force?) #f force?))
+	     (eq? message (buffer-get buffer 'IMAIL-MESSAGE #f)))
+	(imail-update-mode-line! buffer)
 	(begin
 	  (buffer-reset! buffer)
+	  (associate-imail-folder-with-buffer folder buffer)
 	  (buffer-put! buffer 'IMAIL-MESSAGE message)
 	  (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
 	    (if message
@@ -402,12 +437,6 @@ With prefix argument N moves backward N messages with these flags."
 	    (mark-temporary! mark))
 	  (set-buffer-major-mode! buffer (ref-mode-object imail))))))
 
-(define (update-mode-line! buffer)
-  (local-set-variable! mode-line-process
-		       (mode-line-summary-string buffer)
-		       buffer)
-  (buffer-modeline-event! buffer 'PROCESS-STATUS))
-
 (define (selected-message #!optional error? buffer)
   (or (buffer-get (if (or (default-object? buffer) (not buffer))
 		      (selected-buffer)
@@ -416,6 +445,30 @@ With prefix argument N moves backward N messages with these flags."
 		  #f)
       (and (if (default-object? error?) #t error?)
 	   (error "No selected IMAIL message."))))
+
+(define (imail-update-mode-line! buffer)
+  (local-set-variable! mode-line-process
+		       (imail-mode-line-summary-string buffer)
+		       buffer)
+  (buffer-modeline-event! buffer 'PROCESS-STATUS))
+
+(define (imail-mode-line-summary-string buffer)
+  (let ((message (selected-message #f buffer)))
+    (and message
+	 (let ((folder (message-folder message))
+	       (index (message-index message))
+	       (flags (message-flags message)))
+	   (if (and folder index)
+	       (let ((line
+		      (string-append
+		       " "
+		       (number->string (+ 1 index))
+		       "/"
+		       (number->string (count-messages folder)))))
+		 (if (pair? flags)
+		     (string-append line "," (separated-append flags ","))
+		     line))
+	       " 0/0")))))
 
 ;;;; Message deletion
 
@@ -448,7 +501,7 @@ Deleted messages stay in the file until the \\[imail-expunge] command is given."
     (let ((message (selected-message)))
       (if (message-deleted? message)
 	  (undelete-message message)
-	  (let ((message (previous-deleted-message message)))
+	  (let ((message (previous-message message message-deleted?)))
 	    (if (not message)
 		(editor-error "No previous deleted message."))
 	    (undelete-message message)
@@ -462,8 +515,8 @@ Deleted messages stay in the file until the \\[imail-expunge] command is given."
 	  (message
 	   (let ((message (selected-message)))
 	     (if (message-deleted? message)
-		 (or (next-undeleted-message message)
-		     (previous-undeleted-message message))
+		 (or (next-message message message-undeleted?)
+		     (previous-message message message-undeleted?))
 		 message))))
       (expunge-deleted-messages folder)
       (select-message folder message))))
@@ -514,7 +567,7 @@ Completion is performed over known flags when reading."
       (if (not message)
 	  (select-message folder (first-unseen-message folder))))))
 
-(define-command rmail-output
+(define-command imail-output
   "Append this message to a specified folder."
   "sOutput to IMAIL folder"
   (lambda (url-string)
@@ -624,8 +677,8 @@ While composing the reply, use \\[mail-yank-original] to yank the
 			  (or to cc))))
 		 (and cc
 		      (let ((addresses
-			     (dont-reply-to
-			      (rfc822-strip-quoted-names cc))))
+			     (imail-dont-reply-to
+			      (string->rfc822-addresses cc))))
 			(and (not (null? addresses))
 			     (rfc822-addresses->string addresses))))))))
       ("In-reply-to"
@@ -656,3 +709,81 @@ While composing the reply, use \\[mail-yank-original] to yank the
 		       (string-trim-left (string-tail subject 3))))
 		     ((not (string-prefix-ci? "re:" subject))
 		      subject)))))))))
+
+(define (imail-dont-reply-to addresses)
+  (let ((pattern
+	 (re-compile-pattern
+	  (string-append "\\(.*!\\|\\)\\("
+			 (ref-variable imail-dont-reply-to-names)
+			 "\\)")
+	  #t)))
+    (let loop ((addresses addresses))
+      (if (pair? addresses)
+	  (if (re-string-match pattern (car addresses))
+	      (loop (cdr addresses))
+	      (cons (car addresses) (loop (cdr addresses))))
+	  '()))))
+
+;;;; Message editing
+
+(define-command imail-edit-current-message
+  "Edit the current IMAIL message."
+  ()
+  (lambda ()
+    ;; Guarantee that this buffer has both folder and message bindings.
+    (selected-folder)
+    (selected-message)
+    (let ((buffer (selected-buffer)))
+      (set-buffer-major-mode! buffer (ref-mode-object imail-edit))
+      (set-buffer-writable! buffer)
+      (message
+       (substitute-command-keys
+	"Editing: Type \\[imail-cease-edit] to return to Imail, \\[imail-abort-edit] to abort."
+	buffer)))))
+
+(define-major-mode imail-edit text "IMAIL Edit"
+  "Major mode for editing the contents of an IMAIL message.
+The editing commands are the same as in Text mode,
+together with two commands to return to regular IMAIL:
+  \\[imail-abort-edit] cancels the changes you have made and returns to IMAIL;
+  \\[imail-cease-edit] makes them permanent."
+  (lambda (buffer)
+    (enable-group-undo! (buffer-group buffer))))
+
+(define-key 'imail-edit '(#\c-c #\c-c)	'imail-cease-edit)
+(define-key 'imail-edit '(#\c-c #\c-\])	'imail-abort-edit)
+
+(define-command imail-cease-edit
+  "Finish editing message; switch back to IMAIL proper."
+  ()
+  (lambda ()
+    (call-with-values
+	(lambda ()
+	  (let ((buffer (selected-buffer)))
+	    (set-buffer-writable! buffer)
+	    (buffer-widen! buffer)
+	    (guarantee-newline (buffer-end buffer))
+	    (let ((body-start
+		   (search-forward "\n\n"
+				   (buffer-start buffer)
+				   (buffer-end buffer)
+				   #f)))
+	      (if body-start
+		  (values (extract-string (buffer-start buffer)
+					  (mark-1+ body-start))
+			  (extract-string body-start
+					  (buffer-end buffer)))
+		  (values (extract-string (buffer-start buffer)
+					  (buffer-end buffer))
+			  "")))))
+      (lambda (headers-string body)
+	(let ((message (selected-message)))
+	  (set-header-fields! message (string->header-fields headers-string))
+	  (set-message-body! message body)
+	  (select-message (selected-folder) message #t))))))
+
+(define-command imail-abort-edit
+  "Abort edit of current message; restore original contents."
+  ()
+  (lambda ()
+    (select-message (selected-folder) (selected-message) #t)))
