@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosconio.c,v 1.8 1992/10/07 06:23:25 jinx Exp $
+$Id: dosconio.c,v 1.9 1992/11/23 04:18:59 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -323,8 +323,9 @@ DEFUN (buffered_key_command, (c), unsigned char c)
 }
 
 long
-DEFUN (console_read, (buffer, nbytes, buffered_p, blocking_p),
-       char * buffer AND unsigned nbytes AND int buffered_p AND int blocking_p)
+DEFUN (console_read, (buffer, nbytes, buffered_p, blocking_p, intrpt_p),
+       char * buffer AND unsigned nbytes
+       AND int buffered_p AND int blocking_p AND int intrpt_p)
 { 
   System_Error_Reset ();
   do
@@ -338,7 +339,7 @@ DEFUN (console_read, (buffer, nbytes, buffered_p, blocking_p),
       	non_buffered_key_command (get_typeahead_character ());
     } /* End WHILE */
     /* Test for pending interrupts here: */
-    if (pending_interrupts_p ())
+    if (intrpt_p && (pending_interrupts_p ()))
     {
       if (INTERRUPT_QUEUED_P (INT_Character))
 	flush_conio_buffers ();
@@ -350,7 +351,7 @@ DEFUN (console_read, (buffer, nbytes, buffered_p, blocking_p),
   } while (blocking_p);	/* Keep reading for blocking channel. */
   /* This means there is nothing available, don't block */
   System_Error_Return (ERRNO_NONBLOCK);
-  return;
+  return (0);
 }
 
 DEFINE_PRIMITIVE ("DOS-HIGH-PRIORITY-TIMER-INTERRUPT", Prim_dos_high_priority_timer, 2, 2,
