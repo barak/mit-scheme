@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 3.80 1993/11/13 02:23:21 gjr Exp $
+$Id: make.scm,v 3.81 1993/11/15 21:49:08 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -41,4 +41,4 @@ MIT in each case. |#
  "edwin"
  `((os-type . ,(intern (microcode-identification-item 'OS-NAME-STRING))))
  'QUERY)
-(add-system! (make-system "Edwin" 3 79 '()))
+(add-system! (make-system "Edwin" 3 81 '()))
