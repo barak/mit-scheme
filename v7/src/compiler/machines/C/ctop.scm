@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.5 1993/11/13 04:17:11 gjr Exp $
+$Id: ctop.scm,v 1.6 1993/11/13 06:59:59 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -75,34 +75,38 @@ MIT in each case. |#
 	     (vector-ref y 0)))))
 
 (define (c-compile pathname)
-  (fluid-let ((*call/cc-c-compiler* compiler:c-compiler-name)
-	      (*call/cc-warn?* false))
-    (let ((source (enough-namestring pathname))
-	  (object (enough-namestring (pathname-new-type pathname "o"))))
-      (newline)
-      (display ";Compiling ")
-      (display source)
-      (let ((result
-	     (apply call/cc
-		    (append (c-compiler-switches) (list source)))))
-	(if (not (zero? result))
-	    (error "c-compile: C compiler failed" source)))
-      (set! *call/cc-c-compiler* compiler:c-linker-name)
-      (newline)
-      (display ";Linking ")
-      (display object)
-      (let ((result
-	     (apply call/cc
-		    (append (list "-o")
-			    (list
-			     (enough-namestring
-			      (pathname-new-type pathname
-						 (c-output-extension))))
-			    (c-linker-switches)
-			    (list object)))))
-	(if (not (zero? result))
-	    (error "c-compile: C linker failed" object)))
-      (delete-file object))))
+  ;; Some c compilers do not leave the output file in the same place.
+  (with-working-directory-pathname
+    (directory-pathname pathname)
+    (lambda ()
+      (fluid-let ((*call/cc-c-compiler* compiler:c-compiler-name)
+		  (*call/cc-warn?* false))
+	(let ((source (enough-namestring pathname))
+	      (object (enough-namestring (pathname-new-type pathname "o"))))
+	  (newline)
+	  (display ";Compiling ")
+	  (display source)
+	  (let ((result
+		 (apply call/cc
+			(append (c-compiler-switches) (list source)))))
+	    (if (not (zero? result))
+		(error "c-compile: C compiler failed" source)))
+	  (set! *call/cc-c-compiler* compiler:c-linker-name)
+	  (newline)
+	  (display ";Linking ")
+	  (display object)
+	  (let ((result
+		 (apply call/cc
+			(append (list "-o")
+				(list
+				 (enough-namestring
+				  (pathname-new-type pathname
+						     (c-output-extension))))
+				(c-linker-switches)
+				(list object)))))
+	    (if (not (zero? result))
+		(error "c-compile: C linker failed" object)))
+	  (delete-file object))))))
 
 (define (c-output-extension)
   (cond ((not (eq? compiler:c-linker-output-extension 'UNKNOWN))
