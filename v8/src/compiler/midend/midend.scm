@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.22 1996/03/09 18:29:04 adams Exp $
+$Id: midend.scm,v 1.23 1996/07/23 16:13:42 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -478,19 +478,23 @@ Example:
       (let ((text  (with-output-to-string (lambda () (pp scode)))))
 	(let ((fragments (string-split text #\newline)))
 	  (define (prefix s) (if (string-null? s) s (string-append "\n;  " s)))
-	  (error-irritant/noise
-	   (apply string-append (map prefix fragments)))))))
+	  (apply string-append (map prefix fragments))))))
+  (define (wrap e) (error-irritant/noise e))
   (define (get-source dbg-object)
     (cond ((new-dbg-expression? dbg-object)
-	   (format-scode (new-dbg-expression/source-code dbg-object)))
+	   (wrap (format-scode (new-dbg-expression/source-code dbg-object))))
 	  ((new-dbg-procedure? dbg-object)
-	   (format-scode (new-dbg-procedure/source-code dbg-object)))
+	   (wrap (format-scode (new-dbg-procedure/source-code dbg-object))))
 	  ((new-dbg-continuation/inner dbg-object)
 	   => get-source)
 	  ((new-dbg-continuation/outer dbg-object)
 	   => get-source)
 	  (else (unhelpful))))
-  (define (unhelpful) #F)  #|(error-irritant/noise "")|#
+  (define (unhelpful)
+    (wrap
+     (string-append
+      (format-scode (string->symbol "<original source not available>"))
+      (format-scode (kmp/->ppp form)))))
   (cond ((code-rewrite/original-form form) => get-source)
 	((code-rewrite/original-form/previous form) => get-source)
 	(else (unhelpful))))
