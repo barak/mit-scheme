@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.21 1987/01/22 14:30:43 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.22 1987/02/03 15:57:39 jinx Exp $
  *
  * This file contains the code for primitives dealing with pure
  * and constant space.
@@ -324,7 +324,7 @@ Pointer Info;
   return TRUTH;
 }
 
-/* (PRIMITIVE_PURIFY OBJECT PURE?)
+/* (PRIMITIVE-PURIFY OBJECT PURE?)
       [Primitive number 0xB4]
       Copy an object from the heap into constant space.  This requires
       a spare heap, and is tricky to use -- it should only be used
@@ -368,45 +368,6 @@ Built_In_Primitive(Prim_Primitive_Purify, 2, "PRIMITIVE-PURIFY")
   Push(STACK_FRAME_HEADER);
  Pushed();
   longjmp(*Back_To_Eval, PRIM_APPLY); /*NOTREACHED*/
-}
-
-Boolean Pure_Test(Obj_Address)
-fast Pointer *Obj_Address;
-{ fast Pointer *Where;
-#ifdef FLOATING_ALIGNMENT
-  fast Pointer Float_Align_Value = Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, 0);
-#endif
-  Where = Free_Constant-1;
-  while (Where >= Constant_Space)
-  {
-#ifdef FLOATING_ALIGNMENT
-    while (*Where == Float_Align_Value) Where -= 1;
-#endif
-    Where -= 1+Get_Integer(*Where);
-    if (Where <= Obj_Address)
-      return (Boolean) (Obj_Address <= (Where+1+Get_Integer(*(Where+1))));
-  }
-  return (Boolean) false;
-}
-
-/* (PURE_P OBJECT)
-      [Primitive number 0xBB]
-      Returns #!TRUE if the object is pure (ie it doesn't point to any
-      other object, or it is in a pure section of the constant space).
-*/
-Built_In_Primitive(Prim_Pure_P, 1, "PURE?")
-{ Primitive_1_Arg();
-
-  if ((GC_Type_Non_Pointer(Arg1)) ||
-      (GC_Type_Special(Arg1)))
-    return TRUTH;
-  if (GC_Type_Compiled(Arg1)) return NIL;
-  Touch_In_Primitive(Arg1, Arg1);
-  { Pointer *Obj_Address;
-    Obj_Address = Get_Pointer(Arg1);
-    if (Is_Pure(Obj_Address)) return TRUTH;
-  }
-  return NIL;
 }
 
 Pointer Make_Impure(Object)
@@ -516,6 +477,45 @@ fast Pointer *From, *To, *Was, *Will_Be;
   }
 }
 
+Boolean Pure_Test(Obj_Address)
+fast Pointer *Obj_Address;
+{ fast Pointer *Where;
+#ifdef FLOATING_ALIGNMENT
+  fast Pointer Float_Align_Value = Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, 0);
+#endif
+  Where = Free_Constant-1;
+  while (Where >= Constant_Space)
+  {
+#ifdef FLOATING_ALIGNMENT
+    while (*Where == Float_Align_Value) Where -= 1;
+#endif
+    Where -= 1+Get_Integer(*Where);
+    if (Where <= Obj_Address)
+      return (Boolean) (Obj_Address <= (Where+1+Get_Integer(*(Where+1))));
+  }
+  return (Boolean) false;
+}
+
+/* (PURE? OBJECT)
+      [Primitive number 0xBB]
+      Returns #!TRUE if the object is pure (ie it doesn't point to any
+      other object, or it is in a pure section of the constant space).
+*/
+Built_In_Primitive(Prim_Pure_P, 1, "PURE?")
+{ Primitive_1_Arg();
+
+  if ((GC_Type_Non_Pointer(Arg1)) ||
+      (GC_Type_Special(Arg1)))
+    return TRUTH;
+  if (GC_Type_Compiled(Arg1)) return NIL;
+  Touch_In_Primitive(Arg1, Arg1);
+  { Pointer *Obj_Address;
+    Obj_Address = Get_Pointer(Arg1);
+    if (Is_Pure(Obj_Address)) return TRUTH;
+  }
+  return NIL;
+}
+
 /* (CONSTANT? OBJECT)
       [Primitive number 0xBA]
       Returns #!TRUE if the object is in constant space or isn't a
@@ -529,6 +529,16 @@ Built_In_Primitive(Prim_Constant_P, 1, "CONSTANT?")
           ((Get_Pointer(Arg1) >= Constant_Space) &&
            (Get_Pointer(Arg1) < Free_Constant))) ?
          TRUTH : NIL;
+}
+
+/* (GET-NEXT-CONSTANT)
+      [Primitive number 0xE4]
+      Returns the next free address in constant space.
+*/
+Built_In_Primitive(Prim_Get_Next_Constant, 0, "GET-NEXT-CONSTANT")
+{ Pointer *Next_Address = Free_Constant+1;
+  Primitive_0_Args();
+  return Make_Pointer(TC_ADDRESS, Next_Address);
 }
 
 /* copy_to_constant_space is a microcode utility procedure.
