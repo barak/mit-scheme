@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules4.scm,v 1.5 1992/02/25 16:43:10 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules4.scm,v 1.6 1992/02/28 20:23:57 jinx Exp $
 $mc68020-Header: rules4.scm,v 4.12 90/05/03 15:17:38 GMT jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology

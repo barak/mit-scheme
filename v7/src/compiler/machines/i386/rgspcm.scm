@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rgspcm.scm,v 1.2 1992/02/13 03:01:52 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rgspcm.scm,v 1.3 1992/02/28 20:23:57 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rgspcm.scm,v 4.2 1991/05/06 23:17:03 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology

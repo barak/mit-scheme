@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapopt.scm,v 1.1 1992/02/13 03:05:14 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapopt.scm,v 1.2 1992/02/28 20:22:42 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 

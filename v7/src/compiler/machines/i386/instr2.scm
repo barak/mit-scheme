@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instr2.scm,v 1.2 1992/02/18 01:52:23 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instr2.scm,v 1.3 1992/02/28 20:22:42 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 

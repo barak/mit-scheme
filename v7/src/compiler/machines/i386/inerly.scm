@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/inerly.scm,v 1.1 1992/02/13 02:57:04 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/inerly.scm,v 1.2 1992/02/28 20:22:42 jinx Exp $
 $MC68020-Header: inerly.scm,v 1.6 88/08/31 06:00:59 GMT cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
