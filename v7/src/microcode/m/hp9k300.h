@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for HP9000 series 300 (or 200)
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k300.h,v 1.1 1989/07/18 22:35:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k300.h,v 1.2 1989/07/26 23:59:15 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -52,10 +52,6 @@ MIT in each case. */
 
 #define C_SWITCH_MACHINE -Wp,-H60000 -Wc,-Nt30000
 
-#endif
-
-#ifndef HAVE_CURSES
-#define LIBS_MACHINE -ltermcap
 #endif
 
 #ifdef HAVE_STARBASE_GRAPHICS
