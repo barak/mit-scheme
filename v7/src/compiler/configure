@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: configure,v 1.1 2000/12/06 05:11:59 cph Exp $
+# $Id: configure,v 1.2 2000/12/06 05:12:33 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -46,8 +46,8 @@ if test ! -f machine; then
 	exit 1
 	;;
     esac
-    ln -s machines/${MACHINE} compiler/machine
+    ln -s machines/${MACHINE} machine
 fi
 for FN in compiler.cbf compiler.pkg compiler.sf make.com; do \
-    test -f compiler/$${FN} || ln -s machine/$${FN} compiler/.; \
+    test -f $${FN} || ln -s machine/$${FN} .; \
 done
