@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.10 2002/02/03 04:41:22 cph Exp $
+$Id: make.scm,v 1.11 2002/06/26 03:35:32 cph Exp $
 
 Copyright (c) 1993-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -32,4 +32,4 @@ USA.
      (pathname-as-directory "win32")
      (lambda ()
        (load-package-set "win32")))))
-(add-identification! "Win32" 1 6)
+(add-identification! "Win32" 1 7)
