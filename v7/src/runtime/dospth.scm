@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.4 1992/05/26 00:08:03 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.5 1992/05/28 20:01:34 mhwu Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -72,44 +72,40 @@ MIT in each case. |#
 (define (dos/parse-namestring string host)
   ;; The DOS file system is case-insensitive, and the canonical case
   ;; is upper, but it is too inconvenient to type.
-  (with-namestring-device-and-path (string-downcase string)
-    (lambda (device string)
-      (let ((components
-	     (let ((components (string-components string 
-                                                  sub-directory-delimiters)))
-	       (append (expand-directory-prefixes (car components))
-		       (cdr components)))))
-	(parse-name (car (last-pair components))
-          (lambda (name type)
-	    (%make-pathname host
-			    device
-			    (let ((components (except-last-pair components)))
-			      (and (not (null? components))
-				   (simplify-directory
-				    (if (string=? "" (car components))
-					(cons 'ABSOLUTE
-					      (map parse-directory-component
-						   (cdr components)))
-					(cons 'RELATIVE
-					      (map parse-directory-component
-						   components))))))
-			    name
-			    type
-			    'UNSPECIFIC)))))))
+  (let* ((string (string-downcase string))
+	 (components (string-components string sub-directory-delimiters)))
+    (with-namestring-device-and-path
+      (expand-directory-prefixes (car components))
+      (lambda (device directory-components)
+	(let ((components (append directory-components (cdr components))))
+	  (parse-name (car (last-pair components))
+            (lambda (name type)
+	      (%make-pathname host
+			      device
+			      (let ((components (except-last-pair components)))
+				(and (not (null? components))
+				     (simplify-directory
+				      (if (string=? "" (car components))
+					  (cons 'ABSOLUTE
+						(map parse-directory-component
+						     (cdr components)))
+					  (cons 'RELATIVE
+						(map parse-directory-component
+						     components))))))
+			      name
+			      type
+			      'UNSPECIFIC))))))))
 
-(define (with-namestring-device-and-path string receiver)
-  (let ((colon (string-find-next-char string #\:)))
-    (cond ((not colon)
-	   (receiver false string))
-	  #|
-	  ;; CON:,  PRN:, etc. are valid devices.
-	  ((not (= colon 1))
-	   (error "dos/parse-namestring: Invalid drive name" string))
-	  |#
-	  (else
-	   (receiver (substring string 0 (1+ colon))
+(define (with-namestring-device-and-path components receiver)
+  (let ((string (car components)))
+    (let ((colon (string-find-next-char string #\:)))
+      (if (not colon)
+	  (receiver false components)
+	  (receiver (substring string 0 (1+ colon))
+		    (cons 
 		     (substring string (1+ colon)
-				(string-length string)))))))
+				(string-length string))
+		     (cdr components)))))))
 
 (define (simplify-directory directory)
   (if (and (eq? (car directory) 'RELATIVE) (null? (cdr directory)))
