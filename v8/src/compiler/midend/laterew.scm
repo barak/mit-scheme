@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: laterew.scm,v 1.6 1995/04/15 16:36:27 adams Exp $
+$Id: laterew.scm,v 1.7 1995/04/24 16:07:34 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -304,7 +304,10 @@ MIT in each case. |#
     (let ((cont    (first rands))
 	  (layout  (second rands))
 	  (values  (cddr rands)))
-      (laterew/multicell-operation cont layout name 'MAKE #F values))))
+      (let ((name (and (QUOTE/? layout)
+		       (= (vector-length (quote/text layout)) 1)
+		       `(QUOTE ,(vector-ref (quote/text layout) 0)))))
+	(laterew/multicell-operation cont layout name 'MAKE #F values)))))
 
 (define-rewrite/late %multicell-ref
   (lambda (rands)
@@ -327,18 +330,19 @@ MIT in each case. |#
   (if (not (equal? cont '(QUOTE #F)))
       (internal-error "Bad continuation for Multicell operation" cont))
   (let ((layout
-	 (if (not (QUOTE/? layout))
+	 (if (QUOTE/? layout)
 	     (quote/text layout)
 	     (internal-error "Multicell operation needs constant LAYOUT"
 			     layout)))
 	(name
 	 (cond ((eq? name #F)  #F)
-	       ((QUOTE/? name) (name/text name))
+	       ((QUOTE/? name) (quote/text name))
 	       (else (internal-error "Multicell operation needs constant NAME"
 				     name)))))
     (define (index)
       (let ((value  (vector-find-next-element layout name)))
-	(or value
+	(if value
+	    `(QUOTE ,value)
 	    (internal-error "Multicell operation: name not found"
 			    name layout))))
     (case (vector-length layout)
@@ -354,6 +358,6 @@ MIT in each case. |#
       ;;   ((MAKE))))
       (else
        (case operation
-	 ((READ)	`(CALL ',%vector-ref '#F ,cell ,(index)))
-	 ((WRITE)	`(CALL ',%vector-set! '#F ,cell ,(index) ,value/s))
+	 ((READ)	`(CALL ',vector-ref '#F ,cell ,(index)))
+	 ((WRITE)	`(CALL ',vector-set! '#F ,cell ,(index) ,value/s))
 	 ((MAKE)	`(CALL ',%vector '#F ,@value/s)))))))
