@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.35 1996/02/29 22:11:54 cph Exp $
+$Id: dospth.scm,v 1.36 1996/03/01 08:53:41 cph Exp $
 
 Copyright (c) 1992-96 Massachusetts Institute of Technology
 
@@ -122,10 +122,11 @@ MIT in each case. |#
 	components
 	(case (string-ref string 0)
 	  ((#\$)
-	   (let ((value (get-environment-variable (string-tail string 1))))
-	     (if (not value)
-		 (error "Unbound environment variable:" name))
-	     (replace-head value)))
+	   (let ((name (string-tail string 1)))
+	     (let ((value (get-environment-variable name)))
+	       (if (not value)
+		   (error "Unbound environment variable:" name))
+	       (replace-head value))))
 	  ((#\~)
 	   (replace-head
 	    (->namestring
