@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.14 1992/08/14 04:15:56 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.15 1992/09/26 16:03:18 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -32,7 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Dos Pathnames (based on unxpth version 14.9)
+;;;; Dos Pathnames (originally based on unxpth version 14.9)
 ;;; package: (runtime pathname dos)
 
 (declare (usual-integrations))
@@ -220,7 +220,7 @@ MIT in each case. |#
       device))
 
 (define (unparse-directory directory)
-  (cond ((not directory)
+  (cond ((or (not directory) (eq? directory 'UNSPECIFIC))
 	 "")
 	((pair? directory)
 	 (string-append
@@ -262,7 +262,7 @@ MIT in each case. |#
 	 ((memq device '(#F UNSPECIFIC)) device)
 	 (else
 	  (error:wrong-type-argument device "pathname device" 'MAKE-PATHNAME)))
-   (cond ((not directory)
+   (cond ((or (not directory) (eq? directory 'UNSPECIFIC))
 	  directory)
 	 ((and (list? directory)
 	       (not (null? directory))
