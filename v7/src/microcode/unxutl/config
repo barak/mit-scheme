@@ -1,0 +1,148 @@
+#!/bin/sh
+# Configuration script for MIT Scheme
+# Modelled on the configuration script for GNU CC
+#   Copyright (C) 1988 Free Software Foundation, Inc.
+
+#This file is part of GNU CC.
+
+#GNU CC is free software; you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation; either version 1, or (at your option)
+#any later version.
+
+#GNU CC is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with GNU CC; see the file COPYING.  If not, write to
+#the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+
+#
+# Shell script to create proper links to machine-dependent files in
+# preparation for compiling gcc.
+#
+# Usage: config.sh machine
+#
+# If config.sh succeeds, it leaves its status in config.status.
+# If config.sh fails after disturbing the status quo, 
+# 	config.status is removed.
+#
+
+progname=$0
+
+remove=rm
+hard_link=ln
+symbolic_link='ln -s'
+
+#for Test
+#remove="echo rm"
+#hard_link="echo ln"
+#symbolic_link="echo ln -s"
+
+cmp_file=nothing_special
+
+case $# in
+1)
+	machine=$1
+
+	case $machine in
+	vax)					# for vaxen running bsd
+		system_file=bsd4-2
+		machine_file=vax
+		mfour_file=bsd
+		;;
+	vax-ultrix)				# for vaxen running ultrix
+		system_file=ultrix
+		machine_file=vax
+		mfour_file=bsd
+		;;
+	hp9k300)
+		system_file=hpux
+		machine_file=hp9k300
+		mfour_file=sysV
+		;;
+	hp9k800)
+		system_file=hpux
+		machine_file=hp9k800
+		mfour_file=sysV
+		;;
+	sun3)
+		system_file=bsd4-2
+		machine_file=sun3
+		mfour_file=bsd
+		cmp_file=cmp68020.s-sun+fp
+		cmp_link=cmp68020.s
+		;;
+	sun3-nfp)
+		system_file=bsd4-2
+		machine_file=sun3
+		mfour_file=bsd
+		cmp_file=cmp68020.s-sun-fp
+		cmp_link=cmp68020.s
+		;;
+	*)
+		echo "$progname: unknown machine name: $machine"
+		exit 1
+	esac
+
+	files="s/${system_file}.h m/${machine_file}.h ${mfour_file}.macros"
+	links="s.h m.h m4.macros"
+
+	while [ -n "$files" ]
+	do
+		# set file to car of files, files to cdr of files
+		set $files; file=$1; shift; files=$*
+		set $links; link=$1; shift; links=$*
+
+		if [ ! -r $file ]
+		then
+			echo "$progname: cannot create a link \`$link',"
+			echo "since the file \`$file' does not exist."
+			exit 1
+		fi
+
+		$remove -f $link
+		rm -f config.status
+		# Make a symlink if possible, otherwise try a hard link
+		$symbolic_link $file $link 2>/dev/null || $hard_link $file $link
+
+		if [ ! -r $link ]
+		then
+			echo "$progname: unable to link \`$link' to \`$file'."
+			exit 1
+		fi
+		echo "Linked \`$link' to \`$file'."
+	done
+
+	case $cmp_file in
+	nothing_special)
+		;;
+	*)
+		$symbolic_link $cmp_file $cmp_link 2>/dev/null || $hard_link $cmp_file $cmp_link
+		if [ ! -r $cmp_link ]
+		then
+			echo "$progname: unable to link \`$cmp_link' to \`$cmp_file'."
+			exit 1
+		fi
+		echo "Linked \`$cmp_link' to \`$cmp_file'."
+		;;
+	esac
+
+	echo "Links are now set up for use with a $machine." \
+		| tee config.status
+	exit 0
+
+	;;
+*)
+	echo "Usage: $progname machine"
+	echo -n "Where \`machine' is something like "
+	echo "\`vax', \`sun3', \`hp9k300', etc."
+	if [ -r config.status ]
+	then
+		cat config.status
+	fi
+	exit 1
+	;;
+esac

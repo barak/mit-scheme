@@ -1,0 +1,510 @@
+/* -*-C-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.1 1989/07/18 22:32:30 cph Exp $
+
+Copyright (c) 1989 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. */
+
+#include "cf.h"
+
+#undef unix
+
+#ifndef SOURCES_SYSTEM
+#define SOURCES_SYSTEM
+#endif
+
+#ifndef SOURCES_MACHINE
+#define SOURCES_MACHINE
+#endif
+
+#ifndef OBJECTS_SYSTEM
+#define OBJECTS_SYSTEM
+#endif
+
+#ifndef OBJECTS_MACHINE
+#define OBJECTS_MACHINE
+#endif
+
+#ifndef LIBS_SYSTEM
+#define LIBS_SYSTEM
+#endif
+
+#ifndef LIBS_MACHINE
+#define LIBS_MACHINE
+#endif
+
+#ifndef C_SWITCH_SYSTEM
+#define C_SWITCH_SYSTEM
+#endif
+
+#ifndef C_SWITCH_MACHINE
+#define C_SWITCH_MACHINE
+#endif
+
+#ifndef C_SWITCH_FEATURES
+#define C_SWITCH_FEATURES -DCOMPILE_HISTORY
+#endif
+
+/* Unless inhibited or changed, use -g to compile for debugging.  */
+#ifndef C_DEBUG_SWITCH
+#define C_DEBUG_SWITCH -g
+#endif
+
+/* If user wants to optimize, this is how.  */
+#ifndef C_OPTIMIZE_SWITCH
+#ifdef __GNUC__
+#define C_OPTIMIZE_SWITCH -O -g
+#else
+#define C_OPTIMIZE_SWITCH -O
+#endif
+#endif
+
+#ifndef LD_SWITCH_SYSTEM
+#define LD_SWITCH_SYSTEM
+#endif
+
+#ifndef LD_SWITCH_MACHINE
+#define LD_SWITCH_MACHINE
+#endif
+
+#ifndef M4_SWITCH_SYSTEM
+#define M4_SWITCH_SYSTEM
+#endif
+
+#ifndef M4_SWITCH_MACHINE
+#define M4_SWITCH_MACHINE
+#endif
+
+#ifndef AS_SWITCH_SYSTEM
+#define AS_SWITCH_SYSTEM
+#endif
+
+#ifndef AS_SWITCH_MACHINE
+#define AS_SWITCH_MACHINE
+#endif
+
+/* Some machines don't find the standard C libraries in the usual place.  */
+#ifndef LIB_STANDARD
+#define LIB_STANDARD -lc
+#endif
+
+#ifndef LIB_MATH
+#define LIB_MATH -lm
+#endif
+
+/* Unless inhibited or changed, use -lg to link for debugging.  */
+#ifndef LIBS_DEBUG
+#define LIBS_DEBUG -lg
+#endif
+
+#ifndef LIBX11_MACHINE
+#define LIBX11_MACHINE
+#endif
+
+#ifndef LIBX11_SYSTEM
+#define LIBX11_SYSTEM
+#endif
+
+#ifdef HAVE_X_WINDOWS
+X_SOURCES = x11base.c x11term.c x11graph.c 
+X_OBJECTS = x11base.o x11term.o x11graph.o
+X_LIB = -lX11 LIBX11_MACHINE LIBX11_SYSTEM
+#endif /* HAVE_X_WINDOWS */
+
+#ifdef HAVE_STARBASE_GRAPHICS
+#ifdef HAVE_X_WINDOWS
+GRAPHICS_SOURCES = starbase.c starbasex.c
+GRAPHICS_OBJECTS = starbase.o starbasex.o
+GRAPHICS_LIBS = STARBASE_DEVICE_DRIVERS -lddsox11 -lsb1 -lsb2 -lXhp11
+#else /* not HAVE_X_WINDOWS */
+GRAPHICS_SOURCES = starbase.c
+GRAPHICS_OBJECTS = starbase.o
+GRAPHICS_LIBS = STARBASE_DEVICE_DRIVERS -lsb1 -lsb2
+#endif /* HAVE_X_WINDOWS */
+#else /* not HAVE_STARBASE_GRAPHICS */
+GRAPHICS_SOURCES =
+GRAPHICS_OBJECTS =
+GRAPHICS_LIBS =
+#endif /* HAVE_STARBASE_GRAPHICS */
+
+#ifdef HAVE_CURSES
+CTERM_SOURCES = cterm.c
+CTERM_OBJECTS = cterm.o
+CTERM_LIB = -lcurses
+#else /* not HAVE_CURSES */
+CTERM_SOURCES =
+CTERM_OBJECTS =
+CTERM_LIB =
+#endif /* HAVE_CURSES */
+
+#if (PROC_TYPE == PROC_TYPE_68020)
+
+MACHINE_SWITCHES = -DMC68020 -DCMPGCFILE=\"cmp68kgc.h\"
+MACHINE_SOURCES = cmp68020.m4
+MACHINE_OBJECTS = cmp68020.o
+GC_HEAD_FILES = gccode.h cmp68kgc.h
+
+#else
+#if (PROC_TYPE == PROC_TYPE_VAX)
+
+MACHINE_SWITCHES = -DCMPGCFILE=\"cmpvaxgc.h\"
+MACHINE_SOURCES = cmpvax.m4
+MACHINE_OBJECTS = cmpvax.o
+GC_HEAD_FILES = gccode.h cmpvaxgc.h
+
+#else
+
+MACHINE_SWITCHES =
+MACHINE_SOURCES = compiler.c
+MACHINE_OBJECTS = compiler.o
+GC_HEAD_FILES = gccode.h
+
+#endif /* PROC_TYPE */
+#endif /* PROC_TYPE */
+
+USER_PRIM_SOURCES =
+USER_PRIM_OBJECTS =
+USER_LIBS =
+
+SHELL = /bin/sh
+
+#ifdef __GNUC__
+CC = gcc
+#else
+CC = cc
+#endif
+M4 = m4
+AS = as
+
+LDFLAGS = LD_SWITCH_SYSTEM LD_SWITCH_MACHINE
+
+CFLAGS = C_OPTIMIZE_SWITCH C_SWITCH_MACHINE C_SWITCH_SYSTEM $(MACHINE_SWITCHES)
+
+#ifndef ECHO
+#define ECHO echo
+#endif
+
+.SUFFIXES: .o .cpp .s .m4
+
+.c.o: ; @ECHO "#** Generating" $@ because of $?
+	$(CC) $(CFLAGS) -c $*.c
+
+.c.cpp: ; @ECHO "#** Generating" $@
+	make Breakup
+	$(CC) $(CFLAGS) -E $*.c | \
+	./Breakup | \
+	sed -e 's/^#.*//' -e 's/^[ 	]*$$//' -e 's/^$$//' | \
+	sed -n -e '/^..*/p' > $*.cpp
+
+.c.s: ; @ECHO "#** Generating" $@
+	$(CC) $(CFLAGS) -S $*.c
+
+#ifdef M4_RULE
+M4_RULE
+#else
+.m4.s: ; @ECHO "#** Generating" $@ because of $?
+	$(M4) M4_SWITCH_SYSTEM M4_SWITCH_MACHINE $*.m4 > $*.s
+#endif
+
+#ifdef AS_RULE
+AS_RULE
+#else
+.s.o: ; @ECHO "#** Generating" $@ because of $?
+	$(AS) AS_SWITCH_SYSTEM AS_SWITCH_MACHINE -o $*.o $*.s
+#endif
+
+/* Source and object files */
+
+SCHEME_SOURCES = $(X_SOURCES) $(CTERM_SOURCES) $(GRAPHICS_SOURCES) \
+	SOURCES_SYSTEM SOURCES_MACHINE $(USER_PRIM_SOURCES)
+SCHEME_OBJECTS = $(X_OBJECTS) $(CTERM_OBJECTS) $(GRAPHICS_OBJECTS) \
+	OBJECTS_SYSTEM OBJECTS_MACHINE $(USER_PRIM_OBJECTS) usrdef.o
+SCHEME_LIB = $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(CTERM_LIB) \
+	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIBS_DEBUG LIB_STANDARD
+
+SOURCES = \
+$(MACHINE_SOURCES) \
+bignum.c \
+bitstr.c \
+boot.c \
+char.c \
+comutl.c \
+daemon.c \
+debug.c \
+extern.c \
+fasdump.c \
+fasload.c \
+fileio.c \
+fixnum.c \
+flonum.c \
+gcloop.c \
+generic.c \
+hooks.c \
+hunk.c \
+intern.c \
+interp.c \
+list.c \
+lookprm.c \
+lookup.c \
+memmag.c \
+prim.c \
+primutl.c \
+purify.c \
+purutl.c \
+random.c \
+regex.c \
+rgxprim.c \
+step.c \
+storage.c \
+string.c \
+syntax.c \
+sysprim.c \
+ttyio.c \
+utils.c \
+vector.c
+
+HEAD_FILES = scheme.touch prims.h zones.h locks.h flonum.h bignum.h \
+	string.h char.h $(GC_HEAD_FILES) trap.h lookup.h history.h cmpint.h
+
+CORE_OBJECTS = \
+$(MACHINE_OBJECTS) \
+bignum.o \
+bitstr.o \
+boot.o \
+char.o \
+comutl.o \
+daemon.o \
+debug.o \
+extern.o \
+fasload.o \
+fileio.o \
+fixnum.o \
+flonum.o \
+generic.o \
+hooks.o \
+hunk.o \
+intern.o \
+interp.o \
+list.o \
+lookprm.o \
+lookup.o \
+prim.o \
+primutl.o \
+purutl.o \
+random.o \
+regex.o \
+rgxprim.o \
+step.o \
+storage.o \
+string.o \
+syntax.o \
+sysprim.o \
+ttyio.o \
+utils.o \
+vector.o
+
+STD_GC_OBJECTS = \
+fasdump.o \
+gcloop.o \
+memmag.o \
+purify.o
+
+BCH_GC_OBJECTS = \
+bchdmp.o \
+bchgcl.o \
+bchmmg.o \
+bchpur.o
+
+OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) os.o
+BCHOBJECTS = $(CORE_OBJECTS) $(BCH_GC_OBJECTS) os.o
+
+/* Construction rules. */
+
+all: Psbtobin scheme
+
+world: all bchscheme
+
+everything: world Bintopsb Ppband
+
+scheme xscheme : $(OBJECTS) $(SCHEME_OBJECTS)
+	@ECHO "#** Re-linking" $@ because of $?
+	-mv -f $@ $@.busy
+	rm -f $@.busy
+	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(SCHEME_OBJECTS) $(SCHEME_LIB)
+
+bchscheme : $(BCHOBJECTS) $(SCHEME_OBJECTS)
+	@ECHO "#** Re-linking" $@ because of $?
+	-mv -f $@ $@.busy
+	rm -f $@.busy
+	$(CC) $(LDFLAGS) -o $@ $(BCHOBJECTS) $(SCHEME_OBJECTS) $(SCHEME_LIB)
+
+Findprim : Findprim.o
+	@ECHO "#** Re-linking" $@ because of $?
+	-mv -f $@ $@.busy
+	rm -f $@.busy
+	$(CC) $(LDFLAGS) -o $@ Findprim.o
+
+Bintopsb : Bintopsb.o
+	@ECHO "#** Re-linking" $@ because of $?
+	-mv -f $@ $@.busy
+	rm -f $@.busy
+	$(CC) $(LDFLAGS) -o $@ Bintopsb.o
+
+Psbtobin : Psbtobin.o
+	@ECHO "#** Re-linking" $@ because of $?
+	-mv -f $@ $@.busy
+	rm -f $@.busy
+	$(CC) $(LDFLAGS) -o $@ Psbtobin.o
+
+Breakup : Breakup.o
+	@ECHO "#** Re-linking" $@ because of $?
+	-mv -f $@ $@.busy
+	rm -f $@.busy
+	$(CC) $(LDFLAGS) -o $@ Breakup.o
+
+Wsize : Wsize.o
+	@ECHO "#** Re-linking" $@ because of $?
+	-mv -f $@ $@.busy
+	rm -f $@.busy
+	$(CC) $(LDFLAGS) -o $@ Wsize.o $(SCHEME_LIB)
+
+Ppband : Ppband.o
+	@ECHO "#** Re-linking" $@ because of $?
+	-mv -f $@ $@.busy
+	rm -f $@.busy
+	$(CC) $(LDFLAGS) -o $@ Ppband.o
+
+/* Primitive table files */
+
+/* The first two are for VMS. */
+
+usrdef.txt :
+	./make_vmslist usrdef.txt $(SCHEME_SOURCES) $(SOURCES)
+
+vmsusrdef.c :
+	echo "$$ Findprim -o usrdef.c -l [-.vms]usrdef.txt"
+	$(CC) $(CFLAGS) -c usrdef.c
+
+/* The usrFOO.c files should depend on SOURCES, but these change
+   rarely, so they are left out to be generated by hand.
+   use `make primitive_tables scheme' to remake anyway. */
+
+usrdef.c : $(SCHEME_SOURCES) usrdef.touch Findprim xmakefile
+	@ECHO "#** Re-making" $@ because of $?
+	rm -f usrdef.c
+	./Findprim $(SCHEME_SOURCES) $(SOURCES) > usrdef.c
+
+primitive_tables :
+	rm -f usrdef.c usrdef.o
+
+scheme.touch os.touch psbmap.touch usrdef.touch :
+	@ECHO "#** Resetting" $@ because of $?
+	rm -f $@
+	touch $@
+
+/* scheme.touch depends also on butterfly.h rename.c */
+scheme.touch : scheme.h config.h bkpt.h object.h scode.h sdata.h \
+	gc.h interp.h stack.h futures.h types.h errors.h returns.h \
+	const.h fixobj.h default.h extern.h prim.h intrpt.h
+os.touch : os.c mul.c unix.c vms.c unknown.c scheme.touch zones.h
+psbmap.touch : config.h object.h bignum.h bitstr.h types.h \
+	sdata.h const.h char.h missing.c psbmap.h $(GC_HEAD_FILES) \
+	comlin.h comlin.c
+usrdef.touch : usrdef.h config.h object.h prim.h
+
+lint.out : $(SOURCES) $(SCHEME_SOURCES) $(CSRC) usrdef.c $(HEAD_FILES)
+	rm -f lint.out
+	lint $(CFLAGS) $(SOURCES) $(SCHEME_SOURCES) $(CSRC) usrdef.c > lint.out
+
+/* Dependencies of the object files on the header files */
+
+/* "foo" prevents syntax error when USER_PRIM_OBJECTS is empty. */
+foo $(USER_PRIM_OBJECTS) : $(HEAD_FILES)
+
+interp.o : scheme.touch locks.h trap.h lookup.h history.h cmpint.h zones.h
+hooks.o : scheme.touch prims.h winder.h history.h
+utils.o : scheme.touch prims.h flonum.h winder.h history.h cmpint.h
+primutl.o : scheme.touch prims.h prename.h
+
+fixnum.o hunk.o list.o step.o vector.o sysprim.o daemon.o prim.o \
+	random.o extern.o : scheme.touch prims.h
+
+lookup.o debug.o intern.o : scheme.touch prims.h lookup.h trap.h locks.h
+
+fasdump.o fasload.o : scheme.touch prims.h trap.h $(GC_HEAD_FILES) fasl.h \
+	load.c dump.c
+
+memmag.o gcloop.o purify.o purutl.o comutl.o : scheme.touch prims.h \
+	$(GC_HEAD_FILES) zones.h
+
+bignum.o flonum.o generic.o : scheme.touch prims.h flonum.h zones.h \
+	bignum.h
+
+storage.o : scheme.touch gctype.c
+
+char.o fileio.o string.o ttyio.o : scheme.touch prims.h string.h char.h
+
+boot.o : scheme.touch prims.h version.h char.h string.h paths.h
+
+compiler.o : config.h object.h sdata.h types.h errors.h const.h returns.h
+os.o : scheme.touch os.touch zones.h
+
+bchmmg.o bchgcl.o bchpur.o : scheme.touch prims.h bchgcc.h $(GC_HEAD_FILES)
+bchdmp.o : scheme.touch prims.h bchgcc.h $(GC_HEAD_FILES) fasl.h dump.c
+
+hooks.o : scheme.touch prims.h winder.h history.h
+utils.o : scheme.touch prims.h flonum.h winder.h history.h cmpint.h
+
+syntax.o : scheme.touch prims.h string.h char.h edwin.h syntax.h
+bitstr.o : scheme.touch prims.h bignum.h bitstr.h
+regex.o : scheme.touch char.h syntax.h regex.h
+rgxprim.o : scheme.touch prims.h string.h char.h edwin.h syntax.h regex.h
+unixprim.o : scheme.touch prims.h string.h
+
+Bintopsb.o : psbmap.touch trap.h fasl.h load.c bltdef.h
+Psbtobin.o : psbmap.touch fasl.h dump.c
+Ppband.o : config.h types.h const.h object.h sdata.h fasl.h load.c
+
+dmpwrld.o : unexec.c getpagesize.h
+
+x11base.o x11graph.o x11term.o : x11.h
+starbase.o : scheme.touch prims.h flonum.h
+starbasex.o : scheme.touch prims.h x11.h
+
+Xrep.o : scheme.touch prims.h Xlib.h
+Xlib.o : scheme.touch prims.h string.h Xlib.h
+
+Sgraph.o Sgraph_xt.o SgX.o : scheme.touch prims.h flonum.h Sgraph.h
+Sgraph_ar.o : scheme.touch prims.h flonum.h Sgraph.h array.h
+fft.o : scheme.touch prims.h flonum.h zones.h array.h image.h
+array.o image.o : scheme.touch prims.h flonum.h array.h
+
+cmp68020.s : cmp68020.m4
+cmpvax.s : cmpvax.m4
