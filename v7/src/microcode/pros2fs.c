@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2fs.c,v 1.11 1995/10/28 01:30:51 cph Exp $
+$Id: pros2fs.c,v 1.12 1995/10/30 07:55:05 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -433,7 +433,7 @@ DEFINE_PRIMITIVE ("OS2-COPY-FILE", Prim_OS2_copy_file, 2, 2, 0)
 	(info -> attrFile) &=~ FILE_READONLY;
 	OS2_write_file_status (to, info);
       }
-    STD_API_CALL (dos_copy, (from, to, DCPY_EXISTING));
+    STD_API_CALL (dos_copy, (((PSZ) from), ((PSZ) to), DCPY_EXISTING));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
