@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: evlcom.scm,v 1.40 1992/11/16 22:40:58 cph Exp $
+;;;	$Id: evlcom.scm,v 1.41 1992/11/17 22:55:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -320,7 +320,14 @@ Depending on what is being solicited, either defaulting or completion
 may be available.  The following commands are special to this mode:
 
 \\[exit-minibuffer] terminates the input.
-\\[minibuffer-yank-default] yanks the default string, if there is one.")
+\\[minibuffer-yank-default] yanks the default string, if there is one."
+  (lambda (buffer)
+    ;; This kludge prevents auto-fill from being turned on.  Probably
+    ;; there is a better way to do this, but I can't think of one
+    ;; right now.  -- cph
+    (for-each (lambda (mode)
+		(disable-buffer-minor-mode! buffer mode))
+	      (buffer-minor-modes buffer))))
 
 (define-key 'prompt-for-expression #\return 'exit-minibuffer)
 (define-key 'prompt-for-expression #\c-m-y 'minibuffer-yank-default)
