@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr3.scm,v 1.3 1987/08/18 20:23:58 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr3.scm,v 1.4 1987/08/18 21:19:42 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -289,7 +289,7 @@ MIT in each case. |#
   ((W (? c inverse-cc) (? dest displacement))
    (BYTE (4 c)				; (B B (~ cc) (+ *PC* 3))
 	 (4 #x1))
-   (DISPLACEMENT (8 3))
+   (BYTE (8 #x03))
    (BYTE (8 #x31))			; (BR W dest)
    (DISPLACEMENT (16 dest)))
 
