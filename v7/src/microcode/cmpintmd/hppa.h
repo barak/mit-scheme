@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppa.h,v 1.36 1992/11/18 05:01:09 gjr Exp $
+$Id: hppa.h,v 1.37 1992/11/25 05:54:53 gjr Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -94,9 +94,9 @@ typedef unsigned short format_word;
 
 #ifdef __GNUC__
    /* Under GCC version 1, function pointers are NOT closures.
-      We don't know about version 2 or later yet.
+      Under version 2.2.2, they are not closures either.
     */
-#  if (__GNUC__ >= 2)
+#  if (__GNUC__ >= 3)
 #    include "Fix cmpint-hppa.h to define C_FUNC_PTR_IS_CLOSURE if necessary"
 #  endif
 #else /* Assume HP C -- Test for HP-UX >= 8.0 */
