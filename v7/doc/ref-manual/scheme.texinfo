@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.57 1996/04/04 23:25:13 cph Exp $
+@comment $Id: scheme.texinfo,v 1.58 1996/04/07 16:24:10 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -108,9 +108,9 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.57
+@subtitle Edition 1.58
 @subtitle for Scheme Release 7.4
-@subtitle 4 April 1996
+@subtitle 6 April 1996
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -1453,7 +1453,7 @@ objects by their hash number (@pxref{Custom Output}).  This notation is
 an MIT Scheme extension.
 
 @item #=
-@item ##
+@itemx ##
 These character sequences introduce a notation used to show circular
 structures in printed output, or to denote them in input.  The notation
 works much like that in Common Lisp, and is an MIT Scheme extension.
@@ -17160,14 +17160,12 @@ hidden or revealed.  If @var{shown?} is @code{#f}, the window is hidden,
 and if it is @code{#t}, the window is shown.
 
 @item #(7 @var{device} @var{source} @var{mouse?})
+@itemx #(8 @var{device} @var{source} @var{mouse?})
 A menu command.  @var{Source} specifies which menu item was selected to
 cause this event, and @var{mouse?} is a boolean indicating whether the
-item was selected with the mouse or the keyboard.
-
-@item #(8 @var{device} @var{source} @var{mouse?})
-A help menu command.  @var{Source} specifies which menu item was
-selected to cause this event, and @var{mouse?} is a boolean indicating
-whether the item was selected with the mouse or the keyboard.
+item was selected with the mouse or the keyboard.  The event-type number
+@code{7} indicates a command from a @samp{WM_COMMAND} message, while
+@code{8} is a command from a @samp{WM_HELP} message.
 
 @item #(9 @var{device} @var{x} @var{y} @var{hit-test} @var{flags})
 The mouse was moved.  @var{X} and @var{y} specify the position of the
@@ -18535,9 +18533,5 @@ calling convention.
 
 @summarycontents
 @contents
-
-@c Local Variables:
-@c eval: (auto-save-mode -1)
-@c End:
 
 @bye
