@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fixnum.c,v 9.39 1996/07/20 22:26:26 adams Exp $
+$Id: fixnum.c,v 9.40 1996/07/20 22:36:00 adams Exp $
 
 Copyright (c) 1987-96 Massachusetts Institute of Technology
 
@@ -354,8 +354,8 @@ DEFINE_PRIMITIVE ("FIXNUM->FLONUM", Prim_fixnum_to_flonum, 1, 1,
 "(FIXNUM)\n\
 Equivalent to (INTEGER->FLONUM FIXNUM 2)")
 {
-  PRIMITIVE_HEADER (2);
+  PRIMITIVE_HEADER (1);
   {
-    PRIMITIVE_RETURN (FIXNUM_TO_FLONUM (arg_fixnum (2)));
+    PRIMITIVE_RETURN (FIXNUM_TO_FLONUM (arg_fixnum (1)));
   }
 }
