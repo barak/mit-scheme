@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 4.5 1991/05/06 22:48:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 4.6 1991/10/22 09:02:43 cph Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -82,21 +82,21 @@ MIT in each case. |#
 					(allocate-named-label
 					 (string-append (symbol->string object)
 							,suffix))))))))
-  (define constant->label
-    (->label assv *interned-constants*))
+(define constant->label
+  (->label assoc *interned-constants*))
 
-  (define free-reference-label
-    (->label assq *interned-variables* "-READ-CELL-"))
+(define free-reference-label
+  (->label assq *interned-variables* "-READ-CELL-"))
 
-  (define free-assignment-label
-    (->label assq *interned-assignments* "-WRITE-CELL-"))
+(define free-assignment-label
+  (->label assq *interned-assignments* "-WRITE-CELL-"))
 
-  (define free-static-label
-    (->label assq *interned-static-variables* "-HOME-"))
+(define free-static-label
+  (->label assq *interned-static-variables* "-HOME-"))
 
-  ;; End of let-syntax
-  )
-
+;; End of let-syntax
+)
+
 ;; These are different because different uuo-links are used for different
 ;; numbers of arguments.
 
