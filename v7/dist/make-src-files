@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-src-files,v 1.15 2001/01/08 20:52:17 cph Exp $
+# $Id: make-src-files,v 1.16 2001/02/24 03:10:21 cph Exp $
 #
 # Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
@@ -27,28 +27,31 @@ TAG=`get_release_tag`
 
 rm -rf ${PREFIX}
 mkdir ${PREFIX}
-DESTINATION="${PREFIX}/src"
 
 (
     cd /scheme/v7/src/runtime
     TAG_STATUS="`cvs status -v version.scm | fgrep ${TAG}`"
     if [ -z "${TAG_STATUS}" ]; then
-	cvs rtag ${TAG} v7/doc v7/src
+	cvs rtag ${TAG} v7/doc v7/src etc/xscheme.el
     fi
 )
 
 (
     cd ${PREFIX}
     cvs -d /scheme/cvsroot export -r ${TAG} -d src v7/src
-    cd src
-    ./Setup.sh
+    (cd src; ./Setup.sh)
+    cvs -d /scheme/cvsroot export -r ${TAG} -d doc v7/doc
+    (cd doc; autoconf)
+    cvs -d /scheme/cvsroot export -r ${TAG} etc/xscheme.el
 )
 
-find ${DESTINATION} -type f -print | xargs chmod g-w
-find ${DESTINATION} -type d -print | xargs chmod g-w
+find ${PREFIX} -type f -print | xargs chmod g-w
+find ${PREFIX} -type d -print | xargs chmod g-w
 
 ${INSTALL_DATA} /scheme/v7/src/ChangeLog changelog.txt
-${INSTALL_DATA} /scheme/v7/src/ChangeLog ${DESTINATION}/.
+${INSTALL_DATA} /scheme/v7/src/ChangeLog ${PREFIX}/src/.
+${INSTALL_DATA} /scheme/v7/doc/ChangeLog ${PREFIX}/doc/.
+${INSTALL_DATA} /scheme/v7/dist/Makefile ${PREFIX}/.
 
 tarfile=${PREFIX}-src.tar.gz
 zipfile=${PREFIX}-src.zip
@@ -58,12 +61,12 @@ rm -f ${tarfile}
 rm -f ${zipfile}
 rm -f ${ucfile}
 
-tar cvzf ${tarfile} ${DESTINATION}
-tar cvzf ${ucfile} ${DESTINATION}/microcode
+tar cvzf ${tarfile} ${PREFIX}
+tar cvzf ${ucfile} ${PREFIX}/src/microcode
 
-rm -rf ${DESTINATION}/lib
-symlinks -rd ${DESTINATION}
-zip -rl ${zipfile} ${DESTINATION}
+rm -rf ${PREFIX}/src/lib
+symlinks -rd ${PREFIX}
+zip -rl ${zipfile} ${PREFIX}
 
 chmod -w changelog.txt ${tarfile} ${zipfile} ${ucfile}
 
