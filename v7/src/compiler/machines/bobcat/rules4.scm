@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 1.1 1987/06/13 20:59:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 1.1.1.1 1987/07/01 21:02:12 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -58,31 +58,34 @@ MIT in each case. |#
 (define (lookup-call entry environment name)
   (let ((set-environment (expression->machine-register! environment a0)))
     (let ((clear-map (clear-map!)))
-      `(,@set-environment
-	,@clear-map
-	,(load-constant name '(A 1))
-	(JSR ,entry)
-	,@(make-external-label (generate-label))))))
+      (LAP ,@set-environment
+	   ,@clear-map
+	   ,(load-constant name (INST-EA (A 1)))
+	   (JSR ,entry)
+	   ,@(make-external-label (generate-label))))))
 
 (define-rule statement
   (INTERPRETER-CALL:ENCLOSE (? number-pushed))
-  (decrement-frame-pointer-offset! number-pushed
-    `((MOVE L (A 5) ,reg:enclose-result)
-      (MOVE B (& ,(ucode-type vector)) ,reg:enclose-result)
-      ,(load-non-pointer (ucode-type manifest-vector) number-pushed
-			 '(@A+ 5))
-      ,@(generate-n-times number-pushed 5 '(MOVE L (@A+ 7) (@A+ 5))
-	  (lambda (generator)
-	    (generator (allocate-temporary-register! 'DATA)))))
-#| Alternate sequence which minimizes code size.
+  (decrement-frame-pointer-offset!
+   number-pushed
+   (LAP (MOVE/SIMPLE L (A 5) ,reg:enclose-result)
+	(MOVE/SIMPLE B (& ,(ucode-type vector)) ,reg:enclose-result)
+	,(load-non-pointer (ucode-type manifest-vector) number-pushed
+			   (INST-EA (@A+ 5)))
+     
+	,@(generate-n-times number-pushed 5
+			    (INST (MOVE/SIMPLE L (@A+ 7) (@A+ 5)))
+			    (lambda (generator)
+			      (generator (allocate-temporary-register! 'DATA)))))
+   #| Alternate sequence which minimizes code size. ;
    DO NOT USE THIS!  The `clear-registers!' call does not distinguish between
    registers containing objects and registers containing unboxed things, and
    as a result can write unboxed stuff to memory.
-    `(,@(clear-registers! a0 a1 d0)
-      (MOVE W (& ,number-pushed) (D 0))
-      (JSR ,entry:compiler-enclose))
-|#
-    ))
+   (LAP ,@(clear-registers! a0 a1 d0)
+	(MOVE/SIMPLE W (& ,number-pushed) (D 0))
+	(JSR ,entry:compiler-enclose))
+   |#
+   ))
 
 (define-rule statement
   (INTERPRETER-CALL:DEFINE (? environment) (? name) (? value))
@@ -98,12 +101,12 @@ MIT in each case. |#
   (let ((set-environment (expression->machine-register! environment a0)))
     (let ((set-value (expression->machine-register! value a2)))
       (let ((clear-map (clear-map!)))
-	`(,@set-environment
-	  ,@set-value
-	  ,@clear-map
-	  ,(load-constant name '(A 1))
-	  (JSR ,entry)
-	  ,@(make-external-label (generate-label)))))))
+	(LAP ,@set-environment
+	     ,@set-value
+	     ,@clear-map
+	     ,(load-constant name (INST-EA (A 1)))
+	     (JSR ,entry)
+	     ,@(make-external-label (generate-label)))))))
 
 (define-rule statement
   (INTERPRETER-CALL:DEFINE (? environment) (? name)
@@ -123,25 +126,25 @@ MIT in each case. |#
   (let ((set-environment (expression->machine-register! environment a0)))
     (let ((datum (coerce->any datum)))
       (let ((clear-map (clear-map!)))
-	`(,@set-environment
-	  (MOVE L ,datum ,reg:temp)
-	  (MOVE B (& ,type) ,reg:temp)
-	  ,@clear-map
-	  (MOVE L ,reg:temp (A 2))
-	  ,(load-constant name '(A 1))
-	  (JSR ,entry)
-	  ,@(make-external-label (generate-label)))))))
+	(LAP ,@set-environment
+	     (MOVE/SIMPLE L ,datum ,reg:temp)
+	     (MOVE/SIMPLE B (& ,type) ,reg:temp)
+	     ,@clear-map
+	     (MOVE/SIMPLE L ,reg:temp (A 2))
+	     ,(load-constant name (INST-EA (A 1)))
+	     (JSR ,entry)
+	     ,@(make-external-label (generate-label)))))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-REFERENCE (? extension) (? safe?))
   (let ((set-extension (expression->machine-register! extension a0)))
     (let ((clear-map (clear-map!)))
-      `(,@set-extension
-	,@clear-map
-	(JSR ,(if safe?
-		  entry:compiler-safe-reference-trap
-		  entry:compiler-reference-trap))
-	,@(make-external-label (generate-label))))))
+      (LAP ,@set-extension
+	   ,@clear-map
+	   (JSR ,(if safe?
+		     entry:compiler-safe-reference-trap
+		     entry:compiler-reference-trap))
+	   ,@(make-external-label (generate-label))))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension) (? value))
@@ -149,11 +152,11 @@ MIT in each case. |#
   (let ((set-extension (expression->machine-register! extension a0)))
     (let ((set-value (expression->machine-register! value a1)))
       (let ((clear-map (clear-map!)))
-	`(,@set-extension
-	  ,@set-value
-	  ,@clear-map
-	  (JSR ,entry:compiler-assignment-trap)
-	  ,@(make-external-label (generate-label)))))))
+	(LAP ,@set-extension
+	     ,@set-value
+	     ,@clear-map
+	     (JSR ,entry:compiler-assignment-trap)
+	     ,@(make-external-label (generate-label)))))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension)
@@ -162,50 +165,55 @@ MIT in each case. |#
   (let ((set-extension (expression->machine-register! extension a0)))
     (let ((datum (coerce->any datum)))
       (let ((clear-map (clear-map!)))
-	`(,@set-extension
-	  (MOVE L ,datum ,reg:temp)
-	  (MOVE B (& ,type) ,reg:temp)
-	  ,@clear-map
-	  (MOVE L ,reg:temp (A 1))
-	  (JSR ,entry:compiler-assignment-trap)
-	  ,@(make-external-label (generate-label)))))))
+	(LAP ,@set-extension
+	     (MOVE/SIMPLE L ,datum ,reg:temp)
+	     (MOVE/SIMPLE B (& ,type) ,reg:temp)
+	     ,@clear-map
+	     (MOVE/SIMPLE L ,reg:temp (A 1))
+	     (JSR ,entry:compiler-assignment-trap)
+	     ,@(make-external-label (generate-label)))))))
 
 ;;;; Poppers
 
 (define-rule statement
   (MESSAGE-RECEIVER:CLOSURE (? frame-size))
   (record-push!
-   `((MOVE L (& ,(* frame-size 4)) (@-A 7)))))
+   (LAP (MOVE/SIMPLE L (& ,(* frame-size 4)) (@-A 7)))))
 
 (define-rule statement
   (MESSAGE-RECEIVER:STACK (? frame-size))
   (record-push!
-   `((MOVE L (& ,(+ #x00100000 (* frame-size 4))) (@-A 7)))))
+   (LAP (MOVE/SIMPLE L
+		     (& ,(+ #x00100000 (* frame-size 4)))
+		     (@-A 7)))))
 
 (define-rule statement
   (MESSAGE-RECEIVER:SUBPROBLEM (? label))
   (record-continuation-frame-pointer-offset! label)
-  (increment-frame-pointer-offset! 2
-    `((PEA (@PCR ,label))
-      (MOVE B (& ,type-code:return-address) (@A 7))
-      (MOVE L (& #x00200000) (@-A 7)))))
+  (increment-frame-pointer-offset!
+   2
+   (LAP (PEA (@PCR ,label))
+	(MOVE/SIMPLE B (& ,type-code:return-address) (@A 7))
+	(MOVE/SIMPLE L (& #x00200000) (@-A 7)))))
 
 (define (apply-closure-sequence frame-size receiver-offset label)
-  `(,(load-dnw frame-size 1)
-    (LEA (@AO 7 ,(* (+ receiver-offset (frame-pointer-offset)) 4)) (A 0))
-    (LEA (@PCR ,label) (A 1))
-    (JMP ,popper:apply-closure)))
+  (LAP ,(load-dnw frame-size 1)
+       (LEA (@AO 7 ,(* (+ receiver-offset (frame-pointer-offset)) 4))
+	    (A 0))
+       (LEA (@PCR ,label) (A 1))
+       (JMP ,popper:apply-closure)))
 
 (define (apply-stack-sequence frame-size receiver-offset n-levels label)
-  `((MOVEQ (& ,n-levels) (D 0))
-    ,(load-dnw frame-size 1)
-    (LEA (@AO 7 ,(* (+ receiver-offset (frame-pointer-offset)) 4)) (A 0))
-    (LEA (@PCR ,label) (A 1))
-    (JMP ,popper:apply-stack)))
+  (LAP (MOVEQ (& ,n-levels) (D 0))
+       ,(load-dnw frame-size 1)
+       (LEA (@AO 7 ,(* (+ receiver-offset (frame-pointer-offset)) 4))
+	    (A 0))
+       (LEA (@PCR ,label) (A 1))
+       (JMP ,popper:apply-stack)))
 
 (define-rule statement
   (MESSAGE-SENDER:VALUE (? receiver-offset))
   (disable-frame-pointer-offset!
-   `(,@(clear-map!)
-     ,@(increment-anl 7 (+ receiver-offset (frame-pointer-offset)))
-     (JMP ,popper:value))))
+   (LAP ,@(clear-map!)
+	,@(increment-anl 7 (+ receiver-offset (frame-pointer-offset)))
+	(JMP ,popper:value))))
