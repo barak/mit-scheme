@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.6 1996/07/22 04:46:15 adams Exp $
+$Id: rulrew.scm,v 1.7 1996/07/22 17:45:29 adams Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -375,3 +375,42 @@ MIT in each case. |#
   (COERCE-VALUE-CLASS (REGISTER (? frob register-known-expression)) (? class))
   class					; ignored
   frob)
+
+(define-rule add-pre-cse-rewriting-rule!
+  (FLONUM-2-ARGS FLONUM-SUBTRACT
+		 (REGISTER (? operand-1 register-known-flonum-zero?))
+		 (? operand-2)
+		 (? overflow?))
+  (rtl:make-flonum-1-arg 'FLONUM-NEGATE operand-2 overflow?))
+
+(define-rule add-pre-cse-rewriting-rule!
+  (FLONUM-PRED-2-ARGS (? predicate)
+		      (? operand-1)
+		      (REGISTER (? operand-2 register-known-flonum-zero?)))
+  (list 'FLONUM-PRED-1-ARG
+	(case predicate
+	  ((FLONUM-LESS?)     'FLONUM-NEGATIVE?)
+	  ((FLONUM-GREATER?)  'FLONUM-POSITIVE?)
+	  ((FLONUM-EQUAL?)    'FLONUM-ZERO?))
+	operand-1))
+
+(define-rule add-pre-cse-rewriting-rule!
+  (FLONUM-PRED-2-ARGS (? predicate)
+		      (REGISTER (? operand-1 register-known-flonum-zero?))
+		      (? operand-2))
+  (list 'FLONUM-PRED-1-ARG
+	(case predicate
+	  ((FLONUM-LESS?)     'FLONUM-POSITIVE?)
+	  ((FLONUM-GREATER?)  'FLONUM-NEGATIVE?)
+	  ((FLONUM-EQUAL?)    'FLONUM-ZERO?))
+	operand-2))  
+		
+(define (register-known-flonum-zero? regnum)
+  ;; returns the rtl of a constant that is a fixnum, i.e (CONSTANT 1000)
+  ;; recognizes (OBJECT->FLOAT (CONSTANT 0.0))
+  (let ((expr (register-known-value regnum)))
+    (and expr
+	 (rtl:object->float? expr)
+	 (rtl:constant? (rtl:object->float-expression expr))
+	 (equal? 0.0
+		 (rtl:constant-value (rtl:object->float-expression expr))))))
