@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.18 2000/06/15 01:57:41 cph Exp $
+;;; $Id: imail-summary.scm,v 1.19 2000/06/15 02:35:59 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -416,7 +416,6 @@ with some additions to make navigation more natural.
 (define-key 'imail-summary #\c-n	'imail-next-message)
 (define-key 'imail-summary #\c-p	'imail-previous-message)
 (define-key 'imail-summary #\.		'undefined)
-(define-key 'imail-summary #\q		'imail-summary-quit)
 (define-key 'imail-summary #\u		'imail-undelete-forward)
 (define-key 'imail-summary #\m-<	'imail-first-message)
 (define-key 'imail-summary #\m->	'imail-last-message)
@@ -453,17 +452,6 @@ with some additions to make navigation more natural.
 			 (buffer-end (window-buffer window)))
 		     0))))
     ((ref-command imail-summary-select-message))))
-
-(define-command imail-summary-quit
-  "Quit out of IMAIL."
-  ()
-  (lambda ()
-    (let ((folder-buffer
-	   (buffer-get (selected-buffer) 'IMAIL-FOLDER-BUFFER #f)))
-      (if folder-buffer
-	  (for-each window-delete! (buffer-windows folder-buffer))))
-    ((ref-command imail-quit))
-    ((ref-command bury-buffer))))
 
 ;;;; Navigation
 
@@ -567,7 +555,8 @@ with some additions to make navigation more natural.
 		     (ref-variable imail-summary-highlight-message buffer))
 		(begin
 		  (highlight-region (make-region mark (line-end mark 0))
-				    #t)))))))
+				    #t)
+		  (buffer-not-modified! buffer)))))))
   (if (ref-variable imail-summary-pop-up-message buffer)
       (imail-summary-pop-up-message-buffer buffer)))
 
