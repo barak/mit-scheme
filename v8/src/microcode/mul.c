@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: mul.c,v 9.33 1993/02/15 03:39:48 gjr Exp $
+$Id: mul.c,v 9.34 1995/07/26 23:59:44 adams Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -208,8 +208,7 @@ static long Fixnum_Range[2] = {SMALLEST_FIXNUM , BIGGEST_FIXNUM};
 
 #define HALF_WORD_SIZE	(((sizeof (long)) * CHAR_BIT) / 2)
 #define HALF_WORD_MASK	((ONE << HALF_WORD_SIZE) - 1)
-#define MAX_MIDDLE	(ONE << ((DATUM_LENGTH - 1) - HALF_WORD_SIZE))
-#define MAX_FIXNUM	(ONE << DATUM_LENGTH)
+#define MAX_MIDDLE	((BIGGEST_FIXNUM + 1) >> HALF_WORD_SIZE)
 #define	ABS(x)		(((x) < 0) ? -(x) : (x))
 
 SCHEME_OBJECT
@@ -236,6 +235,7 @@ DEFUN (Mul, (Arg1, Arg2),
   if (Lo_C >= FIXNUM_SIGN_BIT)
     return (SHARP_F);
   Middle_C = (Lo_A * Hi_B) + (Hi_A * Lo_B);
+
   if (Middle_C >= MAX_MIDDLE)
     return (SHARP_F);
   C = Lo_C + (Middle_C << HALF_WORD_SIZE);
@@ -244,7 +244,7 @@ DEFUN (Mul, (Arg1, Arg2),
     if (Sign || (C == 0))
       return (LONG_TO_UNSIGNED_FIXNUM(C));
     else
-      return (LONG_TO_UNSIGNED_FIXNUM(MAX_FIXNUM - C));
+      return (LONG_TO_FIXNUM(-C));
   }
   return (SHARP_F);
 }
