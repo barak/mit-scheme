@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.4 1989/10/27 13:28:23 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.5 1989/10/28 15:28:07 jinx Exp $
    $MC68020-Header: cmp68kgc.h,v 9.30 89/03/27 23:14:31 GMT jinx Exp $
 
 Utilities to relocate compiled code in garbage collection-like processes. 
@@ -141,18 +141,19 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
    the machine code for the closure (typically a jsr-type
    instruction).  If there is only one entry point to a closure, the
    GC offset will be 8 bytes, pointing back to the manifest closure
-   header itself.  Otherwise the object consists of a manifest vector
-   header followed by a count of entry points, followed by a manifest
-   closure header, followed by the entry points themselves.  After the
-   entry points there are the values of the variables closed over:
+   header itself.  Otherwise what would have been the first GC offset
+   is 0, and what would have been the first format word is the count
+   in entry points.  The format word and GC offset for the first entry
+   follow this additional word.  After the entry points there are the
+   values of the variables closed over:
 
           >=1 Entry Point		  =1 Entry Point
    (offset in bytes from 1st instruction of 1st (only) entry)
-     -16: Manifest Vector|total length
-     -12: FIXNUM | # of entry points
-     - 8: Manifest Closure | length      Manifest Closure | tot. length
+
+     -12: Manifest Closure | tot. length
+     - 8: Count format word (with 0 GC)  Manifest Closure | tot. length
      - 4: Format word, 1st entry         Format word, only entry
-     - 2: GC offset to -16               GC offset to -8
+     - 2: GC offset to -12               GC offset to -8
        0: jsr instr., 1st entry		 jsr instr.
       xx: more instructions if needed    same
         : Format word, 2nd entry         closed over variable values
@@ -161,48 +162,61 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
      ...: closed over variable values
 
    FIRST_MANIFEST_CLOSURE_ENTRY receives the address of the word past
-   the manifest closure header (-4 in the above picture).  It 
-   bumps it to the first entry point, past the format word and the gc
-   offset (i.e. to 0 above).
+   the manifest closure header (-4 for single entry point closures in
+   the above picture).  It bumps it to the first entry point (i.e. to
+   0 above), past the format word and the gc offset and the count
+   formart word if present.
 
-   MANIFEST_CLOSURE_COUNT receives the address of the first entry
-   point (0 in the above picture).  It returns the number of entry
-   points in this closure block.
+   MANIFEST_CLOSURE_COUNT receives the address of the word past the
+   manifest closure header and extracts the count of entry points
+   in the closure block.
 
    CLOSURE_HEADER_TO_ENTRY is the distance (in bytes) from the
    manifest closure header to the 1st instruction of the (1st) entry.
  */
 
-#define FIRST_MANIFEST_CLOSURE_ENTRY(scan)				\
-  (((machine_word *) scan) + 2)
-
 #define CLOSURE_HEADER_TO_ENTRY						\
-((sizeof(SCHEME_OBJECT)) + (2 * (sizeof(machine_word))))
+((sizeof (SCHEME_OBJECT)) + (2 * (sizeof (machine_word))))
 
-#define MANIFEST_CLOSURE_COUNT(start_ptr)				\
-(((((machine_word *) (start_ptr))[-1]) ==				\
-  ((machine_word)							\
-   (BYTE_OFFSET_TO_OFFSET_WORD (CLOSURE_HEADER_TO_ENTRY))))		\
+#define CLOSURE_HEADER_TO_ENTRY_WORD					\
+((machine_word) (BYTE_OFFSET_TO_OFFSET_WORD (CLOSURE_HEADER_TO_ENTRY)))
+
+#define MANIFEST_CLOSURE_COUNT(scan)					\
+(((((machine_word *) (scan))[1]) ==					\
+  CLOSURE_HEADER_TO_ENTRY_WORD) ?					\
  1 :									\
- (OBJECT_DATUM (((SCHEME_OBJECT *)					\
-		 (((char *) (start_ptr)) -				\
-		  CLOSURE_HEADER_TO_ENTRY))[-1])))
+ ((long) (((machine_word *) (scan))[0])))
+
+#define FIRST_MANIFEST_CLOSURE_ENTRY(scan)				\
+(((((machine_word *) (scan))[1]) ==   CLOSURE_HEADER_TO_ENTRY_WORD) ?	\
+ (((machine_word *) (scan)) + 2) :					\
+ (((machine_word *) (scan)) + 4))
 
 #define NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr)				\
-  ((machine_word *)							\
-   (((SCHEME_OBJECT *) word_ptr) +					\
-    (COMPILED_CLOSURE_ENTRY_SIZE + 1)))
+  (((machine_word *) (word_ptr)) + (COMPILED_CLOSURE_ENTRY_SIZE))
+
+/* Where this closure entry ends with respect to the entry point.
+   Since an entry point is preceded by a format word and a gc offset,
+   it is the address of the next entry minus these two words.
+ */
+
+#define CLOSURE_ENTRY_END(word_ptr)					\
+  (((machine_word *) (word_ptr)) + ((COMPILED_CLOSURE_ENTRY_SIZE) - 2))
 
 /* This takes into account the fact that the relocation loop increments
    by 1 on each major iteration.
+   Note: It also assumes that closures with exactly one entry point
+   are always represented in short format.
  */
 
-#define MANIFEST_CLOSURE_END(end_ptr, start_ptr)			\
-  (((SCHEME_OBJECT *) end_ptr) - 1)
-
-#define MANIFEST_CLOSURE_VALID_FITS_P(word_ptr, top)			\
-  ((NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr)) <=				\
-   ((machine_word *) top))
+#define MANIFEST_CLOSURE_END(start, count)				\
+(((SCHEME_OBJECT *) (start)) +						\
+ (((((sizeof (machine_word)) *						\
+     (((count) * COMPILED_CLOSURE_ENTRY_SIZE) +				\
+      (((count) == 1) ? 0 : 2))) +					\
+    ((sizeof (SCHEME_OBJECT)) - 1)) /					\
+   (sizeof (SCHEME_OBJECT))))						\
+ - 1)
 
 /* Linkage sections */
 
@@ -245,8 +259,8 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 
 /* Heuristic recovery aid.  See unix.c for details. */
 
-#define CC_BLOCK_FIRST_GC_OFFSET				\
-  (CC_BLOCK_FIRST_ENTRY_OFFSET - (sizeof(machine_word)))
+#define CC_BLOCK_FIRST_GC_OFFSET					\
+  (CC_BLOCK_FIRST_ENTRY_OFFSET - (sizeof (machine_word)))
 
 #define PLAUSIBLE_CC_BLOCK_P(block)					\
 ((*((machine_word *)							\
