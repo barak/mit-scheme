@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: applicat.scm,v 1.6 1996/03/08 22:27:09 adams Exp $
+$Id: applicat.scm,v 1.7 1996/03/09 15:25:30 adams Exp $
 
 Copyright (c) 1994-1996 Massachusetts Institute of Technology
 
@@ -123,10 +123,8 @@ MIT in each case. |#
 	((LOOKUP/? rator)
 	 (let ((place (assq (cadr rator) env)))
 	   (if (or (not place) (not (cadr place)))
-	       (default)
-	       `(CALL ,(applicat/expr env rator)
-		      ,(applicat/expr env cont)
-		      ,@(applicat/expr* env rands)))))
+	       (checked-call)
+	       (direct-call))))
 	((LAMBDA/? rator)
 	 (let* ((lambda-list (cadr rator))
 		(rator* `(LAMBDA ,lambda-list
@@ -141,7 +139,7 @@ MIT in each case. |#
 		  ,(applicat/expr env cont)
 		  ,@(applicat/expr* env rands))))
 	(else
-	 (default))))
+	 (checked-call))))
 
 (define-applicator LET (env bindings body)
   `(LET ,(map (lambda (binding)
