@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: blowfish.scm,v 1.6 1999/01/14 18:35:23 cph Exp $
+$Id: blowfish.scm,v 1.7 1999/05/18 17:11:58 cph Exp $
 
 Copyright (c) 1997, 1999 Massachusetts Institute of Technology
 
@@ -23,20 +23,75 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;; package: ()
 
 (declare (usual-integrations))
-
+
 (define-primitives
   (md5 1)
   (md5-init 0)
   (md5-update 4)
-  (md5-final 1)
-  (blowfish-set-key 1)
-  (blowfish-cbc 4)
-  (blowfish-cfb64 5)
-  (blowfish-cfb64-substring 7))
+  (md5-final 1))
 
-(define (blowfish-available?)
-  (and (implemented-primitive-procedure? md5-init)
-       (implemented-primitive-procedure? blowfish-cfb64-substring)))
+(define blowfish-available?)
+(define blowfish-set-key)
+(define blowfish-cbc)
+(define blowfish-cfb64)
+(define blowfish-cfb64-substring)
+
+(let ((unlocked? 'UNKNOWN)
+      (key-sum "8074396df211ba2da12a872b6e84d7ce"))
+
+  (define (check-key)
+    (initialize-key)
+    (if (not unlocked?)
+	(error "Blowfish support disabled in this implementation.")))
+
+  (define (initialize-key)
+    (if (eq? 'UNKNOWN unlocked?)
+	(set! unlocked?
+	      (and (implemented-primitive-procedure? md5-init)
+		   (implemented-primitive-procedure?
+		    (ucode-primitive blowfish-cfb64-substring 7))
+		   (let ((pathname
+			  (call-with-current-continuation
+			   (lambda (k)
+			     (bind-condition-handler
+				 (list condition-type:file-error)
+				 (lambda (condition)
+				   condition
+				   (k #f))
+			       (lambda ()
+				 (system-library-pathname "blowfish.key")))))))
+		     (and pathname
+			  (string=? key-sum
+				    (md5-sum->hexadecimal
+				     (md5-file pathname)))))))))
+
+  (set! blowfish-available?
+	(lambda ()
+	  (initialize-key)
+	  unlocked?))
+
+  (set! blowfish-set-key
+	(lambda (string)
+	  (check-key)
+	  ((ucode-primitive blowfish-set-key 1) string)))
+
+  (set! blowfish-cbc
+	(lambda (input key init-vector encrypt?)
+	  (check-key)
+	  ((ucode-primitive blowfish-cbc 4) input key init-vector encrypt?)))
+
+  (set! blowfish-cfb64
+	(lambda (input key init-vector num encrypt?)
+	  (check-key)
+	  ((ucode-primitive blowfish-cfb64 5) input key init-vector num
+					      encrypt?)))
+
+  (set! blowfish-cfb64-substring
+	(lambda (input start end key init-vector num encrypt?)
+	  (check-key)
+	  ((ucode-primitive blowfish-cfb64-substring 7) input start end
+							key init-vector num
+							encrypt?))))
 
 (define (blowfish-encrypt-string plaintext key-string encrypt?)
   (blowfish-encrypt-substring plaintext 0 (string-length plaintext)
