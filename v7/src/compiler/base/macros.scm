@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 4.3 1987/12/31 10:00:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 4.4 1987/12/31 10:43:40 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -215,24 +215,24 @@ MIT in each case. |#
 
 (syntax-table-define compiler-syntax-table 'MAKE-SNODE
   (macro (tag . extra)
-    `((ACCESS VECTOR SYSTEM-GLOBAL-ENVIRONMENT)
+    `((ACCESS VECTOR ,system-global-environment)
       ,tag FALSE '() '() FALSE ,@extra)))
 
 (syntax-table-define compiler-syntax-table 'MAKE-PNODE
   (macro (tag . extra)
-    `((ACCESS VECTOR SYSTEM-GLOBAL-ENVIRONMENT)
+    `((ACCESS VECTOR ,system-global-environment)
       ,tag FALSE '() '() FALSE FALSE ,@extra)))
 
 (syntax-table-define compiler-syntax-table 'MAKE-RVALUE
   (macro (tag . extra)
-    `((ACCESS VECTOR SYSTEM-GLOBAL-ENVIRONMENT)
+    `((ACCESS VECTOR ,system-global-environment)
       ,tag FALSE ,@extra)))
 
 (syntax-table-define compiler-syntax-table 'MAKE-LVALUE
   (macro (tag . extra)
     (let ((result (generate-uninterned-symbol)))
       `(let ((,result
-	      ((ACCESS VECTOR SYSTEM-GLOBAL-ENVIRONMENT)
+	      ((ACCESS VECTOR ,system-global-environment)
 	       ,tag '() '() '() 'NOT-CACHED FALSE '() FALSE FALSE '()
 	       ,@extra)))
 	 (SET! *LVALUES* (CONS ,result *LVALUES*))
