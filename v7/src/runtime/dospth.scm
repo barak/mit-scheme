@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.11 1992/08/12 09:25:05 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.12 1992/08/13 19:13:09 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -114,6 +114,16 @@ MIT in each case. |#
       directory))
 
 (define (parse-directory-component component)
+  (define (->field field)
+    (cond ((eq? field 'WILD)
+	   "*")
+	  ((not field)
+	   "")
+	  ((not (string? field))
+	   (error "->field: Unknown field" field))
+	  (else
+	   field)))
+  
   (if (string=? ".." component)
       'UP
       (let ((len (string-length component)))
@@ -121,13 +131,9 @@ MIT in each case. |#
 	       ;; Handle screwy directories with dots in their names.
 	       (parse-name component
 			   (lambda (before after)
-			     (string-append (if (eq? before 'WILD)
-						"*"
-						before)
+			     (string-append (->field before)
 					    "."
-					    (if (eq? after 'WILD)
-						"*"
-						after)))))
+					    (->field after)))))
 	      ((> len 8)
 	       (substring component 0 8))
 	      (else
