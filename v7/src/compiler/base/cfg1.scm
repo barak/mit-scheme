@@ -37,7 +37,7 @@
 
 ;;;; Control Flow Graph Abstraction
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.141 1986/12/18 03:36:31 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.142 1986/12/18 12:07:02 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -263,10 +263,11 @@
   (set! *noop-nodes* '()))
 
 (define (noop-node-delete! noop-node)
-  (hooks-replace! (let ((previous (noop-node-previous noop-node)))
-		    (hooks-disconnect! previous noop-node)
-		    previous)
-		  noop-node noop-node-next))
+  (node-next-replace! noop-node
+		      noop-node-next
+		      (let ((previous (noop-node-previous noop-node)))
+			(hooks-disconnect! previous noop-node)
+			previous)))
 
 (define (make-false-pcfg)
   (let ((node (make-noop-node)))
@@ -529,82 +530,34 @@
 
 ;;;; CFG Editing Support
 
-(define node-edit!
-  (let ((tail
-	 (lambda (procedure entry)
-	   (procedure (entry-holder-next entry))
-	   (entry-holder-disconnect! entry))))
-    (lambda (node procedure)
-      (let ((entry (make-entry-holder)))
-	(entry-holder-connect! entry node)
-	(tail procedure entry)))))
-
-(define scfg-edit!
-  (let ((tail
-	 (lambda (procedure entry exit)
-	   (procedure (entry-holder-next entry))
-	   (let ((node (entry-holder-disconnect! entry)))
-	     (if node
-		 (make-scfg node
-			    (node-previous-disconnect! exit))
-		 (make-null-cfg))))))
-    (lambda (scfg procedure)
-      (and (not (cfg-null? scfg))
-	   (let ((entry (make-entry-holder))
-		 (exit (make-exit-holder)))
-	     (entry-holder-connect! entry (cfg-entry-node scfg))
-	     (hooks-connect! (scfg-next-hooks scfg) exit)
-	     (tail procedure entry exit))))))
-
-(define pcfg-edit!
-  (let ((tail
-	 (lambda (procedure entry consequent alternative)
-	   (procedure (entry-holder-next entry))
-	   (make-pcfg (entry-holder-disconnect! entry)
-		      (node-previous-disconnect! consequent)
-		      (node-previous-disconnect! alternative)))))
-    (lambda (pcfg procedure)
-      (and (not (cfg-null? pcfg))
-	   (let ((entry (make-entry-holder))
-		 (exit (make-exit-holder)))
-	     (entry-holder-connect! entry (cfg-entry-node pcfg))
-	     (hooks-connect! (pcfg-consequent-hooks pcfg) consequent)
-	     (hooks-connect! (pcfg-alternative-hooks pcfg) alternative)
-	     (tail procedure entry consequent alternative))))))
-
-(define (node-replace! node cfg)
-  ((vector-method node node-replace!) node cfg))
-
 (define (snode-replace! snode scfg)
-  (hooks-replace! (let ((previous (node-previous snode)))
-		    (hooks-disconnect! previous snode)
-		    (if (not scfg)
-			previous
-			(begin (hooks-connect! previous (cfg-entry-node scfg))
-			       (scfg-next-hooks scfg))))
-		  snode snode-&next))
+  (if (cfg-null? scfg)
+      (snode-delete! snode)
+      (begin (node-previous-replace! snode scfg)
+	     (node-next-replace! snode snode-&next (scfg-next-hooks scfg)))))
+
+(define (snode-delete! snode)
+  (node-next-replace! snode snode-&next (node-previous-disconnect! snode)))
 
 (define (pnode-replace! pnode pcfg)
-  (if (not pcfg)
+  (if (cfg-null? pcfg)
       (error "PNODE-REPLACE!: Cannot delete pnode"))
-  (let ((previous (node-previous pnode))
-	(consequent (pnode-&consequent pnode))
-	(alternative (pnode-&alternative pnode)))
-    (hooks-disconnect! previous pnode)
-    (hooks-connect! previous (cfg-entry-node pcfg))
-    (hooks-replace! (pcfg-consequent-hooks pcfg) pnode pnode-&consequent)
-    (hooks-replace! (pcfg-alternative-hooks pcfg) pnode pnode-&alternative)))
+  (node-previous-replace! pnode pcfg)
+  (node-next-replace! pnode pnode-&consequent (pcfg-consequent-hooks pcfg))
+  (node-next-replace! pnode pnode-&alternative (pcfg-alternative-hooks pcfg)))
+
+(define (node-replace! node cfg)
+  ((vector-method node node-replace!) node cfg))
 
 (define-vector-method snode-tag node-replace! snode-replace!)
 (define-vector-method pnode-tag node-replace! pnode-replace!)
 
-(define (snode-delete! snode)
-  (hooks-replace! (let ((previous (node-previous snode)))
-		    (hooks-disconnect! previous snode)
-		    previous)
-		  snode snode-&next))
+(define (node-previous-replace! node cfg)
+  (let ((previous (node-previous node)))
+    (hooks-disconnect! previous node)
+    (hooks-connect! previous (cfg-entry-node cfg))))
 
-(define (hooks-replace! hooks node next)
+(define (node-next-replace! node next hooks)
   (let ((next (next node)))
     (if next
 	(begin (node-disconnect! node next)
@@ -618,10 +571,8 @@
 
 (define (node-insert-scfg! node scfg)
   (if scfg
-      (let ((previous (node-previous node)))
-	(hooks-disconnect! previous node)
-	(hooks-connect! previous (cfg-entry-node scfg))
-	(hooks-connect! (scfg-next-hooks scfg) node))))
+      (begin (node-previous-replace! node scfg)
+	     (hooks-connect! (scfg-next-hooks scfg) node))))
 
 ;;;; Frames
 
