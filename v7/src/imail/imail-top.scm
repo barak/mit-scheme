@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.252 2001/05/25 18:16:56 cph Exp $
+;;; $Id: imail-top.scm,v 1.253 2001/05/26 01:55:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -2022,7 +2022,7 @@ Negative argument means search in reverse."
     (or (let ((selector
 	       (buffer-get (mark-buffer mark) 'IMAIL-URL-SELECTOR #f)))
 	  (and selector
-	      (selector mark)))
+	       (selector mark)))
 	(and (if (default-object? error?) #t error?)
 	     (error "No selected URL:" mark)))))
 
