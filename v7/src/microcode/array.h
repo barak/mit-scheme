@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.33 1992/12/03 22:03:07 nick Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.34 1993/02/22 20:35:53 nick Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -32,7 +32,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-#define REAL_IS_DEFINED_DOUBLE 1
+#ifndef REAL_IS_DEFINED_DOUBLE
+#define REAL_IS_DEFINED_DOUBLE 0
+#endif
 
 #if (REAL_IS_DEFINED_DOUBLE == 0)
 #define REAL float
