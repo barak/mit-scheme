@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: inlate.scm,v 1.2 1994/11/22 03:49:09 adams Exp $
+$Id: inlate.scm,v 1.3 1995/02/22 04:09:20 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -57,12 +57,24 @@ MIT in each case. |#
       (inlate/remember
        (let ((form* (open-block-components form unscan-defines)))
 	 (if (sequence? form*)
-	     (beginnify (lmap inlate/scode (sequence-actions form*)))
+	     (beginnify
+	      (inlate/map-declarations
+	       (lmap inlate/scode (sequence-actions form*))))
 	     (inlate/scode form*)))
        (new-dbg-expression/make form))))
 
 (define (inlate/constant object)
   `(QUOTE ,(if (unassigned-reference-trap? object) %unassigned object)))
+
+(define (inlate/map-declarations exprs)
+  (let loop ((exprs exprs))
+    (cond ((null? exprs) '())
+	  ((and (QUOTE/? (car exprs))
+		(block-declaration? (quote/text (car exprs))))
+	   (cons `(DECLARE ,@(block-declaration-text (quote/text (car exprs))))
+		 (loop (cdr exprs))))		 
+	(else
+	 (cons (car exprs) (loop (cdr exprs)))))))
 
 (define-inlator VARIABLE (name)
   `(LOOKUP ,name))
