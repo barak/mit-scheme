@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.85 1990/11/14 13:26:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.86 1990/11/15 15:42:35 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -1532,12 +1532,6 @@ MIT in each case. |#
   (files "rep")
   (parent ())
   (export ()
-	  %ge
-	  %gst
-	  %in
-	  %out
-	  %ve
-	  %vst
 	  ->environment
 	  abort->nearest
 	  abort->previous
@@ -1608,8 +1602,6 @@ MIT in each case. |#
 	  set-repl/prompt!
 	  set-repl/reader-history!
 	  set-repl/syntax-table!
-	  ve
-	  vst
 	  with-cmdl/input-port
 	  with-cmdl/output-port
 	  with-proceed-point

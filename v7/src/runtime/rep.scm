@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.15 1990/11/02 02:06:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.16 1990/11/15 15:42:20 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -55,7 +55,8 @@ MIT in each case. |#
   (set! hook/repl-eval default/repl-eval)
   (set! hook/read-command-char default/read-command-char)
   (set! hook/prompt-for-confirmation default/prompt-for-confirmation)
-  (set! hook/prompt-for-expression default/prompt-for-expression))
+  (set! hook/prompt-for-expression default/prompt-for-expression)
+  unspecific)
 
 (define (initial-top-level-repl)
   (fluid-let ((user-repl-environment user-initial-environment)
@@ -95,7 +96,7 @@ MIT in each case. |#
 	 (%make-cmdl parent
 		     (let loop ((parent parent))
 		       (if parent
-			   (1+ (loop (cmdl/parent parent)))
+			   (+ (loop (cmdl/parent parent)) 1)
 			   1))
 		     driver
 		     (current-proceed-continuation)
@@ -151,7 +152,7 @@ MIT in each case. |#
 (define hook/cmdl-prompt)
 
 (define (default/cmdl-prompt cmdl prompt)
-  (use-output-port cmdl
+  (with-output-port-cooked cmdl
     (lambda (output-port)
       (write-string
        (string-append "\n\n"
@@ -167,12 +168,12 @@ MIT in each case. |#
 (define hook/cmdl-message)
 
 (define (default/cmdl-message cmdl string)
-  (use-output-port cmdl
+  (with-output-port-cooked cmdl
     (lambda (output-port)
       (write-string (string-append "\n" string) output-port))))
 
 (define ((cmdl-message/strings . strings) cmdl)
-  (use-output-port cmdl
+  (with-output-port-cooked cmdl
     (lambda (output-port)
       (for-each (lambda (string)
 		  (write-string (string-append "\n" string) output-port))
@@ -183,7 +184,7 @@ MIT in each case. |#
   false)
 
 (define ((cmdl-message/active thunk) cmdl)
-  (use-output-port cmdl
+  (with-output-port-cooked cmdl
     (lambda (output-port)
       (with-output-to-port output-port thunk))))
 
@@ -392,12 +393,10 @@ MIT in each case. |#
   (let ((port (cmdl/output-port repl)))
     (if (not (interpreter-environment? environment))
 	(begin
-	  (write-string
-	   "\n;Warning! this environment is a compiled-code environment:")
-	  (write-string
-	   "\n; Assignments to most compiled-code bindings are prohibited,")
-	  (write-string
-	   "\n; as are certain other environment operations.")))
+	  (write-string "
+;Warning! this environment is a compiled-code environment:
+; Assignments to most compiled-code bindings are prohibited,
+; as are certain other environment operations.")))
     (let ((package (environment->package environment)))
       (if package
 	  (begin
@@ -420,7 +419,7 @@ MIT in each case. |#
 
 (define (default/repl-write repl object)
   (repl-history/record! (repl/printer-history repl) object)
-  (use-output-port repl
+  (with-output-port-cooked repl
     (lambda (output-port)
       (if (undefined-value? object)
 	  (write-string "\n;No value" output-port)
@@ -444,19 +443,27 @@ MIT in each case. |#
 (define (repl-history/record! history object)
   (let ((elements (repl-history/elements history)))
     (if (not (null? elements))
-	(begin (set-car! elements object)
-	       (set-repl-history/elements! history (cdr elements))))))
+	(begin
+	  (set-car! elements object)
+	  (set-repl-history/elements! history (cdr elements))))))
+
+(define (repl-history/replace-current! history object)
+  (let ((elements (repl-history/elements history)))
+    (if (not (null? elements))
+	(set-car! (list-tail elements (- (repl-history/size history) 1))
+		  object))))
 
 (define (repl-history/read history n)
   (if (not (and (exact-nonnegative-integer? n)
 		(< n (repl-history/size history))))
-      (error "REPL-HISTORY/READ: Bad argument" n))
+      (error:illegal-datum n 'REPL-HISTORY/READ))
   (list-ref (repl-history/elements history)
-	    (- (-1+ (repl-history/size history)) n)))
+	    (- (- (repl-history/size history) 1) n)))
 
 ;;; User Interface Stuff
 
 (define user-repl-environment)
+(define user-repl-syntax-table)
 
 (define (pe)
   (let ((environment (nearest-repl/environment)))
@@ -468,34 +475,20 @@ MIT in each case. |#
 (define (ge environment)
   (let ((repl (nearest-repl))
 	(environment (->environment environment)))
-    (set! user-repl-environment environment)
     (set-repl-state/environment! (cmdl/state repl) environment)
-    (use-output-port repl
-      (lambda (output-port)
-	output-port
-	(hook/repl-environment repl environment)))
-    environment))
-
-(define (ve environment)
-  (let ((repl (nearest-repl))
-	(environment (->environment environment)))
-    (set-repl-state/environment! (cmdl/state repl) environment)
-    (set-repl-state/prompt! (cmdl/state repl) "Visiting->")
-    (use-output-port repl
+    (if (not (cmdl/parent repl))
+	(set! user-repl-environment environment))
+    (with-output-port-cooked repl
       (lambda (output-port)
 	output-port
 	(hook/repl-environment repl environment)))
     environment))
 
 (define (->environment object)
-  (cond ((environment? object)
-	 object)
-	((package? object)
-	 (package/environment object))
-	((procedure? object)
-	 (procedure-environment object))
-	((promise? object)
-	 (promise-environment object))
+  (cond ((environment? object) object)
+	((package? object) (package/environment object))
+	((procedure? object) (procedure-environment object))
+	((promise? object) (promise-environment object))
 	(else
 	 (let ((package
 		(let ((package-name
@@ -505,27 +498,28 @@ MIT in each case. |#
 		  (and package-name
 		       (name->package package-name)))))
 	   (if (not package)
-	       (error "->ENVIRONMENT: Not an environment" object))
+	       (error:illegal-datum object '->ENVIRONMENT))
 	   (package/environment package)))))
-
-(define user-repl-syntax-table)
 
 (define (gst syntax-table)
   (guarantee-syntax-table syntax-table)
-  (set! user-repl-syntax-table syntax-table)
-  (set-repl-state/syntax-table! (cmdl/state (nearest-repl)) syntax-table)
-  unspecific)
-
-(define (vst syntax-table)
-  (guarantee-syntax-table syntax-table)
-  (set-repl-state/syntax-table! (cmdl/state (nearest-repl)) syntax-table)
+  (let ((repl (nearest-repl)))
+    (set-repl-state/syntax-table! (cmdl/state repl) syntax-table)
+    (if (not (cmdl/parent repl))
+	(set! user-repl-syntax-table syntax-table)))
   unspecific)
 
 (define (re #!optional index)
   (let ((repl (nearest-repl)))
     (hook/repl-eval repl
-		    (repl-history/read (repl/reader-history repl)
-				       (if (default-object? index) 1 index))
+		    (let ((history (repl/reader-history repl)))
+		      (let ((s-expression
+			     (repl-history/read history
+						(if (default-object? index)
+						    1
+						    index))))
+			(repl-history/replace-current! history s-expression)
+			s-expression))
 		    (repl/environment repl)
 		    (repl/syntax-table repl))))
 
@@ -535,15 +529,7 @@ MIT in each case. |#
 
 (define (out #!optional index)
   (repl-history/read (repl/printer-history (nearest-repl))
-		     (-1+ (if (default-object? index) 1 index))))
-
-;; Compatibility.
-(define %ge ge)
-(define %ve ve)
-(define %gst gst)
-(define %vst vst)
-(define %in in)
-(define %out out)
+		     (- (if (default-object? index) 1 index) 1)))
 
 ;;;; Prompting
 
@@ -570,35 +556,33 @@ MIT in each case. |#
   (read-char-internal (cmdl/input-port cmdl)))
 
 (define (default/prompt-for-confirmation cmdl prompt)
-  (let ((input-port (cmdl/input-port cmdl)))
-    (use-output-port cmdl
+  (let ((input-port (cmdl/input-port cmdl))
+	(prompt (string-append "\n" prompt " (y or n)? ")))
+    (with-output-port-cooked cmdl
       (lambda (output-port)
 	(let loop ()
-	  (newline output-port)
 	  (write-string prompt output-port)
-	  (write-string " (y or n)? " output-port)
-	  (let ((char (char-upcase (read-char-internal input-port))))
-	    (cond ((or (char=? #\Y char)
-		       (char=? #\Space char))
+	  (let ((char (read-char-internal input-port)))
+	    (cond ((or (char-ci=? #\Y char)
+		       (char-ci=? #\Space char))
 		   (write-string "Yes" output-port)
 		   true)
-		  ((or (char=? #\N char)
-		       (char=? #\Rubout char))
+		  ((or (char-ci=? #\N char)
+		       (char-ci=? #\Rubout char))
 		   (write-string "No" output-port)
 		   false)
 		  (else
+		   (write char output-port)
 		   (beep output-port)
 		   (loop)))))))))
 
 (define (default/prompt-for-expression cmdl prompt)
-  (use-output-port cmdl
+  (with-output-port-cooked cmdl
     (lambda (output-port)
-      (newline output-port)
-      (write-string prompt output-port)
-      (write-string ": " output-port)))
+      (write-string (string-append "\n" prompt ": ") output-port)))
   (read-internal (cmdl/input-port cmdl)))
 
-(define (use-output-port cmdl user)
+(define (with-output-port-cooked cmdl user)
   (let ((output-port (cmdl/output-port cmdl)))
     (terminal-bind terminal-cooked-output (output-port/channel output-port)
       (lambda ()
