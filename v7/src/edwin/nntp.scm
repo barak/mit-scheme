@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: nntp.scm,v 1.4 1996/04/24 22:22:49 cph Exp $
+;;;	$Id: nntp.scm,v 1.5 1996/05/09 17:25:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -65,7 +65,6 @@
 		   (constructor make-nntp-connection (server change-hook)))
   (server #f read-only #t)
   (change-hook #f read-only #t)
-  (process #f)
   (port #f)
   (banner #f)
   (group-table (make-group-hash-table) read-only #t)
@@ -78,7 +77,13 @@
 			(nntp-connection:server connection)
 			"... ")))
     (message msg)
-    (let ((port (nntp-connection:reopen-1 connection)))
+    (let ((port
+	   (let ((channel
+		  (open-tcp-stream-socket-channel
+		   (nntp-connection:server connection)
+		   "nntp"))
+		 (size nntp-socket-buffer-size))
+	     (make-generic-i/o-port channel channel size size "\r\n"))))
       (set-nntp-connection:port! connection port)
       (set-nntp-connection:banner! connection (input-port/read-line port)))
     (set-nntp-connection:current-group! connection #f)
@@ -86,33 +91,6 @@
 	((nntp-connection:change-hook connection) connection))
     (message msg "done")))
 
-(define (nntp-connection:reopen-1 connection)
-  ;; Use socket primitives if available, otherwise see if the "tcp"
-  ;; program can be run as a subprocess.
-  (let ((server (nntp-connection:server connection))
-	(size nntp-socket-buffer-size))
-    (or (call-with-current-continuation
-	 (lambda (k)
-	   (bind-condition-handler
-	       (list condition-type:unimplemented-primitive)
-	       (lambda (condition) condition (k #f))
-	     (lambda ()
-	       (let ((channel (open-tcp-stream-socket-channel server "nntp")))
-		 (set-nntp-connection:process! connection #f)
-		 (make-generic-i/o-port channel channel size size "\r\n"))))))
-	(let ((process
-	       (let ((program (os/find-program "tcp" #f)))
-		 (start-pipe-subprocess program
-					(vector (file-namestring program)
-						server
-						"nntp")
-					#f))))
-	  (set-nntp-connection:process! connection process)
-	  (let ((port (subprocess-i/o-port process "\r\n")))
-	    ((port/operation port 'SET-INPUT-BUFFER-SIZE) port size)
-	    ((port/operation port 'SET-OUTPUT-BUFFER-SIZE) port size)
-	    port)))))
-
 (define (nntp-connection:closed? connection)
   (let ((port (nntp-connection:port connection)))
     (or (not port)
@@ -136,11 +114,6 @@
       (begin
 	(close-port (nntp-connection:port connection))
 	(set-nntp-connection:port! connection #f)))
-  (let ((process (nntp-connection:process connection)))
-    (if process
-	(begin
-	  (subprocess-delete process)
-	  (set-nntp-connection:process! connection #f))))
   (set-nntp-connection:current-group! connection #f)
   (if (nntp-connection:change-hook connection)
       ((nntp-connection:change-hook connection) connection)))
