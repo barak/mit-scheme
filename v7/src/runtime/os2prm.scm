@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.15 1995/04/23 05:10:07 cph Exp $
+$Id: os2prm.scm,v 1.16 1995/04/23 05:24:01 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -155,6 +155,12 @@ MIT in each case. |#
 	     32 (decoded-time/hour dt))
 	  64 (decoded-time/minute dt))
        32 (quotient (decoded-time/second dt) 2))))
+
+(define (file-time->universal-time time)
+  (encode-universal-time (decode-file-time time)))
+
+(define (universal-time->file-time time)
+  (encode-file-time (decode-universal-time time)))
 
 (define (file-attributes filename)
   ((ucode-primitive file-info 1)
