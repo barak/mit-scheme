@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: nodefs.scm,v 1.9 1993/08/16 20:11:49 cph Exp $
+$Id: nodefs.scm,v 1.10 1995/04/13 22:26:11 cph Exp $
 
-Copyright (c) 1991-93 Massachusetts Institute of Technology
+Copyright (c) 1991-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -60,7 +60,6 @@ MIT in each case. |#
 	 (if (open-block? expression)
 	     (open-block-components expression unscan-defines)
 	     expression)))
-    (check-for-illegal-definitions expression)
     (if (eq? context 'REPL-BUFFER)
 	(make-sequence
 	 (map (lambda (expression)
@@ -90,101 +89,3 @@ MIT in each case. |#
 		       (*unparser-list-breadth-limit* 10)
 		       (*unparser-string-length-limit* 30))
 	     (write value port)))))))
-
-(define (check-for-illegal-definitions expression)
-  (walk/expression (if (open-block? expression)
-		       (open-block-components expression unscan-defines)
-		       expression)
-		   'LEGAL))
-
-(define (walk/expression expression context)
-  ((scode-walk walker expression) expression context))
-
-(define-integrable (walk/no-definitions expression)
-  (walk/expression expression 'ILLEGAL))
-
-(define (walk/lambda expression context)
-  context
-  (let loop
-      ((expressions
-	(sequence-actions
-	 (lambda-components expression
-	   (lambda (name required optional rest auxiliary declarations body)
-	     name required optional rest
-	     (unscan-defines auxiliary declarations body))))))
-    (if (definition? (car expressions))
-	(begin
-	  (walk/no-definitions (definition-value (car expressions)))
-	  (if (not (null? (cdr expressions)))
-	      (loop (cdr expressions))))
-	(for-each walk/no-definitions expressions))))
-
-(define (walk/definition expression context)
-  (case context
-    ((ILLEGAL)
-     (error "Definition appears in illegal context:"
-	    (unsyntax expression)))
-    ((UNUSUAL)
-     (warn "Definition appears in unusual context:"
-	   (unsyntax expression))))
-  (walk/no-definitions (definition-value expression)))
-
-(define (walk/sequence expression context)
-  (for-each (lambda (expression)
-	      (walk/expression expression context))
-	    (sequence-actions expression)))
-
-(define (walk/constant expression context)
-  expression context
-  unspecific)
-
-(define (walk/access expression context)
-  context
-  (walk/no-definitions (access-environment expression)))
-
-(define (walk/assignment expression context)
-  context
-  (walk/no-definitions (assignment-value expression)))
-
-(define (walk/combination expression context)
-  context
-  (walk/no-definitions (combination-operator expression))
-  (for-each walk/no-definitions (combination-operands expression)))
-
-(define (walk/comment expression context)
-  (walk/expression (comment-expression expression) context))
-
-(define (walk/conditional expression context)
-  (walk/no-definitions (conditional-predicate expression))
-  (let ((context (if (eq? 'LEGAL context) 'UNUSUAL context)))
-    (walk/expression (conditional-consequent expression) context)
-    (walk/expression (conditional-alternative expression) context)))
-
-(define (walk/delay expression context)
-  context
-  (walk/no-definitions (delay-expression expression)))
-
-(define (walk/disjunction expression context)
-  (walk/no-definitions (disjunction-predicate expression))
-  (walk/expression (disjunction-alternative expression)
-		   (if (eq? 'LEGAL context) 'UNUSUAL context)))
-
-(define (walk/in-package expression context)
-  context
-  (walk/no-definitions (in-package-environment expression))
-  (check-for-illegal-definitions (in-package-expression expression)))
-
-(define walker
-  (make-scode-walker
-   walk/constant
-   `((ACCESS ,walk/access)
-     (ASSIGNMENT ,walk/assignment)
-     (COMBINATION ,walk/combination)
-     (COMMENT ,walk/comment)
-     (CONDITIONAL ,walk/conditional)
-     (DEFINITION ,walk/definition)
-     (DELAY ,walk/delay)
-     (DISJUNCTION ,walk/disjunction)
-     (IN-PACKAGE ,walk/in-package)
-     (LAMBDA ,walk/lambda)
-     (SEQUENCE ,walk/sequence))))
