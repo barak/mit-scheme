@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.42 1992/07/20 22:09:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.43 1992/07/31 15:46:19 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,6 +38,8 @@ MIT in each case. |#
 (declare (usual-integrations))
 (declare (integrate-external "infstr"))
 
+(define *save-uncompressed-files?* true)
+
 (define (initialize-package!)
   (set! special-form-procedure-names
 	`((,lambda-tag:unnamed . LAMBDA)
@@ -543,11 +545,21 @@ MIT in each case. |#
 			(loop (fix:1+ i)))))))))))
 
 (define (find-alternate-file-type base-pathname exts/receivers)
-  (or (null? exts/receivers)
-      (let ((file (pathname-new-type base-pathname (caar exts/receivers))))
-	(if (file-exists? file)
-	    ((cdar exts/receivers) (->namestring file))
-	    (find-alternate-file-type base-pathname (cdr exts/receivers))))))
+  (let find-loop ((left exts/receivers)
+		  (time 0)
+		  (file false)
+		  (handler identity-procedure))
+			     
+    (if (null? left)
+	(handler file)
+	(let ((file* (pathname-new-type base-pathname (caar left)))
+	      (handler* (cdar left)))
+	  (if (not (file-exists? file*))
+	      (find-loop (cdr left) time file handler)
+	      (let ((time* (file-modification-time-direct file*)))
+		(if (> time* time)
+		    (find-loop (cdr left) time* file* handler*)
+		    (find-loop (cdr left) time file handler))))))))
 
 (define (fasload-loader filename)
   (call-with-current-continuation
@@ -557,13 +569,26 @@ MIT in each case. |#
         (lambda () (fasload filename true))))))
 
 (define (compressed-loader compressed-filename)
-  (call-with-temporary-filename
-    (lambda (uncompressed-filename)
-      (call-with-current-continuation
-        (lambda (if-fail)
-	  (uncompress-internal compressed-filename uncompressed-filename
-	     (lambda (message . irritants)
-	       message irritants
-	       (if-fail false)))
-	  (fasload-loader uncompressed-filename))))))
-  
+  (let ((core
+	 (lambda (uncompressed-filename)
+	   (call-with-current-continuation
+	    (lambda (if-fail)
+	      (uncompress-internal compressed-filename uncompressed-filename
+				   (lambda (message . irritants)
+				     message irritants
+				     (if-fail false)))
+	      (fasload-loader uncompressed-filename))))))
+
+    (call-with-temporary-filename
+     (if (not *save-uncompressed-files?*)
+	 core
+	 (lambda (temp-file)
+	   (let ((result (core temp-file)))
+	     (let ((new-file (pathname-new-type compressed-filename "bif"))
+		   (dir (directory-pathname-as-file compressed-filename)))
+	       (if (file-writable? dir)
+		   (begin
+		     (if (file-exists? new-file)
+			 (delete-file new-file))
+		     (copy-file temp-file new-file)))
+	       result)))))))
