@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: schmod.scm,v 1.39 1997/10/02 04:49:58 cph Exp $
+;;;	$Id: schmod.scm,v 1.40 1997/10/03 06:00:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -314,7 +314,8 @@ Otherwise, it is shown in the echo area."
 			(cond ((pair? argl)
 			       (insert-char #\space point)
 			       (insert-string (symbol->string (car argl))
-					      point))
+					      point)
+			       (loop (cdr argl)))
 			      ((symbol? argl)
 			       (insert-string " . " point)
 			       (insert-string (symbol->string argl) point)))))
