@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syerly.scm,v 1.6 1988/08/23 09:04:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syerly.scm,v 1.7 1988/08/31 06:40:22 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -161,37 +161,36 @@ MIT in each case. |#
 (define cons-syntax-expander
   (scode->scode-expander
    (lambda (operands if-expanded if-not-expanded)
-     (define (default)
-       (cond ((not (scode/constant? (cadr operands)))
-	      (if-not-expanded))
-	     ((not (null? (scode/constant-value (cadr operands))))
-	      (error "cons-syntax-expander: bad tail" (cadr operands)))
-	     (else
-	      (if-expanded
-	       (scode/make-absolute-combination 'CONS
-						operands)))))
-
-     (if (and (scode/constant? (car operands))
-	      (bit-string? (scode/constant-value (car operands)))
-	      (scode/combination? (cadr operands)))
-	 (scode/combination-components
-	  (cadr operands)
-	  (lambda (operator inner-operands)
-	    (if (and (or (is-operator? operator 'CONS-SYNTAX false)
-			 (is-operator? operator 'CONS cons))
-		     (scode/constant? (car inner-operands))
-		     (bit-string? (scode/constant-value (car inner-operands))))
-		(if-expanded
-		 (scode/make-combination
-		  (if (scode/constant? (cadr inner-operands))
-		      (scode/make-absolute-reference 'CONS)
-		      operator)
-		  (cons (instruction-append
-			 (scode/constant-value (car operands))
-			 (scode/constant-value (car inner-operands)))
-			(cdr inner-operands))))
-		(default))))
-	 (default)))))
+     (let ((default
+	     (lambda ()
+	       (if (not (scode/constant? (cadr operands)))
+		   (if-not-expanded)
+		   (begin
+		     (if (not (null? (scode/constant-value (cadr operands))))
+			 (error "CONS-SYNTAX-EXPANDER: bad tail"
+				(cadr operands)))
+		     (if-expanded (scode/make-combination cons operands)))))))
+       (if (and (scode/constant? (car operands))
+		(bit-string? (scode/constant-value (car operands)))
+		(scode/combination? (cadr operands)))
+	   (scode/combination-components (cadr operands)
+	     (lambda (operator inner-operands)
+	       (if (and (or (is-operator? operator 'CONS-SYNTAX false)
+			    (is-operator? operator 'CONS cons))
+			(scode/constant? (car inner-operands))
+			(bit-string?
+			 (scode/constant-value (car inner-operands))))
+		   (if-expanded
+		    (scode/make-combination
+		     (if (scode/constant? (cadr inner-operands))
+			 cons
+			 operator)
+		     (cons (instruction-append
+			    (scode/constant-value (car operands))
+			    (scode/constant-value (car inner-operands)))
+			   (cdr inner-operands))))
+		   (default))))
+	   (default))))))
 
 ;;;; INSTRUCTION->INSTRUCTION-SEQUENCE expander
 
@@ -200,46 +199,42 @@ MIT in each case. |#
     (define (parse expression receiver)
       (if (not (scode/combination? expression))
 	  (receiver false false false)
-	  (scode/combination-components
-	   expression
-	   (lambda (operator operands)
-	     (cond ((and (not (is-operator? operator 'CONS cons))
-			 (not (is-operator? operator 'CONS-SYNTAX false)))
-		    (receiver false false false))
-		   ((scode/constant? (cadr operands))
-		    (if (not (null? (scode/constant-value (cadr operands))))
-			(error "inst->inst-seq-expander: bad CONS-SYNTAX tail"
-			       (scode/constant-value (cadr operands)))
-			(let ((name
-			       (generate-uninterned-symbol
-				'INSTRUCTION-TAIL-)))
-			  (receiver true
-				    (cons name expression)
-				    (scode/make-variable name)))))
-		   (else
-		    (parse (cadr operands)
-			   (lambda (mode info rest)
-			     (if (not mode)
-				 (receiver false false false)
-				 (receiver true info
-					   (scode/make-combination
-					    operator
-					    (list (car operands)
-						  rest))))))))))))
+	  (scode/combination-components expression
+	    (lambda (operator operands)
+	      (cond ((and (not (is-operator? operator 'CONS cons))
+			  (not (is-operator? operator 'CONS-SYNTAX false)))
+		     (receiver false false false))
+		    ((scode/constant? (cadr operands))
+		     (if (not (null? (scode/constant-value (cadr operands))))
+			 (error "INST->INST-SEQ-EXPANDER: bad CONS-SYNTAX tail"
+				(scode/constant-value (cadr operands))))
+		     (let ((name
+			    (generate-uninterned-symbol 'INSTRUCTION-TAIL-)))
+		       (receiver true
+				 (cons name expression)
+				 (scode/make-variable name))))
+		    (else
+		     (parse (cadr operands)
+		       (lambda (mode info rest)
+			 (if (not mode)
+			     (receiver false false false)
+			     (receiver true info
+				       (scode/make-combination
+					operator
+					(list (car operands) rest))))))))))))
     (scode->scode-expander
      (lambda (operands if-expanded if-not-expanded)
        (if (not (scode/combination? (car operands)))
 	   (if-not-expanded)
 	   (parse (car operands)
-		  (lambda (mode binding rest)
-		    (if (not mode)
-			(if-not-expanded)
-			(if-expanded
-			 (scode/make-let
-			  (list (car binding))
-			  (list (cdr binding))
-			  (scode/make-absolute-combination
-			   'CONS
-			   (list rest
-				 (scode/make-variable
-				  (car binding))))))))))))))
+	     (lambda (mode binding rest)
+	       (if (not mode)
+		   (if-not-expanded)
+		   (if-expanded
+		    (scode/make-let
+		     (list (car binding))
+		     (list (cdr binding))
+		     (scode/make-combination
+		      cons
+		      (list rest
+			    (scode/make-variable (car binding))))))))))))))
