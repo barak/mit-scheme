@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: io.texi,v 1.8 2004/10/14 17:15:36 cph Exp $
+@c $Id: io.texi,v 1.9 2004/10/15 06:00:49 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -2810,10 +2810,10 @@ MIT/GNU Scheme provides a simple non-validating @acronym{XML} parser.
 This parser is believed to be conformant with @acronym{XML} 1.0.  It
 passes all of the tests in the "xmltest" directory of the @acronym{XML}
 conformance tests (dated 2001-03-15).  The parser supports @acronym{XML}
-namespaces.  The parser doesn't support external document type
-declarations (@acronym{DTD}s), and it doesn't yet support @acronym{XML}
-1.1.  The output of the parser is a record tree that closely reflects
-the structure of the @acronym{XML} document.
+namespaces; it doesn't support external document type declarations
+(@acronym{DTD}s), and it doesn't yet support @acronym{XML} 1.1.  The
+output of the parser is a record tree that closely reflects the
+structure of the @acronym{XML} document.
 
 MIT/GNU Scheme also provides support for writing an @acronym{XML} record
 tree to an output port.  There is no guarantee that parsing an
@@ -2865,7 +2865,7 @@ codings, as well as @acronym{UTF-8}, @acronym{UTF-16}, and
 
 When an @acronym{XHTML} document is read, the parser provides entity
 definitions for all of the named @acronym{XHTML} characters; for
-example, it defines @code{&nbsp;} and @code{&copy;}.  In order for a
+example, it defines @samp{&nbsp;} and @samp{&copy;}.  In order for a
 document to be recognized as @acronym{XHTML}, it must contain an
 @acronym{XHTML} @acronym{DTD}, such as this:
 
@@ -2958,8 +2958,8 @@ be encoded as specified; otherwise it will be encoded as
 
 When an @acronym{XHTML} document record is written, named
 @acronym{XHTML} characters are translated into their corresponding
-entities.  For example, the character @code{#\U+00A0} is written as
-@code{&nbsp;}.  In order for an @acronym{XML} document record to be
+entities.  For example, the character @samp{#\U+00A0} is written as
+@samp{&nbsp;}.  In order for an @acronym{XML} document record to be
 recognized as @acronym{XHTML}, it must have a @acronym{DTD} record that
 satisfies the predicate @code{html-dtd?}.
 
@@ -3083,7 +3083,7 @@ The next two procedures get the @dfn{prefix} and @dfn{local part} of an
 is the part of the qname to the left of the colon, while the local part
 is the part of the qname to the right of the colon.  If there is no
 colon in the qname, the local part is the entire qname, and the prefix
-is the null symbol (i.e.@: @code{||}).
+is the null symbol (i.e.@: @samp{||}).
 
 @deffn procedure xml-name-prefix xml-name
 Returns the @dfn{prefix} of @var{xml-name} as a symbol.
@@ -3190,13 +3190,13 @@ The following values are two distinguished @acronym{IRI} records.
 @defvr variable xml-iri
 @code{xml-iri} is the @acronym{IRI} reserved for use by the
 @acronym{XML} recommendation.  This @acronym{IRI} must be used with the
-@code{xml} prefix.
+@samp{xml} prefix.
 @end defvr
 
 @defvr variable xmlns-iri
 @code{xmlns-iri} is the @acronym{IRI} reserved for use by the
 @acronym{XML} namespace recommendation.  This @acronym{IRI} must be used
-with the @code{xmlns} prefix.
+with the @samp{xmlns} prefix.
 @end defvr
 
 
