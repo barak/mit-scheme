@@ -1,5 +1,8 @@
 /* Interface from Emacs to terminfo.
    Copyright (C) 1985, 1986 Free Software Foundation, Inc.
+   Copyright (C) 1998 Massachusetts Institute of Technology
+
+$Id: terminfo.c,v 1.2 1998/07/20 04:37:36 cph Exp $
 
 This file is part of GNU Emacs.
 
@@ -22,8 +25,12 @@ and this notice must be preserved on all copies.  */
    so that we do not need to conditionalize the places in Emacs
    that set them.  */
 
+#include "oscond.h"
+
+#ifndef _IRIX
 char *UP, *BC, PC;
 short ospeed;
+#endif
 
 static buffer[512];
 
