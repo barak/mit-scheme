@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.68 1992/02/20 16:30:07 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.69 1992/02/27 18:17:09 mhwu Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -454,6 +454,29 @@ typedef unsigned long SCHEME_OBJECT;
 #define HAS_MODF
 #endif /* alpha */
 
+
+/* 386/486 under DOS and Zortech C */
+#ifdef DOS386
+#define MACHINE_TYPE            "80386/486"
+#define BELL                    '\007'
+#define UNSIGNED_SHIFT
+#define VAX_BYTE_ORDER
+#define CHAR_BIT                8
+#define USHORT_SIZE             16
+#define ULONG_SIZE              32
+#define DBFLT_SIZE              64
+#define FLONUM_MANTISSA_BITS    53
+#define FLONUM_EXPT_SIZE        10
+#define MAX_FLONUM_EXPONENT     1023
+#define FASL_INTERNAL_FORMAT    FASL_I386
+#define b32
+#define HEAP_IN_LOW_MEMORY
+#define HAS_FLOOR
+#define HAS_FREXP
+#define HAS_MODF
+#endif
+
+
 /* These (pdp10, nu) haven't worked in a while.
    Should be upgraded or flushed some day.  */
 
