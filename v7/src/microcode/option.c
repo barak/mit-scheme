@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.21 1992/05/27 17:31:46 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.22 1992/05/27 17:33:21 jinx Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -386,7 +386,7 @@ The following options are only meaningful to bchscheme:
 #endif
 
 #ifndef LARGE_HEAP_VARIABLE
-#define LARGE_HEAP_VARIABLE "MITSCHEME_LARGE_HEAP"			\
+#define LARGE_HEAP_VARIABLE "MITSCHEME_LARGE_HEAP"
 #endif
 
 #ifndef DEFAULT_LARGE_CONSTANT
