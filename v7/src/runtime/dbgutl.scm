@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgutl.scm,v 14.12 1991/06/26 18:28:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgutl.scm,v 14.13 1991/07/15 23:40:42 arthur Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -84,6 +84,7 @@ MIT in each case. |#
    (lambda ()
      (let loop ((environment environment) (depth depth))
        (write-string "----------------------------------------")
+       (newline)
        (show-frame environment depth true)
        (if (eq? true (environment-has-parent? environment))
 	   (begin
@@ -103,7 +104,6 @@ MIT in each case. |#
 	(show-environment-bindings environment brief?))))
 
 (define (show-environment-name environment)
-  (newline)
   (write-string "Environment ")
   (let ((package (environment->package environment)))
     (if package
