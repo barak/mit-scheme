@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.38 2000/05/03 20:28:38 cph Exp $
+;;; $Id: imail-core.scm,v 1.39 2000/05/04 17:40:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -258,6 +258,12 @@
 ;; penalty.
 
 (define-generic close-folder (folder))
+
+;; -------------------------------------------------------------------
+;; Return a string that concisely identifies FOLDER, for use in the
+;; presentation layer.
+
+(define-generic folder-presentation-name (folder))
 
 ;; -------------------------------------------------------------------
 ;; Return #T if FOLDER represents a real folder, i.e. has a

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.29 2000/05/04 17:29:36 cph Exp $
+;;; $Id: imail-top.scm,v 1.30 2000/05/04 17:39:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -108,7 +108,7 @@ May be called with an IMAIL folder URL as argument;
 	       (folder (open-folder url)))
 	  (select-buffer
 	   (or (imail-folder->buffer folder #f)
-	       (let ((buffer (new-buffer (imail-url->buffer-name url))))
+	       (let ((buffer (new-buffer (folder-presentation-name folder))))
 		 (associate-imail-folder-with-buffer folder buffer)
 		 (select-message folder (first-unseen-message folder) #t)
 		 buffer))))))))
@@ -160,9 +160,6 @@ May be called with an IMAIL folder URL as argument;
       (or folder
 	  (and (if (default-object? error?) #t error?)
 	       (error:bad-range-argument buffer 'SELECTED-FOLDER))))))
-
-(define (imail-url->buffer-name url)
-  (url-body url))
 
 (define-major-mode imail read-only "IMAIL"
   "IMAIL mode is used by \\[imail] for editing IMAIL files.
@@ -293,15 +290,14 @@ DEL	Scroll to previous screen of this message.
 	     #t))))))
 
 (define (imail-kill-buffer buffer)
-  (let ((folder (selected-folder #f buffer)))
-    (if folder
-	(close-folder folder))))
+  (imail-close-buffer-folder buffer))
 
 (define-command imail-quit
   "Quit out of IMAIL."
   ()
   (lambda ()
     ((ref-command imail-save-folder))
+    (imail-close-buffer-folder (selected-buffer))
     ((ref-command bury-buffer))))
 
 (define-command imail-save-folder
@@ -309,6 +305,11 @@ DEL	Scroll to previous screen of this message.
   ()
   (lambda ()
     (save-folder (selected-folder))))
+
+(define (imail-close-buffer-folder buffer)
+  (let ((folder (selected-folder #f buffer)))
+    (if folder
+	(close-folder folder))))
 
 ;;;; Navigation
 

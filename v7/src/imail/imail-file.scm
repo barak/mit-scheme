@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.16 2000/05/03 20:28:42 cph Exp $
+;;; $Id: imail-file.scm,v 1.17 2000/05/04 17:40:03 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -84,6 +84,9 @@
 	   (begin
 	     (set-file-folder-messages! folder 'UNKNOWN)
 	     (for-each detach-message messages)))))))
+
+(define-method folder-presentation-name ((folder <file-folder>))
+  (url-body (folder-url folder)))
 
 (define-method %folder-valid? ((folder <file-folder>))
   (file-exists? (file-folder-pathname folder)))
