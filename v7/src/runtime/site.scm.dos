@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.dos,v 1.7 1992/05/28 23:40:07 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.dos,v 1.8 1992/05/28 23:46:53 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -42,24 +42,6 @@ MIT in each case. |#
   (warn "call/cc: Invoking the C compiler:" args)
   (warn "Segmentation fault (core dumped)"))
 
-;;; Normalization of various directory structures.
-
-(let ((add-directory-rewriting-rule!
-       (access add-directory-rewriting-rule!
-	       (->environment '(runtime compiler-info)))))
-  (for-each
-   (lambda (path)
-     (add-directory-rewriting-rule! path "$MITSCHEME_INF_DIRECTORY"))
-   '("/scheme")))
-
-(let ((set-default-inf-directory!
-       (lambda ()
-	 (if (not (get-environment-variable "mitscheme_inf_directory"))
-	     (set-environment-variable! "MITSCHEME_INF_DIRECTORY"
-					"c:/scheme")))))
-  (set-default-inf-directory!)
-  (add-event-receiver! event:after-restart set-default-inf-directory!))  
-	  
 ;;; Dos specific:
 ;;; Timer hook to get interrupt keys
 
@@ -73,4 +55,23 @@ MIT in each case. |#
 	     (get-fixed-objects-vector)
 	     (fixed-objects-vector-slot 'SYSTEM-INTERRUPT-VECTOR))))
     (vector-set! sv timer-slot typeahead-timer-interrupt))
+
+;;; Normalization of various directory structures.
+
+(let ((add-directory-rewriting-rule!
+       (access add-directory-rewriting-rule!
+	       (->environment '(runtime compiler-info)))))
+  (for-each
+   (lambda (path)
+     (add-directory-rewriting-rule! path "$MITSCHEME_INF_DIRECTORY"))
+   '("/scheme")))
+
+(let ((set-default-inf-directory!
+       (lambda ()
+	 (if (not (get-environment-variable "MITSCHEME_INF_DIRECTORY"))
+	     (set-environment-variable! "MITSCHEME_INF_DIRECTORY"
+					"c:/scheme")))))
+  (set-default-inf-directory!)
+  (add-event-receiver! event:after-restart set-default-inf-directory!))  
+	  
 ) ; End IN-PACKAGE
