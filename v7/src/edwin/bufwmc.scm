@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwmc.scm,v 1.6 1989/08/09 12:55:39 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwmc.scm,v 1.7 1989/08/14 09:22:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -79,21 +79,22 @@
 	(let ((start (line-start-index group end)))
 	  (let ((columns (group-column-length group start end 0)))
 	    (let ((y-start
-		   (- y-end (column->y-size columns x-size truncate-lines?))))
-	      (if (<= start index)
-		  (done start columns y-start)
-		  (search-upwards (-1+ start) y-start))))))
+		   (fix:- y-end
+			  (column->y-size columns x-size truncate-lines?))))
+	      (if (fix:> start index)
+		  (search-upwards (fix:-1+ start) y-start)
+		  (done start columns y-start))))))
 
       (define (search-downwards start y-start)
 	(let ((end (line-end-index group start)))
 	  (let ((columns (group-column-length group start end 0)))
-	    (if (<= index end)
-		(done start columns y-start)
-		(search-downwards (1+ end)
-				  (+ y-start
-				     (column->y-size columns
-						     x-size
-						     truncate-lines?)))))))
+	    (if (fix:> index end)
+		(search-downwards (fix:1+ end)
+				  (fix:+ y-start
+					 (column->y-size columns
+							 x-size
+							 truncate-lines?)))
+		(done start columns y-start)))))
 
       (define-integrable (done start columns y-start)
 	(let ((xy
@@ -104,16 +105,16 @@
 							 start
 							 index
 							 0))))
-	  (cons (car xy) (+ (cdr xy) y-start))))
+	  (cons (car xy) (fix:+ (cdr xy) y-start))))
 
       (let ((start (mark-index start-line-mark))
 	    (end (mark-index end-line-mark)))
-	(cond ((< index start)
-	       (search-upwards (-1+ start)
+	(cond ((fix:< index start)
+	       (search-upwards (fix:-1+ start)
 			       (inferior-y-start
 				(first-line-inferior window))))
-	      ((> index end)
-	       (search-downwards (1+ end)
+	      ((fix:> index end)
+	       (search-downwards (fix:1+ end)
 				 (inferior-y-end last-line-inferior)))
 	      (else
 	       (let ((start (line-start-index group index)))
@@ -128,19 +129,19 @@
     (let ((group (buffer-group buffer)))
       (define (search-upwards start y-end)
 	(and (not (group-start-index? group start))
-	     (let ((end (-1+ start)))
+	     (let ((end (fix:-1+ start)))
 	       (let ((start (line-start-index group end)))
-		 (let ((y-start (- y-end (y-delta start end))))
-		   (if (<= y-start y)
-		       (done start end y-start)
-		       (search-upwards start y-start)))))))
+		 (let ((y-start (fix:- y-end (y-delta start end))))
+		   (if (fix:> y-start y)
+		       (search-upwards start y-start)
+		       (done start end y-start)))))))
 
       (define (search-downwards end y-start)
 	(and (not (group-end-index? group end))
-	     (let ((start (1+ end)))
+	     (let ((start (fix:1+ end)))
 	       (let ((end (line-end-index group start)))
-		 (let ((y-end (+ y-start (y-delta start end))))
-		   (if (< y y-end)
+		 (let ((y-end (fix:+ y-start (y-delta start end))))
+		   (if (fix:< y y-end)
 		       (done start end y-start)
 		       (search-downwards end y-end)))))))
 
@@ -151,19 +152,20 @@
 
       (define (done start end y-start)
 	(let ((column-size (group-column-length group start end 0)))
-	  (if (and truncate-lines? (= x (-1+ x-size)))
+	  (if (and truncate-lines? (fix:= x (fix:-1+ x-size)))
 	      column-size
 	      (group-column->index group start end 0
 				   (min (coordinates->column x
-							     (- y y-start)
+							     (fix:- y y-start)
 							     x-size)
 					column-size)))))
 
       (let ((start (inferior-y-start (first-line-inferior window)))
 	    (end (inferior-y-end last-line-inferior)))
-	(cond ((< y start)
+	(cond ((fix:< y start)
 	       (search-upwards (mark-index start-line-mark) start))
-	      ((>= y end)	       (search-downwards (mark-index end-line-mark) end))
+	      ((not (fix:< y end))
+	       (search-downwards (mark-index end-line-mark) end))
 	      (else
 	       (y->inferiors&index window y
 		 (lambda (inferiors index)

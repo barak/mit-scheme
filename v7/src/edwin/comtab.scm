@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.56 1989/08/11 11:50:20 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.57 1989/08/14 09:22:19 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -204,3 +204,14 @@
   (list-transform-positive (search-comtabs comtabs)
     (lambda (xchar)
       (eq? command (comtab-entry comtabs xchar)))))
+
+(define (comtab->alist comtab)
+  (let loop ((prefix '()) (da (comtab-dispatch-alists comtab)))
+    (append! (map (lambda (element)
+		    (cons (append prefix (list (car element)))
+			  (cdr element)))
+		  (cdr da))
+	     (append-map (lambda (element)
+			   (loop (append prefix (list (car element)))
+				 (cdr element)))
+			 (car da)))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.281 1989/08/11 11:50:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.282 1989/08/14 09:22:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -154,10 +154,10 @@
   (mark-index (group-display-end group)))
 
 (define-integrable (group-start-index? group index)
-  (<= index (group-start-index group)))
+  (not (fix:> index (group-start-index group))))
 
 (define-integrable (group-end-index? group index)
-  (>= index (group-end-index group)))
+  (not (fix:< index (group-end-index group))))
 
 (define (line-start-index group index)
   (let ((limit (group-start-index group)))
@@ -201,8 +201,8 @@
       (and py
 	   (begin
 	     (set-buffer-cursor-y! buffer false)
-	     (and (= (car py) (mark-index point))
-		  (< (cdr py) y-size)
+	     (and (fix:= (car py) (mark-index point))
+		  (fix:< (cdr py) y-size)
 		  (cdr py)))))))
 
 (define (%set-window-buffer! window new-buffer)
@@ -227,9 +227,9 @@
       (let ((point (mark-index (buffer-point buffer)))
 	    (start (group-start-index group))
 	    (end (group-end-index group)))
-	(cond ((< point start)
+	(cond ((fix:< point start)
 	       (%set-buffer-point! buffer (make-mark group start)))
-	      ((> point end)
+	      ((fix:> point end)
 	       (%set-buffer-point! buffer (make-mark group end))))))
     (set! point (buffer-point buffer))
     unspecific))
@@ -260,7 +260,7 @@
 (define (%window-cursor-y window)
   (with-instance-variables buffer-window window ()
     (let ((y (inferior-y-start cursor-inferior)))
-      (and y (< y y-size) y))))
+      (and y (fix:< y y-size) y))))
 
 ;;;; Override Message
 
@@ -315,7 +315,7 @@
     (car line-inferiors)))
 
 (define-integrable (line-inferior-length inferiors)
-  (1+ (line-window-length (inferior-window (car inferiors)))))
+  (fix:1+ (line-window-length (inferior-window (car inferiors)))))
 
 (define-integrable (blank-inferior-changed! window)
   (with-instance-variables buffer-window window ()
@@ -325,9 +325,9 @@
 
 (define-integrable (set-blank-inferior-start! window y-end)
   (with-instance-variables buffer-window window (y-end)
-    (if (< y-end y-size)
+    (if (fix:< y-end y-size)
 	(begin
-	  (set-inferior-size! blank-inferior x-size (- y-size y-end))
+	  (set-inferior-size! blank-inferior x-size (fix:- y-size y-end))
 	  (set-inferior-start! blank-inferior 0 y-end))
 	(set-inferior-start! blank-inferior false false))))
 
@@ -352,7 +352,7 @@
 					  (line-end-index group start)
 					  true))))
 	  (loop (cdr inferiors)
-		(+ start (line-inferior-length inferiors)))))
+		(fix:+ start (line-inferior-length inferiors)))))
     (loop line-inferiors (mark-index start-line-mark))
     (if (not override-inferior)
 	(set! inferiors (cons* cursor-inferior blank-inferior line-inferiors)))
@@ -361,9 +361,9 @@
 (define (y->inferiors window y)
   (with-instance-variables buffer-window window (y)
     (define (loop previous-inferiors inferiors)
-      (cond ((< y (inferior-y-start (car inferiors))) previous-inferiors)
+      (cond ((fix:< y (inferior-y-start (car inferiors))) previous-inferiors)
 	    ((null? (cdr inferiors))
-	     (and (< y (inferior-y-end (car inferiors)))
+	     (and (fix:< y (inferior-y-end (car inferiors)))
 		  inferiors))
 	    (else (loop inferiors (cdr inferiors)))))
     (loop false line-inferiors)))
@@ -372,8 +372,8 @@
   (with-instance-variables buffer-window window (index)
     ;; Assumes that (>= INDEX (MARK-INDEX START-LINE-MARK)).
     (define (loop inferiors start)
-      (let ((new-start (+ start (line-inferior-length inferiors))))
-	(if (< index new-start)
+      (let ((new-start (fix:+ start (line-inferior-length inferiors))))
+	(if (fix:< index new-start)
 	    inferiors
 	    (and (not (null? (cdr inferiors)))
 		 (loop (cdr inferiors) new-start)))))
@@ -386,21 +386,23 @@
       (if (eq? inferiors inferiors*)
 	  start
 	  (loop (cdr inferiors*)
-		(+ start (line-inferior-length inferiors*)))))
+		(fix:+ start (line-inferior-length inferiors*)))))
     (loop line-inferiors (mark-index start-line-mark))))
 
 (define (y->inferiors&index window y receiver)
   (with-instance-variables buffer-window window (y receiver)
     ;; This is used for scrolling.
     (define (loop inferiors start previous-inferiors previous-start)
-      (cond ((< y (inferior-y-start (car inferiors)))
+      (cond ((fix:< y (inferior-y-start (car inferiors)))
 	     (receiver previous-inferiors previous-start))
 	    ((null? (cdr inferiors))
-	     (and (< y (inferior-y-end (car inferiors)))
+	     (and (fix:< y (inferior-y-end (car inferiors)))
 		  (receiver inferiors start)))
 	    (else
-	     (loop (cdr inferiors) (+ start (line-inferior-length inferiors))
-		   inferiors start))))
+	     (loop (cdr inferiors)
+		   (fix:+ start (line-inferior-length inferiors))
+		   inferiors
+		   start))))
     (loop line-inferiors (mark-index start-line-mark) false false)))
 
 (define (start-changes-inferiors window)
@@ -420,8 +422,8 @@
 	    (not-found (mark-index end-line-mark))
 	    (loop (cdr inferiors)
 	      (lambda (end)
-		(let ((new-end (- end (line-inferior-length inferiors))))
-		  (if (< new-end index)
+		(let ((new-end (fix:- end (line-inferior-length inferiors))))
+		  (if (fix:< new-end index)
 		      inferiors
 		      (not-found new-end)))))))
       (loop line-inferiors
@@ -447,24 +449,30 @@
 	  (recenter!
 	   (lambda ()
 	     (%window-redraw! window (%window-y-center window)))))
-      (if (zero? threshold)
+      (if (not (object-type? (ucode-type fixnum) threshold))
+	  (error "Not a small integer" threshold))
+      (if (fix:zero? threshold)
 	  (recenter!)
-	  (if (< (mark-index point) (mark-index start-mark))
+	  (if (fix:< (mark-index point) (mark-index start-mark))
 	      (let ((limit
-		     (%window-coordinates->index window 0 (- threshold))))
-		(if (or (not limit) (>= (mark-index point) limit))
+		     (%window-coordinates->index window
+						 0
+						 (fix:- 0 threshold))))
+		(if (or (not limit)
+			(not (fix:< (mark-index point) limit)))
 		    (%window-scroll-y-relative! window
 						(%window-point-y window))
 		    (recenter!)))
 	      (let ((limit
 		     (%window-coordinates->index window
 						 0
-						 (+ (window-y-size window)
-						    threshold))))
-		(if (or (not limit) (< (mark-index point) limit))
+						 (fix:+ (window-y-size window)
+							threshold))))
+		(if (or (not limit) (fix:< (mark-index point) limit))
 		    (%window-scroll-y-relative!
 		     window
-		     (- (%window-point-y window) (-1+ (window-y-size window))))
+		     (fix:- (%window-point-y window)
+			    (fix:-1+ (window-y-size window))))
 		    (recenter!))))))))
 
 (define (%window-force-redraw! window redraw-type)
@@ -482,8 +490,9 @@
 	  (set-inferior-start!
 	   inferior
 	   0
-	   (- (string-base:index->y (inferior-window inferior)
-				    (- start start-line))))
+	   (fix:- 0
+		  (string-base:index->y (inferior-window inferior)
+					(fix:- start start-line))))
 	  (set-line-inferiors!
 	   window
 	   (cons inferior (fill-bottom window (inferior-y-end inferior) end))
@@ -496,7 +505,8 @@
 		    (if (not y)
 			(%window-y-center window)
 			(begin
-			  (if (or (< y 0) (>= y y-size))
+			  (if (or (fix:< y 0)
+				  (not (fix:< y y-size)))
 			      (error "Attempt to scroll point off window" y))
 			  y))))
   (everything-changed! window
@@ -513,9 +523,9 @@
 	  (set-inferior-start!
 	   inferior
 	   0
-	   (- y
-	      (string-base:index->y (inferior-window inferior)
-				    (- index start))))
+	   (fix:- y
+		  (string-base:index->y (inferior-window inferior)
+					(fix:- index start))))
 	  (fill-top! window (list inferior) start true))))))
 
 (define (everything-changed! window if-not-visible)
@@ -531,10 +541,10 @@
   (with-instance-variables buffer-window window (inferiors y-end)
     (no-outstanding-changes! window)
     (if (and (eq? inferiors line-inferiors)
-	     (negative? (inferior-y-start (car inferiors))))
+	     (fix:negative? (inferior-y-start (car inferiors))))
 	(start-mark-changed! window))
     (if (and (null? (cdr inferiors))
-	     (> y-end y-size))
+	     (fix:> y-end y-size))
 	(end-mark-changed! window))
     (update-cursor! window maybe-recenter!)))
 
@@ -557,12 +567,12 @@
     (set! start-mark
 	  (%make-permanent-mark
 	   (buffer-group buffer)
-	   (+ (mark-index start-line-mark)
-	      (let ((inferior (first-line-inferior window)))
-		(string-base:coordinates->index
-		 (inferior-window inferior)
-		 0
-		 (- (inferior-y-start inferior)))))
+	   (fix:+ (mark-index start-line-mark)
+		  (let ((inferior (first-line-inferior window)))
+		    (string-base:coordinates->index
+		     (inferior-window inferior)
+		     0
+		     (fix:- 0 (inferior-y-start inferior)))))
 	   false))
     (window-modeline-event! superior 'START-MARK-CHANGED!)))
 
@@ -573,12 +583,13 @@
 	  (let ((group (buffer-group buffer)))
 	    (%make-permanent-mark
 	     group
-	     (+ (line-start-index group (mark-index end-line-mark))
-		(string-base:coordinates->index
-		 (inferior-window last-line-inferior)
-		 (-1+ x-size)
-		 (-1+ (- (min y-size (inferior-y-end last-line-inferior))
-			 (inferior-y-start last-line-inferior)))))
+	     (fix:+ (line-start-index group (mark-index end-line-mark))
+		    (string-base:coordinates->index
+		     (inferior-window last-line-inferior)
+		     (fix:-1+ x-size)
+		     (fix:-1+
+		      (fix:- (min y-size (inferior-y-end last-line-inferior))
+			     (inferior-y-start last-line-inferior)))))
 	     true)))
     (window-modeline-event! superior 'END-MARK-CHANGED!)))
 
@@ -606,9 +617,9 @@
 		  (integer-divide
 		   (* y-size (ref-variable cursor-centering-point))
 		   100)))
-	     (if (< (integer-divide-remainder qr) 50)
+	     (if (fix:< (integer-divide-remainder qr) 50)
 		 (integer-divide-quotient qr)
-		 (1+ (integer-divide-quotient qr))))))
-      (cond ((< result 0) 0)
-	    ((< result y-size) result)
-	    (else (-1+ y-size))))))
+		 (fix:1+ (integer-divide-quotient qr))))))
+      (cond ((fix:< result 0) 0)
+	    ((fix:< result y-size) result)
+	    (else (fix:-1+ y-size))))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.7 1989/08/08 10:05:40 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.8 1989/08/14 09:22:15 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -97,6 +97,73 @@
 
 (define-integrable (ascii-controlified? char)
   (< (char-code char) #x20))
+
+(define-variable enable-emacs-key-names
+  "*If true, keys are shown using Emacs-style names."
+  true)
 
-(define-integrable (char-name char)
-  (char->name (unmap-alias-char char)))
+(define (char-name char)
+  (if (ref-variable enable-emacs-key-names)
+      (emacs-char-name char true)
+      (char->name (unmap-alias-char char))))
+
+(define (emacs-char-name char handle-prefixes?)
+  (let ((code (char-code char))
+	(bits (char-bits char))
+	(normal (lambda () (char->name (unmap-alias-char char)))))
+    (let ((process-code
+	   (lambda ()
+	     (cond ((< #x20 code #x7F) (char->name (make-char code 0)))
+		   ((= code #x09) "TAB")
+		   ((= code #x0A) "LFD")
+		   ((= code #x0D) "RET")
+		   ((= code #x1B) "ESC")
+		   ((= code #x20) "SPC")
+		   ((= code #x7F) "DEL")
+		   (else
+		    (char->name
+		     (make-char (+ code (if (<= #x01 code #x1A) #x60 #x40))
+				2)))))))
+      (cond ((zero? bits) (process-code))
+	    ((not handle-prefixes?) (normal))
+	    ((= 1 bits) (string-append "ESC " (process-code)))
+	    ((= 2 bits) (string-append "C-^ " (process-code)))
+	    ((= 3 bits) (string-append "C-z " (process-code)))
+	    (else (normal))))))
+
+(define (xchar->name xchar)
+  (let ((chars (xchar->list xchar)))
+    (string-append-separated
+     (char-name (car chars))
+     (let ((char-name
+	    (if (ref-variable enable-emacs-key-names)
+		(lambda (char)
+		  (emacs-char-name char false))
+		(lambda (char)
+		  (char->name (unmap-alias-char char))))))
+       (let loop ((chars (cdr chars)))
+	 (if (null? chars)
+	     ""
+	     (string-append-separated
+	      (char-name (car chars))
+	      (loop (cdr chars)))))))))
+
+(define (xchar<? x y)
+  (let loop ((x (xchar->list x)) (y (xchar->list y)))
+    (or (char<? (car x) (car y))
+	(and (char=? (car x) (car y))
+	     (not (null? (cdr y)))
+	     (or (null? (cdr x))
+		 (loop (cdr x) (cdr y)))))))
+
+(define (xchar->list xchar)
+  (cond ((char? xchar)
+	 (list xchar))
+	((and (not (null? xchar))
+	      (list-of-type? xchar char?))
+	 xchar)
+	((and (string? xchar)
+	      (not (string-null? xchar)))
+	 (string->list xchar))
+	(else
+	 (error "Not a character or list of characters" xchar))))

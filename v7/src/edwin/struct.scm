@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.70 1989/08/11 11:50:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.71 1989/08/14 09:23:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -129,7 +129,7 @@
     group))
 
 (define (group-length group)
-  (- (string-length (group-text group)) (group-gap-length group)))
+  (fix:- (string-length (group-text group)) (group-gap-length group)))
 
 (define-integrable (group-start-index group)
   (mark-index (group-start-mark group)))
@@ -138,10 +138,10 @@
   (mark-index (group-end-mark group)))
 
 (define-integrable (group-start-index? group index)
-  (<= index (group-start-index group)))
+  (not (fix:> index (group-start-index group))))
 
 (define-integrable (group-end-index? group index)
-  (>= index (group-end-index group)))
+  (not (fix:< index (group-end-index group))))
 
 (define-integrable (set-group-read-only! group)
   (vector-set! group group-index:read-only? true)
@@ -159,17 +159,17 @@
   (%make-region (group-start-mark group) (group-end-mark group)))
 
 (define (group-position->index group position)
-  (if (> position (group-gap-end group))
-      (- position (group-gap-length group))
+  (if (fix:> position (group-gap-end group))
+      (fix:- position (group-gap-length group))
       (let ((start (group-gap-start group)))
-	(if (> position start)
+	(if (fix:> position start)
 	    start
 	    position))))
 
 (define (group-index->position group index left-inserting?)
   (let ((start (group-gap-start group)))
-    (cond ((< index start) index)
-	  ((> index start) (+ index (group-gap-length group)))
+    (cond ((fix:< index start) index)
+	  ((fix:> index start) (fix:+ index (group-gap-length group)))
 	  (left-inserting? (group-gap-end group))
 	  (else start))))
 
@@ -289,9 +289,18 @@
 	      (group-index->position group index left-inserting?)
 	      left-inserting?))
 
-(define-integrable (mark-index mark)
-  (group-position->index (mark-group mark) (mark-position mark)))
-
+(define (mark-index mark)
+  ;; Open-coded for speed -- this procedure is called -alot-.
+  ;; (group-position->index (mark-group mark) (mark-position mark))
+  (let ((group (mark-group mark))
+	(position (mark-position mark)))
+    (if (fix:> position (group-gap-end group))
+	(fix:- position (group-gap-length group))
+	(let ((start (group-gap-start group)))
+	  (if (fix:> position start)
+	      start
+	      position)))))
+
 (define-integrable (mark~ mark1 mark2)
   (eq? (mark-group mark1) (mark-group mark2)))
 
@@ -302,29 +311,29 @@
 ;;; indexes of the marks.  But this implementation is faster and will
 ;;; only fail when marks are used improperly.
 
-(define-integrable (mark= mark1 mark2)
+(define (mark= mark1 mark2)
   (and (mark~ mark1 mark2)
-       (= (mark-position mark1) (mark-position mark2))))
+       (fix:= (mark-position mark1) (mark-position mark2))))
 
-(define-integrable (mark/= mark1 mark2)
+(define (mark/= mark1 mark2)
   (and (mark~ mark1 mark2)
-       (not (= (mark-position mark1) (mark-position mark2)))))
+       (not (fix:= (mark-position mark1) (mark-position mark2)))))
 
-(define-integrable (mark< mark1 mark2)
+(define (mark< mark1 mark2)
   (and (mark~ mark1 mark2)
-       (< (mark-position mark1) (mark-position mark2))))
+       (fix:< (mark-position mark1) (mark-position mark2))))
 
-(define-integrable (mark<= mark1 mark2)
+(define (mark<= mark1 mark2)
   (and (mark~ mark1 mark2)
-       (<= (mark-position mark1) (mark-position mark2))))
+       (not (fix:> (mark-position mark1) (mark-position mark2)))))
 
-(define-integrable (mark> mark1 mark2)
+(define (mark> mark1 mark2)
   (and (mark~ mark1 mark2)
-       (> (mark-position mark1) (mark-position mark2))))
+       (fix:> (mark-position mark1) (mark-position mark2))))
 
-(define-integrable (mark>= mark1 mark2)
+(define (mark>= mark1 mark2)
   (and (mark~ mark1 mark2)
-       (>= (mark-position mark1) (mark-position mark2))))
+       (not (fix:< (mark-position mark1) (mark-position mark2)))))
 
 (define-integrable (group-start mark)
   (group-start-mark (mark-group mark)))
@@ -332,18 +341,18 @@
 (define-integrable (group-end mark)
   (group-end-mark (mark-group mark)))
 
-(define-integrable (group-start? mark)
-  (<= (mark-position mark) (mark-position (group-start mark))))
+(define (group-start? mark)
+  (not (fix:> (mark-position mark) (mark-position (group-start mark)))))
 
-(define-integrable (group-end? mark)
-  (>= (mark-position mark) (mark-position (group-end mark))))
+(define (group-end? mark)
+  (not (fix:< (mark-position mark) (mark-position (group-end mark)))))
 
 (define (mark-right-inserting mark)
   (if (mark-left-inserting? mark)
       (let ((group (mark-group mark)))
 	(%%make-permanent-mark group
 			       (let ((position (mark-position mark)))
-				 (if (= position (group-gap-end group))
+				 (if (fix:= position (group-gap-end group))
 				     (group-gap-start group)
 				     position))
 			       false))
@@ -355,7 +364,7 @@
       (let ((group (mark-group mark)))
 	(%%make-permanent-mark group
 			       (let ((position (mark-position mark)))
-				 (if (= position (group-gap-start group))
+				 (if (fix:= position (group-gap-start group))
 				     (group-gap-end group)
 				     position))
 			       true))))
@@ -499,7 +508,7 @@
 		((and (if (mark-left-inserting? mark)
 			  left-inserting?
 			  (not left-inserting?))
-		      (= (mark-position mark) position))
+		      (fix:= (mark-position mark) position))
 		 mark)
 		(else
 		 (set-group-marks! group marks)
@@ -513,7 +522,7 @@
 		 ((and (if (mark-left-inserting? mark)
 			   left-inserting?
 			   (not left-inserting?))
-		       (= (mark-position mark) position))
+		       (fix:= (mark-position mark) position))
 		  mark)
 		 (else
 		  (scan-tail marks (system-pair-cdr marks)))))))
@@ -531,7 +540,7 @@
 		(if (and (if (mark-left-inserting? mark)
 			     left-inserting?
 			     (not left-inserting?))
-			 (= (mark-position mark) position))
+			 (fix:= (mark-position mark) position))
 		    mark
 		    (scan-tail marks (system-pair-cdr marks))))))))
 
@@ -543,7 +552,7 @@
 		 ((and (if (mark-left-inserting? mark)
 			   left-inserting?
 			   (not left-inserting?))
-		       (= (mark-position mark) position))
+		       (fix:= (mark-position mark) position))
 		  mark)
 		 (else
 		  (scan-tail marks (system-pair-cdr marks))))))))
@@ -603,9 +612,16 @@
 (define-integrable region-end cdr)
 
 (define (make-region start end)
-  (cond ((mark<= start end) (%make-region start end))
-	((mark<= end start) (%make-region end start))
-	(else (error "Marks not related" start end))))
+  (let ((group (mark-group start))
+	(start-position (mark-position start))
+	(end-position (mark-position end)))
+    (cond ((not (eq? group (mark-group end)))
+	   (error "Marks not related" start end))
+	  ((not (fix:> start-position end-position))
+	   (%make-region start end))
+	  (else
+	   (%make-region end start)))))
+
 (define-integrable (region-group region)
   (mark-group (region-start region)))
 

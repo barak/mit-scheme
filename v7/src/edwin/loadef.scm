@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.5 1989/08/03 23:32:32 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.6 1989/08/14 09:22:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -128,6 +128,11 @@ The text previously in the region is overwritten by the blanks.")
 (define-autoload-command 'make-command-summary 'COMMAND-SUMMARY
   "Make a summary of current key bindings in the buffer *Summary*.
 Previous contents of that buffer are killed first.")
+
+(define-autoload-command 'describe-bindings 'COMMAND-SUMMARY
+  "Show a list of all defined keys, and their definitions.
+The list is put in a buffer, which is displayed.")
+
 (define-library 'RESTRICT-SCREEN
   '("rescrn" (EDWIN WINDOW)))
 

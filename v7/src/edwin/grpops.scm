@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.6 1989/04/28 22:50:01 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.7 1989/08/14 09:22:30 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -64,24 +64,26 @@
   (let ((text (group-text group))
 	(gap-start (group-gap-start group))
 	(length (group-gap-length group)))
-    (cond ((<= end gap-start)
+    (cond ((not (fix:> end gap-start))
 	   (substring text start end))
-	  ((>= start gap-start)
-	   (substring text (+ start length) (+ end length)))
+	  ((not (fix:< start gap-start))
+	   (substring text (fix:+ start length) (fix:+ end length)))
 	  (else
-	   (let ((string (string-allocate (- end start))))
+	   (let ((string (string-allocate (fix:- end start))))
 	     (substring-move-right! text start gap-start string 0)
-	     (substring-move-right! text (group-gap-end group) (+ end length)
-				    string (- gap-start start))
+	     (substring-move-right! text
+				    (group-gap-end group)
+				    (fix:+ end length)
+				    string
+				    (fix:- gap-start start))
 	     string)))))
 
 (define (group-left-char group index)
   (string-ref (group-text group)
-	      (-1+ (group-index->position group index false))))
+	      (fix:-1+ (group-index->position group index false))))
 
 (define (group-right-char group index)
-  (string-ref (group-text group)
-	      (group-index->position group index true)))
+  (string-ref (group-text group) (group-index->position group index true)))
 
 (define (group-insert-char! group index char)
   (without-interrupts
@@ -94,8 +96,8 @@
   (move-gap-to! group index)
   (guarantee-gap-length! group 1)
   (string-set! (group-text group) index char)
-  (vector-set! group group-index:gap-length (-1+ (group-gap-length group)))
-  (let ((gap-start* (1+ index)))
+  (vector-set! group group-index:gap-length (fix:-1+ (group-gap-length group)))
+  (let ((gap-start* (fix:1+ index)))
     (vector-set! group group-index:gap-start gap-start*)
     (undo-record-insertion! group index gap-start*)))
 
@@ -111,50 +113,53 @@
 (define-integrable (%group-insert-substring! group index string start end)
   (if (group-read-only? group) (barf-if-read-only))
   (move-gap-to! group index)
-  (let ((n (- end start)))
+  (let ((n (fix:- end start)))
     (guarantee-gap-length! group n)
     (substring-move-right! string start end (group-text group) index)
-    (vector-set! group group-index:gap-length (- (group-gap-length group) n))
-    (let ((gap-start* (+ index n)))
+    (vector-set! group
+		 group-index:gap-length
+		 (fix:- (group-gap-length group) n))
+    (let ((gap-start* (fix:+ index n)))
       (vector-set! group group-index:gap-start gap-start*)
       (undo-record-insertion! group index gap-start*))))
 
 (define (group-delete-left-char! group index)
-  (group-delete! group (-1+ index) index))
+  (group-delete! group (fix:-1+ index) index))
 
 (define (group-delete-right-char! group index)
-  (group-delete! group index (1+ index)))
+  (group-delete! group index (fix:1+ index)))
 
 (define (group-delete! group start end)
   (without-interrupts
    (lambda ()
-     (if (not (= start end))
+     (if (not (fix:= start end))
 	 (begin
 	   (if (group-read-only? group) (barf-if-read-only))
 	   ;; Guarantee that the gap is between START and END.
 	   (let ((gap-start (group-gap-start group)))
-	     (cond ((< gap-start start) (move-gap-to-right! group start))
-		   ((> gap-start end) (move-gap-to-left! group end))))
+	     (cond ((fix:< gap-start start) (move-gap-to-right! group start))
+		   ((fix:> gap-start end) (move-gap-to-left! group end))))
 	   (undo-record-deletion! group start end)
 	   (record-deletion! group start end)
-	   (let* ((end (+ end (group-gap-length group)))
-		  (length (- end start))
+	   (let* ((end (fix:+ end (group-gap-length group)))
+		  (length (fix:- end start))
 		  (max-length gap-maximum-extra))
-	     (if (> length max-length)
-		 (let* ((new-end (+ start max-length))
-			(difference (- length max-length))
+	     (if (fix:> length max-length)
+		 (let* ((new-end (fix:+ start max-length))
+			(difference (fix:- length max-length))
 			(text (group-text group))
 			(end* (string-length text))
-			(new-end* (- end* difference)))
+			(new-end* (fix:- end* difference)))
 		   (substring-move-left! text end end* text new-end)
 		   (set-string-maximum-length! text new-end*)
 		   (for-each-mark group
 		     (lambda (mark)
 		       (let ((position (mark-position mark)))
-			 (cond ((> position end)
-				(set-mark-position! mark
-						    (- position difference)))
-			       ((<= start position)
+			 (cond ((fix:> position end)
+				(set-mark-position!
+				 mark
+				 (fix:- position difference)))
+			       ((not (fix:> start position))
 				(set-mark-position!
 				 mark
 				 (if (mark-left-inserting? mark)
@@ -167,8 +172,8 @@
 		   (for-each-mark group
 		     (lambda (mark)
 		       (let ((position (mark-position mark)))
-			 (if (and (<= start position)
-				  (<= position end))
+			 (if (and (not (fix:> start position))
+				  (not (fix:> position end)))
 			     (set-mark-position!
 			      mark
 			      (if (mark-left-inserting? mark) end start))))))
@@ -181,74 +186,75 @@
 
 (define (move-gap-to! group index)
   (let ((gap-start (group-gap-start group)))
-    (cond ((< index gap-start) (move-gap-to-left! group index))
-	  ((> index gap-start) (move-gap-to-right! group index)))))
+    (cond ((fix:< index gap-start) (move-gap-to-left! group index))
+	  ((fix:> index gap-start) (move-gap-to-right! group index)))))
 
 (define (move-gap-to-left! group new-start)
   (let ((start (group-gap-start group))
 	(length (group-gap-length group))
 	(text (group-text group)))
-    (let ((new-end (+ new-start length)))
+    (let ((new-end (fix:+ new-start length)))
       (for-each-mark group
 	(lambda (mark)
 	  (let ((position (mark-position mark)))
-	    (cond ((and (< new-start position) (<= position start))
-		   (set-mark-position! mark (+ position length)))
-		  ((and (mark-left-inserting? mark) (= new-start position))
+	    (cond ((and (fix:< new-start position)
+			(not (fix:> position start)))
+		   (set-mark-position! mark (fix:+ position length)))
+		  ((and (mark-left-inserting? mark)
+			(fix:= new-start position))
 		   (set-mark-position! mark new-end))))))
       (substring-move-right! text new-start start text new-end)
       (vector-set! group group-index:gap-start new-start)
-      (vector-set! group group-index:gap-end new-end)))
-  unspecific)
+      (vector-set! group group-index:gap-end new-end)
+      unspecific)))
 
 (define (move-gap-to-right! group new-start)
   (let ((start (group-gap-start group))
 	(end (group-gap-end group))
 	(length (group-gap-length group))
 	(text (group-text group)))
-    (let ((new-end (+ new-start length)))
+    (let ((new-end (fix:+ new-start length)))
       (for-each-mark group
 	(lambda (mark)
 	  (let ((position (mark-position mark)))
-	    (cond ((and (> new-end position) (>= position end))
-		   (set-mark-position! mark (- position length)))
-		  ((and (not (mark-left-inserting? mark)) (= new-end position))
+	    (cond ((and (fix:> new-end position)
+			(not (fix:< position end)))
+		   (set-mark-position! mark (fix:- position length)))
+		  ((and (not (mark-left-inserting? mark))
+			(fix:= new-end position))
 		   (set-mark-position! mark new-start))))))
       (substring-move-left! text end new-end text start)
       (vector-set! group group-index:gap-start new-start)
-      (vector-set! group group-index:gap-end new-end)))
-  unspecific)
+      (vector-set! group group-index:gap-end new-end)
+      unspecific)))
 
 (define (guarantee-gap-length! group n)
-  (if (< (group-gap-length group) n)
-      (let ((n (+ n gap-allocation-extra))
+  (if (fix:< (group-gap-length group) n)
+      (let ((n (fix:+ n gap-allocation-extra))
 	    (text (group-text group))
 	    (start (group-gap-start group))
 	    (end (group-gap-end group))
 	    (length (group-gap-length group)))
 	(let ((end* (string-length text)))
-	  (let ((text* (string-allocate (+ end* n)))
-		(new-end (+ end n)))
+	  (let ((text* (string-allocate (fix:+ end* n)))
+		(new-end (fix:+ end n)))
 	    (substring-move-right! text 0 start text* 0)
 	    (substring-move-right! text end end* text* new-end)
 	    (vector-set! group group-index:text text*)
 	    (vector-set! group group-index:gap-end new-end)
-	    (if (zero? length)
-		(for-each-mark group
+	    (for-each-mark group
+	      (if (fix:zero? length)
 		  (lambda (mark)
 		    (let ((position (mark-position mark)))
-		      (cond ((> position end)
-			     (set-mark-position! mark (+ position n)))
-			    ((= position end)
-			     (set-mark-position!
-			      mark
-			      (if (mark-left-inserting? mark)
-				  new-end
-				  start)))))))
-		(for-each-mark group
+		      (if (not (fix:< position end))
+			  (set-mark-position!
+			   mark
+			   (cond ((fix:> position end) (fix:+ position n))
+				 ((mark-left-inserting? mark) new-end)
+				 (else start))))))
 		  (lambda (mark)
 		    (let ((position (mark-position mark)))
-		      (if (>= position end)
-			  (set-mark-position! mark (+ position n)))))))))
-	(vector-set! group group-index:gap-length (+ length n))))
-  unspecific)
+		      (if (not (fix:< position end))
+			  (set-mark-position! mark (fix:+ position n)))))))))
+	(vector-set! group group-index:gap-length (fix:+ length n))
+	unspecific)))

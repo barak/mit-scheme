@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/window.scm,v 1.149 1989/08/10 05:07:43 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/window.scm,v 1.150 1989/08/14 09:23:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -223,25 +223,25 @@
 					   yi (window-y-size window)
 			 (lambda (xl xu yl yu)
 			   (=> window :update-display!
-			       screen (+ x-start xi) (+ y-start yi)
+			       screen (fix:+ x-start xi) (fix:+ y-start yi)
 			       xl xu yl yu display-style)))
 		       (continue))
 		  (continue))))))))
 
 (define (clip-window-region xl xu yl yu xi xs yi ys receiver)
-  (clip-window-region-1 (- xl xi) (- xu xi) xs
+  (clip-window-region-1 (fix:- xl xi) (fix:- xu xi) xs
     (lambda (xl xu)
-      (clip-window-region-1 (- yl yi) (- yu yi) ys
+      (clip-window-region-1 (fix:- yl yi) (fix:- yu yi) ys
 	(lambda (yl yu)
 	  (receiver xl xu yl yu))))))
 
 (define (clip-window-region-1 al au bs receiver)
-  (if (positive? al)
-      (if (<= al bs)
-	  (receiver al (if (< bs au) bs au))
-	  true)
-      (if (positive? au)
-	  (receiver 0 (if (< bs au) bs au))
+  (if (fix:positive? al)
+      (if (fix:> al bs)
+	  true
+	  (receiver al (if (fix:< bs au) bs au)))
+      (if (fix:positive? au)
+	  (receiver 0 (if (fix:< bs au) bs au))
 	  true)))
 
 (define (salvage-inferiors! window)
@@ -375,12 +375,12 @@
 		(let ((x-start (inferior-x-start inferior))
 		      (y-start (inferior-y-start inferior)))
 		  (if (and x-start y-start)
-		      (let ((x (- x x-start))
-			    (y (- y y-start)))
-			(if (and (not (negative? x))
-				 (< x (inferior-x-size inferior))
-				 (not (negative? y))
-				 (< y (inferior-y-size inferior)))
+		      (let ((x (fix:- x x-start))
+			    (y (fix:- y y-start)))
+			(if (and (not (fix:negative? x))
+				 (fix:< x (inferior-x-size inferior))
+				 (not (fix:negative? y))
+				 (fix:< y (inferior-y-size inferior)))
 			    (search (inferior-window inferior) x y)
 			    (loop (cdr inferiors))))
 		      (loop (cdr inferiors))))))))))
@@ -409,10 +409,10 @@
 (define (inferior-x-end inferior)
   (let ((x-start (inferior-x-start inferior)))
     (and x-start
-	 (+ x-start (inferior-x-size inferior)))))
+	 (fix:+ x-start (inferior-x-size inferior)))))
 
 (define (set-inferior-x-end! inferior x-end)
-  (set-inferior-x-start! inferior (- x-end (inferior-x-size inferior))))
+  (set-inferior-x-start! inferior (fix:- x-end (inferior-x-size inferior))))
 
 (define-integrable (inferior-y-start inferior)
   (vector-ref (cdr inferior) 1))
@@ -428,10 +428,11 @@
 (define (inferior-y-end inferior)
   (let ((y-start (inferior-y-start inferior)))
     (and y-start
-	 (+ y-start (inferior-y-size inferior)))))
+	 (fix:+ y-start (inferior-y-size inferior)))))
 
 (define (set-inferior-y-end! inferior y-end)
-  (set-inferior-y-start! inferior (- y-end (inferior-y-size inferior))))
+  (set-inferior-y-start! inferior (fix:- y-end (inferior-y-size inferior))))
+
 (define (inferior-start inferior receiver)
   (receiver (inferior-x-start inferior)
 	    (inferior-y-start inferior)))

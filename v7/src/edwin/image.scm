@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/image.scm,v 1.124 1989/08/09 13:17:27 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/image.scm,v 1.125 1989/08/14 09:22:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -106,18 +106,18 @@
       (vector string start start-column parse column-size))))
 
 (define (image-index-size image)
-  (- (string-length (image-string image)) (image-start-index image)))
+  (fix:- (string-length (image-string image)) (image-start-index image)))
 
 (define (image-direct-output-insert-char! image char)
   (vector-set! image 0 (string-append-char (vector-ref image 0) char))
-  (vector-set! image 4 (1+ (vector-ref image 4)))
+  (vector-set! image 4 (fix:1+ (vector-ref image 4)))
   unspecific)
 
 (define (image-direct-output-insert-substring! image string start end)
   (vector-set! image 0
 	       (string-append-substring (vector-ref image 0)
 					string start end))
-  (vector-set! image 4 (+ (vector-ref image 4) (- end start)))
+  (vector-set! image 4 (fix:+ (vector-ref image 4) (fix:- end start)))
   unspecific)
 
 (define (image-representation image)
@@ -134,13 +134,15 @@
 	      ((string? (car parse))
 	       (let ((size (string-length (car parse))))
 		 (substring-move-right! (car parse) 0 size result result-start)
-		 (loop (cdr parse) (1+ string-start) (+ result-start size))))
+		 (loop (cdr parse)
+		       (fix:1+ string-start)
+		       (fix:+ result-start size))))
 	      ((number? (car parse))
 	       (substring-move-right! string string-start (car parse)
 				      result result-start)
 	       (loop (cdr parse)
 		     (car parse)
-		     (+ result-start (- (car parse) string-start))))
+		     (fix:+ result-start (fix:- (car parse) string-start))))
 	      (else
 	       (error "Bad parse element" (car parse)))))
       result)))
@@ -151,19 +153,19 @@
        (start (image-start-index image))
        (column (image-start-column image)))
     (cond ((null? parse)
-	   (+ column (- index start)))
+	   (fix:+ column (fix:- index start)))
 	  ((string? (car parse))
-	   (if (= index start)
+	   (if (fix:= index start)
 	       column
 	       (loop (cdr parse)
-		     (1+ start)
-		     (+ column (string-length (car parse))))))
+		     (fix:1+ start)
+		     (fix:+ column (string-length (car parse))))))
 	  ((number? (car parse))
-	   (if (<= index (car parse))
-	       (+ column (- index start))
+	   (if (fix:> index (car parse))
 	       (loop (cdr parse)
 		     (car parse)
-		     (+ column (- (car parse) start)))))
+		     (fix:+ column (fix:- (car parse) start)))
+	       (fix:+ column (fix:- index start))))
 	  (else
 	   (error "Bad parse element" (car parse))))))
 
@@ -173,16 +175,16 @@
        (start (image-start-index image))
        (c (image-start-column image)))
     (cond ((null? parse)
-	   (+ start (- column c)))
+	   (fix:+ start (fix:- column c)))
 	  ((string? (car parse))
-	   (let ((new-c (+ c (string-length (car parse)))))
-	     (if (< column new-c)
+	   (let ((new-c (fix:+ c (string-length (car parse)))))
+	     (if (fix:< column new-c)
 		 start
-		 (loop (cdr parse) (1+ start) new-c))))
+		 (loop (cdr parse) (fix:1+ start) new-c))))
 	  ((number? (car parse))
-	   (let ((new-c (+ c (- (car parse) start))))
-	     (if (< column new-c)
-		 (+ start (- column c))
+	   (let ((new-c (fix:+ c (fix:- (car parse) start))))
+	     (if (fix:< column new-c)
+		 (fix:+ start (fix:- column c))
 		 (loop (cdr parse) (car parse) new-c))))
 	  (else
 	   (error "Bad parse element" (car parse))))))
@@ -195,7 +197,7 @@
 (define (substring-representation string start end start-column)
   (let ((result
 	 (string-allocate
-	  (- (substring-column-length string start end start-column)
+	  (fix:- (substring-column-length string start end start-column)
 	     start-column))))
     (let loop ((start start) (column start-column) (rindex 0))
       (let* ((index
@@ -207,22 +209,25 @@
 			(char-representation (string-ref string index) column))
 		       (size (string-length representation)))
 		  (substring-move-right! representation 0 size result rindex)
-		  (loop (1+ index) (+ column size) (+ rindex size))))))
+		  (loop (fix:1+ index)
+			(fix:+ column size)
+			(fix:+ rindex size))))))
 	(cond ((not index)
 	       (substring-move-right! string start end result rindex)
 	       result)
-	      ((= start index)
+	      ((fix:= start index)
 	       (copy-representation! column rindex))
 	      (else
 	       (substring-move-right! string start index result rindex)
-	       (let ((size (- index start)))
-		 (copy-representation! (+ column size) (+ rindex size)))))))))
-
+	       (let ((size (fix:- index start)))
+		 (copy-representation! (fix:+ column size)
+				       (fix:+ rindex size)))))))))
+
 (define (string-column-length string start-column)
   (substring-column-length string 0 (string-length string) start-column))
 
 (define (string-index->column string start-column index)
-  (+ start-column (substring-column-length string 0 index start-column)))
+  (fix:+ start-column (substring-column-length string 0 index start-column)))
 
 (define (substring-column-length string start end start-column)
   (let loop ((i start) (c start-column))
@@ -230,10 +235,12 @@
 	   (substring-find-next-char-in-set string i end
 					    char-set:not-graphic)))
       (if (not index)
-	  (+ c (- end i))
-	  (loop (1+ index)
-		(let ((c (+ c (- index i))))
-		  (+ c (char-column-length (string-ref string index) c))))))))
+	  (fix:+ c (fix:- end i))
+	  (loop (fix:1+ index)
+		(let ((c (fix:+ c (fix:- index i))))
+		  (fix:+ c
+			 (char-column-length (string-ref string index)
+					     c))))))))
 
 (define (string-column->index string start-column column if-lose)
   (substring-column->index string 0 (string-length string) start-column
@@ -241,28 +248,30 @@
 
 (define (substring-column->index string start end start-column column
 				 #!optional if-lose)
-  (if (zero? column)
+  (if (fix:zero? column)
       start
-      (let loop ((i start) (c start-column) (left (- column start-column)))
+      (let loop ((i start) (c start-column) (left (fix:- column start-column)))
 	(let ((index
 	       (substring-find-next-char-in-set string i end
 						char-set:not-graphic)))
 	  (if (not index)
-	      (let ((n (- end i)))
-		(cond ((<= left n) (+ i left))
+	      (let ((n (fix:- end i)))
+		(cond ((not (fix:> left n)) (fix:+ i left))
 		      ((default-object? if-lose) end)
-		      (else (if-lose (+ c n)))))
-	      (let ((n (- index i)))
-		(if (<= left n)
-		    (+ i left)
-		    (let ((c (+ c n))
-			  (left (- left n)))
+		      (else (if-lose (fix:+ c n)))))
+	      (let ((n (fix:- index i)))
+		(if (fix:> left n)
+		    (let ((c (fix:+ c n))
+			  (left (fix:- left n)))
 		      (let ((n
 			     (char-column-length (string-ref string index) c)))
-			(cond ((< left n) index)
-			      ((= left n) (1+ index))
+			(cond ((fix:< left n) index)
+			      ((fix:= left n) (fix:1+ index))
 			      (else
-			       (loop (1+ index) (+ c n) (- left n)))))))))))))
+			       (loop (fix:1+ index)
+				     (fix:+ c n)
+				     (fix:- left n))))))
+		    (fix:+ i left))))))))
 
 ;;;; Parsing
 
@@ -272,14 +281,15 @@
 	   (substring-find-next-char-in-set string start end
 					    char-set:not-graphic)))
       (if (not index)
-	  (receiver '() (+ column (- end start)))
-	  (let ((column (+ column (- index start))))
+	  (receiver '() (fix:+ column (fix:- end start)))
+	  (let ((column (fix:+ column (fix:- index start))))
 	    (let ((representation
 		   (char-representation (string-ref string index) column)))
-	      (loop (1+ index)
-		    (+ column (string-length representation))
+	      (loop (fix:1+ index)
+		    (fix:+ column (string-length representation))
 		    (lambda (parse column-size)
-		      (receiver (if (= index start)				    (cons representation parse)
+		      (receiver (if (fix:= index start)
+				    (cons representation parse)
 				    (cons index (cons representation parse)))
 				column-size)))))))))
 

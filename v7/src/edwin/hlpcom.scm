@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.90 1989/08/12 08:32:15 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.91 1989/08/14 09:22:33 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -49,7 +49,7 @@
 (define-command help-prefix
   "This is a prefix for more commands.
 It reads another character (a subcommand) and dispatches on it."
-  "cA C F I K L M T V W or C-h for more help"
+  "cA B C F I K L M T V W or C-h for more help"
   (lambda (char)
     (dispatch-on-char
      (current-comtabs)
@@ -62,20 +62,21 @@ It reads another character (a subcommand) and dispatches on it."
 		    (insert-string 
 		     "You have typed C-h, the help character.  Type a Help option:
 
-A   command-apropos.  Type a substring, and see a list of commands
-	that contain that substring.
-C   describe-key-briefly.  Type a key sequence;
-	it prints the name of the command that sequence runs.
-F   describe-command.  Type a command name and get its documentation.
-I   info.  The Info documentation reader.
-K   describe-key.  Type a key sequence;
-	it prints the full documentation.
-L   view-lossage.  Prints the last 100 characters you typed.
-M   describe-mode.  Print documentation of current major mode,
-	which describes the commands peculiar to it.
-T   help-with-tutorial.  Select the Emacs learn-by-doing tutorial.
-V   describe-variable.  Type a variable name and get its documentation.
-W   where-is.  Type a command name and get its key binding."
+A  command-apropos.  Type a substring, and see a list of commands
+              that contain that substring.
+B  describe-bindings.  Display table of all key bindings.
+C  describe-key-briefly.  Type a key sequence;
+              it prints the name of the command that sequence runs.
+F  describe-command.  Type a command name and get its documentation.
+I  info.  The Info documentation reader.
+K  describe-key.  Type a key sequence;
+              it prints the full documentation.
+L  view-lossage.  Prints the last 100 characters you typed.
+M  describe-mode.  Print documentation of current major mode,
+              which describes the commands peculiar to it.
+T  help-with-tutorial.  Select the Emacs learn-by-doing tutorial.
+V  describe-variable.  Type a variable name and get its documentation.
+W  where-is.  Type a command name and get its key binding."
 		     (buffer-point buffer))
 		    (set-buffer-point! buffer (buffer-start buffer))
 		    (buffer-not-modified! buffer)
@@ -84,7 +85,8 @@ W   where-is.  Type a command name and get its key binding."
 		      (let loop ()
 			(let ((char
 			       (prompt-for-char
-				"A C F I K L M T V W or space to scroll")))			  (let ((test-for
+				"A B C F I K L M T V W or space to scroll")))
+			  (let ((test-for
 				 (lambda (char*)
 				   (char=? char (remap-alias-char char*)))))
 			    (cond ((or (test-for #\C-h)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rgxcmp.scm,v 1.101 1989/04/28 22:52:50 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rgxcmp.scm,v 1.102 1989/08/14 09:22:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -155,31 +155,35 @@
 (define (re-compile-string string case-fold?)
   (let ((string (if case-fold? (string-upcase string) string)))
     (let ((n (string-length string)))
-      (if (zero? n)
+      (if (fix:zero? n)
 	  string
 	  (let ((result
 		 (string-allocate 
 		  (let ((qr (integer-divide n 255)))
-		    (+ (* 257 (integer-divide-quotient qr))
-		       (cond ((zero? (integer-divide-remainder qr)) 0)
-			     ((= 1 (integer-divide-remainder qr)) 2)
-			     (else (+ (integer-divide-remainder qr) 2))))))))
+		    (fix:+ (fix:* 257 (integer-divide-quotient qr))
+			   (let ((r (integer-divide-remainder qr)))
+			     (cond ((fix:zero? r) 0)
+				   ((fix:= 1 r) 2)
+				   (else (fix:+ r 2)))))))))
 	    (let loop ((n n) (i 0) (p 0))
-	      (cond ((= n 1)
+	      (cond ((fix:= n 1)
 		     (vector-8b-set! result p re-code:exact-1)
-		     (vector-8b-set! result (1+ p) (vector-8b-ref string i))
+		     (vector-8b-set! result
+				     (fix:1+ p)
+				     (vector-8b-ref string i))
 		     result)
-		    ((< n 256)
+		    ((fix:< n 256)
 		     (vector-8b-set! result p re-code:exact-n)
-		     (vector-8b-set! result (1+ p) n)
-		     (substring-move-right! string i (+ i n) result (+ p 2))
+		     (vector-8b-set! result (fix:1+ p) n)
+		     (substring-move-right! string i (fix:+ i n)
+					    result (fix:+ p 2))
 		     result)
 		    (else
 		     (vector-8b-set! result p re-code:exact-n)
-		     (vector-8b-set! result (1+ p) 255)
-		     (let ((j (+ i 255)))
-		       (substring-move-right! string i j result (+ p 2))
-		       (loop (- n 255) j (+ p 257)))))))))))
+		     (vector-8b-set! result (fix:1+ p) 255)
+		     (let ((j (fix:+ i 255)))
+		       (substring-move-right! string i j result (fix:+ p 2))
+		       (loop (fix:- n 255) j (fix:+ p 257)))))))))))
 
 ;;;; Char-Set Compiler
 
@@ -204,18 +208,18 @@
 			    (begin
 			      (let ((end (char->ascii (caddr pattern))))
 				(let loop ((index (char->ascii (car pattern))))
-				  (if (< index end)
+				  (if (fix:< index end)
 				      (begin
 					(vector-8b-set! char-set
 							index
 							foreground)
-					(loop (1+ index))))))
+					(loop (fix:1+ index))))))
 			      (loop (cdddr pattern)))
 			    (error "RE-COMPILE-CHAR-SET: Terminating hyphen")))
 		       (else
 			(adjoin! (char->ascii (car pattern)))
 			(loop (cdr pattern)))))))))
-      (if (and (not (zero? length))
+      (if (and (not (fix:zero? length))
 	       (char=? (string-ref pattern 0) #\^))
 	  (if negate?
 	      (kernel 1 0 1)
@@ -350,7 +354,7 @@
   (let ((tail (list byte)))
     (set-cdr! output-tail tail)
     (set! output-tail tail))
-  (set! output-length (1+ output-length))
+  (set! output-length (fix:1+ output-length))
   unspecific)
 
 (define-integrable (output-re-code! code)
@@ -391,12 +395,14 @@
     (lambda (low high)
       (set-cdr! (cdr from)
 		(cons* opcode low high (cddr from)))
-      (set! output-length (+ output-length 3))
+      (set! output-length (fix:+ output-length 3))
       unspecific)))
 
 (define (compute-jump from to receiver)
-  (let ((n (- to (+ from 3))))
-    (let ((qr (integer-divide (if (negative? n) (+ n #x10000) n) #x100)))
+  (let ((n (fix:- to (fix:+ from 3))))
+    (let ((qr
+	   (integer-divide (if (fix:negative? n) (fix:+ n #x10000) n)
+			   #x100)))
       (receiver (integer-divide-remainder qr)
 		(integer-divide-quotient qr)))))
 
@@ -406,7 +412,7 @@
   (null? stack))
 
 (define-integrable (stack-full?)
-  (>= (stack-length) stack-maximum-length))
+  (not (fix:< (stack-length) stack-maximum-length)))
 
 (define-integrable (stack-length)
   (length stack))
@@ -444,7 +450,7 @@
 	(output! (input-peek-1)))
       (begin
 	(if (or (not pending-exact)
-		(= (pointer-ref pending-exact) #x7F))
+		(fix:= (pointer-ref pending-exact) #x7F))
 	    (begin
 	      (set! last-start (output-pointer))
 	      (output! re-code:exact-n)
@@ -560,20 +566,20 @@
       ;; More than one repetition allowed: put in a backward jump at
       ;; the end.
       (compute-jump (output-position)
-		    (- (pointer-position last-start) 3)
+		    (fix:- (pointer-position last-start) 3)
 	(lambda (low high)
 	  (output-re-code! re-code:maybe-finalize-jump)
 	  (output! low)
 	  (output! high))))
   (insert-jump! last-start
 		re-code:on-failure-jump
-		(+ (output-position) 3))
+		(fix:+ (output-position) 3))
   (if (not zero?)
       ;; At least one repetition required: insert before the loop a
       ;; skip over the initial on-failure-jump instruction.
       (insert-jump! last-start
 		    re-code:dummy-failure-jump
-		    (+ (pointer-position last-start) 6))))
+		    (fix:+ (pointer-position last-start) 6))))
 
 (define-repeater-char #\* true true)
 (define-repeater-char #\+ false true)
@@ -608,11 +614,11 @@
 		     (let ((char* (input-peek)))
 		       (input-discard!)
 		       (let loop ((char char))
-			 (if (<= char char*)
+			 (if (not (fix:> char char*))
 			     (begin
 			       ((ucode-primitive re-char-set-adjoin!) charset
 								      char)
-			       (loop (1+ char))))))))
+			       (loop (fix:1+ char))))))))
 		(else
 		 ((ucode-primitive re-char-set-adjoin!) charset char))))
 	(loop))
@@ -620,16 +626,16 @@
       ;; Discard any bitmap bytes that are all 0 at the end of
       ;; the map.  Decrement the map-length byte too.
       (define (trim n)
-	(cond ((not (zero? (vector-8b-ref charset n)))
-	       (output! (1+ n))
+	(cond ((not (fix:zero? (vector-8b-ref charset n)))
+	       (output! (fix:1+ n))
 	       (let loop ((i 0))
 		 (output! (vector-8b-ref charset i))
-		 (if (< i n)
-		     (loop (1+ i)))))
-	      ((zero? n)
+		 (if (fix:< i n)
+		     (loop (fix:1+ i)))))
+	      ((fix:zero? n)
 	       (output! 0))
 	      (else
-	       (trim (-1+ n)))))
+	       (trim (fix:-1+ n)))))
 
       (vector-8b-fill! charset 0 32 0)
       (cond ((input-end?) (premature-end))
@@ -642,7 +648,7 @@
   (lambda ()
     (if (stack-full?)
 	(error error-type:re-compile-pattern "Nesting too deep"))
-    (if (< register-number re-number-of-registers)
+    (if (fix:< register-number re-number-of-registers)
 	(begin
 	  (output-re-code! re-code:start-memory)
 	  (output! register-number)))
@@ -652,7 +658,7 @@
 		 begin-alternative)
     (set! last-start false)
     (set! fixup-jump false)
-    (set! register-number (1+ register-number))
+    (set! register-number (fix:1+ register-number))
     (set! begin-alternative (output-pointer))
     unspecific))
 
@@ -667,7 +673,7 @@
        (set! last-start op)
        (set! fixup-jump fj)
        (set! begin-alternative bg)
-       (if (< rn re-number-of-registers)
+       (if (fix:< rn re-number-of-registers)
 	   (begin
 	     (output-re-code! re-code:stop-memory)
 	     (output! rn)))))))
@@ -676,7 +682,7 @@
   (lambda ()
     (insert-jump! begin-alternative
 		  re-code:on-failure-jump
-		  (+ (output-position) 6))
+		  (fix:+ (output-position) 6))
     (if fixup-jump
 	(store-jump! fixup-jump re-code:jump (output-position)))
     (set! fixup-jump (output-pointer))
@@ -692,17 +698,18 @@
   (let ((char (digit->char digit)))
     (define-backslash-char char
       (lambda ()
-	(if (>= digit register-number)
-	    (normal-char)
+	(if (fix:< digit register-number)
 	    (let ((n (stack-length)))
 	      (let search-stack ((i 0))
-		(cond ((>= i n)
+		(cond ((not (fix:< i n))
 		       (output-start! re-code:duplicate)
 		       (output! digit))
-		      ((= (stack-ref-register-number i) digit)
+		      ((fix:= (stack-ref-register-number i) digit)
 		       (normal-char))
 		      (else
-		       (search-stack (1+ i)))))))))))
+		       (search-stack (fix:1+ i))))))
+	    (normal-char))))))
+
 (for-each define-digit-char '(1 2 3 4 5 6 7 8 9))
 
 ;;;; Compiled Pattern Disassembler

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.11 1989/08/11 11:50:13 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.12 1989/08/14 09:22:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -61,13 +61,13 @@
 	       (set! start-changes-mark
 		     (%make-permanent-mark group start false))
 	       (set! end-changes-mark (%make-permanent-mark group end true)))
-	      ((< start (mark-position start-changes-mark))
+	      ((fix:< start (mark-position start-changes-mark))
 	       (set-mark-position! start-changes-mark start))
-	      ((> end (mark-position end-changes-mark))
+	      ((fix:> end (mark-position end-changes-mark))
 	       (set-mark-position! end-changes-mark end)))
 	(if (and (not (car redisplay-flags))
-		 (>= end (mark-position start-line-mark))
-		 (<= start (mark-position end-mark)))
+		 (not (fix:< end (mark-position start-line-mark)))
+		 (not (fix:> start (mark-position end-mark))))
 	    (setup-redisplay-flags! redisplay-flags))))))
 
 ;;; It is assumed that the clip daemon is called before the clipping
@@ -85,12 +85,12 @@
 		(end (group-index->position group end true))
 		(window-start (mark-position start-line-mark))
 		(window-end (mark-position end-mark)))
-	    (if (or (> start window-start)
-		    (< end window-end)
-		    (and (< start window-start)
-			 (= window-start (mark-position start-clip-mark)))
-		    (and (> end window-end)
-			 (= window-end (mark-position end-clip-mark))))
+	    (if (or (fix:> start window-start)
+		    (fix:< end window-end)
+		    (and (fix:< start window-start)
+			 (fix:= window-start (mark-position start-clip-mark)))
+		    (and (fix:> end window-end)
+			 (fix:= window-end (mark-position end-clip-mark))))
 		(setup-redisplay-flags! redisplay-flags)))))))
 
 (define (update-buffer-window! window screen x-start y-start
@@ -111,19 +111,7 @@
 
 (define (%recompute-image! window)
   (with-instance-variables buffer-window window ()
-    (cond ((eq? 'START force-redraw?)
-	   (%window-redraw-preserving-start! window))
-	  ((eq? 'POINT force-redraw?)
-	   (%window-redraw! window (%window-point-y window)))
-	  ((eq? 'BUFFER-CURSOR-Y force-redraw?)
-	   (%window-redraw! window (%window-buffer-cursor-y window)))
-	  ((and (integer? force-redraw?)
-		(not (negative? force-redraw?))
-		(< force-redraw? y-size))
-	   (%window-redraw! window force-redraw?))
-	  (force-redraw?
-	   (%window-redraw! window (%window-y-center window)))
-	  (else
+    (cond ((not force-redraw?)
 	   (let ((group (mark-group start-mark))
 		 (start-line (mark-index start-line-mark))
 		 (start (mark-index start-mark))
@@ -132,24 +120,25 @@
 	     (if start-clip-mark
 		 (let ((new-clip-start (group-start-index group))
 		       (new-clip-end (group-end-index group)))
-		   (cond ((< point-index new-clip-start)
+		   (cond ((fix:< point-index new-clip-start)
 			  (%set-buffer-point! buffer
 					      (group-display-start group))
 			  (set! point (buffer-point buffer)))
-			 ((> point-index new-clip-end)
+			 ((fix:> point-index new-clip-end)
 			  (%set-buffer-point! buffer (group-display-end group))
 			  (set! point (buffer-point buffer))))
-		   (cond ((> new-clip-start start-line)
+		   (cond ((fix:> new-clip-start start-line)
 			  (%window-redraw! window false))
-			 ((or (< new-clip-end end)
-			      (and (< new-clip-start start-line)
-				   (= start-line (mark-index start-clip-mark)))
-			      (and (> new-clip-end end)
-				   (= end (mark-index end-clip-mark))))
+			 ((or (fix:< new-clip-end end)
+			      (and (fix:< new-clip-start start-line)
+				   (fix:= start-line
+					  (mark-index start-clip-mark)))
+			      (and (fix:> new-clip-end end)
+				   (fix:= end (mark-index end-clip-mark))))
 			  (%window-redraw! window
 					   (and (not start-changes-mark)
-						(>= point-index start)
-						(<= point-index end)
+						(not (fix:< point-index start))
+						(not (fix:> point-index end))
 						(%window-point-y window))))
 			 (else
 			  (destroy-mark! start-clip-mark)
@@ -159,13 +148,13 @@
 	     (if start-changes-mark
 		 (let ((start-changes (mark-index start-changes-mark))
 		       (end-changes (mark-index end-changes-mark)))
-		   (if (and (>= end-changes start-line)
-			    (<= start-changes end))
-		       (if (<= start-changes start)
-			   (if (< end-changes end)
+		   (if (and (not (fix:< end-changes start-line))
+			    (not (fix:> start-changes end)))
+		       (if (not (fix:> start-changes start))
+			   (if (fix:< end-changes end)
 			       (recompute-image!:top-changed window)
 			       (%window-redraw! window false))
-			   (if (>= end-changes end)
+			   (if (not (fix:< end-changes end))
 			       (recompute-image!:bottom-changed window)
 			       (recompute-image!:middle-changed window)))
 		       (begin
@@ -174,7 +163,21 @@
 			 (destroy-mark! end-changes-mark)
 			 (set! end-changes-mark false))))))
 	   (if point-moved?
-	       (update-cursor! window maybe-recenter!))))))
+	       (update-cursor! window maybe-recenter!)))
+	  ((eq? 'START force-redraw?)
+	   (%window-redraw-preserving-start! window))
+	  ((eq? 'POINT force-redraw?)
+	   (%window-redraw! window (%window-point-y window)))
+	  ((eq? 'BUFFER-CURSOR-Y force-redraw?)
+	   (%window-redraw! window (%window-buffer-cursor-y window)))
+	  ((eq? 'CENTER force-redraw?)
+	   (%window-redraw! window (%window-y-center window)))
+	  ((and (object-type? (ucode-type fixnum) force-redraw?)
+		(not (fix:negative? force-redraw?))
+		(fix:< force-redraw? y-size))
+	   (%window-redraw! window force-redraw?))
+	  (else
+	   (%window-redraw! window (%window-y-center window))))))
 
 (define (recompute-image!:top-changed window)
   (with-instance-variables buffer-window window ()
@@ -217,7 +220,7 @@
 	    (end-start (line-start-index group end-index))
 	    (end-end (line-end-index group end-index)))
 	(if (eq? start-inferiors end-inferiors)
-	    (if (= start-start end-start)
+	    (if (fix:= start-start end-start)
 
   ;; In this case, the changed region was a single line before the
   ;; changes, and is still a single line now.  All we need do is redraw
@@ -229,11 +232,11 @@
      (group-extract-string group start-start start-end)
      truncate-lines?)
     (let ((y-end* (inferior-y-end (car start-inferiors))))
-      (if (= y-end y-end*)
+      (if (fix:= y-end y-end*)
 	  (maybe-marks-changed! window start-inferiors y-end*)
 	  (begin
 	    (set-cdr! start-inferiors
-		      (cond ((< y-end y-end*)
+		      (cond ((fix:< y-end y-end*)
 			     (scroll-lines-down! window
 						 (cdr start-inferiors)
 						 y-end*))
@@ -241,7 +244,7 @@
 			     (scroll-lines-up! window
 					       (cdr start-inferiors)
 					       y-end*
-					       (1+ start-end)))
+					       (fix:1+ start-end)))
 			    (else
 			     (fill-bottom window y-end* start-end))))
 	    (everything-changed! window maybe-recenter!)))))
@@ -261,14 +264,14 @@
 			       (inferior-y-end (car start-inferiors))
 			       start-end
 			       (cdr start-inferiors)
-			       (1+ end-end))))
+			       (fix:1+ end-end))))
    (everything-changed! window maybe-recenter!))
   )
 ;;; continued on next page...
 
 ;;; ...continued from previous page
 
-  (if (= start-start end-start)
+  (if (fix:= start-start end-start)
 
   ;; The changed region used to be multiple lines and is now just one.
   ;; We must scroll the bottom of the screen up to fill in.
@@ -284,7 +287,7 @@
 		 (scroll-lines-up! window
 				   (cdr end-inferiors)
 				   (inferior-y-end (car start-inferiors))
-				   (1+ start-end))))
+				   (fix:1+ start-end))))
    (everything-changed! window maybe-recenter!))
 
   ;; The most general case, we must refill the center of the screen.
@@ -299,11 +302,14 @@
 			       truncate-lines?)
       (let ((y-end (inferior-y-end (car end-inferiors)))
 	    (tail (cdr end-inferiors)))
-	(cond ((> y-end old-y-end)
+	(cond ((fix:> y-end old-y-end)
 	       (set-cdr! end-inferiors (scroll-lines-down! window tail y-end)))
-	      ((< y-end old-y-end)
+	      ((fix:< y-end old-y-end)
 	       (set-cdr! end-inferiors
-			 (scroll-lines-up! window tail y-end (1+ end-end)))))))
+			 (scroll-lines-up! window
+					   tail
+					   y-end
+					   (fix:1+ end-end)))))))
     (set-cdr! start-inferiors
 	      (fill-middle! window
 			    (inferior-y-end (car start-inferiors))
@@ -344,11 +350,11 @@
   (with-instance-variables buffer-window window ()
    (%set-buffer-point! buffer (mark1+ point))
    (set! point (buffer-point buffer))
-   (let ((x-start (1+ (inferior-x-start cursor-inferior)))
+   (let ((x-start (fix:1+ (inferior-x-start cursor-inferior)))
 	 (y-start (inferior-y-start cursor-inferior)))
      (screen-write-cursor! saved-screen
-			   (+ saved-x-start x-start)
-			   (+ saved-y-start y-start))
+			   (fix:+ saved-x-start x-start)
+			   (fix:+ saved-y-start y-start))
      (screen-flush! saved-screen)
      (%set-inferior-x-start! cursor-inferior x-start))))
 
@@ -356,11 +362,11 @@
   (with-instance-variables buffer-window window ()
    (%set-buffer-point! buffer (mark-1+ point))
    (set! point (buffer-point buffer))
-   (let ((x-start (-1+ (inferior-x-start cursor-inferior)))
+   (let ((x-start (fix:-1+ (inferior-x-start cursor-inferior)))
 	 (y-start (inferior-y-start cursor-inferior)))
      (screen-write-cursor! saved-screen
-			   (+ saved-x-start x-start)
-			   (+ saved-y-start y-start))
+			   (fix:+ saved-x-start x-start)
+			   (fix:+ saved-y-start y-start))
      (screen-flush! saved-screen)
      (%set-inferior-x-start! cursor-inferior x-start))))
 
@@ -368,20 +374,20 @@
   (with-instance-variables buffer-window window (char)
    (let ((x-start (inferior-x-start cursor-inferior))
 	 (y-start (inferior-y-start cursor-inferior)))
-     (let ((x (+ saved-x-start x-start))
-	   (y (+ saved-y-start y-start)))
+     (let ((x (fix:+ saved-x-start x-start))
+	   (y (fix:+ saved-y-start y-start)))
        (screen-write-char! saved-screen x y char)
-       (screen-write-cursor! saved-screen (1+ x) y)
+       (screen-write-cursor! saved-screen (fix:1+ x) y)
        (screen-flush! saved-screen))
      (line-window-direct-output-insert-char!
       (inferior-window (car (y->inferiors window y-start)))
       x-start
       char)
-     (%set-inferior-x-start! cursor-inferior (1+ x-start)))))
+     (%set-inferior-x-start! cursor-inferior (fix:1+ x-start)))))
 
 (define (%direct-output-insert-newline! window)
   (with-instance-variables buffer-window window ()
-   (let ((y-start (1+ (inferior-y-start cursor-inferior))))
+   (let ((y-start (fix:1+ (inferior-y-start cursor-inferior))))
      (let ((inferior (make-inferior window line-window)))
        (%set-inferior-x-start! inferior 0)
        (%set-inferior-y-start! inferior y-start)
@@ -389,10 +395,10 @@
        (set! last-line-inferior inferior)
        (line-window-direct-output-insert-newline!
 	(inferior-window inferior)))
-     (let ((y-end (1+ y-start)))
-       (if (< y-end y-size)
+     (let ((y-end (fix:1+ y-start)))
+       (if (fix:< y-end y-size)
 	   (begin
-	     (%set-inferior-y-size! blank-inferior (- y-size y-end))
+	     (%set-inferior-y-size! blank-inferior (fix:- y-size y-end))
 	     (%set-inferior-y-start! blank-inferior y-end))
 	   (begin
 	     (%set-inferior-x-start! blank-inferior false)
@@ -401,21 +407,21 @@
      (%set-inferior-y-start! cursor-inferior y-start)
      (screen-write-cursor! saved-screen
 			   saved-x-start
-			   (+ saved-y-start y-start))
+			   (fix:+ saved-y-start y-start))
      (screen-flush! saved-screen))))
 
 (define (%direct-output-insert-substring! window string start end)
   (with-instance-variables buffer-window window (string start end)
    (let ((x-start (inferior-x-start cursor-inferior))
 	 (y-start (inferior-y-start cursor-inferior))
-	 (length (- end start)))
-     (let ((x (+ saved-x-start x-start))
-	   (y (+ saved-y-start y-start)))
+	 (length (fix:- end start)))
+     (let ((x (fix:+ saved-x-start x-start))
+	   (y (fix:+ saved-y-start y-start)))
        (screen-write-substring! saved-screen x y string start end)
-       (screen-write-cursor! saved-screen (+ x length) y)
+       (screen-write-cursor! saved-screen (fix:+ x length) y)
        (screen-flush! saved-screen))
      (line-window-direct-output-insert-substring!
       (inferior-window (car (y->inferiors window y-start)))
       x-start
       string start end)
-     (%set-inferior-x-start! cursor-inferior (+ x-start length)))))
+     (%set-inferior-x-start! cursor-inferior (fix:+ x-start length)))))

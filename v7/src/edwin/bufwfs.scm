@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwfs.scm,v 1.6 1989/08/11 11:50:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwfs.scm,v 1.7 1989/08/14 09:21:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -61,12 +61,12 @@
 				   (inferior-y-end (car inferiors))
 				   (line-end-index group start)))
 	    (do-bottom! (cdr inferiors)
-			(+ start (line-inferior-length inferiors)))))
+			(fix:+ start (line-inferior-length inferiors)))))
       (let loop
 	  ((y-start (inferior-y-start (car inferiors)))
 	   (start start)
 	   (inferiors inferiors))
-	(cond ((<= y-start 0)
+	(cond ((not (fix:positive? y-start))
 	       (if fill-bottom? (do-bottom! inferiors start))
 	       (set-line-inferiors! window inferiors start))
 	      ((group-start-index? group start)
@@ -74,10 +74,11 @@
 				    (scroll-lines-up! window inferiors 0 start)
 				    start))
 	      (else
-	       (let ((end (-1+ start)))
+	       (let ((end (fix:-1+ start)))
 		 (let ((start (line-start-index group end)))
 		   (let ((inferior (make-line-inferior window start end)))
-		     (let ((y-start (- y-start (inferior-y-size inferior))))
+		     (let ((y-start
+			    (fix:- y-start (inferior-y-size inferior))))
 		       (set-inferior-start! inferior 0 y-start)
 		       (loop y-start start (cons inferior inferiors))))))))))))
 
@@ -87,10 +88,10 @@
     ;; ending in Y-END and END-INDEX.
     (let ((group (buffer-group buffer)))
       (let loop ((y-start y-end) (end end-index))
-	(if (or (>= y-start y-size)
+	(if (or (not (fix:< y-start y-size))
 		(group-end-index? group end))
 	    '()
-	    (let ((start (1+ end)))
+	    (let ((start (fix:1+ end)))
 	      (let ((end (line-end-index group start)))
 		(let ((inferior (make-line-inferior window start end)))
 		  (set-inferior-start! inferior 0 y-start)
@@ -106,15 +107,15 @@
     ;; that (> TAIL-START-INDEX END-INDEX), and that TAIL is non-'().
     (let ((group (buffer-group buffer)))
       (let loop ((y-end y-end) (end end-index))
-	(let ((start (1+ end)))
-	  (cond ((= start tail-start-index)
+	(let ((start (fix:1+ end)))
+	  (cond ((fix:= start tail-start-index)
 		 (let ((old-y-end (inferior-y-start (car tail))))
-		   (cond ((> y-end old-y-end)
+		   (cond ((fix:> y-end old-y-end)
 			  (scroll-lines-down! window tail y-end))
-			 ((< y-end old-y-end)
+			 ((fix:< y-end old-y-end)
 			  (scroll-lines-up! window tail y-end start))
 			 (else tail))))
-		((>= y-end y-size) '())
+		((not (fix:< y-end y-size)) '())
 		(else
 		 (let ((end (line-end-index group start)))
 		   (let ((inferior (make-line-inferior window start end)))
@@ -127,22 +128,24 @@
 (define (%set-window-start-mark! window mark force?)
   (let ((start-y (%window-mark->y window mark)))
     (and (or force?
-	     (let ((point-y (- (%window-point-y window) start-y)))
-	       (and (not (negative? point-y))
-		    (< point-y (window-y-size window)))))
+	     (let ((point-y (fix:- (%window-point-y window) start-y)))
+	       (and (not (fix:negative? point-y))
+		    (fix:< point-y (window-y-size window)))))
 	 (begin
 	   (%window-scroll-y-relative! window start-y)
 	   true))))
 
 (define (%window-scroll-y-absolute! window y-point)
   (with-instance-variables buffer-window window (y-point)
-    (%window-scroll-y-relative! window (- (%window-point-y window) y-point))))
+    (%window-scroll-y-relative! window
+				(fix:- (%window-point-y window) y-point))))
 
 (define (%window-scroll-y-relative! window y-delta)
   (with-instance-variables buffer-window window (y-delta)
-    (cond ((negative? y-delta)
-	   (let ((y-start (- (inferior-y-start (car line-inferiors)) y-delta)))
-	     (if (< y-start y-size)
+    (cond ((fix:negative? y-delta)
+	   (let ((y-start
+		  (fix:- (inferior-y-start (car line-inferiors)) y-delta)))
+	     (if (fix:< y-start y-size)
 		 (fill-top! window
 			    (scroll-lines-down! window line-inferiors y-start)
 			    (mark-index start-line-mark)
@@ -150,7 +153,7 @@
 		 (redraw-at! window
 			     (or (%window-coordinates->mark window 0 y-delta)
 				 (buffer-start buffer))))))
-	  ((positive? y-delta)
+	  ((fix:positive? y-delta)
 	   (let ((inferiors (y->inferiors window y-delta)))
 	     (if inferiors
 		 (let ((start (inferiors->index window inferiors)))
@@ -158,8 +161,8 @@
 		    window
 		    (scroll-lines-up! window
 				      inferiors
-				      (- (inferior-y-start (car inferiors))
-					 y-delta)
+				      (fix:- (inferior-y-start (car inferiors))
+					     y-delta)
 				      start)
 		    start))
 		 (redraw-at! window
@@ -168,7 +171,10 @@
     (everything-changed!
      window
      (lambda (window)
-       (let ((y (if (positive? y-delta) 0 (-1+ (window-y-size window)))))
+       (let ((y
+	      (if (fix:positive? y-delta)
+		  0
+		  (fix:-1+ (window-y-size window)))))
 	 (%set-buffer-point! buffer (%window-coordinates->mark window 0 y))
 	 (set! point (buffer-point buffer))
 	 (set-inferior-start! cursor-inferior 0 y)
@@ -186,7 +192,7 @@
     ;; Returns new list of new inferiors.
     (let loop ((inferiors inferiors) (y-start y-start))
       (if (or (null? inferiors)
-	      (>= y-start y-size))
+	      (not (fix:< y-start y-size)))
 	  '()
 	  (begin
 	    (set-inferior-start! (car inferiors) 0 y-start)
@@ -207,9 +213,9 @@
 			     (line-end-index (buffer-group buffer)
 					     start-index))
 		(let ((y-start (inferior-y-end (car inferiors))))
-		  (if (>= y-start y-size)
-		      '()
+		  (if (fix:< y-start y-size)
 		      (loop (cdr inferiors)
 			    y-start
-			    (+ start-index
-			       (line-inferior-length inferiors))))))))))
+			    (fix:+ start-index
+				   (line-inferior-length inferiors)))
+		      '())))))))

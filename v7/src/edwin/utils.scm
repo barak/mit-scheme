@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.18 1989/08/12 08:32:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.19 1989/08/14 09:23:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -77,21 +77,19 @@
 		(loop (cdr strings) string* index*)
 		(loop (cdr strings) string index)))))))
 
-(define (xchar->name char)
-  (if (pair? char)
-      (chars->name char)
-      (char-name char)))
-
-(define (chars->name chars)
-  (if (null? chars)
-      ""
-      (string-append-separated (char-name (car chars))
-			       (chars->name (cdr chars)))))
-
 (define (string-append-separated x y)
   (cond ((string-null? x) y)
 	((string-null? y) x)
 	(else (string-append x " " y))))
+
+(define (list-of-type? object type)
+  (let loop ((object object))
+    (if (null? object)
+	true
+	(and (pair? object)
+	     (type (car object))
+	     (loop (cdr object))))))
+
 (define (dotimes n procedure)
   (define (loop i)
     (if (< i n)

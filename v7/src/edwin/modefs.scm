@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.121 1989/08/12 08:32:28 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.122 1989/08/14 09:22:49 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -87,7 +87,6 @@ and the cdrs of which are major modes."
 
 (define-key 'fundamental #\rubout 'backward-delete-char)
 
-(define-key 'fundamental #\c-space 'set-mark-command)
 (define-key 'fundamental #\c-% 'replace-string)
 (define-key 'fundamental #\c-- 'negative-argument)
 (define-key 'fundamental #\c-0 'digit-argument)
@@ -228,7 +227,9 @@ and the cdrs of which are major modes."
 
 (define-key 'fundamental '(#\c-c #\c-s) 'select-transcript-buffer)
 
-(define-key 'fundamental '(#\c-h #\a) 'command-apropos)(define-key 'fundamental '(#\c-h #\c) 'describe-key-briefly)
+(define-key 'fundamental '(#\c-h #\a) 'command-apropos)
+(define-key 'fundamental '(#\c-h #\b) 'describe-bindings)
+(define-key 'fundamental '(#\c-h #\c) 'describe-key-briefly)
 (define-key 'fundamental '(#\c-h #\f) 'describe-command)
 (define-key 'fundamental '(#\c-h #\i) 'info)
 (define-key 'fundamental '(#\c-h #\k) 'describe-key)
