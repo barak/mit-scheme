@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.49 1996/07/26 23:43:03 adams Exp $
+$Id: rtlgen.scm,v 1.50 1996/07/30 19:25:12 adams Exp $
 
 Copyright (c) 1994-96 Massachusetts Institute of Technology
 
@@ -317,6 +317,7 @@ MIT in each case. |#
    (lambda ()
      (internal-error "continuation without stack frame" lam-expr))))
 
+#|
 (define (rtlgen/%body-with-stack-references
 	 label dbg-form lam-expr self-arg? wrap no-stack-refs)
   (sample/1 '(rtlgen/formals-per-lambda histogram vector)
@@ -342,6 +343,59 @@ MIT in each case. |#
 		       (rtlgen/initial-state lambda-list self-arg?
 					     frame-vector body))))))))
 	(else (no-stack-refs))))
+|#
+
+;; This version recognizes continuation bodies containing calls to %halt.
+;; This means that the continuation should never be called.
+;; Currently, these continuations are compiled to calls to the global
+;; 1-argument procedure named in the %halt literal operand.  The
+;; procedure must signal an error.  This device is a platform
+;; independent way of issuing a `trap' instruction.  The procedure
+;; receives the continuation's (first) argument.  The continuation for
+;; the call is the current continuation (which has already been set
+;; up), which is essentially free to compute and gives good debugging
+;; information by, in effect, causing an infine trapping loop.
+
+(define (rtlgen/%body-with-stack-references
+	 label dbg-form lam-expr self-arg? wrap no-stack-refs)
+  (sample/1 '(rtlgen/formals-per-lambda histogram vector)
+	    (lambda-list/count-names (lambda/formals lam-expr)))
+
+  (let ((result (form/match rtlgen/continuation-pattern lam-expr)))
+    (if result
+	(let ((lambda-list  (cadr (assq rtlgen/?lambda-list result)))
+	      (frame-vector (cadr (assq rtlgen/?frame-vector result)))
+	      (body         (cadr (assq rtlgen/?continuation-body result))))
+	  (let* ((frame-size (vector-length frame-vector))
+		 (saved-size (- frame-size
+				(rtlgen/->number-of-args-on-stack
+				 lambda-list frame-vector)))
+		 (error-continuation?
+		  (and (CALL/? body)
+		       (QUOTE/? (call/operator body))
+		       (eq? %halt (quote/text (call/operator body))))))
+	    (sample/1 '(rtlgen/frame-size histogram) frame-size)
+	    (fluid-let ((*rtlgen/frame-size* frame-size))
+
+	      (if error-continuation?
+
+		  (rtlgen/with-body-state
+		   (lambda ()
+		     (let ((trap-procedure (quote/text (call/operand1 body))))
+		       (rtlgen/quick&dirty/forbid-interrupt-check! dbg-form)
+		       (wrap label dbg-form
+			     `((INVOCATION:GLOBAL-LINK 2 ,label
+						       ,trap-procedure))
+			     lambda-list saved-size))))
+
+		  (rtlgen/body
+		   body
+		   (lambda (body*)
+		     (wrap label dbg-form body* lambda-list saved-size))
+		   (lambda ()
+		     (rtlgen/initial-state lambda-list self-arg?
+					   frame-vector body)))))))
+	(no-stack-refs))))
 
 (define (rtlgen/initial-state params self-arg? frame-vector body)
   ;; . PARAMS is a lambda list
@@ -597,7 +651,7 @@ MIT in each case. |#
 (define *rtlgen/form-calls-internal?*)
 (define *rtlgen/form-returns?*)
 
-(define (rtlgen/body form wrap gen-state)
+(define (rtlgen/with-body-state thunk)
   (fluid-let ((*rtlgen/next-rtl-pseudo-register* 0)
 	      (*rtlgen/pseudo-registers* '())
 	      (*rtlgen/pseudo-register-values* '())
@@ -608,10 +662,17 @@ MIT in each case. |#
 	      (*rtlgen/form-calls-internal?* false)
 	      (*rtlgen/form-calls-external?* false)
 	      (*rtlgen/form-returns?* false))
-    (rtlgen/stmt (gen-state) form)
-    (rtlgen/renumber-pseudo-registers!
-     (rtlgen/first-pseudo-register-number))
-    (wrap (queue/contents *rtlgen/statements*))))
+    (thunk)))
+
+
+(define (rtlgen/body form wrap gen-state)
+  (rtlgen/with-body-state
+   (lambda ()
+     (rtlgen/stmt (gen-state) form)
+     (rtlgen/renumber-pseudo-registers!
+      (rtlgen/first-pseudo-register-number))
+     (wrap (queue/contents *rtlgen/statements*)))))
+
 
 (define (rtlgen/wrap-with-interrupt-check/expression body desc)
   ;; *** For now, this does not check interrupts.
@@ -727,6 +788,7 @@ MIT in each case. |#
     (let ((orig-depth  *rtlgen/stack-depth*)
 	  (orig-heap   *rtlgen/words-allocated*)
 	  (orig-values *rtlgen/pseudo-register-values*))
+      orig-values
       (gen1)
       (if merge-label
 	  (rtlgen/emit!/1 `(JUMP ,merge-label)))
@@ -1774,7 +1836,8 @@ MIT in each case. |#
 				       cont
 				       (cddr rands))) ; exprs
 	((eq? rator* %invoke-remote-cache)
-	 (set! *rtlgen/form-calls-external?* true)
+	 (if (not (rtlgen/global-call-not-worth-interrupt-check? (first rands)))
+	     (set! *rtlgen/form-calls-external?* true))
 	 (rtlgen/invoke-operator-cache state
 				       'INVOCATION:GLOBAL-LINK
 				       (first rands)    ; name+nargs
@@ -4113,6 +4176,7 @@ MIT in each case. |#
 (define-open-coder/stmt %heap-closure-set! 4
   (let ((offset (rtlgen/closure-first-offset))
 	(closure-tag  (machine-tag 'COMPILED-ENTRY)))
+    closure-tag
     (lambda (state rands open-coder)
       open-coder			; ignored
       (let ((vector (rtlgen/vector-constant? (second rands)))
@@ -4372,8 +4436,28 @@ MIT in each case. |#
 #|
 ;; Missing:
 
-'SET-INTERRUPT-ENABLES!
 |#
+
+(define (call/%stack-closure-ref/unparse expr receiver)
+  (let ((vector  (CALL/%stack-closure-ref/offset expr))
+	(name    (CALL/%stack-closure-ref/name expr)))
+    (if (and (QUOTE/? vector)
+	     (QUOTE/? name))
+	(let ((v  (quote/text vector))
+	      (n  (quote/text name)))
+	  (if (and (vector? v) (symbol? n))
+	      (receiver v n))))))
+
+(define (CALL/%stack-closure-ref/index expr)
+  (call/%stack-closure-ref/unparse expr vector-index))
+
+(define (CALL/%stack-closure-ref/index=? expr value)
+  (call/%stack-closure-ref/unparse
+   expr
+   (lambda (v n)
+     (and (vector? v)
+	  (< -1 value (vector-length v))
+	  (eq? (vector-ref v value) n)))))
 
 ;;;; Patterns
 
@@ -4470,7 +4554,6 @@ MIT in each case. |#
 	       (QUOTE ,rtlgen/?frame-vector*)
 	       ,rtlgen/?return-address
 	       ,@rtlgen/?closure-elts*)))
-	 
 
 ;; Kludges
 
@@ -4484,6 +4567,18 @@ MIT in each case. |#
 		with-interrupts-reduced with-history-disabled))))
     (lambda (primitive)
       (memq primitive apply-like-primitives))))
+
+(define (rtlgen/global-call-not-worth-interrupt-check? name+arity)
+  ;; Some global procedures are known to the compiler and not worth an
+  ;; interrupt check because we know that there cannot be a loop
+  ;; without interrupt checks between that procedure and this one.
+  (memq (first (quote/text name+arity))
+	'(%COMPILED-CODE-SUPPORT:SIGNAL-ERROR-IN-PRIMITIVE
+	  %COMPILED-CODE-SUPPORT:NONRESTARTABLE-CONTINUATION
+	  COERCE-TO-COMPILED-PROCEDURE
+	  ERROR:BAD-RANGE-ARGUMENT
+	  ERROR:WRONG-NUMBER-OF-ARGUMENTS
+	  ERROR:DATUM-OUT-OF-RANGE)))
 
 (define *rtlgen/omit-internal-interrupt-checks?* #T)
 
@@ -4521,27 +4616,6 @@ MIT in each case. |#
 
 (define *rtlgen/valid-remaining-declarations*
   '())
-
-(define (call/%stack-closure-ref/unparse expr receiver)
-  (let ((vector  (CALL/%stack-closure-ref/offset expr))
-	(name    (CALL/%stack-closure-ref/name expr)))
-    (if (and (QUOTE/? vector)
-	     (QUOTE/? name))
-	(let ((v  (quote/text vector))
-	      (n  (quote/text name)))
-	  (if (and (vector? v) (symbol? n))
-	      (receiver v n))))))
-
-(define (CALL/%stack-closure-ref/index expr)
-  (call/%stack-closure-ref/unparse expr vector-index))
-
-(define (CALL/%stack-closure-ref/index=? expr value)
-  (call/%stack-closure-ref/unparse
-   expr
-   (lambda (v n)
-     (and (vector? v)
-	  (< -1 value (vector-length v))
-	  (eq? (vector-ref v value) n)))))
 
 #|
 ;; New RTL:

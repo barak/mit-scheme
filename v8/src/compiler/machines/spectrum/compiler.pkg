@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.17 1996/07/23 14:57:24 adams Exp $
+$Id: compiler.pkg,v 1.18 1996/07/30 19:29:48 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -560,6 +560,7 @@ MIT in each case. |#
 	 "midend/typerew"
 	 "midend/lamlift"
 	 "midend/closconv"
+	 "midend/errcont"
 	 ;; "midend/staticfy"		; broken, for now
 	 "midend/applicat"
 	 "midend/simplify"

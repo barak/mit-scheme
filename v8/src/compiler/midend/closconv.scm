@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: closconv.scm,v 1.10 1995/08/06 19:50:08 adams Exp $
+$Id: closconv.scm,v 1.11 1996/07/30 19:25:51 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -46,7 +46,10 @@ MIT in each case. |#
    (lambda ()
      (let* ((env (closconv/env/%make 'STATIC false))
 	    (program* (closconv/expr env (lifter/letrecify program))))
-       (closconv/analyze! env program*)))))
+       (closconv/analyze! env program*)
+       (if after-cps?
+	   (errcont/rewrite program*))
+       program*))))
 
 (define-macro (define-closure-converter keyword bindings . body)
   (let ((proc-name (symbol-append 'CLOSCONV/ keyword)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.22 1996/07/27 03:30:17 adams Exp $
+$Id: typerew.scm,v 1.23 1996/07/30 19:24:53 adams Exp $
 
 Copyright (c) 1994-1996 Massachusetts Institute of Technology
 
@@ -1070,6 +1070,18 @@ and we dont do much with that.
 (define typerew/->binary-combination typerew/->nary-combination)
 (define typerew/->ternary-combination typerew/->nary-combination)
 
+(define (typerew/->primitive-error-combination primitive)
+  (if (not (primitive-procedure? primitive))
+      (internal-error "Expected a primitive procedure" primitive))
+  (lambda args
+    `(CALL (QUOTE ,%invoke-remote-cache)
+	   '#F
+	   '(%COMPILED-CODE-SUPPORT:SIGNAL-ERROR-IN-PRIMITIVE
+	     ,(+ (length args) 1))
+	   'bogus-cache-reference	; naughty, should insert a global cache
+	   ',primitive
+	   ,@args)))
+
 (define (typerew/diamond original-form test-form form*1 form*2)
   (define (equivalent form*)
     (typerew/remember* form* original-form))
@@ -1945,7 +1957,9 @@ and we dont do much with that.
     ;; No effects.
     (let* ((rator  (make-primitive-procedure name))
 	   (checking-replacement
-	    (typerew-operator-replacement/diamond-1-1-1 %test %operation rator))
+	    (typerew-operator-replacement/diamond-1-1-1
+	     %test %operation
+	     (typerew/->primitive-error-combination rator)))
 	   (unchecked-replacement
 	    (typerew-simple-operator-replacement %operation)))
 
@@ -1977,7 +1991,9 @@ and we dont do much with that.
 	    %test %operation)
     (let* ((rator  (make-primitive-procedure name))
 	   (checking-replacement
-	    (typerew-operator-replacement/diamond-1-2-2 %test %operation rator))
+	    (typerew-operator-replacement/diamond-1-2-2
+	     %test %operation
+	     (typerew/->primitive-error-combination rator)))
 	   (unchecked-replacement
 	    (typerew-simple-operator-replacement %operation)))
 
@@ -2018,7 +2034,7 @@ and we dont do much with that.
 	   `(CALL ',%generic-index-check/ref '#F
 		  ,collection ,index (QUOTE ,checks)))
 	 (typerew/->binary-combination %selector)
-	 (typerew/->binary-combination selector)))
+	 (typerew/->primitive-error-combination selector)))
       
       (define-typerew-replacement-method selector 2
 	(lambda (form collection index)
@@ -2050,7 +2066,7 @@ and we dont do much with that.
 	   `(CALL ',%generic-index-check/set! '#F
 		  ,collection ,index ,element (QUOTE ,checks)))
 	 %mutator
-	 mutator))
+	 (typerew/->primitive-error-combination mutator)))
 
       (define-typerew-replacement-method mutator 3
 	(lambda (form collection index element)

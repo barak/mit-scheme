@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.27 1996/07/20 22:57:13 adams Exp $
+$Id: fakeprim.scm,v 1.28 1996/07/30 19:25:25 adams Exp $
 
 Copyright (c) 1994-96 Massachusetts Institute of Technology
 
@@ -39,8 +39,7 @@ MIT in each case. |#
 
 ;;;; Pseudo primitives
 
-(define *operator-properties*
-  (make-eq-hash-table))
+(define *operator-properties* (make-eq-hash-table))
 
 (define (define-operator-properties rator properties)
   (hash-table/put! *operator-properties* rator properties))
@@ -80,7 +79,31 @@ MIT in each case. |#
 
 (define (make-operator/simple* name . more)
   (apply make-operator name '(SIMPLE) more))
+
+(define (make-operator/out-of-line name . more)
+  (apply make-operator name 
+	 '(SIDE-EFFECT-INSENSITIVE)
+	 '(SIDE-EFFECT-FREE)
+	 '(OUT-OF-LINE-HOOK)
+	 more))
+
+;; By using DEFINE-OPERATOR rather than DEFINE, we get integration of the
+;; operator tokens:
+(define-macro (define-operator op spec)
+  (if (and (list? spec)
+	   (>= (length spec) 2)
+	   (memq (first spec)
+		 '(MAKE-OPERATOR	; all variants above
+		   MAKE-OPERATOR/SIMPLE	   MAKE-OPERATOR/EFFECT-SENSITIVE
+		   MAKE-OPERATOR/SIMPLE*   MAKE-OPERATOR/OUT-OF-LINE))
+	   (string? (second spec)))
+      `(BEGIN
+	 ,spec
+	 (DEFINE-INTEGRABLE ,op ',(string->symbol (second spec))))
+      `(DEFINE ,op ,spec)))
 
+;; COOKIE-CALL generates a predicate and accessors to a CALL <operator>
+;; expression based on a pattern matching the call expression
 
 (define-macro (cookie-call name . parts)
   (define (->string x)  (if (symbol? x) (symbol-name x) x))
@@ -136,7 +159,7 @@ MIT in each case. |#
   `(BEGIN ,(make-predicate)
 	  ,@(reverse (loop parts `(CDDR FORM) '()))))
 
-(define %*lookup
+(define-operator %*lookup
   ;; (CALL ',%*lookup <continuation> <environment>
   ;;       'VARIABLE-NAME 'DEPTH 'OFFSET)
   ;; Note:
@@ -148,7 +171,7 @@ MIT in each case. |#
 ;;(cookie-call %*lookup cont environment 'variable-name 'depth 'offset)
 
 
-(define %*set!
+(define-operator %*set!
   ;; (CALL ',%*set! <continuation> <environment>
   ;;       'VARIABLE-NAME <value> 'DEPTH 'OFFSET)
   ;; Note:
@@ -159,7 +182,7 @@ MIT in each case. |#
 
 ;;(cookie-call %*set! cont environment 'VARIABLE-NAME value 'DEPTH 'OFFSET)
 
-(define %*unassigned?
+(define-operator %*unassigned?
   ;; (CALL ',%*unassigned? <continuation> <environment>
   ;;       'VARIABLE-NAME 'DEPTH 'OFFSET)
   ;; Note:
@@ -172,7 +195,7 @@ MIT in each case. |#
 ;;(cookie-call %*unassigned? cont environment 'variable-name 'depth 'offset)
 
 
-(define %*define
+(define-operator %*define
   ;; (CALL ',%*define <continuation> <environment>
   ;;       'VARIABLE-NAME <value>)
   ;; Note:
@@ -183,7 +206,7 @@ MIT in each case. |#
 (cookie-call %*define cont environment 'VARIABLE-NAME value)
 
 
-(define %*define*
+(define-operator %*define*
   ;; (CALL ',%*define* <continuation> <environment>
   ;;       <vector of names> <vector of values>)
   ;; Note:
@@ -194,7 +217,7 @@ MIT in each case. |#
 (cookie-call %*define* cont environment 'names-vector 'values-vector)
 
 
-(define %*make-environment
+(define-operator %*make-environment
   ;; (CALL ',%*make-environment <continuation>
   ;;       <parent environment> <vector of names> <value>*)
   ;; Note:
@@ -214,7 +237,7 @@ MIT in each case. |#
 ;; substituted or reordered, hence they are not defined as
 ;; effect-insensitive or effect-free
 
-(define %fetch-environment
+(define-operator %fetch-environment
   ;; (CALL ',%fetch-environment '#F)
   ;; Note:
   ;;   Introduced by envconv.scm, open coded by RTL generator.
@@ -224,7 +247,7 @@ MIT in each case. |#
 
 (cookie-call %fetch-environment '#F)
 
-(define %make-operator-variable-cache
+(define-operator %make-operator-variable-cache
   ;; (CALL ',%make-operator-variable-cache '#F <environment>
   ;;       'NAME 'NARGS)
   ;; Note:
@@ -237,7 +260,7 @@ MIT in each case. |#
 
 (cookie-call %make-operator-variable-cache '#F environment 'NAME 'NARGS)
 
-(define %make-remote-operator-variable-cache
+(define-operator %make-remote-operator-variable-cache
   ;; (CALL ',%make-remote-operator-variable-cache '#F
   ;;       'PACKAGE-DESCRIPTOR 'NAME 'NARGS)
   ;; Note: 
@@ -254,7 +277,7 @@ MIT in each case. |#
 (cookie-call %make-remote-operator-variable-cache '#F
 	     'PACKAGE-DESCRIPTOR 'NAME 'NARGS)
 
-(define %make-read-variable-cache
+(define-operator %make-read-variable-cache
   ;; (CALL ',%make-read-variable-cache '#F <environment> 'NAME)
   ;; Note:
   ;;   Introduced by envconv.scm, ignored by RTL generator.
@@ -266,7 +289,7 @@ MIT in each case. |#
 
 (cookie-call %make-read-variable-cache '#F environment 'NAME)
 
-(define %make-write-variable-cache
+(define-operator %make-write-variable-cache
   ;; (CALL ',%make-write-variable-cache '#F <environment> 'NAME)
   ;; Note:
   ;;   Introduced by envconv.scm, ignored by RTL generator.
@@ -279,7 +302,7 @@ MIT in each case. |#
 (cookie-call %make-write-variable-cache '#F environment 'NAME)
 
 
-(define %invoke-operator-cache
+(define-operator %invoke-operator-cache
   ;; (CALL ',%invoke-operator-cache <continuation>
   ;;       '(NAME NARGS) <operator-cache> <value>*)
   ;; Note:
@@ -293,7 +316,7 @@ MIT in each case. |#
 (cookie-call %invoke-operator-cache cont
 	     'descriptor operator-cache #!rest values)
 
-(define %invoke-remote-cache
+(define-operator %invoke-remote-cache
   ;; (CALL ',%invoke-remote-cache <continuation>
   ;;       '(NAME NARGS) <operator-cache> <value>*)
   ;; Note:
@@ -309,7 +332,7 @@ MIT in each case. |#
 (cookie-call %invoke-remote-cache cont
 	     'descriptor operator-cache #!rest values)
 
-(define %variable-cache-ref
+(define-operator %variable-cache-ref
   ;; (CALL %variable-cache-ref '#F <read-variable-cache> 'ignore-traps? 'NAME)
   ;; Note:
   ;;   Introduced by envconv.scm, removed by compat.scm (replaced by a
@@ -321,7 +344,7 @@ MIT in each case. |#
 
 (cookie-call %variable-cache-ref '#F read-variable-cache 'IGNORE-TRAPS? 'NAME)
 
-(define %variable-cache-set!
+(define-operator %variable-cache-set!
   ;; (CALL ',%variable-cache-set! '#F <write-variable-cache>
   ;;       <value> 'IGNORE-TRAPS? 'NAME)
   ;; Note:
@@ -333,7 +356,7 @@ MIT in each case. |#
 (cookie-call %variable-cache-set! '#F write-variable-cache value
 	     'IGNORE-TRAPS? 'NAME)
 
-(define %safe-variable-cache-ref
+(define-operator %safe-variable-cache-ref
   ;; (CALL ',%safe-variable-cache-ref '#F <read-variable-cache>
   ;;       'IGNORE-TRAPS? 'NAME)
   ;; Note:
@@ -348,7 +371,7 @@ MIT in each case. |#
 (cookie-call %safe-variable-cache-ref '#F read-variable-cache
 	     'IGNORE-TRAPS? 'NAME)
 
-(define %variable-read-cache
+(define-operator %variable-read-cache
   ;; (CALL ',%variable-read-cache '#F <read-variable-cache> 'NAME)
   ;; Note:
   ;;   Introduced by compat.scm as part of rewriting
@@ -359,7 +382,7 @@ MIT in each case. |#
 
 (cookie-call %variable-read-cache '#F read-variable-cache 'NAME)
 
-(define %variable-write-cache
+(define-operator %variable-write-cache
   ;; (CALL ',%variable-write-cache '#F <write-variable-cache> 'NAME)
   ;; Note:
   ;;   Introduced by compat.scm as part of rewriting
@@ -370,7 +393,7 @@ MIT in each case. |#
 
 (cookie-call %variable-write-cache '#F write-variable-cache 'NAME)
 
-(define %variable-cell-ref
+(define-operator %variable-cell-ref
   ;; (CALL ',%variable-cell-ref '#F <read-variable-cache>)
   ;; Note:
   ;;   Introduced by compat.scm as part of rewriting
@@ -381,7 +404,7 @@ MIT in each case. |#
 
 (cookie-call %variable-cell-ref '#F read-variable-cache)
 
-(define %variable-cell-set!
+(define-operator %variable-cell-set!
   ;; (CALL ',%variable-cell-ref '#F <write-variable-cache> <value>)
   ;; Note:
   ;;   Introduced by compat.scm as part of rewriting
@@ -391,7 +414,7 @@ MIT in each case. |#
 
 (cookie-call %variable-cell-set! '#F write-variable-cache value)
 
-(define %hook-variable-cell-ref
+(define-operator %hook-variable-cell-ref
   ;; (CALL ',%hook-variable-cell-ref <continuation or '#F>
   ;;       <read-variable-cache>)
   ;; Note:
@@ -409,7 +432,7 @@ MIT in each case. |#
 (cookie-call %hook-variable-cell-ref cont read-variable-cache)
 
 
-(define %hook-safe-variable-cell-ref
+(define-operator %hook-safe-variable-cell-ref
   ;; (CALL ',%hook-safe-variable-cell-ref <continuation or '#F>
   ;;       <read-variable-cache>)
   ;; Note:
@@ -426,7 +449,7 @@ MIT in each case. |#
 
 (cookie-call %hook-safe-variable-cell-ref cont read-variable-cache)
 
-(define %hook-variable-cell-set!
+(define-operator %hook-variable-cell-set!
   ;; (CALL ',%hook-safe-variable-cell-set! '#F
   ;;       <write-variable-cache> <value>) 
   ;; Note:
@@ -441,7 +464,7 @@ MIT in each case. |#
 
 (cookie-call %hook-variable-cell-set! '#F write-variable-cache value) 
 
-(define %copy-program
+(define-operator %copy-program
   ;; (CALL ',%copy-program <continuation> <program>)
   ;; Note:
   ;;   Introduced by envconv.scm and removed by compat.scm (replaced
@@ -462,7 +485,7 @@ MIT in each case. |#
 (cookie-call %copy-program cont program)
 
 
-(define %execute
+(define-operator %execute
   ;; (CALL ',%execute <continuation> <program> <environment>)
   ;; Note:
   ;;   Introduced by envconv.scm and removed by compat.scm (replaced
@@ -475,7 +498,7 @@ MIT in each case. |#
 
 (cookie-call %execute cont program environment)
 
-(define %internal-apply
+(define-operator %internal-apply
   ;; (CALL ',%internal-apply <continuation> 'NARGS <procedure> <value>*)
   ;; Note:
   ;;   NARGS = number of <value> expressions
@@ -484,7 +507,7 @@ MIT in each case. |#
 (cookie-call %internal-apply cont 'NARGS procedure #!REST values)
 
 
-(define %internal-apply-unchecked
+(define-operator %internal-apply-unchecked
   ;; (CALL ',%internal-apply-unchecked <continuation> 'NARGS <procedure>
   ;;        <value>*)
   ;; Note:
@@ -494,7 +517,7 @@ MIT in each case. |#
   (make-operator "#[internal-apply-unchecked]"))
 (cookie-call %internal-apply-unchecked cont 'NARGS procedure #!REST values)
 
-(define %primitive-apply
+(define-operator %primitive-apply
   ;; (CALL ',%primitive-apply <continuation>
   ;;       'NARGS '<primitive-object> <value>*) 
   ;; Note:
@@ -502,21 +525,30 @@ MIT in each case. |#
   ;;   Introduced by applicat.scm and removed by compat.scm (replaced
   ;;     by %PRIMITIVE-APPLY/COMPATIBLE).
  (make-operator "#[primitive-apply]"))
-
 (cookie-call %primitive-apply cont 'NARGS 'primitive-object #!rest values)
+
+
+(define %primitive-apply/compatible
+  ;; (CALL ',%primitive-apply/compatible '#F 'NARGS
+  ;;       '<primitive-object>)
+  ;; Call a primitive with arguments on the stack
+  ;; Note:
+  ;;   Introduced by compat.scm from %primitive-apply
+  (make-operator "#[primitive-apply 2]"))
+(cookie-call %primitive-apply/compatible '#F 'NARG primitive-object)
 
-(define %arity-dispatcher-tag
+(define-operator %arity-dispatcher-tag
   (make-constant "#[(microcode)arity-dispatcher-tag]"))
 
-(define %unspecific
+(define-operator %unspecific
   ;; Magic cookie representing an ignorable value
   (make-constant "#[unspecific]"))
 
-(define %unassigned
+(define-operator %unassigned
   ;; The value of variables that do not yet have values ...
   (make-constant "#[unassigned]"))
 
-(define %unassigned?
+(define-operator %unassigned?
   ;; (CALL ',%unassigned? '#F <value>)
   ;; Note:
   ;;   Introduced by envconv.scm and expand.scm from the MIT Scheme
@@ -526,7 +558,7 @@ MIT in each case. |#
 (cookie-call %unassigned? '#F value)
 
 
-(define %reference-trap?
+(define-operator %reference-trap?
   ;; (CALL ',%reference-trap? '#F <value>)
   ;; Note:
   ;;   Introduced by compat.scm as part of the rewrite of
@@ -536,44 +568,29 @@ MIT in each case. |#
 
 (cookie-call %reference-trap? '#F value)
 
-(define %primitive-error
-  ;;  (CALL ',%primitive-error '#F '<primitive> <arg1> .. <argN>
-  ;;        <expr1> ... <exprn>
-  ;;  Call <primitive> with <arg1> ... <argN> to signal an error.
-  ;; Note:
-  ;;   Introduced at any stage that we know that <primitive> will fail, for
-  ;;   example, when replacing a primitive by a checked
-  ;;     (if <type-check> <open-coded-version> <error>)
-  ;;   diamond.  The <arg_i> are the arguments to the primitive (N is
-  ;;   determined from the primitive's arity) that cause it to fail.
-  ;;
-  ;;   The additional expressions are inserted to keep data live to enhance
-  ;;   debugging information (at the cost of keeping it live, both in
-  ;;   compile time, compiled code performance, and GC opportunities).
-  ;;   For example, we may choose to introduce this code and/or insert
-  ;;   the expressions as follows:
-  ;;     . Add the containing procedure's full set of parameters before
-  ;;       lambda-lifting/1.  This may force procedures to be
-  ;;       implemented as closures.
-  ;;     . After lambda-lifting/1.  This gives us everything that can be made
-  ;;       available without creating extra closures.  The cost is
-  ;;       keeping extra values in the stack.
-  ;;     . After lambda-lifting/2 (same as not at all).  This gives us
-  ;;       everything that would be available in fully optimized code.
-  ;;
-  ;;   This operation may be implemented in two ways: restartable and
-  ;;   non-restartable (perhaps we will introduce another operator to
-  ;;   distinguish the two).  If restartable, we need a hook to call
-  ;;   arbitrary primitives with preservation.  If non-restartable we
-  ;;   need a space-efficient method of constructing a continuation
-  ;;   and passing the arguments, and some work on rtlgen to make it
-  ;;   understand expressions that never terminate (i.e. to construct
-  ;;   a non-diamond rgraph), and some work on conpar and dbg-info to
-  ;;   understand the continuation, and some work on uerror to
-  ;;   understand that restarts are not an option.
-  (make-operator "#[primitive-error]"))
+(define-operator %halt
+  ;; (CALL ',%halt <cont> 'code)
+  ;; This marks a piece of code that should never be executed.  Valid
+  ;; only as the body of a continuations.
+  ;;  Note:
+  ;;   . Introduced by errcont (called from closconv/2)
+  ;;   . RTLGEN should recognize this expression and generate either
+  ;;      - a continuation to which the runtime system will refuse to return
+  ;;      - a continuation which traps or signals an error if invoked.
+  (make-operator "#[halt]"))
 
-(define %cons
+(define-operator %reference
+  ;; (CALL ',%reference '#F <expr> ...)
+  ;; For control over debugging info.
+  ;;  This is a dummy statement which causes references to be kept through
+  ;;  optimizations, for example, lambda-lifting.
+  ;; Note:
+  ;;   Introduced anywhere (nowhere at present)
+  ;;   Removed by laterew.
+  (make-operator "#[reference]"))
+
+
+(define-operator %cons
   ;; (CALL ',%cons '#F <value> <value>)
   ;; Open-coded CONS operation.
   ;; Note:
@@ -586,29 +603,29 @@ MIT in each case. |#
 
 ;; Unchecked operations on pairs.  Result is unspecified if the pair
 ;; argument is not a pair.
-(define %car
+(define-operator %car
   ;; (CALL ',%car '#F <pair>)
   (make-operator/effect-sensitive "#[car]"))
 
-(define %cdr
+(define-operator %cdr
   ;; (CALL ',%cdr '#F <pair>)
   (make-operator/effect-sensitive "#[cdr]"))
 
-(define %set-car!
+(define-operator %set-car!
   ;; (CALL ',%set-car '#F <pair> <value>)
   (make-operator/simple* "#[set-car!]" '(UNSPECIFIC-RESULT)))
 
-(define %set-cdr!
+(define-operator %set-cdr!
   ;; (CALL ',%set-cdr '#F <pair> <value>)
   (make-operator/simple* "#[set-cdr!]" '(UNSPECIFIC-RESULT)))
 
 
-(define %make-entity
+(define-operator %make-entity
   ;; (CALL ',%make-entity '#F <value> <value>)
   (make-operator/simple "#[make-entity]"))
 
 
-(define %vector
+(define-operator %vector
   ;; (CALL ',%vector '#F <value>*)
   ;; Open-coded version of VECTOR primitive.
   ;; Note:
@@ -617,23 +634,23 @@ MIT in each case. |#
 
 (cookie-call %vector '#F #!rest values)
 
-(define %vector-length
+(define-operator %vector-length
   ;; (CALL ',%vector-length '#F <vector>)
   ;; Unchecked.
   (make-operator/simple "#[vector-length]"))
 
-(define %vector-ref
+(define-operator %vector-ref
   ;; (CALL ',%vector-ref '#F <vector> <index>)
   ;; Unchecked.
   (make-operator/effect-sensitive "#[vector-ref]"))
 
-(define %vector-set!
+(define-operator %vector-set!
   ;; (CALL ',%vector-set! '#F <vector> <index> <value>)
   ;; Unchecked.
   (make-operator/simple* "#[vector-set!]" '(UNSPECIFIC-RESULT)))
 
 
-(define %generic-index-check/ref
+(define-operator %generic-index-check/ref
   ;; (CALL ',%generic-index-check '#F <collection> <index>
   ;;       '#(<type> <length-ref>))
   ;;   Generic type & range check.
@@ -641,7 +658,7 @@ MIT in each case. |#
   ;;              and  0  <=  <index>  <  (<length-ref> <collection>)
   (make-operator/simple "#[generic-index-check/ref]" '(PROPER-PREDICATE)))
 
-(define %generic-index-check/set!
+(define-operator %generic-index-check/set!
   ;; (CALL ',%generic-index-check '#F <collection> <index> <elt>
   ;;       '#(<type> <length-ref> <elt-type>))
   ;;   Generic type & range check.
@@ -651,27 +668,27 @@ MIT in each case. |#
   (make-operator/simple "#[generic-index-check/set!]" '(PROPER-PREDICATE)))
 
 
-(define %%record-length  (make-operator/simple "#[%record-length]"))
-(define %%record-ref     (make-operator/effect-sensitive "#[%record-ref]"))
-(define %%record-set!
+(define-operator %%record-length  (make-operator/simple "#[%record-length]"))
+(define-operator %%record-ref     (make-operator/effect-sensitive "#[%record-ref]"))
+(define-operator %%record-set!
   (make-operator/simple* "#[%record-set!]" '(UNSPECIFIC-RESULT)))
 
-(define %string-length   (make-operator/effect-sensitive "#[string-length]"))
-(define %string-ref      (make-operator/effect-sensitive "#[string-ref]"))
-(define %string-set!
+(define-operator %string-length   (make-operator/effect-sensitive "#[string-length]"))
+(define-operator %string-ref      (make-operator/effect-sensitive "#[string-ref]"))
+(define-operator %string-set!
   (make-operator/simple* "#[string-set!]" '(UNSPECIFIC-RESULT)))
-(define %vector-8b-ref   (make-operator/effect-sensitive "#[vector-8b-ref]"))
-(define %vector-8b-set!
+(define-operator %vector-8b-ref   (make-operator/effect-sensitive "#[vector-8b-ref]"))
+(define-operator %vector-8b-set!
   (make-operator/simple* "#[vector-8b-set!]" '(UNSPECIFIC-RESULT)))
 
-(define %floating-vector-length
+(define-operator %floating-vector-length
   (make-operator/simple "#[floating-vector-length]"))
-(define %floating-vector-ref
+(define-operator %floating-vector-ref
   (make-operator/effect-sensitive "#[floating-vector-ref]"))
-(define %floating-vector-set!
+(define-operator %floating-vector-set!
   (make-operator/simple* "#[floating-vector-set!]" '(UNSPECIFIC-RESULT)))
 
-(define %bit-string-length  (make-operator/simple "#[bit-string-length]"))
+(define-operator %bit-string-length  (make-operator/simple "#[bit-string-length]"))
 
 ;;(define %vector-ref/check
 ;;  ;; (CALL ',%vector-ref/check '#F <vector> <limit> <index>)
@@ -691,24 +708,24 @@ MIT in each case. |#
 ;;  (make-operator/simple* "#[vector-set/check!]" '(UNSPECIFIC-RESULT)))
 
 
-(define %make-promise
+(define-operator %make-promise
   ;; (CALL ',%make-promise '#F <thunk>)
   ;; Note:
   ;;   Introduced by expand.scm for DELAY
   (make-operator/simple "#[make-promise]"))
 (cookie-call %make-promise '#F thunk)
 
-(define %make-cell
+(define-operator %make-cell
   ;; (CALL ',%make-cell '#F <value> 'NAME)
   (make-operator/simple "#[make-cell]"))
 (cookie-call %make-cell '#F value 'NAME)
 
-(define %cell-ref
+(define-operator %cell-ref
   ;; (CALL ',%cell-ref '#F <cell> 'NAME)
   (make-operator/effect-sensitive "#[cell-ref]"))
 (cookie-call %cell-ref '#F cell 'NAME)
 
-(define %cell-set!
+(define-operator %cell-set!
   ;; (CALL ',%cell-set '#F <cell> <value> 'NAME)
   ;; Note:
   ;;   Returns no value, because the rewrite is to something like
@@ -724,40 +741,40 @@ MIT in each case. |#
 ;; Multicells are introduced by assconv.scm for references to local
 ;; mutable variables.
 
-(define %make-multicell
+(define-operator %make-multicell
   ;; (CALL ',%make-multicell '#F 'LAYOUT <value> <value> ...)
   (make-operator/simple "#[make-multicell]"))
 ;;(cookie-call %make-multicell '#F 'LAYOUT #!rest values)
 
-(define %multicell-ref
+(define-operator %multicell-ref
   ;; (CALL ',%multicell-ref '#F cell 'LAYOUT 'NAME)
   (make-operator/effect-sensitive "#[multicell-ref]"))
 (cookie-call %multicell-ref '#F cell 'LAYOUT 'NAME)
 
-(define %multicell-set!
+(define-operator %multicell-set!
   ;; (CALL ',%multicell-set! '#F cell value 'LAYOUT 'NAME)
   ;; Note:
   ;;   Always used in statement position - has no value.
   (make-operator/simple* "#[multicell-set!]" '(UNSPECIFIC-RESULT)))
 ;;(cookie-call %multicell-set! '#F cell value 'LAYOUT 'NAME)
 
-(define %flo:make-multicell
+(define-operator %flo:make-multicell
   ;; (CALL ',%flo:make-multicell '#F 'LAYOUT <value> <value> ...)
   (make-operator/simple "#[flo:make-multicell]"))
 
-(define %flo:multicell-ref
+(define-operator %flo:multicell-ref
   ;; (CALL ',%flo:multicell-ref '#F cell 'LAYOUT 'NAME)
   (make-operator/effect-sensitive "#[flo:multicell-ref]" '(RESULT-TYPE FLONUM)))
 (cookie-call %flo:multicell-ref '#F cell 'LAYOUT 'NAME)
 
-(define %flo:multicell-set!
+(define-operator %flo:multicell-set!
   ;; (CALL ',%flo:multicell-set! '#F cell value 'LAYOUT 'NAME)
   ;; Note:
   ;;   Always used in statement position - has no value.
   (make-operator/simple* "#[flo:multicell-set!]" '(UNSPECIFIC-RESULT)))
 
 
-(define %fixnum->flonum
+(define-operator %fixnum->flonum
   ;; (CALL ',%fixnum->flonum '#F fixnum)
   ;;  Convert a fixnum into a flonum.
   (make-operator/simple "#[fixnum->flonum]" '(RESULT-TYPE FLONUM)))
@@ -768,12 +785,12 @@ MIT in each case. |#
 ;; that they can be introduced to collect values together without
 ;; committing to a representation.
 
-(define %make-tuple
+(define-operator %make-tuple
   ;; (CALL ',%make-tuple '#F 'LAYOUT <value> <value> ...)
   (make-operator/simple "#[make-tuple]"))
 ;;(cookie-call %make-tuple '#F 'LAYOUT #!rest values)
 
-(define %tuple-ref
+(define-operator %tuple-ref
   ;; (CALL ',%tuple-ref '#F cell 'LAYOUT 'NAME)
   (make-operator/simple "#[tuple-ref]"))
 ;;(cookie-call %tuple-ref '#F tuple 'LAYOUT 'NAME)
@@ -794,7 +811,7 @@ MIT in each case. |#
 ;; properly simple, but they can be considered such because %heap-closure-set!,
 ;; %make-stack-closure, and %static-binding-set! are used only in limited ways.
 
-(define %make-heap-closure
+(define-operator %make-heap-closure
   ;; (CALL ',%make-heap-closure '#F <lambda-expression> 'VECTOR
   ;;       <value>*)
   ;; Note:
@@ -805,19 +822,19 @@ MIT in each case. |#
 
 (cookie-call %make-heap-closure '#F lambda-expression 'VECTOR #!rest values)
 
-(define %heap-closure-ref
+(define-operator %heap-closure-ref
   ;; (CALL ',%heap-closure-ref '#F <closure> <offset> 'NAME)
   ;; Note:
   ;;   Introduced by closconv.scm (first time it is invoked)
   (make-operator/simple "#[heap-closure-ref]"))
 (cookie-call %heap-closure-ref '#F closure offset 'NAME)
 
-(define %heap-closure-set!
+(define-operator %heap-closure-set!
   ;; (CALL ',%heap-closure-set! '#F <closure> <offset> <value> 'NAME)
   (make-operator/simple* "#[heap-closure-set!]" '(UNSPECIFIC-RESULT)))
 (cookie-call %heap-closure-set! '#F closure offset value 'NAME)
 
-(define %make-trivial-closure
+(define-operator %make-trivial-closure
   ;; (CALL ',%make-trivial-closure '#F <lambda-expression or LOOKUP>)
   ;; Note:
   ;;   Introduced by closconv.scm (first time it is invoked).
@@ -831,7 +848,7 @@ MIT in each case. |#
   (make-operator/simple "#[make-trivial-closure]"))
 (cookie-call %make-trivial-closure '#F procedure)
 
-(define %make-static-binding
+(define-operator %make-static-binding
   ;; (CALL ',%make-static-binding '#F <value> 'NAME)
   ;; Note:
   ;;   Generate a static binding cell for NAME, containing <value>.
@@ -839,21 +856,21 @@ MIT in each case. |#
   (make-operator/simple "#[make-static-binding]"))
 (cookie-call %make-static-binding '#F value 'NAME)
 
-(define %static-binding-ref
+(define-operator %static-binding-ref
   ;; (CALL ',%static-binding-ref '#F <static-cell> 'NAME)
   ;; Note:
   ;;   Introduced by staticfy.scm (not currently working).
   (make-operator/simple "#[static-binding-ref]"))
 (cookie-call %static-binding-ref '#F static-cell 'NAME)
 
-(define %static-binding-set!
+(define-operator %static-binding-set!
   ;; (CALL ',%static-binding-set! '#F <static-cell> <value> 'NAME)
   ;; Note:
   ;;   Introduced by staticfy.scm (not currently working).
   (make-operator/simple* "#[static-binding-set!]" '(UNSPECIFIC-RESULT)))
 (cookie-call %static-binding-set! '#F static-cell value 'NAME)
 
-(define %make-return-address
+(define-operator %make-return-address
   ;; (CALL ',%make-return-address '#F <lambda-expression>)
   ;; Note:
   ;;   Used internally in rtlgen.scm when performing trivial rewrites
@@ -864,7 +881,7 @@ MIT in each case. |#
 ;; %fetch-continuation is not static, but things get confused otherwise
 ;; It is handled specially by lamlift and closconv
 
-(define %fetch-continuation
+(define-operator %fetch-continuation
   ;; (CALL ',%fetch-continuation '#F)
   ;; Note:
   ;;   Grab return address, for use in top-level expressions since they
@@ -873,14 +890,14 @@ MIT in each case. |#
   (make-operator/simple* "#[fetch-continuation]" '(STATIC)))
 (cookie-call %fetch-continuation '#F)
 
-(define %invoke-continuation
+(define-operator %invoke-continuation
   ;; (CALL ',%invoke-continuation <continuation> <value>*)
   ;; Note:
   ;;   Introduced by cpsconv.scm
   (make-operator "#[invoke-continuation]"))
 (cookie-call %invoke-continuation cont #!rest values)
 
-(define %fetch-stack-closure
+(define-operator %fetch-stack-closure
   ;; (CALL ',%fetch-stack-closure '#F 'VECTOR)
   ;; Note:
   ;;   VECTOR contains symbols only.
@@ -891,7 +908,7 @@ MIT in each case. |#
   (make-operator/simple* "#[fetch-stack-closure]"))
 (cookie-call %fetch-stack-closure '#F 'VECTOR)
 
-(define %make-stack-closure
+(define-operator %make-stack-closure
   ;; (CALL ',%make-stack-closure '#F <lambda-expression or '#F>
   ;;       'VECTOR <value>*)
   ;; Note:
@@ -907,7 +924,7 @@ MIT in each case. |#
   (make-operator/simple "#[make-stack-closure]"))
 (cookie-call %make-stack-closure '#F lambda-expression 'VECTOR #!rest values)
 
-(define %stack-closure-ref
+(define-operator %stack-closure-ref
   ;; (CALL ',%stack-closure-ref '#F <closure> <offset> 'NAME)
   ;; Note:
   ;;   Introduced by closconv.scm.
@@ -915,7 +932,7 @@ MIT in each case. |#
   (make-operator/simple "#[stack-closure-ref]"))
 (cookie-call %stack-closure-ref '#F closure offset 'NAME)
 
-(define %small-fixnum?
+(define-operator %small-fixnum?
   ;; (CALL ',%small-fixnum? '#F <value> 'FIXNUM)
   ;; Note:
   ;;  #T iff <value> is a fixnum on the target machine and all of top
@@ -930,16 +947,16 @@ MIT in each case. |#
 
 (cookie-call %small-fixnum? '#F value 'precision-bits)
 
-(define %word-less-than-unsigned?
+(define-operator %word-less-than-unsigned?
   ;; (CALL ', %word-less-than-unsigned? '#F <smaller> <larger>
   (make-operator/simple "#[word-less-than-unsigned?]" '(PROPER-PREDICATE)))
 
-(define %compiled-entry?
+(define-operator %compiled-entry?
   (make-operator/simple "#[compiled-entry?]"  '(PROPER-PREDICATE)))
 
 (cookie-call %compiled-entry? '#F object)
 
-(define %compiled-entry-maximum-arity?
+(define-operator %compiled-entry-maximum-arity?
   ;; (call ',%compiled-entry-maximum-arity? '#F 'count value)
   ;;  Tests if the compiled entry has the specified maximum arity.
   (make-operator/simple "#[compiled-entry-maximum-arity?]"
@@ -947,19 +964,12 @@ MIT in each case. |#
 
 (cookie-call %compiled-entry-maximum-arity? '#F 'n entry)
 
-(define %profile-data
+(define-operator %profile-data
   ;; (CALL ',%profile-data '#F '<data>)
   (make-operator/simple* "#[profile-data]" '(UNSPECIFIC-RESULT)))
 
 (cookie-call %profile-data '#F 'data)
 
-
-(define (make-operator/out-of-line name . more)
-  (apply make-operator name
-	 '(SIDE-EFFECT-INSENSITIVE)
-	 '(SIDE-EFFECT-FREE)
-	 '(OUT-OF-LINE-HOOK)
-	 more))
 
 ;; The following operations are used as:
 ;; (CALL ',<operator> <continuation or #F> <value1> <value2>)
@@ -970,19 +980,19 @@ MIT in each case. |#
 ;;     need to save state, but the operation should tail call into the
 ;;     continuation.
 
-(define %+ (make-operator/out-of-line "#[+]"))
-(define %- (make-operator/out-of-line "#[-]"))
-(define %* (make-operator/out-of-line "#[*]"))
-(define %/ (make-operator/out-of-line "#[/]"))
-(define %quotient (make-operator/out-of-line "#[quotient]"))
-(define %remainder (make-operator/out-of-line "#[remainder]"))
-(define %= (make-operator/out-of-line "#[=]" '(PROPER-PREDICATE)))
-(define %< (make-operator/out-of-line "#[<]" '(PROPER-PREDICATE)))
-(define %> (make-operator/out-of-line "#[>]" '(PROPER-PREDICATE)))
+(define-operator %+ (make-operator/out-of-line "#[+]"))
+(define-operator %- (make-operator/out-of-line "#[-]"))
+(define-operator %* (make-operator/out-of-line "#[*]"))
+(define-operator %/ (make-operator/out-of-line "#[/]"))
+(define-operator %quotient (make-operator/out-of-line "#[quotient]"))
+(define-operator %remainder (make-operator/out-of-line "#[remainder]"))
+(define-operator %= (make-operator/out-of-line "#[=]" '(PROPER-PREDICATE)))
+(define-operator %< (make-operator/out-of-line "#[<]" '(PROPER-PREDICATE)))
+(define-operator %> (make-operator/out-of-line "#[>]" '(PROPER-PREDICATE)))
 
 (define *vector-cons-max-open-coded-length* 5)
 
-(define %vector-cons
+(define-operator %vector-cons
   ;; (CALL ',%vector-cons <continuation or #F> <length> <fill-value>)
   ;; Note:
   ;;   If the continuation is #F then the code generator is responsible
@@ -997,7 +1007,7 @@ MIT in each case. |#
 (define *string-allocate-max-open-coded-length* 4000)
 (define *floating-vector-cons-max-open-coded-length* 500)
 
-(define %string-allocate
+(define-operator %string-allocate
   ;; (CALL ',%string-allocate <continuation or #F> <length>)
   ;; Note:
   ;;   If the continuation is #F then the code generator is responsible
@@ -1007,7 +1017,7 @@ MIT in each case. |#
   ;;     continuation.
   (make-operator/out-of-line "#[string-allocate]"))
 
-(define %floating-vector-cons
+(define-operator %floating-vector-cons
   ;; (CALL ',%floating-vector-cons <continuation or #F> <length>)
   ;; Note:
   ;;   If the continuation is #F then the code generator is responsible
@@ -1163,77 +1173,3 @@ MIT in each case. |#
 	        '(SIDE-EFFECT-FREE)
 	        '(SIDE-EFFECT-INSENSITIVE)))))
   '(COERCE-TO-COMPILED-PROCEDURE))
-
-;;(for-each
-;;    (lambda (prim-name)
-;;      (let ((prim  (make-primitive-procedure prim-name)))
-;;	(set! compiler:primitives-with-no-open-coding
-;;	      (cons prim-name compiler:primitives-with-no-open-coding))))
-;;  '(VECTOR-REF VECTOR-SET! CAR CDR))
-
-;;;; Compatibility operators
-
-(define %primitive-apply/compatible
-  ;; (CALL ',%primitive-apply/compatible '#F 'NARGS
-  ;;       '<primitive-object>)
-  ;; Note:
-  ;;   Introduced by compat.scm from %primitive-apply
-  (make-operator "#[primitive-apply 2]"))
-(cookie-call %primitive-apply/compatible '#F 'NARG primitive-object)
-
-;;; Operators for calling procedures, with a description of the calling
-;;  convention.
-;;
-;; Note these have not been implemented but please leave them here for
-;; when we come back to passing unboxed floats.
-
-(define %call/convention
-  ;; (CALL ',%call/convention <cont> <convention> <op> <value*>)
-  ;; Note:
-  ;;   Introduced by compat.scm from CALL
-  (make-operator "#[call/convention]"))
-
-(define %invoke-operator-cache/convention
-  ;; (CALL ',%invoke-operator-cache/convention <cont> <convention>
-  ;;      '(NAME NARGS) <cache> <value>*)
-  ;; Note:
-  ;;   Introduced by compat.scm from %invoke-operator-cache
-  (make-operator "#[invoke-operator-cache/convention]"))
-
-(define %invoke-remote-cache/convention
-  ;; (CALL ',%invoke-remote-cache/convention <cont> <convention>
-  ;;       '(NAME NARGS) <cache> <value>*)
-  ;; Note:
-  ;;   Introduced by compat.scm from %invoke-remote-cache
-  (make-operator "#[invoke-remote-cache/convention]"))
-
-(define %internal-apply/convention
-  ;; (CALL ',%interna-apply/convention <cont> <convention>
-  ;;       'NARGS <procedure> <value>*)
-  ;; Note:
-  ;;   Introduced by compat.scm from %internal-apply
-  (make-operator "#[internal-apply/convention]"))
-
-(define %primitive-apply/convention
-  ;; (CALL ',%primitive-apply/convention <cont> <convention>
-  ;;       'NARGS '<primitive-object> <value>*)
-  ;; Note:
-  ;;   Introduced by compat.scm from %primitive-apply
-  (make-operator "#[primitive-apply/convention]"))
-
-(define %invoke-continuation/convention
-  ;; (CALL ',%invoke-continuation/convention <cont> <convention>
-  ;;       <value>*)
-  ;; Note:
-  ;;   Introduced by compat.scm from %invoke-continuation
-  (make-operator "#[invoke-continuation/convention]"))
-
-(define %fetch-parameter-frame
-  ;; (CALL ',%fetch-parameter-frame '#F <convention>)
-  ;; Note:
-  ;;   This is supposed to return an accessor for local parameters.
-  ;;   In fact, rtlgen.scm knows about this special case and generates
-  ;;   no output code.  It is used to set an initial model of how
-  ;;   parameters are passed in to a procedure, so it must appear
-  ;;   immediately after the parameter list for a LAMBDA expression.
-  (make-operator "#[fetch-parameter-frame]"))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.18 1996/03/06 14:22:27 adams Exp $
+$Id: simplify.scm,v 1.19 1996/07/30 19:25:02 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -160,6 +160,50 @@ MIT in each case. |#
 		  (simplify/binding&value env0 (car binding) (cadr binding)))
 	       bindings)))
     (do-simplification env0 #T bindings* body* simplify/letrecify)))
+
+(define-simplifier LETREC (env bindings body)
+  (let* ((frame (map (lambda (binding) (simplify/binding/make (car binding)))
+		     bindings))
+	 (env0 (simplify/env/make env frame))
+	 (body* (simplify/expr env0 body)))
+
+    (let ((bindings* '())
+	  (initial-queue (map cons frame bindings)))
+
+      (define (finish unused)
+	(let ((bindings*
+	       (map* bindings*
+		     (lambda (bnd+var+exp)
+		       (list false (second bnd+var+exp) (third bnd+var+exp)))
+		     unused)))
+	  (let ((x
+		 (do-simplification env0 #T bindings* body* simplify/letrecify)))
+	    x)))
+
+      ;; We scan a queue of bindings to check.  If a binding is referenced, add
+      ;; it to the set.  If it is unreferenced, put it in a retry
+      ;; list.  The note below: we don't reverse the list as this
+      ;; gives us a back-and-forth pattern of scanning which guards
+      ;; against pathological (O(n^2)) cases.
+
+      (let loop ((queue initial-queue)	; list (binding,name,expression)
+		 (retry '())
+		 (found-one? #F))
+
+	(if (null? queue)
+	    (if found-one?
+		(loop retry '() #F)	; Note: not reversed!
+		(finish retry))
+	    (let ((head (car queue))
+		  (rest (cdr queue)))
+	      (if (and (null? (simplify/binding/operator-refs (car head)))
+		       (null? (simplify/binding/ordinary-refs (car head))))
+		  (loop rest (cons head retry) found-one?)
+		  (begin
+		    (set! bindings*
+			  (cons (simplify/binding&value env0 (second head) (third head))
+				bindings*))
+		    (loop (cdr queue) retry #T)))))))))
 
 (define (simplify/binding&value env name value)
   (if (not (LAMBDA/? value))

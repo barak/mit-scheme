@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: laterew.scm,v 1.20 1996/07/24 23:42:04 adams Exp $
+$Id: laterew.scm,v 1.21 1996/07/30 19:26:06 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -32,8 +32,12 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Late generic arithmetic rewrite
+;;;; LATEREW
 ;;; package: (compiler midend)
+;;
+;; Late (post CPS and closure conversion) rewrites, including some
+;; generic arithmetic.
+;;
 
 (declare (usual-integrations))
 
@@ -391,6 +395,11 @@ MIT in each case. |#
 		      `(QUOTE ,#F)))
 	      (else (search (cdr rands)))))
       (default)))
+
+(define-rewrite/late %reference
+  (lambda (form rands)
+    rands				; ignored
+    `(QUOTE ,form)))
 
 (define-rewrite/late %make-multicell
   (lambda (form rands)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: errcont.scm,v 1.1 1996/07/30 19:00:42 adams Exp $
+$Id: errcont.scm,v 1.2 1996/07/30 19:24:42 adams Exp $
 
 Copyright (c) 1996 Massachusetts Institute of Technology
 
@@ -125,9 +125,11 @@ MIT in each case. |#
 	     'ok)
 	    ((call/%stack-closure-ref? cont)
 	     ;; we could generate a new continuation with the same stack frame
-	     ;; format as the extand frame.  This would give us better dbg info.
-	     ;; Another way to do this is to explicitly code the error case as 
-	     ;; a sequence.
+             ;; format as the extant frame.  This would give us better
+             ;; dbg info, at the cost of a continuation and the call
+             ;; it contains.  (Another way to achieve this
+             ;; continuation is to explicitly code the error case as a
+             ;; sequence.
 	     (sample/1 '(errcont/%stack-closure-ref count) 1)
 	     'ok)
 	    ((form/match pattern cont)
