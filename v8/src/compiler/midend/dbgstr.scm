@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgstr.scm,v 1.6 1994/11/30 22:19:00 adams Exp $
+$Id: dbgstr.scm,v 1.7 1995/01/19 00:10:42 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -62,32 +62,30 @@ MIT in each case. |#
 			   (new-dbg-procedure/block dbg-proc)))
 
 (define-structure
-  (new-dbg-continuation
-   (conc-name new-dbg-continuation/)
-   (constructor new-dbg-continuation/make (type outer inner)))
+    (new-dbg-continuation
+     (conc-name new-dbg-continuation/)
+     (constructor new-dbg-continuation/make (type outer inner)))
   (type false read-only true)
   (outer false read-only true)
   (inner false read-only true)
   (block false read-only false))
 
 (define-structure
-  (new-dbg-variable
-   (conc-name new-dbg-variable/)
-   (constructor new-dbg-variable/make (original-name block))
-   (print-procedure
-    (standard-unparser-method 'NEW-DBG-VARIABLE
-      (lambda (var port)
-	(write-char #\Space port)
-	(write (new-dbg-variable/name var) port)
-	(write-string " -> " port)
-	(fluid-let ((*unparser-list-breadth-limit* 5)
-		    (*unparser-list-depth-limit*   2))
-	  (write (new-dbg-variable/original-name var) port))))))
-  (name original-name read-only false)
-  (original-name name read-only true)
+    (new-dbg-variable
+     (conc-name new-dbg-variable/)
+     (constructor new-dbg-variable/make (name block))
+     (print-procedure
+      (standard-unparser-method 'NEW-DBG-VARIABLE
+	(lambda (var port)
+	  (write-char #\Space port)
+	  (write (new-dbg-variable/name var) port)
+	  (write-string " -> " port)
+	  (fluid-let ((*unparser-list-breadth-limit* 5)
+		      (*unparser-list-depth-limit*   3))
+	    (write (new-dbg-variable/expression var) port))))))
+  (name false read-only true)
+  (expression `(lookup ,name) read-only true)
   (block false read-only false)
-  (original-block block read-only false)
-  (offset false read-only false)
   (extra false read-only false))
 
 (define-structure 
