@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.10 1988/11/08 08:24:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.11 1988/12/12 22:11:35 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -35,11 +35,11 @@ MIT in each case. |#
 ;;;; 68000 Disassembler: Top Level
 
 (declare (usual-integrations))
-
+
 (set! compiled-code-block/bytes-per-object 4)
 (set! compiled-code-block/objects-per-procedure-cache 2)
 (set! compiled-code-block/objects-per-variable-cache 1)
-
+
 (set! disassembler/read-variable-cache
       (lambda (block index)
 	(let-syntax ((ucode-type
@@ -79,11 +79,14 @@ MIT in each case. |#
 		      (vector 'INTERPRETED
 			      (system-vector-ref new-block 3)
 			      arity))
-		     ((#x102)		; arity
+		     ((#x102		; arity
+		       #x10e		; entity
+		       #x258 #x25e #x264 #x26a #x270 ; specialized arity
+		       #x276 #x27c #x282 #x288 #x28e)
 		      (vector 'COMPILED
 			      (system-vector-ref new-block 3)
 			      arity))
-		     (else
+		     (else		; including #x108, APPLY
 		      (error
 		       "disassembler/read-procedure-cache: Unknown offset"
 		       offset block index)))))
