@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.1 1988/06/15 18:21:19 jrm Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.2 1988/06/16 06:31:04 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -34,13 +34,20 @@ MIT in each case. |#
 
 ;;;; Compiled Code Information
 ;;; package: (runtime compiler-info)
+
 (declare (usual-integrations))
 
-(define compiler-info-tag
-  (make-named-tag "COMPILER-INFO"))
+(define (initialize-package!)
+  (make-value-cache uncached-block->compiler-info
+    (lambda (compute-value flush-cache)
+      (set! compiled-code-block->compiler-info compute-value)
+      (set! flush-compiler-info! flush-cache))))
 
-(define compiler-entries-tag
-  (make-named-tag "COMPILER-ENTRIES"))
+(define-integrable compiler-info-tag
+  (string->symbol "#[COMPILER-INFO]"))
+
+(define-integrable compiler-entries-tag
+  (string->symbol "#[COMPILER-ENTRIES]"))
 
 (define-structure (compiler-info (named compiler-info-tag))
   (procedures false read-only true)
@@ -51,7 +58,6 @@ MIT in each case. |#
   (name false read-only true)
   (offset false read-only true)
   (external? false read-only true))
-
 
 ;;; Yes, you could be clever and do a number of integrations in this file
 ;;; however, I don't think speed will be the problem.
@@ -125,7 +131,6 @@ MIT in each case. |#
       (if-found info))
     (lambda (pathstring offset) 
       (on-demand-load pathstring offset if-found if-not-found))))
-
 
 (define *compiler-info/load-on-demand?* #f)
 
@@ -163,7 +168,6 @@ MIT in each case. |#
 			      (if-found possible-info)
 			      (if-not-found)))
 			(if-not-found)))))))
-
 
 ;; Uncached version will reload the binf file each time.
 
@@ -218,14 +222,13 @@ MIT in each case. |#
     if-not-found))
 
 (define (info-file object)
-  (if (compiled-entry? object)
-      (pathname-name 
-       (compiled-entry->pathname object identity-procedure false-procedure))
-      #f))
+  (and (compiled-code-address? object)
+       (pathname-name (compiled-entry->pathname object
+						identity-procedure
+						false-procedure))))
 
 (define (compiled-entry->compiler-info entry if-found if-not-found)
   (entry->info entry compiled-code-block->compiler-info if-found if-not-found))
-
 
 ;;; This switch gets turned on when the implementation for
 ;;; INDIRECT-THROUGH-MANIFEST-CLOSURE is present.
@@ -233,6 +236,7 @@ MIT in each case. |#
 ;;; is highly machine dependent.
 
 (define *indirect-through-manifest-closure? #f)
+(define indirect-through-manifest-closure)
 
 (define (compiled-entry->block-and-offset entry 
 					  if-block
@@ -243,9 +247,9 @@ MIT in each case. |#
     (if (compiled-code-block/manifest-closure? block)
 	(if *indirect-through-manifest-closure?
 	    (indirect-through-manifest-closure entry
-	       (lambda (indirect-block indirect-offset)
-		 (if-manifest-closure
-		  block offset indirect-block indirect-offset))
+	      (lambda (indirect-block indirect-offset)
+		(if-manifest-closure
+		 block offset indirect-block indirect-offset))
 	       (lambda () (if-failed)))
 	    (if-failed))
 	(if-block block offset))))
@@ -260,7 +264,7 @@ MIT in each case. |#
     if-not-found))
 
 (define (block-symbol-table block if-found if-not-found)
-  (block->compiler-info block
+  (compiled-code-block->compiler-info block
     (lambda (info)
       (if-found (compiler-info/symbol-table info)))
     if-not-found))
@@ -305,7 +309,6 @@ MIT in each case. |#
       vector-index
       (if-found (label-info-offset label-info)))
     if-not-found))
-
 
 ;;;; Binary Search
 
@@ -410,12 +413,3 @@ MIT in each case. |#
 		   (vector-ref vector index) 
 		   (lambda () (if-found index))
 		   (lambda () (loop (1+ index))))))))
-
-
-(define (initialize-package!)
-  (make-value-cache uncached-block->compiler-info
-   (lambda (compute-value flush-cache)
-     (set! block->compiler-info	compute-value)
-     (set! flush-compiler-info!	flush-cache)))
-  )
-
