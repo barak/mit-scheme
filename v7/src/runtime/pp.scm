@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pp.scm,v 14.31 1994/12/02 16:38:29 adams Exp $
+$Id: pp.scm,v 14.32 1995/01/13 18:39:16 adams Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -42,8 +42,10 @@ MIT in each case. |#
   (set! pressured-indentation (special-printer kernel/pressured-indentation))
   (set! print-procedure (special-printer kernel/print-procedure))
   (set! print-let-expression (special-printer kernel/print-let-expression))
+  (set! print-case-expression (special-printer kernel/print-case-expression))
   (set! code-dispatch-list
 	`((COND . ,forced-indentation)
+	  (CASE . ,print-case-expression)
 	  (IF . ,forced-indentation)
 	  (OR . ,forced-indentation)
 	  (AND . ,forced-indentation)
@@ -512,6 +514,23 @@ MIT in each case. |#
 	   ;; ordinary let
 	   (print-node (car nodes) optimistic 0)
 	   (print-body (cdr nodes))))))
+
+(define print-case-expression)
+(define (kernel/print-case-expression nodes optimistic pessimistic depth)
+  (define (print-cases nodes)
+    (if (not (null? nodes))
+	(begin
+	  (tab-to pessimistic)
+	  (print-column nodes pessimistic depth))))
+  (cond ((null? (cdr nodes))
+	 (print-node (car nodes) optimistic depth))
+	((fits-within? (car nodes) optimistic 0)
+	 (print-guaranteed-node (car nodes))
+	 (print-cases (cdr nodes)))
+	(else
+	 (tab-to (+ pessimistic 2))
+	 (print-node (car nodes) optimistic 0)
+	 (print-cases (cdr nodes)))))
 
 ;;;; Alignment
 
