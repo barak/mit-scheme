@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: fasl.h,v 9.36 1994/11/19 21:22:47 cph Exp $
+$Id: fasl.h,v 9.37 1995/07/26 23:20:52 adams Exp $
 
-Copyright (c) 1987-94 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -88,12 +88,12 @@ MIT in each case. */
 #define CI_MASK			((ONE << (DATUM_LENGTH / 2)) - 1)
 #define CI_VERSION(P)		(((P) >> (DATUM_LENGTH / 2)) & CI_MASK)
 #define CI_PROCESSOR(P)		((P) & CI_MASK)
-#define CI_BAND_P(P)		((OBJECT_TYPE (P)) == TC_TRUE)
+#define CI_BAND_P(P)		((OBJECT_TYPE (P)) == TC_CONSTANT)
 
 #define MAKE_CI_VERSION(Band_p, Version, Processor_Type)		\
-  MAKE_OBJECT (((Band_p) ? TC_TRUE : TC_NULL),				\
+  MAKE_OBJECT (((Band_p) ? TC_CONSTANT : TC_NULL),			\
 	       ((((unsigned long) (Version)) << (DATUM_LENGTH / 2))	\
-		| (Processor_Type)))
+		| (Processor_Type)))					\
 
 /* "Memorable" FASL versions -- ones where we modified something
    and want to remain backwards compatible.
@@ -102,8 +102,10 @@ MIT in each case. */
 /* Versions. */
 
 #define FASL_FORMAT_ADDED_STACK	1
+#define FASL_FORMAT_SPLIT_FIXNUMS 2
 
 /* Subversions of highest numbered version. */
+/* For FASL_FORMAT_ADDED_STACK:             */
 
 #define FASL_LONG_HEADER	3
 #define FASL_DENSE_TYPES	4
@@ -114,10 +116,21 @@ MIT in each case. */
 #define FASL_NEW_BIGNUMS	9
 #define FASL_C_CODE		10
 
+/* Subversions of highest numbered version. */
+/* For FASL_FORMAT_SPLIT_FIXNUMS:           */
+
+#define FASL_INITIAL_SPLIT_FIXNUM_SUBVERSION	0
+
+
 /* Current parameters.  Always used on output. */
 
+#define FASL_FORMAT_VERSION	FASL_FORMAT_SPLIT_FIXNUMS
+#define FASL_SUBVERSION		FASL_INITIAL_SPLIT_FIXNUM_SUBVERSION
+
+/*
 #define FASL_FORMAT_VERSION	FASL_FORMAT_ADDED_STACK
 #define FASL_SUBVERSION		FASL_C_CODE
+*/
 
 /*
   The definitions below correspond to the ones above.  They usually
@@ -126,16 +139,23 @@ MIT in each case. */
  */
 
 #ifndef FASL_READ_VERSION
-#define FASL_READ_VERSION	FASL_FORMAT_ADDED_STACK
+/*#define FASL_READ_VERSION	FASL_FORMAT_ADDED_STACK*/
+#define FASL_READ_VERSION	FASL_FORMAT_SPLIT_FIXNUMS
 #endif
 
 #ifndef FASL_READ_SUBVERSION
-#define FASL_READ_SUBVERSION	FASL_NEW_BIGNUMS
+/*#define FASL_READ_SUBVERSION	FASL_C_CODE*/
+#define FASL_READ_SUBVERSION	FASL_INITIAL_SPLIT_FIXNUM_SUBVERSION
 #endif
 
 /* These are for Bintopsb.
    They are the values of the oldest supported formats.
  */
 
+/*
 #define FASL_OLDEST_VERSION	FASL_FORMAT_ADDED_STACK
 #define FASL_OLDEST_SUBVERSION	FASL_PADDED_STRINGS
+*/
+
+#define FASL_OLDEST_VERSION	FASL_FORMAT_SPLIT_FIXNUMS
+#define FASL_OLDEST_SUBVERSION	FASL_INITIAL_SPLIT_FIXNUM_SUBVERSION
