@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: types.scm,v 1.4 1996/07/23 15:34:53 adams Exp $
+$Id: types.scm,v 1.5 1996/07/27 03:31:38 adams Exp $
 
 Copyright (c) 1995-1996 Massachusetts Institute of Technology
 
@@ -83,12 +83,14 @@ MIT in each case. |#
 	  (else
 	   (loop type (cdr pairs) description)))))
 
-(define (type:user-description type)
+(define (type:user-description type accurate?)
   (define (try t name)
     (and (type:subset? type t) name))
   (or (try type:boolean "a boolean")
       (try type:exact-non-negative-integer  "an exact non-negative integer")
+      (and accurate? (try type:fixnum "a small exact integer (fixnum)"))
       (try type:exact-integer "an exact integer")
+      (and accurate? (try type:flonum  "an inexact real (flonum)"))
       (try type:number  "a number")
       (try type:string  "a string")
       (try type:string  "a character")
