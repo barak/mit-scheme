@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.40 1991/01/24 11:26:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.41 1991/02/26 21:33:51 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -582,12 +582,16 @@ fasload.o : scheme.touch prims.h osscheme.h osfile.h osio.h $(GC_HEAD_FILES) \
 fasdump.o : scheme.touch prims.h osio.h osfile.h osfs.h $(GC_HEAD_FILES) \
 	trap.h lookup.h fasl.h dump.c
 
-memmag.o gcloop.o purify.o purutl.o comutl.o : scheme.touch prims.h \
-	$(GC_HEAD_FILES) zones.h
+memmag.o : scheme.touch prims.h $(GC_HEAD_FILES)
+gcloop.o : scheme.touch $(GC_HEAD_FILES)
+purify.o : scheme.touch prims.h $(GC_HEAD_FILES) zones.h
+purutl.o : scheme.touch prims.h $(GC_HEAD_FILES) zones.h
+comutl.o : scheme.touch prims.h
 
 artutl.o : scheme.touch
 bignum.o : scheme.touch bignumint.h limits.h
-bigprm.o flonum.o intprm.o generic.o : scheme.touch prims.h zones.h
+bigprm.o flonum.o intprm.o : scheme.touch prims.h zones.h
+generic.o : scheme.touch prims.h
 fixnum.o : scheme.touch prims.h mul.c
 
 storage.o : scheme.touch gctype.c
@@ -601,10 +605,12 @@ term.o : scheme.touch
 
 compiler.o : config.h object.h sdata.h types.h errors.h const.h returns.h
 
-bchmmg.o bchgcl.o bchpur.o : scheme.touch prims.h bchgcc.h option.h \
-	$(GC_HEAD_FILES)
-bchdmp.o : scheme.touch prims.h osio.h osfile.h trap.h lookup.h bchgcc.h \
-	$(GC_HEAD_FILES) fasl.h dump.c
+BCHGCC_H = bchgcc.h oscond.h $(GC_HEAD_FILES)
+bchmmg.o : scheme.touch prims.h $(BCHGCC_H) option.h
+bchgcl.o : scheme.touch $(BCHGCC_H)
+bchpur.o : scheme.touch prims.h $(BCHGCC_H) zones.h
+bchdmp.o : scheme.touch prims.h uxio.h osio.h osfile.h trap.h lookup.h \
+	$(BCHGCC_H) fasl.h dump.c
 
 syntax.o : scheme.touch prims.h edwin.h syntax.h
 bitstr.o : scheme.touch prims.h bitstr.h
