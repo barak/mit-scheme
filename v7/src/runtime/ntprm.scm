@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.16 1997/11/12 22:38:03 cph Exp $
+$Id: ntprm.scm,v 1.17 1997/11/12 22:58:59 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -314,7 +314,9 @@ MIT in each case. |#
 		;; Look for USER-NAME in same directory as current
 		;; user's home directory.
 		(and homedir
-		     (trydir (merge-pathnames user-name homedir)))
+		     (trydir (merge-pathnames
+			      user-name
+			      (directory-pathname-as-file homedir))))
 		;; Look for USER-NAME in root directory of system
 		;; drive.  Failing that, use root directory itself.
 		(let ((rootdir (%system-root-directory)))
