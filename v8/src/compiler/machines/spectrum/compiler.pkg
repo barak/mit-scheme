@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.10 1995/04/01 16:51:03 adams Exp $
+$Id: compiler.pkg,v 1.11 1995/05/01 02:43:24 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -190,8 +190,6 @@ MIT in each case. |#
 	  dump-rtl
 	  po
 	  show-bblock-rtl
-	  show-fg
-	  show-fg-node
 	  show-rtl
 	  write-rtl-instructions)
   (import (runtime pretty-printer)
