@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.19 1992/08/27 06:39:46 jinx Exp $
+;;;	$Id: artdebug.scm,v 1.20 1992/11/22 17:04:18 gjr Exp $
 ;;;
-;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-1992 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -388,12 +388,13 @@ Miscellany
     subproblem with its value.
 
 Use \\[kill-buffer] to quit the debugger."
-  (local-set-variable! comint-input-ring
-		       (make-ring (ref-variable comint-input-ring-size)))
-  (local-set-variable! evaluation-input-recorder
-		       continuation-browser-input-recorder)
-  (local-set-variable! evaluation-output-receiver
-		       continuation-browser-output-receiver))
+  (lambda (buffer)
+    (define-variable-local-value! buffer comint-input-ring
+      (make-ring (ref-variable comint-input-ring-size)))
+    (define-variable-local-value! buffer evaluation-input-recorder
+      continuation-browser-input-recorder)
+    (define-variable-local-value! buffer evaluation-output-receiver
+      continuation-browser-output-receiver)))
 
 (define (continuation-browser-input-recorder region)
   (ring-push! (ref-variable comint-input-ring) (region->string region)))
