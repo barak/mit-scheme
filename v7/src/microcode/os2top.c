@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2top.c,v 1.17 1996/05/09 20:22:20 cph Exp $
+$Id: os2top.c,v 1.18 1997/01/10 08:00:17 cph Exp $
 
-Copyright (c) 1994-96 Massachusetts Institute of Technology
+Copyright (c) 1994-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -130,10 +130,10 @@ OS2_version_string (void)
   static char result [64];
   char sminor [16];
   char srev [2];
-  if ((major == 20) && (minor == 30))
+  if ((major == 20) && (minor >= 30))
     {
-      major = 30;
-      minor = 0;
+      major = (minor - (minor % 10));
+      minor = ((minor % 10) * 10);
     }
   if ((minor < 10) && (minor != 0))
     sprintf (sminor, "0%d", minor);
