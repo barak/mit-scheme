@@ -1,8 +1,8 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.7 1993/08/30 23:01:05 ziggy Exp $
+$Id: ed-ffi.scm,v 1.8 1994/10/11 23:50:22 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -112,7 +112,6 @@ MIT in each case. |#
 		syntax-table/system-internal)
     ("hashtb"	(runtime hash-table)
 		syntax-table/system-internal)
-
     ("histry"	(runtime history)
 		syntax-table/system-internal)
     ("infstr"	(runtime compiler-info)
@@ -193,7 +192,6 @@ MIT in each case. |#
 		syntax-table/system-internal)
     ("scode"	(runtime scode)
 		syntax-table/system-internal)
-
     ("scomb"	(runtime scode-combinator)
 		syntax-table/system-internal)
     ("sdata"	(runtime scode-data)
@@ -267,6 +265,6 @@ MIT in each case. |#
     ("x11graph"	(runtime X-graphics)
 		syntax-table/system-internal)
     ("xeval"	(runtime extended-scode-eval)
+		syntax-table/system-internal)
+    ("xeval"	(runtime stepper)
 		syntax-table/system-internal)))
-
-;;; fini
