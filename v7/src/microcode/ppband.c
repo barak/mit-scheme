@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.39 1990/06/21 03:50:30 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.40 1990/11/16 21:20:15 arthur Exp $
 
 Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 
@@ -35,7 +35,9 @@ MIT in each case. */
 /* Dumps Scheme FASL in user-readable form. */
 
 #include <stdio.h>
+#include "ansidecl.h"
 #include "config.h"
+#include "errors.h"
 #include "types.h"
 #include "const.h"
 #include "object.h"
@@ -48,15 +50,32 @@ MIT in each case. */
 
 static SCHEME_OBJECT * memory_base;
 
+#ifdef OS2
+
+#include <fcntl.h>
+#include <io.h>
+#include <sys\types.h>
+
+#define fread OS2_fread
+extern off_t EXFUN (OS2_fread, (char *, unsigned int, off_t, FILE *));
+
+#define fwrite OS2_fwrite
+extern off_t EXFUN (OS2_fwrite, (char *, unsigned int, off_t, FILE *));
+
+#endif /* OS2 */
+
 long
-Load_Data(Count, To_Where)
-     long Count;
-     SCHEME_OBJECT *To_Where;
+DEFUN (Load_Data, (Count, To_Where), long Count AND char *To_Where)
 {
-  return (fread (To_Where, (sizeof (SCHEME_OBJECT)), Count, stdin));
+#ifdef OS2
+  setmode (fileno (stdin), O_BINARY);
+#endif /* OS2 */
+
+  return (fread ((char *) To_Where, (sizeof (SCHEME_OBJECT)), Count, stdin));
 }
 
 #define INHIBIT_COMPILED_VERSION_CHECK
+#define INHIBIT_CHECKSUMS
 #include "load.c"
 
 #ifdef HEAP_IN_LOW_MEMORY
@@ -71,15 +90,15 @@ Load_Data(Count, To_Where)
 #endif
 
 #ifndef Conditional_Bug
-#define Relocate(P)						\
-	(((long) (P) < Const_Base) ?				\
-	 File_To_Pointer(((long) (P)) - Heap_Base) :		\
+#define Relocate(P)							\
+	(((long) (P) < Const_Base) ?					\
+	 File_To_Pointer(((long) (P)) - Heap_Base) :			\
 	 (Heap_Count + File_To_Pointer(((long) (P)) - Const_Base)))
 #else
-#define Relocate_Into(What, P)
-if (((long) (P)) < Const_Base)
-  (What) = File_To_Pointer(((long) (P)) - Heap_Base);
-else
+#define Relocate_Into(What, P)						\
+if (((long) (P)) < Const_Base)						\
+  (What) = File_To_Pointer(((long) (P)) - Heap_Base);			\
+else									\
   (What) = Heap_Count + File_To_Pointer(((long) P) - Const_Base);
 
 static long Relocate_Temp;
@@ -89,15 +108,14 @@ static long Relocate_Temp;
 static SCHEME_OBJECT *Data, *end_of_memory;
 
 Boolean
-scheme_string(From, Quoted)
-     long From;
-     Boolean Quoted;
+DEFUN (scheme_string, (From, Quoted), long From AND Boolean Quoted)
 {
   fast long i, Count;
   fast char *Chars;
 
   Chars = ((char *) &Data[From +  STRING_CHARS]);
-  if (Chars < ((char *) end_of_memory))
+  if ((Chars < ((char *) end_of_memory))
+      && (Chars >= ((char *) Data)))
   {
     Count = ((long) (Data[From + STRING_LENGTH_INDEX]));
     if (&Chars[Count] < ((char *) end_of_memory))
@@ -128,8 +146,7 @@ scheme_string(From, Quoted)
 #define via(File_Address) Relocate(OBJECT_DATUM (Data[File_Address]))
 
 void
-scheme_symbol(From)
-     long From;
+DEFUN (scheme_symbol, (From), long From)
 {
   SCHEME_OBJECT *symbol;
 
@@ -165,8 +182,10 @@ static char string_buffer[10];
 char *Type_Names[] = TYPE_NAME_TABLE;
 
 void
-Display(Location, Type, The_Datum)
-     long Location, Type, The_Datum;
+DEFUN (Display, (Location, Type, The_Datum),
+                 long Location AND
+                 long Type AND
+                 long The_Datum)
 {
   char string_buf[100];
   char *the_string;
@@ -259,11 +278,11 @@ Display(Location, Type, The_Datum)
 }
 
 SCHEME_OBJECT *
-show_area(area, start, end, name)
-     fast SCHEME_OBJECT *area;
-     long start;
-     fast long end;
-     char *name;
+DEFUN (show_area, (area, start, end, name),
+       fast SCHEME_OBJECT *area AND
+       long start AND
+       fast long end AND
+       char *name)
 {
   fast long i;
 
@@ -285,14 +304,14 @@ show_area(area, start, end, name)
       for (j = 0; j < count ; j++, area++)
       {
         printf("          %02lx%06lx\n",
-               OBJECT_TYPE (*area), OBJECT_DATUM (*area));
+               (OBJECT_TYPE (*area)), (OBJECT_DATUM (*area)));
       }
       i += count;
       area -= 1;
     }
     else
     {
-      Display(i, OBJECT_TYPE (*area),  OBJECT_DATUM (*area));
+      Display(i, (OBJECT_TYPE (*area)), (OBJECT_DATUM (*area)));
     }
   }
   return (area);
@@ -321,9 +340,9 @@ main(argc, argv)
   {
     Const_Count = 0;
     Primitive_Table_Size = 0;
-    sscanf(argv[1], "%x", &Heap_Base);
-    sscanf(argv[2], "%x", &Const_Base);
-    sscanf(argv[3], "%d", &Heap_Count);
+    sscanf(argv[1], "%lx", ((long) &Heap_Base));
+    sscanf(argv[2], "%lx", ((long) &Const_Base));
+    sscanf(argv[3], "%ld", ((long) &Heap_Count));
     printf("Heap Base = 0x%lx; Constant Base = 0x%lx; Heap Count = %ld\n",
 	   Heap_Base, Const_Base, Heap_Count);
   }
@@ -335,13 +354,13 @@ main(argc, argv)
     fprintf(stderr, "Allocation of %ld words failed.\n", (load_length + 4));
     exit(1);
   }
-  total_length = Load_Data(load_length, Data);
+  total_length = Load_Data (load_length, ((char *) Data));
   end_of_memory = &Data[total_length];
   if (total_length != load_length)
   {
     printf("The FASL file does not have the right length.\n");
-    printf("Expected %d objects.  Obtained %ld objects.\n\n",
-	   load_length, total_length);
+    printf("Expected %ld objects.  Obtained %ld objects.\n\n",
+	   ((long) load_length), ((long) total_length));
     if (total_length < Heap_Count)
     {
       Heap_Count = total_length;
