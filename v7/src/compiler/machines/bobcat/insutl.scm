@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insutl.scm,v 1.1 1987/06/25 10:35:23 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insutl.scm,v 1.2 1987/07/01 20:53:42 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,6 +38,11 @@ MIT in each case. |#
 
 ;;;; Effective Addressing
 
+;;; *** NOTE: If this format changes, inerly.scm must also be changed! ***
+
+(define ea-tag
+  "Effective-Address")
+
 (define (make-effective-address keyword mode register extension categories)
   (vector ea-tag keyword mode register extension categories))
 
@@ -45,9 +50,6 @@ MIT in each case. |#
   (and (vector? object)
        (not (zero? (vector-length object)))
        (eq? (vector-ref object 0) ea-tag)))
-
-(define ea-tag
-  "Effective-Address")
 
 (define-integrable (ea-keyword ea)
   (vector-ref ea 1))
@@ -62,6 +64,30 @@ MIT in each case. |#
   (vector-ref ea 4))
 
 (define-integrable (ea-categories ea)
+  (vector-ref ea 5))
+
+(define-integrable (with-ea ea receiver)
+  (receiver (ea-keyword ea)
+	    (ea-mode ea)
+	    (ea-register ea)
+	    (ea-extension ea)
+	    (ea-categories ea)))
+
+;; For completeness
+
+(define (ea-keyword-early ea)
+  (vector-ref ea 1))
+
+(define (ea-mode-early ea)
+  (vector-ref ea 2))
+
+(define (ea-register-early ea)
+  (vector-ref ea 3))
+
+(define (ea-extension-early ea)
+  (vector-ref ea 4))
+
+(define (ea-categories-early ea)
   (vector-ref ea 5))
 
 ;;;; Effective Address Extensions

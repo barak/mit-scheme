@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/insseq.scm,v 1.1 1987/06/25 10:48:10 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/insseq.scm,v 1.2 1987/07/01 20:48:04 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,32 +36,53 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define-integrable empty-lap-instructions '())
+(define lap:syntax-instruction)
 
-(define (lap-instructions->directives insts)
-  (car insts))
+(define (instruction-sequence->directives insts)
+  (if (null? insts)
+      '()
+      (car insts)))
 
-(define (->instruction-sequence bits)
-  (if (null? bits)
-      empty-lap-instructions
-      (cons bits (last-pair bits))))
+;; instruction->instruction-sequence is expanded.
 
-(define (->lap-instructions pattern)
-  (->instruction-sequence ((access syntax-instruction lap-syntax-package)
-			   pattern)))
+(declare (integrate empty-instruction-sequence)
+	 (integrate-operator directive->instruction-sequence))
 
-(define (append-lap-instructions! directives directives*)
-  (cond ((null? directives) directives*)
-	((null? directives*) directives)
+(define empty-instruction-sequence '())
+
+(define (directive->instruction-sequence directive)
+  (declare (integrate directive))
+  (let ((pair (cons directive '())))
+    (cons pair pair)))
+
+(define (instruction->instruction-sequence inst)
+  (cons inst (last-pair inst)))
+
+(define (copy-instruction-sequence seq)
+  (define (with-last-pair l receiver)
+    (if (null? (cdr l))
+	(receiver l l)
+	(with-last-pair (cdr l)
+			(lambda (rest last)
+			  (receiver (cons (car l) rest)
+				    last)))))
+
+  (if (null? seq)
+      '()
+      (with-last-pair (car seq) cons)))
+
+(define (append-instruction-sequences! seq1 seq2)
+  (cond ((null? seq1) seq2)
+	((null? seq2) seq1)
 	(else
-	 (if (and (bit-string? (cadr directives))
-		  (bit-string? (caar directives*)))
-	     (let ((result (bit-string-append (caar directives*)
-					      (cadr directives))))
-	       (set-car! (cdr directives) result)
-	       (if (not (eq? (car directives*) (cdr directives*)))
-		   (begin (set-cdr! (cdr directives) (cdr (car directives*)))
-			  (set-cdr! directives (cdr directives*)))))
-	     (begin (set-cdr! (cdr directives) (car directives*))
-		    (set-cdr! directives (cdr directives*))))
-	 directives)))
+	 (if (and (bit-string? (cadr seq1))
+		  (bit-string? (caar seq2)))
+	     (let ((result (bit-string-append (caar seq2)
+					      (cadr seq1))))
+	       (set-car! (cdr seq1) result)
+	       (if (not (eq? (car seq2) (cdr seq2)))
+		   (begin (set-cdr! (cdr seq1) (cdr (car seq2)))
+			  (set-cdr! seq1 (cdr seq2)))))
+	     (begin (set-cdr! (cdr seq1) (car seq2))
+		    (set-cdr! seq1 (cdr seq2))))
+	 seq1)))

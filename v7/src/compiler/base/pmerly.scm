@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmerly.scm,v 1.1 1987/06/25 10:51:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmerly.scm,v 1.2 1987/07/01 20:51:29 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -40,7 +40,7 @@ MIT in each case. |#
 
 (define early-parse-rule)
 (define early-pattern-lookup)
-(define define-transformer)
+(define early-make-rule)
 (define make-database-transformer)
 (define make-symbol-transformer)
 (define make-bit-mask-transformer)
@@ -49,16 +49,17 @@ MIT in each case. |#
 
 ;;;; Database construction
 
-(define-export (early-parse-rule pattern expression)
-  (extract-variables pattern
-		     (lambda (pattern variables)
-		       `(,pattern ,variables ,expression))))
+(define-export (early-make-rule pattern variables body)
+  (list pattern variables body))
+
+(define-export (early-parse-rule pattern receiver)
+  (extract-variables pattern receiver))
 
 (define (extract-variables pattern receiver)
   (cond ((not (pair? pattern))
 	 (receiver pattern '()))
 	((eq? (car pattern) '@)
-	 (error "unify-parse-rule: ?@ is not an implemented pattern"
+	 (error "early-parse-rule: ?@ is not an implemented pattern"
 		pattern))
 	((eq? (car pattern) '?)
 	 (receiver (make-pattern-variable (cadr pattern))
@@ -87,7 +88,7 @@ MIT in each case. |#
 		     (merge-variables-lists (cdr x)
 					    (delq! entry y)))
 	       |#
-	       (error "unify-parse-rule: repeated variables not supported"
+	       (error "early-parse-rule: repeated variables not supported"
 		      (list (caar x) entry))
 	       (cons (car x)
 		     (merge-variables-lists (cdr x)
@@ -95,60 +96,62 @@ MIT in each case. |#
 
 ;;;; Early rule processing and code compilation
 
-(define *rule-limit* '())
-
-(define-export (early-pattern-lookup rules unparsed #!optional receiver limit)
+(define-export (early-pattern-lookup
+		rules instance #!optional transformers unparsed receiver limit)
   (if (unassigned? limit) (set! limit *rule-limit*))
-  (if (unassigned? receiver)
+  (if (or (unassigned? receiver) (null? receiver))
       (set! receiver
 	    (lambda (result code)
 	      (cond ((false? result)
 		     (error "early-pattern-lookup: No pattern matches"
-			    unparsed))
+			    instance))
 		    ((eq? result 'TOO-MANY)
 		     (error "early-pattern-lookup: Too many patterns match"
-			    limit))
+			    limit instance))
 		    (else code)))))
-
-  (parse-instance unparsed
+  (parse-instance instance
    (lambda (expression bindings)
-     (apply
-      (lambda (result program)
-	(receiver result
-		  (if (or (eq? result true) (eq? result 'MAYBE))
-		      (scode/make-block bindings '() program)
-		      false)))
-      (fluid-let ((*rule-limit* limit))
-	(try-rules rules
-		   expression
-		   (scode/make-error-combination
-		    "early-pattern-lookup: No pattern matches"
-		    (scode/make-constant unparsed))
-		   list))))))
+     (apply (lambda (result program)
+	      (receiver result
+			(if (or (eq? result true) (eq? result 'MAYBE))
+			    (scode/make-block bindings '() program)
+			    false)))
+	    (fluid-let ((*rule-limit* limit)
+			(*transformers* (if (unassigned? transformers)
+					    '()
+					    transformers)))
+	      (try-rules rules expression
+			 (scode/make-error-combination
+			  "early-pattern-lookup: No pattern matches"
+			  (if (or (unassigned? unparsed) (null? unparsed))
+			      (scode/make-constant instance)
+			      unparsed))
+			 list))))))
 
 (define (parse-instance instance receiver)
   (cond ((not (pair? instance))
 	 (receiver instance '()))
-	((eq? (car instance) 'EVALUATE)
+	((eq? (car instance) 'UNQUOTE)
 	 ;; Shadowing may not permit the optimization below.
-	 ;; I think the code is being careful about uses of
-	 ;; the expressions, but...
+	 ;; I think the code is being careful, but...
 	 (let ((expression (cadr instance)))
 	   (if (scode/variable? expression)
-	       (receiver (make-evaluation expression)
-			 '())
+	       (receiver (make-evaluation expression) '())
 	       (let ((var (make-variable-name 'RESULT)))
 		 (receiver (make-evaluation (scode/make-variable var))
 			   (list (scode/make-binding var expression)))))))
-	(else
-	 (parse-instance (car instance)
-	  (lambda (instance-car car-bindings)
-	    (parse-instance (cdr instance)
-			    (lambda (instance-cdr cdr-bindings)
-			      (receiver (cons instance-car instance-cdr)
-					(append car-bindings cdr-bindings)))))))))
+	((eq? (car instance) 'UNQUOTE-SPLICING)
+	 (error "parse-instance: unquote-splicing not supported" instance))
+	(else (parse-instance (car instance)
+	       (lambda (instance-car car-bindings)
+		 (parse-instance (cdr instance)
+		  (lambda (instance-cdr cdr-bindings)
+		    (receiver (cons instance-car instance-cdr)
+			      (append car-bindings cdr-bindings)))))))))
 
 ;;;; Find matching rules and collect them
+
+(define *rule-limit* '())
 
 (define (try-rules rules expression null-form receiver)
   (define (loop rules null-form bindings nrules)
@@ -463,7 +466,7 @@ MIT in each case. |#
 	(apply-transformer trans-exp name rename exp receiver))))
 
 (define (apply-transformer transformer name rename exp receiver)
-  (receiver name
+  (receiver (scode/make-variable name)
 	    (transformer-bindings name rename (unevaluate exp)
 	     (lambda (exp)
 	       (scode/make-combination (scode/make-variable transformer)
@@ -475,12 +478,7 @@ MIT in each case. |#
       (list (make-outer-binding rename expression)
 	    (make-late-binding name (mapper (scode/make-variable rename))))))
 
-(define *transformers* '())
-
-(define-export (define-transformer name transformer)
-  (set! *transformers*
-	`((,name . ,transformer) ,@*transformers*))
-  name)
+(define *transformers*)
 
 (define (find-transformer expression)
   (and (symbol? expression)
@@ -496,21 +494,22 @@ MIT in each case. |#
 	   (scode/make-constant (generate-uninterned-symbol 'NOT-FOUND-))))
       (try-rules database exp null-form
        (lambda (result code)
-	 (define (possible test)
+	 (define (possible test make-binding)
 	   (receiver test
-		     (cons (make-outer-binding rename code)
+		     (cons (make-binding rename code)
 			   (if (eq? name rename)
 			       '()
-			       (list (make-outer-binding name
-							 (unevaluate exp)))))))
+			       (list (make-binding name
+						   (unevaluate exp)))))))
 
 	 (cond ((false? result)
 		(transformer-fail receiver))
 	       ((eq? result 'TOO-MANY)
 		(apply-transformer texp name rename exp receiver))
 	       ((eq? result 'MAYBE)
-		(possible (make-simple-transformer-test name null-form)))
-	       (else (possible true))))))))
+		(possible (make-simple-transformer-test name null-form)
+			  make-outer-binding))
+	       (else (possible true make-early-binding))))))))
 
 (define-integrable (make-simple-transformer-test name tag)
   (scode/make-absolute-combination 'NOT

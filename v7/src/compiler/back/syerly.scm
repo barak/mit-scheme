@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syerly.scm,v 1.1 1987/06/25 10:56:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syerly.scm,v 1.2 1987/07/01 20:47:29 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,42 +36,45 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define ->lap-instructions-expander
+;;;; Early instruction assembly
+
+(define lap:syntax-instruction-expander
   ((access scode->scode-expander package/expansion package/scode-optimizer)
    (lambda (operands if-expanded if-not-expanded)
-     (define (wrap expression)
-       (if-expanded
-	(scode/make-combination
-	 (scode/make-variable '->INSTRUCTION-SEQUENCE)
-	 (list expression))))
-
-     (define (kernel instruction rules)
+     (define (kernel opcode instruction rules)
        (early-pattern-lookup
 	rules
 	instruction
+	early-transformers
+	(scode/make-constant opcode)
 	(lambda (mode result)
 	  (cond ((false? mode)
-		 (error "->lap-instruction-expander: unknown instruction"
+		 (error "lap:syntax-instruction-expander: unknown instruction"
 			instruction))
 		((eq? mode 'TOO-MANY)
 		 (if-not-expanded))
-		(else (wrap result))))
+		(else (if-expanded result))))
 	1))
 
      (let ((instruction (scode/unquasiquote (car operands))))
        (cond ((not (pair? instruction))
-	      (error "->lap-instruction-expander: bad instruction" instruction))
-	     ((eq? (car instruction) 'EVALUATE)
+	      (error "lap:syntax-instruction-expander: bad instruction" instruction))
+	     ((eq? (car instruction) 'UNQUOTE)
 	      (if-not-expanded))
 	     ((memq (car instruction)
 		    '(EQUATE SCHEME-OBJECT ENTRY-POINT LABEL))
-	      (wrap (scode/make-absolute-combination 'LIST operands)))
+	      (if-expanded
+	       (scode/make-combination
+		(scode/make-variable  'DIRECTIVE->INSTRUCTION-SEQUENCE)
+		operands)))
 	     (else
 	      (let ((place (assq (car instruction) early-instructions)))
 		(if (null? place)
-		    (error "->lap-instruction-expander: unknown opcode"
+		    (error "lap:syntax-instruction-expander: unknown opcode"
 			   (car instruction))
-		    (kernel (cdr instruction) (cdr place))))))))))
+		    (kernel (car instruction) (cdr instruction) (cdr place))))))))))
+
+;;;; Quasiquote unsyntaxing
 
 (define (scode/unquasiquote exp)
   (cond ((scode/combination? exp)
@@ -91,16 +94,147 @@ MIT in each case. |#
 		 (mapcan (lambda (component)
 			   (if (scode/constant? component)
 			       (scode/constant-value component)
-			       (list (list 'EVALUATE-SPLICE component))))
+			       (list (list 'UNQUOTE-SPLICING component))))
 			 operands))
-		(else (list 'EVALUATE exp))))
+		(else (list 'UNQUOTE exp))))
 	    (cond ((eq? operator cons)
 		   ;; integrations
 		   (kernel 'CONS))
 		  ((scode/absolute-reference? operator)
 		   (kernel (scode/absolute-reference-name operator)))
-		  (else (list 'EVALUATE exp))))))
+		  (else (list 'UNQUOTE exp))))))
 	((scode/constant? exp)
 	 (scode/constant-value exp))
-	(else (list 'EVALUATE exp))))
-      
+	(else (list 'UNQUOTE exp))))
+
+;;;; Bit compression expanders
+
+;;; SYNTAX-EVALUATION and OPTIMIZE-GROUP expanders
+
+(define syntax-evaluation-expander
+  ((access scode->scode-expander package/expansion package/scode-optimizer)
+   (lambda (operands if-expanded if-not-expanded)
+     (if (and (scode/constant? (car operands))
+	      (scode/variable? (cadr operands))
+	      (not (lexical-unreferenceable?
+		    (access lap-syntax-package compiler-package)
+		    (scode/variable-name (cadr operands)))))
+	 (if-expanded
+	  (scode/make-constant
+	   ((lexical-reference (access lap-syntax-package compiler-package)
+			       (scode/variable-name (cadr operands)))
+	    (scode/constant-value (car operands)))))
+	 (if-not-expanded)))))
+
+;; This relies on the fact that scode/constant-value = identity-procedure.
+
+(define optimize-group-expander
+  ((access scode->scode-expander package/expansion package/scode-optimizer)
+   (lambda (operands if-expanded if-not-expanded)
+     (optimize-group-internal
+      operands
+      (lambda (result make-group?)
+	(if make-group?
+	    (if-expanded
+	     (scode/make-combination (scode/make-variable 'OPTIMIZE-GROUP)
+				     result))
+	    (if-expanded
+	     (scode/make-constant result))))))))
+
+;;;; CONS-SYNTAX expander
+
+(define (is-operator? expr name primitive)
+  (or (and primitive
+	   (scode/constant? expr)
+	   (eq? (scode/constant-value expr) primitive))
+      (and (scode/variable? expr)
+	   (eq? (scode/variable-name expr) name))
+      (and (scode/absolute-reference? expr)
+	   (eq? (scode/absolute-reference-name expr) name))))
+
+(define cons-syntax-expander
+  ((access scode->scode-expander package/expansion package/scode-optimizer)
+   (lambda (operands if-expanded if-not-expanded)
+     (define (default)
+       (cond ((not (scode/constant? (cadr operands)))
+	      (if-not-expanded))
+	     ((not (null? (scode/constant-value (cadr operands))))
+	      (error "cons-syntax-expander: bad tail" (cadr operands)))
+	     (else
+	      (if-expanded
+	       (scode/make-absolute-combination 'CONS
+						operands)))))
+
+     (if (and (scode/constant? (car operands))
+	      (bit-string? (scode/constant-value (car operands)))
+	      (scode/combination? (cadr operands)))
+	 (scode/combination-components
+	  (cadr operands)
+	  (lambda (operator inner-operands)
+	    (if (and (or (is-operator? operator 'CONS-SYNTAX false)
+			 (is-operator? operator 'CONS cons))
+		     (scode/constant? (car inner-operands))
+		     (bit-string? (scode/constant-value (car inner-operands))))
+		(if-expanded
+		 (scode/make-combination
+		  (if (scode/constant? (cadr inner-operands))
+		      (scode/make-absolute-reference 'CONS)
+		      operator)
+		  (cons (bit-string-append
+			 (scode/constant-value (car inner-operands))
+			 (scode/constant-value (car operands)))
+			(cdr inner-operands))))
+		(default))))
+	 (default)))))
+
+;;;; INSTRUCTION->INSTRUCTION-SEQUENCE expander
+
+(define instruction->instruction-sequence-expander
+  (let ()
+    (define (parse expression receiver)
+      (if (not (scode/combination? expression))
+	  (receiver false false false)
+	  (scode/combination-components
+	   expression
+	   (lambda (operator operands)
+	     (cond ((and (not (is-operator? operator 'CONS cons))
+			 (not (is-operator? operator 'CONS-SYNTAX false)))
+		    (receiver false false false))
+		   ((scode/constant? (cadr operands))
+		    (if (not (null? (scode/constant-value (cadr operands))))
+			(error "inst->inst-seq-expander: bad CONS-SYNTAX tail"
+			       (scode/constant-value (cadr operands)))
+			(let ((name
+			       (generate-uninterned-symbol
+				'INSTRUCTION-TAIL-)))
+			  (receiver true
+				    (cons name expression)
+				    (scode/make-variable name)))))
+		   (else
+		    (parse (cadr operands)
+			   (lambda (mode info rest)
+			     (if (not mode)
+				 (receiver false false false)
+				 (receiver true info
+					   (scode/make-combination
+					    operator
+					    (list (car operands)
+						  rest))))))))))))
+    
+    ((access scode->scode-expander package/expansion package/scode-optimizer)
+     (lambda (operands if-expanded if-not-expanded)
+       (if (not (scode/combination? (car operands)))
+	   (if-not-expanded)
+	   (parse (car operands)
+		  (lambda (mode binding rest)
+		    (if (not mode)
+			(if-not-expanded)
+			(if-expanded
+			 (scode/make-let
+			  (list (car binding))
+			  (list (cdr binding))
+			  (scode/make-absolute-combination
+			   'CONS
+			   (list rest
+				 (scode/make-variable
+				  (car binding))))))))))))))
