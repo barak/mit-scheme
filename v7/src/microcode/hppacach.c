@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hppacach.c,v 1.3 1991/05/05 20:26:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hppacach.c,v 1.4 1993/06/04 22:57:12 cph Exp $
 
 Copyright (c) 1990-1991 Massachusetts Institute of Technology
 
@@ -499,10 +499,10 @@ void
 usage ()
 {
   fprintf (stderr, "usage: one of:\n");
-  fprintf (stderr, " %s -update FILENAME\n");
-  fprintf (stderr, " %s -verify FILENAME\n");
-  fprintf (stderr, " %s -print FILENAME\n");
-  fprintf (stderr, " %s -printall FILENAME\n");
+  fprintf (stderr, " %s -update FILENAME\n", (the_argv[0]));
+  fprintf (stderr, " %s -verify FILENAME\n", (the_argv[0]));
+  fprintf (stderr, " %s -print FILENAME\n", (the_argv[0]));
+  fprintf (stderr, " %s -printall FILENAME\n", (the_argv[0]));
   fflush (stderr);
   exit (1);
 }
