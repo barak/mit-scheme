@@ -37,7 +37,7 @@
 
 ;;;; RTL Rules for 68020
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.149 1987/01/09 21:57:22 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.150 1987/01/09 23:24:13 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access lap-generator-syntax-table compiler-package)
@@ -234,8 +234,9 @@
 (define reg:enclose-result '(@AO 6 #x0014))
 (define reg:compiled-memtop '(@A 6))
 
-(define popper:apply-closure '(@AO 6 #x0168))
-(define popper:apply-stack '(@AO 6 #x01E8))
+(define popper:apply-closure '(@AO 6 #x016E))
+(define popper:apply-stack '(@AO 6 #x01AE))
+(define popper:value '(@AO 6 #x01EE))
 
 ;;;; Transfers to Registers
 
@@ -726,15 +727,15 @@
 
 (define-rule statement
   (MESSAGE-RECEIVER:CLOSURE (? frame-size))
-  `((MOVE L (& ,frame-size) (@-A 7))))
+  `((MOVE L (& ,(* frame-size 4)) (@-A 7))))
 
 (define-rule statement
   (MESSAGE-RECEIVER:STACK (? frame-size))
-  `((MOVE L (& ,(+ #x00200000 frame-size)) (@-A 7))))
+  `((MOVE L (& ,(+ #x00200000 (* frame-size 4))) (@-A 7))))
 
 (define-rule statement
   (MESSAGE-RECEIVER:SUBPROBLEM (? continuation))
-  (list `(MOVE L (& #x00400000) (@-A 7))))
+  (list '(MOVE L (& #x00400000) (@-A 7))))
 
 (define (apply-closure-sequence frame-size receiver-offset label)
   `((MOVEQ (& -1) (D 0))
@@ -752,12 +753,10 @@
 
 (define-rule statement
   (MESSAGE-SENDER:VALUE (? receiver-offset))
-  (let ((size-offset (+ (* receiver-offset 4) 2)))
-    `(,@(clear-map!)
-      (ADD W (@AO 7 ,size-offset) (A 7))
-      (LEA (@AO 7 ,(+ size-offset 2)) (A 7))
-      (CLR B (@A 7))
-      (RTS))))
+  `(,@(clear-map!)
+    (MOVEQ (& -1) (D 0))
+    (LEA (@AO 7 ,(* receiver-offset 4)) (A 0))
+    (JMP ,popper:value)))
 
 ;;; end USING-SYNTAX
 )
