@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.21 1987/01/22 14:14:32 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.22 1987/10/19 20:46:14 pas Exp $ */
 
 /* CONTAINS:                                                         */
 /* Scheme_Array constructors, and selectors                          */
@@ -105,19 +105,9 @@ int Scheme_Number_To_Double(Arg, Cell) Pointer Arg; double *Cell;
   }
   return (0);
 }
-
-void C_Array_Copy(From_Array, To_Array, Length) REAL *From_Array, *To_Array; long Length;
-{ long i;
-  REAL *To_Here, *From_Here;
-  To_Here = To_Array;
-  From_Here = From_Array;
-  for (i=0; i < Length; i++) {
-    *To_Here++ = ((REAL) *From_Here++) ;
-  }
-}
 
-
-/**** Scheme Primitives *****/
+
+/**** SCHEME PRIMITIVES *****/
 
 /*   I think this is not needed, can be done at s-code ...
 Define_Primitive(Prim_Array_Predicate, 1, "ARRAY?")
@@ -205,19 +195,17 @@ Define_Primitive(Prim_Array_Set, 3, "ARRAY-SET!")
 Define_Primitive(Prim_Array_Copy, 1, "ARRAY-COPY")
 { long Length, i, allocated_cells;
   REAL *To_Array, *From_Array;
-  Pointer Result;
-
+  SCHEME_ARRAY Result;
+  
   Primitive_1_Args();
   Arg_1_Type(TC_ARRAY);
   Length = Array_Length(Arg1);
 
   Allocate_Array(Result, Length, allocated_cells);
-  From_Array = Scheme_Array_To_C_Array(Arg1);
-  To_Array   = Scheme_Array_To_C_Array(Result);
-
-  C_Array_Copy(From_Array, To_Array, Length);
-  return Result; 
+  Array_Copy(Arg1, Result);
+  return Result;
 }
+
 
 Define_Primitive(Prim_SubArray, 3, "SUBARRAY")
 { long Length, i, allocated_cells, Start, End, New_Length;
@@ -522,18 +510,6 @@ Define_Primitive(Prim_Array_Clip_Min_Max, 3, "ARRAY-CLIP-MIN-MAX!")
   return Result; 
 }
 
-void C_Array_Clip(Length, From_Here, To_Here, Min_Val, Max_Val)
-     long Length; REAL *From_Here, *To_Here, Min_Val, Max_Val;
-{ long i;
-  for (i=0; i < Length; i++) {
-    if ((*From_Here)<Min_Val) *To_Here++ = Min_Val;
-    else if ((*From_Here)>Max_Val) *To_Here++ = Max_Val;
-    else *To_Here++ = *From_Here;
-    From_Here++ ;
-  }
-}
-
-
 Define_Primitive(Prim_Array_Make_Polar, 2, "ARRAY-MAKE-POLAR!")
 { long Length, i;
   REAL *To_Here_Mag, *To_Here_Phase;
@@ -718,6 +694,121 @@ Define_Primitive(Prim_Array_Complex_Multiplication_Into_Second_One, 4, "ARRAY-CO
     From_Here_2++ ;
     From_Here_3++ ;
     From_Here_4++ ;
+  }
+  return NIL;
+}
+
+Define_Primitive(Prim_Array_Division_Into_First_One, 3, "ARRAY-DIVISION-INTO-FIRST-ONE!")
+{ long Length, i;
+  SCHEME_ARRAY scheme_result;
+  REAL *x,*y,*result;
+  REAL infinity;
+  int Error_Number;
+  
+  Primitive_3_Args();
+  Arg_1_Type(TC_ARRAY);
+  Arg_2_Type(TC_ARRAY);
+  Length = Array_Length(Arg1);
+  if (Length != Array_Length(Arg2)) Primitive_Error(ERR_ARG_2_BAD_RANGE);
+  Error_Number = Scheme_Number_To_REAL(Arg3, &infinity); /* User-Provided Infinity */
+  if (Error_Number == 1) Primitive_Error(ERR_ARG_3_BAD_RANGE);
+  if (Error_Number == 2) Primitive_Error(ERR_ARG_3_WRONG_TYPE);
+  
+  scheme_result = Arg1;
+  result = Scheme_Array_To_C_Array(scheme_result);
+  x = Scheme_Array_To_C_Array(Arg1);
+  y = Scheme_Array_To_C_Array(Arg2);
+  
+  for (i=0; i < Length; i++) {
+    if (y[i] == 0.0) {
+      if (x[i] == 0.0)		/* zero/zero */
+	result[i] = 1.0;
+      else
+	result[i] = infinity * x[i];
+    }
+    else
+      result[i] = x[i] / y[i];      
+  }
+  return scheme_result;
+}
+
+Define_Primitive(Prim_Array_Division_Into_Second_One, 3, "ARRAY-DIVISION-INTO-SECOND-ONE!")
+{ long Length, i;
+  SCHEME_ARRAY scheme_result;
+  REAL *x,*y,*result;
+  REAL infinity;
+  int Error_Number;
+  
+  Primitive_3_Args();
+  Arg_1_Type(TC_ARRAY);
+  Arg_2_Type(TC_ARRAY);
+  Length = Array_Length(Arg1);
+  if (Length != Array_Length(Arg2)) Primitive_Error(ERR_ARG_2_BAD_RANGE);
+  Error_Number = Scheme_Number_To_REAL(Arg3, &infinity); /* User-Provided Infinity */
+  if (Error_Number == 1) Primitive_Error(ERR_ARG_3_BAD_RANGE);
+  if (Error_Number == 2) Primitive_Error(ERR_ARG_3_WRONG_TYPE);
+  
+  scheme_result = Arg2;
+  result = Scheme_Array_To_C_Array(scheme_result);
+  x = Scheme_Array_To_C_Array(Arg1);
+  y = Scheme_Array_To_C_Array(Arg2);
+    
+  for (i=0; i < Length; i++) {
+    if (y[i] == 0.0) {
+      if (x[i] == 0.0)		/* zero/zero */
+	result[i] = 1.0;
+      else
+	result[i] = infinity * x[i];
+    }
+    else
+      result[i] = x[i] / y[i];      
+  }
+  return scheme_result;
+}
+
+Define_Primitive(Prim_Array_Complex_Multiplication_Into_First_One, 5, "ARRAY-COMPLEX-DIVISION-INTO-FIRST-ONE!")
+{ long Length, i;
+  SCHEME_ARRAY scheme_result_r, scheme_result_i;
+  REAL *x_r,*x_i, *y_r,*y_i, *result_r,*result_i;
+  register REAL Temp, radius, infinity;
+  int Error_Number;
+  
+  Primitive_5_Args();
+  Arg_1_Type(TC_ARRAY);
+  Arg_2_Type(TC_ARRAY);
+  Arg_3_Type(TC_ARRAY);
+  Arg_4_Type(TC_ARRAY);
+  Length = Array_Length(Arg1);
+  if (Length != Array_Length(Arg2)) Primitive_Error(ERR_ARG_2_BAD_RANGE);
+  if (Length != Array_Length(Arg3)) Primitive_Error(ERR_ARG_3_BAD_RANGE);
+  if (Length != Array_Length(Arg4)) Primitive_Error(ERR_ARG_4_BAD_RANGE);
+  Error_Number = Scheme_Number_To_REAL(Arg5, &infinity); /* User-Provided Infinity */
+  if (Error_Number == 1) Primitive_Error(ERR_ARG_5_BAD_RANGE);
+  if (Error_Number == 2) Primitive_Error(ERR_ARG_5_WRONG_TYPE);
+  
+  scheme_result_r = Arg1;
+  scheme_result_i = Arg2;
+  result_r = Scheme_Array_To_C_Array(scheme_result_r);
+  result_i = Scheme_Array_To_C_Array(scheme_result_i);
+  x_r = Scheme_Array_To_C_Array(Arg1);
+  x_i = Scheme_Array_To_C_Array(Arg2);
+  y_r = Scheme_Array_To_C_Array(Arg3);
+  y_i = Scheme_Array_To_C_Array(Arg4);
+  
+  for (i=0; i < Length; i++) {
+    Temp        = (x_r[i] * y_r[i]) + (x_i[i] * y_i[i]);
+    radius      = (y_r[i] * y_r[i]) + (y_i[i] * y_i[i]);
+    
+    if (radius == 0.0) {
+      if (x_r[i] == 0.0) result_r[i] = 1.0;
+      else result_r[i] = infinity * x_r[i];
+      if (x_i[i] == 0.0) result_i[i] = 1.0;
+      else result_i[i] = infinity * x_i[i];
+    }
+    else {
+      result_i[i] = ( (x_i[i] * y_r[i]) - (x_r[i] * y_i[i]) ) / radius;
+      result_r[i] = Temp / radius;
+    }
   }
   return NIL;
 }
@@ -1149,5 +1240,3 @@ long n;
   *b = *b / *a;
   return;
 }
-
-/* END OF FILE */
