@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.15 1996/12/16 04:37:31 cph Exp $
+$Id: ux.c,v 1.16 1997/03/21 02:06:08 cph Exp $
 
-Copyright (c) 1990-96 Massachusetts Institute of Technology
+Copyright (c) 1990-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -654,7 +654,7 @@ linux_heap_malloc (unsigned long requested_length)
     = (mmap (((void *) ps),
 	     (((requested_length + (ps - 1)) / ps) * ps),
 	     (PROT_EXEC | PROT_READ | PROT_WRITE),
-	     (MAP_PRIVATE | MAP_ANONYMOUS),
+	     (MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED),
 	     0, 0));
   return ((addr == ((void *) (-1))) ? 0 : addr);
 }
