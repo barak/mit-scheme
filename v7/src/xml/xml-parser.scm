@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml-parser.scm,v 1.15 2002/12/09 19:03:38 cph Exp $
+;;; $Id: xml-parser.scm,v 1.16 2002/12/15 05:23:19 cph Exp $
 ;;;
 ;;; Copyright (c) 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -93,6 +93,15 @@
 (define alphabet:alphanumeric (char-set->alphabet char-set:alphanumeric))
 
 ;;;; Top level
+
+(define (read-xml-file pathname #!optional pi-handlers)
+  (call-with-input-file pathname
+    (lambda (port)
+      (read-xml port (if (default-object? pi-handlers) '() pi-handlers)))))
+
+(define (read-xml port #!optional pi-handlers)
+  (parse-xml-document (input-port->parser-buffer port)
+		      (if (default-object? pi-handlers) '() pi-handlers)))
 
 (define (parse-xml-document buffer #!optional pi-handlers) ;[1,22]
   (if (not (parser-buffer? buffer))

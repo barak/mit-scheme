@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml-output.scm,v 1.8 2002/12/09 18:19:04 cph Exp $
+;;; $Id: xml-output.scm,v 1.9 2002/12/15 05:23:10 cph Exp $
 ;;;
 ;;; Copyright (c) 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -25,6 +25,11 @@
 
 (declare (usual-integrations))
 
+(define (write-xml-file xml pathname)
+  (call-with-output-file pathname
+    (lambda (port)
+      (write-xml xml port))))
+
 (define-generic write-xml (object port))
 
 (define-method write-xml ((document xml-document-rtd) port)
