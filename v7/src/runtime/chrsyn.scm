@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: chrsyn.scm,v 1.4 2001/09/24 03:00:56 cph Exp $
+;;; $Id: chrsyn.scm,v 1.5 2001/09/25 05:13:00 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -41,8 +41,6 @@
 	(guarantee-char-syntax-table table 'MAKE-CHAR-SYNTAX-TABLE)))))
 
 (define (get-char-syntax table char)
-  (if (not (char? char))
-      (error:wrong-type-argument char "character" 'GET-CHAR-SYNTAX))
   (vector-ref (guarantee-char-syntax-table table 'GET-CHAR-SYNTAX)
 	      (char->ascii char)))
 
@@ -94,9 +92,11 @@
 		'(166 169 (172 174) (176 177) 181 183 (188 190) 215 247))
       (for-each (iso-setter ".")
 		'(161 167 191)))
-    (set-char-syntax! table 160 " ")
-    (set-char-syntax! table 171 (string #\( (integer->char 187)))
-    (set-char-syntax! table 187 (string #\) (integer->char 171)))
+    (set-char-syntax! table (integer->char 160) " ")
+    (set-char-syntax! table (integer->char 171)
+		      (string #\( (integer->char 187)))
+    (set-char-syntax! table (integer->char 187)
+		      (string #\) (integer->char 171)))
 
     (set! standard-char-syntax-table table)
     unspecific))
