@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.15 1991/08/16 02:09:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.16 1991/08/16 18:44:42 jinx Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -75,7 +75,7 @@ MIT in each case. |#
 (define *pp-primitives-by-name* true)
 (define *pp-uninterned-symbols-by-name* true)
 (define *pp-no-highlights?* true)
-(define *pp-really-pretty?* true)
+(define *pp-save-vertical-space?* false)
 (define *pp-lists-as-tables?* true)
 (define *pp-forced-x-size* false)
 
@@ -199,20 +199,15 @@ MIT in each case. |#
 			     print-code-node)
 			    (else
 			     print-non-code-node)))))
-	       (fluid-let ((x-size
-			    (let ((value (- x-size (string-length end-string))))
-			      (if (not (positive? value))
-				  x-size
-				  value))))
-		 (handler (highlighted-node/subnode node)
-			  (+ column (string-length start-string))
-			  depth)))
+	       (handler (highlighted-node/subnode node)
+			(+ column (string-length start-string))
+			(+ depth (string-length end-string))))
 	     (*unparse-string end-string))))
 	(else
 	 (*unparse-string node))))
 
 (define (print-list-node node column depth)
-  (if (and (not *pp-really-pretty?*)
+  (if (and *pp-save-vertical-space?*
 	   (fits-within? node column depth))
       (print-guaranteed-list-node node)
       (let* ((subnodes (node-subnodes node))
@@ -275,23 +270,30 @@ MIT in each case. |#
   (define (default)
     (print-column nodes column depth))
 
-  (let ((available-space (-1+ (- x-size column))))
+  (let* ((available-space (- x-size column))
+	 (n-nodes (length nodes))
+	 (max-cols (quotient (+ n-nodes 1) 2)))
 
     (define (try-columns n-columns)
-      (let* ((nodev (list->vector nodes))
-	     (vsize (vector-length nodev)))
+      (let ((nodev (list->vector nodes)))
 
-	(define (fit? widths space)
-	  (or (null? widths)
-	      (let ((next (- space (1+ (car widths)))))
-		(and (>= next 0)
-		     (fit? (cdr widths)
-			   next)))))
+	(define (fit? n-cols widths)
+	  ;; This must check that all rows fit.
+	  ;; The last one must be treated specially because it is
+	  ;; followed by depth tokens (close parens).
+	  (and (>= available-space
+		   (+ (-1+ n-cols)
+		      (reduce + 0 widths)))
+	       (let ((last-n (remainder n-nodes n-cols)))
+		 (>= available-space
+		     (+ (-1+ last-n)
+			depth
+			(reduce + 0 (list-head widths last-n)))))))
 
 	(define (find-max-width posn step)
 	  (let loop ((posn posn)
 		     (width 0))
-	    (if (>= posn vsize)
+	    (if (>= posn n-nodes)
 		width
 		(let ((next (node-size (vector-ref nodev posn))))
 		  (loop (+ posn step)
@@ -310,26 +312,33 @@ MIT in each case. |#
 	  (if (< n 2)
 	      (default)
 	      (let ((widths (find-widths n)))
-		(if (fit? widths available-space)
-		    (print-table nodes column widths)
+		(if (fit? n widths)
+		    (print-guaranteed-table nodes column widths)
 		    (try (- n 1))))))
 
 	(try n-columns)))
 
-    (let loop ((n 1)
-	       (nodes (cdr nodes))
-	       (space (- available-space
-			 (node-size (car nodes)))))
-      (cond ((> space 0)
-	     (loop (1+ n)
-		   (cdr nodes)
-		   (- space (1+ (node-size (car nodes))))))
-	    ((<= n 2)
-	     (default))
-	    (else
-	     (try-columns (-1+ n)))))))
+    (if (< n-nodes 4)
+	;; It's silly to tabulate 3 or less things.
+	(default)
+	(let loop ((n 1)
+		   (nodes (cdr nodes))
+		   (space (- available-space
+			     (node-size (car nodes)))))
+	  (cond ((> n max-cols)
+		 ;; Make sure there are at least two relatively full rows.
+		 ;; This also guarantees that nodes is not null?
+		 (try-columns max-cols))
+		((> space 0)
+		 (loop (1+ n)
+		       (cdr nodes)
+		       (- space (1+ (node-size (car nodes))))))
+		((<= n 2)
+		 (default))
+		(else
+		 (try-columns (-1+ n))))))))
 
-(define (print-table nodes column all-widths)
+(define (print-guaranteed-table nodes column all-widths)
   (define (print-row row widths spaces)
     (cond ((null? row)
 	   unspecific)
