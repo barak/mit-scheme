@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/keymap.scm,v 1.10 1991/08/06 15:39:26 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/keymap.scm,v 1.11 1992/01/09 17:54:12 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -168,7 +168,10 @@ Previous contents of that buffer are killed first."
   (map (lambda (element)
 	 (cons (xkey->name (car element))
 	       (command-name-string (cdr element))))
-       (sort elements (lambda (a b) (xkey<? (car a) (car b))))))
+       (sort (list-transform-negative elements
+	       (lambda (element)
+		 (button? (car element))))
+	     (lambda (a b) (xkey<? (car a) (car b))))))
 
 (define (sort-by-prefix elements)
   (let ((prefix-alist '()))
@@ -189,15 +192,18 @@ Previous contents of that buffer are killed first."
 			   (lambda (index)
 			     (make-entry (string-head string index) element)))
 			  (index (string-find-previous-char string #\space)))
-		      (cond (index
-			     (has-prefix (1+ index)))
-			    ((string-prefix? "M-C-" string)
-			     (has-prefix 4))
-			    ((or (string-prefix? "M-" string)
-				 (string-prefix? "C-" string))
-			     (has-prefix 2))
-			    (else
-			     (make-entry "" element))))))
+		      (if index
+			  (has-prefix (1+ index))
+			  (let ((end (string-length string)))
+			    (let loop ((index 0))
+			      (let ((index+1 (+ index 1)))
+				(if (and (< index+1 end)
+					 (char=? #\-
+						 (string-ref string index+1))
+					 (memv (string-ref string index)
+					       '(#\C #\M #\H #\S #\T)))
+				    (loop (+ index+1 1))
+				    (has-prefix index)))))))))
 		elements))
     (map (lambda (entry)
 	   (group-elements (reverse! (cdr entry))))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.136 1991/11/26 08:03:27 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.137 1992/01/09 17:53:59 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -70,7 +70,6 @@ This is an alist, the cars of which are pathname types,
 and the cdrs of which are major modes."
   (os/file-type-to-major-mode))
 
-(define-default-key 'fundamental 'undefined)
 (define-key 'fundamental char-set:graphic 'self-insert-command)
 (define-key 'fundamental char-set:numeric 'auto-digit-argument)
 (define-key 'fundamental #\- 'auto-negative-argument)
@@ -110,7 +109,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental #\c-@ 'set-mark-command)
 (define-key 'fundamental #\c-a 'beginning-of-line)
 (define-key 'fundamental #\c-b 'backward-char)
-(define-prefix-key 'fundamental #\c-c 'prefix-key)
+(define-prefix-key 'fundamental #\c-c)
 (define-key 'fundamental #\c-d 'delete-char)
 (define-key 'fundamental #\c-e 'end-of-line)
 (define-key 'fundamental #\c-f 'forward-char)
@@ -131,7 +130,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental #\c-u 'universal-argument)
 (define-key 'fundamental #\c-v 'scroll-up)
 (define-key 'fundamental #\c-w 'kill-region)
-(define-prefix-key 'fundamental #\c-x 'prefix-key)
+(define-prefix-key 'fundamental #\c-x)
 (define-key 'fundamental #\c-y 'yank)
 (define-key 'fundamental #\c-z 'control-meta-prefix)
 (define-key 'fundamental #\c-\[ 'meta-prefix)
@@ -273,7 +272,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental '(#\c-x #\0) 'delete-window)
 (define-key 'fundamental '(#\c-x #\1) 'delete-other-windows)
 (define-key 'fundamental '(#\c-x #\2) 'split-window-vertically)
-(define-prefix-key 'fundamental '(#\c-x #\4) 'prefix-key)
+(define-prefix-key 'fundamental '(#\c-x #\4))
 (define-key 'fundamental '(#\c-x #\4 #\c-f) 'find-file-other-window)
 (define-key 'fundamental '(#\c-x #\4 #\.) 'find-tag-other-window)
 (define-key 'fundamental '(#\c-x #\4 #\b) 'switch-to-buffer-other-window)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.60 1991/08/06 15:39:30 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.61 1992/01/09 17:53:26 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -47,173 +47,364 @@
 (declare (usual-integrations))
 
 (define-structure (comtab (constructor make-comtab ()))
-  (dispatch-alists (cons '() '()) read-only true)
-  (button-alist '()))
+  (vector 0)
+  (alist '()))
 
-(define (set-comtab-entry! alists key command)
-  (let ((entry (assq key (cdr alists))))
-    (if entry
-	(set-cdr! entry command)
-	(set-cdr! alists (cons (cons key command) (cdr alists))))))
+(define (comtab-get comtab key)
+  (let ((vector (comtab-vector comtab)))
+    (if (and (vector? vector)
+	     (char? key)
+	     (< (char->integer key) (vector-length vector)))
+	(vector-ref vector (char->integer key))
+	(let ((entry (assq key (comtab-alist comtab))))
+	  (and entry
+	       (cdr entry))))))
 
-(define (make-prefix-key! alists key alists*)
-  (let ((entry (assq key (car alists))))
-    (if entry
-	(set-cdr! entry alists*)
-	(set-car! alists
-		  (cons (cons key alists*)
-			(car alists))))))
+(define (comtab-put! comtab key datum)
+  (cond ((not datum)
+	 (comtab-remove! comtab key))
+	((and (char? key) (< (char->integer key) 256))
+	 (let ((vector (comtab-vector comtab)))
+	   (if (vector? vector)
+	       (vector-set! vector (char->integer key) datum)
+	       (let ((alist (comtab-alist comtab)))
+		 (let ((entry (assq key alist)))
+		   (if entry
+		       (set-cdr! entry datum)
+		       (let ((vector (+ vector 1))
+			     (alist (cons (cons key datum) alist)))
+			 (if (< vector 64)
+			     (without-interrupts
+			      (lambda ()
+				(set-comtab-vector! comtab vector)
+				(set-comtab-alist! comtab alist)))
+			     (let ((vector (make-vector 256 false)))
+			       (let ((alist
+				      (list-transform-negative alist
+					(lambda (entry)
+					  (let ((key (car entry)))
+					    (and (char? key)
+						 (< (char->integer key) 256)
+						 (begin
+						   (vector-set!
+						    vector
+						    (char->integer key)
+						    (cdr entry))
+						   true)))))))
+				 (without-interrupts
+				  (lambda ()
+				    (set-comtab-vector! comtab vector)
+				    (set-comtab-alist! comtab alist))))))))))))
+	 ;; Defining a lower-case character defines the corresponding
+	 ;; upper-case character to be an alias if not already defined.
+	 (if (char-lower-case? key)
+	     (let ((key* (char-upcase key)))
+	       (if (not (comtab-get comtab key*))
+		   (comtab-put! comtab key* (cons comtab key))))))
+	(else
+	 (let ((alist (comtab-alist comtab)))
+	   (let ((entry (assq key alist)))
+	     (if entry
+		 (set-cdr! entry datum)
+		 (set-comtab-alist! comtab
+				    (cons (cons key datum) alist))))))))
 
-(define (comtab-lookup-prefix comtabs key if-undefined if-defined)
-  (let ((alists (comtab-dispatch-alists (car comtabs))))
-    (cond ((key? key)
-	   (if-defined alists (remap-alias-key key)))
-	  ((pair? key)
-	   (let ((keys (map remap-alias-key key)))
-	     (let loop ((alists alists) (keys keys))
-	       (let ((key (car keys))
-		     (keys (cdr keys)))
-		 (cond ((null? keys)
-			(if-defined alists key))
-		       ((assq key (car alists))
-			=> (lambda (entry) (loop (cdr entry) keys)))
-		       ((assq key (cdr alists))
-			(error "Illegal prefix key:" key))
-		       ((not if-undefined)
-			(set-comtab-entry! alists
-					   key
-					   (ref-command-object prefix-key))
-			(let ((alists* (cons '() '())))
-			  (make-prefix-key! alists key alists*)
-			  (loop alists* keys)))
-		       (else
-			(if-undefined)))))))
-	  (else
-	   (error "Illegal comtab key" key)))))
+(define (comtab-remove! comtab key)
+  (if (and (char? key) (< (char->integer key) 256))
+      (let ((vector (comtab-vector comtab)))
+	(if (vector? vector)
+	    (vector-set! vector (char->integer key) false)
+	    (let ((alist (comtab-alist comtab)))
+	      (let ((entry (assq key alist)))
+		(if entry
+		    (let ((vector (- vector 1))
+			  (alist (delq entry alist)))
+		      (without-interrupts
+		       (lambda ()
+			 (set-comtab-vector! comtab vector)
+			 (set-comtab-alist! comtab alist)))))))))
+      (set-comtab-alist! comtab (del-assq key (comtab-alist comtab)))))
+
+(define (valid-comtabs? object)
+  (or (mode? object)
+      (symbol? object)
+      (comtab? object)
+      (list-of-comtabs? object)))
 
-(define (comtab-entry comtabs key)
-  (let ((continue
-	 (if (button? key)
-	     (lambda ()
-	       (and (not (null? (cdr comtabs)))
-		    (comtab? (cadr comtabs))
-		    (comtab-entry (cdr comtabs) key)))
-	     (lambda ()
-	       (cond ((null? (cdr comtabs))
-		      (ref-command-object undefined))
-		     ((comtab? (cadr comtabs))
-		      (comtab-entry (cdr comtabs) key))
+(define (guarantee-comtabs object procedure)
+  (cond ((mode? object)
+	 (mode-comtabs object))
+	((symbol? object)
+	 (mode-comtabs (->mode object)))
+	((comtab? object)
+	 (list object))
+	((list-of-comtabs? object)
+	 object)
+	(else
+	 (error:wrong-type-argument object "list of comtabs" procedure))))
+
+(define (mode-name? object)
+  (and (symbol? object)
+       (string-table-get editor-modes (symbol->string object))))
+
+(define (list-of-comtabs? object)
+  (and (not (null? object))
+       (list? object)
+       (for-all? object comtab?)))
+
+(define (valid-key? object)
+  (or (key? object)
+      (prefixed-key? object)
+      (button? object)))
+
+(define (prefixed-key? object)
+  (let loop ((object object))
+    (and (pair? object)
+	 (key? (car object))
+	 (or (null? (cdr object))
+	     (loop (cdr object))))))
+
+(define (valid-datum? object)
+  (or (not object)
+      (command? object)
+      (comtab? object)
+      (command&comtab? object)
+      (comtab-alias? object)))
+
+(define (command&comtab? object)
+  (and (pair? object)
+       (command? (car object))
+       (comtab? (cdr object))))
+
+(define (comtab-alias? object)
+  (and (pair? object)
+       (valid-comtabs? (car object))
+       (valid-key? (cdr object))))
+
+(define (comtab-alias/dereference datum)
+  (lookup-key (car datum) (cdr datum)))
+
+(define (lookup-key comtabs key)
+  (let ((comtabs (guarantee-comtabs comtabs 'LOOKUP-KEY)))
+    (let ((simple-lookup
+	   (lambda (key)
+	     (let loop ((comtabs* comtabs))
+	       (cond ((comtab-get (car comtabs*) key)
+		      => handle-datum)
+		     ((not (null? (cdr comtabs*)))
+		      (loop (cdr comtabs*)))
 		     (else
-		      (cadr comtabs)))))))
-    (let ((try
-	   (lambda (key alist)
-	     (let ((entry (assq key alist)))
-	       (if entry
-		   (cdr entry)
-		   (continue))))))
-      (cond ((or (key? key) (pair? key))
-	     (comtab-lookup-prefix comtabs key continue
-	       (lambda (alists key)
-		 (try key (cdr alists)))))
+		      false))))))
+      (cond ((key? key)
+	     (simple-lookup (remap-alias-key key)))
 	    ((button? key)
-	     (try key (comtab-button-alist (car comtabs))))
+	     (simple-lookup key))
+	    ((prefixed-key? key)
+	     (let ((prefix (except-last-pair key))
+		   (key (remap-alias-key (car (last-pair key)))))
+	       (if (null? prefix)
+		   (simple-lookup key)
+		   (let loop ((comtabs* comtabs))
+		     (let ((comtab
+			    (lookup-prefix (car comtabs*) prefix false)))
+		       (cond ((and comtab (comtab-get comtab key))
+			      => handle-datum)
+			     ((not (null? (cdr comtabs*)))
+			      (loop (cdr comtabs*)))
+			     (else
+			      false)))))))
 	    (else
-	     (error "Illegal comtab key" key))))))
-
-(define (prefix-key-list? comtabs keys)
-  (let loop
-      ((key->alist (car (comtab-dispatch-alists (car comtabs))))
-       (keys (if (list? keys) keys (list keys))))
-    (or (null? keys)
-	(let ((entry (assq (remap-alias-key (car keys)) key->alist)))
-	  (if entry
-	      (loop (cadr entry) (cdr keys))
-	      (and (not (null? (cdr comtabs)))
-		   (comtab? (cadr comtabs))
-		   (prefix-key-list? (cdr comtabs) keys)))))))
+	     (error:wrong-type-argument key "comtab key" 'LOOKUP-KEY))))))
 
-(define (define-key mode key command)
-  (let ((comtabs (mode-comtabs (->mode mode)))
-	(command (->command command)))
-    (if (button? key)
-	(let ((alist (comtab-button-alist (car comtabs))))
-	  (let ((entry (assq key alist)))
-	    (if entry
-		(set-cdr! entry command)
-		(set-comtab-button-alist! (car comtabs)
-					  (cons (cons key command) alist)))))
-	(let ((normal-key
-	       (lambda (key)
-		 (comtab-lookup-prefix comtabs key false
-		   (lambda (alists key)
-		     (set-comtab-entry! alists key command))))))
-	  (cond ((or (key? key) (pair? key))
-		 (normal-key key))
-		((char-set? key)
-		 (for-each normal-key (char-set-members key)))
-		(else
-		 (error "Illegal comtab key" key))))))
+(define (handle-datum datum)
+  (cond ((or (command? datum)
+	     (comtab? datum)
+	     (command&comtab? datum))
+	 datum)
+	((comtab-alias? datum)
+	 (comtab-alias/dereference datum))
+	(else
+	 (error "Illegal comtab datum:" datum))))
+
+(define (lookup-prefix comtab prefix intern?)
+  (let loop ((comtab comtab) (prefix* prefix))
+    (if (null? prefix*)
+	comtab
+	(let ((key (remap-alias-key (car prefix*)))
+	      (prefix* (cdr prefix*)))
+	  (let datum-loop ((datum (comtab-get comtab key)))
+	    (cond ((not datum)
+		   (and intern?
+			(let ((datum (make-comtab)))
+			  ;; Note that this will clobber a comtab-alias
+			  ;; that points to an undefined entry.
+			  (comtab-put! comtab key datum)
+			  (loop datum prefix*))))
+		  ((comtab? datum)
+		   (loop datum prefix*))
+		  ((command&comtab? datum)
+		   (loop (cdr datum) prefix*))
+		  ((comtab-alias? datum)
+		   (datum-loop (comtab-alias/dereference datum)))
+		  ((command? datum)
+		   (error "Key sequence too long:"
+			  prefix
+			  (- (length prefix) (length prefix*))))
+		  (else
+		   (error "Illegal comtab datum:" datum))))))))
+
+(define (comtab-entry comtabs key)
+  (let ((object (lookup-key comtabs key)))
+    (cond ((not object)
+	   (and (not (button? key))
+		(ref-command-object undefined)))
+	  ((command? object)
+	   object)
+	  ((command&comtab? object)
+	   (car object))
+	  ((comtab? object)
+	   (ref-command-object prefix-key))
+	  (else
+	   (error "Illegal result from lookup-key:" object)))))
+
+(define (prefix-key-list? comtabs key)
+  (let ((object (lookup-key comtabs key)))
+    (or (comtab? object)
+	(command&comtab? object))))
+
+(define (define-key mode key datum)
+  (%define-key (car (guarantee-comtabs mode 'DEFINE-KEY))
+	       key
+	       (if (valid-datum? datum) datum (->command datum))
+	       'DEFINE-KEY))
+
+(define (define-prefix-key mode key #!optional command)
+  (%define-key (car (guarantee-comtabs mode 'DEFINE-PREFIX-KEY))
+	       (begin
+		 (if (button? key)
+		     (error:wrong-type-argument key
+						"comtab prefix key"
+						'DEFINE-PREFIX-KEY))
+		 key)
+	       (let ((command
+		      (if (default-object? command)
+			  (ref-command-object prefix-key)
+			  (->command command)))
+		     (comtab (make-comtab)))
+		 (if (eq? command (ref-command-object prefix-key))
+		     comtab
+		     (cons command comtab)))
+	       'DEFINE-PREFIX-KEY))
+
+(define (%define-key comtab key datum procedure)
+  (cond ((or (key? key) (button? key))
+	 (comtab-put! comtab (remap-alias-key key) datum))
+	((char-set? key)
+	 (for-each (lambda (key)
+		     (comtab-put! comtab (remap-alias-key key) datum))
+		   (char-set-members key)))
+	((prefixed-key? key)
+	 (let ((prefix (except-last-pair key)))
+	   (comtab-put! (if (null? prefix)
+			    comtab
+			    (lookup-prefix comtab prefix true))
+			(remap-alias-key (car (last-pair key)))
+			datum)))
+	(else
+	 (error:wrong-type-argument key "comtab key" procedure)))
   key)
 
-(define (define-prefix-key mode key command)
-  (let ((comtabs (mode-comtabs (->mode mode)))
-	(command (->command command)))
-    (if (not (or (key? key) (pair? key)))
-	(error "Illegal comtab key" key))
-    (comtab-lookup-prefix comtabs key false
-      (lambda (alists key)
-	(set-comtab-entry! alists key command)
-	(make-prefix-key! alists key (cons '() '())))))
-  key)
-
-(define (define-default-key mode command)
-  (let ((comtabs (mode-comtabs (->mode mode)))
-	(command (->command command)))
-    (if (not (or (null? (cdr comtabs)) (command? (cadr comtabs))))
-	(error "Can't define default key for this mode" mode))
-    (set-cdr! comtabs (list command)))
-  'DEFAULT-KEY)
+(define (comtab-alist* comtab)
+  (let ((vector (comtab-vector comtab))
+	(alist (comtab-alist comtab)))
+    (if (vector? vector)
+	(let ((end (vector-length vector)))
+	  (let loop ((index 0))
+	    (if (< index end)
+		(let ((datum (vector-ref vector index)))
+		  (if datum
+		      (cons (cons (integer->char index) datum)
+			    (loop (+ index 1)))
+		      (loop (+ index 1))))
+		alist)))
+	alist)))
 
-(define (comtab-key-bindings comtabs command)
-  (define (search-comtabs comtabs)
-    (let ((bindings
-	   (search-comtab '() (comtab-dispatch-alists (car comtabs)))))
-      (if (and (not (null? (cdr comtabs)))
-	       (comtab? (cadr comtabs)))
-	  (append! bindings (search-comtabs (cdr comtabs)))
-	  bindings)))
-
-  (define (search-comtab prefix dispatch-alists)
-    (define (search-prefix-map alist)
-      (if (null? alist)
-	  (map (lambda (key) (append prefix (list key)))
-	       (search-command-map (cdr dispatch-alists)))
-	  (append! (search-comtab (append prefix (list (caar alist)))
-				  (cdar alist))
-		   (search-prefix-map (cdr alist)))))
-
-    (define (search-command-map alist)
-      (cond ((null? alist)
-	     '())
-	    ((eq? command (cdar alist))
-	     (cons (caar alist) (search-command-map (cdr alist))))
-	    (else
-	     (search-command-map (cdr alist)))))
-
-    (search-prefix-map (car dispatch-alists)))
-
-  ;; Filter out shadowed bindings.
-  (list-transform-positive (search-comtabs comtabs)
-    (lambda (xkey)
-      (eq? command (comtab-entry comtabs xkey)))))
-
 (define (comtab->alist comtab)
-  (let loop ((prefix '()) (da (comtab-dispatch-alists comtab)))
-    (append! (map (lambda (element)
-		    (cons (append prefix (list (car element)))
-			  (cdr element)))
-		  (cdr da))
-	     (append-map (lambda (element)
-			   (loop (append prefix (list (car element)))
-				 (cdr element)))
-			 (car da)))))
+  (let loop ((prefix '()) (comtab comtab))
+    (append-map!
+     (lambda (entry)
+       (if (and (button? (car entry))
+		(not (null? prefix)))
+	   '()
+	   (let ((prefix (append prefix (list (car entry)))))
+	     (let ((key (if (null? (cdr prefix)) (car prefix) prefix)))
+	       (let datum-loop ((datum (cdr entry)))
+		 (cond ((not datum)
+			'())
+		       ((command? datum)
+			(list (cons key datum)))
+		       ((comtab? datum)
+			(loop prefix datum))
+		       ((command&comtab? datum)
+			(cons (cons key (car datum))
+			      (loop prefix (cdr datum))))
+		       ((comtab-alias? datum)
+			(datum-loop (comtab-alias/dereference datum)))
+		       (else
+			(error "Illegal comtab datum:" datum))))))))
+     (comtab-alist* comtab))))
+
+(define (comtab-key-bindings comtabs command)
+  (let ((comtabs (guarantee-comtabs comtabs 'COMTAB-KEY-BINDINGS))
+	(command (->command command)))
+    ;; In addition to having a binding of COMMAND, every key in the
+    ;; result satisfies VALID-KEY?.  This eliminates bindings that are
+    ;; shadowed by other bindings.
+    (let ((valid-key?
+	   (lambda (key)
+	     (let ((datum (lookup-key comtabs key)))
+	       (cond ((command? datum)
+		      (eq? command datum))
+		     ((comtab? datum)
+		      (eq? command (ref-command-object prefix-key)))
+		     ((command&comtab? datum)
+		      (eq? command (car datum)))
+		     (else
+		      false))))))
+      (let loop ((comtabs comtabs))
+	(if (null? comtabs)
+	    '()
+	    (%comtab-bindings (car comtabs)
+			      (loop (cdr comtabs))
+			      command
+			      valid-key?))))))
+
+(define (%comtab-bindings comtab keys command valid-key?)
+  (let comtab-loop ((comtab comtab) (keys keys) (prefix '()))
+    (let alist-loop ((entries (comtab-alist* comtab)))
+      (if (null? entries)
+	  keys
+	  (let ((key (append prefix (list (caar entries)))))
+	    (let datum-loop
+		((datum (cdar entries))
+		 (keys (alist-loop (cdr entries))))
+	      (cond ((not datum)
+		     keys)
+		    ((command? datum)
+		     (if (and (eq? datum command)
+			      (valid-key? key))
+			 (cons key keys)
+			 keys))
+		    ((comtab? datum)
+		     (let ((keys (comtab-loop datum keys key)))
+		       (if (and (eq? command (ref-command-object prefix-key))
+				(valid-key? key))
+			   (cons key keys)
+			   keys)))
+		    ((command&comtab? datum)
+		     (datum-loop (car datum)
+				 (datum-loop (cdr datum) keys)))
+		    ((comtab-alias? datum)
+		     (datum-loop (comtab-alias/dereference datum) keys))
+		    (else
+		     (error "Illegal comtab datum:" datum)))))))))

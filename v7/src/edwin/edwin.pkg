@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.70 1992/01/08 06:26:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.71 1992/01/09 17:54:28 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -178,7 +178,6 @@ MIT in each case. |#
 	  comtab-entry
 	  comtab-key-bindings
 	  comtab?
-	  define-default-key
 	  define-key
 	  define-prefix-key
 	  make-comtab
