@@ -275,14 +275,17 @@
 
 ;;;; Initialization
 
+(define microcode-tables-identification)
+
 (define (snarf-version)
   (set! :identification (microcode-identify))
   (set! :release (vector-ref :identification 0))
   (set! :version (vector-ref :identification 1))
   (set! :modification (vector-ref :identification 2))
 
-  (scode-eval (binary-fasload (microcode-tables-filename))
-	      system-global-environment)
+  (set! microcode-tables-identification
+	(scode-eval (binary-fasload (microcode-tables-filename))
+		    system-global-environment))
 
   (set! fixed-objects (get-fixed-objects-vector))
 

@@ -37,6 +37,8 @@
 
 ;;;; Machine Dependent Type Tables
 
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 1.2 1987/01/13 18:56:14 cph Exp $
+
 (declare (usual-integrations))
 
 ;;; For quick access to any given table,
@@ -50,10 +52,6 @@
 ;;; [] Errors
 
 ;;; [] Fixed
-
-(vector-set! (get-fixed-objects-vector)
-	     #x23 ;(fixed-objects-vector-slot 'MICROCODE-TABLE-IDENTIFICATION)
-	     "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 1.1 1987/01/13 18:18:08 cph Exp $")
 
 (vector-set! (get-fixed-objects-vector)
 	     #x0F ;(fixed-objects-vector-slot 'MICROCODE-FIXED-OBJECTS-SLOTS)
@@ -831,3 +829,6 @@
 (vector-set! (get-fixed-objects-vector)
 	     23 ;(fixed-objects-vector-slot 'MICROCODE-TERMINATION-PROCEDURES)
 	     #())
+
+;;; This identification string is saved by the system.
+
