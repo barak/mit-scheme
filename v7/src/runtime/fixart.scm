@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: fixart.scm,v 1.4 1999/05/07 19:47:25 cph Exp $
+$Id: fixart.scm,v 1.5 2000/03/16 17:13:29 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -125,3 +125,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-integrable (int:->flonum n)
   ((ucode-primitive integer->flonum 2) n #b10))
+
+(define-integrable (flo:<= x y)
+  (not (flo:> x y)))
+
+(define-integrable (flo:>= x y)
+  (not (flo:< x y)))
+
+(define (flo:min n m)
+  (if (flo:< n m) n m))
+
+(define (flo:max n m)
+  (if (flo:> n m) n m))
