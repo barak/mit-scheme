@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.18 1991/04/29 10:42:11 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.19 1991/07/26 20:57:10 bal Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -504,12 +504,13 @@
 (define x-display-type)
 (define x-display-data)
 (define x-display-events)
+(define x-display-name false)
 
 (define (get-x-display)
   ;; X-OPEN-DISPLAY hangs, uninterruptibly, when the X server is
   ;; running the login loop of xdm.  Can this be fixed?
   (or x-display-data
-      (let ((display (x-open-display false)))
+      (let ((display (x-open-display x-display-name)))
 	(set! x-display-data display)
 	(set! x-display-events (make-queue))
 	(set! allow-asynchronous-input? true)
