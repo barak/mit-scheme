@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.193 2000/06/26 19:30:33 cph Exp $
+;;; $Id: imail-top.scm,v 1.194 2000/06/26 22:15:32 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -2246,7 +2246,7 @@ Negative argument means search in reverse."
   (body #f read-only #t)
   (selector #f read-only #t)
   (context #f read-only #t))
-
+
 (define (call-with-mime-decoding-output-port encoding port text? generator)
   (case encoding
     ((QUOTED-PRINTABLE)
@@ -2255,42 +2255,6 @@ Negative argument means search in reverse."
      (call-with-decode-base64-output-port port text? generator))
     (else
      (generator port))))
-
-(define (call-with-decode-quoted-printable-output-port port text? generator)
-  (let ((port
-	 (make-port decode-quoted-printable-port-type
-		    (decode-quoted-printable:initialize port text?))))
-    (let ((v (generator port)))
-      (close-output-port port)
-      v)))
-
-(define decode-quoted-printable-port-type
-  (make-port-type
-   `((WRITE-SUBSTRING
-      ,(lambda (port string start end)
-	 (decode-quoted-printable:update (port/state port) string start end)))
-     (CLOSE-OUTPUT
-      ,(lambda (port)
-	 (decode-quoted-printable:finalize (port/state port)))))
-   #f))
-
-(define (call-with-decode-base64-output-port port text? generator)
-  (let ((port
-	 (make-port decode-base64-port-type
-		    (decode-base64:initialize port text?))))
-    (let ((v (generator port)))
-      (close-output-port port)
-      v)))
-
-(define decode-base64-port-type
-  (make-port-type
-   `((WRITE-SUBSTRING
-      ,(lambda (port string start end)
-	 (decode-base64:update (port/state port) string start end)))
-     (CLOSE-OUTPUT
-      ,(lambda (port)
-	 (decode-base64:finalize (port/state port)))))
-   #f))
 
 ;;;; Automatic wrap/fill
 
