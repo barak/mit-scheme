@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.26 2001/11/26 19:15:10 cph Exp $
+@comment $Id: imail.texinfo,v 1.27 2001/11/26 19:21:37 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -1897,31 +1897,42 @@ that if a folder buffer is deleted, the sort order associated with
 that buffer is deleted too.
 
 @table @kbd
-@item M-x imail-sort-by-arrival
+@item C-c C-s C-v
+@kindex C-c C-s C-v
 @findex imail-sort-by-arrival
-Sort messages of current @acronym{IMAIL} folder by arrival time.  This
-is the default; this sort undoes any other sorting on the folder.
+Sort messages of current @acronym{IMAIL} folder by arrival time
+(@code{imail-sort-by-arrival}).  This is the default; this sort undoes
+any other sorting on the folder.
 
-@item M-x imail-sort-by-date
+@item C-c C-s C-d
+@kindex C-c C-s C-d
 @findex imail-sort-by-date
-Sort messages of current @acronym{IMAIL} folder by date.
+Sort messages of current @acronym{IMAIL} folder by date
+(@code{imail-sort-by-date}).
 
-@item M-x imail-sort-by-subject
+@item C-c C-s C-s
+@kindex C-c C-s C-s
 @findex imail-sort-by-subject
-Sort messages of current @acronym{IMAIL} folder by subject.
+Sort messages of current @acronym{IMAIL} folder by subject
+(@code{imail-sort-by-subject}).
 
-@item M-x imail-sort-by-author
+@item C-c C-s C-a
+@kindex C-c C-s C-a
 @findex imail-sort-by-author
-Sort messages of current @acronym{IMAIL} folder by author's name.
+Sort messages of current @acronym{IMAIL} folder by author's name
+(@code{imail-sort-by-author}).
 
-@item M-x imail-sort-by-recipient
+@item C-c C-s C-r
+@kindex C-c C-s C-r
 @findex imail-sort-by-recipient
-Sort messages of current @acronym{IMAIL} folder by recipient's names.
+Sort messages of current @acronym{IMAIL} folder by recipient's names
+(@code{imail-sort-by-recipient}).
 
-@item M-x imail-sort-by-correspondent
+@item C-c C-s C-c
+@kindex C-c C-s C-c
 @findex imail-sort-by-correspondent
 Sort messages of current @acronym{IMAIL} folder by the name of the
-other correspondent.
+other correspondent (@code{imail-sort-by-correspondent}).
 @end table
 
 The @acronym{IMAIL} sort commands perform a @emph{stable sort}: if
