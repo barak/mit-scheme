@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntproc.c,v 1.1 1997/10/22 05:26:38 cph Exp $
+$Id: ntproc.c,v 1.2 1997/10/24 06:55:43 cph Exp $
 
 Copyright (c) 1997 Massachusetts Institute of Technology
 
@@ -200,6 +200,8 @@ NT_make_subprocess (const char * filename,
     (PROCESS_TICK (child)) = process_tick;
     PROCESS_STATUS_SYNC (child);
     transaction_commit ();
+    STD_BOOL_API_CALL (CloseHandle, ((PROCESS_HANDLES (child)) . hThread));
+    ((PROCESS_HANDLES (child)) . hThread) = INVALID_HANDLE_VALUE;
     return (child);
   }
 }
@@ -297,7 +299,12 @@ find_child_console (DWORD pid)
   struct fcc_info fi;
   (fi . pid) = pid;
   (fi . hwnd) = INVALID_HANDLE_VALUE;
-  STD_BOOL_API_CALL (EnumWindows, (find_child_console_1, ((LPARAM) (&fi))));
+  if (!EnumWindows (find_child_console_1, ((LPARAM) (&fi))))
+    {
+      DWORD code = (GetLastError ());
+      if (code != ERROR_SUCCESS)
+	NT_error_api_call ((GetLastError ()), apicall_EnumWindows);
+    }
   return (fi . hwnd);
 }
 
@@ -315,7 +322,7 @@ find_child_console_1 (HWND hwnd, LPARAM lfi)
 	= (GetClassName (hwnd, window_class, (sizeof (window_class))));
       const char * console_class
 	= ((NT_windows_type == wintype_95) ? "tty" : "ConsoleWindowClass");
-      if ((n == ((strlen (console_class)) + 1))
+      if ((n == (strlen (console_class)))
 	  && ((strcmp (window_class, console_class)) == 0))
 	{
 	  (fi -> hwnd) = hwnd;
@@ -546,11 +553,13 @@ test_process_status_change (Tprocess process)
 	    (GetExitCodeProcess, ((PROCESS_HANDLE (process)), (&exit_code)));
 	  GRAB_PROCESS_TABLE ();
 	  (PROCESS_RAW_STATUS (process))
-	    = ((exit_code < 0x40000000)
-	       ? process_status_exited
-	       : process_status_signalled);
+	    = ((exit_code == STATUS_CONTROL_C_EXIT)
+	       ? process_status_signalled
+	       : process_status_exited);
 	  (PROCESS_RAW_REASON (process)) = exit_code;
 	  (PROCESS_TICK (process)) = (++process_tick);
+	  STD_BOOL_API_CALL (CloseHandle, (PROCESS_HANDLE (process)));
+	  (PROCESS_HANDLE (process)) = INVALID_HANDLE_VALUE;
 	  RELEASE_PROCESS_TABLE ();
 	}
 	break;
