@@ -9,8 +9,8 @@ exec > /scheme/etc/update-rcs-log.out 2>&1
 
 export PATH="/usr/local/bin:${PATH}"
 
-GOPTS_SCHEME="-d :pserver:anoncvs@subversions.gnu.org:/cvsroot/mit-scheme"
-GOPTS_HTML="-d :pserver:anoncvs@subversions.gnu.org:/webcvs"
+GOPTS_SCHEME="-d :ext:anoncvs@subversions.gnu.org:/cvsroot/mit-scheme"
+GOPTS_HTML="-d :ext:anoncvs@savannah.gnu.org:/webcvs/mit-scheme"
 UM="/scheme/v7/src/etc/usermap"
 O="ChangeLog"
 N="${O}.new"
