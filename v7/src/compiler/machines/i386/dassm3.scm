@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/dassm3.scm,v 1.4 1992/08/18 13:40:14 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/dassm3.scm,v 1.5 1998/02/17 20:43:37 adams Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -548,6 +548,7 @@ MIT in each case. |#
 	 (2 5 FUCOMPP #f)			; really only with (ST 1)
 	 (0 0 FADD #f)
 	 (4 0 FADD #t)
+	 (6 0 FADDP #t)
 	 (0 5 FSUB #f)
 	 (4 5 FSUB #t)
 	 (6 5 FSUBP #t)
