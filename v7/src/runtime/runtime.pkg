@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.453 2003/07/30 04:37:29 cph Exp $
+$Id: runtime.pkg,v 14.454 2003/07/30 17:25:47 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -2360,7 +2360,8 @@ USA.
 	  lambda-rest-tag)
   (export (runtime unparser)
 	  char-set/atom-delimiters
-	  char-set/quoted-symbol-delimiters
+	  char-set/number-leaders
+	  char-set/symbol-quotes
 	  lambda-auxiliary-tag
 	  lambda-optional-tag
 	  lambda-rest-tag)

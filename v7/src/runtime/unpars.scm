@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.54 2003/07/30 05:14:38 cph Exp $
+$Id: unpars.scm,v 14.55 2003/07/30 17:25:51 cph Exp $
 
 Copyright 1986,1987,1990,1991,1992,1995 Massachusetts Institute of Technology
 Copyright 1996,2001,2002,2003 Massachusetts Institute of Technology
@@ -48,9 +48,8 @@ USA.
   (set! *unparse-abbreviate-quotations?* #f)
   (set! system-global-unparser-table (make-system-global-unparser-table))
   (set! *default-list-depth* 0)
-  (set! symbol-delimiters
-	(char-set-difference char-set/atom-delimiters
-			     char-set:upper-case))
+  (set! quoted-symbol-chars
+	(char-set-union char-set/atom-delimiters char-set:upper-case))
   (set-current-unparser-table! system-global-unparser-table))
 
 (define *unparser-radix*)
@@ -67,7 +66,7 @@ USA.
 (define *unparse-abbreviate-quotations?*)
 (define system-global-unparser-table)
 (define *default-list-depth*)
-(define symbol-delimiters)
+(define quoted-symbol-chars)
 (define *current-unparser-table*)
 
 (define (current-unparser-table)
@@ -339,8 +338,13 @@ USA.
 
 (define (unparse-symbol symbol)
   (let ((s (symbol-name symbol)))
-    (if (or (string-find-next-char-in-set s symbol-delimiters)
-	    (string->number s))
+    (if (or (string-find-next-char-in-set s
+					  (if *parser-canonicalize-symbols?*
+					      quoted-symbol-chars
+					      char-set/atom-delimiters))
+	    (fix:= (string-length s) 0)
+	    (and (char-set-member? char-set/number-leaders (string-ref s 0))
+		 (string->number s)))
 	(begin
 	  (*unparse-char #\|)
 	  (let ((end (string-length s)))
@@ -349,7 +353,7 @@ USA.
 		  (let ((i
 			 (substring-find-next-char-in-set
 			  s start end
-			  char-set/quoted-symbol-delimiters)))
+			  char-set/symbol-quotes)))
 		    (if i
 			(begin
 			  (*unparse-substring s start i)

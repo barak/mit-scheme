@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.41 2003/07/30 04:14:23 cph Exp $
+$Id: parse.scm,v 14.42 2003/07/30 17:25:44 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1997,1998,1999 Massachusetts Institute of Technology
@@ -35,19 +35,21 @@ USA.
   (set! char-set/whitespace
 	(char-set #\tab #\linefeed #\page #\return #\space))
   (set! char-set/non-whitespace (char-set-invert char-set/whitespace))
+  (set! char-set/symbol-quotes (string->char-set "|\\"))
+  (set! char-set/atom-delimiters
+	(char-set-union char-set/undefined-atom-delimiters
+			char-set/whitespace
+			char-set/symbol-quotes
+			(string->char-set "\"();'`")))
   (set! char-set/comment-delimiters (char-set #\newline))
   (set! char-set/special-comment-leaders (string->char-set "#|"))
   (set! char-set/string-delimiters (string->char-set "\"\\"))
-  (set! char-set/atom-delimiters
-	(char-set-union char-set/whitespace
-			char-set/undefined-atom-delimiters
-			(string->char-set "\"();'`|")))
   (set! char-set/char-delimiters
 	(char-set-union (string->char-set "-\\") char-set/atom-delimiters))
+  (set! char-set/number-leaders (string->char-set "0123456789+-.#"))
   (set! char-set/symbol-leaders
 	(char-set-difference (char-set-invert char-set/atom-delimiters)
-			     (string->char-set "0123456789+-.#")))
-  (set! char-set/quoted-symbol-delimiters (string->char-set "|\\"))
+			     char-set/number-leaders))
   (set! char-set/non-digit
 	(char-set-difference (char-set-invert (char-set))
 			     char-set:numeric))
@@ -75,13 +77,14 @@ USA.
 (define char-set/undefined-atom-delimiters)
 (define char-set/whitespace)
 (define char-set/non-whitespace)
+(define char-set/symbol-quotes)
+(define char-set/atom-delimiters)
 (define char-set/comment-delimiters)
 (define char-set/special-comment-leaders)
 (define char-set/string-delimiters)
-(define char-set/atom-delimiters)
 (define char-set/char-delimiters)
+(define char-set/number-leaders)
 (define char-set/symbol-leaders)
-(define char-set/quoted-symbol-delimiters)
 (define char-set/non-digit)
 
 (define lambda-optional-tag)
@@ -332,50 +335,75 @@ USA.
 
 ;;;; Symbols/Numbers
 
-(define (read-atom)
-  (let ((s (read-string char-set/atom-delimiters)))
+(define-accretor 0 (parse-object/atom)
+  (let ((s (read-unquoted-atom-segment)))
     (if (eof-object? s)
 	(parse-error/end-of-file))
-    (if *parser-canonicalize-symbols?*
-	(string-downcase! s))
-    (if (eqv? (peek-char/eof-ok) #\|)
-	(values
-	 (call-with-output-string
-	   (lambda (port)
-	     (write-string s port)
-	     (let loop ()
-	       (discard-char)
-	       (let find-bar ()
-		 (let ((s (read-string char-set/quoted-symbol-delimiters)))
-		   (if (eof-object? s)
-		       (parse-error "Unterminated |"))
-		   (write-string s port)
-		   (if (char=? (read-char) #\|)
-		       (let ((s (read-string char-set/atom-delimiters)))
-			 (if (not (eof-object? s))
-			     (begin
-			       (if *parser-canonicalize-symbols?*
-				   (string-downcase! s))
-			       (write-string s port)
-			       (if (eqv? (peek-char/eof-ok) #\|)
-				   (loop)))))
-		       (begin
-			 (write-char (read-char) port)
-			 (find-bar))))))))
-	 #t)
-	(values s #f))))
+    (if (peek-atom-quote?)
+	(string->symbol (read-quoted-atom s))
+	(or (parse-number s)
+	    (string->symbol s)))))
 
-(define-accretor 0 (parse-object/atom)
-  (receive (string force-sym?) (read-atom)
-    (or (and (not force-sym?)
-	     (parse-number string))
-	(string->symbol string))))
+(define (read-unquoted-atom-segment)
+  (let ((s (read-string char-set/atom-delimiters)))
+    (if (and (not (eof-object? s))
+	     *parser-canonicalize-symbols?*)
+	(string-downcase! s))
+    s))
+
+(define (read-quoted-atom s)
+  (call-with-output-string
+    (lambda (port)
+      (write-string s port)
+      (letrec
+	  ((read-quoted
+	    (lambda ()
+	      (if (char=? (read-char) #\|)
+		  (find-bar)
+		  (begin
+		    (write-char (read-char) port)
+		    (read-unquoted)))))
+	   (find-bar
+	    (lambda ()
+	      (write-string (read-quoted-atom-segment) port)
+	      (if (char=? (read-char) #\|)
+		  (read-unquoted)
+		  (begin
+		    (write-char (read-char) port)
+		    (find-bar)))))
+	   (read-unquoted
+	    (lambda ()
+	      (let ((s (read-unquoted-atom-segment)))
+		(if (not (eof-object? s))
+		    (begin
+		      (write-string s port)
+		      (if (peek-atom-quote?)
+			  (read-quoted))))))))
+	(read-quoted)))))
+
+(define (peek-atom-quote?)
+  (let ((c (peek-char/eof-ok)))
+    (and (char? c)
+	 (or (char=? c #\|)
+	     (char=? c #\\)))))
+
+(define (read-quoted-atom-segment)
+  (let ((s (read-string char-set/symbol-quotes)))
+    (if (eof-object? s)
+	(parse-error/end-of-file))
+    s))
+
+(define (read-atom)
+  (let ((s (read-unquoted-atom-segment)))
+    (if (eof-object? s)
+	(parse-error/end-of-file))
+    (if (peek-atom-quote?)
+	(read-quoted-atom s)
+	s)))
 
 (define-accretor 0 (parse-object/symbol)
-  (receive (string force-sym?) (read-atom)
-    force-sym?
-    (string->symbol string)))
-
+  (string->symbol (read-atom)))
+
 (define (parse-number string)
   (let ((radix (if (memv *parser-radix* '(2 8 10 16)) *parser-radix* 10)))
     (if (fix:= radix 10)
@@ -391,9 +419,7 @@ USA.
 (define-accretor 1 (parse-object/numeric-prefix)
   (let ((number
 	 (let ((char (read-char)))
-	   (receive (s force-sym?) (read-atom)
-	     force-sym?
-	     (string-append (string #\# char) s)))))
+	   (string-append (string #\# char) (read-atom)))))
     (let ((n (parse-number number)))
       (if (not n)
 	  (parse-error "Bad number syntax" number))
@@ -401,8 +427,7 @@ USA.
 
 (define-accretor 1 (parse-object/bit-string)
   (discard-char)
-  (receive (s force-sym?) (read-atom)
-    force-sym?
+  (let ((s (read-atom)))
     (let ((end (string-length s)))
       (unsigned-integer->bit-string
        end
