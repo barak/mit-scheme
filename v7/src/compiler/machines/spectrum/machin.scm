@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 4.28 1993/02/28 06:20:24 gjr Exp $
+$Id: machin.scm,v 4.29 1993/07/01 03:16:40 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -58,8 +58,11 @@ MIT in each case. |#
   ;; (expt 2 (- 8 scheme-type-width)) ***
   4)
 
-(define-integrable flonum-size 2)
+(define-integrable float-width 64)
 (define-integrable float-alignment 64)
+
+(define-integrable address-units-per-float
+  (quotient float-width addressing-granularity))
 
 ;;; It is currently required that both packed characters and objects
 ;;; be integrable numbers of address units.  Furthermore, the number
@@ -309,12 +312,15 @@ MIT in each case. |#
        (= (rtl:register-number expression) regnum:dynamic-link)))
 
 (define-integrable (interpreter-environment-register)
-  (rtl:make-offset (interpreter-regs-pointer) 3))
+  (rtl:make-offset (interpreter-regs-pointer)
+		   (rtl:make-machine-constant 3)))
 
 (define (interpreter-environment-register? expression)
   (and (rtl:offset? expression)
        (interpreter-regs-pointer? (rtl:offset-base expression))
-       (= 3 (rtl:offset-number expression))))
+       (let ((offset (rtl:offset-offset expression)))
+	 (and (rtl:machine-constant? offset)
+	      (= 3 (rtl:machine-constant-value offset))))))
 
 (define-integrable (interpreter-register:access)
   (rtl:make-machine-register g28))
@@ -396,7 +402,9 @@ MIT in each case. |#
 	  ENTRY:CONTINUATION
 	  ASSIGNMENT-CACHE
 	  VARIABLE-CACHE
-	  OFFSET-ADDRESS)
+	  OFFSET-ADDRESS
+	  BYTE-OFFSET-ADDRESS
+	  FLOAT-OFFSET-ADDRESS)
 	 3)
 	((CONS-POINTER)
 	 (and (rtl:machine-constant? (rtl:cons-pointer-type expression))
@@ -411,6 +419,4 @@ MIT in each case. |#
   true)
 
 (define compiler:primitives-with-no-open-coding
-  '(DIVIDE-FIXNUM GCD-FIXNUM &/
-    FLONUM-SIN FLONUM-COS FLONUM-TAN FLONUM-ASIN FLONUM-ACOS
-    FLONUM-ATAN FLONUM-EXP FLONUM-LOG FLONUM-TRUNCATE))
+  '(DIVIDE-FIXNUM GCD-FIXNUM &/))
