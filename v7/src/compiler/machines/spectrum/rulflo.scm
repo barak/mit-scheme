@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulflo.scm,v 4.33 1991/10/25 12:29:54 cph Exp $
+$Id: rulflo.scm,v 4.34 1993/02/12 01:06:24 gjr Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; LAP Generation Rules: Flonum rules
+;; Package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
@@ -178,10 +179,28 @@ MIT in each case. |#
 
 (define (flonum-compare cc r1 r2)
   (set-current-branches!
-   (lambda (label)
-     (LAP (B (N) (@PCR ,label))))
-   (lambda (label)
-     (LAP (SKIP (TR))
-	  (B (N) (@PCR ,label)))))
-  (LAP (FCMP (,(invert-condition cc) DBL) ,r1 ,r2)
-       (FTEST ())))
+   (lambda (true-label)
+     (LAP (FCMP (,(invert-float-condition cc) DBL) ,r1 ,r2)
+	  (FTEST ())
+	  (B (N) (@PCR ,true-label))))
+   (lambda (false-label)
+     (LAP (FCMP (,cc DBL) ,r1 ,r2)
+	  (FTEST ())
+	  (B (N) (@PCR ,false-label)))))
+  (LAP))
+
+;; invert-float-condition makes sure that NaNs are taken care of
+;; correctly.
+
+(define (invert-float-condition cc)
+  (let ((place (assq cc float-condition-table)))
+    (if (not place)
+	(error "invert-float-condition: Unknown condition"
+	       cc)
+	(cadr place))))
+
+(define float-condition-table
+  ;; There are many others, but only these are used here.
+  '((> !>)
+    (< !<)
+    (= !=)))
