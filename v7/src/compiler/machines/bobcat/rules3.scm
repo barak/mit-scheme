@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.7 1987/07/08 22:08:57 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.8 1987/07/15 21:34:24 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -314,5 +314,7 @@ MIT in each case. |#
 	 ,@(make-external-label internal-label))))
 
 (define (make-external-label label)
+  (set! compiler:external-labels 
+	(cons label compiler:external-labels))
   (LAP (DC W (- ,label ,*block-start-label*))
        (LABEL ,label)))

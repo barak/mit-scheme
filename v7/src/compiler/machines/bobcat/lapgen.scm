@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.184 1987/07/08 22:07:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.185 1987/07/15 21:33:38 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -257,6 +257,8 @@ MIT in each case. |#
   (INST (BRA L (@PCR ,label))))
 
 (define-export (lap:make-entry-point label block-start-label)
+  (set! compiler:external-labels
+	(cons label compiler:external-labels))
   (LAP (ENTRY-POINT ,label)
        (DC W (- ,label ,block-start-label))
        (LABEL ,label)))
