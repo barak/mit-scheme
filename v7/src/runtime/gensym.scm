@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gensym.scm,v 13.41 1987/01/23 00:13:48 jinx Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gensym.scm,v 13.42 1987/11/21 18:06:02 jinx Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -46,7 +46,7 @@
     (named-lambda (name-generator)
       (string->uninterned-symbol
        (string-append prefix
-		      (write-to-string
+		      (number->string
 		       (let ((n counter))
 			 (set! counter (1+ counter))
 			 n)))))))
@@ -68,4 +68,4 @@
 		 (error "Bad argument: GENERATE-UNINTERNED-SYMBOL"
 			argument))))
       (string->uninterned-symbol
-       (string-append name-prefix (write-to-string (get-number)))))))
+       (string-append name-prefix (number->string (get-number)))))))
