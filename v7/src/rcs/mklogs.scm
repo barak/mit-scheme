@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mklogs.scm,v 1.16 2000/03/21 05:29:54 cph Exp $
+$Id: mklogs.scm,v 1.17 2000/03/21 17:40:33 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -21,37 +21,38 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; Update the RCS log files in the standard Scheme directories.
 
-(rcs-directory-log "/scheme/v7/src" #f #t
-		   '("zurich.ai.mit.edu"
-		     ("adams" "Stephen Adams")
-		     ("arthur" "Arthur Gleckler")
-		     ("bal" "Brian A. LaMacchia")
-		     ("boogles" "Brian K. Zuzga")
-		     ("cph" "Chris Hanson")
-		     ("gjr" "Guillermo J. Rozas")
-		     ("gjs" "Gerald Jay Sussman")
-		     ("hal" "Hal Abelson")
-		     ("jacob" "Jacob Katzenelson")
-		     ("jawilson" "Jason Wilson")
-		     ("jbank" "Joe Bank")
-		     ("jinx" "Guillermo J. Rozas" "gjr@zurich.ai.mit.edu")
-		     ("jmiller" "Jim Miller")
-		     ("jrm" "Joe Marshall")
-		     ("markf" "Mark Friedman")
-		     ("mhwu" "Henry M. Wu")
-		     ("nick" "Nick Papadakis")
-		     ("pas" "Panayotis Skordos")
-		     ("thanos" "Thanos Siapas")
-		     ("ziggy" "Michael R. Blair")))
-
+(let ((changelog-map
+       '("zurich.ai.mit.edu"
+	 ("adams" "Stephen Adams")
+	 ("arthur" "Arthur Gleckler")
+	 ("bal" "Brian A. LaMacchia")
+	 ("boogles" "Brian K. Zuzga")
+	 ("cph" "Chris Hanson")
+	 ("gjr" "Guillermo J. Rozas")
+	 ("gjs" "Gerald Jay Sussman")
+	 ("hal" "Hal Abelson")
+	 ("jacob" "Jacob Katzenelson")
+	 ("jawilson" "Jason Wilson")
+	 ("jbank" "Joe Bank")
+	 ("jinx" "Guillermo J. Rozas" "gjr@zurich.ai.mit.edu")
+	 ("jmiller" "Jim Miller")
+	 ("jrm" "Joe Marshall")
+	 ("markf" "Mark Friedman")
+	 ("mhwu" "Henry M. Wu")
+	 ("nick" "Nick Papadakis")
+	 ("pas" "Panayotis Skordos")
+	 ("thanos" "Thanos Siapas")
+	 ("ziggy" "Michael R. Blair"))))
+  (for-each (lambda (directory)
+	      (rcs-directory-log directory #f #t changelog-map))
+	    '("/scheme/v7/src"
+	      "/scheme/etc"
+	      "/scheme/documentation/ref-manual"
+	      "/scheme/documentation/user-manual"
+	      "/scheme/documentation/sos")))
 (for-each rcs-directory-log
 	  '("/scheme/v8/src/bench"
 	    "/scheme/v8/src/compiler"
 	    "/scheme/v8/src/microcode"
 	    "/scheme/v8/src/runtime"
-	    "/scheme/v8/src/sf"
-
-	    "/scheme/etc"
-	    "/scheme/documentation/ref-manual"
-	    "/scheme/documentation/user-manual"
-	    "/scheme/documentation/sos"))
+	    "/scheme/v8/src/sf"))
