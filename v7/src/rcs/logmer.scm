@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: logmer.scm,v 1.12 1995/11/12 05:55:42 cph Exp $
+$Id: logmer.scm,v 1.13 1995/11/12 05:58:57 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -101,7 +101,7 @@ MIT in each case. |#
   (write-string ";  state: " port)
   (write-string (delta/state delta) port)
   (newline port))
-
+
 (define (compress-entries entries)
   (if (null? entries)
       '()
@@ -120,7 +120,7 @@ MIT in each case. |#
 		    (lambda (similar entries*)
 		      (receiver (cons (car entries) similar)
 				entries*))))))))
-
+
 (define (read-entries pairs notification-port)
   (let ((prefix (greatest-common-prefix (map car pairs))))
     (append-map!
