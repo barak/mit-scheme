@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.21 1990/09/13 23:30:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.22 1990/09/13 23:33:49 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -258,7 +258,7 @@ MIT in each case. |#
 	  (write-string
 	   "There is no execution history for this subproblem.")))))
 
-(define subexpression-marker (string->symbol "#SUBPROBLEM#"))
+(define subexpression-marker (string->symbol "###"))
 
 (define (command/print-reductions dstate)
   (let ((reductions (dstate/reductions dstate))
