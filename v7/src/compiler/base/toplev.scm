@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.46 1992/10/19 19:13:30 jinx Exp $
+$Id: toplev.scm,v 4.47 1992/10/24 16:00:50 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -256,7 +256,6 @@ MIT in each case. |#
 
 (define *recursive-compilation-count*)
 (define *recursive-compilation-number*)
-(define *recursive-compilation-results*)
 (define *procedure-result?*)
 (define *remote-links*)
 (define *process-time*)
@@ -351,12 +350,13 @@ MIT in each case. |#
 	  (run-compiler))
 	(fluid-let ((*recursive-compilation-number* 0)
 		    (*recursive-compilation-count* 1)
-		    (*recursive-compilation-results* '())
 		    (*procedure-result?* false)
 		    (*remote-links* '())
 		    (*process-time* 0)
 		    (*real-time* 0))
-	  (bind-compiler-variables run-compiler)))))
+	  (bind-assembler&linker-top-level-variables
+	   (lambda ()
+	     (bind-compiler-variables run-compiler)))))))
 
 (define (bind-compiler-variables thunk)
   ;; Split this fluid-let because compiler was choking on it.
@@ -392,7 +392,6 @@ MIT in each case. |#
 (define (compiler:reset!)
   (set! *recursive-compilation-number* 0)
   (set! *recursive-compilation-count* 1)
-  (set! *recursive-compilation-results* '())
   (set! *procedure-result?* false)
   (set! *remote-links* '())
   (set! *process-time* 0)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: asstop.scm,v 1.1 1992/10/19 19:11:52 jinx Exp $
+$Id: asstop.scm,v 1.2 1992/10/24 16:00:56 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -45,7 +45,9 @@ MIT in each case. |#
 (define (compiled-scode->procedure scode environment)
   (scode-eval scode environment))
 
-;;; State variables for the assembler and linker
+;;; Global variables for the assembler and linker
+
+(define *recursive-compilation-results*)
 
 ;; First set: phase/rtl-generation
 ;; Last used: phase/link
@@ -78,6 +80,10 @@ MIT in each case. |#
 	     (lap:make-entry-point entry-label *block-label*))
        ,@some-lap))
 
+(define (bind-assembler&linker-top-level-variables thunk)
+  (fluid-let ((*recursive-compilation-results* '()))
+    (thunk)))
+
 (define (bind-assembler&linker-variables thunk)
   (fluid-let ((*block-label*)
 	      (*external-labels*)
@@ -96,6 +102,7 @@ MIT in each case. |#
     (thunk)))
 
 (define (assembler&linker-reset!)
+  (set! *recursive-compilation-results* '())
   (set! *block-label*)
   (set! *external-labels*)
   (set! *end-of-block-code*)

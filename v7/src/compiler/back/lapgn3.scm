@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgn3.scm,v 4.10 1992/10/19 19:14:11 jinx Exp $
+$Id: lapgn3.scm,v 4.11 1992/10/24 16:01:10 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -152,3 +152,11 @@ MIT in each case. |#
 		  (lambda (new)
 		    (set! *interned-global-links* new))
 		  "GLOBAL-"))
+
+(define (prepare-constants-block)
+  (generate/constants-block *interned-constants*
+			    *interned-variables*
+			    *interned-assignments*
+			    *interned-uuo-links*
+			    *interned-global-links*
+			    *interned-static-variables*))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.12 1991/10/22 09:53:38 cph Exp $
+$Id: lapgn1.scm,v 4.13 1992/10/24 16:01:03 jinx Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -54,14 +54,7 @@ MIT in each case. |#
 				 (constant->label (vector-ref remote-link 0)))
 		    unspecific)
 		  remote-links)
-	(with-values
-	    (lambda ()
-	      (generate/constants-block *interned-constants*
-					*interned-variables*
-					*interned-assignments*
-					*interned-uuo-links*
-					*interned-global-links*
-					*interned-static-variables*))
+	(with-values prepare-constants-block
 	  (or process-constants-block
 	      (lambda (constants-code environment-label free-ref-label
 				      n-sections)
