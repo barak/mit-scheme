@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gensym.scm,v 14.2 1989/10/26 06:46:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gensym.scm,v 14.3 1990/02/20 15:58:32 jinx Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,7 +39,9 @@ MIT in each case. |#
 
 (define (generate-uninterned-symbol #!optional argument)
   (if (not (default-object? argument))
-      (cond ((symbol? argument)
+      (cond ((string? argument)
+	     (set! name-prefix argument))
+	    ((symbol? argument)
 	     (set! name-prefix (symbol->string argument)))
 	    ((exact-nonnegative-integer? argument)
 	     (set! name-counter argument))
