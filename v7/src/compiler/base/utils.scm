@@ -1,174 +1,40 @@
-;;; -*-Scheme-*-
-;;;
-;;;	Copyright (c) 1987 Massachusetts Institute of Technology
-;;;
-;;;	This material was developed by the Scheme project at the
-;;;	Massachusetts Institute of Technology, Department of
-;;;	Electrical Engineering and Computer Science.  Permission to
-;;;	copy this software, to redistribute it, and to use it for any
-;;;	purpose is granted, subject to the following restrictions and
-;;;	understandings.
-;;;
-;;;	1. Any copy made of this software must include this copyright
-;;;	notice in full.
-;;;
-;;;	2. Users of this software agree to make their best efforts (a)
-;;;	to return to the MIT Scheme project any improvements or
-;;;	extensions that they make, so that these may be included in
-;;;	future releases; and (b) to inform MIT of noteworthy uses of
-;;;	this software.
-;;;
-;;;	3. All materials developed as a consequence of the use of this
-;;;	software shall duly acknowledge such use, in accordance with
-;;;	the usual standards of acknowledging credit in academic
-;;;	research.
-;;;
-;;;	4. MIT has made no warrantee or representation that the
-;;;	operation of this software will be error-free, and MIT is
-;;;	under no obligation to provide any services, by way of
-;;;	maintenance, update, or otherwise.
-;;;
-;;;	5. In conjunction with products arising from the use of this
-;;;	material, there shall be no use of the name of the
-;;;	Massachusetts Institute of Technology nor of any adaptation
-;;;	thereof in any advertising, promotional, or sales literature
-;;;	without prior written consent from MIT in each case.
-;;;
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.81 1987/03/19 00:34:49 cph Exp $
+
+Copyright (c) 1987 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
 
 ;;;; Compiler Utilities
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.80 1987/01/01 18:51:18 cph Exp $
-
 (declare (usual-integrations))
-(using-syntax (access compiler-syntax-table compiler-package)
-
-;;;; Support for tagged objects
-
-(define (make-vector-tag parent name)
-  (let ((tag (cons '() (or parent vector-tag:object))))
-    (vector-tag-put! tag ':TYPE-NAME name)
-    ((access add-unparser-special-object! unparser-package)
-     tag tagged-vector-unparser)
-    tag))
-
-(define *tagged-vector-unparser-show-hash*
-  true)
-
-(define (tagged-vector-unparser object)
-  (unparse-with-brackets
-   (lambda ()
-     (write-string "LIAR ")
-     (if *tagged-vector-unparser-show-hash*
-	 (begin (fluid-let ((*unparser-radix* 10))
-		  (write (hash object)))
-		(write-string " ")))
-     (fluid-let ((*unparser-radix* 16))
-       ((vector-method object ':UNPARSE) object)))))
-
-(define (vector-tag-put! tag key value)
-  (let ((entry (assq key (car tag))))
-    (if entry
-	(set-cdr! entry value)
-	(set-car! tag (cons (cons key value) (car tag))))))
-
-(define (vector-tag-get tag key)
-  (define (loop tag)
-    (and (pair? tag)
-	 (or (assq key (car tag))
-	     (loop (cdr tag)))))
-  (let ((value
-	 (or (assq key (car tag))
-	     (loop (cdr tag)))))
-    (and value (cdr value))))
-
-(define vector-tag:object
-  (list '()))
-
-(vector-tag-put! vector-tag:object ':TYPE-NAME 'OBJECT)
-
-(define-integrable (vector-tag vector)
-  (vector-ref vector 0))
-
-(define (define-vector-method tag name method)
-  (vector-tag-put! tag name method)
-  name)
-
-(define (vector-tag-method tag name)
-  (or (vector-tag-get tag name)
-      (error "Unbound method" tag name)))
-
-(define-integrable (vector-tag-parent-method tag name)
-  (vector-tag-method (cdr tag) name))
-
-(define-integrable (vector-method vector name)
-  (vector-tag-method (vector-tag vector) name))
-
-(define (define-unparser tag unparser)
-  (define-vector-method tag ':UNPARSE unparser))
-
-(define-integrable make-tagged-vector
-  vector)
-
-(define ((tagged-vector-predicate tag) object)
-  (and (vector? object)
-       (not (zero? (vector-length object)))
-       (eq? tag (vector-tag object))))
-
-(define (tagged-vector-subclass-predicate tag)
-  (define (loop tag*)
-    (or (eq? tag tag*)
-	(and (pair? tag*)
-	     (loop (cdr tag*)))))
-  (lambda (object)
-    (and (vector? object)
-	 (not (zero? (vector-length object)))
-	 (loop (vector-tag object)))))
-
-(define tagged-vector?
-  (tagged-vector-subclass-predicate vector-tag:object))
-
-(define-unparser vector-tag:object
-  (lambda (object)
-    (write (vector-method object ':TYPE-NAME))))
-
-(define (->tagged-vector object)
-  (or (and (tagged-vector? object) object)
-      (and (integer? object)
-	   (let ((object (unhash object)))
-	     (and (tagged-vector? object) object)))))
-
-;;;; Queue
-
-(define (make-queue)
-  (cons '() '()))
-
-(define-integrable (queue-empty? queue)
-  (null? (car queue)))
-
-(define-integrable (queued? queue item)
-  (memq item (car queue)))
-
-(define (enqueue! queue object)
-  (let ((next (cons object '())))
-    (if (null? (cdr queue))
-	(set-car! queue next)
-	(set-cdr! (cdr queue) next))
-    (set-cdr! queue next)))
-
-(define (dequeue! queue)
-  (let ((next (car queue)))
-    (if (null? (cdr next))
-	(begin (set-car! queue '())
-	       (set-cdr! queue '()))
-	(set-car! queue (cdr next)))
-    (car next)))
-
-(define (queue-map! queue procedure)
-  (define (loop)
-    (if (not (queue-empty? queue))
-	(begin (procedure (dequeue! queue))
-	       (loop))))
-  (loop))
 
 ;;;; Miscellaneous
 
@@ -199,7 +65,6 @@
      (cond ((eq? prefix lambda-tag:unnamed) 'LAMBDA)
 	   ((eq? prefix lambda-tag:let) 'LET)
 	   ((eq? prefix lambda-tag:make-environment) 'MAKE-ENVIRONMENT)
-	   ((eq? prefix lambda-tag:make-package) 'MAKE-PACKAGE)
 	   ((or (eq? prefix lambda-tag:shallow-fluid-let)
 		(eq? prefix lambda-tag:deep-fluid-let)
 		(eq? prefix lambda-tag:common-lisp-fluid-let))
@@ -236,97 +101,11 @@
       (write-line (- (runtime) start))
       value)))
 
-;;;; Set Operations
-
-(define (eq-set-adjoin element set)
-  (if (memq element set)
-      set
-      (cons element set)))
-
-(define (eqv-set-adjoin element set)
-  (if (memv element set)
-      set
-      (cons element set)))
-
-(define (eq-set-delete set item)
-  (define (loop set)
-    (cond ((null? set) '())
-	  ((eq? (car set) item) (cdr set))
-	  (else (cons (car set) (loop (cdr set))))))
-  (loop set))
-
-(define (eqv-set-delete set item)
-  (define (loop set)
-    (cond ((null? set) '())
-	  ((eqv? (car set) item) (cdr set))
-	  (else (cons (car set) (loop (cdr set))))))
-  (loop set))
-
-(define (eq-set-substitute set old new)
-  (define (loop set)
-    (cond ((null? set) '())
-	  ((eq? (car set) old) (cons new (cdr set)))
-	  (else (cons (car set) (loop (cdr set))))))
-  (loop set))
-
-(define (eqv-set-substitute set old new)
-  (define (loop set)
-    (cond ((null? set) '())
-	  ((eqv? (car set) old) (cons new (cdr set)))
-	  (else (cons (car set) (loop (cdr set))))))
-  (loop set))
-
-(define (set-search set procedure)
-  (define (loop items)
-    (and (not (null? items))
-	 (or (procedure (car items))
-	     (loop (cdr items)))))
-  (loop set))
-
-;;; The dataflow analyzer assumes that
-;;; (eq? (list-tail (eq-set-union x y) n) y) for some n.
-
-(define (eq-set-union x y)
-  (if (null? y)
-      x
-      (let loop ((x x) (y y))
-	(if (null? x)
-	    y
-	    (loop (cdr x)
-		  (if (memq (car x) y)
-		      y
-		      (cons (car x) y)))))))
-
-(define (eqv-set-union x y)
-  (if (null? y)
-      x
-      (let loop ((x x) (y y))
-	(if (null? x)
-	    y
-	    (loop (cdr x)
-		  (if (memv (car x) y)
-		      y
-		      (cons (car x) y)))))))
-
-(define (eq-set-difference x y)
-  (define (loop x)
-    (cond ((null? x) '())
-	  ((memq (car x) y) (loop (cdr x)))
-	  (else (cons (car x) (loop (cdr x))))))
-  (loop x))
-
-(define (eqv-set-difference x y)
-  (define (loop x)
-    (cond ((null? x) '())
-	  ((memv (car x) y) (loop (cdr x)))
-	  (else (cons (car x) (loop (cdr x))))))
-  (loop x))
-
 ;;;; SCode Interface
 
 (let-syntax ((define-scode-operator
 	       (macro (name)
-		 `(DEFINE ,(symbol-append 'SCODE: name)
+		 `(DEFINE ,(symbol-append 'SCODE/ name)
 		    (ACCESS ,name SYSTEM-GLOBAL-ENVIRONMENT)))))
   (define-scode-operator access-components)
   (define-scode-operator access?)
@@ -343,6 +122,7 @@
   (define-scode-operator lambda-components)
   (define-scode-operator lambda?)
   (define-scode-operator make-access)
+  (define-scode-operator make-assignment)
   (define-scode-operator make-combination)
   (define-scode-operator make-conditional)
   (define-scode-operator make-definition)
@@ -362,20 +142,20 @@
   (define-scode-operator variable-name)
   (define-scode-operator variable?))
 
-(define scode:constant?
+(define scode/constant?
   (access scode-constant? system-global-environment))
 
-(define (scode:error-combination-components combination receiver)
-  (scode:combination-components combination
+(define (scode/error-combination-components combination receiver)
+  (scode/combination-components combination
     (lambda (operator operands)
       (receiver (car operands)
 		(let ((irritant (cadr operands)))
-		  (cond ((scode:access? irritant) '())
-			((scode:combination? irritant)
-			 (scode:combination-components irritant
+		  (cond ((scode/access? irritant) '())
+			((scode/combination? irritant)
+			 (scode/combination-components irritant
 			   (lambda (operator operands)
-			     (if (and (scode:access? operator)
-				      (scode:access-components operator
+			     (if (and (scode/access? operator)
+				      (scode/access-components operator
 					(lambda (environment name)
 					  (and (null? environment)
 					       (eq? name 'LIST)))))
@@ -383,13 +163,18 @@
 				 (list irritant)))))
 			(else (list irritant))))))))
 
-(define (scode:procedure-type-code *lambda)
+(define (scode/procedure-type-code *lambda)
   (cond ((primitive-type? type-code:lambda *lambda)
 	 type-code:procedure)
 	((primitive-type? type-code:extended-lambda *lambda)
 	 type-code:extended-procedure)
 	(else
-	 (error "SCODE:PROCEDURE-TYPE-CODE: Unknown lambda type" *lambda))))
+	 (error "SCODE/PROCEDURE-TYPE-CODE: Unknown lambda type" *lambda))))
+
+(define (scode/make-let names values body)
+  (scode/make-combination (scode/make-lambda lambda-tag:let names '() false '()
+					     '() body)
+			  values))
 
 ;;;; Type Codes
 
@@ -482,7 +267,7 @@
   (or (non-pointer-object? object)
       (number? object)
       (symbol? object)
-      (scode:primitive-procedure? object)
+      (scode/primitive-procedure? object)
       (eq? object compiled-error-procedure)))
 
 (define (operator-constant-foldable? operator)
@@ -497,21 +282,7 @@
 	+ - * / 1+ -1+ abs quotient remainder modulo integer-divide
 	gcd lcm floor ceiling truncate round
 	exp log expt sqrt sin cos tan asin acos atan
-	(ucode-primitive &+)
-	(ucode-primitive &-)
-	(ucode-primitive &*)
-	(ucode-primitive &/)
-	(ucode-primitive &<)
-	(ucode-primitive &>)
-	(ucode-primitive &=)
-	(ucode-primitive &atan)))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: compiler-package
-;;; Scheme Syntax Table: (access compiler-syntax-table compiler-package)
-;;; Tags Table Pathname: (access compiler-tags-pathname compiler-package)
-;;; End:
+	(ucode-primitive &+) (ucode-primitive &-)
+	(ucode-primitive &*) (ucode-primitive &/)
+	(ucode-primitive &<) (ucode-primitive &>)
 	(ucode-primitive &=) (ucode-primitive &atan)))

@@ -1,78 +1,74 @@
-;;; -*-Scheme-*-
-;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
-;;;
-;;;	This material was developed by the Scheme project at the
-;;;	Massachusetts Institute of Technology, Department of
-;;;	Electrical Engineering and Computer Science.  Permission to
-;;;	copy this software, to redistribute it, and to use it for any
-;;;	purpose is granted, subject to the following restrictions and
-;;;	understandings.
-;;;
-;;;	1. Any copy made of this software must include this copyright
-;;;	notice in full.
-;;;
-;;;	2. Users of this software agree to make their best efforts (a)
-;;;	to return to the MIT Scheme project any improvements or
-;;;	extensions that they make, so that these may be included in
-;;;	future releases; and (b) to inform MIT of noteworthy uses of
-;;;	this software.
-;;;
-;;;	3. All materials developed as a consequence of the use of this
-;;;	software shall duly acknowledge such use, in accordance with
-;;;	the usual standards of acknowledging credit in academic
-;;;	research.
-;;;
-;;;	4. MIT has made no warrantee or representation that the
-;;;	operation of this software will be error-free, and MIT is
-;;;	under no obligation to provide any services, by way of
-;;;	maintenance, update, or otherwise.
-;;;
-;;;	5. In conjunction with products arising from the use of this
-;;;	material, there shall be no use of the name of the
-;;;	Massachusetts Institute of Technology nor of any adaptation
-;;;	thereof in any advertising, promotional, or sales literature
-;;;	without prior written consent from MIT in each case.
-;;;
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 1.56 1987/03/19 00:33:44 cph Exp $
+
+Copyright (c) 1987 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
 
 ;;;; Compiler Macros
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 1.55 1987/01/01 16:55:28 cph Exp $
-
 (declare (usual-integrations))
 
-(in-package compiler-package
-  (define compiler-syntax-table
-    (make-syntax-table system-global-syntax-table))
+(define compiler-syntax-table
+  (make-syntax-table system-global-syntax-table))
 
-  (define lap-generator-syntax-table
-    (make-syntax-table compiler-syntax-table))
+(define lap-generator-syntax-table
+  (make-syntax-table compiler-syntax-table))
 
-  (define assembler-syntax-table
-    (make-syntax-table compiler-syntax-table)))
+(define assembler-syntax-table
+  (make-syntax-table compiler-syntax-table))
 
-(syntax-table-define (access compiler-syntax-table compiler-package) 'PACKAGE
-  (lambda (expression)
-    (apply (lambda (names . body)
-	     (make-sequence
-	      `(,@(map (lambda (name)
-			 (make-definition name (make-unassigned-object)))
-		       names)
-		,(make-combination
-		  (let ((block (syntax* body)))
-		    (if (open-block? block)
-			(open-block-components block
-			  (lambda (names* declarations body)
-			    (make-lambda lambda-tag:let '() '() #!FALSE
-					 (list-transform-negative names*
-					   (lambda (name)
-					     (memq name names)))
-					 declarations
-					 body)))
-			(make-lambda lambda-tag:let '() '() #!FALSE '()
-				     '() block)))
-		  '()))))
-	   (cdr expression))))
+(syntax-table-define compiler-syntax-table 'PACKAGE
+  (in-package system-global-environment
+    (declare (usual-integrations))
+    (lambda (expression)
+      (apply (lambda (names . body)
+	       (make-sequence
+		`(,@(map (lambda (name)
+			   (make-definition name (make-unassigned-object)))
+			 names)
+		  ,(make-combination
+		    (let ((block (syntax* body)))
+		      (if (open-block? block)
+			  (open-block-components block
+			    (lambda (names* declarations body)
+			      (make-lambda lambda-tag:let '() '() false
+					   (list-transform-negative names*
+					     (lambda (name)
+					       (memq name names)))
+					   declarations
+					   body)))
+			  (make-lambda lambda-tag:let '() '() false '()
+				       '() block)))
+		    '()))))
+	     (cdr expression)))))
 
 (let ()
 
@@ -99,6 +95,7 @@
     (named-lambda (lambda-list->bound-names lambda-list)
       (cond ((symbol? lambda-list)
 	     lambda-list)
+	    ((null? lambda-list) '())
 	    ((not (pair? lambda-list))
 	     (error "Illegal rest variable" lambda-list))
 	    ((eq? (car lambda-list)
@@ -109,8 +106,7 @@
 	    (else
 	     (accumulate lambda-list))))))
 
-(syntax-table-define (access compiler-syntax-table compiler-package)
-		     'DEFINE-EXPORT
+(syntax-table-define compiler-syntax-table 'DEFINE-EXPORT
   (macro (pattern . body)
     (parse-define-syntax pattern body
       (lambda (name body)
@@ -119,8 +115,7 @@
 	`(SET! ,(car pattern)
 	       (NAMED-LAMBDA ,pattern ,@body))))))
 
-(syntax-table-define (access compiler-syntax-table compiler-package)
-		     'DEFINE-INTEGRABLE
+(syntax-table-define compiler-syntax-table 'DEFINE-INTEGRABLE
   (macro (pattern . body)
 #|
     (parse-define-syntax pattern body
@@ -128,7 +123,7 @@
 	`(BEGIN (DECLARE (INTEGRATE ,pattern))
 		(DEFINE ,pattern ,@body)))
       (lambda (pattern body)
-	`(BEGIN (DECLARE (INTEGRATE ,(car pattern)))
+	`(BEGIN (DECLARE (INTEGRATE-OPERATOR ,(car pattern)))
 		(DEFINE ,pattern
 		  ,@(if (list? (cdr pattern))
 			`(DECLARE
@@ -141,8 +136,7 @@
 
 )
 
-(syntax-table-define (access compiler-syntax-table compiler-package)
-		     'DEFINE-VECTOR-SLOTS
+(syntax-table-define compiler-syntax-table 'DEFINE-VECTOR-SLOTS
   (macro (class index . slots)
     (define (loop slots n)
       (if (null? slots)
@@ -163,7 +157,7 @@
  ((define-type-definition
     (macro (name reserved)
       (let ((parent (symbol-append name '-TAG)))
-	`(SYNTAX-TABLE-DEFINE (ACCESS COMPILER-SYNTAX-TABLE COMPILER-PACKAGE)
+	`(SYNTAX-TABLE-DEFINE COMPILER-SYNTAX-TABLE
 			      ',(symbol-append 'DEFINE- name)
 	   (macro (type . slots)
 	     (let ((tag-name (symbol-append type '-TAG)))
@@ -182,8 +176,7 @@
  (define-type-definition rvalue 1)
  (define-type-definition vnode 10))
 
-(syntax-table-define (access compiler-syntax-table compiler-package)
-		     'DESCRIPTOR-LIST
+(syntax-table-define compiler-syntax-table 'DESCRIPTOR-LIST
   (macro (type . slots)
     `(LIST ,@(map (lambda (slot)
 		    (let ((ref-name (symbol-append type '- slot)))
@@ -212,25 +205,21 @@
 			,@(loop (cdr components)
 				(* ref-index 2)
 				(* set-index 2))))))))))
-  (syntax-table-define (access compiler-syntax-table compiler-package)
-      'DEFINE-RTL-EXPRESSION
+  (syntax-table-define compiler-syntax-table 'DEFINE-RTL-EXPRESSION
     (macro (type prefix . components)
       (rtl-common type prefix components identity-procedure)))
 
-  (syntax-table-define (access compiler-syntax-table compiler-package)
-      'DEFINE-RTL-STATEMENT
+  (syntax-table-define compiler-syntax-table 'DEFINE-RTL-STATEMENT
     (macro (type prefix . components)
       (rtl-common type prefix components
 		  (lambda (expression) `(STATEMENT->SCFG ,expression)))))
 
-  (syntax-table-define (access compiler-syntax-table compiler-package)
-      'DEFINE-RTL-PREDICATE
+  (syntax-table-define compiler-syntax-table 'DEFINE-RTL-PREDICATE
     (macro (type prefix . components)
       (rtl-common type prefix components
 		  (lambda (expression) `(PREDICATE->PCFG ,expression))))))
 
-(syntax-table-define (access compiler-syntax-table compiler-package)
-		     'DEFINE-REGISTER-REFERENCES
+(syntax-table-define compiler-syntax-table 'DEFINE-REGISTER-REFERENCES
   (macro (slot)
     (let ((name (symbol-append 'REGISTER- slot)))
       (let ((vector (symbol-append '* name '*)))
@@ -241,35 +230,22 @@
 		  (,(symbol-append 'SET- name '!) REGISTER VALUE)
 		  (VECTOR-SET! ,vector REGISTER VALUE)))))))
 
-(syntax-table-define (access compiler-syntax-table compiler-package)
-		     'UCODE-TYPE
+(syntax-table-define compiler-syntax-table 'UCODE-TYPE
   (macro (name)
     (microcode-type name)))
 
-(syntax-table-define (access compiler-syntax-table compiler-package)
-		     'UCODE-PRIMITIVE
+(syntax-table-define compiler-syntax-table 'UCODE-PRIMITIVE
   (macro (name)
     (make-primitive-procedure name)))
 
-(syntax-table-define (access lap-generator-syntax-table compiler-package)
-		     'DEFINE-RULE
-  (in-package compiler-package
-    (declare (usual-integrations))
-    (macro (type pattern . body)
-      (parse-rule pattern body
-	(lambda (pattern names transformer qualifier actions)
-	  `(,(case type
-	       ((STATEMENT) 'ADD-STATEMENT-RULE!)
-	       ((PREDICATE) 'ADD-STATEMENT-RULE!)
-	       (else (error "Unknown rule type" type)))
-	    ',pattern
-	    ,(rule-result-expression names transformer qualifier
-				     `(BEGIN ,@actions))))))))
-
-;;;; Datatype Definers
-
-;;; Edwin Variables:
-;;; Scheme Environment: system-global-environment
-;;; Tags Table Pathname: (access compiler-tags-pathname compiler-package)
-;;; End:
+(syntax-table-define lap-generator-syntax-table 'DEFINE-RULE
+  (macro (type pattern . body)
+    (parse-rule pattern body
+      (lambda (pattern names transformer qualifier actions)
+	`(,(case type
+	     ((STATEMENT) 'ADD-STATEMENT-RULE!)
+	     ((PREDICATE) 'ADD-STATEMENT-RULE!)
+	     (else (error "Unknown rule type" type)))
+	  ',pattern
+	  ,(rule-result-expression names transformer qualifier
 				   `(BEGIN ,@actions)))))))
