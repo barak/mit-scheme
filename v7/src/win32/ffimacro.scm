@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ffimacro.scm,v 1.7 2002/02/04 06:26:58 cph Exp $
+$Id: ffimacro.scm,v 1.8 2002/02/12 00:31:37 cph Exp $
 
 Copyright (c) 1993, 1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -93,18 +93,6 @@ arguments are mutualy consistent (e.g. an index into a buffer indexes
 to inside a string that is being used as the buffer).
 |#
 
-(define ffi-module-entry-variable  (string->symbol "[ffi entry]"))
-(define ffi-result-variable (string->symbol "[ffi result]"))
-
-(define ((make-type-namer suffix) type environment)
-  (close-syntax (symbol-append type suffix) environment))
-
-(define type->checker (make-type-namer ':CHECK))
-(define type->converter (make-type-namer ':CONVERT))
-(define type->check&converter (make-type-namer ':CHECK&CONVERT))
-(define type->return-converter (make-type-namer ':RETURN-CONVERT))
-(define type->reverter (make-type-namer ':REVERT))
-
 (define-syntax windows-procedure
   (sc-macro-transformer
    (lambda (form environment)
@@ -194,17 +182,17 @@ to inside a string that is being used as the buffer).
 		     (list-ref form 5))
 		'(LAMBDA (X Y) X Y UNSPECIFIC))))
        `(BEGIN 
-	  (DEFINE-INTEGRABLE (,(type->checker name environment) X)
+	  (DEFINE-INTEGRABLE (,(type->checker name) X)
 	    (,check X))
-	  (DEFINE-INTEGRABLE (,(type->converter name environment) X)
+	  (DEFINE-INTEGRABLE (,(type->converter name) X)
 	    (,convert X))
-	  (DEFINE-INTEGRABLE (,(type->check&converter name environment) X)
+	  (DEFINE-INTEGRABLE (,(type->check&converter name) X)
 	    (IF (,(type->checker name environment) X)
 		(,(type->converter name environment) X)
 		(WINDOWS-PROCEDURE-ARGUMENT-TYPE-CHECK-ERROR ',name X)))
-	  (DEFINE-INTEGRABLE (,(type->return-converter name environment) X)
+	  (DEFINE-INTEGRABLE (,(type->return-converter name) X)
 	    (,return X))
-	  (DEFINE-INTEGRABLE (,(type->reverter name environment) X Y)
+	  (DEFINE-INTEGRABLE (,(type->reverter name) X Y)
 	    (,revert X Y)))))))
 
 (define-syntax define-similar-windows-type
@@ -229,15 +217,32 @@ to inside a string that is being used as the buffer).
 		       (list-ref form 6))
 		  (type->reverter model environment))))
 	 `(BEGIN
-	    (DEFINE-INTEGRABLE (,(type->checker name environment) X)
+	    (DEFINE-INTEGRABLE (,(type->checker name) X)
 	      (,check X))
-	    (DEFINE-INTEGRABLE (,(type->converter name environment) X)
+	    (DEFINE-INTEGRABLE (,(type->converter name) X)
 	      (,convert X))
-	    (DEFINE-INTEGRABLE (,(type->check&converter name environment) X)
+	    (DEFINE-INTEGRABLE (,(type->check&converter name) X)
 	      (IF (,(type->checker name environment) X)
 		  (,(type->converter name environment) X)
 		  (WINDOWS-PROCEDURE-ARGUMENT-TYPE-CHECK-ERROR ',name X)))
-	    (DEFINE-INTEGRABLE (,(type->return-converter name environment) X)
+	    (DEFINE-INTEGRABLE (,(type->return-converter name) X)
 	      (,return X))
-	    (DEFINE-INTEGRABLE (,(type->reverter name environment) X Y)
+	    (DEFINE-INTEGRABLE (,(type->reverter name) X Y)
 	      (,revert X Y))))))))
+
+(define ((make-type-namer suffix) type #!optional environment)
+  (let ((name (symbol-append type suffix)))
+    (if (default-object? environment)
+	name
+	(close-syntax name environment))))
+
+(define type->checker (make-type-namer ':CHECK))
+(define type->converter (make-type-namer ':CONVERT))
+(define type->check&converter (make-type-namer ':CHECK&CONVERT))
+(define type->return-converter (make-type-namer ':RETURN-CONVERT))
+(define type->reverter (make-type-namer ':REVERT))
+
+(define ffi-module-entry-variable
+  (string->symbol "[ffi entry]"))
+(define ffi-result-variable
+  (string->symbol "[ffi result]"))
