@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: assconv.scm,v 1.14 1996/02/08 17:10:59 adams Exp $
+$Id: assconv.scm,v 1.15 1996/02/09 04:38:25 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -39,20 +39,42 @@ MIT in each case. |#
 
 ;;  Assignment conversion.
 ;;
-;;  Each variable reference occurs in some dynamic extent.  Each
-;;  environment belongs to an extent.  Some environments, like nested
-;;  LET frames, belong to the same extent.  Extents are represented by
-;;  unique values (small integers).  Later we partition bindings
-;;  according to equivalence classes of the sets of extents in which
-;;  references or assignments to them occur.  The idea behind this is
-;;  that mutable variables that travel around together will be placed
-;;  in the same multi-cell but variables that are live in different
-;;  extents are allocated to different cells, allowing better GC
-;;  behaviour.
+;;  Assignment conversion removes SET! from the language by introducing
+;;  explicit locations (cells) and operations on those locations.
+;;
+;;  It can be advantageous to collect locations together to make a larger
+;;  `multicell' because only one pointer is required for the whole
+;;  collection.  Typically, a cell pointer will be stored on the stack
+;;  or in the heap so one pointer is more efficient.  The downside is
+;;  that if too many (or the wrong) variables are allocated to the
+;;  same multicell then it might keep live a pointer to a value that
+;;  will never be used again because there are no procedures left
+;;  which access that variable.  This will prevent garbage collection
+;;  from reclaiming the value.  Using single cells reduces this false
+;;  liveness problem at the cost of having more pointers.  The scheme
+;;  below is a middle course which has the benefits of both extremes.
+;;
+;;  Each variable reference occurs in some dynamic extent.  By `extent' we
+;;  mean the duration or lifetime of a piece of program text.  Each
+;;  environment frame and the code within it has a separate extent,
+;;  for example, escaping closures could have arbitrary unrelated
+;;  lifetimes.
+;;
+;;  Bindings are partitioned into equivalence classes according to the set
+;;  of extents in which references or assignments to them occur.  To
+;;  make the partitioning easy we represent each extent by a unique
+;;  small integer.
+;;
+;;  Some frames happen to have the same or very similar extents.
+;;  Discovering frames with `equivalent' extents will improve the
+;;  partitioning (bigger multicells without risk of keeping data
+;;  live).  Currently we do only the trivial case of equating the
+;;  extents of nested LET frames.  It is probably not worth doing
+;;  anything more elaborate.
 
-;; Legal values: BY-EXTENT (as decribed above), INDIVIDUAL-CELLS (each
-;; mutable binding is allocated a separate cell), ONE-MULTICELL (all
-;; mutable bindings from a given frame are put in one multicell)
+;; Legal values: BY-EXTENT (the scheme decribed above), INDIVIDUAL-CELLS
+;; (each mutable binding is allocated a separate cell), ONE-MULTICELL
+;; (all mutable bindings from a given frame are put in one multicell).
 
 (define *assconv/partitioning* 'BY-EXTENT)
 
@@ -73,8 +95,7 @@ MIT in each case. |#
 	     (NAMED-LAMBDA (,proc-name ENV FORM)
 	       (ASSCONV/REMEMBER ,code form))))))))
 
-;;;; Variable manipulation forms
-
+
 (define-assignment-converter LAMBDA (env lambda-list body)
   (assconv/lambda* env lambda-list body (assconv/new-extent)))
 
@@ -96,7 +117,7 @@ MIT in each case. |#
 			      name))
 			lambda-list))
 	,body*))))
-
+
 (define-assignment-converter LET (env bindings body)
   (call-with-values
    (lambda ()
@@ -136,9 +157,7 @@ MIT in each case. |#
 	   (cons result (assconv/binding/assignments binding)))
 	  (assconv/binding/new-extent binding env)
 	  result))))
-
-;;;; Trivial forms
-
+
 (define-assignment-converter QUOTE (env object)
   env					; ignored
   `(QUOTE ,object))
@@ -158,7 +177,7 @@ MIT in each case. |#
 			       (lambda/body rator)
 			       (assconv/env/extent env)))
       (finish (assconv/expr env rator))))
-
+
 (define-assignment-converter BEGIN (env #!rest actions)
   (let  ((actions*   (assconv/expr* env actions)))
     (let loop ((actions actions*))
@@ -199,7 +218,7 @@ MIT in each case. |#
 (define (assconv/remember new old)
   (code-rewrite/remember new old)
   new)
-
+
 (define (assconv/new-name prefix)
   (new-variable prefix))
 
@@ -209,7 +228,6 @@ MIT in each case. |#
 (define (assconv/new-cell-name prefix)
   (new-variable (string-append (symbol-name prefix) "-cell")))
 
-
 (define *assconv/effect-only-forms*)
 
 (define (assconv/form/set-effect-only! form)
@@ -217,7 +235,7 @@ MIT in each case. |#
 
 (define (assconv/form/effect-only? form)
   (hash-table/get *assconv/effect-only-forms* form #F))
-
+
 ;;;; Environments and extents.
 
 (define *assconv/extent-counter*)
@@ -229,24 +247,24 @@ MIT in each case. |#
 (define-structure (assconv/env
 		   (conc-name assconv/env/)
 		   (constructor assconv/env/make (bindings parent extent)))
-  parent
-  extent
-  bindings)
+  (parent   #F read-only true)
+  (extent   #F read-only true)
+  (bindings #F read-only true))
 
 (define-structure (assconv/binding
 		   (conc-name assconv/binding/)
 		   (constructor assconv/binding/make (name initial-extent)))
-  (name false read-only true)
+  (name      false read-only true)
   (cell-name false read-only false)
   (multicell-layout false read-only false)
-  (references '() read-only false)
+  (references  '() read-only false)
   (assignments '() read-only false)
   ;;  The extents associated with this binding.  The INITIAL-EXTENT is the
-  ;;  extent in which the binding is introduced.  The other extents
-  ;;  are for the references and assignments.
-  (initial-extent #F read-only true)
-  (extents '() read-only false))
-
+  ;;  extent in which the binding is introduced (i.e. the extent of
+  ;;  its frame).  The other EXTENTS are those of the references and
+  ;;  assignments, collected in a list.
+  (initial-extent #F  read-only true)
+  (extents        '() read-only false))
 
 (define (assconv/binding/new-extent binding env)
   (let ((extent (assconv/env/extent env)))
@@ -264,7 +282,6 @@ MIT in each case. |#
 		  (car rib))
 		 (else
 		  (rib-loop (cdr rib))))))))
-
 
 (define (assconv/binding-body env next-extent names body)
   ;; (values shadowed-names body*)
@@ -517,13 +534,11 @@ MIT in each case. |#
 
 (define (assconv/cellify! binding)
   (for-each (lambda (ref)
-	      (form/rewrite!
-		  ref
+	      (form/rewrite! ref
 		(assconv/cell-reference binding)))
     (assconv/binding/references binding))
   (for-each (lambda (ass)
-	      (form/rewrite!
-		  ass
+	      (form/rewrite! ass
 		(assconv/cell-assignment binding (set!/expr ass) ass)))
     (assconv/binding/assignments binding))
   (dbg-info/remember (assconv/binding/name binding)
