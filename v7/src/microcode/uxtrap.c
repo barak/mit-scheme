@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.11 1991/06/15 00:40:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.12 1991/07/11 03:56:07 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -257,39 +257,36 @@ DEFUN_VOID (initialize_ux_signal_codes)
 }
 
 static SCHEME_OBJECT
-DEFUN (find_signal_code_name, (signo, info),
+DEFUN (find_signal_code_name, (signo, info, scp),
        int signo AND
-       SIGINFO_T info)
+       SIGINFO_T info AND
+       struct FULL_SIGCONTEXT * scp)
 {
-  SCHEME_OBJECT codenam, codenum, result;
-  struct ux_sig_code_desc *entry;
   unsigned long code = (SIGINFO_CODE (info));
-
-  for (entry = &ux_signal_codes[0];
-       entry->signo != 0;
-       entry += 1)
+  char * name = 0;
+#ifdef SPECIAL_SIGNAL_CODE_NAMES
+  SPECIAL_SIGNAL_CODE_NAMES ();
+  if (name == 0)
+#endif
     {
-      if ((entry->signo == signo)
-	  && (((entry->code_mask) & code) == (entry->code_value)))
-	break;
+      struct ux_sig_code_desc * entry = (& (ux_signal_codes [0]));
+      while ((entry -> signo) != 0)
+	if (((entry -> signo) == signo)
+	    && (((entry -> code_mask) & code) == (entry -> code_value)))
+	  {
+	    name = (entry -> name);
+	    break;
+	  }
     }
-
-  codenam = ((entry->signo == 0)
-	     ? SHARP_F
-	     : (char_pointer_to_string (entry->name)));
-  codenum = (long_to_integer ((long) code));
-
-  result = (MAKE_POINTER_OBJECT (TC_LIST, Free));
-  *Free++ = codenum;
-  *Free++ = codenam;
-
-  return (result);  
+  return (cons ((long_to_integer ((long) code)),
+		((name == 0) ? SHARP_F : (char_pointer_to_string (name)))));
 }
 
 static void
-DEFUN (setup_trap_frame, (signo, info, trinfo, new_stack_pointer),
+DEFUN (setup_trap_frame, (signo, info, scp, trinfo, new_stack_pointer),
        int signo AND
        SIGINFO_T info AND
+       struct FULL_SIGCONTEXT * scp AND
        struct trap_recovery_info * trinfo AND
        SCHEME_OBJECT * new_stack_pointer)
 {
@@ -313,7 +310,7 @@ DEFUN (setup_trap_frame, (signo, info, trinfo, new_stack_pointer),
     ((signo == 0)
      ? SHARP_F
      : (char_pointer_to_string (find_signal_name (signo))));
-  signal_code = (find_signal_code_name (signo, info));
+  signal_code = (find_signal_code_name (signo, info, scp));
   History = (Make_Dummy_History ());
   if (!stack_recovered_p)
     {
@@ -381,7 +378,7 @@ DEFUN_VOID (soft_reset)
   if ((Free >= Heap_Top) || (Free < Heap_Bottom))
     /* Let's hope this works. */
     Free = MemTop;
-  setup_trap_frame (0, 0, (&trinfo), new_stack_pointer);
+  setup_trap_frame (0, 0, 0, (&trinfo), new_stack_pointer);
 }
 
 #if !defined(HAVE_SIGCONTEXT) || !defined(HAS_COMPILER_SUPPORT) || defined(USE_STACKLETS)
@@ -396,7 +393,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
   {
     Free = MemTop;
   }
-  setup_trap_frame (signo, info, (&dummy_recovery_info), 0);
+  setup_trap_frame (signo, info, scp, (&dummy_recovery_info), 0);
 }
 
 #else /* HAVE_SIGCONTEXT and HAS_COMPILER_SUPPORT and not USE_STACKLETS */
@@ -623,7 +620,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
   {
     (*xtra_info++) = ((SCHEME_OBJECT) the_pc);
   }
-  setup_trap_frame (signo, info, (&trinfo), new_stack_pointer);
+  setup_trap_frame (signo, info, scp, (&trinfo), new_stack_pointer);
 }
 
 /* Find the compiled code block in area which contains `pc_value'.

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.8 1991/07/11 01:48:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.9 1991/07/11 03:55:53 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -138,9 +138,44 @@ MIT in each case. */
   DECLARE_UX_SIGNAL_CODE						\
     (SIGFPE, (~ 0L), 13, "conditional trap");				\
   DECLARE_UX_SIGNAL_CODE						\
-    (SIGFPE, (~ 0L), 14, "floating-point assist exception trap");	\
+    (SIGFPE, (~ 0L), 14, "assist exception trap");			\
   DECLARE_UX_SIGNAL_CODE						\
-    (SIGFPE, (~ 0L), 22, "floating-point assist emulation trap");	\
+    (SIGFPE, (~ 0L), 22, "assist emulation trap");			\
+}
+
+#define SPECIAL_SIGNAL_CODE_NAMES()					\
+{									\
+  if ((signo == SIGFPE) && (code == 14))				\
+    switch ((((*scp) . sc_sl . sl_ss . ss_frexcp1) >> 26) & 0x3f)	\
+      {									\
+      case 0x20:							\
+	name = "invalid operation";					\
+	break;								\
+      case 0x10:							\
+	name = "divide by zero";					\
+	break;								\
+      case 0x08:							\
+	name = "overflow";						\
+	break;								\
+      case 0x04:							\
+      case 0x14:							\
+      case 0x24:							\
+      case 0x34:							\
+	name = "underflow";						\
+	break;								\
+      case 0x02:							\
+	name = "inexact";						\
+	break;								\
+      case 0x0a:							\
+	name = "inexact and overflow";					\
+	break;								\
+      case 0x06:							\
+      case 0x16:							\
+      case 0x26:							\
+      case 0x36:							\
+	name = "inexact and underflow";					\
+	break;								\
+      }									\
 }
 
 #endif /* hp9000s800 */
