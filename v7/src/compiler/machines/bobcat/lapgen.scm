@@ -37,7 +37,7 @@
 
 ;;;; RTL Rules for 68020
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.142 1986/12/20 23:49:41 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.143 1986/12/21 19:46:08 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access lap-generator-syntax-table compiler-package)
@@ -288,7 +288,7 @@
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? datum))))
   (let ((target* (coerce->any target))
-	(datum* (coerce->any datum)))
+	(datum (coerce->any datum)))
     (if (pseudo-register? target)
 	(delete-dead-registers!))
     (if (register-expression? target*)
