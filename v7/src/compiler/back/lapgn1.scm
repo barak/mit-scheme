@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -37,7 +37,7 @@
 
 ;;;; LAP Code Generation
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.23 1986/12/21 19:34:12 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.24 1987/01/01 19:41:05 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -227,6 +227,7 @@
   (need-register! alias))
 
 (define (clear-map!)
+  (delete-dead-registers!)
   (let ((instructions (clear-map)))
     (set! *register-map* (empty-register-map))
     (set! *needed-registers* '())

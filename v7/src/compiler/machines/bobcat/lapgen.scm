@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -37,7 +37,7 @@
 
 ;;;; RTL Rules for 68020
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.143 1986/12/21 19:46:08 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.144 1987/01/01 19:41:39 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access lap-generator-syntax-table compiler-package)
@@ -283,6 +283,13 @@
     ;; requires that we first mask it.
     `((MOVE L ,source
 	    ,(register-reference (allocate-alias-register! target 'DATA))))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (POST-INCREMENT (REGISTER 15) 1))
+  (let ((target* (coerce->any target)))
+    (if (pseudo-register? target)
+	(delete-dead-registers!))
+    `((MOVE L (@A+ 7) ,target*))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -309,6 +316,11 @@
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (REGISTER (? r)))
   `((MOVE L ,(coerce->any r) ,(indirect-reference! a n))))
+
+(define-rule statement
+  (ASSIGN (OFFSET (REGISTER (? a)) (? n))
+	  (POST-INCREMENT (REGISTER 15) 1))
+  `((MOVE L (@A+ 7) ,(indirect-reference! a n))))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
@@ -553,11 +565,12 @@
 
 (define (lookup-call entry environment name)
   (let ((set-environment (expression->machine-register! environment a0)))
-    `(,@set-environment
-      ,@(clear-map!)
-      ,(load-constant name '(A 1))
-      (JSR ,entry)
-      ,@(make-external-label (generate-label)))))
+    (let ((clear-map (clear-map!)))
+      `(,@set-environment
+	,@clear-map
+	,(load-constant name '(A 1))
+	(JSR ,entry)
+	,@(make-external-label (generate-label))))))
 
 (define-rule statement
   (INTERPRETER-CALL:ENCLOSE (? number-pushed))
@@ -588,12 +601,13 @@
 (define (assignment-call:default entry environment name value)
   (let ((set-environment (expression->machine-register! environment a0)))
     (let ((set-value (expression->machine-register! value a2)))
-      `(,@set-environment
-	,@set-value
-	,@(clear-map!)
-	,(load-constant name '(A 1))
-	(JSR ,entry)
-	,@(make-external-label (generate-label))))))
+      (let ((clear-map (clear-map!)))
+	`(,@set-environment
+	  ,@set-value
+	  ,@clear-map
+	  ,(load-constant name '(A 1))
+	  (JSR ,entry)
+	  ,@(make-external-label (generate-label)))))))
 
 (define-rule statement
   (INTERPRETER-CALL:DEFINE (? environment) (? name)
@@ -611,14 +625,16 @@
 
 (define (assignment-call:cons-pointer entry environment name type datum)
   (let ((set-environment (expression->machine-register! environment a0)))
-    `(,@set-environment
-      (MOVE L ,(coerce->any datum) ,reg:temp)
-      (MOVE B (& ,type) ,reg:temp)
-      ,@(clear-map!)
-      (MOVE L ,reg:temp (A 2))
-      ,(load-constant name '(A 1))
-      (JSR ,entry)
-      ,@(make-external-label (generate-label)))))
+    (let ((datum (coerce->any datum)))
+      (let ((clear-map (clear-map!)))
+	`(,@set-environment
+	  (MOVE L ,datum ,reg:temp)
+	  (MOVE B (& ,type) ,reg:temp)
+	  ,@clear-map
+	  (MOVE L ,reg:temp (A 2))
+	  ,(load-constant name '(A 1))
+	  (JSR ,entry)
+	  ,@(make-external-label (generate-label)))))))
 
 ;;;; Procedure/Continuation Entries
 
