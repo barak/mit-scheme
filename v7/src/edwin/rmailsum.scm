@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.16 1991/11/21 10:38:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.17 1992/01/07 16:47:33 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -46,11 +46,25 @@
 
 (declare (usual-integrations))
 
-(define rmail-buffer false)
+(define-variable-per-buffer rmail-buffer
+  "Corresponding RMAIL buffer for a summary buffer.
+FALSE means buffer is not a summary buffer."
+  false
+  (lambda (x)
+    (or (not x) (buffer? x))))
 
-(define rmail-summary-buffer false)
+(define-variable-per-buffer rmail-summary-buffer 
+  "Corresponding RMAIL-summary buffer for an RMAIL buffer.
+FALSE means buffer has no summary buffer."
+  false
+  (lambda (x)
+    (or (not x) (buffer? x))))
 
-(define rmail-summary-vector false)
+(define-variable-per-buffer rmail-summary-vector
+  "Vector of header lines."
+  false
+  (lambda (x)
+    (or (not x) (vector? x))))
 
 ;;; (define-variable rmail-last-multi-labels
 ;;;   ""
@@ -122,7 +136,7 @@ RECIPIENTS is a string of names separated by commas."
 
 (define (rmail-message-recipients? memo recip-regexp primary-only)
   (without-clipping
-   rmail-buffer
+   (current-buffer)
    (lambda ()
      (let* ((start (msg-memo/start memo))
 	    (end (msg-memo/end memo))
@@ -144,52 +158,69 @@ RECIPIENTS is a string of names separated by commas."
 
 (define rmail-new-summary 
   (lambda (description function . args)
-    (guarantee-rmail-summary-variables)
-    (message "Computing summary lines...")
-    (if (not rmail-summary-buffer)
-	(set! rmail-summary-buffer
-	      (temporary-buffer
-	       (string-append (buffer-name (current-buffer)) "-summary"))))
-    (let ((summary-msgs ())
-	  (the-current-message-number (msg-memo/number (current-msg-memo))))
-      (let loop ((the-memo (msg-memo/first (current-msg-memo))))
-	(let ((next-memo (msg-memo/next the-memo)))
-	  (if (or (not function)
-		  (apply function (cons the-memo args)))
-	      (set! summary-msgs
-		    (cons (rmail-make-summary-line the-memo)
-			  summary-msgs)))
-	  (if next-memo
-	      (loop next-memo))))
-      (select-buffer-other-window rmail-summary-buffer)
-      (set-buffer-writeable! (current-buffer))
-      (set-current-point! (buffer-start (current-buffer)))
-      (kill-string (buffer-start (current-buffer))
-		   (buffer-end (current-buffer)))
-      (let loop ((the-summary-list (reverse summary-msgs)))
-	(if (not (null? the-summary-list))
-	    (begin
-	      (insert-string (car the-summary-list))
-	      (loop (cdr the-summary-list)))))
-      (set-buffer-read-only! (current-buffer))
-      (set-current-point! (buffer-start (current-buffer)))
-      (set-current-major-mode! (ref-mode-object rmail-summary))
-      (set-variable! mode-line-process (list ": " description))
-      (let ((the-current-msg-line
-	     (re-search-forward 
-	      (string-append "^[ ]*" (number->string the-current-message-number))
-	      (buffer-start (current-buffer))
-	      (buffer-end (current-buffer)))))
-	(if the-current-msg-line
-	    (set-current-point! 
-	     (line-start the-current-msg-line 0))))
-      (rmail-summary-goto-message-current-line)
-      (message "Computing summary lines...done"))))
+    (let ((the-rmail-buffer (current-buffer))
+	  (number-of-messages
+	   (msg-memo/number (msg-memo/last (current-msg-memo)))))
+      (message "Computing summary lines...")
+      (if (not (ref-variable rmail-summary-buffer))
+	  (local-set-variable! 
+	   rmail-summary-buffer
+	   (temporary-buffer
+	    (string-append (buffer-name (current-buffer)) "-summary"))))
+      (set-buffer-major-mode! (ref-variable rmail-summary-buffer)
+			      (ref-mode-object rmail-summary))
+      (let ((the-rmail-summary-buffer (ref-variable rmail-summary-buffer)))
+	(select-buffer-other-window (ref-variable rmail-summary-buffer))
+	(perform-buffer-initializations! (current-buffer))
+	(select-buffer-other-window the-rmail-buffer)
+	(define-variable-local-value! 
+	  the-rmail-summary-buffer (ref-variable-object rmail-buffer)
+	  the-rmail-buffer)
+	(define-variable-local-value!
+	  the-rmail-summary-buffer (ref-variable-object rmail-summary-vector)
+	  (make-vector number-of-messages #F)))
+      (let ((summary-msgs ())
+	    (the-current-message-number (msg-memo/number (current-msg-memo))))
+	(let loop ((the-memo (msg-memo/first (current-msg-memo))))
+	  (let ((next-memo (msg-memo/next the-memo)))
+	    (if (or (not function)
+		    (apply function (cons the-memo args)))
+		(set! summary-msgs
+		      (cons (rmail-make-summary-line the-memo)
+			    summary-msgs)))
+	    (if next-memo
+		(loop next-memo))))
+	(select-buffer-other-window (ref-variable rmail-summary-buffer))
+	(set-buffer-writeable! (current-buffer))
+	(set-current-point! (buffer-start (current-buffer)))
+	(kill-string (buffer-start (current-buffer))
+		     (buffer-end (current-buffer)))
+	(let loop ((the-summary-list (reverse summary-msgs)))
+	  (if (not (null? the-summary-list))
+	      (begin
+		(insert-string (car the-summary-list))
+		(loop (cdr the-summary-list)))))
+	(set-buffer-read-only! (current-buffer))
+	(set-current-point! (buffer-start (current-buffer)))
+;	(set-current-major-mode! (ref-mode-object rmail-summary))
+	(set-variable! mode-line-process (list ": " description))
+	(let ((the-current-msg-line
+	       (re-search-forward 
+		(string-append "^[ ]*" (number->string the-current-message-number))
+		(buffer-start (current-buffer))
+		(buffer-end (current-buffer)))))
+	  (if the-current-msg-line
+	      (set-current-point! 
+	       (line-start the-current-msg-line 0))))
+	(rmail-summary-goto-message-current-line)
+	(message "Computing summary lines...done")))))
 
 (define (rmail-make-summary-line memo)
   (let ((new-summary-line-count 0))
     (let ((line
-	   (or (vector-ref rmail-summary-vector (-1+ (msg-memo/number memo)))
+	   (or (vector-ref (ref-variable rmail-summary-vector
+					 (ref-variable rmail-summary-buffer))
+			   (-1+ (msg-memo/number memo)))
 	       (begin
 		 (set! new-summary-line-count
 		       (1+ new-summary-line-count))
@@ -197,7 +228,9 @@ RECIPIENTS is a string of names separated by commas."
 		     (message "Computing summary lines..."
 			      new-summary-line-count))
 		 (rmail-make-summary-line-1 memo)
-		 (vector-ref rmail-summary-vector (-1+ (msg-memo/number memo)))
+		 (vector-ref (ref-variable rmail-summary-vector
+					   (ref-variable rmail-summary-buffer))
+			     (-1+ (msg-memo/number memo)))
 		 ))))
       ;; Fix up the part of the summary that says "deleted" or "unseen".
       (string-set!
@@ -255,7 +288,9 @@ RECIPIENTS is a string of names separated by commas."
 			      (line-start start 2))))
 	 (set! pos (string-find-next-char line #\#))
 	 (let ((num (msg-memo/number memo)))
-	   (vector-set! rmail-summary-vector (-1+ num)
+	   (vector-set! (ref-variable rmail-summary-vector
+				      (ref-variable rmail-summary-buffer))
+			(-1+ num)
 			(string-append
 			 (string-pad-left (number->string num) 4)
 			 "  "
@@ -382,12 +417,6 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
     (set-buffer-read-only! buffer))
   (event-distributor/invoke! (ref-variable rmail-summary-mode-hook)))
 
-(define (guarantee-rmail-summary-variables)
-  (let ((number-of-messages
-	 (msg-memo/number (msg-memo/last (current-msg-memo)))))
-    (set! rmail-buffer (current-buffer))
-    (set! rmail-summary-vector (make-vector number-of-messages #F))))
-
 (define-key 'rmail-summary #\j		'rmail-summary-show-message)
 (define-key 'rmail-summary #\n		'rmail-summary-next-undeleted-message)
 (define-key 'rmail-summary #\p
@@ -431,10 +460,10 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
 
 (define (make-rmail-summary-handler-prefix-arg key)
   (lambda (arg)
-    (select-buffer-other-window rmail-buffer)
+    (select-buffer-other-window (ref-variable rmail-buffer))
     ((command-procedure
       (comtab-entry (mode-comtabs (current-major-mode)) key)) arg)
-    (select-buffer-other-window rmail-summary-buffer)))
+    (select-buffer-other-window (ref-variable rmail-summary-buffer))))
 
 (define-command rmail-summary-show-message
   ""
@@ -469,11 +498,11 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
 			(mark-delete-right-char! end)
 			(insert-char #\space end)
 			(set-buffer-read-only! (current-buffer))))
-		  (select-buffer-other-window rmail-buffer)
+		  (select-buffer-other-window (ref-variable rmail-buffer))
 		  ((command-procedure
 		    (comtab-entry (mode-comtabs (current-major-mode)) #\j))
 		   the-message-number)
-		  (select-buffer-other-window rmail-summary-buffer))))))))
+		  (select-buffer-other-window (ref-variable rmail-summary-buffer)))))))))
 
 (define-command rmail-summary-next-message
   "Goto ARGth previous message."
@@ -540,15 +569,15 @@ shown in the RMAIL buffer, warp to the appropriate message."
 		   (string->number (string-trim (extract-string start end)))))
 	      (if (not (null? the-message-number))
 		  (if (= the-message-number 
-			 (msg-memo/number (buffer-msg-memo rmail-buffer)))
+			 (msg-memo/number (buffer-msg-memo (ref-variable rmail-buffer))))
 		      (begin
-			(select-buffer-other-window rmail-buffer)
+			(select-buffer-other-window (ref-variable rmail-buffer))
 			(let ((window (current-window)))
 			  (scroll-window 
 			   window
 			   (standard-scroll-window-argument window arg 1)
 			   (lambda () true)))
-			(select-buffer-other-window rmail-summary-buffer))
+			(select-buffer-other-window (ref-variable rmail-summary-buffer)))
 		      (begin
 			(if (char=? (mark-right-char end) #\-)
 			    (begin
@@ -556,29 +585,29 @@ shown in the RMAIL buffer, warp to the appropriate message."
 			      (mark-delete-right-char! end)
 			      (insert-char #\space end)
 			      (set-buffer-read-only! (current-buffer))))
-			(select-buffer-other-window rmail-buffer)
+			(select-buffer-other-window (ref-variable rmail-buffer))
 			((command-procedure
 			  (comtab-entry (mode-comtabs (current-major-mode)) #\j))
 			 the-message-number)
-			(select-buffer-other-window rmail-summary-buffer))))))))))
+			(select-buffer-other-window (ref-variable rmail-summary-buffer)))))))))))
  
 (define-command rmail-summary-scroll-message-down
   "Scroll RMAIL window down."
   "P"
   (lambda (arg)
-    (select-buffer-other-window rmail-buffer)
+    (select-buffer-other-window (ref-variable rmail-buffer))
     (let ((window (current-window)))
       (scroll-window window
 		     (standard-scroll-window-argument window arg -1)
 		     (lambda () true)))
-    (select-buffer-other-window rmail-summary-buffer)))
+    (select-buffer-other-window (ref-variable rmail-summary-buffer))))
 
 (define-command rmail-summary-delete-message
   "Delete this message and stay on it."
   '()
   (lambda ()
     (rmail-summary-goto-message-current-line)
-    (let ((the-memo (buffer-msg-memo rmail-buffer)))
+    (let ((the-memo (buffer-msg-memo (ref-variable rmail-buffer))))
       (set-attribute! the-memo 'DELETED))
     (let ((the-mark1
 	   (skip-chars-forward " " (line-start (current-point) 0))))
@@ -608,7 +637,7 @@ shown in the RMAIL buffer, warp to the appropriate message."
   '()
   (lambda ()
     (rmail-summary-goto-message-current-line)
-    (let ((the-memo (buffer-msg-memo rmail-buffer)))
+    (let ((the-memo (buffer-msg-memo (ref-variable rmail-buffer))))
       (if (msg-memo/deleted? the-memo)
 	  (clear-attribute! the-memo 'DELETED))
       (let ((the-mark1
@@ -656,7 +685,7 @@ and undelete it."
   (lambda ()
     (bury-buffer (current-buffer))
     (if (window-has-no-neighbors? (current-window))
-	(select-buffer rmail-buffer)
+	(select-buffer (ref-variable rmail-buffer))
 	((ref-command delete-window)))))
 
 (define-command rmail-summary-quit
@@ -670,16 +699,16 @@ and undelete it."
   "Go to top of message currently being displayed."
   '()
   (lambda ()
-    (select-buffer-other-window rmail-buffer)
+    (select-buffer-other-window (ref-variable rmail-buffer))
     ((ref-command beginning-of-buffer) 0)
-    (select-buffer-other-window rmail-summary-buffer)))
+    (select-buffer-other-window (ref-variable rmail-summary-buffer))))
 
 (define-command rmail-summary-expunge
   "Remove deleted messages, and recompute header lines.
 Calls whatever function is bound to #\e in RMAIL mode."
   '()
   (lambda ()
-    (select-buffer-other-window rmail-buffer)
+    (select-buffer-other-window (ref-variable rmail-buffer))
     ((command-procedure
       (comtab-entry (mode-comtabs (current-major-mode)) #\e)))
     ((ref-command rmail-summary))))
@@ -689,7 +718,7 @@ Calls whatever function is bound to #\e in RMAIL mode."
 Calls whatever function is bound to #\s in RMAIL mode."
   '()
   (lambda ()
-    (select-buffer-other-window rmail-buffer)
+    (select-buffer-other-window (ref-variable rmail-buffer))
     ((command-procedure
       (comtab-entry (mode-comtabs (current-major-mode)) #\s)))
     ((ref-command rmail-summary))))
@@ -699,10 +728,10 @@ Calls whatever function is bound to #\s in RMAIL mode."
 Calls whatever function is bound to #\t in RMAIL mode."
   '()
   (lambda ()
-    (select-buffer-other-window rmail-buffer)
+    (select-buffer-other-window (ref-variable rmail-buffer))
     ((command-procedure
       (comtab-entry (mode-comtabs (current-major-mode)) #\t)))
-    (select-buffer-other-window rmail-summary-buffer)))
+    (select-buffer-other-window (ref-variable rmail-summary-buffer))))
 
 (define-command rmail-summary-output
   "Append this message to Unix mail file named FILE-NAME.
@@ -710,11 +739,11 @@ Calls whatever function is bound to #\c-o in RMAIL mode."
   '()
   (lambda ()
     (rmail-summary-goto-message-current-line)
-    (select-buffer-other-window rmail-buffer)
+    (select-buffer-other-window (ref-variable rmail-buffer))
     (let ((the-command
 	   (comtab-entry (mode-comtabs (current-major-mode)) #\c-o)))
       (execute-command the-command))
-    (select-buffer-other-window rmail-summary-buffer)
+    (select-buffer-other-window (ref-variable rmail-summary-buffer))
     (if (ref-variable rmail-delete-after-output)
 	((ref-command rmail-summary-delete-message-forward)))))
 
@@ -724,11 +753,11 @@ Calls whatever function is bound to #\o in RMAIL mode."
   '()
   (lambda ()
     (rmail-summary-goto-message-current-line)
-    (select-buffer-other-window rmail-buffer)
+    (select-buffer-other-window (ref-variable rmail-buffer))
     (let ((the-command
 	   (comtab-entry (mode-comtabs (current-major-mode)) #\o)))
       (execute-command the-command))
-    (select-buffer-other-window rmail-summary-buffer)
+    (select-buffer-other-window (ref-variable rmail-summary-buffer))
     (if (ref-variable rmail-delete-after-output)
 	((ref-command rmail-summary-delete-message-forward)))))
 
@@ -737,7 +766,7 @@ Calls whatever function is bound to #\o in RMAIL mode."
 Calls whatever function is bound to #\g in RMAIL mode."
   '()
   (lambda ()
-    (select-buffer-other-window rmail-buffer)
+    (select-buffer-other-window (ref-variable rmail-buffer))
     (let ((the-command
 	   (comtab-entry (mode-comtabs (current-major-mode)) #\g)))
       (execute-command the-command))
@@ -748,7 +777,7 @@ Calls whatever function is bound to #\g in RMAIL mode."
 Calls whatever function is bound to #\i in RMAIL mode."
   '()
   (lambda ()
-    (select-buffer-other-window rmail-buffer)
+    (select-buffer-other-window (ref-variable rmail-buffer))
     (let ((the-command
 	   (comtab-entry (mode-comtabs (current-major-mode)) #\i)))
       (execute-command the-command))
@@ -759,7 +788,7 @@ Calls whatever function is bound to #\i in RMAIL mode."
 Calls whatever function is bound to #\m in RMAIL mode."
   '()
   (lambda ()
-    (select-buffer-other-window rmail-buffer)
+    (select-buffer-other-window (ref-variable rmail-buffer))
     ((command-procedure
       (comtab-entry (mode-comtabs (current-major-mode)) #\m)))))
 
@@ -768,7 +797,7 @@ Calls whatever function is bound to #\m in RMAIL mode."
 Calls whatever function is bound to #\r in RMAIL mode."
   "P"
   (lambda (arg)
-    (select-buffer-other-window rmail-buffer)
+    (select-buffer-other-window (ref-variable rmail-buffer))
     ((command-procedure
       (comtab-entry (mode-comtabs (current-major-mode)) #\r))
      arg)))
