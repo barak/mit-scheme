@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.2 2000/12/08 05:27:27 cph Exp $
+# $Id: Setup.sh,v 1.1 2000/12/08 05:34:01 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -18,17 +18,26 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-# Utility for cleaning up the MIT Scheme edwin directory.
-# The working directory must be the edwin directory.
+# Utility to set up the MIT Scheme compiler directory.
+# The working directory must be the compiler directory.
 
-if [ $# -ne 1 ]; then
-    echo "usage: $0 <command>"
+if [ $# -ne 0 ]; then
+    echo "usage: $0"
     exit 1
 fi
 
-../etc/Clean.sh "${1}" rm-bin rm-com rm-pkg-bin
+../etc/Setup.sh
 
-echo "rm -f edwinunx.* edwinw32.* edwinos2.*"
-rm -f edwinunx.* edwinw32.* edwinos2.*
+maybe_link ()
+{
+    if [ ! -e ${1} ]; then
+	echo "ln -s ${2} ${1}"
+	ln -s ${2} ${1}
+    fi
+}
+
+for N in 1 2 3; do
+    maybe_link machines/vax/dinstr$${N}.scm instr$${N}.scm
+done
 
 exit 0

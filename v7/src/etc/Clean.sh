@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.1 2000/12/08 04:49:54 cph Exp $
+# $Id: Clean.sh,v 1.2 2000/12/08 05:27:27 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -22,11 +22,14 @@
 # The working directory must be the build directory.
 
 if [ $# -eq 1 ]; then
-    RECURSIVE=no
-elif [ $# -eq 2 ] && [ "${2}" = "recursive" ]; then
-    RECURSIVE=yes
+    COMMAND="$1"
+    KEYWORDS="rm-bin rm-com rm-pkg-src rm-pkg-bin"
+elif [ $# -ge 2 ]; then
+    COMMAND="$1"
+    shift
+    KEYWORDS="$*"
 else
-    echo "usage: $0 <command> [recursive]"
+    echo "usage: $0 <command> <keyword> ..."
     exit 1
 fi
 
@@ -47,12 +50,25 @@ maintainer-clean)
     ;;
 esac
 
-echo "rm -f *.bin *.ext *.com *.bci *.bco *.bld *.crf *.fre *.glo"
-rm -f *.bin *.ext *.com *.bci *.bco *.bld *.crf *.fre *.glo
-
-if [ ${RECURSIVE} = no ]; then
-    echo "rm -f *.con *.ldr"
-    rm -f *.con *.ldr
-fi
+for KEYWORD in ${KEYWORDS}; do
+    case ${KEYWORD} in
+    rm-bin)
+	echo "rm -f *.bin *.ext"
+	rm -f *.bin *.ext
+	;;
+    rm-com)
+	echo "rm -f *.com *.bci"
+	rm -f *.com *.bci
+	;;
+    rm-pkg-src)
+	echo "rm -f *.con *.ldr"
+	rm -f *.con *.ldr
+	;;
+    rm-pkg-bin)
+	echo "rm -f *.bco *.bld *.crf *.fre *.glo"
+	rm -f *.bco *.bld *.crf *.fre *.glo
+	;;
+    esac
+done
 
 exit 0

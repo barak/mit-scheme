@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.1 2000/12/08 04:50:44 cph Exp $
+# $Id: Clean.sh,v 1.2 2000/12/08 05:27:27 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -26,7 +26,7 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
-../etc/Clean.sh "${1}" recursive
+../etc/Clean.sh "${1}" rm-bin rm-com rm-pkg-bin
 
 echo "rm -f cref.con cref.ldr"
 rm -f cref.con cref.ldr
