@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.29 1998/02/18 07:46:55 adams Exp $
+$Id: rulfix.scm,v 1.30 1998/02/19 08:56:27 adams Exp $
 
 Copyright (c) 1992-1998 Massachusetts Institute of Technology
 
@@ -136,6 +136,26 @@ MIT in each case. |#
   (fixnum-1-arg target source
    (lambda (target)
      (multiply-fixnum-constant target (* n fixnum-1) false))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  (OBJECT->FIXNUM (CONSTANT 2))
+			  #f)))
+  (QUALIFIER (multiply-object-by-2?))
+  (multiply-object-by-2 target source))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+			  (OBJECT->FIXNUM (CONSTANT 2))
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  #f)))
+  (QUALIFIER (multiply-object-by-2?))
+  (multiply-object-by-2 target source))
 
 ;;;; Fixnum Predicates
 
@@ -612,6 +632,33 @@ MIT in each case. |#
   (fixnum-1-arg target source
     (lambda (target)
       (LAP (SHL W ,target (& ,(+ scheme-type-width n)))))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-LSH
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  (OBJECT->FIXNUM (CONSTANT 1))
+			  #f)))
+  (QUALIFIER (multiply-object-by-2?))
+  (multiply-object-by-2 target source))
+
+;; Multiply by two by adding.  This can be done directly on the object
+;; if the fixnum tag is even, since the tag lsb acts as a place where
+;; the carry can stop.
+
+(define-integrable (multiply-object-by-2?)
+  (even? (ucode-type fixnum)))
+
+(define (multiply-object-by-2 target source)
+  (let ((src (source-register source)))
+    (let ((tgt (target-register-reference target)))
+      (let ((subtract-one-typecode
+	     (- #x100000000 (make-non-pointer-literal (ucode-type fixnum) 0)))
+	    (mask-out-carry-into-typecode-lsb
+	     (make-non-pointer-literal (ucode-type fixnum) (object-datum -1))))
+	(LAP (LEA ,tgt (@ROI UW ,src ,subtract-one-typecode ,src 1))
+	     (AND W ,tgt (&U ,mask-out-carry-into-typecode-lsb)))))))
 
 (define-arithmetic-method 'MULTIPLY-FIXNUM fixnum-methods/2-args-constant
   (lambda (target n overflow?)
