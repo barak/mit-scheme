@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.25 2000/05/19 13:33:08 cph Exp $
+$Id: todo.txt,v 1.26 2000/05/19 16:33:10 cph Exp $
 
 Bug fixes
 ---------
@@ -24,10 +24,6 @@ Bug fixes
 * RMAIL file reader must recognize when the tail of the file contains
   umail messages.
 
-* IMAIL must support I/O to compressed files (for my sake if no one
-  else).  A clean solution to this requires moving compressed-file
-  support to the runtime system.
-
 Design changes
 --------------
 
@@ -49,6 +45,12 @@ Design changes
 
 New features
 ------------
+
+* Optionally convert quoted-printable messages to 8bit for presentation.
+
+* Optionally wrap long lines for presentation.
+
+* Add configurable confirmation for performing EXPUNGE.
 
 * Change summary buffer to show more flags, specifically all the
   standard flags.  Use each flag's first letter, except: lump
@@ -92,3 +94,7 @@ New features
 * Generate file I/O messages when reading and writing file folders.
   Generate message "No changes to save." from SAVE-FOLDER on an IMAP
   folder.
+
+* IMAIL must support I/O to compressed files (for my sake if no one
+  else).  A clean solution to this requires moving compressed-file
+  support to the runtime system.
