@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2com.scm,v 1.1 1994/12/19 19:46:35 cph Exp $
+;;;	$Id: os2com.scm,v 1.2 1995/05/20 10:19:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -50,7 +50,7 @@
   "sSet foreground color"
   (lambda (name)
     (let ((screen (selected-screen)))
-      (os2-screen/set-foreground-color! screen (name->color name))
+      (os2-screen/set-foreground-color! screen (os2/find-color name))
       (update-screen! screen #t))))
 
 (define-command set-background-color
@@ -58,23 +58,16 @@
   "sSet background color"
   (lambda (name)
     (let ((screen (selected-screen)))
-      (os2-screen/set-background-color! screen (name->color name))
+      (os2-screen/set-background-color! screen (os2/find-color name))
       (update-screen! screen #t))))
 
-(define (name->color name)
-  (let ((length (string-length name)))
-    (if (and (not (fix:= 0 length))
-	     (char=? #\# (string-ref name 0)))
-	(let ((color
-	       (and (fix:= 7 length)
-		    (let ((color (substring->number name 1 length 16)))
-		      (and color
-			   (fix:>= color 0)
-			   color)))))
-	  (if (not color)
-	      (editor-error "Ill-formed RGB color name:" name))
-	  color)
-	(editor-error "Unknown color name:" name))))
+(define-command define-color-name
+  "Globally define COLOR-NAME to be COLOR.
+This does not affect any colors on the screen,
+but changes the meaning of COLOR-NAME when it is used in the future."
+  "sDefine color\nsDefine color to"
+  (lambda (name color)
+    (os2/define-color name color)))
 
 (define-command set-font
   "Set font to be used for drawing text."

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.175 1995/05/16 09:21:12 cph Exp $
+$Id: edwin.pkg,v 1.176 1995/05/20 10:19:57 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -1326,6 +1326,7 @@ MIT in each case. |#
     (files "os2com")
     (parent (edwin))
     (export (edwin)
+	    edwin-command$define-color-name
 	    edwin-command$set-background-color
 	    edwin-command$set-font
 	    edwin-command$set-foreground-color
