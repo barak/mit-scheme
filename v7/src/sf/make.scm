@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.34 1999/01/03 05:20:33 cph Exp $
+$Id: make.scm,v 4.35 2000/03/16 17:25:38 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -34,4 +34,4 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (package/system-loader "sf" '() 'QUERY)))
     ((package/reference (find-package '(SCODE-OPTIMIZER))
 			'USUAL-INTEGRATIONS/CACHE!))))
-(add-identification! "SF" 4 34)
+(add-system-identification! "SF" '(4 35))
