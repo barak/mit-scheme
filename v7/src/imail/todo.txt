@@ -1,8 +1,13 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.119 2001/05/07 18:03:43 cph Exp $
+$Id: todo.txt,v 1.120 2001/05/23 04:15:10 cph Exp $
 
 Bug fixes
 ---------
+
+* The RENAME-FOLDER operation must change the folder object to refer
+  to the new URL rather than the old.  The operation must close the
+  folder if it is open, then discard all the state, and finally
+  reinitialize it to be a closed reference to the new URL.
 
 * In "imail-imap.scm", FOLDER-LENGTH is just an alias for
   IMAP-FOLDER-N-MESSAGES.  Eliminate the latter procedure; it's just a
