@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.9 1989/11/27 20:21:00 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.10 1990/04/03 00:04:44 jinx Exp $
 
 Utilities to relocate compiled code in garbage collection-like processes. 
 
@@ -268,7 +268,7 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 {									\
   STORE_EXECUTE_CACHE_ADDRESS (target, source);				\
 }
-
+
 /* Heuristic recovery aid.  See unix.c for details. */
 
 #define CC_BLOCK_FIRST_GC_OFFSET					\
@@ -280,6 +280,10 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
    ((BYTE_OFFSET_TO_OFFSET_WORD(CC_BLOCK_FIRST_ENTRY_OFFSET))))
 
 #else /* not HAS_COMPILER_SUPPORT */
+
+/* This can be anything. */
+
+typedef unsigned short format_word;
 
 /* Is there anything else that can be done here? */
 
