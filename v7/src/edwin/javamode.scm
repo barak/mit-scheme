@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: javamode.scm,v 1.7 1999/10/08 04:38:49 cph Exp $
+;;; $Id: javamode.scm,v 1.8 1999/10/09 03:52:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1998-1999 Massachusetts Institute of Technology
 ;;;
@@ -107,5 +107,5 @@ This is just like C mode, except that
 
 (define php-syntax-table
   (let ((syntax-table (make-syntax-table java-syntax-table)))
-    (modify-syntax-entry! syntax-table #\$ "_")
+    (modify-syntax-entry! syntax-table #\$ ". p")
     syntax-table))
