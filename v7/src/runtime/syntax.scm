@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.24 1994/02/22 21:14:00 cph Exp $
+$Id: syntax.scm,v 14.25 1994/02/25 20:35:03 cph Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -96,22 +96,25 @@ MIT in each case. |#
 ;;;; Top Level Syntaxers
 
 (define (syntax expression #!optional table)
-  (syntax* (list expression) (if (default-object? table) #f table)))
+  (syntax-top-level 'SYNTAX syntax-expression expression
+		    (if (default-object? table) #f table)))
 
 (define (syntax* expressions #!optional table)
+  (syntax-top-level 'SYNTAX* syntax-sequence expressions
+		    (if (default-object? table) #f table)))
+
+(define (syntax-top-level name syntaxer expression table)
   (fluid-let ((*syntax-table*
-	       (cond ((or (default-object? table) (not table))
-		      (if (unassigned? *syntax-table*)
-			  (nearest-repl/syntax-table)
-			  *syntax-table*))
-		     ((syntax-table? table)
-		      table)
-		     (else
-		      (error:wrong-type-argument table
-						 "syntax table"
-						 'SYNTAX*))))
+	       (if table
+		   (begin
+		     (if (not (syntax-table? table))
+			 (error:wrong-type-argument table "syntax table" name))
+		     table)
+		   (if (unassigned? *syntax-table*)
+		       (nearest-repl/syntax-table)
+		       *syntax-table*)))
 	      (*current-keyword* #f))
-    (syntax-sequence #t expressions)))
+    (syntaxer #t expression)))
 
 (define (syntax/top-level?)
   *syntax-top-level?*)
@@ -149,8 +152,7 @@ MIT in each case. |#
    ((pair? expression)
     (if (not (list? expression))
 	(error "syntax-expression: not a valid expression" expression))
-    (let ((transform
-	   (syntax-table-ref syntax-table (car expression))))
+    (let ((transform (syntax-table-ref syntax-table (car expression))))
       (if transform
 	  (if (primitive-syntaxer? transform)
 	      (transform-apply (primitive-syntaxer/transform transform)
