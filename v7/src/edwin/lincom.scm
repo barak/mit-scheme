@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.104 1989/08/08 10:06:12 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.105 1990/11/16 11:38:07 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -448,14 +448,16 @@ The variable tab-width controls the action."
     (not-implemented)))
 
 (define-command indent-relative
-  "Indents the current line directly below the previous non blank line."
-  "d"
-  (lambda (point)
-    (let ((indentation (indentation-of-previous-non-blank-line point)))
-      (cond ((not (= indentation (current-indentation point)))
-	     (change-indentation indentation point))
-	    ((line-start? (horizontal-space-start point))
-	     (set-current-point! (horizontal-space-end point)))))))
+  "Space out to under next indent point in previous nonblank line.
+An indent point is a non-whitespace character following whitespace."
+  ()
+  (lambda ()
+    (let ((point (current-point)))
+      (let ((indentation (indentation-of-previous-non-blank-line point)))
+	(cond ((not (= indentation (current-indentation point)))
+	       (change-indentation indentation point))
+	      ((line-start? (horizontal-space-start point))
+	       (set-current-point! (horizontal-space-end point))))))))
 
 (define (indentation-of-previous-non-blank-line mark)
   (let ((start (find-previous-non-blank-line mark)))
