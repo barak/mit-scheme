@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.76 2000/07/21 18:37:28 cph Exp $
+@comment $Id: user.texinfo,v 1.77 2000/10/16 20:29:07 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -29,9 +29,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.75
+@subtitle Edition 1.77
 @subtitle for Scheme Release 7.5
-@subtitle 21 July 2000
+@subtitle 16 October 2000
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -162,7 +162,9 @@ To install the software in @file{/usr/local}, do the following
 @example
 @group
 cd /usr/local
-gzip -cd @var{path-to-distribution}/linux.tar.gz | tar xf -
+rm -f bin/scheme bin/bchscheme
+rm -rf lib/mit-scheme
+gzip -cd scheme-7.5.10-ix86-gnu-linux.tar.gz | tar xvf -
 @end group
 @end example
 
@@ -180,7 +182,7 @@ First unpack the distribution:
 @example
 mkdir temp
 cd temp
-gzip -cd linux.tar.gz | tar xvf -
+gzip -cd scheme-7.5.10-ix86-gnu-linux.tar.gz | tar xvf -
 @end example
 
 @item
@@ -520,10 +522,10 @@ itself, clear the screen, and print something like this:
 
 @example
 @group
-Scheme saved on Wednesday July 5, 2000 at 6:57:51 PM
-  Release 7.5.9
-  Microcode 11.169
-  Runtime 14.183
+Scheme saved on Friday October 13, 2000 at 9:03:36 PM
+  Release 7.5.10
+  Microcode 11.170
+  Runtime 14.184
 @end group
 @end example
 
@@ -4704,6 +4706,12 @@ the Algorithmic Language Scheme}.
 These are the changes since release 7.5.0:
 
 @itemize @bullet
+@item
+Release 7.5.10 fixes numerous bugs, and offers significant speed
+improvements to the basic operation of @acronym{IMAIL}.  This release
+also provides a shell script to build the system from source code (works
+on GNU/Linux and FreeBSD systems only).
+
 @item
 Release 7.5.9 adds the @acronym{IMAIL} mail reader; @acronym{IMAIL} is a
 new Rmail-like mail reader that supports @acronym{IMAP} and
