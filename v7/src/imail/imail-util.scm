@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.20 2000/05/20 19:09:58 cph Exp $
+;;; $Id: imail-util.scm,v 1.21 2000/05/20 19:36:28 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -344,63 +344,60 @@
 
 (define (pathname-complete-string pathname filter
 				  if-unique if-not-unique if-not-found)
-  (let loop
-      ((pathnames (filtered-completions (merge-pathnames pathname) filter)))
-    (if (pair? pathnames)
-	(if (pair? (cdr pathnames))
-	    (if-not-unique
-	     (string-greatest-common-prefix
-	      (map ->namestring pathnames))
-	     (lambda ()
-	       (map canonicalize-pathname pathnames)))
-	    (let ((pathname (car pathnames)))
-	      (let ((pathnames
-		     (filtered-list (pathname-as-directory pathname) filter)))
-		(if (pair? pathnames)
-		    (loop pathnames)
-		    (if-unique pathname)))))
-	(if-not-found))))
+  (let ((pathname (merge-pathnames pathname))
+	(if-directory
+	 (lambda (pathname)
+	   (if-not-unique pathname
+			  (lambda () (filtered-list pathname filter))))))
+    (cond ((not (safe-file-directory? (directory-pathname pathname)))
+	   (if-not-found))
+	  ((string-null? (file-namestring pathname))
+	   (if-directory pathname))
+	  (else
+	   (let ((pathnames (filtered-completions pathname filter)))
+	     (cond ((not (pair? pathnames))
+		    (if-not-found))
+		   ((pair? (cdr pathnames))
+		    (if-not-unique (string-greatest-common-prefix
+				    (map ->namestring pathnames))
+				   (lambda () pathnames)))
+		   ((string-null? (file-namestring (car pathnames)))
+		    (if-directory (car pathnames)))
+		   (else
+		    (if-unique (car pathnames)))))))))
 
 (define (pathname-completions-list pathname filter)
-  (map canonicalize-pathname
-       (filtered-completions (merge-pathnames pathname) filter)))
+  (filtered-completions (merge-pathnames pathname) filter))
 
 (define (filtered-completions pathname filter)
-  (let ((directory (directory-namestring pathname)))
-    (if (safe-file-directory? directory)
-	(let ((prefix (file-namestring pathname))
-	      (channel (directory-channel-open directory)))
-	  (let loop ((result '()))
-	    (let ((name (directory-channel-read-matching channel prefix)))
-	      (if name
-		  (loop
-		   (if (filter name)
-		       (cons (parse-namestring (string-append directory name)
-					       #f #f)
-			     result)
-		       result))
-		  (begin
-		    (directory-channel-close channel)
-		    result)))))
-	'())))
+  (let* ((directory (directory-namestring pathname))
+	 (prefix (file-namestring pathname))
+	 (channel (directory-channel-open directory)))
+    (let loop ((result '()))
+      (let ((name (directory-channel-read-matching channel prefix)))
+	(if name
+	    (loop (filter-result (string-append directory name) filter result))
+	    (begin
+	      (directory-channel-close channel)
+	      result))))))
 
 (define (filtered-list pathname filter)
-  (let ((directory (directory-namestring pathname)))
-    (if (safe-file-directory? directory)
-	(let ((channel (directory-channel-open directory)))
-	  (let loop ((result '()))
-	    (let ((name (directory-channel-read channel)))
-	      (if name
-		  (loop
-		   (if (filter name)
-		       (cons (parse-namestring (string-append directory name)
-					       #f #f)
-			     result)
-		       result))
-		  (begin
-		    (directory-channel-close channel)
-		    result)))))
-	'())))
+  (let* ((directory (directory-namestring pathname))
+	 (channel (directory-channel-open directory)))
+    (let loop ((result '()))
+      (let ((name (directory-channel-read channel)))
+	(if name
+	    (loop (filter-result (string-append directory name) filter result))
+	    (begin
+	      (directory-channel-close channel)
+	      result))))))
+
+(define (filter-result filename filter result)
+  (let ((pathname (parse-namestring filename #f #f)))
+    (cond ((safe-file-directory? pathname)
+	   (cons (pathname-as-directory pathname) result))
+	  ((filter pathname) (cons pathname result))
+	  (else result))))
 
 (define (safe-file-directory? pathname)
   (call-with-current-continuation
@@ -412,8 +409,3 @@
 	   (k #f))
        (lambda ()
 	 (file-directory? pathname))))))
-
-(define (canonicalize-pathname pathname)
-  (if (safe-file-directory? pathname)
-      (pathname-as-directory pathname)
-      pathname))
