@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.1 1989/03/14 01:57:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.2 1989/04/20 04:33:52 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -479,8 +479,8 @@ xterm_dump_rectangle (xt, x, y, width, height)
 	    }
 	}
       if ((xt -> cursor_visible_p) &&
-	  (x_start <= (xt -> cursor_x) < x_end) &&
-	  (y_start <= (xt -> cursor_y) < y_end))
+	  ((x_start <= (xt -> cursor_x)) && ((xt -> cursor_x) < x_end)) &&
+	  ((y_start <= (xt -> cursor_y)) && ((xt -> cursor_y) < y_end)))
 	xterm_draw_cursor (xt);
     }
   return;
@@ -883,7 +883,7 @@ DEFINE_PRIMITIVE ("XTERM-WRITE-SUBSTRING!", Prim_xterm_write_substring, 7, 7, 0)
   WITH_CURSOR_PRESERVED
     (xt,
      ((y == (xt -> cursor_y)) &&
-      (x <= (xt -> cursor_x) < (x + length))),
+      ((x <= (xt -> cursor_x)) && ((xt -> cursor_x) < (x + length)))),
      {
        XTERM_DRAW_CHARS (xt, x, y, char_start, length, (XTERM_HL_GC (xt, hl)));
      });
@@ -929,8 +929,8 @@ DEFINE_PRIMITIVE ("XTERM-CLEAR-RECTANGLE!", Prim_xterm_clear_rectangle, 6, 6, 0)
   }
   WITH_CURSOR_PRESERVED
     (xt,
-     ((start_x <= (xt -> cursor_x) < end_x) &&
-      (start_y <= (xt -> cursor_y) < end_y)),
+     (((start_x <= (xt -> cursor_x)) && ((xt -> cursor_x) < end_x)) &&
+      ((start_y <= (xt -> cursor_y)) && ((xt -> cursor_y) < end_y))),
      {
        if (hl == 0)
 	 XClearArea ((xt -> display), (xt -> window),
