@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.48 1991/04/23 06:46:56 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.49 1991/04/24 00:40:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -53,17 +53,17 @@ Automatically becomes local when set in any fashion."
   exact-nonnegative-integer?)
 
 (define-command set-fill-column
-  "Set fill column to argument or current column.
-If an argument is given, that is used.
-Otherwise the current position of the cursor is used."
+  "Set fill-column to current column, or to argument if given.
+fill-column's value is separate for each buffer."
   "P"
   (lambda (argument)
     (let ((column (or argument (current-column))))
       (set-variable! fill-column column)
-      (temporary-message "Fill column set to " (number->string column)))))
+      (message "fill-column set to " (number->string column)))))
 
 (define-variable-per-buffer fill-prefix
-  "String for auto-fill to insert at start of new line, or #F."
+  "String for filling to insert at front of new line, or #f for none.
+Setting this variable automatically makes it local to the current buffer."
   false
   string-or-false?)
 
