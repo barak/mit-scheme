@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosenv.c,v 1.5 1991/10/29 22:55:11 jinx Exp $
+$Id: prosenv.c,v 1.6 1992/09/18 16:55:10 jinx Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -103,14 +103,14 @@ DEFINE_PRIMITIVE ("SYSTEM-CLOCK", Prim_system_clock, 0, 0,
   "Return the current process time in units of milliseconds.")
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (long_to_integer (OS_process_clock ()));
+  PRIMITIVE_RETURN (ulong_to_integer (OS_process_clock ()));
 }
 
 DEFINE_PRIMITIVE ("REAL-TIME-CLOCK", Prim_real_time_clock, 0, 0,
   "Return the current real time in units of milliseconds.")
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (long_to_integer (OS_real_time_clock ()));
+  PRIMITIVE_RETURN (ulong_to_integer (OS_real_time_clock ()));
 }
 
 DEFINE_PRIMITIVE ("PROCESS-TIMER-CLEAR", Prim_process_timer_clear, 0, 0,
