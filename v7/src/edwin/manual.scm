@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/manual.scm,v 1.4 1991/10/21 12:49:45 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/manual.scm,v 1.5 1991/10/22 10:48:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -120,50 +120,50 @@ where SECTION is the desired section of the manual, as in `tty(4)'."
 
 (define (nuke-nroff-bs buffer)
   (let* ((group (buffer-group buffer))
-	 (syntax-table (group-syntax-table group))
-	 (nuke-regexp
-	  (lambda (regexp case-fold-search replacement)
-	    (let ((pattern (re-compile-pattern regexp case-fold-search)))
-	      (let loop ((index (group-start-index group)))
-		(if (re-search-buffer-forward pattern
-					      case-fold-search
-					      syntax-table
-					      group
-					      index
-					      (group-end-index group))
-		    (begin
-		      (replace-match replacement false true)
-		      (loop (re-match-start-index 0)))))))))
-    ;; Nuke underlining and overstriking
-    (nuke-regexp "\\(_\b\\)+" false "")
-    (nuke-regexp "\\(\b.\\)+" false "")
-    ;; Nuke headers: "MORE(1) UNIX Programmer's Manual MORE(1)"
-    (nuke-regexp "^ *\\([A-Za-z][-_A-Za-z0-9]*([0-9A-Z]+)\\).*\\1$" false "")
-    ;; Nuke footers: "Printed 12/3/85	27 April 1981	1"
-    (nuke-regexp manual-vendor-pattern true "")
-    (nuke-regexp "^\\([A-Za-z0-9_]+\\|\\)[ \t]*[0-9]+$" false "")
+	 (syntax-table (group-syntax-table group)))
+    (let ((nuke-regexp
+	   (lambda (regexp case-fold-search)
+	     (let ((pattern (re-compile-pattern regexp case-fold-search)))
+	       (let loop ((index (group-start-index group)))
+		 (if (re-search-buffer-forward pattern
+					       case-fold-search
+					       syntax-table
+					       group
+					       index
+					       (group-end-index group))
+		     (loop (mark-index (delete-match)))))))))
+      ;; Nuke underlining
+      (nuke-regexp "\\(_\b\\)+" false)
+      ;; Nuke overstriking
+      (nuke-regexp "\\(\b.\\)+" false)
+      ;; Nuke headers: "MORE(1) UNIX Programmer's Manual MORE(1)"
+      (nuke-regexp "^ *\\([A-Za-z][-_A-Za-z0-9]*([-0-9A-Z]+)\\).*\\1$" false)
+      ;; Nuke vendor-specific footers
+      (nuke-regexp manual-vendor-pattern true)
+      ;; Nuke generic footers
+      (nuke-regexp "^[A-Za-z0-9_]*[ \t]*[0-9]+$" false))
     ;; Crunch blank lines
-    (nuke-regexp "\n\n\n\n*" false "\n\n"))
+    (let ((pattern (re-compile-pattern "\n\n\n+" false)))
+      (let loop ((index (group-start-index group)))
+	(if (re-search-buffer-forward pattern
+				      false
+				      syntax-table
+				      group
+				      index
+				      (group-end-index group))
+	    (loop (mark-index (replace-match "\n\n" false true)))))))
   ;; Nuke blanks lines at start.
-  (let ((start (buffer-start buffer)))
-    (let ((delete-blanks
-	   (lambda ()
-	     (if (line-blank? start)
-		 (delete-string start
-				(let loop ((mark start))
-				  (let ((m (line-start mark 1 false)))
-				    (cond ((not m) (line-end mark 0))
-					  ((not (line-blank? m)) m)
-					  (else (loop m))))))))))
-      (delete-blanks)
-      ;; Also get "Reformatting page" message if any.
-      (if (re-match-forward "^Reformatting page"
-			    start
-			    (buffer-end buffer)
-			    false)
-	  (begin
-	    (delete-string start (line-end start 0))
-	    (delete-blanks)))))
+  (if (re-match-forward "\\([ \t]*\n\\)+"
+			(buffer-start buffer)
+			(buffer-end buffer)
+			false)
+      (delete-match))
+  ;; Nuke "Reformatting page" message, plus trailing blank lines.
+  (if (re-match-forward "Reformatting page.*\n\\([ \t]*\n\\)*"
+			(buffer-start buffer)
+			(buffer-end buffer)
+			false)
+      (delete-match))
   ;; Nuke blanks lines at end.
   (let ((end (buffer-end buffer)))
     (if (line-blank? (line-start end 0))
