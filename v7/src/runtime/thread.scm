@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.13 1993/04/28 22:31:46 hal Exp $
+$Id: thread.scm,v 1.14 1993/07/01 22:19:24 cph Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -45,6 +45,7 @@ MIT in each case. |#
   ;; RUNNING
   ;; RUNNING-WITHOUT-PREEMPTION
   ;; WAITING
+  ;; STOPPED
   ;; DEAD
 
   (next #f)
@@ -88,12 +89,6 @@ MIT in each case. |#
 
 (define no-exit-value-marker
   (list 'NO-EXIT-VALUE-MARKER))
-
-(define-integrable (thread-waiting? thread)
-  (eq? 'WAITING (thread/execution-state thread)))
-
-(define-integrable (thread-dead? thread)
-  (eq? 'DEAD (thread/execution-state thread)))
 
 (define thread-population)
 (define first-running-thread)
@@ -109,7 +104,6 @@ MIT in each case. |#
   (set! thread-timer-running? #f)
   (set! timer-records #f)
   (set! timer-interval 100)
-  (set! last-real-time #f)
   (initialize-input-blocking)
   (add-event-receiver! event:after-restore initialize-input-blocking)
   (detach-thread (make-thread #f))
@@ -178,7 +172,7 @@ MIT in each case. |#
   (guarantee-thread thread thread-continuation)
   (without-interrupts
    (lambda ()
-     (and (thread-waiting? thread)
+     (and (eq? 'WAITING (thread/execution-state thread))
 	  (thread/continuation thread)))))
 
 (define (thread-running thread)
@@ -242,6 +236,25 @@ MIT in each case. |#
 	(set-thread/block-events?! thread block-events?)
 	event))))
 
+(define (stop-current-thread)
+  (without-interrupts
+   (lambda ()
+     (let ((thread (current-thread)))
+       (call-with-current-continuation
+	(lambda (continuation)
+	  (set-thread/continuation! thread continuation)
+	  (thread-not-running thread 'STOPPED)))))))
+
+(define (restart-thread thread discard-events? event)
+  (guarantee-thread thread restart-thread)
+  (without-interrupts
+   (lambda ()
+     (if (not (eq? 'STOPPED (thread/execution-state thread)))
+	 (error:bad-range-argument thread restart-thread))
+     (if discard-events? (ring/discard-all (thread/pending-events thread)))
+     (if event (%signal-thread-event thread event))
+     (thread-running thread))))
+
 (define (disallow-preempt-current-thread)
   (set-thread/execution-state! (current-thread) 'RUNNING-WITHOUT-PREEMPTION))
 
@@ -584,7 +597,7 @@ MIT in each case. |#
 	      (unblock-thread-events)))
 	(without-interrupts
 	 (lambda ()
-	   (if (thread-dead? thread)
+	   (if (eq? 'DEAD (thread/execution-state thread))
 	       (signal-thread-dead thread "signal event to"
 				   signal-thread-event thread event))
 	   (%signal-thread-event thread event)
@@ -595,7 +608,7 @@ MIT in each case. |#
 (define (%signal-thread-event thread event)
   (ring/enqueue (thread/pending-events thread) event)
   (if (and (not (thread/block-events? thread))
-	   (thread-waiting? thread))
+	   (eq? 'WAITING (thread/execution-state thread)))
       (%thread-running thread)))
 
 (define (handle-thread-events thread)
@@ -615,7 +628,6 @@ MIT in each case. |#
 
 ;;;; Timer Events
 
-(define last-real-time)
 (define timer-records)
 (define timer-interval)
 
@@ -653,35 +665,14 @@ MIT in each case. |#
 
 (define (deliver-timer-events)
   (let ((time (real-time-clock)))
-    (if (and last-real-time
-	     (< time last-real-time))
-	;; The following adjustment is correct, assuming that the
-	;; real-time timer wraps around to 0, and assuming that there
-	;; has been no GC or OS time slice between the time when the
-	;; timer interrupt was delivered and the time when REAL-TIME-CLOCK
-	;; was called above.
-	(let ((wrap-value (+ last-real-time
-			     (if (not timer-interval)
-				 0
-				 (- timer-interval time)))))
-	  (let update ((record timer-records))
-	    (if record
-		(begin
-		  (set-timer-record/time!
-		   record
-		   (- (timer-record/time record) wrap-value))
-		  (update (timer-record/next record)))))))
-    (set! last-real-time time)
-    (let loop ((record timer-records))
-      (if (or (not record) (< time (timer-record/time record)))
-	  (set! timer-records record)
-	  (begin
-	    (let ((thread (timer-record/thread record))
-		  (event (timer-record/event record)))
-	      (set-timer-record/thread! record #f)
-	      (set-timer-record/event! record #f)
-	      (%signal-thread-event thread event))
-	    (loop (timer-record/next record))))))
+    (do ((record timer-records (timer-record/next record)))
+	((or (not record) (< time (timer-record/time record)))
+	 (set! timer-records record))
+      (let ((thread (timer-record/thread record))
+	    (event (timer-record/event record)))
+	(set-timer-record/thread! record #f)
+	(set-timer-record/event! record #f)
+	(%signal-thread-event thread event))))
   unspecific)
 
 (define (deregister-timer-event registration)
@@ -714,7 +705,7 @@ MIT in each case. |#
 		    (set! timer-records next))
 		(loop next prev))
 	      (loop next record))))))
-
+
 (define (thread-timer-interval)
   timer-interval)
 
@@ -735,18 +726,28 @@ MIT in each case. |#
   (without-interrupts %stop-thread-timer))
 
 (define (%maybe-toggle-thread-timer)
-  (if (and timer-interval
-	   (or (let ((current-thread first-running-thread))
-		 (and current-thread
-		      (or (thread/next current-thread)
-			  input-registrations)))
-	       (threads-pending-timer-events?)))
-      (if (not thread-timer-running?)
-	  (begin
-	    ((ucode-primitive real-timer-set) timer-interval timer-interval)
-	    (set! thread-timer-running? true)
-	    unspecific))
-      (%stop-thread-timer)))
+  (let ((use-timer-interval?
+	 (and timer-interval
+	      (let ((current-thread first-running-thread))
+		(and current-thread
+		     (or (thread/next current-thread)
+			 input-registrations))))))
+    (if (or use-timer-interval? timer-records)
+	(begin
+	  (let ((interval
+		 (if use-timer-interval?
+		     timer-interval
+		     (let ((next-event-interval
+			    (- (timer-record/time timer-records)
+			       (real-time-clock))))
+		       (if (or (not timer-interval)
+			       (> next-event-interval timer-interval))
+			   next-event-interval
+			   timer-interval)))))
+	    ((ucode-primitive real-timer-set) interval interval))
+	  (set! thread-timer-running? true)
+	  unspecific)
+	(%stop-thread-timer))))
 
 (define (%stop-thread-timer)
   (if thread-timer-running?

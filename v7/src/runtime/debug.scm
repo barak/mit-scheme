@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 14.33 1993/03/16 22:13:00 gjr Exp $
+$Id: debug.scm,v 14.34 1993/07/01 22:19:19 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -64,6 +64,13 @@ MIT in each case. |#
 	  (lambda (port)
 	    (debugger-presentation port
 	      (lambda ()
+		(let ((thread (dstate/other-thread dstate)))
+		  (if thread
+		      (begin
+			(write-string "This error occurred in another thread: "
+				      port)
+			(write thread port)
+			(newline port))))
 		(let ((n (count-subproblems dstate)))
 		  (write-string "There " port)
 		  (write-string (if (= n 1) "is" "are") port)
@@ -722,11 +729,7 @@ MIT in each case. |#
 (define (enter-subproblem dstate port subproblem)
   (let ((invalid-expression?
 	 (invalid-expression? (dstate/expression dstate)))
-	(environment (get-evaluation-environment dstate port))
-	(return
-	 (lambda (value)
-	   (hook/debugger-before-return)
-	   ((stack-frame->continuation subproblem) value))))
+	(environment (get-evaluation-environment dstate port)))
     (let ((value
 	   (let ((expression
 		  (prompt-for-expression
@@ -741,19 +744,47 @@ MIT in each case. |#
 		 (debug/scode-eval (dstate/expression dstate)
 				   environment)
 		 (debug/eval expression environment)))))
-      (if debugger:print-return-values?
+      (if (or (not debugger:print-return-values?)
+	      (begin
+		(newline port)
+		(write-string "That evaluates to:" port)
+		(newline port)
+		(write value port)
+		(prompt-for-confirmation "Confirm" port)))
 	  (begin
-	    (newline port)
-	    (write-string "That evaluates to:" port)
-	    (newline port)
-	    (write value port)
-	    (if (prompt-for-confirmation "Confirm" port) (return value)))
-	  (return value)))))
+	    (hook/debugger-before-return)
+	    (let ((thread (dstate/other-thread dstate)))
+	      (if (not thread)
+		  ((stack-frame->continuation subproblem) value)
+		  (begin
+		    (restart-thread thread #t
+		      (lambda ()
+			((stack-frame->continuation subproblem) value)))
+		    (if (prompt-for-confirmation
+			 "Thread restarted; exit debugger"
+			 port)
+			(standard-exit-command dstate port))))))))))
+
+(define (dstate/thread dstate)
+  (let ((condition (dstate/condition dstate)))
+    (and condition
+	 (condition/derived-thread? condition)
+	 (access-condition condition 'THREAD))))
+
+(define (dstate/other-thread dstate)
+  (let ((thread
+	 (let ((condition (dstate/condition dstate)))
+	   (and condition
+		(condition/derived-thread? condition)
+		(access-condition condition 'THREAD)))))
+    (and thread
+	 (not (eq? thread (current-thread)))
+	 thread)))
 
 (define hook/debugger-before-return)
 (define (default/debugger-before-return)
   '())
-
+
 (define *dstate*)
 (define *port*)
 

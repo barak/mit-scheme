@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.181 1993/06/29 22:58:20 cph Exp $
+$Id: runtime.pkg,v 14.182 1993/07/01 22:19:23 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -585,6 +585,7 @@ MIT in each case. |#
 	  condition-type:wrong-type-datum
 	  condition-type?
 	  condition/continuation
+	  condition/derived-thread?
 	  condition/error?
 	  condition/get
 	  condition/properties
@@ -2468,14 +2469,15 @@ MIT in each case. |#
 	  permanently-register-input-thread-event
 	  register-input-thread-event
 	  register-timer-event
+	  restart-thread
 	  set-thread-timer-interval!
 	  signal-thread-event
 	  sleep-current-thread
 	  start-thread-timer
+	  stop-current-thread
 	  stop-thread-timer
 	  suspend-current-thread
 	  thread-continuation
-	  thread-dead?
 	  thread-execution-state
 	  thread-mutex-owner
 	  thread-mutex?

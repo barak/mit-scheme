@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.33 1993/04/27 08:43:07 cph Exp $
+$Id: error.scm,v 14.34 1993/07/01 22:19:21 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -536,7 +536,7 @@ MIT in each case. |#
 	    (lambda ()
 	      (unblock-thread-events)
 	      (error:derived-thread thread condition)))
-	  (suspend-current-thread))
+	  (stop-current-thread))
 	(repl/start (push-repl 'INHERIT 'INHERIT condition '() "error>")))))
 
 (define (standard-warning-handler condition)
@@ -664,6 +664,8 @@ MIT in each case. |#
 (define error:wrong-number-of-arguments)
 (define error:wrong-type-argument)
 (define error:wrong-type-datum)
+
+(define condition/derived-thread?)
 
 (define (condition-type/error? type)
   (guarantee-condition-type type 'CONDITION-TYPE/ERROR?)
@@ -866,7 +868,6 @@ MIT in each case. |#
 	    (newline port)
 	    (write-condition-report (access-condition condition 'CONDITION)
 				    port))))
-
   (set! error:derived-port
 	(let ((make-condition
 	       (condition-constructor condition-type:derived-port-error
@@ -888,7 +889,6 @@ MIT in each case. |#
 	    (newline port)
 	    (write-condition-report (access-condition condition 'CONDITION)
 				    port))))
-
   (set! error:derived-file
 	(let ((make-condition
 	       (condition-constructor condition-type:derived-file-error
@@ -910,7 +910,6 @@ MIT in each case. |#
 	    (newline port)
 	    (write-condition-report (access-condition condition 'CONDITION)
 				    port))))
-
   (set! error:derived-thread
 	(let ((make-condition
 	       (condition-constructor condition-type:derived-thread-error
@@ -921,6 +920,8 @@ MIT in each case. |#
 				   (%condition/restarts condition)
 				   thread
 				   condition)))))
+  (set! condition/derived-thread?
+	(condition-predicate condition-type:derived-thread-error))
 
   (set! condition-type:file-operation-error
 	(make-condition-type 'FILE-OPERATION-ERROR condition-type:file-error
@@ -942,7 +943,6 @@ MIT in each case. |#
 		      (write-string "No such " port)
 		      (write-string noun port))))
 	      (write-string "." port)))))
-
   (set! error:file-operation
 	(let ((get-verb
 	       (condition-accessor condition-type:file-operation-error 'VERB))
