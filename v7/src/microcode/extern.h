@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.44 1992/02/03 23:26:46 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.45 1992/07/29 19:54:52 cph Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -93,7 +93,6 @@ extern SCHEME_OBJECT
  * MemTop,		/* Top of heap space available */
  * Ext_Stack_Pointer,	/* Next available slot in control stack */
  * Stack_Top,		/* Top of control stack */
- * Stack_Guard,		/* Guard area at end of stack */
  * Free_Stacklets,	/* Free list of stacklets */
  * Constant_Space,	/* Bottom of constant+pure space */
  * Free_Constant,	/* Next free cell in constant+pure area */

@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gc.h,v 9.31 1992/07/29 19:54:53 cph Exp $
+
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,8 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gc.h,v 9.30 1989/10/28 15:38:26 jinx Rel $
- *
+/* 
  * Garbage collection related macros of sufficient utility to be
  * included in all compilations.
  */
@@ -127,5 +128,5 @@ MIT in each case. */
 
 #define Set_Stack_Guard(Addr)						\
 {									\
-  Stack_Guard = Addr;							\
+  (Regs[REGBLOCK_STACK_GUARD]) = ((SCHEME_OBJECT) (Addr));		\
 }

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.49 1992/07/28 14:44:37 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.50 1992/07/29 19:54:55 cph Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -49,7 +49,6 @@ SCHEME_OBJECT
  * Free,		/* Next free word in storage */
  * Ext_Stack_Pointer,	/* Next available slot in control stack */
  * Stack_Top,		/* Top of control stack */
- * Stack_Guard,		/* Guard area at end of stack */
  * Free_Stacklets,	/* Free list of stacklets */
  * Constant_Space,	/* Bottom of constant+pure space */
  * Free_Constant,	/* Next free cell in constant+pure area */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.52 1992/02/03 23:41:57 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.53 1992/07/29 19:54:56 cph Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -828,7 +828,7 @@ DEFUN (Allocate_New_Stacklet, (N), long N)
       }
     }
     Free[STACKLET_LENGTH] = MAKE_OBJECT (TC_MANIFEST_VECTOR, (size - 1));
-    Stack_Guard = &(Free[STACKLET_HEADER_SIZE]);
+    Set_Stack_Guard (& (Free[STACKLET_HEADER_SIZE]));
     Free += size;
     Stack_Pointer = Free;
   }
@@ -843,7 +843,7 @@ DEFUN (Allocate_New_Stacklet, (N), long N)
       ((SCHEME_OBJECT *) Free_Stacklets[STACKLET_FREE_LIST_LINK]);
     Stack_Pointer =
       &New_Stacklet[1 + (OBJECT_DATUM (New_Stacklet[STACKLET_LENGTH]))];
-    Stack_Guard = &New_Stacklet[STACKLET_HEADER_SIZE];
+    Set_Stack_Guard (& (New_Stacklet[STACKLET_HEADER_SIZE]));
   }
   Old_Expression = Fetch_Expression();
   Old_Return = Fetch_Return();

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.30 1992/02/03 23:38:30 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.31 1992/07/29 19:54:55 cph Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,7 +46,7 @@ MIT in each case. */
   {									\
     Microcode_Termination(TERM_STACK_ALLOCATION_FAILED);		\
   }									\
-  Stack_Guard = (Free + STACKLET_HEADER_SIZE);				\
+  Set_Stack_Guard (Free + STACKLET_HEADER_SIZE);			\
   *Free =								\
     (MAKE_OBJECT (TC_MANIFEST_VECTOR, (Default_Stacklet_Size - 1)));	\
   Free += Default_Stacklet_Size;					\
@@ -127,7 +127,7 @@ MIT in each case. */
   SCHEME_OBJECT Our_Where;						\
 									\
   Our_Where = (Where);							\
-  Stack_Guard = MEMORY_LOC (Our_Where, STACKLET_HEADER_SIZE);		\
+  Set_Stack_Guard (MEMORY_LOC (Our_Where, STACKLET_HEADER_SIZE));	\
   Stack_Pointer = Previous_Stack_Pointer(Our_Where);			\
 }
 
@@ -248,7 +248,7 @@ Pushed()
 	MEMORY_SET (Older_Stacklet, STACKLET_REUSE_FLAG, SHARP_F);	\
       }									\
       temp = Free;							\
-      Stack_Guard = &(temp[STACKLET_HEADER_SIZE]);			\
+      Set_Stack_Guard (& (temp[STACKLET_HEADER_SIZE]));			\
       temp[STACKLET_LENGTH] = Old_Stacklet_Top[STACKLET_LENGTH];	\
       Unused_Length =							\
 	OBJECT_DATUM (Old_Stacklet_Top[STACKLET_UNUSED_LENGTH]) +	\

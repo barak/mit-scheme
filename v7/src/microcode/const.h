@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/const.h,v 9.40 1992/07/29 19:54:52 cph Exp $
+
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,11 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/const.h,v 9.39 1991/07/24 02:26:55 cph Exp $
- *
- * Named constants used throughout the interpreter
- *
- */
+/* Named constants used throughout the interpreter */
 
 #if (CHAR_BIT != 8)
 #define MAX_CHAR		((1<<CHAR_BIT)-1)
@@ -178,7 +176,8 @@ MIT in each case. */
 #define REGBLOCK_PRIMITIVE		8
 #define REGBLOCK_CLOSURE_FREE		9	/* For use by compiler */
 #define REGBLOCK_CLOSURE_SPACE		10	/* For use by compiler */
-#define REGBLOCK_MINIMUM_LENGTH		11
+#define REGBLOCK_STACK_GUARD		11
+#define REGBLOCK_MINIMUM_LENGTH		12
 
 /* Codes specifying how to start scheme at boot time. */
 

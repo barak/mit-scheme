@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.46 1992/06/11 18:51:35 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.47 1992/07/29 19:54:49 cph Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1365,7 +1365,7 @@ DEFUN (comutil_interrupt_closure,
        long ignore_1 AND long ignore_2 AND long ignore_3 AND long ignore_4)
 {
   TEST_GC_NEEDED();
-  if ((PENDING_INTERRUPTS()) == 0)
+  if (((PENDING_INTERRUPTS()) == 0) && (Stack_Pointer > Stack_Guard))
   {
     SCHEME_OBJECT entry_point;
 
@@ -1398,7 +1398,7 @@ DEFUN (compiler_interrupt_common,
        SCHEME_OBJECT state)
 {
   TEST_GC_NEEDED();
-  if ((PENDING_INTERRUPTS()) == 0)
+  if (((PENDING_INTERRUPTS()) == 0) && (Stack_Pointer > Stack_Guard))
   {
     Store_Env (state);
     Val = state;
