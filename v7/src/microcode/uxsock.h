@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsock.h,v 1.1 1990/06/20 19:37:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsock.h,v 1.2 1990/11/08 11:11:57 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -37,21 +37,20 @@ MIT in each case. */
 
 #include "os.h"
 
-struct host_addresses
-{
-  int address_length;
-  char ** addresses;
-};
-
-extern Tchannel EXFUN (OS_open_tcp_stream_socket, (PTR host, int port));
+extern Tchannel EXFUN (OS_open_tcp_stream_socket, (char * host, int port));
 extern int EXFUN
   (OS_get_service_by_name,
    (CONST char * service_name, CONST char * protocol_name));
-extern struct host_addresses * EXFUN
-  (OS_get_host_by_name, (CONST char * host_name));
+extern unsigned int EXFUN (OS_host_address_length, (void));
+extern char ** EXFUN (OS_get_host_by_name, (CONST char * host_name));
 
 #ifdef HAVE_UNIX_SOCKETS
 extern Tchannel EXFUN (OS_open_unix_stream_socket, (CONST char * filename));
 #endif
+
+extern Tchannel EXFUN (OS_open_server_socket, (int port));
+extern Tchannel EXFUN
+  (OS_server_connection_accept,
+   (Tchannel channel, char * peer_host, int * peer_port));
 
 #endif /* SCM_UXSOCK_H */
