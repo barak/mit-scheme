@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: modwin.scm,v 1.40 1999/01/02 06:11:34 cph Exp $
+;;;$Id: modwin.scm,v 1.41 1999/03/18 02:29:30 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -22,11 +22,21 @@
 
 (declare (usual-integrations))
 
-(define-class modeline-window vanilla-window ())
+(define-class modeline-window vanilla-window
+  (shows-buffer-modified?))
+
+(define (modeline-window/shows-buffer-modified? window)
+  (with-instance-variables modeline-window window ()
+    shows-buffer-modified?))
+
+(define (set-modeline-window/shows-buffer-modified?! window value)
+  (with-instance-variables modeline-window window (value)
+    (set! shows-buffer-modified? value)))
 
 (define-method modeline-window (:initialize! window window*)
   (usual=> window :initialize! window*)
-  (set! y-size 1))
+  (set! y-size 1)
+  (set! shows-buffer-modified? #f))
 
 (define (modeline-window:update-display! window screen x-start y-start
 					 xl xu yl yu display-style)
@@ -35,24 +45,32 @@
       (let ((superior (window-superior window))
 	    (xl (fix:+ x-start xl))
 	    (xu (fix:+ x-start xu)))
-	(modeline-string!
-	 superior
-	 (screen-get-output-line
-	  screen y-start xl xu
-	  (variable-local-value (window-buffer superior)
-				(ref-variable-object mode-line-inverse-video)))
-	 xl xu)))
-  true)
+	(let ((buffer (window-buffer superior)))
+	  (modeline-string!
+	   superior
+	   (screen-get-output-line
+	    screen y-start xl xu
+	    (ref-variable mode-line-inverse-video buffer))
+	   xl xu)
+	  (set-modeline-window/shows-buffer-modified?!
+	   window
+	   (buffer-modified? buffer)))))
+  #t)
 
 (define-method modeline-window :update-display!
   modeline-window:update-display!)
 
 (define-variable mode-line-inverse-video
   "True means use inverse video, or other suitable display mode, for the mode line."
-  true
+  #t
   boolean?)
 
 (define (modeline-window:event! window type)
   type					;ignored
-  (with-instance-variables modeline-window window ()
-    (setup-redisplay-flags! redisplay-flags)))
+  (window-needs-redisplay! window))
+
+(define (modeline-window:notice-changes! window)
+  (if (not (boolean=? (buffer-modified?
+		       (window-buffer (window-superior window)))
+		      (modeline-window/shows-buffer-modified? window)))
+      (window-needs-redisplay! window)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffrm.scm,v 1.53 1999/01/02 06:11:34 cph Exp $
+;;; $Id: buffrm.scm,v 1.54 1999/03/18 02:27:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -92,6 +92,11 @@
 (define-integrable (frame-text-inferior frame)
   (with-instance-variables buffer-frame frame ()
     (inferior-window text-inferior)))
+
+(define-integrable (frame-modeline-inferior frame)
+  (with-instance-variables buffer-frame frame ()
+    (and modeline-inferior
+	 (inferior-window modeline-inferior))))
 
 (define-method buffer-frame (:set-size! window x y)
   (set-buffer-frame-size! window x y))
@@ -191,12 +196,15 @@
   (buffer-window/redraw! (frame-text-inferior frame)))
 
 (define (window-modeline-event! frame type)
-  (with-instance-variables buffer-frame frame (type)
-    (if modeline-inferior
-	(modeline-window:event! (inferior-window modeline-inferior) type)))
+  (let ((window (frame-modeline-inferior frame)))
+    (if window
+	(modeline-window:event! window type)))
   (screen-modeline-event! (window-screen frame) frame type))
 
 (define (notice-window-changes! frame)
+  (let ((window (frame-modeline-inferior frame)))
+    (if window
+	(modeline-window:notice-changes! window)))
   (%notice-window-changes! (frame-text-inferior frame)))
 
 (define-integrable (window-override-message window)
