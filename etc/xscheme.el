@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.13 1987/12/07 10:38:16 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.14 1987/12/10 02:40:19 cph Exp $
 
 (require 'scheme)
 
@@ -311,12 +311,13 @@ The strings are concatenated and terminated by a newline."
 (defun xscheme-select-process-buffer ()
   "Select the Scheme process buffer and move to its output point."
   (interactive)
-  (let ((process (get-process "scheme")))
-    (cond (process
-	   (switch-to-buffer (process-buffer process))
-	   (goto-char (process-mark process)))
-	  (t
-	   (error "No scheme process")))))
+  (let ((process (or (get-process "scheme") (error "No scheme process"))))
+    (let ((buffer (or (process-buffer process) (error "No process buffer"))))
+      (let ((window (get-buffer-window buffer)))
+	(if window
+	    (select-window window)
+	    (switch-to-buffer buffer))
+	(goto-char (process-mark process))))))
 
 (defun xscheme-send-region (start end)
   "Send the current region to the Scheme process.
