@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.105 1991/08/06 15:39:34 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.106 1991/08/08 18:57:17 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -134,6 +134,15 @@ negative means relative to bottom of window."
 	(set-current-point! (if (group-start? mark)
 				(group-start mark)
 				mark))))))
+
+(define-command home-cursor
+  "Position point at upper-left corner of window."
+  ()
+  (lambda ()
+    (let ((mark (window-coordinates->mark (current-window) 0 0)))
+      (set-current-point! (if (group-start? mark)
+			      (group-start mark)
+			      mark)))))
 
 (define-command scroll-up
   "Move down to display next screenful of text.
