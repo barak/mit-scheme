@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prename.h,v 1.6 1992/10/21 00:49:57 jinx Exp $
+$Id: prename.h,v 1.7 1993/01/12 19:49:25 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -55,7 +55,8 @@ static struct primitive_alias aliases [] =
     { "SCREEN-X-SIZE", "TTY-X-SIZE" },
     { "SCREEN-Y-SIZE", "TTY-Y-SIZE" },
     { "FILE-SYMLINK?", "FILE-SOFT-LINK?" },
-    { "X-GRAPHICS-SET-CLASS-HINT", "X-WINDOW-SET-CLASS-HINT" }
+    { "X-GRAPHICS-SET-CLASS-HINT", "X-WINDOW-SET-CLASS-HINT" },
+    { "CURRENT-FILE-TIME", "ENCODED-TIME" }
   };
 
-#define N_ALIASES 20
+#define N_ALIASES 21
