@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.43 2003/03/13 03:57:50 cph Exp $
+$Id: packag.scm,v 14.44 2003/03/13 18:13:52 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright 1988,1989,1991,1992,1993,1994 Massachusetts Institute of Technology
+Copyright 1995,1996,1998,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -204,21 +205,20 @@ USA.
   ;; program runs before it gets purified, some of its run-time state
   ;; can end up being purified also.
   (flush-purification-queue!))
-
+
 (define (package-set-pathname pathname #!optional os-type)
   (make-pathname (pathname-host pathname)
 		 (pathname-device pathname)
 		 (pathname-directory pathname)
 		 (string-append (pathname-name pathname)
-				"-"
 				(case (if (or (default-object? os-type)
 					      (not os-type))
 					  microcode-id/operating-system
 					  os-type)
-				  ((NT) "w32")
-				  ((OS/2) "os2")
-				  ((UNIX) "unx")
-				  (else "unk")))
+				  ((NT) "-w32")
+				  ((OS/2) "-os2")
+				  ((UNIX) "-unx")
+				  (else "-unk")))
 		 "pkd"
 		 (pathname-version pathname)))
 
@@ -228,10 +228,9 @@ USA.
 	 (let* ((name
 		 (let* ((p (->pathname component))
 			(d (pathname-directory p)))
-		   (string-append
-		    (if (pair? d) (car (last-pair d)) system)
-		    "_"
-		    (string-replace (pathname-name p) #\- #\_))))
+		   (string-append (if (pair? d) (car (last-pair d)) system)
+				  "_"
+				  (string-replace (pathname-name p) #\- #\_))))
 		(value (prim name)))
 	   (if (or (not value) load/suppress-loading-message?)
 	       value
@@ -243,31 +242,33 @@ USA.
 
 (define package/system-loader load-package-set)
 
-(define-structure (package-file (type vector)
-				(type-descriptor #f)
-				(conc-name package-file/))
-  (tag #f read-only #t)
-  (version #f read-only #t)
-  (descriptions #f read-only #t)
-  (loads #f read-only #t))
+(define-integrable (make-package-file tag version descriptions loads)
+  (vector tag version descriptions loads))
 
-(define-structure (package-description (type vector)
-				       (type-descriptor #f)
-				       (conc-name package-description/))
-  (name #f read-only #t)
-  (ancestors #f read-only #t)
-  (internal-names #f read-only #t)
-  (exports #f read-only #t)
-  (imports #f read-only #t)
-  (extension? #f read-only #t))
+(define-integrable (package-file/tag pf) (vector-ref pf 0))
+(define-integrable (package-file/version pf) (vector-ref pf 1))
+(define-integrable (package-file/descriptions pf) (vector-ref pf 2))
+(define-integrable (package-file/loads pf) (vector-ref pf 3))
 
-(define-structure (load-description (type vector)
-				    (type-descriptor #f)
-				    (conc-name load-description/))
-  (name #f read-only #t)
-  (file-cases #f read-only #t)
-  (initializations #f read-only #t)
-  (finalizations #f read-only #t))
+(define-integrable (make-package-description name ancestors internal-names
+					     exports imports extension?)
+  (vector name ancestors internal-names exports imports extension?))
+
+(define-integrable (package-description/name pd) (vector-ref pd 0))
+(define-integrable (package-description/ancestors pd) (vector-ref pd 1))
+(define-integrable (package-description/internal-names pd) (vector-ref pd 2))
+(define-integrable (package-description/exports pd) (vector-ref pd 3))
+(define-integrable (package-description/imports pd) (vector-ref pd 4))
+(define-integrable (package-description/extension? pd) (vector-ref pd 5))
+
+(define-integrable (make-load-description name file-cases initializations
+					  finalizations)
+  (vector name file-cases initializations finalizations))
+
+(define-integrable (load-description/name pd) (vector-ref pd 0))
+(define-integrable (load-description/file-cases pd) (vector-ref pd 1))
+(define-integrable (load-description/initializations pd) (vector-ref pd 2))
+(define-integrable (load-description/finalizations pd) (vector-ref pd 3))
 
 (define (package-file? object)
   (and (vector? object)
