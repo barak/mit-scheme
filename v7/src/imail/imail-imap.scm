@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.17 2000/05/04 22:21:27 cph Exp $
+;;; $Id: imail-imap.scm,v 1.18 2000/05/05 17:18:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -28,7 +28,7 @@
 	       (constructor (user-id auth-type host port mailbox uid)))
     (<url>)
   ;; User name to connect as.
-  (user-id accessor url-user-id)
+  (user-id define accessor)
   ;; Type of authentication to use.  Ignored.
   (auth-type define accessor)
   ;; Name or IP address of host to connect to.
@@ -41,52 +41,55 @@
   (uid define accessor))
 
 (define-url-protocol "imap" <imap-url>
-  (lambda (string)
-    (let ((lose (lambda () (error:bad-range-argument string #f))))
-      (if (not (string-prefix? "//" string))
-	  (lose))
+  (let ((//server/
+	 (optional-parser
+	  (sequence-parser (noise-parser (string-matcher "//"))
+			   imap:parse:server
+			   (noise-parser (string-matcher "/")))))
+	(mbox (optional-parser imap:parse:simple-message)))
+    (lambda (string)
       (let ((end (string-length string)))
-	(let ((slash (substring-find-next-char string 2 end #\/)))
-	  (if (not slash)
-	      (lose))
-	  (let ((pv1 (parse-substring imap:parse:server string 2 slash)))
-	    (if (not pv1)
-		(lose))
-	    (let ((pv2
-		   (parse-substring imap:parse:simple-message
-				    string (fix:+ slash 1) end)))
-	      (if (not pv2)
-		  (lose))
-	      (make-imap-url (parser-token pv1 'USER-ID)
-			     (parser-token pv1 'AUTH-TYPE)
-			     (parser-token pv1 'HOST)
-			     (parser-token pv1 'PORT)
-			     (parser-token pv2 'MAILBOX)
-			     (parser-token pv2 'UID)))))))))
+	(let ((pv1 (//server/ string 0 end)))
+	  (let ((pv2
+		 (or (parse-substring mbox string (car pv1) end)
+		     (error:bad-range-argument string 'STRING->URL))))
+	    (make-imap-url (parser-token pv1 'USER-ID)
+			   (parser-token pv1 'AUTH-TYPE)
+			   (parser-token pv1 'HOST)
+			   (let ((port (parser-token pv1 'PORT)))
+			     (and port
+				  (string->number port)))
+			   (parser-token pv2 'MAILBOX)
+			   (parser-token pv2 'UID))))))))
 
 (define-method url-body ((url <imap-url>))
   (string-append
-   "//"
-   (let ((user-id (url-user-id url))
-	 (auth-type (imap-url-auth-type url)))
-     (if (or user-id auth-type)
-	 (string-append (if user-id
-			    (url:encode-string user-id)
-			    "")
-			(if auth-type
-			    (string-append ";auth="
-					   (if (string=? auth-type "*")
-					       auth-type
-					       (url:encode-string auth-type)))
-			    "")
-			"@")
+   (let ((user-id (imap-url-user-id url))
+	 (auth-type (imap-url-auth-type url))
+	 (host (imap-url-host url))
+	 (port (imap-url-port url)))
+     (if (or user-id auth-type host port)
+	 (string-append
+	  "//"
+	  (if (or user-id auth-type)
+	      (string-append (if user-id
+				 (url:encode-string user-id)
+				 "")
+			     (if auth-type
+				 (string-append
+				  ";auth="
+				  (if (string=? auth-type "*")
+				      auth-type
+				      (url:encode-string auth-type)))
+				 "")
+			     "@")
+	      "")
+	  host
+	  (if port
+	      (string-append ":" (number->string port))
+	      "")
+	  "/")
 	 ""))
-   (imap-url-host url)
-   (let ((port (imap-url-port url)))
-     (if port
-	 (string-append ":" port)
-	 ""))
-   "/"
    (url:encode-string (imap-url-mailbox url))
    (let ((uid (imap-url-uid url)))
      (if uid
@@ -158,7 +161,7 @@
 (define (get-imap-connection url)
   (let ((host (imap-url-host url))
 	(ip-port (imap-url-port url))
-	(user-id (or (url-user-id url) (imail-default-user-id))))
+	(user-id (or (imap-url-user-id url) (imail-default-user-id))))
     (let loop ((connections memoized-imap-connections) (prev #f))
       (if (weak-pair? connections)
 	  (let ((connection (weak-car connections)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.40 2000/05/04 18:52:52 cph Exp $
+;;; $Id: imail-core.scm,v 1.41 2000/05/05 17:18:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -78,9 +78,6 @@
 
 (define url-protocol-parsers
   (make-string-hash-table))
-
-(define-generic url-user-id (url))
-(define-method url-user-id ((url <url>)) url #f)
 
 ;;;; Server operations
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.35 2000/05/04 22:37:06 cph Exp $
+;;; $Id: imail-top.scm,v 1.36 2000/05/05 17:18:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -77,15 +77,30 @@ The procedure is called with one argument, a list of headers,
   #f
   boolean?)
 
-(define-variable imail-user-name
-  "A user name to use when authenticating to a mail server.
-#f means use the default user name."
+(define-variable imail-primary-folder
+  "URL for the primary folder that you read your mail from."
   #f
   string-or-false?)
 
-(define-variable imail-primary-folder
-  "URL for the primary folder that you read your mail from."
-  "rmail:RMAIL"
+(define-variable imail-default-imap-server
+  "The hostname of an IMAP server to connect to if none is otherwise specified.
+May contain an optional port suffix \":<port>\".
+May be overridden by an explicit hostname in imail-primary-folder."
+  "localhost"
+  string?)
+
+(define-variable imail-default-user-id
+  "A user id to use when authenticating to a mail server.
+#F means use the id of the user running Edwin.
+May be overridden by an explicit user id in imail-primary-folder."
+  #f
+  string-or-false?)
+
+(define-variable imail-default-imap-mailbox
+  "The name of the default mailbox to connect to on an IMAP server,
+if none is otherwise specified.
+May be overridden by an explicit mailbox in imail-primary-folder."
+  "inbox"
   string?)
 
 (define-command imail
@@ -100,7 +115,9 @@ May be called with an IMAIL folder URL as argument;
     (bind-authenticator imail-authenticator
       (lambda ()
 	(let* ((url
-		(->url (or url-string (ref-variable imail-primary-folder))))
+		(if url-string
+		    (imail-parse-partial-url url-string)
+		    (imail-default-url)))
 	       (folder (open-folder url)))
 	  (select-buffer
 	   (let ((buffer
@@ -116,19 +133,6 @@ May be called with an IMAIL folder URL as argument;
   (call-with-pass-phrase (string-append "Password for user " user-id
 					" on host " host)
 			 receiver))
-
-(define (imail-default-user-id)
-  (or (ref-variable imail-user-name)
-      (current-user-name)))
-
-(define (imail-present-user-alert procedure)
-  (call-with-output-to-temporary-buffer " *IMAP alert*"
-					'(READ-ONLY SHRINK-WINDOW
-						    FLUSH-ON-SPACE)
-					procedure))
-
-(define (imail-message-wrapper . arguments)
-  (apply message-wrapper #f arguments))
 
 (define (associate-imail-folder-with-buffer folder buffer)
   (buffer-put! buffer 'IMAIL-FOLDER folder)
@@ -162,6 +166,67 @@ May be called with an IMAIL folder URL as argument;
       (or folder
 	  (and (if (default-object? error?) #t error?)
 	       (error:bad-range-argument buffer 'SELECTED-FOLDER))))))
+
+(define (imail-default-url)
+  (let ((primary-folder (ref-variable imail-primary-folder)))
+    (if primary-folder
+	(imail-parse-partial-url primary-folder)
+	(imail-default-imap-url))))
+
+(define (imail-parse-partial-url string)
+  (let ((url
+	 (->url
+	  (let ((colon (string-find-next-char string #\:)))
+	    (if colon
+		string
+		(string-append "imap:" string))))))
+    (if (and (imap-url? url)
+	     (not (and (imap-url-user-id url)
+		       (imap-url-host url)
+		       (imap-url-port url)
+		       (imap-url-mailbox url))))
+	(let ((url* (imail-default-imap-url)))
+	  (make-imap-url (or (imap-url-user-id url)
+			     (imap-url-user-id url*))
+			 (or (imap-url-auth-type url)
+			     (imap-url-auth-type url*))
+			 (or (imap-url-host url)
+			     (imap-url-host url*))
+			 (or (imap-url-port url)
+			     (imap-url-port url*))
+			 (or (imap-url-mailbox url)
+			     (imap-url-mailbox url*))
+			 (or (imap-url-uid url)
+			     (imap-url-uid url*))))
+	url)))
+
+(define (imail-default-imap-url)
+  (call-with-values
+      (lambda ()
+	(let ((server (ref-variable imail-default-imap-server)))
+	  (let ((colon (string-find-next-char server #\:)))
+	    (if colon
+		(values (string-head server colon)
+			(or (string->number (string-tail server (+ colon 1)))
+			    (error "Invalid port specification:" server)))
+		(values server #f)))))
+    (lambda (host port)
+      (make-imap-url (or (ref-variable imail-default-user-id)
+			 (current-user-name))
+		     #f
+		     host
+		     port
+		     (ref-variable imail-default-imap-mailbox)
+		     #f))))
+
+(define (imail-present-user-alert procedure)
+  (call-with-output-to-temporary-buffer " *IMAP alert*"
+					'(READ-ONLY SHRINK-WINDOW
+						    FLUSH-ON-SPACE)
+					procedure))
+
+(define (imail-message-wrapper . arguments)
+  (apply message-wrapper #f arguments))
 
 (define-major-mode imail read-only "IMAIL"
   "IMAIL mode is used by \\[imail] for editing IMAIL files.
