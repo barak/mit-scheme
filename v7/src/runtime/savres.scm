@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.4 1988/08/15 23:05:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.5 1988/10/21 00:15:37 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -43,7 +43,7 @@ MIT in each case. |#
 ;;;
 ;;;    [] Not supplied => ^G on restore (normal for saving band).
 ;;;    [] String => New world ID message, and ^G on restore.
-;;;    [] #F => Returns normally on restore.
+;;;    [] #F => Returns normally on restore; value is true iff restored.
 ;;;    [] Otherwise => Returns normally, running `event:after-restart'.
 ;;;
 ;;; The image saved by DISK-SAVE does not include the "microcode", the
@@ -66,22 +66,24 @@ MIT in each case. |#
       (save-image filename
 		  (lambda ()
 		    (set! time-world-saved time)
-		    unspecific)
+		    (if (false? identify)
+			false
+			unspecific))
 		  (lambda ()
 		    (set! time-world-saved time)
 		    (event-distributor/invoke! event:after-restore)
-		    (if (string? identify)
-			(begin
-			  (set! world-identification identify)
-			  (clear console-output-port)
-			  (abort->top-level
-			   (lambda (cmdl)
-			     (identify-world cmdl)
-			     (event-distributor/invoke! event:after-restart))))
-			(begin
-			  (if identify
-			      (event-distributor/invoke! event:after-restart))
-			  unspecific)))))))
+		    (cond ((false? identify)
+			   true)
+			  ((string? identify)
+			   (set! world-identification identify)
+			   (clear console-output-port)
+			   (abort->top-level
+			    (lambda (cmdl)
+			      (identify-world cmdl)
+			      (event-distributor/invoke! event:after-restart))))
+			  (else
+			   (event-distributor/invoke! event:after-restart)
+			   unspecific)))))))
 
 (define (disk-save/kernel filename after-suspend after-restore)
   ((without-interrupts
