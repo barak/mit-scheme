@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.67 1999/10/07 17:00:33 cph Exp $
+$Id: edwin.ldr,v 1.68 1999/10/07 17:06:20 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -208,7 +208,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(load "bufmnu" (->environment '(EDWIN BUFFER-MENU)))
 	(load "c-mode" environment)
 	(load "javamode" environment)
-	(load "htmlmode" environment)
 	(load "cinden" (->environment '(EDWIN C-INDENTATION)))
 	(load "comhst" environment)
 	(load "comint" environment)
@@ -243,6 +242,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(load "shell" environment)
 	(load "tagutl" (->environment '(EDWIN TAGS)))
 	(load "texcom" environment)
+	(load "htmlmode" environment)
 	(if (eq? (lookup 'OS-TYPE) 'UNIX)
 	    (begin
 	      (load "rcsparse" (->environment '(EDWIN RCS-PARSE)))
