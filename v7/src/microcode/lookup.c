@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.c,v 9.43 1989/11/06 22:00:00 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.c,v 9.44 1990/09/17 19:54:34 jinx Exp $
  *
  * This file contains symbol lookup and modification routines.  See
  * Hal Abelson for a paper describing and justifying the algorithm.
@@ -850,7 +850,7 @@ lookup_fluid(trap)
   deep_assignment_end(cell, fake_variable_object, value, true)
 
 long
-definition(cell, value, shadowed_p)
+definition (cell, value, shadowed_p)
      SCHEME_OBJECT *cell, value;
      Boolean shadowed_p;
 {
@@ -880,7 +880,7 @@ definition(cell, value, shadowed_p)
 }
 
 long
-dangerize(cell, sym)
+dangerize (cell, sym)
      fast SCHEME_OBJECT *cell;
      SCHEME_OBJECT sym;
 {
@@ -888,25 +888,25 @@ dangerize(cell, sym)
   fast long temp;
   SCHEME_OBJECT trap;
 
-  setup_lock(set_serializer, cell);
-  if (!(REFERENCE_TRAP_P(*cell)))
+  setup_lock (set_serializer, cell);
+  if (!(REFERENCE_TRAP_P (*cell)))
   {
-    if (GC_allocate_test(2))
+    if (GC_allocate_test (2))
     {
-      remove_lock(set_serializer);
-      Request_GC(2);
+      remove_lock (set_serializer);
+      Request_GC (2);
       return (PRIM_INTERRUPT);
     }
-    trap = MAKE_POINTER_OBJECT (TC_REFERENCE_TRAP, Free);
+    trap = (MAKE_POINTER_OBJECT (TC_REFERENCE_TRAP, Free));
     *Free++ = DANGEROUS_OBJECT;
     *Free++ = *cell;
     *cell = trap;
-    remove_lock(set_serializer);
-    return (simple_uncache(cell, sym));
+    remove_lock (set_serializer);
+    return (simple_uncache (cell, sym));
   }
 
-  get_trap_kind(temp, *cell);
-  switch(temp)
+  get_trap_kind (temp, *cell);
+  switch (temp)
   {
     case TRAP_UNBOUND_DANGEROUS:
     case TRAP_UNASSIGNED_DANGEROUS:
@@ -922,8 +922,8 @@ dangerize(cell, sym)
 
     case TRAP_COMPILER_CACHED_DANGEROUS:
     {
-      remove_lock(set_serializer);
-      return (compiler_uncache(cell, sym));
+      remove_lock (set_serializer);
+      return (compiler_uncache (cell, sym));
     }
 
     case TRAP_FLUID:
@@ -941,11 +941,11 @@ dangerize(cell, sym)
       break;
 
     default:
-      remove_lock(set_serializer);
+      remove_lock (set_serializer);
       return (ERR_ILLEGAL_REFERENCE_TRAP);
   }
-  remove_lock(set_serializer);
-  return (simple_uncache(cell, sym));
+  remove_lock (set_serializer);
+  return (simple_uncache (cell, sym));
 }
 
 /* The core of the incremental definition mechanism.
@@ -963,7 +963,7 @@ dangerize(cell, sym)
  */
 
 long
-extend_frame(env, sym, value, original_frame, recache_p)
+extend_frame (env, sym, value, original_frame, recache_p)
      SCHEME_OBJECT env, sym, value, original_frame;
      Boolean recache_p;
 {
@@ -972,30 +972,46 @@ extend_frame(env, sym, value, original_frame, recache_p)
   fast SCHEME_OBJECT *scan;
   long aux_count;
 
-  if (OBJECT_TYPE (env) == GLOBAL_ENV)
+  if ((OBJECT_TYPE (env)) == GLOBAL_ENV)
   {
     /* *UNDEFINE*: If undefine is ever implemented, this code need not
        change: There are no shadowed bindings that need to be
        recached.
      */
-    if (OBJECT_DATUM (env) != GO_TO_GLOBAL)
+    if ((OBJECT_DATUM (env)) != GO_TO_GLOBAL)
     {
-      return ((env == original_frame) ? ERR_BAD_FRAME : PRIM_DONE);
+      if (env == original_frame)
+      {
+	return (ERR_BAD_FRAME);
+      }
+      else
+      {
+	/* We have a new definition in a chain rooted at the empty
+	   environment.
+	   We need not uncache/recache, but we need to set all
+	   global state accordingly.
+	   We use a cell which never needs uncacheing/recacheing
+	   and use the ordinary code otherwise.
+
+	   This is done only because of compiler cached variables.
+	 */
+	return (compiler_uncache ((unbound_trap_object), sym));
+      }
     }
     else if (env == original_frame)
     {
-      return (redefinition(MEMORY_LOC (sym, SYMBOL_GLOBAL_VALUE),
-			   value));
+      return (redefinition ((MEMORY_LOC (sym, SYMBOL_GLOBAL_VALUE)),
+			    value));
     }
     else
     {
-      return (dangerize(MEMORY_LOC (sym, SYMBOL_GLOBAL_VALUE), sym));
+      return (dangerize ((MEMORY_LOC (sym, SYMBOL_GLOBAL_VALUE)), sym));
     }
   }
 
-  the_procedure = MEMORY_REF (env, ENVIRONMENT_FUNCTION);
-  if (OBJECT_TYPE (the_procedure) == AUX_LIST_TYPE)
-    the_procedure = MEMORY_REF (the_procedure, ENV_EXTENSION_PROCEDURE);
+  the_procedure = (MEMORY_REF (env, ENVIRONMENT_FUNCTION));
+  if ((OBJECT_TYPE (the_procedure)) == AUX_LIST_TYPE)
+    the_procedure = (MEMORY_REF (the_procedure, ENV_EXTENSION_PROCEDURE));
 
   /* Search the formals. */
 
@@ -1003,11 +1019,11 @@ extend_frame(env, sym, value, original_frame, recache_p)
     fast long count;
     SCHEME_OBJECT formals;
 
-    formals = FAST_MEMORY_REF (FAST_MEMORY_REF (the_procedure,
-					      PROCEDURE_LAMBDA_EXPR),
-			      LAMBDA_FORMALS);
-    for (count = VECTOR_LENGTH (formals) - 1,
-	 scan = MEMORY_LOC (formals, VECTOR_DATA + 1);
+    formals = (FAST_MEMORY_REF ((FAST_MEMORY_REF (the_procedure,
+						  PROCEDURE_LAMBDA_EXPR)),
+				LAMBDA_FORMALS));
+    for (count = ((VECTOR_LENGTH (formals)) - 1),
+	 scan = (MEMORY_LOC (formals, VECTOR_DATA + 1));
 	 count > 0;
 	 count -= 1)
     {
@@ -1020,14 +1036,14 @@ extend_frame(env, sym, value, original_frame, recache_p)
       {
 	long offset;
 
-	offset = 1 + VECTOR_LENGTH (formals) - count;
+	offset = (1 + (VECTOR_LENGTH (formals))) - count;
 	if (env == original_frame)
 	{
-	  return (redefinition(MEMORY_LOC (env, offset), value));
+	  return (redefinition ((MEMORY_LOC (env, offset)), value));
 	}
 	else
 	{
-	  return (dangerize(MEMORY_LOC (env, offset), sym));
+	  return (dangerize ((MEMORY_LOC (env, offset)), sym));
 	}
       }
     }
@@ -1037,30 +1053,30 @@ extend_frame(env, sym, value, original_frame, recache_p)
 
 redo_aux_lookup:
 
-  setup_lock(extension_serializer, OBJECT_ADDRESS (env));
-  extension = FAST_MEMORY_REF (env, ENVIRONMENT_FUNCTION);
-  if (OBJECT_TYPE (extension) != AUX_LIST_TYPE)
+  setup_lock (extension_serializer, (OBJECT_ADDRESS (env)));
+  extension = (FAST_MEMORY_REF (env, ENVIRONMENT_FUNCTION));
+  if ((OBJECT_TYPE (extension)) != AUX_LIST_TYPE)
   {
     fast long i;
 
-    if (GC_allocate_test(AUX_LIST_INITIAL_SIZE))
+    if (GC_allocate_test (AUX_LIST_INITIAL_SIZE))
     {
-      remove_lock(extension_serializer);
-      Request_GC(AUX_LIST_INITIAL_SIZE);
+      remove_lock (extension_serializer);
+      Request_GC (AUX_LIST_INITIAL_SIZE);
       return (PRIM_INTERRUPT);
     }
     scan = Free;
-    extension = MAKE_POINTER_OBJECT (AUX_LIST_TYPE, scan);
+    extension = (MAKE_POINTER_OBJECT (AUX_LIST_TYPE, scan));
 
     scan[ENV_EXTENSION_HEADER] =
-      MAKE_OBJECT (TC_MANIFEST_VECTOR, (AUX_LIST_INITIAL_SIZE - 1));
+      (MAKE_OBJECT (TC_MANIFEST_VECTOR, (AUX_LIST_INITIAL_SIZE - 1)));
 
     scan[ENV_EXTENSION_PARENT_FRAME] =
-      MEMORY_REF (the_procedure, PROCEDURE_ENVIRONMENT);
+      (MEMORY_REF (the_procedure, PROCEDURE_ENVIRONMENT));
 
     scan[ENV_EXTENSION_PROCEDURE] = the_procedure;
 
-    scan[ENV_EXTENSION_COUNT] = Make_Local_Offset(0);
+    scan[ENV_EXTENSION_COUNT] = (Make_Local_Offset (0));
 
     for (i = AUX_CHUNK_SIZE, scan += AUX_LIST_FIRST;
 	 --i >= 0;)
@@ -1069,23 +1085,23 @@ redo_aux_lookup:
     Free = scan;
     Do_Store_No_Lock ((MEMORY_LOC (env, ENVIRONMENT_FUNCTION)), extension);
   }
-  aux_count = Lexical_Offset(FAST_MEMORY_REF (extension, AUX_LIST_COUNT));
-  remove_lock(extension_serializer);
+  aux_count = (Lexical_Offset (FAST_MEMORY_REF (extension, AUX_LIST_COUNT)));
+  remove_lock (extension_serializer);
 
   /* Search the aux list. */
 
   {
     fast long count;
 
-    scan = OBJECT_ADDRESS (extension);
+    scan = (OBJECT_ADDRESS (extension));
     count = aux_count;
     scan += AUX_LIST_FIRST;
 
     while (--count >= 0)
     {
-      if (FAST_PAIR_CAR (*scan) == sym)
+      if ((FAST_PAIR_CAR (*scan)) == sym)
       {
-	scan = PAIR_CDR_LOC (*scan);
+	scan = (PAIR_CDR_LOC (*scan));
 
 	/* This is done only because of compiler cached variables.
 	   In their absence, this conditional is unnecessary.
@@ -1094,32 +1110,32 @@ redo_aux_lookup:
 	   of bindings if undefine is ever implemented.  See the
 	   comments above.
 	 */
-	if (MEMORY_FETCH (scan[0]) == DANGEROUS_UNBOUND_OBJECT)
+	if ((MEMORY_FETCH (scan[0])) == DANGEROUS_UNBOUND_OBJECT)
 	{
 	  long temp;
 
 	  temp =
-	    compiler_uncache
-	      (deep_lookup(FAST_MEMORY_REF (extension,
-					   ENV_EXTENSION_PARENT_FRAME),
-			   sym,
-			   fake_variable_object),
-	       sym);
+	    (compiler_uncache
+	     (deep_lookup((FAST_MEMORY_REF (extension,
+					    ENV_EXTENSION_PARENT_FRAME)),
+			  sym,
+			  fake_variable_object),
+	      sym));
 
 	  if ((temp != PRIM_DONE) || (env != original_frame))
 	  {
 	    return (temp);
 	  }
-	  return shadowing_recache(scan, env, sym, value, true);
+	  return shadowing_recache (scan, env, sym, value, true);
 	}
 
 	if (env == original_frame)
 	{
-	  return (redefinition(scan, value));
+	  return (redefinition (scan, value));
 	}
 	else
 	{
-	  return (dangerize(scan, sym));
+	  return (dangerize (scan, sym));
 	}
       }
       scan += 1;
@@ -1132,8 +1148,8 @@ redo_aux_lookup:
     fast long temp;
 
     temp =
-      extend_frame(FAST_MEMORY_REF (extension, ENV_EXTENSION_PARENT_FRAME),
-		   sym, SHARP_F, original_frame, recache_p);
+      extend_frame ((FAST_MEMORY_REF (extension, ENV_EXTENSION_PARENT_FRAME)),
+		    sym, SHARP_F, original_frame, recache_p);
 
     if (temp != PRIM_DONE)
     {
@@ -1148,17 +1164,17 @@ redo_aux_lookup:
          something in the meantime in this frame.
      */
 
-    setup_lock(extension_serializer, OBJECT_ADDRESS (env));
-    temp = Lexical_Offset(FAST_MEMORY_REF (extension, AUX_LIST_COUNT));
+    setup_lock (extension_serializer, (OBJECT_ADDRESS (env)));
+    temp = (Lexical_Offset (FAST_MEMORY_REF (extension, AUX_LIST_COUNT)));
 
-    if ((extension != FAST_MEMORY_REF (env, ENVIRONMENT_FUNCTION)) ||
+    if ((extension != (FAST_MEMORY_REF (env, ENVIRONMENT_FUNCTION))) ||
 	(temp != aux_count))
     {
-      remove_lock(extension_serializer);
+      remove_lock (extension_serializer);
       goto redo_aux_lookup;
     }
 
-    scan = OBJECT_ADDRESS (extension);
+    scan = (OBJECT_ADDRESS (extension));
 
     if ((temp + (AUX_LIST_FIRST - 1)) == (VECTOR_LENGTH (extension)))
     {
@@ -1167,10 +1183,10 @@ redo_aux_lookup:
 
       i = ((2 * temp) + AUX_LIST_FIRST);
 
-      if (GC_allocate_test(i))
+      if (GC_allocate_test (i))
       {
-	remove_lock(extension_serializer);
-	Request_GC(i);
+	remove_lock (extension_serializer);
+	Request_GC (i);
 	return (PRIM_INTERRUPT);
       }
 
@@ -1178,7 +1194,7 @@ redo_aux_lookup:
       i -= 1;
 
       scan += 1;
-      *fast_free++ = MAKE_OBJECT (TC_MANIFEST_VECTOR, i);
+      *fast_free++ = (MAKE_OBJECT (TC_MANIFEST_VECTOR, i));
       for (i = (temp + (AUX_LIST_FIRST - 1)); --i >= 0; )
 	*fast_free++ = *scan++;
       for (i = temp; --i >= 0; )
@@ -1191,29 +1207,29 @@ redo_aux_lookup:
 	 (MAKE_POINTER_OBJECT (AUX_LIST_TYPE, scan)));
     }
 
-    if (GC_allocate_test(2))
+    if (GC_allocate_test (2))
     {
-      remove_lock(extension_serializer);
-      Request_GC(2);
+      remove_lock (extension_serializer);
+      Request_GC (2);
       return (PRIM_INTERRUPT);
     }
 
     {
       SCHEME_OBJECT result;
 
-      result = MAKE_POINTER_OBJECT (TC_LIST, Free);
+      result = (MAKE_POINTER_OBJECT (TC_LIST, Free));
       *Free++ = sym;
       *Free++ = DANGEROUS_UNBOUND_OBJECT;
 
       scan[temp + AUX_LIST_FIRST] = result;
-      scan[AUX_LIST_COUNT] = Make_Local_Offset(temp + 1);
+      scan[AUX_LIST_COUNT] = (Make_Local_Offset (temp + 1));
 
-      remove_lock(extension_serializer);
+      remove_lock (extension_serializer);
 
       if ((env != original_frame) || (!recache_p))
 	return (PRIM_DONE);
       else
-	return (shadowing_recache((Free - 1), env, sym, value, false));
+	return (shadowing_recache ((Free - 1), env, sym, value, false));
     }
   }
 }
@@ -2116,7 +2132,7 @@ environment_ancestor_or_self_p(ancestor, descendant)
  */
 
 long
-compiler_recache_split(slot, sym, definition_env, memoize_cell)
+compiler_recache_split (slot, sym, definition_env, memoize_cell)
      fast SCHEME_OBJECT *slot;
      SCHEME_OBJECT sym, definition_env, **memoize_cell;
 {
@@ -2164,7 +2180,7 @@ compiler_recache_split(slot, sym, definition_env, memoize_cell)
  */
 
 long
-compiler_recache_slot(extension, sym, kind, slot, cell, value)
+compiler_recache_slot (extension, sym, kind, slot, cell, value)
      SCHEME_OBJECT extension, sym, value;
      fast SCHEME_OBJECT *slot, *cell;
      long kind;
@@ -2204,8 +2220,8 @@ compiler_recache_slot(extension, sym, kind, slot, cell, value)
 }
 
 long
-compiler_recache(old_value_cell, new_value_cell, env, sym, value,
-		 shadowed_p, link_p)
+compiler_recache (old_value_cell, new_value_cell, env, sym, value,
+		  shadowed_p, link_p)
      SCHEME_OBJECT *old_value_cell, *new_value_cell, env, sym, value;
      Boolean shadowed_p, link_p;
 {
@@ -2216,8 +2232,8 @@ compiler_recache(old_value_cell, new_value_cell, env, sym, value,
   long
     trap_kind, temp, i, index, total_size, total_count, conflict_count;
 
-  setup_locks(set_serializer_1, old_value_cell,
-	      set_serializer_2, new_value_cell);
+  setup_locks (set_serializer_1, old_value_cell,
+	       set_serializer_2, new_value_cell);
 
   if ((!link_p) && (*new_value_cell != DANGEROUS_UNBOUND_OBJECT))
   {
@@ -2226,36 +2242,36 @@ compiler_recache(old_value_cell, new_value_cell, env, sym, value,
        caches since it is shadowing the same variable.
        The definition has become a redefinition.
      */
-    remove_locks(set_serializer_1, set_serializer_2);
-    return (redefinition(new_value_cell, value));
+    remove_locks (set_serializer_1, set_serializer_2);
+    return (redefinition (new_value_cell, value));
   }
 
   old_value = *old_value_cell;
 
-  if (!(REFERENCE_TRAP_P(old_value)))
+  if (!(REFERENCE_TRAP_P (old_value)))
   {
-    remove_locks(set_serializer_1, set_serializer_2);
+    remove_locks (set_serializer_1, set_serializer_2);
     return (link_p ?
 	    PRIM_DONE :
-	    definition(new_value_cell, value, shadowed_p));
+	    (definition (new_value_cell, value, shadowed_p)));
   }
 
-  get_trap_kind(trap_kind, old_value);
+  get_trap_kind (trap_kind, old_value);
   if ((trap_kind != TRAP_COMPILER_CACHED) &&
       (trap_kind != TRAP_COMPILER_CACHED_DANGEROUS))
   {
-    remove_locks(set_serializer_1, set_serializer_2);
+    remove_locks (set_serializer_1, set_serializer_2);
     return (link_p ?
 	    PRIM_DONE :
-	    definition(new_value_cell, value, shadowed_p));
+	    (definition (new_value_cell, value, shadowed_p)));
   }
 
-  compiler_recache_prolog();
+  compiler_recache_prolog ();
 
-  extension = FAST_MEMORY_REF (old_value, TRAP_EXTRA);
-  references = FAST_MEMORY_REF (extension, TRAP_EXTENSION_REFERENCES);
-  update_lock(set_serializer_1,
-	      MEMORY_LOC (extension, TRAP_EXTENSION_CELL));
+  extension = (FAST_MEMORY_REF (old_value, TRAP_EXTRA));
+  references = (FAST_MEMORY_REF (extension, TRAP_EXTENSION_REFERENCES));
+  update_lock (set_serializer_1,
+	       (MEMORY_LOC (extension, TRAP_EXTENSION_CELL)));
 
   /*
      Split each slot and compute the amount to allocate.
@@ -2268,8 +2284,8 @@ compiler_recache(old_value_cell, new_value_cell, env, sym, value,
   for (i = TRAP_MAP_TABLE_SIZE; --i >= 0; )
   {
     index = trap_map_table[i];
-    temp = compiler_recache_split(MEMORY_LOC (references, index),
-				  sym, env, &trap_info_table[i]);
+    temp = compiler_recache_split ((MEMORY_LOC (references, index)),
+				   sym, env, &trap_info_table[i]);
 
     if (temp != 0)
     {
@@ -2281,11 +2297,11 @@ compiler_recache(old_value_cell, new_value_cell, env, sym, value,
 
   if (total_count == 0)
   {
-    compiler_recache_epilog();
-    remove_locks(set_serializer_1, set_serializer_2);
+    compiler_recache_epilog ();
+    remove_locks (set_serializer_1, set_serializer_2);
     return (link_p ?
 	    PRIM_DONE :
-	    definition(new_value_cell, value, shadowed_p));
+	    (definition (new_value_cell, value, shadowed_p)));
   }
 
   if ((conflict_count == 2) &&
@@ -2295,15 +2311,15 @@ compiler_recache(old_value_cell, new_value_cell, env, sym, value,
     total_size += SPACE_PER_EXTENSION;
   }
 
-  if (GC_allocate_test(total_size))
+  if (GC_allocate_test (total_size))
   {
     /* Unfortunate fact of life: This binding will be dangerous
        even if there is no need, but this is the only way to
        guarantee consistent values.
      */
-    compiler_recache_epilog();
-    remove_locks(set_serializer_1, set_serializer_2);
-    Request_GC(total_size);
+    compiler_recache_epilog ();
+    remove_locks (set_serializer_1, set_serializer_2);
+    Request_GC (total_size);
     return (PRIM_INTERRUPT);
   }
 
@@ -2324,23 +2340,23 @@ compiler_recache(old_value_cell, new_value_cell, env, sym, value,
        skip this binding.
      */
 
-    references = MAKE_POINTER_OBJECT (TRAP_REFERENCES_TYPE, Free);
+    references = (MAKE_POINTER_OBJECT (TRAP_REFERENCES_TYPE, Free));
 
     *Free++ = EMPTY_LIST;
     *Free++ = EMPTY_LIST;
     *Free++ = EMPTY_LIST;
 
-    new_extension = MAKE_POINTER_OBJECT (TRAP_EXTENSION_TYPE, Free);
+    new_extension = (MAKE_POINTER_OBJECT (TRAP_EXTENSION_TYPE, Free));
 
     *Free++ = value;
     *Free++ = sym;
     *Free++ = SHARP_F;
     *Free++ = references;
 
-    new_trap = MAKE_POINTER_OBJECT (TC_REFERENCE_TRAP, Free);
-    *Free++ = LONG_TO_UNSIGNED_FIXNUM((shadowed_p ?
-				    TRAP_COMPILER_CACHED_DANGEROUS :
-				    TRAP_COMPILER_CACHED));
+    new_trap = (MAKE_POINTER_OBJECT (TC_REFERENCE_TRAP, Free));
+    *Free++ = (LONG_TO_UNSIGNED_FIXNUM((shadowed_p ?
+					TRAP_COMPILER_CACHED_DANGEROUS :
+					TRAP_COMPILER_CACHED)));
     *Free++ = new_extension;
   }
 
@@ -2349,7 +2365,7 @@ compiler_recache(old_value_cell, new_value_cell, env, sym, value,
   {
     SCHEME_OBJECT clone;
 
-    clone = MAKE_POINTER_OBJECT (TRAP_EXTENSION_TYPE, Free);
+    clone = (MAKE_POINTER_OBJECT (TRAP_EXTENSION_TYPE, Free));
 
     *Free++ = EXPENSIVE_ASSIGNMENT_OBJECT;
     *Free++ = sym;
@@ -2365,10 +2381,10 @@ compiler_recache(old_value_cell, new_value_cell, env, sym, value,
   for (i = TRAP_MAP_TABLE_SIZE; --i >= 0; )
   {
     index = trap_map_table[i];
-    temp = compiler_recache_slot(new_extension, sym, index,
-				 MEMORY_LOC (references, index),
-				 trap_info_table[i],
-				 value);
+    temp = compiler_recache_slot (new_extension, sym, index,
+				  (MEMORY_LOC (references, index)),
+				  trap_info_table[i],
+				  value);
     if (temp != PRIM_DONE)
     {
       extern char *Abort_Names[];
@@ -2376,17 +2392,17 @@ compiler_recache(old_value_cell, new_value_cell, env, sym, value,
       /* We've lost BIG. */
 
       if (temp == PRIM_INTERRUPT)
-	fprintf(stderr,
-		"\ncompiler_recache: Ran out of guaranteed space!\n");
+	fprintf (stderr,
+		 "\ncompiler_recache: Ran out of guaranteed space!\n");
       else if (temp > 0)
-	fprintf(stderr,
-		"\ncompiler_recache: Unexpected error value %d (%s)\n",
-		temp, Abort_Names[temp]);
+	fprintf (stderr,
+		 "\ncompiler_recache: Unexpected error value %d (%s)\n",
+		 temp, Abort_Names[temp]);
       else
-	fprintf(stderr,
-		"\ncompiler_recache: Unexpected abort value %d (%s)\n",
-		-temp, Abort_Names[(-temp) - 1]);
-      Microcode_Termination(TERM_EXIT);
+	fprintf (stderr,
+		 "\ncompiler_recache: Unexpected abort value %d (%s)\n",
+		 -temp, Abort_Names[(-temp) - 1]);
+      Microcode_Termination (TERM_EXIT);
     }
   }
 
@@ -2394,8 +2410,8 @@ compiler_recache(old_value_cell, new_value_cell, env, sym, value,
   {
     *new_value_cell = new_trap;
   }
-  compiler_recache_epilog();
-  remove_locks(set_serializer_1, set_serializer_2);
+  compiler_recache_epilog ();
+  remove_locks (set_serializer_1, set_serializer_2);
   return (PRIM_DONE);
 }
 
