@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.20 1993/02/16 00:02:14 arthur Exp $
+$Id: uxterm.c,v 1.21 1993/02/18 05:15:04 gjr Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -345,6 +345,7 @@ DEFUN (OS_terminal_get_ospeed, (channel), Tchannel channel)
   return (terminal_state_get_ospeed (&s));
 }
 
+#ifndef NO_BAUD_CONVERSION
 static unsigned int baud_convert [] =
 #ifdef _HPUX
   {
@@ -360,28 +361,41 @@ static unsigned int baud_convert [] =
 
 #define BAUD_CONVERT_LENGTH						\
   ((sizeof (baud_convert)) / (sizeof (baud_convert[0])))
+#endif /* NO_BAUD_CONVERSION */
 
 unsigned int
 DEFUN (arg_baud_index, (argument), unsigned int argument)
 {
+#ifdef NO_BAUD_CONVERSION
+  return (arg_nonnegative_integer (argument));
+#else
   return (arg_index_integer (argument, BAUD_CONVERT_LENGTH));
+#endif
 }
 
 unsigned int
 DEFUN (OS_baud_index_to_rate, (index), unsigned int index)
 {
+#ifdef NO_BAUD_CONVERSION
+  return (index);
+#else
   return (baud_convert [index]);
+#endif
 }
 
 int
 DEFUN (OS_baud_rate_to_index, (rate), unsigned int rate)
 {
+#ifdef NO_BAUD_CONVERSION
+  return (rate);
+#else
   unsigned int * scan = baud_convert;
   unsigned int * end = (scan + BAUD_CONVERT_LENGTH);
   while (scan < end)
     if ((*scan++) == rate)
       return ((scan - 1) - baud_convert);
   return (-1);
+#endif
 }
 
 unsigned int
