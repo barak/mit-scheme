@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.5 1988/06/14 08:33:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.6 1988/06/14 09:11:03 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -49,6 +49,7 @@ MIT in each case. |#
 (define compiler:cse? true)
 (define compiler:open-code-primitives? true)
 (define compiler:generate-rtl-files? false)
+(define compiler:generate-range-checks? false)
 
 ;;; Nary switches
 
