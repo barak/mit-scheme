@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.230 2001/01/24 04:29:09 cph Exp $
+;;; $Id: imail-top.scm,v 1.231 2001/01/24 19:17:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -503,6 +503,7 @@ Instead, these commands are available:
 (define-key 'imail #\D		'imail-delete-folder)
 (define-key 'imail #\R		'imail-rename-folder)
 (define-key 'imail #\+		'imail-create-folder)
+(define-key 'imail button3-down 'imail-mouse-save-mime-entity)
 
 ;; These commands not yet implemented.
 ;;(define-key 'imail #\m-m	'imail-retry-failure)
@@ -2363,12 +2364,7 @@ Negative argument means search in reverse."
 				      selector))))))))
 
 (define (attach-mime-info start end info)
-  (region-put! start end 'IMAIL-MIME-INFO info #t)
-  (set-region-local-comtabs!
-   (make-region start end)
-   (let ((comtab (make-comtab)))
-     (define-key comtab button3-down 'imail-mouse-save-mime-entity)
-     (list comtab))))
+  (region-put! start end 'IMAIL-MIME-INFO info #t))
 
 (define (mark-mime-info mark)
   (region-get mark 'IMAIL-MIME-INFO #f))
