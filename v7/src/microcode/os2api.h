@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2api.h,v 1.5 1995/01/31 21:29:42 cph Exp $
+$Id: os2api.h,v 1.6 1995/04/09 22:34:36 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -38,8 +38,9 @@ MIT in each case. */
 
 enum syscall_names
 {
-  syscall_dos_async_timer,
   syscall_dos_alloc_mem,
+  syscall_dos_alloc_shared_mem,
+  syscall_dos_async_timer,
   syscall_dos_close,
   syscall_dos_close_event_sem,
   syscall_dos_close_mutex_sem,
@@ -61,6 +62,9 @@ enum syscall_names
   syscall_dos_free_mem,
   syscall_dos_get_info_blocks,
   syscall_dos_get_message,
+  syscall_dos_get_named_shared_mem,
+  syscall_dos_get_shared_mem,
+  syscall_dos_give_shared_mem,
   syscall_dos_kill_process,
   syscall_dos_kill_thread,
   syscall_dos_move,
@@ -756,8 +760,9 @@ enum syserr_names
     }									\
 }
 
-#define dos_async_timer		DosAsyncTimer
 #define dos_alloc_mem		DosAllocMem
+#define dos_alloc_shared_mem	DosAllocSharedMem
+#define dos_async_timer		DosAsyncTimer
 #define dos_close		DosClose
 #define dos_close_event_sem	DosCloseEventSem
 #define dos_close_mutex_sem	DosCloseMutexSem
@@ -779,6 +784,9 @@ enum syserr_names
 #define dos_free_mem		DosFreeMem
 #define dos_get_info_blocks	DosGetInfoBlocks
 #define dos_get_message		DosGetMessage
+#define dos_get_named_shared_mem DosGetNamedSharedMem
+#define dos_get_shared_mem	DosGetSharedMem
+#define dos_give_shared_mem	DosGiveSharedMem
 #define dos_kill_process	DosKillProcess
 #define dos_kill_thread		DosKillThread
 #define dos_move		DosMove
@@ -822,8 +830,9 @@ enum syserr_names
 
 static char * syscall_names_table [] =
 {
-  "dos-async-timer",
   "dos-alloc-mem",
+  "dos-alloc-shared-mem",
+  "dos-async-timer",
   "dos-close",
   "dos-close-event-sem",
   "dos-close-mutex-sem",
@@ -845,6 +854,9 @@ static char * syscall_names_table [] =
   "dos-free-mem",
   "dos-get-info-blocks",
   "dos-get-message",
+  "dos-get-named-shared-mem",
+  "dos-get-shared-mem",
+  "dos-give-shared-mem",
   "dos-kill-process",
   "dos-kill-thread",
   "dos-move",
