@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntenv.c,v 1.7 1993/08/28 22:46:38 gjr Exp $
+$Id: ntenv.c,v 1.8 1993/09/01 18:31:49 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -32,13 +32,12 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+#include "scheme.h"
 #include "nt.h"
 #include "osenv.h"
+#include <windows.h>
 #include <stdlib.h>
-
-#ifdef WINNT
 #include <string.h>
-#endif
 
 time_t
 DEFUN_VOID (OS_encoded_time)
@@ -101,16 +100,149 @@ DEFUN_VOID (OS_real_time_clock)
   return ((((double) (clock ())) * 1000.0) / ((double) CLOCKS_PER_SEC));
 }
 
+/* The timers are all the same.
+   This just provides three distinct timers.
+ */
+
+#define TIMER_ID_BASE		0x100
+#define TIMER_ID_REAL		(TIMER_ID_BASE + 2)
+#define TIMER_ID_PROFILE	(TIMER_ID_BASE + 1)
+#define TIMER_ID_PROCESS	(TIMER_ID_BASE + 0)
+
+#if 0
+enum timer_next
+{
+  timer_next_none,
+  timer_next_normal,
+  timer_next_disable,
+  timer_next_set_period
+};
+
+struct timer_state_s
+{
+  int local_id;
+  int global_id;
+  clock_t period;
+  enum timer_next next;
+};
+
+struct timer_state_s scheme_timers[3] =
+{
+  { TIMER_ID_PROCESS, 0, 0, timer_next_none, },
+  { TIMER_ID_PROFILE, 0, 0, timer_next_none, },
+  { TIMER_ID_REAL,    0, 0, timer_next_none, },
+};
+
+extern HANDLE master_tty_window;
+
+static void
+DEFUN (clear_timer, (timer_id), int timer_id)
+{
+  struct timer_state_s * timer = &scheme_timers[timer_id - TIMER_ID_BASE];
+  if (timer->global_id != 0)
+    KillTimer (master_tty_window, timer->global_id);
+  timer->global_id = 0;
+  timer->next = timer_next_none;
+  return;
+}
+
+extern VOID CALLBACK EXFUN (TimerProc, (HWND, UINT, UINT, DWORD));
+
+#define THE_TIMER_PROC ((TIMERPROC) TimerProc)
+
+VOID CALLBACK
+DEFUN (TimerProc, (hwnd, umsg, timer_id, dwtime),
+       HWND hwnd AND UINT umsg AND UINT timer_id AND DWORD dwtime)
+{
+  if (hwnd == master_tty_window)
+  {
+    struct timer_state_s * timer;
+
+    REQUEST_INTERRUPT (INT_Timer);
+    timer = &scheme_timers[timer_id - TIMER_ID_BASE];
+    switch (timer->next)
+    {
+    case timer_next_set_period:
+      // clear_timer (timer_id);
+      timer->global_id = (SetTimer (master_tty_window,
+				    timer->local_id,
+				    timer->period,
+				    THE_TIMER_PROC));
+      timer->next = timer_next_normal;
+      break;
+      
+    case timer_next_normal:
+      break;
+
+    case timer_next_none:
+    case timer_next_disable:
+    default:      
+      clear_timer (timer_id);
+      break;
+    }
+  }
+  return;
+}
+
+static void
+DEFUN (set_timer, (timer_id, first, interval),
+       int timer_id AND clock_t first AND clock_t interval)
+{
+  struct timer_state_s * timer = &scheme_timers[timer_id - TIMER_ID_BASE];
+  if (timer->global_id != 0)
+  {
+    KillTimer (master_tty_window, timer->global_id);
+    timer->global_id = 0;
+  }
+  
+  timer->period = interval;
+  if ((first == 0) || (interval == first))
+    timer->next = timer_next_normal;
+  else if (interval == 0)
+    timer->next = timer_next_disable;
+  else
+    timer->next = timer_next_set_period;
+  timer->global_id = (SetTimer (master_tty_window,
+				timer->local_id,
+				((first == 0) ? interval : first),
+				THE_TIMER_PROC));
+  if (timer->global_id == 0)
+  {
+    timer->next = timer_next_none;
+    error_system_call ((GetLastError ()), syscall_setitimer);
+  }
+  return;
+}
+
+#else /* not 0 */
+
+static void
+DEFUN (set_timer, (timer_id, first, interval),
+       int timer_id AND clock_t first AND clock_t interval)
+{
+  return;
+}
+
+static void
+DEFUN (clear_timer, (timer_id), int timer_id)
+{
+  return;
+}
+
+#endif /* 0 */
+
 void
 DEFUN (OS_process_timer_set, (first, interval),
        clock_t first AND clock_t interval)
 {
+  set_timer (TIMER_ID_PROCESS, first, interval);
   return;
 }
 
 void
 DEFUN_VOID (OS_process_timer_clear)
 {
+  clear_timer (TIMER_ID_PROCESS);
   return;
 }
 
@@ -118,12 +250,14 @@ void
 DEFUN (OS_profile_timer_set, (first, interval),
        clock_t first AND clock_t interval)
 {
+  set_timer (TIMER_ID_PROFILE, first, interval);
   return;
 }
 
 void
 DEFUN_VOID (OS_profile_timer_clear)
 {
+  clear_timer (TIMER_ID_PROFILE);
   return;
 }
 
@@ -131,14 +265,14 @@ void
 DEFUN (OS_real_timer_set, (first, interval),
        clock_t first AND clock_t interval)
 {
-  OS_process_timer_set (first, interval);
+  set_timer (TIMER_ID_REAL, first, interval);
   return;
 }
 
 void
 DEFUN_VOID (OS_real_timer_clear)
 {
-  OS_process_timer_clear();
+  clear_timer (TIMER_ID_REAL);
   return;
 }
 
@@ -161,7 +295,8 @@ DEFUN_VOID (OS_working_dir_pathname)
   while (1)
     {
       if ((NT_getcwd (current_dir_path, current_dir_path_size)) != 0)
-      { strlwr(current_dir_path);
+      {
+	strlwr (current_dir_path);
 	return (current_dir_path);
       }
 #ifdef ERANGE
