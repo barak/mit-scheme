@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fileio.scm,v 1.156 2001/12/18 21:35:09 cph Exp $
+;;; $Id: fileio.scm,v 1.157 2002/02/25 18:53:02 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -423,7 +423,7 @@ after you find a file.  If you explicitly request such a scan with
 				 (if (string-ci=? var "Eval")
 				     (evaluate val)
 				     (define-variable-local-value! buffer
-					 (name->variable var)
+					 (name->variable (intern var))
 				       (evaluate val))))))))
 		      (loop m4))))))))
 
