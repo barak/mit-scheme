@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.14 1993/08/23 01:51:40 jbank Exp $
+;;;	$Id: debug.scm,v 1.15 1993/08/25 15:14:19 jbank Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -72,7 +72,7 @@
   (remove-text-properties (buffer-group (mark-buffer start))
 		       (mark-index start)
 		       (mark-index end)
-		       '((highlighted))))
+		       '((highlighted . #t))))
 
 (define (read-only-between start end)
   (add-text-properties (buffer-group (mark-buffer start))
@@ -1109,7 +1109,7 @@ The buffer below describes the current subproblem or reduction.
 			 (newline port)
 			 (newline port)
 			 (write-string "  " port)
-			 (with-output-props '((highlighted))
+			 (with-output-props '((highlighted . #t))
 			   (lambda () (write-condition-report object port))
 			   port)
 			 (newline port)))
