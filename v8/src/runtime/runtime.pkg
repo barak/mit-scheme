@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.71 1990/07/16 17:12:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.72 1990/07/20 01:21:23 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -228,6 +228,8 @@ MIT in each case. |#
 	  dbg-info-vector/purification-root
 	  dbg-info-vector?
 	  fasload/update-debugging-info!)
+  (export (runtime program-copier)
+	  dbg-info-vector?)
   (export (runtime debugger-command-loop)
 	  special-form-procedure-name?)
   (export (runtime environment)
@@ -1334,6 +1336,13 @@ MIT in each case. |#
 	  terminal-buffered?
 	  terminal-nonbuffered
 	  tty-input-channel)
+  (initialization (initialize-package!)))
+
+(define-package (runtime program-copier)
+  (files "prgcop")
+  (parent ())
+  (export ()
+	  copy-program)
   (initialization (initialize-package!)))
 
 (define-package (runtime random-number)
