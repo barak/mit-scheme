@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.8 1993/10/31 18:34:13 gjr Exp $
+$Id: cout.scm,v 1.9 1993/11/01 15:30:24 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -203,7 +203,8 @@ MIT in each case. |#
 				    "\", " decl-data-name
 				    ", " data-name ")\n"
 				    "#endif /* WANT_ONLY_CODE */\n\n"
-				    "DECLARE_DYNAMIC_INITIALIZATION ()\n\n"))
+				    "DECLARE_DYNAMIC_INITIALIZATION (\""
+				    code-name "\")\n\n"))
 				  '())
 			      xtra-procs
 

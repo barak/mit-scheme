@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.7 1993/10/30 03:02:05 gjr Exp $
+$Id: liarc.h,v 1.8 1993/11/01 15:30:34 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -346,7 +346,7 @@ REGISTER SCHEME_OBJECT * Rsp = Stack_Pointer
   extern int EXFUN (decl_data, (void));					\
   extern SCHEME_OBJECT * EXFUN (data, (unsigned long));
 
-# define DECLARE_DYNAMIC_INITIALIZATION()
+# define DECLARE_DYNAMIC_INITIALIZATION(name)
 
 #else /* COMPILE_FOR_DYNAMIC_LOADING */
 
@@ -371,17 +371,21 @@ REGISTER SCHEME_OBJECT * Rsp = Stack_Pointer
     return (declare_compiled_data (name, decl_data, data));		\
   }
 
-# define DECLARE_DYNAMIC_INITIALIZATION()				\
-  extern int EXFUN (dload_initialize_file, (void));			\
+# define DECLARE_DYNAMIC_INITIALIZATION(name)				\
+  extern char * EXFUN (dload_initialize_file, (void));			\
 									\
-  int									\
+  char *								\
   DEFUN_VOID (dload_initialize_file)					\
   {									\
     int result = (dload_initialize_code ());				\
     if (result != 0)							\
-      return (result);							\
-    return (dload_initialize_data ());					\
-  }
+      return ((char *) NULL);						\
+    result = (dload_initialize_data ());				\
+    if (result != 0)							\
+      return ((char *) NULL);						\
+    else								\
+      return (name);							\
+  }									\
 
 #endif /* COMPILE_FOR_DYNAMIC_LOADING */
 
