@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.36 2004/10/28 19:38:23 cph Exp $
+$Id: sfile.scm,v 14.37 2004/10/28 22:39:56 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
-Copyright 1999,2001,2003 Massachusetts Institute of Technology
+Copyright 1999,2001,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -180,6 +180,8 @@ USA.
   (<= (or (file-modification-time p1) -1)
       (or (file-modification-time p2) -1)))
 
+;;;; Temporary files
+
 (define (call-with-temporary-filename receiver)
   (call-with-temporary-file-pathname
    (lambda (pathname)
@@ -216,7 +218,9 @@ USA.
        (vector-set! objects slot
 		    (delete! filename (vector-ref objects slot)))
        ((ucode-primitive set-fixed-objects-vector! 1) objects)))))
-
+
+;;;; Init files
+
 (define (guarantee-init-file-specifier object procedure)
   (if (not (init-file-specifier? object))
       (error:wrong-type-argument object "init-file specifier" procedure)))
@@ -249,11 +253,42 @@ USA.
 
 ;;;; MIME types
 
+(define (pathname-mime-type pathname)
+  (pathname-type->mime-type (pathname-type pathname)))
+
+(define (pathname-type->mime-type type)
+  (and (string? type)
+       (let ((string (os/suffix-mime-type type)))
+	 (and string
+	      (string->mime-type string)))))
+
 (define-record-type <mime-type>
-    (%make-mime-type top-level subtype)
+    (%%make-mime-type top-level subtype)
     mime-type?
   (top-level mime-type/top-level)
   (subtype mime-type/subtype))
+
+(define (make-mime-type top-level subtype)
+  (guarantee-mime-token top-level 'MAKE-MIME-TYPE)
+  (guarantee-mime-token subtype 'MAKE-MIME-TYPE)
+  (%make-mime-type top-level subtype))
+
+(define (%make-mime-type top-level subtype)
+  (let ((e (vector-length top-level-mime-types))
+	(new (lambda () (%%make-mime-type top-level subtype))))
+    (let loop ((i 0))
+      (if (fix:< i e)
+	  (if (eq? (vector-ref top-level-mime-types i) top-level)
+	      (hash-table/intern! (vector-ref interned-mime-types i)
+				  subtype
+				  new)
+	      (loop (fix:+ i 1)))
+	  (hash-table/intern! unusual-interned-mime-types
+			      (cons top-level subtype)
+			      new)))))
+
+(define top-level-mime-types
+  '#(TEXT IMAGE AUDIO VIDEO APPLICATION MULTIPART MESSAGE))
 
 (set-record-type-unparser-method! <mime-type>
   (standard-unparser-method 'MIME-TYPE
@@ -261,11 +296,24 @@ USA.
       (write-char #\space port)
       (write-string (mime-type->string mime-type) port))))
 
-(define (make-mime-type top-level subtype)
-  (guarantee-mime-token top-level 'MAKE-MIME-TYPE)
-  (guarantee-mime-token subtype 'MAKE-MIME-TYPE)
-  (%make-mime-type top-level subtype))
-
+(define interned-mime-types)
+(define unusual-interned-mime-types)
+(define char-set:mime-token)
+(define (initialize-package!)
+  (set! interned-mime-types
+	(let ((e (vector-length top-level-mime-types)))
+	  (let ((v (make-vector e)))
+	    (do ((i 0 (fix:+ i 1)))
+		((not (fix:< i e)))
+	      (vector-set! v i (make-eq-hash-table)))
+	    v)))
+  (set! unusual-interned-mime-types
+	(make-equal-hash-table))
+  (set! char-set:mime-token
+	(char-set-difference (ascii-range->char-set #x21 #x7F)
+			     (string->char-set "()<>@,;:\\\"/[]?=")))
+  unspecific)
+
 (define (mime-type->string mime-type)
   (guarantee-mime-type mime-type 'MIME-TYPE->STRING)
   (string-append (symbol-name (mime-type/top-level mime-type))
@@ -311,22 +359,6 @@ USA.
 	    (loop (fix:+ i 1))
 	    i)
 	end)))
-
-(define char-set:mime-token)
-(define (initialize-package!)
-  (set! char-set:mime-token
-	(char-set-difference (ascii-range->char-set #x21 #x7F)
-			     (string->char-set "()<>@,;:\\\"/[]?=")))
-  unspecific)
-
-(define (pathname-mime-type pathname)
-  (pathname-type->mime-type (pathname-type pathname)))
-
-(define (pathname-type->mime-type type)
-  (and (string? type)
-       (let ((string (os/suffix-mime-type type)))
-	 (and string
-	      (string->mime-type string)))))
 
 (define-syntax define-guarantee
   (sc-macro-transformer
