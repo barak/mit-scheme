@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prntfs.c,v 1.13 1997/08/23 02:52:05 cph Exp $
+$Id: prntfs.c,v 1.14 1997/10/26 09:15:10 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -185,7 +185,7 @@ The file must exist and you must be the owner.")
     }
   if (disable_ro)
     STD_BOOL_API_CALL (SetFileAttributes, (filename, attributes));
-  NT_close_file_handle (hfile);
+  STD_BOOL_API_CALL (CloseHandle, (hfile));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 

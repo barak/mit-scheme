@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.16 1997/08/23 02:51:59 cph Exp $
+$Id: ntfs.c,v 1.17 1997/10/26 09:15:04 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -37,47 +37,26 @@ MIT in each case. */
 #include <string.h>
 #include "outf.h"
 
-static HANDLE create_file_for_info (const char *);
-
-static enum get_file_info_result get_file_info_from_dir
-  (const char *, BY_HANDLE_FILE_INFORMATION *);
-
+/* Incredible kludge.  Some files (e.g. \pagefile.sys) cannot be
+   accessed by the usual technique, but much of the same information
+   is available by reading the directory.  Additionally,
+   GetFileInformationByHandle returns incorrect time-stamp information
+   for some files (specifically, Samba files), but FindFirstFile
+   returns correct information.  Go figure.  More M$ bullshit.  */
 enum get_file_info_result
 NT_get_file_info (const char * namestring, BY_HANDLE_FILE_INFORMATION * info)
 {
-  HANDLE hfile = (create_file_for_info (namestring));
-  if (hfile == INVALID_HANDLE_VALUE)
-    {
-      DWORD code = (GetLastError ());
-      if (STAT_NOT_FOUND_P (code))
-	return (gfi_not_found);
-      if (STAT_NOT_ACCESSIBLE_P (code))
-	return (get_file_info_from_dir (namestring, info));
-      NT_error_api_call (code, apicall_CreateFile);
-    }
-  if (!GetFileInformationByHandle (hfile, info))
-    {
-      DWORD code = (GetLastError ());
-      (void) CloseHandle (hfile);
-      if (STAT_NOT_FOUND_P (code))
-	return (gfi_not_found);
-      if (STAT_NOT_ACCESSIBLE_P (code))
-	return (gfi_not_accessible);
-      NT_error_api_call (code, apicall_GetFileInformationByHandle);
-    }
-  NT_close_file_handle (hfile);
-  return (gfi_ok);
-}
-
-/* Incredible kludge.  Some files (e.g. \pagefile.sys) cannot be
-   accessed by the usual technique, but much of the same information
-   is available by reading the directory.  More M$ bullshit.  */
-static enum get_file_info_result
-get_file_info_from_dir (const char * namestring,
-			BY_HANDLE_FILE_INFORMATION * info)
-{
+  char nscopy [MAX_PATH];
   WIN32_FIND_DATA fi;
-  HANDLE handle = (FindFirstFile (namestring, (&fi)));
+  HANDLE handle;
+
+  strcpy (nscopy, namestring);
+  {
+    unsigned int len = (strlen (nscopy));
+    if ((len > 0) && ((nscopy [len - 1]) == '\\'))
+      (nscopy [len - 1]) = '\0';
+  }
+  handle = (FindFirstFile (nscopy, (&fi)));
   if (handle == INVALID_HANDLE_VALUE)
     {
       DWORD code = (GetLastError ());
@@ -101,25 +80,6 @@ get_file_info_from_dir (const char * namestring,
   return (gfi_ok);
 }
 
-static HANDLE
-create_file_for_info (const char * namestring)
-{
-  return
-    (CreateFile (namestring,
-		 0,
-		 (FILE_SHARE_READ | FILE_SHARE_WRITE),
-		 0,
-		 OPEN_EXISTING,
-		 FILE_FLAG_BACKUP_SEMANTICS,
-		 NULL));
-}
-
-void
-NT_close_file_handle (HANDLE hfile)
-{
-  STD_BOOL_API_CALL (CloseHandle, (hfile));
-}
-
 enum file_existence
 DEFUN (OS_file_existence_test, (name), CONST char * name)
 {

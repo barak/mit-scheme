@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfs.h,v 1.1 1997/08/23 02:52:23 cph Exp $
+$Id: ntfs.h,v 1.2 1997/10/26 09:15:18 cph Exp $
 
 Copyright (c) 1997 Massachusetts Institute of Technology
 
@@ -39,7 +39,6 @@ enum get_file_info_result { gfi_ok, gfi_not_found, gfi_not_accessible };
 
 extern enum get_file_info_result NT_get_file_info
   (const char *, BY_HANDLE_FILE_INFORMATION *);
-extern void NT_close_file_handle (HANDLE);
 
 #define STAT_NOT_FOUND_P(code)						\
   (((code) == ERROR_FILE_NOT_FOUND)					\
