@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.h,v 1.3 1991/09/07 22:30:18 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.h,v 1.4 1991/09/07 22:30:56 jinx Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
