@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.15 2000/12/07 22:56:18 cph Exp $
+# $Id: Makefile,v 1.16 2000/12/07 23:06:27 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -18,7 +18,8 @@
 
 SHELL = /bin/sh
 
-SCHEME_SUBDIRS = 6001 compiler cref edwin imail rcs runtime sf sos win32
+SCHEME_SUBDIRS = 6001 compiler cref edwin imail rcs \
+	runtime runtime-check sf sos win32
 SUBDIRS = $(SCHEME_SUBDIRS) microcode
 
 all:
@@ -51,10 +52,6 @@ mostlyclean: mostlyclean-extra
 	done
 
 mostlyclean-extra:
-	@if test -d runtime-check && test -e runtime-check/Makefile; then \
-	    echo "making mostlyclean in runtime-check"; \
-	    ( cd runtime-check && $(MAKE) mostlyclean ); \
-	fi
 
 clean: clean-extra
 	@for SUBDIR in $(SUBDIRS); do \
@@ -76,7 +73,7 @@ distclean: distclean-extra
 	done
 
 distclean-extra: clean-extra
-	rm -rf runtime-check lib
+	rm -rf lib
 
 maintainer-clean: maintainer-clean-extra
 	@for SUBDIR in $(SCHEME_SUBDIRS); do \

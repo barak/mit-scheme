@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: create-dirs.sh,v 1.6 2000/12/07 22:44:57 cph Exp $
+# $Id: create-dirs.sh,v 1.7 2000/12/07 23:05:08 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -35,21 +35,6 @@ maybe_link ()
 	ln -s ${2} ${1}
     fi
 }
-
-# runtime-check
-maybe_mkdir runtime-check
-maybe_link runtime-check/runtime.cbf ../etc/runtime-check.cbf
-maybe_link runtime-check/Makefile ../Makefile.std
-(
-    cd runtime
-    for FN in *.scm; do
-	FN_BIN="`basename ${FN} .scm`.bin"
-	maybe_link ../runtime-check/${FN_BIN} ../runtime/${FN_BIN}
-    done
-    for FN in runtime.bco runtime.bld; do
-	maybe_link ../runtime-check/${FN} ../runtime/${FN}
-    done
-)
 
 # lib
 maybe_mkdir lib
