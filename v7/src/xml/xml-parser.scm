@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml-parser.scm,v 1.14 2002/12/08 17:58:45 cph Exp $
+;;; $Id: xml-parser.scm,v 1.15 2002/12/09 19:03:38 cph Exp $
 ;;;
 ;;; Copyright (c) 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -94,41 +94,56 @@
 
 ;;;; Top level
 
-(define (parse-xml-document buffer)	;[1,22]
-  (let ((one-value (lambda (v) (and v (vector-ref v 0)))))
-    (fluid-let ((*general-entities* (predefined-entities))
-		(*standalone?*)
-		(*internal-dtd?* #t))
-      (let ((declaration (one-value (parse-declaration buffer))))
-	(set! *standalone?*
-	      (and declaration
-		   (equal? (xml-declaration-standalone declaration)
-			   "yes")))
-	(let* ((misc-1 (one-value (parse-misc buffer)))
-	       (dtd (one-value (parse-dtd buffer)))
-	       (misc-2 (if dtd (one-value (parse-misc buffer)) '()))
-	       (element
-		(or (one-value (parse-element buffer))
-		    (perror buffer "Missing root element")))
-	       (misc-3 (one-value (parse-misc buffer))))
-	  (if (peek-parser-buffer-char buffer)
-	      (perror buffer "Unparsed content in input"))
-	  (make-xml-document declaration
-			     misc-1
-			     dtd
-			     misc-2
-			     element
-			     misc-3))))))
+(define (parse-xml-document buffer #!optional pi-handlers) ;[1,22]
+  (if (not (parser-buffer? buffer))
+      (error:wrong-type-argument buffer "parser buffer" 'PARSE-XML-DOCUMENT))
+  (let ((pi-handlers (if (default-object? pi-handlers) '() pi-handlers)))
+    (if (not (list-of-type? pi-handlers
+	       (lambda (entry)
+		 (and (pair? entry)
+		      (symbol? (car entry))
+		      (pair? (cdr entry))
+		      (procedure? (cadr entry))
+		      (procedure-arity-valid? (cadr entry) 1)
+		      (null? (cddr entry))))))
+	(error:wrong-type-argument pi-handlers "handler alist"
+				   'PARSE-XML-DOCUMENT))
+    (let ((one-value (lambda (v) (and v (vector-ref v 0)))))
+      (fluid-let ((*general-entities* (predefined-entities))
+		  (*standalone?*)
+		  (*internal-dtd?* #t)
+		  (*pi-handlers* pi-handlers))
+	(let ((declaration (one-value (parse-declaration buffer))))
+	  (set! *standalone?*
+		(and declaration
+		     (equal? (xml-declaration-standalone declaration)
+			     "yes")))
+	  (let* ((misc-1 (one-value (parse-misc buffer)))
+		 (dtd (one-value (parse-dtd buffer)))
+		 (misc-2 (if dtd (one-value (parse-misc buffer)) '()))
+		 (element
+		  (or (one-value (parse-element buffer))
+		      (perror buffer "Missing root element")))
+		 (misc-3 (one-value (parse-misc buffer))))
+	    (if (peek-parser-buffer-char buffer)
+		(perror buffer "Unparsed content in input"))
+	    (make-xml-document declaration
+			       misc-1
+			       dtd
+			       misc-2
+			       element
+			       misc-3)))))))
 
 (define *standalone?*)
 (define *internal-dtd?*)
+(define *pi-handlers*)
 
 (define parse-misc			;[27]
   (*parser
    (encapsulate vector->list
      (* (top-level
 	 (alt parse-comment
-	      parse-processing-instructions
+	      parse-pi:misc
 	      (map normalize-line-endings (match S))))))))
 
 (define (xml-declaration-parser description allow-standalone?)
@@ -262,7 +277,7 @@
 	(* (seq (alt parse-element
 		     parse-reference
 		     parse-cdata-section
-		     parse-processing-instructions
+		     parse-pi:element
 		     parse-comment)
 		parse-char-data)))))
 
@@ -303,18 +318,27 @@
 
 (define parse-cdata-section		;[18,19,20,21]
   (bracketed-region-parser "CDATA section" "<![CDATA[" "]]>"))
+
+;;;; Processing instructions
 
-(define parse-processing-instructions	;[16,17]
+(define (pi-parser valid-content?) ;[16,17]
   (let ((description "processing instructions")
 	(start "<?")
 	(end "?>"))
     (let ((parse-body
 	   (terminated-region-parser description alphabet:xml-char end)))
       (*parser
-       (encapsulate
+       (transform
 	   (lambda (v)
-	     (make-xml-processing-instructions (vector-ref v 0)
-					       (vector-ref v 1)))
+	     (let ((name (vector-ref v 0))
+		   (text (vector-ref v 1)))
+	       (let ((entry (assq name *pi-handlers*)))
+		 (if entry
+		     (let ((content ((cadr entry) text)))
+		       (if (not (list-of-type? content valid-content?))
+			   (error "Illegal output from XML processor:" name))
+		       (list->vector content))
+		     (vector (make-xml-processing-instructions name text))))))
 	 (sbracket description start end
 	   (with-pointer p
 	     (map (lambda (name)
@@ -323,6 +347,31 @@
 		    name)
 		  parse-required-name))
 	   parse-body))))))
+
+(define parse-pi:misc
+  (pi-parser
+   (lambda (object)
+     (or (string? object)
+	 (xml-comment? object)
+	 (xml-processing-instructions? object)))))
+
+(define parse-pi:element
+  (pi-parser
+   (lambda (object)
+     (or (string? object)
+	 (xml-element? object)
+	 (xml-comment? object)
+	 (xml-processing-instructions? object)))))
+
+(define parse-pi:internal-markup-decl
+  (pi-parser
+   (lambda (object)
+     (or (xml-!element? object)
+	 (xml-!attlist? object)
+	 (xml-!entity? object)
+	 (xml-!notation? object)
+	 (xml-comment? object)
+	 (xml-processing-instructions? object)))))
 
 ;;;; Names and references
 
@@ -704,7 +753,7 @@
 	parse-!attlist
 	parse-!entity
 	parse-!notation
-	parse-processing-instructions
+	parse-pi:internal-markup-decl
 	parse-comment)))
 
 (define parse-!element			;[45]
