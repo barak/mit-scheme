@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.26 1987/07/07 02:39:05 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.27 1987/07/07 20:01:19 cph Rel $
  *
  * This file contains default definitions for some hooks which 
  * various machines require.  These machines define these hooks
@@ -276,4 +276,22 @@ Loc = Apply_Primitive(N)
 
 #ifndef Error_Exit_Hook
 #define Error_Exit_Hook()
+#endif
+
+/* Common Lisp Hooks */
+
+#ifndef SITE_EXPRESSION_DISPATCH_HOOK
+#define SITE_EXPRESSION_DISPATCH_HOOK()
+#endif
+
+#ifndef SITE_RETURN_DISPATCH_HOOK
+#define SITE_RETURN_DISPATCH_HOOK()
+#endif
+
+#ifndef DOWNWARD_COERCE_FLONUM_P
+#define DOWNWARD_COERCE_FLONUM_P(number) ((floor (number)) != (number))
+#endif
+
+#ifndef FASLOAD_RELOCATE_HOOK
+#define FASLOAD_RELOCATE_HOOK(heap_low, heap_high, constant_low, constant_high)
 #endif
