@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: url.scm,v 1.3 2000/04/12 03:47:51 cph Exp $
+;;; $Id: url.scm,v 1.4 2000/04/13 15:59:26 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -40,42 +40,37 @@
 (define url:char-set:escaped
   (char-set-invert url:char-set:unescaped))
 
-(define url:regexp:escape
-  "%[0-9A-Fa-f][0-9A-Fa-f]")
+(define url:rexp:escape
+  (rexp-sequence "%" char-set:alphanumeric char-set:alphanumeric))
 
-(define url:regexp:uchar
-  (regexp-group (char-set->regexp url:char-set:unreserved)
-		url:regexp:escape))
+(define url:rexp:uchar
+  (rexp-alternatives url:char-set:unreserved url:rexp:escape))
 
-(define url:regexp:xchar
-  (regexp-group (char-set->regexp url:char-set:unescaped)
-		url:regexp:escape))
+(define url:rexp:xchar
+  (rexp-alternatives url:char-set:unescaped url:rexp:escape))
 
-(define url:regexp:hostname
-  (let ((c1 (char-set->regexp char-set:alphanumeric)))
-    (let ((tail
-	   (regexp-group
-	    ""
-	    (string-append
-	     (char-set->regexp
-	      (char-set-union char-set:alphanumeric (string->char-set "-")))
-	     "*"
-	     c1))))
-      (string-append (regexp-group (string-append c1 tail "."))
-		     "*"
-		     (char-set->regexp char-set:alphabetic)
-		     tail))))
+(define url:rexp:hostname
+  (let ((tail
+	 (rexp-optional
+	  (rexp-sequence
+	   (rexp*
+	    (char-set-union char-set:alphanumeric (string->char-set "-")))
+	   char-set:alphanumeric))))
+    (rexp-sequence (rexp* (rexp-sequence char-set:alphanumeric tail "."))
+		   char-set:alphabetic
+		   tail)))
 
-(define url:regexp:hostnumber
-  "[0-9]+.[0-9]+.[0-9]+.[0-9]+")
+(define url:rexp:hostnumber
+  (let ((n (rexp+ char-set:numeric)))
+    (rexp-sequence n "." n "." n "." n)))
 
-(define url:regexp:host
-  (regexp-group url:regexp:hostname
-		url:regexp:hostnumber))
+(define url:rexp:host
+  (rexp-alternatives url:rexp:hostname url:rexp:hostnumber))
 
-(define url:regexp:hostport
-  (string-append url:regexp:host (regexp-group ":[0-9]+") "?"))
-
+(define url:rexp:hostport
+  (rexp-sequence url:rexp:host
+		 (rexp-optional (rexp-sequence ":" (rexp+ char-set:numeric)))))
+
 (define (url:string-encoded? string)
   (url:substring-encoded? string 0 (string-length string)))
 
@@ -86,18 +81,12 @@
   (url:decode-substring string 0 (string-length string)))
 
 (define url:substring-encoded?
-  (let ((pattern
-	 (re-compile-pattern
-	  (string-append
-	   (regexp-group (char-set->regexp url:char-set:unescaped)
-			 url:regexp:escape)
-	   "*")
-	  #f)))
+  (let ((pattern (rexp-compile-pattern url:rexp:xchar #f)))
     (lambda (string start end)
       (let ((regs (re-substring-match pattern string start end)))
 	(and regs
 	     (fix:= end (re-match-end-index 0 regs)))))))
-
+
 (define (url:encode-substring string start end)
   (let ((n-to-encode
 	 (let loop ((start start) (n-to-encode 0))
@@ -134,32 +123,29 @@
 	  encoded))))
 
 (define (url:decode-substring string start end)
-  (let ((n-encoded
-	 (let loop ((start start) (n-encoded 0))
-	   (let ((regs
-		  (re-substring-search-forward url:regexp:escape
-					       string start end)))
-	     (if regs
-		 (loop (re-match-end-index 0 regs) (fix:+ n-encoded 1))
-		 n-encoded)))))
-    (if (fix:= 0 n-encoded)
-	(substring string start end)
-	(let ((decoded
-	       (make-string (fix:- (fix:- end start) (fix:* 2 n-encoded)))))
-	  (let loop ((start start) (i 0))
-	    (let ((regs
-		   (re-substring-search-forward url:regexp:escape
-						string start end)))
-	      (if regs
-		  (let ((index (re-match-start-index 0 regs)))
-		    (substring-move-left! string start index decoded i)
-		    (let ((i (fix:+ i (fix:- index start))))
-		      (vector-8b-set!
-		       decoded i
-		       (substring->number string
-					   (fix:+ index 1)
-					   (fix:+ index 3)
-					   16))
-		      (loop (fix:+ index 3) (fix:+ i 1))))
-		  (substring-move-left! string start end decoded i))))
-	  decoded))))
+  (let ((patt (rexp-compile url:rexp:escape #f)))
+    (let ((n-encoded
+	   (let loop ((start start) (n-encoded 0))
+	     (let ((regs (re-substring-search-forward patt string start end)))
+	       (if regs
+		   (loop (re-match-end-index 0 regs) (fix:+ n-encoded 1))
+		   n-encoded)))))
+      (if (fix:= 0 n-encoded)
+	  (substring string start end)
+	  (let ((decoded
+		 (make-string (fix:- (fix:- end start) (fix:* 2 n-encoded)))))
+	    (let loop ((start start) (i 0))
+	      (let ((regs (re-substring-search-forward patt string start end)))
+		(if regs
+		    (let ((index (re-match-start-index 0 regs)))
+		      (substring-move-left! string start index decoded i)
+		      (let ((i (fix:+ i (fix:- index start))))
+			(vector-8b-set!
+			 decoded i
+			 (substring->number string
+					     (fix:+ index 1)
+					     (fix:+ index 3)
+					     16))
+			(loop (fix:+ index 3) (fix:+ i 1))))
+		    (substring-move-left! string start end decoded i))))
+	    decoded)))))
