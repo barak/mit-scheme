@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.19 1990/12/01 00:22:03 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.20 1991/05/02 06:13:37 jinx Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -246,7 +246,7 @@ void
 flush_i_cache ()
 {
   extern void cache_flush_all ();
-  /* Newer machines can interrupt this call, so do it twice.
+  /* The call can be interrupted in the middle of a set, so do it twice.
      Probability of two interrupts in the same cache line is
      exceedingly small, so this is likely to win. */
   cache_flush_all ((D_CACHE | I_CACHE), (& (cache_info . cache_format)));
@@ -435,6 +435,10 @@ do {									\
    STORE_TRAMPOLINE_ENTRY gets the address of the first instruction in
    the trampoline and stores the instructions.  It also receives the
    index of the C SCHEME_UTILITY to be invoked.
+
+   Note: this flushes both caches because the words may fall in a cache
+   line that already has an association in the i-cache because a different
+   trampoline or a closure are in it.
 */
 
 #define TRAMPOLINE_ENTRY_SIZE		3
@@ -452,14 +456,15 @@ do {									\
 									\
   /*	BLE	4(4,3)		*/					\
 									\
-  *PC++ = ((unsigned long) 0xe4602008);					\
+  *PC = ((unsigned long) 0xe4602008);					\
 									\
   /*	LDO	index(0),28	*/					\
   /*    This assumes that index is >= 0. */				\
 									\
-  *PC++ = (((unsigned long) 0x341c0000) +				\
-	   (((unsigned long) (index)) << 1));				\
-  cache_flush_region (PC, (TRAMPOLINE_ENTRY_SIZE - 1));			\
+  *(PC + 1) = (((unsigned long) 0x341c0000) +				\
+	       (((unsigned long) (index)) << 1));			\
+  cache_flush_region (PC, (TRAMPOLINE_ENTRY_SIZE - 1),			\
+		      (I_CACHE | D_CACHE));				\
 }
 
 /* Execute cache entries.
@@ -596,8 +601,33 @@ do {									\
 {									\
   extern void cache_flush_region ();					\
 									\
-  cache_flush_region (((void *) (address)), nwords);			\
+  cache_flush_region (((void *) (address)), (nwords),			\
+		      (D_CACHE | I_CACHE));				\
 } while (0)
+
+/* This pushes a region of the D-cache back to memory.
+   It is (typically) used after loading (and relocating) a piece of code
+   into memory.
+   Note that the first and last words are also flushed from the I-cache
+   in case this object is adjacent to another that has already caused
+   the cache line to be copied into the I-cache.
+ */   
+
+#define PUSH_D_CACHE_REGION(address, nwords) do				\
+{									\
+  extern void cache_flush_region ();					\
+  long *start_address, block_size;					\
+									\
+  start_address = ((long *) (address));					\
+  block_size = (nwords);						\
+									\
+  cache_flush_region (((void *) start_address), block_size, D_CACHE);	\
+  cache_flush_region (((void *) start_address), 1, I_CACHE);		\
+  cache_flush_region (((void *) (start_address + (block_size - 1))), 1,	\
+		      I_CACHE);						\
+} while (0)
+
+#define SPLIT_CACHES
 
 /* This loads the cache information structure for use by flush_i_cache.
  */
