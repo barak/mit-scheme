@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.12 1990/03/21 02:11:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.13 1990/03/28 06:07:59 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -254,27 +254,33 @@ MIT in each case. |#
 		   block)))
 	    (condition (and procedure (list procedure reason1 reason2))))
 	(let ((entry (assq block *undrifting-constraints*))
-	      (check-inheritance
+	      (generate-caller-constraints
 	       (lambda ()
-		 (let loop ((block* block*))
-		   (if block*
-		       (let ((procedure (block-procedure block*)))
-			 (if (and (rvalue/procedure? procedure)
-				  (eq? (procedure-closure-context procedure)
-				       true))
-			     (close-non-descendent-callees! procedure block)
-			     (loop (block-parent block*)))))))))
+		 (let ((procedure* (block-procedure block)))
+		   (if (rvalue/procedure? procedure*)
+		       (begin
+			 (for-each
+			  (lambda (procedure*)
+			    (undrifting-constraint! (procedure-block procedure*) block*
+						    procedure reason1 reason2))
+			  (procedure-free-callers procedure*))
+			 (for-each
+			  (lambda (variable)
+			    (close-if-unreachable! (variable-block variable)
+						   block*
+						   procedure* 'EXPORTED variable))
+			  (procedure-variables procedure*))))))))
 	  (if (not entry)
 	      (begin
 		(set! *undrifting-constraints*
 		      (cons (list block (list block* condition))
 			    *undrifting-constraints*))
-		(check-inheritance))
+		(generate-caller-constraints))
 	      (let ((entry* (assq block* (cdr entry))))
 		(cond ((not entry*)
 		       (set-cdr! entry
 				 (cons (list block* condition) (cdr entry)))
-		       (check-inheritance))
+		       (generate-caller-constraints))
 		      ((not
 			(if condition
 			    (list-search-positive (cdr entry*)
