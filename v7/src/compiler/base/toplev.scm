@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.23 1989/11/02 08:08:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.24 1989/12/02 05:03:24 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -525,9 +525,9 @@ MIT in each case. |#
   (write-string *output-prefix*)
   (write-string prefix)
   (write-string ": ")
-  (write (/ process-time 1000))
+  (write (/ (exact->inexact process-time) 1000))
   (write-string " (process time); ")
-  (write (/ real-time 1000))
+  (write (/ (exact->inexact real-time) 1000))
   (write-string " (real time)"))
 
 (define-macro (last-reference name)
