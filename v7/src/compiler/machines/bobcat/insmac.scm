@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: insmac.scm,v 1.131 2002/02/14 15:58:56 cph Exp $
+$Id: insmac.scm,v 1.132 2002/02/14 22:03:32 cph Exp $
 
 Copyright (c) 1988, 1990, 1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -41,30 +41,29 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		(make-position-independent pattern actions environment))))))))
 
 (define-syntax extension-word
-  (sc-macro-transformer
+  (rsc-macro-transformer
    (lambda (form environment)
      environment
      (call-with-values (lambda () (expand-descriptors (cdr form) environment))
        (lambda (instruction size source destination)
 	 (if (or source destination)
-	     (error "Source or destination used" 'EXTENSION-WORD))
+	     (error "Source or destination used:" form))
 	 (if (not (zero? (remainder size 16)))
-	     (error "EXTENSION-WORD: Extensions must be 16 bit multiples"
-		    size))
-	 (optimize-group-syntax instruction #f))))))
+	     (error "Extensions must be 16 bit multiples:" size))
+	 (optimize-group-syntax instruction #f environment))))))
 
 (define-syntax variable-extension
-  (sc-macro-transformer
+  (rsc-macro-transformer
    (lambda (form environment)
      (let ((binding (cadr form))
 	   (clauses (cddr form)))
        (variable-width-expression-syntaxer
 	(car binding)
-	(close-syntax (cadr binding) environment)
+	(cadr binding)
+	environment
 	(map (lambda (clause)
-	       `((LIST ,(make-syntactic-closure environment
-			    (list (car binding))
-			  (caddr clause)))
+	       `((,(close-syntax 'LIST environment)
+		  ,(caddr clause))
 		 ,(cadr clause)
 		 ,@(car clause)))
 	     clauses))))))
@@ -77,8 +76,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(extension (cdddr actions)))
     `(,(close-syntax 'MAKE-EFFECTIVE-ADDRESS environment)
       ',keyword
-      ,(integer-syntaxer mode 'UNSIGNED 3)
-      ,(integer-syntaxer register 'UNSIGNED 3)
+      ,(integer-syntaxer mode environment 'UNSIGNED 3)
+      ,(integer-syntaxer register environment 'UNSIGNED 3)
       (,(close-syntax 'LAMBDA environment)
        (IMMEDIATE-SIZE INSTRUCTION-TAIL)
        IMMEDIATE-SIZE			;ignore if not referenced
@@ -117,15 +116,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (process-ea-field field environment)
   (if (exact-integer? field)
-      (integer-syntaxer field 'UNSIGNED 3)
+      (integer-syntaxer field environment 'UNSIGNED 3)
       (let ((binding (cadr field))
 	    (clauses (cddr field)))
 	(variable-width-expression-syntaxer
 	 (car binding)
 	 (cadr binding)
+	 environment
 	 (map (lambda (clause)
 		`((,(close-syntax 'LIST environment)
-		   ,(integer-syntaxer (cadr clause) 'UNSIGNED 3))
+		   ,(integer-syntaxer (cadr clause) environment 'UNSIGNED 3))
 		  3
 		  ,@(car clause)))
 	      clauses)))))
@@ -225,7 +225,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     `(LIST
       ,(variable-width-expression-syntaxer
 	(car binding)
-	(close-syntax (cadr binding) environment)
+	(cadr binding)
+	environment
 	(map (lambda (clause)
 	       (if (pair? (cddr clause))
 		   (error "Extension found in clause:" clause))
@@ -289,9 +290,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		    ,code))
 		 (else
 		  (error "PARSE-WORD: multiple tail elements" tail))))))
-    (if (not (null? instruction))
+    (if (pair? instruction)
 	`(,(if (null? code) 'CONS 'CONS-SYNTAX)
-	  ,(optimize-group-syntax instruction early-instruction-parsing?)
+	  ,(optimize-group-syntax instruction
+				  early-instruction-parsing?
+				  environment)
 	  ,code)
 	code)))
 
@@ -314,7 +317,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     (handle)))
 
 (define (with-early-selectors handle)
-  (fluid-let ((early-instruction-parsing? true)
+  (fluid-let ((early-instruction-parsing? #t)
 	      (ea-keyword-selector 'EA-KEYWORD-EARLY)
 	      (ea-categories-selector 'EA-CATEGORIES-EARLY)
 	      (ea-mode-selector 'EA-MODE-EARLY)
@@ -329,30 +332,43 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 (if (pair? (cddr descriptor)) (caddr descriptor) 'UNSIGNED)))
     (case coercion-type
       ((UNSIGNED SIGNED SHIFT-NUMBER QUICK BFWIDTH SCALE-FACTOR)
-       (values `(,(integer-syntaxer expression coercion-type size))
+       (values `(,(integer-syntaxer expression environment coercion-type size))
 	       size #f #f))
       ((SHORT-LABEL)
-       (values `(,(integer-syntaxer ``(- ,,expression (+ *PC* 2))
+       (values `(,(integer-syntaxer ``(,',(close-syntax '- environment)
+					,,expression
+					(,',(close-syntax '+ environment)
+					 ,',(close-syntax '*PC* environment)
+					 2))
+				    environment
 				    'SHORT-LABEL
 				    size))
 	       size #f #f))
       ((SOURCE-EA)
-       (values `((,ea-mode-selector ,expression)
-		 (,ea-register-selector ,expression))
+       (values `((,(close-syntax ea-mode-selector environment) ,expression)
+		 (,(close-syntax ea-register-selector environment)
+		  ,expression))
 	       size
-	       `((,ea-extension-selector ,expression) ,(cadddr descriptor))
+	       `((,(close-syntax ea-extension-selector environment)
+		  ,expression)
+		 ,(cadddr descriptor))
 	       #f))
       ((DESTINATION-EA)
-       (values `((,ea-mode-selector ,expression)
-		 (,ea-register-selector ,expression))
+       (values `((,(close-syntax ea-mode-selector environment) ,expression)
+		 (,(close-syntax ea-register-selector environment)
+		  ,expression))
 	       size
 	       #f
-	       `((,ea-extension-selector ,expression) '())))
+	       `((,(close-syntax ea-extension-selector environment)
+		  ,expression)
+		 '())))
       ((DESTINATION-EA-REVERSED)
-       (values `((,ea-register-selector ,expression)
-		 (,ea-mode-selector ,expression))
+       (values `((,(close-syntax ea-register-selector environment) ,expression)
+		 (,(close-syntax ea-mode-selector environment) ,expression))
 	       size
 	       #f
-	       `((,ea-extension-selector ,expression) '())))
+	       `((,(close-syntax ea-extension-selector environment)
+		  ,expression)
+		 '())))
       (else
        (error "Badly-formed descriptor:" descriptor)))))

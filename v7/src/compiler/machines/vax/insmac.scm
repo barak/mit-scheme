@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: insmac.scm,v 1.15 2001/12/23 17:20:58 cph Exp $
+$Id: insmac.scm,v 1.16 2002/02/14 22:03:32 cph Exp $
 
-Copyright (c) 1987, 1989, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -30,132 +30,138 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   'EA-DATABASE)
 
 (define-syntax define-ea-database
-  (non-hygienic-macro-transformer
-   (lambda rules
-     `(DEFINE ,ea-database-name
-	,(compile-database rules
+  (rsc-macro-transformer
+   (lambda (form environment)
+     `(,(close-syntax 'DEFINE environment)
+       ,ea-database-name
+       ,(compile-database (cdr form) environment
 	  (lambda (pattern actions)
 	    (let ((keyword (car pattern))
 		  (categories (car actions))
 		  (value (cdr actions)))
-	      (declare (integrate keyword categories value))
-	      `(MAKE-EFFECTIVE-ADDRESS
+	      `(,(close-syntax 'MAKE-EFFECTIVE-ADDRESS environment)
 		',keyword
 		',categories
-		,(process-fields value false)))))))))
+		,(process-fields value #f environment)))))))))
 
 (define-syntax define-ea-transformer
-  (non-hygienic-macro-transformer
-   (lambda (name category type)
-     `(DEFINE (,name EXPRESSION)
-	(LET ((EA (PROCESS-EA EXPRESSION ',type)))
-	  (AND EA
-	       (MEMQ ',category (EA-CATEGORIES EA))
-	       EA))))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (if (syntax-match? '(IDENTIFIER DATUM DATUM) (cdr form))
+	 `(DEFINE (,(cadr form) EXPRESSION)
+	    (LET ((EA (PROCESS-EA EXPRESSION ',(cadddr form))))
+	      (AND EA
+		   (MEMQ ',(caddr form) (EA-CATEGORIES EA))
+		   EA)))
+	 (ill-formed-syntax form)))))
 
 (define-syntax define-symbol-transformer
-  (non-hygienic-macro-transformer
-   (lambda (name . alist)
-     `(DEFINE-INTEGRABLE (,name SYMBOL)
-	(LET ((PLACE (ASSQ SYMBOL ',alist)))
-	  (IF (PAIR? PLACE)
-	      (CDR PLACE)
-	      #F))))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (if (syntax-match? '(IDENTIFIER * SYMBOL) (cdr form))
+	 `(DEFINE-INTEGRABLE (,(cadr form) SYMBOL)
+	    (LET ((PLACE (ASSQ SYMBOL ',(cddr form))))
+	      (IF (PAIR? PLACE)
+		  (CDR PLACE)
+		  #F)))
+	 (ill-formed-syntax form)))))
 
 (define-syntax define-transformer
-  (non-hygienic-macro-transformer
-   (lambda (name value)
-     `(DEFINE ,name ,value))))
+  (rsc-macro-transformer
+   (lambda (form environment)
+     `(,(close-syntax 'DEFINE environment) ,@(cdr form)))))
 
-(define (parse-instruction opcode tail early?)
-  (process-fields (cons opcode tail) early?))
+(define (parse-instruction opcode tail early? environment)
+  (process-fields (cons opcode tail) early? environment))
 
-(define (process-fields fields early?)
+(define (process-fields fields early? environment)
   (if (and (null? (cdr fields))
 	   (eq? (caar fields) 'VARIABLE-WIDTH))
-      (expand-variable-width (car fields) early?)
-      (expand-fields fields
-		     early?
-		     (lambda (code size)
-		       (if (not (zero? (remainder size 8)))
-			   (error "process-fields: bad syllable size" size))
-		       code))))
+      (expand-variable-width (car fields) early? environment)
+      (call-with-values (lambda () (expand-fields fields early? environment))
+	(lambda (code size)
+	  (if (not (zero? (remainder size 8)))
+	      (error "Bad syllable size:" size))
+	  code))))
 
-(define (expand-variable-width field early?)
+(define (expand-variable-width field early? environment)
   (let ((binding (cadr field))
 	(clauses (cddr field)))
-    `(LIST
+    `(,(close-syntax 'LIST environment)
       ,(variable-width-expression-syntaxer
 	(car binding)			; name
 	(cadr binding)			; expression
+	environment
 	(map (lambda (clause)
-	       (expand-fields
-		(cdr clause)
-		early?
-		(lambda (code size)
-		  (if (not (zero? (remainder size 8)))
-		      (error "expand-variable-width: bad clause size" size))
-		  `(,code ,size ,@(car clause)))))
+	       (call-with-values
+		   (lambda () (expand-fields (cdr clause) early? environment))
+		 (lambda (code size)
+		   (if (not (zero? (remainder size 8)))
+		       (error "Bad clause size:" size))
+		   `(,code ,size ,@(car clause)))))
 	     clauses)))))
 
-(define (expand-fields fields early? receiver)
-  (if (null? fields)
-      (receiver ''() 0)
-      (expand-fields (cdr fields) early?
-       (lambda (tail tail-size)
-	 (case (caar fields)
-	   ((BYTE)
-	    (collect-byte (cdar fields)
-			  tail
-			  (lambda (code size)
-			    (receiver code (+ size tail-size)))))
-	   ((OPERAND)
-	    (receiver
-	     `(APPEND-SYNTAX!
-	       ,(if early?
-		    `(EA-VALUE-EARLY ',(cadar fields) ,(caddar fields))
-		    `(EA-VALUE ,(caddar fields)))
-	       ,tail)
-	     tail-size))
-	   ;; Displacements are like signed bytes.  They are a different
-	   ;; keyword to allow the disassembler to do its thing correctly.
-	   ((DISPLACEMENT)
-	    (let* ((desc (cadar fields))
-		   (size (car desc)))
-	      (receiver
-	       `(CONS-SYNTAX ,(integer-syntaxer (cadr desc) 'SIGNED size)
-			     ,tail)
-	       (+ size tail-size))))
-	   ((IMMEDIATE)
-	    (receiver
-	     `(CONS-SYNTAX
-	       (COERCE-TO-TYPE ,(cadar fields)
-			       *IMMEDIATE-TYPE*
-			       ,(and (cddar fields)
-				     (eq? (caddar fields)
-					 'UNSIGNED)))
-	       ,tail)
-	     tail-size))
-	   (else
-	    (error "expand-fields: Unknown field kind" (caar fields))))))))
-
-(define (collect-byte components tail receiver)
-  (define (inner components receiver)
-    (if (null? components)
-	(receiver tail 0)
-	(inner (cdr components)
-	       (lambda (byte-tail byte-size)
-		 (let ((size (caar components))
-		       (expression (cadar components))
-		       (type (if (null? (cddar components))
-				 'UNSIGNED
-				 (caddar components))))
-		   (receiver
-		    `(CONS-SYNTAX
-		      ,(integer-syntaxer expression type size)
-		      ,byte-tail)
-		    (+ size byte-size)))))))
-  (inner components receiver))
-		 
-     
+(define (expand-fields fields early? environment)
+  (if (pair? fields)
+      (call-with-values
+	  (lambda () (expand-fields (cdr fields) early? environment))
+	(lambda (tail tail-size)
+	  (case (caar fields)
+	    ((BYTE)
+	     (call-with-values
+		 (lambda () (collect-byte (cdar fields) tail environment))
+	       (lambda (code size)
+		 (values code (+ size tail-size)))))
+	    ((OPERAND)
+	     (values `(,(close-syntax 'APPEND-SYNTAX! environment)
+		       ,(if early?
+			    `(,(close-syntax 'EA-VALUE-EARLY environment)
+			      ',(cadar fields)
+			      ,(caddar fields))
+			    `(,(close-syntax 'EA-VALUE environment)
+			      ,(caddar fields)))
+		       ,tail)
+		     tail-size))
+	    ;; Displacements are like signed bytes.  They are a
+	    ;; different keyword to allow the disassembler to do its
+	    ;; thing correctly.
+	    ((DISPLACEMENT)
+	     (let* ((desc (cadar fields))
+		    (size (car desc)))
+	       (values `(,(close-syntax 'CONS-SYNTAX environment)
+			 ,(integer-syntaxer (cadr desc)
+					    environment
+					    'SIGNED
+					    size)
+			 ,tail)
+		       (+ size tail-size))))
+	    ((IMMEDIATE)
+	     (values `(,(close-syntax 'CONS-SYNTAX environment)
+		       (,(close-syntax 'COERCE-TO-TYPE environment)
+			,(cadar fields)
+			,(close-syntax '*IMMEDIATE-TYPE* environment)
+			,(and (cddar fields)
+			      (eq? (caddar fields) 'UNSIGNED)))
+		       ,tail)
+		     tail-size))
+	    (else
+	     (error "Unknown field kind:" (caar fields))))))
+      (values `'() 0)))
 
+(define (collect-byte components tail environment)
+  (let inner ((components components))
+    (if (pair? components)
+	(call-with-values (lambda () (inner (cdr components)))
+	  (lambda (byte-tail byte-size)
+	    (let ((size (caar components))
+		  (expression (cadar components))
+		  (type (if (pair? (cddar components))
+			    (caddar components)
+			    'UNSIGNED)))
+	      (values `(,(close-syntax 'CONS-SYNTAX environment)
+			,(integer-syntaxer expression environment type size)
+			,byte-tail)
+		      (+ size byte-size)))))
+	(values tail 0))))

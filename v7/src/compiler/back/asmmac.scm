@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: asmmac.scm,v 1.16 2002/02/14 15:56:53 cph Exp $
+$Id: asmmac.scm,v 1.17 2002/02/14 22:03:32 cph Exp $
 
 Copyright (c) 1988, 1990, 1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -52,48 +52,47 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 					    environment)))))
 	   cases)))
 
-(define optimize-group-syntax
-  (let ()
-    (define (find-constant components)
-      (cond ((null? components)
-	     '())
-	    ((car-constant? components)
-	     (compact (car-constant-value components)
-		      (cdr components)))
-	    (else
-	     (cons (car components)
-		   (find-constant (cdr components))))))
+(define (optimize-group-syntax components early? environment)
+  (define (find-constant components)
+    (cond ((null? components)
+	   '())
+	  ((car-constant? components)
+	   (compact (car-constant-value components)
+		    (cdr components)))
+	  (else
+	   (cons (car components)
+		 (find-constant (cdr components))))))
 
-    (define (compact bit-string components)
-      (cond ((null? components)
-	     (cons (make-constant bit-string) '()))
-	    ((car-constant? components)
-	     (compact (instruction-append bit-string
-					  (car-constant-value components))
-		      (cdr components)))
-	    (else
-	     (cons (make-constant bit-string)
-		   (cons (car components)
-			 (find-constant (cdr components)))))))
+  (define (compact bit-string components)
+    (cond ((null? components)
+	   (cons (make-constant bit-string) '()))
+	  ((car-constant? components)
+	   (compact (instruction-append bit-string
+					(car-constant-value components))
+		    (cdr components)))
+	  (else
+	   (cons (make-constant bit-string)
+		 (cons (car components)
+		       (find-constant (cdr components)))))))
 
-    (define-integrable (car-constant? expression)
-      (and (eq? (caar expression) 'QUOTE)
-	   (bit-string? (cadar expression))))
+  (define (car-constant? components)
+    (and (identifier=? environment (caar components)
+		       system-global-environment 'QUOTE)
+	 (bit-string? (cadar components))))
 
-    (define-integrable (car-constant-value constant)
-      (cadar constant))
+  (define-integrable (car-constant-value constant)
+    (cadar constant))
 
-    (define-integrable (make-constant bit-string)
-      `',bit-string)
+  (define-integrable (make-constant bit-string)
+    `',bit-string)
 
-    (lambda (components early?)
-      (let ((components (find-constant components)))
-	(cond ((null? components)
-	       (error "OPTIMIZE-GROUP-SYNTAX: No components in group!"))
-	      ((null? (cdr components))
-	       (car components))
-	      (else
-	       `(,(if early?
-		      'OPTIMIZE-GROUP-EARLY
-		      'OPTIMIZE-GROUP)
-		 ,@components)))))))
+  (let ((components (find-constant components)))
+    (if (not (pair? components))
+	(error "No components in group!"))
+    (if (pair? (cdr components))
+	`(,(close-syntax (if early?
+			     'OPTIMIZE-GROUP-EARLY
+			     'OPTIMIZE-GROUP)
+			 environment)
+	  ,@components)
+	(car components))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: insmac.scm,v 1.16 2002/02/14 15:58:08 cph Exp $
+$Id: insmac.scm,v 1.17 2002/02/14 22:03:32 cph Exp $
 
 Copyright (c) 1992, 1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -56,8 +56,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	      `(,(close-syntax 'MAKE-EFFECTIVE-ADDRESS environment)
 		',keyword
 		',categories
-		,(integer-syntaxer mode 'UNSIGNED 2)
-		,(integer-syntaxer register 'UNSIGNED 3)
+		,(integer-syntaxer mode environment 'UNSIGNED 2)
+		,(integer-syntaxer register environment 'UNSIGNED 3)
 		,(if (null? tail)
 		     `()
 		     (process-fields tail #f environment))))))))))
@@ -104,6 +104,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       ,(variable-width-expression-syntaxer
 	(car binding)
 	(cadr binding)
+	environment
 	(map (lambda (clause)
 	       (call-with-values
 		   (lambda () (expand-fields (cdr clause) early? environment))
@@ -139,7 +140,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		(values `(,(close-syntax 'CONS-SYNTAX environment)
 			  (,(close-syntax 'EA/REGISTER environment) ,r/m)
 			  (,(close-syntax 'CONS-SYNTAX environment)
-			   ,(integer-syntaxer digit-or-reg 'UNSIGNED 3)
+			   ,(integer-syntaxer digit-or-reg environment
+					      'UNSIGNED 3)
 			   (,(close-syntax 'CONS-SYNTAX environment)
 			    (,(close-syntax 'EA/MODE environment) ,r/m)
 			    (,(close-syntax 'APPEND-SYNTAX! environment)
@@ -160,6 +162,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		 `(,(close-syntax 'CONS-SYNTAX environment)
 		   ,(integer-syntaxer
 		     value
+		     environment
 		     domain
 		     (case mode
 		       ((OPERAND) *operand-size*)
@@ -182,7 +185,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			    (caddar components)
 			    'UNSIGNED)))
 	      (values `(,(close-syntax 'CONS-SYNTAX environment)
-			,(integer-syntaxer expression type size)
+			,(integer-syntaxer expression environment type size)
 			,byte-tail)
 		      (+ size byte-size)))))
 	(values tail 0))))

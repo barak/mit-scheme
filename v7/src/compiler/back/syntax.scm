@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 1.28 2001/12/20 18:47:01 cph Exp $
+$Id: syntax.scm,v 1.29 2002/02/14 22:03:32 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -80,11 +80,11 @@ USA.
 (define instructions
   '())
 
-(define (integer-syntaxer expression coercion-type size)
+(define (integer-syntaxer expression environment coercion-type size)
   (let ((name (make-coercion-name coercion-type size)))
     (if (exact-integer? expression)
 	`',((lookup-coercion name) expression)
-	`(SYNTAX-EVALUATION ,expression ,name))))
+	`(,(close-syntax 'SYNTAX-EVALUATION environment) ,expression ,name))))
 
 (define (syntax-evaluation expression coercion)
   (if (exact-integer? expression)
@@ -132,33 +132,25 @@ USA.
 
 ;;;; Variable width expression processing
 
-(define (choose-clause value clauses)
-  (if (null? clauses)
-      (error "CHOOSE-CLAUSE: value out of range" value))
-  (if (let ((low (caddr (car clauses)))
-	    (high (cadddr (car clauses))))
-	(and (or (null? low)
-		 (<= low value))
-	     (or (null? high)
-		 (<= value high))))
-      (car clauses)
-      (choose-clause value (cdr clauses))))
-
-(define (variable-width-expression-syntaxer name expression clauses)
+(define (variable-width-expression-syntaxer name expression environment
+					    clauses)
   (if (exact-integer? expression)
       (let ((chosen (choose-clause expression clauses)))
-	`(LET ((,name ,expression))
-	   (DECLARE (INTEGRATE ,name))
-	   ,name			;ignore if not referenced
-	   (CAR ,(car chosen))))
-      `(SYNTAX-VARIABLE-WIDTH-EXPRESSION
+	`(,(close-syntax 'LET environment)
+	  ((,name ,expression))
+	  (,(close-syntax 'DECLARE environment) (INTEGRATE ,name))
+	  ,name				;ignore if not referenced
+	  (,(close-syntax 'CAR environment) ,(car chosen))))
+      `(,(close-syntax 'SYNTAX-VARIABLE-WIDTH-EXPRESSION environment)
 	,expression
-	(LIST
-	 ,@(map (LAMBDA (clause)
-		  `(CONS (LAMBDA (,name)
-			   ,name	;ignore if not referenced
-			   ,(car clause))
-			 ',(cdr clause)))
+	(,(close-syntax 'LIST environment)
+	 ,@(map (lambda (clause)
+		  `(,(close-syntax 'CONS environment)
+		    (,(close-syntax 'LAMBDA environment)
+		     (,name)
+		     ,name		;ignore if not referenced
+		     ,(car clause))
+		    ',(cdr clause)))
 		clauses)))))
 
 (define (syntax-variable-width-expression expression clauses)
@@ -168,6 +160,18 @@ USA.
       `(VARIABLE-WIDTH-EXPRESSION
 	,expression
 	,@clauses)))
+
+(define (choose-clause value clauses)
+  (if (not (pair? clauses))
+      (error "Value out of range:" value))
+  (if (let ((low (caddr (car clauses)))
+	    (high (cadddr (car clauses))))
+	(and (or (null? low)
+		 (<= low value))
+	     (or (null? high)
+		 (<= value high))))
+      (car clauses)
+      (choose-clause value (cdr clauses))))
 
 ;;;; Coercion Machinery
 
