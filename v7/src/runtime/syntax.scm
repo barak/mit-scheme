@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.6 1988/08/26 22:53:47 jrm Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.7 1988/12/05 23:32:12 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -112,6 +112,8 @@ MIT in each case. |#
 
 (define (syntax-expression expression)
   (cond ((pair? expression)
+	 (if (not (list? expression))
+	     (error "syntax-expression: not a valid expression" expression))
 	 (let ((transform (syntax-table-ref *syntax-table* (car expression))))
 	   (if transform
 	       (if (primitive-syntaxer? transform)
@@ -183,17 +185,20 @@ MIT in each case. |#
       (cons (syntax-expression (car expressions))
 	    (syntax-expressions (cdr expressions)))))
 
-(define (syntax-sequence expressions)
-  (if (null? expressions)
+(define (syntax-sequence original-expressions)
+  (if (null? original-expressions)
       (syntax-error "No subforms in sequence")
       (make-scode-sequence
-       (let loop ((expressions expressions))
-	 (if (null? expressions)
-	     '()
-	     ;; Force eval order.  This is required so that special
-	     ;; forms such as `define-syntax' work correctly.
-	     (let ((first (syntax-expression (car expressions))))
-	       (cons first (loop (cdr expressions)))))))))
+       (let process ((expressions original-expressions))
+	 (cond ((pair? expressions)
+		;; Force eval order.  This is required so that special
+		;; forms such as `define-syntax' work correctly.
+		(let ((first (syntax-expression (car expressions))))
+		  (cons first (process (cdr expressions)))))
+	       ((null? expressions)
+		'())
+	       (else
+		(syntax-error "Bad sequence" original-expressions)))))))
 
 (define (syntax-bindings bindings receiver)
   (cond ((null? bindings)
@@ -225,11 +230,11 @@ MIT in each case. |#
 (define (expand-disjunction forms)
   (if (null? forms)
       false
-      (let loop ((forms forms))
+      (let process ((forms forms))
 	(if (null? (cdr forms))
 	    (syntax-expression (car forms))
 	    (make-disjunction (syntax-expression (car forms))
-			      (loop (cdr forms)))))))
+			      (process (cdr forms)))))))
 
 (define (expand-lambda pattern actions receiver)
   ((if (pair? pattern)
