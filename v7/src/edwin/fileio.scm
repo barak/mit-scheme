@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.109 1992/09/30 17:50:04 cph Exp $
+;;;	$Id: fileio.scm,v 1.110 1992/11/12 18:00:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -49,7 +49,7 @@
 ;;;; Input
 
 (define (read-buffer buffer pathname visit?)
-  (set-buffer-writeable! buffer)
+  (set-buffer-writable! buffer)
   (let ((truename
 	 (catch-file-errors (lambda () false)
 			    (lambda () (->truename pathname)))))

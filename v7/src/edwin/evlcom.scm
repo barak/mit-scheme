@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.38 1992/08/18 23:31:58 cph Exp $
+;;;	$Id: evlcom.scm,v 1.39 1992/11/12 18:00:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -574,14 +574,14 @@ FIT           Error messages appear in typein window if they fit;
 		      (set! outside (group-read-only? group))
 		      (if inside
 			  (set-group-read-only! group)
-			  (set-group-writeable! group)))
+			  (set-group-writable! group)))
 		    (lambda ()
 		      (procedure buffer))
 		    (lambda ()
 		      (set! inside (group-read-only? group))
 		      (if outside
 			  (set-group-read-only! group)
-			  (set-group-writeable! group)))))))
+			  (set-group-writable! group)))))))
 
 (define (transcript-buffer)
   (let ((name (ref-variable transcript-buffer-name)))

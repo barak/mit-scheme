@@ -36,7 +36,7 @@
 ;;;
 ;;; Author: Brian A. LaMacchia -- bal@zurich.ai.mit.edu
 ;;;
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/techinfo.scm,v 1.2 1992/01/10 19:03:41 bal Exp $
+;;; $Id: techinfo.scm,v 1.3 1992/11/12 18:00:43 cph Exp $
 ;;;
 
 (define-variable techinfo-web-buffer 
@@ -186,7 +186,7 @@ is set to t.  At Athena it is nil."
 
 (define (techinfo-display-internal-node node-list #!optional placement)
   (set-variable! techinfo-current-node-list node-list)
-  (set-buffer-writeable! (current-buffer))
+  (set-buffer-writable! (current-buffer))
   (set-current-point! (buffer-start (current-buffer)))
   (kill-string (buffer-start (current-buffer))
 	       (buffer-end (current-buffer)))
@@ -213,7 +213,7 @@ is set to t.  At Athena it is nil."
 
 (define (techinfo-display-leaf-node node-list)
   (set-variable! techinfo-current-node-list node-list)
-  (set-buffer-writeable! (current-buffer))
+  (set-buffer-writable! (current-buffer))
   (set-current-point! (buffer-start (current-buffer)))
   (kill-string (buffer-start (current-buffer))
 	       (buffer-end (current-buffer)))

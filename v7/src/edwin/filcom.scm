@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.169 1992/09/30 02:27:55 jinx Exp $
+;;;	$Id: filcom.scm,v 1.170 1992/11/12 18:00:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -232,7 +232,7 @@ until one of them returns non-false."
 
 (define (after-find-file buffer pathname)
   (if (file-writable? pathname)
-      (set-buffer-writeable! buffer)
+      (set-buffer-writable! buffer)
       (set-buffer-read-only! buffer))
   (setup-buffer-auto-save! buffer)
   (normal-mode buffer true)

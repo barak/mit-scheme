@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.14 1992/04/08 17:57:46 cph Exp $
+;;;	$Id: modlin.scm,v 1.15 1992/11/12 18:00:37 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -264,7 +264,7 @@ If #F, the normal method is used."
 	   " Narrow"
 	   ""))
       ((#\*)
-       (cond ((not (buffer-writeable? buffer)) "%")
+       (cond ((not (buffer-writable? buffer)) "%")
 	     ((buffer-modified? buffer) "*")
 	     (else "-")))
       ((#\s)

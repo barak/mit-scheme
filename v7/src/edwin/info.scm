@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.111 1992/06/10 18:03:59 sybok Exp $
+;;;	$Id: info.scm,v 1.112 1992/11/12 18:00:33 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -288,7 +288,7 @@ Allowed only if the variable Info Enable Edit is not false."
   (lambda ()
     (if (not (ref-variable info-enable-edit))
 	(editor-error "Editing Info nodes is not enabled"))
-    (set-buffer-writeable! (current-buffer))
+    (set-buffer-writable! (current-buffer))
     (set-current-major-mode! (ref-mode-object info-edit))
     (message "Editing: Type C-c C-c to return to Info")))
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: buffer.scm,v 1.156 1992/09/29 21:08:56 cph Exp $
+;;;	$Id: buffer.scm,v 1.157 1992/11/12 18:00:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -121,7 +121,7 @@ The buffer is guaranteed to be deselected at that time."
 	  (loop (cdr windows))))))
 
 (define (buffer-reset! buffer)
-  (set-buffer-writeable! buffer)
+  (set-buffer-writable! buffer)
   (region-delete! (buffer-region buffer))
   (buffer-not-modified! buffer)
   (let ((group (buffer-group buffer)))
@@ -311,11 +311,11 @@ The buffer is guaranteed to be deselected at that time."
 (define-integrable (buffer-read-only? buffer)
   (group-read-only? (buffer-group buffer)))
 
-(define-integrable (buffer-writeable? buffer)
+(define-integrable (buffer-writable? buffer)
   (not (buffer-read-only? buffer)))
 
-(define (set-buffer-writeable! buffer)
-  (set-group-writeable! (buffer-group buffer))
+(define (set-buffer-writable! buffer)
+  (set-group-writable! (buffer-group buffer))
   (buffer-modeline-event! buffer 'BUFFER-MODIFIABLE))
 
 (define (set-buffer-read-only! buffer)
@@ -330,13 +330,13 @@ The buffer is guaranteed to be deselected at that time."
 		    (set! outside (group-read-only? group))
 		    (if inside
 			(set-group-read-only! group)
-			(set-group-writeable! group)))
+			(set-group-writable! group)))
 		  thunk
 		  (lambda ()
 		    (set! inside (group-read-only? group))
 		    (if outside
 			(set-group-read-only! group)
-			(set-group-writeable! group))))))
+			(set-group-writable! group))))))
 
 ;;;; Local Bindings
 

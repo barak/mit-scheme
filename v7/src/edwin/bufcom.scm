@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufcom.scm,v 1.98 1992/10/01 15:55:34 arthur Exp $
+;;;	$Id: bufcom.scm,v 1.99 1992/11/12 18:00:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -192,9 +192,9 @@ When locked, the buffer's major mode may not be changed."
   ()
   (lambda ()
     (let ((buffer (current-buffer)))
-      (if (buffer-writeable? buffer)
+      (if (buffer-writable? buffer)
 	  (set-buffer-read-only! buffer)
-	  (set-buffer-writeable! buffer)))))
+	  (set-buffer-writable! buffer)))))
 
 (define-command no-toggle-read-only
   "Display warning indicating that this buffer may not be modified."
@@ -205,7 +205,7 @@ When locked, the buffer's major mode may not be changed."
 (define (save-buffer-changes buffer)
   (if (and (buffer-pathname buffer)
 	   (buffer-modified? buffer)
-	   (buffer-writeable? buffer)
+	   (buffer-writable? buffer)
 	   (prompt-for-yes-or-no?
 	    (string-append "Buffer "
 			   (buffer-name buffer)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.80 1992/02/04 04:04:15 cph Exp $
+;;;	$Id: struct.scm,v 1.81 1992/11/12 18:00:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -164,7 +164,7 @@
 (define-integrable (set-group-read-only! group)
   (vector-set! group group-index:read-only? true))
 
-(define-integrable (set-group-writeable! group)
+(define-integrable (set-group-writable! group)
   (vector-set! group group-index:read-only? false))
 
 (define-integrable (set-group-marks! group marks)

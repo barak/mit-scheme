@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.127 1992/09/23 23:04:55 jinx Exp $
+;;;	$Id: dired.scm,v 1.128 1992/11/12 18:00:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -190,7 +190,7 @@ Type `h' after entering dired for more info."
   exact-nonnegative-integer?)
 
 (define (fill-dired-buffer! buffer pathname)
-  (set-buffer-writeable! buffer)
+  (set-buffer-writable! buffer)
   (region-delete! (buffer-region buffer))
   (temporary-message
    (string-append "Reading directory " (->namestring pathname) "..."))
