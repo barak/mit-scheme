@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2sock.c,v 1.1 1996/05/09 20:22:03 cph Exp $
+$Id: os2sock.c,v 1.2 1996/05/17 17:26:03 cph Exp $
 
 Copyright (c) 1990-96 Massachusetts Institute of Technology
 
@@ -51,13 +51,11 @@ static void stream_socket_operator
 
 #define VOID_SOCKET_CALL(proc, args)					\
 {									\
-  while (1)								\
+  while ((proc args) < 0)						\
     {									\
-      int rc = (proc args);						\
-      if (rc >= 0)							\
-	break;								\
       if ((sock_errno ()) != SOCEINTR)					\
 	OS2_error_system_call ((sock_errno ()), syscall_ ## proc);	\
+      deliver_pending_interrupts ();					\
     }									\
 }
 
@@ -73,6 +71,7 @@ static void stream_socket_operator
 	}								\
       if ((sock_errno ()) != SOCEINTR)					\
 	OS2_error_system_call ((sock_errno ()), syscall_ ## proc);	\
+      deliver_pending_interrupts ();					\
     }									\
 }
 
@@ -194,6 +193,7 @@ OS_server_connection_accept (Tchannel channel,
 	return (NO_CHANNEL);
       if ((sock_errno ()) != SOCEINTR)
 	OS2_error_system_call ((sock_errno ()), syscall_accept);
+      deliver_pending_interrupts ();
     }
   if (peer_host != 0)
     memcpy (peer_host, (& (address . sin_addr)), (sizeof (struct in_addr)));
@@ -221,11 +221,13 @@ initialize_stream_socket (int s, enum channel_type type)
 static msg_t *
 stream_socket_reader (LHANDLE handle, qid_t qid, msg_t * message, int * eofp)
 {
-  int nread
-    = (recv (((int) handle),
-	     (SM_READAHEAD_DATA (message)),
-	     (sizeof (SM_READAHEAD_DATA (message))),
-	     0));
+  int nread;
+  do
+    nread = (recv (((int) handle),
+		   (SM_READAHEAD_DATA (message)),
+		   (sizeof (SM_READAHEAD_DATA (message))),
+		   0));
+  while ((nread < 0) && ((sock_errno ()) == SOCEINTR));
   if (nread >= 0)
     {
       (SM_READAHEAD_SIZE (message)) = nread;
