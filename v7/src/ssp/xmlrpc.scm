@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xmlrpc.scm,v 1.11 2005/02/16 04:31:24 cph Exp $
+$Id: xmlrpc.scm,v 1.12 2005/02/17 17:50:54 cph Exp $
 
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
@@ -226,7 +226,8 @@ USA.
 				 )))
 	    ((struct)
 	     (map (lambda (elt)
-		    (cons (utf8-string->symbol (named-child 'name elt))
+		    (cons (utf8-string->symbol
+			   (content-string (named-child 'name elt)))
 			  (decode-value (named-child 'value elt))))
 		  (named-children 'member elt)))
 	    (else (lose)))))))
