@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.8 1993/01/29 16:31:20 cph Exp $
+$Id: thread.scm,v 1.9 1993/03/09 23:53:13 cph Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -128,7 +128,9 @@ MIT in each case. |#
 	      (let ((thread (make-thread)))
 		(set-thread/continuation! thread continuation)
 		(thread-running thread)
-		(%within-continuation return true (lambda () thread)))))
+		(%within-continuation (let ((k return)) (set! return #f) k)
+				      true
+				      (lambda () thread)))))
 	   (set-interrupt-enables! interrupt-mask/all)
 	   (exit-current-thread (thunk))))))))
 
@@ -177,7 +179,7 @@ MIT in each case. |#
 	  (set-interrupt-enables! interrupt-mask/all)
 	  (do () (false)))
 	(run-thread thread*))))
-
+
 (define (run-thread thread)
   (let ((continuation (thread/continuation thread)))
     (set-thread/continuation! thread false)
@@ -191,7 +193,7 @@ MIT in each case. |#
 	      (%maybe-toggle-thread-timer)
 	      (handle-thread-event thread event)
 	      (set-thread/block-events?! thread false)))))))
-
+
 (define (suspend-current-thread)
   (without-interrupts
    (lambda ()
