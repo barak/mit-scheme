@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/syntax.scm,v 1.72 1991/05/17 23:23:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/syntax.scm,v 1.73 1991/05/20 21:56:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -144,28 +144,26 @@ a comment ending."
 (let ()
 
 (define (%forward-word mark n limit?)
-  (let ((group (mark-group mark))
-	(end (mark-index (group-end mark))))
-    (let loop ((start (mark-index mark)) (n n))
-      (let ((m
-	     ((ucode-primitive scan-word-forward)
-	      (syntax-table/entries (ref-variable syntax-table))
-	      group start end)))
-	(cond ((not m) (limit-mark-motion limit? (make-mark group start)))
-	      ((= n 1) (make-mark group m))
-	      (else (loop m (-1+ n))))))))
+  (let ((group (mark-group mark)))
+    (let ((end (group-end-index group))
+	  (entries (syntax-table/entries (group-syntax-table group))))
+      (let loop ((start (mark-index mark)) (n n))
+	(let ((m
+	       ((ucode-primitive scan-word-forward) entries group start end)))
+	  (cond ((not m) (limit-mark-motion limit? (make-mark group start)))
+		((= n 1) (make-mark group m))
+		(else (loop m (-1+ n)))))))))
 
 (define (%backward-word mark n limit?)
-  (let ((group (mark-group mark))
-	(end (mark-index (group-start mark))))
-    (let loop ((start (mark-index mark)) (n n))
-      (let ((m
-	     ((ucode-primitive scan-word-backward)
-	      (syntax-table/entries (ref-variable syntax-table))
-	      group start end)))
-	(cond ((not m) (limit-mark-motion limit? (make-mark group start)))
-	      ((= n 1) (make-mark group m))
-	      (else (loop m (-1+ n))))))))
+  (let ((group (mark-group mark)))
+    (let ((end (group-start-index group))
+	  (entries (syntax-table/entries (group-syntax-table group))))
+      (let loop ((start (mark-index mark)) (n n))
+	(let ((m
+	       ((ucode-primitive scan-word-backward) entries group start end)))
+	  (cond ((not m) (limit-mark-motion limit? (make-mark group start)))
+		((= n 1) (make-mark group m))
+		(else (loop m (-1+ n)))))))))
 
 (set! forward-word
 (named-lambda (forward-word mark n #!optional limit?)
@@ -185,48 +183,66 @@ a comment ending."
 
 (define (forward-to-word mark #!optional limit?)
   (let ((limit? (and (not (default-object? limit?)) limit?))
-	(index
-	 ((ucode-primitive scan-forward-to-word)
-	  (syntax-table/entries (ref-variable syntax-table))
-	  (mark-group mark)
-	  (mark-index mark)
-	  (mark-index (group-end mark)))))
-    (if (not index)
-	(limit-mark-motion limit? (group-end mark))
-	(make-mark (mark-group mark) index))))
+	(group (mark-group mark)))
+    (let ((index
+	   ((ucode-primitive scan-forward-to-word)
+	    (syntax-table/entries (group-syntax-table group))
+	    group
+	    (mark-index mark)
+	    (group-end-index group))))
+      (if (not index)
+	  (limit-mark-motion limit? (group-end mark))
+	  (make-mark group index)))))
 
 ;;;; Lisp Parsing
 
 (define-macro (default-end/forward start end)
-  `(COND ((DEFAULT-OBJECT? ,end) (GROUP-END ,start))
-	 ((NOT (MARK<= ,start ,end)) (ERROR "END less than START" ,end))
-	 (ELSE ,end)))
+  `(COND ((DEFAULT-OBJECT? ,end)
+	  (GROUP-END ,start))
+	 ((MARK<= ,start ,end)
+	  ,end)
+	 (ELSE
+	  (ERROR "Marks incorrectly related:" ,start ,end))))
 
 (define-macro (default-end/backward start end)
-  `(COND ((DEFAULT-OBJECT? ,end) (GROUP-START ,start))
-	 ((NOT (MARK>= ,start ,end)) (ERROR "END greater than START" ,end))
-	 (ELSE ,end)))
+  `(COND ((DEFAULT-OBJECT? ,end)
+	  (GROUP-START ,start))
+	 ((MARK>= ,start ,end)
+	  ,end)
+	 (ELSE
+	  (ERROR "Marks incorrectly related:" ,start ,end))))
+
+(define (forward-prefix-chars start #!optional end)
+  (let ((group (mark-group start)))
+    (make-mark group
+	       ((ucode-primitive scan-forward-prefix-chars 4)
+		(syntax-table/entries (group-syntax-table group))
+		group
+		(mark-index start)
+		(mark-index (default-end/forward start end))))))
 
 (define (backward-prefix-chars start #!optional end)
-  (make-mark (mark-group start)
-	     ((ucode-primitive scan-backward-prefix-chars)
-	      (syntax-table/entries (ref-variable syntax-table))
-	      (mark-group start)
-	      (mark-index start)
-	      (mark-index (default-end/backward start end)))))
+  (let ((group (mark-group start)))
+    (make-mark group
+	       ((ucode-primitive scan-backward-prefix-chars 4)
+		(syntax-table/entries (group-syntax-table group))
+		group
+		(mark-index start)
+		(mark-index (default-end/backward start end))))))
 
 (define (mark-right-char-quoted? mark)
-  ((ucode-primitive quoted-char?)
-   (syntax-table/entries (ref-variable syntax-table))
-   (mark-group mark)
-   (mark-index mark)
-   (group-start-index (mark-group mark))))
+  (let ((group (mark-group mark)))
+    ((ucode-primitive quoted-char?)
+     (syntax-table/entries (group-syntax-table group))
+     group
+     (mark-index mark)
+     (group-start-index group))))
 
 (define (mark-left-char-quoted? mark)
   (if (group-start? mark)
       (error "Mark has no left char" mark))
   (mark-right-char-quoted? (mark-1+ mark)))
-
+
 (define-structure (parse-state (type vector))
   (depth false read-only true)
   (in-string? false read-only true)	;#F or ASCII delimiter.
@@ -252,7 +268,7 @@ a comment ending."
 	(group (mark-group start)))
     (let ((state
 	   ((ucode-primitive scan-sexps-forward)
-	    (syntax-table/entries (ref-variable syntax-table))
+	    (syntax-table/entries (group-syntax-table group))
 	    group
 	    (mark-index start)
 	    (mark-index end)
@@ -282,28 +298,32 @@ a comment ending."
 (let ()
 
 (define (%forward-list start end depth sexp?)
-  (let ((index
-	 ((ucode-primitive scan-list-forward)
-	  (syntax-table/entries (ref-variable syntax-table))
-	  (mark-group start)
-	  (mark-index start)
-	  (mark-index end)
-	  depth
-	  sexp?
-	  true)))
-    (and index (make-mark (mark-group start) index))))
+  (let ((group (mark-group start)))
+    (let ((index
+	   ((ucode-primitive scan-list-forward)
+	    (syntax-table/entries (group-syntax-table group))
+	    group
+	    (mark-index start)
+	    (mark-index end)
+	    depth
+	    sexp?
+	    true)))
+      (and index (make-mark group index)))))
 
 (define (%backward-list start end depth sexp?)
-  (let ((index
-	 ((ucode-primitive scan-list-backward)
-	  (syntax-table/entries (ref-variable syntax-table))
-	  (mark-group start)
-	  (mark-index start)
-	  (mark-index end)
-	  depth
-	  sexp?
-	  (ref-variable syntax-ignore-comments-backwards))))
-    (and index (make-mark (mark-group start) index))))
+  (let ((group (mark-group start)))
+    (let ((index
+	   ((ucode-primitive scan-list-backward)
+	    (syntax-table/entries (group-syntax-table group))
+	    group
+	    (mark-index start)
+	    (mark-index end)
+	    depth
+	    sexp?
+	    (group-local-ref
+	     group
+	     (ref-variable-object syntax-ignore-comments-backwards)))))
+      (and index (make-mark group index)))))
 
 (set! forward-one-sexp
 (named-lambda (forward-one-sexp start #!optional end)
@@ -349,16 +369,22 @@ a comment ending."
   string?)
 
 (define (definition-start? mark)
-  (re-match-forward (ref-variable definition-start) mark))
+  (re-match-forward
+   (mark-local-ref mark (ref-variable-object definition-start))
+   mark))
 
 (define (forward-one-definition-start mark)
-  (and (re-search-forward (ref-variable definition-start)
-			  (if (line-start? mark) (line-end mark 0) mark)
-			  (group-end mark))
+  (and (re-search-forward
+	(mark-local-ref mark (ref-variable-object definition-start))
+	(if (line-start? mark) (line-end mark 0) mark)
+	(group-end mark))
        (re-match-start 0)))
 
 (define (backward-one-definition-start mark)
-  (re-search-backward (ref-variable definition-start) mark (group-start mark)))
+  (re-search-backward
+   (mark-local-ref mark (ref-variable-object definition-start))
+   mark
+   (group-start mark)))
 
 (define (forward-one-definition-end mark)
   (define (loop start)
