@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.24 1995/04/20 03:26:28 adams Exp $
+$Id: rtlgen.scm,v 1.25 1995/04/27 02:48:47 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -319,6 +319,7 @@ MIT in each case. |#
 		    (body         (cadr (assq rtlgen/?continuation-body
 					      result))))
 		(let ((frame-size (vector-length frame-vector)))
+		  (sample/1 '(rtlgen/frame-size histogram) frame-size)
 		  (fluid-let ((*rtlgen/frame-size* frame-size))
 		    (rtlgen/body
 		     body
