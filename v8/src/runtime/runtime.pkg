@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.29 1989/02/28 18:35:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.30 1989/03/06 20:00:30 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -661,6 +661,7 @@ MIT in each case. |#
 	  read-char
 	  read-char-no-hang
 	  read-string
+	  set-current-input-port!
 	  set-input-port/state!
 	  with-input-from-file
 	  with-input-from-port)
@@ -813,6 +814,7 @@ MIT in each case. |#
 	  weak-car
 	  weak-cdr
 	  weak-cons
+	  weak-memq
 	  weak-pair/car?
 	  weak-pair?
 	  weak-set-car!
@@ -996,6 +998,7 @@ MIT in each case. |#
 	  output-port/write-string
 	  output-port/x-size
 	  output-port?
+	  set-current-output-port!
 	  set-output-port/state!
 	  with-output-to-file
 	  with-output-to-port
@@ -1253,6 +1256,8 @@ MIT in each case. |#
 	  set-repl/syntax-table!
 	  ve
 	  vst
+	  with-cmdl/input-port
+	  with-cmdl/output-port
 	  with-proceed-point
 	  with-standard-proceed-point)
   (export (runtime load)
@@ -1503,6 +1508,7 @@ MIT in each case. |#
 	  execute-at-new-state-point
 	  get-fluid-bindings
 	  make-state-space
+	  object-component-binder
 	  set-current-dynamic-state!
 	  set-fluid-bindings!
 	  translate-to-state-point)
