@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.101 1991/04/15 20:47:45 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.102 1991/04/18 22:36:11 markf Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -55,7 +55,8 @@ MIT in each case. |#
     ((unix) "unxpth" "unxprm")
     ;;((vms) "vmspth")
     ;;(else "unkpth")
-    (else)))
+    (else))
+  (initialization (initialize-package!)))
 
 (define-package (package)
   ;; The information appearing here must be duplicated in the cold load
@@ -2133,6 +2134,7 @@ MIT in each case. |#
   (files "syntax")
   (parent ())
   (export ()
+	  hook/syntax-expression
 	  lambda-tag:fluid-let
 	  lambda-tag:let
 	  lambda-tag:make-environment
