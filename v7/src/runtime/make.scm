@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.8 1988/12/31 06:05:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.9 1988/12/31 06:39:18 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -376,14 +376,9 @@ MIT in each case. |#
    (RUNTIME EMACS-INTERFACE)
    ))
 
-(let ((pathname
-       (let ((pathname (->pathname "site")))
-	 (list-search-positive
-	     (map (lambda (type) (pathname-new-type pathname type))
-		  load/default-types)
-	   file-exists?))))
-  (if pathname
-      (load pathname '())))
+(let ((filename (map-filename "site")))
+  (if (file-exists? filename)
+      (eval (purify (fasload filename true)) system-global-environment)))
 
 (let ((fasload/update-debugging-info!
        (access fasload/update-debugging-info!
