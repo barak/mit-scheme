@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uproc.scm,v 1.2 1991/06/10 22:45:37 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uproc.scm,v 1.3 1991/10/29 13:31:30 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -244,8 +244,10 @@ MIT in each case. |#
   (if (not offset)
       ((ucode-primitive primitive-object-ref 2) closure (+ 2 index))
       ((ucode-primitive primitive-object-ref 2)
-       ((ucode-primitive compiled-code-address->block 1)
-	closure)
+       (if (compiled-closure? closure)
+	   ((ucode-primitive compiled-code-address->block 1) closure)
+	   ;; Closure may also be a vector in this case.
+	   closure)
        (+ index offset))))
 
 (define-integrable (compiled-closure/set! closure index offset value)

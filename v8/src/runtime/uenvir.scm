@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/uenvir.scm,v 14.24 1991/07/21 07:02:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/uenvir.scm,v 14.25 1991/10/29 13:31:11 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -475,7 +475,7 @@ MIT in each case. |#
 	 (find-stack-element environment
 			     dbg-block/normal-closure-index
 			     "closure")))
-    (if (not (compiled-closure? closure))
+    (if (not (or (compiled-closure? closure) (vector? closure)))
 	(error "Frame missing closure" closure environment))
 #|
     ;; Temporarily disable this consistency check until the compiler
@@ -587,12 +587,14 @@ MIT in each case. |#
     (let ((parent (dbg-block/parent stack-block))
 	  (use-simulation
 	   (lambda ()
-	     (let ((environment
-		    (compiled-code-block/environment
-		     (compiled-entry/block closure))))
-	       (if (ic-environment? environment)
-		   environment
-		   system-global-environment)))))
+	     (if (compiled-closure? closure)
+		 (let ((environment
+			(compiled-code-block/environment
+			 (compiled-entry/block closure))))
+		   (if (ic-environment? environment)
+		       environment
+		       system-global-environment))
+		 system-global-environment))))
       (if parent
 	  (case (dbg-block/type parent)
 	    ((STACK)
@@ -607,8 +609,7 @@ MIT in each case. |#
 	      (let ((index (dbg-block/ic-parent-index closure-block)))
 		(if index
 		    (closure/get-value closure closure-block index)
-		    (compiled-code-block/environment
-		     (compiled-entry/block closure))))))
+		    (use-simulation)))))
 	    (else
 	     (error "Illegal parent block" parent)))
 	  (use-simulation)))))
