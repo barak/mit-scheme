@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.38 2000/07/03 02:06:35 cph Exp $
+;;; $Id: imap-response.scm,v 1.39 2000/07/03 02:07:06 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -80,7 +80,8 @@
   (read-list port read-flag))
 
 (define (read-list-response port)
-  (let ((flags (read-flags-response port)))
+  (discard-known-char #\space port)
+  (let ((flags (read-list port read-flag)))
     (discard-known-char #\space port)
     (let ((delim (read-nstring port)))
       (discard-known-char #\space port)
