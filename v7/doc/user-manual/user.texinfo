@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.58 1999/07/06 15:11:15 cph Exp $
+@comment $Id: user.texinfo,v 1.59 1999/07/16 18:07:14 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -41,9 +41,9 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.58
+@subtitle Edition 1.59
 @subtitle for Scheme Release 7.5
-@subtitle 6 July 1999
+@subtitle 16 July 1999
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -253,7 +253,7 @@ more information.
 @section OS/2 Installation
 
 This section describes how to install MIT Scheme on a machine running
-OS/2 2.1 later.
+OS/2 2.1 or later.
 
 @menu
 * Prerequisites for OS/2 Installation::  
@@ -267,21 +267,17 @@ OS/2 2.1 later.
 @subsection Prerequisites
 
 The Scheme files use about 20 megabytes of disk space when installed.
-An additional 5 megabytes of disk space is required during installation.
 After installation, you can reduce the amount of disk space required by
 deleting some files (@pxref{Image Files for OS/2 Installation}).
 
 MIT Scheme requires a fair amount of RAM to run well.  We haven't
 tried running this on any machine with less than 36 megabytes, so we
 don't have any hard data on what the smallest practical amount of RAM
-is.  However, for running Scheme under OS/2 Warp, 8 megabytes is
-probably the least you should consider, and 12 megabytes is probably
-comfortable.  If you want to use the Scheme compiler or the Edwin text
-editor, you should have at least 16 megabytes of RAM.
+is.
 
-MIT Scheme has been tested only on OS/2 Warp 3.0, but it should also
-run under OS/2 versions 2.1 and 2.11.  It was compiled using IBM
-Visual Age C++ version 3.0 and the OS/2 Toolkit version 3.0.
+This release of MIT Scheme has been tested only on OS/2 Warp 4.0, but it
+should also run under OS/2 versions 2.1 and later.  It was compiled using
+IBM Visual Age C++ version 3.0 and the OS/2 Toolkit version 4.0.
 
 @node OS/2 Installation Procedure, Image Files for OS/2 Installation, Prerequisites for OS/2 Installation, OS/2 Installation
 @subsection OS/2 Installation Procedure
@@ -290,25 +286,20 @@ After unpacking the @sc{zip} file, @file{os2.zip}, you will have these
 directories containing the following files:
 
 @table @file
-@item readme
-This file.
-
-@item bin\
+@item bin
 The executable programs @file{scheme.exe} and @file{bchschem.exe}.
 
-@item doc\
-Documentation files.  Two files, the @cite{MIT Scheme User's Manual} and
-the @cite{MIT Scheme Reference Manual}, are provided in @file{.inf}
-format; these files can be read with the OS/2 @file{view} command.
+@item doc
+Documentation files in HTML.
 
-@item etc\
+@item etc
 Installation command files.  These are scripts that will be used during
 the installation procedure.
 
-@item icons\
+@item icons
 A directory containing some useful icons.
 
-@item lib\
+@item lib
 A directory containing the data files needed by Scheme when it is
 running.
 @end table
@@ -317,43 +308,13 @@ Perform the following steps to install Scheme:
 
 @enumerate
 @item
-Run the command file @file{etc\mkbands.cmd}.  This creates the image
-files @file{compiler.com}, @file{edwin.com}, and @file{all.com}, and
-deletes the files @file{compdel.com} and @file{eddel.com}.
-
-@item
 Move the executable files @file{scheme.exe} and @file{bchschem.exe} from
 @file{bin\} to any directory that appears in your @samp{PATH}
 environment variable.  Depending on your needs, you may want to keep
-only one of these files; each of these files is about 450 kilobytes and
-chances are you'll only be using one of them.  If you keep only
-@file{bchschem.exe} we recommend you rename it to @file{scheme.exe}.  Of
-course, you can also keep both programs around if you think you might
-use them both.
-
-The only difference between these two programs is in how they handle
-garbage collection.  @file{scheme.exe} allocates two memory heaps, and
-copies objects between the heaps to preserve them.  This means that most
-of the time the other heap is occupying valuable memory but doesn't
-hold any interesting data.  @file{bchschem.exe} allocates only one
-memory heap, creates a disk file during garbage collection, copies
-objects into the file, then copies them back into
-memory.@footnote{@xref{Memory Usage}, for more detail about this topic.}
-
-These programs provide you with some important performance trade-offs.
-If you have plenty of memory and want the best performance, use
-@file{scheme.exe}.  If you don't have enough memory, or if you want to
-use less memory and will accept slower performance, use
-@file{bchschem.exe}.  One way to tell that you don't have enough memory
-is to run @file{scheme.exe} for a while and see if your machine is
-paging during garbage collection.
-
-You might consider trying to use @file{scheme.exe} and letting the
-operating system's paging handle the lack of RAM.  But usually you will
-find that using @file{bchschem.exe} without paging is much faster than
-using @file{scheme.exe} with paging.  Of course, if you are using
-@file{bchschem.exe} and you're still paging, there's nothing you can do
-to win.
+only one of these files; chances are you'll only be using one of them.
+Of course, you can also keep both programs around if you think you might
+use them both.  @xref{Memory Usage}, for more information about the
+tradeoffs between these two programs.
 
 @item
 You may move the @file{lib\} directory anywhere you like.  You may
@@ -377,7 +338,7 @@ You can override the setting of this environment variable with the
 @code{-library} command-line option to Scheme, for example:
 
 @example
-scheme -library d:\scheme\lib
+scheme -library d:\myscm\mylib
 @end example
 
 @noindent
@@ -391,107 +352,13 @@ and pass it the @code{-library} option automatically.
 delete it if you do not want to keep the documentation.
 
 @item
-@emph{Optional:} Run the command file @file{etc\mkfolder.cmd} to create
-a folder containing icons to invoke Scheme.  You must give this command
-file a single argument, which is the full path name of the executable
-file that you will use.  For example, if you stored the file
-@file{scheme.exe} as @file{c:\scheme\bin\scheme.exe}, then you would
-invoke this command file as follows:
-
-@example
-etc\mkfolder c:\scheme\bin\scheme.exe
-@end example
-
-@noindent
-This will create a folder containing four icons, called @samp{Scheme},
-@samp{Edwin}, @samp{Liar}, and @samp{All}, which correspond to the image
-files @file{runtime.com}, @file{edwin.com}, @file{compiler.com}, and
-@file{all.com}.  If you decide to delete any of the image files, you can
-delete the corresponding icons as well.
-
-@item
 @emph{Optional:} The @file{icons\} directory contains some Scheme-ish icon
-files.  If you don't like the icons created by the @file{etc\mkfolder}
-command, you can use these icon files to change their appearance.
+files.  Again, move this directory wherever you like, or delete it.
 
 @item
 @emph{Optional:} Consider setting some of other environment variables
 described below.
 @end enumerate
-
-@node Image Files for OS/2 Installation, Documentation for OS/2 Installation, OS/2 Installation Procedure, OS/2 Installation
-@subsection Image Files
-
-@cindex image file
-Scheme stores its runtime environment in a binary @dfn{image} file,
-which is directly loaded into the Scheme process.  An image file is a
-snapshot of Scheme's memory taken at a particular time (you can create
-your own image files using the @code{disk-save} procedure; @pxref{World
-Images}).  This distribution comes with four different image files, each
-of which contains different mixes of programs.  These image files are
-stored in the @file{lib\} directory.
-
-@enumerate
-@item
-@file{runtime.com} is the basic runtime environment with no other
-programs loaded.  This is the smallest image file.  All other image
-files are supersets of this file.  This is the default image file
-that is used when Scheme starts up, unless it is overridden by a
-command-line option.
-
-@item
-@file{compiler.com} contains the basic runtime environment and the Liar
-native-code compiler.  This is the image file that is loaded when Scheme
-is started with the @code{-compiler} command-line option.
-
-@item
-@file{edwin.com} contains the basic runtime environment and the Edwin
-text editor.  This is the image file that is loaded when Scheme is
-started with the @code{-edwin} command-line option.
-
-@item
-@file{all.com} contains the basic runtime environment, the Liar
-compiler, and the Edwin editor.  This is the largest of the image files.
-There is no command-line option corresponding to this image file, but
-the following options can be used to load this file:
-
-@example
--large -constant 1600 -band all.com
-@end example
-@end enumerate
-
-You can delete any of these files that you aren't going to use (these
-image files take up a @emph{lot} of disk space!).  However, keep in mind
-that you need at least one image file to run Scheme at all.
-
-@node Documentation for OS/2 Installation, Environment Variables for OS/2 Installation, Image Files for OS/2 Installation, OS/2 Installation
-@subsection Documentation
-
-Documentation for Scheme is included with this release, in the directory
-@file{doc\}.  It consists of the following files:
-
-@itemize @bullet
-@item
-@file{user.inf} is the @cite{MIT Scheme User's Manual}, which describes
-how to run and use Scheme.  It describes all of the environment
-variables and command-line options, how to run the compiler and editor,
-etc.
-
-@item
-@file{scheme.inf} is the @cite{MIT Scheme Reference Manual}, which
-documents the programming language and the runtime library.  This is a
-large and detailed document for writing programs.
-
-@item
-@file{console.txt} describes the procedures that can be used to control
-the appearance of the console window (i.e.@: Scheme's main window).
-@end itemize
-
-@noindent
-Note: the User's Manual and Reference Manual are available in other
-forms, specifically: as PostScript files and as GNU Info files.  These
-alternate forms of documentation may be obtained from our @sc{ftp} site,
-@file{ftp://swiss-ftp.ai.mit.edu}.
 
 @node Environment Variables for OS/2 Installation,  , Documentation for OS/2 Installation, OS/2 Installation
 @subsection Environment Variables
@@ -528,13 +395,12 @@ The default value for this environment variable is a subdirectory
 SET MITSCHEME_INF_DIRECTORY=C:\SCHEME\LIB\SRC
 @end example
 
-@item TEMP
-@findex TEMP
+@item TMPDIR
+@findex TMPDIR
 tells Scheme the name of a directory where it can store temporary files.
 
-
 @example
-SET TEMP=C:\TMP
+SET TMPDIR=C:\TMP
 @end example
 
 @item HOME
@@ -564,7 +430,7 @@ shell commands.  If not specified, this defaults to the standard OS/2
 shell, @file{cmd.exe}.
 
 @example
-SET SHELL=C:\LOCAL\PROG\4OS2251\4OS2.EXE
+SET SHELL=C:\4OS2251\4OS2.EXE
 @end example
 @end table
 
@@ -771,7 +637,8 @@ the @samp{HOME} environment variable.  Under unix, the file is called
 
 In addition, when Edwin starts up, it loads a separate init file from
 your home directory into the Edwin environment.  This file is called
-@file{.edwin} under unix, and @file{edwin.ini} on the PC.
+@file{.edwin} under unix, and @file{edwin.ini} on the PC
+(@pxref{Starting Edwin}).
 
 You can use both of these files to define new procedures or commands, or
 to change defaults in the system.
@@ -1634,7 +1501,9 @@ signalled when the username is required.
 @findex USERDIR
 Specifies a directory that contains the home directories of users.  One
 of the places in which Scheme looks for the user's home directory, by
-searching for a subdirectory with the user's login name.
+searching for a subdirectory with the user's login name.  This variable
+is used only when @code{HOME} is not defined; we recommend using
+@code{HOME} rather than @code{USERDIR}.
 
 @item COMSPEC
 @findex COMSPEC
@@ -1671,7 +1540,7 @@ Include absolute pathnames to @file{scheme.exe} and @file{bchscheme.exe}
 in the shortcut @var{Command line}.
 
 @item
-I you specify the @code{-library} command-line option then you do not
+If you specify the @code{-library} command-line option then you do not
 have to worry about the @code{MITSCHEME_LIBRARY_PATH} environment
 variable.
 
@@ -2177,7 +2046,7 @@ in the Reference Manual.
 @item stepper
 Support to step through the evaluation of Scheme expressions.
 Undocumented; see the source file @file{runtime/ystep.scm}.  Used by the
-Edwin command @kbd{M-x step-expression}.
+Edwin command @kbd{step-expression}.
 
 @item subprocess
 Support to run other programs as subprocesses of the Scheme process.
@@ -3254,10 +3123,10 @@ assignment must check for the reference traps.
 Sometimes you can prove that the variable (a) will always be bound, (b)
 will never be unassigned and (c) there will never be any compiled calls
 to that variable.  The compiler can't prove this because it assumes that
-other, independently compiled, files might be loaded that invalidate
-these assumptions.
-If you know that these conditions hold, the following declarations can
-speed up and reduce the size of a program that uses global variables.
+other independently compiled files might be loaded that invalidate these
+assumptions.  If you know that these conditions hold, the following
+declarations can speed up and reduce the size of a program that uses
+global variables.
 
 @deffn {declaration+} ignore-reference-traps variables
 This declaration tells the compiler that it need not check for
@@ -3729,8 +3598,8 @@ debugging tools, especially @code{debug}.
 @findex debug
 There are two debuggers available with MIT Scheme.  One of them runs
 under Edwin, and is described in that section of this document
-(@pxref{Edwin}).  The other is command-line oriented, does not require
-Edwin, and is described here.
+(@pxref{Edwin Debugger}).  The other is command-line oriented, does not
+require Edwin, and is described here.
 
 @cindex command-line debugger
 The @dfn{command-line debugger}, called @code{debug}, is the tool you
@@ -3775,10 +3644,10 @@ You are now in the debugger.  Type q to quit, ? for commands.
 @noindent
 @cindex execution history
 This tells us that the error occurred while trying to evaluate the
-expression @code{fob} while running @code{(fib 10)}.  It also tells us
+expression @samp{fob} while running @samp{(fib 10)}.  It also tells us
 this is subproblem level 0, the first of 6 subproblems that are
-available for us to examine.  The expression shown is marked ``(from
-stack)'', which tells us that this expression was reconstructed from the
+available for us to examine.  The expression shown is marked @samp{(from
+stack)}, which tells us that this expression was reconstructed from the
 interpreter's internal data structures.  Another source of information
 is the @dfn{execution history}, which keeps a record of expressions
 evaluated by the interpreter.  The debugger informs us that the
@@ -4123,17 +3992,13 @@ to the procedure.
 @example
 (trace-entry fib)
 (fib 3)
-@print{} [Entering #[compound-procedure 54 fib]
+@print{} [Entering #[compound-procedure 19 fib]
 @print{}     Args: 3]
-@print{} [Entering #[compound-procedure 54 fib]
+@print{} [Entering #[compound-procedure 19 fib]
 @print{}     Args: 1]
-@print{} [Entering #[compound-procedure 54 fib]
+@print{} [Entering #[compound-procedure 19 fib]
 @print{}     Args: 2]
-@print{} [Entering #[compound-procedure 54 fib]
-@print{}     Args: 0]
-@print{} [Entering #[compound-procedure 54 fib]
-@print{}     Args: 1]
-@result{} 2
+@result{} 3
 @end example
 @end deffn
 
@@ -4146,21 +4011,15 @@ and the value returned by the procedure.
 (trace-exit fib)
 (fib 3)
 @print{} [1
-@print{}       <== #[compound-procedure 54 fib]
+@print{}       <== #[compound-procedure 19 fib]
 @print{}     Args: 1]
-@print{} [0
-@print{}       <== #[compound-procedure 54 fib]
-@print{}     Args: 0]
-@print{} [1
-@print{}       <== #[compound-procedure 54 fib]
-@print{}     Args: 1]
-@print{} [1
-@print{}       <== #[compound-procedure 54 fib]
-@print{}     Args: 2]
 @print{} [2
-@print{}       <== #[compound-procedure 54 fib]
+@print{}       <== #[compound-procedure 19 fib]
+@print{}     Args: 2]
+@print{} [3
+@print{}       <== #[compound-procedure 19 fib]
 @print{}     Args: 3]
-@result{} 2
+@result{} 3
 @end example
 @end deffn
 
@@ -4172,32 +4031,22 @@ Equivalent to calling both @code{trace-entry} and @code{trace-exit} on
 @example
 (trace-both fib)
 (fib 3)
-@print{} [Entering #[compound-procedure 54 fib]
+@print{} [Entering #[compound-procedure 19 fib]
 @print{}     Args: 3]
-@print{} [Entering #[compound-procedure 54 fib]
+@print{} [Entering #[compound-procedure 19 fib]
 @print{}     Args: 1]
 @print{} [1
-@print{}       <== #[compound-procedure 54 fib]
+@print{}       <== #[compound-procedure 19 fib]
 @print{}     Args: 1]
-@print{} [Entering #[compound-procedure 54 fib]
-@print{}     Args: 2]
-@print{} [Entering #[compound-procedure 54 fib]
-@print{}     Args: 0]
-@print{} [0
-@print{}       <== #[compound-procedure 54 fib]
-@print{}     Args: 0]
-@print{} [Entering #[compound-procedure 54 fib]
-@print{}     Args: 1]
-@print{} [1
-@print{}       <== #[compound-procedure 54 fib]
-@print{}     Args: 1]
-@print{} [1
-@print{}       <== #[compound-procedure 54 fib]
+@print{} [Entering #[compound-procedure 19 fib]
 @print{}     Args: 2]
 @print{} [2
-@print{}       <== #[compound-procedure 54 fib]
+@print{}       <== #[compound-procedure 19 fib]
+@print{}     Args: 2]
+@print{} [3
+@print{}       <== #[compound-procedure 19 fib]
 @print{}     Args: 3]
-@result{} 2
+@result{} 3
 @end example
 @end deffn
 
@@ -4338,7 +4187,7 @@ guaranteed to be correct for your version of Scheme.
 This interface is supported under unix only, mostly because it requires
 unix signals for its operation.  Porting it to either OS/2 or Windows
 would require reimplementing the interface to eliminate the use of
-signals.
+signals.  We have no plans to do this.
 
 @findex run-scheme
 @findex -emacs
@@ -4480,15 +4329,25 @@ customization of Edwin.
 @menu
 * Starting Edwin::              
 * Leaving Edwin::               
+* Edwin Scheme Mode::           
+* Edwin Scheme Evaluation::     
+* Edwin REPL Mode::             
+* Edwin Debugger::              
 * Last Resorts::                
 @end menu
 
 @node Starting Edwin, Leaving Edwin, Edwin, Edwin
 @section Starting Edwin
 
-To use Edwin, start Scheme with a world image containing Edwin (for
-example by giving the @code{-edwin} command-line option), then call the
-procedure @code{edit}:
+To use Edwin, start Scheme with the following command-line options:
+
+@example
+scheme -edwin -edit
+@end example
+
+@noindent
+Alternatively, you can load Edwin by giving the @code{-edwin}
+command-line option and then calling procedure @code{edit}:
 
 @deffn {procedure+} edit
 @deffnx {procedure+} edwin
@@ -4496,14 +4355,6 @@ Enter the Edwin text editor.  If entering for the first time, the editor
 is initialized (by calling @code{create-editor} with no arguments).
 Otherwise, the previously-initialized editor is reentered.
 
-This procedure is sometimes evaluated from the command line to start
-Scheme with Edwin running:
-
-@example
-scheme -edwin -eval (edit)
-@end example
-
-@findex edwin
 The procedure @code{edwin} is an alias for @code{edit}.
 @end deffn
 
@@ -4513,6 +4364,9 @@ When Edwin is first initialized, it loads your init file (called
 the Scheme variable @code{inhibit-editor-init-file?} is true, however,
 your init file will not be loaded even if it exists.  By default, this
 variable is false.
+
+Note that you can set this variable in your Scheme init file
+(@pxref{Customizing Scheme}).
 @end defvr
 
 @deffn {procedure+} create-editor arg @dots{}
@@ -4577,7 +4431,7 @@ Windows only.  Creates a window and uses it as Edwin's main window.
 @end table
 @end defvr
 
-@node Leaving Edwin, Last Resorts, Starting Edwin, Edwin
+@node Leaving Edwin, Edwin Scheme Mode, Starting Edwin, Edwin
 @section Leaving Edwin
 
 Once Edwin has been entered, it can be exited in the following ways:
@@ -4616,7 +4470,198 @@ system's command interpreter, and the Scheme process is terminated.
 This command is identical to the @kbd{C-x C-c} command of GNU Emacs.
 @end table
 
-@node Last Resorts,  , Leaving Edwin, Edwin
+@node Edwin Scheme Mode, Edwin Scheme Evaluation, Leaving Edwin, Edwin
+@section Scheme Mode
+
+As you might expect, Edwin has special support for editing and
+evaluating Scheme code.  This section describes @dfn{Scheme Mode}, the
+appropriate mode for editing MIT Scheme programs.
+
+Scheme mode is normally entered automatically by visiting a file whose
+file name ends in @samp{.scm}.  You can also mark a file as Scheme code
+by placing the string @samp{-*-Scheme-*-} on the first line of the
+file.  Finally, you can put any buffer in Scheme mode by executing the
+command @kbd{M-x scheme-mode}.
+
+Scheme mode is similar to the Emacs modes that edit Lisp code.  So, for
+example, @kbd{C-i} indents the current line, and @kbd{C-M-q} indents the
+expression to the right of point.  The close parenthesis will
+temporarily flash the matching open parenthesis.  Most Scheme constructs
+requiring special indentation are recognized by Scheme mode, for
+example, @code{begin}, @code{do}, and @code{let}.
+
+Scheme mode also provides support that is specific to Scheme programs,
+much as Emacs-Lisp mode does in Emacs.  Completion of global variable
+names is provided: type the first few characters of a variable, then
+type @kbd{C-M-i}, and Edwin will attempt to complete the variable name
+using the current set of bound variables.  If @kbd{C-M-i} is given a
+prefix argument, it will complete the name using the current set of
+interned symbols (which includes the bound variables as a subset).
+
+The @kbd{M-A} command (note the @emph{uppercase} @kbd{A}) will show the
+parameters of a procedure when point is inside a procedure call.  For
+example, type the string @samp{(quotient}, then press @kbd{M-A}, and the
+command will echo @samp{(n d)} in the echo area.  With a prefix
+argument, @kbd{M-A} will insert the parameter names in the buffer at
+point, so in this example, the buffer would contain @samp{(quotient n d}
+after running @kbd{C-u M-A}.
+
+@node Edwin Scheme Evaluation, Edwin REPL Mode, Edwin Scheme Mode, Edwin
+@section Evaluation
+
+Scheme mode also provides commands for evaluating Scheme expressions.
+The simplest evaluation command is @kbd{C-x C-e}, which evaluates the
+expression to the left of point.  (This key is bound in all buffers,
+even if they don't contain Scheme code.)  The command @kbd{M-z}
+evaluates the definition that point is in (a definition is an expression
+starting with a left parenthesis in the leftmost column).  The command
+@kbd{M-:} prompts for an expression in the minibuffer, evaluates it, and
+prints the value in the echo area.
+
+Other commands that evaluate larger amounts of code are @kbd{C-M-z},
+which evaluates all of the expressions in the region, and @kbd{M-o},
+which evaluates the entire buffer.  Both of these commands are
+potentially dangerous in that they will evaluate anything that appears
+to be an expression, even if it isn't intended to be.
+
+Normally, these commands evaluate expressions by sending them to a
+@sc{repl} buffer, which performs the evaluations in a separate thread.
+This has two advantages: it allows you to continue editing while the
+evaluation is happening, and it keeps a record of each evaluation and
+its printed output.  If you wish to stop a running evaluation and to
+erase any pending expressions, use the @kbd{C-c C-c} command from any
+Scheme buffer.  (Note that by default, Edwin starts up with one
+@sc{repl} buffer, called @samp{*scheme*}.)
+
+If you would prefer to have Scheme mode evaluation commands evaluate
+directly, rather than sending expressions to the @sc{repl} buffer, set
+the Edwin variable @code{evaluate-in-inferior-repl} to @code{#f}.  In
+this case, you will not be able to use Edwin while evaluation is
+occurring; any output from the evaluation will be shown in a pop-up
+buffer when the evaluation finishes; and you abort the evaluation using
+@kbd{C-g}.
+
+@node Edwin REPL Mode, Edwin Debugger, Edwin Scheme Evaluation, Edwin
+@section REPL Mode
+
+Edwin provides a special mechanism for interacting with Scheme
+read-eval-print loops: @sc{repl} buffers.  A @sc{repl} buffer is
+associated with a Scheme @sc{repl} running in a separate thread of
+execution; because of this, expressions may be evaluated in this buffer
+while you simultaneously do other things with the editor.  A @sc{repl}
+buffer captures all printed output from an evaluated expression, as well
+as supporting interactive programs such as @code{debug}.  For these and
+other reasons, @sc{repl} buffers are the preferred means for interacting
+with the Scheme interpreter.
+
+When Edwin starts, it has one buffer: a @sc{repl} buffer called
+@samp{*scheme*}.  The command @kbd{M-x repl} selects this buffer, if it
+exists; otherwise it creates a new @sc{repl} buffer.  Thus, if you want
+two @sc{repl} buffers, just rename the @samp{*scheme*} buffer to
+something else and run @kbd{M-x repl} again.
+
+@sc{repl} buffers support all the same evaluation commands that Scheme
+mode does; in fact, @sc{repl} buffers use a special mode called
+@sc{repl} mode that inherits from Scheme mode.  Thus, any key bindings
+defined in Scheme mode are also defined in @sc{repl} mode.  One
+exception to this is the @kbd{M-o} command, which is deliberately
+undefined in @sc{repl} mode; otherwise it would be too easy to
+re-evaluate all the previously evaluated expressions in the @sc{repl}
+buffer.
+
+In addition to evaluation commands, @sc{repl} mode provides a handful of
+special commands for controlling the @sc{repl} itself.  The commands
+@kbd{C-c C-x} and @kbd{C-c C-u} abort the current evaluation, returning
+to the current or previous @sc{repl} levels, respectively.  The command
+@kbd{C-c C-b} interrupts the current evaluation, entering a breakpoint.
+
+Each @sc{repl} buffer maintains a history of the expressions that were
+typed into it.  Several commands allow you to access the contents of
+this history.  The command @kbd{M-p} moves backwards through the
+history, inserting previously evaluated expressions at point.  Likewise,
+@kbd{M-n} moves forward through the history.  The commands @kbd{C-c C-r}
+and @kbd{C-c C-s} search backward and forward through the history for a
+particular string.  The command @kbd{C-c C-o} deletes any output from
+the previous evaluation; use this command with care since it cannot be
+undone.  The command @kbd{C-c C-l} finds the most recent expression in
+the buffer and moves point there.
+
+When an expression that you evaluate signals an error, the @sc{repl}
+buffer notices this and offers to run the debugger for you.  Answer this
+question with a @samp{y} or @samp{n} response.  You can start the
+debugger whenever the @sc{repl} buffer is listening by executing the
+@kbd{C-c C-d} command.  In either case, this starts the Edwin debugger,
+which pops up a new window containing the debugger.  Your @sc{repl}
+buffer remains in the error state, allowing you to examine it further if
+you wish.
+
+@node Edwin Debugger, Last Resorts, Edwin REPL Mode, Edwin
+@section The Edwin Debugger
+
+The Edwin debugger is similar to the command-line debugger, except that
+it takes advantage of multiple windows and Edwin's command structure to
+provide a more intuitive interface.  The debugger operates as a browser,
+much like Dired, presenting you with an overview of the subproblem
+structure, and allowing you to examine parts of that structure in more
+detail by selecting the parts.  When started, the debugger creates a
+buffer @samp{*debug*} showing the subproblem structure, and selects the
+first line.
+
+Each line beginning with @samp{S} represents either a subproblem or
+stack frame.  A subproblem line may be followed by one or more indented
+lines (beginning with the letter @samp{R}) which represent reductions
+associated with that subproblem.  The subproblems are indexed with the
+natural numbers.  To obtain a more complete description of a subproblem
+or reduction, click the mouse on the desired line or move the cursor to
+the line using the arrow keys (or @kbd{C-n} and @kbd{C-p}).  The
+description buffer will display the additional information.
+
+The description buffer contains three major regions.  The first region
+contains a pretty-printed version of the current expression.  The
+current subproblem within the expression is highlighted.  The second
+region contains a representation of the frames of the environment of the
+current expression.  The bindings of each frame are listed below the
+frame header.  If there are no bindings in the frame, none will be
+listed.  The frame of the current expression is preceded with
+@samp{==>}.
+
+The bottom of the description buffer contains a third region for
+evaluating expressions in the environment of the selected subproblem or
+reduction.  This is the only portion of the buffer where editing is
+possible.  This region can be used to find the values of variables in
+different environments, or even to modify variable values or data
+structures (note that variables in compiled code usually cannot be
+modified).
+
+Typing @kbd{e} creates a new buffer in which you may browse through the
+current environment.  In this new buffer, you can use the mouse, the
+arrows, or @kbd{C-n} and @kbd{C-p} to select lines and view different
+environments.  The environments listed are the same as those in the
+description buffer.  If the selected environment structure is too large
+to display (i.e.@: if the number of bindings in the environment exceeds
+the value of the editor variable @code{environment-package-limit}) a
+message to that effect is displayed.  To display the environment in this
+case, use @kbd{M-x set-variable} to set @code{environment-package-limit}
+to @code{#f}.  At the bottom of the new buffer is a region for
+evaluating expressions, similar to that of the description buffer.
+
+The appearance of environment displays is controlled by the editor
+variables @code{debugger-show-inner-frame-topmost?} and
+@code{debugger-compact-display?}  which affect the ordering of
+environment frames and the line spacing respectively.
+
+Type @kbd{q} to quit the debugger, killing its primary buffer, any
+others that it has created, and the window that was popped up to show
+the debugger.
+
+@strong{Note}: The description buffers created by the debugger are given
+names beginning with spaces so that they do not appear in the buffer
+list; these buffers are automatically deleted when you quit the
+debugger.  If you wish to keep one of these buffers, simply rename it
+using @kbd{M-x rename-buffer}: once it has been renamed, it will not be
+deleted automatically.
+
+@node Last Resorts,  , Edwin Debugger, Edwin
 @section Last Resorts
 
 When Scheme exits abnormally it tries to save any unsaved Edwin buffers.
@@ -4660,7 +4705,388 @@ state that prevents Edwin from running.
 @node Release Notes, Index, Edwin, Top
 @appendix Release Notes
 
-The last full release of MIT Scheme was version 7.4.7 in 1998.
+The last full release of MIT Scheme was version 7.4.7 in 1998.  This
+section describes major changes that have occurred since that time.  For
+more detailed information, see the @file{RCS.log} files in the source
+code.
+
+@menu
+* Overall Changes::             
+* Base System Changes::         
+* Edwin Changes::               
+* Changes to the Windows Port::  
+@end menu
+
+@node Overall Changes, Base System Changes, Release Notes, Release Notes
+@section Overall Changes
+
+The following changes affect the entire system:
+
+@itemize @bullet
+
+@item
+MIT Scheme has been re-released under the GNU General Public License.
+
+@item
+With this release we no longer support Windows 3.1 or any form of
+@sc{dos}.  The only supported Microsoft operating systems are Windows
+95, Windows 98, and Windows NT.  We have tested on Windows 95, Windows
+98, and Windows NT 4.0.
+
+@item
+Although there have been no significant changes to the compiler, there
+have been some low-level representation changes to records and
+structures that make compiled code in this release incompatible with
+that from the previous release.
+
+@item
+@sc{sos} object-oriented programming extensions are now included in the
+base release.  They are not loaded by default; evaluate
+@code{(load-option 'sos)} to load them.
+
+@end itemize
+
+@node Base System Changes, Edwin Changes, Overall Changes, Release Notes
+@section Base System Changes
+
+These are the major changes to the base system:
+
+@itemize @bullet
+
+@item
+@code{-compiler} and @code{-edwin} can now be specified together, which
+specifies that a band containing both compiler and Edwin support should
+be loaded.
+
+@item
+Heap-sizing code now automatically defaults @code{-constant} to the
+correct size for the band being loaded, and adds the heap used by the
+band to the requested heap size.  In consequence, it should rarely be
+necessary to specify @code{-constant}, and @code{-heap} will specify
+exactly how much heap space is available when Scheme is started.
+
+@item
+Command-line arguments can now be defined by user code.
+
+@item
+Several changes to the number reader and printer have resulted in
+greatly improved performance, particularly for floating-point numbers.
+
+@item
+The variable @code{flonum-unparser-cutoff} can now specify the format in
+which the numbers are to be printed, e.g.@: @code{scientific} or
+@code{engineering}.
+
+@item
+Regular-expression match and search are now available for strings.
+
+@item
+String search procedures are now implemented, using Boyer-Moore search
+when appropriate.
+
+@item
+Synchronous subprocesses can now be run from Scheme code.
+
+@item
+Date and time support has been fleshed out and now provides a rich set
+of representations and conversions.  Unfortunately, this support depends
+on underlying support of the C library, which is sometimes of low
+quality.
+
+@item
+New (and undocumented) generic-procedure dispatch mechanism provides
+high-performance substrate for building @sc{clos}-like object-oriented
+programming systems.  This mechanism has been fully integrated into the
+existing record and @code{defstruct} code.  The @sc{sos} system has been
+added as a load option to allow writing object-oriented code.
+
+@item
+Transcripts (i.e.@: @code{transcript-on}) are now local to a particular
+@sc{repl}.  This is usually relevant only when using Edwin, where there
+can be several @sc{repl} buffers.  Previously transcripts only recorded
+activity on the Scheme console, and ignored any other @sc{repl}s,
+including Edwin @sc{repl} buffers.
+
+@item
+Red-black trees now support operations to read or delete the minimum or
+maximum element of a tree.
+
+@item
+Both @code{merge-sort} and @code{quick-sort} are now available.  As
+before, @code{sort} defaults to @code{merge-sort}.
+
+@item
+The @code{fresh-line} operation is now supported by all common port
+types.  @code{close-input-port} and @code{close-output-port} now close
+only one side of a bidirectional port; previously they closed both
+sides.  The following port operations have been eliminated:
+@code{write-string}, @code{read-chars}, and @code{write-chars}.
+
+@item
+Characters now have 16 bits of character code (instead of 7) to allow
+8-bit ISO latin and Unicode characters.  Strings are still based on
+8-bit characters.
+
+@item
+Under X11, the BackSpace keysym is treated as Delete, as long as
+BackSpace is bound to @sc{ascii} backspace.
+
+@item
+Under Linux, Scheme now detects various foreign filesystems such as
+@code{msdos}, @code{vfat}, @code{ntfs}, and @code{hpfs}, and sets the
+default line translation for files on those systems to @code{"\r\n"}.
+
+@item
+@file{hppacach} knows how to find kernel files for HP-UX 10.x and later.
+
+@item
+Under OS/2, the default font for the Scheme console window has been
+changed to @code{"8.Courier"}.
+
+@item
+Under OS/2 Warp 4.0, Scheme now reports the operating-system version
+correctly.
+
+@item
+More sophisticated heuristics are used to discover the user's home
+directory on OS/2 systems.
+
+@item
+Undocumented interfaces now provide support for gdbm, MD5 checksums, and
+blowfish encryption.  The blowfish encryption is disabled by default,
+but we may later distribute a key to enable it.
+
+@item
+The parser now treats @code{*parser-radix*} differently: if it is set to
+a value other than @code{10} and the parser encounters radix-10 syntax
+(e.g.@: a decimal point), an error is signalled.
+
+@item
+Pathname objects can now be written (using @code{fasdump}) on one
+operating system and read (using @code{fasload}) on another.  Previously
+this didn't work between unlike operating systems, such as Windows and
+unix, because Scheme only loaded the pathname support for the operating
+system it was running on.  Now support for all operating systems is
+loaded, no matter what system is being used.
+
+@item
+Low-level port data abstraction has been overhauled.  New design has
+@dfn{port types} that contain the operations for the port, and are
+shared between all ports of a given type.  New port abstraction supports
+a form of encapsulation, allowing the construction of ports that
+encapsulate other ports in controlled ways.
+
+@item
+@code{bkpt} is no longer a macro.  Instead, it extracts an environment
+from the continuation it is called with, by looking at the innermost
+stack frame.  In order for this to work properly, it must not be called
+in a tail-recursive position.  Calling it in a tail-recursive position
+will not generate any errors, but will cause the breakpoint to be
+visiting the wrong environment.
+
+@item
+Numerous fixes to stream code, eliminating premature dereferencing of
+streams, and dropping pointers to streams as soon as possible.
+
+@item
+Fixed bug in socket support: port numbers are now specified normally and
+automatically translated to network order.  Previously it was necessary
+to translate them to network order by hand.
+
+@item
+@code{open-tcp-stream-socket} and @code{open-unix-stream-socket} now
+return one I/O port rather than an input port and an output port.  TCP
+sockets now use CR/LF end-of-line marker regardless of the operating
+system.
+
+@end itemize
+
+@node Edwin Changes, Changes to the Windows Port, Base System Changes, Release Notes
+@section Edwin Changes
+
+These changes affect only Edwin:
+
+@itemize @bullet
+
+@item
+Ability to read and write files compressed with @code{bzip2},
+@code{gzip}, or @code{compress}.  Ability to read and write files
+encrypted with blowfish (but this is currently disabled due to export
+restrictions).
+
+@item
+Commands that read arguments from the minibuffer now have prompt
+histories, which can be accessed by using @kbd{M-p} and @kbd{M-n}.
+
+@item
+The command @code{eval-expression} is now bound to @kbd{M-:} for
+compatibility with newer versions of Emacs.
+
+@item
+New command @code{insert-filename}, bound to @kbd{C-c C-i}, prompts for
+a filename in the minibuffer, then inserts it at point.  The formatting
+of the filename is controlled by the variable
+@code{insert-filename-format}, which by default uses Scheme string
+format.
+
+@item
+Shell buffers now implement command completion.  This is overloaded onto
+the filename-completion command @kbd{C-M-i} just as in Emacs.
+
+@item
+New command-line option @code{-edit} causes the editor to start up when
+Scheme is started.
+
+@item
+New mode for Java code.  This is a minimal hack, not a real
+implementation.
+
+@item
+New command @code{inferior-repl-flush-output}, bound to @kbd{C-c C-o},
+deletes output from the previous command.  This works similarly to the
+corresponding command in shell buffers.
+
+@item
+Errors in the @sc{repl} buffer now prompt in the @sc{repl} buffer
+itself, rather than in the minibuffer as previously.  The new prompts
+are less intrusive.
+
+@item
+The evaluation commands now permit the evaluation environment to be set
+to the name of a package, and use the package's environment if
+available.  If the package's environment is unavailable, or if the
+package doesn't exist, the global environment is used instead.
+
+@item
+Info now supports the variable @code{info-directory-list}, which works
+like that in Emacs.
+
+@item
+Command @code{manual-entry} now uses multiple buffers with Emacs 19
+naming conventions.
+
+@item
+New modes for editing Verilog code and @sc{vhdl} code.
+
+@item
+On PC systems, compressed files, encrypted files, and @sc{rmail} files
+do not have line translation; they are stored in Scheme's native format
+(i.e.@: with newlines as line terminators).
+
+@item
+Edwin now indirects through symbolic links to find the true file being
+edited, and backup files go in the directory of the true file rather
+than the link.
+
+@item
+Frame-related commands are now bound to @kbd{C-x 5} as in Emacs, e.g.@:
+@kbd{C-x 5 f} finds a file in another frame.  The command
+@code{split-window-horizontally} has been moved to @kbd{C-x 3}, again as
+in Emacs.
+
+@item
+All commands operating on frames now use the noun ``frame'' in their
+names, for consistency with Emacs.  Previously they used ``screen''.
+
+@item
+New commands @code{show-frame-size}, @code{show-frame-position},
+@code{set-frame-size}, and @code{set-frame-position}.
+
+@item
+Under X11, Edwin now distinguishes between its primary frame and all
+other frames when finding resources.  New X resource name for these
+secondary frames is @samp{edwinSecondary}.
+
+@end itemize
+
+@node Changes to the Windows Port,  , Edwin Changes, Release Notes
+@section Windows Changes
+
+Many substantial changes have been made to the Windows port, mostly to
+bring it up to par with the other ports.
+
+@itemize @bullet
+
+@item
+There is now a single input queue for events, which fixes various small
+but annoying bugs having to do with events not being read at times when
+they should have been.
+
+@item
+Improved command-line parser so that it will accept arguments with
+spaces in them.  In order for this to work properly, the argument must
+be surrounded by double quotes.  This fix allows Scheme to be installed
+in a directory whose name contains spaces.
+
+@item
+Scheme now understands about Windows 98 version strings, and furthermore
+provides more detailed information about specifics of the platform.
+
+@item
+Scheme now more aggressively allocates low memory, and consequently is
+able to allocate slightly larger heaps.  Unfortunately there are
+inherent limitations on the heap size that cannot easily be worked
+around in this fashion.  If you need more memory, you must use a
+friendlier operating system, or wait for Windows 64-bit addressing
+support.
+
+@item
+The Scheme microcode now compiles using Visual C++ 5.0 or later.
+However it is probably not desirable to do this, because Visual C++
+links in certain libraries at key places in the memory image, and
+consequently limits the heap to fairly small sizes.  The microcode we
+distribute is compiled with Watcom C/C++ 11.0, which does not restrict
+our heap allocation as much.
+
+@item
+Various pop-up error dialogs are now suppressed, e.g.@: for inaccessible
+floppy devices.
+
+@item
+International keyboards should now work properly.  However, this hasn't
+been tested properly; we'd appreciate information about how well it
+works.
+
+@item
+Subprocesses and sockets are now supported.  However, Edwin's shell mode
+works only under Windows NT; there is something wrong with the Windows
+9x subprocess support that we don't yet understand.
+
+@item
+Scheme now uses more sophisticated heuristics to discover the user's
+home directory on Windows systems.  It is no longer necessary to bind
+the @code{HOME} environment variable under Windows NT.
+
+@item
+Edwin has its own copy of @file{gzip.exe} to guarantee that there's
+support for @code{gzip}-compressed files.
+
+@item
+Edwin now recognizes the standard Windows shell prompt in shell buffers.
+
+@item
+Edwin printing commands now work.
+
+@item
+Sending mail is now supported through a direct @sc{smtp} interface.
+This interface will work on any system that supports sockets.  See the
+variables @code{mail-relay-host} and
+@code{smtp-require-valid-recipients}.
+
+@item
+Edwin now supports cut and paste using the kill and yank commands.
+
+@item
+All Dired commands are now supported.  Dired formats directory listing
+in native format rather than unix format.  The @kbd{M} command changes
+mode bits, which are specified much like the @code{attrib} command.  The
+@kbd{S} command toggles whether or not hidden/system files are shown; by
+default these files do not appear in Dired listings.
+
+@item
+New undocumented primitives provide access to the registry.
+
+@end itemize
 
 @node Index,  , Release Notes, Top
 @unnumbered Index
