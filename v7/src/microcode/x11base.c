@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.9 1990/07/22 06:35:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.10 1990/07/22 06:40:36 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -599,7 +599,7 @@ xw_wait_for_window_event (xw)
   XEvent event_s;
   XEvent * event;
 
-  event &event_s;
+  event = &event_s;
 
   while (1)
     {
