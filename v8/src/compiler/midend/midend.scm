@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.10 1995/03/13 23:23:16 adams Exp $
+$Id: midend.scm,v 1.11 1995/04/27 23:23:18 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -124,7 +124,7 @@ MIT in each case. |#
 			      (show-program "Output from phase " result))))
 		       result)))))
 	  (phase/post-hook program result)
-	  (gather-phase-statistics program result)
+	  ;;(gather-phase-statistics program result)
 	  result)))))
 
 (define (phase-wrapper rewrite)
@@ -208,13 +208,16 @@ Example:
 	     assconv/top-level		; eliminate SET! and introduce LETREC
 					;  rewriting LOOKUP and SET!
 	     cleanup/top-level/1	; as below
-	     ;;coerce/top-level
-	     ;;simplify/top-level
-	     ;;cleanup/top-level/1.5
+	     coerce/top-level
 
 	     earlyrew/top-level		; rewrite -1+ into -, etc.
+
+	     ;;!frag/top-level
 	     lamlift/top-level/1	; flatten environment structure
 					; splitting lambda nodes if necessary
+	     ;;!cleanup/top-level/1.5
+	     ;;!arity/top-level
+
 	     closconv/top-level/1	; introduce %make-heap-closure
 					;  and %heap-closure-ref
 					;  after this pass there are no
@@ -284,6 +287,8 @@ Example:
 		   (copy-variable-properties)))
 	      (*after-cps-conversion?* false)
 	      (*previous-code-rewrite-table* false)
+	      (*dbg-rewrites*
+	       (if (not recursive?) (dbg-info/make-rewrites) *dbg-rewrites*))
 	      (*code-rewrite-table*
 	       (if (not recursive?)
 		   (code/rewrite-table/make)

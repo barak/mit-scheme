@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.10 1995/04/09 04:45:59 adams Exp $
+$Id: simplify.scm,v 1.11 1995/04/27 23:18:52 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -40,6 +40,21 @@ MIT in each case. |#
 (define (simplify/top-level program)
   (simplify/expr #F program))
 
+;;(define-macro (define-simplifier keyword bindings . body)
+;;  (let ((proc-name (symbol-append 'SIMPLIFY/ keyword)))
+;;    (call-with-values
+;;	(lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
+;;      (lambda (names code)
+;;	`(DEFINE ,proc-name
+;;	   (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
+;;	     (NAMED-LAMBDA (,proc-name ENV FORM)
+;;	       (LET ((TRANSFORM-CODE (LAMBDA () ,code)))
+;;		 (LET ((INFO (SIMPLIFY/GET-DBG-INFO ENV FORM)))
+;;		   (LET ((CODE (TRANSFORM-CODE)))
+;;		     (IF INFO
+;;			 (CODE-REWRITE/REMEMBER* CODE INFO))
+;;		     CODE))))))))))
+
 (define-macro (define-simplifier keyword bindings . body)
   (let ((proc-name (symbol-append 'SIMPLIFY/ keyword)))
     (call-with-values
@@ -48,12 +63,7 @@ MIT in each case. |#
 	`(DEFINE ,proc-name
 	   (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
 	     (NAMED-LAMBDA (,proc-name ENV FORM)
-	       (LET ((TRANSFORM-CODE (LAMBDA () ,code)))
-		 (LET ((INFO (SIMPLIFY/GET-DBG-INFO ENV FORM)))
-		   (LET ((CODE (TRANSFORM-CODE)))
-		     (IF INFO
-			 (CODE-REWRITE/REMEMBER* CODE INFO))
-		     CODE))))))))))
+	       (SIMPLIFY/REMEMBER ,code FORM))))))))
 
 (define-simplifier LOOKUP (env name)
   (let ((ref `(LOOKUP ,name)))
@@ -388,7 +398,15 @@ MIT in each case. |#
     
     (for-each (lambda (ref)
 		(form/rewrite! ref `(CALL ,(copy-value ref) ,@(cddr ref))))
-      operator-refs)))
+      operator-refs)
+
+    ;; For DBG info
+    (cond ((and (null? ordinary-refs) (LAMBDA/? value))
+	   'ignore) ; probably a huge procedure body
+	  (else
+	   (dbg-info/remember (simplify/binding/name node)
+			      value)))
+    ))
 
 (define (simplify/copy-form/renaming env form)
   ;;  Copy FORM, renaming local bindings and keeping references to free
@@ -397,7 +415,9 @@ MIT in each case. |#
   (define (rename name)
     (if (memq name '(#!aux #!rest #!optional))
 	name
-	(variable/rename name)))
+	(let ((new-name (variable/rename name)))
+	  (dbg-info/remember name new-name)
+	  new-name)))
   (define (walk renames form)
     (define (extend old new) (map* renames cons old new))
     (define (reference name wrap kind)
@@ -427,6 +447,14 @@ MIT in each case. |#
 		  (new  (map rename old)))
 	     `(LAMBDA ,new
 		,(walk (extend old new) (lambda/body form)))))
+	  ((CALL/? form)
+	   (if (LOOKUP/? (call/operator form))
+	       (let ((name (lookup/name (call/operator form))))
+		 (define (call name)
+		   `(CALL (LOOKUP ,name)
+			  ,@(walk* (call/cont-and-operands form))))
+		 (reference name call 'OPERATOR))
+	       `(CALL ,@(walk* (cdr form)))))
 	  ((LET/? form)
 	   (let/letrec 'LET))
 	  ((LETREC/? form)
@@ -436,14 +464,6 @@ MIT in each case. |#
 	  ((BEGIN/? form)
 	   `(BEGIN ,@(walk* (cdr form))))
 	  ((DECLARE/? form) `(DECLARE ,@(cdr form)))
-	  ((CALL/? form)
-	   (if (LOOKUP/? (call/operator form))
-	       (let ((name (lookup/name (call/operator form))))
-		 (define (call name)
-		   `(CALL (LOOKUP ,name)
-			  ,@(walk* (call/cont-and-operands form))))
-		 (reference name call 'OPERATOR))
-	       `(CALL ,@(walk* (cdr form)))))
 	  (else
 	   (internal-error "Unexpected syntax" form))))
 
@@ -527,32 +547,32 @@ MIT in each case. |#
 
 
 
-(define (simplify/get-dbg-info env expr)
-  (cond ((code-rewrite/original-form/previous expr)
-         => (lambda (dbg-info)
-	      ;; Copy the dbg info, keeping dbg-info-refs in the environment
-              ;; which may later be overwritten
-              (let* ((block     (new-dbg-form/block dbg-info))
-                     (block*    (new-dbg-block/copy-transforming
-                                 (lambda (expr)
-                                   (simplify/copy-dbg-kmp expr env))
-                                 block))
-                     (dbg-info* (new-dbg-form/new-block dbg-info block*)))
-                dbg-info*)))
-        (else #F)))
-
-
-(define (simplify/copy-dbg-kmp expr env)
-  (form/copy-transforming
-   (lambda (form copy uninteresting)
-     copy
-     (cond ((and (LOOKUP/? form)
-		 (simplify/lookup*! env (lookup/name form)
-				    `(LOOKUP ,(lookup/name form))
-				    'DBG-INFO))
-	    => (lambda (reference)  reference))
-	   (else (uninteresting form))))
-   expr))
+;;(define (simplify/get-dbg-info env expr)
+;;  (cond ((code-rewrite/original-form/previous expr)
+;;         => (lambda (dbg-info)
+;;	      ;; Copy the dbg info, keeping dbg-info-refs in the environment
+;;              ;; which may later be overwritten
+;;              (let* ((block     (new-dbg-form/block dbg-info))
+;;                     (block*    (new-dbg-block/copy-transforming
+;;                                 (lambda (expr)
+;;                                   (simplify/copy-dbg-kmp expr env))
+;;                                 block))
+;;                     (dbg-info* (new-dbg-form/new-block dbg-info block*)))
+;;                dbg-info*)))
+;;        (else #F)))
+;;
+;;
+;;(define (simplify/copy-dbg-kmp expr env)
+;;  (form/copy-transforming
+;;   (lambda (form copy uninteresting)
+;;     copy
+;;     (cond ((and (LOOKUP/? form)
+;;		 (simplify/lookup*! env (lookup/name form)
+;;				    `(LOOKUP ,(lookup/name form))
+;;				    'DBG-INFO))
+;;	    => (lambda (reference)  reference))
+;;	   (else (uninteresting form))))
+;;   expr))
 
 (define-structure
     (simplify/binding

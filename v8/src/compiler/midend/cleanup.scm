@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.15 1995/04/20 03:23:02 adams Exp $
+$Id: cleanup.scm,v 1.16 1995/04/27 23:18:34 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -40,6 +40,21 @@ MIT in each case. |#
 (define (cleanup/top-level program)
   (cleanup/expr (cleanup/env/initial) program))
 
+;;(define-macro (define-cleanup-handler keyword bindings . body)
+;;  (let ((proc-name (symbol-append 'CLEANUP/ keyword)))
+;;    (call-with-values
+;;	(lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
+;;      (lambda (names code)
+;;	`(DEFINE ,proc-name
+;;	   (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
+;;	     (NAMED-LAMBDA (,proc-name ENV FORM)
+;;	       (LET ((TRANSFORM-CODE (LAMBDA () ,code)))
+;;		 (LET ((INFO (CLEANUP/GET-DBG-INFO ENV FORM)))
+;;		   (LET ((CODE (TRANSFORM-CODE)))
+;;		     (IF INFO
+;;			 (CODE-REWRITE/REMEMBER* CODE INFO))
+;;		     CODE))))))))))
+
 (define-macro (define-cleanup-handler keyword bindings . body)
   (let ((proc-name (symbol-append 'CLEANUP/ keyword)))
     (call-with-values
@@ -48,12 +63,7 @@ MIT in each case. |#
 	`(DEFINE ,proc-name
 	   (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
 	     (NAMED-LAMBDA (,proc-name ENV FORM)
-	       (LET ((TRANSFORM-CODE (LAMBDA () ,code)))
-		 (LET ((INFO (CLEANUP/GET-DBG-INFO ENV FORM)))
-		   (LET ((CODE (TRANSFORM-CODE)))
-		     (IF INFO
-			 (CODE-REWRITE/REMEMBER* CODE INFO))
-		     CODE))))))))))
+	       (CLEANUP/REMEMBER ,code FORM))))))))
 
 (define-cleanup-handler LOOKUP (env name)
   (let ((value (cleanup/env/lookup name env)))
@@ -595,7 +605,10 @@ MIT in each case. |#
 	   (if (or (not value)
 		   (QUOTE/? value))
 	       (cleanup/binding/make name `(LOOKUP ,name))
-	       (cleanup/binding/make name `(LOOKUP ,(variable/rename name))))))
+	       (let ((renamed-form
+		      `(LOOKUP ,(variable/rename name))))
+		 (dbg-info/remember name renamed-form)
+		 (cleanup/binding/make name renamed-form)))))
        names))
 
 ;; Environment is a list of frames.  Frames are a list of bindings.
@@ -654,28 +667,28 @@ MIT in each case. |#
 (define (cleanup/remember new old)
   (code-rewrite/remember new old))
 
-(define (cleanup/get-dbg-info env expr)
-  (cond ((code-rewrite/original-form/previous expr)
-         => (lambda (dbg-info)
-              ;; Copy the dbg info, rewriting the expressions
-              (let* ((block     (new-dbg-form/block dbg-info))
-                     (block*    (new-dbg-block/copy-transforming
-                                 (lambda (expr)
-                                   (cleanup/copy-dbg-kmp expr env))
-                                 block))
-                     (dbg-info* (new-dbg-form/new-block dbg-info block*)))
-                dbg-info*)))
-        (else #F)))
-
-
-(define (cleanup/copy-dbg-kmp expr env)
-  (form/copy-transforming
-   (lambda (form copy uninteresting)
-     copy
-     (cond ((and (LOOKUP/? form)
-		 (cleanup/env/lookup (lookup/name form) env))
-	    => (lambda (value)
-		 (form/copy value)))
-	   (else
-	    (uninteresting form))))
-   expr))
+;;(define (cleanup/get-dbg-info env expr)
+;;  (cond ((code-rewrite/original-form/previous expr)
+;;         => (lambda (dbg-info)
+;;              ;; Copy the dbg info, rewriting the expressions
+;;              (let* ((block     (new-dbg-form/block dbg-info))
+;;                     (block*    (new-dbg-block/copy-transforming
+;;                                 (lambda (expr)
+;;                                   (cleanup/copy-dbg-kmp expr env))
+;;                                 block))
+;;                     (dbg-info* (new-dbg-form/new-block dbg-info block*)))
+;;                dbg-info*)))
+;;        (else #F)))
+;;
+;;
+;;(define (cleanup/copy-dbg-kmp expr env)
+;;  (form/copy-transforming
+;;   (lambda (form copy uninteresting)
+;;     copy
+;;     (cond ((and (LOOKUP/? form)
+;;		 (cleanup/env/lookup (lookup/name form) env))
+;;	    => (lambda (value)
+;;		 (form/copy value)))
+;;	   (else
+;;	    (uninteresting form))))
+;;   expr))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: alpha.scm,v 1.6 1995/03/12 05:53:10 adams Exp $
+$Id: alpha.scm,v 1.7 1995/04/27 23:23:05 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -42,16 +42,16 @@ MIT in each case. |#
 (define-macro (define-alphaconv keyword bindings . body)
   (let ((proc-name (symbol-append 'ALPHACONV/ keyword)))
     (call-with-values
-     (lambda () (%matchup (cddr bindings) '(handler state env) '(cdr form)))
-     (lambda (names code)
-       `(define ,proc-name
-	  (named-lambda (,proc-name state env form)
-	    ;; All handlers inherit FORM (and others) from the
-	    ;; surrounding scope.
-	    (let ((handler
-		   (lambda ,(cons* (car bindings) (cadr bindings) names)
-		     ,@body)))
-	      ,code)))))))
+	(lambda () (%matchup (cddr bindings) '(handler state env) '(cdr form)))
+      (lambda (names code)
+	`(DEFINE ,proc-name
+	   (NAMED-LAMBDA (,proc-name STATE ENV FORM)
+	     ;; All handlers inherit FORM (and others) from the
+	     ;; surrounding scope.
+	     (LET ((HANDLER
+		    (LAMBDA ,(cons* (car bindings) (cadr bindings) names)
+		      ,@body)))
+	       ,code)))))))
 
 (define-alphaconv LOOKUP (state env name)
   state env				; ignored
@@ -81,12 +81,10 @@ MIT in each case. |#
 	   (and block
 		(for-each
 		 (lambda (var)
-		   (let ((expr (new-dbg-variable/expression var)))
-		     (if (not (LOOKUP/? expr))
-			 (internal-error "expression not a LOOKUP" var))
-		     (set-car! (cdr expr)
-			       (alphaconv/env/lookup (new-dbg-variable/name var)
-						     env*))))
+		   (let ((new-name
+			  (alphaconv/env/lookup (new-dbg-variable/name var)
+						env*)))
+		     (dbg-info/remember var `(LOOKUP ,new-name))))
 		 (new-dbg-block/variables block)))))))
 
 (define-alphaconv CALL (state env rator cont #!rest rands)

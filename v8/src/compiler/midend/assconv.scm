@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: assconv.scm,v 1.9 1995/04/24 16:06:45 adams Exp $
+$Id: assconv.scm,v 1.10 1995/04/27 23:22:39 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -41,51 +41,6 @@ MIT in each case. |#
   (fluid-let ((*assconv/effect-only-forms* (make-eq-hash-table)))
     (assconv/expr '() program)))
 
-;;(define-macro (define-assignment-converter keyword bindings . body)
-;;  (let ((proc-name (symbol-append 'ASSCONV/ keyword)))
-;;    (call-with-values
-;;     (lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
-;;     (lambda (names code)
-;;       `(define ,proc-name
-;;	  (let ((handler (lambda ,(cons (car bindings) names) ,@body)))
-;;	    (named-lambda (,proc-name env form)
-;;	      (assconv/remember ,code form))))))))
-
-;;_____________________________________________________________________________
-;;
-;; This version of assconv is an early attempt at getting a data
-;; representation transformation into the debugging info.
-;;
-;;  Comments:
-;;
-;;  . Nothing special is done for LAMBDA & LET, so the environment used for
-;;    these forms is missing the new bindings.  Does this matter?  It
-;;    certainly would matter if assconv/get-dbg-info edited the blocks
-;;    to remove bindings that were unavailable, but this allows us to
-;;    distinguish the occurences:
-;;
-;;    (lambda (n-17) [1]
-;;      (let ((n-17-cell  (make-cell n-17 'n)))
-;;        [2]...[3]...))
-;;
-;;    At [1] the user variable N is the alpha renamed parameter N-17.
-;;    At [2] the user variable is available also as (CELL-REF N-17-CELL)
-;;
-;;    If LAMBDA was done `right' something would have to distinguish these
-;;    two cases.
-;;
-;;  . Note that there are two access paths for N, but we keep only one.
-;;    Let us assume also that at [3] the CELL-REF version is available.
-;;    How do we know which one to keep at [2]?  Perhaps the right
-;;    thing is to generate all of the access paths and discard those
-;;    which use information which is not available.  Discarding
-;;    infeasible access paths would leave just N-17 at [1], both at
-;;    [2] and the just (CELL-REF N-17-CELL) at [3].
-;;
-;;    The filtering might be done frequently to avoid a great many
-;;    descriptions, or rarely.
-
-
 (define-macro (define-assignment-converter keyword bindings . body)
   (let ((proc-name (symbol-append 'ASSCONV/ keyword)))
     (call-with-values
@@ -94,11 +49,7 @@ MIT in each case. |#
 	`(DEFINE ,proc-name
 	   (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
 	     (NAMED-LAMBDA (,proc-name ENV FORM)
-	       (LET ((INFO (ASSCONV/GET-DBG-INFO ENV FORM)))
-		 (LET ((CODE ,code))
-		   (IF INFO
-		       (CODE-REWRITE/REMEMBER* CODE INFO))
-		   CODE)))))))))
+	       (ASSCONV/REMEMBER ,code form))))))))
 
 ;;;; Variable manipulation forms
 
@@ -226,39 +177,6 @@ MIT in each case. |#
 
 (define (assconv/form/effect-only? form)
   (hash-table/get *assconv/effect-only-forms* form #F))
-
-
-(define (assconv/get-dbg-info env expr)
-  (cond ((code-rewrite/original-form/previous expr)
-	 => (lambda (dbg-info)
-	      (assconv/has-dbg-info env expr dbg-info)))
-	(else #F)))
-
-(define (assconv/has-dbg-info env expr dbg-info)
-  expr
-  ;; Copy the dbg info, keeping dbg-references in the environment which
-  ;; will later be ocerwritten
-  (let* ((block     (new-dbg-form/block dbg-info))
-	 (block*    (new-dbg-block/copy-transforming
-		     (lambda (expr)
-		       (assconv/copy-dbg-kmp expr env))
-		     block))
-	 (dbg-info* (new-dbg-form/new-block dbg-info block*)))
-    dbg-info*))
-
-(define (assconv/copy-dbg-kmp expr env)
-  (form/copy-transforming
-   (lambda (form copy uninteresting)
-     copy
-     (cond ((and (LOOKUP/? form) (assconv/env-lookup env (lookup/name form)))
-	    => (lambda (binding)
-		 (let ((form*  `(LOOKUP ,(lookup/name form))))
-		   (set-assconv/binding/dbg-references!
-		    binding
-		    (cons form* (assconv/binding/dbg-references binding)))
-		   form*)))
-	   (else (uninteresting form))))
-   expr))
 
 ;;;; Utilities for variable manipulation forms
 
@@ -270,7 +188,8 @@ MIT in each case. |#
   (multicell-layout false read-only false)
   (references '() read-only false)
   (assignments '() read-only false)
-  (dbg-references '() read-only false))
+  ;;(dbg-references '() read-only false)
+  )
 
 (define (assconv/binding-body env names body)
   ;; (values shadowed-names body*)
@@ -469,11 +388,15 @@ MIT in each case. |#
 		  ass
 		(assconv/cell-assignment binding (set!/expr ass) ass)))
     (assconv/binding/assignments binding))
-  (for-each (lambda (ref)
-	      (form/rewrite!
-		  ref
-		(assconv/cell-reference binding)))
-    (assconv/binding/dbg-references binding)))
+  ;;(for-each (lambda (ref)
+  ;;	      (form/rewrite!
+  ;;		  ref
+  ;;		(assconv/cell-reference binding)))
+  ;;    (assconv/binding/dbg-references binding))
+
+  (dbg-info/remember (assconv/binding/name binding)
+		     (assconv/cell-reference binding))
+  )
 
 (define (assconv/env-lookup env name)
   (let spine-loop ((env env))
