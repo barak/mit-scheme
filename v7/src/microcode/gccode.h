@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: gccode.h,v 9.50 1993/08/22 22:39:02 gjr Exp $
+$Id: gccode.h,v 9.51 1993/08/24 00:19:49 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -255,11 +255,28 @@ do									\
   (* Scan) = (MAKE_OBJECT_FROM_OBJECTS (Temp, New_Address));		\
 }
 
+/* HP sucks the big donkey wong?! (still?) */
+/* HP92453-01 A.09.19 HP C Compiler on HP-UX 9.01 drops the
+   first line when "optimizing".
+ */
+
+#ifdef hp9000s800
+SCHEME_OBJECT gccode_HPUX_lossage_bug_fix_fnord; /* ``I'm not dead yet!'' */
+
+#define RAW_POINTER_END()						\
+{									\
+  gccode_HPUX_lossage_bug_fix_fnord = Temp;				\
+  (* (SCHEME_ADDR_TO_ADDR (gccode_HPUX_lossage_bug_fix_fnord)))         \
+    = New_Address;							\
+  (* Scan) = (ADDR_TO_SCHEME_ADDR (OBJECT_ADDRESS (New_Address)));	\
+}
+#else /* not hp9000s800 */
 #define RAW_POINTER_END()						\
 {									\
   (* (SCHEME_ADDR_TO_ADDR (Temp))) = New_Address;			\
   (* Scan) = (ADDR_TO_SCHEME_ADDR (OBJECT_ADDRESS (New_Address)));	\
 }
+#endif /* hp9000s800 */
 
 /* GC Type handlers.  These do the actual work. */
 
