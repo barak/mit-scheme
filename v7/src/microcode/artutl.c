@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: artutl.c,v 1.14 1997/04/23 05:40:18 cph Exp $
+$Id: artutl.c,v 1.15 1997/07/08 06:25:59 adams Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -484,7 +484,7 @@ DEFUN (integer_length_in_bits, (n), SCHEME_OBJECT n)
 	      (unsigned_long_length_in_bits ((n1 < 0) ? (- n1) : n1)));
     }
   else
-    return (bignum_length_in_bits (n));
+    return (bignum_to_integer (bignum_length_in_bits (n)));
 }
 
 SCHEME_OBJECT
