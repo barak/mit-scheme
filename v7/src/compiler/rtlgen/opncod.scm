@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.14 1988/09/01 18:51:35 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.15 1988/10/20 17:22:35 markf Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -36,9 +36,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package (open-coding-analysis combination/inline
-	  generate-generic-binary generate-generic-unary
-          generate-type-test generate-primitive)
+(package (open-coding-analysis combination/inline)
 
 ;;;; Analysis
 
@@ -243,10 +241,10 @@ MIT in each case. |#
 	    alternate)))))
 
 (define (open-code:with-checks checks non-error-cfg error-finish prim-invocation)
-  (let* ((continuation-label (generate-label))
+  (let* ((continuation-entry (generate-continuation-entry))
 	 (error-continuation
 	  (scfg*scfg->scfg!
-	   (rtl:make-continuation-entry continuation-label)
+	   continuation-entry
 	   (if error-finish
 	       (error-finish (rtl:make-fetch register:value))
 	       (make-null-cfg))))
@@ -255,7 +253,10 @@ MIT in each case. |#
 	   (generate-primitive
 	    (car prim-invocation)
 	    (cdr prim-invocation)
-	    continuation-label)
+	    (rtl:continuation-entry-continuation
+	     (rinst-rtl
+	      (bblock-instructions
+	       (cfg-entry-node continuation-entry)))))
 	   error-continuation)))
     (multiply-guarded-statement checks non-error-cfg error-cfg)))
 
@@ -282,9 +283,15 @@ MIT in each case. |#
       (make-null-cfg)))
 
 
-;;;; Exported Code Generators
+(define (generate-continuation-entry)
+  (let* ((label (generate-label))
+	 (rtl (rtl:make-continuation-entry label))
+	 (rtl-continuation
+	  (make-rtl-continuation *current-rgraph* label (cfg-entry-edge rtl))))
+    (set! *extra-continuations* (cons rtl-continuation *extra-continuations*))
+    rtl))
 
-(define-export (generate-primitive name arg-list continuation-label)
+(define (generate-primitive name arg-list continuation-label)
   (let ((primitive (make-primitive-procedure name true)))
     (let loop ((args arg-list)
 	       (temps '() )
@@ -310,16 +317,17 @@ MIT in each case. |#
 		   (rtl:make-push (rtl:make-fetch temp))
 		   pushes)))))))
 		  
-(define-export (generate-type-test type expression)
-  (if (rtl:constant? expression)
-      (if (eq? type
-	       (object-type
-		(rtl:constant-value expression)))
-	  (make-true-pcfg)
-	  (make-false-pcfg))
-      (rtl:make-type-test
-       (rtl:make-object->type expression)
-       (microcode-type type))))
+(define (generate-type-test type expression)
+  (let ((mu-type (microcode-type type)))
+    (if (rtl:constant? expression)
+	(if (eq? mu-type
+		 (object-type
+		  (rtl:constant-value expression)))
+	    (make-true-pcfg)
+	    (make-false-pcfg))
+	(rtl:make-type-test
+	 (rtl:make-object->type expression)
+	 mu-type))))
 
 ;;;; Open Coders
 
@@ -418,16 +426,17 @@ MIT in each case. |#
     (scfg*scfg->scfg!
      (rtl:make-assignment
       temporary
-      (rtl:make-fixnum-2-args
-       'PLUS-FIXNUM
-       (rtl:make-object->address vector)
+      (rtl:make-fixnum->address
        (rtl:make-fixnum-2-args
-	'MULTIPLY-FIXNUM
-	(rtl:make-object->fixnum
-	 (rtl:make-constant
-	  (quotient scheme-object-width
-		    addressing-granularity)))
-	(rtl:make-object->fixnum index))))
+	'PLUS-FIXNUM
+	(rtl:make-address->fixnum (rtl:make-object->address vector))
+	(rtl:make-fixnum-2-args
+	 'MULTIPLY-FIXNUM
+	 (rtl:make-object->fixnum
+	  (rtl:make-constant
+	   (quotient scheme-object-width
+		     addressing-granularity)))
+	 (rtl:make-object->fixnum index)))))
      (finish (rtl:make-fetch temporary)))))
 
 (let* ((open-code/memory-ref
@@ -675,9 +684,9 @@ MIT in each case. |#
 
 ;;; Generic arithmetic
 
-(define-export generate-generic-binary
+(define generate-generic-binary
   (lambda (expression finish #!optional is-pred?)
-    (let ((continuation-label (generate-label))
+    (let ((continuation-entry (generate-continuation-entry))
 	  (generic-op (rtl:generic-binary-operator expression))
 	  (fix-op (generic->fixnum-op
 		   (rtl:generic-binary-operator expression)))
@@ -691,8 +700,11 @@ MIT in each case. |#
 	       (generate-primitive
 		generic-op
 		(cddr expression)
-		continuation-label)
-	       (rtl:make-continuation-entry continuation-label)
+		(rtl:continuation-entry-continuation
+		 (rinst-rtl
+		  (bblock-instructions
+		   (cfg-entry-node continuation-entry)))))
+	       continuation-entry
 	       (if (or (default-object? is-pred?)
 		       (not is-pred?))
 		   (expression-simplify-for-statement
@@ -768,9 +780,9 @@ MIT in each case. |#
 	      generic-2)
 	     generic-1))))))
 
-(define-export generate-generic-unary
+(define generate-generic-unary
   (lambda (expression finish #!optional is-pred?)
-    (let ((continuation-label (generate-label))
+    (let ((continuation-entry (generate-continuation-entry))
 	  (generic-op (rtl:generic-unary-operator expression))
 	  (fix-op (generic->fixnum-op
 		   (rtl:generic-unary-operator expression)))
@@ -783,8 +795,11 @@ MIT in each case. |#
 	       (generate-primitive
 		generic-op
 		(cddr expression)
-		continuation-label)
-	       (rtl:make-continuation-entry continuation-label)
+		(rtl:continuation-entry-continuation
+		 (rinst-rtl
+		  (bblock-instructions
+		   (cfg-entry-node continuation-entry)))))
+	       continuation-entry
 	       (if (or (default-object? is-pred?)
 		       (not is-pred?))
 		   (expression-simplify-for-statement
@@ -867,10 +882,12 @@ MIT in each case. |#
 	    (lambda (operands)
 	      (return-2
 	        (lambda (expressions finish)
-		  (finish (rtl:make-generic-binary
+		  (generate-generic-binary
+		   (rtl:make-generic-binary
 			   generic-op
 			   (car expressions)
-			   (cadr expressions))))
+			   (cadr expressions))
+		   finish))
 		'(0 1)))))))
   (for-each
    define-generic-binary
@@ -882,9 +899,11 @@ MIT in each case. |#
 	    (lambda (operand)
 	      (return-2
 	        (lambda (expression finish)
-		  (finish (rtl:make-generic-unary
-			   generic-op
-			   (car expression))))
+		  (generate-generic-unary
+		   (rtl:make-generic-unary
+		    generic-op
+		    (car expression))
+		   finish))
 		'(0)))))))
   (for-each
    define-generic-unary
