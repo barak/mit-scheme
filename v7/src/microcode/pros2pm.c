@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2pm.c,v 1.4 1995/02/14 00:25:34 cph Exp $
+$Id: pros2pm.c,v 1.5 1995/02/21 22:54:07 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -122,6 +122,13 @@ DEFINE_PRIMITIVE ("OS2WIN-BEEP", Prim_OS2_window_beep, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   DosBeep ((arg_nonnegative_integer (1)), (arg_nonnegative_integer (2)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2PM-SYNCHRONIZE", Prim_OS2_pm_synchronize, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  OS2_pm_synchronize (pm_qid);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -326,6 +333,15 @@ DEFINE_PRIMITIVE ("OS2PS-DESTROY-BITMAP", Prim_OS2_destroy_bitmap, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   OS2_destroy_bitmap (bid_argument (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2PS-GET-BITMAP", Prim_OS2_ps_get_bitmap, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    bid_t bid = (OS2_ps_get_bitmap ((memory_psid_argument (1))));
+    PRIMITIVE_RETURN ((bid == BID_NONE) ? SHARP_F : (long_to_integer (bid)));
+  }
 }
 
 DEFINE_PRIMITIVE ("OS2PS-SET-BITMAP", Prim_OS2_ps_set_bitmap, 2, 2, 0)
@@ -608,9 +624,9 @@ DEFINE_PRIMITIVE ("OS2PS-GET-BITMAP-PARAMETERS", Prim_OS2_ps_get_bitmap_paramete
 {
   PRIMITIVE_HEADER (1);
   {
-    SCHEME_OBJECT s = (allocate_string (sizeof (BITMAPINFOHEADER2)));
-    PBITMAPINFOHEADER2 params = ((PBITMAPINFOHEADER2) (STRING_LOC (s, 0)));
-    (params -> cbFix) = (sizeof (BITMAPINFOHEADER2));
+    SCHEME_OBJECT s = (allocate_string (sizeof (BITMAPINFOHEADER)));
+    PBITMAPINFOHEADER params = ((PBITMAPINFOHEADER) (STRING_LOC (s, 0)));
+    (params -> cbFix) = (sizeof (BITMAPINFOHEADER));
     OS2_get_bitmap_parameters ((bid_argument (1)), params);
     PRIMITIVE_RETURN (s);
   }

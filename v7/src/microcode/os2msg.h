@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2msg.h,v 1.6 1995/02/14 00:25:43 cph Exp $
+$Id: os2msg.h,v 1.7 1995/02/21 22:54:30 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -76,6 +76,11 @@ typedef enum
      return no meaningful data other than that they have completed.  */
   mt_generic_reply,
 
+  /* This message, when sent to the PM thread, causes it to return a
+     generic reply message.  This is used to synchronize with the PM
+     thread.  */
+  mt_pm_synchronize_request,
+
   /* These are messages that command the PM thread to perform specific
      actions.  A command that does not have a specific reply type will
      receive a generic reply when the PM code is configured to do
@@ -131,8 +136,7 @@ typedef enum
   mt_ps_set_mix,		/* set fg mix */
   mt_ps_query_caps,		/* query display capabilities */
   mt_ps_set_clip_rectangle,	/* set/clear clipping rectangle */
-  mt_get_bitmap_parameters_request, /* get bitmap dimensions, depth, etc. */
-  mt_get_bitmap_parameters_reply,
+  mt_get_bitmap_parameters,	/* get bitmap dimensions, depth, etc. */
   mt_ps_get_bitmap_bits_request, /* get bitmap contents */
   mt_ps_get_bitmap_bits_reply,
   mt_ps_set_bitmap_bits_request, /* set bitmap contents */

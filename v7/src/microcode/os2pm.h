@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.h,v 1.5 1995/02/14 00:25:15 cph Exp $
+$Id: os2pm.h,v 1.6 1995/02/21 22:54:23 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -165,6 +165,7 @@ extern int OS2_bid_validp (bid_t);
 
 extern psid_t OS2_window_client_ps (wid_t);
 extern qid_t OS2_create_pm_qid (tqueue_t *);
+extern void OS2_pm_synchronize (qid_t);
 extern wid_t OS2_window_open (qid_t, qid_t, unsigned long, const char *);
 extern void OS2_window_permanent (wid_t);
 extern void OS2_window_close (wid_t);
@@ -192,6 +193,7 @@ extern void OS2_destroy_memory_ps (psid_t);
 extern int OS2_memory_ps_p (psid_t);
 extern bid_t OS2_create_bitmap (psid_t, USHORT, USHORT);
 extern void OS2_destroy_bitmap (bid_t);
+extern bid_t OS2_ps_get_bitmap (psid_t);
 extern bid_t OS2_ps_set_bitmap (psid_t, bid_t);
 extern void OS2_ps_bitblt (psid_t, psid_t, LONG, PPOINTL, LONG, ULONG);
 extern void OS2_ps_draw_text

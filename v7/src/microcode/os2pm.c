@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.6 1995/02/14 00:25:24 cph Exp $
+$Id: os2pm.c,v 1.7 1995/02/21 22:54:15 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -119,6 +119,8 @@ typedef struct
 #define ID_TABLE_LENGTH(table) ((table) -> length)
 #define ID_TABLE_POINTERS(table) ((table) -> pointers)
 
+typedef msg_t sm_pm_synchronize_request_t;
+
 typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
@@ -625,17 +627,12 @@ typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
   bitmap_t * bitmap;
-} sm_get_bitmap_parameters_request_t;
-#define SM_GET_BITMAP_PARAMETERS_REQUEST_BITMAP(m)			\
-  (((sm_get_bitmap_parameters_request_t *) (m)) -> bitmap)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  BITMAPINFOHEADER2 params;
-} sm_get_bitmap_parameters_reply_t;
-#define SM_GET_BITMAP_PARAMETERS_REPLY_PARAMS(m)			\
-  (((sm_get_bitmap_parameters_reply_t *) (m)) -> params)
+  PBITMAPINFOHEADER params;
+} sm_get_bitmap_parameters_t;
+#define SM_GET_BITMAP_PARAMETERS_BITMAP(m)				\
+  (((sm_get_bitmap_parameters_t *) (m)) -> bitmap)
+#define SM_GET_BITMAP_PARAMETERS_PARAMS(m)				\
+  (((sm_get_bitmap_parameters_t *) (m)) -> params)
 
 typedef struct
 {
@@ -761,7 +758,7 @@ static void ps_set_line_type (ps_t *, LONG);
 static void ps_set_mix (ps_t *, LONG);
 static void ps_query_caps (ps_t *, LONG, LONG, PLONG);
 static void ps_set_clip_rectangle (ps_t *, PRECTL);
-static void get_bitmap_parameters (bitmap_t *, PBITMAPINFOHEADER2);
+static void get_bitmap_parameters (bitmap_t *, PBITMAPINFOHEADER);
 static unsigned long ps_get_bitmap_bits
   (ps_t *, unsigned long, unsigned long, PBYTE, PBITMAPINFO2);
 static unsigned long ps_set_bitmap_bits
@@ -820,7 +817,7 @@ window_error_1 (const char * name, int fatalp)
 {
   char buffer [1024];
   ERRORID code = (WinGetLastError (pm_hab));
-  sprintf (buffer, "%s error %d occurred in the %s procedure.  \
+  sprintf (buffer, "%s error 0x%08x occurred in the %s procedure.  \
 This indicates a bug in the Scheme implementation.  \
 Please report this information to a Scheme wizard.",
 	   (fatalp ? "Fatal" : "Non-fatal"), code, name);
@@ -838,6 +835,7 @@ Please report this information to a Scheme wizard.",
 void
 OS2_initialize_pm_thread (void)
 {
+  SET_MSG_TYPE_LENGTH (mt_pm_synchronize_request, sm_pm_synchronize_request_t);
   SET_MSG_TYPE_LENGTH (mt_window_open_request, sm_open_request_t);
   SET_MSG_TYPE_LENGTH (mt_window_open_reply, sm_open_reply_t);
   SET_MSG_TYPE_LENGTH (mt_window_close, sm_close_t);
@@ -890,10 +888,7 @@ OS2_initialize_pm_thread (void)
   SET_MSG_TYPE_LENGTH (mt_ps_set_mix, sm_ps_set_mix_t);
   SET_MSG_TYPE_LENGTH (mt_ps_query_caps, sm_ps_query_caps_t);
   SET_MSG_TYPE_LENGTH (mt_ps_set_clip_rectangle, sm_ps_set_clip_rectangle_t);
-  SET_MSG_TYPE_LENGTH (mt_get_bitmap_parameters_request,
-		       sm_get_bitmap_parameters_request_t);
-  SET_MSG_TYPE_LENGTH (mt_get_bitmap_parameters_reply,
-		       sm_get_bitmap_parameters_reply_t);
+  SET_MSG_TYPE_LENGTH (mt_get_bitmap_parameters, sm_get_bitmap_parameters_t);
   SET_MSG_TYPE_LENGTH (mt_ps_get_bitmap_bits_request,
 		       sm_ps_get_bitmap_bits_request_t);
   SET_MSG_TYPE_LENGTH (mt_ps_get_bitmap_bits_reply,
@@ -1158,6 +1153,7 @@ close_all_windows (void)
    encapsulated messages sent from the Scheme thread.  This defines
    the protocol used to communicate with the Scheme thread.  */
 
+static void handle_pm_synchronize_request (msg_t *);
 static void handle_window_open_request (msg_t *);
 static void handle_window_close_request (msg_t *);
 static void handle_window_show_request (msg_t *);
@@ -1209,6 +1205,9 @@ object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
       msg_t * message = (PVOIDFROMMP (mp1));
       switch (MSG_TYPE (message))
 	{
+	case mt_pm_synchronize_request:
+	  handle_pm_synchronize_request (message);
+	  break;
 	case mt_window_open_request:
 	  handle_window_open_request (message);
 	  break;
@@ -1324,7 +1323,7 @@ object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
 	case mt_ps_set_clip_rectangle:
 	  handle_ps_set_clip_rectangle_request (message);
 	  break;
-	case mt_get_bitmap_parameters_request:
+	case mt_get_bitmap_parameters:
 	  handle_get_bitmap_parameters_request (message);
 	  break;
 	case mt_ps_get_bitmap_bits_request:
@@ -1351,6 +1350,20 @@ OS2_create_pm_qid (tqueue_t * tqueue)
   OS2_open_qid (pm_side, pm_tqueue);
   OS2_open_qid (client_side, tqueue);
   return (client_side);
+}
+
+void
+OS2_pm_synchronize (qid_t qid)
+{
+  sync_transaction (qid, (OS2_create_message (mt_pm_synchronize_request)));
+}
+
+static void
+handle_pm_synchronize_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  OS2_destroy_message (message);
+  sync_reply (sender);
 }
 
 wid_t
@@ -1891,6 +1904,13 @@ handle_destroy_bitmap_request (msg_t * request)
 }
 
 bid_t
+OS2_ps_get_bitmap (psid_t psid)
+{
+  bitmap_t * bitmap = (PS_VISUAL (psid_to_ps (psid)));
+  return ((bitmap == 0) ? BID_NONE : (BITMAP_ID (bitmap)));
+}
+
+bid_t
 OS2_ps_set_bitmap (psid_t psid, bid_t bid)
 {
   ps_t * ps = (psid_to_ps (psid));
@@ -2284,26 +2304,20 @@ void
 OS2_get_bitmap_parameters (bid_t bid, void * params)
 {
   bitmap_t * bitmap = (bid_to_bitmap (bid));
-  msg_t * message = (OS2_create_message (mt_get_bitmap_parameters_request));
-  (SM_GET_BITMAP_PARAMETERS_REQUEST_BITMAP (message)) = bitmap;
-  message
-    = (OS2_message_transaction ((BITMAP_QID (bitmap)),
-				message,
-				mt_get_bitmap_parameters_reply));
-  (* ((PBITMAPINFOHEADER2) params))
-    = (SM_GET_BITMAP_PARAMETERS_REPLY_PARAMS (message));
-  OS2_destroy_message (message);
+  msg_t * message = (OS2_create_message (mt_get_bitmap_parameters));
+  (SM_GET_BITMAP_PARAMETERS_BITMAP (message)) = bitmap;
+  (SM_GET_BITMAP_PARAMETERS_PARAMS (message)) = params;
+  sync_transaction ((BITMAP_QID (bitmap)), message);
 }
 
 static void
-handle_get_bitmap_parameters_request (msg_t * request)
+handle_get_bitmap_parameters_request (msg_t * message)
 {
-  qid_t sender = (MSG_SENDER (request));
-  msg_t * reply = (OS2_create_message (mt_get_bitmap_parameters_reply));
-  get_bitmap_parameters ((SM_GET_BITMAP_PARAMETERS_REQUEST_BITMAP (request)),
-			 (& (SM_GET_BITMAP_PARAMETERS_REPLY_PARAMS (reply))));
-  OS2_destroy_message (request);
-  OS2_send_message (sender, reply);
+  qid_t sender = (MSG_SENDER (message));
+  get_bitmap_parameters ((SM_GET_BITMAP_PARAMETERS_BITMAP (message)),
+			 (SM_GET_BITMAP_PARAMETERS_PARAMS (message)));
+  OS2_destroy_message (message);
+  sync_reply (sender);
 }
 
 unsigned long
@@ -2984,10 +2998,9 @@ ps_set_clip_rectangle (ps_t * ps, PRECTL rectl)
 }
 
 static void
-get_bitmap_parameters (bitmap_t * bitmap, PBITMAPINFOHEADER2 params)
+get_bitmap_parameters (bitmap_t * bitmap, PBITMAPINFOHEADER params)
 {
-  if (!GpiQueryBitmapParameters ((BITMAP_HANDLE (bitmap)),
-				 ((PBITMAPINFOHEADER) params)))
+  if (!GpiQueryBitmapParameters ((BITMAP_HANDLE (bitmap)), params))
     window_error (GpiQueryBitmapParameters);
 }
 
