@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.137 1993/09/09 04:52:50 cph Exp $
+;;;	$Id: dired.scm,v 1.138 1993/10/26 21:28:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -311,6 +311,8 @@ Type `h' after entering dired for more info."
   (lambda (to-file)
     (let ((from (dired-current-pathname))
 	  (to (->pathname to-file)))
+      (if (file-exists? to)
+	  (editor-error "File already exists: " (->namestring to)))
       (bind-condition-handler (list condition-type:file-error
 				    condition-type:port-error)
 	  (lambda (condition)
@@ -333,6 +335,8 @@ Type `h' after entering dired for more info."
   (lambda (to-file)
     (let ((from (dired-current-pathname))
 	  (to (->pathname to-file)))
+      (if (file-exists? to-file)
+	  (editor-error "File already exists: " (->namestring to-file)))
       (bind-condition-handler (list condition-type:file-error
 				    condition-type:port-error)
 	  (lambda (condition)
