@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: info.scm,v 1.130 1998/03/11 22:06:53 cph Exp $
+;;;	$Id: info.scm,v 1.131 1998/10/14 00:31:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -989,7 +989,7 @@ The name may be an abbreviation of the reference name."
 
 (define (record-node file node point)
   (set-variable! info-history
-		 (cons (vector file node point)
+		 (cons (vector (->namestring file) node point)
 		       (ref-variable info-history))))
 
 (define (node-start start end)
