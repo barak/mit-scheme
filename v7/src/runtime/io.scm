@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.72 2003/02/14 18:28:32 cph Exp $
+$Id: io.scm,v 14.73 2003/06/08 04:07:40 cph Exp $
 
 Copyright 1986,1987,1988,1990,1991,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1998,1999,2000,2001 Massachusetts Institute of Technology
@@ -30,17 +30,14 @@ USA.
 
 (declare (usual-integrations))
 
-(define open-channels-list)
+(define open-channels)
 (define open-directories)
 
 (define (initialize-package!)
-  (set! open-channels-list (list 'OPEN-CHANNELS-LIST))
-  (add-gc-daemon! close-lost-open-files-daemon)
+  (set! open-channels
+	(make-gc-finalizer (ucode-primitive channel-close 1)))
   (set! open-directories
 	(make-gc-finalizer (ucode-primitive new-directory-close 1)))
-  (add-event-receiver! event:after-restore
-    (lambda ()
-      (close-all-open-channels-internal (lambda (ignore) ignore))))
   (initialize-select-registry!))
 
 (define-structure (channel (constructor %make-channel))
@@ -52,42 +49,18 @@ USA.
   (type #f read-only #t)
   port)
 
+(define (make-channel d)
+  (open-channel (lambda (p) (system-pair-set-cdr! p d) #t)))
+
 (define (open-channel procedure)
-  ;; A bunch of hair to permit microcode descriptors be opened with
-  ;; interrupts turned on, yet not leave a dangling descriptor around
-  ;; if the open is interrupted before the runtime system's data
-  ;; structures are updated.
-  (let ((p (system-pair-cons (ucode-type weak-cons) #f #f)))
-    (dynamic-wind
-     (lambda () unspecific)
-     (lambda ()
-       (and (procedure p)
-	    (make-channel-1 p)))
-     (lambda ()
-       (if (and (not (system-pair-car p)) (system-pair-cdr p))
-	   (begin
-	     ((ucode-primitive channel-close 1) (system-pair-cdr p))
-	     (system-pair-set-cdr! p #f)))))))
+  (make-gc-finalized-object open-channels procedure
+    (lambda (d)
+      (%make-channel d (descriptor-type-name d) #f))))
 
-(define (make-channel descriptor)
-  (make-channel-1 (system-pair-cons (ucode-type weak-cons) #f descriptor)))
-
-(define (make-channel-1 p)
-  (let ((channel
-	 (let ((d (system-pair-cdr p)))
-	   (%make-channel d (descriptor-type-name d) #f))))
-    (without-interrupts
-     (lambda ()
-       (system-pair-set-car! p channel)
-       (set-cdr! open-channels-list (cons p (cdr open-channels-list)))))
-    channel))
-
 (define (descriptor->channel descriptor)
-  (let loop ((channels (cdr open-channels-list)))
-    (and (not (null? channels))
-	 (if (fix:= descriptor (system-pair-cdr (car channels)))
-	     (system-pair-car (car channels))
-	     (loop (cdr channels))))))
+  (search-gc-finalizer open-channels
+    (lambda (channel)
+      (fix:= descriptor (channel-descriptor channel)))))
 
 (define (descriptor-type-name descriptor)
   (let ((name ((ucode-primitive channel-type-name 1) descriptor)))
@@ -110,28 +83,14 @@ USA.
 	(eq? 'OS/2-CONSOLE type))))
 
 (define (channel-close channel)
-  (without-interrupts
-   (lambda ()
-     (if (channel-descriptor channel)
-	 (begin
-	   ((ucode-primitive channel-close 1) (channel-descriptor channel))
-	   (set-channel-descriptor! channel #f)
-	   (let loop
-	       ((l1 open-channels-list)
-		(l2 (cdr open-channels-list)))
-	     (cond ((null? l2)
-		    (error "CHANNEL-CLOSE: lost channel" channel))
-		   ((eq? channel (system-pair-car (car l2)))
-		    (set-cdr! l1 (cdr l2)))
-		   (else
-		    (loop l2 (cdr l2))))))))))
+  (remove-from-gc-finalizer! open-channels channel))
 
 (define-integrable (channel-open? channel)
   (channel-descriptor channel))
 
 (define-integrable (channel-closed? channel)
   (not (channel-descriptor channel)))
-
+
 (define (close-all-open-files)
   (close-all-open-channels channel-type=file?))
 
@@ -145,41 +104,10 @@ USA.
 			  (channel-close channel)))))
 	      (all-open-channels))
     (if (not filter)
-	(close-all-open-channels-internal (ucode-primitive channel-close 1)))))
+	(remove-all-from-gc-finalizer! open-channels))))
 
 (define (all-open-channels)
-  (without-interrupts
-   (lambda ()
-     (let loop ((l (cdr open-channels-list)) (result '()))
-       (if (null? l)
-	   result
-	   (loop (cdr l) (cons (system-pair-car (car l)) result)))))))
-
-(define (close-all-open-channels-internal action)
-  (without-interrupts
-   (lambda ()
-     (let loop ((l (cdr open-channels-list)))
-       (if (not (null? l))
-	   (begin
-	     (let ((channel (system-pair-car (car l))))
-	       (if channel
-		   (set-channel-descriptor! channel #f)))
-	     (action (system-pair-cdr (car l)))
-	     (let ((l (cdr l)))
-	       (set-cdr! open-channels-list l)
-	       (loop l))))))))
-
-(define (close-lost-open-files-daemon)
-  ;; This is the daemon that closes files that no one points to.
-  (let loop ((l1 open-channels-list) (l2 (cdr open-channels-list)))
-    (cond ((null? l2)
-	   unspecific)
-	  ((system-pair-car (car l2))
-	   (loop l2 (cdr l2)))
-	  (else
-	   ((ucode-primitive channel-close 1) (system-pair-cdr (car l2)))
-	   (set-cdr! l1 (cdr l2))
-	   (loop l1 (cdr l1))))))
+  (gc-finalizer-elements open-channels))
 
 ;;;; Channel Primitives
 
