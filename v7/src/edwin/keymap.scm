@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: keymap.scm,v 1.13 2000/02/23 19:40:24 cph Exp $
+;;;$Id: keymap.scm,v 1.14 2000/02/24 01:22:27 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -32,40 +32,33 @@ The list is put in a buffer, which is displayed."
        (describe-bindings (current-comtabs) (current-output-port))))))
 
 (define (describe-bindings comtabs port)
-  (let ((alists (comtabs->alists comtabs)))
+  (let ((alists (map sort-by-prefix (comtabs->alists comtabs))))
     (if (pair? alists)
-	(let ((n
-	       (+ (reduce max 0
-			  (map (lambda (elements)
-				 (reduce max 0
-					 (map (lambda (element)
-						(string-length (car element)))
-					      elements)))
-			       alists))
-		  2)))
-	  (let ((write-element
-		 (lambda (element port)
-		   (write-string
-		    (string-append (pad-on-right-to (car element) n)
-				   " "
-				   (cdr element))
-		    port)
-		   (newline port))))
-	    (let ((write-elements
-		   (lambda (elements port)
-		     (write-element '("key" . "binding") port)
-		     (write-element '("---" . "-------") port)
-		     (for-each (lambda (elements)
-				 (newline port)
-				 (for-each (lambda (element)
-					     (write-element element port))
-					   elements))
-			       (sort-by-prefix elements)))))
-	      (write-elements (car alists) port)
-	      (for-each (lambda (elements)
-			  (newline port)
-			  (write-elements elements port))
-			(cdr alists))))))))
+	(let ((write-element
+	       (lambda (element port)
+		 (write-string (car element) port)
+		 (write-string (let ((n (string-length (car element))))
+				 (cond ((fix:< n 8) "\t\t")
+				       ((fix:< n 16) "\t")
+				       (else " ")))
+			       port)
+		 (write-string (cdr element) port)
+		 (newline port))))
+	  (let ((write-groups
+		 (lambda (groups port)
+		   (write-element '("key" . "binding") port)
+		   (write-element '("---" . "-------") port)
+		   (for-each (lambda (elements)
+			       (newline port)
+			       (for-each (lambda (element)
+					   (write-element element port))
+					 elements))
+			     groups))))
+	    (write-groups (car alists) port)
+	    (for-each (lambda (groups)
+			(newline port)
+			(write-groups groups port))
+		      (cdr alists)))))))
 
 (define-command make-command-summary
   "Make a summary of current key bindings in the buffer *Summary*.
