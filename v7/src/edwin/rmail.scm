@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.42 1995/09/13 04:18:04 cph Exp $
+;;;	$Id: rmail.scm,v 1.43 1995/09/13 04:28:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -176,7 +176,7 @@ w	Edit the current message.  C-c C-c to return to Rmail."
     (define-variable-local-value! buffer
 	(ref-variable-object require-final-newline)
       false)
-    (define-variable-local-value buffer
+    (define-variable-local-value! buffer
       (ref-variable-object translate-file-data-on-output)
       #f)
     (define-variable-local-value! buffer (ref-variable-object rmail-last-file)
@@ -1551,7 +1551,7 @@ buffer visiting that file."
 	  (file-time->string (current-file-time))
 	  "\n")
 	 start)))
-    (define-variable-local-value buffer
+    (define-variable-local-value! buffer
       (ref-variable-object translate-file-data-on-output)
       #f)
     (append-to-file (buffer-region buffer) pathname #f)
