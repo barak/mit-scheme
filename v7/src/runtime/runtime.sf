@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: runtime.sf,v 14.11 1995/01/06 18:37:20 cph Exp $
+$Id: runtime.sf,v 14.12 1996/04/23 21:10:56 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,12 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 (fluid-let ((sf/default-syntax-table syntax-table/system-internal))
+  (sf-conditionally "char")
+  (sf-conditionally "graphics")
+  (sf-conditionally "infstr")
+  (sf-conditionally "os2winp")
+  (sf-conditionally "gentag")
+  (sf-conditionally "gencache")
   (sf-directory "."))
 
 ;; Guarantee that the package modeller is loaded.  load-option ensures
@@ -40,7 +46,7 @@ MIT in each case. |#
 ;; is loaded.
 (load-option 'CREF)
 (cref/generate-constructors "runtime")
-(sf "runtime.con")
-(sf "runtime.ldr")
+(sf-conditionally "runtime.con")
+(sf-conditionally "runtime.ldr")
 (if (file-exists? "runtime.avd")
     (fasdump (read-file "runtime.avd") "runtime.bad"))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: edwin.sf,v 1.17 1995/11/04 05:58:44 cph Exp $
+;;;	$Id: edwin.sf,v 1.18 1996/04/23 21:09:51 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -108,12 +108,11 @@
 	    (write-globals pathname pmodel)
 	    (write-constructor pathname pmodel))))))
   (generate package-name)
-  (sf (pathname-new-type package-name "con"))
+  (sf-conditionally (pathname-new-type package-name "con"))
   (if (and (file-exists? (pathname-new-type package-name "avd"))
 	   (not (file-processed? package-name "avd" "bad")))
       (fasdump (read-file (pathname-new-type package-name "avd"))
 	       (pathname-new-type package-name "bad"))))
-(if (not (file-processed? "edwin" "ldr" "bld"))
-    (sf "edwin.ldr"))
+(sf-conditionally "edwin.ldr")
 
 )

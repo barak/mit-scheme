@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: cref.sf,v 1.8 1995/01/06 19:25:59 cph Exp $
+$Id: cref.sf,v 1.9 1996/04/23 21:09:04 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,5 +45,5 @@ MIT in each case. |#
     (begin
       (load-option 'CREF)
       (cref/generate-constructors "cref")
-      (sf "cref.con")
-      (sf "cref.ldr")))
+      (sf-conditionally "cref.con")
+      (sf-conditionally "cref.ldr")))

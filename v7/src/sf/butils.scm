@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: butils.scm,v 4.8 1993/11/09 04:17:02 gjr Exp $
+$Id: butils.scm,v 4.9 1996/04/23 21:01:48 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -100,14 +100,18 @@ MIT in each case. |#
 (define (sf-conditionally filename #!optional echo-up-to-date?)
   (let ((kernel
 	 (lambda (filename)
-	   (cond ((not (file-processed? filename "scm" "bin"))
-		  (sf filename))
-		 ((and (not (default-object? echo-up-to-date?))
-		       echo-up-to-date?)
-		  (newline)
-		  (write-string "Syntax file: ")
-		  (write filename)
-		  (write-string " is up to date"))))))
+	   (call-with-values
+	       (lambda () (sf/pathname-defaulting filename #f #f))
+	     (lambda (input output spec)
+	       spec
+	       (cond ((not (compare-file-modification-times input output))
+		      (sf filename))
+		     ((and (not (default-object? echo-up-to-date?))
+			   echo-up-to-date?)
+		      (newline)
+		      (write-string "Syntax file: ")
+		      (write filename)
+		      (write-string " is up to date"))))))))
     (if (pair? filename)
 	(for-each kernel filename)
 	(kernel filename))))
