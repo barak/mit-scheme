@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 3.1 1987/03/13 04:13:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 3.2 1987/03/18 22:51:09 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -301,5 +301,7 @@ MIT in each case. |#
 			    block
 			    expression)))))))
 	(if info
-	    (finish info)
+	    (transmit-values info
+	      (lambda (value uninterned)
+		(finish value)))
 	    (variable/final-value variable environment finish if-not))))))
