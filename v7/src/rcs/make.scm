@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.4 1999/01/02 06:11:34 cph Exp $
+$Id: make.scm,v 1.5 1999/10/26 20:51:25 cph Exp $
 
 Copyright (c) 1988, 1991, 1999 Massachusetts Institute of Technology
 
@@ -24,5 +24,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (declare (usual-integrations))
 
 (load-option 'hash-table)
-(package/system-loader "rcs" '() 'QUERY)
+(with-working-directory-pathname (directory-pathname (current-load-pathname))
+  (lambda ()
+    (package/system-loader "rcs" '() 'QUERY)))
 (add-identification! "RCS" 2 1)
