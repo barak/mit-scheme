@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.10 2000/01/20 17:45:29 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.11 2000/02/04 04:53:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -261,11 +261,11 @@
   (let ((pathnames (rmail-folder-inbox-list folder)))
     (if (null? pathnames)
 	#f
-	(let ((initial-count (count-messages folder)))
+	(let ((initial-count (folder-length folder)))
 	  (let ((inbox-folders
 		 (map (lambda (pathname)
 			(let ((inbox (read-rmail-inbox folder pathname #t)))
-			  (let ((n (count-messages inbox)))
+			  (let ((n (folder-length inbox)))
 			    (do ((index 0 (+ index 1)))
 				((= index n))
 			      (append-message folder
@@ -277,7 +277,7 @@
 			(if folder
 			    (delete-folder folder)))
 		      inbox-folders))
-	  (- (count-messages folder) initial-count)))))
+	  (- (folder-length folder) initial-count)))))
 
 (define (rmail-folder-inbox-list folder)
   (let ((url (folder-url folder))

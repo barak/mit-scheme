@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.19 2000/01/21 20:21:47 cph Exp $
+;;; $Id: imail-core.scm,v 1.20 2000/02/04 04:53:12 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -238,13 +238,13 @@
 (define-generic %folder-valid? (folder))
 
 ;; Return the number of messages in FOLDER.
-(define-generic count-messages (folder))
+(define-generic folder-length (folder))
 
 ;; Get the INDEX'th message in FOLDER and return it.  Signal an
 ;; error for invalid INDEX.
 (define (get-message folder index)
   (guarantee-index index 'GET-MESSAGE)
-  (if (not (< index (count-messages folder)))
+  (if (not (< index (folder-length folder)))
       (error:bad-range-argument index 'GET-MESSAGE))
   (%get-message folder index))
 
@@ -255,7 +255,7 @@
 ;; Unspecified result.
 (define (insert-message folder index message)
   (guarantee-index index 'INSERT-MESSAGE)
-  (if (not (<= index (count-messages folder)))
+  (if (not (<= index (folder-length folder)))
       (error:bad-range-argument index 'INSERT-MESSAGE))
   (guarantee-message message 'INSERT-MESSAGE)
   (%insert-message folder index message))
@@ -403,11 +403,11 @@
 		   (else next)))))))
 
 (define (first-message folder)
-  (and (> (count-messages folder) 0)
+  (and (> (folder-length folder) 0)
        (get-message folder 0)))
 
 (define (last-message folder)
-  (let ((n (count-messages folder)))
+  (let ((n (folder-length folder)))
     (and (> n 0)
 	 (get-message folder (- n 1)))))
 
@@ -431,7 +431,7 @@
 	     (lambda (message) message #t)
 	     predicate))
 	(folder (message-folder message)))
-    (let ((n (count-messages folder)))
+    (let ((n (folder-length folder)))
       (let loop ((index (message-index message)))
 	(let ((index (+ index 1)))
 	  (and (< index n)
@@ -461,7 +461,7 @@
   (flags-delete! flag (message-flags message)))
 
 (define (folder-flags folder)
-  (let ((n (count-messages folder)))
+  (let ((n (folder-length folder)))
     (do ((index 0 (+ index 1))
 	 (flags '() (append (message-flags (get-message folder index)) flags)))
 	((= index n)

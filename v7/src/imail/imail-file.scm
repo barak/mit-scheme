@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.5 2000/01/21 20:22:06 cph Exp $
+;;; $Id: imail-file.scm,v 1.6 2000/02/04 04:53:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -68,7 +68,7 @@
 (define-method %folder-valid? ((folder <file-folder>))
   (file-exists? (file-url-pathname (folder-url folder))))
 
-(define-method count-messages ((folder <file-folder>))
+(define-method folder-length ((folder <file-folder>))
   (length (file-folder-messages folder)))
 
 (define-method %get-message ((folder <file-folder>) index)
@@ -139,7 +139,7 @@
 
 (define-method search-folder ((folder <file-folder>) criteria)
   (cond ((string? criteria)
-	 (let ((n (count-messages folder)))
+	 (let ((n (folder-length folder)))
 	   (let loop ((index 0) (winners '()))
 	     (if (< index n)
 		 (loop (+ index 1)

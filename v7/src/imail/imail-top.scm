@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.11 2000/01/21 20:25:41 cph Exp $
+;;; $Id: imail-top.scm,v 1.12 2000/02/04 04:52:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -149,7 +149,7 @@ May be called with an IMAIL folder URL as argument;
 	      ((= 0 n-new)
 	       (message "(No new mail has arrived.)"))
 	      (else
-	       (select-message folder (- (count-messages folder) n-new))
+	       (select-message folder (- (folder-length folder) n-new))
 	       (event-distributor/invoke! (ref-variable imail-new-mail-hook))
 	       (message n-new
 			" new message"
@@ -276,7 +276,7 @@ DEL	Scroll to previous screen of this message.
       (select-message
        folder
        (cond ((eq? folder (message-folder message)) message)
-	     ((and (<= 0 index) (< index (count-messages folder))) index)
+	     ((and (<= 0 index) (< index (folder-length folder))) index)
 	     (else (first-unseen-message folder)))))))
 
 (define-command imail-quit
@@ -300,7 +300,7 @@ Currently meaningless for file-based folders."
   "p"
   (lambda (index)
     (let ((folder (selected-folder)))
-      (if (not (<= 1 index (count-messages folder)))
+      (if (not (<= 1 index (folder-length folder)))
 	  (editor-error "Message index out of bounds:" index))
       (select-message folder (- index 1)))))
 
@@ -407,7 +407,7 @@ With prefix argument N moves backward N messages with these flags."
 		selector)
 	       ((and (exact-integer? selector)
 		     (<= 0 selector)
-		     (< selector (count-messages folder)))
+		     (< selector (folder-length folder)))
 		(get-message folder selector))
 	       (else
 		(error:wrong-type-argument selector "message selector"
@@ -464,7 +464,7 @@ With prefix argument N moves backward N messages with these flags."
 		       " "
 		       (number->string (+ 1 index))
 		       "/"
-		       (number->string (count-messages folder)))))
+		       (number->string (folder-length folder)))))
 		 (if (pair? flags)
 		     (string-append line "," (separated-append flags ","))
 		     line))
@@ -592,7 +592,7 @@ Completion is performed over known flags when reading."
     (let ((folder (selected-folder))
 	  (message (selected-message))
 	  (folder* (open-folder url-string)))
-      (let ((n (count-messages folder*)))
+      (let ((n (folder-length folder*)))
 	(do ((index 0 (+ index 1)))
 	    ((= index n))
 	  (append-message folder (get-message folder* index))))
