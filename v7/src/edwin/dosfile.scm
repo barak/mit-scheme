@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dosfile.scm,v 1.5 1996/02/27 21:06:03 cph Exp $
+;;;	$Id: dosfile.scm,v 1.6 1996/02/29 22:16:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -90,7 +90,10 @@ Includes the new backup.  Must be > 0."
 (define (os/trim-pathname-string string prefix)
   (let ((index (string-match-forward prefix string)))
     (if (and index
-	     (fix:= index (string-length prefix))
+	     (or (fix:= index (string-length prefix))
+		 (and (fix:> index 0)
+		      (or (char=? (string-ref prefix (fix:- index 1)) #\/)
+			  (char=? (string-ref prefix (fix:- index 1)) #\\))))
 	     (re-match-substring-forward
 	      (re-compile-pattern "[\\/$~]\\|[a-zA-Z]:" #t)
 	      #t #f string index (string-length string)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.63 1996/02/27 21:56:57 cph Exp $
+;;;	$Id: unix.scm,v 1.64 1996/02/29 22:16:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -91,7 +91,9 @@ Includes the new backup.  Must be > 0."
 (define (os/trim-pathname-string string prefix)
   (let ((index (string-match-forward prefix string)))
     (if (and index
-	     (fix:= index (string-length prefix))
+	     (or (fix:= index (string-length prefix))
+		 (and (fix:> index 0)
+		      (char=? (string-ref prefix (fix:- index 1)) #\/)))
 	     (re-match-substring-forward (re-compile-pattern "[/$~]" #t)
 					 #t #f string index
 					 (string-length string)))
