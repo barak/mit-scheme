@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.11 1990/07/24 22:17:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.12 1990/08/16 20:05:21 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -38,28 +38,21 @@ MIT in each case. */
 #include "prims.h"
 #include "ux.h"
 #include "x11.h"
-
-char *
-x_malloc (size)
-     int size;
-{
-  char * result;
 
-  result = (UX_malloc (size));
-  if (result == ((char *) 0))
+PTR
+DEFUN (x_malloc, (size), unsigned int size)
+{
+  PTR result = (UX_malloc (size));
+  if (result == 0)
     error_external_return ();
   return (result);
 }
 
-char *
-x_realloc (ptr, size)
-     char * ptr;
-     int size;
+PTR
+DEFUN (x_realloc, (ptr, size), PTR ptr AND unsigned int size)
 {
-  char * result;
-
-  result = (UX_realloc (ptr, size));
-  if (result == ((char *) 0))
+  PTR result = (UX_realloc (ptr, size));
+  if (result == 0)
     error_external_return ();
   return (result);
 }
@@ -76,8 +69,7 @@ x_allocate_table_index (table, item)
   if (length == 0)
     {
       int new_length = 4;
-      char ** new_items =
-	((char **) (x_malloc ((sizeof (char *)) * new_length)));
+      char ** new_items = (x_malloc ((sizeof (char *)) * new_length));
       (new_items [0]) = item;
       for (i = 1; (i < new_length); i += 1)
 	(new_items [i]) = ((char *) 0);
@@ -93,8 +85,7 @@ x_allocate_table_index (table, item)
       }
   {
     int new_length = (length * 2);
-    char ** new_items =
-      ((char **) (x_realloc (items, ((sizeof (char *)) * new_length))));
+    char ** new_items = (x_realloc (items, ((sizeof (char *)) * new_length)));
     (new_items [length]) = item;
     for (i = (length + 1); (i < new_length); i += 1)
       (new_items [i]) = ((char *) 0);
@@ -346,7 +337,7 @@ x_make_window (display, window, x_size, y_size, attributes, extra, deallocator, 
     (display, mouse_cursor, (attributes -> mouse_pixel), background_pixel);
   XDefineCursor (display, window, mouse_cursor);
 
-  xw = ((struct xwindow *) (x_malloc (sizeof (struct xwindow))));
+  xw = (x_malloc (sizeof (struct xwindow)));
   (XW_DISPLAY (xw)) = display;
   (XW_WINDOW (xw)) = window;
   (XW_X_SIZE (xw)) = x_size;
@@ -366,7 +357,7 @@ x_make_window (display, window, x_size, y_size, attributes, extra, deallocator, 
   (XW_VISIBLE_P (xw)) = 0;
 
   if (extra > 0)
-    (xw -> extra) = ((char *) (x_malloc (extra)));
+    (xw -> extra) = (x_malloc (extra));
   (xw -> deallocator) = deallocator;
   (xw -> event_proc) = event_proc;
   return (xw);
@@ -469,14 +460,14 @@ x_close_display (index)
 
 static struct event_queue global_x_event_queue;
 
-Boolean
-x_process_events()
+int
+x_process_events ()
 {
   Display ** displays;
   Display * display;
   int length;
   int i;
-  Boolean any_events_p = false;
+  int any_events_p = false;
 
   displays = ((Display **) (x_display_table . items));
   length = (x_display_table . length);
@@ -496,9 +487,7 @@ x_enqueue_event (events, event)
   struct event_queue_element * element;
   struct event_queue_element * global_element;
 
-  element =
-    ((struct event_queue_element *)
-     (x_malloc (sizeof (struct event_queue_element))));
+  element = (x_malloc (sizeof (struct event_queue_element)));
   (element -> event) = (* event);
   (element -> next) = ((struct event_queue_element *) 0);
   if ((events -> head) == ((struct event_queue_element *) 0))
@@ -507,9 +496,7 @@ x_enqueue_event (events, event)
     ((events -> tail) -> next) = element;
   (events -> tail) = element;
 
-  global_element =
-    ((struct event_queue_element *)
-     (x_malloc (sizeof (struct event_queue_element))));
+  global_element = (x_malloc (sizeof (struct event_queue_element)));
   (global_element -> event) = (* event);
   (global_element -> next) = ((struct event_queue_element *) 0);
   if ((global_x_event_queue . head) == ((struct event_queue_element *) 0))
@@ -568,20 +555,20 @@ xw_dequeue_event (xw, event)
   return (x_dequeue_event ((& (xw -> events)), event));
 }
 
-Boolean
+int
 x_distribute_events (display)
      Display * display;
 {
   int nevents;
   XEvent * event;
   struct xwindow * exw;
-  Boolean any_events_p;
+  int any_events_p;
 
   nevents = (XEventsQueued (display, QueuedAfterReading));
   any_events_p = (nevents ? true : false);
   while (nevents > 0)
     {
-      event = (XEvent *) (x_malloc (sizeof (XEvent)));
+      event = (x_malloc (sizeof (XEvent)));
       XNextEvent (display, (event));
       nevents -= 1;
 
@@ -624,7 +611,7 @@ xw_wait_for_window_event (xw)
 }
 
 static int * x_select_mask;
-static int x_select_mask_size;
+static int x_select_mask_size = 0;
 static int x_max_file_descriptor;
 
 int
@@ -633,7 +620,7 @@ copy_x_select_mask (mask)
 {
   int i;
   
-  *mask = (int *) x_malloc (x_select_mask_size * sizeof (int));
+  (*mask) = (x_malloc (x_select_mask_size * sizeof (int)));
   for (i = 0; i < x_select_mask_size; i++) {
     (*mask) [i] = (x_select_mask) [i];
   }
@@ -644,12 +631,12 @@ copy_x_select_mask (mask)
    depend on x_wait_for_event() actually waiting for an event. The
    return value will tell you if an event actually was processed */
 
-Boolean
+int
 x_wait_for_event ()
 {
   int * select_mask;
   int max_filedesc;
-  Boolean any_events_p;
+  int any_events_p;
 
   any_events_p = x_process_events ();
 
@@ -890,44 +877,59 @@ EVENT-TYPE.")
 }
   
 
+static int initialization_done = 0;
+
+static void
+DEFUN_VOID (x_close_all_displays)
+{
+  Display ** items = ((Display **) (x_display_table . items));
+  int length = (x_display_table . length);
+  int i;
+  for (i = 0; (i < length); i += 1)
+    if ((items [i]) != ((Display *) 0))
+      x_close_display (i);
+}
+
 DEFINE_PRIMITIVE ("X-OPEN-DISPLAY", Prim_x_open_display, 1, 1, 0)
 {
   Display * display;
   int display_file_descriptor;
   PRIMITIVE_HEADER (1);
-
+  if (!initialization_done)
+    {
+      add_reload_cleanup (x_close_all_displays);
+      initialization_done = 1;
+    }
   display =
-    (XOpenDisplay (((ARG_REF (1)) == SHARP_F) ? NULL : (STRING_ARG (1))));
-  if (display == NULL)
+    (XOpenDisplay (((ARG_REF (1)) == SHARP_F) ? 0 : (STRING_ARG (1))));
+  if (display == 0)
     PRIMITIVE_RETURN (SHARP_F);
-
   /* This only needs to be done once for this process, but it doesn't
      hurt to run it every time we open the display. */
   XSetErrorHandler (x_error_handler);
   XSetIOErrorHandler (x_io_error_handler);
+  {
+    int display_file_descriptor = ConnectionNumber (display);
 
-  display_file_descriptor = ConnectionNumber (display);
-
-  if (! x_select_mask_size) {
-    x_select_mask_size = 1;
-    x_select_mask = (int *) x_malloc (x_select_mask_size * sizeof (int));
-  }
-      
-
-  if (display_file_descriptor > x_max_file_descriptor) {
-
-    int new_select_mask_size;
-    
-    x_max_file_descriptor = display_file_descriptor;
-    new_select_mask_size = 1 + (x_max_file_descriptor / BITS_PER_INT);
-    if (new_select_mask_size > x_select_mask_size) {
-      x_select_mask = (int *) x_realloc (x_select_mask,
-					  new_select_mask_size * sizeof (int));
-      x_select_mask_size = new_select_mask_size;
+    if (! x_select_mask_size) {
+      x_select_mask_size = 1;
+      x_select_mask = (x_malloc (x_select_mask_size * sizeof (int)));
     }
-    SET_X_SELECT_MASK (display_file_descriptor);
+
+    if (display_file_descriptor > x_max_file_descriptor) {
+
+      int new_select_mask_size;
+    
+      x_max_file_descriptor = display_file_descriptor;
+      new_select_mask_size = 1 + (x_max_file_descriptor / BITS_PER_INT);
+      if (new_select_mask_size > x_select_mask_size) {
+	x_select_mask = (x_realloc (x_select_mask,
+				    new_select_mask_size * sizeof (int)));
+	x_select_mask_size = new_select_mask_size;
+      }
+      SET_X_SELECT_MASK (display_file_descriptor);
+    }
   }
-      
   PRIMITIVE_RETURN
     (LONG_TO_UNSIGNED_FIXNUM
      (x_allocate_table_index ((& x_display_table), ((char *) display))));
@@ -936,7 +938,6 @@ DEFINE_PRIMITIVE ("X-OPEN-DISPLAY", Prim_x_open_display, 1, 1, 0)
 DEFINE_PRIMITIVE ("X-CLOSE-DISPLAY", Prim_x_close_display, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
   x_close_display (x_allocation_index_arg (1, (& x_display_table)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -944,16 +945,7 @@ DEFINE_PRIMITIVE ("X-CLOSE-DISPLAY", Prim_x_close_display, 1, 1, 0)
 DEFINE_PRIMITIVE ("X-CLOSE-ALL-DISPLAYS", Prim_x_close_all_displays, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
-
-  {
-    Display ** items = ((Display **) (x_display_table . items));
-    int length = (x_display_table . length);
-    int i;
-
-    for (i = 0; (i < length); i += 1)
-      if ((items [i]) != ((Display *) 0))
-	x_close_display (i);
-  }
+  x_close_all_displays ();
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -963,7 +955,7 @@ DEFINE_PRIMITIVE ("X-CLOSE-WINDOW", Prim_x_close_window, 1, 1, 0)
   XFlush (x_close_window (x_allocation_index_arg (1, (& x_window_table))));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
+
 DEFINE_PRIMITIVE ("X-WINDOW-X-SIZE", Prim_x_window_x_size, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
@@ -975,37 +967,34 @@ DEFINE_PRIMITIVE ("X-WINDOW-Y-SIZE", Prim_x_window_y_size, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN (long_to_integer (XW_Y_SIZE (WINDOW_ARG (1))));
 }
-
+
 DEFINE_PRIMITIVE ("X-WINDOW-MAP", Prim_x_window_map, 1, 1, 0)
 {
-  struct xwindow * xw;
-  Display * display;
   PRIMITIVE_HEADER (1);
-
-  xw = (WINDOW_ARG (1));
-  display = (XW_DISPLAY (xw));
-  (XW_VISIBLE_P (xw)) = 1;
-  XMapWindow (display, (XW_WINDOW (xw)));
+  {
+    struct xwindow * xw = (WINDOW_ARG (1));
+    Display * display = (XW_DISPLAY (xw));
+    (XW_VISIBLE_P (xw)) = 1;
+    XMapWindow (display, (XW_WINDOW (xw)));
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-UNMAP", Prim_x_window_unmap, 1, 1, 0)
 {
-  struct xwindow * xw;
-  Display * display;
   PRIMITIVE_HEADER (1);
-
-  xw = (WINDOW_ARG (1));
-  display = (XW_DISPLAY (xw));
-  (XW_VISIBLE_P (xw)) = 0;
-  XUnmapWindow (display, (XW_WINDOW (xw)));
+  {
+    struct xwindow * xw = (WINDOW_ARG (1));
+    Display * display = (XW_DISPLAY (xw));
+    (XW_VISIBLE_P (xw)) = 0;
+    XUnmapWindow (display, (XW_WINDOW (xw)));
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-BEEP", Prim_x_window_beep, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
   XBell ((XW_DISPLAY (WINDOW_ARG (1))), 100); /* 100% */
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -1029,23 +1018,20 @@ DEFINE_PRIMITIVE ("X-WINDOW-CLEAR", Prim_x_window_clear, 1, 1, 0)
 DEFINE_PRIMITIVE ("X-WINDOW-FLUSH", Prim_x_window_flush, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
   XFlush (XW_DISPLAY (WINDOW_ARG (1)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-GET-DEFAULT", Prim_x_window_get_default, 3, 3, 0)
 {
-  char * result;
   PRIMITIVE_HEADER (3);
-
-  result =
-    (XGetDefault
-     ((XW_DISPLAY (WINDOW_ARG (1))), (STRING_ARG (2)), (STRING_ARG (3))));
-  PRIMITIVE_RETURN
-    ((result == ((char *) 0))
-     ? SHARP_F
-     : (char_pointer_to_string (result)));
+  {
+    char * result =
+      (XGetDefault
+       ((XW_DISPLAY (WINDOW_ARG (1))), (STRING_ARG (2)), (STRING_ARG (3))));
+    PRIMITIVE_RETURN
+      ((result == 0) ? SHARP_F : (char_pointer_to_string (result)));
+  }
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-SET-FOREGROUND-COLOR", Prim_x_window_set_foreground_color, 2, 2, 0)
