@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.16 1993/02/25 19:59:36 cph Exp $
+$Id: list.scm,v 14.17 1993/02/26 08:17:14 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -87,7 +87,7 @@ MIT in each case. |#
     (car tail)))
 
 (define (list-tail list index)
-  (guarantee-index length 'LIST-TAIL)
+  (guarantee-index index 'LIST-TAIL)
   (let loop ((list list) (index* index))
     (if (zero? index*)
 	list
@@ -97,7 +97,7 @@ MIT in each case. |#
 	  (loop (cdr list) (- index* 1))))))
 
 (define (list-head list index)
-  (guarantee-index length 'LIST-HEAD)
+  (guarantee-index index 'LIST-HEAD)
   (let loop ((list list) (index* index))
     (if (zero? index*)
 	'()
@@ -425,8 +425,8 @@ MIT in each case. |#
 			    (,combiner (APPLY ,procedure (REVERSE! CARS))
 				       (N-LOOP (REVERSE! CDRS))))
 			   ((PAIR? (CAR LISTS*))
-			    (PARSE-CARS (CDR LISTS*)
-					(CDR LISTS)
+			    (PARSE-CARS (CDR LISTS)
+					(CDR LISTS*)
 					(CONS (CAR (CAR LISTS*)) CARS)
 					(CONS (CDR (CAR LISTS*)) CDRS)))
 			   (ELSE
@@ -617,18 +617,15 @@ MIT in each case. |#
   ((deletor (lambda (match) (predicate match item))) items))
 
 (define (association-procedure predicate selector)
-  (lambda (key alist)
-    (let loop ((alist* alist))
-      (if (pair? alist*)
+  (lambda (key items)
+    (let loop ((items* items))
+      (if (pair? items*)
+	  (if (predicate (selector (car items*)) key)
+	      (car items*)
+	      (loop (cdr items*)))
 	  (begin
-	    (if (not (pair? (car alist*)))
-		(error:wrong-type-argument alist "alist" #f))
-	    (if (predicate (selector (car alist*)) key)
-		(car alist*)
-		(loop (cdr alist*))))
-	  (begin
-	    (if (not (null? alist*))
-		(error:wrong-type-argument alist "alist" #f))
+	    (if (not (null? items*))
+		(error:wrong-type-argument items "list" #f))
 	    #f)))))
 
 (define ((delete-association-procedure deletor predicate selector) key alist)
