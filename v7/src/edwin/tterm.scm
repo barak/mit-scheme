@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.2 1990/11/29 22:09:44 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.3 1991/01/15 20:22:18 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,6 +52,9 @@ MIT in each case. |#
     (if operation
 	(operation port)
 	0)))
+
+(define (output-port/y-size port)
+  ((output-port/custom-operation port 'Y-SIZE) port))
 
 (define (console-available?)
   (let ((description (console-termcap-description)))
@@ -96,8 +99,8 @@ MIT in each case. |#
 		 console-write-char!
 		 console-write-cursor!
 		 console-write-substring!
-		 (tn-x-size description)
-		 (tn-y-size description))))
+		 (output-port/x-size console-output-port)
+		 (output-port/y-size console-output-port))))
 
 (define (console-termcap-description)
   (if (eq? console-description 'UNKNOWN)
@@ -311,7 +314,7 @@ MIT in each case. |#
 
 (define (console-exit! screen)
   (let ((description (screen-description screen)))
-    (move-cursor screen 0 (fix:-1+ (tn-y-size description)))
+    (move-cursor screen 0 (fix:-1+ (screen-y-size screen)))
     (exit-standout-mode screen)
     (exit-insert-mode screen)
     (maybe-output screen (ts-exit-termcap-mode description)))
@@ -356,8 +359,8 @@ MIT in each case. |#
 (define (console-write-char! screen x y char highlight)
   (if (let ((description (screen-description screen)))
 	(not (and (tf-automatic-wrap description)
-		  (fix:= x (fix:-1+ (tn-x-size description)))
-		  (fix:= y (fix:-1+ (tn-y-size description))))))
+		  (fix:= x (fix:-1+ (screen-x-size screen)))
+		  (fix:= y (fix:-1+ (screen-y-size screen))))))
       (begin
 	(exit-insert-mode screen)
 	(move-cursor screen x y)
@@ -374,9 +377,9 @@ MIT in each case. |#
 	(let ((end
 	       (if (let ((description (screen-description screen)))
 		     (and (tf-automatic-wrap description)
-			  (fix:= y (fix:-1+ (tn-y-size description)))
+			  (fix:= y (fix:-1+ (screen-y-size screen)))
 			  (fix:= (fix:+ x (fix:- end start))
-				 (tn-x-size description))))
+				 (screen-x-size screen))))
 		   (fix:-1+ end)
 		   end)))
 	  (do ((i start (fix:1+ i)))
@@ -392,37 +395,36 @@ MIT in each case. |#
   (clear-screen screen))
 
 (define (console-clear-rectangle! screen xl xu yl yu highlight)
-  (let ((description (screen-description screen)))
-    (let ((x-size (tn-x-size description))
-	  (y-size (tn-y-size description)))
-      (cond ((not (fix:= xu x-size))
-	     (let ((n (fix:- xu xl)))
-	       (do ((y yl (fix:1+ y)))
-		   ((fix:= y yu))
-		 (move-cursor screen xl y)
-		 (clear-multi-char screen n))))
-	    ((fix:= yl (fix:1+ yu))
-	     (move-cursor screen xl yl)
-	     (clear-line screen x-size))
-	    ((and (fix:= xl 0) (fix:= yu y-size))
-	     (if (fix:= yl 0)
-		 (clear-screen screen)
-		 (begin
-		   (move-cursor screen 0 yl)
-		   (clear-to-bottom screen))))
-	    (else
+  (let ((x-size (screen-x-size screen))
+	(y-size (screen-y-size screen)))
+    (cond ((not (fix:= xu x-size))
+	   (let ((n (fix:- xu xl)))
 	     (do ((y yl (fix:1+ y)))
 		 ((fix:= y yu))
 	       (move-cursor screen xl y)
-	       (clear-line screen x-size)))))))
+	       (clear-multi-char screen n))))
+	  ((fix:= yl (fix:1+ yu))
+	   (move-cursor screen xl yl)
+	   (clear-line screen x-size))
+	  ((and (fix:= xl 0) (fix:= yu y-size))
+	   (if (fix:= yl 0)
+	       (clear-screen screen)
+	       (begin
+		 (move-cursor screen 0 yl)
+		 (clear-to-bottom screen))))
+	  (else
+	   (do ((y yl (fix:1+ y)))
+	       ((fix:= y yu))
+	     (move-cursor screen xl y)
+	     (clear-line screen x-size))))))
 
 (define (console-scroll-lines-down! screen xl xu yl yu amount)
   (let ((description (screen-description screen)))
     (and (insert/delete-line-ok? description)
 	 (fix:= xl 0)
-	 (fix:= xu (tn-x-size description))
+	 (fix:= xu (screen-x-size screen))
 	 (begin
-	   (let ((y-size (tn-y-size description)))
+	   (let ((y-size (screen-y-size screen)))
 	     (if (or (fix:= yu y-size)
 		     (scroll-region-ok? description))
 		 (insert-lines screen yl yu amount)
@@ -435,9 +437,9 @@ MIT in each case. |#
   (let ((description (screen-description screen)))
     (and (insert/delete-line-ok? description)
 	 (fix:= xl 0)
-	 (fix:= xu (tn-x-size description))
+	 (fix:= xu (screen-x-size screen))
 	 (begin
-	   (let ((y-size (tn-y-size description)))
+	   (let ((y-size (screen-y-size screen)))
 	     (if (or (fix:= yu y-size)
 		     (scroll-region-ok? description))
 		 (delete-lines screen yl yu amount)
@@ -454,7 +456,7 @@ MIT in each case. |#
       (if ts-clear-screen
 	  (begin
 	    (exit-standout-mode screen)
-	    (output-n screen ts-clear-screen (tn-y-size description))
+	    (output-n screen ts-clear-screen (screen-y-size screen))
 	    (set-screen-cursor-x! screen 0)
 	    (set-screen-cursor-y! screen 0))
 	  (begin
@@ -468,8 +470,8 @@ MIT in each case. |#
 	  (begin
 	    (exit-standout-mode screen)
 	    (output screen ts-clear-to-bottom))
-	  (let ((x-size (tn-x-size description))
-		(y-size (tn-y-size description)))
+	  (let ((x-size (screen-x-size screen))
+		(y-size (screen-y-size screen)))
 	    (do ((y (screen-cursor-y screen) (fix:1+ y)))
 		((fix:= y y-size))
 	      (move-cursor screen 0 y)
@@ -485,9 +487,9 @@ MIT in each case. |#
 	    (exit-insert-mode screen)
 	    (let ((first-unused-x
 		   (if (and (tf-automatic-wrap description)
-			    (fix:= first-unused-x (tn-x-size description))
+			    (fix:= first-unused-x (screen-x-size screen))
 			    (fix:= (screen-cursor-y screen)
-				   (fix:-1+ (tn-y-size description))))
+				   (fix:-1+ (screen-y-size screen))))
 		       (fix:-1+ first-unused-x)
 		       first-unused-x)))
 	      (do ((x (screen-cursor-x screen) (fix:1+ x)))
@@ -506,13 +508,13 @@ MIT in each case. |#
 	    (let ((cursor-x (screen-cursor-x screen)))
 	      (let ((x-end
 		     (let ((x-end (fix:+ cursor-x n))
-			   (x-size (tn-x-size description)))
+			   (x-size (screen-x-size screen)))
 		       (if (fix:> x-end x-size)
 			   (error "can't clear past end of line"))
 		       (if (and (fix:= x-end x-size)
 				(tf-automatic-wrap description)
 				(fix:= (screen-cursor-y screen)
-				       (fix:-1+ (tn-y-size description))))
+				       (fix:-1+ (screen-y-size screen))))
 			   (fix:-1+ x-size)
 			   x-end))))
 		(do ((x cursor-x (fix:1+ x)))
@@ -523,7 +525,7 @@ MIT in each case. |#
 (define (insert-lines screen yl yu n)
   (let ((description (screen-description screen))
 	(n-lines (fix:- yu yl)))
-    (let ((y-size (tn-y-size description)))
+    (let ((y-size (screen-y-size screen)))
       (cond ((ts-insert-line description)
 	     =>
 	     (lambda (ts-insert-line)
@@ -553,7 +555,7 @@ MIT in each case. |#
 	       (if (and (tf-memory-above-screen description)
 			(fix:= yl 0)
 			(fix:= yu y-size))
-		   (let ((x-size (tn-x-size description)))
+		   (let ((x-size (screen-x-size screen)))
 		     (do ((y 0 (fix:1+ y)))
 			 ((fix:= y n))
 		       (move-cursor screen 0 y)
@@ -564,7 +566,7 @@ MIT in each case. |#
 (define (delete-lines screen yl yu n)
   (let ((description (screen-description screen))
 	(n-lines (fix:- yu yl)))
-    (let ((y-size (tn-y-size description)))
+    (let ((y-size (screen-y-size screen)))
       (cond ((ts-delete-line description)
 	     =>
 	     (lambda (ts-delete-line)
@@ -628,7 +630,7 @@ MIT in each case. |#
 		    ((ts-set-scroll-region-1 description)
 		     =>
 		     (lambda (ts-set-scroll-region-1)
-		       (let ((y-size (tn-y-size description)))
+		       (let ((y-size (screen-y-size screen)))
 			 (parameterize-4 ts-set-scroll-region-1
 					 y-size
 					 yl
@@ -639,7 +641,7 @@ MIT in each case. |#
 		     (lambda (ts-set-window)
 		       (parameterize-4 ts-set-window
 				       yl (fix:-1+ yu)
-				       0 (fix:-1+ (tn-x-size description)))))
+				       0 (fix:-1+ (screen-x-size screen)))))
 		    (else
 		     (error "can't set scroll region" screen)))))
   (set-screen-cursor-x! screen false)
@@ -701,7 +703,7 @@ MIT in each case. |#
 	(cursor-x (screen-cursor-x screen))
 	(cursor-y (screen-cursor-y screen)))
     (if (not (and cursor-x (fix:= x cursor-x) (fix:= y cursor-y)))
-	(let ((y-size (tn-y-size description))
+	(let ((y-size (screen-y-size screen))
 	      (trivial-command (lambda (command) (output-1 screen command)))
 	      (general-case
 	       (lambda ()
@@ -755,7 +757,7 @@ MIT in each case. |#
 
 (define (record-cursor-after-output screen cursor-x)
   (let ((description (screen-description screen)))
-    (let ((x-size (tn-x-size description)))
+    (let ((x-size (screen-x-size screen)))
       (cond ((fix:< cursor-x x-size)
 	     (set-screen-cursor-x! screen cursor-x))
 	    ((fix:> cursor-x x-size)
