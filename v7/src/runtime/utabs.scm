@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 14.10 1992/05/27 22:10:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 14.11 1992/05/27 22:44:52 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -46,7 +46,7 @@ MIT in each case. |#
 		(old-vector (vector-copy identification-vector)))
 	    (let loop ((fields '(CONSOLE-WIDTH CONSOLE-HEIGHT)))
 	      (if (not (null? fields))
-		  (let ((slot (microcode-identification-slot (car fields))))
+		  (let ((slot (microcode-identification-vector-slot (car fields))))
 		    (vector-set! old-vector slot false)
 		    (vector-set! new-vector slot false)
 		    (loop (cdr fields)))))
