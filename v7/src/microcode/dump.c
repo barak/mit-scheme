@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.26 1988/02/06 20:39:50 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.27 1988/08/09 02:31:26 jinx Exp $
  *
  * This file contains common code for dumping internal format binary files.
  */
@@ -81,17 +81,16 @@ prepare_dump_header(Buffer, Dumped_Object,
     Make_Version(FASL_FORMAT_VERSION,
 		 FASL_SUBVERSION, FASL_INTERNAL_FORMAT);
   Buffer[FASL_Offset_Stack_Top] =
-
 #ifdef USE_STACKLETS
-    Make_Pointer(TC_BROKEN_HEART, 0);	/* Nothing in stack area */
+    Make_Non_Pointer(TC_BROKEN_HEART, 0);	/* Nothing in stack area */
 #else
     Make_Pointer(TC_BROKEN_HEART, Stack_Top);
 #endif /* USE_STACKLETS */
 
   Buffer[FASL_Offset_Prim_Length] = 
-    Make_Pointer(TC_BROKEN_HEART, table_length);
+    Make_Non_Pointer(TC_BROKEN_HEART, table_length);
   Buffer[FASL_Offset_Prim_Size] = 
-    Make_Pointer(TC_BROKEN_HEART, table_size);
+    Make_Non_Pointer(TC_BROKEN_HEART, table_size);
 
   if (cc_code_p)
   {
