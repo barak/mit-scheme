@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.9 2001/07/14 11:42:35 cph Exp $
+;;; $Id: shared.scm,v 1.10 2001/10/15 17:01:10 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -26,7 +26,8 @@
 (define (with-buffer-name thunk)
   (let ((v (generate-uninterned-symbol)))
     `(LAMBDA (,v)
-       ,(fluid-let ((*buffer-name* v))
+       ,(fluid-let ((*buffer-name* v)
+		    (*id-counters* '()))
 	  (thunk)))))
 
 (define *buffer-name*)
@@ -45,6 +46,83 @@
   (if (pair? bindings)
       `(LET ,bindings ,body)
       body))
+
+(define (wrap-matcher generate-body)
+  (let ((ks (make-ks-identifier))
+	(kf (make-kf-identifier)))
+    `(LAMBDA (,ks ,kf)
+       ,(generate-body ks kf))))
+
+(define wrap-parser wrap-matcher)
+
+(define (wrap-external-matcher matcher)
+  (wrap-matcher
+   (lambda (ks kf)
+     `(IF ,matcher
+	  (,ks ,kf)
+	  (,kf)))))
+
+(define (wrap-external-parser expression)
+  (wrap-matcher
+   (lambda (ks kf)
+     (handle-parser-value expression ks kf))))
+
+(define (handle-parser-value expression ks kf)
+  (with-value-binding expression
+    (lambda (v)
+      `(IF ,v
+	   (,ks ,v ,kf)
+	   (,kf)))))
+
+(define (with-value-binding expression generator)
+  (let ((v (make-value-identifier)))
+    `(LET ((,v ,expression))
+       ,(generator v))))
+
+(define (call-with-pointer procedure)
+  (let ((p (make-ptr-identifier)))
+    `(LET ((,p ,(fetch-pointer)))
+       ,(procedure p))))
+
+(define (fetch-pointer)
+  `(GET-PARSER-BUFFER-POINTER ,*buffer-name*))
+
+(define (make-kf p body)
+  `(LAMBDA ()
+     (SET-PARSER-BUFFER-POINTER! ,*buffer-name* ,p)
+     ,body))
+
+(define (make-kf-identifier)
+  (generate-identifier 'KF))
+
+(define (make-ks-identifier)
+  (generate-identifier 'KS))
+
+(define (make-ptr-identifier)
+  (generate-identifier 'P))
+
+(define (make-value-identifier)
+  (generate-identifier 'V))
+
+(define (generate-identifier prefix)
+  (string->uninterned-symbol
+   (string-append
+    (symbol-name prefix)
+    (number->string
+     (let ((entry (assq prefix *id-counters*)))
+       (if entry
+	   (let ((n (cdr entry)))
+	     (set-cdr! entry (+ n 1))
+	     n)
+	   (begin
+	     (set! *id-counters* (cons (cons prefix 2) *id-counters*))
+	     1)))))))
+ 
+(define *id-counters*)
+
+(define (check-0-args expression)
+  (if (not (null? (cdr expression)))
+      (error "Malformed expression:" expression)))
 
 (define (check-1-arg expression #!optional predicate)
   (if (and (pair? (cdr expression))
@@ -157,51 +235,6 @@
 
 (define *parser-macros*
   *global-parser-macros*)
-
-;;;; Buffer pointers
-
-(define (call-with-unknown-pointer procedure)
-  (let ((v.u (cons (generate-uninterned-symbol) #f)))
-    (let ((x (procedure (cons v.u #f))))
-      (if (cdr v.u)
-	  `(LET ((,(car v.u) (GET-PARSER-BUFFER-POINTER ,*buffer-name*)))
-	     ,x)
-	  x))))
-
-(define (backtrack-to backtrack-pointer pointer)
-  ;; Specify that we want to backtrack to the position specified in
-  ;; BACKTRACK-POINTER.  But don't actually change the position yet.
-  ;; Instead delay the move until it's actually needed.  Without the
-  ;; delay, we can generate multiple sequential calls to change the
-  ;; position, which is wasteful since only the last call in the
-  ;; sequence is meaningful.
-  (cons (car pointer)
-	(let ((p (or (cdr backtrack-pointer) (car backtrack-pointer))))
-	  (if (eq? (car pointer) p)
-	      #f
-	      p))))
-
-(define (handle-pending-backtracking pointer procedure)
-  ;; Perform a pending backtracking operation, if any.
-  (if (cdr pointer)
-      (begin
-	(set-cdr! (cdr pointer) #t)
-	`(BEGIN
-	   (SET-PARSER-BUFFER-POINTER! ,*buffer-name* ,(car (cdr pointer)))
-	   ,(procedure (cons (cdr pointer) #f))))
-      (procedure (cons (car pointer) #f))))
-
-(define (simple-backtracking-continuation value)
-  (lambda (pointer)
-    (handle-pending-backtracking pointer
-      (lambda (pointer)
-	pointer
-	value))))
-
-(define (pointer-reference pointer)
-  (let ((p (or (cdr pointer) (car pointer))))
-    (set-cdr! p #t)
-    (car p)))
 
 ;;;; Code optimizer
 

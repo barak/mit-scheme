@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.9 2001/10/04 16:52:12 cph Exp $
+;;; $Id: load.scm,v 1.10 2001/10/15 17:01:03 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -23,4 +23,4 @@
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (package/system-loader "parser" '() 'QUERY)))
-(add-subsystem-identification! "*Parser" '(0 8))
+(add-subsystem-identification! "*Parser" '(0 9))
