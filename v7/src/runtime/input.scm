@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: input.scm,v 14.26 2004/02/16 05:36:44 cph Exp $
+$Id: input.scm,v 14.27 2004/02/26 19:05:06 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1997,1999,2002,2003 Massachusetts Institute of Technology
@@ -81,7 +81,7 @@ USA.
       (let loop ((a (make-accum 128)))
 	(let ((char (input-port/read-char port)))
 	  (cond ((eof-object? char)
-		 (if (fix:> (cdr a) 0)
+		 (if (fix:> (accum-count a) 0)
 		     (accum->string a)
 		     char))
 		((char=? char #\newline) (accum->string a))
@@ -93,7 +93,9 @@ USA.
       (let loop ((a (make-accum 128)))
 	(let ((char (input-port/read-char port)))
 	  (cond ((eof-object? char)
-		 (accum->string a))
+		 (if (fix:> (accum-count a) 0)
+		     (accum->string a)
+		     char))
 		((char-set-member? delimiters char)
 		 (input-port/unread-char port char)
 		 (accum->string a))
@@ -127,6 +129,9 @@ USA.
 (define-integrable (accum->string a)
   (set-string-maximum-length! (car a) (cdr a))
   (car a))
+
+(define-integrable (accum-count a)
+  (cdr a))
 
 (define-record-type <eof-object>
     (make-eof-object port)
