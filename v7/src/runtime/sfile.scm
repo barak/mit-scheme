@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.21 1999/11/19 14:10:49 cph Exp $
+$Id: sfile.scm,v 14.22 1999/11/19 14:12:53 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -53,16 +53,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (current-file-time)
   (call-with-temporary-file-pathname file-modification-time))
 
-(define (directory-file-names directory)
+(define (directory-file-names directory #!optional include-dots?)
   (let ((channel
 	 (directory-channel-open
-	  (->namestring (pathname-as-directory directory)))))
+	  (->namestring (pathname-as-directory directory))))
+	(include-dots?
+	 (if (default-object? include-dots?) #f include-dots?)))
     (let loop ((result '()))
       (let ((name (directory-channel-read channel)))
 	(if name
 	    (loop
-	     (if (or (string=? "." name)
-		     (string=? ".." name))
+	     (if (and (not include-dots?)
+		      (or (string=? "." name)
+			  (string=? ".." name)))
 		 result
 		 (cons name result)))
 	    (begin
