@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.23 2000/03/22 17:34:49 cph Exp $
+$Id: datime.scm,v 14.24 2000/03/22 17:37:02 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -349,13 +349,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (universal-time->ctime-string time)
   (decoded-time->ctime-string (universal-time->local-decoded-time time)))
 
-(define (ctime-string->universal-time time)
+(define (ctime-string->universal-time string)
   (decoded-time->universal-time (ctime-string->decoded-time string)))
 
 (define (file-time->ctime-string time)
   (decoded-time->ctime-string (file-time->local-decoded-time time)))
 
-(define (ctime-string->file-time time)
+(define (ctime-string->file-time string)
   (decoded-time->file-time (ctime-string->decoded-time string)))
 
 (define (month/max-days month)

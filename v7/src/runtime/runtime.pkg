@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.336 2000/01/04 17:24:06 cph Exp $
+$Id: runtime.pkg,v 14.337 2000/03/22 17:35:25 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -486,9 +486,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (files "datime")
   (parent ())
   (export ()
+	  ctime-string->decoded-time
+	  ctime-string->file-time
+	  ctime-string->universal-time
 	  day-of-week/long-string
 	  day-of-week/short-string
 	  decode-universal-time
+	  decoded-time->ctime-string
 	  decoded-time->string
 	  decoded-time->universal-time
 	  decoded-time/date-string
@@ -504,6 +508,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  decoded-time/zone
 	  encode-universal-time
 	  epoch
+	  file-time->ctime-string
 	  file-time->global-time-string
 	  file-time->local-time-string
 	  file-time->string
@@ -515,11 +520,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  month/long-string
 	  month/max-days
 	  month/short-string
+	  string->day-of-week
 	  string->decoded-time
 	  string->file-time
+	  string->month
+	  string->time-zone
 	  string->universal-time
 	  time-zone->string
 	  time-zone?
+	  universal-time->ctime-string
 	  universal-time->global-decoded-time
 	  universal-time->global-time-string
 	  universal-time->local-decoded-time
