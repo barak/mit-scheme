@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 4.8 1988/12/12 21:30:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 4.9 1988/12/15 17:23:48 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -177,7 +177,7 @@ MIT in each case. |#
  (define-type-definition snode 5 false)
  (define-type-definition pnode 6 false)
  (define-type-definition rvalue 2 rvalue-types)
- (define-type-definition lvalue 13 false))
+ (define-type-definition lvalue 14 false))
 
 ;;; Kludge to make these compile efficiently.
 
@@ -201,9 +201,8 @@ MIT in each case. |#
     (let ((result (generate-uninterned-symbol)))
       `(let ((,result
 	      ((ACCESS VECTOR ,system-global-environment)
-	       ,tag '() '() '() '() '() 'NOT-CACHED
-	       FALSE '() FALSE FALSE '() '()
-	       ,@extra)))
+	       ,tag FALSE '() '() '() '() '() '() 'NOT-CACHED
+	       FALSE '() FALSE FALSE '() ,@extra)))
 	 (SET! *LVALUES* (CONS ,result *LVALUES*))
 	 ,result))))
 

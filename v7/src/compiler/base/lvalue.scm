@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.11 1988/12/13 13:58:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.12 1988/12/15 17:23:26 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -41,6 +41,8 @@ MIT in each case. |#
 ;; deleted!
 
 (define-root-type lvalue
+  generation		;generation mark for graph walking
+  alist			;property list
   initial-forward-links	;lvalues that sink values directly from here
   initial-backward-links ;lvalues that source values directly to here
   forward-links		;transitive closure of initial-forward-links
@@ -51,7 +53,6 @@ MIT in each case. |#
   applications		;applications whose operators are this lvalue
   passed-in?		;true iff this lvalue gets an unknown value
   passed-out?		;true iff this lvalue passes its value to unknown place
-  marks			;attribute marks list (see `lvalue-mark-set?')
   source-links		;backward links with circularities removed
   )
 
@@ -64,9 +65,8 @@ MIT in each case. |#
 ;;; (define (make-lvalue tag . extra)
 ;;;   (let ((lvalue
 ;;; 	 (list->vector
-;;; 	  (cons* tag '() '() '() '() '() 'NOT-CACHED
-;;; 		 false '() false false '() '()
-;;; 		 extra))))
+;;; 	  (cons* tag false '() '() '() '() '() '() 'NOT-CACHED
+;;; 		 false '() false false '() extra))))
 ;;;     (set! *lvalues* (cons lvalue *lvalues*))
 ;;;     lvalue))
 
@@ -188,17 +188,43 @@ MIT in each case. |#
 	      (set-lvalue-values-cache! lvalue 'NOT-CACHED))
 	    (lvalue-forward-links lvalue)))
 
-;;;; Attribute Marking
+;;;; Attributes
 
-(define (lvalue-mark-set! lvalue mark)
-  (if (not (memq mark (lvalue-marks lvalue)))
-      (set-lvalue-marks! lvalue (cons mark (lvalue-marks lvalue)))))
+(package (with-new-lvalue-marks lvalue-marked? lvalue-mark!)
 
-(define (lvalue-mark-clear! lvalue mark)
-  (set-lvalue-marks! lvalue (delq! mark (lvalue-marks lvalue))))
+  (define-export (with-new-lvalue-marks thunk)
+    (fluid-let ((*generation* (make-generation)))
+      (thunk)))
 
-(define-integrable (lvalue-mark-set? lvalue mark)
-  (memq mark (lvalue-marks lvalue)))
+  (define-export (lvalue-marked? lvalue)
+    (eq? (lvalue-generation lvalue) *generation*))
+
+  (define-export (lvalue-mark! lvalue)
+    (set-lvalue-generation! lvalue *generation*))
+
+  (define *generation*)
+
+  (define make-generation
+    (let ((generation 0))
+      (named-lambda (make-generation)
+	(let ((value generation))
+	  (set! generation (1+ generation))
+	  value)))))
+
+(define (lvalue-get lvalue key)
+  (let ((entry (assq key (lvalue-alist lvalue))))
+    (and entry
+	 (cdr entry))))
+
+(define (lvalue-put! lvalue key item)
+  (let ((entry (assq key (lvalue-alist lvalue))))
+    (if entry
+	(set-cdr! entry item)
+	(set-lvalue-alist! lvalue
+			   (cons (cons key item) (lvalue-alist lvalue))))))
+
+(define (lvalue-remove! lvalue key)
+  (set-lvalue-alist! lvalue (del-assq! key (lvalue-alist lvalue))))
 
 (define (variable-assigned! variable assignment)
   (set-variable-assignments!
