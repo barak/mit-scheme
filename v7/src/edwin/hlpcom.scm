@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.91 1989/08/14 09:22:33 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.92 1989/08/14 09:30:57 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -300,11 +300,13 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 	       (newline)))))
 
 (define (char-list-string xchars)
-  (if (null? (cdr xchars))
-      (xchar->name (car xchars))
-      (string-append (xchar->name (car xchars))
-		     ", "
-		     (char-list-string (cdr xchars)))))
+  (let loop ((xchars (sort xchars xchar<?)))
+    (if (null? (cdr xchars))
+	(xchar->name (car xchars))
+	(string-append (xchar->name (car xchars))
+		       ", "
+		       (loop (cdr xchars))))))
+
 (define (print-variable-binding variable)
   (write-string "    which is bound to: ")
   (write (variable-value variable))
