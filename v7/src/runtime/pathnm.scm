@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.25 1993/01/12 23:08:57 gjr Exp $
+$Id: pathnm.scm,v 14.26 1993/01/29 00:07:22 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -591,7 +591,7 @@ these rules:
   '((UNIX . 0)
     (DOS . 1)
     (VMS . 2)
-    (MS-NT . 3)))
+    (NT . 3)))
 
 (define (make-unimplemented-host-type index)
   (let* ((name (let loop ((types known-host-types))
