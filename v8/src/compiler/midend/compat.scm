@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compat.scm,v 1.5 1995/02/14 00:58:08 adams Exp $
+$Id: compat.scm,v 1.6 1995/02/22 05:32:39 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -378,10 +378,11 @@ MIT in each case. |#
        (invocation+2-handler (compat/invocation-cookie 2)))
 
   ;; These are kinds of calls which have extra arguments like arity or cache
-  (define-rewrite/compat %invoke-operator-cache invocation+2-handler)
-  (define-rewrite/compat %invoke-remote-cache   invocation+2-handler)
-  (define-rewrite/compat %internal-apply        invocation+2-handler)
-  (define-rewrite/compat %invoke-continuation   compat/standard-call-handler))
+  (define-rewrite/compat %invoke-operator-cache     invocation+2-handler)
+  (define-rewrite/compat %invoke-remote-cache       invocation+2-handler)
+  (define-rewrite/compat %internal-apply            invocation+2-handler)
+  (define-rewrite/compat %internal-apply-unchecked  invocation+2-handler)
+  (define-rewrite/compat %invoke-continuation    compat/standard-call-handler))
 
 
 (define-rewrite/compat %vector-index

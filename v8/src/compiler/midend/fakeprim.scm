@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.4 1994/12/08 16:48:37 adams Exp $
+$Id: fakeprim.scm,v 1.5 1995/02/22 05:32:50 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -477,9 +477,18 @@ MIT in each case. |#
   ;;   NARGS = number of <value> expressions
   ;;   Introduced by applicat.scm.
   (make-operator "#[internal-apply]"))
-
 (cookie-call %internal-apply cont 'NARGS procedure #!REST values)
 
+
+(define %internal-apply-unchecked
+  ;; (CALL ',%internal-apply-unchecked <continuation> 'NARGS <procedure>
+  ;;        <value>*)
+  ;; Note:
+  ;;   NARGS = number of <value> expressions
+  ;;   Like %internal-apply, but assumes that the procedure is compiled and
+  ;;   of the correct arity.
+  (make-operator "#[internal-apply-unchecked]"))
+(cookie-call %internal-apply-unchecked cont 'NARGS procedure #!REST values)
 
 (define %primitive-apply
   ;; (CALL ',%primitive-apply <continuation>
@@ -914,42 +923,42 @@ MIT in each case. |#
   ;; (CALL ',%call/convention <cont> <convention> <op> <value*>)
   ;; Note:
   ;;   Introduced by compat.scm from CALL
-  (make-operator "#[call 2]"))
+  (make-operator "#[call/convention]"))
 
 (define %invoke-operator-cache/convention
   ;; (CALL ',%invoke-operator-cache/convention <cont> <convention>
   ;;      '(NAME NARGS) <cache> <value>*)
   ;; Note:
   ;;   Introduced by compat.scm from %invoke-operator-cache
-  (make-operator "#[invoke-operator-cache 2]"))
+  (make-operator "#[invoke-operator-cache/convention]"))
 
 (define %invoke-remote-cache/convention
   ;; (CALL ',%invoke-remote-cache/convention <cont> <convention>
   ;;       '(NAME NARGS) <cache> <value>*)
   ;; Note:
   ;;   Introduced by compat.scm from %invoke-remote-cache
-  (make-operator "#[invoke-remote-cache 2]"))
+  (make-operator "#[invoke-remote-cache/convention]"))
 
 (define %internal-apply/convention
   ;; (CALL ',%interna-apply/convention <cont> <convention>
   ;;       'NARGS <procedure> <value>*)
   ;; Note:
   ;;   Introduced by compat.scm from %internal-apply
-  (make-operator "#[internal-apply 2]"))
+  (make-operator "#[internal-apply/convention]"))
 
 (define %primitive-apply/convention
   ;; (CALL ',%primitive-apply/convention <cont> <convention>
   ;;       'NARGS '<primitive-object> <value>*)
   ;; Note:
   ;;   Introduced by compat.scm from %primitive-apply
-  (make-operator "#[primitive-apply 2]"))
+  (make-operator "#[primitive-apply/convention]"))
 
 (define %invoke-continuation/convention
   ;; (CALL ',%invoke-continuation/convention <cont> <convention>
   ;;       <value>*)
   ;; Note:
   ;;   Introduced by compat.scm from %invoke-continuation
-  (make-operator "#[invoke-continuation 2]"))
+  (make-operator "#[invoke-continuation/convention]"))
 
 (define %fetch-parameter-frame
   ;; (CALL ',%fetch-parameter-frame '#F <convention>)
