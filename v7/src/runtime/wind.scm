@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: wind.scm,v 14.9 2004/09/30 20:00:36 cph Exp $
+$Id: wind.scm,v 14.10 2004/10/01 02:43:49 cph Exp $
 
 Copyright 1986,1987,1988,1989,1992,1993 Massachusetts Institute of Technology
 Copyright 2004 Massachusetts Institute of Technology
@@ -69,14 +69,14 @@ USA.
 
 (define (%execute-at-new-state-point space before during after)
   (let ((old-root
-	 (without-interrupts
-	  (lambda ()
+	 (%without-interrupts
+	  (lambda (interrupt-mask)
 	    (let ((old-root (state-space/nearest-point space)))
 	      (before)
 	      ;; Don't trust BEFORE not to change the root; move back
 	      ;; if it did.
 	      (if (not (eq? old-root (state-space/nearest-point space)))
-		  (%%translate-to-state-point old-root))
+		  (%%translate-to-state-point old-root interrupt-mask))
 	      (let ((new-point (make-state-point #f space #f)))
 		(set-state-point/nearer-point! old-root new-point)
 		(set-state-point/to-nearer! old-root before)
@@ -89,11 +89,11 @@ USA.
       value)))
 
 (define (%translate-to-state-point point)
-  (without-interrupts
-   (lambda ()
-     (%%translate-to-state-point point))))
+  (%without-interrupts
+   (lambda (interrupt-mask)
+     (%%translate-to-state-point point interrupt-mask))))
 
-(define (%%translate-to-state-point point)
+(define (%%translate-to-state-point point interrupt-mask)
   (let find-nearest ((point point) (chain '()))
     (let ((nearer-point (state-point/nearer-point point)))
       (if nearer-point
@@ -113,10 +113,10 @@ USA.
 		      (set-state-point/from-nearer! new-root #f)
 		      (set-state-space/nearest-point! space new-root)
 		      (with-stack-marker from-nearer
-			set-interrupt-enables! interrupt-mask/gc-ok))
+			set-interrupt-enables! interrupt-mask))
 		    ;; Disable interrupts again in case FROM-NEARER
 		    ;; re-enabled them.
-		    (set-interrupt-enables! interrupt-mask/gc-ok)
+		    (set-interrupt-enables! interrupt-mask)
 		    ;; Make sure that NEW-ROOT is still the root,
 		    ;; because FROM-NEARER might have moved it.  If
 		    ;; it has been moved, find the new root, and
@@ -135,6 +135,11 @@ USA.
 			       ;; The root has moved elsewhere.
 			       (find-nearest nearer-point
 					     chain)))))))))))))
+
+(define (%without-interrupts procedure)
+  (with-limited-interrupts interrupt-mask/gc-ok
+    (lambda (interrupt-mask)
+      (procedure (fix:and interrupt-mask interrupt-mask/gc-ok)))))
 
 (define (current-state-point space)
   (guarantee-state-space space 'CURRENT-STATE-POINT)
@@ -150,7 +155,7 @@ USA.
 
 (define (state-point/space point)
   (guarantee-state-point point 'STATE-POINT/SPACE)
-  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/none)))
+  (let ((interrupt-mask (limit-interrupts! interrupt-mask/gc-ok)))
     (let loop ((point point))
       (let ((nearer-point (state-point/nearer-point point)))
 	(if nearer-point
@@ -187,7 +192,7 @@ USA.
   (local #f read-only #t))
 
 (define (get-dynamic-state)
-  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/none)))
+  (let ((interrupt-mask (limit-interrupts! interrupt-mask/gc-ok)))
     (let ((state
 	   (make-dynamic-state
 	    (state-space/nearest-point state-space:global)
