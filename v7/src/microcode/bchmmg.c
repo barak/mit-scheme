@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.89 1995/10/08 15:32:27 cph Exp $
+$Id: bchmmg.c,v 9.90 1995/10/09 05:51:50 cph Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -56,7 +56,7 @@ MIT in each case. */
 #include "os2.h"
 #define SUB_DIRECTORY_DELIMITER '\\'
 #define ASSUME_NORMAL_GC_FILE
-#ifdef __IBMC__
+#if defined(__IBMC__) || defined(__EMX__)
 #include <io.h>
 #include <sys\stat.h>
 #endif

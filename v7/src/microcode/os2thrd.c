@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2thrd.c,v 1.3 1995/04/28 07:05:04 cph Exp $
+$Id: os2thrd.c,v 1.4 1995/10/09 05:55:14 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -50,24 +50,24 @@ OS2_beginthread (thread_procedure_t procedure,
     = ((stack_size < 0x2000)
        ? 0x2000
        : ((stack_size + 0xfff) & (~0xfff)));
-#ifdef __IBMC__
+#if defined(__IBMC__) || defined(__EMX__)
   int result = (_beginthread (procedure, 0, ss, argument));
   if (result < 0)
     OS2_error_system_call (ERROR_MAX_THRDS_REACHED, syscall_beginthread);
   return (result);
-#else /* not __IBMC__ */
+#else /* not __IBMC__ nor __EMX__ */
   TID tid;
   STD_API_CALL (dos_create_thread,
 		((&tid), ((PFNTHREAD) procedure), ((ULONG) argument), 0, ss));
   return (tid);
-#endif /* not __IBMC__ */
+#endif /* not __IBMC__ nor __EMX__ */
 }
 
 void
 OS2_endthread (void)
 {
   DosUnsetExceptionHandler (THREAD_EXCEPTION_HANDLER ());
-#ifdef __IBMC__
+#if defined(__IBMC__) || defined(__EMX__)
   _endthread ();
 #else
   dos_exit (EXIT_THREAD, 0);
@@ -96,7 +96,7 @@ static thread_store_t * thread_store_array [MAX_TID + 1];
 thread_store_t **
 OS2_threadstore (void)
 {
-  TID tid = (OS2_thread_id ());
+  TID tid = (OS2_current_tid ());
   if (tid > MAX_TID)
     OS2_logic_error ("Unexpectedly large TID.");
   return (& (thread_store_array [tid]));

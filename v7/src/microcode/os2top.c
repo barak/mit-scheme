@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2top.c,v 1.14 1995/05/20 03:19:09 cph Exp $
+$Id: os2top.c,v 1.15 1995/10/09 05:55:38 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -623,14 +623,20 @@ OS_error_code_to_syserr (int code)
     case ERROR_INVALID_EXE_SIGNATURE:	return (syserr_invalid_exe_signature);
     case ERROR_EXE_MARKED_INVALID:	return (syserr_exe_marked_invalid);
     case ERROR_BAD_EXE_FORMAT:	return (syserr_bad_exe_format);
+#ifdef ERROR_ITERATED_DATA_EXCEEDS_64k
     case ERROR_ITERATED_DATA_EXCEEDS_64k:	return (syserr_iterated_data_exceeds_64k);
+#endif
     case ERROR_INVALID_MINALLOCSIZE:	return (syserr_invalid_minallocsize);
     case ERROR_DYNLINK_FROM_INVALID_RING:	return (syserr_dynlink_from_invalid_ring);
     case ERROR_IOPL_NOT_ENABLED:	return (syserr_iopl_not_enabled);
     case ERROR_INVALID_SEGDPL:	return (syserr_invalid_segdpl);
+#ifdef ERROR_AUTODATASEG_EXCEEDS_64k
     case ERROR_AUTODATASEG_EXCEEDS_64k:	return (syserr_autodataseg_exceeds_64k);
+#endif
     case ERROR_RING2SEG_MUST_BE_MOVABLE:	return (syserr_ring2seg_must_be_movable);
+#ifdef ERROR_RELOC_CHAIN_XEEDS_SEGLIM
     case ERROR_RELOC_CHAIN_XEEDS_SEGLIM:	return (syserr_reloc_chain_xeeds_seglim);
+#endif
     case ERROR_INFLOOP_IN_RELOC_CHAIN:	return (syserr_infloop_in_reloc_chain);
     case ERROR_ENVVAR_NOT_FOUND:	return (syserr_envvar_not_found);
     case ERROR_NOT_CURRENT_CTRY:	return (syserr_not_current_ctry);
@@ -807,7 +813,9 @@ OS_error_code_to_syserr (int code)
     case ERROR_INVALID_FREQUENCY:	return (syserr_invalid_frequency);
     case ERROR_NLS_NO_COUNTRY_FILE:	return (syserr_nls_no_country_file);
     case ERROR_NLS_OPEN_FAILED:	return (syserr_nls_open_failed);
+#ifdef ERROR_NO_COUNTRY_OR_CODEPAGE
     case ERROR_NO_COUNTRY_OR_CODEPAGE:	return (syserr_no_country_or_codepage);
+#endif
     case ERROR_NLS_TABLE_TRUNCATED:	return (syserr_nls_table_truncated);
     case ERROR_NLS_BAD_TYPE:	return (syserr_nls_bad_type);
     case ERROR_NLS_TYPE_NOT_FOUND:	return (syserr_nls_type_not_found);
@@ -987,7 +995,9 @@ OS_error_code_to_syserr (int code)
     case NO_ERROR_BIDI_RW_INCOMPLETE:	return (syserr_bidi_rw_incomplete);
     case ERROR_IMP_INVALID_PARM:	return (syserr_imp_invalid_parm);
     case ERROR_IMP_INVALID_LENGTH:	return (syserr_imp_invalid_length);
+#ifdef MSG_HPFS_DISK_ERROR_WARN
     case MSG_HPFS_DISK_ERROR_WARN:	return (syserr_hpfs_disk_error_warn);
+#endif
     case ERROR_MON_BAD_BUFFER:	return (syserr_mon_bad_buffer);
     case ERROR_MODULE_CORRUPTED:	return (syserr_module_corrupted);
     case ERROR_SM_OUTOF_SWAPFILE:	return (syserr_sm_outof_swapfile);
@@ -1238,14 +1248,20 @@ syserr_to_error_code (enum syserr_names syserr)
     case syserr_invalid_exe_signature:	return (ERROR_INVALID_EXE_SIGNATURE);
     case syserr_exe_marked_invalid:	return (ERROR_EXE_MARKED_INVALID);
     case syserr_bad_exe_format:	return (ERROR_BAD_EXE_FORMAT);
+#ifdef ERROR_ITERATED_DATA_EXCEEDS_64k
     case syserr_iterated_data_exceeds_64k:	return (ERROR_ITERATED_DATA_EXCEEDS_64k);
+#endif
     case syserr_invalid_minallocsize:	return (ERROR_INVALID_MINALLOCSIZE);
     case syserr_dynlink_from_invalid_ring:	return (ERROR_DYNLINK_FROM_INVALID_RING);
     case syserr_iopl_not_enabled:	return (ERROR_IOPL_NOT_ENABLED);
     case syserr_invalid_segdpl:	return (ERROR_INVALID_SEGDPL);
+#ifdef ERROR_AUTODATASEG_EXCEEDS_64k
     case syserr_autodataseg_exceeds_64k:	return (ERROR_AUTODATASEG_EXCEEDS_64k);
+#endif
     case syserr_ring2seg_must_be_movable:	return (ERROR_RING2SEG_MUST_BE_MOVABLE);
+#ifdef ERROR_RELOC_CHAIN_XEEDS_SEGLIM
     case syserr_reloc_chain_xeeds_seglim:	return (ERROR_RELOC_CHAIN_XEEDS_SEGLIM);
+#endif
     case syserr_infloop_in_reloc_chain:	return (ERROR_INFLOOP_IN_RELOC_CHAIN);
     case syserr_envvar_not_found:	return (ERROR_ENVVAR_NOT_FOUND);
     case syserr_not_current_ctry:	return (ERROR_NOT_CURRENT_CTRY);
@@ -1422,7 +1438,9 @@ syserr_to_error_code (enum syserr_names syserr)
     case syserr_invalid_frequency:	return (ERROR_INVALID_FREQUENCY);
     case syserr_nls_no_country_file:	return (ERROR_NLS_NO_COUNTRY_FILE);
     case syserr_nls_open_failed:	return (ERROR_NLS_OPEN_FAILED);
+#ifdef ERROR_NO_COUNTRY_OR_CODEPAGE
     case syserr_no_country_or_codepage:	return (ERROR_NO_COUNTRY_OR_CODEPAGE);
+#endif
     case syserr_nls_table_truncated:	return (ERROR_NLS_TABLE_TRUNCATED);
     case syserr_nls_bad_type:	return (ERROR_NLS_BAD_TYPE);
     case syserr_nls_type_not_found:	return (ERROR_NLS_TYPE_NOT_FOUND);
@@ -1602,7 +1620,9 @@ syserr_to_error_code (enum syserr_names syserr)
     case syserr_bidi_rw_incomplete:	return (NO_ERROR_BIDI_RW_INCOMPLETE);
     case syserr_imp_invalid_parm:	return (ERROR_IMP_INVALID_PARM);
     case syserr_imp_invalid_length:	return (ERROR_IMP_INVALID_LENGTH);
+#ifdef MSG_HPFS_DISK_ERROR_WARN
     case syserr_hpfs_disk_error_warn:	return (MSG_HPFS_DISK_ERROR_WARN);
+#endif
     case syserr_mon_bad_buffer:	return (ERROR_MON_BAD_BUFFER);
     case syserr_module_corrupted:	return (ERROR_MODULE_CORRUPTED);
     case syserr_sm_outof_swapfile:	return (ERROR_SM_OUTOF_SWAPFILE);

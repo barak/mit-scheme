@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchdmp.c,v 9.79 1995/03/21 22:12:50 cph Exp $
+$Id: bchdmp.c,v 9.80 1995/10/09 05:52:16 cph Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -97,7 +97,7 @@ static char FASDUMP_FILENAME[] = "\\tmp\\faXXXXXX";
 #ifdef _OS2
 #include "os2.h"
 
-#ifdef __IBMC__
+#if defined(__IBMC__) || defined(__EMX__)
 #include <io.h>
 #include <sys\stat.h>
 #include <fcntl.h>

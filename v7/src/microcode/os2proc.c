@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2proc.c,v 1.2 1995/04/28 07:05:03 cph Exp $
+$Id: os2proc.c,v 1.3 1995/10/09 05:54:35 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -187,10 +187,9 @@ OS_make_subprocess (const char * filename,
 
 typedef struct
 {
-
-  HFILE stdin;
-  HFILE stdout;
-  HFILE stderr;
+  HFILE std_in;
+  HFILE std_out;
+  HFILE std_err;
   const char * working_directory;
   int copied_p;
 } process_state_t;
@@ -199,18 +198,18 @@ static void
 save_process_state (int save_working_dir_p)
 {
   process_state_t * state = (dstack_alloc (sizeof (process_state_t)));
-  (state -> stdin) = NULLHANDLE;
-  (state -> stdout) = NULLHANDLE;
-  (state -> stderr) = NULLHANDLE;
+  (state -> std_in) = NULLHANDLE;
+  (state -> std_out) = NULLHANDLE;
+  (state -> std_err) = NULLHANDLE;
   (state -> working_directory) = 0;
   (state -> copied_p) = 0;
   transaction_record_action (tat_always, restore_process_state, state);
   if (valid_handle_p (0))
-    (state -> stdin) = (copy_handle (0));
+    (state -> std_in) = (copy_handle (0));
   if (valid_handle_p (1))
-    (state -> stdout) = (copy_handle (1));
+    (state -> std_out) = (copy_handle (1));
   if (valid_handle_p (2))
-    (state -> stderr) = (copy_handle (2));
+    (state -> std_err) = (copy_handle (2));
   if (save_working_dir_p)
     {
       const char * dir = (OS_working_dir_pathname ());
@@ -242,21 +241,21 @@ restore_process_state (void * env)
   process_state_t * state = env;
   if (state -> copied_p)
     {
-      restore_stdio (0, (state -> stdin));
-      restore_stdio (1, (state -> stdout));
-      restore_stdio (2, (state -> stderr));
+      restore_stdio (0, (state -> std_in));
+      restore_stdio (1, (state -> std_out));
+      restore_stdio (2, (state -> std_err));
       if ((state -> working_directory) != 0)
 	{
 	  OS_set_working_dir_pathname (state -> working_directory);
 	  OS_free ((void *) (state -> working_directory));
 	}
     }
-  if ((state -> stdin) != NULLHANDLE)
-    (void) dos_close (state -> stdin);
-  if ((state -> stdout) != NULLHANDLE)
-    (void) dos_close (state -> stdout);
-  if ((state -> stderr) != NULLHANDLE)
-    (void) dos_close (state -> stderr);
+  if ((state -> std_in) != NULLHANDLE)
+    (void) dos_close (state -> std_in);
+  if ((state -> std_out) != NULLHANDLE)
+    (void) dos_close (state -> std_out);
+  if ((state -> std_err) != NULLHANDLE)
+    (void) dos_close (state -> std_err);
 }
 
 static void

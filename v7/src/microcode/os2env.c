@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2env.c,v 1.7 1995/04/28 07:16:35 cph Exp $
+$Id: os2env.c,v 1.8 1995/10/09 05:54:02 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -43,12 +43,15 @@ MIT in each case. */
 #include <sys\timeb.h>
 
 #else /* not __IBMC__ */
-#ifdef __GCC2__
+#ifdef __GNUC__
 
 #include <errno.h>
 #include <sys/times.h>
+#ifdef __EMX__
+#include <sys/timeb.h>
+#endif
 
-#endif /* __GCC2__ */
+#endif /* __GNUC__ */
 #endif /* not __IBMC__ */
 
 static void initialize_real_time_clock (void);
@@ -113,6 +116,8 @@ OS_encode_time (struct time_structure * buffer)
   }
 }
 
+#ifdef __IBMC__
+
 long
 OS2_timezone (void)
 {
@@ -124,6 +129,28 @@ OS2_daylight_savings_p (void)
 {
   return (_daylight);
 }
+
+#else /* not __IBMC__ */
+#ifdef __EMX__
+
+long
+OS2_timezone (void)
+{
+  struct timeb tb;
+  ftime (&tb);
+  return (tb . timezone);
+}
+
+int
+OS2_daylight_savings_p (void)
+{
+  struct timeb tb;
+  ftime (&tb);
+  return (tb . dstflag);
+}
+
+#endif /* __EMX__ */
+#endif /* not __IBMC__ */
 
 static double initial_rtc;
 
@@ -147,11 +174,11 @@ get_real_time_clock (void)
   _ftime (&rtc);
   return ((((double) (rtc . time)) * 1000.0) + ((double) (rtc . millitm)));
 #else /* not __IBMC__ */
-#ifdef __GCC2__
+#ifdef __GNUC__
   struct tms rtc;
   times (&rtc);
   return (((double) (rtc . tms_utime)) * (1000.0 / ((double) CLK_TCK)));
-#endif /* __GCC2__ */
+#endif /* __GNUC__ */
 #endif /* not __IBMC__ */
 }
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchutl.c,v 1.5 1995/03/21 22:12:45 cph Exp $
+$Id: bchutl.c,v 1.6 1995/10/09 05:52:46 cph Exp $
 
 Copyright (c) 1991-95 Massachusetts Institute of Technology
 
@@ -72,7 +72,7 @@ DEFUN (error_name, (code), int code)
 #else /* not WINNT */
 #ifdef _OS2
 
-#ifdef __IBMC__
+#if defined(__IBMC__) || defined(__EMX__)
 #include <io.h>
 #endif
 

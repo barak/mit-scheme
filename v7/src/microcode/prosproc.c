@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosproc.c,v 1.14 1995/01/05 23:48:27 cph Exp $
+$Id: prosproc.c,v 1.15 1995/10/09 05:56:18 cph Exp $
 
 Copyright (c) 1990-95 Massachusetts Institute of Technology
 
@@ -181,7 +181,9 @@ DEFUN (convert_string_vector, (vector), SCHEME_OBJECT vector)
 }
 
 #ifdef _OS2
+#ifndef __EMX__
 #define environ _environ
+#endif
 #endif
 
 DEFINE_PRIMITIVE ("SCHEME-ENVIRONMENT", Prim_scheme_environment, 0, 0, 0)

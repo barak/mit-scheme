@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2xcpt.c,v 1.4 1995/04/28 07:20:08 cph Exp $
+$Id: os2xcpt.c,v 1.5 1995/10/09 05:56:04 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -816,7 +816,9 @@ static exception_entry_t exception_names [] =
   EXCEPTION_ENTRY (XCPT_ACCESS_VIOLATION, "access violation"),
   EXCEPTION_ENTRY (XCPT_ARRAY_BOUNDS_EXCEEDED, "array bounds exceeded"),
   EXCEPTION_ENTRY (XCPT_ASYNC_PROCESS_TERMINATE, "async process terminate"),
+#ifdef XCPT_B1NPX_ERRATA_02
   EXCEPTION_ENTRY (XCPT_B1NPX_ERRATA_02, "B1NPX errata"),
+#endif
   EXCEPTION_ENTRY (XCPT_BAD_STACK, "bad stack"),
   EXCEPTION_ENTRY (XCPT_BREAKPOINT, "breakpoint"),
   EXCEPTION_ENTRY (XCPT_DATATYPE_MISALIGNMENT, "data type misalignment"),
