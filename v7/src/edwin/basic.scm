@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: basic.scm,v 1.127 1993/02/02 04:34:53 gjr Exp $
+;;;	$Id: basic.scm,v 1.128 1993/02/25 02:43:26 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -294,16 +294,13 @@ For a normal exit, you should use \\[exit-recursive-edit], NOT this command."
 ;;;; Leaving Edwin
 
 ;; Set this to #F to indicate that returning from the editor has the
-;; same effect as calling %EXIT.
+;; same effect as calling %EXIT, or to prevent the editor from
+;; returning to scheme.
 (define editor-can-exit? true)
 
 ;; Set this to #F to indicate that calling QUIT has the same effect
-;; as calling %EXIT.
+;; as calling %EXIT, or to prevent the editor from suspending to the OS.
 (define scheme-can-quit?
-  #|
-  (not (string=? microcode-id/operating-system-name "dos"))
-  |#
-  ;; DOS now has a pseudo-suspend
   true)
 
 ;; Set this to #T to force the exit commands to always prompt for
@@ -316,7 +313,7 @@ With argument, saves visited file first."
   "P"
   (lambda (argument)
     (if argument (save-buffer (current-buffer) false))
-    (if (not (and scheme-can-quit? (subprocess-job-control-available?)))
+    (if (and scheme-can-quit? (os/scheme-can-quit?))
 	(editor-error "Scheme cannot be suspended"))
     (quit-scheme)))
 

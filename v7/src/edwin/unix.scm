@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.32 1993/02/21 05:55:02 cph Exp $
+;;;	$Id: unix.scm,v 1.33 1993/02/25 02:43:08 gjr Exp $
 ;;;
-;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-1993 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -552,3 +552,8 @@ CANNOT contain the 'F' option."
        (file-namestring
 	(extract-and-delete-string start (line-end start 0)))
        start))))
+
+(define (os/scheme-can-quit?)
+  (subprocess-job-control-available?))
+
+(define os/quit %quit)

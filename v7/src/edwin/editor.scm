@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: editor.scm,v 1.224 1992/09/14 23:12:23 cph Exp $
+;;;	$Id: editor.scm,v 1.225 1993/02/25 02:43:42 gjr Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -342,7 +342,7 @@ This does not affect editor errors or evaluation errors."
   (quit-editor-and (lambda () *the-non-printing-object*)))
 
 (define (quit-scheme)
-  (quit-editor-and (lambda () (%quit) (edit))))
+  (quit-editor-and (lambda () (os/quit) (edit))))
 
 (define (quit-editor-and thunk)
   (call-with-current-continuation

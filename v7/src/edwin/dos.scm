@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.7 1993/02/02 04:38:46 gjr Exp $
+;;;	$Id: dos.scm,v 1.8 1993/02/25 02:42:56 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ;;;
@@ -456,3 +456,25 @@ Includes the new backup.  Must be > 0."
 		  name)))
       (insert-string entry point)
       (insert-newline point))))
+
+(define (os/scheme-can-quit?)
+  true)
+
+(define (os/quit)
+  (without-interrupts
+    (lambda ()
+      (with-real-working-directory-pathname
+	(buffer-default-directory (current-buffer))
+	%quit))))
+
+(define (with-real-working-directory-pathname dir thunk)
+  (let ((inside dir)
+	(outside false))
+    (dynamic-wind
+     (lambda ()
+       (set! outside (working-directory-pathname))
+       (set-working-directory-pathname! inside))
+     thunk
+     (lambda ()
+       (set! inside (working-directory-pathname))
+       (set-working-directory-pathname! outside)))))
