@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 4.5 1988/12/30 07:05:28 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 4.6 1989/08/28 18:34:25 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -103,7 +103,7 @@ MIT in each case. |#
       (let ((clear-map (clear-map!)))
 	(LAP ,@set-environment
 	     (MOV L ,datum ,reg:temp)
-	     (MOV B (& ,type) ,reg:temp)
+	     ,(memory-set-type type reg:temp)
 	     ,@clear-map
 	     (MOV L ,reg:temp (A 2))
 	     ,(load-constant name (INST-EA (A 1)))
@@ -128,7 +128,7 @@ MIT in each case. |#
     (LAP ,@set-environment
 	 ,@(clear-map!)
 	 (PEA (@PCR ,(rtl-procedure/external-label (label->object label))))
-	 (MOV B (& ,type) (@A 7))
+	 ,(memory-set-type type (INST-EA (@A 7)))
 	 (MOV L (@A+ 7) (A 2))
 	 ,(load-constant name (INST-EA (A 1)))
 	 (JSR ,entry))))
@@ -162,7 +162,7 @@ MIT in each case. |#
     (let ((datum (standard-register-reference datum false)))      (let ((clear-map (clear-map!)))
 	(LAP ,@set-extension
 	     (MOV L ,datum ,reg:temp)
-	     (MOV B (& ,type) ,reg:temp)
+	     ,(memory-set-type type reg:temp)
 	     ,@clear-map
 	     (MOV L ,reg:temp (A 1))
 	     (JSR ,entry:compiler-assignment-trap))))))
@@ -176,7 +176,8 @@ MIT in each case. |#
     (LAP ,@set-extension
 	 ,@(clear-map!)
 	 (PEA (@PCR ,(rtl-procedure/external-label (label->object label))))
-	 (MOV B (& ,type) (@A 7))	 (MOV L (@A+ 7) (A 1))
+	 ,(memory-set-type type (INST-EA (@A 7)))
+	 (MOV L (@A+ 7) (A 1))
 	 (JSR ,entry:compiler-assignment-trap))))
 
 (define-rule statement

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/assmd.scm,v 1.35 1988/08/31 05:55:31 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/assmd.scm,v 1.36 1989/08/28 18:33:33 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,47 +36,41 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(let-syntax ((fold
-	      (macro (expression)
-		(eval expression system-global-environment))))
-
-(define-integrable addressing-granularity 8)
-(define-integrable scheme-object-width 32)
-(define-integrable endianness 'BIG)
+(let-syntax ((ucode-type (macro (name) `',(microcode-type name))))
 
 (define-integrable maximum-padding-length
   ;; Instruction length is always a multiple of 16 bits
   16)
 
-(define-integrable padding-string
+(define padding-string
   ;; Pad with ILLEGAL instructions
-  (fold (unsigned-integer->bit-string 16 #b0100101011111100)))
+  (unsigned-integer->bit-string maximum-padding-length #b0100101011111100))
 
 (define-integrable block-offset-width
   ;; Block offsets are always 16 bit words
   16)
 
 (define-integrable maximum-block-offset
-  (fold (- (expt 2 16) 2)))
+  (- (expt 2 block-offset-width) 2))
 
-(define-integrable (block-offset->bit-string offset start?)
+(define (block-offset->bit-string offset start?)
   (unsigned-integer->bit-string block-offset-width (+ offset (if start? 0 1))))
 
-(define-integrable nmv-type-string
-  (fold (unsigned-integer->bit-string 8 (microcode-type 'MANIFEST-NM-VECTOR))))
-
 (define (make-nmv-header n)
-  (bit-string-append (unsigned-integer->bit-string 24 n) nmv-type-string))
+  (bit-string-append (unsigned-integer->bit-string scheme-datum-width n)
+		     nmv-type-string))
+
+(define nmv-type-string
+  (unsigned-integer->bit-string scheme-type-width
+				(ucode-type manifest-nm-vector)))
 
 (define (object->bit-string object)
   (bit-string-append
-   (unsigned-integer->bit-string 24 (object-datum object))
-   (unsigned-integer->bit-string 8 (object-type object))))
+   (unsigned-integer->bit-string scheme-datum-width
+				 (careful-object-datum object))
+   (unsigned-integer->bit-string scheme-type-width (object-type object))))
 
 ;;; Machine dependent instruction order
-
-(define-integrable (instruction-initial-position block)
-  (bit-string-length block))
 
 (define (instruction-insert! bits block position receiver)
   (let* ((l (bit-string-length bits))
@@ -84,7 +78,8 @@ MIT in each case. |#
     (bit-substring-move-right! bits 0 l block new-position)
     (receiver new-position)))
 
-(define-integrable instruction-append
-  bit-string-append-reversed)
+(define instruction-initial-position bit-string-length)
+(define-integrable instruction-append bit-string-append-reversed)
+
 ;;; end let-syntax
 )

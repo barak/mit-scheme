@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insutl.scm,v 1.6 1988/06/14 08:47:30 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insutl.scm,v 1.7 1989/08/28 18:33:55 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -120,16 +120,13 @@ MIT in each case. |#
 
 (define (output-immediate-data immediate-size i)
   (case immediate-size
-    ((B)
-     (EXTENSION-WORD (8 #b00000000)
-		     (8 i SIGNED)))
-    ((W)
-     (EXTENSION-WORD (16 i SIGNED)))
-    ((L)
-     (EXTENSION-WORD (32 i SIGNED)))
-    (else
-     (error "OUTPUT-IMMEDIATE-DATA: illegal immediate size"
-	    immediate-size))))
+    ((B)  (EXTENSION-WORD (8 #b00000000) (8 i SIGNED)))
+    ((UB) (EXTENSION-WORD (8 #b00000000) (8 i UNSIGNED)))
+    ((W)  (EXTENSION-WORD (16 i SIGNED)))
+    ((UW) (EXTENSION-WORD (16 i UNSIGNED)))
+    ((L)  (EXTENSION-WORD (32 i SIGNED)))
+    ((UL) (EXTENSION-WORD (32 i UNSIGNED)))
+    (else (error "illegal immediate size" immediate-size))))
 
 ;;; Support for 68020 addressing modes
 
@@ -230,17 +227,37 @@ MIT in each case. |#
     ((B) (immediate-byte data))
     ((W) (immediate-word data))
     ((L) (immediate-long data))
-    (else (error "IMMEDIATE-WORD: Illegal size" size))))
+    ((UB) (immediate-unsigned-byte data))
+    ((UW) (immediate-unsigned-word data))
+    ((UL) (immediate-unsigned-long data))
+    (else (error "Illegal size" size))))
+
+(define (immediate-unsigned-words data size)
+  (case size
+    ((B UB) (immediate-unsigned-byte data))
+    ((W UW) (immediate-unsigned-word data))
+    ((L UL) (immediate-unsigned-long data))
+    (else (error "Illegal size" size))))
 
 (define-integrable (immediate-byte data)
   `(GROUP ,(make-bit-string 8 0)
 	  ,(syntax-evaluation data coerce-8-bit-signed)))
 
+(define-integrable (immediate-unsigned-byte data)
+  `(GROUP ,(make-bit-string 8 0)
+	  ,(syntax-evaluation data coerce-8-bit-unsigned)))
+
 (define-integrable (immediate-word data)
   (syntax-evaluation data coerce-16-bit-signed))
 
+(define-integrable (immediate-unsigned-word data)
+  (syntax-evaluation data coerce-16-bit-unsigned))
+
 (define-integrable (immediate-long data)
   (syntax-evaluation data coerce-32-bit-signed))
+
+(define-integrable (immediate-unsigned-long data)
+  (syntax-evaluation data coerce-32-bit-unsigned))
 
 (define-integrable (relative-word address)
   (syntax-evaluation `(- ,address *PC*) coerce-16-bit-signed))

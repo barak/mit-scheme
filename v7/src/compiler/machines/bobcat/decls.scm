@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.22 1989/07/25 12:40:16 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.23 1989/08/28 18:33:41 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -374,6 +374,16 @@ MIT in each case. |#
 ;;;; Integration Dependencies
 
 (define (initialize/integration-dependencies!)
+
+  (define (add-declaration! declaration filenames)
+    (for-each (lambda (filenames)
+		(let ((node (filename->source-node filenames)))
+		  (set-source-node/declarations!
+		   node
+		   (cons declaration
+			 (source-node/declarations node)))))
+	      filenames))
+
   (let ((front-end-base
 	 (filename/append "base"
 			  "blocks" "cfg1" "cfg2" "cfg3"
@@ -512,14 +522,16 @@ MIT in each case. |#
     (define-integration-dependencies "rtlopt" "rcserq" "base" "object")
     (define-integration-dependencies "rtlopt" "rlife"  "base" "cfg2")
 
-    (file-dependency/integration/join
-     (append instruction-base
-	     lapgen-base
-	     lapgen-body
-	     assembler-base
-	     assembler-body
-	     (filename/append "back" "linear" "syerly"))
-     instruction-base)
+    (let ((dependents
+	   (append instruction-base
+		   lapgen-base
+		   lapgen-body
+		   assembler-base
+		   assembler-body
+		   (filename/append "back" "linear" "syerly"))))
+      (add-declaration! '(USUAL-DEFINITION (SET EXPT)) dependents)
+      (file-dependency/integration/join dependents instruction-base))
+
     (file-dependency/integration/join (append lapgen-base lapgen-body)
 				      lapgen-base)
 

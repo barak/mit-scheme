@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.12 1989/05/31 20:01:36 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.13 1989/08/28 18:33:09 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -306,3 +306,10 @@ MIT in each case. |#
 
 (define procedure-object?
   (lexical-reference system-global-environment 'PROCEDURE?))
+
+(define (careful-object-datum object)
+  ;; This works correctly when cross-compiling.
+  (if (and (object-type? (ucode-type fixnum) object)
+	   (negative? object))
+      (+ object unsigned-fixnum/upper-limit)
+      (object-datum object)))

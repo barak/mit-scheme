@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 4.8 1989/07/25 12:38:07 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 4.9 1989/08/28 18:34:18 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -120,14 +120,19 @@ MIT in each case. |#
   (QUALIFIER (pseudo-register? register))
   (set-standard-branches! 'EQ)
   (let ((reference (move-to-temporary-register! register 'DATA)))
-    (LAP (RO L L (& 8) ,reference)
+    (LAP ,@(object->type reference)
 	 ,(test-byte type reference))))
 
 (define-rule predicate
   (TYPE-TEST (OBJECT->TYPE (? memory)) (? type))
   (QUALIFIER (predicate/memory-operand? memory))
   (set-standard-branches! 'EQ)
-  (LAP ,(test-byte type (predicate/memory-operand-reference memory))))
+  (if (= scheme-type-width 8)
+      (LAP ,(test-byte type (predicate/memory-operand-reference memory)))
+      (let ((temp (reference-temporary-register! 'DATA)))
+	(LAP (MOV L ,(predicate/memory-operand-reference memory) ,temp)
+	     ,@(object->type temp)
+	     ,(test-byte type temp)))))
 
 (define-rule predicate
   (UNASSIGNED-TEST (REGISTER (? register)))
@@ -183,9 +188,9 @@ MIT in each case. |#
   (if (non-pointer-object? constant)
       (begin
 	(set-standard-branches! 'EQ)
-	(LAP ,(test-non-pointer (object-type constant)
-				(object-datum constant)
-				(standard-register-reference register 'DATA))))
+	(LAP ,(test-non-pointer-constant
+	       constant
+	       (standard-register-reference register 'DATA))))
       (compare/register*memory register
 			       (INST-EA (@PCR ,(constant->label constant)))
 			       'EQ)))
@@ -194,9 +199,7 @@ MIT in each case. |#
   (if (non-pointer-object? constant)
       (begin
 	(set-standard-branches! 'EQ)
-	(LAP ,(test-non-pointer (object-type constant)
-				(object-datum constant)
-				memory)))
+	(LAP ,(test-non-pointer-constant constant memory)))
       (compare/memory*memory memory
 			     (INST-EA (@PCR ,(constant->label constant)))
 			     'EQ)))
@@ -277,8 +280,8 @@ MIT in each case. |#
   (guarantee-signed-fixnum constant)
   (let ((reference (standard-register-reference register 'DATA)))
     (if (effective-address/register? reference)
-	(LAP (CMP L (& ,(* constant #x100)) ,reference))
-	(LAP (CMPI L (& ,(* constant #x100)) ,reference)))))
+	(LAP (CMP L (& ,(* constant fixnum-1)) ,reference))
+	(LAP (CMPI L (& ,(* constant fixnum-1)) ,reference)))))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
@@ -302,7 +305,8 @@ MIT in each case. |#
 (define (fixnum-predicate/memory*constant memory constant cc)
   (set-standard-branches! cc)
   (guarantee-signed-fixnum constant)
-  (LAP (CMPI L (& ,(* constant #x100)) ,memory)))
+  (LAP (CMPI L (& ,(* constant fixnum-1)) ,memory)))
+
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (? memory)

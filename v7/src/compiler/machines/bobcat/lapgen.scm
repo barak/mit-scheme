@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.20 1989/07/25 12:40:04 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.21 1989/08/28 18:33:59 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -68,7 +68,7 @@ MIT in each case. |#
   (offset-reference regnum:regs-pointer
 		    (pseudo-register-offset register)))
 
-(define-integrable (machine->machine-register source target)
+(define (machine->machine-register source target)
   (cond ((float-register? source)
 	 (if (float-register? target)
 	     (INST (FMOVE ,source ,target))
@@ -79,12 +79,12 @@ MIT in each case. |#
 			 ,(register-reference source)
 			 ,(register-reference target))))))
 
-(define-integrable (machine-register->memory source target)
+(define (machine-register->memory source target)
   (if (float-register? source)
       (INST (FMOVE X ,(register-reference source) ,target))
       (INST (MOV L ,(register-reference source) ,target))))
 
-(define-integrable (memory->machine-register source target)
+(define (memory->machine-register source target)
   (if (float-register? target)
       (INST (FMOVE X ,source ,(register-reference target)))
       (INST (MOV L ,source ,(register-reference target)))))
@@ -136,16 +136,19 @@ MIT in each case. |#
 
 (define (load-constant constant target)
   (if (non-pointer-object? constant)
-      (load-non-pointer (object-type constant)
-			(object-datum constant)
-			target)
+      (load-non-pointer-constant constant target)
       (INST (MOV L
 		 (@PCR ,(constant->label constant))
 		 ,target))))
 
+(define (load-non-pointer-constant constant target)
+  (load-non-pointer (object-type constant)
+		    (careful-object-datum constant)
+		    target))
+
 (define (load-non-pointer type datum target)
   (cond ((not (zero? type))
-	 (INST (MOV L
+	 (INST (MOV UL
 		    (& ,(make-non-pointer-literal type datum))
 		    ,target)))
 	((and (zero? datum)
@@ -155,12 +158,19 @@ MIT in each case. |#
 	      (effective-address/data-register? target))
 	 (INST (MOVEQ (& ,datum) ,target)))
 	(else
-	 (INST (MOV L (& ,datum) ,target)))))
-
+	 (INST (MOV UL (& ,datum) ,target)))))
+
 (define (test-byte n effective-address)
+  ;; This is used to test actual bytes.
+  ;; Type codes are "preprocessed" by the pertinent rule.
   (if (and (zero? n) (effective-address/data&alterable? effective-address))
       (INST (TST B ,effective-address))
       (INST (CMPI B (& ,n) ,effective-address))))
+
+(define (test-non-pointer-constant constant target)
+  (test-non-pointer (object-type constant)
+		    (careful-object-datum constant)
+		    target))
 
 (define (test-non-pointer type datum effective-address)
   (if (and (zero? type) (zero? datum)
@@ -171,11 +181,11 @@ MIT in each case. |#
 		  ,effective-address))))
  
 (define make-non-pointer-literal
-  (let ((type-scale-factor (expt 2 24)))
+  (let ((type-scale-factor (expt 2 scheme-datum-width)))
     (lambda (type datum)
-      (+ (* (if (negative? datum) (1+ type) type)
-	    type-scale-factor)
-	 datum))))
+      (if (negative? datum)
+	  (error "Non-pointer datum must be nonnegative" datum))
+      (+ (* type type-scale-factor) datum))))
 
 (define (set-standard-branches! cc)
   (set-current-branches!
@@ -311,14 +321,10 @@ MIT in each case. |#
       (delete-machine-register! register)
       result)))
 
-(define (put-type-in-ea type-code ea)
-  (cond ((effective-address/data-register? ea)
-	 (LAP (AND L ,mask-reference ,ea)
-	      (OR L (& ,(make-non-pointer-literal type-code 0)) ,ea)))
-	((effective-address/data&alterable? ea)
-	 (LAP (MOV B (& ,type-code) ,ea)))
-	(else
-	 (error "PUT-TYPE-IN-EA: Illegal effective-address" ea))))
+(define (memory-set-type type target)
+  (if (= 8 scheme-type-width)
+      (INST (MOV B (& ,type) ,target))
+      (INST (OR B (& ,(* type-scale-factor type)) ,target))))
 
 (define (standard-target-expression? target)
   (or (rtl:offset? target)
@@ -361,23 +367,24 @@ MIT in each case. |#
   (if (not (unsigned-fixnum? n)) (error "Not a unsigned fixnum" n))
   n)
 
-(define-integrable (load-fixnum-constant constant register-reference)
-  (LAP (MOV L (& ,(* #x100 constant)) ,register-reference)))
+(define fixnum-1
+  (expt 2 scheme-type-width))
 
-(define-integrable (object->fixnum reg-ref)
-  (LAP (LS L L (& 8) ,reg-ref)))
+(define (load-fixnum-constant constant register-reference)
+  (LAP (MOV L (& ,(* constant fixnum-1)) ,register-reference)))
 
-(define-integrable (address->fixnum reg-ref)
-  (LAP (LS L L (& 8) ,reg-ref)))
+(define (object->fixnum reg-ref)
+  (LAP (LS L L (& ,scheme-type-width) ,reg-ref)))
+
+(define (address->fixnum reg-ref)
+  (LAP (LS L L (& ,scheme-type-width) ,reg-ref)))
 
 (define (fixnum->object reg-ref)
-  (LAP
-   (MOV B (& ,(ucode-type fixnum)) ,reg-ref)
-   (RO R L (& 8) ,reg-ref)))
+  (LAP (OR B (& ,(ucode-type fixnum)) ,reg-ref)
+       (RO R L (& ,scheme-type-width) ,reg-ref)))
 
-(define-integrable (fixnum->address reg-ref)
-  (LAP
-   (LS R L (& 8) ,reg-ref)))
+(define (fixnum->address reg-ref)
+  (LAP (LS R L (& ,scheme-type-width) ,reg-ref)))
 
 (define (test-fixnum effective-address)
   (if (effective-address/data&alterable? effective-address)
@@ -459,11 +466,11 @@ MIT in each case. |#
 
 (define-fixnum-method 'ONE-PLUS-FIXNUM fixnum-methods/1-arg
   (lambda (reference)
-    (LAP (ADD L (& #x100) ,reference))))
+    (LAP (ADD L (& ,fixnum-1) ,reference))))
 
 (define-fixnum-method 'MINUS-ONE-PLUS-FIXNUM fixnum-methods/1-arg
   (lambda (reference)
-    (LAP (SUB L (& #x100) ,reference))))
+    (LAP (SUB L (& ,fixnum-1) ,reference))))
 
 (define-fixnum-method 'PLUS-FIXNUM fixnum-methods/2-args
   (lambda (target source)
@@ -472,7 +479,7 @@ MIT in each case. |#
 (define-fixnum-method 'PLUS-FIXNUM fixnum-methods/2-args-constant
   (lambda (target n)
     (cond ((zero? n) (LAP))
-	  (else (LAP (ADD L (& ,(* n #x100)) ,target))))))
+	  (else (LAP (ADD L (& ,(* n fixnum-1)) ,target))))))
 
 (define-fixnum-method 'MULTIPLY-FIXNUM fixnum-methods/2-args
   (lambda (target source)
@@ -484,10 +491,10 @@ MIT in each case. |#
 	  ;;; moved into the rules.
 	  (LAP
 	   (MOV L ,source ,new-source)
-	   (AS R L (& 8) ,target)
+	   (AS R L (& ,scheme-type-width) ,target)
 	   (MUL S L ,new-source ,target)))
 	(LAP
-	 (AS R L (& 8) ,target)
+	 (AS R L (& ,scheme-type-width) ,target)
 	 (MUL S L ,source ,target)))))
 
 (define-fixnum-method 'MULTIPLY-FIXNUM fixnum-methods/2-args-constant
@@ -518,7 +525,7 @@ MIT in each case. |#
 (define-fixnum-method 'MINUS-FIXNUM fixnum-methods/2-args-constant
   (lambda (target n)
     (cond ((zero? n) (LAP))
-	  (else (LAP (SUB L (& ,(* n #x100)) ,target))))))
+	  (else (LAP (SUB L (& ,(* n fixnum-1)) ,target))))))
 
 ;;;; Flonum Operators
 
@@ -609,20 +616,27 @@ MIT in each case. |#
 
 (define (load-constant-datum constant register-ref)
   (if (non-pointer-object? constant)
-      (LAP (MOV L (& ,(object-datum constant)) ,register-ref))
+      (LAP (MOV L (& ,(careful-object-datum constant)) ,register-ref))
       (LAP (MOV L
 		(@PCR ,(constant->label constant))
 		,register-ref)
 	   ,@(object->address register-ref))))
 
-(define-integrable (object->address register-reference)
+(define (object->address register-reference)
   (LAP (AND L ,mask-reference ,register-reference)))
 
-(define-integrable (object->datum register-reference)
+(define (object->datum register-reference)
   (LAP (AND L ,mask-reference ,register-reference)))
 
-(define-integrable (object->type register-reference)
-  (LAP (RO L L (& 8) ,register-reference)))
+(define scheme-type-mask
+  (-1+ (expt 2 scheme-type-width)))
+
+(define (object->type register-reference)
+  (if (= scheme-type-width 8)
+      (LAP (RO L L (& 8) ,register-reference))
+      (LAP (RO L L (& ,scheme-type-width) ,register-reference)
+	   (AND B (& ,scheme-type-mask) ,register-reference))))
+
 ;;;; CHAR->ASCII rules
 
 (define (coerce->any/byte-reference register)

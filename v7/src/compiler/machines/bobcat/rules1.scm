@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.24 1989/08/13 09:57:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.25 1989/08/28 18:34:13 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -141,7 +141,7 @@ MIT in each case. |#
   (delete-dead-registers!)
   (let ((target (reference-target-alias! target 'DATA)))
     (if (non-pointer-object? constant)
-	(LAP ,(load-non-pointer 0 (object-datum constant) target))
+	(LAP ,(load-non-pointer 0 (careful-object-datum constant) target))
 	(LAP ,(load-constant constant target)
 	     ,@(conversion target)))))
 
@@ -230,15 +230,14 @@ MIT in each case. |#
   (QUALIFIER (and (pseudo-register? target) (machine-register? datum)))
   (let ((target (reference-target-alias! target 'DATA)))
     (LAP (MOV L ,(register-reference datum) ,target)
-	 (OR L (& ,(make-non-pointer-literal type 0)) ,target))))
+	 (OR UL (& ,(make-non-pointer-literal type 0)) ,target))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? datum))))
   (QUALIFIER (and (pseudo-register? target) (pseudo-register? datum)))
   (let ((target (move-to-alias-register! datum 'DATA target)))
-    (LAP (OR L (& ,(make-non-pointer-literal type 0)) ,target))))
-
+    (LAP (OR UL (& ,(make-non-pointer-literal type 0)) ,target))))
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (CONSTANT (? type)) (CONSTANT (? datum))))
@@ -255,7 +254,7 @@ MIT in each case. |#
       (LAP (LEA (@PCR ,(rtl-procedure/external-label (label->object label)))
 		,temp)
 	   (MOV L ,temp ,target)
-	   (OR L (& ,(make-non-pointer-literal type 0)) ,target)))))
+	   (OR UL (& ,(make-non-pointer-literal type 0)) ,target)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->FIXNUM (CONSTANT (? constant))))
@@ -320,7 +319,7 @@ MIT in each case. |#
 	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? datum))))
   (let ((target (indirect-reference! address offset)))
     (LAP (MOV L ,(standard-register-reference datum 'DATA) ,target)
-	 (MOV B (& ,type) ,target))))
+	 ,(memory-set-type type target))))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
@@ -330,7 +329,7 @@ MIT in each case. |#
     (LAP (LEA (@PCR ,(rtl-procedure/external-label (label->object label)))
 	      ,temp)
 	 (MOV L ,temp ,target)
-	 (MOV B (& ,type) ,target))))
+	 ,(memory-set-type type target))))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a0)) (? n0))
@@ -405,13 +404,13 @@ MIT in each case. |#
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
 	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? datum))))
   (LAP (MOV L ,(standard-register-reference datum 'DATA) (@-A 7))
-       (MOV B (& ,type) (@A 7))))
+       ,(memory-set-type type (INST-EA (@A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
 	  (CONS-POINTER (CONSTANT (? type)) (ENTRY:PROCEDURE (? label))))
   (LAP (PEA (@PCR ,(rtl-procedure/external-label (label->object label))))
-       (MOV B (& ,type) (@A 7))))
+       ,(memory-set-type type (INST-EA (@A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (OFFSET (REGISTER (? r)) (? n)))
@@ -420,8 +419,7 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (ENTRY:CONTINUATION (? label)))
   (LAP (PEA (@PCR ,label))
-       (MOV B (& ,(ucode-type compiled-entry)) (@A 7))))
-
+       ,(memory-set-type (ucode-type compiled-entry) (INST-EA (@A 7)))))
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
 	  (FIXNUM->OBJECT (REGISTER (? r))))
@@ -477,15 +475,11 @@ MIT in each case. |#
       (operate-on-target (reference-target-alias! target 'DATA)))
     operate-on-target))
 
-#|
+;;; The maximum value for a shift constant is 8, so these rules can
+;;; only be used when the type width is 6 bits or less.
 
-;;; This code would have been a nice idea except that 10 is not a
-;;; valid value as a shift constant.
-
-(define (convert-index->fixnum/register target source)
-  (reuse-and-load-fixnum-target! target source
-    (lambda (target)
-      (LAP (LS L L (& 10) ,target)))))
+(if (<= scheme-type-width 6)
+    (begin
 
 (define-rule statement
   (ASSIGN (? target)
@@ -503,13 +497,6 @@ MIT in each case. |#
   (QUALIFIER (and (fixnum-operation-target? target) (pseudo-register? source)))
   (convert-index->fixnum/register target source))
 
-(define (convert-index->fixnum/offset target address offset)
-  (let ((source (indirect-reference! address offset)))
-    (reuse-and-operate-on-fixnum-target! target
-      (lambda (target)
-	(LAP (MOV L ,source ,target)
-	     (LS L L (& 10) ,target))))))
-
 (define-rule statement
   (ASSIGN (? target)
 	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
@@ -526,7 +513,23 @@ MIT in each case. |#
   (QUALIFIER (fixnum-operation-target? target))
   (convert-index->fixnum/offset target r n))
 
-|#
+;;; end (IF (<= SCHEME-TYPE-WIDTH 6) ...)
+))
+
+;;; It doesn't hurt for these to be defined when the above rules are
+;;; not in use.
+
+(define (convert-index->fixnum/register target source)
+  (reuse-and-load-fixnum-target! target source
+    (lambda (target)
+      (LAP (LS L L (& ,(+ scheme-type-width 2)) ,target)))))
+
+(define (convert-index->fixnum/offset target address offset)
+  (let ((source (indirect-reference! address offset)))
+    (reuse-and-operate-on-fixnum-target! target
+      (lambda (target)
+	(LAP (MOV L ,source ,target)
+	     (LS L L (& ,(+ scheme-type-width 2)) ,target))))))
 (define-rule statement
   (ASSIGN (? target)
 	  (FIXNUM-2-ARGS (? operator)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.15 1989/07/25 12:39:50 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.16 1989/08/28 18:34:05 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -38,10 +38,17 @@ MIT in each case. |#
 ;;; Size of words.  Some of the stuff in "assmd.scm" might want to
 ;;; come here.
 
+(define-integrable endianness 'BIG)
 (define-integrable addressing-granularity 8)
 (define-integrable scheme-object-width 32)
-(define-integrable scheme-datum-width 24)
-(define-integrable scheme-type-width 8)
+(define-integrable scheme-type-width 6)	;or 8
+
+(define-integrable scheme-datum-width
+  (- scheme-object-width scheme-type-width))
+
+(define-integrable type-scale-factor
+  (expt 2 (- 8 scheme-type-width)))
+
 (define-integrable flonum-size 2)
 (define-integrable float-alignment 32)
 
@@ -51,24 +58,24 @@ MIT in each case. |#
 ;; of address units per character.  This will cause problems on a
 ;; machine that is word addressed, in which case we will have to
 ;; rethink the character addressing strategy.
-(define-integrable address-units-per-object 4)
+
+(define address-units-per-object
+  (quotient scheme-object-width addressing-granularity))
+
 (define-integrable address-units-per-packed-char 1)
 
-(let-syntax ((fold
-	      (macro (expression)
-		(eval expression system-global-environment))))
-  (define-integrable unsigned-fixnum/upper-limit (fold (expt 2 24)))
-  (define-integrable signed-fixnum/upper-limit (fold (expt 2 23)))
-  (define-integrable signed-fixnum/lower-limit (fold (- (expt 2 23)))))
+(define-integrable signed-fixnum/upper-limit
+  (expt 2 (-1+ scheme-datum-width)))
 
-(define-integrable (stack->memory-offset offset)
-  offset)
+(define-integrable signed-fixnum/lower-limit
+  (- signed-fixnum/upper-limit))
 
-(define ic-block-first-parameter-offset
-  2)
+(define-integrable unsigned-fixnum/upper-limit
+  (* 2 signed-fixnum/upper-limit))
 
-(define closure-block-first-offset
-  2)
+(define-integrable (stack->memory-offset offset) offset)
+(define-integrable ic-block-first-parameter-offset 2)
+(define-integrable closure-block-first-offset 2)
 
 (define (rtl:machine-register? rtl-register)
   (case rtl-register
@@ -128,16 +135,14 @@ MIT in each case. |#
 (define-integrable fp5 21)
 (define-integrable fp6 22)
 (define-integrable fp7 23)
-(define number-of-machine-registers 24)
-(define number-of-temporary-registers 50)
+(define-integrable number-of-machine-registers 24)
+(define-integrable number-of-temporary-registers 50)
 
 (define-integrable regnum:dynamic-link a4)
 (define-integrable regnum:free-pointer a5)
 (define-integrable regnum:regs-pointer a6)
 (define-integrable regnum:stack-pointer a7)
-
-(define-integrable (sort-machine-registers registers)
-  registers)
+(define-integrable (sort-machine-registers registers) registers)
 
 (define available-machine-registers
   (list d0 d1 d2 d3 d4 d5 d6
@@ -148,16 +153,16 @@ MIT in each case. |#
   (list d7 a4 a5 a6 a7))
 
 (define (float-register? register)
-  (if (machine-register? register)
-      (eq? (register-type register) 'FLOAT)
-      (error "FLOAT-REGISTER? valid only for machine registers" register)))
+  (if (not (machine-register? register))
+      (error "Not a machine-register" register))
+  (eq? (register-type register) 'FLOAT))
 
 (define (word-register? register)
   (if (machine-register? register)
-      (memq (register-type register)
-	    '(DATA ADDRESS))))
+      (memq (register-type register) '(DATA ADDRESS))))
 
-(define (register-types-compatible? type1 type2)  (eq? (eq? type1 'FLOAT) (eq? type2 'FLOAT)))
+(define-integrable (register-types-compatible? type1 type2)
+  (eq? (eq? type1 'FLOAT) (eq? type2 'FLOAT)))
 
 (define register-type
   (let ((types (make-vector number-of-machine-registers)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.sf,v 1.10 1989/08/21 19:33:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.sf,v 1.11 1989/08/28 18:33:37 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -36,7 +36,7 @@ MIT in each case. |#
 
 ;; Guarantee that the package modeller is loaded.
 (if (not (name->package '(CROSS-REFERENCE)))
-    (with-working-directory-pathname "/scheme/cref" (lambda () (load "make"))))
+    (with-working-directory-pathname "../cref" (lambda () (load "make"))))
 
 ;; Guarantee that the compiler's package structure exists.
 (if (not (name->package '(COMPILER)))
@@ -69,7 +69,16 @@ MIT in each case. |#
 	((access initialize-package! environment)))
       (sf-and-load '("base/pmlook") '(COMPILER PATTERN-MATCHER/LOOKUP))
       (sf-and-load '("base/pmpars") '(COMPILER PATTERN-MATCHER/PARSER))
-      (sf-and-load '("machines/bobcat/assmd") '(COMPILER ASSEMBLER))      (sf-and-load '("back/syntax") '(COMPILER LAP-SYNTAXER))
+      (fluid-let ((sf/default-syntax-table
+		   (access compiler-syntax-table
+			   (->environment '(COMPILER MACROS)))))
+	(sf-and-load '("machines/bobcat/machin") '(COMPILER)))
+      (fluid-let ((sf/default-declarations
+		   '((integrate-external "insseq")
+		     (integrate-external "machin")
+		     (usual-definition (set expt)))))
+	(sf-and-load '("machines/bobcat/assmd") '(COMPILER ASSEMBLER)))
+      (sf-and-load '("back/syntax") '(COMPILER LAP-SYNTAXER))
       (sf-and-load '("machines/bobcat/coerce" "back/asmmac"
 					      "machines/bobcat/insmac")
 		   '(COMPILER LAP-SYNTAXER))

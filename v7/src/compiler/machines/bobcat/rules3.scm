@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.16 1989/08/21 19:33:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.17 1989/08/28 18:34:21 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -38,10 +38,15 @@ MIT in each case. |#
 
 ;;;; Invocations
 
+(define-integrable (clear-continuation-type-code)
+  (if (= scheme-type-width 8)
+      (INST (CLR B (@A 7)))
+      (INST (AND L ,mask-reference (@A 7)))))
+
 (define-rule statement
   (POP-RETURN)
   (LAP ,@(clear-map!)
-       (CLR B (@A 7))
+       ,(clear-continuation-type-code)
        (RTS)))
 
 (define-rule statement
@@ -62,7 +67,7 @@ MIT in each case. |#
   frame-size continuation
   ;; It expects the procedure at the top of the stack
   (LAP ,@(clear-map!)
-       (CLR B (@A 7))
+       ,(clear-continuation-type-code)
        (RTS)))
 
 (define-rule statement
@@ -79,7 +84,7 @@ MIT in each case. |#
   ;; It expects the procedure at the top of the stack
   (LAP ,@(clear-map!)
        ,(load-dnw number-pushed 0)
-       (CLR B (@A 7))
+       ,(clear-continuation-type-code)
        (MOV L (@A+ 7) (A 0))
        (JMP ,entry:compiler-lexpr-apply)))
 
@@ -384,7 +389,7 @@ MIT in each case. |#
 ;;;; Closures.  These two statements are intertwined:
 
 (define magic-closure-constant
-  (- (* #x1000000 (ucode-type compiled-entry)) 6))
+  (- (make-non-pointer-literal (ucode-type compiled-entry) 0) 6))
 
 (define-rule statement
   (CLOSURE-HEADER (? internal-label))
@@ -394,7 +399,7 @@ MIT in each case. |#
       (LAP (LABEL ,gc-label)
 	   (JMP ,entry:compiler-interrupt-closure)
 	   ,@(make-external-label internal-entry-code-word external-label)
-	   (ADD L (& ,magic-closure-constant) (@A 7))
+	   (ADD UL (& ,magic-closure-constant) (@A 7))
 	   (LABEL ,internal-label)
 	   (CMP L ,reg:compiled-memtop (A 5))
 	   (B GE B (@PCR ,gc-label))))))
@@ -426,12 +431,13 @@ MIT in each case. |#
 	 ,(load-non-pointer (ucode-type manifest-closure)
 			    (+ 3 size)
 			    (INST-EA (@A+ 5)))
-	 (MOVE L (& ,(+ (* (make-procedure-code-word min max) #x10000) 8))
-	       (@A+ 5))
-	 (MOVE L (A 5) ,target)
-	 (OR L (& ,(make-non-pointer-literal type 0)) ,target)
-	 (MOVE W (& #x4eb9) (@A+ 5))	; (JSR (L <entry>))
-	 (MOVE L ,temporary (@A+ 5))
+	 (MOV UL
+	      (& ,(+ (* (make-procedure-code-word min max) #x10000) 8))
+	      (@A+ 5))
+	 (MOV L (A 5) ,target)
+	 (OR UL (& ,(make-non-pointer-literal type 0)) ,target)
+	 (MOV UW (& #x4eb9) (@A+ 5))	; (JSR (L <entry>))
+	 (MOV L ,temporary (@A+ 5))
 	 (CLR W (@A+ 5))
 	 ,@(increment-machine-register 13 size))))
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr1.scm,v 1.66 1988/06/14 08:47:12 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr1.scm,v 1.67 1989/08/28 18:33:49 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -209,10 +209,11 @@ MIT in each case. |#
 (define-symbol-transformer nwl   (N . 1) (W . 2) (L . 3))
 (define-symbol-transformer bwlq  (B . 0) (W . 1) (L . 2) (Q . 3))
 (define-symbol-transformer bwl-b (W . 1) (L . 2))
-(define-symbol-transformer bwl   (B . 0) (W . 1) (L . 2))
+(define-symbol-transformer bwl
+  (B . 0) (W . 1) (L . 2) (UB . 0) (UW . 1) (UL . 2))
 (define-symbol-transformer bw    (B . 0) (W . 1))
 (define-symbol-transformer wl    (W . 0) (L . 1))
-(define-symbol-transformer lw    (W . 1) (L . 0))
+(define-symbol-transformer lw    (W . 1) (L . 0) (UW . 1) (UL . 0))
 (define-symbol-transformer rl    (R . 0) (L . 1))
 (define-symbol-transformer us    (U . 0) (S . 1))
 (define-symbol-transformer chkwl (W . 6) (L . 4))
