@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.4 2001/06/26 21:16:46 cph Exp $
+;;; $Id: parser.scm,v 1.5 2001/06/26 21:28:54 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -163,6 +163,7 @@
     if-fail))
 
 (define-parser (default value parser)
+  if-fail
   (compile-parser-expression parser pointers if-succeed
     (lambda (pointers)
       (if-succeed pointers `(VECTOR ,value)))))
@@ -201,7 +202,7 @@
 	       ,(if-fail (new-backtrack-pointer start-pointers pointers))
 	       (BEGIN
 		 (DISCARD-PARSER-BUFFER-HEAD! ,*buffer-name*)
-		 ,result)))
+		 ,(if-succeed pointers result))))
 	if-fail))))
 
 (define-parser (top-level parser)
