@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.175 1993/08/10 06:40:36 cph Exp $
+;;;	$Id: filcom.scm,v 1.176 1993/09/08 19:50:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -172,7 +172,7 @@ invocation."
 			   "write-protected"
 			   "doesn't exist")))))))))
     (normal-mode buffer true)
-    (event-distributor/invoke! (ref-variable find-file-hooks buffer))
+    (event-distributor/invoke! (ref-variable find-file-hooks buffer) buffer)
     (load-find-file-initialization buffer pathname)))
 
 (define (file-test-no-errors test pathname)
