@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/dassm1.scm,v 1.2 1992/08/11 04:46:19 jinx Exp $
-$MC68020-Header: dassm1.scm,v 4.14 89/10/26 07:37:28 GMT cph Exp $
+$Id: dassm1.scm,v 1.3 1993/07/07 20:38:46 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,7 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; MIPS Disassembler: User Level
+;;;; Disassembler: User Level
 ;;; package: (compiler disassembler)
 
 (declare (usual-integrations))
@@ -77,7 +76,9 @@ MIT in each case. |#
 			   (compiled-code-block/dbg-info (car blocks)
 							 symbol-table?))
 			  (if (not (null? (cdr blocks)))
-			      (write-char #\page)))))))))))))
+			      (begin
+				(write-char #\page)
+				(newline))))))))))))))
 
 (define disassembler/base-address)
 
@@ -95,6 +96,20 @@ MIT in each case. |#
   (let ((symbol-table (and info (dbg-info/labels info))))
     (write-string "Disassembly of ")
     (write block)
+    (let loop ((info (compiled-code-block/debugging-info block)))
+      (cond ((string? info)
+	     (write-string " (")
+	     (write-string info)
+	     (write-string ")"))
+	    ((not (pair? info)))
+	    ((vector? (car info))
+	     (loop (cdr info)))
+	    (else
+	       (write-string " (Block ")
+	       (write (cdr info))
+	       (write-string " in ")
+	       (write-string (car info))
+	       (write-string ")"))))
     (write-string ":\n")
     (write-string "Code:\n\n")
     (disassembler/write-instruction-stream
