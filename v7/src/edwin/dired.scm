@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.152 1994/08/04 08:48:12 cph Exp $
+;;;	$Id: dired.scm,v 1.153 1995/01/31 21:38:09 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -125,12 +125,8 @@ Space and Rubout can be used to move down and up by lines."
 (define-key 'dired #\~ 'dired-flag-backup-files)
 
 (define-key 'dired #\C 'dired-do-copy)
-(define-key 'dired #\G 'dired-chgrp)
 (define-key 'dired #\K 'dired-krypt-file)
-(define-key 'dired #\M 'dired-chmod)
-(define-key 'dired #\O 'dired-chown)
 (define-key 'dired #\R 'dired-do-rename)
-(define-key 'dired #\Z 'dired-do-compress)
 
 (define-key 'dired #\c-d 'dired-flag-file-deletion)
 (define-key 'dired #\c-n 'dired-next-line)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dirunx.scm,v 1.8 1995/01/06 00:58:41 cph Exp $
+;;;	$Id: dirunx.scm,v 1.9 1995/01/31 21:38:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ;;;
@@ -57,21 +57,25 @@
 				   program attribute (->namestring pathname))
 	  (dired-redisplay pathname lstart))))))
 
+(define-key 'dired #\M 'dired-chmod)
 (define-command dired-chmod
   "Change mode of this file."
   "sChange to Mode\nP"
   (dired-change-inode "chmod"))
 
+(define-key 'dired #\G 'dired-chgrp)
 (define-command dired-chgrp
   "Change group of this file."
   "sChange to Group\nP"
   (dired-change-inode "chgrp"))
 
+(define-key 'dired #\O 'dired-chown)
 (define-command dired-chown
   "Change owner of this file."
   "sChange to Owner\nP"
   (dired-change-inode "chown"))
 
+(define-key 'dired #\Z 'dired-do-compress)
 (define-command dired-do-compress
   "Compress or uncompress marked (or next ARG) files.
 The files are compressed or uncompressed using gzip."
