@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.5 2000/04/12 03:50:32 cph Exp $
+;;; $Id: imail.pkg,v 1.6 2000/04/12 03:53:59 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -23,19 +23,6 @@
 (global-definitions "$bscm/runtime/runtime")
 (global-definitions "$bscm/sos/sos")
 (global-definitions "$bscm/edwin/edwinunx")
-
-(define-package (edwin imail)
-  (files "imail-util"
-	 "rfc822"
-	 "imail-core"
-	 "imail-file"
-	 "imail-rmail"
-	 "imail-umail"
-	 "imail-top")
-  (parent (edwin))
-  (import (edwin rmail)
-	  guarantee-rmail-variables-initialized
-	  rmail-spool-directory))
 
 (define-package (edwin url)
   (files "url")
@@ -62,3 +49,17 @@
 	  url:regexp:xchar
 	  url:string-encoded?
 	  url:substring-encoded?))
+
+(define-package (edwin imail)
+  (files "imail-util"
+	 "rfc822"
+	 "imail-core"
+	 "imail-file"
+	 "imail-rmail"
+	 "imail-umail"
+	 "imail-imap"
+	 "imail-top")
+  (parent (edwin))
+  (import (edwin rmail)
+	  guarantee-rmail-variables-initialized
+	  rmail-spool-directory))
