@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.6 1989/12/08 01:52:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.7 1990/04/04 18:23:16 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -140,7 +140,7 @@ MIT in each case. |#
 		(or (pathname->input-truename pathname)
 		    (pathname-new-version pathname false)))))))
     (let ((result ((ucode-primitive file-touch) filename)))
-      (if result
+      (if (string? result)
 	  (error error-type:file
 		 result
 		 (error-irritant/noise #\newline)
