@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xterm.scm,v 1.48 1995/09/27 16:24:07 cph Exp $
+;;;	$Id: xterm.scm,v 1.49 1995/11/19 05:30:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -556,15 +556,14 @@
 		   (loop))))))))
 
 (define (preview-event event)
-  (cond ((not (vector? event))
-	 (enqueue!/unsafe x-display-events event))
-	((and signal-interrupts?
-	      (fix:= event-type:key-press (vector-ref event 0))
-	      (string-find-next-char (vector-ref event 2) #\BEL))
-	 (clean-event-queue x-display-events)
-	 (signal-interrupt!))
-	((vector-ref event-handlers (vector-ref event 0))
-	 (enqueue!/unsafe x-display-events event))))
+  (if (and signal-interrupts?
+	   (vector? event)
+	   (fix:= event-type:key-press (vector-ref event 0))
+	   (string-find-next-char (vector-ref event 2) #\BEL))
+      (begin
+	(clean-event-queue x-display-events)
+	(signal-interrupt!))
+      (enqueue!/unsafe x-display-events event)))
 
 (define (clean-event-queue queue)
   ;; Flush keyboard and mouse events from the input queue.  Other
