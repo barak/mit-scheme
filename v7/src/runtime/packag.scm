@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.37 2001/12/18 19:35:50 cph Exp $
+$Id: packag.scm,v 14.38 2001/12/18 20:42:50 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -400,9 +400,7 @@ USA.
 	  (vv
 	   ((ucode-primitive vector-cons)
 	    n
-	    ((ucode-primitive primitive-object-set-type)
-	     (ucode-type reference-trap)
-	     0))))
+	    (make-unmapped-unassigned-reference-trap))))
       (let loop ((name-sources name-sources) (i 1))
 	(if (pair? name-sources)
 	    (let ((v (car (car name-sources)))
@@ -434,8 +432,10 @@ USA.
   (if (lexical-unbound? environment name)
       (local-assignment environment
 			name
-			(primitive-object-set-type (ucode-type reference-trap)
-						   0))))
+			(make-unmapped-unassigned-reference-trap))))
+
+(define-integrable (make-unmapped-unassigned-reference-trap)
+  (primitive-object-set-type (ucode-type reference-trap) 0))
 
 (define-primitives
   lexical-unbound?

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.385 2001/12/18 18:39:52 cph Exp $
+$Id: runtime.pkg,v 14.386 2001/12/18 20:44:13 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -2658,6 +2658,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  cached-reference-trap?
 	  make-unassigned-reference-trap
 	  make-unbound-reference-trap
+	  make-unmapped-unassigned-reference-trap
+	  make-unmapped-unbound-reference-trap
 	  map-reference-trap
 	  map-reference-trap-value
 	  reference-trap-kind
