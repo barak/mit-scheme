@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: i386.h,v 1.29 1995/10/24 06:21:44 cph Exp $
+$Id: i386.h,v 1.30 1996/01/04 23:58:42 cph Exp $
 
-Copyright (c) 1992-95 Massachusetts Institute of Technology
+Copyright (c) 1992-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -505,6 +505,12 @@ long i386_pc_displacement_relocation = 0;
 #define HOOK_TO_SCHEME_OFFSET(hook) ((unsigned long) (hook))
 #endif
 
+#ifdef __STDC__
+#define STRINGIFY(x) #x
+#else
+#define STRINGIFY(x) "x"
+#endif
+
 #define SETUP_REGISTER(hook) do						\
 {									\
   extern void hook ();							\
@@ -512,12 +518,14 @@ long i386_pc_displacement_relocation = 0;
   (* ((unsigned long *) (esi_value + offset))) =			\
     (HOOK_TO_SCHEME_OFFSET (hook));					\
   offset += (COMPILER_HOOK_SIZE * (sizeof (SCHEME_OBJECT)));		\
+  declare_builtin (((unsigned long) hook), (STRINGIFY (hook)));		\
 } while (0)
 
 void
 DEFUN_VOID (i386_reset_hook)
 {
   extern int EXFUN (ASM_ENTRY_POINT(i386_interface_initialize), (void));
+  extern void EXFUN (declare_builtin, (unsigned long, char *));
   int offset = (COMPILER_REGBLOCK_N_FIXED * (sizeof (SCHEME_OBJECT)));
   unsigned char * esi_value = ((unsigned char *) (&Registers[0]));
   int fp_support_present = (i386_interface_initialize ());
