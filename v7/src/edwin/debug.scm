@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.9 1993/08/13 01:56:57 jawilson Exp $
+;;;	$Id: debug.scm,v 1.10 1993/08/14 03:31:21 jbank Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -333,8 +333,7 @@
   (let ((bline
 	 (if (bline/continuation? bline)
 	     (replace-continuation-bline bline)
-	     bline))
-	(ind (if (reduction? (bline/object bline)) 6 3)))
+	     bline)))
     (let ((browser (bline/browser bline)))
       (unselect-bline browser)
       (let ((mark (bline/start-mark bline)))
