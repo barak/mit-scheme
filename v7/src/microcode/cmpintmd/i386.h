@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.16 1992/04/14 18:40:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.17 1992/05/04 18:31:13 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -216,39 +216,15 @@ typedef unsigned short format_word;
 
 #define PC_ZERO_BITS                    	0
 
-/* For the relocation of PC-relative JMP and CALL instructions.
-   This is used during GC/relocation, when the displacement
-   is incorrect, since it was computed with respect to the
-   location in old space.
- */
-
-extern long i386_pc_displacement_relocation;
-
-#define EXTRACT_ADDRESS_FROM_DISPLACEMENT(loc, instr_addr) do		\
-{									\
-  long displacement_address, new_displacement;				\
-									\
-  displacement_address = (((long) (instr_addr)) + 1);			\
-  new_displacement = ((* ((long *) displacement_address))		\
-		      + i386_pc_displacement_relocation);		\
-  (* ((long *) displacement_address)) = new_displacement;		\
-  (loc) = ((SCHEME_OBJECT)						\
-	   ((displacement_address + 4) + new_displacement));		\
-} while (0)
-
-#define STORE_DISPLACEMENT_FROM_ADDRESS(target, instr_address) do	\
-{									\
-  long displacement_address = (((long) (instr_address)) + 1);		\
-  (* ((long *) displacement_address)) =					\
-    (((long) (target)) - (displacement_address + 4));			\
-} while (0)
-
 /* See the encodings above. */
 
 #define ENTRY_SKIPPED_CHECK_OFFSET 		4
 #define ENTRY_PREFIX_LENGTH			3
 
 #define CLOSURE_SKIPPED_CHECK_OFFSET 		11
+
+#  define COMPILED_CLOSURE_ENTRY_SIZE					\
+  ((2 * (sizeof (format_word))) + 6)
 
 #  define ADJUST_CLOSURE_AT_CALL(entry_point, location)			\
 do {									\
@@ -259,27 +235,114 @@ do {									\
 		((((long) (OBJECT_ADDRESS (location))) + 5) +		\
 		 magic_constant));					\
 } while (0)
+
+/* For the relocation of PC-relative JMP and CALL instructions.
+   This is used during GC/relocation, when the displacement
+   is incorrect, since it was computed with respect to the
+   location in old space.
+ */
 
-#  define COMPILED_CLOSURE_ENTRY_SIZE					\
-  ((2 * (sizeof (format_word))) + 6)
+extern long i386_pc_displacement_relocation;
 
+#define EXTRACT_ADDRESS_FROM_DISPLACEMENT(var, instr_addr) do		\
+{									\
+  long displacement_address, new_displacement;				\
+									\
+  displacement_address = (((long) (instr_addr)) + 1);			\
+  new_displacement = ((* ((long *) displacement_address))		\
+		      + i386_pc_displacement_relocation);		\
+  (* ((long *) displacement_address)) = new_displacement;		\
+  (var) = ((SCHEME_OBJECT)						\
+	   ((displacement_address + 4) + new_displacement));		\
+} while (0)
+
+#define STORE_DISPLACEMENT_FROM_ADDRESS(target, instr_address) do	\
+{									\
+  long displacement_address = (((long) (instr_address)) + 1);		\
+  (* ((long *) displacement_address)) =					\
+    (((long) (target)) - (displacement_address + 4));			\
+} while (0)
+
+#define BCH_EXTRACT_ADDRESS_FROM_DISPLACEMENT(var, v_addr, p_addr) do	\
+{									\
+  long displacement_address, new_displacement;				\
+									\
+  displacement_address = (((long) (p_addr)) + 1);			\
+  new_displacement = ((* ((long *) displacement_address))		\
+		      + i386_pc_displacement_relocation);		\
+  (* ((long *) displacement_address)) = new_displacement;		\
+  (var) = ((SCHEME_OBJECT)						\
+	   ((((long) (v_addr)) + 5) + new_displacement));		\
+} while (0)
+
+#define BCH_STORE_DISPLACEMENT_FROM_ADDRESS(target, v_addr, p_addr) do	\
+{									\
+  long displacement_address = (((long) (p_addr)) + 1);			\
+  (* ((long *) displacement_address))					\
+    = (((long) (target)) - (((long) (v_addr)) + 5));			\
+} while (0)
+
 #define START_CLOSURE_RELOCATION(scan) do				\
 {									\
-  SCHEME_OBJECT								\
-    * _block = ((SCHEME_OBJECT *) (scan)),				\
-    * _old = (OBJECT_ADDRESS (_block[(OBJECT_DATUM (*_block))]));	\
-  char * _new =								\
-    ((char *) (FIRST_MANIFEST_CLOSURE_ENTRY (_block + 1)));		\
+  SCHEME_OBJECT * _block, * _old;					\
+  char * _new;								\
+									\
+  _block = ((SCHEME_OBJECT *) (scan));					\
+  _old = (OBJECT_ADDRESS (_block[(OBJECT_DATUM (*_block))]));		\
+  _new = ((char *) (FIRST_MANIFEST_CLOSURE_ENTRY (_block + 1)));	\
 									\
   i386_pc_displacement_relocation = (((long) _old) - ((long) _new));	\
 } while (0)
 
 #define END_CLOSURE_RELOCATION(scan)	i386_pc_displacement_relocation = 0
-
 #define EXTRACT_CLOSURE_ENTRY_ADDRESS	EXTRACT_ADDRESS_FROM_DISPLACEMENT
 #define STORE_CLOSURE_ENTRY_ADDRESS	STORE_DISPLACEMENT_FROM_ADDRESS
+
+#define BCH_START_CLOSURE_RELOCATION(scan) do				\
+{									\
+  SCHEME_OBJECT * _scan, * _block, _old_obj, * _old;			\
+  char * _new;								\
+									\
+  _scan = ((SCHEME_OBJECT *) (scan));					\
+  _block = ((SCHEME_OBJECT *)						\
+	    (SCAN_POINTER_TO_NEWSPACE_ADDRESS (_scan)));		\
+  READ_NEWSPACE_ADDRESS (_old_obj,					\
+			 (_block + (OBJECT_DATUM (* _scan))));		\
+  _old = (OBJECT_ADDRESS (_old_obj));					\
+  _new = ((char *) (FIRST_MANIFEST_CLOSURE_ENTRY (_scan + 1)));		\
+									\
+  i386_pc_displacement_relocation					\
+    = (((long) _old)							\
+       - ((long) (SCAN_POINTER_TO_NEWSPACE_ADDRESS (_new))));		\
+} while (0)
+
+#define BCH_END_CLOSURE_RELOCATION	END_CLOSURE_RELOCATION
+
+#define BCH_EXTRACT_CLOSURE_ENTRY_ADDRESS(var, p_addr) do		\
+{									\
+  SCHEME_OBJECT * _p_addr, * _v_addr;					\
+									\
+  _p_addr = ((SCHEME_OBJECT *) (p_addr));				\
+  _v_addr = ((SCHEME_OBJECT *)						\
+	     (SCAN_POINTER_TO_NEWSPACE_ADDRESS (_p_addr)));		\
+									\
+  BCH_EXTRACT_ADDRESS_FROM_DISPLACEMENT (var, _v_addr, _p_addr);	\
+} while (0)
+
+#define BCH_STORE_CLOSURE_ENTRY_ADDRESS(target, p_addr) do		\
+{									\
+  SCHEME_OBJECT * _p_addr, * _v_addr;					\
+									\
+  _p_addr = ((SCHEME_OBJECT *) (p_addr));				\
+  _v_addr = ((SCHEME_OBJECT *)						\
+	     (SCAN_POINTER_TO_NEWSPACE_ADDRESS (_p_addr)));		\
+									\
+  BCH_STORE_DISPLACEMENT_FROM_ADDRESS (target, _v_addr, _p_addr);	\
+} while (0)
 
 #define EXECUTE_CACHE_ENTRY_SIZE		2
+
+#define FIRST_OPERATOR_LINKAGE_OFFSET		2
 
 #define EXTRACT_EXECUTE_CACHE_ARITY(target, address) do			\
 {									\
@@ -330,18 +393,54 @@ do {									\
 
 #define START_OPERATOR_RELOCATION(scan)	do				\
 {									\
-  SCHEME_OBJECT								\
-    * _new = (((SCHEME_OBJECT *) (scan)) + 1),				\
-    * _old = ((SCHEME_OBJECT *) (* _new));				\
+  SCHEME_OBJECT * _new, * _old;						\
+									\
+  _new = (((SCHEME_OBJECT *) (scan)) + 1);				\
+  _old = ((SCHEME_OBJECT *) (* _new));					\
 									\
   (* _new) = ((SCHEME_OBJECT) _new);					\
   i386_pc_displacement_relocation = (((long) _old) - ((long) _new));	\
 } while (0)
 
 #define END_OPERATOR_RELOCATION(scan)	i386_pc_displacement_relocation = 0
+
+#define BCH_START_OPERATOR_RELOCATION(scan) do				\
+{									\
+  SCHEME_OBJECT * _scan, * _new, * _old;				\
+									\
+  _scan = (((SCHEME_OBJECT *) (scan)) + 1);				\
+  _new = ((SCHEME_OBJECT *)						\
+	  (SCAN_POINTER_TO_NEWSPACE_ADDRESS (_scan)));			\
+  _old = ((SCHEME_OBJECT *) (* _scan));					\
+									\
+  * _scan = ((SCHEME_OBJECT) _new);					\
+  i386_pc_displacement_relocation = (((long) _old) - ((long) _new));	\
+} while (0)
 
-#define FIRST_OPERATOR_LINKAGE_OFFSET	2
+#define BCH_END_OPERATOR_RELOCATION		END_OPERATOR_RELOCATION
 
+#define BCH_EXTRACT_OPERATOR_LINKAGE_ADDRESS(var, p_addr) do		\
+{									\
+  SCHEME_OBJECT * _p_addr, * _v_addr;					\
+									\
+  _p_addr = ((SCHEME_OBJECT *) (((long) (p_addr)) + 3));		\
+  _v_addr = ((SCHEME_OBJECT *)						\
+	     (SCAN_POINTER_TO_NEWSPACE_ADDRESS (_p_addr)));		\
+									\
+  BCH_EXTRACT_ADDRESS_FROM_DISPLACEMENT (var, _v_addr, _p_addr);	\
+} while (0)
+
+#define BCH_STORE_OPERATOR_LINKAGE_ADDRESS(e_addr, p_addr) do		\
+{									\
+  SCHEME_OBJECT * _p_addr, * _v_addr;					\
+									\
+  _p_addr = ((SCHEME_OBJECT *) (((long) (p_addr)) + 3));		\
+  _v_addr = ((SCHEME_OBJECT *)						\
+	     (SCAN_POINTER_TO_NEWSPACE_ADDRESS (_p_addr)));		\
+									\
+  BCH_STORE_DISPLACEMENT_FROM_ADDRESS (e_addr, _v_addr, _p_addr);	\
+} while (0)
+
 #define TRAMPOLINE_ENTRY_SIZE			3
 #define TRAMPOLINE_BLOCK_TO_ENTRY		3 /* MNV to MOV instr. */
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.44 1992/02/29 19:36:55 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.45 1992/05/04 18:31:22 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -46,6 +46,40 @@ MIT in each case. */
 #ifndef DOS386
 #include <sys/param.h>
 #endif
+
+#ifndef BCH_START_CLOSURE_RELOCATION
+#  define BCH_START_CLOSURE_RELOCATION(scan) do { } while (0)
+#endif
+
+#ifndef BCH_END_CLOSURE_RELOCATION
+#  define BCH_END_CLOSURE_RELOCATION(scan) do { } while (0)
+#endif
+
+#ifndef BCH_EXTRACT_CLOSURE_ENTRY_ADDRESS
+#  define BCH_EXTRACT_CLOSURE_ENTRY_ADDRESS EXTRACT_CLOSURE_ENTRY_ADDRESS
+#endif
+
+#ifndef BCH_STORE_CLOSURE_ENTRY_ADDRESS
+#  define BCH_STORE_CLOSURE_ENTRY_ADDRESS STORE_CLOSURE_ENTRY_ADDRESS
+#endif
+
+
+#ifndef BCH_START_OPERATOR_RELOCATION
+#  define BCH_START_OPERATOR_RELOCATION(scan) do { } while (0)
+#endif
+
+#ifndef BCH_END_OPERATOR_RELOCATION
+#  define BCH_END_OPERATOR_RELOCATION(scan) do { } while (0)
+#endif
+
+#ifndef BCH_EXTRACT_OPERATOR_LINKAGE_ADDRESS
+#  define BCH_EXTRACT_OPERATOR_LINKAGE_ADDRESS EXTRACT_OPERATOR_LINKAGE_ADDRESS
+#endif
+
+#ifndef BCH_STORE_OPERATOR_LINKAGE_ADDRESS
+#  define BCH_STORE_OPERATOR_LINKAGE_ADDRESS STORE_OPERATOR_LINKAGE_ADDRESS
+#endif
+
 
 extern char * EXFUN (error_name, (int));
 
@@ -99,7 +133,8 @@ extern SCHEME_OBJECT
   * free_buffer_top,
   * free_buffer_bottom,
   * weak_pair_stack_ptr,
-  * weak_pair_stack_limit;
+  * weak_pair_stack_limit,
+  * virtual_scan_pointer;
 
 extern SCHEME_OBJECT
   * EXFUN (GCLoop, (SCHEME_OBJECT *, SCHEME_OBJECT **, SCHEME_OBJECT **)),
@@ -107,7 +142,8 @@ extern SCHEME_OBJECT
   * EXFUN (dump_and_reset_free_buffer, (long, Boolean *)),
   * EXFUN (dump_free_directly, (SCHEME_OBJECT *, long, Boolean *)),
   * EXFUN (initialize_free_buffer, (void)),
-  * EXFUN (initialize_scan_buffer, (void));
+  * EXFUN (initialize_scan_buffer, (SCHEME_OBJECT *)),
+  EXFUN (read_newspace_address, (SCHEME_OBJECT *));
 
 extern void
   EXFUN (GC, (int)),
@@ -126,16 +162,33 @@ extern int
 
 /* Some utility macros */
 
-#define copy_cell()							\
-{									\
-  *To++ = *Old;								\
-}
+/* These work even when scan/addr point to constant space
+   because initialize_free_buffer (in bchmmg.c) cleverly initializes
+   scan_buffer_bottom, scan_buffer_top, and virtual_scan_pointer
+   so that the operations below do the right thing.
 
-#define copy_pair()							\
+   These depend on (scan) and (addr) always pointing past the current
+   Scan pointer!
+ */
+
+#define SCAN_POINTER_TO_NEWSPACE_ADDRESS(scan)				\
+  (((char *) virtual_scan_pointer)					\
+   + (((char *) (scan)) - ((char *) scan_buffer_bottom)))
+      
+#define READ_NEWSPACE_ADDRESS(loc, addr) do				\
 {									\
-  *To++ = *Old++;							\
-  *To++ = *Old;								\
-}
+  SCHEME_OBJECT * _addr, * _scaddr;					\
+									\
+  _addr = (addr);							\
+  _scaddr = (scan_buffer_bottom + ((_addr) - virtual_scan_pointer));	\
+									\
+  if ((_scaddr >= scan_buffer_bottom) && (_scaddr < scan_buffer_top))	\
+    (loc) = (* _scaddr);						\
+  else if ((_addr >= Constant_Space) && (_addr < Free_Constant))	\
+    (loc) = (* _addr);							\
+  else									\
+    (loc) = (read_newspace_address (_addr));				\
+} while (0)
 
 #define copy_weak_pair()						\
 {									\
@@ -145,7 +198,7 @@ extern int
   weak_car = (*Old++);							\
   car_type = (OBJECT_TYPE (weak_car));					\
   if ((car_type == TC_NULL)						\
-      || ((OBJECT_ADDRESS (weak_car)) >= Constant_Space))		\
+      || ((OBJECT_ADDRESS (weak_car)) >= Low_Constant))			\
   {									\
     *To++ = weak_car;							\
     *To++ = (*Old);							\
@@ -165,6 +218,17 @@ extern int
     Weak_Chain = Temp;							\
   }									\
 }
+
+#define copy_cell()							\
+{									\
+  *To++ = *Old;								\
+}
+
+#define copy_pair()							\
+{									\
+  *To++ = *Old++;							\
+  *To++ = *Old;								\
+}
 
 #define copy_triple()							\
 {									\
@@ -180,7 +244,7 @@ extern int
   *To++ = *Old++;							\
   *To++ = *Old;								\
 }
-
+
 /* Transporting vectors is done in 3 parts:
    - Finish filling the current free buffer, dump it, and get a new one.
    - Dump the middle of the vector directly by bufferfulls.
@@ -191,7 +255,7 @@ extern int
 
 #define copy_vector(success)						\
 {									\
-  SCHEME_OBJECT *Saved_Scan = Scan;					\
+  SCHEME_OBJECT * Saved_Scan = Scan;					\
   unsigned long real_length = (1 + (OBJECT_DATUM (*Old)));		\
 									\
   To_Address += real_length;						\
@@ -235,9 +299,7 @@ extern int
   copy_code;								\
   To_Address += (length);						\
   if (To >= free_buffer_top)						\
-  {									\
     To = (dump_and_reset_free_buffer ((To - free_buffer_top), NULL));	\
-  }									\
 }
 
 #define relocate_normal_end()						\
@@ -316,8 +378,17 @@ do {									\
   relocate_typeless_end ();						\
 }
 
-#define relocate_compiled_entry(in_gc_p)				\
-do {									\
+/* The following macro uses do-while to trap the use of continue.
+   On certain machines, the operator/closure need to be updated
+   since the only addressing mode is pc-relative and the object
+   containing the reference may not be at the same address as it was
+   last time.
+   In addition, we may be in the middle of a scan-buffer extension,
+   which we need to finish.
+ */
+
+#define relocate_compiled_entry(in_gc_p) do				\
+{									\
   Old = (OBJECT_ADDRESS (Temp));					\
   if (Old >= Low_Constant)						\
     continue;								\
@@ -327,7 +398,7 @@ do {									\
 									\
     New_Address = (MAKE_BROKEN_HEART (To_Address));			\
     copy_vector (NULL);							\
-    *Saved_Old = New_Address;						\
+    * Saved_Old = New_Address;						\
     Temp = (RELOCATE_COMPILED (Temp,					\
 			       (OBJECT_ADDRESS (New_Address)),		\
 			       Saved_Old));				\
@@ -338,17 +409,17 @@ do {									\
 #define relocate_linked_operator(in_gc_p)				\
 {									\
   Scan = ((SCHEME_OBJECT *) (word_ptr));				\
-  EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);			\
+  BCH_EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);			\
   relocate_compiled_entry (in_gc_p);					\
-  STORE_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);				\
+  BCH_STORE_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);			\
 }
 
 #define relocate_manifest_closure(in_gc_p)				\
 {									\
   Scan = ((SCHEME_OBJECT *) (word_ptr));				\
-  EXTRACT_CLOSURE_ENTRY_ADDRESS (Temp, Scan);				\
+  BCH_EXTRACT_CLOSURE_ENTRY_ADDRESS (Temp, Scan);			\
   relocate_compiled_entry (in_gc_p);					\
-  STORE_CLOSURE_ENTRY_ADDRESS (Temp, Scan);				\
+  BCH_STORE_CLOSURE_ENTRY_ADDRESS (Temp, Scan);				\
 }
 
 #endif /* _BCHGCC_H_INCLUDED */

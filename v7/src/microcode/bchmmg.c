@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.73 1992/03/26 04:17:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.74 1992/05/04 18:31:32 jinx Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -143,7 +143,11 @@ static unsigned long
 
 SCHEME_OBJECT
   * scan_buffer_top,		* scan_buffer_bottom,
-  * free_buffer_top,		* free_buffer_bottom;
+  * free_buffer_top,		* free_buffer_bottom,
+  * virtual_scan_pointer;
+
+static SCHEME_OBJECT
+  * virtual_scan_base;
 
 static char
   * gc_file_name = ((char *) NULL),
@@ -163,7 +167,8 @@ static SCHEME_OBJECT
 
 static Boolean
   can_dump_directly_p,
-  extension_overlap_p;
+  extension_overlap_p,
+  scan_buffer_extended_p;
 
 static long
   scan_position,
@@ -1859,10 +1864,21 @@ DEFUN (open_gc_file, (size, unlink_p),
     (void) (mktemp (gc_file_name));
 
   flags = GC_FILE_FLAGS;
-  gc_file_start_position = option_gc_start_position;
+  gc_file_start_position = (ALIGN_UP_TO_IO_PAGE (option_gc_start_position));
   gc_file_end_position = option_gc_end_position;
   if (gc_file_end_position == -1)
     gc_file_end_position = (gc_file_start_position + size);
+  gc_file_end_position = (ALIGN_DOWN_TO_IO_PAGE (gc_file_end_position));
+  if (gc_file_end_position < gc_file_start_position)
+  {
+    fprintf (stderr, "%s (open_gc_file): file bounds are inconsistent.\n",
+	     scheme_program_name);
+    fprintf (stderr, "\trequested start = 0x%lx;\taligned start = 0x%lx.\n",
+	     option_gc_start_position, gc_file_start_position);
+    fprintf (stderr, "\trequested end   = 0x%lx;\taligned end   = 0x%lx.\n",
+	     option_gc_end_position, gc_file_end_position);
+    termination_open_gc_file (((char *) NULL), ((char *) NULL));
+  }
 
   if ((stat (gc_file_name, &file_info)) == -1)
   {
@@ -2049,8 +2065,10 @@ DEFUN (set_gc_buffer_sizes, (new_buffer_shift), unsigned long new_buffer_shift)
   }
 
   new_buffer_overlap_bytes = IO_PAGE_SIZE;
-  new_extra_buffer_size = (new_buffer_overlap_bytes / (sizeof (SCHEME_OBJECT)));
-  if ((new_extra_buffer_size * (sizeof (SCHEME_OBJECT))) != new_buffer_overlap_bytes)
+  new_extra_buffer_size
+    = (new_buffer_overlap_bytes / (sizeof (SCHEME_OBJECT)));
+  if ((new_extra_buffer_size * (sizeof (SCHEME_OBJECT)))
+      != new_buffer_overlap_bytes)
   {
     fprintf (stderr, " %s (Setup_Memory): improper IO_PAGE_SIZE.\n",
 	     scheme_program_name);
@@ -2193,7 +2211,7 @@ DEFUN (enqueue_free_buffer, (success), Boolean * success)
   diff = ((free_position - pre_read_position) >> gc_buffer_byte_shift);
   if (diff >= read_overlap)
     DUMP_BUFFER (free_buffer, free_position, gc_buffer_bytes,
-		  success, "the free buffer");
+		 success, "the free buffer");
   else
   {
     ENQUEUE_READY_BUFFER (free_buffer, free_position, gc_buffer_bytes);
@@ -2241,7 +2259,9 @@ DEFUN_VOID (abort_pre_reads)
 static void
 DEFUN (reload_scan_buffer, (skip), int skip)
 {
+
   scan_position += (skip << gc_buffer_byte_shift);
+  virtual_scan_pointer += (skip << gc_buffer_shift);
 
   if ((read_overlap > 0) && (scan_position > pre_read_position))
     abort_pre_reads ();
@@ -2338,6 +2358,7 @@ DEFUN (extend_scan_buffer, (to_where, current_free),
      in the free pointer window?
    */
 
+  scan_buffer_extended_p = true;
   dest = ((char *) scan_buffer_top);
   extension_overlap_length = (to_where - dest);
   extension_overlap_p = (new_scan_position == free_position);
@@ -2412,6 +2433,7 @@ DEFUN (end_scan_buffer_extension, (to_relocate), char * to_relocate)
     DUMP_BUFFER (scan_buffer, scan_position, gc_buffer_bytes,
 		 ((Boolean *) NULL), "the scan buffer");
     scan_position += gc_buffer_bytes;
+    virtual_scan_pointer += gc_buffer_size;
 
     scan_buffer = (OTHER_BUFFER (free_buffer));
     scan_buffer_bottom = (GC_BUFFER_BOTTOM (scan_buffer));
@@ -2448,6 +2470,7 @@ DEFUN (end_scan_buffer_extension, (to_relocate), char * to_relocate)
     DUMP_BUFFER (scan_buffer, scan_position, gc_buffer_bytes,
 		 ((Boolean *) NULL), "the scan buffer");
     scan_position += gc_buffer_bytes;
+    virtual_scan_pointer += gc_buffer_size;
 
     scan_buffer = next_scan_buffer;
     next_scan_buffer = NULL;
@@ -2457,6 +2480,7 @@ DEFUN (end_scan_buffer_extension, (to_relocate), char * to_relocate)
       (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, scan_buffer_top));
     schedule_pre_reads ();
   }
+  scan_buffer_extended_p = false; 
   return (result);
 }
 
@@ -2538,6 +2562,7 @@ DEFUN_VOID (initialize_free_buffer)
   free_buffer = (INITIAL_FREE_BUFFER ());
   free_buffer_bottom = (GC_BUFFER_BOTTOM (free_buffer));
   free_buffer_top = (GC_BUFFER_TOP (free_buffer));
+  virtual_scan_pointer = NULL;
   scan_position = -1L;
   scan_buffer = NULL;
   scan_buffer_bottom = NULL;
@@ -2545,14 +2570,17 @@ DEFUN_VOID (initialize_free_buffer)
   /* Force first write to do an lseek. */
   gc_file_current_position = -1;
   next_scan_buffer = NULL;
+  scan_buffer_extended_p = false;
   extension_overlap_p = false;
   extension_overlap_length = 0;
   return (free_buffer_bottom);
 }
 
 SCHEME_OBJECT *
-DEFUN_VOID (initialize_scan_buffer)
+DEFUN (initialize_scan_buffer, (block_start), SCHEME_OBJECT * block_start)
 {
+  virtual_scan_base = block_start;
+  virtual_scan_pointer = virtual_scan_base;
   scan_position = gc_file_start_position;
   scan_buffer = (INITIAL_SCAN_BUFFER ());
   scan_buffer_bottom = (GC_BUFFER_BOTTOM (scan_buffer));
@@ -2567,6 +2595,7 @@ DEFUN (end_transport, (success), Boolean * success)
   DUMP_BUFFER (scan_buffer, scan_position, gc_buffer_bytes,
 	       success, "the final scan buffer");
   scan_position += gc_buffer_bytes;
+  virtual_scan_pointer += gc_buffer_size;
   free_position = scan_position;
   END_TRANSPORT_HOOK ();
   STATISTICS_PRINT (2, "after transport");
@@ -2630,6 +2659,8 @@ DEFUN_VOID (pre_read_weak_pair_buffers)
       position = (obj_addr - aligned_heap);
       position = (position >> gc_buffer_shift);
       position = (position << gc_buffer_byte_shift);
+      position += gc_file_start_position;
+
       if ((position != last_position)
 	  && (position != weak_pair_buffer_position))
       {
@@ -2644,6 +2675,92 @@ DEFUN_VOID (pre_read_weak_pair_buffers)
   }
   weak_pair_break = next;
   return;
+}
+
+/* The following code depends on being called in between copying objects,
+   so that the "free" pointer points to the middle of the free buffer,
+   and thus the overlap area at the end of the free buffer is available
+   as temporary storage.  In addition, because we have not yet moved free,
+   next_scan_buffer has not been set even if we are in the middle of a
+   scan buffer extension.
+ */
+
+SCHEME_OBJECT
+DEFUN (read_newspace_address, (addr), SCHEME_OBJECT * addr)
+{
+  unsigned long position, offset;
+  SCHEME_OBJECT result;
+
+  if ((addr >= Constant_Space) && (addr < Free_Constant))
+    return (* addr);
+
+  position = (addr - virtual_scan_base);
+  offset = (position & gc_buffer_mask);
+  position = (position >> gc_buffer_shift);
+  position = (position << gc_buffer_byte_shift);
+  position += gc_file_start_position;
+
+  if (position > free_position)
+  {
+    fprintf (stderr,
+	     "\n%s (read_newspace_address): Reading outside of GC window!\n",
+	     scheme_program_name);
+    fprintf (stderr, "\t         addr = 0x%lx;\t     position = 0x%lx.\n",
+	     addr, position);
+    fprintf (stderr, "\tscan_position = 0x%lx;\tfree_position = 0x%lx.\n",
+	     scan_position, free_position);
+    fflush (stderr);
+    Microcode_Termination (TERM_EXIT);
+    /*NOTREACHED*/    
+  }
+  if (position == scan_position)
+    result = (* (scan_buffer_bottom + offset));
+  else if (position == free_position)
+    result = (* (free_buffer_bottom + offset));
+  else if ((position == (scan_position + 1))
+	   && scan_buffer_extended_p
+	   && ((read_overlap != 0) || (offset < gc_extra_buffer_size)))
+  {
+    /* Note: we need not worry about the state of extension_overlap_p,
+       because if there is overlap between the scan extension and the free
+       buffer, then (position == free_position) would be true,
+       and that case has already been taken care of.
+     */
+       
+    result = ((read_overlap == 0)
+	      ? (* (scan_buffer_top + offset))
+	      : (* ((GC_BUFFER_BOTTOM (next_scan_buffer)) + offset)));
+  }
+  else if ((read_overlap <= 0) || (position > pre_read_position))
+  {
+    unsigned long position2;
+
+    position = (((char *) addr) - ((char *) virtual_scan_base));
+    position2 = (ALIGN_DOWN_TO_IO_PAGE (position));
+    offset = (position - position2);
+    position2 += gc_file_start_position;
+    
+    load_data (position2,
+	       ((char *) free_buffer_top),
+	       IO_PAGE_SIZE,
+	       "a buffer for read_newspace_address",
+	       ((Boolean *) NULL));
+    result = (* ((SCHEME_OBJECT *) (((char *) free_buffer_top) + offset)));
+  }
+  else
+  {
+    /* The buffer is pre-read or in the process of being pre-read.
+       Force completion of the read, fetch the location,
+       and re-queue the buffer as ready.
+     */
+
+    LOAD_BUFFER (next_scan_buffer, position, gc_buffer_bytes,
+		 "a buffer for read_newspace_address");
+    result = ((GC_BUFFER_BOTTOM (next_scan_buffer)) [offset]);
+    ENQUEUE_READY_BUFFER (next_scan_buffer, position, gc_buffer_bytes);
+    next_scan_buffer = ((struct buffer_info *) NULL);
+  }
+  return (result);
 }
 
 static void
@@ -2690,6 +2807,8 @@ DEFUN (guarantee_in_memory, (addr), SCHEME_OBJECT * addr)
   offset = (position & gc_buffer_mask);
   position = (position >> gc_buffer_shift);
   position = (position << gc_buffer_byte_shift);
+  position += gc_file_start_position;
+
   if (position != weak_pair_buffer_position)
   {
     flush_new_space_buffer ();
@@ -2906,7 +3025,7 @@ DEFUN (GC, (weak_pair_transport_initialized_p),
     /*NOTREACHED*/
   }
 
-  result = (GCLoop (((initialize_scan_buffer ())
+  result = (GCLoop (((initialize_scan_buffer (block_start))
 		     + (Heap_Bottom - block_start)),
 		    &free_buffer, &Free));
   if (free_buffer != result)
