@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax-output.scm,v 14.9 2003/02/14 18:28:34 cph Exp $
+$Id: syntax-output.scm,v 14.10 2003/03/14 01:12:39 cph Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -58,6 +58,9 @@ USA.
 
 (define (output/conditional predicate consequent alternative)
   (make-conditional predicate consequent alternative))
+
+(define (output/disjunction predicate alternative)
+  (make-disjunction predicate alternative))
 
 (define (output/sequence expressions)
   (make-sequence expressions))

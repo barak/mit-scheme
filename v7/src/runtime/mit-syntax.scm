@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mit-syntax.scm,v 14.17 2003/03/08 02:06:43 cph Exp $
+$Id: mit-syntax.scm,v 14.18 2003/03/14 01:11:36 cph Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -594,25 +594,22 @@ USA.
 		     (car operands))))
 	     `#T))))))
 
-(define-er-macro-transformer 'OR system-global-environment
-  (lambda (form rename compare)
-    compare				;ignore
-    (capture-expansion-history
-     (lambda (history)
-       (syntax-check '(KEYWORD * EXPRESSION) form history)
-       (let ((operands (cdr form)))
-	 (if (pair? operands)
-	     (let ((let-keyword (rename 'LET))
-		   (if-keyword (rename 'IF))
-		   (temp (rename 'TEMP)))
-	       (let loop ((operands operands))
-		 (if (pair? (cdr operands))
-		     `(,let-keyword ((,temp ,(car operands)))
-				    (,if-keyword ,temp
-						 ,temp
-						 ,(loop (cdr operands))))
-		     (car operands))))
-	     `#F))))))
+(define-compiler 'OR system-global-environment
+  (lambda (form environment history)
+    (syntax-check '(KEYWORD * EXPRESSION) form history)
+    (if (pair? (cdr form))
+	(let loop ((expressions (cdr form)) (selector select-cdr))
+	  (let ((compiled
+		 (compile/subexpression (car expressions)
+					environment
+					history
+					(selector/add-car selector))))
+	    (if (pair? (cdr expressions))
+		(output/disjunction compiled
+				    (loop (cdr expressions)
+					  (selector/add-cdr selector)))
+		compiled)))
+	`#F)))
 
 (define-er-macro-transformer 'CASE system-global-environment
   (lambda (form rename compare)
