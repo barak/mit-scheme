@@ -1,9 +1,9 @@
 	   Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.23 1991/09/09 22:10:31 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.24 1992/07/25 15:48:11 jinx Exp $
 
 
-Copyright (c) 1991 Massachusetts Institute of Technology
+Copyright (c) 1991-1992 Massachusetts Institute of Technology
 
 
 			LIAR PORTING GUIDE
@@ -13,7 +13,7 @@ Copyright (c) 1991 Massachusetts Institute of Technology
 
 Notes: 
 
-This porting guide applies to Liar version 4.87, but most of the
+This porting guide applies to Liar version 4.91, but most of the
 relevant information has not changed for a while, nor is it likely to
 change in major ways any time soon.
 
@@ -34,10 +34,16 @@ are the sources that contain the pathnames of other files.
 The syntax could easily be changed for other file systems.
 This document uses Unix pathname syntax and assumes a hierarchical
 file system, but it should easy to map these directories to a
-different file system.
+different file system.  The DOS runtime library accepts forward
+slashes (#\/) as a substitute for backward slashes (#\\), so the
+scripts are shared between Unix and DOS.
 
 This document also assumes that you are familiar with MIT Scheme, C,
-and the C preprocessor.
+and the C preprocessor.  It does not describe Liar in detail, and it
+does not cover many machine-independent portions at all.  It is
+intended to guide a programmer familiar with (MIT) Scheme and C in the
+task of porting the compiler to a new architecture, not in modifying
+the compiler in any other way.
 
 For questions on Liar not covered by this document, or questions about
 this document, contact ``liar-implementors@zurich.ai.mit.edu''.
@@ -50,9 +56,9 @@ Good luck!
 
 Liar is the work of many people.  The current version is mostly the
 effort of Chris Hanson and Bill Rozas, with significant contributions
-from Mark Friedman.  Arthur Gleckler, Brian LaMacchia, Jim Miller, and
-Henry Wu have also contributed to the current version of Liar.  Many
-other people have offered suggestions and criticisms.
+from Mark Friedman and Jim Miller.  Arthur Gleckler, Brian LaMacchia,
+and Henry Wu have also contributed to the current version of Liar.
+Many other people have offered suggestions and criticisms.
 
 The current Liar might never have existed had it not been for the
 efforts and help of the now-extinct BBN Butterfly Lisp group.  That
@@ -126,8 +132,8 @@ to this document.
 
 The package structure of the compiler reflects the pass structure and
 is specified in compiler/machines/port/comp.pkg, where port is the
-name of a machine (vax, mips, spectrum, bobcat, sparc, etc.).  The
-major packages are:
+name of a machine (bobcat, vax, spectrum, mips, i386, alpha, etc.).
+The major packages are:
 
 (COMPILER):
 	Utilities and data structures shared by most of the compiler.
@@ -296,27 +302,29 @@ the implementation issues.
 
 - Liar assumes that the target machine is a general-register machine.
 That is, operations are based on processor registers, and there is a
-moderately large set of general-purpose registers that can be used
-interchangeably.  It would be hard to port Liar to a stack machine, a
-graph-reduction engine, or a 4-counter machine.  It is probably also
-hard to port Liar to an Intel 386/486 because of the small number of
-registers and the fact that most of them are special to some common
-instructions.  
+set of general-purpose registers that can be used interchangeably.  It
+would be hard to port Liar to a pure stack machine, a graph-reduction
+engine, a Turing machine, or a 4-counter machine.  However, the
+register set required is not huge.  Liar has been ported to the
+386/486 architecture which only has eight registers, four of which are
+reserved for implementation quantities (e.g. stack pointer and free
+pointer) and four of which are left to the register allocator.
 
 - Liar currently assumes that floating-point registers and integer
 registers are separate or the same size.  In other words, currently
 Liar cannot handle quantities that need multiple registers to hold
-them.  For example, on the DEC VAX, there is a single set of
-registers, and double floating point values (the only kind used by
-Scheme) take two consecutive integer registers.  The register
-allocator in Liar does not currently handle this situation, and thus,
-floating-point operations are not currently open-coded on the VAX.
+them.  For example, on the DEC VAX and the Motorola 88100, there is a
+single set of registers, and double floating point values (the only
+kind used by Scheme) take two consecutive integer registers.  The
+register allocator in Liar does not currently handle this situation,
+and thus, floating-point operations are not currently open-coded on
+the VAX.
 
 - Liar assumes that the target machine has an address space that is
 flat enough that all Scheme objects can be addressed uniformly.  In
 other words, segmented address spaces with segments necessarily
 smaller than the Scheme runtime heap (i.e. Intel 286) will make Liar
-hard or inefficient to port.
+difficult to port.
 
 - Liar assumes that instructions and data can coexist in the same
 address space, and that new code objects that contain machine
@@ -355,7 +363,6 @@ per block of operations, but instead bumps it once per item.  This is
 expensive on many modern machines where pre-and-post incrementing are
 not supported by the hardware.  This may also change in the
 not-too-far future.
- [*Jinx: Wasn't this done recently for the MIPS?]
 
 - Liar assumes that it is cheap to compute overflow conditions on
 integer arithmetic operations.  Generic arithmetic primitives have the
@@ -373,16 +380,16 @@ computes the overflow conditions explicitly.
 - Liar assumes that extracting, inserting, and comparing bit-fields is
 relatively cheap.  The current object representation for Liar
 (compatible with the interpreter) consists of using a number of bits
-(6) in the most significant bit positions of a machine word as a type
-tag, and the rest as the datum, usually an encoded address.  Not only
-must extracting, comparing, and inserting these tags be cheap, but
-decoding the address must be cheap as well.  These operations are
-relatively cheap on architectures with bit-field instructions, but
-more expensive if they must be emulated with bitwise boolean
-operations and shifts, as on the MIPS R3000.  Decoding a datum into an
-address may involve inserting segment bits in some of the positions
-where the tag is placed, further increasing the dependency on cheap
-bit-field manipulation.
+(usually 6) in the most significant bit positions of a machine word as
+a type tag, and the rest as the datum, usually an encoded address.
+Not only must extracting, comparing, and inserting these tags be
+cheap, but decoding the address must be cheap as well.  These
+operations are relatively cheap on architectures with bit-field
+instructions, but more expensive if they must be emulated with bitwise
+boolean operations and shifts, as on the MIPS R3000.  Decoding a datum
+into an address may involve inserting segment bits in some of the
+positions where the tag is placed, further increasing the dependency
+on cheap bit-field manipulation.
 
 - The CScheme interpreter uses a particularly poor representation for
 fixnums, forcing Liar's hand.  Fixnums are suitably small integers.
@@ -413,9 +420,10 @@ tuned or not tuned at all.  If you improve an existing port, please
 share the improvements by notifying liar-implementors.
 
 - If you have a Vax-like CISC machine, you can try starting from the
-Vax or the Motorola MC68020 ports.  The Vax port was written by
-starting from the MC68020 port.  This is probably the best solution
-for some architectures like the NS32000, and perhaps even the IBM 370.
+Vax, the Motorola MC68020, or the i386 ports.  The Vax and i386 ports
+were written by starting from the MC68020 port.  This is probably the
+best solution for some architectures like the NS32000, and perhaps
+even the IBM 370.
 
 - If you have an ``enlarged'' RISC processor, with some complex
 addressing modes, and bit-field instructions, you may want to start by
@@ -428,15 +436,14 @@ processor, you may want to start from this port.  Since the MIPS R3000
 is a minimalist architecture, it almost subsumes all other RISCs, and
 may well be a good starting point for all of them.  This is probably a
 good starting point for the Sparc.  The MIPS port used the Spectrum
-port as its model.
+port as its model, and the Alpha port used the MIPS port as its model.
 
 - If you have a machine significantly different from those listed
 above, you are out of luck and will have to write a port from scratch.
-In particular, a port to an Intel 386/486 would use some of the
-concepts and code from ports to other CISCs, but due to the reduced
-register set, would probably have to re-do all the register allocation
-or, alternatively, use memory locations to instantiate pseudo
-registers and avoid hardware register allocation completely.
+For example, the port to the Intel 386+387/486 uses some of the
+concepts and code from ports to other CISCs, but due to the
+floating-point stack architecture (instead of register-based), the
+floating-point stack management is different (but not very good).
 
 Of course, no architecture is identical to any other, so you may want
 to mix and match ideas from many of the ports already done, and it is
@@ -800,6 +807,11 @@ the primary parameters.  The definitions of derived parameters not
 mentioned here should be copied verbatim from existing ports.  Some of
 these parameters are not currently in use, but should all be provided
 for completeness.
+
+- USE-PRE/POST-INCREMENT?: Should be true or false depending on
+whether the architecture has addressing modes that update the base
+address.  It is true on the MC68020, Vax, i386, and HP-PA, and false
+on the MIPS and Alpha.
 
 - ENDIANNESS: Should be the symbol LITTLE if an address, when used as
 a byte address, refers to the least significant byte of the long-word
@@ -1862,6 +1874,11 @@ and fixed-routine, written in assembly language, will do something like
 The 68040 version of the Motorola 68000 family port uses this trick
 because the 68040 cache is typically configured in copyback mode, and
 synchronizing the caches involves an expensive supervisor (OS) call.
+The Alpha back-end also uses this trick because the caches can be
+synchronized only by using the CALL_PAL IMB instruction, which flushes
+the complete instruction cache, therefore implying a large re-start
+cost.  The Alpha version of this code is currently better than the
+68040 version, so you should probably emulate that version.
 
 * (INVOCATION:UUO-LINK (? frame-size) (? continuation) (? name))
   This rule is used to invoke a procedure named by a free variable.
@@ -2120,9 +2137,9 @@ TRANSMOGRIFLY will return a list of the following form:
    ...)
 
 There may be any number of optional words, but the layout must match
-that expected by the macros defined in microcode/cmpint-md.h.  In
+that expected by the macros defined in microcode/cmpint-port.h.  In
 particular, the length in longwords must match the definition of
-EXECUTE_CACHE_ENTRY_SIZE in microcode/cmpint-md.h, and the definition
+EXECUTE_CACHE_ENTRY_SIZE in microcode/cmpint-port.h, and the definition
 of EXECUTE-CACHE-SIZE in compiler/machines/port/machin.scm.
 
 Furthermore, the instructions that the linker will insert should
@@ -2216,7 +2233,7 @@ The reason is that VECTOR-REF and VECTOR-SET! translate into a
 sequence that uses these patterns when the index is not a compile-time
 constant.  Of course, you can include VECTOR-REF and VECTOR-SET! in
 compiler:PRIMITIVES-WITH-NO-OPEN-CODING to avoid the problem
-altogether.
+altogether, but this is probably not advisable.
 
 	5.3.5. Rules used to invoke the runtime library
 
@@ -2244,13 +2261,13 @@ The code names are typically defined in
 compiler/machines/port/lapgen.scm.
 
 Many of the utilities expect return addresses as their first argument,
-and it is convenient to define a procedure, INVOKE-INTERFACE-JSB which
-receives an index but leaves the appropriate return address in the
-first argument's location.  INVOKE-INTERFACE-JSB can be written by
-using INVOKE-INTERFACE (and SCHEME-TO-INTERFACE), but given the
-frequency of this type of call, it is often written in terms of an
-alternate entry point to the runtime library (e.g.
-SCHEME-TO-INTERFACE-JSB).
+and it is convenient to define a procedure, INVOKE-INTERFACE-JSB
+(sometimes called LINK-TO-INTERFACE) which receives an index but
+leaves the appropriate return address in the first argument's
+location.  INVOKE-INTERFACE-JSB can be written by using
+INVOKE-INTERFACE (and SCHEME-TO-INTERFACE), but given the frequency of
+this type of call, it is often written in terms of an alternate entry
+point to the runtime library (e.g.  SCHEME-TO-INTERFACE-JSB).
 
 An example of a more complicated call to the runtime library is
     (define-rule statement
@@ -2271,11 +2288,13 @@ CLEAR-REGISTERS! and NEED-REGISTER! besides performing the assignment.
 
 For very frequent calls, the assembly language part of the runtime
 library can provide additional entry points.  The calling convention
-for these would be machine-dependent, but frequently they take arguments
-in the same way that SCHEME-TO-INTERFACE and SCHEME-TO-INTERFACE-JSB
-take them, but avoid passing the utility index, and may do part or all
-of the work of the utility in assembly language instead of invoking
-the portable C version.
+for these would be machine-dependent, but frequently they take
+arguments in the same way that SCHEME-TO-INTERFACE and
+SCHEME-TO-INTERFACE-JSB take them, but avoid passing the utility
+index, and may do part or all of the work of the utility in assembly
+language instead of invoking the portable C version.  Many of the
+ports have out-of-line handlers for generic arithmetic, with the
+commond fixnum/flonum cases handled there.
 
 The following is a possible specialized version of apply
 where the special entry point expects the procedure argument on the
@@ -2439,11 +2458,16 @@ knowledgeable with MIT Scheme and the compiler, but without
 documentation.  This guide was written after the first three ports.
 
 One unfortunate aspect is that a lot of mechanism must be in place
-before most of the compiler can be tested.  In other words, there is a
-lot of code that needs to be written before small pieces can be
+before most of the compiler can be tried out.  In other words, there
+is a lot of code that needs to be written before small pieces can be
 tested, and the compiler is not properly organized so that parts of it
-can be tested independently.  Keeping this in mind, here is a
-suggested ordering of the tasks:
+can be run independently.  
+
+Note also that cmpint-port.h, machin.scm, rules3.scm, and
+cmpaux-port.m4 are very intertwined, and you may often have to iterate
+while writing them until you converge on a final design.
+
+Keeping all this in mind, here is a suggested ordering of the tasks:
 
 	6.1. Learn the target instruction set well.  
 
@@ -2453,90 +2477,65 @@ and to the facilities available for controlling the processor caches
 operating system provides if the instructions to control the cache are
 privileged instructions.
 
-	6.2. Write microcode/cmpaux-port.m4:
-
-cmpaux.txt documents the entry points that this file must provide.
-You need not use m4, but it is convenient to conditionalize the code
-for debugging and different type code size.  If you decide not to use
-it, you should call your file cmpaux-port.s
-
- 6.2.1. Determine your C compiler's calling convention.  Find out what
-registers have fixed meanings, which are supposed to be saved by
-callees if written, and which are supposed to be saved by callers if
-they contain useful data.
-
- 6.2.2. Find out how C code returns scalars and small C structures.
-If the documentation for the compiler does not describe this, you can
-write a C program consisting of two procedures, one of which returns a
-two-word (two int) struct to the other, and you can examine the
-assembly language produced by the compiler.
-
- 6.2.3. Decide how registers are going to be used and split between
-your C compiler and Liar.  If your architecture has a large register
-set, you can let C keep those registers to which it assigns a fixed
-meaning (stack pointer, frame pointer, data segment pointer), and use
-the rest for Liar.  If your machine has few registers or you feel more
-ambitious, you can give all the registers to Liar, but the code for
-transferring control between both languages will become more complex.
-Either way, you will need to choose appropriate registers for the Liar
-fixed registers (stack pointer, free pointer, register block pointer,
-dynamic link register and optionally, datum mask, return value
-register, memtop register, and scheme_to_interface address pointer).
-
- 6.2.4. Design how scheme compiled code will invoke the C utilities.
-Decide where the parameters (maximum of four) to the utilities will be
-passed (preferably wherever C procedures expect arguments), and where
-the utility index will be passed (preferably in a C caller-saves
-register).
-
- 6.2.5. Given all this, write a minimalist cmpaux-port.m4.  In other
-words, write those entry points that are absolutely required
-(C_to_interface, interface_to_C, interface_to_scheme, and
-scheme_to_interface).  Be especially careful with the code that
-switches between calling conventions and register sets.
-C_to_interface and interface_to_scheme must switch between C and Liar
-conventions, while scheme_to_interface must switch the other way.
-interface_to_C must return from the original call to C_to_interface.
-Make sure that C code always sees a valid C register set and that code
-compiled by Liar always sees a valid Scheme register set.
-
-	6.3. Write microcode/cmpint-port.h:
+	6.2. Write microcode/cmpint-port.h:
 
 cmpint.txt documents most of the definitions that this file must
 provide.
 
- 6.3.1. Design the trampoline code format.  Trampolines are used to
+ 6.2.1. Design the trampoline code format.  Trampolines are used to
 invoke C utilities indirectly.  In other words, Scheme code treats
 trampolines like compiled Scheme entry points, but they immediately
 invoke a utility to accomplish their task.  Since
 return-to-interpreter is implemented as a trampoline, you will need to
 get this working before you can run any compiled code at all.
 
- 6.3.1. Design the closure format and the execute cache format.  This
+ 6.2.1. Design the closure format and the execute cache format.  This
 is needed to get the Scheme part of the compiler up AND to get the
 compiled code interface in the microcode working.  Try to keep the
 number of instructions low since closures and execute caches are very
 common.
 
- 6.3.2. Design the interrupt check instructions that are executed on
+ 6.2.2. Design the interrupt check instructions that are executed on
 entry to every procedure, continuation, and closure.  Again, try to
 keep the number of instructions low, and attempt to make the
 non-interrupting case fast at the expense of the case when interrupts
-must be processed.
+must be processed.  Note that when writing the Scheme code to generate
+the interrupt sequences, you can use the ADD-END-OF-BLOCK-CODE!
+procedure to make sure that the interrupt sequence does not confuse
+your hardware's branch prediction strategy.
 
- 6.3.3. Given all this, write cmpint-port.h.  Be especially careful
+ 6.2.3. Given all this, write cmpint-port.h.  Be especially careful
 with the code used to extract and insert absolute addresses into
 closures and execute caches.  A bug in this code would typically
 manifest itself much later, after a couple of garbage collections.
 
-	6.4. Write machin.scm:
+During this process you will be making decisions about what registers
+will be fixed by the port, namely the stack pointer, the free pointer,
+the register block pointer, and at least one register holding the
+address of a label used to get back to C, typically
+scheme_to_interface.
+
+	6.3. Write machin.scm:
 
 Most of the definitions in this file have direct counterparts or are
-direct consequences of the code in microcode/cmpaux-port.m4 and
-microcode/cmpint-port.h, so it will be mostly a matter of re-coding
-the definitions in Scheme rather than C or assembly language.
+direct consequences of the code in and microcode/cmpint-port.h, so it
+will be mostly a matter of re-coding the definitions in Scheme rather
+than C.
 
-	6.5. Write the assembler:
+In particular, you will have to decide how registers are going to be
+used and split between your C compiler and Liar.  If your architecture
+has a large register set, you can let C keep those registers to which
+it assigns a fixed meaning (stack pointer, frame pointer, global
+pointer), and use the rest for Liar.  If your machine has few
+registers or you feel more ambitious, you can give all the registers
+to Liar, but the code for transferring control between both languages
+in cmpaux-port.m4 will become more complex.  Either way, you will need
+to choose appropriate registers for the Liar fixed registers (stack
+pointer, free pointer, register block pointer, dynamic link register
+and optionally, datum mask, return value register, memtop register,
+and scheme_to_interface address pointer).
+
+	6.4. Write the assembler:
 
 You can write the assembler any old way you want, but it is easier to
 use the branch tensioner and the rest of the facilities if you use the
@@ -2552,18 +2551,18 @@ can be configured either way.  If your processor has fixed endianness,
 you can prune the inappropriate code.  The block-offset definitions
 must agree with those in microcode/cmpint-port.h, and the padding
 definitions are simple constants.
-
+
 Assuming that you decide to use the same structure as existing
 assemblers, you may need to write parsers for addressing modes if your
-machine has them.  You can use the versions in the MC68020 (bobcat)
-and Vax ports for guidance.  Addressing modes are described by a set
-of conditions under which they are valid, and some output code to
-issue.  The higher-level code that parses instructions in insmac.scm
-must decide where the bits for the addressing modes must appear.  The
-MC68020 version divides the code into two parts, the part that is
-inserted into the opcode word of the instruction (further subdivided
-into two parts), and the part that follows the opcode word as an
-extension.  The Vax version produces all the bits at once since
+machine has them.  You can use the versions in the MC68020 (bobcat),
+Vax, and i386 (Intel 386) ports for guidance.  Addressing modes are
+described by a set of conditions under which they are valid, and some
+output code to issue.  The higher-level code that parses instructions
+in insmac.scm must decide where the bits for the addressing modes must
+appear.  The MC68020 version divides the code into two parts, the part
+that is inserted into the opcode word of the instruction (further
+subdivided into two parts), and the part that follows the opcode word
+as an extension.  The Vax version produces all the bits at once since
 addressing modes are not split on that architecture.  You should write
 the addressing mode definitions in port/insutl.scm, plus any
 additional transformers that the instruction set may require.
@@ -2577,8 +2576,8 @@ gc-offset to the beginning of the compiled code block will be inserted
 correctly.  See for example, the definition of the EXTERNAL-LABEL
 pseudo-opcode in machines/mips/instr1.scm, and its use in
 machines/mips/rules3.scm.
-
-	6.6. Write the LAPGEN rules:
+
+	6.5. Write the LAPGEN rules:
 
 You will need to write lapgen.scm, rules1.scm, rules2.scm, rules3.scm,
 and parts of rules4.scm.  Most of rules4.scm is not used by the
@@ -2608,7 +2607,7 @@ prefix code, and the block assembly code.
  The block assembly code can be taken from another port.  You will
 only have to change how the transmogrifly procedure works to take into
 account the size and layout of un-linked execute caches.
-
+
  The invocation prefix code is used to adjust the stack pointer, and
 move a frame in the stack prior to a call to guarantee proper tail
 recursion.  The frame moved is the one pointed at by the stack
@@ -2646,11 +2645,8 @@ of line, especially if ``assembling'' the appropriate instructions on
 the fly would require a lot of code.  In addition, you may have to
 call out-of-line routines to synchronize the processor caches or
 block-allocate multiple closure entries.
-
- Make sure that you test this code thoroughly when the compiler is up
-enough to compile simple programs.
-
-	6.7. Write stubs for remaining port files: 
+
+	6.6. Write stubs for remaining port files: 
 
 rgspcm.scm and dassm1.scm can be copied verbatim from any other port.
 
@@ -2663,8 +2659,8 @@ dassm2.scm and dassm3.scm need not be written at first, but they are
 useful to debug the assembler (since disassembling some code should
 produce code equivalent to the input to the assembler) and compiler
 output when you forgot to make it output the LAP.
-
-	6.8. Write the compiler-building files:
+
+	6.7. Write the compiler-building files:
 
 make.scm, and comp.cbf should be minorly modified copies of the
 corresponding files in another port.
@@ -2673,6 +2669,41 @@ comp.sf and decls.scm can be essentially copied from another port, but
 you will need to change the pathnames to refer to your port directory
 instead of the one you copied them from, and in addition, you may have
 to add or remove instr<n> and other files as appropriate.
+
+	6.8. Write microcode/cmpaux-port.m4:
+
+cmpaux.txt documents the entry points that this file must provide.
+You need not use m4, but it is convenient to conditionalize the code
+for debugging and different type code size.  If you decide not to use
+it, you should call your file cmpaux-port.s
+
+ 6.8.1. Determine your C compiler's calling convention.  Find out what
+registers have fixed meanings, which are supposed to be saved by
+callees if written, and which are supposed to be saved by callers if
+they contain useful data.
+
+ 6.8.2. Find out how C code returns scalars and small C structures.
+If the documentation for the compiler does not describe this, you can
+write a C program consisting of two procedures, one of which returns a
+two-word (two int) struct to the other, and you can examine the
+assembly language produced by the compiler.
+
+ 6.8.3. Design how scheme compiled code will invoke the C utilities.
+Decide where the parameters (maximum of four) to the utilities will be
+passed (preferably wherever C procedures expect arguments), and where
+the utility index will be passed (preferably in a C caller-saves
+register).
+
+ 6.8.4. Given all this, write a minimalist cmpaux-port.m4.  In other
+words, write those entry points that are absolutely required
+(C_to_interface, interface_to_C, interface_to_scheme, and
+scheme_to_interface).  Be especially careful with the code that
+switches between calling conventions and register sets.
+C_to_interface and interface_to_scheme must switch between C and Liar
+conventions, while scheme_to_interface must switch the other way.
+interface_to_C must return from the original call to C_to_interface.
+Make sure that C code always sees a valid C register set and that code
+compiled by Liar always sees a valid Scheme register set.
 
 	6.9. After the preliminary code works:
 
@@ -2807,7 +2838,11 @@ however, a small test suite that is likely to catch gross errors.  The
 files for the test suite are in compiler/etc/tests.  Each file
 contains a short description of how it can be used.
 
-A good order to try them is
+Make sure, in particular, that you test the closure code thoroughly,
+especially if closure allocation hand-shakes with out-of-line code to
+accomodate the CPU's caches.
+
+A good order to try the test suite in is
 
 	three.scm
 	expr.scm
@@ -2822,7 +2857,6 @@ A good order to try them is
 	reptd.scm
 	lexpr.scm
 	klexpr.scm
-	tail.scm
 
 	close2.scm
 	prim.scm
@@ -2892,9 +2926,11 @@ option, and typing
 
     (begin
 	(cd "<sparc compiler directory>")
-	(load "comp.cbf"))
+	(load "comp.cbf")
+	(in-package (->environment '(compiler))
+	  (set! compiler:cross-compiling? true)))
 
-before loading and dumping the compiler.
+to load the compiler.
 
 Once you have the cross-compiler, you can use CROSS-COMPILE-BIN-FILE
 to generate .moc files.  The .moc files can be translated to .psb
@@ -3576,6 +3612,9 @@ distributed with MIT CScheme version 7.1.
 
 4. "MIT Scheme Reference Manual for Scheme Release 7.1" by Chris
 Hanson, distributed with MIT CScheme version 7.1.
+
+5. "Taming the Y Operator" by Guillermo J. Rozas, in Proceedings of
+the 1992 ACM Conference on Lisp and Functional Programming.
 
 		A.1. MIT Scheme package system
 
