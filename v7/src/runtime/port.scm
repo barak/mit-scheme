@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/port.scm,v 1.3 1992/02/25 22:55:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/port.scm,v 1.4 1992/02/27 01:11:19 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -61,6 +61,7 @@ MIT in each case. |#
 (define port/state (record-accessor port-rtd 'STATE))
 (define set-port/state! (record-updater port-rtd 'STATE))
 (define port/thread-mutex (record-accessor port-rtd 'THREAD-MUTEX))
+(define set-port/thread-mutex! (record-updater port-rtd 'THREAD-MUTEX))
 (define port/operation-names (record-accessor port-rtd 'OPERATION-NAMES))
 (define set-port/operation-names! (record-updater port-rtd 'OPERATION-NAMES))
 (define port/custom-operations (record-accessor port-rtd 'CUSTOM-OPERATIONS))
@@ -112,6 +113,7 @@ MIT in each case. |#
 (define (port/copy port state)
   (let ((port (record-copy port)))
     (set-port/state! port state)
+    (set-port/thread-mutex! port (make-thread-mutex))
     port))
 
 (define (port/operation port name)
