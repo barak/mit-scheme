@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.61 1996/04/15 21:43:58 adams Exp $
+@comment $Id: scheme.texinfo,v 1.62 1996/04/16 20:29:18 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -108,9 +108,9 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.60
+@subtitle Edition 1.62
 @subtitle for Scheme Release 7.4
-@subtitle 7 April 1996
+@subtitle 16 April 1996
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -12753,7 +12753,7 @@ Returns an unspecified value.
 @findex set-input-port/state!
 @findex set-output-port/state!
 For compatibility with old code, @code{set-input-port/state!} and
-@code{set-output-port/state!} are synonyms for this procedure.
+@code{set-output-port/@*state!} are synonyms for this procedure.
 @end deffn
 
 @deffn {procedure+} port/operation port object
@@ -12770,7 +12770,7 @@ differ in that they translate certain old operation names to new
 equivalents before calling @code{port/operation}.
 @code{input-port/custom-operation} and
 @code{output-port/custom-operation} are synonyms for
-@code{input-port/operation} and @code{output-port/operation},
+@code{input-port/@*operation} and @code{output-port/operation},
 respectively.
 @end deffn
 
@@ -12782,7 +12782,7 @@ modified.
 @findex input-port/operation-names
 @findex output-port/operation-names
 For compatibility with old code, @code{input-port/operation-names} and
-@code{output-port/operation-names} are synonyms for this procedure.
+@code{output-port/@*operation-names} are synonyms for this procedure.
 @end deffn
 
 @deffn {procedure+} make-eof-object input-port
@@ -17810,7 +17810,7 @@ stored in variables or defined using @code{define}:
 
 @example
 @group
-(define my-type unchecked)                       @error{}  Unbound variable
+(define my-type unchecked)            @error{}  Unbound variable
 (define-similar-windows-type my-type unchecked)  @r{;; the correct way}
 @end group
 @end example
