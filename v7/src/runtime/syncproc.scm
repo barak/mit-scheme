@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syncproc.scm,v 1.1 1999/01/29 22:45:54 cph Exp $
+$Id: syncproc.scm,v 1.2 1999/01/29 22:58:29 cph Exp $
 
 Copyright (c) 1999 Massachusetts Institute of Technology
 
@@ -89,19 +89,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		     environment))))
 	(let loop ()
 	  (let* ((status (synchronous-process-wait process context))
-		 (reason (subprocess-exit-reason process)))
+		 (reason (subprocess-exit-reason process))
+		 (p process))
 	    (subprocess-delete process)
 	    (set! process 'DELETED)
 	    (case status
 	      ((EXITED)
-	       (if (not (eqv? 0 reason))
-		   (error:subprocess-exited process reason)))
+	       reason)
 	      ((SIGNALLED)
-	       (error:subprocess-signalled process reason))
+	       (error:subprocess-signalled p reason))
 	      ((STOPPED)
-	       (subprocess-kill process)
-	       (subprocess-wait process)
-	       (error:subprocess-stopped process reason))
+	       (subprocess-kill p)
+	       (subprocess-wait p)
+	       (error:subprocess-stopped p reason))
 	      ((RUNNING)
 	       (loop))
 	      (else
