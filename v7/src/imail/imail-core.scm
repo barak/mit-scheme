@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.113 2000/08/05 01:53:36 cph Exp $
+;;; $Id: imail-core.scm,v 1.114 2000/10/20 00:44:28 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -485,7 +485,6 @@
   (with-string-output-port
     (lambda (port)
       (write-header-fields (message-header-fields message) port)
-      (newline port)
       (write-message-body message port))))
 
 ;;;; Message Navigation

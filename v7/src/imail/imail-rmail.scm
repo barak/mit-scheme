@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.50 2000/09/11 21:55:16 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.51 2000/10/20 00:44:31 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -261,14 +261,10 @@
 	(displayed-headers (rmail-message-displayed-header-fields message)))
     (let ((formatted? (not (eq? 'UNDEFINED displayed-headers))))
       (write-rmail-attributes-line message formatted? port)
-      (if formatted?
-	  (begin
-	    (write-header-fields headers port)
-	    (newline port)))
+      (if formatted? (write-header-fields headers port))
       (write-string rmail-message:headers-separator port)
       (newline port)
       (write-header-fields (if formatted? displayed-headers headers) port)
-      (newline port)
       (write-message-body message port)
       (fresh-line port)
       (write-char rmail-message:end-char port))))
