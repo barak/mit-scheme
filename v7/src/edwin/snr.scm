@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.16 1996/10/23 22:58:42 cph Exp $
+;;;	$Id: snr.scm,v 1.17 1996/10/28 00:12:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -3644,9 +3644,9 @@ With prefix arg, replaces the file with the list information."
   (news-group:update-ranges! group)
   (news-group:pre-read-headers group (news-group:unread-header-numbers group))
   (if (not (ref-variable news-group-show-seen-headers buffer))
-      (begin
-	(news-group:get-headers group #f buffer)
-	(news-group:purge-and-compact-headers! group buffer))))
+      ;; Read in the headers -- this finds the headers to be ignored
+      ;; and marks them as such.
+      (news-group:get-headers group #f buffer)))
 
 (define (article-number-seen! group number)
   (set-news-group:ranges-seen!
