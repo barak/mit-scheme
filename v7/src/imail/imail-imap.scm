@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.19 2000/05/08 04:31:01 cph Exp $
+;;; $Id: imail-imap.scm,v 1.20 2000/05/08 15:04:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -247,69 +247,6 @@
   (unseen define standard)
   (messages define standard initial-value '#()))
 
-(define-class <imap-message> (<message>)
-  (uid define accessor)
-  (length define accessor))
-
-(define make-imap-message
-  (let ((constructor
-	 (instance-constructor <imap-message>
-			       '(HEADER-FIELDS BODY FLAGS PROPERTIES
-					       UID LENGTH))))
-    (lambda (uid flags rfc822.size rfc822.header)
-      (constructor (lines->header-fields
-		    (except-last-pair!
-		     (string->lines
-		      (translate-string-line-endings rfc822.header))))
-		   'UNCACHED
-		   (map imap-flag->imail-flag flags)
-		   '()
-		   uid
-		   rfc822.size))))
-
-(let ((modifier (slot-modifier <imap-message> 'BODY)))
-  (define-method message-body ((message <imap-message>))
-    (let ((body (call-next-method message)))
-      (if (eq? 'UNCACHED body)
-	  (let ((body
-		 (translate-string-line-endings
-		  (car
-		   (let ((index (message-index message)))
-		     ((imail-message-wrapper "Reading body for message "
-					     (number->string (+ index 1)))
-		      (lambda ()
-			(imap:command:fetch (imap-folder-connection
-					     (message-folder message))
-					    index
-					    '(RFC822.TEXT)))))))))
-	    (modifier message body)
-	    body)
-	  body))))
-
-(define-method set-message-flags! ((message <imap-message>) flags)
-  (call-next-method
-   message
-   (map imap-flag->imail-flag
-	(imap:response:fetch-attribute
-	 (imap:command:store-flags
-	  (imap-folder-connection (message-folder message))
-	  (message-index message)
-	  (map imail-flag->imap-flag (flags-delete "\\recent" flags)))
-	 'FLAGS))))
-
-(define (imap-flag->imail-flag flag)
-  (case flag
-    ((\ANSWERED) "answered")
-    ((\DELETED) "deleted")
-    ((\SEEN) "seen")
-    (else (symbol->string flag))))
-
-(define (imail-flag->imap-flag flag)
-  (cond ((string-ci=? flag "answered") '\ANSWERED)
-	((string-ci=? flag "deleted") '\DELETED)
-	((string-ci=? flag "seen") '\SEEN)
-	(else (intern flag))))
-
 (define (reset-imap-folder! folder)
   (without-interrupts
    (lambda ()
@@ -326,8 +263,8 @@
 (define (set-imap-folder-length! folder count)
   (let ((v (imap-folder-messages folder)))
     (let ((v* (vector-grow v count #f)))
-      (fill-messages-vector folder v* (vector-length v))
-      (set-imap-folder-messages! folder v*)))
+      (set-imap-folder-messages! folder v*)
+      (fill-messages-vector folder v* (vector-length v))))
   (folder-modified! folder))
 
 (define (forget-imap-folder-messages! folder)
@@ -337,21 +274,16 @@
   (folder-modified! folder))
 
 (define (fill-messages-vector folder messages start)
-  (let ((connection (imap-folder-connection folder))
-	(end (vector-length messages)))
-    (do ((responses
-	  ((imail-message-wrapper "Reading message outlines")
-	   (lambda ()
-	     (imap:command:fetch-range connection 0 end
-				       '(UID FLAGS RFC822.SIZE
-					     RFC822.HEADER))))
-	  (cdr responses))
-	 (index start (fix:+ index 1)))
+  (let ((end (vector-length messages)))
+    (do ((index start (fix:+ index 1)))
 	((fix:= index end))
-      (let ((message (apply make-imap-message (car responses))))
-	(set-message-folder! message folder)
-	(set-message-index! message index)
-	(vector-set! messages index message)))))
+      (vector-set! messages index (make-imap-message folder index)))
+    ((imail-message-wrapper "Reading message headers")
+     (lambda ()
+       ;; Ignore the value of this command, as the results are
+       ;; transparently stored in the messages.
+       (imap:command:fetch-range (imap-folder-connection folder) start end
+				 '(UID FLAGS RFC822.SIZE RFC822.HEADER))))))
 
 (define (remove-imap-folder-message folder index)
   (let ((v (imap-folder-messages folder)))
@@ -362,6 +294,51 @@
 	(subvector-move-left! v (fix:+ index 1) end v* index)
 	(set-imap-folder-messages! folder v*))))
   (folder-modified! folder))
+
+;;;; Message datatype
+
+(define-class (<imap-message> (constructor (folder index))) (<message>)
+  (properties initial-value '())
+  (uid define standard)
+  (length define standard))
+
+(define %set-message-header-fields! (slot-modifier <message> 'HEADER-FIELDS))
+(define %set-message-body! (slot-modifier <message> 'BODY))
+(define %message-body-initialized? (slot-initpred <message> 'BODY))
+(define %set-message-flags! (slot-modifier <message> 'FLAGS))
+
+(define-method message-body ((message <imap-message>))
+  (if (not (%message-body-initialized? message))
+      (let ((index (message-index message)))
+	((imail-message-wrapper "Reading body for message "
+				(number->string (+ index 1)))
+	 (lambda ()
+	   ;; Ignore the value of this command, as the result is
+	   ;; transparently stored in the message.
+	   (imap:command:fetch (imap-folder-connection
+				(message-folder message))
+			       index
+			       '(RFC822.TEXT))))))
+  (call-next-method message))
+
+(define-method set-message-flags! ((message <imap-message>) flags)
+  (imap:command:store-flags (imap-folder-connection (message-folder message))
+			    (message-index message)
+			    (map imail-flag->imap-flag
+				 (flags-delete "\\recent" flags))))
+
+(define (imap-flag->imail-flag flag)
+  (case flag
+    ((\ANSWERED) "answered")
+    ((\DELETED) "deleted")
+    ((\SEEN) "seen")
+    (else (symbol->string flag))))
+
+(define (imail-flag->imap-flag flag)
+  (cond ((string-ci=? flag "answered") '\ANSWERED)
+	((string-ci=? flag "deleted") '\DELETED)
+	((string-ci=? flag "seen") '\SEEN)
+	(else (intern flag))))
 
 ;;;; Server operations
 
@@ -469,32 +446,23 @@
       (imap:command:no-response connection 'SELECT mailbox)))))
 
 (define (imap:command:fetch connection index items)
-  (let ((response
-	 (imap:command:single-response imap:response:fetch?
-				       connection 'FETCH (+ index 1) items)))
-    (map (lambda (item)
-	   (imap:response:fetch-attribute response item))
-	 items)))
+  (imap:command:single-response imap:response:fetch?
+				connection 'FETCH (+ index 1) items))
 
 (define (imap:command:fetch-range connection start end items)
   (if (fix:< start end)
-      (map (lambda (response)
-	     (map (lambda (item)
-		    (imap:response:fetch-attribute response item))
-		  items))
-	   (imap:command:multiple-response imap:response:fetch?
-					   connection 'FETCH
-					   (cons 'ATOM
-						 (string-append
-						  (number->string (+ start 1))
-						  ":"
-						  (number->string end)))
-					   items))
+      (imap:command:multiple-response imap:response:fetch?
+				      connection 'FETCH
+				      (cons 'ATOM
+					    (string-append
+					     (number->string (+ start 1))
+					     ":"
+					     (number->string end)))
+				      items)
       '()))
 
 (define (imap:command:store-flags connection index flags)
-  (imap:command:single-response imap:response:fetch?
-				connection 'STORE index 'FLAGS flags))
+  (imap:command:no-response connection 'STORE index 'FLAGS flags))
 
 (define (imap:command:expunge connection)
   ((imail-message-wrapper "Expunging messages")
@@ -675,7 +643,11 @@
 	((imap:response:status? response)
 	 (eq? command 'STATUS))
 	((imap:response:fetch? response)
-	 (memq command '(FETCH STORE)))
+	 (process-fetch-attributes
+	  (get-message (selected-imap-folder connection)
+		       (fix:- (imap:response:fetch-index response) 1))
+	  response)
+	 (eq? command 'FETCH))
 	(else
 	 (error "Illegal server response:" response))))
 
@@ -732,3 +704,38 @@
 	 unspecific)
 	|#
 	))
+
+(define (process-fetch-attributes message response)
+  (let loop
+      ((keywords (imap:response:fetch-attribute-keywords response))
+       (any-modifications? #f))
+    (if (pair? keywords)
+	(loop (cdr keywords)
+	      (or (process-fetch-attribute
+		   message
+		   (car keywords)
+		   (imap:response:fetch-attribute response (car keywords)))
+		  any-modifications?))
+	(if any-modifications?
+	    (message-modified! message)))))
+
+(define (process-fetch-attribute message keyword datum)
+  (case keyword
+    ((FLAGS)
+     (%set-message-flags! message (map imap-flag->imail-flag datum))
+     #t)
+    ((RFC822.HEADER)
+     (%set-message-header-fields!
+      message
+      (lines->header-fields (network-string->lines datum)))
+     #t)
+    ((RFC822.SIZE)
+     (set-imap-message-length! message datum)
+     #t)
+    ((RFC822.TEXT)
+     (%set-message-body! message (translate-string-line-endings datum))
+     #t)
+    ((UID)
+     (set-imap-message-uid! message datum)
+     #t)
+    (else #f)))
