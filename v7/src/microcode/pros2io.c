@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2io.c,v 1.3 1995/01/16 20:58:18 cph Exp $
+$Id: pros2io.c,v 1.4 1995/04/28 06:59:29 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -104,6 +104,8 @@ DEFINE_PRIMITIVE ("OS2-SELECT-REGISTRY-TEST", Prim_OS2_select_registry_test, 3, 
     qid_t qid;
     int n;
 
+    /* This first phase checks the qid subqueues and OS2_scheme_tqueue
+       for any previously-queued input.  */
     for (qid = 0; (qid <= QID_MAX); qid += 1)
       {
 	(results [qid]) = 0;
@@ -119,34 +121,29 @@ DEFINE_PRIMITIVE ("OS2-SELECT-REGISTRY-TEST", Prim_OS2_select_registry_test, 3, 
 	      break;
 	    }
       }
-    while (1)
-      {
-	for (qid = 0; (qid <= QID_MAX); qid += 1)
-	  (OS2_scheme_tqueue_avail_map [qid]) = 0;
-	n = (OS2_tqueue_select (OS2_scheme_tqueue, blockp));
-	if (n == (-1))
-	  break;
-	else if (n < 0)
-	  {
-	    interruptp = 1;
+    /* This second phase waits for input if necessary.  It does not
+       check the subqueues for previously-stored data, so it's
+       important that we already did this.  Otherwise we could end up
+       waiting for input when there was valid input ready.  */
+    if (blockp)
+      while (! (inputp || interruptp))
+	{
+	  for (qid = 0; (qid <= QID_MAX); qid += 1)
+	    (OS2_scheme_tqueue_avail_map [qid]) = 0;
+	  n = (OS2_tqueue_select (OS2_scheme_tqueue, blockp));
+	  if (n == (-1))
 	    break;
-	  }
-	else
-	  {
-	    int breakp = 0;
+	  else if (n < 0)
+	    interruptp = 1;
+	  else
 	    for (qid = 0; (qid <= QID_MAX); qid += 1)
 	      if (((registry [qid]) != 0)
 		  && (OS2_scheme_tqueue_avail_map [qid]))
 		{
 		  inputp = 1;
 		  (results [qid]) = 1;
-		  if (blockp)
-		    breakp = 1;
 		}
-	    if (breakp)
-	      break;
-	  }
-      }
+	}
     if (inputp)
       PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (0));
     else if (!interruptp)
