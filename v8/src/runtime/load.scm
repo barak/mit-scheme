@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.55 1999/05/11 20:30:21 cph Exp $
+$Id: load.scm,v 14.56 1999/05/11 20:35:10 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -369,10 +369,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define *load-init-file?*)
 
 (define (default/process-command-line unused-command-line)
-  (let ((after-parsing-actions
-	 (list (lambda ()
-		 (if *load-init-file?*
-		     (load-init-file))))))
+  (let ((after-parsing-actions '()))
 
     (define (process-keyword command-line unused-options)
       (if (not (null? command-line))
@@ -422,7 +419,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (set! *unused-command-line*
 		  (process-keyword (vector->list unused-command-line) '()))
 	    (for-each (lambda (act) (act))
-		      (reverse after-parsing-actions)))))))
+		      (reverse after-parsing-actions))
+	    (if *load-init-file?* (load-init-file)))))))
 
 (define (load-init-file)
   (let ((pathname (init-file-pathname)))

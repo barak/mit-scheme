@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.326 1999/05/08 02:23:36 cph Exp $
+$Id: runtime.pkg,v 14.327 1999/05/11 20:30:37 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -1388,6 +1388,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (files "load")
   (parent ())
   (export ()
+	  argument-command-line-parser
 	  condition-type:not-loading
 	  current-load-pathname
 	  fasload
@@ -1404,7 +1405,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  load/push-hook!
 	  load/suppress-loading-message?
 	  read-file
-	  set-command-line-parser!)
+	  set-command-line-parser!
+	  simple-command-line-parser)
   (initialization (initialize-package!)))
 
 (define-package (runtime macros)
