@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2sock.c,v 1.5 1997/11/01 07:26:23 cph Exp $
+$Id: os2sock.c,v 1.6 1997/11/12 22:14:09 cph Exp $
 
 Copyright (c) 1990-97 Massachusetts Institute of Technology
 
@@ -39,10 +39,10 @@ MIT in each case. */
 #include "uxsock.h"
 
 #include <types.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <sys/un.h>
+#include <sys/socket.h>
 
 static Tchannel initialize_stream_socket (int, enum channel_type);
 static msg_t * stream_socket_reader (LHANDLE, qid_t, msg_t *, int *);
@@ -156,7 +156,8 @@ const char *
 OS_get_host_name (void)
 {
   char host_name [HOSTNAMESIZE];
-  VOID_SOCKET_CALL (gethostname, (host_name, HOSTNAMESIZE));
+  if (gethostname (host_name, HOSTNAMESIZE))
+    OS2_error_anonymous ();
   {
     char * result = (OS_malloc ((strlen (host_name)) + 1));
     strcpy (result, host_name);
@@ -167,7 +168,7 @@ OS_get_host_name (void)
 const char *
 OS_canonical_host_name (const char * host_name)
 {
-  struct hostent * entry = (gethostbyname (host_name));
+  struct hostent * entry = (gethostbyname ((char *) host_name));
   if (entry == 0)
     return (0);
   {
