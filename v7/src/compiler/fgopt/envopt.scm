@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/envopt.scm,v 1.5 1989/03/14 19:42:25 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/envopt.scm,v 1.6 1990/04/01 22:19:41 jinx Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -139,29 +139,23 @@ MIT in each case. |#
 		   ;; the limit is therefore the current target block.
 		   (loop target-block (cdr free-vars)))))))))
 
-;; Note that when this is run there are no closures yet.
-;; The closure analysis happens after this pass.
+;;; choose-target-block! is simpler than the old version, below,
+;;; because the undrifting code fixes LET-like procedures that
+;;; would otherwise have been closed.
 
-(define (examine-procedure! procedure)
-  (let ((original (procedure-target-block procedure))
-	(block (procedure-block procedure)))
-    (let loop ((dependencies (procedure-free-callees procedure))
-	       (target-block original))
-      ;; (constraint (block-ancestor-or-self? block target-block))
-      (cond ((not (null? dependencies))
-	     (let ((this-block (procedure-target-block (caar dependencies))))
-	       (if (block-ancestor-or-self? this-block block)
-		   (loop (cdr dependencies) target-block)
-		   (let ((merge-block
-			  (block-nearest-common-ancestor block this-block)))
-		     (loop (cdr dependencies)
-			   (if (block-ancestor? merge-block target-block)
-			       merge-block
-			       target-block))))))
-	    ((not (eq? target-block original))
-	     (set-procedure-target-block! procedure target-block)
-	     (enqueue-nodes! (procedure-free-callers procedure)))))))
+(define (choose-target-block! procedure)
+  (let ((block (procedure-block procedure))
+	(parent (procedure-closing-block procedure))
+	(target-block (procedure-target-block procedure)))
+    ;; This now becomes `original-block-parent' of the procedure's
+    ;; invocation block.
+    (set-procedure-target-block! procedure parent)
+    (if (not (eq? parent target-block))
+	(begin
+	  (disown-block-child! parent block)
+	  (own-block-child! target-block block)))))
 
+#|
 (define (choose-target-block! procedure)
   (let ((block (procedure-block procedure))
 	(parent (procedure-closing-block procedure))
@@ -196,7 +190,31 @@ MIT in each case. |#
 	  (disown-block-child! parent block)
 	  (own-block-child! target-block block)))
     unspecific))
+|#
 
+;; Note that when this is run there are no closures yet.
+;; The closure analysis happens after this pass.
+
+(define (examine-procedure! procedure)
+  (let ((original (procedure-target-block procedure))
+	(block (procedure-block procedure)))
+    (let loop ((dependencies (procedure-free-callees procedure))
+	       (target-block original))
+      ;; (constraint (block-ancestor-or-self? block target-block))
+      (cond ((not (null? dependencies))
+	     (let ((this-block (procedure-target-block (caar dependencies))))
+	       (if (block-ancestor-or-self? this-block block)
+		   (loop (cdr dependencies) target-block)
+		   (let ((merge-block
+			  (block-nearest-common-ancestor block this-block)))
+		     (loop (cdr dependencies)
+			   (if (block-ancestor? merge-block target-block)
+			       merge-block
+			       target-block))))))
+	    ((not (eq? target-block original))
+	     (set-procedure-target-block! procedure target-block)
+	     (enqueue-nodes! (procedure-free-callers procedure)))))))
+
 ;;; Utilities
 
 (define (add-caller&callee! procedure on-whom var)
