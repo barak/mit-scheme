@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.29 1994/03/11 05:19:06 cph Exp $
+$Id: unxprm.scm,v 1.30 1994/06/02 21:41:07 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -247,8 +247,24 @@ MIT in each case. |#
 (define-integrable unix/current-pid
   (ucode-primitive current-pid 0))
 
-(define-integrable unix/system
-  (ucode-primitive system 1))
+(define (unix/system string)
+  (let ((wd-inside (->namestring (working-directory-pathname)))
+	(wd-outside)
+	(ti-outside))
+    (dynamic-wind
+     (lambda ()
+       (set! wd-outside ((ucode-primitive working-directory-pathname 0)))
+       ((ucode-primitive set-working-directory-pathname! 1) wd-inside)
+       (set! ti-outside (thread-timer-interval))
+       (set-thread-timer-interval! #f))
+     (lambda ()
+       ((ucode-primitive system 1) string))
+     (lambda ()
+       ((ucode-primitive set-working-directory-pathname! 1) wd-outside)
+       (set! wd-outside)
+       (set-thread-timer-interval! ti-outside)
+       (set! ti-outside)
+       unspecific))))
 
 (define (file-touch filename)
   ((ucode-primitive file-touch 1) (->namestring (merge-pathnames filename))))
