@@ -37,7 +37,7 @@
 
 ;;;; RTL Rules for 68020
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.139 1986/12/15 05:48:37 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.140 1986/12/16 06:27:48 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access lap-generator-syntax-table compiler-package)
@@ -266,7 +266,7 @@
   (ASSIGN (REGISTER (? target)) (OBJECT->TYPE (REGISTER (? source))))
   (QUALIFIER (pseudo-register? target))
   (let ((target (move-to-alias-register! source 'DATA target)))
-    `((LS R (& 24) ,target))))
+    `((RO L L (& 8) ,target))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OFFSET (REGISTER (? address)) (? offset)))
@@ -402,7 +402,7 @@
   (QUALIFIER (pseudo-register? register))
   (set-standard-branches! 'EQ)
   (let ((reference (move-to-temporary-register! register 'DATA)))
-    `((LS R (& 24) ,reference)
+    `((RO L L (& 8) ,reference)
       ,(test-byte type reference))))
 
 (define-rule predicate
