@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.8 1989/05/10 03:01:40 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.9 1989/09/24 03:33:55 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -109,7 +109,20 @@ to #F whenever a closure is identified.
 		(lvalue-values lvalue))))
 
 (define (initialize-closure-limit! procedure)
-  (set-procedure-closing-limit! procedure (procedure-closing-block procedure)))
+  (set-procedure-closing-limit! procedure (procedure-closing-block procedure))
+  ;; This sorting is crucial!  It causes a procedure's ancestors to be
+  ;; considered for undrifting prior to the procedure being
+  ;; considered.  This matters because the decision to undrift a
+  ;; procedure can be affected by whether or not the ancestors have
+  ;; been undrifted.
+  (set-procedure-free-callers!
+   procedure
+   (sort (procedure-free-callers procedure)
+	 (lambda (x y)
+	   (let ((y (procedure-block y))
+		 (x (procedure-block x)))
+	     (and (not (eq? y x))
+		  (original-block-ancestor-or-self? y x)))))))
 
 (define (initialize-arguments! application)
   (if (application/combination? application)
@@ -237,15 +250,15 @@ to #F whenever a closure is identified.
 	   (add-closure-reason! procedure reason1 reason2))
 	  ((not (and binding-block
 		     (block-ancestor-or-self? binding-block closing-limit)))
-	   (set-procedure-closing-limit! procedure false)
-	   (if (procedure-virtual-closure? procedure)
-	       (set-procedure-virtual-closure?! procedure false))
 	   (close-procedure! procedure reason1 reason2)))))
 
 (define (close-procedure! procedure reason1 reason2)
+  (set-procedure-closing-limit! procedure false)
+  (if (procedure-virtual-closure? procedure)
+      (set-procedure-virtual-closure?! procedure false))
   (let ((previously-trivial? (procedure/trivial-closure? procedure)))
-    ;; We can't change the closing block yet.
-    ;; blktyp has a consistency check that depends on the closing block
+    ;; We can't change the closing block yet.  `setup-block-types!'
+    ;; has a consistency check that depends on the closing block
     ;; remaining the same.
     (add-closure-reason! procedure reason1 reason2)
     ;; Force the procedure's type to CLOSURE.
@@ -286,7 +299,7 @@ to #F whenever a closure is identified.
     (for-each
      (lambda (procedure*)
        (if (not (procedure-closure-context procedure*))
-	   (let ((parent (procedure-current-parent procedure*))
+	   (let ((parent (procedure-closing-block procedure*))
 		 (original-parent (procedure-target-block procedure*)))
 	     ;; No need to do anything if PROCEDURE* hasn't drifted
 	     ;; relative to PROCEDURE.
@@ -308,27 +321,13 @@ to #F whenever a closure is identified.
 		       (undrift-procedure! procedure* binding-block)))))))
      (procedure-free-callers procedure))))
 
-;;; Don't update the block-parent (i.e. closing-block) of a procedure
-;;; anywhere in this pass, because the order in which the side effects
-;;; happen can permit blocks to be lost if this is done.  If we were
-;;; to do this update, the block-parent and the closing-limit would be
-;;; the same, so instead use the closing-limit.  This introduces an
-;;; inconsistency which is fixed in the compiler's next pass,
-;;; setup-block-types!, in which any procedure whose closing-limit and
-;;; block-parent differ is closed (this is the definition of a
-;;; closure).
-
-(define-integrable (procedure-current-parent procedure)
-  (procedure-closing-limit procedure))
-
 (define (undrift-procedure! procedure new-parent)
   (let ((block (procedure-block procedure))
-	(parent (procedure-current-parent procedure))
+	(parent (procedure-closing-block procedure))
 	(original-parent (procedure-target-block procedure)))
     ;; (assert! (eq? parent (procedure-closing-limit procedure)))
     (set-block-children! parent (delq! block (block-children parent)))
-    ;; Don't set this!  See note above.
-    ;; (set-block-parent! block new-parent)
+    (set-block-parent! block new-parent)
     (set-block-children! new-parent (cons block (block-children new-parent)))
     (set-procedure-closing-limit! procedure new-parent)
     (enqueue-nodes! (cons procedure (procedure-applications procedure)))
@@ -348,17 +347,15 @@ to #F whenever a closure is identified.
 			 procedure)))))
     (examine-free-callers! procedure)))
 
-;; These are like the corresponding standard block operations, but
-;; they ignore any block drifting caused by envopt.
+;;; These are like the corresponding standard block operations, but
+;;; they ignore any block drifting caused by envopt.
 
 (define (original-block-ancestor-or-self? block block*)
-  (define (loop block)
-    (and block
-	 (or (eq? block block*)
-	     (loop (original-block-parent block)))))
-
   (or (eq? block block*)
-      (loop (original-block-parent block))))
+      (let loop ((block (original-block-parent block)))
+	(and block
+	     (or (eq? block block*)
+		 (loop (original-block-parent block)))))))
 
 (define (original-block-nearest-common-ancestor block block*)
   (let loop
