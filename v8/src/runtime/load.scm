@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.36 1992/05/27 04:07:00 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.37 1992/05/30 16:47:40 mhwu Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -343,22 +343,29 @@ MIT in each case. |#
 ;;;; Loader for packed binaries
 
 (define (load-packed-binaries pathname fname count environment)
-  (define (find-filename fname alist)
-    (define (compatible? path1 path2)
-      (and (equal? (pathname-directory path1)
-                   (pathname-directory path2))
-           (equal? (pathname-name path1)
-                   (pathname-name path2))
-           (or (equal? (pathname-type path1) (pathname-type path2))
-               (and (member (pathname-type path1) '(#f "bin" "com"))
-                    (member (pathname-type path2) '(#f "bin" "com"))))))
+  (define (search-alist path alist predicate?)
+    (let loop ((alist alist))
+      (and (not (null? alist))
+	   (if (predicate? path (cadar alist))
+	       (car alist)
+	       (loop (cdr alist))))))
 
-    (let ((path (->pathname fname)))
-      (let loop ((alist alist))
-        (and (not (null? alist))
-             (if (compatible? path (cadar alist))
-                 (car alist)
-                 (loop (cdr alist)))))))
+  (define (find-filename fname alist)
+    (search-alist (->pathname fname) alist
+      (lambda (path1 path2)
+	(and (equal? (pathname-directory path1)
+		     (pathname-directory path2))
+	     (equal? (pathname-name path1)
+		     (pathname-name path2))
+	     (or (equal? (pathname-type path1) (pathname-type path2))
+		 (and (member (pathname-type path1) '(#f "bin" "com"))
+		      (member (pathname-type path2) '(#f "bin" "com"))))))))
+
+  (define (directory-represented? dname alist)
+    (search-alist (pathname-as-directory (->pathname dname)) alist
+      (lambda (path1 path2)
+	(equal? (pathname-directory path1)
+		(pathname-directory path2)))))
 
   (define (loading-message fname suppress? kind)
     (if (not suppress?)
@@ -371,7 +378,9 @@ MIT in each case. |#
   (define (process-bunch alist)
     (let ((real-load load)
 	  (real-fasload fasload)
-	  (real-file-exists? file-exists?))
+	  (real-file-exists? file-exists?)
+	  (real-file-directory? file-directory?))
+
       (fluid-let
 	  ((load
 	    (lambda (fname #!optional env syntax-table purify?)
@@ -394,7 +403,6 @@ MIT in each case. |#
 			(if (and purify? (not (eq? purify? default-object)))
 			    (purify (load/purification-root scode)))
 			(extended-scode-eval scode env)))))))
-
 	   (fasload
 	    (lambda (filename #!optional suppress-message?)
 	      (let ((suppress-message?
@@ -413,10 +421,14 @@ MIT in each case. |#
 	    (lambda (fname)
 	      (or (find-filename fname alist)
 		  (real-file-exists? fname))))
+	   (file-directory?
+	    (lambda (dname)
+	      (or (directory-represented? dname alist)
+		  (real-file-directory? dname))))
 	   (flush-purification-queue! (lambda () 'done)))
         (load (caar alist))))
     (flush-purification-queue!))
-
+
   (with-binary-input-file (->truename pathname)
     (lambda (channel)
       ((ucode-primitive binary-fasload) channel) ; Dismiss header.
