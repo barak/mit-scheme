@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.3 1995/01/11 20:42:52 ssmith Exp $
+$Id: rules3.scm,v 1.4 1995/01/11 21:58:54 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -937,6 +937,76 @@ MIT in each case. |#
 		(JL (@PCR ,interrupt-label))))
 	  (else
 	   (LAP)))))
+
+
+;; Invocation rules
+
+;; Jumps to the location stored in the register
+(define-rule statement
+  (INVOCATION:REGISTER 0 #F (REGISTER (? reg))
+		       #F (MACHINE-CONSTANT (? nregs)))
+  nregs					; ignored
+  (profile-info/add 'INVOCATION:REGISTER)
+  (let ((addr (standard-source! reg)))
+    (LAP ,@(clear-map!)
+	 (JMP (@R ,addr)))))
+
+;; NOTE for this procedure, we may need to alter the return address
+;; that's pushed onto the stack...  I'm not sure what the best way to
+;; do that is.  Potential bug.
+(define-rule statement
+  (INVOCATION:PROCEDURE 0 (? continuation) (? destination)
+			(MACHINE-CONSTANT (? nregs)))
+  nregs					; ignored
+  (profile-info/add 'INVOCATION:PROCEDURE)
+  (LAP ,@(clear-map!)
+       ,@(if (not continuation)
+	     (LAP (JMP (@PCR ,destination)))
+	     (LAP (CALL (@PCR ,destination))))))
+
+(define-rule statement
+  (INVOCATION:NEW-APPLY (? frame-size) (? continuation)
+			(REGISTER (? dest)) (MACHINE-CONSTANT (? nregs)))
+  ;; *** For now, ignore nregs and use frame-size ***
+  nregs
+  (profile-info/add 'INVOCATION:NEW-APPLY)
+  (let* ((obj (register-alias dest (register-type dest)))
+	 (prefix (if obj
+		     (LAP)
+		     (%load-machine-register! dest regnum:first-arg
+					      delete-dead-registers!)))
+	 (obj* (or obj regnum:first-arg)))
+    (need-register! obj*)
+    (if continuation
+	(need-register! 19))
+    (let ((addr (if untagged-entries? obj* (standard-temporary!)))
+	  (temp (standard-temporary!))
+	  (label (generate-label))
+	  (load-continuation
+	   (if continuation
+	       (load-pc-relative-address continuation 19 'CODE)
+	       '())))
+      (LAP ,@prefix
+	   ,@(clear-map!)
+	   ,@load-continuation
+	   ,@(object->type obj* temp)
+	   ,@(let ((tag (ucode-type compiled-entry)))
+	       (LAP (CMP W ,temp (& ,tag))
+		    (JNE (@PCR ,label))))
+	   ,@(if untagged-entries?
+		 (LAP)
+		 (LAP (MOV W (R ,addr) (R ,obj*))
+		      ,@(adjust-type (ucode-type compiled-entry)
+				     quad-mask-value
+				     addr)))
+	   (CMP B (@RO B ,addr -3) 0)
+	   ;; This is ugly - oh well
+	   (JNE (@PCR ,label)
+	   (JMP (@R ,addr))
+	   (LABEL ,label)
+	   ,@(copy obj* regnum:first-arg)
+	   ,@(%invocation:apply frame-size)))))
+
 
 
 ;;; Local Variables: ***
