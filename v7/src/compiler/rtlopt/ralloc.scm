@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/ralloc.scm,v 1.16 1988/09/07 06:25:33 cph Rel $
+$Id: ralloc.scm,v 1.17 1993/02/22 22:38:41 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -130,8 +130,10 @@ MIT in each case. |#
 	next-allocation))))
 
 (define (allocate<? x y)
-  (< (/ (register-n-refs x) (register-live-length x))
-     (/ (register-n-refs y) (register-live-length y))))
+  (and (not (= (register-live-length x) 0))
+       (or (= (register-live-length y) 0)
+	   (< (/ (register-n-refs x) (register-live-length x))
+	      (/ (register-n-refs y) (register-live-length y))))))
 
 (define (mark-births! live rtl register->renumber)
   (if (rtl:assign? rtl)
