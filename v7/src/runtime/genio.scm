@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.27 2004/02/24 20:35:32 cph Exp $
+$Id: genio.scm,v 1.28 2004/02/24 20:59:09 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004 Massachusetts Institute of Technology
@@ -1276,11 +1276,13 @@ USA.
   (or (fix:= (fix:and #xF800 n) #xD800)
       (fix:= (fix:and #xFFFE n) #xFFFE)))
 
-(define-decoder-alias 'UTF-16
-  (lambda ()
-    (if (host-big-endian?)
-	'UTF-16BE
-	'UTF-16LE)))
+(let ((alias
+       (lambda ()
+	 (if (host-big-endian?)
+	     'UTF-16BE
+	     'UTF-16LE))))
+  (define-decoder-alias 'UTF-16 alias)
+  (define-encoder-alias 'UTF-16 alias))
 
 (define-decoder 'UTF-16BE
   (lambda (ib)
@@ -1352,11 +1354,13 @@ USA.
 		 (extract n1 #x3FF 0))
 	 #x10000))
 
-(define-decoder-alias 'UTF-32
-  (lambda ()
-    (if (host-big-endian?)
-	'UTF-32BE
-	'UTF-32LE)))
+(let ((alias
+       (lambda ()
+	 (if (host-big-endian?)
+	     'UTF-32BE
+	     'UTF-32LE))))
+  (define-decoder-alias 'UTF-32 alias)
+  (define-encoder-alias 'UTF-32 alias))
 
 (define-decoder 'UTF-32BE
   (lambda (ib)
