@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/prdosfs.c,v 1.1 1992/05/05 06:55:13 jinx Exp $
+$Id: prdosfs.c,v 1.2 1992/09/15 20:35:31 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -382,15 +382,14 @@ The file must exist and you must be the owner (or superuser).")
 DEFINE_PRIMITIVE ("FILE-EQ?", Prim_file_eq_p, 2, 2,
   "True iff the two file arguments are the same file.")
 {
+  extern int EXFUN (DOS_canonicalize_filename, (char *, char *));
+  static char buf1[128], buf2[128];
   PRIMITIVE_HEADER (2);
-  {
-    struct stat s1;
-    struct stat s2;
-    PRIMITIVE_RETURN
-      (BOOLEAN_TO_OBJECT
-       ((DOS_read_file_status ((STRING_ARG (1)), (&s1)))
-	&& (DOS_read_file_status ((STRING_ARG (2)), (&s2)))
-	&& ((s1 . st_dev) == (s2 . st_dev))
-	&& ((s1 . st_ino) == (s2 . st_ino))));
-  }
+
+  if (((DOS_canonicalize_filename ((STRING_ARG (1)), &buf1[0]))
+       == -1)
+      || ((DOS_canonicalize_filename ((STRING_ARG (2)), &buf2[0]))
+	  == -1))
+    error_external_return ();
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((strcmp (&buf1[0], &buf2[0])) == 0));
 }

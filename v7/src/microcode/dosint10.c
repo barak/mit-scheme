@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosint10.c,v 1.1 1992/07/28 18:15:43 jinx Exp $
+$Id: dosint10.c,v 1.2 1992/09/15 20:35:42 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -111,10 +111,11 @@ int BACKGROUND_ATTRIBUTE = UNINITIALIZED;
 int NORMAL_VIDEO = UNINITIALIZED;
 int REVERSE_VIDEO = UNINITIALIZED;
 
-unsigned long RealModeBufferParagraph = 0;
-char *pRealModeBuffer = NULL;
+extern unsigned long RealModeBufferParagraph;
+extern char *pRealModeBuffer;
 
-void bios_initialize_variables(void)
+void 
+bios_initialize_variables (void)
 /*
   If valid environment variables exist, use values. Otherwise
   queries BIOS for parameters.
@@ -162,18 +163,7 @@ void bios_initialize_variables(void)
 
   NORMAL_VIDEO = (FOREGROUND_ATTRIBUTE | BACKGROUND_ATTRIBUTE);
   REVERSE_VIDEO = ((FOREGROUND_ATTRIBUTE << 4) | (BACKGROUND_ATTRIBUTE >> 4));
-
-  {
-    union REGS rIn;
-    union REGS rOut;
-
-    rIn.h.ah = 0x48;
-    rIn.x.bx = 256;
-    int86(0x21,&rIn,&rOut);
-      /* Ought to check for success, carry flag cleared if successful */
-    pRealModeBuffer = (char *) rOut.e.ebx;
-    RealModeBufferParagraph = rOut.x.ax;
-  }
+  return;
 }
 
 void bios_uninitialize_variables(void)
@@ -443,7 +433,7 @@ DEFINE_PRIMITIVE("BIOS:DISCARD!", Prim_bios_discard, 0, 0, 0)
 DEFINE_PRIMITIVE("BIOS:ENTER!", Prim_bios_enter, 0, 0, 0)
 {
   PRIMITIVE_HEADER(0);
-  bios_initialize_variables();
+  bios_initialize_variables ();
   bios_clear_screen();
   bios__set_cursor_position(0,0,DISPLAY_ROWS);
   PRIMITIVE_RETURN(SHARP_T);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dostop.c,v 1.4 1992/08/22 19:33:10 jinx Exp $
+$Id: dostop.c,v 1.5 1992/09/15 20:35:49 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -50,6 +50,7 @@ extern void EXFUN (DOS_initialize_trap_recovery, (void));
 extern void EXFUN (DOS_initialize_conio, (void));
 extern void EXFUN (DOS_initialize_tty, (void));
 extern void EXFUN (DOS_initialize_userio, (void));
+extern void EXFUN (DOS_initialize_real_mode, (void));
 
 extern void EXFUN (DOS_reset_channels, (void));
 extern void EXFUN (DOS_reset_processes, (void));
@@ -88,6 +89,7 @@ DEFUN_VOID (OS_initialize)
   DOS_initialize_signals ();
   DOS_initialize_directory_reader ();
   DOS_initialize_conio();
+  DOS_initialize_real_mode ();
   OS_Name = SYSTEM_NAME;
   OS_Variant = SYSTEM_VARIANT;
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosfs.c,v 1.2 1992/07/06 23:42:01 jinx Exp $
+$Id: dosfs.c,v 1.3 1992/09/15 20:35:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -35,32 +35,13 @@ MIT in each case. */
 #include "msdos.h"
 #include "osfs.h"
 
-int
-DEFUN (DOS_read_file_status, (name, s),
-       CONST char * name AND
-       struct stat * s)
-{ char filename[128];
-
-  dos_pathname_as_filename(name, filename);
-  
-  while ((stat (filename, s)) < 0)
-    {
-      if (errno == EINTR)
-	continue;
-      if ((errno == ENOENT) || (errno == ENOTDIR))
-	return (0);
-      error_system_call (errno, syscall_lstat);
-    }
-  return (1);
-}
-
 enum file_existence
 DEFUN (OS_file_existence_test, (name), char * name)
 {
   struct stat s;
   char filename[128];
  
-  dos_pathname_as_filename(name, filename);
+  dos_pathname_as_filename (name, filename);
   
   return
     (((DOS_stat (filename, (&s))) < 0)
@@ -72,7 +53,7 @@ DEFUN (OS_file_access, (name, mode), CONST char * name AND unsigned int mode)
 {
   char filename[128];
  
-  dos_pathname_as_filename(name, filename);
+  dos_pathname_as_filename (name, filename);
   return ((DOS_access (filename, mode)) == 0);
 }
 
@@ -82,7 +63,7 @@ DEFUN (OS_file_directory_p, (name), char * name)
   struct stat s;
   char filename[128];
  
-  dos_pathname_as_filename(name, filename);
+  dos_pathname_as_filename (name, filename);
   return (((DOS_stat (filename, (&s))) == 0) &&
 	  (((s . st_mode) & S_IFMT) == S_IFDIR));
 }
@@ -115,6 +96,7 @@ DEFUN (OS_file_link_hard, (from_name, to_name),
        CONST char * to_name)
 {
   error_unimplemented_primitive ();
+  /*NOTREACHED*/
 }
 
 void
@@ -123,6 +105,7 @@ DEFUN (OS_file_link_soft, (from_name, to_name),
        CONST char * to_name)
 {
   error_unimplemented_primitive ();
+  /*NOTREACHED*/
 }
 
 void
@@ -241,7 +224,7 @@ DEFUN (OS_directory_open, (name), CONST char * name)
   if (pointer == 0)
     error_system_call (ENOMEM, syscall_malloc);
 
-  if (dos_pathname_as_filename(name, filename))
+  if (dos_pathname_as_filename (name, filename))
     sprintf(searchname, "%s*.*", filename);
   else
     sprintf(searchname, "%s\\*.*", filename);
@@ -270,7 +253,7 @@ DEFUN (OS_directory_read_matching, (index, prefix),
        CONST char * prefix)
 {
   error_unimplemented_primitive ();
-  return (0);
+  /*NOTREACHED*/
 }
 
 void
@@ -280,5 +263,23 @@ DEFUN (OS_directory_close, (index), unsigned int index)
   free(pointer);
   DEALLOCATE_DIRECTORY (index);
 }
+
+int
+DEFUN (DOS_read_file_status, (name, s),
+       CONST char * name AND
+       struct stat * s)
+{
+  char filename[128];
 
-
+  dos_pathname_as_filename (name, filename);
+  
+  while ((stat (filename, s)) < 0)
+    {
+      if (errno == EINTR)
+	continue;
+      if ((errno == ENOENT) || (errno == ENOTDIR))
+	return (0);
+      error_system_call (errno, syscall_lstat);
+    }
+  return (1);
+}
