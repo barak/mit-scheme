@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.6 1994/12/15 02:32:09 adams Exp $
+$Id: compiler.pkg,v 1.7 1994/12/15 03:07:44 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -46,19 +46,11 @@ MIT in each case. |#
 	 "machines/spectrum/machin"	;machine dependent stuff
 	 "back/asutl"			;back-end odds and ends
 	 "base/utils"			;odds and ends
+	 "base/stats"			;statistics abstraction
 
 	 "base/cfg1"			;control flow graph
 	 "base/cfg2"
 	 "base/cfg3"
-
-	 ;; Old CFG stuff
-	 ;;"base/ctypes"			;CFG datatypes
-	 ;;"base/rvalue"			;Right hand values
-	 ;;"base/lvalue"			;Left hand values
-	 ;;"base/blocks"			;rvalue: blocks
-	 ;;"base/proced"			;rvalue: procedures
-	 ;;"base/contin"			;rvalue: continuations
-	 ;;"base/subprb"			;subproblem datatype
 
 	 "rtlbase/rgraph"		;program graph abstraction
 	 "rtlbase/rtlty1"		;RTL: type definitions
@@ -113,21 +105,6 @@ MIT in each case. |#
 	  compiler:display-statistics
 	  compiler:reset-statistics!))
 
-;;(define-package (compiler reference-contexts)
-;;  (files "base/refctx")
-;;  (parent (compiler))
-;;  (export (compiler)
-;;	  add-reference-context/adjacent-parents!
-;;	  initialize-reference-contexts!
-;;	  make-reference-context
-;;	  modify-reference-contexts!
-;;	  reference-context/adjacent-parent?
-;;	  reference-context/block
-;;	  reference-context/offset
-;;	  reference-context/procedure
-;;	  reference-context?
-;;	  set-reference-context/offset!))
-
 (define-package (compiler macros)
   (files "base/macros")
   (parent ())
