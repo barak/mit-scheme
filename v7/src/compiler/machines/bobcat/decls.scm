@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.14 1988/11/03 08:47:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.15 1988/11/05 22:34:28 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -341,7 +341,7 @@ MIT in each case. |#
 			      "lapgn2" "lapgn3" "linear" "regmap" "symtab"
 			      "syntax")
 	     (filename/append "machines/bobcat"
-			      "insmac" "machin" "rgspcm")
+			      "dassm1" "insmac" "machin" "rgspcm")
 	     (filename/append "fggen"
 			      "declar" "fggen" "canon")
 	     (filename/append "fgopt"
