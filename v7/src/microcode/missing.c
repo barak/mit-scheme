@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/missing.c,v 9.24 1989/09/22 08:45:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/missing.c,v 9.25 1989/09/22 09:33:16 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -33,6 +33,8 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 /* This file contains utilities potentially missing from the math library. */
+
+#include "config.h"
 
 #ifndef HAS_FREXP
 
@@ -82,7 +84,7 @@ frexp (value, eptr)
 	    }
 	}
     }
-  else if (x < 1)
+  else if ((x > 0) && (x < 1))
     {
       while (1)
 	{
@@ -113,9 +115,9 @@ ldexp (value, exponent)
      double value;
      int exponent;
 {
-  fast double x = value;
-  fast double e = exponent;
-  fast double r = 2;
+  register double x = value;
+  register int e = exponent;
+  register double r = 2;
   if (e > 0)
     {
       if (e == 1)
@@ -168,7 +170,7 @@ modf (value, iptr)
   {
     register double s =
       ((((significand < 0) ? (-significand) : significand) * 2) - 1);
-    register double e = (exponent - 1);
+    register int e = (exponent - 1);
     register double n = 1;
     while (1)
       {
