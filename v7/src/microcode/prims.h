@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prims.h,v 9.44 1993/12/05 06:08:03 cph Exp $
+$Id: prims.h,v 9.45 1995/09/18 22:33:00 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -97,6 +97,8 @@ extern long EXFUN (arg_integer, (int));
 extern long EXFUN (arg_nonnegative_integer, (int));
 extern long EXFUN (arg_index_integer, (int, long));
 extern long EXFUN (arg_integer_in_range, (int, long, long));
+extern unsigned long EXFUN (arg_ulong_integer, (int));
+extern unsigned long EXFUN (arg_ulong_index_integer, (int, unsigned long));
 extern double EXFUN (arg_real_number, (int));
 extern double EXFUN (arg_real_in_range, (int, double, double));
 extern long EXFUN (arg_ascii_char, (int));

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: extern.h,v 9.52 1995/07/26 21:06:15 adams Exp $
+$Id: extern.h,v 9.53 1995/09/18 22:32:54 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -171,6 +171,7 @@ extern SCHEME_OBJECT EXFUN (double_to_flonum, (double));
 extern Boolean EXFUN (integer_to_long_p, (SCHEME_OBJECT));
 extern long EXFUN (integer_to_long, (SCHEME_OBJECT));
 extern SCHEME_OBJECT EXFUN (long_to_integer, (long));
+extern Boolean EXFUN (integer_to_ulong_p, (SCHEME_OBJECT));
 extern unsigned long EXFUN (integer_to_ulong, (SCHEME_OBJECT));
 extern SCHEME_OBJECT EXFUN (ulong_to_integer, (unsigned long));
 extern Boolean EXFUN (integer_to_double_p, (SCHEME_OBJECT));

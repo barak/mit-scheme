@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: artutl.c,v 1.11 1992/09/18 19:40:07 jinx Exp $
+$Id: artutl.c,v 1.12 1995/09/18 22:32:53 cph Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -77,6 +77,12 @@ DEFUN (long_to_integer, (number), long number)
     ((LONG_TO_FIXNUM_P (number))
      ? (LONG_TO_FIXNUM (number))
      : (long_to_bignum (number)));
+}
+
+Boolean
+DEFUN (integer_to_ulong_p, (n), fast SCHEME_OBJECT n)
+{
+  return ((FIXNUM_P (n)) || (BIGNUM_TO_ULONG_P (n)));
 }
 
 unsigned long

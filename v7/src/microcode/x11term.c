@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: x11term.c,v 1.23 1993/08/16 08:12:32 cph Exp $
+$Id: x11term.c,v 1.24 1995/09/18 22:33:14 cph Exp $
 
-Copyright (c) 1989-93 Massachusetts Institute of Technology
+Copyright (c) 1989-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -221,13 +221,13 @@ DEFUN (xterm_deallocate, (xw), struct xwindow * xw)
 static SCHEME_OBJECT
 DEFUN (xterm_x_coordinate_map, (xw, x), struct xwindow * xw AND unsigned int x)
 {
-  return (long_to_integer (x / (FONT_WIDTH (XW_FONT (xw)))));
+  return (ulong_to_integer (x / (FONT_WIDTH (XW_FONT (xw)))));
 }
 
 static SCHEME_OBJECT
 DEFUN (xterm_y_coordinate_map, (xw, y), struct xwindow * xw AND unsigned int y)
 {
-  return (long_to_integer (y / (FONT_HEIGHT (XW_FONT (xw)))));
+  return (ulong_to_integer (y / (FONT_HEIGHT (XW_FONT (xw)))));
 }
 
 static void
@@ -423,8 +423,8 @@ DEFINE_PRIMITIVE ("XTERM-RECONFIGURE", Prim_xterm_reconfigure, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   xterm_reconfigure ((x_window_arg (1)),
-		     (arg_nonnegative_integer (2)),
-		     (arg_nonnegative_integer (3)));
+		     (arg_ulong_integer (2)),
+		     (arg_ulong_integer (3)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -432,10 +432,10 @@ DEFINE_PRIMITIVE ("XTERM-DUMP-RECTANGLE", Prim_xterm_dump_rectangle, 5, 5, 0)
 {
   PRIMITIVE_HEADER (5);
   xterm_dump_rectangle ((x_window_arg (1)),
-			(arg_nonnegative_integer (2)),
-			(arg_nonnegative_integer (3)),
-			(arg_nonnegative_integer (4)),
-			(arg_nonnegative_integer (5)));
+			(arg_ulong_integer (2)),
+			(arg_ulong_integer (3)),
+			(arg_ulong_integer (4)),
+			(arg_ulong_integer (5)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -444,7 +444,7 @@ DEFINE_PRIMITIVE ("XTERM-MAP-X-COORDINATE", Prim_xterm_map_x_coordinate, 2, 2, 0
   PRIMITIVE_HEADER (2);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int xp = (arg_nonnegative_integer (2));
+    unsigned int xp = (arg_ulong_integer (2));
     int bx = (xp - (XW_INTERNAL_BORDER_WIDTH (xw)));
     PRIMITIVE_RETURN
       (long_to_integer
@@ -460,7 +460,7 @@ DEFINE_PRIMITIVE ("XTERM-MAP-Y-COORDINATE", Prim_xterm_map_y_coordinate, 2, 2, 0
   PRIMITIVE_HEADER (2);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int yp = (arg_nonnegative_integer (2));
+    unsigned int yp = (arg_ulong_integer (2));
     int by = (yp - (XW_INTERNAL_BORDER_WIDTH (xw)));
     PRIMITIVE_RETURN
       (long_to_integer
@@ -479,7 +479,7 @@ DEFINE_PRIMITIVE ("XTERM-MAP-X-SIZE", Prim_xterm_map_x_size, 2, 2, 0)
     int width =
       ((arg_nonnegative_integer (2)) - (2 * (XW_INTERNAL_BORDER_WIDTH (xw))));
     PRIMITIVE_RETURN
-      (long_to_integer
+      (ulong_to_integer
        ((width < 0) ? 0 : (width / (FONT_WIDTH (XW_FONT (xw))))));
   }
 }
@@ -492,7 +492,7 @@ DEFINE_PRIMITIVE ("XTERM-MAP-Y-SIZE", Prim_xterm_map_y_size, 2, 2, 0)
     int height =
       ((arg_nonnegative_integer (2)) - (2 * (XW_INTERNAL_BORDER_WIDTH (xw))));
     PRIMITIVE_RETURN
-      (long_to_integer
+      (ulong_to_integer
        ((height < 0) ? 0 : (height / (FONT_HEIGHT (XW_FONT (xw))))));
   }
 }
@@ -600,13 +600,13 @@ DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3, 0)
 DEFINE_PRIMITIVE ("XTERM-X-SIZE", Prim_xterm_x_size, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (XW_X_CSIZE (x_window_arg (1))));
+  PRIMITIVE_RETURN (ulong_to_integer (XW_X_CSIZE (x_window_arg (1))));
 }
 
 DEFINE_PRIMITIVE ("XTERM-Y-SIZE", Prim_xterm_y_size, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (XW_Y_CSIZE (x_window_arg (1))));
+  PRIMITIVE_RETURN (ulong_to_integer (XW_Y_CSIZE (x_window_arg (1))));
 }
 
 DEFINE_PRIMITIVE ("XTERM-SET-SIZE", Prim_xterm_set_size, 3, 3, 0)
@@ -621,8 +621,8 @@ DEFINE_PRIMITIVE ("XTERM-SET-SIZE", Prim_xterm_set_size, 3, 3, 0)
   XResizeWindow
     ((XW_DISPLAY (xw)),
      (XW_WINDOW (xw)),
-     (((arg_nonnegative_integer (2)) * (FONT_WIDTH (font))) + extra),
-     (((arg_nonnegative_integer (3)) * (FONT_HEIGHT (font))) + extra));
+     (((arg_ulong_integer (2)) * (FONT_WIDTH (font))) + extra),
+     (((arg_ulong_integer (3)) * (FONT_HEIGHT (font))) + extra));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -652,8 +652,8 @@ DEFINE_PRIMITIVE ("XTERM-WRITE-CURSOR!", Prim_xterm_write_cursor, 3, 3, 0)
   PRIMITIVE_HEADER (3);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int x = (arg_index_integer (2, (XW_X_CSIZE (xw))));
-    unsigned int y = (arg_index_integer (3, (XW_Y_CSIZE (xw))));
+    unsigned int x = (arg_ulong_index_integer (2, (XW_X_CSIZE (xw))));
+    unsigned int y = (arg_ulong_index_integer (3, (XW_Y_CSIZE (xw))));
     if ((x != (XW_CURSOR_X (xw))) || (y != (XW_CURSOR_Y (xw))))
       {
 	xterm_erase_cursor (xw);
@@ -670,8 +670,8 @@ DEFINE_PRIMITIVE ("XTERM-WRITE-CHAR!", Prim_xterm_write_char, 5, 5, 0)
   PRIMITIVE_HEADER (5);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int x = (arg_index_integer (2, (XW_X_CSIZE (xw))));
-    unsigned int y = (arg_index_integer (3, (XW_Y_CSIZE (xw))));
+    unsigned int x = (arg_ulong_index_integer (2, (XW_X_CSIZE (xw))));
+    unsigned int y = (arg_ulong_index_integer (3, (XW_Y_CSIZE (xw))));
     int c = (arg_ascii_char (4));
     unsigned int hl = (HL_ARG (5));
     unsigned int index = (XTERM_CHAR_INDEX (xw, x, y));
@@ -694,11 +694,12 @@ DEFINE_PRIMITIVE ("XTERM-WRITE-SUBSTRING!", Prim_xterm_write_substring, 7, 7, 0)
   CHECK_ARG (4, STRING_P);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int x = (arg_index_integer (2, (XW_X_CSIZE (xw))));
-    unsigned int y = (arg_index_integer (3, (XW_Y_CSIZE (xw))));
+    unsigned int x = (arg_ulong_index_integer (2, (XW_X_CSIZE (xw))));
+    unsigned int y = (arg_ulong_index_integer (3, (XW_Y_CSIZE (xw))));
     SCHEME_OBJECT string = (ARG_REF (4));
-    unsigned int end = (arg_index_integer (6, ((STRING_LENGTH (string)) + 1)));
-    unsigned int start = (arg_index_integer (5, (end + 1)));
+    unsigned int end
+      = (arg_ulong_index_integer (6, ((STRING_LENGTH (string)) + 1)));
+    unsigned int start = (arg_ulong_index_integer (5, (end + 1)));
     unsigned int hl = (HL_ARG (7));
     unsigned int length = (end - start);
     unsigned int index = (XTERM_CHAR_INDEX (xw, x, y));
@@ -778,10 +779,12 @@ DEFINE_PRIMITIVE ("XTERM-CLEAR-RECTANGLE!", Prim_xterm_clear_rectangle, 6, 6, 0)
   PRIMITIVE_HEADER (6);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int x_end = (arg_index_integer (3, ((XW_X_CSIZE (xw)) + 1)));
-    unsigned int y_end = (arg_index_integer (5, ((XW_Y_CSIZE (xw)) + 1)));
-    unsigned int x_start = (arg_index_integer (2, (x_end + 1)));
-    unsigned int y_start = (arg_index_integer (4, (y_end + 1)));
+    unsigned int x_end
+      = (arg_ulong_index_integer (3, ((XW_X_CSIZE (xw)) + 1)));
+    unsigned int y_end
+      = (arg_ulong_index_integer (5, ((XW_Y_CSIZE (xw)) + 1)));
+    unsigned int x_start = (arg_ulong_index_integer (2, (x_end + 1)));
+    unsigned int y_start = (arg_ulong_index_integer (4, (y_end + 1)));
     unsigned int hl = (HL_ARG (6));
     if ((x_start < x_end) && (y_start < y_end))
       {
@@ -830,11 +833,13 @@ Scroll the contents of the region up by LINES.")
   PRIMITIVE_HEADER (6);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int x_end = (arg_index_integer (3, ((XW_X_CSIZE (xw)) + 1)));
-    unsigned int x_start = (arg_index_integer (2, (x_end + 1)));
-    unsigned int y_end = (arg_index_integer (5, ((XW_Y_CSIZE (xw)) + 1)));
-    unsigned int y_start = (arg_index_integer (4, (y_end + 1)));
-    unsigned int lines = (arg_index_integer (6, (y_end - y_start)));
+    unsigned int x_end
+      = (arg_ulong_index_integer (3, ((XW_X_CSIZE (xw)) + 1)));
+    unsigned int x_start = (arg_ulong_index_integer (2, (x_end + 1)));
+    unsigned int y_end
+      = (arg_ulong_index_integer (5, ((XW_Y_CSIZE (xw)) + 1)));
+    unsigned int y_start = (arg_ulong_index_integer (4, (y_end + 1)));
+    unsigned int lines = (arg_ulong_index_integer (6, (y_end - y_start)));
     if ((0 < lines) && (x_start < x_end) && (y_start < y_end))
       {
 	if (CURSOR_IN_RECTANGLE (xw, x_start, x_end, (y_start + lines), y_end))
@@ -892,11 +897,13 @@ Scroll the contents of the region down by LINES.")
   PRIMITIVE_HEADER (6);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int x_end = (arg_index_integer (3, ((XW_X_CSIZE (xw)) + 1)));
-    unsigned int x_start = (arg_index_integer (2, (x_end + 1)));
-    unsigned int y_end = (arg_index_integer (5, ((XW_Y_CSIZE (xw)) + 1)));
-    unsigned int y_start = (arg_index_integer (4, (y_end + 1)));
-    unsigned int lines = (arg_index_integer (6, (y_end - y_start)));
+    unsigned int x_end
+      = (arg_ulong_index_integer (3, ((XW_X_CSIZE (xw)) + 1)));
+    unsigned int x_start = (arg_ulong_index_integer (2, (x_end + 1)));
+    unsigned int y_end
+      = (arg_ulong_index_integer (5, ((XW_Y_CSIZE (xw)) + 1)));
+    unsigned int y_start = (arg_ulong_index_integer (4, (y_end + 1)));
+    unsigned int lines = (arg_ulong_index_integer (6, (y_end - y_start)));
     if ((0 < lines) && (x_start < x_end) && (y_start < y_end))
       {
 	if (CURSOR_IN_RECTANGLE (xw, x_start, x_end, y_start, (y_end - lines)))
@@ -931,10 +938,12 @@ The pairs are organized in row-major order from (X-START, Y-START).")
   PRIMITIVE_HEADER (5);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int x_end = (arg_index_integer (3, ((XW_X_CSIZE (xw)) + 1)));
-    unsigned int y_end = (arg_index_integer (5, ((XW_Y_CSIZE (xw)) + 1)));
-    unsigned int x_start = (arg_index_integer (2, (x_end + 1)));
-    unsigned int y_start = (arg_index_integer (4, (y_end + 1)));
+    unsigned int x_end
+      = (arg_ulong_index_integer (3, ((XW_X_CSIZE (xw)) + 1)));
+    unsigned int y_end
+      = (arg_ulong_index_integer (5, ((XW_Y_CSIZE (xw)) + 1)));
+    unsigned int x_start = (arg_ulong_index_integer (2, (x_end + 1)));
+    unsigned int y_start = (arg_ulong_index_integer (4, (y_end + 1)));
     unsigned int x_length = (x_end - x_start);
     unsigned int string_length = (2 * x_length * (y_end - y_start));
     SCHEME_OBJECT string = (allocate_string (string_length));
@@ -968,10 +977,12 @@ See `XTERM-SCREEN-CONTENTS' for the format of CONTENTS.")
   CHECK_ARG (6, STRING_P);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int x_end = (arg_index_integer (3, ((XW_X_CSIZE (xw)) + 1)));
-    unsigned int y_end = (arg_index_integer (5, ((XW_Y_CSIZE (xw)) + 1)));
-    unsigned int x_start = (arg_index_integer (2, (x_end + 1)));
-    unsigned int y_start = (arg_index_integer (4, (y_end + 1)));
+    unsigned int x_end
+      = (arg_ulong_index_integer (3, ((XW_X_CSIZE (xw)) + 1)));
+    unsigned int y_end
+      = (arg_ulong_index_integer (5, ((XW_Y_CSIZE (xw)) + 1)));
+    unsigned int x_start = (arg_ulong_index_integer (2, (x_end + 1)));
+    unsigned int y_start = (arg_ulong_index_integer (4, (y_end + 1)));
     unsigned int x_length = (x_end - x_start);
     unsigned int string_length = (2 * x_length * (y_end - y_start));
     SCHEME_OBJECT string = (ARG_REF (6));

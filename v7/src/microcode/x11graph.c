@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: x11graph.c,v 1.33 1994/09/26 23:08:46 cph Exp $
+$Id: x11graph.c,v 1.34 1995/09/18 22:33:08 cph Exp $
 
-Copyright (c) 1989-94 Massachusetts Institute of Technology
+Copyright (c) 1989-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -262,8 +262,8 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-RECONFIGURE", Prim_x_graphics_reconfigure, 3, 3, 0
 {
   PRIMITIVE_HEADER (3);
   reconfigure ((x_window_arg (1)),
-	       (arg_nonnegative_integer (2)),
-	       (arg_nonnegative_integer (3)));
+	       (arg_ulong_integer (2)),
+	       (arg_ulong_integer (3)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -487,7 +487,7 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-SET-FUNCTION", Prim_x_graphics_set_function, 2, 2,
   {
     struct xwindow * xw = (x_window_arg (1));
     Display * display = (XW_DISPLAY (xw));
-    unsigned int function = (arg_index_integer (2, 16));
+    unsigned int function = (arg_ulong_index_integer (2, 16));
     XSetFunction (display, (XW_NORMAL_GC (xw)), function);
     XSetFunction (display, (XW_REVERSE_GC (xw)), function);
   }
@@ -593,7 +593,7 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-SET-FILL-STYLE", Prim_x_graphics_set_fill_style, 2
   {
     struct xwindow * xw = (x_window_arg (1));
     Display * display = (XW_DISPLAY (xw));
-    unsigned int fill_style = (arg_index_integer (2, 4));
+    unsigned int fill_style = (arg_ulong_index_integer (2, 4));
     XSetFillStyle (display, (XW_NORMAL_GC (xw)), fill_style);
     XSetFillStyle (display, (XW_REVERSE_GC (xw)), fill_style);
   }
@@ -606,7 +606,7 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-SET-LINE-STYLE", Prim_x_graphics_set_line_style, 2
   {
     struct xwindow * xw = (x_window_arg (1));
     Display * display = (XW_DISPLAY (xw));
-    unsigned int style = (arg_index_integer (2, 3));
+    unsigned int style = (arg_ulong_index_integer (2, 3));
     XSetLineAttributes
       (display, (XW_NORMAL_GC (xw)), 0, style, CapButt, JoinMiter);
     XSetLineAttributes
@@ -623,7 +623,7 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-SET-DASHES", Prim_x_graphics_set_dashes, 3, 3, 0)
     Display * display = (XW_DISPLAY (xw));
     char * dash_list = (STRING_ARG (3));
     unsigned int dash_list_length = (STRING_LENGTH (ARG_REF (3)));
-    unsigned int dash_offset = (arg_index_integer (2, dash_list_length));
+    unsigned int dash_offset = (arg_ulong_index_integer (2, dash_list_length));
     XSetDashes
       (display, (XW_NORMAL_GC (xw)), dash_offset, dash_list, dash_list_length);
     XSetDashes
@@ -743,8 +743,8 @@ information needed to crate an XImage structure.")
     struct xwindow * xw = (x_window_arg (1));
     Window window = (XW_WINDOW (xw));
     Display * dpy = (XW_DISPLAY (xw));
-    unsigned int width = (arg_nonnegative_integer (2));
-    unsigned int height = (arg_nonnegative_integer (3));
+    unsigned int width = (arg_ulong_integer (2));
+    unsigned int height = (arg_ulong_integer (3));
     unsigned int bitmap_pad = (BitmapPad (dpy));
     unsigned int byte_pad = (bitmap_pad / CHAR_BIT);
     unsigned int bytes_per_line =
@@ -775,8 +775,8 @@ DEFINE_PRIMITIVE ("X-BYTES-INTO-IMAGE", Prim_x_bytes_into_image, 2, 2,
 {
   PRIMITIVE_HEADER (2);
   {
-    SCHEME_OBJECT vector = ARG_REF (1);
-    XImage * image = XI_IMAGE (x_image_arg (2));
+    SCHEME_OBJECT vector = (ARG_REF (1));
+    XImage * image = (XI_IMAGE (x_image_arg (2)));
     char * image_scan;
     unsigned long width = (image -> width);
     unsigned long height = (image -> height);
@@ -795,20 +795,20 @@ DEFINE_PRIMITIVE ("X-BYTES-INTO-IMAGE", Prim_x_bytes_into_image, 2, 2,
   }
 }
 
-DEFINE_PRIMITIVE("X-GET-PIXEL-FROM-IMAGE", Prim_x_get_image_pixel, 3, 3, 0)
+DEFINE_PRIMITIVE ("X-GET-PIXEL-FROM-IMAGE", Prim_x_get_image_pixel, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   {
     XImage * image = (XI_IMAGE (x_image_arg (1)));
     PRIMITIVE_RETURN
-      (long_to_integer
+      (ulong_to_integer
        (XGetPixel (image,
 		   (arg_index_integer (2, (image -> width))),
 		   (arg_index_integer (3, (image -> height))))));
   }
 }
 
-DEFINE_PRIMITIVE("X-SET-PIXEL-IN-IMAGE", Prim_x_set_image_pixel, 4, 4, 0)
+DEFINE_PRIMITIVE ("X-SET-PIXEL-IN-IMAGE", Prim_x_set_image_pixel, 4, 4, 0)
 {
   PRIMITIVE_HEADER (4);
   {
@@ -816,7 +816,7 @@ DEFINE_PRIMITIVE("X-SET-PIXEL-IN-IMAGE", Prim_x_set_image_pixel, 4, 4, 0)
     XPutPixel (image,
 	       (arg_index_integer (2, (image -> width))),
 	       (arg_index_integer (3, (image -> height))),
-	       (arg_integer (4)));
+	       (arg_ulong_integer (4)));
     PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }
@@ -842,8 +842,8 @@ DEFINE_PRIMITIVE ("X-DISPLAY-IMAGE", Prim_x_display_image, 8, 8, 0)
     XImage * image = (XI_IMAGE (x_image_arg (1)));
     unsigned int image_width = (image -> width);
     unsigned int image_height = (image -> height);
-    unsigned int x_offset = (arg_index_integer (2, image_width));
-    unsigned int y_offset = (arg_index_integer (3, image_height));
+    unsigned int x_offset = (arg_ulong_index_integer (2, image_width));
+    unsigned int y_offset = (arg_ulong_index_integer (3, image_height));
     struct xwindow * xw = (x_window_arg (4));
     XPutImage
       ((XW_DISPLAY (xw)),(XW_WINDOW (xw)),(XW_NORMAL_GC (xw)),
@@ -894,7 +894,7 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-MAP-X-COORDINATE", Prim_x_graphics_map_x_coordinat
   PRIMITIVE_HEADER (2);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int xp = (arg_nonnegative_integer (2));
+    unsigned int xp = (arg_ulong_integer (2));
     int bx = (xp - (XW_INTERNAL_BORDER_WIDTH (xw)));
     PRIMITIVE_RETURN
       (x_coordinate_map
@@ -910,7 +910,7 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-MAP-Y-COORDINATE", Prim_x_graphics_map_y_coordinat
   PRIMITIVE_HEADER (2);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int yp = (arg_nonnegative_integer (2));
+    unsigned int yp = (arg_ulong_integer (2));
     int by = (yp - (XW_INTERNAL_BORDER_WIDTH (xw)));
     PRIMITIVE_RETURN
       (y_coordinate_map

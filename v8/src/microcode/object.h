@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: object.h,v 9.46 1995/07/27 00:06:04 adams Exp $
+$Id: object.h,v 9.47 1995/09/18 22:32:56 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -495,6 +495,9 @@ extern SCHEME_OBJECT * memory_base;
 
 #define BIGNUM_TO_LONG_P(bignum)					\
   (bignum_fits_in_word_p ((bignum), ((sizeof (long)) * CHAR_BIT), 1))
+
+#define BIGNUM_TO_ULONG_P(bignum)					\
+  (bignum_fits_in_word_p ((bignum), ((sizeof (unsigned long)) * CHAR_BIT), 0))
 
 /* If precision should not be lost,
    compare to DBL_MANT_DIG instead. */

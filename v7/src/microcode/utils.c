@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.67 1994/11/28 04:37:22 cph Exp $
+$Id: utils.c,v 9.68 1995/09/18 22:33:04 cph Exp $
 
-Copyright (c) 1987-94 Massachusetts Institute of Technology
+Copyright (c) 1987-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -436,6 +436,27 @@ DEFUN (arg_integer_in_range,
 {
   fast long result = (arg_integer (arg_number));
   if ((result < lower_limit) || (result >= upper_limit))
+    error_bad_range_arg (arg_number);
+  return (result);
+}
+
+unsigned long
+DEFUN (arg_ulong_integer, (arg_number), int arg_number)
+{
+  fast SCHEME_OBJECT object = (ARG_REF (arg_number));
+  if (! (INTEGER_P (object)))
+    error_wrong_type_arg (arg_number);
+  if (! (integer_to_ulong_p (object)))
+    error_bad_range_arg (arg_number);
+  return (integer_to_ulong (object));
+}
+
+unsigned long
+DEFUN (arg_ulong_index_integer, (arg_number, upper_limit),
+       int arg_number AND unsigned long upper_limit)
+{
+  fast unsigned long result = (arg_ulong_integer (arg_number));
+  if (result >= upper_limit)
     error_bad_range_arg (arg_number);
   return (result);
 }
