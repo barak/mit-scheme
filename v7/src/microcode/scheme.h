@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.32 1990/06/20 17:41:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.33 1990/09/08 00:10:39 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -43,8 +43,6 @@ MIT in each case. */
 #else
 #define fast			register
 #endif
-
-#define quick			fast
 
 #ifdef ENABLE_DEBUGGING_TOOLS
 #define Consistency_Check	true

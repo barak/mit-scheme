@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.33 1990/06/20 17:39:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.34 1990/09/08 00:10:25 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -108,24 +108,20 @@ do									\
 #define main_type void
 #endif
 
-#ifndef term_type
-#define term_type void
-#endif
-
 #ifndef Command_Line_Hook
 #define Command_Line_Hook()
 #endif
 
-#ifndef Exit_Scheme_Declarations
-#define Exit_Scheme_Declarations
+#ifndef EXIT_SCHEME_DECLARATIONS
+#define EXIT_SCHEME_DECLARATIONS
 #endif
 
-#ifndef Init_Exit_Scheme
-#define Init_Exit_Scheme()
+#ifndef INIT_EXIT_SCHEME
+#define INIT_EXIT_SCHEME()
 #endif
 
-#ifndef Exit_Scheme
-#define Exit_Scheme exit
+#ifndef EXIT_SCHEME
+#define EXIT_SCHEME exit
 #endif
 
 /* Used in various places. */

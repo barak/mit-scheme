@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mips.h,v 1.6 1990/08/17 23:28:46 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mips.h,v 1.7 1990/09/08 00:10:10 cph Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -524,8 +524,9 @@ do {									\
 #define FORMAT_WORD_LOW_BYTE(word)                                      \
   (SIGN_EXTEND_FIELD((((unsigned long) (word)) & 0xff), 8))
 
-#define FORMAT_WORD_HIGH_BYTE(word)                                     \
-  (SIGN_EXTEND_FIELD((((unsigned long) (word)) >> 8), (USHORT_SIZE - 8)))
+#define FORMAT_WORD_HIGH_BYTE(word)					\
+  (SIGN_EXTEND_FIELD((((unsigned long) (word)) >> 8),			\
+		     (((sizeof (format_word)) * CHAR_BIT) - 8)))
 
 #define COMPILED_ENTRY_FORMAT_HIGH(addr)                                \
   (FORMAT_WORD_HIGH_BYTE(COMPILED_ENTRY_FORMAT_WORD(addr)))

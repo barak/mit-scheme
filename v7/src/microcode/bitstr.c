@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.44 1990/06/14 19:54:00 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.45 1990/09/08 00:09:43 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -627,8 +627,8 @@ long_significant_bits (number)
 {
   return
     ((number < 0)
-     ? ULONG_SIZE
-     : (count_significant_bits (number, (ULONG_SIZE - 1))));
+     ? ((sizeof (long)) * CHAR_BIT)
+     : (count_significant_bits (number, (((sizeof (long)) * CHAR_BIT) - 1))));
 }
 
 SCHEME_OBJECT

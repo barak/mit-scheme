@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/wsize.c,v 9.29 1989/11/30 03:03:31 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/wsize.c,v 9.30 1990/09/08 00:09:38 cph Rel $ */
 
 #include <stdio.h>
 #include <math.h>
@@ -118,16 +118,14 @@ main()
       (((int) 'A') == ASCII_UPPER_A))
   {
     printf("/%c The ASCII character set is used. %c/\n", '*', '*');
-    printf("#define BELL                   '\\007'\n\n");
   }
   else
   {
     printf("/%c The ASCII character set is NOT used. %c/\n", '*', '*');
     printf("/%c REMINDER: Change the following definition! %c/\n",
 	   '*', '*');
-    printf("#define BELL                   'G'\n\n");
   }
-
+
   for(bogus = ((unsigned) -1), count = 0;
       bogus != 0;
       count += 1)
@@ -155,14 +153,14 @@ main()
   }
 
   to_be_shifted = -1;
-  if ((to_be_shifted >> 1) != to_be_shifted)
+  if ((to_be_shifted >> 1) == to_be_shifted)
   {
-    printf("#define UNSIGNED_SHIFT         1\n");
+    printf("/%c unsigned longs use arithmetic shifting. %c/\n", '*', '*');
+    printf("#define UNSIGNED_SHIFT_BUG\n");
   }
   else
   {
-    printf("/%c unsigned longs use arithmetic shifting. %c/\n",
-           '*', '*');
+    printf("/%c unsigned longs use logical shifting. %c/\n", '*', '*');
   }
 
   if (sizeof(long) == sizeof(char))
@@ -191,15 +189,6 @@ main()
 
   printf("#define CHAR_BIT              %d\n",
 	 char_size);
-
-  printf("#define USHORT_SIZE            %d\n",
-	 (sizeof(unsigned short) * char_size));
-
-  printf("#define ULONG_SIZE             %d\n",
-	 (sizeof(unsigned long) * char_size));
-
-  printf("#define DBFLT_SIZE             %d\n\n",
-	 double_size);
 
   if (sizeof(struct double_probe) == (sizeof(double) + sizeof(long)))
   {

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.55 1990/06/20 17:39:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.56 1990/09/08 00:10:16 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -65,7 +65,7 @@ MIT in each case. */
 /* #define USE_STACKLETS */
 #endif
 #endif
-
+
 /* Some configuration consistency testing */
 
 #ifdef COMPILE_STEPPER
@@ -89,15 +89,11 @@ typedef char Boolean;
 /* This is the Scheme object type; it should be called `SCHEME_OBJECT'.
    The various fields are defined in "object.h". */
 typedef unsigned long SCHEME_OBJECT;
-
-/* This definition makes the value of `OBJECT_LENGTH' available to
-   the preprocessor. */
-#define OBJECT_LENGTH ULONG_SIZE
+#define OBJECT_LENGTH (CHAR_BIT * (sizeof (unsigned long)))
 
 /* Operating System / Machine dependencies:
 
-   For each implementation, be sure to specify FASL_INTERNAL_FORMAT,
-   the various sizes, and the floating point information.
+   For each implementation, be sure to specify FASL_INTERNAL_FORMAT.
    Make sure that there is an appropriate FASL_<machine name>.
    If there isn't, add one to the list below.
 
@@ -115,76 +111,45 @@ typedef unsigned long SCHEME_OBJECT;
 
    CHAR_BIT is the size of a character in bits.
 
-   USHORT_SIZE is the size of an unsigned short in bits.  It should
-   be equivalent to (sizeof(unsigned short) * CHAR_BIT), but is
-   available to the preprocessor.
-
-   ULONG_SIZE is the size of an unsigned long in bits.
-
-   ******** The following flonum constants have been superseded by the
-   use of "float.h". ********
-
-   FLONUM_EXPT_SIZE is the number of bits in the largest positive
-   exponent of a (double) floating point number.
-   Note that if excess exponents are used in the representation,
-   this number is one less than the size in bits of the exponent field.
-
-   FLONUM_MANTISSA_BITS is the number of bits in the (positive) mantissa
-   of a (double) floating point number.  It includes the hidden bit if
-   the representation uses them.
-
-   Thus 2+FLONUM_EXPT_SIZE+FLONUM_MANTISSA_BITS(-1 if hidden bit is
-   used) should be no greater than the size in bits of a (double)
-   floating point number.  Note that
-   MAX_FLONUM_EXPONENT = (2^FLONUM_EXPONENT_SIZE) - 1
-
    FLOATING_ALIGNMENT should be defined ONLY if the system requires
    floating point numbers (double) to be aligned more strictly than
-   SCHEME_OBJECTs (long).  The value must be a mask of the low order
-   bits which are required to be zero for the storage address.  For
-   example, a value of 0x7 requires octabyte alignment on a machine
-   where addresses are specified in bytes.  The alignment must be an
-   integral multiple of the length of a long.
+   SCHEME_OBJECTs (unsigned long).  The value must be a mask of the
+   low order bits which are required to be zero for the storage
+   address.  For example, a value of 0x7 requires octabyte alignment
+   on a machine where addresses are specified in bytes.  The alignment
+   must be an integral multiple of the length of a long.
 
    VAX_BYTE_ORDER should be defined ONLY if the least significant byte
    of a longword in memory lies at the lowest address, not defined
-   otherwise (ie. Motorola MC68020, with opposite convention, or
-   PDP-10 with word addressing). */
-
-/*
+   otherwise (i.e. Motorola MC68020, with opposite convention, or
+   PDP-10 with word addressing).
+
    Other flags (the safe option is NOT to define them, which will
    sacrifice speed for safety):
-
-   b32 should be defined for machines whose word size
-   (CHAR_BIT*sizeof(long)) is 32 bits.  The information is redundant,
-   but some C compilers do not do constant folding when shifts are
-   involved, so it sometimes makes a big difference to define the
-   constants directly rather than in terms of other constants.
-   Similar things can be done for other word sizes.
 
    HEAP_IN_LOW_MEMORY should be defined if malloc returns the lowest
    available memory and thus all addresses will fit in the datum portion
    of a Scheme object.  The datum portion of a Scheme object is 8 bits
    less than the length of a C long.
 
-   UNSIGNED_SHIFT is defined if right shifting an unsigned long
-   (i.e. SCHEME_OBJECT) results in a logical (vs. arithmetic) shift.
-   Setting the flag allows faster type code extraction.
+   b32 says that objects are 32 bits long.  The information is
+   redundant, but some C compilers do not do constant folding when
+   shifts are involved, so it sometimes makes a big difference to
+   define the constants directly rather than in terms of other
+   constants.  Similar things can be done for other word sizes.
 
-   BELL is the character which rings the terminal bell.
+   The following switches say whether to use the system-provided
+   library routines rather than the emulated versions in the Scheme
+   sources.  The library routines should be more accurate and probably
+   more efficient.
 
-   The following switches are used to use the system provided library
-   routines rather than the emulated versions in the Scheme sources.
-   The system provided ones should be more accurate and probably more
-   efficient.
-
-   HAS_FLOOR should be defined if the system has the double precision
+   HAS_FLOOR should be defined if the system has the double-precision
    procedures floor and ceil.  On Unix, look for floor(3M).
 
-   HAS_FREXP should be defined if the system has the double precision
+   HAS_FREXP should be defined if the system has the double-precision
    procedures ldexp and frexp.  On Unix, look for frexp(3C).
 
-   HAS_MODF should be defined if the system has the double precision
+   HAS_MODF should be defined if the system has the double-precision
    procedure modf.  On Unix, look for frexp(3C).  **** This flag is
    new as of 22-SEP-89; please comment out any incorrect #define's as
    we haven't been able to test this on all machines.
@@ -203,13 +168,9 @@ typedef unsigned long SCHEME_OBJECT;
 #define FASL_PDP10		1
 #define FASL_VAX		2
 #define FASL_68020		3
-#define FASL_HP_9000_300	FASL_68020
-#define FASL_SUN_3		FASL_68020
 #define FASL_68000  		4
-#define FASL_HP_9000_200	FASL_68000
-#define FASL_SUN_2		FASL_68000
 #define FASL_HP_9000_500	5
-/* #define FASL_SUN		6 */
+#define FASL_I386		6
 #define FASL_BFLY		7
 #define FASL_CYBER		8
 #define FASL_CELERITY		9
@@ -217,58 +178,18 @@ typedef unsigned long SCHEME_OBJECT;
 #define FASL_UMAX		11
 #define FASL_PYR		12
 #define FASL_ALLIANT		13
-#define FASL_SUN4		14
+#define FASL_SPARC		14
 #define FASL_MIPS		15
-
-/* These (pdp10 and nu) haven't worked in a while.
- * Should be upgraded or flushed some day.
- */
-
-#ifdef pdp10
-#define MACHINE_TYPE		"pdp10"
-#define HEAP_IN_LOW_MEMORY
-#define CHAR_BIT 36		/ * Ugh! Supposedly fixed in newer Cs * /
-#define BELL 			'\007'
-#define FASL_INTERNAL_FORMAT    FASL_PDP10
-#endif
-
-#ifdef nu
-#define MACHINE_TYPE		"nu"
-#define HEAP_IN_LOW_MEMORY
-#define CHAR_BIT		8
-#define USHORT_SIZE		16
-#define ULONG_SIZE		32
-#define BELL 			'\007'
-#define FASL_INTERNAL_FORMAT	FASL_68000
-/* #define FLONUM_EXPT_SIZE	7 */
-/* #define FLONUM_MANTISSA_BITS	56 */
-/* #define MAX_FLONUM_EXPONENT	127 */
-#define HAS_FREXP
-#ifdef quick
-/* Bignum code fails for certain variables in registers because of a
-   compiler bug!
-*/
-#undef quick
-#define quick
-#endif
-#endif
 
 #ifdef vax
 
 /* Amazingly unix and vms agree on all these */
 
 #define MACHINE_TYPE		"vax"
-#define HEAP_IN_LOW_MEMORY
-#define UNSIGNED_SHIFT
-#define VAX_BYTE_ORDER
-#define CHAR_BIT 		8
-#define USHORT_SIZE		16
-#define ULONG_SIZE		32
-#define BELL			'\007'
 #define FASL_INTERNAL_FORMAT	FASL_VAX
-/* #define FLONUM_EXPT_SIZE	7 */
-/* #define FLONUM_MANTISSA_BITS	56    D format */
-/* #define MAX_FLONUM_EXPONENT	127 */
+#define VAX_BYTE_ORDER
+#define b32
+#define HEAP_IN_LOW_MEMORY
 #define HAS_FLOOR
 #define HAS_FREXP
 #define HAS_MODF
@@ -294,219 +215,73 @@ typedef unsigned long SCHEME_OBJECT;
 
 /* This eliminates a spurious warning from the C compiler. */
 #define main_type
-
-/* exit(0) produces horrible message on VMS */
 
+/* exit(0) produces horrible message on VMS */
 #define NORMAL_EXIT 1
 
-#define Exit_Scheme_Declarations static jmp_buf Exit_Point
+#define EXIT_SCHEME_DECLARATIONS static jmp_buf exit_scheme_jmp_buf
 
-#define Init_Exit_Scheme()						\
+#define INIT_EXIT_SCHEME()						\
 {									\
-  int Which_Way = setjmp(Exit_Point);					\
-  if (Which_Way == NORMAL_EXIT)						\
+  int which_way = (setjmp (exit_scheme_jmp_buf));			\
+  if (which_way == NORMAL_EXIT)						\
     return;								\
 }
 
-#define Exit_Scheme(value)						\
-if (value != 0)								\
-  exit(value);								\
-longjmp(Exit_Point, NORMAL_EXIT)
+#define EXIT_SCHEME(value)						\
+{									\
+  if (value != 0)							\
+    exit (value);							\
+  longjmp (exit_scheme_jmp_buf, NORMAL_EXIT);				\
+}
 
-#else /* not VMS ie. unix */
+#else /* not vms */
 
 /* Vax Unix C compiler bug */
 #define HAVE_DOUBLE_TO_LONG_BUG
 
-#endif /* VMS */
+#endif /* not vms */
 #endif /* vax */
 
+#ifdef hpux
+
+#define HAS_FLOOR
+#define HAS_FREXP
+#define HAS_MODF
+
 #ifdef hp9000s300
 #define MACHINE_TYPE		"hp9000s300"
-#define HEAP_IN_LOW_MEMORY
-#define UNSIGNED_SHIFT
-#define CHAR_BIT		8
-#define USHORT_SIZE		16
-#define ULONG_SIZE		32
-#define BELL 			'\007'
 #ifdef MC68020
 #define FASL_INTERNAL_FORMAT	FASL_68020
-#else /* not MC68020 */
+#else
 #define FASL_INTERNAL_FORMAT	FASL_68000
-#endif /* MC68020 */
-/* #define FLONUM_EXPT_SIZE	10 */
-/* #define FLONUM_MANTISSA_BITS	53 */
-/* #define MAX_FLONUM_EXPONENT	1023 */
-#define HAS_FLOOR
-#define HAS_FREXP
-#define HAS_MODF
-/* C compiler bug in GC_Type */
-#define term_type		int
 #endif
-
-#ifdef hp9000s500
-#define MACHINE_TYPE		"hp9000s500"
-/* An unfortunate fact of life on this machine:
-   the C heap is in high memory thus HEAP_IN_LOW_MEMORY is not
-   defined and the whole thing runs slowly.  *Sigh*
-*/
-#define UNSIGNED_SHIFT
-#define CHAR_BIT		8
-#define USHORT_SIZE		16
-#define ULONG_SIZE		32
-#define BELL 			'\007'
-#define FASL_INTERNAL_FORMAT 	FASL_HP_9000_500
-/* #define FLONUM_EXPT_SIZE	10 */
-/* #define FLONUM_MANTISSA_BITS	53 */
-/* #define MAX_FLONUM_EXPONENT	1023 */
-#define HAS_FLOOR
-#define HAS_FREXP
-#define HAS_MODF
-
-/* C Compiler bug when constant folding and anchor pointing */
-#define And2(x, y)	((x) ? (y) : false)
-#define And3(x, y, z)	((x) ? ((y) ? (z) : false) : false)
-#define Or2(x, y)	((x) ? true : (y))
-#define Or3(x, y, z)	((x) ? true : ((y) ? true : (z)))
-#endif
-
-#ifdef sun4
-#define MACHINE_TYPE		"sun4"
+#define b32
 #define HEAP_IN_LOW_MEMORY
-#define UNSIGNED_SHIFT
-#define CHAR_BIT		8
-#define USHORT_SIZE		16
-#define ULONG_SIZE		32
-#define BELL 			'\007'
-#define FASL_INTERNAL_FORMAT	FASL_SUN4
-/* #define FLONUM_EXPT_SIZE	10 */
-/* #define FLONUM_MANTISSA_BITS	53 */
-/* #define MAX_FLONUM_EXPONENT	1023 */
-#define FLOATING_ALIGNMENT	0x7	/* Low 3 MBZ for float storage */
-#define HAS_FLOOR
-#define HAS_FREXP
-#define HAS_MODF
-#define HAVE_DOUBLE_TO_LONG_BUG
-#endif
+#endif /* hp9000s300 */
 
-#ifdef sun3
-#define MACHINE_TYPE		"sun3"
-#define HEAP_IN_LOW_MEMORY
-#define UNSIGNED_SHIFT
-#define CHAR_BIT		8
-#define USHORT_SIZE		16
-#define ULONG_SIZE		32
-#define BELL 			'\007'
-#define FASL_INTERNAL_FORMAT	FASL_68020
-/* #define FLONUM_EXPT_SIZE	10 */
-/* #define FLONUM_MANTISSA_BITS	53 */
-/* #define MAX_FLONUM_EXPONENT	1023 */
-#define HAS_FLOOR
-#define HAS_FREXP
-#define HAS_MODF
-#define HAVE_DOUBLE_TO_LONG_BUG
-#endif
-
-#ifdef sun2
-#define MACHINE_TYPE		"sun2"
-#define HEAP_IN_LOW_MEMORY
-#define UNSIGNED_SHIFT
-#define CHAR_BIT		8
-#define USHORT_SIZE		16
-#define ULONG_SIZE		32
-#define BELL 			'\007'
-#define FASL_INTERNAL_FORMAT	FASL_68000
-/* #define FLONUM_EXPT_SIZE	10 */
-/* #define FLONUM_MANTISSA_BITS	53 */
-/* #define MAX_FLONUM_EXPONENT	1023 */
-#define HAS_FLOOR
-#define HAS_FREXP
-#define HAS_MODF
-#define HAVE_DOUBLE_TO_LONG_BUG
-#endif
-
-#ifdef butterfly
-#define MACHINE_TYPE		"butterfly"
-#define HEAP_IN_LOW_MEMORY
-#define CHAR_BIT		8
-#define USHORT_SIZE		16
-#define ULONG_SIZE		32
-#define BELL 			'\007'
-#define FASL_INTERNAL_FORMAT	FASL_BFLY
-/* #define FLONUM_EXPT_SIZE	7 */
-/* #define FLONUM_MANTISSA_BITS	56 */
-/* #define MAX_FLONUM_EXPONENT	127 */
-#include <public.h>
-#define HAS_FREXP
-#define HAS_MODF
-#define STACK_SIZE		4	/* 4K objects */
-#endif
-
-#ifdef cyber180
-#define MACHINE_TYPE		"cyber180"
-/* Word size is 64 bits. */
-#define HEAP_IN_LOW_MEMORY
-#define CHAR_BIT		8
-#define USHORT_SIZE		???
-#define ULONG_SIZE		???
-#define BELL			'\007'
-#define FASL_INTERNAL_FORMAT	FASL_CYBER
-/* #define FLONUM_EXPT_SIZE	14 */
-/* #define FLONUM_MANTISSA_BITS	48 */
-/* Not the full range, or so the manual says. */
-/* #define MAX_FLONUM_EXPONENT	4095 */
-/* The Cyber180 C compiler manifests a bug in hairy conditional
-   expressions */
-#define Conditional_Bug
-#endif
-
-#ifdef celerity
-#define MACHINE_TYPE		"celerity"
-#define HEAP_IN_LOW_MEMORY
-#define UNSIGNED_SHIFT
-#define CHAR_BIT		8
-#define USHORT_SIZE		16
-#define ULONG_SIZE		32
-#define BELL 			'\007'
-#define FASL_INTERNAL_FORMAT	FASL_CELERITY
-/* #define FLONUM_EXPT_SIZE	11 */
-/* #define FLONUM_MANTISSA_BITS 	53 */
-/* #define MAX_FLONUM_EXPONENT	2047 */
-#endif
-
 #ifdef hp9000s800
 #define MACHINE_TYPE		"hp9000s800"
-#define UNSIGNED_SHIFT
-#define CHAR_BIT		8
-#define USHORT_SIZE		16
-#define ULONG_SIZE		32
-#define BELL 			'\007'
 #define FASL_INTERNAL_FORMAT	FASL_HP_SPECTRUM
-/* #define FLONUM_EXPT_SIZE	10 */
-/* #define FLONUM_MANTISSA_BITS	53 */
-/* #define MAX_FLONUM_EXPONENT	1023 */
-#define FLOATING_ALIGNMENT	0x7	/* Low 3 MBZ for float storage */
-#define HAS_FLOOR
-#define HAS_FREXP
-#define HAS_MODF
+#define FLOATING_ALIGNMENT	0x7
+#define b32
 
 /* Heap resides in data space, pointed at by space register 5.
    Short pointers must have their high two bits set to 01 so that
    it is interpreted as space register 5, 2nd quadrant.
 
    This is kludged by the definitions below, and is still considered
-   HEAP_IN_LOW_MEMORY.
-  */
+   HEAP_IN_LOW_MEMORY.  */
 
 #define HEAP_IN_LOW_MEMORY
 
 #define HPPA_QUAD_BIT	0x40000000
 
 #define DATUM_TO_ADDRESS(datum)						\
-((SCHEME_OBJECT *) (((unsigned long) (datum)) | HPPA_QUAD_BIT))
+  ((SCHEME_OBJECT *) (((unsigned long) (datum)) | HPPA_QUAD_BIT))
 
 #define ADDRESS_TO_DATUM(address)					\
-((SCHEME_OBJECT) (((unsigned long) (address)) & (~(HPPA_QUAD_BIT))))
+  ((SCHEME_OBJECT) (((unsigned long) (address)) & (~(HPPA_QUAD_BIT))))
 
 /* HPPA compiled binaries are large! */
 
@@ -521,86 +296,132 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #endif
 
 #endif /* hp9000s800 */
+
+#ifdef hp9000s500
+#define MACHINE_TYPE		"hp9000s500"
+#define FASL_INTERNAL_FORMAT 	FASL_HP_9000_500
+#define b32
+
+/* An unfortunate fact of life on this machine:
+   the C heap is in high memory thus HEAP_IN_LOW_MEMORY is not
+   defined and the whole thing runs slowly.  */
+
+/* C Compiler bug when constant folding and anchor pointing */
+#define And2(x, y)	((x) ? (y) : false)
+#define And3(x, y, z)	((x) ? ((y) ? (z) : false) : false)
+#define Or2(x, y)	((x) ? true : (y))
+#define Or3(x, y, z)	((x) ? true : ((y) ? true : (z)))
+
+#endif /* hp9000s500 */
+
+#endif /* hpux */
 
-#ifdef umax
-#define MACHINE_TYPE		"umax"
+#ifdef sparc
+#define MACHINE_TYPE		"sun4"
+#define FASL_INTERNAL_FORMAT	FASL_SPARC
+#define FLOATING_ALIGNMENT	0x7
+#define b32
 #define HEAP_IN_LOW_MEMORY
-#define UNSIGNED_SHIFT
+#define HAS_FLOOR
+#define HAS_FREXP
+#define HAS_MODF
+#define HAVE_DOUBLE_TO_LONG_BUG
+#endif
+
+#ifdef sun3
+#define MACHINE_TYPE		"sun3"
+#define FASL_INTERNAL_FORMAT	FASL_68020
+#define b32
+#define HEAP_IN_LOW_MEMORY
+#define HAS_FLOOR
+#define HAS_FREXP
+#define HAS_MODF
+#define HAVE_DOUBLE_TO_LONG_BUG
+#endif
+
+#ifdef sun2
+#define MACHINE_TYPE		"sun2"
+#define FASL_INTERNAL_FORMAT	FASL_68000
+#define b32
+#define HEAP_IN_LOW_MEMORY
+#define HAS_FLOOR
+#define HAS_FREXP
+#define HAS_MODF
+#define HAVE_DOUBLE_TO_LONG_BUG
+#endif
+
+#ifdef NeXT
+#define MACHINE_TYPE		"next"
+#define FASL_INTERNAL_FORMAT	FASL_68020
+#define b32
+#define HEAP_IN_LOW_MEMORY
+#define HAS_FLOOR
+#define HAS_FREXP
+#define HAS_MODF
+#endif
+
+#ifdef butterfly
+#define MACHINE_TYPE		"butterfly"
+#define FASL_INTERNAL_FORMAT	FASL_BFLY
+#define b32
+#define HEAP_IN_LOW_MEMORY
+#include <public.h>
+#define HAS_FREXP
+#define HAS_MODF
+#define STACK_SIZE		4	/* 4K objects */
+#endif
+
+#ifdef i386
+
+#define FASL_INTERNAL_FORMAT	FASL_I386
 #define VAX_BYTE_ORDER
-#define CHAR_BIT		8
-#define USHORT_SIZE		16
-#define ULONG_SIZE		32
-#define DBFLT_SIZE		64
-#define BELL			'\007'
-#define FASL_INTERNAL_FORMAT	FASL_UMAX
-/* #define FLONUM_EXPT_SIZE	10 */
-/* #define FLONUM_MANTISSA_BITS	53 */
-/* #define MAX_FLONUM_EXPONENT	1023 */
+#define b32
+
+#ifdef sequent
+#define MACHINE_TYPE		"sequent386"
+#else /* not sequent */
+#ifdef sun
+#define MACHINE_TYPE		"sun386i"
+#else /* not sun */
+#define MACHINE_TYPE		"i386"
+#endif /* not sun */
+#endif /* not sequent */
+
+/* These are really OS-dependent.  They are correct for the sequent,
+   but we don't know about any other 386 systems. */
+#define HEAP_IN_LOW_MEMORY
 #define HAS_FLOOR
 #define HAS_FREXP
-#define HAS_MODF
-#endif
 
-#ifdef pyr
-#define MACHINE_TYPE		"pyramid"
-#define HEAP_IN_LOW_MEMORY
-#define UNSIGNED_SHIFT
-#define CHAR_BIT		8
-#define USHORT_SIZE		16
-#define ULONG_SIZE		32
-#define BELL			'\007'
-#define FASL_INTERNAL_FORMAT	FASL_PYR
-/* #define FLONUM_EXPT_SIZE	10 */
-/* #define FLONUM_MANTISSA_BITS	53 */
-/* #define MAX_FLONUM_EXPONENT	1023 */
-#endif
-
-#ifdef alliant
-#define MACHINE_TYPE		"alliant"
-#define HEAP_IN_LOW_MEMORY
-#define UNSIGNED_SHIFT
-#define CHAR_BIT		8
-#define USHORT_SIZE		16
-#define ULONG_SIZE		32
-#define BELL 			'\007'
-#define FASL_INTERNAL_FORMAT	FASL_ALLIANT
-/* #define FLONUM_EXPT_SIZE	10 */
-/* #define FLONUM_MANTISSA_BITS 	53 */
-/* #define MAX_FLONUM_EXPONENT	1023 */
-#define HAS_FLOOR
-#define HAS_FREXP
-#define HAS_MODF
-#endif
+#endif /* i386 */
 
 #ifdef mips
-#define MACHINE_TYPE		"MIPS (DECStation 3100)"
-#define UNSIGNED_SHIFT
-#define VAX_BYTE_ORDER
-#define CHAR_BIT            	8
-#define USHORT_SIZE          	16
-#define ULONG_SIZE           	32
-/* Flonum (double) size is 64 bits. */
-#define FLOATING_ALIGNMENT   	0x7
-/* #define FLONUM_MANTISSA_BITS 	53 */
-/* #define FLONUM_EXPT_SIZE     	10 */
-/* #define MAX_FLONUM_EXPONENT  	1023 */
-/* Floating point representation uses hidden bit. */
+
+#define MACHINE_TYPE		"mips"
 #define FASL_INTERNAL_FORMAT	FASL_MIPS
-#define BELL 			'\007'
+#define FLOATING_ALIGNMENT   	0x7
+#define b32
+
+#ifdef ultrix
+#define VAX_BYTE_ORDER
+#else
+#ifdef MIPSEL
+#define VAX_BYTE_ORDER
+#endif
+#endif
 
 /* Heap resides in data space which begins at 0x10000000. This is
    kludged by the definitions below, and is still considered
-   HEAP_IN_LOW_MEMORY.
-*/
+   HEAP_IN_LOW_MEMORY.  */
 
 #define HEAP_IN_LOW_MEMORY
 #define MIPS_DATA_BIT	0x10000000
 
 #define DATUM_TO_ADDRESS(datum)						\
-((SCHEME_OBJECT *) (((unsigned long) (datum)) | MIPS_DATA_BIT))
+  ((SCHEME_OBJECT *) (((unsigned long) (datum)) | MIPS_DATA_BIT))
 
 #define ADDRESS_TO_DATUM(address)					\
-((SCHEME_OBJECT) (((unsigned long) (address)) & (~(MIPS_DATA_BIT))))
+  ((SCHEME_OBJECT) (((unsigned long) (address)) & (~(MIPS_DATA_BIT))))
 
 /* MIPS compiled binaries are large! */
 
@@ -616,23 +437,90 @@ longjmp(Exit_Point, NORMAL_EXIT)
 
 #endif /* mips */
 
-/* Make sure that some definition applies.
-   If this error occurs, and the parameters of the
-   configuration are unknown, try the Wsize program.
-*/
+/* These (pdp10 and nu) haven't worked in a while.
+   Should be upgraded or flushed some day.  */
 
-#ifndef CHAR_BIT
+#ifdef pdp10
+#define MACHINE_TYPE		"pdp10"
+#define FASL_INTERNAL_FORMAT    FASL_PDP10
+#define HEAP_IN_LOW_MEMORY
+#define CHAR_BIT 36		/ * Ugh! Supposedly fixed in newer Cs * /
+#define UNSIGNED_SHIFT_BUG
+#endif /* pdp10 */
+
+#ifdef nu
+#define MACHINE_TYPE		"nu"
+#define FASL_INTERNAL_FORMAT	FASL_68000
+#define b32
+#define HEAP_IN_LOW_MEMORY
+#define HAS_FREXP
+#define UNSIGNED_SHIFT_BUG
+#endif /* nu */
+
+#ifdef cyber180
+#define MACHINE_TYPE		"cyber180"
+#define FASL_INTERNAL_FORMAT	FASL_CYBER
+#define HEAP_IN_LOW_MEMORY
+#define UNSIGNED_SHIFT_BUG
+/* The Cyber180 C compiler manifests a bug in hairy conditional expressions */
+#define Conditional_Bug
+#endif /* cyber180 */
+
+#ifdef celerity
+#define MACHINE_TYPE		"celerity"
+#define FASL_INTERNAL_FORMAT	FASL_CELERITY
+#define b32
+#define HEAP_IN_LOW_MEMORY
+#endif /* celerity */
+
+#ifdef umax
+#define MACHINE_TYPE		"umax"
+#define FASL_INTERNAL_FORMAT	FASL_UMAX
+#define VAX_BYTE_ORDER
+#define b32
+#define HEAP_IN_LOW_MEMORY
+#define HAS_FLOOR
+#define HAS_FREXP
+#define HAS_MODF
+#endif /* umax */
+
+#ifdef pyr
+#define MACHINE_TYPE		"pyramid"
+#define FASL_INTERNAL_FORMAT	FASL_PYR
+#define b32
+#define HEAP_IN_LOW_MEMORY
+#endif /* pyr */
+
+#ifdef alliant
+#define MACHINE_TYPE		"alliant"
+#define FASL_INTERNAL_FORMAT	FASL_ALLIANT
+#define b32
+#define HEAP_IN_LOW_MEMORY
+#define HAS_FLOOR
+#define HAS_FREXP
+#define HAS_MODF
+#endif /* alliant */
+
+/* Make sure that some definition applies.  If this error occurs, and
+   the parameters of the configuration are unknown, try the Wsize
+   program.  */
+#ifndef MACHINE_TYPE
 #include "Error: config.h: Unknown configuration."
 #endif
 
-#if (ULONG_SIZE == 32)
-#define b32
+/* Virtually all machines have 8-bit characters these days, so don't
+   explicitly specify this value unless it is different.  */
+#ifndef CHAR_BIT
+#define CHAR_BIT 8
 #endif
 
-#ifndef MACHINE_TYPE
-#define MACHINE_TYPE		"unknown"
+/* The GNU C compiler does not have any of these bugs. */
+#ifdef __GNUC__
+#undef HAVE_DOUBLE_TO_LONG_BUG
+#undef UNSIGNED_SHIFT_BUG
+#undef Conditional_Bug
 #endif
-
+
 /* Default "segment" sizes */
 
 #ifndef STACK_SIZE

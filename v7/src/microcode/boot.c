@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.62 1990/07/28 18:56:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.63 1990/09/08 00:09:49 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -292,7 +292,7 @@ DEFUN (find_image_parameters, (file_name, cold_load_p, supplied_p),
 
 /* Exit is done in a different way on some operating systems (eg. VMS)  */
 
-Exit_Scheme_Declarations;
+EXIT_SCHEME_DECLARATIONS;
 
 forward void Start_Scheme ();
 forward void Enter_Interpreter ();
@@ -309,7 +309,7 @@ main (argc, argv)
   CONST char * file_name;
   extern void compiler_initialize ();
 
-  Init_Exit_Scheme();
+  INIT_EXIT_SCHEME ();
 
   Saved_argc = argc;
   Saved_argv = argv;

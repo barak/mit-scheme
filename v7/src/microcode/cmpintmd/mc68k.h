@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.15 1990/06/28 18:15:30 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.16 1990/09/08 00:10:03 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -466,8 +466,9 @@ mc68k_reset_hook ()
 #define FORMAT_WORD_HIGH_BYTE(word)					\
   (SIGN_EXTEND_FIELD((((unsigned long) (word)) >> 8),			\
 		     (((sizeof (format_word)) * CHAR_BIT) - 8)))
-#define FORMAT_WORD_HIGH_BYTE(word)                                     \
-  (SIGN_EXTEND_FIELD((((unsigned long) (word)) >> 8), (USHORT_SIZE - 8)))
+
+#define COMPILED_ENTRY_FORMAT_HIGH(addr)                                \
+  (FORMAT_WORD_HIGH_BYTE(COMPILED_ENTRY_FORMAT_WORD(addr)))
 
 #define COMPILED_ENTRY_FORMAT_LOW(addr)                                 \
   (FORMAT_WORD_LOW_BYTE(COMPILED_ENTRY_FORMAT_WORD(addr)))

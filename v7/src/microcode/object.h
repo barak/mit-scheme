@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.34 1989/11/30 03:04:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.35 1990/09/08 00:10:33 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -98,12 +98,12 @@ MIT in each case. */
 /* Basic object structure */
 
 #ifndef OBJECT_TYPE
-#ifdef UNSIGNED_SHIFT
+#ifdef UNSIGNED_SHIFT_BUG
+/* This fixes bug in some compilers. */
+#define OBJECT_TYPE(object) (((object) >> DATUM_LENGTH) & MAX_TYPE_CODE)
+#else
 /* Faster for logical shifts */
 #define OBJECT_TYPE(object) ((object) >> DATUM_LENGTH)
-#else
-/* Portable version */
-#define OBJECT_TYPE(object) (((object) >> DATUM_LENGTH) & MAX_TYPE_CODE)
 #endif
 #endif
 
@@ -387,26 +387,9 @@ extern SCHEME_OBJECT * memory_base;
 #define LONG_TO_FIXNUM_P(value)						\
   ((((value) & SIGN_MASK) == 0) || (((value) & SIGN_MASK) == SIGN_MASK))
 
-#if 0
-/* #ifdef __GNUC__
-   Still doesn't compile correctly as of GCC 1.35! */
-
 #define FIXNUM_TO_LONG(fixnum)						\
-  ({									\
-    long _temp = ((long) (OBJECT_DATUM (fixnum)));			\
-    (((_temp & FIXNUM_SIGN_BIT) != 0)					\
-     ? (_temp | (-1 << DATUM_LENGTH))					\
-     : _temp);								\
-  })
-
-#else
-
-#define FIXNUM_TO_LONG(fixnum)						\
-  ((FIXNUM_NEGATIVE_P (fixnum))						\
-   ? (((long) (OBJECT_DATUM (fixnum))) | ((long) (-1 << DATUM_LENGTH)))	\
-   : ((long) (OBJECT_DATUM (fixnum))))
-
-#endif
+  ((((long) (fixnum)) ^ ((long) FIXNUM_SIGN_BIT))			\
+   - ((long) ((TC_FIXNUM << DATUM_LENGTH) | FIXNUM_SIGN_BIT)))
 
 #define FIXNUM_TO_DOUBLE(fixnum) ((double) (FIXNUM_TO_LONG (fixnum)))
 

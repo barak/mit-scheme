@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/term.c,v 1.1 1990/06/20 19:38:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/term.c,v 1.2 1990/09/08 00:10:44 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -104,7 +104,7 @@ DEFUN (termination_suffix, (code, value, abnormal_p),
   fflush (stdout);
   Reset_Memory ();
   EXIT_HOOK ();
-  Exit_Scheme (value);
+  EXIT_SCHEME (value);
 }
 
 static void
