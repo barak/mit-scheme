@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.29 1997/03/30 06:26:45 cph Exp $
+;;;	$Id: snr.scm,v 1.30 1997/03/31 20:55:06 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -889,6 +889,7 @@ With prefix argument, unsubscribes from the previous several News groups."
 
 (define (unsubscribe-news-group buffer group)
   (news-group:purge-pre-read-headers group 'ALL)
+  (news-group:close-database group)
   (set-news-group:subscribed?! group #f)
   (update-news-groups-buffers buffer group))
 
@@ -1099,8 +1100,7 @@ This shows News groups that have been created since the last time that
 		      => (lambda (header)
 			   (or (news-group-buffer:header-mark buffer header)
 			       (news-group-buffer:thread-start-mark
-				buffer
-				(news-header:thread header))
+				buffer (news-header:thread header))
 			       ls)))
 		     (else ls))))))))
 
@@ -1176,7 +1176,8 @@ This shows News groups that have been created since the last time that
 	(lambda (thread)
 	  (insert-news-thread-lines thread mark)))
       (mark-temporary! mark))
-    (update-news-groups-buffers buffer group)))
+    (update-news-groups-buffers buffer group)
+    (news-group:close-database group)))
 
 (define (news-group-buffer:collapse-thread buffer thread)
   (if (news-thread:expanded? thread)
@@ -1207,7 +1208,8 @@ This shows News groups that have been created since the last time that
 	(set-news-thread:expanded?! thread expanded?)
 	(insert-news-thread-lines thread ls)
 	(mark-temporary! ls)
-	(update-subsequent-news-header-lines ls)))))
+	(update-subsequent-news-header-lines ls)
+	(news-group:close-database (news-group-buffer:group buffer))))))
 
 (define (delete-news-thread-lines buffer thread)
   (let ((region (news-thread-lines-region buffer thread)))
@@ -1896,7 +1898,8 @@ With prefix argument, unmarks the previous several articles."
 	 (news-group-buffer:move-to-header buffer
 					   (if (and next (> n 0))
 					       next
-					       header)))))))
+					       header))))
+      (news-group:close-database (news-group-buffer:group (current-buffer))))))
 
 (define (mark/unmark-news-header-line buffer header name)
   (let ((thread (news-header:thread header)))
@@ -1942,6 +1945,11 @@ Subsequent reading of the message bodies can be done offline."
 			  " of "
 			  (number->string n-articles)))
 	  (news-header:read-marked-body header buffer)))
+      (cond ((news-group-buffer? buffer)
+	     (news-group:close-database (news-group-buffer:group buffer)))
+	    ((news-server-buffer? buffer)
+	     (for-each-vector-element (news-server-buffer:groups buffer)
+				      news-group:close-database)))
       (message (number->string n-articles) " articles read"))))
 
 (define-command news-delete-thread
@@ -1996,7 +2004,8 @@ This unmarks the article indicated by point and any other articles in
 	  (news-group-buffer:move-to-thread buffer
 					    (if (and next (> n 0))
 						next
-						thread)))))))
+						thread))))
+      (news-group:close-database (news-group-buffer:group (current-buffer))))))
 
 (define (news-group-buffer:move-to-thread buffer thread)
   (news-group-buffer:move-to-header
@@ -2225,11 +2234,13 @@ This kills the current buffer."
 	  (set-buffer-read-only! buffer)
 	  (news-header:article-deleted! header group-buffer)
 	  (update-buffer-news-header-status group-buffer header)
+	  (news-group:close-database (news-group-buffer:group group-buffer))
 	  buffer)
 	(begin
 	  (kill-buffer buffer)
 	  (news-header:article-deleted! header group-buffer)
 	  (update-buffer-news-header-status group-buffer header)
+	  (news-group:close-database (news-group-buffer:group group-buffer))
 	  #f))))
 
 (define (news-article-buffer-name header)
@@ -2253,7 +2264,9 @@ This kills the current buffer."
 	 (lambda ()
 	   (update-buffer-news-header-status
 	    group-buffer
-	    (news-article-buffer:header buffer)))))))
+	    (news-article-buffer:header buffer))
+	   (news-group:close-database
+	    (news-group-buffer:group group-buffer)))))))
 
 (define (insert-news-header header buffer truncate?)
   (let ((hend (mark-left-inserting-copy (buffer-start buffer))))
@@ -2424,7 +2437,8 @@ Kill the current buffer in either case."
   ()
   (lambda ()
     (news-article-thread-action-command news-group-buffer:next-thread
-					news-group-buffer:ignore-thread)))
+					news-group-buffer:ignore-thread)
+    (news-group:close-database (news-group-buffer:group (current-buffer)))))
 
 (define (news-article-header-motion-command select-next)
   (news-article-header-action-command select-next #f))
@@ -3873,6 +3887,7 @@ With prefix arg, replaces the file with the list information."
 	    #f
 	    (ref-variable news-split-threads-on-subject-changes buffer)
 	    (ref-variable news-join-threads-with-same-subject buffer))))
+      (news-group:close-database group)
       (message msg "done")
       (list->vector
        (if (or (command-argument-multiplier-only? argument)
@@ -3937,7 +3952,8 @@ With prefix arg, replaces the file with the list information."
   (if (not (ref-variable news-group-show-seen-headers buffer))
       ;; Read in the headers -- this finds the headers to be ignored
       ;; and marks them as such.
-      (news-group:get-headers group #f buffer)))
+      (news-group:get-headers group #f buffer))
+  (news-group:close-database group))
 
 (define (article-number-seen! group number)
   (set-news-group:ranges-deleted!
@@ -3982,6 +3998,7 @@ With prefix arg, replaces the file with the list information."
 					  buffer))
 		       (news-header:ignore? header)))))
 	  news-header:article-deleted?))
+    (news-group:close-database group)
     (message msg "done")))
 
 (define (news-group:number-of-articles group)

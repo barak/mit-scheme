@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: nntp.scm,v 1.13 1996/12/19 04:48:35 cph Exp $
+;;;	$Id: nntp.scm,v 1.14 1997/03/31 20:54:59 cph Exp $
 ;;;
-;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -879,6 +879,18 @@
 	(for-each (lambda (key) (gdbm-delete gdbf key)) keys)
 	(loop (gdbm-nextkey gdbf key)
 	      (if (predicate key) (cons key keys) keys)))))
+
+(define (news-group:close-database group)
+  (let ((header-gdbf (news-group:header-gdbf group #f)))
+    (if header-gdbf
+	(begin
+	  (gdbm-close header-gdbf)
+	  (set-news-group:%header-gdbf! group #f))))
+  (let ((body-gdbf (news-group:body-gdbf group #f)))
+    (if body-gdbf
+	(begin
+	  (gdbm-close body-gdbf)
+	  (set-news-group:%body-gdbf! group #f)))))
 
 ;;;; Read Headers
 

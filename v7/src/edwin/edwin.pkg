@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.209 1997/03/10 05:40:35 cph Exp $
+$Id: edwin.pkg,v 1.210 1997/03/31 20:54:50 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -1759,6 +1759,7 @@ MIT in each case. |#
 	  news-group:active?
 	  news-group:cached-header
 	  news-group:cached-headers
+	  news-group:close-database
 	  news-group:connection
 	  news-group:discard-cached-header!
 	  news-group:estimated-n-articles
