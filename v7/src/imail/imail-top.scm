@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.157 2000/06/15 02:35:27 cph Exp $
+;;; $Id: imail-top.scm,v 1.158 2000/06/15 03:20:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1284,37 +1284,23 @@ With prefix argument N moves backward N messages with these flags."
 
 (define (call-with-auto-wrapped-output-mark mark generator)
   (case (ref-variable imail-auto-wrap mark)
-    ((#F) (call-with-output-mark mark generator))
-    ((FILL) (call-with-filled-output-mark mark generator))
-    (else (call-with-wrapped-output-mark mark generator))))
-
-(define (call-with-wrapped-output-mark mark generator)
-  (let ((start (mark-right-inserting-copy mark))
-	(end (mark-left-inserting-copy mark)))
-    (call-with-output-mark mark generator)
-    (with-variable-value! (ref-variable-object fill-column)
-      (- (mark-x-size mark) 1)
-      (lambda ()
-	(let ((m (mark-left-inserting-copy (line-end start 0))))
-	  (let loop ()
-	    (delete-horizontal-space m)
-	    (do () ((not (auto-fill-break m))))
-	    (if (mark< m end)
-		(begin
-		  (move-mark-to! m (line-end m 1 'ERROR))
-		  (loop))))
-	  (mark-temporary! m))))
-    (mark-temporary! start)
-    (mark-temporary! end)))
-
-(define (call-with-filled-output-mark mark generator)
-  (let ((start (mark-right-inserting-copy mark))
-	(end (mark-left-inserting-copy mark)))
-    (call-with-output-mark mark generator)
-    (fill-individual-paragraphs start end
-				(ref-variable fill-column start) #f #f)
-    (mark-temporary! start)
-    (mark-temporary! end)))
+    ((#F)
+     (call-with-output-mark mark generator))
+    ((FILL)
+     (let ((start (mark-right-inserting-copy mark))
+	   (end (mark-left-inserting-copy mark)))
+       (call-with-output-mark mark generator)
+       (fill-individual-paragraphs start end
+				   (ref-variable fill-column start) #f #f)
+       (mark-temporary! start)
+       (mark-temporary! end)))
+    (else
+     (let ((start (mark-right-inserting-copy mark))
+	   (end (mark-left-inserting-copy mark)))
+       (call-with-output-mark mark generator)
+       (wrap-individual-paragraphs start end (- (mark-x-size mark) 1) #f)
+       (mark-temporary! start)
+       (mark-temporary! end)))))
 
 ;;;; Navigation hooks
 
