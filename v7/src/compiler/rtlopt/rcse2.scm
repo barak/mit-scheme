@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.10 1988/08/29 23:17:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.11 1989/01/21 09:06:11 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -202,14 +202,12 @@ MIT in each case. |#
 	       (lambda (quantity)
 		 (set-register-quantity! register quantity)
 		 (let ((last (quantity-last-register quantity)))
-		   (if last
-		       (begin
-			 (set-register-next-equivalent! last register)
-			 (set-register-previous-equivalent! register last))
-		       (begin
-			 (set-quantity-first-register! quantity register)
-			 (set-quantity-last-register! quantity register))))
-		 (set-register-next-equivalent! register false)
+		   (cond ((not last)
+			  (set-quantity-first-register! quantity register)
+			  (set-register-next-equivalent! register false))
+			 (else
+			  (set-register-next-equivalent! last register)
+			  (set-register-previous-equivalent! register last))))
 		 (set-quantity-last-register! quantity register))))
 	  (cond ((rtl:register? expression)
 		 (register-equivalence!
@@ -223,12 +221,23 @@ MIT in each case. |#
   unspecific)
 
 (define (insert-stack-destination! expression element)
-  (set-element-in-memory?! (hash-table-insert! (expression-hash expression)
-					       expression
-					       (element->class element))
-			   false)
+  (let ((class (element->class element)))
+    (if class
+	(let ((expression (element-expression class))
+	      (stash-quantity!
+	       (lambda (quantity)
+		 (set-stack-reference-quantity! expression quantity))))
+	  (cond ((rtl:register? expression)
+		 (stash-quantity!
+		  (get-register-quantity (rtl:register-number expression))))
+		((stack-reference? expression)
+		 (stash-quantity!
+		  (stack-reference-quantity expression))))))
+    (set-element-in-memory?!
+     (hash-table-insert! (expression-hash expression) expression class)
+     false))
   unspecific)
-
+
 (define (insert-memory-destination! expression element hash)
   (let ((class (element->class element)))
     (mention-registers! expression)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.15 1988/11/08 11:15:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.16 1989/01/21 09:05:49 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -149,78 +149,104 @@ MIT in each case. |#
   (expression-replace! rtl:assign-expression rtl:set-assign-expression!
 		       statement
     (lambda (volatile? insert-source!)
-      (let ((address (rtl:assign-address statement)))
-	(cond ((rtl:register? address)
-	       (if (interpreter-stack-pointer? address)
-		   (let ((expression (rtl:assign-expression statement)))
-		     (if (and (rtl:offset? expression)
-			      (interpreter-stack-pointer?
-			       (rtl:offset-register expression)))
-			 (stack-pointer-adjust! (rtl:offset-number expression))
-			 (begin
-			   (stack-invalidate!)
-			   (stack-pointer-invalidate!))))
-		   (register-expression-invalidate! address))
-	       (if (and (not volatile?)
-			(not (rtl:machine-register-expression?
-			      (rtl:assign-expression statement))))
-		   (insert-register-destination! address (insert-source!))))
-	      ((stack-reference? address)
-	       (stack-reference-invalidate! address)
-	       (if (not volatile?)
-		   (insert-stack-destination! address (insert-source!))))
-	      ((interpreter-register-reference? address)
-	       (let ((hash (expression-hash address)))
-		 (let ((memory-invalidate!
-			(lambda ()
-			  (hash-table-delete! hash
-					      (hash-table-lookup hash
-								 address)))))
-		   (if volatile?
-		       (memory-invalidate!)
-		       (assignment-memory-insertion address
-						    hash
-						    insert-source!
-						    memory-invalidate!)))))
-	      (else
-	       (let ((address (expression-canonicalize address)))
-		 (rtl:set-assign-address! statement address)
-		 (full-expression-hash address
-		   (lambda (hash volatile?* in-memory?)
-		     in-memory?
-		     (let ((memory-invalidate!
-			    (cond ((stack-push/pop? address)
-				   (lambda () 'DONE))
-				  ((and (memq (rtl:expression-type address)
-					      '(PRE-INCREMENT POST-INCREMENT))
-					(interpreter-free-pointer?
-					 (rtl:address-register address)))
-				   (lambda ()
-				     (register-expression-invalidate!
-				      (rtl:address-register address))))
-				  ((expression-address-varies? address)
-				   (lambda ()
-				     (hash-table-delete-class!
-				      element-in-memory?)))
-				  (else
-				   (lambda ()
-				     (hash-table-delete!
-				      hash
-				      (hash-table-lookup hash address))
-				     (varying-address-invalidate!))))))
-		       (if (or volatile? volatile?*)
-			   (memory-invalidate!)
-			   (assignment-memory-insertion address
-							hash
-							insert-source!
-							memory-invalidate!)))))
-		 (notice-push/pop! address)))))
-      (notice-push/pop! (rtl:assign-expression statement)))))
+      ((let ((address (rtl:assign-address statement)))
+	 (if volatile? (notice-pop! (rtl:assign-expression statement)))
+	 (cond ((rtl:register? address) cse/assign/register)
+	       ((stack-reference? address) cse/assign/stack-reference)
+	       ((and (rtl:pre-increment? address)
+		     (interpreter-stack-pointer?
+		      (rtl:address-register address)))
+		cse/assign/stack-push)
+	       ((interpreter-register-reference? address)
+		cse/assign/interpreter-register)
+	       (else
+		(let ((address (expression-canonicalize address)))
+		  (rtl:set-assign-address! statement address)
+		  cse/assign/general))))
+       (rtl:assign-address statement)
+       (rtl:assign-expression statement)
+       volatile?
+       insert-source!))))
+
+(define (cse/assign/register address expression volatile? insert-source!)
+  (if (interpreter-stack-pointer? address)
+      (if (and (rtl:offset? expression)
+	       (interpreter-stack-pointer?
+		(rtl:offset-register expression)))
+	  (stack-pointer-adjust! (rtl:offset-number expression))
+	  (begin
+	    (stack-invalidate!)
+	    (stack-pointer-invalidate!)))
+      (register-expression-invalidate! address))
+  (if (and (not volatile?)
+	   (pseudo-register? (rtl:register-number address)))
+      (insert-register-destination! address (insert-source!))))
+
+(define (cse/assign/stack-reference address expression volatile?
+				    insert-source!)
+  (stack-reference-invalidate! address)
+  (if (not volatile?)
+      (insert-stack-destination! address (insert-source!))))
+
+(define (cse/assign/stack-push address expression volatile? insert-source!)
+  (let ((adjust!
+	 (lambda ()
+	   (stack-pointer-adjust! (rtl:address-number address)))))
+    (if (not volatile?)
+	(let ((element (insert-source!)))
+	  (adjust!)
+	  (insert-stack-destination!
+	   (rtl:make-offset (interpreter-stack-pointer) 0)
+	   element))
+	(adjust!))))
+
+(define (cse/assign/interpreter-register address expression volatile?
+					 insert-source!)
+  (let ((hash (expression-hash address)))
+    (let ((memory-invalidate!
+	   (lambda ()
+	     (hash-table-delete! hash (hash-table-lookup hash address)))))
+      (if volatile?
+	  (memory-invalidate!)
+	  (assignment-memory-insertion address
+				       hash
+				       insert-source!
+				       memory-invalidate!)))))
 
-(define (notice-push/pop! expression)
+(define (cse/assign/general address expression volatile? insert-source!)
+  (full-expression-hash address
+    (lambda (hash volatile?* in-memory?)
+      in-memory?
+      (let ((memory-invalidate!
+	     (cond ((stack-pop? address)
+		    (lambda () unspecific))
+		   ((and (memq (rtl:expression-type address)
+			       '(PRE-INCREMENT POST-INCREMENT))
+			 (interpreter-free-pointer?
+			  (rtl:address-register address)))
+		    (lambda ()
+		      (register-expression-invalidate!
+		       (rtl:address-register address))))
+		   ((expression-address-varies? address)
+		    (lambda ()
+		      (hash-table-delete-class! element-in-memory?)))
+		   (else
+		    (lambda ()
+		      (hash-table-delete! hash
+					  (hash-table-lookup hash address))
+		      (varying-address-invalidate!))))))
+	(if (or volatile? volatile?*)
+	    (memory-invalidate!)
+	    (assignment-memory-insertion address
+					 hash
+					 insert-source!
+					 memory-invalidate!)))))
+  (notice-pop! address))
+
+(define (notice-pop! expression)
   ;; **** Kludge.  Works only because stack-pointer
   ;; gets used in very fixed way by code generator.
-  (if (stack-push/pop? expression)
+  (if (stack-pop? expression)
       (stack-pointer-adjust! (rtl:address-number expression))))
 
 (define (assignment-memory-insertion address hash insert-source!
@@ -301,8 +327,14 @@ MIT in each case. |#
 
 (define-cse-method 'INVOCATION:SPECIAL-PRIMITIVE
   (lambda (statement)
-    statement
-    (stack-pointer-adjust! (rtl:invocation:special-primitive-pushed statement))
+    (for-each-pseudo-register
+     (lambda (register)
+       (let ((expression (register-expression register)))
+	 (if expression
+	     (register-expression-invalidate! expression)))))
+    (stack-pointer-adjust!
+     (stack->memory-offset
+      (rtl:invocation:special-primitive-pushed statement)))
     (expression-invalidate! (interpreter-value-register))
     (expression-invalidate! (interpreter-free-pointer))))
 
