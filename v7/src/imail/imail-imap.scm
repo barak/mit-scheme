@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.170 2001/05/29 20:36:47 cph Exp $
+;;; $Id: imail-imap.scm,v 1.171 2001/05/29 20:41:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -658,8 +658,11 @@
   (uidvalidity define standard)
   (unseen define standard)
   (messages-synchronized? define standard)
-  (n-messages define standard initial-value 0)
-  (messages define standard initial-value '#()))
+  (length accessor folder-length
+	  define modifier
+	  initial-value 0)
+  (messages define standard
+	    initial-value '#()))
 
 (define-class (<imap-container> (constructor (locator))) (<container>))
 
@@ -675,7 +678,7 @@
      (set-imap-folder-uidvalidity! folder #f)
      (set-imap-folder-unseen! folder #f)
      (set-imap-folder-messages-synchronized?! folder #f)
-     (set-imap-folder-n-messages! folder 0)
+     (set-imap-folder-length! folder 0)
      (set-imap-folder-messages! folder (initial-messages)))))
 
 (define (guarantee-imap-folder-open folder)
@@ -712,14 +715,14 @@
 
 (define (detach-all-messages! folder)
   (let ((v (imap-folder-messages folder))
-	(n (imap-folder-n-messages folder)))
+	(n (folder-length folder)))
     (do ((i 0 (fix:+ i 1)))
 	((fix:= i n))
       (detach-message! (vector-ref v i)))))
 
 (define (fill-messages-vector! folder start)
   (let ((v (imap-folder-messages folder))
-	(n (imap-folder-n-messages folder)))
+	(n (folder-length folder)))
     (do ((index start (fix:+ index 1)))
 	((fix:= index n))
       (vector-set! v index (make-imap-message folder index)))))
@@ -736,7 +739,7 @@
   (without-interrupts
    (lambda ()
      (let ((v (imap-folder-messages folder))
-	   (n (fix:- (imap-folder-n-messages folder) 1)))
+	   (n (fix:- (folder-length folder) 1)))
        (detach-message! (vector-ref v index))
        (do ((i index (fix:+ i 1)))
 	   ((fix:= i n))
@@ -744,7 +747,7 @@
 	   (set-message-index! m i)
 	   (vector-set! v i m)))
        (vector-set! v n #f)
-       (set-imap-folder-n-messages! folder n)
+       (set-imap-folder-length! folder n)
        (set-imap-folder-unseen! folder #f)
        (let ((new-length (compute-messages-length v n)))
 	 (if new-length
@@ -801,16 +804,16 @@
   (with-interrupt-mask interrupt-mask/gc-ok
     (lambda (interrupt-mask)
       (if (or (imap-folder-messages-synchronized? folder)
-	      (= 0 (imap-folder-n-messages folder)))
+	      (= 0 (folder-length folder)))
 	  (let ((v (imap-folder-messages folder))
-		(n (imap-folder-n-messages folder)))
+		(n (folder-length folder)))
 	    (cond ((> count n)
 		   (let ((new-length (compute-messages-length v count)))
 		     (if new-length
 			 (set-imap-folder-messages!
 			  folder
 			  (vector-grow v new-length #f))))
-		   (set-imap-folder-n-messages! folder count)
+		   (set-imap-folder-length! folder count)
 		   (fill-messages-vector! folder n)
 		   (set-imap-folder-messages-synchronized?! folder #t)
 		   (with-interrupt-mask interrupt-mask
@@ -826,8 +829,8 @@
 	  (begin
 	    (detach-all-messages! folder)
 	    (let ((v (imap-folder-messages folder))
-		  (n (imap-folder-n-messages folder)))
-	      (set-imap-folder-n-messages! folder count)
+		  (n (folder-length folder)))
+	      (set-imap-folder-length! folder count)
 	      (set-imap-folder-messages!
 	       folder
 	       (make-vector (or (compute-messages-length v count)
@@ -845,7 +848,7 @@
 			  (imap-folder-connection folder)
 			  0 #f '(UID)))))))
 	      (let ((v* (imap-folder-messages folder))
-		    (n* (imap-folder-n-messages folder)))
+		    (n* (folder-length folder)))
 		(let loop ((i 0) (i* 0))
 		  (if (and (fix:< i n) (fix:< i* n*))
 		      (let ((m (vector-ref v i))
@@ -1383,9 +1386,6 @@
     (maybe-close-imap-connection connection)
     (set-imap-connection-folder! connection #f))
   (object-modified! folder 'STATUS))
-
-(define-method folder-length ((folder <imap-folder>))
-  (imap-folder-n-messages folder))
 
 (define-method %get-message ((folder <imap-folder>) index)
   (vector-ref (imap-folder-messages folder) index))
