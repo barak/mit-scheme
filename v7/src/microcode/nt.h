@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nt.h,v 1.6 1997/01/01 22:57:19 cph Exp $
+$Id: nt.h,v 1.7 1997/10/22 05:28:19 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -53,6 +53,9 @@ MIT in each case. */
 #include <errno.h>
 
 #include <fcntl.h>
+
+enum windows_type { wintype_unknown, wintype_31, wintype_95, wintype_nt };
+extern enum windows_type NT_windows_type;
 
 #ifndef ERRNO_NONBLOCK
 #define ERRNO_NONBLOCK	1998

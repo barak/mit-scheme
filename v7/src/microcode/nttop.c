@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.22 1997/08/24 04:03:53 cph Exp $
+$Id: nttop.c,v 1.23 1997/10/22 05:28:45 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -47,6 +47,7 @@ extern void EXFUN (execute_reload_cleanups, (void));
 extern void EXFUN (NT_gui_init, (void));
 extern void EXFUN (NT_initialize_channels, (void));
 extern void EXFUN (NT_initialize_directory_reader, (void));
+extern void EXFUN (NT_initialize_processes, (void));
 extern void EXFUN (NT_initialize_signals, (void));
 extern void EXFUN (NT_initialize_traps, (void));
 extern void EXFUN (NT_initialize_tty, (void));
@@ -122,6 +123,8 @@ DEFUN_VOID (OS_under_emacs_p)
   return (option_emacs_subprocess);
 }
 
+enum windows_type NT_windows_type;
+
 void
 DEFUN_VOID (OS_initialize)
 {
@@ -134,6 +137,7 @@ DEFUN_VOID (OS_initialize)
   NT_initialize_signals ();
   NT_initialize_traps ();
   NT_initialize_directory_reader ();
+  NT_initialize_processes ();
 
   OS_Name = SYSTEM_NAME;
   {
@@ -146,6 +150,7 @@ DEFUN_VOID (OS_initialize)
 		 (DWORD)(LOBYTE(LOWORD(dwVersion))),
 		 (DWORD)(HIBYTE(LOWORD(dwVersion))),
 		 (DWORD)(HIWORD(dwVersion)));
+      NT_windows_type = wintype_nt;
     }
     else if (LOBYTE(LOWORD(dwVersion))<4) {
       // Win32s
@@ -153,12 +158,14 @@ DEFUN_VOID (OS_initialize)
 		 (DWORD)(LOBYTE(LOWORD(dwVersion))),
 		 (DWORD)(HIBYTE(LOWORD(dwVersion))),
 		 (DWORD)(HIWORD(dwVersion) & ~0x8000));
+      NT_windows_type = wintype_31;
     } else {
       // Windows 95
 	sprintf (variant, "Microsoft Windows 95 %u.%u (Build: %u)",
 		 (DWORD)(LOBYTE(LOWORD(dwVersion))),
 		 (DWORD)(HIBYTE(LOWORD(dwVersion))),
 		 (DWORD)(HIWORD(dwVersion) & ~0x8000));
+      NT_windows_type = wintype_95;
     }
 
     OS_Variant = malloc (128);

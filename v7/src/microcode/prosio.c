@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosio.c,v 1.14 1997/01/01 22:57:40 cph Exp $
+$Id: prosio.c,v 1.15 1997/10/22 05:30:41 cph Exp $
 
 Copyright (c) 1987-97 Massachusetts Institute of Technology
 
@@ -42,7 +42,7 @@ MIT in each case. */
 #define CLOSE_CHANNEL_HOOK(channel)
 #endif
 
-static Tchannel
+Tchannel
 DEFUN (arg_to_channel, (argument, arg_number),
        SCHEME_OBJECT argument AND
        int arg_number)

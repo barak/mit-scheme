@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile.wcc,v 1.8 1997/08/23 02:48:18 cph Exp $
+###     $Id: makefile.wcc,v 1.9 1997/10/22 05:28:08 cph Exp $
 ###
 ###     Copyright (c) 1992-97 Massachusetts Institute of Technology
 ###
@@ -185,6 +185,7 @@ OS_PRIM_SOURCES = &
 prosfile.c &
 prosfs.c &
 prosio.c &
+prosproc.c &
 prosterm.c &
 prostty.c &
 prosenv.c &
@@ -213,6 +214,7 @@ ntfile.c &
 ntfs.c &
 ntgui.c &
 ntio.c &
+ntproc.c &
 ntscreen.c &
 ntsig.c &
 ntsys.c &
@@ -283,6 +285,7 @@ OS_PRIM_OBJECTS = &
 prosfile.obj &
 prosfs.obj &
 prosio.obj &
+prosproc.obj &
 prosterm.obj &
 prosenv.obj &
 prostty.obj &
@@ -311,6 +314,7 @@ ntfile.obj &
 ntfs.obj &
 ntgui.obj &
 ntio.obj &
+ntproc.obj &
 ntscreen.obj &
 ntsig.obj &
 ntsys.obj  &
@@ -507,6 +511,8 @@ ntenv.obj : ntenv.c scheme.tch osenv.h ntscreen.h $(NT_DEPENDENCIES)
 ntfile.obj : ntfile.c osfile.h osio.h ntio.h $(NT_DEPENDENCIES)
 ntfs.obj : ntfs.c ntfs.h osfs.h $(NT_DEPENDENCIES)
 ntio.obj : ntio.c osio.h ntio.h ntscreen.h $(NT_DEPENDENCIES)
+ntproc.obj : ntproc.c $(NT_DEPENDENCIES) osproc.h ntproc.h osio.h ntio.h &
+	ntscreen.h ntgui.h
 nttop.obj : nttop.c ostop.h nttop.h osctty.h errors.h option.h &
 	$(NT_DEPENDENCIES)
 nttty.obj : nttty.c ostty.h osenv.h osio.h ntio.h osterm.h ntterm.h &
@@ -521,7 +527,7 @@ ntkbutl.obj : ntkbutl.asm
 prntenv.obj : prntenv.c $(NT_DEPENDENCIES)
 prntfs.obj : prntfs.c ntfs.h $(NT_DEPENDENCIES) scheme.tch prims.h osfs.h
 prntio.obj : prntio.c $(NT_DEPENDENCIES) scheme.tch prims.h ntio.h osio.h &
-	syscall.h ntapi.h ntscreen.h
+	syscall.h ntscreen.h ntgui.h
 
 cmpauxmd.obj : cmpauxmd.asm
 

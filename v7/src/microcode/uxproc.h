@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxproc.h,v 1.4 1993/06/24 07:10:13 gjr Exp $
+$Id: uxproc.h,v 1.5 1997/10/22 05:30:57 cph Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -59,5 +59,9 @@ struct process
 #define PROCESS_JC_STATUS(process) ((process_table [(process)]) . jc_status)
 
 extern struct process * process_table;
+
+/* OS_make_subprocess is obsolete, but it uses the same interface as
+   UX_make_subprocess.  */
+#define UX_make_subprocess OS_make_subprocess
 
 #endif /* SCM_UXPROC_H */
