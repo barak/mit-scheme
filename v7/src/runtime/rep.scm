@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.52 1999/01/02 06:11:34 cph Exp $
+$Id: rep.scm,v 14.53 1999/02/18 03:54:13 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -86,7 +86,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (error:bad-range-argument port 'MAKE-CMDL))
       (constructor (if parent (+ (cmdl/level parent) 1) 1)
 		   parent
-		   (or port (cmdl/child-port parent))
+		   (let ((port* (and parent (cmdl/child-port parent))))
+		     (if port
+			 (if (eq? port port*)
+			     port
+			     (make-transcriptable-port port))
+			 port*))
 		   driver
 		   state
 		   (parse-operations-list operations 'MAKE-CMDL)

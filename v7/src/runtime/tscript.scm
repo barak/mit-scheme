@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: tscript.scm,v 1.2 1999/01/02 06:19:10 cph Exp $
+$Id: tscript.scm,v 1.3 1999/02/18 03:54:26 cph Exp $
 
 Copyright (c) 1990, 1999 Massachusetts Institute of Technology
 
@@ -23,21 +23,90 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;; package: (runtime transcript)
 
 (declare (usual-integrations))
+
+(define-structure (encap-state
+		   (conc-name encap-state/)
+		   (constructor make-encap-state ()))
+  (transcript-port #f))
 
-(define transcript-port)
+(define (encap? object)
+  (and (encapsulated-port? object)
+       (encap-state? (encapsulated-port/state object))))
 
-(define (initialize-package!)
-  (set! transcript-port false)
-  unspecific)
+(define (encap/tport encap)
+  (encap-state/transcript-port (encapsulated-port/state encap)))
+
+(define (set-encap/tport! encap tport)
+  (set-encap-state/transcript-port! (encapsulated-port/state encap) tport))
+
+(define (make-transcriptable-port port)
+  (make-encapsulated-port port (make-encap-state)
+    (lambda (name operation)
+      (let ((entry (assq name duplexed-operations)))
+	(if entry
+	    (and (cadr entry)
+		 ((cadr entry) operation))
+	    operation)))))
 
 (define (transcript-on filename)
-  (if transcript-port
-      (error "transcript already turned on"))
-  (set! transcript-port (open-output-file filename))
-  unspecific)
+  (let ((encap (nearest-cmdl/port)))
+    (if (not (encap? encap))
+	(error "Transcript not supported for this REPL."))
+    (if (encap/tport encap)
+	(error "transcript already turned on"))
+    (set-encap/tport! encap (open-output-file filename))))
 
 (define (transcript-off)
-  (if transcript-port
-      (let ((port transcript-port))
-	(set! transcript-port false)
-	(close-output-port port))))
+  (let ((encap (nearest-cmdl/port)))
+    (if (not (encap? encap))
+	(error "Transcript not supported for this REPL."))
+    (let ((tport (encap/tport encap)))
+      (if tport
+	  (begin
+	    (set-encap/tport! encap #f)
+	    (close-port tport))))))
+
+(define duplexed-operations)
+
+(define (initialize-package!)
+  (set! duplexed-operations
+	(let ((input-char
+	       (lambda (operation)
+		 (lambda (encap . arguments)
+		   (let ((char (apply operation encap arguments))
+			 (tport (encap/tport encap)))
+		     (if (and tport (char? char))
+			 (write-char char tport))
+		     char))))
+	      (input-expr
+	       (lambda (operation)
+		 (lambda (encap . arguments)
+		   (let ((expr (apply operation encap arguments))
+			 (tport (encap/tport encap)))
+		     (if tport
+			 (write expr tport))
+		     expr))))
+	      (duplex
+	       (lambda (toperation)
+		 (lambda (operation)
+		   (lambda (encap . arguments)
+		     (apply operation encap arguments)
+		     (let ((tport (encap/tport encap)))
+		       (if tport
+			   (apply toperation tport arguments))))))))
+	  `((READ-CHAR ,input-char)
+	    (PROMPT-FOR-COMMAND-CHAR ,input-char)
+	    (PROMPT-FOR-EXPRESSION ,input-expr)
+	    (PROMPT-FOR-COMMAND-EXPRESSION ,input-expr)
+	    (READ ,input-expr)
+	    (DISCARD-CHAR #f)
+	    (DISCARD-CHARS #f)
+	    (READ-STRING #f)
+	    (READ-SUBSTRING #f)
+	    (WRITE-CHAR ,(duplex output-port/write-char))
+	    (WRITE-SUBSTRING ,(duplex output-port/write-substring))
+	    (FRESH-LINE ,(duplex output-port/fresh-line))
+	    (FLUSH-OUTPUT ,(duplex output-port/flush-output))
+	    (DISCRETIONARY-FLUSH-OUTPUT
+	     ,(duplex output-port/discretionary-flush)))))
+  unspecific)

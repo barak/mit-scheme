@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.15 1999/02/16 20:41:49 cph Exp $
+$Id: port.scm,v 1.16 1999/02/18 03:54:03 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -164,12 +164,26 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       (accessor type))))))
 
 (define port-rtd (make-record-type "port" '(TYPE STATE THREAD-MUTEX)))
+(define %make-port (record-constructor port-rtd '(TYPE STATE THREAD-MUTEX)))
 (define port? (record-predicate port-rtd))
 (define port/type (record-accessor port-rtd 'TYPE))
-(define port/state (record-accessor port-rtd 'STATE))
-(define set-port/state! (record-modifier port-rtd 'STATE))
+(define %port/state (record-accessor port-rtd 'STATE))
 (define port/thread-mutex (record-accessor port-rtd 'THREAD-MUTEX))
 (define set-port/thread-mutex! (record-modifier port-rtd 'THREAD-MUTEX))
+
+(define (port/state port)
+  (%port/state (base-port port)))
+
+(define set-port/state!
+  (let ((modifier (record-modifier port-rtd 'STATE)))
+    (lambda (port state)
+      (modifier (base-port port) state))))
+
+(define (base-port port)
+  (let ((state (%port/state port)))
+    (if (encapsulated-port-state? state)
+	(base-port (encapsulated-port-state/port state))
+	port)))
 
 (define (port/operation-names port)
   (port-type/operation-names (port/type port)))
@@ -224,7 +238,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(begin
 	  (close-output-port port)
 	  (close-input-port port)))))
-
+
 (define (close-input-port port)
   (let ((close-input (port/operation port 'CLOSE-INPUT)))
     (if close-input
@@ -234,7 +248,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((close-output (port/operation port 'CLOSE-OUTPUT)))
     (if close-output
 	(close-output port))))
-
+
 (define (port/input-channel port)
   (let ((operation (port/operation port 'INPUT-CHANNEL)))
     (and operation
@@ -280,6 +294,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (and (port-type/supports-input? type)
 	      (port-type/supports-output? type)))))
 
+(define (guarantee-port port)
+  (if (not (port? port))
+      (error:wrong-type-argument port "port" #f))
+  port)
+
 (define (guarantee-input-port port)
   (if (not (input-port? port))
       (error:wrong-type-argument port "input port" #f))
@@ -295,6 +314,54 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (error:wrong-type-argument port "I/O port" #f))
   port)
 
+;;;; Encapsulation
+
+(define-structure (encapsulated-port-state
+		   (conc-name encapsulated-port-state/))
+  (port #f read-only #t)
+  state)
+
+(define (encapsulated-port? object)
+  (and (port? object)
+       (encapsulated-port-state? (%port/state object))))
+
+(define (guarantee-encapsulated-port object procedure)
+  (guarantee-port object)
+  (if (not (encapsulated-port-state? (%port/state object)))
+      (error:wrong-type-argument object "encapsulated port" procedure)))
+
+(define (encapsulated-port/port port)
+  (guarantee-encapsulated-port port 'ENCAPSULATED-PORT/PORT)
+  (encapsulated-port-state/port (%port/state port)))
+
+(define (encapsulated-port/state port)
+  (guarantee-encapsulated-port port 'ENCAPSULATED-PORT/STATE)
+  (encapsulated-port-state/state (%port/state port)))
+
+(define (set-encapsulated-port/state! port state)
+  (guarantee-encapsulated-port port 'SET-ENCAPSULATED-PORT/STATE!)
+  (set-encapsulated-port-state/state! (%port/state port) state))
+
+(define (make-encapsulated-port port state rewrite-operation)
+  (guarantee-port port)
+  (%make-port (let ((type (port/type port)))
+		((if (port-type/supports-input? type)
+		     (if (port-type/supports-output? type)
+			 make-i/o-port-type
+			 make-input-port-type)
+		     make-output-port-type)
+		 (append-map
+		  (lambda (entry)
+		    (let ((operation
+			   (rewrite-operation (car entry) (cadr entry))))
+		      (if operation
+			  (list (list (car entry) operation))
+			  '())))
+		  (port-type/operations type))
+		 #f))
+	      (make-encapsulated-port-state port state)
+	      (port/thread-mutex port)))
+
 ;;;; Constructors
 
 (define (make-input-port type state)
@@ -307,11 +374,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (make-i/o-port type state)
   (make-port (if (port-type? type) type (make-i/o-port-type type #f)) state))
 
-(define make-port
-  (let ((constructor (record-constructor port-rtd '(TYPE STATE THREAD-MUTEX))))
-    (lambda (type state)
-      (guarantee-port-type type 'MAKE-PORT)
-      (constructor type state (make-thread-mutex)))))
+(define (make-port type state)
+  (guarantee-port-type type 'MAKE-PORT)
+  (%make-port type state (make-thread-mutex)))
 
 (define (make-input-port-type operations type)
   (operations->port-type operations type 'MAKE-INPUT-PORT-TYPE #t #f))
@@ -330,10 +395,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      (list-transform-negative (port-type/operations type)
 			(let ((ignored
 			       (append (if (assq 'READ-CHAR operations)
-					   input-operation-names
+					   '(DISCARD-CHAR
+					     DISCARD-CHARS
+					     PEEK-CHAR
+					     READ-CHAR
+					     READ-STRING
+					     READ-SUBSTRING)
 					   '())
 				       (if (assq 'WRITE-CHAR operations)
-					   output-operation-names
+					   '(WRITE-CHAR
+					     WRITE-SUBSTRING)
 					   '()))))
 			  (lambda (entry)
 			    (or (assq (car entry) operations)

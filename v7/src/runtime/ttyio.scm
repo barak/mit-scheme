@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ttyio.scm,v 1.10 1999/02/16 20:11:30 cph Exp $
+$Id: ttyio.scm,v 1.11 1999/02/18 03:54:37 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -36,16 +36,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (make-i/o-port-type
 	   `((BEEP ,operation/beep)
 	     (CLEAR ,operation/clear)
-	     (DISCRETIONARY-FLUSH-OUTPUT
-	      ,operation/discretionary-flush-output)
-	     (FLUSH-OUTPUT ,operation/flush-output)
-	     (FRESH-LINE ,operation/fresh-line)
+	     (DISCRETIONARY-FLUSH-OUTPUT ,operation/flush-output)
 	     (PEEK-CHAR ,(lambda (port) (hook/peek-char port)))
 	     (READ-CHAR ,(lambda (port) (hook/read-char port)))
 	     (READ-FINISH ,operation/read-finish)
-	     (WRITE-CHAR ,operation/write-char)
 	     (WRITE-SELF ,operation/write-self)
-	     (WRITE-SUBSTRING ,operation/write-substring)
 	     (X-SIZE ,operation/x-size)
 	     (Y-SIZE ,operation/y-size))
 	   generic-i/o-type))
@@ -132,12 +127,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((char (input-buffer/read-char (port/input-buffer port))))
     (if (eof-object? char)
 	(signal-end-of-input port))
-    (if char
-	(cond ((console-port-state/echo-input? (port/state port))
-	       (output-port/write-char port char))
-	      (transcript-port
-	       (output-port/write-char transcript-port char)
-	       (output-port/discretionary-flush transcript-port))))
+    (if (and char (console-port-state/echo-input? (port/state port)))
+	(output-port/write-char port char))
     char))
 
 (define (signal-end-of-input port)
@@ -155,29 +146,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		  (operation/read-char port)
 		  (loop)))))))
   (output-port/discretionary-flush port))
-
-(define (operation/write-char port char)
-  (output-buffer/write-char-block (port/output-buffer port) char)
-  (if transcript-port (output-port/write-char transcript-port char)))
-
-(define (operation/write-substring port string start end)
-  (output-buffer/write-substring-block (port/output-buffer port)
-				       string start end)
-  (if transcript-port
-      (output-port/write-substring transcript-port string start end)))
-
-(define (operation/fresh-line port)
-  (if (not (output-buffer/line-start? (port/output-buffer port)))
-      (operation/write-char port #\newline)))
-
-(define (operation/flush-output port)
-  (output-buffer/drain-block (port/output-buffer port))
-  (if transcript-port (output-port/flush-output transcript-port)))
-
-(define (operation/discretionary-flush-output port)
-  (output-buffer/drain-block (port/output-buffer port))
-  (if transcript-port
-      (output-port/discretionary-flush transcript-port)))
 
 (define (operation/clear port)
   (output-port/write-string port ((ucode-primitive tty-command-clear 0))))
