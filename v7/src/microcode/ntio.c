@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.6 1993/07/28 20:28:14 gjr Exp $
+$Id: ntio.c,v 1.7 1993/08/21 03:34:00 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -52,11 +52,12 @@ struct channel * channel_table;
 
 unsigned int OS_channels_registered;
 
-HANDLE  STDIN_HANDLE,  STDOUT_HANDLE,  STDERR_HANDLE;
-
+#ifndef GUI
+  HANDLE STDIN_HANDLE,  STDOUT_HANDLE,  STDERR_HANDLE;
+#endif
 
 static void
-DEFUN_VOID (DOS_channel_close_all)
+DEFUN_VOID (NT_channel_close_all)
 {
   Tchannel channel;
   for (channel = 0; (channel < OS_channel_table_size); channel += 1)
@@ -84,49 +85,51 @@ extern  HANDLE master_tty_window;
 void
 DEFUN_VOID (NT_initialize_channels)
 {
-  STDIN_HANDLE  = GetStdHandle (STD_INPUT_HANDLE);
-  STDOUT_HANDLE = GetStdHandle (STD_OUTPUT_HANDLE);
-  STDERR_HANDLE = GetStdHandle (STD_ERROR_HANDLE);
+#ifndef GUI
+  STDIN_HANDLE  = (GetStdHandle (STD_INPUT_HANDLE));
+  STDOUT_HANDLE = (GetStdHandle (STD_OUTPUT_HANDLE));
+  STDERR_HANDLE = (GetStdHandle (STD_ERROR_HANDLE));
 
   if (STDIN_HANDLE == INVALID_HANDLE_VALUE  ||
       STDOUT_HANDLE == INVALID_HANDLE_VALUE  ||
-      STDERR_HANDLE == INVALID_HANDLE_VALUE) {
+      STDERR_HANDLE == INVALID_HANDLE_VALUE)
+  {
     outf_fatal ("\nUnable to get standard handles %s(%d).\n",
                 __FILE__, __LINE__);
     termination_init_error ();
   }
 
-#ifndef GUI
   SetConsoleMode (STDIN_HANDLE,
-        ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT);
+		  (  ENABLE_LINE_INPUT
+		   | ENABLE_ECHO_INPUT
+		   | ENABLE_PROCESSED_INPUT));
   SetConsoleCtrlHandler (NT_ctrl_handler, TRUE);
 #endif /* GUI */
 
   master_tty_window = Screen_Create (NULL, "MIT Scheme", SW_SHOWNORMAL);
 
-
-  OS_channel_table_size = (DOS_SC_OPEN_MAX ());
+  OS_channel_table_size = (NT_SC_OPEN_MAX ());
   channel_table =
-    (DOS_malloc (OS_channel_table_size * (sizeof (struct channel))));
+    (NT_malloc (OS_channel_table_size * (sizeof (struct channel))));
   if (channel_table == 0)
-    {
-      outf_fatal ("\nUnable to allocate channel table.\n");
-      termination_init_error ();
-    }
+  {
+    outf_fatal ("\nUnable to allocate channel table.\n");
+    termination_init_error ();
+  }
   {
     Tchannel channel;
     for (channel = 0; (channel < OS_channel_table_size); channel += 1)
       MARK_CHANNEL_CLOSED (channel);
   }
-  add_reload_cleanup (DOS_channel_close_all);
+  add_reload_cleanup (NT_channel_close_all);
   OS_channels_registered = 0;
   return;
 }
 
 void
-DEFUN_VOID (DOS_reset_channels)
+DEFUN_VOID (NT_reset_channels)
 {
-  DOS_free (channel_table);
+  NT_free (channel_table);
   channel_table = 0;
   OS_channel_table_size = 0;
   return;
@@ -223,21 +226,6 @@ DEFUN (OS_terminal_drain_output, (channel), Tchannel channel)
   return;
 }
 
-//extern int EXFUN (dos_read, (int, PTR, size_t, int, int, int));
-//
-//int
-//DEFUN (dos_read, (fd, buffer, nbytes, buffered_p, blocking_p, intrpt_p),
-//       HANDLE  fd AND PTR buffer AND size_t nbytes
-//       AND int buffered_p AND int blocking_p AND int intrpt_p)
-//{
-//  if (nbytes == 0)
-//    return (0);
-//  else if (fd == (fileno (stdin)))
-//    return (console_read (buffer, nbytes, buffered_p, blocking_p, intrpt_p));
-//  else
-//    return (DOS_read (fd, buffer, nbytes));
-//}
-
 static void
 Relinquish_Timeslice (void)
 {
@@ -250,42 +238,44 @@ int
 DEFUN (nt_channel_read, (channel, buffer, nbytes),
        Tchannel channel AND PTR buffer AND size_t nbytes)
 {
-  DWORD  bytesRead = 0;
+  DWORD bytesRead = 0;
   
   if (nbytes == 0)
-    return 0;
-  else if (Screen_IsScreenHandle(CHANNEL_HANDLE (channel)))
+    return (0);
+
+  if (Screen_IsScreenHandle (CHANNEL_HANDLE (channel)))
   {
     bytesRead = Screen_Read ((CHANNEL_HANDLE (channel)),
 			     ((BOOL) (CHANNEL_BUFFERED (channel))),
 			     buffer, nbytes);
-    if (bytesRead == 0xffffffff) {
+    if (bytesRead == 0xffffffff)
+    {
       /* for pleasantness give up rest of this timeslice */
       Relinquish_Timeslice ();    
       errno = ERRNO_NONBLOCK;
     }
-    return  (int)bytesRead;
+    return ((int) bytesRead);
   }
-  else if (IsConsoleHandle(CHANNEL_HANDLE (channel))) {
+
+  if (IsConsoleHandle (CHANNEL_HANDLE (channel)))
+  {
     /* fake the console being a nonblocking channel that has nothing after
-       each alternate read */
+       each alternate read
+     */
+
     static int nonblock = 1;
     nonblock = !nonblock;
-    if (nonblock) {
+    if (nonblock)
+    {
       errno = ERRNO_NONBLOCK;
-      return  -1;
+      return (-1);
     }
-    if (ReadFile (CHANNEL_HANDLE (channel), buffer, nbytes, &bytesRead, 0))
-      return  (int)bytesRead;
-    else
-      return  -1;
   }
-  else {
-    if (ReadFile (CHANNEL_HANDLE (channel), buffer, nbytes, &bytesRead, 0))
-      return  (int)bytesRead;
-    else
-      return  -1;
-  }
+
+  if (ReadFile (CHANNEL_HANDLE (channel), buffer, nbytes, &bytesRead, 0))
+    return ((int) bytesRead);
+  else
+    return (-1);
 }
 
 long
@@ -298,15 +288,14 @@ DEFUN (OS_channel_read, (channel, buffer, nbytes),
     if (scr < 0)
     {
       if (errno == ERRNO_NONBLOCK)
-	return -1;
-      DOS_prim_check_errno (syscall_read);
+	return (-1);
+      NT_prim_check_errno (syscall_read);
       continue;
     }
     else if (((size_t) scr) > nbytes)
       error_external_return ();
-    else {
-        return (scr);
-    }
+    else 
+      return (scr);
   }
 }
 
@@ -321,7 +310,7 @@ DEFUN (raw_write, (fd, buffer, nbytes),
     return (nbytes);
   }
   if (IsConsoleHandle (fd))
-    return (dos_console_write (buffer, nbytes));
+    return (nt_console_write (buffer, nbytes));
   if (WriteFile (fd, buffer, nbytes, &bytesWritten, 0))
     return (bytesWritten);
   else
@@ -386,7 +375,7 @@ DEFUN (OS_channel_write, (channel, buffer, nbytes),
 
     if (scr < 0)
     {
-      DOS_prim_check_errno (syscall_write);
+      NT_prim_check_errno (syscall_write);
       continue;
     }
 
@@ -400,11 +389,10 @@ size_t
 DEFUN (OS_channel_read_load_file, (channel, buffer, nbytes),
        Tchannel channel AND PTR buffer AND size_t nbytes)
 {
-  DWORD  scr;
-  if (ReadFile (CHANNEL_HANDLE (channel), buffer, nbytes, &scr, 0))
-    return  scr;
-  else
-    return  0;
+  DWORD scr;
+
+  return ((ReadFile (CHANNEL_HANDLE (channel), buffer, nbytes, &scr, 0))
+	  ? scr : 0);
 }
 
 size_t
@@ -412,10 +400,9 @@ DEFUN (OS_channel_write_dump_file, (channel, buffer, nbytes),
        Tchannel channel AND CONST PTR buffer AND size_t nbytes)
 {
   DWORD  scr;
-  if (WriteFile (CHANNEL_HANDLE (channel), buffer, nbytes, &scr, 0))
-    return  scr;
-  else
-    return  0;
+
+  return ((WriteFile (CHANNEL_HANDLE (channel), buffer, nbytes, &scr, 0))
+	  ? scr : 0);
 }
 
 void
@@ -458,31 +445,31 @@ DEFUN (OS_channel_blocking, (channel), Tchannel channel)
 int
 DEFUN (OS_terminal_buffered_p, (channel), Tchannel channel)
 {
-  return (CHANNEL_BUFFERED(channel));
+  return (CHANNEL_BUFFERED (channel));
 }
 
 void
 DEFUN (OS_terminal_buffered, (channel), Tchannel channel)
 {
-  CHANNEL_BUFFERED(channel) = 1;
+  CHANNEL_BUFFERED (channel) = 1;
 }
 
 void
 DEFUN (OS_terminal_nonbuffered, (channel), Tchannel channel)
 {
-  CHANNEL_BUFFERED(channel) = 0;
+  CHANNEL_BUFFERED (channel) = 0;
 }
 
 int
 DEFUN (OS_terminal_cooked_output_p, (channel), Tchannel channel)
 {
-  return (CHANNEL_COOKED(channel));
+  return (CHANNEL_COOKED (channel));
 }
 
 void
 DEFUN (OS_terminal_cooked_output, (channel), Tchannel channel)
 {
-  CHANNEL_COOKED(channel) = 1;
+  CHANNEL_COOKED (channel) = 1;
 }
 
 void
@@ -500,13 +487,13 @@ DEFUN (arg_baud_index, (argument), unsigned int argument)
 unsigned int
 DEFUN (OS_terminal_get_ispeed, (channel), Tchannel channel)
 {
-  return  0;
+  return (0);
 }
 
 unsigned int
 DEFUN (OS_terminal_get_ospeed, (channel), Tchannel channel)
 {
-  return  0;
+  return (0);
 }
 
 void
@@ -514,6 +501,7 @@ DEFUN (OS_terminal_set_ispeed, (channel, baud),
        Tchannel channel AND
        unsigned int baud)
 {
+  return;
 }
 
 void
@@ -521,12 +509,13 @@ DEFUN (OS_terminal_set_ospeed, (channel, baud),
        Tchannel channel AND
        unsigned int baud)
 {
+  return;
 }
 
 unsigned int
 DEFUN (OS_baud_index_to_rate, (index), unsigned int index)
 {
-  return  9600;
+  return (9600);
 }
 
 int
@@ -545,11 +534,11 @@ void
 DEFUN (OS_terminal_get_state, (channel, state_ptr),
        Tchannel channel AND PTR state_ptr)
 {
-  unsigned char *statep = (unsigned char *) state_ptr;
+  unsigned char * statep = ((unsigned char *) state_ptr);
 
-  *statep++ = CHANNEL_NONBLOCKING(channel);
-  *statep++ = CHANNEL_BUFFERED(channel);
-  *statep   = CHANNEL_COOKED(channel);
+  *statep++ = CHANNEL_NONBLOCKING (channel);
+  *statep++ = CHANNEL_BUFFERED (channel);
+  *statep   = CHANNEL_COOKED (channel);
 
   return;
 }
@@ -558,11 +547,11 @@ void
 DEFUN (OS_terminal_set_state, (channel, state_ptr),
        Tchannel channel AND PTR state_ptr)
 {
-  unsigned char *statep = (unsigned char *) state_ptr;
+  unsigned char * statep = ((unsigned char *) state_ptr);
 
-  CHANNEL_NONBLOCKING(channel) = *statep++;
-  CHANNEL_BUFFERED(channel)    = *statep++;
-  CHANNEL_COOKED(channel)      = *statep;
+  CHANNEL_NONBLOCKING (channel) = *statep++;
+  CHANNEL_BUFFERED (channel)    = *statep++;
+  CHANNEL_COOKED (channel)      = *statep;
 
   return;
 }
@@ -606,7 +595,10 @@ DEFUN (OS_channel_unregister, (channel), Tchannel channel)
   return;
 }
 
-/* No SELECT in DOS */
+/* Hold-over from DOS.
+   This needs to be updated to use the NT equivalent.
+ */
+
 CONST int OS_have_select_p = 0;
 
 long
@@ -629,7 +621,7 @@ DEFUN (OS_channel_select_then_read, (channel, buffer, nbytes),
 	return -4;
       else
       {
-	DOS_prim_check_errno (syscall_read);
+	NT_prim_check_errno (syscall_read);
 	continue;
       }
     }

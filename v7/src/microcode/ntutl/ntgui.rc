@@ -1,5 +1,6 @@
 #include "windows.h"
 #include "ntgui.h"
+#include "ntdialog.h"
 
 SHIELD3_ICON ICON shield3.ico
 SHIELD4_ICON ICON shield4.ico
@@ -14,3 +15,5 @@ LAIR3_ICON ICON liar3.ico
 GRAPHICS_ICON ICON graphics.ico
 CONSES_ICON ICON conses.ico
 ENVIRONMENT_ICON ICON envir1.ico
+
+RCINCLUDE NTDIALOG.DLG

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.h,v 1.4 1993/06/24 02:15:21 gjr Exp $
+$Id: ntio.h,v 1.5 1993/08/21 03:34:27 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -83,9 +83,15 @@ extern Tchannel EXFUN (channel_allocate, (void));
 #define CARRIAGE_RETURN		'\r'
 #define LINEFEED		'\n'
 #define CNTRL_Z			'\032'
-#define DELETE			'\177'
+#define ASCII_DELETE		'\177'
 
-#define CONSOLE_HANDLE (STDIN_HANDLE)
-#define IsConsoleHandle(h)  ((h)==CONSOLE_HANDLE)
+extern BOOL EXFUN (Screen_IsScreenHandle, (HANDLE));
+
+#ifndef GUI
+#  define CONSOLE_HANDLE (STDIN_HANDLE)
+#  define IsConsoleHandle(h)  ((h) == CONSOLE_HANDLE)
+#else
+#  define IsConsoleHandle(h)  (0 == 1)
+#endif
 
 #endif /* SCM_NTIO_H */

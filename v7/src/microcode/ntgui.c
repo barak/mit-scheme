@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.5 1993/08/07 00:12:49 adams Exp $
+$Id: ntgui.c,v 1.6 1993/08/21 03:32:14 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -38,7 +38,9 @@ MIT in each case. */
 #include "os.h"
 #include "ntgui.h"
 #include "ntscreen.h"
+#include "ntdialog.h"
 #include <string.h>
+#include <stdarg.h>
 
 extern /*static*/ HANDLE  ghInstance = 0;
 
@@ -317,7 +319,7 @@ Prim_set_general_scheme_wndproc, 1, 1, "")
   PRIMITIVE_HEADER(1);
   {
     SCHEME_OBJECT  wndproc = ARG_REF(1);
-    if (! ADDRESS_CONSTANT_P (OBJECT_ADDRESS (wndproc)))
+    if (! (ADDRESS_CONSTANT_P (OBJECT_ADDRESS (wndproc))))
       signal_error_from_primitive (ERR_ARG_1_WRONG_TYPE);
     general_scheme_wndproc = wndproc;
     PRIMITIVE_RETURN (UNSPECIFIC);
@@ -429,7 +431,7 @@ DEFINE_PRIMITIVE ("WIN:CREATE-WINDOW", Prim_create_window, 10, 10,
     lpvParam   = (LPVOID)  ARG_REF (10);
     
     result = CreateWindowEx (0, class_name, window_name, style, x, y, w, h,
-                             hWndParent, hMenu, ghInstance, lpvParam);
+			     hWndParent, hMenu, ghInstance, lpvParam);
 		 
     return  ulong_to_integer (result);
 }
@@ -783,8 +785,6 @@ DEFINE_PRIMITIVE ("UINT32-OFFSET-SET!", Prim_uint32_offset_set, 3, 3,
     }
     PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
-
 
 static void *
 xmalloc (int size)
@@ -803,3 +803,106 @@ xfree (void *p)
 {
     free (p);
 }
+
+/* GUI utilities for debuggging .*/
+
+#ifdef W32_TRAP_DEBUG
+
+extern HANDLE ghInstance;
+extern HANDLE master_tty_window;
+extern int TellUser (char *, ...);
+extern int TellUserEx (int, char *, ...);
+extern char * AskUser (char *, int);
+
+int
+TellUser (char * format, ...)
+{
+  va_list arg_ptr;
+  char buffer[1024];
+  
+  va_start (arg_ptr, format);
+  wvsprintf (&buffer[0], format, arg_ptr);
+  va_end (arg_ptr);
+  return (MessageBox (master_tty_window,
+		      ((LPCSTR) &buffer[0]),
+		      ((LPCSTR) "MIT Scheme Win32 Notification"),
+		      (MB_TASKMODAL | MB_ICONINFORMATION
+		       | MB_SETFOREGROUND | MB_OK)));
+}
+
+int
+TellUserEx (int flags, char * format, ...)
+{
+  va_list arg_ptr;
+  char buffer[1024];
+  
+  va_start (arg_ptr, format);
+  wvsprintf (&buffer[0], format, arg_ptr);
+  va_end (arg_ptr);
+  return (MessageBox (master_tty_window,
+		      ((LPCSTR) &buffer[0]),
+		      ((LPCSTR) "MIT Scheme Win32 Notification"),
+		      (MB_TASKMODAL | MB_ICONINFORMATION
+		       | MB_SETFOREGROUND | flags)));
+}
+
+static char * askuserbuffer = ((char *) NULL);
+static int askuserbufferlength = 0;
+
+static BOOL APIENTRY
+DEFUN (askuserdlgproc, (hwnddlg, message, wparam, lparam),
+       HWND hwnddlg AND UINT message
+       AND WPARAM wparam AND LPARAM lparam)
+{
+  switch (message)
+  {
+    case WM_CLOSE:
+    done:
+      GetDlgItemText (hwnddlg, SCHEME_INPUT_TEXT,
+		      askuserbuffer,
+		      askuserbufferlength);
+      EndDialog (hwnddlg, 0);
+      return (TRUE);
+
+    case WM_COMMAND:
+      switch (wparam)
+      {
+        case IDOK:
+	  goto done;
+	  
+        case IDCANCEL:
+	  EndDialog (hwnddlg, -1);
+	  return (TRUE);
+
+        default:
+	  return (FALSE);
+      }
+
+    case WM_INITDIALOG:
+      return (TRUE);
+
+    default:
+      return (FALSE);
+  }
+}
+
+char *
+DEFUN (AskUser, (buf, len), char * buf AND int len)
+{
+  char * result;
+
+  askuserbuffer = buf;
+  askuserbufferlength = len;
+  result = (DialogBox (ghInstance,
+		       SCHEME_INPUT,
+		       master_tty_window,
+		       askuserdlgproc));
+  if (result == -1)
+    return ((char *) NULL);
+
+  askuserbuffer = ((char *) NULL);
+  askuserbufferlength = 0;
+  return (buf);
+}
+
+#endif /* W32_TRAP_DEBUG */
