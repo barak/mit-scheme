@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.16 1989/08/28 18:34:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.17 1989/09/05 22:34:16 arthur Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -35,7 +35,10 @@ MIT in each case. |#
 ;;;; Machine Model for 68020
 
 (declare (usual-integrations))
-;;; Size of words.  Some of the stuff in "assmd.scm" might want to
+
+(define compiler:open-code-floating-point-arithmetic? true)
+
+;;; Size of words.  Some of the stuff in "assmd.scm" might want to
 ;;; come here.
 
 (define-integrable endianness 'BIG)

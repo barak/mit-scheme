@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.11 1989/08/21 19:32:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.12 1989/09/05 22:33:50 arthur Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -57,6 +57,8 @@ MIT in each case. |#
 (define compiler:generate-range-checks? false)
 (define compiler:generate-type-checks? false)
 (define compiler:open-code-flonum-checks? false)
+;; The switch COMPILER:OPEN-CODE-FLOATING-POINT-ARITHMETIC? is in machin.scm.
+
 ;;; Nary switches
 
 (define compiler:package-optimization-level

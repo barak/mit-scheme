@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/machin.scm,v 4.5 1989/05/17 20:30:31 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/machin.scm,v 4.6 1989/09/05 22:34:32 arthur Rel $
 $MC68020-Header: machin.scm,v 4.14 89/01/18 09:58:56 GMT cph Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
@@ -36,7 +36,11 @@ MIT in each case. |#
 ;;;; Machine Model for DEC Vax
 
 (declare (usual-integrations))
-;;; Size of words.  Some of the stuff in "assmd.scm" might want to
+
+;;; Floating-point open-coding not implemented for VAXen.
+(define compiler:open-code-floating-point-arithmetic? false)
+
+;;; Size of words.  Some of the stuff in "assmd.scm" might want to
 ;;; come here.
 
 (define-integrable addressing-granularity 8)

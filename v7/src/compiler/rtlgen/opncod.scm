@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.30 1989/07/25 12:32:50 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.31 1989/09/05 22:34:52 arthur Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -717,92 +717,101 @@ MIT in each case. |#
 
 ;;; Floating Point Arithmetic
 
-(for-each (lambda (flonum-operator)
-	    (define-open-coder/value flonum-operator
-	      (simple-open-coder
-	       (lambda (context expressions finish)
-		 (let ((argument (car expressions)))
-		   (open-code:with-checks
-		    context
-		    (list (open-code:type-check argument (ucode-type flonum)))
-		    (finish (rtl:make-float->object
-			     (rtl:make-flonum-1-arg
-			      flonum-operator
-			      (rtl:make-@address->float
-			       (rtl:make-object->address argument)))))
-		    finish
+(if compiler:open-code-floating-point-arithmetic?
+    (begin
+
+      (for-each
+       (lambda (flonum-operator)
+	 (define-open-coder/value flonum-operator
+	   (simple-open-coder
+	    (lambda (context expressions finish)
+	      (let ((argument (car expressions)))
+		(open-code:with-checks
+		 context
+		 (list (open-code:type-check argument (ucode-type flonum)))
+		 (finish (rtl:make-float->object
+			  (rtl:make-flonum-1-arg
+			   flonum-operator
+			   (rtl:make-@address->float
+				     (rtl:make-object->address argument)))))
+		 finish
+		 flonum-operator
+		 expressions)))
+	    '(0))))
+       '(SINE-FLONUM COSINE-FLONUM ATAN-FLONUM EXP-FLONUM
+		     LN-FLONUM SQRT-FLONUM TRUNCATE-FLONUM))
+
+      (for-each
+       (lambda (flonum-operator)
+	 (define-open-coder/value flonum-operator
+	   (simple-open-coder
+	    (lambda (context expressions finish)
+	      (let ((arg1 (car expressions))
+		    (arg2 (cadr expressions)))
+		(open-code:with-checks
+		 context
+		 (list (open-code:type-check arg1 (ucode-type flonum))
+		       (open-code:type-check arg2 (ucode-type flonum)))
+		 (finish
+		  (rtl:make-float->object
+		   (rtl:make-flonum-2-args
 		    flonum-operator
-		    expressions)))
-	       '(0))))
-	  '(SINE-FLONUM COSINE-FLONUM ATAN-FLONUM EXP-FLONUM
-	    LN-FLONUM SQRT-FLONUM TRUNCATE-FLONUM))
+		    (rtl:make-@address->float
+			      (rtl:make-object->address arg1))
+		    (rtl:make-@address->float
+			      (rtl:make-object->address arg2)))))
+		 finish
+		 flonum-operator
+		 expressions)))
+	    '(0 1))))
+       '(PLUS-FLONUM MINUS-FLONUM MULTIPLY-FLONUM DIVIDE-FLONUM))
 
-(for-each (lambda (flonum-operator)
-	    (define-open-coder/value flonum-operator
-	      (simple-open-coder
-	       (lambda (context expressions finish)
-		 (let ((arg1 (car expressions))
-		       (arg2 (cadr expressions)))
-		   (open-code:with-checks
-		    context
-		    (list (open-code:type-check arg1 (ucode-type flonum))
-			  (open-code:type-check arg2 (ucode-type flonum)))
-		    (finish
-		     (rtl:make-float->object
-		      (rtl:make-flonum-2-args
-		       flonum-operator
-		       (rtl:make-@address->float
-			 (rtl:make-object->address arg1))
-		       (rtl:make-@address->float
-			 (rtl:make-object->address arg2)))))
-		    finish
-		    flonum-operator
-		    expressions)))
-	       '(0 1))))
-	  '(PLUS-FLONUM MINUS-FLONUM MULTIPLY-FLONUM DIVIDE-FLONUM))
+      (for-each
+       (lambda (flonum-pred)
+	 (define-open-coder/predicate flonum-pred
+	   (simple-open-coder
+	    (lambda (context expressions finish)
+	      (let ((argument (car expressions)))
+		(open-code:with-checks
+		 context
+		 (list (open-code:type-check argument (ucode-type flonum)))
+		 (finish
+		  (rtl:make-flonum-pred-1-arg
+		   flonum-pred
+		   (rtl:make-@address->float
+			     (rtl:make-object->address argument))))
+		 (lambda (expression)
+		   (finish (rtl:make-true-test expression)))
+		 flonum-pred
+		 expressions)))
+	    '(0))))
+       '(ZERO-FLONUM? POSITIVE-FLONUM? NEGATIVE-FLONUM?))
 
-(for-each (lambda (flonum-pred)
-	    (define-open-coder/predicate flonum-pred
-	      (simple-open-coder
-	       (lambda (context expressions finish)
-		 (let ((argument (car expressions)))
-		   (open-code:with-checks
-		    context
-		    (list (open-code:type-check argument (ucode-type flonum)))
-		    (finish
-		     (rtl:make-flonum-pred-1-arg
-		      flonum-pred
-		      (rtl:make-@address->float
-		        (rtl:make-object->address argument))))
-		    (lambda (expression)
-		      (finish (rtl:make-true-test expression)))
-		    flonum-pred
-		    expressions)))
-	       '(0))))
-	  '(ZERO-FLONUM? POSITIVE-FLONUM? NEGATIVE-FLONUM?))
-
-(for-each (lambda (flonum-pred)
-	    (define-open-coder/predicate flonum-pred
-	      (simple-open-coder
-	       (lambda (context expressions finish)
-		 (let ((arg1 (car expressions))
-		       (arg2 (cadr expressions)))
-		   (open-code:with-checks
-		    context
-		    (list (open-code:type-check arg1 (ucode-type flonum))
-			  (open-code:type-check arg2 (ucode-type flonum)))
-		    (finish (rtl:make-flonum-pred-2-args
-			     flonum-pred
-			     (rtl:make-@address->float
-			       (rtl:make-object->address arg1))
-			     (rtl:make-@address->float
-			       (rtl:make-object->address arg2))))
-		    (lambda (expression)
-		      (finish (rtl:make-true-test expression)))
-		    flonum-pred
-		    expressions)))
-	       '(0 1))))
-	  '(EQUAL-FLONUM? LESS-THAN-FLONUM? GREATER-THAN-FLONUM?))
+      (for-each
+       (lambda (flonum-pred)
+	 (define-open-coder/predicate flonum-pred
+	   (simple-open-coder
+	    (lambda (context expressions finish)
+	      (let ((arg1 (car expressions))
+		    (arg2 (cadr expressions)))
+		(open-code:with-checks
+		 context
+		 (list (open-code:type-check arg1 (ucode-type flonum))
+		       (open-code:type-check arg2 (ucode-type flonum)))
+		 (finish (rtl:make-flonum-pred-2-args
+			  flonum-pred
+			  (rtl:make-@address->float
+				    (rtl:make-object->address arg1))
+			  (rtl:make-@address->float
+				    (rtl:make-object->address arg2))))
+		 (lambda (expression)
+		   (finish (rtl:make-true-test expression)))
+		 flonum-pred
+		 expressions)))
+	    '(0 1))))
+       '(EQUAL-FLONUM? LESS-THAN-FLONUM? GREATER-THAN-FLONUM?))
+      ))
+
 ;;; Generic arithmetic
 
 (define (generic-binary-generator generic-op is-pred?)
