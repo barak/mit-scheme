@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.10 1990/09/11 20:44:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.11 1990/09/13 23:46:06 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -36,7 +36,7 @@ MIT in each case. |#
 ;;; package: (runtime pretty-printer)
 
 (declare (usual-integrations))
-
+
 (define (initialize-package!)
   (set! forced-indentation (special-printer kernel/forced-indentation))
   (set! pressured-indentation (special-printer kernel/pressured-indentation))
@@ -53,8 +53,8 @@ MIT in each case. |#
 	  (LAMBDA . ,print-procedure)
 	  (NAMED-LAMBDA . ,print-procedure)))
   (set! dispatch-default print-combination)
-  (set! walk-dispatcher default/walk-dispatcher))
-
+  unspecific)
+
 (define *named-lambda->define?* true)
 (define *pp-primitives-by-name* true)
 (define *pp-uninterned-symbols-by-name* true)
@@ -77,75 +77,41 @@ MIT in each case. |#
 	       object))))))
 
 (define (pretty-print object #!optional port as-code? indentation)
-  (let ((port (if (default-object? port) (current-output-port) port))
-	(indentation (if (default-object? indentation) 0 indentation)))
-    (if (scode-constant? object)
-	(pp-top-level object
-		      port
-		      (if (default-object? as-code?) false as-code?)
-		      indentation)
-	(pp-top-level (let ((sexp (unsyntax object)))
-			(if (and *named-lambda->define?*
-				 (pair? sexp)
-				 (eq? (car sexp) 'NAMED-LAMBDA))
-			    `(DEFINE ,@(cdr sexp))
-			    sexp))
-		      port
-		      true
-		      indentation)))
+  (pp-top-level (if (scode-constant? object)
+		    object
+		    (let ((sexp (unsyntax object)))
+		      (if (and *named-lambda->define?*
+			       (pair? sexp)
+			       (eq? (car sexp) 'NAMED-LAMBDA))
+			  `(DEFINE ,@(cdr sexp))
+			  sexp)))
+		(if (default-object? port) (current-output-port) port)
+		(if (default-object? as-code?)
+		    (not (scode-constant? object))
+		    as-code?)
+		(if (default-object? indentation) 0 indentation)
+		0)
   unspecific)
-
-(define (pp-top-level expression port as-code? indentation)
-  (fluid-let
-      ((x-size (get-x-size port))
-       (output-port port)
-       (operation/write-char (output-port/operation/write-char port))
-       (operation/write-string (output-port/operation/write-string port)))
-    (let ((node (numerical-walk expression)))
-      (if (positive? indentation)
-	  (*unparse-string (make-string indentation #\Space)))
-      ((if as-code? print-node print-non-code-node) node indentation 0)
-      (output-port/flush-output port))))
-
-(define (stepper-pp expression port p-wrapper table nc relink! sc! offset)
-  (fluid-let ((x-size (get-x-size port))
-	      (output-port port)
-	      (operation/write-char (output-port/operation/write-char port))
-	      (operation/write-string
-	       (output-port/operation/write-string port))
-	      (walk-dispatcher table)
-	      (next-coords nc)
-	      (sc-relink! relink!)
-	      (add-sc-entry! sc!)
-	      (print-combination (p-wrapper print-combination))
-	      (forced-indentation (p-wrapper forced-indentation))
-	      (pressured-indentation (p-wrapper pressured-indentation))
-	      (print-procedure (p-wrapper print-procedure))
-	      (print-let-expression (p-wrapper print-let-expression))
-	      (print-node (p-wrapper print-node))
-	      (print-guaranteed-node (p-wrapper print-guaranteed-node)))
-    (let ((node (numerical-walk expression)))
-      (print-node node (car offset) 0)
-      (output-port/flush-output port))))
-
-(define (get-x-size port)
-  (or *forced-x-size*
-      (output-port/x-size port)))
 
+(define (pp-top-level expression port as-code? indentation list-depth)
+  (fluid-let ((x-size (or *forced-x-size* (output-port/x-size port)))
+	      (output-port port))
+    (let ((node (numerical-walk expression list-depth)))
+      (if (positive? indentation)
+	  (*unparse-string (make-string indentation #\space)))
+      (if as-code?
+	  (print-node node indentation list-depth)
+	  (print-non-code-node node indentation list-depth))
+      (output-port/flush-output port))))
+
 (define x-size)
 (define output-port)
-(define operation/write-char)
-(define operation/write-string)
-
-(define next-coords)
-(define add-sc-entry!)
-(define sc-relink!)
 
 (define-integrable (*unparse-char char)
-  (operation/write-char output-port char))
+  (output-port/write-char output-port char))
 
 (define-integrable (*unparse-string string)
-  (operation/write-string output-port string))
+  (output-port/write-string output-port string))
 
 (define-integrable (*unparse-open)
   (*unparse-char #\())
@@ -154,10 +120,10 @@ MIT in each case. |#
   (*unparse-char #\)))
 
 (define-integrable (*unparse-space)
-  (*unparse-char #\Space))
+  (*unparse-char #\space))
 
 (define-integrable (*unparse-newline)
-  (*unparse-char #\Newline))
+  (*unparse-char #\newline))
 
 (define (print-non-code-node node column depth)
   (fluid-let ((dispatch-list '())
@@ -166,17 +132,21 @@ MIT in each case. |#
 
 (define (print-data-column nodes column depth)
   (*unparse-open)
-  (print-column nodes (1+ column) (1+ depth))
+  (print-column nodes (+ column 1) (+ depth 1))
   (*unparse-close))
 
 (define (print-node node column depth)
-  (cond ((list-node? node) (print-list-node node column depth))
-	((symbol? node) (*unparse-symbol node))
-	((prefix-node? node) (*unparse-string (node-prefix node))
+  (cond ((list-node? node)
+	 (print-list-node node column depth))
+	((symbol? node)
+	 (*unparse-symbol node))
+	((prefix-node? node)
+	 (*unparse-string (node-prefix node))
 	 (print-node (node-subnode node) 
-		     (+ (string-length (node-prefix node)) column)
+		     (+ column (string-length (node-prefix node)))
 		     depth))
-	(else (*unparse-string node))))
+	(else
+	 (*unparse-string node))))
 
 (define (print-list-node node column depth)
   (if (fits-within? node column depth)
@@ -186,54 +156,58 @@ MIT in each case. |#
 	       (and association (cdr association)))
 	     dispatch-default)
 	 subnodes column depth))))
-
+
 (define (print-guaranteed-node node)
-  (cond ((list-node? node) (print-guaranteed-list-node node))
-	((symbol? node) (*unparse-symbol node))
+  (cond ((list-node? node)
+	 (print-guaranteed-list-node node))
+	((symbol? node)
+	 (*unparse-symbol node))
 	((prefix-node? node)
 	 (*unparse-string (node-prefix node))
 	 (print-guaranteed-node (node-subnode node)))
-	(else (*unparse-string node))))
+	(else
+	 (*unparse-string node))))
 
 (define (print-guaranteed-list-node node)
-  (define (loop nodes)
+  (*unparse-open)
+  (let loop ((nodes (node-subnodes node)))
     (print-guaranteed-node (car nodes))
     (if (not (null? (cdr nodes)))
-	(begin (*unparse-space)
-	       (loop (cdr nodes)))))
-  (*unparse-open)
-  (loop (node-subnodes node))
+	(begin
+	  (*unparse-space)
+	  (loop (cdr nodes)))))
   (*unparse-close))
 
 (define (print-column nodes column depth)
-  (define (loop nodes)
+  (let loop ((nodes nodes))
     (if (null? (cdr nodes))
 	(print-node (car nodes) column depth)
-	(begin (print-node (car nodes) column 0)
-	       (tab-to column)
-	       (loop (cdr nodes)))))
-  (loop nodes))
+	(begin
+	  (print-node (car nodes) column 0)
+	  (tab-to column)
+	  (loop (cdr nodes))))))
 
 (define (print-guaranteed-column nodes column)
-  (define (loop nodes)
+  (let loop ((nodes nodes))
     (print-guaranteed-node (car nodes))
     (if (not (null? (cdr nodes)))
-	(begin (tab-to column)
-	       (loop (cdr nodes)))))
-  (loop nodes))
+	(begin
+	  (tab-to column)
+	  (loop (cdr nodes))))))
 
 ;;;; Printers
 
 (define (print-combination nodes column depth)
   (*unparse-open)
-  (let ((column (1+ column)) (depth (1+ depth)))
+  (let ((column (+ column 1))
+	(depth (+ depth 1)))
     (cond ((null? (cdr nodes))
 	   (print-node (car nodes) column depth))
 	  ((two-on-first-line? nodes column depth)
 	   (print-guaranteed-node (car nodes)) 
 	   (*unparse-space)
 	   (print-guaranteed-column (cdr nodes)
-				    (1+ (+ column (node-size (car nodes))))))
+				    (+ column 1 (node-size (car nodes)))))
 	  (else
 	   (print-column nodes column depth))))
   (*unparse-close))
@@ -247,9 +221,9 @@ MIT in each case. |#
   (*unparse-space)
   (if (not (null? (cdr nodes)))
       (procedure (cdr nodes)
-		 (+ 2 (+ column (symbol-length (car nodes))))
-		 (+ 2 column)
-		 (1+ depth)))
+		 (+ column 2 (symbol-length (car nodes)))
+		 (+ column 2)
+		 (+ depth 1)))
   (*unparse-close))
 
 ;;; Force the indentation to be an optimistic column.
@@ -267,8 +241,9 @@ MIT in each case. |#
 (define (kernel/pressured-indentation nodes optimistic pessimistic depth)
   (if (fits-as-column? nodes optimistic depth)
       (print-guaranteed-column nodes optimistic)
-      (begin (tab-to pessimistic)
-	     (print-column nodes pessimistic depth))))
+      (begin
+	(tab-to pessimistic)
+	(print-column nodes pessimistic depth))))
 
 ;;; Print a procedure definition.  The bound variable pattern goes on
 ;;; the same line as the keyword, while everything else gets indented
@@ -294,14 +269,17 @@ MIT in each case. |#
   (let ((print-body
 	 (lambda (nodes)
 	   (if (not (null? nodes))
-	       (begin (tab-to pessimistic)
-		      (print-column nodes pessimistic depth))))))
-    (cond ((null? (cdr nodes))				;Screw case.
+	       (begin
+		 (tab-to pessimistic)
+		 (print-column nodes pessimistic depth))))))
+    (cond ((null? (cdr nodes))
+	   ;; screw case
 	   (print-node (car nodes) optimistic depth))
-	  ((symbol? (car nodes))			;Named LET.
+	  ((symbol? (car nodes))
+	   ;; named LET
 	   (*unparse-symbol (car nodes))
 	   (let ((new-optimistic
-		  (1+ (+ optimistic (symbol-length (car nodes))))))
+		  (+ optimistic (+ 1 (symbol-length (car nodes))))))
 	     (cond ((fits-within? (cadr nodes) new-optimistic 0)
 		    (*unparse-space)
 		    (print-guaranteed-node (cadr nodes))
@@ -312,14 +290,15 @@ MIT in each case. |#
 		    (*unparse-space)
 		    (*unparse-open)
 		    (print-guaranteed-column (node-subnodes (cadr nodes))
-					     (1+ new-optimistic))
+					     (+ new-optimistic 1))
 		    (*unparse-close)
 		    (print-body (cddr nodes)))
 		   (else
 		    (tab-to optimistic)
 		    (print-node (cadr nodes) optimistic 0)
 		    (print-body (cddr nodes))))))
-	  (else					;Ordinary LET.
+	  (else
+	   ;; ordinary LET
 	   (print-node (car nodes) optimistic 0)
 	   (print-body (cdr nodes))))))
 
@@ -332,19 +311,18 @@ MIT in each case. |#
 ;;; Fits if each node fits when stacked vertically at the given column.
 
 (define (fits-as-column? nodes column depth)
-  (define (loop nodes)
+  (let loop ((nodes nodes))
     (if (null? (cdr nodes))
 	(fits-within? (car nodes) column depth)
 	(and (> x-size
 		(+ column (node-size (car nodes))))
-	     (loop (cdr nodes)))))
-  (loop nodes))
+	     (loop (cdr nodes))))))
 
 ;;; Fits if first two nodes fit on same line, and rest fit under the
 ;;; second node.  Assumes at least two nodes are given.
 
 (define (two-on-first-line? nodes column depth)
-  (let ((column (1+ (+ column (node-size (car nodes))))))
+  (let ((column (+ column (+ 1 (node-size (car nodes))))))
     (and (> x-size column)
 	 (fits-as-column? (cdr nodes) column depth))))
 
@@ -352,55 +330,79 @@ MIT in each case. |#
 
 (define (tab-to column)
   (*unparse-newline)
-  (*unparse-string (make-string column #\Space)))
+  (*unparse-string (make-string column #\space)))
 
 ;;;; Numerical Walk
 
-(define (numerical-walk object)
-  ((walk-dispatcher object) object))
+(define (numerical-walk object list-depth)
+  (cond ((pair? object)
+	 (let ((unparser (unparse-list/unparser object)))
+	   (if unparser
+	       (let ((prefix (unparse-list/prefix-pair? object)))
+		 (if prefix
+		     (make-prefix-node prefix
+				       (numerical-walk (cadr object)
+						       list-depth))
+		     (walk-custom unparser object list-depth)))
+	       (walk-pair object list-depth))))
+	((vector? object)
+	 (let ((unparser
+		(and (not (zero? (vector-length object)))
+		     (unparse-vector/unparser object))))
+	   (if unparser
+	       (walk-custom unparser object list-depth)
+	       (make-prefix-node "#"
+				 (walk-pair (vector->list object)
+					    list-depth)))))
+	((symbol? object)
+	 (if (or *pp-uninterned-symbols-by-name*
+		 (object-type? (ucode-type interned-symbol) object))
+	     object
+	     (walk-custom unparse-object object list-depth)))
+	((primitive-procedure? object)
+	 (if *pp-primitives-by-name*
+	     (primitive-procedure-name object)
+	     (walk-custom unparse-object object list-depth)))
+	(else
+	 (walk-custom unparse-object object list-depth))))
 
-(define walk-dispatcher)
-(define (default/walk-dispatcher x)
-  (cond ((if *pp-uninterned-symbols-by-name*
-	     (symbol? x)
-	     (object-type? (ucode-type interned-symbol) x))
-	 identity-procedure)
-	((primitive-procedure? x) walk-primitive)
-	((pair? x)
-	 (if (and (unparse-list/unparser x)
-		  (not (unparse-list/prefix-pair? x)))
-	     walk-general
-	     walk-pair))
-	((and (vector? x)
-	      (not (zero? (vector-length x)))
-	      (not (unparse-vector/unparser x)))
-	 walk-vector)
-	(else walk-general)))
+(define (walk-custom unparser object list-depth)
+  (with-string-output-port
+   (lambda (port)
+     (unparser (make-unparser-state port
+				    list-depth
+				    true
+				    (current-unparser-table))
+	       object))))
 
-(define-integrable (walk-general object)
-  (write-to-string object))
-
-(define (walk-primitive primitive)
-  (if *pp-primitives-by-name*
-      (primitive-procedure-name primitive)
-      (write-to-string primitive)))
-
-(define (walk-pair pair)
-  (if (null? (cdr pair))
-      (make-singleton-list-node (numerical-walk (car pair)))
-      (let ((prefix (unparse-list/prefix-pair? pair)))
-	(if prefix
-	    (make-prefix-node prefix (numerical-walk (cadr pair)))
-	    (make-list-node
-	     (numerical-walk (car pair))
-	     (if (and (pair? (cdr pair))
-		      (not (unparse-list/unparser (cdr pair))))
-		 (walk-pair (cdr pair))
+(define (walk-pair pair list-depth)
+  (if (and *unparser-list-depth-limit*
+	   (>= list-depth *unparser-list-depth-limit*))
+      "..."
+      (let ((list-depth (+ list-depth 1)))
+	(let loop ((pair pair) (list-breadth 0))
+	  (cond ((and *unparser-list-breadth-limit*
+		      (>= list-breadth *unparser-list-breadth-limit*))
+		 (make-singleton-list-node "..."))
+		((null? (cdr pair))
 		 (make-singleton-list-node
-		  (make-prefix-node ". " (numerical-walk (cdr pair))))))))))
-
-(define (walk-vector vector)
-  (make-prefix-node "#" (walk-pair (vector->list vector))))
+		  (numerical-walk (car pair) list-depth)))
+		(else
+		 (make-list-node
+		  (numerical-walk (car pair) list-depth)
+		  (let ((list-breadth (+ list-breadth 1)))
+		    (if (and (pair? (cdr pair))
+			     (not (unparse-list/unparser (cdr pair))))
+			(loop (cdr pair) list-breadth)
+			(make-list-node
+			 "."
+			 (make-singleton-list-node
+			  (if (and *unparser-list-breadth-limit*
+				   (>= list-breadth
+				       *unparser-list-breadth-limit*))
+			      "..."
+			      (numerical-walk (cdr pair)
+					      list-depth)))))))))))))
 
 ;;;; Node Model
 ;;;  Carefully crafted to use the least amount of memory, while at the
@@ -425,7 +427,8 @@ MIT in each case. |#
 	((prefix-node? subnode)
 	 (make-prefix-node (string-append prefix (node-prefix subnode))
 			   (node-subnode subnode)))
-	(else (string-append prefix subnode))))
+	(else
+	 (string-append prefix subnode))))
 
 (define-integrable (prefix-node? object)
   (vector? object))
@@ -438,9 +441,9 @@ MIT in each case. |#
 
 (define-integrable (node-subnode node)
   (vector-ref node 2))
-
+
 (define (make-list-node car-node cdr-node)
-  (cons (1+ (+ (node-size car-node) (list-node-size cdr-node)))	;+1 space.
+  (cons (+ 1 (node-size car-node) (list-node-size cdr-node)) ;+1 space.
 	(cons car-node (node-subnodes cdr-node))))
 
 (define (make-singleton-list-node car-node)
@@ -457,8 +460,7 @@ MIT in each case. |#
   (cdr node))
 
 (define (node-size node)
-  ((cond ((list-node? node) list-node-size)
-	 ((symbol? node) symbol-length)
-	 ((prefix-node? node) prefix-node-size)
-	 (else string-length))
-   node))
+  (cond ((list-node? node) (list-node-size node))
+	((symbol? node) (symbol-length node))
+	((prefix-node? node) (prefix-node-size node))
+	(else (string-length node))))
