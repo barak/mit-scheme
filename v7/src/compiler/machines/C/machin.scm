@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.4 1993/10/26 02:59:34 gjr Exp $
+$Id: machin.scm,v 1.5 1993/10/28 02:55:01 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -308,11 +308,5 @@ MIT in each case. |#
   true)
 
 (define compiler:primitives-with-no-open-coding
-  '(
-    DIVIDE-FIXNUM GCD-FIXNUM  &/ FLONUM-SIN FLONUM-COS FLONUM-TAN
-    FLONUM-ASIN FLONUM-ACOS
-    FLONUM-ATAN FLONUM-EXP FLONUM-LOG FLONUM-TRUNCATE FLONUM-ROUND
-    FLONUM-REMAINDER FLONUM-SQRT
-    VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS
-    FLOATING-VECTOR-REF FLOATING-VECTOR-SET!))
-
+  '(DIVIDE-FIXNUM GCD-FIXNUM &/
+    VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rgspcm.scm,v 1.1 1993/06/08 06:13:32 gjr Exp $
+$Id: rgspcm.scm,v 1.2 1993/10/28 02:55:10 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -70,5 +70,11 @@ MIT in each case. |#
 (define-special-primitive/standard 'zero?)
 (define-special-primitive/standard 'positive?)
 (define-special-primitive/standard 'negative?)
+(define-special-primitive/standard 'quotient)
+(define-special-primitive/standard 'remainder)
 
-
+#|
+(define-special-primitive/if-open-coding 'vector-cons)
+(define-special-primitive/if-open-coding 'string-allocate)
+(define-special-primitive/if-open-coding 'floating-vector-cons)
+|#
