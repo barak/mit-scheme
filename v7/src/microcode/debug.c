@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: debug.c,v 9.52 2001/03/08 18:00:18 cph Exp $
+$Id: debug.c,v 9.53 2001/07/31 03:11:17 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* Utilities to help with debugging */
@@ -171,7 +172,7 @@ DEFUN (Show_Env, (The_Env), SCHEME_OBJECT The_Env)
   procedure = MEMORY_REF (The_Env, ENVIRONMENT_FUNCTION);
   value_ptr = MEMORY_LOC (The_Env, ENVIRONMENT_FIRST_ARG);
 
-  if (OBJECT_TYPE (procedure) == AUX_LIST_TYPE)
+  if (FRAME_EXTENSION_P (procedure))
   {
     extension = procedure;
     procedure = FAST_MEMORY_REF (extension, ENV_EXTENSION_PROCEDURE);
@@ -198,9 +199,9 @@ DEFUN (Show_Env, (The_Env), SCHEME_OBJECT The_Env)
   }
   if (extension != SHARP_F)
   {
-    outf_console ("Auxilliary Variables\n");
-    count = OBJECT_DATUM (MEMORY_REF (extension, AUX_LIST_COUNT));
-    for (i = 0, name_ptr = MEMORY_LOC (extension, AUX_LIST_FIRST);
+    outf_console ("Auxiliary Variables\n");
+    count = (GET_FRAME_EXTENSION_LENGTH (extension));
+    for (i = 0, name_ptr = (GET_FRAME_EXTENSION_BINDINGS (extension));
 	 i < count;
 	 i++, name_ptr++)
     {

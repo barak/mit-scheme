@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988, 1989, 1999 Massachusetts Institute of Technology
+$Id: sdata.h,v 9.35 2001/07/31 03:12:08 cph Exp $
+
+Copyright (c) 1987-1989, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -14,15 +16,15 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
-/* $Id: sdata.h,v 9.34 1999/01/02 06:11:34 cph Exp $
- *
- * Description of the user data objects.  This should parallel the
- * file SDATA.SCM in the runtime system.
- *
- */
+/* Description of the user data objects.  This should parallel the
+   file SDATA.SCM in the runtime system.  */
+
+#ifndef SCM_SDATA_H
+#define SCM_SDATA_H
 
 /* Alphabetical order.  Every type of object is described either with a
    comment or with offsets describing locations of various parts. */
@@ -153,7 +155,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #define ENTITY_OPERATOR		0
 #define ENTITY_DATA		1
-
+
 /* ENVIRONMENT
  * Associates identifiers with values.
  * The identifiers are either from a lambda-binding (as in a procedure
@@ -183,7 +185,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  * associations between names and values.  It is the final stage, and
  * corresponds to the structure described above.
  */
-
+
 #define ENVIRONMENT_HEADER	0
 #define ENVIRONMENT_FUNCTION	1
 #define ENVIRONMENT_FIRST_ARG	2
@@ -202,12 +204,27 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    true global environment, or terminate at this frame.
 
    We arrange for the global environment to be the same as #F, and the
-   end chain to be different by toggling the lowest bit:
- */
+   end chain to be different by toggling the lowest bit:  */
 
-#define GLOBAL_ENV     (OBJECT_TYPE(SHARP_F))
-#define GO_TO_GLOBAL   (OBJECT_DATUM(SHARP_F))
-#define END_OF_CHAIN   ((GO_TO_GLOBAL) ^ 1)
+#define GLOBAL_ENV     (OBJECT_TYPE (SHARP_F))
+#define THE_GLOBAL_ENV (MAKE_OBJECT (GLOBAL_ENV, (OBJECT_DATUM (SHARP_F))))
+#define THE_NULL_ENV (MAKE_OBJECT (GLOBAL_ENV, ((OBJECT_DATUM (SHARP_F)) ^ 1)))
+
+#define GLOBAL_FRAME_P(frame) ((frame) == THE_GLOBAL_ENV)
+#define NULL_FRAME_P(frame) ((frame) == THE_NULL_ENV)
+#define PROCEDURE_FRAME_P(frame) ((OBJECT_TYPE (frame)) == TC_ENVIRONMENT)
+
+#define GET_FRAME_PARENT(frame)						\
+  (GET_PROCEDURE_ENVIRONMENT (GET_FRAME_PROCEDURE (frame)))
+
+#define GET_FRAME_PROCEDURE(frame)					\
+  (MEMORY_REF ((frame), ENVIRONMENT_FUNCTION))
+
+#define SET_FRAME_EXTENSION(frame, extension)				\
+  MEMORY_SET ((frame), ENVIRONMENT_FUNCTION, (extension))
+
+#define GET_FRAME_ARG_CELL(frame, index)				\
+  (MEMORY_LOC ((frame), (ENVIRONMENT_FIRST_ARG + (index))))
 
 /* Environment extension objects:
 
@@ -228,6 +245,43 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #define ENV_EXTENSION_PROCEDURE		2
 #define ENV_EXTENSION_COUNT		3
 #define ENV_EXTENSION_MIN_SIZE		4
+
+#define EXTENDED_FRAME_P(frame)						\
+  (FRAME_EXTENSION_P (GET_FRAME_PROCEDURE (frame)))
+
+#define FRAME_EXTENSION_P VECTOR_P
+
+#define GET_EXTENDED_FRAME_BINDINGS(frame)				\
+  (GET_FRAME_EXTENSION_BINDINGS (GET_FRAME_PROCEDURE (frame)))
+
+#define GET_FRAME_EXTENSION_BINDINGS(extension)				\
+  ((OBJECT_ADDRESS (extension)) + ENV_EXTENSION_MIN_SIZE)
+
+#define GET_EXTENDED_FRAME_LENGTH(frame)				\
+  (GET_FRAME_EXTENSION_LENGTH (GET_FRAME_PROCEDURE (frame)))
+
+#define GET_FRAME_EXTENSION_LENGTH(extension)				\
+  (UNSIGNED_FIXNUM_TO_LONG						\
+   ((OBJECT_ADDRESS (extension)) [ENV_EXTENSION_COUNT]))
+
+#define SET_EXTENDED_FRAME_LENGTH(frame, length)			\
+  (SET_FRAME_EXTENSION_LENGTH ((GET_FRAME_PROCEDURE (frame)), (length)))
+
+#define SET_FRAME_EXTENSION_LENGTH(extension, length)			\
+  (((OBJECT_ADDRESS (extension)) [ENV_EXTENSION_COUNT])			\
+   = (LONG_TO_UNSIGNED_FIXNUM (length)))
+
+#define GET_MAX_EXTENDED_FRAME_LENGTH(frame)				\
+  (GET_MAX_FRAME_EXTENSION_LENGTH (GET_FRAME_PROCEDURE (frame)))
+
+#define GET_MAX_FRAME_EXTENSION_LENGTH(extension)			\
+  ((VECTOR_LENGTH (extension)) - (ENV_EXTENSION_MIN_SIZE - 1))
+
+#define GET_EXTENDED_FRAME_PROCEDURE(frame)				\
+  (GET_FRAME_EXTENSION_PROCEDURE (GET_FRAME_PROCEDURE (frame)))
+
+#define GET_FRAME_EXTENSION_PROCEDURE(extension)			\
+  (MEMORY_REF ((extension), ENV_EXTENSION_PROCEDURE))
 
 /* EXTENDED_FIXNUM
  * Not used in the C version.  On the 68000 this is used for 24-bit
@@ -271,6 +325,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 #define SYMBOL_NAME		0
 #define SYMBOL_GLOBAL_VALUE	1
+
+#define SYMBOL_GLOBAL_VALUE_CELL(symbol)				\
+  (MEMORY_LOC ((symbol), SYMBOL_GLOBAL_VALUE))
+
+#define GET_SYMBOL_GLOBAL_VALUE(symbol)					\
+  (* (SYMBOL_GLOBAL_VALUE_CELL (symbol)))
+
+#define SET_SYMBOL_GLOBAL_VALUE(symbol, value)				\
+  ((* (SYMBOL_GLOBAL_VALUE_CELL (symbol))) = (value))
 
 /* LIST
  * Ordinary CONS cell as supplied to a user.  Perhaps this data type is
@@ -326,6 +389,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 #define PROCEDURE_LAMBDA_EXPR	0
 #define PROCEDURE_ENVIRONMENT	1
+
+#define GET_PROCEDURE_LAMBDA(procedure)					\
+  (MEMORY_REF ((procedure), PROCEDURE_LAMBDA_EXPR))
+
+#define GET_PROCEDURE_ENVIRONMENT(procedure)				\
+  (MEMORY_REF ((procedure), PROCEDURE_ENVIRONMENT))
 
 /* QUAD or HUNK4
  * Like a pair but with 4 components.
@@ -339,31 +408,82 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 /* REFERENCE_TRAP
  * Causes the variable lookup code to trap.
  * Used to implement a variety of features.
- * This type code is really the collection of two, done this way for efficiency.
- * Traps whose datum is less than TRAP_MAX_IMMEDIATE are immediate (not pointers).
- * The rest are pairs.  The garbage collector deals with them specially.
- */
+ * This type code is really the collection of two, done this way for
+ * efficiency.  Traps whose datum is less than TRAP_MAX_IMMEDIATE are
+ * immediate (not pointers).  The rest are pairs.  The garbage
+ * collector deals with them specially.  */
 
 #define TRAP_TAG				0
 #define TRAP_EXTRA				1
 
-/* Traps can be extended for the use of the fast variable reference mechanism in
- * compiled code.  The following is the format of a trap extension object.
- */
+#define GET_TRAP_TAG(object)						\
+  (MEMORY_REF ((object), TRAP_TAG))
+
+#define GET_TRAP_EXTENSION(object)					\
+  (MEMORY_REF ((object), TRAP_EXTRA))
+
+/* Traps can be extended for the use of the fast variable reference
+   mechanism in compiled code.  The following is the format of a trap
+   extension object.  */
 
 #define TRAP_EXTENSION_CELL			HUNK4_CXR0
 #define TRAP_EXTENSION_NAME			HUNK4_CXR1
 #define TRAP_EXTENSION_CLONE			HUNK4_CXR2
 #define TRAP_EXTENSION_REFERENCES		HUNK4_CXR3
 
-/* Aliases */
+#define CACHE_REFERENCES_LOOKUP			HUNK3_CXR0
+#define CACHE_REFERENCES_ASSIGNMENT		HUNK3_CXR1
+#define CACHE_REFERENCES_OPERATOR		HUNK3_CXR2
 
-#define TRAP_EXTENSION_BLOCK			TRAP_EXTENSION_CLONE
-#define TRAP_EXTENSION_OFFSET			TRAP_EXTENSION_REFERENCES
+#define GET_TRAP_CACHE GET_TRAP_EXTENSION
 
-#define TRAP_REFERENCES_LOOKUP			HUNK3_CXR0
-#define TRAP_REFERENCES_ASSIGNMENT		HUNK3_CXR1
-#define TRAP_REFERENCES_OPERATOR		HUNK3_CXR2
+
+#define GET_CACHE_CELL(extension)					\
+  (MEMORY_LOC ((extension), TRAP_EXTENSION_CELL))
+
+#define GET_CACHE_NAME(extension)					\
+  (MEMORY_REF ((extension), TRAP_EXTENSION_NAME))
+
+#define GET_CACHE_CLONE(extension)					\
+  (MEMORY_REF ((extension), TRAP_EXTENSION_CLONE))
+
+#define SET_CACHE_CLONE(extension, clone)				\
+  MEMORY_SET ((extension), TRAP_EXTENSION_CLONE, (clone))
+
+#define GET_CACHE_REFERENCES(extension)					\
+  (MEMORY_REF ((extension), TRAP_EXTENSION_REFERENCES))
+
+
+#define GET_CACHE_REFERENCES_LOOKUP(references)				\
+  (MEMORY_REF ((references), CACHE_REFERENCES_LOOKUP))
+
+#define SET_CACHE_REFERENCES_LOOKUP(references, list)			\
+  MEMORY_SET ((references), CACHE_REFERENCES_LOOKUP, (list)))
+
+#define GET_CACHE_REFERENCES_ASSIGNMENT(references)			\
+  (MEMORY_REF ((references), CACHE_REFERENCES_ASSIGNMENT))
+
+#define SET_CACHE_REFERENCES_ASSIGNMENT(references, list)		\
+  MEMORY_SET ((references), CACHE_REFERENCES_ASSIGNMENT, (list)))
+
+#define GET_CACHE_REFERENCES_OPERATOR(references)			\
+  (MEMORY_REF ((references), CACHE_REFERENCES_OPERATOR))
+
+#define SET_CACHE_REFERENCES_OPERATOR(references, list)			\
+  MEMORY_SET ((references), CACHE_REFERENCES_OPERATOR, (list)))
+
+
+#define GET_CACHE_REFERENCE_BLOCK(reference)				\
+  (PAIR_CAR (reference))
+
+#define SET_CACHE_REFERENCE_BLOCK(reference, block)			\
+  SET_PAIR_CAR (reference, block)
+
+#define GET_CACHE_REFERENCE_OFFSET(reference)				\
+  (OBJECT_DATUM (PAIR_CDR (reference)))
+
+#define SET_CACHE_REFERENCE_OFFSET(reference, offset)			\
+  (SET_PAIR_CDR ((reference), (LONG_TO_UNSIGNED_FIXNUM (offset))))
 
 /* RETURN_CODE
  * Represents an address where computation is to continue.  These can be
@@ -422,3 +542,5 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #define COMPLEX_REAL		0
 #define COMPLEX_IMAG		1
+
+#endif /* not SCM_SDATA_H */

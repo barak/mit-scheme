@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: extern.h,v 9.59 2001/03/08 17:12:50 cph Exp $
+$Id: extern.h,v 9.60 2001/07/31 03:11:21 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -16,10 +16,14 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* External Declarations */
+
+#ifndef SCM_EXTERN_H
+#define SCM_EXTERN_H
 
 #ifdef ENABLE_DEBUGGING_TOOLS
 
@@ -143,14 +147,6 @@ extern long Constant_Size;
 extern long Stack_Size;
 extern SCHEME_OBJECT * Lowest_Allocated_Address, * Highest_Allocated_Address;
 
-/* Environment lookup utilities. */
-extern long EXFUN (Lex_Ref, (SCHEME_OBJECT, SCHEME_OBJECT));
-extern long EXFUN (Local_Set, (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT));
-extern long EXFUN (Lex_Set, (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT));
-extern long EXFUN (Symbol_Lex_Ref, (SCHEME_OBJECT, SCHEME_OBJECT));
-extern long EXFUN (Symbol_Lex_Set,
-		   (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT));
-
 /* Arithmetic utilities */
 extern long EXFUN (fixnum_to_long, (SCHEME_OBJECT));
 extern SCHEME_OBJECT EXFUN (double_to_fixnum, (double));
@@ -276,3 +272,5 @@ extern void EXFUN (Allocate_New_Stacklet, (long));
 #if FALSE
 extern void EXFUN (Clear_Perfinfo_Data, (void));
 #endif
+
+#endif /* not SCM_EXTERN_H */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.78 2001/03/08 18:24:30 cph Exp $
+$Id: utils.c,v 9.79 2001/07/31 03:12:15 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* This file contains utilities for interrupts, errors, etc. */
@@ -250,7 +251,7 @@ DEFUN_VOID (back_out_of_primitive_internal)
     compiler_apply_procedure (nargs);
   STACK_PUSH (primitive);
   STACK_PUSH (STACK_FRAME_HEADER + nargs);
-  Store_Env (MAKE_OBJECT (GLOBAL_ENV, END_OF_CHAIN));
+  Store_Env (THE_NULL_ENV);
   Val = SHARP_F;
   Store_Return (RC_INTERNAL_APPLY);
   Store_Expression (SHARP_F);

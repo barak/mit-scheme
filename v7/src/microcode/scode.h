@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988, 1989, 1999 Massachusetts Institute of Technology
+$Id: scode.h,v 9.27 2001/07/31 03:12:03 cph Exp $
+
+Copyright (c) 1987-1989, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -14,15 +16,15 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
-/* $Id: scode.h,v 9.26 1999/01/02 06:11:34 cph Exp $
- *
- * Format of the SCode representation of programs.  Each of these
- * is described in terms of the slots in the data structure.
- *
- */
+/* Format of the SCode representation of programs.  Each of these is
+   described in terms of the slots in the data structure. */
+
+#ifndef SCM_SCODE_H
+#define SCM_SCODE_H
 
 /* Here are the definitions of the the executable operations for the
    interpreter.  This file should parallel the file SCODE.SCM in the
@@ -130,6 +132,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #define LAMBDA_SCODE		0
 #define LAMBDA_FORMALS		1
 
+#define GET_LAMBDA_FORMALS(lambda)					\
+  (MEMORY_REF ((lambda), LAMBDA_FORMALS))
+
+#define GET_LAMBDA_PARAMETERS(lambda)					\
+  (MEMORY_LOC ((GET_LAMBDA_FORMALS (lambda)), (VECTOR_DATA + 1)))
+
+#define GET_LAMBDA_N_PARAMETERS(lambda)					\
+  ((VECTOR_LENGTH (GET_LAMBDA_FORMALS (lambda))) - 1)
+
 /* LEXPR
  * Same as LAMBDA (q.v.) except additional arguments are permitted
  * beyond those indicated in the LAMBDA_FORMALS list.
@@ -174,3 +185,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #define VARIABLE_FRAME_NO	1
 #define VARIABLE_OFFSET		2
 #define VARIABLE_COMPILED_TYPE	1
+
+#define GET_VARIABLE_SYMBOL(variable)					\
+  (MEMORY_REF ((variable), VARIABLE_SYMBOL))
+
+#endif /* not SCM_SCODE_H */

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.88 2000/12/05 21:23:44 cph Exp $
+$Id: fasload.c,v 9.89 2001/07/31 03:11:26 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* The "fast loader" which reads in and relocates binary files and then
@@ -1059,7 +1060,7 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   Store_Expression (SHARP_F);
   Save_Cont ();
   Store_Expression (MEMORY_REF (result, 0));
-  Store_Env (MAKE_OBJECT (GLOBAL_ENV, GO_TO_GLOBAL));
+  Store_Env (THE_GLOBAL_ENV);
   /* Clear various interpreter state parameters. */
   Trapping = false;
   Return_Hook_Address = 0;

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.92 2000/12/05 21:23:43 cph Exp $
+$Id: cmpint.c,v 1.93 2001/07/31 03:11:12 cph Exp $
 
-Copyright (c) 1989-2000 Massachusetts Institute of Technology
+Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /*
@@ -81,7 +82,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "interp.h"     /* Interpreter state and primitive destructuring */
 #include "default.h"    /* various definitions */
 #include "extern.h"	/* External decls (missing Cont_Debug, etc.) */
-#include "trap.h"       /* UNASSIGNED_OBJECT, TRAP_EXTENSION_TYPE */
+#include "trap.h"       /* UNASSIGNED_OBJECT, CACHE_TYPE */
 #include "prims.h"      /* LEXPR */
 #include "prim.h"	/* Primitive_Procedure_Table, etc. */
 
@@ -90,6 +91,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #define IN_CMPINT_C
 #include "cmpgc.h"      /* Compiled code object relocation */
+
+#include "lookup.h"
 
 #ifdef HAS_COMPILER_SUPPORT
 
@@ -247,12 +250,6 @@ typedef utility_result EXFUN
   (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, block_addr))
 
 /* Imports from the rest of the "microcode" */
-
-extern long
-  EXFUN (compiler_cache_assignment, (SCHEME_OBJECT, SCHEME_OBJECT, long)),
-  EXFUN (compiler_cache_lookup, (SCHEME_OBJECT, SCHEME_OBJECT, long)),
-  EXFUN (compiler_cache_global_operator, (SCHEME_OBJECT, SCHEME_OBJECT, long)),
-  EXFUN (compiler_cache_operator, (SCHEME_OBJECT, SCHEME_OBJECT, long));
 
 /* Exports to the rest of the "microcode" */
 
@@ -996,7 +993,9 @@ DEFNX (comutil_lexpr_apply,
 
 static long
 DEFUN (compiler_link_closure_pattern, (distance, block, offset),
-       SCHEME_OBJECT distance AND SCHEME_OBJECT block AND long offset)
+       SCHEME_OBJECT distance AND
+       SCHEME_OBJECT block AND
+       unsigned long offset)
 {
   long objdist = (FIXNUM_TO_LONG (distance));
   long nmv_length = (OBJECT_DATUM (MEMORY_REF (block, 1)));
@@ -1047,9 +1046,9 @@ static long
 DEFUN (link_cc_block,
        (block_address, offset, last_header_offset,
 	sections, original_count, ret_add),
-       register SCHEME_OBJECT * block_address AND
-       register long offset AND
-       long last_header_offset AND
+       SCHEME_OBJECT * block_address AND
+       unsigned long offset AND
+       unsigned long last_header_offset AND
        long sections AND
        long original_count AND
        instruction * ret_add)
@@ -1059,7 +1058,7 @@ DEFUN (link_cc_block,
   SCHEME_OBJECT block;
   SCHEME_OBJECT header;
   long result, kind, total_count;
-  long EXFUN ((* cache_handler), (SCHEME_OBJECT, SCHEME_OBJECT, long));
+  long EXFUN ((*cache_handler), (SCHEME_OBJECT, SCHEME_OBJECT, unsigned long));
 
   transaction_begin ();
   {
@@ -1146,7 +1145,7 @@ DEFUN (link_cc_block,
       else
 	EXTRACT_EXECUTE_CACHE_SYMBOL (info, &(block_address[offset]));
 
-      result = ((* cache_handler) (info, block, offset));
+      result = ((*cache_handler) (info, block, offset));
       if (result != PRIM_DONE)
       {
         /* Save enough state to continue.
@@ -1238,7 +1237,7 @@ DEFNX (comutil_link,
     = (SCHEME_ADDR_TO_ADDR (block_address_raw));
   SCHEME_OBJECT * constant_address
     = (SCHEME_ADDR_TO_ADDR (constant_address_raw));
-  long offset;
+  unsigned long offset;
 
 #ifdef AUTOCLOBBER_BUG
   block_address[OBJECT_DATUM (* block_address)] = Regs[REGBLOCK_ENV];
@@ -1266,7 +1265,9 @@ C_TO_SCHEME long
 DEFUN_VOID (comp_link_caches_restart)
 {
   SCHEME_OBJECT block, environment;
-  long original_count, offset, last_header_offset, sections, code;
+  long original_count, sections, code;
+  unsigned long offset;
+  unsigned long last_header_offset;
   instruction * ret_add;
 
   original_count = (OBJECT_DATUM (STACK_POP()));
@@ -1404,9 +1405,6 @@ DEFNX (comutil_operator_primitive_trap,
 
   return (comutil_primitive_apply ((tramp_data[0]), 0, 0, 0));
 }
-
-extern SCHEME_OBJECT EXFUN (compiler_var_error,
-			    (SCHEME_OBJECT, SCHEME_OBJECT));
 
 /* The linker either couldn't find a binding or the binding was
    unassigned, unbound, or a deep-bound (parallel processor) fluid.
@@ -1423,36 +1421,34 @@ extern SCHEME_OBJECT EXFUN (compiler_var_error,
 SCHEME_UTILITY utility_result
 DEFNX (comutil_operator_lookup_trap,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
-       SCHEME_ADDR tramp_data_raw
-       AND long ignore_2 AND long ignore_3 AND long ignore_4)
+       SCHEME_ADDR tramp_data_raw AND
+       long ignore_2 AND
+       long ignore_3 AND
+       long ignore_4)
 {
-  extern long EXFUN (complr_operator_reference_trap,
-		     (SCHEME_OBJECT *, SCHEME_OBJECT));
   SCHEME_OBJECT * tramp_data = (SCHEME_ADDR_TO_ADDR (tramp_data_raw));
-  SCHEME_OBJECT true_operator, * cache_cell;
-  long code, nargs;
+  SCHEME_OBJECT true_operator;
+  long code
+    = (compiler_operator_reference_trap ((tramp_data[0]), (&true_operator)));
+  SCHEME_OBJECT * cache_cell
+    = (MEMORY_LOC ((tramp_data[1]), (OBJECT_DATUM (tramp_data[2]))));
+  long nargs;
 
-  code = (complr_operator_reference_trap (&true_operator, (tramp_data[0])));
-  cache_cell = (MEMORY_LOC ((tramp_data[1]),
-			    (OBJECT_DATUM (tramp_data[2]))));
   EXTRACT_EXECUTE_CACHE_ARITY (nargs, cache_cell);
   if (code == PRIM_DONE)
     return (comutil_apply (true_operator, nargs, 0, 0));
-  else /* Error or interrupt */
+  /* Error or interrupt */
   {
-    SCHEME_OBJECT trampoline, environment, name;
+    SCHEME_OBJECT trampoline;
 
-    /* This could be done by bumpint tramp_data to the entry point.
-       It would probably be better.
-     */
+    /* This could be done by bumping tramp_data to the entry point.
+	 It would probably be better.  */
     EXTRACT_EXECUTE_CACHE_ADDRESS (trampoline, cache_cell);
-    environment = (compiled_block_environment (tramp_data[1]));
-    name = (compiler_var_error ((tramp_data[0]), environment));
-
     STACK_PUSH (ENTRY_TO_OBJECT (SCHEME_ADDR_TO_ADDR (trampoline)));
-    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nargs));	/* For debugger */
-    STACK_PUSH (environment);				/* For debugger */
-    STACK_PUSH (name);					/* For debugger */
+    /* Next three for debugger.  */
+    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nargs));
+    STACK_PUSH (compiled_block_environment (tramp_data[1]));
+    STACK_PUSH (compiler_var_error (tramp_data[0]));
     Store_Expression (SHARP_F);
     Store_Return (RC_COMP_OP_REF_TRAP_RESTART);
     Save_Cont ();
@@ -1768,9 +1764,7 @@ DEFNX (comutil_interrupt_continuation_2,
 C_TO_SCHEME long
 DEFUN_VOID (comp_interrupt_restart)
 {
-  SCHEME_OBJECT state;
-
-  state = (STACK_POP ());
+  SCHEME_OBJECT state = (STACK_POP ());
   Store_Env (state);
   Val = state;
   ENTER_SCHEME (OBJECT_ADDRESS (STACK_POP ()));
@@ -1783,95 +1777,77 @@ DEFUN_VOID (comp_interrupt_restart)
 SCHEME_UTILITY utility_result
 DEFNX (comutil_assignment_trap,
        (return_address_raw, extension_addr_raw, value, ignore_4),
-       SCHEME_ADDR return_address_raw
-       AND SCHEME_ADDR extension_addr_raw
-       AND SCHEME_OBJECT value
-       AND long ignore_4)
+       SCHEME_ADDR return_address_raw AND
+       SCHEME_ADDR extension_addr_raw AND
+       SCHEME_OBJECT value AND
+       long ignore_4)
 {
-  extern long EXFUN (compiler_assignment_trap, (SCHEME_OBJECT, SCHEME_OBJECT));
   instruction * return_address
     = ((instruction *) (SCHEME_ADDR_TO_ADDR (return_address_raw)));
-  SCHEME_OBJECT * extension_addr = (SCHEME_ADDR_TO_ADDR (extension_addr_raw));
-  SCHEME_OBJECT extension;
-  long code;
-
-  extension = (MAKE_POINTER_OBJECT (TC_QUAD, extension_addr));
-  code = (compiler_assignment_trap (extension, value));
+  SCHEME_OBJECT extension
+    = (MAKE_POINTER_OBJECT
+       (TC_QUAD, (SCHEME_ADDR_TO_ADDR (extension_addr_raw))));
+  long code = (compiler_assignment_trap (extension, value, (&Val)));
   if (code == PRIM_DONE)
     RETURN_TO_SCHEME (return_address);
   else
-  {
-    SCHEME_OBJECT block, environment, name, sra;
-
-    sra = (ENTRY_TO_OBJECT (return_address));
-    STACK_PUSH (sra);
-    STACK_PUSH (value);
-    block = (compiled_entry_to_block (sra));
-    environment = (compiled_block_environment (block));
-    STACK_PUSH (environment);
-    name = (compiler_var_error (extension, environment));
-    STACK_PUSH (name);
-    Store_Expression (SHARP_F);
-    Store_Return (RC_COMP_ASSIGNMENT_TRAP_RESTART);
-    Save_Cont ();
-    RETURN_TO_C (code);
-  }
+    {
+      SCHEME_OBJECT sra = (ENTRY_TO_OBJECT (return_address));
+      STACK_PUSH (sra);
+      STACK_PUSH (value);
+      STACK_PUSH (compiled_block_environment (compiled_entry_to_block (sra)));
+      STACK_PUSH (compiler_var_error (extension));
+      Store_Expression (SHARP_F);
+      Store_Return (RC_COMP_ASSIGNMENT_TRAP_RESTART);
+      Save_Cont ();
+      RETURN_TO_C (code);
+    }
 }
 
 C_TO_SCHEME long
 DEFUN_VOID (comp_assignment_trap_restart)
 {
-  extern long EXFUN (Symbol_Lex_Set,
-		     (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT));
-  SCHEME_OBJECT name, environment, value;
-  long code;
-
-  name = (STACK_POP ());
-  environment = (STACK_POP ());
-  value = (STACK_POP ());
-  code = (Symbol_Lex_Set (environment, name, value));
+  SCHEME_OBJECT name = (STACK_POP ());
+  SCHEME_OBJECT environment = (STACK_POP ());
+  SCHEME_OBJECT value = (STACK_POP ());
+  long code = (assign_variable (environment, name, value, (&Val)));
   if (code == PRIM_DONE)
     ENTER_SCHEME (OBJECT_ADDRESS (STACK_POP ()));
   else
-  {
-    STACK_PUSH (value);
-    STACK_PUSH (environment);
-    STACK_PUSH (name);
-    Store_Expression (SHARP_F);
-    Store_Return (RC_COMP_ASSIGNMENT_TRAP_RESTART);
-    Save_Cont ();
-    return (code);
-  }
+    {
+      STACK_PUSH (value);
+      STACK_PUSH (environment);
+      STACK_PUSH (name);
+      Store_Expression (SHARP_F);
+      Store_Return (RC_COMP_ASSIGNMENT_TRAP_RESTART);
+      Save_Cont ();
+      return (code);
+    }
 }
 
 SCHEME_UTILITY utility_result
 DEFNX (comutil_cache_lookup_apply,
        (extension_addr_raw, block_address_raw, nactuals, ignore_4),
-       SCHEME_ADDR extension_addr_raw
-       AND SCHEME_ADDR block_address_raw
-       AND long nactuals
-       AND long ignore_4)
+       SCHEME_ADDR extension_addr_raw AND
+       SCHEME_ADDR block_address_raw AND
+       long nactuals AND
+       long ignore_4)
 {
-  extern long EXFUN (compiler_lookup_trap, (SCHEME_OBJECT));
-  SCHEME_OBJECT * extension_addr = (SCHEME_ADDR_TO_ADDR (extension_addr_raw));
-  SCHEME_OBJECT * block_address = (SCHEME_ADDR_TO_ADDR (block_address_raw));
-  SCHEME_OBJECT extension;
-  long code;
-
-  extension = (MAKE_POINTER_OBJECT (TC_QUAD, extension_addr));
-  code = (compiler_lookup_trap (extension));
+  SCHEME_OBJECT extension
+    = (MAKE_POINTER_OBJECT
+       (TC_QUAD, (SCHEME_ADDR_TO_ADDR (extension_addr_raw))));
+  SCHEME_OBJECT value;
+  long code = (compiler_lookup_trap (extension, (&value)));
   if (code == PRIM_DONE)
-    return (comutil_apply (Val, nactuals, 0, 0));
-  else
+    return (comutil_apply (value, nactuals, 0, 0));
   {
-    SCHEME_OBJECT block, environment, name;
-
-    block = (MAKE_CC_BLOCK (block_address));
+    SCHEME_OBJECT block
+      = (MAKE_CC_BLOCK (SCHEME_ADDR_TO_ADDR (block_address_raw)));
+    SCHEME_OBJECT environment = (compiled_block_environment (block));
+    SCHEME_OBJECT name = (compiler_var_error (extension));
     STACK_PUSH (block);
     STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
-    environment = (compiled_block_environment (block));
     STACK_PUSH (environment);
-    name = (compiler_var_error (extension, environment));
     STACK_PUSH (name);
     Store_Expression (SHARP_F);
     Store_Return (RC_COMP_CACHE_REF_APPLY_RESTART);
@@ -1883,97 +1859,83 @@ DEFNX (comutil_cache_lookup_apply,
 C_TO_SCHEME long
 DEFUN_VOID (comp_cache_lookup_apply_restart)
 {
-  extern long EXFUN (Symbol_Lex_Ref, (SCHEME_OBJECT, SCHEME_OBJECT));
-  SCHEME_OBJECT name, environment;
-  long code;
-
-  name = (STACK_POP ());
-  environment = (STACK_POP ());
-  code = (Symbol_Lex_Ref (environment, name));
+  SCHEME_OBJECT name = (STACK_POP ());
+  SCHEME_OBJECT environment = (STACK_POP ());
+  SCHEME_OBJECT value;
+  long code = (lookup_variable (environment, name, (&value)));
   if (code == PRIM_DONE)
-  {
-    /* Replace block with actual operator */
-    (* (STACK_LOC (1))) = Val;
-    if (COMPILED_CODE_ADDRESS_P (Val))
-      return (apply_compiled_procedure ());
-    else
-      return (PRIM_APPLY);
-  }
+    {
+      /* Replace block with actual operator */
+      (* (STACK_LOC (1))) = value;
+      if (COMPILED_CODE_ADDRESS_P (value))
+	return (apply_compiled_procedure ());
+      else
+	return (PRIM_APPLY);
+    }
   else
-  {
-    STACK_PUSH (environment);
-    STACK_PUSH (name);
-    Store_Expression (SHARP_F);
-    Store_Return (RC_COMP_CACHE_REF_APPLY_RESTART);
-    Save_Cont ();
-    return (code);
-  }
+    {
+      STACK_PUSH (environment);
+      STACK_PUSH (name);
+      Store_Expression (SHARP_F);
+      Store_Return (RC_COMP_CACHE_REF_APPLY_RESTART);
+      Save_Cont ();
+      return (code);
+    }
 }
 
 /* Variable reference traps:
    Reference to a free variable that has a reference trap -- either a
-   fluid or an error (unassigned / unbound)
- */
+   fluid or an error (unassigned / unbound).  */
 
 #define CMPLR_REF_TRAP(name, c_trap, ret_code, restart, c_lookup)	\
 SCHEME_UTILITY utility_result						\
 DEFNX (name,								\
        (return_address_raw, extension_addr_raw, ignore_3, ignore_4),	\
-       SCHEME_ADDR return_address_raw					\
-       AND SCHEME_ADDR extension_addr_raw				\
-       AND long ignore_3 AND long ignore_4)				\
+       SCHEME_ADDR return_address_raw AND				\
+       SCHEME_ADDR extension_addr_raw AND				\
+       long ignore_3 AND						\
+       long ignore_4)							\
 {									\
-  extern long EXFUN (c_trap, (SCHEME_OBJECT));				\
   instruction * return_address						\
     = ((instruction *) (SCHEME_ADDR_TO_ADDR (return_address_raw)));	\
-  SCHEME_OBJECT * extension_addr					\
-    = (SCHEME_ADDR_TO_ADDR (extension_addr_raw));			\
-  SCHEME_OBJECT extension;						\
-  long code;								\
-									\
-  extension = (MAKE_POINTER_OBJECT (TC_QUAD, extension_addr));		\
-  code = c_trap (extension);						\
+  SCHEME_OBJECT extension						\
+    = (MAKE_POINTER_OBJECT						\
+       (TC_QUAD, (SCHEME_ADDR_TO_ADDR (extension_addr_raw))));		\
+  long code = (c_trap (extension, (&Val)));				\
   if (code == PRIM_DONE)						\
     RETURN_TO_SCHEME (return_address);					\
   else									\
-  {									\
-    SCHEME_OBJECT block, environment, name, sra;			\
-									\
-    sra = (ENTRY_TO_OBJECT (return_address));				\
-    STACK_PUSH (sra);							\
-    block = (compiled_entry_to_block (sra));				\
-    environment = (compiled_block_environment (block));			\
-    STACK_PUSH (environment);						\
-    name = (compiler_var_error (extension, environment));		\
-    STACK_PUSH (name);							\
-    Store_Expression (SHARP_F);						\
-    Store_Return (ret_code);						\
-    Save_Cont ();							\
-    RETURN_TO_C (code);							\
-  }									\
+    {									\
+      SCHEME_OBJECT sra = (ENTRY_TO_OBJECT (return_address));		\
+      STACK_PUSH (sra);							\
+      STACK_PUSH							\
+	(compiled_block_environment					\
+	 (compiled_entry_to_block (sra)));				\
+      STACK_PUSH (compiler_var_error (extension));			\
+      Store_Expression (SHARP_F);					\
+      Store_Return (ret_code);						\
+      Save_Cont ();							\
+      RETURN_TO_C (code);						\
+    }									\
 }									\
 									\
 C_TO_SCHEME long							\
 DEFUN_VOID (restart)							\
 {									\
-  extern long EXFUN (c_lookup, (SCHEME_OBJECT, SCHEME_OBJECT));		\
-  SCHEME_OBJECT name, environment;					\
-  long code;								\
-									\
-  name = (Fetch_Expression ());						\
-  environment = (STACK_POP ());						\
-  code = (c_lookup (environment, name));				\
+  SCHEME_OBJECT name = (Fetch_Expression ());				\
+  SCHEME_OBJECT environment = (STACK_POP ());				\
+  long code = (c_lookup (environment, name, (&Val)));			\
   if (code == PRIM_DONE)						\
     ENTER_SCHEME (OBJECT_ADDRESS (STACK_POP ()));			\
   else									\
-  {									\
-    STACK_PUSH (environment);						\
-    STACK_PUSH (name);							\
-    Store_Expression (SHARP_F);						\
-    Store_Return (ret_code);						\
-    Save_Cont ();							\
-    return (code);							\
-  }									\
+    {									\
+      STACK_PUSH (environment);						\
+      STACK_PUSH (name);						\
+      Store_Expression (SHARP_F);					\
+      Store_Return (ret_code);						\
+      Save_Cont ();							\
+      return (code);							\
+    }									\
 }
 
 /* Actual traps */
@@ -1982,19 +1944,19 @@ CMPLR_REF_TRAP(comutil_lookup_trap,
                compiler_lookup_trap,
                RC_COMP_LOOKUP_TRAP_RESTART,
                comp_lookup_trap_restart,
-               Symbol_Lex_Ref)
+               lookup_variable)
 
 CMPLR_REF_TRAP(comutil_safe_lookup_trap,
                compiler_safe_lookup_trap,
                RC_COMP_SAFE_REF_TRAP_RESTART,
                comp_safe_lookup_trap_restart,
-               safe_symbol_lex_ref)
+               safe_lookup_variable)
 
 CMPLR_REF_TRAP(comutil_unassigned_p_trap,
                compiler_unassigned_p_trap,
                RC_COMP_UNASSIGNED_TRAP_RESTART,
                comp_unassigned_p_trap_restart,
-               Symbol_Lex_unassigned_p)
+               variable_unassigned_p)
 
 
 /* NUMERIC ROUTINES
@@ -2047,12 +2009,11 @@ DEFNX (util_name,							\
        AND SCHEME_OBJECT environment AND SCHEME_OBJECT variable		\
        AND long ignore_4)						\
 {									\
-  extern long EXFUN (c_proc, (SCHEME_OBJECT, SCHEME_OBJECT));		\
   instruction * ret_add							\
     = ((instruction *) (SCHEME_ADDR_TO_ADDR (ret_add_raw)));		\
   long code;								\
 									\
-  code = (c_proc (environment, variable));				\
+  code = (c_proc (environment, variable, (&Val)));			\
   if (code == PRIM_DONE)						\
   {									\
     RETURN_TO_SCHEME (ret_add);						\
@@ -2072,13 +2033,12 @@ DEFNX (util_name,							\
 C_TO_SCHEME long							\
 DEFUN_VOID (restart_name)						\
 {									\
-  extern long EXFUN (c_proc, (SCHEME_OBJECT, SCHEME_OBJECT));		\
   SCHEME_OBJECT environment, variable;					\
   long code;								\
 									\
   environment = (STACK_POP ());						\
   variable = (STACK_POP ());						\
-  code = (c_proc (environment, variable));				\
+  code = (c_proc (environment, variable, (&Val)));			\
   if (code == PRIM_DONE)						\
   {									\
     Regs[REGBLOCK_ENV] = environment;					\
@@ -2104,8 +2064,6 @@ DEFNX (util_name,							\
        AND SCHEME_OBJECT variable					\
        AND SCHEME_OBJECT value)						\
 {									\
-  extern long EXFUN (c_proc, (SCHEME_OBJECT, SCHEME_OBJECT,		\
-			      SCHEME_OBJECT));				\
   instruction * ret_add							\
     = ((instruction *) (SCHEME_ADDR_TO_ADDR (ret_add_raw)));		\
   long code;								\
@@ -2129,8 +2087,6 @@ DEFNX (util_name,							\
 C_TO_SCHEME long							\
 DEFUN_VOID (restart_name)						\
 {									\
-  extern long EXFUN (c_proc, (SCHEME_OBJECT, SCHEME_OBJECT,		\
-			      SCHEME_OBJECT));				\
   SCHEME_OBJECT environment, variable, value;				\
   long code;								\
 									\
@@ -2156,37 +2112,54 @@ DEFUN_VOID (restart_name)						\
 }
 
 CMPLR_REFERENCE(comutil_access,
-		Symbol_Lex_Ref,
+		lookup_variable,
 		RC_COMP_ACCESS_RESTART,
 		comp_access_restart)
 
 CMPLR_REFERENCE(comutil_reference,
-		Lex_Ref,
+		lookup_variable,
 		RC_COMP_REFERENCE_RESTART,
 		comp_reference_restart)
 
 CMPLR_REFERENCE(comutil_safe_reference,
-		safe_lex_ref,
+		safe_lookup_variable,
 		RC_COMP_SAFE_REFERENCE_RESTART,
 		comp_safe_reference_restart)
 
 CMPLR_REFERENCE(comutil_unassigned_p,
-		Symbol_Lex_unassigned_p,
+		variable_unassigned_p,
 		RC_COMP_UNASSIGNED_P_RESTART,
 		comp_unassigned_p_restart)
 
 CMPLR_REFERENCE(comutil_unbound_p,
-		Symbol_Lex_unbound_p,
+		variable_unbound_p,
 		RC_COMP_UNBOUND_P_RESTART,
 		comp_unbound_p_restart)
 
+static long
+compiler_assign_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
+			  SCHEME_OBJECT value)
+{
+  return (assign_variable (environment, symbol, value, (&Val)));
+}
+
 CMPLR_ASSIGNMENT(comutil_assignment,
-		 Lex_Set,
+		 compiler_assign_variable,
 		 RC_COMP_ASSIGNMENT_RESTART,
 		 comp_assignment_restart)
 
+static long
+compiler_define_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
+			  SCHEME_OBJECT value)
+{
+  long result = (define_variable (environment, symbol, value));
+  if (result == PRIM_DONE)
+    Val = symbol;
+  return (result);
+}
+
 CMPLR_ASSIGNMENT(comutil_definition,
-		 Local_Set,
+		 compiler_define_variable,
 		 RC_COMP_DEFINITION_RESTART,
 		 comp_definition_restart)
 
@@ -2196,13 +2169,9 @@ DEFNX (comutil_lookup_apply,
        SCHEME_OBJECT environment AND SCHEME_OBJECT variable
        AND long nactuals AND long ignore_4)
 {
-  extern long EXFUN (Lex_Ref, (SCHEME_OBJECT, SCHEME_OBJECT));
-  long code;
-
-  code = (Lex_Ref (environment, variable));
+  long code = (lookup_variable (environment, variable, (&Val)));
   if (code == PRIM_DONE)
     return (comutil_apply (Val, nactuals, 0, 0));
-  else
   {
     STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
     STACK_PUSH (variable);
@@ -2217,34 +2186,29 @@ DEFNX (comutil_lookup_apply,
 C_TO_SCHEME long
 DEFUN_VOID (comp_lookup_apply_restart)
 {
-  extern long EXFUN (Lex_Ref, (SCHEME_OBJECT, SCHEME_OBJECT));
-  SCHEME_OBJECT environment, variable;
-  long code;
-
-  environment = (STACK_POP ());
-  variable = (STACK_POP ());
-  code = (Lex_Ref (environment, variable));
+  SCHEME_OBJECT environment = (STACK_POP ());
+  SCHEME_OBJECT variable = (STACK_POP ());
+  SCHEME_OBJECT value;
+  long code = (lookup_variable (environment, variable, (&value)));
   if (code == PRIM_DONE)
-  {
-    SCHEME_OBJECT nactuals;
-
-    nactuals = (STACK_POP ());
-    STACK_PUSH (Val);
-    STACK_PUSH (nactuals);
-    if (COMPILED_CODE_ADDRESS_P (Val))
-      return (apply_compiled_procedure ());
-    else
-      return (PRIM_APPLY);
-  }
+    {
+      SCHEME_OBJECT nactuals = (STACK_POP ());
+      STACK_PUSH (value);
+      STACK_PUSH (nactuals);
+      if (COMPILED_CODE_ADDRESS_P (value))
+	return (apply_compiled_procedure ());
+      else
+	return (PRIM_APPLY);
+    }
   else
-  {
-    STACK_PUSH (variable);
-    STACK_PUSH (environment);
-    Store_Expression (SHARP_F);
-    Store_Return (RC_COMP_LOOKUP_APPLY_RESTART);
-    Save_Cont ();
-    return (code);
-  }
+    {
+      STACK_PUSH (variable);
+      STACK_PUSH (environment);
+      Store_Expression (SHARP_F);
+      Store_Return (RC_COMP_LOOKUP_APPLY_RESTART);
+      Save_Cont ();
+      return (code);
+    }
 }
 
 SCHEME_UTILITY utility_result
@@ -2539,7 +2503,7 @@ DEFUN (extract_variable_cache,
        (block, offset),
        SCHEME_OBJECT block AND long offset)
 {
-  return (MAKE_POINTER_OBJECT (TRAP_EXTENSION_TYPE,
+  return (MAKE_POINTER_OBJECT (CACHE_TYPE,
                                ((SCHEME_OBJECT *)
 				(SCHEME_ADDR_TO_ADDR
 				 (FAST_MEMORY_REF (block, offset))))));

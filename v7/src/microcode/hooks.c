@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.59 2000/12/05 21:23:44 cph Exp $
+$Id: hooks.c,v 9.60 2001/07/31 03:11:31 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* This file contains various hooks and handles that connect the
@@ -738,7 +739,7 @@ identified by the continuation parser.")
     {
       SCHEME_OBJECT thunk = (STACK_POP ());
       STACK_PUSH (STACK_FRAME_HEADER + (nargs - 2));
-      Store_Env (MAKE_OBJECT (GLOBAL_ENV, END_OF_CHAIN));
+      Store_Env (THE_NULL_ENV);
       Store_Expression (SHARP_F);
       Store_Return (RC_INTERNAL_APPLY);
       Save_Cont ();

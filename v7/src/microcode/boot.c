@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.104 2000/12/05 21:23:43 cph Exp $
+$Id: boot.c,v 9.105 2001/07/31 03:10:57 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* This file contains `main' and associated startup code. */
@@ -411,7 +412,7 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
       expr = MAKE_POINTER_OBJECT (TC_PCOMB2, Free);
       *Free++ = prim;
       *Free++ = MAKE_POINTER_OBJECT (TC_PCOMB1, inner_arg);
-      *Free++ = MAKE_OBJECT (GLOBAL_ENV, GO_TO_GLOBAL);
+      *Free++ = THE_GLOBAL_ENV;
       break;
 
     case BOOT_LOAD_BAND:	/* (LOAD-BAND <file>) */
@@ -444,7 +445,7 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
       expr = (MAKE_POINTER_OBJECT (TC_PCOMB2, Free));
       *Free++ = prim;
       *Free++ = (MAKE_POINTER_OBJECT (TC_PCOMB1, inner_arg));
-      *Free++ = (MAKE_OBJECT (GLOBAL_ENV, GO_TO_GLOBAL));
+      *Free++ = THE_GLOBAL_ENV;
       break;
       
 
@@ -457,7 +458,7 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
   /* Setup registers */
   INITIALIZE_INTERRUPTS ();
   SET_INTERRUPT_MASK (0);
-  Env = (MAKE_OBJECT (GLOBAL_ENV, 0));
+  Env = THE_GLOBAL_ENV;
   Trapping = false;
   Return_Hook_Address = NULL;
 

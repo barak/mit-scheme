@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.90 2000/12/05 21:23:44 cph Exp $
+$Id: interp.c,v 9.91 2001/07/31 03:11:39 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* This file contains the heart of the SCode interpreter. */
@@ -843,74 +844,12 @@ Eval_Non_Trapping:
       {
 	long temp;
 
-#ifndef No_In_Line_Lookup
-
-	fast SCHEME_OBJECT *cell;
-
 	Set_Time_Zone(Zone_Lookup);
-	cell = OBJECT_ADDRESS (Fetch_Expression());
-	lookup(cell, Fetch_Env(), cell, repeat_variable_lookup);
-
-      lookup_end_restart:
-
-	Val = MEMORY_FETCH (cell[0]);
-	if (OBJECT_TYPE (Val) != TC_REFERENCE_TRAP)
-	  {
-	    Set_Time_Zone(Zone_Working);
-	    goto Pop_Return;
-	  }
-
-	get_trap_kind(temp, Val);
-	switch(temp)
-	  {
-	  case TRAP_DANGEROUS:
-	  case TRAP_UNBOUND_DANGEROUS:
-	  case TRAP_UNASSIGNED_DANGEROUS:
-	  case TRAP_FLUID_DANGEROUS:
-	  case TRAP_COMPILER_CACHED_DANGEROUS:
-	    cell = OBJECT_ADDRESS (Fetch_Expression());
-	    temp =
-	      deep_lookup_end(deep_lookup(Fetch_Env(),
-					  cell[VARIABLE_SYMBOL],
-					  cell),
-			      cell);
-	    Import_Val();
-	    if (temp != PRIM_DONE)
-	      break;
-	    Set_Time_Zone(Zone_Working);
-	    goto Pop_Return;
-
-	  case TRAP_COMPILER_CACHED:
-	    cell = MEMORY_LOC (FAST_MEMORY_REF (Val, TRAP_EXTRA),
-			       TRAP_EXTENSION_CELL);
-	    goto lookup_end_restart;
-
-	  case TRAP_FLUID:
-	    cell = lookup_fluid(Val);
-	    goto lookup_end_restart;
-
-	  case TRAP_UNBOUND:
-	    temp = ERR_UNBOUND_VARIABLE;
-	    break;
-
-	  case TRAP_UNASSIGNED:
-	    temp = ERR_UNASSIGNED_VARIABLE;
-	    break;
-
-	  default:
-	    temp = ERR_ILLEGAL_REFERENCE_TRAP;
-	    break;
-	  }
-
-#else /* No_In_Line_Lookup */
-
-	Set_Time_Zone(Zone_Lookup);
-	temp = Lex_Ref(Fetch_Env(), Fetch_Expression());
+	temp
+	  = (lookup_variable ((Fetch_Env ()), (Fetch_Expression ()), (&Val)));
 	Import_Val();
 	if (temp == PRIM_DONE)
 	  goto Pop_Return;
-
-#endif /* No_In_Line_Lookup */
 
 	/* Back out of the evaluation. */
 
@@ -1134,9 +1073,11 @@ Pop_Return_Non_Trapping:
 
 	if (ENVIRONMENT_P (Val))
 	  {
-	    Result = Symbol_Lex_Ref(value,
-				    FAST_MEMORY_REF (Fetch_Expression(),
-						     ACCESS_NAME));
+	    Result
+	      = (lookup_variable (value,
+				  (FAST_MEMORY_REF ((Fetch_Expression ()),
+						    ACCESS_NAME)),
+				  (&Val)));
 	    Import_Val();
 	    if (Result == PRIM_DONE)
 	      {
@@ -1163,124 +1104,15 @@ Pop_Return_Non_Trapping:
 	DECLARE_LOCK (set_serializer);
 #endif
 
-#ifndef No_In_Line_Lookup
-
-	SCHEME_OBJECT bogus_unassigned;
-	fast SCHEME_OBJECT *cell;
-
-	Set_Time_Zone(Zone_Lookup);
-	Restore_Env();
-	cell = OBJECT_ADDRESS (MEMORY_REF (Fetch_Expression(), ASSIGN_NAME));
-	lookup(cell, Fetch_Env(), cell, repeat_assignment_lookup);
-
-	value = Val;
-	bogus_unassigned = Get_Fixed_Obj_Slot(Non_Object);
-	if (value == bogus_unassigned)
-	  value = UNASSIGNED_OBJECT;
-
-      assignment_end_before_lock:
-
-	setup_lock(set_serializer, cell);
-
-      assignment_end_after_lock:
-
-	Val = *cell;
-
-	if (OBJECT_TYPE (*cell) != TC_REFERENCE_TRAP)
-	  {
-	  normal_assignment_done:
-	    *cell = value;
-	    remove_lock(set_serializer);
-	    Set_Time_Zone(Zone_Working);
-	    End_Subproblem();
-	    goto Pop_Return;
-	  }
-
-	get_trap_kind(temp, *cell);
-	switch(temp)
-	  {
-	  case TRAP_DANGEROUS:
-	  case TRAP_UNBOUND_DANGEROUS:
-	  case TRAP_UNASSIGNED_DANGEROUS:
-	  case TRAP_FLUID_DANGEROUS:
-	  case TRAP_COMPILER_CACHED_DANGEROUS:
-	    remove_lock(set_serializer);
-	    cell
-	      = OBJECT_ADDRESS (MEMORY_REF (Fetch_Expression(), ASSIGN_NAME));
-	    temp
-	      = deep_assignment_end(deep_lookup(Fetch_Env(),
-						cell[VARIABLE_SYMBOL],
-						cell),
-				    cell,
-				    value,
-				    false);
-	  external_assignment_return:
-	    Import_Val();
-	    if (temp != PRIM_DONE)
-	      break;
-	    Set_Time_Zone(Zone_Working);
-	    End_Subproblem();
-	    goto Pop_Return;
-
-	  case TRAP_COMPILER_CACHED:
-	    {
-	      SCHEME_OBJECT extension, references;
-
-	      extension = FAST_MEMORY_REF (Val, TRAP_EXTRA);
-	      references
-		= FAST_MEMORY_REF (extension, TRAP_EXTENSION_REFERENCES);
-
-	      if ((FAST_MEMORY_REF (references, TRAP_REFERENCES_OPERATOR))
-		  != SHARP_F)
-		{
-
-		  /* There are uuo links.
-		     wimp out and let deep_assignment_end handle it.
-		     */
-
-		  remove_lock(set_serializer);
-		  temp = deep_assignment_end(cell,
-					     fake_variable_object,
-					     value,
-					     false);
-		  goto external_assignment_return;
-		}
-	      cell = MEMORY_LOC (extension, TRAP_EXTENSION_CELL);
-	      update_lock(set_serializer, cell);
-	      goto assignment_end_after_lock;
-	    }
-
-	  case TRAP_FLUID:
-	    remove_lock(set_serializer);
-	    cell = lookup_fluid(Val);
-	    goto assignment_end_before_lock;
-
-	  case TRAP_UNBOUND:
-	    remove_lock(set_serializer);
-	    temp = ERR_UNBOUND_VARIABLE;
-	    break;
-
-	  case TRAP_UNASSIGNED:
-	    Val = bogus_unassigned;
-	    goto normal_assignment_done;
-
-	  default:
-	    remove_lock(set_serializer);
-	    temp = ERR_ILLEGAL_REFERENCE_TRAP;
-	    break;
-	  }
-
-	if (value == UNASSIGNED_OBJECT)
-	  value = bogus_unassigned;
-
-#else /* No_In_Line_Lookup */
-
 	value = Val;
 	Set_Time_Zone(Zone_Lookup);
 	Restore_Env();
-	temp = Lex_Set(Fetch_Env(),
-		       MEMORY_REF (Fetch_Expression(), ASSIGN_NAME),
-		       value);
+	temp
+	  = (assign_variable
+	     ((Fetch_Env ()),
+	      (MEMORY_REF ((Fetch_Expression ()), ASSIGN_NAME)),
+	      value,
+	      (&Val)));
 	Import_Val();
 	if (temp == PRIM_DONE)
 	  {
@@ -1288,8 +1120,6 @@ Pop_Return_Non_Trapping:
 	    Set_Time_Zone(Zone_Working);
 	    break;
 	  }
-
-#endif /* No_In_Line_Lookup */
 
 	Set_Time_Zone(Zone_Working);
 	Save_Env();
@@ -1312,9 +1142,11 @@ Pop_Return_Non_Trapping:
 	value = Val;
         Restore_Env();
 	Export_Registers();
-        result = Local_Set(Fetch_Env(),
-			   FAST_MEMORY_REF (Fetch_Expression(), DEFINE_NAME),
-			   Val);
+        result
+	  = (define_variable
+	     ((Fetch_Env ()),
+	      (FAST_MEMORY_REF ((Fetch_Expression ()), DEFINE_NAME)),
+	      Val));
         Import_Registers();
         if (result == PRIM_DONE)
 	  {

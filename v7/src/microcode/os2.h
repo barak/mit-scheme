@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2.h,v 1.7 2000/12/05 21:23:46 cph Exp $
+$Id: os2.h,v 1.8 2001/07/31 03:11:59 cph Exp $
 
-Copyright (c) 1994-2000 Massachusetts Institute of Technology
+Copyright (c) 1994-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* OS/2 system include file */
@@ -28,12 +29,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "dstack.h"
 #include "osscheme.h"
 #include "syscall.h"
-
-/* Defined by "scheme.h" and conflicts with definition in <os2.h>.
-   Scheme's definition not needed in OS/2 files.  */
-#ifdef END_OF_CHAIN
-#  undef END_OF_CHAIN
-#endif
 
 #define INCL_BASE
 #define INCL_PM
