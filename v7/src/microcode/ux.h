@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.1 1990/06/20 19:37:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.2 1990/07/16 21:06:52 markf Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -111,6 +111,7 @@ extern void EXFUN (error_system_call, (int code, CONST char * name));
 #define HAVE_MKDIR
 #define HAVE_RENAME
 #define HAVE_RMDIR
+#define HAVE_SELECT		/* does POSIX allow this */
 #define HAVE_TIMES
 #define HAVE_WAIT3
 /* MORE/BSD has this -- do all 4.3 implementations? */
@@ -156,6 +157,7 @@ extern void EXFUN (error_system_call, (int code, CONST char * name));
 #define HAVE_MKDIR
 #define HAVE_RENAME
 #define HAVE_RMDIR
+#define HAVE_SELECT		/* does POSIX allow this */
 #define HAVE_WAIT3
 
 #if (_HPUX_VERSION < 65)
@@ -668,6 +670,10 @@ extern int EXFUN
 #ifndef WUNTRACED
 #define WUNTRACED 0
 #endif
+
+#ifdef HAVE_SELECT
+#define UX_select select
+#endif /* HAVE_SELECT */
 
 #ifdef _BSD
 #define BSD_DEV_TTY "/dev/tty"
