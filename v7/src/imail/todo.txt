@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.43 2000/05/23 14:12:07 cph Exp $
+$Id: todo.txt,v 1.44 2000/05/23 14:13:44 cph Exp $
 
 Bug fixes
 ---------
@@ -10,6 +10,9 @@ Bug fixes
 * M-x imail-copy-messages re-reads the target folder UIDs for each
   message that is written, when the target folder is not being
   visited.
+
+* M-x imail-copy-messages appears to rewrite an RMAIL file that is the
+  source of the copy.
 
 * Implement operations for IMAP: URL-EXISTS?.
 
