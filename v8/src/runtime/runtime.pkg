@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.277 1996/07/30 00:12:10 adams Exp $
+$Id: runtime.pkg,v 14.278 1996/07/30 16:26:39 adams Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -3314,6 +3314,7 @@ MIT in each case. |#
   (files "coerce")
   (parent ())
   (export ()
-	  compiled-code-support:nonrestartable-continuation
+	  %compiled-code-support:nonrestartable-continuation
+	  %compiled-code-support:signal-error-in-primitive
 	  ;;coerce-to-compiled-procedure
 	  ))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: coerce.scm,v 1.6 1996/07/30 00:12:55 adams Exp $
+$Id: coerce.scm,v 1.7 1996/07/30 16:26:51 adams Exp $
 
 Copyright (c) 1996 Massachusetts Institute of Technology
 
@@ -195,14 +195,16 @@ MIT in each case. |#
 ;;; Other procedures which the 8.0 compiler expects to be defined
 ;;
 
-(define (compiled-code-support:nonrestartable-continuation result)
+(define (%compiled-code-support:nonrestartable-continuation result)
   (error
    "You attempted to return to a subproblem with a non-restartable error in"
    (error-irritant/noise "compiled code, using the value: \n;  ")
    result))
 
+(define (%compiled-code-support:signal-error-in-primitive prim args)
+  (apply prim args))
 
-;; This is done in make.scm:
+;; This is defined in make.scm:
 ;;
 ;;   (define coerce-to-compiled-procedure)
 ;;
