@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: logmer.scm,v 1.24 2000/03/31 14:37:47 cph Exp $
+$Id: logmer.scm,v 1.25 2000/03/31 14:51:21 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -23,62 +23,60 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (declare (usual-integrations))
 
-(define (rcs-directory-log directory #!optional output-file
-			   changelog? changelog-map)
-  (let ((changelog? (if (default-object? changelog?) #f changelog?))
-	(changelog-map
-	 (if (default-object? changelog-map)
-	     (list (os/hostname))
-	     changelog-map))
+(define (rcs-directory-log directory #!optional options)
+  (let ((options (if (default-object? options) '() options))
 	(port (notification-output-port)))
-    (let ((output-file
-	   (merge-pathnames (if (or (default-object? output-file)
-				    (not output-file))
-				(if changelog? "ChangeLog" "RCS.log")
-				output-file)
-			    (pathname-as-directory directory))))
-      (write-string "regenerating log for directory: " port)
-      (write (->namestring directory))
-      (write-string "..." port)
-      (let ((pathnames (rcs-directory-read directory)))
-	(if (let ((time (file-modification-time-indirect output-file)))
-	      (or (not time)
-		  (there-exists? pathnames
-		    (lambda (w.r)
-		      (> (file-modification-time-indirect (cdr w.r))
-			 time)))))
-	    (begin
-	      (newline port)
-	      (write-string "total files: " port)
-	      (write (length pathnames) port)
-	      (newline port)
-	      (let ((entries (read-entries pathnames port)))
-		(write-string "total entries: " port)
-		(write (length entries) port)
+    (let ((changelog? (find-option options 'CHANGELOG? #f)))
+      (let ((output-file
+	     (merge-pathnames (or (find-option options 'OUTPUT-FILE #f)
+				  (if changelog? "ChangeLog" "RCS.log"))
+			      (pathname-as-directory directory))))
+	(write-string "regenerating log for directory: " port)
+	(write (->namestring directory))
+	(write-string "..." port)
+	(let ((pathnames (rcs-directory-read directory)))
+	  (if (let ((time (file-modification-time-indirect output-file)))
+		(or (not time)
+		    (there-exists? pathnames
+		      (lambda (w.r)
+			(> (file-modification-time-indirect (cdr w.r))
+			   time)))))
+	      (begin
 		(newline port)
-		(let ((entries
-		       (if changelog?
-			   (sort-entries-for-changelog entries)
-			   (sort-entries-for-rcs.log entries))))
-		  (write-string "sorting finished" port)
+		(write-string "total files: " port)
+		(write (length pathnames) port)
+		(newline port)
+		(let ((entries (read-entries pathnames port)))
+		  (write-string "total entries: " port)
+		  (write (length entries) port)
 		  (newline port)
-		  (call-with-output-file output-file
-		    (lambda (port)
-		      (if changelog?
-			  (format-changelog entries
-					    (if (pair? changelog?)
-						changelog?
-						'())
-					    changelog-map
-					    port)
-			  (format-rcs.log entries port)))))))
-	    (begin
-	      (write-string " log is up to date" port)
-	      (newline port)))))))
+		  (let ((entries
+			 (if changelog?
+			     (sort-entries-for-changelog entries)
+			     (sort-entries-for-rcs.log entries))))
+		    (write-string "sorting finished" port)
+		    (newline port)
+		    (call-with-output-file output-file
+		      (lambda (port)
+			(if changelog?
+			    (format-changelog entries options port)
+			    (format-rcs.log entries options port)))))))
+	      (begin
+		(write-string " log is up to date" port)
+		(newline port))))))))
+
+(define (find-option options key default)
+  (let loop ((options options))
+    (if (pair? options)
+	(if (eq? key (caar options))
+	    (cadar options)
+	    (loop (cdr options)))
+	default)))
 
 ;;;; RCS.log format
 
-(define (format-rcs.log entries port)
+(define (format-rcs.log entries options port)
+  options
   (let ((groups (group-entries-by-log entries))
 	(format-group
 	 (lambda (group)
@@ -114,78 +112,74 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; ChangeLog format
 
-(define (format-changelog entries options changelog-map port)
+(define (format-changelog entries options port)
   (let ((groups
 	 (group-entries-by-author&day
 	  (list-transform-negative entries
 	    (lambda (entry)
-	      (string-prefix? "#" (delta/log (car entry)))))))
-	(format-group
-	 (lambda (entries)
-	   (write-string
-	    (format-date-for-changelog (delta/date (caar entries)))
-	    port)
-	   (write-string "  " port)
-	   (let ((author (delta/author (caar entries))))
-	     (let ((mentry (assoc author (cdr changelog-map))))
-	       (write-string (if mentry (cadr mentry) author) port)
-	       (write-string " <" port)
-	       (if (and mentry (pair? (cddr mentry)))
-		   (write-string (caddr mentry) port)
-		   (begin
-		     (write-string author port)
-		     (write-string "@" port)
-		     (write-string (car changelog-map) port)))
-	       (write-string ">" port)))
-	   (newline port)
-	   (for-each
-	    (lambda (entries)
-	      (newline port)
-	      (write-char #\tab port)
-	      (write-string "* " port)
-	      (let ((filenames
-		     (if (memq 'SHOW-VERSIONS options)
-			 (map (lambda (entry)
-				(string-append (cdr entry)
-					       "["
-					       (delta/number (car entry))
-					       "]"))
-			      (sort-group-by-name&date entries))
-			 (remove-duplicate-strings
-			  (sort (map cdr entries) string<?)))))
-		(write-string (car filenames) port)
-		(let loop
-		    ((filenames (cdr filenames))
-		     (column (fix:+ 11 (string-length (car filenames)))))
-		  (if (pair? filenames)
-		      (let ((filename (car filenames)))
-			(let ((column*
-			       (+ column 2 (string-length filename))))
-			  (if (fix:>= column* 80)
-			      (begin
-				(write-string "," port)
-				(newline port)
-				(write-char #\tab port)
-				(write-string "  " port)
-				(write-string filename port)
-				(loop (cdr filenames)
-				      (fix:+ 11
-					     (string-length filename))))
-			      (begin
-				(write-string ", " port)
-				(write-string filename port)
-				(loop (cdr filenames) column*))))))))
-	      (write-string ":" port)
-	      (newline port)
-	      (format-log-for-changelog (delta/log (caar entries)) port))
-	    (sort-groups-by-date (group-entries-by-log entries))))))
+	      (string-prefix? "#" (delta/log (car entry))))))))
     (if (pair? groups)
-	(begin
-	  (format-group (car groups))
+	(let ((changelog-map
+	       (or (find-option options 'CHANGELOG-MAP #f)
+		   (list (os/hostname)))))
+	  (format-changelog-group (car groups) changelog-map options port)
 	  (for-each (lambda (group)
 		      (newline port)
-		      (format-group group))
+		      (format-changelog-group group changelog-map options
+					      port))
 		    (cdr groups))))))
+
+(define (format-changelog-group entries changelog-map options port)
+  (write-string (format-date-for-changelog (delta/date (caar entries))) port)
+  (write-string "  " port)
+  (let ((author (delta/author (caar entries))))
+    (let ((mentry (assoc author (cdr changelog-map))))
+      (write-string (if mentry (cadr mentry) author) port)
+      (write-string " <" port)
+      (if (and mentry (pair? (cddr mentry)))
+	  (write-string (caddr mentry) port)
+	  (begin
+	    (write-string author port)
+	    (write-string "@" port)
+	    (write-string (car changelog-map) port)))
+      (write-string ">" port)))
+  (newline port)
+  (for-each
+   (lambda (entries)
+     (newline port)
+     (write-char #\tab port)
+     (write-string "* " port)
+     (let ((filenames
+	    (if (find-option options 'SHOW-VERSIONS #t)
+		(map (lambda (entry)
+		       (string-append (cdr entry)
+				      "[" (delta/number (car entry)) "]"))
+		     (sort-group-by-name&date entries))
+		(remove-duplicate-strings (sort (map cdr entries) string<?)))))
+       (write-string (car filenames) port)
+       (let loop
+	   ((filenames (cdr filenames))
+	    (column (fix:+ 11 (string-length (car filenames)))))
+	 (if (pair? filenames)
+	     (let ((filename (car filenames)))
+	       (let ((column* (+ column 2 (string-length filename))))
+		 (if (fix:>= column* 80)
+		     (begin
+		       (write-string "," port)
+		       (newline port)
+		       (write-char #\tab port)
+		       (write-string "  " port)
+		       (write-string filename port)
+		       (loop (cdr filenames)
+			     (fix:+ 11 (string-length filename))))
+		     (begin
+		       (write-string ", " port)
+		       (write-string filename port)
+		       (loop (cdr filenames) column*))))))))
+     (write-string ":" port)
+     (newline port)
+     (format-log-for-changelog (delta/log (caar entries)) port))
+   (sort-groups-by-date (group-entries-by-log entries))))
 
 (define (sort-entries-for-changelog entries)
   (sort entries
