@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.19 1992/11/29 14:22:20 gjr Exp $
+$Id: syntax.scm,v 14.20 1993/02/28 21:03:50 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -130,9 +130,6 @@ MIT in each case. |#
 	  (make-combination (syntax-expression (car expression))
 			    (syntax-expressions (cdr expression))))))
    ((symbol? expression)
-    (if (syntax-table-ref syntax-table expression)
-	(error "syntactic keyword referenced as variable"
-	       expression))
     (make-variable expression))
    (else
     expression)))
