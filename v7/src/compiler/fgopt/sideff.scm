@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/sideff.scm,v 1.4 1988/12/20 23:13:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/sideff.scm,v 1.5 1989/03/14 19:38:55 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -420,15 +420,21 @@ MIT in each case. |#
     (set-procedure-properties! procedure
 			       (cons `(SIMPLIFIED ,r/lvalue)
 				     (procedure-properties procedure))))
-  (set-procedure-entry-node!
-   procedure
-   (let ((context (make-reference-context (procedure-block procedure))))
-     (cfg-entry-node
-      (make-return context
-		   (make-reference context
-				   (procedure-continuation-lvalue procedure)
-				   true)
-		   (r/lvalue->rvalue context r/lvalue))))))
+  ;; **** Kludge! `make-application' requires that a block be given,
+  ;; rather than a context, because this is how "fggen" builds things.
+  ;; So we must pass the block and then clobber it after.
+  (let ((block (procedure-block procedure)))
+    (let ((context (make-reference-context block)))
+      (let ((application
+	     (cfg-entry-node
+	      (make-return block
+			   (make-reference
+			    context
+			    (procedure-continuation-lvalue procedure)
+			    true)
+			   (r/lvalue->rvalue context r/lvalue)))))
+	(set-application-context! application context)
+	(set-procedure-entry-node! procedure application)))))
 
 (define (procedure/simplified-value procedure block)
   (let ((node (procedure-entry-node procedure)))
