@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: output.scm,v 14.30 2003/01/03 21:32:12 cph Exp $
+$Id: output.scm,v 14.31 2003/01/03 21:56:01 cph Exp $
 
 Copyright (c) 1986,1987,1988,1989,1990 Massachusetts Institute of Technology
 Copyright (c) 1991,1992,1993,1999,2001 Massachusetts Institute of Technology
@@ -193,8 +193,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 		 ((strings (cdr strings))
 		  (width (+ lm-width rm-width (string-length (car strings))))
 		  (n-cols 1))
-	       (if (and (< width max-width)
-			(pair? strings))
+	       (if (pair? strings)
 		   (let ((width*
 			  (+ width cs-width (string-length (car strings)))))
 		     (if (< width* max-width)
@@ -265,22 +264,30 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	    (single-major))))
 
     (define (write-cols cols col-widths)
-      (do ()
-	  ((not (pair? (car cols))))
-	(do ((cols cols (cdr cols))
-	     (col-widths col-widths (cdr col-widths))
-	     (prefix left-margin col-sep))
-	    ((not (pair? cols)))
-	  (let ((strings (car cols)))
-	    (if (pair? strings)
-		(begin
-		  (write-string prefix port)
-		  (write-string (car strings) port)
-		  (write-spaces (- (car col-widths)
-				   (string-length (car strings))))
-		  (set-car! cols (cdr strings))))))
-	(write-string right-margin port)
-	(newline port)))
+      (let per-row ()
+	(if (pair? (car cols))
+	    (let per-col
+		((cols cols)
+		 (col-widths col-widths)
+		 (prefix left-margin)
+		 (pending-spaces 0))
+	      (if (pair? cols)
+		  (let ((strings (car cols)))
+		    (if (pair? strings)
+			(begin
+			  (write-spaces pending-spaces)
+			  (write-string prefix port)
+			  (write-string (car strings) port)
+			  (set-car! cols (cdr strings))
+			  (per-col (cdr cols)
+				   (cdr col-widths)
+				   col-sep
+				   (- (car col-widths)
+				      (string-length (car strings)))))))
+		  (begin
+		    (write-string right-margin port)
+		    (newline port)
+		    (per-row)))))))
 
     (define (write-spaces n)
       (if (> n 0)
