@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.4 1987/07/15 22:12:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.5 1987/07/16 00:51:08 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -626,7 +626,7 @@ struct levelstruct { char *last, *previous; };
 {									\
   if (stop_before) goto stop;						\
   (level -> last) = start;						\
-}
+} while (0)
 
 Built_In_Primitive (Prim_Scan_Sexps_Forward, 7, "SCAN-SEXPS-FORWARD", 0x17B)
 {
