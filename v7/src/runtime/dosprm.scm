@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosprm.scm,v 1.2 1992/05/13 00:56:12 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosprm.scm,v 1.3 1992/05/26 05:51:54 mhwu Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -69,6 +69,39 @@ MIT in each case. |#
 	       ((ucode-primitive file-access) (directory-namestring pathname)
 					      2))))))
 
+(define (call-with-temporary-filename receiver)
+  (let find-eligible-directory
+      ((eligible-directories 
+	(let ((tmp (or (get-environment-variable "TEMP")
+		       (get-environment-variable "TMP")))
+	      (others '("/tmp" "c:/" "." "/")))
+	  (if (not tmp) others (cons tmp others)))))
+    (if (null? eligible-directories)
+	(error "Can't locate directory for temporary file")
+	(let ((dir (->namestring
+		    (pathname-as-directory
+		     (merge-pathnames (car eligible-directories))))))
+	  (if (and (file-directory? dir) (file-writable? dir))
+	      (let ((base-name (string-append dir "_scm_tmp.")))
+		(let unique-file ((ext 0))
+		  (let ((name (string-append base-name (number->string ext))))
+		    ;; Needs test-and-set here
+		    (if (file-exists? name)
+			(if (fix:> ext 999) ; don't get rediculous here
+			    (error "Cannot find unique temp file name"
+				   base-name)
+			    (unique-file (fix:+ ext 1)))
+			(dynamic-wind
+			 (lambda ()
+			   (close-output-port (open-output-file name)))
+			 (lambda ()
+			   (receiver name))
+			 (lambda ()
+			   (if (file-exists? name)
+			       (delete-file name))))))))
+	      (find-eligible-directory (cdr eligible-directories)))))))
+    
+
 (define (file-attributes-direct filename)
   ((ucode-primitive file-attributes)
    (->namestring (merge-pathnames filename))))
