@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.32 1992/02/12 15:32:51 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.33 1992/05/23 01:18:45 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -364,7 +364,7 @@ DEFUN_VOID (flush_i_cache_initialize)
 {
   struct utsname sysinfo;
   CONST char * models_filename =
-    (search_path_for_file (0, MODELS_FILENAME, 1));
+    (search_path_for_file (0, MODELS_FILENAME, 1, 1));
   if ((uname (&sysinfo)) < 0)
     {
       fprintf (stderr, "\nflush_i_cache: uname failed.\n");

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.h,v 1.8 1992/02/18 20:51:57 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.h,v 1.9 1992/05/23 01:17:50 jinx Exp $
 
-Copyright (c) 1990-1991 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -77,6 +77,6 @@ extern CONST char * EXFUN (search_for_library_file, (CONST char *));
 
 extern CONST char * EXFUN
   (search_path_for_file,
-   (CONST char * option, CONST char * filename, int default_p));
+   (CONST char * option, CONST char * filename, int default_p, int fail_p));
 
 #endif /* SCM_OPTION_H */
