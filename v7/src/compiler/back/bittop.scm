@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.6 1987/08/13 02:00:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.7 1988/02/17 19:12:25 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -135,15 +135,25 @@ MIT in each case. |#
 	((not (= where (system-vector-size v)))
 	 (error "insert-objects!: object phase error" where))
 	(else v)))
+
+(define (pad! block pc position)
+  (let ((l (bit-string-length padding-string)))
+    (let loop ((to-pad (- (pad pc) pc))
+	       (position position))
+      (if (not (zero? to-pad))
+	  (if (< to-pad l)
+	      (error "pad!: Bad padding length" to-pad)
+	      (instruction-insert! padding-string block position
+	       (lambda (new-position)
+		 (declare (integrate new-position))
+		 (loop (- to-pad l) new-position))))))))
 
 (define (assemble-directives! block directives initial-position)
 
   (define (loop directives dir-stack pc pc-stack position last-blabel blabel)
 
     (define (actual-bits bits l)
-      (instruction-insert!
-       bits
-       block position
+      (instruction-insert! bits block position
        (lambda (np)
 	 (declare (integrate np))
 	 (loop (cdr directives) dir-stack (+ pc l) pc-stack np
@@ -168,55 +178,61 @@ MIT in each case. |#
 				  (car pc-stack))))
 		   l))
 
-    (cond ((not (null? directives))
-	   (let ((this (car directives)))
-	     (case (vector-ref this 0)
-	       ((LABEL)
-		(loop (cdr directives) dir-stack pc pc-stack position
-		      last-blabel blabel))
-	       ((TICK)
-		(loop (cdr directives) dir-stack
-		      pc
-		      (if (vector-ref this 1)
-			  (cons (->machine-pc pc) pc-stack)
-			  (cdr pc-stack))
-		      position
-		      last-blabel blabel))
-	       ((FIXED-WIDTH-GROUP)
-		(loop (vector-ref this 2) (cons (cdr directives) dir-stack)
-		      pc pc-stack
-		      position
-		      last-blabel blabel))
-	       ((CONSTANT)
-		(let ((bs (vector-ref this 1)))
-		  (actual-bits bs (bit-string-length bs))))
-	       ((EVALUATION)
-		(evaluation (vector-ref this 3)
-			    (vector-ref this 1)
-			    (vector-ref this 2)))
-	       ((VARIABLE-WIDTH-EXPRESSION)
-		(let ((sel (car (vector-ref this 3))))
-		  (evaluation (variable-handler-wrapper (selector/handler sel))
-			      (vector-ref this 1)
-			      (selector/length sel))))
-	       ((BLOCK-OFFSET)
-		(let* ((label (vector-ref this 1))
-		       (offset (evaluate `(- ,label ,blabel) '())))
-		  (if (> offset maximum-block-offset)
-		      (block-offset (evaluate `(- ,label ,last-blabel) '())
-				    label last-blabel)
-		      (block-offset offset label blabel))))
-	       (else
-		(error "assemble-directives!: Unknown directive" this)))))
-	  ((not (null? dir-stack))
-	   (loop (car dir-stack) (cdr dir-stack) pc pc-stack position
-		 last-blabel blabel))
-	  ((not (= (abs (- position initial-position))
-		   (- pc starting-pc)))
-	   (error "assemble-directives!: phase error"
-		  `(PC ,starting-pc ,pc)
-		  `(BIT-POSITION ,initial-position ,position)))
-	  (else (assemble-objects! block))))
+    (define (end-assembly)
+      (cond ((not (null? dir-stack))
+	     (loop (car dir-stack) (cdr dir-stack) pc pc-stack position
+		   last-blabel blabel))
+	    ((not (= (abs (- position initial-position))
+		     (- pc starting-pc)))
+	     (error "assemble-directives!: phase error"
+		    `(PC ,starting-pc ,pc)
+		    `(BIT-POSITION ,initial-position ,position)))
+	    (else
+	     (pad! block pc position)
+	     (assemble-objects! block))))
+
+    (if (null? directives)
+	(end-assembly)
+	(let ((this (car directives)))
+	  (case (vector-ref this 0)
+	    ((LABEL)
+	     (loop (cdr directives) dir-stack pc pc-stack position
+		   last-blabel blabel))
+	    ((TICK)
+	     (loop (cdr directives) dir-stack
+		   pc
+		   (if (vector-ref this 1)
+		       (cons (->machine-pc pc) pc-stack)
+		       (cdr pc-stack))
+		   position
+		   last-blabel blabel))
+	    ((FIXED-WIDTH-GROUP)
+	     (loop (vector-ref this 2) (cons (cdr directives) dir-stack)
+		   pc pc-stack
+		   position
+		   last-blabel blabel))
+	    ((CONSTANT)
+	     (let ((bs (vector-ref this 1)))
+	       (actual-bits bs (bit-string-length bs))))
+	    ((EVALUATION)
+	     (evaluation (vector-ref this 3)
+			 (vector-ref this 1)
+			 (vector-ref this 2)))
+	    ((VARIABLE-WIDTH-EXPRESSION)
+	     (let ((sel (car (vector-ref this 3))))
+	       (evaluation (variable-handler-wrapper (selector/handler sel))
+			   (vector-ref this 1)
+			   (selector/length sel))))
+	    ((BLOCK-OFFSET)
+	     (let* ((label (vector-ref this 1))
+		    (offset (evaluate `(- ,label ,blabel) '())))
+	       (if (> offset maximum-block-offset)
+		   (block-offset (evaluate `(- ,label ,last-blabel) '())
+				 label last-blabel)
+		   (block-offset offset label blabel))))
+	    (else
+	     (error "assemble-directives!: Unknown directive" this))))))
+
   (loop directives '() starting-pc '() initial-position
 	*start-label* *start-label*))
 

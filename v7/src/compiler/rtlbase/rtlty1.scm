@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.2 1987/12/30 07:07:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.3 1988/02/17 19:13:26 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -59,6 +59,7 @@ MIT in each case. |#
 (define-rtl-predicate unassigned-test % expression)
 
 (define-rtl-statement assign % address expression)
+(define-rtl-statement continuation-entry rtl: continuation)
 (define-rtl-statement continuation-heap-check rtl: continuation)
 (define-rtl-statement procedure-heap-check rtl: procedure)
 (define-rtl-statement setup-lexpr rtl: procedure)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.4 1987/12/31 07:01:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.5 1988/02/17 19:14:05 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -262,6 +262,7 @@ MIT in each case. |#
 (define-cse-method 'POP-RETURN method/noop)
 (define-cse-method 'PROCEDURE-HEAP-CHECK method/noop)
 (define-cse-method 'CONTINUATION-HEAP-CHECK method/noop)
+(define-cse-method 'CONTINUATION-ENTRY method/noop)
 (define-cse-method 'INVOCATION:APPLY method/noop)
 (define-cse-method 'INVOCATION:JUMP method/noop)
 (define-cse-method 'INVOCATION:LEXPR method/noop)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.2 1987/12/30 07:10:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.3 1988/02/17 19:12:51 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -107,6 +107,20 @@ MIT in each case. |#
 			     (generate/node (procedure-entry-node procedure))
 			     true))
 
+(define (operator/needs-no-heap-check? op)
+  (and (rvalue/constant? op)
+       (let ((obj (constant-value op)))
+	 (and (normal-primitive-procedure? obj)
+	      (special-primitive-handler obj)))))
+
+(define (continuation/avoid-check? continuation)
+  (and (null? (continuation/returns continuation))
+       (for-all?
+	(continuation/combinations continuation)
+	(lambda (combination)
+	  (let ((op (rvalue-known-value (combination/operator combination))))
+	    (and op (operator/needs-no-heap-check? op)))))))
+
 (define (generate/continuation continuation)
   (let ((label (continuation/label continuation)))
     (transmit-values
@@ -114,7 +128,9 @@ MIT in each case. |#
 	 (continuation/entry-node continuation)
 	 (lambda (node)
 	   (scfg-append!
-	    (rtl:make-continuation-heap-check label)
+	    (if (continuation/avoid-check? continuation)
+		(rtl:make-continuation-entry label)
+		(rtl:make-continuation-heap-check label))
 	    (generate/continuation-entry/ic-block continuation)
 	    (if (block/dynamic-link?
 		 (continuation/closing-block continuation))
