@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 1.3 1987/07/16 10:12:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 1.4 1987/08/07 22:52:30 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -173,6 +173,15 @@ MIT in each case. |#
 	     (MOV L ,reg:temp (A 1))
 	     (JSR ,entry:compiler-assignment-trap)
 	     ,@(make-external-label (generate-label)))))))
+
+(define-rule statement
+  (INTERPRETER-CALL:CACHE-UNASSIGNED? (? extension))
+  (let ((set-extension (expression->machine-register! extension a0)))
+    (let ((clear-map (clear-map!)))
+      (LAP ,@set-extension
+	   ,@clear-map
+	   (JSR ,entry:compiler-unassigned?-trap)
+	   ,@(make-external-label (generate-label))))))
 
 ;;;; Poppers
 
