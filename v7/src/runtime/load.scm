@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.48 1993/12/29 18:35:47 cph Exp $
+$Id: load.scm,v 14.49 1994/09/29 03:55:05 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -91,39 +91,31 @@ MIT in each case. |#
 		 (eq? purify? default-object))
 	     false
 	     purify?)))
-    (call-with-values
-	(lambda ()
-	  (fluid-let ((load/loading? true)
-		      (load/after-load-hooks '()))
-	    (let ((kernel
-		   (lambda (filename last-file?)
-		     (call-with-values
-			 (lambda ()
-			   (find-pathname filename load/default-types))
-		       (lambda (pathname loader)
-			 (fluid-let ((load/current-pathname pathname))
-			   (let ((value
-				  (loader pathname
-					  environment
-					  syntax-table
-					  purify?
-					  load-noisily?)))
-			     (cond (last-file? value)
-				   (load-noisily? (write-line value))))))))))
-	      (let ((value
-		     (if (pair? filename/s)
-			 (let loop ((filenames filename/s))
-			   (if (null? (cdr filenames))
-			       (kernel (car filenames) true)
-			       (begin
-				 (kernel (car filenames) false)
-				 (loop (cdr filenames)))))
-			 (kernel filename/s true))))
-		(values value load/after-load-hooks)))))
-      (lambda (result hooks)
-	(if (not (null? hooks))
-	    (for-each (lambda (hook) (hook)) (reverse hooks)))
-	result))))
+    (handle-load-hooks
+     (lambda ()
+       (let ((kernel
+	      (lambda (filename last-file?)
+		(call-with-values
+		    (lambda ()
+		      (find-pathname filename load/default-types))
+		  (lambda (pathname loader)
+		    (fluid-let ((load/current-pathname pathname))
+		      (let ((value
+			     (loader pathname
+				     environment
+				     syntax-table
+				     purify?
+				     load-noisily?)))
+			(cond (last-file? value)
+			      (load-noisily? (write-line value))))))))))
+	 (if (pair? filename/s)
+	     (let loop ((filenames filename/s))
+	       (if (null? (cdr filenames))
+		   (kernel (car filenames) true)
+		   (begin
+		     (kernel (car filenames) false)
+		     (loop (cdr filenames)))))
+	     (kernel filename/s true)))))))
 
 (define (fasload filename #!optional suppress-loading-message?)
   (call-with-values (lambda () (find-pathname filename fasload/default-types))
@@ -141,6 +133,17 @@ MIT in each case. |#
   (if (not load/loading?) (error condition-type:not-loading))
   (set! load/after-load-hooks (cons hook load/after-load-hooks))
   unspecific)
+
+(define (handle-load-hooks thunk)
+  (call-with-values
+      (lambda ()
+	(fluid-let ((load/loading? true)
+		    (load/after-load-hooks '()))
+	  (let ((result (thunk)))
+	    (values result (reverse load/after-load-hooks)))))
+    (lambda (result hooks)
+      (for-each (lambda (hook) (hook)) hooks)
+      result)))
 
 (define default-object
   "default-object")
@@ -530,18 +533,21 @@ MIT in each case. |#
 				     default-object
 				     syntax-table)
 				 purify?)
-		      (let ((scode (caddr place)))
-			(loading-message fname
-                                         load/suppress-loading-message?
-					 ";Pseudo-loading ")
-			(if (and (not (eq? purify? default-object)) purify?)
-			    (set! to-purify
-				  (cons (load/purification-root scode)
-					to-purify)))
-			(extended-scode-eval scode
-					     (if (eq? env default-object)
-						 environment
-						 env))))))))
+		      (handle-load-hooks
+		       (lambda ()
+			 (let ((scode (caddr place)))
+			   (loading-message fname
+					    load/suppress-loading-message?
+					    ";Pseudo-loading ")
+			   (if (and (not (eq? purify? default-object)) purify?)
+			       (set! to-purify
+				     (cons (load/purification-root scode)
+					   to-purify)))
+			   (fluid-let ((load/current-pathname (cadr place)))
+			     (extended-scode-eval scode
+						  (if (eq? env default-object)
+						      environment
+						      env)))))))))))
 	   (fasload
 	    (lambda (filename #!optional suppress-message?)
 	      (let ((suppress-message?
