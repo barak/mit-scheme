@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchutl.c,v 1.1 1991/10/29 22:35:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchutl.c,v 1.2 1992/02/29 19:39:41 mhwu Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -33,7 +33,14 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 #include <errno.h>
+#ifndef EINTR
+#define EINTR 1999
+#endif
+
+#ifndef DOS386
 #include <unistd.h>
+#endif
+
 #include "ansidecl.h"
 
 extern char * EXFUN (error_name, (int));

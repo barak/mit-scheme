@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdrn.h,v 1.2 1991/11/04 16:53:08 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdrn.h,v 1.3 1992/02/29 19:35:23 mhwu Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -46,8 +46,10 @@ MIT in each case. */
 #if defined(_POSIX) || defined(_SUNOS4)
 #  include <unistd.h>
 #else
+#ifndef DOS386
   extern int EXFUN (read, (int, PTR, unsigned int));
   extern int EXFUN (write, (int, PTR, unsigned int));
+#endif
 #endif
 
 #if defined(HAVE_POSIX_SIGNALS) && defined(HAVE_BSD_SIGNALS)

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.43 1992/02/10 13:52:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.44 1992/02/29 19:36:55 mhwu Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -43,7 +43,9 @@ MIT in each case. */
 #else
 #include <fcntl.h>
 #endif
+#ifndef DOS386
 #include <sys/param.h>
+#endif
 
 extern char * EXFUN (error_name, (int));
 

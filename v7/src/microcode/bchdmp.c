@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.60 1992/02/10 13:53:22 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.61 1992/02/29 19:33:03 mhwu Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -38,15 +38,43 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
-#include "uxio.h"
 #include "osfile.h"
 #include "trap.h"
 #include "lookup.h"		/* UNCOMPILED_VARIABLE */
 #define In_Fasdump
 #include "bchgcc.h"
 #include "fasl.h"
-#include "ux.h"
 
+
+#ifdef DOS386
+#include "msdos.h"
+#include "dosio.h"
+
+int
+DEFUN (ftruncate, (fd, size), int fd AND unsigned long size)
+{
+  return size;
+}
+
+void
+DEFUN (mktemp, (fname), unsigned char * fname)
+{ /* Should call tmpname */
+  return;
+}
+
+#define FASDUMP_FILENAME "\\tmp\\fasdump.bin"
+
+#else
+
+#include "ux.h"
+#include "uxio.h"
+extern int EXFUN (unlink, (CONST char *));
+
+#define FASDUMP_FILENAME "/tmp/fasdumpXXXXXX"
+
+#endif /* DOS386 */
+
+
 static Tchannel dump_channel;
 
 #define Write_Data(size, buffer)					\
@@ -244,8 +272,6 @@ DEFUN (fasdump_exit, (length), long length)
 
   if (length == 0)
   {
-    extern int EXFUN (unlink, (CONST char *));
-
     (void) (unlink (dump_file_name));
   }
   dump_file_name = ((char *) NULL);
@@ -775,7 +801,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
     Tchannel channel, temp_channel;
     char temp_name [19];
     {
-      char * scan1 = "/tmp/fasdumpXXXXXX";
+      char * scan1 = FASDUMP_FILENAME;
       char * scan2 = temp_name;
       while (1)
 	if (((*scan2++) = (*scan1++)) == '\0')
