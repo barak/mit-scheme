@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.7 1995/07/13 23:01:06 adams Exp $
+$Id: toplev.scm,v 1.8 1995/07/27 14:18:57 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -39,95 +39,92 @@ MIT in each case. |#
 
 ;;;; Usual Entry Point: File Compilation
 
-(define (make-cf compile-bin-file)
-  (lambda (input #!optional output)
-    (let ((kernel
-	   (lambda (source-file)
-	     (with-values
-		 (lambda () (sf/pathname-defaulting source-file false false))
-	       (lambda (source-pathname bin-pathname spec-pathname)
-		 ;; Maybe this should be done only if scode-file
-		 ;; does not exist or is older than source-file.
-		 (sf source-pathname bin-pathname spec-pathname)
-		 (if (default-object? output)
-		     (compile-bin-file bin-pathname)
-		     (compile-bin-file bin-pathname output)))))))
-      (if (pair? input)
-	  (for-each kernel input)
-	  (kernel input)))))
+(define (cf input #!optional output)
+  (let ((kernel
+	 (lambda (source-file)
+	   (with-values
+	       (lambda () (sf/pathname-defaulting source-file false false))
+	     (lambda (source-pathname bin-pathname spec-pathname)
+	       ;; Maybe this should be done only if scode-file
+	       ;; does not exist or is older than source-file.
+	       (sf source-pathname bin-pathname spec-pathname)
+	       (if (default-object? output)
+		   (compile-bin-file bin-pathname)
+		   (compile-bin-file bin-pathname output)))))))
+    (if (pair? input)
+	(for-each kernel input)
+	(kernel input))))
 
-(define (make-cbf compile-bin-file)
-  (lambda (input . rest)
-    (apply compile-bin-file input rest)))
+(define (cbf input . rest)
+  (apply compile-bin-file input rest))
 
 (define *input-filename-for-temporary-info-info*)
 
-(define (make-compile-bin-file compile-scode/internal)
-  (lambda (input-string #!optional output-string)
-    (let ((input-default
-	   (make-pathname false false false false "bin" 'NEWEST))
-	  (output-default
-	   (if compiler:cross-compiling?
-	       (make-pathname false false false false "moc" false)
-	       #F))
-	  (inf-file-type (if compiler:cross-compiling? "fni" "inf")))
-      (perhaps-issue-compatibility-warning)
-      (compiler-pathnames
-       input-string
-       (if compiler:cross-compiling?
-	   (if (not (default-object? output-string))
-	       output-string
-	       (merge-pathnames output-default
-				(merge-pathnames input-string input-default)))
-	   (and (not (default-object? output-string)) output-string))
-       (make-pathname false false false false "bin" 'NEWEST)
-       (lambda (input-pathname output-pathname)
-	 (fluid-let ((*input-filename-for-temporary-info-info*
-		      (->namestring (->truename input-pathname))))
-	   (maybe-open-file
-	    compiler:generate-kmp-files?
-	    (pathname-new-type output-pathname "kmp")
-	    (lambda (kmp-output-port)
-	      (maybe-open-file
-	       compiler:generate-rtl-files?
-	       (pathname-new-type output-pathname "rtl")
-	       (lambda (rtl-output-port)
-		 (maybe-open-file
-		  compiler:generate-lap-files?
-		  (pathname-new-type output-pathname "lap")
-		  (lambda (lap-output-port)
-		    (compile-scode/internal
-		     (compiler-fasload input-pathname)
-		     (pathname-new-type output-pathname inf-file-type)
-		     kmp-output-port
-		     rtl-output-port
-		     lap-output-port))))))))))
-      unspecific)))
+(define (compile-bin-file input-string #!optional output-string)
+  (let ((input-default
+	 (make-pathname false false false false "bin" 'NEWEST))
+	(output-default
+	 (if compiler:cross-compiling?
+	     (make-pathname false false false false "moc" false)
+	     #F))
+	(inf-file-type (if compiler:cross-compiling? "fni" "inf")))
+    (perhaps-issue-compatibility-warning)
+    (compiler-pathnames
+     input-string
+     (if compiler:cross-compiling?
+	 (if (not (default-object? output-string))
+	     output-string
+	     (merge-pathnames output-default
+			      (merge-pathnames input-string input-default)))
+	 (and (not (default-object? output-string)) output-string))
+     (make-pathname false false false false "bin" 'NEWEST)
+     (lambda (input-pathname output-pathname)
+       (fluid-let ((*input-filename-for-temporary-info-info*
+		    (->namestring (->truename input-pathname))))
+	 (maybe-open-file
+	  compiler:generate-kmp-files?
+	  (pathname-new-type output-pathname "kmp")
+	  (lambda (kmp-output-port)
+	    (maybe-open-file
+	     compiler:generate-rtl-files?
+	     (pathname-new-type output-pathname "rtl")
+	     (lambda (rtl-output-port)
+	       (maybe-open-file
+		compiler:generate-lap-files?
+		(pathname-new-type output-pathname "lap")
+		(lambda (lap-output-port)
+		  (%compile (compiler-fasload input-pathname)
+			    false
+			    (make-dbg-locator
+			     (pathname-new-type output-pathname inf-file-type)
+			     (get-universal-time))
+			    kmp-output-port
+			    rtl-output-port
+			    lap-output-port))))))))))
+    unspecific))
 
 (define (maybe-open-file open? pathname receiver)
   (if open?
       (call-with-output-file pathname receiver)
       (receiver false)))
 
-(define (make-compile-expression compile-scode)
+(define (compile-expression expression #!optional declarations)
   (perhaps-issue-compatibility-warning)
-  (lambda (expression #!optional declarations)
-    (let ((declarations (if (default-object? declarations)
-			    '((usual-integrations))
-			    declarations)))
-      (compile-scode (syntax&integrate expression declarations)
-		     'KEEP))))
+  (let ((declarations (if (default-object? declarations)
+			  '((usual-integrations))
+			  declarations)))
+    (compile-scode (syntax&integrate expression declarations)
+		   'KEEP)))
 
-(define (make-compile-procedure compile-scode)
-  (lambda (procedure #!optional keep-debugging-info?)
-    (perhaps-issue-compatibility-warning)
-    (compiler-output->procedure
-     (compile-scode
-      (procedure-lambda procedure)
-      (and (or (default-object? keep-debugging-info?)
-	       keep-debugging-info?)
-	   'KEEP))
-     (procedure-environment procedure))))
+(define (compile-procedure procedure #!optional keep-debugging-info?)
+  (perhaps-issue-compatibility-warning)
+  (compiler-output->procedure
+   (compile-scode
+    (procedure-lambda procedure)
+    (and (or (default-object? keep-debugging-info?)
+	     keep-debugging-info?)
+	 'KEEP))
+   (procedure-environment procedure)))
 
 (define (compiler-pathnames input-string output-string default transform)
   (let* ((core
@@ -178,11 +175,6 @@ MIT in each case. |#
 
 ;;;; Alternate Entry Points
 
-(define (compile-scode scode #!optional keep-debugging-info?)
-  keep-debugging-info?			; ignored
-  (perhaps-issue-compatibility-warning)
-  (compile-scode/%new scode))
-
 (define compatibility-detection-frob (vector #F '()))
 
 (define (perhaps-issue-compatibility-warning)
@@ -194,13 +186,16 @@ MIT in each case. |#
 	(warn "!! The compiled code will be incorrect for the")
 	(warn "!! standard environment."))))
 
-(define (compile-scode/%new scode #!optional keep-debugging-info?)
-  keep-debugging-info?			; ignored
+(define (compile-scode scode #!optional keep-debugging-info?)
+  (perhaps-issue-compatibility-warning)
   (compiler-output->compiled-expression
    (let* ((kmp-file-name (temporary-file-pathname))
 	  (rtl-file-name (temporary-file-pathname))
 	  (lap-file-name (temporary-file-pathname))
-	  (info-output-pathname false))
+	  (info-output-pathname
+	   (and (or (default-object? keep-debugging-info?)
+		    keep-debugging-info?)
+		'KEEP)))
      (warn "KMP Output to temporary file" (->namestring kmp-file-name))
      (warn "RTL Output to temporary file" (->namestring rtl-file-name))
      (warn "LAP Output to temporary file" (->namestring lap-file-name))
@@ -215,12 +210,12 @@ MIT in each case. |#
 		  (call-with-output-file lap-file-name
 		    (lambda (lap-output-port)
 		      (let ((result
-			     (%compile/new scode
-					   false
-					   info-output-pathname
-					   kmp-output-port
-					   rtl-output-port
-					   lap-output-port)))
+			     (%compile scode
+				       false
+				       info-output-pathname
+				       kmp-output-port
+				       rtl-output-port
+				       lap-output-port)))
 			(set! win? true)
 			result))))))))
 	(lambda ()
@@ -247,12 +242,12 @@ MIT in each case. |#
 (define *argument-registers* '())
 (define *use-debugging-info?* true)
 
-(define (%compile/new program
-		      recursive?
-		      info-output-pathname
-		      kmp-output-port
-		      rtl-output-port
-		      lap-output-port)
+(define (%compile program
+		  recursive?
+		  info-output-pathname
+		  kmp-output-port
+		  rtl-output-port
+		  lap-output-port)
   (initialize-machine-register-map!)
   (fluid-let ((*info-output-filename*
 	       (if (memq info-output-pathname '(KEEP RECURSIVE))
@@ -278,16 +273,16 @@ MIT in each case. |#
      (lambda ()
        (set! *current-label-number* 0)
        (within-midend
-	 recursive?
-	 (lambda ()
-	   (if (not recursive?)
-	       (begin
-		 (set! *input-scode* program)
-		 (phase/scode->kmp))
-	       (begin
-		 (set! *kmp-program* program)))
-	   (phase/optimize-kmp recursive?)
-	   (phase/kmp->rtl)))
+	recursive?
+	(lambda ()
+	  (if (not recursive?)
+	      (begin
+		(set! *input-scode* program)
+		(phase/scode->kmp))
+	      (begin
+		(set! *kmp-program* program)))
+	  (phase/optimize-kmp recursive?)
+	  (phase/kmp->rtl)))
        (if rtl-output-port
 	   (phase/rtl-file-output "Original"
 				  false
@@ -420,16 +415,16 @@ MIT in each case. |#
 		  (*envconv/procedure-result?*
 		   procedure-result?))
 	(let ((result
-	       (%compile/new kmp-program
-			     true
-			     (and *info-output-filename*
-				  (if (eq? *info-output-filename*
-					   'KEEP)
-				      'KEEP
-				      'RECURSIVE))
-			     *kmp-output-port*
-			     *rtl-output-port*
-			     *lap-output-port*)))
+	       (%compile kmp-program
+			 true
+			 (and *info-output-filename*
+			      (if (eq? *info-output-filename*
+				       'KEEP)
+				  'KEEP
+				  'RECURSIVE))
+			 *kmp-output-port*
+			 *rtl-output-port*
+			 *lap-output-port*)))
 	  (values result (not (eq? procedure-result?
 				   *procedure-result?*))))))
 
@@ -575,52 +570,52 @@ MIT in each case. |#
 (define *dbg-continuations*)
 
 (define (in-compiler thunk)
-  (let ((run-compiler
+
+  (define (run-compiler)
+    (let ((expression (thunk)))
+      (let ((others
+	     (map (lambda (other) (vector-ref other 2))
+		  (recursive-compilation-results))))
+	(let ((value
+	       (cond ((not (compiled-code-address? expression))
+		      (vector compiler:compile-by-procedures?
+			      expression
+			      others))
+		     (else
+		      (let* ((all-blocks
+			      (list->vector
+			       (cons
+				(compiled-code-address->block
+				 expression)
+				others)))
+			     (purification-root
+			      (if compiler:compile-by-procedures?
+				  (list->vector others)
+				  all-blocks)))
+			(make-compiled-module
+			 expression
+			 all-blocks
+			 *info-output-filename*
+			 purification-root))))))
+	  (if compiler:show-time-reports?
+	      (compiler-time-report "Total compilation time"
+				    *process-time*
+				    *real-time*))
+	  value))))
+
+  (if compiler:preserve-data-structures?
+      (begin
+	(compiler:reset!)
+	(run-compiler))
+      (fluid-let ((*recursive-compilation-number* 0)
+		  (*recursive-compilation-count* 1)
+		  (*procedure-result?* false)
+		  (*remote-links* '())
+		  (*process-time* 0)
+		  (*real-time* 0))
+	(bind-assembler&linker-top-level-variables
 	 (lambda ()
-	   (let ((value
-		  (let ((expression (thunk)))
-		    (let ((others
-			   (map (lambda (other) (vector-ref other 2))
-				(recursive-compilation-results))))
-		      (cond ((not (compiled-code-address? expression))
-			     (vector compiler:compile-by-procedures?
-				     expression
-				     others))
-			    ((null? others)
-			     expression)
-			    (else
-			     (scode/make-comment
-			      (make-dbg-info-vector
-			       (let ((all-blocks
-				      (list->vector
-				       (cons
-					(compiled-code-address->block
-					 expression)
-					others))))
-				 (if compiler:compile-by-procedures?
-				     (list 'COMPILED-BY-PROCEDURES
-					   all-blocks
-					   (list->vector others))
-				     all-blocks)))
-			      expression)))))))
-	     (if compiler:show-time-reports?
-		 (compiler-time-report "Total compilation time"
-				       *process-time*
-				       *real-time*))
-	     value))))
-    (if compiler:preserve-data-structures?
-	(begin
-	  (compiler:reset!)
-	  (run-compiler))
-	(fluid-let ((*recursive-compilation-number* 0)
-		    (*recursive-compilation-count* 1)
-		    (*procedure-result?* false)
-		    (*remote-links* '())
-		    (*process-time* 0)
-		    (*real-time* 0))
-	  (bind-assembler&linker-top-level-variables
-	   (lambda ()
-	     (bind-compiler-variables run-compiler)))))))
+	   (bind-compiler-variables run-compiler))))))
 
 (define (bind-compiler-variables thunk)
   ;; Split this fluid-let because compiler was choking on it.
@@ -982,18 +977,3 @@ MIT in each case. |#
 		  (write-char #\page)
 		  (newline)))
 	    (output-port/flush-output port)))))))
-
-(define compile-bin-file
-  (make-compile-bin-file
-   (lambda (scode info-pathname kmp-port rtl-port lap-port)
-     (%compile/new scode
-		   false
-		   info-pathname
-		   kmp-port
-		   rtl-port
-		   lap-port))))
-     
-(define cbf (make-cbf compile-bin-file))
-(define cf  (make-cf compile-bin-file))
-(define compile-expression (make-compile-expression compile-scode/%new))
-(define compile-procedure  (make-compile-procedure compile-scode/%new))
