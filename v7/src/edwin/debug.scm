@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.21 1993/10/16 07:40:55 cph Exp $
+;;;	$Id: debug.scm,v 1.22 1993/10/26 00:31:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -1194,7 +1194,7 @@ The buffer below describes the current subproblem or reduction.
 	      (fluid-let ((starting-debugger? true))
 		(select-continuation-browser-buffer condition))
 	      (message error-type-name " error")))
-	(abort-current-command))))
+	(return-to-command-loop #f))))
 
 (define starting-debugger? false)
 
