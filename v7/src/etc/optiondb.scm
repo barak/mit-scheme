@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.2 2000/10/16 18:16:24 cph Exp $
+$Id: optiondb.scm,v 1.3 2000/12/07 21:56:29 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -21,8 +21,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (guarded-system-loader package-name place #!optional filename)
   (let ((directory
-	 (merge-pathnames place
-			  (directory-pathname (current-load-pathname)))))
+	 (let ((here (directory-pathname (current-load-pathname))))
+	   (let ((directory
+		  (pathname-new-directory here
+					  (append (pathname-directory here)
+						  (list 'UP place)))))
+	     (if (file-directory? directory)
+		 directory
+		 (merge-pathnames place here))))))
     (lambda ()
       (if (not (name->package package-name))
 	  (with-working-directory-pathname directory
@@ -40,10 +46,29 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		       ((test "load") "load")
 		       (else (error "Can't find loader.")))))))))))
 
-(define-load-option 'SOS
-  (guarded-system-loader '(runtime object-system) "sos"))
+(define-load-option 'CREF
+  (guarded-system-loader '(cross-reference) "cref"))
+
+(define-load-option 'COMPILER
+  (lambda () (load-option 'SF))
+  (guarded-system-loader '(compiler) "compiler"))
+
+(define-load-option 'EDWIN
+  (guarded-system-loader '(edwin) "edwin"))
 
 (define-load-option 'IMAIL
   (guarded-system-loader '(edwin imail) "imail"))
+
+(define-load-option 'RCS
+  (guarded-system-loader '(rcs) "rcs"))
+
+(define-load-option 'SF
+  (guarded-system-loader '(scode-optimizer) "sf"))
+
+(define-load-option 'STUDENT
+  (guarded-system-loader '(student) "6001"))
+
+(define-load-option 'SOS
+  (guarded-system-loader '(runtime object-system) "sos"))
 
 (further-load-options standard-load-options)
