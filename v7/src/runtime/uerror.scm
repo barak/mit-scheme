@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uerror.scm,v 14.41 1994/10/10 21:29:53 cph Exp $
+$Id: uerror.scm,v 14.42 1994/12/19 21:07:34 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -889,9 +889,9 @@ MIT in each case. |#
     (lambda (continuation)
       (let ((frame (continuation/first-subproblem continuation)))
 	(if (apply-frame? frame)
-	     (signal continuation
-		     (apply-frame/operator frame)
-		     (apply-frame/operands frame)))))))
+	    (signal continuation
+		    (apply-frame/operator frame)
+		    (apply-frame/operands frame)))))))
 
 (define-error-handler 'WRITE-INTO-PURE-SPACE
   (lambda (continuation)
@@ -986,23 +986,43 @@ MIT in each case. |#
 	     (condition-signaller condition-type:hardware-trap '(NAME CODE))))
 	(lambda (name)
 	  (call-with-current-continuation
-	   (lambda (continuation)
+	   (lambda (k)
 	     (if (not name)
-		 (signal-user-microcode-reset continuation)
-		 (let ((code
-			(let ((frame
-			       (continuation/first-subproblem continuation)))
-			  (and (hardware-trap-frame? frame)
-			       (hardware-trap-frame/code frame)))))
-		   (if (string=? "SIGFPE" name)
-		       ((case (and (string? code)
-				   (normalize-trap-code-name code))
-			  ((UNDERFLOW) signal-floating-point-underflow)
-			  ((OVERFLOW) signal-floating-point-overflow)
-			  ((DIVIDE-BY-ZERO) signal-divide-by-zero)
-			  (else signal-arithmetic-error))
-			continuation false '())
-		       (signal-hardware-trap continuation name code)))))))))
+		 (signal-user-microcode-reset k)
+		 (case microcode-id/operating-system
+		   ((OS/2)
+		    (cond ((string=? "XCPT_FLOAT_UNDERFLOW" name)
+			   (signal-floating-point-underflow k #f '()))
+			  ((or (string=? "XCPT_FLOAT_OVERFLOW" name)
+			       (string=? "XCPT_INTEGER_OVERFLOW" name))
+			   (signal-floating-point-overflow k #f '()))
+			  ((or (string=? "XCPT_FLOAT_DIVIDE_BY_ZERO" name)
+			       (string=? "XCPT_INTEGER_DIVIDE_BY_ZERO" name))
+			   (signal-divide-by-zero k #f '()))
+			  ((or (string=? "XCPT_FLOAT_DENORMAL_OPERAND" name)
+			       (string=? "XCPT_FLOAT_INEXACT_RESULT" name)
+			       (string=? "XCPT_FLOAT_INVALID_OPERATION" name)
+			       (string=? "XCPT_FLOAT_STACK_CHECK" name)
+			       (string=? "XCPT_B1NPX_ERRATA_02" name))
+			   (signal-arithmetic-error k #f '()))
+			  (else
+			   (signal-hardware-trap k name #f))))
+		   (else
+		    (let ((code
+			   (let ((frame (continuation/first-subproblem k)))
+			     (and (hardware-trap-frame? frame)
+				  (hardware-trap-frame/code frame)))))
+		      (if (string=? "SIGFPE" name)
+			  ((case (and (string? code)
+				      (normalize-trap-code-name code))
+			     ((UNDERFLOW) signal-floating-point-underflow)
+			     ((OVERFLOW) signal-floating-point-overflow)
+			     ((DIVIDE-BY-ZERO) signal-divide-by-zero)
+			     (else signal-arithmetic-error))
+			   k false '())
+			  (signal-hardware-trap k
+						name
+						code)))))))))))
 
 ;;; end INITIALIZE-PACKAGE!.
 )
