@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.19 1999/04/07 21:46:04 cph Exp $
+$Id: string.scm,v 14.20 1999/05/07 21:26:13 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -279,8 +279,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (string-append . strings)
   (%string-append strings))
-
+
 (define (burst-string string delimiter allow-runs?)
+  (guarantee-string string 'BURST-STRING)
+  (if (not (char? delimiter))
+      (error:wrong-type-argument delimiter "character" 'BURST-STRING))
   (let ((end (string-length string)))
     (let loop ((start 0) (index 0) (result '()))
       (cond ((fix:= index end)
@@ -296,6 +299,39 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		       (cons (substring string start index) result))))
 	    (else
 	     (loop start (fix:+ index 1) result))))))
+
+(define (reverse-string string)
+  (guarantee-string string 'REVERSE-STRING)
+  (%reverse-substring string 0 (string-length string)))
+
+(define (reverse-substring string start end)
+  (guarantee-substring string start end 'REVERSE-SUBSTRING)
+  (%reverse-substring string start end))
+
+(define (%reverse-substring string start end)
+  (let ((result (make-string (fix:- end start)))
+	(k (fix:- end 1)))
+    (do ((i start (fix:+ i 1)))
+	((fix:= i end))
+      (string-set! result (fix:- k i) (string-ref string i)))
+    result))
+
+(define (reverse-string! string)
+  (guarantee-string string 'REVERSE-STRING!)
+  (%reverse-substring! string 0 (string-length string)))
+
+(define (reverse-substring! string start end)
+  (guarantee-substring string start end 'REVERSE-SUBSTRING!)
+  (%reverse-substring! string start end))
+
+(define (%reverse-substring! string start end)
+  (let ((k (fix:+ start (fix:quotient (fix:- end start) 2))))
+    (do ((i start (fix:+ i 1))
+	 (j (fix:- end 1) (fix:- j 1)))
+	((fix:= i k))
+      (let ((char (string-ref string j)))
+	(string-set! string j (string-ref string i))
+	(string-set! string i char)))))
 
 ;;;; Case
 
@@ -586,28 +622,179 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; String Search
 
-;;; This is the obvious dumb implementation.  Boyer-Moore is planned
-;;; for the future.
+(define (substring? pattern text)
+  (and (string-search-forward text pattern) #t))
 
-(define (substring? substring string)
-  ;; Returns starting-position or #f if not true.
-  (guarantee-string substring 'SUBSTRING?)
-  (guarantee-string string 'SUBSTRING?)
-  (if (%string-null? substring)
+(define (string-search-forward text pattern)
+  (guarantee-string text 'STRING-SEARCH-FORWARD)
+  (guarantee-string pattern 'STRING-SEARCH-FORWARD)
+  (%substring-search-forward text 0 (string-length text)
+			     pattern 0 (string-length pattern)))
+
+(define (substring-search-forward text tstart tend pattern)
+  (guarantee-substring text tstart tend 'SUBSTRING-SEARCH-FORWARD)
+  (guarantee-string pattern 'SUBSTRING-SEARCH-FORWARD)
+  (%substring-search-forward text tstart tend
+			     pattern 0 (string-length pattern)))
+
+(define (%substring-search-forward text tstart tend pattern pstart pend)
+  ;; Returns index of first matched char, or #F.
+  (if (fix:< (fix:- pend pstart) 4)
+      (%dumb-substring-search-forward text tstart tend pattern pstart pend)
+      (%bm-string-search-forward text tstart tend pattern pstart pend)))
+
+(define (%dumb-substring-search-forward text tstart tend pattern pstart pend)
+  (if (fix:= pstart pend)
       0
-      (let ((len (string-length substring))
-	    (end (string-length string))
-	    (char (string-ref substring 0)))
-	(let loop ((posn -1))
-	  (let ((posn*
-		 (substring-find-next-char string (fix:+ posn 1) end char)))
-	    (and posn*
-		 (let ((end* (fix:+ posn* len)))
-		   (and (fix:<= end* end)
-			(if (substring=? substring 0 len
-					 string posn* end*)
-			    posn*
-			    (loop posn*))))))))))
+      (let* ((leader (string-ref pattern pstart))
+	     (plen (fix:- pend pstart))
+	     (tend (fix:- tend plen)))
+	(let loop ((tstart tstart))
+	  (let ((tstart
+		 (let find-leader ((tstart tstart))
+		   (and (fix:< tstart tend)
+			(if (char=? leader (string-ref text tstart))
+			    tstart
+			    (find-leader (fix:+ tstart 1)))))))
+	    (and tstart
+		 (if (substring=? text (fix:+ tstart 1) (fix:+ tstart plen)
+				  pattern (fix:+ pstart 1) pend)
+		     tstart
+		     (loop (fix:+ tstart 1)))))))))
+
+(define (string-search-backward text pattern)
+  (guarantee-string text 'STRING-SEARCH-BACKWARD)
+  (guarantee-string pattern 'STRING-SEARCH-BACKWARD)
+  (%substring-search-backward text 0 (string-length text)
+			      pattern 0 (string-length pattern)))
+
+(define (substring-search-backward text tstart tend pattern)
+  (guarantee-substring text tstart tend 'SUBSTRING-SEARCH-BACKWARD)
+  (guarantee-string pattern 'SUBSTRING-SEARCH-BACKWARD)
+  (%substring-search-backward text tstart tend
+			      pattern 0 (string-length pattern)))
+
+(define (%substring-search-backward text tstart tend pattern pstart pend)
+  ;; Returns index following last matched char, or #F.
+  (if (fix:< (fix:- pend pstart) 4)
+      (%dumb-substring-search-backward text tstart tend pattern pstart pend)
+      (%bm-string-search-backward text tstart tend pattern pstart pend)))
+
+(define (%dumb-substring-search-backward text tstart tend pattern pstart pend)
+  (if (fix:= pstart pend)
+      0
+      (let* ((trailer (string-ref pattern (fix:- pend 1)))
+	     (plen (fix:- pend pstart))
+	     (tstart (fix:+ tstart plen)))
+	(let loop ((tend tend))
+	  (let ((tend
+		 (let find-trailer ((tend tend))
+		   (and (fix:< tstart tend)
+			(if (char=? trailer (string-ref text (fix:- tend 1)))
+			    tend
+			    (find-trailer (fix:- tend 1)))))))
+	    (and tend
+		 (if (substring=? text (fix:- tend plen) (fix:- tend 1)
+				  pattern pstart (fix:- pend 1))
+		     tend
+		     (loop (fix:- tend 1)))))))))
+
+;;;; Boyer-Moore String Search
+
+;;; Cormen, Leiserson, and Rivest, "Introduction to Algorithms",
+;;; Chapter 34, "String Matching".
+
+(define (%bm-string-search-forward text tstart tend pattern pstart pend)
+  (let ((m (fix:- pend pstart))
+	(pstart-1 (fix:- pstart 1))
+	(pend-1 (fix:- pend 1))
+	(lambda* (compute-last-occurrence-function pattern pstart pend))
+	(gamma (compute-good-suffix-function pattern pstart pend)))
+    (let ((tend-m (fix:- tend m))
+	  (m-1 (fix:- m 1)))
+      (let outer ((s tstart))
+	(and (fix:<= s tend-m)
+	     (let inner ((pj pend-1) (tj (fix:+ s m-1)))
+	       (if (fix:= (vector-8b-ref pattern pj) (vector-8b-ref text tj))
+		   (if (fix:= pstart pj)
+		       s
+		       (inner (fix:- pj 1) (fix:- tj 1)))
+		   (outer
+		    (fix:+ s
+			   (fix:max (fix:- (fix:- pj pstart-1)
+					   (lambda* (vector-8b-ref text tj)))
+				    (gamma (fix:- pj pstart))))))))))))
+
+(define (%bm-string-search-backward text tstart tend pattern pstart pend)
+  (let ((m (fix:- pend pstart))
+	(pend-1 (fix:- pend 1))
+	(rpattern (reverse-substring pattern pstart pend)))
+    (let ((tstart+m (fix:+ tstart m))
+	  (lambda* (compute-last-occurrence-function rpattern 0 m))
+	  (gamma (compute-good-suffix-function rpattern 0 m)))
+      (let outer ((s tend))
+	(and (fix:>= s tstart+m)
+	     (let inner ((pj pstart) (tj (fix:- s m)))
+	       (if (fix:= (vector-8b-ref pattern pj) (vector-8b-ref text tj))
+		   (if (fix:= pend-1 pj)
+		       s
+		       (inner (fix:+ pj 1) (fix:+ tj 1)))
+		   (outer
+		    (fix:- s
+			   (fix:max (fix:- (fix:- pend pj)
+					   (lambda* (vector-8b-ref text tj)))
+				    (gamma (fix:- pend-1 pj))))))))))))
+
+(define (compute-last-occurrence-function pattern pstart pend)
+  (let ((lam (make-vector 256 0)))
+    (do ((j pstart (fix:+ j 1)))
+	((fix:= j pend))
+      (vector-set! lam
+		   (vector-8b-ref pattern j)
+		   (fix:+ (fix:- j pstart) 1)))
+    (lambda (symbol)
+      (vector-ref lam symbol))))
+
+(define (compute-good-suffix-function pattern pstart pend)
+  (let ((m (fix:- pend pstart)))
+    (let ((pi
+	   (compute-prefix-function (reverse-substring pattern pstart pend)
+				    0 m))
+	  (gamma (make-vector m (compute-gamma0 pattern pstart pend)))
+	  (m-1 (fix:- m 1)))
+      (do ((l 0 (fix:+ l 1)))
+	  ((fix:= l m))
+	(let ((j (fix:- m-1 (vector-ref pi l)))
+	      (k (fix:- (fix:+ 1 l) (vector-ref pi l))))
+	  (if (fix:< k (vector-ref gamma j))
+	      (vector-set! gamma j k))))
+      (lambda (index)
+	(vector-ref gamma index)))))
+
+(define (compute-gamma0 pattern pstart pend)
+  (let ((m (fix:- pend pstart)))
+    (fix:- m
+	   (vector-ref (compute-prefix-function pattern pstart pend)
+		       (fix:- m 1)))))
+
+(define (compute-prefix-function pattern pstart pend)
+  (let* ((m (fix:- pend pstart))
+	 (pi (make-vector m)))
+    (vector-set! pi 0 0)
+    (let outer ((k 0) (q 1))
+      (if (fix:< q m)
+	  (let ((k
+		 (let ((pq (vector-8b-ref pattern (fix:+ pstart q))))
+		   (let inner ((k k))
+		     (cond ((fix:= pq (vector-8b-ref pattern (fix:+ pstart k)))
+			    (fix:+ k 1))
+			   ((fix:= k 0)
+			    k)
+			   (else
+			    (inner (vector-ref pi (fix:- k 1)))))))))
+	    (vector-set! pi q k)
+	    (outer k (fix:+ q 1)))))
+    pi))
 
 ;;;; Guarantors
 ;;
