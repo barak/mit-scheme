@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: staticfy.scm,v 1.1 1994/11/19 02:04:29 adams Exp $
+$Id: staticfy.scm,v 1.2 1995/04/29 01:05:08 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -64,11 +64,11 @@ MIT in each case. |#
 (define-staticfier LETREC (env bindings body)
   (let ((env* (staticfy/bind (staticfy/env/context env)
 			     env
-			     (lmap car bindings))))
-    `(LETREC ,(lmap (lambda (binding)
-		      (list (car binding)
-			    (staticfy/expr env* (cadr binding))))
-		    bindings)
+			     (map car bindings))))
+    `(LETREC ,(map (lambda (binding)
+		     (list (car binding)
+			   (staticfy/expr env* (cadr binding))))
+		   bindings)
        ,(staticfy/expr env* body))))
 
 (define-staticfier QUOTE (env object)
@@ -103,11 +103,11 @@ MIT in each case. |#
 
 (define-staticfier LET (env bindings body)
   (if (eq? (staticfy/env/context env) 'DYNAMIC)
-      `(LET ,(lmap (lambda (binding)
-		     (list (car binding)
-			   (staticfy/expr env (cadr binding))))
-		   bindings)
-	 ,(staticfy/expr (staticfy/bind 'DYNAMIC env (lmap car bindings))
+      `(LET ,(map (lambda (binding)
+		    (list (car binding)
+			  (staticfy/expr env (cadr binding))))
+		  bindings)
+	 ,(staticfy/expr (staticfy/bind 'DYNAMIC env (map car bindings))
 			 body))
       (staticfy/let* staticfy/letify
 		     env
@@ -119,46 +119,46 @@ MIT in each case. |#
 
 (define (staticfy/pseudo-letify rator bindings body)
   `(CALL ,(staticfy/remember
-	   `(LAMBDA (,(car (cadr rator)) ,@(lmap car bindings))
+	   `(LAMBDA (,(car (cadr rator)) ,@(map car bindings))
 	      ,body)
 	   rator)
 	 (QUOTE #F)
-	 ,@(lmap cadr bindings)))
+	 ,@(map cadr bindings)))
 
 (define (staticfy/let* letify env bindings body)
-  (let* ((bindings* (lmap (lambda (binding)
-			    (list (car binding)
-				  (staticfy/expr env (cadr binding))))
-			  bindings))
+  (let* ((bindings* (map (lambda (binding)
+			   (list (car binding)
+				 (staticfy/expr env (cadr binding))))
+			 bindings))
 	 (env* (staticfy/bind (staticfy/env/context env)
 			      env
-			      (lmap car bindings)))
+			      (map car bindings)))
 	 (body* (staticfy/expr env* body)))
     (call-with-values
-     (lambda ()
-       (list-split bindings*
-		   (lambda (binding*)
-		     (staticfy/simple? (cadr binding*)))))
-     (lambda (simple hairy)
-       (if (null? hairy)
-	   (letify bindings* body*)
-	   (begin
-	     (for-each
-	      (lambda (hairy)
-		(let* ((name (car hairy))
-		       (binding (assq name (staticfy/env/bindings env*))))
-		  (for-each
-		   (lambda (ref)
-		     (form/rewrite!
-		      ref
-		      `(CALL (QUOTE ,%static-binding-ref)
-			     (QUOTE #F)
-			     (LOOKUP ,name)
-			     (QUOTE ,name))))
-		   (cdr binding))))
-	      hairy)
-	     (letify
-	      (lmap (lambda (binding*)
+	(lambda ()
+	  (list-split bindings*
+		      (lambda (binding*)
+			(staticfy/simple? (cadr binding*)))))
+      (lambda (simple hairy)
+	(if (null? hairy)
+	    (letify bindings* body*)
+	    (begin
+	      (for-each
+		  (lambda (hairy)
+		    (let* ((name (car hairy))
+			   (binding (assq name (staticfy/env/bindings env*))))
+		      (for-each
+			  (lambda (ref)
+			    (form/rewrite!
+				ref
+			      `(CALL (QUOTE ,%static-binding-ref)
+				     (QUOTE #F)
+				     (LOOKUP ,name)
+				     (QUOTE ,name))))
+			(cdr binding))))
+		hairy)
+	      (letify
+	       (map (lambda (binding*)
 		      (if (memq binding* simple)
 			  simple
 			  (let ((name (car binding*)))
@@ -168,10 +168,10 @@ MIT in each case. |#
 					 (QUOTE ,%unassigned)
 					 (QUOTE ,name))))))
 		    bindings*)
-	      (beginnify
-	       (append
-		(let ((actions*
-		       (lmap (lambda (hairy)
+	       (beginnify
+		(append
+		 (let ((actions*
+			(map (lambda (hairy)
 			       (let ((name (car hairy)))
 				 `(CALL (QUOTE ,%static-binding-set!)
 					(QUOTE #F)
@@ -179,14 +179,14 @@ MIT in each case. |#
 					,(cadr hairy)
 					(QUOTE ,name))))
 			     hairy)))
-		  (case *order-of-argument-evaluation*
-		    ((ANY LEFT-TO-RIGHT) actions*)
-		    ((RIGHT-TO_LEFT) (reverse actions*))
-		    (else
-		     (configuration-error
-		      "Unknown order of argument evaluation"
-		      *order-of-argument-evaluation*))))
-		(list body*))))))))))
+		   (case *order-of-argument-evaluation*
+		     ((ANY LEFT-TO-RIGHT) actions*)
+		     ((RIGHT-TO_LEFT) (reverse actions*))
+		     (else
+		      (configuration-error
+		       "Unknown order of argument evaluation"
+		       *order-of-argument-evaluation*))))
+		 (list body*))))))))))
 
 (define (staticfy/expr env expr)
   (if (not (pair? expr))
@@ -217,9 +217,9 @@ MIT in each case. |#
      (illegal expr))))
 
 (define (staticfy/expr* env exprs)
-  (lmap (lambda (expr)
-	  (staticfy/expr env expr))
-	exprs))
+  (map (lambda (expr)
+	 (staticfy/expr env expr))
+       exprs))
 
 (define (staticfy/remember new old)
   (code-rewrite/remember new old))
@@ -264,4 +264,4 @@ MIT in each case. |#
 (define-integrable (staticfy/bind context env names)
   (staticfy/env/make context
 		     env
-		     (lmap list names)))
+		     (map list names)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.25 1995/04/27 02:48:47 adams Exp $
+$Id: rtlgen.scm,v 1.26 1995/04/29 01:03:15 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -1346,7 +1346,7 @@ MIT in each case. |#
 
 (define (rtlgen/let* state bindings body rtlgen/body rtlgen/state/new-env)
   (let* ((env   (rtlgen/state/env state))
-	 (rands (rtlgen/expr* state (lmap cadr bindings))))
+	 (rands (rtlgen/expr* state (map cadr bindings))))
     (rtlgen/body (rtlgen/state/new-env
 		  state
 		  (map* env

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lamlift.scm,v 1.5 1995/03/11 16:01:01 adams Exp $
+$Id: lamlift.scm,v 1.6 1995/04/29 01:02:49 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -128,7 +128,7 @@ MIT in each case. |#
 		 (let ((bindings* (lamlift/bindings env* env bindings)))
 		   (set-lamlift/env/split?! env* 'UNNECESSARY)
 		   `(CALL ,rator*
-			  ,@(lmap cadr bindings*))))))))
+			  ,@(map cadr bindings*))))))))
 	(else
 	 `(CALL ,(lamlift/expr env rator)
 		,(lamlift/expr env cont)
@@ -169,9 +169,9 @@ MIT in each case. |#
      (illegal expr))))
 
 (define (lamlift/expr* env exprs)
-  (lmap (lambda (expr)
-	  (lamlift/expr env expr))
-	exprs))
+  (map (lambda (expr)
+	 (lamlift/expr env expr))
+       exprs))
 
 (define (lamlift/remember new old)
   (code-rewrite/remember new old))
@@ -303,20 +303,20 @@ MIT in each case. |#
 	       binding)))))
 
 (define (lamlift/renames env names)
-  (lmap (lambda (name)
-	  (cons name
-		(if (not (lamlift/bound? env name))
-		    name
-		    (variable/rename name))))
-	names))
+  (map (lambda (name)
+	 (cons name
+	       (if (not (lamlift/bound? env name))
+		   name
+		   (variable/rename name))))
+       names))
 
 (define (lamlift/rename-lambda-list lambda-list pairs)
-  (lmap (lambda (token)
-	  (let ((pair (assq token pairs)))
-	    (if (not pair)
-		token
-		(cdr pair))))
-	lambda-list))
+  (map (lambda (token)
+	 (let ((pair (assq token pairs)))
+	   (if (not pair)
+	       token
+	       (cdr pair))))
+       lambda-list))
 
 (define (lamlift/bound? env name)
   (let loop ((env env))
@@ -330,7 +330,7 @@ MIT in each case. |#
 					   (lamlift/env/context outer-env)
 					   bindings)
 		     outer-env
-		     (lmap car bindings)))
+		     (map car bindings)))
 	 (expr* `(,keyword
 		    ,(lamlift/bindings
 		      inner-env
@@ -341,18 +341,18 @@ MIT in each case. |#
     expr*))
 
 (define (lamlift/bindings binding-env body-env bindings)
-  (lmap (lambda (binding)
-	  (let ((name (car binding))
-		(value (cadr binding)))
-	    (list
-	     name
-	     (if (not (LAMBDA/? value))
-		 (lamlift/expr body-env value)
-		 (call-with-values
-		  (lambda ()
-		    (lamlift/lambda** 'DYNAMIC ; bindings are dynamic
-				      body-env
-				      value))
+  (map (lambda (binding)
+	 (let ((name (car binding))
+	       (value (cadr binding)))
+	   (list
+	    name
+	    (if (not (LAMBDA/? value))
+		(lamlift/expr body-env value)
+		(call-with-values
+		    (lambda ()
+		      (lamlift/lambda** 'DYNAMIC ; bindings are dynamic
+					body-env
+					value))
 		  (lambda (value* lambda-body-env)
 		    (let ((binding
 			   (or (lamlift/binding/find
@@ -361,7 +361,7 @@ MIT in each case. |#
 		      (set-lamlift/env/binding! lambda-body-env binding)
 		      (set-lamlift/binding/value! binding lambda-body-env)
 		      value*)))))))
-	bindings))
+       bindings))
 
 (define (lamlift/analyze! env)
   (lamlift/decide-split! env)
@@ -469,10 +469,10 @@ MIT in each case. |#
 (define (lamlift/decide/letrec! letrec-env)
 
   (define (decide-remaining-children! child-bindings-done)
-    (let ((children-done (lmap lamlift/binding/value child-bindings-done)))
+    (let ((children-done (map lamlift/binding/value child-bindings-done)))
       (for-each (lambda (child)
 		  (lamlift/decide!* (lamlift/env/children child)))
-		children-done)
+	children-done)
       (lamlift/decide!*
        (delq* children-done (lamlift/env/children letrec-env)))))
 
@@ -494,14 +494,14 @@ MIT in each case. |#
 			     (let ((env* (lamlift/binding/value binding)))
 			       (eq? (lamlift/env/split? env*) 'NO))))))
 	     (for-each
-	      (lambda (binding)
-		(let ((env* (lamlift/binding/value binding)))
-		  ;; No bindings need be added before lifting this,
-		  ;; because all free references from a static frame
-		  ;; are to static variables and hence lexically
-		  ;; visible after lifting.
-		  (set-lamlift/env/extended! env* '())))
-	      splits)
+		 (lambda (binding)
+		   (let ((env* (lamlift/binding/value binding)))
+		     ;; No bindings need be added before lifting this,
+		     ;; because all free references from a static frame
+		     ;; are to static variables and hence lexically
+		     ;; visible after lifting.
+		     (set-lamlift/env/extended! env* '())))
+	       splits)
 	     (decide-remaining-children! splits)))
 	  (else
 	   (lamlift/decide/letrec!/dynamic-frame letrec-env)
@@ -722,12 +722,12 @@ MIT in each case. |#
 	       ;; Should be modified to preserve complete alpha renaming
 	       `(LAMBDA ,orig-lambda-list
 		  (CALL (LOOKUP ,body-lambda-name)
-			,@(lmap (lambda (name)
-				  (if (or *after-cps-conversion?*
-					  (not (continuation-variable? name)))
-				      `(LOOKUP ,name)
-				      `(QUOTE #F)))
-				lifted-lambda-list)))))
+			,@(map (lambda (name)
+				 (if (or *after-cps-conversion?*
+					 (not (continuation-variable? name)))
+				     `(LOOKUP ,name)
+				     `(QUOTE #F)))
+			       lifted-lambda-list)))))
             (lift-stub?
              (or 
               ;; The stub can drift to a static frame, the stub is named,
