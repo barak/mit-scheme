@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.61 1995/10/25 02:18:34 cph Exp $
+;;;	$Id: unix.scm,v 1.62 1996/02/27 21:05:56 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -91,6 +91,7 @@ Includes the new backup.  Must be > 0."
 (define (os/trim-pathname-string string prefix)
   (let ((index (string-match-forward prefix string)))
     (if (and index
+	     (fix:= index (string-length prefix))
 	     (re-match-substring-forward (re-compile-pattern "[/$~]" #t)
 					 #t #f string index
 					 (string-length string)))

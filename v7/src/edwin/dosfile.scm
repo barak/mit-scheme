@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dosfile.scm,v 1.4 1995/10/25 03:49:29 cph Exp $
+;;;	$Id: dosfile.scm,v 1.5 1996/02/27 21:06:03 cph Exp $
 ;;;
-;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -90,6 +90,7 @@ Includes the new backup.  Must be > 0."
 (define (os/trim-pathname-string string prefix)
   (let ((index (string-match-forward prefix string)))
     (if (and index
+	     (fix:= index (string-length prefix))
 	     (re-match-substring-forward
 	      (re-compile-pattern "[\\/$~]\\|[a-zA-Z]:" #t)
 	      #t #f string index (string-length string)))
