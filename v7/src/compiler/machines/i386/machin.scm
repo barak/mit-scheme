@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/machin.scm,v 1.3 1992/01/30 06:34:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/machin.scm,v 1.4 1992/02/04 04:04:44 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/machin.scm,v 4.26 1991/10/25 06:49:34 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -133,7 +133,7 @@ MIT in each case. |#
 
 ;; Virtual floating point registers:
 ;; Floating point stack locations, allocated as if registers.
-;; Two left free to allow room to push and operate.
+;; One left free to allow room to push and operate.
 
 (define fr0 8)
 (define fr1 9)
@@ -141,8 +141,10 @@ MIT in each case. |#
 (define fr3 11)
 (define fr4 12)
 (define fr5 13)
+(define fr6 14)
+;; (define fr7 15)
 
-(define number-of-machine-registers 8)
+(define number-of-machine-registers 15)
 (define number-of-temporary-registers 256)
 
 (define-integrable regnum:stack-pointer esp)
