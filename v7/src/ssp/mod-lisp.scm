@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.6 2004/10/30 04:57:19 cph Exp $
+$Id: mod-lisp.scm,v 1.7 2004/10/30 05:18:33 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -757,7 +757,9 @@ USA.
   (if (hook-in-list? mod-lisp-before-expander-hooks 'LOG-REQUESTS)
       (error "Logging already started."))
   (set! request-log-port (open-output-file pathname 'APPEND))
-  (add-hook-to-list mod-lisp-before-expander-hooks 'LOG-REQUESTS log-requests))
+  (append-hook-to-list mod-lisp-before-expander-hooks
+		       'LOG-REQUESTS
+		       log-requests))
 
 (define (stop-logging-requests)
   (remove-hook-from-list mod-lisp-before-expander-hooks 'LOG-REQUESTS)

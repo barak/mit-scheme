@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ssp.pkg,v 1.8 2004/10/30 05:17:31 cph Exp $
+$Id: ssp.pkg,v 1.9 2004/10/30 05:20:03 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -212,8 +212,12 @@ USA.
 	  xd:menuitem?
 	  xd:number
 	  xd:number?
+	  xd:page-frame
+	  xd:page-frame?
 	  xd:problem
 	  xd:problem?
+	  xd:programmed-output
+	  xd:programmed-output?
 	  xd:radio-buttons
 	  xd:radio-buttons?
 	  xd:radio-entry
