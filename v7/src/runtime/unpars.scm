@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.30 1993/03/07 20:56:23 cph Exp $
+$Id: unpars.scm,v 14.31 1993/06/18 02:45:33 gjr Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -637,7 +637,25 @@ MIT in each case. |#
 (define (unparse/flonum flonum)
   (if (= (system-vector-length flonum) (system-vector-length 0.0))
       (unparse/number flonum)
-      (unparse/default flonum)))
+      (unparse/floating-vector flonum)))
+
+(define (unparse/floating-vector v)
+  (let ((length ((ucode-primitive floating-vector-length) v)))
+    (*unparse-with-brackets
+     "floating-vector"
+     v
+     (and (not (zero? length))
+	  (lambda ()
+	    (let ((limit (if (not *unparser-list-breadth-limit*)
+			     length
+			     (min length *unparser-list-breadth-limit*))))
+	      (unparse/flonum ((ucode-primitive floating-vector-ref) v 0))
+	      (do ((i 1 (1+ i)))
+		  ((>= i limit))
+		(*unparse-char #\Space)
+		(unparse/flonum ((ucode-primitive floating-vector-ref) v i)))
+	      (if (< limit length)
+		  (*unparse-string " ..."))))))))
 
 (define (unparse/future future)
   (*unparse-with-brackets 'FUTURE false
