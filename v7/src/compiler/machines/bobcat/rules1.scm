@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.19 1989/01/18 04:04:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.20 1989/01/21 09:21:37 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -39,8 +39,11 @@ MIT in each case. |#
 ;;;; Transfers to Registers
 
 (define-rule statement
-  (ASSIGN (REGISTER 15) (REGISTER (? source)))
-  (LAP (MOV L ,(standard-register-reference source false) (A 7))))
+  (ASSIGN (REGISTER (? target)) (REGISTER (? source)))
+  (QUALIFIER (machine-register? target))
+  (LAP (MOV L
+	    ,(standard-register-reference source false)
+	    ,(register-reference target))))
 
 (define-rule statement
   (ASSIGN (REGISTER 15) (OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
@@ -50,10 +53,6 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (REGISTER 15) (OFFSET-ADDRESS (REGISTER 15) (? n)))
   (increment-machine-register 15 n))
-
-(define-rule statement
-  (ASSIGN (REGISTER 12) (REGISTER 15))
-  (LAP (MOV L (A 7) (A 4))))
 
 (define-rule statement
   (ASSIGN (REGISTER 12) (OFFSET-ADDRESS (REGISTER 15) (? offset)))
@@ -236,6 +235,12 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
+	  (CONS-POINTER (CONSTANT (? type)) (CONSTANT (? datum))))
+  (QUALIFIER (pseudo-register? target))
+  (LAP ,(load-non-pointer type datum (standard-target-reference target))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (CONSTANT (? type)) (ENTRY:PROCEDURE (? label))))
   (QUALIFIER (pseudo-register? target))
   (let ((temp (reference-temporary-register! 'ADDRESS)))
@@ -277,14 +282,6 @@ MIT in each case. |#
   (ASSIGN (REGISTER (? target)) (FIXNUM->ADDRESS (REGISTER (? source))))
   (QUALIFIER (pseudo-register? target))
   (convert-object/register->register target source fixnum->address))
-
-(define-rule statement
-  (ASSIGN (OFFSET (REGISTER (? a)) (? n))
-	  (FIXNUM->OBJECT (REGISTER (? source))))
-  (let ((target (indirect-reference! a n)))
-    (let ((temporary (move-to-temporary-register! source 'DATA)))
-      (LAP ,@(fixnum->object temporary)
-	   (MOV L ,temporary ,target)))))
 
 ;;;; Transfers to Memory
 
@@ -334,6 +331,14 @@ MIT in each case. |#
 	  (OFFSET (REGISTER (? a1)) (? n1)))
   (let ((source (indirect-reference! a1 n1)))
     (LAP (MOV L ,source ,(indirect-reference! a0 n0)))))
+
+(define-rule statement
+  (ASSIGN (OFFSET (REGISTER (? a)) (? n))
+	  (FIXNUM->OBJECT (REGISTER (? source))))
+  (let ((target (indirect-reference! a n)))
+    (let ((temporary (move-to-temporary-register! source 'DATA)))
+      (LAP ,@(fixnum->object temporary)
+	   (MOV L ,temporary ,target)))))
 
 ;;;; Consing
 
@@ -580,35 +585,45 @@ MIT in each case. |#
 	   (reference-alias-register! register 'DATA)))))
 ;;;; CHAR->ASCII/BYTE-OFFSET
 
+(define (load-char-into-register type source target)
+  (let ((target (reference-target-alias! target 'DATA)))
+    (delete-dead-registers!)
+    (LAP ,(load-non-pointer type 0 target)
+	 (MOV B ,source ,target))))
+
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CHAR->ASCII (OFFSET (REGISTER (? address)) (? offset))))
   (QUALIFIER (pseudo-register? target))
-  (byte-offset->register (indirect-char/ascii-reference! address offset)
-			 (indirect-register address)
-			 target))
+  (load-char-into-register 0
+			   (indirect-char/ascii-reference! address offset)
+			   target))
 
 (define-rule statement
-  (ASSIGN (REGISTER (? target)) (CHAR->ASCII (REGISTER (? source))))
-  (QUALIFIER (pseudo-register? target))
-  (let ((source-reference (machine-register-reference source false)))
-    (if source-reference
-	(begin
-	  (delete-dead-registers!)
-	  (LAP (BFEXTU ,source-reference (& 24) (& 8)
-		       ,(reference-target-alias! target 'DATA))))
-	(byte-offset->register
-	 (indirect-char/ascii-reference! regnum:regs-pointer
-					 (pseudo-register-offset source))
-	 (indirect-register regnum:regs-pointer)
-	 target))))
-
-(define-rule statement
-  (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
+  (ASSIGN (REGISTER (? target))
 	  (CHAR->ASCII (REGISTER (? source))))
-  (let ((source (coerce->any/byte-reference source)))
-    (let ((target (indirect-byte-reference! address offset)))
-      (LAP (MOV B ,source ,target)))))
+  (QUALIFIER (pseudo-register? target))
+  (let ((source (machine-register-reference source 'DATA)))
+    (delete-dead-registers!)
+    (LAP (BFEXTU ,source (& 24) (& 8)
+		 ,(reference-target-alias! target 'DATA)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (BYTE-OFFSET (REGISTER (? address)) (? offset)))
+  (QUALIFIER (pseudo-register? target))
+  (load-char-into-register 0
+			   (indirect-byte-reference! address offset)
+			   target))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (CONS-POINTER (CONSTANT (? type))
+			(BYTE-OFFSET (REGISTER (? address)) (? offset))))
+  (QUALIFIER (pseudo-register? target))
+  (load-char-into-register type
+			   (indirect-byte-reference! address offset)
+			   target))
 
 (define-rule statement
   (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
@@ -618,12 +633,11 @@ MIT in each case. |#
 	    ,(indirect-byte-reference! address offset))))
 
 (define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (BYTE-OFFSET (REGISTER (? address)) (? offset)))
-  (QUALIFIER (pseudo-register? target))
-  (byte-offset->register (indirect-byte-reference! address offset)
-			 (indirect-register address)
-			 target))
+  (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
+	  (CHAR->ASCII (REGISTER (? source))))
+  (let ((source (coerce->any/byte-reference source)))
+    (let ((target (indirect-byte-reference! address offset)))
+      (LAP (MOV B ,source ,target)))))
 
 (define-rule statement
   (ASSIGN (BYTE-OFFSET (REGISTER (? target)) (? target-offset))
