@@ -1,6 +1,6 @@
 #!/bin/csh -f
 
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/rebuild-7.4,v 1.1 1991/08/16 21:34:31 arthur Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/rebuild-7.4,v 1.2 1991/08/21 17:48:27 jinx Exp $
 
 # Arguments: runtimeversion compilerversion edwinversion
 # The versions can be omitted, and if they are, the current version
@@ -24,10 +24,21 @@ if ("$status" == 0) then
 endif
 
 
+set noclobber
+set lock="$root/tmp/lock"
+(echo "### Rebuild in progress started by" `whoami` "on" `date` "on" `hostname` > $lock)
+if ("$status" != 0) then
+  cat "$lock"
+  exit 1
+endif
+
+
 # Stage 2: Write re-compilation script
 
 set script="$root/tmp/build.$$"
 rm -f "$script"
+
+onintr abort_and_exit
 
 echo \(begin\  > $script
 
@@ -77,20 +88,21 @@ echo \(\%exit\)\) >>$script
 
 if (("$runtime" == "") && ("$complr" == "") && ("$edwin" == "")) then
   echo "### No systems to rebuild."
-  rm -f $script
+  rm -f "$script" "$lock"
   exit 0
 endif
 
 # Stage 3: Re-compile sources
 
 cd $root/runtime
-scheme -compiler <$script
+scheme -compiler -no-init-file <$script
 
 set result="$status"
 rm -f $script
 
 if ("$result" != 0) then
   echo "### Recompilation failed."
+  rm -f "$lock"
   exit "$result"
 endif
 
@@ -100,7 +112,7 @@ endif
 if ("$runtime" != "") then
   cd $root/runtime
   rm -f ../tmp/runtime.com
-  scheme -large -fasl make.com <<*END*
+  scheme -large -fasl make.com -no-init-file <<*END*
 (begin
   (disk-save "../tmp/runtime.com")
   (write-line '(saved runtime band))
@@ -109,7 +121,7 @@ if ("$runtime" != "") then
   set result="$status"
   if ("$result" != 0) then
     echo "### Re-building the runtime system failed."
-    rm -f ../tmp/runtime.com
+    rm -f ../tmp/runtime.com "$lock"
     exit "$result"
   endif
   set runband="$root/tmp/runtime.com"
@@ -123,7 +135,7 @@ endif
 if ("$complr" != "") then
   cd $root/sf
   rm -f ../tmp/complr.com
-  scheme -large $band <<*END*
+  scheme -large $band -no-init-file <<*END*
 (begin
   (load "make.com")
   (cd "../compiler")
@@ -135,7 +147,7 @@ if ("$complr" != "") then
   set result="$status"
   if ("$result" != 0) then
     echo "### Re-building the compiler failed."
-    rm -f ../tmp/runtime.com ../tmp/complr.com
+    rm -f ../tmp/runtime.com ../tmp/complr.com "$lock"
     exit "$result"
   endif
   set compband="$root/tmp/complr.com"
@@ -149,7 +161,7 @@ endif
 if ("$edwin" != "") then
   cd $root/edwin
   rm -f ../tmp/edwin.com
-  scheme -large $band <<*END*
+  scheme -large $band -no-init-file <<*END*
 (begin
   (load "make.com")
   (disk-save "../tmp/edwin.com")
@@ -159,7 +171,7 @@ if ("$edwin" != "") then
   set result="$status"
   if ("$result" != 0) then
     echo "### Re-building edwin failed."
-    rm -f ../tmp/runtime.com ../tmp/complr.com ../tmp/edwin.com
+    rm -f ../tmp/runtime.com ../tmp/complr.com ../tmp/edwin.com "$lock"
     exit "$result"
   endif
   set edband="$root/tmp/edwin.com"
@@ -171,7 +183,7 @@ endif
 if (("$edwin" != "") || ("$complr" != 0)) then
   cd $root/edwin
   rm -f ../tmp/c+e.com
-  scheme -constant 2000 -heap 2000 -compiler $cband <<*END*
+  scheme -constant 2000 -heap 2000 -compiler $cband -no-init-file <<*END*
 (begin
   (load "make.com")
   (disk-save "../tmp/c+e.com")
@@ -191,6 +203,9 @@ endif
 
 
 # Stage 5: Install bands
+# This part should be atomic
+
+onintr -
 
 if ("$runtime" != "") then
   set backup=`nextver $runtime`
@@ -236,5 +251,17 @@ if ("$fullband" != "") then
   mv -f "$fullband" /usr/local/lib/mit-scheme/c+e.com
 endif
 
+rm -f "$lock"
 echo "### Done."
 exit 0
+
+abort_and_exit:
+  echo "### Aborting -- Cleaning up..."
+  if ("`jobs`" != "") then
+    kill %1
+    wait
+  endif
+  cd "$root/tmp"
+  rm -f "$script" runtime.com complr.com edwin.com c+e.com "$lock"
+  echo "### Cleaned up."
+  exit 1
