@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.12 1995/04/15 06:58:41 cph Exp $
+$Id: os2prm.scm,v 1.13 1995/04/22 23:38:03 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -105,7 +105,6 @@ MIT in each case. |#
    modification-time))
 
 (define (file-time->string time)
-  ;; Except for the missing time zone, this is an RFC-822 date/time string.
   (let ((dt (decode-file-time time))
 	(d2 (lambda (n) (string-pad-left (number->string n) 2 #\0))))
     (string-append (number->string (decoded-time/day dt))
@@ -118,7 +117,24 @@ MIT in each case. |#
 		   ":"
 		   (d2 (decoded-time/minute dt))
 		   ":"
-		   (d2 (decoded-time/second dt)))))
+		   (d2 (decoded-time/second dt))
+		   " "
+		   (time-zone->string
+		    (let ((tz (local-time-zone)))
+		      (if (decoded-time/daylight-savings-time? dt)
+			  (- tz 1)
+			  tz))))))
+
+(define (local-time-zone)
+  (let ((tz (get-environment-variable "TZ")))
+    (or (and tz
+	     (let ((l (string-length tz)))
+	       (and (fix:> l 6)
+		    (let ((n (substring->number tz 3 (fix:- l 3))))
+		      (and (exact-integer? n)
+			   (<= -24 n 24)
+			   n)))))
+	5)))
 
 (define (decode-file-time time)
   (let* ((twosecs (remainder time 32))

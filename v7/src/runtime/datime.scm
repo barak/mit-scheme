@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.8 1995/04/22 23:37:09 cph Exp $
+$Id: datime.scm,v 14.9 1995/04/22 23:42:10 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -150,10 +150,11 @@ MIT in each case. |#
   (if (not (time-zone? tz))
       (error:wrong-type-argument tz "time zone" 'TIME-ZONE->STRING))
   (let ((minutes (round (* 60 (- tz)))))
-    (let ((qr (integer-divide (abs minutes) 60)))
+    (let ((qr (integer-divide (abs minutes) 60))
+	  (d2 (lambda (n) (string-pad-left (number->string n) 2 #\0))))
       (string-append (if (< minutes 0) "-" "+")
-		     (string-pad-left (integer-divide-quotient qr) 2 #\0)
-		     (string-pad-left (integer-divide-remainder qr) 2 #\0)))))
+		     (d2 (integer-divide-quotient qr))
+		     (d2 (integer-divide-remainder qr))))))
 
 (define (decoded-time/daylight-savings-time? dt)
   ;; In current implementation, DAY-OF-WEEK field might be missing, so
