@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.12 1988/11/03 08:20:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.13 1988/11/03 08:21:25 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -270,6 +270,7 @@ MIT in each case. |#
       (lambda ()
 	(sf/pathname-defaulting (source-node/pathname node) "" false))
     (lambda (input-pathname bin-pathname spec-pathname)
+      input-pathname
       (pathname-touch! bin-pathname)
       (pathname-touch! (pathname-new-type bin-pathname "ext"))
       (if spec-pathname (pathname-touch! spec-pathname)))))
