@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.88 2000/01/05 03:00:46 cph Exp $
+@comment $Id: scheme.texinfo,v 1.89 2000/01/07 18:11:25 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -95,9 +95,9 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.88
+@subtitle Edition 1.89
 @subtitle for Scheme Release 7.5
-@subtitle 4 January 2000
+@subtitle 7 January 2000
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -13926,24 +13926,29 @@ of by the Scheme implementation.
 
 @table @var
 @item host
-The name of the file system on which the file resides.
+The name of the file system on which the file resides.  In the current
+implementation, this component is always a host object that is filled in
+automatically by the runtime system.  When specifying the host
+component, use either @code{#f} or the value of the variable
+@code{local-host}.
 @cindex host, pathname component
 
 @item device
 Corresponds to the ``device'' or ``file structure'' concept in many host
 file systems: the name of a (logical or physical) device containing
-files.
+files.  This component is the drive letter for PC file systems, and is
+unused for unix file systems.
 @cindex device, pathname component
 
 @item directory
 Corresponds to the ``directory'' concept in many host file systems: the
 name of a group of related files (typically those belonging to a single
-user or project).
+user or project).  This component is always used for all file systems.
 @cindex directory, pathname component
 
 @item name
 The name of a group of files that can be thought of as conceptually the
-``same'' file.
+``same'' file.  This component is always used for all file systems.
 @cindex name, pathname component
 
 @item type
@@ -13951,13 +13956,15 @@ Corresponds to the ``filetype'' or ``extension'' concept in many host
 file systems.  This says what kind of file this is.  Files with the same
 name but different type are usually related in some specific way, such
 as one being a source file, another the compiled form of that source,
-and a third the listing of error messages from the compiler.
+and a third the listing of error messages from the compiler.  This
+component is currently used for all file systems, and is formed by
+taking the characters that follow the last dot in the namestring.
 @cindex type, pathname component
 
 @item version
 Corresponds to the ``version number'' concept in many host file systems.
 Typically this is a number that is incremented every time the file is
-modified.
+modified.  This component is currently unused for all file systems.
 @cindex version, pathname component
 @end table
 
@@ -14002,67 +14009,33 @@ adapted from @cite{Common Lisp, The Language}, second edition, section
 23.1.1.}
 @comment **** end CLTL ****
 
-Each component in a pathname is typically one of the following (with
-some exceptions that will be described below):
+In addition to @code{#f} and @code{unspecific}, the components of a
+pathname may take on the following meaningful values:
 
-@table @asis
-@item a string
-This is a @dfn{literal component}.  It is considered to be fully
-specified.
-@cindex literal component, of pathname
-@cindex pathname component, literal
-@cindex component, of pathname, literal
+@table @var
+@item host
+An implementation-defined type which may be tested for using the
+@code{host?} predicate.
 
-@item @code{#f}
-This is a @dfn{missing component}.  It is considered to be unspecified.
-@cindex #f, as pathname component
-@cindex missing component, of pathname
-@cindex pathname component, missing
-@cindex component, of pathname, missing
+@item device
+On systems that support this component (Windows and OS/2), it may be
+specified as a string containing a single alphabetic character, for
+which the alphabetic case is ignored.
 
-@item @code{wild}
-This is a @dfn{wildcard component}.  It is useful only when the pathname
-is being used with the directory reader, where it means that the
-pathname component matches anything.
-@cindex wild, as pathname component
-@cindex wildcard component, of pathname
-@cindex pathname component, wildcard
-@cindex component, of pathname, wildcard
-
-@item @code{unspecific}
-This is an @dfn{unspecifiable component}.  It is treated the same as a
-missing component except that it is not considered to be missing for
-purposes of merging or defaulting components.
-@cindex unspecifiable component, of pathname
-@cindex unspecific, as pathname component
-@cindex component, of pathname, unspecific
-@end table
-
-The host, directory, and version pathname components are exceptions to
-these rules in that they may never be strings, although the values
-@code{#f}, @code{wild}, and @code{unspecific} are allowed with their
-usual meanings.  Here are the other values allowed for these components:
-
-@itemize @bullet
-@item
-The host component is of an implementation defined type which may be
-tested for using the @code{host?} predicate.
-
-@item
-A directory, if it is not one of the above values, must be a non-empty
-list, which represents a @dfn{directory path}: a sequence of
+@item directory
+A non-empty list, which represents a @dfn{directory path}: a sequence of
 directories, each of which has a name in the previous directory, the
 last of which is the directory specified by the entire path.  Each
 element in such a path specifies the name of the directory relative to
-the directory specified by the elements to its left.
-The first element of the list is either the symbol @code{absolute} or the symbol @code{relative}.  If the first
-element in the list is the symbol @code{absolute}, then the directory
-component (and subsequently the pathname) is @dfn{absolute}; the first
-component in the sequence is to be found at the ``root'' of the file
-system.  If the directory is @dfn{relative} then the
-first component is to be found in some as yet unspecified directory;
-typically this is later specified to be the @dfn{current working
-directory}.
+the directory specified by the elements to its left.  The first element
+of the list is either the symbol @code{absolute} or the symbol
+@code{relative}.  If the first element in the list is the symbol
+@code{absolute}, then the directory component (and subsequently the
+pathname) is @dfn{absolute}; the first component in the sequence is to
+be found at the ``root'' of the file system.  If the directory is
+@dfn{relative} then the first component is to be found in some as yet
+unspecified directory; typically this is later specified to be the
+@dfn{current working directory}.
 @cindex root, as pathname component
 @cindex directory path (defn)
 @cindex path, directory (defn)
@@ -14071,37 +14044,47 @@ directory}.
 @cindex parent, of directory
 Aside from @code{absolute} and @code{relative}, which may only appear as
 the first element of the list, each subsequent element in the list is
-either a string or the symbol @code{wild} (each with the same meaning as
-described above), or @code{up}, which means the next directory is the
-``parent'' of the previous one.  @code{up} corresponds to the file
-@file{..} in unix file systems.
+either: a string, which is a literal component; the symbol @code{wild},
+meaningful only when used in conjunction with the directory reader; or
+the symbol @code{up}, meaning the next directory is the ``parent'' of
+the previous one.  @code{up} corresponds to the file @file{..} in unix
+and PC file systems.
 
-In file systems that do not have ``hierarchical'' structure, a specified
+(The following note does not refer to any file system currently
+supported by MIT Scheme, but is included for completeness.)  In file
+systems that do not have ``hierarchical'' structure, a specified
 directory component will always be a list whose first element is
-@code{absolute}.  If the system does not support directories other than a
-single global directory, the list will have no other elements.  If the
+@code{absolute}.  If the system does not support directories other than
+a single global directory, the list will have no other elements.  If the
 system supports ``flat'' directories, i.e.@: a global set of directories
 with no subdirectories, then the list will contain a second element,
 which is either a string or @code{wild}.  In other words, a
 non-hierarchical file system is treated as if it were hierarchical, but
 the hierarchical features are unused.  This representation is somewhat
 inconvenient for such file systems, but it discourages programmers from
-making code depend on the lack of a file hierarchy.  Fortunately few
-such file systems are in common use today.
+making code depend on the lack of a file hierarchy.
 
-@item
-A version component may take the following values: an exact positive
-integer, which is a literal component; the symbol @code{newest}, which
-means to choose the largest available version number for that file; or
-the symbol @code{oldest}, which means to choose the smallest version
-number.  In the future some other possible values may be added, e.g.@:
-@code{installed}.  Note that in the current implementation there are no
-file systems that support version numbers; thus this component is not
-used and should be specified as @code{#f}.
+@item name
+A string, which is a literal component; or the symbol @code{wild},
+meaningful only when used in conjunction with the directory reader.
+
+@item type
+A string, which is a literal component; or the symbol @code{wild},
+meaningful only when used in conjunction with the directory reader.
+
+@item version
+An exact positive integer, which is a literal component; the symbol
+@code{newest}, which means to choose the largest available version
+number for that file; the symbol @code{oldest}, which means to choose
+the smallest version number; or the symbol @code{wild}, meaningful only
+when used in conjunction with the directory reader.  In the future some
+other possible values may be added, e.g.@: @code{installed}.  Note that
+currently no file systems support version numbers; thus this component
+is not used and should be specified as @code{#f}.
 @cindex newest, as pathname component
 @cindex oldest, as pathname component
 @cindex installed, as pathname component
-@end itemize
+@end table
 
 @deffn {procedure+} make-pathname host device directory name type version
 @cindex construction, of pathname
