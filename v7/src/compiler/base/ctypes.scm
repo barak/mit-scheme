@@ -37,7 +37,7 @@
 
 ;;;; Compiler CFG Datatypes
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.33 1986/12/15 05:26:07 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.34 1986/12/16 23:47:07 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -108,13 +108,16 @@
   (entry-holder-next (continuation-&entry continuation)))
 
 (define-integrable (set-continuation-entry! continuation entry)
-  (set-continuation-&entry! continuation (node->holder entry)))
+  (set-entry-holder-next! (continuation-&entry continuation) entry))
 
 (define-integrable (continuation-rtl continuation)
   (sframe->scfg (continuation-&rtl continuation)))
 
-(define-integrable (set-continuation-rtl! continuation rtl)
-  (set-continuation-&rtl! continuation (scfg->sframe rtl)))
+(define (set-continuation-rtl! continuation rtl)
+  (let ((sframe (continuation-&rtl continuation)))
+    (if sframe
+	(sframe-replace-cfg! sframe rtl)
+	(set-continuation-&rtl! continuation (scfg->sframe rtl)))))
 
 (define-unparser continuation-tag
   (lambda (continuation)
