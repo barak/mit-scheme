@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.28 1999/12/31 04:44:46 cph Exp $
+$Id: string.scm,v 14.29 2000/04/13 20:11:29 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -259,6 +259,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (substring-move-right! string 0 size result 0)
       result)))
 
+(define (string-append . strings)
+  (%string-append strings))
+
 (define (%string-append strings)
   (let ((result
 	 (string-allocate
@@ -277,8 +280,42 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (substring-move-right! (car strings) 0 size result index)
 	    (loop (cdr strings) (fix:+ index size)))))))
 
-(define (string-append . strings)
-  (%string-append strings))
+(define (string-move! string1 string2 start2)
+  (guarantee-string string1 'STRING-MOVE!)
+  (%substring-move! string1 0 (string-length string1) string2 start2
+		    'STRING-MOVE!))
+
+(define (substring-move! string1 start1 end1 string2 start2)
+  (guarantee-substring string1 start1 end1 'SUBSTRING-MOVE!)
+  (%substring-move! string1 start1 end1 string2 start2
+		    'SUBSTRING-MOVE!))
+
+(define (%substring-move! string1 start1 end1 string2 start2 procedure)
+  (guarantee-string string2 procedure)
+  (guarantee-index/string start2 procedure)
+  (let* ((n (fix:- end1 start1))
+	 (end2 (fix:+ start2 n)))
+    (if (not (fix:<= end2 (string-length string2)))
+	(error:bad-range-argument start2 procedure))
+    (if (fix:< n 32)
+	;; When transferring less than 32 bytes, it's faster to do
+	;; inline than to call the primitive.
+	(if (or (not (eq? string2 string1)) (fix:< start2 start1))
+	    (let loop ((i1 start1) (i2 start2))
+	      (if (fix:< i1 end1)
+		  (begin
+		    (string-set! string2 i2 (string-ref string1 i1))
+		    (loop (fix:+ i1 1) (fix:+ i2 1)))))
+	    (let loop ((i1 end2) (i2 end2))
+	      (if (fix:> i1 start1)
+		  (let ((i1 (fix:+ i1 1))
+			(i2 (fix:+ i2 1)))
+		    (string-set! string2 i2 (string-ref string1 i1))
+		    (loop i1 i2)))))
+	(if (or (not (eq? string2 string1)) (fix:< start2 start1))
+	    (substring-move-left! string1 start1 end1 string2 start2)
+	    (substring-move-right! string1 start1 end1 string2 start2)))
+    end2))
 
 (define (burst-string string delimiter allow-runs?)
   (guarantee-string string 'BURST-STRING)
