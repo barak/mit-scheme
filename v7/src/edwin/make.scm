@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 3.86 1995/05/20 10:20:45 cph Exp $
+$Id: make.scm,v 3.87 1995/10/31 23:26:55 cph Exp $
 
 Copyright (c) 1989-94 Massachusetts Institute of Technology
 
@@ -46,7 +46,12 @@ MIT in each case. |#
      (lambda ()
        (declare-shared-library "edwin" (lambda () true))
        (package/system-loader
-	"edwin"
+	(case microcode-id/operating-system
+	  ((DOS) "edwindos")
+	  ((NT) "edwinw32")
+	  ((OS2) "edwinos2")
+	  ((UNIX) "edwinunx")
+	  (else "edwin"))
 	`((os-type . ,microcode-id/operating-system))
 	'QUERY)))))
 (add-system! (make-system "Edwin" 3 86 '()))

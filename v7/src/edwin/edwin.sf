@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: edwin.sf,v 1.13 1995/10/31 23:26:48 cph Exp $
+;;;	$Id: edwin.sf,v 1.14 1995/10/31 23:29:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -104,13 +104,13 @@
 	 ((NT) "edwinw32")
 	 ((OS2) "edwinos2")
 	 ((UNIX) "edwinunx")
-	 (else "edwin"))))
-  (if (not (string=? name "edwin"))
-      (copy-file "edwin.pkg" (pathname-new-type name "pkg")))
+	 (else "edwinunk"))))
+  (copy-file "edwin.pkg" (pathname-new-type name "pkg"))
   (generate name)
-  (sf (pathname-new-type name "con")))
+  (sf (pathname-new-type name "con"))
+  (if (and (file-exists? (pathname-new-type name "avd"))
+	   (not (file-processed? name "avd" "bad")))
+      (fasdump (read-file (pathname-new-type name "avd"))
+	       (pathname-new-type name "bad"))))
 (if (not (file-processed? "edwin" "ldr" "bld"))
     (sf "edwin.ldr"))
-(if (and (file-exists? "edwin.avd")
-	 (not (file-processed? "edwin" "avd" "bad")))
-    (fasdump (read-file "edwin.avd") "edwin.bad"))
