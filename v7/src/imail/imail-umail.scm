@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.12 2000/04/27 02:16:47 cph Exp $
+;;; $Id: imail-umail.scm,v 1.13 2000/05/02 21:09:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -146,7 +146,7 @@
 				   (get-first-header-field-value
 				    message "from" #f)))
 			      (and from
-				   (rfc822-first-address from)))
+				   (rfc822:first-address from)))
 			    "unknown")
 			port)
 	  (write-string " " port)

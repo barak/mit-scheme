@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rfc822.scm,v 1.4 2000/04/14 01:45:47 cph Exp $
+;;; $Id: rfc822.scm,v 1.5 2000/05/02 21:07:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -22,20 +22,32 @@
 
 (declare (usual-integrations))
 
-(define (rfc822-first-address string)
-  (let ((addresses (string->rfc822-addresses string)))
+(define rfc822:char-set:header-constituents
+  (char-set-difference (ascii-range->char-set 33 127)
+		       (char-set #\:)))
+
+(define rfc822:char-set:not-header-constituents
+  (char-set-invert rfc822:char-set:header-constituents))
+
+(define (rfc822:header-field-name? string start end)
+  (and (fix:< start end)
+       (not (substring-find-next-char-in-set
+	     string start end rfc822:char-set:not-header-constituents))))
+
+(define (rfc822:first-address string)
+  (let ((addresses (rfc822:string->addresses string)))
     (and (pair? addresses)
 	 (car addresses))))
 
-(define (rfc822-addresses->string addresses)
+(define (rfc822:addresses->string addresses)
   (if (null? addresses)
       ""
       (decorated-string-append "" ", " "" addresses)))
 
-(define (string->rfc822-addresses string)
+(define (rfc822:string->addresses string)
   (let ((address-list
-	 (rfc822-strip-quoted-names
-	  (let loop ((tokens (string->rfc822-tokens string)))
+	 (rfc822:strip-quoted-names
+	  (let loop ((tokens (rfc822:string->tokens string)))
 	    (if (pair? tokens)
 		(let ((rest (loop (cdr tokens))))
 		  (if (cond ((char? (car tokens))
@@ -50,7 +62,7 @@
 	(car address-list)
 	(map string-trim (burst-string string #\, #f)))))
 
-(define (rfc822-strip-quoted-names tokens)
+(define (rfc822:strip-quoted-names tokens)
   (define (parse-list tokens separator parse-element)
     (let ((first (parse-element tokens)))
       (and first
@@ -127,7 +139,7 @@
 
 ;;;; Parser
 
-(define string->rfc822-tokens
+(define rfc822:string->tokens
   (let* ((special-chars
 	  (char-set #\( #\) #\[ #\] #\< #\> #\@ #\, #\; #\: #\\ #\" #\.))
 	 (atom-chars
