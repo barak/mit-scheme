@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: screen.scm,v 1.105 1994/03/08 22:05:44 cph Exp $
+;;;	$Id: screen.scm,v 1.106 1995/07/02 06:38:33 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -172,14 +172,12 @@
   (eq? 'DELETED (screen-visibility screen)))
 
 (define (update-screen! screen display-style)
-  (and (or (not (screen-visible? screen))
-	   (begin
-	     (if (and display-style (not (eq? 'NO-OUTPUT display-style)))
-		 (screen-force-update screen))
-	     (with-screen-in-update screen display-style
-	       (lambda ()
-		 (editor-frame-update-display! (screen-root-window screen)
-					       display-style)))))
+  (if (and display-style (not (eq? 'NO-OUTPUT display-style)))
+      (screen-force-update screen))
+  (and (with-screen-in-update screen display-style
+	 (lambda ()
+	   (editor-frame-update-display! (screen-root-window screen)
+					 display-style)))
        (begin
 	 (set-screen-needs-update?! screen false)
 	 true)))
@@ -650,12 +648,13 @@
 	       screen
 	       (lambda ()
 		 (and (thunk)
-		      (or (not (screen-needs-update? screen))
-			  (and (not (eq? 'NO-OUTPUT display-style))
-			       (screen-update screen display-style)))
-		      (begin
-			(screen-update-cursor screen)
-			true))))))
+		      (or (not (screen-visible? screen))
+			  (and (or (not (screen-needs-update? screen))
+				   (and (not (eq? 'NO-OUTPUT display-style))
+					(screen-update screen display-style)))
+			       (begin
+				 (screen-update-cursor screen)
+				 true))))))))
 	 (set-screen-in-update?! screen old-flag)
 	 finished?)))))
 
