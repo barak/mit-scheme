@@ -1,17 +1,8 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.100 2000/06/29 03:46:05 cph Exp $
+$Id: todo.txt,v 1.101 2000/06/29 17:51:01 cph Exp $
 
 Bug fixes
 ---------
-
-* IMAP URL completion must handle folders that contain both messages
-  and subfolders differently.  Such folders should appear twice in the
-  completion list: once with no delimiter suffix, and once with a
-  delimiter suffix.  That way when the user completes such a folder,
-  the message "complete, but not unique" will be shown, and it will be
-  obvious there are subfolders.  As it now stands, there's no way to
-  tell there are subfolders other than by adding the delimiter suffix
-  and re-completing.
 
 * Must be able to handle malformed headers in incoming mail.
   Generating a low-level error in this situation is unacceptable.

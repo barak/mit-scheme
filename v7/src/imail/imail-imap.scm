@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.126 2000/06/24 01:37:56 cph Exp $
+;;; $Id: imail-imap.scm,v 1.127 2000/06/29 17:51:06 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -255,16 +255,27 @@
 	       (if-unique (car responses)))))))
 
 (define (imap-mailbox-completions mailbox url)
-  (map (lambda (response)
-	 (let ((mailbox (imap:response:list-mailbox response))
-	       (delimiter (imap:response:list-delimiter response)))
-	   (if (and delimiter
-		    (memq '\NOSELECT (imap:response:list-flags response)))
-	       (string-append mailbox delimiter)
-	       mailbox)))
-       (with-open-imap-connection url
-	 (lambda (connection)
-	   (imap:command:list connection "" (string-append mailbox "%"))))))
+  (with-open-imap-connection url
+    (lambda (connection)
+      (let ((get-list
+	     (lambda (prefix)
+	       (imap:command:list connection "" (string-append prefix "%")))))
+	(append-map!
+	 (lambda (response)
+	   (let ((flags (imap:response:list-flags response))
+		 (delimiter (imap:response:list-delimiter response))
+		 (mailbox (imap:response:list-mailbox response)))
+	     (let ((tail
+		    (if (or (not delimiter) (memq '\NOINFERIORS flags))
+			'()
+			(let ((container (string-append mailbox delimiter)))
+			  (if (pair? (get-list container))
+			      (list container)
+			      '())))))
+	       (if (memq '\NOSELECT flags)
+		   tail
+		   (cons mailbox tail)))))
+	 (get-list mailbox))))))
 
 ;;;; Server connection
 
