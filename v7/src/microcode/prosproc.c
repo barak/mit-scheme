@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.10 1992/01/20 17:30:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.11 1992/02/11 23:01:37 cph Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -93,15 +93,14 @@ Seventh arg STDERR is the error channel for the subprocess.\n\
 {
   PRIMITIVE_HEADER (7);
   CHECK_ARG (2, string_vector_p);
-  if ((ARG_REF (3)) != SHARP_F)
-    CHECK_ARG (3, string_vector_p);
   {
     PTR position = dstack_position;
     CONST char * filename = (STRING_ARG (1));
     CONST char ** argv =
       ((CONST char **) (convert_string_vector (ARG_REF (2))));
-    char ** env =
-      (((ARG_REF (3)) == SHARP_F) ? 0 : (convert_string_vector (ARG_REF (3))));
+    SCHEME_OBJECT env_object = (ARG_REF (3));
+    char ** env = 0;
+    CONST char * working_directory = 0;
     enum process_ctty_type ctty_type;
     char * ctty_name = 0;
     enum process_channel_type channel_in_type;
@@ -111,6 +110,18 @@ Seventh arg STDERR is the error channel for the subprocess.\n\
     enum process_channel_type channel_err_type;
     Tchannel channel_err;
 
+    if ((PAIR_P (env_object)) && (STRING_P (PAIR_CDR (env_object))))
+      {
+	working_directory =
+	  ((CONST char *) (STRING_LOC ((PAIR_CDR (env_object)), 0)));
+	env_object = (PAIR_CAR (env_object));
+      }
+    if (env_object != SHARP_F)
+      {
+	if (! (string_vector_p (env_object)))
+	  error_wrong_type_arg (3);
+	env = (convert_string_vector (env_object));
+      }
     if ((ARG_REF (4)) == SHARP_F)
       ctty_type = process_ctty_type_none;
     else if ((ARG_REF (4)) == (LONG_TO_FIXNUM (-1)))
@@ -128,7 +139,7 @@ Seventh arg STDERR is the error channel for the subprocess.\n\
     {
       Tprocess process =
 	(OS_make_subprocess
-	 (filename, argv, env,
+	 (filename, argv, env, working_directory,
 	  ctty_type, ctty_name,
 	  channel_in_type, channel_in,
 	  channel_out_type, channel_out,

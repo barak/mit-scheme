@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osproc.h,v 1.5 1991/03/14 04:22:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osproc.h,v 1.6 1992/02/11 23:01:04 cph Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -90,6 +90,7 @@ extern Tprocess EXFUN
    (CONST char * filename,
     CONST char ** argv,
     char ** env,
+    CONST char * working_directory,
     enum process_ctty_type ctty_type,
     char * ctty_name,
     enum process_channel_type channel_in_type,

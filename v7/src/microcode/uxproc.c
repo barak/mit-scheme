@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.11 1991/06/15 00:40:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.12 1992/02/11 23:01:17 cph Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -241,6 +241,7 @@ DEFUN (OS_make_subprocess,
        CONST char * filename AND
        CONST char ** argv AND
        char ** envp AND
+       CONST char * working_directory AND
        enum process_ctty_type ctty_type AND
        char * ctty_name AND
        enum process_channel_type channel_in_type AND
@@ -308,6 +309,8 @@ DEFUN (OS_make_subprocess,
   /* Don't do `transaction_commit ()' here.  Because we used `vfork'
      to spawn the child, the side-effects that are performed by
      `transaction_commit' will occur in the parent as well. */
+  if (working_directory != 0)
+    UX_chdir (working_directory);
   {
     int in_fd = (-1);
     int out_fd = (-1);
