@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/missing.c,v 9.26 1989/10/28 11:00:32 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/missing.c,v 9.27 1991/12/07 01:55:51 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -49,62 +49,67 @@ frexp (value, eptr)
     {
       while (1)
 	{
-	  x /= 2;
-	  if (x > 1)
+	  if (x > 2)
 	    {
 	      register double xr = (x / 2);
-	      register double r = 4;
+	      register double r = 2;
 	      register int n = 1;
-	      while (xr > 1)
+	      while (xr >= r)
 		{
-		  x = xr;
+		  /* ((xr == (x / r)) && (xr >= r) && (x >= (r * r))) */
 		  xr /= r;
+		  /* ((xr == (x / (r * r))) && (xr >= 1)) */
 		  r *= r;
+		  /* ((xr == (x / r)) && (x >= r)) */
 		  n += n;
 		}
-	      if (xr < 1)
-		e += n;
-	      else
-		{
-		  x = (xr / 2);
-		  e += (n + n + 1);
-		  break;
-		}
+	      /* ((xr >= 1) && (xr < r)) */
+	      x = xr;
+	      e += n;
 	    }
-	  else if (x < 1)
+	  else if (x < 2)
 	    {
+	      x /= 2;
 	      e += 1;
 	      break;
 	    }
 	  else
 	    {
-	      x /= 2;
+	      x /= 4;
 	      e += 2;
 	      break;
 	    }
 	}
     }
-  else if (x > 0)
+  else if ((x > 0) && (x < 0.5))
     {
       while (1)
 	{
-	  if (x < 0.5)
+	  if (x < 0.25)
 	    {
-	      register double xr = (x * 4);
-	      register double r = 4;
+	      register double xr = (x * 2);
+	      register double r = 0.5;
 	      register int n = 1;
-	      x *= 2;
-	      while (xr < 1)
+	      /* ((xr == (x / r)) && (xr < 0.5) && (x < (r / 2))) */
+	      while (xr < (r / 2))
 		{
-		  x = xr;
-		  xr *= r;
+		  /* ((xr < (r / 2)) && (x < ((r * r) / 2))) */
+		  xr /= r;
+		  /* ((xr == (x / (r * r))) && (xr < 0.5)) */
 		  r *= r;
+		  /* ((xr == (x / r)) && (x < (r / 2))) */
 		  n += n;
 		}
+	      /* ((xr >= (r / 2)) && (xr < 0.5)) */
+	      x = xr;
 	      e -= n;
 	    }
 	  else
-	    break;
+	    {
+	      x *= 2;
+	      e -= 1;
+	      break;
+	    }
 	}
     }
   (*eptr) = e;
