@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/histry.scm,v 14.3 1990/08/08 00:58:12 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/histry.scm,v 14.4 1991/08/06 22:12:23 arthur Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -134,23 +134,25 @@ MIT in each case. |#
 ;;; SET-CURRENT-HISTORY! is run.
 
 (define (with-new-history thunk)
-  ((ucode-primitive set-current-history!)
-   (let ((history
-	  (push-history! (create-history max-subproblems
-					 max-reductions))))
-     (if (zero? max-subproblems)
+  (with-history-disabled
+    (lambda ()
+      ((ucode-primitive set-current-history!)
+       (let ((history
+	      (push-history! (create-history max-subproblems
+					     max-reductions))))
+	 (if (zero? max-subproblems)
 
-	 ;; In this case, we want the history to appear empty,
-	 ;; so when it pops up, there is nothing in it.
-	 history
+	     ;; In this case, we want the history to appear empty,
+	     ;; so when it pops up, there is nothing in it.
+	     history
 
-	 ;; Otherwise, record a dummy reduction, which will appear
-	 ;; in the history.
-	 (begin (record-evaluation-in-history! history
-					       false
-					       system-global-environment)
-		(push-history! history)))))
-  (thunk))
+	     ;; Otherwise, record a dummy reduction, which will appear
+	     ;; in the history.
+	     (begin (record-evaluation-in-history! history
+						   false
+						   system-global-environment)
+		    (push-history! history)))))
+      (thunk))))
 
 (define max-subproblems 10)
 (define max-reductions 5)
