@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.8 1992/01/30 06:34:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.9 1992/01/31 13:35:37 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -117,13 +117,25 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS (? operator)
+			 (OBJECT->FIXNUM (CONSTANT 0))
+			 (REGISTER (? source))
+			 (? overflow?)))
+  (QUALIFIER (not (fixnum-2-args/commutative? operator)))
+  overflow?				; ignored
+  (if (eq? operator 'MINUS-FIXNUM)
+      (fixnum-1-arg target source (fixnum-1-arg/operate 'FIXNUM-NEGATE))
+      (load-fixnum-constant 0 (target-register-reference target))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
 	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
 			 (OBJECT->FIXNUM (CONSTANT 4))
 			 (OBJECT->FIXNUM (REGISTER (? source)))
 			 (? overflow?)))
   overflow?				; ignored
   (convert-index->fixnum/register target source))
-
+
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
@@ -132,8 +144,8 @@ MIT in each case. |#
 			 (? overflow?)))
   overflow?				; ignored
   (convert-index->fixnum/register target source))
-
-;;;; Fixnum Predicates
+
+;;; Fixnum Predicates
 
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate) (REGISTER (? register)))
@@ -331,6 +343,10 @@ MIT in each case. |#
   (lambda (target)
     (LAP (NOT W ,target)
 	 ,@(word->fixnum target))))
+
+(define-fixnum-method 'FIXNUM-NEGATE fixnum-methods/1-arg
+  (lambda (target)
+    (LAP (NEG W ,target))))
 
 (let-syntax
     ((binary-operation
