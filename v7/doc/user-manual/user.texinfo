@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.90 2001/11/26 19:52:11 cph Exp $
+@comment $Id: user.texinfo,v 1.91 2001/11/26 19:52:48 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -438,9 +438,9 @@ situations; you should read this to decide which is right for you.
 The Scheme runtime environment and associated tools are normally
 stored in @dfn{bands}, which are large memory images stored in files
 (@pxref{World Images}).  Scheme requires at least one band to work
-properly.  The Scheme distribution two bands.  These bands are stored
-in the @file{lib/mit-scheme} directory on unix systems, and the
-@file{lib} directory on PC systems.
+properly.  The Scheme distribution includes two bands.  These bands
+are stored in the @file{lib/mit-scheme} directory on unix systems, and
+the @file{lib} directory on PC systems.
 
 @table @file
 @item runtime.com
