@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: wincom.scm,v 1.131 2000/12/01 06:07:43 cph Exp $
+;;; $Id: wincom.scm,v 1.132 2000/12/07 16:07:03 cph Exp $
 ;;;
 ;;; Copyright (c) 1987, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -451,7 +451,7 @@ Also kills any pop up window it may have created."
 	    (lambda (window)
 	      (let ((entry (weak-assq window *pop-up-buffer-window-alist*)))
 		(if entry
-		    (set-window-buffer! window (weak-cdr entry)))))
+		    (select-buffer-no-record (weak-cdr entry) window))))
 	    (buffer-windows buffer))
 	   (weak-set-car! *previous-popped-up-buffer* #f)
 	   (kill-buffer-interactive buffer))
@@ -544,7 +544,6 @@ Also kills any pop up window it may have created."
 	  (let ((limit (* 2 (ref-variable window-min-height))))
 	    (if (< (ref-variable split-height-threshold) limit)
 		(set-variable! split-height-threshold limit))
-	    (maybe-deselect-buffer-layout screen)
 	    (cond ((and (use-multiple-screens?)
 			(other-screen screen))
 		   => (lambda (screen)
