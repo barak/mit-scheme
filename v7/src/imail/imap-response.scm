@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.31 2000/05/30 04:02:27 cph Exp $
+;;; $Id: imap-response.scm,v 1.32 2000/06/01 18:44:35 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -632,7 +632,7 @@
     ((BAD NO OK) (cddr response))
     ((PREAUTH BYE) (cdr response))
     (else (error:bad-range-argument response 'IMAP:RESPONSE:RESPONSE-TEXT))))
-
+
 (define (imap:response:fetch-attribute-keywords response)
   (map car (cddr response)))
 
@@ -641,6 +641,22 @@
     (if (not entry)
 	(error "Missing FETCH attribute:" keyword))
     (cadr entry)))
+
+(define (imap:response:fetch-body-part response section offset)
+  (let ((entry
+	 (list-search-positive (cddr response)
+	   (lambda (entry)
+	     (and (eq? (car entry) 'BODY)
+		  (equal? (cadr entry) section)
+		  (pair? (cddr entry))
+		  (eqv? offset (caddr entry))
+		  (pair? (cdddr entry))
+		  (or (not (cadddr entry))
+		      (string? (cadddr entry)))
+		  (null? (cddddr entry)))))))
+    (if (not entry)
+	(error "Missing FETCH body part:" section offset))
+    (cadddr entry)))
 
 (define (imap:response-code:alert? code) (eq? (car code) 'ALERT))
 (define (imap:response-code:appenduid? code) (eq? (car code) 'APPENDUID))

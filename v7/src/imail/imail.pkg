@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.41 2000/06/01 18:23:58 cph Exp $
+;;; $Id: imail.pkg,v 1.42 2000/06/01 18:44:41 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -191,6 +191,7 @@
 	  imap:response:expunge?
 	  imap:response:fetch-attribute
 	  imap:response:fetch-attribute-keywords
+	  imap:response:fetch-body-part
 	  imap:response:fetch-index
 	  imap:response:fetch?
 	  imap:response:flags
