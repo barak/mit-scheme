@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.31 1990/05/16 22:42:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.32 1990/06/14 19:54:57 jinx Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -953,7 +953,7 @@ bignum_destructive_scale_up (bignum, factor)
   fast bignum_digit_type two_digits;
   fast bignum_digit_type product_low;
 #define product_high carry
-  bignum_digit_type * end = (scan + ((BIGNUM_LENGTH (bignum)) - 1));
+  bignum_digit_type * end = (scan + (BIGNUM_LENGTH (bignum)));
   BIGNUM_ASSERT ((factor > 1) && (factor < BIGNUM_RADIX_ROOT));
   while (scan < end)
     {
@@ -966,7 +966,11 @@ bignum_destructive_scale_up (bignum, factor)
       (*scan++) = (HD_CONS ((HD_LOW (product_high)), (HD_LOW (product_low))));
       carry = (HD_HIGH (product_high));
     }
-  (*scan) += carry;
+  /* A carry here would be an overflow, i.e. it would not fit.
+     Hopefully the callers allocate enough space that this will
+     never happen.
+   */
+  BIGNUM_ASSERT (carry == 0);
   return;
 #undef product_high
 }
