@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.15 1989/01/06 20:50:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.16 1989/04/21 17:10:28 markf Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -303,18 +303,25 @@ MIT in each case. |#
 			    (scode/make-conditional expression #T #F))))
 
 (define (find-name block name)
-  (define (search block)
+  (define (search block if-non-local)
     (or (variable-assoc name (block-bound-variables block))
 	(variable-assoc name (block-free-variables block))
 	(let ((variable
 	       (if (block-parent block)
-		   (search (block-parent block))
+		   (search (block-parent block)
+			   (lambda (bl var) bl var))
 		   (make-variable block name))))
 	  (set-block-free-variables! block
 				     (cons variable
 					   (block-free-variables block)))
+	  (if-non-local block variable)
 	  variable)))
-  (search block))
+  (search block
+	  (lambda (block variable)
+	    (set-block-variables-nontransitively-free!
+	     block
+	     (cons variable
+		   (block-variables-nontransitively-free block))))))
 
 (define (generate/lambda block continuation expression)
   (generate/lambda* block continuation expression false false))

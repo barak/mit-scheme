@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.13 1989/04/15 18:05:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.14 1989/04/21 17:04:12 markf Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -83,13 +83,17 @@ MIT in each case. |#
   normal-offset	;offset of variable within `block'
   declarations	;list of declarations for this variable
   closed-over?	;true iff a closure references it freely.
+  register	;register for parameters passed in registers
+  stack-overwrite-target?
+		;true iff variable is the target of a stack overwrite
   )
 
 (define continuation-variable/type variable-in-cell?)
 (define set-continuation-variable/type! set-variable-in-cell?!)
 
 (define (make-variable block name)
-  (make-lvalue variable-tag block name '() false false '() false))
+  (make-lvalue variable-tag block name '() false false '() false false
+	       false))
 
 (define variable-assoc
   (association-procedure eq? variable-name))
@@ -121,6 +125,12 @@ MIT in each case. |#
 			 (EQ? (VARIABLE-NAME LVALUE) ',symbol))))))))
   (define-named-variable continuation)
   (define-named-variable value))
+
+(define-integrable (variable/register variable)
+  (let ((maybe-delayed-register (variable-register variable)))
+    (if (promise? maybe-delayed-register)
+	(force maybe-delayed-register)
+	maybe-delayed-register)))
 
 ;;;; Linking
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.11 1989/04/17 17:06:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.12 1989/04/21 17:05:12 markf Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -312,3 +312,16 @@ MIT in each case. |#
 	 (or (memq (caar reasons)
 		   '(PASSED-OUT ARGUMENT ASSIGNMENT APPLY-COMPATIBILITY))
 	     (loop (cdr reasons))))))
+
+(define (procedure-maybe-registerizable? procedure)
+;;; yields true if the procedure might be able to have some of its
+;;; parameters in registers.  Note: This does not mean that the
+;;; procedure WILL have its parameters in registers, or that ALL its
+;;; parameters will be in registers. Which parameters will actually be
+;;; in registers depends on the procedure's argument subproblems, as
+;;; well as the parameter lvalues themselves.
+  (and
+   (procedure-always-known-operator? procedure)
+   (procedure-application-unique? procedure)
+   (procedure/virtually-open? procedure)
+   (not (block-layout-frozen? (procedure-block procedure)))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.19 1989/01/18 19:44:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.20 1989/04/21 17:14:14 markf Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -331,10 +331,11 @@ MIT in each case. |#
 		     filenames))))
     (file-dependency/syntax/join
      (append (filename/append "base"
-			      "blocks" "cfg1" "cfg2" "cfg3" "contin" "ctypes"
-			      "debug" "enumer" "infnew" "lvalue" "object"
-			      "pmerly" "proced" "refctx" "rvalue" "scode"
-			      "sets" "subprb" "switch" "toplev" "utils")
+			      "blocks" "cfg1" "cfg2" "cfg3" "constr"
+			      "contin" "ctypes" "debug" "enumer" "infnew"
+			      "lvalue" "object" "pmerly" "proced" "refctx"
+			      "rvalue" "scode" "sets" "subprb" "switch"
+			      "toplev" "utils")
 	     (filename/append "back"
 			      "asmmac" "bittop" "bitutl" "insseq" "lapgn1"
 			      "lapgn2" "lapgn3" "linear" "regmap" "symtab"
@@ -344,10 +345,10 @@ MIT in each case. |#
 	     (filename/append "fggen"
 			      "declar" "fggen" "canon")
 	     (filename/append "fgopt"
-			      "blktyp" "closan" "conect" "contan" "desenv"
-			      "envopt" "folcon" "offset" "operan" "order"
-			      "outer" "reord" "reuse" "sideff" "simapp"
-			      "simple" "subfre")
+			      "blktyp" "closan" "conect" "contan" "delint"
+			      "desenv" "envopt" "folcon" "offset" "operan"
+			      "order" "outer" "param" "reord" "reuse"
+			      "sideff" "simapp" "simple" "subfre")
 	     (filename/append "rtlbase"
 			      "regset" "rgraph" "rtlcfg" "rtlcon" "rtlexp"
 			      "rtline" "rtlobj" "rtlreg" "rtlty1" "rtlty2")
@@ -372,8 +373,9 @@ MIT in each case. |#
 (define (initialize/integration-dependencies!)
   (let ((front-end-base
 	 (filename/append "base"
-			  "blocks" "cfg1" "cfg2" "cfg3" "contin" "ctypes"
-			  "enumer" "lvalue" "object" "proced" "rvalue"
+			  "blocks" "cfg1" "cfg2" "cfg3" "constr"
+			  "contin" "ctypes" "enumer" "lvalue"
+			  "object" "proced" "rvalue"
 			  "scode" "subprb" "utils"))
 	(bobcat-base
 	 (filename/append "machines/bobcat" "machin"))
@@ -479,8 +481,8 @@ MIT in each case. |#
       (filename/append "fggen"
 		       "declar" "fggen") ; "canon" needs no integrations
       (filename/append "fgopt"
-		       "blktyp" "closan" "conect" "contan" "desenv"
-		       "envopt" "folcon" "offset" "operan" "order"
+		       "blktyp" "closan" "conect" "contan" "delint" "desenv"
+		       "envopt" "folcon" "offset" "operan" "order" "param"
 		       "outer" "reuse" "sideff" "simapp" "simple" "subfre"))
      (append bobcat-base front-end-base))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndvar.scm,v 1.1 1988/12/12 21:33:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndvar.scm,v 1.2 1989/04/21 17:10:02 markf Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -91,13 +91,15 @@ MIT in each case. |#
 	    (procedure-block rvalue)
 	    0
 	    (procedure-closure-offset rvalue))))
-	(find-block/variable context variable
-	  (lambda (offset-locative)
-	    (lambda (block locative)
-	      (if-compiler
-	       (offset-locative locative (variable-offset block variable)))))
-	  if-ic))))
-
+	(let ((register (variable/register variable)))
+	  (if register
+	      (if-compiler (register-locative register))
+	      (find-block/variable context variable
+		(lambda (offset-locative)
+		  (lambda (block locative)
+		    (if-compiler
+		     (offset-locative locative (variable-offset block variable)))))
+		if-ic))))))
 (define (find-definition-variable context lvalue)
   (find-block/variable context lvalue
     (lambda (offset-locative)
@@ -171,3 +173,6 @@ MIT in each case. |#
    (rtl:make-fetch register:stack-pointer)
    (+ (procedure-closure-offset (reference-context/procedure context))
       (reference-context/offset context))))
+
+(define (register-locative register)
+  register)

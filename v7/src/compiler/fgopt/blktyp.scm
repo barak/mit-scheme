@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.10 1988/12/30 07:11:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.11 1989/04/21 17:09:37 markf Rel $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -66,6 +66,16 @@ MIT in each case. |#
 (define (close-procedure! block)
   (let ((procedure (block-procedure block))
 	(current-parent (block-parent block)))
+
+    (define (uninteresting-variable? variable)
+      (or (lvalue-integrated? variable)
+	  ;; Some of this is redundant
+	  (let ((value (lvalue-known-value variable)))
+	    (and value
+		 (or (eq? value procedure)
+		     (and (rvalue/procedure? value)
+			  (procedure/trivial-or-virtual? value)))))))
+
     (let ((previously-trivial? (procedure/trivial-closure? procedure))
 	  (parent (or (procedure-target-block procedure) current-parent)))
       ;; Note: this should be innocuous if there is already a closure block.
@@ -82,17 +92,14 @@ MIT in each case. |#
 	     parent
 	     (list-transform-negative (block-free-variables block)
 	       (lambda (lvalue)
-		 (or (lvalue-integrated? lvalue)
-		     ;; Some of this is redundant
-		     (let ((value (lvalue-known-value lvalue)))
-		       (and value
-			    (or (eq? value procedure)
-				(and (rvalue/procedure? value)
-				     (procedure/trivial-or-virtual? value)))))
+		 (or (uninteresting-variable? lvalue)
 		     (begin
 		       (set-variable-closed-over?! lvalue true)
 		       false))))
-	     '()))
+	     '()
+	     (list-transform-negative (block-variables-nontransitively-free
+				       block)
+	       uninteresting-variable?)))
 	(lambda (closure-frame-block size)
 	  (set-block-parent! block closure-frame-block)
 	  (set-procedure-closure-size! procedure size)))
@@ -103,14 +110,16 @@ MIT in each case. |#
 		   procedure))))
     (disown-block-child! current-parent block)))
 
-(define (find-closure-bindings block free-variables bound-variables)
+(define (find-closure-bindings block free-variables bound-variables
+			       variables-nontransitively-free)
   (if (or (not block) (ic-block? block))
       (let ((grandparent (and (not (null? free-variables)) block)))
 	(if (null? bound-variables)
 	    (values grandparent (if grandparent 1 0))
 	    (make-closure-block grandparent
 				free-variables
-				bound-variables)))
+				bound-variables
+				variables-nontransitively-free)))
       (with-values
 	  (lambda ()
 	    (filter-bound-variables (block-bound-variables block)
@@ -119,7 +128,8 @@ MIT in each case. |#
 	(lambda (free-variables bound-variables)
 	  (find-closure-bindings (original-block-parent block)
 				 free-variables
-				 bound-variables)))))
+				 bound-variables
+				 variables-nontransitively-free)))))
 
 (define (filter-bound-variables bindings free-variables bound-variables)
   (cond ((null? bindings)
@@ -138,10 +148,14 @@ MIT in each case. |#
 ;; This may have to change if we ever do simultaneous closing of multiple
 ;; procedures sharing structure.
 
-(define (make-closure-block parent free-variables bound-variables)
+(define (make-closure-block parent free-variables bound-variables
+			    variables-nontransitively-free)
   (let ((block (make-block parent 'CLOSURE)))
     (set-block-free-variables! block free-variables)
     (set-block-bound-variables! block bound-variables)
+    (set-block-variables-nontransitively-free!
+     block
+     variables-nontransitively-free)
     (do ((variables (block-bound-variables block) (cdr variables))
 	 (size (if (and parent (ic-block/use-lookup? parent)) 1 0) (1+ size))
 	 (table '()

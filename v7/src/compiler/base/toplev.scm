@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.14 1988/12/30 07:02:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.15 1989/04/21 17:06:51 markf Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -450,8 +450,10 @@ MIT in each case. |#
       (phase/continuation-analysis)
       (phase/setup-frame-adjustments)
       (phase/subproblem-analysis)
-      (phase/design-environment-frames)
+      (phase/delete-integrated-parameters)
       (phase/subproblem-ordering)
+      (phase/delete-integrated-parameters)
+      (phase/design-environment-frames)
       (phase/connectivity-analysis)
       (phase/compute-node-offsets)
       (phase/info-generation-1)
@@ -524,6 +526,11 @@ MIT in each case. |#
       (simplicity-analysis *parallels*)
       (compute-subproblem-free-variables *parallels*))))
 
+(define (phase/delete-integrated-parameters)
+  (compiler-subphase "Integrated Parameter Deletion"
+		     (lambda ()
+		       (delete-integrated-parameters *blocks*))))
+
 (define (phase/subproblem-ordering)
   (compiler-subphase "Subproblem Ordering"
     (lambda ()
@@ -536,8 +543,8 @@ MIT in each case. |#
 
 (define (phase/design-environment-frames)
   (compiler-subphase "Environment Frame Design"
-    (lambda ()
-      (design-environment-frames! *blocks*))))
+		     (lambda ()
+		       (design-environment-frames! *blocks*))))
 
 (define (phase/compute-node-offsets)
   (compiler-subphase "Stack Frame Offset Determination"

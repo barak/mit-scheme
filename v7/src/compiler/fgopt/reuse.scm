@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/reuse.scm,v 1.1 1988/12/12 21:32:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/reuse.scm,v 1.2 1989/04/21 17:09:50 markf Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -100,14 +100,22 @@ MIT in each case. |#
 		  (begin
 		    (set-combination/reuse-existing-frame?! combination
 							    overwritten-block)
-		    (linearize-subproblems!
-		     continuation-type/push
-		     extra-subproblems
-		     (order-subproblems/overwrite-block caller-block
-							overwritten-block
-							terminal-nodes
-							non-terminal-nodes
-							rest)))
+		    (with-values
+			(lambda ()
+			  (order-subproblems/overwrite-block
+			   caller-block
+			   overwritten-block
+			   terminal-nodes
+			   non-terminal-nodes
+			   rest))
+		      (lambda (cfg subproblem-ordering)
+			(let ((cfg (linearize-subproblems!
+				    continuation-type/push
+				    extra-subproblems
+				    cfg)))
+			  (values
+			   cfg
+			   (append extra-subproblems subproblem-ordering))))))
 		  (if-no-overwrite))))
 	  (if-no-overwrite)))))
 
@@ -118,9 +126,9 @@ MIT in each case. |#
       (lambda ()
 	(let ((n-subproblems (length subproblems)))
 	  (let ((targets
-		 (overwritten-objects caller-block
-				      overwritten-block
-				      n-subproblems)))
+		 (overwritten-objects! caller-block
+				       overwritten-block
+				       n-subproblems)))
 	    (let ((n-targets (length targets))
 		  (make-nodes
 		   (lambda (subproblems)
@@ -149,9 +157,10 @@ MIT in each case. |#
 	(lambda (terminal-nodes non-terminal-nodes)
 	  (values terminal-nodes non-terminal-nodes extra-subproblems))))))
 
-(define (overwritten-objects caller-block overwritten-block overwriting-size)
+(define (overwritten-objects! caller-block overwritten-block overwriting-size)
   (let ((stack-layout
 	 (let loop ((block caller-block))
+	   (set-block-layout-frozen?! block true)
 	   (if (eq? block overwritten-block)
 	       (block-layout block)
 	       (append! (block-layout block) (loop (block-parent block)))))))
@@ -171,7 +180,11 @@ MIT in each case. |#
 	      (closure-procedure-needs-operator? procedure))
 	 (list block)
 	 '())
-     (cdr (procedure-required procedure))
+     (list-transform-negative
+	 (cdr (procedure-required procedure))
+       (lambda (variable)
+	 (or (lvalue-integrated? variable)
+	     (variable-register variable))))
      (procedure-optional procedure)
      (if (procedure-rest procedure) (list (procedure-rest procedure)) '())
      (if (and (not (procedure/closure? procedure))
@@ -229,18 +242,22 @@ MIT in each case. |#
 					   terminal-nodes
 					   non-terminal-nodes
 					   rest)
-  (let ((node
-	 (trivial-assignments
-	  terminal-nodes
-	  (generate-assignments (reorder-assignments non-terminal-nodes)
-				rest))))
+  (let* ((reordered-non-terms (reorder-assignments non-terminal-nodes))
+	 (node
+	  (trivial-assignments
+	   terminal-nodes
+	   (generate-assignments reordered-non-terms rest))))
       (if (not (eq? caller-block overwritten-block))
 	  (modify-reference-contexts! node rest
 	    (let ((blocks
 		   (block-partial-ancestry caller-block overwritten-block)))
 	      (lambda (context)
 		(add-reference-context/adjacent-parents! context blocks)))))
-      node))
+      (values node
+	      (map node-value
+		   (list-transform-negative
+		       (append terminal-nodes reordered-non-terms)
+		     node/noop?)))))
 
 (define (generate-assignments nodes rest)
   (cond ((null? nodes)
@@ -260,14 +277,21 @@ MIT in each case. |#
 			     (generate-assignments (cdr nodes) rest)))))
 
 (define (trivial-assignments nodes rest)
-  (let loop ((nodes nodes))
+  (let loop ((nodes
+	      (order-nodes-per-current-constraints nodes)))
     (if (null? nodes)
 	rest
 	(trivial-assignment (car nodes) (loop (cdr nodes))))))
 
 (define (trivial-assignment node rest)
   (if (node/noop? node)
-      rest
+      (begin
+	(let ((target (node-target node)))
+	  (and (lvalue? target)
+	       (lvalue/variable? target)
+	       (set-variable-stack-overwrite-target?! target
+						      true)))
+	rest)
       (linearize-subproblem! continuation-type/register
 			     (node-value node)
 			     (overwrite node rest))))
@@ -287,9 +311,23 @@ MIT in each case. |#
 		 (else false))))))
 
 (define (overwrite node rest)
-  (let ((subproblem (node-value node)))
+  (let ((subproblem (node-value node))
+	(target (node-target node)))
+    (if (and (lvalue? target)
+	     (lvalue/variable? target))
+	(set-variable-stack-overwrite-target?! target
+					       true))
     (scfg*node->node!
      (make-stack-overwrite (subproblem-context subproblem)
-			   (node-target node)
+			   target
 			   (subproblem-continuation subproblem))
      rest)))
+
+(define (order-nodes-per-current-constraints nodes)
+  (if *current-constraints*
+      (order-per-constraints/extracted
+       nodes
+       *current-constraints*
+       node-value)
+      nodes))
+
