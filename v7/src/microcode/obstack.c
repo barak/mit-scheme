@@ -155,6 +155,8 @@ _obstack_newchunk (h, length)
    This is here for debugging.
    If you use it in a program, you are probably losing.  */
 
+extern int EXFUN (_obstack_allocated_p, (struct obstack *, POINTER));
+
 int
 _obstack_allocated_p (h, obj)
      struct obstack *h;
