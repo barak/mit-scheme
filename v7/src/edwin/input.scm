@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: input.scm,v 1.96 1993/08/01 06:44:19 cph Exp $
+;;;	$Id: input.scm,v 1.97 1993/08/19 00:18:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -220,6 +220,9 @@ B 3BAB8C
 				(car (input-event/operands input))))))))
 	  (begin
 	    (apply-input-event input)
+	    (let ((discard (editor-read current-editor)))
+	      (if (not (eq? discard thunk))
+		  (discard)))
 	    (loop))
 	  input))))
 
