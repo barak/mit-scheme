@@ -1,6 +1,6 @@
 #!/bin/csh -f
 
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/rebuild-7.4,v 1.9 1992/07/30 06:43:34 cph Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/rebuild-7.4,v 1.10 1992/11/30 01:06:23 gjr Exp $
 
 # Arguments: runtimeversion compilerversion edwinversion 6001version
 
@@ -143,7 +143,7 @@ echo "### cd $root/runtime"
 cd $root/runtime
 
 echo "### scheme -compiler -no-init-file"
-scheme -compiler -no-init-file <$script
+scheme -compiler -heap 2000 -no-init-file <$script
 
 set result="$status"
 rm -f $script
