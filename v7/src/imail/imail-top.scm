@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.209 2000/07/05 22:38:51 cph Exp $
+;;; $Id: imail-top.scm,v 1.210 2000/07/11 20:34:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -444,8 +444,8 @@ Instead, these commands are available:
 ;; Putting these after the group above exploits behavior in the comtab
 ;; abstraction that makes these bindings the ones that show up during
 ;; command substitution.
-(define-key 'imail #\c-m-f	'imail-summary-by-flags)
 (define-key 'imail #\c-m-h	'imail-summary)
+(define-key 'imail #\c-m-l	'imail-summary-by-flags)
 (define-key 'imail #\c-m-r	'imail-summary-by-recipients)
 (define-key 'imail #\c-m-s	'imail-summary-by-regexp)
 (define-key 'imail #\c-m-t	'imail-summary-by-topic)
