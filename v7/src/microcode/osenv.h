@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: osenv.h,v 1.4 1993/07/01 22:29:57 cph Exp $
+$Id: osenv.h,v 1.5 1993/08/28 22:46:39 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -55,6 +55,8 @@ extern double EXFUN (OS_process_clock, (void));
 extern double EXFUN (OS_real_time_clock, (void));
 extern void EXFUN (OS_process_timer_set, (clock_t first, clock_t interval));
 extern void EXFUN (OS_process_timer_clear, (void));
+extern void EXFUN (OS_profile_timer_set, (clock_t first, clock_t interval));
+extern void EXFUN (OS_profile_timer_clear, (void));
 extern void EXFUN (OS_real_timer_set, (clock_t first, clock_t interval));
 extern void EXFUN (OS_real_timer_clear, (void));
 extern CONST char * EXFUN (OS_working_dir_pathname, (void));

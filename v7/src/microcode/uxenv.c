@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxenv.c,v 1.11 1993/07/01 22:29:59 cph Exp $
+$Id: uxenv.c,v 1.12 1993/08/28 22:46:40 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -34,6 +34,7 @@ MIT in each case. */
 
 #include "ux.h"
 #include "osenv.h"
+#include "config.h"		/* For TRUE/FALSE & true/false */
 
 time_t
 DEFUN_VOID (OS_encoded_time)
@@ -240,6 +241,20 @@ DEFUN_VOID (OS_process_timer_clear)
 }
 
 void
+DEFUN (OS_profile_timer_set, (first, interval),
+       clock_t first AND
+       clock_t interval)
+{
+  set_timer (ITIMER_PROF, first, interval);
+}
+
+void
+DEFUN_VOID (OS_profile_timer_clear)
+{
+  set_timer (ITIMER_PROF, 0, 0);
+}
+
+void
 DEFUN (OS_real_timer_set, (first, interval),
        clock_t first AND
        clock_t interval)
@@ -274,6 +289,21 @@ DEFUN (OS_process_timer_set, (first, interval),
 void
 DEFUN_VOID (OS_process_timer_clear)
 {
+  return;
+}
+
+void
+DEFUN (OS_profile_timer_set, (first, interval),
+       clock_t first AND
+       clock_t interval)
+{
+  error_unimplemented_primitive ();
+}
+
+void
+DEFUN_VOID (OS_profile_timer_clear)
+{
+  return;
 }
 
 void

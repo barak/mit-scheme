@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosenv.c,v 1.9 1993/07/01 22:29:58 cph Exp $
+$Id: prosenv.c,v 1.10 1993/08/28 22:46:39 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -172,6 +172,26 @@ Both arguments are in units of milliseconds.")
 		     (arg_nonnegative_integer (2)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
+
+DEFINE_PRIMITIVE ("PROFILE-TIMER-CLEAR", Prim_profile_timer_clear, 0, 0,
+  "Turn off the PC sample timer.")
+{
+  PRIMITIVE_HEADER (0);
+  OS_profile_timer_clear ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("PROFILE-TIMER-SET", Prim_profile_timer_set, 2, 2,
+  "Set the PC sample timer.\n\
+First arg FIRST says how long to wait until the first interrupt;\n\
+second arg INTERVAL says how long to wait between interrupts after that.\n\
+Both arguments are in units of milliseconds.")
+{
+  PRIMITIVE_HEADER (2);
+  OS_profile_timer_set ((arg_nonnegative_integer (1)),
+			(arg_nonnegative_integer (2)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
 
 DEFINE_PRIMITIVE ("SETUP-TIMER-INTERRUPT", Prim_setup_timer_interrupt, 2, 2,
   "This is an obsolete primitive; use `process-timer-set' instead.")
@@ -188,7 +208,7 @@ DEFINE_PRIMITIVE ("SETUP-TIMER-INTERRUPT", Prim_setup_timer_interrupt, 2, 2,
     }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
+
 DEFINE_PRIMITIVE ("WORKING-DIRECTORY-PATHNAME", Prim_working_dir_pathname, 0, 0,
   "Return the current working directory as a string.")
 {

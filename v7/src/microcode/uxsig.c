@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsig.c,v 1.26 1993/06/24 06:35:59 gjr Exp $
+$Id: uxsig.c,v 1.27 1993/08/28 22:46:42 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -32,11 +32,13 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+#include "config.h"
 #include "ux.h"
 #include "ossig.h"
 #include "osctty.h"
 #include "ostty.h"
 #include "uxtrap.h"
+#include "uxsig.h"
 #include "uxutil.h"
 #include "critsec.h"
 
@@ -56,7 +58,7 @@ DEFUN (current_handler, (signo), int signo)
 #define SA_SIGINFO 0
 #endif
 
-static void
+void
 DEFUN (INSTALL_HANDLER, (signo, handler),
        int signo AND
        Tsignal_handler handler)
@@ -81,13 +83,6 @@ DEFUN (current_handler, (signo), int signo)
   return (result);
 }
 
-#define INSTALL_HANDLER UX_sigset
-
-#define NEED_HANDLER_TRANSACTION
-#define ENTER_HANDLER(signo)
-#define ABORT_HANDLER(signo, handler) UX_sigrelse (signo)
-#define EXIT_HANDLER(signo, handler)
-
 #else /* not HAVE_SYSV3_SIGNALS */
 
 static Tsignal_handler
@@ -99,15 +94,19 @@ DEFUN (current_handler, (signo), int signo)
   return (result);
 }
 
-#define INSTALL_HANDLER UX_signal
-
-#define NEED_HANDLER_TRANSACTION
-#define ENTER_HANDLER(signo) UX_signal ((signo), SIG_IGN)
-#define ABORT_HANDLER UX_signal
-#define EXIT_HANDLER UX_signal
-
 #endif /* HAVE_SYSV3_SIGNALS */
 #endif /* HAVE_POSIX_SIGNALS */
+
+#ifdef NEED_HANDLER_TRANSACTION
+
+void
+DEFUN (ta_abort_handler, (ap), PTR ap)
+{
+  ABORT_HANDLER ((((struct handler_record *) ap) -> signo),
+		 (((struct handler_record *) ap) -> handler));
+}
+
+#endif /* NEED_HANDLER_TRANSACTION */
 
 #ifdef HAVE_POSIX_SIGNALS
 
@@ -164,6 +163,20 @@ DEFUN_VOID (unblock_signals)
 }
 
 #endif /* not HAVE_POSIX_SIGNALS */
+
+void
+DEFUN (deactivate_handler, (signo), int signo)
+{
+  INSTALL_HANDLER (signo, SIG_IGN) ;
+}
+
+void
+DEFUN (activate_handler, (signo, handler),
+       int signo AND
+       Tsignal_handler handler)
+{
+  INSTALL_HANDLER (signo, handler) ;
+}
 
 /* Signal Descriptors */
 
@@ -316,75 +329,6 @@ DEFUN_VOID (initialize_signal_descriptors)
 #endif
 }
 
-/* Signal Handlers */
-
-#ifndef NEED_HANDLER_TRANSACTION
-
-#define DEFUN_STD_HANDLER(name, statement)				\
-static Tsignal_handler_result						\
-DEFUN (name, (signo, info, pscp),					\
-       int signo AND							\
-       SIGINFO_T info AND						\
-       struct SIGCONTEXT * pscp)					\
-{									\
-  int STD_HANDLER_abortp;						\
-  DECLARE_FULL_SIGCONTEXT (scp);					\
-  INITIALIZE_FULL_SIGCONTEXT (pscp, scp);				\
-  STD_HANDLER_abortp = (enter_interruption_extent ());			\
-  statement;								\
-  if (STD_HANDLER_abortp)						\
-    exit_interruption_extent ();					\
-  SIGNAL_HANDLER_RETURN ();						\
-}
-
-#else /* NEED_HANDLER_TRANSACTION */
-
-struct handler_record
-{
-  int signo;
-  Tsignal_handler handler;
-};
-
-#define DEFUN_STD_HANDLER(name, statement)				\
-static Tsignal_handler_result						\
-DEFUN (name, (signo, info, pscp),					\
-       int signo AND							\
-       SIGINFO_T info AND						\
-       struct SIGCONTEXT * pscp)					\
-{									\
-  int STD_HANDLER_abortp;						\
-  DECLARE_FULL_SIGCONTEXT (scp);					\
-  INITIALIZE_FULL_SIGCONTEXT (pscp, scp);				\
-  ENTER_HANDLER (signo);						\
-  STD_HANDLER_abortp = (enter_interruption_extent ());			\
-  transaction_begin ();							\
-  {									\
-    struct handler_record * record =					\
-      (dstack_alloc (sizeof (struct handler_record)));			\
-    (record -> signo) = signo;						\
-    (record -> handler) = name;						\
-    transaction_record_action (tat_abort, ta_abort_handler, record);	\
-  }									\
-  statement;								\
-  if (STD_HANDLER_abortp)						\
-    {									\
-      transaction_abort ();						\
-      exit_interruption_extent ();					\
-    }									\
-  transaction_commit ();						\
-  EXIT_HANDLER (signo, name);						\
-  SIGNAL_HANDLER_RETURN ();						\
-}
-
-static void
-DEFUN (ta_abort_handler, (ap), PTR ap)
-{
-  ABORT_HANDLER ((((struct handler_record *) ap) -> signo),
-		 (((struct handler_record *) ap) -> handler));
-}
-
-#endif /* NEED_HANDLER_TRANSACTION */
-
 #define CONTROL_B_INTERRUPT_CHAR 'B'
 #define CONTROL_G_INTERRUPT_CHAR 'G'
 #define CONTROL_U_INTERRUPT_CHAR 'U'
@@ -410,23 +354,23 @@ DEFUN (echo_keyboard_interrupt, (c, dc), cc_t c AND cc_t dc)
   fflush (stdout);
 }
 
-DEFUN_STD_HANDLER (sighnd_control_g,
+static DEFUN_STD_HANDLER (sighnd_control_g,
   {
     echo_keyboard_interrupt ((OS_ctty_int_char ()), ALERT_CHAR);
     tty_set_next_interrupt_char (CONTROL_G_INTERRUPT_CHAR);
   })
 
-DEFUN_STD_HANDLER (sighnd_control_u,
+static DEFUN_STD_HANDLER (sighnd_control_u,
   {
     tty_set_next_interrupt_char (CONTROL_U_INTERRUPT_CHAR);
   })
 
-DEFUN_STD_HANDLER (sighnd_control_x,
+static DEFUN_STD_HANDLER (sighnd_control_x,
   {
     tty_set_next_interrupt_char (CONTROL_X_INTERRUPT_CHAR);
   })
 
-DEFUN_STD_HANDLER (sighnd_control_b,
+static DEFUN_STD_HANDLER (sighnd_control_b,
   {
     tty_set_next_interrupt_char (CONTROL_B_INTERRUPT_CHAR);
   })
@@ -434,7 +378,7 @@ DEFUN_STD_HANDLER (sighnd_control_b,
 static void EXFUN
   (interactive_interrupt_handler, (struct FULL_SIGCONTEXT * scp));
 
-DEFUN_STD_HANDLER (sighnd_interactive,
+static DEFUN_STD_HANDLER (sighnd_interactive,
   (interactive_interrupt_handler (scp)))
 
 void
@@ -484,7 +428,7 @@ void EXFUN ((*stop_signal_hook), (int signo));
 #  define IF_POSIX_SIGNALS(code) do {} while (0)
 #endif
 
-DEFUN_STD_HANDLER (sighnd_stop,
+static DEFUN_STD_HANDLER (sighnd_stop,
   IF_POSIX_SIGNALS(
   {
     sigset_t old_mask;
@@ -520,7 +464,7 @@ DEFUN_VOID (OS_restartable_exit)
 
 #ifdef HAVE_ITIMER
 
-DEFUN_STD_HANDLER (sighnd_timer,
+static DEFUN_STD_HANDLER (sighnd_timer,
   {
     request_timer_interrupt ();
   })
@@ -529,7 +473,7 @@ DEFUN_STD_HANDLER (sighnd_timer,
 
 extern void EXFUN (reschedule_alarm, (void));
 
-DEFUN_STD_HANDLER (sighnd_timer,
+static DEFUN_STD_HANDLER (sighnd_timer,
   {
     reschedule_alarm ();
     request_timer_interrupt ();
@@ -537,26 +481,26 @@ DEFUN_STD_HANDLER (sighnd_timer,
 
 #endif /* HAVE_ITIMER */
 
-DEFUN_STD_HANDLER (sighnd_save_then_terminate,
+static DEFUN_STD_HANDLER (sighnd_save_then_terminate,
   (request_suspend_interrupt ()))
 
-DEFUN_STD_HANDLER (sighnd_terminate,
+static DEFUN_STD_HANDLER (sighnd_terminate,
   (termination_signal
    ((! (option_emacs_subprocess && (signo == SIGHUP)))
     ? (find_signal_name (signo))
     : 0)))
 
-DEFUN_STD_HANDLER (sighnd_fpe,
+static DEFUN_STD_HANDLER (sighnd_fpe,
   {
     if (executing_scheme_primitive_p ())
       error_floating_point_exception ();
     trap_handler ("floating-point exception", signo, info, scp);
   })
 
-DEFUN_STD_HANDLER (sighnd_hardware_trap,
+static DEFUN_STD_HANDLER (sighnd_hardware_trap,
   (trap_handler ("hardware fault", signo, info, scp)))
 
-DEFUN_STD_HANDLER (sighnd_software_trap,
+static DEFUN_STD_HANDLER (sighnd_software_trap,
   (trap_handler ("system software fault", signo, info, scp)))
 
 #ifdef HAVE_NICE
@@ -565,7 +509,7 @@ DEFUN_STD_HANDLER (sighnd_software_trap,
 #define NICE_DELTA 5
 #endif
 
-DEFUN_STD_HANDLER (sighnd_renice,
+static DEFUN_STD_HANDLER (sighnd_renice,
   {
     fprintf (stderr, "\n;;; Renicing! New nice value = %d\n",
 	     ((nice (NICE_DELTA)) + 20));
@@ -600,7 +544,7 @@ void EXFUN ((*subprocess_death_hook), (pid_t pid, wait_status_t * status));
 #define BREAK break
 #endif
 
-DEFUN_STD_HANDLER (sighnd_dead_subprocess,
+static DEFUN_STD_HANDLER (sighnd_dead_subprocess,
   {
     while (1)
       {

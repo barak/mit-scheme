@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: fixobj.h,v 9.33 1993/08/23 22:25:54 cph Exp $
+$Id: fixobj.h,v 9.34 1993/08/28 22:46:36 gjr Exp $
 
-Copyright (c) 1987-93 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -85,7 +85,9 @@ MIT in each case. */
 					   primitives. */
 
 /* Trampolines for various generic arithmetic operations.
-   These facilitate upwards compatibility and simplify compilation. */
+   These facilitate upwards compatibility and simplify compilation. 
+ */
+
 #define GENERIC_TRAMPOLINE_ZERO_P	0x24
 #define GENERIC_TRAMPOLINE_POSITIVE_P	0x25
 #define GENERIC_TRAMPOLINE_NEGATIVE_P	0x26
@@ -101,8 +103,27 @@ MIT in each case. */
 #define GENERIC_TRAMPOLINE_QUOTIENT	0x30
 #define GENERIC_TRAMPOLINE_REMAINDER	0x31
 #define GENERIC_TRAMPOLINE_MODULO	0x32
-
+
 #define ARITY_DISPATCHER_TAG		0x33
 
-#define NFixed_Objects		0x34
+/* Descartes profiling tables */
 
+#define PC_Sample_Builtin_Table		0x34 /* ``built in'' assembly code */
+#define PC_Sample_Utility_Table		0x35 /* Foreign func'n utilities */
+#define PC_Sample_Primitive_Table	0x36 /* Primitive proc samples */
+
+#define PC_Sample_Code_Block_Table	0x37 /* Compiled  proc samples */
+
+#define PC_Sample_PCB_Block_Buffer	0x38 /* Double buffer pure compiled */
+#define PC_Sample_PCB_Offset_Buffer	0x39 /* Double buffer pure comp offs */
+#define PC_Sample_HCB_Block_Buffer	0x3A /* Double buffer heathen comps */
+#define PC_Sample_HCB_Offset_Buffer	0x3B /* Double buffer heathen comps */
+
+#define PC_Sample_Interp_Proc_Buffer	0x3C /* Double buffer interp procs */
+
+#define PC_Sample_Prob_Comp_Table	0x3D /* Sure looked compiled ?! */
+#define PC_Sample_UFO_Table		0x3E /* Invalid ENV at sample time  */
+
+
+
+#define NFixed_Objects			0x3F

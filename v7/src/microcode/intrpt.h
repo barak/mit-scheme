@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: intrpt.h,v 1.13 1993/08/21 02:28:59 gjr Exp $
+$Id: intrpt.h,v 1.14 1993/08/28 22:46:37 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -48,10 +48,19 @@ MIT in each case. */
 #define INT_Global_Mask		\
   (INT_Global_GC | INT_Global_1 | INT_Global_3)
 
+/* Descartes profiling interrupts */
+
+#define INT_IPPB_Flush		512	/* Local interrupt */
+#define INT_IPPB_Extend	       1024	/* Local interrupt */
+#define INT_PCBPB_Flush	       2048	/* Local interrupt */
+#define INT_PCBPB_Extend       4096	/* Local interrupt */
+#define INT_HCBPB_Flush	       8192	/* Local interrupt */
+#define INT_HCBPB_Extend      16384	/* Local interrupt */
+
 #define Global_GC_Level		1
 #define Global_1_Level		3
 #define Global_3_Level		7
-#define MAX_INTERRUPT_NUMBER	8
+#define MAX_INTERRUPT_NUMBER   14	/* 2^14 = 16384 = INT_HCBPB_Extend */
 
 #define INT_Mask		((1 << (MAX_INTERRUPT_NUMBER + 1)) - 1)
 

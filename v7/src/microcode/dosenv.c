@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosenv.c,v 1.5 1993/07/07 05:46:49 gjr Exp $
+$Id: dosenv.c,v 1.6 1993/08/28 22:46:35 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -137,6 +137,20 @@ void
 DEFUN_VOID (OS_process_timer_clear)
 {
   scm_itimer_reload = scm_itimer_counter = 0;
+  return;
+}
+
+void
+DEFUN (OS_profile_timer_set, (first, interval),
+       clock_t first AND
+       clock_t interval)
+{
+  error_unimplemented_primitive ();
+}
+
+void
+DEFUN_VOID (OS_profile_timer_clear)
+{
   return;
 }
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.c,v 1.22 1993/07/29 07:02:51 gjr Exp $
+$Id: uxtrap.c,v 1.23 1993/08/28 22:46:05 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -232,19 +232,6 @@ DEFUN (trap_handler, (message, signo, info, scp),
   }
 }
 
-#define STATE_UNKNOWN		(LONG_TO_UNSIGNED_FIXNUM (0))
-#define STATE_PRIMITIVE		(LONG_TO_UNSIGNED_FIXNUM (1))
-#define STATE_COMPILED_CODE	(LONG_TO_UNSIGNED_FIXNUM (2))
-#define STATE_PROBABLY_COMPILED	(LONG_TO_UNSIGNED_FIXNUM (3))
-
-struct trap_recovery_info
-{
-  SCHEME_OBJECT state;
-  SCHEME_OBJECT pc_info_1;
-  SCHEME_OBJECT pc_info_2;
-  SCHEME_OBJECT extra_trap_info;
-};
-
 static struct trap_recovery_info dummy_recovery_info =
 {
   STATE_UNKNOWN,
@@ -455,34 +442,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
 #define STACK_ALIGNMENT_MASK		SCHEME_ALIGNMENT_MASK
 #define FREE_PARANOIA_MARGIN		0x100
 
-/* PCs must be aligned according to this. */
-
-#define PC_ALIGNMENT_MASK		((1 << PC_ZERO_BITS) - 1)
-
-/* But they may have bits that can be masked by this. */
-
-#ifndef PC_VALUE_MASK
-#define PC_VALUE_MASK			(~0)
-#endif
-
 #define C_STACK_SIZE			0x01000000
-
-#ifdef HAS_COMPILER_SUPPORT
-#define ALLOW_ONLY_C 0
-#else
-#define ALLOW_ONLY_C 1
-#define PLAUSIBLE_CC_BLOCK_P(block) 0
-#endif
-
-static SCHEME_OBJECT * EXFUN
-  (find_block_address, (char * pc_value, SCHEME_OBJECT * area_start));
-
-#if !(defined (_NEXTOS) && (_NEXTOS_VERSION >= 20))
-#if !(defined (_HPUX) && (_HPUX_VERSION >= 80) && defined (hp9000s300))
-extern long etext;
-#endif
-#  define get_etext() (&etext)
-#endif
 
 static void
 DEFUN (continue_from_trap, (signo, info, scp),
@@ -581,7 +541,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
     }
     else if (pc_in_builtin)
     {
-      (trinfo . state) = STATE_PROBABLY_COMPILED;
+      (trinfo . state) = STATE_BUILTIN;
       (trinfo . pc_info_1) = (LONG_TO_UNSIGNED_FIXNUM (builtin_index));
       (trinfo . pc_info_2) = SHARP_T;
     }
@@ -622,7 +582,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
 
     if (pc_in_utility)
     {
-      (trinfo . state) = STATE_PROBABLY_COMPILED;
+      (trinfo . state) = STATE_UTILITY;
       (trinfo . pc_info_1) = (LONG_TO_UNSIGNED_FIXNUM (utility_index));
       (trinfo . pc_info_2) = UNSPECIFIC;
     }
@@ -683,7 +643,7 @@ static SCHEME_OBJECT * EXFUN
 
 #define MINIMUM_SCAN_RANGE		2048
 
-static SCHEME_OBJECT *
+SCHEME_OBJECT *
 DEFUN (find_block_address, (pc_value, area_start),
        char * pc_value AND
        SCHEME_OBJECT * area_start)

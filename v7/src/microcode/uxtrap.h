@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.h,v 1.20 1993/07/29 07:02:52 gjr Exp $
+$Id: uxtrap.h,v 1.21 1993/08/28 22:46:43 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -37,6 +37,8 @@ MIT in each case. */
 
 #include "os.h"
 
+/* Machine/OS-dependent section (long) */
+
 #ifdef hp9000s300
 
 #include <sys/sysmacros.h>
@@ -519,7 +521,33 @@ struct full_sigcontext
 #ifndef INITIALIZE_UX_SIGNAL_CODES
 #define INITIALIZE_UX_SIGNAL_CODES()
 #endif
+
+/* PCs must be aligned according to this. */
+
+#define PC_ALIGNMENT_MASK		((1 << PC_ZERO_BITS) - 1)
+
+/* But they may have bits that can be masked by this. */
+
+#ifndef PC_VALUE_MASK
+#define PC_VALUE_MASK			(~0)
+#endif
+
+#ifdef HAS_COMPILER_SUPPORT
+# define ALLOW_ONLY_C 0
+#else
+# define ALLOW_ONLY_C 1
+# define PLAUSIBLE_CC_BLOCK_P(block) 0
+#endif
+
+#if !(defined (_NEXTOS) && (_NEXTOS_VERSION >= 20))
+#if !(defined (_HPUX) && (_HPUX_VERSION >= 80) && defined (hp9000s300))
+extern long etext;
+#endif
+#  define get_etext() (&etext)
+#endif
 
+/* Machine/OS-independent section */
+
 enum trap_state
 {
   trap_state_trapped,
@@ -541,5 +569,23 @@ extern void EXFUN
     struct FULL_SIGCONTEXT * scp));
 extern void EXFUN (hard_reset, (struct FULL_SIGCONTEXT * scp));
 extern void EXFUN (soft_reset, (void));
+
+#define STATE_UNKNOWN		(LONG_TO_UNSIGNED_FIXNUM (0))
+#define STATE_PRIMITIVE		(LONG_TO_UNSIGNED_FIXNUM (1))
+#define STATE_COMPILED_CODE	(LONG_TO_UNSIGNED_FIXNUM (2))
+#define STATE_PROBABLY_COMPILED	(LONG_TO_UNSIGNED_FIXNUM (3))
+#define STATE_BUILTIN		(LONG_TO_UNSIGNED_FIXNUM (4))
+#define STATE_UTILITY		(LONG_TO_UNSIGNED_FIXNUM (5))  /* CommGas? */
+
+struct trap_recovery_info
+{
+  SCHEME_OBJECT state;
+  SCHEME_OBJECT pc_info_1;
+  SCHEME_OBJECT pc_info_2;
+  SCHEME_OBJECT extra_trap_info;
+};
+
+extern SCHEME_OBJECT * EXFUN
+  (find_block_address, (char * pc_value, SCHEME_OBJECT * area_start));
 
 #endif /* SCM_UXTRAP_H */

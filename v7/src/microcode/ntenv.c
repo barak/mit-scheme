@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntenv.c,v 1.6 1993/08/21 03:21:19 gjr Exp $
+$Id: ntenv.c,v 1.7 1993/08/28 22:46:38 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -110,6 +110,19 @@ DEFUN (OS_process_timer_set, (first, interval),
 
 void
 DEFUN_VOID (OS_process_timer_clear)
+{
+  return;
+}
+
+void
+DEFUN (OS_profile_timer_set, (first, interval),
+       clock_t first AND clock_t interval)
+{
+  return;
+}
+
+void
+DEFUN_VOID (OS_profile_timer_clear)
 {
   return;
 }
