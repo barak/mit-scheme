@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.32 1997/05/18 07:59:44 cph Exp $
+;;;	$Id: snr.scm,v 1.33 1997/05/27 07:30:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -3149,12 +3149,11 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 (define (valid-group-server-info? server-info)
   (and (vector? server-info)
        (= (vector-length server-info) 3)
-       (or (not (vector-ref server-info 0))
-	   (article-number? (vector-ref server-info 0)))
-       (or (not (vector-ref server-info 1))
-	   (article-number? (vector-ref server-info 1)))
-       (or (not (vector-ref server-info 2))
-	   (article-number? (vector-ref server-info 2)))))
+       (or (equal? '#(#f #f #f) server-info)
+	   (equal? '#(0 0 0) server-info)
+	   (and (exact-nonnegative-integer? (vector-ref server-info 0))
+		(article-number? (vector-ref server-info 1))
+		(article-number? (vector-ref server-info 2))))))
 
 ;;;; Ignored-Subjects File
 
@@ -4032,16 +4031,20 @@ With prefix arg, replaces the file with the list information."
    (add-to-ranges! (news-group:guarantee-ranges-deleted group) number)))
 
 (define (news-group:unread-header-numbers group)
-  (ranges->list
-   (complement-ranges (news-group:guarantee-ranges-deleted group)
-		      (news-group:first-article group)
-		      (news-group:last-article group))))
+  (if (news-group:server-has-articles? group)
+      (ranges->list
+       (complement-ranges (news-group:guarantee-ranges-deleted group)
+			  (news-group:first-article group)
+			  (news-group:last-article group)))
+      '()))
 
 (define (news-group:all-header-numbers group)
-  (ranges->list
-   (complement-ranges '()
-		      (news-group:first-article group)
-		      (news-group:last-article group))))
+  (if (news-group:server-has-articles? group)
+      (ranges->list
+       (complement-ranges '()
+			  (news-group:first-article group)
+			  (news-group:last-article group)))
+      '()))
 
 (define (news-group:update-ranges! group)
   (let ((msg
@@ -4061,13 +4064,17 @@ With prefix arg, replaces the file with the list information."
     (news-group:purge-header-cache group 'ALL)
     (news-group:purge-pre-read-headers group
       (if (ref-variable news-group-keep-seen-headers buffer)
-	  (lambda (header)
-	    (let ((number (news-header:number header)))
-	      (or (< number (news-group:first-article group))
-		  (> number (news-group:last-article group))
-		  (and (not (ref-variable news-group-keep-ignored-headers
-					  buffer))
-		       (news-header:ignore? header)))))
+	  (if (news-group:server-has-articles? group)
+	      (lambda (header)
+		(let ((number (news-header:number header)))
+		  (or (< number (news-group:first-article group))
+		      (> number (news-group:last-article group))
+		      (and (not (ref-variable news-group-keep-ignored-headers
+					      buffer))
+			   (news-header:ignore? header)))))
+	      (lambda (header)
+		header
+		#t))
 	  news-header:article-deleted?))
     (news-group:close-database group)
     (message msg "done")))
@@ -4088,9 +4095,11 @@ With prefix arg, replaces the file with the list information."
 
 (define (news-group:guarantee-ranges-deleted group)
   (let ((ranges
-	 (clip-ranges! (news-group:ranges-deleted group)
-		       (news-group:first-article group)
-		       (news-group:last-article group))))
+	 (if (news-group:server-has-articles? group)
+	     (clip-ranges! (news-group:ranges-deleted group)
+			   (news-group:first-article group)
+			   (news-group:last-article group))
+	     '())))
     (set-news-group:ranges-deleted! group ranges)
     ranges))
 
@@ -4208,6 +4217,10 @@ With prefix arg, replaces the file with the list information."
 		 set-news-group:ranges-browsed!
 		 #f
 		 add-to-ranges!))
+
+(define (news-group:server-has-articles? group)
+  (and (article-number? (news-group:first-article group))
+       (article-number? (news-group:last-article group))))
 
 ;;;; Ignored-Subjects Database
 
