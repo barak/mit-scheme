@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.33 1996/10/02 17:00:22 cph Exp $
+;;;	$Id: os2.scm,v 1.34 1996/10/09 15:44:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -56,26 +56,6 @@
 
 (define (os/form-shell-command command)
   (list "/c" command))
-
-(define (os/directory-list directory)
-  (let ((channel (directory-channel-open directory)))
-    (let loop ((result '()))
-      (let ((name (directory-channel-read channel)))
-	(if name
-	    (loop (cons (begin (string-downcase! name) name) result))
-	    (begin
-	      (directory-channel-close channel)
-	      result))))))
-
-(define (os/directory-list-completions directory prefix)
-  (let ((channel (directory-channel-open directory)))
-    (let loop ((result '()))
-      (let ((name (directory-channel-read-matching channel prefix)))
-	(if name
-	    (loop (cons (begin (string-downcase! name) name) result))
-	    (begin
-	      (directory-channel-close channel)
-	      result))))))
 
 (define (os/set-file-modes-writable! pathname)
   (set-file-modes! pathname

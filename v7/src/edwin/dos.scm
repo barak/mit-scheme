@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.39 1996/10/07 18:51:12 cph Exp $
+;;;	$Id: dos.scm,v 1.40 1996/10/09 15:44:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-96 Massachusetts Institute of Technology
 ;;;
@@ -60,20 +60,6 @@
 (define (os/form-shell-command command)
   ;; Not sure if this is right.
   (list "/c" command))
-
-(define (os/directory-list directory)
-  (os/directory-list-completions directory ""))
-
-(define (os/directory-list-completions directory prefix)
-  (let ((plen (string-length prefix)))
-    (let loop ((pathnames (directory-read (pathname-as-directory directory))))
-      (if (null? pathnames)
-	  '()
-	  (let ((filename (file-namestring (car pathnames))))
-	    (if (and (fix:>= (string-length filename) plen)
-		     (string-ci=? prefix (substring filename 0 plen)))
-		(cons filename (loop (cdr pathnames)))
-		(loop (cdr pathnames))))))))
 
 (define (os/set-file-modes-writable! pathname)
   (set-file-modes! pathname

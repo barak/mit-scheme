@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dosfile.scm,v 1.7 1996/04/24 02:19:30 cph Exp $
+;;;	$Id: dosfile.scm,v 1.8 1996/10/09 15:44:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -122,6 +122,26 @@ Includes the new backup.  Must be > 0."
 	  (string-set! result 0 #\$)
 	  result)
 	filename)))
+
+(define (os/directory-list directory)
+  (let ((channel (directory-channel-open directory)))
+    (let loop ((result '()))
+      (let ((name (directory-channel-read channel)))
+	(if name
+	    (loop (cons (begin (string-downcase! name) name) result))
+	    (begin
+	      (directory-channel-close channel)
+	      result))))))
+
+(define (os/directory-list-completions directory prefix)
+  (let ((channel (directory-channel-open directory)))
+    (let loop ((result '()))
+      (let ((name (directory-channel-read-matching channel prefix)))
+	(if name
+	    (loop (cons (begin (string-downcase! name) name) result))
+	    (begin
+	      (directory-channel-close channel)
+	      result))))))
 
 ;;;; Backup and Auto-Save Filenames
 
