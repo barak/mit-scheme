@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: gcloop.c,v 9.41 1993/06/24 04:49:14 gjr Exp $
+$Id: gcloop.c,v 9.42 1993/08/21 02:27:45 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -48,13 +48,19 @@ extern SCHEME_OBJECT * EXFUN (GCLoop, (SCHEME_OBJECT *, SCHEME_OBJECT **));
 
 #define GC_Pointer(Code)						\
 {									\
-  Old = OBJECT_ADDRESS (Temp);						\
+  Old = (OBJECT_ADDRESS (Temp));					\
+  Code;									\
+}
+
+#define GC_RAW_POINTER(Code)						\
+{									\
+  Old = (SCHEME_ADDR_TO_ADDR (Temp));					\
   Code;									\
 }
 
 #define Setup_Pointer_for_GC(Extra_Code)				\
 {									\
-  GC_Pointer(Setup_Pointer(true, Extra_Code));				\
+  GC_Pointer (Setup_Pointer (true, Extra_Code));			\
 }
 
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
@@ -174,12 +180,14 @@ DEFUN (GCLoop,
 	    fast long count;
 
 	    Scan++;
-	    for (count = READ_CACHE_LINKAGE_COUNT(Temp);
+	    for (count = (READ_CACHE_LINKAGE_COUNT (Temp));
 		 --count >= 0;
 		 Scan += 1)
 	    {
-	      Temp = *Scan;
-	      Setup_Pointer_for_GC(Transport_Quadruple());
+	      Temp = (* Scan);
+	      GC_RAW_POINTER (Setup_Internal (true,
+					      TRANSPORT_RAW_QUADRUPLE (),
+					      RAW_BH (true, continue)));
 	    }
 	    Scan -= 1;
 	    break;
@@ -202,11 +210,11 @@ DEFUN (GCLoop,
 	      Scan = ((SCHEME_OBJECT *) word_ptr);
 	      word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
 	      EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
-	      GC_Pointer(Setup_Internal(true,
-					Transport_Compiled(),
-					Compiled_BH(true,
-						    goto next_operator)));
-	      next_operator:
+	      GC_Pointer (Setup_Internal (true,
+					  Transport_Compiled (),
+					  Compiled_BH(true,
+						      goto next_operator)));
+	    next_operator:
 	      STORE_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
 	    }
 	    Scan = end_scan;

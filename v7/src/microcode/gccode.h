@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: gccode.h,v 9.48 1993/06/24 04:48:12 gjr Exp $
+$Id: gccode.h,v 9.49 1993/08/21 02:25:29 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -218,9 +218,18 @@ do									\
 
 #define Normal_BH(In_GC, then_what)					\
 {									\
-  if (BROKEN_HEART_P (*Old))						\
+  if (BROKEN_HEART_P (* Old))						\
   {									\
-    *Scan = (MAKE_OBJECT_FROM_OBJECTS (Temp, (*Old)));			\
+    (* Scan) = (MAKE_OBJECT_FROM_OBJECTS (Temp, (* Old)));		\
+    then_what;								\
+  }									\
+}
+
+#define RAW_BH(In_GC, then_what)					\
+{									\
+  if (BROKEN_HEART_P (* Old))						\
+  {									\
+    (* Scan) = (ADDR_TO_SCHEME_ADDR (OBJECT_ADDRESS (* Old)));		\
     then_what;								\
   }									\
 }
@@ -244,6 +253,12 @@ do									\
 {									\
   (* (OBJECT_ADDRESS (Temp))) = New_Address;				\
   (* Scan) = (MAKE_OBJECT_FROM_OBJECTS (Temp, New_Address));		\
+}
+
+#define RAW_POINTER_END()						\
+{									\
+  (* (SCHEME_ADDR_TO_ADDR (Temp))) = New_Address;			\
+  (* Scan) = (ADDR_TO_SCHEME_ADDR (OBJECT_ADDRESS (New_Address)));	\
 }
 
 /* GC Type handlers.  These do the actual work. */
@@ -295,8 +310,7 @@ extern SCHEME_OBJECT * gc_objects_referencing_end;
 #define TRANSPORT_ONE_THING(transport_code) transport_code
 
 #endif
-
-
+
 #define Transport_Cell()						\
 {									\
   TRANSPORT_ONE_THING ((*To++) = (*Old));				\
@@ -318,13 +332,24 @@ extern SCHEME_OBJECT * gc_objects_referencing_end;
   Pointer_End ();							\
 }
 
-#define Transport_Quadruple()						\
+#define TRANSPORT_QUADRUPLE_INTERNAL()					\
 {									\
   TRANSPORT_ONE_THING ((*To++) = (*Old++));				\
   TRANSPORT_ONE_THING ((*To++) = (*Old++));				\
   TRANSPORT_ONE_THING ((*To++) = (*Old++));				\
   TRANSPORT_ONE_THING ((*To++) = (*Old));				\
+}
+
+#define Transport_Quadruple()						\
+{									\
+  TRANSPORT_QUADRUPLE_INTERNAL ();					\
   Pointer_End ();							\
+}
+
+#define TRANSPORT_RAW_QUADRUPLE()					\
+{									\
+  TRANSPORT_QUADRUPLE_INTERNAL ();					\
+  RAW_POINTER_END ();							\
 }
 
 #ifndef In_Fasdump
@@ -492,7 +517,7 @@ extern SCHEME_OBJECT Weak_Chain;
       Fixup = Fixes;							\
       return (PRIM_INTERRUPT);						\
     }									\
-  (*--Fixes) = (*Old);							\
+  (*--Fixes) = (* Old);							\
   (*--Fixes) = (ADDRESS_TO_DATUM (Old));				\
   Extra_Code;								\
 }

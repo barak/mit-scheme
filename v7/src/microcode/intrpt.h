@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: intrpt.h,v 1.12 1993/06/29 22:53:52 cph Exp $
+$Id: intrpt.h,v 1.13 1993/08/21 02:28:59 gjr Exp $
 
-Copyright (c) 1987-93 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -66,19 +66,19 @@ MIT in each case. */
 
 #define INTERRUPT_PENDING_P(mask) (((PENDING_INTERRUPTS ()) & (mask)) != 0)
 
-#define COMPILER_SETUP_INTERRUPT()					\
+#define COMPILER_SETUP_INTERRUPT() do					\
 {									\
   (Registers[REGBLOCK_MEMTOP]) =					\
     ((INTERRUPT_PENDING_P (INT_Mask))					\
      ? ((SCHEME_OBJECT) -1)						\
      : (INTERRUPT_ENABLED_P (INT_GC))					\
-     ? ((SCHEME_OBJECT) MemTop)						\
-     : ((SCHEME_OBJECT) Heap_Top));					\
+     ? ((SCHEME_OBJECT) (ADDR_TO_SCHEME_ADDR (MemTop)))			\
+     : ((SCHEME_OBJECT) (ADDR_TO_SCHEME_ADDR (Heap_Top))));		\
   (Registers[REGBLOCK_STACK_GUARD]) =					\
     ((INTERRUPT_ENABLED_P (INT_Stack_Overflow))				\
-     ? ((SCHEME_OBJECT) Stack_Guard)					\
-     : ((SCHEME_OBJECT) Absolute_Stack_Base));				\
-}
+     ? ((SCHEME_OBJECT) (ADDR_TO_SCHEME_ADDR (Stack_Guard)))		\
+     : ((SCHEME_OBJECT) (ADDR_TO_SCHEME_ADDR (Absolute_Stack_Base))));	\
+} while (0)
 
 #define FETCH_INTERRUPT_MASK() ((long) (Registers[REGBLOCK_INT_MASK]))
 
