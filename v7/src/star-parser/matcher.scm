@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.22 2001/11/10 06:31:16 cph Exp $
+;;; $Id: matcher.scm,v 1.23 2001/11/14 18:15:16 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -186,7 +186,7 @@
 
 (syntax-table/define system-global-syntax-table '*MATCHER
   (lambda (expression)
-    (optimize-expression (generate-matcher-code expression))))
+    (generate-matcher-code expression)))
 
 (define (generate-matcher-code expression)
   (generate-external-procedure expression preprocess-matcher-expression

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.16 2001/11/14 18:03:32 cph Exp $
+;;; $Id: shared.scm,v 1.17 2001/11/14 18:15:02 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -47,11 +47,25 @@
 				       (list (cdr b) (car b)))
 				     (cdr internal-bindings))
 		  (strip-protection-wrappers
-		   (optimize-pointer-usage
-		    (let ((expression (generator expression)))
-		      (if debug:disable-substitution-optimizer?
-			  expression
-			  (optimize-by-substitution expression)))))))))))))
+		   (maybe-peephole-optimize
+		    (maybe-optimize-pointer-usage
+		     (maybe-optimize-by-substitution
+		      (generator expression)))))))))))))
+
+(define (maybe-optimize-by-substitution expression)
+  (if debug:disable-substitution-optimizer?
+      expression
+      (optimize-by-substitution expression)))
+
+(define (maybe-optimize-pointer-usage expression)
+  (if debug:disable-pointer-optimizer?
+      expression
+      (optimize-pointer-usage expression #f)))
+
+(define (maybe-peephole-optimize expression)
+  (if debug:disable-peephole-optimizer?
+      expression
+      (peephole-optimize expression)))
 
 ;;;; Support for preprocessing
 
@@ -641,40 +655,35 @@
 
 ;;;; Pointer optimizer
 
-(define (optimize-pointer-usage expression)
-  (if debug:disable-pointer-optimizer?
-      expression
-      (optimize-pointer-usage-1 expression #f)))
-
-(define (optimize-pointer-usage-1 expression pointer)
+(define (optimize-pointer-usage expression pointer)
   (cond ((not (pair? expression))
 	 expression)
 	((eq? (car expression) 'LAMBDA)
 	 (let ((parameters (cadr expression)))
 	   `(LAMBDA ,parameters
-	      ,(optimize-pointer-usage-1 (caddr expression)
-					 (if (memq pointer parameters)
-					     #f
-					     pointer)))))
+	      ,(optimize-pointer-usage (caddr expression)
+				       (if (memq pointer parameters)
+					   #f
+					   pointer)))))
 	((eq? (car expression) 'LET)
 	 (let ((name (cadr expression))
 	       (bindings
 		(map (lambda (binding)
 		       `(,(car binding)
-			 ,(optimize-pointer-usage-1 (cadr binding) pointer)))
+			 ,(optimize-pointer-usage (cadr binding) pointer)))
 		     (caddr expression))))
 	   `(LET ,name ,bindings
-	      ,(optimize-pointer-usage-1 (cadddr expression)
-					 (if (or (eq? pointer name)
-						 (assq pointer bindings))
-					     #f
-					     pointer)))))
+	      ,(optimize-pointer-usage (cadddr expression)
+				       (if (or (eq? pointer name)
+					       (assq pointer bindings))
+					   #f
+					   pointer)))))
 	((eq? (car expression) 'PROTECT)
 	 expression)
 	((eq? (car expression) 'IF)
-	 `(IF ,(optimize-pointer-usage-1 (cadr expression) pointer)
-	      ,(optimize-pointer-usage-1 (caddr expression) #f)
-	      ,(optimize-pointer-usage-1 (cadddr expression) pointer)))
+	 `(IF ,(optimize-pointer-usage (cadr expression) pointer)
+	      ,(optimize-pointer-usage (caddr expression) #f)
+	      ,(optimize-pointer-usage (cadddr expression) pointer)))
 	((syntax-match? '(('LAMBDA (IDENTIFIER) EXPRESSION)
 			  ('GET-PARSER-BUFFER-POINTER EXPRESSION))
 			expression)
@@ -683,7 +692,7 @@
 	   (let ((parameter (car (cadr operator)))
 		 (body (caddr operator)))
 	     `((LAMBDA (,parameter)
-		 ,(optimize-pointer-usage-1 body parameter))
+		 ,(optimize-pointer-usage body parameter))
 	       ,operand))))
 	((syntax-match?
 	  '('BEGIN
@@ -692,108 +701,105 @@
 	  expression)
 	 (let* ((action (cadr expression))
 		(pointer* (caddr action))
-		(tail (optimize-pointer-usage-1 (caddr expression) pointer*)))
+		(tail (optimize-pointer-usage (caddr expression) pointer*)))
 	   (if (eq? pointer* pointer)
 	       tail
 	       `(BEGIN ,action ,tail))))
 	(else
 	 (map (lambda (expression)
-		(optimize-pointer-usage-1 expression pointer))
+		(optimize-pointer-usage expression pointer))
 	      expression))))
 
 ;;;; Peephole optimizer
 
-(define (optimize-expression expression)
-  (if debug:disable-peephole-optimizer?
-      expression
-      (let loop ((entries optimizer-patterns))
-	(cond ((pair? entries)
-	       (if (and (syntax-match? (caar entries) expression)
-			(or (not (cadar entries))
-			    ((cadar entries) expression)))
-		   (let ((expression* ((cddar entries) expression)))
-		     (if (equal? expression* expression)
-			 expression
-			 (optimize-expression expression*)))
-		   (loop (cdr entries))))
-	      ((and (pair? expression)
-		    (symbol? (car expression)))
-	       (let ((expression*
-		      (let ((optimizer
-			     (hash-table/get default-optimizers
-					     (car expression)
-					     #f)))
-			(if optimizer
-			    (optimizer expression)
-			    (cons (car expression)
-				  (map optimize-expression
-				       (cdr expression)))))))
+(define (peephole-optimize expression)
+  (let loop ((entries peephole-optimizer-patterns))
+    (cond ((pair? entries)
+	   (if (and (syntax-match? (caar entries) expression)
+		    (or (not (cadar entries))
+			((cadar entries) expression)))
+	       (let ((expression* ((cddar entries) expression)))
 		 (if (equal? expression* expression)
 		     expression
-		     (optimize-expression expression*))))
-	      (else expression)))))
+		     (peephole-optimize expression*)))
+	       (loop (cdr entries))))
+	  ((and (pair? expression)
+		(symbol? (car expression)))
+	   (let ((expression*
+		  (let ((optimizer
+			 (hash-table/get default-peephole-optimizers
+					 (car expression)
+					 #f)))
+		    (if optimizer
+			(optimizer expression)
+			(cons (car expression)
+			      (map peephole-optimize (cdr expression)))))))
+	     (if (equal? expression* expression)
+		 expression
+		 (peephole-optimize expression*))))
+	  (else expression))))
 
-(define (define-optimizer pattern predicate optimizer)
-  (let ((entry (assoc pattern optimizer-patterns))
+(define (define-peephole-optimizer pattern predicate optimizer)
+  (let ((entry (assoc pattern peephole-optimizer-patterns))
 	(datum (cons predicate optimizer)))
     (if entry
 	(set-cdr! entry datum)
 	(begin
-	  (set! optimizer-patterns
-		(cons (cons pattern datum) optimizer-patterns))
+	  (set! peephole-optimizer-patterns
+		(cons (cons pattern datum) peephole-optimizer-patterns))
 	  unspecific))))
 
-(define (define-default-optimizer keyword optimizer)
-  (hash-table/put! default-optimizers keyword optimizer)
+(define (define-default-peephole-optimizer keyword optimizer)
+  (hash-table/put! default-peephole-optimizers keyword optimizer)
   keyword)
 
-(define optimizer-patterns '())
-(define default-optimizers (make-eq-hash-table))
+(define peephole-optimizer-patterns '())
+(define default-peephole-optimizers (make-eq-hash-table))
 
 (define (predicate-not-or expression)
   (not (and (pair? (cadr expression))
 	    (eq? (caadr expression) 'OR))))
 
-(define-optimizer '('IF EXPRESSION #T #F) predicate-not-or
+(define-peephole-optimizer '('IF EXPRESSION #T #F) predicate-not-or
   (lambda (expression)
     (cadr expression)))
 
-(define-optimizer '('IF EXPRESSION #F #T) predicate-not-or
+(define-peephole-optimizer '('IF EXPRESSION #F #T) predicate-not-or
   (lambda (expression)
     `(NOT ,(cadr expression))))
 
-(define-optimizer '('IF EXPRESSION EXPRESSION #F)
+(define-peephole-optimizer '('IF EXPRESSION EXPRESSION #F)
     (lambda (expression)
       (not (eq? (caddr expression) '#T)))
   (lambda (expression)
     `(AND ,(cadr expression) ,(caddr expression))))
 
-(define-optimizer '('IF EXPRESSION #F EXPRESSION)
+(define-peephole-optimizer '('IF EXPRESSION #F EXPRESSION)
     (lambda (expression)
       (not (eq? (cadddr expression) '#T)))
   (lambda (expression)
     `(AND (NOT ,(cadr expression)) ,(cadddr expression))))
 
-(define-optimizer '('IF EXPRESSION EXPRESSION EXPRESSION)
+(define-peephole-optimizer '('IF EXPRESSION EXPRESSION EXPRESSION)
     (lambda (expression)
       (equal? (caddr expression) (cadddr expression)))
   (lambda (expression)
     `(BEGIN ,(cadr expression) ,(caddr expression))))
 
-(define-optimizer '('IF EXPRESSION EXPRESSION 'UNSPECIFIC) #f
+(define-peephole-optimizer '('IF EXPRESSION EXPRESSION 'UNSPECIFIC) #f
   (lambda (expression)
     `(IF ,(cadr expression) ,(caddr expression))))
 
-(define-optimizer '('IF EXPRESSION EXPRESSION)
+(define-peephole-optimizer '('IF EXPRESSION EXPRESSION)
     (lambda (expression)
       (and (eq? (caddr expression) 'UNSPECIFIC)
 	   (predicate-not-or expression)))
   (lambda (expression)
     (cadr expression)))
 
-(define-optimizer '('IF EXPRESSION
-			('IF EXPRESSION EXPRESSION EXPRESSION)
-			EXPRESSION)
+(define-peephole-optimizer '('IF EXPRESSION
+				 ('IF EXPRESSION EXPRESSION EXPRESSION)
+				 EXPRESSION)
     (lambda (expression)
       (equal? (cadddr (caddr expression))
 	      (cadddr expression)))
@@ -802,9 +808,9 @@
 	 ,(caddr (caddr expression))
 	 ,(cadddr expression))))
 
-(define-optimizer '('IF EXPRESSION
-			EXPRESSION
-			('IF EXPRESSION EXPRESSION EXPRESSION))
+(define-peephole-optimizer '('IF EXPRESSION
+				 EXPRESSION
+				 ('IF EXPRESSION EXPRESSION EXPRESSION))
     (lambda (expression)
       (equal? (caddr (cadddr expression))
 	      (caddr expression)))
@@ -813,9 +819,9 @@
 	 ,(caddr expression)
 	 ,(cadddr (cadddr expression)))))
 
-(define-optimizer '('IF EXPRESSION
-			('BEGIN . (+ EXPRESSION))
-			EXPRESSION)
+(define-peephole-optimizer '('IF EXPRESSION
+				 ('BEGIN . (+ EXPRESSION))
+				 EXPRESSION)
     (lambda (expression)
       (let ((expression* (car (last-pair (caddr expression)))))
 	(and (syntax-match? '('IF EXPRESSION EXPRESSION EXPRESSION)
@@ -830,9 +836,9 @@
 	   ,(caddr expression*)
 	   ,(cadddr expression)))))
 
-(define-optimizer '('IF EXPRESSION
-			EXPRESSION
-			('BEGIN . (+ EXPRESSION)))
+(define-peephole-optimizer '('IF EXPRESSION
+				 EXPRESSION
+				 ('BEGIN . (+ EXPRESSION)))
     (lambda (expression)
       (let ((expression* (car (last-pair (cadddr expression)))))
 	(and (syntax-match? '('IF EXPRESSION EXPRESSION EXPRESSION)
@@ -847,9 +853,9 @@
 	   ,(caddr expression)
 	   ,(cadddr expression*)))))
 
-(define-optimizer '('IF EXPRESSION
-			('OR . (+ EXPRESSION))
-			EXPRESSION)
+(define-peephole-optimizer '('IF EXPRESSION
+				 ('OR . (+ EXPRESSION))
+				 EXPRESSION)
     (lambda (expression)
       (equal? (car (last-pair (caddr expression)))
 	      (cadddr expression)))
@@ -858,10 +864,10 @@
 	      (OR ,@(except-last-pair (cdr (caddr expression)))))
 	 ,(cadddr expression))))
 
-(define-optimizer '('LET ((IDENTIFIER EXPRESSION))
-		     ('IF IDENTIFIER
-			  IDENTIFIER
-			  EXPRESSION))
+(define-peephole-optimizer '('LET ((IDENTIFIER EXPRESSION))
+			      ('IF IDENTIFIER
+				   IDENTIFIER
+				   EXPRESSION))
     (lambda (expression)
       (and (eq? (caar (cadr expression))
 		(cadr (caddr expression)))
@@ -871,9 +877,9 @@
     `(OR ,(cadar (cadr expression))
 	 ,(cadddr (caddr expression)))))
 
-(define-optimizer '('LET ((IDENTIFIER EXPRESSION))
-		     ('AND IDENTIFIER
-			   IDENTIFIER))
+(define-peephole-optimizer '('LET ((IDENTIFIER EXPRESSION))
+			      ('AND IDENTIFIER
+				    IDENTIFIER))
     (lambda (expression)
       (and (eq? (caar (cadr expression))
 		(cadr (caddr expression)))
@@ -882,71 +888,73 @@
   (lambda (expression)
     (cadar (cadr expression))))
 
-(define-default-optimizer 'LET
+(define-default-peephole-optimizer 'LET
   (lambda (expression)
     (if (symbol? (cadr expression))
 	`(LET ,(cadr expression)
 	   ,(map (lambda (binding)
-		   `(,(car binding) ,(optimize-expression (cadr binding))))
+		   `(,(car binding) ,(peephole-optimize (cadr binding))))
 		 (caddr expression))
-	   ,@(map optimize-expression (cdddr expression)))
+	   ,@(map peephole-optimize (cdddr expression)))
 	`(LET ,(map (lambda (binding)
-		      `(,(car binding) ,(optimize-expression (cadr binding))))
+		      `(,(car binding) ,(peephole-optimize (cadr binding))))
 		    (cadr expression))
-	   ,@(map optimize-expression (cddr expression))))))
+	   ,@(map peephole-optimize (cddr expression))))))
 
-(define-optimizer '(('LAMBDA (* IDENTIFIER) . (* EXPRESSION)) . (* EXPRESSION))
+(define-peephole-optimizer '(('LAMBDA (* IDENTIFIER) . (* EXPRESSION))
+			     . (* EXPRESSION))
     (lambda (expression)
       (= (length (cadr (car expression)))
 	 (length (cdr expression))))
   (lambda (expression)
     `(LET ,(map (lambda (v x) (list v x))
 		(cadr (car expression))
-		(map optimize-expression (cdr expression)))
-       ,@(map optimize-expression (cddr (car expression))))))
+		(map peephole-optimize (cdr expression)))
+       ,@(map peephole-optimize (cddr (car expression))))))
 
-(define-optimizer '('LAMBDA (* IDENTIFIER) EXPRESSION) #f
+(define-peephole-optimizer '('LAMBDA (* IDENTIFIER) EXPRESSION) #f
   (lambda (expression)
-    `(LAMBDA ,(cadr expression) ,(optimize-expression (caddr expression)))))
+    `(LAMBDA ,(cadr expression) ,(peephole-optimize (caddr expression)))))
 
-(define-default-optimizer 'LAMBDA
+(define-default-peephole-optimizer 'LAMBDA
   (lambda (expression)
     `(LAMBDA ,(cadr expression)
-       ,@(map optimize-expression (cddr expression)))))
+       ,@(map peephole-optimize (cddr expression)))))
 
-(define-optimizer '('VECTOR-MAP EXPRESSION ('VECTOR EXPRESSION)) #f
+(define-peephole-optimizer '('VECTOR-MAP EXPRESSION ('VECTOR EXPRESSION)) #f
   (lambda (expression)
     `(VECTOR (,(cadr expression) ,(cadr (caddr expression))))))
 
-(define-optimizer '('VECTOR-MAP IDENTIFIER ('VECTOR . (* EXPRESSION))) #f
+(define-peephole-optimizer '('VECTOR-MAP IDENTIFIER ('VECTOR . (* EXPRESSION)))
+    #f
   (lambda (expression)
     `(VECTOR
       ,@(map (lambda (subexpression)
 	       `(,(cadr expression) ,subexpression))
 	     (cdr (caddr expression))))))
 
-(define-optimizer '('NOT EXPRESSION) #f
+(define-peephole-optimizer '('NOT EXPRESSION) #f
   (lambda (expression)
-    `(NOT ,(optimize-expression (cadr expression)))))
+    `(NOT ,(peephole-optimize (cadr expression)))))
 
-(define-optimizer '('VECTOR-APPEND . (* EXPRESSION)) #f
+(define-peephole-optimizer '('VECTOR-APPEND . (* EXPRESSION)) #f
   (lambda (expression)
     (optimize-group-expression expression '(VECTOR))))
 
-(define-optimizer '('AND . (* EXPRESSION)) #f
+(define-peephole-optimizer '('AND . (* EXPRESSION)) #f
   (lambda (expression)
     (optimize-group-expression expression '#T)))
 
-(define-optimizer '('OR . (* EXPRESSION)) #f
+(define-peephole-optimizer '('OR . (* EXPRESSION)) #f
   (lambda (expression)
     (optimize-group-expression expression '#F)))
 
-(define-optimizer '('BEGIN . (+ EXPRESSION)) #f
+(define-peephole-optimizer '('BEGIN . (+ EXPRESSION)) #f
   (lambda (expression)
     (optimize-group-expression expression 'UNSPECIFIC)))
 
 (define (optimize-group-expression expression identity)
-  (optimize-group-expression-1 (map optimize-expression
+  (optimize-group-expression-1 (map peephole-optimize
 				    (flatten-subexpressions expression))
 			       (car expression)
 			       identity))
@@ -972,5 +980,5 @@
 	'())))
 
 ;;; Edwin Variables:
-;;; Eval: (scheme-indent-method 'define-optimizer 2)
+;;; Eval: (scheme-indent-method 'define-peephole-optimizer 2)
 ;;; End:

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.25 2001/11/10 06:31:47 cph Exp $
+;;; $Id: parser.scm,v 1.26 2001/11/14 18:15:31 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -175,7 +175,7 @@
 
 (syntax-table/define system-global-syntax-table '*PARSER
   (lambda (expression)
-    (optimize-expression (generate-parser-code expression))))
+    (generate-parser-code expression)))
 
 (define (generate-parser-code expression)
   (generate-external-procedure expression preprocess-parser-expression
