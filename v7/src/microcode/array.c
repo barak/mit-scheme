@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.36 1989/06/22 21:50:18 pas Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.37 1989/06/23 03:47:49 pas Rel $ */
 
 
 #include "scheme.h"
@@ -1125,19 +1125,19 @@ void cs_array_magnitude(a,n)
 }
 
 
-/* Rectangular and Polar             cs-arrays
+/* Rectangular and Polar        
+
+   A cs-array has      even magnitude and odd angle (almost)
+   hence
+   a polar cs-array  stores    magnitude   in the first  half (real part)
+   and                         angle       in the second half (imag part)
    
-   cs-arrays have      Even magnitude and (almost) Odd angle
-   hence     we store the magnitude into the real part of cs-array
-   and                the angle     into the imag part of cs-array 
+   except for     a[0] real-only    and a[n2] (n even)    
+   The angle of a[0]    is either 0 (pos. sign)  or pi (neg. sign), 
+   but there is no place in an n-point cs-array    to store this, so 
+   a[0]  and a[n2] when n even       are left unchanged  when going polar.
+   as opposed to taking their absolute values, for magnitude.
    
-   Except for   index 0 and index n2(when n even)     are only real
-   Hence               the angle can be either 0 or pi
-   ---> information is lost  when going from rect to polar (compromise to save space)
-   
-   To invert from polar to rect, assume the signal is a continuous curve
-   and choose sign (from angle 0 or pi)   at index i=0 same sign as i=1, 
-   and                                            i=n2 same sign as i=n2+1
    */
 
 DEFINE_PRIMITIVE ("CS-ARRAY-TO-POLAR!", Prim_cs_array_to_polar, 1,1, 0)
@@ -1160,9 +1160,11 @@ void cs_array_to_polar(a,n)
   double real, imag;		/* temporary variables */
   n2 = n/2;			/* integer division truncates down */
   
-  a[0]  = (REAL) fabs((double) a[0]); /*   implicitly angle = 0, but it could be pi */
+  ;				/* a[0] stores both magnitude and angle 
+				   (pos. sign angle=0 , neg. sign angle=pi) */
+  
   if (2*n2 == n)		/* even length, n2 is only real */
-    a[n2] = (REAL) fabs((double) a[n2]); /*  implicitly angle = 0, but it could be pi */
+    ;				/* a[n2] stores sign information like a[0] */
   else				
     n2 = n2+1;			/* odd length, make the loop include the n2 index */
   
@@ -1174,7 +1176,7 @@ void cs_array_to_polar(a,n)
       a[n-i] = 0.0;
     else
       a[n-i] = (REAL) atan2( imag, real ); }
-}  
+}
 
 DEFINE_PRIMITIVE ("CS-ARRAY-TO-RECTANGULAR!",
 		  Prim_cs_array_to_rectangular, 1,1, 0)
@@ -1188,16 +1190,10 @@ DEFINE_PRIMITIVE ("CS-ARRAY-TO-RECTANGULAR!",
   n = Array_Length(ARG_REF(1));
   n2 = n/2;			/* integer division truncates down */
   
-  if (a[1] > 0.0) 
-    a[0]   =      a[0];		/* assume  angle = 0 */
-  else 
-    a[0]   =   (-a[0]);		/* assume  angle = pi */
+  ;				/* a[0] is okay */
   
   if (2*n2 == n)		/* even length, n2 is real only */
-    if (a[n2+1] > 0.0)
-      a[n2]  =      a[n2];	/* assume  angle = 0 */
-    else
-      a[n2]  =   (-a[n2]);	/* assume  angle = pi */
+    ;				/* a[n2] is okay */
   else
     n2 = n2+1;			/* odd length, make the loop include the n2 index */
   
