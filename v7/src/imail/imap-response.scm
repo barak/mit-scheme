@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.3 2000/04/23 03:04:55 cph Exp $
+;;; $Id: imap-response.scm,v 1.4 2000/04/23 04:13:53 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -122,26 +122,27 @@
   (discard-known-char #\[ port)
   (let ((code
 	 (let ((x (intern (read-resp-text-atom port))))
-	   (case x
-	     ((ALERT PARSE READ-ONLY READ-WRITE TRYCREATE)
-	      x)
-	     ((NEWNAME)
-	      (discard-known-char #\space port)
-	      (let ((old (read-xstring port)))
-		(discard-known-char #\space port)
-		(list x old (read-xstring port))))
-	     ((UIDVALIDITY UNSEEN)
-	      (discard-known-char #\space port)
-	      (list x (read-nz-number port)))
-	     ((PERMANENTFLAGS)
-	      (discard-known-char #\space port)
-	      (cons x (read-list port read-pflag)))
-	     (else
-	      (if (char=? #\space (peek-char-no-eof port))
-		  (begin
-		    (read-char port)
-		    (list x (read-resp-text-tail port)))
-		  x))))))
+	   (cons x
+		 (case x
+		   ((ALERT PARSE READ-ONLY READ-WRITE TRYCREATE)
+		    '())
+		   ((NEWNAME)
+		    (discard-known-char #\space port)
+		    (let ((old (read-xstring port)))
+		      (discard-known-char #\space port)
+		      (list old (read-xstring port))))
+		   ((UIDVALIDITY UNSEEN)
+		    (discard-known-char #\space port)
+		    (list (read-nz-number port)))
+		   ((PERMANENTFLAGS)
+		    (discard-known-char #\space port)
+		    (read-list port read-pflag))
+		   (else
+		    (if (char=? #\space (peek-char-no-eof port))
+			(begin
+			  (read-char port)
+			  (read-resp-text-tail port))
+			'())))))))
     (discard-known-char #\] port)
     (discard-known-char #\space port)
     code))
