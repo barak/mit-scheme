@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.35 1994/12/19 22:11:51 cph Exp $
+$Id: conpar.scm,v 14.36 1995/07/27 20:37:03 adams Exp $
 
-Copyright (c) 1988-94 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,6 +36,8 @@ MIT in each case. |#
 ;;; package: (runtime continuation-parser)
 
 (declare (usual-integrations))
+
+(define number-of-argument-registers 15)
 
 ;;;; Stack Frames
 
@@ -101,16 +103,28 @@ MIT in each case. |#
 	  (map-reference-trap (lambda () (vector-ref elements index)))
 	  (stack-frame/ref (stack-frame/next stack-frame) (- index length))))))
 
-(define-integrable (stack-frame/return-address stack-frame)
+(define-integrable (stack-frame/real-return-address stack-frame)
   (stack-frame/ref stack-frame 0))
 
 (define (stack-frame/return-code stack-frame)
-  (let ((return-address (stack-frame/return-address stack-frame)))
+  (let ((return-address (stack-frame/real-return-address stack-frame)))
     (and (interpreter-return-address? return-address)
 	 (return-address/code return-address))))
 
 (define-integrable (stack-frame/compiled-code? stack-frame)
-  (compiled-return-address? (stack-frame/return-address stack-frame)))
+  (compiled-return-address? (stack-frame/real-return-address stack-frame)))
+
+(define (stack-frame/compiled-interrupt? frame)
+  ;; returns the interrupted compiled entry or #F
+  (let  ((type  (stack-frame/type frame)))
+    (and (or (eq? type stack-frame-type/interrupt-compiled-procedure)
+	     (eq? type stack-frame-type/interrupt-compiled-expression)
+	     (eq? type stack-frame-type/interrupt-compiled-return-address))
+	 (vector-ref (stack-frame/elements frame) 4))))
+
+(define (stack-frame/return-address frame)
+  (or (stack-frame/compiled-interrupt? frame)
+      (stack-frame/real-return-address frame)))
 
 (define (stack-frame/subproblem? stack-frame)
   (if (stack-frame/stack-marker? stack-frame)
@@ -130,7 +144,7 @@ MIT in each case. |#
   (let ((type (stack-frame/type stack-frame)))
     (cond ((and (stack-frame/subproblem? stack-frame)
 		(not (and (eq? type stack-frame-type/compiled-return-address)
-			  (eq? (stack-frame/return-address stack-frame)
+			  (eq? (stack-frame/real-return-address stack-frame)
 			       continuation-return-address))))
 	   stack-frame)
 	  ((stack-frame/stack-marker? stack-frame)
@@ -157,7 +171,7 @@ MIT in each case. |#
 		   continuation/first-subproblem)))))
 	  (and (eq? (stack-frame/type stack-frame)
 		    stack-frame-type/compiled-return-address)
-	       (stack-frame/return-address stack-frame))))
+	       (stack-frame/real-return-address stack-frame))))
   unspecific)
 
 ;;;; Parser
@@ -202,13 +216,7 @@ MIT in each case. |#
 (define (parse-one-frame state)
   (define (handle-ordinary stream)
     (let ((type
-	   (return-address->stack-frame-type
-	    (element-stream/head stream)
-	    (let ((type (parser-state/previous-type state)))
-	      (and type
-		   (1d-table/get (stack-frame-type/properties type)
-				 allow-extended?-tag
-				 false))))))
+	   (identify-stack-frame-type stream)))
       (let ((length
 	     (let ((length (stack-frame-type/length type)))
 	       (if (exact-nonnegative-integer? length)
@@ -313,9 +321,7 @@ MIT in each case. |#
    type elements state
    (let ((stream (parser-state/element-stream state)))
      (and (stream-pair? stream)
-	  (eq? (return-address->stack-frame-type
-		(element-stream/head stream)
-		true)
+	  (eq? (identify-stack-frame-type stream)
 	       stack-frame-type/return-to-interpreter)))
    false))
 
@@ -376,13 +382,76 @@ MIT in each case. |#
 	  ((fix:= code code/special-compiled/stack-marker)
 	   (parser/stack-marker type elements state))
 	  ((or (fix:= code code/special-compiled/compiled-code-bkpt)
-	       (fix:= code code/interrupt-restart)
 	       (fix:= code code/restore-regs)
 	       (fix:= code code/apply-compiled)
 	       (fix:= code code/continue-linking))
 	   (parse/standard-next type elements state false false))
 	  (else
 	   (error "Unknown special compiled frame" code)))))
+
+(define (parser/interrupt-compiled-procedure type elements state)
+  ;; At this point the parsing state and frame elements may be incorrect.
+  ;; This happens when some of the procedure's parameters are passed
+  ;; on the stack: the return address pushed by the assembly level
+  ;; interrupt handler is earlier in the stack.  We handle this by
+  ;; making an element vector with the continuation `squeezed' out,
+  ;; and putting the return address back on the stream.
+  ;;  Stack: [deeper to shallower].
+  ;;         `|' mark values in ELEMENTS (last to first)
+  ;;      BEFORE                                        AFTER
+  ;;      [continuation's closed values]                [same]
+  ;;      stack argument                                continuation
+  ;;    | ...                                         | stack argument
+  ;;    | stack argument                              | ...
+  ;;    | continuation (return-address)               | stack argument
+  ;;    | register argument                           | same from here on
+  ;;    | register argument                           | ....
+  ;;    | register argument
+  ;;    | <other saved data> (0 words)
+  ;;    | entry (that which has been interrupted)
+  ;;    | number of arguments (register+stack)
+  ;;    | number words of other saved data (0)
+  ;;    | REFLECT_CODE_INTERRUPT_RESTART
+  ;;    | reflect_to_interface
+  (let ((entry  (vector-ref elements 4)))
+    (let ((frame-size  (compiled-procedure-frame-size entry))
+	  (saved-words (vector-ref elements 3))
+	  (extra-words (vector-ref elements 2)))
+      (if (or (not (= 0 extra-words))
+	      (not (= frame-size (- saved-words 1))))
+	  (error "Inconsistent interrupt frame" frame-size elements))
+      (if (<= frame-size number-of-argument-registers)
+	  (parser/standard type elements state)
+	  (let* ((ret-addr-offset (+ number-of-argument-registers
+				     extra-words
+				     5))
+		 (element-stream (parser-state/element-stream state))
+		 (extra-argument (stream-first element-stream))
+		 (return-address (vector-ref elements ret-addr-offset)))
+	    (let ((elements*
+		   (vector-append 
+		    (vector-head elements ret-addr-offset)
+		    (vector-tail elements (+ ret-addr-offset 1))
+		    (vector extra-argument)))
+		  (stream*
+		   (cons-stream return-address (stream-rest element-stream))))
+	      (parser/standard
+	       type
+	       elements*
+	       (make-parser-state
+		(parser-state/dynamic-state state)
+		(parser-state/interrupt-mask state)
+		(parser-state/history state)
+		(parser-state/previous-history-offset state)
+		(parser-state/previous-history-control-point state)
+		stream*
+		(parser-state/n-elements state)
+		(parser-state/next-control-point state)
+		(parser-state/previous-type state)))))))))
+
+(define (parser/interrupt-compiled-return-address type elements state)
+  (parser/standard type elements state))
+
 
 (define (parser/stack-marker type elements state)
   (call-with-values
@@ -480,7 +549,7 @@ MIT in each case. |#
        next-control-point))))
 
 (define (unparse/stack-frame stack-frame)
-  (if (eq? (stack-frame/return-address stack-frame)
+  (if (eq? (stack-frame/real-return-address stack-frame)
 	   return-address/join-stacklets)
       (values (stream) (vector-ref (stack-frame/elements stack-frame) 1))
       (with-values
@@ -495,14 +564,34 @@ MIT in each case. |#
 		     (values (stream) false)))))
 	(lambda (element-stream next-control-point)
 	  (values
-	   (let ((elements (stack-frame/elements stack-frame)))
-	     (let ((length (vector-length elements)))
-	       (let loop ((index 0))
-		 (if (< index length)
-		     (cons-stream (vector-ref elements index)
-				  (loop (1+ index)))
-		     element-stream))))
+	   ((stack-frame-type/stream (stack-frame/type stack-frame))
+	    (stack-frame/elements stack-frame)
+	    element-stream)
 	   next-control-point)))))
+
+
+(define (subvector->stream* elements start end stream-tail)
+  (let loop ((index start))
+    (if (< index end)
+	(cons-stream (vector-ref elements index)
+		     (loop (1+ index)))
+	stream-tail)))
+
+(define (stream/standard elements deeper-stream)
+  (subvector->stream* elements 0 (vector-length elements) deeper-stream))
+
+(define (stream/interrupt-compiled elements deeper-stream)
+  ;; Re-assemble stream with the continuation in the place where the
+  ;; interrupt-hander would have saved it.
+  (let* ((size  (vector-length elements))
+	 (join  (min (+ number-of-argument-registers 5) size))
+	 (cont  (stream-first deeper-stream))
+	 (deeper-stream* (stream-rest deeper-stream)))
+    (subvector->stream*
+     elements 0 join			; standard prefix + register arguments
+     (cons-stream cont
+		  (subvector->stream* elements join size ; stack arguments
+				      deeper-stream*)))))
 
 (define return-address/join-stacklets)
 (define return-address/reenter-compiled-code)
@@ -549,20 +638,13 @@ MIT in each case. |#
 		 5
 		 (fix:+ 5 fsize))))
 	  ((fix:= code code/interrupt-restart)
-	   (if (fix:= 12 microcode-id/version)
-	       4
-	       (let ((homes-saved (object-datum (element-stream/ref stream 2)))
-		     (regs-saved (object-datum (element-stream/ref stream 3))))
-		 ;; The first reg saved is _always_ the continuation,
-		 ;; part of the next frame.
-		 (fix:- (fix:+
-			 ;; Return code, reflect code, homes saved, regs saved,
-			 ;; and entry point
-			 5
-			 (fix:+ homes-saved regs-saved))
-			1))))
+	   (default))
 	  ((fix:= code code/restore-regs)
-	   (fix:+ 3 (object-datum (element-stream/ref stream 2))))
+	   (let ((guess (fix:+ 3 (object-datum (element-stream/ref stream 2)))))
+	     (let loop ((guess* guess))
+	       (if (compiled-return-address? (element-stream/ref stream guess*))
+		   (+ guess* 1)
+		   (loop (+ guess 1))))))
 	  ((fix:= code code/apply-compiled)
 	   ;; Stream[2] is code entry point, [3] is frame size
 	   (+ 3 (object-datum (element-stream/ref stream 3))))
@@ -574,9 +656,32 @@ MIT in each case. |#
 	  (else
 	   (default)))))
 
+
+(define (length/interrupt-compiled-common stream extra)
+  (let ((homes-saved (object-datum (element-stream/ref stream 2)))
+	(regs-saved  (object-datum (element-stream/ref stream 3))))
+    ;; . There are five words in every interrupt frame: Return code/address,
+    ;;   reflect code, homes saved, regs saved and entry point.
+    ;; . One of the regs saved is the continuation (even if the interrupted
+    ;;   entry is itself a continuation, in which case it is #F),
+    ;;   which counts as part of the next frame, hence the -1.  (We
+    ;;   are not worried about which one it is at this point.)
+    (define fixed-words (+ 5 -1))
+    (fix:+ (fix:+ fixed-words extra)
+	   (fix:+ homes-saved regs-saved))))
+
+
+(define (length/interrupt-compiled-return-address stream offset)
+  offset
+  (let ((entry (stream-ref stream 4)))
+    (let ((frame-size (compiled-continuation/next-continuation-offset entry)))
+      (if frame-size
+	  (length/interrupt-compiled-common stream (+ frame-size 1))
+	  (error "Unexpected dynamic link" stream)))))
+
 (define (length/interrupt-compiled-procedure stream offset)
-  offset				; ignored
-  (1+ (compiled-procedure-frame-size (element-stream/head stream))))
+  offset
+  (length/interrupt-compiled-common stream 0))
 
 (define (compiled-code-address/frame-size cc-address)
   (cond ((not (compiled-code-address? cc-address))
@@ -591,14 +696,13 @@ MIT in each case. |#
 	 (fix:+ (compiled-procedure-frame-size cc-address) 1))
 	(else
 	 (error "compiled-code-address/frame-size: Unexpected object"
-		cc-address))))	 
+		cc-address))))
 
 (define (verify paranoia-index stream offset)
   (or (zero? paranoia-index)
       (stream-null? stream)
       (let* ((type
-	      (return-address->stack-frame-type (element-stream/head stream)
-						false))
+	      (identify-stack-frame-type stream))
 	     (length
 	      (let ((length (stack-frame-type/length type)))
 		(if (exact-nonnegative-integer? length)
@@ -631,16 +735,15 @@ MIT in each case. |#
 (define-structure (stack-frame-type
 		   (constructor make-stack-frame-type
 				(code subproblem? history-subproblem?
-				      length parser))
+				      length parser stream))
 		   (conc-name stack-frame-type/))
   (code false read-only true)
   (subproblem? false read-only true)
   (history-subproblem? false read-only true)
   (properties (make-1d-table) read-only true)
   (length false read-only true)
-  (parser false read-only true))
-
-(define allow-extended?-tag "stack-frame-type/allow-extended?")
+  (parser false read-only true)
+  (stream false read-only true))
 
 (define (microcode-return/code->type code)
   (if (not (< code (vector-length stack-frame-types)))
@@ -650,30 +753,38 @@ MIT in each case. |#
 (define (microcode-return/name->type name)
   (microcode-return/code->type (microcode-return name)))
 
-(define (return-address->stack-frame-type return-address allow-extended?)
-  allow-extended?			; ignored
-  (let ((allow-extended? true))
-    (cond ((interpreter-return-address? return-address)
-	   (let ((code (return-address/code return-address)))
-	     (let ((type (microcode-return/code->type code)))
-	       (if (not type)
-		   (error "return-code has no type" code))
-	       type)))
-	  ((compiled-return-address? return-address)
-	   (cond ((compiled-continuation/return-to-interpreter?
-		   return-address)
-		  stack-frame-type/return-to-interpreter)
-		 ((compiled-continuation/reflect-to-interface?
-		   return-address)
-		  stack-frame-type/special-compiled)
-		 (else
-		  stack-frame-type/compiled-return-address)))
-	  ((and allow-extended? (compiled-procedure? return-address))
-	   stack-frame-type/interrupt-compiled-procedure)
-	  ((and allow-extended? (compiled-expression? return-address))
-	   stack-frame-type/interrupt-compiled-expression)
-	  (else
-	   (error "illegal return address" return-address)))))
+(define (identify-stack-frame-type stream)
+  (define (interrupt-frame)
+    (let* ((entry (element-stream/ref stream 4))
+	   (type  (compiled-entry-type entry)))
+      (case type
+	((COMPILED-PROCEDURE)
+	 stack-frame-type/interrupt-compiled-procedure)
+	((COMPILED-RETURN-ADDRESS)
+	 stack-frame-type/interrupt-compiled-return-address)
+	(else
+	 (error "Unexpected interrupted" type stream)))))
+
+  (let ((return-address  (element-stream/head stream)))
+    (cond
+     ((interpreter-return-address? return-address)
+      (let ((code (return-address/code return-address)))
+	(let ((type (microcode-return/code->type code)))
+	  (if (not type)
+	      (error "return-code has no type" code))
+	  type)))
+     ((compiled-return-address? return-address)
+      (cond ((compiled-continuation/return-to-interpreter? return-address)
+	     stack-frame-type/return-to-interpreter)
+	    ((compiled-continuation/reflect-to-interface? return-address)
+	     (cond ((= (element-stream/ref stream 1) code/interrupt-restart)
+		    (interrupt-frame))
+		   (else
+		    stack-frame-type/special-compiled)))
+	    (else
+	     stack-frame-type/compiled-return-address)))
+     (else
+      (error "illegal return address" return-address stream)))))
 
 (define (initialize-package!)
   (set! return-address/join-stacklets
@@ -688,23 +799,33 @@ MIT in each case. |#
   (set! stack-frame-type/compiled-return-address
 	(make-stack-frame-type false true false
 			       length/compiled-return-address
-			       parser/standard-compiled))
+			       parser/standard-compiled
+			       stream/standard))
   (set! stack-frame-type/return-to-interpreter
 	(make-stack-frame-type false false true
 			       1
-			       parser/standard))
+			       parser/standard
+			       stream/standard))
   (set! stack-frame-type/special-compiled
 	(make-stack-frame-type false true false
 			       length/special-compiled
-			       parser/special-compiled))
+			       parser/special-compiled
+			       stream/standard))
   (set! stack-frame-type/interrupt-compiled-procedure
 	(make-stack-frame-type false true false
 			       length/interrupt-compiled-procedure
-			       parser/standard))
-  (set! stack-frame-type/interrupt-compiled-expression
+			       parser/interrupt-compiled-procedure
+			       stream/interrupt-compiled))
+  (set! stack-frame-type/interrupt-compiled-return-address
 	(make-stack-frame-type false true false
-			       1
-			       parser/standard))
+			       length/interrupt-compiled-return-address
+			       parser/interrupt-compiled-return-address
+			       stream/interrupt-compiled))
+  (set! stack-frame-type/interrupt-compiled-expression
+  	(make-stack-frame-type false true false
+  			       1
+  			       parser/standard
+			       stream/interrupt-compiled))
   (set! word-size
 	(let ((initial (system-vector-length (make-bit-string 1 #f))))
 	  (let loop ((size 2))
@@ -722,17 +843,19 @@ MIT in each case. |#
 (define stack-frame-type/stack-marker)
 (define stack-frame-type/interrupt-compiled-procedure)
 (define stack-frame-type/interrupt-compiled-expression)
+(define stack-frame-type/interrupt-compiled-return-address)
+
 
 (define (make-stack-frame-types)
   (let ((types (make-vector (microcode-return/code-limit) false)))
 
     (define (stack-frame-type name subproblem?
 			      history-subproblem?
-			      length parser)
+			      length parser stream)
       (let ((code (microcode-return name)))
 	(let ((type (make-stack-frame-type code subproblem?
 					   history-subproblem?
-					   length parser)))
+					   length parser stream)))
 	  (vector-set! types code type)
 	  type)))
 
@@ -743,14 +866,16 @@ MIT in each case. |#
 			length
 			(if (default-object? parser)
 			    parser/standard
-			    parser)))
+			    parser)
+			stream/standard))
 
     (define (standard-subproblem name length)
       (stack-frame-type name
 			true
 			true
 			length
-			parser/standard))
+			parser/standard
+			stream/standard))
 
     (define (non-history-subproblem name length #!optional parser)
       (stack-frame-type name
@@ -759,7 +884,8 @@ MIT in each case. |#
 			length
 			(if (default-object? parser)
 			    parser/standard
-			    parser)))
+			    parser)
+			stream/standard))
 
     (standard-frame 'RESTORE-INTERRUPT-MASK 2 parser/restore-interrupt-mask)
     (standard-frame 'RESTORE-HISTORY 4 parser/restore-history)
@@ -804,20 +930,16 @@ MIT in each case. |#
 
     (let ((compiler-frame
 	   (lambda (name length)
-	     (stack-frame-type name false true length parser/standard)))
+	     (stack-frame-type name false true length parser/standard stream/standard)))
 	  (compiler-subproblem
 	   (lambda (name length)
-	     (stack-frame-type name true true length parser/standard))))
+	     (stack-frame-type name true true length parser/standard stream/standard))))
 
       (let ((length (length/application-frame 4 0)))
 	(compiler-subproblem 'COMPILER-LOOKUP-APPLY-TRAP-RESTART length)
 	(compiler-subproblem 'COMPILER-OPERATOR-LOOKUP-TRAP-RESTART length))
 
-      (let ((type (compiler-frame 'COMPILER-INTERRUPT-RESTART 3)))
-	(1d-table/put! (stack-frame-type/properties type)
-		       allow-extended?-tag
-		       true))
-
+      (compiler-frame 'COMPILER-INTERRUPT-RESTART 3)
       (compiler-frame 'COMPILER-LINK-CACHES-RESTART 8)
       (compiler-frame 'REENTER-COMPILED-CODE 2)
 
