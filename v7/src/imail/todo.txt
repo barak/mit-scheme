@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.49 2000/05/24 19:45:21 cph Exp $
+$Id: todo.txt,v 1.50 2000/05/25 05:06:55 cph Exp $
 
 Bug fixes
 ---------
@@ -37,9 +37,6 @@ New features
 
 * Add mail notification in mode line, active across the editor as long
   as there is an IMAP connection open in some buffer.
-
-* Implement background thread to periodically send NOOP to IMAP server
-  both to check for new mail and to keep the connection alive.
 
 * Implement cache that saves information about messages on disk.  This
   should use UIDs for IMAP folders; for other folders perhaps the

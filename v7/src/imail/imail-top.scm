@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.107 2000/05/24 23:21:53 cph Exp $
+;;; $Id: imail-top.scm,v 1.108 2000/05/25 05:06:38 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -113,6 +113,16 @@ The pass phrase is deleted if unused for this long.
 Set this to zero if you don't want pass-phrase retention."
   30
   exact-nonnegative-integer?)
+
+(define-variable imail-update-interval
+  "How often to update a folder's contents, in seconds.
+IMAIL will periodically poll the mail server for changes at this interval.
+The polls will only occur when there is an open connection to the server;
+  it will not reestablish a connection when there is none.
+This has no effect on file-based folders.
+Set this variable to #F to disable updating."
+  600
+  (lambda (x) (or (not x) (and (exact-integer? x) (positive? x)))))
 
 (define-command imail
   "Read and edit incoming mail.
@@ -692,7 +702,9 @@ With prefix argument N moves backward N messages with these flags."
        (lambda (folder type parameters)
 	 type parameters
 	 (maybe-add-command-suffix! notice-folder-modifications folder)))
-     (add-kill-buffer-hook buffer delete-associated-buffers))))
+     (add-kill-buffer-hook buffer delete-associated-buffers)
+     (add-kill-buffer-hook buffer stop-probe-folder-thread)
+     (start-probe-folder-thread buffer))))
 
 (define (delete-associated-buffers folder-buffer)
   (for-each (lambda (buffer)
@@ -727,6 +739,57 @@ With prefix argument N moves backward N messages with these flags."
 (define (chase-imail-buffer buffer)
   (or (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)
       buffer))
+
+(define (start-probe-folder-thread buffer)
+  (stop-probe-folder-thread buffer)
+  (let ((folder (buffer-get buffer 'IMAIL-FOLDER #f))
+	(interval (ref-variable imail-update-interval #f)))
+    (if (and folder interval
+	     (not (get-property folder 'PROBE-REGISTRATION #f)))
+	(let ((registration (list #f)))
+	  (set-car! registration
+		    (register-inferior-thread!
+		     (let ((thread
+			    (create-thread
+			     editor-thread-root-continuation
+			     (probe-folder-thread registration
+						  (* 1000 interval)))))
+		       (detach-thread thread)
+		       thread)
+		     (probe-folder-output-processor
+		      (weak-cons folder unspecific))))
+	  (store-property! folder 'PROBE-REGISTRATION registration)))))
+
+(define ((probe-folder-thread registration interval))
+  (do () (#f)
+    (let ((registration (car registration)))
+      (cond ((eq? registration 'KILL-THREAD) (exit-current-thread unspecific))
+	    (registration (inferior-thread-output! registration))))
+    (sleep-current-thread interval)))
+
+(define ((probe-folder-output-processor folder))
+  (let ((folder (weak-car folder)))
+    (and folder
+	 (eq? (folder-connection-status folder) 'ONLINE)
+	 (begin
+	   (probe-folder folder)
+	   #t))))
+
+(define (stop-probe-folder-thread buffer)
+  (without-interrupts
+   (lambda ()
+     (let ((folder (buffer-get buffer 'IMAIL-FOLDER #f)))
+       (if folder
+	   (begin
+	     (let ((holder (get-property folder 'PROBE-REGISTRATION #f)))
+	       (if holder
+		   (begin
+		     (let ((registration (car holder)))
+		       (if (and registration
+				(not (eq? registration 'KILL-THREAD)))
+			   (deregister-inferior-thread! registration)))
+		     (set-car! holder 'KILL-THREAD))))
+	     (remove-property! folder 'PROBE-REGISTRATION)))))))
 
 (define (selected-folder #!optional error? buffer)
   (let ((buffer
