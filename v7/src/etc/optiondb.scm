@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.12 2004/01/16 21:05:12 cph Exp $
+$Id: optiondb.scm,v 1.13 2004/11/01 19:22:29 cph Exp $
 
 Copyright 2000,2001,2002,2004 Massachusetts Institute of Technology
 
@@ -109,6 +109,9 @@ USA.
 
 (define-load-option 'WIN32
   (guarded-system-loader '(win32) "win32"))
+
+(define-load-option 'XDOC
+  (guarded-system-loader '(runtime ssp xdoc) "xdoc"))
 
 (define-load-option 'XML
   (guarded-system-loader '(runtime xml) "xml"))

@@ -1,6 +1,6 @@
-# $Id: Makefile.in,v 1.25 2004/11/01 19:21:21 cph Exp $
+# $Id: Makefile.in,v 1.1 2004/11/01 19:21:04 cph Exp $
 #
-# Copyright 2000,2001,2002,2004 Massachusetts Institute of Technology
+# Copyright 2004 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -58,36 +58,16 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 
 # **** END BOILERPLATE ****
 
-SUBDIRS = 6001 compiler rcs runtime-check sf win32 $(INSTALLED_SUBDIRS)
-INSTALLED_SUBDIRS = microcode runtime cref edwin imail sos ssp star-parser \
-	 xdoc xml
-
 AUXDIR = @AUXDIR@
-EDETC = $(AUXDIR)/edwin/etc
+XDOC_DIR = $(AUXDIR)/xdoc
 
-
-all:
-	( cd microcode && $(MAKE) all )
-	$(srcdir)/etc/compile.sh $(srcdir)
-	$(srcdir)/etc/build-bands.sh
-
-mostlyclean clean distclean maintainer-clean:
-	$(srcdir)/Clean.sh $@ $(SUBDIRS)
-
-tags TAGS:
-	$(srcdir)/Tags.sh $(SUBDIRS)
+include ../Makefile.std
 
 install:
-	@for SUBDIR in $(INSTALLED_SUBDIRS); do \
-	    echo "Making $@ in $${SUBDIR}";\
-	    ( cd $${SUBDIR}; $(MAKE) $@ ) || exit 1;\
-	done
+	$(mkinstalldirs) $(DESTDIR)$(XDOC_DIR)
+	$(INSTALL_DATA) *.com $(DESTDIR)$(XDOC_DIR)/.
+	$(INSTALL_DATA) *.bci $(DESTDIR)$(XDOC_DIR)/.
+	$(INSTALL_DATA) xdoc-unx.pkd $(DESTDIR)$(XDOC_DIR)/.
+	$(INSTALL_DATA) $(srcdir)/load.scm $(DESTDIR)$(XDOC_DIR)/.
 
-	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
-	$(INSTALL_DATA) $(srcdir)/lib/optiondb.scm $(DESTDIR)$(AUXDIR)/.
-	$(INSTALL_DATA) $(srcdir)/lib/*.com $(DESTDIR)$(AUXDIR)/.
-
-	$(mkinstalldirs) $(DESTDIR)$(EDETC)
-	$(INSTALL_DATA) $(srcdir)/etc/TUTORIAL $(DESTDIR)$(EDETC)/.
-
-.PHONY: all mostlyclean clean distclean maintainer-clean tags TAGS install
+.PHONY: install

@@ -1,0 +1,215 @@
+#| -*-Scheme-*-
+
+$Id: xdoc.pkg,v 1.1 2004/11/01 19:21:05 cph Exp $
+
+Copyright 2004 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
+
+;;;; XDOC: packaging
+
+(global-definitions "../runtime/runtime")
+(global-definitions "../xml/xml")
+(global-definitions "../ssp/ssp")
+
+(define-package (runtime ssp xdoc)
+  (files "xdoc")
+  (parent (runtime ssp))
+  (export (runtime ssp)
+	  boolean-attribute
+	  int0-attribute
+	  with-xdoc-expansion-context
+	  xd:answer
+	  xd:answer?
+	  xd:boolean
+	  xd:boolean?
+	  xd:case
+	  xd:case?
+	  xd:check-input
+	  xd:check-input?
+	  xd:check-inputs
+	  xd:check-inputs?
+	  xd:checkbox
+	  xd:checkbox?
+	  xd:choice
+	  xd:choice?
+	  xd:default
+	  xd:default?
+	  xd:due-date
+	  xd:due-date?
+	  xd:expected-value
+	  xd:expected-value?
+	  xd:explain
+	  xd:explain?
+	  xd:head
+	  xd:head?
+	  xd:hint
+	  xd:hint?
+	  xd:label
+	  xd:label?
+	  xd:menu
+	  xd:menu?
+	  xd:menuindex
+	  xd:menuindex?
+	  xd:menuitem
+	  xd:menuitem?
+	  xd:number
+	  xd:number?
+	  xd:page-frame
+	  xd:page-frame?
+	  xd:problem
+	  xd:problem?
+	  xd:programmed-output
+	  xd:programmed-output?
+	  xd:radio-buttons
+	  xd:radio-buttons?
+	  xd:radio-entry
+	  xd:radio-entry?
+	  xd:refer
+	  xd:refer?
+	  xd:submit
+	  xd:submit?
+	  xd:text
+	  xd:text?
+	  xd:true-false
+	  xd:true-false?
+	  xd:when
+	  xd:when?
+	  xd:xdoc
+	  xd:xdoc?
+	  xdoc-db-id
+	  xdoc-output?)
+  (export (runtime ssp-expander-environment)
+	  find-xdoc-due-date
+	  with-xdoc-expansion-context
+	  xd:answer
+	  xd:answer?
+	  xd:boolean
+	  xd:boolean?
+	  xd:case
+	  xd:case?
+	  xd:check-input
+	  xd:check-input?
+	  xd:check-inputs
+	  xd:check-inputs?
+	  xd:checkbox
+	  xd:checkbox?
+	  xd:choice
+	  xd:choice?
+	  xd:default
+	  xd:default?
+	  xd:due-date
+	  xd:due-date?
+	  xd:expected-value
+	  xd:expected-value?
+	  xd:explain
+	  xd:explain?
+	  xd:head
+	  xd:head?
+	  xd:hint
+	  xd:hint?
+	  xd:label
+	  xd:label?
+	  xd:menu
+	  xd:menu?
+	  xd:menuindex
+	  xd:menuindex?
+	  xd:menuitem
+	  xd:menuitem?
+	  xd:number
+	  xd:number?
+	  xd:page-frame
+	  xd:page-frame?
+	  xd:problem
+	  xd:problem?
+	  xd:programmed-output
+	  xd:programmed-output?
+	  xd:radio-buttons
+	  xd:radio-buttons?
+	  xd:radio-entry
+	  xd:radio-entry?
+	  xd:refer
+	  xd:refer?
+	  xd:submit
+	  xd:submit?
+	  xd:text
+	  xd:text?
+	  xd:true-false
+	  xd:true-false?
+	  xd:when
+	  xd:when?
+	  xd:xdoc
+	  xd:xdoc?
+	  xdoc-due-date-attributes
+	  xdoc-due-date-string
+	  xdoc-outputs-submitted?
+	  xdoc-part-number
+	  xdoc-ps-number
+	  xdoc-recursive?))
+
+(define-package (runtime ssp database-interface)
+  (files "db")
+  (parent (runtime ssp))
+  (export (runtime ssp)
+	  close-database
+	  with-database-connection)
+  (export (runtime ssp xdoc)
+	  db-delete-persistent-value!
+	  db-get-persistent-value
+	  db-intern-persistent-value!
+	  db-previously-saved-input
+	  db-previously-saved-output
+	  db-save-input!
+	  db-save-output!
+	  db-set-persistent-value!)
+  (export (runtime ssp-expander-environment)
+	  db-change-user-password
+	  db-clear-late-flag
+	  db-clear-submitter
+	  db-delete-global-value!
+	  db-delete-persistent-value!
+	  db-generate-password
+	  db-get-global-value
+	  db-get-persistent-value
+	  db-get-ps-structure
+	  db-get-saved-output
+	  db-intern-global-value!
+	  db-intern-persistent-value!
+	  db-known-user?
+	  db-known-users
+	  db-late-submitters
+	  db-new-user-account
+	  db-problem-submitted?
+	  db-ps-problem-names
+	  db-quote
+	  db-register-problem-set
+	  db-registered-problem-sets
+	  db-run-cmd
+	  db-run-query
+	  db-saved-submitters
+	  db-set-global-value!
+	  db-set-persistent-value!
+	  db-set-user-administrator
+	  db-set-user-enabled
+	  db-set-user-real-name
+	  db-user-administrator?
+	  db-user-enabled?
+	  db-user-real-name
+	  db-valid-password?))

@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme], [7.7.91], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.1 2004/10/29 05:32:18 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.2 2004/11/01 19:21:21 cph Exp $])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_PROG_MAKE_SET
 
@@ -46,6 +46,7 @@ runtime/Makefile
 sos/Makefile
 ssp/Makefile
 star-parser/Makefile
+xdoc/Makefile
 xml/Makefile
 ])
 AC_OUTPUT
