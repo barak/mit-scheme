@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.3 1991/08/06 22:18:41 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.4 1991/08/06 22:58:51 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -52,10 +52,10 @@
 
 (define rmail-summary-vector false)
 
-(define-variable rmail-last-multi-labels
-  ""
-  ""
-  list-of-strings?)
+;;; (define-variable rmail-last-multi-labels
+;;;   ""
+;;;   ""
+;;;   list-of-strings?)
 
 (define-command rmail-summary
   "Display a summary of all messages, one line per message."
@@ -299,10 +299,6 @@
 	(else
 	 address)))
 
-(define-variable rmail-summary-mode-hook
-  "An event distributor what is invoked when entering RMAIL Summary mode."
-  (make-event-distributor))
-
 (define-major-mode rmail-summary read-only "RMAIL Summary"
   "Major mode in effect in Rmail summary buffer.
 A subset of the Rmail mode commands are supported in this mode. 
