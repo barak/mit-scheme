@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.30 1997/04/01 05:57:25 cph Exp $
+$Id: os2pm.c,v 1.31 1997/05/21 06:30:59 cph Exp $
 
 Copyright (c) 1994-97 Massachusetts Institute of Technology
 
@@ -317,19 +317,25 @@ window_error_1 (const char * name, int fatalp)
 {
   char buffer [1024];
   ERRORID code = (WinGetLastError (pm_hab));
-  sprintf (buffer, "%s error 0x%08x occurred in the %s procedure.  \
+  if (fatalp)
+    {
+      sprintf (buffer, "Fatal error 0x%08x occurred in the %s procedure.",
+	       code, name);
+      OS2_logic_error (buffer);
+    }
+  else
+    {
+      sprintf (buffer, "Non-fatal error 0x%08x occurred in the %s procedure.  \
 This indicates a bug in the Scheme implementation.  \
 Please report this information to a Scheme wizard.",
-	   (fatalp ? "Fatal" : "Non-fatal"), code, name);
-  if (fatalp)
-    OS2_logic_error (buffer);
-  else
-    (void) WinMessageBox (HWND_DESKTOP,
-			  NULLHANDLE,
-			  buffer,
-			  "Scheme Error",
-			  0,
-			  (MB_OK | MB_WARNING));
+	       code, name);
+      (void) WinMessageBox (HWND_DESKTOP,
+			    NULLHANDLE,
+			    buffer,
+			    "Scheme Error",
+			    0,
+			    (MB_OK | MB_WARNING));
+    }
 }
 
 void
