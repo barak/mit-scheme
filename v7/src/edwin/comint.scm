@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comint.scm,v 1.23 1997/03/04 06:42:55 cph Exp $
+$Id: comint.scm,v 1.24 1997/06/14 01:22:05 cph Exp $
 
 Copyright (c) 1991-97 Massachusetts Institute of Technology
 
@@ -335,7 +335,7 @@ comint-prompt-regexp."
 (define-command comint-delchar-or-maybe-eof
   "If at end of buffer, send EOF to the current subprocess.
 If not at end of buffer, just like \\[delete-char]."
-  "p"
+  "P"
   (lambda (argument)
     (if (group-end? (current-point))
 	(process-send-eof (current-process))
