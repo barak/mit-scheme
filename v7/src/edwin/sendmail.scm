@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.49 2000/06/08 18:52:59 cph Exp $
+;;; $Id: sendmail.scm,v 1.50 2000/06/08 20:56:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -358,6 +358,26 @@ is inserted."
 		      ", MIT Scheme Release "
 		      (get-subsystem-version-string "release")
 		      "]")))
+
+(define (random-mime-boundary-string length)
+  (if (not (exact-nonnegative-integer? length))
+      (error:wrong-type-argument length "exact nonnegative integer"
+				 'RANDOM-MIME-BOUNDARY-STRING))
+  (if (not (<= 2 length 70))
+      (error:bad-range-argument length 'RANDOM-MIME-BOUNDARY-STRING))
+  (let ((s
+	 (with-string-output-port
+	   (lambda (port)
+	     (write-char #\= port)
+	     (write-char #\_ port)
+	     (let ((context (encode-base64:initialize port #f))
+		   (n-bytes (min 51 (* (integer-ceiling (- length 2) 4) 3))))
+	       (encode-base64:update context
+				     (random-byte-vector n-bytes) 0 n-bytes)
+	       (encode-base64:finalize context))))))
+    (if (fix:> (string-length s) length)
+	(set-string-maximum-length! s length))
+    s))
 
 (define-variable mail-setup-hook
   "An event distributor invoked immediately after a mail buffer is initialized.
@@ -506,6 +526,17 @@ Here are commands that move to a header field (and create it if there isn't):
 (define (mail-field-end! header-start header-end field)
   (or (mail-field-end header-start header-end field)
       (mail-insert-field header-end field)))
+
+(define (mail-new-field! header-start header-end field)
+  (let ((region (mail-field-region header-start header-end field)))
+    (if region
+	(begin
+	  (region-delete! region)
+	  (region-start region))
+	(mail-insert-field header-end field))))
+
+(define (mail-insert-field-value! header-start header-end field value)
+  (insert-string value (mail-new-field! start header-end field)))
 
 (define-command mail-signature
   "Sign letter with contents of ~/.signature file."
@@ -632,6 +663,7 @@ the user from the mailer."
        (lambda () (kill-buffer temp-buffer))))))
 
 (define (prepare-mail-buffer-for-sending mail-buffer process-header)
+  (guarantee-mime-compliance mail-buffer)
   (let ((temp-buffer (temporary-buffer " sendmail temp")))
     (let ((start (mark-right-inserting-copy (buffer-start temp-buffer)))
 	  (end (mark-left-inserting-copy (buffer-end temp-buffer))))
@@ -751,6 +783,57 @@ the user from the mailer."
 	  (begin
 	    (mark-temporary! m)
 	    pathnames)))))
+
+;;;; MIME Compliance
+
+(define (guarantee-mime-compliance buffer)
+  (let ((start (buffer-start buffer))
+	(end (buffer-end buffer)))
+    (let ((header-end
+	   (mark-left-inserting-copy (mail-match-header-separator start end))))
+      (mail-insert-field-value! start header-end "MIME-Version" "1.0")
+      (mail-insert-field-value! start header-end
+				"Content-Type"
+				"text/plain; charset=us-ascii")
+      (if (any-non-us-ascii-chars? start header-end)
+	  (begin
+	    (pop-up-occur-buffer start header-end regexp:non-us-ascii #f)
+	    (editor-error
+	     "Message to be sent contains illegal characters in header.")))
+      (let ((body-start (line-start header-end 1 'LIMIT)))
+	(if (any-non-us-ascii-chars? body-start end)
+	    (begin
+	      (let ((body (extract-and-delete-string body-start end)))
+		(call-with-output-mark body-start
+		  (lambda (port)
+		    (let ((context
+			   (encode-quoted-printable:initialize port #t)))
+		      (encode-quoted-printable:update
+		       context body 0 (string-length body))
+		      (encode-quoted-printable:finalize context)))))
+	      (mail-insert-field-value! start header-end
+					"Content-Transfer-Encoding"
+					"quoted-printable")
+	      (message "Message converted to quoted-printable encoding."))
+	    (mail-insert-field-value! start header-end
+				      "Content-Transfer-Encoding"
+				      "7bit")))
+      (mark-temporary! header-end))))
+
+(define (any-non-us-ascii-chars? start end)
+  (group-find-next-char-in-set (mark-group start)
+			       (mark-index start)
+			       (mark-index end)
+			       char-set:non-us-ascii))
+
+(define char-set:us-ascii
+  (char-set-union char-set:graphic (char-set #\tab #\page #\linefeed)))
+
+(define char-set:non-us-ascii
+  (char-set-invert char-set:us-ascii))
+
+(define regexp:non-us-ascii
+  (char-set->regexp char-set:non-us-ascii))
 
 ;;;; Direct SMTP
 
