@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2env.c,v 1.12 1999/04/07 04:01:45 cph Exp $
+$Id: os2env.c,v 1.13 2002/10/22 02:37:10 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -26,22 +26,26 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include <sys\types.h>
 
 #ifdef __IBMC__
-#include <sys\timeb.h>
-#define NC_TIMEZONE _timezone
-#define NC_DAYLIGHT _daylight
-#define NC_FTIME _ftime
+#  include <sys\timeb.h>
+#  define NC_TIMEZONE _timezone
+#  define NC_DAYLIGHT _daylight
+#  if (__IBMC__ >= 360)
+#    define NC_FTIME ftime
+#  else
+#    define NC_FTIME _ftime
+#  endif
 #endif
 
 #if defined(__WATCOMC__) || defined(__EMX__)
-#include <sys\timeb.h>
-#define NC_TIMEZONE timezone
-#define NC_DAYLIGHT daylight
-#define NC_FTIME ftime
+#  include <sys\timeb.h>
+#  define NC_TIMEZONE timezone
+#  define NC_DAYLIGHT daylight
+#  define NC_FTIME ftime
 #endif
 
 #ifdef __GCC2__
-#include <errno.h>
-#include <sys/times.h>
+#  include <errno.h>
+#  include <sys/times.h>
 #endif
 
 static void initialize_real_time_clock (void);

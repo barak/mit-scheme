@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: config.h,v 1.3 2001/03/01 05:23:53 cph Exp $
+$Id: config.h,v 1.4 2002/10/22 02:39:37 cph Exp $
 
-Copyright (c) 2000-2001 Massachusetts Institute of Technology
+Copyright (c) 2000-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 #ifndef SCM_CONFIG_H
@@ -30,15 +31,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include <time.h>
 
 #ifndef __GNUC__
-typedef unsigned short mode_t;
-typedef short nlink_t;
-typedef long pid_t;
-typedef short uid_t;
-typedef short gid_t;
+  typedef unsigned short mode_t;
+  typedef short nlink_t;
+  typedef long pid_t;
+  typedef short uid_t;
+  typedef short gid_t;
 #endif
 
 typedef unsigned char cc_t;
-typedef long ssize_t;
+#if (! ((defined (__IBMC__)) && (__IBMC__ >= 360)))
+  typedef long ssize_t;
+#endif
 
 /* The number of bytes in a unsigned long.  */
 #define SIZEOF_UNSIGNED_LONG 4
