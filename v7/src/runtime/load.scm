@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.56 2001/03/08 19:26:56 cph Exp $
+$Id: load.scm,v 14.57 2001/03/08 20:58:23 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -277,33 +277,37 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			   environment)))
 
 (define (load-library-object-file name errors?)
-  (let ((pathname
-	 (merge-pathnames name
-			  (system-library-directory-pathname "lib"))))
-    (if (there-exists? loaded-object-files
-	  (lambda (pathname*)
-	    (pathname=? pathname pathname*)))
-	#t
-	(let ((pathname*
-	       (let ((find
-		      (lambda (type)
-			(let ((pathname (pathname-new-type pathname type)))
-			  (and (file-exists? pathname)
-			       pathname)))))
-		 (or (find "so")
-		     (find "sl")))))
-	  (cond ((not pathname*)
-		 (and errors?
-		      (error "No library object file of this name:" pathname)))
-		((ignore-errors (lambda () (load pathname*)))
-		 => (lambda (condition)
-		      (if errors?
-			  (signal-condition condition)
-			  condition)))
-		(else
-		 (set! loaded-object-files
-		       (cons pathname loaded-object-files))
-		 #t))))))
+  (let ((directory (system-library-directory-pathname "lib"))
+	(nsf
+	 (lambda ()
+	   (and errors?
+		(error "No library object file of this name:" name)))))
+    (if (not directory)
+	(nsf))
+    (let ((pathname (merge-pathnames name directory)))
+      (if (there-exists? loaded-object-files
+	    (lambda (pathname*)
+	      (pathname=? pathname pathname*)))
+	  #t
+	  (let ((pathname*
+		 (let ((find
+			(lambda (type)
+			  (let ((pathname (pathname-new-type pathname type)))
+			    (and (file-exists? pathname)
+				 pathname)))))
+		   (or (find "so")
+		       (find "sl")))))
+	    (cond ((not pathname*)
+		   (nsf))
+		  ((ignore-errors (lambda () (load pathname*)))
+		   => (lambda (condition)
+			(if errors?
+			    (signal-condition condition)
+			    condition)))
+		  (else
+		   (set! loaded-object-files
+			 (cons pathname loaded-object-files))
+		   #t)))))))
 
 (define (reset-loaded-object-files!)
   (set! loaded-object-files '())
