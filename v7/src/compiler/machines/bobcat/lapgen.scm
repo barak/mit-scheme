@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.7 1988/05/19 15:29:00 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.8 1988/05/19 18:37:36 markf Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -415,7 +415,7 @@ MIT in each case. |#
 	 (let ((constant (fixnum-constant (rtl:constant-value addend))))
 	   (if (and (<= constant 8) (>= constant 1))
 	       (INST (ADDQ L (& ,(modulo constant 8)) ,target))
-	       (INST (ADD L (& ,(modulo constant 8)) ,target)))))
+	       (INST (ADD L (& ,constant) ,target)))))
 	((UNASSIGNED)			; this needs to be looked at
 	 (LAP ,(load-non-pointer type-code:unassigned 0 target)))
 	(else
@@ -472,7 +472,7 @@ MIT in each case. |#
 	 (let ((constant (fixnum-constant (rtl:constant-value subtrahend))))
 	   (if (and (<= constant 8) (>= constant 1))
 	       (INST (SUBQ L (& ,(modulo constant 8)) ,target))
-	       (INST (SUB L (& ,(modulo constant 8)) ,target)))))
+	       (INST (SUB L (& ,constant) ,target)))))
 	((UNASSIGNED)			; this needs to be looked at
 	 (LAP ,(load-non-pointer type-code:unassigned 0 target)))
 	(else
