@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.8 1995/03/13 23:23:45 adams Exp $
+$Id: fakeprim.scm,v 1.9 1995/03/22 01:08:13 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -740,6 +740,8 @@ MIT in each case. |#
 
 (define %compiled-entry?
   (make-operator/simple "#[compiled-entry?]"  '(PROPER-PREDICATE)))
+
+(cookie-call %compiled-entry? '#F object)
 
 (define %compiled-entry-maximum-arity?
   ;; (call ',%compiled-entry-maximum-arity? '#F 'count value)
