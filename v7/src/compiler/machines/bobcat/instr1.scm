@@ -38,6 +38,8 @@
 ;;;; 68000 Instruction Set Description
 ;;; Originally from GJS (who did the hard part).
 
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr1.scm,v 1.59 1986/12/20 22:59:09 cph Exp $
+
 (declare (usual-integrations))
 (using-syntax (access assembler-syntax-table compiler-package)
 
@@ -48,7 +50,7 @@
 
 (define (effective-address? object)
   (and (vector? object)
-       (not (zero? (vector-size object)))
+       (not (zero? (vector-length object)))
        (eq? (vector-ref object 0) ea-tag)))
 
 (define ea-tag
