@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.59 1993/02/02 06:02:46 jawilson Exp $
+$Id: opncod.scm,v 4.60 1993/07/01 03:26:29 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -314,7 +314,8 @@ MIT in each case. |#
 	(let ((error-cfg
 	       (if (combination/reduction? combination)
 		   (let ((scfg
-			  (generate-primitive primitive-name (length expressions)
+			  (generate-primitive primitive-name
+					      (length expressions)
 					      '() false false)))
 		     (make-scfg (cfg-entry-node scfg) '()))
 		   (with-values
@@ -453,70 +454,100 @@ MIT in each case. |#
 	 name
 	 expressions)))))
 
-(define (index-locative-generator make-locative
-				  header-length-in-objects
-				  address-units-per-index
+(define (index-locative-generator make-constant-locative
+				  make-variable-locative
+				  header-length-in-units
 				  scfg*scfg->scfg!)
-  (let ((header-length-in-indexes
-	 (back-end:* header-length-in-objects
-		     (back-end:quotient address-units-per-object
-					address-units-per-index))))
-    (lambda (base index finish)
-      (let ((unknown-index
-	     (lambda ()
-	       (load-temporary-register
-		scfg*scfg->scfg!
-		(rtl:make-fixnum->address
-		 (rtl:make-fixnum-2-args
-		  'PLUS-FIXNUM
-		  (rtl:make-address->fixnum (rtl:make-object->address base))
-		  (let ((index (rtl:make-object->fixnum index)))
-		    (if (back-end:= address-units-per-index 1)
-			index
-			(rtl:make-fixnum-2-args
-			 'MULTIPLY-FIXNUM
-			 (rtl:make-object->fixnum
-			  (rtl:make-constant address-units-per-index))
-			 index
-			 false)))
-		  false))
-		(lambda (expression)
-		  (finish
-		   (make-locative expression header-length-in-indexes)))))))
-	(if (rtl:constant? index)
-	    (let ((value (rtl:constant-value index)))
-	      (if (and (object-type? (ucode-type fixnum) value)
-		       (not (negative? value)))
-		  (finish
-		   (make-locative base
-				  (back-end:+ header-length-in-indexes
-					      value)))
-		  (unknown-index)))
-	    (unknown-index))))))
+  scfg*scfg->scfg!			; ignored
+  (lambda (base index finish)
+    (let ((unknown-index
+	   (lambda ()
+	     (finish
+	      (make-constant-locative
+	       (make-variable-locative base
+				       (rtl:make-object->datum index))
+	       header-length-in-units)))))	       
+      (if (rtl:constant? index)
+	  (let ((value (rtl:constant-value index)))
+	    (if (and (object-type? (ucode-type fixnum) value)
+		     (not (negative? value)))
+		(finish
+		 (make-constant-locative base
+					 (+ value header-length-in-units)))
+		(unknown-index)))
+	  (unknown-index)))))
 
 (define object-memory-reference
   (indexed-memory-reference
    (lambda (expression) expression false)
-   (index-locative-generator rtl:locative-offset
+   (index-locative-generator rtl:locative-object-offset
+			     rtl:locative-object-index
 			     0
-			     address-units-per-object
 			     scfg*scfg->scfg!)))
 
 (define vector-memory-reference
   (indexed-memory-reference
    (lambda (expression) (rtl:make-fetch (rtl:locative-offset expression 0)))
-   (index-locative-generator rtl:locative-offset
+   (index-locative-generator rtl:locative-object-offset
+			     rtl:locative-object-index
 			     1
-			     address-units-per-object
 			     scfg*scfg->scfg!)))
 
 (define string-memory-reference
   (indexed-memory-reference
    (lambda (expression) (rtl:make-fetch (rtl:locative-offset expression 1)))
    (index-locative-generator rtl:locative-byte-offset
-			     2
-			     address-units-per-packed-char
+			     rtl:locative-byte-index
+			     (* 2 address-units-per-object)
 			     scfg*scfg->scfg!)))
+
+(define float-memory-reference
+  (indexed-memory-reference
+   (lambda (expression) (rtl:make-fetch (rtl:locative-offset expression 0)))
+   (if (back-end:= address-units-per-float address-units-per-object)
+       (index-locative-generator rtl:locative-float-offset
+				 rtl:locative-float-index
+				 1
+				 scfg*scfg->scfg!)
+       (lambda (base index finish)
+	 (let* ((data-base (rtl:locative-offset base 1))
+		(unknown-index
+		 (lambda ()
+		   (finish
+		    (rtl:locative-float-index
+		     data-base
+		     (rtl:make-object->datum index))))))
+	   (if (rtl:constant? index)
+	       (let ((value (rtl:constant-value index)))
+		 (if (and (object-type? (ucode-type fixnum) value)
+			  (not (negative? value)))
+		     (finish (rtl:locative-float-offset data-base value))
+		     (unknown-index)))
+	       (unknown-index)))))))
+
+(define rtl:floating-vector-length-fetch
+  (if (back-end:= address-units-per-float address-units-per-object)
+      rtl:vector-length-fetch
+      (let ((quantum
+	     (back-end:quotient
+	      (back-end:+ address-units-per-float
+			  (back-end:- address-units-per-object 1))
+	      address-units-per-object)))
+	(if (and (number? quantum) (= quantum 2))
+	    (lambda (locative)
+	      (rtl:make-fixnum->object
+	       (rtl:make-fixnum-2-args
+		'FIXNUM-LSH
+		(rtl:make-object->fixnum (rtl:make-fetch locative))
+		(rtl:make-object->fixnum (rtl:make-constant -1))
+		false)))
+	    (lambda (locative)
+	      (rtl:make-fixnum->object
+	       (rtl:make-fixnum-2-args
+		'FIXNUM-QUOTIENT
+		(rtl:make-object->fixnum (rtl:make-fetch locative))
+		(rtl:make-object->fixnum (rtl:make-constant quantum))
+		false)))))))
 
 (define (rtl:length-fetch locative)
   (rtl:make-cons-non-pointer (rtl:make-machine-constant (ucode-type fixnum))
@@ -535,8 +566,15 @@ MIT in each case. |#
   (rtl:make-cons-non-pointer (rtl:make-machine-constant (ucode-type fixnum))
 			     (rtl:make-fetch locative)))
 
+(define (rtl:float-fetch locative)
+  (rtl:make-float->object (rtl:make-fetch locative)))
+
 (define (rtl:string-assignment locative value)
   (rtl:make-assignment locative (rtl:make-char->ascii value)))
+
+(define (rtl:float-assignment locative value)
+  (rtl:make-assignment locative
+		       (rtl:make-object->float value)))
 
 (define (assignment-finisher make-assignment make-fetch)
   make-fetch				;ignore
@@ -559,6 +597,9 @@ MIT in each case. |#
 
 (define finish-vector-8b-assignment
   (assignment-finisher rtl:make-assignment rtl:vector-8b-fetch))
+
+(define finish-float-assignment
+  (assignment-finisher rtl:float-assignment rtl:float-fetch))
 
 ;;;; Open Coders
 
@@ -716,9 +757,9 @@ MIT in each case. |#
 	(list (open-code:type-check length (ucode-type fixnum))
 	      (open-code:nonnegative-check length))
 	(let ((assignment
-	       ((index-locative-generator rtl:locative-offset
+	       ((index-locative-generator rtl:locative-object-offset
+					  rtl:locative-object-index
 					  0
-					  address-units-per-object
 					  scfg*scfg->scfg!)
 		(rtl:make-fetch register:free)
 		length
@@ -743,9 +784,9 @@ MIT in each case. |#
 	combination
 	(list (open-code:type-check length (ucode-type fixnum))
 	      (open-code:nonnegative-check length))
-	((index-locative-generator rtl:locative-offset
+	((index-locative-generator rtl:locative-object-offset
+				   rtl:locative-object-index
 				   0
-				   address-units-per-object
 				   scfg*pcfg->pcfg!)
 	 (rtl:make-fetch register:free)
 	 length
@@ -754,9 +795,10 @@ MIT in each case. |#
 	    (rtl:make-fixnum-pred-2-args
 	     'LESS-THAN-FIXNUM?
 	     (rtl:make-address->fixnum (rtl:make-address locative))
-	     (rtl:make-address->fixnum (rtl:make-fetch register:memory-top))))))
+	     (rtl:make-address->fixnum
+	      (rtl:make-fetch register:memory-top))))))
 	finish
-	'PRIMITIVE-INCREMENT-FREE
+	'HEAP-AVAILABLE?
 	expressions)))
    '(0)
    internal-close-coding-for-type-or-range-checks))
@@ -807,7 +849,7 @@ MIT in each case. |#
     (if (null? operands)
 	'()
 	(cons index (loop (cdr operands) (1+ index))))))
-
+
 #|
 ;; This is somewhat painful to implement.  The problem is that most of
 ;; the open coding takes place in "rtlcon.scm", and the mechanism for
@@ -834,6 +876,30 @@ MIT in each case. |#
    '(0)
    internal-close-coding-for-range-checks))
 |#
+
+;; The following are discretionally open-coded by the back-end.
+;; This allows the type and range checking to take place if
+;; the switch is set appropriately.  The back-end does not check.
+
+(define (define-allocator-open-coder name args)
+  (define-open-coder/value name
+    (simple-open-coder
+     (lambda (combination expressions finish)
+       (let ((length (car expressions)))
+	 (open-code:with-checks
+	  combination
+	  (list (open-code:nonnegative-check length)
+		(make-false-pcfg))
+	  (make-null-cfg)
+	  finish
+	  name
+	  expressions)))
+     args
+     true)))
+
+(define-allocator-open-coder 'STRING-ALLOCATE '(0))
+(define-allocator-open-coder 'FLOATING-VECTOR-CONS '(0))
+(define-allocator-open-coder 'VECTOR-CONS '(0 1))
 
 (let ((user-ref
        (lambda (name make-fetch type index)
@@ -855,6 +921,10 @@ MIT in each case. |#
   (user-ref '%RECORD-LENGTH rtl:vector-length-fetch (ucode-type record) 0)
   (user-ref 'STRING-LENGTH rtl:length-fetch (ucode-type string) 1)
   (user-ref 'BIT-STRING-LENGTH rtl:length-fetch (ucode-type vector-1b) 1)
+  (user-ref 'FLOATING-VECTOR-LENGTH
+	    rtl:floating-vector-length-fetch
+	    (ucode-type flonum)
+	    0)
   (user-ref 'CAR rtl:make-fetch (ucode-type pair) 0)
   (user-ref 'CDR rtl:make-fetch (ucode-type pair) 1))
 
@@ -1062,6 +1132,25 @@ MIT in each case. |#
        (finish-vector-8b-assignment locative (caddr expressions) finish)))
    '(0 1 2)
    internal-close-coding-for-type-or-range-checks))
+
+(define-open-coder/value 'FLOATING-VECTOR-REF
+  (simple-open-coder
+   (float-memory-reference 'FLOATING-VECTOR-REF (ucode-type flonum) false
+     (lambda (locative expressions finish)
+       expressions
+       (finish (rtl:float-fetch locative))))
+   '(0 1)
+   internal-close-coding-for-type-or-range-checks))
+
+(define-open-coder/effect 'FLOATING-VECTOR-SET!
+  (simple-open-coder
+   (float-memory-reference 'FLOATING-VECTOR-SET!
+			    (ucode-type flonum)
+			    (ucode-type flonum)
+     (lambda (locative expressions finish)
+       (finish-float-assignment locative (caddr expressions) finish)))
+   '(0 1 2)
+   internal-close-coding-for-type-or-range-checks))
 
 ;;;; Fixnum Arithmetic
 
@@ -1229,7 +1318,7 @@ MIT in each case. |#
       internal-close-coding-for-type-checks)))
  '(FLONUM-NEGATE FLONUM-ABS FLONUM-SIN FLONUM-COS FLONUM-TAN FLONUM-ASIN
    FLONUM-ACOS FLONUM-ATAN FLONUM-EXP FLONUM-LOG FLONUM-SQRT FLONUM-ROUND
-   FLONUM-TRUNCATE))
+   FLONUM-TRUNCATE FLONUM-CEILING FLONUM-FLOOR))
 
 (for-each
  (lambda (flonum-operator)
@@ -1254,7 +1343,7 @@ MIT in each case. |#
 	   expressions)))
       '(0 1)
       internal-close-coding-for-type-checks)))
- '(FLONUM-ADD FLONUM-SUBTRACT FLONUM-MULTIPLY FLONUM-DIVIDE))
+ '(FLONUM-ADD FLONUM-SUBTRACT FLONUM-MULTIPLY FLONUM-DIVIDE FLONUM-ATAN2))
 
 (for-each
  (lambda (flonum-pred)
@@ -1426,14 +1515,16 @@ MIT in each case. |#
 (define (generic-default generic-op combination expressions predicate? finish)
   (lambda ()
     (if (combination/reduction? combination)
-	(let ((scfg (generate-primitive generic-op (length expressions) '() false false)))
+	(let ((scfg (generate-primitive generic-op (length expressions) '()
+					false false)))
 	  (make-scfg (cfg-entry-node scfg) '()))
 	(with-values
 	    (lambda ()
 	      (generate-continuation-entry (combination/context combination)))
 	  (lambda (label setup cleanup)
 	    (scfg-append!
-	     (generate-primitive generic-op (length expressions) expressions setup label)
+	     (generate-primitive generic-op (length expressions)
+				 expressions setup label)
 	     cleanup
 	     (if predicate?
 		 (finish (rtl:make-true-test (rtl:make-fetch register:value)))
