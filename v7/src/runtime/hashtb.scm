@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.17 1993/12/08 21:13:14 cph Exp $
+$Id: hashtb.scm,v 1.18 1994/01/29 22:08:15 adams Exp $
 
 Copyright (c) 1990-93 Massachusetts Institute of Technology
 
@@ -729,8 +729,9 @@ MIT in each case. |#
 
 (define-integrable (eq-hash object)
   (let ((n
-	 ((ucode-primitive primitive-object-set-type) (ucode-type fixnum)
-						      object)))
+	 ((ucode-primitive primitive-object-set-type)
+	  (ucode-type positive-fixnum)
+	  object)))
     (if (fix:< n 0)
 	(fix:not n)
 	n)))
