@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.13 1992/10/02 01:43:50 jinx Exp $
+$Id: dosprm.scm,v 1.14 1992/10/08 18:03:52 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -203,22 +203,20 @@ MIT in each case. |#
   unspecific)				; End LET
 
 (define (dos/user-home-directory user-name)
-  (let ((directory (get-environment-variable "USERDIR")))
-    (if (not directory)
-	(error "environment variable USERDIR has no value"
-	       'DOS/USER-HOME-DIRECTORY))
-    (pathname-new-name
-     (pathname-as-directory (merge-pathnames directory))
-     user-name)))
+  (or (and user-name
+	   (let ((directory (get-environment-variable "USERDIR")))
+	     (and directory
+		  (pathname-new-name
+		   (pathname-as-directory (merge-pathnames directory))
+		   user-name))))
+      "\\"))
+
+(define (dos/current-user-name)
+  (get-environment-variable "USER"))
 
 (define (dos/current-home-directory)
   (or (get-environment-variable "HOME")
       (dos/user-home-directory (dos/current-user-name))))
-
-(define (dos/current-user-name)
-  (or (get-environment-variable "USER")
-      (error "environment variable USER has no value"
-	     'DOS/CURRENT-USER-NAME)))
 
 (define dos/current-file-time
   (ucode-primitive current-file-time 0))
@@ -241,7 +239,7 @@ MIT in each case. |#
   ;; to handle the trailing back-slash.
   ((ucode-primitive directory-delete 1)
    (->namestring (merge-pathnames name))))
-
+
 ;;; Queues after-restart daemon to clean up environment space
 
 (define (initialize-system-primitives!)
