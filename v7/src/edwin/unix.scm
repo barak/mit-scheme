@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.64 1996/02/29 22:16:09 cph Exp $
+;;;	$Id: unix.scm,v 1.65 1996/03/01 07:14:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -101,10 +101,21 @@ Includes the new backup.  Must be > 0."
 	string)))
 
 (define (os/pathname->display-string pathname)
-  (let ((pathname (enough-pathname pathname (user-homedir-pathname))))
-    (if (pathname-absolute? pathname)
-	(->namestring pathname)
-	(string-append "~/" (->namestring pathname)))))
+  ;; This code is more thorough than ENOUGH-PATHNAME, in that it
+  ;; checks to see if one of the ancestor directories of PATHNAME is
+  ;; an alias for the homedir.  ENOUGH-PATHNAME only does syntactic
+  ;; comparison, and will not notice aliases.
+  (let ((homedir (user-homedir-pathname)))
+    (let loop ((directory (directory-pathname pathname)))
+      (cond ((file-eq? directory homedir)
+	     (string-append
+	      "~/"
+	      (->namestring (enough-pathname pathname directory))))
+	    ((equal? (pathname-directory directory) '(ABSOLUTE))
+	     (->namestring pathname))
+	    (else
+	     (loop
+	      (directory-pathname (directory-pathname-as-file directory))))))))
 
 (define (os/auto-save-pathname pathname buffer)
   (let ((wrap
@@ -722,30 +733,33 @@ option, instead taking -P <filename>."
     target))
 
 (define (unix/call-with-pop-client-password-options password receiver)
-  (if (ref-variable rmail-popclient-is-debian)
-      (cond ((string? password)
-	     (call-with-temporary-filename
-	      (lambda (temporary-file)
-		(set-file-modes! temporary-file #o600)
-		(call-with-output-file temporary-file
-		  (lambda (port)
-		    (write-string password port)
-		    (newline port)))
-		(receiver (list "-P" temporary-file)))))
-	    ((and (pair? password) (eq? 'FILE (car password)))
-	     (receiver (list "-P" (cadr password))))
-	    (else
-	     (error "Illegal password:" password)))
-      (cond ((string? password)
-	     (receiver (list "-p" password)))
-	    ((and (pair? password) (eq? 'FILE (car password)))
-	     (receiver
-	      (list "-p"
-		    (call-with-input-file (cadr password)
-		      (lambda (port)
-			(read-string (char-set #\newline) port))))))
-	    (else
-	     (error "Illegal password:" password)))))
+  (cond ((eq? password 'KERBEROS-V4)
+	 (receiver (list "-K")))
+	((ref-variable rmail-popclient-is-debian)
+	 (cond ((string? password)
+		(call-with-temporary-filename
+		 (lambda (temporary-file)
+		   (set-file-modes! temporary-file #o600)
+		   (call-with-output-file temporary-file
+		     (lambda (port)
+		       (write-string password port)
+		       (newline port)))
+		   (receiver (list "-P" temporary-file)))))
+	       ((and (pair? password) (eq? 'FILE (car password)))
+		(receiver (list "-P" (cadr password))))
+	       (else
+		(error "Illegal password:" password))))
+	(else
+	 (cond ((string? password)
+		(receiver (list "-p" password)))
+	       ((and (pair? password) (eq? 'FILE (car password)))
+		(receiver
+		 (list "-p"
+		       (call-with-input-file (cadr password)
+			 (lambda (port)
+			   (read-string (char-set #\newline) port))))))
+	       (else
+		(error "Illegal password:" password))))))
 
 ;;;; Miscellaneous
 
