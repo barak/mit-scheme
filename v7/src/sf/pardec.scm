@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 3.2 1987/03/18 22:51:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 3.3 1987/03/19 17:19:06 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -245,7 +245,7 @@ MIT in each case. |#
 (define (parse-primitive-specification block specification)
   (let ((finish
 	 (lambda (variable-name primitive-name)
-	   (return-2 (block/lookup-name block variable-name)
+	   (return-2 variable-name
 		     (constant->integration-info
 		      (make-primitive-procedure primitive-name))))))
     (cond ((and (pair? specification)
