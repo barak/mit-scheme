@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.41 1995/05/02 00:40:13 cph Exp $
+;;;	$Id: rmail.scm,v 1.42 1995/09/13 04:18:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -176,6 +176,9 @@ w	Edit the current message.  C-c C-c to return to Rmail."
     (define-variable-local-value! buffer
 	(ref-variable-object require-final-newline)
       false)
+    (define-variable-local-value buffer
+      (ref-variable-object translate-file-data-on-output)
+      #f)
     (define-variable-local-value! buffer (ref-variable-object rmail-last-file)
       (ref-variable rmail-last-file buffer))
     (define-variable-local-value! buffer (ref-variable-object rmail-inbox-list)
@@ -190,7 +193,7 @@ w	Edit the current message.  C-c C-c to return to Rmail."
     (set-buffer-read-only! buffer)
     (disable-group-undo! (buffer-group buffer))
     (event-distributor/invoke! (ref-variable rmail-mode-hook buffer) buffer)))
-
+
 (define-major-mode rmail-edit text "RMAIL Edit"
   "Major mode for editing the contents of an RMAIL message.
 The editing commands are the same as in Text mode,
@@ -199,7 +202,7 @@ together with two commands to return to regular RMAIL:
   * \\[rmail-cease-edit] makes them permanent."
   (lambda (buffer)
     (enable-group-undo! (buffer-group buffer))))
-
+
 (define (guarantee-variables-initialized)
   (if (not (ref-variable rmail-pop-procedure))
       (set-variable! rmail-pop-procedure (os/rmail-pop-procedure)))
@@ -1493,10 +1496,25 @@ buffer visiting that file."
 			  (string-append "\"" (->namestring pathname)
 					 "\" does not exist, create it")))
 		    (editor-error "Output file does not exist."))
-		(call-with-output-file pathname
+		(call-with-binary-output-file pathname
 		  (lambda (port)
 		    (write-string babyl-initial-header port)))))
-	  (append-to-file region pathname #f)))))
+	  (let ((buf (->buffer (region-group region)))
+		(var (ref-variable-object translate-file-data-on-output))
+		(val))
+	    (dynamic-wind
+	     (lambda ()
+	       (set! val
+		     (if (variable-local-value? buf var)
+			 (variable-local-value buf var)
+			 'NONE))
+	       (define-variable-local-value! buf var #f))
+	     (lambda ()
+	       (append-to-file region pathname #f))
+	     (lambda ()
+	       (if (eq? val 'NONE)
+		   (undefine-variable-local-value! buf var)
+		   (define-variable-local-value! buf var val)))))))))
 
 (define-command rmail-output
   "Append this message to Unix mail file named FILE-NAME."
@@ -1533,6 +1551,9 @@ buffer visiting that file."
 	  (file-time->string (current-file-time))
 	  "\n")
 	 start)))
+    (define-variable-local-value buffer
+      (ref-variable-object translate-file-data-on-output)
+      #f)
     (append-to-file (buffer-region buffer) pathname #f)
     (kill-buffer buffer)))
 
