@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.176 1995/05/20 10:19:57 cph Exp $
+$Id: edwin.pkg,v 1.177 1995/05/21 10:03:30 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -1542,6 +1542,8 @@ MIT in each case. |#
 	  edwin-mode$news-group
 	  edwin-mode$news-server
 	  edwin-variable$news-article-context-lines
+	  edwin-variable$news-full-name
+	  edwin-variable$news-organization
 	  edwin-variable$news-server
 	  edwin-variable$news-server-show-domain
 	  edwin-variable$show-unsubscribed-news-groups))
