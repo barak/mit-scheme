@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 4.2 1987/12/30 08:21:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 4.3 1987/12/30 08:33:43 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -44,11 +44,11 @@ MIT in each case. |#
     (make-environment
       (define :name "Liar (Bobcat 68020)")
       (define :version 4)
-      (define :modification 2)
+      (define :modification 3)
       (define :files)
 
       (define :rcs-header
-	"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 4.2 1987/12/30 08:21:49 cph Exp $")
+	"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 4.3 1987/12/30 08:33:43 cph Exp $")
 
       (define :files-lists
 	(list
@@ -117,23 +117,23 @@ MIT in each case. |#
 		 ))
 
 	 (cons fg-generator-package
-	       '("alpha/fggen.com"	;SCode->flow-graph converter
-		 "alpha/declar.com"	;Declaration handling
+	       '("fggen/fggen.com"	;SCode->flow-graph converter
+		 "fggen/declar.com"	;Declaration handling
 		 ))
 
 	 (cons fg-optimizer-package
-	       '("alpha/simapp.com"	;simulate applications
-		 "alpha/outer.com"	;outer analysis
-		 "alpha/folcon.com"	;fold constants
-		 "alpha/operan.com"	;operator analysis
-		 "alpha/closan.com"	;closure analysis
-		 "alpha/blktyp.com"	;environment type assignment
-		 "alpha/contan.com"	;continuation analysis
-		 "alpha/simple.com"	;simplicity analysis
-		 "alpha/order.com"	;subproblem ordering
-		 "alpha/conect.com"	;connectivity analysis
-		 "alpha/desenv.com"	;environment design
-		 "alpha/offset.com"	;compute node offsets
+	       '("fgopt/simapp.com"	;simulate applications
+		 "fgopt/outer.com"	;outer analysis
+		 "fgopt/folcon.com"	;fold constants
+		 "fgopt/operan.com"	;operator analysis
+		 "fgopt/closan.com"	;closure analysis
+		 "fgopt/blktyp.com"	;environment type assignment
+		 "fgopt/contan.com"	;continuation analysis
+		 "fgopt/simple.com"	;simplicity analysis
+		 "fgopt/order.com"	;subproblem ordering
+		 "fgopt/conect.com"	;connectivity analysis
+		 "fgopt/desenv.com"	;environment design
+		 "fgopt/offset.com"	;compute node offsets
 		 ))
 
 	 (cons rtl-generator-package
