@@ -1,10 +1,10 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.117 2004/03/09 03:46:42 cph Exp $
+$Id: boot.c,v 9.118 2005/01/01 05:43:57 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,1997 Massachusetts Institute of Technology
-Copyright 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -44,7 +44,6 @@ extern void EXFUN (Setup_Memory, (int, int, int));
 extern void EXFUN (compiler_initialize, (long fasl_p));
 extern SCHEME_OBJECT EXFUN (make_primitive, (char *, int));
 extern void EXFUN (OS_announcement, (void));
-extern SCHEME_OBJECT EXFUN (char_pointer_to_symbol, (unsigned char *));
 
 static void EXFUN (Start_Scheme, (int, CONST char *));
 static void EXFUN (Enter_Interpreter, (void));
