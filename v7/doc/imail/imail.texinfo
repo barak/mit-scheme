@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.20 2000/12/29 03:56:18 cph Exp $
+@comment $Id: imail.texinfo,v 1.21 2000/12/29 04:01:57 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -940,7 +940,7 @@ Another kind of multipart @acronym{MIME} message is the digest message,
 which has type @samp{multipart/@-digest}.  Digest messages are normally
 used by high-volume mailing lists to reduce the number of messages sent
 to the end user; instead the user receives one message containing all of
-the messages from that group in a particular time period, usually a day.
+the messages from that list in a particular time period, usually a day.
 @acronym{IMAIL} can present @acronym{MIME} digest messages in one of two
 formats.  The default format is to show all of the component messages of
 the digest as attachments.  This is particularly useful for large
@@ -956,9 +956,11 @@ shown as specially-formatted abbreviations.  Here is an example:
 
 @example
 @group
-<IMAIL-ATTACHMENT name="foo.doc"
-                  type=application/msword
-                  length=55499>
+<imail-part
+    name="foo.doc"
+    type="application/msword"
+    length="55499"
+    />
 @end group
 @end example
 
