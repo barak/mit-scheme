@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/lapgen.scm,v 4.2 1988/01/13 19:26:26 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/lapgen.scm,v 4.3 1988/01/13 19:29:29 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -35,6 +35,10 @@ MIT in each case. |#
 ;;;; RTL Rules for DEC VAX.  Part 1
 ;;;  Matches MC68020 version 1.188
 
+;;;
+;;; Popper code has been removed, since poppers are
+;;; no longer being used 
+;;;
 (declare (usual-integrations))
 
 ;;;; Basic machine instructions
