@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.37 1993/10/16 10:10:47 cph Exp $
+$Id: rep.scm,v 14.38 1993/10/20 21:22:23 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -105,7 +105,14 @@ MIT in each case. |#
 
 (define (push-cmdl driver state operations)
   (let ((parent (nearest-cmdl)))
-    (make-cmdl parent (cmdl/port parent) driver state operations)))
+    (make-cmdl parent
+	       (or (let ((operation (cmdl/local-operation parent 'CHILD-PORT)))
+		     (and operation
+			  (operation parent)))
+		   (cmdl/port parent))
+	       driver
+	       state
+	       operations)))
 
 (define (cmdl/base cmdl)
   (let ((parent (cmdl/parent cmdl)))
