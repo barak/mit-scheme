@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxenv.c,v 1.16 1995/07/27 00:37:51 adams Exp $
+$Id: pruxenv.c,v 1.17 1997/07/15 22:31:53 adams Exp $
 
 Copyright (c) 1990-1995 Massachusetts Institute of Technology
 
@@ -258,9 +258,11 @@ DEFINE_PRIMITIVE ("INSTRUCTION-ADDRESS->COMPILED-CODE-BLOCK",
 {
   PRIMITIVE_HEADER (1);
   {
-      extern SCHEME_OBJECT find_ccblock();
-      long the_pc = (long) OBJECT_ADDRESS(ARG_REF(1));
-      PRIMITIVE_RETURN (find_ccblock(the_pc));
+      extern SCHEME_OBJECT find_ccblock(long);
+      long the_pc = (INTEGER_P (ARG_REF (1)))
+	? (integer_to_long (ARG_REF (1)))
+	: ((long) OBJECT_ADDRESS (ARG_REF (1)));
+      PRIMITIVE_RETURN (find_ccblock (the_pc));
   }
 }
 
