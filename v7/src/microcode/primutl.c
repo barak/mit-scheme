@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: primutl.c,v 9.65 1993/08/28 05:42:28 gjr Exp $
+$Id: primutl.c,v 9.66 1993/08/28 20:01:08 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -464,7 +464,7 @@ DEFUN_VOID (initialize_primitives)
 
 static SCHEME_OBJECT
 DEFUN (declare_primitive_internal,
-       (override_p, code, nargs_lo, nargs_hi, docstr),
+       (override_p, name, code, nargs_lo, nargs_hi, docstr),
        Boolean override_p
        AND char * name
        AND primitive_procedure_t code
