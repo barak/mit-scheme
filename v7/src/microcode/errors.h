@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: errors.h,v 9.40 1993/08/03 09:08:40 gjr Exp $
+$Id: errors.h,v 9.41 1993/10/04 00:03:38 adams Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -254,7 +254,7 @@ MIT in each case. */
 
 #define TERM_MESSAGE_TABLE						\
 {									\
-/* 0x00 */		"Moriturus te saluto",				\
+/* 0x00 */		"Happy Happy Joy Joy",				\
 /* 0x01 */		"Unrecoverable error while loading a band",	\
 /* 0x02 */		"Broken heart encountered",			\
 /* 0x03 */		"Non pointer relocation",			\
