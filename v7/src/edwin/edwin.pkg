@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.190 1996/04/24 01:57:40 cph Exp $
+$Id: edwin.pkg,v 1.191 1996/04/24 02:04:58 cph Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -581,6 +581,7 @@ MIT in each case. |#
 	  edwin-variable$lisp-indent-hook
 	  edwin-variable$lisp-indent-methods
 	  edwin-variable$lisp-indent-offset
+	  edwin-variable$lisp-indent-regexps
 	  indent-code-rigidly
 	  lisp-comment-indentation
 	  lisp-comment-locate

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: schmod.scm,v 1.37 1994/10/12 00:30:25 cph Exp $
+;;;	$Id: schmod.scm,v 1.38 1996/04/24 02:05:35 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -49,8 +49,7 @@
 (define-command scheme-mode
   "Enter Scheme mode."
   ()
-  (lambda ()
-    (set-current-major-mode! (ref-mode-object scheme))))
+  (lambda () (set-current-major-mode! (ref-mode-object scheme))))
 
 (define-major-mode scheme fundamental "Scheme"
   "Major mode specialized for editing Scheme code.
@@ -65,45 +64,27 @@ The following commands evaluate Scheme expressions:
 \\[eval-current-buffer] evaluates the buffer.
 \\[eval-region] evaluates the current region."
   (lambda (buffer)
-    (define-variable-local-value! buffer (ref-variable-object syntax-table)
-      scheme-mode:syntax-table)
-    (define-variable-local-value! buffer
-	(ref-variable-object syntax-ignore-comments-backwards)
-      false)
-    (define-variable-local-value! buffer (ref-variable-object lisp-indent-hook)
-      standard-lisp-indent-hook)
-    (define-variable-local-value! buffer
-	(ref-variable-object lisp-indent-methods)
-      scheme-mode:indent-methods)
-    (define-variable-local-value! buffer (ref-variable-object comment-column)
-      40)
-    (define-variable-local-value! buffer
-	(ref-variable-object comment-locator-hook)
-      lisp-comment-locate)
-    (define-variable-local-value! buffer
-	(ref-variable-object comment-indent-hook)
-      lisp-comment-indentation)
-    (define-variable-local-value! buffer (ref-variable-object comment-start)
-      ";")
-    (define-variable-local-value! buffer (ref-variable-object comment-end)
-      "")
+    (local-set-variable! syntax-table scheme-mode:syntax-table buffer)
+    (local-set-variable! syntax-ignore-comments-backwards #f buffer)
+    (local-set-variable! lisp-indent-hook standard-lisp-indent-hook buffer)
+    (local-set-variable! lisp-indent-methods scheme-mode:indent-methods buffer)
+    (local-set-variable! lisp-indent-regexps scheme-mode:indent-regexps buffer)
+    (local-set-variable! comment-column 40 buffer)
+    (local-set-variable! comment-locator-hook lisp-comment-locate buffer)
+    (local-set-variable! comment-indent-hook lisp-comment-indentation buffer)
+    (local-set-variable! comment-start ";" buffer)
+    (local-set-variable! comment-end "" buffer)
     (let ((separate
 	   (string-append "^$\\|" (ref-variable page-delimiter buffer))))
-      (define-variable-local-value! buffer
-	  (ref-variable-object paragraph-start)
-	separate)
-      (define-variable-local-value! buffer
-	  (ref-variable-object paragraph-separate)
-	separate))
-    (define-variable-local-value! buffer
-	(ref-variable-object paragraph-ignore-fill-prefix)
-      true)
-    (define-variable-local-value! buffer
-	(ref-variable-object indent-line-procedure)
-      (ref-command lisp-indent-line))
-    (define-variable-local-value! buffer
-	(ref-variable-object mode-line-process)
-      '(RUN-LIGHT (": " RUN-LIGHT) ""))
+      (local-set-variable! paragraph-start separate buffer)
+      (local-set-variable! paragraph-separate separate buffer))
+    (local-set-variable! paragraph-ignore-fill-prefix #t buffer)
+    (local-set-variable! indent-line-procedure
+			 (ref-command lisp-indent-line)
+			 buffer)
+    (local-set-variable! mode-line-process
+			 '(RUN-LIGHT (": " RUN-LIGHT) "")
+			 buffer)
     (event-distributor/invoke! (ref-variable scheme-mode-hook buffer) buffer)))
 
 (define-variable scheme-mode-hook
@@ -171,57 +152,58 @@ The following commands evaluate Scheme expressions:
        1)
    state indent-point normal-indent))
 
-(define scheme-mode:indent-methods (make-string-table))
+(define scheme-mode:indent-methods
+  (alist->string-table
+   (map (lambda (entry) (cons (symbol->string (car entry)) (cdr entry)))
+	`((BEGIN . 0)
+	  (CASE . 1)
+	  (DELAY . 0)
+	  (DO . 2)
+	  (LAMBDA . 1)
+	  (LET . ,scheme-mode:indent-let-method)
+	  (LET* . 1)
+	  (LETREC . 1)
 
-(for-each (lambda (entry)
-	    (string-table-put! scheme-mode:indent-methods
-			       (symbol->string (car entry))
-			       (cdr entry)))
-	  `(
-	    (BEGIN . 0)
-	    (CASE . 1)
-	    (DELAY . 0)
-	    (DO . 2)
-	    (LAMBDA . 1)
-	    (LET . ,scheme-mode:indent-let-method)
-	    (LET* . 1)
-	    (LETREC . 1)
+	  (CALL-WITH-INPUT-FILE . 1)
+	  (WITH-INPUT-FROM-FILE . 1)
+	  (CALL-WITH-OUTPUT-FILE . 1)
+	  (WITH-OUTPUT-TO-FILE . 1)
 
-	    (CALL-WITH-INPUT-FILE . 1)
-	    (WITH-INPUT-FROM-FILE . 1)
-	    (CALL-WITH-OUTPUT-FILE . 1)
-	    (WITH-OUTPUT-TO-FILE . 1)
+	  ;; Remainder are MIT Scheme specific.
 
-	    ;; Remainder are MIT Scheme specific.
+	  (FLUID-LET . 1)
+	  (IN-PACKAGE . 1)
+	  (LET-SYNTAX . 1)
+	  (LOCAL-DECLARE . 1)
+	  (MACRO . 1)
+	  (MAKE-ENVIRONMENT . 0)
+	  (NAMED-LAMBDA . 1)
+	  (USING-SYNTAX . 1)
 
-	    (FLUID-LET . 1)
-	    (IN-PACKAGE . 1)
-	    (LET-SYNTAX . 1)
-	    (LOCAL-DECLARE . 1)
-	    (MACRO . 1)
-	    (MAKE-ENVIRONMENT . 0)
-	    (NAMED-LAMBDA . 1)
-	    (USING-SYNTAX . 1)
+	  (WITH-INPUT-FROM-PORT . 1)
+	  (WITH-INPUT-FROM-STRING . 1)
+	  (WITH-OUTPUT-TO-PORT . 1)
+	  (WITH-OUTPUT-TO-STRING . 0)
+	  (CALL-WITH-VALUES . 1)
+	  (WITH-VALUES . 1)
+	  (WITHIN-CONTINUATION . 1)
 
-	    (WITH-INPUT-FROM-PORT . 1)
-	    (WITH-INPUT-FROM-STRING . 1)
-	    (WITH-OUTPUT-TO-PORT . 1)
-	    (WITH-OUTPUT-TO-STRING . 0)
-	    (WITH-VALUES . 1)
-	    (WITHIN-CONTINUATION . 1)
+	  (MAKE-CONDITION-TYPE . 3)
+	  (WITH-RESTART . 4)
+	  (WITH-SIMPLE-RESTART . 2)
+	  (BIND-CONDITION-HANDLER . 2)
+	  (LIST-TRANSFORM-POSITIVE . 1)
+	  (LIST-TRANSFORM-NEGATIVE . 1)
+	  (LIST-SEARCH-POSITIVE . 1)
+	  (LIST-SEARCH-NEGATIVE . 1)
+	  (SYNTAX-TABLE-DEFINE . 2)
+	  (FOR-ALL? . 1)
+	  (THERE-EXISTS? . 1)))))
 
-	    (MAKE-CONDITION-TYPE . 3)
-	    (WITH-RESTART . 4)
-	    (WITH-SIMPLE-RESTART . 2)
-	    (BIND-CONDITION-HANDLER . 2)
-	    (LIST-TRANSFORM-POSITIVE . 1)
-	    (LIST-TRANSFORM-NEGATIVE . 1)
-	    (LIST-SEARCH-POSITIVE . 1)
-	    (LIST-SEARCH-NEGATIVE . 1)
-	    (SYNTAX-TABLE-DEFINE . 2)
-	    (FOR-ALL? . 1)
-	    (THERE-EXISTS? . 1)
-	    ))
+(define scheme-mode:indent-regexps
+  `(SCHEME-MODE:INDENT-REGEXPS
+    ("DEF" . DEFINITION)
+    ("WITH-" . 1)))
 
 ;;;; Completion
 
@@ -229,13 +211,13 @@ The following commands evaluate Scheme expressions:
   (let ((end
 	 (let ((point (current-point)))
 	   (or (re-match-forward "\\(\\sw\\|\\s_\\)+"
-				 point (group-end point) false)
+				 point (group-end point) #f)
 	       (let ((start (group-start point)))
 		 (if (not (and (mark< start point)
 			       (re-match-forward "\\sw\\|\\s_"
 						 (mark-1+ point)
 						 point
-						 false)))
+						 #f)))
 		     (editor-error "No symbol preceding point"))
 		 point)))))
     (let ((start (forward-prefix-chars (backward-sexp end 1 'LIMIT) end)))
@@ -246,7 +228,7 @@ The following commands evaluate Scheme expressions:
 			(obarray-completions (string-downcase prefix))))
 		   (if (not bound-only?)
 		       completions
-		       (let ((environment (evaluation-environment false)))
+		       (let ((environment (evaluation-environment #f)))
 			 (list-transform-positive completions
 			   (lambda (name)
 			     (environment-bound? environment name))))))))
@@ -303,10 +285,11 @@ are considered for completion."
   (lambda (all-symbols?) (scheme-complete-symbol (not all-symbols?))))
 
 (define-command show-parameter-list
-  "Show the parameter list of the \"current\" procedure.
-The \"current\" procedure is the expression at the head of the enclosing list."
-  "d"
-  (lambda (point)
+  "Show the parameter list of the procedure in the call surrounding point.
+With prefix argument, the parameter list is inserted at point.
+Otherwise, it is shown in the echo area."
+  "d\nP"
+  (lambda (point insert?)
     (let ((start
 	   (forward-down-list (backward-up-list point 1 'ERROR) 1 'ERROR))
 	  (buffer (mark-buffer point)))
@@ -318,7 +301,19 @@ The \"current\" procedure is the expression at the head of the enclosing list."
 			  (evaluation-syntax-table buffer environment))
 		  environment))))
 	  (if (procedure? procedure)
-	      (message (procedure-argl procedure))
+	      (let ((argl (procedure-argl procedure)))
+		(if (and insert? (or (symbol? argl) (list? argl)))
+		    (let ((point (mark-left-inserting-copy point)))
+		      (if (symbol? argl)
+			  (begin
+			    (insert-string " . " point)
+			    (insert-string (symbol->string argl) point))
+			  (for-each (lambda (param)
+				      (insert-char #\space point)
+				      (insert-string (write-to-string param)
+						     point))
+				    argl)))
+		    (message argl)))
 	      (editor-error "Expression does not evaluate to a procedure: "
 			    (extract-string start end))))))))
 
