@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: uproc.scm,v 1.15 2003/03/14 20:02:18 cph Exp $
+$Id: uproc.scm,v 1.16 2005/03/29 03:39:23 cph Exp $
 
 Copyright 1990,1991,1992,1995,1996,2003 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -36,21 +37,10 @@ USA.
 	(%primitive-procedure? object)
 	(%compiled-procedure? object))))
 
-(define (guarantee-procedure object procedure)
-  (if (not (procedure? object))
-      (error:wrong-type-argument object "procedure" procedure)))
-
-(define (guarantee-compound-procedure object procedure)
-  (if (not (compound-procedure? object))
-      (error:wrong-type-argument object "compound procedure" procedure)))
-
-(define (guarantee-primitive-procedure object procedure)
-  (if (not (primitive-procedure? object))
-      (error:wrong-type-argument object "primitive procedure" procedure)))
-
-(define (guarantee-compiled-procedure object procedure)
-  (if (not (compiled-procedure? object))
-      (error:wrong-type-argument object "compiled procedure" procedure)))
+(define-guarantee procedure "procedure")
+(define-guarantee compound-procedure "compound procedure")
+(define-guarantee primitive-procedure "primitive procedure")
+(define-guarantee compiled-procedure "compiled procedure")
 
 (define (procedure-lambda procedure)
   (discriminate-procedure procedure
@@ -151,6 +141,17 @@ USA.
 (define (thunk? object)
   (and (procedure? object)
        (procedure-arity-valid? object 0)))
+
+(define-guarantee thunk "thunk")
+
+(define-integrable (procedure-of-arity? object arity)
+  (and (procedure? object)
+       (procedure-arity-valid? object arity)))
+
+(define (guarantee-procedure-of-arity object arity caller)
+  (guarantee-procedure object caller)
+  (if (not (procedure-arity-valid? object arity))
+      (error:bad-range-argument object caller)))
 
 ;;;; Interpreted Procedures
 
