@@ -1,8 +1,8 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.3 1994/12/19 22:32:49 cph Exp $
+###	$Id: makefile,v 1.4 1995/01/05 23:30:55 cph Exp $
 ###
-###	Copyright (c) 1994 Massachusetts Institute of Technology
+###	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ###
 ###	This material was developed by the Scheme project at the
 ###	Massachusetts Institute of Technology, Department of
@@ -66,7 +66,7 @@ USER_PRIM_OBJECTS =
 USER_LIBS =
 
 CC = icc
-ICC_FLAGS = /Gd+ /Gm+ /Q+
+ICC_FLAGS = /Gd- /Gm+ /Q+
 DEBUG_CFLAGS = /Ti+ /O- /Oi- /Debug
 OPTIMIZE_CFLAGS = /O
 CFLAGS = -DMIT_SCHEME -D__STDC__ $(DEBUG_CFLAGS) $(ICC_FLAGS)
@@ -231,12 +231,12 @@ prosenv.c \
 prosfile.c \
 prosfs.c \
 prosio.c \
+prosproc.c \
 prosterm.c \
 prostty.c \
 pros2fs.c \
 pros2io.c \
 pros2pm.c
-# prosproc.c
 # prospty.c
 
 OS_PRIM_OBJECTS = \
@@ -244,17 +244,16 @@ prosenv.$(OBJ) \
 prosfile.$(OBJ) \
 prosfs.$(OBJ) \
 prosio.$(OBJ) \
+prosproc.$(OBJ) \
 prosterm.$(OBJ) \
 prostty.$(OBJ) \
 pros2fs.$(OBJ) \
 pros2io.$(OBJ) \
 pros2pm.$(OBJ)
-#prosproc.$(OBJ)
 #prospty.$(OBJ)
 
 OS2_SOURCES = \
 os2.c \
-os2api.c \
 os2conio.c \
 os2cthrd.c \
 os2ctty.c \
@@ -266,6 +265,7 @@ os2msg.c \
 os2pipe.c \
 os2pm.c \
 os2pmcon.c \
+os2proc.c \
 os2term.c \
 os2thrd.c \
 os2top.c \
@@ -274,7 +274,6 @@ os2xcpt.c
 
 OS2_OBJECTS = \
 os2.$(OBJ) \
-os2api.$(OBJ) \
 os2conio.$(OBJ) \
 os2cthrd.$(OBJ) \
 os2ctty.$(OBJ) \
@@ -286,6 +285,7 @@ os2msg.$(OBJ) \
 os2pipe.$(OBJ) \
 os2pm.$(OBJ) \
 os2pmcon.$(OBJ) \
+os2proc.$(OBJ) \
 os2term.$(OBJ) \
 os2thrd.$(OBJ) \
 os2top.$(OBJ) \
@@ -429,7 +429,7 @@ prosenv.$(OBJ) : osenv.h ostop.h
 prosfile.$(OBJ) : osfile.h
 prosfs.$(OBJ) : osfs.h
 prosio.$(OBJ) : osio.h
-#prosproc.$(OBJ) : osproc.h
+prosproc.$(OBJ) : osproc.h
 #prospty.$(OBJ) : osterm.h osio.h ospty.h
 prosterm.$(OBJ) : osterm.h osio.h
 prostty.$(OBJ) : ostty.h osctty.h osfile.h osio.h
@@ -443,6 +443,7 @@ os2ctty.$(OBJ) : osctty.h ossig.h
 os2env.$(OBJ) : scheme.tch osenv.h
 os2file.$(OBJ) : osfile.h
 os2fs.$(OBJ) : osfs.h
+os2proc.$(OBJ) : osproc.h
 os2top.$(OBJ) : ostop.h option.h
 os2tty.$(OBJ) : ostty.h
 os2xcpt.$(OBJ) : scheme.tch $(GC_HEAD_FILES)
