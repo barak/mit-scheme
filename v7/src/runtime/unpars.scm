@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.53 2003/07/30 04:37:22 cph Exp $
+$Id: unpars.scm,v 14.54 2003/07/30 05:14:38 cph Exp $
 
 Copyright 1986,1987,1990,1991,1992,1995 Massachusetts Institute of Technology
 Copyright 1996,2001,2002,2003 Massachusetts Institute of Technology
@@ -332,7 +332,7 @@ USA.
 
 (define (unparse/uninterned-symbol symbol)
   (if *unparse-uninterned-symbols-by-name?*
-      (unparse-symbol symbol)
+      (*unparse-string (symbol-name symbol))
       (*unparse-with-brackets 'UNINTERNED-SYMBOL symbol
 	(lambda ()
 	  (unparse-symbol symbol)))))
