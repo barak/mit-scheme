@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.211 1993/11/02 20:07:36 adams Exp $
+$Id: runtime.pkg,v 14.212 1993/11/03 03:31:17 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -2632,4 +2632,5 @@ MIT in each case. |#
           wt-tree/min-datum
           wt-tree/min-pair
           wt-tree/delete-min
+          wt-tree/delete-min!
 	  ))
