@@ -1,8 +1,11 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.81 2000/06/15 03:57:13 cph Exp $
+$Id: todo.txt,v 1.82 2000/06/15 13:48:57 cph Exp $
 
 Bug fixes
 ---------
+
+* Improve performance of quoted-printable decoder by searching for
+  encoded characters rather than scanning characters one at a time.
 
 * Must be able to handle malformed headers in incoming mail.
   Generating a low-level error in this situation is unacceptable.
@@ -10,13 +13,36 @@ Bug fixes
 * RMAIL file reader must recognize when the tail of the file contains
   umail messages.
 
+MIME conformance
+----------------
+
+* Implement codec for =?x?y?z?= header notation.  Use codec to do
+  encoding/decoding in header fields.
+
+* When sending message attachments, examine them to see if they are
+  properly encoded for 7bit transmission.  If not, encode them as
+  needed.  When a message is already encoded but violates the spec,
+  decode and re-encode it.
+
+* Don't inline anything other than text.  (Although message/rfc822
+  should also be shown, though the spec doesn't say so.)
+
 New features
 ------------
 
+* Add variable to control how multipart/alternative shows the
+  secondary alternatives.
+
+* For multipart/alternative, choose the part to show by examining each
+  part looking for highest-quality one that is allowed to be inlined.
+
+* Examine spec for text/enriched and see if it can be incorporated
+  into the reader.
+
+* Command to save an attachment should work on inline entities too.
+
 * Add variable saying what type/subtype combinations should be
   inlined.  Can this be combined with the known-charsets variable?
-
-* Bind M-x imail-summary to `h'.
 
 * Support the "flagged" message flag by highlighting messages with
   this flag in the summary buffer.
