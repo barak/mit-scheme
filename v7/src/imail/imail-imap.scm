@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.97 2000/06/01 18:46:59 cph Exp $
+;;; $Id: imail-imap.scm,v 1.98 2000/06/01 19:29:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -845,9 +845,8 @@
 	(let ((extensions (parse-mime-body:extensions (cdr tail))))
 	  (make-mime-body-multipart (intern (car tail))
 				    (parse-mime-parameters (car extensions))
-				    (list->vector
-				     (map parse-mime-body
-					  (sublist body 0 index)))
+				    (map parse-mime-body
+					 (sublist body 0 index))
 				    (cadr extensions)
 				    (caddr extensions)))
 	(loop (cdr tail) (fix:+ index 1)))))
