@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.16 1991/07/18 23:37:33 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.17 1991/08/22 01:15:03 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -371,7 +371,7 @@ MIT in each case. |#
 	 (ELSE
 	  (GUARANTEE-RESTARTS ,restarts ',name)
 	  ,restarts)))
-
+
 (define (find-restart name #!optional restarts)
   (guarantee-symbol name 'FIND-RESTART)
   (%find-restart name (restarts-default restarts 'FIND-RESTART)))
@@ -395,6 +395,12 @@ MIT in each case. |#
     (if (not restart)
 	(error:no-such-restart 'MUFFLE-WARNING))
     ((%restart/effector restart))))
+
+(define (retry #!optional restarts)
+  (let ((restart
+	 (%find-restart 'RETRY (restarts-default restarts 'RETRY))))
+    (if restart
+	((%restart/effector restart)))))
 
 (define (store-value datum #!optional restarts)
   (let ((restart
@@ -533,6 +539,67 @@ MIT in each case. |#
 		       field-values)))
 	   (signal-condition condition)
 	   (default-handler condition)))))))
+
+;; This is similar to condition-signaller, but error procedures
+;; created with this allow substitution of the FIRST argument by
+;; using the USE-VALUE restart and allow retrying the operation by
+;; using the RETRY restart.  The RETRY restart will return the
+;; original irritant, while USE-VALUE will return a value prompted for.
+
+(define (substitutable-value-condition-signaller
+	 type field-names default-handler
+	 #!optional use-value-prompter use-value-message retry-message)
+  (guarantee-condition-handler default-handler 'CONDITION-SIGNALLER)
+  (let ((make-condition (condition-constructor type field-names))
+	(use-value-prompter
+	 (if (default-object? use-value-prompter)
+	     (lambda (field-value . all)
+	       all			;ignore
+	       (string-append "Substitute "
+			      (write-to-string field-value)
+			      " with"))
+	     use-value-prompter))
+	(use-value-message
+	 (if (default-object? use-value-message)
+	     "Retry operation with a different value."
+	     use-value-message))
+	(retry-message
+	 (if (default-object? retry-message)
+	     "Retry operation with the same value."
+	     retry-message)))
+    (lambda field-values
+      (let ((field-value (car field-values)))
+	(call-with-current-continuation
+	 (lambda (continuation)
+	   (let ((core
+		  (lambda ()
+		    (let ((condition
+			   (apply make-condition
+				  continuation
+				  'BOUND-RESTARTS
+				  field-values)))
+		      (signal-condition condition)
+		      (default-handler condition)))))
+	     (bind-restart
+	      'USE-VALUE
+	      use-value-message
+	      continuation
+	      (lambda (use-value-restart)
+		(restart/put! use-value-restart 'INTERACTIVE
+			      (let ((prompt
+				     (apply use-value-prompter field-values)))
+				(lambda ()
+				  (values (prompt-for-evaluated-expression
+					   prompt
+					   (nearest-repl/environment))))))
+		(bind-restart 'RETRY
+			      retry-message
+			      (lambda ()
+				(continuation field-value))
+			      (lambda (retry-restart)
+				(restart/put! retry-restart 'INTERACTIVE
+					      values)
+				(core))))))))))))
 
 ;;;; Basic Condition Types
 
@@ -846,7 +913,7 @@ MIT in each case. |#
 	  (lambda (condition port)
 	    (write-string "Unassigned variable: " port)
 	    (write (access-condition condition 'LOCATION) port))))
-
+
   (let ((arithmetic-error-report
 	 (lambda (description)
 	   (lambda (condition port)
@@ -875,7 +942,7 @@ MIT in each case. |#
 	      condition-type:arithmetic-error
 	      '()
 	    (arithmetic-error-report "Floating-point underflow"))))
-
+
   (set! make-simple-error
 	(condition-constructor condition-type:simple-error
 			       '(MESSAGE IRRITANTS)))
@@ -912,9 +979,18 @@ MIT in each case. |#
 			     '(NAME)
 			     standard-error-handler))
   (set! error:open-file
-	(condition-signaller condition-type:open-file-error
-			     '(FILENAME)
-			     standard-error-handler))
+	(substitutable-value-condition-signaller
+	 condition-type:open-file-error '(FILENAME)
+	 standard-error-handler
+	 (lambda (pathname)
+	   (string-append
+	    "Expression to yield replacement for file name \""
+	    (if (pathname? pathname)
+		(pathname->string pathname)
+		pathname)
+	    "\""))
+	 "Try opening a different file."
+	 "Try opening the same file."))
   (set! error:file-touch
 	(condition-signaller condition-type:file-touch-error
 			     '(FILENAME MESSAGE)
