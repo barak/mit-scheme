@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.26 2003/03/13 03:15:41 cph Exp $
+$Id: hashtb.scm,v 1.27 2003/07/29 03:46:04 cph Exp $
 
 Copyright 1990,1991,1993,1994,1995,2003 Massachusetts Institute of Technology
 
@@ -187,21 +187,19 @@ USA.
     (if (and key (table-standard-accessors? table))
 	;; Optimize standard case: compiler makes this fast.
 	(let loop ((entries entries))
-	  (cond ((null? entries)
-		 default)
-		((eq? (system-pair-car (car entries)) key)
-		 (system-pair-cdr (car entries)))
-		(else
-		 (loop (cdr entries)))))
+	  (if (pair? entries)
+	      (if (eq? (system-pair-car (car entries)) key)
+		  (system-pair-cdr (car entries))
+		  (loop (cdr entries)))
+	      default))
 	(let ((key=? (table-key=? table))
 	      (entry-key (table-entry-key table)))
 	  (let loop ((entries entries))
-	    (cond ((null? entries)
-		   default)
-		  ((key=? (entry-key (car entries)) key)
-		   ((table-entry-datum table) (car entries)))
-		  (else
-		   (loop (cdr entries)))))))))
+	    (if (pair? entries)
+		(if (key=? (entry-key (car entries)) key)
+		    ((table-entry-datum table) (car entries))
+		    (loop (cdr entries)))
+		default))))))
 
 ;; This is useful when interning objects using a hash-table.
 (define (hash-table/get-key table key default)
@@ -211,21 +209,19 @@ USA.
     (if (and key (table-standard-accessors? table))
 	;; Optimize standard case: compiler makes this fast.
 	(let loop ((entries entries))
-	  (cond ((null? entries)
-		 default)
-		((eq? (system-pair-car (car entries)) key)
-		 (system-pair-car (car entries)))
-		(else
-		 (loop (cdr entries)))))
+	  (if (pair? entries)
+	      (if (eq? (system-pair-car (car entries)) key)
+		  (system-pair-car (car entries))
+		  (loop (cdr entries)))
+	      default))
 	(let ((key=? (table-key=? table))
 	      (entry-key (table-entry-key table)))
 	  (let loop ((entries entries))
-	    (cond ((null? entries)
-		   default)
-		  ((key=? (entry-key (car entries)) key)
-		   (entry-key (car entries)))
-		  (else
-		   (loop (cdr entries)))))))))
+	    (if (pair? entries)
+		(if (key=? (entry-key (car entries)) key)
+		    (entry-key (car entries))
+		    (loop (cdr entries)))
+		default))))))
 
 (define hash-table/lookup
   (let ((default (list #f)))
@@ -256,21 +252,19 @@ USA.
 		    (grow-table! table)))))))
       (if (and key (table-standard-accessors? table))
 	  (let loop ((entries (vector-ref buckets hash)))
-	    (cond ((null? entries)
-		   (add-bucket!))
-		  ((eq? (system-pair-car (car entries)) key)
-		   (system-pair-set-cdr! (car entries) datum))
-		  (else
-		   (loop (cdr entries)))))
+	    (if (pair? entries)
+		(if (eq? (system-pair-car (car entries)) key)
+		    (system-pair-set-cdr! (car entries) datum)
+		    (loop (cdr entries)))
+		(add-bucket!)))
 	  (let ((key=? (table-key=? table))
 		(entry-key (table-entry-key table)))
 	    (let loop ((entries (vector-ref buckets hash)))
-	      (cond ((null? entries)
-		     (add-bucket!))
-		    ((key=? (entry-key (car entries)) key)
-		     ((table-set-entry-datum! table) (car entries) datum))
-		    (else
-		     (loop (cdr entries))))))))))
+	      (if (pair? entries)
+		  (if (key=? (entry-key (car entries)) key)
+		      ((table-set-entry-datum! table) (car entries) datum)
+		      (loop (cdr entries)))
+		  (add-bucket!))))))))
 
 (define (hash-table/remove! table key)
   (guarantee-hash-table table 'HASH-TABLE/REMOVE!)
@@ -286,7 +280,7 @@ USA.
     (let ((buckets (table-buckets table))
 	  (hash (compute-key-hash table key)))
       (let ((entries (vector-ref buckets hash)))
-	(if (not (null? entries))
+	(if (pair? entries)
 	    (let ((next (cdr entries)))
 	      (if (key=? (entry-key (car entries)) key)
 		  (without-interrupts
@@ -294,7 +288,7 @@ USA.
 		     (vector-set! buckets hash next)
 		     (decrement-count)))
 		  (let loop ((previous entries) (entries next))
-		    (if (not (null? entries))
+		    (if (pair? entries)
 			(let ((next (cdr entries)))
 			  (if (key=? (entry-key (car entries)) key)
 			      (without-interrupts
@@ -302,6 +296,41 @@ USA.
 				 (set-cdr! previous next)
 				 (decrement-count)))
 			      (loop entries next))))))))))))
+
+(define (hash-table/intern! table key get-datum)
+  (guarantee-hash-table table 'HASH-TABLE/INTERN!)
+  (let ((buckets (table-buckets table))
+	(hash (compute-key-hash table key)))
+    (let ((add-bucket!
+	   (lambda ()
+	     (let ((datum (get-datum)))
+	       (without-interrupts
+		(lambda ()
+		  (vector-set! buckets
+			       hash
+			       (cons ((table-make-entry table) key datum)
+				     (vector-ref buckets hash)))
+		  (if (> (let ((count (fix:+ (table-count table) 1)))
+			   (set-table-count! table count)
+			   count)
+			 (table-grow-size table))
+		      (grow-table! table))))
+	       datum))))
+      (if (and key (table-standard-accessors? table))
+	  (let loop ((entries (vector-ref buckets hash)))
+	    (if (pair? entries)
+		(if (eq? (system-pair-car (car entries)) key)
+		    (system-pair-cdr (car entries))
+		    (loop (cdr entries)))
+		(add-bucket!)))
+	  (let ((key=? (table-key=? table))
+		(entry-key (table-entry-key table)))
+	    (let loop ((entries (vector-ref buckets hash)))
+	      (if (pair? entries)
+		  (if (key=? (entry-key (car entries)) key)
+		      ((table-entry-datum table) (car entries))
+		      (loop (cdr entries)))
+		  (add-bucket!))))))))
 
 ;;;; Enumerators
 
@@ -324,11 +353,11 @@ USA.
       (let per-bucket ((n 0) (i 0))
 	(if (fix:< n n-buckets)
 	    (let per-entry ((entries (vector-ref buckets n)) (i i))
-	      (if (null? entries)
-		  (per-bucket (fix:+ n 1) i)
+	      (if (pair? entries)
 		  (begin
 		    (vector-set! result i (car entries))
-		    (per-entry (cdr entries) (fix:+ i 1))))))))
+		    (per-entry (cdr entries) (fix:+ i 1)))
+		  (per-bucket (fix:+ n 1) i))))))
     result))
 
 (define (hash-table/entries-list table)
@@ -368,10 +397,10 @@ USA.
 	(if (fix:< n n-buckets)
 	    (loop (fix:+ n 1)
 		  (let loop ((entries (vector-ref buckets n)) (result result))
-		    (if (null? entries)
-			result
+		    (if (pair? entries)
 			(loop (cdr entries)
-			      (cons-element (car entries) result)))))
+			      (cons-element (car entries) result))
+			result)))
 	    result)))))
 
 ;;;; Parameters
@@ -469,39 +498,39 @@ USA.
 	(letrec
 	    ((scan-head
 	      (lambda (entries)
-		(cond ((null? entries)
-		       (vector-set! buckets i entries))
-		      ((entry-valid? (car entries))
-		       (vector-set! buckets i entries)
-		       (scan-tail entries (cdr entries)))
-		      (else
-		       (decrement-table-count! table)
-		       (scan-head (cdr entries))))))
+		(if (pair? entries)
+		    (if (entry-valid? (car entries))
+			(begin
+			  (vector-set! buckets i entries)
+			  (scan-tail entries (cdr entries)))
+			(begin
+			  (decrement-table-count! table)
+			  (scan-head (cdr entries))))
+		    (vector-set! buckets i entries))))
 	     (scan-tail
 	      (lambda (previous entries)
-		(cond ((null? entries)
-		       unspecific)
-		      ((entry-valid? (car entries))
-		       (scan-tail entries (cdr entries)))
-		      (else
-		       (decrement-table-count! table)
-		       (let loop ((entries (cdr entries)))
-			 (cond ((null? entries)
-				(set-cdr! previous entries))
-			       ((entry-valid? (car entries))
-				(set-cdr! previous entries)
-				(scan-tail entries (cdr entries)))
-			       (else
-				(decrement-table-count! table)
-				(loop (cdr entries))))))))))
+		(if (pair? entries)
+		    (if (entry-valid? (car entries))
+			(scan-tail entries (cdr entries))
+			(begin
+			  (decrement-table-count! table)
+			  (let loop ((entries (cdr entries)))
+			    (if (pair? entries)
+				(if (entry-valid? (car entries))
+				    (begin
+				      (set-cdr! previous entries)
+				      (scan-tail entries (cdr entries)))
+				    (begin
+				      (decrement-table-count! table)
+				      (loop (cdr entries))))
+				(set-cdr! previous entries)))))))))
 	  (let ((entries (vector-ref buckets i)))
-	    (cond ((null? entries)
-		   unspecific)
-		  ((entry-valid? (car entries))
-		   (scan-tail entries (cdr entries)))
-		  (else
-		   (decrement-table-count! table)
-		   (scan-head (cdr entries))))))))))
+	    (if (pair? entries)
+		(if (entry-valid? (car entries))
+		    (scan-tail entries (cdr entries))
+		    (begin
+		      (decrement-table-count! table)
+		      (scan-head (cdr entries)))))))))))
 
 (define-integrable (decrement-table-count! table)
   (set-table-count! table (fix:- (table-count table) 1)))
@@ -583,7 +612,7 @@ USA.
     (do ((i 0 (fix:+ i 1)))
 	((fix:= i n-buckets))
       (let ((entries (vector-ref buckets i)))
-	(if (not (null? entries))
+	(if (pair? entries)
 	    (rehash-table-entries! table entries)))))
   (maybe-shrink-table! table))
 
@@ -594,7 +623,7 @@ USA.
 	(key-hash (table-key-hash table)))
     (let ((n-buckets (vector-length buckets)))
       (let loop ((entries entries))
-	(if (not (null? entries))
+	(if (pair? entries)
 	    (let ((rest (cdr entries)))
 	      (if (entry-valid? (car entries))
 		  (let ((hash
@@ -624,12 +653,12 @@ USA.
 	(do ((i 0 (fix:+ i 1)))
 	    ((fix:= i n-buckets))
 	  (let ((bucket (vector-ref buckets i)))
-	    (if (not (null? bucket))
+	    (if (pair? bucket)
 		(begin
 		  (let loop ((bucket bucket))
-		    (if (null? (cdr bucket))
-			(set-cdr! bucket entries)
-			(loop (cdr bucket))))
+		    (if (pair? (cdr bucket))
+			(loop (cdr bucket))
+			(set-cdr! bucket entries)))
 		  (set! entries bucket)
 		  (vector-set! buckets i '())))))
 	entries))))
@@ -785,16 +814,16 @@ USA.
 
 (define (mark-address-hash-tables!)
   (let loop ((previous #f) (tables address-hash-tables))
-    (cond ((null? tables)
-	   unspecific)
-	  ((system-pair-car tables)
-	   (set-table-needs-rehash?! (system-pair-car tables) #t)
-	   (loop tables (system-pair-cdr tables)))
-	  (else
-	   (if previous
-	       (system-pair-set-cdr! previous (system-pair-cdr tables))
-	       (set! address-hash-tables (system-pair-cdr tables)))
-	   (loop previous (system-pair-cdr tables))))))
+    (if (pair? tables)
+	(if (system-pair-car tables)
+	    (begin
+	      (set-table-needs-rehash?! (system-pair-car tables) #t)
+	      (loop tables (system-pair-cdr tables)))
+	    (begin
+	      (if previous
+		  (system-pair-set-cdr! previous (system-pair-cdr tables))
+		  (set! address-hash-tables (system-pair-cdr tables)))
+	      (loop previous (system-pair-cdr tables)))))))
 
 ;;;; Miscellany
 

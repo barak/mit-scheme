@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.450 2003/07/22 02:32:26 cph Exp $
+$Id: runtime.pkg,v 14.451 2003/07/29 03:46:08 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -1714,6 +1714,7 @@ USA.
 	  hash-table/entry-value
 	  hash-table/for-each
 	  hash-table/get
+	  hash-table/intern!
 	  hash-table/key-hash
 	  hash-table/key-list
 	  hash-table/key=?
