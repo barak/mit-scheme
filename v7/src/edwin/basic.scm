@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.99 1989/08/03 01:33:18 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.100 1989/08/04 03:30:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -211,8 +211,12 @@ With argument, saves visited file first."
   "P"
   (lambda (argument)
     (if argument ((ref-command save-buffer) false))
-    (quit)
-    (update-screens! true)))
+    (set! edwin-finalization
+	  (lambda ()
+	    (set! edwin-finalization false)
+	    (quit)
+	    (edwin)))
+    ((ref-command suspend-edwin))))
 
 (define-command suspend-edwin
   "Stop Edwin and return to Scheme."
@@ -220,8 +224,8 @@ With argument, saves visited file first."
   (lambda ()
     (editor-abort *the-non-printing-object*)))
 (define-command exit-recursive-edit
-  "Exit normally from a subsystem of a level of editing.
-At top level, exit from Edwin like \\[suspend-scheme]."  ()
+  "Exit normally from a subsystem of a level of editing."
+  ()
   (lambda ()
     (exit-recursive-edit 'EXIT)))
 
