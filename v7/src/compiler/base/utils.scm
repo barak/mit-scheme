@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.11 1989/04/15 18:05:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.12 1989/05/31 20:01:36 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -169,17 +169,12 @@ MIT in each case. |#
 	 type-code:extended-procedure)
 	(else
 	 (error "SCODE/PROCEDURE-TYPE-CODE: Unknown lambda type" *lambda))))
-
-;;;; Primitive Procedures
+
+;;; Primitive Procedures
 
 (define (primitive-procedure? object)
   (or (eq? compiled-error-procedure object)
       (scode/primitive-procedure? object)))
-
-(define (normal-primitive-procedure? object)
-  (or (eq? compiled-error-procedure object)
-      (and (scode/primitive-procedure? object)
-	   (primitive-procedure-safe? object))))
 
 (define (primitive-arity-correct? primitive argument-count)
   (if (eq? primitive compiled-error-procedure)
@@ -187,47 +182,6 @@ MIT in each case. |#
       (let ((arity (primitive-procedure-arity primitive)))
 	(or (= arity -1)
 	    (= arity argument-count)))))
-
-(define (primitive-procedure-safe? object)
-  (and (object-type? (ucode-type primitive) object)
-       (not (memq object unsafe-primitive-procedures))))
-
-(define unsafe-primitive-procedures
-  (let-syntax ((primitives
-		(macro names
-		  `'(,@(map (lambda (spec)
-			      (if (pair? spec)
-				  (apply make-primitive-procedure spec)
-				  (make-primitive-procedure spec)))
-			    names)))))
-    (primitives scode-eval
-		apply
-		force
-		error-procedure
-		within-control-point
-		call-with-current-continuation
-		non-reentrant-call-with-current-continuation
-		with-interrupt-mask
-		with-interrupts-reduced
-		execute-at-new-state-point
-		translate-to-state-point
-		set-current-history!
-		with-history-disabled
-		garbage-collect
-		primitive-purify
-		primitive-impurify
-		primitive-fasdump
-		dump-band
-		load-band
-		(primitive-eval-step 3)
-		(primitive-apply-step 3)
-		(primitive-return-step 2)
-		(dump-world 1)
-		(complete-garbage-collect 1)
-		(with-saved-fluid-bindings 1)
-		(global-interrupt 3)
-		(get-work 1)
-		(master-gc-loop 1))))
 
 ;;;; Special Compiler Support
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.11 1989/04/21 16:32:10 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.12 1989/05/31 20:01:50 jinx Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -456,7 +456,7 @@ MIT in each case. |#
 	   (or (not (reference? operator))
 	       (reference-to-known-location? operator)))
 	  ((rvalue/constant? callee)
-	   (not (normal-primitive-procedure? (constant-value callee))))
+	   (not (primitive-procedure? (constant-value callee))))
 	  ((rvalue/procedure? callee)
 	   (case (procedure/type callee)
 	     ((OPEN-EXTERNAL OPEN-INTERNAL) false)

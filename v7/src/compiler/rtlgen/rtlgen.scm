@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.17 1989/04/15 18:04:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.18 1989/05/31 20:02:25 jinx Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -169,7 +169,7 @@ MIT in each case. |#
 (define (operator/needs-no-heap-check? op)
   (and (rvalue/constant? op)
        (let ((obj (constant-value op)))
-	 (and (normal-primitive-procedure? obj)
+	 (and (primitive-procedure? obj)
 	      (special-primitive-handler obj)))))
 
 (define (wrap-with-continuation-entry context scfg)

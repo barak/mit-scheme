@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.9 1988/12/12 21:52:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.10 1989/05/31 20:02:11 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -45,7 +45,7 @@ MIT in each case. |#
 		    invocation/reference
 		    invocation/apply))
 	       ((rvalue/constant? model)
-		(if (normal-primitive-procedure? (constant-value model))
+		(if (primitive-procedure? (constant-value model))
 		    invocation/primitive
 		    invocation/apply))
 	       ((rvalue/procedure? model)
