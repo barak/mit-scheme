@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.1 1988/06/13 11:44:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.2 1988/06/21 05:48:19 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -41,12 +41,16 @@ MIT in each case. |#
   (set! next-condition-type-index 0)
   (set! handler-frames false)
   (set! condition-type:error
-	(let ((dependencies (list false)))
-	  (let ((result (%make-condition-type dependencies true false)))
-	    (set-car! dependencies result)
+	(let ((generalizations (list false)))
+	  (let ((result
+		 (%make-condition-type generalizations
+				       true
+				       condition-reporter/default)))
+	    (set-car! generalizations result)
 	    result)))
   (set! error-type:vanilla
-	(make-condition-type (list condition-type:error) "Anonymous error"))
+	(make-condition-type (list condition-type:error)
+			     condition-reporter/default))
   (set! hook/error-handler default/error-handler)
   (set! hook/error-decision default/error-decision)
   (let ((fixed-objects (get-fixed-objects-vector)))
@@ -96,7 +100,10 @@ MIT in each case. |#
 	      (make-error-condition error-type:vanilla
 				    irritants
 				    environment)))
-	 (1d-table/put! (condition/properties condition) message-tag message)
+	 (if (string? message)
+	     (1d-table/put! (condition/properties condition)
+			    message-tag
+			    message))
 	 condition))))
 
 (define (make-error-condition condition-type irritants environment)
@@ -123,11 +130,16 @@ MIT in each case. |#
 
 (define error-type:vanilla)
 
+(define (condition-reporter/default condition port)
+  (format-error-message (condition/message condition)
+			(condition/irritants condition)
+			port))
+
 (define (condition/message condition)
-  (let ((condition-type (condition/type condition)))
-    (or (and (eq? condition-type error-type:vanilla)
-	     (1d-table/get (condition/properties condition) message-tag false))
-	(condition-type/message condition-type))))
+  (or (1d-table/get (condition/properties condition) message-tag false)
+      (1d-table/get (condition-type/properties (condition/type condition))
+		    message-tag
+		    "Anonymous error")))
 
 (define-integrable (condition/environment condition)
   (car (1d-table/get (condition/properties condition) environment-tag false)))
@@ -146,9 +158,7 @@ MIT in each case. |#
   (push-repl (condition/environment condition)
 	     (let ((message
 		    (cmdl-message/append
-		     (apply cmdl-message/error
-			    (condition/message condition)
-			    (condition/irritants condition))
+		     (cmdl-message/strings (condition/report-string condition))
 		     (cmdl-message/active hook/error-decision))))
 	       (if (condition/substitute-environment? condition)
 		   (cmdl-message/append
@@ -183,11 +193,10 @@ MIT in each case. |#
 ;;;; Error Messages
 
 (define (warn string . irritants)
-  (with-output-to-port (cmdl/output-port (nearest-cmdl))
-    (lambda ()
-      (newline)
-      (write-string "Warning: ")
-      (format-error-message string irritants))))
+  (let ((port (cmdl/output-port (nearest-cmdl))))
+    (newline port)
+    (write-string "Warning: " port)
+    (format-error-message string irritants port)))
 
 (define-integrable (error-irritants/sans-noise)
   (list-transform-negative (error-irritants)
@@ -205,17 +214,17 @@ MIT in each case. |#
        string
        (with-output-to-string
 	 (lambda ()
-	   (format-error-message string irritants))))))
+	   (format-error-message string irritants (current-output-port)))))))
 
-(define (format-error-message message irritants)
+(define (format-error-message message irritants port)
   (fluid-let ((*unparser-list-depth-limit* 2)
 	      (*unparser-list-breadth-limit* 5))
     (for-each (lambda (irritant)
 		(if (error-irritant/noise? irritant)
-		    (display (error-irritant/noise-value irritant))
+		    (display (error-irritant/noise-value irritant) port)
 		    (begin
-		      (write-char #\Space)
-		      (write irritant))))
+		      (write-char #\Space port)
+		      (write irritant port))))
 	      (cons (if (string? message)
 			(error-irritant/noise message)
 			message)
@@ -238,29 +247,32 @@ MIT in each case. |#
 
 (define-structure (condition-type
 		   (constructor %make-condition-type
-				(dependencies error? message))
+				(generalizations error? reporter))
 		   (conc-name condition-type/))
-  ;; `dependencies' is sorted in decreasing `index' order.
-  (dependencies false read-only true)
+  ;; `generalizations' is sorted in decreasing `index' order.
+  (generalizations false read-only true)
   (error? false read-only true)
-  (message false read-only true)
+  (reporter false read-only true)
   (index (allocate-condition-type-index!) read-only true)
   (properties (make-1d-table) read-only true))
 
-(define (make-condition-type dependencies message)
-  (for-each guarantee-condition-type dependencies)
-  (let ((dependencies
+(define (make-condition-type generalizations reporter)
+  (for-each guarantee-condition-type generalizations)
+  (let ((generalizations
 	 (cons false
-	       (reduce dependencies/union
+	       (reduce generalizations/union
 		       '()
-		       (map condition-type/dependencies dependencies)))))
+		       (map condition-type/generalizations generalizations)))))
     (let ((result
-	   (%make-condition-type dependencies
-				 (if (memq condition-type:error dependencies)
-				     true
-				     false)
-				 message)))
-      (set-car! dependencies result)
+	   (%make-condition-type
+	    generalizations
+	    (if (memq condition-type:error generalizations) true false)
+	    (if (string? reporter) condition-reporter/default reporter))))
+      (set-car! generalizations result)
+      (if (string? reporter)
+	  (1d-table/put! (condition-type/properties result)
+			 message-tag
+			 reporter))
       result)))
 
 (define (allocate-condition-type-index!)
@@ -277,30 +289,31 @@ MIT in each case. |#
 (define-integrable (condition-type<? x y)
   (< (condition-type/index x) (condition-type/index y)))
 
-(define (dependencies/union x y)
-  ;; This takes advantage of (and preserves) the dependency ordering.
+(define (generalizations/union x y)
+  ;; This takes advantage of (and preserves) the ordering of generalizations.
   (cond ((null? x) y)
 	((null? y) x)
 	((eq? (car x) (car y))
-	 (cons (car x) (dependencies/union (cdr x) (cdr y))))
+	 (cons (car x) (generalizations/union (cdr x) (cdr y))))
 	((condition-type<? (car x) (car y))
-	 (cons (car y) (dependencies/union x (cdr y))))
+	 (cons (car y) (generalizations/union x (cdr y))))
 	(else
-	 (cons (car x) (dependencies/union (cdr x) y)))))
+	 (cons (car x) (generalizations/union (cdr x) y)))))
 
-(define (dependencies/intersect? x y)
+(define (generalizations/intersect? x y)
   (cond ((or (null? x) (null? y)) false)
 	((eq? (car x) (car y)) true)
 	((condition-type<? (car x) (car y))
-	 (dependencies/intersect? x (cdr y)))
+	 (generalizations/intersect? x (cdr y)))
 	(else
-	 (dependencies/intersect? (cdr x) y))))
+	 (generalizations/intersect? (cdr x) y))))
 
-(define (make-error-type dependencies message)
-  (make-condition-type (if (there-exists? dependencies condition-type/error?)
-			   dependencies
-			   (cons condition-type:error dependencies))
-		       message))
+(define (make-error-type generalizations reporter)
+  (make-condition-type
+   (if (there-exists? generalizations condition-type/error?)
+       generalizations
+       (cons condition-type:error generalizations))
+   reporter))
 
 (define (error-type? object)
   (and (condition-type? object)
@@ -329,15 +342,34 @@ MIT in each case. |#
   (if (not (condition? object)) (error "Illegal condition" object))
   object)
 
-(define-integrable (condition/dependencies condition)
-  (condition-type/dependencies (condition/type condition)))
+(define-integrable (condition/internal? condition)
+  ;; For future expansion.
+  false)
+
+(define-integrable (condition/generalizations condition)
+  (condition-type/generalizations (condition/type condition)))
 
 (define-integrable (condition/error? condition)
   (condition-type/error? (condition/type condition)))
 
+(define-integrable (condition/reporter condition)
+  (condition-type/reporter (condition/type condition)))
+
 (define (error? object)
   (and (condition? object)
        (condition/error? object)))
+
+(define (condition/write-report condition #!optional port)
+  ((condition/reporter condition)
+   condition
+   (if (default-object? port)
+       (current-output-port)
+       (guarantee-output-port port))))
+
+(define (condition/report-string condition)
+  (with-output-to-string
+    (lambda ()
+      ((condition/reporter condition) condition (current-output-port)))))
 
 ;;;; Condition Handling
 
@@ -363,8 +395,8 @@ MIT in each case. |#
 (define (signal-condition condition #!optional default-handler)
   (guarantee-condition condition)
   (let ((condition-type (condition/type condition)))
-    (let ((dependencies (condition-type/dependencies condition-type)))
-      (or (scan-handler-frames handler-frames dependencies
+    (let ((generalizations (condition-type/generalizations condition-type)))
+      (or (scan-handler-frames handler-frames generalizations
 	    (lambda (frame)
 	      (fluid-let ((handler-frames (handler-frame/next frame)))
 		((handler-frame/handler frame) condition))))
@@ -372,13 +404,13 @@ MIT in each case. |#
 	       (fluid-let ((handler-frames false))
 		 (default-handler condition)))))))
 
-(define (scan-handler-frames frames dependencies try-frame)
+(define (scan-handler-frames frames generalizations try-frame)
   (let loop ((frame frames))
     (and frame
 	 (or (and (let ((condition-types
 			 (handler-frame/condition-types frame)))
 		    (or (null? condition-types)
-			(dependencies/intersect? dependencies
-						 condition-types)))
+			(generalizations/intersect? generalizations
+						    condition-types)))
 		  (try-frame frame))
 	     (loop (handler-frame/next frame))))))
