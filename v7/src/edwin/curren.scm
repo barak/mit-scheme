@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: curren.scm,v 1.110 1993/10/11 11:37:49 cph Exp $
+;;;	$Id: curren.scm,v 1.111 1994/03/08 21:00:10 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -226,15 +226,20 @@
 	     (loop (window1+ window))))))
    (screen-list)))
 
-(define (other-window #!optional n)
+(define (other-window #!optional n other-screens?)
   (let ((n (if (or (default-object? n) (not n)) 1 n))
+	(other-screens?
+	 (if (default-object? other-screens?) #f other-screens?))
 	(selected-window (current-window))
 	(typein-ok? (within-typein-edit?)))
     (cond ((positive? n)
 	   (let loop ((n n) (window selected-window))
 	     (if (zero? n)
 		 window
-		 (let ((window (next-visible-window window typein-ok?)))
+		 (let ((window
+			(next-visible-window window
+					     typein-ok?
+					     other-screens?)))
 		   (if window
 		       (loop (-1+ n) window)
 		       selected-window)))))
@@ -242,19 +247,24 @@
 	   (let loop ((n n) (window selected-window))
 	     (if (zero? n)
 		 window
-		 (let ((window (previous-visible-window window typein-ok?)))
+		 (let ((window
+			(previous-visible-window window
+						 typein-ok?
+						 other-screens?)))
 		   (if window
 		       (loop (1+ n) window)
 		       selected-window)))))
 	  (else
 	   selected-window))))
 
-(define (next-visible-window first-window typein-ok?)
-  (let ((first-screen (window-screen first-window)))
+(define (next-visible-window first-window typein-ok? #!optional other-screens?)
+  (let ((other-screens?
+	 (if (default-object? other-screens?) #f other-screens?))
+	(first-screen (window-screen first-window)))
     (letrec
 	((next-screen
 	  (lambda (screen)
-	    (let ((screen (screen1+ screen)))
+	    (let ((screen (if other-screens? (screen1+ screen) screen)))
 	      (let ((window (screen-window0 screen)))
 		(if (screen-visible? screen)
 		    (and (not (and (eq? screen first-screen)
@@ -271,12 +281,15 @@
 		    (next-screen first-screen))
 		window))))))
 
-(define (previous-visible-window first-window typein-ok?)
-  (let ((first-screen (window-screen first-window)))
+(define (previous-visible-window first-window typein-ok?
+				 #!optional other-screens?)
+  (let ((other-screens?
+	 (if (default-object? other-screens?) #f other-screens?))
+	(first-screen (window-screen first-window)))
     (letrec
 	((previous-screen
 	  (lambda (screen)
-	    (let ((screen (screen-1+ screen)))
+	    (let ((screen (if other-screens? (screen-1+ screen) screen)))
 	      (let ((window
 		     (or (and typein-ok? (screen-typein-window screen))
 			 (window-1+ (screen-window0 screen)))))
