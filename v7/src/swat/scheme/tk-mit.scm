@@ -1,7 +1,7 @@
 ; -*- Scheme -*-
 ;;;;; C external interfaces to Tk procedures not associated with
 ;;;;; a particular widget.
-;;;; $Id: tk-mit.scm,v 1.2 1996/07/31 18:12:58 adams Exp $
+;;;; $Id: tk-mit.scm,v 1.3 1996/07/31 18:31:20 adams Exp $
 
 ;;;; This is the lowest level Scheme interface to general TK/TCL data
 ;;;; structures.  Primitives are defined in tk-mit.c and tk.c
@@ -349,19 +349,20 @@
 (define (apply-callback callback arglist)
   (cond ((ignore-errors
 	  (lambda () (apply callback arglist)))
-	 => (lambda (condition)
-	      (let ((port  (notification-output-port)))
-		(newline port)
-		(write-string "; Error in callback " port)
-		(display callback port)
-		(newline port)
-		(write-string ";" port)
-		(write-condition-report condition port)
-		(newline port)
-		(write-string ";To debug, type (debug (unhash " port)
-		(write (hash condition) port)
-		(write-string "))" port)
-		(newline port))))))
+	 => (lambda (result)
+	      (if (condition? result)
+		  (let ((port  (notification-output-port)))
+		    (newline port)
+		    (write-string ";Error in callback " port)
+		    (display callback port)
+		    (newline port)
+		    (write-string ";" port)
+		    (write-condition-report result port)
+		    (newline port)
+		    (write-string ";To debug, type (debug #@" port)
+		    (write (hash result) port)
+		    (write-string ")" port)
+		    (newline port)))))))
 
 
 (define *event-processing-mutex* (make-thread-mutex))
