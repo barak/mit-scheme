@@ -1,11 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.436 2003/03/11 05:00:56 cph Exp $
+$Id: runtime.pkg,v 14.437 2003/03/13 20:17:15 cph Exp $
 
-Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
-Copyright (c) 1993,1994,1995,1996,1997 Massachusetts Institute of Technology
-Copyright (c) 1998,1999,2000,2001,2002 Massachusetts Institute of Technology
-Copyright (c) 2003 Massachusetts Institute of Technology
+Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -2664,6 +2663,7 @@ USA.
 	  %record?
 	  copy-record
 	  define-structure/keyword-parser
+	  define-structure/keyword-parser*
 	  define-structure/list-accessor
 	  define-structure/list-modifier
 	  define-structure/vector-accessor
