@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.12 1991/12/06 00:58:41 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.13 1992/01/23 22:02:05 cph Exp $
 ;;;
-;;;	Copyright (c) 1991 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -769,17 +769,17 @@ Deleted messages stay in the file until the \\[rmail-expunge] command is given."
 	     buffer
 	     (with-buffer-open buffer (lambda () (expunge buffer memo)))))))))
 
-(define (expunge buffer memo)
-  (let ((old-n (msg-memo/number memo)))
-    (let loop ((memo (msg-memo/first memo)) (n 1))
+(define (expunge buffer current-memo)
+  (let ((new-memo
+	 (if (not (msg-memo/deleted? current-memo))
+	     current-memo
+	     (or (msg-memo/next-undeleted current-memo)
+		 (msg-memo/previous-undeleted current-memo)))))
+    (let loop ((memo (msg-memo/first current-memo)) (n 1))
       (let ((next (msg-memo/next memo)))
 	(cond ((not (msg-memo/deleted? memo))
 	       (set-msg-memo/number! memo n)
-	       (if (or (= n old-n) (and (not next) (< n old-n)))
-		   (set-buffer-msg-memo! buffer memo))
-	       (if next
-		   (loop next (+ n 1))
-		   (min n old-n)))
+	       (if next (loop next (+ n 1))))
 	      (next
 	       (let ((start (msg-memo/start memo)))
 		 (delete-string start (msg-memo/start next))
@@ -795,14 +795,14 @@ Deleted messages stay in the file until the \\[rmail-expunge] command is given."
 		 (delete-string start end)
 		 (mark-temporary! end))
 	       (let ((previous (msg-memo/previous memo)))
-		 (if previous
-		     (begin
-		       (set-msg-memo/next! previous false)
-		       (if (<= n old-n) (set-buffer-msg-memo! buffer previous))
-		       (min (- n 1) old-n))
-		     (begin
-		       (set-buffer-msg-memo! buffer true)
-		       false)))))))))
+		 (if previous (set-msg-memo/next! previous false)))))))
+    (if new-memo
+	(begin
+	  (set-buffer-msg-memo! buffer new-memo)
+	  (msg-memo/number new-memo))
+	(begin
+	  (set-buffer-msg-memo! buffer true)
+	  false))))
 
 ;;;; Mailing commands
 
@@ -885,7 +885,8 @@ original message into it."
 				 (fetch-last-field "resent-subject" start end))
 			    (fetch-first-field "subject" start end))))
 		   (if (ref-variable rmail-reply-with-re)
-		       (if (and subject (not (string-prefix-ci? "re: " subject)))
+		       (if (and subject
+				(not (string-prefix-ci? "re: " subject)))
 			   (string-append "Re: " subject)
 			   subject)
 		       (if (and subject (string-prefix-ci? "re: " subject))
