@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typedb.scm,v 1.11 1996/07/23 15:33:51 adams Exp $
+$Id: typedb.scm,v 1.12 1996/07/27 03:29:10 adams Exp $
 
 Copyright (c) 1996 Massachusetts Institute of Technology
 
@@ -183,6 +183,11 @@ MIT in each case. |#
 			    'effect-insensitive
 			    'effect effect:allocation))
 
+(define-operator-type (make-primitive-procedure '%RECORD)
+  (primitive-procedure-type (cons* type:any type:any) type:%record
+			    'effect-insensitive
+			    'effect effect:allocation))
+
 (define-operator-type (make-primitive-procedure 'VECTOR-CONS)
   (primitive-procedure-type (list type:vector-length type:any)  type:vector
 			    'effect-insensitive
@@ -242,7 +247,7 @@ MIT in each case. |#
 
 
 (define-operator-type (make-primitive-procedure 'COERCE-TO-COMPILED-PROCEDURE)
-  (primitive-procedure-type (list type:any) type:compiled-procedure
+  (primitive-procedure-type (list type:any type:fixnum) type:compiled-procedure
 			    'function))
 
 
