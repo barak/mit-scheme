@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.10 1989/05/31 20:02:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.11 1989/06/16 09:14:08 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -90,12 +90,17 @@ MIT in each case. |#
 	    (generate/procedure-entry/inline callee))
 	   (else
 	    (enqueue-procedure! callee)
-	    ((if (procedure-rest callee)
-		 rtl:make-invocation:lexpr
-		 rtl:make-invocation:jump)
-	     frame-size
-	     continuation
-	     (procedure-label callee)))))))
+	    (if (procedure-rest callee)
+		(rtl:make-invocation:lexpr
+		 (if (stack-block/static-link? (procedure-block callee))
+		     (-1+ frame-size)
+		     frame-size)
+		 continuation
+		 (procedure-label callee))
+		(rtl:make-invocation:jump
+		 frame-size
+		 continuation
+		 (procedure-label callee))))))))
 
 (define (invocation/apply model operator frame-size continuation prefix)
   model operator			; ignored
