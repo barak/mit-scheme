@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: compile.scm,v 1.2 1992/11/16 22:40:55 cph Exp $
+;;;	$Id: compile.scm,v 1.3 1994/09/09 01:23:34 adams Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -62,8 +62,26 @@ with output going to the buffer *compilation*."
     (set-variable! compile-command command)
     (run-compilation command)))
 
+(define-command grep
+  "Run grep, with user-specified args, and collect output in a buffer."
+  (lambda ()
+    (list (prompt-for-string "Run grep (with args): "
+			     previous-grep-arguments
+			     'INSERTED-DEFAULT)))
+  (lambda (command)
+    (set! previous-grep-arguments command)
+    (run-compilation (string-append "grep -n " command " /dev/null"))))
+
 (define-command kill-compilation
   "Kill the process made by the \\[compile] command."
+  ()
+  (lambda ()
+    (let ((process compilation-process))
+      (if (and process (eq? (process-status process) 'RUN))
+	  (interrupt-process process true)))))
+
+(define-command kill-grep
+  "Kill the process made by the \\[grep] command."
   ()
   (lambda ()
     (let ((process compilation-process))
@@ -132,3 +150,6 @@ with output going to the buffer *compilation*."
 
 (define compilation-process
   false)
+
+(define previous-grep-arguments
+  "")
