@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.32 1993/07/31 03:34:12 cph Exp $
+$Id: rep.scm,v 14.33 1993/08/12 08:23:44 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -382,6 +382,7 @@ MIT in each case. |#
        repl
        (let ((value
 	      (hook/repl-eval
+	       repl
 	       (let ((s-expression
 		      (hook/repl-prompt
 		       (string-append (number->string (cmdl/level repl))
@@ -400,7 +401,8 @@ MIT in each case. |#
   (prompt-for-command-expression prompt port))
 
 (define hook/repl-eval)
-(define (default/repl-eval s-expression environment syntax-table)
+(define (default/repl-eval repl s-expression environment syntax-table)
+  repl
   (let ((scode (syntax s-expression syntax-table)))
     (with-new-history (lambda () (extended-scode-eval scode environment)))))
 
@@ -714,7 +716,8 @@ MIT in each case. |#
 
 (define (re #!optional index)
   (let ((repl (nearest-repl)))
-    (hook/repl-eval (let ((history (repl/reader-history repl)))
+    (hook/repl-eval repl
+		    (let ((history (repl/reader-history repl)))
 		      (let ((s-expression
 			     (repl-history/read history
 						(if (default-object? index)

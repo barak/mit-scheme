@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.42 1993/03/13 05:39:16 jawilson Exp $
+$Id: load.scm,v 14.43 1993/08/12 08:23:59 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -280,7 +280,8 @@ MIT in each case. |#
 			    (repl/syntax-table repl)
 			    syntax-table))))
 		  (lambda (s-expression)
-		    (hook/repl-eval s-expression
+		    (hook/repl-eval #f
+				    s-expression
 				    environment
 				    syntax-table))))))
 

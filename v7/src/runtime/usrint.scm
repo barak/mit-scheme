@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.3 1992/11/12 03:25:49 gjr Exp $
+$Id: usrint.scm,v 1.4 1993/08/12 08:23:52 cph Exp $
 
-Copyright (c) 1991-1992 Massachusetts Institute of Technology
+Copyright (c) 1991-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -69,7 +69,8 @@ MIT in each case. |#
   (default/prompt-for-command-expression port (string-append prompt ":")))
 
 (define (prompt-for-evaluated-expression prompt #!optional environment port)
-  (hook/repl-eval (prompt-for-expression prompt
+  (hook/repl-eval #f
+		  (prompt-for-expression prompt
 					 (if (default-object? port)
 					     (nearest-cmdl/port)
 					     port))
