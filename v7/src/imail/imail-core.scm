@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.137 2001/05/25 02:45:29 cph Exp $
+;;; $Id: imail-core.scm,v 1.138 2001/05/25 18:16:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -101,7 +101,9 @@
 
 ;;;; URL type
 
-(define-class <url> (<property-mixin>))
+(define-class <url> (<property-mixin>)
+  (container initial-value 'UNKNOWN))
+
 (define-class <folder-url> (<url>))
 (define-class <container-url> (<url>))
 
@@ -130,12 +132,18 @@
 ;; Return #T iff URL represents an existing folder.
 (define-generic url-exists? (url))
 
-;; Return #T iff URL both exists and can be opened.
-(define-generic url-is-selectable? (folder-url))
+;; Return #T iff FOLDER-URL both exists and can be opened.
+(define-generic folder-url-is-selectable? (folder-url))
+
+;; If URL both exists and can contain other resources, return a
+;; container URL for the same resource.  Otherwise return #F.
+(define-generic url-is-container? (url))
+(define-method url-is-container? ((url <container-url>)) url)
 
 ;; Return a locator for the container of URL.  E.g. the container URL
 ;; of "imap://localhost/inbox/foo" is "imap://localhost/inbox/".
 (define-generic container-url (url))
+(add-method container-url (slot-accessor-method <url> 'CONTAINER))
 
 ;; Like CONTAINER-URL except that the returned container URL is
 ;; allowed to be different from the true container URL when this
@@ -161,7 +169,7 @@
 ;; Return a URL that refers to the content NAME of the container
 ;; referred to by CONTAINER-URL.
 (define-generic make-content-url (container-url name))
-
+
 ;; Return the base name of FOLDER-URL.  This is the content name of
 ;; FOLDER-URL, but presented in a type-independent way.  For example,
 ;; if the content name of a file URL is "foo.mail", the base name is
@@ -173,7 +181,7 @@
 ;; mailbox information.  This string will be included in the
 ;; pass-phrase prompt, and also used as a key for memoization.
 (define-generic url-pass-phrase-key (url))
-
+
 ;; Convert STRING to a URL.  GET-DEFAULT-URL is a procedure of one
 ;; argument that returns a URL that is used to fill in defaults if
 ;; STRING is a specification for a partial URL.  GET-DEFAULT-URL is
@@ -194,12 +202,24 @@
 ;; STRING must cause an error to be signalled.
 (define-generic parse-url-body (string default-url))
 
-(define (intern-url url)
-  (let ((string (url->string url)))
-    (or (hash-table/get interned-urls string #f)
-	(begin
-	  (hash-table/put! interned-urls string url)
-	  url))))
+(define intern-url
+  (let ((modifier (slot-modifier <url> 'CONTAINER)))
+    (lambda (url compute-container)
+      (let ((string (url->string url)))
+	(or (hash-table/get interned-urls string #f)
+	    (begin
+	      (let ((finished? #f))
+		(dynamic-wind
+		 (lambda ()
+		   (hash-table/put! interned-urls string url))
+		 (lambda ()
+		   (modifier url (compute-container url))
+		   (set! finished? #t)
+		   unspecific)
+		 (lambda ()
+		   (if (not finished?)
+		       (hash-table/remove! interned-urls string)))))
+	      url))))))
 
 (define interned-urls
   (make-string-hash-table))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.251 2001/05/25 02:45:51 cph Exp $
+;;; $Id: imail-top.scm,v 1.252 2001/05/25 18:16:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1660,7 +1660,7 @@ Negative argument means search in reverse."
   (%prompt-for-url prompt default options
 		   (lambda (url)
 		     (and (folder-url? url)
-			  (url-is-selectable? url)))))
+			  (folder-url-is-selectable? url)))))
 
 (define (prompt-for-container prompt default . options)
   (%prompt-for-url prompt default options

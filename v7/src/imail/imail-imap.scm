@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.163 2001/05/25 02:45:41 cph Exp $
+;;; $Id: imail-imap.scm,v 1.164 2001/05/25 18:16:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -44,14 +44,15 @@
     (let ((make-folder (instance-constructor <imap-folder-url> fields))
 	  (make-container (instance-constructor <imap-container-url> fields)))
       (lambda (user-id host port mailbox)
-	(intern-url
-	 ((if (or (string-null? mailbox) (string-suffix? "/" mailbox))
-	      make-container
-	      make-folder)
-	  user-id
-	  (string-downcase host)
-	  port
-	  (canonicalize-imap-mailbox mailbox)))))))
+	(intern-url ((if (or (string-null? mailbox)
+			     (string-suffix? "/" mailbox))
+			 make-container
+			 make-folder)
+		     user-id
+		     (string-downcase host)
+		     port
+		     (canonicalize-imap-mailbox mailbox))
+		    imap-container-url)))))
 
 (define (imap-url-new-mailbox url mailbox)
   (make-imap-url (imap-url-user-id url)
@@ -98,10 +99,17 @@
 (define-method url-exists? ((url <imap-url>))
   (and (imap-url-info url) #t))
 
-(define-method url-is-selectable? ((url <imap-folder-url>))
+(define-method folder-url-is-selectable? ((url <imap-folder-url>))
   (let ((response (imap-url-info url)))
     (and response
 	 (not (memq '\NOSELECT (imap:response:list-flags response))))))
+
+(define-method url-is-container? ((url <imap-folder-url>))
+  (let ((response (imap-url-info url)))
+    (and response
+	 (not (memq '\NOINFERIORS (imap:response:list-flags response)))
+	 (imap-url-new-mailbox url
+			       (string-append (imap-url-mailbox url) "/")))))
 
 (define (imap-url-info url)
   (let ((responses
@@ -159,7 +167,7 @@
 
 ;;;; Container heirarchy
 
-(define-method container-url ((url <imap-url>))
+(define (imap-container-url url)
   (imap-url-new-mailbox url
 			(or (imap-url-container-mailbox url)
 			    "")))
@@ -274,26 +282,28 @@
 (define (imap-mailbox-completions prefix url)
   (with-open-imap-connection url
     (lambda (connection)
-      (map (lambda (response)
-	     (let ((flags (imap:response:list-flags response))
-		   (delimiter (imap:response:list-delimiter response))
-		   (mailbox
-		    (imap:decode-mailbox-name
-		     (imap:response:list-mailbox response))))
-	       (if delimiter
-		   (let ((mailbox
-			  (string-replace mailbox
-					  (string-ref delimiter 0)
-					  #\/)))
-		     (if (and (memq '\NOSELECT flags)
-			      (not (memq '\NOINFERIORS flags)))
-			 (string-append mailbox "/")
-			 mailbox))
-		   mailbox)))
-	   (imap:command:list
-	    connection
-	    ""
-	    (string-append (imap-mailbox/url->server url prefix) "%"))))))
+      (append-map! (lambda (response)
+		     (let ((flags (imap:response:list-flags response))
+			   (delimiter (imap:response:list-delimiter response))
+			   (mailbox
+			    (imap:decode-mailbox-name
+			     (imap:response:list-mailbox response))))
+		       (if delimiter
+			   (let ((mailbox
+				  (string-replace mailbox
+						  (string-ref delimiter 0)
+						  #\/)))
+			     (if (memq '\NOSELECT flags)
+				 (if (memq '\NOINFERIORS flags)
+				     '()
+				     (list (string-append mailbox "/")))
+				 (list mailbox)))
+			   (list mailbox))))
+		   (imap:command:list
+		    connection
+		    ""
+		    (string-append (imap-mailbox/url->server url prefix)
+				   "%"))))))
 
 ;;;; URL->server delimiter conversion
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.73 2001/05/25 02:45:33 cph Exp $
+;;; $Id: imail-file.scm,v 1.74 2001/05/25 18:16:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -34,7 +34,8 @@
   (let ((procedure
 	 (let ((constructor (instance-constructor class '(PATHNAME))))
 	   (lambda (pathname)
-	     (intern-url (constructor (merge-pathnames pathname)))))))
+	     (intern-url (constructor (merge-pathnames pathname))
+			 pathname-container-url)))))
     (register-pathname-url-constructor class procedure)
     procedure))
 
@@ -48,7 +49,7 @@
 (define pathname-url-constructors
   (make-eq-hash-table))
 
-(define-method container-url ((url <pathname-url>))
+(define (pathname-container-url url)
   (make-directory-url (pathname-container (pathname-url-pathname url))))
 
 (define-method container-url-for-prompt ((url <pathname-url>))
@@ -104,9 +105,6 @@
 
 (define pathname-url-predicates '())
 
-(define-method url-is-selectable? ((url <pathname-url>))
-  (and (find-pathname-url-constructor (pathname-url-pathname url) #t #f) #t))
-
 (define-method parse-url-body ((string <string>) (default-url <pathname-url>))
   (let ((pathname
 	 (parse-pathname-url-body string (pathname-url-pathname default-url))))
@@ -178,6 +176,13 @@
 (define-method url-exists? ((url <file-url>))
   (file-exists? (pathname-url-pathname url)))
 
+(define-method folder-url-is-selectable? ((url <file-url>))
+  (and (find-pathname-url-constructor (pathname-url-pathname url) #t #f) #t))
+
+(define-method url-is-container? ((url <file-url>))
+  url
+  #f)
+
 (define-method url-base-name ((url <file-url>))
   (pathname-name (pathname-url-pathname url)))
 
@@ -189,7 +194,8 @@
   (let ((constructor (instance-constructor <directory-url> '(PATHNAME))))
     (lambda (pathname)
       (intern-url
-       (constructor (pathname-as-directory (merge-pathnames pathname)))))))
+       (constructor (pathname-as-directory (merge-pathnames pathname)))
+       pathname-container-url))))
 
 (register-pathname-url-constructor <directory-url> make-directory-url)
 
