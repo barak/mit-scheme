@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: schmod.scm,v 1.32 1993/04/01 23:37:28 cph Exp $
+;;;	$Id: schmod.scm,v 1.33 1993/04/02 01:48:10 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -337,6 +337,7 @@ Grumbles if PROC is an undocumented primitive."
       (let ((code (procedure-lambda proc)))
 	(lambda-components* code
 	  (lambda (name required optional rest body)
+	    name body
 	    (append required
 		    (if (null? optional) '() `(#!OPTIONAL ,@optional))
 		    (if rest `(#!REST ,rest) '())))))))
