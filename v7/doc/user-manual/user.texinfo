@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.57 1999/07/03 02:30:28 cph Exp $
+@comment $Id: user.texinfo,v 1.58 1999/07/06 15:11:15 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -41,9 +41,9 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.56
+@subtitle Edition 1.58
 @subtitle for Scheme Release 7.5
-@subtitle 2 July 1999
+@subtitle 6 July 1999
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -3673,6 +3673,7 @@ the following combination:
 (* (+ 5 6) (+ 7 9))
 @end example
 
+@noindent
 If @code{(prime? n)} is true, then @code{(cons 'prime n)} is a reduction
 for the following expression:
 
@@ -3920,8 +3921,9 @@ command followed by the @kbd{j} command.
 @cindex Debugger command: m
 @cindex Debugger command: x
 @cindex Debugger command: y
-The @kbd{m}, @kbd{x}, and @kbd{y} commands are for Scheme wizards.
-If you want to find out what they do, read the source code.
+The @kbd{m}, @kbd{x}, and @kbd{y} commands are for Scheme wizards.  They
+are used to debug the MIT Scheme implementation.  If you want to find
+out what they do, read the source code.
 
 @item Miscellaneous commands
 @cindex Debugger command: i
@@ -3965,7 +3967,7 @@ foo
 
 ;Value: 6
 
-2 bkpt> (proceed)
+2 bkpt> (continue)
 
 bar
 ;Value: done
@@ -4058,29 +4060,39 @@ user examine the closing environment of the procedure.  This is useful
 for debugging procedure arguments and values.
 @end deffn
 
-@deffn {procedure+} apropos string [package/env [search-parents?]]
+@deffn {procedure+} apropos string [environment [search-parents?]]
 @cindex finding procedures
 @cindex procedures, finding
 @cindex help
 Search an environment for bound names containing @var{string} and print
-out the matching bound names.  If @var{package/env} is specified, it
+out the matching bound names.  If @var{environment} is specified, it
 must be an environment or package name, and it defaults to the current
 @sc{repl} environment.  The flag @var{search-parents?} specifies whether
 the environment's parents should be included in the search.  The default
-is @code{#f} if @var{package/env} is specified, and @code{#t} if
-@var{package/env} is not specified.
+is @code{#f} if @var{environment} is specified, and @code{#t} if
+@var{environment} is not specified.
 
 @example
-@group
 (apropos "search")
-@print{} #[package 41 (user)]
-@print{} #[package 33 ()]
+@print{} #[package 47 (user)]
+@print{} #[package 48 ()]
 @print{} list-search-negative
 @print{} list-search-positive
+@print{} nt-fs-flag/case-sensitive-search
+@print{} re-string-search-backward
+@print{} re-string-search-forward
+@print{} re-substring-search-backward
+@print{} re-substring-search-forward
 @print{} search-ordered-subvector
 @print{} search-ordered-vector
+@print{} search-protection-list
+@print{} string-search-all
+@print{} string-search-backward
+@print{} string-search-forward
+@print{} substring-search-all
+@print{} substring-search-backward
+@print{} substring-search-forward
 @print{} vector-binary-search
-@end group
 @end example
 @end deffn
 
@@ -4107,18 +4119,86 @@ Causes an informative message to be printed whenever
 
 where @var{val1}, @var{val2} etc.@: are the evaluated arguments supplied
 to the procedure.
+
+@example
+(trace-entry fib)
+(fib 3)
+@print{} [Entering #[compound-procedure 54 fib]
+@print{}     Args: 3]
+@print{} [Entering #[compound-procedure 54 fib]
+@print{}     Args: 1]
+@print{} [Entering #[compound-procedure 54 fib]
+@print{}     Args: 2]
+@print{} [Entering #[compound-procedure 54 fib]
+@print{}     Args: 0]
+@print{} [Entering #[compound-procedure 54 fib]
+@print{}     Args: 1]
+@result{} 2
+@end example
 @end deffn
 
 @deffn {procedure+} trace-exit procedure
 Causes an informative message to be printed when @var{procedure}
 terminates.  The message contains the procedure, its argument values,
 and the value returned by the procedure.
+
+@example
+(trace-exit fib)
+(fib 3)
+@print{} [1
+@print{}       <== #[compound-procedure 54 fib]
+@print{}     Args: 1]
+@print{} [0
+@print{}       <== #[compound-procedure 54 fib]
+@print{}     Args: 0]
+@print{} [1
+@print{}       <== #[compound-procedure 54 fib]
+@print{}     Args: 1]
+@print{} [1
+@print{}       <== #[compound-procedure 54 fib]
+@print{}     Args: 2]
+@print{} [2
+@print{}       <== #[compound-procedure 54 fib]
+@print{}     Args: 3]
+@result{} 2
+@end example
 @end deffn
 
 @deffn {procedure+} trace-both procedure
 @deffnx {procedure+} trace procedure
 Equivalent to calling both @code{trace-entry} and @code{trace-exit} on
 @var{procedure}.  @code{trace} is the same as @code{trace-both}.
+
+@example
+(trace-both fib)
+(fib 3)
+@print{} [Entering #[compound-procedure 54 fib]
+@print{}     Args: 3]
+@print{} [Entering #[compound-procedure 54 fib]
+@print{}     Args: 1]
+@print{} [1
+@print{}       <== #[compound-procedure 54 fib]
+@print{}     Args: 1]
+@print{} [Entering #[compound-procedure 54 fib]
+@print{}     Args: 2]
+@print{} [Entering #[compound-procedure 54 fib]
+@print{}     Args: 0]
+@print{} [0
+@print{}       <== #[compound-procedure 54 fib]
+@print{}     Args: 0]
+@print{} [Entering #[compound-procedure 54 fib]
+@print{}     Args: 1]
+@print{} [1
+@print{}       <== #[compound-procedure 54 fib]
+@print{}     Args: 1]
+@print{} [1
+@print{}       <== #[compound-procedure 54 fib]
+@print{}     Args: 2]
+@print{} [2
+@print{}       <== #[compound-procedure 54 fib]
+@print{}     Args: 3]
+@result{} 2
+@end example
 @end deffn
 
 @deffn {procedure+} untrace-entry [procedure]
@@ -4187,7 +4267,7 @@ Returns the procedure in which the breakpoint has stopped.
 
 @deffn {procedure+} *args*
 Returns the arguments to the procedure in which the breakpoint has
-stopped.  The arguments are returned as a list.
+stopped.  The arguments are returned as a newly allocated list.
 @end deffn
 
 @deffn {procedure+} *result*
@@ -4253,8 +4333,12 @@ There is an interface library, called @file{xscheme}, distributed with
 MIT Scheme and GNU Emacs, which facilitates running Scheme as a
 subprocess of Emacs.  If you wish to use this interface, please install
 the version of @file{xscheme.el} that comes with MIT Scheme, as it is
-guaranteed to be correct for your version of Scheme.  Note that this
-interface is supported under unix only.
+guaranteed to be correct for your version of Scheme.
+
+This interface is supported under unix only, mostly because it requires
+unix signals for its operation.  Porting it to either OS/2 or Windows
+would require reimplementing the interface to eliminate the use of
+signals.
 
 @findex run-scheme
 @findex -emacs
