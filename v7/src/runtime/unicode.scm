@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.14 2004/02/16 05:39:15 cph Exp $
+$Id: unicode.scm,v 1.15 2004/02/23 20:50:33 cph Exp $
 
 Copyright 2001,2003,2004 Massachusetts Institute of Technology
 
@@ -670,18 +670,24 @@ USA.
   unspecific)
 
 (define (string->wide-string string #!optional start end)
-  (let ((input
-	 (open-input-string string
-			    (if (default-object? start) #f start)
-			    (if (default-object? end) #f end))))
-    (call-with-wide-output-string
-     (lambda (output)
-       (let loop ()
-	 (let ((char (read-char input)))
-	   (if (not (eof-object? char))
-	       (begin
-		 (write-char char output)
-		 (loop)))))))))
+  (guarantee-string string 'STRING->WIDE-STRING)
+  (let* ((end
+	  (if (or (default-object? end) (not end))
+	      (string-length string)
+	      (guarantee-substring-end-index end (string-length string)
+					     'STRING->WIDE-STRING)))
+	 (start
+	  (if (or (default-object? start) (not start))
+	      0
+	      (guarantee-substring-start-index start end
+					       'STRING->WIDE-STRING)))
+	 (n (fix:- end start))
+	 (v (make-vector n)))
+    (do ((i start (fix:+ i 1))
+	 (j 0 (fix:+ j 1)))
+	((not (fix:< i end)))
+      (vector-set! v j (string-ref string i)))
+    (%make-wide-string v)))
 
 (define (open-wide-input-string string #!optional start end)
   (guarantee-wide-string string 'OPEN-WIDE-INPUT-STRING)
