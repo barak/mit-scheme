@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.8 1995/06/28 01:59:38 adams Exp $
+$Id: graphics.scm,v 1.9 1995/09/25 20:54:10 adams Exp $
 
 Copyright (c) 1993-95 Massachusetts Institute of Technology
 
@@ -642,7 +642,8 @@ MIT in each case. |#
 
 
 (define (close-descriptor des)
-  (if des
+  (if (and des
+	   (win32-device/hwnd des))
       (send-message (win32-device/hwnd des) WM_CLOSE 0 0))
   unspecific)
 
