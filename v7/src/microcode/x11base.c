@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.68 1996/12/11 00:43:08 cph Exp $
+$Id: x11base.c,v 1.69 1996/12/11 07:23:10 cph Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -645,7 +645,7 @@ DEFUN (xw_set_class_hint, (xw, name, class),
   (class_hint -> res_name) = ((char *) name);
   (class_hint -> res_class) = ((char *) class);
   XSetClassHint ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), class_hint);
-  XFree ((caddr_t) class_hint);
+  XFree ((PTR) class_hint);
 }
 
 void
@@ -659,7 +659,7 @@ DEFUN (xw_set_wm_input_hint, (xw, input_hint),
   (hints -> flags) = InputHint;
   (hints -> input) = (input_hint != 0);
   XSetWMHints ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), hints);
-  XFree ((caddr_t) hints);
+  XFree ((PTR) hints);
 }
 
 void
@@ -2048,13 +2048,12 @@ DEFUN (get_window_frame, (display, w), Display * display AND Window w)
   Window parent;
   Window * children;
   unsigned int n_children;
-
   while (1)
     {
       if (! (XQueryTree (display, w,
 			 (&root), (&parent), (&children), (&n_children))))
 	error_external_return ();
-      XFree ((caddr_t) children);
+      XFree ((PTR) children);
       if (parent == root)
 	return (w);
       w = parent;
@@ -2102,38 +2101,30 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-POSITION", Prim_x_window_set_position, 3, 3, 0)
     int y = (arg_integer (3));
     Display * display = (XW_DISPLAY (xw));
     Window me = (XW_WINDOW (xw));
-    Window root;
-    Window parent;
-    Window * children;
-    unsigned int n_children;
-    if (! (XQueryTree (display, me,
-		       (&root), (&parent), (&children), (&n_children))))
-      error_external_return ();
-    XFree ((caddr_t) children);
-    if (parent != root)
+    Window frame = (get_window_frame (display, me));
+    if (me != frame)
       {
 	int px;
 	int py;
 	Window child;
-	Window ancestor;
 
-	while (1)
-	  {
-	    if (! (XQueryTree (display, parent,
-			       (&root), (&ancestor),
-			       (&children), (&n_children))))
-	      error_external_return ();
-	    XFree ((caddr_t) children);
-	    if (ancestor == root)
-	      break;
-	    parent = ancestor;
-	  }
 	if (! (XTranslateCoordinates
-	       (display, me, parent, x, y, (&px), (&py), (&child))))
+	       (display, me, frame, x, y, (&px), (&py), (&child))))
 	  error_bad_range_arg (1);
 	x = px;
 	y = py;
       }
+    /* This is a kludge; Emacs does the same thing.  Apparently,
+       failing to do this results in incorrect behavior, but the need
+       for this offset is not documented and the Emacs maintainers are
+       mystified as to why it is necessary.  */
+    {
+      XWindowAttributes a;
+      if (! (XGetWindowAttributes (display, frame, (&a))))
+	error_external_return ();
+      x += (a . border_width);
+      y += (a . border_width);
+    }
     XMoveWindow (display, me, x, y);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
