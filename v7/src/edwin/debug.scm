@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.10 1993/08/14 03:31:21 jbank Exp $
+;;;	$Id: debug.scm,v 1.11 1993/08/15 22:03:59 jbank Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -343,13 +343,8 @@
 	    (delete-right-char mark)
 	    (highlight-the-number mark)))
 	(set-browser/selected-line! browser bline)
-	(set-buffer-point! (mark-buffer mark) mark)
-	(if (not (current-message))
-	    (if (environment? (bline/object bline))
-		(where-command-line-help!)
-		(debug-command-line-help! (buffer-get 
-					   (browser/buffer browser)
-					   'THREAD))))))
+	(set-buffer-point! (mark-buffer mark) mark)))
+
     (let ((buffer (bline/description-buffer bline)))
       (if buffer
 	  (pop-up-buffer buffer false)))))
@@ -373,7 +368,7 @@
 ;;;For any frame with an environment (excluding the mark frame)
 ;;;an inferior repl is started below the other descriptions.
 (define (bline/description-buffer bline)
-  (let ((system? 
+  (let* ((system? 
 	 (and (subproblem? (bline/object bline))
 	      (system-frame? (subproblem/stack-frame (bline/object bline)))))
 	(buffer
@@ -381,7 +376,14 @@
 	(get-environment 
 	 (1d-table/get (bline-type/properties (bline/type bline))
 		       'GET-ENVIRONMENT
-		       false)))
+		       false))
+	(environment (if (and get-environment (not system?))
+			  (let ((environment* (get-environment bline)))
+			    (if (environment? environment*)
+				environment*
+				#f))
+			  #f)))
+    (temporary-message "Computing, please wait...")
     (if (and buffer (buffer-alive? buffer))
 	buffer
 	(let ((write-description
@@ -390,22 +392,22 @@
 	       (let ((buffer (browser/new-buffer (bline/browser bline) false)))
 		 (call-with-output-mark (buffer-start buffer)
 					(lambda (port)
-					  (write-description bline port)))
+					  (write-description bline port)
+					   (if environment
+					      (write-string "\n;EVALUATION may occur below in the environment of the selected frame.\n" port))))
 		 (set-buffer-point! buffer (buffer-start buffer))
 		 (1d-table/put! (bline/properties bline)
 				'DESCRIPTION-BUFFER
 				buffer)
 		 (read-only-between (buffer-start buffer) (buffer-end buffer))	 
 		 (buffer-not-modified! buffer)
-		 (if (and get-environment (not system?))
-		     (let ((environment (get-environment bline)))
-		       (if (environment? environment)
-			   (start-inferior-repl!
-			    buffer
-			    environment
-			    (evaluation-syntax-table buffer environment)
-			    (cmdl-message/strings
-			     "EVALUATION may occur below in the environment of the selected frame.")))))
+		 (if environment
+		     (start-inferior-repl!
+		      buffer
+		      environment
+		      (evaluation-syntax-table buffer environment)
+		      #f))
+		 (append-message "done")
 		 buffer))))))
 
 
@@ -1019,20 +1021,23 @@ If false show the bindings without frames."
 
 ;;;; Help Messages
 
-;;;The help messages for the debugger and for breaks
-(define (debug-command-line-help! break-thread)
-  (if break-thread
-      (set-current-message! 
-       "COMMANDS: ?-Help  q-Continue e-Environment browser p-proceed with value")
-      (set-current-message!
-       "COMMANDS: ?-Help  q-Quit Debugger  e-Environment browser p-invoke restarts")))
+;;;The help messages for the debugger
 
-(define (where-command-line-help!)
-  (message 
-   "COMMANDS: ?-More Help  q-Quit Environment browser"))
+
+(define where-help-message
+"     COMMANDS:  ? - Help   q - Quit Environment browser
+
+This is an environment browser buffer.
+
+Lines identify environment frames.
+The buffer below shows the bindings of the selected environment.
+-----------
+")
 
 (define debugger-help-message
-  "This is a debugger buffer:
+"     COMMANDS:   ? - Help   q - Quit Debugger   e - Environment browser
+
+This is a debugger buffer.
 
 Lines identify stack frames, most recent first.
 
@@ -1117,7 +1122,6 @@ The buffer below describes the current subproblem or reduction.
 	  (if (null? blines)
 	      (set-buffer-point! buffer (buffer-end buffer))
 	      (select-bline (car blines)))
-	  (debug-command-line-help! break-thread) ;  puts help up
 	  buffer)))))
 
 ;;;kludge to deal with the screen synch 
@@ -1398,7 +1402,8 @@ it has been renamed, it will not be deleted automatically."
 		  ((or (and limit (>= n limit))
 		       (if (system-frame? frame)
 			   (begin (set! beyond-system-code #t) #t)
-			   #f))
+			   #f)
+		       beyond-system-code)
 		   (list (make-continuation-bline continue false prev)))
 		  (else (continue))))))))
 
@@ -1621,12 +1626,21 @@ it has been renamed, it will not be deleted automatically."
 			 (ref-mode-object environment-browser)
 			 object))
 	  (blines (environment->blines environment)))
-      (insert-blines browser 0 blines)
+      
       (let ((buffer (browser/buffer browser)))
+	(let ((mark (buffer-end buffer)))
+	  (with-buffer-open mark
+	    (lambda ()
+	      (call-with-output-mark
+	       mark
+	       (lambda (port)
+		 (if (ref-variable debugger-show-help-message?)
+		     (write-string where-help-message port))
+		 (newline port))))))
+	(insert-blines browser 0 blines)
 	(if (null? blines)
 	    (set-buffer-point! buffer (buffer-end buffer))
 	    (select-bline (car blines)))
-	(where-command-line-help!)
 	buffer))))
 
 (define (environment->blines environment)
@@ -1715,7 +1729,9 @@ once it has been renamed, it will not be deleted automatically.")
 
 (define (environment/write-description bline port)
   (let ((environment (bline/object bline)))
-    (show-environment-name-and-bindings environment port)))
+    (temporary-message "Computing environment bindings...")
+    (show-environment-name-and-bindings environment port)
+    (append-message "done")))
 
 (define (show-environment-name-and-bindings environment port)
   (show-environment-name environment port)
