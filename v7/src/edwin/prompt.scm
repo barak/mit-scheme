@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: prompt.scm,v 1.172 1998/11/18 03:17:41 cph Exp $
+;;;	$Id: prompt.scm,v 1.173 1998/12/04 05:07:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -680,7 +680,8 @@ a repetition of this command will exit."
 
 (define (completion-message string)
   (if (typein-window? (current-window))
-      (temporary-typein-message (string-append " [" string "]"))
+      (if (not (string-null? string))
+	  (temporary-typein-message (string-append " [" string "]")))
       (message string)))
 
 (define (temporary-typein-message string)
