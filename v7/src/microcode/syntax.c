@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.3 1987/06/18 21:15:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.4 1987/07/15 22:12:35 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -101,7 +101,7 @@ Built_In_Primitive (Prim_String_To_Syntax_Entry, 1, "STRING->SYNTAX-ENTRY",
   if (length > 6) error_bad_range_arg (1);
   scan = (string_pointer (Arg1, 0));
 
-  if (length-- > 0)
+  if ((length--) > 0)
     {
       c = (char_to_long (*scan++));
       if (c >= 0200) error_bad_range_arg (1);
@@ -111,13 +111,13 @@ Built_In_Primitive (Prim_String_To_Syntax_Entry, 1, "STRING->SYNTAX-ENTRY",
   else
     result = ((long) syntaxcode_whitespace);
 
-  if (length-- > 0)
+  if ((length--) > 0)
     {
       c = (char_to_long (*scan++));
       if (c != ' ') result |= (c << 8);
     }
 
-  while (length-- > 0)
+  while ((length--) > 0)
     switch (*scan++)
       {
       case '1': result |= (1 << 16); break;
@@ -147,7 +147,7 @@ Built_In_Primitive (Prim_Char_To_Syntax_Code, 2, "CHAR->SYNTAX-CODE", 0x17E)
 #define NORMAL_INITIALIZATION_COMMON(primitive_initialization)		\
   fast char *start;							\
   char *first_char, *end;						\
-  long entry;								\
+  long sentry;								\
   long gap_length;							\
   primitive_initialization ();						\
 									\
@@ -197,30 +197,26 @@ Built_In_Primitive (Prim_Char_To_Syntax_Code, 2, "CHAR->SYNTAX-CODE", 0x17E)
 #define PEEK_RIGHT(scan) (SYNTAX_TABLE_REF (Arg1, (*scan)))
 #define PEEK_LEFT(scan) (SYNTAX_TABLE_REF (Arg1, (scan[-1])))
 
-#define MOVE_RIGHT(scan)						\
-do									\
+#define MOVE_RIGHT(scan) do						\
 {									\
-  if (++scan == gap_start)						\
+  if ((++scan) == gap_start)						\
     scan = gap_end;							\
 } while (0)
 
-#define MOVE_LEFT(scan)							\
-do									\
+#define MOVE_LEFT(scan) do						\
 {									\
-  if (--scan == gap_end)						\
+  if ((--scan) == gap_end)						\
     scan = gap_start;							\
 } while (0)
 
-#define READ_RIGHT(scan, target)					\
-do									\
+#define READ_RIGHT(scan, target) do					\
 {									\
   target = (SYNTAX_TABLE_REF (Arg1, (*scan++)));			\
   if (scan == gap_start)						\
     scan = gap_end;							\
 } while (0)
 
-#define READ_LEFT(scan, target)						\
-do									\
+#define READ_LEFT(scan, target) do					\
 {									\
   target = (SYNTAX_TABLE_REF (Arg1, (*--scan)));			\
   if (scan == gap_end)							\
@@ -230,8 +226,7 @@ do									\
 #define RIGHT_END_P(scan) (scan >= end)
 #define LEFT_END_P(scan) (scan <= end)
 
-#define LOSE_IF(expression)						\
-do									\
+#define LOSE_IF(expression) do						\
 {									\
   if (expression)							\
     return (NIL);							\
@@ -243,8 +238,7 @@ do									\
 #define SCAN_TO_INDEX(scan)						\
   ((((scan) > gap_start) ? ((scan) - gap_length) : (scan)) - first_char)
 
-#define WIN_IF(expression)						\
-do									\
+#define WIN_IF(expression) do						\
 {									\
   if (expression)							\
     return (Make_Unsigned_Fixnum (SCAN_TO_INDEX (start)));		\
@@ -253,25 +247,23 @@ do									\
 #define WIN_IF_RIGHT_END(scan) WIN_IF (RIGHT_END_P (scan))
 #define WIN_IF_LEFT_END(scan) WIN_IF (LEFT_END_P (scan))
 
-#define RIGHT_QUOTED_P_INTERNAL(scan, quoted)				\
-do									\
+#define RIGHT_QUOTED_P_INTERNAL(scan, quoted) do			\
 {									\
-  long entry;								\
+  long sentry;								\
 									\
   quoted = false;							\
   while (true)								\
     {									\
       if (LEFT_END_P (scan))						\
 	break;								\
-      READ_LEFT (scan, entry);						\
-      if (! (SYNTAX_ENTRY_QUOTE (entry)))				\
+      READ_LEFT (scan, sentry);						\
+      if (! (SYNTAX_ENTRY_QUOTE (sentry)))				\
 	break;								\
       quoted = (! quoted);						\
     }									\
 } while (0)
 
-#define RIGHT_QUOTED_P(scan_init, quoted)				\
-do									\
+#define RIGHT_QUOTED_P(scan_init, quoted) do				\
 {									\
   char *scan;								\
 									\
@@ -279,8 +271,7 @@ do									\
   RIGHT_QUOTED_P_INTERNAL (scan, quoted);				\
 } while (0)
 
-#define LEFT_QUOTED_P(scan_init, quoted)				\
-do									\
+#define LEFT_QUOTED_P(scan_init, quoted) do				\
 {									\
   char *scan;								\
 									\
@@ -339,8 +330,8 @@ Built_In_Primitive (Prim_Scan_Word_Forward, 4, "SCAN-WORD-FORWARD", 0x177)
   while (true)
     {
       LOSE_IF_RIGHT_END (start);
-      READ_RIGHT (start, entry);
-      if ((SYNTAX_ENTRY_CODE (entry)) == syntaxcode_word)
+      READ_RIGHT (start, sentry);
+      if ((SYNTAX_ENTRY_CODE (sentry)) == syntaxcode_word)
 	break;
     }
   while (true)
@@ -358,8 +349,8 @@ Built_In_Primitive (Prim_Scan_Word_Backward, 4, "SCAN-WORD-BACKWARD", 0x178)
   while (true)
     {
       LOSE_IF_LEFT_END (start);
-      READ_LEFT (start, entry);
-      if ((SYNTAX_ENTRY_CODE (entry)) == syntaxcode_word)
+      READ_LEFT (start, sentry);
+      if ((SYNTAX_ENTRY_CODE (sentry)) == syntaxcode_word)
 	break;
     }
   while (true)
@@ -380,19 +371,19 @@ Built_In_Primitive (Prim_Scan_List_Forward, 7, "SCAN-LIST-FORWARD", 0x179)
     {
       LOSE_IF_RIGHT_END (start);
       c = (*start);
-      READ_RIGHT(start, entry);
+      READ_RIGHT(start, sentry);
 
       if ((! (RIGHT_END_P (start))) &&
-	  (SYNTAX_ENTRY_COMSTART_FIRST (entry)) &&
+	  (SYNTAX_ENTRY_COMSTART_FIRST (sentry)) &&
 	  (SYNTAX_ENTRY_COMSTART_SECOND (PEEK_RIGHT (start))))
 	{
 	  MOVE_RIGHT (start);
 	  LOSE_IF_RIGHT_END (start);
 	  while (true)
 	    {
-	      READ_RIGHT (start, entry);
+	      READ_RIGHT (start, sentry);
 	      LOSE_IF_RIGHT_END (start);
-	      if ((SYNTAX_ENTRY_COMEND_FIRST (entry)) &&
+	      if ((SYNTAX_ENTRY_COMEND_FIRST (sentry)) &&
 		  (SYNTAX_ENTRY_COMEND_SECOND (PEEK_RIGHT (start))))
 		{
 		  MOVE_RIGHT (start);
@@ -402,7 +393,7 @@ Built_In_Primitive (Prim_Scan_List_Forward, 7, "SCAN-LIST-FORWARD", 0x179)
 	  break;
 	}
 
-      switch (SYNTAX_ENTRY_CODE (entry))
+      switch (SYNTAX_ENTRY_CODE (sentry))
 	{
 	case syntaxcode_escape:
 	case syntaxcode_charquote:
@@ -453,23 +444,23 @@ Built_In_Primitive (Prim_Scan_List_Forward, 7, "SCAN-LIST-FORWARD", 0x179)
 	    MOVE_RIGHT (start);
 	  if (math_exit)
 	    {
-	      WIN_IF (--depth == 0);
+	      WIN_IF ((--depth) == 0);
 	      LOSE_IF (depth < min_depth);
 	      math_exit = false;
 	    }
 	  else
 	    {
-	      WIN_IF (++depth == 0);
+	      WIN_IF ((++depth) == 0);
 	      math_exit = true;
 	    }
 	  break;
 
 	case syntaxcode_open:
-	  WIN_IF (++depth == 0);
+	  WIN_IF ((++depth) == 0);
 	  break;
 
 	case syntaxcode_close:
-	  WIN_IF (--depth == 0);
+	  WIN_IF ((--depth) == 0);
 	  LOSE_IF (depth < min_depth);
 	  break;
 
@@ -479,8 +470,8 @@ Built_In_Primitive (Prim_Scan_List_Forward, 7, "SCAN-LIST-FORWARD", 0x179)
 	      LOSE_IF_RIGHT_END (start);
 	      if (c == *start)
 		break;
-	      READ_RIGHT (start, entry);
-	      if (SYNTAX_ENTRY_QUOTE (entry))
+	      READ_RIGHT (start, sentry);
+	      if (SYNTAX_ENTRY_QUOTE (sentry))
 		{
 		  LOSE_IF_RIGHT_END (start);
 		  MOVE_RIGHT (start);
@@ -508,13 +499,13 @@ Built_In_Primitive (Prim_Scan_List_Backward, 7, "SCAN-LIST-BACKWARD", 0x17A)
 	{
 	  MOVE_LEFT (start);
 	  /* existence of this character is guaranteed by LEFT_QUOTED_P. */
-	  READ_LEFT (start, entry);
+	  READ_LEFT (start, sentry);
 	  goto word_entry;
 	}
       c = (start[-1]);
-      READ_LEFT (start, entry);
+      READ_LEFT (start, sentry);
       if ((! (LEFT_END_P (start))) &&
-	  (SYNTAX_ENTRY_COMEND_SECOND (entry)) &&
+	  (SYNTAX_ENTRY_COMEND_SECOND (sentry)) &&
 	  (SYNTAX_ENTRY_COMEND_FIRST (PEEK_LEFT (start))))
 	{
 	  LEFT_QUOTED_P (start, quoted);
@@ -524,9 +515,9 @@ Built_In_Primitive (Prim_Scan_List_Backward, 7, "SCAN-LIST-BACKWARD", 0x17A)
 	      LOSE_IF_LEFT_END (start);
 	      while (true)
 		{
-		  READ_LEFT (start, entry);
+		  READ_LEFT (start, sentry);
 		  LOSE_IF_LEFT_END (start);
-		  if ((SYNTAX_ENTRY_COMSTART_SECOND (entry)) &&
+		  if ((SYNTAX_ENTRY_COMSTART_SECOND (sentry)) &&
 		      (SYNTAX_ENTRY_COMSTART_SECOND (PEEK_LEFT (start))))
 		    {
 		      MOVE_LEFT (start);
@@ -537,11 +528,11 @@ Built_In_Primitive (Prim_Scan_List_Backward, 7, "SCAN-LIST-BACKWARD", 0x17A)
 	    }
 	}
 
-      switch (SYNTAX_ENTRY_CODE (entry))
+      switch (SYNTAX_ENTRY_CODE (sentry))
 	{
 	case syntaxcode_word:
 	case syntaxcode_symbol:
-word_entry:
+	word_entry:
 	  if ((depth != 0) || (! sexp_flag))
 	    break;
 	  while (true)
@@ -552,9 +543,9 @@ word_entry:
 		MOVE_LEFT (start);
 	      else
 		{
-		  entry = (PEEK_LEFT (start));
-		  WIN_IF (((SYNTAX_ENTRY_CODE (entry)) != syntaxcode_word) &&
-			  ((SYNTAX_ENTRY_CODE (entry)) != syntaxcode_symbol));
+		  sentry = (PEEK_LEFT (start));
+		  WIN_IF (((SYNTAX_ENTRY_CODE (sentry)) != syntaxcode_word) &&
+			  ((SYNTAX_ENTRY_CODE (sentry)) != syntaxcode_symbol));
 		}
 	      MOVE_LEFT (start);
 	    }
@@ -566,23 +557,23 @@ word_entry:
 	    MOVE_LEFT (start);
 	  if (math_exit)
 	    {
-	      WIN_IF (--depth == 0);
+	      WIN_IF ((--depth) == 0);
 	      LOSE_IF (depth < min_depth);
 	      math_exit = false;
 	    }
 	  else
 	    {
-	      WIN_IF (++depth == 0);
+	      WIN_IF ((++depth) == 0);
 	      math_exit = true;
 	    }
 	  break;
 
 	case syntaxcode_close:
-	  WIN_IF (++depth == 0);
+	  WIN_IF ((++depth) == 0);
 	  break;
 
 	case syntaxcode_open:
-	  WIN_IF (--depth == 0);
+	  WIN_IF ((--depth) == 0);
 	  LOSE_IF (depth < min_depth);
 	  break;
 
@@ -623,8 +614,7 @@ word_entry:
 #define LEVEL_ARRAY_LENGTH 100
 struct levelstruct { char *last, *previous; };
 
-#define DONE_IF(expression)						\
-do									\
+#define DONE_IF(expression) do						\
 {									\
   if (expression)							\
     goto done;								\
@@ -632,9 +622,11 @@ do									\
 
 #define DONE_IF_RIGHT_END(scan) DONE_IF (RIGHT_END_P (scan))
 
-#define SEXP_START()							\
-if (stop_before) goto stop;						\
-level->last = start
+#define SEXP_START() do							\
+{									\
+  if (stop_before) goto stop;						\
+  (level -> last) = start;						\
+}
 
 Built_In_Primitive (Prim_Scan_Sexps_Forward, 7, "SCAN-SEXPS-FORWARD", 0x17B)
 {
@@ -657,7 +649,7 @@ Built_In_Primitive (Prim_Scan_Sexps_Forward, 7, "SCAN-SEXPS-FORWARD", 0x17B)
 
   level = level_start;
   level_end = (level_start + LEVEL_ARRAY_LENGTH);
-  level->previous = NULL;
+  (level -> previous) = NULL;
 
   /* Initialize the state variables from the state argument. */
 
@@ -733,19 +725,19 @@ Built_In_Primitive (Prim_Scan_Sexps_Forward, 7, "SCAN-SEXPS-FORWARD", 0x17B)
     {
       LOSE_IF_RIGHT_END (start);
       c = (*start);
-      READ_RIGHT (start, entry);
+      READ_RIGHT (start, sentry);
       if ((! (RIGHT_END_P (start))) &&
-	  (SYNTAX_ENTRY_COMSTART_FIRST (entry)) &&
+	  (SYNTAX_ENTRY_COMSTART_FIRST (sentry)) &&
 	  (SYNTAX_ENTRY_COMSTART_FIRST (PEEK_RIGHT (start))))
 	{
 	  MOVE_RIGHT (start);
 	  in_comment = 2;
-start_in_comment2:
+	start_in_comment2:
 	  while (true)
 	    {
 	      DONE_IF_RIGHT_END (start);
-	      READ_RIGHT (start, entry);
-	      if (SYNTAX_ENTRY_COMEND_FIRST (entry))
+	      READ_RIGHT (start, sentry);
+	      if (SYNTAX_ENTRY_COMEND_FIRST (sentry))
 		{
 		  /* Actually, terminating here is a special case.  There
 		     should be a third value of in_comment to handle it. */
@@ -761,12 +753,12 @@ start_in_comment2:
 	}
       else
 
-	switch (SYNTAX_ENTRY_CODE (entry))
+	switch (SYNTAX_ENTRY_CODE (sentry))
 	  {
 	  case syntaxcode_escape:
 	  case syntaxcode_charquote:
 	    SEXP_START ();
-start_quoted:
+	  start_quoted:
 	    if (RIGHT_END_P (start))
 	      {
 		quoted = true;
@@ -778,7 +770,7 @@ start_quoted:
 	  case syntaxcode_word:
 	  case syntaxcode_symbol:
 	    SEXP_START ();
-start_atom:
+	  start_atom:
 	    while (! (RIGHT_END_P (start)))
 	      {
 		switch (SYNTAX_ENTRY_CODE (PEEK_RIGHT (start)))
@@ -801,18 +793,18 @@ start_atom:
 		    goto end_atom;
 		  }
 	      }
-end_atom:
-	    level->previous = level->last;
+	  end_atom:
+	    (level -> previous) = (level -> last);
 	    break;      
 
 	  case syntaxcode_comment:
 	    in_comment = 1;
-start_in_comment:
+	  start_in_comment:
 	    while (true)
 	      {
 		DONE_IF_RIGHT_END (start);
-		READ_RIGHT (start, entry);
-		if ((SYNTAX_ENTRY_CODE (entry)) == syntaxcode_endcomment)
+		READ_RIGHT (start, sentry);
+		if ((SYNTAX_ENTRY_CODE (sentry)) == syntaxcode_endcomment)
 		  break;
 	      }
 	    in_comment = 0;
@@ -824,8 +816,8 @@ start_in_comment:
 	    level += 1;
 	    if (level == level_end)
 	      error_bad_range_arg (5); /* random error */
-	    level->last = NULL;
-	    level->previous = NULL;
+	    (level -> last) = NULL;
+	    (level -> previous) = NULL;
 	    DONE_IF ((--target_depth) == 0);
 	    break;
 
@@ -833,23 +825,23 @@ start_in_comment:
 	    depth -= 1;
 	    if (level != level_start)
 	      level -= 1;
-	    level->previous = level->last;
+	    (level -> previous) = (level -> last);
 	    DONE_IF ((++target_depth) == 0);
 	    break;
 
 	  case syntaxcode_string:
 	    SEXP_START ();
 	    in_string = (char_to_long (c));
-start_in_string:
+	  start_in_string:
 	    while (true)
 	      {
 		DONE_IF_RIGHT_END (start);
 		if (in_string == (*start))
 		  break;
-		READ_RIGHT (start, entry);
-		if (SYNTAX_ENTRY_QUOTE (entry))
+		READ_RIGHT (start, sentry);
+		if (SYNTAX_ENTRY_QUOTE (sentry))
 		  {
-start_quoted_in_string:
+		  start_quoted_in_string:
 		    if (RIGHT_END_P (start))
 		      {
 			quoted = true;
@@ -858,36 +850,36 @@ start_quoted_in_string:
 		  }
 	      }
 	    in_string = -1;
-	    level->previous = level->last;
+	    (level -> previous) = (level -> last);
 	    MOVE_RIGHT (start);
 	    break;
 	  }
     }
   /* NOTREACHED */
 
-stop:
+ stop:
   /* Back up to point at character that starts sexp. */
   if (start == gap_end)
     start = gap_start;
   start -= 1;
 
-done:
+ done:
   result = ((Pointer) Free);
-  *Free++ = (Make_Non_Pointer (TC_MANIFEST_VECTOR, 7));
-  *Free++ = (Make_Signed_Fixnum (depth));
-  *Free++ = ((in_string == -1) ? NIL : (Make_Unsigned_Fixnum (in_string)));
-  *Free++ = ((in_comment == 0) ? NIL : (Make_Unsigned_Fixnum (in_comment)));
-  *Free++ = ((quoted == false) ? NIL : TRUTH);
+  (*Free++) = (Make_Non_Pointer (TC_MANIFEST_VECTOR, 7));
+  (*Free++) = (Make_Signed_Fixnum (depth));
+  (*Free++) = ((in_string == -1) ? NIL : (Make_Unsigned_Fixnum (in_string)));
+  (*Free++) = ((in_comment == 0) ? NIL : (Make_Unsigned_Fixnum (in_comment)));
+  (*Free++) = ((quoted == false) ? NIL : TRUTH);
   /* Decrement the following indices by one since we recorded them after
      `start' was advanced past the opening character. */
-  *Free++ =
-    ((level->previous == NULL)
+  (*Free++) =
+    (((level -> previous) == NULL)
      ? NIL
-     : (Make_Unsigned_Fixnum ((SCAN_TO_INDEX (level->previous)) - 1)));
-  *Free++ =
-    (((level == level_start) || (level->previous == NULL))
+     : (Make_Unsigned_Fixnum ((SCAN_TO_INDEX (level -> previous)) - 1)));
+  (*Free++) =
+    (((level == level_start) || ((level -> previous) == NULL))
      ? NIL
-     : (Make_Unsigned_Fixnum ((SCAN_TO_INDEX ((level - 1)->last)) - 1)));
-  *Free++ = (Make_Unsigned_Fixnum (SCAN_TO_INDEX (start)));
+     : (Make_Unsigned_Fixnum ((SCAN_TO_INDEX ((level - 1) -> last)) - 1)));
+  (*Free++) = (Make_Unsigned_Fixnum (SCAN_TO_INDEX (start)));
   return (result);
 }
