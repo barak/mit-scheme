@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: switch.scm,v 1.4 1995/01/17 22:59:43 adams Exp $
+$Id: switch.scm,v 1.5 1995/08/08 16:17:59 adams Exp $
 
 Copyright (c) 1988-1994  Massachusetts Institute of Technology
 
@@ -57,6 +57,7 @@ MIT in each case. |#
 (define compiler:cse? true)
 (define compiler:open-code-primitives? true)
 (define compiler:generate-kmp-files? false)
+(define compiler:kmp-output-abbreviated? true)
 (define compiler:generate-rtl-files? false)
 (define compiler:generate-lap-files? false)
 (define compiler:intersperse-rtl-in-lap? true)
@@ -71,7 +72,7 @@ MIT in each case. |#
 (define compiler:compress-top-level? false)
 (define compiler:avoid-scode? true)
 
-;; True if being used by a guru
+;; True if being used by a guru. Controls lots of debugging printout
 (define compiler:guru? false)
 
 ;; If true, the compiler is allowed to assume that fixnum operations
