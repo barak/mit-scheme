@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.134 1992/02/25 22:56:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.135 1992/02/26 22:39:05 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -929,7 +929,9 @@ MIT in each case. |#
 	  port?
 	  set-input-port/state!
 	  set-output-port/state!
-	  set-port/state!))
+	  set-port/state!)
+  (export (runtime emacs-interface)
+	  port-rtd))
 
 (define-package (runtime input-port)
   (files "input")
