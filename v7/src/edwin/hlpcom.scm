@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.93 1990/11/02 03:24:19 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.94 1990/11/21 23:18:24 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -280,10 +280,9 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 	      (set-current-major-mode! (ref-mode-object fundamental))
 	      (disable-buffer-auto-save! buffer)
 	      (let ((mark
-		     (mark1+
-		      (line-end (search-forward "\n<<" (buffer-start buffer))
-				0))))
-		(delete-string mark (line-end mark 0))
+		     (line-start (search-forward "\n<<" (buffer-start buffer))
+				 0)))
+		(delete-string (line-end mark -1) (line-end mark 0))
 		(insert-newlines (- (window-y-size (current-window))
 				    (+ 4 (region-count-lines
 					  (make-region (buffer-start buffer)
