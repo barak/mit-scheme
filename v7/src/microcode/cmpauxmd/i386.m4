@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.16 1992/03/06 04:59:27 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.17 1992/03/07 18:54:33 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -301,7 +301,7 @@ IF387(`	OP(sub,l)	TW(IMM(4),REG(esp))
 	# mask the inexact result exception, and unmask the other exceptions.
 	OP(and,l)	TW(IMM(HEX(0000f0e0)),LOF(-4,REG(ebp)))
 	OP(or,l)	TW(IMM(HEX(00000220)),LOF(-4,REG(ebp)))
-	fldcw	LOF(-2,REG(ebp))')
+	fldcw	WOF(-2,REG(ebp))')
 	OP(mov,w)	TW(REG(cs),REG(ax))		# Obtain code segment
 	leave
 	ret
@@ -499,7 +499,7 @@ asm_generic_flonum_result:
 	OP(fstp,l)	DOF(4,rfree)			# fstpd
 	OP(or,l)	TW(IMM(eval(TAG(TC_FLONUM,0))),REG(eax))
 	OP(and,l)	TW(rmask,IND(REG(esp)))
-	OP(add,l)	TW(IMM(12),rfre)e
+	OP(add,l)	TW(IMM(12),rfree)
 	OP(mov,l)	TW(REG(eax),LOF(REGBLOCK_VAL(),regs))
 	ret
 
@@ -593,9 +593,9 @@ define_c_label(asm_generic_$1)
 	je	asm_generic_$1_fix
 	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(al))
 	jne	asm_generic_$1_fail
-	OP(cmp,b)	IMM(TC_FLONUM),REG(cl)
+	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(cl))
 	je	asm_generic_$1_flo_flo
-	OP(cmp,b)	IMM(TC_FIXNUM),REG(cl)
+	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(cl))
 	jne	asm_generic_$1_fail
 	OP(shl,l)	TW(IMM(TC_LENGTH),REG(ebx))
 	OP(and,l)	TW(rmask,REG(edx))
