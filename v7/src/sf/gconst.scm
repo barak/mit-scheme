@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.9 1990/10/16 21:06:53 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.10 1991/04/20 06:09:48 cph Exp $
 
-Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -204,7 +204,6 @@ MIT in each case. |#
     PROCESS-TIME-CLOCK
     READ-BITS!
     REAL-TIME-CLOCK
-    SCODE-EVAL
     SET-CAR!
     SET-CDR!
     SET-CELL-CONTENTS!

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usicon.scm,v 4.1 1988/06/13 12:30:46 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usicon.scm,v 4.2 1991/04/20 06:10:10 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,7 +52,27 @@ MIT in each case. |#
 	(map (lambda (name)
 	       (let ((object
 		      (lexical-reference system-global-environment name)))
-		 (if (not (scode-constant? object))
+		 (if (not (memq (microcode-type/code->name
+				 (object-type object))
+				'(BIGNUM
+				  CHARACTER
+				  FIXNUM
+				  FLONUM
+				  INTERNED-SYMBOL
+				  NULL
+				  PAIR
+				  PRIMITIVE
+				  QUAD
+				  RATNUM
+				  RECNUM
+				  RETURN-CODE
+				  STRING
+				  TRIPLE
+				  TRUE
+				  UNINTERNED-SYMBOL
+				  VECTOR
+				  VECTOR-16B
+				  VECTOR-1B)))
 		     (error "USUAL-INTEGRATIONS: not a constant" name))
 		 (constant->integration-info object)))
 	     usual-integrations/constant-names))
