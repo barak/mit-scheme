@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.22 2003/08/20 17:23:34 cph Exp $
+$Id: xml-struct.scm,v 1.23 2003/09/11 18:38:21 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -47,7 +47,7 @@ USA.
   (combos universal-name-combos))
 
 (define (xml-name? object)
-  (or (and (symbol? object)
+  (or (and (interned-symbol? object)
 	   (string-is-xml-name? (symbol-name object)))
       (combo-name? object)))
 
@@ -58,26 +58,44 @@ USA.
 (define (error:not-xml-name object caller)
   (error:wrong-type-argument object "an XML name" caller))
 
-(define (xml-intern string #!optional uri)
-  (guarantee-string string 'XML-INTERN)
-  (cond ((and (string-is-xml-nmtoken? string)
-	      (or (default-object? uri) (not uri)))
-	 (string->symbol string))
-	((string-is-xml-name? string)
-	 (guarantee-string uri 'XML-INTERN)
-	 (if (not (and (fix:> (string-length uri) 0)
-		       (utf8-string-valid? uri)))
-	     (error:wrong-type-argument uri "an XML name URI" 'XML-INTERN))
-	 (let ((simple (string->symbol string)))
-	   (%make-xml-name simple
-			   uri
-			   (let ((c (string-find-next-char string #\:)))
-			     (if c
-				 (string->symbol
-				  (string-tail string (fix:+ c 1)))
-				 simple)))))
-	(else
-	 (error:wrong-type-argument string "an XML name string" 'XML-INTERN))))
+(define (xml-namespace-uri? object)
+  (and (interned-symbol? object)
+       (let ((string (symbol-name object)))
+	 (and (fix:> (string-length string) 0)
+	      (utf8-string-valid? string)))))
+
+(define (guarantee-xml-namespace-uri object caller)
+  (if (not (xml-namespace-uri? object))
+      (error:not-xml-namespace-uri object caller)))
+
+(define (error:not-xml-namespace-uri object caller)
+  (error:wrong-type-argument object "an XML namespace URI" caller))
+
+(define (xml-intern name #!optional uri)
+  (let ((uri (if (default-object? uri) #f uri))
+	(lose
+	 (lambda ()
+	   (error:wrong-type-argument string
+				      "an XML name string"
+				      'XML-INTERN))))
+    (if uri
+	(guarantee-xml-namespace-uri uri 'XML-INTERN))
+    (receive (string symbol)
+	(cond ((symbol? name) (values (symbol-name name) name))
+	      ((string? name) (values name (string->symbol name)))
+	      (else (lose)))
+      (let ((type (string-is-xml-nmtoken? string)))
+	(cond ((and type (not uri))
+	       symbol)
+	      ((eq? type 'NAME)
+	       (%make-xml-name symbol
+			       uri
+			       (let ((c (string-find-next-char string #\:)))
+				 (if c
+				     (string->symbol
+				      (string-tail string (fix:+ c 1)))
+				     symbol))))
+	      (else (lose)))))))
 
 (define (%make-xml-name simple uri local)
   (let ((uname
@@ -94,7 +112,7 @@ USA.
 			(lambda () (make-combo-name simple uname)))))
 
 (define universal-names
-  (make-string-hash-table))
+  (make-eq-hash-table))
 
 (define (xml-name-string name)
   (cond ((xml-nmtoken? name) (symbol-name name))
@@ -154,24 +172,40 @@ USA.
        (string-is-xml-nmtoken? (symbol-name object))))
 
 (define (string-is-xml-name? string)
-  (let ((buffer (string->parser-buffer string)))
-    (and (match-utf8-char-in-alphabet buffer alphabet:name-initial)
-	 (let loop ((nc 0))
-	   (cond ((match-parser-buffer-char buffer #\:)
-		  (loop (fix:+ nc 1)))
-		 ((peek-parser-buffer-char buffer)
-		  (and (match-utf8-char-in-alphabet buffer
-						    alphabet:name-subsequent)
-		       (loop nc)))
-		 (else (fix:<= nc 1)))))))
+  (eq? (string-is-xml-nmtoken? string) 'NAME))
 
 (define (string-is-xml-nmtoken? string)
   (let ((buffer (string->parser-buffer string)))
-    (let loop ()
-      (and (match-utf8-char-in-alphabet buffer alphabet:name-subsequent)
-	   (if (peek-parser-buffer-char buffer)
-	       (loop)
-	       #t)))))
+    (let ((check-char
+	   (lambda ()
+	     (match-utf8-char-in-alphabet buffer alphabet:name-subsequent))))
+      (letrec
+	  ((no-colon
+	    (lambda ()
+	      (cond ((match-parser-buffer-char buffer #\:)
+		     (colon))
+		    ((peek-parser-buffer-char buffer)
+		     (and (check-char)
+			  (no-colon)))
+		    (else 'NAME))))
+	   (colon
+	    (lambda ()
+	      (cond ((match-parser-buffer-char buffer #\:)
+		     (nmtoken?))
+		    ((peek-parser-buffer-char buffer)
+		     (and (check-char)
+			  (colon)))
+		    (else 'NAME))))
+	   (nmtoken?
+	    (lambda ()
+	      (if (peek-parser-buffer-char buffer)
+		  (and (check-char)
+		       (nmtoken?))
+		  'NMTOKEN))))
+	(if (match-utf8-char-in-alphabet buffer alphabet:name-initial)
+	    (no-colon)
+	    (and (check-char)
+		 (nmtoken?)))))))
 
 (define (xml-whitespace-string? object)
   (string-composed-of? object char-set:xml-whitespace))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.37 2003/08/23 05:39:58 cph Exp $
+$Id: xml-parser.scm,v 1.38 2003/09/11 18:38:13 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -537,7 +537,7 @@ USA.
 			       #f)))))))))
 	(if uri
 	    (%make-xml-name simple
-			    uri
+			    (string->symbol uri)
 			    (if c
 				(string->symbol (string-head s (fix:+ c 1)))
 				simple))
