@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.1 1988/06/14 08:58:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.2 1988/06/15 20:40:34 jrm Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -71,7 +71,11 @@ MIT in each case. |#
 	 "rtlbase/rtlobj"		;RTL: CFG objects
 	 "rtlbase/regset"		;RTL: register sets
 
+	 #|
+	 ;;; Now in runtime system (I hope) ~JRM
 	 "base/infutl"			;utilities for info generation, shared
+	 |#
+
 	 "back/insseq"			;LAP instruction sequences
 	 )
   (parent ()))
