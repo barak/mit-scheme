@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.23 1987/04/16 02:28:57 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.24 1987/04/28 16:29:33 cph Exp $
  *
  * General declarations for the SCode interpreter.  This
  * file is INCLUDED by others and contains declarations only.
@@ -50,8 +50,12 @@ MIT in each case. */
 
 #ifdef ENABLE_DEBUGGING_TOOLS
 #define Consistency_Check	true
+#define ENABLE_PRIMITIVE_PROFILING
 #else
 #define Consistency_Check	false
+#ifdef ENABLE_PRIMITIVE_PROFILING
+#undef ENABLE_PRIMITIVE_PROFILING
+#endif
 #endif
 
 #ifdef COMPILE_STEPPER
