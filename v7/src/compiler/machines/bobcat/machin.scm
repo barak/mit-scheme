@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 1.46 1987/05/29 17:48:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 1.47 1987/05/31 14:14:21 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -41,6 +41,9 @@ MIT in each case. |#
 
 (define-integrable (stack->memory-offset offset)
   offset)
+
+(define ic-block-first-parameter-offset
+  2)
 
 (define (rtl:expression-cost expression)
   ;; Returns an estimate of the cost of evaluating the expression.
