@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.20 1993/12/16 22:44:12 adams Exp $
+@comment $Id: user.texinfo,v 1.21 1993/12/17 22:20:37 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -54,9 +54,9 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.17 beta
+@subtitle Edition 1.21 beta
 @subtitle for Scheme Release 7.3
-@subtitle DRAFT: @today{}
+@subtitle 17 December 1993
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -132,7 +132,7 @@ Installation
 
 PC Operating Systems
 
-* System requirements::         
+* System Requirements::         
 * Manifest::                    
 * PC Installation::             Installation
 
@@ -150,7 +150,7 @@ News
 C Back-End Release Notes
 
 * Notes on C Back-End::         
-* Problems with C Back-End::    
+* Problems with the C Back-End::  
 
 PC Release Notes
 
@@ -167,11 +167,11 @@ Running Scheme
 
 Environment Variables
 
-* Environment Variables that affect the Microcode::  
-* Environment variables for Bchscheme::  
-* Environment variables for PC versions::  
-* Environment variables that affect the runtime system::  
-* Environment variables that affect Edwin::  
+* Microcode Environment Variables::  
+* Bchscheme Environment Variables::  
+* PC Environment Variables::    
+* Runtime Environment Variables::  
+* Edwin Environment Variables::  
 
 The Read-Eval-Print Loop
 
@@ -184,8 +184,8 @@ Debugging
 
 * Subproblems and Reductions::  
 * Debugger::                    
-* Debugging aids::              
-* Advising procedures::         
+* Debugging Aids::              
+* Advising Procedures::         
 
 Compiling Files
 
@@ -196,31 +196,29 @@ Declarations
 
 * Standard Names::              
 * In-line Coding::              
-* Operator Replacement::        
-* Operator Reduction::          
+* Replacement of Operators::    
+* Reduction of Operators::      
 
 Edwin
 
 * Starting Edwin::              
 * Leaving Edwin::               
-* Last resorts::                
+* Last Resorts::                
 * Comparison of Edwin 3.82 to Emacs 18.57::  
 
 Comparison of Edwin 3.82 to Emacs 18.57
 
-* Incompatibilities::           
-* Deficiencies::                
-* Subsystems missing from Edwin::  
-* Documented Emacs commands missing from Edwin::  
-* Documented Emacs variables missing from Edwin::  
-* Variables that should be per-buffer in Edwin::  
+* Incompatibilities of Edwin::  
+* Deficiencies of Edwin::       
+* Subsystems Missing from Edwin::  
+* Commands Missing from Edwin::  
+* Variables Missing from Edwin::  
+* Per-Buffer Variables::        
 * Edwin Bugs::                  
 @end menu
 
 @node Installation, Release Notes, Top, Top
 @chapter Installation
-
-
 
 @menu
 * Unix::                        
@@ -229,7 +227,6 @@ Comparison of Edwin 3.82 to Emacs 18.57
 
 @node Unix, PC Operating Systems,  , Installation
 @section Unix
-
 
 We will use as an example the installation for HP 9000 series 400
 computers.  The installation for other Unix systems is similar.
@@ -248,12 +245,11 @@ directory where they will be executed as commands, and to put the
 library files in some convenient place where Scheme can find them.
 
 @itemize @bullet
-
 @item
 First unpack the distribution:
 
 @example
-     gzip -cd hp400.tar.gz | tar xvf -
+gzip -cd hp400.tar.gz | tar xvf -
 @end example
 
 If you do not have the `gzip' program: we have built executables of
@@ -266,7 +262,7 @@ yourself.
 Next, go to the directory that you just unpacked:
 
 @example
-     cd dist-7.3
+cd dist-7.3
 @end example
 
 The easiest way to install the files is to use the "install.sh" shell
@@ -327,7 +323,7 @@ Once you are satisfied that the @file{install.sh} script is correct,
 execute it:
 
 @example
-     ./install.sh
+./install.sh
 @end example
 
 @item
@@ -337,15 +333,13 @@ directory that you unpacked earlier.
 You should now be able to run MIT Scheme by typing
 
 @example
-     scheme
+scheme
 @end example
 
 @noindent
 at the command line (if you use the C shell, you may have to type
 @samp{rehash} before @samp{scheme} will be recognized).
-
 @end itemize
-
 
 @c NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
 @node PC Operating Systems,  , Unix, Installation
@@ -363,13 +357,13 @@ does require some care with the configuration of the system.
 Note that we have only tested the DOS version on Microsoft DOS 5.0.
 
 @menu
-* System requirements::         
+* System Requirements::         
 * Manifest::                    
 * PC Installation::             Installation
 @end menu
 
-@node System requirements, Manifest,  , PC Operating Systems
-@subsection System requirements
+@node System Requirements, Manifest,  , PC Operating Systems
+@subsection System Requirements
 
 MIT Scheme requires at least a 386SX with 8Mb RAM.
 The bare minimum
@@ -378,7 +372,7 @@ for Scheme.  We strongly recommend a more advanced environment.  To
 build the Edwin editor band requires an additional 4.3Mb.  The whole
 installation without source code occupies 36Mb of disk.
 
-@node Manifest, PC Installation, System requirements, PC Operating Systems
+@node Manifest, PC Installation, System Requirements, PC Operating Systems
 @subsection Manifest
 
 The installation is split into several files according to functional
@@ -413,7 +407,6 @@ INSTALL.TXT     @r{These instructions}
 UNZIP.EXE       @r{Program to unpack the @file{.zip} files}
 @end example
 
-
 Minimal installation on Windows NT requires: @file{BIN.ZIP},
 @file{LIB.ZIP} and @file{RUNTIME.ZIP}.
 
@@ -426,9 +419,6 @@ that Win32S also needs to be installed.
 For DOS the minimal installation comprises @file{DOSBIN.ZIP},
 @file{LIB.ZIP} and one of @file{RUNTIME.ZIP} or @file{RUNNOFLO.ZIP}.
 
-
-
-
 @node PC Installation,  , Manifest, PC Operating Systems
 @subsection PC Installation
 
@@ -438,9 +428,8 @@ installing for DOS and another operating system, you should do the
 bulk of the installation using the windowing environment.
 
 In each of the following steps the amount of disk space consumed is
-indicated in square brackets.
-These sizes do not include the @file{.zip} files which are required
-only during installation.
+indicated in square brackets.  These sizes do not include the
+@file{.zip} files which are required only during installation.
 
 @enumerate
 @item 
@@ -525,6 +514,7 @@ has @emph{no} graphics support
 @item
 If you are installing for Windows 3.1 only, do @emph{one} of the
 following:
+
 @itemize @bullet
 @item
 Put the following line in the @file{autoexec.bat} file to ensure that
@@ -535,7 +525,8 @@ path %PATH%;@var{scheme}\bin\win31
 @end example
 
 @noindent
-This command must be in a @file{.bat} file to work.
+This command must be in a @file{.bat} file to work
+
 @item
 Copy the files from @file{@var{scheme}\bin\win31} into
 @file{@var{scheme}\bin}.
@@ -544,14 +535,17 @@ Copy the files from @file{@var{scheme}\bin\win31} into
 @item
 If you are installing for Windows NT only, do @emph{one} of the
 following:
+
 @itemize @bullet
 @item
 As system
 administrator add @file{@var{scheme}\bin\nt} to the @code{PATH} in the
-system environment (using the Registry Editor, @code{regedt32})
+system environment (using the Registry Editor, @code{regedt32}
+
 @item
 As an individual place @code{PATH=}@var{scheme}@code{\bin\nt} in your
-environment (use the control panel's system option)
+environment (use the control panel's system option
+
 @item
 Copy the files from @file{@var{scheme}\bin\nt} into
 @file{@var{scheme}\bin}.
@@ -569,9 +563,9 @@ This can be done by putting
 path %PATH%;@var{scheme}\bin\win31
 @end example
 
+@noindent
 in the @file{autoexec.bat} file and adding @file{@var{scheme}\bin\nt} to
 the Windows NT system environment path.
-
 
 @item
 If you are installing for DOS there is no need to add things to the
@@ -584,7 +578,6 @@ the environment variable @code{MITSCHEME_LIBRARY_PATH} is defined:
 @example
 set MITSCHEME_LIBRARY_PATH=@var{scheme}\lib
 @end example
-
 
 @item
 Now test the installation so far.
@@ -621,12 +614,15 @@ using the @code{File|Run} option:
 
 @noindent
 This program creates a program group called `MIT Scheme' which contains
+
 @itemize @bullet
 @item
 Icons for running scheme in several configurations
+
 @item
 Windows Help versions of the Scheme Reference Manual and the MIT Scheme
 User's Manual.
+
 @item
 `Mincer' icons for building the rest of the system
 @end itemize
@@ -679,7 +675,6 @@ If you are installing only for DOS you will have to build
 @var{scheme}\dos-bin\scheme -large -load @var{scheme}\etc\build -eval (edwin.com)
 @end example
 
-
 @item
 To install the compiler you need to build the @file{compiler.com} band.
 First unpack the @file{compdel.com} delta file [2.5Mb]:
@@ -708,7 +703,6 @@ run the DOS @file{scheme.exe} rather than the Windows version:
 @example
 @var{scheme}\dos-bin\scheme -large -load @var{scheme}\etc\build -eval (compiler.com)
 @end example
-
 
 @item
 If you want both Edwin and the compiler in one band you should build the
@@ -739,7 +733,6 @@ If you choose to build this band under DOS, be sure to run the DOS
 @example
 @var{scheme}\dos-bin\scheme -large -load @var{scheme}\etc\build -eval (all.com)
 @end example
-
 
 @item
 Any combination of @file{edwin.com}, @file{compiler.com} and
@@ -774,11 +767,7 @@ directory or in another directory.  If another directory is chosen then
 set the @code{MITSCHEME_INF_DIRECTORY} environment variable to this
 directory.  @file{bcied1.zip} through @file{bcied3.zip} [3.8Mb
 installed] hold the debugging information files for Edwin.
-
 @end enumerate
-
-
-
 
 @node Release Notes, Running Scheme, Installation, Top
 @chapter Release Notes
@@ -1124,10 +1113,10 @@ description of the features and known problems for such systems.
 
 @menu
 * Notes on C Back-End::         
-* Problems with C Back-End::    
+* Problems with the C Back-End::  
 @end menu
 
-@node Notes on C Back-End, Problems with C Back-End,  , C Back-End Release Notes
+@node Notes on C Back-End, Problems with the C Back-End,  , C Back-End Release Notes
 @subsection General Notes
 
 This section describes the general design of C back-end systems.
@@ -1239,8 +1228,8 @@ shared library of a large subsystem that you have written, please
 contact us for advice on how it can be done.
 @end itemize
 
-@node Problems with C Back-End,  , Notes on C Back-End, C Back-End Release Notes
-@subsection Problems with C Back-End
+@node Problems with the C Back-End,  , Notes on C Back-End, C Back-End Release Notes
+@subsection Problems with the C Back-End
 
 This section details problems and shortcomings of the system that are
 specific to the C back-end.
@@ -1379,10 +1368,8 @@ On DOS 6.2 with @code{emm386} you may have to put the following in
 @example
 device=emm386 noems novcpi
 @end example
-
 @end itemize
 @end itemize
-
 
 @c @node
 @c @subsection NT build
@@ -1491,7 +1478,6 @@ scheme -compiler
 This option causes Scheme to use a larger constant space and heap, and
 to load the world image containing the compiler.
 
-
 @node Customizing Scheme, Command-Line Options, Basics of Starting Scheme, Running Scheme
 @section Customizing Scheme
 
@@ -1546,7 +1532,6 @@ Under Windows and Windows NT it is possible to create icons in
 the Program Manager that invoke Scheme with different parameters.
 @end itemize
 
-
 One of the important parameters that can be customized is how much
 memory Scheme uses and how that memory is used.  Scheme uses four kinds
 of memory:
@@ -1558,11 +1543,13 @@ of memory:
 @itemize @bullet
 @item
 A @dfn{stack} which is used for recursive procedure calls,
+
 @item
 A @dfn{heap} which is used for dynamically allocated objects, like @samp{cons}
 cells and strings.
 Storage used for objects in the heap which become unreferenced is
 eventually reclaimed by @dfn{garbage collection}.
+
 @item
 A @dfn{constant space}, which is used for allocated objects, like the
 heap.
@@ -1570,6 +1557,7 @@ Unlike the heap, storage used for objects in constant space is not
 reclaimed by garbage collection.
 Constant space is used for objects that are essentially permanent, like
 procedures from the runtime system.
+
 @item
 An amount of extra storage which is used by the Microcode (the part
 of the system that is implemented in C).
@@ -1618,17 +1606,14 @@ Scheme accepts the command-line options detailed in the following
 sections.  The options may appear in any order, with the restriction
 that the microcode options must appear before the runtime options, and
 the runtime options must appear before any other arguments on the
-command line.
-(At present, any arguments other than these options will generate a
-warning message when Scheme starts.  In the future, there will be an
-advertised mechanism by which the extra arguments can be handled by user
-code.)
-
+command line.  (At present, any arguments other than these options will
+generate a warning message when Scheme starts.  In the future, there
+will be an advertised mechanism by which the extra arguments can be
+handled by user code.)
 
 These are the microcode options:
 
 @table @code
-
 @item -band @var{filename}
 @findex -band
 @findex MITSCHEME_BAND
@@ -1802,14 +1787,12 @@ Specifies that a @dfn{cold load} should be performed, using
 given, a normal load is performed instead.  This option may not be used
 together with the @code{-band} option.  This option is useful only for
 maintainance and development of the MIT Scheme runtime system.
-
 @end table
 
-
 @noindent
-The following options are runtime options.
-They are processed after the microcode options and after runtime, Edwin
-or other band is loaded.
+The following options are runtime options.  They are processed after the
+microcode options and after the runtime, Edwin or some other band is
+loaded.
 
 @table @code
 @item -no-init-file
@@ -1951,7 +1934,6 @@ and if that is not defined, 0 is used, disabling overlapped writes.
 @node Environment Variables, Starting Scheme from Windows 3.1/NT, Command-Line Options, Running Scheme
 @section Environment Variables
 
-
 There are many environment variables that Scheme (and Edwin, etc.) look
 for.  Environment variables that affect the microcode must be defined
 before you start Scheme, but others can be defined or overwritten within
@@ -1966,18 +1948,20 @@ are specific to MIT Scheme.  The environment variables are organised
 according to the parts of MIT Scheme that they affect.
 
 @menu
-* Environment Variables that affect the Microcode::  
-* Environment variables for Bchscheme::  
-* Environment variables for PC versions::  
-* Environment variables that affect the runtime system::  
-* Environment variables that affect Edwin::  
+* Microcode Environment Variables::  
+* Bchscheme Environment Variables::  
+* PC Environment Variables::    
+* Runtime Environment Variables::  
+* Edwin Environment Variables::  
 @end menu
 
-@node Environment Variables that affect the Microcode, Environment variables for Bchscheme,  , Environment Variables
-@subsection Environment Variables that affect the Microcode
+@node Microcode Environment Variables, Bchscheme Environment Variables,  , Environment Variables
+@subsection Environment Variables Affecting the Microcode
+
+These environment variables are referred to by the microcode (the
+executable C programs called @file{scheme} and @file{bchscheme}).
 
 @table @asis
-
 @item @code{MITSCHEME_BAND} (default: @file{runtime.com} on the library path)
 @findex MITSCHEME_BAND
 The initial band to be loaded.  Overridden by @code{-band},
@@ -2052,14 +2036,15 @@ given.  Overridden by @code{-stack}, @code{-large}, @code{-compiler}, or
 The file containing the microcode tables.  Overridden by @code{-utabmd}
 and @code{-utab}.  It is only necessary when re-building
 @file{runtime.com}.
-
 @end table
 
-@node Environment variables for Bchscheme, Environment variables for PC versions, Environment Variables that affect the Microcode, Environment Variables
-@subsection Environment variables for Bchscheme
+@node Bchscheme Environment Variables, PC Environment Variables, Microcode Environment Variables, Environment Variables
+@subsection Environment Variables for Bchscheme
+
+These environment variables are referred to by @file{bchscheme}
+(@emph{not} by @file{scheme}).
 
 @table @asis
-
 @item @code{MITSCHEME_GC_DIRECTORY} (default: @file{/tmp})
 @findex MITSCHEME_GC_DIRECTORY
 The directory where to write gc files.  Overridden by @code{-gc-directory}.
@@ -2108,11 +2093,11 @@ The maximum number of simultaneous write operations.  Overridden by
 @code{-gc-write-overlap}.
 @end table
 
-@node Environment variables for PC versions, Environment variables that affect the runtime system, Environment variables for Bchscheme, Environment Variables
-@subsection Environment variables for PC versions
+@node PC Environment Variables, Runtime Environment Variables, Bchscheme Environment Variables, Environment Variables
+@subsection Environment Variables for the PC
 
-These environment variables only make sense to the Windows,
-Windows NT, or DOS versions of MIT Scheme.
+These environment variables are referred to by the Windows, Windows NT,
+and DOS versions of MIT Scheme.
 
 @table @asis
 @item @code{MITSCHEME_DPMI_EXT_KBD} (default: @samp{false})
@@ -2128,8 +2113,8 @@ Boolean option specifying whether Scheme inserts its own keyboard handling
 routine when @emph{not} running under DPMI or Windows.
 
 @item @code{MITSCHEME_TRAP_ALT_TAB} (default: @samp{false})
+@itemx @code{MITSCHEME_TRAP_ALT_ESCAPE} (default: @samp{false})
 @findex MITSCHEME_TRAP_ALT_TAB
-@item @code{MITSCHEME_TRAP_ALT_ESCAPE} (default: @samp{false})
 @findex MITSCHEME_TRAP_ALT_ESCAPE
 Windows and Windows NT only.
 Boolean option specifying the handling of system command accelerators.
@@ -2155,12 +2140,12 @@ text color.  The color is specified as hex blue, green and red values
 @findex MITSCHEME_BACKGROUND
 Windows and Windows NT only.  A value specifying the window
 background color.  See @code{MITSCHEME_FOREGROUND}.
-
 @end table
 
-@node Environment variables that affect the runtime system, Environment variables that affect Edwin, Environment variables for PC versions, Environment Variables
-@subsection Environment variables that affect the runtime system
+@node Runtime Environment Variables, Edwin Environment Variables, PC Environment Variables, Environment Variables
+@subsection Environment Variables Affecting the Runtime System
 
+These environment variables are referred to by the runtime system.
 
 @table @asis
 @item @code{HOME}
@@ -2173,11 +2158,12 @@ Directory where to look for init files.  E.g.@: @samp{c:\users\joe} or
 @findex TEMP
 Directory for various temporary files.  @code{TEMP} is given preference
 to @code{TMP}.
-
 @end table
 
-@node Environment variables that affect Edwin,  , Environment variables that affect the runtime system, Environment Variables
-@subsection Environment variables that affect Edwin
+@node Edwin Environment Variables,  , Runtime Environment Variables, Environment Variables
+@subsection Environment Variables Affecting Edwin
+
+These environment variables are referred to by Edwin.
 
 @table @asis
 @item @code{EDWIN_BINARY_DIRECTORY} (default: @file{edwin/autoload} on the library path)
@@ -2233,9 +2219,7 @@ video adapter and support software (DOS).  E.g.@: 132.
 @findex MITSCHEME_COLUMNS
 DOS only.  Number of text columns on the screen, depending on the video
 adapter and support software.  E.g.@: 132.
-
 @end table
-
 
 @node Starting Scheme from Windows 3.1/NT, Leaving Scheme, Environment Variables, Running Scheme
 @section Starting Scheme from Windows 3.1/NT
@@ -2271,15 +2255,19 @@ doing this under Windows 3.1 and for personal groups too:
 @itemize @bullet
 @item
 Give the icon an accurate @var{Description}.
+
 @item
 Include absolute pathnames to @code{scheme.exe} and @code{bchscheme.exe}
 in the icon @var{Command line} if these executables are not in a
 directory on the default @code{PATH}.
+
 @item
 Set the icon's @var{Working Directory} to: @code{%HOMEPATH%}
+
 @item
 There are several icons available --- choose one that best represents
 the options given on the command line.
+
 @item
 Specifying a band that contains Edwin is not sufficient to invoke the
 editor.  You also have to put
@@ -2328,7 +2316,6 @@ suspension, this procedure does nothing.  (Calling the @code{quit}
 procedure is analogous to typing Control-@code{Z}, but it allows Scheme
 to respond by typing a prompt when it is unsuspended.)
 
-
 @node REPL, Debugging, Running Scheme, Top
 @chapter The Read-Eval-Print Loop
 
@@ -2371,7 +2358,6 @@ Scheme:
 ; (RESTART 3) => Specify a value to use instead of foo.
 ; (RESTART 2) => Define foo to a given value.
 ; (RESTART 1) => Return to read-eval-print level 1.
-
 
 2 error> 
 @end example
@@ -2421,7 +2407,6 @@ based on that character.  It is not necessary to type @key{RET} after
 Here are the more common options for @kbd{C-c}.
 
 @table @kbd
-
 @item C-c i
 @kindex C-c i
 Ignore the interrupt.  Type this if you made a mistake and didn't
@@ -2540,7 +2525,6 @@ restart methods is different for each @sc{repl}; in the case of an error
 ; (RESTART 2) => Define foo to a given value.
 ; (RESTART 1) => Return to read-eval-print level 1.
 
-
 2 error> 
 @end group
 @end example
@@ -2651,7 +2635,6 @@ that.
 
 @strong{This chapter is out of date and currently under revision}.
 
-
 This chapter is adapted from @cite{Don't Panic: A 6.001 User's Guide to
 the Chipmunk System}, by Arthur A. Gleckler.
 
@@ -2697,7 +2680,6 @@ cause Scheme to respond
 ; (RESTART 2) => Define foo to a given value.
 ; (RESTART 1) => Return to read-eval-print level 1.
 
-
 2 error> 
 @end example
 
@@ -2734,8 +2716,8 @@ appear, be prepared to attack them with all the tools available.
 @menu
 * Subproblems and Reductions::  
 * Debugger::                    
-* Debugging aids::              
-* Advising procedures::         
+* Debugging Aids::              
+* Advising Procedures::         
 @end menu
 
 @node Subproblems and Reductions, Debugger,  , Debugging
@@ -2804,7 +2786,7 @@ subproblem, where they start over at zero.  The best way to get a feel
 for subproblem levels and reduction numbers is to experiment with the
 debugging tools, especially @code{debug}.
 
-@node Debugger, Debugging aids, Subproblems and Reductions, Debugging
+@node Debugger, Debugging Aids, Subproblems and Reductions, Debugging
 @section The Debugger
 
 @cindex debugger
@@ -2838,7 +2820,6 @@ starting the debugger:
 ; (RESTART 2) => Define fob to a given value.
 ; (RESTART 1) => Return to read-eval-print level 1.
 
-
 2 error> (debug)
 
 There are 6 subproblems on the stack.
@@ -2867,15 +2848,12 @@ evaluated by the interpreter.  The debugger informs us that the
 execution history has recorded some information for this subproblem,
 specifically a description of one reduction.
 
-
-
-@node Debugging aids, Advising procedures, Debugger, Debugging
-@section Debugging aids
+@node Debugging Aids, Advising Procedures, Debugger, Debugging
+@section Debugging Aids
 
 An important step in debugging is to locate the piece of code from which
 the error is signalled.  The Scheme debugger contains a history examiner
 and an environment examiner to aid the user in locating a bug.
-
 
 @deffn {special form+} bkpt message irritant
 Sets a breakpoint.  When the breakpoint is encountered, @var{message}
@@ -2921,14 +2899,13 @@ lets the user examine the environment of definition of the procedure.
 This is useful for debugging procedure arguments and values.
 @end deffn
 
-@node Advising procedures,  , Debugging aids, Debugging
-@section Advising procedures
+@node Advising Procedures,  , Debugging Aids, Debugging
+@section Advising Procedures
 
 Giving advice to procedures is a powerful debugging technique.
 @code{trace} and @code{break} are useful examples of advice-giving
 procedures.
 Note that the advice system only works for interpreted procedures.
-
 
 @deffn {procedure+} trace-entry proc
 Causes an informative message to be printed whenever the procedure
@@ -3379,8 +3356,8 @@ Several declarations can be added to your programs to help @code{cf} and
 @menu
 * Standard Names::              
 * In-line Coding::              
-* Operator Replacement::        
-* Operator Reduction::          
+* Replacement of Operators::    
+* Reduction of Operators::      
 @end menu
 
 @node Standard Names, In-line Coding,  , Declarations
@@ -3417,7 +3394,7 @@ following expression:
       (->environment '(scode-optimizer)))
 @end lisp
 
-@node In-line Coding, Operator Replacement, Standard Names, Declarations
+@node In-line Coding, Replacement of Operators, Standard Names, Declarations
 @subsection In-line Coding
 
 Another useful facility is the ability to in-line code procedure
@@ -3531,8 +3508,7 @@ Finally, remove the @code{((lambda () @dots{}))} to produce
 (vector-ref (vector-ref (car baz) (cdr baz)) 3)
 @end lisp
 
-
-@node Operator Replacement, Operator Reduction, In-line Coding, Declarations
+@node Replacement of Operators, Reduction of Operators, In-line Coding, Declarations
 @subsection Operator Replacement
 
 The @code{replace-operator} declaration is provided to inform the
@@ -3565,7 +3541,6 @@ respectively.  All the other cases are not expanded but are handled by the
 original, general @code{map} procedure, which is less efficient because
 it must handle a variable number of arguments.
 
-
 @deffn {declaration+} replace-operator name ...
 
 The syntax of this declaration is
@@ -3593,7 +3568,6 @@ following symbols:  @code{any}, @code{else} or @code{otherwise}.
 expressions in one of these forms:
 
 @table @code
-
 @item '@var{constant}
 A constant.
 
@@ -3635,7 +3609,7 @@ replaced.
 @end itemize
 @end deffn
 
-@node Operator Reduction,  , Operator Replacement, Declarations
+@node Reduction of Operators,  , Replacement of Operators, Declarations
 @subsection Operator Reduction
 
 @findex reduce-operator
@@ -3717,7 +3691,6 @@ informs the compiler that certain optimizations can be performed on
 calls to @code{+} by replacing them with calls to @code{%+}.  You should
 provide a definition of @code{%+} as well, although it is not required.
 
-
 @noindent
 Declaration:
 
@@ -3737,9 +3710,6 @@ Replacements:
 (apply @var{f}) @expansion{} (apply @var{f})
 (apply) @expansion{} (apply)
 @end lisp
-
-
-
 
 @deffn {declaration+} reduce-operator name ...
 The general format of the declaration is (brackets denote optional
@@ -3761,7 +3731,6 @@ elements):
 where
 
 @itemize @bullet
-
 @item
 @var{n} and @var{m} are non-negative integers.
 
@@ -3773,7 +3742,6 @@ where
 expressions in one of these forms:
 
 @table @code
-
 @item '@var{constant}
 A constant.
 
@@ -3802,7 +3770,6 @@ A global variable.
 The meaning of these fields is:
 
 @itemize @bullet
-
 @item
 @var{name} is the name of the n-ary operation to be reduced.
 
@@ -3819,7 +3786,6 @@ The @code{null-value} option specifies a value to use in the following
 cases:
 
 @table @code
-
 @item none
 @itemx empty
 When no arguments are supplied to @var{name}, @var{value} is returned.
@@ -3855,7 +3821,6 @@ the wrapper.  They are passed to the left of the reduction.
 @item
 The maximum option specifies that calls with more than @var{m} arguments
 should not be reduced.
-
 @end itemize
 @end deffn
 
@@ -3919,7 +3884,6 @@ commands for evaluating expressions (do @kbd{C-h m} in any
 @code{scheme-mode} buffer for the most up-to-date information):
 
 @table @kbd
-
 @item @key{ESC} o
 @kindex @key{ESC} o
 @findex xscheme-send-buffer
@@ -3960,7 +3924,6 @@ Yanks the most recently evaluated expression, placing it at point
 The following commands provide interrupt capability:
 
 @table @kbd
-
 @item C-c C-c
 @kindex C-c C-c
 @findex xscheme-send-control-g-interrupt
@@ -4004,7 +3967,7 @@ customization of Edwin.
 @menu
 * Starting Edwin::              
 * Leaving Edwin::               
-* Last resorts::                
+* Last Resorts::                
 * Comparison of Edwin 3.82 to Emacs 18.57::  
 @end menu
 
@@ -4067,7 +4030,6 @@ This variable controls the initialization of Edwin.  The following
 values are defined:
 
 @table @code
-
 @item (console)
 This says to run Edwin on Scheme's console, or in unix terminology, the
 standard input and output.  If the console is not a terminal device, or
@@ -4092,14 +4054,12 @@ signals an error if neither the console nor the X display is usable.
 @end table
 @end defvr
 
-
-@node Leaving Edwin, Last resorts, Starting Edwin, Edwin
+@node Leaving Edwin, Last Resorts, Starting Edwin, Edwin
 @section Leaving Edwin
 
 Once Edwin has been entered, it can be exited in the following ways:
 
 @table @kbd
-
 @item C-x z
 @kindex C-x z
 @findex suspend-edwin
@@ -4133,10 +4093,8 @@ system's command interpreter, and the Scheme process is terminated.
 This command is identical to the @kbd{C-x C-c} command of GNU Emacs.
 @end table
 
-
-
-@node Last resorts, Comparison of Edwin 3.82 to Emacs 18.57, Leaving Edwin, Edwin
-@section Last resorts
+@node Last Resorts, Comparison of Edwin 3.82 to Emacs 18.57, Leaving Edwin, Edwin
+@section Last Resorts
 
 When Scheme exits abnormally it tries to save any unsaved Edwin buffers.
 The buffers are saved in an auto-save file in case the original is more
@@ -4145,7 +4103,6 @@ valuable than the unsaved version.  You can use the editor command
 auto-save files are named so: under unix, @file{foo.scm} will be saved
 as @file{#foo.scm#}; on PCs it will be saved as @file{foo.s00}, a backup
 file with version @samp{00} (which is never used as an actual version).
-
 
 The following Scheme procedures are useful for recovering from bugs in
 Edwin's implementation.  All of them are designed for use when Edwin is
@@ -4176,25 +4133,24 @@ Edwin's internal display data structures to get into an inconsistent
 state that prevents Edwin from running.
 @end deffn
 
-@node Comparison of Edwin 3.82 to Emacs 18.57,  , Last resorts, Edwin
+@node Comparison of Edwin 3.82 to Emacs 18.57,  , Last Resorts, Edwin
 @section Comparison of Edwin 3.82 to Emacs 18.57
 
 This section documents all known differences between Edwin 3.82 and
-Emacs 18.57.  All page numbers in this section refer to the Emacs
-version 18 manual.
-
+Emacs 18.57.  A reference to a ``documented'' feature of Emacs means
+that the feature is documented in the GNU Emacs version 18 manual.
 
 @menu
-* Incompatibilities::           
-* Deficiencies::                
-* Subsystems missing from Edwin::  
-* Documented Emacs commands missing from Edwin::  
-* Documented Emacs variables missing from Edwin::  
-* Variables that should be per-buffer in Edwin::  
+* Incompatibilities of Edwin::  
+* Deficiencies of Edwin::       
+* Subsystems Missing from Edwin::  
+* Commands Missing from Edwin::  
+* Variables Missing from Edwin::  
+* Per-Buffer Variables::        
 * Edwin Bugs::                  
 @end menu
 
-@node Incompatibilities, Deficiencies,  , Comparison of Edwin 3.82 to Emacs 18.57
+@node Incompatibilities of Edwin, Deficiencies of Edwin,  , Comparison of Edwin 3.82 to Emacs 18.57
 @subsection Incompatibilities
 
 These are differences in design, unlikely to be `fixed'.
@@ -4267,7 +4223,7 @@ Variable @code{text-mode-hook} is an event distributor rather than a
 procedure of no arguments.
 @end itemize
 
-@node Deficiencies, Subsystems missing from Edwin, Incompatibilities, Comparison of Edwin 3.82 to Emacs 18.57
+@node Deficiencies of Edwin, Subsystems Missing from Edwin, Incompatibilities of Edwin, Comparison of Edwin 3.82 to Emacs 18.57
 @subsection Deficiencies
 
 Deficiencies are shortcomings of Edwin that are likely to be fixed.
@@ -4317,28 +4273,40 @@ y   @r{copy marked files}
 Edwin does not have the notion of ``novice''.
 @end itemize
 
-@node Subsystems missing from Edwin, Documented Emacs commands missing from Edwin, Deficiencies, Comparison of Edwin 3.82 to Emacs 18.57
-@subsection Subsystems missing from Edwin
+@node Subsystems Missing from Edwin, Commands Missing from Edwin, Deficiencies of Edwin, Comparison of Edwin 3.82 to Emacs 18.57
+@subsection Missing Subsystems
+
+The following documented subsystems are implemented by Emacs but not by
+Edwin.
 
 @itemize @bullet
 @item
-abbrev mode (edwin has dynamic abbreviations)
+abbrev mode (edwin has dynamic abbreviations
+
 @item
-emulation modes: edt, vi, vip
+emulation modes: edt, vi, vi
+
 @item
-file locks
+file lock
+
 @item
-language modes: emacs-lisp, fortran, lisp, modula-2, prolog
+language modes: emacs-lisp, fortran, lisp, modula-2, prolo
+
 @item
-overwrite mode
+overwrite mod
+
 @item
-picture mode
+picture mod
+
 @item
-slow terminal incremental search
+slow terminal incremental searc
+
 @item
-spelling
+spellin
+
 @item
-tab stops
+tab stop
+
 @item
 text formatter modes: nroff, scribe, tex, latex
 @end itemize
@@ -4385,11 +4353,14 @@ The ones that are known to work are marked with an asterisk (*),
 although for some of them variables have to be set appropriately
 before use (e.g.@: @code{info-directory} for info).
 
+@node Commands Missing from Edwin, Variables Missing from Edwin, Subsystems Missing from Edwin, Comparison of Edwin 3.82 to Emacs 18.57
+@subsection Missing Commands
 
-@node Documented Emacs commands missing from Edwin, Documented Emacs variables missing from Edwin, Subsystems missing from Edwin, Comparison of Edwin 3.82 to Emacs 18.57
-@subsection Documented Emacs commands missing from Edwin
-
-Here is a list of Emacs commands that are not implemented by Edwin:
+These commands are implemented by Emacs but not by Edwin.  The commands
+marked with an asterisk are implemented by the unix version of Edwin but
+not by the PC version.  Some of the asterisked comands can work in the
+PC version but the code to implement them is not loaded in order to save
+space; others are unix-specific and are not implemented on the PC.
 
 @example
   abbrev-mode
@@ -4500,12 +4471,12 @@ Here is a list of Emacs commands that are not implemented by Edwin:
   zap-to-char
 @end example
 
-The commands marked with an asterisk are available under Unix, but not
-under DOS.  Some of them can be explicitly loaded under DOS.
+@node Variables Missing from Edwin, Per-Buffer Variables, Commands Missing from Edwin, Comparison of Edwin 3.82 to Emacs 18.57
+@subsection Missing Variables
 
-@node Documented Emacs variables missing from Edwin, Variables that should be per-buffer in Edwin, Documented Emacs commands missing from Edwin, Comparison of Edwin 3.82 to Emacs 18.57
-@subsection Documented Emacs variables missing from Edwin
-
+These documented variables are implemented by Emacs but not Edwin.  The
+variables marked with an asterisk are implemented by the unix version of
+Edwin, but not by the PC version.
 
 @example
   abbrev-all-caps
@@ -4546,12 +4517,10 @@ under DOS.  Some of them can be explicitly loaded under DOS.
   visible-bell
 @end example
 
-@noindent
-The variables marked with an asterisk are available under Unix, but
-not under DOS.
+@node Per-Buffer Variables, Edwin Bugs, Variables Missing from Edwin, Comparison of Edwin 3.82 to Emacs 18.57
+@subsection Per-Buffer Variables
 
-@node Variables that should be per-buffer in Edwin, Edwin Bugs, Documented Emacs variables missing from Edwin, Comparison of Edwin 3.82 to Emacs 18.57
-@subsection Variables that should be per-buffer in Edwin
+These documented variables are per-buffer in Emacs but not in Edwin.
 
 @example
 abbrev-mode
@@ -4575,7 +4544,7 @@ selective-display-ellipses
 shell-prompt-pattern
 @end example
 
-@node Edwin Bugs,  , Variables that should be per-buffer in Edwin, Comparison of Edwin 3.82 to Emacs 18.57
+@node Edwin Bugs,  , Per-Buffer Variables, Comparison of Edwin 3.82 to Emacs 18.57
 @subsection Edwin Bugs
 
 Incorrect behavior of Edwin that will be fixed:
@@ -4601,7 +4570,6 @@ the matching delimiter.
 @kbd{M-x indent-for-comment} shouldn't reindent existing comment in
 column zero.
 @end itemize
-
 
 @node Concept Index,  , Edwin, Top
 @unnumbered Concept Index
