@@ -1,6 +1,6 @@
 #!/bin/csh -f
 
-# $Id: rebuild-7.4,v 1.14 1995/07/27 18:30:17 adams Exp $
+# $Id: rebuild-7.4,v 1.15 1995/11/28 16:49:21 adams Exp $
 
 # Arguments: runtimeversion compilerversion edwinversion 6001version
 
@@ -144,8 +144,8 @@ endif
 echo "### cd $root/runtime"
 cd $root/runtime
 
-echo "### scheme -compiler -no-init-file"
-$scheme -compiler -heap 2000 -no-init-file <$script
+echo "### $scheme -compiler -heap 2000 -no-init-file"
+          $scheme -compiler -heap 2000 -no-init-file <$script
 
 set result="$status"
 rm -f $script
@@ -163,8 +163,8 @@ if ("$runtime" != "") then
   echo "### cd $root/runtime"
   cd $root/runtime
   rm -f ../tmp/runtime.com
-  echo "### scheme -large -fasl make.com -no-init-file"
-  $scheme -large -fasl make.com -no-init-file <<*END*
+  echo "### $scheme -large -fasl make.com -no-init-file"
+            $scheme -large -fasl make.com -no-init-file <<*END*
 (begin
   (disk-save "../tmp/runtime.com")
   (write-line '(saved runtime band))
@@ -189,8 +189,8 @@ if ("$complr" != "") then
   echo "### cd $root/sf"
   cd $root/sf
   rm -f ../tmp/complr.com
-  echo "### scheme -large $runbandarg -no-init-file"
-  $scheme -large $runbandarg -no-init-file <<*END*
+  echo "### $scheme -large $runbandarg -no-init-file"
+            $scheme -large $runbandarg -no-init-file <<*END*
 (begin
   (load "make.com")
   (cd "../compiler")
@@ -218,8 +218,8 @@ if ("$edwin" != "") then
   echo "### cd $root/edwin"
   cd $root/edwin
   rm -f ../tmp/edwin.com
-  echo "### scheme -large $runbandarg -no-init-file"
-  $scheme -large $runbandarg -no-init-file <<*END*
+  echo "### $scheme -large $runbandarg -no-init-file"
+            $scheme -large $runbandarg -no-init-file <<*END*
 (begin
   (load "make.com")
   (disk-save "../tmp/edwin.com")
@@ -243,8 +243,8 @@ if (("$edwin" != "") || ("$complr" != "")) then
   echo "### cd $root/edwin"
   cd $root/edwin
   rm -f ../tmp/c+e.com
-  echo "### scheme -constant 2000 -heap 2000 -compiler $cbandarg -no-init-file"
-  scheme -constant 2000 -heap 2000 -compiler $cbandarg -no-init-file <<*END*
+  echo "### $scheme -constant 2000 -heap 2000 -compiler $cbandarg -no-init-file"
+            $scheme -constant 2000 -heap 2000 -compiler $cbandarg -no-init-file <<*END*
 (begin
   (load "make.com")
   (disk-save "../tmp/c+e.com")
@@ -268,8 +268,8 @@ if ("$student" != "") then
   echo "### cd $root/runtime-check"
   cd $root/runtime-check
   rm -f ../tmp/6001.com
-  echo "### scheme -large$student_constant -fasl make.com -no-init-file"
-  $scheme -large$student_constant -fasl make.com -no-init-file <<*END*
+  echo "### $scheme -large$student_constant -fasl make.com -no-init-file"
+            $scheme -large$student_constant -fasl make.com -no-init-file <<*END*
 (begin
   (cd "../edwin")
   (load "make.com")
