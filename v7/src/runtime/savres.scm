@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: savres.scm,v 14.30 1999/01/02 06:11:34 cph Exp $
+$Id: savres.scm,v 14.31 1999/04/07 04:09:06 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -49,7 +49,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (lambda (filename #!optional identify)
     (let ((identify
 	   (if (default-object? identify) world-identification identify))
-	  (time (get-decoded-time)))
+	  (time (local-decoded-time)))
       (gc-clean)
       (save-image
        filename

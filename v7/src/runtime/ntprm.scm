@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.30 1999/03/26 01:55:48 cph Exp $
+$Id: ntprm.scm,v 1.31 1999/04/07 04:09:03 cph Exp $
 
 Copyright (c) 1992-1999 Massachusetts Institute of Technology
 
@@ -115,11 +115,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      (or access-time (file-access-time filename))
      (or modification-time (file-modification-time filename)))))
 
-(define (decode-file-time time)
-  (decode-universal-time (file-time->universal-time time)))
+(define (file-time->local-decoded-time time)
+  (universal-time->local-decoded-time (file-time->universal-time time)))
 
-(define (encode-file-time dt)
-  (universal-time->file-time (encode-universal-time dt)))
+(define (file-time->global-decoded-time time)
+  (universal-time->global-decoded-time (file-time->universal-time time)))
+
+(define (decoded-time->file-time dt)
+  (universal-time->file-time (decoded-time->universal-time dt)))
+
+(define decode-file-time file-time->local-decoded-time)
+(define encode-file-time decoded-time->file-time)
 
 (define (file-time->universal-time time) (+ time epoch))
 (define (universal-time->file-time time) (- time epoch))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.17 1999/01/02 06:11:34 cph Exp $
+$Id: datime.scm,v 14.18 1999/04/07 04:09:01 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -48,42 +48,88 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (daylight-savings-time #f read-only #t)
   (zone #f))
 
-(define (make-decoded-time second minute hour day month year)
-  (let ((dt
-	 (let ((limit
-		(lambda (low number high)
-		  (cond ((< number low) low)
-			((> number high) high)
-			(else number)))))
-	   (let ((month (limit 1 month 12)))
-	     (%make-decoded-time (limit 0 second 59)
-				 (limit 0 minute 59)
-				 (limit 0 hour 23)
-				 (limit 1 day (month/max-days month))
-				 month
-				 (if (< year 0) 0 year)
-				 0
-				 -1
-				 #f)))))
-    ;; These calls fill in the other fields of the structure.
-    ;; ENCODE-TIME can easily signal an error, for example on unix
-    ;; machines when the time is prior to 1970.
-    (let ((t (ignore-errors (lambda () ((ucode-primitive encode-time 1) dt)))))
-      (if (condition? t)
-	  (set-decoded-time/day-of-week! dt #f)
-	  ((ucode-primitive decode-time 2) dt t)))
-    (if (decoded-time/zone dt)
-	(set-decoded-time/zone! dt (/ (decoded-time/zone dt) 3600)))
-    dt))
+(define (make-decoded-time second minute hour day month year #!optional zone)
+  (check-decoded-time-args second minute hour day month year
+			   'MAKE-DECODED-TIME)
+  (let ((zone (if (default-object? zone) #f zone)))
+    (if (and zone (not (time-zone? zone)))
+	(error:bad-range-argument zone "time zone" 'MAKE-DECODED-TIME))
+    (if zone
+	(%make-decoded-time second minute hour day month
+			    (compute-day-of-week day month year)
+			    0
+			    zone)
+	(let ((dt (%make-decoded-time second minute hour day month 0 -1 #f)))
+	  ;; These calls fill in the other fields of the structure.
+	  ;; ENCODE-TIME can easily signal an error, for example on
+	  ;; unix machines when the time is prior to 1970.
+	  (let ((t (ignore-errors
+		    (lambda () ((ucode-primitive encode-time 1) dt)))))
+	    (if (condition? t)
+		(set-decoded-time/day-of-week!
+		 dt
+		 (compute-day-of-week day month year))
+		((ucode-primitive decode-time 2) dt t)))
+	  (if (decoded-time/zone dt)
+	      (set-decoded-time/zone! dt (/ (decoded-time/zone dt) 3600)))
+	  dt))))
+
+(define (check-decoded-time-args second minute hour day month year procedure)
+  (let ((check-type
+	 (lambda (object)
+	   (if (not (exact-nonnegative-integer? object))
+	       (error:wrong-type-argument object
+					  "exact non-negative integer"
+					  procedure)))))
+    (let ((check-range
+	   (lambda (object min max)
+	     (check-type object)
+	     (if (not (<= min object max))
+		 (error:bad-range-argument object procedure)))))
+      (check-type year)
+      (check-range month 1 12)
+      (check-range day 1 (month/max-days month))
+      (check-range hour 0 23)
+      (check-range minute 0 59)
+      (check-range second 0 59))))
 
-(define (decode-universal-time time)
+(define (compute-day-of-week day month year)
+  ;; This implements Zeller's Congruence.
+  (modulo (+ day
+	     (let ((y (remainder year 100)))
+	       (+ y
+		  (floor (/ y 4))))
+	     (let ((c (quotient year 100)))
+	       (- (floor (/ c 4))
+		  (* 2 c)))
+	     (let ((m (modulo (- month 2) 12)))
+	       (- (floor (/ (- (* 13 m) 1) 5))
+		  (* (floor (/ m 11))
+		     (if (and (= 0 (remainder year 4))
+			      (or (not (= 0 (remainder year 100)))
+				  (= 0 (remainder year 400))))
+			 2
+			 1))))
+	     ;; This -1 adjusts so that 0 corresponds to Monday.
+	     ;; Normally, 0 corresponds to Sunday.
+	     -1)
+	  7))
+
+(define (universal-time->local-decoded-time time)
   (let ((result (allocate-decoded-time)))
     ((ucode-primitive decode-time 2) result (- time epoch))
     (if (decoded-time/zone result)
 	(set-decoded-time/zone! result (/ (decoded-time/zone result) 3600)))
     result))
 
-(define (encode-universal-time dt)
+(define (universal-time->global-decoded-time time)
+  (let ((result (allocate-decoded-time)))
+    ((ucode-primitive decode-utc 2) result (- time epoch))
+    (if (decoded-time/zone result)
+	(set-decoded-time/zone! result (/ (decoded-time/zone result) 3600)))
+    result))
+
+(define (decoded-time->universal-time dt)
   (+ ((ucode-primitive encode-time 1)
       (if (decoded-time/zone dt)
 	  (let ((dt* (copy-decoded-time dt)))
@@ -97,8 +143,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define epoch 2208988800)
 
-(define (get-decoded-time)
-  (decode-universal-time (get-universal-time)))
+(define (local-decoded-time)
+  (universal-time->local-decoded-time (get-universal-time)))
+
+(define (global-decoded-time)
+  (universal-time->global-decoded-time (get-universal-time)))
 
 (define (time-zone? object)
   (and (number? object)
@@ -135,11 +184,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		   " "
 		   (if (< hour 12) "AM" "PM"))))
 
-(define (universal-time->string time)
-  (decoded-time->string (decode-universal-time time)))
+(define (universal-time->local-time-string time)
+  (decoded-time->string (universal-time->local-decoded-time time)))
 
-(define (file-time->string time)
-  (decoded-time->string (decode-file-time time)))
+(define (universal-time->global-time-string time)
+  (decoded-time->string (universal-time->global-decoded-time time)))
+
+(define (file-time->local-time-string time)
+  (decoded-time->string (file-time->local-decoded-time time)))
+
+(define (file-time->global-time-string time)
+  (decoded-time->string (file-time->global-decoded-time time)))
 
 (define (decoded-time->string dt)
   ;; The returned string is in the format specified by RFC 822,
@@ -171,6 +226,22 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			       (- zone 1)
 			       zone)))
 			 "")))))
+
+(define (string->decoded-time string)
+  ;; STRING must be in RFC-822 format.
+  (let ((tokens (burst-string string #\space)))
+    (if (not (fix:= 6 (length tokens)))
+	(error "Ill-formed RFC-822 time string:" string))
+    (let ((tokens (burst-string (list-ref tokens 4) #\:)))
+      (if (not (fix:= 3 (length tokens)))
+	  (error "Malformed time:" string))
+      (make-decoded-time (string->number (caddr tokens))
+			 (string->number (cadr tokens))
+			 (string->number (car tokens))
+			 (string->number (list-ref tokens 1))
+			 (short-string->month (list-ref tokens 2))
+			 (string->number (list-ref tokens 3))
+			 (string->time-zone (list-ref tokens 5))))))
 
 (define (time-zone->string tz)
   (if (not (time-zone? tz))
@@ -182,15 +253,39 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		     (d2 (integer-divide-quotient qr))
 		     (d2 (integer-divide-remainder qr))))))
 
+(define (string->time-zone string)
+  (let ((n (string->number string)))
+    (if (not (and (exact-nonnegative-integer? n)
+		  (<= -2400 n 2400)))
+	(error "Malformed time zone:" string))
+    (let ((qr (integer-divide (abs n) 100)))
+      (let ((hours (integer-divide-quotient qr))
+	    (minutes (integer-divide-remainder qr)))
+	(if (not (<= 0 minutes 59))
+	    (error "Malformed time zone:" string))
+	(let ((hours (+ hours (/ minutes 60))))
+	  (if (< n 0)
+	      hours
+	      (- hours)))))))
+
 (define (month/max-days month)
   (guarantee-month month 'MONTH/MAX-DAYS)
   (vector-ref '#(31 29 31 30 31 30 31 31 30 31 30 31) (- month 1)))
 
 (define (month/short-string month)
   (guarantee-month month 'MONTH/SHORT-STRING)
-  (vector-ref '#("Jan" "Feb" "Mar" "Apr" "May" "Jun"
-		       "Jul" "Aug" "Sep" "Oct" "Nov" "Dec")
-	      (- month 1)))
+  (vector-ref month/short-strings (- month 1)))
+
+(define (short-string->month string)
+  (let loop ((index 0))
+    (if (fix:= index 12)
+	(error "Unknown month designation:" string))
+    (if (string-ci=? string (vector-ref month/short-strings index))
+	(fix:+ index 1)
+	(loop (fix:+ index 1)))))
+
+(define month/short-strings
+  '#("Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"))
 
 (define (month/long-string month)
   (guarantee-month month 'MONTH/LONG-STRING)
@@ -220,3 +315,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (error:wrong-type-argument day "day-of-week integer" name))
   (if (not (<= 0 day 6))
       (error:bad-range-argument day name)))
+
+;; Upwards compatibility
+(define decode-universal-time universal-time->local-decoded-time)
+(define encode-universal-time decoded-time->universal-time)
+(define get-decoded-time local-decoded-time)
+(define universal-time->string universal-time->local-time-string)
+(define file-time->string file-time->local-time-string)

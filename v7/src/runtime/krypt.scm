@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: krypt.scm,v 1.8 1999/01/02 06:11:34 cph Exp $
+$Id: krypt.scm,v 1.9 1999/04/07 04:09:02 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -27,19 +27,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;; This implementation is based on krypt.c, written by Ron Rivest.
 ;;; encrypt and decrypt are compatible with krypt.c.
 
-(define-integrable ts 256)				; Actual table size to use
+(define-integrable ts 256)		; Actual table size to use
 
 (define-structure (krypt-key (conc-name krypt-key/)
-			     (constructor %make-krypt-key))
-  state-table
-  index-i
-  index-j)
-
-(define (make-krypt-key)
-  (%make-krypt-key
-    (make-vector ts)
-    #f
-    #f))
+			     (constructor make-krypt-key ()))
+  (state-table (make-vector ts))
+  (index-i #f)
+  (index-j #f))
 
 (define (rcm-keyinit key)
   (let loop ((i 0))
@@ -89,21 +83,22 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		   (t (vector-ref s i)))
 	      (vector-set! s i (vector-ref s j))
 	      (vector-set! s j t)
-	      (vector-8b-set! buf k
-			      (fix:xor (vector-8b-ref buf k)
-				       (vector-ref s (inc-mod
-						      (fix:+ (fix:1+ (vector-ref s i))
-							     (vector-ref s j)) 
-						      ts))))
+	      (vector-8b-set!
+	       buf k
+	       (fix:xor (vector-8b-ref buf k)
+			(vector-ref s (inc-mod
+				       (fix:+ (fix:1+ (vector-ref s i))
+					      (vector-ref s j)) 
+				       ts))))
 	      (loop (fix:1+ k) i j)))
 	  (begin
 	    (set-krypt-key/index-i! key i)
 	    (set-krypt-key/index-j! key j))))))
-
+
 (define kryptid "This file krypted ")
 
 (define (get-krypt-time-string)
-  (let ((the-time (get-decoded-time)))
+  (let ((the-time (local-decoded-time)))
     (string-append
      (vector-ref '#("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun")
 		 (decoded-time/day-of-week the-time))
@@ -129,12 +124,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (if (fix:< i end-index)
 	  (loop (fix:1+ i) (fix:+ checksum (vector-8b-ref block i)))
 	  (fix:remainder checksum 256)))))
-
+
 (define (encrypt input-string password)
   (let* ((checksum 0)
 	 (header (string-append kryptid (get-krypt-time-string) "\n"))
 	 (hlen (string-length header))
-	 (output-string (make-string (fix:+ 6 (fix:+ hlen (string-length input-string)))))
+	 (output-string
+	  (make-string (fix:+ 6 (fix:+ hlen (string-length input-string)))))
 	 (end-index (fix:- (string-length output-string) ts)))
     (let ((key1 (make-krypt-key)))
       (rcm-keyinit key1)
@@ -144,7 +140,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(rcm key1 5 passwordmac)
 	(substring-move-left! header 0 hlen output-string 0)
 	(substring-move-left! passwordmac 0 5 output-string hlen)
-	(substring-move-left! input-string 0 (string-length input-string) output-string (fix:+ hlen 5)))
+	(substring-move-left! input-string 0 (string-length input-string)
+			      output-string (fix:+ hlen 5)))
       (let loop ((index (fix:+ hlen 5)))
 	(if (fix:< index end-index)
 	    (begin
@@ -152,18 +149,23 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (rcm-iter key1 ts output-string index)
 	      (loop (fix:+ index ts)))
 	    (let ((count (fix:- (string-length output-string) (fix:1+ index))))
-	      (set! checksum (update-checksum checksum output-string index count))
+	      (set! checksum
+		    (update-checksum checksum output-string index count))
 	      (rcm-iter key1 count output-string index))))
       (let ((check-char (ascii->char (modulo (- checksum) ts))))
 	(let ((cc-string (char->string check-char)))
 	  (rcm key1 1 cc-string)
-	  (string-set! output-string (fix:-1+ (string-length output-string)) (string-ref cc-string 0))))
+	  (string-set! output-string
+		       (fix:-1+ (string-length output-string))
+		       (string-ref cc-string 0))))
       output-string)))
 
-(define (decrypt input-string password #!optional password-error checksum-error)
+(define (decrypt input-string password
+		 #!optional password-error checksum-error)
   (let* ((header-length (+ (string-length kryptid) 25))
 	 (header (string-head input-string header-length))
-	 (pwordmac (substring input-string header-length (fix:+ header-length 5)))
+	 (pwordmac
+	  (substring input-string header-length (fix:+ header-length 5)))
 	 (output-string (string-tail input-string (fix:+ header-length 5)))
 	 (end-index (fix:- (string-length output-string) ts))
 	 (key1 (make-krypt-key))
@@ -179,19 +181,23 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(if (fix:< index end-index)
 		    (begin
 		      (rcm-iter key1 ts output-string index)
-		      (set! checksum (update-checksum checksum output-string index ts))
+		      (set! checksum
+			    (update-checksum checksum output-string index ts))
 		      (loop (fix:+ index ts)))
 		    (let ((count (fix:- (string-length output-string) index)))
 		      (rcm-iter key1 count output-string index)
-		      (set! checksum (update-checksum checksum output-string index count)))))
+		      (set! checksum
+			    (update-checksum checksum output-string index
+					     count)))))
 	      (if (not (= (modulo checksum 256) 0))
 		  (if (default-object? checksum-error)
 		      (error "krypt: Checksum error.")
 		      (checksum-error output-string))
 		  (begin
-		    (set-string-length! output-string (fix:-1+ (string-length output-string)))
+		    (set-string-length!
+		     output-string
+		     (fix:-1+ (string-length output-string)))
 		    output-string)))
 	    (if (default-object? password-error)
 		(error "krypt: Password error.")
 		(password-error))))))
-	  

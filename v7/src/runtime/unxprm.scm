@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.54 1999/02/25 22:15:37 cph Exp $
+$Id: unxprm.scm,v 1.55 1999/04/07 04:09:07 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -221,15 +221,20 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define-integrable current-user-name
   (ucode-primitive current-user-name 0))
 
-(define (decode-file-time time)
-  (decode-universal-time (file-time->universal-time time)))
+(define (file-time->local-decoded-time time)
+  (universal-time->local-decoded-time (file-time->universal-time time)))
 
-(define (encode-file-time dt)
-  (universal-time->file-time (encode-universal-time dt)))
+(define (file-time->global-decoded-time time)
+  (universal-time->global-decoded-time (file-time->universal-time time)))
+
+(define (decoded-time->file-time dt)
+  (universal-time->file-time (decoded-time->universal-time dt)))
 
 (define (file-time->universal-time time) (+ time epoch))
 (define (universal-time->file-time time) (- time epoch))
 
+(define decode-file-time file-time->local-decoded-time)
+(define encode-file-time decoded-time->file-time)
 (define unix/user-home-directory user-home-directory)
 (define unix/current-home-directory current-home-directory)
 (define unix/current-user-name current-user-name)

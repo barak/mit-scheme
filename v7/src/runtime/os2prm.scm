@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.41 1999/02/25 22:15:41 cph Exp $
+$Id: os2prm.scm,v 1.42 1999/04/07 04:09:03 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -97,7 +97,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    access-time
    modification-time))
 
-(define (decode-file-time time)
+(define (file-time->local-decoded-time time)
   (let* ((twosecs (remainder time 32)) (time (quotient time 32))
 	 (minutes (remainder time 64)) (time (quotient time 64))
 	 (hours   (remainder time 32)) (time (quotient time 32))
@@ -105,7 +105,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (month   (remainder time 16)) (year (quotient time 16)))
     (make-decoded-time (* twosecs 2) minutes hours day month (+ 1980 year))))
 
-(define (encode-file-time dt)
+(define (file-time->global-decoded-time time)
+  (universal-time->global-decoded-time (file-time->universal-time time)))
+
+(define (decoded-time->file-time dt)
   (let ((f (lambda (i j k) (+ (* i j) k))))
     (f (f (f (f (f (let ((year (decoded-time/year dt)))
 		     (if (< year 1980)
@@ -117,11 +120,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  64 (decoded-time/minute dt))
        32 (quotient (decoded-time/second dt) 2))))
 
+(define decode-file-time file-time->local-decoded-time)
+(define encode-file-time decoded-time->file-time)
+
 (define (file-time->universal-time time)
-  (encode-universal-time (decode-file-time time)))
+  (decoded-time->universal-time (file-time->local-decoded-time time)))
 
 (define (universal-time->file-time time)
-  (encode-file-time (decode-universal-time time)))
+  (decoded-time->file-time (universal-time->local-decoded-time time)))
 
 (define (file-attributes filename)
   ((ucode-primitive file-info 1)
