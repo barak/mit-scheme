@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.240 2001/05/18 00:55:32 cph Exp $
+;;; $Id: imail-top.scm,v 1.241 2001/05/18 01:01:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -661,10 +661,16 @@ With prefix argument N moves backward N messages with these flags."
 ;;;; Message deletion
 
 (define-command imail-delete-message
-  "Delete this message and stay on it."
-  ()
-  (lambda ()
-    (delete-message (selected-message))))
+  "Delete this message and stay on it.
+With prefix argument N, deletes forward N messages,
+ or backward if N is negative.
+Deleted messages stay in the file until the \\[imail-expunge] command is given."
+  "P"
+  (lambda (argument)
+    (if argument
+	(move-relative-undeleted (command-argument-numeric-value argument)
+				 delete-message)
+	(delete-message (selected-message)))))
 
 (define-command imail-delete-forward
   "Delete this message and move to next nondeleted one.
