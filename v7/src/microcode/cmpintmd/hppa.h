@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppa.h,v 1.38 1993/02/06 05:31:18 gjr Exp $
+$Id: hppa.h,v 1.39 1993/02/06 06:03:53 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -377,7 +377,7 @@ DEFUN_VOID (flush_i_cache_initialize)
       fprintf (stderr, "\nflush_i_cache_initialize: uname failed.\n");
       goto loser;
     }
-  model = &sysinfo->machine[0];
+  model = &sysinfo.machine[0];
 #else /* not _HPUX */
   /* Presumably BSD */
   extern char * EXFUN (getenv, (char *));
