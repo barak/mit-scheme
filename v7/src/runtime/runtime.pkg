@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.459 2003/09/24 19:21:55 cph Exp $
+$Id: runtime.pkg,v 14.460 2003/09/30 03:39:10 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -3776,6 +3776,7 @@ USA.
 	  stream->list
 	  stream-accumulate
 	  stream-append
+	  stream-append-map
 	  stream-car
 	  stream-cdr
 	  stream-filter

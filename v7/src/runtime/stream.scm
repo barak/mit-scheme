@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: stream.scm,v 14.15 2003/02/14 18:28:34 cph Exp $
+$Id: stream.scm,v 14.16 2003/09/30 03:39:03 cph Exp $
 
-Copyright (c) 1988-1999, 2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1992,1995 Massachusetts Institute of Technology
+Copyright 1998,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -120,12 +121,11 @@ USA.
 		'()))))
        (do-n
 	(lambda (procedure streams)
-	  (call-with-values (lambda () (split-streams streams 'STREAM-MAP))
-	    (lambda (cars cdrs)
-	      (if (null? cars)
-		  '()
-		  (cons (apply procedure cars)
-			(delay (do-n procedure (map force cdrs))))))))))
+	  (receive (cars cdrs) (split-streams streams 'STREAM-MAP)
+	    (if (pair? cars)
+		(cons-stream (apply procedure cars)
+			     (do-n procedure (map force cdrs)))
+		'())))))
     (lambda (procedure stream . streams)
       (if (null? streams)
 	  ;; Kludge: accept arguments in old order.
@@ -145,13 +145,11 @@ USA.
 		 (error:illegal-stream-element stream 'STREAM-FOR-EACH 1)))))
        (do-n
 	(lambda (procedure streams)
-	  (call-with-values
-	      (lambda () (split-streams streams 'STREAM-FOR-EACH))
-	    (lambda (cars cdrs)
-	      (if (not (null? cars))
-		  (begin
-		    (apply procedure cars)
-		    (do-n procedure (map force cdrs)))))))))
+	  (receive (cars cdrs) (split-streams streams 'STREAM-FOR-EACH)
+	    (if (pair? cars)
+		(begin
+		  (apply procedure cars)
+		  (do-n procedure (map force cdrs))))))))
     (lambda (procedure stream . streams)
       (if (null? streams)
 	  (do-1 procedure stream)
@@ -161,8 +159,7 @@ USA.
   (let ((cars (list 'CARS))
 	(cdrs (list 'CDRS)))
     (let loop ((streams streams) (cars-tail cars) (cdrs-tail cdrs) (n 0))
-      (if (null? streams)
-	  (values (cdr cars) (cdr cdrs))
+      (if (pair? streams)
 	  (let ((stream (car streams)))
 	    (if (stream-pair? stream)
 		(let ((cars-tail* (list (car stream)))
@@ -173,29 +170,56 @@ USA.
 		(begin
 		  (if (not (null? stream))
 		      (error:illegal-stream-element stream operator n))
-		  (values '() '()))))))))
+		  (values '() '()))))
+	  (values (cdr cars) (cdr cdrs))))))
 
-(define stream-append
+(define stream-append-map
   (letrec
-      ((outer-loop
-	(lambda (streams n)
-	  (if (null? (cdr streams))
-	      (car streams)
-	      (inner-loop (car streams) (cdr streams) n))))
-       (inner-loop
-	(lambda (stream streams n)
+      ((do-1
+	(lambda (procedure stream)
 	  (if (stream-pair? stream)
-	      (cons-stream (car stream)
-			   (inner-loop (force (cdr stream)) streams n))
+	      (append (procedure (car stream))
+		      (delay (do-1 procedure (force (cdr stream)))))
 	      (begin
 		(if (not (null? stream))
-		    (error:illegal-stream-element stream 'STREAM-APPEND n))
-		(outer-loop streams (fix:+ n 1)))))))
-    (lambda streams
+		    (error:illegal-stream-element stream 'STREAM-APPEND-MAP 1))
+		'()))))
+       (do-n
+	(lambda (procedure streams)
+	  (receive (cars cdrs) (split-streams streams 'STREAM-APPEND-MAP)
+	    (if (pair? cars)
+		(append (apply procedure cars)
+			(delay (do-n procedure (map force cdrs))))
+		'()))))
+       (append
+	(lambda (s1 s2)
+	  (let loop ((s s1))
+	    (if (stream-pair? s)
+		(cons-stream (car s) (loop (force (cdr s))))
+		(begin
+		  (if (not (null? s))
+		      (error:illegal-stream-element s1 'STREAM-APPEND 0))
+		  (force s2)))))))
+    (lambda (procedure stream . streams)
       (if (null? streams)
-	  '()
-	  (outer-loop streams 0)))))
+	  (do-1 procedure stream)
+	  (do-n procedure (cons stream streams))))))
 
+(define (stream-append . streams)
+  (if (pair? streams)
+      (let outer-loop ((streams streams) (n 0))
+	(if (pair? (cdr streams))
+	    (let inner-loop ((stream (car streams)))
+	      (if (stream-pair? stream)
+		  (cons-stream (car stream)
+			       (inner-loop (force (cdr stream))))
+		  (begin
+		    (if (not (null? stream))
+			(error:illegal-stream-element stream 'STREAM-APPEND n))
+		    (outer-loop (cdr streams) (fix:+ n 1)))))
+	    (car streams)))
+      '()))
+
 (define (stream-accumulate procedure initial stream)
   (if (stream-pair? stream)
       (procedure (car stream)
