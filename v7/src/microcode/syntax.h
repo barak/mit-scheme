@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: syntax.h,v 1.8 1993/06/24 07:09:59 gjr Exp $
+$Id: syntax.h,v 1.9 1996/04/24 01:07:34 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,21 +42,41 @@ GENERAL PUBLIC LICENSE may apply to this code.  A copy of that license
 should have been included along with this file. */
 
 /* CODE is the syntax code for the character. */
-
-#define SYNTAX_ENTRY_CODE(entry) ((enum syntaxcode) ((entry) & 0xFF))
+#define SYNTAX_ENTRY_CODE(entry) ((enum syntaxcode) ((entry) & 0xF))
 
 /* MATCH is a matching delimiter, if the character is a delimiter type.
    For example, if the character is '(', then MATCH is usually ')'. */
-
-#define SYNTAX_ENTRY_MATCH(entry) (((entry) >> 8) & 0xFF)
+#define SYNTAX_ENTRY_MATCH(entry) (((entry) >> 4) & 0xFF)
 
 /* Bits indicating whether this character is part of a two-character
    comment delimiter sequence. */
+#define SYNTAX_ENTRY_COMMENT_BITS(entry) (((entry) >> 12) & 0xFF)
 
-#define SYNTAX_ENTRY_COMSTART_FIRST(entry) (((entry) >> 16) & 1)
-#define SYNTAX_ENTRY_COMSTART_SECOND(entry) (((entry) >> 17) & 1)
-#define SYNTAX_ENTRY_COMEND_FIRST(entry) (((entry) >> 18) & 1)
-#define SYNTAX_ENTRY_COMEND_SECOND(entry) (((entry) >> 19) & 1)
+#define COMSTART_FIRST_A	0x80
+#define COMSTART_FIRST_B	0x40
+#define COMSTART_SECOND_A	0x20
+#define COMSTART_SECOND_B	0x10
+#define COMEND_FIRST_A		0x08
+#define COMEND_FIRST_B		0x04
+#define COMEND_SECOND_A		0x02
+#define COMEND_SECOND_B		0x01
+
+#define COMMENT_STYLE_A		0xAA
+#define COMMENT_STYLE_B		0x55
+#define COMSTART_FIRST		0xC0
+#define COMSTART_SECOND		0x30
+#define COMEND_FIRST		0x0C
+#define COMEND_SECOND		0x03
+
+#define SYNTAX_ENTRY_COMMENT_STYLE(sentry, m)				\
+  ((((SYNTAX_ENTRY_COMMENT_BITS (sentry)) & (m) & COMMENT_STYLE_A)	\
+    ? COMMENT_STYLE_A							\
+    : 0)								\
+   | (((SYNTAX_ENTRY_COMMENT_BITS (sentry)) & (m) & COMMENT_STYLE_B)	\
+      ? COMMENT_STYLE_B							\
+      : 0))
+
+/* PREFIX says to skip over this character if it precedes an s-expression.  */
 #define SYNTAX_ENTRY_PREFIX(entry) (((entry) >> 20) & 1)
 
 enum syntaxcode			/* The possible syntax codes. */
@@ -84,7 +104,6 @@ enum syntaxcode			/* The possible syntax codes. */
 /* This array, indexed by a character, contains the syntax code which that
    character signifies (as a char).  For example,
    ((enum syntaxcode) syntax_spec_code['w']) is syntaxcode_word. */
-
 extern char syntax_spec_code[0200];
 
 #define SYNTAX_TABLE_P(argument)					\

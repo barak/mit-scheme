@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: syntax.c,v 1.22 1993/06/24 07:09:57 gjr Exp $
+$Id: syntax.c,v 1.23 1996/04/24 01:07:24 cph Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -91,12 +91,14 @@ unsigned char syntax_code_spec[13] =
     ' ', '.', 'w', '_', '(', ')', '\'', '\"', '$', '\\', '/', '<', '>'
   };
 
-#define MERGE_PREFIX_BIT(result, bit)					\
+#define MERGE_PREFIX_BIT(bit)						\
 {									\
   if ((result & bit) != 0)						\
     error_bad_range_arg (1);						\
   result |= bit;							\
 }
+
+#define MERGE_COMMENT(bit) MERGE_PREFIX_BIT ((bit) << 12)
 
 DEFINE_PRIMITIVE ("STRING->SYNTAX-ENTRY", Prim_string_to_syntax_entry, 1, 1, 0)
 {
@@ -121,21 +123,37 @@ DEFINE_PRIMITIVE ("STRING->SYNTAX-ENTRY", Prim_string_to_syntax_entry, 1, 1, 0)
   if ((length--) > 0)
     {
       c = (*scan++);
-      if (c != ' ') result |= (c << 8);
+      if (c != ' ') result |= (c << 4);
     }
 
   while ((length--) > 0)
     switch (*scan++)
       {
-      case '1': MERGE_PREFIX_BIT (result, (1 << 16)); break;
-      case '2': MERGE_PREFIX_BIT (result, (1 << 17)); break;
-      case '3': MERGE_PREFIX_BIT (result, (1 << 18)); break;
-      case '4': MERGE_PREFIX_BIT (result, (1 << 19)); break;
-      case 'p': MERGE_PREFIX_BIT (result, (1 << 20)); break;
+      case '1': MERGE_COMMENT (COMSTART_FIRST_B); break;
+      case '2': MERGE_COMMENT (COMSTART_SECOND_B); break;
+      case '3': MERGE_COMMENT (COMEND_FIRST_B); break;
+      case '4': MERGE_COMMENT (COMEND_SECOND_B); break;
+      case '5': MERGE_COMMENT (COMSTART_FIRST_A); break;
+      case '6': MERGE_COMMENT (COMSTART_SECOND_A); break;
+      case '7': MERGE_COMMENT (COMEND_FIRST_A); break;
+      case '8': MERGE_COMMENT (COMEND_SECOND_A); break;
+      case 'b':
+	switch (SYNTAX_ENTRY_CODE (result))
+	  {
+	  case syntaxcode_comment: MERGE_COMMENT (COMSTART_FIRST_B); break;
+	  case syntaxcode_endcomment: MERGE_COMMENT (COMEND_FIRST_B); break;
+	  }
+	break;
+      case 'p': MERGE_PREFIX_BIT (1 << 20); break;
       case ' ': break;
       default: error_bad_range_arg (1);
       }
-
+  if (((SYNTAX_ENTRY_CODE (result)) == syntaxcode_comment)
+      && (! ((SYNTAX_ENTRY_COMMENT_BITS (result)) & COMSTART_FIRST)))
+    MERGE_COMMENT (COMSTART_FIRST_A);
+  if (((SYNTAX_ENTRY_CODE (result)) == syntaxcode_endcomment)
+      && (! ((SYNTAX_ENTRY_COMMENT_BITS (result)) & COMEND_FIRST)))
+    MERGE_COMMENT (COMEND_FIRST_A);
   PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (result));
 }
 
@@ -247,6 +265,11 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
 
 #define SCAN_TO_INDEX(scan)						\
   ((((scan) > gap_start) ? ((scan) - gap_length) : (scan)) - first_char)
+
+#define INDEX_TO_SCAN(index)						\
+  ((((index) + first_char) > gap_start)					\
+   ? (((index) + first_char) + gap_length)				\
+   : ((index) + first_char))
 
 #define WIN_IF(expression) do						\
 {									\
@@ -398,27 +421,47 @@ DEFINE_PRIMITIVE ("SCAN-LIST-FORWARD", Prim_scan_list_forward, 7, 7, 0)
     {
       LOSE_IF_RIGHT_END (start);
       c = (*start);
-      READ_RIGHT(start, sentry);
+      READ_RIGHT (start, sentry);
 
-      if ((! (RIGHT_END_P (start))) &&
-	  (SYNTAX_ENTRY_COMSTART_FIRST (sentry)) &&
-	  (SYNTAX_ENTRY_COMSTART_SECOND (PEEK_RIGHT (start))))
-	{
-	  MOVE_RIGHT (start);
-	  LOSE_IF_RIGHT_END (start);
-	  while (true)
-	    {
-	      READ_RIGHT (start, sentry);
-	      LOSE_IF_RIGHT_END (start);
-	      if ((SYNTAX_ENTRY_COMEND_FIRST (sentry)) &&
-		  (SYNTAX_ENTRY_COMEND_SECOND (PEEK_RIGHT (start))))
-		{
-		  MOVE_RIGHT (start);
-		  break;
-		}
-	    }
-	  continue;
-	}
+      {
+	unsigned int style = 0;
+	if (((SYNTAX_ENTRY_CODE (sentry))) == syntaxcode_comment)
+	  style = (SYNTAX_ENTRY_COMMENT_STYLE (sentry, COMSTART_FIRST));
+	else if (! (RIGHT_END_P (start)))
+	  {
+	    style
+	      = ((SYNTAX_ENTRY_COMMENT_STYLE (sentry, COMSTART_FIRST))
+		 & (SYNTAX_ENTRY_COMMENT_STYLE ((PEEK_RIGHT (start)),
+						COMSTART_SECOND)));
+	    if (style != 0)
+	      MOVE_RIGHT (start);
+	  }
+	if (style != 0)
+	  {
+	    LOSE_IF_RIGHT_END (start);
+	    while (true)
+	      {
+		READ_RIGHT (start, sentry);
+		if ((SYNTAX_ENTRY_COMMENT_BITS (sentry))
+		    & COMEND_FIRST
+		    & style)
+		  {
+		    if (((SYNTAX_ENTRY_CODE (sentry)))
+			== syntaxcode_endcomment)
+		      break;
+		    LOSE_IF_RIGHT_END (start);
+		    if ((SYNTAX_ENTRY_COMMENT_BITS (PEEK_RIGHT (start)))
+			& COMEND_SECOND
+			& style)
+		      {
+			MOVE_RIGHT (start);
+			break;
+		      }
+		  }
+	      }
+	    continue;
+	  }
+      }
       if (SYNTAX_ENTRY_PREFIX (sentry))
 	continue;
 
@@ -453,19 +496,6 @@ DEFINE_PRIMITIVE ("SCAN-LIST-FORWARD", Prim_scan_list_forward, 7, 7, 0)
 		}
 	    }
 
-	case syntaxcode_comment:
-	  if (! ignore_comments)
-	    break;
-	  while (true)
-	    {
-	      LOSE_IF_RIGHT_END (start);
-	      if ((SYNTAX_ENTRY_CODE (PEEK_RIGHT (start))) ==
-		  syntaxcode_endcomment)
-		break;
-	      MOVE_RIGHT (start);
-	    }
-	  break;
-
 	case syntaxcode_math:
 	  if (! sexp_flag)
 	    break;
@@ -509,9 +539,6 @@ DEFINE_PRIMITIVE ("SCAN-LIST-FORWARD", Prim_scan_list_forward, 7, 7, 0)
 	  MOVE_RIGHT (start);
 	  WIN_IF ((depth == 0) && sexp_flag);
 	  break;
-
-	default:
-	  break;
 	}
     }
 }
@@ -533,29 +560,53 @@ DEFINE_PRIMITIVE ("SCAN-LIST-BACKWARD", Prim_scan_list_backward, 7, 7, 0)
 	}
       c = (start[-1]);
       READ_LEFT (start, sentry);
-      if ((! (LEFT_END_P (start))) &&
-	  (SYNTAX_ENTRY_COMEND_SECOND (sentry)) &&
-	  (SYNTAX_ENTRY_COMEND_FIRST (PEEK_LEFT (start))))
-	{
-	  LEFT_QUOTED_P (start, quoted);
-	  if (! quoted)
-	    {
-	      MOVE_LEFT (start);
-	      LOSE_IF_LEFT_END (start);
-	      while (true)
-		{
-		  READ_LEFT (start, sentry);
-		  LOSE_IF_LEFT_END (start);
-		  if ((SYNTAX_ENTRY_COMSTART_SECOND (sentry)) &&
-		      (SYNTAX_ENTRY_COMSTART_FIRST (PEEK_LEFT (start))))
-		    {
-		      MOVE_LEFT (start);
-		      break;
-		    }
-		}
-	      continue;
-	    }
-	}
+
+      {
+	unsigned int style = 0;
+	if (((SYNTAX_ENTRY_CODE (sentry))) == syntaxcode_endcomment)
+	  {
+	    if (ignore_comments)
+	      style = (SYNTAX_ENTRY_COMMENT_STYLE (sentry, COMEND_SECOND));
+	  }
+	else if (! (LEFT_END_P (start)))
+	  {
+	    LEFT_QUOTED_P (start, quoted);
+	    if (!quoted)
+	      {
+		style
+		  = ((SYNTAX_ENTRY_COMMENT_STYLE (sentry, COMEND_SECOND))
+		     & (SYNTAX_ENTRY_COMMENT_STYLE ((PEEK_LEFT (start)),
+						    COMEND_FIRST)));
+		if (style != 0)
+		  MOVE_LEFT (start);
+	      }
+	  }
+	if (style != 0)
+	  {
+	    LOSE_IF_LEFT_END (start);
+	    while (true)
+	      {
+		READ_LEFT (start, sentry);
+		if ((((SYNTAX_ENTRY_CODE (sentry))) == syntaxcode_comment)
+		    && ((SYNTAX_ENTRY_COMMENT_BITS (sentry))
+			& COMSTART_FIRST
+			& style))
+		  break;
+		LOSE_IF_LEFT_END (start);
+		if (((SYNTAX_ENTRY_COMMENT_BITS (sentry))
+		     & COMSTART_SECOND
+		     & style)
+		    && ((SYNTAX_ENTRY_COMMENT_BITS (PEEK_LEFT (start)))
+			& COMSTART_FIRST
+			& style))
+		  {
+		    MOVE_LEFT (start);
+		    break;
+		  }
+	      }
+	    continue;
+	  }
+      }
 
       switch (SYNTAX_ENTRY_CODE (sentry))
 	{
@@ -596,7 +647,7 @@ DEFINE_PRIMITIVE ("SCAN-LIST-BACKWARD", Prim_scan_list_backward, 7, 7, 0)
 	      math_exit = true;
 	    }
 	  break;
-
+
 	case syntaxcode_close:
 	  WIN_IF ((++depth) == 0);
 	  break;
@@ -617,22 +668,6 @@ DEFINE_PRIMITIVE ("SCAN-LIST-BACKWARD", Prim_scan_list_backward, 7, 7, 0)
 	    }
 	  MOVE_LEFT (start);
 	  WIN_IF ((depth == 0) && sexp_flag);
-	  break;
-
-	case syntaxcode_endcomment:
-	  if (! ignore_comments)
-	    break;
-	  while (true)
-	    {
-	      LOSE_IF_LEFT_END (start);
-	      if ((SYNTAX_ENTRY_CODE (PEEK_LEFT (start))) ==
-		  syntaxcode_comment)
-		break;
-	      MOVE_LEFT (start);
-	    }
-	  break;
-
-	default:
 	  break;
 	}
     }
@@ -664,7 +699,14 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
   SCHEME_OBJECT state_argument;
   long depth;
   long in_string;		/* -1 or delimiter character */
-  long in_comment;		/* 0, 1, or 2 */
+  /* Values of in_comment:
+     0 = not in comment
+     1 = in comment
+     2 = found first start of comment
+     3 = found first end of comment */
+  unsigned int in_comment;
+  unsigned int comment_style;
+  unsigned char * comment_start;
   Boolean quoted;
   struct levelstruct level_start[LEVEL_ARRAY_LENGTH];
   struct levelstruct *level;
@@ -691,7 +733,7 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
       quoted = false;
     }
   else if ((VECTOR_P (state_argument)) &&
-	   (VECTOR_LENGTH (state_argument)) == 7)
+	   (VECTOR_LENGTH (state_argument)) == 8)
     {
       SCHEME_OBJECT temp;
 
@@ -714,17 +756,57 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
       if (temp == SHARP_F)
 	in_comment = 0;
       else if (temp == (LONG_TO_UNSIGNED_FIXNUM (1)))
-	in_comment = 1;
+	{
+	  in_comment = 1;
+	  comment_style = COMMENT_STYLE_A;
+	}
       else if (temp == (LONG_TO_UNSIGNED_FIXNUM (2)))
-	in_comment = 2;
+	{
+	  in_comment = 2;
+	  comment_style = COMMENT_STYLE_A;
+	}
+      else if (temp == (LONG_TO_UNSIGNED_FIXNUM (3)))
+	{
+	  in_comment = 3;
+	  comment_style = COMMENT_STYLE_A;
+	}
+      else if (temp == (LONG_TO_UNSIGNED_FIXNUM (4)))
+	{
+	  in_comment = 2;
+	  comment_style = (COMMENT_STYLE_A | COMMENT_STYLE_B);
+	}
+      else if (temp == (LONG_TO_UNSIGNED_FIXNUM (5)))
+	{
+	  in_comment = 1;
+	  comment_style = COMMENT_STYLE_B;
+	}
+      else if (temp == (LONG_TO_UNSIGNED_FIXNUM (6)))
+	{
+	  in_comment = 2;
+	  comment_style = COMMENT_STYLE_B;
+	}
+      else if (temp == (LONG_TO_UNSIGNED_FIXNUM (7)))
+	{
+	  in_comment = 3;
+	  comment_style = COMMENT_STYLE_B;
+	}
       else
 	error_bad_range_arg (7);
 
       quoted = ((VECTOR_REF (state_argument, 3)) != SHARP_F);
-
+      
+      if (in_comment != 0)
+	{
+	  temp = (VECTOR_REF (state_argument, 7));
+	  if (MARK_P (temp))
+	    comment_start = (INDEX_TO_SCAN (MARK_INDEX (temp)));
+	  else if (UNSIGNED_FIXNUM_P (temp))
+	    comment_start = (INDEX_TO_SCAN (UNSIGNED_FIXNUM_TO_LONG (temp)));
+	  else
+	    error_bad_range_arg (7);
+	}
       if ((in_comment != 0) && ((in_string != -1) || (quoted != false)))
 	error_bad_range_arg (7);
-
     }
   else
     error_bad_range_arg (7);
@@ -735,10 +817,12 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 
   /* Enter main loop at place appropiate for initial state. */
 
-  if (in_comment == 1)
-    goto start_in_comment;
-  if (in_comment == 2)
-    goto start_in_comment2;
+  switch (in_comment)
+    {
+    case 1: goto in_comment_1;
+    case 2: goto in_comment_2;
+    case 3: goto in_comment_3;
+    }
   if (quoted)
     {
       quoted = false;
@@ -754,138 +838,143 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
     {
       DONE_IF_RIGHT_END (start);
       c = (*start);
+      comment_start = start;
       READ_RIGHT (start, sentry);
-      if ((! (RIGHT_END_P (start))) &&
-	  (SYNTAX_ENTRY_COMSTART_FIRST (sentry)) &&
-	  (SYNTAX_ENTRY_COMSTART_SECOND (PEEK_RIGHT (start))))
+      comment_style = (SYNTAX_ENTRY_COMMENT_STYLE (sentry, COMSTART_FIRST));
+      if (((SYNTAX_ENTRY_CODE (sentry))) == syntaxcode_comment)
+	goto in_comment_1;
+      if (comment_style == 0)
+	goto not_in_comment;
+
+    in_comment_2:
+      in_comment = 2;
+      DONE_IF_RIGHT_END (start);
+      comment_style
+	&= (SYNTAX_ENTRY_COMMENT_STYLE ((PEEK_RIGHT (start)),
+					COMSTART_SECOND));
+      if (comment_style == 0)
+	goto not_in_comment;
+      MOVE_RIGHT (start);
+
+    in_comment_1:
+      while (true)
 	{
+	  in_comment = 1;
+	  DONE_IF_RIGHT_END (start);
+	  READ_RIGHT (start, sentry);
+	  if ((SYNTAX_ENTRY_COMMENT_BITS (sentry))
+	      & COMEND_FIRST
+	      & comment_style)
+	    {
+	      if (((SYNTAX_ENTRY_CODE (sentry))) == syntaxcode_endcomment)
+		break;
+	    in_comment_3:
+	      in_comment = 3;
+	      DONE_IF_RIGHT_END (start);
+	      if ((SYNTAX_ENTRY_COMMENT_BITS (PEEK_RIGHT (start)))
+		  & COMEND_SECOND
+		  & comment_style)
+		{
+		  MOVE_RIGHT (start);
+		  break;
+		}
+	    }
+	}
+
+    not_in_comment:
+      in_comment = 0;
+      if (SYNTAX_ENTRY_PREFIX (sentry))
+	continue;
+
+      switch (SYNTAX_ENTRY_CODE (sentry))
+	{
+	case syntaxcode_escape:
+	case syntaxcode_charquote:
+	  SEXP_START ();
+	start_quoted:
+	  if (RIGHT_END_P (start))
+	    {
+	      quoted = true;
+	      DONE_IF (true);
+	    }
 	  MOVE_RIGHT (start);
-	  in_comment = 2;
-	start_in_comment2:
+	  goto start_atom;
+
+	case syntaxcode_word:
+	case syntaxcode_symbol:
+	  SEXP_START ();
+	start_atom:
+	  while (! (RIGHT_END_P (start)))
+	    {
+	      switch (SYNTAX_ENTRY_CODE (PEEK_RIGHT (start)))
+		{
+		case syntaxcode_escape:
+		case syntaxcode_charquote:
+		  MOVE_RIGHT (start);
+		  if (RIGHT_END_P (start))
+		    {
+		      quoted = true;
+		      DONE_IF (true);
+		    }
+
+		case syntaxcode_word:
+		case syntaxcode_symbol:
+		  MOVE_RIGHT (start);
+		  break;
+
+		default:
+		  goto end_atom;
+		}
+	    }
+	end_atom:
+	  (level -> previous) = (level -> last);
+	  break;
+
+	case syntaxcode_open:
+	  SEXP_START ();
+	  depth += 1;
+	  level += 1;
+	  if (level == level_end)
+	    error_bad_range_arg (5); /* random error */
+	  (level -> last) = NULL;
+	  (level -> previous) = NULL;
+	  DONE_IF ((--target_depth) == 0);
+	  break;
+
+	case syntaxcode_close:
+	  depth -= 1;
+	  if (level != level_start)
+	    level -= 1;
+	  (level -> previous) = (level -> last);
+	  DONE_IF ((++target_depth) == 0);
+	  break;
+
+	case syntaxcode_string:
+	  SEXP_START ();
+	  in_string = (c);
+	start_in_string:
 	  while (true)
 	    {
 	      DONE_IF_RIGHT_END (start);
+	      if (in_string == (*start))
+		break;
 	      READ_RIGHT (start, sentry);
-	      if (SYNTAX_ENTRY_COMEND_FIRST (sentry))
+	      if (SYNTAX_ENTRY_QUOTE (sentry))
 		{
-		  /* Actually, terminating here is a special case.  There
-		     should be a third value of in_comment to handle it. */
-		  DONE_IF_RIGHT_END (start);
-		  if (SYNTAX_ENTRY_COMEND_SECOND (PEEK_RIGHT (start)))
+		start_quoted_in_string:
+		  if (RIGHT_END_P (start))
 		    {
-		      MOVE_RIGHT (start);
-		      break;
+		      quoted = true;
+		      DONE_IF (true);
 		    }
+		  MOVE_RIGHT (start);
 		}
 	    }
-	  in_comment = 0;
+	  in_string = -1;
+	  (level -> previous) = (level -> last);
+	  MOVE_RIGHT (start);
+	  break;
 	}
-      else if (SYNTAX_ENTRY_PREFIX (sentry))
-	continue;
-      else
-
-	switch (SYNTAX_ENTRY_CODE (sentry))
-	  {
-	  case syntaxcode_escape:
-	  case syntaxcode_charquote:
-	    SEXP_START ();
-	  start_quoted:
-	    if (RIGHT_END_P (start))
-	      {
-		quoted = true;
-		DONE_IF (true);
-	      }
-	    MOVE_RIGHT (start);
-	    goto start_atom;
-
-	  case syntaxcode_word:
-	  case syntaxcode_symbol:
-	    SEXP_START ();
-	  start_atom:
-	    while (! (RIGHT_END_P (start)))
-	      {
-		switch (SYNTAX_ENTRY_CODE (PEEK_RIGHT (start)))
-		  {
-		  case syntaxcode_escape:
-		  case syntaxcode_charquote:
-		    MOVE_RIGHT (start);
-		    if (RIGHT_END_P (start))
-		      {
-			quoted = true;
-			DONE_IF (true);
-		      }
-
-		  case syntaxcode_word:
-		  case syntaxcode_symbol:
-		    MOVE_RIGHT (start);
-		    break;
-
-		  default:
-		    goto end_atom;
-		  }
-	      }
-	  end_atom:
-	    (level -> previous) = (level -> last);
-	    break;
-
-	  case syntaxcode_comment:
-	    in_comment = 1;
-	  start_in_comment:
-	    while (true)
-	      {
-		DONE_IF_RIGHT_END (start);
-		READ_RIGHT (start, sentry);
-		if ((SYNTAX_ENTRY_CODE (sentry)) == syntaxcode_endcomment)
-		  break;
-	      }
-	    in_comment = 0;
-	    break;
-
-	  case syntaxcode_open:
-	    SEXP_START ();
-	    depth += 1;
-	    level += 1;
-	    if (level == level_end)
-	      error_bad_range_arg (5); /* random error */
-	    (level -> last) = NULL;
-	    (level -> previous) = NULL;
-	    DONE_IF ((--target_depth) == 0);
-	    break;
-
-	  case syntaxcode_close:
-	    depth -= 1;
-	    if (level != level_start)
-	      level -= 1;
-	    (level -> previous) = (level -> last);
-	    DONE_IF ((++target_depth) == 0);
-	    break;
-
-	  case syntaxcode_string:
-	    SEXP_START ();
-	    in_string = (c);
-	  start_in_string:
-	    while (true)
-	      {
-		DONE_IF_RIGHT_END (start);
-		if (in_string == (*start))
-		  break;
-		READ_RIGHT (start, sentry);
-		if (SYNTAX_ENTRY_QUOTE (sentry))
-		  {
-		  start_quoted_in_string:
-		    if (RIGHT_END_P (start))
-		      {
-			quoted = true;
-			DONE_IF (true);
-		      }
-		    MOVE_RIGHT (start);
-		  }
-	      }
-	    in_string = -1;
-	    (level -> previous) = (level -> last);
-	    MOVE_RIGHT (start);
-	    break;
-	  }
     }
   /* NOTREACHED */
 
@@ -896,7 +985,7 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
   start -= 1;
 
  done:
-  result = (allocate_marked_vector (TC_VECTOR, 7, true));
+  result = (allocate_marked_vector (TC_VECTOR, 8, true));
   FAST_VECTOR_SET (result, 0, (LONG_TO_FIXNUM (depth)));
   FAST_VECTOR_SET
     (result, 1,
@@ -907,7 +996,13 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
     (result, 2,
      ((in_comment == 0)
       ? SHARP_F
-      : (LONG_TO_UNSIGNED_FIXNUM (in_comment))));
+      : (LONG_TO_UNSIGNED_FIXNUM
+	 (((in_comment == 2)
+	   && (comment_style == (COMMENT_STYLE_A | COMMENT_STYLE_B)))
+	  ? 4
+	  : (comment_style == COMMENT_STYLE_A)
+	  ? in_comment
+	  : (in_comment + 4)))));
   FAST_VECTOR_SET (result, 3, (BOOLEAN_TO_OBJECT (quoted)));
   FAST_VECTOR_SET
     (result, 4,
@@ -922,5 +1017,10 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 	 ((SCAN_TO_INDEX ((level - 1) -> last)) - 1))));
   FAST_VECTOR_SET
     (result, 6, (LONG_TO_UNSIGNED_FIXNUM (SCAN_TO_INDEX (start))));
+  FAST_VECTOR_SET
+    (result, 7,
+     ((in_comment == 0)
+      ? SHARP_F
+      : (LONG_TO_UNSIGNED_FIXNUM (SCAN_TO_INDEX (comment_start)))));
   PRIMITIVE_RETURN (result);
 }
