@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.27 1991/08/27 01:31:00 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.28 1991/08/28 13:19:53 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -277,9 +277,12 @@ MIT in each case. |#
       (dynamic-wind
        (lambda ()
 	 (set! old-stepper-hooks (get-stepper-hooks))
-	 ((ucode-primitive primitive-return-step 2) unspecific null-hooks))
+	 (if old-stepper-hooks
+	     ((ucode-primitive primitive-return-step 2)
+	      unspecific null-hooks)))
        thunk
        (lambda ()
 	 ((ucode-primitive primitive-return-step 2)
 	  unspecific
-	  old-stepper-hooks))))))
+	  (or old-stepper-hooks
+	      null-hooks)))))))
