@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.21 1993/08/01 00:16:01 cph Exp $
+$Id: tterm.scm,v 1.22 1993/08/02 04:22:51 cph Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -187,12 +187,13 @@ MIT in each case. |#
 	 (guarantee-result
 	  (lambda ()
 	    (let ((event (read-event #t)))
-	      (cond ((char? event)
-		     event)
+	      (cond ((char? event) event)
 		    ((process-change-event event)
-		     (make-input-event 'UPDATE update-screens! #f))
-		    (else
-		     (guarantee-result)))))))
+		     => (lambda (flag)
+			  (make-input-event
+			   (if (eq? flag 'FORCE-RETURN) 'RETURN 'UPDATE)
+			   update-screens! #f)))
+		    (else (guarantee-result)))))))
       (values
        (lambda ()			;halt-update?
 	 (or (fix:< start end)
