@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmpars.scm,v 1.1.1.1 1987/06/10 21:22:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmpars.scm,v 1.2 1987/07/08 21:53:25 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -163,5 +163,4 @@ MIT in each case. |#
 			 (caddr var)))))))))))
 
 ;; End of PARSE-RULE environment.
-)
 )

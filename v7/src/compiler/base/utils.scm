@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.89 1987/06/24 04:51:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.90 1987/07/08 21:54:59 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -71,7 +71,7 @@ MIT in each case. |#
 	    'FLUID-LET)
 	   (else prefix)))
     "-"
-    (write-to-string (generate-label-number)))))
+    (number->string (generate-label-number)))))
 
 (define *current-label-number*)
 
@@ -189,11 +189,15 @@ MIT in each case. |#
   (define-scode-operator make-combination)
   (define-scode-operator make-comment)
   (define-scode-operator make-conditional)
+  (define-scode-operator make-declaration)
   (define-scode-operator make-definition)
+  (define-scode-operator make-disjunction)
   (define-scode-operator make-lambda)
   (define-scode-operator make-quotation)
   (define-scode-operator make-sequence)
+  (define-scode-operator make-the-environment)
   (define-scode-operator make-variable)
+  (define-scode-operator make-unassigned-object)
   (define-scode-operator open-block-components)
   (define-scode-operator open-block?)
   (define-scode-operator primitive-procedure?)
@@ -205,9 +209,51 @@ MIT in each case. |#
   (define-scode-operator unbound?-name)
   (define-scode-operator variable-name)
   (define-scode-operator variable?))
+
+;;; Scode constants
 
 (define scode/constant?
   (access scode-constant? system-global-environment))
+
+(define scode/constant?
+  (access scode-constant? system-global-environment))
+
+(define-integrable (scode/constant-value const)
+  const)
+
+(define-integrable (scode/make-constant const)
+  const)
+
+;;; Abolute variables and combinations
+
+(define (scode/make-absolute-reference variable-name)
+  (scode/make-access '() variable-name))
+
+(define (scode/absolute-reference? obj)
+  (and (scode/access? obj)
+       (scode/access-components
+	obj
+	(lambda (environment name)
+	  (null? environment)))))
+
+(define (scode/absolute-reference-name obj)
+  (scode/access-components obj (lambda (ignore name) name)))
+
+(define (scode/make-absolute-combination name operands)
+  (scode/make-combination (scode/make-absolute-reference name) operands))
+
+(define (scode/absolute-combination? obj)
+  (and (scode/combination? obj)
+       (scode/combination-components
+	obj
+	(lambda (op ops)
+	  (scode/absolute-reference? obj)))))
+
+(define (scode/absolute-combination-components obj receiver)
+  (scode/combination-components
+   obj
+   (lambda (op ops)
+     (receiver (scode/absolute-reference-name op) ops))))
 
 (define (scode/error-combination-components combination receiver)
   (scode/combination-components combination
@@ -215,17 +261,18 @@ MIT in each case. |#
       (receiver (car operands)
 		(let ((irritant (cadr operands)))
 		  (cond ((scode/access? irritant) '())
-			((scode/combination? irritant)
-			 (scode/combination-components irritant
-			   (lambda (operator operands)
-			     (if (and (scode/access? operator)
-				      (scode/access-components operator
-					(lambda (environment name)
-					  (and (null? environment)
-					       (eq? name 'LIST)))))
+			((scode/absolute-combination? irritant)
+			 (scode/absolute-combination-components irritant
+			   (lambda (name operands)
+			     (if (eq? name 'LIST)
 				 operands
 				 (list irritant)))))
 			(else (list irritant))))))))
+
+(define (scode/make-error-combination message operand)
+  (scode/make-absolute-combination
+   'ERROR-PROCEDURE
+   (list message operand (scode/make-the-environment))))
 
 (define (scode/procedure-type-code *lambda)
   (cond ((primitive-type? type-code:lambda *lambda)
@@ -242,41 +289,23 @@ MIT in each case. |#
 
 ;;;; Type Codes
 
-(define type-code:lambda
-  (microcode-type 'LAMBDA))
+(let-syntax ((define-type-code
+	       (macro (var-name type-name)
+		 `(define-integrable ,var-name ',(microcode-type type-name)))))
 
-(define type-code:extended-lambda
-  (microcode-type 'EXTENDED-LAMBDA))
-
-(define type-code:procedure
-  (microcode-type 'PROCEDURE))
-
-(define type-code:extended-procedure
-  (microcode-type 'EXTENDED-PROCEDURE))
-
-(define type-code:cell
-  (microcode-type 'CELL))
-
-(define type-code:compiled-expression
-  (microcode-type 'COMPILED-EXPRESSION))
-
-(define type-code:compiler-link
-  (microcode-type 'COMPILER-LINK))
-
-(define type-code:compiled-procedure
-  (microcode-type 'COMPILED-PROCEDURE))
-
-(define type-code:environment
-  (microcode-type 'ENVIRONMENT))
-
-(define type-code:stack-environment
-  (microcode-type 'STACK-ENVIRONMENT))
-
-(define type-code:return-address
-  (microcode-type 'COMPILER-RETURN-ADDRESS))
-
-(define type-code:unassigned
-  (microcode-type 'UNASSIGNED))
+(define-type-code type-code:lambda LAMBDA)
+(define-type-code type-code:extended-lambda EXTENDED-LAMBDA)
+(define-type-code type-code:procedure PROCEDURE)
+(define-type-code type-code:extended-procedure EXTENDED-PROCEDURE)
+(define-type-code type-code:cell CELL)
+(define-type-code type-code:compiled-expression COMPILED-EXPRESSION)
+(define-type-code type-code:compiler-link COMPILER-LINK)
+(define-type-code type-code:compiled-procedure COMPILED-PROCEDURE)
+(define-type-code type-code:environment ENVIRONMENT)
+(define-type-code type-code:stack-environment STACK-ENVIRONMENT)
+(define-type-code type-code:return-address COMPILER-RETURN-ADDRESS)
+(define-type-code type-code:unassigned UNASSIGNED)
+)
 
 ;;; Disgusting hack to replace microcode implementation.
 

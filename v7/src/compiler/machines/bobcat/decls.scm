@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.15 1987/07/02 20:54:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.16 1987/07/08 21:54:41 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -55,6 +55,15 @@ MIT in each case. |#
 		   (pathname->absolute-pathname (->pathname dependency)))
 		 dependencies))))))
 
+(define (file-dependency/expansion/join filenames expansions)
+  (for-each (lambda (filename)
+	      (file-dependency/expansion/make filename expansions))
+	    filenames))			 
+
+(define (file-dependency/expansion/make filename expansions)
+  (if enable-expansion-declarations
+      (sf/add-file-declarations! filename `((EXPAND-OPERATOR ,@expansions)))))
+
 (define (filename/append directory . names)
   (map (lambda (name)
 	 (string-append directory "/" name))
@@ -65,6 +74,8 @@ MIT in each case. |#
 	      (sf/set-file-syntax-table! filename dependency))
 	    filenames))
 
+;;;; Integration and expansion dependencies
+
 (define filenames/dependency-chain/base
   (filename/append "base"
 		   "object" "cfg1" "cfg2" "cfg3" "ctypes" "dtype1" "dtype2"
@@ -89,24 +100,98 @@ MIT in each case. |#
   (append filenames/dependency-chain/base
 	  filenames/dependency-chain/rcse)))
 
-(file-dependency/integration/join filenames/dependency-group/base
-				  filenames/dependency-chain/base)
-
-(file-dependency/integration/join
- (filename/append "machines/bobcat" "instr2" "instr3")
- (filename/append "machines/bobcat" "instr1"))
-
 (file-dependency/integration/join
  (filename/append "back-end" "laptop")
  (filename/append "back-end" "symtab" "block"))
+
+(file-dependency/integration/join filenames/dependency-group/base
+				  filenames/dependency-chain/base)
 
+;;;; Lap level integration and expansion dependencies
+
+(define filenames/dependency-group/lap
+  (filename/append "machines/bobcat" "instr1" "instr2" "instr3"))
+
+(define filenames/dependency-group/lap-syn1
+  (append (filename/append "back-end" "lapgn1" "lapgn2" "lapgn3" "regmap")
+	  (filename/append "base" "linear")))
+
+(define filenames/dependency-group/lap-syn2
+  (filename/append "machines/bobcat" "lapgen"))
+
+(define filenames/dependency-group/lap-syn3
+  (filename/append "machines/bobcat" "rules1" "rules2" "rules3" "rules4"))
+
+(define filenames/dependency-group/lap-syn4
+  (append filenames/dependency-group/lap-syn2 filenames/dependency-group/lap-syn3))
+
+(file-dependency/integration/join filenames/dependency-group/lap-syn3
+				  filenames/dependency-group/lap-syn2)
+
+(file-dependency/integration/join filenames/dependency-group/lap-syn4
+				  (append
+				   (filename/append "machines/bobcat" "machin")
+				   (filename/append "base" "utils")))
+
+(file-dependency/integration/join (append filenames/dependency-group/lap-syn1
+					  filenames/dependency-group/lap-syn4)
+				  (filename/append "back-end" "insseq"))
+
+(file-dependency/integration/join (append filenames/dependency-group/lap
+					  filenames/dependency-group/lap-syn4)
+				  (filename/append "machines/bobcat" "insutl"))
+
+(file-dependency/expansion/join filenames/dependency-group/lap-syn4
+				'((LAP:SYNTAX-INSTRUCTION
+				   (ACCESS LAP:SYNTAX-INSTRUCTION-EXPANDER
+					   LAP-SYNTAX-PACKAGE
+					   COMPILER-PACKAGE))
+				  (INSTRUCTION->INSTRUCTION-SEQUENCE
+				   (ACCESS INSTRUCTION->INSTRUCTION-SEQUENCE-EXPANDER
+					   LAP-SYNTAX-PACKAGE
+					   COMPILER-PACKAGE))
+				  (SYNTAX-EVALUATION
+				   (ACCESS SYNTAX-EVALUATION-EXPANDER
+					   LAP-SYNTAX-PACKAGE
+					   COMPILER-PACKAGE))
+				  (CONS-SYNTAX
+				   (ACCESS CONS-SYNTAX-EXPANDER
+					   LAP-SYNTAX-PACKAGE
+					   COMPILER-PACKAGE))
+				  (OPTIMIZE-GROUP-EARLY
+				   (ACCESS OPTIMIZE-GROUP-EXPANDER
+					   LAP-SYNTAX-PACKAGE
+					   COMPILER-PACKAGE))
+				  (EA-KEYWORD-EARLY
+				   (ACCESS EA-KEYWORD-EXPANDER
+					   LAP-SYNTAX-PACKAGE
+					   COMPILER-PACKAGE))
+				  (EA-MODE-EARLY
+				   (ACCESS EA-MODE-EXPANDER
+					   LAP-SYNTAX-PACKAGE
+					   COMPILER-PACKAGE))
+				  (EA-REGISTER-EARLY
+				   (ACCESS EA-REGISTER-EXPANDER
+					   LAP-SYNTAX-PACKAGE
+					   COMPILER-PACKAGE))
+				  (EA-EXTENSION-EARLY
+				   (ACCESS EA-EXTENSION-EXPANDER
+					   LAP-SYNTAX-PACKAGE
+					   COMPILER-PACKAGE))
+				  (EA-CATEGORIES-EARLY
+				   (ACCESS EA-CATEGORIES-EXPANDER
+					   LAP-SYNTAX-PACKAGE
+					   COMPILER-PACKAGE))))
+
+;;;; Syntax dependencies
+
 (file-dependency/syntax/join
  (append (filename/append "base"
 			  "bblock" "cfg1" "cfg2" "cfg3" "ctypes" "dfg" "dtype1"
-			  "dtype2" "dtype3" "emodel" "linear" "object" "queue"
-			  "regset" "rtlcfg" "rtlcon" "rtlexp" "rtlreg" "rtlty1"
-			  "rtlty2" "rtypes" "sets" "toplv1" "toplv2" "toplv3"
-			  "utils")
+			  "dtype2" "dtype3" "emodel" "linear" "object" "pmerly"
+			  "queue" "regset" "rtlcfg" "rtlcon" "rtlexp" "rtlreg"
+			  "rtlty1" "rtlty2" "rtypes" "sets" "toplv1" "toplv2"
+			  "toplv3" "utils")
 	 (filename/append "alpha" "declar" "dflow1" "dflow2" "dflow3" "dflow4"
 			  "dflow5" "dflow6" "fggen1" "fggen2")
 	 (filename/append "front-end"
@@ -114,18 +199,17 @@ MIT in each case. |#
 			  "rcsesa" "rdeath" "rdebug" "rgcomb" "rgpcom" "rgpred"
 			  "rgproc" "rgrval" "rgstmt" "rlife" "rtlgen")
 	 (filename/append "back-end"
-			  "asmmac" "block" "lapgn1" "lapgn2" "lapgn3" "laptop"
-			  "regmap" "symtab")
+			  "asmmac" "block" "insseq" "lapgn1" "lapgn2" "lapgn3"
+			  "laptop" "regmap" "symtab" "syntax")
 	 (filename/append "machines/bobcat" "insmac" "machin"))
  compiler-syntax-table)
 
 (file-dependency/syntax/join
- (append (filename/append "machines/bobcat"
-			  "lapgen" "rules1" "rules2" "rules3" "rules4")
-	 (filename/append "machines/spectrum" "lapgen"))
+ (append (filename/append "machines/spectrum" "lapgen")
+	 filenames/dependency-group/lap-syn4)
  lap-generator-syntax-table)
 
 (file-dependency/syntax/join
- (append (filename/append "machines/bobcat" "instr1" "instr2" "instr3")
+ (append (filename/append "machines/bobcat" "insutl" "instr1" "instr2" "instr3")
 	 (filename/append "machines/spectrum" "instrs"))
  assembler-syntax-table)

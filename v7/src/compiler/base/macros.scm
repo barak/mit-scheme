@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 1.58 1987/05/21 14:55:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 1.59 1987/07/08 21:52:32 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -45,6 +45,9 @@ MIT in each case. |#
 (define assembler-syntax-table
   (make-syntax-table compiler-syntax-table))
 
+(define early-syntax-table
+  (make-syntax-table compiler-syntax-table))
+
 (syntax-table-define compiler-syntax-table 'PACKAGE
   (in-package system-global-environment
     (declare (usual-integrations))
@@ -71,6 +74,9 @@ MIT in each case. |#
 	     (cdr expression)))))
 
 (define enable-integration-declarations
+  true)
+
+(define enable-expansion-declarations
   true)
 
 (let ()
@@ -243,11 +249,46 @@ MIT in each case. |#
 (syntax-table-define lap-generator-syntax-table 'DEFINE-RULE
   (macro (type pattern . body)
     (parse-rule pattern body
-      (lambda (pattern names transformer qualifier actions)
+      (lambda (pattern variables qualifier actions)
 	`(,(case type
 	     ((STATEMENT) 'ADD-STATEMENT-RULE!)
 	     ((PREDICATE) 'ADD-STATEMENT-RULE!)
 	     (else (error "Unknown rule type" type)))
 	  ',pattern
-	  ,(rule-result-expression names transformer qualifier
+	  ,(rule-result-expression variables qualifier
 				   `(BEGIN ,@actions)))))))
+
+;;;; Lap instruction sequences.
+
+;; The effect of unquote and unquote-splicing is the same since
+;; syntax-instruction actually returns a bit-level instruction sequence.
+;; Kept separate for clarity and because it does not have to be like that.
+
+(syntax-table-define compiler-syntax-table 'LAP
+  (macro some-instructions
+    (define (handle current remaining)
+      (let ((processed
+	     (cond ((eq? (car current) 'UNQUOTE)
+		    (cadr current))
+		   ((eq? (car current) 'UNQUOTE-SPLICING)
+		    (cadr current))
+		   (else `(INST ,current)))))
+	(if (null? remaining)
+	    processed
+	    `(APPEND-INSTRUCTION-SEQUENCES!
+	      ,processed
+	      ,(handle (car remaining) (cdr remaining))))))
+    (if (null? some-instructions)
+	`EMPTY-INSTRUCTION-SEQUENCE
+	(handle (car some-instructions) (cdr some-instructions)))))
+
+(syntax-table-define compiler-syntax-table 'INST
+  (macro (the-instruction)
+    `(LAP:SYNTAX-INSTRUCTION
+      ,(list 'QUASIQUOTE the-instruction))))
+
+;; This is a NOP for now.
+
+(syntax-table-define compiler-syntax-table 'INST-EA
+  (macro (ea)
+    (list 'QUASIQUOTE ea)))

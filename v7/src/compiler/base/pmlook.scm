@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmlook.scm,v 1.4 1987/05/07 00:09:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmlook.scm,v 1.5 1987/07/08 21:53:09 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -39,6 +39,9 @@ MIT in each case. |#
 (define pattern-lookup)
 (define pattern-variables)
 (define make-pattern-variable)
+(define pattern-variable?)
+(define pattern-variable-name)
+
 (let ((pattern-variable-tag (make-named-tag "Pattern Variable")))
 
 ;;; PATTERN-LOOKUP returns either false or a pair whose car is the
@@ -86,6 +89,14 @@ MIT in each case. |#
 (set! make-pattern-variable
   (named-lambda (make-pattern-variable name)
     (cons pattern-variable-tag name)))
+
+(set! pattern-variable?
+      (named-lambda (pattern-variable? obj)
+	(and (pair? obj) (eq? (car obj) pattern-variable-tag))))
+
+(set! pattern-variable-name
+      (named-lambda (pattern-variable-name var)
+	(cdr var)))
 
 )
 
