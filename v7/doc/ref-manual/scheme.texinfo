@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.99 2001/11/16 21:05:07 cph Exp $
+@comment $Id: scheme.texinfo,v 1.100 2001/11/16 21:15:11 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -6474,6 +6474,11 @@ a newly-allocated string.
 Converts @var{rexp} to standard regular-expression notation, then
 compiles it and returns the compiled result.  Equivalent to
 
+@example
+(re-compile-pattern (rexp->regexp @var{rexp}) #f)
+@end example
+@end deffn
+
 @deffn {procedure+} rexp-any-char
 Returns a @acronym{REXP} that matches any single character except a
 newline.  This is equivalent to the @code{.} construct.
@@ -6605,11 +6610,6 @@ the @code{?} construct.
 Returns a @acronym{REXP} that matches the same pattern as @var{rexp},
 but is insensitive to character case.  This has no equivalent in
 standard regular-expression notation.
-@end deffn
-
-@example
-(re-compile-pattern (rexp->regexp @var{rexp}) #f)
-@end example
 @end deffn
 
 @node Modification of Strings, Variable-Length Strings, Regular Expressions, Strings
