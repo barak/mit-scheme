@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instr1.scm,v 1.8 1992/02/18 01:52:39 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instr1.scm,v 1.9 1992/02/18 04:35:22 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -432,7 +432,7 @@ MIT in each case. |#
   (define-jump-instruction JP   #x7a #x8a)
   (define-jump-instruction JPE  #x7a #x8a)
   (define-jump-instruction JPO  #x7b #x8b)
-  (define-jump-instruction JS   #x74 #x84)
+  (define-jump-instruction JS   #x78 #x88)
   (define-jump-instruction JZ   #x74 #x84))
   
 (let-syntax
