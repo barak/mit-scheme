@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.6 1994/11/26 22:06:43 gjr Exp $
+$Id: utils.scm,v 1.7 1995/01/05 22:31:00 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -1062,3 +1062,12 @@ MIT in each case. |#
 (define (code/rewrite-table/copy table)
   (hash-table/copy table
 		   code/rewrite-table/make))
+
+(define (kmp-program-size program)
+  (let walk ((program program) (size 0))
+    (cond ((not (pair? program))
+	   size)
+	  ((QUOTE/? program)
+	   (+ size 1))
+	  (else
+	   (walk (car program) (walk (cdr program) (+ size 1)))))))
