@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.20 1995/08/10 13:48:22 adams Exp $
+$Id: fakeprim.scm,v 1.21 1995/08/19 01:36:13 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -536,8 +536,46 @@ MIT in each case. |#
 
 (cookie-call %reference-trap? '#F value)
 
+(define %primitive-error
+  ;;  (CALL ',%primitive-error '#F '<primitive> <arg1> .. <argN>
+  ;;        <expr1> ... <exprn>
+  ;;  Call <primitive> with <arg1> ... <argN> to signal an error.
+  ;; Note:
+  ;;   Introduced at any stage that we know that <primitive> will fail, for
+  ;;   example, when replacing a primitive by a checked
+  ;;     (if <type-check> <open-coded-version> <error>)
+  ;;   diamond.  The <arg_i> are the arguments to the primitive (N is
+  ;;   determined from the primitive's arity) that cause it to fail.
+  ;;
+  ;;   The additional expressions are inserted to keep data live to enhance
+  ;;   debugging information (at the cost of keeping it live, both in
+  ;;   compile time, compiled code performance, and GC opportunities).
+  ;;   For example, we may choose to introduce this code and/or insert
+  ;;   the expressions as follows:
+  ;;     . Add the containing procedure's full set of parameters before
+  ;;       lambda-lifting/1.  This may force procedures to be
+  ;;       implemented as closures.
+  ;;     . After lambda-lifting/1.  This gives us everything that can be made
+  ;;       available without creating extra closures.  The cost is
+  ;;       keeping extra values in the stack.
+  ;;     . After lambda-lifting/2 (same as not at all).  This gives us
+  ;;       everything that would be available in fully optimized code.
+  ;;
+  ;;   This operation may be implemented in two ways: restartable and
+  ;;   non-restartable (perhaps we will introduce another operator to
+  ;;   distinguish the two).  If restartable, we need a hook to call
+  ;;   arbitrary primitives with preservation.  If non-restartable we
+  ;;   need a space-efficient method of constructing a continuation
+  ;;   and passing the arguments, and some work on rtlgen to make it
+  ;;   understand expressions that never terminate (i.e. to construct
+  ;;   a non-diamond rgraph), and some work on conpar and dbg-info to
+  ;;   understand the continuation, and some work on uerror to
+  ;;   understand that restarts are not an option.
+  (make-operator "#[primitive-error]"))
+
 (define %cons
   ;; (CALL ',%cons '#F <value> <value>)
+  ;; Open-coded CONS operation.
   ;; Note:
   ;;   Introduced by LAMBDA-LIST/APPLICATE to do early application of
   ;;     a known lexpr (avoids an out-of-line call at runtime)
@@ -572,23 +610,55 @@ MIT in each case. |#
 
 (define %vector
   ;; (CALL ',%vector '#F <value>*)
+  ;; Open-coded version of VECTOR primitive.
   ;; Note:
   ;;   Introduced by expand.scm for DEFINE-MULTIPLE
   (make-operator/simple "#[vector]"))
 
+(cookie-call %vector '#F #!rest values)
+
 (define %vector-length
   ;; (CALL ',%vector-length '#F <vector>)
+  ;; Unchecked.
   (make-operator/simple "#[vector-length]"))
+
+(define %vector-check
+  ;; (CALL ',%vector-check '#F <object> <index>)
+  ;; ->#T if <object> is a vector and <index> is a valid index
+  (make-operator/simple "#[vector-check]" '(PROPER-PREDICATE)))
+
+(define %vector-check/index
+  ;; (CALL ',%vector-check/index '#F <vector> <index>)
+  ;; ->#T if <index> is a valid index for the vector <vector>
+  (make-operator/simple "#[vector-check/index]" '(PROPER-PREDICATE)))
 
 (define %vector-ref
   ;; (CALL ',%vector-ref '#F <vector> <index>)
+  ;; Unchecked.
   (make-operator/effect-sensitive "#[vector-ref]"))
 
 (define %vector-set!
   ;; (CALL ',%vector-set! '#F <vector> <index> <value>)
+  ;; Unchecked.
   (make-operator/simple* "#[vector-set!]" '(UNSPECIFIC-RESULT)))
 
-(cookie-call %vector '#F #!rest values)
+(define %vector-ref/check
+  ;; (CALL ',%vector-ref/check '#F <vector> <limit> <index>)
+  ;;  Range-check component of VECTOR-REF.
+  ;;   VECTOR-REF
+  ;;    == (%vector-ref/check <vector> (VECTOR-LENGTH <vector>) <index>)
+  ;; Note
+  ;;   This operation can be used in a loop, with the vector-length operation
+  ;;   lifted out.  Further, if the length is computed as
+  ;;     (if (vector? <vector>) (%vector-length <vector>) 0)
+  ;;   then the inner check is effectively coerced to a type check as well.
+  (make-operator/effect-sensitive "#[vector-ref/check]"))
+
+(define %vector-set/check!
+  ;; (CALL ',%vector-set/check! '#F <vector> <limit> <index> <value>)
+  ;; See %vector-ref/check
+  (make-operator/simple* "#[vector-set/check!]" '(UNSPECIFIC-RESULT)))
+
 
 (define %make-promise
   ;; (CALL ',%make-promise '#F <thunk>)
@@ -639,6 +709,23 @@ MIT in each case. |#
   ;;   Always used in statement position - has no value.
   (make-operator/simple* "#[multicell-set!]" '(UNSPECIFIC-RESULT)))
 (cookie-call %multicell-set! '#F cell value 'LAYOUT 'NAME)
+
+
+;; Tuples are collections of values.  Each slot is named.  LAYOUT
+;; describes the arrangment of the slots in memory.  Currently it is
+;; just a vector of names.  Tuples are immutable.  The intention is
+;; that they can be introduced to collect values together without
+;; committing to a representation.
+
+(define %make-tuple
+  ;; (CALL ',%make-tuple '#F 'LAYOUT <value> <value> ...)
+  (make-operator/simple "#[make-tuple]"))
+;;(cookie-call %make-tuple '#F 'LAYOUT #!rest values)
+
+(define %tuple-ref
+  ;; (CALL ',%tuple-ref '#F cell 'LAYOUT 'NAME)
+  (make-operator/simple "#[tuple-ref]"))
+;;(cookie-call %tuple-ref '#F tuple 'LAYOUT 'NAME)
 
 ;; OBSOLETE
 ;;(define %vector-index
@@ -798,6 +885,10 @@ MIT in each case. |#
 
 (cookie-call %small-fixnum? '#F value 'precision-bits)
 
+(define %word-less-than-unsigned?
+  ;; (CALL ', %word-less-than-unsigned? '#F <smaller> <larger>
+  (make-operator/simple "#[word-less-than-unsigned?]" '(PROPER-PREDICATE)))
+
 (define %compiled-entry?
   (make-operator/simple "#[compiled-entry?]"  '(PROPER-PREDICATE)))
 
@@ -937,7 +1028,9 @@ MIT in each case. |#
      simple-operator
      (list '(SIMPLE)
 	   '(SIDE-EFFECT-FREE))))
- (list cell-contents car cdr %record-ref vector-ref string-ref
+ (list cell-contents car cdr %record-ref
+       vector-ref
+       string-ref
        string-length vector-8b-ref flo:vector-ref
        system-pair-car system-pair-cdr
        system-hunk3-cxr0 system-hunk3-cxr1 system-hunk3-cxr2
@@ -949,7 +1042,8 @@ MIT in each case. |#
    (define-operator-properties
      operator
      (list '(SIMPLE) '(UNSPECIFIC-RESULT))))
- (list set-cell-contents! set-car! set-cdr! %record-set! vector-set!
+ (list set-cell-contents! set-car! set-cdr! %record-set!
+       vector-set!
        string-set! vector-8b-set! flo:vector-set!
        (make-primitive-procedure 'PRIMITIVE-INCREMENT-FREE)
        (make-primitive-procedure 'PRIMITIVE-OBJECT-SET!)))
@@ -987,6 +1081,13 @@ MIT in each case. |#
 	        '(SIDE-EFFECT-FREE)
 	        '(SIDE-EFFECT-INSENSITIVE)))))
   '(COERCE-TO-COMPILED-PROCEDURE))
+
+(for-each
+    (lambda (prim-name)
+      (let ((prim  (make-primitive-procedure prim-name)))
+	(set! compiler:primitives-with-no-open-coding
+	      (cons prim-name compiler:primitives-with-no-open-coding))))
+  '(VECTOR-REF VECTOR-SET! CAR CDR))
 
 ;;;; Compatibility operators
 
