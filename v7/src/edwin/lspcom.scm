@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lspcom.scm,v 1.152 1991/05/10 05:13:10 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lspcom.scm,v 1.153 1991/07/31 18:24:47 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -220,6 +220,48 @@ rigidly along with this one."
   "d"
   (lambda (mark)
     (lisp-indent-sexp mark)))
+
+(define-command insert-parentheses
+  "Insert a pair of matching parentheses, leaving the point after the
+open parenthesis.  With argument, wrap parentheses around that many
+following sexps.)"
+  "P"
+  (lambda (argument)
+    (if argument
+	(set-current-point! (skip-chars-forward " \t"))
+	(or (group-start? (current-point))
+	    (memv (char->syntax-code standard-syntax-table
+				     (mark-left-char (current-point)))
+		  '(#\\ #\> #\( #\space #\.))
+	    (insert-char #\space)))
+    (insert-char #\()
+    (let ((mark (mark-right-inserting-copy (current-point))))
+      (insert-char #\)
+		   (if (and argument
+			    (exact-nonnegative-integer? argument))
+		       (forward-sexp (current-point) argument 'LIMIT)
+		       (current-point)))
+      (or argument
+	  (group-end? (current-point))
+	  (memv (char->syntax-code standard-syntax-table
+				   (mark-right-char (current-point)))
+		'(#\\ #\> #\( #\) #\space))
+	  (insert-char #\space))
+      (set-current-point! mark))))
+
+(define-command move-past-close-and-reindent
+  "Move past next right parenthesis, delete indentation before it, and
+indent after it."
+  ()
+  (lambda ()
+    (set-current-point! (mark-1+ (forward-up-list (current-point) 1 'limit)))
+    (let delete-more-indentation ((before-parenthesis (current-point)))
+      (if (mark= before-parenthesis
+		 (horizontal-space-end (line-start (current-point) 0)))
+	  (begin ((ref-command delete-indentation) #f)
+		 (delete-more-indentation (current-point)))))
+    (move-thing mark+ 1)
+    ((ref-command newline-and-indent))))
 
 ;;;; Motion Covers
 
