@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.73 2000/07/10 21:56:21 cph Exp $
+@comment $Id: user.texinfo,v 1.74 2000/07/21 18:23:32 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -11,6 +11,8 @@
 @syncodeindex vr cp
 @syncodeindex fn cp
 @syncodeindex ky cp
+@syncodeindex pg cp
+@syncodeindex tp cp
 
 @ifinfo
 This file documents the use of MIT Scheme.
@@ -27,9 +29,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.73
+@subtitle Edition 1.74
 @subtitle for Scheme Release 7.5
-@subtitle 10 July 2000
+@subtitle 21 July 2000
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -5203,6 +5205,10 @@ are shown; by default these files do not appear in Dired listings.
 New undocumented primitives provide access to the registry.
 
 @end itemize
+
+@node GNU Free Documentation License, Binding Index, Printing, Top
+@unnumbered GNU Free Documentation License
+@include gfdl.texinfo
 
 @node Index,  , Release Notes, Top
 @unnumbered Index
