@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.31 2004/05/26 15:19:53 cph Exp $
+$Id: genio.scm,v 1.32 2004/05/27 16:06:31 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004 Massachusetts Institute of Technology
@@ -718,8 +718,10 @@ USA.
   (channel-open? (output-buffer-channel ob)))
 
 (define (close-output-buffer ob)
-  (force-drain-output-buffer ob)
-  (channel-close (output-buffer-channel ob)))
+  (if (output-buffer-open? ob)
+      (begin
+	(force-drain-output-buffer ob)
+	(channel-close (output-buffer-channel ob)))))
 
 (define-integrable (output-buffer-port ob)
   (channel-port (output-buffer-channel ob)))
