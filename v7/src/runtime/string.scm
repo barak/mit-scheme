@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/string.scm,v 14.5 1992/08/28 16:05:58 jinx Exp $
+$Id: string.scm,v 14.6 1992/12/01 14:52:03 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -237,15 +237,15 @@ MIT in each case. |#
 
 (define (substring-upper-case? string start end)
   (let find-upper ((start start))
-    (and (fix:< start end)
-	 (let ((char (string-ref string start)))
-	   (if (char-upper-case? char)
-	       (let search-rest ((start (fix:+ start 1)))
-		 (or (fix:= start end)
-		     (and (not (char-lower-case? (string-ref string start)))
-			  (search-rest (fix:+ start 1)))))
-	       (and (not (char-lower-case? char))
-		    (find-upper (fix:+ start 1))))))))
+    (or (not (fix:< start end))
+	(let ((char (string-ref string start)))
+	  (if (char-upper-case? char)
+	      (let search-rest ((start (fix:+ start 1)))
+		(or (fix:= start end)
+		    (and (not (char-lower-case? (string-ref string start)))
+			 (search-rest (fix:+ start 1)))))
+	      (and (not (char-lower-case? char))
+		   (find-upper (fix:+ start 1))))))))
 
 (define (string-upcase string)
   (let ((string (string-copy string)))
@@ -260,15 +260,15 @@ MIT in each case. |#
 
 (define (substring-lower-case? string start end)
   (let find-lower ((start start))
-    (and (fix:< start end)
-	 (let ((char (string-ref string start)))
-	   (if (char-lower-case? char)
-	       (let search-rest ((start (fix:+ start 1)))
-		 (or (fix:= start end)
-		     (and (not (char-upper-case? (string-ref string start)))
-			  (search-rest (fix:+ start 1)))))
-	       (and (not (char-upper-case? char))
-		    (find-lower (fix:+ start 1))))))))
+    (or (not (fix:< start end))
+	(let ((char (string-ref string start)))
+	  (if (char-lower-case? char)
+	      (let search-rest ((start (fix:+ start 1)))
+		(or (fix:= start end)
+		    (and (not (char-upper-case? (string-ref string start)))
+			 (search-rest (fix:+ start 1)))))
+	      (and (not (char-upper-case? char))
+		   (find-lower (fix:+ start 1))))))))
 
 (define (string-downcase string)
   (let ((string (string-copy string)))
