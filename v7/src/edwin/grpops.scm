@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: grpops.scm,v 1.27 2000/02/27 05:33:41 cph Exp $
+;;; $Id: grpops.scm,v 1.28 2000/05/19 16:55:22 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -180,6 +180,10 @@
   (group-delete! group index (fix:+ index 1)))
 
 (define (group-delete! group start end)
+  (if (not (and (fix:>= end 0) (fix:<= end (group-length group))))
+      (error:bad-range-argument end 'GROUP-DELETE!))
+  (if (not (and (fix:>= start 0) (fix:<= start end)))
+      (error:bad-range-argument start 'GROUP-DELETE!))
   (if (not (fix:= start end))
       (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
 	(let ((text (group-text group))
@@ -250,6 +254,8 @@
 ;;;; Replacement
 
 (define (group-replace-char! group index char)
+  (if (not (and (fix:>= index 0) (fix:< index (group-length group))))
+      (error:bad-range-argument index 'GROUP-REPLACE-CHAR!))
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok))
 	(end-index (fix:+ index 1)))
     (prepare-gap-for-replace! group index end-index)
@@ -267,6 +273,9 @@
   (if (fix:< start end)
       (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok))
 	    (end-index (fix:+ index (fix:- end start))))
+	(if (not (and (fix:>= index 0)
+		      (fix:<= end-index (group-length group))))
+	    (error:bad-range-argument index 'GROUP-REPLACE-SUBSTRING!))
 	(prepare-gap-for-replace! group index end-index)
 	(%substring-move! string start end
 			  (group-text group)
