@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.6 1995/02/28 01:50:05 adams Exp $
+$Id: toplev.scm,v 1.7 1995/07/13 23:01:06 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -932,7 +932,8 @@ MIT in each case. |#
   (compiler-phase "LAP File Output"
     (lambda ()
       (fluid-let ((*unparser-radix* 16)
-		  (*unparse-uninterned-symbols-by-name?* true))
+		  (*unparse-uninterned-symbols-by-name?* true)
+		  (*unparse-abbreviate-quotations?* true))
 	(with-output-to-port port
 	  (lambda ()
 	    (define (hack-rtl rtl)
