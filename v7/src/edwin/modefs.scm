@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: modefs.scm,v 1.141 1992/10/20 20:03:14 jinx Exp $
+;;;	$Id: modefs.scm,v 1.142 1992/11/13 22:43:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -238,6 +238,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental '(#\c-h #\k) 'describe-key)
 (define-key 'fundamental '(#\c-h #\l) 'view-lossage)
 (define-key 'fundamental '(#\c-h #\m) 'describe-mode)
+(define-key 'fundamental '(#\c-h #\s) 'describe-syntax)
 (define-key 'fundamental '(#\c-h #\t) 'help-with-tutorial)
 (define-key 'fundamental '(#\c-h #\v) 'describe-variable)
 (define-key 'fundamental '(#\c-h #\w) 'where-is)
@@ -299,7 +300,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental '(#\c-x #\q) 'kbd-macro-query)
 (define-key 'fundamental '(#\c-x #\r) 'copy-rectangle-to-register)
 (define-key 'fundamental '(#\c-x #\s) 'save-some-buffers)
-;(define-key 'fundamental '(#\c-x #\t) 'transpose-regions)
+;;(define-key 'fundamental '(#\c-x #\t) 'transpose-regions)
 (define-key 'fundamental '(#\c-x #\u) 'undo)
 (define-key 'fundamental '(#\c-x #\w) 'widen)
 (define-key 'fundamental '(#\c-x #\x) 'copy-to-register)

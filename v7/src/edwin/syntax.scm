@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/syntax.scm,v 1.75 1992/07/09 15:55:19 arthur Exp $
+;;;	$Id: syntax.scm,v 1.76 1992/11/13 22:43:33 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -104,6 +104,23 @@
   ((ucode-primitive char->syntax-code) (syntax-table/entries syntax-table)
 				       char))
 
+(define (syntax-entry->string entry)
+  (let ((code (fix:and #xff entry)))
+    (if (> code 12)
+	"invalid"
+	(string-append
+	 (vector-ref '#(" " "." "w" "_" "(" ")" "'" "\"" "$" "\\" "/" "<" ">")
+		     code)
+	 (let ((match (fix:and #xff (fix:lsh -8 entry))))
+	   (if (zero? match)
+	       " "
+	       (emacs-key-name (ascii->char match) false)))
+	 (if (fix:= 0 (fix:and #x10000 entry)) "" "1")
+	 (if (fix:= 0 (fix:and #x20000 entry)) "" "2")
+	 (if (fix:= 0 (fix:and #x40000 entry)) "" "3")
+	 (if (fix:= 0 (fix:and #x80000 entry)) "" "4")
+	 (if (fix:= 0 (fix:and #x100000 entry)) "" "p")))))
+
 (define (substring-find-next-char-of-syntax string start end
 					    syntax-table syntax)
   (let loop ((index start))
@@ -123,6 +140,79 @@
 					(string-ref string index)))
 	     (loop (+ index 1))
 	     index))))
+
+(define-command describe-syntax
+  "Describe the syntax specifications in the syntax table.
+The descriptions are inserted in a buffer,
+which is selected so you can see it."
+  ()
+  (lambda ()
+    (with-output-to-help-display
+     (lambda ()
+       (newline)
+       (let ((table (syntax-table/entries (ref-variable syntax-table))))
+	 (let ((table-end (vector-length table))
+	       (describe-char-range
+		(lambda (bottom top)
+		  (let ((describe-char
+			 (lambda (ascii)
+			   (emacs-key-name (ascii->char ascii) false)))
+			(top (- top 1)))
+		    (if (= bottom top)
+			(describe-char bottom)
+			(string-append (describe-char bottom)
+				       " .. "
+				       (describe-char top)))))))
+	   (let loop ((start 0))
+	     (if (< start table-end)
+		 (let* ((entry (vector-ref table start))
+			(end
+			 (let loop ((index (+ start 1)))
+			   (if (and (< index table-end)
+				    (eqv? entry (vector-ref table index)))
+			       (loop (+ index 1))
+			       index))))
+		   (let ((range-desc (describe-char-range start end)))
+		     (write-string range-desc)
+		     (write-char #\tab)
+		     (if (< (string-length range-desc) 8)
+			 (write-char #\tab)))
+		   (describe-syntax-entry entry)
+		   (loop end))))))))))
+
+(define (describe-syntax-entry entry)
+  (let ((code (fix:and #xff entry)))
+    (if (> code 12)
+	(write-string "invalid")
+	(begin
+	  (write-string (syntax-entry->string entry))
+	  (write-string "\twhich means: ")
+	  (write-string
+	   (vector-ref '#("whitespace" "punctuation" "word" "symbol" "open"
+				       "close" "quote" "string" "math"
+				       "escape" "charquote" "comment"
+				       "endcomment" "invalid")
+		       code))
+	  (let ((match (fix:and #xff (fix:lsh -8 entry))))
+	    (if (not (zero? match))
+		(begin
+		  (write-string ", matches ")
+		  (write-string (emacs-key-name (ascii->char match) false)))))
+	  (if (not (fix:= 0 (fix:and #x10000 entry)))
+	      (write-string
+	       ",\n\t  is the first character of a comment-start sequence"))
+	  (if (not (fix:= 0 (fix:and #x20000 entry)))
+	      (write-string
+	       ",\n\t  is the second character of a comment-start sequence"))
+	  (if (not (fix:= 0 (fix:and #x40000 entry)))
+	      (write-string
+	       ",\n\t  is the first character of a comment-end sequence"))
+	  (if (not (fix:= 0 (fix:and #x80000 entry)))
+	      (write-string
+	       ",\n\t  is the second character of a comment-end sequence"))
+	  (if (not (fix:= 0 (fix:and #x100000 entry)))
+	      (write-string ",\n\t  is a prefix character")))))
+  (newline))
 
 ;;;; Word Parsing
 
