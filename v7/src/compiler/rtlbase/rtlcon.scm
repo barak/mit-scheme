@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 1.11 1987/07/21 22:40:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 1.12 1987/07/31 00:51:10 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -222,11 +222,18 @@ MIT in each case. |#
 		    (lambda (register)
 		      (if-memory register (caddr locative))))
 		  (error "LOCATIVE-DEREFERENCE: Bad OFFSET" locative))))
+	   ((CONSTANT)
+	    (assign-to-temporary locative scfg-append!
+	      (lambda (register)
+		(assign-to-temporary (rtl:make-object->address register)
+				     scfg-append!
+		  (lambda (register)
+		    (if-memory register 0))))))
 	   (else
 	    (error "LOCATIVE-DEREFERENCE: Unknown keyword" (car locative)))))
 	(else
 	 (error "LOCATIVE-DEREFERENCE: Illegal locative" locative))))
-
+
 (define (locative-fetch locative scfg-append! receiver)
   (locative-fetch-1 locative scfg-append!
     (lambda (register)
@@ -235,7 +242,7 @@ MIT in each case. |#
 	  (assign-to-temporary (rtl:make-object->address register)
 			       scfg-append!
 			       receiver)))))
-
+
 (define (locative-fetch-1 locative scfg-append! receiver)
   (locative-dereference locative scfg-append!
     receiver
@@ -243,7 +250,7 @@ MIT in each case. |#
       (assign-to-temporary (rtl:make-offset register offset)
 			   scfg-append!
 			   receiver))))
-
+
 (define-export (expression-simplify-for-statement expression receiver)
   (expression-simplify expression scfg*scfg->scfg! receiver))
 
