@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: paths.scm,v 1.15 2001/02/28 14:56:13 cph Exp $
+$Id: paths.scm,v 1.16 2001/03/01 04:59:33 cph Exp $
 
 Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
@@ -24,9 +24,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (declare (usual-integrations))
 
 (define (edwin-library-directory-pathname envvar name required?)
-  (let ((name (get-environment-variable envvar)))
-    (if name
-	(pathname-as-directory (merge-pathnames name))
+  (let ((envval (get-environment-variable envvar)))
+    (if envval
+	(pathname-as-directory (merge-pathnames envval))
 	(or (system-library-directory-pathname
 	     (merge-pathnames name (pathname-as-directory "edwin")))
 	    (and required?
