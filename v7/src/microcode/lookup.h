@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.h,v 9.45 1992/01/15 03:32:22 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.h,v 9.46 1992/01/15 04:28:52 jinx Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -310,7 +310,7 @@ extern long
 
 extern long
   EXFUN (compiler_recache,
-	 (SCHEME_OBJECT *, SCHEME_OBJECT *, SCHEME_OBJECT, SCHEME_OBJECT
+	 (SCHEME_OBJECT *, SCHEME_OBJECT *, SCHEME_OBJECT, SCHEME_OBJECT,
 	  SCHEME_OBJECT, Boolean, Boolean));
 
 extern SCHEME_OBJECT * shadowed_value_cell;

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.c,v 9.47 1992/01/15 03:25:38 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.c,v 9.48 1992/01/15 04:29:05 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -1565,9 +1565,9 @@ extern long
 SCHEME_OBJECT compiler_cache_variable[3];
 
 Boolean
-DEFUN (local_reference_p, (env, hunk)
-     SCHEME_OBJECT env;
-     SCHEME_OBJECT * hunk;
+DEFUN (local_reference_p, (env, hunk),
+       SCHEME_OBJECT env
+       AND SCHEME_OBJECT * hunk)
 {
   SCHEME_OBJECT spec;
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookprm.c,v 1.5 1992/01/15 02:37:02 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookprm.c,v 1.6 1992/01/15 04:28:24 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -364,7 +364,7 @@ DEFINE_PRIMITIVE ("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3, 3, 0)
 	value_cell = MEMORY_LOC (cache, TRAP_EXTENSION_CELL);
 	lookup_primitive_action
 	  (compiler_recache(shadowed_value_cell, value_cell, target,
-			    sym, MEMORY_FETCH (value_cell[0]), false, true));
+			    sym, (MEMORY_FETCH (value_cell[0])), false, true));
 	MEMORY_SET (value, TRAP_EXTRA, cache);
 	PRIMITIVE_RETURN(SHARP_T);
       }
