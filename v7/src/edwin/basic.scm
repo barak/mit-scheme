@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: basic.scm,v 1.138 2000/06/02 00:43:25 cph Exp $
+;;; $Id: basic.scm,v 1.139 2000/06/05 17:44:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -433,7 +433,7 @@ Otherwise, set the comment column to the argument."
 		(set-current-point! comment-end)
 		(begin
 		  (insert-string (ref-variable comment-start))
-		  (insert-comment-end)))))))))
+		  (insert-comment-end (current-point))))))))))
 
 (define-variable comment-multi-line
   "True means \\[indent-new-comment-line] should continue same comment
@@ -479,10 +479,11 @@ on new line, with no new terminator or starter."
 	  (if-not-in-comment)))
     (mark-temporary! mark)))
 
-(define (insert-comment-end)
-  (let ((point (mark-right-inserting (current-point))))
-    (insert-string (ref-variable comment-end))
-    (set-current-point! point)))
+(define (insert-comment-end mark)
+  (let ((mark (mark-right-inserting-copy mark)))
+    (insert-string (ref-variable comment-end mark) mark)
+    (set-buffer-point! (mark-buffer mark) mark)
+    (mark-temporary! mark)))
 
 (define-command kill-comment
   "Kill the comment on this line, if any."
