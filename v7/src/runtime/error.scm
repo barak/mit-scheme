@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 13.50 1988/02/10 17:24:43 jinx Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 13.51 1988/05/03 19:04:42 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -345,6 +345,10 @@ using the current read-eval-print environment."))
   combination-second-operand)
 
 (define-unbound-variable-error
+  (list (make-primitive-procedure 'ENVIRONMENT-LINK-NAME 3))
+  combination-third-operand)
+
+(define-unbound-variable-error
   (list (make-primitive-procedure 'ADD-FLUID-BINDING! 3))
   (lambda (obj)
     (let ((object (combination-second-operand obj)))
@@ -484,6 +488,11 @@ using the current read-eval-print environment."))
   "Too many open files"
   combination-first-operand)
 
+(define-operation-specific-error 'BAD-ASSIGNMENT
+  (list (make-primitive-procedure 'ENVIRONMENT-LINK-NAME 3))
+  "Bound variable"
+  combination-third-operand)
+
 ;;; SCODE Syntax Errors
 
 ;;; This error gets an unevaluated combination, but it doesn't ever
@@ -510,12 +519,6 @@ using the current read-eval-print environment."))
 (define-default-error 'EXECUTE-MANIFEST-VECTOR
   "Attempt to execute Manifest Vector -- get a wizard"
   identity-procedure)
-
-(define-total-error-handler 'WRITE-INTO-PURE-SPACE
-  (lambda (error-code expression)
-    (newline)
-    (write-string "Automagically IMPURIFYing an object....")
-    (impurify (combination-first-operand expression))))
  
 (define-default-error 'UNDEFINED-USER-TYPE
   "Undefined Type Code -- get a wizard"
@@ -529,9 +532,25 @@ using the current read-eval-print environment."))
   "Compiled code error -- get a wizard"
   identity-procedure)
 
+(define-default-error 'ILLEGAL-REFERENCE-TRAP
+  "Illegal reference trap -- get a wizard"
+  identity-procedure)
+
+(define-default-error 'BROKEN-VARIABLE-CACHE
+  "Broken variable value cell"
+  identity-procedure)
+
+;;;; Harmless system errors
+
 (define-default-error 'FLOATING-OVERFLOW
   "Floating point overflow"
   identity-procedure)
+
+(define-total-error-handler 'WRITE-INTO-PURE-SPACE
+  (lambda (error-code expression)
+    (newline)
+    (write-string "Automagically IMPURIFYing an object....")
+    (impurify (combination-first-operand expression))))
 
 ;;; end ERROR-SYSTEM package.
 ))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/boot.scm,v 13.45 1988/04/12 14:59:27 jinx Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/boot.scm,v 13.46 1988/05/03 19:04:10 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1988 Massachusetts Institute of Technology
 ;;;
@@ -149,16 +149,37 @@
 (define (copy-program exp)
   (if (not (primitive-type? (ucode-type COMPILED-ENTRY) exp))
       (error "copy-program: Can only copy compiled programs" exp))
-  (let ((v (vector-copy
-	    (primitive-set-type
-	     (ucode-type VECTOR)
-	     (compiled-code-address->block exp)))))
-    (with-interrupt-mask
-     interrupt-mask-none
-     (lambda (old)
-       old ;; ignored
-       (primitive-object-set-type
-	(ucode-type COMPILED-ENTRY)
-	(+ (compiled-code-address->offset exp) (primitive-datum v)))))))
+  (let* ((original (compiled-code-address->block exp))
+	 (block (primitive-set-type
+		 (ucode-type COMPILED-CODE-BLOCK)
+		 (vector-copy
+		  (primitive-set-type (ucode-type VECTOR)
+				      original))))
+	 (end (system-vector-size block)))
+
+    (define (map-entry entry)
+      (with-interrupt-mask
+       interrupt-mask-none
+       (lambda (old)
+	 old ;; ignored
+	 (primitive-object-set-type
+	  (primitive-type entry)
+	  (+ (compiled-code-address->offset entry)
+	     (primitive-datum block))))))
+
+    (let loop ((n (1+ (primitive-datum (system-vector-ref block 0)))))
+      (cond ((>= n end)
+	     (map-entry exp))
+	    ((not (lambda? (system-vector-ref block n)))
+	     (loop (1+ n)))
+	    (else
+	     (lambda-components (system-vector-ref block n)
+	       (lambda (name req opt rest aux decl body)
+		 (if (and (primitive-type? (ucode-type COMPILED-ENTRY) body)
+			  (eq? original (compiled-code-address->block body)))
+		     (system-vector-set! block n
+		      (make-lambda name req opt rest aux decl
+				   (map-entry body))))
+		 (loop (1+ n)))))))))
 
 ) ;; End of let-syntax
