@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.32 1992/04/05 02:00:34 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.33 1992/05/23 00:11:09 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -339,3 +339,96 @@ MIT in each case. |#
 			     (cons (vector-ref unused-command-line index)
 				   unhandled-options))))))))
       (load-init-file)))
+
+;;;; Loader for packed binaries
+
+(define (load-packed-binaries pathname fname count environment)
+  (define (find-filename fname alist)
+    (define (compatible? path1 path2)
+      (and (equal? (pathname-directory path1)
+                   (pathname-directory path2))
+           (equal? (pathname-name path1)
+                   (pathname-name path2))
+           (or (equal? (pathname-type path1) (pathname-type path2))
+               (and (member (pathname-type path1) '(#f "bin" "com"))
+                    (member (pathname-type path2) '(#f "bin" "com"))))))
+
+    (let ((path (->pathname fname)))
+      (let loop ((alist alist))
+        (and (not (null? alist))
+             (if (compatible? path (cadar alist))
+                 (car alist)
+                 (loop (cdr alist)))))))
+
+  (define (process-bunch alist)
+    (let* ((real-load load)
+	   (new-load
+	    (lambda (fname #!optional env syntax-table purify?)
+	      (let ((env (if (default-object? env)
+			     environment
+			     env))
+		    (st (if (default-object? syntax-table)
+			    default-object
+			    syntax-table))
+		    (purify? (if (default-object? purify?)
+				 default-object
+				 purify?)))
+		(let ((place (find-filename fname alist)))
+		  (if (not place)
+		      (real-load fname env st purify?)
+		      (let ((scode (caddr place)))
+			(if (not load/suppress-loading-message?)
+			    (begin
+			      (newline)
+			      (display ";Pseudo-loading ")
+			      (display (->namestring (->pathname fname)))
+			      (display "...")))
+			(if (and purify? (not (eq? purify? default-object)))
+			    (purify (load/purification-root scode)))
+			(extended-scode-eval scode env))))))))
+      (fluid-let ((load new-load)
+		  (flush-purification-queue! (lambda () 'done)))
+        (new-load (caar alist))))
+    (flush-purification-queue!))
+
+  (with-binary-input-file (->truename pathname)
+    (lambda (channel)
+      ((ucode-primitive binary-fasload) channel) ; Dismiss header.
+      (let ((process-next-bunch
+	     (lambda ()
+	       (process-bunch
+		(map (lambda (pair)
+		       (list (car pair)
+			     (->pathname (car pair))
+			     (cdr pair)))
+		     ((ucode-primitive binary-fasload) channel))))))
+
+
+	(do ((count count (-1+ count)))
+	    ((= count 1)
+	     (process-next-bunch))
+	  (process-next-bunch))))))
+
+;;;; Utilities for the binary unpacker
+
+(define (with-binary-file-channel file action open extract-channel name)
+  (let ((port false))
+    (dynamic-wind
+     (lambda ()
+       (if port
+           (error "cannot re-enter with-binary-file-channel" name)))
+     (lambda ()
+       (set! port (open file))
+       (action (channel-descriptor (extract-channel port))))
+     (lambda ()
+       (if (and port
+                (not (eq? port true)))
+           (begin
+             (close-port port)
+             (set! port true)))))))
+
+(define (with-binary-input-file file action)
+  (with-binary-file-channel file action
+    open-binary-input-file
+    input-port/channel
+    'with-binary-input-file))
