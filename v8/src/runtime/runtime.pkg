@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.149 1992/05/23 00:11:27 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.150 1992/05/23 01:13:04 jinx Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -1252,7 +1252,7 @@ MIT in each case. |#
 	  microcode-type/code-limit
 	  microcode-type/name->code)
   (export (runtime save/restore)
-	  read-microcode-tables!)
+	  re-read-microcode-tables!)
   (initialization (initialize-package!)))
 
 (define-package (runtime number)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.24 1992/02/08 15:08:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.25 1992/05/23 01:12:47 jinx Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -101,7 +101,7 @@ MIT in each case. |#
 		    (error "Disk save failed:" filename))))
 	      (continuation after-suspend)))
 	   ((ucode-primitive set-fixed-objects-vector!) fixed-objects)
-	   (read-microcode-tables!)
+	   (re-read-microcode-tables!)
 	   after-restore)))))))
 
 (define (dump-world/kernel filename after-suspend after-restore)
