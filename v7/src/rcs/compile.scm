@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.3 2001/08/15 03:10:15 cph Exp $
+$Id: compile.scm,v 1.4 2001/12/20 06:21:45 cph Exp $
 
 Copyright (c) 2000, 2001 Massachusetts Institute of Technology
 
@@ -24,7 +24,5 @@ USA.
 
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
-    (for-each (lambda (filename)
-		(compile-file filename '() system-global-syntax-table))
-	      '("object" "format" "nparse" "logmer"))
+    (for-each compile-file '("object" "format" "nparse" "logmer"))
     (cref/generate-constructors "rcs")))
