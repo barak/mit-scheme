@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 3.8 1988/03/30 21:59:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 3.9 1988/03/30 23:05:03 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -336,7 +336,7 @@ Currently only the 68000 implementation needs this."
   (set! previous-name this-name))
 
 (define (end-phase)
-  (let ((this-process-time (runtime))
+  (let ((this-process-time (process-time-clock))
 	(this-real-time (real-time-clock)))
     (if previous-process-time
 	(let ((delta-process-time (- this-process-time previous-process-time)))
@@ -344,8 +344,8 @@ Currently only the 68000 implementation needs this."
 	  (time-report "      Time taken"
 		       delta-process-time
 		       (- this-real-time previous-real-time))))
-    (set! previous-real-time this-time)
-    (set! previous-process-time this-process-time)))
+    (set! previous-process-time this-process-time)
+    (set! previous-real-time this-real-time)))
 
 ;; Should match the compiler.  We'll merge the two at some point.
 (define (time-report prefix process-time real-time)
