@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stackopt.scm,v 1.9 1995/07/07 19:29:33 adams Exp $
+$Id: stackopt.scm,v 1.10 1995/07/08 03:31:36 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -522,20 +522,6 @@ End of Big Note A |#
 		   ,(call/%make-stack-closure/lambda-expression form)
 		   ,(call/%make-stack-closure/vector form)
 		   ,@values*))))))
-
-(define (stackopt/rewrite-dbg-frames! frame-var new-vector)
-  (dbg-info/for-all-dbg-expressions!
-   (lambda (expr)
-     (match expr
-       ((CALL ',%stack-closure-ref
-	      '#F
-	      (LOOKUP ?frame)
-	      (CALL ',%vector-index '#F ?quoted-vector '_)
-	      '_)
-	(eq? frame frame-var)
-	=> (pp `(,expr ,frame-vector ,new-vector))
-	(form/rewrite! quoted-vector
-	  `(QUOTE ,new-vector)))))))
 
 (define (stackopt/rewrite-dbg-frames! frame-var new-vector)
   (dbg-info/for-all-dbg-expressions!
