@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.68 1999/01/02 06:06:43 cph Exp $
+$Id: opncod.scm,v 4.69 2001/09/25 05:31:16 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; RTL Generation: Inline Combinations
@@ -642,7 +643,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (define-open-coder/predicate name
 	     (simple-open-coder (open-code/type-test type) '(0) false)))))
     (simple-type-test 'CHAR?    (ucode-type character))
-    (simple-type-test 'CELL?    (ucode-type cell))
     (simple-type-test 'PAIR?    (ucode-type pair))
     (simple-type-test 'STRING?  (ucode-type string))
     (simple-type-test 'VECTOR?  (ucode-type vector))
@@ -848,14 +848,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    '(0)
    internal-close-coding-for-type-or-range-checks))
 
-(define-open-coder/value 'MAKE-CELL
-  (simple-open-coder
-   (lambda (combination expressions finish)
-     combination
-     (finish (rtl:make-cell-cons (car expressions))))
-   '(0)
-   false))
-
 (let ((open-code/pair-cons
        (lambda (type)
 	 (lambda (combination expressions finish)
@@ -969,7 +961,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		 expressions)))
 	    '(0)
 	    internal-close-coding-for-type-checks)))))
-  (user-ref 'CELL-CONTENTS rtl:make-fetch (ucode-type cell) 0)
   (user-ref 'VECTOR-LENGTH rtl:length-fetch (ucode-type vector) 0)
   (user-ref '%RECORD-LENGTH rtl:vector-length-fetch (ucode-type record) 0)
   (user-ref 'STRING-LENGTH rtl:length-fetch (ucode-type string) 1)
@@ -1039,8 +1030,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    '(0 1)
 	    internal-close-coding-for-type-checks)))))
   (fixed-assignment 'SET-CAR! (ucode-type pair) 0)
-  (fixed-assignment 'SET-CDR! (ucode-type pair) 1)
-  (fixed-assignment 'SET-CELL-CONTENTS! (ucode-type cell) 0))
+  (fixed-assignment 'SET-CDR! (ucode-type pair) 1))
 
 (define-open-coder/effect 'SET-STRING-LENGTH!
   (simple-open-coder
@@ -1084,51 +1074,28 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    '(0 1 2)
    false))
 
-;;;; Character/String Primitives
+;;;; Characters
 
-(let* ((careless-range-open-coder
-	(lambda (generator indices internal-close-coding?)
-	  (conditional-open-coder
-	   (lambda (operands)
-	     operands
-	     (not compiler:generate-range-checks?))
-	   (simple-open-coder generator indices internal-close-coding?))))
-
-       (define-open-coder
-	(lambda (name tsource tdest)
-	  (define-open-coder/value name
-	    (careless-range-open-coder
-	     (lambda (combination expressions finish)
-	       (let ((arg (car expressions)))
-		 (open-code:with-checks
-		  combination
-		  (list (open-code:type-check arg tsource))
-		  (finish
-		   (rtl:make-cons-non-pointer
-		    (rtl:make-machine-constant tdest)
-		    (rtl:make-object->datum arg)))
-		  finish
-		  name
-		  expressions)))
-	     '(0)
-	     internal-close-coding-for-type-checks)))))
-
-  (define-open-coder 'INTEGER->CHAR
-    (ucode-type fixnum)
-    (ucode-type character))
-
-  #|
-  ;; These do the wrong thing with control characters.
-
-  (define-open-coder 'ASCII->CHAR
-    (ucode-type fixnum)
-    (ucode-type character))
-
-  (define-open-coder 'CHAR->ASCII
-    (ucode-type character)
-    (ucode-type fixnum))
-  |#
-  )
+(define-open-coder/value 'INTEGER->CHAR
+  (conditional-open-coder
+   (lambda (operands)
+     operands
+     (not compiler:generate-range-checks?))
+   (simple-open-coder
+    (lambda (combination expressions finish)
+      (let ((arg (car expressions)))
+	(open-code:with-checks
+	 combination
+	 (list (open-code:type-check arg (ucode-type fixnum)))
+	 (finish
+	  (rtl:make-cons-non-pointer
+	   (rtl:make-machine-constant (ucode-type character))
+	   (rtl:make-object->datum arg)))
+	 finish
+	 name
+	 expressions)))
+    '(0)
+    internal-close-coding-for-type-checks)))
 
 (define-open-coder/value 'CHAR->INTEGER
   (simple-open-coder
@@ -1147,6 +1114,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    '(0)
    internal-close-coding-for-type-checks))
 
+;;;; Unboxed vectors
+
 (define-open-coder/value 'STRING-REF
   (simple-open-coder
    (string-memory-reference 'STRING-REF (ucode-type string) false
@@ -1604,19 +1573,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (for-each (lambda (generic-op)
 	    (generic-binary-operator generic-op))
-	  '(&+ &- &* #| &/ |# quotient remainder
-	       integer-add integer-subtract integer-multiply
-	       integer-quotient integer-remainder))
+	  '(&+ &- &* #| &/ |# QUOTIENT REMAINDER
+	       INTEGER-ADD INTEGER-SUBTRACT INTEGER-MULTIPLY
+	       INTEGER-QUOTIENT INTEGER-REMAINDER))
 
 (for-each (lambda (generic-op)
 	    (generic-binary-predicate generic-op))
-	  '(&= &< &> integer-equal? integer-less? integer-greater?))
+	  '(&= &< &> INTEGER-EQUAL? INTEGER-LESS? INTEGER-GREATER?))
 
 (for-each (lambda (generic-op)
 	    (generic-unary-operator generic-op))
-	  '(1+ -1+ integer-add-1 integer-subtract-1))
+	  '(1+ -1+ INTEGER-ADD-1 INTEGER-SUBTRACT-1))
 
 (for-each (lambda (generic-op)
 	    (generic-unary-predicate generic-op))
-	  '(zero? positive? negative?
-	    integer-zero? integer-positive? integer-negative?))
+	  '(ZERO? POSITIVE? NEGATIVE?
+	    INTEGER-ZERO? INTEGER-POSITIVE? INTEGER-NEGATIVE?))
