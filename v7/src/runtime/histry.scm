@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/histry.scm,v 13.46 1987/06/02 11:26:07 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/histry.scm,v 13.47 1987/06/04 21:08:49 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -212,25 +212,26 @@
 			   (loop next)))))
 	      '()))))
 
-(define (dummy-compiler-reduction? reduction)
-  (and (marked-reduction? reduction)
-       (null? (reduction-expression reduction))
-       (eq? return-address-pop-from-compiled-code
-	    (reduction-environment reduction))))
-
 (define (unfold-and-reverse-rib rib)
   (let loop ((current (next-reduction rib)) (output 'WRAP-AROUND))
     (let ((step
-	   (if (dummy-compiler-reduction? current)
-	       '()
-	       (cons (list (reduction-expression current)
-			   (reduction-environment current))
-		     (if (marked-reduction? current)
-			 '()
-			 output)))))
+	   (let ((tail
+		  (if (marked-reduction? current)
+		      '()
+		      output)))
+	     (if (dummy-compiler-reduction? current)
+		 tail
+		 (cons (list (reduction-expression current)
+			     (reduction-environment current))
+		       tail)))))
       (if (eq? current rib)
 	  step
 	  (loop (next-reduction current) step)))))
+
+(define (dummy-compiler-reduction? reduction)
+  (and (null? (reduction-expression reduction))
+       (eq? return-address-pop-from-compiled-code
+	    (reduction-environment reduction))))
 
 (define the-empty-history
   (cons (vector-ref (get-fixed-objects-vector)
