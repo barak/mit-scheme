@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.37 1990/05/03 15:11:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.38 1990/06/26 22:16:41 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -333,7 +333,8 @@ MIT in each case. |#
       primitive))))
 
 (define (open-code:type-check expression type)
-  (if compiler:generate-type-checks?
+  (if (and compiler:generate-type-checks?
+	   type)
       (generate-type-test type
 			  expression
 			  make-false-pcfg
@@ -354,7 +355,8 @@ MIT in each case. |#
 ;; This is not reasonable since the port may not include such open codings.
 
 (define (open-code:range-check index-expression limit-locative)
-  (if compiler:generate-range-checks?
+  (if (and compiler:generate-range-checks?
+	   limit-locative)
       (pcfg*pcfg->pcfg!
        (generate-nonnegative-check index-expression)
        (pcfg/prefer-consequent!
@@ -441,6 +443,14 @@ MIT in each case. |#
 		   (make-locative base (+ header-length-in-indexes value)))
 		  (unknown-index)))
 	    (unknown-index))))))
+
+(define object-memory-reference
+  (indexed-memory-reference
+   false
+   (lambda (expression)
+     expression				; ignored
+     false)
+   (index-locative-generator rtl:locative-offset 0 address-units-per-object)))
 
 (define vector-memory-reference
   (indexed-memory-reference
@@ -681,6 +691,15 @@ MIT in each case. |#
 		   compiler:generate-range-checks?))))
 	  '(VECTOR-REF SYSTEM-VECTOR-REF))
 
+(define-open-coder/value 'PRIMITIVE-OBJECT-REF
+  (simple-open-coder
+   (object-memory-reference 'PRIMITIVE-OBJECT-REF false
+    (lambda (locative expressions finish)
+      expressions
+      (finish (rtl:make-fetch locative))))
+   '(0 1)
+   false))
+
 ;; For now SYSTEM-XXXX side effect procedures are considered
 ;; dangerous to the garbage collector's health.  Some day we will
 ;; again be able to enable them.
@@ -725,6 +744,16 @@ MIT in each case. |#
 	       (or compiler:generate-type-checks?
 		   compiler:generate-range-checks?))))
 	  '(VECTOR-SET! #| SYSTEM-VECTOR-SET! |#))
+
+(define-open-coder/effect 'PRIMITIVE-OBJECT-SET!
+  (simple-open-coder
+   (object-memory-reference 'PRIMITIVE-OBJECT-SET! false
+    (lambda (locative expressions finish)
+      (finish-vector-assignment locative
+				(caddr expressions)
+				finish)))
+   '(0 1 2)
+   false))
 
 ;;;; Character/String Primitives
 
@@ -802,8 +831,14 @@ MIT in each case. |#
 	  '(PLUS-FIXNUM
 	    MINUS-FIXNUM
 	    MULTIPLY-FIXNUM
-	    DIVIDE-FIXNUM
-	    GCD-FIXNUM))
+	    ;; DIVIDE-FIXNUM
+	    GCD-FIXNUM
+	    FIXNUM-QUOTIENT
+	    FIXNUM-REMAINDER
+	    FIXNUM-ANDC
+	    FIXNUM-AND
+	    FIXNUM-OR
+	    FIXNUM-XOR))
 
 (for-each (lambda (fixnum-operator)
 	    (define-open-coder/value fixnum-operator
@@ -818,7 +853,7 @@ MIT in each case. |#
 		    false))))
 	       '(0)
 	       false)))
-	  '(ONE-PLUS-FIXNUM MINUS-ONE-PLUS-FIXNUM))
+	  '(ONE-PLUS-FIXNUM MINUS-ONE-PLUS-FIXNUM FIXNUM-NOT))
 
 (for-each (lambda (fixnum-pred)
 	    (define-open-coder/predicate fixnum-pred

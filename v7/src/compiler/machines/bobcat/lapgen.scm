@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.32 1990/05/03 15:17:14 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.33 1990/06/26 22:16:23 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -561,7 +561,8 @@ MIT in each case. |#
     (else (error "FIXNUM-PREDICATE->CC: Unknown predicate" predicate))))
 
 (define (fixnum-2-args/commutative? operator)
-  (memq operator '(PLUS-FIXNUM MULTIPLY-FIXNUM)))
+  (memq operator '(PLUS-FIXNUM MULTIPLY-FIXNUM
+			       FIXNUM-AND FIXNUM-OR FIXNUM-XOR)))
 
 (define (define-fixnum-method operator methods method)
   (let ((entry (assq operator (cdr methods))))
@@ -600,29 +601,78 @@ MIT in each case. |#
   (lambda (reference)
     (LAP (SUB L (& ,fixnum-1) ,reference))))
 
-(define-fixnum-method 'PLUS-FIXNUM fixnum-methods/2-args
-  (lambda (target source)
-    (LAP (ADD L ,source ,target))))
+(define-fixnum-method 'FIXNUM-NOT fixnum-methods/1-arg
+  (lambda (reference)
+    (LAP (NOT L ,reference)
+	 ,@(word->fixnum reference))))
 
-(define-fixnum-method 'PLUS-FIXNUM fixnum-methods/2-args-constant
+(let-syntax
+    ((binary-fixnum
+      (macro (name instr identity?)
+	`(begin
+	   (define-fixnum-method ',name fixnum-methods/2-args
+	     (lambda (target source)
+	       (LAP (,instr L ,',source ,',target))))
+	   (define-fixnum-method ',name fixnum-methods/2-args-constant
+	     (lambda (target n)
+	       (if (,identity? n)
+		   (LAP)
+		   (LAP (,instr L (& ,',(* n fixnum-1)) ,',target)))))))))
+
+  (binary-fixnum PLUS-FIXNUM ADD zero?)
+  (binary-fixnum FIXNUM-OR OR zero?)
+  (binary-fixnum FIXNUM-AND AND
+		 (lambda (n)
+		   (declare (integrate n))
+		   (fix:= n -1))))
+
+;; XOR is weird because the first operand for an EOR instruction
+;; must be a D register!
+
+(define-fixnum-method 'FIXNUM-XOR fixnum-methods/2-args
+  (lambda (target source)
+    (if (effective-address/data-register? source)
+	(LAP (EOR L ,source ,target))
+	(let ((temp (reference-temporary-register! 'DATA)))
+	  (LAP (MOV L ,source ,temp)
+	       (EOR L ,temp ,target))))))
+
+(define-fixnum-method 'FIXNUM-XOR fixnum-methods/2-args-constant
   (lambda (target n)
-    (cond ((zero? n) (LAP))
-	  (else (LAP (ADD L (& ,(* n fixnum-1)) ,target))))))
+    (if (zero? n)
+	(LAP)
+	(LAP (EOR L (& ,(* n fixnum-1)) ,target)))))
+
+;; Multiply is hairy, since numbers are shifted by the type code width.
+;; Rather than unshift, multiply, and shift, we unshift one and then
+;; multiply, but we have to be careful if the source is the same
+;; as the destination.
 
 (define-fixnum-method 'MULTIPLY-FIXNUM fixnum-methods/2-args
   (lambda (target source)
-    (if (equal? target source)
-	(if (even? scheme-type-width)
+    (cond ((not (equal? target source))
+	   (LAP
+	    (AS R L (& ,scheme-type-width) ,target)
+	    (MUL S L ,source ,target)))
+	  ((even? scheme-type-width)
 	    (LAP
 	     (AS R L (& ,(quotient scheme-type-width 2)) ,target)
-	     (MUL S L ,source ,target))
+	     (MUL S L ,source ,target)))
+	  (else
+	    #|
+	    ;; This is no good because the MUL instruction is
+	    ;; not last, and thus the overflow condition is
+	    ;; not set appropriately.
 	    (LAP
 	     (AS R L (& ,scheme-type-width) ,target)
 	     (MUL S L ,source ,target)
-	     (AS L L (& ,scheme-type-width) ,target)))
-	(LAP
-	 (AS R L (& ,scheme-type-width) ,target)
-	 (MUL S L ,source ,target)))))
+	     (AS L L (& ,scheme-type-width) ,target))
+	    |#
+	    (let ((temp (reference-temporary-register! 'DATA)))
+	      (LAP
+	       (MOV L ,source ,temp)
+	       (AS R L (& ,scheme-type-width) ,target)
+	       (MUL S L ,temp ,target)))))))
 
 (define-fixnum-method 'MULTIPLY-FIXNUM fixnum-methods/2-args-constant
   (lambda (target n)
@@ -631,28 +681,43 @@ MIT in each case. |#
 	  ((= n -1) (LAP (NEG L ,target)))
 	  (else
 	   (let ((power-of-2 (integer-log-base-2? n)))
-	     (if power-of-2
-		 (if (> power-of-2 8)
-		     (let ((temp (reference-temporary-register! 'DATA)))
-		       (LAP (MOV L (& ,power-of-2) ,temp)
-			    (AS L L ,temp ,target)))
-		     (LAP (AS L L (& ,power-of-2) ,target)))
-		 (LAP (MUL S L (& ,n) ,target))))))))
-
+	     (cond ((not power-of-2)
+		    (LAP (MUL S L (& ,n) ,target)))
+		   ((> power-of-2 8)
+		    (let ((temp (reference-temporary-register! 'DATA)))
+		      (LAP (MOV L (& ,power-of-2) ,temp)
+			   (AS L L ,temp ,target))))
+		   (else
+		    (LAP (AS L L (& ,power-of-2) ,target)))))))))
+
 (define (integer-log-base-2? n)
   (let loop ((power 1) (exponent 0))
     (cond ((< n power) false)
 	  ((= n power) exponent)
 	  (else (loop (* 2 power) (1+ exponent))))))
-
+
 (define-fixnum-method 'MINUS-FIXNUM fixnum-methods/2-args
   (lambda (target source)
     (LAP (SUB L ,source ,target))))
 
 (define-fixnum-method 'MINUS-FIXNUM fixnum-methods/2-args-constant
   (lambda (target n)
-    (cond ((zero? n) (LAP))
-	  (else (LAP (SUB L (& ,(* n fixnum-1)) ,target))))))
+    (if (zero? n)
+	(LAP)
+	(LAP (SUB L (& ,(* n fixnum-1)) ,target)))))
+
+(define-fixnum-method 'FIXNUM-ANDC fixnum-methods/2-args
+  (lambda (target source)
+    (let ((temp (reference-temporary-register! 'DATA)))
+      (LAP (MOV L ,source ,temp)
+	   (NOT L ,temp)
+	   (AND L ,temp ,target)))))
+
+(define-fixnum-method 'FIXNUM-ANDC fixnum-methods/2-args-constant
+  (lambda (target n)
+    (if (zero? n)
+	(LAP)
+	(LAP (AND L (& ,(* (fix:not n) fixnum-1)) ,target)))))
 
 (define-fixnum-method 'FIXNUM-QUOTIENT fixnum-methods/2-args
   (lambda (target source)
@@ -664,23 +729,63 @@ MIT in each case. |#
   (lambda (target n)
     (cond ((= n 1) (LAP))
 	  ((= n -1) (LAP (NEG L ,target)))
-	  (else (LAP (DIV S L (& ,n) ,target))))))
+	  ((integer-log-base-2? n)
+	   =>
+	   (lambda (power-of-2)
+	     (let ((label (generate-uninterned-symbol "quoshift")))
+	       (LAP (TST L ,target)
+		    (B GE (@PCR ,label))
+		    (ADD L (& ,(* (-1+ n) fixnum-1)) ,target)
+		    (LABEL ,label)
+		    ,@(if (<= power-of-2 8)
+			  (LAP (AS R L (& ,power-of-2) ,target))
+			  (let ((temp (reference-temporary-register! 'DATA)))
+			    (LAP (MOV L (& ,power-of-2) ,temp)
+				 (AS R L ,temp ,target))))
+		    ,@(word->fixnum target)))))
+	  (else
+	   ;; This includes negative n
+	   (LAP (DIV S L (& ,n) ,target))))))
 
+;; This renormalizes a fixnum after a bit-wise boolean operation
+
+(define-integrable fixnum-bits-mask
+  (fix:not scheme-type-mask))
+
+(define (word->fixnum target)
+  (cond ((= scheme-type-width 8)
+	 (LAP (CLR B ,target)))
+	((< scheme-type-width 8)
+	 (LAP (AND B (& ,fixnum-bits-mask) ,target)))
+	(else
+	 (LAP (AND L (& ,fixnum-bits-mask) ,target)))))
+
 (define-fixnum-method 'FIXNUM-REMAINDER fixnum-methods/2-args
   (lambda (target source)
     (let ((temp (reference-temporary-register! 'DATA)))
-      (LAP
-       (DIV S L ,source ,temp ,target)
-       (MOV L ,temp ,target)))))
+      (LAP (DIVL S L ,source ,temp ,target)
+	   (MOV L ,temp ,target)))))
 
 (define-fixnum-method 'FIXNUM-REMAINDER fixnum-methods/2-args-constant
   (lambda (target n)
     (if (or (= n 1) (= n -1))
 	(LAP (CLR L ,target))
-	(let ((temp (reference-temporary-register! 'DATA)))
-	  (LAP
-	   (DIV S L (& ,(* n fixnum-1)) ,temp ,target)
-	   (MOV L ,temp ,target))))))
+	(let ((xpt (integer-log-base-2? n)))
+	  (if (or (not xpt)
+		  (not use-68020-instructions?) )
+	      ;; This includes negative n
+	      (let ((temp (reference-temporary-register! 'DATA)))
+		(LAP (DIVL S L (& ,(* n fixnum-1)) ,temp ,target)
+		     (MOV L ,temp ,target)))
+	      (let ((sign (reference-temporary-register! 'DATA))
+		    (label (generate-uninterned-symbol "remmerge"))
+		    (shift (- scheme-datum-width xpt)))
+		(LAP (CLR L ,sign)
+		     (BFTST ,target (& ,shift) (& ,xpt))
+		     (B EQ (@PCR ,label))
+		     (BFEXTS ,target (& 0) (& 1) ,sign)
+		     (LABEL ,label)
+		     (BFINS ,target (& 0) (& ,shift) ,sign))))))))
 
 ;;;; Flonum Operators
 
@@ -794,7 +899,7 @@ MIT in each case. |#
   ;; (-1+ (expt 2 scheme-type-width)) ***
   #x3f)
 
-(define use-68020-instructions? true)
+(define-integrable use-68020-instructions? true)
 
 (define (object->type source target)
   ;; `Source' must be a data register or non-volatile memory reference.
