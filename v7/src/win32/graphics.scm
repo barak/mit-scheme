@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.5 1994/10/26 18:33:16 adams Exp $
+$Id: graphics.scm,v 1.6 1994/11/06 18:13:23 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -348,7 +348,11 @@ MIT in each case. |#
           (get-system-metrics SM_CYBORDER))
        (* 2 (get-system-metrics SM_CYFRAME))))
 
-(define (win32-graphics/open #!optional width height palette-kind)
+
+(define device-protection-list)
+
+(define (win32-graphics/open descriptor->device 
+			     #!optional width height palette-kind)
   (let* ((width   (if (default-object? width)  512 width))
          (height  (if (default-object? height) 512 height))
 	 (palette
@@ -359,8 +363,8 @@ MIT in each case. |#
 		  ((eq? palette-kind 'standard)      (make-standard-palette))
 		  ((eq? palette-kind 'system)        #f)
 		  (else  #f)))
-         (device  (make-win32-device width height palette))
-	 (wndproc (make-scheme-graphics-wndproc device))
+         (descriptor (make-win32-device width height palette))
+	 (wndproc    (make-scheme-graphics-wndproc descriptor))
          (w
 	   (create-scheme-window
 	     (+)
@@ -374,7 +378,9 @@ MIT in each case. |#
 	     0 0 (get-handle 0) 0
              wndproc)))
     w ;ignored
-    device))
+    (let ((device (descriptor->device descriptor)))
+      (protection-list/add! device-protection-list device descriptor)
+      device)))
 
 
 (define (win32-device/select-pen window)
@@ -634,10 +640,13 @@ MIT in each case. |#
     unspecific))
 
 
-(define (win32-graphics/close device)
-  (send-message (win32-device/hwnd (graphics-device/descriptor device))
-                WM_CLOSE 0 0)
+(define (close-descriptor des)
+  (if des
+      (send-message (win32-device/hwnd des) WM_CLOSE 0 0))
   unspecific)
+
+(define (win32-graphics/close device)
+  (close-descriptor (graphics-device/descriptor device)))
 
 (define (win32-graphics/set-clip-rectangle device
            x-left y-bottom x-right y-top)
@@ -861,9 +870,6 @@ MIT in each case. |#
     (register-class (+) (get-handle 3) 0 0 hInstance
                     hIcon 32515 NULL_BRUSH 0 "SCHEME-GRAPHICS")))
 
-
-(define win32-graphics-device-type)
-
 (define (initialize-package!)
   (set! win32-graphics-device-type
 	(make-graphics-device-type
@@ -921,4 +927,15 @@ MIT in each case. |#
   (add-event-receiver! event:after-restore
 		       (when-microcode-supports-win32 register-graphics-window-class))
   (register-graphics-device-type 'win32 win32-graphics-device-type)
+  (set! device-protection-list (make-protection-list close-descriptor))
+  (add-event-receiver! event:after-restore
+		       (lambda ()
+			 (set! device-protection-list
+			       (make-protection-list close-descriptor))))
+  (add-event-receiver! event:before-exit
+		       (lambda ()
+			 (protection-list/for-each-info close-descriptor
+							device-protection-list)))
   unspecific)
+
+(define win32-graphics-device-type)
