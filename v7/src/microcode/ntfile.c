@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfile.c,v 1.9 1997/06/19 05:55:34 cph Exp $
+$Id: ntfile.c,v 1.10 1997/08/22 16:33:14 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -115,9 +115,6 @@ DEFUN_OPEN_FILE (OS_open_io_file,
    (FILE_SHARE_READ | FILE_SHARE_WRITE), 0,
    OPEN_ALWAYS, (FILE_ATTRIBUTE_NORMAL | FILE_FLAG_RANDOM_ACCESS), 0));
 
-
-#ifdef HAVE_APPEND
-
 Tchannel
 DEFUN (OS_open_append_file, (filename), CONST char * filename)
 {
@@ -136,17 +133,6 @@ DEFUN (OS_open_append_file, (filename), CONST char * filename)
     NT_error_api_call ((GetLastError ()), apicall_SetFilePointer);
   return (OS_open_handle (hFile));
 }
-
-#else
-
-Tchannel
-DEFUN (OS_open_append_file, (filename), CONST char * filename)
-{
-  error_unimplemented_primitive ();
-  return (0);
-}
-
-#endif
 
 static Tchannel
 DEFUN (make_load_channel, (handle), HANDLE handle)
