@@ -1,5 +1,5 @@
 
-# $Id: Makefile,v 1.1 2000/07/10 22:13:35 cph Exp $
+# $Id: Makefile,v 1.2 2000/07/10 22:14:33 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -17,13 +17,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-all:	scheme.ps scheme.info html/scheme_toc.html
+all:	scheme.ps scheme.pdf scheme.info html/scheme_toc.html
 
 scheme.ps: scheme.dvi
 	dvips -o $@ $^
 
 scheme.dvi: scheme.texinfo
-	./re-tex
+	texi2dvi $^
+
+scheme.pdf: scheme.texinfo
+	texi2pdf $^
 
 scheme.info: scheme.texinfo
 	makeinfo $^
@@ -33,3 +36,13 @@ scheme.info: scheme.texinfo
 
 html/scheme_toc.html: scheme.texinfo
 	(cd html;make)
+
+AUX_SUFFIXES = aux log toc
+INDEX_SUFFIXES = cp fn ky pg tp vr
+
+clean:
+	rm -f scheme.ps scheme.dvi scheme.pdf scheme.info*
+	rm -f $(addprefix scheme.,$(AUX_SUFFIXES))
+	rm -f $(addprefix scheme.,$(INDEX_SUFFIXES))
+	rm -f $(addsuffix s,$(addprefix scheme.,$(INDEX_SUFFIXES)))
+	$(MAKE) -C html $@
