@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.35 1995/04/09 23:07:05 cph Exp $
+;;;	$Id: rmail.scm,v 1.36 1995/04/09 23:09:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -240,7 +240,7 @@ together with two commands to return to regular RMAIL:
 		   end)))
 	  (let ((start (search-forward "\nMail:" start end true)))
 	    (if start
-		(parse-comma-list start end)
+		(parse-comma-list start (line-end start 0))
 		'())))
 	'())))
 
@@ -473,7 +473,7 @@ and use that file as the inbox."
 	     (rename-inbox-using-rename source insert))))))
 
 (define (rename-inbox-using-rename source insert)
-  (let ((target (string-append (->namestring source) "~")))
+  (let ((target (string-append (->namestring source) "+")))
     (let ((msg
 	   (string-append "Getting mail from "
 			  (->namestring source)
