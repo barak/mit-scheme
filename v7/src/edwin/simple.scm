@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.36 1991/04/24 00:39:02 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.37 1991/05/08 22:46:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -136,7 +136,7 @@
 	       (group-insert-substring! (mark-group point)
 					(mark-index point)
 					text start end))
-	      ((<= gap-end start)
+	      ((<= gap-start start)
 	       (group-insert-substring! (mark-group point)
 					(mark-index point)
 					text
