@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: wabbit.c,v 1.2 1994/02/15 07:39:35 gjr Exp $
+$Id: wabbit.c,v 1.3 1994/03/25 00:58:52 gjr Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -421,13 +421,17 @@ repeat_dispatch:
 
       case TC_LINKAGE_SECTION:
       {
+	SCHEME_OBJECT saved_last_object, * saved_last_object_end;
+
+	saved_last_object = last_object;
+	saved_last_object_end = last_object_end;
 	if ((last_object == SHARP_F) || (last_object_end < scan))
 	{
 	  last_object = (MAKE_POINTER_OBJECT (TC_HEADLESS_REFERENCE, scan));
 	  last_object_end
 	    = (scan + (1 + (READ_CACHE_LINKAGE_COUNT (this_object))));
 	}
-	  
+
 	switch (READ_LINKAGE_KIND (this_object))
 	{
 	  case REFERENCE_LINKAGE_KIND:
@@ -488,6 +492,8 @@ repeat_dispatch:
 	    /*NOTREACHED*/
 	  }
 	}
+	last_object = saved_last_object;
+	last_object_end = saved_last_object_end;
 	break;
       }
 
@@ -496,9 +502,15 @@ repeat_dispatch:
 	fast long count;
 	fast char * word_ptr;
 	SCHEME_OBJECT * area_end;
+	SCHEME_OBJECT saved_last_object, * saved_last_object_end;
 
-	last_object = (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, scan));
-	last_object_end = (scan + (1 + (OBJECT_DATUM (this_object))));
+	saved_last_object = last_object;
+	saved_last_object_end = last_object_end;
+	if ((last_object == SHARP_F) || (last_object_end < scan))
+	{
+	  last_object = (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, scan));
+	  last_object_end = (scan + (1 + (OBJECT_DATUM (this_object))));
+	}
 	START_CLOSURE_RELOCATION (scan);
 	scan += 1;
 	count = (MANIFEST_CLOSURE_COUNT (scan));
@@ -516,7 +528,8 @@ repeat_dispatch:
 
 	scan = area_end;
 	END_CLOSURE_RELOCATION (scan);
-	last_object = SHARP_F;
+	last_object = saved_last_object;
+	last_object_end = saved_last_object_end;
 	break;
       }
 
