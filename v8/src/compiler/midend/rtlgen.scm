@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.42 1996/03/08 15:57:43 adams Exp $
+$Id: rtlgen.scm,v 1.43 1996/03/08 17:15:38 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -3169,8 +3169,9 @@ MIT in each case. |#
 		       (rtlgen/branch/false state)))))))))
   (define-simple-tag-test 'CELL?       (machine-tag 'CELL))
   (define-simple-tag-test 'PAIR?       (machine-tag 'PAIR))
-  (define-simple-tag-test 'VECTOR?     (machine-tag 'VECTOR))
-  (define-simple-tag-test '%RECORD?    (machine-tag 'RECORD))
+  ;; These two are not primitives (yet)
+  ;;(define-simple-tag-test 'VECTOR?     (machine-tag 'VECTOR))
+  ;;(define-simple-tag-test '%RECORD?    (machine-tag 'RECORD))
   (define-simple-tag-test 'STRING?     (machine-tag 'STRING))
   (define-simple-tag-test 'BIT-STRING? (machine-tag 'VECTOR-1B))
   (define-simple-tag-test 'FLONUM?     (machine-tag 'FLONUM))
@@ -3462,6 +3463,7 @@ MIT in each case. |#
 	  result)))))
 
 (define-open-coder/value 'FLOATING-VECTOR-CONS 1
+  ;; (flo:vector-cons <small-known-integer>)
   (let ((fv-tag  (machine-tag 'FLOATING-POINT-VECTOR))
 	(nmv-tag (machine-tag 'MANIFEST-NM-VECTOR)))
     (lambda (state rands open-coder)
@@ -3498,7 +3500,7 @@ MIT in each case. |#
 			    len))
 	(rtlgen/cons state
 		     (cons `(CONSTANT ,len) (make-list len fill))
-		     vector-tag)))))
+		     `(MACHINE-CONSTANT ,vector-tag))))))
 
 ;; *** STRING-ALLOCATE, FLOATING-VECTOR-CONS, and perhaps VECTOR-CONS
 ;; should always be in-lined, even when the length argument is not known.

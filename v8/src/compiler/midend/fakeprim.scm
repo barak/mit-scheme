@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.23 1995/09/05 18:59:19 adams Exp $
+$Id: fakeprim.scm,v 1.24 1996/03/08 17:16:12 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -1022,7 +1022,9 @@ MIT in each case. |#
 	      '(SIDE-EFFECT-FREE)
 	      '(PROPER-PREDICATE))))
   (list not eq? null? false?
-	boolean? cell? pair? vector? %record? string? bit-string?
+	boolean? cell? pair? string? bit-string?
+	;; these two no not exist as primitives (SF expands to OBJECT-TYPE?)
+	;;   vector? %record?
 	fixnum? index-fixnum? flo:flonum? object-type?
 	fix:= fix:> fix:< fix:<= fix:>=
 	fix:zero? fix:positive? fix:negative? 
@@ -1046,11 +1048,13 @@ MIT in each case. |#
 	   '(SIDE-EFFECT-INSENSITIVE)
 	   '(SIDE-EFFECT-FREE))))
  (list make-cell cons vector %record string-allocate flo:vector-cons
+       (make-primitive-procedure 'VECTOR-CONS)
        system-pair-cons
        ;;%record-length
        ;;vector-length
        ;;flo:vector-length
        object-type object-datum
+       (make-primitive-procedure 'PRIMITIVE-OBJECT-TYPE)
        ;;bit-string-length
        (make-primitive-procedure 'PRIMITIVE-OBJECT-SET-TYPE)
        fix:-1+ fix:1+ fix:+ fix:- fix:*
@@ -1072,7 +1076,9 @@ MIT in each case. |#
        flo:negate flo:abs flo:sqrt
        flo:floor flo:ceiling flo:truncate flo:round
        flo:exp flo:log flo:sin flo:cos flo:tan flo:asin
-       flo:acos flo:atan flo:atan2 flo:expt))
+       flo:acos flo:atan flo:atan2 flo:expt
+       (make-primitive-procedure 'FLONUM-NORMALIZE)
+       (make-primitive-procedure 'FLONUM-DENORMALIZE)))
 
 (for-each
  (lambda (simple-operator)
@@ -1087,6 +1093,10 @@ MIT in each case. |#
        ;;string-length vector-8b-ref
        system-pair-car system-pair-cdr
        system-hunk3-cxr0 system-hunk3-cxr1 system-hunk3-cxr2
+       (make-primitive-procedure 'SYSTEM-VECTOR-SIZE)
+       system-vector-ref
+       (make-primitive-procedure 'SYSTEM-VECTOR-SIZE)
+       (make-primitive-procedure 'GET-INTERRUPT-ENABLES)
        (make-primitive-procedure 'PRIMITIVE-GET-FREE)
        (make-primitive-procedure 'PRIMITIVE-OBJECT-REF)))
 
@@ -1105,6 +1115,7 @@ MIT in each case. |#
      operator
      (list '(SIMPLE) '(UNSPECIFIC-RESULT))))
  (list set-cell-contents!
+       set-string-length!
        ;;set-car! set-cdr! %record-set!
        ;;vector-set!
        ;;string-set! vector-8b-set! flo:vector-set!
