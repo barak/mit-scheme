@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 4.8 1990/10/24 15:09:57 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 4.9 1991/05/06 18:46:23 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; SCode Optimizer: Usual Integrations: Combination Expansions
+;;; package: (scode-optimizer expansion)
 
 (declare (usual-integrations)
 	 (automagic-integrations)
@@ -40,7 +41,7 @@ MIT in each case. |#
 	 (eta-substitution)
 	 (integrate-external "object"))
 
-;;;; N-ary Arithmetic Predicates
+;;;; Fixed-arity arithmetic primitives
 
 (define (make-combination primitive operands)
   (combination/make (constant/make primitive) operands))
@@ -54,6 +55,15 @@ MIT in each case. |#
     block
     (if (and (pair? operands)
 	     (null? (cdr operands)))
+	(if-expanded (make-combination primitive operands))
+	(if-not-expanded))))
+
+(define (binary-arithmetic primitive)
+  (lambda (operands if-expanded if-not-expanded block)
+    block
+    (if (and (pair? operands)
+	     (pair? (cdr operands))
+	     (null? (cddr operands)))
 	(if-expanded (make-combination primitive operands))
 	(if-not-expanded))))
 
@@ -71,6 +81,17 @@ MIT in each case. |#
 
 (define -1+-expansion
   (unary-arithmetic (ucode-primitive -1+)))
+
+(define quotient-expansion
+  (binary-arithmetic (ucode-primitive quotient 2)))
+
+(define remainder-expansion
+  (binary-arithmetic (ucode-primitive remainder 2)))
+
+(define modulo-expansion
+  (binary-arithmetic (ucode-primitive modulo 2)))
+
+;;;; N-ary Arithmetic Predicates
 
 (define (pairwise-test binary-predicate if-left-zero if-right-zero)
   (lambda (operands if-expanded if-not-expanded block)
@@ -482,9 +503,12 @@ MIT in each case. |#
     int:integer?
     list
     make-string
+    ;; modulo	; Compiler does not currently open-code it.
     negative?
     number?
     positive?
+    quotient
+    remainder
     second
     seventh
     sixth
@@ -556,9 +580,12 @@ MIT in each case. |#
    exact-integer?-expansion
    list-expansion
    make-string-expansion
+   ;; modulo-expansion
    negative?-expansion
    complex?-expansion
    positive?-expansion
+   quotient-expansion
+   remainder-expansion
    second-expansion
    seventh-expansion
    sixth-expansion

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.10 1991/04/20 06:09:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.11 1991/05/06 18:46:04 jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; SCode Optimizer: Global Constants List
+;;; package: (scode-optimizer)
 
 (declare (usual-integrations))
 
@@ -190,6 +191,7 @@ MIT in each case. |#
     MAKE-CELL
     MAKE-CHAR
     MAKE-NON-POINTER-OBJECT
+    ;; MODULO ; expanded to primitive.  Global defn. is not.
     NOT
     NULL?
     OBJECT-CONSTANT?
@@ -202,8 +204,10 @@ MIT in each case. |#
     PAIR?
     PRIMITIVE-PROCEDURE-ARITY
     PROCESS-TIME-CLOCK
+    ;; QUOTIENT ; expanded to primitive.  Global defn. is not.
     READ-BITS!
     REAL-TIME-CLOCK
+    ;; REMAINDER ; expanded to primitive.  Global defn. is not.
     SET-CAR!
     SET-CDR!
     SET-CELL-CONTENTS!
