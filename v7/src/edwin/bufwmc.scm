@@ -34,6 +34,11 @@
 ;;;	thereof in any advertising, promotional, or sales literature
 ;;;	without prior written consent from MIT in each case.
 ;;;
+;;; NOTE: Parts of this program (Edwin) were created by translation
+;;; from corresponding parts of GNU Emacs.  Users should be aware that
+;;; the GNU GENERAL PUBLIC LICENSE may apply to these parts.  A copy
+;;; of that license should have been included along with this file.
+;;;
 
 ;;;; Buffer Windows:  Mark <-> Coordinate Maps
 

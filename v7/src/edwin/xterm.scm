@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.4 1989/04/25 03:54:38 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.5 1989/04/28 22:55:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -35,6 +35,11 @@
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
 ;;;	without prior written consent from MIT in each case.
+;;;
+;;; NOTE: Parts of this program (Edwin) were created by translation
+;;; from corresponding parts of GNU Emacs.  Users should be aware that
+;;; the GNU GENERAL PUBLIC LICENSE may apply to these parts.  A copy
+;;; of that license should have been included along with this file.
 ;;;
 
 ;;;; X Terminal

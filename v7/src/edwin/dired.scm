@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.101 1989/04/25 22:06:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.102 1989/04/28 22:49:16 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -35,6 +35,11 @@
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
 ;;;	without prior written consent from MIT in each case.
+;;;
+;;; NOTE: Parts of this program (Edwin) were created by translation
+;;; from corresponding parts of GNU Emacs.  Users should be aware that
+;;; the GNU GENERAL PUBLIC LICENSE may apply to these parts.  A copy
+;;; of that license should have been included along with this file.
 ;;;
 
 ;;;; Directory Editor
