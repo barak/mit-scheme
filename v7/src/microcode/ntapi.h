@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntapi.h,v 1.3 1997/08/23 02:52:10 cph Exp $
+$Id: ntapi.h,v 1.4 1997/08/24 04:05:55 cph Exp $
 
 Copyright (c) 1997 Massachusetts Institute of Technology
 
@@ -51,6 +51,7 @@ enum syscall_names
   apicall_GetFileTime,
   apicall_MoveFile,
   apicall_MsgWaitForMultipleObjects,
+  apicall_ReadFile,
   apicall_RemoveDirectory,
   apicall_SetCurrentDirectory,
   apicall_SetFileAttributes,
@@ -814,6 +815,7 @@ static char * syscall_names_table [] =
   "GET-FILE-TIME",
   "MOVE-FILE",
   "MSG-WAIT-FOR-MULTIPLE-OBJECTS",
+  "READ-FILE",
   "REMOVE-DIRECTORY",
   "SET-CURRENT-DIRECTORY",
   "SET-FILE-ATTRIBUTES",

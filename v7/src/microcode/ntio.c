@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.15 1997/06/19 05:55:43 cph Exp $
+$Id: ntio.c,v 1.16 1997/08/24 04:05:49 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -213,69 +213,58 @@ Relinquish_Timeslice (void)
   return;
 }
 
-int
-DEFUN (nt_channel_read, (channel, buffer, nbytes),
-       Tchannel channel AND PTR buffer AND size_t nbytes)
+long
+DEFUN (OS_channel_read, (channel, buffer, nbytes),
+       Tchannel channel AND
+       PTR buffer AND
+       size_t nbytes)
 {
-  DWORD bytesRead = 0;
-  
   if (nbytes == 0)
     return (0);
 
   if (Screen_IsScreenHandle (CHANNEL_HANDLE (channel)))
-  {
-    bytesRead = Screen_Read ((CHANNEL_HANDLE (channel)),
-			     ((BOOL) (CHANNEL_BUFFERED (channel))),
-			     buffer, nbytes);
-    if (bytesRead == 0xffffffff)
     {
-      /* for pleasantness give up rest of this timeslice */
-      Relinquish_Timeslice ();    
-      errno = ERRNO_NONBLOCK;
+      DWORD bytes_read
+	= (Screen_Read ((CHANNEL_HANDLE (channel)),
+			((BOOL) (CHANNEL_BUFFERED (channel))),
+			buffer,
+			nbytes));
+      if (bytes_read == 0xFFFFFFFF)
+	{
+	  /* For pleasantness give up rest of this timeslice.  */
+	  Relinquish_Timeslice ();
+	  return (-1);
+	}
+      if (bytes_read > nbytes)
+	error_external_return ();
+      return (bytes_read);
     }
-    return ((int) bytesRead);
-  }
 
-  if (IsConsoleHandle (CHANNEL_HANDLE (channel)))
-  {
-    /* fake the console being a nonblocking channel that has nothing after
-       each alternate read
-     */
-
-    static int nonblock = 1;
-    nonblock = !nonblock;
-    if (nonblock)
+  while (1)
     {
-      errno = ERRNO_NONBLOCK;
-      return (-1);
+      if (IsConsoleHandle (CHANNEL_HANDLE (channel)))
+	{
+	  /* Fake the console being a nonblocking channel that has
+	     nothing after each alternate read.  */
+	  static int nonblock = 1;
+	  nonblock = (!nonblock);
+	  if (nonblock)
+	    return (-1);
+	}
+      {
+	DWORD bytes_read;
+	if ((!ReadFile ((CHANNEL_HANDLE (channel)),
+			buffer,
+			nbytes,
+			(&bytes_read),
+			0))
+	    && (bytes_read > 0))
+	  NT_error_api_call ((GetLastError ()), apicall_ReadFile);
+	if (bytes_read > nbytes)
+	  error_external_return ();
+	return (bytes_read);
+      }
     }
-  }
-
-  if (ReadFile (CHANNEL_HANDLE (channel), buffer, nbytes, &bytesRead, 0))
-    return ((int) bytesRead);
-  else
-    return (-1);
-}
-
-long
-DEFUN (OS_channel_read, (channel, buffer, nbytes),
-       Tchannel channel AND PTR buffer AND size_t nbytes)
-{
-  while (1) 
-  {
-    long scr = nt_channel_read (channel, buffer, nbytes);
-    if (scr < 0)
-    {
-      if (errno == ERRNO_NONBLOCK)
-	return (-1);
-      NT_prim_check_errno (syscall_read);
-      continue;
-    }
-    else if (((size_t) scr) > nbytes)
-      error_external_return ();
-    else 
-      return (scr);
-  }
 }
 
 static int
