@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.31 1999/02/24 21:23:27 cph Exp $
+$Id: thread.scm,v 1.32 1999/03/01 05:31:24 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -321,7 +321,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (set-thread/block-events?! thread #t)
     (ring/discard-all (thread/pending-events thread))
     (translate-to-state-point (thread/root-state-point thread))
-    (%deregister-input-thread-events thread)
+    (%deregister-input-thread-events thread #t)
     (%discard-thread-timer-records thread)
     (%disassociate-joined-threads thread)
     (%disassociate-thread-mutexes thread)
@@ -393,10 +393,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   prev
   next)
 
-(define-structure (tentry (conc-name tentry/) (constructor make-tentry ()))
+(define-structure (tentry (conc-name tentry/)
+			  (constructor make-tentry (thread event permanent?)))
   dentry
   thread
   event
+  (permanent? #f read-only #t)
   prev
   next)
 
@@ -469,7 +471,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		   (lambda ()
 		     (set! result 'INPUT-AVAILABLE)
 		     unspecific)
-		   #t))
+		   #f #t))
 	    (set! registration-2
 		  (%register-input-thread-event
 		   'PROCESS-STATUS-CHANGE
@@ -477,7 +479,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		   (lambda ()
 		     (set! result 'PROCESS-STATUS-CHANGE)
 		     unspecific)
-		   #t)))
+		   #f #t)))
 	  unspecific)
 	(lambda ()
 	  (%suspend-current-thread)
@@ -488,32 +490,29 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (permanently-register-input-thread-event descriptor thread event)
   (guarantee-thread thread permanently-register-input-thread-event)
-  (let ((tentry (make-tentry)))
-    (letrec ((register!
-	      (lambda ()
-		 (%%register-input-thread-event descriptor thread
-						wrapped-event #f tentry)))
-	     (wrapped-event (lambda () (register!) (event))))
-      (without-interrupts register!)
-      tentry)))
+  (without-interrupts
+   (lambda ()
+     (%register-input-thread-event descriptor thread event #t #f))))
 
 (define (register-input-thread-event descriptor thread event)
   (guarantee-thread thread register-input-thread-event)
   (without-interrupts
    (lambda ()
-     (let ((tentry (%register-input-thread-event descriptor thread event #f)))
-       (%maybe-toggle-thread-timer)
-       tentry))))
-
-(define (%register-input-thread-event descriptor thread event front?)
-  (let ((tentry (make-tentry)))
-    (%%register-input-thread-event descriptor thread event front? tentry)
-    tentry))
+     (%register-input-thread-event descriptor thread event #f #f))))
 
-(define (%%register-input-thread-event descriptor thread event front? tentry)
-  (set-tentry/thread! tentry thread)
-  (set-tentry/event! tentry event)
-  (let ((dentry
+(define (deregister-input-thread-event tentry)
+  (if (not (tentry? tentry))
+      (error:wrong-type-argument tentry "input thread event registration"
+				 'DEREGISTER-INPUT-THREAD-EVENT))
+  (without-interrupts
+   (lambda ()
+     (%deregister-input-thread-event tentry)
+     (%maybe-toggle-thread-timer))))
+
+(define (%register-input-thread-event descriptor thread event
+				      permanent? front?)
+  (let ((tentry (make-tentry thread event permanent?))
+	(dentry
 	 (let loop ((dentry input-registrations))
 	   (and dentry
 		(if (eqv? descriptor (dentry/descriptor dentry))
@@ -544,22 +543,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(set-tentry/prev! tentry prev)
 		(set-tentry/next! tentry #f)
 		(set-dentry/last-tentry! dentry tentry)
-		(set-tentry/next! prev tentry)))))))
-
-(define (deregister-input-thread-event tentry)
-  (if (not (tentry? tentry))
-      (error:wrong-type-argument tentry "input thread event registration"
-				 'DEREGISTER-INPUT-THREAD-EVENT))
-  (without-interrupts
-   (lambda ()
-     (%deregister-input-thread-event tentry)
-     (%maybe-toggle-thread-timer))))
+		(set-tentry/next! prev tentry)))))
+    (%maybe-toggle-thread-timer)
+    tentry))
 
 (define (%deregister-input-thread-event tentry)
   (if (tentry/dentry tentry)
       (delete-tentry! tentry)))
 
-(define (%deregister-input-thread-events thread)
+(define (%deregister-input-thread-events thread permanent?)
   (let loop ((dentry input-registrations) (tentries '()))
     (if (not dentry)
 	(do ((tentries tentries (cdr tentries)))
@@ -571,28 +563,47 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(if (not tentry)
 		    tentries
 		    (loop (tentry/next tentry)
-			  (if (eq? thread (tentry/thread tentry))
+			  (if (and (eq? thread (tentry/thread tentry))
+				   (or permanent?
+				       (not (tentry/permanent? tentry))))
 			      (cons tentry tentries)
 			      tentries))))))))
-
+
 (define (signal-input-thread-events descriptors)
-  (let loop ((dentry input-registrations) (tentries '()))
-    (if (not dentry)
-	(begin
-	  (do ((tentries tentries (cdr tentries)))
-	      ((null? tentries))
-	    (%signal-thread-event (tentry/thread (car tentries))
-				  (tentry/event (car tentries)))
-	    (delete-tentry! (car tentries)))
-	  (%maybe-toggle-thread-timer))
-	(loop (dentry/next dentry)
-	      (if (let ((descriptor (dentry/descriptor dentry)))
-		    (let loop ((descriptors descriptors))
-		      (and (not (null? descriptors))
-			   (or (eqv? descriptor (car descriptors))
-			       (loop (cdr descriptors))))))
-		  (cons (dentry/first-tentry dentry) tentries)
-		  tentries)))))
+  (let loop ((dentry input-registrations) (events '()))
+    (cond ((not dentry)
+	   (do ((events events (cdr events)))
+	       ((null? events))
+	     (%signal-thread-event (caar events) (cdar events)))
+	   (%maybe-toggle-thread-timer))
+	  ((let ((descriptor (dentry/descriptor dentry)))
+	     (let loop ((descriptors descriptors))
+	       (and (not (null? descriptors))
+		    (or (eqv? descriptor (car descriptors))
+			(loop (cdr descriptors))))))
+	   (let ((next (dentry/next dentry))
+		 (tentry (dentry/first-tentry dentry)))
+	     (let ((events
+		    (cons (cons (tentry/thread tentry)
+				(tentry/event tentry))
+			  events)))
+	       (if (tentry/permanent? tentry)
+		   (move-tentry-to-back! tentry)
+		   (delete-tentry! tentry))
+	       (loop next events))))
+	  (else
+	   (loop (dentry/next dentry) events)))))
+
+(define (move-tentry-to-back! tentry)
+  (let ((next (tentry/next tentry)))
+    (if next
+	(let ((dentry (tentry/dentry tentry))
+	      (prev (tentry/prev tentry)))
+	  (set-tentry/prev! tentry (dentry/last-tentry dentry))
+	  (set-tentry/next! tentry #f)
+	  (set-dentry/last-tentry! dentry tentry)
+	  (set-tentry/prev! next prev)
+	  (if (not prev) (set-dentry/first-tentry! dentry next))))))
 
 (define (delete-tentry! tentry)
   (let ((dentry (tentry/dentry tentry))
@@ -752,7 +763,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (let ((new-record (make-timer-record time (current-thread) event #f)))
       (without-interrupts
        (lambda ()
-	 (let loop ((record timer-records) (prev false))
+	 (let loop ((record timer-records) (prev #f))
 	   (if (or (not record) (< time (timer-record/time record)))
 	       (begin
 		 (set-timer-record/next! new-record record)
@@ -809,7 +820,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (let ((block-events? (thread/block-events? thread)))
       (set-thread/block-events?! thread #t)
       (ring/discard-all (thread/pending-events thread))
-      (%deregister-input-thread-events thread)
+      (%deregister-input-thread-events thread #f)
       (%discard-thread-timer-records thread)
       (set-thread/block-events?! thread block-events?))
     (set-interrupt-enables! interrupt-mask/all)))
