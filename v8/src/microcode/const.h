@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: const.h,v 9.43 1993/09/11 02:45:52 gjr Exp $
+$Id: const.h,v 9.44 1995/07/26 23:18:37 adams Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -47,32 +47,43 @@ MIT in each case. */
 #ifdef b32			/* 32 bit word */
 
 #if (TYPE_CODE_LENGTH == 8)
-#define SHARP_F			0x00000000
-#define SHARP_T			0x08000000
-#define UNSPECIFIC		0x08000001
-#define FIXNUM_ZERO		0x1A000000
-#define BROKEN_HEART_ZERO	0x22000000
+#include "error: update the constants here to reflect the general #defines"
+#define SHARP_F			0x08000000
+#define SHARP_T			0x08000001
+#define UNSPECIFIC		0x08000002
+#define EMPTY_LIST_VALUE        0x08000003
+#define FIXNUM_ZERO		0x00000000
+#define BROKEN_HEART_ZERO	0x11000000
 #endif /* (TYPE_CODE_LENGTH == 8) */
 
 #if (TYPE_CODE_LENGTH == 6)
-#define SHARP_F			0x00000000
-#define SHARP_T			0x20000000
-#define UNSPECIFIC		0x20000001
-#define FIXNUM_ZERO		0x68000000
-#define BROKEN_HEART_ZERO	0x88000000
+#ifndef SHARP_F
+#define SHARP_F			0x22000000
+#endif
+#define SHARP_T			0x23000000
+#define UNSPECIFIC		0x23800000
+#define EMPTY_LIST_VALUE        0x22800000
+#define FIXNUM_ZERO		0x00000000
+#define BROKEN_HEART_ZERO	0x44000000
 #endif /* (TYPE_CODE_LENGTH == 6) */
 
 #endif /* b32 */
 
-#ifndef SHARP_F			/* Safe version */
-#define SHARP_F			MAKE_OBJECT (TC_NULL, 0)
-#define SHARP_T			MAKE_OBJECT (TC_TRUE, 0)
-#define UNSPECIFIC		MAKE_OBJECT (TC_TRUE, 1)
-#define FIXNUM_ZERO		MAKE_OBJECT (TC_FIXNUM, 0)
-#define BROKEN_HEART_ZERO	MAKE_OBJECT (TC_BROKEN_HEART, 0)
+#ifndef SHARP_T			/* Safe version */
+/* The special constants are all of the form TC_CONSTANT | #b1xx
+   to allows smaller datum values to be integer-like
+   xxx values:  100=#F, 101=(), 110=#T, 111=unspecific
+ */
+
+#define SHARP_F		       MAKE_OBJECT (TC_CONSTANT, 0x4<<(DATUM_LENGTH-3))
+#define SHARP_T		       MAKE_OBJECT (TC_CONSTANT, 0x6<<(DATUM_LENGTH-3))
+#define UNSPECIFIC	       MAKE_OBJECT (TC_CONSTANT, 0x7<<(DATUM_LENGTH-3))
+#define EMPTY_LIST_VALUE       MAKE_OBJECT (TC_CONSTANT, 0x5<<(DATUM_LENGTH-3))
+#define FIXNUM_ZERO	       MAKE_OBJECT (TC_POSITIVE_FIXNUM, 0)
+#define BROKEN_HEART_ZERO      MAKE_OBJECT (TC_BROKEN_HEART, 0)
 #endif /* SHARP_F */
 
-#define EMPTY_LIST SHARP_F
+#define EMPTY_LIST              (Registers[REGBLOCK_EMPTY_LIST])
 
 /* Assorted sizes used in various places */
 
@@ -107,9 +118,17 @@ MIT in each case. */
 
 /* For headers in pure / constant area */
 
-#define END_OF_BLOCK		TC_FIXNUM
-#define CONSTANT_PART		TC_TRUE
-#define PURE_PART		TC_FALSE
+/*#define END_OF_BLOCK		TC_POSITIVE_FIXNUM*/
+/*#define CONSTANT_PART		TC_TRUE*/
+/*#define PURE_PART		TC_FALSE*/
+
+#define END_OF_BLOCK		TC_POSITIVE_FIXNUM
+#define CONSTANT_PART		TC_CONSTANT
+#if (TC_CONSTANT==TC_FALSE)
+#  define PURE_PART		TC_CHARACTER
+#else
+#  define PURE_PART             TC_FALSE
+#endif
 
 /* Primitive flow control codes: directs computation after
  * processing a primitive application.
@@ -151,9 +170,9 @@ MIT in each case. */
 /* VMS preprocessor does not like line continuations in conditionals */
 
 #define Are_The_Constants_Incompatible					\
-((TC_NULL != 0x00) || (TC_TRUE != 0x08) ||				\
- (TC_FIXNUM != 0x1A) || (TC_BROKEN_HEART != 0x22) || 			\
- (TC_CHARACTER_STRING != 0x1E))
+( (TC_NULL != 0x05) || (TC_CONSTANT != 0x08) ||				\
+  (TC_POSITIVE_FIXNUM != 0x00) ||                                       \
+  (TC_NEGATIVE_FIXNUM != 0x3F) || (TC_BROKEN_HEART != 0x11))
 
 /* The values used above are in sdata.h and types.h,
    check for consistency if the check below fails. */
@@ -179,8 +198,9 @@ MIT in each case. */
 #define REGBLOCK_STACK_GUARD		11
 #define REGBLOCK_INT_CODE		12
 #define REGBLOCK_REFLECT_TO_INTERFACE	13	/* For use by compiler */
+#define REGBLOCK_EMPTY_LIST             14      /* allows compatbilty */
 
-#define REGBLOCK_MINIMUM_LENGTH		14
+#define REGBLOCK_MINIMUM_LENGTH		15
 
 /* Codes specifying how to start scheme at boot time. */
 
