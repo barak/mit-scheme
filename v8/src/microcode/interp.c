@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.54 1990/01/29 22:32:57 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.55 1990/01/30 14:44:25 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -84,10 +84,13 @@ MIT in each case. */
 
 #define Prepare_Pop_Return_Interrupt(Return_Code, Contents_of_Val)	\
 {									\
+  SCHEME_OBJECT temp;							\
+									\
+  temp = (Contents_of_Val);						\
   Store_Return(Return_Code);						\
   Save_Cont();								\
   Store_Return(RC_RESTORE_VALUE);					\
-  Store_Expression(Contents_of_Val);					\
+  Store_Expression(temp);						\
   Save_Cont();								\
 }
 
