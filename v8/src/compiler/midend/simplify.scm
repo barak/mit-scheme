@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.14 1995/06/22 15:22:26 adams Exp $
+$Id: simplify.scm,v 1.15 1995/07/06 21:27:14 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -43,21 +43,6 @@ MIT in each case. |#
 
 (define (simplify/top-level program)
   (simplify/expr #F program))
-
-;;(define-macro (define-simplifier keyword bindings . body)
-;;  (let ((proc-name (symbol-append 'SIMPLIFY/ keyword)))
-;;    (call-with-values
-;;	(lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
-;;      (lambda (names code)
-;;	`(DEFINE ,proc-name
-;;	   (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
-;;	     (NAMED-LAMBDA (,proc-name ENV FORM)
-;;	       (LET ((TRANSFORM-CODE (LAMBDA () ,code)))
-;;		 (LET ((INFO (SIMPLIFY/GET-DBG-INFO ENV FORM)))
-;;		   (LET ((CODE (TRANSFORM-CODE)))
-;;		     (IF INFO
-;;			 (CODE-REWRITE/REMEMBER* CODE INFO))
-;;		     CODE))))))))))
 
 (define-macro (define-simplifier keyword bindings . body)
   (let ((proc-name (symbol-append 'SIMPLIFY/ keyword)))
@@ -592,16 +577,18 @@ MIT in each case. |#
 (define (simplify/expr env expr)
   (if (not (pair? expr))
       (illegal expr))
+  ;;(sample/1 '(simplify/dispatch histogram) (car expr))
+  ;; Distrubution: quote: 57%, call: 20%, lookup: 17%, let: 3%, lambda: 2%
   (case (car expr)
     ((QUOTE)   (simplify/quote env expr))
-    ((LOOKUP)  (simplify/lookup env expr))
-    ((LAMBDA)  (simplify/lambda env expr))
-    ((LET)     (simplify/let env expr))
-    ((DECLARE) (simplify/declare env expr))
     ((CALL)    (simplify/call env expr))
-    ((BEGIN)   (simplify/begin env expr))
+    ((LOOKUP)  (simplify/lookup env expr))
+    ((LET)     (simplify/let env expr))
+    ((LAMBDA)  (simplify/lambda env expr))
     ((IF)      (simplify/if env expr))
     ((LETREC)  (simplify/letrec env expr))
+    ((BEGIN)   (simplify/begin env expr))
+    ((DECLARE) (simplify/declare env expr))
     (else      (illegal expr))))
 
 (define (simplify/expr* env exprs)
