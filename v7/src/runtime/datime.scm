@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.28 2000/05/15 18:15:36 cph Exp $
+$Id: datime.scm,v 14.29 2000/05/23 21:48:53 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -253,11 +253,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			   (string->number (car time))
 			   (string->number (list-ref tokens 0))
 			   (string->month (list-ref tokens 1))
-			   (let ((n (string->number (list-ref tokens 2))))
-			     (and (exact-nonnegative-integer? n)
-				  (if (< n 100)
-				      (+ 1900 n)
-				      n)))
+			   (string->year (list-ref tokens 2))
 			   (string->time-zone (list-ref tokens 4)))))))
 
 (define (string->universal-time string)
@@ -343,12 +339,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			   (string->number (car time))
 			   (string->number (list-ref tokens 2))
 			   (string->month (list-ref tokens 1))
-			   (let ((n (string->number (list-ref tokens 4))))
-			     (if (not (exact-nonnegative-integer? n))
-				 (lose))
-			     (if (< n 100)
-				 (+ 1900 n)
-				 n))
+			   (string->year (list-ref tokens 4))
 			   zone)))))
 
 (define (universal-time->local-ctime-string time)
@@ -433,6 +424,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (cond ((fix:= index end) #f)
 	    ((string-ci=? string (vector-ref string-vector index)) index)
 	    (else (loop (fix:+ index 1)))))))
+
+(define (string->year string)
+  (let ((n (string->number string)))
+    (if (not (exact-nonnegative-integer? n))
+	(error:bad-range-argument string 'STRING->YEAR))
+    (cond ((< n 38) (+ 2000 n))
+	  ((< n 100) (+ 1900 n))
+	  (else n))))
 
 ;; Upwards compatibility
 (define decode-universal-time universal-time->local-decoded-time)
