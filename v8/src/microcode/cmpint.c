@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.74 1993/10/30 03:04:27 gjr Exp $
+$Id: cmpint.c,v 1.75 1993/11/01 23:52:47 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -3823,6 +3823,7 @@ DEFUN (coerce_to_compiled,
 
 extern char * EXFUN (utility_index_to_name, (int));
 extern void EXFUN (declare_builtin, (unsigned long));
+extern char * EXFUN (builtin_index_to_name, (int));
 extern int EXFUN (pc_to_utility_index, (unsigned long));
 extern int EXFUN (pc_to_builtin_index, (unsigned long));
 
@@ -3836,6 +3837,12 @@ void
 DEFUN (declare_builtin, (builtin), unsigned long builtin)
 {
   return;
+}
+
+char *
+DEFUN (builtin_index_to_name, (index), int index)
+{
+  return ((char *) NULL);
 }
 
 int
