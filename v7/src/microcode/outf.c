@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: outf.c,v 1.1 1993/06/24 06:54:47 gjr Exp $
+$Id: outf.c,v 1.2 1993/06/28 02:29:10 cph Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -54,7 +54,16 @@ MIT in each case. */
   information to stay visible `after' the termination of Scheme.
 */
 
+#ifdef __STDC__
 #include <stdarg.h>
+#define VA_START(args, lastarg) va_start(args, lastarg)
+#define VA_DCL
+#else
+#include <varargs.h>
+#define VA_START(args, lastarg) va_start(args)
+#define VA_DCL va_dcl
+#endif
+
 #include <stdio.h>
 #include "scheme.h"
 
@@ -62,19 +71,24 @@ MIT in each case. */
 #include <windows.h>
 #include "ntscreen.h"
 #endif
+
+/* forward reference */
+extern void EXFUN
+  (voutf, (CONST outf_channel chan, CONST char * format, va_list ap));
 
-#define make_outf_variants(outputter,flusher,chan)	\
-void							\
-DEFUN (outputter, (format), CONST char *format DOTS)	\
-{							\
-    va_list args;						\
-    va_start(args, format);				\
-    voutf((chan), format, args);			\
-}							\
-void					\
-DEFUN_VOID (flusher)			\
-{					\
-    outf_flush (chan);			\
+#define make_outf_variants(outputter,flusher,chan)			\
+void									\
+DEFUN (outputter, (format, va_alist), CONST char *format DOTS)		\
+     VA_DCL								\
+{									\
+    va_list args;							\
+    VA_START(args, format);						\
+    voutf((chan), format, args);					\
+}									\
+void									\
+DEFUN_VOID (flusher)							\
+{									\
+    outf_flush (chan);							\
 }
 
 make_outf_variants(outf_console, outf_flush_console, console_output)
@@ -82,10 +96,13 @@ make_outf_variants(outf_error,   outf_flush_error,   error_output)
 make_outf_variants(outf_fatal,   outf_flush_fatal,   fatal_output)
 
 void
-DEFUN (outf, (chan, format), outf_channel chan AND CONST char *format DOTS)
+DEFUN (outf, (chan, format, va_alist),
+       outf_channel chan AND
+       CONST char *format DOTS)
+     VA_DCL
 {
     va_list ap;
-    va_start(ap, format);
+    VA_START(ap, format);
     voutf(chan, format, ap);
 }
 
@@ -137,17 +154,18 @@ DEFUN (voutf_master_tty, (chan, format, args),
 #endif
 
 void
-DEFUN (voutf, (chan, format, args),
-       outf_channel chan  AND  CONST char *format  AND  va_list args)
+DEFUN (voutf, (chan, format, ap),
+       CONST outf_channel chan AND
+       CONST char *format AND
+       va_list ap)
 {
 #ifdef WINNT
-         if (chan==fatal_output) voutf_fatal(format, args);
-    else if (chan==console_output) voutf_master_tty(chan, format, args);
-    else if (chan==error_output)   voutf_master_tty(chan, format, args);
+         if (chan==fatal_output) voutf_fatal(format, ap);
+    else if (chan==console_output) voutf_master_tty(chan, format, ap);
+    else if (chan==error_output)   voutf_master_tty(chan, format, ap);
     else
 #endif
-    vfprintf(outf_channel_to_FILE(chan), format, args);
-
+    vfprintf(outf_channel_to_FILE(chan), format, ap);
 }
 
 void
