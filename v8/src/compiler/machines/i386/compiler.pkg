@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.1 1995/10/25 19:19:32 ssmith Exp $
+$Id: compiler.pkg,v 1.2 1995/10/25 19:27:35 ssmith Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -44,7 +44,7 @@ MIT in each case. |#
 	 "base/fasthash"		;eq-hash tables
 	 "base/mvalue"			;multiple-value support
 	 "base/scode"			;SCode abstraction
-	 "machines/spectrum/machin"	;machine dependent stuff
+	 "machines/i386/machin"	;machine dependent stuff
 	 "back/asutl"			;back-end odds and ends
 	 "base/utils"			;odds and ends
 	 "base/stats"			;statistics abstraction
@@ -120,7 +120,7 @@ MIT in each case. |#
   (initialization (initialize-package!)))
 
 (define-package (compiler declarations)
-  (files "machines/spectrum/decls")
+  (files "machines/i386/decls")
   (parent (compiler))
   (export (compiler)
 	  sc
@@ -412,23 +412,23 @@ MIT in each case. |#
 	 "back/lapgn2"			; "      "
 	 "back/lapgn3"			; "      "
 	 "back/regmap"			;Hardware register allocator
-	 "machines/spectrum/lapgen"	;code generation rules
-	 "machines/spectrum/rules1"	;  "      "        "
-	 "machines/spectrum/rules2"	;  "      "        "
-	 "machines/spectrum/rules3"	;  "      "        "
-	 "machines/spectrum/rules4"	;  "      "        "
-	 "machines/spectrum/rulfix"	;  "      "        "
-	 "machines/spectrum/rulflo"	;  "      "        "
-	 "machines/spectrum/rulrew"	;code rewriting rules
+	 "machines/i386/lapgen"	;code generation rules
+	 "machines/i386/rules1"	;  "      "        "
+	 "machines/i386/rules2"	;  "      "        "
+	 "machines/i386/rules3"	;  "      "        "
+	 "machines/i386/rules4"	;  "      "        "
+	 "machines/i386/rulfix"	;  "      "        "
+	 "machines/i386/rulflo"	;  "      "        "
+	 "machines/i386/rulrew"	;code rewriting rules
 	 "back/syntax"			;Generic syntax phase
 	 "back/syerly"			;Early binding version
-	 "machines/spectrum/coerce"	;Coercions: integer -> bit string
+	 "machines/i386/coerce"	;Coercions: integer -> bit string
 	 "back/asmmac"			;Macros for hairy syntax
-	 "machines/spectrum/insmac"	;Macros for hairy syntax
-	 "machines/spectrum/inerly"	;Early binding version
-	 "machines/spectrum/instr1"	;Spectrum instruction utilities
-	 "machines/spectrum/instr2"	;Spectrum instructions
-	 "machines/spectrum/instr3"	;  "        "
+	 "machines/i386/insmac"	;Macros for hairy syntax
+	 "machines/i386/inerly"	;Early binding version
+	 "machines/i386/instr1"	;I386 instruction utilities
+	 "machines/i386/instr2"	;I386 instructions
+	 "machines/i386/instr3"	;  "        "
 	 )
   (parent (compiler))
   (export (compiler)
@@ -485,7 +485,7 @@ MIT in each case. |#
 	  linearize-lap))
 
 (define-package (compiler lap-optimizer)
-  (files "machines/spectrum/lapopt")
+  (files "machines/i386/lapopt")
   (parent (compiler))
   (import (compiler lap-syntaxer)
 	  entry->address
@@ -497,7 +497,7 @@ MIT in each case. |#
 	  optimize-linear-lap))
 
 (define-package (compiler assembler)
-  (files "machines/spectrum/assmd"	;Machine dependent
+  (files "machines/i386/assmd"	;Machine dependent
 	 "back/symtab"			;Symbol tables
 	 "back/bitutl"			;Assembly blocks
 	 "back/bittop"			;Assembler top level
@@ -509,9 +509,9 @@ MIT in each case. |#
 	  assemble))
 
 (define-package (compiler disassembler)
-  (files "machines/spectrum/dassm1"
-	 "machines/spectrum/dassm2"
-	 "machines/spectrum/dassm3")
+  (files "machines/i386/dassm1"
+	 "machines/i386/dassm2"
+	 "machines/i386/dassm3")
   (parent (compiler))
   (export ()
 	  compiler:write-lap-file
