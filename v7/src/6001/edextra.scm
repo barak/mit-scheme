@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.17 1993/01/12 23:31:46 gjs Exp $
+$Id: edextra.scm,v 1.18 1993/10/25 17:13:41 cph Exp $
 
 Copyright (c) 1992-93 Massachusetts Institute of Technology
 
@@ -218,54 +218,57 @@ Now, there is formatting stuff to be considered here, in print-pgm.sh.
   "Load a 6.001 problem set."
   ()
   (lambda ()
-    (load pset-list-file (->environment '(edwin)))
-    (let* ((default-ps (problem-sets/default-ps problem-sets))
-	   (ps (prompt-for-string "Load Problem Set" (->string default-ps))))
-      (let* ((error-handler
-	      (lambda ()
-		(editor-error "There doesn't appear to be a problem set "
-			      ps
-			      " installed; ask a TA for help.")))
-	     (groups (ps-groups ps error-handler))
-	     (pset-path
-	      (merge-pathnames (string-append "ps" (->string ps) "/") 
-			       pset-dir)))
-	(if (not (files-all-exist? (groups/all-files groups) pset-path))
-	    (error-handler))
-	(map (lambda (file)
-	       (find-file (merge-pathnames pset-path (->pathname file))))
-	     (groups/files-to-reference groups))
-	(map (lambda (file)
-	       (let ((filename (merge-pathnames pset-path (->pathname file))))
-		 (message "Evaluating file " (->namestring filename))
-		 (load filename (->environment '(student)))
-		 (append-message " -- done")))
-	     (groups/files-to-load groups))
-	(map (lambda (file)
-	       (let ((filename (merge-pathnames pset-path (->pathname file))))
-		 (message "Evaluating file " (->namestring filename))
-		 (load filename (->environment '(student)))
-		 (append-message " -- done")
-		 (find-file filename)))
-	     (groups/files-to-load&reference groups))
-	(map (lambda (file)
-	       (let ((source-file
-		      (merge-pathnames pset-path (->pathname file)))
-		     (dest-file
-		      (merge-pathnames student-dir (->pathname file))))
-		 (message "Copying file "
-			  (->namestring file)
-			  " to working area")
-		 (let ((buffer (find-buffer (->namestring dest-file))))
-		   (if buffer (kill-buffer buffer)))
-		 (find-file source-file)
-		 (let ((buffer (current-buffer)))
-		   (set-buffer-writable! buffer)
-		   (set-visited-pathname buffer dest-file)
-		   (write-buffer buffer))
-		 (append-message " -- done")
-		 (find-file dest-file)))
-	     (groups/files-to-copy groups))))))
+    (fluid-let ((load/suppress-loading-message? #t))
+      (load pset-list-file (->environment '(edwin)))
+      (let* ((default-ps (problem-sets/default-ps problem-sets))
+	     (ps (prompt-for-string "Load Problem Set" (->string default-ps))))
+	(let* ((error-handler
+		(lambda ()
+		  (editor-error "There doesn't appear to be a problem set "
+				ps
+				" installed; ask a TA for help.")))
+	       (groups (ps-groups ps error-handler))
+	       (pset-path
+		(merge-pathnames (string-append "ps" (->string ps) "/") 
+				 pset-dir)))
+	  (if (not (files-all-exist? (groups/all-files groups) pset-path))
+	      (error-handler))
+	  (map (lambda (file)
+		 (find-file (merge-pathnames pset-path (->pathname file))))
+	       (groups/files-to-reference groups))
+	  (map (lambda (file)
+		 (let ((filename
+			(merge-pathnames pset-path (->pathname file))))
+		   (message "Evaluating file " (->namestring filename))
+		   (load filename (->environment '(student)))
+		   (append-message " -- done")))
+	       (groups/files-to-load groups))
+	  (map (lambda (file)
+		 (let ((filename
+			(merge-pathnames pset-path (->pathname file))))
+		   (message "Evaluating file " (->namestring filename))
+		   (load filename (->environment '(student)))
+		   (append-message " -- done")
+		   (find-file filename)))
+	       (groups/files-to-load&reference groups))
+	  (map (lambda (file)
+		 (let ((source-file
+			(merge-pathnames pset-path (->pathname file)))
+		       (dest-file
+			(merge-pathnames student-dir (->pathname file))))
+		   (message "Copying file "
+			    (->namestring file)
+			    " to working area")
+		   (let ((buffer (find-buffer (->namestring dest-file))))
+		     (if buffer (kill-buffer buffer)))
+		   (find-file source-file)
+		   (let ((buffer (current-buffer)))
+		     (set-buffer-writable! buffer)
+		     (set-visited-pathname buffer dest-file)
+		     (write-buffer buffer))
+		   (append-message " -- done")
+		   (find-file dest-file)))
+	       (groups/files-to-copy groups)))))))
 
 ;;;; DOS Filenames
 
