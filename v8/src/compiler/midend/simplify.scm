@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.17 1995/08/19 13:42:24 adams Exp $
+$Id: simplify.scm,v 1.18 1996/03/06 14:22:27 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -86,15 +86,25 @@ MIT in each case. |#
   ;; where ENVIRONMENT is either #F or the environment for the lambda
   ;; expression bound to this name
   (define unsafe-cyclic-reference?
+    ;; Maps a LAMBDA form to a boolean: was this LAMBDA chosen to break
+    ;; cycles?  Things that we do not take into account but we should:
+    ;; (1) If for some reason we would not try to substitute the lambda,
+    ;; then it already breaks a cycle.  (2) we should put lambdas
+    ;; with simple inline-able bodies last so they don't break a cycle
+    ;; by accident. (3) the DFS should be rooted in the LETREC's body.
     (if mutually-recursive?
-	(let ((finder (association-procedure eq? second)))
-	  (make-breaks-cycle? (map second bindings)
-			      (lambda (name)
-				(let* ((triple (finder name bindings))
-				       (env    (first triple)))
-				  (if env
-				      (simplify/env/free-calls env)
-				      '())))))
+	(let ((table (make-monotonic-strong-eq-hash-table)))
+	  (define (insert! triple)
+	    (monotonic-strong-eq-hash-table/put!
+	     table
+	     (second triple)		;name
+	     (if (first triple)
+		 (simplify/env/free-calls (first triple))
+		 '())))
+	  (for-each insert! bindings)
+	  (make-breaks-cycle?
+	   (map second bindings)
+	   (lambda (name) (monotonic-strong-eq-hash-table/get table name #F))))
 	(lambda (lambda-expr) lambda-expr #F)))
 
   (simplify/bindings env unsafe-cyclic-reference?
