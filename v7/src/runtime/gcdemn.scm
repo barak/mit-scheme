@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcdemn.scm,v 14.3 1989/08/15 13:19:44 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcdemn.scm,v 14.4 1991/12/10 23:24:16 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,17 +48,14 @@ MIT in each case. |#
 (define secondary-gc-daemons)
 
 (define (trigger-gc-daemons)
-  (trigger-daemons gc-daemons))
+  (do ((daemons gc-daemons (cdr daemons)))
+      ((null? daemons))
+    ((car daemons))))
 
 (define (trigger-secondary-gc-daemons!)
-  (trigger-daemons secondary-gc-daemons))
-
-(define (trigger-daemons daemons . extra-args)
-  (let loop ((daemons daemons))
-    (if (not (null? daemons))
-	(begin
-	  (apply (car daemons) extra-args)
-	  (loop (cdr daemons))))))
+  (do ((daemons secondary-gc-daemons (cdr daemons)))
+      ((null? daemons))
+    ((car daemons))))
 
 (define (add-gc-daemon! daemon)
   (set! gc-daemons (cons daemon gc-daemons))
