@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: expand.scm,v 1.8 1996/02/09 02:30:23 adams Exp $
+$Id: expand.scm,v 1.9 1996/02/09 03:24:03 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -32,7 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Simple special form expansion
+;;;; Expansion of simple special forms
 ;;; package: (compiler midend)
 
 (declare (usual-integrations))
@@ -51,7 +51,7 @@ MIT in each case. |#
 	     (NAMED-LAMBDA (,proc-name FORM)
 	       (EXPAND/REMEMBER ,code
 				FORM))))))))
-
+
 ;;;; Core forms: simply expand components
 
 (define-expander QUOTE (object)
@@ -62,7 +62,7 @@ MIT in each case. |#
 
 (define-expander SET! (name value)
   `(SET! ,name ,(expand/expr value)))
-
+
 #|
 (define-expander LAMBDA (lambda-list body)
   (expand/rewrite/lambda lambda-list (expand/expr body)))
@@ -101,7 +101,15 @@ MIT in each case. |#
 				    #F)))))
 
 (define-expander LET (bindings body)
-  (expand/let* expand/letify bindings body))
+  (let ((bindings*  (map (lambda (binding)
+			    (list (car binding)
+				  (expand/expr (cadr binding))))
+			 bindings)))
+    (let ((body*  (expand/expr body)))
+      (if (null? bindings*)
+	  body*
+	  `(LET ,bindings*
+	     ,body*)))))
 
 (define-expander DECLARE (#!rest anything)
   `(DECLARE ,@anything))
@@ -193,14 +201,14 @@ MIT in each case. |#
 
     (case (car new-pred)
       ((QUOTE)
-       (case (boolean/discriminate (cadr new-pred))
+       (case (boolean/discriminate (quote/text new-pred))
 	 ((TRUE)    new-pred)
 	 ((FALSE)   new-alt)
 	 (else	    (default))))
       ((LOOKUP)
        `(IF ,new-pred ,new-pred ,new-alt))
       ((CALL)
-       (let ((rator (cadr new-pred)))
+       (let ((rator (call/operator new-pred)))
 	 (if (and (QUOTE/? rator)
 		  (operator/satisfies? (quote/text rator) '(PROPER-PREDICATE)))
 	     `(IF ,new-pred (QUOTE #T) ,new-alt)
@@ -244,51 +252,32 @@ MIT in each case. |#
 
 (define (expand/new-name prefix)
   (new-variable prefix))
-
-(define (expand/let* letify bindings body)
-  (let ((bindings*  (map (lambda (binding)
-			    (list (car binding)
-				  (expand/expr (cadr binding))))
-			 bindings)))
-    (let ((body*  (expand/expr body)))
-      (if (null? bindings*)
-	  body*
-	  (letify bindings* body*)))))
-
-(define (expand/letify bindings body)
-  `(LET ,bindings
-     ,body))
-
-(define (expand/pseudo-letify rator bindings body)
-  (pseudo-letify rator bindings body expand/remember))
-
-(define (expand/bindify lambda-list operands)
-  (map (lambda (name operand) (list name operand))
-       (lambda-list->names lambda-list)
-       (lambda-list/applicate lambda-list operands)))
 
 (define (expand/code-compress actions)
-  (define (->vector exprs)
-    (if (not (for-all? exprs
-	       (lambda (expr)
-		 (and (pair? expr)
-		      (eq? (car expr) 'QUOTE)))))
+  ;; Reduce sequences of operations that define variables in the *same*
+  ;; first-class environment (%*define) into a single multi-define
+  ;; (%*define*).  Only do this for variables which are defined to
+  ;; simple expressions that can't generate errors or otherwise
+  ;; capture the continuation (e.g. constants, compiled procedure
+  ;; constants, or immediately constructed procedures).
+  
+  (define (->multi-values-vector exprs)
+    (if (for-all? exprs QUOTE/?)
+	`(QUOTE ,(list->vector (map quote/text exprs)))
 	`(CALL (QUOTE ,%vector)
 	       (QUOTE #F)
-	       ,@exprs)
-	`(QUOTE ,(list->vector (map cadr exprs)))))
+	       ,@exprs)))
 
   (define (->multi-define defns)
     `(CALL (QUOTE ,%*define*)
 	   (QUOTE #F)
-	   ,(list-ref (car defns) 3)
-	   (QUOTE ,(list->vector (map (lambda (defn)
-					(cadr (list-ref defn 4)))
-				      defns)))
-	   ,(->vector
-	     (map (lambda (defn)
-		     (list-ref defn 5))
-		   defns))))
+	   ,(call/%*define/environment (car defns))
+	   (QUOTE ,(list->vector
+		    (map (lambda (defn)
+			   (quote/text (call/%*define/variable-name defn)))
+			 defns)))
+	   ,(->multi-values-vector
+	     (map call/%*define/value defns))))
 
   (define (collect defns actions)
     (cond ((null? defns) actions)
@@ -298,39 +287,29 @@ MIT in each case. |#
 	   (cons (->multi-define (reverse defns))
 		 actions))))
 
+  (define (expand/code-compress/trivial? expr)
+    (or (QUOTE/? expr)
+	(LAMBDA/? expr)))
+
   (let loop ((actions actions)
 	     (defns '())
 	     (actions* '()))
+    (define (next defns actions*)
+      (loop (cdr actions) defns actions*))
     (if (null? actions)
 	(beginnify (reverse (collect defns actions*)))
 	(let ((action (car actions)))
 	  (cond ((not (and (CALL/%*define? action)
 			   (expand/code-compress/trivial?
 			    (call/%*define/value action))))
-		 (loop (cdr actions)
-		       '()
+		 (next '()
 		       (cons action
 			     (collect defns actions*))))
 		((or (null? defns)
-		     (not (equal? (list-ref action 3)
-				  (list-ref (car defns) 3))))
-		 (loop (cdr actions)
-		       (list action)
+		     (not (equal? (call/%*define/environment action)
+				  (call/%*define/environment (car defns)))))
+		 (next (list action)
 		       (collect defns actions*)))
 		(else
-		 (loop (cdr actions)
-		       (cons action defns)
+		 (next (cons action defns)
 		       actions*)))))))
-
-(define (expand/code-compress/trivial? expr)
-  (or (QUOTE/? expr)
-      (and (LAMBDA/? expr)
-	   #| (let ((params (cadr expr)))
-		(if (or (null? params)
-			(null? cdr params)
-			(not (null? (cddr params))))
-		    (internal-error
-		     "EXPAND/CODE-COMPRESS/TRIVIAL? param error"
-		     params)
-		    (ignored-variable? (second params))))
-           |# )))
