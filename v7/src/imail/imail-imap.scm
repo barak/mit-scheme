@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.28 2000/05/10 20:39:33 cph Exp $
+;;; $Id: imail-imap.scm,v 1.29 2000/05/10 20:45:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -412,8 +412,7 @@
 		  (cons v n))))))
 	((imail-message-wrapper "Reading message UIDs")
 	 (lambda ()
-	   (imap:command:fetch-range (imap-folder-connection folder) 0 count
-				     '(UID))))
+	   (imap:command:fetch-all (imap-folder-connection folder) '(UID))))
 	(without-interrupts
 	 (lambda ()
 	   (let ((v* (imap-folder-messages folder))
@@ -623,6 +622,12 @@
 (define (imap:command:fetch connection index items)
   (imap:command:single-response imap:response:fetch?
 				connection 'FETCH (+ index 1) items))
+
+(define (imap:command:fetch-all connection items)
+  (imap:command:multiple-response imap:response:fetch?
+				  connection 'FETCH
+				  (cons 'ATOM "1:*")
+				  items))
 
 (define (imap:command:fetch-range connection start end items)
   (if (< start end)
