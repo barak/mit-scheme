@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.24 2004/12/13 03:27:17 cph Exp $
+$Id: toplev.scm,v 1.25 2005/01/11 02:59:14 cph Exp $
 
 Copyright 1988,1989,1991,1993,1995,1996 Massachusetts Institute of Technology
 Copyright 1998,2000,2001,2002,2003 Massachusetts Institute of Technology
-Copyright 2004 Institute of Technology
+Copyright 2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,14 +30,18 @@ USA.
 (declare (usual-integrations))
 
 (define (generate/common kernel)
-  (lambda (filename)
-    (let ((pathname (merge-pathnames filename)))
-      (for-each (lambda (os-type)
-		  (let ((pmodel (read-package-model pathname os-type)))
-		    (let ((changes? (read-file-analyses! pmodel os-type)))
-		      (resolve-references! pmodel)
-		      (kernel pathname pmodel changes? os-type))))
-		os-types))))
+  (lambda (filename #!optional os-type)
+    (let ((do-type
+	   (let ((pathname (merge-pathnames filename)))
+	     (lambda (os-type)
+	       (let ((pmodel (read-package-model pathname os-type)))
+		 (let ((changes? (read-file-analyses! pmodel os-type)))
+		   (resolve-references! pmodel)
+		   (kernel pathname pmodel changes? os-type)))))))
+      (cond ((default-object? os-type) (do-type microcode-id/operating-system))
+	    ((eq? os-type 'ALL) (for-each do-type os-types))
+	    ((memq os-type os-types) (do-type os-type))
+	    (else (error:bad-range-argument os-type #f))))))
 
 (define (cref/generate-trivial-constructor filename)
   (let ((pathname (merge-pathnames filename)))
