@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.140 1993/10/26 23:23:58 cph Exp $
+;;;	$Id: dired.scm,v 1.141 1993/12/21 10:45:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -466,8 +466,8 @@ negative numeric arg overrides kept-old-versions with minus the arg."
 					 ((fix:= index end))
 				       (dired-mark-1 (cdar versions) #\D)))))))
 			 (dired-numeric-backup-files))))))
-      (cond ((and argument (> argument 0)) (do-it argument new))
-	    ((and argument (< argument 0)) (do-it old (- argument)))
+      (cond ((and argument (> argument 0)) (do-it old argument))
+	    ((and argument (< argument 0)) (do-it (- argument) new))
 	    (else (do-it old new))))))
 
 (define (dired-numeric-backup-files)
@@ -479,7 +479,8 @@ negative numeric arg overrides kept-old-versions with minus the arg."
 	      (let ((region (dired-filename-region start)))
 		(if region
 		    (let ((filename (region->string region)))
-		      (let ((root.version (os/numeric-backup-filename? filename)))
+		      (let ((root.version
+			     (os/numeric-backup-filename? filename)))
 			(if root.version
 			    (let ((root (car root.version))
 				  (version.index
