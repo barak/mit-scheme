@@ -1,0 +1,129 @@
+;;; -*-Scheme-*-
+;;;
+;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;
+;;;	This material was developed by the Scheme project at the
+;;;	Massachusetts Institute of Technology, Department of
+;;;	Electrical Engineering and Computer Science.  Permission to
+;;;	copy this software, to redistribute it, and to use it for any
+;;;	purpose is granted, subject to the following restrictions and
+;;;	understandings.
+;;;
+;;;	1. Any copy made of this software must include this copyright
+;;;	notice in full.
+;;;
+;;;	2. Users of this software agree to make their best efforts (a)
+;;;	to return to the MIT Scheme project any improvements or
+;;;	extensions that they make, so that these may be included in
+;;;	future releases; and (b) to inform MIT of noteworthy uses of
+;;;	this software.
+;;;
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
+;;;	research.
+;;;
+;;;	4. MIT has made no warrantee or representation that the
+;;;	operation of this software will be error-free, and MIT is
+;;;	under no obligation to provide any services, by way of
+;;;	maintenance, update, or otherwise.
+;;;
+;;;	5. In conjunction with products arising from the use of this
+;;;	material, there shall be no use of the name of the
+;;;	Massachusetts Institute of Technology nor of any adaptation
+;;;	thereof in any advertising, promotional, or sales literature
+;;;	without prior written consent from MIT in each case.
+;;;
+
+;;;; Compiler Make File for MC68020
+
+(declare (usual-integrations))
+
+(set-working-directory-pathname! "$zcomp")
+(load "load" system-global-environment)
+
+(load-system system-global-environment
+	     'COMPILER-PACKAGE
+	     '(SYSTEM-GLOBAL-ENVIRONMENT)
+	     '(
+	       (SYSTEM-GLOBAL-ENVIRONMENT
+		"macros.bin.52"		;compiler syntax
+		"pbs.bin.1"		;bit-string read/write syntax
+		)
+
+	       (COMPILER-PACKAGE
+		"mc68020/machin.bin.40"	;machine dependent stuff
+		"toplev.bin.86"		;top level
+		"utils.bin.69"		;odds and ends
+		"cfg.bin.136"		;control flow graph
+		"ctypes.bin.32"		;CFG datatypes
+		"dtypes.bin.83"		;DFG datatypes
+		"dfg.bin.54"		;data flow graph
+		"rtl.bin.106"		;register transfer language
+		"emodel.bin.93"		;environment model
+		"rtypes.bin.10"		;RTL analyzer datatypes
+		"nmatch.bin.11"		;simple pattern matcher
+		)
+
+	       (CONVERTER-PACKAGE
+		"graphc.bin.107"	;SCode->flow-graph converter
+		)
+
+	       (DATAFLOW-PACKAGE
+		"dflow.bin.99"		;Dataflow analyzer
+		)
+
+	       (CALL-CONSTRUCTOR-PACKAGE
+		"calls.bin.73"		;Call-sequence constructor
+		)
+
+	       (RTL-GENERATOR-PACKAGE
+		"cgen.bin.187"		;RTL generator
+		"linear.bin.72"		;linearization
+		)
+
+	       (RTL-CSE-PACKAGE
+		"rcse.bin.91"		;RTL common subexpression eliminator
+		)
+
+	       (RTL-ANALYZER-PACKAGE
+		"rlife.bin.49"		;RTL register lifetime analyzer
+		"ralloc.bin.7"		;RTL register allocator
+		)
+
+	       (LAP-GENERATOR-PACKAGE
+		"lapgen.bin.17"		;LAP generator.
+		"regmap.bin.84"		;Hardware register allocator.
+		"mc68020/lapgen.bin.138" ;code generation rules.
+		)
+
+	       (LAP-SYNTAXER-PACKAGE
+		"syntax.bin.12"		;Generic syntax phase
+		"mc68020/coerce.bin.6"	;Coercions: integer -> bit string
+		"asmmac.bin.1"		;Macros for hairy syntax
+		"mc68020/insmac.bin.117" ;Macros for hairy syntax
+		"mc68020/instr1.bin.58"	;68000 Effective addressing
+		"mc68020/instr2.bin.8"	;68000 Instructions
+		"mc68020/instr3.bin.8"	;  "        "
+		)
+
+	       (LAP-PACKAGE
+		"mc68020/assmd.bin.28"	;Machine dependent
+		"symtab.bin.36"		;Symbol tables
+		"block.bin.19"		;Assembly blocks
+		"laptop.bin.90"		;Assembler top level
+		)
+
+	       ))
+
+(in-package compiler-package
+  (define compiler-system
+    (make-environment
+      (define :name "Liar (Bobcat 68020)")
+      (define :version 3)
+      (define :modification 0)))
+  (add-system! compiler-system))
+
+(%ge compiler-package)
+(%gst (access compiler-syntax-table compiler-package))
+(%gst (access compiler-syntax-table compiler-package))
