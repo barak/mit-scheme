@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile,v 1.27 2001/07/19 00:02:54 cph Exp $
+###     $Id: makefile,v 1.28 2001/07/19 01:13:53 cph Exp $
 ###
 ###     Copyright (c) 1992-2001 Massachusetts Institute of Technology
 ###
@@ -43,7 +43,7 @@ AS = wasm
 # **** Microsoft's assembler.  To use this, comment out the two lines
 # **** above, and uncomment these two.  (You will probably need to
 # **** adjust the path in the definition of AS.)
-#ASFLAGS = /Cx /Zm /coff /c
+#ASFLAGS = /Cx /Cp /Zm /coff /c
 #AS = c:\masm611\bin\ml
 
 !IFDEF NODEBUG
@@ -270,7 +270,6 @@ SCHEME_LIB = $(USER_LIBS)
 scheme: scheme.exe
 
 clean:
-  -del *.tch
   -del *.obj
   -del *.exe
   -del *.lib
@@ -325,13 +324,13 @@ findprim.exe : findprim.obj
 ntgui.res: ntgui.rc ntgui.h ntdialog.dlg ntdialog.h
     rc -r -fo $*.res $(cvars) $*.rc
 
-usrdef.c : $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) ntgui.c usrdef.tch \
+usrdef.c : $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) ntgui.c \
 	findprim.exe
 	.\findprim $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) ntgui.c \
 	> usrdef.c
 
 bchdef.c : $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) ntgui.c \
-	usrdef.tch findprim.exe
+	findprim.exe
 	.\findprim $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) ntgui.c \
 	> bchdef.c
 
