@@ -1,8 +1,12 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.135 2001/11/06 04:48:23 cph Exp $
+$Id: todo.txt,v 1.136 2002/01/12 02:57:38 cph Exp $
 
 Bug fixes
 ---------
+
+* Change M-o command to act like o if the output file is in a known
+  format.  Maybe make the o command act like M-o if it is _not_ in a
+  known format?  In that case there would be only one output command.
 
 * Remove cache for folders that aren't on server any more.
 
