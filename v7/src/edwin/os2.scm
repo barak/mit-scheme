@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.34 1996/10/09 15:44:46 cph Exp $
+;;;	$Id: os2.scm,v 1.35 1996/10/10 10:29:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -70,6 +70,26 @@
 (define (os/quit dir)
   dir
   (error "Can't quit."))
+
+(define (os/hostname)
+  (if (not os2/cached-hostname)
+      (let ((buffer (temporary-buffer "*hostname*")))
+	(let ((status.reason
+	       (run-synchronous-process #f (buffer-end buffer) #f #f
+					"hostname")))
+	  (if (not (equal? status.reason '(EXITED . 0)))
+	      (begin
+		(pop-up-buffer buffer)
+		(error "Error running HOSTNAME program:" status.reason))))
+	(set! os2/cached-hostname (string-trim (buffer-string buffer)))
+	(kill-buffer buffer)))
+  os2/cached-hostname)
+
+(define os2/cached-hostname #f)
+(add-event-receiver! event:after-restore
+  (lambda ()
+    (set! os2/cached-hostname #f)
+    unspecific))
 
 ;;;; OS/2 Clipboard Interface
 
@@ -305,6 +325,19 @@ filename suffix \".gz\"."
 (define (os/sendmail-program)
   "sendmail")
 
+(define (os/rmail-spool-directory)
+  (or (let ((etc (get-environment-variable "ETC")))
+	(and etc
+	     (file-directory? etc)
+	     (let ((mail
+		    (merge-pathnames "mail/" (pathname-as-directory etc))))
+	       (and (file-directory? mail)
+		    (->namestring mail)))))
+      "c:\\mptn\\etc\\mail\\"))
+
+(define (os/rmail-primary-inbox-list system-mailboxes)
+  system-mailboxes)
+
 (define (os/rmail-pop-procedure)
   (and (dos/find-program "popclient" (ref-variable exec-path) #f)
        (lambda (server user-name password directory)
@@ -357,23 +390,3 @@ filename suffix \".gz\"."
 Otherwise, messages remain on the server and will be re-fetched later."
   #t
   boolean?)
-
-(define (os/hostname)
-  (if (not os2/cached-hostname)
-      (let ((buffer (temporary-buffer "*hostname*")))
-	(let ((status.reason
-	       (run-synchronous-process #f (buffer-end buffer) #f #f
-					"hostname")))
-	  (if (not (equal? status.reason '(EXITED . 0)))
-	      (begin
-		(pop-up-buffer buffer)
-		(error "Error running HOSTNAME program:" status.reason))))
-	(set! os2/cached-hostname (string-trim (buffer-string buffer)))
-	(kill-buffer buffer)))
-  os2/cached-hostname)
-
-(define os2/cached-hostname #f)
-(add-event-receiver! event:after-restore
-  (lambda ()
-    (set! os2/cached-hostname #f)
-    unspecific))

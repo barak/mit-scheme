@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.52 1996/09/30 01:01:39 cph Exp $
+;;;	$Id: rmail.scm,v 1.53 1996/10/10 10:28:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
@@ -47,7 +47,7 @@
 (declare (usual-integrations))
 
 (define rmail-spool-directory
-  "/usr/mail/")
+  #f)
 
 (define-variable rmail-file-name
   ""
@@ -164,7 +164,7 @@ C-M-r   Like h only just messages with particular recipient(s) are summarized.
 t	Toggle header, show Rmail header if unformatted or vice versa.
 w	Edit the current message.  C-c C-c to return to Rmail."
   (lambda (buffer)
-    (guarantee-variables-initialized)
+    (guarantee-rmail-variables-initialized)
     (define-variable-local-value! buffer
 	(ref-variable-object mode-line-modified)
       "--- ")
@@ -203,20 +203,22 @@ together with two commands to return to regular RMAIL:
   (lambda (buffer)
     (enable-group-undo! (buffer-group buffer))))
 
-(define (guarantee-variables-initialized)
+(define (guarantee-rmail-variables-initialized)
+  (if (not rmail-spool-directory)
+      (set! rmail-spool-directory (os/rmail-spool-directory)))
   (if (not (ref-variable rmail-pop-procedure))
       (set-variable! rmail-pop-procedure (os/rmail-pop-procedure)))
   (if (null? (ref-variable rmail-primary-inbox-list))
-      (set-variable!
-       rmail-primary-inbox-list
-       (list "~/mbox"
-	     (let ((server
-		    (and (ref-variable rmail-pop-procedure)
-			 (ref-variable rmail-primary-pop-server))))
-	       (if server
-		   (string-append "pop:" server)
-		   (string-append rmail-spool-directory
-				  (current-user-name)))))))
+      (set-variable! rmail-primary-inbox-list
+		     (os/rmail-primary-inbox-list
+		      (list
+		       (let ((server
+			      (and (ref-variable rmail-pop-procedure)
+				   (ref-variable rmail-primary-pop-server))))
+			 (if server
+			     (string-append "pop:" server)
+			     (string-append rmail-spool-directory
+					    (current-user-name))))))))
   (if (not (ref-variable rmail-dont-reply-to-names))
       (set-variable!
        rmail-dont-reply-to-names
@@ -525,8 +527,8 @@ and use that file as the inbox."
 	    (let ((start (buffer-start error-buffer))
 		  (end (buffer-end error-buffer)))
 	      (run-synchronous-process false start false false
-				       (->namestring
-					(edwin-etc-pathname "movemail"))
+				       (os/find-program "movemail"
+							(edwin-etc-directory))
 				       (->namestring source)
 				       (->namestring target))
 	      (if (mark< start end)

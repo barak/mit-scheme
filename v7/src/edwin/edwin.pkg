@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.198 1996/10/07 18:20:31 cph Exp $
+$Id: edwin.pkg,v 1.199 1996/10/10 10:30:00 cph Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -1559,6 +1559,7 @@ MIT in each case. |#
 	  fetch-all-fields
 	  fetch-first-field
 	  fetch-last-field
+	  guarantee-rmail-variables-initialized
 	  make-in-reply-to-field
 	  prompt-for-rmail-output-filename
 	  rfc822-addresses->string

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.72 1996/10/02 17:00:35 cph Exp $
+;;;	$Id: unix.scm,v 1.73 1996/10/10 10:28:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -788,9 +788,19 @@ option, instead taking -P <filename>."
 (define os/restore-modes-to-updated-file!
   set-file-modes!)
 
+(define (os/rmail-spool-directory)
+  (or (list-search-positive
+	  '("/var/spool/mail/" "/var/mail/" "/usr/spool/mail/" "/usr/mail/")
+	file-directory?)
+      "/usr/spool/mail/"))
+
+(define (os/rmail-primary-inbox-list system-mailboxes)
+  (cons "~/mbox" system-mailboxes))
+
 (define (os/sendmail-program)
-  (if (file-exists? "/usr/lib/sendmail")
-      "/usr/lib/sendmail"
+  (or (list-search-positive
+	  '("/usr/lib/sendmail" "/usr/sbin/sendmail" "/usr/ucblib/sendmail")
+	file-executable?)
       "fakemail"))
 
 (define (os/hostname)

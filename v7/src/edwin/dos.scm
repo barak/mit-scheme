@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.40 1996/10/09 15:44:28 cph Exp $
+;;;	$Id: dos.scm,v 1.41 1996/10/10 10:29:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-96 Massachusetts Institute of Technology
 ;;;
@@ -168,6 +168,8 @@
 (define (os/write-file-methods) '())
 (define (os/alternate-pathnames group pathname) group pathname '())
 
+(define (os/rmail-spool-directory) #f)
+(define (os/rmail-primary-inbox-list system-mailboxes) system-mailboxes '())
 (define (os/sendmail-program) "sendmail.exe")
 (define (os/rmail-pop-procedure) #f)
 (define (os/hostname) (error "OS/HOSTNAME procedure unimplemented."))

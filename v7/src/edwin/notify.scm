@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: notify.scm,v 1.16 1995/04/09 22:33:28 cph Exp $
+;;;	$Id: notify.scm,v 1.17 1996/10/10 10:29:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ;;;
@@ -118,10 +118,14 @@ Ignored if notify-show-mail is false."
 
 (define-variable mail-notify-directory
   "Directory in which MAIL-NOTIFY checks for mail."
-  (pathname-as-directory "/usr/mail/")
-  file-directory?)
+  #f
+  (lambda (object) (or (not object) (file-directory? object))))
 
 (define (notifier:mail-present)
+  (if (not (ref-variable mail-notify-directory))
+      (begin
+	(guarantee-rmail-variables-initialized)
+	(set-variable! mail-notify-directory rmail-spool-directory)))
   (if (let ((pathname
 	     (merge-pathnames (ref-variable mail-notify-directory)
 			      (current-user-name))))
