@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.59 1996/03/23 19:25:17 adams Exp $
+$Id: memmag.c,v 9.60 1996/03/27 23:12:45 adams Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -363,6 +363,67 @@ DEFUN_VOID (Fix_Weak_Chain)
   return;
 }
 
+#ifdef WINNT
+
+static void
+win32_flush_old_halfspace ()
+{
+  /* Since we allocated the heap with VirtualAlloc, we can decommit the old
+     half-space to tell the VM system that it contains trash.
+     Immediately recommitting the region allows the old half-space to be used
+     for temporary storage (e.g. by fasdump).
+     Note that this is only a win when it prevents paging.  When no paging
+     would have happened, we incur the cost of zero-filling the recommitted
+     pages.  This can be significant - up to 50% of the time taken to GC, but
+     usually somewhat less.
+
+     We are careful to play with pages that are strictly within the old
+     half-space, hence the `pagesize' arithmetic.
+     */
+  long pagesize = 4096;
+  void *base =
+    ((void*)
+     (((DWORD)((char*)Unused_Heap_Bottom + pagesize)) & ~(pagesize-1)));
+  DWORD  len =
+    ((DWORD)(((char*)Unused_Heap_Top) - ((char*)base))) & ~(pagesize-1);
+  VirtualFree (base, len, MEM_DECOMMIT);
+  VirtualAlloc (base, len, MEM_COMMIT, PAGE_READWRITE);
+}
+
+
+static BOOL win32_flush_old_halfspace_p = FALSE;
+
+void
+win32_advise_end_GC ()
+{
+  if (win32_flush_old_halfspace_p)
+    win32_flush_old_halfspace ();
+}
+
+DEFINE_PRIMITIVE ("WIN32-FLUSH-OLD-HALFSPACE-AFTER-GC?!",
+		  Prim_win32_flush_old_halfspace_after_gc, 1, 1,
+		  "(boolean)")
+{
+  PRIMITIVE_HEADER (1);
+  {
+    BOOL old = win32_flush_old_halfspace_p;
+    win32_flush_old_halfspace_p = (ARG_REF (1)) != SHARP_F;
+    PRIMITIVE_RETURN (old ? SHARP_T : SHARP_F);
+  }
+}
+
+DEFINE_PRIMITIVE ("WIN32-FLUSH-OLD-HALFSPACE!", Prim_win32_flush_old_halfspace,
+		  0, 0,
+		  "()")
+{
+  PRIMITIVE_HEADER (1);
+  {
+    win32_flush_old_halfspace ();
+    PRIMITIVE_RETURN (UNSPECIFIC);
+  }
+}
+#endif  /* WINNT */
+
 /* Here is the set up for the full garbage collection:
 
    - First it saves away all the relevant microcode registers into new
@@ -545,23 +606,11 @@ DEFUN_VOID (GC)
   COMPILER_TRANSPORT_END ();
 
 #ifdef WINNT
-  /* Since we allocated the heap with VirtualAlloc, we can decommit the old
-     half-space to tell the VM system that it comtains trash.
-     Immediately recommitting the region allows the old half-space to be used
-     for temporary storage (e.g. by fasdump).
-     We are careful to do this with pages that are strictly within the old
-     half-space
-  */
-  { long pagesize = 4096;
-    void *base =
-      ((void*)
-       (((DWORD)((char*)Unused_Heap_Bottom + pagesize)) & ~(pagesize-1))) ;
-    DWORD  len =
-      ((DWORD)(((char*)Unused_Heap_Top) - ((char*)base))) & ~(pagesize-1);
-    VirtualFree (base, len, MEM_DECOMMIT);
-    VirtualAlloc (base, len, MEM_COMMIT, PAGE_READWRITE);
+  {
+    extern void win32_advise_end_GC ();
+    win32_advise_end_GC ();
   }
-#endif	       
+#endif
 
   CLEAR_INTERRUPT (INT_GC);
   return;
