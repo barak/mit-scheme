@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.10 1993/01/02 07:33:38 cph Exp $
+$Id: toplev.scm,v 4.11 1993/08/03 02:26:28 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -268,7 +268,7 @@ MIT in each case. |#
   (string->symbol "#[(scode-optimizer top-level)externs-file]"))
 
 (define externs-file-version
-  2)
+  3)
 
 ;;;; Optimizer Top Level
 
