@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.37 2000/12/21 05:46:59 cph Exp $
+;;; $Id: imail-summary.scm,v 1.38 2001/01/06 05:48:48 cph Exp $
 ;;;
-;;; Copyright (c) 2000 Massachusetts Institute of Technology
+;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -26,6 +26,17 @@
   "If true, selecting a message in the IMAIL summary buffer pops up the
  message buffer in a separate window.
 If false, the message buffer is updated but not popped up."
+  #t
+  boolean?)
+
+(define-variable imail-summary-auto-select
+  "If true, some cursor motion commands cause automatic message selection.
+If false, these commands move the cursor but don't select messages.
+The commands affected are:
+    \\[imail-summary-next-message]
+    \\[imail-summary-previous-message]
+    \\[imail-summary-first-message]
+    \\[imail-summary-last-message]"
   #t
   boolean?)
 
@@ -623,13 +634,13 @@ with some additions to make navigation more natural.
 
 (define-key 'imail-summary #\space	'imail-summary-scroll-msg-up)
 (define-key 'imail-summary #\rubout	'imail-summary-scroll-msg-down)
-(define-key 'imail-summary #\c-n	'imail-next-message)
-(define-key 'imail-summary #\c-p	'imail-previous-message)
+(define-key 'imail-summary #\c-n	'imail-summary-next-message)
+(define-key 'imail-summary #\c-p	'imail-summary-previous-message)
 (define-key 'imail-summary #\.		'imail-summary-beginning-of-buffer)
 (define-key 'imail-summary #\e		'imail-summary-select-message)
 (define-key 'imail-summary #\u		'imail-undelete-forward)
-(define-key 'imail-summary #\m-<	'imail-first-message)
-(define-key 'imail-summary #\m->	'imail-last-message)
+(define-key 'imail-summary #\m-<	'imail-summary-first-message)
+(define-key 'imail-summary #\m->	'imail-summary-last-message)
 
 (define-key 'imail-summary (make-special-key 'down 0) '(imail-summary . #\c-n))
 (define-key 'imail-summary (make-special-key 'up 0) '(imail-summary . #\c-p))
@@ -723,3 +734,53 @@ advance to the previous message."
 							    -1))))
 		    ((ref-command imail-summary-beginning-of-message))))
 	      ((ref-command imail-summary-select-message)))))))
+
+(define-command imail-summary-next-message
+  (lambda ()
+    (command-description
+     (if (ref-variable imail-summary-auto-select)
+	 (ref-command-object imail-next-message)
+	 (ref-command-object next-line))))
+  "p"
+  (lambda (delta)
+    ((if (ref-variable imail-summary-auto-select)
+	 (ref-command imail-next-message)
+	 (ref-command next-line))
+     delta)))
+
+(define-command imail-summary-previous-message
+  (lambda ()
+    (command-description
+     (if (ref-variable imail-summary-auto-select)
+	 (ref-command-object imail-previous-message)
+	 (ref-command-object previous-line))))
+  "p"
+  (lambda (delta)
+    ((if (ref-variable imail-summary-auto-select)
+	 (ref-command imail-previous-message)
+	 (ref-command previous-line))
+     delta)))
+
+(define-command imail-summary-first-message
+  (lambda ()
+    (command-description
+     (if (ref-variable imail-summary-auto-select)
+	 (ref-command-object imail-first-message)
+	 (ref-command-object beginning-of-buffer))))
+  ()
+  (lambda ()
+    (if (ref-variable imail-summary-auto-select)
+	((ref-command imail-first-message))
+	((ref-command beginning-of-buffer) #f))))
+
+(define-command imail-summary-last-message
+  (lambda ()
+    (command-description
+     (if (ref-variable imail-summary-auto-select)
+	 (ref-command-object imail-last-message)
+	 (ref-command-object end-of-buffer))))
+  ()
+  (lambda ()
+    (if (ref-variable imail-summary-auto-select)
+	((ref-command imail-last-message))
+	((ref-command end-of-buffer) #f))))
