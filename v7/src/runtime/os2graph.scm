@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.14 1999/01/02 06:11:34 cph Exp $
+$Id: os2graph.scm,v 1.15 1999/02/24 21:57:12 cph Exp $
 
 Copyright (c) 1995-1999 Massachusetts Institute of Technology
 
@@ -692,13 +692,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (error "Unknown font name:" font-specifier))
      metrics)))
 
-(define (without-thread-events thunk)
-  (let ((block-events? (block-thread-events)))
-    (let ((value (thunk)))
-      (if (not block-events?)
-	  (unblock-thread-events))
-      value)))
-
 (define (fix:vector-min v)
   (let ((length (vector-length v))
 	(min (vector-ref v 0)))
@@ -761,7 +754,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (pm-synchronize)
   (os2pm-synchronize)
-  (without-thread-events (lambda () (do () ((not (read-and-process-event)))))))
+  (with-thread-events-blocked
+    (lambda () (do () ((not (read-and-process-event)))))))
 
 (define (read-and-process-event)
   (let ((event (os2win-get-event event-descriptor #f)))
@@ -854,7 +848,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (os2-graphics/read-user-event device)
   device
-  (without-thread-events
+  (with-thread-events-blocked
    (lambda ()
      (let loop ()
        (if (queue-empty? user-event-queue)
@@ -881,7 +875,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (os2-graphics/discard-events device)
   device
-  (without-thread-events
+  (with-thread-events-blocked
    (lambda ()
      (let loop ()
        (flush-queue! user-event-queue)

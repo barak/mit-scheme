@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.58 1999/02/16 05:38:22 cph Exp $
+$Id: io.scm,v 14.59 1999/02/24 21:57:06 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -235,25 +235,22 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 					     buffer start end))))
     (declare (integrate-operator do-read))
     (if (and have-select? (not (channel-type=file? channel)))
-	(let ((block-events? (block-thread-events)))
-	  (let ((result
-		 (let ((do-test
-			(lambda (k)
-			  (let ((result (test-for-input-on-channel channel)))
-			    (case result
-			      ((INPUT-AVAILABLE)
-			       (do-read))
-			      ((PROCESS-STATUS-CHANGE)
-			       (handle-subprocess-status-change)
-			       (if (channel-closed? channel) 0 (k)))
-			      (else
-			       (k)))))))
-		   (if (channel-blocking? channel)
-		       (let loop () (do-test loop))
-		       (do-test (lambda () #f))))))
-	    (if (not block-events?)
-		(unblock-thread-events))
-	    result))
+	(with-thread-events-blocked
+	  (lambda ()
+	    (let ((do-test
+		   (lambda (k)
+		     (let ((result (test-for-input-on-channel channel)))
+		       (case result
+			 ((INPUT-AVAILABLE)
+			  (do-read))
+			 ((PROCESS-STATUS-CHANGE)
+			  (handle-subprocess-status-change)
+			  (if (channel-closed? channel) 0 (k)))
+			 (else
+			  (k)))))))
+	      (if (channel-blocking? channel)
+		  (let loop () (do-test loop))
+		  (do-test (lambda () #f))))))
 	(do-read))))
 
 (define (channel-read-block channel buffer start end)

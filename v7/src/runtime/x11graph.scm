@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.48 1999/01/02 06:19:10 cph Exp $
+$Id: x11graph.scm,v 1.49 1999/02/24 21:57:17 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -305,18 +305,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     registration))
 
 (define (read-event display)
-  (let ((queue (x-display/event-queue display))
-	(block-events? (block-thread-events)))
-    (let ((event
-	   (let loop ()
-	     (if (queue-empty? queue)
-		 (begin
-		   (%read-and-process-event display)
-		   (loop))
-		 (dequeue! queue)))))
-      (if (not block-events?)
-	  (unblock-thread-events))
-      event)))
+  (letrec ((loop
+	    (let ((queue (x-display/event-queue display)))
+	      (lambda ()
+		(if (queue-empty? queue)
+		    (begin
+		      (%read-and-process-event display)
+		      (loop))
+		    (dequeue! queue))))))
+    (with-thread-events-blocked loop)))
 
 (define (%read-and-process-event display)
   (let ((event
@@ -329,19 +326,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(process-event display event))))
 
 (define (discard-events display)
-  (let ((queue (x-display/event-queue display))
-	(block-events? (block-thread-events)))
-    (let loop ()
-      (cond ((not (queue-empty? queue))
-	     (dequeue! queue)
-	     (loop))
-	    ((x-display-process-events (x-display/xd display) 2)
-	     =>
-	     (lambda (event)
-	       (process-event display event)
-	       (loop)))))
-    (if (not block-events?)
-	(unblock-thread-events))))
+  (letrec ((loop
+	    (let ((queue (x-display/event-queue display)))
+	      (lambda ()
+		(cond ((not (queue-empty? queue))
+		       (dequeue! queue)
+		       (loop))
+		      ((x-display-process-events (x-display/xd display) 2)
+		       =>
+		       (lambda (event)
+			 (process-event display event)
+			 (loop))))))))
+    (with-thread-events-blocked loop)))
 
 (define (process-event display event)
   (without-interrupts
@@ -512,15 +508,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (if (not (boolean? (x-window/mapped? window)))
 	(begin
 	  (x-window-flush xw)
-	  (let ((block-events? (block-thread-events))
-		(display (x-window/display window)))
-	    (let loop ()
-	      (if (not (eq? #t (x-window/mapped? window)))
-		  (begin
-		    (%read-and-process-event display)
-		    (loop))))
-	    (if (not block-events?)
-		(unblock-thread-events)))))))
+	  (letrec ((loop
+		    (let ((display (x-window/display window)))
+		      (lambda ()
+			(if (not (eq? #t (x-window/mapped? window)))
+			    (begin
+			      (%read-and-process-event display)
+			      (loop)))))))
+	    (with-thread-events-blocked loop))))))
 
 (define (decode-suppress-map-arg suppress-map? procedure)
   (cond ((boolean? suppress-map?)
