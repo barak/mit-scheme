@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.192 1996/04/24 02:55:18 cph Exp $
+$Id: edwin.pkg,v 1.193 1996/05/03 07:00:45 cph Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -1202,7 +1202,14 @@ MIT in each case. |#
 	    load-icon
 	    get-handle)
     (export (edwin)
-	    edwin-command$set-icon)
+	    edwin-command$set-background-color
+	    edwin-command$set-default-font
+	    edwin-command$set-font
+	    edwin-command$set-foreground-color
+	    edwin-command$set-frame-position
+	    edwin-command$set-icon
+	    edwin-command$show-frame-position
+	    edwin-command$show-frame-size)
     (export (edwin screen win32)
 	    update-win32-screen-name!)))
 
