@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.74 1992/05/04 18:31:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.75 1992/06/03 21:55:24 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -36,25 +36,25 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
-#include "bchgcc.h"
 #include "option.h"
-#include <sys/stat.h>
+#include "oscond.h"
 
 #ifdef DOS386
-#include "msdos.h"
-#define SUB_DIRECTORY_DELIMITER '\\'
+#  include "msdos.h"
+#  define SUB_DIRECTORY_DELIMITER '\\'
 extern char * EXFUN (mktemp, (char *));
 #else
-#include "ux.h"
-#define SUB_DIRECTORY_DELIMITER '/'
-#define UNLINK_BEFORE_CLOSE
+#  include "ux.h"
+#  define SUB_DIRECTORY_DELIMITER '/'
+#  define UNLINK_BEFORE_CLOSE
 extern int EXFUN (unlink, (CONST char *));
 #endif
 
+#include "bchgcc.h"
 #include "bchdrn.h"
 
 #ifndef SEEK_SET
-#define SEEK_SET 0
+#  define SEEK_SET 0
 #endif
 
 #ifdef HAVE_SYSV_SHARED_MEMORY
@@ -1682,8 +1682,8 @@ do {									\
 #define INITIALIZE_IO()		do { } while (0)
 #define AWAIT_IO_COMPLETION()	do { } while (0)
 
-#define INITIAL_SCAN_BUFFER()	gc_disk_buffer_2
 #define INITIAL_FREE_BUFFER()	gc_disk_buffer_1
+#define INITIAL_SCAN_BUFFER()	OTHER_BUFFER(free_buffer)
 
 /* (gc_disk_buffer_1 - (gc_disk_buffer_2 - (buffer))) does not work
    because scan_buffer is not initialized until after scanning
@@ -1973,7 +1973,7 @@ DEFUN (open_gc_file, (size, unlink_p),
 	     (IO_PAGE_SIZE - (sizeof (message))));
     (* (buffer + (IO_PAGE_SIZE - 1))) = '\n';
 
-#if defined(F_GETFL)&&defined(F_SETFL)
+#if defined(F_GETFL) && defined(F_SETFL) && defined(O_NONBLOCK)
     if ((flags = (fcntl (gc_file, F_GETFL, 0))) != -1)
       (void) (fcntl (gc_file, F_SETFL, (flags | O_NONBLOCK)));
 #endif
@@ -1995,7 +1995,7 @@ DEFUN (open_gc_file, (size, unlink_p),
 	       scheme_program_name, gc_file_name);
       termination_open_gc_file (((char *) NULL), ((char *) NULL));
     }
-#if defined(F_GETFL)&&defined(F_SETFL)
+#if defined(F_GETFL) && defined(F_SETFL) && defined(O_NONBLOCK)
     if (flags != -1)
       (void) (fcntl (gc_file, F_SETFL, (flags | O_NONBLOCK)));
 #endif
@@ -2717,7 +2717,7 @@ DEFUN (read_newspace_address, (addr), SCHEME_OBJECT * addr)
     result = (* (scan_buffer_bottom + offset));
   else if (position == free_position)
     result = (* (free_buffer_bottom + offset));
-  else if ((position == (scan_position + 1))
+  else if ((position == (scan_position + gc_buffer_bytes))
 	   && scan_buffer_extended_p
 	   && ((read_overlap != 0) || (offset < gc_extra_buffer_size)))
   {
