@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.15 1993/08/03 03:09:53 gjr Exp $
+$Id: usiexp.scm,v 4.16 1993/08/30 22:16:55 jacob Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -224,6 +224,59 @@ MIT in each case. |#
   (right-accumulation 1
     (lambda (expr x y)
       (make-combination expr (ucode-primitive &*) (list x y)))))
+
+(define (expt-expansion expr operands if-expanded if-not-expanded block)
+  (let ((make-binder
+	 (lambda (make-body)
+	   (if-expanded
+	    (combination/make
+	     (and expr (object/scode expr))
+	     (let ((block (block/make block #t '()))
+		   (name (string->uninterned-symbol "operand")))
+	       (let ((variable (variable/make&bind! block name)))
+		 (procedure/make
+		  #f
+		  block lambda-tag:let (list variable) '() #f
+		  (make-body (reference/make false block variable)))))
+	     (list (car operands)))))))
+    (cond ((not (and (pair? operands)
+		     (pair? (cdr operands))
+		     (null? (cddr operands))))
+	   (if-not-expanded))
+	  ;;((constant-eq? (cadr operands) 0)
+	  ;; (if-expanded (constant/make (and expr (object/scode expr)) 1)))
+	  ((constant-eq? (cadr operands) 1)
+	   (if-expanded (car operands)))
+	  ((constant-eq? (cadr operands) 2)
+	   (make-binder
+	    (lambda (operand)
+	      (make-combination #f
+				(ucode-primitive &*)
+				(list operand operand)))))
+	  ((constant-eq? (cadr operands) 3)
+	   (make-binder
+	    (lambda (operand)
+	      (make-combination
+	       #f
+	       (ucode-primitive &*)
+	       (list operand
+		     (make-combination #f
+				       (ucode-primitive &*)
+				       (list operand operand)))))))
+	  ((constant-eq? (cadr operands) 4)
+	   (make-binder
+	    (lambda (operand)
+	      (make-combination
+	       #f
+	       (ucode-primitive &*)
+	       (list (make-combination #f
+				       (ucode-primitive &*)
+				       (list operand operand))
+		     (make-combination #f
+				       (ucode-primitive &*)
+				       (list operand operand)))))))
+	  (else
+	   (if-not-expanded)))))
 
 (define (right-accumulation-inverse identity inverse-expansion make-binary)
   (lambda (expr operands if-expanded if-not-expanded block)
@@ -522,6 +575,7 @@ MIT in each case. |#
     eighth
     exact-integer?
     exact-rational?
+    expt
     fifth
     fix:<=
     fix:=
@@ -602,6 +656,7 @@ MIT in each case. |#
    eighth-expansion
    exact-integer?-expansion
    exact-rational?-expansion
+   expt-expansion
    fifth-expansion
    fix:<=-expansion
    fix:=-expansion
