@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.39 2003/11/26 02:27:14 cph Exp $
+$Id: datime.scm,v 14.40 2004/06/23 03:45:50 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1993 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1999,2000,2003 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -507,6 +508,16 @@ USA.
 	   (vector (vector (decoded-time/year dt)
 			   (decoded-time/month dt)
 			   (decoded-time/day dt)))))))
+
+(define parse-8601-zone
+  (*parser
+   (encapsulate (lambda (v) v)
+     (alt (transform (lambda (v) v (vector 1 0 0))
+		     (match "Z"))
+	  (seq parse-8601-sign
+	       parse-8601-zone-hour
+	       (alt (seq (? ":") parse-8601-minute)
+		    (values 0)))))))
 
 (define parse-8601-time
   (*parser
@@ -523,16 +534,6 @@ USA.
 	       (seq parse-8601-minute
 		    (alt parse-8601-second
 			 (values 0))))))))
-
-(define parse-8601-zone
-  (*parser
-   (encapsulate (lambda (v) v)
-     (alt (transform (lambda (v) v (vector 1 0 0))
-		     (match "Z"))
-	  (seq parse-8601-sign
-	       parse-8601-zone-hour
-	       (alt (seq (? ":") parse-8601-minute)
-		    (values 0)))))))
 
 (define (8601-number-parser n-digits low high)
   (let ((parse-digits
@@ -576,7 +577,17 @@ USA.
 (define parse-8601-hour (8601-number-parser 2 0 24))
 (define parse-8601-zone-hour (8601-number-parser 2 0 12))
 (define parse-8601-minute (8601-number-parser 2 0 59))
-(define parse-8601-second (8601-number-parser 2 0 59))
+
+(define parse-8601-second
+  (*parser
+   (transform (lambda (v)
+		(let ((x (string->number (vector-ref v 0))))
+		  (and (<= 0 x)
+		       (< x 60)
+		       (vector (min 59 (round->exact x))))))
+	      (match (seq (char-set char-set:numeric)
+			  (char-set char-set:numeric)
+			  (? (seq "." (* (char-set char-set:numeric)))))))))
 
 (define parse-8601-sign
   (*parser
