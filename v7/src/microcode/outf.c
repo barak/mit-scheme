@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: outf.c,v 1.2 1993/06/28 02:29:10 cph Exp $
+$Id: outf.c,v 1.3 1993/07/18 20:26:48 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -31,7 +31,7 @@ there shall be no use of the name of the Massachusetts Institute of
 Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
-
+
 /*
   OUTF system
     
@@ -54,7 +54,7 @@ MIT in each case. */
   information to stay visible `after' the termination of Scheme.
 */
 
-#ifdef __STDC__
+#if defined(__STDC__) || defined(WINNT)
 #include <stdarg.h>
 #define VA_START(args, lastarg) va_start(args, lastarg)
 #define VA_DCL
