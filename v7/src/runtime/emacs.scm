@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.37 2004/09/27 17:08:34 cph Exp $
+$Id: emacs.scm,v 14.38 2004/09/30 20:02:48 cph Exp $
 
 Copyright 1986,1987,1991,1993,1994,1999 Massachusetts Institute of Technology
 Copyright 2001,2003,2004 Massachusetts Institute of Technology
@@ -175,7 +175,6 @@ USA.
 ;;; On an interpreted system, they will cons a little anyway.
 
 (define (emacs/gc-start port)
-  (output-port/flush-output port)
   (cwb (port/output-channel port) "\033b" 0 2))
 
 (define (emacs/gc-finish port)
