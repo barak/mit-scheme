@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.85 1990/10/03 04:54:03 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.86 1990/10/09 16:23:12 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -74,11 +74,11 @@ specifying a non-existent buffer will cause it to be created."
   (lambda (buffer)
     (select-buffer (find-buffer buffer))))
 
-(define-command switch-to-buffer-in-new-screen
-  "Select buffer in a new screen."
-  (prompt-for-select-buffer "Switch to buffer in new screen")
+(define-command switch-to-buffer-other-screen
+  "Select buffer in another screen."
+  (prompt-for-select-buffer "Switch to buffer in other screen")
   (lambda (buffer)
-    (select-buffer-in-new-screen (find-buffer buffer))))
+    (select-buffer-other-screen (find-buffer buffer))))
 
 (define-command switch-to-buffer-other-window
   "Select buffer in another window."
@@ -92,11 +92,11 @@ specifying a non-existent buffer will cause it to be created."
   (lambda (name)
     (select-buffer (new-buffer name))))
 
-(define-command create-buffer-in-new-screen
-  "Create a new buffer with a given name, and select it in a new screen."
-  "sCreate buffer in new screen"
+(define-command create-buffer-other-screen
+  "Create a new buffer with a given name, and select it in another screen."
+  "sCreate buffer in other screen"
   (lambda (name)
-    (select-buffer-in-new-screen (new-buffer name))))
+    (select-buffer-other-screen (new-buffer name))))
 
 (define-command insert-buffer
   "Insert the contents of a specified buffer at point."

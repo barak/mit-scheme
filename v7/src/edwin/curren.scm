@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.89 1990/10/06 00:15:33 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.90 1990/10/09 16:23:40 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -48,46 +48,75 @@
 
 ;;;; Screens
 
-(define (make-screen buffer)
-  (without-interrupts
-   (lambda ()
-     (let ((screen (make-editor-screen)))
-       (initialize-screen-root-window! screen (current-bufferset) buffer)
-       (editor-add-screen! current-editor screen)
-       (update-screen! screen false)
-       screen))))
+(define-integrable (screen-list)
+  (editor-screens current-editor))
+
+(define-integrable (selected-screen)
+  (editor-selected-screen current-editor))
+
+(define-integrable (selected-screen? screen)
+  (eq? screen (selected-screen)))
+
+(define-integrable (multiple-screens?)
+  (display-type/multiple-screens? (current-display-type)))
+
+(define (make-screen buffer . make-screen-args)
+  (let ((display-type (current-display-type)))
+    (if (not (display-type/multiple-screens? display-type))
+	(error "display doesn't support multiple screens" display-type))
+    (without-interrupts
+     (lambda ()
+       (let ((screen (display-type/make-screen display-type make-screen-args)))
+	 (initialize-screen-root-window! screen
+					 (editor-bufferset current-editor)
+					 buffer)
+	 (set-editor-screens! current-editor
+			      (append! (editor-screens current-editor)
+				       (list screen)))
+	 (update-screen! screen false)
+	 screen)))))
 
 (define (delete-screen! screen)
-  (editor-delete-screen! current-editor screen)
-  (screen-discard! screen))
+  (without-interrupts
+   (lambda ()
+     (if (selected-screen? screen)
+	 (let ((screen* (other-screen screen)))
+	   (if (not screen*)
+	       (error "can't delete only screen" screen))
+	   (select-screen screen*)))
+     (screen-discard! screen)
+     (set-editor-screens! current-editor
+			  (delq! screen
+				 (editor-screens current-editor))))))
 
 (define (select-screen screen)
   (without-interrupts
    (lambda ()
      (let ((message (current-message)))
-       (set-current-message! "")
+       (clear-current-message!)
+       (screen-exit! (selected-screen))
        (change-selected-buffer
 	(window-buffer (screen-selected-window screen))
 	true
 	(lambda ()
 	  (set-editor-selected-screen! current-editor screen)))
-       (set-current-message! message)))))
-
-(define (select-buffer-in-new-screen buffer)
-  (select-screen (make-screen buffer)))
-
+       (set-current-message! message)
+       (screen-enter! screen)))))
+
 (define (update-screens! display-style)
-  (let loop ((screens (screen-list)))
-    (or (null? screens)
-	(and (not (screen-in-update? (car screens)))
-	     (update-screen! (car screens) display-style)
-	     (loop (cdr screens))))))
+  (if display-style
+      (let loop ((screens (screen-list)))
+	(or (null? screens)
+	    (and (update-screen! (car screens) display-style)
+		 (loop (cdr screens)))))
+      (let loop ((screens (cons (selected-screen) (screen-list))))
+	(or (null? screens)
+	    (and (or (screen-in-update? (car screens))
+		     (update-screen! (car screens) false))
+		 (loop (cdr screens)))))))
 
 (define (update-selected-screen! display-style)
   (update-screen! (selected-screen) display-style))
-
-(define-integrable (selected-screen? screen)
-  (eq? screen (selected-screen)))
 
 (define-integrable (screen0)
   (car (screen-list)))
@@ -125,6 +154,11 @@
 	       (loop (1+ n) (screen-1+ screen)))))
 	(else
 	 screen)))
+
+(define (other-screen screen)
+  (let ((screen* (screen1+ screen)))
+    (and (not (eq? screen screen*))
+	 screen*)))
 
 ;;;; Windows
 
@@ -148,7 +182,9 @@
 	   (change-selected-buffer (window-buffer window) true
 	     (lambda ()
 	       (screen-select-window! screen window)))
-	   (screen-select-window! screen window))))))
+	   (begin
+	     (screen-select-window! screen window)
+	     (select-screen screen)))))))
 
 (define-integrable (select-cursor window)
   (screen-select-cursor! (window-screen window) window))
@@ -321,18 +357,6 @@ The buffer is guaranteed to be selected at that time."
 			  (set-window-buffer! window old-buffer true)))
 		    (set! old-buffer)
 		    unspecific))))
-
-(define (select-buffer-other-window buffer)
-  (let ((window
-	 (let ((window (current-window)))
-	   (if (window-has-no-neighbors? window)
-	       (window-split-vertically! window false)
-	       (or (list-search-negative (buffer-windows buffer)
-		     (lambda (window*)
-		       (eq? window window*)))
-		   (window1+ window))))))
-    (select-window window)
-    (set-window-buffer! window buffer true)))
 
 ;;;; Point
 
