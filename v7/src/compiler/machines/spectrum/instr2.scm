@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/instr2.scm,v 1.1 1990/01/25 16:36:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/instr2.scm,v 1.2 1990/04/09 21:21:01 cph Exp $
 
 Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 
@@ -608,8 +608,8 @@ branch-extend-nullify in instr1.
 
   (defmovb&bb BVB	#x30 (reg)		    () 		#b00000)
   (defmovb&bb BB	#x31 (reg)		    ((? pos))	pos)
-  (defmovb&bb MOVB	#x32 (reg-1)		    (? reg-2)	reg-2)
-  (defmovb&bb MOVIB	#x33 (immed-5 right-signed) (? reg-2)	reg-2))
+  (defmovb&bb MOVB	#x32 (reg-1)		    ((? reg-2))	reg-2)
+  (defmovb&bb MOVIB	#x33 (immed-5 right-signed) ((? reg-2))	reg-2))
 
 ;;;; Assembler pseudo-ops
 
