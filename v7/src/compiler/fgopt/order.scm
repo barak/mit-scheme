@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.8 1988/10/04 22:59:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.9 1988/11/01 04:52:18 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -152,7 +152,8 @@ MIT in each case. |#
 	  (combination/block combination)
 	  (car subproblems)
 	  (cdr subproblems)
-	  (rvalue-known-value (combination/operator combination)))))
+	  (or (rvalue-known-value (combination/operator combination))
+	      (combination/model combination)))))
     (set-combination/frame-size!
      combination
      (let loop ((subproblems subproblems) (accumulator 0))
@@ -165,24 +166,24 @@ MIT in each case. |#
 		     accumulator)))))
     subproblems))
 
-(define (order-subproblems/out-of-line block operator operands callee)
+(define (order-subproblems/out-of-line block operator operands model)
   (set-subproblem-type! operator (operator-type (subproblem-rvalue operator)))
-  (if (and callee (rvalue/procedure? callee))
+  (if (and model (rvalue/procedure? model))
       (let ((rest
-	     (cond ((not (stack-block? (procedure-block callee)))
+	     (cond ((not (stack-block? (procedure-block model)))
 		    (standard-combination-ordering operator operands))
-		   ((procedure-always-known-operator? callee)
+		   ((procedure-always-known-operator? model)
 		    ;; At this point, the following should be true.
-		    ;; (procedure-interface-optimizible? callee)
+		    ;; (procedure-interface-optimizible? model)
 		    (optimized-combination-ordering block
 						    operator
 						    operands
-						    callee))
+						    model))
 		   (else
 		    (known-combination-ordering block operator
-						operands callee)))))
-	(if (procedure/open? callee)
-	    (generate/static-link block callee rest)
+						operands model)))))
+	(if (procedure/open? model)
+	    (generate/static-link block model rest)
 	    rest))
       (standard-combination-ordering operator operands)))
 
@@ -200,7 +201,8 @@ MIT in each case. |#
   (reverse (cons operator operands)))
 
 (define (known-combination-ordering block operator operands procedure)
-  (if (not (procedure/closure? procedure))
+  (if (and (not (procedure/closure? procedure))
+	   (not (procedure-virtual-closure? procedure)))
       (error "known-combination-ordering: known non-closure" procedure))
   ;; The behavior of known lexpr closures should be improved
   ;; at least when the listification is trivial (0 or 1 args).
@@ -210,7 +212,9 @@ MIT in each case. |#
 	(set-subproblem-types! operands continuation-type/push)
 	(set-subproblem-type!
 	 operator
-	 (if (closure-procedure-needs-operator? procedure)
+	 (if (or (not (rvalue-known-value (subproblem-rvalue operator)))
+		 (and (procedure/closure? procedure)
+		      (closure-procedure-needs-operator? procedure)))
 	     continuation-type/push
 	     continuation-type/effect))
 	(push-unassigned block

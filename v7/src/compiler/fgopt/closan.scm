@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.3 1988/04/15 02:05:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.4 1988/11/01 04:51:03 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -76,8 +76,8 @@ result, the analysis has been modified to force the closure-limit to
 (define-export (identify-closure-limits! procedures applications assignments)
   (for-each initialize-closure-limit! procedures)
   (for-each close-passed-out! procedures)
-  (for-each close-application-arguments! applications)
-  (for-each close-assignment-values! assignments))
+  (for-each close-assignment-values! assignments)
+  (close-application-elements! applications))
 
 (define (initialize-closure-limit! procedure)
   (if (not (procedure-continuation? procedure))
@@ -87,61 +87,171 @@ result, the analysis has been modified to force the closure-limit to
 (define (close-passed-out! procedure)
   (if (and (not (procedure-continuation? procedure))
 	   (procedure-passed-out? procedure))
-      (close-procedure! procedure false)))
+      (close-procedure! procedure false 'PASSED-OUT false)))
 
-(define (close-application-arguments! application)
-  ;; Note that case where all procedures are closed in same block can
-  ;; be solved by introduction of another kind of closure, which has a
-  ;; fixed environment but carries around a pointer to the code.
-  (if (application/combination? application)
-      (let ((operator (application-operator application)))
-	(if (not (rvalue-known-value operator))
-	    (close-rvalue! operator false))))
+(define (close-assignment-values! assignment)
+  (close-rvalue! (assignment-rvalue assignment)
+		 (variable-block (assignment-lvalue assignment))
+		 'ASSIGNMENT
+		 (assignment-lvalue assignment)))
+
+(define-integrable (close-application-arguments! application)
   (close-values!
    (application-operand-values application)
    (let ((procedure (rvalue-known-value (application-operator application))))
      (and procedure
 	  (rvalue/procedure? procedure)
 	  (procedure-always-known-operator? procedure)
-	  ;; **** Force trivial closure limit.
-	  ;; (procedure-block procedure)
-	  false))))
+	  (procedure-block procedure)))
+   'ARGUMENT
+   application))
 
-(define (close-assignment-values! assignment)
-  (close-rvalue! (assignment-rvalue assignment)
-		 ;; **** Force trivial closure limit.
-		 ;; (variable-block (assignment-lvalue assignment))
-		 false))
+;; This attempts to find the cases where all procedures are closed in
+;; same block.  This case can be solved by introduction of another
+;; kind of closure, which has a fixed environment but carries around a
+;; pointer to the code.
+
+(define (close-application-elements! applications)
+  (let loop ((applications applications)
+	     (potential-winners '()))
+    (if (null? applications)
+	(maybe-close-multiple-operators! potential-winners)
+	(let ((application (car applications)))
+	  (close-application-arguments! application)
+	  (let ((operator (application-operator application)))
+	    (cond ((not (application/combination? application))
+		   (loop (cdr applications) potential-winners))
+		  ((rvalue-passed-in? operator)
+		   (close-rvalue! operator false
+				  'APPLY-COMPATIBILITY application)
+		   (loop (cdr applications) potential-winners))
+		  ((or (rvalue-known-value operator)
+		       ;; Paranoia
+		       (and (null? (rvalue-values operator))
+			    (error "Operator has no values and not passed in"
+				   operator application)))
+		   (loop (cdr applications) potential-winners))
+		  (else
+		   (let ((class
+			  (compatibility-class (rvalue-values operator))))
+		     (if (not (eq? class 'APPLY-COMPATIBILITY))
+			 (set-combination/model!
+			  application
+			  (car (rvalue-values operator))))
+		     (if (eq? class 'POTENTIAL)
+			 (loop (cdr applications)
+			       (cons application potential-winners))
+			 (begin
+			   (close-rvalue! operator false class application)
+			   (loop (cdr applications)
+				 potential-winners)))))))))))
+
+(define (with-procedure-arity proc receiver)
+  (let ((req (length (procedure-required proc))))
+    (receiver req
+	      (if (procedure-rest proc)
+		  -1
+		  (+ req (length (procedure-optional proc)))))))
 
-(define-integrable (close-rvalue! rvalue binding-block)
-  (close-values! (rvalue-values rvalue) binding-block))
+;; The reason each application may have to be examined more than once
+;; is because the same procedure may be a potential operator in more
+;; than one application.  The procedure may be forced into becoming a
+;; closure due to one combination, forcing the others to become a
+;; closure in other combinations, etc.  The procedure dependency graph
+;; could be built, but since the number of applications in this
+;; category is usually VERY small, it does not seem worth it.
 
-(define (close-values! values binding-block)
+(define (maybe-close-multiple-operators! applications)
+  (define (virtually-close-operators! application)
+    (for-each (lambda (proc)
+		(set-procedure-virtual-closure?! proc true))
+	      (rvalue-values (application-operator application))))
+
+  (define (relax applications still-good any-bad?)
+    (cond ((not (null? applications))
+	   (let ((application (car applications)))
+	     (if (there-exists?
+		  (rvalue-values (application-operator application))
+		  procedure/closure?)
+		 (begin
+		   (close-rvalue! (application-operator application)
+				  false
+				  'COMPATIBILITY
+				  application)
+		   (relax (cdr applications) still-good true))
+		 (relax (cdr applications)
+			(cons application still-good)
+			any-bad?))))
+	  (any-bad?
+	   (relax still-good '() false))
+	  (else
+	   (for-each virtually-close-operators! still-good))))
+
+  (relax applications '() false))
+
+(define (compatibility-class procs)
+  (if (not (for-all? procs rvalue/procedure?))
+      'APPLY-COMPATIBILITY
+      (let* ((model (car procs))
+	     (model-env (procedure-closing-block model)))
+	(with-procedure-arity
+	 model
+	 (lambda (model-min model-max)
+	   (let loop ((procs (cdr procs))
+		      (class (if (procedure/closure? model)
+				 'COMPATIBILITY
+				 'POTENTIAL)))
+	     (if (null? procs)
+		 class
+		 (let ((this (car procs)))
+		   (with-procedure-arity
+		    this
+		    (lambda (this-min this-max)
+		      (cond ((not (and (= model-min this-min)
+				       (= model-max this-max)))
+			     'APPLY-COMPATIBILITY)
+			    ((or (procedure/closure? this)
+				 (not (eq? (procedure-closing-block this)
+					   model-env)))
+			     (loop (cdr procs) 'COMPATIBILITY))
+			    (else
+			     (loop (cdr procs) class)))))))))))))
+
+(define-integrable (close-rvalue! rvalue binding-block reason1 reason2)
+  (close-values! (rvalue-values rvalue) binding-block reason1 reason2))
+
+(define (close-values! values binding-block reason1 reason2)
   (for-each (lambda (value)
 	      (if (and (rvalue/procedure? value)
 		       (not (procedure-continuation? value)))
-		  (close-procedure! value binding-block)))
+		  (close-procedure! value binding-block reason1 reason2)))
 	    values))
 
-(define (close-procedure! procedure binding-block)
-  (let ((closing-limit (procedure-closing-limit procedure)))
-    (let ((new-closing-limit
-	   (and binding-block
-		closing-limit
-		(block-nearest-common-ancestor binding-block closing-limit))))
-      (if (not (eq? new-closing-limit closing-limit))
-	  (begin
-	    (set-procedure-closing-limit! procedure new-closing-limit)
-	    (if (not (procedure-closure-block procedure))
-		;; The following line forces the procedure's type to CLOSURE.
-		(set-procedure-closure-block! procedure true))
-	    (close-callees! (procedure-block procedure) new-closing-limit))))))
+(define (close-procedure! procedure binding-block reason1 reason2)
+  (let* ((closing-limit (procedure-closing-limit procedure))
+	 (new-closing-limit
+	  (and binding-block
+	       closing-limit
+	       (block-nearest-common-ancestor binding-block closing-limit))))
+    (cond ((not (eq? new-closing-limit closing-limit))
+	   ;; **** Force trivial closure limit due to poor code generator.
+	   (let ((new-closing-limit false))
+	     (set-procedure-closing-limit! procedure new-closing-limit)
+	     (add-closure-reason! procedure reason1 reason2)
+	     (if (not (procedure-closure-block procedure))
+		 ;; Force the procedure's type to CLOSURE.
+		 (set-procedure-closure-block! procedure true))
+	     (close-callees! (procedure-block procedure)
+			     new-closing-limit
+			     procedure)))
+	  ((false? new-closing-limit)
+	   (add-closure-reason! procedure reason1 reason2)))))
 
-(define (close-callees! block new-closing-limit)
+(define (close-callees! block new-closing-limit culprit)
   (for-each-callee! block
     (lambda (value)
       (if (not (block-ancestor-or-self? (procedure-block value) block))
-	  (close-procedure! value new-closing-limit)))))
+	  (close-procedure! value new-closing-limit 'CONTAGION culprit)))))
 
 (define (for-each-callee! block procedure)
   (for-each-block-descendent! block

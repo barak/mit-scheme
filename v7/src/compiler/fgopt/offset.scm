@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/offset.scm,v 4.4 1988/08/18 01:36:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/offset.scm,v 4.5 1988/11/01 04:51:59 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -121,6 +121,14 @@ MIT in each case. |#
     ((APPLICATION)
      (case (application-type node)
        ((COMBINATION)
+	;; This is done because the arguments may be integrated and may
+	;; be closures that would otherwise not be met, since they are
+	;; never operators.
+	(if (combination/inline? node)
+	    (for-each
+	     (lambda (subp)
+	       (walk-rvalue (subproblem-rvalue subp)))
+	     (cdr (parallel-subproblems (application-owner node)))))
 	(walk-rvalue (combination/operator node)))
        ((RETURN)
 	(walk-return (return/operator node) (return/operand node) offset))))

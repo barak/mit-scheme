@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndblk.scm,v 4.8 1988/08/18 01:36:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndblk.scm,v 4.9 1988/11/01 04:53:37 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -87,6 +87,7 @@ MIT in each case. |#
 		(if-compiler
 		 (offset-locative locative (variable-offset block variable)))))
 	    if-ic))
+	  ;; This is just for paranoia.
 	  ((procedure/trivial-closure? rvalue)
 	   (error "FIND-VARIABLE-INTERNAL: Trivial closure value encountered"))
 	  (else
@@ -167,21 +168,30 @@ MIT in each case. |#
     receiver))
 
 (define (find-block/initial block offset)
-  (enumeration-case block-type (block-type block)
-    ((STACK)
-     (stack-locative-offset (rtl:make-fetch register:stack-pointer) offset))
-    ((IC)
-     (rtl:make-fetch register:environment))
-    (else
-     (error "Illegal initial block type" block))))
+  (if (null? block)
+      (begin
+	(error "find-block/initial: Null block!" block)
+	(rtl:make-fetch register:environment))
+      (enumeration-case block-type (block-type block)
+       ((STACK)
+	(stack-locative-offset (rtl:make-fetch register:stack-pointer) offset))
+       ((IC)
+	(rtl:make-fetch register:environment))
+       (else
+	(error "Illegal initial block type" block)))))
 
 (define (find-block/loop block end-block? locative)
-  (if (or (end-block? block)
-	  (ic-block? block))
-      (return-2 block locative)
-      (find-block/loop (block-parent block)
-		       end-block?
-		       ((find-block/parent-procedure block) block locative))))
+  (cond ((null? block)
+	 (error "find-block/loop: Null block!" block)
+	 (return-2 block locative))
+	((or (end-block? block)
+	     (ic-block? block))
+	 (return-2 block locative))
+	(else
+	 (find-block/loop (block-parent block)
+			  end-block?
+			  ((find-block/parent-procedure block)
+			   block locative)))))
 
 (define (find-block/parent-procedure block)
   (enumeration-case block-type (block-type block)
@@ -196,6 +206,15 @@ MIT in each case. |#
 		   (else (error "Illegal procedure parent" parent)))
 		  (error "Block has no parent" block)))
 	     ((procedure/trivial-closure? (block-procedure block))
+#|
+	      ;; This case cannot signal an error because of the way that
+	      ;; find-block/loop is written.  The locative for the
+	      ;; parent is needed, although it will be ignored by the
+	      ;; receiver once it finds out that the block is
+	      ;; ic/non-existent.  The references are found by using
+	      ;; the variable caches.
+	      (error "Block corresponds to trivial closure")
+|#
 	      trivial-closure/bogus-locative)
 	     ((not parent)
 	      (error "Block has no parent" block))

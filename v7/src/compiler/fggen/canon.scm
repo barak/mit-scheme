@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/canon.scm,v 1.2 1988/06/14 08:36:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/canon.scm,v 1.3 1988/11/01 04:49:45 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -40,18 +40,15 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-;;;; Data structures, top level and switches
-
-(define-structure canout		; canonicalize-output
-  expr					; expression
-  safe?					; safe? if no (THE-ENVIRONMENT)
-  needs?				; requires environment binding
-  splice?)				; top level can be moved
-
 #|
-Allowed levels for compiler:package-optimization-level are:
+This program translates expressions depending on the context
+in which they appear, the value of the global switch
+compiler:package-optimization-level, and the variables which are
+bound by "visible" surrounding lambda expressions.
 
-All levels treat all packages uniformly except the HYBRID level.
+1) Allowed levels for compiler:package-optimization-level are:
+
+All levels except HYBRID treat all packages uniformly.
 
 NONE:	no optimization is to be performed.
 
@@ -66,7 +63,39 @@ HIGH:	package bodies are treated as top level expressions to be
 	processed independently.  They are copied as necessary to
 	avoid inefficiencies (or incorrectness) due to shared lexical
 	addresses, etc.
+
+2) The context in which an expression appears is described by an
+argument to canonicalize/expression.  The context argument can take
+the following values:
+
+FIRST-CLASS:	Treat every expression as if it appeared in a first class
+		environment.  This is used by the LOW optimization level.
+
+TOP-LEVEL:	The expression appears at top level of the original
+		expression or an in-package special form.  It is not
+		surrounded by any lambda expressions in the input form.
+		It is assumed that such expressions are only executed
+		(evaluated) once.
+
+ONCE-ONLY:	The expression will be executed only once (as long as
+		the corresponding top level expression is executed
+		only once), although it appears surrounded by some
+		lambda expression.  Currently this context occurs only
+		in the body of (potentially nested) top level LET
+		expressions.
+
+ARBITRARY:	The expression may be executed more than once.  It
+		appears surrounded by some lambda expressions which
+		have not been proven to be invoked at most once.
 |#
+
+;;;; Data structures, top level and switches
+
+(define-structure canout		; canonicalize-output
+  expr					; expression
+  safe?					; safe? if no (THE-ENVIRONMENT)
+  needs?				; requires environment binding
+  splice?)				; top level can be moved
 
 (define (canonicalize/top-level expression)
   (if (eq? compiler:package-optimization-level 'NONE)
@@ -142,7 +171,8 @@ HIGH:	package bodies are treated as top level expressions to be
 
 ;;;; Caching first class environments
 
-(define environment-variable (make-named-tag "ENVIRONMENT"))
+(define environment-variable
+  (make-named-tag "ENVIRONMENT"))
 
 (define (scode/comment-directive? text . kinds)
   (and (pair? text)
@@ -179,7 +209,7 @@ HIGH:	package bodies are treated as top level expressions to be
 		  (recvr (scode/quotation-expression (car operands)))
 		  (normal))))
 	   (normal)))))
- 
+ 
   (cond ((scode/variable? body)
 	 (let ((name (scode/variable-name body)))
 	   (if (eq? name environment-variable)
@@ -202,8 +232,6 @@ HIGH:	package bodies are treated as top level expressions to be
 	((scode/comment? body)
 	 (comment body (lambda (nbody) nbody)))
 	(else (normal))))
-
-;;;; Hairy expressions
 
 (define (combine-list elements)
   (if (null? elements)
@@ -211,6 +239,8 @@ HIGH:	package bodies are treated as top level expressions to be
       (canonicalize/combine-binary cons
        (car elements)
        (combine-list (cdr elements)))))
+
+;;; Expressions
 
 (define canonicalize/constant canonicalize/trivial)
 
@@ -221,6 +251,20 @@ HIGH:	package bodies are treated as top level expressions to be
     (list (canonicalize/expression (car operands) bound context)
 	  (canonicalize/expression (cadr operands) bound context)
 	  (canonicalize/trivial (caddr operands) bound context)))))
+
+;;;; Variables and assignment
+
+;; Variables and assignment are treated asymmetrically:
+;; Assignments to free variables in non ARBITRARY contexts are
+;; performed by using LEXICAL-ASSIGNMENT to avoid creating an
+;; assignment cache which will be used only once.  Variable references
+;; will only use LEXICAL-REFERENCE in FIRST-CLASS contexts.
+;; The reason for this asymmetry is that a common programming style is
+;; to bind some names at top level, and then assign them from within a
+;; once-only context to initialize them.  Lowering the space
+;; requirements of the assignment is more important than increasing
+;; the speed since the assignment will only be done once.  This
+;; decision penalizes certain assignments, but oh well...
 
 (define (canonicalize/variable var bound context)
   (let ((name (scode/variable-name var)))
@@ -242,7 +286,7 @@ HIGH:	package bodies are treated as top level expressions to be
    expr
    (lambda (name old-value)
      (let ((value (canonicalize/expression old-value bound context)))
-       (cond ((not (eq? context 'FIRST-CLASS))
+       (cond ((eq? context 'ARBITRARY)
 	      (canonicalize/combine-binary scode/make-assignment
 	       (make-canout name true false (if (memq name bound) true false))
 	       value))
@@ -256,9 +300,10 @@ HIGH:	package bodies are treated as top level expressions to be
 		(list (scode/make-variable environment-variable)
 		      name
 		      (canout-expr value)))
-	       (canout-safe? value) true false)))))))
+	       (canout-safe? value)
+	       true false)))))))
 
-;;;; More hairy expressions
+;;;; Hairy expressions
 
 (define (canonicalize/definition expression bound context)
   (scode/definition-components expression
@@ -462,6 +507,8 @@ HIGH:	package bodies are treated as top level expressions to be
 	  nenv))
 
        (cond ((canout-splice? nexpr)
+	      ;; Random optimization.  The in-package expression has no
+	      ;; free variables.  Turn it into a sequence.
 	      (canonicalize/combine-unary scode/make-sequence
 					  (combine-list (list nenv nexpr))))
 	     ((canonicalize/optimization-low? context)

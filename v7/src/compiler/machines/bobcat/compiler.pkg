@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.7 1988/08/23 16:34:11 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.8 1988/11/01 04:43:57 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -192,6 +192,7 @@ MIT in each case. |#
 	 "fgopt/folcon"			;fold constants
 	 "fgopt/operan"			;operator analysis
 	 "fgopt/closan"			;closure analysis
+	 "fgopt/envopt"			;environment optimization
 	 "fgopt/blktyp"			;environment type assignment
 	 "fgopt/contan"			;continuation analysis
 	 "fgopt/simple"			;simplicity analysis
@@ -210,6 +211,7 @@ MIT in each case. |#
 	  identify-closure-limits!
 	  operator-analysis
 	  outer-analysis
+	  optimize-environments!
 	  setup-block-types!
 	  simplicity-analysis
 	  simulate-application
@@ -228,18 +230,17 @@ MIT in each case. |#
 	 "rtlbase/rtline"		;linearizer
 	 )
   (parent (compiler))
+  (export (compiler)
+	  make-linearizer)
   (export (compiler top-level)
 	  generate/top-level
 	  linearize-rtl
-	  open-coding-analysis)
+	  open-coding-analysis
+	  setup-bblock-continuations!)
   (export (compiler debug)
 	  linearize-rtl)
-  (export (compiler rtl-optimizer)
-	  rgraph/compress!
-	  generate-primitive
-	  generate-type-test
-	  generate-generic-binary
-	  generate-generic-unary))
+  (import (compiler top-level)
+	  label->object))
 
 (define-package (compiler rtl-cse)
   (files "rtlopt/rcse1"			;RTL common subexpression eliminator
@@ -258,14 +259,12 @@ MIT in each case. |#
 	 "rtlopt/rdeath"		;RTL code compression
 	 "rtlopt/rdebug"		;RTL optimizer debugging output
 	 "rtlopt/ralloc"		;RTL register allocation
-	 "rtlopt/expand"		;RTL expansion
 	 )
   (parent (compiler))
   (export (compiler top-level)
 	  code-compression
 	  lifetime-analysis
-	  register-allocation
-	  rtl-expansion))
+	  register-allocation))
 
 (define-package (compiler debugging-information)
   (files "base/infnew")

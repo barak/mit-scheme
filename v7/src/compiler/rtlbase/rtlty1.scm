@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.11 1988/10/20 18:15:40 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.12 1988/11/01 04:53:11 jinx Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -101,7 +101,9 @@ MIT in each case. |#
 
 (define-rtl-statement invocation:apply rtl: pushed continuation)
 (define-rtl-statement invocation:jump rtl: pushed continuation procedure)
+(define-rtl-statement invocation:computed-jump rtl: pushed continuation)
 (define-rtl-statement invocation:lexpr rtl: pushed continuation procedure)
+(define-rtl-statement invocation:computed-lexpr rtl: pushed continuation)
 (define-rtl-statement invocation:uuo-link rtl: pushed continuation name)
 (define-rtl-statement invocation:primitive rtl: pushed continuation procedure)
 (define-rtl-statement invocation:special-primitive rtl: pushed continuation

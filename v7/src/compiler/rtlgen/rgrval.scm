@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.7 1988/06/14 08:42:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.8 1988/11/01 04:55:26 jinx Exp $
 #| -*-Scheme-*-
 Copyright (c) 1988 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.7 1988/06/14 08:42:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.8 1988/11/01 04:55:26 jinx Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -102,8 +102,7 @@ promotional, or sales literature without prior written consent from
 	(cond ((not value) (perform-fetch))
 			  lvalue))
 	       (generate/rvalue* value offset))
-	      ((and (procedure/closure? value)
-		    (procedure/trivial-closure? value))
+	      ((not (rvalue/procedure? value))
 	       (generate/rvalue* value))
 	      (else (perform-fetch)))))))
 
@@ -167,7 +166,9 @@ promotional, or sales literature without prior written consent from
        (make-ic-cons procedure offset
 		     (lambda (scfg expr) (return-2 scfg expr))))
 	   (make-cons-closure-indirection procedure)))))
-       (error "Reference to open procedure" procedure))
+      ((IC)
+       (make-ic-cons procedure))
+      ((OPEN-EXTERNAL OPEN-INTERNAL)
        (if (not (procedure-virtual-closure? procedure))
 	   (error "Reference to open procedure" procedure))
 	    ;; inside another IC procedure?
@@ -207,23 +208,24 @@ promotional, or sales literature without prior written consent from
 		   (loop (cdr entries)
 			 (scfg*scfg->scfg!
 			  (rtl:make-assignment
-			     (cond ;; This is a waste.
-				   ;; It should be integrated.
-				   ((and value
-					 (rvalue/procedure? value)
-					 (procedure/closure? value)
-					 (procedure/trivial-closure? value))
-				    (make-trivial-closure-cons value))
-				   ((not (eq? value (block-procedure
-						     closure-block)))
-				    (rtl:make-fetch
-				     (find-closure-variable closure-block
-							    variable
-							    offset)))
-				   (else
-				    (rtl:make-fetch
-				     (block-closure-locative closure-block
-							     offset))))))
+			   (rtl:locative-offset closure-locative
+						(cdar entries))
+			   (let* ((variable (caar entries))
+				  (value (lvalue-known-value variable)))
+			     (cond
+			      ;; Paranoia.
+			      ((and value
+				    (rvalue/procedure? value)
+			      ((not (eq? value (block-procedure
+						closure-block)))
+					   value variable))
+				(find-closure-variable closure-block
+						       variable
+						       offset)))
+			      ((eq? value
+			       (rtl:make-fetch
+				(block-closure-locative closure-block
+							offset))))))
 			  code))))
 
 	     (loop
@@ -273,6 +275,7 @@ promotional, or sales literature without prior written consent from
 )
 
 (define (make-trivial-closure-cons procedure)
+  (enqueue-procedure! procedure)
   (rtl:make-cons-pointer
    (rtl:make-constant type-code:compiled-entry)
    (rtl:make-entry:procedure (procedure-label procedure))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.11 1988/08/11 20:10:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.12 1988/11/01 04:55:53 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -280,6 +280,8 @@ MIT in each case. |#
   statement
   unspecific)
 
+(define-cse-method 'OVERFLOW-TEST method/noop)
+
 (define-cse-method 'POP-RETURN method/noop)
 
 (define-cse-method 'CONTINUATION-ENTRY method/noop)
@@ -291,7 +293,9 @@ MIT in each case. |#
 
 (define-cse-method 'INVOCATION:APPLY method/noop)
 (define-cse-method 'INVOCATION:JUMP method/noop)
+(define-cse-method 'INVOCATION:COMPUTED-JUMP method/noop)
 (define-cse-method 'INVOCATION:LEXPR method/noop)
+(define-cse-method 'INVOCATION:COMPUTED-LEXPR method/noop)
 (define-cse-method 'INVOCATION:UUO-LINK method/noop)
 (define-cse-method 'INVOCATION:PRIMITIVE method/noop)
 (define-cse-method 'INVOCATION:SPECIAL-PRIMITIVE method/noop)

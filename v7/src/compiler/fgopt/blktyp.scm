@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.4 1988/04/15 02:06:00 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.5 1988/11/01 04:50:40 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -67,27 +67,33 @@ MIT in each case. |#
 
 (define (close-procedure! block)
   (let ((procedure (block-procedure block))
-	(parent (block-parent block)))
-    ;; Note: this should be innocuous if there is already a closure block.
-    ;; In particular, if there is a closure block which happens to be a
-    ;; reference placed there by the first-class environment transformation
-    ;; in fggen/fggen and fggen/canon, and it is replaced by the line below,
-    ;; the presumpt first-class environment is not really used as one, so
-    ;; the procedure is being "demoted" from first-class to closure.
-    (set-procedure-closure-block! procedure parent)
-    (((find-closure-bindings
-       (lambda (closure-frame-block size)
-	 (set-block-parent! block closure-frame-block)
-	 (set-procedure-closure-size! procedure size)))
-      parent)
-     (list-transform-negative (block-free-variables block)
-       (lambda (lvalue)
-	 (eq? (lvalue-known-value lvalue) procedure)))
-     '())
-    (set-block-children! parent (delq! block (block-children parent)))
-    (set-block-disowned-children!
-     parent
-     (cons block (block-disowned-children parent)))))
+	(current-parent (block-parent block)))
+    (let ((parent (or (procedure-target-block procedure) current-parent)))
+      ;; Note: this should be innocuous if there is already a closure block.
+      ;; In particular, if there is a closure block which happens to be a
+      ;; reference placed there by the first-class environment transformation
+      ;; in fggen/fggen and fggen/canon, and it is replaced by the line below,
+      ;; the presumpt first-class environment is not really used as one, so
+      ;; the procedure is being "demoted" from first-class to closure.
+      (set-procedure-closure-block! procedure parent)
+      (((find-closure-bindings
+	 (lambda (closure-frame-block size)
+	   (set-block-parent! block closure-frame-block)
+	   (set-procedure-closure-size! procedure size)))
+	parent)
+       (list-transform-negative (block-free-variables block)
+	 (lambda (lvalue)
+	   (let ((val (lvalue-known-value lvalue)))
+	     (and val
+		  (or (eq? val procedure)
+		      (and (rvalue/procedure? val)
+			   (procedure/trivial-or-virtual? val)))))))
+       '())
+      (set-block-children! current-parent
+			   (delq! block (block-children current-parent)))
+      (set-block-disowned-children!
+       current-parent
+       (cons block (block-disowned-children current-parent))))))
 
 (define (find-closure-bindings receiver)
   (define (find-internal block)
@@ -105,8 +111,14 @@ MIT in each case. |#
 	   (filter-bound-variables (block-bound-variables block)
 				   free-variables
 				   bound-variables)
-	   (find-internal (block-parent block))))))
+	   (find-internal (block-original-parent block))))))
   find-internal)
+
+;; This only works for procedures (not continuations) and it assumes
+;; that all procedures' target-block field have been initialized.
+
+(define-integrable (block-original-parent block)
+  (procedure-target-block (block-procedure block)))
 
 (define (filter-bound-variables bindings free-variables bound-variables)
   (cond ((null? bindings)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.6 1988/06/14 08:32:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.7 1988/11/01 04:47:24 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -36,6 +36,10 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+;; IMPORTANT: Change transform/make-lvalue and the call to
+;; define-type-definition in macros.scm whenever a field is added or
+;; deleted!
+
 (define-root-type lvalue
   forward-links		;lvalues that sink values from here
   backward-links	;lvalues that source values to here
@@ -46,6 +50,7 @@ MIT in each case. |#
   passed-in?		;true iff this lvalue gets an unknown value
   passed-out?		;true iff this lvalue passes its value to unknown place
   marks			;attribute marks list (see `lvalue-mark-set?')
+  source-links		;backward links with circularities removed
   )
 
 ;;; Note that the rvalues stored in `initial-values', `values-cache',
@@ -205,15 +210,7 @@ MIT in each case. |#
     (and value
 	 (or (rvalue/constant? value)
 	     (and (rvalue/procedure? value)
-		  (procedure/open? value)
-#|
-		  ;; For now this is disabled.
-		  ;; We need self-consistent closing
-		  (or (procedure/open? value)
-		      (and (procedure/closure? value)
-			   (procedure/trivial-closure? value)))
-|#
-		  )))))
+		  (procedure/virtually-open? value))))))
 
 (define (lvalue=? lvalue lvalue*)
   (or (eq? lvalue lvalue*)

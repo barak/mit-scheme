@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.15 1988/10/20 17:22:35 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.16 1988/11/01 04:53:58 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -47,18 +47,18 @@ MIT in each case. |#
 		      (let ((inliner (analyze-combination application)))
 			(set-combination/inliner! application inliner)
 			;; Don't push a return address on the stack
- 			;; if: (1) the combination is inline coded,
- 			;; (2) the continuation is known, and (3) the
- 			;; push is unique for this combination.
- 			(let ((push
- 			       (combination/continuation-push application)))
- 			  (if (and inliner
- 				   push
- 				   (rvalue-known-value
- 				    (combination/continuation application)))
- 			      (set-virtual-continuation/type!
- 			       (virtual-return-operator push)
- 			       continuation-type/effect))))))
+			;; if: (1) the combination is inline coded,
+			;; (2) the continuation is known, and (3) the
+			;; push is unique for this combination.
+			(let ((push
+			       (combination/continuation-push application)))
+			  (if (and inliner
+				   push
+				   (rvalue-known-value
+				    (combination/continuation application)))
+			      (set-virtual-continuation/type!
+			       (virtual-return-operator push)
+			       continuation-type/effect))))))
 		(lambda (application)
 		  (if (eq? (application-type application) 'COMBINATION)
 		      (set-combination/inliner! application false))))
@@ -91,7 +91,7 @@ MIT in each case. |#
   (let ((offset (node/offset combination)))
     (generate/return* (combination/block combination)
 		      (combination/continuation combination)
- 		      (combination/continuation-push combination)
+		      (combination/continuation-push combination)
 		      (let ((inliner (combination/inliner combination)))
 			(let ((handler (inliner/handler inliner))
 			      (generator (inliner/generator inliner))
@@ -123,8 +123,7 @@ MIT in each case. |#
 	       (rtl:make-constant (constant-value value)))
 	      ((and value
 		    (rvalue/procedure? value)
-		    (procedure/closure? value)
-		    (procedure/trivial-closure? value))
+		    (procedure/trivial-or-virtual? value))
 	       (make-trivial-closure-cons value))
 	      ((and (rvalue/reference? rvalue)
 		    (not (variable/value-variable? (reference-lvalue rvalue)))
@@ -440,7 +439,7 @@ MIT in each case. |#
      (finish (rtl:make-fetch temporary)))))
 
 (let* ((open-code/memory-ref
-        (lambda (index)
+	(lambda (index)
 	  (lambda (expressions finish)
 	    (finish
 	     (rtl:make-fetch
@@ -499,7 +498,7 @@ MIT in each case. |#
      (define-open-coder/value name
        (lambda (operands)
 	 (or (filter/nonnegative-integer (cadr operands)
-	          (lambda (index)
+		  (lambda (index)
 		    (return-2
 		     (open-code/constant-vector-ref name (1+ index))
 		     '(0 1))))
@@ -729,25 +728,29 @@ MIT in each case. |#
 	       give-it-up))
 	     (generic-2
 	      ;; op1 is a fixnum, op2 is not
-	      (pcfg*scfg->scfg!
-	       (generate-type-test 'flonum op2)
-	       ;; Whem we have open coded flonums we
-	       ;; will convert op1 to a float and do a
-	       ;; floating op.
-	       generic-flonum
-	       give-it-up))
+	      (if compiler:open-code-flonum-checks?
+		  (pcfg*scfg->scfg!
+		   (generate-type-test 'flonum op2)
+		   ;; Whem we have open coded flonums we
+		   ;; will convert op1 to a float and do a
+		   ;; floating op.
+		   generic-flonum
+		   give-it-up)
+		  give-it-up))
 	     (generic-1
 	      ;; op1 is not a fixnum, op2 unknown
-	      (pcfg*scfg->scfg!
-	       (generate-type-test 'flonum op1)
-	       (pcfg*scfg->scfg!
-		(generate-type-test 'flonum op2)
-		;; For now we will just call the generic op.
-		;; When we have open coded flonums, we will
-		;; stick that stuff here.
-		generic-flonum
-		generic-3)
-	       give-it-up)))
+	      (if compiler:open-code-flonum-checks?
+		  (pcfg*scfg->scfg!
+		   (generate-type-test 'flonum op1)
+		   (pcfg*scfg->scfg!
+		    (generate-type-test 'flonum op2)
+		    ;; For now we will just call the generic op.
+		    ;; When we have open coded flonums, we will
+		    ;; stick that stuff here.
+		    generic-flonum
+		    generic-3)
+		   give-it-up)
+		  give-it-up)))
 	(if (or (default-object? is-pred?)
 		(not is-pred?))
 	    (pcfg*scfg->scfg!
@@ -828,20 +831,24 @@ MIT in each case. |#
 	       give-it-up
 	       (finish (rtl:make-fixnum->object
 			fix-temp))))
-	     (pcfg*scfg->scfg!
-	      (generate-type-test 'flonum op)
-	      generic-flonum
-	      give-it-up))
+	     (if compiler:open-code-flonum-checks?
+		 (pcfg*scfg->scfg!
+		  (generate-type-test 'flonum op)
+		  generic-flonum
+		  give-it-up)
+		 give-it-up))
 	    (pcfg*scfg->scfg!
 	     (generate-type-test 'fixnum op)
 	     (finish
 	      (rtl:make-fixnum-pred-1-arg
 	      fix-op
 	      (rtl:make-object->fixnum op)))
-	     (pcfg*scfg->scfg!
-	      (generate-type-test 'flonum op)
-	      generic-flonum
-	      give-it-up)))))))
+	     (if compiler:open-code-flonum-checks?
+		 (pcfg*scfg->scfg!
+		  (generate-type-test 'flonum op)
+		  generic-flonum
+		  give-it-up)
+		 give-it-up)))))))
 
 (define (generic->fixnum-op generic-op)
   (case generic-op
@@ -881,7 +888,7 @@ MIT in each case. |#
 	  (define-open-coder/value generic-op
 	    (lambda (operands)
 	      (return-2
-	        (lambda (expressions finish)
+		(lambda (expressions finish)
 		  (generate-generic-binary
 		   (rtl:make-generic-binary
 			   generic-op
@@ -898,7 +905,7 @@ MIT in each case. |#
 	  (define-open-coder/value generic-op
 	    (lambda (operand)
 	      (return-2
-	        (lambda (expression finish)
+		(lambda (expression finish)
 		  (generate-generic-unary
 		   (rtl:make-generic-unary
 		    generic-op
@@ -914,7 +921,7 @@ MIT in each case. |#
 	  (define-open-coder/predicate generic-op
 	    (lambda (operands)
 	      (return-2
-	        (lambda (expressions finish)
+		(lambda (expressions finish)
 		  (generate-generic-binary
 		   (rtl:make-generic-binary
 			   generic-op
@@ -932,7 +939,7 @@ MIT in each case. |#
 	  (define-open-coder/predicate generic-op
 	    (lambda (operand)
 	      (return-2
-	        (lambda (expression finish)
+		(lambda (expression finish)
 		  (generate-generic-unary
 		   (rtl:make-generic-unary
 			   generic-op

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.10 1988/08/29 22:54:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.11 1988/11/01 04:58:20 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -58,11 +58,29 @@ MIT in each case. |#
        (BRA (@PCR ,label))))
 
 (define-rule statement
+  (INVOCATION:COMPUTED-JUMP (? frame-size) (? continuation))
+  frame-size continuation
+  ;; It expects the procedure at the top of the stack
+  (LAP ,@(clear-map!)
+       (CLR B (@A 7))
+       (RTS)))
+
+(define-rule statement
   (INVOCATION:LEXPR (? number-pushed) (? continuation) (? label))
   continuation
   (LAP ,@(clear-map!)
        ,(load-dnw number-pushed 0)
        (LEA (@PCR ,label) (A 0))
+       (JMP ,entry:compiler-lexpr-apply)))
+
+(define-rule statement
+  (INVOCATION:COMPUTED-LEXPR (? number-pushed) (? continuation))
+  continuation
+  ;; It expects the procedure at the top of the stack
+  (LAP ,@(clear-map!)
+       ,(load-dnw number-pushed 0)
+       (CLR B (@A 7))
+       (MOV L (@A+ 7) (A 0))
        (JMP ,entry:compiler-lexpr-apply)))
 
 (define-rule statement
@@ -224,6 +242,20 @@ MIT in each case. |#
 	   (LABEL ,label)
 	   ,@(generate/move-frame-up* frame-size temp)))))
 
+(define-rule statement
+  (INVOCATION-PREFIX:DYNAMIC-LINK (? frame-size)
+				  (REGISTER (? source))
+				  (REGISTER 12))
+  (QUALIFIER (pseudo-register? source))
+  (let ((areg (move-to-temporary-register! source 'ADDRESS))
+	(label (generate-label)))
+    (LAP (CMP L ,areg (A 4))
+	 (B HS B (@PCR ,label))
+	 (MOV L (A 4) ,areg)
+	 (LABEL ,label)
+	 ,@(generate/move-frame-up* frame-size
+				    (+ (lap:ea-operand-1 areg) 8)))))
+
 (define (generate/move-frame-up frame-size destination)
   (let ((temp (allocate-temporary-register! 'ADDRESS)))
     (LAP (LEA ,destination ,(register-reference temp))
@@ -327,9 +359,14 @@ MIT in each case. |#
 
 (define-rule statement
   (OPEN-PROCEDURE-HEADER (? internal-label))
-  (simple-procedure-header internal-entry-code-word
-			   internal-label
-			   entry:compiler-interrupt-procedure))
+  (LAP ,@(let ((external-label (rtl-procedure/%external-label
+				(label->object internal-label))))
+	   (if external-label
+	       (LAP (EQUATE ,external-label ,internal-label))
+	       (LAP)))
+       ,@(simple-procedure-header internal-entry-code-word
+				  internal-label
+				  entry:compiler-interrupt-procedure)))
 
 (define-rule statement
   (PROCEDURE-HEADER (? internal-label) (? min) (? max))

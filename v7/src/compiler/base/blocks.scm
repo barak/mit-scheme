@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.3 1988/06/14 08:31:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.4 1988/11/01 04:46:18 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -141,7 +141,9 @@ from the continuation, and then "glued" into place afterwards.
    ))
 
 (define-integrable (ic-block? block)
-  (eq? (block-type block) block-type/ic))
+  (let ((type (block-type block)))
+    (or (eq? type block-type/ic)
+	(eq? type block-type/expression))))
 
 (define-integrable (closure-block? block)
   (eq? (block-type block) block-type/closure))
@@ -213,6 +215,12 @@ from the continuation, and then "glued" into place afterwards.
   (if (block-parent block)
       (block-ancestry (block-parent block) (cons block path))
       (cons block path)))
+
+(define (find-outermost-block block)
+  ;; Should this check whether it is an expression/ic block or not?
+  (if (block-parent block)
+      (find-outermost-block (block-parent block))
+      block))
 
 (define (stack-block/external-ancestor block)
   (let ((parent (block-parent block)))

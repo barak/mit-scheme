@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.10 1988/10/20 18:34:36 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.11 1988/11/01 04:49:15 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -422,6 +422,7 @@ MIT in each case. |#
       (phase/fold-constants)
       (phase/open-coding-analysis)
       (phase/operator-analysis)
+      (phase/environment-optimization)
       (phase/identify-closure-limits)
       (phase/setup-block-types)      (phase/continuation-analysis)
       (phase/simplicity-analysis)
@@ -455,6 +456,11 @@ MIT in each case. |#
   (compiler-subphase "Operator Analysis"
     (lambda ()
       (operator-analysis *procedures* *applications*))))
+
+(define (phase/environment-optimization)
+  (compiler-subphase "Environment optimization"
+   (lambda ()
+     (optimize-environments! *procedures*))))
 
 (define (phase/identify-closure-limits)
   (compiler-subphase "Closure Limit Identification"

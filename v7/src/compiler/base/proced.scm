@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.5 1988/06/14 08:33:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.6 1988/11/01 04:48:30 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -51,12 +51,19 @@ MIT in each case. |#
   original-rest		;like `rest' but never changed
   label			;label to identify procedure entry point [symbol]
   applications		;list of applications for which this is an operator
-  always-known-operator? ;true if always known operator of application
+  always-known-operator? ;always known operator of application? [boolean]
   closing-limit		;closing limit (see code)
   closure-block		;for closure, where procedure is closed [block]
   closure-offset	;for closure, offset of procedure in stack frame
   register		;for continuation, argument register
   closure-size		;for closure, virtual size of frame [integer or false]
+  target-block		;where procedure is "really" closed [block]
+  free-callees		;procedures invoked by means of free variables
+  free-callers		;procedures that invoke me by means of free variables
+  virtual-closure?	;need entry point but no environment? [boolean]
+  closure-reasons	;reasons why a procedure is closed.
+  side-effects		;classes of side-effects performed by this procedure
+  trivial?		;true if body is trivial and should open code [boolean]
   )
 
 (define *procedures*)
@@ -70,7 +77,7 @@ MIT in each case. |#
 		      (node->edge (cfg-entry-node scfg))
 		      (list-copy required) (list-copy optional) rest
 		      (generate-label name) false false false false false
-		      false false)))
+		      false false false false false false '() '() false)))
     (set! *procedures* (cons procedure *procedures*))
     (set-block-procedure! block procedure)
     procedure))
@@ -104,6 +111,9 @@ MIT in each case. |#
 
 (define-integrable (procedure-closing-block procedure)
   (block-parent (procedure-block procedure)))
+
+(define (set-procedure-closing-block! procedure block)
+  (set-block-parent! (procedure-block procedure) block))
 
 (define-integrable (procedure-continuation-lvalue procedure)
   ;; Valid only if (not (procedure-continuation? procedure))
@@ -145,9 +155,10 @@ MIT in each case. |#
   (null? (cdr (procedure-applications procedure))))
 
 (define (procedure-inline-code? procedure)
-  (and (procedure/open? procedure)
-       (procedure-always-known-operator? procedure)
-       (procedure-application-unique? procedure)))
+  (or (procedure-trivial? procedure)
+      (and (procedure-always-known-operator? procedure)
+	   (procedure-application-unique? procedure)
+	   (procedure/virtually-open? procedure))))
 
 (define-integrable (open-procedure-needs-static-link? procedure)
   (stack-block/static-link? (procedure-block procedure)))
@@ -221,3 +232,57 @@ MIT in each case. |#
 (define (procedure/open-internal? procedure)
   (and (procedure/open? procedure)
        (procedure/internal? procedure)))
+
+(define (procedure/virtually-open? procedure)
+  (or (procedure/open? procedure)
+      (and (procedure/closure? procedure)
+	   (procedure/trivial-closure? procedure))))
+
+(define (procedure/trivial-or-virtual? procedure)
+  (or (procedure-virtual-closure? procedure)
+      (and (procedure/closure? procedure)
+	   (procedure/trivial-closure? procedure))))
+
+(define (add-closure-reason! procedure reason1 reason2)
+  (let ((reasons (procedure-closure-reasons procedure)))
+    (let ((slot (assq reason1 reasons)))
+      (cond ((null? slot)
+	     (set-procedure-closure-reasons!
+	      procedure
+	      (cons (cons reason1
+			  (if (false? reason2)
+			      '()
+			      (list reason2)))
+		    reasons)))
+	    ((and (not (false? reason2))
+		  (not (memq reason2 (cdr slot))))
+	     (set-cdr! slot (cons reason2 (cdr slot))))))))
+
+;; The possible reasons are
+;;
+;; - passed-out : procedure is available from outside block
+;;   (usually an upwards funarg).
+;;
+;; - argument : procedure is given as an argument to a procedure does not
+;;   share its lexical chain.  Some of these cases of downward funargs
+;;   could be stack allocated.
+;;
+;; - assignment: procedure is assigned to some variable outside its closing
+;;   block. 
+;;
+;; - contagion: procedure is called by some other closure.
+;;
+;; - compatibility: procedure is called from a location which may have more
+;;   than one operator, but the complete set of possibilities is known and
+;;   they are compatible closures.
+;;
+;; - apply-compatibility: procedure is called from a location which may have
+;;   move than one operator, but the complete set of possibilities is now known
+;;   or they are incompatible, so (internal) apply has to be used.
+
+(define (closure-procedure-needs-external-descriptor? procedure)
+  (let loop ((reasons (procedure-closure-reasons procedure)))
+    (and (not (null? reasons))
+	 (or (memq (caar reasons)
+		   '(PASSED-OUT ARGUMENT ASSIGNMENT APPLY-COMPATIBILITY))
+	     (loop (cdr reasons))))))

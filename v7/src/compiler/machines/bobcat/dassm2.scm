@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.7 1988/06/14 08:46:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.8 1988/11/01 04:56:26 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -144,9 +144,9 @@ MIT in each case. |#
   (let ((word (bit-string-allocate size-in-bits)))
     (with-absolutely-no-interrupts
      (lambda ()
-       (read-bits! (if *block (+ (object-datum *block) offset) offset)
-		   0
-		   word)))
+       (if *block
+	   (read-bits! *block (* offset addressing-granularity) word)
+	   (read-bits! offset 0 word))))
     word))
 
 ;;;; Compiler specific information

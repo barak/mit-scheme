@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 4.6 1988/08/22 20:20:59 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 4.7 1988/11/01 04:48:06 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -176,7 +176,7 @@ MIT in each case. |#
  (define-type-definition snode 5 false)
  (define-type-definition pnode 6 false)
  (define-type-definition rvalue 2 rvalue-types)
- (define-type-definition lvalue 10 false))
+ (define-type-definition lvalue 11 false))
 
 ;;; Kludge to make these compile efficiently.
 
@@ -200,7 +200,7 @@ MIT in each case. |#
     (let ((result (generate-uninterned-symbol)))
       `(let ((,result
 	      ((ACCESS VECTOR ,system-global-environment)
-	       ,tag '() '() '() 'NOT-CACHED FALSE '() FALSE FALSE '()
+	       ,tag '() '() '() 'NOT-CACHED FALSE '() FALSE FALSE '() '()
 	       ,@extra)))
 	 (SET! *LVALUES* (CONS ,result *LVALUES*))
 	 ,result))))
@@ -210,29 +210,27 @@ MIT in each case. |#
 (define transform/define-rtl-predicate)
 (let ((rtl-common
        (lambda (type prefix components wrap-constructor)
-	 (let ((constructor-name (symbol-append prefix 'MAKE- type)))
-	   `(BEGIN
-	      (DEFINE-INTEGRABLE
-		(,constructor-name ,@components)
-		,(wrap-constructor `(LIST ',type ,@components)))
-	      (DEFINE-RTL-CONSTRUCTOR ',type ,constructor-name)
-	      (DEFINE-INTEGRABLE (,(symbol-append 'RTL: type '?) EXPRESSION)
-		(EQ? (CAR EXPRESSION) ',type))
-	      ,@(let loop ((components components)
-			   (ref-index 6)
-			   (set-index 2))
-		  (if (null? components)
-		      '()
-		      (let* ((slot (car components))
-			     (name (symbol-append type '- slot)))
-			`((DEFINE-INTEGRABLE (,(symbol-append 'RTL: name) ,type)
-			    (GENERAL-CAR-CDR ,type ,ref-index))
-			  (DEFINE-INTEGRABLE (,(symbol-append 'RTL:SET- name '!)
-					      ,type ,slot)
-			    (SET-CAR! (GENERAL-CAR-CDR ,type ,set-index) ,slot))
-			  ,@(loop (cdr components)
-				  (* ref-index 2)
-				  (* set-index 2)))))))))))
+	 `(BEGIN
+	    (DEFINE-INTEGRABLE
+	      (,(symbol-append prefix 'MAKE- type) ,@components)
+	      ,(wrap-constructor `(LIST ',type ,@components)))
+	    (DEFINE-INTEGRABLE (,(symbol-append 'RTL: type '?) EXPRESSION)
+	      (EQ? (CAR EXPRESSION) ',type))
+	    ,@(let loop ((components components)
+			 (ref-index 6)
+			 (set-index 2))
+		(if (null? components)
+		    '()
+		    (let* ((slot (car components))
+			   (name (symbol-append type '- slot)))
+		      `((DEFINE-INTEGRABLE (,(symbol-append 'RTL: name) ,type)
+			  (GENERAL-CAR-CDR ,type ,ref-index))
+			(DEFINE-INTEGRABLE (,(symbol-append 'RTL:SET- name '!)
+					    ,type ,slot)
+			  (SET-CAR! (GENERAL-CAR-CDR ,type ,set-index) ,slot))
+			,@(loop (cdr components)
+				(* ref-index 2)
+				(* set-index 2))))))))))
   (set! transform/define-rtl-expression
 	(macro (type prefix . components)
 	  (rtl-common type prefix components identity-procedure)))

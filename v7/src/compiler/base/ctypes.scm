@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.5 1988/08/18 01:34:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.6 1988/11/01 04:46:49 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -48,6 +48,7 @@ MIT in each case. |#
    arguments)		;used in outer-analysis
   operand-values	;set by outer-analysis, used by identify-closure-limits
   continuation-push
+  model			;set by identify-closure-limits, used in generation
   )
 
 (define *applications*)
@@ -56,7 +57,7 @@ MIT in each case. |#
   (let ((application
 	 (make-snode application-tag
 		     type block operator operands false '() '()
-		     continuation-push)))
+		     continuation-push false)))
     (set! *applications* (cons application *applications*))
     (add-block-application! block application)
     (if (rvalue/reference? operator)
@@ -114,6 +115,8 @@ MIT in each case. |#
 (define-integrable set-combination/frame-size! set-application-operand-values!)
 (define-integrable combination/inline? combination/inliner)
 (define-integrable combination/continuation-push application-continuation-push)
+(define-integrable combination/model application-model)
+(define-integrable set-combination/model! set-application-model!)
 
 (define-integrable (combination/continuation combination)
   (car (application-operands combination)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.10 1988/08/18 02:02:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.11 1988/11/01 04:50:09 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -735,7 +735,7 @@ MIT in each case. |#
 	   (let ((operator (scode/combination-operator expression))
 		 (operands (scode/combination-operands expression)))
 	     (cond ((and (eq? operator (ucode-primitive lexical-unassigned?))
-			 (the-environment? (car operands))
+			 (scode/the-environment? (car operands))
 			 (scode/symbol? (cadr operands)))
 		    (generate/unassigned? block continuation expression))
 		   ((and (or (eq? operator (ucode-primitive error-procedure))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.6 1988/09/14 06:38:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.7 1988/11/01 04:54:28 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -49,66 +49,76 @@ MIT in each case. |#
 	(frame-size (combination/frame-size combination))
 	(continuation (combination/continuation combination))
 	(offset (node/offset combination)))
-    (let ((callee (rvalue-known-value operator)))
-      (let ((finish
-	     (lambda (invocation callee-external?)
-	       (invocation operator
-			   offset
-			   frame-size
-			   (and (return-operator/subproblem? continuation)
-				(not (continuation/always-known-operator?
-				      continuation))
-				(continuation/label continuation))
-			   (generate/invocation-prefix block
-						       callee
-						       continuation
-						       callee-external?)))))
-	(cond ((not callee)
-	       (finish (if (reference? operator)
-			   invocation/reference
-			   invocation/apply)
-		       true))
-	      ((rvalue/constant? callee)
-	       (finish
-		(if (normal-primitive-procedure? (constant-value callee))
-		    invocation/primitive
-		    invocation/apply)
-		true))
-	      ((rvalue/procedure? callee)
-	       (case (procedure/type callee)
-		 ((OPEN-EXTERNAL) (finish invocation/jump true))
-		 ((OPEN-INTERNAL) (finish invocation/jump false))
-		 ((CLOSURE)
-		  ;; *** For the time being, known lexpr closures are
-		  ;; invoked through apply.  This makes the code
-		  ;; simpler and probably does not matter much. ***
-		  (if (procedure-rest callee)
-		      (finish invocation/apply true)
-		      (finish invocation/jump true)))
-		 ((IC) (finish invocation/ic true))
-		 (else (error "Unknown procedure type" callee))))
-	      (else
-	       (finish invocation/apply true)))))))
+    (let* ((callee (rvalue-known-value operator))
+	   (callee-model (or callee (combination/model combination)))
+	   (finish
+	    (lambda (invocation callee-external?)
+	      (invocation callee-model
+			  operator
+			  offset
+			  frame-size
+			  (and (return-operator/subproblem? continuation)
+			       (not (continuation/always-known-operator?
+				     continuation))
+			       (continuation/label continuation))
+			  (generate/invocation-prefix block
+						      callee-model
+						      continuation
+						      callee-external?)))))
+      (cond ((not callee-model)
+	     (finish (if (reference? operator)
+			 invocation/reference
+			 invocation/apply)
+		     true))
+	    ((and callee (rvalue/constant? callee))
+	     (finish
+	      (if (normal-primitive-procedure? (constant-value callee))
+		  invocation/primitive
+		  invocation/apply)
+	      true))
+	    ((rvalue/procedure? callee-model)
+	     (case (procedure/type callee-model)
+	       ((OPEN-EXTERNAL) (finish invocation/jump true))
+	       ((OPEN-INTERNAL) (finish invocation/jump false))
+	       ((CLOSURE)
+		;; *** For the time being, known lexpr closures are
+		;; invoked through apply.  This makes the code
+		;; simpler and probably does not matter much. ***
+		(if (procedure-rest callee-model)
+		    (finish invocation/apply true)
+		    (finish invocation/jump true)))
+	       ((IC) (finish invocation/ic true))
+	       (else (error "Unknown procedure type" callee-model))))
+	    (else
+	     (finish invocation/apply true))))))
 
 ;;;; Invocations
 
-(define (invocation/jump operator offset frame-size continuation prefix)
+(define (invocation/jump model operator offset frame-size continuation prefix)
   (let ((callee (rvalue-known-value operator)))
     (scfg*scfg->scfg!
      (prefix offset frame-size)
-     (if (procedure-inline-code? callee)
-	 (generate/procedure-entry/inline callee)
-	 (begin
-	   (enqueue-procedure! callee)
-	   ((if (procedure-rest callee)
-		rtl:make-invocation:lexpr
-		rtl:make-invocation:jump)
-	    frame-size
-	    continuation
-	    (procedure-label callee)))))))
+     (cond ((not callee)
+	    (if (not model)
+		(error "invocation/jump: Going to hyperspace!"))
+	    ((if (procedure-rest model)
+		 rtl:make-invocation:computed-lexpr
+		 rtl:make-invocation:computed-jump)
+	     frame-size
+	     continuation))
+	   ((procedure-inline-code? callee)
+	    (generate/procedure-entry/inline callee))
+	   (else
+	    (enqueue-procedure! callee)
+	    ((if (procedure-rest callee)
+		 rtl:make-invocation:lexpr
+		 rtl:make-invocation:jump)
+	     frame-size
+	     continuation
+	     (procedure-label callee)))))))
 
-(define (invocation/apply operator offset frame-size continuation prefix)
-  operator
+(define (invocation/apply model operator offset frame-size continuation prefix)
+  model operator			; ignored
   (invocation/apply* offset frame-size continuation prefix))
 
 (define (invocation/apply* offset frame-size continuation prefix)
@@ -121,7 +131,9 @@ MIT in each case. |#
   ;; sibling, self-recursion, or an ancestor.
   invocation/apply)
 
-(define (invocation/primitive operator offset frame-size continuation prefix)
+(define (invocation/primitive model operator offset frame-size
+			      continuation prefix)
+  model					; ignored
   (scfg*scfg->scfg!
    (prefix offset frame-size)
    (let ((primitive (constant-value (rvalue-known-value operator))))
@@ -133,8 +145,9 @@ MIT in each case. |#
 
 (package (invocation/reference)
 
-(define-export (invocation/reference operator offset frame-size continuation
-				     prefix)
+(define-export (invocation/reference model operator offset frame-size
+				     continuation prefix)
+  model					; ignored
   (if (reference-to-known-location? operator)
       (invocation/apply* offset frame-size continuation prefix)
       (let ((block (reference-block operator))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.sf,v 1.5 1988/08/31 06:49:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.sf,v 1.6 1988/11/01 04:45:49 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -34,6 +34,9 @@ MIT in each case. |#
 
 ;;;; Script to incrementally syntax the compiler
 
+(fluid-let ((sf/usual-integrations-default-deletions
+	     '(VARIABLE? PRIMITIVE-PROCEDURE?)))
+
 ;; Guarantee that the package modeller is loaded.
 (if (not (name->package '(CROSS-REFERENCE)))
     (with-working-directory-pathname "/scheme/cref" (lambda () (load "make"))))
@@ -99,3 +102,4 @@ MIT in each case. |#
 ;; Rebuild the package constructors and cref.
 (cref/generate-all "comp")(sf "comp.con" "comp.bcon")
 (sf "comp.ldr" "comp.bldr")
+) ;; End of fluid-let

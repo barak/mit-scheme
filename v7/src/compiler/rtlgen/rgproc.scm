@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.3 1988/04/15 02:04:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.4 1988/11/01 04:55:01 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -47,16 +47,27 @@ MIT in each case. |#
 	    (rtl:make-ic-procedure-header (procedure-label procedure)))
 	(setup-ic-frame procedure))
        (scfg*scfg->scfg!
-	(cond ((procedure/closure? procedure)
-	       (if (procedure/trivial-closure? procedure)
-		   (with-procedure-arity-encoding
-		    procedure
-		    (lambda (min max)
-		      (rtl:make-procedure-header (procedure-label procedure)
-						 min max)))
-		   (rtl:make-closure-header (procedure-label procedure))))
-	      (inline?
+	(cond (inline?
+	       ;; Paranoia
+	       (if (not (procedure/virtually-open? procedure))
+		   (error "Inlining a real closure!" procedure))
 	       (make-null-cfg))
+	      ((procedure/closure? procedure)
+	       (cond ((not (procedure/trivial-closure? procedure))
+		      (rtl:make-closure-header (procedure-label procedure)))
+		     ((or (procedure-rest procedure)
+			  (closure-procedure-needs-external-descriptor?
+			   procedure))
+		      (with-procedure-arity-encoding
+		       procedure
+		       (lambda (min max)
+			 (rtl:make-procedure-header (procedure-label procedure)
+						    min max))))
+		     (else
+		      ;; It's not an open procedure but it looks like one
+		      ;; at the rtl level.
+		      (rtl:make-open-procedure-header
+		       (procedure-label procedure)))))
 	      ((procedure-rest procedure)
 	       (with-procedure-arity-encoding
 		procedure
@@ -109,8 +120,7 @@ MIT in each case. |#
        (scfg*->scfg!
 	(map (lambda (name value)
 	       (if (and (procedure? value)
-			(procedure/closure? value)
-			(not (procedure/trivial-closure? value)))
+			(not (procedure/trivial-or-virtual? value)))
 		   (letrec-close block name value)
 		   (make-null-cfg)))
 	     names values))))))
@@ -141,8 +151,10 @@ MIT in each case. |#
 	 (case (procedure/type value)
 	   ((CLOSURE)
 	    (if (procedure/trivial-closure? value)
-		(recvr (make-null-cfg)
-		       (make-trivial-closure-cons value))
+		(begin
+		  (error "Letrec value is trivial closure" value)
+		  (recvr (make-null-cfg)
+			 (make-trivial-closure-cons value)))
 		(recvr (make-non-trivial-closure-cons value)
 		       (rtl:interpreter-call-result:enclose))))
 	   ((IC)
