@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.41 1993/02/25 01:58:17 gjr Exp $
+$Id: make.scm,v 14.42 1993/02/25 02:02:48 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -171,52 +171,7 @@ MIT in each case. |#
 
 ;;;; Utilities
 
-(define fasload-purification-queue
-  '())
 
-(define (remember-to-purify purify? filename value)
-  (if purify?
-      (set! fasload-purification-queue
-	    (cons (cons filename value)
-		  fasload-purification-queue)))
-  value)
-
-(define (fasload filename purify?)
-  (tty-write-char newline-char)
-  (tty-write-string filename)
-  (let ((value (binary-fasload filename)))
-    (tty-write-string " loaded")
-    (remember-to-purify purify? filename value)))
-
-(define (map-filename filename)
-  (let ((com-file (string-append filename ".com")))
-    (if (file-exists? com-file)
-	com-file
-	(let ((bin-file (string-append filename ".bin")))
-	  (and (file-exists? bin-file)
-	       bin-file)))))
-
-(define (file->object filename purify? optional?)
-  (let* ((block-name (string-append "LiarC_" filename))
-	 (value ((ucode-primitive initialize-c-compiled-block 1)
-		 block-name)))
-    (cond (value
-	   (tty-write-char newline-char)
-	   (tty-write-string block-name)
-	   (tty-write-string " initialized")
-	   (remember-to-purify purify? filename value))
-	  ((map-filename filename)
-	   => (lambda (mapped)
-		(fasload mapped purify?)))
-	  ((not optional?)
-	   (fatal-error (string-append "Could not find " filename)))
-	  (else
-	   false))))
-
-(define (eval object environment)
-  (let ((value (scode-eval object environment)))
-    (tty-write-string " evaluated")
-    value))
 
 (define (package-initialize package-name procedure-name mandatory?)
   (define (print-name string)
@@ -262,7 +217,50 @@ MIT in each case. |#
 	      (package-initialize spec 'INITIALIZE-PACKAGE! false)
 	      (package-initialize (car spec) (cadr spec) (caddr spec)))
 	  (loop (cdr specs))))))
+
+(define (remember-to-purify purify? filename value)
+  (if purify?
+      (set! fasload-purification-queue
+	    (cons (cons filename value)
+		  fasload-purification-queue)))
+  value)
+
+(define (fasload filename purify?)
+  (tty-write-char newline-char)
+  (tty-write-string filename)
+  (let ((value (binary-fasload filename)))
+    (tty-write-string " loaded")
+    (remember-to-purify purify? filename value)))
 
+(define (map-filename filename)
+  (let ((com-file (string-append filename ".com")))
+    (if (file-exists? com-file)
+	com-file
+	(let ((bin-file (string-append filename ".bin")))
+	  (and (file-exists? bin-file)
+	       bin-file)))))
+
+(define (file->object filename purify? optional?)
+  (let* ((block-name (string-append "LiarC_" filename))
+	 (value (initialize-c-compiled-block block-name)))
+    (cond (value
+	   (tty-write-char newline-char)
+	   (tty-write-string block-name)
+	   (tty-write-string " initialized")
+	   (remember-to-purify purify? filename value))
+	  ((map-filename filename)
+	   => (lambda (mapped)
+		(fasload mapped purify?)))
+	  ((not optional?)
+	   (fatal-error (string-append "Could not find " filename)))
+	  (else
+	   false))))
+
+(define (eval object environment)
+  (let ((value (scode-eval object environment)))
+    (tty-write-string " evaluated")
+    value))
+
 (define (string-append x y)
   (let ((x-length (string-length x))
 	(y-length (string-length y)))
@@ -284,6 +282,20 @@ MIT in each case. |#
 
 (define (intern string)
   (string->symbol (string-downcase string)))
+
+(define (implemented-primitive-procedure? primitive)
+  (get-primitive-address (intern (get-primitive-name (object-datum primitive)))
+			 #f))
+
+(define fasload-purification-queue
+  '())
+
+(define initialize-c-compiled-block
+  (let ((prim (ucode-primitive initialize-c-compiled-block 1)))
+    (if (implemented-primitive-procedure? prim)
+	prim
+	(lambda (name)
+	  false))))
 
 ;; Construct the package structure.
 ;; Lotta hair here to load the package code before its package is built.
