@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: txtprp.scm,v 1.8 1993/08/25 05:49:38 cph Exp $
+;;;	$Id: txtprp.scm,v 1.9 1993/09/09 20:59:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1993 Massachusetts Institute of Technology
 ;;;
@@ -46,41 +46,74 @@
 
 (declare (usual-integrations))
 
-(define-structure (interval
-		   (constructor make-interval
-				(total-length start properties size)))
-  (left false)
-  (right false)
-  (parent false)
-  total-length
-  start
-  properties
-  size)
+(define (add-text-property group start end key datum)
+  (validate-region-arguments group start end 'ADD-TEXT-PROPERTY)
+  (validate-symbol-argument key 'ADD-TEXT-PROPERTY)
+  (step group start end
+	(lambda (alist)
+	  (let ((entry (assq key alist)))
+	    (and entry
+		 (eq? (cdr entry) datum))))
+	(lambda (alist)
+	  (let loop ((alist alist))
+	    (cond ((null? alist)
+		   (list (cons key datum)))
+		  ((eq? key (caar alist))
+		   (cons (cons key datum) (cdr alist)))
+		  (else
+		   (cons (car alist) (loop (cdr alist)))))))))
 
-(define (add-text-properties group start end plist)
+(define (add-text-properties group start end alist)
   (validate-region-arguments group start end 'ADD-TEXT-PROPERTIES)
+  (validate-alist-argument alist 'ADD-TEXT-PROPERTIES)
   (step group start end
-	(lambda (i)
-	  (add-properties plist i))
-	(lambda (i)
-	  (not (add-properties? plist (interval-properties i))))))
+	(lambda (alist*)
+	  (alist-subset? alist alist*))
+	(lambda (alist*)
+	  (append (alist-copy alist)
+		  (list-transform-negative alist*
+		    (lambda (association)
+		      (assq (car association) alist)))))))
 
-(define (set-text-properties group start end plist)
-  (validate-region-arguments group start end 'SET-TEXT-PROPERTIES)
+(define (remove-text-property group start end key)
+  (validate-region-arguments group start end 'REMOVE-TEXT-PROPERTY)
+  (validate-symbol-argument key 'REMOVE-TEXT-PROPERTY)
   (step group start end
-	(lambda (i)
-	  (set-properties plist i))
-	(lambda (i)
-	  (not (set-properties? plist (interval-properties i))))))
+	(lambda (alist)
+	  (not (assq key alist)))
+	(lambda (alist)
+	  (let loop ((alist alist))
+	    (cond ((null? alist) '())
+		  ((eq? key (caar alist)) (cdr alist))
+		  (else (cons (car alist) (loop (cdr alist)))))))))
 
-(define (remove-text-properties group start end plist)
+(define (remove-text-properties group start end keys)
   (validate-region-arguments group start end 'REMOVE-TEXT-PROPERTIES)
+  (if (not (and (list? keys)
+		(for-all? keys symbol?)))
+      (error:wrong-type-argument keys "list of symbols"
+				 'REMOVE-TEXT-PROPERTIES))
   (step group start end
-	(lambda (i)
-	  (remove-properties plist i))
-	(lambda (i)
-	  (not (remove-properties? plist (interval-properties i))))))
+	(lambda (alist*)
+	  (let loop ((keys keys))
+	    (or (null? keys)
+		(and (not (assq (car keys) alist*))
+		     (loop (cdr keys))))))
+	(lambda (alist*)
+	  (list-transform-negative alist*
+	    (lambda (association)
+	      (memq (car association) keys))))))
 
+(define (set-text-properties group start end alist)
+  (validate-region-arguments group start end 'SET-TEXT-PROPERTIES)
+  (validate-alist-argument alist 'SET-TEXT-PROPERTIES)
+  (step group start end
+	(lambda (alist*)
+	  (alist-same-set? alist alist*))
+	(lambda (alist*)
+	  alist*
+	  (alist-copy alist))))
+
 (define (validate-region-arguments group start end procedure)
   (validate-group group procedure)
   (validate-group-index group start procedure)
@@ -102,96 +135,111 @@
   (if (not (and (fix:<= (group-start-index group) index)
 		(fix:<= index (group-end-index group))))
       (error:bad-range-argument index procedure)))
-
-;;; This also needs to test whether or not the left split is
-;;; necessary.  Maybe rather than a separate test we could grab the
-;;; plist before, let the proc do its magic, and then take action
-;;; afterword.
 
-(define (step group start end proc test)
+(define (validate-alist-argument alist procedure)
+  (if (not (alist? alist))
+      (error:wrong-type-argument alist "alist" procedure))
+  (if (not (let loop ((alist alist))
+	     (or (null? alist)
+		 (and (symbol? (caar alist))
+		      (not (assq (caar alist) (cdr alist)))
+		      (loop (cdr alist))))))
+      (error:bad-range-argument alist procedure)))
+
+(define (validate-symbol-argument key procedure)
+  (if (not (symbol? key))
+      (error:wrong-type-argument key "symbol" procedure)))
+
+(define (alist-subset? x y)
+  (let loop ((x x))
+    (or (null? x)
+	(let ((entry (assq (caar x) y)))
+	  (and entry
+	       (eq? (cdar x) (cdr entry))
+	       (loop (cdr x)))))))
+
+(define (alist-same-set? x y)
+  ;; Slow but effective.
+  (and (alist-subset? x y)
+       (alist-subset? y x)))
+
+(define (step group start end dont-modify? modify-alist)
   (define (loop i lst)
     ;; we now know that we are starting on the begining of an interval
     (let ((next (next-interval i))
 	  (p (interval-properties i))
 	  (start (interval-start i)))
-      (let ((end* (if next
-		      (interval-start next)
-		      (fix:+ (interval-start i)
-			     (interval-length i)))))
-	(cond ((fix:= end end*)
-	       (if (proc i)
-		   (cons (list start end p) lst)
-		   lst))
-	      ((fix:< end end*)
-	       (if (proc (split-interval-left i end group))
-		   (cons (list start end lst) lst)
-		   lst))
-	      (else
-	       (loop next
-		     (if (proc i)
-			 (cons (list start end* p) lst)
-			 lst)))))))
-  (record-property-changes!
-   (let ((i
-	  (if (group-text-properties group)
-	      (find-interval group start)
-	      (create-initial-interval group))))
-     (let ((start* (interval-start i)))
-       (cond ((group-start-changes-index group)
-	      (lambda (gsc)
-		(set-group-start-changes-index!
-		 group
-		 (if (fix:< start gsc) start gsc))
-		(set-group-end-changes-index!
-		 group
-		 (let ((gec (group-end-changes-index group)))
-		   (if (fix:> end gec) end gec)))))
-	     (else
-	      (set-group-start-changes-index! group start)
-	      (set-group-end-changes-index! group end)))
-       (if (fix:= start start*)
-	   (loop i '())
-	   (let ((no-split? (test i))
-		 (next (next-interval i)))
-	     (cond ((and no-split?
-			 (or (not next) (<= end (interval-start next))))
-		    '())
-		   (no-split?
-		    (loop next
-			  '()))
-		   (else
-		    (loop (split-interval-right i start group)
-			  '())))))))
-   group))
-
-(define (record-property-changes! p group)
-  ;; Return false if no changes were actually made.
-  (if p
-      (begin
-	(undo-record-property-changes! group p)
-	(set-group-modified?! group true)
-	(vector-set! group group-index:modified-tick
-		     (fix:+ (group-modified-tick group) 1))
-	true)
-      false))
+      (let ((end* (if next (interval-start next) (interval-end i))))
+	(if (fix:> end end*)
+	    (loop next
+		  (if (dont-modify? p)
+		      lst
+		      (begin
+			(set-interval-properties! i (modify-alist p))
+			(cons (list start end* p) lst))))
+	    (let ((i
+		   (if (fix:< end end*) (split-interval-left i end group) i)))
+	      (if (dont-modify? p)
+		  lst
+		  (begin
+		    (set-interval-properties! i (modify-alist p))
+		    (cons (list start end p) lst))))))))
+  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (let ((p
+	   (let ((i
+		  (if (group-text-properties group)
+		      (find-interval group start)
+		      (create-initial-interval group))))
+	     (let ((start* (interval-start i)))
+	       (if (fix:= start start*)
+		   (loop i '())
+		   (let ((dont-split? (dont-modify? (interval-properties i)))
+			 (next (next-interval i)))
+		     (if (and dont-split?
+			      (or (not next)
+				  (fix:<= end (interval-start next))))
+			 '()
+			 (loop (if dont-split?
+				   next
+				   (split-interval-right i start group))
+			       '()))))))))
+      (cond ((group-start-changes-index group)
+	     =>
+	     (lambda (gsc)
+	       (set-group-start-changes-index!
+		group
+		(if (fix:< start gsc) start gsc))
+	       (set-group-end-changes-index!
+		group
+		(let ((gec (group-end-changes-index group)))
+		  (if (fix:> end gec) end gec)))))
+	    (else
+	     (set-group-start-changes-index! group start)
+	     (set-group-end-changes-index! group end)))
+      (if (not (null? p))
+	  (begin
+	    (undo-record-property-changes! group p)
+	    (set-group-modified?! group true)
+	    (vector-set! group group-index:modified-tick
+			 (fix:+ (group-modified-tick group) 1)))))
+    (set-interrupt-enables! interrupt-mask)))
 
 (define (text-properties-at index group)
   (validate-point-arguments group index 'TEXT-PROPERTIES-AT)
   (if (group-text-properties group)
-      (interval-properties (find-interval group index))
-      default-properties))
+      (alist-copy (interval-properties (find-interval group index)))
+      '()))
 
 (define (get-property-at prop index group)
   (validate-point-arguments group index 'GET-PROPERTY-AT)
-  (if (group-text-properties group)
-      (get-property prop (interval-properties (find-interval group index)))
-      #f))
+  (and (group-text-properties group)
+       (assq prop (interval-properties (find-interval group index)))))
 
 (define (local-comtabs mark)
   (let ((property
 	 (get-property-at 'COMMAND-TABLE (mark-index mark) (mark-group mark))))
     (and property
-	 (cadr property))))
+	 (cdr property))))
 
 ;;; The next four procedures are all about the same
 ;;; and none have been tested.
@@ -203,8 +251,7 @@
 	 (let ((p1 (interval-properties z)))
 	   (let loop ((next (next-interval z)))
 	     (and next
-		  (if (interval-properties-equal? p1
-						  (interval-properties next))
+		  (if (alist-same-set? p1 (interval-properties next))
 		      (loop (next-interval next))
 		      (interval-start next))))))))
 
@@ -226,8 +273,7 @@
 	 (let ((p1 (interval-properties z)))
 	   (let loop ((prev (previous-interval z)))
 	     (and prev
-		  (if (interval-properties-equal? p1
-						  (interval-properties prev))
+		  (if (alist-same-set? p1 (interval-properties prev))
 		      (loop (previous-interval prev))
 		      (interval-start prev))))))))
 
@@ -241,19 +287,6 @@
 		  (if (eq? p (assq prop (interval-properties prev)))
 		      (loop (previous-interval prev))
 		      (interval-start prev))))))))
-
-(define (interval-properties-equal? p1 p2)
-  ;; Slow but effective.
-  (let ((subset?
-	 (lambda (p1 p2)
-	   (let loop ((p1 p1))
-	     (or (null? p1)
-		 (let ((entry (assq (caar p1) p2)))
-		   (and entry
-			(eq? (cdar p1) (cdr entry))
-			(loop (cdr p1)))))))))
-    (and (subset? p1 p2)
-	 (subset? p2 p1))))
 
 ;;; The READ-ONLY property is applied to a contiguous region of
 ;;; characters.  No insertions are allowed within that region, and no
@@ -360,80 +393,17 @@
 				       (vector-ref x 2)))
 		properties)))
 
-;;;; Property Lists
-;;;; these are complicated becase of the desire to recognize
-;;;; unnecessary changes
-(define-integrable default-properties '())
+(define-structure (interval
+		   (constructor make-interval
+				(total-length start properties size)))
+  (left false)
+  (right false)
+  (parent false)
+  total-length
+  start
+  properties
+  size)
 
-(define (get-property prop plist)
-  (assq prop plist))
-
-(define (remove-property prop plist)
-  (del-assq prop plist))
-
-(define (add-properties? plist plist2)
-  (there-exists? plist
-    (lambda (p1)
-      (let ((p2 (get-property (car p1) plist2)))
-	(not (and p2 (eq? (cdr p1) (cdr p2))))))))
-
-(define (add-properties plist interval)
-  (let ((plist2 (interval-properties interval)))
-    (cond ((add-properties? plist plist2)
-	    (set-interval-properties!
-	     interval
-	     (append plist
-		     (append-map
-		      (lambda (p2)
-			(if (get-property (car p2) plist)
-			    '()
-			    (list p2)))
-		      plist2)))
-	    true)
-	  (else false))))
-
-(define (remove-properties? plist plist2)
-  (there-exists? plist
-    (lambda (p1)
-      (get-property (car p1) plist2))))
-
-(define (remove-properties plist interval)
-  (let ((plist2 (interval-properties interval)))
-    (cond ((remove-properties? plist plist2)
-	   (set-interval-properties!
-	    interval
-	    (append-map
-	     (lambda (p2)
-	       (if (get-property (car p2) plist)
-		   '()
-		   (list p2)))
-	     plist2))
-	   true)
-	  (else false))))
-
-(define (set-properties? plist plist2)
-  (cond ((not (= (length plist)
-		 (length plist2)))
-	 true)
-	(else
-	 (there-exists? plist
-	   (lambda (p)
-	     (let ((p2 (get-property (car p) plist2)))
-	       (if (and p2 (or
-			    (eq? (cdr p2) (cdr p))
-			    (eq? (cadr p2) (cadr p))))
-		   false
-		   true)))))))
-
-(define (set-properties plist interval)
-  (let ((plist2 (interval-properties interval)))
-    (cond ((set-properties? plist plist2)
-	   (set-interval-properties!
-	    interval
-	    plist)
-	   true)
-	  (else false))))
-
 (define-integrable (interval-property interval key default)
   (let ((entry (assq key (interval-properties interval))))
     (if entry
@@ -445,14 +415,6 @@
 
 (define-integrable (null-left-child? t)
   (not (interval-left t)))
-
-(define (null-parent? t)
-  (not (interval-parent t)))
-
-(define-integrable (total-length i)
-  (if (not i)
-      0
-      (interval-total-length i)))
 
 (define-integrable (left-total-length t)
   (if (interval-left t)
@@ -485,14 +447,8 @@
   (if child
       (set-interval-parent! child parent)))
 
-(define-integrable (interval-add-amount! i amt)
-  (set-interval-total-length!
-   i
-   (fix:+ (interval-total-length i) amt))
-  amt)
-
 (define (create-initial-interval group)
-  (let ((i (make-interval (group-length group) 0 default-properties 1)))
+  (let ((i (make-interval (group-length group) 0 '() 1)))
     (set-group-text-properties! group i)
     i))
 
@@ -587,32 +543,6 @@
     (if r
 	(rightmost-interval r)
 	t)))
-
-#|
-(define (left-insert interval amt group)
-  (let ((i (make-interval amt false default-properties)))
-    (if (null-left-child? interval)
-	(connect-left! interval i)
-	(begin
-	  (connect-left! i (interval-left interval))
-	  (connect-left! interval i)
-	  (set-interval-total-length!
-	   i (fix:+ (left-total-length i) amt))))
-    (add-amount-up-tree interval amt)
-    (balance i group)))
-
-(define (right-insert interval amt group)
-  (let ((i (make-interval amt false default-properties)))
-    (if (null-right-child? interval)
-	(connect-right! interval i)
-	(begin
-	  (connect-right! i (interval-right interval))
-	  (connect-right! interval i)
-	  (set-interval-total-length!
-	   i (fix:+ (right-total-length i) amt))))
-    (add-amount-up-tree interval amt)
-    (balance i group)))
-|#
 
 ;;;
 ;;;     interval                  interval

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.129 1993/09/03 04:41:30 cph Exp $
+$Id: edwin.pkg,v 1.130 1993/09/09 20:59:33 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -838,6 +838,7 @@ MIT in each case. |#
   (parent (edwin))
   (export (edwin)
 	  add-text-properties
+	  add-text-property
 	  get-property
 	  get-property-at
 	  group-extract-properties
@@ -848,6 +849,7 @@ MIT in each case. |#
 	  prev-specific-property-change
 	  previous-property-change
 	  remove-text-properties
+	  remove-text-property
 	  set-text-properties
 	  text-not-deleteable?
 	  text-not-insertable?
