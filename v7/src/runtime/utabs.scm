@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 14.8 1992/05/23 01:12:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 14.9 1992/05/27 21:51:20 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -36,17 +36,32 @@ MIT in each case. |#
 ;;; package: (runtime microcode-tables)
 
 (declare (usual-integrations))
-
+
 (define (re-read-microcode-tables!)
   (let ((file-name ((ucode-primitive microcode-tables-filename))))
-    (cond ((file-exists? file-name)
-	   (read-microcode-tables! file-name))
-	  ((not (equal? ((ucode-primitive microcode-identify))
-			identification-vector))
-	   (error
-	    "re-read-microcode-tables!: Cannot find description for new microcode in"
-	    file-name)))))
-
+    (if (file-exists? file-name)
+	(read-microcode-tables! file-name)
+	(let ((new-identification (ucode-primitive microcode-identify)))
+	  (let ((new-vector (vector-copy new-identification))
+		(old-vector (vector-copy identification-vector)))
+	    (let loop ((fields '(CONSOLE-WIDTH CONSOLE-HEIGHT)))
+	      (if (not (null? fields))
+		  (let ((slot (microcode-identification-slot (car fields))))
+		    (vector-set! old-vector slot false)
+		    (vector-set! new-vector slot false)
+		    (loop (cdr fields)))))
+	    (if (not (equal? new-vector old-vector))
+		(error
+		 "re-read-microcode-tables!: Missing microcode description"
+		 file-name)
+		(begin
+		  (set! identification-vector new-identification)
+		  (set! microcode-id/tty-x-size
+			(microcode-identification-item 'CONSOLE-WIDTH))
+		  (set! microcode-id/tty-y-size
+			(microcode-identification-item 'CONSOLE-HEIGHT))
+		  unspecific)))))))
+
 (define (read-microcode-tables! #!optional filename)
   (set! microcode-tables-identification
 	(scode-eval ((ucode-primitive binary-fasload)
@@ -72,9 +87,6 @@ MIT in each case. |#
   (set! microcode-id/release-string
 	(microcode-identification-item 'SYSTEM-RELEASE-STRING))
   (set! char:newline (microcode-identification-item 'NEWLINE-CHAR))
-  (set! microcode-id/tty-x-size (microcode-identification-item 'CONSOLE-WIDTH))
-  (set! microcode-id/tty-y-size
-	(microcode-identification-item 'CONSOLE-HEIGHT))
   (set! microcode-id/floating-mantissa-bits
 	(microcode-identification-item 'FLONUM-MANTISSA-LENGTH))
   (set! microcode-id/floating-epsilon
@@ -88,6 +100,10 @@ MIT in each case. |#
 	  (cond ((string? string) (intern string))
 		((not string) 'STANDARD)
 		(else (error "illegal stack type" string)))))
+  (set! microcode-id/tty-x-size
+	(microcode-identification-item 'CONSOLE-WIDTH))
+  (set! microcode-id/tty-y-size
+	(microcode-identification-item 'CONSOLE-HEIGHT))
   unspecific)
 
 (define microcode-tables-identification)
