@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.7 1995/01/20 22:45:45 ssmith Exp $
+$Id: machin.scm,v 1.8 1995/05/24 00:22:51 ssmith Exp $
 
 Copyright (c) 1992-1995 Massachusetts Institute of Technology
 
@@ -157,12 +157,12 @@ MIT in each case. |#
 
 (define (closure-environment-adjustment nentries entry)
   (declare (integrate-operator closure-entry-distance))
-  (closure-entry-distance nentries entry 0))
+  (- (closure-entry-distance nentries entry 0) 5))
 
 ;;;; Machine registers
 
 ;; This gives us an extra scratch register
-(define use-ebp-as-mask? #f)
+(define use-ebp-as-mask? #t)
 
 
 (define eax 0)				; acumulator
@@ -199,6 +199,8 @@ MIT in each case. |#
 (define-integrable regnum:hook eax)
 (define-integrable regnum:first-arg ecx)
 (define-integrable regnum:second-arg edx)
+(define-integrable regnum:third-arg ebx)
+
 
 (define datum-mask-value)
 (define regnum:datum-mask)
@@ -245,7 +247,7 @@ MIT in each case. |#
 		   (error "illegal machine register" register))))))
 
 (define *rtlgen/argument-registers*
-  (vector ecx edx))
+  (vector edx ecx))
 
 (define-integrable register-block/memtop-offset 0)
 (define-integrable register-block/int-mask-offset 1)
@@ -256,6 +258,9 @@ MIT in each case. |#
 (define-integrable register-block/utility-arg4-offset 9) ; closure free
 (define-integrable register-block/stack-guard-offset 11)
 (define-integrable register-block/empty-list 14)
+
+(define (get-regblock-ea offs)
+  `(@RO B ,regnum:regs-pointer ,(* 4 offs)))
 
 (define-integrable (fits-in-signed-byte? value)
   (and (>= value -128) (< value 128)))
@@ -403,7 +408,7 @@ MIT in each case. |#
        (let ((value (rtl:constant-value expression)))
 	 (if (non-pointer-object? value)
 	     (if-synthesized-constant (object-type value)
-				      (careful-object-datum value))
+				      (386-object-datum value))
 	     (+ get-pc-cost based-reference-cost))))
       ((MACHINE-CONSTANT)
        (if-integer (rtl:machine-constant-value expression)))
@@ -438,14 +443,19 @@ MIT in each case. |#
 		  ;; Disabled for now.  The F2XM1 instruction is
 		  ;; broken on the 387 (or at least some of them).
 		  FLONUM-EXP
+		  FLONUM-ROUND->EXACT FLONUM-CEILING->EXACT
+		  FLONUM-TRUNCATE->EXACT FLONUM-FLOOR->EXACT
+		  FLONUM-NORMALIZE FLONUM-DENORMALIZE
+		  FLONUM-EXPT
 		  VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS))
 
-;; Copied from Spectrum's so I could see it compile
+;; This fits the normal calling convention, even though the real expectation
+;; is that arg 2 will go to ebx, but code in i386.m4 fixes that.
 
 (define (rtlgen/interpreter-call/argument-home index)
   (case index
-    ((1) `(REGISTER ,ecx))
-    ((2) `(REGISTER ,edx))
+    ((1) `(REGISTER ,edx))
+    ((2) `(REGISTER ,ecx))
     (else
      (internal-error "Unexpected interpreter-call argument index" index))))
 
@@ -462,3 +472,11 @@ MIT in each case. |#
 (define (machine/indexed-stores? type)
   type					; for all types
   #T)
+
+(define (386-object-type d)
+  (object-type d))
+
+(define (386-object-datum d)
+  (if (false? d)
+      (- (careful-object-datum d) 16)
+      (careful-object-datum d)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.7 1995/01/20 23:13:03 ssmith Exp $
+$Id: lapgen.scm,v 1.8 1995/05/24 00:23:08 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -188,7 +188,7 @@ MIT in each case. |#
 	 (INST-EA (@RO UW ,register ,offset)))))
 
 (define-integrable (pseudo-register-offset register)
-  (+ (+ (* 16 4) (* 80 4))
+  (+ (+ 16 80)
      (* 3 (register-renumber register))))
 
 (define-integrable (pseudo->machine-register source target)
@@ -242,13 +242,13 @@ MIT in each case. |#
   (let ((target (target-register-reference target)))
     (if (non-pointer-object? constant)
 	;; Is this correct if conversion is object->address ?
-	(load-non-pointer target 0 (careful-object-datum constant))
+	(load-non-pointer target 0 (386-object-datum constant))
 	(LAP ,@(load-constant target constant)
 	     ,@(conversion target)))))
 
 (define (non-pointer->literal object)
   (make-non-pointer-literal (object-type object)
-			    (careful-object-datum object)))
+			    (386-object-datum object)))
 
 (define (load-immediate target value)
   (if (zero? value)
@@ -263,7 +263,7 @@ MIT in each case. |#
 
 (define (load-constant target obj)
   (if (non-pointer-object? obj)
-      (load-non-pointer target (object-type obj) (careful-object-datum obj))
+      (load-non-pointer target (object-type obj) (386-object-datum obj))
       (load-pc-relative target (constant->label obj))))
 
 (define (load-pc-relative target label-expr)
