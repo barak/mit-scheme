@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insmac.scm,v 1.5 1987/08/20 20:42:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insmac.scm,v 1.6 1987/08/21 14:47:41 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -130,14 +130,32 @@ MIT in each case. |#
 	   (else
 	    (error "expand-fields: Unknown field kind" (caar fields))))))))
 
-;; Patterned after integer-syntaxer in back-end/syntax.scm
-
 (define (displacement-syntaxer expression size)
-  (let ((coercion (make-coercion-name 'DISPLACEMENT size)))
-    (if (and (pair? expression)
-	     (memq (car expression) '(@PCO @PCR)))
-	`',((lexical-reference coercion-environment coercion) expression)
-	`(SYNTAX-EVALUATION ,expression ,coercion))))
+  (cond ((not (pair? expression))
+	 `(SYNTAX-DISPLACEMENT ,expression
+			       ,(make-coercion-name 'SIGNED size)))
+	((eq? '@PCO (car expression))
+	 (integer-syntaxer (cadr expression) 'SIGNED size))
+	((eq? '@PCR (car expression))
+	 (nteger-syntaxer `(- ,(cadr expression)
+			      (+ *PC* ,(/ size 8))) 'SIGNED size))
+	(else
+	 `(SYNTAX-DISPLACEMENT ,expression
+			       ,(make-coercion-name 'SIGNED size)))))
+
+(define (syntax-displacement expression coercion)
+  (cond ((not (pair? expression))
+	 (error "syntax-displacement: bad displacement specifier"
+		expression))
+	((eq? (car expression) '@PCO)
+	 (syntax-evaluation (cadr expression) coercion))
+	((eq? (car expression) '@PCR)
+	 (syntax-evaluation `(- ,(cadr expression)
+				(+ *PC* ,(/ (coercion-size coercion) 8)))
+			    coercion))
+	(else
+	 (error "syntax-displacement: bad displacement specifier"
+		expression))))
 
 (define (collect-byte components tail receiver)
   (define (inner components receiver)
