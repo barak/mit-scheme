@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dosio.h,v 1.2 1993/06/24 07:08:06 gjr Exp $
+$Id: dosio.h,v 1.3 1994/01/29 21:25:33 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,8 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-#ifndef SCM_UXIO_H
-#define SCM_UXIO_H
+#ifndef SCM_DOSIO_H
+#define SCM_DOSIO_H
 
 #include "osio.h"
 
@@ -85,4 +85,4 @@ extern Tchannel EXFUN (channel_allocate, (void));
 #define CNTRL_Z			'\032'
 #define DELETE			'\177'
 
-#endif /* SCM_UXIO_H */
+#endif /* SCM_DOSIO_H */
