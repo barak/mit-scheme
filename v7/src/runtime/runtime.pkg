@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.432 2003/03/07 18:34:43 cph Exp $
+$Id: runtime.pkg,v 14.433 2003/03/07 21:19:39 cph Exp $
 
 Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright (c) 1993,1994,1995,1996,1997 Massachusetts Institute of Technology
@@ -3800,10 +3800,12 @@ USA.
 	 "syntax-check")
   (parent (runtime))
   (export ()
+	  <syntactic-closure>
 	  call-with-syntax-error-procedure
 	  capture-syntactic-environment
 	  close-syntax
 	  er-macro-transformer->expander
+	  guarantee-syntactic-environment
 	  identifier->symbol
 	  identifier=?
 	  identifier?
@@ -3817,20 +3819,24 @@ USA.
 	  non-hygienic-macro-transformer->expander
 	  parse-mit-lambda-list
 	  r4rs-lambda-list?
-	  sc-macro-transformer->expander
 	  reverse-syntactic-environments
 	  rsc-macro-transformer->expander
+	  sc-macro-transformer->expander
 	  strip-syntactic-closures
 	  supported-srfi-features
-	  syntactic-closure-rtd
 	  syntactic-closure/environment
-	  syntactic-closure/free-names
 	  syntactic-closure/form
+	  syntactic-closure/free-names
 	  syntactic-closure?
-	  synthetic-identifier?
+	  syntactic-environment->environment
+	  syntactic-environment/lookup
+	  syntactic-environment/top-level?
+	  syntactic-environment?
 	  syntax
 	  syntax*
-	  syntax-match?)
+	  syntax-match?
+	  synthetic-identifier?
+	  )
   (export (runtime defstruct)
 	  define-expander
 	  parse-mit-lambda-list))

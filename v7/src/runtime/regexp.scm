@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: regexp.scm,v 1.12 2003/02/14 18:28:33 cph Exp $
+$Id: regexp.scm,v 1.13 2003/03/07 21:22:51 cph Exp $
 
 Copyright 1986, 1989-1999 Massachusetts Institute of Technology
 
@@ -34,7 +34,7 @@ USA.
   (set! registers (make-vector 20 #f))
   unspecific)
 
-(define-structure (re-registers (type-descriptor re-registers-rtd))
+(define-structure (re-registers (type-descriptor <re-registers>))
   (vector #f read-only #t))
 
 (define (guarantee-re-registers object procedure)
