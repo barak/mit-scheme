@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 13.47 1987/06/02 23:44:38 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 13.48 1987/06/05 16:28:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -101,20 +101,20 @@
 			   *the-non-printing-object*)))))))
 
 (set! disk-save
-      (setup-image save-world))
+  (setup-image save-world))
 
 (set! dump-world
-      (setup-image
-       (let ((primitive (make-primitive-procedure 'DUMP-WORLD true)))
-	 (lambda (filename after-dumping after-restoring)
-	   (let ((ie (set-interrupt-enables! interrupt-mask-none)))
-	     ((if (primitive filename)
-		  (lambda (ie)
-		    ((access reset! primitive-io))
-		    ((access reset! working-directory-package))
-		    (after-restoring ie))
-		  after-dumping)
-	      ie))))))
+  (setup-image
+   (let ((primitive (make-primitive-procedure 'DUMP-WORLD true)))
+     (lambda (filename after-dumping after-restoring)
+       (let ((ie (set-interrupt-enables! interrupt-mask-none)))
+	 ((if (primitive filename)
+	      (lambda (ie)
+		((access reset! primitive-io))
+		((access reset! working-directory-package))
+		(after-restoring ie))
+	      after-dumping)
+	  ie))))))
 
 (set! event:after-restore (make-event-distributor))
 (set! event:after-restart (make-event-distributor))
@@ -140,43 +140,43 @@
    ((access reset! continuation-package))))
 
 (set! full-quit
-(named-lambda (full-quit)
-  (quit)
-  (restart-world)))
+  (named-lambda (full-quit)
+    (quit)
+    (restart-world)))
 
 (set! identify-world
-(named-lambda (identify-world)
-  (newline)
-  (write-string world-identification)
-  (write-string " saved on ")
-  (write-string (apply date->string date-world-saved))
-  (write-string " at ")
-  (write-string (apply time->string time-world-saved))
-  (newline)
-  (write-string "  Release ")
-  (write-string (access :release microcode-system))
-  (for-each identify-system known-systems)))
+  (named-lambda (identify-world)
+    (newline)
+    (write-string world-identification)
+    (write-string " saved on ")
+    (write-string (apply date->string date-world-saved))
+    (write-string " at ")
+    (write-string (apply time->string time-world-saved))
+    (newline)
+    (write-string "  Release ")
+    (write-string (access :release microcode-system))
+    (for-each identify-system known-systems)))
 
 (set! identify-system
-(named-lambda (identify-system system)
-  (newline)
-  (write-string "  ")
-  (write-string (access :name system))
-  (write-string " ")
-  (write (access :version system))
-  (let ((mod (access :modification system)))
-    (if mod
-	(begin (write-string ".")
-	       (write mod))))))
+  (named-lambda (identify-system system)
+    (newline)
+    (write-string "  ")
+    (write-string (access :name system))
+    (write-string " ")
+    (write (access :version system))
+    (let ((mod (access :modification system)))
+      (if mod
+	  (begin (write-string ".")
+		 (write mod))))))
 
 (set! add-system!
-(named-lambda (add-system! system)
-  (set! known-systems (append! known-systems (list system)))))
+  (named-lambda (add-system! system)
+    (set! known-systems (append! known-systems (list system)))))
 
 (set! add-secondary-gc-daemon!
-(named-lambda (add-secondary-gc-daemon! daemon)
-  (if (not (memq daemon secondary-gc-daemons))
-      (set! secondary-gc-daemons (cons daemon secondary-gc-daemons)))))
+  (named-lambda (add-secondary-gc-daemon! daemon)
+    (if (not (memq daemon secondary-gc-daemons))
+	(set! secondary-gc-daemons (cons daemon secondary-gc-daemons)))))
 
 )
 
@@ -203,11 +203,17 @@
 	  '()
 	  (split-list files 20
 	    (lambda (head tail)
-	      (let ((scode (map fasload head)))
-		(newline)
-		(write-string "Purify")
-		(purify (list->vector scode) true)
-		(append! scode (loop tail)))))))
+	      (fasload-files head
+		(lambda (expressions pure constant)
+		  (if (not (null? pure))
+		      (begin (newline)
+			     (write-string "Purify")
+			     (purify (list->vector pure) true)))
+		  (if (not (null? constant))
+		      (begin (newline)
+			     (write-string "Constantify")
+			     (purify (list->vector constant) false)))
+		  (append! expressions (loop tail))))))))
     (let ((files (format-files-list (access :files-lists system) compiled?)))
       (set! (access :files system)
 	    (map (lambda (file) (pathname->string (car file))) files))
@@ -229,6 +235,23 @@
 	(lambda (head tail)
 	  (receiver (cons (car list) head) tail)))))
 
+(define (fasload-files filenames receiver)
+  (if (null? filenames)
+      (receiver '() '() '())
+      (fasload-files (cdr filenames)
+	(lambda (expressions pure constant)
+	  (let ((scode (fasload (car filenames))))
+	    (if (primitive-type? type-code/compiled-expression scode)
+		(receiver (cons scode expressions)
+			  pure
+			  (cons scode constant))
+		(receiver (cons scode expressions)
+			  (cons scode pure)
+			  constant)))))))
+
+(define type-code/compiled-expression
+  (microcode-type 'COMPILED-EXPRESSION))
+
 (define (format-files-list files-lists compiled?)
   (mapcan (lambda (files-list)
 	    (map (lambda (filename)
@@ -253,5 +276,4 @@
 	   false)
 	  (else (beep) (query prompt)))))
 
-)
 )
