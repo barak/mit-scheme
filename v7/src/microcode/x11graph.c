@@ -1,7 +1,6 @@
-
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.22 1992/02/11 19:38:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.23 1992/03/16 19:41:37 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -260,29 +259,33 @@ DEFUN (process_event, (xw, event),
 
 static void
 DEFUN (wm_set_size_hint, (xw, geometry_mask, x, y),
-       struct xwindow  * xw AND
+       struct xwindow * xw AND
        int geometry_mask AND
        int x AND
        int y)
 {
   unsigned int extra = (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
-  XSizeHints size_hints;
-  (size_hints . flags) =
-    (PResizeInc
-     | PMinSize
+  XSizeHints * size_hints = (XAllocSizeHints ());
+  if (size_hints == 0)
+    error_external_return ();
+  (size_hints -> flags) =
+    (PResizeInc | PMinSize | PBaseSize
      | (((geometry_mask & XValue) && (geometry_mask & YValue))
 	? USPosition : PPosition)
      | (((geometry_mask & WidthValue) && (geometry_mask & HeightValue))
 	? USSize : PSize));
-  (size_hints . x) = x;
-  (size_hints . y) = y;
-  (size_hints . width) = ((XW_X_SIZE (xw)) + extra);
-  (size_hints . height) = ((XW_Y_SIZE (xw)) + extra);
-  (size_hints . width_inc) = 1;
-  (size_hints . height_inc) = 1;
-  (size_hints . min_width) = extra;
-  (size_hints . min_height) = extra;
-  XSetNormalHints ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), (&size_hints));
+  (size_hints -> x) = x;
+  (size_hints -> y) = y;
+  (size_hints -> width) = ((XW_X_SIZE (xw)) + extra);
+  (size_hints -> height) = ((XW_Y_SIZE (xw)) + extra);
+  (size_hints -> width_inc) = 1;
+  (size_hints -> height_inc) = 1;
+  (size_hints -> min_width) = extra;
+  (size_hints -> min_height) = extra;
+  (size_hints -> base_width) = extra;
+  (size_hints -> base_height) = extra;
+  XSetWMNormalHints ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), size_hints);
+  XFree ((caddr_t) size_hints);
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-OPEN-WINDOW", Prim_x_graphics_open_window, 3, 3,
@@ -354,6 +357,7 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
 	(XW_X_CURSOR (xw)) = 0;
 	(XW_Y_CURSOR (xw)) = 0;
 	wm_set_size_hint (xw, geometry_mask, x_pos, y_pos);
+	xw_set_wm_input_hint (xw, 0);
 	xw_set_wm_name (xw, "scheme-graphics");
 	xw_set_wm_icon_name (xw, "scheme-graphics");
 	XSelectInput (display, window, StructureNotifyMask);
