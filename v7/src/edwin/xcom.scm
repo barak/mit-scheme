@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xcom.scm,v 1.7 1992/03/13 23:59:41 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xcom.scm,v 1.8 1992/03/26 22:29:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -41,7 +41,7 @@
 ;;;; X Commands
 
 (declare (usual-integrations))
-
+
 (define-primitives
   (x-window-clear 1)
   (x-window-lower 1)
@@ -65,7 +65,7 @@
 
 (define (current-xterm)
   (screen-xterm (selected-screen)))
-
+
 (define-command x-set-foreground-color
   "Set foreground (text) color to COLOR."
   "sSet foreground color"
@@ -111,16 +111,6 @@
 	    (editor-error "Unknown font name: " font))
 	(xterm-set-size xterm x-size y-size)))))
 
-(define-command x-raise-screen
-  "Raise the editor screen so that it is not obscured by other X windows."
-  ()
-  (lambda () (x-window-raise (current-xterm))))
-
-(define-command x-lower-screen
-  "Lower the editor screen so that it does not obscure other X windows."
-  ()
-  (lambda () (x-window-lower (current-xterm))))
-
 (define-command x-set-size
   "Set size of editor screen to WIDTH x HEIGHT."
   "nScreen width (chars)\nnScreen height (chars)"
@@ -145,7 +135,7 @@
   "nSet internal border width"
   (lambda (width)
     (x-window-set-internal-border-width (current-xterm) (max 0 width))))
-
+
 (define-command x-set-window-name
   "Set X window name to NAME.
 Useful only if `x-screen-name-format' is false."
@@ -198,6 +188,30 @@ Used only if `x-screen-icon-name-format' is non-false."
 		   (variable-local-value
 		    (window-buffer window)
 		    (ref-variable-object x-screen-icon-name-length))))))
+
+(define-command x-raise-screen
+  "Raise the editor screen so that it is not obscured by other X windows."
+  ()
+  (lambda () (x-window-raise (current-xterm))))
+
+(define-command x-lower-screen
+  "Lower the editor screen so that it does not obscure other X windows."
+  ()
+  (lambda () (x-window-lower (current-xterm))))
+
+(define-command x-auto-raise-mode
+  "Toggle auto-raise mode.
+With argument, turn auto-raise mode on iff argument is positive."
+  "P"
+  (lambda (argument)
+    (let ((argument (command-argument-value argument)))
+      (cond ((and (or (not argument) (positive? argument))
+		  (not x-screen-auto-raise))
+	     (set! x-screen-auto-raise true))
+	    ((and (or (not argument) (not (positive? argument)))
+		  x-screen-auto-raise)
+	     (set! x-screen-auto-raise false))))
+    (message "Auto-raise " (if x-screen-auto-raise "enabled" "disabled"))))
 
 (define-command x-set-mouse-shape
   "Set mouse cursor shape to SHAPE.
