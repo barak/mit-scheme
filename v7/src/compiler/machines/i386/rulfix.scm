@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.11 1992/02/05 04:54:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.12 1992/02/08 17:45:37 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -258,10 +258,18 @@ MIT in each case. |#
       (LAP (XOR W ,target ,target))
       (LAP (MOV W ,target (& ,(* constant fixnum-1))))))
 
+(define-integrable (fits-in-signed-byte? value)
+  (and (>= value -128) (< value 128)))
+
 (define (add-fixnum-constant target constant overflow?)
-  (if (and (zero? constant) (not overflow?))
-      (LAP)
-      (LAP (ADD W ,target (& ,(* constant fixnum-1))))))
+  (let ((value (* constant fixnum-1)))
+    (cond ((and (zero? value) (not overflow?))
+	   (LAP))
+	  ((and (not (fits-in-signed-byte? value))
+		(fits-in-signed-byte? (- value)))
+	   (LAP (SUB W ,target (& ,(- value)))))
+	  (else
+	   (LAP (ADD W ,target (& ,value)))))))
 
 (define (multiply-fixnum-constant target constant overflow?)
   (cond ((zero? constant)
