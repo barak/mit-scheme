@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.23 1992/05/26 16:05:25 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.24 1992/05/26 16:09:40 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -423,7 +423,7 @@ MIT in each case. |#
 		       (set-dbg-info/labels/desc! dbg-info (cons bsmname pos))
 		       (loop (fix:1+ pos))))))))
 	  (else 
-	   (error "Unknown inf file format" infpath))))))
+	   (error "Unknown inf file format" infpath)))))
 
 
 ;;; UNCOMPRESS: A simple extractor for compressed binary info files.
