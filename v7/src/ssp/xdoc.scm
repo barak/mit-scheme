@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xdoc.scm,v 1.4 2004/10/27 20:04:12 cph Exp $
+$Id: xdoc.scm,v 1.5 2004/10/30 01:20:40 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -1503,6 +1503,7 @@ USA.
 
 (define-element check-input empty output)
 (define-element check-inputs empty output)
+(define-element programmed-output empty output)
 (define-element number empty output)
 (define-element boolean empty output)
 (define-element menuindex empty output)
@@ -1516,8 +1517,7 @@ USA.
 (define-element choice mixed internal)
 (define-element default mixed internal)
 
-(define-element check-action empty action)
-(define-element submit-action empty action)
+(define-element submit empty action)
 
 (define (xd:true-false . keyword-list)
   (xd:radio-buttons (apply xml-attrs keyword-list)
