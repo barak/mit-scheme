@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.6 1993/08/21 03:21:47 gjr Exp $
+$Id: ntfs.c,v 1.7 1994/10/07 22:43:34 adams Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -148,23 +148,16 @@ DEFUN (OS_directory_delete, (name), CONST char * name)
   STD_VOID_SYSTEM_CALL (syscall_rmdir, (NT_rmdir (name)));
 }
 
-#define DIR_UNALLOCATED (-1L)
-
-/* This is used to cache the result of _findfirst because directory open
-   does not return the first file.
- */
-
 typedef struct DIR_struct
 {
-  struct _finddata_t entry;
-  long handle;         /* may be DIR_UNALLOCATED */
+  WIN32_FIND_DATA entry;
+  HANDLE handle;         /* may be DIR_UNALLOCATED */
+  BOOL more;
   char pathname[256];
 } DIR;
 
-#define Get_Directory_Entry_Name(entry, pathname)		\
-  (strcpy(pathname, (entry).name), strlwr(pathname))
-
-int OS_directory_index;
+#define GET_DIRECTORY_ENTRY_NAME(entry, pathname)		\
+  (strcpy(pathname, (entry).cFileName), strlwr(pathname))
 
 static DIR ** directory_pointers;
 static unsigned int n_directory_pointers;
@@ -174,7 +167,6 @@ DEFUN_VOID (NT_initialize_directory_reader)
 {
   directory_pointers = 0;
   n_directory_pointers = 0;
-  OS_directory_index = (-1);
 }
 
 static unsigned int
@@ -236,7 +228,7 @@ DEFUN (OS_directory_valid_p, (index), long index)
 {
   return
     ((0 <= index)
-     && (index < n_directory_pointers)
+     && (index < (long) n_directory_pointers)
      && ((REFERENCE_DIRECTORY (index)) != 0));
 }
 
@@ -244,7 +236,7 @@ unsigned int
 DEFUN (OS_directory_open, (name), CONST char * name)
 {
   char filename[128], searchname[128];
-  DIR * dir = malloc(sizeof(DIR));
+  DIR * dir = NT_malloc(sizeof(DIR));
 
   if (dir == 0)
     error_system_call (ENOMEM, syscall_malloc);
@@ -254,27 +246,24 @@ DEFUN (OS_directory_open, (name), CONST char * name)
   else
     sprintf (searchname, "%s\\*.*", filename);
 
-  dir->handle = _findfirst (searchname, &(dir->entry));
-  if ((dir->handle == DIR_UNALLOCATED)
-#if 0
-      || ((dir->entry.attrib & _A_SUBDIR) == 0)
-#endif
-      )
+  dir->handle = FindFirstFile(searchname, &(dir->entry));
+  if (dir->handle == INVALID_HANDLE_VALUE)
     error_system_call (errno, syscall_opendir);
 
+  dir->more = TRUE;
   return (allocate_directory_pointer (dir));
 }
 
 CONST char *
 DEFUN (OS_directory_read, (index), unsigned int index)
-{ DIR * dir = REFERENCE_DIRECTORY (index);
+{
+  DIR * dir = REFERENCE_DIRECTORY (index);
 
-  if (dir == 0 || dir->handle==DIR_UNALLOCATED)
+  if (dir == 0 || !dir->more)
     return 0;
 
-  Get_Directory_Entry_Name(dir->entry, dir->pathname);
-  if (_findnext (dir->handle, &(dir->entry)))
-    dir->handle = DIR_UNALLOCATED;
+  GET_DIRECTORY_ENTRY_NAME(dir->entry, dir->pathname);
+  dir->more = FindNextFile(dir->handle, &(dir->entry));
   return (dir -> pathname);
 }
 
@@ -289,13 +278,13 @@ DEFUN (OS_directory_read_matching, (index, prefix),
 
 void
 DEFUN (OS_directory_close, (index), unsigned int index)
-{ DIR * dir = REFERENCE_DIRECTORY (index);
+{ 
+  DIR * dir = REFERENCE_DIRECTORY (index);
 
   if (dir)
   {
-    if (dir->handle != DIR_UNALLOCATED)
-      _findclose (dir->handle);
-    free(dir);
+    FindClose(dir->handle);
+    NT_free(dir);
   }
   DEALLOCATE_DIRECTORY (index);
 }
