@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: nntp.scm,v 1.15 1997/11/01 19:33:58 cph Exp $
+;;;	$Id: nntp.scm,v 1.16 1997/11/04 11:02:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -1807,15 +1807,6 @@
 (define (token->number token)
   (or (substring->nonnegative-integer token 0 (string-length token))
       (error:bad-range-argument token #f)))
-
-(define (substring->nonnegative-integer line start end)
-  (let loop ((index start) (n 0))
-    (if (fix:= index end)
-	n
-	(let ((k (fix:- (vector-8b-ref line index) (char->integer #\0))))
-	  (and (fix:>= k 0)
-	       (fix:< k 10)
-	       (loop (fix:+ index 1) (+ (* n 10) k)))))))
 
 (define (substring-skip-leading-space string start end)
   (let loop ((index start))
