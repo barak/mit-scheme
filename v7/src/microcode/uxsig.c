@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.2 1990/07/30 16:52:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.3 1990/08/27 20:08:39 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -467,20 +467,20 @@ static void EXFUN
 DEFUN_STD_HANDLER (sighnd_interactive,
   (interactive_interrupt_handler (scp)))
 
-void
-DEFUN_VOID (OS_restartable_exit)
+static void
+DEFUN (restartable_exit, (signo), int signo)
 {
   if (UX_SC_JOB_CONTROL ())
     {
       BLOCK_SIGNALS_DECLARE ();
-      BLOCK_SIGNALS (SIGTSTP);
+      BLOCK_SIGNALS (signo);
       OS_save_internal_state ();
       OS_restore_external_state ();
       {
-	Tsignal_handler handler = (current_handler (SIGTSTP));
-	INSTALL_HANDLER (SIGTSTP, SIG_DFL);
-	UX_kill ((UX_getpid ()), SIGTSTP);
-	INSTALL_HANDLER (SIGTSTP, handler);
+	Tsignal_handler handler = (current_handler (signo));
+	INSTALL_HANDLER (signo, SIG_DFL);
+	UX_kill ((UX_getpid ()), signo);
+	INSTALL_HANDLER (signo, handler);
       }
       OS_save_external_state ();
       OS_restore_internal_state ();
@@ -489,7 +489,13 @@ DEFUN_VOID (OS_restartable_exit)
 }
 
 DEFUN_STD_HANDLER (sighnd_stop,
-  (OS_restartable_exit ()))
+  (restartable_exit (signo)))
+
+void
+DEFUN_VOID (OS_restartable_exit)
+{
+  restartable_exit (SIGTSTP);
+}
 
 #ifdef HAVE_ITIMER
 
