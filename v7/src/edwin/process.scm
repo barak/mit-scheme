@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.39 1996/04/24 02:45:38 cph Exp $
+;;;	$Id: process.scm,v 1.40 1996/05/08 20:57:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
@@ -597,12 +597,12 @@ after the listing is made.)"
     (subprocess-i/o-port
      process
      (if output-mark
-	 (and (ref-variable translate-file-data-on-output output-mark)
+	 (and (ref-variable translate-file-data-on-input output-mark)
 	      (mark-translation output-mark))
 	 'DEFAULT)
      (if input-region
 	 (let ((mark (region-start input-region)))
-	   (and (ref-variable translate-file-data-on-input mark)
+	   (and (ref-variable translate-file-data-on-output mark)
 		(mark-translation mark)))
 	 'DEFAULT)))
   (if input-region
