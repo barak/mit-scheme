@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 14.1 1988/06/13 11:58:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 14.2 1988/06/16 06:39:36 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -37,9 +37,13 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(define (add-identification! name version modification)
+  (add-system! (make-system name version modification '())))
+
 (define-structure (system
-		   (constructor make-system
-				(name version modification files-lists))
+		   (constructor
+		    make-system
+		    (name version modification files-lists))
 		   (conc-name system/))
   (name false read-only true)
   (version false read-only true)
