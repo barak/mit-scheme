@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: comutl.c,v 1.27 1993/09/11 21:27:44 gjr Exp $
+$Id: comutl.c,v 1.28 1993/10/26 02:58:01 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -191,14 +191,14 @@ DEFINE_PRIMITIVE ("DECLARE-COMPILED-CODE-BLOCK",
 		  Prim_declare_compiled_code_block, 1, 1,
   "Ensure cache coherence for a compiled-code block newly constructed.")
 {
-  extern void EXFUN (declare_compiled_code, (SCHEME_OBJECT));
+  extern void EXFUN (declare_compiled_code_block, (SCHEME_OBJECT));
   SCHEME_OBJECT new_cc_block;
   PRIMITIVE_HEADER (1);
 
   new_cc_block = (ARG_REF (1));
   if ((OBJECT_TYPE (new_cc_block)) != TC_COMPILED_CODE_BLOCK)
     error_wrong_type_arg (1);
-  declare_compiled_code (new_cc_block);
+  declare_compiled_code_block (new_cc_block);
   PRIMITIVE_RETURN (SHARP_T);
 }
 

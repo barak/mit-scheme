@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.72 1993/09/12 05:18:38 gjr Exp $
+$Id: cmpint.c,v 1.73 1993/10/26 02:57:43 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -284,7 +284,7 @@ extern C_UTILITY void
   EXFUN (store_variable_cache,
 	 (SCHEME_OBJECT extension, SCHEME_OBJECT block, long offset)),
   EXFUN (compiled_entry_type, (SCHEME_OBJECT entry, long *buffer)),
-  EXFUN (declare_compiled_code, (SCHEME_OBJECT block));
+  EXFUN (declare_compiled_code_block, (SCHEME_OBJECT block));
 
 extern C_TO_SCHEME long
   EXFUN (enter_compiled_expression, (void)),
@@ -2410,7 +2410,7 @@ DEFUN (compiled_entry_type,
 }
 
 void
-DEFUN (declare_compiled_code, (block), SCHEME_OBJECT block)
+DEFUN (declare_compiled_code_block, (block), SCHEME_OBJECT block)
 {
   SCHEME_OBJECT * block_addr = (OBJECT_ADDRESS (block));
 
@@ -3169,7 +3169,7 @@ struct util_descriptor_s utility_descriptor_table[] =
   UTLD(compiled_entry_closure_p),
   UTLD(compiled_closure_to_entry),
   UTLD(compiled_entry_type),
-  UTLD(declare_compiled_code),
+  UTLD(declare_compiled_code_block),
   UTLD(store_variable_cache),
   UTLD(extract_variable_cache),
   UTLD(extract_uuo_link),
@@ -3551,7 +3551,7 @@ extern void
   EXFUN (store_variable_cache,
 	 (SCHEME_OBJECT extension, SCHEME_OBJECT block, long offset)),
   EXFUN (compiled_entry_type, (SCHEME_OBJECT entry, long *buffer)),
-  EXFUN (declare_compiled_code, (SCHEME_OBJECT block));
+  EXFUN (declare_compiled_code_block, (SCHEME_OBJECT block));
 
 /* Breakpoint stuff. */
 
@@ -3746,7 +3746,7 @@ DEFUN (compiled_closure_to_entry, (entry), SCHEME_OBJECT entry)
 }
 
 void
-DEFUN (declare_compiled_code, (block), SCHEME_OBJECT block)
+DEFUN (declare_compiled_code_block, (block), SCHEME_OBJECT block)
 {
   return;
 }
