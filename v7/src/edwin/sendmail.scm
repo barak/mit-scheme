@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sendmail.scm,v 1.83 2004/10/28 19:40:07 cph Exp $
+$Id: sendmail.scm,v 1.84 2004/10/29 16:31:41 cph Exp $
 
 Copyright 1991,1992,1993,1994,1995,1996 Massachusetts Institute of Technology
 Copyright 1997,1998,2000,2001,2003,2004 Massachusetts Institute of Technology
@@ -825,28 +825,26 @@ the user from the mailer."
    pathnames))
 
 (define (compute-message-recipients h-start h-end)
-  (call-with-values
-      (lambda ()
-	(if (mail-field-start h-start h-end "resent-to")
-	    (values "^\\(resent-to:\\|resent-cc:\\|resent-bcc:\\)[ \t]*"
-		    "resent-bcc:")
-	    (values "^\\(to:\\|cc:\\|bcc:\\)[ \t]*" "bcc:")))
-    (lambda (regexp prefix)
-      (let loop ((start h-start) (addresses '()))
-	(let ((f-start (re-search-forward regexp start h-end #t)))
-	  (if f-start
-	      (let* ((f-end (%mail-field-end f-start h-end))
-		     (addresses
-		      (append (rfc822:string->addresses
-			       (extract-string f-start f-end))
-			      addresses))
-		     (ls (line-start f-start 0)))
-		(if (match-forward prefix ls h-end #t)
-		    (begin
-		      (delete-string ls (mark1+ f-end 'LIMIT))
-		      (loop ls addresses))
-		    (loop f-end addresses)))
-	      addresses))))))
+  (receive (regexp prefix)
+      (if (mail-field-start h-start h-end "resent-to")
+	  (values "^\\(resent-to:\\|resent-cc:\\|resent-bcc:\\)[ \t]*"
+		  "resent-bcc:")
+	  (values "^\\(to:\\|cc:\\|bcc:\\)[ \t]*" "bcc:"))
+    (let loop ((start h-start) (addresses '()))
+      (let ((f-start (re-search-forward regexp start h-end #t)))
+	(if f-start
+	    (let* ((f-end (%mail-field-end f-start h-end))
+		   (addresses
+		    (append (rfc822:string->addresses
+			     (extract-string f-start f-end))
+			    addresses))
+		   (ls (line-start f-start 0)))
+	      (if (match-forward prefix ls h-end #t)
+		  (begin
+		    (delete-string ls (mark1+ f-end 'LIMIT))
+		    (loop ls addresses))
+		  (loop f-end addresses)))
+	    addresses)))))
 
 ;;;; Sendmail transmission
 
@@ -1200,32 +1198,30 @@ the user from the mailer."
 		    (mime-attachment-message-headers attachment))
 	  (newline port)
 	  ((mime-attachment-message-body-generator attachment) port))
-	(call-with-values
-	    (lambda ()
-	      (if (eq? type 'TEXT)
-		  (values encode-quoted-printable:initialize
-			  encode-quoted-printable:update
-			  encode-quoted-printable:finalize
-			  #t)
-		  (values encode-base64:initialize
-			  encode-base64:update
-			  encode-base64:finalize
-			  #f)))
-	  (lambda (initialize update finalize text?)
-	    (let ((context (initialize port text?)))
-	      ((if (eq? type 'TEXT)
-		   call-with-input-file
-		   call-with-binary-input-file)
-	       (mime-attachment-pathname attachment)
-	       (lambda (input-port)
-		 (let ((buffer (make-string 4096)))
-		   (let loop ()
-		     (let ((n-read (read-string! buffer input-port)))
-		       (if (> n-read 0)
-			   (begin
-			     (update context buffer 0 n-read)
-			     (loop))))))))
-	      (finalize context)))))))
+	(receive (initialize update finalize text?)
+	    (if (eq? type 'TEXT)
+		(values encode-quoted-printable:initialize
+			encode-quoted-printable:update
+			encode-quoted-printable:finalize
+			#t)
+		(values encode-base64:initialize
+			encode-base64:update
+			encode-base64:finalize
+			#f))
+	  (let ((context (initialize port text?)))
+	    ((if (eq? type 'TEXT)
+		 call-with-input-file
+		 call-with-binary-input-file)
+	     (mime-attachment-pathname attachment)
+	     (lambda (input-port)
+	       (let ((buffer (make-string 4096)))
+		 (let loop ()
+		   (let ((n-read (read-string! buffer input-port)))
+		     (if (> n-read 0)
+			 (begin
+			   (update context buffer 0 n-read)
+			   (loop))))))))
+	    (finalize context))))))
 
 (define (enable-buffer-mime-processing! buffer)
   (buffer-remove! buffer 'MAIL-DISABLE-MIME-PROCESSING))
@@ -1481,16 +1477,15 @@ Otherwise, the MIME type is determined from the file's suffix;
   (lambda (pathname argument)
     (let ((mail-buffer (selected-mail-buffer)))
       (let ((attachment
-	     (call-with-values
-		 (lambda ()
-		   (pathname->mime-type pathname mail-buffer argument))
-	       (lambda (type subtype parameters)
-		 (add-buffer-mime-attachment!
-		  mail-buffer type subtype
-		  `(,@parameters
-		    (NAME ,(pathname-name pathname)))
-		  `(ATTACHMENT (FILENAME ,(file-namestring pathname)))
-		  pathname)))))
+	     (receive (mime-type parameters)
+		 (pathname->mime-type pathname mail-buffer argument)
+	       (add-buffer-mime-attachment!
+		mail-buffer
+		mime-type
+		`(,@parameters
+		  (NAME ,(pathname-name pathname)))
+		`(ATTACHMENT (FILENAME ,(file-namestring pathname)))
+		pathname))))
 	(let ((buffer (get-mime-attachments-buffer mail-buffer #f)))
 	  (if buffer
 	      (let ((mark (mark-left-inserting-copy (buffer-end buffer))))
@@ -1528,47 +1523,46 @@ Otherwise, the MIME type is determined from the file's suffix;
       (kill-buffer-interactive buffer))))
 
 (define (pathname->mime-type pathname buffer prompt?)
-  (let ((type (pathname-type pathname))
-	(finish
-	 (lambda (type subtype)
-	   (values type
-		   subtype
-		   (if (eq? type 'TEXT)
-		       '((CHARSET "iso-8859-1"))
-		       '())))))
-    (let ((do-mime
-	   (lambda ()
-	     (let ((type
-		    (prompt-for-alist-value "MIME type"
-					    mime-top-level-types
-					    #f
-					    #t)))
-	       (finish type
+  (let ((mime-type
+	 (let ((type (pathname-type pathname)))
+	   (let ((do-mime
+		  (lambda ()
+		    (let ((type
+			   (prompt-for-alist-value "MIME type"
+						   mime-top-level-types
+						   #f
+						   #t)))
+		      (make-mime-type
+		       type
 		       (string->symbol
 			(prompt-for-string "MIME subtype" #f)))))))
-      (if prompt?
-	  (do-mime)
-	  (let ((entry
-		 (find-matching-item
-		     (ref-variable file-type-to-mime-type buffer)
-		   (lambda (entry)
-		     (if type
-			 (string-ci=? (car entry) type)
-			 (not (car entry)))))))
-	    (cond (entry
-		   (finish (cadr entry) (caddr entry)))
-		  ((pathname-mime-type pathname)
-		   => (lambda (t)
-			(finish (mime-type/top-level t)
-				(mime-type/subtype t))))
-		  (else
-		   (let loop ()
-		     (case (prompt-for-char
-			    "File type (T=text, B=binary, M=MIME)")
-		       ((#\t #\T) (finish 'TEXT 'PLAIN))
-		       ((#\b #\B) (finish 'APPLICATION 'OCTET-STREAM))
-		       ((#\m #\M) (do-mime))
-		       (else (editor-beep) (loop)))))))))))
+	     (if prompt?
+		 (do-mime)
+		 (let ((entry
+			(find-matching-item
+			    (ref-variable file-type-to-mime-type buffer)
+			  (lambda (entry)
+			    (cond ((string? type)
+				   (string-ci=? (car entry) type))
+				  ((not type)
+				   (not (car entry)))
+				  (else
+				   (eq? type 'WILD)))))))
+		   (cond (entry (make-mime-type (cadr entry) (caddr entry)))
+			 ((pathname-mime-type pathname))
+			 (else
+			  (let loop ()
+			    (case (prompt-for-char
+				   "File type (T=text, B=binary, M=MIME)")
+			      ((#\t #\T) (make-mime-type 'TEXT 'PLAIN))
+			      ((#\b #\B) (make-mime-type 'APPLICATION
+							 'OCTET-STREAM))
+			      ((#\m #\M) (do-mime))
+			      (else (editor-beep) (loop))))))))))))
+    (values mime-type
+	    (if (eq? (mime-type/top-level mime-type) 'TEXT)
+		'((CHARSET "iso-8859-1"))
+		'()))))
 
 (define-variable file-type-to-mime-type
   "Specifies the MIME type/subtype for files with a given type.
