@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: info.scm,v 1.131 1998/10/14 00:31:17 cph Exp $
+;;;	$Id: info.scm,v 1.132 1998/12/17 08:04:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -96,7 +96,7 @@ This variable is now obsolete; use info-directory-list instead."
 Empty list means not yet initialized.  In this case, Info uses the environment
 variable INFOPATH to initialize it, or `info-default-directory-list'
 if there is no INFOPATH variable in the environment.
-The last element of `info-default-directory-list' is the directory
+The last element of `info-directory-list' is the directory
 where Edwin installs the Info files that come with it."
   '()
   list-of-pathnames?)
