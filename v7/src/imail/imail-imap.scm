@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.41 2000/05/16 03:33:38 cph Exp $
+;;; $Id: imail-imap.scm,v 1.42 2000/05/16 03:36:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -551,7 +551,8 @@
 	(message-body message)))))
 
 (define-method available-folder-names ((url <imap-url>))
-  ???)
+  url
+  (error "Unimplemented operation:" 'AVAILABLE-FOLDER-NAMES))
 
 ;;;; Folder operations
 
