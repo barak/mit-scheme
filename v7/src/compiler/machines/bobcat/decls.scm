@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.7 1987/05/18 23:29:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.8 1987/05/26 18:57:18 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -75,7 +75,7 @@ MIT in each case. |#
 
 (define filenames/dependency-group/base
   (append (filename/append "base" "linear" "rtlcon" "rtlexp")
-	  (filename/append "alpha" "dflow" "graphc")
+	  (filename/append "alpha" "dflow" "fggen1" "fggen2")
 	  (filename/append "front-end"
 			   "ralloc" "rcseep" "rcsesa" "rdeath" "rdebug"
 			   "rgcomb" "rgpcom" "rgpred" "rgproc" "rgrval"
@@ -99,7 +99,7 @@ MIT in each case. |#
 			  "bblock" "cfg" "ctypes" "dfg" "dtypes" "emodel"
 			  "linear" "object" "queue" "rtlcfg" "rtlcon" "rtlexp"
 			  "rtlreg" "rtltyp" "rtypes" "sets" "toplev" "utils")
-	 (filename/append "alpha" "dflow" "graphc")
+	 (filename/append "alpha" "dflow" "fggen1" "fggen2")
 	 (filename/append "front-end"
 			  "ralloc" "rcse" "rcseep" "rcseht" "rcserq" "rcsesa"
 			  "rdeath" "rdebug" "rgcomb" "rgpcom" "rgpred" "rgproc"
