@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/global.scm,v 14.38 1992/07/21 04:24:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/global.scm,v 14.39 1992/07/21 17:28:45 boogles Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -235,13 +235,18 @@ MIT in each case. |#
       ((ucode-primitive primitive-impurify) object))
   object)
 
-(define (fasdump object filename #!optional suppress-messages?)
+(define (fasdump object filename
+		 #!optional suppress-messages? dump-option)
   (let* ((filename (->namestring (merge-pathnames filename)))
 	 (do-it
 	  (lambda (start-message end-message)
 	    (start-message)
 	    (let loop ()
-	      (if ((ucode-primitive primitive-fasdump) object filename false)
+	      (if ((ucode-primitive primitive-fasdump)
+		   object filename
+		   (if (default-object? dump-option)
+		       false
+		       dump-option))
 		  (end-message)
 		  (begin
 		    (with-simple-restart 'RETRY "Try again."
