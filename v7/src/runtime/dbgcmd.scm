@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dbgcmd.scm,v 14.14 1993/10/16 10:10:56 cph Exp $
+$Id: dbgcmd.scm,v 14.15 1994/08/15 20:11:46 cph Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -86,7 +86,8 @@ MIT in each case. |#
 	       (let loop ()
 		 (let ((entry
 			(assv (char-upcase
-			       (prompt-for-command-char prompt port))
+			       (prompt-for-command-char (cons 'STANDARD prompt)
+							port))
 			      (cdr command-set))))
 		   (if entry
 		       ((cadr entry) state port)

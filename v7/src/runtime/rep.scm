@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.49 1993/12/29 18:46:41 cph Exp $
+$Id: rep.scm,v 14.50 1994/08/15 20:11:55 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -445,7 +445,7 @@ MIT in each case. |#
     (port/set-default-syntax-table (cmdl/port repl) (repl/syntax-table repl))
     (do () (false)
       (let ((s-expression
-	     (prompt-for-command-expression (repl/prompt repl)
+	     (prompt-for-command-expression (cons 'STANDARD (repl/prompt repl))
 					    (cmdl/port repl))))
 	(repl-history/record! reader-history s-expression)
 	(let ((value

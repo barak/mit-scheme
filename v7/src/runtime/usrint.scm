@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.11 1994/08/15 19:36:15 cph Exp $
+$Id: usrint.scm,v 1.12 1994/08/15 20:08:31 cph Exp $
 
 Copyright (c) 1991-94 Massachusetts Institute of Technology
 
@@ -47,30 +47,28 @@ MIT in each case. |#
       (string-append prompt suffix)))
 
 (define (canonicalize-command-prompt prompt)
-  (let ((prompt* (canonicalize-prompt prompt " ")))
-    (if (member prompt* standard-command-prompts)
-	prompt*
-	prompt)))
+  (cond ((string? prompt)
+	 prompt)
+	((and (pair? prompt)
+	      (eq? 'STANDARD (car prompt))
+	      (string? (cdr prompt)))
+	 (cons (car prompt) (canonicalize-prompt (cdr prompt) " ")))
+	(else
+	 (error:wrong-type-datum prompt))))
 
 (define (write-command-prompt port prompt level)
   (port/with-output-terminal-mode port 'COOKED
     (lambda ()
       (fresh-line port)
       (newline port)
-      (if (member prompt standard-command-prompts)
+      (if (and (pair? prompt)
+	       (eq? 'STANDARD (car prompt)))
 	  (begin
 	    (write level port)
-	    (write-string " " port)))
-      (write-string prompt port)
+	    (write-string " " port)
+	    (write-string (cdr prompt) port))
+	  (write-string prompt port))
       (flush-output port))))
-
-(define standard-command-prompts
-  '("]=> "
-    "error> "
-    "break> "
-    "bkpt> "
-    "debug> "
-    "where> "))
 
 (define (prompt-for-command-expression prompt #!optional port)
   (let ((prompt (canonicalize-command-prompt prompt))

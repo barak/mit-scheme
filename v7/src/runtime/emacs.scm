@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.21 1994/08/15 19:14:42 cph Exp $
+$Id: emacs.scm,v 14.22 1994/08/15 20:11:32 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -54,18 +54,18 @@ MIT in each case. |#
   (transmit-signal-with-argument
    port
    #\p
-   (let ((prefix (number->string level)))
-     (let ((entry (assoc prompt cmdl-prompt-alist)))
-       (if entry
-	   (string-append prefix " " (cadr entry))
-	   (string-append prefix " [Evaluator] " prompt))))))
+   (string-append (number->string level)
+		  " "
+		  (if (and (pair? prompt)
+			   (eq? 'STANDARD (car prompt)))
+		      (let ((entry (assoc (cdr prompt) cmdl-prompt-alist)))
+			(if entry
+			    (cadr entry)
+			    "[Evaluator]"))
+		      (string-append "[Evaluator] " prompt)))))
 
 (define cmdl-prompt-alist
-  '(("]=> " "[Evaluator]")
-    ("error> " "[Evaluator]")
-    ("break> " "[Evaluator]")
-    ("bkpt> " "[Evaluator]")
-    ("debug> " "[Debug]")
+  '(("debug> " "[Debug]")
     ("where> " "[Where]")))
 
 (define (emacs/prompt-for-expression port prompt)
