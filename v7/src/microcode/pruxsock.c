@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxsock.c,v 1.19 2001/06/02 01:05:16 cph Exp $
+$Id: pruxsock.c,v 1.20 2001/06/02 01:06:01 cph Exp $
 
 Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
@@ -267,7 +267,7 @@ The opened socket is stored in the cdr of WEAK-PAIR.")
     });
 }
 
-DEFINE_PRIMITIVE ("CREATE_TCP_SERVER_SOCKET", Prim_create_tcp_server_socket, 0, 0, 0)
+DEFINE_PRIMITIVE ("CREATE-TCP-SERVER-SOCKET", Prim_create_tcp_server_socket, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
   SOCKET_CODE
