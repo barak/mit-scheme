@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.1 1994/11/19 02:04:29 adams Exp $
+$Id: simplify.scm,v 1.2 1994/11/22 19:51:49 gjr Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -283,7 +283,11 @@ MIT in each case. |#
 		 (null? hairy-unused))
 	     (let ((new-env
 		    (simplify/env/modified-copy env0 not-simple-unused)))
-	       (simplify/bindings* new-env bindings* unsafe-cyclic-reference? body letify))
+	       (simplify/bindings* new-env
+				   bindings*
+				   unsafe-cyclic-reference?
+				   body
+				   letify))
 	     (let ((hairy-bindings
 		    (lmap (lambda (hairy)
 			    (assq (simplify/binding/name hairy)
@@ -294,9 +298,13 @@ MIT in each case. |#
 		(append
 		 (map cadr hairy-bindings)
 		 (list
-		  (let ((new-env (simplify/env/modified-copy env0 used-bindings)))
-		    (simplify/bindings* new-env (delq* hairy-bindings bindings*)
-					unsafe-cyclic-reference? body letify))))))))))))
+		  (let ((new-env
+			 (simplify/env/modified-copy env0 used-bindings)))
+		    (simplify/bindings* new-env
+					(delq* hairy-bindings bindings*)
+					unsafe-cyclic-reference?
+					body
+					letify))))))))))))
 
 (define (simplify/bindings* env0 bindings unsafe-cyclic-reference? body letify)
   ;; ENV0 is the current environment frame, as simplified by simplify/bindings
@@ -348,6 +356,7 @@ MIT in each case. |#
 
 (define (simplify/substitute! node value)
   (for-each (lambda (ref)
+	      (simplify/remember*! ref value)
 	      (form/rewrite! ref value))
 	    (simplify/binding/ordinary-refs node))
   (for-each (lambda (ref)
@@ -414,6 +423,9 @@ MIT in each case. |#
 (define (simplify/remember new old)
   (code-rewrite/remember new old))
 
+(define (simplify/remember*! new old)
+  (code-rewrite/remember*! new (code-rewrite/original-form old)))
+
 (define (simplify/new-name prefix)
   (new-variable prefix))
 
@@ -464,7 +476,8 @@ MIT in each case. |#
 		    (begin
 		      (set-simplify/binding/operator-refs!
 		       binding
-		       (cons reference (simplify/binding/operator-refs binding)))
+		       (cons reference
+			     (simplify/binding/operator-refs binding)))
 		      (if prev
 			  (set-simplify/env/free-calls!
 			   prev
