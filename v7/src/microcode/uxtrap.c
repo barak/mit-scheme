@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.16 1991/10/29 22:55:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.17 1992/02/03 23:48:02 jinx Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -501,7 +501,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
   SCHEME_OBJECT * xtra_info;
   struct trap_recovery_info trinfo;
 
-#if 0
+#if FALSE
   fprintf (stderr, "\ncontinue_from_trap:");
   fprintf (stderr, "\tpc = 0x%08lx\n", the_pc);
   fprintf (stderr, "\tCsp = 0x%08lx\n", C_sp);
@@ -741,7 +741,7 @@ DEFUN (find_block_address_in_area, (pc_value, area_start),
 	      }
 
 	      default:
-#if 0
+#if FALSE
 	      {
 		gc_death (TERM_EXIT,
 			  "find_block_address: Unknown compiler linkage kind.",
