@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.65 1994/09/29 15:54:27 adams Exp $
+$Id: utils.c,v 9.66 1994/11/14 05:16:32 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -129,6 +129,14 @@ DEFUN (Setup_Interrupt, (masked_interrupts), long masked_interrupts)
   long interrupt_mask;
   SCHEME_OBJECT interrupt_handler;
 
+#ifdef _OS2
+  if ((1 << interrupt_number) == INT_Global_1)
+    {
+      extern void OS2_handle_attention_interrupt ();
+      OS2_handle_attention_interrupt ();
+      abort_to_interpreter (PRIM_POP_RETURN);
+    }
+#endif /* _OS2 */
   if (! (Valid_Fixed_Obj_Vector ()))
     {
       outf_fatal ("\nInvalid fixed-objects vector.");

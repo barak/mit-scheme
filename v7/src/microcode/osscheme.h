@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: osscheme.h,v 1.8 1993/06/24 06:11:12 gjr Exp $
+$Id: osscheme.h,v 1.9 1994/11/14 05:11:04 cph Exp $
 
-Copyright (c) 1990-1993 Massachusetts Institute of Technology
+Copyright (c) 1990-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -59,6 +59,11 @@ extern void EXFUN (termination_normal, (CONST int));
 extern void EXFUN (termination_init_error, (void));
 extern void EXFUN (termination_signal, (CONST char * signal_name));
 extern void EXFUN (termination_trap, (void));
+
+#ifdef _OS2
+extern void EXFUN (request_attention_interrupt, (void));
+extern int  EXFUN (test_and_clear_attention_interrupt, (void));
+#endif /* _OS2 */
 
 extern void EXFUN (request_character_interrupt, (void));
 extern void EXFUN (request_timer_interrupt, (void));

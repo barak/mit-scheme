@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os.h,v 1.4 1993/06/24 06:08:38 gjr Exp $
+$Id: os.h,v 1.5 1994/11/14 05:08:23 cph Exp $
 
-Copyright (c) 1990-1993 Massachusetts Institute of Technology
+Copyright (c) 1990-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,9 +37,21 @@ MIT in each case. */
 
 #include "ansidecl.h"
 #include "oscond.h"
-
 #include "posixtyp.h"
 
 typedef unsigned int Tchannel;
+
+extern PTR EXFUN (OS_malloc, (unsigned int));
+extern PTR EXFUN (OS_realloc, (PTR, unsigned int));
+extern void EXFUN (OS_free, (PTR));
+
+#define FASTCOPY(from, to, n)						\
+{									\
+  const char * FASTCOPY_scan_src = (from);				\
+  const char * FASTCOPY_end_src = (FASTCOPY_scan_src + (n));		\
+  char * FASTCOPY_scan_dst = (to);					\
+  while (FASTCOPY_scan_src < FASTCOPY_end_src)				\
+    (*FASTCOPY_scan_dst++) = (*FASTCOPY_scan_src++);			\
+}
 
 #endif /* SCM_OS_H */

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: osscheme.c,v 1.7 1993/06/24 06:12:14 gjr Exp $
+$Id: osscheme.c,v 1.8 1994/11/14 05:10:53 cph Exp $
 
-Copyright (c) 1990-1993 Massachusetts Institute of Technology
+Copyright (c) 1990-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -67,6 +67,27 @@ DEFUN_VOID (executing_scheme_primitive_p)
 {
   return (PRIMITIVE_P (Regs [REGBLOCK_PRIMITIVE]));
 }
+
+#ifdef _OS2
+
+void
+DEFUN_VOID (request_attention_interrupt)
+{
+  REQUEST_INTERRUPT (INT_Global_1);
+}
+
+int
+DEFUN_VOID (test_and_clear_attention_interrupt)
+{
+  long code;
+  GRAB_INTERRUPT_REGISTERS ();
+  code = (FETCH_INTERRUPT_CODE ());
+  CLEAR_INTERRUPT_NOLOCK (INT_Global_1);
+  RELEASE_INTERRUPT_REGISTERS ();
+  return ((code & INT_Global_1) != 0);
+}
+
+#endif /* _OS2 */
 
 void
 DEFUN_VOID (request_character_interrupt)
