@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.42 2000/06/20 19:47:01 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.43 2000/06/20 19:49:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -291,8 +291,6 @@
 
 (define rmail-attributes
   '("deleted" "answered" "unseen" "filed" "forwarded" "edited" "resent"))
-
-;;;; Utilities
 
 (define (read-lines-to-eom port)
   (source->list
