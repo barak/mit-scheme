@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fill.scm,v 1.66 2000/06/15 03:43:46 cph Exp $
+;;; $Id: fill.scm,v 1.67 2000/06/15 03:44:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -531,7 +531,6 @@ With argument, turn auto-fill mode on iff argument is positive."
 (define (wrap-region-as-paragraph p-start p-end fill-prefix fill-column)
   (let ((m (mark-left-inserting-copy (line-end p-start 0)))
 	(group (mark-group p-start))
-	(end-index (mark-index p-end))
 	(fp-length (and fill-prefix (string-length fill-prefix)))
 	(target-column (fix:+ fill-column 1)))
     (let ((tab-width (group-tab-width group))
