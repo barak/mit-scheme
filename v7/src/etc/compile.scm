@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.8 2004/01/16 21:06:06 cph Exp $
+$Id: compile.scm,v 1.9 2004/12/07 03:21:55 cph Exp $
 
 Copyright 2000,2001,2002,2004 Massachusetts Institute of Technology
 
@@ -47,7 +47,7 @@ USA.
 	  (load "cref.sf"))))
   (for-each (lambda (name)
 	      (load (merge-pathnames "compile" (pathname-as-directory name))))
-	    '("sos" "star-parser" "imail" "xml" "ssp"))
+	    '("sos" "star-parser" "imail" "xml" "ssp" "xdoc"))
   (with-working-directory-pathname "runtime-check"
     (lambda ()
       (load "runtime.cbf"))))
