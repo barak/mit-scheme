@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.46 1989/11/26 17:38:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.47 1990/01/16 01:57:07 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -771,7 +771,7 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
 
   /* Point of no return. */
 
-  length = (STRING_LENGTH (argument));
+  length = ((STRING_LENGTH (argument)) + 1); /* add 1 for \0 at end */
   band_name = malloc(length);
   if (band_name != ((char *) NULL))
     strcpy (band_name, ((char *) (STRING_LOC (argument, 0))));
