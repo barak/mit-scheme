@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: split.scm,v 1.5 1995/08/19 22:42:51 adams Exp $
+$Id: split.scm,v 1.6 1995/09/04 21:55:10 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -309,9 +309,6 @@ MIT in each case. |#
 
 (define (split/new-name prefix)
   (new-variable prefix))
-
-(define (for-every things proc)
-  (for-each proc things))
 
 (define (operator-is-unique? call-site)
   ;; Call-site is an application structure, or a symbol denoting an
