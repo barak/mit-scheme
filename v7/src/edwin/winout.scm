@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/winout.scm,v 1.1 1989/03/14 08:08:57 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/winout.scm,v 1.2 1989/04/25 01:58:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -94,6 +94,10 @@
 	  (region-insert-string! point string)))))
 
 (define (operation/flush-output port)
+  ;; Calling `keyboard-active?' gives the screen abstraction a chance
+  ;; to do refresh if it needs to (e.g. if an X exposure event is
+  ;; received).
+  (keyboard-active? 0)
   (let ((window (output-port/state port)))
     (if (window-needs-redisplay? window)
 	(window-direct-update! window false))))
