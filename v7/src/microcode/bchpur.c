@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.30 1987/06/05 17:29:53 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.31 1987/06/05 19:55:06 cph Exp $
  *
  * This file contains the code for primitives dealing with pure
  * and constant space.  Garbage collection to disk version.
@@ -130,7 +130,7 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 	break;
 
       case_compiled_entry_point:
-	if (GC_Mode == PURE_COPY)
+	if (purify_mode == PURE_COPY)
 	  break;
 	Old = Get_Pointer(Temp);
 	if (Old >= Low_Constant)
