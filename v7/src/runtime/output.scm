@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: output.scm,v 14.29 2003/01/03 01:37:38 cph Exp $
+$Id: output.scm,v 14.30 2003/01/03 21:32:12 cph Exp $
 
 Copyright (c) 1986,1987,1988,1989,1990 Massachusetts Institute of Technology
 Copyright (c) 1991,1992,1993,1999,2001 Massachusetts Institute of Technology
@@ -197,7 +197,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 			(pair? strings))
 		   (let ((width*
 			  (+ width cs-width (string-length (car strings)))))
-		     (if (<= width* max-width)
+		     (if (< width* max-width)
 			 (loop (cdr strings) width* (+ n-cols 1))
 			 (max n-cols min-minor)))
 		   (max n-cols min-minor)))
@@ -254,12 +254,12 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 			   (apply max (map string-length col)))
 			 cols)))
 	      (if (or (limit-n-minor? n-minor)
-		      (<= (apply +
-				 lm-width
-				 (* cs-width (- (length cols) 1))
-				 rm-width
-				 col-widths)
-			  max-width))
+		      (< (apply +
+				lm-width
+				(* cs-width (- (length cols) 1))
+				rm-width
+				col-widths)
+			 max-width))
 		  (write-cols cols col-widths)
 		  (loop (step-minor n-minor))))
 	    (single-major))))
