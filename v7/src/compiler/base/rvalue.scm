@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/rvalue.scm,v 1.1 1987/06/17 02:15:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/rvalue.scm,v 1.2 1987/07/09 23:19:37 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -53,7 +53,7 @@ MIT in each case. |#
     (write (constant-value constant))))
 
 (define-rvalue block parent children bound-variables free-variables procedure
-  declarations type closures combinations interned-variables closure-offsets)
+  declarations type closures combinations interned-variables closure-offsets frame)
 (define *blocks*)
 
 (define (make-block parent)
