@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2top.c,v 1.6 1995/01/06 17:41:46 cph Exp $
+$Id: os2top.c,v 1.7 1995/01/06 22:12:13 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -1545,6 +1545,15 @@ OS_error_code_to_message (unsigned int syserr)
   if (last_message != 0)
     free ((void *) last_message);
   last_message = (dos_error_message (code));
+  /* Many of OS/2's error messages are terminated with a period, but
+     the runtime system is assuming that the messages have no period,
+     and adding its own.  */
+  if (last_message != 0)
+    {
+      length = (strlen (last_message));
+      if ((length > 0) && ((last_message [length - 1]) == '.'))
+	(last_message [length - 1]) = '\0';
+    }
   return (last_message);
 }
 
