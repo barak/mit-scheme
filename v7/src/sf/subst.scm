@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 3.0 1987/03/10 13:25:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 3.1 1987/03/10 14:57:38 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -34,7 +34,8 @@ MIT in each case. |#
 
 ;;;; SCode Optimizer: Beta Substitution
 
-(declare (usual-integrations))
+(declare (usual-integrations)
+	 (integrate-external (access integrations package/scode-optimizer)))
 
 (define (integrate/top-level block expression)
   (let ((operations (operations/bind-block (operations/make) block))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/xform.scm,v 3.0 1987/03/10 13:25:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/xform.scm,v 3.1 1987/03/10 14:58:01 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -34,7 +34,8 @@ MIT in each case. |#
 
 ;;;; SCode Optimizer: Transform Input Expression
 
-(declare (usual-integrations))
+(declare (usual-integrations)
+	 (integrate-external (access integrations package/scode-optimizer)))
 
 ;;; GLOBAL-BLOCK is used to handle (USUAL-INTEGRATIONS), as follows.
 ;;; This declaration refers to a large group of names, which are

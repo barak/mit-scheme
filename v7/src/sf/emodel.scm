@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/emodel.scm,v 3.0 1987/03/10 13:24:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/emodel.scm,v 3.1 1987/03/10 14:53:32 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -34,7 +34,8 @@ MIT in each case. |#
 
 ;;;; SCode Optimizer: Environment Model
 
-(declare (usual-integrations))
+(declare (usual-integrations)
+	 (integrate-external (access integrations package/scode-optimizer)))
 
 (define variable/assoc
   (association-procedure eq? variable/name))
