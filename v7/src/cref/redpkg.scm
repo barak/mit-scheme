@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.8 1995/01/10 20:38:00 cph Exp $
+$Id: redpkg.scm,v 1.9 1996/04/23 21:16:54 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -97,12 +97,15 @@ MIT in each case. |#
 	    globals)))
 
 (define (read-file-analyses! pmodel)
-  (for-each (lambda (p&c)
-	      (record-file-analysis! pmodel
-				     (car p&c)
-				     (analysis-cache/pathname (cdr p&c))
-				     (analysis-cache/data (cdr p&c))))
-	    (cache-file-analyses! pmodel)))
+  (call-with-values (lambda () (cache-file-analyses! pmodel))
+    (lambda (analyses changes?)
+      (for-each (lambda (p&c)
+		  (record-file-analysis! pmodel
+					 (car p&c)
+					 (analysis-cache/pathname (cdr p&c))
+					 (analysis-cache/data (cdr p&c))))
+		analyses)
+      changes?)))
 
 (define-structure (analysis-cache
 		   (type vector)
@@ -113,7 +116,8 @@ MIT in each case. |#
   (data false))
 
 (define (cache-file-analyses! pmodel)
-  (let ((pathname (pathname-new-type (pmodel/pathname pmodel) "fre")))
+  (let ((pathname (pathname-new-type (pmodel/pathname pmodel) "fre"))
+	(changes? (list #f)))
     (let ((result
 	   (let ((caches (if (file-exists? pathname) (fasload pathname) '())))
 	     (append-map! (lambda (package)
@@ -121,13 +125,15 @@ MIT in each case. |#
 				   (cons package
 					 (cache-file-analysis! pmodel
 							       caches
-							       pathname)))
+							       pathname
+							       changes?)))
 				 (package/files package)))
 			  (pmodel/packages pmodel)))))
-      (fasdump (map cdr result) pathname)
-      result)))
+      (if (car changes?)
+	  (fasdump (map cdr result) pathname))
+      (values result (car changes?)))))
 
-(define (cache-file-analysis! pmodel caches pathname)
+(define (cache-file-analysis! pmodel caches pathname changes?)
   (let ((cache (analysis-cache/lookup caches pathname))
 	(full-pathname
 	 (merge-pathnames (pathname-new-type pathname "bin")
@@ -140,9 +146,14 @@ MIT in each case. |#
 	    (if (> time (analysis-cache/time cache))
 		(begin
 		  (set-analysis-cache/data! cache (analyze-file full-pathname))
-		  (set-analysis-cache/time! cache time)))
+		  (set-analysis-cache/time! cache time)
+		  (set-car! changes? #t)))
 	    cache)
-	  (make-analysis-cache pathname time (analyze-file full-pathname))))))
+	  (begin
+	    (set-car! changes? #t)
+	    (make-analysis-cache pathname
+				 time
+				 (analyze-file full-pathname)))))))
 
 (define (analysis-cache/lookup caches pathname)
   (let loop ((caches caches))

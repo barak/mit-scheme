@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: edwin.sf,v 1.18 1996/04/23 21:09:51 cph Exp $
+;;;	$Id: edwin.sf,v 1.19 1996/04/23 21:19:40 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
@@ -103,10 +103,10 @@
 (let ((generate
        (in-package (->environment '(CROSS-REFERENCE))
 	 (generate/common
-	  (lambda (pathname pmodel)
-	    (write-cref-unusual pathname pmodel)
-	    (write-globals pathname pmodel)
-	    (write-constructor pathname pmodel))))))
+	  (lambda (pathname pmodel changes?)
+	    (write-cref-unusual pathname pmodel changes?)
+	    (write-globals pathname pmodel changes?)
+	    (write-constructor pathname pmodel changes?))))))
   (generate package-name)
   (sf-conditionally (pathname-new-type package-name "con"))
   (if (and (file-exists? (pathname-new-type package-name "avd"))
