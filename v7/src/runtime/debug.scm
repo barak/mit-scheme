@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.4 1988/08/01 23:08:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.5 1988/10/07 22:38:13 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -211,7 +211,10 @@ MIT in each case. |#
 			    (reduction-environment reduction)))))
 		    (print-reduction (car reductions))
 		    (if (= level 0)
-			(for-each print-reduction (cdr reductions))))
+			(let loop ((reductions (cdr reductions)))
+			  (if (pair? reductions)
+			      (begin (print-reduction (car reductions))
+				     (loop (cdr reductions)))))))
 		  (with-values
 		      (lambda () (stack-frame/debugging-info frame))
 		    (lambda (expression environment)
