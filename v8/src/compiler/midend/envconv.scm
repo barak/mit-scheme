@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: envconv.scm,v 1.10 1995/06/22 15:18:44 adams Exp $
+$Id: envconv.scm,v 1.11 1995/06/22 22:47:30 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -297,13 +297,37 @@ MIT in each case. |#
   (define (interesting-declaration? text)
     (and (pair? text)
 	 (memq (car text) interesting-declarations)))
+  (define (reject declaration)
+    (user-warning "Illegal declaration (ignored):" declaration))
   (call-with-values
       (lambda ()
 	(list-split anything interesting-declaration?))
     (lambda (interesting other)
-      (set-cdr! (envconv/env/declarations env)
-		(append interesting (cdr (envconv/env/declarations env))))
-      `(DECLARE ,@other))))
+      (call-with-values
+	  (lambda ()
+	    (list-split interesting envconv/declaration-legal?))
+	(lambda (good illegal)
+	  (for-each reject illegal)
+	  (set-cdr! (envconv/env/declarations env)
+		    (append good (cdr (envconv/env/declarations env))))
+	  `(DECLARE ,@other))))))
+
+(define (envconv/declaration-legal? declaration)
+  ;; This should correspond with the EVAL function later
+  (and
+   (list? declaration)
+   (= (length declaration) 2)
+   (let ok? ((expr (second declaration)))
+     (define (binary name)
+       (and (list? expr) (= (length expr) 3) (eq? (car expr) name) 
+	    (for-all? (cdr expr) ok?)))
+     (cond ((memq expr '(NONE ALL #|FREE BOUND ASSIGNED|#)))
+	   ((not (pair? expr))  #F)
+	   ((or (binary 'UNION) (binary 'DIFFERENCE) (binary 'INTERSECTION)))
+	   ((and (eq? (car expr) 'SET)
+		 (list? expr)
+		 (for-all? expr symbol?)))
+	   (else #F)))))      
 
 ;;;; Dispatcher
 
@@ -396,7 +420,7 @@ MIT in each case. |#
   (children  '() read-only false)
   (bindings  '() read-only false)
   (number    0   read-only false)
-  (captured  '() read-only false)
+  (captured  '() read-only false)	; list(cons(binding,list(reference)))
   (wrapper false read-only false)
   (body    false read-only false)
   (result  false read-only false)
@@ -420,6 +444,24 @@ MIT in each case. |#
   (env false read-only true)
   (number false read-only true)
   (references '() read-only false))
+
+(define-structure
+    (envconv/reference
+     (conc-name envconv/reference/)
+     (constructor envconv/reference/make (text binding env))
+     (print-procedure
+      (standard-unparser-method 'ENVCONV/REFERENCE
+	(lambda (ref port)
+	  (write-char #\space port)
+	  (write-string 
+	   (symbol-name (envconv/binding/name (envconv/reference/binding ref)))
+	   port)))))
+
+  (text    #F read-only true)		; KMP text of reference
+  (binding #F read-only true)		; to which binding do I refer?
+  (env	   #F read-only true)		; environment of reference
+  )
+     
 
 (define-structure
     (envconv/separate-compilation-key
@@ -467,13 +509,14 @@ MIT in each case. |#
 	    (envconv/env/reify! env)
 	    (envconv/env/reify-top-level! parent)))))
 
-(define (envconv/new-reference env name reference)
-  (let ((binding (envconv/env/lookup! env name)))
+(define (envconv/new-reference env name reference-text)
+  (let* ((binding   (envconv/env/lookup! env name))
+	 (reference (envconv/reference/make reference-text binding env)))
     (set-envconv/binding/references!
      binding
-     (cons (cons env reference)
+     (cons reference
 	   (envconv/binding/references binding)))
-    reference))
+    reference-text))
 
 (define (envconv/env/lookup! env name)
   (let spine-loop ((frame env) (frame* false))
@@ -603,15 +646,16 @@ MIT in each case. |#
 	   (let loop ((refs (envconv/binding/references binding)))
 	     (if (not (null? refs))
 		 (let* ((ref   (car refs))
-			(env*  (envconv/env/nearest-reified (car ref)))
+			(env*  (envconv/env/nearest-reified
+				(envconv/reference/env ref)))
 			(place (assq binding (envconv/env/captured env*))))
 		   (if (not place)
 		       (set-envconv/env/captured!
 			env*
-			(cons (list binding (cdr ref))
+			(cons (list binding ref)
 			      (envconv/env/captured env*)))
 		       (set-cdr! place
-				 (cons  (cdr ref) (cdr place))))
+				 (cons  ref  (cdr place))))
 		   (loop (cdr refs))))))
 	 (envconv/env/bindings env))
 	(for-each envconv/capture! (envconv/env/children env)))))
@@ -637,69 +681,107 @@ MIT in each case. |#
 
 (define (envconv/medium/cache? context)
   (eq? context 'TOP-LEVEL))
+
+
+(define (envconv/ignore-reference-traps? reference)
+  (and (envconv/boolean-property? 'IGNORE-REFERENCE-TRAPS reference)
+       'IGNORE-REFERENCE-TRAPS))
+
+(define (envconv/ignore-assignment-traps? reference)
+  (and (envconv/boolean-property? 'IGNORE-ASSIGNMENT-TRAPS reference)
+       'IGNORE-ASSIGNMENT-TRAPS))
+
+(define (envconv/boolean-property? property reference)
+  (let* ((binding  (envconv/reference/binding reference))
+	 (name       (envconv/binding/name binding))
+	 (last-frame (envconv/binding/env binding)))
+    (let frame-loop ((env  (envconv/reference/env reference)))
+
+      (define (eval expr)
+	(define (bad-expression)
+	  (user-error "Illegal declaration(s)" (envconv/env/declarations env)))
+	(cond ((eq? expr 'ALL) #T)
+	      ((eq? expr 'NONE) #F)
+	      ((eq? (car expr) 'SET)
+	       (memq name (cdr expr)))
+	      ((eq? (car expr) 'UNION)
+	       (or (eval (second expr)) (eval (third expr))))
+	      ((eq? (car expr) 'DIFFERENCE)
+	       (and (eval (second expr)) (not (eval (third expr)))))
+	      ((eq? (car expr) 'INTERSECTION)
+	       (and (eval (second expr)) (eval (third expr))))
+	      (else (bad-expression))))
+
+      (and env
+	   (let loop ((declarations (cdr (envconv/env/declarations env))))
+	     (cond ((null? declarations)
+		    (and (not (eq? env last-frame))
+			 (frame-loop (envconv/env/parent env))))
+		   ((eq? (car (car declarations)) property)
+		    (or (eval (second (car declarations)))
+			(loop (cdr declarations))))
+		   (else (loop (cdr declarations)))))))))
 
 (define (envconv/use-calls! env)
   (let ((env-name (envconv/env/reified-name env)))
     (for-each
-     (lambda (capture)
-       (let ((binding (car capture)))
-	 (let ((var-name (envconv/binding/name binding))
-	       (binding-env (envconv/binding/env binding)))
-	   (let* ((depth (and (envconv/env/parent binding-env)
-			      (- (envconv/env/depth env)
-				 (envconv/env/depth binding-env))))
-		  (offset (and depth (envconv/binding/number binding))))
-	     (for-each
-	      (lambda (reference)
-		(let ((simple-var
-		       (lambda ()
-			 `(CALL (QUOTE ,%*lookup)
-				(QUOTE #f)
-				(LOOKUP ,env-name)
-				(QUOTE ,var-name)
-				(QUOTE ,depth)
-				(QUOTE ,offset)))))
-		  (form/rewrite!
-		   reference
-		   (case (car reference)
-		     ((LOOKUP)
-		      (simple-var))
-		     ((SET!)
-		      `(CALL (QUOTE ,%*set!)
-			     (QUOTE #F)
-			     (LOOKUP ,env-name)
-			     (QUOTE ,var-name)
-			     ,(set!/expr reference)
-			     (QUOTE ,depth)
-			     (QUOTE ,offset)))
-		     ((UNASSIGNED?)
-		      `(CALL (QUOTE ,%*unassigned?)
-			     (QUOTE #F)
-			     (LOOKUP ,env-name)
-			     (QUOTE ,var-name)
-			     (QUOTE ,depth)
-			     (QUOTE ,offset)))
-		     ((CALL)
-		      (let ((rator (call/operator reference)))
-			(case (car rator)
-			  ((LOOKUP)
-			   (form/rewrite! rator (simple-var)))
-			  ((ACCESS)
-			   ;; Only done for packages
-			   (form/rewrite!
-			    rator
-			    (envconv/package-lookup
-			     (envconv/package-name (access/env-expr rator))
-			     (access/name rator))))
-			  (else
-			   (internal-error "Unknown reference kind"
-					   reference))))
-		      reference)
-		     (else
-		      (internal-error "Unknown reference kind"
-				      reference))))))
-	      (cdr capture))))))
-     (envconv/env/captured env))))
+	(lambda (capture)
+	  (let ((binding (car capture)))
+	    (let ((var-name    (envconv/binding/name binding))
+		  (binding-env (envconv/binding/env binding)))
+	      (let* ((depth (and (envconv/env/parent binding-env)
+				 (- (envconv/env/depth env)
+				    (envconv/env/depth binding-env))))
+		     (offset (and depth (envconv/binding/number binding))))
+		(define (simple-var)
+		  `(CALL (QUOTE ,%*lookup)
+			 (QUOTE #f)
+			 (LOOKUP ,env-name)
+			 (QUOTE ,var-name)
+			 (QUOTE ,depth)
+			 (QUOTE ,offset)))
+		(for-each
+		    (lambda (reference)
+		      (let ((reference  (envconv/reference/text reference)))
+			(define (bad-reference-kind)
+			  (internal-error "Unknown reference kind" reference))
+			(form/rewrite! reference
+			  (case (car reference)
+			    ((LOOKUP)
+			     (simple-var))
+			    ((SET!)
+			     `(CALL (QUOTE ,%*set!)
+				    (QUOTE #F)
+				    (LOOKUP ,env-name)
+				    (QUOTE ,var-name)
+				    ,(set!/expr reference)
+				    (QUOTE ,depth)
+				    (QUOTE ,offset)))
+			    ((UNASSIGNED?)
+			     `(CALL (QUOTE ,%*unassigned?)
+				    (QUOTE #F)
+				    (LOOKUP ,env-name)
+				    (QUOTE ,var-name)
+				    (QUOTE ,depth)
+				    (QUOTE ,offset)))
+			    ((CALL)
+			     (let ((rator (call/operator reference)))
+			       (case (car rator)
+				 ((LOOKUP)
+				  (form/rewrite! rator (simple-var)))
+				 ((ACCESS)
+				  ;; Only done for packages
+				  (form/rewrite!
+				      rator
+				    (envconv/package-lookup
+				     (envconv/package-name
+				      (access/env-expr rator))
+				     (access/name rator))))
+				 (else (bad-reference-kind))))
+			     reference)
+			    (else (bad-reference-kind))))))
+		  (cdr capture))))))
+      (envconv/env/captured env))))
 
 (define (envconv/use-caches! env)
   (let ((env-name (envconv/env/reified-name env)))
@@ -755,7 +837,7 @@ MIT in each case. |#
 				(maker extra name arity))
 			  (cdr refs)))
 	  cell-name))
-
+
       (let ((place (assq name (cdr by-arity))))
 	(if (not place)
 	    (let ((cell-name (new-cell!)))
@@ -778,99 +860,100 @@ MIT in each case. |#
 	  (remote-exe-refs (list '-REMOTE-EXECUTE-CELL))
 	  (remote-exe-by-package '()))
 
-      (for-each
-       (lambda (capture)
-	 (let ((binding (car capture)))
-	   (let ((var-name (envconv/binding/name binding)))
-	     (for-each
-	      (lambda (reference)
-		(form/rewrite!
-		    reference
-		  (case (car reference)
-		    ((LOOKUP)
-		     (let ((cell-name
-			    (new-cell! read-refs var-name
-				       read-variable-cache-maker)))
-		       `(CALL (QUOTE ,%variable-cache-ref)
+      (define (rewrite-reference! ref var-name)
+	(let ((reference  (envconv/reference/text ref)))
+	  (define (bad-reference-kind)
+	    (internal-error "Unknown reference kind" reference))
+	  (form/rewrite! reference
+	    (case (car reference)
+	      ((LOOKUP)
+	       (let ((cell-name
+		      (new-cell! read-refs var-name
+				 read-variable-cache-maker)))
+		 `(CALL (QUOTE ,%variable-cache-ref)
+			(QUOTE #F)
+			(LOOKUP ,cell-name)
+			(QUOTE ,(envconv/ignore-reference-traps? ref))
+			(QUOTE ,var-name))))
+	      ((SET!)
+	       (let ((write-cell-name
+		      (new-cell! write-refs var-name
+				 write-variable-cache-maker))
+		     (read-cell-name
+		      (new-cell! read-refs var-name
+				 read-variable-cache-maker))
+		     (temp-name (envconv/new-name var-name)))
+		 (bind temp-name
+		       `(CALL (QUOTE ,%safe-variable-cache-ref)
+			      (QUOTE #F)
+			      (LOOKUP ,read-cell-name)
+			      (QUOTE ,(envconv/ignore-reference-traps? ref))
+			      (QUOTE ,var-name))
+		       `(BEGIN
+			  (CALL (QUOTE ,%variable-cache-set!)
+				(QUOTE #F)
+				(LOOKUP ,write-cell-name)
+				,(set!/expr reference)
+				(QUOTE ,(envconv/ignore-assignment-traps? ref))
+				(QUOTE ,var-name))
+			  (LOOKUP ,temp-name)))))
+	      ((UNASSIGNED?)
+	       (let ((cell-name (new-cell! read-refs var-name
+					   read-variable-cache-maker)))
+		 `(CALL (QUOTE ,%unassigned?)
+			(QUOTE #F)
+			(CALL (QUOTE ,%safe-variable-cache-ref)
 			      (QUOTE #F)
 			      (LOOKUP ,cell-name)
-			      (QUOTE #F)
-			      (QUOTE ,var-name))))
-		    ((SET!)
-		     (let ((write-cell-name
-			    (new-cell! write-refs var-name
-				       write-variable-cache-maker))
-			   (read-cell-name
-			    (new-cell! read-refs var-name
-				       read-variable-cache-maker))
-			   (temp-name (envconv/new-name var-name)))
-		       (bind temp-name
-			     `(CALL (QUOTE ,%safe-variable-cache-ref)
-				    (QUOTE #F)
-				    (LOOKUP ,read-cell-name)
-				    (QUOTE #F) ;ignore-traps?
-				    (QUOTE ,var-name))
-			     `(BEGIN
-				(CALL (QUOTE ,%variable-cache-set!)
-				      (QUOTE #F)
-				      (LOOKUP ,write-cell-name)
-				      ,(set!/expr reference)
-				      (QUOTE ,#F) ;ignore traps?
-				      (QUOTE ,var-name))
-				(LOOKUP ,temp-name)))))
-		    ((UNASSIGNED?)
-		     (let ((cell-name (new-cell! read-refs var-name
-						 read-variable-cache-maker)))
-		       `(CALL (QUOTE ,%unassigned?)
-			      (QUOTE #F)
-			      (CALL (QUOTE ,%safe-variable-cache-ref)
-				    (QUOTE #F)
-				    (LOOKUP ,cell-name)
-				    (QUOTE #F) ;ignore-traps?
-				    (QUOTE ,var-name)))))
+			      (QUOTE ,#F) ;ignore-traps?
+			      (QUOTE ,var-name)))))
 
-		    ((CALL)
-		     (let ((rator (call/operator reference)))
-		       (define (operate %invoke name refs by-arity maker extra)
-			 (let* ((arity (length (cdddr reference)))
-				(cell-name
-				 (new-operator-cell!
-				  name
-				  arity
-				  refs by-arity maker extra)))
-			   (form/rewrite! rator `(LOOKUP ,cell-name))
-			   `(CALL (QUOTE ,%invoke)
-				  ,(call/continuation reference)
-				  (QUOTE (,name ,arity))
-				  ,rator
-				  ,@(cdddr reference))))
+	      ((CALL)
+	       (let ((rator (call/operator reference)))
+		 (define (operate %invoke name refs by-arity maker extra)
+		   (let* ((arity (length (cdddr reference)))
+			  (cell-name
+			   (new-operator-cell!
+			    name
+			    arity
+			    refs by-arity maker extra)))
+		     (form/rewrite! rator `(LOOKUP ,cell-name))
+		     `(CALL (QUOTE ,%invoke)
+			    ,(call/continuation reference)
+			    (QUOTE (,name ,arity))
+			    ,rator
+			    ,@(cdddr reference))))
 
-		       (case (car rator)
-			 ((LOOKUP)
-			  (operate %invoke-operator-cache
-				   var-name exe-refs exe-by-arity
-				   local-operator-variable-cache-maker
-				   false))
-			 ((ACCESS)
-			  (let ((package (envconv/package-name
-					  (access/env-expr rator))))
-			    (operate
-			     %invoke-remote-cache
-			     (access/name rator) remote-exe-refs
-			     (or (assoc package remote-exe-by-package)
-				 (let ((new (list package)))
-				   (set! remote-exe-by-package
-					 (cons new remote-exe-by-package))
-				   new))
-			     remote-operator-variable-cache-maker
-			     package)))
-			 (else
-			  (internal-error "Unknown reference kind"
-					  reference)))))
-		    (else
-		     (internal-error "Unknown reference kind"
-				     reference)))))
-	      (cdr capture)))))
+		 (case (car rator)
+		   ((LOOKUP)
+		    (operate %invoke-operator-cache
+			     var-name exe-refs exe-by-arity
+			     local-operator-variable-cache-maker
+			     false))
+		   ((ACCESS)
+		    (let ((package (envconv/package-name
+				    (access/env-expr rator))))
+		      (operate
+		       %invoke-remote-cache
+		       (access/name rator) remote-exe-refs
+		       (or (assoc package remote-exe-by-package)
+			   (let ((new (list package)))
+			     (set! remote-exe-by-package
+				   (cons new remote-exe-by-package))
+			     new))
+		       remote-operator-variable-cache-maker
+		       package)))
+		   (else (bad-reference-kind)))))
+	      (else (bad-reference-kind))))))
+
+      (for-each
+	  (lambda (capture)
+	    (let ((binding (car capture)))
+	      (let ((var-name (envconv/binding/name binding)))
+		(for-each
+		    (lambda (reference)
+		      (rewrite-reference! reference var-name))
+		  (cdr capture)))))
 	(envconv/env/captured env))
 
       ;; Rewrite top-level to bind caches, separately compile, and
