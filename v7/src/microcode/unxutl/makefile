@@ -1,7 +1,7 @@
 #
 # Makefile for MIT CScheme microcode.
 #
-# $Id: makefile,v 1.22 1993/06/08 04:10:57 gjr Exp $
+# $Id: makefile,v 1.23 1993/06/09 18:38:44 jawilson Exp $
 #
 CPP = cc -E
 MAKE = make  # BSD doesn't have it as a default.
@@ -65,6 +65,9 @@ xmakefile: ymakefile ymake.script ymake.local cf.h s.h m.h
 	cp ymakefile junk.c
 	$(CPP) junk.c | sed -n -f ymake.script > xmakefile
 	rm -f junk.c
+
+ymake.local:
+	touch ymake.local
 
 clean remove:
 # the - at the beginning of the following line is what causes make to continue 
