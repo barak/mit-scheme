@@ -1,6 +1,6 @@
 /* -*- C -*-
 
-$Id: alpha.h,v 1.3 1992/09/26 02:54:49 cph Exp $
+$Id: alpha.h,v 1.4 1992/11/18 05:03:55 gjr Exp $
 
 Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
 
@@ -56,8 +56,12 @@ case. */
 #define COMPILER_I386_TYPE			9
 #define COMPILER_ALPHA_TYPE			10
 #define COMPILER_MIPS_TYPE			11
+#define COMPILER_LOSING_C_TYPE			12
 
 /* Machine parameters to be set by the user. */
+
+/* Until cmpaux-alpha.m4 is updated. */
+#define CMPINT_USE_STRUCS
 
 #define PAGE_SIZE (8 * 1024)
 
