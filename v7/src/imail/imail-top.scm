@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.212 2000/09/06 15:22:30 cph Exp $
+;;; $Id: imail-top.scm,v 1.213 2000/09/06 16:41:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -293,7 +293,8 @@ regardless of the folder type."
   (make-event-distributor))
 
 (define (imail-adjust-adaptive-fill buffer)
-  (add-adaptive-fill-regexp! "[ \t]*[-a-zA-Z0-9]*>\\([ \t]*>\\)[ \t]*" buffer))
+  (add-adaptive-fill-regexp! "[ \t]*[-a-zA-Z0-9]*>\\([ \t]*>\\)*[ \t]*"
+			     buffer))
 
 (define (add-adaptive-fill-regexp! regexp buffer)
   (local-set-variable! adaptive-fill-regexp
