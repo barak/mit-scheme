@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.39 1994/11/06 18:06:46 adams Exp $
+$Id: x11graph.scm,v 1.40 1995/01/06 00:49:43 cph Exp $
 
-Copyright (c) 1989-1993 Massachusetts Institute of Technology
+Copyright (c) 1989-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,6 +48,7 @@ MIT in each case. |#
   (x-display-get-default 3)
   (x-display-process-events 2)
   (x-font-structure 2)
+  (x-get-visual-info 10)
   (x-window-beep 1)
   (x-window-clear 1)
   (x-window-colormap 1)
@@ -211,6 +212,7 @@ MIT in each case. |#
 	 `((available? ,x-graphics/available?)
 	   (clear ,x-graphics/clear)
 	   (close ,x-graphics/close-window)
+	   (color? ,x-graphics/color?)
 	   (coordinate-limits ,x-graphics/coordinate-limits)
 	   (copy-area ,x-graphics/copy-area)
 	   (create-colormap ,create-x-colormap)
@@ -981,3 +983,14 @@ MIT in each case. |#
 
 (define (x-colormap/store-colors colormap color-vector)
   (x-store-colors (colormap/descriptor colormap) color-vector))
+
+(define (x-graphics/color? device)
+  (let ((info
+	 (x-get-visual-info (x-graphics-device/xw device)
+			    #f #f #f #f #f #f #f #f #f)))
+    (let ((n (vector-length info)))
+      (let loop ((index 0))
+	(and (not (fix:= index n))
+	     (let ((info (vector-ref info index)))
+	       (or (memv (vector-ref info 4) '(2 3 4 5))
+		   (loop (fix:+ index 1)))))))))
