@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.76 2001/06/03 01:22:54 cph Exp $
+;;; $Id: imail-file.scm,v 1.77 2001/06/03 01:42:31 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -459,7 +459,7 @@
       (call-with-input-xstring (file-folder-xstring folder) 0 reader)))))
 
 (define-method discard-folder-cache ((folder <file-folder>))
-  (close-resource folder))
+  (close-resource folder #f))
 
 (define-method probe-folder ((folder <file-folder>))
   folder
