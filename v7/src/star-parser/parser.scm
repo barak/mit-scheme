@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.9 2001/06/27 01:57:16 cph Exp $
+;;; $Id: parser.scm,v 1.10 2001/06/30 03:23:41 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -36,6 +36,14 @@
 (syntax-table/define system-global-syntax-table '*PARSER
   (lambda (expression)
     (optimize-expression (generate-parser-code expression))))
+
+(syntax-table/define system-global-syntax-table 'DEFINE-*PARSER-MACRO
+  (lambda (bvl expression)
+    (if (not (named-lambda-bvl? bvl))
+	(error "Malformed bound-variable list:" bvl))
+    `(DEFINE-*PARSER-MACRO* ',(car bvl)
+       (LAMBDA ,(cdr bvl)
+	 ,expression))))
 
 (define (generate-parser-code expression)
   (with-canonical-parser-expression expression
@@ -108,11 +116,22 @@
 		(check-2-args expression)
 		`(,(car expression) ,(cadr expression)
 				    ,(do-expression (caddr expression))))
+	       ((WITH-POINTER)
+		(check-2-args expression
+			      (lambda (expression)
+				(symbol? (cadr expression))))
+		`(,(car expression)
+		  ,(cadr expression)
+		  ,(do-expression (caddr expression))))
 	       ((SEXP)
 		(handle-complex-expression (check-1-arg expression)
 					   internal-bindings))
 	       (else
-		(error "Unknown parser expression:" expression))))
+		(let ((expander
+		       (hash-table/get *parser-macros (car expression) #f)))
+		  (if expander
+		      (do-expression (apply expander (cdr expression)))
+		      (error "Unknown parser expression:" expression))))))
 	    ((symbol? expression)
 	     expression)
 	    (else
@@ -125,6 +144,13 @@
 	    (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
 				 (cdr internal-bindings))
 	      (receiver expression))))))))
+
+(define (define-*parser-macro* name procedure)
+  (hash-table/put! *parser-macros name procedure)
+  name)
+
+(define *parser-macros
+  (make-eq-hash-table))
 
 ;;;; Parsers
 
@@ -169,7 +195,7 @@
   (compile-parser-expression parser pointers if-succeed
     (lambda (pointers)
       (if-succeed pointers `(VECTOR ,value)))))
-
+
 (define-parser (transform transform parser)
   (with-current-pointer pointers
     (lambda (start-pointers)
@@ -206,7 +232,7 @@
 		 (DISCARD-PARSER-BUFFER-HEAD! ,*buffer-name*)
 		 ,(if-succeed pointers result))))
 	if-fail))))
-
+
 (define-parser (top-level parser)
   (compile-parser-expression parser pointers
     (lambda (pointers result)
@@ -215,6 +241,13 @@
 	 ,(if-succeed pointers result)))
     if-fail))
 
+(define-parser (with-pointer identifier expression)
+  (with-current-pointer pointers
+    (lambda (pointers)
+      `(LET ((,identifier ,(current-pointer pointers)))
+	 ,(compile-parser-expression expression pointers
+				     if-succeed if-fail)))))
+
 (define-parser (seq . ps)
   (if (pair? ps)
       (if (pair? (cdr ps))

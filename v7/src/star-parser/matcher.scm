@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.5 2001/06/27 02:00:08 cph Exp $
+;;; $Id: matcher.scm,v 1.6 2001/06/30 03:23:34 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -37,14 +37,32 @@
   (lambda (expression)
     (optimize-expression (generate-matcher-code expression))))
 
+(syntax-table/define system-global-syntax-table 'DEFINE-*MATCHER-MACRO
+  (lambda (bvl expression)
+    (if (not (named-lambda-bvl? bvl))
+	(error "Malformed bound-variable list:" bvl))
+    `(DEFINE-*MATCHER-MACRO* ',(car bvl)
+       (LAMBDA ,(cdr bvl)
+	 ,expression))))
+
 (define (generate-matcher-code expression)
-  (with-canonical-matcher-expression expression
-    (lambda (expression)
-      (compile-matcher-expression
-       expression
-       (no-pointers)
-       (simple-backtracking-continuation `#T)
-       (simple-backtracking-continuation `#F)))))
+  (let ((external-bindings (list 'BINDINGS))
+	(internal-bindings (list 'BINDINGS)))
+    (let ((expression
+	   (canonicalize-matcher-expression expression
+					    external-bindings
+					    internal-bindings)))
+      (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
+			   (cdr external-bindings))
+	(with-buffer-name
+	  (lambda ()
+	    (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
+				 (cdr internal-bindings))
+			    (compile-matcher-expression
+			     expression
+			     (no-pointers)
+			     (simple-backtracking-continuation `#T)
+			     (simple-backtracking-continuation `#F)))))))))
 
 (define (compile-matcher-expression expression pointers if-succeed if-fail)
   (cond ((and (pair? expression)
@@ -70,21 +88,6 @@
 	 (error "Malformed matcher:" expression))))
 
 ;;;; Canonicalization
-
-(define (with-canonical-matcher-expression expression receiver)
-  (let ((external-bindings (list 'BINDINGS))
-	(internal-bindings (list 'BINDINGS)))
-    (let ((expression
-	   (canonicalize-matcher-expression expression
-					    external-bindings
-					    internal-bindings)))
-      (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
-			   (cdr external-bindings))
-	(with-buffer-name
-	  (lambda ()
-	    (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
-				 (cdr internal-bindings))
-	      (receiver expression))))))))
 
 (define (canonicalize-matcher-expression expression
 					 external-bindings internal-bindings)
@@ -135,16 +138,33 @@
 			    `(RE-COMPILE-CHAR-SET ,arg #F))
 			external-bindings)
 		       (handle-complex-expression arg internal-bindings)))))
+	     ((WITH-POINTER)
+	      (check-2-args expression
+			    (lambda (expression) (symbol? (cadr expression))))
+	      `(,(car expression)
+		,(cadr expression)
+		,(do-expression (caddr expression))))
 	     ((SEXP)
 	      (handle-complex-expression (check-1-arg expression)
 					 internal-bindings))
 	     (else
-	      (error "Unknown matcher expression:" expression))))
+	      (let ((expander
+		     (hash-table/get *matcher-macros (car expression) #f)))
+		(if expander
+		    (do-expression (apply expander (cdr expression)))
+		    (error "Unknown matcher expression:" expression))))))
 	  ((symbol? expression)
 	   expression)
 	  (else
 	   (error "Unknown matcher expression:" expression))))
   (do-expression expression))
+
+(define (define-*matcher-macro* name procedure)
+  (hash-table/put! *matcher-macros name procedure)
+  name)
+
+(define *matcher-macros
+  (make-eq-hash-table))
 
 ;;;; Matchers
 
@@ -194,6 +214,13 @@
 
 (define-atomic-matcher (string-ci string)
   `(MATCH-PARSER-BUFFER-STRING-CI ,*buffer-name* ,string))
+
+(define-matcher (with-pointer identifier expression)
+  (with-current-pointer pointers
+    (lambda (pointers)
+      `(LET ((,identifier ,(current-pointer pointers)))
+	 ,(compile-matcher-expression expression pointers
+				      if-succeed if-fail)))))
 
 (define-matcher (* expression)
   if-fail

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.1 2001/06/26 18:03:13 cph Exp $
+;;; $Id: load.scm,v 1.2 2001/06/30 03:23:59 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -24,4 +24,4 @@
   (lambda ()
     (fluid-let ((*allow-package-redefinition?* #t))
       (package/system-loader "parser" '() 'QUERY))))
-(add-subsystem-identification! "*Parser" '(0 1))
+(add-subsystem-identification! "*Parser" '(0 2))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.4 2001/06/26 23:46:20 cph Exp $
+;;; $Id: shared.scm,v 1.5 2001/06/30 03:23:45 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -46,16 +46,20 @@
       `(LET ,bindings ,body)
       body))
 
-(define (check-1-arg expression)
+(define (check-1-arg expression #!optional predicate)
   (if (and (pair? (cdr expression))
-	   (null? (cddr expression)))
+	   (null? (cddr expression))
+	   (or (default-object? predicate)
+	       (predicate expression)))
       (cadr expression)
       (error "Malformed expression:" expression)))
 
-(define (check-2-args expression)
+(define (check-2-args expression #!optional predicate)
   (if (not (and (pair? (cdr expression))
 		(pair? (cddr expression))
-		(null? (cdddr expression))))
+		(null? (cdddr expression))
+		(or (default-object? predicate)
+		    (predicate expression))))
       (error "Malformed expression:" expression)))
 
 (define (handle-complex-expression expression bindings)
@@ -73,6 +77,16 @@
 			(cons (cons expression variable)
 			      (cdr bindings)))
 	      variable)))))
+
+(define (named-lambda-bvl? object)
+  (and (pair? object)
+       (symbol? (car object))
+       (let loop ((object (cdr object)))
+	 (or (null? object)
+	     (symbol? object)
+	     (and (pair? object)
+		  (symbol? (car object))
+		  (loop (cdr object)))))))
 
 ;;;; Buffer pointers
 
@@ -205,15 +219,13 @@
       (not (eq? (cadddr expression) '#T)))
   (lambda (expression)
     `(AND (NOT ,(cadr expression)) ,(cadddr expression))))
-
+
 (define-optimizer '('IF EXPRESSION EXPRESSION EXPRESSION)
     (lambda (expression)
       (equal? (caddr expression) (cadddr expression)))
   (lambda (expression)
-    `(BEGIN
-       ,(cadr expression)
-       ,(caddr expression))))
-
+    `(BEGIN ,(cadr expression) ,(caddr expression))))
+
 (define-optimizer '('IF EXPRESSION EXPRESSION 'UNSPECIFIC) #f
   (lambda (expression)
     `(IF ,(cadr expression) ,(caddr expression))))
