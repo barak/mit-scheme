@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: hlpcom.scm,v 1.112 2000/02/23 23:00:20 cph Exp $
+;;; $Id: hlpcom.scm,v 1.113 2000/02/24 00:59:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -359,7 +359,7 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 			     (find-terminator start* index #\]
 					      subst-key comtabs))
 			    ((char=? #\{ (string-ref string next))
-			     (find-terminator start* index #\]
+			     (find-terminator start* index #\}
 					      show-bindings comtabs))
 			    ((char=? #\< (string-ref string next))
 			     (find-terminator start* index #\>
