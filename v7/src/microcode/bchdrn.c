@@ -1,6 +1,6 @@
 /* -*- C -*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdrn.c,v 1.1 1991/10/29 22:34:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdrn.c,v 1.2 1991/11/04 16:54:41 jinx Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -34,13 +34,13 @@ MIT in each case. */
 
 /* Drone program for overlapped I/O in bchscheme. */
 
-#include <stdio.h>
 #include <setjmp.h>
-#include <fcntl.h>
-#include <sys/stat.h>
+#include "ux.h"
 #include "bchdrn.h"
 
 #define DEBUG
+/* #define DEBUG_1 */
+/* #define DEBUG_2 */
 
 extern char * EXFUN (error_name, (int));
 extern int EXFUN (retrying_file_operation,
@@ -97,9 +97,34 @@ static int gc_fid = -1;
 static char * shared_memory;
 static struct buffer_info * gc_buffers;
 static struct drone_info * myself;
-static pid_t parent_pid, * wait_pid;
+static unsigned long * drone_version, * wait_mask;
 static jmp_buf abort_point;
+static pid_t boss_pid;
 
+static void 
+DEFUN (posix_signal, (signum, handler),
+       int signum AND void EXFUN ((*handler), ()))
+{
+  static void EXFUN (shutdown, ());
+  struct sigaction new;
+
+  new.sa_handler = handler;
+  UX_sigemptyset (&new.sa_mask);
+  UX_sigaddset ((&new.sa_mask), SIGCONT);
+  UX_sigaddset ((&new.sa_mask), SIGQUIT);
+  new.sa_flags = SA_NOCLDSTOP;
+  
+  if ((UX_sigaction (signum, &new, 0)) == -1)
+  {
+    fprintf (stderr, "%s (%d, posix_signal): sigaction failed. errno = %s.\n",
+	     arguments.program_name, myself->index, (error_name (errno)));
+    fflush (stderr);
+    shutdown (0);
+    /*NOTREACHED*/
+  }
+  return;
+}
+
 static void
 DEFUN (shutdown, (sig), int sig)
 {
@@ -120,27 +145,18 @@ DEFUN (shutdown, (sig), int sig)
 static void
 DEFUN (abort_operation, (sig), int sig)
 {
-  signal (SIGQUIT, abort_operation);
+  RE_INSTALL_HANDLER (SIGQUIT, abort_operation);
   myself->state = drone_aborting;
   longjmp (abort_point, 1);
   /*NOTREACHED*/
 }
 
-#if 0
-static void
-DEFUN (handle_child_death, (sig), int sig)
-{
-  signal (SIGCHLD, handle_child_death);
-  (void) (wait ((int *) 0));
-  return;
-}
-#endif
-
 static void
 DEFUN (continue_running, (sig), int sig)
 {
-  signal (SIGCONT, continue_running);
-  return;
+  RE_INSTALL_HANDLER (SIGCONT, continue_running);
+  longjmp (abort_point, 1);
+  /*NOTREACHED*/
 }
 
 static int
@@ -154,12 +170,15 @@ static void
 DEFUN (process_requests, (drone), struct drone_info * drone)
 {
   extern int EXFUN (select, (int, int *, int *, int *, struct timeval *));
-  long non_blocking_signal_mask, blocking_signal_mask, current_position = -1;
-  struct timeval timeout;
+  sigset_t non_blocking_signal_mask, blocking_signal_mask;
   int result, count, buffer_index, flags;
-  pid_t read_pid;
+  long current_position = -1;
+  struct timeval timeout;
+  struct stat file_info;
+  unsigned long read_mask, my_mask;
 
   myself = drone;
+  my_mask = (((unsigned long) 1) << drone->index);
   drone->DRONE_PID = (getpid ());
   gc_fid = (open (arguments.file_name, O_RDWR, 0644));
   if (gc_fid == -1)
@@ -168,32 +187,28 @@ DEFUN (process_requests, (drone), struct drone_info * drone)
 	     "%s (%d, process_requests): open failed. errno = %s.\n",	
 	     arguments.program_name, drone->index, (error_name (errno)));
     fflush (stderr);
-    if (drone->DRONE_PPID == parent_pid)
-      (void) (kill (parent_pid, SIGCONT));
+    if (drone->DRONE_PPID == boss_pid)
+      (void) (kill (boss_pid, SIGCONT));
     shutdown (0);
     /*NOTREACHED*/
   }
 #ifdef DEBUG_1
-  printf ("%s (%d, process_requests): Starting.\n",
-	  arguments.program_name, drone->index);
+  printf ("%s (%d, process_requests): Starting (pid = %d, ppid = %d).\n",
+	  arguments.program_name, drone->index,
+	  drone->DRONE_PID, drone->DRONE_PPID);
   fflush (stdout);
 #endif
-  do
+  if ((result = (fstat (gc_fid, &file_info))) == -1)
   {
-    struct stat file_info;
+    fprintf (stderr,
+	     "%s (%d, process_requests): fstat failed. errno = %s.\n",
+	     arguments.program_name, drone->index, (error_name (errno)));
+    fflush (stderr);
+  }
+  /* Force O_SYNC only if we are dealing with a raw device. */
     
-    /* Force O_SYNC only if we are dealing with a raw device. */
-
-    if ((fstat (gc_fid, &file_info)) == -1)
-    {
-      fprintf (stderr,
-	       "%s (%d, process_requests): fstat failed. errno = %s.\n",
-	       arguments.program_name, drone->index, (error_name (errno)));
-      fflush (stderr);
-    }
-    else if ((file_info.st_mode & S_IFMT) != S_IFCHR)
-      break;
-
+  if ((result == -1) || ((file_info.st_mode & S_IFMT) == S_IFCHR))
+  {
     if ((flags = (fcntl (gc_fid, F_GETFL, 0))) == -1)
     {
       fprintf
@@ -214,33 +229,45 @@ DEFUN (process_requests, (drone), struct drone_info * drone)
 	fflush (stderr);
       }
     }
-  } while (0);
+  }
 
-  drone->state = drone_idle;
-#ifdef DEBUG_1
-  printf ("%s (%d, process_requests): PID = %d; PPID = %d.\n",
-	  arguments.program_name, drone->index, drone->DRONE_PID,
-	  drone->DRONE_PPID);
-  fflush (stdout);
-#endif
-  if (drone->DRONE_PPID == parent_pid)
-    (void) (kill (parent_pid, SIGCONT));
-  count = drone->index; 
-  non_blocking_signal_mask = (sigblock (sigmask (SIGQUIT)));
-  blocking_signal_mask = (sigblock (sigmask (SIGQUIT)));
-  signal (SIGQUIT, abort_operation);
-  if (setjmp (abort_point))
+  UX_sigemptyset (&non_blocking_signal_mask);
+  UX_sigemptyset (&blocking_signal_mask);
+  UX_sigaddset ((&blocking_signal_mask), SIGCONT);
+  UX_sigaddset ((&blocking_signal_mask), SIGQUIT);
+  UX_sigprocmask (SIG_SETMASK, (&blocking_signal_mask), 0);
+  posix_signal (SIGQUIT, abort_operation);
+  posix_signal (SIGCONT, continue_running);
+
+  if ((setjmp (abort_point)) == 0)
+  {
+    count = drone->index; 
+    drone->state = drone_idle;
+    if (drone->DRONE_PPID == boss_pid)
+      (void) (kill (boss_pid, SIGCONT));
+  }
+  else
     goto redo_dispatch;
 
   for (; 1; count++)
   {
-    (void) (sigsetmask (non_blocking_signal_mask));
     timeout.tv_sec = 6;
     timeout.tv_usec = 0;
-    result = (select (0, 0, 0, 0, &timeout));
 
-    if ((result == -1) && (errno == EINTR))
+    UX_sigprocmask (SIG_SETMASK, (&non_blocking_signal_mask), 0);
+    result = (select (0, 0, 0, 0, &timeout));
+    UX_sigprocmask (SIG_SETMASK, (&blocking_signal_mask), 0);
+
+    if ((drone->state != drone_idle)
+	|| ((result == -1) && (errno == EINTR)))
     {
+      if (result != -1)
+      {
+	fprintf (stderr,
+		 "\n%s (%d, process_requests): request after timeout %d.\n",
+		 arguments.program_name, drone->index, drone->state);
+	fflush (stderr);
+      }
 redo_dispatch:
       switch (drone->state)
       {
@@ -249,11 +276,11 @@ redo_dispatch:
 		   "\n%s (%d, process_requests): Unknown/bad operation %d.\n",
 		   arguments.program_name, drone->index, drone->state);
 	  fflush (stderr);
-	  (void) (shutdown (0));
+	  shutdown (0);
 	  /*NOTREACHED*/
 
 	case drone_idle:
-	  continue;
+	  break;
 
 	case drone_aborting:
 #ifdef DEBUG_1
@@ -264,7 +291,7 @@ redo_dispatch:
 	  drone->buffer_index = -1;
 	  current_position = -1;
 	  break;
-
+
 	case drone_reading:
 	case drone_writing:
 	{
@@ -273,44 +300,44 @@ redo_dispatch:
 	   */
 
 	  int saved_errno;
+	  enum drone_state operation;
 	  char * operation_name, * buffer_address;
 	  struct buffer_info * buffer;
 	  struct gc_queue_entry * entry;
 
+	  operation = drone->state;
 	  buffer_index = (drone->buffer_index);
 	  buffer = (gc_buffers + buffer_index);
-
+
 	  entry = ((struct gc_queue_entry *)
 		   (((char *) drone) + (drone->entry_offset)));
 	  entry->error_code = 0;
 
-	  operation_name = ((drone->state == drone_reading)
-			    ? "read"
-			    : "write");
+	  operation_name = ((operation == drone_reading) ? "read" : "write");
 	  buffer_address = (shared_memory + (arguments.bufsiz * buffer_index));
 #ifdef DEBUG_1
-	  printf ("\n%s (%d, process_requests %s): Buffer index = %d",
+	  printf ("\n%s (%d, process_requests %s): Buffer index = %d.\n",
 		  arguments.program_name, drone->index, operation_name,
 		  buffer_index);
-	  printf ("\n\tBuffer address = 0x%lx; Position = 0x%lx; Size = 0x%lx.",
+	  printf ("\tBuffer address = 0x%lx; Position = 0x%lx; Size = 0x%lx.",
 		  buffer_address, buffer->position, buffer->size);
 	  fflush (stdout);
 #endif
 
+	  UX_sigprocmask (SIG_SETMASK, (&non_blocking_signal_mask), 0);
 	  result = (retrying_file_operation
-		    (((drone->state == drone_reading)
+		    (((operation == drone_reading)
 		      ? ((int (*) ()) read)
 		      : ((int (*) ()) write)),
 		     gc_fid, buffer_address,
 		     buffer->position, buffer->size, operation_name, NULL,
 		     &current_position, always_one));
-
 	  saved_errno = errno;
-	  (void) (sigsetmask (blocking_signal_mask));
+	  UX_sigprocmask (SIG_SETMASK, (&blocking_signal_mask), 0);
 
 	  if (result == -1)
 	  {
-	    buffer->state = ((drone->state == drone_reading)
+	    buffer->state = ((operation == drone_reading)
 			     ? buffer_read_error
 			     : buffer_write_error);
 	    drone->buffer_index = -1;
@@ -325,18 +352,20 @@ redo_dispatch:
 	    fflush (stdout);
 #endif
 	  }
+
 	  else
 	  {
-	    buffer->state = ((drone->state == drone_reading)
+	    buffer->state = ((operation == drone_reading)
 			     ? buffer_ready
 			     : buffer_idle);
 	    drone->buffer_index = -1;
 	    entry->drone_index = -1;
-	    if (drone->state == drone_writing)
+	    if (operation == drone_writing)
 	    {
 	      entry->retry_count = 0;
 	      entry->state = entry_idle;
 	    }
+
 #ifdef DEBUG_1
 	  printf ("\n%s (%d, process_requests %s): Done.",
 		  arguments.program_name, drone->index, operation_name);
@@ -345,18 +374,32 @@ redo_dispatch:
 	  }
 	}
       }
-
+
+      count = 0;
       drone->state = drone_idle;
-      read_pid = (*wait_pid);
-      if ((read_pid == parent_pid) || (read_pid == drone->DRONE_PID))
-	(void) (kill (parent_pid, SIGCONT));
-      count = 0;
+      read_mask = (* wait_mask);
+      if ((read_mask & my_mask) == my_mask)
+	(void) (kill (boss_pid, SIGCONT));
     }
-    else if ((result == 0) && (count == arguments.tdron))
+    else if (result == 0)
     {
-      count = 0;
-      if ((kill (parent_pid, 0)) == -1)
-	(void) (shutdown (-1));
+      if (count == arguments.tdron)
+      {
+	count = 0;
+	if ((kill (boss_pid, 0)) == -1)
+	  shutdown (-1);
+      }
+      read_mask = (* wait_mask);
+      if ((read_mask & my_mask) == my_mask)
+      {
+	fprintf (stderr,
+		 "\n%s (%d, process_requests): signal deadlock (%s)!\n",
+		 arguments.program_name, drone->index,
+		 ((read_mask == ((unsigned long) -1)) ? "any" : "me"));
+	fflush (stderr);
+	drone->state = drone_idle; /* !! */
+	(void) (kill (boss_pid, SIGCONT));
+      }
     }
   }
 }
@@ -366,11 +409,11 @@ DEFUN_VOID (start_drones)
 {
   pid_t my_pid;
   int counter, cpid;
-  long * drone_version;
   struct drone_info *gc_drones, *drone;
 
   my_pid = (getpid ());
-  shared_memory = (shmat (arguments.shmid, ATTACH_POINT, 0));
+
+  shared_memory = (shmat (arguments.shmid, ((char *) 0), 0));
   if (shared_memory == ((char *) -1))
   {
     fprintf (stderr,
@@ -378,6 +421,8 @@ DEFUN_VOID (start_drones)
 %s (start_drones): Unable to attach shared memory segment %d (errno = %s).\n",
 	     arguments.program_name, arguments.shmid, (error_name (errno)));
     fflush (stderr);
+    sleep (10);
+    kill (boss_pid, SIGCONT);
     exit (1);
   }
 #ifdef DEBUG_1
@@ -385,26 +430,28 @@ DEFUN_VOID (start_drones)
 	  arguments.program_name, ((long) shared_memory));
   fflush (stdout);
 #endif
-  signal (SIGINT, SIG_IGN);
-  signal (SIGQUIT, SIG_IGN);
-  signal (SIGHUP, shutdown);
-  signal (SIGTERM, shutdown);
-  signal (SIGCONT, continue_running);
+  posix_signal (SIGINT, SIG_IGN);
+  posix_signal (SIGQUIT, SIG_IGN);
+  posix_signal (SIGHUP, shutdown);
+  posix_signal (SIGTERM, shutdown);
+
   gc_buffers = ((struct buffer_info *)
 		(shared_memory + (arguments.nbuf * arguments.bufsiz)));
   gc_drones = ((struct drone_info *) (gc_buffers + arguments.nbuf));
-  drone_version = ((long *) (gc_drones + arguments.tdron));
-  wait_pid = ((pid_t *) (drone_version + 1));
-  if (*drone_version != DRONE_VERSION_NUMBER)
+  drone_version = ((unsigned long *) (gc_drones + arguments.tdron));
+  wait_mask = (drone_version + 1);
+  if ((* drone_version) != ((unsigned long) DRONE_VERSION_NUMBER))
   {
-    fprintf (stderr, "%s (start_drones): stored drone version != drone version.\n",
+    fprintf (stderr,
+	     "%s (start_drones): stored drone version != drone version.\n",
 	     arguments.program_name);
-    fprintf (stderr, "\t*drone_version = %d; DRONE_VERSION_NUMBER = %d.\n",
-	     *drone_version, DRONE_VERSION_NUMBER);
+    fprintf (stderr, "\t*drone_version = %ld; DRONE_VERSION_NUMBER = %ld.\n",
+	     (* drone_version), ((unsigned long) DRONE_VERSION_NUMBER));
     fflush (stderr);
+    kill (boss_pid, SIGCONT);
     exit (1);
   }
-
+
   for (counter = 1, drone = (gc_drones + (arguments.sdron + 1));
        counter < arguments.ndron;
        counter++, drone ++)
@@ -424,13 +471,10 @@ DEFUN_VOID (start_drones)
     }
   }
   drone = (gc_drones + arguments.sdron);
-  drone->DRONE_PPID = parent_pid;
+  drone->DRONE_PPID = boss_pid;
+  /* This is non-portable behavior to prevent zombies from being created. */
   if (arguments.ndron != 1)
-#if 0
-    signal (SIGCHLD, handle_child_death);
-#else
-    signal (SIGCHLD, SIG_IGN);
-#endif
+    posix_signal (SIGCHLD, SIG_IGN);
   process_requests (drone);
   /*NOTREACHED*/
 }
@@ -440,14 +484,14 @@ DEFUN (main, (argc, argv), int argc AND char ** argv)
 {
   int count, nargs;
   static char err_buf[1024];
-#if defined(DEBUG) || defined(DEBUG_1)
+#if defined(DEBUG) || defined(DEBUG_1) || defined(DEBUG_2)
   static char out_buf[1024];
 
   setvbuf (stdout, &out_buf[0], _IOFBF, (sizeof (out_buf)));
 #endif
   setvbuf (stderr, &err_buf[0], _IOFBF, (sizeof (err_buf)));
 
-#ifdef DEBUG_1
+#ifdef DEBUG_2
   printf ("%s (main): Arguments =\n", argv[0]);
   for (count = 1; count < argc; count++)
     printf ("\t%s\n", argv[count]);
@@ -455,14 +499,14 @@ DEFUN (main, (argc, argv), int argc AND char ** argv)
 #endif
 
   nargs = ((sizeof (command_line)) / (sizeof (struct argdesc)));
-  parent_pid = (getppid ());
+  boss_pid = (getppid ());
   if (argc != nargs)
   {
     fprintf (stderr,
 	     "%s (main): Wrong number of arguments (got %d, expected %d).\n",
 	     argv[0], (argc - 1), (nargs - 1));
     fflush (stderr);
-    kill (parent_pid, SIGCONT);
+    kill (boss_pid, SIGCONT);
     exit (1);
   }
   for (count = 0; count < nargs; count++)
@@ -475,7 +519,7 @@ DEFUN (main, (argc, argv), int argc AND char ** argv)
 	      command_line[count].location);
   }
 
-#ifdef DEBUG_1
+#ifdef DEBUG_2
   printf ("%s (main): Parsed arguments =\n", argv[0]);
   for (count = 0; count < nargs; count++)
   {
@@ -492,7 +536,7 @@ DEFUN (main, (argc, argv), int argc AND char ** argv)
 #endif
 
   start_drones ();
-  exit (0);
+  /*NOTREACHED*/
 }
 
 #define MAIN main
