@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.177 1993/10/05 07:40:59 cph Exp $
+;;;	$Id: filcom.scm,v 1.178 1993/10/15 05:35:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -233,13 +233,7 @@ invocation."
 	      (cadr entry))
 	    (define-variable-local-value! buffer
 		(ref-variable-object scheme-syntax-table)
-	      (caddr entry))
-	    (define-variable-local-value! buffer
-		(ref-variable-object evaluate-in-inferior-repl)
-	      false)
-	    (define-variable-local-value! buffer
-		(ref-variable-object run-light)
-	      false))))))
+	      (caddr entry)))))))
 
 (define (find-file-revert buffer)
   (if (not (verify-visited-file-modification-time? buffer))

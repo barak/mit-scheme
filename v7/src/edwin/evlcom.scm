@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: evlcom.scm,v 1.43 1993/08/12 08:35:18 cph Exp $
+;;;	$Id: evlcom.scm,v 1.44 1993/10/15 05:35:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -52,46 +52,78 @@
 (define-variable scheme-environment
   "The environment used by the evaluation commands, or 'DEFAULT.
 If 'DEFAULT, use the default (REP loop) environment."
-  'DEFAULT)
+  'DEFAULT
+  #f
+  (lambda (object) (if (eq? 'DEFAULT object) object (->environment object))))
 
 (define-variable scheme-syntax-table
   "The syntax table used by the evaluation commands, or #F.
 If #F, use the default (REP loop) syntax-table."
-  false)
+  #f
+  (lambda (object)
+    (or (not object)
+	(symbol? object)
+	(scheme-syntax-table? object))))
+
+(let ((daemon
+       (lambda (buffer variable)
+	 variable
+	 (if buffer (normal-buffer-evaluation-mode buffer)))))
+  (add-variable-assignment-daemon! (ref-variable-object scheme-environment)
+				   daemon)
+  (add-variable-assignment-daemon! (ref-variable-object scheme-syntax-table)
+				   daemon))
+
+(define (normal-buffer-evaluation-mode buffer)
+  (let ((environment (ref-variable-object scheme-environment))
+	(syntax-table (ref-variable-object scheme-syntax-table))
+	(evaluate-inferior (ref-variable-object evaluate-in-inferior-repl))
+	(run-light (ref-variable-object run-light)))
+    (if (and (not (variable-local-value? buffer evaluate-inferior))
+	     (or (and (variable-local-value? buffer environment)
+		      (not (eq? 'DEFAULT
+				(variable-local-value buffer environment))))
+		 (and (variable-local-value? buffer syntax-table)
+		      (not (memq (variable-local-value buffer syntax-table)
+				 '(#F DEFAULT))))))
+	(begin
+	  (define-variable-local-value! buffer evaluate-inferior #f)
+	  (if (not (variable-local-value? buffer run-light))
+	      (define-variable-local-value! buffer run-light #f))))))
 
 (define-variable debug-on-evaluation-error
   "True means enter debugger if error is signalled while evaluating.
 This does not affect editor errors."
-  true
+  #t
   boolean?)
 
 (define-variable evaluation-input-recorder
   "A procedure that receives each input region before evaluation.
 If #F, disables input recording."
-  false)
+  #f)
 
 (define-variable evaluation-output-receiver
   "Procedure to call with the value and output from evaluation.
 The value is an object, and the output is a string.
 If #F, the value is printed in the typein window,
 and the output, if non-null, is shown in a pop-up buffer."
-  false)
+  #f)
 
 (define-variable enable-transcript-buffer
   "If true, output from evaluation commands is recorded in transcript buffer."
-  false
+  #f
   boolean?)
 
 (define-variable disable-evaluation-commands
   "If true, evaluation commands signal an error."
-  false
+  #f
   boolean?)
 
 (define-variable evaluate-in-inferior-repl
   "If true, evaluation commands evaluate expressions in an inferior REPL.
 Also, the inferior REPL's run light appears in all Scheme mode buffers.
 Otherwise, expressions are evaluated directly by the commands."
-  false
+  #f
   boolean?)
 
 (define-variable transcript-buffer-name
@@ -106,28 +138,28 @@ This can be either a mode object or the name of one."
 
 (define-variable transcript-buffer-read-only
   "If true, transcript buffer is initialized to read-only when created."
-  true
+  #t
   boolean?)
 
 (define-variable transcript-output-wrapper
   "A procedure that is called to setup transcript output.
 It is passed a thunk as its only argument.
 If #F, normal transcript output is done."
-  false)
+  #f)
 
 (define-variable transcript-list-depth-limit
   "List depth to which evaluation results are printed.  #F means no limit."
-  false
+  #f
   (lambda (object) (or (not object) (exact-nonnegative-integer? object))))
 
 (define-variable transcript-list-breadth-limit
   "List breadth to which evaluation results are printed.  #F means no limit."
-  false
+  #f
   (lambda (object) (or (not object) (exact-nonnegative-integer? object))))
 
 (define-variable transcript-disable-evaluation
   "If true, evaluation commands are disabled in the transcript buffer."
-  true
+  #t
   boolean?)
 
 ;;;; Commands
@@ -188,7 +220,7 @@ The values are printed in the typein window."
 		 (call-with-transcript-buffer
 		  (lambda (buffer)
 		    (insert-string
-		     (fluid-let ((*unparse-with-maximum-readability?* true))
+		     (fluid-let ((*unparse-with-maximum-readability?* #t))
 		       (write-to-string expression))
 		     (buffer-end buffer)))))
 	     (editor-eval buffer
@@ -209,45 +241,24 @@ Has no effect if evaluate-in-inferior-repl is false."
   "Make ENVIRONMENT the current evaluation environment."
   "XSet environment"
   (lambda (environment)
-    (let ((buffer (current-buffer)))
-      (define-variable-local-value! buffer
+    (define-variable-local-value! (current-buffer)
 	(ref-variable-object scheme-environment)
-	(if (eq? environment 'DEFAULT)
-	    'DEFAULT
-	    (->environment environment)))
-      (normal-buffer-evaluation-mode buffer))))
+      environment)))
 
 (define-command set-syntax-table
   "Make SYNTAX-TABLE the current syntax table."
   "XSet syntax table"
   (lambda (syntax-table)
-    (let ((buffer (current-buffer)))
-      (define-variable-local-value! buffer
-				    (ref-variable-object scheme-syntax-table)
-				    syntax-table)
-      (normal-buffer-evaluation-mode buffer))))
-
-(define (normal-buffer-evaluation-mode buffer)
-  (let ((evaluate-in-inferior-repl
-	 (ref-variable-object evaluate-in-inferior-repl))
-	(run-light (ref-variable-object run-light)))
-    (if (and (eq? (ref-variable scheme-environment buffer) 'DEFAULT)
-	     (memq (ref-variable scheme-syntax-table buffer) '(#F DEFAULT)))
-	(begin
-	  (undefine-variable-local-value! buffer evaluate-in-inferior-repl)
-	  (undefine-variable-local-value! buffer run-light))
-	(begin
-	  (define-variable-local-value! buffer evaluate-in-inferior-repl false)
-	  (define-variable-local-value! buffer run-light false)))))
+    (define-variable-local-value! (current-buffer)
+	(ref-variable-object scheme-syntax-table)
+      syntax-table)))
 
 (define-command set-default-environment
   "Make ENVIRONMENT the default evaluation environment."
   "XSet default environment"
   (lambda (environment)
     (set-variable-default-value! (ref-variable-object scheme-environment)
-				 (if (eq? environment 'DEFAULT)
-				     'DEFAULT
-				     (->environment environment)))))
+				 environment)))
 
 (define-command set-default-syntax-table
   "Make SYNTAX-TABLE the default syntax table."
@@ -371,12 +382,7 @@ may be available.  The following commands are special to this mode:
 	 (ref-variable scheme-environment (or buffer (current-buffer)))))
     (if (eq? 'DEFAULT environment)
 	(nearest-repl/environment)
-	(bind-condition-handler (list condition-type:error)
-	    (lambda (condition)
-	      condition
-	      (editor-error "Illegal environment: " environment))
-	  (lambda ()
-	    (->environment environment))))))
+	environment)))
 
 (define (evaluation-syntax-table buffer environment)
   (let ((syntax-table (ref-variable scheme-syntax-table buffer)))
@@ -399,12 +405,12 @@ may be available.  The following commands are special to this mode:
 (define-variable run-light
   "Scheme run light.  Not intended to be modified by users.
 Set by Scheme evaluation code to update the mode line."
-  false
+  #f
   (lambda (object) (or (not object) (string? object))))
 
 (define-variable enable-run-light?
   "If true, Scheme evaluation commands display a run light in the mode line."
-  true
+  #t
   boolean?)
 
 (define (editor-eval buffer sexp environment)
@@ -442,14 +448,14 @@ Set by Scheme evaluation code to update the mode line."
 	     (set-variable-local-value! buffer run-light inside)
 	     (set! inside)
 	     (global-window-modeline-event!)
-	     (update-screens! false))
+	     (update-screens! #f))
 	   core
 	   (lambda ()
 	     (set! inside (variable-local-value buffer run-light))
 	     (set-variable-local-value! buffer run-light outside)
 	     (set! outside)
 	     (global-window-modeline-event!)
-	     (update-screens! false))))
+	     (update-screens! #f))))
 	(core))))
 
 (define (eval-with-history buffer expression environment)
@@ -495,7 +501,7 @@ Set by Scheme evaluation code to update the mode line."
 	 (typein-report))
 	((FIT)
 	 (if (and (not (string-find-next-char report-string #\newline))
-		  (< (string-columns report-string 18 false)
+		  (< (string-columns report-string 18 #f)
 		     (window-x-size (typein-window))))
 	     (typein-report)
 	     (error-buffer-report)))))))
@@ -537,7 +543,7 @@ FIT           Error messages appear in typein window if they fit;
 (define (transcript-write value buffer)
   (let ((value-string
 	 (string-append
-	  (transcript-value-prefix-string value false)
+	  (transcript-value-prefix-string value #f)
 	  (transcript-value-string value))))
     (if buffer
 	(let ((point (mark-left-inserting-copy (buffer-end buffer))))
@@ -576,7 +582,7 @@ FIT           Error messages appear in typein window if they fit;
   (let ((buffer (transcript-buffer)))
     (let ((group (buffer-group buffer))
 	  (outside)
-	  (inside false))
+	  (inside #f))
       (dynamic-wind (lambda ()
 		      (set! outside (group-read-only? group))
 		      (if inside
@@ -604,14 +610,14 @@ FIT           Error messages appear in typein window if they fit;
 	      (if (ref-variable transcript-disable-evaluation)
 		  (define-variable-local-value! buffer
 		      (ref-variable-object disable-evaluation-commands)
-		    true)
+		    #t)
 		  (if (eq? (buffer-major-mode buffer)
 			   (ref-mode-object scheme))
 		      (begin
 			(define-variable-local-value! buffer
 			    (ref-variable-object evaluate-in-inferior-repl)
-			  false)
+			  #f)
 			(define-variable-local-value! buffer
 			    (ref-variable-object run-light)
-			  false))))
+			  #f))))
 	      buffer)))))
