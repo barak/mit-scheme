@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.31 1993/07/31 03:11:54 cph Exp $
+$Id: rep.scm,v 14.32 1993/07/31 03:34:12 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -138,37 +138,48 @@ MIT in each case. |#
 			*default-pathname-defaults*))
 	     (let loop ((message message))
 	       (loop
-		(call-with-current-continuation
-		 (lambda (continuation)
-		   (bind-restart 'ABORT
-		       (string-append "Return to "
-				      (if (repl? cmdl)
-					  "read-eval-print"
-					  "command")
-				      " level "
-				      (number->string (cmdl/level cmdl))
-				      ".")
-		       (lambda (#!optional message)
-			 (continuation
-			  (if (default-object? message)
-			      (cmdl-message/strings "Abort!")
-			      message)))
-		     (lambda (restart)
-		       (restart/put! restart make-cmdl cmdl)
-		       (with-interrupt-mask interrupt-mask/all
-			 (lambda (interrupt-mask)
-			   interrupt-mask
-			   (unblock-thread-events)
-			   (message cmdl)
-			   (call-with-current-continuation
-			    (lambda (continuation)
-			      (with-create-thread-continuation continuation
-				(lambda ()
-				  ((cmdl/driver cmdl) cmdl)))))))))))))))))
+		(bind-abort-restart cmdl
+		  (lambda ()
+		    (with-interrupt-mask interrupt-mask/all
+		      (lambda (interrupt-mask)
+			interrupt-mask
+			(unblock-thread-events)
+			(message cmdl)
+			(call-with-current-continuation
+			 (lambda (continuation)
+			   (with-create-thread-continuation continuation
+			     (lambda ()
+			       ((cmdl/driver cmdl) cmdl)))))))))))))))
     (if operation
 	(operation cmdl thunk)
 	(with-thread-mutex-locked (port/thread-mutex (cmdl/port cmdl))
 	  thunk))))
+
+(define (bind-abort-restart cmdl thunk)
+  (call-with-current-continuation
+   (lambda (continuation)
+     (bind-restart 'ABORT
+	 (string-append "Return to "
+			(if (repl? cmdl)
+			    "read-eval-print"
+			    "command")
+			" level "
+			(number->string (cmdl/level cmdl))
+			".")
+	 (lambda (#!optional message)
+	   (continuation
+	    (cmdl-message/append
+	     (cmdl-message/active
+	      (lambda (port)
+		;; Inform the port that the default directory has changed.
+		(port/set-default-directory port
+					    (working-directory-pathname))))
+	     (if (default-object? message)
+		 (cmdl-message/strings "Abort!")
+		 message))))
+       (lambda (restart)
+	 (restart/put! restart make-cmdl cmdl)
+	 (thunk))))))
 
 (define *nearest-cmdl*)
 
