@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.18 1993/09/01 18:23:42 gjr Exp $
+$Id: dosprm.scm,v 1.19 1993/09/01 22:25:34 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -309,10 +309,10 @@ MIT in each case. |#
   unspecific)
 
 (define (select-descriptor descriptor block?)
-  (define (select-result res)
-    (cond ((fix:> res 0)
+  (define (select-result result)
+    (cond ((fix:> result 0)
 	   'INPUT-AVAILABLE)
-	  ((fix:< res 0)
+	  ((fix:< result 0)
 	   (error "Illegal result from select-internal" result))
 	  (else
 	   #f)))
