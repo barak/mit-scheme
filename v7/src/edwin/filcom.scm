@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.184 1995/02/24 00:30:27 cph Exp $
+;;;	$Id: filcom.scm,v 1.185 1995/07/11 23:09:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -634,15 +634,16 @@ If a file with the new name already exists, confirmation is requested first."
   (let ((directory
 	 (if directory
 	     (directory-pathname directory)
-	     (buffer-default-directory (current-buffer)))))
+	     (buffer-default-directory (current-buffer))))
+	(insertion (os/pathname->display-string directory)))
     (prompt-string->pathname
      (prompt-for-completed-string
       prompt
-      (os/pathname->display-string directory)
+      insertion
       'INSERTED-DEFAULT
       (lambda (string if-unique if-not-unique if-not-found)
 	(filename-complete-string
-	 (prompt-string->pathname string directory)
+	 (prompt-string->pathname string insertion directory)
 	 (lambda (filename)
 	   (if-unique (os/pathname->display-string filename)))
 	 (lambda (prefix get-completions)
@@ -650,10 +651,13 @@ If a file with the new name already exists, confirmation is requested first."
 			  get-completions))
 	 if-not-found))
       (lambda (string)
-	(filename-completions-list (prompt-string->pathname string directory)))
+	(filename-completions-list
+	 (prompt-string->pathname string insertion directory)))
       (lambda (string)
-	(verify-final-value? (prompt-string->pathname string directory)))
+	(verify-final-value?
+	 (prompt-string->pathname string insertion directory)))
       require-match?)
+     insertion
      directory)))
 
 ;;;; Filename Completion
@@ -723,8 +727,8 @@ If a file with the new name already exists, confirmation is requested first."
      (os/directory-list-completions directory
 				    (file-namestring pathname)))))
 
-(define (prompt-string->pathname string directory)
-  (merge-pathnames (let ((pathname (os/trim-pathname-string string)))
+(define (prompt-string->pathname string insertion directory)
+  (merge-pathnames (let ((pathname (os/trim-pathname-string string insertion)))
 		     (if (memq (pathname-device pathname) '(#F UNSPECIFIC))
 			 pathname
 			 (pathname-default-directory pathname '(ABSOLUTE))))
