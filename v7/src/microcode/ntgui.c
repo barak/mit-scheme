@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.18 1996/10/07 18:01:36 cph Exp $
+$Id: ntgui.c,v 1.19 1997/03/18 04:06:32 cph Exp $
 
 Copyright (c) 1993-96 Massachusetts Institute of Technology
 
@@ -314,7 +314,12 @@ static SCHEME_OBJECT
 apply4 (SCHEME_OBJECT procedure, SCHEME_OBJECT arg1, SCHEME_OBJECT arg2,
                                  SCHEME_OBJECT arg3, SCHEME_OBJECT arg4)
 {
-    return  C_call_scheme (procedure, 4, &arg1);
+  SCHEME_OBJECT argvec [4];
+  (argvec[0]) = arg1;
+  (argvec[1]) = arg2;
+  (argvec[2]) = arg3;
+  (argvec[3]) = arg4;
+  return (C_call_scheme (procedure, 4, argvec));
 }
 
 LRESULT CALLBACK
