@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.23 1990/08/21 02:24:33 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.24 1991/02/15 16:52:44 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -166,7 +166,7 @@ MIT in each case. |#
 	 rgraph
 	 label
 	 entry-edge
-	 (block/next-continuation-offset
+	 (compute-next-continuation-offset
 	  (continuation/closing-block continuation)
 	  (continuation/offset continuation))
 	 (continuation/debugging-info continuation))))))
@@ -184,7 +184,7 @@ MIT in each case. |#
        (let ((obj (constant-value op)))
 	 (and (primitive-procedure? obj)
 	      (special-primitive-handler obj)))))
-
+
 (define (wrap-with-continuation-entry context scfg)
   (with-values (lambda () (generate-continuation-entry context))
     (lambda (label setup cleanup)
@@ -204,12 +204,17 @@ MIT in each case. |#
 		   *current-rgraph*
 		   label
 		   (cfg-entry-edge cleanup)
-		   (block/next-continuation-offset
+		   (compute-next-continuation-offset
 		    closing-block
 		    (reference-context/offset context))
 		   (generated-dbg-continuation context label))
 		  *extra-continuations*))
       (values label setup cleanup))))
+
+(define (compute-next-continuation-offset block offset)
+  (let ((nco (block/next-continuation-offset block offset)))
+    (and nco
+	 (+ (continuation-extra-length block) nco))))
 
 (define (block/next-continuation-offset block offset)
   (if (stack-block? block)
@@ -234,6 +239,15 @@ MIT in each case. |#
 
 (define (generate/continuation-entry/pop-extra continuation)
   (pop-continuation-extra (continuation/closing-block continuation)))
+
+(define (continuation-extra-length closing-block)
+  (cond ((ic-block? closing-block)
+	 1)
+	((and (stack-block? closing-block)
+	      (stack-block/dynamic-link? closing-block))
+	 1)
+	(else
+	 0)))
 
 (define (push-continuation-extra closing-block)
   (cond ((ic-block? closing-block)
