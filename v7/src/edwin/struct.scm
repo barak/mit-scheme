@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.75 1991/04/01 10:04:29 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.76 1991/04/02 19:56:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -87,6 +87,8 @@
 ;;;; Groups
 
 (define-named-structure "Group"
+  ;; The microcode file "edwin.h" depends on the fields TEXT,
+  ;; GAP-START, GAP-LENGTH, GAP-END, START-MARK, and END-MARK.
   text
   gap-start
   gap-length
@@ -114,10 +116,10 @@
     (vector-set! group group-index:gap-length 0)
     (vector-set! group group-index:gap-end n)
     (vector-set! group group-index:marks '())
-    (let ((start (%make-permanent-mark group 0 false)))
+    (let ((start (make-permanent-mark group 0 false)))
       (vector-set! group group-index:start-mark start)
       (vector-set! group group-index:display-start start))
-    (let ((end (%make-permanent-mark group n true)))
+    (let ((end (make-permanent-mark group n true)))
       (vector-set! group group-index:end-mark end)
       (vector-set! group group-index:display-end end))
     (vector-set! group group-index:read-only? false)
@@ -126,7 +128,7 @@
     (vector-set! group group-index:clip-daemons '())
     (vector-set! group group-index:undo-data false)
     (vector-set! group group-index:modified? false)
-    (vector-set! group group-index:point (%make-permanent-mark group 0 true))
+    (vector-set! group group-index:point (make-permanent-mark group 0 true))
     (vector-set! group group-index:buffer buffer)
     group))
 
@@ -212,8 +214,8 @@
 (define (with-group-text-clipped! group start end thunk)
   (let ((old-text-start)
 	(old-text-end)
-	(new-text-start (%make-permanent-mark group start false))
-	(new-text-end (%make-permanent-mark group end true)))
+	(new-text-start (make-permanent-mark group start false))
+	(new-text-end (make-permanent-mark group end true)))
     (dynamic-wind (lambda ()
 		    (set! old-text-start (group-start-mark group))
 		    (set! old-text-end (group-end-mark group))
@@ -286,20 +288,23 @@
 ;;;; Marks
 
 (define-structure (mark
-		   (constructor %make-mark)
+		   (constructor make-temporary-mark)
 		   (print-procedure
 		    (unparser/standard-method 'MARK
 		      (lambda (state mark)
-			(unparse-string state "index: ")
+			(unparse-object state
+					(or (mark-buffer mark)
+					    (mark-group mark)))
+			(unparse-string state " ")
 			(unparse-object state (mark-index mark))
-			(unparse-string state " position: ")
-			(unparse-object state (mark-position mark))
 			(unparse-string state
 					(if (mark-left-inserting? mark)
 					    " left"
 					    " right"))))))
+  ;; The microcode file "edwin.h" depends on the definition of this
+  ;; structure.
   (group false read-only true)
-  (position false)
+  (index false)
   (left-inserting? false read-only true))
 
 (define (guarantee-mark mark)
@@ -307,39 +312,51 @@
   mark)
 
 (define-integrable (make-mark group index)
-  (%make-temporary-mark group index true))
-
-(define (%make-temporary-mark group index left-inserting?)
-  (%make-mark group
-	      (group-index->position-integrable group index left-inserting?)
-	      left-inserting?))
-
-(define (mark-index mark)
-  (mark-index-integrable mark))
-
-(define-integrable (mark-index-integrable mark)
-  (group-position->index-integrable (mark-group mark) (mark-position mark)))
-
-(define (set-mark-index! mark index)
-  (set-mark-index-integrable! mark index))
-
-(define-integrable (set-mark-index-integrable! mark index)
-  (set-mark-position!
-   mark
-   (group-index->position-integrable (mark-group mark)
-				     index
-				     (mark-left-inserting? mark))))
+  (make-temporary-mark group index true))
 
 (define (move-mark-to! mark target)
-  (set-mark-index-integrable! mark (mark-index-integrable target)))
+  (set-mark-index! mark (mark-index target)))
 
 (define (mark-temporary-copy mark)
-  (%make-mark (mark-group mark)
-	      (mark-position mark)
-	      (mark-left-inserting? mark)))
+  (make-temporary-mark (mark-group mark)
+		       (mark-index mark)
+		       (mark-left-inserting? mark)))
 
 (define-integrable (mark-permanent-copy mark)
   (mark-permanent! (mark-temporary-copy mark)))
+
+(define (mark-right-inserting mark)
+  (if (mark-left-inserting? mark)
+      (make-permanent-mark (mark-group mark) (mark-index mark) false)
+      (mark-permanent! mark)))
+
+(define (mark-right-inserting-copy mark)
+  (make-permanent-mark (mark-group mark) (mark-index mark) false))
+
+(define (mark-left-inserting mark)
+  (if (mark-left-inserting? mark)
+      (mark-permanent! mark)
+      (make-permanent-mark (mark-group mark) (mark-index mark) true)))
+
+(define (mark-left-inserting-copy mark)
+  (make-permanent-mark (mark-group mark) (mark-index mark) true))
+
+(define (make-permanent-mark group index left-inserting?)
+  (let ((mark (make-temporary-mark group index left-inserting?)))
+    (set-group-marks! group
+		      (system-pair-cons (ucode-type weak-cons)
+					mark
+					(group-marks group)))
+    mark))
+
+(define (mark-permanent! mark)
+  (let ((group (mark-group mark)))
+    (if (not (weak-memq mark (group-marks group)))
+	(set-group-marks! group
+			  (system-pair-cons (ucode-type weak-cons)
+					    mark
+					    (group-marks group)))))
+  mark)
 
 (define-integrable (mark~ mark1 mark2)
   (eq? (mark-group mark1) (mark-group mark2)))
@@ -391,74 +408,6 @@
 
 (define (group-display-end? mark)
   (group-display-end-index? (mark-group mark) (mark-index mark)))
-
-(define (mark-right-inserting mark)
-  (if (mark-left-inserting? mark)
-      (let ((group (mark-group mark)))
-	(%%make-permanent-mark group
-			       (if (fix:= (mark-position mark)
-					  (group-gap-end group))
-				   (group-gap-start group)
-				   (mark-position mark))
-			       false))
-      (mark-permanent! mark)))
-
-(define (mark-right-inserting-copy mark)
-  (let ((group (mark-group mark)))
-    (%%make-permanent-mark group
-			   (if (and (mark-left-inserting? mark)
-				    (fix:= (mark-position mark)
-					   (group-gap-end group)))
-			       (group-gap-start group)
-			       (mark-position mark))
-			   false)))
-
-(define (mark-left-inserting mark)
-  (if (mark-left-inserting? mark)
-      (mark-permanent! mark)
-      (let ((group (mark-group mark)))
-	(%%make-permanent-mark group
-			       (if (fix:= (mark-position mark)
-					  (group-gap-start group))
-				   (group-gap-end group)
-				   (mark-position mark))
-			       true))))
-
-(define (mark-left-inserting-copy mark)
-  (let ((group (mark-group mark)))
-    (%%make-permanent-mark group
-			   (if (and (not (mark-left-inserting? mark))
-				    (fix:= (mark-position mark)
-					   (group-gap-start group)))
-			       (group-gap-end group)
-			       (mark-position mark))
-			   true)))
-
-(define-integrable (%make-permanent-mark group index left-inserting?)
-  (%%make-permanent-mark
-   group
-   (group-index->position-integrable group index left-inserting?)
-   left-inserting?))
-
-(define (%%make-permanent-mark group position left-inserting?)
-  (let ((mark (%make-mark group position left-inserting?)))
-    (set-group-marks! group
-		      (system-pair-cons (ucode-type weak-cons)
-					mark
-					(group-marks group)))
-    mark))
-
-(define (mark-permanent! mark)
-  (let ((group (mark-group mark)))
-    (or (let ((tail (weak-memq mark (group-marks group))))
-	  (and tail
-	       (system-pair-car tail)))
-	(begin
-	  (set-group-marks! group
-			    (system-pair-cons (ucode-type weak-cons)
-					      mark
-					      (group-marks group)))
-	  mark))))
 
 ;;; The next few procedures are simple algorithms that are haired up
 ;;; the wazoo for maximum speed.
@@ -547,7 +496,7 @@
 		  (else
 		   (scan-tail marks (system-pair-cdr marks)))))))))
 
-(define (find-permanent-mark group position left-inserting?)
+(define (find-permanent-mark group index left-inserting?)
 
   (define (scan-head marks)
     (if (null? marks)
@@ -560,7 +509,7 @@
 		((and (if (mark-left-inserting? mark)
 			  left-inserting?
 			  (not left-inserting?))
-		      (fix:= (mark-position mark) position))
+		      (fix:= (mark-index mark) index))
 		 mark)
 		(else
 		 (set-group-marks! group marks)
@@ -574,7 +523,7 @@
 		 ((and (if (mark-left-inserting? mark)
 			   left-inserting?
 			   (not left-inserting?))
-		       (fix:= (mark-position mark) position))
+		       (fix:= (mark-index mark) index))
 		  mark)
 		 (else
 		  (scan-tail marks (system-pair-cdr marks)))))))
@@ -592,7 +541,7 @@
 		(if (and (if (mark-left-inserting? mark)
 			     left-inserting?
 			     (not left-inserting?))
-			 (fix:= (mark-position mark) position))
+			 (fix:= (mark-index mark) index))
 		    mark
 		    (scan-tail marks (system-pair-cdr marks))))))))
 
@@ -604,7 +553,7 @@
 		 ((and (if (mark-left-inserting? mark)
 			   left-inserting?
 			   (not left-inserting?))
-		       (fix:= (mark-position mark) position))
+		       (fix:= (mark-index mark) index))
 		  mark)
 		 (else
 		  (scan-tail marks (system-pair-cdr marks))))))))
@@ -662,15 +611,12 @@
 (define-integrable region-end cdr)
 
 (define (make-region start end)
-  (let ((group (mark-group start))
-	(start-position (mark-position start))
-	(end-position (mark-position end)))
-    (cond ((not (eq? group (mark-group end)))
-	   (error "Marks not related" start end))
-	  ((not (fix:> start-position end-position))
-	   (%make-region start end))
-	  (else
-	   (%make-region end start)))))
+  (cond ((not (eq? (mark-group start) (mark-group end)))
+	 (error "Marks not related" start end))
+	((fix:<= (mark-index start) (mark-index end))
+	 (%make-region start end))
+	(else
+	 (%make-region end start))))
 
 (define-integrable (region-group region)
   (mark-group (region-start region)))

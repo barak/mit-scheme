@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwmc.scm,v 1.12 1991/04/01 10:06:50 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwmc.scm,v 1.13 1991/04/02 19:55:33 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -176,8 +176,8 @@
        (not (%window-point-moved? window))
        (not (%window-force-redraw? window))
        (%window-start-line-mark window)
-       (fix:= (mark-position (%window-start-line-mark window))
-	      (mark-position (%window-current-start-mark window)))))
+       (fix:= (%window-start-line-index window)
+	      (%window-current-start-index window))))
 
 (define (predict-y window start y index)
   ;; Assuming that the character at index START appears at coordinate

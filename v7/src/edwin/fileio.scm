@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.93 1991/03/22 00:31:46 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.94 1991/04/02 19:55:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -107,6 +107,13 @@
 			   (+ index length))))
 	(without-interrupts
 	 (lambda ()
+	   (for-each-mark group
+	     (lambda (mark)
+	       (let ((index* (mark-index mark)))
+		 (if (or (fix:> index* index)
+			 (and (fix:= index* index)
+			      (mark-left-inserting? mark)))
+		     (set-mark-index! mark (fix:+ index* n))))))
 	   (vector-set! group
 			group-index:gap-length
 			(fix:- (group-gap-length group) n))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regops.scm,v 1.81 1991/03/22 00:32:43 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regops.scm,v 1.82 1991/04/02 19:55:52 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -52,8 +52,8 @@
 	(start (mark-index mark)))
     (let ((n (string-length string)))
       (group-insert-substring! group start string 0 n)
-      (%make-region (%make-temporary-mark group start false)
-		    (%make-temporary-mark group (+ start n) true)))))
+      (%make-region (make-temporary-mark group start false)
+		    (make-temporary-mark group (+ start n) true)))))
 
 (define (region-insert-string! mark string)
   (group-insert-substring! (mark-group mark) (mark-index mark)
@@ -123,8 +123,8 @@
   unspecific)
 
 (define (group-un-clip! group)
-  (let ((start (%make-permanent-mark group 0 false))
-	(end (%make-permanent-mark group (group-length group) true)))
+  (let ((start (make-permanent-mark group 0 false))
+	(end (make-permanent-mark group (group-length group) true)))
     (record-clipping! group 0 (group-length group))
     (vector-set! group group-index:start-mark start)
     (vector-set! group group-index:end-mark end)

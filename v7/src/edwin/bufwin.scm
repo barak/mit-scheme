@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.291 1991/04/01 10:06:30 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.292 1991/04/02 19:55:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -211,7 +211,7 @@
   (with-instance-variables buffer-window window () point))
 
 (define-integrable (%window-point-index window)
-  (mark-index-integrable (%window-point window)))
+  (mark-index (%window-point window)))
 
 (define-integrable (%set-window-point! window point*)
   (with-instance-variables buffer-window window (point*)
@@ -219,9 +219,9 @@
 
 (define-integrable (%set-window-point-index! window index)
   (%set-window-point! window
-		      (%make-permanent-mark (%window-group window)
-					    index
-					    true)))
+		      (make-permanent-mark (%window-group window)
+					   index
+					   true)))
 
 (define-integrable (%window-cursor-inferior window)
   (with-instance-variables buffer-window window () cursor-inferior))
@@ -262,7 +262,7 @@
   (with-instance-variables buffer-window window () current-start-mark))
 
 (define-integrable (%window-current-start-index window)
-  (mark-index-integrable (%window-current-start-mark window)))
+  (mark-index (%window-current-start-mark window)))
 
 (define-integrable (%set-window-current-start-mark! window mark)
   (with-instance-variables buffer-window window (mark)
@@ -272,7 +272,7 @@
   (with-instance-variables buffer-window window () current-end-mark))
 
 (define-integrable (%window-current-end-index window)
-  (mark-index-integrable (%window-current-end-mark window)))
+  (mark-index (%window-current-end-mark window)))
 
 (define-integrable (%set-window-current-end-mark! window mark)
   (with-instance-variables buffer-window window (mark)
@@ -310,7 +310,7 @@
   (with-instance-variables buffer-window window () start-mark))
 
 (define-integrable (%window-start-index window)
-  (mark-index-integrable (%window-start-mark window)))
+  (mark-index (%window-start-mark window)))
 
 (define-integrable (%set-window-start-mark! window mark)
   (with-instance-variables buffer-window window (mark)
@@ -320,7 +320,7 @@
   (with-instance-variables buffer-window window () start-line-mark))
 
 (define-integrable (%window-start-line-index window)
-  (mark-index-integrable (%window-start-line-mark window)))
+  (mark-index (%window-start-line-mark window)))
 
 (define-integrable (%set-window-start-line-mark! window mark)
   (with-instance-variables buffer-window window (mark)
@@ -344,7 +344,7 @@
   (with-instance-variables buffer-window window () start-changes-mark))
 
 (define-integrable (%window-start-changes-index window)
-  (mark-index-integrable (%window-start-changes-mark window)))
+  (mark-index (%window-start-changes-mark window)))
 
 (define-integrable (%set-window-start-changes-mark! window mark)
   (with-instance-variables buffer-window window (mark)
@@ -354,7 +354,7 @@
   (with-instance-variables buffer-window window () end-changes-mark))
 
 (define-integrable (%window-end-changes-index window)
-  (mark-index-integrable (%window-end-changes-mark window)))
+  (mark-index (%window-end-changes-mark window)))
 
 (define-integrable (%set-window-end-changes-mark! window mark)
   (with-instance-variables buffer-window window (mark)
@@ -371,7 +371,7 @@
   (with-instance-variables buffer-window window () start-clip-mark))
 
 (define-integrable (%window-start-clip-index window)
-  (mark-index-integrable (%window-start-clip-mark window)))
+  (mark-index (%window-start-clip-mark window)))
 
 (define-integrable (%set-window-start-clip-mark! window mark)
   (with-instance-variables buffer-window window (mark)
@@ -381,7 +381,7 @@
   (with-instance-variables buffer-window window () end-clip-mark))
 
 (define-integrable (%window-end-clip-index window)
-  (mark-index-integrable (%window-end-clip-mark window)))
+  (mark-index (%window-end-clip-mark window)))
 
 (define-integrable (%set-window-end-clip-mark! window mark)
   (with-instance-variables buffer-window window (mark)
@@ -459,7 +459,15 @@
 
 ;;;; Outlines
 
-(define-structure (outline (constructor %make-outline))
+(define-structure (outline
+		   (constructor %make-outline)
+		   (print-procedure
+		    (unparser/standard-method 'OUTLINE
+		      (lambda (state outline)
+			(unparse-string state "index: ")
+			(unparse-object state (outline-index-length outline))
+			(unparse-string state " y: ")
+			(unparse-object state (outline-y-size outline))))))
   ;; The number of characters in the text line.  This is exclusive of
   ;; the newlines at the line's beginning and end, if any.
   index-length
@@ -528,8 +536,10 @@
 			(unparse-object state (o3-index o3))
 			(unparse-string state " y: ")
 			(unparse-object state (o3-y o3))
-			(unparse-string state " ")
-			(unparse-object state (o3-outline o3))))))
+			(if (outline? (o3-outline o3))
+			    (begin
+			      (unparse-string state " ")
+			      (unparse-object state (o3-outline o3))))))))
   outline
   index
   y)
@@ -558,14 +568,10 @@
   (group-display-end (%window-group window)))
 
 (define-integrable (%window-group-start-index window)
-  (group-position->index-integrable
-   (%window-group window)
-   (mark-position (group-display-start (%window-group window)))))
+  (mark-index (%window-group-start-mark window)))
 
 (define-integrable (%window-group-end-index window)
-  (group-position->index-integrable
-   (%window-group window)
-   (mark-position (group-display-end (%window-group window)))))
+  (mark-index (%window-group-end-mark window)))
 
 (define-integrable (%window-group-start-index? window index)
   (fix:<= index (%window-group-start-index window)))
@@ -936,8 +942,7 @@
   (if (fix:= y-start 0)
       (if (%window-start-line-mark window)
 	  (begin
-	    (set-mark-index-integrable! (%window-start-line-mark window)
-					start-line)
+	    (set-mark-index! (%window-start-line-mark window) start-line)
 	    (if (not (eq? (%window-start-line-mark window)
 			  (%window-start-mark window)))
 		(begin
@@ -945,30 +950,28 @@
 		  (%set-window-start-mark! window
 					   (%window-start-line-mark window)))))
 	  (let ((mark
-		 (%make-permanent-mark (%window-group window)
-				       start-line
-				       false)))
+		 (make-permanent-mark (%window-group window)
+				      start-line
+				      false)))
 	    (%set-window-start-line-mark! window mark)
 	    (%set-window-start-mark! window mark)))
       (let ((start (predict-start-index window start-line y-start)))
 	(if (%window-start-line-mark window)
 	    (begin
-	      (set-mark-index-integrable! (%window-start-line-mark window)
-					  start-line)
+	      (set-mark-index! (%window-start-line-mark window) start-line)
 	      (if (eq? (%window-start-line-mark window)
 		       (%window-start-mark window))
 		  (%set-window-start-mark!
 		   window
-		   (%make-permanent-mark (%window-group window) start false))
-		  (set-mark-index-integrable! (%window-start-mark window)
-					      start)))
+		   (make-permanent-mark (%window-group window) start false))
+		  (set-mark-index! (%window-start-mark window) start)))
 	    (let ((group (%window-group window)))
 	      (%set-window-start-line-mark!
 	       window
-	       (%make-permanent-mark group start-line false))
+	       (make-permanent-mark group start-line false))
 	      (%set-window-start-mark!
 	       window
-	       (%make-permanent-mark group start false))))))
+	       (make-permanent-mark group start false))))))
   (%set-window-start-line-y! window y-start)
   (if (eq? (%window-point-moved? window) 'SINCE-START-SET)
       (%set-window-point-moved?! window true))
@@ -1119,17 +1122,15 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
   (%set-window-end-outline! window (o3-outline end))
   (if (%window-current-start-mark window)
       (begin
-	(set-mark-index-integrable! (%window-current-start-mark window)
-				    (o3-index start))
-	(set-mark-index-integrable! (%window-current-end-mark window)
-				    (o3-index end)))
+	(set-mark-index! (%window-current-start-mark window) (o3-index start))
+	(set-mark-index! (%window-current-end-mark window) (o3-index end)))
       (begin
 	(%set-window-current-start-mark!
 	 window
-	 (%make-permanent-mark (%window-group window) (o3-index start) false))
+	 (make-permanent-mark (%window-group window) (o3-index start) false))
 	(%set-window-current-end-mark!
 	 window
-	 (%make-permanent-mark (%window-group window) (o3-index end) true))))
+	 (make-permanent-mark (%window-group window) (o3-index end) true))))
   (%set-window-current-start-y! window (o3-y start))
   (%set-window-current-end-y! window (o3-y end))
   (deallocate-o3! window start)

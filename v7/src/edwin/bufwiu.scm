@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.18 1991/04/01 19:47:25 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.19 1991/04/02 19:55:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -61,32 +61,21 @@
     (if (and (not (%window-force-redraw? window))
 	     (fix:<= (%window-current-start-index window) end)
 	     (fix:<= start (%window-current-end-index window)))
-	;; We can compare marks by their positions here because
-	;; the marks being compared have the same
-	;; LEFT-INSERTING? flag.
-	(let ((start
-	       (group-index->position-integrable group start false))
-	      (end (group-index->position-integrable group end true)))
+	(begin
 	  (if (not (%window-start-changes-mark window))
 	      (begin
 		(%set-window-start-changes-mark!
 		 window
-		 (%%make-permanent-mark group start false))
+		 (make-permanent-mark group start false))
 		(%set-window-end-changes-mark!
 		 window
-		 (%%make-permanent-mark group end true)))
+		 (make-permanent-mark group end true)))
 	      (begin
-		(if (fix:< start
-			   (mark-position
-			    (%window-start-changes-mark window)))
-		    (set-mark-position!
-		     (%window-start-changes-mark window)
-		     start))
-		(if (fix:> end
-			   (mark-position
-			    (%window-end-changes-mark window)))
-		    (set-mark-position! (%window-end-changes-mark window)
-					end))))
+		(if (fix:< start (%window-start-changes-index window))
+		    (set-mark-index! (%window-start-changes-mark window)
+				     start))
+		(if (fix:> end (%window-end-changes-index window))
+		    (set-mark-index! (%window-end-changes-mark window) end))))
 	  (window-needs-redisplay! window)))
     ;; If this change affects where the window starts, choose a
     ;; new place to start it.
@@ -101,11 +90,9 @@
 	      (begin
 		(clear-start-mark! window)
 		(window-needs-redisplay! window)))
-	  (if (and (not (eq? (%window-point-moved? window)
-			     'SINCE-START-SET))
-		   (let ((point (%window-point-index window)))
-		     (and (fix:<= start point)
-			  (fix:<= point end))))
+	  (if (and (not (eq? (%window-point-moved? window) 'SINCE-START-SET))
+		   (fix:<= start (%window-point-index window))
+		   (fix:<= (%window-point-index window) end))
 	      (%set-window-point-moved?! window 'SINCE-START-SET))))))
 
 ;;;; Clip
@@ -124,22 +111,19 @@
 	      (begin
 		(%set-window-start-clip-mark!
 		 window
-		 (%make-permanent-mark group
-				       (group-display-start-index group)
-				       true))
+		 (make-permanent-mark group
+				      (group-display-start-index group)
+				      true))
 		(%set-window-end-clip-mark!
 		 window
-		 (%make-permanent-mark group
-				       (group-display-end-index group)
-				       false))))
-	  (let ((start (group-index->position-integrable group start true))
-		(end (group-index->position-integrable group end false)))
-	    ;; We can compare marks by their positions here because the
-	    ;; marks being compared have the same LEFT-INSERTING? flag.
-	    (if (fix:> start (mark-position (%window-start-clip-mark window)))
-		(set-mark-position! (%window-start-clip-mark window) start))
-	    (if (fix:< end (mark-position (%window-end-clip-mark window)))
-		(set-mark-position! (%window-end-clip-mark window) end)))
+		 (make-permanent-mark group
+				      (group-display-end-index group)
+				      false))))
+	  (begin
+	    (if (fix:> start (%window-start-clip-index window))
+		(set-mark-index! (%window-start-clip-mark window) start))
+	    (if (fix:< end (%window-end-clip-index window))
+		(set-mark-index! (%window-end-clip-mark window) end)))
 	  (if (and (not (window-needs-redisplay? window))
 		   (or (fix:>= (%window-start-clip-index window)
 			       (%window-current-start-index window))
