@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/subprb.scm,v 4.3 1988/06/14 08:33:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/subprb.scm,v 4.4 1988/12/12 21:51:35 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -54,19 +54,21 @@ parts of the compiler, where better code can be generated if it is
 known that the continuation need not be used.
 
 |#
-
+
 (define-structure (subproblem
 		   (constructor make-subproblem
 				(prefix continuation rvalue)))
   (prefix false read-only true)
   (continuation false read-only true)
   (rvalue false read-only true)
-  (simple? 'UNKNOWN))
+  (simple? 'UNKNOWN)
+  (free-variables 'UNKNOWN))
 
 (set-type-object-description!
  subproblem
  (lambda (subproblem)
-   (descriptor-list subproblem prefix continuation rvalue simple?)))
+   (descriptor-list subproblem
+		    prefix continuation rvalue simple? free-variables)))
 
 (define-integrable (subproblem-entry-node subproblem)
   (cfg-entry-node (subproblem-prefix subproblem)))
@@ -74,25 +76,45 @@ known that the continuation need not be used.
 (define-integrable (subproblem-canonical? subproblem)
   (procedure? (subproblem-continuation subproblem)))
 
-(define (subproblem-type subproblem)
-  (let ((continuation (subproblem-continuation subproblem)))
-    (if (procedure? continuation)
-	(continuation/type continuation)
-	(virtual-continuation/type continuation))))
+(define-integrable (subproblem-type subproblem)
+  (continuation*/type (subproblem-continuation subproblem)))
 
-(define (set-subproblem-type! subproblem type)
-  (let ((continuation (subproblem-continuation subproblem)))
-    (if (procedure? continuation)
-	(set-continuation/type! continuation type)
-	(set-virtual-continuation/type! continuation type))))
+(define-integrable (set-subproblem-type! subproblem type)
+  (set-continuation*/type! (subproblem-continuation subproblem) type))
 
 (define-integrable (subproblem-register subproblem)
   (continuation*/register (subproblem-continuation subproblem)))
+
+(define (subproblem-context subproblem)
+  (continuation*/context (subproblem-continuation subproblem)))
+
+(define (continuation*/type continuation)
+  (if (procedure? continuation)
+      (continuation/type continuation)
+      (virtual-continuation/type continuation)))
+
+(define (set-continuation*/type! continuation type)
+  (if (procedure? continuation)
+      (set-continuation/type! continuation type)
+      (set-virtual-continuation/type! continuation type)))
 
 (define (continuation*/register continuation)
   (if (procedure? continuation)
       (continuation/register continuation)
       (virtual-continuation/register continuation)))
+
+(define (continuation*/context continuation)
+  (let ((continuation/context
+	 (lambda (continuation)
+	   (make-reference-context
+	    (block-parent (continuation/block continuation))))))
+    (cond ((procedure? continuation)
+	   (continuation/context continuation))
+	  ((virtual-continuation/reified? continuation)
+	   (continuation/context
+	    (virtual-continuation/reification continuation)))
+	  (else
+	   (virtual-continuation/context continuation)))))
 
 ;;;; Virtual Continuations
 
@@ -103,7 +125,8 @@ known that the continuation need not be used.
 ;;; have resided in the real continuation.
 
 (define-structure (virtual-continuation
-		   (constructor virtual-continuation/%make (block parent type))
+		   (constructor virtual-continuation/%make
+				(context parent type))
 		   (conc-name virtual-continuation/)
 		   (print-procedure
 		    (standard-unparser "VIRTUAL-CONTINUATION"		      (lambda (state continuation)
@@ -113,14 +136,15 @@ known that the continuation need not be used.
 			       state
 			       (enumeration/index->name continuation-types
 							type))))))))
-  block
+  context
   parent
   type)
 
 (set-type-object-description!
  virtual-continuation
  (lambda (continuation)
-   `((VIRTUAL-CONTINUATION/BLOCK ,(virtual-continuation/block continuation))
+   `((VIRTUAL-CONTINUATION/CONTEXT
+      ,(virtual-continuation/context continuation))
      (VIRTUAL-CONTINUATION/PARENT ,(virtual-continuation/parent continuation))
      (VIRTUAL-CONTINUATION/TYPE ,(virtual-continuation/type continuation)))))
 
@@ -132,21 +156,22 @@ known that the continuation need not be used.
   (not (virtual-continuation/type continuation)))
 
 (define-integrable virtual-continuation/reification
-  virtual-continuation/block)
-
+  virtual-continuation/context)
+
 (define (virtual-continuation/reify! continuation)
   ;; This is used only during FG generation when it is decided that we
   ;; need a real continuation to handle a subproblem.
   (if (virtual-continuation/type continuation)
       (let ((reification
-	     (make-continuation (virtual-continuation/block continuation)
-				(virtual-continuation/parent continuation)
-				(virtual-continuation/type continuation))))
-	(set-virtual-continuation/block! continuation reification)
+	     (make-continuation
+	      (virtual-continuation/context continuation)
+	      (virtual-continuation/parent continuation)
+	      (virtual-continuation/type continuation))))
+	(set-virtual-continuation/context! continuation reification)
 	(set-virtual-continuation/parent! continuation false)
 	(set-virtual-continuation/type! continuation false)
 	reification)
-      (virtual-continuation/block continuation)))
+      (virtual-continuation/context continuation)))
 
 (define (virtual-continuation/register continuation)
   (or (virtual-continuation/parent continuation)
