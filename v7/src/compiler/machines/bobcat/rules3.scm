@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.15 1987/10/05 20:38:51 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.16 1987/11/21 18:46:28 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -109,7 +109,7 @@ MIT in each case. |#
 	,@(if (eq? primitive compiled-error-procedure)
 	      (LAP ,(load-dnw frame-size 0)
 		   (JMP ,entry:compiler-error))
-	      (LAP ,(load-dnw (primitive-datum primitive) 6)
+	      (LAP (MOV L (@PCR ,(constant->label primitive)) (D 6))
 		   (JMP ,entry:compiler-primitive-apply))))))
 
 (define-rule statement
@@ -243,13 +243,12 @@ MIT in each case. |#
 		     (LAP ,(load-dnw (length references) 1)
 			  (JSR ,entry:multiple)))
 	       ,@(make-external-label (generate-label)))))
-
+
     (lambda (block-label constants references assignments uuo-links)
-      (declare-constants references
-       (declare-constants assignments
-	(declare-constants uuo-links
-	 (declare-constants
-	  constants
+      (declare-constants uuo-links
+       (declare-constants references
+	(declare-constants assignments
+	 (declare-constants constants
 	  (let ((debugging-information-label (allocate-constant-label))
 		(environment-label (allocate-constant-label)))
 	    (LAP
@@ -257,7 +256,9 @@ MIT in each case. |#
 	     (SCHEME-OBJECT ,debugging-information-label DEBUGGING-INFO)
 	     (SCHEME-OBJECT ,environment-label ENVIRONMENT)
 	     (LEA (@PCR ,environment-label) (A 0))
-	     ,@(if (and (null? references) (null? assignments) (null? uuo-links))
+	     ,@(if (and (null? references)
+			(null? assignments)
+			(null? uuo-links))
 		   (LAP ,(load-constant 0 '(@A 0)))
 		   (LAP (MOV L ,reg:environment (@A 0))
 			(LEA (@PCR ,block-label) (A 0))
