@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xterm.scm,v 1.57 1999/02/22 05:05:10 cph Exp $
+;;; $Id: xterm.scm,v 1.58 1999/02/28 05:53:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -1182,15 +1182,6 @@
 	     ((request-selection xterm selection 'C_STRING property time)
 	      (receive-selection xterm property 'C_STRING time))
 	     (else #f))))))
-
-(define (with-thread-events-blocked thunk)
-  (let ((block-events?))
-    (dynamic-wind (lambda ()
-		    (set! block-events? (block-thread-events))
-		    unspecific)
-		  thunk
-		  (lambda ()
-		    (if (not block-events?) (unblock-thread-events))))))
 
 (define (request-selection xterm selection target property time)
   (let ((display (x-window-display xterm))
