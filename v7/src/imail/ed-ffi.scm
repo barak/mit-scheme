@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: ed-ffi.scm,v 1.12 2000/06/08 18:08:26 cph Exp $
+;;; $Id: ed-ffi.scm,v 1.13 2000/07/05 00:13:18 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -21,16 +21,29 @@
 ;;;; IMAIL mail reader: Edwin buffer packaging info
 
 (standard-scheme-find-file-initialization
- '#(("imail-core"	(edwin imail)		system-global-syntax-table)
-    ("imail-file"	(edwin imail)		system-global-syntax-table)
-    ("imail-imap"	(edwin imail)		system-global-syntax-table)
-    ("imail-rmail"	(edwin imail)		system-global-syntax-table)
-    ("imail-summary"	(edwin imail)		edwin-syntax-table)
-    ("imail-top"	(edwin imail)		edwin-syntax-table)
-    ("imail-umail"	(edwin imail)		system-global-syntax-table)
-    ("imail-util"	(edwin imail)		system-global-syntax-table)
-    ("imap-response"	(edwin imail imap-response) system-global-syntax-table)
-    ("imap-syntax"	(edwin imail imap-syntax) system-global-syntax-table)
-    ("parser"		(edwin imail parser)	system-global-syntax-table)
-    ("rexp"		(edwin imail rexp)	system-global-syntax-table)
-    ("url"		(edwin imail url)	system-global-syntax-table)))
+ '#(("imail-core"	(edwin imail)
+			system-global-syntax-table)
+    ("imail-file"	(edwin imail file-folder)
+			system-global-syntax-table)
+    ("imail-imap"	(edwin imail imap-folder)
+			system-global-syntax-table)
+    ("imail-rmail"	(edwin imail file-folder rmail-folder)
+			system-global-syntax-table)
+    ("imail-summary"	(edwin imail front-end summary)
+			edwin-syntax-table)
+    ("imail-top"	(edwin imail front-end)
+			edwin-syntax-table)
+    ("imail-umail"	(edwin imail file-folder umail-folder)
+			system-global-syntax-table)
+    ("imail-util"	(edwin imail)
+			system-global-syntax-table)
+    ("imap-response"	(edwin imail imap-response)
+			system-global-syntax-table)
+    ("imap-syntax"	(edwin imail imap-syntax)
+			system-global-syntax-table)
+    ("parser"		(edwin imail parser)
+			system-global-syntax-table)
+    ("rexp"		(edwin imail rexp)
+			system-global-syntax-table)
+    ("url"		(edwin imail url)
+			system-global-syntax-table)))
