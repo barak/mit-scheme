@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 13.41 1987/01/23 00:21:32 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 13.42 1987/03/12 02:19:48 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -55,6 +55,7 @@
 (define disk-save)
 (define dump-world)
 (define event:after-restore)
+(define event:after-restart)
 (define full-quit)
 (define identify-world)
 (define identify-system)
@@ -70,7 +71,10 @@
 
 (define (restart-world)
   (screen-clear)
-  (abort->top-level identify-world))
+  (abort->top-level
+   (lambda ()
+     (identify-world)
+     (event:after-restart))))
 
 (define (setup-image save-image)
   (lambda (filename #!optional identify)
@@ -109,8 +113,21 @@
 		  after-dumping)
 	      ie))))))
 
-(set! event:after-restore
-      (make-event-distributor))
+(set! event:after-restore (make-event-distributor))
+(set! event:after-restart (make-event-distributor))
+
+(add-event-receiver! event:after-restart
+ (lambda ()
+   (if (not (unassigned? init-file-pathname))
+       (let ((file
+	      (or (pathname->input-truename
+		   (merge-pathnames init-file-pathname
+				    (working-directory-pathname)))
+		  (pathname->input-truename
+		   (merge-pathnames init-file-pathname
+				    (home-directory-pathname))))))
+	 (if (not (null? file))
+	     (load file user-initial-environment))))))
 
 (set! full-quit
 (named-lambda (full-quit)
