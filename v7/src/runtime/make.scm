@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.38 1992/11/03 22:41:13 jinx Exp $
+$Id: make.scm,v 14.39 1992/12/07 19:06:47 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -261,39 +261,44 @@ MIT in each case. |#
 (eval (fasload "runtim.bcon" #f) system-global-environment)
 
 ;;; Global databases.  Load, then initialize.
-(let ((sine-qua-non
+(let ((files1
        '(("gcdemn" . (RUNTIME GC-DAEMONS))
+	 ("gc" . (RUNTIME GARBAGE-COLLECTOR))
+	 ("boot" . ())
+	 ("queue" . ())
+	 ("equals" . ())
+	 ("list" . (RUNTIME LIST))
+	 ("symbol" . ())
+	 ("uproc" . (RUNTIME PROCEDURE))
+	 ("record" . (RUNTIME RECORD))))
+      (files2
+       '(("defstr" . (RUNTIME DEFSTRUCT))
 	 ("poplat" . (RUNTIME POPULATION))
 	 ("prop1d" . (RUNTIME 1D-PROPERTY))
 	 ("events" . (RUNTIME EVENT-DISTRIBUTOR))
-	 ("gdatab" . (RUNTIME GLOBAL-DATABASE))
-	 ("boot" . ())
-	 ("queue" . ())
-	 ("gc" . (RUNTIME GARBAGE-COLLECTOR))
-	 ("equals" . ())
-	 ("list" . (RUNTIME LIST))
-	 ("record" . (RUNTIME RECORD)))))
-  (let loop ((files sine-qua-non))
-    (if (not (null? files))
-	(begin
-	  (eval (fasload (map-filename (car (car files))) #t)
-		(package-reference (cdr (car files))))
-	  (loop (cdr files)))))
+	 ("gdatab" . (RUNTIME GLOBAL-DATABASE))))
+      (load-files
+       (lambda (files)
+	 (do ((files files (cdr files)))
+	     ((null? files))
+	   (eval (fasload (map-filename (car (car files))) #t)
+		 (package-reference (cdr (car files))))))))
+  (load-files files1)
   (package-initialize '(RUNTIME GC-DAEMONS) 'INITIALIZE-PACKAGE! true)
-  (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-PACKAGE! true)
-  (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-PACKAGE! true)
-  (package-initialize '(RUNTIME EVENT-DISTRIBUTOR) 'INITIALIZE-PACKAGE! true)
-  (package-initialize '(RUNTIME GLOBAL-DATABASE) 'INITIALIZE-PACKAGE! true)
-  (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-UNPARSER! true)
-  (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-UNPARSER! true)
-  (package-initialize '(RUNTIME EVENT-DISTRIBUTOR) 'INITIALIZE-UNPARSER! true)
-  (package-initialize '(PACKAGE) 'INITIALIZE-UNPARSER! true)
   (package-initialize '(RUNTIME GARBAGE-COLLECTOR) 'INITIALIZE-PACKAGE! true)
   (lexical-assignment (package-reference '(RUNTIME GARBAGE-COLLECTOR))
 		      'CONSTANT-SPACE/BASE
 		      constant-space/base)
   (package-initialize '(RUNTIME LIST) 'INITIALIZE-PACKAGE! true)
   (package-initialize '(RUNTIME RECORD) 'INITIALIZE-PACKAGE! true)
+  (package-initialize '(PACKAGE) 'FINALIZE-PACKAGE-RECORD-TYPE! true)
+  (load-files files2)
+  (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-PACKAGE! true)
+  (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-PACKAGE! true)
+  (package-initialize '(RUNTIME EVENT-DISTRIBUTOR) 'INITIALIZE-PACKAGE! true)
+  (package-initialize '(RUNTIME GLOBAL-DATABASE) 'INITIALIZE-PACKAGE! true)
+  (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-UNPARSER! true)
+  (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-UNPARSER! true)
 
 ;; Load everything else.
 ;; Note: The following code needs MAP* and MEMBER-PROCEDURE
@@ -307,7 +312,7 @@ MIT in each case. |#
 			  (fasload "runtim.bad" #f)
 			  '())
 		      car
-		      sine-qua-non)))
+		      (append files1 files2))))
 	 (string-member? (member-procedure string=?)))
      (lambda (filename environment)
        (if (not (string-member? filename to-avoid))

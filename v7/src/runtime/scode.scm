@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: scode.scm,v 14.14 1992/11/08 04:24:31 jinx Exp $
+$Id: scode.scm,v 14.15 1992/12/07 19:06:58 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -38,7 +38,8 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! scode-constant/type-vector (make-scode-constant/type-vector)))
+  (set! scode-constant/type-vector (make-scode-constant/type-vector))
+  unspecific)
 
 ;;;; Constant
 
@@ -85,7 +86,7 @@ MIT in each case. |#
 		VECTOR-16B
 		VECTOR-1B))
     type-vector))
-
+
 ;;;; Quotation
 
 (define-integrable (make-quotation expression)
@@ -96,60 +97,6 @@ MIT in each case. |#
 
 (define-integrable (quotation-expression quotation)
   (&singleton-element quotation))
-
-;;;; Symbol
-
-(define (symbol? object)
-  (or (interned-symbol? object)
-      (uninterned-symbol? object)))
-
-(define-integrable (interned-symbol? object)
-  (object-type? (ucode-type interned-symbol) object))
-
-(define-integrable (uninterned-symbol? object)
-  (object-type? (ucode-type uninterned-symbol) object))
-
-(define (string->uninterned-symbol string)
-  (if (not (string? string))
-      (error:wrong-type-argument string "string" 'STRING->UNINTERNED-SYMBOL))
-  (&typed-pair-cons (ucode-type uninterned-symbol)
-		    string
-		    (make-unbound-reference-trap)))
-
-(define-integrable find-symbol
-  (ucode-primitive find-symbol))
-
-(define (string->symbol string)
-  ;; This prevents the symbol from being affected if the string
-  ;; is mutated.  The string is copied only if the symbol is
-  ;; created.
-  (or (find-symbol string)
-      ((ucode-primitive string->symbol) (string-copy string))))
-
-(define-integrable (intern string)
-  ((ucode-primitive string->symbol) (string-downcase string)))
-
-(define (intern-soft string)
-  (find-symbol (string-downcase string)))
-
-(define (symbol-name symbol)
-  (if (not (symbol? symbol))
-      (error:wrong-type-argument symbol "symbol" 'SYMBOL-NAME))
-  (system-pair-car symbol))
-
-(define-integrable (symbol->string symbol)
-  (string-copy (symbol-name symbol)))
-
-(define (symbol-append . symbols)
-  (let ((string (apply string-append (map symbol-name symbols))))
-    (string-downcase! string)
-    ((ucode-primitive string->symbol) string)))
-
-(define-integrable (symbol-hash symbol)
-  (string-hash (symbol-name symbol)))
-
-(define-integrable (symbol-hash-mod symbol modulus)
-  (string-hash-mod (symbol-name symbol) modulus))
 
 ;;;; Variable
 

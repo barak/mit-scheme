@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.11 1992/11/29 14:18:20 gjr Exp $
+$Id: packag.scm,v 14.12 1992/12/07 19:06:51 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -37,15 +37,50 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define-structure (package
-		   (constructor make-package (parent %name environment))
-		   (conc-name package/)
-		   (print-procedure false))
-  (parent false read-only true)
-  (children '())
-  (%name false read-only true)
-  (environment false read-only true))
+;;; Kludge -- package objects want to be records, but this file must
+;;; be loaded first, before the record package.  The way we solve this
+;;; problem is to build the initial packages without an appropriate
+;;; record type, then build the record type and clobber it into the
+;;; packages.  Thereafter, packages are constructed normally.
 
+(define package-rtd
+  false)
+
+(define-integrable (make-package parent name environment)
+  (%record package-rtd parent '() name environment))
+
+(define (package? object)
+  (and (%record? object)
+       (eq? (%record-ref object 0) package-rtd)))
+
+(define-integrable (package/parent package)
+  (%record-ref package 1))
+
+(define-integrable (package/children package)
+  (%record-ref package 2))
+
+(define-integrable (set-package/children! package children)
+  (%record-set! package 2 children))
+
+(define-integrable (package/%name package)
+  (%record-ref package 3))
+
+(define-integrable (package/environment package)
+  (%record-ref package 4))
+
+(define (finalize-package-record-type!)
+  (let ((rtd
+	 (make-record-type "package" '(PARENT CHILDREN %NAME ENVIRONMENT))))
+    (set! package-rtd rtd)
+    (let loop ((package system-global-package))
+      (%record-set! package 0 rtd)
+      (for-each loop (package/children package)))
+    (set-record-type-unparser-method!
+     rtd
+     (unparser/standard-method 'PACKAGE
+       (lambda (state package)
+	 (unparse-object state (package/name package)))))))
+
 (define (package/child package name)
   (let loop ((children (package/children package)))
     (and (not (null? children))
@@ -145,9 +180,3 @@ MIT in each case. |#
   (local-assignment system-global-environment
 		    package-name-tag
 		    system-global-package))
-
-(define (initialize-unparser!)
-  (unparser/set-tagged-vector-method! package
-    (unparser/standard-method 'PACKAGE
-      (lambda (state package)
-	(unparse-object state (package/name package))))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.19 1992/11/29 14:15:27 gjr Exp $
+$Id: defstr.scm,v 14.20 1992/12/07 19:06:41 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -43,41 +43,40 @@ This macro works like the Common Lisp `defstruct' with the following
 differences:
 
 * The default constructor procedure takes positional arguments, in the
-same order as specified in the definition of the structure.  A keyword
-constructor may be specified by giving the option KEYWORD-CONSTRUCTOR.
+  same order as specified in the definition of the structure.  A
+  keyword constructor may be specified by giving the option
+  KEYWORD-CONSTRUCTOR.
 
 * BOA constructors are described using Scheme lambda lists.  Since
-there is nothing corresponding to &aux in Scheme lambda lists, this
-functionality is not implemented.
+  there is nothing corresponding to &aux in Scheme lambda lists, this
+  functionality is not implemented.
 
 * By default, no COPIER procedure is generated.
 
-* COPIERS are not allowed for structures of type RECORD.
-
 * The side effect procedure corresponding to the accessor "foo" is
-given the name "set-foo!".
+  given the name "set-foo!".
 
 * Keywords are just ordinary symbols -- use "foo" instead of ":foo".
 
 * The option values FALSE, NIL, TRUE, and T are treated as if the
-appropriate boolean constant had been specified instead.
+  appropriate boolean constant had been specified instead.
 
 * The PRINT-FUNCTION option is named PRINT-PROCEDURE.  Its argument is
-a procedure of two arguments (the unparser state and the structure
-instance) rather than three as in Common Lisp.
+  a procedure of two arguments (the unparser state and the structure
+  instance) rather than three as in Common Lisp.
 
 * By default, named structures are tagged with a unique object of some
-kind.  In Common Lisp, the structures are tagged with symbols, but
-that depends on the Common Lisp package system to help generate unique
-tags; Scheme has no such way of generating unique symbols.
+  kind.  In Common Lisp, the structures are tagged with symbols, but
+  that depends on the Common Lisp package system to help generate
+  unique tags; Scheme has no such way of generating unique symbols.
 
 * The NAMED option may optionally take an argument, which is normally
-the name of a variable (any expression may be used, but it will be
-evaluated whenever the tag name is needed).  If used, structure
-instances will be tagged with that variable's value.  The variable
-must be defined when the defstruct is evaluated.
+  the name of a variable (any expression may be used, but it will be
+  evaluated whenever the tag name is needed).  If used, structure
+  instances will be tagged with that variable's value.  The variable
+  must be defined when the defstruct is evaluated.
 
-* The TYPE option is restricted to the values VECTOR, LIST and RECORD.
+* The TYPE option is restricted to the values VECTOR and LIST.
 
 * The INCLUDE option is not implemented.
 
@@ -90,391 +89,339 @@ must be defined when the defstruct is evaluated.
 
 (define transform/define-structure
   (macro (name-and-options . slot-descriptions)
-    (let ((structure (parse/name-and-options name-and-options)))
-      (structure/set-slots! structure
-			    (parse/slot-descriptions structure
-						     slot-descriptions))
-      (if (eq? (structure/scheme-type structure) 'RECORD)
-	  (structure/set-type! structure
-			       (make-record-type
-				(make-record-type-name structure)
-				(map slot/name (structure/slots structure)))))
+    (let ((structure
+	   (with-values
+	       (lambda ()
+		 (if (pair? name-and-options)
+		     (values (car name-and-options) (cdr name-and-options))
+		     (values name-and-options '())))
+	     (lambda (name options)
+	       (parse/options name
+			      options
+			      (map parse/slot-description
+				   slot-descriptions))))))
+      (do ((slots (structure/slots structure) (cdr slots))
+	   (index (if (structure/named? structure)
+		      (+ (structure/offset structure) 1)
+		      (structure/offset structure))
+		  (+ index 1)))
+	  ((null? slots))
+	(set-slot/index! (car slots) index))
       `(BEGIN ,@(type-definitions structure)
 	      ,@(constructor-definitions structure)
 	      ,@(accessor-definitions structure)
-	      ,@(settor-definitions structure)
+	      ,@(modifier-definitions structure)
 	      ,@(predicate-definitions structure)
 	      ,@(copier-definitions structure)
 	      ,@(print-procedure-definitions structure)
 	      ',(structure/name structure)))))
 
-;;;; Parse Name-and-Options
+;;;; Parse Options
 
-(define (parse/name-and-options name-and-options)
-  (if (pair? name-and-options)
-      (parse/options (car name-and-options) (cdr name-and-options))
-      (parse/options name-and-options '())))
-
-(define (parse/options name options)
+(define (parse/options name options slots)
   (if (not (symbol? name))
-      (error "Structure name must be a symbol" name))
+      (error "Structure name must be a symbol:" name))
   (if (not (list? options))
-      (error "Structure options must be a list" options))
+      (error "Structure options must be a list:" options))
   (let ((conc-name (symbol-append name '-))
 	(default-constructor-disabled? false)
 	(boa-constructors '())
 	(keyword-constructors '())
 	(copier-name false)
 	(predicate-name (symbol-append name '?))
-	(print-procedure default-value)
-	(type-seen? false)
-	(type 'STRUCTURE)
-	(named-seen? false)
-	(tag-name default-value)
+	(print-procedure `(,(absolute 'UNPARSER/STANDARD-METHOD) ',name))
+	(type 'RECORD)
+	(type-name name)
+	(tag-expression)
 	(offset 0)
-	(include false))
-
-    (define (parse/option option keyword arguments)
-      (let ((n-arguments (length arguments)))
-
-	(define (check-arguments min max)
-	  (if (or (< n-arguments min) (> n-arguments max))
-	      (error "Structure option used with wrong number of arguments"
-		     option)))
-
-	(define (symbol-option default)
-	  (parse/option-value symbol? keyword (car arguments) default))
-
-	(case keyword
-	  ((CONC-NAME)
-	   (check-arguments 0 1)
-	   (set! conc-name
-		 (and (not (null? arguments))
-		      (symbol-option (symbol-append name '-)))))
-	  ((KEYWORD-CONSTRUCTOR)
-	   (check-arguments 0 1)
-	   (set! keyword-constructors
-		 (cons (list option
-			     (if (null? arguments)
-				 (symbol-append 'make- name)
-				 (car arguments)))
-		       keyword-constructors)))
-	  ((CONSTRUCTOR)
-	   (check-arguments 0 2)
-	   (if (null? arguments)
-	       (set! boa-constructors
-		     (cons (list option (symbol-append 'make- name))
-			   boa-constructors))
-	       (let ((name (car arguments)))
-		 (if (memq name '(#F FALSE NIL))
-		     (set! default-constructor-disabled? true)
-		     (set! boa-constructors
-			   (cons (cons option arguments)
-				 boa-constructors))))))
-	  ((COPIER)
-	   (check-arguments 0 1)
-	   (if (not (null? arguments))
-	       (set! copier-name (symbol-option (symbol-append 'copy- name)))))
-	  ((PREDICATE)
-	   (check-arguments 0 1)
-	   (if (not (null? arguments))
-	       (set! predicate-name (symbol-option (symbol-append name '?)))))
-
-	  ((PRINT-PROCEDURE)
-	   (check-arguments 1 1)
-	   (set! print-procedure
-		 (parse/option-value (lambda (x) x true)
-				     keyword
-				     (car arguments)
-				     false)))
-	  ((NAMED)
-	   (check-arguments 0 1)
-	   (set! named-seen? true)
-	   (if (not (null? arguments))
-	       (set! tag-name (car arguments))))
-	  ((TYPE)
-	   (check-arguments 1 1)
-	   (set! type-seen? true)
-	   (set! type (car arguments)))
-	  ((INITIAL-OFFSET)
-	   (check-arguments 1 1)
-	   (set! offset (car arguments)))
-	  #|
-	  ((INCLUDE)
-	   (check-arguments 1 1)
-	   (set! include arguments))
-	  |#
-	  (else
-	   (error "Unrecognized structure option" keyword)))))
-
-    (for-each (lambda (option)
-		(if (pair? option)
-		    (parse/option option (car option) (cdr option))
-		    (parse/option option option '())))
-	      options)
+	(options-seen '()))
+    (set! tag-expression type-name)
+    (for-each
+     (lambda (option)
+       (if (not (or (symbol? option)
+		    (and (pair? option)
+			 (symbol? (car option))
+			 (list? (cdr option)))))
+	   (error "Ill-formed structure option:" option))
+       (with-values
+	   (lambda ()
+	     (if (pair? option)
+		 (values (car option) (cdr option))
+		 (values option '())))
+	 (lambda (keyword arguments)
+	   (set! options-seen (cons (cons keyword option) options-seen))
+	   (let ((n-arguments (length arguments))
+		 (check-duplicate
+		  (lambda ()
+		    (let ((previous (assq keyword (cdr options-seen))))
+		      (if previous
+			  (error "Duplicate structure option:"
+				 previous option)))))
+		 (symbol-option
+		  (lambda (argument)
+		    (cond ((memq argument '(#F FALSE NIL)) false)
+			  ((symbol? argument) argument)
+			  (else (error "Illegal structure option:" option))))))
+	     (let ((check-argument
+		    (lambda ()
+		      (if (not (= n-arguments 1))
+			  (error
+			   (if (= n-arguments 0)
+			       "Structure option requires an argument:"
+			       "Structure option accepts at most 1 argument:")
+			   option))))
+		   (check-arguments
+		    (lambda (max)
+		      (if (> n-arguments max)
+			  (error (string-append
+				  "Structure option accepts at most "
+				  (number->string max)
+				  " arguments:")
+				 option)))))
+	       (case keyword
+		 ((CONC-NAME)
+		  (check-duplicate)
+		  (check-argument)
+		  (set! conc-name (symbol-option (car arguments))))
+		 ((CONSTRUCTOR)
+		  (check-arguments 2)
+		  (if (null? arguments)
+		      (set! boa-constructors
+			    (cons (list option (symbol-append 'MAKE- name))
+				  boa-constructors))
+		      (let ((name (car arguments)))
+			(if (memq name '(#F FALSE NIL))
+			    (set! default-constructor-disabled? true)
+			    (set! boa-constructors
+				  (cons (cons option arguments)
+					boa-constructors))))))
+		 ((KEYWORD-CONSTRUCTOR)
+		  (check-arguments 1)
+		  (set! keyword-constructors
+			(cons (list option
+				    (if (null? arguments)
+					(symbol-append 'MAKE- name)
+					(car arguments)))
+			      keyword-constructors)))
+		 ((COPIER)
+		  (check-duplicate)
+		  (check-arguments 1)
+		  (set! copier-name
+			(if (null? arguments)
+			    (symbol-append 'COPY- name)
+			    (symbol-option (car arguments)))))
+		 ((PREDICATE)
+		  (check-duplicate)
+		  (check-arguments 1)
+		  (set! predicate-name
+			(if (null? arguments)
+			    (symbol-append name '?)
+			    (symbol-option (car arguments)))))
+		 ((PRINT-PROCEDURE)
+		  (check-duplicate)
+		  (check-argument)
+		  (set! print-procedure
+			(and (not (memq (car arguments) '(#F FALSE NIL)))
+			     (car arguments))))
+		 ((TYPE)
+		  (check-duplicate)
+		  (check-argument)
+		  (if (not (memq (car arguments) '(VECTOR LIST)))
+		      (error "Illegal structure option:" option))
+		  (set! type (car arguments)))
+		 ((NAMED)
+		  (check-duplicate)
+		  (check-arguments 1)
+		  (if (null? arguments)
+		      (begin
+			(set! type-name name)
+			(set! tag-expression type-name))
+		      (begin
+			(set! type-name false)
+			(set! tag-expression (car arguments)))))
+		 ((INITIAL-OFFSET)
+		  (check-duplicate)
+		  (check-argument)
+		  (if (not (exact-nonnegative-integer? (car arguments)))
+		      (error "Illegal structure option:" option))
+		  (set! offset (car arguments)))
+		 (else
+		  (error "Unknown structure option:" option))))))))
+     options)
     (let loop ((constructors (append boa-constructors keyword-constructors)))
       (if (not (null? constructors))
 	  (begin
 	    (let ((name (cadar constructors)))
 	      (for-each (lambda (constructor)
 			  (if (eq? name (cadr constructor))
-			      (error "Conflicting constructor definitions"
+			      (error "Conflicting constructor definitions:"
 				     (caar constructors)
 				     (car constructor))))
 			(cdr constructors)))
 	    (loop (cdr constructors)))))
-    (vector structure
-	    name
-	    conc-name
-	    false
-	    (map cdr keyword-constructors)
-	    (cond ((or (not (null? boa-constructors))
-		       (not (null? keyword-constructors)))
-		   (map cdr boa-constructors))
-		  ((not default-constructor-disabled?)
-		   (list (list (symbol-append 'make- name))))
-		  (else
-		   '()))
-	    copier-name
-	    predicate-name
-	    (if (eq? print-procedure default-value)
-		`(,(absolute 'UNPARSER/STANDARD-METHOD) ',name)
-		print-procedure)
-	    type 
-	    (cond ((eq? type 'STRUCTURE) 'VECTOR)
-		  ((eq? type 'VECTOR) 'VECTOR)
-		  ((eq? type 'LIST) 'LIST)
-		  ((eq? type 'RECORD) 'RECORD)
-		  (else (error "Unsupported structure type" type)))
-	    (and (or (not type-seen?) named-seen?)
-		 (if (eq? tag-name default-value) 'DEFAULT true))
-	    (if (eq? tag-name default-value)
-		name
-		tag-name)
-	    (if (and (eq? type 'RECORD) (not (zero? offset)))
-		(error "Offset not allowed for record type structures" offset)
-		offset)
-	    include
-	    '())))
-
-(define default-value
-  "default")
+    (let ((type-seen? (assq 'TYPE options-seen))
+	  (named-seen? (assq 'NAMED options-seen)))
+      (let ((named? (or (not type-seen?) named-seen?)))
+	(if (not type-seen?)
+	    (begin
+	      (if (and named-seen? (not type-name))
+		  (error "Illegal structure option:" (cdr named-seen?)))
+	      (let ((initial-offset-seen? (assq 'INITIAL-OFFSET options-seen)))
+		(if initial-offset-seen?
+		    (error "Structure option illegal without TYPE option:"
+			   (cdr initial-offset-seen?))))))
+	(if (not named?)
+	    (let ((check
+		   (lambda (option-seen)
+		     (if option-seen
+			 (error
+			  "Structure option illegal for unnamed structure:"
+			  (cdr option-seen))))))
+	      (if predicate-name
+		  (check (assq 'PREDICATE options-seen)))
+	      (if print-procedure
+		  (check (assq 'PRINT-PROCEDURE options-seen)))))
+	(make-structure name
+			conc-name
+			(map cdr keyword-constructors)
+			(cond ((or (not (null? boa-constructors))
+				   (not (null? keyword-constructors)))
+			       (map cdr boa-constructors))
+			      ((not default-constructor-disabled?)
+			       (list (list (symbol-append 'MAKE- name))))
+			      (else
+			       '()))
+			copier-name
+			(and named? predicate-name)
+			(and named? print-procedure)
+			type
+			named?
+			(and named? type-name)
+			(and named? tag-expression)
+			offset
+			slots)))))
 
 ;;;; Parse Slot-Descriptions
 
-(define (parse/slot-descriptions structure slot-descriptions)
-  (define (loop slot-descriptions index)
-    (if (null? slot-descriptions)
-	'()
-	(cons (parse/slot-description structure (car slot-descriptions) index)
-	      (loop (cdr slot-descriptions) (1+ index)))))
-  (loop slot-descriptions
-	(if (structure/named? structure)
-	    (1+ (structure/offset structure))
-	    (structure/offset structure))))
-
-(define (parse/slot-description structure slot-description index)
-  structure
-  (let ((kernel
-	 (lambda (name default options)
-	   (if (not (list? options))
-	       (error "Structure slot options must be a list" options))
-	   (let ((type #T) (read-only? false))
-	     (define (with-option-type-and-argument options receiver)
-	       (if (null? (cdr options))
-		   (error "DEFINE-STRUCTURE -- Argument to option not given"
-			  (car options))
-		   (receiver (car options) (cadr options))))
-	     (let loop ((options options))
-	       (if (not (null? options))
-		   (begin
-		     (case (car options)
-		       ((TYPE)
-			(set! type
-			      (with-option-type-and-argument options
-                                (lambda (type arg)
-				  (parse/option-value symbol?
-						      type
-						      arg
-						      true)))))
-		       ((READ-ONLY)
-			(set! read-only?
-			      (with-option-type-and-argument options
-                                (lambda (type arg)
-				  (parse/option-value boolean?
-						      type
-						      arg
-						      true)))))
-		       (else
-			(error "Unrecognized structure slot option"
-			       (car options))))
-		     (loop (cddr options)))))
-	     (vector name index default type read-only?)))))
-    (if (pair? slot-description)
-	(if (pair? (cdr slot-description))
-	    (kernel (car slot-description)
-		    (cadr slot-description)
-		    (cddr slot-description))
-	    (kernel (car slot-description) false '()))
-	(kernel slot-description false '()))))
-
-(define (parse/option-value predicate keyword option default)
-  (case option
-    ((FALSE NIL)
-     #F)
-    ((TRUE T)
-     default)
-    (else
-     (if (not (or (predicate option)
-		  (not option)
-		  (eq? option default)))
-	 (error "Structure option has incorrect type" keyword option))
-     option)))
+(define (parse/slot-description slot-description)
+  (with-values
+      (lambda ()
+	(if (pair? slot-description)
+	    (if (pair? (cdr slot-description))
+		(values (car slot-description)
+			(cadr slot-description)
+			(cddr slot-description))
+		(values (car slot-description) false '()))
+	    (values slot-description false '())))
+    (lambda (name default options)
+      (if (not (list? options))
+	  (error "Structure slot options must be a list" options))
+      (let ((type true)
+	    (read-only? false)
+	    (options-seen '()))
+	(do ((options options (cddr options)))
+	    ((null? options))
+	  (if (null? (cdr options))
+	      (error "Missing slot option argument:" (car options)))
+	  (let ((previous (assq (car options) options-seen))
+		(option (list (car options) (cadr options))))
+	    (if previous
+		(error "Duplicate slot option:" previous option))
+	    (set! options-seen (cons option options-seen))
+	    (case (car options)
+	      ((TYPE)
+	       (set! type
+		     (let ((argument (cadr options)))
+		       (cond ((memq argument '(#T TRUE T)) true)
+			     ((symbol? argument) argument)
+			     (else (error "Illegal slot option:" option))))))
+	      ((READ-ONLY)
+	       (set! read-only?
+		     (let ((argument (cadr options)))
+		       (cond ((memq argument '(#F FALSE NIL)) false)
+			     ((memq argument '(#T TRUE T)) true)
+			     (else (error "Illegal slot option:" option))))))
+	      (else
+	       (error "Unrecognized structure slot option:" option)))))
+	(make-slot name default type read-only?)))))
 
 ;;;; Descriptive Structure
 
-(let-syntax
-    ((define-structure-refs
-       (macro (name reserved . slots)
-	 (define (loop slots n)
-	   (if (null? slots)
-	       '()
-	       (cons
-		(let ((ref-name (symbol-append name '/ (car slots)))
-		      (set-name (symbol-append name '/set- (car slots) '!)))
-		  `(BEGIN
-		     (DECLARE (INTEGRATE-OPERATOR ,ref-name ,set-name))
-		     (DEFINE (,ref-name ,name)
-		       (DECLARE (INTEGRATE ,name))
-		       (VECTOR-REF ,name ,n))
-		     (DEFINE (,set-name ,name ,(car slots))
-		       (DECLARE (INTEGRATE ,name ,(car slots)))
-		       (VECTOR-SET! ,name ,n ,(car slots)))))
-		(loop (cdr slots) (1+ n)))))
-	 `(BEGIN ,@(loop slots reserved)))))
+(define structure-rtd
+  (make-record-type "structure"
+		    '(NAME
+		      CONC-NAME
+		      KEYWORD-CONSTRUCTORS
+		      BOA-CONSTRUCTORS
+		      COPIER-NAME
+		      PREDICATE-NAME
+		      PRINT-PROCEDURE
+		      TYPE
+		      NAMED?
+		      TYPE-NAME
+		      TAG-EXPRESSION
+		      OFFSET
+		      SLOTS)))
 
-  (define-structure-refs structure 1
-    name
-    conc-name
-    *dummy*
-    keyword-constructors
-    boa-constructors
-    copier-name
-    predicate-name
-    print-procedure
-    type
-    scheme-type
-    named?
-    tag-name
-    offset
-    include
-    slots)
+(define make-structure
+  (record-constructor structure-rtd))
 
-  (define-structure-refs slot 0
-    name
-    index
-    default
-    type
-    read-only?))
+(define structure?
+  (record-predicate structure-rtd))
 
-(define-integrable structure
-  ((ucode-primitive string->symbol) "#[defstruct-description]"))
+(define structure/name
+  (record-accessor structure-rtd 'NAME))
+
+(define structure/conc-name
+  (record-accessor structure-rtd 'CONC-NAME))
+
+(define structure/keyword-constructors
+  (record-accessor structure-rtd 'KEYWORD-CONSTRUCTORS))
+
+(define structure/boa-constructors
+  (record-accessor structure-rtd 'BOA-CONSTRUCTORS))
+
+(define structure/copier-name
+  (record-accessor structure-rtd 'COPIER-NAME))
+
+(define structure/predicate-name
+  (record-accessor structure-rtd 'PREDICATE-NAME))
+
+(define structure/print-procedure
+  (record-accessor structure-rtd 'PRINT-PROCEDURE))
+
+(define structure/type
+  (record-accessor structure-rtd 'TYPE))
+
+(define structure/named?
+  (record-accessor structure-rtd 'NAMED?))
+
+(define structure/type-name
+  (record-accessor structure-rtd 'TYPE-NAME))
+
+(define structure/tag-expression
+  (record-accessor structure-rtd 'TAG-EXPRESSION))
+
+(define structure/offset
+  (record-accessor structure-rtd 'OFFSET))
+
+(define structure/slots
+  (record-accessor structure-rtd 'SLOTS))
+
+(define slot-rtd
+  (make-record-type "slot" '(NAME DEFAULT TYPE READ-ONLY? INDEX)))
+
+(define make-slot
+  (record-constructor slot-rtd '(NAME DEFAULT TYPE READ-ONLY?)))
+
+(define slot/name (record-accessor slot-rtd 'NAME))
+(define slot/default (record-accessor slot-rtd 'DEFAULT))
+(define slot/type (record-accessor slot-rtd 'TYPE))
+(define slot/read-only? (record-accessor slot-rtd 'READ-ONLY?))
+(define slot/index (record-accessor slot-rtd 'INDEX))
+(define set-slot/index! (record-modifier slot-rtd 'INDEX))
 
 (define slot-assoc)
-
-(define (structure? object)
-  (and (vector? object)
-	   (not (zero? (vector-length object)))
-	   (eq? structure (vector-ref object 0))))
-
-(define (tag->structure tag)
-  (if (structure? tag)
-      tag
-      (named-structure/get-tag-description tag)))
-
-(define record-type-name-tag
-  ((ucode-primitive string->symbol) "#[defstruct-tag]"))
-
-(unparser/set-tagged-vector-method! record-type-name-tag
-  (lambda (state record-type-name)
-    (unparse-object
-     state
-     (record-type-name->tag-name record-type-name))))
-
-(define-integrable (make-record-type-name structure-descriptor)
-  (vector
-   record-type-name-tag
-   (structure/tag-name structure-descriptor)
-   structure-descriptor))
-
-(define-integrable (record-type-name->tag-name type-name)
-  (and (vector? type-name)
-       (= 3 (vector-length type-name))
-       (vector-second type-name)))
-
-(define-integrable (record-type-name->structure-descriptor type-name)
-  (and (vector? type-name)
-       (= 3 (vector-length type-name))
-       (vector-third type-name)))
-
-(define-integrable (record-is-structure? record)
-  (eq? (record-type-name->structure-descriptor record)
-       record-type-name-tag))
-
-(define (named-structure? object)
-  (let ((object
-	 (cond ((and (record? object) (record-is-structure? object))
-		(tag->structure
-		 (record-type-name->structure-descriptor
-		  (record-type-name (record-type-descriptor object)))))
-	       ((vector? object)
-		(and (not (zero? (vector-length object)))
-		     (tag->structure (vector-ref object 0))))
-	       ((pair? object)
-		(tag->structure (car object)))
-	       (else false))))
-    (or (structure? object)
-	(procedure? object))))
-
-(define (named-structure/description instance)
-  (let ((structure
-	 (tag->structure
-	  (cond ((vector? instance) (vector-ref instance 0))
-		((pair? instance) (car instance))
-		((record? instance)
-		 (record-type-name->structure-descriptor
-		  (record-type-name (record-type-descriptor instance))))
-		(else (error "Illegal structure instance" instance))))))
-    (cond ((structure? structure)
-	   (let ((scheme-type (structure/scheme-type structure)))
-	     (if (not (case scheme-type
-			((VECTOR) (vector? instance))
-			((LIST) (list? instance))
-			((RECORD) (record? instance))
-			(else (error "Illegal structure type" scheme-type))))
-		 (error "Malformed structure instance" instance))
-	     (let ((accessor
-		    (case scheme-type
-		      ((VECTOR)
-		       (lambda (instance slot)
-			 (vector-ref instance (slot/index slot))))
-		      ((LIST)
-		       (lambda (instance slot)
-			 (list-ref instance (slot/index slot))))
-		      ((RECORD)
-		       (lambda (instance slot)
-			 ((record-accessor
-			   (structure/type structure)
-			   (slot/name slot))
-			  instance))))))
-	       (map (lambda (slot)
-		      `(,(slot/name slot)
-			,(accessor instance slot)))
-		    (structure/slots structure)))))
-	  ((procedure? structure)
-	   (structure instance))
-	  (else
-	   (error "Illegal structure instance" instance)))))
 
 ;;;; Code Generation
 
@@ -482,69 +429,50 @@ must be defined when the defstruct is evaluated.
   `(ACCESS ,name #F))
 
 (define (accessor-definitions structure)
+  (map (lambda (slot)
+	 `(DEFINE-INTEGRABLE
+	    (,(if (structure/conc-name structure)
+		  (symbol-append (structure/conc-name structure)
+				 (slot/name slot))
+		  (slot/name slot))
+	     STRUCTURE)
+	    (,(absolute
+	       (case (structure/type structure)
+		 ((RECORD) '%RECORD-REF)
+		 ((VECTOR) 'VECTOR-REF)
+		 ((LIST) 'LIST-REF)))
+	     STRUCTURE
+	     ,(slot/index slot))))
+       (structure/slots structure)))
+
+(define (modifier-definitions structure)
   (append-map! (lambda (slot)
-		 (let ((accessor-name
-			(if (structure/conc-name structure)
-			    (symbol-append (structure/conc-name structure)
-					   (slot/name slot))
-			    (slot/name slot))))
-		   (if (eq? (structure/scheme-type structure) 'RECORD)
-		       `((DECLARE (INTEGRATE-OPERATOR ,accessor-name))
-			 (DEFINE ,accessor-name
-			   (,(absolute 'RECORD-ACCESSOR)
-			    ,(structure/type structure)
-			    ',(slot/name slot))))
-		       `((DECLARE (INTEGRATE-OPERATOR ,accessor-name))
-			 (DEFINE (,accessor-name STRUCTURE)
-			   (DECLARE (INTEGRATE STRUCTURE))
-			   ,(case (structure/scheme-type structure)
-			      ((VECTOR)
-			       `(,(absolute 'VECTOR-REF)
-				 STRUCTURE
-				 ,(slot/index slot)))
-			      ((LIST)
-			       `(,(absolute 'LIST-REF)
-				 STRUCTURE
-				 ,(slot/index slot)))
-			      (error "Unknown scheme type" structure)))))))
+		 (if (slot/read-only? slot)
+		     '()
+		     `((DEFINE-INTEGRABLE
+			 (,(if (structure/conc-name structure)
+			       (symbol-append 'SET-
+					      (structure/conc-name structure)
+					      (slot/name slot)
+					      '!)
+			       (symbol-append 'SET- (slot/name slot) '!))
+			  STRUCTURE
+			  VALUE)
+			 ,(case (structure/type structure)
+			    ((RECORD)
+			     `(,(absolute '%RECORD-SET!) STRUCTURE
+							 ,(slot/index slot)
+							 VALUE))
+			    ((VECTOR)
+			     `(,(absolute 'VECTOR-SET!) STRUCTURE
+							,(slot/index slot)
+							VALUE))
+			    ((LIST)
+			     `(,(absolute 'SET-CAR!)
+			       (,(absolute 'LIST-TAIL) STRUCTURE
+						       ,(slot/index slot))
+			       VALUE)))))))
 	       (structure/slots structure)))
-
-(define (settor-definitions structure)
-  (append-map!
-   (lambda (slot)
-     (if (slot/read-only? slot)
-	 '()
-	 (let ((settor-name
-		(if (structure/conc-name structure)
-		    (symbol-append 'SET-
-				   (structure/conc-name structure)
-				   (slot/name slot)
-				   '!)
-		    (symbol-append 'SET-
-				   (slot/name slot)
-				   '!))))
-	   (if (eq? (structure/scheme-type structure) 'RECORD)
-	       `((DECLARE (INTEGRATE-OPERATOR ,settor-name))
-		 (DEFINE ,settor-name
-		   (,(absolute 'RECORD-UPDATER)
-		    ,(structure/type structure)
-		    ',(slot/name slot))))
-	       `((DECLARE (INTEGRATE-OPERATOR ,settor-name))
-		 (DEFINE (,settor-name STRUCTURE VALUE)
-		   (DECLARE (INTEGRATE STRUCTURE VALUE))
-		   ,(case (structure/scheme-type structure)
-		      ((VECTOR)
-		       `(,(absolute 'VECTOR-SET!) STRUCTURE
-						  ,(slot/index slot)
-						  VALUE))
-		      ((LIST)
-		       `(,(absolute 'SET-CAR!)
-			 (,(absolute 'LIST-TAIL) STRUCTURE
-						 ,(slot/index slot))
-			 VALUE))
-		      (else
-		       (error "Unknown scheme type" structure)))))))))
-   (structure/slots structure)))
 
 (define (constructor-definitions structure)
   `(,@(map (lambda (boa-constructor)
@@ -565,24 +493,20 @@ must be defined when the defstruct is evaluated.
 	 (map (lambda (slot)
 		(string->uninterned-symbol (symbol->string (slot/name slot))))
 	      (structure/slots structure))))
-    (if (eq? (structure/scheme-type structure) 'RECORD)
-	`(DEFINE ,name
-	   (,(absolute 'RECORD-CONSTRUCTOR)
-	    ,(structure/type structure)
-	    ',(map slot/name
-		   (structure/slots structure))))
-	`(DEFINE (,name ,@slot-names)
-	   ;; *** Kludge -- SCHEME-TYPE happens to be same as constructor.
-	   (,(absolute (structure/scheme-type structure))
-	    ,@(constructor-prefix-slots structure)
-	    ,@slot-names)))))
+    `(DEFINE (,name ,@slot-names)
+       (,(absolute
+	  (case (structure/type structure)
+	    ((RECORD) '%RECORD)
+	    ((VECTOR) 'VECTOR)
+	    ((LIST) 'LIST)))
+	,@(constructor-prefix-slots structure)
+	,@slot-names))))
 
 (define (constructor-definition/keyword structure name)
   (let ((keyword-list (string->uninterned-symbol "keyword-list")))
     `(DEFINE (,name . ,keyword-list)
        ,(let ((list-cons
-	       `(,(absolute 'CONS*)
-		 ,@(constructor-prefix-slots structure)
+	       `(,@(constructor-prefix-slots structure)
 		 (,(absolute 'DEFINE-STRUCTURE/KEYWORD-PARSER)
 		  ,keyword-list
 		  (,(absolute 'LIST)
@@ -590,16 +514,13 @@ must be defined when the defstruct is evaluated.
 			    `(,(absolute 'CONS) ',(slot/name slot)
 						,(slot/default slot)))
 			  (structure/slots structure)))))))
-	  (case (structure/scheme-type structure)
-	    ((VECTOR)
-	     `(,(absolute 'LIST->VECTOR) ,list-cons))
-	    ((LIST)
-	     list-cons)
+	  (case (structure/type structure)
 	    ((RECORD)
-	     `((,(absolute 'RECORD-CONSTRUCTOR) (structure/type structure))
-	       ,list-cons))
-	    (else
-	     (error "Unknown scheme type" structure)))))))
+	     `(,(absolute 'APPLY) ,(absolute '%RECORD) ,@list-cons))
+	    ((VECTOR)
+	     `(,(absolute 'APPLY) ,(absolute 'VECTOR) ,@list-cons))
+	    ((LIST)
+	     `(,(absolute 'CONS*) ,@list-cons)))))))
 
 (define (define-structure/keyword-parser argument-list default-alist)
   (if (null? argument-list)
@@ -620,8 +541,14 @@ must be defined when the defstruct is evaluated.
 	(map cdr alist))))
 
 (define (constructor-definition/boa structure name lambda-list)
-  (let ((handle-defaults
-	 (parse-lambda-list lambda-list
+  `(DEFINE (,name . ,lambda-list)
+     (,(absolute
+	(case (structure/type structure)
+	  ((RECORD) '%RECORD)
+	  ((VECTOR) 'VECTOR)
+	  ((LIST) 'LIST)))
+      ,@(constructor-prefix-slots structure)
+      ,@(parse-lambda-list lambda-list
 	  (lambda (required optional rest)
 	    (let ((name->slot
 		   (lambda (name)
@@ -640,94 +567,146 @@ must be defined when the defstruct is evaluated.
 				   ,(slot/name slot)))
 			     (else
 			      (slot/default slot))))
-		     (structure/slots structure)))))))
-	 (prefix-slots (constructor-prefix-slots structure))
-	 (scheme-type (structure/scheme-type structure)))
-    (if (eq? scheme-type 'RECORD)
-	`(DEFINE (,name . ,lambda-list)
-	   (,((access RECORD-CONSTRUCTOR '())
-	      (structure/type structure))
-	    ,@handle-defaults))
-	`(DEFINE (,name . ,lambda-list)
-	   ;; *** Kludge -- SCHEME-TYPE happens to be same as constructor.
-	   (,(absolute scheme-type)
-	    ,@prefix-slots
-	    ,@handle-defaults)))))
+		     (structure/slots structure)))))))))
 
 (define (constructor-prefix-slots structure)
   (let ((offsets (make-list (structure/offset structure) false)))
     (if (structure/named? structure)
-	(cons (structure/tag-name structure) offsets)
+	(cons (structure/tag-expression structure) offsets)
 	offsets)))
 
-(define (type-definitions structure)
-  (cond ((not (structure/named? structure))
-	 '())
-	((eq? (structure/named? structure) 'DEFAULT)
-	 `((DEFINE ,(structure/tag-name structure)
-	     ',structure)))
-	(else
-	 `((NAMED-STRUCTURE/SET-TAG-DESCRIPTION!
-	    ,(structure/tag-name structure)
-	    ',structure)))))
-
-(define (predicate-definitions structure)
-  (if (and (structure/predicate-name structure)
-	   (structure/named? structure))
-      (let ((variable (string->uninterned-symbol "object")))
-	(case (structure/scheme-type structure)
-	  ((VECTOR)
-	   `((DEFINE (,(structure/predicate-name structure) ,variable)
-	       (AND (,(absolute 'VECTOR?) ,variable)
-		    (,(absolute 'NOT)
-		     (,(absolute 'ZERO?)
-		      (,(absolute 'VECTOR-LENGTH) ,variable)))
-		    (,(absolute 'EQ?) (,(absolute 'VECTOR-REF) ,variable 0)
-				      ,(structure/tag-name structure))))))
-	  ((LIST)
-	   `((DEFINE (,(structure/predicate-name structure) ,variable)
-	       (AND (,(absolute 'PAIR?) ,variable)
-		    (,(absolute 'EQ?) (,(absolute 'CAR) ,variable)
-				      ,(structure/tag-name structure))))))
-	  ((RECORD)
-	   `((DEFINE ,(structure/predicate-name structure)
-	       (,(absolute 'RECORD-PREDICATE)
-		,(structure/type structure)))))
-	  (else
-	   (error "Unknown scheme type" structure))))
-      '()))
-
 (define (copier-definitions structure)
   (let ((copier-name (structure/copier-name structure)))
     (if copier-name
-	`((DECLARE (INTEGRATE-OPERATOR ,copier-name))
-	  ,(case (structure/scheme-type structure)
-	     ((VECTOR)
-	      `(DEFINE (,copier-name OBJECT)
-		 (DECLARE (INTEGRATE OBJECT))
-		 (,(absolute 'VECTOR-COPY) OBJECT)))
-	     ((LIST)
-	      `(DEFINE (,copier-name OBJECT)
-		 (DECLARE (INTEGRATE OBJECT))
-		 (,(absolute 'LIST-COPY) OBJECT)))
-	     ((RECORD)
-	      (error "No copiers for record type structures" structure))
-	     (else
-	      (error "Unknown scheme type" structure))))
+	`((DEFINE ,copier-name
+	    ,(absolute
+	      (case (structure/type structure)
+		((RECORD) 'RECORD-COPY)
+		((VECTOR) 'VECTOR-COPY)
+		((LIST) 'LIST-COPY)))))
+	'())))
+
+(define (predicate-definitions structure)
+  (let ((predicate-name (structure/predicate-name structure)))
+    (if predicate-name
+	(let ((tag-expression (structure/tag-expression structure))
+	      (variable (string->uninterned-symbol "object")))
+	  `((DEFINE (,predicate-name ,variable)
+	      ,(case (structure/type structure)
+		 ((RECORD)
+		  `(AND (,(absolute '%RECORD?) ,variable)
+			(,(absolute 'EQ?)
+			 (,(absolute '%RECORD-REF) ,variable 0)
+			 ,tag-expression)))
+		 ((VECTOR)
+		  `(AND (,(absolute 'VECTOR?) ,variable)
+			(,(absolute 'NOT)
+			 (,(absolute 'ZERO?)
+			  (,(absolute 'VECTOR-LENGTH) ,variable)))
+			(,(absolute 'EQ?) (,(absolute 'VECTOR-REF) ,variable 0)
+					  ,tag-expression)))
+		 ((LIST)
+		  `(AND (,(absolute 'PAIR?) ,variable)
+			(,(absolute 'EQ?) (,(absolute 'CAR) ,variable)
+					  ,tag-expression)))))))
 	'())))
 
 (define (print-procedure-definitions structure)
-  (if (and (structure/print-procedure structure)
-	   (structure/named? structure))
-      (let ((scheme-type (structure/scheme-type structure)))
-	`((,(absolute (case scheme-type
-			((VECTOR) 'UNPARSER/SET-TAGGED-VECTOR-METHOD!)
-			((LIST) 'UNPARSER/SET-TAGGED-PAIR-METHOD!)
-			((RECORD) 'SET-RECORD-TYPE-UNPARSER-METHOD!)
-			(else (error "Unknown scheme type" structure))))
-	   ,((if (eq? scheme-type 'RECORD)
-		 structure/type
-		 structure/tag-name)
-	     structure)
-	   ,(structure/print-procedure structure))))
+  (let ((print-procedure (structure/print-procedure structure)))
+    (if (and print-procedure (eq? (structure/type structure) 'RECORD))
+	`((,(absolute 'SET-RECORD-TYPE-UNPARSER-METHOD!)
+	   ,(structure/type-name structure)
+	   ,print-procedure))
+	'())))
+
+(define (type-definitions structure)
+  (if (structure/named? structure)
+      (let ((type (structure/type structure))
+	    (type-name (structure/type-name structure))
+	    (name (symbol->string (structure/name structure)))
+	    (field-names (map slot/name (structure/slots structure))))
+	(if (eq? type 'RECORD)
+	    `((DEFINE ,type-name
+		(,(absolute 'MAKE-RECORD-TYPE) ',name ',field-names)))
+	    (let ((type-expression
+		   `(,(absolute 'MAKE-DEFINE-STRUCTURE-TYPE)
+		     ',type
+		     ',name
+		     ',field-names
+		     ',(map slot/index (structure/slots structure))
+		     ,(structure/print-procedure structure))))
+	      (if type-name
+		  `((DEFINE ,type-name ,type-expression))
+		  `((NAMED-STRUCTURE/SET-TAG-DESCRIPTION!
+		     ,(structure/tag-expression structure)
+		     ,type-expression))))))
       '()))
+
+(define structure-type-rtd
+  (make-record-type "structure-type"
+		    '(TYPE NAME FIELD-NAMES FIELD-INDEXES UNPARSER-METHOD)))
+
+(define make-define-structure-type
+  (record-constructor structure-type-rtd))
+
+(define structure-type?
+  (record-predicate structure-type-rtd))
+
+(define structure-type/type
+  (record-accessor structure-type-rtd 'TYPE))
+
+(define structure-type/name
+  (record-accessor structure-type-rtd 'NAME))
+
+(define structure-type/field-names
+  (record-accessor structure-type-rtd 'FIELD-NAMES))
+
+(define structure-type/field-indexes
+  (record-accessor structure-type-rtd 'FIELD-INDEXES))
+
+(define structure-type/unparser-method
+  (record-accessor structure-type-rtd 'UNPARSER-METHOD))
+
+(define set-structure-type/unparser-method!
+  (record-modifier structure-type-rtd 'UNPARSER-METHOD))
+
+(define (structure-tag/unparser-method tag type)
+  (let ((structure-type (tag->structure-type tag type)))
+    (and structure-type
+	 (structure-type/unparser-method structure-type))))
+
+(define (named-structure? object)
+  (cond ((record? object)
+	 true)
+	((vector? object)
+	 (and (not (zero? (vector-length object)))
+	      (tag->structure-type (vector-ref object 0) 'VECTOR)))
+	((pair? object)
+	 (tag->structure-type (car object) 'LIST))
+	(else
+	 false)))
+
+(define (named-structure/description structure)
+  (cond ((record? structure)
+	 (record-description structure))
+	((named-structure? structure)
+	 =>
+	 (lambda (type)
+	   (let ((accessor (if (pair? structure) list-ref vector-ref)))
+	     (map (lambda (field-name index)
+		    `(,field-name ,(accessor structure index)))
+		  (structure-type/field-names type)
+		  (structure-type/field-indexes type)))))
+	(else
+	 (error:wrong-type-argument structure "named structure"
+				    'NAMED-STRUCTURE/DESCRIPTION))))
+
+(define (tag->structure-type tag type)
+  (if (structure-type? tag)
+      (and (eq? (structure-type/type tag) type)
+	   tag)
+      (and (symbol? tag)
+	   (let ((structure-type (named-structure/get-tag-description tag)))
+	     (and (structure-type? structure-type)
+		  (eq? (structure-type/type structure-type) type)
+		  structure-type)))))

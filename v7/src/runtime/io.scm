@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.30 1992/04/16 05:12:27 jinx Exp $
+$Id: io.scm,v 14.31 1992/12/07 19:06:45 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -405,6 +405,8 @@ MIT in each case. |#
 (define (terminal-output-baud-rate channel)
   ((ucode-primitive baud-index->rate 1)
    ((ucode-primitive terminal-get-ospeed 1) (channel-descriptor channel))))
+
+;;;; PTY Master Primitives
 
 (define (open-pty-master)
   (without-interrupts
@@ -545,7 +547,8 @@ MIT in each case. |#
 			       buffer-size))
       (lambda (logical-size string-size)
 	(%make-output-buffer channel
-			     (and (fix:> string-size 0) (make-string string-size))
+			     (and (fix:> string-size 0)
+				  (make-string string-size))
 			     0
 			     translation
 			     logical-size)))))
@@ -776,7 +779,7 @@ MIT in each case. |#
 
 (define (input-buffer/buffered-chars buffer)
   (fix:- (input-buffer/end-index buffer) (input-buffer/start-index buffer)))
-
+
 (define (input-buffer/chars-remaining buffer)
   (let ((channel (input-buffer/channel buffer)))
     (and (channel-open? channel)
@@ -785,7 +788,7 @@ MIT in each case. |#
 	 (let ((n (fix:- (file-length channel) (file-position channel))))
 	   (and (fix:>= n 0)
 		(fix:+ (input-buffer/buffered-chars buffer) n))))))
-
+
 (define (input-buffer/char-ready? buffer interval)
   (char-ready? buffer
     (lambda (buffer)
@@ -999,12 +1002,13 @@ MIT in each case. |#
 					   string start)
 		     (set-input-buffer/start-index! buffer end-index)
 		     (fix:+ available
-			    (or (and (channel-open? (input-buffer/channel buffer))
+			    (or (and (channel-open?
+				      (input-buffer/channel buffer))
 				     (read-directly (fix:+ start available)
 						    end))
 				0))))))
 	    ((or (fix:= end-index 0)
-		 (channel-closed? channel))
+		 (channel-closed? (input-buffer/channel buffer)))
 	     0)
 	    (else
 	     (read-directly start end)))))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/boot.scm,v 14.4 1990/09/19 00:32:41 cph Rel $
+$Id: boot.scm,v 14.5 1992/12/07 19:06:39 cph Exp $
 
-Copyright (c) 1988, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -57,6 +57,10 @@ MIT in each case. |#
 		(begin (write-char #\Space port)
 		       (unparser state object)))
 	    (write-char #\] port))))))
+
+(define (unparser-method? object)
+  (and (procedure? object)
+       (procedure-arity-valid? object 2)))
 
 (define-integrable interrupt-bit/stack     #x0001)
 (define-integrable interrupt-bit/global-gc #x0002)

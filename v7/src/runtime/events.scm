@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/events.scm,v 14.2 1991/04/25 14:40:13 markf Exp $
+$Id: events.scm,v 14.3 1992/12/07 19:06:44 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,17 +39,12 @@ MIT in each case. |#
 
 (define (initialize-package!)
   (set! add-event-receiver! (make-receiver-modifier 'ADD-RECEIVER))
-  (set! remove-event-receiver! (make-receiver-modifier 'REMOVE-RECEIVER)))
-
-(define (initialize-unparser!)
-  (unparser/set-tagged-vector-method!
-   event-distributor
-   (unparser/standard-method 'EVENT-DISTRIBUTOR)))
+  (set! remove-event-receiver! (make-receiver-modifier 'REMOVE-RECEIVER))
+  unspecific)
 
 (define-structure (event-distributor
 		   (constructor make-event-distributor ())
-		   (conc-name event-distributor/)
-		   (print-procedure false))
+		   (conc-name event-distributor/))
   (events (make-queue))
   (lock false)
   (receivers '()))

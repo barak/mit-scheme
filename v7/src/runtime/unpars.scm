@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.28 1992/09/21 20:33:45 cph Exp $
+$Id: unpars.scm,v 14.29 1992/12/07 19:07:00 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -97,6 +97,7 @@ MIT in each case. |#
 		(PRIMITIVE ,unparse/primitive-procedure)
 		(PROCEDURE ,unparse/compound-procedure)
 		(RATNUM ,unparse/number)
+		(RECORD ,unparse/record)
 		(RETURN-ADDRESS ,unparse/return-address)
 		(STRING ,unparse/string)
 		(UNINTERNED-SYMBOL ,unparse/uninterned-symbol)
@@ -398,7 +399,10 @@ MIT in each case. |#
 
 (define (unparse-vector/unparser vector)
   (and (not (zero? (vector-length vector)))
-       (unparser/tagged-vector-method (safe-vector-ref vector 0))))
+       (let ((tag (safe-vector-ref vector 0)))
+	 (or (structure-tag/unparser-method tag 'VECTOR)
+	     ;; Check the global tagging table too.
+	     (unparser/tagged-vector-method tag)))))
 
 (define (unparse-vector/normal vector)
   (limit-unparse-depth
@@ -429,6 +433,12 @@ MIT in each case. |#
 			   (vector-ref vector index)))))
       (error "Attempt to unparse partially marked vector"))
   (vector-ref vector index))
+
+(define (unparse/record record)
+  (let ((method (%record-unparser-method record)))
+    (if method
+	(invoke-user-method method record)
+	(unparse/default record))))
 
 (define (unparse/pair pair)
   (let ((prefix (unparse-list/prefix-pair? pair)))
@@ -487,8 +497,11 @@ MIT in each case. |#
 	 (*unparse-string " . ")
 	 (*unparse-object l))))
 
-(define-integrable (unparse-list/unparser object)
-  (unparser/tagged-pair-method (car object)))
+(define (unparse-list/unparser pair)
+  (let ((tag (car pair)))
+    (or (structure-tag/unparser-method tag 'LIST)
+	;; Check the global tagging table too.
+	(unparser/tagged-pair-method tag))))
 
 (define (unparse-list/prefix-pair prefix pair)
   (*unparse-string prefix)

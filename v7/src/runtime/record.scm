@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.16 1992/12/02 20:30:00 cph Exp $
+$Id: record.scm,v 1.17 1992/12/07 19:06:52 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -49,165 +49,207 @@ MIT in each case. |#
 (define-integrable (%record? object)
   (object-type? (ucode-type record) object))
 
-(define (initialize-package!)
-  (set! record-type-marker
-	((ucode-primitive string->symbol)
-	 "#[(runtime record)record-type-marker]"))
-  (unparser/set-tagged-vector-method!
-   record-type-marker
-   (unparser/standard-method 'RECORD-TYPE-DESCRIPTOR
-     (lambda (state record-type)
-       (unparse-object state (record-type-name record-type)))))
-  (named-structure/set-tag-description! record-type-marker
-    (lambda (record-type)
-      (if (not (record-type? record-type))
-	  (error:wrong-type-argument record-type "record type" false))
-      `((TYPE-NAME ,(record-type-name record-type))
-	(FIELD-NAMES ,(record-type-field-names record-type))))))
-
-(define record-type-marker)
+(define (%make-record length #!optional object)
+  (if (not (exact-integer? length))
+      (error:wrong-type-argument length "exact integer" '%MAKE-RECORD))
+  (if (not (> length 0))
+      (error:bad-range-argument length '%MAKE-RECORD))
+  (if (default-object? object)
+      (object-new-type (ucode-type record) (make-vector length))
+      (object-new-type (ucode-type record) (make-vector length object))))
 
+(define (%record-copy record)
+  (let ((length (%record-length record)))
+    (let ((result (object-new-type (ucode-type record) (make-vector length))))
+      (do ((index 0 (+ index 1)))
+	  ((= index length))
+	(%record-set! result index (%record-ref record index)))
+      result)))
+
 (define (make-record-type type-name field-names)
-  (let ((record-type
-	 (vector record-type-marker type-name (list-copy field-names))))
-    (unparser/set-tagged-vector-method! record-type
-					(unparser/standard-method type-name))
-    (named-structure/set-tag-description! record-type
-      (letrec ((description
-		(let ((predicate (record-predicate record-type)))
-		  (lambda (record)
-		    (if (not (predicate record))
-			(record-type-error record record-type description))
-		    (map (lambda (field-name)
-			   (list field-name
-				 (vector-ref
-				  record
-				  (record-type-field-index record-type
-							   field-name
-							   description))))
-			 (vector-ref record-type 2))))))
-	description))
-    record-type))
+  (guarantee-list-of-unique-symbols field-names 'MAKE-RECORD-TYPE)
+  (%record record-type-type
+	   false
+	   (->string type-name)
+	   (list-copy field-names)
+	   false))
 
 (define (record-type? object)
-  (and (vector? object)
-       (fix:= (vector-length object) 3)
-       (eq? (vector-ref object 0) record-type-marker)))
+  (and (%record? object)
+       (eq? (%record-ref object 0) record-type-type)))
+
+(define (record-type-application-method record-type)
+  (guarantee-record-type record-type 'RECORD-TYPE-APPLICATION-METHOD)
+  (%record-ref record-type 1))
+
+(define (set-record-type-application-method! record-type method)
+  (guarantee-record-type record-type 'SET-RECORD-TYPE-APPLICATION-METHOD!)
+  (if (not (or (not method) (procedure? method)))
+      (error:wrong-type-argument method "application method"
+				 'SET-RECORD-TYPE-APPLICATION-METHOD!))
+  (%record-set! record-type 1 method))
 
 (define (record-type-name record-type)
-  (if (not (record-type? record-type))
-      (error:wrong-type-argument record-type "record type" 'RECORD-TYPE-NAME))
-  (vector-ref record-type 1))
+  (guarantee-record-type record-type 'RECORD-TYPE-NAME)
+  (%record-type/name record-type))
+
+(define-integrable (%record-type/name record-type)
+  (%record-ref record-type 2))
 
 (define (record-type-field-names record-type)
-  (if (not (record-type? record-type))
-      (error:wrong-type-argument record-type "record type"
-				 'RECORD-TYPE-FIELD-NAMES))
-  (list-copy (vector-ref record-type 2)))
+  (guarantee-record-type record-type 'RECORD-TYPE-FIELD-NAMES)
+  (list-copy (%record-type/field-names record-type)))
 
-(define (record-type-record-length record-type)
-  (fix:+ (length (vector-ref record-type 2)) 1))
+(define-integrable (%record-type/field-names record-type)
+  (%record-ref record-type 3))
+
+(define (record-type-unparser-method record-type)
+  (guarantee-record-type record-type 'RECORD-TYPE-UNPARSER-METHOD)
+  (%record-type/unparser-method record-type))
+
+(define-integrable (%record-type/unparser-method record-type)
+  (%record-ref record-type 4))
+
+(define (set-record-type-unparser-method! record-type method)
+  (guarantee-record-type record-type 'SET-RECORD-TYPE-UNPARSER-METHOD!)
+  (if (not (or (not method) (unparser-method? method)))
+      (error:wrong-type-argument method "unparser method"
+				 'SET-RECORD-TYPE-UNPARSER-METHOD!))
+  (%record-set! record-type 4 method))
+
+(define record-type-type)
+
+(define (initialize-package!)
+  (set! record-type-type
+	(let ((record-type-type
+	       (%record false
+			false
+			"record-type"
+			'(RECORD-TYPE-APPLICATION-METHOD
+			  RECORD-TYPE-NAME
+			  RECORD-TYPE-FIELD-NAMES
+			  RECORD-TYPE-UNPARSER-METHOD)
+			false)))
+	  (%record-set! record-type-type 0 record-type-type)
+	  record-type-type))
+  unspecific)
 
 (define (record-type-field-index record-type field-name procedure-name)
-  (let loop ((field-names (vector-ref record-type 2)) (index 1))
+  (let loop ((field-names (%record-type/field-names record-type)) (index 1))
     (if (null? field-names)
 	(error:bad-range-argument field-name procedure-name))
     (if (eq? field-name (car field-names))
 	index
-	(loop (cdr field-names) (fix:+ index 1)))))
-
-(define (record-type-error record record-type procedure)
-  (error:wrong-type-argument
-   record
-   (string-append "record of type "
-		  (let ((type-name (vector-ref record-type 1)))
-		    (if (string? type-name)
-			type-name
-			(write-to-string type-name))))
-   procedure))
-
-(define (set-record-type-unparser-method! record-type method)
-  (if (not (record-type? record-type))
-      (error:wrong-type-argument record-type "record type"
-				 'SET-RECORD-TYPE-UNPARSER-METHOD!))
-  (unparser/set-tagged-vector-method! record-type method))
+	(loop (cdr field-names) (+ index 1)))))
 
 (define (record-constructor record-type #!optional field-names)
-  (if (not (record-type? record-type))
-      (error:wrong-type-argument record-type "record type"
-				 'RECORD-CONSTRUCTOR))
-  (let ((field-names
-	 (if (default-object? field-names)
-	     (vector-ref record-type 2)
-	     field-names)))
-    (let ((record-length (record-type-record-length record-type))
-	  (number-of-inits (length field-names))
-	  (indexes
-	   (map (lambda (field-name)
-		  (record-type-field-index record-type
-					   field-name
-					   'RECORD-CONSTRUCTOR))
-		field-names)))
-      (lambda field-values
-	(if (not (fix:= (length field-values) number-of-inits))
-	    (error "wrong number of arguments to record constructor"
-		   field-values record-type field-names))
-	(let ((record (make-vector record-length)))
-	  (vector-set! record 0 record-type)
-	  (for-each (lambda (index value) (vector-set! record index value))
-		    indexes
-		    field-values)
-	  record)))))
+  (guarantee-record-type record-type 'RECORD-CONSTRUCTOR)
+  (let ((all-field-names (%record-type/field-names record-type)))
+    (let ((field-names
+	   (if (default-object? field-names) all-field-names field-names))
+	  (record-length (+ 1 (length all-field-names))))
+      (let ((number-of-inits (length field-names))
+	    (indexes
+	     (map (lambda (field-name)
+		    (record-type-field-index record-type
+					     field-name
+					     'RECORD-CONSTRUCTOR))
+		  field-names)))
+	(lambda field-values
+	  (if (not (= (length field-values) number-of-inits))
+	      (error "wrong number of arguments to record constructor"
+		     field-values record-type field-names))
+	  (let ((record
+		 (object-new-type (ucode-type record)
+				  (make-vector record-length))))
+	    (%record-set! record 0 record-type)
+	    (do ((indexes indexes (cdr indexes))
+		 (field-values field-values (cdr field-values)))
+		((null? indexes))
+	      (%record-set! record (car indexes) (car field-values)))
+	    record))))))
 
 (define (record? object)
-  (and (vector? object)
-       (fix:> (vector-length object) 0)
-       (record-type? (vector-ref object 0))))
+  (and (%record? object)
+       (record-type? (%record-ref object 0))))
 
 (define (record-type-descriptor record)
-  (if (not (record? record))
-      (error:wrong-type-argument record "record" 'RECORD-TYPE-DESCRIPTOR))
-  (vector-ref record 0))
+  (guarantee-record record 'RECORD-TYPE-DESCRIPTOR)
+  (%record-ref record 0))
 
 (define (record-copy record)
-  (vector-copy record))
+  (guarantee-record record 'RECORD-COPY)
+  (%record-copy record))
+
+(define (%record-unparser-method record)
+  ;; Used by unparser.  Assumes RECORD has type-code RECORD.
+  (let ((type (%record-ref record 0)))
+    (and (record-type? type)
+	 (or (%record-type/unparser-method type)
+	     (unparser/standard-method (record-type-name type))))))
+
+(define (record-description record)
+  (let ((type (record-type-descriptor record)))
+    (map (lambda (field-name)
+	   `(,field-name ,((record-accessor type field-name) record)))
+	 (record-type-field-names type))))
 
 (define (record-predicate record-type)
-  (if (not (record-type? record-type))
-      (error:wrong-type-argument record-type "record type" 'RECORD-PREDICATE))
-  (let ((record-length (record-type-record-length record-type)))
-    (lambda (object)
-      (and (vector? object)
-	   (fix:= (vector-length object) record-length)
-	   (eq? (vector-ref object 0) record-type)))))
+  (guarantee-record-type record-type 'RECORD-PREDICATE)
+  (lambda (object)
+    (and (%record? object)
+	 (eq? (%record-ref object 0) record-type))))
 
 (define (record-accessor record-type field-name)
-  (if (not (record-type? record-type))
-      (error:wrong-type-argument record-type "record type" 'RECORD-ACCESSOR))
-  (let ((record-length (record-type-record-length record-type))
-	(procedure-name `(RECORD-ACCESSOR ,record-type ',field-name))
+  (guarantee-record-type record-type 'RECORD-ACCESSOR)
+  (let ((procedure-name `(RECORD-ACCESSOR ,record-type ',field-name))
 	(index
 	 (record-type-field-index record-type field-name 'RECORD-ACCESSOR)))
     (lambda (record)
-      (if (not (and (vector? record)
-		    (fix:= (vector-length record) record-length)
-		    (eq? (vector-ref record 0) record-type)))
-	  (record-type-error record record-type procedure-name))
-      (vector-ref record index))))
+      (guarantee-record-of-type record record-type procedure-name)
+      (%record-ref record index))))
 
 (define (record-modifier record-type field-name)
-  (if (not (record-type? record-type))
-      (error:wrong-type-argument record-type "record type" 'RECORD-UPDATER))
-  (let ((record-length (record-type-record-length record-type))
-	(procedure-name `(RECORD-UPDATER ,record-type ',field-name))
+  (guarantee-record-type record-type 'RECORD-MODIFIER)
+  (let ((procedure-name `(RECORD-ACCESSOR ,record-type ',field-name))
 	(index
-	 (record-type-field-index record-type field-name 'RECORD-UPDATER)))
+	 (record-type-field-index record-type field-name 'RECORD-MODIFIER)))
     (lambda (record field-value)
-      (if (not (and (vector? record)
-		    (fix:= (vector-length record) record-length)
-		    (eq? (vector-ref record 0) record-type)))
-	  (record-type-error record record-type procedure-name))
-      (vector-set! record index field-value))))
+      (guarantee-record-of-type record record-type procedure-name)
+      (%record-set! record index field-value))))
 
 (define record-updater
   record-modifier)
+
+(define (->string object)
+  (if (string? object)
+      object
+      (write-to-string object)))
+
+(define-integrable (guarantee-list-of-unique-symbols object procedure)
+  (if (not (list-of-unique-symbols? object))
+      (error:wrong-type-argument object "list of unique symbols" procedure)))
+
+(define (list-of-unique-symbols? object)
+  (and (list? object)
+       (let loop ((elements object))
+	 (or (null? elements)
+	     (and (symbol? (car elements))
+		  (not (memq (car elements) (cdr elements)))
+		  (loop (cdr elements)))))))
+
+(define-integrable (guarantee-record-type record-type procedure)
+  (if (not (record-type? record-type))
+      (error:wrong-type-argument record-type "record type" procedure)))
+
+(define-integrable (guarantee-record-of-type record record-type procedure-name)
+  (if (not (and (%record? record)
+		(eq? (%record-ref record 0) record-type)))
+      (error:wrong-type-argument
+       record
+       (string-append "record of type " (%record-type/name record-type))
+       procedure-name)))
+
+(define-integrable (guarantee-record record procedure-name)
+  (if (not (record? record))
+      (error:wrong-type-argument record "record" procedure-name)))
