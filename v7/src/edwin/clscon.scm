@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/clscon.scm,v 1.4 1990/11/02 02:54:34 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/clscon.scm,v 1.5 1991/11/21 10:02:56 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -85,9 +85,7 @@
 		     class))
 		  ((or (not (= object-size (vector-ref class 3)))
 		       (not (equal? transforms (vector-ref class 4))))
-		   (with-output-to-port (cmdl/output-port (nearest-cmdl))
-		     (lambda ()
-		       (warn "Redefining class" name)))
+		   (warn "Redefining class" name)
 		   (vector-set! class 3 object-size)
 		   (vector-set! class 4 transforms)
 		   class)
