@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.6 1989/08/17 14:51:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.7 1990/01/04 06:43:35 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -102,7 +102,9 @@ MIT in each case. |#
   (or (object-type? (ucode-type interned-symbol) object)
       (object-type? (ucode-type uninterned-symbol) object)))
 
-(define-integrable (string->uninterned-symbol string)
+(define (string->uninterned-symbol string)
+  (if (not (string? string))
+      (error error-type:wrong-type-argument string))
   (&typed-pair-cons (ucode-type uninterned-symbol)
 		    string
 		    (make-unbound-reference-trap)))
@@ -110,19 +112,24 @@ MIT in each case. |#
 (define-integrable string->symbol
   (ucode-primitive string->symbol))
 
-(define-integrable (symbol->string symbol)
-  (string-copy (system-pair-car symbol)))
-
 (define-integrable (intern string)
   (string->symbol (string-downcase string)))
 
-(define-integrable (symbol-hash symbol)
-  (string-hash (system-pair-car symbol)))
+(define (symbol-name symbol)
+  (if (not (symbol? symbol))
+      (error error-type:wrong-type-argument symbol))
+  (symbol-name symbol))
+
+(define-integrable (symbol->string symbol)
+  (string-copy (symbol-name symbol)))
 
 (define (symbol-append . symbols)
-  (let ((string (apply string-append (map system-pair-car symbols))))
+  (let ((string (apply string-append (map symbol-name symbols))))
     (string-downcase! string)
     (string->symbol string)))
+
+(define-integrable (symbol-hash symbol)
+  (string-hash (symbol-name symbol)))
 
 ;;;; Variable
 
