@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.10 1992/02/16 02:07:02 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.11 1992/02/16 03:04:44 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -262,8 +262,10 @@ do {									\
 #define START_CLOSURE_RELOCATION(scan) do				\
 {									\
   SCHEME_OBJECT								\
-    * _new = ((SCHEME_OBJECT *) (scan)),				\
-    * _old = (OBJECT_ADDRESS (_new[(OBJECT_DATUM (*_new))]));		\
+    * _block = ((SCHEME_OBJECT *) (scan)),				\
+    * _old = (OBJECT_ADDRESS (_block[(OBJECT_DATUM (*_block))]));	\
+  char * _new =								\
+    ((char *) (FIRST_MANIFEST_CLOSURE_ENTRY (_block + 1)));		\
 									\
   i386_pc_displacement_relocation = (((long) _old) - ((long) _new));	\
 } while (0)
