@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.40 1990/04/17 22:16:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.41 1990/04/27 23:43:27 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -502,11 +502,18 @@ Otherwise it returns a unix error string.")
 
 #define N_RETRIES 5
 
+#define RET_ERROR(errno, message)					\
+do {									\
+  return (((errno) == ESTALE) ?						\
+	  ret_val :							\
+	  (system_error_message (message)));				\
+} while (0)
+
 static SCHEME_OBJECT
 file_touch (filename)
      char * filename;
 {
-  int result;
+  int result, serrno;
   struct stat file_status;
   int fd;
   char buf [1];
@@ -549,13 +556,21 @@ file_touch (filename)
       {
 	break;
       }
-      else if ((errno != ENOENT) || (count >= N_RETRIES))
+      else if (((errno != ENOENT) && (errno != ESTALE)) ||
+	       (count >= N_RETRIES))
       {
 	return (system_error_message ("open"));
       }
-      /* The file disappeared between both opens.
+      /* The file disappeared between the opens.
 	 Go around the loop again.
-	 */
+      */
+    }
+    else if (errno == ESTALE)
+    {
+      if (count >= N_RETRIES)
+      {
+	return (system_error_message ("open"));
+      }
     }
     else if (count >= N_RETRIES)
     {
@@ -565,7 +580,9 @@ file_touch (filename)
 
   result = fstat(fd, &file_status);
   if (result != 0)
-    return(system_error_message("fstat"));
+  {
+    RET_ERROR (errno, "fstat");
+  }
 
 #if 0
 /*
@@ -604,88 +621,119 @@ file_touch (filename)
 #endif /* 0 */
 
   if (((file_status . st_mode) & S_IFMT) != S_IFREG)
+  {
     return (char_pointer_to_string ("can only touch regular files"));
+  }
 
   /* CASE 3: file length of 0 needs special treatment. */
   if ((file_status . st_size) == 0)
+  {
+zero_length_file:
+    (buf [0]) = '\0';
+    while (1)
     {
-    zero_length_file:
-      (buf [0]) = '\0';
-      while (1)
-	{
-	  result = (write (fd, buf, 1));
-	  if (result > 0) break;
-	  if ((result < 0) && (errno != EINTR))
-	    {
-	      (void) close (fd);
-	      return (system_error_message ("write"));
-	    }
-	}
-      if ((lseek (fd, 0, 0)) != 0)
-	{
-	  (void) ftruncate (fd, 0);
-	  (void) close (fd);
-	  return (system_error_message ("lseek"));
-	}
-      while (1)
-	{
-	  result = (read (fd, buf, 1));
-	  if (result > 0) break;
-	  if (result == 0)
-	    {
-	      (void) ftruncate (fd, 0);
-	      (void) close (fd);
-	      return (char_pointer_to_string ("read: eof encountered"));
-	    }
-	  if ((result < 0) && (errno != EINTR))
-	    {
-	      (void) ftruncate (fd, 0);
-	      (void) close (fd);
-	      return (system_error_message ("read"));
-	    }
-	}
-      if ((ftruncate (fd, 0)) != 0)
+      result = (write (fd, buf, 1));
+      if (result > 0)
       {
-	(void) close(fd);
-	return (system_error_message ("ftruncate"));
+	break;
       }
-      if ((close (fd)) != 0)
-	return (system_error_message ("close"));
-      return (ret_val);
+      if ((result < 0) && (errno != EINTR))
+      {
+	serrno = errno;
+	(void) close (fd);
+	RET_ERROR (serrno, "write");
+      }
     }
+#if 0
+    if ((lseek (fd, 0, 0)) != 0)
+    {
+      serrno = errno;
+      (void) ftruncate (fd, 0);
+      (void) close (fd);
+      RET_ERROR (serrno, "lseek");
+    }
+    while (1)
+    {
+      result = (read (fd, buf, 1));
+      if (result > 0)
+      {
+	break;
+      }
+      if (result == 0)
+      {
+	(void) ftruncate (fd, 0);
+	(void) close (fd);
+	return (char_pointer_to_string ("read: eof encountered"));
+      }
+      if ((result < 0) && (errno != EINTR))
+      {
+	serrno = errno;
+	(void) ftruncate (fd, 0);
+	(void) close (fd);
+	RET_ERROR (serrno, "read");
+      }
+    }
+#endif
+    if ((ftruncate (fd, 0)) != 0)
+    {
+      serrno = errno;
+      (void) close(fd);
+      RET_ERROR (serrno, "ftruncate");
+    }
+    if ((close (fd)) != 0)
+    {
+      return (system_error_message ("close"));
+    }
+    return (ret_val);
+  }
 
   /* CASE 4: read, then write back the first byte in the file. */
   while (1)
+  {
+    result = (read (fd, buf, 1));
+    if (result > 0)
     {
-      result = (read (fd, buf, 1));
-      if (result > 0) break;
-      if (result == 0)
-	{
-	  (void) close (fd);
-	  return (char_pointer_to_string ("read: eof encountered"));
-	}
-      if ((result < 0) && (errno != EINTR))
-	{
-	  (void) close (fd);
-	  return (system_error_message ("read"));
-	}
+      break;
     }
-  if ((lseek (fd, 0, 0)) != 0)
+    if (result == 0)
     {
+      /* Someone else truncated the file! */
+#if 0
       (void) close (fd);
-      return (system_error_message ("lseek"));
+      return (char_pointer_to_string ("read: eof encountered"));
+#endif
+      goto zero_length_file;
     }
-  while (1)
+    if ((result < 0) && (errno != EINTR))
     {
-      result = (write (fd, buf, 1));
-      if (result > 0) break;
-      if ((result < 0) && (errno != EINTR))
-	{
-	  (void) close (fd);
-	  return (system_error_message ("write"));
-	}
+      serrno = errno;
+      (void) close (fd);
+      RET_ERROR (serrno, "read");
     }
+  }
+  if ((lseek (fd, 0, 0)) != 0)
+  {
+    serrno = errno;
+    (void) close (fd);
+    RET_ERROR (serrno, "lseek");
+  }
+  while (1)
+  {
+    result = (write (fd, buf, 1));
+    if (result > 0)
+    {
+      break;
+    }
+    if ((result < 0) && (errno != EINTR))
+    {
+      serrno = errno;
+      (void) close (fd);
+      RET_ERROR (serrno, "write");
+    }
+  }
   if ((close (fd)) != 0)
+  {
     return (system_error_message ("close"));
+  }
   return (ret_val);
 }
