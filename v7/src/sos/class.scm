@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: class.scm,v 1.5 1997/06/25 03:42:11 cph Exp $
+;;; $Id: class.scm,v 1.6 1997/06/25 03:44:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -81,35 +81,30 @@
     class))
 
 (define (class-name class)
-  (guarantee-class class 'CLASS-NAME)
-  (class/name class))
+  (class/name (guarantee-class class 'CLASS-NAME)))
 
 (define (class-direct-superclasses class)
-  (guarantee-class class 'CLASS-DIRECT-SUPERCLASSES)
-  (class/direct-superclasses class))
+  (class/direct-superclasses
+   (guarantee-class class 'CLASS-DIRECT-SUPERCLASSES)))
 
 (define (class-direct-slot-names class)
-  (guarantee-class class 'CLASS-DIRECT-SLOTS)
-  (map car (class/direct-slots class)))
+  (map car (class/direct-slots (guarantee-class class 'CLASS-DIRECT-SLOTS))))
 
 (define (class-precedence-list class)
-  (guarantee-class class 'CLASS-PRECEDENCE-LIST)
-  (class/precedence-list class))
+  (class/precedence-list (guarantee-class class 'CLASS-PRECEDENCE-LIST)))
 
 (define (class-slots class)
-  (guarantee-class class 'CLASS-SLOTS)
-  (class/slots class))
+  (class/slots (guarantee-class class 'CLASS-SLOTS)))
 
 (define (class-slot class name error?)
-  (guarantee-class class 'CLASS-SLOT)
-  (or (list-search-positive (class/slots class)
+  (or (list-search-positive (class/slots (guarantee-class class 'CLASS-SLOT))
 	(lambda (slot)
 	  (eq? name (slot-name slot))))
-      (and error? (error:no-such-slot class name))))
+      (and error?
+	   (class-slot class (error:no-such-slot class name) error?))))
 
 (define (class->dispatch-tag class)
-  (guarantee-class class 'CLASS->DISPATCH-TAG)
-  (class/dispatch-tag class))
+  (class/dispatch-tag (guarantee-class class 'CLASS->DISPATCH-TAG)))
 
 (define (subclass? c s)
   (let ((pl (class-precedence-list c)))
@@ -119,8 +114,9 @@
 	 #t)))
 
 (define (guarantee-class class name)
-  (if (not (class? class))
-      (error:wrong-type-argument class "class" name)))
+  (cond ((class? class) class)
+	((record-type? class) (record-type-class class))
+	(else (error:wrong-type-argument class "class" name))))
 
 (define (compute-precedence-list class)
   (let ((elements (build-transitive-closure class/direct-superclasses class)))
