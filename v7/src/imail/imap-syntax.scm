@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-syntax.scm,v 1.14 2000/07/05 01:14:01 cph Exp $
+;;; $Id: imap-syntax.scm,v 1.15 2000/07/05 01:23:05 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -284,7 +284,10 @@
 (define (url:decoding-parser match-encoded keyword)
   (decoding-parser match-encoded
 		   url:decode-substring
-		   (simple-parser match-always keyword)))
+		   (simple-parser (lambda (string start end)
+				    string start
+				    end)
+				  keyword)))
 
 (define (imap:server-parser allow-auth?)
   (sequence-parser
