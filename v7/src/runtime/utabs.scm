@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 14.2 1989/03/23 20:43:59 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 14.3 1989/09/24 14:17:55 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -69,8 +69,9 @@ MIT in each case. |#
 	(microcode-identification-item 'CONSOLE-HEIGHT))
   (set! microcode-id/floating-mantissa-bits
 	(microcode-identification-item 'FLONUM-MANTISSA-LENGTH))
-  (set! microcode-id/floating-exponent-bits
-	(microcode-identification-item 'FLONUM-EXPONENT-LENGTH))  (set! microcode-id/operating-system-name
+  (set! microcode-id/floating-epsilon
+	(microcode-identification-item 'FLONUM-EPSILON))
+  (set! microcode-id/operating-system-name
 	(microcode-identification-item 'OS-NAME-STRING))
   (set! microcode-id/operating-system-variant
 	(microcode-identification-item 'OS-VARIANT-STRING))
