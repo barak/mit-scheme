@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.14 1992/02/18 14:11:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.15 1992/02/25 23:32:03 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -185,9 +185,14 @@ MIT in each case. |#
       (let ((read-until-result
 	     (lambda (block?)
 	       (let loop ()
-		 (update-screens! false)
 		 (or (fix:< start end)
-		     (let ((event (read-event block?)))
+		     (let ((event
+			    (if block?
+				(or (read-event false)
+				    (begin
+				      (update-screens! false)
+				      (read-event true)))
+				(read-event false))))
 		       (if (fix:fixnum? event)
 			   (begin
 			     (process-change-event event)
