@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.10 1988/08/18 01:36:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.11 1988/08/22 20:03:44 markf Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -36,7 +36,9 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package (open-coding-analysis combination/inline)
+(package (open-coding-analysis combination/inline
+	  generate-generic-binary generate-generic-unary
+          generate-type-test generate-primitive)
 
 ;;;; Analysis
 
@@ -230,50 +232,94 @@ MIT in each case. |#
 (define-integrable (make-invocation operator operands)
   `(,operator ,@operands))
 
-(define (generate-primitive name arg-list continuation-label)
-  (let loop ((args arg-list)
-	     (temps '() )
-	     (pushes '() ))
-    (if (null? args)
-	(scfg-append!
-	 temps
-	 (rtl:make-push-return continuation-label)
-	 pushes
-	 (rtl:make-invocation:primitive (1+ (length arg-list))
-					continuation-label
-					(make-primitive-procedure name true)))
-	(let ((temp (rtl:make-pseudo-register)))
-	  (loop (cdr args)
-		(scfg*scfg->scfg! (rtl:make-assignment temp (car args)) temps)
-		(scfg*scfg->scfg! (rtl:make-push (rtl:make-fetch temp))
-				  pushes))))))
+(define (multiply-guarded-statement guards statement alternate)
+  (let guard-loop ((guards guards))
+    (cond ((null? guards) statement)
+	  ((cfg-null? (car guards)) (guard-loop (cdr guards)))
+	  (else
+	   (pcfg*scfg->scfg!
+	    (car guards)
+	    (guard-loop (cdr guards))
+	    alternate)))))
 
-(define (range-check checkee-locative limit-locative non-error-cfg
-		     error-finish prim-invocation)
+(define (open-code:with-checks checks non-error-cfg error-finish prim-invocation)
+  (let* ((continuation-label (generate-label))
+	 (error-continuation
+	  (scfg*scfg->scfg!
+	   (rtl:make-continuation-entry continuation-label)
+	   (if error-finish
+	       (error-finish (rtl:make-fetch register:value))
+	       (make-null-cfg))))
+	 (error-cfg
+	  (scfg*scfg->scfg!
+	   (generate-primitive
+	    (car prim-invocation)
+	    (cdr prim-invocation)
+	    continuation-label)
+	   error-continuation)))
+    (multiply-guarded-statement checks non-error-cfg error-cfg)))
+
+(define (open-code:limit-check checkee-locative limit-locative)
   (if compiler:generate-range-checks?
-      (let* ((continuation-label (generate-label))
-	     (error-continuation
-	      (scfg*scfg->scfg!
-	       (rtl:make-continuation-entry continuation-label)
-	       (if error-finish
-		   (error-finish (rtl:make-fetch register:value))
-		   (make-null-cfg))))
-	     (error-cfg
-	      (scfg*scfg->scfg! (generate-primitive (car prim-invocation)
-						    (cdr prim-invocation)
-						    continuation-label)
-				error-continuation)))
-	(pcfg*scfg->scfg!
-	 (rtl:make-fixnum-pred-2-args 'LESS-THAN-FIXNUM?
-	  (rtl:make-object->fixnum checkee-locative)
-	  (rtl:make-object->fixnum limit-locative))
-	 (pcfg*scfg->scfg!
+      (rtl:make-fixnum-pred-2-args 'LESS-THAN-FIXNUM?
+	(rtl:make-object->fixnum checkee-locative)
+	(rtl:make-object->fixnum limit-locative))
+      (make-null-cfg)))
+
+(define (open-code:range-check checkee-locative limit-locative)
+  (if compiler:generate-range-checks?
+      (pcfg*pcfg->pcfg!
+	 (open-code:limit-check checkee-locative limit-locative)
+	 (pcfg-invert
 	  (rtl:make-fixnum-pred-1-arg 'NEGATIVE-FIXNUM?
-	   (rtl:make-object->fixnum checkee-locative))
-	  error-cfg
-	  non-error-cfg)
-	 error-cfg))
-      non-error-cfg))
+	   (rtl:make-object->fixnum checkee-locative)))
+	 (make-null-cfg))
+      (make-null-cfg)))
+
+(define (open-code:type-check checkee-locative type)
+  (if compiler:generate-type-checks?
+      (generate-type-test type checkee-locative)
+      (make-null-cfg)))
+
+
+;;;; Exported Code Generators
+
+(define-export (generate-primitive name arg-list continuation-label)
+  (let ((primitive (make-primitive-procedure name true)))
+    (let loop ((args arg-list)
+	       (temps '() )
+	       (pushes '() ))
+      (if (null? args)
+	  (scfg-append!
+	   temps
+	   (rtl:make-push-return continuation-label)
+	   pushes
+	   ((or (special-primitive-handler primitive)
+		rtl:make-invocation:primitive)
+	    (1+ (length arg-list))
+	    continuation-label
+	    primitive))
+	  (let ((temp (rtl:make-pseudo-register)))
+	    (loop (cdr args)
+		  (scfg*scfg->scfg!
+		   (rtl:make-assignment
+		    temp
+		    (car args))
+		   temps)
+		  (scfg*scfg->scfg!
+		   (rtl:make-push (rtl:make-fetch temp))
+		   pushes)))))))
+		  
+(define-export (generate-type-test type expression)
+  (if (rtl:constant? expression)
+      (if (eq? type
+	       (object-type
+		(rtl:constant-value expression)))
+	  (make-true-pcfg)
+	  (make-false-pcfg))
+      (rtl:make-type-test
+       (rtl:make-object->type expression)
+       (microcode-type type))))
 
 ;;;; Open Coders
 
@@ -367,65 +413,92 @@ MIT in each case. |#
     (define/length '(VECTOR-LENGTH SYSTEM-VECTOR-SIZE) 0)
     (define/length '(STRING-LENGTH BIT-STRING-LENGTH) 1)))
 
-(define (generate-index-locative expressions non-error-finish error-finish
-				 prim-invocation)
-  (let* ((index (cadr expressions))
-	 (vector (car expressions))
-	 (temporary (rtl:make-pseudo-register))
-	 (element-address-code
-	  (rtl:make-assignment
-	   temporary
-	   (rtl:make-fixnum-2-args
-	    'PLUS-FIXNUM
-	    (rtl:make-object->address (car expressions))
-	    (rtl:make-fixnum-2-args
-	     'MULTIPLY-FIXNUM
-	     (rtl:make-object->fixnum
-	      (rtl:make-constant
-	       (quotient scheme-object-width addressing-granularity)))
-	     (rtl:make-object->fixnum (cadr expressions))))))
-	 (index-locative (rtl:make-fetch temporary)))
-     (range-check index
-		  (rtl:make-fetch (rtl:locative-offset vector 0))
-		  (scfg*scfg->scfg! element-address-code
-				    (non-error-finish index-locative))
-		  error-finish
-		  prim-invocation)))
+(define (generate-index-locative vector index finish)
+  (let ((temporary (rtl:make-pseudo-register)))
+    (scfg*scfg->scfg!
+     (rtl:make-assignment
+      temporary
+      (rtl:make-fixnum-2-args
+       'PLUS-FIXNUM
+       (rtl:make-object->address vector)
+       (rtl:make-fixnum-2-args
+	'MULTIPLY-FIXNUM
+	(rtl:make-object->fixnum
+	 (rtl:make-constant
+	  (quotient scheme-object-width
+		    addressing-granularity)))
+	(rtl:make-object->fixnum index))))
+     (finish (rtl:make-fetch temporary)))))
 
 (let* ((open-code/memory-ref
-	(lambda (index)
+        (lambda (index)
 	  (lambda (expressions finish)
 	    (finish
-	     (rtl:make-fetch (rtl:locative-offset (car expressions) index))))))
+	     (rtl:make-fetch
+	      (rtl:locative-offset (car expressions) index))))))
        (open-code/vector-ref
 	(lambda (name)
 	  (lambda (expressions finish)
-	    (generate-index-locative
-	     expressions
-	     (lambda (memory-locative)
-	       ((open-code/memory-ref 1) (list memory-locative) finish))
-	     finish
-	     (make-invocation name expressions))))))
+	    (let ((vector (car expressions))
+		  (index (cadr expressions)))
+	      (open-code:with-checks
+	       (list
+		(open-code:type-check vector 'VECTOR)
+		(open-code:type-check index 'FIXNUM)
+		(open-code:range-check
+		 index
+		 (rtl:make-fetch
+		  (rtl:locative-offset vector 0))))
+	       (generate-index-locative
+		vector
+		index
+		(lambda (memory-locative)
+		  ((open-code/memory-ref 1)
+		   (list memory-locative)
+		   finish)))
+	       finish
+	       (make-invocation name expressions))))))
+       (open-code/constant-vector-ref
+	(lambda (name index)
+	  (lambda (expressions finish)
+	    (let ((vector (car expressions)))
+	      (open-code:with-checks
+	       (list
+		(open-code:type-check vector 'VECTOR)
+		(open-code:limit-check
+		 (rtl:make-constant index)
+		 (rtl:make-fetch
+		  (rtl:locative-offset vector 0))))
+	       ((open-code/memory-ref index) expressions finish)
+	       finish
+	       (make-invocation name expressions)))))))
 
   (let ((define/ref
 	  (lambda (name index)
 	    (define-open-coder/value name
 	      (lambda (operands)
-		operands
-		(return-2 (open-code/memory-ref index) '(0)))))))
-    (define/ref '(CAR SYSTEM-PAIR-CAR CELL-CONTENTS SYSTEM-HUNK3-CXR0) 0)
-    (define/ref '(CDR SYSTEM-PAIR-CDR SYSTEM-HUNK3-CXR1) 1)
+		(return-2 (open-code/memory-ref index)
+			  '(0)))))))
+    (define/ref
+      '(CAR SYSTEM-PAIR-CAR CELL-CONTENTS SYSTEM-HUNK3-CXR0) 0)
+    (define/ref 
+      '(CDR SYSTEM-PAIR-CDR SYSTEM-HUNK3-CXR1) 1)
     (define/ref 'SYSTEM-HUNK3-CXR2 2))
 
-  (for-each (lambda (name)
-	      (define-open-coder/value name
-		(lambda (operands)
-		  (or (filter/nonnegative-integer (cadr operands)
-			(lambda (index)
-			  (return-2 (open-code/memory-ref (1+ index)) '(0))))
-		      (return-2 (open-code/vector-ref name) '(0 1))))))
-	    '(VECTOR-REF SYSTEM-VECTOR-REF)))
+  (for-each
+   (lambda (name)
+     (define-open-coder/value name
+       (lambda (operands)
+	 (or (filter/nonnegative-integer (cadr operands)
+	          (lambda (index)
+		    (return-2
+		     (open-code/constant-vector-ref name (1+ index))
+		     '(0 1))))
+	     (return-2 (open-code/vector-ref name)
+		       '(0 1))))))
+   '(VECTOR-REF SYSTEM-VECTOR-REF)))
 
+
 (let ((open-code/general-car-cdr
        (lambda (pattern)
 	 (lambda (expressions finish)
@@ -462,14 +535,40 @@ MIT in each case. |#
        (open-code/vector-set
 	(lambda (name)
 	  (lambda (expressions finish)
-	    (generate-index-locative
-	     expressions
-	     (lambda (memory-locative)
-	       ((open-code/memory-assignment 1)
-		(cons memory-locative (cddr expressions))
-		finish))
-	     finish
-	     (make-invocation name expressions))))))
+	    (let ((vector (car expressions))
+		  (index (cadr expressions))
+		  (newval-list (cddr expressions)))
+	      (open-code:with-checks
+	       (list
+		(open-code:type-check vector 'VECTOR)
+		(open-code:type-check index 'FIXNUM)
+		(open-code:range-check
+		 index
+		 (rtl:make-fetch
+		  (rtl:locative-offset vector 0))))
+	       (generate-index-locative
+		vector
+		index
+		(lambda (memory-locative)
+		  ((open-code/memory-assignment 1)
+		   (cons memory-locative newval-list)
+		   finish)))
+	       finish
+	       (make-invocation name expressions))))))
+       (open-code/constant-vector-set
+	(lambda (name index)
+	  (lambda (expressions finish)
+	    (let ((vector (car expressions)))
+	      (open-code:with-checks
+	       (list
+		(open-code:type-check vector 'VECTOR)
+		(open-code:limit-check
+		 (rtl:make-constant index)
+		 (rtl:make-fetch
+		  (rtl:locative-offset vector 0))))
+	       ((open-code/memory-assignment index) expressions finish)
+	       finish
+	       (make-invocation name expressions)))))))
 
   ;; For now SYSTEM-XXXX side effect procedures are considered
   ;; dangerous to the garbage collector's health.  Some day we will
@@ -492,12 +591,19 @@ MIT in each case. |#
     (define/set! '(#| SYSTEM-HUNK3-SET-CXR2! |#)
       2))
 
-  (define-open-coder/effect '(VECTOR-SET! #| SYSTEM-VECTOR-SET! |#)
-    (lambda (operands)
-      (or (filter/nonnegative-integer (cadr operands)
-	    (lambda (index)
-	      (return-2 (open-code/memory-assignment (1+ index)) '(0 2))))
-	  (return-2 (open-code/vector-set 'VECTOR-SET!) '(0 1 2))))))
+  (for-each
+   (lambda (name)
+     (define-open-coder/effect name
+       (lambda (operands)
+	 (or (filter/nonnegative-integer
+	      (cadr operands)
+	      (lambda (index)
+		(return-2 (open-code/constant-vector-set name (1+ index))
+			  '(0 1 2))))
+	     (return-2 (open-code/vector-set name)
+		       '(0 1 2))))))
+   '(VECTOR-SET! #| SYSTEM-VECTOR-SET! |#)))
+
 
 (let ((define-fixnum-2-args
 	(lambda (fixnum-operator)
@@ -566,6 +672,216 @@ MIT in each case. |#
    define-fixnum-pred-1-arg
    '(ZERO-FIXNUM? POSITIVE-FIXNUM? NEGATIVE-FIXNUM?)))
 
+
+;;; Generic arithmetic
+
+(define-export generate-generic-binary
+  (lambda (expression finish)
+    (let ((continuation-label (generate-label))
+	  (generic-op (rtl:generic-binary-operator expression))
+	  (fix-op (generic->fixnum-op
+		   (rtl:generic-binary-operator expression)))
+	  (flo-op (generic->floatnum-op
+		   (rtl:generic-binary-operator expression)))
+	  (op1 (rtl:generic-binary-operand-1 expression))
+	  (op2 (rtl:generic-binary-operand-2 expression))
+	  (fix-temp (rtl:make-pseudo-register)))
+      (let* ((give-it-up
+	      (scfg-append!
+	       (generate-primitive
+		generic-op
+		(cddr expression)
+		continuation-label)
+	       (rtl:make-continuation-entry continuation-label)
+	       (expression-simplify-for-statement
+		(rtl:make-fetch register:value)
+		finish)))
+	     (generic-flonum
+	      ;; For now we will just call the generic op.
+	      ;; When we have open coded flonums, we will
+	      ;; stick that stuff here.
+	      give-it-up)
+	     (generic-3
+	      ;; op1 is a flonum, op2 is not
+	      (pcfg*scfg->scfg!
+	       (generate-type-test 'fixnum op2)
+	       ;; Whem we have open coded flonums we
+	       ;; will convert op2 to a float and do a
+	       ;; floating op.
+	       generic-flonum
+	       give-it-up))
+	     (generic-2
+	      ;; op1 is a fixnum, op2 is not
+	      (pcfg*scfg->scfg!
+	       (generate-type-test 'flonum op2)
+	       ;; Whem we have open coded flonums we
+	       ;; will convert op1 to a float and do a
+	       ;; floating op.
+	       generic-flonum
+	       give-it-up))
+	     (generic-1
+	      ;; op1 is not a fixnum, op2 unknown
+	      (pcfg*scfg->scfg!
+	       (generate-type-test 'flonum op1)
+	       (pcfg*scfg->scfg!
+		(generate-type-test 'flonum op2)
+		;; For now we will just call the generic op.
+		;; When we have open coded flonums, we will
+		;; stick that stuff here.
+		generic-flonum
+		generic-3)
+	       give-it-up)))
+	(pcfg*scfg->scfg!
+	 (generate-type-test 'fixnum op1)
+	 (pcfg*scfg->scfg!
+	  (generate-type-test 'fixnum op2)
+	  (scfg*scfg->scfg!
+	   (rtl:make-assignment
+	    fix-temp
+	    (rtl:make-fixnum-2-args
+	     fix-op
+	     (rtl:make-object->fixnum op1)
+	     (rtl:make-object->fixnum op2)))
+	   (pcfg*scfg->scfg!
+	    (rtl:make-overflow-test)
+	    give-it-up
+	    (finish (rtl:make-fixnum->object
+		     fix-temp))))
+	  generic-2)
+	 generic-1)))))
+
+(define-export generate-generic-unary
+  (lambda (expression finish)
+    (let ((continuation-label (generate-label))
+	  (generic-op (rtl:generic-unary-operator expression))
+	  (fix-op (generic->fixnum-op
+		   (rtl:generic-unary-operator expression)))
+	  (flo-op (generic->floatnum-op
+		   (rtl:generic-unary-operator expression)))
+	  (op (rtl:generic-unary-operand expression))
+	  (fix-temp (rtl:make-pseudo-register)))
+      (let* ((give-it-up
+	      (scfg-append!
+	       (generate-primitive
+		generic-op
+		(cddr expression)
+		continuation-label)
+	       (rtl:make-continuation-entry continuation-label)
+	       (expression-simplify-for-statement
+		(rtl:make-fetch register:value)
+		finish)))
+	     (generic-flonum
+	      ;; For now we will just call the generic op.
+	      ;; When we have open coded flonums, we will
+	      ;; stick that stuff here.
+	      give-it-up))
+	(pcfg*scfg->scfg!
+	 (generate-type-test 'fixnum op)
+	 (scfg*scfg->scfg!
+	  (rtl:make-assignment
+	   fix-temp
+	   (rtl:make-fixnum-1-arg
+	    fix-op
+	    (rtl:make-object->fixnum op)))
+	  (pcfg*scfg->scfg!
+	   (rtl:make-overflow-test)
+	   give-it-up
+	   (finish (rtl:make-fixnum->object
+		    fix-temp))))
+	 (pcfg*scfg->scfg!
+	  (generate-type-test 'flonum op)
+	  generic-flonum
+	  give-it-up))))))
+
+(define (generic->fixnum-op generic-op)
+  (case generic-op
+    ((&+) 'PLUS-FIXNUM)
+    ((&-) 'MINUS-FIXNUM)
+    ((&*) 'MULTIPLY-FIXNUM)
+    ((1+) 'ONE-PLUS-FIXNUM)
+    ((-1+) 'MINUS-ONE-PLUS-FIXNUM)
+    ((&<) 'LESS-THAN-FIXNUM?)
+    ((&>) 'GREATER-THAN-FIXNUM?)
+    ((&=) 'EQUAL-FIXNUM?)
+    ((zero?) 'ZERO-FIXNUM?)
+    ((positive?) 'POSITIVE-FIXNUM?)
+    ((negative?) 'NEGATIVE-FIXNUM?)
+    (else (error "Can't find corresponding fixnum op:"
+		 generic-op))))
+
+(define (generic->floatnum-op generic-op)
+  (case generic-op
+    ((&+) 'PLUS-FLOATNUM)
+    ((&-) 'MINUS-FLOATNUM)
+    ((&*) 'MULTIPLY-FLOATNUM)
+    ((1+) 'ONE-PLUS-FLOATNUM)
+    ((-1+) 'MINUS-ONE-PLUS-FLOATNUM)
+    ((&<) 'LESS-THAN-FLOATNUM?)
+    ((&>) 'GREATER-THAN-FLOATNUM?)
+    ((&=) 'EQUAL-FLOATNUM?)
+    ((zero?) 'ZERO-FLOATNUM?)
+    ((positive?) 'POSITIVE-FLOATNUM?)
+    ((negative?) 'NEGATIVE-FLOATNUM?)
+    (else (error "Can't find corresponding floatnum op:"
+		 generic-op))))
+
+
+(let ((define-generic-binary
+	(lambda (generic-op)
+	  (define-open-coder/value generic-op
+	    (lambda (operands)
+	      (return-2
+	        (lambda (expressions finish)
+		  (finish (rtl:make-generic-binary
+			   generic-op
+			   (car expressions)
+			   (cadr expressions))))
+		'(0 1)))))))
+  (for-each
+   define-generic-binary
+   '(&+ &- &*)))
+
+(let ((define-generic-unary
+	(lambda (generic-op)
+	  (define-open-coder/value generic-op
+	    (lambda (operand)
+	      (return-2
+	        (lambda (expression finish)
+		  (finish (rtl:make-generic-unary
+			   generic-op
+			   (car expression))))
+		'(0)))))))
+  (for-each
+   define-generic-unary
+   '(1+ -1+)))
+
+(let ((define-generic-binary-pred
+	(lambda (generic-op)
+	  (define-open-coder/predicate generic-op
+	    (lambda (operands)
+	      (return-2
+	        (lambda (expressions finish)
+		  (generate-generic-binary
+		   (cons generic-op expressions)
+		   finish))
+		'(0 1)))))))
+  (for-each
+   define-generic-binary-pred
+   '(&= &< &>)))
+
+(let ((define-generic-unary-pred
+	(lambda (generic-op)
+	  (define-open-coder/predicate generic-op
+	    (lambda (operand)
+	      (return-2
+	        (lambda (expression finish)
+		  (generate-generic-unary
+		   (cons generic-op expression)
+		   finish))
+		'(0)))))))
+  (for-each
+   define-generic-unary-pred
+   '(zero? positive? negative?)))
 
 ;;; Character open-coding
 
