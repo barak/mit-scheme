@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.15 2000/05/23 03:55:06 cph Exp $
+;;; $Id: imail-summary.scm,v 1.16 2000/05/23 05:31:58 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -350,6 +350,8 @@ Additional variables controlling this mode:
 
 imail-summary-pop-up-message       keep message buffer visible
 imail-summary-highlight-message    highlight line for current message
+imail-summary-show-date            show date message sent
+imail-summary-subject-width        width of subject field
 
 The commands in this buffer are mostly the same as those for IMAIL
 mode (the mode used by the buffer that shows the message contents),

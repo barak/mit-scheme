@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.98 2000/05/23 04:50:52 cph Exp $
+;;; $Id: imail-top.scm,v 1.99 2000/05/23 05:32:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -109,9 +109,25 @@ May be overridden by an explicit mailbox in imail-primary-folder."
 
 (define-command imail
   "Read and edit incoming mail.
-May be called with an IMAIL folder URL as argument;
- then performs IMAIL editing on that folder,
- but does not copy any new mail into the folder."
+Given a prefix argument, it prompts for an IMAIL URL,
+ then visits the mail folder at that URL.
+IMAIL URLs take one of the following forms.
+
+imap://[<user-name>@]<host-name>{:<port>]/<folder-name>
+    Specifies a folder on an IMAP server.  The portions in brackets
+    are optional and are filled in automatically if omitted.
+
+rmail:<pathname>
+    Specifies an RMAIL file.
+
+umail:<pathname>
+    Specifies a unix mail file.
+
+You may simultaneously open multiple mail folders.  If you revisit a
+folder that is already in a buffer, that buffer is selected.  Messages
+may be freely copied from one mail folder to another, regardless of
+the type of folder.  Likewise, the available commands are the same
+regardless of the folder type."
   (lambda ()
     (list (and (command-argument)
 	       (prompt-for-imail-url-string "Run IMAIL on folder"
@@ -280,13 +296,10 @@ May be called with an IMAIL folder URL as argument;
        unspecific))))
 
 (define-major-mode imail read-only "IMAIL"
-  "IMAIL mode is used by \\[imail] for editing IMAIL files.
+  "IMAIL mode is used by \\[imail] for editing mail folders.
 All normal editing commands are turned off.
 Instead, these commands are available:
 
-.	Move point to front of this message (same as \\[beginning-of-buffer]).
-SPC	Scroll to next screen of this message.
-DEL	Scroll to previous screen of this message.
 \\[imail-next-undeleted-message]	Move to next non-deleted message.
 \\[imail-previous-undeleted-message]	Move to previous non-deleted message.
 \\[imail-next-message]	Move to next message whether deleted or not.
@@ -298,7 +311,7 @@ DEL	Scroll to previous screen of this message.
 \\[imail-delete-forward]	Delete this message, move to next nondeleted.
 \\[imail-delete-backward]	Delete this message, move to previous nondeleted.
 \\[imail-undelete-previous-message]	Undelete message.  Tries current message, then earlier messages
-	until a deleted message is found.
+	  until a deleted message is found.
 \\[imail-expunge]	Expunge deleted messages.
 \\[imail-save-folder]	Save the current folder.
 
@@ -311,10 +324,12 @@ DEL	Scroll to previous screen of this message.
 \\[imail-forward]	Forward this message to another user.
 \\[imail-continue]	Continue composing outgoing message started before.
 
-\\[imail-create-folder]	Create a new folder.
-\\[imail-delete-folder]	Delete an existing folder.
 \\[imail-output]       Output this message to a specified folder (append it).
 \\[imail-input]	Append messages from a specified folder.
+\\[imail-copy-messages]	Copy all messages in selected folder to another folder.
+\\[imail-create-folder]	Create a new folder.  (Normally not needed
+	  as output commands auto-create folders.)
+\\[imail-delete-folder]	Delete an existing folder.
 
 \\[imail-add-flag]	Add flag to message.  It will be displayed in the mode line.
 \\[imail-kill-flag]	Remove a flag from current message.
@@ -326,11 +341,30 @@ DEL	Scroll to previous screen of this message.
 \\[imail-previous-flagged-message]   Move to previous message with specified flag.
 
 \\[imail-summary]	Show headers buffer, with a one line summary of each message.
-\\[imail-summary-by-flags]	Like \\[imail-summary] only just messages with particular flag(s) are summarized.
-\\[imail-summary-by-recipients]   Like \\[imail-summary] only just messages with particular recipient(s) are summarized.
+\\[imail-summary-by-flags]	Like \\[imail-summary] only just messages with particular flag(s).
+\\[imail-summary-by-recipients]   Like \\[imail-summary] only just messages with particular recipient(s).
 
 \\[imail-toggle-header]	Toggle between full headers and reduced headers.
-	  Normally only reduced headers are shown."
+	  Normally only reduced headers are shown.
+
+The following variables customize the behavior of IMAIL.  See each
+variable's documentation (using \\[describe-variable]) for details:
+
+    imail-default-dont-reply-to-names
+    imail-default-imap-mailbox
+    imail-default-imap-server
+    imail-default-user-id
+    imail-delete-after-output
+    imail-dont-reply-to-names
+    imail-expunge-confirmation
+    imail-ignored-headers
+    imail-kept-headers
+    imail-message-filter
+    imail-mode-hook
+    imail-primary-folder
+    imail-reply-with-re
+
+\\{imail}"
   (lambda (buffer)
     (buffer-put! buffer 'REVERT-BUFFER-METHOD imail-revert-buffer)
     (add-kill-buffer-hook buffer imail-kill-buffer)
@@ -338,11 +372,11 @@ DEL	Scroll to previous screen of this message.
     (set-buffer-read-only! buffer)
     (disable-group-undo! (buffer-group buffer))
     (event-distributor/invoke! (ref-variable imail-mode-hook buffer) buffer)))
-
+
 (define-variable imail-mode-hook
   "An event distributor that is invoked when entering IMAIL mode."
   (make-event-distributor))
-
+
 (define-key 'imail #\.		'beginning-of-buffer)
 (define-key 'imail #\space	'scroll-up)
 (define-key 'imail #\rubout	'scroll-down)
