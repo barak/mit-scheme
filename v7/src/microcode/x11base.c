@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.69 1996/12/11 07:23:10 cph Exp $
+$Id: x11base.c,v 1.70 1997/02/05 19:03:58 cph Exp $
 
-Copyright (c) 1989-96 Massachusetts Institute of Technology
+Copyright (c) 1989-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,6 +41,7 @@ MIT in each case. */
 #include "osio.h"
 #include "x11.h"
 #include <X11/Xmd.h>
+#include <X11/keysym.h>
 
 extern void EXFUN (block_signals, (void));
 extern void EXFUN (unblock_signals, (void));
@@ -1432,6 +1433,7 @@ DEFINE_PRIMITIVE ("X-OPEN-DISPLAY", Prim_x_open_display, 1, 1, 0)
     (XD_WM_TAKE_FOCUS (xd)) =
       (XInternAtom ((XD_DISPLAY (xd)), "WM_TAKE_FOCUS", False));
     (XD_CACHED_EVENT_P (xd)) = 0;
+    XRebindKeysym ((XD_DISPLAY (xd)), XK_BackSpace, 0, 0, "\177", 1);
     PRIMITIVE_RETURN (XD_TO_OBJECT (xd));
   }
 }
