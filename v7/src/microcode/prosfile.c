@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfile.c,v 1.2 1991/03/01 00:55:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfile.c,v 1.3 1992/01/20 17:25:43 jinx Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,6 +37,8 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #include "osfile.h"
+
+extern Tchannel EXFUN (arg_channel, (int));
 
 #ifndef OPEN_FILE_HOOK
 #define OPEN_FILE_HOOK(channel)

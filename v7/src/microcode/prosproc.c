@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.9 1991/10/29 22:55:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.10 1992/01/20 17:30:50 jinx Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,6 +38,7 @@ MIT in each case. */
 #include "prims.h"
 #include "osproc.h"
 
+extern Tchannel EXFUN (arg_channel, (int));
 static int EXFUN (string_vector_p, (SCHEME_OBJECT vector));
 static char ** EXFUN (convert_string_vector, (SCHEME_OBJECT vector));
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtty.c,v 1.5 1991/01/15 20:18:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtty.c,v 1.6 1992/01/20 17:24:17 jinx Exp $
 
 Copyright (c) 1990, 1991 Massachusetts Institute of Technology
 
@@ -118,6 +118,7 @@ DEFUN (tputs_write_char, (c), char c)
 void
 DEFUN_VOID (UX_initialize_tty)
 {
+  extern int EXFUN (atoi, (const char *));
   extern Tchannel EXFUN (OS_open_fd, (int fd));
   input_channel = (OS_open_fd (STDIN_FILENO));
   (CHANNEL_INTERNAL (input_channel)) = 1;
@@ -187,6 +188,7 @@ DEFUN_VOID (UX_initialize_tty)
     tty_command_clear = "\f";
   else
     {
+      extern void EXFUN (tputs, (char *, int, void (*) (char)));
       char * command = tputs_output_scan;
       tputs (tty_command_clear, tty_y_size, tputs_write_char);
       (*tputs_output_scan++) = '\0';

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.44 1992/01/15 21:25:55 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.45 1992/01/20 17:35:57 jinx Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -80,8 +80,8 @@ MIT in each case. */
 
 #include <ctype.h>
 
-extern int strcmp ();
-extern int strlen ();
+extern int EXFUN (strcmp, (const char *, const char *));
+extern int EXFUN (strlen, (const char *));
 
 typedef int boolean;
 #define TRUE 1
@@ -99,14 +99,16 @@ typedef int boolean;
 
 #define pseudo_void int
 
+extern void EXFUN (exit, (int));
+
 char *
 DEFUN (xmalloc, (length),
        int length)
 {
   char * result;
-  extern char * malloc ();
+  extern PTR EXFUN (malloc, (int));
 
-  result = (malloc (length));
+  result = ((char *) (malloc (length)));
   if (result == ((char *) 0))
     {
       fprintf (stderr, "malloc: unable to allocate %d bytes\n", length);
@@ -121,9 +123,9 @@ DEFUN (xrealloc, (ptr, length),
        int length)
 {
   char * result;
-  extern char * realloc ();
+  extern PTR EXFUN (realloc, (void *, int));
 
-  result = (realloc (ptr, length));
+  result = ((char *) (realloc (ptr, length)));
   if (result == ((char *) 0))
     {
       fprintf (stderr, "realloc: unable to allocate %d bytes\n", length);

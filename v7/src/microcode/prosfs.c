@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfs.c,v 1.5 1991/10/29 22:55:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfs.c,v 1.6 1992/01/20 17:29:30 jinx Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,7 +36,14 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
+#include "osfile.h"
 #include "osfs.h"
+#include "osio.h"
+
+extern int EXFUN (OS_channel_copy,
+		  (off_t source_length,
+		   Tchannel source_channel,
+		   Tchannel destination_channel));
 
 #define STRING_RESULT(expression)					\
 {									\
@@ -160,11 +167,6 @@ If third arg HARD? is #F, a soft link is created;\n\
 #ifndef FILE_COPY_BUFFER_LENGTH
 #define FILE_COPY_BUFFER_LENGTH 8192
 #endif
-
-extern int EXFUN (OS_channel_copy,
-		  (off_t source_length,
-		   Tchannel source_channel,
-		   Tchannel destination_channel));
 
 int
 DEFUN (OS_channel_copy, (source_length, source_channel, destination_channel),
