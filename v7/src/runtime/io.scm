@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.51 1997/11/01 19:12:16 cph Exp $
+$Id: io.scm,v 14.52 1998/01/08 05:58:22 cph Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -245,20 +245,25 @@ MIT in each case. |#
   (let ((do-read
 	 (lambda ()
 	   ((ucode-primitive channel-read 4) (channel-descriptor channel)
-					     buffer start end)))
-	(do-test
-	 (lambda ()
-	   (eq? 'INPUT-AVAILABLE (test-for-input-on-channel channel)))))
-    (declare (integrate-operator do-read do-test))
+					     buffer start end))))
+    (declare (integrate-operator do-read))
     (if (and have-select? (not (channel-type=file? channel)))
 	(let ((block-events? (block-thread-events)))
 	  (let ((result
-		 (if (channel-blocking? channel)
-		     (begin
-		       (do () ((do-test)))
-		       (do-read))
-		     (and (do-test)
-			  (do-read)))))
+		 (let ((do-test
+			(lambda (k)
+			  (let ((result (test-for-input-on-channel channel)))
+			    (case result
+			      ((INPUT-AVAILABLE)
+			       (do-read))
+			      ((PROCESS-STATUS-CHANGE)
+			       (handle-subprocess-status-change)
+			       (if (channel-closed? channel) 0 (k)))
+			      (else
+			       (k)))))))
+		   (if (channel-blocking? channel)
+		       (let loop () (do-test loop))
+		       (do-test (lambda () #f))))))
 	    (if (not block-events?)
 		(unblock-thread-events))
 	    result))
