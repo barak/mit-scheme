@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.48 2000/05/08 19:02:42 cph Exp $
+;;; $Id: imail-core.scm,v 1.49 2000/05/08 19:07:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -374,11 +374,6 @@
 	   (loop (cdr headers) (cons (car headers) headers*) flags
 		 properties)))))
 
-(define (make-attached-message folder headers body)
-  (let ((message (make-detached-message headers body)))
-    (attach-message! message folder)
-    message))
-
 (define (copy-message message)
   (make-message (map copy-header-field (message-header-fields message))
 		(message-body message)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.16 2000/05/03 19:29:48 cph Exp $
+;;; $Id: imail-umail.scm,v 1.17 2000/05/08 19:07:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -75,22 +75,21 @@
 		 (begin
 		   (if (not (umail-delimiter? from-line))
 		       (error "Malformed unix mail file:" port))
-		   (let loop ((from-line from-line) (messages '()))
+		   (let loop ((from-line from-line) (index 0) (messages '()))
 		     (call-with-values
-			 (lambda ()
-			   (read-umail-message folder from-line port))
+			 (lambda () (read-umail-message from-line port))
 		       (lambda (message from-line)
+			 (attach-message! message folder index)
 			 (let ((messages (cons message messages)))
 			   (if from-line
-			       (loop from-line messages)
+			       (loop from-line (+ index 1) messages)
 			       (reverse! messages)))))))))))))))
 
-(define (read-umail-message folder from-line port)
+(define (read-umail-message from-line port)
   (let read-headers ((header-lines '()))
     (let ((line (read-line port)))
       (cond ((eof-object? line)
-	     (values (make-umail-message folder
-					 from-line
+	     (values (make-umail-message from-line
 					 (reverse! header-lines)
 					 '())
 		     #f))
@@ -98,14 +97,12 @@
 	     (let read-body ((body-lines '()))
 	       (let ((line (read-line port)))
 		 (cond ((eof-object? line)
-			(values (make-umail-message folder
-						    from-line
+			(values (make-umail-message from-line
 						    (reverse! header-lines)
 						    (reverse! body-lines))
 				#f))
 		       ((umail-delimiter? line)
-			(values (make-umail-message folder
-						    from-line
+			(values (make-umail-message from-line
 						    (reverse! header-lines)
 						    (reverse! body-lines))
 				line))
@@ -114,10 +111,9 @@
 	    (else
 	     (read-headers (cons line header-lines)))))))
 
-(define (make-umail-message folder from-line header-lines body-lines)
+(define (make-umail-message from-line header-lines body-lines)
   (let ((message
-	 (make-attached-message
-	  folder
+	 (make-detached-message
 	  (lines->header-fields header-lines)
 	  (lines->string (map (lambda (line)
 				(if (string-prefix-ci? ">From " line)
