@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2fs.c,v 1.1 1994/11/28 03:43:02 cph Exp $
+$Id: pros2fs.c,v 1.2 1995/01/05 23:45:59 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -33,13 +33,13 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 #include "scheme.h"
-#undef END_OF_CHAIN
 #include "prims.h"
 #include "os2.h"
 #include "osfs.h"
 
 extern FILESTATUS3 * OS2_read_file_status (const char *);
 extern void OS2_write_file_status (const char *, FILESTATUS3 *);
+extern char * OS2_drive_type (char);
 
 #ifndef FILE_TOUCH_OPEN_TRIES
 #define FILE_TOUCH_OPEN_TRIES 5
@@ -358,12 +358,26 @@ Otherwise the result is #F.")
   {
     unsigned int attr = (info -> attrFile);
     char * s = ((char *) (STRING_LOC (modes, 0)));
-    (s[0]) = (((attr & FILE_READONLY)  != 0) ? 'r' : '_');
-    (s[1]) = (((attr & FILE_HIDDEN)    != 0) ? 'h' : '_');
-    (s[2]) = (((attr & FILE_SYSTEM)    != 0) ? 's' : '_');
-    (s[3]) = (((attr & FILE_ARCHIVED)  != 0) ? 'a' : '_');
-    (s[4]) = (((attr & FILE_DIRECTORY) != 0) ? 'd' : '_');
+    (s[0]) = (((attr & FILE_DIRECTORY) != 0) ? 'd' : '-');
+    (s[1]) = (((attr & FILE_READONLY)  != 0) ? 'r' : '-');
+    (s[2]) = (((attr & FILE_HIDDEN)    != 0) ? 'h' : '-');
+    (s[3]) = (((attr & FILE_SYSTEM)    != 0) ? 's' : '-');
+    (s[4]) = (((attr & FILE_ARCHIVED)  != 0) ? 'a' : '-');
   }
   VECTOR_SET (result, 5, modes);
   PRIMITIVE_RETURN (result);
+}
+
+DEFINE_PRIMITIVE ("DRIVE-TYPE", Prim_drive_type, 1, 1, 0)
+{
+  SCHEME_OBJECT arg;
+  char * type;
+  PRIMITIVE_HEADER (1);
+
+  CHECK_ARG (1, STRING_P);
+  arg = (ARG_REF (1));
+  if (! (((STRING_LENGTH (arg)) == 1) && (isalpha (STRING_REF (arg, 0)))))
+    error_bad_range_arg (1);
+  type = (OS2_drive_type (STRING_REF (arg, 0)));
+  PRIMITIVE_RETURN (char_pointer_to_string ((type == 0) ? "unknown" : type));
 }
