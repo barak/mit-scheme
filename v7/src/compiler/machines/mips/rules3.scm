@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.14 1992/09/30 21:05:57 cph Exp $
+$Id: rules3.scm,v 1.15 1992/12/28 22:02:50 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -56,10 +56,28 @@ MIT in each case. |#
   (INVOCATION:APPLY (? frame-size) (? continuation))
   continuation				;ignore
   (LAP ,@(clear-map!)
-       ,@(load-immediate regnum:third-arg frame-size #F)
-       (LW ,regnum:second-arg (OFFSET 0 ,regnum:stack-pointer))
-       (ADDI ,regnum:stack-pointer ,regnum:stack-pointer 4)
-       ,@(invoke-interface code:compiler-apply)))
+       (ADDI ,regnum:second-arg ,regnum:scheme-to-interface -56)
+       ,@(let ((regs (get-immediate-aliases frame-size)))
+	   (cond ((not (null? regs))
+		  (LAP (JR ,regnum:second-arg)
+		       ,@(if (memv regnum:third-arg regs)
+			     (LAP (NOP))
+			     (LAP (ADD ,regnum:third-arg 0 ,(car regs))))))
+		 ((fits-in-16-bits-signed? frame-size)
+		  (LAP (JR ,regnum:second-arg)
+		       (ADDIU ,regnum:third-arg 0 ,frame-size)))
+		 ((fits-in-16-bits-unsigned? frame-size)
+		  (LAP (JR ,regnum:second-arg)
+		       (ORI ,regnum:third-arg 0 ,frame-size)))
+		 ((top-16-bits-only? frame-size)
+		  (LAP (JR ,regnum:second-arg)
+		       (LUI ,regnum:third-arg ,(top-16-bits frame-size))))
+		 (else
+		  (LAP (LUI ,regnum:third-arg ,(top-16-bits frame-size))
+		       (JR ,regnum:second-arg)
+		       (ORI ,regnum:third-arg
+			    ,regnum:third-arg
+			    ,(bottom-16-bits frame-size))))))))
 
 (define-rule statement
   (INVOCATION:JUMP (? frame-size) (? continuation) (? label))
