@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: output.scm,v 14.27 2003/01/02 01:52:51 cph Exp $
+$Id: output.scm,v 14.28 2003/01/03 01:35:55 cph Exp $
 
 Copyright (c) 1986,1987,1988,1989,1990 Massachusetts Institute of Technology
 Copyright (c) 1991,1992,1993,1999,2001 Massachusetts Institute of Technology
@@ -276,17 +276,16 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 		(begin
 		  (write-string prefix port)
 		  (write-string (car strings) port)
-		  (do ((n (- (car col-widths) (string-length (car strings)))
-			  (- n 1)))
-		      ((= n 0))
-		    (write-char #\space port))
-		  (set-car! cols (cdr strings)))
-		(begin
-		  (write-string prefix port)
-		  (do ((n (car col-widths) (- n 1)))
-		      ((= n 0))
-		    (write-char #\space port))))))
+		  (write-spaces (- (car col-widths)
+				   (string-length (car strings))))
+		  (set-car! cols (cdr strings))))))
 	(write-string right-margin port)
 	(newline port)))
+
+    (define (write-spaces n)
+      (if (> n 0)
+	  (begin
+	    (write-char #\space port)
+	    (write-spaces (- n 1)))))
 
     (if row-major? (do-row-major) (do-col-major))))
