@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.10 1994/04/19 18:42:54 cph Exp $
+$Id: random.scm,v 14.11 1995/07/19 05:16:29 cph Exp $
 
-Copyright (c) 1993-94 Massachusetts Institute of Technology
+Copyright (c) 1993-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -143,7 +143,10 @@ MIT in each case. |#
 	    (set! seed n)
 	    (quotient (* (- n 1) b) m-1)))))))
 
-(define-structure (random-state (constructor %make-random-state))
+(define-structure (random-state
+		   (named ((ucode-primitive string->symbol)
+			   "#[(runtime random-number)random-state]"))
+		   (constructor %make-random-state))
   index
   borrow
   vector)
@@ -173,7 +176,6 @@ MIT in each case. |#
 	state)))
 
 (define *random-state*)
-
 (define (initialize-package!)
-  (set! *random-state* (make-random-state 0))
+  (set! *random-state* (make-random-state #t))
   unspecific)
