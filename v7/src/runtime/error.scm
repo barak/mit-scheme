@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.30 1992/02/25 22:54:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.31 1992/04/06 05:49:26 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -456,7 +456,9 @@ MIT in each case. |#
       (if (let ((types break-on-signals-types))
 	    (and (not (null? types))
 		 (intersect-generalizations? types)))
-	  (bkpt "BKPT entered because of BREAK-ON-SIGNALS:" condition))
+	  (breakpoint-procedure 'INHERIT
+				"BKPT entered because of BREAK-ON-SIGNALS:"
+				condition))
       (do ((frames dynamic-handler-frames (cdr frames)))
 	  ((null? frames))
 	(if (let ((types (caar frames)))

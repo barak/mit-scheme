@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.142 1992/04/02 07:53:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.143 1992/04/06 05:49:19 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -1672,7 +1672,6 @@ MIT in each case. |#
 	  abort->nearest
 	  abort->previous
 	  abort->top-level
-	  bkpt
 	  breakpoint
 	  breakpoint-procedure
 	  cmdl-interrupt/abort-nearest

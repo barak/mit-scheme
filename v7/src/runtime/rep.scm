@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.26 1992/03/25 21:57:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.27 1992/04/06 05:49:12 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -702,11 +702,8 @@ MIT in each case. |#
 		       (if (default-object? message) "Break!" message)
 		       "break>"))))
 
-(define (bkpt datum . arguments)
-  (apply breakpoint-procedure 'INHERIT datum arguments))
-
 (define (breakpoint-procedure environment datum . arguments)
-  ;; For upwards compatibility.
+  ;; BKPT expands into this.
   (with-simple-restart 'CONTINUE "Return from BKPT."
     (lambda ()
       (read-eval-print environment
@@ -714,7 +711,7 @@ MIT in each case. |#
 			(lambda (port)
 			  (newline port)
 			  (format-error-message datum arguments port)))
-		       "break>"))))
+		       "bkpt>"))))
 
 (define (ve environment)
   (read-eval-print (->environment environment) false 'INHERIT))
