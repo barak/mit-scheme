@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.43 1992/11/03 22:41:00 jinx Exp $
+$Id: global.scm,v 14.44 1992/11/08 18:13:16 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -159,12 +159,17 @@ MIT in each case. |#
 (define (pwd)
   (working-directory-pathname))
 
-(define (cd pathname)
-  (set-working-directory-pathname! pathname))
+(define (cd #!optional pathname)
+  (set-working-directory-pathname!
+    (if (default-object? pathname)
+        (user-homedir-pathname)
+ 	pathname)))
 
+#|
 ;; Compatibility.
 (define %pwd pwd)
 (define %cd cd)
+|#
 
 (define (show-time thunk)
   (let ((process-start (process-time-clock))
@@ -190,13 +195,14 @@ MIT in each case. |#
 
 (define (default/exit integer)
   (if (prompt-for-confirmation "Kill Scheme")
-      (if integer (%exit integer) (%exit))))
+      (%exit integer)))
 
 (define hook/exit default/exit)
 
 (define (%exit #!optional integer)
   (event-distributor/invoke! event:before-exit)
-  (if (default-object? integer)
+  (if (or (default-object? integer)
+	  (not integer))
       ((ucode-primitive exit 0))
       ((ucode-primitive exit-with-value 1) integer)))
 
