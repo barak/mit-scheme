@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.55 1997/01/03 04:06:53 cph Exp $
+;;;	$Id: rmail.scm,v 1.56 1997/01/15 07:09:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
 ;;;
@@ -1605,7 +1605,7 @@ buffer visiting that file."
     (define-variable-local-value! buffer
       (ref-variable-object translate-file-data-on-output)
       #f)
-    (append-to-file (buffer-region buffer) pathname #f)
+    (append-to-file (buffer-region buffer) pathname #f #f)
     (kill-buffer buffer)))
 
 (define (prompt-for-rmail-output-filename prompt default)
