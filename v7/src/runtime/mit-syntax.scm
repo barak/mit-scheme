@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mit-syntax.scm,v 14.5 2002/03/01 03:09:54 cph Exp $
+;;; $Id: mit-syntax.scm,v 14.6 2002/04/17 15:02:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -240,9 +240,10 @@
 
 (define (classify/define form environment definition-environment history
 			 binding-theory)
-  (syntactic-environment/define definition-environment
-				(cadr form)
-				(make-reserved-name-item history))
+  (if (not (syntactic-environment/top-level? definition-environment))
+      (syntactic-environment/define definition-environment
+				    (cadr form)
+				    (make-reserved-name-item history)))
   (binding-theory definition-environment
 		  (cadr form)
 		  (classify/subexpression (caddr form)
