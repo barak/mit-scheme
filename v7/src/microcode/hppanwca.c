@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: hppanwca.c,v 1.2 1993/06/24 05:43:10 gjr Exp $
+$Id: hppanwca.c,v 1.3 1994/09/21 06:12:30 gjr Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,12 +37,13 @@ MIT in each case. */
 
    To use, replace the structure labeled "written_data" below with the
    new one (if not present in the data base), then recompile this program:
-     cc -Aa -D_HPUX_SOURCE -O -o hppanewcache hppanewcache.c
+     cc -Ae -O -o hppanewcache hppanewcache.c
    and then type
      ./hppanewcache >>HPPAmodels
  */
 
 #include <stdio.h>
+#define _HPUX
 #include "hppacach.h"
 
 struct pdc_cache_written
