@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.2 1992/12/01 22:07:38 gjr Exp $
+$Id: rulfix.scm,v 1.3 1992/12/03 21:56:27 gjr Exp $
 
 Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
 
@@ -454,6 +454,7 @@ case.
     (if (not (= target r23)) (require-register! r23))
     (if (not (= target r24)) (require-register! r24))
     (if (not (= target r25)) (require-register! r25))
+    (if (not (= target r27)) (require-register! r27))
     (LAP
      ,@(cond ((and (= source1 r25) (= source2 r24))
 	      (LAP (COPY ,r24 ,r23)
@@ -465,9 +466,9 @@ case.
 	     (else
 	      (LAP ,@(copy source2 r25)
 		   ,@(copy source1 r24))))
-     (LDQ ,r23 ,hook)
-     (JSR ,r23 ,r23 (@PCO 0))
-     ,@(end-code ovflw? r24 target))))
+     (LDQ ,r27 ,hook)
+     (JSR ,r23 ,r27 (@PCO 0))
+     ,@(end-code ovflw? r27 target))))
 
 (define-arithmetic-method 'FIXNUM-QUOTIENT fixnum-methods/2-args
   (special-binary-operation
