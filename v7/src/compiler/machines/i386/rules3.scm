@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.24 1992/10/15 16:28:14 jinx Exp $
-$MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
+$Id: rules3.scm,v 1.25 1993/03/01 17:35:59 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -625,6 +624,69 @@ MIT in each case. |#
 		  ,@(invoke-hook/call entry:compiler-link)
 		  ,@(make-external-label (continuation-code-word false)
 					 (generate-label))))))
+
+(define (generate/remote-links n-blocks vector-label nsects)
+  (if (zero? n-blocks)
+      (LAP)
+      (let ((loop (generate-label))
+	    (bytes  (generate-label))
+	    (end (generate-label)))
+	(LAP
+	 ;; Push counter
+	 (PUSH W (& 0))
+	 (LABEL ,loop)
+	 ,@(pc->reg
+	    eax
+	    (lambda (pc-label prefix)
+	      (LAP ,@prefix
+		   ;; Get index
+		   (MOV W (R ,ecx) (@R ,esp))
+		   ;; Get vector
+		   (MOV W (R ,edx) (@RO W ,eax (- ,vector-label ,pc-label)))
+		   ;; Get n-sections for this cc-block
+		   (XOR W (R ,ebx) (R ,ebx))
+		   (MOV B (R ,ebx) (@ROI B ,eax (- ,bytes ,pc-label) ,ecx 1))
+		   ;; address of vector
+		   (AND W (R ,edx) (R ,regnum:datum-mask))
+		   ;; Store n-sections in arg
+		   (MOV W ,reg:utility-arg-4 (R ,ebx))
+		   ;; vector-ref -> cc block
+		   (MOV W (R ,edx) (@ROI B ,edx 4 ,ecx 4))
+		   ;; address of cc-block
+		   (AND W (R ,edx) (R ,regnum:datum-mask))
+		   ;; cc-block length
+		   (MOV W (R ,ebx) (@R ,edx))
+		   ;; Get environment
+		   (MOV W (R ,ecx) ,reg:environment)
+		   ;; Eliminate length tags
+		   (AND W (R ,ebx) (R ,regnum:datum-mask))
+		   ;; Store environment
+		   (MOV W (@RI ,edx ,ebx 4) (R ,ecx))
+		   ;; Get NMV header
+		   (MOV W (R ,ecx) (@RO B ,edx 4))
+		   ;; Eliminate NMV tag
+		   (AND W (R ,ecx) (R ,regnum:datum-mask))
+		   ;; Address of first free reference
+		   (LEA (R ,ebx) (@ROI B ,edx 8 ,ecx 4))
+		   ;; Invoke linker
+		   ,@(invoke-hook/call entry:compiler-link)
+		   ,@(make-external-label (continuation-code-word false)
+					 (generate-label))		   
+		   ;; Increment counter and loop
+		   (INC W (@R ,esp))
+		   (CMP W (@R ,esp) (& ,n-blocks))
+		   (JL (@PCR ,loop))
+		   )))
+	 (JMP (@PCR ,end))
+	 (LABEL ,bytes)
+	 ,@(let walk ((bytes (vector->list nsects)))
+	     (if (null? bytes)
+		 (LAP)
+		 (LAP (BYTE U ,(car bytes))
+		      ,@(walk (cdr bytes)))))
+	 (LABEL ,end)
+	 ;; Pop counter
+	 (POP (R ,eax))))))
 
 (define (generate/constants-block constants references assignments
 				  uuo-links global-links static-vars)
