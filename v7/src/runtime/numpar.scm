@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: numpar.scm,v 14.13 1997/07/10 09:16:23 adams Exp $
+$Id: numpar.scm,v 14.14 1997/07/20 06:38:55 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -51,9 +51,9 @@ MIT in each case. |#
       (error:wrong-type-argument start "string index" 'SUBSTRING->NUMBER))
   (if (not (index-fixnum? end))
       (error:wrong-type-argument end "string index" 'SUBSTRING->NUMBER))
-  (if (not (< end (string-length string)))
+  (if (not (fix:<= end (string-length string)))
       (error:bad-range-argument end 'SUBSTRING->NUMBER))
-  (if (not (<= start end))
+  (if (not (fix:<= start end))
       (error:bad-range-argument start 'SUBSTRING->NUMBER))
   (parse-number string start end
 		(if (default-object? radix) #f radix)
@@ -110,7 +110,7 @@ MIT in each case. |#
 		     (parse-integer string start end digit
 				    exactness (or radix 10) #f)))
 	       (else #f)))))
-
+
 (define (find-leader string start end exactness radix sign)
   ;; State: leading sign has been seen.
   (and (fix:< start end)
@@ -128,7 +128,7 @@ MIT in each case. |#
 		(and (fix:= start end)
 		     (if (eq? #\- sign) -i +i)))
 	       (else #f)))))
-
+
 (define (parse-integer string start end integer exactness radix sign)
   ;; State: at least one digit has been seen.
   (parse-digits string start end integer exactness radix
@@ -378,7 +378,7 @@ MIT in each case. |#
 
 (define flonum-parser-fast?
   #f)
-
+
 (define (finish number exactness sign)
   (apply-sign sign (apply-exactness exactness number)))
 
