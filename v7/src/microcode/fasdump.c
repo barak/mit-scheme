@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.46 1990/01/23 08:30:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.47 1990/01/31 05:01:53 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -48,11 +48,15 @@ extern SCHEME_OBJECT
   *initialize_primitive_table(),
   *cons_primitive_table(),
   *cons_whole_primitive_table();
+
+extern Boolean
+  OS_file_remove();
 
 /* Some statics used freely in this file */
 
 static SCHEME_OBJECT *NewFree, *NewMemTop, *Fixup, *Orig_New_Free;
 static Boolean compiled_code_present_p;
+static unsigned char *dump_file_name = ((unsigned char *) NULL);
 
 /* FASDUMP:
 
@@ -307,24 +311,25 @@ exit_dumploop:
   value = DumpLoop(obj, code);						\
   if (value != PRIM_DONE)						\
   {									\
-    PRIMITIVE_RETURN(Fasdump_Exit(value));				\
+    PRIMITIVE_RETURN(Fasdump_Exit(value, false));			\
   }									\
 }
 
 #define FASDUMP_INTERRUPT()						\
 {									\
-  PRIMITIVE_RETURN(Fasdump_Exit(PRIM_INTERRUPT));			\
+  PRIMITIVE_RETURN(Fasdump_Exit(PRIM_INTERRUPT, false));		\
 }
 
 SCHEME_OBJECT
-Fasdump_Exit(code)
+Fasdump_Exit(code, close_p)
      long code;
+     Boolean close_p;
 {
   Boolean result;
   fast SCHEME_OBJECT *Fixes;
 
   Fixes = Fixup;
-  result = Close_Dump_File();
+  result = ((close_p) ? (Close_Dump_File ()) : true);
   while (Fixes != NewMemTop)
   {
     fast SCHEME_OBJECT *Fix_Address;
@@ -333,6 +338,11 @@ Fasdump_Exit(code)
     *Fix_Address = *Fixes++;             /* Put it there. */
   }
   Fixup = Fixes;
+  if ((close_p) && ((!result) || (code != PRIM_DONE)))
+  {
+    result = ((OS_file_remove (dump_file_name)) && result);
+  }
+  dump_file_name = ((unsigned char *) NULL);
   Fasdump_Exit_Hook();
   if (!result)
   {
@@ -380,8 +390,6 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
   Object = (ARG_REF (1));
   File_Name = (ARG_REF (2));
   Flag = (ARG_REF (3));
-  if (! (Open_Dump_File (File_Name, WRITE_FLAG)))
-    error_bad_range_arg (2);
 #if false
   CHECK_ARG (3, BOOLEAN_P);
 #else
@@ -391,9 +399,10 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
   table_end = &Free[Space_Before_GC()];
   table_start = initialize_primitive_table(Free, table_end);
   if (table_start >= table_end)
-    {
-      Primitive_GC (table_start - Free);
-    }
+  {
+    Primitive_GC (table_start - Free);
+  }
+  dump_file_name = (STRING_LOC (File_Name, 0));
   Fasdump_Free_Calc(NewFree, NewMemTop, Orig_New_Free);
   Fixup = NewMemTop;
   ALIGN_FLOAT (NewFree);
@@ -438,6 +447,10 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
     {
       FASDUMP_INTERRUPT();
     }
+    if (! (Open_Dump_File (File_Name, WRITE_FLAG)))
+    {
+      PRIMITIVE_RETURN (Fasdump_Exit (ERR_ARG_2_BAD_RANGE, false));
+    }
     result = Write_File(Addr_Of_New_Object, 0, 0,
 			Length, New_Object,
 			table_start, table_length,
@@ -456,6 +469,10 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
     {
       FASDUMP_INTERRUPT();
     }
+    if (! (Open_Dump_File (File_Name, WRITE_FLAG)))
+    {
+      PRIMITIVE_RETURN (Fasdump_Exit (ERR_ARG_2_BAD_RANGE, false));
+    }
     result = Write_File(New_Object,
 			Length, New_Object,
 			0, Constant_Space,
@@ -464,7 +481,8 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
 			compiled_code_present_p, false);
   }
 
-  PRIMITIVE_RETURN(Fasdump_Exit(result ? PRIM_DONE : PRIM_INTERRUPT));
+  PRIMITIVE_RETURN (Fasdump_Exit ((result ? PRIM_DONE : PRIM_INTERRUPT),
+				  true));
 }
 
 /* (DUMP-BAND PROCEDURE FILE-NAME)
@@ -483,13 +501,11 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
   CHECK_ARG (1, INTERPRETER_APPLICABLE_P);
   CHECK_ARG (2, STRING_P);
   if (Unused_Heap < Heap_Bottom)
-    {
-      /* Cause the image to be in the low heap, to increase
-	 the probability that no relocation is needed on reload. */
-      Primitive_GC (0);
-    }
-  if (! (Open_Dump_File ((ARG_REF (2)), WRITE_FLAG)))
-    error_bad_range_arg (2);
+  {
+    /* Cause the image to be in the low heap, to increase
+       the probability that no relocation is needed on reload. */
+    Primitive_GC (0);
+  }
   Primitive_GC_If_Needed (5);
   saved_free = Free;
   Combination = MAKE_POINTER_OBJECT (TC_COMBINATION_1, Free);
@@ -509,10 +525,8 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
   }
   else
   {
-#if false
-  /* Aligning here confuses some of the counts computed. */
-    ALIGN_FLOAT (Free);
-#endif
+    if (! (Open_Dump_File ((ARG_REF (2)), WRITE_FLAG)))
+      error_bad_range_arg (2);
     result = Write_File((Free - 1),
 			((long) (Free - Heap_Bottom)), Heap_Bottom,
 			((long) (Free_Constant - Constant_Space)),
@@ -520,9 +534,13 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
 			table_start, table_length,
 			((long) (table_end - table_start)),
 			(compiler_utilities != SHARP_F), true);
+    /* The and is short-circuit, so it must be done in this order. */
+    result = ((Close_Dump_File ()) && result);
+    if (!result)
+    {
+      result = ((OS_file_remove (STRING_ARG (2))) && result);
+    }
   }
-  /* The and is short-circuit, so it must be done in this order. */
-  result = ((Close_Dump_File ()) && result);
   Band_Dump_Exit_Hook ();
   Free = saved_free;
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (result));
