@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.8 1988/12/13 13:03:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.9 1988/12/16 16:19:21 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -143,10 +143,6 @@ MIT in each case. |#
 	(extra (if (and parent (ic-block/use-lookup? parent)) 1 0)))
     (set-block-free-variables! block free-variables)
     (set-block-bound-variables! block bound-variables)
-    (set-block-frame! block
-		      (and frame
-			   (rvalue/procedure? frame)
-			   (procedure-name frame)))
     (let loop ((variables (block-bound-variables block))
 	       (offset (+ closure-block-first-offset extra))
 	       (table '())
