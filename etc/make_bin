@@ -7,10 +7,16 @@ if (! -e $scheme/microcode/Psbtobin ) then
 endif
 
 cd $scheme/psb
-foreach i (*)
+foreach i (`find * -type d -print | xargs echo`)
+  if (! -d $scheme/$i) then
+    echo "mkdir $scheme/$i"
+    mkdir $scheme/$i
+  endif
   cd $scheme/psb/$i
   foreach j (*)
-    echo "Psbtobin $scheme/$i/$j"
-    $scheme/microcode/Psbtobin < $j >! $scheme/$i/$j
+    if (-f $j) then
+      echo "Psbtobin $scheme/$i/$j"
+      $scheme/microcode/Psbtobin < $j >! $scheme/$i/$j
+    endif
   end
 end
