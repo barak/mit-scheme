@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.26 2000/04/07 19:41:25 cph Exp $
+;;; $Id: imail-core.scm,v 1.27 2000/04/07 20:58:49 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -210,6 +210,8 @@
 (define-class <folder> ()
   (modified? define standard
 	     initial-value #t)
+  (modification-event define accessor
+		      initial-value (make-event-distributor))
   (properties define standard
 	      initializer make-1d-table))
 
@@ -249,14 +251,22 @@
 (define-generic folder-length (folder))
 
 (define (folder-modified! folder)
-  (set-folder-modified?! folder #t))
+  (if (not (folder-modified? folder))
+      (begin
+	(set-folder-modified?! folder #t)
+	(event-distributor/invoke! (folder-modification-event folder)
+				   folder))))
 
 (define (folder-not-modified! folder)
-  (let ((count (folder-length folder)))
-    (do ((index 0 (+ index 1)))
-	((= index count))
-      (message-not-modified! (get-message folder index))))
-  (set-folder-modified?! folder #f))
+  (if (folder-modified? folder)
+      (begin
+	(let ((count (folder-length folder)))
+	  (do ((index 0 (+ index 1)))
+	      ((= index count))
+	    (message-not-modified! (get-message folder index))))
+	(set-folder-modified?! folder #f)
+	(event-distributor/invoke! (folder-modification-event folder)
+				   folder))))
 
 ;; Get the INDEX'th message in FOLDER and return it.  Signal an
 ;; error for invalid INDEX.
