@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.124 2003/04/15 03:35:33 cph Exp $
+@comment $Id: scheme.texinfo,v 1.125 2003/09/18 16:51:59 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT/GNU Scheme Reference
@@ -52,8 +52,8 @@ Free Documentation License".
 @titlepage
 @title{MIT/GNU Scheme Reference Manual}
 @subtitle Edition 1.99
-@subtitle for Scheme Release 7.8.0
-@subtitle 14 April 2003
+@subtitle for Scheme Release 7.7.90
+@subtitle 18 September 2003
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
