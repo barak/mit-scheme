@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntsock.c,v 1.9 2001/06/02 01:05:09 cph Exp $
+$Id: ntsock.c,v 1.10 2001/06/02 01:25:00 cph Exp $
 
-Copyright (c) 1997-1999 Massachusetts Institute of Technology
+Copyright (c) 1997-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* This conditional encompasses the entire file.  */
@@ -77,7 +78,7 @@ socket_close_on_abort (SOCKET s)
 }
 
 Tchannel
-OS_open_tcp_stream_socket (char * host, int port)
+OS_open_tcp_stream_socket (void * host, unsigned int port)
 {
   SOCKET s;
   struct sockaddr_in address;
@@ -87,7 +88,7 @@ OS_open_tcp_stream_socket (char * host, int port)
   socket_close_on_abort (s);
   memset ((&address), 0, (sizeof (address)));
   (address . sin_family) = AF_INET;
-  memcpy ((& (address . sin_addr)), host, (sizeof (struct in_addr)));
+  memcpy ((& (address . sin_addr)), host, (sizeof (address . sin_addr)));
   (address . sin_port) = port;
   VOID_SOCKET_CALL
     (connect, (s,
@@ -171,6 +172,18 @@ OS_get_host_by_address (const char * host_addr)
     return (result);
   }
 }
+
+void
+OS_host_address_any (void * addr)
+{
+  (((struct in_addr *) addr) -> s_addr) = (htonl (INADDR_ANY));
+}
+
+void
+OS_host_address_loopback (void * addr)
+{
+  (((struct in_addr *) addr) -> s_addr) = (htonl (INADDR_LOOPBACK));
+}
 
 Tchannel
 OS_create_tcp_server_socket (void)
@@ -233,7 +246,9 @@ OS_server_connection_accept (Tchannel channel,
   transaction_begin ();
   socket_close_on_abort (s);
   if (peer_host != 0)
-    memcpy (peer_host, (& (address . sin_addr)), (sizeof (struct in_addr)));
+    memcpy (peer_host,
+	    (& (address . sin_addr)),
+	    (sizeof (address . sin_addr)));
   if (peer_port != 0)
     (*peer_port) = (address . sin_port);
   RETURN_SOCKET (s, NT_channel_class_tcp_stream_socket);

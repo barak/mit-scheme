@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.27 2001/06/02 01:05:19 cph Exp $
+$Id: uxsock.c,v 1.28 2001/06/02 01:21:58 cph Exp $
 
 Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
@@ -200,13 +200,13 @@ DEFUN (OS_get_host_by_address, (host_addr), CONST char * host_addr)
 void
 DEFUN (OS_host_address_any, (addr), PTR addr)
 {
-  (((struct in_addr *) addr) -> s_addr) = INADDR_ANY;
+  (((struct in_addr *) addr) -> s_addr) = (htonl (INADDR_ANY));
 }
 
 void
 DEFUN (OS_host_address_loopback, (addr), PTR addr)
 {
-  (((struct in_addr *) addr) -> s_addr) = INADDR_LOOPBACK;
+  (((struct in_addr *) addr) -> s_addr) = (htonl (INADDR_LOOPBACK));
 }
 
 #ifdef HAVE_UNIX_SOCKETS

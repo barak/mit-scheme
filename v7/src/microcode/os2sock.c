@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2sock.c,v 1.16 2001/06/02 01:05:12 cph Exp $
+$Id: os2sock.c,v 1.17 2001/06/02 01:22:47 cph Exp $
 
 Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
@@ -199,13 +199,13 @@ OS_get_host_by_address (const char * host_addr)
 void
 OS_host_address_any (void * addr)
 {
-  (((struct in_addr *) addr) -> s_addr) = INADDR_ANY;
+  (((struct in_addr *) addr) -> s_addr) = (htonl (INADDR_ANY));
 }
 
 void
 OS_host_address_loopback (void * addr)
 {
-  (((struct in_addr *) addr) -> s_addr) = INADDR_LOOPBACK;
+  (((struct in_addr *) addr) -> s_addr) = (htonl (INADDR_LOOPBACK));
 }
 
 Tchannel
