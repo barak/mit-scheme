@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.17 2001/11/14 18:15:02 cph Exp $
+;;; $Id: shared.scm,v 1.18 2001/11/14 18:27:17 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -46,8 +46,8 @@
 		(maybe-make-let (map (lambda (b)
 				       (list (cdr b) (car b)))
 				     (cdr internal-bindings))
-		  (strip-protection-wrappers
-		   (maybe-peephole-optimize
+		  (maybe-peephole-optimize
+		   (strip-protection-wrappers
 		    (maybe-optimize-pointer-usage
 		     (maybe-optimize-by-substitution
 		      (generator expression)))))))))))))
@@ -66,6 +66,27 @@
   (if debug:disable-peephole-optimizer?
       expression
       (peephole-optimize expression)))
+
+(define (strip-protection-wrappers expression)
+  ;; Remove PROTECT wrappers from EXPRESSION.  Used after substitution
+  ;; optimization is complete.
+  (if (pair? expression)
+      (case (car expression)
+	((LAMBDA)
+	 `(LAMBDA ,(cadr expression)
+	    ,(strip-protection-wrappers (caddr expression))))
+	((LET)
+	 `(LET ,(cadr expression)
+	    ,(map (lambda (binding)
+		    (list (car binding)
+			  (strip-protection-wrappers (cadr binding))))
+		  (caddr expression))
+	    ,(strip-protection-wrappers (cadddr expression))))
+	((PROTECT)
+	 (cadr expression))
+	(else
+	 (map strip-protection-wrappers expression)))
+      expression))
 
 ;;;; Support for preprocessing
 
@@ -595,7 +616,7 @@
 	(or (loop (car tree))
 	    (loop (cdr tree)))
 	(eq? 'PROTECT tree))))
-
+
 (define (count-references identifiers expression)
   ;; For each element of IDENTIFIERS, count the number of references
   ;; in EXPRESSION.  Result is a list of counts.
@@ -631,27 +652,6 @@
 	       (if entry
 		   (set-cdr! entry (+ (cdr entry) 1)))))))
     (map cdr alist)))
-
-(define (strip-protection-wrappers expression)
-  ;; Remove PROTECT wrappers from EXPRESSION.  Used after substitution
-  ;; optimization is complete.
-  (if (pair? expression)
-      (case (car expression)
-	((LAMBDA)
-	 `(LAMBDA ,(cadr expression)
-	    ,(strip-protection-wrappers (caddr expression))))
-	((LET)
-	 `(LET ,(cadr expression)
-	    ,(map (lambda (binding)
-		    (list (car binding)
-			  (strip-protection-wrappers (cadr binding))))
-		  (caddr expression))
-	    ,(strip-protection-wrappers (cadddr expression))))
-	((PROTECT)
-	 (cadr expression))
-	(else
-	 (map strip-protection-wrappers expression)))
-      expression))
 
 ;;;; Pointer optimizer
 
@@ -689,11 +689,11 @@
 			expression)
 	 (let ((operator (car expression))
 	       (operand (cadr expression)))
-	   (let ((parameter (car (cadr operator)))
-		 (body (caddr operator)))
-	     `((LAMBDA (,parameter)
-		 ,(optimize-pointer-usage body parameter))
-	       ,operand))))
+	   (let ((parameter (car (cadr operator))))
+	     (let ((body (optimize-pointer-usage (caddr operator) parameter)))
+	       (if (> (car (count-references (list parameter) body)) 0)
+		   `((LAMBDA (,parameter) ,body) ,operand)
+		   body)))))
 	((syntax-match?
 	  '('BEGIN
 	     ('SET-PARSER-BUFFER-POINTER! EXPRESSION IDENTIFIER)
