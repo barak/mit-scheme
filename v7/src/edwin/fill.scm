@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fill.scm,v 1.64 2000/06/02 00:42:32 cph Exp $
+;;; $Id: fill.scm,v 1.65 2000/06/15 03:17:57 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -292,6 +292,12 @@ the distance between the end of the text and `fill-column'."
     (mark-temporary! start)))
 
 (define (fill-individual-paragraphs start end fill-column justify? mail?)
+  (operate-on-individual-paragraphs start end mail?
+    (lambda (p-start p-end fill-prefix)
+      (fill-region-as-paragraph p-start p-end fill-prefix
+				fill-column justify?))))
+
+(define (operate-on-individual-paragraphs start end mail? operator)
   (let ((start (mark-right-inserting-copy start))
 	(end (mark-left-inserting-copy end))
 	(point (mark-left-inserting-copy start))
@@ -326,9 +332,7 @@ the distance between the end of the text and `fill-column'."
 		       point)))
 	      (if (mark= m point)
 		  (begin
-		    (fill-region-as-paragraph point pend
-					      fill-prefix fill-column
-					      justify?)
+		    (operator point pend fill-prefix)
 		    (move-mark-to! point pend)
 		    (loop))
 		  (begin
@@ -516,3 +520,49 @@ With argument, turn auto-fill mode on iff argument is positive."
 
 (define (auto-fill-break? point)
   (> (mark-column point) (ref-variable fill-column)))
+
+;;;; Wrap lines
+
+(define (wrap-individual-paragraphs start end fill-column mail?)
+  (operate-on-individual-paragraphs start end mail?
+    (lambda (p-start p-end fill-prefix)
+      (wrap-region-as-paragraph p-start p-end fill-prefix fill-column))))
+
+(define (wrap-region-as-paragraph p-start p-end fill-prefix fill-column)
+  (let ((m (mark-left-inserting-copy (line-end p-start 0)))
+	(group (mark-group p-start))
+	(end-index (mark-index p-end))
+	(fp-length (and fill-prefix (string-length fill-prefix)))
+	(target-column (fix:+ fill-column 1)))
+    (let ((tab-width (group-tab-width group))
+	  (image-strings (group-char-image-strings group)))
+      (let loop ()
+	(delete-horizontal-space m)
+	(let inner ()
+	  (let* ((index (mark-index m))
+		 (ls-index (line-start-index group index))
+		 (v
+		  (group-column->index group
+				       ls-index
+				       end-index
+				       0
+				       target-column
+				       tab-width
+				       image-strings)))
+	    (if (and (fix:>= (vector-ref v 1) target-column)
+		     (fix:< (vector-ref v 0) end-index)
+		     (re-search-backward "[^ \t][ \t]+"
+					 (make-mark group (vector-ref v 0))
+					 (make-mark group ls-index)))
+		(let ((break (re-match-end 0)))
+		  (if (or (not fill-prefix)
+			  (fix:> (fix:- (mark-index break) ls-index)
+				 fp-length))
+		      (begin
+			(indent-new-comment-line break fill-prefix)
+			(inner)))))))
+	(if (mark< m p-end)
+	    (begin
+	      (move-mark-to! m (line-end m 1 'ERROR))
+	      (loop)))))
+    (mark-temporary! m)))
