@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.44 1989/06/12 16:08:28 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.45 1989/08/02 17:04:43 cph Exp $
  *
  * This file contains the configuration information and the information
  * given on the command line on Unix.
@@ -478,9 +478,11 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define MACHINE_TYPE		"umax"
 #define Heap_In_Low_Memory
 #define UNSIGNED_SHIFT
+#define VAX_BYTE_ORDER
 #define CHAR_SIZE		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
+#define DBFLT_SIZE		64
 #define BELL			'\007'
 #define FASL_INTERNAL_FORMAT	FASL_UMAX
 #define FLONUM_EXPT_SIZE	10
