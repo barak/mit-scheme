@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.60 1997/10/22 05:10:53 cph Exp $
+$Id: edwin.ldr,v 1.61 1998/04/30 21:32:41 cph Exp $
 
-Copyright (c) 1989-97 Massachusetts Institute of Technology
+Copyright (c) 1989-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -93,6 +93,8 @@ MIT in each case. |#
 	(load "strtab" environment)
 	(load "strpad" environment)
 	(load "macros" (->environment '(EDWIN MACROS)))
+	(set-environment-syntax-table! environment
+				       (access edwin-syntax-table environment))
 	(load "class" environment)
 	(load "clscon" (->environment '(EDWIN CLASS-CONSTRUCTOR)))
 	(load "clsmac" (->environment '(EDWIN CLASS-MACROS)))
