@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.109 1991/05/02 01:12:16 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.110 1991/05/06 00:57:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -203,10 +203,8 @@ For more information type the HELP key while entering the name."
     (temporary-message "Quit")
     (^G-signal)))
 
-(define-command ^r-bad-command
-  "This command is used to capture undefined keys.
-It is usually called directly by the command lookup
-procedure when it fails to find a command."
+(define-command undefined
+  "This command is used to capture undefined keys."
   ()
   (lambda ()
     (editor-error "Undefined command: " (xchar->name (current-command-char)))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.97 1991/04/23 06:39:19 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.98 1991/05/06 00:57:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -157,7 +157,7 @@ Prints the brief documentation for that command."
   "kDescribe key briefly"
   (lambda (key)
     (let ((command (comtab-entry (current-comtabs) key)))
-      (if (eq? command (ref-command-object ^r-bad-command))
+      (if (eq? command (ref-command-object undefined))
 	  (help-describe-unbound-key key)
 	  (message (xchar->name key)
 		   " runs the command "
@@ -169,7 +169,7 @@ Prints the full documentation for that command."
   "kDescribe key"
   (lambda (key)
     (let ((command (comtab-entry (current-comtabs) key)))
-      (if (eq? command (ref-command-object ^r-bad-command))
+      (if (eq? command (ref-command-object undefined))
 	  (help-describe-unbound-key key)
 	  (help-describe-command command)))))
 
