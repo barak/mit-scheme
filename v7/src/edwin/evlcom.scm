@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: evlcom.scm,v 1.48 1993/10/27 02:23:21 cph Exp $
+;;;	$Id: evlcom.scm,v 1.49 1993/10/28 20:50:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -558,9 +558,11 @@ FIT           Error messages appear in typein window if they fit;
 	  (transcript-value-string value))))
     (if buffer
 	(let ((point (mark-left-inserting-copy (buffer-end buffer))))
-	  (guarantee-newlines 1 point)
-	  (insert-string value-string point)
-	  (insert-newlines 2 point)
+	  (with-read-only-defeated point
+	    (lambda ()
+	      (guarantee-newlines 1 point)
+	      (insert-string value-string point)
+	      (insert-newlines 2 point)))
 	  (mark-temporary! point)))
     (if (or (not buffer) (null? (buffer-windows buffer)))
 	(message value-string))))
