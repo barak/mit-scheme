@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Id: i386.m4,v 1.30 1993/08/21 04:57:15 gjr Exp $
+###	$Id: i386.m4,v 1.31 1993/08/23 04:46:44 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
@@ -350,6 +350,7 @@ define_c_label(i386_interface_initialize)
 ifdef(`WINNT',
 `	lea	eax,cross_segment_transfer_point
 	mov	_Scheme_Transfer_Address,eax
+	mov	_C_Extra_Segment_Selector,es		; This assumes it is constant
 
 	mov	_C_Code_Segment_Selector,cs
 	mov	ax,_Scheme_Code_Segment_Selector
@@ -512,9 +513,6 @@ ifdef(`WINNT',
 	sub	edx,_winnt_address_delta		; Entry point to new space
 	xor	ecx,ecx					; Setup cross-segment jump
 	mov	cx,_Scheme_Code_Segment_Selector
-
-	mov	ax,es					; Store old es
-	mov	_C_Extra_Segment_Selector,ax
 
 	mov	ax,ds					; Store C ds in es,
 	mov	es,ax					;  unused by Scheme.
