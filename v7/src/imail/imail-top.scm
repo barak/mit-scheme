@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.117 2000/06/02 01:54:19 cph Exp $
+;;; $Id: imail-top.scm,v 1.118 2000/06/02 02:25:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -130,13 +130,23 @@ Otherwise, all messages are presented as plain text."
   #t
   boolean?)
 
-(define-variable imail-auto-wrap-mime
-  "If true, all decoded MIME messages will have their lines wrapped.
+(define-variable imail-auto-wrap-mime-encoded
+  "If true, all encoded MIME messages will have their lines wrapped.
 If set to 'FILL, the paragraphs are filled as well as wrapped.
 Otherwise, no wrapping occurs.
 Note that this only applies to MIME parts that are encoded as
- quoted-printable or BASE64; unencoded parts are show verbatim."
+ quoted-printable or BASE64.
+See also imail-auto-wrap."
   #t
+  (lambda (x) (or (boolean? x) (eq? x 'FILL))))
+
+(define-variable imail-auto-wrap
+  "If true, all unencoded messages will have their lines wrapped.
+If set to 'FILL, the paragraphs are filled as well as wrapped.
+Otherwise, no wrapping occurs.
+Note that this only applies to unencoded message parts.
+See also imail-auto-wrap-mime-encoded."
+  #f
   (lambda (x) (or (boolean? x) (eq? x 'FILL))))
 
 (define-command imail
@@ -163,7 +173,8 @@ regardless of the folder type."
   (lambda ()
     (list (and (command-argument)
 	       (prompt-for-imail-url-string "Run IMAIL on folder"
-					    'HISTORY 'IMAIL))))
+					    'HISTORY 'IMAIL
+					    'REQUIRE-MATCH? #t))))
   (lambda (url-string)
     (let ((folder
 	   (open-folder
@@ -208,10 +219,12 @@ regardless of the folder type."
 	   (lambda (string)
 	     (url-string-completions string imail-get-default-url))
 	   (lambda (string)
-	     (url?
-	      (ignore-errors
-	       (lambda ()
-		 (parse-url-string string imail-get-default-url)))))
+	     (let ((url
+		    (ignore-errors
+		     (lambda ()
+		       (parse-url-string string imail-get-default-url)))))
+	       (and (url? url)
+		    (url-exists? url))))
 	   'DEFAULT-TYPE 'INSERTED-DEFAULT
 	   options)))
 
@@ -440,7 +453,8 @@ variable's documentation (using \\[describe-variable]) for details:
     (buffer-put! buffer 'REVERT-BUFFER-METHOD imail-revert-buffer)
     (add-kill-buffer-hook buffer imail-kill-buffer)
     (local-set-variable! mode-line-modified "--- " buffer)
-    (add-adaptive-fill-regexp! "[ \t]*[-a-zA-Z0-9]*>+[ \t]*")
+    (local-set-variable! truncate-lines #t buffer)
+    (add-adaptive-fill-regexp! "[ \t]*[-a-zA-Z0-9]*>+[ \t]*" buffer)
     (standard-alternate-paragraph-style! buffer)
     (set-buffer-read-only! buffer)
     (disable-group-undo! (buffer-group buffer))
@@ -450,17 +464,17 @@ variable's documentation (using \\[describe-variable]) for details:
   "An event distributor that is invoked when entering IMAIL mode."
   (make-event-distributor))
 
-(define (add-adaptive-fill-regexp! regexp)
+(define (add-adaptive-fill-regexp! regexp buffer)
   (local-set-variable!
    adaptive-fill-regexp
-   (string-append reply-prefix
+   (string-append regexp
 		  "\\|"
 		  (variable-default-value
 		   (ref-variable-object adaptive-fill-regexp)))
    buffer)
   (local-set-variable!
    adaptive-fill-first-line-regexp
-   (string-append reply-prefix
+   (string-append regexp
 		  "\\|"
 		  (variable-default-value
 		   (ref-variable-object adaptive-fill-first-line-regexp)))
@@ -722,7 +736,8 @@ With prefix argument N moves backward N messages with these flags."
 		      (if (and (ref-variable imail-receive-mime buffer)
 			       (folder-supports-mime? folder))
 			  (insert-mime-message-body message mark)
-			  (insert-string (message-body message) mark))
+			  (insert-auto-wrapped-string (message-body message)
+						      #f mark))
 		      (guarantee-newline mark))
 		    (insert-string "[This folder has no messages in it.]"
 				   mark))))
@@ -777,15 +792,16 @@ With prefix argument N moves backward N messages with these flags."
 	  (case (mime-body-one-part-encoding body)
 	    ((QUOTED-PRINTABLE)
 	     (insert-auto-wrapped-string (decode-quoted-printable-string text)
+					 #t
 					 mark))
 	    ((BASE64)
 	     (call-with-values (lambda () (decode-base64-text-string text #f))
 	       (lambda (decoded-text pending-return?)
-		 (insert-auto-wrapped-string decoded-text mark)
+		 (insert-auto-wrapped-string decoded-text #t mark)
 		 (if pending-return?
 		     (insert-char #\return mark)))))
 	    (else
-	     (insert-string text mark)))
+	     (insert-auto-wrapped-string text #f mark)))
 	  (guarantee-newline mark))
 	(insert-mime-message-binary message body selector mark))))
 
@@ -812,8 +828,11 @@ With prefix argument N moves backward N messages with these flags."
   message body selector
   (insert-string "[** ATTACHMENT **]\n" mark))
 
-(define (insert-auto-wrapped-string string mark)
-  (let ((mode (ref-variable imail-auto-wrap-mime mark)))
+(define (insert-auto-wrapped-string string encoded? mark)
+  (let ((mode
+	 (if encoded?
+	     (ref-variable imail-auto-wrap-mime-encoded mark)
+	     (ref-variable imail-auto-wrap mark))))
     (cond ((not mode)
 	   (insert-string string mark))
 	  ((eq? mode 'FILL)
@@ -1298,7 +1317,8 @@ An error if signalled if the folder already exists."
   "Delete a specified folder."
   (lambda ()
     (list (prompt-for-imail-url-string "Delete folder"
-				       'HISTORY 'IMAIL-DELETE-FOLDER)))
+				       'HISTORY 'IMAIL-DELETE-FOLDER
+				       'REQUIRE-MATCH? #t)))
   (lambda (url-string)
     (let ((url (imail-parse-partial-url url-string)))
       (if (prompt-for-yes-or-no?
@@ -1312,7 +1332,8 @@ An error if signalled if the folder already exists."
   "Run IMAIL on a specified folder."
   (lambda ()
     (list (prompt-for-imail-url-string "Run IMAIL on folder"
-				       'HISTORY 'IMAIL)))
+				       'HISTORY 'IMAIL
+				       'REQUIRE-MATCH? #t)))
   (lambda (url-string)
     ((ref-command imail) url-string)))
 
@@ -1321,7 +1342,8 @@ An error if signalled if the folder already exists."
   (lambda ()
     (list (prompt-for-imail-url-string "Get messages from folder"
 				       'HISTORY 'IMAIL-INPUT
-				       'HISTORY-INDEX 0)))
+				       'HISTORY-INDEX 0
+				       'REQUIRE-MATCH? #t)))
   (lambda (url-string)
     (let ((url (imail-parse-partial-url url-string))
 	  (folder (selected-folder)))
@@ -1386,7 +1408,8 @@ If it doesn't exist, it is created first."
     (let ((from
 	   (prompt-for-imail-url-string "Copy folder"
 					'HISTORY 'IMAIL-COPY-FOLDER-SOURCE
-					'HISTORY-INDEX 0)))
+					'HISTORY-INDEX 0
+					'REQUIRE-MATCH? #t)))
       (list from
 	    (prompt-for-imail-url-string "Copy messages to folder"
 					 'HISTORY 'IMAIL-COPY-FOLDER-TARGET
@@ -1618,7 +1641,8 @@ A prefix argument says to prompt for a URL and append all messages
     (list (and (command-argument)
 	       (prompt-for-imail-url-string "Get messages from folder"
 					    'HISTORY 'IMAIL-INPUT
-					    'HISTORY-INDEX 0))))
+					    'HISTORY-INDEX 0
+					    'REQUIRE-MATCH? #t))))
   (lambda (url-string)
     (if url-string
 	((ref-command imail-input-from-folder) url-string)
