@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.16 1989/01/21 09:05:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.17 1989/01/21 09:29:50 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -184,11 +184,13 @@ MIT in each case. |#
 
 (define (cse/assign/stack-reference address expression volatile?
 				    insert-source!)
+  expression
   (stack-reference-invalidate! address)
   (if (not volatile?)
       (insert-stack-destination! address (insert-source!))))
 
 (define (cse/assign/stack-push address expression volatile? insert-source!)
+  expression
   (let ((adjust!
 	 (lambda ()
 	   (stack-pointer-adjust! (rtl:address-number address)))))
@@ -202,6 +204,7 @@ MIT in each case. |#
 
 (define (cse/assign/interpreter-register address expression volatile?
 					 insert-source!)
+  expression
   (let ((hash (expression-hash address)))
     (let ((memory-invalidate!
 	   (lambda ()
@@ -214,6 +217,7 @@ MIT in each case. |#
 				       memory-invalidate!)))))
 
 (define (cse/assign/general address expression volatile? insert-source!)
+  expression
   (full-expression-hash address
     (lambda (hash volatile?* in-memory?)
       in-memory?
