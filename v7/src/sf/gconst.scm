@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 4.29 2003/02/14 18:28:34 cph Exp $
+$Id: gconst.scm,v 4.30 2004/07/02 01:00:46 cph Exp $
 
-Copyright (c) 1987-2001 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
+Copyright 1993,1994,1997,2001,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -183,7 +184,6 @@ USA.
     NULL?
     OBJECT-CONSTANT?
     OBJECT-DATUM
-    OBJECT-GC-TYPE
     OBJECT-NEW-TYPE
     OBJECT-PURE?
     OBJECT-TYPE
