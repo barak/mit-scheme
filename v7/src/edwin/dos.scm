@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.46 1997/12/30 21:19:30 cph Exp $
+;;;	$Id: dos.scm,v 1.47 1998/10/23 04:59:36 cph Exp $
 ;;;
-;;;	Copyright (c) 1992-97 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -50,10 +50,10 @@
   (cond ((string-prefix? "Microsoft Windows NT"
 			 microcode-id/operating-system-variant)
 	 'WINNT)
-	((string-prefix? "Microsoft Windows 95"
+	((string-prefix? "Microsoft Windows 9"
 			 microcode-id/operating-system-variant)
 	 'WIN95)
-	((string-prefix? "Microsoft Win32s"
+	((string-prefix? "Microsoft Windows"
 			 microcode-id/operating-system-variant)
 	 'WIN31)
 	(else #f)))
