@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.48 1991/03/24 01:22:54 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.49 1992/02/03 22:38:18 jinx Exp $
 
-Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -822,7 +822,7 @@ DEFUN (relocate, (object),
     result += Heap_Relocation;
   }
 
-#if false
+#if FALSE
 
   /* Currently constant space is not supported */
 
@@ -1561,7 +1561,7 @@ DEFUN_VOID (do_it)
     Free_Cobjects = &Mem_Base[Const_Count + Free_Constant];
     Constant_Objects = 0;
 
-#if true
+#if TRUE
 
     Do_Area (HEAP_CODE, Scan, Free, Objects, Free_Objects);
 
@@ -1659,7 +1659,7 @@ DEFUN_VOID (do_it)
     WRITE_HEADER ("CPU type", "%ld", dumped_processor_type);
     WRITE_HEADER ("Compiled code interface version", "%ld",
 		  dumped_interface_version);
-#if false
+#if FALSE
     WRITE_HEADER ("Compiler utilities vector", "%ld",
 		  (OBJECT_DATUM (dumped_utilities)));
 #endif
@@ -1669,7 +1669,7 @@ DEFUN_VOID (do_it)
     print_external_objects (&Mem_Base[Initial_Free + Heap_Count],
 			    Objects);
 
-#if false
+#if FALSE
 
     print_external_objects (&Mem_Base[Pure_Objects_Start],
 			    Pure_Objects);
@@ -1682,7 +1682,7 @@ DEFUN_VOID (do_it)
 
     print_objects (&Mem_Base[NROOTS], &Mem_Base[Free]);
 
-#if false
+#if FALSE
     print_objects (&Mem_Base[Pure_Start], &Mem_Base[Free_Pure]);
     print_objects (&Mem_Base[Constant_Start], &Mem_Base[Free_Constant]);
 #endif

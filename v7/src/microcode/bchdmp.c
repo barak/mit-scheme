@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.58 1991/11/04 16:49:52 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.59 1992/02/03 22:40:39 jinx Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -226,7 +226,7 @@ DEFUN (fasdump_exit, (length), long length)
   Free = saved_free;
   restore_gc_file ();
 
-#if true
+#if TRUE
   {
     extern int EXFUN (ftruncate, (int, unsigned long));
 
