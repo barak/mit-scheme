@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.54 2000/03/31 19:50:53 cph Exp $
+;;; $Id: vc.scm,v 1.55 2000/03/31 20:10:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -547,20 +547,20 @@ merge in the changes into your working copy."
     (if (pair? files)
 	(if (pair? (cdr files))
 	    (vc-start-entry
-	     #f
+	     buffer
 	     "Enter a change comment for the marked files."
-	     (and (there-exists? files
-		    (lambda (file)
-		      (let ((master (file-vc-master file #f)))
-			(or (not master)
-			    (if (eq? vc-type:cvs (vc-master-type master))
-				(memq (cvs-status master)
-				      '(LOCALLY-MODIFIED
-					LOCALLY-ADDED
-					LOCALLY-REMOVED))
-				(vc-backend-locking-user master #f))))))
-		  "")
-	     #f
+	     (if (there-exists? files
+		   (lambda (file)
+		     (let ((master (file-vc-master (car file) #f)))
+		       (or (not master)
+			   (if (eq? vc-type:cvs (vc-master-type master))
+			       (memq (cvs-status master)
+				     '(LOCALLY-MODIFIED
+				       LOCALLY-ADDED
+				       LOCALLY-REMOVED))
+			       (vc-backend-locking-user master #f))))))
+		 #f
+		 "")
 	     (lambda (comment)
 	       (for-each-dired-mark buffer
 		 (lambda (file)
@@ -1000,16 +1000,20 @@ There is a special command, `*l', to mark all files currently locked.
 
 ;;;; Log Entries
 
-(define (vc-start-entry master msg comment finish-entry after)
+(define (vc-start-entry reference msg comment finish-entry after)
   (if comment
       (begin
 	(finish-entry comment)
 	(if after (after)))
       (let ((log-buffer (new-buffer "*VC-log*")))
 	(set-buffer-major-mode! log-buffer (ref-mode-object vc-log))
-	(if (vc-master? master)
-	    (vc-mode-line master log-buffer))
-	(let ((buffer (and master (pathname->buffer (->workfile master)))))
+	(if (vc-master? reference)
+	    (vc-mode-line reference log-buffer))
+	(let ((buffer
+	       (and reference
+		    (if (buffer? reference)
+			reference
+			(pathname->buffer (->workfile reference))))))
 	  (if buffer
 	      (buffer-put! log-buffer 'VC-PARENT-BUFFER buffer)
 	      (buffer-remove! log-buffer 'VC-PARENT-BUFFER)))
@@ -1017,19 +1021,19 @@ There is a special command, `*l', to mark all files currently locked.
 	  (let ((log-window (pop-up-buffer log-buffer #t)))
 	    (buffer-put! log-buffer
 			 'VC-LOG-FINISH-ENTRY
-			 (vc-finish-entry master
+			 (vc-finish-entry reference
 					  finish-entry
 					  after
 					  (weak-cons log-window #f)
 					  (weak-cons window #f)))))
 	(message msg "  Type C-c C-c when done."))))
 
-(define (vc-finish-entry master finish-entry after log-window window)
+(define (vc-finish-entry reference finish-entry after log-window window)
   (lambda (log-buffer)
-    (if (vc-master? master)
+    (if (vc-master? reference)
 	(begin
-	  (guarantee-vc-master-valid master)
-	  (vc-backend-check-log-entry master log-buffer)))
+	  (guarantee-vc-master-valid reference)
+	  (vc-backend-check-log-entry reference log-buffer)))
     (guarantee-newline (buffer-end log-buffer))
     (let ((comment (buffer-string log-buffer))
 	  (buffer (chase-parent-buffer log-buffer)))
@@ -1038,7 +1042,8 @@ There is a special command, `*l', to mark all files currently locked.
 	  (begin
 	    ;; Save any changes the user might have made while editing
 	    ;; the comment.
-	    (vc-save-buffer buffer #t)
+	    (if (not (vc-dired-buffer? buffer))
+		(vc-save-buffer buffer #t))
 	    (pop-up-buffer buffer #t)))
       ;; Do the log operation.
       (finish-entry comment))
