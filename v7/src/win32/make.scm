@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.3 1998/02/01 05:17:47 cph Exp $
+$Id: make.scm,v 1.4 1998/02/12 04:35:20 cph Exp $
 
 Copyright (c) 1993-98 Massachusetts Institute of Technology
 
@@ -35,7 +35,7 @@ MIT in each case. |#
 ;;;; Win32 subsystem: System Construction
 
 (declare (usual-integrations))
-
+
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     ((access with-directory-rewriting-rule
@@ -48,7 +48,7 @@ MIT in each case. |#
 
 ;((package/reference (find-package '(WIN32))
 ;		    'INITIALIZE-PACKAGE!))
-(add-system! (make-system "Win32" 1 0 '()))
+(add-identification! "Win32" 1 4)
 
 
 (define (package-initialize package-name procedure-name mandatory?)

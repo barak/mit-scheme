@@ -14,7 +14,7 @@
      (pathname-as-directory "lib/swat")
      (lambda ()
        (package/system-loader "swat" '() 'QUERY)))
-    (add-system! (make-system "SWAT" 1 0 '()))))
+    (add-identification! "SWAT" 1 0)))
 |#
 
 

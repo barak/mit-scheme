@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.3 1995/11/19 19:33:24 adams Exp $
+$Id: load.scm,v 1.4 1998/02/12 04:36:43 cph Exp $
 
-Copyright (c) 1995 Massachusetts Institute of Technology
+Copyright (c) 1995-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,7 +46,7 @@ MIT in each case. |#
 	  compiled-code-block/filename))))
 
 (package/system-loader "pcs" '() 'QUERY)
-(add-system! (make-system "PC Sampler" 1 0 '()))
+(add-identification! "PC Sampler" 1 0)
 
 (let ()
   (define (package-initialize package-name

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: version.scm,v 14.174 1997/10/22 05:18:12 cph Exp $
+$Id: version.scm,v 14.175 1998/02/12 04:33:28 cph Exp $
 
-Copyright (c) 1988-97 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,17 +38,11 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! microcode-system
-	(make-system "Microcode"
-		     microcode-id/version
-		     microcode-id/modification
-		     '()))
-  (add-system! microcode-system)
+  (snarf-microcode-version!)
   (add-event-receiver! event:after-restore snarf-microcode-version!)
   (add-identification! "Runtime" 14 174))
 
-(define microcode-system)
-
 (define (snarf-microcode-version!)
-  (set-system/version! microcode-system microcode-id/version)
-  (set-system/modification! microcode-system microcode-id/modification))
+  (add-identification! "Microcode"
+		       microcode-id/version
+		       microcode-id/modification))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.1 1995/07/11 02:03:43 ziggy Exp $
+$Id: load.scm,v 1.2 1998/02/12 04:38:00 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,7 +41,7 @@ MIT in each case. |#
        'ok)
       (else
        (package/system-loader "wabbit" '() 'QUERY)
-       (add-system! (make-system "Wabbit Hunting / Headhunting GC" 1 0 '()))
+       (add-identification! "Wabbit Hunting / Headhunting GC" 1 0)
 
        (let ()
 	 (define (package-initialize package-name
