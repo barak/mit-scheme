@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pcs.cbf,v 1.1 1995/07/28 14:14:08 adams Exp $
+$Id: pcs.cbf,v 1.2 1997/10/02 20:10:10 adams Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -37,6 +37,6 @@ MIT in each case. |#
 
 (display "
 
-Remember to use `make -install' to copy compiled files to library directory.
+Remember to use `make install' to copy compiled files to library directory.
 
 ")
