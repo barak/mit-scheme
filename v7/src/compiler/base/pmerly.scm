@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmerly.scm,v 1.5 1987/08/24 20:37:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmerly.scm,v 1.6 1987/08/25 02:18:38 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -527,7 +527,8 @@ MIT in each case. |#
 		 (and (not (null? place))
 		      (let ((integrated (cdr place)))
 			(let loop ((left names))
-			  (cond ((null? left) true)
+			  (cond ((null? left)
+				 (can-integrate? body))
 				((memq (car left) integrated)
 				 (loop (cdr left)))
 				(else false)))))))))))			     
