@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.254 1995/04/23 05:43:50 cph Exp $
+$Id: runtime.pkg,v 14.255 1995/04/24 23:22:30 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -762,6 +762,7 @@ MIT in each case. |#
   (export ()
 	  gc-statistic->string
 	  print-gc-statistics
+	  set-gc-notification!
 	  toggle-gc-notification!
 	  with-gc-notification!))
 

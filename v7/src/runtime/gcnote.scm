@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gcnote.scm,v 14.10 1993/10/21 11:49:44 cph Exp $
+$Id: gcnote.scm,v 14.11 1995/04/24 23:22:19 adams Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -45,6 +45,18 @@ MIT in each case. |#
 		(else (error "Can't grab GC statistics hook")))))
   unspecific)
 
+(define (set-gc-notification! #!optional on?)
+  (let ((on? (if (default-object? on?) #T on?)))
+    (set! hook/record-statistic!
+	  (let ((current hook/record-statistic!))
+	    (if (or (eq? current gc-notification)
+		    (eq? current default/record-statistic!))
+		(if on?
+		    gc-notification
+		    default/record-statistic!)
+		(error "Can't grab GC statistics hook"))))
+    unspecific))
+    
 (define (with-gc-notification! notify? thunk)
   (fluid-let ((hook/record-statistic!
 	       (if notify? gc-notification default/record-statistic!)))
