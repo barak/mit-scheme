@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xterm.scm,v 1.42 1993/08/16 08:09:30 cph Exp $
+;;;	$Id: xterm.scm,v 1.43 1993/08/17 21:31:35 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -58,6 +58,8 @@
   (x-display-sync 2)
   (x-window-beep 1)
   (x-window-display 1)
+  (x-window-flush 1)
+  (x-window-map 1)
   (x-window-raise 1)
   (x-window-set-event-mask 2)
   (x-window-set-icon-name 2)
@@ -123,15 +125,16 @@
 (define screen-list)
 
 (define (make-xterm-screen #!optional geometry)
-  (let ((screen
-	 (let* ((display (get-x-display))
-		(xterm
-		 (xterm-open-window (or display
-					(error "unable to open display"))
-				    (and (not (default-object? geometry))
-					 geometry)
-				    '("edwin" . "Emacs"))))
-	   (x-window-set-event-mask xterm event-mask)
+  ;; Don't map the window until all of the data structures are in
+  ;; place.  This guarantees that no events will be missed.
+  (let ((xterm
+	 (xterm-open-window (or (get-x-display)
+				(error "unable to open display"))
+			    (and (not (default-object? geometry))
+				 geometry)
+			    '#(#F "edwin" "Emacs"))))
+    (x-window-set-event-mask xterm event-mask)
+    (let ((screen
 	   (make-screen (make-xterm-screen-state xterm
 						 (x-window-display xterm))
 			xterm-screen/beep
@@ -152,9 +155,47 @@
 			xterm-screen/write-substring!
 			8
 			(xterm-x-size xterm)
-			(xterm-y-size xterm)))))
-    (set! screen-list (cons screen screen-list))
-    screen))
+			(xterm-y-size xterm))))
+      (set! screen-list (cons screen screen-list))
+      ;; See below for details of this next line.
+      (set-screen-visibility! screen (list 'UNMAPPED))
+      (x-window-map xterm)
+      (x-window-flush xterm)
+      screen)))
+
+;;; According to the Xlib manual, we're not allowed to draw anything
+;;; on the window until the first Expose event arrives.  The manual
+;;; says nothing about the relationship between this event and the
+;;; MapNotify event associated with that mapping.  So, we do this as
+;;; follows.  While we are waiting for the Expose event, the screen's
+;;; VISIBILITY is a list whose single element is the symbol that would
+;;; normally be the VISIBILITY.  Other events that normally change
+;;; VISIBILITY instead change the list element.  Because the
+;;; VISIBILITY is not one of the recognized flags, the screen
+;;; abstraction assumes that the window is not visible and will not
+;;; draw on it.  When the Expose event comes along, we set the
+;;; VISIBILITY to whatever the list's element is.  Thus we won't draw
+;;; anything until both a MapNotify and an Expose event are received,
+;;; and the order in which they are received is unimportant.
+
+(define (%screen-visibility screen)
+  (let ((visibility (screen-visibility screen)))
+    (if (pair? visibility)
+	(car visibility)
+	visibility)))
+
+(define (%set-screen-visibility! screen flag)
+  (let ((visibility (screen-visibility screen)))
+    (if (pair? visibility)
+	(set-car! visibility flag)
+	(set-screen-visibility! screen flag))))
+
+(define (note-xterm-exposed xterm)
+  (let ((screen (xterm->screen xterm)))
+    (if screen
+	(let ((visibility (screen-visibility screen)))
+	  (if (pair? visibility)
+	      (set-screen-visibility! screen (car visibility)))))))
 
 (define-integrable (screen-xterm screen)
   (xterm-screen-state/xterm (screen-state screen)))
@@ -432,11 +473,18 @@
       (if (and (vector? event)
 	       (fix:= (vector-ref event 0) event-type:expose))
 	  (begin
-	    (xterm-dump-rectangle (vector-ref event 1)
-				  (vector-ref event 2)
-				  (vector-ref event 3)
-				  (vector-ref event 4)
-				  (vector-ref event 5))
+	    (let ((xterm (vector-ref event 1)))
+	      ;; If this is the first Expose event for this window, it
+	      ;; requires special treatment.  Element 6 of the event
+	      ;; is 0 for Expose events and 1 for GraphicsExpose
+	      ;; events.
+	      (if (eq? 0 (vector-ref event 6))
+		  (note-xterm-exposed xterm))
+	      (xterm-dump-rectangle xterm
+				    (vector-ref event 2)
+				    (vector-ref event 3)
+				    (vector-ref event 4)
+				    (vector-ref event 5)))
 	    (loop))
 	  event))))
 
@@ -567,7 +615,7 @@
     event
     (and (not (screen-deleted? screen))
 	 (begin
-	   (set-screen-visibility! screen 'VISIBLE)
+	   (%set-screen-visibility! screen 'VISIBLE)
 	   (make-input-event 'UPDATE update-screen! screen #t)))))
 
 (define-event-handler event-type:unmap
@@ -575,7 +623,7 @@
     event
     (and (not (screen-deleted? screen))
 	 (begin
-	   (set-screen-visibility! screen 'UNMAPPED)
+	   (%set-screen-visibility! screen 'UNMAPPED)
 	   (and (selected-screen? screen)
 		(let ((screen (other-screen screen false)))
 		  (and screen
@@ -585,13 +633,13 @@
 
 (define-event-handler event-type:visibility
   (lambda (screen event)
-    (let ((old-visibility (screen-visibility screen)))
+    (let ((old-visibility (%screen-visibility screen)))
       (and (not (eq? old-visibility 'DELETED))
 	   (begin
 	     (case (vector-ref event 2)
-	       ((0) (set-screen-visibility! screen 'VISIBLE))
-	       ((1) (set-screen-visibility! screen 'PARTIALLY-OBSCURED))
-	       ((2) (set-screen-visibility! screen 'OBSCURED)))
+	       ((0) (%set-screen-visibility! screen 'VISIBLE))
+	       ((1) (%set-screen-visibility! screen 'PARTIALLY-OBSCURED))
+	       ((2) (%set-screen-visibility! screen 'OBSCURED)))
 	      (and (or (eq? old-visibility 'UNMAPPED)
 		       (eq? old-visibility 'OBSCURED))
 		   (make-input-event 'UPDATE update-screen! screen #t)))))))
