@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: prompt.scm,v 1.181 1999/01/29 05:33:57 cph Exp $
+;;; $Id: prompt.scm,v 1.182 1999/01/31 04:01:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -392,8 +392,8 @@
     (or (boolean? object)
 	(eq? 'CONFIRM object)))
   (lambda (options require-match?)
-    (set-options/mode! options
-		       (if require-match?
+    (if require-match?
+	(set-options/mode! options
 			   (ref-mode-object minibuffer-local-must-match)))
     (set-options/confirm-completion?! options (eq? 'CONFIRM require-match?))))
 
