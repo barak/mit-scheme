@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.23 2000/12/05 21:23:45 cph Exp $
+$Id: ntio.c,v 1.24 2001/05/22 02:46:47 cph Exp $
 
-Copyright (c) 1992-2000 Massachusetts Institute of Technology
+Copyright (c) 1992-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 #include "scheme.h"
@@ -34,6 +35,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #ifdef TRACE_NTIO
 extern FILE * trace_file;
 #endif
+
+extern HANDLE master_tty_window;
 
 channel_class_t * NT_channel_class_generic;
 channel_class_t * NT_channel_class_file;
@@ -301,8 +304,10 @@ static long
 screen_channel_write (Tchannel channel, const void * buffer,
 		      unsigned long n_bytes)
 {
-  SendMessage ((CHANNEL_HANDLE (channel)), SCREEN_WRITE,
-	       ((WPARAM) n_bytes), ((LPARAM) buffer));
+  HANDLE h = (CHANNEL_HANDLE (channel));
+  SendMessage (h, SCREEN_WRITE, ((WPARAM) n_bytes), ((LPARAM) buffer));
+  if (h == master_tty_window)
+    SendMessage (h, WM_PAINT, 0, 0);
   return (n_bytes);
 }
 
