@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/6001.cbf,v 1.1 1991/08/22 17:44:50 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/6001.cbf,v 1.2 1991/08/22 17:56:31 arthur Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -32,4 +32,6 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-(compile-directory ".")
+(fluid-let ((compiler:generate-range-checks? true)
+	    (compiler:generate-type-checks? true))
+  (compile-directory "."))
