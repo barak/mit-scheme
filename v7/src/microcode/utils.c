@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.46 1990/06/21 20:17:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.47 1990/08/16 08:42:48 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -486,7 +486,11 @@ Do_Micro_Error (Err, From_Pop_Return)
 		    Get_Fixed_Obj_Slot(System_Error_Vector))) !=
        TC_VECTOR))
   {
-    error_death(Err, "Bad error handlers vector");
+    error_death (Err,
+		 (((Valid_Fixed_Obj_Vector())
+		   && (Error_Vector == SHARP_F))
+		  ? "No error handlers"
+		  : "No error handlers: Bad handlers vector"));
     /*NOTREACHED*/
   }
 
@@ -494,7 +498,7 @@ Do_Micro_Error (Err, From_Pop_Return)
   {
     if (VECTOR_LENGTH (Error_Vector) == 0)
     {
-      error_death(Err, "Empty error handlers vector");
+      error_death (Err, "No error handlers: Empty handlers vector");
       /*NOTREACHED*/
     }
     Handler = (VECTOR_REF (Error_Vector, ERR_BAD_ERROR_CODE));
