@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.65 1999/05/13 03:06:38 cph Exp $
+$Id: edwin.ldr,v 1.66 1999/08/10 17:01:21 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -67,8 +67,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
       (if (memq (lookup 'OS-TYPE) '(UNIX OS/2 NT))
 	  (begin
-	    ;; #T means no error if not present.
-	    (load-option 'KRYPT #t)
 	    (load-option 'SUBPROCESS)
 	    (load-option 'SYNCHRONOUS-SUBPROCESS)))
       (load-option 'RB-TREE)
