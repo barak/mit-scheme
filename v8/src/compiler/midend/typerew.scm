@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.3 1995/09/03 17:15:04 adams Exp $
+$Id: typerew.scm,v 1.4 1995/09/05 18:46:09 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -47,16 +47,13 @@ MIT in each case. |#
 
 (define (typerew/top-level program)
   (let  ((program* (copier/top-level program code-rewrite/remember)))
-    (kmp/ppp program*)
-    (fluid-let ((*typerew-type-map*
-		 (make-monotonic-strong-eq-hash-table))
-		(*typerew-suggestions-map*
-		 (make-monotonic-strong-eq-hash-table))
-		(*typerew-dbg-map*
-		 (make-monotonic-strong-eq-hash-table)))
+    ;;(kmp/ppp program*)
+    (fluid-let ((*typerew-type-map*        (make-form-map))
+		(*typerew-suggestions-map* (make-form-map))
+		(*typerew-dbg-map*	   (make-form-map)))
       (typerew/expr program* q-env:top
-		    (lambda (q t e)
-		      (bkpt "PROGRAM* has been analysed")
+		    (lambda (q t e) q t e
+		      ;;(bkpt "PROGRAM* has been analysed")
 		      (typerew/rewrite! program*)
 		      program*)))))
 
@@ -73,19 +70,19 @@ MIT in each case. |#
 	       ,code)))))))
 
 (define (typerew/associate-type form type)
-  (monotonic-strong-eq-hash-table/put! *typerew-type-map* form type))
+  (form-map/put! *typerew-type-map* form type))
 
 (define (typerew/type form)
-  (or (monotonic-strong-eq-hash-table/get *typerew-type-map* form #F)
+  (or (form-map/get *typerew-type-map* form #F)
       (internal-error "No type associated with form" form)))
 
 (define (typerew/suggest-rewrite form rewrite)
-  (monotonic-strong-eq-hash-table/put! *typerew-suggestions-map* form rewrite))
+  (form-map/put! *typerew-suggestions-map* form rewrite))
 
 ;; This is incorrect in the following conservative way: QUANTITY may
 ;; already be bound in ENV to a type that would restrict TYPE.
-(define-integrable (typerew/send receiver quantity type env)
-  (receiver quantity type (q-env:glb/1 env quantity type)))
+;;(define-integrable (typerew/send receiver quantity type env)
+;;  (receiver quantity type (q-env:glb/1 env quantity type)))
 
 ;; Do we really have to do an O(n) lookup?
 (define (typerew/send receiver quantity type env)
@@ -104,6 +101,7 @@ MIT in each case. |#
   ;; . It is a shame to waste the returned information: it tells us the
   ;;   return type and constraints imposed on the arguments, and even if the
   ;;   procedure returns at all.
+  lambda-list				; ignored
   (typerew/expr
    body
    (q-env:restrict env effect:unknown)
@@ -117,6 +115,7 @@ MIT in each case. |#
 		   env))))
 
 (define-type-rewriter CALL (rator cont #!rest rands)
+  cont					; ignored - pre-CPS
   (define (default)
     (typerew/expr*/unordered
      (cdr form) env
@@ -162,6 +161,7 @@ MIT in each case. |#
 	 (typerew/expr
 	  (first exprs) env
 	  (lambda (quantity type env*)
+	    quantity			; ignored
 	    (typerew/expr
 	     body
 	     (q-env:glb/1 env* (quantity:variable (car names)) type)
@@ -200,6 +200,7 @@ MIT in each case. |#
   (receiver (quantity:constant form)  (type:of-object object)  env))
 
 (define-type-rewriter DECLARE (#!rest anything)
+  anything				; ignored
   (receiver (quantity:other-expression form effect:none)  type:any  env))
 
 (define-type-rewriter BEGIN (#!rest actions)
@@ -256,7 +257,7 @@ MIT in each case. |#
 		      (lambda (Q T env*)
 			(loop (cons Q Qs) (cons T Ts) env* (cdr exprs)))))))
 
-(define (typerew/expr*/unordered exprs env receiver)
+(define (typerew/expr*/unordered/old-version exprs env receiver)
   ;; receiver = (lambda (quantities types envs env) ...)
   ;; . ENVS are returned because they can give hints on how subexpressions
   ;;   should be ordered.
@@ -272,10 +273,11 @@ MIT in each case. |#
   ;; . An approximation to the approximation is punt if any expression has
   ;;   side-effects.
 
-  (let ((split-env
-	 (if (for-all? exprs form/simple&side-effect-free?) ;exponential!
-	     env
-	     (q-env:restrict env effect:unknown))))
+  (let* ((all-effects
+	  (if (for-all? exprs form/simple&side-effect-free?) ;exponential!
+	      effect:none
+	      effect:unknown))
+	 (split-env (q-env:restrict env all-effects)))
     (define (glb* envs)
       ;; (reduce q-env:glb q-env:top envs)
       ;; Hopefully most envs are the same as passed in (lookups & quotes)
@@ -292,8 +294,174 @@ MIT in each case. |#
 	  (typerew/expr (car exprs)
 			split-env
 			(lambda (Q T env*)
-			  (loop (cons Q Qs) (cons T Ts) (cons env* Es)
+			  (loop (cons Q Qs) (cons T Ts)
+				(cons (q-env:restrict env* all-effects) Es)
 				(cdr exprs))))))))
+
+(define (typerew/expr*/unordered exprs env receiver)
+  ;; receiver = (lambda (quantities types envs env) ...)
+  ;; . ENVS are returned because they can give hints on how subexpressions
+  ;;   should be ordered.
+  ;; . Try every permutation! you must be joking.
+  ;; . An approximation is to evaluate each expression in an environment
+  ;;   containing all the deleterious and none of the beneficial effects of
+  ;;   the other expressions.  This is the worst that the other
+  ;;   expressions could do if they were ordered before this
+  ;;   expression.  The output environment must then have all the
+  ;;   deleterious effects of the other expressions applied (thus
+  ;;   modelling their evaluation after the current expression).  The
+  ;;   result is then the GLB of the expression results.
+  ;; . An approximation to the approximation is punt if any expression has
+  ;;   side-effects.
+  ;; . An optimization: LOOKUPs and QUOTES cant do any damage, so (1) we
+  ;;   collect them together and process them at the end and (2) if
+  ;;   there is only one hard expression then that can be done
+  ;;   directly.
+
+  (define (do-easy easy Qs Ts Es env*)
+    ;; now EASY, and Qs, Ts and Es are reversed wrt EXPRS.
+    (let loop ((easy easy)
+	       (Qs Qs) (Ts Ts) (Es Es)
+	       (Qs* '()) (Ts* '()) (Es* '()) (env* env*))
+      (define (take-hard easy)
+	(loop easy
+	      (cdr Qs) (cdr Ts) (cdr Es)
+	      (cons (car Qs) Qs*) (cons (car Ts) Ts*) (cons (car Es) Es*) env*))
+      (cond ((null? easy)
+	     (if (null? Qs)
+		 (receiver Qs* Ts* Es* env*)
+		 (take-hard easy)))
+	    ((car easy)
+	     (typerew/expr
+	      (car easy)
+	      env*
+	      (lambda (Q T env**)
+		(loop (cdr easy)
+		      Qs Ts Es 
+		      (cons Q Qs*) (cons T Ts*) (cons env** Es*)
+		      (q-env:glb/1 env** Q T)))))
+	    (else
+	     (take-hard (cdr easy))))))
+
+  (let loop ((exprs exprs) (easy '()) (hard '()))
+    ;; HARD and EASY are reversed wrt EXPRS.  EASY ends up the same length as
+    ;; EXPRS, with a #f to mark the slots that are occupied by the
+    ;; hard expression - so we can reassemble them later.
+    (if (pair? exprs)
+	(if (or (LOOKUP/? (car exprs))
+		(QUOTE/? (car exprs)))
+	    (loop (cdr exprs) (cons (car exprs) easy) hard)
+	    (loop (cdr exprs) (cons #F easy) (cons (car exprs) hard)))
+	(cond ((null? hard) (do-easy easy '() '() '() env))
+	      ((null? (cdr hard))
+	       (typerew/expr
+		(car hard)
+		env
+		(lambda (Q T env*)
+		  (do-easy easy (list Q) (list T) (list env*) env*))))
+	      (else
+	       (typerew/expr*/unordered/hard
+		hard env
+		(lambda (Qs Ts Es env*)
+		  (do-easy easy Qs Ts Es env*))))))))
+
+(define (typerew/expr*/unordered/hard exprs env receiver)
+  (let* ((all-effects
+	  (if (for-all? exprs form/simple&side-effect-free?) ;exponential!
+	      effect:none
+	      effect:unknown))
+	 (split-env (q-env:restrict env all-effects)))
+    (define (glb* envs)
+      (reduce q-env:glb q-env:top envs))
+    (let loop ((Qs '()) (Ts '()) (Es '()) (exprs exprs))
+      (if (not (pair? exprs))
+	  (receiver (reverse! Qs) (reverse! Ts) (reverse! Es) (glb* Es))
+	  (typerew/expr (car exprs)
+			split-env
+			(lambda (Q T env*)
+			  (loop (cons Q Qs) (cons T Ts)
+				(cons (q-env:restrict env* all-effects) Es)
+				(cdr exprs))))))))
+
+(define (typerew/pred form env receiver)
+  ;; receiver = (lambda (env_t env_f) ...)
+  (define (->expr)
+    (typerew/expr
+     form env
+     (lambda (quantity type env*)
+       (receiver (q-env:glb/1 env* quantity (type:and type type:not-false))
+		 (q-env:glb/1 env* quantity (type:and type type:false))))))
+  (cond ((and (CALL/? form)
+	      (QUOTE/? (call/operator form))
+	      (operator-predicate-test-type (quote/text (call/operator form))))
+	 => (lambda (test-types)
+	      (typerew/expr
+	       form env
+	       (lambda (quantity type env*)
+		 type
+		 ;;(pp `(predicate-q ,quantity))
+		 (let ((arg-quantity (quantity:operand1 quantity))
+		       (env*_t (q-env:glb/1 env* quantity type:not-false))
+		       (env*_f (q-env:glb/1 env* quantity type:false)))
+		   ;;(pp `(env*_t: ,env*_t env*_f: ,env*_f))
+		   (receiver 
+		    (q-env:glb/1 env*_t arg-quantity (car test-types))
+		    (q-env:glb/1 env*_f arg-quantity (cdr test-types))))))))
+	((and (CALL/? form)
+	      (QUOTE/? (call/operator form))
+	      (eq? OBJECT-TYPE? (quote/text (call/operator form)))
+	      (form/number? (call/operand1 form)))
+	 => (lambda (tag)
+	      (typerew/expr
+	       form env
+	       (lambda (quantity type env*)
+		 type
+		 (let ((arg-quantity (quantity:operand2 quantity))
+		       (env*_t (q-env:glb/1 env* quantity type:not-false))
+		       (env*_f (q-env:glb/1 env* quantity type:false))
+		       (test-types (and (exact-integer? tag)
+					(type:tag->test-types tag))))
+		   ;;(pp `(env*_t: ,env*_t env*_f: ,env*_f))
+		   ;;(pp `(test-types ,test-types))
+		   (receiver 
+		    (q-env:glb/1 env*_t arg-quantity (car test-types))
+		    (q-env:glb/1 env*_f arg-quantity (cdr test-types))))))))
+	((IF/? form)
+	 (typerew/pred
+	  (if/predicate form) env
+	  (lambda (env_t env_f)
+	    (typerew/pred
+	     (if/consequent form) env_t
+	     (lambda (env_tt env_tf)
+	       (typerew/pred
+		(if/alternate form) env_f
+		(lambda (env_ft env_ff)
+		  (receiver (q-env:lub env_tt env_ft)
+			    (q-env:lub env_ff env_tf)))))))))
+	(else (->expr))))
+
+
+(define (typerew/expr form env receiver)
+  ;; receiver = (lambda (quantity type env*) ...)
+  (if (not (pair? form))
+      (illegal form))
+  (define (receiver* quantity type env*)
+     (typerew/associate-type form type)
+     (form-map/put! *typerew-dbg-map* form
+					  (list quantity type env*))
+     (receiver quantity type env*))
+  (case (car form)
+    ((QUOTE)    (typerew/quote  form env receiver*))
+    ((LOOKUP)   (typerew/lookup form env receiver*))
+    ((LAMBDA)   (typerew/lambda form env receiver*))
+    ((LET)      (typerew/let form env receiver*))
+    ((DECLARE)  (typerew/declare form env receiver*))
+    ((CALL)     (typerew/call form env receiver*))
+    ((BEGIN)    (typerew/begin form env receiver*))
+    ((IF)       (typerew/if form env receiver*))
+    ((LETREC)   (typerew/letrec form env receiver*))
+    (else
+     (illegal form))))
 
 (define (typerew/remember new old)
   (code-rewrite/remember new old))
@@ -318,11 +486,19 @@ MIT in each case. |#
 
 ;; Quantities
 ;;
+;; Quantities are naming scheme for expressions in the program.  We do
+;; not use the expressions themselves because we want to tell when two
+;; different expressions are really the same thing.
+;;
+;; Note: currently `different' expressions have to be syntactically the
+;; same to be the same quantity, i.e. we do not track what variables
+;; are bound to.
+;;
 ;; Quantities are represented as vectors:
 ;;   #(<hash> <effects> <variable>)
 ;;   #(<hash> <effects> <quoted-form>)
 ;;   #(<hash> <effects> <operator> . <operand-quantities>)
-;; <effects> is the effects to which this quantity is sensitive
+;; <effects> is the effects to which this quantity is sensitive.
 
 (define-integrable (quantity:hash Q)
   (vector-ref Q 0))
@@ -335,6 +511,9 @@ MIT in each case. |#
 
 (define-integrable (quantity:operand1 Q)
   (vector-ref Q 3))
+
+(define-integrable (quantity:operand2 Q)
+  (vector-ref Q 4))
 
 (define (quantity:constant quoted-form)
   (vector (quantity:hash-constant (quote/text quoted-form))
@@ -367,7 +546,7 @@ MIT in each case. |#
   (if (fix:<= (quantity:hash operand1) (quantity:hash operand2))
       (quantity:combination/2 operator operand1 operand2)
       (quantity:combination/2 operator operand2 operand1)))
-
+
 (define (quantity:combination operator operands)
   (define (default)
     (list->vector
@@ -428,7 +607,7 @@ MIT in each case. |#
 	  (let ((value  (quantity:hash+ last 10000)))
 	    (monotonic-strong-eq-hash-table/put! table operator value)
 	    value)))))
-
+
 ;; Quantity environments map quantities to types
 ;;
 ;; Quantity type lattice
@@ -488,7 +667,7 @@ MIT in each case. |#
 
 (define (q-env:top? env)
   (null? env))
-
+
 (define (q-env:lub env1 env2)
   (define (merge env1 env2)
     (define (skip1) (merge (cdr env1) env2))
@@ -517,18 +696,9 @@ MIT in each case. |#
 	(if (type:disjoint? (type:of-object (quote/text op)) type)
 	    q-env:bottom;; we have just concluded a constant an absurd  value
 	    env)
-	(q-env:glb env (list (cons quantity type))))))
-
-
-#| env2 must be sorted
-(define (q-env:glb* env quantities types asserted-types)
-  (q-env:glb env
-	     (map (lambda (q type a-type)
-		    (cons q (type:and a-type type)))
-		  quantities
-		  types
-		  asserted-types)))
-|#
+	(if (type:subset? type type:empty)
+	    q-env:bottom
+	    (q-env:glb env (list (cons quantity type)))))))
 
 (define (q-env:glb* env quantities types asserted-types)
   (let loop ((env2 q-env:top) (Qs quantities) (Ts types) (As asserted-types))
@@ -576,69 +746,69 @@ MIT in each case. |#
 		      names
 		      quantities
 		      types))))
+
+;;;; TYPE METHODS
+;;
+;; Operators have type methods.  Type methods are procedures of the form
+;;   (lambda (quantities types env form receiver) ...)
+;; They invoke the reciever on
+;;   a) a new quantity for the combination
+;;   b) the return type of the combination
+;;   c) an updated environment reflecting inferences that can be made from the
+;;      execution of the combination's operator.
+;; TYPEREW/GENERAL-TYPE-METHOD is a generator of type methods from an
+;; enforced signature and a set of effects.
 
-(define (typerew/pred form env receiver)
-  ;; receiver = (lambda (env_t env_f) ...)
-  (define (->expr)
-    (typerew/expr
-     form env
-     (lambda (quantity type env*)
-       (receiver (q-env:glb/1 env* quantity type:not-false)
-		 (q-env:glb/1 env* quantity type:false)))))
-  (cond ((and (CALL/? form)
-	      (QUOTE (call/operator form))
-	      (operator-predicate-test-type (quote/text (call/operator form))))
-	 => (lambda (test-types)
-	      (typerew/expr
-	       form env
-	       (lambda (quantity type env*)
-		 ;;(pp `(predicate-q ,quantity))
-		 (let ((arg-quantity (quantity:operand1 quantity))
-		       (env*_t (q-env:glb/1 env* quantity type:not-false))
-		       (env*_f (q-env:glb/1 env* quantity type:false)))
-		   ;;(pp `(env*_t: ,env*_t env*_f: ,env*_f))
-		   (receiver 
-		    (q-env:glb/1 env*_t arg-quantity (car test-types))
-		    (q-env:glb/1 env*_f arg-quantity (cdr test-types))))))))
-	((IF/? form)
-	 (typerew/pred
-	  (if/predicate form) env
-	  (lambda (env_t env_f)
-	    (typerew/pred
-	     (if/consequent form) env_t
-	     (lambda (env_tt env_tf)
-	       (typerew/pred
-		(if/alternate form) env_f
-		(lambda (env_ft env_ff)
-		  (receiver (q-env:lub env_tt env_ft)
-			    (q-env:lub env_ff env_tf)))))))))
-	(else (->expr))))
+(define *typerew/type-methods*    (make-monotonic-strong-eq-hash-table))
+(define *typerew/rewrite-methods* (make-monotonic-strong-eq-hash-table))
 
+(define (typerew/type-method? op arity)
+  (let ((arity.method
+	 (monotonic-strong-eq-hash-table/get *typerew/type-methods* op #F)))
+    (and arity.method
+	 (if (car arity.method)		; specific arity only
+	     (and (= (car arity.method) arity)
+		  (cdr arity.method))
+	     (cdr arity.method)))))	; #F => any arity
 
-(define (typerew/expr form env receiver)
-  ;; receiver = (lambda (quantity type env*) ...)
-  (if (not (pair? form))
-      (illegal form))
-  (define (receiver* quantity type env*)
-     (typerew/associate-type form type)
-     (monotonic-strong-eq-hash-table/put! *typerew-dbg-map* form
-					  (list quantity type env*))
-     (receiver quantity type env*))
-  (case (car form)
-    ((QUOTE)    (typerew/quote  form env receiver*))
-    ((LOOKUP)   (typerew/lookup form env receiver*))
-    ((LAMBDA)   (typerew/lambda form env receiver*))
-    ((LET)      (typerew/let form env receiver*))
-    ((DECLARE)  (typerew/declare form env receiver*))
-    ((CALL)     (typerew/call form env receiver*))
-    ((BEGIN)    (typerew/begin form env receiver*))
-    ((IF)       (typerew/if form env receiver*))
-    ((LETREC)   (typerew/letrec form env receiver*))
-    (else
-     (illegal form))))
+(define (define-typerew-type-method op arity method)
+  ;; ARITY = #F means method for any arity
+  (monotonic-strong-eq-hash-table/put! *typerew/type-methods* op
+				       (cons arity method)))
 
+(define (typerew/general-type-method rator
+				     asserted-argument-types
+				     result-type
+				     effects-performed)
+  (lambda (quantities types env form receiver)
+    form				; No operator replacement
+    (let ((env* (q-env:restrict
+		 (q-env:glb* env quantities types asserted-argument-types)
+		 effects-performed)))
+      (typerew/send receiver
+		    (quantity:combination rator quantities)
+		    result-type
+		    env*))))
 
-(define (typerew/rewrite! form)
+(let ((OBJECT-TYPE? (make-primitive-procedure 'OBJECT-TYPE?)))
+  (define-typerew-type-method OBJECT-TYPE? 2
+    (typerew/general-type-method OBJECT-TYPE?
+				 (list type:unsigned-byte type:any)
+				 type:boolean
+				 effect:none)))
+
+;; Example: SUBSTRING?
+;;  SUBSTRING? checks that the two arguments are strings and signals an
+;;  error if they are not.  If it returns, the result is either #T or
+;;  #F, and it makes no effects (e.g. it doesnt change the strings).
+(define-typerew-type-method 'SUBSTRING? 2
+  (typerew/general-type-method 'SUBSTRING?
+			       (list type:string type:string)
+			       type:boolean
+			       effect:none))
+
+;; 
+(define (typerew/rewrite! program)
 
   (define (rewrite-bindings! bindings)
     (for-each (lambda (binding) (rewrite! (second binding)))
@@ -648,28 +818,36 @@ MIT in each case. |#
     (for-each rewrite! forms))
 
   (define (rewrite-call! form rator cont rands)
-    (define (apply-method method rands*)
-      (cond ((null? rands*)         (method form))
-	    ((null? (cdr rands*))   (method form (car rands*)))
-	    ((null? (cddr rands*))  (method form (car rands*) (cadr rands*)))
-	    ((null? (cdddr rands*))
-	     (method form (car rands*) (cadr rands*) (caddr rands*)))
-	    (else (apply method form rands*))))
+
+    (define (install-replacement! replacement-generator)
+      (sample/1 '(typerew/replacements count) 1)
+      (form/rewrite! form (replacement-generator form)))
+
     (define (apply-suggestion suggestion)
-      (suggestion form))
+      (install-replacement! suggestion))
+
+    (define (apply-method method rands*)
+      (install-replacement!
+       (cond ((null? rands*)         (method form))
+	     ((null? (cdr rands*))   (method form (car rands*)))
+	     ((null? (cddr rands*))  (method form (car rands*) (cadr rands*)))
+	     ((null? (cdddr rands*))
+	      (method form (car rands*) (cadr rands*) (caddr rands*)))
+	     (else (apply method form rands*)))))
+
     (rewrite!* rands)
     (rewrite! cont)
     (cond ((not (QUOTE/? rator))
 	   (rewrite! rator))
-	  ((monotonic-strong-eq-hash-table/get *typerew-suggestions-map*
-					       form #F)
+	  ((form-map/get *typerew-suggestions-map* form #F)
 	   => apply-suggestion)
-	  ((typerew/rewrite-method? (quote/text rator) (length rands))
+	  ((typerew/replacement-method? (quote/text rator) (length rands))
 	   => (lambda (method)
 		(apply-method method rands)))
 	  ((and (eq? (quote/text rator) %invoke-remote-cache)
-		(typerew/type-method? (first (quote/text (first rands)))
-				      (second (quote/text (first rands)))))
+		(typerew/replacement-method?
+		 (first (quote/text (first rands)))
+		 (second (quote/text (first rands)))))
 	   => (lambda (method)
 		(apply-method method (cddr rands))))
 	  (else (rewrite! rator))))
@@ -699,26 +877,24 @@ MIT in each case. |#
 	  ((DECLARE/? form))
 	  (else (illegal form))))
 
-  (rewrite! form))
+  (rewrite! program))
 
-(define *typerew/type-methods*    (make-monotonic-strong-eq-hash-table))
-(define *typerew/rewrite-methods* (make-monotonic-strong-eq-hash-table))
+;; REPLACEMENT METHODS
+;;
+;; Operators have replacement methods.  Replacement methods are produres
+;; of the form
+;;  (lambda (form arg1 arg2 ... argN) ...)
+;; where FORM is the combination with the operator for which this is a
+;; rewrite method, and ARG1 .. ARGN are the argument forms.  FORM is
+;; passed as an easy way of copying the original expression (via
+;; form/and is necessary for accessing the remote-execute-cache for
+;; those operators which are global procedures.
+;;
+;; Replacement methods returns a replacement generator.  The replacement
+;; generator is a procedure that when applied to the original FORM,
+;; yields new form.  It does not modify the program text.
 
-(define (typerew/type-method? op arity)
-  (let ((arity.method
-	 (monotonic-strong-eq-hash-table/get *typerew/type-methods* op #F)))
-    (and arity.method
-	 (if (car arity.method)		; specific arity only
-	     (and (= (car arity.method) arity)
-		  (cdr arity.method))
-	     (cdr arity.method)))))	; #F => any arity
-
-(define (define-typerew-type-method op arity method)
-  ;; ARITY = #F means method for any arity
-  (monotonic-strong-eq-hash-table/put! *typerew/type-methods* op
-				       (cons arity method)))
-
-(define (typerew/rewrite-method? op arity)
+(define (typerew/replacement-method? op arity)
   (let ((arity.method
 	 (monotonic-strong-eq-hash-table/get *typerew/rewrite-methods* op #F)))
     (and arity.method
@@ -727,133 +903,183 @@ MIT in each case. |#
 		  (cdr arity.method))
 	     (cdr arity.method)))))	; #F => any arity
 
-(define (define-typerew-rewrite-method op arity method)
+(define (define-typerew-replacement-method op arity method)
   ;; ARITY = #F means method for any arity
   (monotonic-strong-eq-hash-table/put! *typerew/rewrite-methods* op
 				       (cons arity method)))
 
 ;; Operator replacement strategies
 
+(define (typerew-no-replacement form)
+  form)
+
+(define (typerew-guaranteed-error-replacement error-kind bad-thing good-thing)
+  (lambda (form)
+    (warn
+     (with-output-to-string
+       (lambda ()
+	 (display "This form is guaranteed to signal a ")
+	 (display error-kind)
+	 (display " error at runtime.  ")
+	 (display "\n;The ")
+	 (display error-kind)
+	 (display " is ")
+	 (display bad-thing)
+	 (display ", but should be ")
+	 (display good-thing)
+	 (display ".\n;")))
+     form)
+    form))
+
+(define (typerew-guaranteed-type-error-replacement bad-type good-type)
+  (typerew-guaranteed-error-replacement "type" bad-type good-type))
+
+
 (define (typerew-simple-operator-replacement new-op)
   ;; Coerces operator to a replacement procedure
   (if (and (procedure? new-op) (not (primitive-procedure? new-op)))
       new-op
       (lambda (form)
-	(pp `(operator-replacement ,new-op ,form))
-	(form/rewrite! form
-	  `(CALL (QUOTE ,new-op) ,@(cddr form))))))
+	(sample/1 '(typerew/simple-replacements histogram) new-op)
+	(let ((rator (quote/text (call/operator form))))
+	  (if (eq? rator %invoke-remote-cache)
+	      (begin
+		;;(pp `(,(fourth form) => ,new-op))
+		`(CALL (QUOTE ,new-op) '#F ,@(cdr (cddddr form))))
+	      (begin
+		;;(pp `(,(quote/text (call/operator form)) => ,new-op))
+		`(CALL (QUOTE ,new-op) ,@(cddr form))))))))
 
-(define (typerew-object-type-test typecode)
-  (let ((OBJECT-TYPE?  (make-primitive-procedure 'OBJECT-TYPE?)))
-    (lambda (expr)
-      `(CALL ',OBJECT-TYPE? '#F  (QUOTE ,typecode)  ,expr))))
+(define (typerew-object-type-test type-name)
+  (let ((OBJECT-TYPE?  (make-primitive-procedure 'OBJECT-TYPE?))
+	(type-code     (machine-tag type-name)))
+    (lambda (object)
+      `(CALL ',OBJECT-TYPE? '#F  (QUOTE ,type-code) ,object))))
 
-(define (typerew/->unary-expression make-expression)
-  (if (and (procedure? make-expression)
-	   (not (primitive-procedure? make-expression)))
-      make-expression
+(define (typerew/->unary-combination make-combination/operator)
+  (if (and (procedure? make-combination/operator)
+	   (not (primitive-procedure? make-combination/operator)))
+      make-combination/operator
       (lambda (arg1)
-	`(CALL (QUOTE ,make-expression) '#F ,arg1))))
+	`(CALL (QUOTE ,make-combination/operator) '#F ,arg1))))
 
+(define (typerew/->nary-combination make-combination/operator)
+  (if (and (procedure? make-combination/operator)
+	   (not (primitive-procedure? make-combination/operator)))
+      make-combination/operator
+      (lambda args
+	`(CALL (QUOTE ,make-combination/operator) '#F ,@args))))
+
+(define typerew/->binary-combination typerew/->nary-combination)
+(define typerew/->ternary-combination typerew/->nary-combination)
+
+(define (typerew/diamond original-form test-form form*1 form*2)
+  (define (equivalent form*)
+    (typerew/remember* form* original-form))
+  (sample/1 '(typerew/diamond-replacements histogram)
+	    (call/operator original-form))
+  (equivalent `(IF ,test-form
+		   ,(equivalent form*1)
+		   ,(equivalent form*2))))
+  
 (define (typerew-operator-replacement/diamond-1-1-1 test good-op bad-op)
-  (let ((test (typerew/->unary-expression test)))
+  (let ((test    (typerew/->unary-combination test))
+	(good-op (typerew/->unary-combination good-op))
+	(bad-op  (typerew/->unary-combination bad-op)))
     (lambda (form)
-      (pp `(operator-replacement/check (,test ,good-op ,bad-op) ,form))
-      (form/rewrite! form
-	(let ((name (typerew/new-name 'OBJECT)))
-	  (bind name (call/operand1 form)
-		`(IF ,(test `(LOOKUP ,name))
-		     (CALL ',good-op '#F (LOOKUP ,name))
-		     (CALL ',bad-op  '#F (LOOKUP ,name)))))))))
-
-(define (typerew-operator-replacement/diamond-2-1-1 test arg good-op bad-op)
-  (lambda (form)
-    (pp `(operator-replacement/check (,test ,good-op ,bad-op) ,form))
-    (form/rewrite! form
       (let ((name (typerew/new-name 'OBJECT)))
 	(bind name (call/operand1 form)
-	      `(IF (CALL ',test    '#F ,arg (LOOKUP ,name))
-		   (CALL ',good-op '#F (LOOKUP ,name))
-		   (CALL ',bad-op  '#F (LOOKUP ,name))))))))
+	      (typerew/diamond form
+			       (test    `(LOOKUP ,name))
+			       (good-op `(LOOKUP ,name))
+			       (bad-op  `(LOOKUP ,name))))))))
 
 (define (typerew-operator-replacement/diamond-1-2-2 test good-op bad-op)
-  (lambda (form)
-    (pp `(operator-replacement (,test ,good-op ,bad-op) ,form))
-    (form/rewrite! form
+  (let ((test    (typerew/->unary-combination test))
+	(good-op (typerew/->binary-combination good-op))
+	(bad-op  (typerew/->binary-combination bad-op)))
+    (lambda (form)
       (let ((object (typerew/new-name 'OBJECT))
 	    (value  (typerew/new-name 'VALUE)))
-	(bind* (list object value)
-	       (list (call/operand1 form) (call/operand2 form))
-	       `(IF (CALL ',test    '#F (LOOKUP ,object))
-		    (CALL ',good-op '#F (LOOKUP ,object) (LOOKUP ,value))
-		    (CALL ',bad-op  '#F (LOOKUP ,object) (LOOKUP ,value))))))))
+	(bind* 
+	 (list object value)
+	 (list (call/operand1 form) (call/operand2 form))
+	 (typerew/diamond form
+			  (test    `(LOOKUP ,object))
+			  (good-op `(LOOKUP ,object) `(LOOKUP ,value))
+			  (bad-op  `(LOOKUP ,object) `(LOOKUP ,value))))))))
+
 
 (define (typerew-operator-replacement/diamond-2-2-2 test good-op bad-op)
-  (lambda (form)
-    (pp `(operator-replacement (,test ,good-op ,bad-op) ,form))
-    (form/rewrite! form
+  (let ((test    (typerew/->binary-combination test))
+	(good-op (typerew/->binary-combination good-op))
+	(bad-op  (typerew/->binary-combination bad-op)))
+    (lambda (form)
       (let ((object (typerew/new-name 'OBJECT))
 	    (index  (typerew/new-name 'INDEX)))
-	(bind* (list object index)
-	       (list (call/operand1 form) (call/operand2 form))
-	       `(IF (CALL ',test    '#F (LOOKUP ,object) (LOOKUP ,index))
-		    (CALL ',good-op '#F (LOOKUP ,object) (LOOKUP ,index))
-		    (CALL ',bad-op  '#F (LOOKUP ,object) (LOOKUP ,index))))))))
+	(bind*
+	 (list object index)
+	 (list (call/operand1 form) (call/operand2 form))
+	 (typerew/diamond form 
+			  (test    `(LOOKUP ,object) `(LOOKUP ,index))
+			  (good-op `(LOOKUP ,object) `(LOOKUP ,index))
+			  (bad-op  `(LOOKUP ,object) `(LOOKUP ,index))))))))
 
 (define (typerew-operator-replacement/diamond-2-3-3 test good-op bad-op)
-  (define (rewrite)
-    (let ((obj (typerew/new-name 'OBJECT))
-	  (idx (typerew/new-name 'INDEX))
-	  (elt (typerew/new-name 'ELEMENT)))
-      (bind*
-       (list obj idx elt)
-       (list (call/operand1 form) (call/operand2 form) (call/operand3 form))
-       `(IF (CALL ',test    '#F (LOOKUP ,obj) (LOOKUP ,idx))
-	    (CALL ',good-op '#F (LOOKUP ,obj) (LOOKUP ,idx) (LOOKUP ,elt))
-	    (CALL ',bad-op  '#F (LOOKUP ,obj) (LOOKUP ,idx) (LOOKUP ,elt))))))
-  (lambda (form)
-    (pp `(operator-replacement (,test ,good-op ,bad-op) ,form))
-    (form/rewrite! form (rewrite))))
+  (let ((test    (typerew/->binary-combination test))
+	(good-op (typerew/->ternary-combination good-op))
+	(bad-op  (typerew/->ternary-combination bad-op)))
+    (lambda (form)
+      (let ((obj (typerew/new-name 'OBJECT))
+	    (idx (typerew/new-name 'INDEX))
+	    (elt (typerew/new-name 'ELEMENT)))
+	(bind*
+	 (list obj idx elt)
+	 (list (call/operand1 form) (call/operand2 form) (call/operand3 form))
+	 (typerew/diamond
+	  form
+	  (test    `(LOOKUP ,obj) `(LOOKUP ,idx))
+	  (good-op `(LOOKUP ,obj) `(LOOKUP ,idx) `(LOOKUP ,elt))
+	  (bad-op  `(LOOKUP ,obj) `(LOOKUP ,idx) `(LOOKUP ,elt))))))))
+
+(define (typerew-operator-replacement/diamond-3-3-3 test good-op bad-op)
+  (let ((test    (typerew/->binary-combination test))
+	(good-op (typerew/->ternary-combination good-op))
+	(bad-op  (typerew/->ternary-combination bad-op)))
+    (lambda (form)
+      (let ((obj (typerew/new-name 'OBJECT))
+	    (idx (typerew/new-name 'INDEX))
+	    (elt (typerew/new-name 'ELEMENT)))
+	(bind*
+	 (list obj idx elt)
+	 (list (call/operand1 form) (call/operand2 form) (call/operand3 form))
+	 (typerew/diamond
+	  form
+	  (test    `(LOOKUP ,obj) `(LOOKUP ,idx) `(LOOKUP ,elt))
+	  (good-op `(LOOKUP ,obj) `(LOOKUP ,idx) `(LOOKUP ,elt))
+	  (bad-op  `(LOOKUP ,obj) `(LOOKUP ,idx) `(LOOKUP ,elt))))))))
 
-(define (typerew/general-type-method rator
-				     asserted-argument-types
-				     result-type
-				     effects-performed)
-  (lambda (quantities types env form receiver)
-    form				; No operator replacement
-    (let ((env* (q-env:restrict
-		 (q-env:glb* env quantities types asserted-argument-types)
-		 effects-performed)))
-      (typerew/send receiver
-		    (quantity:combination rator quantities)
-		    result-type
-		    env*))))
-
-;; Example: substring?
-
-(define-typerew-type-method 'SUBSTRING? 2
-  (typerew/general-type-method 'SUBSTRING?
-			       (list type:string type:string)
-			       type:boolean
-			       effect:none))
-
 (define (typerew-binary-variants-type-method rator effect . spec)
   ;; spec: repeated (input-type1 input-type2 output-type rewrite)
   ;;  Final spec is the asserted-type1 asserted-type2 default-output-type
+  ;; 
   (define (result receiver result-type q1 q2 env)
     (typerew/send receiver
 		  (quantity:combination/2 rator q1 q2)
 		  result-type
 		  env))
   (define (compile-spec spec)
+    ;; COMPILE-SPEC converts SPEC into a procedure to eliminate the
+    ;; interpretive overhead of analysing SPEC every time.
     (let* ((a1 (first spec))
 	   (a2 (second spec)) 
 	   (result-type (third spec))
-	   (rewrite     (fourth spec))
-	   (rewrite (and rewrite
-			 (typerew-simple-operator-replacement rewrite))))
+	   (rewrite-spec (fourth spec))
+	   (rewrite
+	    (and rewrite-spec
+		 (typerew-simple-operator-replacement rewrite-spec))))
 
-      (if (null? (cddddr spec)) ; final row of table
+      (if (null? (cddddr spec))		; final row of table
 	  (lambda (t1 t2 q1 q2 env form receiver)
 	    (if rewrite (typerew/suggest-rewrite form rewrite))
 	    (result receiver result-type q1 q2
@@ -865,7 +1091,8 @@ MIT in each case. |#
 	    (lambda (t1 t2 q1 q2 env form receiver)
 	      (if (and (type:subset? t1 a1) (type:subset? t2 a2))
 		  (begin
-		    (if rewrite (typerew/suggest-rewrite form rewrite))
+		    (if rewrite 
+			(typerew/suggest-rewrite form rewrite))
 		    (result receiver result-type q1 q2 env))
 		  (after-tests t1 t2 q1 q2 env form receiver)))))))
   (let ((compiled-spec  (compile-spec spec)))
@@ -895,7 +1122,7 @@ MIT in each case. |#
 		 effect)
 		(second spec)))
 	      ((type:subset? type (car spec))
-	       (if (caddr spec) ((caddr spec) form type))
+	       (if (caddr spec) (typerew/suggest-rewrite form (caddr spec)))
 	       (result env (cadr spec)))
 	      (else (loop (cdddr spec))))))))
 
@@ -910,7 +1137,12 @@ MIT in each case. |#
 (define-typerew-unary-variants-type-method 'EXACT->INEXACT  effect:none
   type:real    type:inexact-real    #F
   type:recnum  type:inexact-recnum  #F
-  type:number  type:number)
+  type:number  type:inexact-number)
+
+(define-typerew-unary-variants-type-method 'INEXACT->EXACT  effect:none
+  type:real      type:exact-real    #F
+  type:recnum    type:exact-recnum  #F
+  type:number    type:exact-number)
 
 (define-typerew-unary-variants-type-method 'COS    effect:none
   type:exact-zero type:exact-one     #F
@@ -974,14 +1206,10 @@ MIT in each case. |#
   type:number           type:inexact-number   type:inexact-number   %+
   type:number           type:number           type:number           #F)
 
-
-(define-typerew-binary-variants-type-method fix:+
-  effect:none
-  type:fixnum  type:fixnum type:fixnum  #F)
-
 (define-typerew-binary-variants-type-method (make-primitive-procedure '&-)
   effect:none
   type:small-fixnum     type:small-fixnum     type:fixnum           fix:-
+  type:fixnum>=0        type:fixnum>=0        type:fixnum           fix:-
   type:flonum           type:flonum           type:flonum           flo:-
   type:exact-integer    type:exact-integer    type:exact-integer    #F
   type:exact-number     type:exact-number     type:exact-number     #F
@@ -1059,20 +1287,21 @@ MIT in each case. |#
     type:flonum        type:exact-integer   type:flonum         #F
     type:number        type:number          type:number         #F))
 
-(define-typerew-rewrite-method 'EXPT 2
+(define-typerew-replacement-method 'EXPT 2
   (lambda (form base exponent)
-    (let* ((t-base     (typerew/type base))
-	   (t-exponent (typerew/type exponent)))
+    (let* ((t-exponent (typerew/type exponent)))
       (cond ((and (type:subset? t-exponent type:fixnum)
 		  (or (equal? base '(QUOTE -1))
 		      (equal? base '(QUOTE -1.0))))
-	     (let ((negative-one (quote/text e-base)))
-	       (form/rewrite! form	;
+	     (let ((negative-one (quote/text base)))
+	       (lambda (form)
+		 form
 		 `(IF (CALL ',eq? '#F
 			    (CALL ',fix:and '#F ,exponent '1)
 			    '0)
 		      ',(- negative-one)
-		      ',negative-one))))))))
+		      ',negative-one))))
+	    (else typerew-no-replacement)))))
 
 (let ()
   (define (define-relational-method name fix:op flo:op out:op)
@@ -1090,202 +1319,201 @@ MIT in each case. |#
   (define-relational-method  '&>  fix:>  flo:>  %>))
 
 (let ((type:eqv?-is-eq? (type:or (type:not type:number) type:fixnum))
-      (eq?              (make-primitive-procedure 'EQ?)))
+      (EQ?              (make-primitive-procedure 'EQ?)))
   (define-typerew-binary-variants-type-method 'EQV?
     effect:none
     type:eqv?-is-eq?   type:any            type:boolean      EQ?
     type:any           type:eqv?-is-eq?    type:boolean      EQ?
     type:any           type:any            type:boolean      #F))
-
 
 (let ()
-  (define (def-unary-selector name asserted-type  result-type type-check-class
+  (define (def-unary-selector name asserted-type  type-check-class
 	    %test %operation)
     ;; No effects.
     (let* ((rator  (make-primitive-procedure name))
-	   (safe-replacement
+	   (checking-replacement
 	    (typerew-operator-replacement/diamond-1-1-1 %test %operation rator))
-	   (unsafe-replacement (typerew-operator-replacement %operation)))
+	   (unchecked-replacement
+	    (typerew-simple-operator-replacement %operation)))
 
-      (define-typerew-type-method rator 1
-	(typerew/general-type-method
-	 rator (list asserted-type) result-type effect:none))
-
-      (define-typerew-rewrite-method rator 1
+      (define-typerew-replacement-method rator 1
 	(lambda (form arg1)
+	  form
 	  (if (and (typerew/type-checks? type-check-class)
 		   (not (type:subset? (typerew/type arg1) asserted-type)))
-	      (safe-replacement form)
-	      (unsafe-replacement form))))))
-  
-  (def-unary-selector 'CAR type:pair type:any 'PAIR  PAIR?  %car)
-  (def-unary-selector 'CDR type:pair type:any 'PAIR  PAIR?  %cdr)
-  (def-unary-selector 'VECTOR-LENGTH type:vector type:vector-length 'VECTOR
-    (typerew-object-type-test (machine-tag 'VECTOR))
+	      checking-replacement
+	      unchecked-replacement)))))
+
+  (def-unary-selector 'CAR type:pair 'PAIR  PAIR?  %car)
+  (def-unary-selector 'CDR type:pair 'PAIR  PAIR?  %cdr)
+  (def-unary-selector 'VECTOR-LENGTH type:vector 'VECTOR
+    (typerew-object-type-test 'VECTOR)
     %vector-length)
+  (def-unary-selector '%RECORD-LENGTH type:%record 'RECORD
+    (typerew-object-type-test 'RECORD)
+    %%record-length)
+  (def-unary-selector 'STRING-LENGTH type:string 'STRING
+    (typerew-object-type-test 'VECTOR-8B)
+    %string-length)
+  (def-unary-selector 'FLOATING-VECTOR-LENGTH type:flonum-vector
+    'FLOATING-VECTOR
+    (typerew-object-type-test 'FLONUM) ;
+    %floating-vector-length)
     
   (define (def-unary-mutator name location-type type-check-class
-	    effect %test %operation)
+	    %test %operation)
     (let* ((rator  (make-primitive-procedure name))
-	   (unsafe-replacement (typerew-operator-replacement %operation))
-	   (safe-replacement
+	   (checking-replacement
 	    (typerew-operator-replacement/diamond-1-2-2 %test %operation rator))
-	   (asserted-types (list location-type type:any)))
+	   (unchecked-replacement
+	    (typerew-simple-operator-replacement %operation)))
 
-      (define-typerew-type-method rator 2
-	(typerew/general-type-method rator asserted-types type:any effect))
-
-      (define-typerew-rewrite-method rator 2
+      (define-typerew-replacement-method rator 2
 	(lambda (form arg1 arg2)
-	  arg2				;
-	  (if (or (not (typerew/type-checks? type-check-class))
-		  (type:subset? (typerew/type arg1) asserted-type))
-	      (safe-replacement form)
-	      (unsafe-replacement form))))))
+	  form arg2				;
+	  (if (and (typerew/type-checks? type-check-class)
+		   (not (type:subset? (typerew/type arg1) location-type)))
+	      checking-replacement
+	      unchecked-replacement)))))
   
-  (def-unary-mutator 'SET-CAR! type:pair 'PAIR effect:set-car! PAIR? %set-car!)
-  (def-unary-mutator 'SET-CDR! type:pair 'PAIR effect:set-cdr! PAIR? %set-cdr!)
+  (def-unary-mutator 'SET-CAR! type:pair 'PAIR PAIR? %set-car!)
+  (def-unary-mutator 'SET-CDR! type:pair 'PAIR PAIR? %set-cdr!)
   )
 
 
 (let ()
   ;; For the indexed selectors or mutators we do not even try to figure out
-  ;; if the index is in range.
+  ;; if the index is in range.  With the type and range checking on
 
   (define (def-indexed-operations selector-name mutator-name type-check-class
-	    element-type asserted-v-type asserted-i-type mutator-effect
-	    %selector %mutator v-typecode v-length)
+	    element-type collection-type
+	    %selector %mutator v-typecode v-length element-typecode)
     ;; No effects.
-    (let* ((selector           (make-primitive-procedure selector-name))
-	   (unsafe-selection   (typerew-operator-replacement %selector)))
-
-      (define (safe-selection checks)
-	(lambda (form)
-	  (define (equivalent form*)
-	    (typerew/remember* form* form))
-	  (let ((collection  (typerew/new-name 'COLLECTION))
-		(index       (typerew/new-name 'INDEX)))
-	    (form/rewrite! form
-	      (bind* (list collection index)
-		     (list (call/operand1 form) (call/operand2 form))
-		     `(IF (CALL ',%generic-index-check/ref '#F
-				(LOOKUP ,collection) (LOOKUP ,index)
-				(QUOTE ,checks))
-			  ,(equivalent
-			    `(CALL ',%selector '#F
-				   (LOOKUP ,collection) (LOOKUP ,index)))
-			  ,(equivalent
-			    `(CALL ',selector '#F
-				   (LOOKUP ,collection) (LOOKUP ,index)))))))))
-
-      (define-typerew-type-method selector 2
-	(typerew/general-type-method
-	 selector (list asserted-v-type asserted-i-type) element-type
-	 effect:none))
-
-      (define-typerew-rewrite-method selector 2
+    (let ((selector            (make-primitive-procedure selector-name))
+	  (unchecked-selection (typerew-simple-operator-replacement %selector)))
+      
+      (define (make-checked-selection checks)
+	(typerew-operator-replacement/diamond-2-2-2
+	 (lambda (collection index)
+	   `(CALL ',%generic-index-check/ref '#F
+		  ,collection ,index (QUOTE ,checks)))
+	 (typerew/->binary-combination %selector)
+	 (typerew/->binary-combination selector)))
+      
+      (define-typerew-replacement-method selector 2
 	(lambda (form collection index)
+	  form index
 	  (let ((v-type         (typerew/type collection))
 		(type-checks?   (typerew/type-checks? type-check-class))
 		(range-checks?  (typerew/range-checks? type-check-class)))
 	    (let ((check/1? (and type-checks?
-				 (not (type:subset? v-type asserted-v-type))
+				 (not (type:subset? v-type collection-type))
 				 v-typecode))
 		  (check/2? (and (or type-checks? range-checks?)
 				 v-length)))
 	      (if (or check/1? check/2?)
-		  ((safe-selection (vector check/1? check/2?)) form)
-		  (unsafe-selection form)))))))
+		  (if (type:disjoint? v-type collection-type)
+		      ;;typerew-no-replacement
+		      (typerew-guaranteed-type-error-replacement
+		       v-type collection-type)
+		      (make-checked-selection (vector check/1? check/2?)))
+		  unchecked-selection))))))
 
 
-    (let* ((mutator         (make-primitive-procedure mutator-name))
-	   (unsafe-mutation (typerew-operator-replacement %mutator)))
+    (let ((mutator         (make-primitive-procedure mutator-name))
+	  (unsafe-mutation (typerew-simple-operator-replacement %mutator)))
 
-      (define (safe-mutation checks)
-	(lambda (form)
-	  (define (equivalent form*)
-	    (typerew/remember* form* form))
-	  (let ((collection  (typerew/new-name 'COLLECTION))
-		(index       (typerew/new-name 'INDEX))
-		(element     (typerew/new-name 'ELEMENT)))
-	    (form/rewrite! form
-	      (bind* (list collection index element)
-		     (list (call/operand1 form) (call/operand2 form)
-			   (call/operand3 form))
-		     `(IF (CALL ',%generic-index-check/set! '#F
-				(LOOKUP ,collection) (LOOKUP ,index)
-				(LOOKUP ,element) (QUOTE ,checks))
-			  ,(equivalent
-			    `(CALL ',%mutator '#F
-				   (LOOKUP ,collection) (LOOKUP ,index)
-				   (LOOKUP ,element)))
-			  ,(equivalent
-			    `(CALL ',mutator '#F
-				   (LOOKUP ,collection) (LOOKUP ,index)
-				   (LOOKUP ,element)))))))))
+      (define (make-checked-mutation checks)
+	(typerew-operator-replacement/diamond-3-3-3
+	 (lambda (collection index element)
+	   `(CALL ',%generic-index-check/set! '#F
+		  ,collection ,index ,element (QUOTE ,checks)))
+	 (typerew/->ternary-combination %mutator)
+	 (typerew/->ternary-combination mutator)))
 
-      (define-typerew-type-method mutator 3
-	(typerew/general-type-method
-	 mutator (list asserted-v-type asserted-i-type element-type) type:any
-	 effect:none))
-
-      (define-typerew-rewrite-method mutator 3
+      (define-typerew-replacement-method mutator 3
 	(lambda (form collection index element)
+	  form index
 	  (let ((v-type      (typerew/type collection))
 		(e-type      (typerew/type element))
 		(type-checks?   (typerew/type-checks? type-check-class))
 		(range-checks?  (typerew/range-checks? type-check-class)))
 	    (let ((check/1? (and type-checks?
-				 (not (type:subset? v-type asserted-v-type))
+				 (not (type:subset? v-type collection-type))
 				 v-typecode))
 		  (check/2? (and (or type-checks? range-checks?)
 				 v-length))
-		  (check/3? (and type-checks? element-type
+		  (check/3? (and type-checks? element-typecode
 				 (not (type:subset? e-type element-type))
 				 element-typecode)))
 	      (if (or check/1? check/2? check/3?)
-		  ((safe-mutation (vector check/1? check/2? check/3?)) form)
-		  (unsafe-mutation form))))))))  
+		  (make-checked-mutation (vector check/1? check/2? check/3?))
+		  unsafe-mutation)))))))
 
   (def-indexed-operations 'VECTOR-REF  'VECTOR-SET!   'VECTOR
-    type:any type:vector type:vector-length  effect:vector-set!
-    %vector-ref %vector-set! (machine-tag 'VECTOR) %vector-length)
+    type:any type:vector
+    %vector-ref %vector-set! (machine-tag 'VECTOR) %vector-length #F)
 
   (def-indexed-operations '%RECORD-REF '%RECORD-SET!  'RECORD
-    type:any type:%record type:vector-length effect:%record-set!
-    %%record-ref %%record-set! (machine-tag 'RECORD) %%record-length)
+    type:any type:%record
+    %%record-ref %%record-set! (machine-tag 'RECORD) %%record-length #F)
 
   (def-indexed-operations 'STRING-REF  'STRING-SET!   'STRING
-    type:character type:string type:string-length  effect:string-set!
-    %string-ref %string-set! (machine-tag 'VECTOR-8B) %string-length)
+    type:character type:string
+    %string-ref %string-set! (machine-tag 'VECTOR-8B) %string-length
+    (machine-tag 'CHARACTER))
 
   (def-indexed-operations 'VECTOR-8B-REF  'VECTOR-8B-SET!  'STRING
-    type:unsigned-byte type:string type:string-length  effect:string-set!
-    %vector-8b-ref %vector-8b-set! (machine-tag 'VECTOR-8B) %string-length)
+    type:unsigned-byte type:string
+    %vector-8b-ref %vector-8b-set! (machine-tag 'VECTOR-8B) %string-length
+    (machine-tag 'POSITIVE-FIXNUM))
 
   (def-indexed-operations
-    'FLOATING-VECTOR-REF 'FLOATING-VECTOR-SET!  'FLO:VECTOR
-    type:flonum type:flonum-vector type:vector-length effect:flo:vector-set!
-    %flo:vector-ref %flo:vector-set! (machine-tag 'FLONUM)  %flo:vector-length)
+    'FLOATING-VECTOR-REF 'FLOATING-VECTOR-SET!  'FLOATING-VECTOR
+    type:flonum type:flonum-vector
+    %floating-vector-ref %floating-vector-set! (machine-tag 'FLONUM)
+    %floating-vector-length (machine-tag 'FLONUM))
 )
+
+
+(define (typerew/initialize-known-operators!)
+  ;; Augment our special knowledge
+  (for-every (monotonic-strong-eq-hash-table->alist *operator-types*)
+    (lambda (operator.procedure-type)
+      (let ((operator   (car operator.procedure-type))
+	    (proc-type  (cdr operator.procedure-type)))
+	(if (not (monotonic-strong-eq-hash-table/get *typerew/type-methods*
+						     operator #F))
+	    (let ((argtypes (procedure-type/argument-assertions proc-type)))
+	      (if (list? argtypes)
+		  (define-typerew-type-method operator (length argtypes)
+		    (typerew/general-type-method
+		     operator
+		     argtypes
+		     (procedure-type/result-type proc-type)
+		     (procedure-type/effects-performed proc-type))))))))))
+
+(typerew/initialize-known-operators!)
 
 (define (pp/ann/ty program)
   (let ((type-map *typerew-type-map*)
 	(sugg-map *typerew-suggestions-map*)
 	(dbg-map  *typerew-dbg-map*)
-	(cache    (make-monotonic-strong-eq-hash-table))) ; prevents GC
+	(cache    (make-form-map)))	; prevents GC
+    dbg-map
     (define (annotate e)
-      (or (monotonic-strong-eq-hash-table/get cache e #F)
-	  (let ((type  (monotonic-strong-eq-hash-table/get type-map e #F))
-		(new   (monotonic-strong-eq-hash-table/get sugg-map e #F)))
+      (or (form-map/get cache e #F)
+	  (let ((type  (form-map/get type-map e #F))
+		(new   (form-map/get sugg-map e #F)))
 	    (let ((annotation
 		   (cond ((and (not type) (not new))  #F)
-			  ((not type)
-			   `(suggested-operator-replacement: ,new))
-			  ((not new)  type)
-			  (else
-			   `(type: ,type
-				   suggested-operator-replacement: ,new)))))
-	      (monotonic-strong-eq-hash-table/put! cache e annotation)
+			 ((not type)
+			  `(suggested-operator-replacement: ,new))
+			 ((not new)  type)
+			 (else
+			  `(type: ,type
+				  suggested-operator-replacement: ,new)))))
+	      (form-map/put! cache e annotation)
 	      annotation))))
     (pp/ann program annotate)))
+
