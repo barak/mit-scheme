@@ -1,6 +1,6 @@
-# $Id: Makefile.in,v 1.3 2000/12/25 05:43:43 cph Exp $
+# $Id: Makefile.in,v 1.4 2001/02/06 04:15:35 cph Exp $
 #
-# Copyright (c) 2000 Massachusetts Institute of Technology
+# Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -63,8 +63,8 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 AUXDIR = @AUXDIR@
 EDDIR = $(AUXDIR)/edwin
 EODIR = $(EDDIR)/autoload
-EDOPTS = eystep manual midas nntp pasmod print pwedit pwparse snr sort \
-	 techinfo telnet tximod verilog vhdl webster
+EDOPTS = debian-changelog eystep manual midas nntp pasmod print pwedit \
+	 pwparse snr sort techinfo telnet tximod verilog vhdl webster
 
 all:
 	echo "No ALL action"

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fileio.scm,v 1.152 2000/03/25 20:32:40 cph Exp $
+;;; $Id: fileio.scm,v 1.153 2001/02/06 04:19:13 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -319,7 +319,7 @@ of the predicates is satisfied, the file is written in the usual way."
   "Alist of filename patterns vs corresponding major modes.
 Each element looks like (REGEXP . MODE).
 Visiting a file whose name matches REGEXP causes MODE to be used."
-  '()
+  '((".+/debian/changelog$" . DEBIAN-CHANGELOG))
   string->mode-alist?)
 
 (define-variable file-type-to-major-mode
