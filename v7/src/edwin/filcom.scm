@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.217 2001/05/12 20:02:19 cph Exp $
+;;; $Id: filcom.scm,v 1.218 2001/06/02 21:57:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -743,8 +743,15 @@ Prefix arg means treat the plaintext file as binary data."
 
 (define (prompt-for-directory prompt default . options)
   (->namestring
-   (pathname-as-directory
-    (prompt-for-pathname* prompt default file-directory-not-wild? options))))
+   (let ((directory
+	  (prompt-for-pathname* prompt default file-directory-not-wild?
+				options)))
+     ;; Don't convert the result to directory form unless it is known
+     ;; to be a directory.  If REQUIRE-MATCH? is false, it is allowed
+     ;; to specify a file part.
+     (if (file-test-no-errors file-directory-not-wild? directory)
+	 (pathname-as-directory directory)
+	 directory))))
 
 (define (prompt-for-existing-directory prompt default . options)
   (->namestring
