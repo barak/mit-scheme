@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mips.h,v 1.14 1992/08/20 04:36:38 jinx Exp $
+$Id: mips.h,v 1.15 1992/08/29 13:30:29 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -414,10 +414,14 @@ do {									\
 
 #ifdef MIPSEL
 
+/* Little-endian MIPS, i.e. DecStations. */
+
 #define MIPS_CACHE_ARITY_OFFSET 2
 #define MIPS_CACHE_CODE_OFFSET 7
 
 #else /* not MIPSEL */
+
+/* Big-endian MIPS, e.g. SGI and Sony. */
 
 #define MIPS_CACHE_ARITY_OFFSET 3
 #define MIPS_CACHE_CODE_OFFSET 4
@@ -513,7 +517,24 @@ do {									\
 
 #ifdef IN_CMPINT_C
 
-#define ASM_RESET_HOOK interface_initialize
+static void
+DEFUN_VOID (interface_initialize_C)
+{
+  extern void EXFUN (interface_initialize, (void));
+
+  /* Prevent the OS from "fixing" unaligned accesses.
+     Within Scheme, they are a BUG, and should fault.
+
+     Is this defined for all the OSs?
+   */
+#ifdef MIPSEL
+  syscall (SYS_sysmips, MIPS_FIXADE, 0);
+#endif
+  interface_initialize ();
+  return;
+}
+
+#define ASM_RESET_HOOK interface_initialize_C
 
 #define CLOSURE_ENTRY_WORDS			\
   (COMPILED_CLOSURE_ENTRY_SIZE / (sizeof (SCHEME_OBJECT)))
