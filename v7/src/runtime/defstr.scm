@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.53 2003/03/13 21:50:00 cph Exp $
+$Id: defstr.scm,v 14.54 2003/03/14 20:11:37 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,1997,2000 Massachusetts Institute of Technology
@@ -800,9 +800,9 @@ differences:
 	       `(,(absolute 'MAKE-DEFINE-STRUCTURE-TYPE context)
 		 ',(structure/physical-type structure)
 		 ',name
-		 ',field-names
-		 ',(map slot/index slots)
-		 (LIST ,@inits)
+		 '#(,@field-names)
+		 '#(,@(map slot/index slots))
+		 (VECTOR ,@inits)
 		 ,(if (structure/tagged? structure)
 		      (close print-procedure context)
 		      '#F)
