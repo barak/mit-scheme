@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.h,v 5.2 1986/12/17 06:00:03 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.h,v 5.3 1986/12/17 06:34:23 cph Exp $
 
 Head file for bignums.  This is shared by bignum.c and generic.c. */
 
@@ -65,7 +65,7 @@ typedef long bigdouble;
 #if ((USHORT_SIZE * 2) <= ULONG_SIZE)
 #define bigdigit		unsigned short
 #define bigdouble 		long	/* Should be unsigned */
-#define SHIFT			(CHAR_SIZE*sizeof(bigdigit))
+#define SHIFT			USHORT_SIZE
 #define factor			(sizeof(Pointer)/sizeof(bigdigit))
 #else
 #if ((CHAR_SIZE * 2) <= ULONG_SIZE)

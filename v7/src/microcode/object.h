@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* File: object.h
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 5.2 1986/12/17 06:35:06 cph Exp $
  *
  * This file contains definitions pertaining to the C view of 
  * Scheme pointers: widths of fields, extraction macros, pre-computed
@@ -38,8 +38,13 @@ MIT in each case. */
  *
  */
 
-/* The C type Pointer is defined at the end of CONFIG.H */
+/* The C type Pointer is defined at the end of CONFIG.H
+   The definition of POINTER_LENGTH here assumes that Pointer is the same
+   as unsigned long.  If that ever changes, this definition must also.
+   POINTER_LENGTH is defined this way to make it available to
+   the preprocessor. */
 
+#define POINTER_LENGTH		ULONG_SIZE
 #define TYPE_CODE_LENGTH	8	/* Not CHAR_SIZE!! */
 #define MAX_TYPE_CODE		0xFF	/* ((1<<TYPE_CODE_LENGTH) - 1) */
 
@@ -57,7 +62,6 @@ MIT in each case. */
 
 #ifndef b32			/* Safe versions */
 
-#define POINTER_LENGTH		(CHAR_SIZE*sizeof(Pointer))
 #define ADDRESS_LENGTH		(POINTER_LENGTH-TYPE_CODE_LENGTH)
 #define ADDRESS_MASK		((1<<ADDRESS_LENGTH) - 1)
 #define TYPE_CODE_MASK		(~ADDRESS_MASK)
@@ -71,7 +75,6 @@ MIT in each case. */
 
 #else				/* 32 bit word versions */
 
-#define POINTER_LENGTH		32
 #define ADDRESS_LENGTH		24
 #define ADDRESS_MASK		0x00FFFFFF
 #define TYPE_CODE_MASK		0xFF000000
