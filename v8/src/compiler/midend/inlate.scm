@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: inlate.scm,v 1.6 1995/08/18 23:54:03 adams Exp $
+$Id: inlate.scm,v 1.7 1995/08/19 15:29:50 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -53,7 +53,7 @@ MIT in each case. |#
 (define (inlate/sequence+ form outer-form)
   ;; Kludge
   (if (not (open-block? form))
-      (inlate/sequence form)
+      (inlate/sequence form outer-form)
       (inlate/remember
        (let ((form* (open-block-components form unscan-defines)))
 	 (if (sequence? form*)
