@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.27 1992/05/26 18:41:31 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.28 1992/05/26 18:43:40 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -525,6 +525,8 @@ MIT in each case. |#
       (call-with-current-continuation
         (lambda (if-fail)
 	  (uncompress-internal compressed-filename uncompressed-filename
-	     (lambda (message . irritants) (if-fail false)))
+	     (lambda (message . irritants)
+	       message irritants
+	       (if-fail false)))
 	  (fasload-loader uncompressed-filename))))))
   
