@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.19 2000/06/15 02:35:59 cph Exp $
+;;; $Id: imail-summary.scm,v 1.20 2000/06/15 02:38:05 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -93,7 +93,7 @@ Edwin will list the header line in the summary."
   "sRegexp to summarize by"
   (lambda (regexp)
     (imail-summary
-     (string-append "Regular expression " recipients-string)
+     (string-append "Regular expression " regexp)
      (lambda (m)
        (re-string-search-forward regexp
 				 (header-fields->string
@@ -111,7 +111,7 @@ SUBJECT is a string of regexps separated by commas."
      (let ((regexp
 	    (apply regexp-group
 		   (map re-quote-string
-			(burst-comma-list-string recipients-string)))))
+			(burst-comma-list-string regexps-string)))))
        (lambda (m)
 	 (let ((s (get-first-header-field-value m "subject" #f)))
 	   (and s
