@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.122 1992/02/17 22:06:10 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.123 1992/03/08 18:33:55 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -252,8 +252,13 @@ For more information type the HELP key while entering the name."
   (editor-beep)
   (keyboard-macro-disable))
 
+(define-variable beeping-allowed?
+  "False if Edwin must never beep."
+  true)
+
 (define-integrable (editor-beep)
-  (screen-beep (selected-screen)))
+  (if (ref-variable beeping-allowed?)
+      (screen-beep (selected-screen))))
 
 ;;;; Level Control
 
