@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.7 1995/01/05 22:31:00 adams Exp $
+$Id: utils.scm,v 1.8 1995/01/19 01:27:46 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -470,6 +470,53 @@ MIT in each case. |#
 	  (else
 	   (cons (walk (car form))
 		 (walk (cdr form)))))))
+
+
+(define (form/copy-transforming specialized-copier expr)
+  ;; specialized-copier = (lambda (expr recursive-copy uninteresting) ...)
+  (define (copy expr)
+    (if (pair? expr)
+	(specialized-copier expr copy uninteresting)
+	expr))
+
+  (define (uninteresting expr)
+    (cond ((not (pair? expr)) expr)
+	  ((or (QUOTE/? expr)
+	       (LOOKUP/? expr)
+	       (DECLARE/? expr))
+	   (list-copy expr))
+	  ((LAMBDA/? expr)
+	   `(LAMBDA ,(lambda/formals expr) ,(copy (lambda/body expr))))
+	  ((LET/? expr)
+	   `(LET ,(copy-bindings (let/bindings expr))
+	      ,(copy (let/body expr))))
+	  ((LETREC/? expr)
+	   `(LETREC ,(copy-bindings (letrec/bindings expr))
+	      ,(copy (letrec/body expr))))
+	  ((or (CALL/? expr) (BEGIN/? expr) (IF/? expr))
+	   `(,(car expr) . ,(map copy (cdr expr))))
+	  ((SET!/? expr)
+	   `(SET! (set!/name expr) (copy (set!/expr expr))))
+	  (else
+	   (internal-error "FORM/COPY-TRANSFORMING - illegal form" expr))))
+
+  (define (copy-bindings bindings)
+    (map (lambda (binding)
+	   (list (first binding) (copy (second binding))))
+	 bindings))
+
+  (copy expr))
+#|
+Example use of FORM/COPY-TRANSFORMING:
+(define (begin->nigeb expr)
+  (form/copy-transforming 
+   (lambda (expr copy uninteresting)
+     (if (BEGIN/? expr)
+	 `(NIGEB . ,(map copy (cdr expr)))
+	 (uninteresting expr)))
+   expr))
+|#
+			  
 
 (define (form/satisfies? form operator-properties)
   (let walk ((expr form))
