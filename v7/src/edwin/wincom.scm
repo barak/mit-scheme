@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: wincom.scm,v 1.123 1999/03/17 03:22:45 cph Exp $
+;;; $Id: wincom.scm,v 1.124 2000/04/03 16:55:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1987, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -479,8 +479,9 @@ Also kills any pop up window it may have created."
   ;; as the value.  Otherwise the value is #f.
   (let ((select? (and (not (default-object? select?)) select?))
 	(current-window-ok?
-	 (not (and (not (default-object? not-current-window?))
-		   not-current-window?))))
+	 (if (default-object? not-current-window?)
+	     #t
+	     (not not-current-window?))))
 
     (define (pop-up-window window)
       (let ((window (window-split-vertically! window #f)))
