@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.20 2000/05/15 17:51:25 cph Exp $
+;;; $Id: imail-umail.scm,v 1.21 2000/05/15 18:19:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -181,7 +181,27 @@
 
 ;;;; Detection of unix "from" lines.
 
-(define unix-mail-delimiter
+(define (extract-umail-from-time string)
+  (let ((regs (re-string-search-forward unix-from-time-regexp string)))
+    (and regs
+	 (ctime-string->universal-time
+	  (string-append
+	   (re-match-extract string regs 1)
+	   " "
+	   (re-match-extract string regs 2)
+	   " "
+	   (re-match-extract string regs 3)
+	   " "
+	   (re-match-extract string regs 4)
+	   " "
+	   (re-match-extract string regs 8))
+	  (let ((tz1 (re-match-extract string regs 6))
+		(tz2 (re-match-extract string regs 9)))
+	    (cond ((not (string-null? tz1)) (string->time-zone tz1))
+		  ((not (string-null? tz2)) (string->time-zone tz2))
+		  (else #f)))))))
+
+(define unix-from-time-regexp
   ;; This very complex regular expression taken from Emacs 20.
   (let ((time-zone-regexp
 	 (string-append
@@ -190,29 +210,6 @@
 			"")
 	  " *")))
     (string-append
-     "^From "
-
-     ;; Many things can happen to an RFC 822 mailbox before it is put into
-     ;; a `From' line.  The leading phrase can be stripped, e.g.
-     ;; `Joe <@w.x:joe@y.z>' -> `<@w.x:joe@y.z>'.  The <> can be stripped, e.g.
-     ;; `<@x.y:joe@y.z>' -> `@x.y:joe@y.z'.  Everything starting with a CRLF
-     ;; can be removed, e.g.
-     ;;		From: joe@y.z (Joe	K
-     ;;			User)
-     ;; can yield `From joe@y.z (Joe 	K Fri Mar 22 08:11:15 1996', and
-     ;;		From: Joe User
-     ;;			<joe@y.z>
-     ;; can yield `From Joe User Fri Mar 22 08:11:15 1996'.
-     ;; The mailbox can be removed or be replaced by white space, e.g.
-     ;;		From: "Joe User"{space}{tab}
-     ;;			<joe@y.z>
-     ;; can yield `From {space}{tab} Fri Mar 22 08:11:15 1996',
-     ;; where {space} and {tab} represent the Ascii space and tab characters.
-     ;; We want to match the results of any of these manglings.
-     ;; The following regexp rejects names whose first characters are
-     ;; obviously bogus, but after that anything goes.
-     "\\([^\000-\b\n-\r\177].*\\)? "
-
      ;; The time the message was sent.
      "\\([^\000-\r \177]+\\) +"				; day of the week
      "\\([^\000-\r \177]+\\) +"				; month
@@ -233,3 +230,26 @@
      "\\(remote from .*\\)?"
 
      "$")))
+
+(define unix-mail-delimiter
+  ;; This very complex regular expression taken from Emacs 20.
+  ;; Many things can happen to an RFC 822 mailbox before it is put into
+  ;; a `From' line.  The leading phrase can be stripped, e.g.
+  ;; `Joe <@w.x:joe@y.z>' -> `<@w.x:joe@y.z>'.  The <> can be stripped, e.g.
+  ;; `<@x.y:joe@y.z>' -> `@x.y:joe@y.z'.  Everything starting with a CRLF
+  ;; can be removed, e.g.
+  ;;		From: joe@y.z (Joe	K
+  ;;			User)
+  ;; can yield `From joe@y.z (Joe 	K Fri Mar 22 08:11:15 1996', and
+  ;;		From: Joe User
+  ;;			<joe@y.z>
+  ;; can yield `From Joe User Fri Mar 22 08:11:15 1996'.
+  ;; The mailbox can be removed or be replaced by white space, e.g.
+  ;;		From: "Joe User"{space}{tab}
+  ;;			<joe@y.z>
+  ;; can yield `From {space}{tab} Fri Mar 22 08:11:15 1996',
+  ;; where {space} and {tab} represent the Ascii space and tab characters.
+  ;; We want to match the results of any of these manglings.
+  ;; The following regexp rejects names whose first characters are
+  ;; obviously bogus, but after that anything goes.
+  (string-append "^From \\([^\000-\b\n-\r\177].*\\)? " unix-from-time-regexp))
