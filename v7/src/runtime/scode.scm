@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.12 1991/06/24 23:15:37 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.13 1992/07/21 03:41:40 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,13 +62,14 @@ MIT in each case. |#
 		ENTITY
 		ENVIRONMENT
 		EXTENDED-PROCEDURE
-		FIXNUM
 		FLONUM
 		HUNK3-A
 		INTERNED-SYMBOL
+		NEGATIVE-FIXNUM
 		NON-MARKED-VECTOR
 		NULL
 		PAIR
+		POSITIVE-FIXNUM
 		PRIMITIVE
 		PROCEDURE
 		QUAD
