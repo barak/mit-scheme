@@ -13,7 +13,7 @@
 @ifinfo
 This file documents the use of MIT Scheme.
 
-Copyright @copyright{} 1991 Massachusetts Institute of Technology
+Copyright @copyright{} 1991-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and Computer
@@ -60,7 +60,7 @@ literature without prior written consent from MIT in each case.
 @page
 
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1991 Massachusetts Institute of Technology
+Copyright @copyright{} 1991-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and Computer
@@ -125,9 +125,8 @@ Installation
 * Generic Unix::                
 * C-backend::                   
 * Microsoft Windows and Windows NT installation::  
-* DOS::                         
 
-Microsoft Windows and Windows NT installation
+DOS, Microsoft Windows and Windows NT installation
 
 * System requirements::         
 * Manifest::                    
@@ -148,6 +147,7 @@ Environment Variables
 * General Environment Variables::  
 * Environment variables for Bchscheme::  
 * Environment variables for PC versions::  
+* Environment variables that affect the runtime system::  
 * Environment variables that affect Edwin::  
 
 The Read-Eval-Print Loop
@@ -200,7 +200,6 @@ Device Independent Bitmap Utilities
 * Generic Unix::                
 * C-backend::                   
 * Microsoft Windows and Windows NT installation::  
-* DOS::                         
 @end menu
 
 @node Generic Unix, C-backend,  , Installation
@@ -217,12 +216,15 @@ Installation information for C back-end versions goes here?
 
 
 @c NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
-@node Microsoft Windows and Windows NT installation, DOS, C-backend, Installation
-@section Microsoft Windows and Windows NT installation
+@node Microsoft Windows and Windows NT installation,  , C-backend, Installation
+@section DOS, Microsoft Windows and Windows NT installation
 
-This section describes how to install MIT Scheme on Microsoft Windows
-3.1 and Microsoft Windows NT.  For the most part installing under these
-platforms is the same.
+This section describes how to install MIT Scheme on PC-DOS (MS-DOS),
+Microsoft Windows 3.1 and Microsoft Windows NT.  For the most part the
+installation any of these platforms uses the same files, and the
+procedure is similar.  It is possible to install MIT Scheme so that it
+will run under all three operating systems on one computer, but this
+does require some care with the configuration of the system.
 
 @menu
 * System requirements::         
@@ -246,7 +248,8 @@ environment.  To build the Edwin editor band requires an additional
 The installation comprises the following files:
 
 @example
-bin.zip         @r{Scheme binaries}
+bin.zip         @r{Scheme binaries for Windows 3.1/Windows NT}
+dosbin.zip      @r{Scheme binaries for PC-DOS}
 lib.zip         @r{Smaller files from Scheme library}
 runtime.zip     @r{@file{runtime.com} band}
 eddel.zip       @r{@file{eddel.com}: a kit to build @file{edwin.com} band}
@@ -261,12 +264,20 @@ bcied3.zip      @r{    "          "       "    "}
 bcicomp1.zip    @r{Debugging information for compiler}
 bcicomp2.zip    @r{    "          "       "      "}
 bcicomp3.zip    @r{    "          "       "      "}
+
 win32s.zip      @r{Win32s installation floppy from Microsoft}
+install.txt     @r{These instructions}
+unzip.exe       @r{Program to unpack the @file{.zip} files}
 @end example
 
 
 @node Installation-win32, Known Problems, Manifest, Microsoft Windows and Windows NT installation
 @subsection Installation
+
+These installation instructions describe how to install MIT Scheme on
+one or more of PC-DOS, Microsoft Windows 3.1 and Microsoft Windows NT.
+If you are installing for PC-DOS and another operating system, you
+should do the bulk of the installation using the windowing environment.
 
 In each of the following steps the amount of disk space consumed is
 indicated in square brackets.
@@ -315,11 +326,29 @@ unzip @var{wherever}\lib.zip
 unzip @var{wherever}\runtime.zip
 @end example
 
+This will create the directory structures @file{@var{scheme}\bin},
+@file{@var{scheme}\lib} and @file{@var{scheme}\etc}, and unpacks the
+essential files.
 (@var{Wherever} stands for the place that you have put the @file{.zip}
 files, which might be another directory or a floppy disk.)
 
 @item
-If you are installing for Windows 3.1 only, do @emph{one} of the following:
+To install the DOS binaries, unzip the @file{dosbin.zip} file.
+
+@example
+unzip @var{wherever}\dosbin.zip
+@end example
+
+This creates a @file{@var{scheme}\dos-bin} directory containing the DOS
+versions of the @file{.exe} files.  These files are different to the
+Windows versions, so they are placed in a different directory to allow
+the different version to co-exist on your computer.
+It is only the @file{.exe} files that differ between DOS and Windows.
+The other parts of the MIT Scheme system are shared.
+
+@item
+If you are installing for Windows 3.1 only, do @emph{one} of the
+following:
 @itemize @bullet
 @item
 Put the following line in the @file{autoexec.bat} file to ensure that
@@ -329,13 +358,15 @@ the @file{@var{scheme}\bin\win31} directory is on the path:
 path %PATH%;@var{scheme}\bin\win31
 @end example
 
+@noindent
+Note that this command must be in a @file{.bat} file to work.
 @item
 Copy the files from @file{@var{scheme}\bin\win31} into
 @file{@var{scheme}\bin}.
 @end itemize
 
 @item
-If you are installing for Windows NT only, do @emph{one} of teh
+If you are installing for Windows NT only, do @emph{one} of the
 following:
 @itemize @bullet
 @item
@@ -356,9 +387,22 @@ use use environment variables and the @code{PATH} rather than copying
 files, i.e.  you must arrange for Windows 3.1 to be run with
 @file{@var{scheme}\bin\win31} on the path and for Windows NT to be run
 with @file{@var{scheme}\bin\nt} on the path.
+This can be done by putting
+
+@example
+path %PATH%;@var{scheme}\bin\win31
+@end example
+
+in the @file{autoexec.bat} file and adding @file{@var{scheme}\bin\nt} to
+the Windows NT system environment path.
 
 
 @item
+If you are installing for DOS there is no need to add things to the
+@code{PATH}.
+
+@item
+
 If you did not choose the default installation directory, make sure that
 the environment variable @code{MITSCHEME_LIBRARY_PATH} is defined:
 
@@ -369,12 +413,20 @@ set MITSCHEME_LIBRARY_PATH=@var{scheme}\lib
 
 @item
 Now test the installation so far.
-You should be able to get a Scheme system running in it's terminal
+Under either Windows system, 
+you should be able to get a Scheme system running in it's terminal
 window by running the following from the Program Manager or the File
 Manager
 
 @example
 @var{scheme}\bin\scheme
+@end example
+
+From DOS you should be able to get Scheme running by typing the
+following at the DOS prompt:
+
+@example
+@var{scheme}\dos-bin\scheme
 @end example
 
 @noindent
@@ -411,6 +463,7 @@ shield) should report that they cannot find their bands.
 
 @item
 To install the Edwin editor you need to build the @file{edwin.com} band.
+(A band is a Scheme memory image containing programs and data.)
 First unpack the delta file @file{eddel.com} [1.6Mb]:
 
 @example
@@ -428,6 +481,17 @@ the following command:
 @noindent
 This will load in @file{eddel.com} and create the new band [4.3Mb].
 After a successful build the program will exit.
+The @file{edwin.com} band can be used by both the DOS and Windows
+versions, so you only need to do this step once, even if you are
+installing for more than one of PC-DOS, Windows 3.1 and Windows NT.
+
+If you are installing only for DOS you will have to build
+@file{edwin.com} from the command line.  Be sure to run the DOS
+@file{scheme.exe} rather than the Windows version:
+
+@example
+@var{scheme}\dos-bin\scheme -large -load @var{scheme}\etc\build -eval (edwin.com)
+@end example
 
 
 @item
@@ -450,6 +514,14 @@ or run the following command:
 This will load in @file{compdel.com} and create the new
 @file{compiler.com} band [4.8Mb].  After a successful build the program
 will exit.
+As for Edwin, this step needs to be done only once.
+
+If you choose to build this band under using the DOS version be sure to
+run the DOS @file{scheme.exe} rather than the Windows version:
+
+@example
+@var{scheme}\dos-bin\scheme -large -load @var{scheme}\etc\build -eval (compiler.com)
+@end example
 
 
 @item
@@ -475,15 +547,26 @@ This will load in both @file{eddel.com} and @file{compdel.com} into the
 runtime band and create the new band [6.7Mb].  After a successful build
 the program will exit.
 
+If you choose to build this band under DOS, be sure to run the DOS
+@file{scheme.exe} rather than the Windows version:
+
+@example
+@var{scheme}\dos-bin\scheme -large -load @var{scheme}\etc\build -eval (all.com)
+@end example
+
 
 @item
 Any combination of @file{edwin.com}, @file{compiler.com} and
 @file{all.com} may be used.  They may be built in any order: it is not
 necessary to build either of @file{edwin.com} and @file{compiler.com}
-before building and using @file{all.com}.  After building the bands you
-may tidy the MIT Scheme group by removing the mincer icons and recover
-disk space by deleting the delta files [4.1Mb] and the
-@file{runtime.com} band [2.3Mb] if you do not need it.
+before building and using @file{all.com}.
+The bands are shared by all of the supported operating systems so you
+only have to build the bands once, even if you want to use them from,
+say, both PC-DOS and Windows 3.1.
+
+After building the bands you may tidy the MIT Scheme group by removing
+the mincer icons and recover disk space by deleting the delta files
+[4.1Mb] and the @file{runtime.com} band [2.3Mb] if you do not need it.
 
 To create icons that use @code{bchscheme} instead of @code{scheme} copy
 the icons and edit the command lines to change `scheme' to `bchschem'
@@ -509,24 +592,50 @@ compiler respectively.
 
 
 @node Known Problems,  , Installation-win32, Microsoft Windows and Windows NT installation
-@subsection Known Problems
+@subsection Known Problems in this Beta Release
 
 @itemize @bullet
 
 @item
-MIT Scheme is more robust under NT than Windows 3.1
+The Windows version of MIT Scheme is more robust under NT than Windows
+3.1
 
 @item
-Exclusive file access [NT].
-Can't write a file that is still open for reading.  (e.g.
-mismatched paren in @code{(load "foo.scm")}.  Work-around: Quit to top
-level. Do a @code{(gc-flip)} to force file to be closed.  Now you will
-be able to save the file.
+[NT] Exclusive file access problems.
+Edwin sometimes can't write a file that is still open for reading.
+
+Typically you will have entered @code{(load "foo.scm")} in the
+interaction buffer and got an error, say a mis-matched parenthesis.
+You then switch to the @code{foo.scm} buffer, fix the problem and then
+try to save the file.
+Edwin refuses, saying
+
+@example
+Unable to open file "@var{your-path}\\foo.scm" because: Unknown
+@end example
+
+Work-around: In the interaction buffer: Quit to top level.  Do a
+@code{(gc-flip)}, which forces the file to be closed when the file port
+os garbage-collected.  Now you will be able to save the file.
 
 @item
 @code{MITSCHEME_INF_DIRECTORY} sometimes does not work.
 The runtime system cannot find the debugging information unless it is on
 the @file{C:} drive.
+To test if the debugging information is available, try
+
+@example
+(pp pp)
+@end example
+
+If the debugging information is available the @code{pp} procedure
+pretty-prints procedures as Scheme code.
+If the information cannot be found then it prints the procedure as an
+opaque object, similar to this:
+
+@example
+#[compiled-procedure 13 (pp "pp" #x2) #xF #x646BF7]
+@end example
 
 @item
 Edwin autoloads.
@@ -573,10 +682,10 @@ in your @file{edwin.ini} file.
 
 
 
-@node DOS,  , Microsoft Windows and Windows NT installation, Installation
-@section DOS
-
-Installation information for DOS version goes here
+@c @node DOS,  , Microsoft Windows and Windows NT installation, Installation
+@c @section DOS
+@c 
+@c Installation information for DOS version goes here
 
 
 
@@ -1114,6 +1223,7 @@ according to the parts of MIT Scheme that they affect.
 * General Environment Variables::  
 * Environment variables for Bchscheme::  
 * Environment variables for PC versions::  
+* Environment variables that affect the runtime system::  
 * Environment variables that affect Edwin::  
 @end menu
 
@@ -1252,7 +1362,7 @@ The maximum number of simultaneous write operations.  Overriden by
 @code{-gc-write-overlap}.
 @end table
 
-@node Environment variables for PC versions, Environment variables that affect Edwin, Environment variables for Bchscheme, Environment Variables
+@node Environment variables for PC versions, Environment variables that affect the runtime system, Environment variables for Bchscheme, Environment Variables
 @subsection Environment variables for PC versions
 
 These environment variables only make sense to the Microsoft Windows,
@@ -1302,7 +1412,7 @@ background color.  See @code{MITSCHEME_FOREGROUND}.
 
 @end table
 
-
+@node Environment variables that affect the runtime system, Environment variables that affect Edwin, Environment variables for PC versions, Environment Variables
 @subsection Environment variables that affect the runtime system
 
 
@@ -1320,7 +1430,7 @@ to @code{TMP}.
 
 @end table
 
-@node Environment variables that affect Edwin,  , Environment variables for PC versions, Environment Variables
+@node Environment variables that affect Edwin,  , Environment variables that affect the runtime system, Environment Variables
 @subsection Environment variables that affect Edwin
 
 @table @asis
