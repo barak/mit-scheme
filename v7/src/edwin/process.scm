@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.37 1995/04/10 16:50:04 cph Exp $
+;;;	$Id: process.scm,v 1.38 1995/09/13 23:01:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -581,6 +581,19 @@ after the listing is made.)"
 	  (cons status reason))))))
 
 (define (synchronous-process-wait process input-region output-mark)
+  ;; Initialize the subprocess line-translation appropriately.
+  ;; Buffers that disable translation should have it disabled for
+  ;; subprocess I/O as well as normal file I/O, since subprocesses are
+  ;; used for reading and writing compressed files and such.
+  (subprocess-i/o-port process
+		       (and (or (not output-mark)
+				(ref-variable translate-file-data-on-input
+					      output-mark))
+			    'DEFAULT)
+		       (and (or (not input-region)
+				(ref-variable translate-file-data-on-output
+					      (region-start input-region)))
+			    'DEFAULT))
   (if input-region
       (call-with-protected-continuation
        (lambda (continuation)

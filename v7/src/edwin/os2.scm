@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.20 1995/07/24 22:08:39 cph Exp $
+;;;	$Id: os2.scm,v 1.21 1995/09/13 23:01:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -620,9 +620,24 @@ Includes the new backup.  Must be > 0."
 
 ;;;; Compressed Files
 
-(define (os/read-file-methods) (list maybe-read-compressed-file))
+(define (os/read-file-methods)
+  `((,read/write-compressed-file?
+     . ,(lambda (pathname mark visit?)
+	  visit?
+	  (read-compressed-file "gzip -d" pathname mark)))))
 
-(define (os/write-file-methods) (list maybe-write-compressed-file))
+(define (os/write-file-methods)
+  `((,read/write-compressed-file?
+     . ,(lambda (region pathname visit?)
+	  visit?
+	  (write-compressed-file "gzip" region pathname)))))
+
+(define (os/alternate-pathnames group pathname)
+  (if (and (ref-variable enable-compressed-files group)
+	   (os2/fs-long-filenames? pathname)
+	   (not (equal? "gz" (pathname-type pathname))))
+      (list (string-append (->namestring pathname) ".gz"))
+      '()))
 
 (define-variable enable-compressed-files
   "If true, compressed files are automatically uncompressed when read,
@@ -631,13 +646,9 @@ filename suffix \".gz\"."
   #t
   boolean?)
 
-(define (maybe-read-compressed-file pathname mark visit?)
-  visit?
-  (and (ref-variable enable-compressed-files mark)
-       (equal? "gz" (pathname-type pathname))
-       (begin
-	 (read-compressed-file "gzip -d" pathname mark)
-	 #t)))
+(define (read/write-compressed-file? group pathname)
+  (and (ref-variable enable-compressed-files group)
+       (equal? "gz" (pathname-type pathname))))
 
 (define (read-compressed-file program pathname mark)
   (let ((do-it
@@ -665,14 +676,6 @@ filename suffix \".gz\"."
 			     "...")
 	  (do-it)
 	  (append-message "done")))))
-
-(define (maybe-write-compressed-file region pathname visit?)
-  visit?
-  (and (ref-variable enable-compressed-files (region-start region))
-       (equal? "gz" (pathname-type pathname))
-       (begin
-	 (write-compressed-file "gzip" region pathname)
-	 #t)))
 
 (define (write-compressed-file program region pathname)
   (if (not (equal? '(EXITED . 0)

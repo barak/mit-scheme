@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.26 1995/07/11 23:10:41 cph Exp $
+;;;	$Id: dos.scm,v 1.27 1995/09/13 23:00:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ;;;
@@ -319,8 +319,8 @@ Includes the new backup.  Must be > 0."
 	     pathname))))
 
 (define (os/read-file-methods) '())
-
 (define (os/write-file-methods) '())
+(define (os/alternate-pathnames group pathname) group pathname '())
 
 ;;;; Dired customization
 

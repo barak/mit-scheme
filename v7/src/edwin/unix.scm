@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.52 1995/07/11 23:10:49 cph Exp $
+;;;	$Id: unix.scm,v 1.53 1995/09/13 23:01:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -371,12 +371,43 @@ Includes the new backup.  Must be > 0."
        (string-find-next-char filename #\#)))
 
 (define (os/read-file-methods)
-  (list maybe-read-compressed-file
-	maybe-read-encrypted-file))
+  `((,read/write-compressed-file?
+     . ,(lambda (pathname mark visit?)
+	  visit?
+	  (let ((type (pathname-type pathname)))
+	    (cond ((equal? "gz" type)
+		   (read-compressed-file "gzip -d" pathname mark))
+		  ((equal? "Z" type)
+		   (read-compressed-file "uncompress" pathname mark))))))
+    (,read/write-encrypted-file?
+     . ,(lambda (pathname mark visit?)
+	  visit?
+	  (read-encrypted-file pathname mark)))))
 
 (define (os/write-file-methods)
-  (list maybe-write-compressed-file
-	maybe-write-encrypted-file))
+  `((,read/write-compressed-file?
+     . ,(lambda (region pathname visit?)
+	  visit?
+	  (let ((type (pathname-type pathname)))
+	    (cond ((equal? "gz" type)
+		   (write-compressed-file "gzip" region pathname))
+		  ((equal? "Z" type)
+		   (write-compressed-file "compress" region pathname))))))
+    (,read/write-encrypted-file?
+     . ,(lambda (region pathname visit?)
+	  visit?
+	  (write-encrypted-file region pathname)))))
+
+(define (os/alternate-pathnames group pathname)
+  (let ((filename (->namestring pathname)))
+    `(,@(if (ref-variable enable-compressed-files group)
+	    (map (lambda (suffix) (string-append filename "." suffix))
+		 unix/compressed-file-suffixes)
+	    '())
+      ,@(if (ref-variable enable-encrypted-files group)
+	    (map (lambda (suffix) (string-append filename "." suffix))
+		 unix/encrypted-file-suffixes)
+	    '()))))
 
 ;;;; Compressed Files
 
@@ -387,27 +418,21 @@ of the filename suffixes \".gz\" or \".Z\"."
   true
   boolean?)
 
-(define (maybe-read-compressed-file pathname mark visit?)
-  visit?
-  (and (ref-variable enable-compressed-files mark)
-       (let ((type (pathname-type pathname)))
-	 (cond ((equal? "gz" type)
-		(read-compressed-file "gunzip" pathname mark)
-		#t)
-	       ((equal? "Z" type)
-		(read-compressed-file "uncompress" pathname mark)
-		#t)
-	       (else
-		#f)))))
+(define (read/write-compressed-file? group pathname)
+  (and (ref-variable enable-compressed-files group)
+       (member (pathname-type pathname) unix/compressed-file-suffixes)))
+
+(define unix/compressed-file-suffixes
+  '("gz" "Z"))
 
 (define (read-compressed-file program pathname mark)
   (let ((do-it
 	 (lambda ()
 	   (if (not (equal? '(EXITED . 0)
-			    (shell-command false
+			    (shell-command #f
 					   mark
 					   (directory-pathname pathname)
-					   false
+					   #f
 					   (string-append
 					    program
 					    " < "
@@ -427,25 +452,12 @@ of the filename suffixes \".gz\" or \".Z\"."
 	  (do-it)
 	  (append-message "done")))))
 
-(define (maybe-write-compressed-file region pathname visit?)
-  visit?
-  (and (ref-variable enable-compressed-files (region-start region))
-       (let ((type (pathname-type pathname)))
-	 (cond ((equal? "gz" type)
-		(write-compressed-file "gzip" region pathname)
-		#t)
-	       ((equal? "Z" type)
-		(write-compressed-file "compress" region pathname)
-		#t)
-	       (else
-		#f)))))
-
 (define (write-compressed-file program region pathname)
   (if (not (equal? '(EXITED . 0)
 		   (shell-command region
-				  false
+				  #f
 				  (directory-pathname pathname)
-				  false
+				  #f
 				  (string-append program
 						 " > "
 						 (file-namestring pathname)))))
@@ -465,13 +477,12 @@ filename suffix \".KY\"."
   true
   boolean?)
 
-(define (maybe-read-encrypted-file pathname mark visit?)
-  visit?
-  (and (ref-variable enable-encrypted-files mark)
-       (equal? "KY" (pathname-type pathname))
-       (begin
-	 (read-encrypted-file pathname mark)
-	 true)))
+(define (read/write-encrypted-file? group pathname)
+  (and (ref-variable enable-encrypted-files group)
+       (member (pathname-type pathname) unix/encrypted-file-suffixes)))
+
+(define unix/encrypted-file-suffixes
+  '("KY"))
 
 (define (read-encrypted-file pathname mark)
   (let ((the-encrypted-file
@@ -496,14 +507,6 @@ filename suffix \".KY\"."
     (define-variable-local-value! (mark-buffer mark)
 	(ref-variable-object auto-save-default)
       #f)))
-
-(define (maybe-write-encrypted-file region pathname visit?)
-  visit?
-  (and (ref-variable enable-encrypted-files (region-start region))
-       (equal? "KY" (pathname-type pathname))
-       (begin
-	 (write-encrypted-file region pathname)
-	 true)))
 
 (define (write-encrypted-file region pathname)
   (let* ((password 

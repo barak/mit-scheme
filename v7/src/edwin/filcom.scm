@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.186 1995/07/11 23:19:30 cph Exp $
+;;;	$Id: filcom.scm,v 1.187 1995/09/13 23:00:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -131,9 +131,16 @@ invocation."
 			    (ref-variable find-file-not-found-hooks buffer)
 			    (cdr hooks)))
 			  ((or (null? hooks)
-			       ((car hooks) buffer)))))
+			       ((car hooks) buffer))))
+		      (maybe-change-buffer-name! buffer pathname))
 		  (after-find-file buffer error? warn?))
 		buffer))))))
+
+(define (maybe-change-buffer-name! buffer pathname)
+  (let ((name (pathname->buffer-name pathname))
+	(name* (pathname->buffer-name (buffer-pathname buffer))))
+    (if (not (string=? name name*))
+	(rename-buffer buffer (new-buffer-name name*)))))
 
 (define (after-find-file buffer error? warn?)
   (let ((pathname (or (buffer-truename buffer) (buffer-pathname buffer))))
