@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: ed-ffi.scm,v 1.2 2001/06/29 05:23:24 cph Exp $
+;;; $Id: ed-ffi.scm,v 1.3 2001/07/11 22:09:50 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -31,4 +31,6 @@
     ("shared"	(runtime *parser)
 		system-global-syntax-table)
     ("synchk"	(runtime *parser)
+		system-global-syntax-table)
+    ("unicode"  (runtime unicode)
 		system-global-syntax-table)))
