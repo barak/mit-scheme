@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.41 1990/04/03 19:53:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.42 1990/04/03 19:57:05 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -890,7 +890,7 @@ DEFINE_PRIMITIVE ("BIT-SUBSTRING-FIND-NEXT-SET-BIT", Prim_bitstr_find_next_set_b
       FIND_NEXT_SET_LOOP (bit);
     }
   INC_BIT_STRING_PTR (word);
-  while (word > end_word)
+  while (word != end_word)
   {
     if ((* (INC_BIT_STRING_PTR (scan))) != 0)
       {
