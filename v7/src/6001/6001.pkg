@@ -1,0 +1,113 @@
+(global-definitions "../runtime/runtim")
+
+(define-package (student)
+  (parent ()))
+
+(define-package (student scode-rewriting)
+  (files "nodefs")
+  (parent ())
+  (import (runtime rep)
+	  hook/repl-eval)
+  (initialization (initialize-package!)))
+
+(define-package (student number)
+  (files "arith")
+  (parent ())
+  (import (runtime number)
+	  flo:->rational
+	  flo:rationalize
+	  int:abs
+	  int:even?
+	  int:expt
+	  int:gcd
+	  int:lcm
+	  int:modulo
+	  rat:denominator
+	  rat:numerator
+	  reduce-comparator
+	  reduce-max/min)
+  (export (student)
+	  *
+	  +
+	  -
+	  /
+	  <
+	  <=
+	  =
+	  >
+	  >=
+	  abs
+	  acos
+	  asin
+	  atan
+	  ceiling
+	  complex?
+	  cos
+	  denominator
+	  even?
+	  exact->inexact
+	  exact?
+	  exp
+	  expt
+	  floor
+	  gcd
+	  inexact->exact
+	  inexact?
+	  integer?
+	  lcm
+	  log
+	  max
+	  min
+	  modulo
+	  negative?
+	  number?
+	  numerator
+	  odd?
+	  positive?
+	  quotient
+	  rational?
+	  rationalize
+	  real?
+	  remainder
+	  round
+	  sin
+	  sqrt
+	  tan
+	  truncate
+	  zero?))
+
+(define-package (student pictures)
+  (files "picture"
+	 "pic-record"
+	 "pic-read"
+	 "pic-image"
+	 "pic-ops")
+  (parent ())
+  (import (runtime x-graphics)
+	  x-graphics-device/window)
+  (import (runtime graphics)
+	  graphics-device/descriptor)
+  (export (student)
+	  make-window
+	  show-window-size
+	  make-picture
+	  function->picture
+	  pgm-file->picture
+	  picture-read
+	  picture?
+	  picture-width
+	  picture-height
+	  picture-min
+	  picture-max
+	  picture-ref
+	  picture-set!
+	  picture-map
+	  picture-cut
+	  picture-overlap
+	  picture-paste!
+	  picture-h-reflect
+	  picture-v-reflect
+	  picture-rotate
+	  picture-scale
+	  picture-display
+	  picture-write))
