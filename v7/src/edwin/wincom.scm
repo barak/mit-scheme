@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: wincom.scm,v 1.127 2000/10/20 04:30:19 cph Exp $
+;;; $Id: wincom.scm,v 1.128 2000/10/26 04:24:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1987, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -76,7 +76,7 @@ An argument gives the line to put point on;
 negative args count from the bottom."
   "P"
   (lambda (argument)
-    (let ((window (current-window)))
+    (let ((window (selected-window)))
       (if (not argument)
 	  (begin
 	    (window-scroll-y-absolute! window (window-y-center window))
@@ -96,7 +96,7 @@ An argument specifies screen line; zero means top of window,
 negative means relative to bottom of window."
   "P"
   (lambda (argument)
-    (let ((window (current-window)))
+    (let ((window (selected-window)))
       (let ((mark
 	     (or (window-coordinates->mark
 		  window 0
@@ -116,7 +116,7 @@ negative means relative to bottom of window."
   "Position point at upper-left corner of window."
   ()
   (lambda ()
-    (let ((mark (window-coordinates->mark (current-window) 0 0)))
+    (let ((mark (window-coordinates->mark (selected-window) 0 0)))
       (set-current-point! (if (group-start? mark)
 			      (group-start mark)
 			      mark)))))
@@ -127,7 +127,7 @@ With argument, moves window down that many lines (negative moves up).
 Just minus as an argument moves up a full screen."
   "P"
   (lambda (argument)
-    (let ((window (current-window)))
+    (let ((window (selected-window)))
       (scroll-window window
 		     (standard-scroll-window-argument window argument 1)))))
 
@@ -137,7 +137,7 @@ With argument, moves window up that many lines (negative moves down).
 Just minus as an argument moves down a full screen."
   "P"
   (lambda (argument)
-    (let ((window (current-window)))
+    (let ((window (selected-window)))
       (scroll-window window
 		     (standard-scroll-window-argument window argument -1)))))
 
@@ -147,7 +147,7 @@ With argument, move window down that many screenfuls (negative moves up).
 Just minus as an argument moves up a full screen."
   "P"
   (lambda (argument)
-    (let ((window (current-window)))
+    (let ((window (selected-window)))
       (scroll-window window
 		     (multi-scroll-window-argument window argument 1)))))
 
@@ -157,7 +157,7 @@ With argument, move window down that many screenfuls (negative moves down).
 Just minus as an argument moves down full screen."
   "P"
   (lambda (argument)
-    (let ((window (current-window)))
+    (let ((window (selected-window)))
       (scroll-window window
 		     (multi-scroll-window-argument window argument -1)))))
 
@@ -166,7 +166,7 @@ Just minus as an argument moves down full screen."
   "P"
   (lambda (argument)
     (let ((window
-	   (or (and (typein-window? (current-window))
+	   (or (and (typein-window? (selected-window))
 		    (weak-car *minibuffer-scroll-window*))
 	       (other-window-interactive 1))))
       (scroll-window window
@@ -177,7 +177,7 @@ Just minus as an argument moves down full screen."
   "P"
   (lambda (argument)
     (let ((window
-	   (or (and (typein-window? (current-window))
+	   (or (and (typein-window? (selected-window))
 		    (weak-car *minibuffer-scroll-window*))
 	       (other-window-interactive 1))))
       (scroll-window window
@@ -191,7 +191,7 @@ means scroll one screenful down."
   "P"
   (lambda (argument)
     (let ((window
-	   (or (and (typein-window? (current-window))
+	   (or (and (typein-window? (selected-window))
 		    (weak-car *minibuffer-scroll-window*))
 	       (other-window-interactive 1))))
       (scroll-window window
@@ -226,7 +226,7 @@ means scroll one screenful down."
   "Print info on cursor position (on screen and within buffer)."
   ()
   (lambda ()
-    (let ((buffer (current-buffer))
+    (let ((buffer (selected-buffer))
 	  (point (current-point)))
       (let ((position (mark-index point))
 	    (total (group-length (buffer-group buffer))))
@@ -265,7 +265,7 @@ ARG lines.  No arg means split equally."
   "P"
   (lambda (argument)
     (disallow-typein)
-    (window-split-vertically! (current-window)
+    (window-split-vertically! (selected-window)
 			      (command-argument-value argument))))
 
 (define-command split-window-horizontally
@@ -275,7 +275,7 @@ ARG lines.  No arg means split equally."
   "P"
   (lambda (argument)
     (disallow-typein)
-    (window-split-horizontally! (current-window)
+    (window-split-horizontally! (selected-window)
 				(command-argument-value argument))))
 
 (define-command enlarge-window
@@ -283,14 +283,14 @@ ARG lines.  No arg means split equally."
   "p"
   (lambda (argument)
     (disallow-typein)
-    (window-grow-vertically! (current-window) argument)))
+    (window-grow-vertically! (selected-window) argument)))
 
 (define-command shrink-window
   "Makes current window ARG lines smaller."
   "p"
   (lambda (argument)
     (disallow-typein)
-    (window-grow-vertically! (current-window) (- argument))))
+    (window-grow-vertically! (selected-window) (- argument))))
 
 (define-command shrink-window-if-larger-than-buffer
   "Shrink the WINDOW to be as small as possible to display its contents.
@@ -298,27 +298,27 @@ Do nothing if the buffer contains more lines than the present window height,
 or if some of the window's contents are scrolled out of view,
 or if the window is the only window of its frame."
   ()
-  (lambda () (shrink-window-if-larger-than-buffer (current-window))))
+  (lambda () (shrink-window-if-larger-than-buffer (selected-window))))
 
 (define-command enlarge-window-horizontally
   "Makes current window ARG columns wider."
   "p"
   (lambda (argument)
     (disallow-typein)
-    (window-grow-horizontally! (current-window) argument)))
+    (window-grow-horizontally! (selected-window) argument)))
 
 (define-command shrink-window-horizontally
   "Makes current window ARG columns narrower."
   "p"
   (lambda (argument)
     (disallow-typein)
-    (window-grow-horizontally! (current-window) (- argument))))
+    (window-grow-horizontally! (selected-window) (- argument))))
 
 (define-command delete-window
   "Delete the current window from the screen."
   ()
   (lambda ()
-    (let ((window (current-window)))
+    (let ((window (selected-window)))
       (if (and (window-has-no-neighbors? window)
 	       (use-multiple-screens?)
 	       (other-screen? (selected-screen)))
@@ -328,7 +328,7 @@ or if the window is the only window of its frame."
 (define-command delete-other-windows
   "Make the current window fill the screen."
   ()
-  (lambda () (delete-other-windows (current-window))))
+  (lambda () (delete-other-windows (selected-window))))
 
 (define-command other-window
   "Select the ARG'th different window."
@@ -338,7 +338,7 @@ or if the window is the only window of its frame."
 (define (other-window-interactive n)
   (let ((window
 	 (let ((window (other-window n)))
-	   (if (current-window? window)
+	   (if (selected-window? window)
 	       (and (use-multiple-screens?)
 		    (let ((screen (other-screen (selected-screen) 1 #f)))
 		      (and screen
@@ -349,7 +349,7 @@ or if the window is the only window of its frame."
     window))
 
 (define (disallow-typein)
-  (if (typein-window? (current-window))
+  (if (typein-window? (selected-window))
       (editor-error "Not implemented for typein window")))
 
 (define (use-multiple-screens?)
@@ -357,10 +357,10 @@ or if the window is the only window of its frame."
        (multiple-screens?)))
 
 (define (select-buffer-other-window buffer)
-  (let ((window (current-window))
+  (let ((window (selected-window))
 	(use-window
 	 (lambda (window)
-	   (select-buffer-in-window buffer window #t)
+	   (select-buffer buffer window)
 	   (select-window window))))
     (let loop ((windows (buffer-windows buffer)))
       (cond ((null? windows)
@@ -377,13 +377,15 @@ or if the window is the only window of its frame."
 	    (else
 	     (loop (cdr windows)))))))
 
-(define (select-buffer-other-screen buffer)
+(define (select-buffer-other-screen buffer #!optional screen)
   (if (multiple-screens?)
-      (let ((screen (other-screen (selected-screen) 1 #t)))
+      (let ((screen
+	     (other-screen (if (or (default-object? screen) (not screen))
+			       (selected-screen)
+			       screen)
+			   1 #t)))
 	(if screen
-	    (select-buffer-in-window buffer
-				     (screen-selected-window screen)
-				     #t)
+	    (select-buffer buffer (screen-selected-window screen))
 	    (make-screen buffer)))
       (editor-error "Display doesn't support multiple screens")))
 
@@ -492,8 +494,10 @@ Also kills any pop up window it may have created."
 (define (pop-up-buffer buffer select? #!optional options)
   ;; If some new window is created by this procedure, it is returned
   ;; as the value.  Otherwise the value is #f.
-  (let ((select? (if (default-object? select?) #f select?))
-	(options (if (default-object? options) '() options)))
+  (let* ((select? (if (default-object? select?) #f select?))
+	 (options (if (default-object? options) '() options))
+	 (screen (pop-up-buffer-option options 'SCREEN (selected-screen)))
+	 (selected (screen-selected-window screen)))
 
     (define (pop-up-window window)
       (let ((window
@@ -506,7 +510,7 @@ Also kills any pop up window it may have created."
 	window))
 
     (define (pop-into-window window)
-      (select-buffer-in-window buffer window #t)
+      (select-buffer buffer window)
       (maybe-record-window window))
 
     (define (maybe-record-window window)
@@ -517,13 +521,14 @@ Also kills any pop up window it may have created."
 
     (define (find-visible-window buffer)
       (let loop ((windows (buffer-windows buffer)))
-	(and (not (null? windows))
+	(and (pair? windows)
 	     (let ((window (car windows)))
 	       (if (and (window-visible? window)
-			(or (not (pop-up-buffer-option options
-						       'NOT-CURRENT-WINDOW
-						       #f))
-			    (not (current-window? window))))
+			(eq? (window-screen window) screen)
+			(not (and (pop-up-buffer-option options
+							'NOT-CURRENT-WINDOW
+							#f)
+				  (eq? window selected))))
 		   window
 		   (loop (cdr windows)))))))
 
@@ -539,29 +544,25 @@ Also kills any pop up window it may have created."
 	    (if (< (ref-variable split-height-threshold) limit)
 		(set-variable! split-height-threshold limit))
 	    (cond ((and (use-multiple-screens?)
-			(other-screen (selected-screen) 1 #t))
-		   =>
-		   (lambda (screen)
-		     (pop-into-window (screen-selected-window screen))))
+			(other-screen screen 1 #t))
+		   => (lambda (screen) (pop-into-window selected)))
 		  ((ref-variable preserve-window-arrangement)
-		   (pop-into-window (largest-window)))
+		   (pop-into-window (largest-window screen)))
 		  ((not (ref-variable pop-up-windows))
-		   (pop-into-window (lru-window)))
+		   (pop-into-window (lru-window screen)))
 		  ((use-multiple-screens?)
 		   (maybe-record-window
 		    (screen-selected-window (make-screen buffer))))
 		  (else
-		   (let ((window (largest-window)))
+		   (let ((window (largest-window screen)))
 		     (if (and (>= (window-y-size window)
 				  (ref-variable split-height-threshold))
 			      (not (window-has-horizontal-neighbor? window)))
 			 (pop-up-window window)
-			 (let ((window (lru-window))
-			       (current (current-window)))
-			   (if (and (or (eq? window current)
-					(and (typein-window? current)
-					     (eq? window
-						  (window1+ window))))
+			 (let ((window (lru-window screen)))
+			   (if (and (or (eq? window selected)
+					(and (typein-window? selected)
+					     (eq? window (window1+ window))))
 				    (>= (window-y-size window) limit))
 			       (pop-up-window window)
 			       (pop-into-window window))))))))))))
@@ -573,8 +574,8 @@ Also kills any pop up window it may have created."
 	     (car windows)
 	     (loop (cdr windows))))))
 
-(define (largest-window)
-  (let ((start (window0)))
+(define (largest-window screen)
+  (let ((start (screen-window0 screen)))
     (let loop
 	((window (window1+ start))
 	 (largest start)
@@ -586,8 +587,8 @@ Also kills any pop up window it may have created."
 		(loop (window1+ window) window area)
 		(loop (window1+ window) largest largest-area)))))))
 
-(define (lru-window)
-  (let ((start (window0)))
+(define (lru-window screen)
+  (let ((start (screen-window0 screen)))
     (define (search-full-width window smallest smallest-time)
       (let ((next (window1+ window))
 	    (time (window-select-time window)))
@@ -656,7 +657,7 @@ Compares the text starting at point in each window,
 moving over text in each one as far as they match."
   ()
   (lambda ()
-    (let ((w1 (current-window))
+    (let ((w1 (selected-window))
 	  (w2 (other-window-interactive 1)))
       (let ((p1 (window-point w1)))
 	(let loop ((s1 p1) (s2 (window-point w2)) (length 1024))
