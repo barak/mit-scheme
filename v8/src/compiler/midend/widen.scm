@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: widen.scm,v 1.7 1995/03/20 02:01:15 adams Exp $
+$Id: widen.scm,v 1.8 1995/08/18 18:09:35 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -468,8 +468,8 @@ MIT in each case. |#
   (case n
     ((0) '())
     ((1) (list expr))
-    ((2) `((CALL ',car '#F ,expr)
-	   (CALL ',cdr '#F ,expr)))
+    ((2) `((CALL ',%car '#F ,expr)
+	   (CALL ',%cdr '#F ,expr)))
     (else (let loop ((m (- n 1))
 		     (result '()))
 	    (if (negative? m)
