@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.13 2002/02/08 03:10:37 cph Exp $
+$Id: compiler.pkg,v 1.14 2002/02/08 03:15:10 cph Exp $
 
 Copyright (c) 1992-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -90,6 +90,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  compiler:show-subphases?
 	  compiler:show-time-reports?
 	  compiler:use-multiclosures?)
+  (import (runtime system-macros)
+	  ucode-primitive
+	  ucode-type)
   (import ()
 	  (scode/access-components access-components)
 	  (scode/access-environment access-environment)
