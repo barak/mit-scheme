@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: qsort.scm,v 14.2 1996/12/01 17:20:23 adams Exp $
+$Id: qsort.scm,v 14.3 1998/04/30 18:05:09 cph Exp $
 
-Copyright (c) 1988-1996 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,44 +37,45 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (sort vector predicate)
+(define (quick-sort vector predicate)
   (if (vector? vector)
-      (sort! (vector-copy vector) predicate)
-      (vector->list (sort! (list->vector vector) predicate))))
+      (quick-sort! (vector-copy vector) predicate)
+      (vector->list (quick-sort! (list->vector vector) predicate))))
 
-(define (sort! vector predicate)
-
+(define (quick-sort! vector predicate)
   (define (outer-loop l r)
-    (if (> r l)
-	(if (= r (1+ l)) 
+    (if (fix:> r l)
+	(if (fix:= r (fix:+ l 1)) 
 	    (if (predicate (vector-ref vector r)
 			   (vector-ref vector l))
 		(exchange! l r))
 	    (let ((lth-element (vector-ref vector l)))
 
 	      (define (increase-i i)
-		(if (or (> i r)
+		(if (or (fix:> i r)
 			(predicate lth-element (vector-ref vector i)))
 		    i
-		    (increase-i (1+ i))))
+		    (increase-i (fix:+ i 1))))
 
 	      (define (decrease-j j)
-		(if (or (<= j l)
+		(if (or (fix:<= j l)
 			(not (predicate lth-element (vector-ref vector j))))
 		    j
-		    (decrease-j (-1+ j))))
+		    (decrease-j (fix:- j 1))))
 
 	      (define (inner-loop i j)
-		(if (< i j)		;used to be <=
-		    (begin (exchange! i j)
-			   (inner-loop (increase-i (1+ i))
-				       (decrease-j (-1+ j))))
-		    (begin (if (> j l)
-			       (exchange! j l))
-			   (outer-loop (1+ j) r)
-			   (outer-loop l (-1+ j)))))
+		(if (fix:< i j)		;used to be <=
+		    (begin
+		      (exchange! i j)
+		      (inner-loop (increase-i (fix:+ i 1))
+				  (decrease-j (fix:- j 1))))
+		    (begin
+		      (if (fix:> j l)
+			  (exchange! j l))
+		      (outer-loop (fix:+ j 1) r)
+		      (outer-loop l (fix:- j 1)))))
 
-	      (inner-loop (increase-i (1+ l))
+	      (inner-loop (increase-i (fix:+ l 1))
 			  (decrease-j r))))))
 
   (define-integrable (exchange! i j)
@@ -83,6 +84,6 @@ MIT in each case. |#
       (vector-set! vector j ith-element)))
 
   (if (not (vector? vector))
-      (error:wrong-type-argument vector "vector" 'SORT!))
-  (outer-loop 0 (-1+ (vector-length vector)))
+      (error:wrong-type-argument vector "vector" 'QUICK-SORT!))
+  (outer-loop 0 (fix:- (vector-length vector) 1))
   vector)
