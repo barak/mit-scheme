@@ -1,0 +1,2711 @@
+@c This file is part of the MIT/GNU Scheme Reference Manual.
+@c $Id: os-interface.texi,v 1.1 2003/04/15 03:30:00 cph Exp $
+
+@c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
+@c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
+@c Copyright 2002,2003 Massachusetts Institute of Technology
+@c See file scheme.texinfo for copying conditions.
+
+@node Operating-System Interface, Error System, Input/Output, Top
+@chapter Operating-System Interface
+@cindex Operating-System Interface
+
+The Scheme standard provides a simple mechanism for reading and writing
+files: file ports.  MIT/GNU Scheme provides additional tools for
+dealing with other aspects of the operating system:
+
+@itemize @bullet
+@item
+@dfn{Pathnames} are a reasonably operating-system independent tool for
+manipulating the component parts of file names.  This can be useful for
+implementing defaulting of file name components.
+@cindex pathname
+
+@item
+Control over the @dfn{current working directory}: the place in the file
+system from which relative file names are interpreted.
+@cindex current working directory
+
+@item
+Procedures that rename, copy, delete, and test for the existence of
+files.  Also, procedures that return detailed information about a
+particular file, such as its type (directory, link, etc.) or length.
+
+@item
+Procedures for reading the contents of a directory.
+
+@item
+Procedures for obtaining times in various formats, converting between
+the formats, and generating human-readable time strings.
+
+@item
+Procedures to run other programs as subprocesses of Scheme, to read
+their output, and write input to them.
+
+@item
+A means to determine the operating system Scheme is running under.
+@end itemize
+
+@menu
+* Pathnames::                   
+* Working Directory::           
+* File Manipulation::           
+* Directory Reader::            
+* Date and Time::               
+* Machine Time::                
+* Subprocesses::                
+* TCP Sockets::                 
+* Miscellaneous OS Facilities::  
+@end menu
+
+@node Pathnames, Working Directory, Operating-System Interface, Operating-System Interface
+@section Pathnames
+
+@comment **** begin CLTL ****
+@cindex file name
+MIT/GNU Scheme programs need to use names to designate files.  The main
+difficulty in dealing with names of files is that different file systems
+have different naming formats for files.  For example, here is a table
+of several file systems (actually, operating systems that provide file
+systems) and what equivalent file names might look like for each one:
+
+@example
+@group
+System          File Name
+------          ---------
+TOPS-20         <LISPIO>FORMAT.FASL.13
+TOPS-10         FORMAT.FAS[1,4]
+ITS             LISPIO;FORMAT FASL
+MULTICS         >udd>LispIO>format.fasl
+TENEX           <LISPIO>FORMAT.FASL;13
+VAX/VMS         [LISPIO]FORMAT.FAS;13
+UNIX            /usr/lispio/format.fasl
+DOS             C:\USR\LISPIO\FORMAT.FAS
+@end group
+@end example
+
+@cindex filename (defn)
+@cindex pathname (defn)
+It would be impossible for each program that deals with file names to
+know about each different file name format that exists; a new operating
+system to which Scheme was ported might use a format different from any
+of its predecessors.  Therefore, MIT/GNU Scheme provides @emph{two} ways to
+represent file names: @dfn{filenames} (also called @dfn{namestrings}),
+which are strings in the implementation-dependent form customary for the
+file system, and @dfn{pathnames}, which are special abstract data
+objects that represent file names in an implementation-independent way.
+Procedures are provided to convert between these two representations,
+and all manipulations of files can be expressed in machine-independent
+terms by using pathnames.
+
+@cindex host, in filename
+In order to allow MIT/GNU Scheme programs to operate in a network
+environment that may have more than one kind of file system, the
+pathname facility allows a file name to specify which file system is to
+be used.  In this context, each file system is called a @dfn{host}, in
+keeping with the usual networking terminology.@footnote{This
+introduction is adapted from @cite{Common Lisp, The Language}, second
+edition, section 23.1.}
+@comment **** end CLTL ****
+
+Note that the examples given in this section are specific to unix
+pathnames.  Pathnames for other operating systems have different
+external representations.
+
+@menu
+* Filenames and Pathnames::     
+* Components of Pathnames::     
+* Operations on Pathnames::     
+* Miscellaneous Pathnames::     
+@end menu
+
+@node Filenames and Pathnames, Components of Pathnames, Pathnames, Pathnames
+@subsection Filenames and Pathnames
+
+Pathname objects are usually created by parsing filenames (character
+strings) into component parts.  MIT/GNU Scheme provides operations that
+convert filenames into pathnames and vice versa.
+
+@deffn procedure ->pathname object
+@cindex construction, of pathname
+Returns a pathname that is the equivalent of @var{object}.  @var{Object}
+must be a pathname or a string.  If @var{object} is a pathname, it is
+returned.  If @var{object} is a string, this procedure returns the
+pathname that corresponds to the string; in this case it is equivalent
+to @code{(parse-namestring @var{object} #f #f)}.
+
+@example
+@group
+(->pathname "foo")          @result{}  #[pathname 65 "foo"]
+(->pathname "/usr/morris")  @result{}  #[pathname 66 "/usr/morris"]
+@end group
+@end example
+@end deffn
+
+
+@deffn procedure parse-namestring thing [host [defaults]]
+@cindex construction, of pathname
+This turns @var{thing} into a pathname.
+@var{Thing} must be a pathname or a string.
+If @var{thing} is a pathname, it is returned.  If @var{thing} is a
+string, this procedure returns the pathname that corresponds to the
+string, parsed according to the syntax of the file system specified by
+@var{host}.
+
+This procedure @emph{does not} do defaulting of pathname components.
+
+The optional arguments are used to determine what syntax should be used
+for parsing the string.  In general this is only really useful if your
+implementation of MIT/GNU Scheme supports more than one file system,
+otherwise you would use @code{->pathname}.  If given, @var{host} must be
+a host object or @code{#f}, and @var{defaults} must be a pathname.
+@var{Host} specifies the syntax used to parse the string.  If @var{host}
+is not given or @code{#f}, the host component from @var{defaults} is
+used instead; if @var{defaults} is not given, the host component from
+@code{*default-pathname-defaults*} is used.
+@end deffn
+
+@deffn procedure ->namestring pathname
+@cindex conversion, pathname to string
+@code{->namestring} returns a newly allocated string that is the
+filename corresponding to @var{pathname}.
+@example
+@group
+(->namestring (->pathname "/usr/morris/minor.van"))
+     @result{}  "/usr/morris/minor.van"
+@end group
+@end example
+@end deffn
+
+
+@deffn procedure pathname-simplify pathname
+@cindex simplification, of pathname
+Returns a pathname that locates the same file or directory as
+@var{pathname}, but is in some sense simpler.  Note that
+@code{pathname-simplify} might not always be able to simplify the
+pathname, e.g.@: on unix with symbolic links the directory
+@file{/usr/morris/../} need not be the same as @file{/usr/}.  In cases
+of uncertainty the behavior is conservative, returning the original or a
+partly simplified pathname.
+
+@example
+@group
+(pathname-simplify "/usr/morris/../morris/dance")
+     @result{}  #[pathname "/usr/morris/dance"]
+@end group
+@end example
+@end deffn
+
+@node Components of Pathnames, Operations on Pathnames, Filenames and Pathnames, Pathnames
+@subsection Components of Pathnames
+@cindex components, of pathname
+@cindex pathname components
+
+@comment **** begin CLTL ****
+A pathname object always has six components, described below.  These
+components are the common interface that allows programs to work the
+same way with different file systems; the mapping of the pathname
+components into the concepts peculiar to each file system is taken care
+of by the Scheme implementation.
+
+@table @var
+@item host
+The name of the file system on which the file resides.  In the current
+implementation, this component is always a host object that is filled in
+automatically by the runtime system.  When specifying the host
+component, use either @code{#f} or the value of the variable
+@code{local-host}.
+@cindex host, pathname component
+
+@item device
+Corresponds to the ``device'' or ``file structure'' concept in many host
+file systems: the name of a (logical or physical) device containing
+files.  This component is the drive letter for PC file systems, and is
+unused for unix file systems.
+@cindex device, pathname component
+
+@item directory
+Corresponds to the ``directory'' concept in many host file systems: the
+name of a group of related files (typically those belonging to a single
+user or project).  This component is always used for all file systems.
+@cindex directory, pathname component
+
+@item name
+The name of a group of files that can be thought of as conceptually the
+``same'' file.  This component is always used for all file systems.
+@cindex name, pathname component
+
+@item type
+Corresponds to the ``filetype'' or ``extension'' concept in many host
+file systems.  This says what kind of file this is.  Files with the same
+name but different type are usually related in some specific way, such
+as one being a source file, another the compiled form of that source,
+and a third the listing of error messages from the compiler.  This
+component is currently used for all file systems, and is formed by
+taking the characters that follow the last dot in the namestring.
+@cindex type, pathname component
+
+@item version
+Corresponds to the ``version number'' concept in many host file systems.
+Typically this is a number that is incremented every time the file is
+modified.  This component is currently unused for all file systems.
+@cindex version, pathname component
+@end table
+
+Note that a pathname is not necessarily the name of a specific file.
+Rather, it is a specification (possibly only a partial specification) of
+how to access a file.  A pathname need not correspond to any file that
+actually exists, and more than one pathname can refer to the same file.
+For example, the pathname with a version of @code{newest} may refer to
+the same file as a pathname with the same components except a certain
+number as the version.  Indeed, a pathname with version @code{newest}
+may refer to different files as time passes, because the meaning of such
+a pathname depends on the state of the file system.  In file systems
+with such facilities as ``links'', multiple file names, logical devices,
+and so on, two pathnames that look quite different may turn out to
+address the same file.  To access a file given a pathname, one must do a
+file-system operation such as @code{open-input-file}.
+
+Two important operations involving pathnames are @dfn{parsing} and
+@dfn{merging}.  Parsing is the conversion of a filename (which might be
+something supplied interactively  by the users when asked to supply the
+name of a file) into a pathname object.  This operation is
+implementation-dependent, because the format of filenames is
+implementation-dependent.  Merging takes a pathname with missing
+components and supplies values for those components from a source of
+default values.
+
+Not all of the components of a pathname need to be specified.  If a
+component of a pathname is missing, its value is @code{#f}.
+Before the file system interface can do anything interesting with a
+file, such as opening the file, all the missing components of a pathname
+must be filled in.  Pathnames with missing components are used
+internally for various purposes; in particular, parsing a namestring
+that does not specify certain components will result in a pathname with
+missing components.
+
+Any component of a pathname may be the symbol @code{unspecific}, meaning
+that the component simply does not exist, for file systems in which such
+a value makes no sense.  For example, unix, Windows, and OS/2 file
+systems usually do not support version numbers, so the version component
+for such a host might be @code{unspecific}.@footnote{This description is
+adapted from @cite{Common Lisp, The Language}, second edition, section
+23.1.1.}
+@comment **** end CLTL ****
+
+In addition to @code{#f} and @code{unspecific}, the components of a
+pathname may take on the following meaningful values:
+
+@table @var
+@item host
+An implementation-defined type which may be tested for using the
+@code{host?} predicate.
+
+@item device
+On systems that support this component (Windows and OS/2), it may be
+specified as a string containing a single alphabetic character, for
+which the alphabetic case is ignored.
+
+@item directory
+A non-empty list, which represents a @dfn{directory path}: a sequence of
+directories, each of which has a name in the previous directory, the
+last of which is the directory specified by the entire path.  Each
+element in such a path specifies the name of the directory relative to
+the directory specified by the elements to its left.  The first element
+of the list is either the symbol @code{absolute} or the symbol
+@code{relative}.  If the first element in the list is the symbol
+@code{absolute}, then the directory component (and subsequently the
+pathname) is @dfn{absolute}; the first component in the sequence is to
+be found at the ``root'' of the file system.  If the directory is
+@dfn{relative} then the first component is to be found in some as yet
+unspecified directory; typically this is later specified to be the
+@dfn{current working directory}.
+@cindex root, as pathname component
+@cindex directory path (defn)
+@cindex path, directory (defn)
+
+@cindex up, as pathname component
+@cindex parent, of directory
+Aside from @code{absolute} and @code{relative}, which may only appear as
+the first element of the list, each subsequent element in the list is
+either: a string, which is a literal component; the symbol @code{wild},
+meaningful only when used in conjunction with the directory reader; or
+the symbol @code{up}, meaning the next directory is the ``parent'' of
+the previous one.  @code{up} corresponds to the file @file{..} in unix
+and PC file systems.
+
+(The following note does not refer to any file system currently
+supported by MIT/GNU Scheme, but is included for completeness.)  In file
+systems that do not have ``hierarchical'' structure, a specified
+directory component will always be a list whose first element is
+@code{absolute}.  If the system does not support directories other than
+a single global directory, the list will have no other elements.  If the
+system supports ``flat'' directories, i.e.@: a global set of directories
+with no subdirectories, then the list will contain a second element,
+which is either a string or @code{wild}.  In other words, a
+non-hierarchical file system is treated as if it were hierarchical, but
+the hierarchical features are unused.  This representation is somewhat
+inconvenient for such file systems, but it discourages programmers from
+making code depend on the lack of a file hierarchy.
+
+@item name
+A string, which is a literal component; or the symbol @code{wild},
+meaningful only when used in conjunction with the directory reader.
+
+@item type
+A string, which is a literal component; or the symbol @code{wild},
+meaningful only when used in conjunction with the directory reader.
+
+@item version
+An exact positive integer, which is a literal component; the symbol
+@code{newest}, which means to choose the largest available version
+number for that file; the symbol @code{oldest}, which means to choose
+the smallest version number; or the symbol @code{wild}, meaningful only
+when used in conjunction with the directory reader.  In the future some
+other possible values may be added, e.g.@: @code{installed}.  Note that
+currently no file systems support version numbers; thus this component
+is not used and should be specified as @code{#f}.
+@cindex newest, as pathname component
+@cindex oldest, as pathname component
+@cindex installed, as pathname component
+@end table
+
+@deffn procedure make-pathname host device directory name type version
+@cindex construction, of pathname
+Returns a pathname object whose components are the respective arguments.
+Each argument must satisfy the restrictions for the corresponding
+component, which were outlined above.
+
+@example
+@group
+(make-pathname #f
+               #f
+               '(absolute "usr" "morris")
+               "foo"
+               "scm"
+               #f)
+     @result{}  #[pathname 67 "/usr/morris/foo.scm"]
+@end group
+@end example
+@end deffn
+
+@deffn procedure pathname-host pathname
+@deffnx procedure pathname-device pathname
+@deffnx procedure pathname-directory pathname
+@deffnx procedure pathname-name pathname
+@deffnx procedure pathname-type pathname
+@deffnx procedure pathname-version pathname
+Returns a particular component of @var{pathname}.
+
+@example
+@group
+(define x (->pathname "/usr/morris/foo.scm"))
+(pathname-host x)       @result{}  #[host 1]
+(pathname-device x)     @result{}  unspecific
+(pathname-directory x)  @result{}  (absolute "usr" "morris")
+(pathname-name x)       @result{}  "foo"
+(pathname-type x)       @result{}  "scm"
+(pathname-version x)    @result{}  unspecific
+@end group
+@end example
+@end deffn
+
+@deffn procedure pathname-new-device pathname device
+@deffnx procedure pathname-new-directory pathname directory
+@deffnx procedure pathname-new-name pathname name
+@deffnx procedure pathname-new-type pathname type
+@deffnx procedure pathname-new-version pathname version
+Returns a new copy of @var{pathname} with the respective component
+replaced by the second argument.  @var{Pathname} is unchanged.
+Portable programs should not explicitly replace a component with
+@code{unspecific} because this might not be permitted in some
+situations.
+
+@example
+@group
+(define p (->pathname "/usr/blisp/rel15"))
+p
+     @result{}  #[pathname 71 "/usr/blisp/rel15"]
+(pathname-new-name p "rel100")
+     @result{}  #[pathname 72 "/usr/blisp/rel100"]
+(pathname-new-directory p '(relative "test" "morris"))
+     @result{}  #[pathname 73 "test/morris/rel15"]
+p
+     @result{}  #[pathname 71 "/usr/blisp/rel15"]
+@end group
+@end example
+@end deffn
+
+@deffn procedure pathname-default-device pathname device
+@deffnx procedure pathname-default-directory pathname directory
+@deffnx procedure pathname-default-name pathname name
+@deffnx procedure pathname-default-type pathname type
+@deffnx procedure pathname-default-version pathname version
+These operations are similar to the @code{pathname-new-@var{component}}
+operations, except that they only change the specified @var{component}
+if it has the value @code{#f} in @var{pathname}.
+@end deffn
+
+@node Operations on Pathnames, Miscellaneous Pathnames, Components of Pathnames, Pathnames
+@subsection Operations on Pathnames
+
+@deffn procedure pathname? object
+@cindex type predicate, for pathname
+Returns @code{#t} if @var{object} is a pathname; otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn procedure pathname=? pathname1 pathname2
+@cindex equivalence predicate, for pathnames
+Returns @code{#t} if @var{pathname1} is equivalent to @var{pathname2};
+otherwise returns @code{#f}.
+Pathnames are equivalent if all of their components are equivalent,
+hence two pathnames that are equivalent must identify the same file or
+equivalent partial pathnames.
+However, the converse is not true: non-equivalent pathnames may specify
+the same file (e.g.@: via absolute and relative directory components),
+and pathnames that specify no file at all (e.g.@: name and directory
+components unspecified) may be equivalent.
+@end deffn
+
+@deffn procedure pathname-absolute? pathname
+Returns @code{#t} if @var{pathname} is an absolute rather than relative
+pathname object; otherwise returns @code{#f}.  Specifically, this
+procedure returns @code{#t} when the directory component of
+@var{pathname} is a list starting with the symbol @code{absolute}, and
+returns @code{#f} in all other cases.  All pathnames are either absolute
+or relative, so if this procedure returns @code{#f}, the argument is a
+relative pathname.
+@end deffn
+
+@deffn procedure directory-pathname? pathname
+Returns @code{#t} if @var{pathname} has only directory components and no
+file components.  This is roughly equivalent to
+
+@example
+@group
+(define (directory-pathname? pathname)
+  (string-null? (file-namestring pathname)))
+@end group
+@end example
+
+@noindent
+except that it is faster.
+@end deffn
+
+@deffn procedure pathname-wild? pathname
+Returns @code{#t} if @var{pathname} contains any wildcard components;
+otherwise returns @code{#f}.
+@end deffn
+
+@deffn procedure merge-pathnames pathname [defaults [default-version]]
+@cindex merging, of pathnames
+@cindex defaulting, of pathname
+Returns a pathname whose components are obtained by combining those of
+@var{pathname} and @var{defaults}.  @var{Defaults} defaults to the value
+of @code{*default-pathname-defaults*} and @var{default-version} defaults
+to @code{newest}.
+
+The pathnames are combined by components: if @var{pathname} has a
+non-missing component, that is the resulting component, otherwise the
+component from @var{defaults} is used.
+The default version can be @code{#f} to preserve the information that
+the component was missing from @var{pathname}.
+The directory component is handled specially: if both pathnames have
+directory components that are lists, and the directory component from
+@var{pathname} is relative (i.e.@: starts with @code{relative}), then the
+resulting directory component is formed by appending @var{pathname}'s
+component to @var{defaults}'s component.
+For example:
+
+@example
+@group
+(define path1 (->pathname "scheme/foo.scm"))
+(define path2 (->pathname "/usr/morris"))
+path1
+     @result{}  #[pathname 74 "scheme/foo.scm"]
+path2
+     @result{}  #[pathname 75 "/usr/morris"]
+(merge-pathnames path1 path2)
+     @result{}  #[pathname 76 "/usr/scheme/foo.scm"]
+(merge-pathnames path2 path1)
+     @result{}  #[pathname 77 "/usr/morris.scm"]
+@end group
+@end example
+
+The merging rules for the version are more complex and depend on whether
+@var{pathname} specifies a name.  If @var{pathname} does not specify a
+name, then the version, if not provided, will come from @var{defaults}.
+However, if @var{pathname} does specify a name then the version is not
+affected by @var{defaults}.  The reason is that the version ``belongs
+to'' some other file name and is unlikely to have anything to do with
+the new one.  Finally, if this process leaves the version missing, then
+@var{default-version} is used.
+
+The net effect is that if the user supplies just a name, then the host,
+device, directory and type will come from @var{defaults}, but the
+version will come from @var{default-version}.  If the user supplies
+nothing, or just a directory, the name, type and version will come over
+from @var{defaults} together.
+@end deffn
+
+@defvr variable *default-pathname-defaults*
+@cindex defaulting, of pathname
+This is the default pathname-defaults pathname; if any pathname
+primitive that needs a set of defaults is not given one, it uses this
+one.  @code{set-working-directory-pathname!} sets this variable to a new
+value, computed by merging the new working directory with the variable's
+old value.
+@end defvr
+
+@deffn procedure pathname-default pathname device directory name type version
+This procedure defaults all of the components of @var{pathname}
+simultaneously.  It could have been defined by:
+
+@example
+@group
+(define (pathname-default pathname
+                          device directory name type version)
+  (make-pathname (pathname-host pathname)
+                 (or (pathname-device pathname) device)
+                 (or (pathname-directory pathname) directory)
+                 (or (pathname-name pathname) name)
+                 (or (pathname-type pathname) type)
+                 (or (pathname-version pathname) version)))
+@end group
+@end example
+@end deffn
+
+@deffn procedure file-namestring pathname
+@deffnx procedure directory-namestring pathname
+@deffnx procedure host-namestring pathname
+@deffnx procedure enough-namestring pathname [defaults]
+@cindex conversion, pathname to string
+These procedures return a string corresponding to a subset of the
+@var{pathname} information.  @code{file-namestring} returns a string
+representing just the @var{name}, @var{type} and @var{version}
+components of @var{pathname}; the result of @code{directory-namestring}
+represents just the @var{host}, @var{device}, and @var{directory}
+components; and @code{host-namestring} returns a string for just the
+@var{host} portion.
+
+@code{enough-namestring} takes another argument, @var{defaults}.
+It returns an abbreviated namestring that is just sufficient to identify
+the file named by @var{pathname} when considered relative to the
+@var{defaults} (which defaults to @code{*default-pathname-defaults*}).
+
+@example
+@group
+(file-namestring "/usr/morris/minor.van")
+     @result{}  "minor.van"
+(directory-namestring "/usr/morris/minor.van")
+     @result{}  "/usr/morris/"
+(enough-namestring "/usr/morris/men")
+     @result{}  "men"      @r{;perhaps}
+@end group
+@end example
+@end deffn
+
+@deffn procedure file-pathname pathname
+@deffnx procedure directory-pathname pathname
+@deffnx procedure enough-pathname pathname [defaults]
+@cindex selection, components of pathname
+These procedures return a pathname corresponding to a subset of the
+@var{pathname} information.
+@code{file-pathname} returns a pathname with just the
+@var{name}, @var{type} and @var{version} components of @var{pathname}.
+The result of @code{directory-pathname} is a pathname containing the
+@var{host}, @var{device} and @var{directory} components of @var{pathname}.
+
+@code{enough-pathname} takes another argument, @var{defaults}.
+It returns an abbreviated pathname that is just sufficient to identify
+the file named by @var{pathname} when considered relative to the
+@var{defaults} (which defaults to @code{*default-pathname-defaults*}).
+
+These procedures are similar to @code{file-namestring},
+@code{directory-namestring} and @code{enough-namestring}, but they
+return pathnames instead of strings.
+@end deffn
+
+@deffn procedure directory-pathname-as-file pathname
+@cindex file, converting pathname directory to
+Returns a pathname that is equivalent to @var{pathname}, but in which
+the directory component is represented as a file.
+The last directory is removed from the directory component and converted
+into name and type components.
+This is the inverse operation to @code{pathname-as-directory}.
+
+@example
+@group
+(directory-pathname-as-file (->pathname "/usr/blisp/"))
+     @result{}  #[pathname "/usr/blisp"]
+@end group
+@end example
+@end deffn
+
+@deffn procedure pathname-as-directory pathname
+@cindex directory, converting pathname to
+Returns a pathname that is equivalent to @var{pathname}, but in which
+any file components have been converted to a directory component.  If
+@var{pathname} does not have name, type, or version components, it is
+returned without modification.  Otherwise, these file components are
+converted into a string, and the string is added to the end of the list
+of directory components.  This is the inverse operation to
+@code{directory-pathname-as-file}.
+
+@example
+@group
+(pathname-as-directory (->pathname "/usr/blisp/rel5"))
+     @result{}  #[pathname "/usr/blisp/rel5/"]
+@end group
+@end example
+@end deffn
+
+
+@node Miscellaneous Pathnames,  , Operations on Pathnames, Pathnames
+@subsection Miscellaneous Pathname Procedures
+@cindex directory, reading
+
+This section gives some standard operations on host objects, and some
+procedures that return some useful pathnames.
+
+@defvr variable local-host
+This variable has as its value the host object that describes the local
+host's file system.
+@end defvr
+
+@deffn procedure host? object
+@cindex type predicate, for pathname host
+Returns @code{#t} if @var{object} is a pathname host; otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn procedure host=? host1 host2
+@cindex equivalence predicate, for pathname host
+Returns @code{#t} if @var{host1} and @var{host2} denote the same
+pathname host; otherwise returns @code{#f}.
+@end deffn
+
+@deffn procedure init-file-pathname [host]
+@cindex home directory, as pathname
+Returns a pathname for the user's initialization file on @var{host}.
+The @var{host} argument defaults to the value of @code{local-host}.  If
+the initialization file does not exist this procedure returns @code{#f}.
+
+Under unix, the init file is called @file{.scheme.init}; under Windows
+and OS/2, the init file is called @file{scheme.ini}.  In either
+case, it is located in the user's home directory, which is computed by
+@code{user-homedir-pathname}.
+@end deffn
+
+@deffn procedure user-homedir-pathname [host]
+@cindex home directory, as pathname
+Returns a pathname for the user's ``home directory'' on @var{host}.  The
+@var{host} argument defaults to the value of @code{local-host}.  The
+concept of a ``home directory'' is itself somewhat
+implementation-dependent, but it should be the place where the user
+keeps personal files, such as initialization files and mail.
+
+Under unix, the user's home directory is specified by the @code{HOME}
+environment variable.  If this variable is undefined, the user name is
+computed using the @code{getlogin} system call, or if that fails, the
+@code{getuid} system call.  The resulting user name is passed to the
+@code{getpwnam} system call to obtain the home directory.
+
+Under OS/2, several heuristics are tried to find the user's home
+directory.  First, if the environment variable @code{HOME} is defined,
+that is the home directory.  If @code{HOME} is undefined, but the
+@code{USERDIR} and @code{USER} environment variables are defined and
+the directory @file{%USERDIR%\%USER%} exists, then it is used.  Failing
+that, if the directory @file{%USER%} exists on the OS/2 system
+drive, then it is used.  As a last resort, the OS/2 system drive is
+the home directory.
+
+Like OS/2, the Windows implementation uses heuristics based on
+environment variables.  The user's home directory is computed by
+examining several environment variables, in the following order:
+
+@itemize @bullet
+@item
+@code{HOMEDRIVE} and @code{HOMEPATH} are both defined and
+@file{%HOMEDRIVE%%HOMEPATH%} is an existing directory.  (These variables
+are automatically defined by Windows NT.)
+
+@item
+@code{HOME} is defined and @file{%HOME%} is an existing directory.
+
+@item
+@code{USERDIR} and @code{USERNAME} are defined and
+@file{%USERDIR%\%USERNAME%} is an existing directory.
+
+@item
+@code{USERDIR} and @code{USER} are defined and
+@file{%USERDIR%\%USER%} is an existing directory.
+
+@item
+@code{USERNAME} is defined and @file{%USERNAME%} is an existing
+directory on the Windows system drive.
+
+@item
+@code{USER} is defined and @file{%USER%} is an existing directory on the
+Windows system drive.
+
+@item
+Finally, if all else fails, the Windows system drive is used as the home
+directory.
+@end itemize
+@end deffn
+
+@deffn procedure system-library-pathname pathname
+@cindex library, system pathname
+Locates @var{pathname} in MIT/GNU Scheme's system library directory.  An
+error of type @code{condition-type:file-operation-error} is signalled if
+@var{pathname} cannot be located on the library search path.
+@findex condition-type:file-operation-error
+
+@example
+@group
+(system-library-pathname "compiler.com")
+  @result{} #[pathname 45 "/usr/local/lib/mit-scheme/compiler.com"]
+@end group
+@end example
+@end deffn
+
+@deffn procedure system-library-directory-pathname pathname
+@cindex library, system pathname
+Locates the pathname of an MIT/GNU Scheme system library directory.  An
+error of type @code{condition-type:file-operation-error} is signalled if
+@var{pathname} cannot be located on the library search path.
+
+@example
+@group
+(system-library-directory-pathname "options")
+     @result{} #[pathname 44 "/usr/local/lib/mit-scheme/options/"]
+@end group
+@end example
+@end deffn
+
+@node Working Directory, File Manipulation, Pathnames, Operating-System Interface
+@section Working Directory
+
+@cindex absolute pathname (defn)
+@cindex pathname, absolute (defn)
+@cindex relative pathname (defn)
+@cindex pathname, relative (defn)
+@cindex directory, current working (defn)
+@cindex current working directory (defn)
+@cindex working directory (see current working directory)
+When MIT/GNU Scheme is started, the @dfn{current working directory} (or
+simply, @dfn{working directory}) is initialized in an operating-system
+dependent manner; usually, it is the directory in which Scheme was
+invoked.  The working directory can be determined from within Scheme by
+calling the @code{pwd} procedure, and changed by calling the @code{cd}
+procedure.  Each @acronym{REP} loop has its own working directory, and
+inferior @acronym{REP} loops initialize their working directory from the
+value in effect in their superior at the time they are created.
+
+@deffn procedure working-directory-pathname
+@deffnx procedure pwd
+Returns the current working directory as a pathname that has no name,
+type, or version components, just host, device, and directory
+components.  @code{pwd} is an alias for
+@code{working-directory-pathname}; the long name is intended for
+programs and the short name for interactive use.
+@end deffn
+
+@deffn procedure set-working-directory-pathname! filename
+@deffnx procedure cd filename
+@findex ->pathname
+@findex pathname-as-directory
+Makes @var{filename} the current working directory and returns the new
+current working directory as a pathname.  @var{Filename} is coerced to a
+pathname using @code{pathname-as-directory}.  @code{cd} is an alias for
+@code{set-working-directory-pathname!}; the long name is intended for
+programs and the short name for interactive use.
+
+Additionally, @code{set-working-directory-pathname!} modifies the value
+of@* @code{*default-pathname-defaults*} by merging the new working
+directory into it.
+
+When this procedure is executed in the top-level @acronym{REP} loop, it
+changes the working directory of the running Scheme executable.
+
+@example
+@group
+(set-working-directory-pathname! "/usr/morris/blisp")
+     @result{}  #[pathname "/usr/morris/blisp/"]
+(set-working-directory-pathname! "~")
+     @result{}  #[pathname "/usr/morris/"]
+@end group
+@end example
+
+This procedure signals an error if @var{filename} does not refer to an
+existing directory.
+
+If @var{filename} describes a relative rather than absolute pathname,
+this procedure interprets it as relative to the current working
+directory, before changing the working directory.
+
+@example
+@group
+(working-directory-pathname)
+     @result{}  #[pathname "/usr/morris/"]
+(set-working-directory-pathname! "foo")
+     @result{}  #[pathname "/usr/morris/foo/"]
+@end group
+@end example
+@end deffn
+
+@deffn procedure with-working-directory-pathname filename thunk
+This procedure temporarily rebinds the current working directory to
+@var{filename}, invokes @var{thunk} (a procedure of no arguments), then
+restores the previous working directory and returns the value yielded by
+@var{thunk}.  @var{Filename} is coerced to a pathname using
+@code{pathname-as-directory}.  In addition to binding the working
+directory, @code{with-working-directory-pathname} also binds the
+variable @code{*default-pathname-defaults*}, merging the old value of
+that variable with the new working directory pathname.  Both bindings
+are performed in exactly the same way as dynamic binding of a variable
+(@pxref{Dynamic Binding}).
+@end deffn
+
+@node File Manipulation, Directory Reader, Working Directory, Operating-System Interface
+@section File Manipulation
+
+This section describes procedures that manipulate files and directories.
+Any of these procedures can signal a number of errors for many reasons.
+The specifics of these errors are much too operating-system dependent to
+document here.  However, if such an error is signalled by one of
+these procedures, it will be of type
+@code{condition-type:file-operation-error}.
+@findex condition-type:file-operation-error
+
+@deffn procedure file-exists? filename
+@deffnx procedure file-exists-direct? filename
+@deffnx procedure file-exists-indirect? filename
+@cindex existence, testing of file
+These procedures return @code{#t} if @var{filename} is an existing file
+or directory; otherwise they return @code{#f}.  In operating systems
+that support symbolic links, if the file is a symbolic link,
+@code{file-exists-direct?} tests for the existence of the link, while
+@code{file-exists-indirect?} and @code{file-exists?} test for the
+existence of the file pointed to by the link.
+@end deffn
+
+@deffn procedure copy-file source-filename target-filename
+@cindex copying, of file
+Makes a copy of the file named by @var{source-filename}.  The copy is
+performed by creating a new file called @var{target-filename}, and
+filling it with the same data as @var{source-filename}.
+@end deffn
+
+@deffn procedure rename-file source-filename target-filename
+@cindex renaming, of file
+@cindex name, of file
+Changes the name of @var{source-filename} to be @var{target-filename}.
+In the unix implementation, this will not rename across file systems.
+@end deffn
+
+@deffn procedure delete-file filename
+@cindex deletion, of file
+Deletes the file named @var{filename}.
+@end deffn
+
+@deffn procedure delete-file-no-errors filename
+Like @code{delete-file}, but returns a boolean value indicating whether
+an error occurred during the deletion.  If no errors occurred, @code{#t}
+is returned.  If an error of type @code{condition-type:file-error} or
+@code{condition-type:port-error} is signalled, @code{#f} is returned.
+@end deffn
+
+@deffn procedure hard-link-file source-filename target-filename
+@cindex linking (hard), of file
+@cindex hard linking, of file
+Makes a hard link from @var{source-filename} to @var{target-filename}.
+This operation gives the file specified by @var{source-filename} a new
+name, in addition to the old name.
+
+This currently works only on unix systems.  It is further restricted to
+work only when  @var{source-filename} and @var{target-filename} refer to
+names in the same file system.
+@end deffn
+
+@deffn procedure soft-link-file source-filename target-filename
+@cindex linking (soft), of file
+@cindex soft linking, of file
+@cindex symbolic linking, of file
+Creates a new soft link called @var{target-filename} that points at the
+file @var{source-filename}.  (Soft links are also sometimes called
+@dfn{symbolic} links.)  Note that @var{source-filename} will be
+interpreted as a string (although you may specify it as a pathname
+object, if you wish).  The contents of this string will be stored in the
+file system as the soft link.  When a file operation attempts to open
+the link, the contents of the link are interpreted relative to the
+link's location at that time.
+
+This currently works only on unix systems.
+@end deffn
+
+@deffn procedure make-directory filename
+Creates a new directory named @var{filename}.  Signals an error if
+@var{filename} already exists, or if the directory cannot be created.
+@end deffn
+
+@deffn procedure delete-directory filename
+Deletes the directory named @var{filename}.  Signals an error if
+the directory does not exist, is not a directory, or contains any files
+or subdirectories.
+@end deffn
+
+@deffn procedure ->truename filename
+@cindex truename, of input file
+This procedure attempts to discover and return the ``true name'' of the
+file associated with @var{filename} within the file system.  An error of
+type @code{condition-type:file-operation-error} is signalled if the
+appropriate file cannot be located within the file system.
+@findex condition-type:file-operation-error
+@end deffn
+
+@deffn procedure call-with-temporary-file-pathname procedure
+Calls @code{temporary-file-pathname} to create a temporary file, then
+calls @var{procedure} with one argument, the pathname referring to that
+file.  When @var{procedure} returns, if the temporary file still exists,
+it is deleted; then, the value yielded by @var{procedure} is returned.
+If @var{procedure} escapes from its continuation, and the file still
+exists, it is deleted.
+@end deffn
+
+@deffn procedure temporary-file-pathname [directory]
+Creates a new empty temporary file and returns a pathname referring to
+it.  The temporary file is created with Scheme's default permissions, so
+barring unusual circumstances it can be opened for input and/or output
+without error.  The temporary file will remain in existence until
+explicitly deleted.  If the file still exists when the Scheme process
+terminates, it will be deleted.
+
+If @var{directory} is specified, the temporary file will be stored
+there.  If it is not specified, or if it is @code{#f}, the temporary
+file will be stored in the directory returned by
+@code{temporary-directory-pathname}.
+@end deffn
+
+@deffn procedure temporary-directory-pathname
+Returns the pathname of an existing directory that can be used to store
+temporary files.  These directory names are tried, in order, until a
+writeable directory is found:
+
+@itemize @bullet
+@item
+The directories specified by the environment variables @code{TMPDIR},
+@code{TEMP}, or @code{TMP}.
+
+@item
+Under unix, the directories @file{/var/tmp}, @file{/usr/tmp}, or
+@file{/tmp}.
+
+@item
+Under OS/2 or Windows, the following directories on the system drive:
+@file{\temp}, @file{\tmp}, or @file{\}.
+
+@item
+Under OS/2 or Windows, the current directory, as specified by
+@code{*default-pathname-defaults*}.
+@end itemize
+@end deffn
+
+@deffn procedure file-directory? filename
+@cindex directory, predicate for
+Returns @code{#t} if the file named @var{filename} exists and is a
+directory.  Otherwise returns @code{#f}.  In operating systems that
+support symbolic links, if @var{filename} names a symbolic link, this
+examines the file linked to, not the link itself.
+
+This is equivalent to
+
+@example
+(eq? 'directory (file-type-indirect @var{filename}))
+@end example
+@end deffn
+
+@deffn procedure file-regular? filename
+@cindex file (regular), predicate for
+@cindex regular file, predicate for
+Returns @code{#t} if the file named @var{filename} exists and is a
+regular file (i.e.@: not a directory, symbolic link, device file, etc.).
+Otherwise returns @code{#f}.  In operating systems that support symbolic
+links, if @var{filename} names a symbolic link, this examines the file
+linked to, not the link itself.
+
+This is equivalent to
+
+@example
+(eq? 'regular (file-type-indirect @var{filename}))
+@end example
+@end deffn
+
+@deffn procedure file-symbolic-link? filename
+@cindex symbolic link, predicate for
+In operating systems that support symbolic links, if the file named
+@var{filename} exists and is a symbolic link, this procedure returns the
+contents of the symbolic link as a newly allocated string.  The returned
+value is the name of the file that the symbolic link points to and must
+be interpreted relative to the directory of @var{filename}.  If
+@var{filename} either does not exist or is not a symbolic link, or if
+the operating system does not support symbolic links, this procedure
+returns @code{#f}.
+@end deffn
+
+@deffn procedure file-type-direct filename
+@deffnx procedure file-type-indirect filename
+@cindex file type, procedure for
+If the file named @var{filename} exists, @code{file-type-direct} returns
+a symbol specifying what type of file it is.  For example, if
+@var{filename} refers to a directory, the symbol @code{directory} is
+returned.  If @var{filename} doesn't refer to an existing file,
+@code{#f} is returned.
+
+If @var{filename} refers to a symbolic link, @code{file-type-direct}
+returns the type of the link itself, while @code{file-type-indirect}
+returns the type of the file linked to.
+
+At this time, the symbols that can be returned are the following.  The
+names are intended to be self-explanatory.  Most of these names can only
+be returned on particular operating systems, and so the operating-system
+name is prefixed to the name.
+
+@example
+regular
+directory
+unix-symbolic-link
+unix-character-device
+unix-block-device
+unix-named-pipe
+unix-socket
+os2-named-pipe
+win32-named-pipe
+@end example
+@end deffn
+
+@deffn procedure file-readable? filename
+Returns @code{#t} if @var{filename} names a file that can be opened for
+input; i.e.@: a @dfn{readable} file.  Otherwise returns @code{#f}.
+@end deffn
+
+@deffn procedure file-writeable? filename
+Returns @code{#t} if @var{filename} names a file that can be opened for
+output; i.e.@: a @dfn{writeable} file.  Otherwise returns @code{#f}.
+@end deffn
+
+@deffn procedure file-executable? filename
+Returns @code{#t} if @var{filename} names a file that can be executed.
+Otherwise returns @code{#f}.  Under unix, an executable file is
+identified by its mode bits.  Under OS/2, an executable file has
+one of the file extensions @file{.exe}, @file{.com}, @file{.cmd}, or
+@file{.bat}.  Under Windows, an executable file has one of the file
+extensions @file{.exe}, @file{.com}, or @file{.bat}.
+@end deffn
+
+@deffn procedure file-access filename mode
+@var{Mode} must be an exact integer between @code{0} and @code{7}
+inclusive; it is a bitwise-encoded predicate selector with @code{1}
+meaning ``executable'', @code{2} meaning ``writeable'', and @code{4}
+meaning ``readable''.  @code{file-access} returns @code{#t} if
+@var{filename} exists and satisfies the predicates selected by
+@var{mode}.  For example, if @var{mode} is @code{5}, then @var{filename}
+must be both readable and executable.  If @var{filename} doesn't exist,
+or if it does not satisfy the selected predicates, @code{#f} is
+returned.
+@end deffn
+
+@deffn procedure file-eq? filename1 filename2
+Determines whether @var{filename1} and @var{filename2} refer to the same
+file.  Under unix, this is done by comparing the inodes and devices of
+the two files.  Under OS/2 and Windows, this is done by comparing
+the filename strings.
+@end deffn
+
+@deffn procedure file-modes filename
+If @var{filename} names an existing file, @code{file-modes} returns an
+exact non-negative integer encoding the file's permissions.  The
+encoding of this integer is operating-system dependent.  Under unix, it
+is the least-significant 12 bits of the @code{st_mode} element of the
+@code{struct stat} structure.  Under OS/2 and Windows, it is the file
+attribute bits, which are described below.  If @var{filename} does not
+name an existing file, @code{#f} is returned.
+@end deffn
+
+@deffn procedure set-file-modes! filename modes
+@var{Filename} must name an existing file.  @var{Modes} must be an exact
+non-negative integer that could have been returned by a call to
+@code{file-modes}.  @code{set-file-modes!} modifies the file's
+permissions to be those encoded by @var{modes}.
+@end deffn
+
+@defvr variable os2-file-mode/read-only
+@defvrx variable os2-file-mode/hidden
+@defvrx variable os2-file-mode/system
+@defvrx variable os2-file-mode/directory
+@defvrx variable os2-file-mode/archived
+The values of these variables are the ``mode bits'' that comprise the
+value returned by @code{file-modes} under OS/2.  These bits are small
+integers that are combined by adding to form a complete set of modes.
+The integer zero represents a set of modes in which none of these bits
+are set.
+@end defvr
+
+@defvr variable nt-file-mode/read-only
+@defvrx variable nt-file-mode/hidden
+@defvrx variable nt-file-mode/system
+@defvrx variable nt-file-mode/directory
+@defvrx variable nt-file-mode/archive
+@defvrx variable nt-file-mode/normal
+@defvrx variable nt-file-mode/temporary
+@defvrx variable nt-file-mode/compressed
+The values of these variables are the ``mode bits'' that comprise the
+value returned by @code{file-modes} under Windows.  These bits are small
+integers that are combined by adding to form a complete set of modes.
+The integer zero represents a set of modes in which none of these bits
+are set.
+@end defvr
+
+@deffn procedure file-modification-time filename
+@cindex modification time, of file
+Returns the modification time of @var{filename} as an exact non-negative
+integer.  The result may be compared to other file times using ordinary
+integer arithmetic.  If @var{filename} names a file that does not exist,
+@code{file-modification-time} returns @code{#f}.
+
+@findex file-modification-time-direct
+@findex file-modification-time-indirect
+In operating systems that support symbolic links, if @var{filename}
+names a symbolic link, @code{file-modification-time} returns the
+modification time of the file linked to.  An alternate procedure,
+@code{file-modification-time-direct}, returns the modification time of
+the link itself; in all other respects it is identical to
+@code{file-modification-time}.  For symmetry,
+@code{file-modification-time-indirect} is a synonym of
+@code{file-modification-time}.
+@end deffn
+
+@deffn procedure file-access-time filename
+@cindex access time, of file
+Returns the access time of @var{filename} as an exact non-negative
+integer.  The result may be compared to other file times using ordinary
+integer arithmetic.  If @var{filename} names a file that does not exist,
+@code{file-access-time} returns @code{#f}.
+
+@findex file-access-time-direct
+@findex file-access-time-indirect
+In operating systems that support symbolic links, if @var{filename}
+names a symbolic link, @code{file-access-time} returns the access time
+of the file linked to.  An alternate procedure,
+@code{file-access-time-direct}, returns the access time of the link
+itself; in all other respects it is identical to
+@code{file-access-time}.  For symmetry, @code{file-access-time-indirect}
+is a synonym of @code{file-access-time}.
+@end deffn
+
+@deffn procedure set-file-times! filename access-time modification-time
+@var{Filename} must name an existing file, while @var{access-time} and
+@var{modification-time} must be valid file times that might have been
+returned by @code{file-access-time} and @code{file-modification-time},
+respectively.  @code{set-file-times!} alters the access and modification
+times of the file specified by @var{filename} to the values given by
+@var{access-time} and @var{modification-time}, respectively.  For
+convenience, either of the time arguments may be specified as @code{#f};
+in this case the corresponding time is not changed.
+@code{set-file-times!} returns an unspecified value.
+@end deffn
+
+@deffn procedure current-file-time
+Returns the current time as an exact non-negative integer, in the same
+format used by the above file-time procedures.  This number can be
+compared to other file times using ordinary arithmetic operations.
+@end deffn
+
+@deffn procedure file-touch filename
+@dfn{Touches} the file named @var{filename}.  If the file already
+exists, its modification time is set to the current file time and
+@code{#f} is returned.  Otherwise, the file is created and @code{#t} is
+returned.  This is an atomic test-and-set operation, so it is useful as
+a synchronization mechanism.
+@end deffn
+
+@deffn procedure file-length filename
+Returns the length, in bytes, of the file named @var{filename} as an
+exact non-negative integer.
+@end deffn
+
+@deffn procedure file-attributes filename
+@cindex attribute, of file
+This procedure determines if the file named @var{filename} exists, and
+returns information about it if so; if the file does not exist, it
+returns @code{#f}.
+
+@findex file-attributes-direct
+@findex file-attributes-indirect
+In operating systems that support symbolic links, if @var{filename}
+names a symbolic link, @code{file-attributes} returns the attributes of
+the link itself.  An alternate procedure,
+@code{file-attributes-indirect}, returns the attributes of the file
+linked to; in all other respects it is identical to
+@code{file-attributes}.  For symmetry, @code{file-attributes-direct} is
+a synonym of @code{file-attributes}.
+@end deffn
+
+The information returned by @code{file-attributes} is decoded by
+accessor procedures.  The following accessors are defined in all
+operating systems:
+
+@deffn procedure file-attributes/type attributes
+The file type: @code{#t} if the file is a directory, a character string
+(the name linked to) if a symbolic link, or @code{#f} for all other
+types of file.
+@end deffn
+
+@deffn procedure file-attributes/access-time attributes
+The last access time of the file, an exact non-negative integer.
+@end deffn
+
+@deffn procedure file-attributes/modification-time attributes
+The last modification time of the file, an exact non-negative integer.
+@end deffn
+
+@deffn procedure file-attributes/change-time attributes
+The last change time of the file, an exact non-negative integer.
+@end deffn
+
+@deffn procedure file-attributes/length attributes
+The length of the file in bytes.
+@end deffn
+
+@deffn procedure file-attributes/mode-string attributes
+The mode string of the file, a newly allocated string showing the file's
+mode bits.  Under unix, this string is in unix format.  Under OS/2 and
+Windows, this string shows the standard ``DOS'' attributes in their
+usual format.
+@end deffn
+
+@deffn procedure file-attributes/n-links attributes
+The number of links to the file, an exact positive integer.  Under
+Windows and OS/2, this is always @code{1}.
+@end deffn
+
+The following additional accessors are defined under unix:
+
+@deffn procedure file-attributes/uid attributes
+The user id of the file's owner, an exact non-negative integer.
+@end deffn
+
+@deffn procedure file-attributes/gid attributes
+The group id of the file's group, an exact non-negative integer.
+@end deffn
+
+@deffn procedure file-attributes/inode-number attributes
+The inode number of the file, an exact non-negative integer.
+@end deffn
+
+The following additional accessor is defined under OS/2 and Windows:
+
+@deffn procedure file-attributes/modes attributes
+The attribute bits of the file.  This is an exact non-negative integer
+containing the file's attribute bits, exactly as specified by the
+operating system's API.
+@end deffn
+
+The following additional accessor is defined under OS/2:
+
+@deffn procedure file-attributes/allocated-length attributes
+The allocated length of the file, which can be larger than the length of
+the file due to fixed-length allocation units.
+@end deffn
+
+@node Directory Reader, Date and Time, File Manipulation, Operating-System Interface
+@section Directory Reader
+@cindex directory, reading
+
+@deffn procedure directory-read directory [sort?]
+@var{Directory} must be an object that can be converted into a pathname
+by@* @code{->pathname}.  The directory specified by @var{directory} is
+read, and the contents of the directory is returned as a newly allocated
+list of absolute pathnames.  The result is sorted according to the usual
+sorting conventions for directories, unless @var{sort?} is specified as
+@code{#f}.  If @var{directory} has name, type, or version components,
+the returned list contains only those pathnames whose name, type, and
+version components match those of @var{directory}; @code{wild} or
+@code{#f} as one of these components means ``match anything''.
+
+The OS/2 and Windows implementations support ``globbing'', in which the
+characters @code{*} and @code{?} are interpreted to mean ``match
+anything'' and ``match any character'', respectively.  This ``globbing''
+is supported only in the file part of @var{directory}.
+@end deffn
+
+@node Date and Time, Machine Time, Directory Reader, Operating-System Interface
+@section Date and Time
+
+MIT/GNU Scheme provides a simple set of procedures for manipulating date
+and time information.  There are four time representations, each of
+which serves a different purpose.  Each representation may be
+converted to any of the others.
+
+@cindex universal time
+@cindex time, universal
+The primary time representation, @dfn{universal time}, is an exact
+non-negative integer counting the number of seconds that have elapsed
+since midnight January 1, 1900 UTC.  (UTC stands for @dfn{Coordinated
+Universal Time}, and is the modern name for Greenwich Mean Time.)  This
+format is produced by @code{get-universal-time} and
+@code{decoded-time->universal-time}.
+
+@cindex decoded time
+@cindex time, decoded
+The second representation, @dfn{decoded time}, is a record structure in
+which the time is broken down into components, such as month, minute,
+etc.  Decoded time is always relative to a particular time zone, which
+is a component of the structure.  This format is produced by
+@code{global-decoded-time} and @code{local-decoded-time}.
+
+@cindex file time
+@cindex time, file
+The third representation, @dfn{file time}, is an exact non-negative
+integer that is larger for increasing time.  Unlike universal time,
+this representation is operating-system dependent.  This format is
+produced by all of the file-attribute procedures, for example
+@code{file-modification-time} and @code{file-attributes}.
+
+@cindex time, string
+The fourth representation, the @dfn{time string}, is an external
+representation for time.  This format is defined by RFC-822,
+@cite{Standard for the format of ARPA Internet text messages}, with the
+modification that years are represented as four-digit numbers rather
+than two-digit numbers.  This format is the standard format for Internet
+email and numerous other network protocols.
+
+Within this section, argument variables named @var{universal-time},
+@var{decoded-time}, @var{file-time}, and @var{time-string} are
+respectively required to be of the corresponding format.
+
+@menu
+* Universal Time::              
+* Decoded Time::                
+* File Time::                   
+* Time-Format Conversion::      
+* External Representation of Time::  
+@end menu
+
+@node Universal Time, Decoded Time, Date and Time, Date and Time
+@subsection Universal Time
+
+@deffn procedure get-universal-time
+Return the current time in universal format.
+
+@example
+(get-universal-time) @result{} 3131453078
+@end example
+@end deffn
+
+@defvr variable epoch
+@code{epoch} is the representation of midnight January 1, 1970 UTC in
+universal-time format.
+
+@example
+epoch @result{} 2208988800
+@end example
+@end defvr
+
+@node Decoded Time, File Time, Universal Time, Date and Time
+@subsection Decoded Time
+
+Objects representing standard time components, such as seconds and
+minutes, are required to be exact non-negative integers.  Seconds and
+minutes must be inclusively between @code{0} and @code{59}; hours
+between @code{0} and @code{23}; days between @code{1} and @code{31};
+months between @code{1} and @code{12}; years are represented in
+``four-digit'' form, in which 1999 is represented as @code{1999} ---
+@emph{not} @code{99}.
+
+@deffn procedure local-decoded-time
+Return the current time in decoded format.  The decoded time is
+represented in the local time zone.
+
+@example
+@group
+(pp (local-decoded-time))
+@print{} #[decoded-time 76]
+@print{} (second 2)
+@print{} (minute 12)
+@print{} (hour 11)
+@print{} (day 27)
+@print{} (month 4)
+@print{} (year 1999)
+@print{} (day-of-week 1)
+@print{} (daylight-savings-time 1)
+@print{} (zone 5)
+@end group
+@end example
+@end deffn
+
+@deffn procedure global-decoded-time
+Return the current time in decoded format.  The decoded time is
+represented in UTC.
+
+@example
+@group
+(pp (global-decoded-time))
+@print{} #[decoded-time 77]
+@print{} (second 8)
+@print{} (minute 12)
+@print{} (hour 15)
+@print{} (day 27)
+@print{} (month 4)
+@print{} (year 1999)
+@print{} (day-of-week 1)
+@print{} (daylight-savings-time 0)
+@print{} (zone 0)
+@end group
+@end example
+@end deffn
+
+@deffn procedure make-decoded-time second minute hour day month year [zone]
+Return a new decoded-time object representing the given time.  The
+arguments must be valid components according to the above rules, and
+must form a valid date.
+
+If @var{zone} is not supplied or is @code{#f}, the resulting decoded
+time will be represented in the local time zone.  Otherwise, @var{zone}
+must be a valid time zone, and the result will be represented in that
+zone.
+
+@strong{Warning}: because this procedure depends on the operating
+system's runtime library, it is not capable of representing all dates.
+In particular, on most unix systems, it is not possible to encode dates
+that occur prior to midnight, January 1, 1970 UTC.  Attempting to do
+this will signal an error.
+
+@example
+@group
+(pp (make-decoded-time 0 9 11 26 3 1999))
+@print{} #[decoded-time 19]
+@print{} (second 0)
+@print{} (minute 9)
+@print{} (hour 11)
+@print{} (day 26)
+@print{} (month 3)
+@print{} (year 1999)
+@print{} (day-of-week 4)
+@print{} (daylight-savings-time 0)
+@print{} (zone 5)
+@end group
+
+@group
+(pp (make-decoded-time 0 9 11 26 3 1999 3))
+@print{} #[decoded-time 80]
+@print{} (second 0)
+@print{} (minute 9)
+@print{} (hour 11)
+@print{} (day 26)
+@print{} (month 3)
+@print{} (year 1999)
+@print{} (day-of-week 4)
+@print{} (daylight-savings-time 0)
+@print{} (zone 3)
+@end group
+@end example
+@end deffn
+
+@deffn procedure decoded-time/second decoded-time
+@deffnx procedure decoded-time/minute decoded-time
+@deffnx procedure decoded-time/hour decoded-time
+@deffnx procedure decoded-time/day decoded-time
+@deffnx procedure decoded-time/month decoded-time
+@deffnx procedure decoded-time/year decoded-time
+Return the corresponding component of @var{decoded-time}.
+
+@example
+@group
+(decoded-time/second (local-decoded-time)) @result{} 17
+(decoded-time/year (local-decoded-time)) @result{} 1999
+(decoded-time/day (local-decoded-time)) @result{} 26
+@end group
+@end example
+@end deffn
+
+@deffn procedure decoded-time/day-of-week decoded-time
+Return the day of the week on which @var{decoded-time} falls, encoded
+as an exact integer between @code{0} (Monday) and @code{6} (Sunday),
+inclusive.
+
+@example
+(decoded-time/day-of-week (local-decoded-time)) @result{} 4
+@end example
+@end deffn
+
+@deffn procedure decoded-time/daylight-savings-time? decoded-time
+Return @code{#t} if @var{decoded-time} is represented using daylight
+savings time.  Otherwise return @code{#f}.
+
+@example
+(decoded-time/daylight-savings-time? (local-decoded-time))
+                  @result{} #f
+@end example
+@end deffn
+
+@deffn procedure decoded-time/zone decoded-time
+Return the time zone in which @var{decoded-time} is represented.  This
+is an exact rational number between @code{-24} and @code{+24} inclusive,
+that when multiplied by @code{3600} is an integer.  The value is the
+number of hours west of UTC.
+
+@example
+(decoded-time/zone (local-decoded-time)) @result{} 5
+@end example
+@end deffn
+
+@deffn procedure time-zone? object
+Returns @code{#t} if @var{object} is an exact number between @code{-24}
+and @code{+24} inclusive, that when multiplied by @code{3600} is an
+integer.
+
+@example
+@group
+(time-zone? -5)   @result{} #t
+(time-zone? 11/2) @result{} #t
+(time-zone? 11/7) @result{} #f
+@end group
+@end example
+@end deffn
+
+@deffn procedure month/max-days month
+Returns the maximum number of days possible in @var{month}.  @var{Month}
+must be an exact integer between @code{1} and @code{12} inclusive.
+
+@example
+@group
+(month/max-days 2) @result{} 29
+(month/max-days 3) @result{} 31
+(month/max-days 4) @result{} 30
+@end group
+@end example
+@end deffn
+
+@node File Time, Time-Format Conversion, Decoded Time, Date and Time
+@subsection File Time
+
+As stated above, file time is operating-system dependent.  As of this
+writing, two formats are used.  For unix and Windows systems, file time
+is the number of seconds since midnight January 1, 1970 UTC (the
+standard unix time convention).
+
+OS/2 represents file time as a 32-bit unsigned integer, in which the
+time components are broken down into unsigned bit fields.  The
+components are always stated in local time.  The fields, from MSB to
+LSB, are:
+
+@itemize @bullet
+@item
+7 bits representing the year, relative to 1900.
+
+@item
+4 bits representing the month, numbered 1 to 12.
+
+@item
+5 bits representing the day of the month, numbered 1 to 31.
+
+@item
+5 bits representing the hour of the day, numbered 0 to 23.
+
+@item
+6 bits representing the minute, numbered 0 to 59.
+
+@item
+5 bits representing the second.  This field is unusual in that it counts
+units of two seconds, so it is a number between 0 and 29, representing
+second counts corresponding to 0 through 58.
+@end itemize
+
+The following procedures generate their results in file-time format:
+
+@example
+@group
+file-access-time
+file-access-time-direct
+file-access-time-indirect
+file-modification-time
+file-modification-time-direct
+file-modification-time-indirect
+file-attributes/access-time
+file-attributes/modification-time
+file-attributes/change-time
+@end group
+@end example
+
+@noindent
+Additionally, @code{set-file-times!} accepts its time arguments in
+file-time format.
+
+@node Time-Format Conversion, External Representation of Time, File Time, Date and Time
+@subsection Time-Format Conversion
+
+The procedures described in this section convert times from one format
+to another.
+
+@deffn procedure universal-time->local-decoded-time universal-time
+@deffnx procedure universal-time->global-decoded-time universal-time
+Converts an argument in universal-time format to decoded-time format.
+The result is in the local time zone or UTC, respectively.
+
+@example
+@group
+(pp (universal-time->local-decoded-time (get-universal-time)))
+@print{} #[decoded-time 21]
+@print{} (second 23)
+@print{} (minute 57)
+@print{} (hour 17)
+@print{} (day 29)
+@print{} (month 4)
+@print{} (year 1999)
+@print{} (day-of-week 3)
+@print{} (daylight-savings-time 1)
+@print{} (zone 5)
+@end group
+
+@group
+(pp (universal-time->global-decoded-time
+     (get-universal-time)))
+@print{} #[decoded-time 22]
+@print{} (second 27)
+@print{} (minute 57)
+@print{} (hour 21)
+@print{} (day 29)
+@print{} (month 4)
+@print{} (year 1999)
+@print{} (day-of-week 3)
+@print{} (daylight-savings-time 0)
+@print{} (zone 0)
+@end group
+@end example
+@end deffn
+
+@deffn procedure universal-time->file-time universal-time
+Converts an argument in universal-time format to file-time format.
+
+@example
+@group
+(universal-time->file-time (get-universal-time))
+    @result{} 925422988
+@end group
+@end example
+@end deffn
+
+@deffn procedure universal-time->local-time-string universal-time
+@deffnx procedure universal-time->global-time-string universal-time
+Converts an argument in universal-time format to a time string.  The
+result is in the local time zone or UTC, respectively.
+
+@example
+@group
+(universal-time->local-time-string (get-universal-time))
+    @result{} "Thu, 29 Apr 1999 17:55:31 -0400"
+(universal-time->global-time-string (get-universal-time))
+    @result{} "Thu, 29 Apr 1999 21:55:51 +0000"
+@end group
+@end example
+@end deffn
+
+@deffn procedure decoded-time->universal-time decoded-time
+Converts an argument in decoded-time format to universal-time format.
+
+@example
+@group
+(decoded-time->universal-time (local-decoded-time))
+    @result{} 3134411942
+(decoded-time->universal-time (global-decoded-time))
+    @result{} 3134411947
+@end group
+@end example
+@end deffn
+
+@deffn procedure decoded-time->file-time decoded-time
+Converts an argument in decoded-time format to file-time format.
+
+@example
+@group
+(decoded-time->file-time (local-decoded-time))
+    @result{} 925423191
+(decoded-time->file-time (global-decoded-time))
+    @result{} 925423195
+@end group
+@end example
+@end deffn
+
+@deffn procedure decoded-time->string decoded-time
+Convert an argument in decoded-time format to a time string.
+
+@example
+@group
+(decoded-time->string (local-decoded-time))
+    @result{} "Thu, 29 Apr 1999 18:00:43 -0400"
+(decoded-time->string (global-decoded-time))
+    @result{} "Thu, 29 Apr 1999 22:00:46 +0000"
+@end group
+@end example
+@end deffn
+
+@deffn procedure file-time->universal-time file-time
+Converts an argument in universal-time format to file-time format.
+
+@example
+@group
+(file-time->universal-time (file-modification-time "/"))
+    @result{} 3133891907
+@end group
+@end example
+@end deffn
+
+@deffn procedure file-time->local-decoded-time file-time
+@deffnx procedure file-time->global-decoded-time file-time
+Converts an argument in file-time format to decoded-time format.  The
+result is in the local time zone or UTC, respectively.
+
+@example
+@group
+(pp (file-time->local-decoded-time
+     (file-modification-time "/")))
+@print{} #[decoded-time 26]
+@print{} (second 47)
+@print{} (minute 31)
+@print{} (hour 17)
+@print{} (day 23)
+@print{} (month 4)
+@print{} (year 1999)
+@print{} (day-of-week 4)
+@print{} (daylight-savings-time 1)
+@print{} (zone 5)
+@end group
+
+@group
+(pp (file-time->global-decoded-time
+     (file-modification-time "/")))
+@print{} #[decoded-time 27]
+@print{} (second 47)
+@print{} (minute 31)
+@print{} (hour 21)
+@print{} (day 23)
+@print{} (month 4)
+@print{} (year 1999)
+@print{} (day-of-week 4)
+@print{} (daylight-savings-time 0)
+@print{} (zone 0)
+@end group
+@end example
+@end deffn
+
+@deffn procedure file-time->local-time-string file-time
+@deffnx procedure file-time->global-time-string file-time
+Converts an argument in file-time format to a time string.  The result
+is in the local time zone or UTC, respectively.
+
+@example
+@group
+(file-time->local-time-string (file-modification-time "/"))
+    @result{} "Fri, 23 Apr 1999 17:31:47 -0400"
+(file-time->global-time-string (file-modification-time "/"))
+    @result{} "Fri, 23 Apr 1999 21:31:47 +0000"
+@end group
+@end example
+@end deffn
+
+@deffn procedure string->universal-time time-string
+Converts a time-string argument to universal-time format.
+
+@example
+@group
+(string->universal-time "Fri, 23 Apr 1999 21:31:47 +0000")
+    @result{} 3133888307
+(string->universal-time "Fri, 23 Apr 1999 17:31:47 -0400")
+    @result{} 3133888307
+@end group
+@end example
+@end deffn
+
+@deffn procedure string->decoded-time time-string
+Converts a time-string argument to decoded-time format.
+
+@example
+@group
+(pp (string->decoded-time "Fri, 23 Apr 1999 17:31:47 -0400"))
+@print{} #[decoded-time 30]
+@print{} (second 47)
+@print{} (minute 31)
+@print{} (hour 17)
+@print{} (day 23)
+@print{} (month 4)
+@print{} (year 1999)
+@print{} (day-of-week 4)
+@print{} (daylight-savings-time 0)
+@print{} (zone 4)
+@end group
+@end example
+@end deffn
+
+@deffn procedure string->file-time time-string
+Converts a time-string argument to file-time format.
+
+@example
+@group
+(string->file-time "Fri, 23 Apr 1999 17:31:47 -0400")
+    @result{} 924899507
+@end group
+@end example
+@end deffn
+
+@node External Representation of Time,  , Time-Format Conversion, Date and Time
+@subsection External Representation of Time
+
+The normal external representation for time is the time string, as
+described above.  The procedures in this section generate alternate
+external representations of time which are more verbose and may be more
+suitable for presentation to human readers.
+
+@deffn procedure decoded-time/date-string decoded-time
+@deffnx procedure decoded-time/time-string decoded-time
+These procedures return strings containing external representations of
+the date and time, respectively, represented by @var{decoded-time}.  The
+results are implicitly in local time.
+
+@example
+@group
+(decoded-time/date-string (local-decoded-time))
+    @result{} "Tuesday March 30, 1999"
+(decoded-time/time-string (local-decoded-time))
+    @result{} "11:22:38 AM"
+@end group
+@end example
+@end deffn
+
+@deffn procedure day-of-week/long-string day-of-week
+@deffnx procedure day-of-week/short-string day-of-week
+Returns a string representing the given @var{day-of-week}.  The argument
+must be an exact non-negative integer between @code{0} and @code{6}
+inclusive.  @code{day-of-week/long-string} returns a long string that
+fully spells out the name of the day.  @code{day-of-week/short-string}
+returns a shortened string that abbreviates the day to three letters.
+
+@example
+@group
+(day-of-week/long-string 0)  @result{} "Monday"
+(day-of-week/short-string 0) @result{} "Mon"
+(day-of-week/short-string 3) @result{} "Thu"
+@end group
+@end example
+@end deffn
+
+@deffn procedure month/long-string month
+@deffnx procedure month/short-string month
+Returns a string representing the given @var{month}.  The argument must
+be an exact non-negative integer between @code{1} and @code{12}
+inclusive.  @code{month/long-string} returns a long string that fully
+spells out the name of the month.  @code{month/short-string} returns a
+shortened string that abbreviates the month to three letters.
+
+@example
+@group
+(month/long-string 1)   @result{} "January"
+(month/short-string 1)  @result{} "Jan"
+(month/short-string 10) @result{} "Oct"
+@end group
+@end example
+@end deffn
+
+@deffn procedure time-zone->string
+Returns a string corresponding to the given time zone.  This string is
+the same string that is used to generate RFC-822 time strings.
+
+@example
+@group
+(time-zone->string 5)    @result{} "-0500"
+(time-zone->string -4)   @result{} "+0400"
+(time-zone->string 11/2) @result{} "-0530"
+@end group
+@end example
+@end deffn
+
+@node Machine Time, Subprocesses, Date and Time, Operating-System Interface
+@section Machine Time
+
+The previous section dealt with procedures that manipulate clock time.
+This section describes procedures that deal with computer time: elapsed
+CPU time, elapsed real time, and so forth.  These procedures are useful
+for measuring the amount of time it takes to execute code.
+
+@cindex tick
+Some of the procedures in this section manipulate a time representation
+called @dfn{ticks}.  A tick is a unit of time that is unspecified here
+but can be converted to and from seconds by supplied procedures.  A
+count in ticks is represented as an exact integer.  At present each tick
+is one millisecond, but this may change in the future.
+
+@deffn procedure process-time-clock
+Returns the amount of process time, in ticks, that has elapsed since
+Scheme was started.  Process time is measured by the operating system
+and is time during which the Scheme process is computing.  It does not
+include time in system calls, but depending on the operating system it
+may include time used by subprocesses.
+
+@example
+(process-time-clock) @result{} 21290
+@end example
+@end deffn
+
+@deffn procedure real-time-clock
+Returns the amount of real time, in ticks, that has elapsed since Scheme
+was started.  Real time is the time measured by an ordinary clock.
+
+@example
+(real-time-clock) @result{} 33474836
+@end example
+@end deffn
+
+@deffn procedure internal-time/ticks->seconds ticks
+Returns the number of seconds corresponding to @var{ticks}.  The result
+is always a real number.
+
+@example
+@group
+(internal-time/ticks->seconds 21290) @result{} 21.29
+(internal-time/ticks->seconds 33474836) @result{} 33474.836
+@end group
+@end example
+@end deffn
+
+@deffn procedure internal-time/seconds->ticks seconds
+Returns the number of ticks corresponding to @var{seconds}.
+@var{Seconds} must be a real number.
+
+@example
+@group
+(internal-time/seconds->ticks 20.88) @result{} 20880
+(internal-time/seconds->ticks 20.83) @result{} 20830
+@end group
+@end example
+@end deffn
+
+@deffn procedure system-clock
+Returns the amount of process time, in seconds, that has elapsed since
+Scheme was started.  Roughly equivalent to:
+
+@example
+(internal-time/ticks->seconds (process-time-clock))
+@end example
+
+@noindent
+Example:
+
+@example
+(system-clock) @result{} 20.88
+@end example
+@end deffn
+
+@deffn procedure runtime
+Returns the amount of process time, in seconds, that has elapsed since
+Scheme was started.  However, it does not include time spent in garbage
+collection.
+
+@example
+(runtime) @result{} 20.83
+@end example
+@end deffn
+
+@deffn procedure with-timings thunk receiver
+Calls @var{thunk} with no arguments.  After @var{thunk} returns,
+@var{receiver} is called with three arguments describing the time spent
+while computing @var{thunk}: the elapsed run time, the amount of time
+spent in the garbage collector, and the elapsed real time.  All three
+times are in ticks.
+
+This procedure is most useful for doing performance measurements, and is
+designed to have relatively low overhead.
+
+@example
+@group
+(with-timings
+ (lambda () @r{@dots{} hairy computation @dots{}})
+ (lambda (run-time gc-time real-time)
+   (write (internal-time/ticks->seconds run-time))
+   (write-char #\space)
+   (write (internal-time/ticks->seconds gc-time))
+   (write-char #\space)
+   (write (internal-time/ticks->seconds real-time))
+   (newline)))
+@end group
+@end example
+@end deffn
+
+@deffn procedure measure-interval runtime? procedure
+Calls @var{procedure}, passing it the current process time, in seconds,
+as an argument.  The result of this call must be another procedure.
+When @var{procedure} returns, the resulting procedure is
+tail-recursively called with the ending time, in seconds, as an
+argument.
+
+If @var{runtime?} is @code{#f}, the elapsed time is deducted from the
+elapsed system time returned by @code{runtime}.
+
+While this procedure can be used for time measurement, its interface is
+somewhat clumsy for that purpose.  We recommend that you use
+@code{with-timings} instead, because it is more convenient and has lower
+overhead.
+
+@example
+@group
+(measure-interval #t
+                  (lambda (start-time)
+                    (let ((v @r{@dots{} hairy computation @dots{}}))
+                      (lambda (end-time)
+                        (write (- end-time start-time))
+                        (newline)
+                        v))))
+@end group
+@end example
+@end deffn
+
+@node Subprocesses, TCP Sockets, Machine Time, Operating-System Interface
+@section Subprocesses
+
+@cindex subprocess
+@cindex synchronous subprocess
+MIT/GNU Scheme provides the ability to run and control subprocesses.  This
+support is divided into two parts: a low-level set of primitives that
+maps onto the underlying operating system's process-control primitives,
+and a high-level set of procedures for starting a subprocess and running
+it to completion in a single call.  Subprocesses that are run in the
+latter fashion are referred to as @dfn{synchronous}, because they are
+started and stopped in synchrony with a Scheme procedure call.
+
+This chapter documents Scheme's high-level synchronous-subprocess
+support.  The low-level support is not documented but is available for
+those who are willing to read the source code.
+
+Synchronous-subprocess support is a run-time-loadable option.  To use
+it, execute
+
+@example
+(load-option 'synchronous-subprocess)
+@end example
+
+@noindent
+once before calling it.
+
+@menu
+* Subprocess Procedures::       
+* Subprocess Conditions::       
+* Subprocess Options::          
+@end menu
+
+@node Subprocess Procedures, Subprocess Conditions, Subprocesses, Subprocesses
+@subsection Subprocess Procedures
+
+There are two commands for running synchronous subprocesses under
+Scheme.  @code{run-shell-command} is very simple to use, provides access
+to all shell features, and is to be preferred in most situations.
+@code{run-synchronous-subprocess} allows direct execution of a program
+and precise control of the command-line arguments passed to the program,
+but does not provide file globbing, I/O redirection, or other shell
+features.
+
+@deffn procedure run-shell-command command option @dots{}
+Runs @var{command}, which must be a string.  @var{Command} is passed to
+a command shell for interpretation; how the shell is chosen is detailed
+below.
+
+The @var{option}s are a sequence of keyword/value pairs that specify
+optional behavior.  See below for more information about options.
+
+@code{run-shell-command} waits until the subprocess completes its
+execution and returns the exit code from the subprocess.  If the
+subprocess is killed or stopped, an error is signalled and the procedure
+does not return.
+@end deffn
+
+@deffn procedure run-synchronous-subprocess program arguments option @dots{}
+Runs @var{program}, passing it the given command-line @var{arguments}.
+@var{Program} must be either the name of a program on the path, or else
+a pathname to a specific program.  @var{Arguments} must be a list of
+strings; each string is a single command-line argument to the program.
+
+The @var{option}s are a sequence of keyword/value pairs that specify
+optional behavior.  See below for more information about options.
+
+@code{run-synchronous-subprocess} waits until the subprocess completes
+its execution and returns the exit code from the subprocess.  If the
+subprocess is killed or stopped, an error is signalled and the procedure
+does not return.
+@end deffn
+
+@node Subprocess Conditions, Subprocess Options, Subprocess Procedures, Subprocesses
+@subsection Subprocess Conditions
+
+If a subprocess spawned by one of the above procedures is killed or
+suspended, then one of the following errors will be signalled.
+
+@deffn {condition type} condition-type:subprocess-signalled subprocess reason
+This condition type is a subtype of
+@code{condition-type:subprocess-abnormal-termination}.  It is signalled
+when the subprocess is killed.
+
+@var{Subprocess} is an object that represents the subprocess involved.
+The internals of this object can be accessed but the interface is not
+documented at this time; see the source code for details.
+
+@var{Reason} is interesting only on unix systems, where it is the signal
+that killed the process.  On other systems it has a fixed value that
+conveys no useful information.
+@end deffn
+
+@deffn {condition type} condition-type:subprocess-stopped subprocess reason
+This condition type is a subtype of
+@code{condition-type:subprocess-abnormal-termination}.  It is signalled
+when the subprocess is stopped or suspended.
+
+@var{Subprocess} is an object that represents the subprocess involved.
+The internals of this object can be accessed but the interface is not
+documented at this time; see the source code for details.
+
+@var{Reason} is interesting only on unix systems, where it is the signal
+that stopped the process.  On other systems it has a fixed value that
+conveys no useful information.
+@end deffn
+
+@deffn {condition type} condition-type:subprocess-abnormal-termination subprocess reason
+This condition type is a subtype of @code{condition-type:error}.  This
+is an abstract type that is never signalled.  It is provided so that
+condition handlers can be bound to it.
+@end deffn
+
+@node Subprocess Options,  , Subprocess Conditions, Subprocesses
+@subsection Subprocess Options
+
+The following subprocess options may be passed to
+@code{run-shell-command} or @code{run-synchronous-subprocess}.  These
+options are passed as alternating keyword/value pairs, for example:
+
+@example
+@group
+(run-shell-command "ls /"
+                   'output my-output-port
+                   'output-buffer-size 8192)
+@end group
+@end example
+
+@noindent
+The example shows a shell command being run with two options specified:
+@code{output} and @code{output-buffer-size}.
+
+@deffn {subprocess option} input port
+Specifies the standard input of the subprocess.  @var{Port} may be an
+input port, in which case characters are read from @var{port} and fed to
+the subprocess until @var{port} reaches end-of-file.  Alternatively,
+@var{port} may be @code{#f}, indicating that the subprocess has no
+standard input.
+
+The default value of this option is @code{#f}.
+
+@example
+@group
+(call-with-input-file "foo.in"
+  (lambda (port)
+    (run-shell-command "cat > /dev/null" 'input port)))
+@end group
+@end example
+@end deffn
+
+@deffn {subprocess option} input-line-translation line-ending
+Specifies how line-endings should be translated when writing characters
+to the subprocess.  Ignored if the @code{input} option is @code{#f}.
+@var{Line-ending} must be either a string specifying the line ending, or
+the symbol @code{default}, meaning to use the operating system's
+standard line ending.  In either case, newline characters to be written
+to the @code{input} port are translated to the specified line ending
+before being written.
+
+The default value of this option is @code{default}.
+
+@example
+@group
+(call-with-input-file "foo.in"
+  (lambda (port)
+    (run-shell-command "cat > /dev/null"
+                       'input port
+                       'input-line-translation "\r\n")))
+@end group
+@end example
+@end deffn
+
+@deffn {subprocess option} input-buffer-size n
+Specifies the size of the input buffer for the standard input of the
+subprocess.  (This is the buffer on the Scheme side, and has nothing to
+do with any buffering done on the subprocess side.)  Ignored if the
+@code{input} option is @code{#f}.  @var{N} must be an exact positive
+integer specifying the number of characters the buffer can hold.
+
+The default value of this option is @code{512}.
+
+@example
+@group
+(call-with-input-file "foo.in"
+  (lambda (port)
+    (run-shell-command "cat > /dev/null"
+                       'input port
+                       'input-buffer-size 4096)))
+@end group
+@end example
+@end deffn
+
+@deffn {subprocess option} output port
+Specifies the standard output and standard error of the subprocess.
+@var{Port} may be an output port, in which case characters are read from
+the subprocess and fed to @var{port} until the subprocess finishes.
+Alternatively, @var{port} may be @code{#f}, indicating that the
+subprocess has no standard output or standard error.
+
+The default value of this option is the value of
+@code{(current-output-port)}.
+
+@example
+@group
+(call-with-output-file "foo.out"
+  (lambda (port)
+    (run-shell-command "ls -la /etc" 'output port)))
+@end group
+@end example
+@end deffn
+
+@deffn {subprocess option} output-line-translation line-ending
+Specifies how line-endings should be translated when reading characters
+from the standard output of the subprocess.  Ignored if the
+@code{output} option is @code{#f}.  @var{Line-ending} must be either a
+string specifying the line ending, or the symbol @code{default}, meaning
+to use the operating system's standard line ending.  In either case,
+newline characters read from the subprocess port are translated to the
+specified line ending.
+
+The default value of this option is @code{default}.
+
+@example
+@group
+(call-with-output-file "foo.out"
+  (lambda (port)
+    (run-shell-command "ls -la /etc"
+                       'output port
+                       'output-line-translation "\r\n")))
+@end group
+@end example
+@end deffn
+
+@deffn {subprocess option} output-buffer-size n
+Specifies the size of the output buffer for the standard output of the
+subprocess.  (This is the buffer on the Scheme side, and has nothing to
+do with any buffering done on the subprocess side.)  Ignored if the
+@code{output} option is @code{#f}.  @var{N} must be an exact positive
+integer specifying the number of characters the buffer can hold.
+
+The default value of this option is @code{512}.
+
+@example
+@group
+(call-with-output-file "foo.out"
+  (lambda (port)
+    (run-shell-command "ls -la /etc"
+                       'output port
+                       'output-buffer-size 4096)))
+@end group
+@end example
+@end deffn
+
+@deffn {subprocess option} redisplay-hook thunk
+Specifies that @var{thunk} is to be run periodically when output from
+the subprocess is available.  @var{Thunk} must be a procedure of no
+arguments, or @code{#f} indicating that no hook is supplied.  This
+option is mostly useful for interactive systems.  For example, the Edwin
+text editor uses this to update output buffers when running some
+subprocesses.
+
+The default value of this option is @code{#f}.
+
+@example
+@group
+(run-shell-command "ls -la /etc"
+                   'redisplay-hook
+                   (lambda ()
+                     (update-buffer-contents buffer)))
+@end group
+@end example
+@end deffn
+
+@deffn {subprocess option} environment environment
+Specifies the environment variables that are to be used for the
+subprocess.  @var{Environment} must be either a vector of strings or
+@code{#f} indicating the default environment.  If it is a vector of
+strings, each string must be a name/value pair where the name and value
+are separated by an equal sign, for example, @code{"foo=bar"}.  To
+define a variable with no value, just omit the value, as in @code{"foo="}.
+
+@vindex scheme-subprocess-environment
+Note that the variable @code{scheme-subprocess-environment} is bound to
+the default subprocess environment.
+
+The default value of this option is @code{#f}.
+
+@example
+@group
+(run-shell-command "ls -la /etc"
+                   'environment
+                   (let* ((v scheme-subprocess-environment)
+                          (n (vector-length v))
+                          (v (vector-grow v (+ n 1))))
+                     (vector-set! v n "TERM=none")
+                     v))
+@end group
+@end example
+@end deffn
+
+@deffn {subprocess option} working-directory pathname
+Specifies the working directory in which the subprocess will run.
+
+The default value of this option is @code{(working-directory-pathname)}.
+
+@example
+@group
+(run-shell-command "ls -la" 'working-directory "/etc/")
+@end group
+@end example
+@end deffn
+
+@deffn {subprocess option} use-pty? boolean
+This option is meaningful only on unix systems; on other systems it is
+ignored.  Specifies whether to communicate with the subprocess using
+@sc{pty} devices; if true, @sc{pty}s will be used, otherwise pipes will
+be used.
+
+The default value of this option is @code{#f}.
+
+@example
+@group
+(run-shell-command "ls -la /etc" 'use-pty? #t)
+@end group
+@end example
+@end deffn
+
+@deffn {subprocess option} shell-file-name pathname
+Specifies the shell program to use for @code{run-shell-command}.
+
+The default value of this option is @code{(os/shell-file-name)}.  This
+is the value of the environment variable @code{SHELL}, or if
+@code{SHELL} is not set, the value is operating-system dependent as
+follows:
+
+@itemize @bullet
+@item
+On unix systems, @file{/bin/sh} is used.
+
+@item
+On OS/2 systems, the value of the environment variable @code{COMSPEC} is
+used, or if that is not set, @file{cmd.exe} on the current path.
+
+@item
+On Windows systems, the value of the environment variable @code{COMSPEC}
+is used.  If that is not set, @file{cmd.exe} is used for Windows NT, or
+@file{command.com} is used for Windows 9x; in each case the shell is
+found by searching the path.
+@end itemize
+
+@example
+@group
+(run-shell-command "ls -la /etc"
+                   'shell-file-name "/usr/local/bin/bash")
+@end group
+@end example
+@end deffn
+
+@node TCP Sockets, Miscellaneous OS Facilities, Subprocesses, Operating-System Interface
+@section TCP Sockets
+
+@cindex socket
+MIT/GNU Scheme provides access to @dfn{sockets}, which are a mechanism for
+inter-process communication.  @sc{tcp} stream sockets are supported,
+which communicate between computers over a @sc{tcp/ip} network.
+@sc{tcp} sockets are supported on all operating systems.
+
+@cindex client socket
+@cindex server socket
+@sc{tcp} sockets have two distinct interfaces: one interface to
+implement a @dfn{client} and another to implement a @dfn{server}.  The
+basic protocol is that servers set up a listening port and wait for
+connections from clients.  Implementation of clients is simpler and will
+be treated first.
+
+@cindex hostname, TCP
+The socket procedures accept two special arguments, called
+@var{host-name} and @var{service}.  @var{Host-name} is a string which
+must be the name of an internet host.  It is looked up using the
+ordinary lookup rules for your computer.  For example, if your host is
+@code{foo.mit.edu} and @var{host-name} is @code{"bar"}, then it
+specifies @code{bar.mit.edu}.
+
+@cindex service, TCP
+@cindex port number, TCP
+@var{Service} specifies the service to which you will connect.  A
+networked computer normally provides several different services, such as
+telnet or @acronym{FTP}.  Each service is associated with a unique
+@dfn{port number}; for example, the @code{"www"} service is associated
+with port @code{80}.  The @var{service} argument specifies the port
+number, either as a string, or directly as an exact non-negative
+integer.  Port strings are decoded by the operating system using a
+table; for example, on unix the table is in @file{/etc/services}.
+Usually you will use a port string rather than a number.
+
+@deffn procedure open-tcp-stream-socket host-name service [buffer-size [line-translation]]
+@code{open-tcp-stream-socket} opens a connection to the host specified
+by @var{host-name}.  @var{Host-name} is looked up using the ordinary
+lookup rules for your computer.  The connection is established to the
+service specified by @var{service}.  The returned value is an
+@acronym{I/O} port, to which you can read and write characters using
+ordinary Scheme @acronym{I/O} procedures such as @code{read-char} and
+@code{write-char}.
+
+@var{Buffer-size} specifies the size of the read and write buffers used
+by the port; if this is unspecified or @code{#f}, the buffers will hold
+@code{4096} bytes.
+
+@var{Line-translation} specifies how end-of-line characters will be
+translated when reading or writing to the socket.  If this is
+unspecified or @code{#f}, then lines will be terminated by @sc{cr-lf},
+which is the standard for most internet protocols.  Otherwise, it must
+be a string, which specifies the line-ending character sequence to use.
+
+When you wish to close the connection, just use @code{close-port}.
+
+As an example, here is how you can open a connection to a web server:
+
+@example
+(open-tcp-stream-socket "web.mit.edu" "www")
+@end example
+@end deffn
+
+@cindex server socket
+Next we will treat setting up a @sc{tcp} server, which is slightly more
+complicated.  Creating a server is a two-part process.  First, you must
+open a @dfn{server socket}, which causes the operating system to listen
+to the network on a port that you specify.  Once the server socket is
+opened, the operating system will allow clients to connect to your
+computer on that port.
+
+In the second step of the process, you @dfn{accept} the connection,
+which completes the connection initiated by the client, and allows you
+to communicate with the client.  Accepting a connection does not affect
+the server socket; it continues to listen for additional client
+connections.  You can have multiple client connections to the same
+server socket open simultaneously.
+
+@deffn procedure open-tcp-server-socket service [address]
+This procedure opens a server socket that listens for connections to
+@var{service}; the socket will continue to listen until you close it.
+The returned value is a server socket object.
+
+An error is signalled if another process is already listening on the
+service.  Additionally, ports whose number is less than @code{1024} are
+privileged on many operating systems, and cannot be used by
+non-privileged processes; if @var{service} specifies such a port and you
+do not have administrative privileges, an error may be signalled.
+
+The optional argument @var{address} specifies the @acronym{IP} address
+on which the socket will listen.  If this argument is not supplied or is
+given as @code{#f}, then the socket listens on all @acronym{IP}
+addresses for this machine.  (This is equivalent to passing the result
+of calling @code{host-address-any}.)
+@end deffn
+
+@deffn procedure tcp-server-connection-accept server-socket block? peer-address [line-translation]
+Checks to see if a client has connected to @var{server-socket}.  If
+so, an @acronym{I/O} port is returned.  The returned port can be read
+and written using ordinary Scheme @acronym{I/O} procedures such as
+@code{read-char} and @code{write-char}.
+
+The argument @var{block?} says what to do if no client has connected at
+the time of the call.  If @code{#f}, it says to return immediately with
+two values of @code{#f}.  Otherwise, the call waits until a client
+connects.
+
+The argument @var{peer-address} is either @code{#f} or an @acronym{IP}
+address as allocated by @code{allocate-host-address}.  If it is an
+@acronym{IP} address, the address is modified to be the address of the
+client making the connection.
+
+The optional argument @var{line-translation} specifies how end-of-line
+characters will be translated when reading or writing to the returned
+socket.  If this is unspecified or @code{#f}, then lines will be
+terminated by @sc{cr-lf}, which is the standard for most internet
+protocols.  Otherwise, it must be a string, which specifies the
+line-ending character sequence to use.
+
+Note that closing the port returned by this procedure does not affect
+@var{server-socket}; it just closes the particular client connection
+that was opened by the call.  To close @var{server-socket}, use
+@code{close-tcp-server-socket}.
+@end deffn
+
+@deffn procedure close-tcp-server-socket server-socket
+Closes the server socket @var{server-socket}.  The operating system will
+cease listening for network connections to that service.  Client
+connections to @var{server-socket} that have already been accepted will
+not be affected.
+@end deffn
+
+@node Miscellaneous OS Facilities,  , TCP Sockets, Operating-System Interface
+@section Miscellaneous OS Facilities
+
+This section contains assorted operating-system facilities that don't
+fit into other categories.
+
+@defvr variable microcode-id/operating-system
+@defvrx variable microcode-id/operating-system-name
+@code{microcode-id/operating-system} is bound to a symbol that specifies
+the type of operating system that Scheme is running under.  There are
+three possible values: @code{unix}, @code{os/2}, or @code{nt}.
+
+@code{microcode-id/operating-system-name} is a string containing the
+same name as @code{microcode-id/operating-system}; the latter is created
+by interning the former as a symbol.
+@end defvr
+
+@defvr variable microcode-id/operating-system-variant
+This variable is a string that identifies the particular variant of the
+operating system that Scheme is running under.  Here are some of the
+possible values:
+
+@example
+@group
+"GNU/Linux"
+"FreeBSD"
+"HP-UX"
+"SunOS"
+"OS/2 2.1"
+"OS/2 4.0"
+"Microsoft Windows NT 4.0 (Build 1381; Service Pack 3)"
+"Microsoft Windows 98 (Build 410)"
+@end group
+@end example
+
+@noindent
+For Windows systems, it is recommended that you match on the prefix of
+this string and ignore the @code{"Build"} suffix.  This is because the
+suffix may contain information about service packs or fixes, while the
+prefix will be constant for a particular version of Windows.
+@end defvr
+
+The next few procedures provide access to the @dfn{domain name service}
+(@acronym{DNS}), which maintains associations between internet host
+names such as @code{"www.swiss.ai.mit.edu"} and @acronym{IP} addresses,
+such as @code{18.23.0.16}.  In MIT/GNU Scheme, we represent an internet host
+name as a string, and an @acronym{IP} address as a byte vector of length
+4 (byte vectors are just character strings that are accessed using
+@code{vector-8b-ref} rather than @code{string-ref}).  The bytes in an
+@acronym{IP} address read in the same order as they do when written out:
+
+@example
+(get-host-by-name "www.swiss") @result{} #("\022\027\000\020")
+@end example
+
+@deffn procedure get-host-by-name host-name
+Looks up the internet host name @var{host-name} using the @acronym{DNS},
+returning a vector of @acronym{IP} addresses for the corresponding host,
+or @code{#f} if there is no such host.  Usually the returned vector has
+only one element, but if a host has more than one network interface, the
+vector might have more than one element.
+
+@example
+(get-host-by-name "www.swiss") @result{} #("\022\027\000\020")
+@end example
+@end deffn
+
+@deffn procedure get-host-by-address ip-address
+Does a reverse @acronym{DNS} lookup on @var{ip-address}, returning the
+internet host name corresponding to that address, or @code{#f} if there
+is no such host.
+
+@example
+(get-host-by-address "\022\027\000\020") @result{} "swissnet.ai.mit.edu"
+@end example
+@end deffn
+
+@deffn procedure canonical-host-name host-name
+Finds the ``canonical'' internet host name for @var{host-name}.  For
+example:
+
+@example
+@group
+(canonical-host-name "zurich")    @result{} "zurich.ai.mit.edu"
+(canonical-host-name "www.swiss") @result{} "swissnet.ai.mit.edu"
+@end group
+@end example
+
+@noindent
+In both examples, the default internet domain @samp{ai.mit.edu} is added
+to @var{host-name}.  In the second example, @code{"www.swiss"} is an
+alias for another computer named @code{"swissnet"}.
+@end deffn
+
+@deffn procedure get-host-name
+Returns the string that identifies the computer that MIT/GNU Scheme is
+running on.  Usually this is an unqualified internet host name, i.e.@:
+the host name without the domain suffix:
+
+@example
+(get-host-name) @result{} "aarau"
+@end example
+@end deffn
+
+@deffn procedure os/hostname
+Returns the canonical internet host name of the computer that MIT/GNU Scheme
+is running on.  So, in contrast to the example for @code{get-host-name}:
+
+@example
+(os/hostname) @result{} "aarau.ai.mit.edu"
+@end example
+@end deffn
+
+@deffn procedure allocate-host-address
+Allocates and returns an @acronym{IP} address object.  This is just a
+string of a fixed length (current 4 bytes) into which an @acronym{IP}
+address may be stored.  This procedure is used to generate an
+appropriate argument to be passed to
+@code{tcp-server-connection-accept}.
+
+@example
+(allocate-host-address) @result{} "Xe\034\241"
+@end example
+@end deffn
+
+@deffn procedure host-address-any
+Return an @acronym{IP} address object that specifies ``any host''.  This
+object is useful only when passed as the @var{address} argument to
+@code{open-tcp-server-socket}.
+
+@example
+(host-address-any) @result{} "\000\000\000\000"
+@end example
+@end deffn
+
+@deffn procedure host-address-loopback
+@cindex loopback interface
+Return an @acronym{IP} address object that specifies the local
+@dfn{loopback} network interface.  The loopback interface is a software
+network interface that can be used only for communicating between
+processes on the same computer.  This address object is useful only when
+passed as the @var{address} argument to @code{open-tcp-server-socket}.
+
+@example
+(host-address-loopback) @result{} "\177\000\000\001"
+@end example
+@end deffn

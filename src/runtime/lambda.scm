@@ -1,22 +1,26 @@
 #| -*-Scheme-*-
 
-$Id: lambda.scm,v 14.16 2000/10/14 00:56:03 cph Exp $
+$Id: lambda.scm,v 14.19 2003/02/14 18:28:33 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2000, 2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Lambda Abstraction
@@ -84,6 +88,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		    set-clambda-unwrapped-body!
 		    set-clexpr-unwrapped-body!
 		    set-xlambda-unwrapped-body!))
+  (set! lambda-names-vector
+	(dispatch-0 'LAMBDA-NAME
+		    slambda-names-vector
+		    slexpr-names-vector
+		    xlambda-names-vector))
   (set! lambda-name
 	(dispatch-0 'LAMBDA-NAME
 		    slambda-name
@@ -325,6 +334,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		       (lambda-body-auxiliary (&triple-first xlambda)))
 		      (xlambda-unwrapped-body xlambda))))))))
 
+(define (xlambda-names-vector xlambda)
+  (&triple-second xlambda))
+
 (define (xlambda-name xlambda)
   (vector-ref (&triple-second xlambda) 0))
 
@@ -433,6 +445,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define lambda-unwrap-body!)
 (define lambda-body)
 (define set-lambda-body!)
+(define lambda-names-vector)
 (define lambda-name)
 (define lambda-bound)
 
@@ -458,6 +471,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (receiver (vector-ref bound 0)
 	      (subvector->list bound 1 (vector-length bound))
 	      (&pair-car slambda))))
+
+(define (slambda-names-vector slambda)
+  (&pair-cdr slambda))
 
 (define-integrable (slambda-name slambda)
   (vector-ref (&pair-cdr slambda) 0))
@@ -486,6 +502,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (receiver (vector-ref bound 0)
 	      (subvector->list bound 1 (vector-length bound))
 	      (&pair-car slexpr))))
+
+(define (slexpr-names-vector slexpr)
+  (&pair-cdr slexpr))
 
 (define-integrable (slexpr-name slexpr)
   (vector-ref (&pair-cdr slexpr) 0))

@@ -1,22 +1,26 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.46 2000/12/05 21:23:45 cph Exp $
+$Id: ntscreen.c,v 1.50 2003/02/14 18:48:12 cph Exp $
 
-Copyright (c) 1993-2000 Massachusetts Institute of Technology
+Copyright 1993-2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 */
 
 /* #include <stdio.h> */
@@ -776,7 +780,7 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				"\n"
 				"Really Exit Scheme?")
 			     : "OK to close this window?",
-			     "MIT Scheme",
+			     "MIT/GNU Scheme",
 			     (MB_ICONQUESTION | MB_OKCANCEL)))
 	       break;
 	   }
@@ -1341,15 +1345,15 @@ SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
       return  FALSE;
 
    if (IsIconic(hWnd)) {
-     /*   THis entire section is a crock to ensure a reasonably sized window
-          when Scheme is started minimized
+     /* This entire section is a crock to ensure a reasonably sized window
+        when Scheme is started minimized.
 
         Since we protect this procedure against minimizing in the WndProc, we
         can get here only when window is launched in a minimized state.  We
         get here because of the SendMessage in ScreenReset.  Our duty is to
 	fake a normal position and size.
-        Luckily none of the scrolling businness happens because all the cursor
-        etc are at zero. (Hopefully it would be clipped).
+        Luckily none of the scrolling business happens because all the cursor
+        etc are at zero.  (Hopefully it would be clipped).
      */
      WINDOWPLACEMENT pl;
      int width, height, params[4] = {-1, -1, 0, 0};  /* left,top,width,height*/
@@ -1358,6 +1362,7 @@ SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
 		    GetSystemMetrics(SM_CXSCREEN));
      height  = min (params[3] ? params[3] : 40*screen->yChar,
 		    GetSystemMetrics(SM_CYSCREEN));
+     pl.length = (sizeof (pl));
      GetWindowPlacement (hWnd, &pl);
      AdjustedSize (screen, &width, &height);
      pl.rcNormalPosition.left = params[0]==-1 ? 0 : params[0];
@@ -2922,7 +2927,7 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock_in, int nLength_in)
 		  screen->mode_flags |= SCREEN_MODE_NEWLINE_CRS;
 		  screen->scroll_lines
 		    = (COMPUTE_SCROLL_LINES (screen->height));
-		  SetWindowText (screen->hWnd, "MIT Scheme");
+		  SetWindowText (screen->hWnd, "MIT/GNU Scheme");
 		}
 		i = j;  /* 1 added in for loop */
 		continue;

@@ -1,23 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.34 2002/02/09 05:55:25 cph Exp $
+$Id: tterm.scm,v 1.38 2003/02/14 18:28:13 cph Exp $
 
-Copyright (c) 1990-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1990,1991,1993,1994,1998,1999 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Termcap(3) Screen Implementation
@@ -247,9 +251,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			((not have-select?)
 			 (and block? (read-event block?)))
 			(else
-			 (case (test-for-input-on-descriptor
+			 (case (test-for-io-on-descriptor
 				(channel-descriptor-for-select channel)
-				block?)
+				block?
+				'READ)
 			   ((#F) #f)
 			   ((PROCESS-STATUS-CHANGE) event:process-status)
 			   ((INTERRUPT) (loop))
@@ -441,46 +446,48 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (scroll-region false)
   (key-table false))
 
-(let-syntax ((define-accessor
-	      (sc-macro-transformer
-	       (lambda (form environment)
-		 (let ((name (cadr form)))
-		   `(DEFINE-INTEGRABLE (,(symbol-append 'SCREEN- name) SCREEN)
-		      (,(close-syntax (symbol-append 'TERMINAL-STATE/ name)
-				      environment)
-		       (SCREEN-STATE SCREEN)))))))
-	     (define-updater
-	      (sc-macro-transformer
-	       (lambda (form environment)
-		 (let ((name (cadr form)))
-		   (let ((param (make-synthetic-identifier name)))
-		     `(DEFINE-INTEGRABLE
-			(,(symbol-append 'SET-SCREEN- name '!) SCREEN ,param)
-			(,(close-syntax
-			   (symbol-append 'SET-TERMINAL-STATE/ name '!)
-			   environment)
-			 (SCREEN-STATE SCREEN)
-			 ,param))))))))
-  (define-accessor description)
-  (define-accessor baud-rate-index)
-  (define-accessor baud-rate)
-  (define-accessor insert-line-cost)
-  (define-accessor insert-line-next-cost)
-  (define-accessor delete-line-cost)
-  (define-accessor delete-line-next-cost)
-  (define-accessor scroll-region-cost)
-  (define-accessor cursor-x)
-  (define-updater  cursor-x)
-  (define-accessor cursor-y)
-  (define-updater  cursor-y)
-  (define-accessor standout-mode?)
-  (define-updater  standout-mode?)
-  (define-accessor insert-mode?)
-  (define-updater  insert-mode?)
-  (define-accessor delete-mode?)
-  (define-updater  delete-mode?)
-  (define-accessor scroll-region)
-  (define-updater  scroll-region))
+(define-syntax define-ts-accessor
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (cadr form)))
+       `(DEFINE-INTEGRABLE (,(symbol-append 'SCREEN- name) SCREEN)
+	  (,(close-syntax (symbol-append 'TERMINAL-STATE/ name)
+			  environment)
+	   (SCREEN-STATE SCREEN)))))))
+
+(define-syntax define-ts-modifier
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (cadr form)))
+       (let ((param (make-synthetic-identifier name)))
+	 `(DEFINE-INTEGRABLE
+	    (,(symbol-append 'SET-SCREEN- name '!) SCREEN ,param)
+	    (,(close-syntax
+	       (symbol-append 'SET-TERMINAL-STATE/ name '!)
+	       environment)
+	     (SCREEN-STATE SCREEN)
+	     ,param)))))))
+
+(define-ts-accessor description)
+(define-ts-accessor baud-rate-index)
+(define-ts-accessor baud-rate)
+(define-ts-accessor insert-line-cost)
+(define-ts-accessor insert-line-next-cost)
+(define-ts-accessor delete-line-cost)
+(define-ts-accessor delete-line-next-cost)
+(define-ts-accessor scroll-region-cost)
+(define-ts-accessor cursor-x)
+(define-ts-modifier cursor-x)
+(define-ts-accessor cursor-y)
+(define-ts-modifier cursor-y)
+(define-ts-accessor standout-mode?)
+(define-ts-modifier standout-mode?)
+(define-ts-accessor insert-mode?)
+(define-ts-modifier insert-mode?)
+(define-ts-accessor delete-mode?)
+(define-ts-modifier delete-mode?)
+(define-ts-accessor scroll-region)
+(define-ts-modifier scroll-region)
 
 ;;;; Console Screen Operations
 

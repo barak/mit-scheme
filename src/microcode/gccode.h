@@ -1,23 +1,26 @@
 /* -*-C-*-
 
-$Id: gccode.h,v 9.58 2001/08/07 01:26:09 cph Exp $
+$Id: gccode.h,v 9.60 2003/02/14 18:28:19 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 */
 
 /* This file contains the macros for use in code which does GC-like

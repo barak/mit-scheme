@@ -1,23 +1,28 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.37 2002/02/09 06:09:51 cph Exp $
+$Id: parse.scm,v 14.42 2003/07/30 17:25:44 cph Exp $
 
-Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,1994,1997,1998,1999 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Scheme Parser
@@ -26,24 +31,25 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! char-set/undefined-atom-delimiters (char-set #\[ #\] #\{ #\} #\|))
+  (set! char-set/undefined-atom-delimiters (string->char-set "[]{}"))
   (set! char-set/whitespace
-	(char-set #\Tab #\Linefeed #\Page #\Return #\Space))
+	(char-set #\tab #\linefeed #\page #\return #\space))
   (set! char-set/non-whitespace (char-set-invert char-set/whitespace))
-  (set! char-set/comment-delimiters (char-set #\Newline))
-  (set! char-set/special-comment-leaders (char-set #\# #\|))
-  (set! char-set/string-delimiters (char-set #\" #\\))
+  (set! char-set/symbol-quotes (string->char-set "|\\"))
   (set! char-set/atom-delimiters
-	(char-set-union char-set/whitespace
-			(char-set-union char-set/undefined-atom-delimiters
-					(char-set #\( #\) #\; #\" #\' #\`))))
-  (set! char-set/atom-constituents (char-set-invert char-set/atom-delimiters))
+	(char-set-union char-set/undefined-atom-delimiters
+			char-set/whitespace
+			char-set/symbol-quotes
+			(string->char-set "\"();'`")))
+  (set! char-set/comment-delimiters (char-set #\newline))
+  (set! char-set/special-comment-leaders (string->char-set "#|"))
+  (set! char-set/string-delimiters (string->char-set "\"\\"))
   (set! char-set/char-delimiters
-	(char-set-union (char-set #\- #\\) char-set/atom-delimiters))
+	(char-set-union (string->char-set "-\\") char-set/atom-delimiters))
+  (set! char-set/number-leaders (string->char-set "0123456789+-.#"))
   (set! char-set/symbol-leaders
-	(char-set-difference char-set/atom-constituents
-			     (char-set #\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9
-				       #\+ #\- #\. #\#)))
+	(char-set-difference (char-set-invert char-set/atom-delimiters)
+			     char-set/number-leaders))
   (set! char-set/non-digit
 	(char-set-difference (char-set-invert (char-set))
 			     char-set:numeric))
@@ -54,14 +60,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (set! dot-symbol (intern "."))
   (set! named-objects
 	`((NULL . ,(list))
-	  (FALSE . ,false)
-	  (TRUE . ,true)
+	  (FALSE . ,#f)
+	  (TRUE . ,#t)
 	  (OPTIONAL . ,lambda-optional-tag)
 	  (REST . ,lambda-rest-tag)
 	  (AUX . ',lambda-auxiliary-tag)))
 
   (set! *parser-radix* 10)
-  (set! *parser-associate-positions?* false)
+  (set! *parser-associate-positions?* #f)
   (set! *parser-associate-position* parser-associate-positions/default)
   (set! *parser-current-position* parser-current-position/default)
   (set! *parser-canonicalize-symbols?* #t)
@@ -71,12 +77,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define char-set/undefined-atom-delimiters)
 (define char-set/whitespace)
 (define char-set/non-whitespace)
+(define char-set/symbol-quotes)
+(define char-set/atom-delimiters)
 (define char-set/comment-delimiters)
 (define char-set/special-comment-leaders)
 (define char-set/string-delimiters)
-(define char-set/atom-delimiters)
-(define char-set/atom-constituents)
 (define char-set/char-delimiters)
+(define char-set/number-leaders)
 (define char-set/symbol-leaders)
 (define char-set/non-digit)
 
@@ -84,6 +91,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define lambda-rest-tag)
 (define lambda-auxiliary-tag)
 (define *parser-radix*)
+(define *parser-canonicalize-symbols?*)
 (define system-global-parser-table)
 
 (define (make-system-global-parser-table)
@@ -178,8 +186,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(if (not *parser-associate-positions?*)
 	    parser-current-position/default
 	    (current-position-getter port))))
-    (cyclic-parser-post-edit (thunk))
-))
+    (cyclic-parser-post-edit (thunk))))
 
 ;;;; Character Operations
 
@@ -316,7 +323,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (parser-current-position/default offset)
   offset				; fnord
-  false)
+  #f)
 
 ;; Do not integrate this!!! -- GJR
 
@@ -329,14 +336,73 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;;; Symbols/Numbers
 
 (define-accretor 0 (parse-object/atom)
-  (build-atom (read-atom)))
+  (let ((s (read-unquoted-atom-segment)))
+    (if (eof-object? s)
+	(parse-error/end-of-file))
+    (if (peek-atom-quote?)
+	(string->symbol (read-quoted-atom s))
+	(or (parse-number s)
+	    (string->symbol s)))))
 
-(define-integrable (read-atom)
-  (read-string char-set/atom-delimiters))
+(define (read-unquoted-atom-segment)
+  (let ((s (read-string char-set/atom-delimiters)))
+    (if (and (not (eof-object? s))
+	     *parser-canonicalize-symbols?*)
+	(string-downcase! s))
+    s))
 
-(define (build-atom string)
-  (or (parse-number string)
-      (intern-string! string)))
+(define (read-quoted-atom s)
+  (call-with-output-string
+    (lambda (port)
+      (write-string s port)
+      (letrec
+	  ((read-quoted
+	    (lambda ()
+	      (if (char=? (read-char) #\|)
+		  (find-bar)
+		  (begin
+		    (write-char (read-char) port)
+		    (read-unquoted)))))
+	   (find-bar
+	    (lambda ()
+	      (write-string (read-quoted-atom-segment) port)
+	      (if (char=? (read-char) #\|)
+		  (read-unquoted)
+		  (begin
+		    (write-char (read-char) port)
+		    (find-bar)))))
+	   (read-unquoted
+	    (lambda ()
+	      (let ((s (read-unquoted-atom-segment)))
+		(if (not (eof-object? s))
+		    (begin
+		      (write-string s port)
+		      (if (peek-atom-quote?)
+			  (read-quoted))))))))
+	(read-quoted)))))
+
+(define (peek-atom-quote?)
+  (let ((c (peek-char/eof-ok)))
+    (and (char? c)
+	 (or (char=? c #\|)
+	     (char=? c #\\)))))
+
+(define (read-quoted-atom-segment)
+  (let ((s (read-string char-set/symbol-quotes)))
+    (if (eof-object? s)
+	(parse-error/end-of-file))
+    s))
+
+(define (read-atom)
+  (let ((s (read-unquoted-atom-segment)))
+    (if (eof-object? s)
+	(parse-error/end-of-file))
+    (if (peek-atom-quote?)
+	(read-quoted-atom s)
+	s)))
+
+(define-accretor 0 (parse-object/symbol)
+  (string->symbol (read-atom)))
 
 (define (parse-number string)
   (let ((radix (if (memv *parser-radix* '(2 8 10 16)) *parser-radix* 10)))
@@ -350,39 +416,30 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		   string))
 	      #f)))))
 
-(define *parser-canonicalize-symbols?*)
-
-(define (intern-string! string)
-  ;; Special version of `intern' to reduce consing and increase speed.
-  (if *parser-canonicalize-symbols?*
-      (substring-downcase! string 0 (string-length string)))
-  (string->symbol string))
-
-(define-accretor 0 (parse-object/symbol)
-  (intern-string! (read-atom)))
-
 (define-accretor 1 (parse-object/numeric-prefix)
   (let ((number
 	 (let ((char (read-char)))
 	   (string-append (string #\# char) (read-atom)))))
-    (or (parse-number number)
-	(parse-error "Bad number syntax" number))))
+    (let ((n (parse-number number)))
+      (if (not n)
+	  (parse-error "Bad number syntax" number))
+      n)))
 
 (define-accretor 1 (parse-object/bit-string)
   (discard-char)
-  (let ((string (read-atom)))
-    (let ((length (string-length string)))
+  (let ((s (read-atom)))
+    (let ((end (string-length s)))
       (unsigned-integer->bit-string
-       length
+       end
        (let loop ((index 0) (result 0))
-	 (if (< index length)
-	     (loop (1+ index)
+	 (if (fix:< index end)
+	     (loop (fix:+ index 1)
 		   (+ (* result 2)
-		      (case (string-ref string index)
+		      (case (string-ref s index)
 			((#\0) 0)
 			((#\1) 1)
-			(else  (parse-error "Bad bit-string syntax"
-					    (string-append "#*" string))))))
+			(else (parse-error "Bad bit-string syntax"
+					   (string-append "#*" s))))))
 	     result))))))
 
 ;;;; Lists/Vectors
@@ -407,7 +464,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (list))
 
 (define ignore-extra-list-closes
-  true)
+  #t)
 
 (define (collect-list/top-level)
   (let ((value (collect-list/dispatch)))
@@ -504,32 +561,24 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(list 'UNQUOTE-SPLICING (parse-object/dispatch)))
       (list 'UNQUOTE (parse-object/dispatch))))
 
-
 (define-accretor 0 (parse-object/string-quote)
-  ;; This version uses a string output port to collect the string fragments
-  ;; because string ports store the string efficiently and append the
-  ;; string fragments in amortized linear time.
-  ;;
-  ;; The common case for a string with no escapes is handled efficiently by
-  ;; lifting the code out of the loop.
-
   (discard-char)
   (let ((head (read-string char-set/string-delimiters)))
     (if (char=? #\" (read-char))
 	head
-	(with-string-output-port
+	(call-with-output-string
 	 (lambda (port)
 	   (write-string head port)
 	   (let loop ()
 	     (let ((char
 		    (let ((char (read-char)))
-		      (cond ((char-ci=? char #\n) #\Newline)
-			    ((char-ci=? char #\t) #\Tab)
-			    ((char-ci=? char #\v) #\VT)
-			    ((char-ci=? char #\b) #\BS)
-			    ((char-ci=? char #\r) #\Return)
-			    ((char-ci=? char #\f) #\Page)
-			    ((char-ci=? char #\a) #\BEL)
+		      (cond ((char-ci=? char #\n) #\newline)
+			    ((char-ci=? char #\t) #\tab)
+			    ((char-ci=? char #\v) #\vt)
+			    ((char-ci=? char #\b) #\bs)
+			    ((char-ci=? char #\r) #\return)
+			    ((char-ci=? char #\f) #\page)
+			    ((char-ci=? char #\a) #\bel)
 			    ((char->digit char 8)
 			     (let ((c2 (read-char)))
 			       (octal->char char c2 (read-char))))
@@ -544,12 +593,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(d2 (char->digit c2 8))
 	(d3 (char->digit c3 8)))
     (if (not (and d1 d2 d3))
-	(error "Badly formed octal string escape:" (string #\\ c1 c2 c3)))
+	(parse-error "Badly formed octal string escape" (string #\\ c1 c2 c3)))
     (let ((sum (+ (* #o100 d1) (* #o10 d2) d3)))
       (if (>= sum 256)
-	  (error "Octal string escape exceeds ASCII range:"
-		 (string #\\ c1 c2 c3)))
-      (ascii->char sum))))
+	  (parse-error "Octal string escape exceeds ISO-8859-1 range"
+		       (string #\\ c1 c2 c3)))
+      (integer->char sum))))
 
 (define-accretor 1 (parse-object/char-quote)
   (discard-char)
@@ -576,11 +625,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-accretor 0 (parse-object/false)
   (discard-char)
-  false)
+  #f)
 
 (define-accretor 0 (parse-object/true)
   (discard-char)
-  true)
+  #t)
 
 (define-accretor 1 (parse-object/named-constant)
   (discard-char)
@@ -734,14 +783,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (make-context)   (%make-context '() 0))
 
 (define (context/touch! context)
-  (set-context/touches! context  (fix:1+ (context/touches context))))
+  (set-context/touches! context  (fix:+ (context/touches context) 1)))
 
 (define (context/define-reference context index)
-  (let ((ref  (make-reference index
-			      context
-			      ()
-			      (context/touches context)
-			      #f)))
+  (let ((ref (make-reference index
+			     context
+			     '()
+			     (context/touches context)
+			     #f)))
     
     (set-context/references!
      context

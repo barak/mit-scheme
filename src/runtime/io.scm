@@ -1,23 +1,28 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.64 2001/06/09 00:30:38 cph Exp $
+$Id: io.scm,v 14.73 2003/06/08 04:07:40 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1990,1991,1993 Massachusetts Institute of Technology
+Copyright 1994,1995,1998,1999,2000,2001 Massachusetts Institute of Technology
+Copyright 2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Input/Output Utilities
@@ -25,17 +30,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (declare (usual-integrations))
 
-(define open-channels-list)
+(define open-channels)
 (define open-directories)
-(define have-select?)
 
 (define (initialize-package!)
-  (set! open-channels-list (list 'OPEN-CHANNELS-LIST))
-  (add-gc-daemon! close-lost-open-files-daemon)
+  (set! open-channels
+	(make-gc-finalizer (ucode-primitive channel-close 1)))
   (set! open-directories
 	(make-gc-finalizer (ucode-primitive new-directory-close 1)))
-  (set! have-select? ((ucode-primitive have-select? 0)))
-  (add-event-receiver! event:after-restore primitive-io/reset!))
+  (initialize-select-registry!))
 
 (define-structure (channel (constructor %make-channel))
   ;; This structure serves two purposes.  First, because a descriptor
@@ -46,42 +49,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (type #f read-only #t)
   port)
 
+(define (make-channel d)
+  (open-channel (lambda (p) (system-pair-set-cdr! p d) #t)))
+
 (define (open-channel procedure)
-  ;; A bunch of hair to permit microcode descriptors be opened with
-  ;; interrupts turned on, yet not leave a dangling descriptor around
-  ;; if the open is interrupted before the runtime system's data
-  ;; structures are updated.
-  (let ((p (system-pair-cons (ucode-type weak-cons) #f #f)))
-    (dynamic-wind
-     (lambda () unspecific)
-     (lambda ()
-       (and (procedure p)
-	    (make-channel-1 p)))
-     (lambda ()
-       (if (and (not (system-pair-car p)) (system-pair-cdr p))
-	   (begin
-	     ((ucode-primitive channel-close 1) (system-pair-cdr p))
-	     (system-pair-set-cdr! p #f)))))))
-
-(define (make-channel descriptor)
-  (make-channel-1 (system-pair-cons (ucode-type weak-cons) #f descriptor)))
-
-(define (make-channel-1 p)
-  (let ((channel
-	 (let ((d (system-pair-cdr p)))
-	   (%make-channel d (descriptor-type-name d) #f))))
-    (without-interrupts
-     (lambda ()
-       (system-pair-set-car! p channel)
-       (set-cdr! open-channels-list (cons p (cdr open-channels-list)))))
-    channel))
+  (make-gc-finalized-object open-channels procedure
+    (lambda (d)
+      (%make-channel d (descriptor-type-name d) #f))))
 
 (define (descriptor->channel descriptor)
-  (let loop ((channels (cdr open-channels-list)))
-    (and (not (null? channels))
-	 (if (fix:= descriptor (system-pair-cdr (car channels)))
-	     (system-pair-car (car channels))
-	     (loop (cdr channels))))))
+  (search-gc-finalizer open-channels
+    (lambda (channel)
+      (fix:= descriptor (channel-descriptor channel)))))
 
 (define (descriptor-type-name descriptor)
   (let ((name ((ucode-primitive channel-type-name 1) descriptor)))
@@ -102,23 +81,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     (or (eq? 'TERMINAL type)
 	(eq? 'UNIX-PTY-MASTER type)
 	(eq? 'OS/2-CONSOLE type))))
-
+
 (define (channel-close channel)
-  (without-interrupts
-   (lambda ()
-     (if (channel-descriptor channel)
-	 (begin
-	   ((ucode-primitive channel-close 1) (channel-descriptor channel))
-	   (set-channel-descriptor! channel #f)
-	   (let loop
-	       ((l1 open-channels-list)
-		(l2 (cdr open-channels-list)))
-	     (cond ((null? l2)
-		    (error "CHANNEL-CLOSE: lost channel" channel))
-		   ((eq? channel (system-pair-car (car l2)))
-		    (set-cdr! l1 (cdr l2)))
-		   (else
-		    (loop l2 (cdr l2))))))))))
+  (remove-from-gc-finalizer! open-channels channel))
 
 (define-integrable (channel-open? channel)
   (channel-descriptor channel))
@@ -139,48 +104,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			  (channel-close channel)))))
 	      (all-open-channels))
     (if (not filter)
-	(close-all-open-channels-internal (ucode-primitive channel-close 1)))))
+	(remove-all-from-gc-finalizer! open-channels))))
 
 (define (all-open-channels)
-  (without-interrupts
-   (lambda ()
-     (let loop ((l (cdr open-channels-list)) (result '()))
-       (if (null? l)
-	   result
-	   (loop (cdr l) (cons (system-pair-car (car l)) result)))))))
-
-(define (primitive-io/reset!)
-  ;; This is invoked after disk-restoring.
-  ;; It "cleans" the new runtime system.
-  (close-all-open-channels-internal (lambda (ignore) ignore))
-  (set! have-select? ((ucode-primitive have-select? 0)))
-  unspecific)
-
-(define (close-all-open-channels-internal action)
-  (without-interrupts
-   (lambda ()
-     (let loop ((l (cdr open-channels-list)))
-       (if (not (null? l))
-	   (begin
-	     (let ((channel (system-pair-car (car l))))
-	       (if channel
-		   (set-channel-descriptor! channel #f)))
-	     (action (system-pair-cdr (car l)))
-	     (let ((l (cdr l)))
-	       (set-cdr! open-channels-list l)
-	       (loop l))))))))
-
-(define (close-lost-open-files-daemon)
-  ;; This is the daemon that closes files that no one points to.
-  (let loop ((l1 open-channels-list) (l2 (cdr open-channels-list)))
-    (cond ((null? l2)
-	   unspecific)
-	  ((system-pair-car (car l2))
-	   (loop l2 (cdr l2)))
-	  (else
-	   ((ucode-primitive channel-close 1) (system-pair-cdr (car l2)))
-	   (set-cdr! l1 (cdr l2))
-	   (loop l1 (cdr l1))))))
+  (gc-finalizer-elements open-channels))
 
 ;;;; Channel Primitives
 
@@ -244,45 +171,50 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  (lambda ()
 	    (let ((do-test
 		   (lambda (k)
-		     (let ((result (test-for-input-on-channel channel)))
+		     (let ((result (test-for-io-on-channel channel 'READ)))
 		       (case result
-			 ((INPUT-AVAILABLE)
-			  (do-read))
+			 ((READ HANGUP ERROR) (do-read))
 			 ((PROCESS-STATUS-CHANGE)
 			  (handle-subprocess-status-change)
 			  (if (channel-closed? channel) 0 (k)))
-			 (else
-			  (k)))))))
+			 (else (k)))))))
 	      (if (channel-blocking? channel)
 		  (let loop () (do-test loop))
 		  (do-test (lambda () #f))))))
 	(do-read))))
 
+(define (channel-write channel buffer start end)
+  (let ((do-write
+	 (lambda ()
+	   ((ucode-primitive channel-write 4)
+	    (channel-descriptor channel)
+	    (if (external-string? buffer)
+		(external-string-descriptor buffer)
+		buffer)
+	    start
+	    end))))
+    (declare (integrate-operator do-write))
+    (if (and have-select? (not (channel-type=file? channel)))
+	(with-thread-events-blocked
+	  (lambda ()
+	    (let ((do-test
+		   (lambda (k)
+		     (let ((result (test-for-io-on-channel channel 'WRITE)))
+		       (case result
+			 ((WRITE HANGUP ERROR) (do-write))
+			 ((PROCESS-STATUS-CHANGE)
+			  (handle-subprocess-status-change)
+			  (if (channel-closed? channel) 0 (k)))
+			 (else (k)))))))
+	      (if (channel-blocking? channel)
+		  (let loop () (do-test loop))
+		  (do-test (lambda () #f))))))
+	(do-write))))
+
 (define (channel-read-block channel buffer start end)
   (let loop ()
     (or (channel-read channel buffer start end)
 	(loop))))
-
-(define-integrable (test-for-input-on-channel channel)
-  (test-for-input-on-descriptor (channel-descriptor-for-select channel)
-				(channel-blocking? channel)))
-
-(define (test-for-input-on-descriptor descriptor block?)
-  (if block?
-      (or (select-descriptor descriptor #f)
-	  (block-on-input-descriptor descriptor))
-      (select-descriptor descriptor #f)))
-
-(define-integrable (channel-descriptor-for-select channel)
-  ((ucode-primitive channel-descriptor 1) (channel-descriptor channel)))
-
-(define (channel-write channel buffer start end)
-  ((ucode-primitive channel-write 4) (channel-descriptor channel)
-				     (if (external-string? buffer)
-					 (external-string-descriptor buffer)
-					 buffer)
-				     start
-				     end))
 
 (define (channel-write-block channel buffer start end)
   (let loop ((start start) (n-left (- end start)))
@@ -512,7 +444,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   line-translation			; string that newline maps to
   logical-size
   closed?
-  line-start?)
+  column)
 
 (define (output-buffer-sizes translation buffer-size)
   (let ((logical-size
@@ -546,7 +478,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			     translation
 			     logical-size
 			     #f
-			     #t)))))
+			     0)))))
 
 (define (output-buffer/close buffer associated-buffer)
   (output-buffer/drain-block buffer)
@@ -711,13 +643,26 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 				 n-prev*
 				 (loop (fix:+ index 1)
 				       (fix:+ n-prev* 1))))))))))))
-    (if (fix:> n-written 0)
-	(set-output-buffer/line-start?!
-	 buffer
-	 (char=? #\newline
-		 (string-ref string (fix:+ start (fix:- n-written 1))))))
+    (set-output-buffer/column!
+     buffer
+     (let* ((end (fix:+ start n-written))
+	    (nl (substring-find-previous-char string start end #\newline)))
+       (if nl
+	   (count-columns string (fix:+ nl 1) end 0)
+	   (count-columns string start end (output-buffer/column buffer)))))
     n-written))
 
+(define (count-columns string start end column)
+  ;; This simple-minded algorithm works only for a limited subset of
+  ;; US-ASCII.  Doing a better job quickly gets very hairy.
+  (do ((start start (fix:+ start 1))
+       (column column
+	       (fix:+ column
+		      (if (char=? #\tab (string-ref string start))
+			  (fix:- 8 (fix:remainder column 8))
+			  1))))
+      ((fix:= start end) column)))
+
 (define (output-buffer/drain buffer)
   (let ((string (output-buffer/string buffer))
 	(position (output-buffer/position buffer)))
@@ -1171,3 +1116,160 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		 (input-buffer/set-size buffer contents-size))
 	     (substring-move! contents 0 contents-size string 0)
 	     (input-buffer/after-fill! buffer contents-size)))))))
+
+;;;; Select registry
+
+(define have-select?)
+(define select-registry-finalizer)
+(define select-registry-result-vectors)
+
+(define (initialize-select-registry!)
+  (set! have-select? ((ucode-primitive have-select? 0)))
+  (set! select-registry-finalizer
+	(make-gc-finalizer (ucode-primitive deallocate-select-registry 1)))
+  (let ((reset-rv!
+	 (lambda ()
+	   (set! select-registry-result-vectors '())
+	   unspecific)))
+    (reset-rv!)
+    (add-event-receiver! event:after-restart reset-rv!))
+  (add-event-receiver! event:after-restore
+    (lambda ()
+      (set! have-select? ((ucode-primitive have-select? 0)))
+      unspecific)))
+
+(define-structure (select-registry
+		   (constructor %make-select-registry (handle)))
+  handle
+  (length #f))
+
+(define (make-select-registry)
+  (without-interrupts
+   (lambda ()
+     (let ((handle ((ucode-primitive allocate-select-registry 0))))
+       (let ((registry (%make-select-registry handle)))
+	 (add-to-gc-finalizer! select-registry-finalizer registry handle)
+	 registry)))))
+
+(define (add-to-select-registry! registry descriptor mode)
+  ((ucode-primitive add-to-select-registry 3)
+   (select-registry-handle registry)
+   descriptor
+   (encode-select-registry-mode mode))
+  (set-select-registry-length! registry #f))
+
+(define (remove-from-select-registry! registry descriptor mode)
+  ((ucode-primitive remove-from-select-registry 3)
+   (select-registry-handle registry)
+   descriptor
+   (encode-select-registry-mode mode))
+  (set-select-registry-length! registry #f))
+
+(define (test-select-descriptor descriptor block? mode)
+  (let ((result
+	 ((ucode-primitive test-select-descriptor 3)
+	  descriptor
+	  block?
+	  (encode-select-registry-mode mode))))
+    (cond ((>= result 0) (decode-select-registry-mode result))
+	  ((= result -1) 'INTERRUPT)
+	  ((= result -2)
+	   (subprocess-global-status-tick)
+	   'PROCESS-STATUS-CHANGE)
+	  (else
+	   (error "Illegal result from TEST-SELECT-DESCRIPTOR:" result)))))
+
+(define (encode-select-registry-mode mode)
+  (case mode
+    ((READ) 1)
+    ((WRITE) 2)
+    ((READ/WRITE) 3)
+    (else (error:bad-range-argument mode 'ENCODE-SELECT-REGISTRY-MODE))))
+
+(define (decode-select-registry-mode mode)
+  (cond ((fix:= 8 (fix:and 8 mode)) 'HANGUP)
+	((fix:= 4 (fix:and 4 mode)) 'ERROR)
+	(else
+	 (if (fix:= 1 (fix:and 1 mode))
+	     (if (fix:= 2 (fix:and 2 mode)) 'READ/WRITE 'READ)
+	     (if (fix:= 2 (fix:and 2 mode)) 'WRITE #f)))))
+
+(define (test-select-registry registry block?)
+  (receive (vfd vmode) (allocate-select-registry-result-vectors registry)
+    (let ((result
+	   ((ucode-primitive test-select-registry 4)
+	    (select-registry-handle registry)
+	    block?
+	    vfd
+	    vmode)))
+      (if (> result 0)
+	  (begin
+	    (do ((i 0 (fix:+ i 1)))
+		((fix:= i result))
+	      (vector-set! vmode i
+			   (decode-select-registry-mode (vector-ref vmode i))))
+	    (vector result vfd vmode))
+	  (begin
+	    (deallocate-select-registry-result-vectors vfd vmode)
+	    (cond ((= 0 result) #f)
+		  ((= -1 result) 'INTERRUPT)
+		  ((= -2 result)
+		   (subprocess-global-status-tick)
+		   'PROCESS-STATUS-CHANGE)
+		  (else
+		   (error "Illegal result from TEST-SELECT-REGISTRY:"
+			  result))))))))
+
+(define (allocate-select-registry-result-vectors registry)
+  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (let ((n
+	   (or (select-registry-length registry)
+	       (let ((rl
+		      ((ucode-primitive select-registry-length 1)
+		       (select-registry-handle registry))))
+		 (set-select-registry-length! registry rl)
+		 rl))))
+      (let loop ((rv select-registry-result-vectors))
+	(if (pair? rv)
+	    (let ((vfd (caar rv))
+		  (vmode (cdar rv)))
+	      (if (and vfd (fix:<= n (vector-length vfd)))
+		  (begin
+		    (set-car! (car rv) #f)
+		    (set-cdr! (car rv) #f)
+		    (set-interrupt-enables! interrupt-mask)
+		    (values vfd vmode))
+		  (loop (cdr rv))))
+	    (let loop ((m 16))
+	      (if (fix:< n m)
+		  (begin
+		    (set-interrupt-enables! interrupt-mask)
+		    (values (make-vector m) (make-vector m)))
+		  (loop (fix:* m 2)))))))))
+
+(define (deallocate-select-registry-result-vectors vfd vmode)
+  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (let loop ((rv select-registry-result-vectors))
+      (if (pair? rv)
+	  (if (caar rv)
+	      (loop (cdr rv))
+	      (begin
+		(set-car! (car rv) vfd)
+		(set-cdr! (car rv) vmode)))
+	  (set! select-registry-result-vectors
+		(cons (cons vfd vmode) select-registry-result-vectors))))
+    (set-interrupt-enables! interrupt-mask)))
+
+(define (test-for-io-on-channel channel mode)
+  (test-for-io-on-descriptor (channel-descriptor-for-select channel)
+			     (channel-blocking? channel)
+			     mode))
+
+(define (test-for-io-on-descriptor descriptor block? mode)
+  (if block?
+      (or (test-select-descriptor descriptor #f mode)
+	  (block-on-io-descriptor descriptor mode))
+      (test-select-descriptor descriptor #f mode)))
+
+(define-integrable (channel-descriptor-for-select channel)
+  ((ucode-primitive channel-descriptor 1) (channel-descriptor channel)))

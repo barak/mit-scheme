@@ -1,23 +1,26 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.8 2001/12/20 03:04:02 cph Exp $
+$Id: decls.scm,v 1.11 2003/03/10 20:51:49 cph Exp $
 
-Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
+Copyright 1992,1993,2001,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Compiler File Dependencies
@@ -79,19 +82,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-structure (source-node
 		   (conc-name source-node/)
-		   (constructor make/source-node (filename)))
-  (filename false read-only true)
-  (pathname (->pathname filename) read-only true)
+		   (constructor %make/source-node (filename pathname)))
+  (filename #f read-only #t)
+  (pathname #f read-only #t)
   (forward-links '())
   (backward-links '())
   (forward-closure '())
   (backward-closure '())
   (dependencies '())
   (dependents '())
-  (rank false)
-  (syntax-table false)
+  (rank #f)
+  (syntax-table #f)
   (declarations '())
-  (modification-time false))
+  (modification-time #f))
+
+(define (make/source-node filename)
+  (%make/source-node filename (->pathname filename)))
 
 (define (filename->source-node filename)
   (let ((node (hash-table/get source-hash filename #f)))
@@ -213,7 +219,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 				  (write-string " newer than dependency ")
 				  (write (source-node/filename node*))))
 			    newer?))))
-		 (set-source-node/modification-time! node false))))
+		 (set-source-node/modification-time! node #f))))
 	 source-nodes)
 	(for-each
 	 (lambda (node)
@@ -225,7 +231,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 				 (write (source-node/filename node*))
 				 (write-string " depends on ")
 				 (write (source-node/filename node))))
-			   (set-source-node/modification-time! node* false))
+			   (set-source-node/modification-time! node* #f))
 			 (source-node/forward-closure node))))
 	 source-nodes)))
   (for-each (lambda (node)
@@ -254,7 +260,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (source-node/touch! node)
   (with-values
       (lambda ()
-	(sf/pathname-defaulting (source-node/pathname node) "" false))
+	(sf/pathname-defaulting (source-node/pathname node) "" #f))
     (lambda (input-pathname bin-pathname spec-pathname)
       input-pathname
       (pathname-touch! bin-pathname)
@@ -282,7 +288,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (source-node/syntax! node)
   (with-values
       (lambda ()
-	(sf/pathname-defaulting (source-node/pathname node) "" false))
+	(sf/pathname-defaulting (source-node/pathname node) "" #f))
     (lambda (input-pathname bin-pathname spec-pathname)
       (sf/internal
        input-pathname bin-pathname spec-pathname
@@ -554,15 +560,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   `(INTEGRATE-EXTERNAL
     ,@(map (let ((default
 		  (make-pathname
-		   false
-		   false
+		   #f
+		   #f
 		   (cons 'RELATIVE
 			 (make-list
 			  (length (cdr (pathname-directory pathname)))
 			  'UP))
-		   false
-		   false
-		   false)))
+		   #f
+		   #f
+		   #f)))
 	     (lambda (pathname)
 	       (merge-pathnames pathname default)))
 	   integration-dependencies)))

@@ -1,22 +1,26 @@
 /* -*-C-*-
 
-$Id: default.h,v 9.44 2000/12/05 21:23:44 cph Exp $
+$Id: default.h,v 9.47 2003/02/14 18:28:18 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2000, 2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 */
 
 /* This file contains default definitions for some hooks which
@@ -67,7 +71,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #ifndef INITIALIZE_STACK
 #define INITIALIZE_STACK() do						\
 {									\
-  Stack_Pointer = Stack_Top;						\
+  sp_register = Stack_Top;						\
   SET_STACK_GUARD (Stack_Bottom + STACK_GUARD_SIZE);			\
   * Stack_Bottom							\
     = (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Stack_Bottom));		\
@@ -107,11 +111,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #endif
 
 #ifndef CONSTANT_AREA_END
-#define CONSTANT_AREA_END()	Free_Constant
+#define CONSTANT_AREA_END() Free_Constant
 #endif
 
 #ifndef CONSTANT_AREA_START
-#define CONSTANT_AREA_START()	Stack_Pointer
+#define CONSTANT_AREA_START() sp_register
 #endif /* CONSTANT_AREA_START */
 
 #ifndef SEAL_CONSTANT_SPACE

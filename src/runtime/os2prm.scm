@@ -1,23 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.48 2001/12/18 18:39:45 cph Exp $
+$Id: os2prm.scm,v 1.51 2003/02/14 18:28:33 cph Exp $
 
-Copyright (c) 1994-2001 Massachusetts Institute of Technology
+Copyright 1994,1995,1997,1998,1999,2000 Massachusetts Institute of Technology
+Copyright 2001,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 |#
 
 ;;;; Miscellaneous OS/2 Primitives
@@ -346,99 +350,9 @@ USA.
 		       (close-port port)
 		       (set! port #f)
 		       unspecific))))))))))
-
+
 (define (initialize-system-primitives!)
-  (discard-select-registry-result-vectors!)
-  (add-event-receiver! event:after-restart
-		       discard-select-registry-result-vectors!))
-
-(define os2/select-registry-lub)
-(define select-registry-result-vectors)
-
-(define (discard-select-registry-result-vectors!)
-  (set! os2/select-registry-lub ((ucode-primitive os2-select-registry-lub 0)))
-  (set! select-registry-result-vectors '())
   unspecific)
-
-(define (allocate-select-registry-result-vector)
-  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (let ((v
-	   (let loop ((rv select-registry-result-vectors))
-	     (if (pair? rv)
-		 (let ((v (car rv)))
-		   (if v
-		       (begin
-			 (set-car! rv #f)
-			 v)
-		       (loop (cdr rv))))
-		 (make-string os2/select-registry-lub)))))
-      (set-interrupt-enables! interrupt-mask)
-      v)))
-
-(define (deallocate-select-registry-result-vector v)
-  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (let loop ((rv select-registry-result-vectors))
-      (if (pair? rv)
-	  (if (car rv)
-	      (loop (cdr rv))
-	      (set-car! rv v))
-	  (set! select-registry-result-vectors
-		(cons v select-registry-result-vectors))))
-    (set-interrupt-enables! interrupt-mask))
-  unspecific)
-
-(define (make-select-registry . descriptors)
-  (let ((registry (make-string os2/select-registry-lub)))
-    (vector-8b-fill! registry 0 os2/select-registry-lub 0)
-    (do ((descriptors descriptors (cdr descriptors)))
-	((not (pair? descriptors)))
-      (add-to-select-registry! registry (car descriptors)))
-    registry))
-
-(define (os2/guarantee-select-descriptor descriptor procedure)
-  (if (not (and (fix:fixnum? descriptor)
-		(fix:<= 0 descriptor)
-		(fix:< descriptor os2/select-registry-lub)))
-      (error:wrong-type-argument descriptor "select descriptor" procedure))
-  descriptor)
-
-(define (add-to-select-registry! registry descriptor)
-  (os2/guarantee-select-descriptor descriptor 'ADD-TO-SELECT-REGISTRY!)
-  (vector-8b-set! registry descriptor 1))
-
-(define (remove-from-select-registry! registry descriptor)
-  (os2/guarantee-select-descriptor descriptor 'REMOVE-FROM-SELECT-REGISTRY!)
-  (vector-8b-set! registry descriptor 0))
-
-(define (select-descriptor descriptor block?)
-  (vector-ref os2/select-result-values
-	      ((ucode-primitive os2-select-descriptor 2) descriptor block?)))
-
-(define (select-registry-test registry block?)
-  (let ((result-vector (allocate-select-registry-result-vector)))
-    (let ((result
-	   ((ucode-primitive os2-select-registry-test 3) registry
-							 result-vector
-							 block?)))
-      (if (fix:= result 0)
-	  (let loop
-	      ((index (fix:- os2/select-registry-lub 1))
-	       (descriptors '()))
-	    (let ((descriptors
-		   (if (fix:= 0 (vector-8b-ref result-vector index))
-		       descriptors
-		       (cons index descriptors))))
-	      (if (fix:= 0 index)
-		  (begin
-		    (deallocate-select-registry-result-vector result-vector)
-		    descriptors)
-		  (loop (fix:- index 1) descriptors))))
-	  (begin
-	    (deallocate-select-registry-result-vector result-vector)
-	    (vector-ref os2/select-result-values result))))))
-
-(define os2/select-result-values
-  '#(INPUT-AVAILABLE #F INTERRUPT PROCESS-STATUS-CHANGE))
 
 ;;;; Subprocess/Shell Support
 

@@ -1,0 +1,1867 @@
+@c This file is part of the MIT/GNU Scheme Reference Manual.
+@c $Id: associations.texi,v 1.1 2003/04/15 03:29:22 cph Exp $
+
+@c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
+@c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
+@c Copyright 2002,2003 Massachusetts Institute of Technology
+@c See file scheme.texinfo for copying conditions.
+
+@node Associations, Procedures, Miscellaneous Datatypes, Top
+@chapter Associations
+
+MIT/GNU Scheme provides several mechanisms for associating objects with
+one another.  Each of these mechanisms creates a link between one or
+more objects, called @dfn{keys}, and some other object, called a
+@dfn{datum}.  Beyond this common idea, however, each of the mechanisms
+has various different properties that make it appropriate in different
+situations:
+
+@itemize @bullet
+@item
+@dfn{Association lists} are one of Lisp's oldest association mechanisms.
+Because they are made from ordinary pairs, they are easy to build and
+manipulate, and very flexible in use.  However, the average lookup time
+for an association list is linear in the number of associations.
+
+@item
+@dfn{1D tables} have a very simple interface, making them easy to use,
+and offer the feature that they do not prevent their keys from being
+reclaimed by the garbage collector.  Like association lists, their
+average lookup time is linear in the number of associations; but 1D
+tables aren't as flexible.
+
+@item
+@cindex property list
+@dfn{The association table} is MIT/GNU Scheme's equivalent to the
+@dfn{property lists} of Lisp.  It has the advantages that the keys may
+be any type of object and that it does not prevent the keys from being
+reclaimed by the garbage collector.  However, two linear-time lookups
+must be performed, one for each key, whereas for traditional property
+lists only one lookup is required for both keys.
+
+@item
+@dfn{Hash tables} are a powerful mechanism with constant-time access to
+large amounts of data.  Hash tables are not as flexible as association
+lists, but because their access times are independent of the number of
+associations in the table, for most applications they are the mechanism
+of choice.
+
+@item
+@dfn{Balanced binary trees} are another association mechanism that is
+useful for applications in which the keys are ordered.  Binary trees
+have access times that are proportional to the logarithm of the number
+of associations in the tree.  While they aren't as fast as hash tables,
+they offer the advantage that the contents of the tree can be converted
+to a sorted alist in linear time.  Additionally, two trees can be
+compared for equality in worst-case linear time.
+
+@item
+@dfn{Red-Black trees} are a kind of balanced binary tree.  The
+implementation supports destructive insertion and deletion operations
+with a good constant factor.
+
+@item
+@dfn{Weight-Balanced trees} are a kind of balanced binary tree.  The
+implementation provides non-destructive operations.  There is a
+comprehensive set of operations, including: a constant-time size
+operation; many high-level operations such as the set operations union,
+intersection and difference; and indexing of elements by position.
+
+@end itemize
+
+@menu
+* Association Lists::           
+* 1D Tables::                   
+* The Association Table::       
+* Hash Tables::                 
+* Object Hashing::              
+* Red-Black Trees::             
+* Weight-Balanced Trees::       
+@end menu
+
+@node Association Lists, 1D Tables, Associations, Associations
+@section Association Lists
+
+@comment **** begin CLTL ****
+@cindex association list (defn)
+@cindex list, association (defn)
+@cindex alist (defn)
+@cindex key, of association list element (defn)
+An @dfn{association list}, or @dfn{alist}, is a data structure used very
+frequently in Scheme.  An alist is a list of pairs, each of which is
+called an @dfn{association}.  The car of an association is called the
+@dfn{key}.
+
+An advantage of the alist representation is that an alist can be
+incrementally augmented simply by adding new entries to the front.
+Moreover, because the searching procedures @code{assv} et al.@: search the
+alist in order, new entries can ``shadow'' old entries.  If an alist is
+viewed as a mapping from keys to data, then the mapping can be not only
+augmented but also altered in a non-destructive manner by adding new
+entries to the front of the alist.@footnote{This introduction is taken
+from @cite{Common Lisp, The Language}, second edition, p.@: 431.}
+@comment **** end CLTL ****
+
+@deffn procedure alist? object
+@cindex type predicate, for alist
+@findex list?
+Returns @code{#t} if @var{object} is an association list (including the
+empty list); otherwise returns @code{#f}.  Any @var{object} satisfying this
+predicate also satisfies @code{list?}.
+@end deffn
+
+@deffn procedure assq object alist
+@deffnx procedure assv object alist
+@deffnx procedure assoc object alist
+@cindex searching, of alist
+@findex eq?
+@findex eqv?
+@findex equal?
+These procedures find the first pair in @var{alist} whose car field is
+@var{object}, and return that pair; the returned pair is always an
+@emph{element} of @var{alist}, @emph{not} one of the pairs from which
+@var{alist} is composed.  If no pair in @var{alist} has @var{object} as
+its car, @code{#f} (n.b.: not the empty list) is returned.  @code{assq}
+uses @code{eq?} to compare @var{object} with the car fields of the pairs
+in @var{alist}, while @code{assv} uses @code{eqv?} and @code{assoc} uses
+@code{equal?}.@footnote{Although they are often used as predicates,
+@code{assq}, @code{assv}, and @code{assoc} do not have question marks in
+their names because they return useful values rather than just @code{#t}
+or @code{#f}.}
+
+@example
+@group
+(define e '((a 1) (b 2) (c 3)))
+(assq 'a e)                             @result{}  (a 1)
+(assq 'b e)                             @result{}  (b 2)
+(assq 'd e)                             @result{}  #f
+(assq (list 'a) '(((a)) ((b)) ((c))))   @result{}  #f
+(assoc (list 'a) '(((a)) ((b)) ((c))))  @result{}  ((a))
+(assq 5 '((2 3) (5 7) (11 13)))         @result{}  @r{unspecified}
+(assv 5 '((2 3) (5 7) (11 13)))         @result{}  (5 7)
+@end group
+@end example
+@end deffn
+
+@deffn procedure association-procedure predicate selector
+Returns an association procedure that is similar to @code{assv}, except
+that @var{selector} (a procedure of one argument) is used to select the
+key from the association, and @var{predicate} (an equivalence predicate)
+is used to compare the key to the given item.  This can be used to make
+association lists whose elements are, say, vectors instead of pairs
+(also @pxref{Searching Lists}).
+
+For example, here is how @code{assv} could be implemented:
+
+@example
+(define assv (association-procedure eqv? car))
+@end example
+
+Another example is a ``reverse association'' procedure:
+
+@example
+(define rassv (association-procedure eqv? cdr))
+@end example
+@end deffn
+
+@deffn procedure del-assq object alist
+@deffnx procedure del-assv object alist
+@deffnx procedure del-assoc object alist
+@cindex deletion, of alist element
+@findex eq?
+@findex eqv?
+@findex equal?
+These procedures return a newly allocated copy of @var{alist} in which
+all associations with keys equal to @var{object} have been removed.
+Note that while the returned copy is a newly allocated list, the
+association pairs that are the elements of the list are shared with
+@var{alist}, not copied.  @code{del-assq} uses @code{eq?} to compare
+@var{object} with the keys, while @code{del-assv} uses @code{eqv?} and
+@code{del-assoc} uses @code{equal?}.
+
+@example
+@group
+(define a
+  '((butcher . "231 e22nd St.")
+    (baker . "515 w23rd St.")
+    (hardware . "988 Lexington Ave.")))
+
+(del-assq 'baker a)
+     @result{}
+     ((butcher . "231 e22nd St.")
+      (hardware . "988 Lexington Ave."))
+@end group
+@end example
+@end deffn
+
+@deffn procedure del-assq! object alist
+@deffnx procedure del-assv! object alist
+@deffnx procedure del-assoc! object alist
+@findex eq?
+@findex eqv?
+@findex equal?
+These procedures remove from @var{alist} all associations with keys
+equal to @var{object}.  They return the resulting list.
+@code{del-assq!} uses @code{eq?} to compare @var{object} with the keys,
+while @code{del-assv!} uses @code{eqv?} and @code{del-assoc!} uses
+@code{equal?}.  These procedures are like @code{del-assq},
+@code{del-assv}, and @code{del-assoc}, respectively, except that they
+destructively modify @var{alist}.
+@end deffn
+
+@deffn procedure delete-association-procedure deletor predicate selector
+@findex list-deletor
+@findex list-deletor!
+This returns a deletion procedure similar to @code{del-assv} or
+@code{del-assq!}.  The @var{predicate} and @var{selector} arguments are
+the same as those for @code{association-procedure}, while the
+@var{deletor} argument should be either the procedure
+@code{list-deletor} (for non-destructive deletions), or the procedure
+@code{list-deletor!} (for destructive deletions).
+
+For example, here is a possible implementation of @code{del-assv}:
+
+@example
+@group
+(define del-assv 
+  (delete-association-procedure list-deletor eqv? car))
+@end group
+@end example
+@end deffn
+
+@deffn procedure alist-copy alist
+@cindex copying, of alist
+@findex list-copy
+Returns a newly allocated copy of @var{alist}.  This is similar to
+@code{list-copy} except that the ``association'' pairs, i.e.@: the
+elements of the list @var{alist}, are also copied.  @code{alist-copy}
+could have been implemented like this:
+
+@example
+@group
+(define (alist-copy alist)
+  (if (null? alist)
+      '()
+      (cons (cons (car (car alist)) (cdr (car alist)))
+            (alist-copy (cdr alist)))))
+@end group
+@end example
+@end deffn
+
+@node 1D Tables, The Association Table, Association Lists, Associations
+@section 1D Tables
+
+@cindex 1D table (defn)
+@cindex one-dimensional table (defn)
+@cindex table, one-dimensional (defn)
+@cindex weak pair, and 1D table
+@dfn{1D tables} (``one-dimensional'' tables) are similar to association
+lists.  In a 1D table, unlike an association list, the keys of the table
+are held @dfn{weakly}: if a key is garbage-collected, its associated
+value in the table is removed.  1D tables compare their keys for
+equality using @code{eq?}.
+
+@cindex property list
+1D tables can often be used as a higher-performance alternative to the
+two-dimensional association table (@pxref{The Association Table}).  If
+one of the keys being associated is a compound object such as a vector,
+a 1D table can be stored in one of the vector's slots.  Under these
+circumstances, accessing items in a 1D table will be comparable in
+performance to using a property list in a conventional Lisp.
+
+@deffn procedure make-1d-table
+Returns a newly allocated empty 1D table.
+@end deffn
+
+@deffn procedure 1d-table? object
+@cindex type predicate, for 1D table
+@findex list?
+Returns @code{#t} if @var{object} is a 1D table, otherwise returns
+@code{#f}.  Any object that satisfies this predicate also satisfies
+@code{list?}.
+@end deffn
+
+@deffn procedure 1d-table/put! 1d-table key datum
+Creates an association between @var{key} and @var{datum} in
+@var{1d-table}.  Returns an unspecified value.
+@end deffn
+
+@deffn procedure 1d-table/remove! 1d-table key
+Removes any association for @var{key} in @var{1d-table} and returns an
+unspecified value.
+@end deffn
+
+@deffn procedure 1d-table/get 1d-table key default
+Returns the @var{datum} associated with @var{key} in @var{1d-table}.  If
+there is no association for @var{key}, @var{default} is returned.
+@end deffn
+
+@deffn procedure 1d-table/lookup 1d-table key if-found if-not-found
+@var{If-found} must be a procedure of one argument, and
+@var{if-not-found} must be a procedure of no arguments.  If
+@var{1d-table} contains an association for @var{key}, @var{if-found} is
+invoked on the @var{datum} of the association.  Otherwise,
+@var{if-not-found} is invoked with no arguments.  In either case, the
+result of the invoked procedure is returned as the result of
+@code{1d-table/lookup}.
+@end deffn
+
+@deffn procedure 1d-table/alist 1d-table
+Returns a newly allocated association list that contains the same
+information as @var{1d-table}.
+@end deffn
+
+@node The Association Table, Hash Tables, 1D Tables, Associations
+@section The Association Table
+
+@cindex association table (defn)
+@cindex table, association (defn)
+@cindex property list
+@findex eq?
+MIT/GNU Scheme provides a generalization of the property-list mechanism
+found in most other implementations of Lisp: a global two-dimensional
+@dfn{association table}.  This table is indexed by two keys, called
+@var{x-key} and @var{y-key} in the following procedure descriptions.
+These keys and the datum associated with them can be arbitrary objects.
+@code{eq?} is used to discriminate keys.
+
+Think of the association table as a matrix: a single datum can be
+accessed using both keys, a column using @var{x-key} only, and a row
+using @var{y-key} only.
+
+@deffn procedure 2d-put! x-key y-key datum
+Makes an entry in the association table that associates @var{datum} with
+@var{x-key} and @var{y-key}.  Returns an unspecified result.
+@end deffn
+
+@deffn procedure 2d-remove! x-key y-key
+If the association table has an entry for @var{x-key} and @var{y-key},
+it is removed.  Returns an unspecified result.
+@end deffn
+
+@deffn procedure 2d-get x-key y-key
+Returns the @var{datum} associated with @var{x-key} and @var{y-key}.
+Returns @code{#f} if no such association exists.
+@end deffn
+
+@deffn procedure 2d-get-alist-x x-key
+Returns an association list of all entries in the association table that
+are associated with @var{x-key}.  The result is a list of
+@code{(@var{y-key} . @var{datum})} pairs.  Returns the empty list if no
+entries for @var{x-key} exist.
+
+@example
+@group
+(2d-put! 'foo 'bar 5)
+(2d-put! 'foo 'baz 6)
+(2d-get-alist-x 'foo)           @result{}  ((baz . 6) (bar . 5))
+@end group
+@end example
+@end deffn
+
+@deffn procedure 2d-get-alist-y y-key
+Returns an association list of all entries in the association table that
+are associated with @var{y-key}.  The result is a list of
+@code{(@var{x-key} . @var{datum})} pairs.  Returns the empty list if no
+entries for @var{y-key} exist.
+
+@example
+@group
+(2d-put! 'bar 'foo 5)
+(2d-put! 'baz 'foo 6)
+(2d-get-alist-y 'foo)           @result{}  ((baz . 6) (bar . 5))
+@end group
+@end example
+@end deffn
+
+@node Hash Tables, Object Hashing, The Association Table, Associations
+@section Hash Tables
+
+@cindex hash table
+Hash tables are a fast, powerful mechanism for storing large numbers of
+associations.  MIT/GNU Scheme's hash tables feature automatic resizing,
+customizable growth parameters, and customizable hash procedures.
+
+The average times for the insertion, deletion, and lookup operations on
+a hash table are bounded by a constant.  The space required by the table
+is proportional to the number of associations in the table; the
+constant of proportionality is described below (@pxref{Resizing of Hash
+Tables}).
+
+(Previously, the hash-table implementation was a run-time-loadable
+option, but as of release 7.7.0 it is loaded by default.  It's no longer
+necessary to call @code{load-option} prior to using hash tables.)
+
+@menu
+* Construction of Hash Tables::  
+* Basic Hash Table Operations::  
+* Resizing of Hash Tables::     
+* Address Hashing::             
+* Low-Level Hash Table Operations::  
+@end menu
+
+@node Construction of Hash Tables, Basic Hash Table Operations, Hash Tables, Hash Tables
+@subsection Construction of Hash Tables
+
+@cindex construction, of hash table
+The next few procedures are hash-table constructors.  All hash table
+constructors are procedures that accept one optional argument,
+@var{initial-size}, and return a newly allocated hash table.  If
+@var{initial-size} is given, it must be an exact non-negative integer or
+@code{#f}.  The meaning of @var{initial-size} is discussed below
+(@pxref{Resizing of Hash Tables}).
+
+@cindex equivalence predicate, of hash table
+@cindex strongly held keys, of hash table
+@cindex weakly held keys, of hash table
+Hash tables are normally characterized by two things: the equivalence
+predicate that is used to compare keys, and whether or not the table
+allows its keys to be reclaimed by the garbage collector.  If a table
+prevents its keys from being reclaimed by the garbage collector, it is
+said to hold its keys @dfn{strongly}; otherwise it holds its keys
+@dfn{weakly} (@pxref{Weak Pairs}).
+
+@deffn procedure make-eq-hash-table [initial-size]
+@findex eq?
+Returns a newly allocated hash table that accepts arbitrary objects as
+keys, and compares those keys with @code{eq?}.  The keys are held
+weakly.  These are the fastest of the standard hash tables.
+@end deffn
+
+@deffn procedure make-eqv-hash-table [initial-size]
+@findex eqv?
+Returns a newly allocated hash table that accepts arbitrary objects as
+keys, and compares those keys with @code{eqv?}.  The keys are held
+weakly, except that booleans, characters, and numbers are held strongly.
+These hash tables are a little slower than those made by
+@code{make-eq-hash-table}.
+@end deffn
+
+@deffn procedure make-equal-hash-table [initial-size]
+@findex equal?
+Returns a newly allocated hash table that accepts arbitrary objects as
+keys, and compares those keys with @code{equal?}.  The keys are held
+strongly.  These hash tables are quite a bit slower than those made by
+@code{make-eq-hash-table}.
+@end deffn
+
+@deffn procedure make-string-hash-table [initial-size]
+@findex string=?
+Returns a newly allocated hash table that accepts character strings as
+keys, and compares them with @code{string=?}.  The keys are held
+strongly.
+@end deffn
+
+The next two procedures are used to create new hash-table constructors.
+All of the above hash table constructors, with the exception of
+@code{make-eqv-hash-table}, could have been created by calls to these
+``constructor-constructors''; see the examples below.
+
+@deffn procedure strong-hash-table/constructor key-hash key=? [rehash-after-gc?]
+@deffnx procedure weak-hash-table/constructor key-hash key=? [rehash-after-gc?]
+@cindex hashing, of key in hash table
+@cindex modulus, of hashing procedure
+Each of these procedures accepts two arguments and returns a hash-table
+constructor.  The @var{key=?} argument is an equivalence predicate for
+the keys of the hash table.  The @var{key-hash} argument is a procedure
+that computes a hash number.  Specifically, @var{key-hash} accepts two
+arguments, a key and an exact positive integer (the @dfn{modulus}), and
+returns an exact non-negative integer that is less than the modulus.
+
+The optional argument @var{rehash-after-gc?}, if true, says that the
+values returned by @var{key-hash} might change after a garbage
+collection.  If so, the hash-table implementation arranges for the table
+to be rehashed when necessary.  (@xref{Address Hashing}, for
+information about hash procedures that have this property.)  Otherwise,
+it is assumed that @var{key-hash} always returns the same value for the
+same arguments.  The default value of this argument is @code{#f}.
+
+The constructors returned by @code{strong-hash-table/constructor} make
+hash tables that hold their keys strongly.  The constructors returned by
+@code{weak-hash-table/constructor} make hash tables that hold their keys
+weakly.
+@end deffn
+
+Some examples showing how some standard hash-table constructors could have
+been defined:
+
+@findex eq-hash-mod
+@findex eq?
+@findex equal-hash-mod
+@findex equal?
+@findex string-hash-mod
+@findex string=?
+@example
+@group
+(define make-eq-hash-table
+  (weak-hash-table/constructor eq-hash-mod eq? #t))
+
+(define make-equal-hash-table
+  (strong-hash-table/constructor equal-hash-mod equal? #t))
+
+(define make-string-hash-table
+  (strong-hash-table/constructor string-hash-mod string=? #f))
+@end group
+@end example
+
+The following procedure is sometimes useful in conjunction with weak
+hash tables.  Normally it is not needed, because such hash tables clean
+themselves automatically as they are used.
+
+@deffn procedure hash-table/clean! hash-table
+If @var{hash-table} is a type of hash table that holds its @var{key}s
+weakly, this procedure recovers any space that was being used to record
+associations for objects that have been reclaimed by the garbage
+collector.  Otherwise, this procedure does nothing.  In either case, it
+returns an unspecified result.
+@end deffn
+
+@node Basic Hash Table Operations, Resizing of Hash Tables, Construction of Hash Tables, Hash Tables
+@subsection Basic Hash Table Operations
+
+The procedures described in this section are the basic operations on
+hash tables.  They provide the functionality most often needed by
+programmers.  Subsequent sections describe other operations that provide
+additional functionality needed by some applications.
+
+@deffn procedure hash-table? object
+@cindex type predicate, for hash table
+Returns @code{#t} if @var{object} is a hash table, otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn procedure hash-table/put! hash-table key datum
+Associates @var{datum} with @var{key} in @var{hash-table} and returns an
+unspecified result.  The average time required by this operation is
+bounded by a constant.
+@end deffn
+
+@deffn procedure hash-table/get hash-table key default
+Returns the datum associated with @var{key} in @var{hash-table}.  If
+there is no association for @var{key}, @var{default} is returned.  The
+average time required by this operation is bounded by a constant.
+@end deffn
+
+@deffn procedure hash-table/remove! hash-table key
+If @var{hash-table} has an association for @var{key}, removes it.
+Returns an unspecified result.  The average time required by this
+operation is bounded by a constant.
+@end deffn
+
+@deffn procedure hash-table/clear! hash-table
+Removes all associations in @var{hash-table} and returns an unspecified
+result.  The average and worst-case times required by this operation are
+bounded by a constant.
+@end deffn
+
+@deffn procedure hash-table/count hash-table
+Returns the number of associations in @var{hash-table} as an exact
+non-negative integer.  If @var{hash-table} holds its keys weakly, this
+is a conservative upper bound that may count some associations whose
+keys have recently been reclaimed by the garbage collector.  The average
+and worst-case times required by this operation are bounded by a
+constant.
+@end deffn
+
+@deffn procedure hash-table->alist hash-table
+Returns the contents of @var{hash-table} as a newly allocated alist.
+Each element of the alist is a pair @code{(@var{key} . @var{datum})}
+where @var{key} is one of the keys of @var{hash-table}, and @var{datum}
+is its associated datum.  The average and worst-case times required by
+this operation are linear in the number of associations
+in the table.
+@end deffn
+
+@deffn procedure hash-table/key-list hash-table
+Returns a newly allocated list of the keys in @var{hash-table}.  The
+average and worst-case times required by this operation are linear in
+the number of associations in the table.
+@end deffn
+
+@deffn procedure hash-table/datum-list hash-table
+Returns a newly allocated list of the datums in @var{hash-table}.  Each
+element of the list corresponds to one of the associations in
+@var{hash-table}; if the table contains multiple associations with the
+same datum, so will this list.  The average and worst-case times
+required by this operation are linear in the number of associations in
+the table.
+@end deffn
+
+@deffn procedure hash-table/for-each hash-table procedure
+@var{Procedure} must be a procedure of two arguments.  Invokes
+@var{procedure} once for each association in @var{hash-table}, passing
+the association's @var{key} and @var{datum} as arguments, in that order.
+Returns an unspecified result.  @var{Procedure} must not modify
+@var{hash-table}, with one exception: it is permitted to call
+@code{hash-table/remove!} to remove the association being processed.
+@end deffn
+
+The following procedure is an alternate form of @code{hash-table/get}
+that is useful in some situations.  Usually, @code{hash-table/get} is
+preferable because it is faster.
+
+@deffn procedure hash-table/lookup hash-table key if-found if-not-found
+@var{If-found} must be a procedure of one argument, and
+@var{if-not-found} must be a procedure of no arguments.  If
+@var{hash-table} contains an association for @var{key}, @var{if-found}
+is invoked on the datum of the association.  Otherwise,
+@var{if-not-found} is invoked with no arguments.  In either case, the
+result yielded by the invoked procedure is returned as the result of
+@code{hash-table/lookup} (@code{hash-table/lookup} @emph{reduces} into
+the invoked procedure, i.e.@: calls it tail-recursively).  The average
+time required by this operation is bounded by a constant.
+@end deffn
+
+@node Resizing of Hash Tables, Address Hashing, Basic Hash Table Operations, Hash Tables
+@subsection Resizing of Hash Tables
+
+@cindex resizing, of hash table
+@cindex size, of hash table (defn)
+Normally, hash tables automatically resize themselves according to need.
+Because of this, the programmer need not be concerned with management of
+the table's size.  However, some limited control over the table's size
+is provided, which will be discussed below.  This discussion involves
+two concepts, @dfn{usable size} and @dfn{physical size}, which we will
+now define.
+
+@cindex usable size, of hash table (defn)
+The @dfn{usable size} of a hash table is the number of associations that
+the table can hold at a given time.  If the number of associations in
+the table exceeds the usable size, the table will automatically grow,
+increasing the usable size to a new value that is sufficient to hold the
+associations.
+
+@cindex physical size, of hash table (defn)
+The @dfn{physical size} is an abstract measure of a hash table that
+specifies how much space is allocated to hold the associations of the
+table.  The physical size is always greater than or equal to the usable
+size.  The physical size is not interesting in itself; it is interesting
+only for its effect on the performance of the hash table.  While the
+average performance of a hash-table lookup is bounded by a constant, the
+worst-case performance is not.  For a table containing a given number of
+associations, increasing the physical size of the table decreases the
+probability that worse-than-average performance will occur.
+
+The physical size of a hash table is statistically related to the number
+of associations.  However, it is possible to place bounds on the
+physical size, and from this to estimate the amount of space used by the
+table:
+
+@example
+@group
+(define (hash-table-space-bounds count rehash-size rehash-threshold)
+  (let ((tf (/ 1 rehash-threshold)))
+    (values (if (exact-integer? rehash-size)
+                (- (* count (+ 4 tf))
+                   (* tf (+ rehash-size rehash-size)))
+                (* count (+ 4 (/ tf (* rehash-size rehash-size)))))
+            (* count (+ 4 tf)))))
+@end group
+@end example
+
+@noindent
+What this formula shows is that, for a ``normal'' rehash size (that is,
+not an exact integer), the amount of space used by the hash table is
+proportional to the number of associations in the table.  The constant
+of proportionality varies statistically, with the low bound being
+
+@example
+(+ 4 (/ (/ 1 rehash-threshold) (* rehash-size rehash-size)))
+@end example
+
+@noindent
+and the high bound being
+
+@example
+(+ 4 (/ 1 rehash-threshold))
+@end example
+
+@noindent
+which, for the default values of these parameters, are @code{4.25} and
+@code{5}, respectively.  Reducing the rehash size will tighten these
+bounds, but increases the amount of time spent resizing, so you can see
+that the rehash size gives some control over the time-space tradeoff of
+the table.
+
+The programmer can control the size of a hash table by means of three
+parameters:
+
+@itemize @bullet
+@item
+Each table's @var{initial-size} may be specified when the table is
+created.
+
+@item
+Each table has a @dfn{rehash size} that specifies how the size of the
+table is changed when it is necessary to grow or shrink the table.
+
+@item
+Each table has a @dfn{rehash threshold} that specifies the relationship
+of the table's physical size to its usable size.
+@end itemize
+
+@cindex initial size, of hash table
+If the programmer knows that the table will initially contain a specific
+number of items, @var{initial-size} can be given when the table is
+created.  If @var{initial-size} is an exact non-negative integer, it
+specifies the initial usable size of the hash table; the table will not
+change size until the number of items in the table exceeds
+@var{initial-size}, after which automatic resizing is enabled and
+@var{initial-size} no longer has any effect.  Otherwise, if
+@var{initial-size} is not given or is @code{#f}, the table is
+initialized to an unspecified size and automatic resizing is immediately
+enabled.
+
+@cindex rehash size, of hash table (defn)
+The @dfn{rehash size} specifies how much to increase the usable size of
+the hash table when it becomes full.  It is either an exact positive
+integer, or a real number greater than one.  If it is an integer, the
+new size is the sum of the old size and the rehash size.  Otherwise, it
+is a real number, and the new size is the product of the old size and
+the rehash size.  Increasing the rehash size decreases the average cost
+of an insertion, but increases the average amount of space used by the
+table.  The rehash size of a table may be altered dynamically by the
+application in order to optimize the resizing of the table; for example,
+if the table will grow quickly for a known period and afterwards will
+not change size, performance might be improved by using a large rehash
+size during the growth phase and a small one during the static phase.
+The default rehash size of a newly constructed hash table is @code{2.0}.
+
+@strong{Warning}: The use of an exact positive integer for a rehash
+size is almost always undesirable; this option is provided solely for
+compatibility with the Common Lisp hash-table mechanism.  The reason for
+this has to do with the time penalty for resizing the hash table.  The
+time needed to resize a hash table is proportional to the
+number of associations in the table.  This resizing cost is
+@dfn{amortized} across the insertions required to fill the table to the
+point where it needs to grow again.  If the table grows by an amount
+proportional to the number of associations, then the cost of
+resizing and the increase in size are both proportional to the
+number of associations, so the @dfn{amortized cost} of an insertion
+operation is still bounded by a constant.  However, if the table grows
+by a constant amount, this is not true: the amortized cost of an
+insertion is not bounded by a constant.  Thus, using a constant rehash
+size means that the average cost of an insertion increases
+proportionally to the number of associations in the hash table.
+
+@cindex rehash threshold, of hash table (defn)
+The @dfn{rehash threshold} is a real number, between zero exclusive and
+one inclusive, that specifies the ratio between a hash table's usable
+size and its physical size.  Decreasing the rehash threshold decreases
+the probability of worse-than-average insertion, deletion, and lookup
+times, but increases the physical size of the table for a given usable
+size.  The default rehash threshold of a newly constructed hash table is
+@code{1}.
+
+@deffn procedure hash-table/size hash-table
+Returns the usable size of @var{hash-table} as an exact positive
+integer.  This is the number of associations that @var{hash-table} can
+hold before it will grow.
+@end deffn
+
+@deffn procedure hash-table/rehash-size hash-table
+Returns the rehash size of @var{hash-table}.
+@end deffn
+
+@deffn procedure set-hash-table/rehash-size! hash-table x
+@var{X} must be either an exact positive integer, or a real number that
+is greater than one.  Sets the rehash size of @var{hash-table} to
+@var{x} and returns an unspecified result.  This operation adjusts the
+``shrink threshold'' of the table; the table might shrink if the number
+of associations is less than the new threshold.
+@end deffn
+
+@deffn procedure hash-table/rehash-threshold hash-table
+Returns the rehash threshold of @var{hash-table}.
+@end deffn
+
+@deffn procedure set-hash-table/rehash-threshold! hash-table x
+@var{X} must be a real number between zero exclusive and one inclusive.
+Sets the rehash threshold of @var{hash-table} to @var{x} and returns an
+unspecified result.  This operation does not change the usable size of
+the table, but it usually changes the physical size of the table, which
+causes the table to be rehashed.
+@end deffn
+
+@node Address Hashing, Low-Level Hash Table Operations, Resizing of Hash Tables, Hash Tables
+@subsection Address Hashing
+@cindex address hashing
+
+The procedures described in this section may be used to make very
+efficient key-hashing procedures for arbitrary objects.  All of these
+procedures are based on @dfn{address hashing}, which uses the address of
+an object as its hash number.  The great advantage of address hashing is
+that converting an arbitrary object to a hash number is extremely fast
+and takes the same amount of time for any object.
+
+The disadvantage of address hashing is that the garbage collector
+changes the addresses of most objects.  The hash-table implementation
+compensates for this disadvantage by automatically rehashing tables that
+use address hashing when garbage collections occur.  Thus, in order to
+use these procedures for key hashing, it is necessary to tell the
+hash-table implementation (by means of the @var{rehash-after-gc?}
+argument to the ``constructor-constructor'' procedure) that the hash
+numbers computed by your key-hashing procedure must be recomputed after
+a garbage collection.
+
+@deffn procedure eq-hash object
+@deffnx procedure eqv-hash object
+@deffnx procedure equal-hash object
+These procedures return a hash number for @var{object}.  The result is
+always a non-negative integer, and in the case of @code{eq-hash}, a
+non-negative fixnum.  Two objects that are equivalent according to
+@code{eq?}, @code{eqv?}, or @code{equal?}, respectively, will produce the
+same hash number when passed as arguments to these procedures, provided
+that the garbage collector does not run during or between the two calls.
+@end deffn
+
+The following procedures are the key-hashing procedures used by the
+standard address-hash-based hash tables.
+
+@deffn procedure eq-hash-mod object modulus
+This procedure is the key-hashing procedure used by
+@code{make-eq-hash-table}.
+@end deffn
+
+@deffn procedure eqv-hash-mod object modulus
+This procedure is the key-hashing procedure used by
+@code{make-eqv-hash-table}.
+@end deffn
+
+@deffn procedure equal-hash-mod object modulus
+This procedure is the key-hashing procedure used by
+@code{make-equal-hash-table}.
+@end deffn
+
+@node Low-Level Hash Table Operations,  , Address Hashing, Hash Tables
+@subsection Low-Level Hash Table Operations
+
+The procedures in this section allow the programmer to control some of
+the internal structure of a hash table.  Normally, hash tables maintain
+associations between keys and datums using pairs or weak pairs.  These
+procedures allow the programmer to specify the use of some other data
+structure to maintain the association.  In this section, the data
+structure that represents an association in a hash table is called an
+@dfn{entry}.
+
+@deffn procedure hash-table/constructor key-hash key=? make-entry entry-valid? entry-key entry-datum set-entry-datum! [rehash-after-gc?]
+Creates and returns a hash-table constructor procedure
+(@pxref{Construction of Hash Tables}).  The arguments define the
+characteristics of the hash table as follows:
+
+@table @var
+@item key-hash
+The hashing procedure.  A procedure that accepts two arguments, a key and
+an exact positive integer (the @dfn{modulus}), and returns an exact
+non-negative integer that is less than the modulus.
+
+@item key=?
+A equivalence predicate that accepts two keys and is true iff they are
+the same key.  If this predicate is true of two keys, then
+@var{key-hash} must return the same value for each of these keys (given
+the same modulus in both cases).
+
+@item make-entry
+A procedure that accepts a key and a datum as arguments and returns a
+newly allocated entry.
+
+@item entry-valid?
+A procedure that accepts an entry and returns @code{#f} iff the entry's
+key has been reclaimed by the garbage collector.  Instead of a
+procedure, this may be @code{#t}, which is equivalent to @code{(lambda
+(entry) #t)}.
+@findex weak-pair/car?
+
+@item entry-key
+A procedure that accepts an entry as an argument and returns the entry's
+key.
+
+@item entry-datum
+A procedure that accepts an entry as an argument and returns the entry's
+datum.
+
+@item set-entry-datum!
+A procedure that accepts an entry and an object as arguments, modifies
+the entry's datum to be the object, and returns an unspecified
+result.
+
+@item rehash-after-gc?
+An optional argument that, if true, says the values returned by
+@var{key-hash} might change after a garbage collection.  If so, the
+hash-table implementation arranges for the table to be rehashed when
+necessary.  (@xref{Address Hashing}, for information about hash
+procedures that have this property.)  Otherwise, it is assumed that
+@var{key-hash} always returns the same value for the same arguments.
+The default value of this argument is @code{#f}.
+@end table
+@end deffn
+
+@noindent
+For example, here is how the constructors for ordinary hash tables could
+be defined:
+
+@example
+@group
+(define (strong-hash-table/constructor key-hash key=?
+                                       #!optional rehash-after-gc?)
+  (hash-table/constructor key-hash key=?
+                          cons #t car cdr set-cdr!
+                          (if (default-object? rehash-after-gc?)
+                              #f
+                              rehash-after-gc?)))
+@end group
+
+@group
+(define (weak-hash-table/constructor key-hash key=?
+                                     #!optional rehash-after-gc?)
+  (hash-table/constructor key-hash key=? weak-cons weak-pair/car?
+                          weak-car weak-cdr weak-set-cdr!
+                          (if (default-object? rehash-after-gc?)
+                              #f
+                              rehash-after-gc?)))
+@end group
+@end example
+
+@deffn procedure hash-table/key-hash hash-table
+@deffnx procedure hash-table/key=? hash-table
+@deffnx procedure hash-table/make-entry hash-table
+@deffnx procedure hash-table/entry-valid? hash-table
+@deffnx procedure hash-table/entry-key hash-table
+@deffnx procedure hash-table/entry-datum hash-table
+@deffnx procedure hash-table/set-entry-datum! hash-table
+Each procedure returns the value of the corresponding argument that was
+used to construct @var{hash-table}.
+@end deffn
+
+The following procedures return the contents of a hash table as a
+collection of entries.  While the data structure holding the entries is
+newly allocated, the entries themselves are not copied.  Since hash
+table operations can modify these entries, the entries should be copied
+if it is desired to keep them while continuing to modify the table.
+
+@deffn procedure hash-table/entries-list hash-table
+Returns a newly allocated list of the entries in @var{hash-table}.
+@end deffn
+
+@deffn procedure hash-table/entries-vector hash-table
+Returns a newly allocated vector of the entries in @var{hash-table}.
+Equivalent to
+
+@example
+(list->vector (hash-table/entries-list @var{hash-table}))
+@end example
+@end deffn
+
+@node Object Hashing, Red-Black Trees, Hash Tables, Associations
+@section Object Hashing
+
+@cindex object hashing
+@cindex hashing, of object
+The MIT/GNU Scheme object-hashing facility provides a mechanism for
+generating a unique hash number for an arbitrary object.  This hash
+number, unlike an object's address, is unchanged by garbage collection.
+The object-hashing facility is useful in conjunction with hash tables,
+but it may be used for other things as well.  In particular, it is used
+in the generation of the written representation for many objects
+(@pxref{Custom Output}).
+
+All of these procedures accept an optional argument called @var{table};
+this table contains the object-integer associations.  If given, this
+argument must be an object-hash table as constructed by
+@code{hash-table/make} (see below).  If not given, a default table is
+used.
+
+@deffn procedure hash object [table]
+@findex eq?
+@code{hash} associates an exact non-negative integer with @var{object}
+and returns that integer.  If @code{hash} was previously called with
+@var{object} as its argument, the integer returned is the same as was
+returned by the previous call.  @code{hash} guarantees that distinct
+objects (in the sense of @code{eq?}) are associated with distinct
+integers.
+@end deffn
+
+@deffn procedure unhash k [table]
+@code{unhash} takes an exact non-negative integer @var{k} and returns
+the object associated with that integer.  If there is no object
+associated with @var{k}, or if the object previously associated with
+@var{k} has been reclaimed by the garbage collector, an error of type
+@code{condition-type:bad-range-argument} is signalled.  In other words,
+if @code{hash} previously returned @var{k} for some object, and that
+object has not been reclaimed, it is the value of the call to
+@code{unhash}.
+@findex condition-type:bad-range-argument
+@end deffn
+
+An object that is passed to @code{hash} as an argument is not protected
+from being reclaimed by the garbage collector.  If all other references
+to that object are eliminated, the object will be reclaimed.
+Subsequently calling @code{unhash} with the hash number of the (now
+reclaimed) object will signal an error.
+
+@example
+@group
+(define x (cons 0 0))           @result{}  @r{unspecified}
+(hash x)                        @result{}  77
+(eqv? (hash x) (hash x))        @result{}  #t
+(define x 0)                    @result{}  @r{unspecified}
+(gc-flip)                       @r{;force a garbage collection}
+(unhash 77)                     @error{}
+@end group
+@end example
+
+@deffn procedure object-hashed? object [table]
+This predicate is true if @var{object} has an associated hash number.
+Otherwise it is false.
+@end deffn
+
+@deffn procedure valid-hash-number? k [table]
+This predicate is true if @var{k} is the hash number associated with
+some object.  Otherwise it is false.
+@end deffn
+
+The following two procedures provide a lower-level interface to the
+object-hashing mechanism.
+
+@deffn procedure object-hash object [table [insert?]]
+@findex eq?
+@code{object-hash} is like @code{hash}, except that it accepts an
+additional optional argument, @var{insert?}.  If @var{insert?}@: is
+supplied and is @code{#f}, @code{object-hash} will return an integer for
+@var{object} only if there is already an association in the table;
+otherwise, it will return @code{#f}.  If @var{insert?} is not supplied,
+or is not @code{#f}, @code{object-hash} always returns an integer,
+creating an association in the table if necessary.
+
+@code{object-hash} additionally treats @code{#f} differently than does
+@code{hash}.  Calling @code{object-hash} with @code{#f} as its argument
+will return an integer that, when passed to @code{unhash}, will signal
+an error rather than returning @code{#f}.  Likewise,
+@code{valid-hash-number?} will return @code{#f} for this integer.
+@end deffn
+
+@deffn procedure object-unhash k [table]
+@code{object-unhash} is like @code{unhash}, except that when @var{k} is
+not associated with any object or was previously associated with an
+object that has been reclaimed, @code{object-unhash} returns @code{#f}.
+This means that there is an ambiguity in the value returned by
+@code{object-unhash}: if @code{#f} is returned, there is no way to
+tell if @var{k} is associated with @code{#f} or is not associated with
+any object at all.
+@end deffn
+
+Finally, this procedure makes new object-hash tables:
+
+@deffn procedure hash-table/make
+This procedure creates and returns a new, empty object-hash table that
+is suitable for use as the optional @var{table} argument to the above
+procedures.  The returned table contains no associations.
+@end deffn
+
+@node Red-Black Trees, Weight-Balanced Trees, Object Hashing, Associations
+@section Red-Black Trees
+
+@cindex trees, balanced binary
+@cindex balanced binary trees
+@cindex binary trees
+@cindex red-black binary trees
+Balanced binary trees are a useful data structure for maintaining large
+sets of associations whose keys are ordered.  While most applications
+involving large association sets should use hash tables, some
+applications can benefit from the use of binary trees.  Binary trees
+have two advantages over hash tables:
+
+@itemize @bullet
+@item
+The contents of a binary tree can be converted to an alist, sorted by
+key, in time proportional to the number of associations in the
+tree.  A hash table can be converted into an unsorted alist in linear
+time; sorting it requires additional time.
+
+@item
+Two binary trees can be compared for equality in linear time.  Hash
+tables, on the other hand, cannot be compared at all; they must be
+converted to alists before comparison can be done, and alist comparison
+is quadratic unless the alists are sorted.
+@end itemize
+
+MIT/GNU Scheme provides an implementation of @dfn{red-black} trees.  The
+red-black tree-balancing algorithm provides generally good performance
+because it doesn't try to keep the tree very closely balanced.  At any
+given node in the tree, one side of the node can be twice as high as the
+other in the worst case.  With typical data the tree will remain fairly
+well balanced anyway.
+
+A red-black tree takes space that is proportional to the number of
+associations in the tree.  For the current implementation, the constant
+of proportionality is eight words per association.
+
+Red-black trees hold their keys @dfn{strongly}.  In other words, if a
+red-black tree contains an association for a given key, that key cannot
+be reclaimed by the garbage collector.
+
+@cindex run-time-loadable option
+@cindex option, run-time-loadable
+The red-black tree implementation is a run-time-loadable option.  To use
+red-black trees, execute
+
+@example
+(load-option 'rb-tree)
+@end example
+@findex load-option
+
+@noindent
+once before calling any of the procedures defined here.
+
+@deffn procedure make-rb-tree key=? key<?
+This procedure creates and returns a newly allocated red-black tree.
+The tree contains no associations.  @var{Key=?} and @var{key<?} are
+predicates that compare two keys and determine whether they are equal to
+or less than one another, respectively.  For any two keys, at most one
+of these predicates is true.
+@end deffn
+
+@deffn procedure rb-tree? object
+Returns @code{#t} if @var{object} is a red-black tree, otherwise
+returns @code{#f}.
+@end deffn
+
+@deffn procedure rb-tree/insert! rb-tree key datum
+Associates @var{datum} with @var{key} in @var{rb-tree} and returns an
+unspecified value.  If @var{rb-tree} already has an association for
+@var{key}, that association is replaced.  The average and worst-case
+times required by this operation are proportional to the logarithm of
+the number of assocations in @var{rb-tree}.
+@end deffn
+
+@deffn procedure rb-tree/lookup rb-tree key default
+Returns the datum associated with @var{key} in @var{rb-tree}.  If
+@var{rb-tree} doesn't contain an association for @var{key},
+@var{default} is returned.  The average and worst-case times required by
+this operation are proportional to the logarithm of the number of
+assocations in @var{rb-tree}.
+@end deffn
+
+@deffn procedure rb-tree/delete! rb-tree key
+If @var{rb-tree} contains an association for @var{key}, removes it.
+Returns an unspecified value.  The average and worst-case times required
+by this operation are proportional to the logarithm of the number of
+assocations in @var{rb-tree}.
+@end deffn
+
+@deffn procedure rb-tree->alist rb-tree
+Returns the contents of @var{rb-tree} as a newly allocated alist.  Each
+element of the alist is a pair @code{(@var{key} . @var{datum})} where
+@var{key} is one of the keys of @var{rb-tree}, and @var{datum} is its
+associated datum.  The alist is sorted by key according to the
+@var{key<?} argument used to construct @var{rb-tree}.  The
+time required by this operation is proportional to the
+number of associations in the tree.
+@end deffn
+
+@deffn procedure rb-tree/key-list rb-tree
+Returns a newly allocated list of the keys in @var{rb-tree}.  The list
+is sorted by key according to the @var{key<?} argument used to construct
+@var{rb-tree}.  The time required by this
+operation is proportional to the number of associations in the tree.
+@end deffn
+
+@deffn procedure rb-tree/datum-list rb-tree
+Returns a newly allocated list of the datums in @var{rb-tree}.  Each
+element of the list corresponds to one of the associations in
+@var{rb-tree}, so if the tree contains multiple associations with the
+same datum, so will this list.  The list is sorted by the keys of the
+associations, even though they do not appear in the result.  The time required by this operation is proportional to the
+number of associations in the tree.
+
+This procedure is equivalent to:
+
+@example
+(lambda (rb-tree) (map cdr (rb-tree->alist rb-tree)))
+@end example
+@end deffn
+
+@deffn procedure rb-tree/equal? rb-tree-1 rb-tree-2 datum=?
+Compares @var{rb-tree-1} and @var{rb-tree-2} for equality, returning
+@code{#t} iff they are equal and @code{#f} otherwise.  The trees must
+have been constructed with the same equality and order predicates (same
+in the sense of @code{eq?}).  The keys of the trees are compared using
+the @var{key=?} predicate used to build the trees, while the datums of
+the trees are compared using the equivalence predicate @var{datum=?}.
+The worst-case time required by this operation is proportional to the
+number of associations in the tree.
+@end deffn
+
+@deffn procedure rb-tree/empty? rb-tree
+Returns @code{#t} iff @var{rb-tree} contains no associations.  Otherwise
+returns @code{#f}.
+@end deffn
+
+@deffn procedure rb-tree/size rb-tree
+Returns the number of associations in @var{rb-tree}, an exact
+non-negative integer.  The average and worst-case times required by this
+operation are proportional to the number of associations in the tree.
+@end deffn
+
+@deffn procedure rb-tree/height rb-tree
+Returns the height of @var{rb-tree}, an exact non-negative integer.
+This is the length of the longest path from a leaf of the tree to the
+root.  The average and worst-case times required by this operation are
+proportional to the number of associations in the tree.
+
+The returned value satisfies the following:
+
+@example
+@group
+(lambda (rb-tree)
+  (let ((size (rb-tree/size rb-tree))
+        (lg (lambda (x) (/ (log x) (log 2)))))
+    (<= (lg size)
+        (rb-tree/height rb-tree)
+        (* 2 (lg (+ size 1))))))
+@end group
+@end example
+@end deffn
+
+@deffn procedure rb-tree/copy rb-tree
+Returns a newly allocated copy of @var{rb-tree}.  The copy is identical
+to @var{rb-tree} in all respects, except that changes to @var{rb-tree}
+do not affect the copy, and vice versa.  The time required by this
+operation is proportional to the number of associations in the tree.
+@end deffn
+
+@deffn procedure alist->rb-tree alist key=? key<?
+Returns a newly allocated red-black tree that contains the same
+associations as @var{alist}.  This procedure is equivalent to:
+
+@example
+@group
+(lambda (alist key=? key<?)
+  (let ((tree (make-rb-tree key=? key<?)))
+    (for-each (lambda (association)
+                (rb-tree/insert! tree
+                                 (car association)
+                                 (cdr association)))
+              alist)
+    tree))
+@end group
+@end example
+@end deffn
+
+The following operations provide access to the smallest and largest
+members in a red/black tree.  They are useful for implementing priority
+queues.
+
+@deffn procedure rb-tree/min rb-tree default
+Returns the smallest key in @var{rb-tree}, or @var{default} if the tree
+is empty.
+@end deffn
+
+@deffn procedure rb-tree/min-datum rb-tree default
+Returns the datum associated with the smallest key in @var{rb-tree}, or
+@var{default} if the tree is empty.
+@end deffn
+
+@deffn procedure rb-tree/min-pair rb-tree
+Finds the smallest key in @var{rb-tree} and returns a pair containing
+that key and its associated datum.  If the tree is empty, returns
+@code{#f}.
+@end deffn
+
+@deffn procedure rb-tree/max rb-tree default
+Returns the largest key in @var{rb-tree}, or @var{default} if the tree
+is empty.
+@end deffn
+
+@deffn procedure rb-tree/max-datum rb-tree default
+Returns the datum associated with the largest key in @var{rb-tree}, or
+@var{default} if the tree is empty.
+@end deffn
+
+@deffn procedure rb-tree/max-pair rb-tree
+Finds the largest key in @var{rb-tree} and returns a pair containing
+that key and its associated datum.  If the tree is empty, returns
+@code{#f}.
+@end deffn
+
+@deffn procedure rb-tree/delete-min! rb-tree default
+@deffnx procedure rb-tree/delete-min-datum! rb-tree default
+@deffnx procedure rb-tree/delete-min-pair! rb-tree
+@deffnx procedure rb-tree/delete-max! rb-tree default
+@deffnx procedure rb-tree/delete-max-datum! rb-tree default
+@deffnx procedure rb-tree/delete-max-pair! rb-tree
+These operations are exactly like the accessors above, in that they
+return information associated with the smallest or largest key, except
+that they simultaneously delete that key.
+@end deffn
+
+@node Weight-Balanced Trees,  , Red-Black Trees, Associations
+@section Weight-Balanced Trees
+
+@cindex trees, balanced binary
+@cindex balanced binary trees
+@cindex binary trees
+@cindex weight-balanced binary trees
+Balanced binary trees are a useful data structure for maintaining large
+sets of ordered objects or sets of associations whose keys are ordered.
+MIT/GNU Scheme has a comprehensive implementation of weight-balanced binary
+trees which has several advantages over the other data structures for
+large aggregates:
+
+@itemize @bullet
+@item
+In addition to the usual element-level operations like insertion,
+deletion and lookup, there is a full complement of collection-level
+operations, like set intersection, set union and subset test, all of
+which are implemented with good orders of growth in time and space.
+This makes weight-balanced trees ideal for rapid prototyping of
+functionally derived specifications.
+
+@item
+An element in a tree may be indexed by its position under the ordering
+of the keys, and the ordinal position of an element may be determined,
+both with reasonable efficiency.
+
+@item
+Operations to find and remove minimum element make weight-balanced trees
+simple to use for priority queues.
+
+@item
+The implementation is @emph{functional} rather than @emph{imperative}.
+This means that operations like `inserting' an association in a tree do
+not destroy the old tree, in much the same way that @code{(+ 1 x)}
+modifies neither the constant 1 nor the value bound to @code{x}.  The
+trees are referentially transparent thus the programmer need not worry
+about copying the trees.  Referential transparency allows space
+efficiency to be achieved by sharing subtrees.
+@end itemize
+
+These features make weight-balanced trees suitable for a wide range of
+applications, especially those that require large numbers of sets or
+discrete maps.  Applications that have a few global databases and/or
+concentrate on element-level operations like insertion and lookup are
+probably better off using hash tables or red-black trees.
+
+The @emph{size} of a tree is the number of associations that it
+contains.  Weight-balanced binary trees are balanced to keep the sizes
+of the subtrees of each node within a constant factor of each other.
+This ensures logarithmic times for single-path operations (like lookup
+and insertion).  A weight-balanced tree takes space that is proportional
+to the number of associations in the tree.  For the current
+implementation, the constant of proportionality is six words per
+association.
+
+@cindex binary trees, as sets
+@cindex binary trees, as discrete maps
+@cindex sets, using binary trees
+@cindex discrete maps, using binary trees
+Weight-balanced trees can be used as an implementation for either
+discrete sets or discrete maps (associations).  Sets are implemented by
+ignoring the datum that is associated with the key.  Under this scheme
+if an association exists in the tree this indicates that the key of the
+association is a member of the set.  Typically a value such as
+@code{()}, @code{#t} or @code{#f} is associated with the key.
+
+Many operations can be viewed as computing a result that, depending on
+whether the tree arguments are thought of as sets or maps, is known by
+two different names.  An example is @code{wt-tree/member?}, which, when
+regarding the tree argument as a set, computes the set membership
+operation, but, when regarding the tree as a discrete map,
+@code{wt-tree/member?} is the predicate testing if the map is defined at
+an element in its domain.  Most names in this package have been chosen
+based on interpreting the trees as sets, hence the name
+@code{wt-tree/member?} rather than @code{wt-tree/defined-at?}.
+
+@cindex run-time-loadable option
+@cindex option, run-time-loadable
+The weight-balanced tree implementation is a run-time-loadable option.
+To use weight-balanced trees, execute
+
+@example
+(load-option 'wt-tree)
+@end example
+@findex load-option
+
+@noindent
+once before calling any of the procedures defined here.
+
+@menu
+* Construction of Weight-Balanced Trees::  
+* Basic Operations on Weight-Balanced Trees::  
+* Advanced Operations on Weight-Balanced Trees::  
+* Indexing Operations on Weight-Balanced Trees::  
+@end menu
+
+@node Construction of Weight-Balanced Trees, Basic Operations on Weight-Balanced Trees, Weight-Balanced Trees, Weight-Balanced Trees
+@subsection Construction of Weight-Balanced Trees
+
+Binary trees require there to be a total order on the keys used to
+arrange the elements in the tree.  Weight-balanced trees are organized
+by @emph{types}, where the type is an object encapsulating the ordering
+relation.  Creating a tree is a two-stage process.  First a tree type
+must be created from the predicate that gives the ordering.  The tree type
+is then used for making trees, either empty or singleton trees or trees
+from other aggregate structures like association lists.  Once created, a
+tree `knows' its type and the type is used to test compatibility between
+trees in operations taking two trees.  Usually a small number of tree
+types are created at the beginning of a program and used many times
+throughout the program's execution.
+
+@deffn procedure make-wt-tree-type key<?
+This procedure creates and returns a new tree type based on the ordering
+predicate @var{key<?}.
+@var{Key<?} must be a total ordering, having the property that for all
+key values @code{a}, @code{b} and @code{c}:
+
+@example
+@group
+(key<? a a)                         @result{} #f
+(and (key<? a b) (key<? b a))       @result{} #f
+(if (and (key<? a b) (key<? b c))
+    (key<? a c)
+    #t)                             @result{} #t
+@end group
+@end example
+
+@noindent
+Two key values are assumed to be equal if neither is less than the other
+by @var{key<?}.
+
+Each call to @code{make-wt-tree-type} returns a distinct value, and
+trees are only compatible if their tree types are @code{eq?}.  A
+consequence is that trees that are intended to be used in binary-tree
+operations must all be created with a tree type originating from the
+same call to @code{make-wt-tree-type}.
+@end deffn
+
+@defvr variable number-wt-type
+A standard tree type for trees with numeric keys.  @code{Number-wt-type}
+could have been defined by
+
+@example
+(define number-wt-type (make-wt-tree-type  <))
+@end example
+@end defvr
+
+@defvr variable string-wt-type
+A standard tree type for trees with string keys.  @code{String-wt-type}
+could have been defined by
+
+@example
+(define string-wt-type (make-wt-tree-type  string<?))
+@end example
+@end defvr
+
+@deffn procedure make-wt-tree wt-tree-type
+This procedure creates and returns a newly allocated weight-balanced
+tree.  The tree is empty, i.e. it contains no associations.
+@var{Wt-tree-type} is a weight-balanced tree type obtained by calling
+@code{make-wt-tree-type}; the returned tree has this type.
+@end deffn
+
+@deffn procedure singleton-wt-tree wt-tree-type key datum
+This procedure creates and returns a newly allocated weight-balanced
+tree.  The tree contains a single association, that of @var{datum} with
+@var{key}.  @var{Wt-tree-type} is a weight-balanced tree type obtained
+by calling @code{make-wt-tree-type}; the returned tree has this type.
+@end deffn
+
+@deffn procedure alist->wt-tree tree-type alist
+Returns a newly allocated weight-balanced tree that contains the same
+associations as @var{alist}.  This procedure is equivalent to:
+
+@example
+@group
+(lambda (type alist)
+  (let ((tree (make-wt-tree type)))
+    (for-each (lambda (association)
+                (wt-tree/add! tree
+                              (car association)
+                              (cdr association)))
+              alist)
+    tree))
+@end group
+@end example
+@end deffn
+
+@node Basic Operations on Weight-Balanced Trees, Advanced Operations on Weight-Balanced Trees, Construction of Weight-Balanced Trees, Weight-Balanced Trees
+@subsection Basic Operations on Weight-Balanced Trees
+
+This section describes the basic tree operations on weight-balanced
+trees.  These operations are the usual tree operations for insertion,
+deletion and lookup, some predicates and a procedure for determining the
+number of associations in a tree.
+
+@deffn procedure wt-tree? object
+Returns @code{#t} if @var{object} is a weight-balanced tree, otherwise
+returns @code{#f}.
+@end deffn
+
+@deffn procedure wt-tree/empty? wt-tree
+Returns @code{#t} if @var{wt-tree} contains no associations, otherwise
+returns @code{#f}.
+@end deffn
+
+@deffn procedure wt-tree/size wt-tree
+Returns the number of associations in @var{wt-tree}, an exact
+non-negative integer.  This operation takes constant time.
+@end deffn
+
+@deffn procedure wt-tree/add wt-tree key datum
+Returns a new tree containing all the associations in @var{wt-tree} and
+the association of @var{datum} with @var{key}.  If @var{wt-tree} already
+had an association for @var{key}, the new association overrides the old.
+The average and worst-case times required by this operation are
+proportional to the logarithm of the number of associations in
+@var{wt-tree}.
+@end deffn
+
+@deffn procedure wt-tree/add! wt-tree key datum
+Associates @var{datum} with @var{key} in @var{wt-tree} and returns an
+unspecified value.  If @var{wt-tree} already has an association for
+@var{key}, that association is replaced.  The average and worst-case
+times required by this operation are proportional to the logarithm of
+the number of associations in @var{wt-tree}.
+@end deffn
+
+@deffn procedure wt-tree/member? key wt-tree
+Returns @code{#t} if @var{wt-tree} contains an association for
+@var{key}, otherwise returns @code{#f}.  The average and worst-case
+times required by this operation are proportional to the logarithm of
+the number of associations in @var{wt-tree}.
+@end deffn
+
+@deffn procedure wt-tree/lookup wt-tree key default
+Returns the datum associated with @var{key} in @var{wt-tree}.  If
+@var{wt-tree} doesn't contain an association for @var{key},
+@var{default} is returned.  The average and worst-case times required by
+this operation are proportional to the logarithm of the number of
+associations in @var{wt-tree}.
+@end deffn
+
+@deffn procedure wt-tree/delete wt-tree key
+Returns a new tree containing all the associations in @var{wt-tree},
+except that if @var{wt-tree} contains an association for @var{key}, it
+is removed from the result.  The average and worst-case times required
+by this operation are proportional to the logarithm of the number of
+associations in @var{wt-tree}.
+@end deffn
+
+@deffn procedure wt-tree/delete! wt-tree key
+If @var{wt-tree} contains an association for @var{key} the association
+is removed.  Returns an unspecified value.  The average and worst-case
+times required by this operation are proportional to the logarithm of
+the number of associations in @var{wt-tree}.
+@end deffn
+
+@node Advanced Operations on Weight-Balanced Trees, Indexing Operations on Weight-Balanced Trees, Basic Operations on Weight-Balanced Trees, Weight-Balanced Trees
+@subsection Advanced Operations on Weight-Balanced Trees
+
+In the following the @emph{size} of a tree is the number of associations
+that the tree contains, and a @emph{smaller} tree contains fewer
+associations.
+
+@deffn procedure wt-tree/split< wt-tree bound
+Returns a new tree containing all and only the associations in
+@var{wt-tree} that have a key that is less than @var{bound} in the
+ordering relation of the tree type of @var{wt-tree}.  The average and
+worst-case times required by this operation are proportional to the
+logarithm of the size of @var{wt-tree}.
+@end deffn
+
+@deffn procedure wt-tree/split> wt-tree bound
+Returns a new tree containing all and only the associations in
+@var{wt-tree} that have a key that is greater than @var{bound} in the
+ordering relation of the tree type of @var{wt-tree}.  The average and
+worst-case times required by this operation are proportional to the
+logarithm of the size of @var{wt-tree}.
+@end deffn
+
+@deffn procedure wt-tree/union wt-tree-1 wt-tree-2
+Returns a new tree containing all the associations from both trees.
+This operation is asymmetric: when both trees have an association for
+the same key, the returned tree associates the datum from @var{wt-tree-2}
+with the key.  Thus if the trees are viewed as discrete maps then
+@code{wt-tree/union} computes the map override of @var{wt-tree-1} by
+@var{wt-tree-2}.  If the trees are viewed as sets the result is the set
+union of the arguments.
+The worst-case time required by this operation
+is proportional to the sum of the sizes of both trees.
+If the minimum key of one tree is greater than the maximum key of
+the other tree then the worst-case time required is proportional to
+the logarithm of the size of the larger tree.
+@end deffn
+
+@deffn procedure wt-tree/intersection wt-tree-1 wt-tree-2
+Returns a new tree containing all and only those associations from
+@var{wt-tree-1} that have keys appearing as the key of an association
+in @var{wt-tree-2}.  Thus the associated data in the result are those
+from @var{wt-tree-1}.  If the trees are being used as sets the result is
+the set intersection of the arguments.  As a discrete map operation,
+@code{wt-tree/intersection} computes the domain restriction of
+@var{wt-tree-1} to (the domain of) @var{wt-tree-2}.
+The worst-case time required by this operation is proportional to
+the sum of the sizes of the trees.
+@end deffn
+
+@deffn procedure wt-tree/difference wt-tree-1 wt-tree-2
+Returns a new tree containing all and only those associations from
+@var{wt-tree-1} that have keys that @emph{do not} appear as the key of
+an association in @var{wt-tree-2}.  If the trees are viewed as sets the
+result is the asymmetric set difference of the arguments.  As a discrete
+map operation, it computes the domain restriction of @var{wt-tree-1} to
+the complement of (the domain of) @var{wt-tree-2}.
+The worst-case time required by this operation is proportional to
+the sum of the sizes of the trees.
+@end deffn
+
+@deffn procedure wt-tree/subset? wt-tree-1 wt-tree-2
+Returns @code{#t} iff the key of each association in @var{wt-tree-1} is
+the key of some association in @var{wt-tree-2}, otherwise returns @code{#f}.
+Viewed as a set operation, @code{wt-tree/subset?} is the improper subset
+predicate.
+A proper subset predicate can be constructed:
+
+@example
+@group
+(define (proper-subset? s1 s2)
+  (and (wt-tree/subset? s1 s2)
+       (< (wt-tree/size s1) (wt-tree/size s2))))
+@end group
+@end example
+
+As a discrete map operation, @code{wt-tree/subset?} is the subset
+test on the domain(s) of the map(s).  In the worst-case the time
+required by this operation is proportional to the size of
+@var{wt-tree-1}.
+@end deffn
+
+@deffn procedure wt-tree/set-equal? wt-tree-1 wt-tree-2
+Returns @code{#t} iff for every association in @var{wt-tree-1} there is
+an association in @var{wt-tree-2} that has the same key, and @emph{vice
+versa}.
+
+Viewing the arguments as sets, @code{wt-tree/set-equal?} is the set
+equality predicate.  As a map operation it determines if two maps are
+defined on the same domain.
+
+This procedure is equivalent to
+
+@example
+@group
+(lambda (wt-tree-1 wt-tree-2)
+  (and (wt-tree/subset? wt-tree-1 wt-tree-2
+       (wt-tree/subset? wt-tree-2 wt-tree-1)))
+@end group
+@end example
+
+In the worst case the time required by this operation is proportional to
+the size of the smaller tree.
+@end deffn
+
+@deffn procedure wt-tree/fold combiner initial wt-tree
+This procedure reduces @var{wt-tree} by combining all the associations,
+using an reverse in-order traversal, so the associations are visited in
+reverse order.  @var{Combiner} is a procedure of three arguments: a key,
+a datum and the accumulated result so far.  Provided @var{combiner}
+takes time bounded by a constant, @code{wt-tree/fold} takes time
+proportional to the size of @var{wt-tree}.
+
+A sorted association list can be derived simply:
+
+@example
+@group
+(wt-tree/fold (lambda (key datum list)
+                (cons (cons key datum) list))
+              '()
+              @var{wt-tree}))
+@end group
+@end example
+
+The data in the associations can be summed like this:
+
+@example
+@group
+(wt-tree/fold (lambda (key datum sum) (+ sum datum))
+              0
+              @var{wt-tree})
+@end group
+@end example
+@end deffn
+
+@deffn procedure wt-tree/for-each action wt-tree
+This procedure traverses @var{wt-tree} in order, applying @var{action} to
+each association.
+The associations are processed in increasing order of their keys.
+@var{Action} is a procedure of two arguments that takes the key and
+datum respectively of the association.
+Provided @var{action} takes time bounded by a constant,
+@code{wt-tree/for-each} takes time proportional to the size of
+@var{wt-tree}.
+The example prints the tree:
+
+@example
+@group
+(wt-tree/for-each (lambda (key value)
+                    (display (list key value)))
+                  @var{wt-tree}))
+@end group
+@end example
+@end deffn
+
+@deffn procedure wt-tree/union-merge wt-tree-1 wt-tree-2 merge
+Returns a new tree containing all the associations from both trees.  If
+both trees have an association for the same key, the datum associated
+with that key in the result tree is computed by applying the procedure
+@var{merge} to the key, the value from @var{wt-tree-1} and the value
+from @var{wt-tree-2}.  @var{Merge} is of the form
+
+@example
+(lambda (@var{key} @var{datum-1} @var{datum-2}) @dots{})
+@end example
+
+If some key occurs only in one tree, that association will appear in the
+result tree without being processed by @var{merge}, so for this
+operation to make sense, either @var{merge} must have both a right and
+left identity that correspond to the association being absent in one of
+the trees, or some guarantee must be made, for example, all the keys in
+one tree are known to occur in the other.
+
+These are all reasonable procedures for @var{merge}
+
+@example
+@group
+(lambda (key val1 val2) (+ val1 val2))
+(lambda (key val1 val2) (append val1 val2))
+(lambda (key val1 val2) (wt-tree/union val1 val2))
+@end group
+@end example
+
+However, a procedure like
+
+@example
+(lambda (key val1 val2) (- val1 val2))
+@end example
+
+would result in a subtraction of the data for all associations with keys
+occuring in both trees but associations with keys occuring in only the
+second tree would be copied, not negated, as is presumably be intent.
+The programmer might ensure that this never happens.
+
+This procedure has the same time behavior as @code{wt-tree/union} but
+with a slightly worse constant factor.  Indeed, @code{wt-tree/union}
+might have been defined like this:
+
+@example
+@group
+(define (wt-tree/union tree1 tree2)
+  (wt-tree/union-merge tree1 tree2
+                       (lambda (key val1 val2) val2)))
+@end group
+@end example
+@end deffn
+
+The @var{merge} procedure takes the @var{key} as a parameter in case the
+data are not independent of the key.
+
+
+@node Indexing Operations on Weight-Balanced Trees,  , Advanced Operations on Weight-Balanced Trees, Weight-Balanced Trees
+@subsection Indexing Operations on Weight-Balanced Trees
+
+Weight-balanced trees support operations that view the tree as sorted
+sequence of associations.  Elements of the sequence can be accessed by
+position, and the position of an element in the sequence can be
+determined, both in logarthmic time.
+
+@deffn procedure wt-tree/index wt-tree index
+@deffnx procedure wt-tree/index-datum wt-tree index
+@deffnx procedure wt-tree/index-pair wt-tree index
+Returns the 0-based @var{index}th association of @var{wt-tree} in the
+sorted sequence under the tree's ordering relation on the keys.
+@code{wt-tree/index} returns the @var{index}th key,
+@code{wt-tree/index-datum} returns the datum associated with the
+@var{index}th key and @code{wt-tree/index-pair} returns a new pair
+@code{(@var{key} . @var{datum})} which is the @code{cons} of the
+@var{index}th key and its datum.  The average and worst-case times
+required by this operation are proportional to the logarithm of the
+number of associations in the tree.
+
+These operations signal a condition of type
+@code{condition-type:bad-range-argument} if @var{index}@code{<0} or if
+@var{index} is greater than or equal to the number of associations in
+the tree.  If the tree is empty, they signal an anonymous error.
+
+Indexing can be used to find the median and maximum keys in the tree as
+follows:
+
+@example
+@group
+median:   (wt-tree/index @var{wt-tree}
+                         (quotient (wt-tree/size @var{wt-tree})
+                                   2))
+maximum:  (wt-tree/index @var{wt-tree}
+                         (- (wt-tree/size @var{wt-tree})
+                            1))
+@end group
+@end example
+@end deffn
+
+@deffn procedure wt-tree/rank wt-tree key
+Determines the 0-based position of @var{key} in the sorted sequence of
+the keys under the tree's ordering relation, or @code{#f} if the tree
+has no association with for @var{key}.  This procedure returns either an
+exact non-negative integer or @code{#f}.  The average and worst-case
+times required by this operation are proportional to the logarithm of
+the number of associations in the tree.
+@end deffn
+
+@deffn procedure wt-tree/min wt-tree
+@deffnx procedure wt-tree/min-datum wt-tree
+@deffnx procedure wt-tree/min-pair wt-tree
+Returns the association of @var{wt-tree} that has the least key under the tree's ordering relation.
+@code{wt-tree/min} returns the least key,
+@code{wt-tree/min-datum} returns the datum associated with the
+least key and @code{wt-tree/min-pair} returns a new pair
+@code{(key . datum)} which is the @code{cons} of the minimum key and its datum.
+The average and worst-case times required by this operation are
+proportional to the logarithm of the number of associations in the tree.
+
+These operations signal an error if the tree is empty.
+They could have been written
+
+@example
+@group
+(define (wt-tree/min tree)
+  (wt-tree/index tree 0))
+(define (wt-tree/min-datum tree)
+  (wt-tree/index-datum tree 0))
+(define (wt-tree/min-pair tree)
+  (wt-tree/index-pair tree 0))
+@end group
+@end example
+@end deffn
+
+@deffn procedure wt-tree/delete-min wt-tree
+Returns a new tree containing all of the associations in @var{wt-tree}
+except the association with the least key under the @var{wt-tree}'s
+ordering relation.  An error is signalled if the tree is empty.  The
+average and worst-case times required by this operation are proportional
+to the logarithm of the number of associations in the tree.  This
+operation is equivalent to
+
+@example
+(wt-tree/delete @var{wt-tree} (wt-tree/min @var{wt-tree}))
+@end example
+@end deffn
+
+@deffn procedure wt-tree/delete-min! wt-tree
+Removes the association with the least key under the @var{wt-tree}'s
+ordering relation.  An error is signalled if the tree is empty.  The
+average and worst-case times required by this operation are proportional
+to the logarithm of the number of associations in the tree.  This
+operation is equivalent to
+
+@example
+(wt-tree/delete! @var{wt-tree} (wt-tree/min @var{wt-tree}))
+@end example
+@end deffn

@@ -1,22 +1,26 @@
 /* -*-C-*-
 
-$Id: os2msg.h,v 1.15 1999/01/02 06:11:34 cph Exp $
+$Id: os2msg.h,v 1.18 2003/04/25 05:13:10 cph Exp $
 
-Copyright (c) 1994-1999 Massachusetts Institute of Technology
+Copyright 1994,1995,1997,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 */
 
 #ifndef SCM_OS2MSG_H
@@ -139,7 +143,6 @@ typedef enum { mat_not_available, mat_available, mat_interrupt } msg_avail_t;
 
 extern tqueue_t * OS2_scheme_tqueue;
 extern qid_t OS2_interrupt_qid;
-extern char OS2_scheme_tqueue_avail_map [QID_MAX + 1];
 
 extern void OS2_make_qid_pair (qid_t *, qid_t *);
 extern void OS2_open_qid (qid_t, tqueue_t *);
@@ -159,7 +162,7 @@ extern msg_avail_t OS2_message_availablep (qid_t, int);
 extern msg_t * OS2_wait_for_message (qid_t, msg_type_t);
 extern msg_t * OS2_message_transaction (qid_t, msg_t *, msg_type_t);
 extern void OS2_unread_message (qid_t, msg_t *);
-extern int OS2_tqueue_select (tqueue_t *, int);
+extern msg_avail_t OS2_scheme_tqueue_block (void);
 extern tqueue_t * OS2_make_std_tqueue (void);
 extern void OS2_close_std_tqueue (tqueue_t *);
 

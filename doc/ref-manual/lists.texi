@@ -1,0 +1,1116 @@
+@c This file is part of the MIT/GNU Scheme Reference Manual.
+@c $Id: lists.texi,v 1.1 2003/04/15 03:29:50 cph Exp $
+
+@c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
+@c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
+@c Copyright 2002,2003 Massachusetts Institute of Technology
+@c See file scheme.texinfo for copying conditions.
+
+@node Lists, Vectors, Strings, Top
+@chapter Lists
+
+@cindex pair (defn)
+@cindex dotted pair (see pair)
+@cindex car field, of pair (defn)
+@cindex cdr field, of pair (defn)
+A @dfn{pair} (sometimes called a @dfn{dotted pair}) is a data structure
+with two fields called the @dfn{car} and @dfn{cdr} fields (for
+historical reasons).  Pairs are created by the procedure @code{cons}.
+The car and cdr fields are accessed by the procedures @code{car} and
+@code{cdr}.  The car and cdr fields are assigned by the procedures
+@code{set-car!} and @code{set-cdr!}.
+
+@cindex list (defn)
+Pairs are used primarily to represent @dfn{lists}.  A list can be
+defined recursively as either the empty list or a pair whose cdr is
+a list.  More precisely, the set of lists is defined as the smallest set
+@var{X} such that
+
+@itemize @bullet
+@item
+The empty list is in @var{X}.
+
+@item
+If @var{list} is in @var{X}, then any pair whose cdr field contains
+@var{list} is also in @var{X}.
+@end itemize
+
+@cindex element, of list (defn)
+@cindex length, of list (defn)
+@cindex empty list (defn)
+The objects in the car fields of successive pairs of a list are the
+@dfn{elements} of the list.  For example, a two-element list is a pair
+whose car is the first element and whose cdr is a pair whose car is the
+second element and whose cdr is the empty list.  The @dfn{length} of a
+list is the number of elements, which is the same as the number of
+pairs.  The @dfn{empty list} is a special object of its own type (it is
+not a pair); it has no elements and its length is zero.@footnote{The
+above definitions imply that all lists have finite length and are
+terminated by the empty list.}
+
+@cindex dotted notation, for pair (defn)
+@cindex notation, dotted (defn)
+@cindex external representation, for pair
+@cindex pair, external representation
+@cindex ( as external representation
+@cindex ) as external representation
+@cindex . as external representation
+@cindex parenthesis, as external representation
+@cindex dot, as external representation
+@cindex period, as external representation
+@findex (
+@findex )
+@findex .
+The most general notation (external representation) for Scheme pairs is
+the ``dotted'' notation @code{(@var{c1} . @var{c2})} where @var{c1} is
+the value of the car field and @var{c2} is the value of the cdr field.
+For example, @code{(4 . 5)} is a pair whose car is @code{4} and whose
+cdr is @code{5}.  Note that @code{(4 . 5)} is the external
+representation of a pair, not an expression that evaluates to a pair.
+
+@cindex external representation, for list
+@cindex list, external representation
+@cindex external representation, for empty list
+@cindex empty list, external representation
+@findex ()
+A more streamlined notation can be used for lists: the elements of the
+list are simply enclosed in parentheses and separated by spaces.  The
+empty list is written @code{()}.  For example, the following are
+equivalent notations for a list of symbols:
+
+@example
+@group
+(a b c d e)
+(a . (b . (c . (d . (e . ())))))
+@end group
+@end example
+
+@findex set-cdr!
+Whether a given pair is a list depends upon what is stored in the cdr
+field.  When the @code{set-cdr!} procedure is used, an object can be a
+list one moment and not the next:
+
+@example
+@group
+(define x (list 'a 'b 'c))
+(define y x)
+y                                       @result{}  (a b c)
+(list? y)                               @result{}  #t
+(set-cdr! x 4)                          @result{}  @r{unspecified}
+x                                       @result{}  (a . 4)
+(eqv? x y)                              @result{}  #t
+y                                       @result{}  (a . 4)
+(list? y)                               @result{}  #f
+(set-cdr! x x)                          @result{}  @r{unspecified}
+(list? y)                               @result{}  #f
+@end group
+@end example
+
+@cindex improper list (defn)
+@cindex list, improper (defn)
+A chain of pairs that doesn't end in the empty list is called an
+@dfn{improper list}.  Note that an improper list is not a list.  The
+list and dotted notations can be combined to represent improper lists,
+as the following equivalent notations show:
+
+@example
+@group
+(a b c . d)
+(a . (b . (c . d)))
+@end group
+@end example
+
+@findex quote
+@findex quasiquote
+@findex unquote
+@findex unquote-splicing
+@findex '
+@findex `
+@findex ,
+@findex ,@@
+@findex read
+Within literal expressions and representations of objects read by the
+@code{read} procedure, the forms @code{'@var{datum}},
+@code{`@var{datum}}, @code{,@var{datum}}, and @code{,@@@var{datum}}
+denote two-element lists whose first elements are the symbols
+@code{quote}, @code{quasiquote}, @code{unquote}, and
+@code{unquote-splicing}, respectively.  The second element in each case
+is @var{datum}.  This convention is supported so that arbitrary Scheme
+programs may be represented as lists.  Among other things, this permits
+the use of the @code{read} procedure to parse Scheme programs.
+
+@menu
+* Pairs::                       
+* Construction of Lists::       
+* Selecting List Components::   
+* Cutting and Pasting Lists::   
+* Filtering Lists::             
+* Searching Lists::             
+* Mapping of Lists::            
+* Reduction of Lists::          
+* Miscellaneous List Operations::  
+@end menu
+
+@node Pairs, Construction of Lists, Lists, Lists
+@section Pairs
+
+This section describes the simple operations that are available for
+constructing and manipulating arbitrary graphs constructed from pairs.
+
+@deffn procedure pair? object
+@cindex type predicate, for pair
+Returns @code{#t} if @var{object} is a pair; otherwise returns
+@code{#f}.
+
+@example
+@group
+(pair? '(a . b))                        @result{}  #t
+(pair? '(a b c))                        @result{}  #t
+(pair? '())                             @result{}  #f
+(pair? '#(a b))                         @result{}  #f
+@end group
+@end example
+@end deffn
+
+@deffn procedure cons obj1 obj2
+@cindex construction, of pair
+@findex eqv?
+Returns a newly allocated pair whose car is @var{obj1} and whose cdr is
+@var{obj2}.  The pair is guaranteed to be different (in the sense of
+@code{eqv?}) from every previously existing object.
+
+@example
+@group
+(cons 'a '())                           @result{}  (a)
+(cons '(a) '(b c d))                    @result{}  ((a) b c d)
+(cons "a" '(b c))                       @result{}  ("a" b c)
+(cons 'a 3)                             @result{}  (a . 3)
+(cons '(a b) 'c)                        @result{}  ((a b) . c)
+@end group
+@end example
+@end deffn
+
+@deffn procedure car pair
+@cindex selection, of pair component
+@cindex component selection, of pair
+Returns the contents of the car field of @var{pair}.  Note that it is an
+error to take the @code{car} of the empty list.
+
+@example
+@group
+(car '(a b c))                          @result{}  a
+(car '((a) b c d))                      @result{}  (a)
+(car '(1 . 2))                          @result{}  1
+(car '())                               @error{} Illegal datum
+@end group
+@end example
+@end deffn
+
+@deffn procedure cdr pair
+Returns the contents of the cdr field of @var{pair}.  Note that it is an
+error to take the @code{cdr} of the empty list.
+
+@example
+@group
+(cdr '((a) b c d))                      @result{}  (b c d)
+(cdr '(1 . 2))                          @result{}  2
+(cdr '())                               @error{} Illegal datum
+@end group
+@end example
+@end deffn
+
+@deffn procedure set-car! pair object
+Stores @var{object} in the car field of @var{pair}.  The value returned
+by @code{set-car!} is unspecified.
+
+@example
+@group
+(define (f) (list 'not-a-constant-list))
+(define (g) '(constant-list))
+(set-car! (f) 3)                        @result{}  @r{unspecified}
+(set-car! (g) 3)                        @error{} Illegal datum
+@end group
+@end example
+@end deffn
+
+@deffn procedure set-cdr! pair object
+Stores @var{object} in the cdr field of @var{pair}.  The value returned
+by @code{set-cdr!} is unspecified.
+@end deffn
+
+@deffn procedure caar pair
+@deffnx procedure cadr pair
+@deffnx procedure cdar pair
+@deffnx procedure cddr pair
+@deffnx procedure caaar pair
+@deffnx procedure caadr pair
+@deffnx procedure cadar pair
+@deffnx procedure caddr pair
+@deffnx procedure cdaar pair
+@deffnx procedure cdadr pair
+@deffnx procedure cddar pair
+@deffnx procedure cdddr pair
+@deffnx procedure caaaar pair
+@deffnx procedure caaadr pair
+@deffnx procedure caadar pair
+@deffnx procedure caaddr pair
+@deffnx procedure cadaar pair
+@deffnx procedure cadadr pair
+@deffnx procedure caddar pair
+@deffnx procedure cadddr pair
+@deffnx procedure cdaaar pair
+@deffnx procedure cdaadr pair
+@deffnx procedure cdadar pair
+@deffnx procedure cdaddr pair
+@deffnx procedure cddaar pair
+@deffnx procedure cddadr pair
+@deffnx procedure cdddar pair
+@deffnx procedure cddddr pair
+These procedures are compositions of @code{car} and @code{cdr}; for
+example, @code{caddr} could be defined by
+
+@example
+(define caddr (lambda (x) (car (cdr (cdr x)))))
+@end example
+@end deffn
+
+@deffn procedure general-car-cdr object path
+This procedure is a generalization of @code{car} and @code{cdr}.
+@var{Path} encodes a particular sequence of @code{car} and @code{cdr}
+operations, which @code{general-car-cdr} executes on @var{object}.
+@var{Path} is an exact non-negative integer that encodes the operations
+in a bitwise fashion: a zero bit represents a @code{cdr} operation, and
+a one bit represents a @code{car}.  The bits are executed LSB to MSB,
+and the most significant one bit, rather than being interpreted as an
+operation, signals the end of the sequence.@footnote{Note that
+@var{path} is restricted to a machine-dependent range, usually the size
+of a machine word.  On many machines, this means that the maximum length
+of @var{path} will be 30 operations (32 bits, less the sign bit and the
+``end-of-sequence'' bit).}
+
+For example, the following are equivalent:
+@example
+@group
+(general-car-cdr @var{object} #b1011)
+(cdr (car (car @var{object})))
+@end group
+@end example
+
+Here is a partial table of path/operation equivalents:
+
+@example
+@group
+#b10    cdr
+#b11    car
+#b100   cddr
+#b101   cdar
+#b110   cadr
+#b111   caar
+#b1000  cdddr
+@end group
+@end example
+@end deffn
+
+@deffn procedure tree-copy tree
+@cindex copying, of tree
+@cindex tree, copying
+This copies an arbitrary @var{tree} constructed from pairs, copying both
+the car and cdr elements of every pair.  This could have been defined by
+
+@example
+@group
+(define (tree-copy tree)
+  (let loop ((tree tree))
+    (if (pair? tree)
+        (cons (loop (car tree)) (loop (cdr tree)))
+        tree)))
+@end group
+@end example
+@end deffn
+
+@node Construction of Lists, Selecting List Components, Pairs, Lists
+@section Construction of Lists
+@cindex construction, of list
+
+@deffn procedure list object @dots{}
+Returns a list of its arguments.
+
+@example
+@group
+(list 'a (+ 3 4) 'c)                    @result{}  (a 7 c)
+(list)                                  @result{}  ()
+@end group
+@end example
+
+These expressions are equivalent:
+
+@example
+@group
+(list @var{obj1} @var{obj2} @dots{} @var{objN})
+(cons @var{obj1} (cons @var{obj2} @dots{} (cons @var{objN} '()) @dots{}))
+@end group
+@end example
+@end deffn
+
+@deffn procedure make-list k [element]
+This procedure returns a newly allocated list of length @var{k},
+whose elements are all @var{element}.  If @var{element} is not supplied,
+it defaults to the empty list.
+@end deffn
+
+@deffn procedure cons* object object @dots{}
+@findex list
+@code{cons*} is similar to @code{list}, except that @code{cons*} conses
+together the last two arguments rather than consing the last argument
+with the empty list.  If the last argument is not a list the result is
+an improper list.  If the last argument is a list, the result is a list
+consisting of the initial arguments and all of the items in the final
+argument.  If there is only one argument, the result is the argument.
+
+@example
+@group
+(cons* 'a 'b 'c)                        @result{}  (a b . c)
+(cons* 'a 'b '(c d))                    @result{}  (a b c d)
+(cons* 'a)                              @result{}  a
+@end group
+@end example
+
+These expressions are equivalent:
+
+@example
+@group
+(cons* @var{obj1} @var{obj2} @dots{} @var{objN-1} @var{objN})
+(cons @var{obj1} (cons @var{obj2} @dots{} (cons @var{objN-1} @var{objN}) @dots{}))
+@end group
+@end example
+@end deffn
+
+@deffn procedure list-copy list
+Returns a newly allocated copy of @var{list}.  This copies each of the
+pairs comprising @var{list}.  This could have been defined by
+
+@example
+@group
+(define (list-copy list)
+  (if (null? list)
+      '()
+      (cons (car list)
+            (list-copy (cdr list)))))
+@end group
+@end example
+@end deffn
+
+@deffn procedure vector->list vector
+@deffnx procedure subvector->list vector start end
+@cindex vector, converting to list
+@findex list->vector
+@code{vector->list} returns a newly allocated list of the elements of
+@var{vector}.@* @code{subvector->list} returns a newly allocated list of
+the elements of the given subvector.  The inverse of @code{vector->list}
+is @code{list->vector}.
+
+@example
+(vector->list '#(dah dah didah))        @result{}  (dah dah didah)
+@end example
+@end deffn
+
+@deffn {procedure} string->list string
+@deffnx {procedure} substring->list string start end
+@cindex string, converting to list
+@findex list->string
+@code{string->list} returns a newly allocated list of the character
+elements of @var{string}.@*
+@code{substring->list} returns a newly allocated list of the character
+elements of the given substring.  The inverse of @code{string->list} is
+@code{list->string}.
+
+@example
+@group
+(string->list "abcd")                   @result{}  (#\a #\b #\c #\d)
+(substring->list "abcdef" 1 3)          @result{}  (#\b #\c)
+@end group
+@end example
+@end deffn
+
+@node Selecting List Components, Cutting and Pasting Lists, Construction of Lists, Lists
+@section Selecting List Components
+@cindex selection, of list component
+@cindex component selection, of list
+
+@deffn procedure list? object
+@cindex type predicate, for list
+@cindex circular list
+Returns @code{#t} if @var{object} is a list, otherwise returns
+@code{#f}.  By definition, all lists have finite length and are
+terminated by the empty list.  This procedure returns an answer even for
+circular structures.
+
+@findex pair?
+@findex null?
+Any @var{object} satisfying this predicate will also satisfy exactly one
+of @code{pair?} or @code{null?}.
+
+@example
+@group
+(list? '(a b c))                        @result{}  #t
+(list? '())                             @result{}  #t
+(list? '(a . b))                        @result{}  #f
+(let ((x (list 'a)))
+  (set-cdr! x x)
+  (list? x))                            @result{}  #f
+@end group
+@end example
+@end deffn
+
+@deffn procedure length list
+Returns the length of @var{list}.  Signals an error if @var{list} isn't
+a proper list.
+
+@example
+@group
+(length '(a b c))                       @result{}  3
+(length '(a (b) (c d e)))               @result{}  3
+(length '())                            @result{}  0
+@end group
+@end example
+@end deffn
+
+@deffn procedure null? object
+@cindex type predicate, for empty list
+@cindex empty list, predicate for
+Returns @code{#t} if @var{object} is the empty list; otherwise returns
+@code{#f} (but @pxref{True and False}).
+
+@example
+@group
+(null? '(a . b))                        @result{}  #f
+(null? '(a b c))                        @result{}  #f
+(null? '())                             @result{}  #t
+@end group
+@end example
+@end deffn
+
+@deffn procedure list-ref list k
+@cindex index, of list (defn)
+@cindex valid index, of list (defn)
+@cindex list index (defn)
+Returns the @var{k}th element of @var{list}, using zero-origin indexing.
+The @dfn{valid indexes} of a list are the exact non-negative integers
+less than the length of the list.  The first element of a list has index
+@code{0}, the second has index @code{1}, and so on.
+
+@example
+@group
+(list-ref '(a b c d) 2)                 @result{}  c
+(list-ref '(a b c d)
+          (inexact->exact (round 1.8)))
+     @result{}  c
+@end group
+@end example
+
+@findex list-tail
+@code{(list-ref @var{list} @var{k})} is equivalent to @code{(car
+(list-tail @var{list} @var{k}))}.
+@end deffn
+
+@deffn procedure first list
+@deffnx procedure second list
+@deffnx procedure third list
+@deffnx procedure fourth list
+@deffnx procedure fifth list
+@deffnx procedure sixth list
+@deffnx procedure seventh list
+@deffnx procedure eighth list
+@deffnx procedure ninth list
+@deffnx procedure tenth list
+Returns the specified element of @var{list}.  It is an error if
+@var{list} is not long enough to contain the specified element (for
+example, if the argument to @code{seventh} is a list that contains only
+six elements).
+@end deffn
+
+@node Cutting and Pasting Lists, Filtering Lists, Selecting List Components, Lists
+@section Cutting and Pasting Lists
+@cindex cutting, of list
+@cindex pasting, of lists
+
+@deffn procedure sublist list start end
+@var{Start} and @var{end} must be exact integers satisfying
+
+@example
+0 <= @var{start} <= @var{end} <= (length @var{list})
+@end example
+
+@code{sublist} returns a newly allocated list formed from the elements
+of @var{list} beginning at index @var{start} (inclusive) and ending at
+@var{end} (exclusive).
+@end deffn
+
+@deffn procedure list-head list k
+Returns a newly allocated list consisting of the first @var{k} elements of
+@var{list}.  @var{K} must not be greater than the length of
+@var{list}.
+
+We could have defined @code{list-head} this way:
+
+@example
+@group
+(define (list-head list k)
+  (sublist list 0 k))
+@end group
+@end example
+@end deffn
+
+@deffn procedure list-tail list k
+Returns the sublist of @var{list} obtained by omitting the first @var{k}
+elements.  The result, if it is not the empty list, shares structure
+with @var{list}.  @var{K} must not be greater than the length of
+@var{list}.
+@end deffn
+
+@deffn {procedure} append list @dots{}
+@cindex appending, of lists
+Returns a list consisting of the elements of the first @var{list}
+followed by the elements of the other @var{list}s.
+
+@example
+@group
+(append '(x) '(y))                      @result{}  (x y)
+(append '(a) '(b c d))                  @result{}  (a b c d)
+(append '(a (b)) '((c)))                @result{}  (a (b) (c))
+(append)                                @result{}  ()
+@end group
+@end example
+
+The resulting list is always newly allocated, except that it shares
+structure with the last @var{list} argument.  The last argument may
+actually be any object; an improper list results if the last argument is
+not a proper list.
+
+@example
+@group
+(append '(a b) '(c . d))                @result{}  (a b c . d)
+(append '() 'a)                         @result{}  a
+@end group
+@end example
+@end deffn
+
+@deffn procedure append! list @dots{}
+Returns a list that is the argument @var{list}s concatenated together.
+The arguments are changed rather than copied.  (Compare this with
+@code{append}, which copies arguments rather than destroying them.)  For
+example:
+
+@example
+@group
+(define x '(a b c))
+(define y '(d e f))
+(define z '(g h))
+(append! x y z)                         @result{}  (a b c d e f g h)
+x                                       @result{}  (a b c d e f g h)
+y                                       @result{}  (d e f g h)
+z                                       @result{}  (g h)
+@end group
+@end example
+@end deffn
+
+@deffn procedure last-pair list
+Returns the last pair in @var{list}, which may be an improper list.
+@code{last-pair} could have been defined this way:
+
+@example
+@group
+(define last-pair
+  (lambda (x)
+    (if (pair? (cdr x))
+        (last-pair (cdr x))
+        x)))
+@end group
+@end example
+@end deffn
+
+@deffn procedure except-last-pair list
+@deffnx procedure except-last-pair! list
+These procedures remove the last pair from @var{list}.  @var{List} may
+be an improper list, except that it must consist of at least one pair.
+@code{except-last-pair} returns a newly allocated copy of @var{list}
+that omits the last pair.  @code{except-last-pair!} destructively
+removes the last pair from @var{list} and returns @var{list}.  If the
+cdr of @var{list} is not a pair, the empty list is returned by either
+procedure.
+@end deffn
+
+@node Filtering Lists, Searching Lists, Cutting and Pasting Lists, Lists
+@section Filtering Lists
+@cindex filtering, of list
+@cindex deletion, of list element
+
+@deffn procedure keep-matching-items list predicate
+@deffnx procedure delete-matching-items list predicate
+These procedures return a newly allocated copy of @var{list} containing
+only the elements for which @var{predicate} is (respectively) true or
+false.  @var{Predicate} must be a procedure of one argument.
+
+@example
+@group
+(keep-matching-items '(1 2 3 4 5) odd?) @result{} (1 3 5)
+(delete-matching-items '(1 2 3 4 5) odd?) @result{} (2 4)
+@end group
+@end example
+
+@findex list-transform-positive
+@findex list-transform-negative
+For compatibility, the procedure @code{list-transform-positive} is an
+alias for @code{keep-matching-items}, and @code{list-transform-negative}
+is an alias for @code{delete-matching-items}.
+@end deffn
+
+@deffn procedure keep-matching-items! list predicate
+@deffnx procedure delete-matching-items! list predicate
+These procedures are exactly like @code{keep-matching-items} and
+@code{delete-matching-items}, respectively, except that they
+destructively modify the @var{list} argument rather than allocating a
+new result.
+@end deffn
+
+@deffn procedure delq element list
+@deffnx procedure delv element list
+@deffnx procedure delete element list
+@findex eq?
+@findex eqv?
+@findex equal?
+Returns a newly allocated copy of @var{list} with all entries equal to
+@var{element} removed.  @code{delq} uses @code{eq?} to compare
+@var{element} with the entries in @var{list}, @code{delv} uses
+@code{eqv?}, and @code{delete} uses @code{equal?}.
+@end deffn
+
+@deffn procedure delq! element list
+@deffnx procedure delv! element list
+@deffnx procedure delete! element list
+@findex eq?
+@findex eqv?
+@findex equal?
+Returns a list consisting of the top-level elements of @var{list} with
+all entries equal to @var{element} removed.  These procedures are like
+@code{delq}, @code{delv}, and @code{delete} except that they
+destructively modify @var{list}.  @code{delq!} uses @code{eq?} to
+compare element with the entries in @var{list}, @code{delv!} uses
+@code{eqv?}, and @code{delete!} uses @code{equal?}.  Because the result
+may not be @code{eq?} to @var{list}, it is desirable to do something
+like @code{(set! x (delete! x))}.
+
+@example
+@group
+(define x '(a b c b))
+(delete 'b x)                           @result{}  (a c)
+x                                       @result{}  (a b c b)
+
+(define x '(a b c b))
+(delete! 'b x)                          @result{}  (a c)
+x                                       @result{}  (a c)
+@r{;; Returns correct result:}
+(delete! 'a x)                          @result{}  (c)
+
+@r{;; Didn't modify what x points to:}
+x                                       @result{}  (a c)
+@end group
+@end example
+@end deffn
+
+@deffn procedure delete-member-procedure deletor predicate
+@findex list-deletor
+@findex list-deletor!
+@findex delv
+@findex delete!
+Returns a deletion procedure similar to @code{delv} or @code{delete!}.
+@var{Deletor} should be one of the procedures @code{list-deletor} or
+@code{list-deletor!}.  @var{Predicate} must be an equivalence predicate.
+The returned procedure accepts exactly two arguments: first, an object
+to be deleted, and second, a list of objects from which it is to be
+deleted.  If @var{deletor} is @code{list-deletor}, the procedure
+returns a newly allocated copy of the given list in which all entries
+equal to the given object have been removed.  If @var{deletor} is
+@code{list-deletor!}, the procedure returns a list consisting of the
+top-level elements of the given list with all entries equal to the given
+object removed; the given list is destructively modified to produce the
+result.  In either case @var{predicate} is used to compare the given
+object to the elements of the given list.
+
+Here are some examples that demonstrate how
+@code{delete-member-procedure} could have been used to implement
+@code{delv} and @code{delete!}:
+
+@example
+@group
+(define delv
+  (delete-member-procedure list-deletor eqv?))
+(define delete!
+  (delete-member-procedure list-deletor! equal?))
+@end group
+@end example
+@end deffn
+
+@deffn procedure list-deletor predicate
+@deffnx procedure list-deletor! predicate
+These procedures each return a procedure that deletes elements from
+lists.  @var{Predicate} must be a procedure of one argument.  The
+returned procedure accepts exactly one argument, which must be a proper
+list, and applies @var{predicate} to each of the elements of the
+argument, deleting those for which it is true.
+
+The procedure returned by @code{list-deletor} deletes elements
+non-destructively, by returning a newly allocated copy of the argument
+with the appropriate elements removed.  The procedure returned by
+@code{list-deletor!} performs a destructive deletion.
+@end deffn
+
+@node Searching Lists, Mapping of Lists, Filtering Lists, Lists
+@section Searching Lists
+@cindex searching, of list
+
+@deffn procedure find-matching-item list predicate
+Returns the first element in @var{list} for which @var{predicate} is
+true; returns @code{#f} if it doesn't find such an element.  (This means
+that if @var{predicate} is true for @code{#f}, it may be impossible to
+distinguish a successful result from an unsuccessful one.)
+@var{Predicate} must be a procedure of one argument.
+
+@findex list-search-positive
+@findex list-search-negative
+For compatibility, @code{list-search-positive} is an alias for
+@code{find-matching-item}.  @code{list-search-negative} is similar but
+the sense of the predicate is reversed.
+@end deffn
+
+@deffn procedure memq object list
+@deffnx procedure memv object list
+@deffnx procedure member object list
+@findex eq?
+@findex eqv?
+@findex equal?
+These procedures return the first pair of @var{list} whose car is
+@var{object}; the returned pair is always one from which @var{list} is
+composed.  If @var{object} does not occur in @var{list}, @code{#f}
+(n.b.: not the empty list) is returned.  @code{memq} uses @code{eq?} to
+compare @var{object} with the elements of @var{list}, while @code{memv}
+uses @code{eqv?} and @code{member} uses @code{equal?}.@footnote{Although
+they are often used as predicates, @code{memq}, @code{memv}, and
+@code{member} do not have question marks in their names because they
+return useful values rather than just @code{#t} or @code{#f}.}
+
+@example
+@group
+(memq 'a '(a b c))                      @result{}  (a b c)
+(memq 'b '(a b c))                      @result{}  (b c)
+(memq 'a '(b c d))                      @result{}  #f
+(memq (list 'a) '(b (a) c))             @result{}  #f
+(member (list 'a) '(b (a) c))           @result{}  ((a) c)
+(memq 101 '(100 101 102))               @result{}  @r{unspecified}
+(memv 101 '(100 101 102))               @result{}  (101 102)
+@end group
+@end example
+@end deffn
+
+@deffn procedure member-procedure predicate
+Returns a procedure similar to @code{memq}, except that @var{predicate},
+which must be an equivalence predicate, is used instead of @code{eq?}.
+This could be used to define @code{memv} as follows:
+
+@example
+(define memv (member-procedure eqv?))
+@end example
+@end deffn
+
+@need 1000
+@node Mapping of Lists, Reduction of Lists, Searching Lists, Lists
+@section Mapping of Lists
+@cindex mapping, of list
+
+@deffn {procedure} map procedure list list @dots{}
+@var{Procedure} must be a procedure taking as many arguments as there
+are @var{list}s.  If more than one @var{list} is given, then they must
+all be the same length.  @code{map} applies @var{procedure} element-wise
+to the elements of the @var{list}s and returns a list of the results, in
+order from left to right.  The dynamic order in which @var{procedure} is
+applied to the elements of the @var{list}s is unspecified; use
+@code{for-each} to sequence side effects.
+
+@example
+@group
+(map cadr '((a b) (d e) (g h)))           @result{}  (b e h)
+(map (lambda (n) (expt n n)) '(1 2 3 4))  @result{}  (1 4 27 256)
+(map + '(1 2 3) '(4 5 6))                 @result{}  (5 7 9)
+(let ((count 0))
+  (map (lambda (ignored)
+         (set! count (+ count 1))
+         count)
+       '(a b c)))                         @result{}  @r{unspecified}
+@end group
+@end example
+@end deffn
+
+@deffn procedure map* initial-value procedure list1 list2 @dots{}
+Similar to @code{map}, except that the resulting list is terminated by
+@var{initial-value} rather than the empty list.  The following are
+equivalent:
+
+@example
+@group
+(map @var{procedure} @var{list} @var{list} @dots{})
+(map* '() @var{procedure} @var{list} @var{list} @dots{})
+@end group
+@end example
+@end deffn
+
+@deffn procedure append-map procedure list list @dots{}
+@deffnx procedure append-map* initial-value procedure list list @dots{}
+@findex append
+Similar to @code{map} and @code{map*}, respectively, except that the
+results of applying @var{procedure} to the elements of @var{list}s are
+concatenated together by @code{append} rather than by @code{cons}.  The
+following are equivalent, except that the former is more efficient:
+
+@example
+@group
+(append-map @var{procedure} @var{list} @var{list} @dots{})
+(apply append (map @var{procedure} @var{list} @var{list} @dots{}))
+@end group
+@end example
+@end deffn
+
+@deffn procedure append-map! procedure list list @dots{}
+@deffnx procedure append-map*! initial-value procedure list list @dots{}
+@findex append!
+Similar to @code{map} and @code{map*}, respectively, except that the
+results of applying @var{procedure} to the elements of @var{list}s are
+concatenated together by @code{append!} rather than by @code{cons}.  The
+following are equivalent, except that the former is more efficient:
+
+@example
+@group
+(append-map! @var{procedure} @var{list} @var{list} @dots{})
+(apply append! (map @var{procedure} @var{list} @var{list} @dots{}))
+@end group
+@end example
+@end deffn
+
+@deffn {procedure} for-each procedure list list @dots{}
+The arguments to @code{for-each} are like the arguments to @code{map},
+but @code{for-each} calls @var{procedure} for its side effects rather
+than for its values.  Unlike @code{map}, @code{for-each} is guaranteed
+to call @var{procedure} on the elements of the @var{list}s in order from
+the first element to the last, and the value returned by @code{for-each}
+is unspecified.
+
+@example
+@group
+(let ((v (make-vector 5)))
+  (for-each (lambda (i)
+              (vector-set! v i (* i i)))
+            '(0 1 2 3 4))
+  v)                            @result{}  #(0 1 4 9 16)
+@end group
+@end example
+@end deffn
+
+@node Reduction of Lists, Miscellaneous List Operations, Mapping of Lists, Lists
+@section Reduction of Lists
+@cindex reduction, of list
+
+@deffn procedure reduce procedure initial list
+Combines all the elements of @var{list} using the binary operation
+@var{procedure}.  For example, using @code{+} one can add up all the
+elements:
+
+@example
+(reduce + 0 list-of-numbers)
+@end example
+
+The argument @var{initial} is used only if @var{list} is empty; in this
+case @var{initial} is the result of the call to @code{reduce}.  If
+@var{list} has a single argument, it is returned.  Otherwise, the arguments
+are reduced in a left-associative fashion.  For example:
+
+@example
+@group
+(reduce + 0 '(1 2 3 4))                 @result{}  10
+(reduce + 0 '(1 2))                     @result{}  3
+(reduce + 0 '(1))                       @result{}  1
+(reduce + 0 '())                        @result{}  0
+(reduce + 0 '(foo))                     @result{}  foo
+(reduce list '() '(1 2 3 4))            @result{}  (((1 2) 3) 4)
+@end group
+@end example
+@end deffn
+
+@deffn procedure reduce-right procedure initial list
+Like @code{reduce} except that it is right-associative.
+
+@example
+(reduce-right list '() '(1 2 3 4))      @result{}  (1 (2 (3 4)))
+@end example
+@end deffn
+
+@deffn procedure fold-right procedure initial list
+Combines all of the elements of @var{list} using the binary operation
+@var{procedure}.  Unlike @code{reduce} and @code{reduce-right},
+@var{initial} is always used:
+
+@example
+@group
+(fold-right + 0 '(1 2 3 4))             @result{}  10
+(fold-right + 0 '(foo))                 @error{} Illegal datum
+(fold-right list '() '(1 2 3 4))        @result{}  (1 (2 (3 (4 ()))))
+@end group
+@end example
+
+@code{Fold-right} has interesting properties because it establishes a
+homomorphism between (@code{cons}, @code{()}) and (@var{procedure},
+@var{initial}).  It can be thought of as replacing the pairs in the
+spine of the list with @var{procedure} and replacing the @code{()} at
+the end with @var{initial}.  Many of the classical list-processing
+procedures can be expressed in terms of @code{fold-right}, at least for
+the simple versions that take a fixed number of arguments:
+
+@example
+@group
+(define (copy-list list)
+  (fold-right cons '() list))
+
+(define (append list1 list2)
+  (fold-right cons list2 list1))
+
+(define (map p list) 
+  (fold-right (lambda (x r) (cons (p x) r)) '() list))
+
+(define (reverse items)
+  (fold-right (lambda (x r) (append r (list x))) '() items))
+@end group
+@end example
+@end deffn
+
+@deffn procedure fold-left procedure initial list
+Combines all the elements of @var{list} using the binary operation
+@var{procedure}.  Elements are combined starting with @var{initial} and
+then the elements of @var{list} from left to right.  Whereas
+@code{fold-right} is recursive in nature, capturing the essence of
+@code{cdr}-ing down a list and then computing a result, @var{fold-left}
+is iterative in nature, combining the elements as the list is traversed.
+
+@example
+@group
+(fold-left list '() '(1 2 3 4))         @result{}  ((((() 1) 2) 3) 4)
+
+(define (length list)
+  (fold-left (lambda (sum element) (+ sum 1)) 0 list))
+
+(define (reverse items)
+  (fold-left (lambda (x y) (cons y x)) () items))
+@end group
+@end example
+@end deffn
+
+@deffn procedure there-exists? list predicate
+@var{Predicate} must be a procedure of one argument.  Applies
+@var{predicate} to each element of @var{list}, in order from left to
+right.  If @var{predicate} is true for any element of @var{list}, the
+value yielded by @var{predicate} is immediately returned as the value of
+@code{there-exists?}; @var{predicate} will not be applied to the
+remaining elements of @var{list}.  If @var{predicate} returns @code{#f}
+for all of the elements of @var{list}, then @code{#f} is returned.
+@end deffn
+
+@deffn procedure for-all? list predicate
+@var{Predicate} must be a procedure of one argument.  Applies
+@var{predicate} to each element of @var{list}, in order from left to
+right.  If @var{predicate} returns @code{#f} for any element of
+@var{list}, @code{#f} is immediately returned as the value of
+@code{for-all?}; @var{predicate} will not be applied to the remaining
+elements of @var{list}.  If @var{predicate} is true for all of the
+elements of @var{list}, then @code{#t} is returned.
+@end deffn
+
+@node Miscellaneous List Operations,  , Reduction of Lists, Lists
+@section Miscellaneous List Operations
+
+@deffn procedure circular-list object @dots{}
+@deffnx procedure make-circular-list k [element]
+@cindex circular list
+@cindex construction, of circular list
+@findex list
+@findex make-list
+These procedures are like @code{list} and @code{make-list},
+respectively, except that the returned lists are circular.
+@code{circular-list} could have been defined like this:
+
+@example
+@group
+(define (circular-list . objects)
+  (append! objects objects))
+@end group
+@end example
+@end deffn
+
+@deffn procedure reverse list
+@cindex reversal, of list
+Returns a newly allocated list consisting of the top-level elements of
+@var{list} in reverse order.
+
+@example
+@group
+(reverse '(a b c))                  @result{}  (c b a)
+(reverse '(a (b c) d (e (f))))      @result{}  ((e (f)) d (b c) a)
+@end group
+@end example
+@end deffn
+
+@deffn procedure reverse! list
+Returns a list consisting of the top-level elements of @var{list} in
+reverse order.  @code{reverse!} is like @code{reverse}, except that it
+destructively modifies @var{list}.  Because the result may not be
+@code{eqv?} to @var{list}, it is desirable to do something like
+@code{(set! x (reverse! x))}.
+@end deffn
+
+@deffn procedure sort sequence procedure
+@deffnx procedure merge-sort sequence procedure
+@deffnx procedure quick-sort sequence procedure
+@cindex total ordering (defn)
+@var{Sequence} must be either a list or a vector.  @var{Procedure} must be a
+procedure of two arguments that defines a @dfn{total ordering} on the
+elements of @var{sequence}.  In other words, if @var{x} and @var{y} are two
+distinct elements of @var{sequence}, then it must be the case that
+
+@example
+@group
+(and (@var{procedure} @var{x} @var{y})
+     (@var{procedure} @var{y} @var{x}))
+     @result{}  #f
+@end group
+@end example
+
+If @var{sequence} is a list (vector), @code{sort} returns a newly
+allocated list (vector) whose elements are those of @var{sequence},
+except that they are rearranged to be sorted in the order defined by
+@var{procedure}.  So, for example, if the elements of @var{sequence} are
+numbers, and @var{procedure} is @code{<}, then the resulting elements
+are sorted in monotonically nondecreasing order.  Likewise, if
+@var{procedure} is @code{>}, the resulting elements are sorted in
+monotonically nonincreasing order.  To be precise, if @var{x} and
+@var{y} are any two adjacent elements in the result, where @var{x}
+precedes @var{y}, it is the case that
+
+@example
+@group
+(@var{procedure} @var{y} @var{x})
+     @result{}  #f
+@end group
+@end example
+
+Two sorting algorithms are implemented: @code{merge-sort} and
+@code{quick-sort}.  The procedure @code{sort} is an alias for
+@code{merge-sort}.
+
+See also the definition of @code{sort!}.
+@end deffn

@@ -1,47 +1,59 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.11 2001/11/05 21:32:40 cph Exp $
+$Id: url.scm,v 1.14 2003/02/14 18:28:34 cph Exp $
 
-Copyright (c) 2000, 2001 Massachusetts Institute of Technology
+Copyright (c) 2000, 2001, 2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 |#
 
 ;;;; URL Encoding
 
 (declare (usual-integrations))
 
-(define url:char-set:safe (string->char-set "$-_.+"))
-(define url:char-set:extra (string->char-set "!*'(),"))
-(define url:char-set:national (string->char-set "{}|\\^~[]`"))
-(define url:char-set:punctuation (string->char-set "<>#%\""))
-(define url:char-set:reserved (string->char-set ";/?:@&="))
-(define url:char-set:hex (string->char-set "0123456789abcdefABCDEF"))
+(define url:char-set:safe)
+(define url:char-set:extra)
+(define url:char-set:national)
+(define url:char-set:punctuation)
+(define url:char-set:reserved)
+(define url:char-set:hex)
+(define url:char-set:unreserved)
+(define url:char-set:unescaped)
+(define url:char-set:escaped)
 
-(define url:char-set:unreserved
-  (char-set-union char-set:alphanumeric
-		  url:char-set:safe
-		  url:char-set:extra))
-
-(define url:char-set:unescaped
-  (char-set-union url:char-set:unreserved
-		  url:char-set:reserved))
-
-(define url:char-set:escaped
-  (char-set-invert url:char-set:unescaped))
+(define (initialize-package!)
+  (set! url:char-set:safe (string->char-set "$-_.+"))
+  (set! url:char-set:extra (string->char-set "!*'(),"))
+  (set! url:char-set:national (string->char-set "{}|\\^~[]`"))
+  (set! url:char-set:punctuation (string->char-set "<>#%\""))
+  (set! url:char-set:reserved (string->char-set ";/?:@&="))
+  (set! url:char-set:hex (string->char-set "0123456789abcdefABCDEF"))
+  (set! url:char-set:unreserved
+	(char-set-union char-set:alphanumeric
+			url:char-set:safe
+			url:char-set:extra))
+  (set! url:char-set:unescaped
+	(char-set-union url:char-set:unreserved
+			url:char-set:reserved))
+  (set! url:char-set:escaped
+	(char-set-invert url:char-set:unescaped))
+  unspecific)
 
 (define url:match:escape
   (*matcher

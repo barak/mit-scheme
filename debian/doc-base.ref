@@ -1,7 +1,7 @@
 Document: mit-scheme-ref
-Title: MIT Scheme Reference Manual
+Title: MIT/GNU Scheme Reference Manual
 Author: Chris Hanson
-Abstract: A detailed description of the MIT Scheme runtime system.
+Abstract: A detailed description of the MIT/GNU Scheme runtime system.
  This is intended to be a reference document for programmers.
 Section: Apps/Programming
 

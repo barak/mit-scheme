@@ -1,23 +1,27 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.28 2001/06/02 01:21:58 cph Exp $
+$Id: uxsock.c,v 1.31 2003/07/09 22:53:38 cph Exp $
 
-Copyright (c) 1990-2001 Massachusetts Institute of Technology
+Copyright 1993,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
+Copyright 2001,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 */
 
 #include "ux.h"
@@ -248,13 +252,24 @@ DEFUN (OS_bind_tcp_server_socket, (channel, host, port),
        unsigned int port)
 {
   struct sockaddr_in address;
+  int one = 1;
+
   (address . sin_family) = AF_INET;
   memcpy ((& (address . sin_addr)), host, (sizeof (address . sin_addr)));
   (address . sin_port) = port;
+
   STD_VOID_SYSTEM_CALL
-    (syscall_bind, (UX_bind ((CHANNEL_DESCRIPTOR (channel)),
-			     ((struct sockaddr *) (&address)),
-			     (sizeof (struct sockaddr_in)))));
+    (syscall_setsockopt,
+     (setsockopt ((CHANNEL_DESCRIPTOR (channel)),
+		  SOL_SOCKET,
+		  SO_REUSEADDR,
+		  (&one),
+		  (sizeof (one)))));
+  STD_VOID_SYSTEM_CALL
+    (syscall_bind,
+     (UX_bind ((CHANNEL_DESCRIPTOR (channel)),
+	       ((struct sockaddr *) (&address)),
+	       (sizeof (struct sockaddr_in)))));
 }
 
 #ifndef SOCKET_LISTEN_BACKLOG

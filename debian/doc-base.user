@@ -1,7 +1,7 @@
 Document: mit-scheme-user
-Title: MIT Scheme User's Manual
+Title: MIT/GNU Scheme User's Manual
 Author: Stephen Adams and Chris Hanson
-Abstract: This document describes how to install and use MIT Scheme.
+Abstract: This document describes how to install and use MIT/GNU Scheme.
  It gives installation instructions for all of the platforms that we
  support; complete documentation of the command-line options and
  environment variables that control how Scheme works; and rudimentary

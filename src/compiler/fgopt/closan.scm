@@ -1,23 +1,26 @@
 #| -*-Scheme-*-
 
-$Id: closan.scm,v 4.29 2001/11/05 18:57:11 cph Exp $
+$Id: closan.scm,v 4.32 2003/02/14 18:28:01 cph Exp $
 
-Copyright (c) 1987-1991, 1998, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987-1991, 1998, 1999, 2001, 2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Closure Analysis
@@ -49,13 +52,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;; The closure analysis uses a handful of straightforward rules to
 ;;; decide whether to close a procedure.  These rules fall into two
 ;;; general classes: (1) The procedure is stored or invoked in a place
-;;; where it's ancestor environments aren't available on the stack;
+;;; where its ancestor environments aren't available on the stack;
 ;;; (2) The procedure is invoked from a place in which other
 ;;; procedures are also invoked, and so must be closed to provide a
 ;;; uniform calling interface amongst the procedures.
 ;;;
-;;; The environment analysis is considerably more complex.  The basic
-;;; algorithm is to take each procedure and raise it up in the
+;;; The environment optimization is considerably more complex.  The
+;;; basic algorithm is to take each procedure and raise it up in the
 ;;; environment heirarchy so that its closing environment is the
 ;;; top-level environment.  Then, a number of constraints are applied
 ;;; to the procedure, which together have the effect of pulling it
@@ -106,7 +109,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;; feedback makes analysis of the algorithm very difficult.
 ;;;
 ;;; This brings up my final point about the implementation.  The
-;;; entire relaxation process involves a great deal of undiscipled
+;;; entire relaxation process involves a great deal of undisciplined
 ;;; feedback.  In addition to the transitive closure problem, there is
 ;;; also the ad hoc intermixing of constraint application and closing
 ;;; of procedures.  The end result of all of this is that the specific

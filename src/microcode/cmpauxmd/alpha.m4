@@ -1,8 +1,9 @@
  ### -*- Midas -*-
  ### 
- ### $Id: alpha.m4,v 1.1 1992/08/29 12:19:18 jinx Exp $
+ ### $Id: alpha.m4,v 1.2 2002/07/02 18:13:18 cph Exp $
  ### 
  ### Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
+ ### Copyright (c) 2002 Massachusetts Institute of Technology
  ### 
  ### This software was developed at the Digital Equipment Corporation
  ### Cambridge Research Laboratory.  Permission to copy this software, to
@@ -341,7 +342,7 @@ scheme_to_interface:
 	ldq	$23,REGBLOCK_ADDRESS_OF_FREE($9)		# 12
 	stq	$14,REGBLOCK_CLOSURE_FREE($9)
 	s8addq	$1,$24,$24	# Address of entry in table	# 16
-	stq	$2,0($22)	# Save Ext_Stack_Pointer	# 20
+	stq	$2,0($22)	# Save sp_register		# 20
 	ldq	$27,0($24)	# Destination address		# 24
 	lda	$16,64($sp)	# Return structure value here	# 28
 	stq	$4,0($23)	# Save Free			# 32

@@ -13,15 +13,13 @@ set -e
 #
 # For details see /usr/share/doc/packaging-manual/
 
-case "$1" in
-    install|upgrade)
-	;;
-    abort-upgrade)
-	;;
-    *)
-	echo "preinst called with unknown argument \`$1'" >&2
-	exit 1
-	;;
+case "${1}" in
+(install|upgrade|abort-upgrade)
+    ;;
+(*)
+    echo "preinst called with unknown argument \"${1}\"" >&2
+    exit 1
+    ;;
 esac
 
 # dh_installdeb will replace this with shell code automatically

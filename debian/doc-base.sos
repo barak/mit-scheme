@@ -1,7 +1,7 @@
 Document: mit-scheme-sos
 Title: The SOS Manual
 Author: Chris Hanson
-Abstract: SOS is an object-oriented programming extension for MIT Scheme.
+Abstract: SOS is an object-oriented programming extension for MIT/GNU Scheme.
  This document is a reference manual for SOS.
 Section: Apps/Programming
 

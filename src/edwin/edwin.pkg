@@ -1,23 +1,28 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.281 2002/03/06 20:05:22 cph Exp $
+$Id: edwin.pkg,v 1.286 2003/04/25 03:10:00 cph Exp $
 
-Copyright (c) 1989-2002 Massachusetts Institute of Technology
+Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
+Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Edwin Packaging
@@ -105,6 +110,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  make-output-buffer
 	  output-buffer/drain-block
 	  output-buffer/write-substring-block)
+  (import (runtime character)
+	  bucky-bits->prefix)
   (import (runtime char-syntax)
 	  char-syntax-table/entries)
   (import (runtime)
@@ -811,9 +818,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-package (edwin debugger)
   (files "debug")
   (parent (edwin))
-  (export ()
-	  with-break-on
-	  call-with-break)
   (export (edwin)
 	  debug-scheme-error
 	  edwin-command$browse-continuation
@@ -838,10 +842,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  edwin-variable$debugger-split-window?
 	  edwin-variable$debugger-start-new-frame?
 	  edwin-variable$debugger-start-new-screen?
-	  edwin-variable$debugger-start-on-error?
 	  edwin-variable$debugger-verbose-mode?
-	  edwin-variable$environment-package-limit
-	  maybe-debug-scheme-error)
+	  edwin-variable$environment-package-limit)
   (import (runtime debugger)
 	  command/condition-restart
 	  command/frame
@@ -1134,6 +1136,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    edwin-variable$vc-checkin-hooks
 	    edwin-variable$vc-checkout-carefully
 	    edwin-variable$vc-command-messages
+	    edwin-variable$vc-cvs-stay-local
 	    edwin-variable$vc-default-init-version
 	    edwin-variable$vc-delete-logbuf-window
 	    edwin-variable$vc-display-status

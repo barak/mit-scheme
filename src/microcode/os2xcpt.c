@@ -1,23 +1,26 @@
 /* -*-C-*-
 
-$Id: os2xcpt.c,v 1.9 2001/12/16 06:01:32 cph Exp $
+$Id: os2xcpt.c,v 1.15 2003/02/14 18:28:22 cph Exp $
 
-Copyright (c) 1994-2001 Massachusetts Institute of Technology
+Copyright (c) 1994-2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 */
 
 #include <stdarg.h>
@@ -419,7 +422,7 @@ continue_from_trap (PEXCEPTIONREPORTRECORD report, PCONTEXTRECORD context)
 	pc_location = pc_in_builtin;
       else if ((pc_to_utility_index (pc)) != (-1))
 	pc_location = pc_in_utility;
-      else if (PRIMITIVE_P (Regs [REGBLOCK_PRIMITIVE]))
+      else if (PRIMITIVE_P (Registers[REGBLOCK_PRIMITIVE]))
 	pc_location = pc_in_primitive;
       else
 	pc_location = pc_in_c;
@@ -449,7 +452,7 @@ continue_from_trap (PEXCEPTIONREPORTRECORD report, PCONTEXTRECORD context)
     case pc_in_utility:
     case pc_in_primitive:
     case pc_in_c:
-      new_sp = Stack_Pointer;
+      new_sp = sp_register;
       break;
     default:
       new_sp = 0;
@@ -496,9 +499,9 @@ continue_from_trap (PEXCEPTIONREPORTRECORD report, PCONTEXTRECORD context)
       break;
     case pc_in_primitive:
       (trinfo . state) = STATE_PRIMITIVE;
-      (trinfo . pc_info_1) = (Regs [REGBLOCK_PRIMITIVE]);
+      (trinfo . pc_info_1) = (Registers[REGBLOCK_PRIMITIVE]);
       (trinfo . pc_info_2)
-	= (LONG_TO_UNSIGNED_FIXNUM (Regs [REGBLOCK_LEXPR_ACTUALS]));
+	= (LONG_TO_UNSIGNED_FIXNUM (Registers[REGBLOCK_LEXPR_ACTUALS]));
       Free = ((new_sp == 0) ? MemTop : (interpreter_free (0)));
       break;
     default:
@@ -753,13 +756,13 @@ setup_trap_frame (PEXCEPTIONREPORTRECORD report,
 
   /* Make sure the stack is correctly initialized.  */
   if (new_sp != 0)
-    Stack_Pointer = new_sp;
+    sp_register = new_sp;
   else
     {
       INITIALIZE_STACK ();
      Will_Push (CONTINUATION_SIZE);
       Store_Return (RC_END_OF_COMPUTATION);
-      Store_Expression (SHARP_F);
+      exp_register = SHARP_F;
       Save_Cont ();
      Pushed ();
     }
@@ -780,14 +783,14 @@ setup_trap_frame (PEXCEPTIONREPORTRECORD report,
   STACK_PUSH (long_to_integer (report -> ExceptionNum));
   STACK_PUSH (trap_name);
   Store_Return (RC_HARDWARE_TRAP);
-  Store_Expression (UNSPECIFIC);
+  exp_register = UNSPECIFIC;
   Save_Cont ();
  Pushed ();
 
   /* Make sure the history register is properly initialized.  */
   if ((new_sp != 0) && ((trinfo -> state) == STATE_COMPILED_CODE))
     Stop_History ();
-  History = (Make_Dummy_History ());
+  history_register = (Make_Dummy_History ());
 
   /* Push the call frame for the trap handler.  */
  Will_Push (STACK_ENV_EXTRA_SLOTS + 2);

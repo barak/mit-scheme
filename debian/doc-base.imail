@@ -2,9 +2,9 @@ Document: mit-scheme-imail
 Title: IMAIL User's Manual
 Author: Chris Hanson
 Abstract: IMAIL is program for reading electronic mail.
- IMAIL runs inside of Edwin, MIT Scheme's Emacs-like editor, and is
- intended to be similar to Rmail while providing support for IMAP and
- MIME.  This manual describes how to use IMAIL.
+ IMAIL runs inside of Edwin, MIT/GNU Scheme's Emacs-like editor, and
+ is intended to be similar to Rmail while providing support for IMAP
+ and MIME.  This manual describes how to use IMAIL.
 Section: Apps/Net
 
 Format: HTML

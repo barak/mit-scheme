@@ -1,23 +1,28 @@
 /* -*-C-*-
 
-$Id: object.h,v 9.51 2001/07/31 03:11:56 cph Exp $
+$Id: object.h,v 9.54 2003/02/28 04:34:38 cph Exp $
 
-Copyright (c) 1987-2001 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
+Copyright 1993,1995,1997,1998,2000,2001 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 */
 
 /* This file defines the macros which define and manipulate Scheme
@@ -335,13 +340,13 @@ extern SCHEME_OBJECT * memory_base;
 /* Character Operations */
 
 #define ASCII_LENGTH CHAR_BIT	/* CHAR_BIT in config.h - 8 for unix  */
-#define CODE_LENGTH 16
-#define BITS_LENGTH 5
-#define MIT_ASCII_LENGTH 21
+#define CODE_LENGTH 21
+#define BITS_LENGTH 4
+#define MIT_ASCII_LENGTH 25
 
-#define CHAR_BITS_META 		01
-#define CHAR_BITS_CONTROL 	02
-#define CHAR_BITS_CONTROL_META	03
+#define CHAR_BITS_META 		0x1
+#define CHAR_BITS_CONTROL 	0x2
+#define CHAR_BITS_CONTROL_META	0x3
 
 #define MAX_ASCII (1L << ASCII_LENGTH)
 #define MAX_CODE (1L << CODE_LENGTH)

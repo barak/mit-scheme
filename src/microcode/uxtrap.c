@@ -1,23 +1,27 @@
 /* -*-C-*-
 
-$Id: uxtrap.c,v 1.31 2001/12/16 06:01:33 cph Exp $
+$Id: uxtrap.c,v 1.39 2003/05/12 20:02:55 cph Exp $
 
-Copyright (c) 1990-2001 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1993,1995,1997 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 */
 
 #include "scheme.h"
@@ -315,12 +319,12 @@ DEFUN (setup_trap_frame, (signo, info, scp, trinfo, new_stack_pointer),
       INITIALIZE_STACK ();
      Will_Push (CONTINUATION_SIZE);
       Store_Return (RC_END_OF_COMPUTATION);
-      Store_Expression (SHARP_F);
+      exp_register = SHARP_F;
       Save_Cont ();
      Pushed ();
     }
   else
-    Stack_Pointer = new_stack_pointer;
+    sp_register = new_stack_pointer;
  Will_Push (7 + CONTINUATION_SIZE);
   STACK_PUSH (trinfo -> extra_trap_info);
   STACK_PUSH (trinfo -> pc_info_2);
@@ -330,7 +334,7 @@ DEFUN (setup_trap_frame, (signo, info, scp, trinfo, new_stack_pointer),
   STACK_PUSH (signal_code);
   STACK_PUSH (signal_name);
   Store_Return (RC_HARDWARE_TRAP);
-  Store_Expression (long_to_integer (signo));
+  exp_register = (long_to_integer (signo));
   Save_Cont ();
  Pushed ();
   if (stack_recovered_p
@@ -339,7 +343,7 @@ DEFUN (setup_trap_frame, (signo, info, scp, trinfo, new_stack_pointer),
   {
     Stop_History ();
   }
-  History = (Make_Dummy_History ());
+  history_register = (Make_Dummy_History ());
  Will_Push (STACK_ENV_EXTRA_SLOTS + 2);
   STACK_PUSH (signal_name);
   STACK_PUSH (handler);
@@ -364,15 +368,15 @@ DEFUN_VOID (soft_reset)
 {
   struct trap_recovery_info trinfo;
   SCHEME_OBJECT * new_stack_pointer =
-    (((Stack_Pointer <= Stack_Top) && (Stack_Pointer > Stack_Guard))
-     ? Stack_Pointer
+    (((sp_register <= Stack_Top) && (sp_register > Stack_Guard))
+     ? sp_register
      : 0);
-  if ((Regs[REGBLOCK_PRIMITIVE]) != SHARP_F)
+  if ((Registers[REGBLOCK_PRIMITIVE]) != SHARP_F)
     {
       (trinfo . state) = STATE_PRIMITIVE;
-      (trinfo . pc_info_1) = (Regs[REGBLOCK_PRIMITIVE]);
+      (trinfo . pc_info_1) = (Registers[REGBLOCK_PRIMITIVE]);
       (trinfo . pc_info_2) =
-	(LONG_TO_UNSIGNED_FIXNUM (Regs[REGBLOCK_LEXPR_ACTUALS]));
+	(LONG_TO_UNSIGNED_FIXNUM (Registers[REGBLOCK_LEXPR_ACTUALS]));
       (trinfo . extra_trap_info) = SHARP_F;
     }
   else
@@ -388,7 +392,15 @@ DEFUN_VOID (soft_reset)
   setup_trap_frame (0, 0, 0, (&trinfo), new_stack_pointer);
 }
 
-#if !defined(HAVE_STRUCT_SIGCONTEXT) || !defined(HAS_COMPILER_SUPPORT) || defined(USE_STACKLETS)
+#ifdef HAS_COMPILER_SUPPORT
+#  include "gccode.h"
+#endif
+
+#if defined(HAVE_STRUCT_SIGCONTEXT) && defined(HAS_COMPILER_SUPPORT) && !defined(USE_STACKLETS)
+#  define ENABLE_TRAP_RECOVERY 1
+#endif
+
+#ifndef ENABLE_TRAP_RECOVERY
 
 static struct trap_recovery_info dummy_recovery_info =
 {
@@ -411,7 +423,15 @@ DEFUN (continue_from_trap, (signo, info, scp),
   setup_trap_frame (signo, info, scp, (&dummy_recovery_info), 0);
 }
 
-#else /* HAS_COMPILER_SUPPORT and not USE_STACKLETS */
+SCHEME_OBJECT *
+DEFUN (find_block_address, (pc_value, area_start),
+       char * pc_value AND
+       SCHEME_OBJECT * area_start)
+{
+  return (0);
+}
+
+#else /* ENABLE_TRAP_RECOVERY */
 
 /* Heuristic recovery from Unix signals (traps).
 
@@ -424,14 +444,12 @@ DEFUN (continue_from_trap, (signo, info, scp),
    4) set up a recovery frame for the interpreter so that debuggers can
       display more information. */
 
-#include "gccode.h"
-
 #define SCHEME_ALIGNMENT_MASK		((sizeof (long)) - 1)
 #define STACK_ALIGNMENT_MASK		SCHEME_ALIGNMENT_MASK
 #define FREE_PARANOIA_MARGIN		0x100
 
 #define C_STACK_SIZE			0x01000000
-
+
 static void
 DEFUN (continue_from_trap, (signo, info, scp),
        int signo AND
@@ -489,11 +507,11 @@ DEFUN (continue_from_trap, (signo, info, scp),
   new_stack_pointer =
     (scheme_sp_valid
      ? ((SCHEME_OBJECT *) scheme_sp)
-     : (pc_in_C && (Stack_Pointer < Stack_Top)
-	&& (Stack_Pointer > Stack_Bottom))
-     ? Stack_Pointer
+     : (pc_in_C && (sp_register < Stack_Top)
+	&& (sp_register > Stack_Bottom))
+     ? sp_register
      : ((SCHEME_OBJECT *) 0));
-
+
   if (pc_in_hyper_space || (pc_in_scheme && ALLOW_ONLY_C))
   {
     /* In hyper space. */
@@ -560,12 +578,11 @@ DEFUN (continue_from_trap, (signo, info, scp),
 	  Free = MemTop;
     }
   }
-
   else /* pc_in_C */
   {
     /* In the interpreter, a primitive, or a compiled code utility. */
 
-    SCHEME_OBJECT primitive = (Regs[REGBLOCK_PRIMITIVE]);
+    SCHEME_OBJECT primitive = (Registers[REGBLOCK_PRIMITIVE]);
 
     if (pc_in_utility)
     {
@@ -585,7 +602,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
       (trinfo . state) = STATE_PRIMITIVE;
       (trinfo . pc_info_1) = primitive;
       (trinfo . pc_info_2) =
-	(LONG_TO_UNSIGNED_FIXNUM (Regs[REGBLOCK_LEXPR_ACTUALS]));
+	(LONG_TO_UNSIGNED_FIXNUM (Registers[REGBLOCK_LEXPR_ACTUALS]));
     }
     if ((new_stack_pointer == 0)
 	|| ((((unsigned long) Free) & SCHEME_ALIGNMENT_MASK) != 0)
@@ -617,7 +634,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
     (*xtra_info++) = ((SCHEME_OBJECT) the_pc);
   setup_trap_frame (signo, info, scp, (&trinfo), new_stack_pointer);
 }
-
+
 /* Find the compiled code block in area which contains `pc_value'.
    This attempts to be more efficient than `find_block_address_in_area'.
    If the pointer is in the heap, it can actually do twice as
@@ -665,7 +682,7 @@ DEFUN (find_block_address, (pc_value, area_start),
   }
   return (find_block_address_in_area (pc_value, area_start));
 }
-
+
 /*
   Find the compiled code block in area which contains `pc_value',
   by scanning sequentially the complete area.
@@ -762,9 +779,7 @@ DEFUN (find_block_address_in_area, (pc_value, area_start),
   return (0);
 }
 
-#endif /* HAS_COMPILER_SUPPORT and not USE_STACKLETS */
-
-
+#endif /* ENABLE_TRAP_RECOVERY */
 
 SCHEME_OBJECT
 DEFUN (find_ccblock, (the_pc),
@@ -835,7 +850,7 @@ DEFUN (find_ccblock, (the_pc),
   {
     /* In the interpreter, a primitive, or a compiled code utility. */
 
-    SCHEME_OBJECT primitive = (Regs[REGBLOCK_PRIMITIVE]);
+    SCHEME_OBJECT primitive = (Registers[REGBLOCK_PRIMITIVE]);
 
     if (pc_in_utility)
     {

@@ -1,23 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: chrset.scm,v 14.16 2001/09/25 05:15:17 cph Exp $
+$Id: chrset.scm,v 14.20 2003/09/09 03:45:52 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1988,1995,1997,1998,2000,2001 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Character Sets
@@ -25,7 +29,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (declare (usual-integrations))
 
-(define-structure (char-set (type-descriptor char-set-rtd))
+(define-structure (char-set (type-descriptor <char-set>))
   (table #f read-only #t))
 
 (define-integrable (guarantee-char-set object procedure)
@@ -81,6 +85,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	((fix:= code char-set-table-length))
       (vector-8b-set! table code (if (predicate (integer->char code)) 1 0)))
     (make-char-set table)))
+
+(define (char-set=? c1 c2)
+  (guarantee-char-set c1 'CHAR-SET=?)
+  (guarantee-char-set c2 'CHAR-SET=?)
+  (string=? (char-set-table c1) (char-set-table c2)))
 
 (define (char-set-members char-set)
   (guarantee-char-set char-set 'CHAR-SET-MEMBERS)

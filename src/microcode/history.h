@@ -1,22 +1,26 @@
 /* -*-C-*-
 
-$Id: history.h,v 9.29 1999/01/02 06:11:34 cph Exp $
+$Id: history.h,v 9.33 2003/02/14 18:28:19 cph Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990, 1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1990, 1999, 2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 */
 
 /* History maintenance data structures and support. */
@@ -62,11 +66,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      : (MAKE_POINTER_OBJECT						\
 	(TC_CONTROL_POINT, Prev_Restore_History_Stacklet)));		\
   STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (Prev_Restore_History_Offset));	\
-  Store_Expression							\
-    (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, History));		\
+  exp_register								\
+    = (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, history_register));	\
   Store_Return (Return_Code);						\
   Save_Cont ();								\
-  History = (OBJECT_ADDRESS (Get_Fixed_Obj_Slot (Dummy_History)));	\
+  history_register							\
+    = (OBJECT_ADDRESS (Get_Fixed_Obj_Slot (Dummy_History)));		\
 }
 
 /* History manipulation in the interpreter. */
@@ -75,10 +80,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #define New_Subproblem(expression, environment)				\
 {									\
-  History = (OBJECT_ADDRESS (History [HIST_NEXT_SUBPROBLEM]));		\
-  HISTORY_MARK (History [HIST_MARK]);					\
+  history_register							\
+    = (OBJECT_ADDRESS (history_register [HIST_NEXT_SUBPROBLEM]));	\
+  HISTORY_MARK (history_register [HIST_MARK]);				\
   {									\
-    fast SCHEME_OBJECT * Rib = (OBJECT_ADDRESS (History [HIST_RIB]));	\
+    SCHEME_OBJECT * Rib							\
+      = (OBJECT_ADDRESS (history_register [HIST_RIB]));			\
     HISTORY_MARK (Rib [RIB_MARK]);					\
     (Rib [RIB_ENV]) = (environment);					\
     (Rib [RIB_EXP]) = (expression);					\
@@ -87,7 +94,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #define Reuse_Subproblem(expression, environment)			\
 {									\
-  fast SCHEME_OBJECT * Rib = (OBJECT_ADDRESS (History [HIST_RIB]));	\
+  SCHEME_OBJECT * Rib = (OBJECT_ADDRESS (history_register [HIST_RIB]));	\
   HISTORY_MARK (Rib [RIB_MARK]);					\
   (Rib [RIB_ENV]) = (environment);					\
   (Rib [RIB_EXP]) = (expression);					\
@@ -97,8 +104,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 {									\
   fast SCHEME_OBJECT * Rib =						\
     (OBJECT_ADDRESS							\
-     (FAST_MEMORY_REF ((History [HIST_RIB]), RIB_NEXT_REDUCTION)));	\
-  (History [HIST_RIB]) =						\
+     (FAST_MEMORY_REF ((history_register [HIST_RIB]),			\
+		       RIB_NEXT_REDUCTION)));				\
+  (history_register [HIST_RIB]) =					\
     (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, Rib));			\
   (Rib [RIB_ENV]) = (environment);					\
   (Rib [RIB_EXP]) = (expression);					\
@@ -107,8 +115,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #define End_Subproblem()						\
 {									\
-  HISTORY_UNMARK (History [HIST_MARK]);					\
-  History = (OBJECT_ADDRESS (History [HIST_PREV_SUBPROBLEM]));		\
+  HISTORY_UNMARK (history_register [HIST_MARK]);			\
+  history_register							\
+    = (OBJECT_ADDRESS (history_register [HIST_PREV_SUBPROBLEM]));	\
 }
 
 #else /* DISABLE_HISTORY */

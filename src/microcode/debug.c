@@ -1,23 +1,26 @@
 /* -*-C-*-
 
-$Id: debug.c,v 9.53 2001/07/31 03:11:17 cph Exp $
+$Id: debug.c,v 9.57 2003/02/14 18:28:18 cph Exp $
 
-Copyright (c) 1987-2001 Massachusetts Institute of Technology
+Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 */
 
 /* Utilities to help with debugging */
@@ -268,7 +271,7 @@ void
 DEFUN (Print_Return, (String), char * String)
 {
   outf_console ("%s: ", String);
-  print_return_name (console_output, Fetch_Return ());
+  print_return_name (console_output, ret_register);
   outf_console ("\n");
 }
 
@@ -706,7 +709,7 @@ DEFUN (print_one_continuation_frame, (stream, Temp),
       ((OBJECT_DATUM (Temp)) == RC_HALT))
     return (true);
   if ((OBJECT_DATUM (Temp)) == RC_JOIN_STACKLETS)
-    Stack_Pointer = (Previous_Stack_Pointer (Expr));
+    sp_register = (Previous_Stack_Pointer (Expr));
   return (false);
 }
 
@@ -728,7 +731,7 @@ DEFUN (Back_Trace, (stream), outf_channel stream)
   SCHEME_OBJECT Temp, * Old_Stack;
 
   Back_Trace_Entry_Hook();
-  Old_Stack = Stack_Pointer;
+  Old_Stack = sp_register;
   while (true)
   {
     if ((STACK_LOCATIVE_DIFFERENCE (Stack_Top, (STACK_LOC (0)))) <= 0)
@@ -768,28 +771,24 @@ DEFUN (Back_Trace, (stream), outf_channel stream)
       print_expression (stream, Temp, "  ...");
       if ((OBJECT_TYPE (Temp)) == TC_MANIFEST_NM_VECTOR)
       {
-	Stack_Pointer = (STACK_LOC (- ((long) (OBJECT_DATUM (Temp)))));
+	sp_register = (STACK_LOC (- ((long) (OBJECT_DATUM (Temp)))));
         outf (stream, " (skipping)");
       }
       outf (stream, "\n");
     }
   }
-  Stack_Pointer = Old_Stack;
+  sp_register = Old_Stack;
   Back_Trace_Exit_Hook();
   outf_flush (stream);
-  return;
 }
 
 void
 DEFUN (print_stack, (sp), SCHEME_OBJECT * sp)
 {
-  SCHEME_OBJECT * saved_sp;
-
-  saved_sp = Stack_Pointer;
-  Stack_Pointer = sp;
+  SCHEME_OBJECT * saved_sp = sp_register;
+  sp_register = sp;
   Back_Trace (console_output);
-  Stack_Pointer = saved_sp;
-  return;
+  sp_register = saved_sp;
 }
 
 extern void

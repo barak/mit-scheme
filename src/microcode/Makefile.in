@@ -1,22 +1,24 @@
 # This file automatically generated from Makefile.in.in
-# on Thu, 14 Mar 2002 23:19:01 -0500.
+# on Thu, 18 Sep 2003 23:52:16 -0400.
 
-# $Id: Makefile.in.in,v 1.20 2002/01/29 20:43:14 cph Exp $
+# $Id: Makefile.in.in,v 1.23 2003/07/21 03:52:08 cph Exp $
 #
-# Copyright (c) 2000-2002 Massachusetts Institute of Technology
+# Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or (at
-# your option) any later version.
+# This file is part of MIT/GNU Scheme.
 #
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MIT/GNU Scheme is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# MIT/GNU Scheme is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
+# along with MIT/GNU Scheme; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
 
@@ -263,6 +265,12 @@ prmhash.so: prmhash.o
 prmcrypt.so: prmcrypt.o
 	$(LINK_MODULE) $^ -lmcrypt -lltdl $(MODULE_LIBS)
 
+prgdbm.so: prgdbm.o
+	$(LINK_MODULE) $^ -lgdbm $(MODULE_LIBS)
+
+prpgsql.so: prpgsql.o
+	$(LINK_MODULE) $^ -lpq $(MODULE_LIBS)
+
 @MODULE_RULES@
 
 tags: TAGS
@@ -280,6 +288,7 @@ distclean: clean
 
 maintainer-clean: distclean
 	-rm -f $(MAINTAINER_CLEAN_FILES)
+	-rm -rf autom4te.cache
 	( cd cmpauxmd && $(MAKE) $@ )
 
 install: install-binPROGRAMS install-auxPROGRAMS install-auxLIBS \
@@ -381,7 +390,7 @@ boot.o: boot.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
 	gc.h interp.h intrpt.h object.h obstack.h option.h os.h ostop.h \
 	ostty.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
-	stack.h types.h version.h
+	stack.h types.h
 char.o: char.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
 	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
@@ -571,6 +580,10 @@ prostty.o: prostty.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	gc.h interp.h intrpt.h object.h obstack.h os.h osctty.h osfile.h \
 	osio.h ostty.h outf.h prim.h prims.h returns.h scheme.h scode.h \
 	sdata.h stack.h types.h
+prpgsql.o: prpgsql.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h os.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h usrdef.h
 pruxdld.o: pruxdld.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
 	gc.h interp.h intrpt.h object.h obstack.h os.h outf.h prim.h prims.h \
@@ -640,9 +653,9 @@ sysprim.o: sysprim.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	prim.h prims.h returns.h scheme.h scode.h sdata.h stack.h types.h
 term.o: term.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	critsec.h default.h dstack.h edwin.h errors.h extern.h fixobj.h \
-	futures.h gc.h interp.h intrpt.h object.h obstack.h os.h osfile.h \
-	osfs.h osio.h ostop.h outf.h prim.h returns.h scheme.h scode.h \
-	sdata.h stack.h types.h
+	futures.h gc.h interp.h intrpt.h object.h obstack.h option.h os.h \
+	osfile.h osfs.h osio.h ostop.h outf.h prim.h returns.h scheme.h \
+	scode.h sdata.h stack.h types.h
 termcap.o: termcap.c ansidecl.h config.h confshared.h dstack.h intext.h os.h \
 	osscheme.h outf.h syscall.h ux.h
 terminfo.o: terminfo.c ansidecl.h config.h confshared.h

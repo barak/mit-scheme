@@ -1,22 +1,26 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.98 2000/12/05 21:34:56 cph Exp $
+$Id: bchmmg.c,v 9.104 2003/02/14 18:48:11 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright 1987-2000, 2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 */
 
 /* Memory management top level.  Garbage collection to disk. */
@@ -219,7 +223,7 @@ DEFUN (io_error_retry_p, (operation_name, noise),
 	   operation_name, (GetLastError ()), noise);
   switch (MessageBox (master_tty_window,
 		      &buf[0],
-		      "MIT Scheme garbage-collection problem description",
+		      "MIT/GNU Scheme garbage-collection problem description",
 		      (MB_ICONSTOP | MB_ABORTRETRYIGNORE | MB_APPLMODAL)))
   {
     case IDABORT:
@@ -246,12 +250,13 @@ io_error_retry_p (char * operation_name, char * noise)
 	   "%s: GC file error (code = %d) when manipulating %s.\n"
 	   "Choose an option (Cancel = Exit Scheme)",
 	   operation_name, errno, noise);
-  switch (WinMessageBox (HWND_DESKTOP,
-			 NULLHANDLE,
-			 (&buf[0]),
-			 "MIT Scheme garbage-collection problem description",
-			 0,
-			 (MB_ICONHAND | MB_ABORTRETRYIGNORE | MB_APPLMODAL)))
+  switch
+    (WinMessageBox (HWND_DESKTOP,
+		    NULLHANDLE,
+		    (&buf[0]),
+		    "MIT/GNU Scheme garbage-collection problem description",
+		    0,
+		    (MB_ICONHAND | MB_ABORTRETRYIGNORE | MB_APPLMODAL)))
     {
     case MBID_ABORT: return (1);
     case MBID_RETRY: return (0);
@@ -3160,7 +3165,7 @@ void
 DEFUN (initialize_weak_pair_transport, (limit), SCHEME_OBJECT * limit)
 {
   Weak_Chain = EMPTY_WEAK_CHAIN;
-  weak_pair_stack_ptr = Stack_Pointer;
+  weak_pair_stack_ptr = sp_register;
   weak_pair_stack_limit = (limit + 1); /* in case it's odd */
   return;
 }
@@ -3173,7 +3178,7 @@ DEFUN (fix_weak_chain_1, (low_heap), SCHEME_OBJECT * low_heap)
   chain = Weak_Chain;
   initialize_new_space_buffer (chain, low_heap);
 
-  limit = Stack_Pointer;
+  limit = sp_register;
   for (ptr = weak_pair_stack_ptr; ptr < limit ; ptr += 2)
     *ptr = (update_weak_pointer (*ptr, low_heap));
 
@@ -3196,9 +3201,9 @@ DEFUN (fix_weak_chain_1, (low_heap), SCHEME_OBJECT * low_heap)
 void
 DEFUN_VOID (fix_weak_chain_2)
 {
-  fast SCHEME_OBJECT * ptr, * limit, new_car, * addr;
+  SCHEME_OBJECT * ptr, * limit, new_car, * addr;
 
-  limit = Stack_Pointer;
+  limit = sp_register;
   for (ptr = weak_pair_stack_ptr; ptr < limit ; )
   {
     new_car = *ptr++;
@@ -3226,7 +3231,7 @@ DEFUN (GC_relocate_root, (free_buffer_ptr), SCHEME_OBJECT ** free_buffer_ptr)
   Set_Fixed_Obj_Slot (Lost_Objects_Base, SHARP_F);
 
   *free_buffer++ = Fixed_Objects;
-  *free_buffer++ = (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, History));
+  *free_buffer++ = (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, history_register));
   *free_buffer++ = (Get_Current_Stacklet ());
   *free_buffer++ = ((Prev_Restore_History_Stacklet == NULL) ?
 		    SHARP_F :
@@ -3253,7 +3258,7 @@ DEFUN (GC_end_root_relocation, (root, root2),
   Set_Fixed_Obj_Slot
     (Lost_Objects_Base, (LONG_TO_UNSIGNED_FIXNUM (ADDRESS_TO_DATUM (root2))));
 
-  History = (OBJECT_ADDRESS (*root++));
+  history_register = (OBJECT_ADDRESS (*root++));
   Set_Current_Stacklet (* root);
   root += 1;
   if ((* root) != SHARP_F)
@@ -3395,7 +3400,7 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
 
  Will_Push (CONTINUATION_SIZE);
   Store_Return (RC_NORMAL_GC_DONE);
-  Store_Expression (LONG_TO_UNSIGNED_FIXNUM (MemTop - Free));
+  exp_register = (LONG_TO_UNSIGNED_FIXNUM (MemTop - Free));
   Save_Cont ();
  Pushed ();
 

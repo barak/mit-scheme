@@ -1,23 +1,25 @@
 ### -*-Midas-*-
 ###
-### $Id: mc68k.m4,v 1.27 2000/12/05 21:23:50 cph Exp $
+### $Id: mc68k.m4,v 1.30 2003/02/14 18:28:25 cph Exp $
 ###
-### Copyright (c) 1989-2000 Massachusetts Institute of Technology
+### Copyright (c) 1989-2000, 2002 Massachusetts Institute of Technology
 ###
-### This program is free software; you can redistribute it and/or
+### This file is part of MIT/GNU Scheme.
+###
+### MIT/GNU Scheme is free software; you can redistribute it and/or
 ### modify it under the terms of the GNU General Public License as
 ### published by the Free Software Foundation; either version 2 of the
 ### License, or (at your option) any later version.
 ###
-### This program is distributed in the hope that it will be useful,
+### MIT/GNU Scheme is distributed in the hope that it will be useful,
 ### but WITHOUT ANY WARRANTY; without even the implied warranty of
 ### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ### General Public License for more details.
 ###
 ### You should have received a copy of the GNU General Public License
-### along with this program; if not, write to the Free Software
-### Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-###
+### along with MIT/GNU Scheme; if not, write to the Free Software
+### Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+### 02111-1307, USA.
 
 #### 68K assembly language (HP/Motorola Syntax) part of the compiled
 #### code interface.  See cmpint.txt, cmpint.c, cmpint-mc68k.h, and
@@ -161,7 +163,7 @@ define(regs, %a6)			# Pointer to Registers[0]
 define(rmask, %d7)			# Mask to clear type code
 define(rval,%d6)			# Procedure value
 
-reference_external(Ext_Stack_Pointer)
+reference_external(sp_register)
 reference_external(Free)
 reference_external(Registers)
 
@@ -170,14 +172,14 @@ reference_external(Registers)
 define(switch_to_scheme_registers,
 	`mov.l	%a6,(%sp)
 	mov.l	%sp,c_save_stack
-	mov.l	extern_c_label(Ext_Stack_Pointer),%sp
+	mov.l	extern_c_label(sp_register),%sp
 	mov.l	extern_c_label(Free),rfree
 	lea	extern_c_label(Registers),regs
 	mov.l	&address_mask,rmask')
 
 define(switch_to_C_registers,
 	`mov.l	rfree,extern_c_label(Free)
-	mov.l	%sp,extern_c_label(Ext_Stack_Pointer)
+	mov.l	%sp,extern_c_label(sp_register)
 	mov.l	c_save_stack,%sp
 	mov.l	(%sp),%a6')
 

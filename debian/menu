@@ -1,5 +1,5 @@
 ?package(mit-scheme):\
-  needs=X11\
-  section=Apps/Programming\
-  title="MIT Scheme"\
-  command="scheme -compiler -edwin -edit"
+  needs="X11"\
+  section="Apps/Programming"\
+  title="MIT/GNU Scheme"\
+  command="mit-scheme --compiler --edwin --edit"

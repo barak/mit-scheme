@@ -1,22 +1,26 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.15 2000/12/05 21:23:45 cph Exp $
+$Id: liarc.h,v 1.21 2003/02/14 18:28:19 cph Exp $
 
-Copyright (c) 1992-2000 Massachusetts Institute of Technology
+Copyright (c) 1992-2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 */
 
 #ifndef LIARC_INCLUDED
@@ -62,8 +66,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 extern PTR dstack_position;
 extern SCHEME_OBJECT * Free;
-extern SCHEME_OBJECT * Ext_Stack_Pointer;
-extern SCHEME_OBJECT Registers[];
+extern SCHEME_OBJECT * sp_register;
+extern SCHEME_OBJECT Registers [];
 
 union machine_word_u
 {
@@ -141,10 +145,10 @@ typedef union machine_word_u machine_word;
 
 #ifdef USE_GLOBAL_VARIABLES
 
-#define Rvl Val
+#define Rvl val_register
 #define Rhp Free
-#define Rrb Regs
-#define Rsp Stack_Pointer
+#define Rrb Registers
+#define Rsp sp_register
 
 #define DECLARE_VARIABLES() int unsed_variable_to_keep_C_happy
 #define UNCACHE_VARIABLES() do {} while (0)
@@ -154,25 +158,25 @@ typedef union machine_word_u machine_word;
 
 #define REGISTER register
 
-#define Rrb Regs
+#define Rrb Registers
 
 #define DECLARE_VARIABLES()						\
-REGISTER SCHEME_OBJECT Rvl = Val;					\
+REGISTER SCHEME_OBJECT Rvl = val_register;				\
 REGISTER SCHEME_OBJECT * Rhp = Free;					\
-REGISTER SCHEME_OBJECT * Rsp = Stack_Pointer
+REGISTER SCHEME_OBJECT * Rsp = sp_register
 
 #define UNCACHE_VARIABLES() do						\
 {									\
-  Stack_Pointer = Rsp;							\
+  sp_register = Rsp;							\
   Free = Rhp;								\
-  Val = Rvl;								\
+  val_register = Rvl;							\
 } while (0)
 
 #define CACHE_VARIABLES() do						\
 {									\
-  Rvl = Val;								\
+  Rvl = val_register;							\
   Rhp = Free;								\
-  Rsp = Stack_Pointer;							\
+  Rsp = sp_register;							\
 } while (0)
 
 #endif /* USE_GLOBAL_VARIABLES */
@@ -200,7 +204,7 @@ REGISTER SCHEME_OBJECT * Rsp = Stack_Pointer
   SCHEME_OBJECT * destination;						\
 									\
   UNCACHE_VARIABLES ();							\
-  PRIMITIVE_APPLY (Val, primitive);					\
+  PRIMITIVE_APPLY (val_register, primitive);				\
   POP_PRIMITIVE_FRAME (primitive_nargs);				\
   destination = (OBJECT_ADDRESS (STACK_POP ()));			\
   CACHE_VARIABLES ();							\

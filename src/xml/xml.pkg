@@ -1,23 +1,27 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: xml.pkg,v 1.9 2001/12/20 06:46:58 cph Exp $
-;;;
-;;; Copyright (c) 2001 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: xml.pkg,v 1.25 2003/09/17 03:20:41 cph Exp $
+
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; XML: packaging
 
@@ -32,18 +36,37 @@
   (files "xml-struct")
   (parent (runtime xml))
   (export ()
+	  <xml-!attlist>
+	  <xml-!element>
+	  <xml-!entity>
+	  <xml-!notation>
+	  <xml-comment>
+	  <xml-declaration>
+	  <xml-document>
+	  <xml-dtd>
+	  <xml-element>
+	  <xml-entity-ref>
+	  <xml-external-id>
+	  <xml-parameter-!entity>
+	  <xml-parameter-entity-ref>
+	  <xml-processing-instructions>
+	  <xml-unparsed-!entity>
+	  guarantee-xml-name
 	  make-xml-!attlist
 	  make-xml-!element
 	  make-xml-!entity
 	  make-xml-!notation
+	  make-xml-comment
 	  make-xml-declaration
 	  make-xml-document
 	  make-xml-dtd
 	  make-xml-element
+	  make-xml-entity-ref
 	  make-xml-external-id
+	  make-xml-name-hash-table
 	  make-xml-parameter-!entity
+	  make-xml-parameter-entity-ref
 	  make-xml-processing-instructions
-	  make-xml-uninterpreted
 	  make-xml-unparsed-!entity
 	  set-xml-!attlist-definitions!
 	  set-xml-!attlist-name!
@@ -53,6 +76,7 @@
 	  set-xml-!entity-value!
 	  set-xml-!notation-id!
 	  set-xml-!notation-name!
+	  set-xml-comment-text!
 	  set-xml-declaration-encoding!
 	  set-xml-declaration-standalone!
 	  set-xml-declaration-version!
@@ -68,34 +92,39 @@
 	  set-xml-element-attributes!
 	  set-xml-element-contents!
 	  set-xml-element-name!
+	  set-xml-entity-ref-name!
 	  set-xml-external-id-id!
 	  set-xml-external-id-uri!
 	  set-xml-parameter-!entity-name!
 	  set-xml-parameter-!entity-value!
+	  set-xml-parameter-entity-ref-name!
 	  set-xml-processing-instructions-name!
 	  set-xml-processing-instructions-text!
-	  set-xml-uninterpreted-text!
 	  set-xml-unparsed-!entity-id!
 	  set-xml-unparsed-!entity-name!
 	  set-xml-unparsed-!entity-notation!
 	  xml-!attlist-definitions
 	  xml-!attlist-name
-	  xml-!attlist-rtd
 	  xml-!attlist?
 	  xml-!element-content-type
 	  xml-!element-name
-	  xml-!element-rtd
 	  xml-!element?
 	  xml-!entity-name
-	  xml-!entity-rtd
 	  xml-!entity-value
 	  xml-!entity?
 	  xml-!notation-id
 	  xml-!notation-name
-	  xml-!notation-rtd
 	  xml-!notation?
+	  xml-attribute-list?
+	  xml-attribute-value-item?
+	  xml-attribute-value?
+	  xml-attribute?
+	  xml-char-data?
+	  xml-comment-text
+	  xml-comment?
+	  xml-content-item?
+	  xml-content?
 	  xml-declaration-encoding
-	  xml-declaration-rtd
 	  xml-declaration-standalone
 	  xml-declaration-version
 	  xml-declaration?
@@ -105,48 +134,65 @@
 	  xml-document-misc-2
 	  xml-document-misc-3
 	  xml-document-root
-	  xml-document-rtd
 	  xml-document?
 	  xml-dtd-external
 	  xml-dtd-internal
 	  xml-dtd-root
-	  xml-dtd-rtd
 	  xml-dtd?
 	  xml-element-attributes
 	  xml-element-contents
 	  xml-element-name
-	  xml-element-rtd
 	  xml-element?
+	  xml-entity-ref-name
+	  xml-entity-ref?
 	  xml-external-id-id
-	  xml-external-id-rtd
 	  xml-external-id-uri
 	  xml-external-id?
 	  xml-intern
+	  xml-name-hash
+	  xml-name-local
+	  xml-name-prefix
+	  xml-name-simple
+	  xml-name-string
+	  xml-name-uri
+	  xml-name=?
+	  xml-name?
+	  xml-nmtoken?
 	  xml-parameter-!entity-name
-	  xml-parameter-!entity-rtd
 	  xml-parameter-!entity-value
 	  xml-parameter-!entity?
+	  xml-parameter-entity-ref-name
+	  xml-parameter-entity-ref?
 	  xml-processing-instructions-name
-	  xml-processing-instructions-rtd
 	  xml-processing-instructions-text
 	  xml-processing-instructions?
-	  xml-uninterpreted-rtd
-	  xml-uninterpreted-text
-	  xml-uninterpreted?
 	  xml-unparsed-!entity-id
 	  xml-unparsed-!entity-name
 	  xml-unparsed-!entity-notation
-	  xml-unparsed-!entity-rtd
-	  xml-unparsed-!entity?))
+	  xml-unparsed-!entity?
+	  xml-whitespace-string?)
+  (export (runtime xml parser)
+	  %make-xml-name))
 
 (define-package (runtime xml parser)
   (files "xml-chars" "xml-parser")
   (parent (runtime xml))
   (export ()
-	  parse-xml-document))
+	  char-set:xml-whitespace
+	  parse-xml-document
+	  read-xml
+	  read-xml-file
+	  string->xml
+	  substring->xml)
+  (export (runtime xml structure)
+	  alphabet:name-initial
+	  alphabet:name-subsequent))
 
 (define-package (runtime xml output)
   (files "xml-output")
   (parent (runtime xml))
   (export ()
-	  write-xml))
+	  write-xml
+	  write-xml-file
+	  xml->string
+	  xml->wide-string))

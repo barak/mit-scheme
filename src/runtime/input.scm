@@ -1,29 +1,34 @@
 #| -*-Scheme-*-
 
-$Id: input.scm,v 14.20 1999/12/21 19:05:13 cph Exp $
+$Id: input.scm,v 14.25 2003/07/30 17:18:49 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,1997,1999,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Input
 ;;; package: (runtime input-port)
 
 (declare (usual-integrations))
-
+
 ;;;; Input Ports
 
 (define (input-port/char-ready? port interval)
@@ -56,22 +61,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (input-port/discard-char port)
     line))
 
-(define eof-object
-  "EOF Object")
-
-(define (eof-object? object)
-  (eq? object eof-object))
-
-(define (make-eof-object port)
-  port
-  eof-object)
+(define <eof-object> (make-record-type '<EOF-OBJECT> '()))
+(define eof-object? (record-predicate <eof-object>))
+(define eof-object ((record-constructor <eof-object>)))
+(define (make-eof-object port) port eof-object)
 
 ;;;; Input Procedures
 
 (define (char-ready? #!optional port interval)
   (input-port/char-ready? (if (default-object? port)
 			      (current-input-port)
-			      (guarantee-input-port port))
+			      (guarantee-input-port port 'CHAR-READY?))
 			  (if (default-object? interval)
 			      0
 			      (begin
@@ -85,7 +85,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-input-port)
-	     (guarantee-input-port port))))
+	     (guarantee-input-port port 'PEEK-CHAR))))
     (let loop ()
       (or (input-port/peek-char port)
 	  (loop)))))
@@ -94,7 +94,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-input-port)
-	     (guarantee-input-port port))))
+	     (guarantee-input-port port 'READ-CHAR))))
     (let loop ()
       (or (input-port/read-char port)
 	  (loop)))))
@@ -103,7 +103,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-input-port)
-	     (guarantee-input-port port))))
+	     (guarantee-input-port port 'READ-CHAR-NO-HANG))))
     (if (input-port/char-ready? port 0)
 	(input-port/read-char port)
 	(let ((eof? (port/operation port 'EOF?)))
@@ -114,13 +114,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (read-string delimiters #!optional port)
   (input-port/read-string (if (default-object? port)
 			      (current-input-port)
-			      (guarantee-input-port port))
+			      (guarantee-input-port port 'READ-STRING))
 			  delimiters))
 
 (define (read #!optional port parser-table)
   (parse-object (if (default-object? port)
 		    (current-input-port)
-		    (guarantee-input-port port))
+		    (guarantee-input-port port 'READ))
 		(if (default-object? parser-table)
 		    (current-parser-table)
 		    parser-table)))
@@ -128,16 +128,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (read-line #!optional port)
   (input-port/read-line (if (default-object? port)
 			    (current-input-port)
-			    (guarantee-input-port port))))
+			    (guarantee-input-port port 'READ-LINE))))
 
 (define (read-string! string #!optional port)
   (input-port/read-string! (if (default-object? port)
 			       (current-input-port)
-			       (guarantee-input-port port))
+			       (guarantee-input-port port 'READ-STRING!))
 			   string))
 
 (define (read-substring! string start end #!optional port)
   (input-port/read-substring! (if (default-object? port)
 				  (current-input-port)
-				  (guarantee-input-port port))
+				  (guarantee-input-port port 'READ-SUBSTRING!))
 			      string start end))

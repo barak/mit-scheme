@@ -1,23 +1,27 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: imail-imap.scm,v 1.195 2001/11/19 20:19:48 cph Exp $
-;;;
-;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: imail-imap.scm,v 1.200 2003/09/19 03:26:50 cph Exp $
+
+Copyright 1999,2000,2001,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; IMAIL mail reader: IMAP back end
 
@@ -1046,8 +1050,9 @@
 
 (define standard-imap-flags
   (map (lambda (s)
-	 (cons s (string-tail (symbol->string s) 1)))
-       '(\SEEN \ANSWERED \FLAGGED \DELETED \DRAFT \RECENT)))
+	 (cons (intern (string-append "\\" s))
+	       s))
+       '("seen" "answered" "flagged" "deleted" "draft" "recent")))
 
 (define-method message-internal-time ((message <imap-message>))
   (imap:response:fetch-attribute
@@ -1693,22 +1698,22 @@
 	  (encode-cache-namestring (imap-url-mailbox url)))))
 
 (define (encode-cache-namestring string)
-  (with-string-output-port
-    (lambda (port)
-      (let ((n (string-length string)))
-	(do ((i 0 (fix:+ i 1)))
-	    ((fix:= i n))
-	  (let ((char (string-ref string i)))
-	    (cond ((char-set-member? char-set:cache-namestring-safe char)
-		   (write-char char port))
-		  ((char=? char #\/)
-		   (write-char #\# port))
-		  (else
-		   (write-char #\% port)
-		   (let ((n (char->integer char)))
-		     (if (fix:< n #x10)
-			 (write-char #\0 port))
-		     (write-string (number->string n 16) port))))))))))
+  (call-with-output-string
+   (lambda (port)
+     (let ((n (string-length string)))
+       (do ((i 0 (fix:+ i 1)))
+	   ((fix:= i n))
+	 (let ((char (string-ref string i)))
+	   (cond ((char-set-member? char-set:cache-namestring-safe char)
+		  (write-char char port))
+		 ((char=? char #\/)
+		  (write-char #\# port))
+		 (else
+		  (write-char #\% port)
+		  (let ((n (char->integer char)))
+		    (if (fix:< n #x10)
+			(write-char #\0 port))
+		    (write-string (number->string n 16) port))))))))))
 
 (define char-set:cache-namestring-safe
   (char-set-union char-set:alphanumeric (string->char-set "-_.")))
@@ -2147,7 +2152,7 @@
 	  (flush-output imap-trace-port)))
     (imap-transcript-write-string tag port)
     (imap-transcript-write-char #\space port)
-    (imap-transcript-write command port)
+    (imap-transcript-write-string (symbol-name command) port)
     (for-each (lambda (argument)
 		(if argument
 		    (begin
@@ -2162,9 +2167,10 @@
 (define (imap:send-command-argument connection tag argument)
   (let ((port (imap-connection-port connection)))
     (let loop ((argument argument))
-      (cond ((or (symbol? argument)
-		 (exact-nonnegative-integer? argument))
+      (cond ((exact-nonnegative-integer? argument)
 	     (imap-transcript-write argument port))
+	    ((symbol? argument)
+	     (imap-transcript-write-string (symbol-name argument) port))
 	    ((and (pair? argument)
 		  (eq? (car argument) 'QUOTE)
 		  (pair? (cdr argument))

@@ -1,23 +1,26 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.79 2001/07/31 03:12:15 cph Exp $
+$Id: utils.c,v 9.85 2003/02/14 18:28:24 cph Exp $
 
-Copyright (c) 1987-2001 Massachusetts Institute of Technology
+Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 */
 
 /* This file contains utilities for interrupts, errors, etc. */
@@ -220,7 +223,7 @@ DEFUN_VOID (preserve_interrupt_mask)
 {
  Will_Push (CONTINUATION_SIZE);
   Store_Return (RC_RESTORE_INT_MASK);
-  Store_Expression (LONG_TO_FIXNUM (FETCH_INTERRUPT_MASK ()));
+  exp_register = (LONG_TO_FIXNUM (FETCH_INTERRUPT_MASK ()));
   Save_Cont ();
  Pushed ();
   return;
@@ -239,7 +242,7 @@ DEFUN_VOID (back_out_of_primitive_internal)
   /* Setup a continuation to return to compiled code if the primitive is
      restarted and completes successfully. */
 
-  primitive = (Regs [REGBLOCK_PRIMITIVE]);
+  primitive = (Registers[REGBLOCK_PRIMITIVE]);
   if (! (PRIMITIVE_P (primitive)))
     {
       outf_fatal(
@@ -251,11 +254,11 @@ DEFUN_VOID (back_out_of_primitive_internal)
     compiler_apply_procedure (nargs);
   STACK_PUSH (primitive);
   STACK_PUSH (STACK_FRAME_HEADER + nargs);
-  Store_Env (THE_NULL_ENV);
-  Val = SHARP_F;
+  env_register = THE_NULL_ENV;
+  val_register = SHARP_F;
   Store_Return (RC_INTERNAL_APPLY);
-  Store_Expression (SHARP_F);
-  (Regs [REGBLOCK_PRIMITIVE]) = SHARP_F;
+  exp_register = SHARP_F;
+  (Registers[REGBLOCK_PRIMITIVE]) = SHARP_F;
   return;
 }
 
@@ -281,7 +284,7 @@ DEFUN_VOID (canonicalize_primitive_context)
   long nargs;
   SCHEME_OBJECT primitive;
 
-  primitive = (Regs [REGBLOCK_PRIMITIVE]);
+  primitive = (Registers[REGBLOCK_PRIMITIVE]);
   if (! (PRIMITIVE_P (primitive)))
     {
       outf_fatal
@@ -553,9 +556,9 @@ DEFUN (Do_Micro_Error, (Err, From_Pop_Return),
   if (Consistency_Check)
   {
     err_print(Err, error_output);
-    Print_Expression(Fetch_Expression(), "Expression was");
+    Print_Expression(exp_register, "Expression was");
     outf_error ("\nEnvironment 0x%lx (#%lo).\n",
-	    ((long) (Fetch_Env ())), ((long) (Fetch_Env ())));
+	    ((long) exp_register), ((long) env_register));
     Print_Return("Return code");
     outf_error ("\n");
   }
@@ -598,9 +601,9 @@ DEFUN (Do_Micro_Error, (Err, From_Pop_Return),
 
  Will_Push (CONTINUATION_SIZE + (From_Pop_Return ? 0 : 1));
   if (From_Pop_Return)
-    Store_Expression (Val);
+    exp_register = val_register;
   else
-    STACK_PUSH (Fetch_Env ());
+    STACK_PUSH (env_register);
   Store_Return ((From_Pop_Return) ?
 		RC_POP_RETURN_ERROR :
 		RC_EVAL_ERROR);
@@ -695,15 +698,15 @@ DEFUN_VOID (Stop_History)
   SCHEME_OBJECT Saved_Expression;
   long Saved_Return_Code;
 
-  Saved_Expression = Fetch_Expression();
-  Saved_Return_Code = Fetch_Return();
+  Saved_Expression = exp_register;
+  Saved_Return_Code = ret_register;
  Will_Push(HISTORY_SIZE);
   Save_History(RC_RESTORE_DONT_COPY_HISTORY);
  Pushed();
   Prev_Restore_History_Stacklet = NULL;
-  Prev_Restore_History_Offset = ((Get_End_Of_Stacklet() - Stack_Pointer) +
+  Prev_Restore_History_Offset = ((Get_End_Of_Stacklet() - sp_register) +
 				 CONTINUATION_RETURN_CODE);
-  Store_Expression(Saved_Expression);
+  exp_register = Saved_Expression;
   Store_Return(Saved_Return_Code);
   return;
 }
@@ -815,8 +818,8 @@ DEFUN (Restore_History, (hist_obj), SCHEME_OBJECT hist_obj)
   }
   else
   {
-    History = (OBJECT_ADDRESS (new_hist));
-    return (true);
+    history_register = (OBJECT_ADDRESS (new_hist));
+    return (1);
   }
 }
 
@@ -835,14 +838,14 @@ DEFUN (primitive_apply_internal, (primitive), SCHEME_OBJECT primitive)
   if (Primitive_Debug)
     Print_Primitive (primitive);
   {
-    SCHEME_OBJECT * saved_stack = Stack_Pointer;
+    SCHEME_OBJECT * saved_stack = sp_register;
     PRIMITIVE_APPLY_INTERNAL (result, primitive);
-    if (saved_stack != Stack_Pointer)
+    if (saved_stack != sp_register)
       {
 	int arity = (PRIMITIVE_N_ARGUMENTS (primitive));
 	Print_Expression (primitive, "Stack bad after ");
 	outf_fatal ("\nStack was 0x%lx, now 0x%lx, #args=%ld.\n",
-		    ((long) saved_stack), ((long) Stack_Pointer), ((long) arity));
+		    ((long) saved_stack), ((long) sp_register), ((long) arity));
 	Microcode_Termination (TERM_EXIT);
       }
   }
@@ -915,7 +918,7 @@ DEFUN (Allocate_New_Stacklet, (N), long N)
     Free[STACKLET_LENGTH] = MAKE_OBJECT (TC_MANIFEST_VECTOR, (size - 1));
     SET_STACK_GUARD (& (Free[STACKLET_HEADER_SIZE]));
     Free += size;
-    Stack_Pointer = Free;
+    sp_register = Free;
   }
   else
   {
@@ -926,19 +929,19 @@ DEFUN (Allocate_New_Stacklet, (N), long N)
     New_Stacklet = Free_Stacklets;
     Free_Stacklets =
       ((SCHEME_OBJECT *) Free_Stacklets[STACKLET_FREE_LIST_LINK]);
-    Stack_Pointer =
+    sp_register =
       &New_Stacklet[1 + (OBJECT_DATUM (New_Stacklet[STACKLET_LENGTH]))];
     SET_STACK_GUARD (& (New_Stacklet[STACKLET_HEADER_SIZE]));
   }
-  Old_Expression = Fetch_Expression();
-  Old_Return = Fetch_Return();
-  Store_Expression(MAKE_POINTER_OBJECT (TC_CONTROL_POINT, Old_Stacklet));
+  Old_Expression = exp_register;
+  Old_Return = ret_register;
+  exp_register = (MAKE_POINTER_OBJECT (TC_CONTROL_POINT, Old_Stacklet));
   Store_Return(RC_JOIN_STACKLETS);
   /*
     Will_Push omitted because size calculation includes enough room.
    */
   Save_Cont();
-  Store_Expression(Old_Expression);
+  exp_register = Old_Expression;
   Store_Return(Old_Return);
   return;
 }
@@ -1062,7 +1065,7 @@ DEFUN (Translate_To_Point, (Target), SCHEME_OBJECT Target)
   STACK_PUSH (Target);
   STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM((From_Depth - Merge_Depth)));
   STACK_PUSH (Current_Location);
-  Store_Expression(State_Space);
+  exp_register = State_Space;
   Store_Return(RC_MOVE_TO_ADJACENT_POINT);
   Save_Cont();
  Pushed();
@@ -1116,21 +1119,21 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
 #endif
 #endif
   {  
-    primitive = (Regs [REGBLOCK_PRIMITIVE]);
-    prim_lexpr = (Regs [REGBLOCK_LEXPR_ACTUALS]);
+    primitive = (Registers[REGBLOCK_PRIMITIVE]);
+    prim_lexpr = (Registers[REGBLOCK_LEXPR_ACTUALS]);
     callers_last_return_code = last_return_code;
 
     if (! (PRIMITIVE_P (primitive)))
       abort_to_interpreter (ERR_CANNOT_RECURSE);
       /*NOTREACHED*/
-    sp = Stack_Pointer;
+    sp = sp_register;
 
    Will_Push ((2 * CONTINUATION_SIZE) + (nargs + STACK_ENV_EXTRA_SLOTS + 1));
     {
       long i;
 
       Store_Return (RC_END_OF_COMPUTATION);
-      Store_Expression (primitive);
+      exp_register = primitive;
       Save_Cont ();
 
       for (i = nargs; --i >= 0; )
@@ -1139,19 +1142,19 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
       STACK_PUSH (STACK_FRAME_HEADER + nargs);
 
       Store_Return (RC_INTERNAL_APPLY);
-      Store_Expression (SHARP_F);
+      exp_register = SHARP_F;
       Save_Cont ();
     }
    Pushed ();
     result = (Re_Enter_Interpreter ());
 
-    if (Stack_Pointer != sp)
+    if (sp_register != sp)
       signal_error_from_primitive (ERR_STACK_HAS_SLIPPED);
       /*NOTREACHED*/
 
     last_return_code = callers_last_return_code;
-    Regs [REGBLOCK_LEXPR_ACTUALS] = prim_lexpr;
-    Regs [REGBLOCK_PRIMITIVE] = primitive;
+    Registers[REGBLOCK_LEXPR_ACTUALS] = prim_lexpr;
+    Registers[REGBLOCK_PRIMITIVE] = primitive;
   }
 #ifdef __IA32__
 #ifdef CL386

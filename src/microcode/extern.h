@@ -1,23 +1,26 @@
 /* -*-C-*-
 
-$Id: extern.h,v 9.60 2001/07/31 03:11:21 cph Exp $
+$Id: extern.h,v 9.64 2003/02/14 18:28:18 cph Exp $
 
-Copyright (c) 1987-2001 Massachusetts Institute of Technology
+Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 */
 
 /* External Declarations */
@@ -91,7 +94,7 @@ extern SCHEME_OBJECT
   * Unused_Heap_Top,	/* Top of unused heap */
   * Unused_Heap_Bottom,	/* Bottom of unused heap */
   * Stack_Guard,	/* Guard area at end of stack */
-  * Ext_Stack_Pointer,	/* Next available slot in control stack */
+  * sp_register,	/* Next available slot in control stack */
   * Stack_Bottom,	/* Bottom of control stack */
   * Stack_Top,		/* Top of control stack */
   * Free_Constant,	/* Next free word in constant space */
@@ -99,7 +102,7 @@ extern SCHEME_OBJECT
   * Constant_Top,	/* Top of constant+pure space */
   * Local_Heap_Base,	/* Per-processor CONSing area */
   * Free_Stacklets,	/* Free list of stacklets */
-  * Ext_History,	/* History register */
+  * history_register,	/* History register */
   Current_State_Point,	/* Dynamic state point */
   Fluid_Bindings;	/* Fluid bindings AList */
 
@@ -241,7 +244,7 @@ extern void EXFUN (Setup_Interrupt, (long Masked_Interrupts));
 extern void EXFUN (preserve_interrupt_mask, (void));
 extern void EXFUN (back_out_of_primitive, (void));
 
-extern void EXFUN (Interpret, (Boolean));
+extern void EXFUN (Interpret, (int));
 extern void EXFUN (Do_Micro_Error, (long, Boolean));
 extern void EXFUN (Translate_To_Point, (SCHEME_OBJECT));
 extern void EXFUN (Stop_History, (void));

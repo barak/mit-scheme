@@ -1,23 +1,26 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.39 2001/08/10 17:09:13 cph Exp $
+$Id: conpar.scm,v 14.42 2003/07/22 02:12:52 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Continuation Parser
@@ -553,18 +556,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		 5
 		 (fix:+ 5 fsize))))
 	  ((fix:= code code/interrupt-restart)
-	   (if (fix:= 12 microcode-id/version)
-	       4
-	       (let ((homes-saved (object-datum (element-stream/ref stream 2)))
-		     (regs-saved (object-datum (element-stream/ref stream 3))))
-		 ;; The first reg saved is _always_ the continuation,
-		 ;; part of the next frame.
-		 (fix:- (fix:+
-			 ;; Return code, reflect code, homes saved, regs saved,
-			 ;; and entry point
-			 5
-			 (fix:+ homes-saved regs-saved))
-			1))))
+	   (let ((homes-saved (object-datum (element-stream/ref stream 2)))
+		 (regs-saved (object-datum (element-stream/ref stream 3))))
+	     ;; The first reg saved is _always_ the continuation,
+	     ;; part of the next frame.
+	     (fix:- (fix:+
+		     ;; Return code, reflect code, homes saved, regs saved,
+		     ;; and entry point
+		     5
+		     (fix:+ homes-saved regs-saved))
+		    1)))
 	  ((fix:= code code/restore-regs)
 	   (fix:+ 3 (object-datum (element-stream/ref stream 2))))
 	  ((fix:= code code/apply-compiled)

@@ -1,55 +1,60 @@
 /* -*-C-*-
 
-$Id: intrpt.h,v 1.21 2000/12/05 21:23:45 cph Exp $
+$Id: intrpt.h,v 1.24 2003/04/07 20:33:03 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright 1987,1992,1993,1994,1997,2000 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 */
 
 /* Interrupt manipulation utilities. */
 
 /* Interrupt bits -- scanned from LSB (1) to MSB (16) */
 
-#define INT_Stack_Overflow	1	/* Local interrupt */
-#define INT_Global_GC		2
-#define INT_GC			4	/* Local interrupt */
-#define INT_Global_1		8
-#define INT_Character		16	/* Local interrupt */
-#define INT_AFTER_GC		32	/* Local interrupt */
-#define INT_Timer		64	/* Local interrupt */
-#define INT_Global_3		128
-#define INT_Suspend		256	/* Local interrupt */
-#define INT_Global_Mask		\
-  (INT_Global_GC | INT_Global_1 | INT_Global_3)
+#define INT_Stack_Overflow	0x0001	/* Local interrupt */
+#define INT_Global_GC		0x0002
+#define INT_GC			0x0004	/* Local interrupt */
+#define INT_Global_1		0x0008
+#define INT_Character		0x0010	/* Local interrupt */
+#define INT_AFTER_GC		0x0020	/* Local interrupt */
+#define INT_Timer		0x0040	/* Local interrupt */
+#define INT_Global_3		0x0080
+#define INT_Suspend		0x0100	/* Local interrupt */
 
 /* Descartes profiling interrupts */
 
-#define INT_IPPB_Flush		512	/* Local interrupt */
-#define INT_IPPB_Extend	       1024	/* Local interrupt */
-#define INT_PCBPB_Flush	       2048	/* Local interrupt */
-#define INT_PCBPB_Extend       4096	/* Local interrupt */
-#define INT_HCBPB_Flush	       8192	/* Local interrupt */
-#define INT_HCBPB_Extend      16384	/* Local interrupt */
+#define INT_IPPB_Flush		0x0200	/* Local interrupt */
+#define INT_IPPB_Extend		0x0400	/* Local interrupt */
+#define INT_PCBPB_Flush		0x0800	/* Local interrupt */
+#define INT_PCBPB_Extend	0x1000	/* Local interrupt */
+#define INT_HCBPB_Flush		0x2000	/* Local interrupt */
+#define INT_HCBPB_Extend	0x4000	/* Local interrupt */
 
-#define INT_Step_CC	      32768		
+#define INT_Step_CC		0x8000
 
-#define Global_GC_Level		1
-#define Global_1_Level		3
-#define Global_3_Level		7
-#define MAX_INTERRUPT_NUMBER   15	/* 2^15 = INT_Step_CC */
+#define INT_Global_Mask (INT_Global_GC | INT_Global_1 | INT_Global_3)
+
+#define Global_GC_Level		0x1
+#define Global_1_Level		0x3
+#define Global_3_Level		0x7
+#define MAX_INTERRUPT_NUMBER	0xF	/* 2^15 = INT_Step_CC */
 
 #define INT_Mask		((1 << (MAX_INTERRUPT_NUMBER + 1)) - 1)
 

@@ -1,22 +1,28 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: regops.scm,v 1.88 2000/02/25 17:47:18 cph Exp $
-;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#| -*-Scheme-*-
+
+$Id: regops.scm,v 1.91 2003/02/14 18:28:13 cph Exp $
+
+Copyright 1986,1989,1991,1992,1993,2000 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; Region/Mark Operations
 
@@ -120,23 +126,23 @@
 (define (with-region-clipped! new-region thunk)
   (let ((group (region-group new-region))
 	(old-region))
-    (unwind-protect (lambda ()
-		      (set! old-region (group-region group))
-		      (region-clip! new-region)
-		      (set! new-region)
-		      unspecific)
-		    thunk
-		    (lambda ()
-		      (region-clip! old-region)))))
+    (dynamic-wind (lambda ()
+		    (set! old-region (group-region group))
+		    (region-clip! new-region)
+		    (set! new-region)
+		    unspecific)
+		  thunk
+		  (lambda ()
+		    (region-clip! old-region)))))
 
 (define (without-group-clipped! group thunk)
   (let ((old-region))
-    (unwind-protect (lambda ()
-		      (set! old-region (group-region group))
-		      (group-widen! group))
-		    thunk
-		    (lambda ()
-		      (region-clip! old-region)))))
+    (dynamic-wind (lambda ()
+		    (set! old-region (group-region group))
+		    (group-widen! group))
+		  thunk
+		  (lambda ()
+		    (region-clip! old-region)))))
 
 (define (group-clipped? group)
   (not (and (zero? (group-start-index group))

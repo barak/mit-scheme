@@ -1,22 +1,26 @@
 /* -*-C-*-
 
-$Id: stack.h,v 9.38 1999/01/02 06:11:34 cph Exp $
+$Id: stack.h,v 9.44 2003/02/14 18:28:23 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 */
 
 /* This file contains macros for manipulating stacks and stacklets. */
@@ -39,7 +43,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   *Free =								\
     (MAKE_OBJECT (TC_MANIFEST_VECTOR, (Default_Stacklet_Size - 1)));	\
   Free += Default_Stacklet_Size;					\
-  Stack_Pointer = Free;							\
+  sp_register = Free;							\
   Free_Stacklets = NULL;						\
   Prev_Restore_History_Stacklet = NULL;					\
   Prev_Restore_History_Offset = 0;					\
@@ -51,11 +55,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #define Internal_Will_Push(N)						\
 {									\
-  if ((Stack_Pointer - (N)) < Stack_Guard)				\
+  if ((sp_register - (N)) < Stack_Guard)				\
   {									\
-    Export_Registers();							\
     Allocate_New_Stacklet((N));						\
-    Import_Registers();							\
   }									\
 }
 
@@ -73,17 +75,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 {									\
   Current_Stacklet[STACKLET_REUSE_FLAG] = SHARP_T;			\
   Current_Stacklet[STACKLET_UNUSED_LENGTH] =				\
-    MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (Stack_Pointer - Stack_Guard));	\
+    MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (sp_register - Stack_Guard));	\
 }
 
 #ifdef ENABLE_DEBUGGING_TOOLS
 
 #define Terminate_Old_Stacklet()					\
 {									\
-  if (Stack_Pointer < Stack_Guard)					\
+  if (sp_register < Stack_Guard)					\
   {									\
-    outf_fatal ("\nStack_Pointer: 0x%lx, Guard: 0x%lx\n",		\
-                ((long) Stack_Pointer), ((long) Stack_Guard));		\
+    outf_fatal ("\nsp_register: 0x%lx, Guard: 0x%lx\n",			\
+                ((long) sp_register), ((long) Stack_Guard));		\
     Microcode_Termination(TERM_EXIT);					\
   }									\
   Internal_Terminate_Old_Stacklet();					\
@@ -114,7 +116,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 									\
   Our_Where = (Where);							\
   SET_STACK_GUARD (MEMORY_LOC (Our_Where, STACKLET_HEADER_SIZE));	\
-  Stack_Pointer = Previous_Stack_Pointer(Our_Where);			\
+  sp_register = Previous_Stack_Pointer(Our_Where);			\
 }
 
 #define STACKLET_SLACK	(STACKLET_HEADER_SIZE + CONTINUATION_SIZE)
@@ -129,10 +131,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #define Apply_Stacklet_Backout()					\
 Will_Push((2 * CONTINUATION_SIZE) + (STACK_ENV_EXTRA_SLOTS + 2));	\
-  Store_Expression(SHARP_F);						\
+  exp_register = SHARP_F;						\
   Store_Return(RC_END_OF_COMPUTATION);					\
   Save_Cont();								\
-  STACK_PUSH (Val);							\
+  STACK_PUSH (val_register);						\
   STACK_PUSH (Previous_Stacklet);					\
   STACK_PUSH (STACK_FRAME_HEADER + 1);					\
   Store_Return(RC_INTERNAL_APPLY);					\
@@ -152,11 +154,11 @@ Pushed()
 {									\
   SCHEME_OBJECT Old_Expression;						\
 									\
-  Old_Expression = Fetch_Expression();					\
-  Store_Expression(Previous_Stacklet);					\
+  Old_Expression = exp_register;					\
+  exp_register = Previous_Stacklet;					\
   Store_Return(RC_JOIN_STACKLETS);					\
   Save_Cont();								\
-  Store_Expression(Old_Expression);					\
+  exp_register = Old_Expression;					\
 }
 
 /* Our_Throw is used in chaining from one stacklet to another.  In
@@ -198,7 +200,7 @@ Pushed()
 									\
       Free_Stacklets =							\
 	((SCHEME_OBJECT *) Free_Stacklets[STACKLET_FREE_LIST_LINK]);	\
-      Stack_Pointer = Get_End_Of_Stacklet();				\
+      sp_register = Get_End_Of_Stacklet();				\
       Prev_Restore_History_Stacklet = NULL;				\
       Prev_Restore_History_Offset = 0
 
@@ -238,7 +240,7 @@ Pushed()
 	OBJECT_DATUM (Old_Stacklet_Top[STACKLET_UNUSED_LENGTH]) +	\
         STACKLET_HEADER_SIZE;						\
       temp += Unused_Length;						\
-      Stack_Pointer = temp;						\
+      sp_register = temp;						\
       Used_Length =							\
         (OBJECT_DATUM (Old_Stacklet_Top[STACKLET_LENGTH]) -		\
          Unused_Length) + 1;						\
@@ -276,7 +278,7 @@ Pushed()
     }									\
 } while (0)
 
-#define Internal_Will_Push(N)	Stack_Check(Stack_Pointer - (N))
+#define Internal_Will_Push(N)	Stack_Check(sp_register - (N))
 
 #define Terminate_Old_Stacklet()
 
@@ -328,7 +330,7 @@ Pushed()
   To_Where = (Stack_Top - valid);					\
   From_Where = MEMORY_LOC (Control_Point, invalid);			\
   Stack_Check (To_Where);						\
-  Stack_Pointer = To_Where;						\
+  sp_register = To_Where;						\
   while (--valid >= 0)							\
     *To_Where++ = *From_Where++;					\
   if (Consistency_Check)						\
@@ -345,9 +347,10 @@ Pushed()
     Prev_Restore_History_Offset = 0;					\
     if ((!Valid_Fixed_Obj_Vector ()) ||					\
 	(Get_Fixed_Obj_Slot (Dummy_History) == SHARP_F))		\
-      History = Make_Dummy_History ();					\
+      history_register = Make_Dummy_History ();				\
     else								\
-      History = OBJECT_ADDRESS (Get_Fixed_Obj_Slot (Dummy_History));	\
+      history_register							\
+	= OBJECT_ADDRESS (Get_Fixed_Obj_Slot (Dummy_History));		\
   }									\
   else if (Prev_Restore_History_Stacklet ==				\
 	   OBJECT_ADDRESS (Control_Point))				\

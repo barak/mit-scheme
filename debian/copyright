@@ -1,25 +1,32 @@
 This package was debianized by Chris Hanson <cph@debian.org> on
 Thu, 22 Feb 2001 11:50:57 -0500.
 
-It was downloaded from http://www.swiss.ai.mit.edu/projects/scheme/
+It was downloaded from http://www.gnu.org/software/mit-scheme/
 
 Upstream Author: Chris Hanson <cph@debian.org>
 
 Copyright:
 
-   Copyright (c) 1984-2002 Massachusetts Institute of Technology
+   Copyright (c) 1984-2003 Massachusetts Institute of Technology
 
-   This package is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; version 2 dated June, 1991.
+   This program is released under the GNU General Public License with
+   the additional exemption that compiling, linking, and/or using
+   OpenSSL is allowed.
 
-   This package is distributed in the hope that it will be useful,
+   ----------------------------------------------------------------
+
+   MIT/GNU Scheme is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License as
+   published by the Free Software Foundation; either version 2 of the
+   License, or (at your option) any later version.
+
+   MIT/GNU Scheme is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this package; if not, write to the Free Software
+   along with MIT/GNU Scheme; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
    02111-1307, USA.
 

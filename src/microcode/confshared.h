@@ -1,23 +1,26 @@
 /* -*-C-*-
 
-$Id: confshared.h,v 11.3 2002/01/29 05:57:24 cph Exp $
+$Id: confshared.h,v 11.7 2003/07/22 02:19:51 cph Exp $
 
-Copyright (c) 2000, 2002 Massachusetts Institute of Technology
+Copyright 2000,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 */
 
 /* Shared part of "config.h".  */
@@ -209,8 +212,6 @@ typedef unsigned long SCHEME_OBJECT;
 #define ADDRESS_TO_DATUM(address)					\
   ((SCHEME_OBJECT) (((unsigned long) (address)) & (~(HPPA_QUAD_MASK))))
 
-#if (SCHEME_VERSION > 11)
-
 /* SHARP_F is a magic value:
    Typecode TC_CONSTANT, high datum bits #b100, low datum bits are the top
    TYPE_CODE_LENGTH bits of HPPA_QUAD_BIT
@@ -223,7 +224,6 @@ typedef unsigned long SCHEME_OBJECT;
    See also cmpauxmd/hppa.m4.  */
 
 #define SHARP_F         0x22000010
-#endif /* (SCHEME_VERSION > 11) */
 
 #endif /* hp9000s800 */
 
@@ -311,18 +311,6 @@ typedef unsigned long SCHEME_OBJECT;
 #  define MACHINE_TYPE		"IA-32"
 #endif
 
-#ifdef __linux__
-   extern void * linux_heap_malloc (unsigned long);
-#  define HEAP_MALLOC linux_heap_malloc
-#  define HEAP_FREE(address)
-#endif
-
-#ifdef __FreeBSD__
-   extern void * freebsd_heap_malloc (unsigned long);
-#  define HEAP_MALLOC freebsd_heap_malloc
-#  define HEAP_FREE(address)
-#endif
-
 #endif /* __IA32__ */
 
 #ifdef mips
@@ -385,6 +373,12 @@ typedef unsigned long SCHEME_OBJECT;
 #endif
 
 #endif /* __alpha */
+
+#ifdef USE_MMAP_HEAP_MALLOC
+   extern void * mmap_heap_malloc (unsigned long);
+#  define HEAP_MALLOC mmap_heap_malloc
+#  define HEAP_FREE(address)
+#endif
 
 #ifdef __OS2__
 

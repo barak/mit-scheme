@@ -1,22 +1,26 @@
 /* -*-C-*-
 
-$Id: pruxdld.c,v 1.14 2001/03/08 18:01:45 cph Exp $
+$Id: pruxdld.c,v 1.19 2003/06/06 16:37:47 cph Exp $
 
-Copyright (c) 1993-2001 Massachusetts Institute of Technology
+Copyright 1993,1997,2000,2001,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 */
 
 /* This file contains the interface to the unix dynamic loader.  */
@@ -27,7 +31,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "syscall.h"
 #include "os.h"
 
-#ifdef __linux__
+#ifdef HAVE_DLFCN_H
 
 #include <dlfcn.h>
 
@@ -63,7 +67,7 @@ DEFUN (dld_lookup, (handle, symbol), unsigned long handle AND char * symbol)
   return ((unsigned long) address);
 }
 
-#endif /* __linux__ */
+#endif /* HAVE_DLFCN_H */
 
 DEFINE_PRIMITIVE ("LOAD-OBJECT-FILE", Prim_load_object_file, 1, 1,
 		  "(FILENAME)\n\
@@ -76,7 +80,7 @@ Load the shared library FILENAME and return a handle for it.")
 DEFINE_PRIMITIVE ("OBJECT-LOOKUP-SYMBOL", Prim_object_lookup_symbol, 3, 3,
 		  "(HANDLE SYMBOL TYPE)\n\
 Look up SYMBOL, a Scheme string, in the dynamically-loaded file\n\
-referenced by HANDLE.  TYPE is obsolete and must be specified as zero.
+referenced by HANDLE.  TYPE is obsolete and must be specified as zero.\n\
 Returns the symbol's address, or signals an error if no such symbol.")
 {
   PRIMITIVE_HEADER (3);

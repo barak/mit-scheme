@@ -1,22 +1,26 @@
 /* -*-C-*-
 
-$Id: cmpint.h,v 10.7 2000/12/05 21:23:43 cph Exp $
+$Id: cmpint.h,v 10.11 2003/02/14 18:28:18 cph Exp $
 
-Copyright (c) 1987-1990, 1999, 2000 Massachusetts Institute of Technology
+Copyright (c) 1987-1990, 1999, 2000, 2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 */
 
 /* Macros for the interface between compiled code and interpreted code. */
@@ -30,13 +34,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #define With_Stack_Gap(Gap_Size, Gap_Position, Code)			\
 {									\
-  fast long size_to_move = (Gap_Position);				\
-  fast SCHEME_OBJECT * Destination = (STACK_LOC (- (Gap_Size)));	\
+  long size_to_move = (Gap_Position);					\
+  SCHEME_OBJECT * Destination = (STACK_LOC (- (Gap_Size)));		\
   SCHEME_OBJECT * Saved_Destination = Destination;			\
   while ((--size_to_move) >= 0)						\
     (STACK_LOCATIVE_POP (Destination)) = (STACK_POP ());		\
   Code;									\
-  Stack_Pointer = Saved_Destination;					\
+  sp_register = Saved_Destination;					\
 }
 
 /* Close_Stack_Gap closes a gap Gap_Size wide Gap_Position cells above the
@@ -45,12 +49,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #define Close_Stack_Gap(Gap_Size, Gap_Position, extra_code)		\
 {									\
-  fast long size_to_move;						\
-  fast SCHEME_OBJECT *Source;						\
+  long size_to_move;							\
+  SCHEME_OBJECT *Source;						\
 									\
   size_to_move = (Gap_Position);					\
   Source = (STACK_LOC (size_to_move));					\
-  Stack_Pointer = (STACK_LOC ((Gap_Size) + size_to_move));		\
+  sp_register = (STACK_LOC ((Gap_Size) + size_to_move));		\
   extra_code;								\
   while (--size_to_move >= 0)						\
   {									\
@@ -118,7 +122,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     long segment_size;							\
 									\
     Restore_Cont();							\
-    segment_size = OBJECT_DATUM (Fetch_Expression());			\
+    segment_size = OBJECT_DATUM (exp_register);				\
     last_return_code = (STACK_LOC (segment_size));			\
     /* Undo the subproblem rotation. */					\
     Compiler_End_Subproblem();						\
@@ -138,7 +142,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #define compiled_code_restart()						\
 {									\
-  long segment_size = OBJECT_DATUM (Fetch_Expression());		\
+  long segment_size = OBJECT_DATUM (exp_register);			\
   last_return_code = (STACK_LOC (segment_size));			\
   /* Undo the subproblem rotation. */					\
   Compiler_End_Subproblem();						\
@@ -175,7 +179,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   long segment_size =						\
 	     (STACK_LOCATIVE_DIFFERENCE					\
 	      (last_return_code, (STACK_LOC (0))));			\
-	   Store_Expression (LONG_TO_UNSIGNED_FIXNUM (segment_size));	\
+	   exp_register = (LONG_TO_UNSIGNED_FIXNUM (segment_size));	\
 	   Store_Return (RC_REENTER_COMPILED_CODE);			\
 	   Save_Cont ();						\
 	 });								\
@@ -214,7 +218,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   {									\
     long segment_size =							\
       (STACK_LOCATIVE_DIFFERENCE (last_return_code, (STACK_LOC (0))));	\
-    Store_Expression (LONG_TO_UNSIGNED_FIXNUM (segment_size));		\
+    exp_register = (LONG_TO_UNSIGNED_FIXNUM (segment_size));		\
     Store_Return (RC_REENTER_COMPILED_CODE);				\
     Save_Cont ();							\
     /* Rotate history to a new subproblem. */				\
@@ -238,10 +242,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   Restore_Cont();							\
   segment_size =							\
     (STACK_LOCATIVE_DIFFERENCE (last_return_code, (STACK_LOC (0))));	\
-  Store_Expression (LONG_TO_UNSIGNED_FIXNUM (segment_size));		\
+  exp_register = (LONG_TO_UNSIGNED_FIXNUM (segment_size));		\
   /* The Store_Return is a NOP, the Save_Cont is done by the code	\
      that follows. */							\
-  /* Store_Return (OBJECT_DATUM (Fetch_Return ())); */			\
+  /* Store_Return (OBJECT_DATUM (ret_register)); */			\
   /* Save_Cont (); */							\
   Compiler_New_Subproblem ();						\
 }

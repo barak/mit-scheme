@@ -1,23 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: savres.scm,v 14.34 2001/10/05 19:11:15 cph Exp $
+$Id: savres.scm,v 14.44 2003/03/21 17:51:14 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1988,1989,1990,1991,1992,1995 Massachusetts Institute of Technology
+Copyright 1998,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Save/Restore World
@@ -66,7 +70,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		(set! world-identification identify)
 		(abort->top-level
 		 (lambda (cmdl)
-		   (identify-world (cmdl/port cmdl))
+		   (if (not (cmdl/batch-mode? cmdl))
+		       (identify-world (cmdl/port cmdl)))
 		   (event-distributor/invoke! event:after-restart))))
 	       ((not identify)
 		#t)
@@ -135,24 +140,37 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     (event-distributor/invoke! event:before-exit)
     ((ucode-primitive load-band) filename)))
 
-(define world-identification "Scheme")
+(define world-identification "Image")
 (define time-world-saved #f)
+(define license-statement
+  "This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.")
 
 (define (identify-world #!optional port)
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
-	     (guarantee-output-port port))))
-    (write-string world-identification port)
+	     (guarantee-output-port port 'IDENTIFY-WORLD))))
+    (write-string "Copyright " port)
+    (write (decoded-time/year (or time-world-saved (get-decoded-time))) port)
+    (write-string " Massachusetts Institute of Technology." port)
+    (newline port)
+    (write-string license-statement port)
+    (newline port)
+    (newline port)
     (if time-world-saved
 	(begin
+	  (write-string world-identification port)
 	  (write-string " saved on " port)
 	  (write-string (decoded-time/date-string time-world-saved) port)
 	  (write-string " at " port)
-	  (write-string (decoded-time/time-string time-world-saved) port)))
-    (newline port)
-    (for-each (lambda (name)
-		(write-string "  " port)
-		(write-string (get-subsystem-identification-string name) port)
-		(newline port))
-	      (get-subsystem-names))))
+	  (write-string (decoded-time/time-string time-world-saved) port)
+	  (newline port)))
+    (write-strings-in-columns (map get-subsystem-identification-string
+				   (get-subsystem-names))
+			      port
+			      #t
+			      1
+			      "  "
+			      " || "
+			      "")))

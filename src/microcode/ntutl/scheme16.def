@@ -1,5 +1,5 @@
 LIBRARY		scheme16
-DESCRIPTION	"MIT Scheme Win16 Server for Win32S DLL"
+DESCRIPTION	"MIT/GNU Scheme Win16 Server for Win32S DLL"
 
 EXETYPE		WINDOWS
 

@@ -1,23 +1,27 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: syntactic-closures.scm,v 14.9 2002/03/01 17:46:25 cph Exp $
-;;;
-;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: syntactic-closures.scm,v 14.16 2003/04/17 02:52:16 cph Exp $
+
+Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; Syntactic Closures
 ;;;  Based on a design by Alan Bawden.
@@ -65,10 +69,10 @@
   (if (binding-item? item)
       (let ((name (binding-item/name item))
 	    (value (binding-item/value item)))
-	(if (transformer-item? value)
+	(if (keyword-value-item? value)
 	    (output/top-level-syntax-definition
 	     name
-	     (compile-item/expression (transformer-item/expression value)))
+	     (compile-item/expression (keyword-value-item/expression value)))
 	    (output/top-level-definition
 	     name
 	     (compile-item/expression value))))
@@ -128,7 +132,14 @@
 
 (define (classify/form form environment definition-environment history)
   (cond ((identifier? form)
-	 (item/new-history (lookup-identifier environment form) history))
+	 (let ((item
+		(item/new-history (lookup-identifier environment form)
+				  history)))
+	   (if (keyword-item? item)
+	       (make-keyword-ref-item (strip-keyword-value-item item)
+				      form
+				      history)
+	       item)))
 	((syntactic-closure? form)
 	 (let ((form (syntactic-closure/form form))
 	       (environment
@@ -144,8 +155,9 @@
 						     history))))
 	((pair? form)
 	 (let ((item
-		(classify/subexpression (car form) environment history
-					select-car)))
+		(strip-keyword-value-item
+		 (classify/subexpression (car form) environment history
+					 select-car))))
 	   (cond ((classifier-item? item)
 		  ((classifier-item/classifier item) form
 						     environment
@@ -155,12 +167,6 @@
 		  (classify/compiler item form environment history))
 		 ((expander-item? item)
 		  (classify/expander item
-				     form
-				     environment
-				     definition-environment
-				     history))
-		 ((transformer-item? item)
-		  (classify/expander (transformer-item/expander item)
 				     form
 				     environment
 				     definition-environment
@@ -271,42 +277,34 @@
 		  declarations
 		  (cons (car items) items*)))
 	(values (reverse! declarations) (reverse! items*)))))
+
+(define (strip-keyword-value-item item)
+  (if (keyword-value-item? item)
+      (keyword-value-item/item item)
+      item))
 
 ;;;; Syntactic Closures
  
-(define syntactic-closure-rtd
-  (make-record-type "syntactic-closure" '(ENVIRONMENT FREE-NAMES FORM)))
+(define-record-type <syntactic-closure>
+    (%make-syntactic-closure environment free-names form)
+    syntactic-closure?
+  (environment syntactic-closure/environment)
+  (free-names syntactic-closure/free-names)
+  (form syntactic-closure/form))
 
-(define make-syntactic-closure
-  (let ((constructor
-	 (record-constructor syntactic-closure-rtd
-			     '(ENVIRONMENT FREE-NAMES FORM))))
-    (lambda (environment free-names form)
-      (guarantee-syntactic-environment environment 'MAKE-SYNTACTIC-CLOSURE)
-      (if (not (list-of-type? free-names identifier?))
-	  (error:wrong-type-argument free-names "list of identifiers"
-				     'MAKE-SYNTACTIC-CLOSURE))
-      (if (or (memq form free-names)	;LOOKUP-IDENTIFIER assumes this.
-	      (and (syntactic-closure? form)
-		   (null? (syntactic-closure/free-names form))
-		   (not (identifier? (syntactic-closure/form form))))
-	      (not (or (syntactic-closure? form)
-		       (pair? form)
-		       (symbol? form))))
-	  form
-	  (constructor environment free-names form)))))
-
-(define syntactic-closure?
-  (record-predicate syntactic-closure-rtd))
-
-(define syntactic-closure/environment
-  (record-accessor syntactic-closure-rtd 'ENVIRONMENT))
-
-(define syntactic-closure/free-names
-  (record-accessor syntactic-closure-rtd 'FREE-NAMES))
-
-(define syntactic-closure/form
-  (record-accessor syntactic-closure-rtd 'FORM))
+(define (make-syntactic-closure environment free-names form)
+  (guarantee-syntactic-environment environment 'MAKE-SYNTACTIC-CLOSURE)
+  (guarantee-list-of-type free-names identifier?
+			  "list of identifiers" 'MAKE-SYNTACTIC-CLOSURE)
+  (if (or (memq form free-names)	;LOOKUP-IDENTIFIER assumes this.
+	  (and (syntactic-closure? form)
+	       (null? (syntactic-closure/free-names form))
+	       (not (identifier? (syntactic-closure/form form))))
+	  (not (or (syntactic-closure? form)
+		   (pair? form)
+		   (symbol? form))))
+      form
+      (%make-syntactic-closure environment free-names form)))
 
 (define (strip-syntactic-closures object)
   (if (let loop ((object object))
@@ -459,14 +457,12 @@
 ;;; prevent illegal use of definitions) and to seal off environments
 ;;; used in magic keywords.
 
-(define null-syntactic-environment-rtd
-  (make-record-type "null-syntactic-environment" '()))
+(define-record-type <null-syntactic-environment>
+    (%make-null-syntactic-environment)
+    null-syntactic-environment?)
 
 (define null-syntactic-environment
-  ((record-constructor null-syntactic-environment-rtd '())))
-
-(define null-syntactic-environment?
-  (record-predicate null-syntactic-environment-rtd))
+  (%make-null-syntactic-environment))
 
 (define (null-syntactic-environment/lookup environment name)
   environment
@@ -507,33 +503,21 @@
 ;;; Top-level syntactic environments represent top-level environments.
 ;;; They are always layered over a real syntactic environment.
 
-(define top-level-syntactic-environment-rtd
-  (make-record-type "top-level-syntactic-environment" '(PARENT BOUND)))
+(define-record-type <top-level-syntactic-environment>
+    (%make-top-level-syntactic-environment parent bound)
+    top-level-syntactic-environment?
+  (parent top-level-syntactic-environment/parent)
+  (bound top-level-syntactic-environment/bound
+	 set-top-level-syntactic-environment/bound!))
 
-(define make-top-level-syntactic-environment
-  (let ((constructor
-	 (record-constructor top-level-syntactic-environment-rtd
-			     '(PARENT BOUND))))
-    (lambda (parent)
-      (guarantee-syntactic-environment parent
-				       'MAKE-TOP-LEVEL-SYNTACTIC-ENVIRONMENT)
-      (if (not (or (syntactic-environment/top-level? parent)
-		   (null-syntactic-environment? parent)))
-	  (error:bad-range-argument parent "top-level syntactic environment"
-				    'MAKE-TOP-LEVEL-SYNTACTIC-ENVIRONMENT))
-      (constructor parent '()))))
-
-(define top-level-syntactic-environment?
-  (record-predicate top-level-syntactic-environment-rtd))
-
-(define top-level-syntactic-environment/parent
-  (record-accessor top-level-syntactic-environment-rtd 'PARENT))
-
-(define top-level-syntactic-environment/bound
-  (record-accessor top-level-syntactic-environment-rtd 'BOUND))
-
-(define set-top-level-syntactic-environment/bound!
-  (record-modifier top-level-syntactic-environment-rtd 'BOUND))
+(define (make-top-level-syntactic-environment parent)
+  (guarantee-syntactic-environment parent
+				   'MAKE-TOP-LEVEL-SYNTACTIC-ENVIRONMENT)
+  (if (not (or (syntactic-environment/top-level? parent)
+	       (null-syntactic-environment? parent)))
+      (error:bad-range-argument parent "top-level syntactic environment"
+				'MAKE-TOP-LEVEL-SYNTACTIC-ENVIRONMENT))
+  (%make-top-level-syntactic-environment parent '()))
 
 (define (top-level-syntactic-environment/lookup environment name)
   (let ((binding
@@ -564,39 +548,19 @@
 ;;; Internal syntactic environments represent environments created by
 ;;; procedure application.
 
-(define internal-syntactic-environment-rtd
-  (make-record-type "internal-syntactic-environment"
-		    '(PARENT BOUND FREE RENAME-STATE)))
+(define-record-type <internal-syntactic-environment>
+    (%make-internal-syntactic-environment parent bound free rename-state)
+    internal-syntactic-environment?
+  (parent internal-syntactic-environment/parent)
+  (bound internal-syntactic-environment/bound
+	 set-internal-syntactic-environment/bound!)
+  (free internal-syntactic-environment/free
+	set-internal-syntactic-environment/free!)
+  (rename-state internal-syntactic-environment/rename-state))
 
-(define make-internal-syntactic-environment
-  (let ((constructor
-	 (record-constructor internal-syntactic-environment-rtd
-			     '(PARENT BOUND FREE RENAME-STATE))))
-    (lambda (parent)
-      (guarantee-syntactic-environment parent
-				       'MAKE-INTERNAL-SYNTACTIC-ENVIRONMENT)
-      (constructor parent '() '() (make-rename-id)))))
-
-(define internal-syntactic-environment?
-  (record-predicate internal-syntactic-environment-rtd))
-
-(define internal-syntactic-environment/parent
-  (record-accessor internal-syntactic-environment-rtd 'PARENT))
-
-(define internal-syntactic-environment/bound
-  (record-accessor internal-syntactic-environment-rtd 'BOUND))
-
-(define set-internal-syntactic-environment/bound!
-  (record-modifier internal-syntactic-environment-rtd 'BOUND))
-
-(define internal-syntactic-environment/free
-  (record-accessor internal-syntactic-environment-rtd 'FREE))
-
-(define set-internal-syntactic-environment/free!
-  (record-modifier internal-syntactic-environment-rtd 'FREE))
-
-(define internal-syntactic-environment/rename-state
-  (record-accessor internal-syntactic-environment-rtd 'RENAME-STATE))
+(define (make-internal-syntactic-environment parent)
+  (guarantee-syntactic-environment parent 'MAKE-INTERNAL-SYNTACTIC-ENVIRONMENT)
+  (%make-internal-syntactic-environment parent '() '() (make-rename-id)))
 
 (define (internal-syntactic-environment/lookup environment name)
   (let ((binding
@@ -642,31 +606,24 @@
 ;;; Filtered syntactic environments are used to implement syntactic
 ;;; closures that have free names.
 
-(define filtered-syntactic-environment-rtd
-  (make-record-type "filtered-syntactic-environment"
-		    '(NAMES NAMES-ENVIRONMENT ELSE-ENVIRONMENT)))
+(define-record-type <filtered-syntactic-environment>
+    (%make-filtered-syntactic-environment names
+					  names-environment
+					  else-environment)
+    filtered-syntactic-environment?
+  (names filtered-syntactic-environment/names)
+  (names-environment filtered-syntactic-environment/names-environment)
+  (else-environment filtered-syntactic-environment/else-environment))
 
-(define make-filtered-syntactic-environment
-  (let ((constructor
-	 (record-constructor filtered-syntactic-environment-rtd
-			     '(NAMES NAMES-ENVIRONMENT ELSE-ENVIRONMENT))))
-    (lambda (names names-environment else-environment)
-      (if (or (null? names)
-	      (eq? names-environment else-environment))
-	  else-environment
-	  (constructor names names-environment else-environment)))))
-
-(define filtered-syntactic-environment?
-  (record-predicate filtered-syntactic-environment-rtd))
-
-(define filtered-syntactic-environment/names
-  (record-accessor filtered-syntactic-environment-rtd 'NAMES))
-
-(define filtered-syntactic-environment/names-environment
-  (record-accessor filtered-syntactic-environment-rtd 'NAMES-ENVIRONMENT))
-
-(define filtered-syntactic-environment/else-environment
-  (record-accessor filtered-syntactic-environment-rtd 'ELSE-ENVIRONMENT))
+(define (make-filtered-syntactic-environment names
+					     names-environment
+					     else-environment)
+  (if (or (null? names)
+	  (eq? names-environment else-environment))
+      else-environment
+      (%make-filtered-syntactic-environment names
+					    names-environment
+					    else-environment)))
 
 (define (filtered-syntactic-environment/lookup environment name)
   (syntactic-environment/lookup
@@ -699,16 +656,16 @@
 ;;; needed during the cold load.
 
 (define item?
-  (record-predicate item-rtd))
+  (record-predicate <item>))
 
 (define item/history
-  (record-accessor item-rtd 'HISTORY))
+  (record-accessor <item> 'HISTORY))
 
 (define (item/new-history item history)
   (make-item history (item/record item)))
 
 (define item/record
-  (record-accessor item-rtd 'RECORD))
+  (record-accessor <item> 'RECORD))
 
 (define (item=? x y)
   (eq? (item/record x) (item/record y)))
@@ -742,16 +699,16 @@
 ;;; to signal a meaningful error when one of the <init>s refers to
 ;;; one of the names being bound.
 
-(define reserved-name-item-rtd
+(define <reserved-name-item>
   (make-item-type "reserved-name-item" '()
     (lambda (item)
       (illegal-expression-item item "Reserved name"))))
 
 (define make-reserved-name-item
-  (item-constructor reserved-name-item-rtd '()))
+  (item-constructor <reserved-name-item> '()))
 
 (define reserved-name-item?
-  (item-predicate reserved-name-item-rtd))
+  (item-predicate <reserved-name-item>))
 
 ;;; Keyword items represent macro keywords.  There are several flavors
 ;;; of keyword item.
@@ -760,7 +717,7 @@
   (or (classifier-item? item)
       (compiler-item? item)
       (expander-item? item)
-      (transformer-item? item)))
+      (keyword-value-item? item)))
 
 (define (make-keyword-type name fields)
   (make-item-type name fields keyword-item-compiler))
@@ -769,99 +726,109 @@
   (illegal-expression-item item "Syntactic keyword"))
 
 
-(define classifier-item-rtd
+(define <classifier-item>
   (make-keyword-type "classifier-item" '(CLASSIFIER)))
 
 (define make-classifier-item
-  (keyword-constructor classifier-item-rtd '(CLASSIFIER)))
+  (keyword-constructor <classifier-item> '(CLASSIFIER)))
 
 (define classifier-item?
-  (item-predicate classifier-item-rtd))
+  (item-predicate <classifier-item>))
 
 (define classifier-item/classifier
-  (item-accessor classifier-item-rtd 'CLASSIFIER))
+  (item-accessor <classifier-item> 'CLASSIFIER))
 
 
-(define compiler-item-rtd
+(define <compiler-item>
   (make-keyword-type "compiler-item" '(COMPILER)))
 
 (define make-compiler-item
-  (keyword-constructor compiler-item-rtd '(COMPILER)))
+  (keyword-constructor <compiler-item> '(COMPILER)))
 
 (define compiler-item?
-  (item-predicate compiler-item-rtd))
+  (item-predicate <compiler-item>))
 
 (define compiler-item/compiler
-  (item-accessor compiler-item-rtd 'COMPILER))
+  (item-accessor <compiler-item> 'COMPILER))
 
 
-(define-item-compiler expander-item-rtd
+(define-item-compiler <expander-item>
   keyword-item-compiler)
 
 (define expander-item?
-  (item-predicate expander-item-rtd))
+  (item-predicate <expander-item>))
 
 (define expander-item/expander
-  (item-accessor expander-item-rtd 'EXPANDER))
+  (item-accessor <expander-item> 'EXPANDER))
 
 (define expander-item/environment
-  (item-accessor expander-item-rtd 'ENVIRONMENT))
+  (item-accessor <expander-item> 'ENVIRONMENT))
 
 
-(define transformer-item-rtd
-  (make-keyword-type "transformer-item" '(EXPANDER EXPRESSION)))
+(define <keyword-value-item>
+  (make-keyword-type "keyword-value-item" '(ITEM EXPRESSION)))
 
-(define make-transformer-item
-  (keyword-constructor transformer-item-rtd '(EXPANDER EXPRESSION)))
+(define make-keyword-value-item
+  (keyword-constructor <keyword-value-item> '(ITEM EXPRESSION)))
 
-(define transformer-item?
-  (item-predicate transformer-item-rtd))
+(define keyword-value-item?
+  (item-predicate <keyword-value-item>))
 
-(define transformer-item/expander
-  (item-accessor transformer-item-rtd 'EXPANDER))
+(define keyword-value-item/item
+  (item-accessor <keyword-value-item> 'ITEM))
 
-(define transformer-item/expression
-  (item-accessor transformer-item-rtd 'EXPRESSION))
+(define keyword-value-item/expression
+  (item-accessor <keyword-value-item> 'EXPRESSION))
+
+(define (make-keyword-ref-item item identifier history)
+  (make-keyword-value-item item
+    (make-expression-item history
+      (let ((name (identifier->symbol identifier)))
+	(lambda ()
+	  (output/combination
+	   (output/access-reference 'SYNTACTIC-KEYWORD->ITEM
+				    system-global-environment)
+	   (list name (output/the-environment))))))))
 
 ;;; Variable items represent run-time variables.
 
-(define variable-item-rtd
+(define <variable-item>
   (make-item-type "variable-item" '(NAME)
     (lambda (item)
       (output/variable (variable-item/name item)))))
 
 (define make-variable-item
-  (let ((constructor (item-constructor variable-item-rtd '(NAME))))
+  (let ((constructor (item-constructor <variable-item> '(NAME))))
     (lambda (name)
       (constructor #f name))))
 
 (define variable-item?
-  (item-predicate variable-item-rtd))
+  (item-predicate <variable-item>))
 
 (define variable-item/name
-  (item-accessor variable-item-rtd 'NAME))
+  (item-accessor <variable-item> 'NAME))
 
 ;;; Expression items represent any kind of expression other than a
 ;;; run-time variable or a sequence.  The ANNOTATION field is used to
 ;;; make expression items that can appear in non-expression contexts
 ;;; (for example, this could be used in the implementation of SETF).
 
-(define expression-item-rtd
+(define <expression-item>
   (make-item-type "expression-item" '(COMPILER ANNOTATION)
     (lambda (item)
       ((expression-item/compiler item)))))
 
 (define make-special-expression-item
-  (item-constructor expression-item-rtd '(COMPILER ANNOTATION)))
+  (item-constructor <expression-item> '(COMPILER ANNOTATION)))
 
 (define expression-item?
-  (item-predicate expression-item-rtd))
+  (item-predicate <expression-item>))
 
 (define expression-item/compiler
-  (item-accessor expression-item-rtd 'COMPILER))
+  (item-accessor <expression-item> 'COMPILER))
 
 (define expression-item/annotation
-  (item-accessor expression-item-rtd 'ANNOTATION))
+  (item-accessor <expression-item> 'ANNOTATION))
 
 (define (make-expression-item history compiler)
   (make-special-expression-item history compiler #f))
@@ -869,40 +836,40 @@
 ;;; Unassigned items represent the right hand side of a binding that
 ;;; has no explicit value.
 
-(define unassigned-item-rtd
+(define <unassigned-item>
   (make-item-type "unassigned-item" '()
     (lambda (item)
       item				;ignore
       (output/unassigned))))
 
 (define make-unassigned-item
-  (item-constructor unassigned-item-rtd '()))
+  (item-constructor <unassigned-item> '()))
 
 (define unassigned-item?
-  (item-predicate unassigned-item-rtd))
+  (item-predicate <unassigned-item>))
 
 ;;; Declaration items represent block-scoped declarations that are to
 ;;; be passed through to the compiler.
 
-(define declaration-item-rtd
+(define <declaration-item>
   (make-item-type "declaration-item" '(TEXT)
     (lambda (item)
       (illegal-expression-item item "Declaration"))))
 
 (define make-declaration-item
-  (item-constructor declaration-item-rtd '(TEXT)))
+  (item-constructor <declaration-item> '(TEXT)))
 
 (define declaration-item?
-  (item-predicate declaration-item-rtd))
+  (item-predicate <declaration-item>))
 
 (define declaration-item/text
-  (let ((accessor (item-accessor declaration-item-rtd 'TEXT)))
+  (let ((accessor (item-accessor <declaration-item> 'TEXT)))
     (lambda (item)
       ((accessor item)))))
 
 ;;; Body items represent sequences (e.g. BEGIN).
 
-(define body-item-rtd
+(define <body-item>
   (make-item-type "body-item" '(COMPONENTS)
     (lambda (item)
       (compile-body-items item (body-item/components item)))))
@@ -915,7 +882,7 @@
      (map (lambda (item)
 	    (if (binding-item? item)
 		(let ((value (binding-item/value item)))
-		  (if (transformer-item? value)
+		  (if (keyword-value-item? value)
 		      (output/sequence '())
 		      (output/definition (binding-item/name item)
 					 (compile-item/expression value))))
@@ -923,45 +890,45 @@
 	  items))))
 
 (define make-body-item
-  (item-constructor body-item-rtd '(COMPONENTS)))
+  (item-constructor <body-item> '(COMPONENTS)))
 
 (define body-item?
-  (item-predicate body-item-rtd))
+  (item-predicate <body-item>))
 
 (define body-item/components
-  (item-accessor body-item-rtd 'COMPONENTS))
+  (item-accessor <body-item> 'COMPONENTS))
 
 ;;; Binding items represent definitions, whether top-level or
 ;;; internal, keyword or variable.  Null binding items are for
 ;;; definitions that don't emit code.
 
-(define binding-item-rtd
+(define <binding-item>
   (make-item-type "binding-item" '(NAME VALUE)
     (lambda (item)
       (illegal-expression-item item "Definition"))))
 
 (define make-binding-item
-  (item-constructor binding-item-rtd '(NAME VALUE)))
+  (item-constructor <binding-item> '(NAME VALUE)))
 
 (define binding-item?
-  (item-predicate binding-item-rtd))
+  (item-predicate <binding-item>))
 
 (define binding-item/name
-  (item-accessor binding-item-rtd 'NAME))
+  (item-accessor <binding-item> 'NAME))
 
 (define binding-item/value
-  (item-accessor binding-item-rtd 'VALUE))
+  (item-accessor <binding-item> 'VALUE))
 
-(define null-binding-item-rtd
+(define <null-binding-item>
   (make-item-type "null-binding-item" '()
     (lambda (item)
       (illegal-expression-item item "Definition"))))
 
 (define make-null-binding-item
-  (item-constructor null-binding-item-rtd '()))
+  (item-constructor <null-binding-item> '()))
 
 (define null-binding-item?
-  (item-predicate null-binding-item-rtd))
+  (item-predicate <null-binding-item>))
 
 (define (bind-variable! environment name)
   (let ((rename (syntactic-environment/rename environment name)))
@@ -991,25 +958,29 @@
   (list (list (cons forms environment))))
 
 (define (history/add-reduction form environment history)
-  (cons (cons (cons form environment)
-	      (car history))
-	(cdr history)))
+  (and history
+       (cons (cons (cons form environment)
+		   (car history))
+	     (cdr history))))
 
 (define (history/replace-reduction form environment history)
   ;; This is like ADD-REDUCTION, but it discards the current reduction
   ;; before adding a new one.  This is used when the current reduction
   ;; is not interesting, such as when reducing a syntactic closure.
-  (cons (cons (cons form environment)
-	      (cdar history))
-	(cdr history)))
+  (and history
+       (cons (cons (cons form environment)
+		   (cdar history))
+	     (cdr history))))
 
 (define (history/add-subproblem form environment history selector)
-  (cons (list (cons form environment))
-	(cons (cons selector (car history))
-	      (cdr history))))
+  (and history
+       (cons (list (cons form environment))
+	     (cons (cons selector (car history))
+		   (cdr history)))))
 
 (define (history/original-form history)
-  (caar (last-pair (car history))))
+  (and history
+       (caar (last-pair (car history)))))
 
 ;;;; Selectors
 ;;;  These are used by the expansion history to record subproblem

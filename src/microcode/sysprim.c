@@ -1,22 +1,26 @@
 /* -*-C-*-
 
-$Id: sysprim.c,v 9.47 2000/12/05 21:23:48 cph Exp $
+$Id: sysprim.c,v 9.50 2003/02/14 18:28:24 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2000, 2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 */
 
 /* Random system primitives.  Most are implemented in terms of
@@ -134,7 +138,7 @@ DEFINE_PRIMITIVE ("GC-SPACE-STATUS", Prim_gc_space_status, 0, 0, 0)
   heap_high = Heap_Top;
 #ifndef USE_STACKLETS
   stack_low = Stack_Bottom;
-  stack_free = Stack_Pointer;
+  stack_free = sp_register;
   stack_limit = Stack_Guard;
   stack_high = Stack_Top;
 #endif /* USE_STACKLETS */

@@ -1,23 +1,28 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: debug.scm,v 1.62 2002/01/07 04:35:10 cph Exp $
-;;;
-;;; Copyright (c) 1992-2002 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: debug.scm,v 1.66 2003/03/07 19:34:48 cph Exp $
+
+Copyright 1992,1993,1994,1995,1996,1997 Massachusetts Institute of Technology
+Copyright 1998,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; Browser-style Debug and Where
 ;;; Package: (edwin debugger)
@@ -72,61 +77,46 @@
 
 ;;;; Browsers
 
-(define browser-rtd
-  (make-record-type
-   "browser"
-   '(
-     ;; The browser's buffer.
-     BUFFER
+(define-record-type <browser>
+    (%make-browser buffer object name lines selected-line buffers properties)
+    browser?
 
-     ;; The object being browsed.
-     OBJECT
+  ;; The browser's buffer.
+  (buffer browser/buffer)
 
-     ;; Name of this browser, a string.  Not necessarily unique.
-     NAME
+  ;; The object being browsed.
+  (object browser/object)
 
-     ;; Vector of BLINE objects, sorted in order of increasing INDEX.
-     LINES
+  ;; Name of this browser, a string.  Not necessarily unique.
+  (name browser/name)
 
-     ;; The current selected BLINE object.
-     SELECTED-LINE
+  ;; Vector of BLINE objects, sorted in order of increasing INDEX.
+  (lines browser/lines set-browser/lines!)
 
-     ;; List of buffers associated with this browser.
-     BUFFERS
+  ;; The current selected BLINE object.
+  (selected-line browser/selected-line set-browser/selected-line!)
 
-     PROPERTIES)))
+  ;; List of buffers associated with this browser.
+  (buffers browser/buffers set-browser/buffers!)
 
-(define browser? (record-predicate browser-rtd))
-(define browser/buffer (record-accessor browser-rtd 'BUFFER))
-(define browser/object (record-accessor browser-rtd 'OBJECT))
-(define browser/lines (record-accessor browser-rtd 'LINES))
-(define set-browser/lines! (record-modifier browser-rtd 'LINES))
-(define browser/selected-line (record-accessor browser-rtd 'SELECTED-LINE))
-(define set-browser/selected-line!
-  (record-modifier browser-rtd 'SELECTED-LINE))
-(define browser/name (record-accessor browser-rtd 'NAME))
-(define browser/buffers (record-accessor browser-rtd 'BUFFERS))
-(define set-browser/buffers! (record-modifier browser-rtd 'BUFFERS))
-(define browser/properties (record-accessor browser-rtd 'PROPERTIES))
+  (properties browser/properties))
 
-(define make-browser
-  (let ((constructor (record-constructor browser-rtd)))
-    (lambda (name mode object)
-      (let ((buffer (new-buffer name)))
-	(buffer-reset! buffer)
-	(set-buffer-read-only! buffer)
-	(set-buffer-major-mode! buffer mode)
-	(add-kill-buffer-hook buffer kill-browser-buffer)
-	(let ((browser
-	       (constructor buffer
-			    object
-			    name
-			    (vector)
-			    #f
-			    '()
-			    (make-1d-table))))
-	  (buffer-put! buffer 'BROWSER browser)
-	  browser)))))
+(define (make-browser name mode object)
+  (let ((buffer (new-buffer name)))
+    (buffer-reset! buffer)
+    (set-buffer-read-only! buffer)
+    (set-buffer-major-mode! buffer mode)
+    (add-kill-buffer-hook buffer kill-browser-buffer)
+    (let ((browser
+	   (%make-browser buffer
+			  object
+			  name
+			  (vector)
+			  #f
+			  '()
+			  (make-1d-table))))
+      (buffer-put! buffer 'BROWSER browser)
+      browser)))
 
 (define (kill-browser-buffer buffer)
   (let ((browser (buffer-get buffer 'BROWSER)))
@@ -557,75 +547,61 @@
 
 ;;;; Browser Lines
 
-(define bline-rtd
-  (make-record-type
-   "browser-line"
-   '(
-     ;; Index of this bline within browser lines vector.  #F if line
-     ;; is invisible.
-     INDEX
+(define-record-type <browser-line>
+    (%make-bline start-mark object type parent depth next prev offset
+		 properties)
+    bline?
 
-     ;; Line start within browser buffer.  #F if line is invisible.
-     START-MARK
+  ;; Index of this bline within browser lines vector.  #F if line is
+  ;; invisible.
+  (index bline/index set-bline/index!)
 
-     ;; Object that this line represents.
-     OBJECT
+  ;; Line start within browser buffer.  #F if line is invisible.
+  (start-mark bline/start-mark set-bline/start-mark!)
 
-     ;; Type of OBJECT.  This type is specific to the browser; it
-     ;; tells the browser how to manipulate OBJECT.
-     TYPE
+  ;; Object that this line represents.
+  (object bline/object)
 
-     ;; BLINE representing the object that this object is a component
-     ;; of, or #F if none.
-     PARENT
+  ;; Type of OBJECT.  This type is specific to the browser; it tells
+  ;; the browser how to manipulate OBJECT.
+  (type bline/type)
 
-     ;; Nonnegative integer indicating the depth of this object in
-     ;; the component nesting.
-     DEPTH
+  ;; BLINE representing the object that this object is a component of,
+  ;; or #F if none.
+  (parent bline/parent)
 
-     ;; BLINEs representing the objects that are adjacent to this one
-     ;; in the component ordering, or #F if none.
-     NEXT
-     PREV
+  ;; Nonnegative integer indicating the depth of this object in the
+  ;; component nesting.
+  (depth bline/depth)
 
-     ;; Nonnegative integer indicating the position of this object in
-     ;; the component ordering.
-     OFFSET
+  ;; BLINEs representing the objects that are adjacent to this one in
+  ;; the component ordering, or #F if none.
+  (next bline/next set-bline/next!)
+  (prev bline/prev)
 
-     PROPERTIES)))
+  ;; Nonnegative integer indicating the position of this object in the
+  ;; component ordering.
+  (offset bline/offset)
 
-(define bline? (record-predicate bline-rtd))
-(define bline/index (record-accessor bline-rtd 'INDEX))
-(define set-bline/index! (record-modifier bline-rtd 'INDEX))
-(define bline/start-mark (record-accessor bline-rtd 'START-MARK))
-(define set-bline/start-mark! (record-modifier bline-rtd 'START-MARK))
-(define bline/object (record-accessor bline-rtd 'OBJECT))
-(define bline/type (record-accessor bline-rtd 'TYPE))
-(define bline/parent (record-accessor bline-rtd 'PARENT))
-(define bline/depth (record-accessor bline-rtd 'DEPTH))
-(define bline/next (record-accessor bline-rtd 'NEXT))
-(define bline/prev (record-accessor bline-rtd 'PREV))
-(define bline/offset (record-accessor bline-rtd 'OFFSET))
-(define bline/properties (record-accessor bline-rtd 'PROPERTIES))
+  (properties bline/properties))
+
+(define (make-bline object type parent prev)
+  (let ((bline
+	 (%make-bline #f
+		      object
+		      type
+		      parent
+		      (if parent (+ (bline/depth parent) 1) 0)
+		      #f
+		      prev
+		      (if prev (+ (bline/offset prev) 1) 0)
+		      (make-1d-table))))
+    (if prev
+	(set-bline/next! prev bline))
+    bline))
 
 (define (bline/browser bline)
   (buffer-browser (mark-buffer (bline/start-mark bline))))
-
-(define make-bline
-  (let ((constructor
-	 (record-constructor
-	  bline-rtd
-	  '(START-MARK OBJECT TYPE PARENT DEPTH NEXT PREV OFFSET PROPERTIES)))
-	(set-bline/next! (record-modifier bline-rtd 'NEXT)))
-    (lambda (object type parent prev)
-      (let ((bline
-	     (constructor #f object type
-			  parent (if parent (+ (bline/depth parent) 1) 0)
-			  #f prev (if prev (+ (bline/offset prev) 1) 0)
-			  (make-1d-table))))
-	(if prev
-	    (set-bline/next! prev bline))
-	bline))))
 
 ;;;; Browser Line Editing
 
@@ -742,56 +718,38 @@
 
 ;;;; Browser Line Types
 
-(define bline-type-rtd
-  (make-record-type
-   "browser-element-type"
-   '(
-     ;; Procedure that is called to generate the browser line that
-     ;; represents this object.  Two arguments: BLINE and PORT.  The
-     ;; summary of BLINE is written to PORT.  The summary should fit
-     ;; on one line; PORT will limit the number of characters that can
-     ;; be printed so that it fits.
-     WRITE-SUMMARY
+(define-record-type <browser-line-type>
+    (%make-bline-type write-summary write-description selection-mark
+		      properties)
+    bline-type?
 
-     ;; Procedure that is called to generate a full description of the
-     ;; object.  Two arguments: BLINE and PORT.  This description may
-     ;; use multiple lines; it will be presented in its own buffer, so
-     ;; the presentation style is not very constrained.  This
-     ;; component may be #F to indicate that the object is not
-     ;; normally viewed.
-     WRITE-DESCRIPTION
+  ;; Procedure that is called to generate the browser line that
+  ;; represents this object.  Two arguments: BLINE and PORT.  The
+  ;; summary of BLINE is written to PORT.  The summary should fit on
+  ;; one line; PORT will limit the number of characters that can be
+  ;; printed so that it fits.
+  (write-summary bline-type/write-summary)
 
-     ;; Procedure that generates the standard mark at which the point
-     ;; should be placed when this object is selected.  One argument:
-     ;; BLINE.  This component may be a nonnegative exact integer
-     ;; meaning an offset from the START-MARK of the bline.
-     SELECTION-MARK
+  ;; Procedure that is called to generate a full description of the
+  ;; object.  Two arguments: BLINE and PORT.  This description may use
+  ;; multiple lines; it will be presented in its own buffer, so the
+  ;; presentation style is not very constrained.  This component may
+  ;; be #F to indicate that the object is not normally viewed.
+  (write-description bline-type/write-description)
 
-     PROPERTIES
-     )))
+  ;; Procedure that generates the standard mark at which the point
+  ;; should be placed when this object is selected.  One argument:
+  ;; BLINE.  This component may be a nonnegative exact integer meaning
+  ;; an offset from the START-MARK of the bline.
+  (selection-mark bline-type/selection-mark)
 
-(define bline-type/write-summary
-  (record-accessor bline-type-rtd 'WRITE-SUMMARY))
+  (properties bline-type/properties))
 
-(define bline-type/write-description
-  (record-accessor bline-type-rtd 'WRITE-DESCRIPTION))
-
-(define bline-type/selection-mark
-  (record-accessor bline-type-rtd 'SELECTION-MARK))
-
-(define bline-type/properties
-  (record-accessor bline-type-rtd 'PROPERTIES))
-
-(define make-bline-type
-  (let ((constructor
-	 (record-constructor
-	  bline-type-rtd
-	  '(WRITE-SUMMARY WRITE-DESCRIPTION SELECTION-MARK PROPERTIES))))
-    (lambda (write-summary write-description selection-mark)
-      (constructor write-summary
-		   write-description
-		   selection-mark
-		   (make-1d-table)))))
+(define (make-bline-type write-summary write-description selection-mark)
+  (%make-bline-type write-summary
+		    write-description
+		    selection-mark
+		    (make-1d-table)))
 
 (define (make-continuation-bline expander parent prev)
   (make-bline expander bline-type:continuation-line parent prev))
@@ -828,13 +786,6 @@
   'ASK
   boolean-or-ask?)
 
-(define-variable debugger-start-on-error?
-  "#T means start the debugger whenever there is an evaluation error.
-#F means ignore evaluation errors.
-'ASK means ask user what to do for each evaluation error."
-  'ASK
-  boolean-or-ask?)
-
 (define-variable debugger-max-subproblems
   "Maximum number of subproblems displayed when debugger starts.
 Set this variable to #F to disable this limit."
@@ -862,7 +813,8 @@ Quitting the debugger kills the debugger buffer and any associated buffers."
   #t
   boolean?)
 
-;;;Limited this bc the bindings are now pretty-printed
+;;; Limited this because the bindings are now pretty-printed.
+
 (define-variable environment-package-limit
   "Packages with more than this number of bindings will be abbreviated.
 Set this variable to #F to disable this abbreviation."
@@ -870,7 +822,7 @@ Set this variable to #F to disable this abbreviation."
   (lambda (object)
     (or (not object)
 	(exact-nonnegative-integer? object))))
-
+
 (define-variable debugger-show-help-message?
   "True means show the help message, false means don't."
   #T
@@ -884,7 +836,7 @@ Set this variable to #F to disable this abbreviation."
   boolean-or-ask?)
 (define edwin-variable$debugger-start-new-screen?
   edwin-variable$debugger-start-new-frame?)
-
+
 (define-variable debugger-hide-system-code?
   "True means don't show subproblems created by the runtime system."
   #T
@@ -913,14 +865,16 @@ a fixed size terminal."
   #F
   boolean?)
 
-;;;; Pred's
+;;;; Predicates
 
-;;;Determines if a frame is marked
+;;; Determines if a frame is marked.
+
 (define (system-frame? stack-frame)
   (stack-frame/repl-eval-boundary? stack-frame))
 
-;;;Bad implementation to determine for breaks
-;;;if a value to proceed with is desired
+;;; Bad implementation to determine for breaks if a value to proceed
+;;; with is desired.
+
 (define value? #f)
 
 (define (invalid-subexpression? subexpression)
@@ -933,32 +887,55 @@ a fixed size terminal."
 
 ;;;; Help Messages
 
-;;;The help messages for the debugger
+;;; The help messages for the debugger
 
 (define where-help-message
-"     COMMANDS:  ? - Help   q - Quit Environment browser
+"     COMMANDS:  ? - Help  q - Quit environment browser
 
-This is an environment browser buffer.
+This is an environment-browser buffer.
 
 Lines identify environment frames.
 The buffer below shows the bindings of the selected environment.
------------
-")
+-----------")
 
 (define debugger-help-message
-"     COMMANDS:   ? - Help   q - Quit Debugger   e - Environment browser
+"     COMMANDS:  ? - Help  q - Quit debugger  e - Environment browser
 
 This is a debugger buffer.
 
 Lines identify stack frames, most recent first.
 
-   Sx means frame is in subproblem number x
-   Ry means frame is reduction number y
+   Sx means frame is in subproblem number x.
+   Ry means frame is reduction number y.
 
-The buffer below describes the current subproblem or reduction.
+The buffer below shows the current subproblem or reduction.
 -----------")
 
-;;;; Debugger Entry
+;;;; Debugger entry point
+
+(define starting-debugger? #f)
+
+(define (debug-scheme-error error-type condition ask?)
+  (if starting-debugger?
+      (quit-editor-and-signal-error condition)
+      (begin
+	(let ((start-debugger
+	       (lambda ()
+		 (fluid-let ((starting-debugger? #t))
+		   (select-continuation-browser-buffer condition)))))
+	  (if ask?
+	      (if (cleanup-pop-up-buffers
+		   (lambda ()
+		     (standard-error-report error-type condition #t)
+		     (editor-beep)
+		     (prompt-for-confirmation? "Start debugger")))
+		  (start-debugger))
+	      (begin
+		(start-debugger)
+		(message (string-capitalize (symbol->string error-type))
+			 " error")
+		(editor-beep))))
+	(return-to-command-loop condition))))
 
 (define (select-continuation-browser-buffer object #!optional thread)
   (set! value? #f)
@@ -984,7 +961,7 @@ The buffer below describes the current subproblem or reduction.
   "Invoke the continuation-browser on CONTINUATION."
   "XBrowse Continuation"
   select-continuation-browser-buffer)
-
+
 (define (make-debug-screen buffer)
   (and (multiple-screens?)
        (let ((new-screen? (ref-variable debugger-start-new-screen? buffer)))
@@ -1050,7 +1027,7 @@ The buffer below describes the current subproblem or reduction.
 		    (begin
 		      (write-string "The " port)
 		      (write-string (if (condition/error? object)
-					"*ERROR*"
+					"error"
 					"condition")
 				    port)
 		      (write-string " that started the debugger is:" port)
@@ -1068,83 +1045,17 @@ The buffer below describes the current subproblem or reduction.
 			     (buffer-end buffer)
 			     (bline/start-mark (car blines))))
       buffer)))
-
+
 (define (find-debugger-buffers)
   (list-transform-positive (buffer-list)
     (let ((debugger-mode (ref-mode-object continuation-browser)))
       (lambda (buffer)
 	(eq? (buffer-major-mode buffer) debugger-mode)))))
-
-;;;Procedure that actually calls the cont-browser with the continuation
-;;;and stops the thread when a break-pt is called
-(define (break-to-debugger #!optional pred-thunk)
-  (let ((pred
-	 (if (default-object? pred-thunk)
-	     (prompt-for-yes-or-no?
-	      "Enter the continuation browser at breakpoint")
-	     (pred-thunk))))
-    (if pred
-	(with-simple-restart 'CONTINUE "Return from BKPT."
-	  (lambda ()
-	    (let ((thread (current-thread)))
-	      (call-with-current-continuation
-	       (lambda (cont)
-		 (select-continuation-browser-buffer cont thread)
-		 (if (eq? thread editor-thread)
-		     (abort-current-command)
-		     (stop-current-thread))
-		 (if value?
-		     (abort-current-command))))))))))
-
-;;;Calls the break pt thing with a pred thunk and a thunk to do
-(define (with-break-on pred-thunk val-thunk)
-  (let ((val value?)
-	(bkvalue (break-to-debugger pred-thunk)))
-    (set! value? #f)
-    (if val
-	bkvalue
-	(val-thunk))))
-
-;;;Calls the break pt thing with a pred-thunk a proc and args
-(define (call-with-break pred-thunk proc . args)
-  (let ((val  value?)
-	(bkvalue (break-to-debugger pred-thunk)))
-    (set! value? #f)
-    (if val
-	bkvalue
-	(apply proc args))))
-
-;;;; External Entry Point
-
-(define (maybe-debug-scheme-error switch-variable condition error-type-name)
-  (if (variable-value switch-variable)
-      (debug-scheme-error condition error-type-name)))
-
-(define (debug-scheme-error condition error-type-name)
-  (cond (starting-debugger?
-	 (quit-editor-and-signal-error condition))
-	((let ((start? (ref-variable debugger-start-on-error?)))
-	   (if (eq? 'ASK start?)
-	       (debug-scheme-error? condition error-type-name)
-	       start?))
-	 (fluid-let ((starting-debugger? #t))
-	   (select-continuation-browser-buffer condition))
-	 (message (string-capitalize error-type-name) " error")
-	 (return-to-command-loop condition))))
-
-(define starting-debugger? #f)
-
-(define (debug-scheme-error? condition error-type-name)
-  (cleanup-pop-up-buffers
-   (lambda ()
-     (standard-error-report condition error-type-name #t)
-     (editor-beep)
-     (prompt-for-confirmation? "Start debugger"))))
 
 ;;;; Continuation Browser Mode
 
 (define-major-mode continuation-browser read-only "Debug"
-  "                     ********Debugger Help********
+  "                     ******* Debugger Help *******
 
 Commands:
 
@@ -1247,7 +1158,8 @@ it has been renamed, it will not be deleted automatically.")
 ;; of bindings.  Subproblems, reductions, and environment frames are
 ;; ordered; bindings are not.
 
-;;;Stops from displaying subproblems past marked frame by default
+;;; Stops displaying subproblems past marked frame by default.
+
 (define (continuation->blines continuation limit)
   (let ((beyond-system-code #f))
     (let loop ((frame (continuation/first-subproblem continuation))
@@ -1315,41 +1227,27 @@ it has been renamed, it will not be deleted automatically.")
 		   (list (make-continuation-bline continue #f prev)))
 		  (else (continue))))))))
 
-(define subproblem-rtd
-  (make-record-type
-   "subproblem"
-   '(STACK-FRAME EXPRESSION ENVIRONMENT SUBEXPRESSION NUMBER)))
+(define-record-type <subproblem>
+    (make-subproblem stack-frame expression environment subexpression number)
+    subproblem?
+  (stack-frame subproblem/stack-frame)
+  (expression subproblem/expression)
+  (environment subproblem/environment)
+  (subexpression subproblem/subexpression)
+  (number subproblem/number))
 
-(define subproblem? (record-predicate subproblem-rtd))
-(define subproblem/stack-frame (record-accessor subproblem-rtd 'STACK-FRAME))
-(define subproblem/expression (record-accessor subproblem-rtd 'EXPRESSION))
-(define subproblem/environment (record-accessor subproblem-rtd 'ENVIRONMENT))
-(define subproblem/subexpression
-  (record-accessor subproblem-rtd 'SUBEXPRESSION))
-(define subproblem/number (record-accessor subproblem-rtd 'NUMBER))
+(define (stack-frame->subproblem frame number)
+  (receive (expression environment subexpression)
+      (stack-frame/debugging-info frame)
+    (make-subproblem frame expression environment subexpression number)))
 
-(define stack-frame->subproblem
-  (let ((constructor
-	 (record-constructor
-	  subproblem-rtd
-	  '(STACK-FRAME EXPRESSION ENVIRONMENT SUBEXPRESSION NUMBER))))
-    (lambda (frame number)
-      (with-values (lambda () (stack-frame/debugging-info frame))
-	(lambda (expression environment subexpression)
-	  (constructor frame expression environment subexpression number))))))
-
-(define reduction-rtd
-  (make-record-type "reduction" '(SUBPROBLEM EXPRESSION ENVIRONMENT NUMBER)))
-
-(define reduction? (record-predicate reduction-rtd))
-(define reduction/subproblem (record-accessor reduction-rtd 'SUBPROBLEM))
-(define reduction/expression (record-accessor reduction-rtd 'EXPRESSION))
-(define reduction/environment (record-accessor reduction-rtd 'ENVIRONMENT))
-(define reduction/number (record-accessor reduction-rtd 'NUMBER))
-
-(define make-reduction
-  (record-constructor reduction-rtd
-		      '(SUBPROBLEM EXPRESSION ENVIRONMENT NUMBER)))
+(define-record-type <reduction>
+    (make-reduction subproblem expression environment number)
+    reduction?
+  (subproblem reduction/subproblem)
+  (expression reduction/expression)
+  (environment reduction/environment)
+  (number reduction/number))
 
 (define (subproblem/reductions subproblem)
   (let ((frame (subproblem/stack-frame subproblem)))
@@ -1506,7 +1404,8 @@ it has been renamed, it will not be deleted automatically.")
   (lambda (environment)
     (select-buffer (environment-browser-buffer environment))))
 
-;;;adds a help line
+;;; Adds a help line.
+
 (define (environment-browser-buffer object)
   (let ((environment (->environment object)))
     (let ((browser

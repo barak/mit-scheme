@@ -1,7 +1,7 @@
-.TH "mit\-scheme" "1" "7.6.0" "MIT Scheme Team" ""
+.TH "mit\-scheme" "1" "7.7.90" "MIT/GNU Scheme Team" ""
 .SH "NAME"
 .LP 
-MIT Scheme \- Scheme development environment
+MIT/GNU Scheme \- Scheme development environment
 .SH "SYNOPSIS"
 .LP 
 .B mit\-scheme
@@ -12,11 +12,11 @@ MIT Scheme \- Scheme development environment
 .br 
 .SH "DESCRIPTION"
 .LP 
-MIT Scheme is an implementation of the Scheme programming language,
-providing an interpreter, compiler, source\-code debugger, integrated
-Emacs\-like editor, and a large runtime library.  MIT Scheme is best
-suited to programming large applications with a rapid development
-cycle.
+MIT/GNU Scheme is an implementation of the Scheme programming
+language, providing an interpreter, compiler, source\-code debugger,
+integrated Emacs\-like editor, and a large runtime library.  MIT/GNU
+Scheme is best suited to programming large applications with a rapid
+development cycle.
 .LP 
 There are two executable programs.  The programs are functionally
 identical, but use different garbage collectors.
@@ -33,49 +33,49 @@ collection slower but uses less memory.
 These are some of the more common command\-line options.  For full
 information about available options, see the Texinfo documentation.
 .TP 
-\-compiler
+\-\-compiler
 .br 
 Load the native\-code compiler.
 .TP 
-\-edwin
+\-\-edwin
 .br 
 Load the Emacs\-like text editor.
 .TP 
-.RI \-heap " NBLOCKS"
+.RI \-\-heap " NBLOCKS"
 .br 
 Specify the size of the heap in 1024\-word blocks.
-The default heap size is 1000 blocks if either \-compiler or \-edwin
+The default heap size is 1000 blocks if either \-\-compiler or \-\-edwin
 is specified, and 250 blocks otherwise.
 .TP 
-.RI \-stack " NBLOCKS"
+.RI \-\-stack " NBLOCKS"
 .br 
 Specify the size of the stack in 1024\-word blocks.
 The default stack size is 100 blocks.
 .TP 
-.RI \-library " PATH"
+.RI \-\-library " PATH"
 .br 
 Specify where to look for Scheme's binary files.
 .I PATH
 should be a colon\-separated list of directory names.
 .TP 
-\-no\-init\-file
+\-\-no\-init\-file
 .br 
 Don't load the user's init file.
 .TP 
-\-edit
+\-\-edit
 .br 
 Start the text editor automatically.  Meaningful only when combined
-with the \-edwin option.
+with the \-\-edwin option.
 .TP 
-.RI \-eval " EXPRESSION" ...
+.RI \-\-eval " EXPRESSION" ...
 .br 
 Evaluate the specified expressions after starting Scheme.
 .TP 
-.RI \-load " FILENAME" ...
+.RI \-\-load " FILENAME" ...
 .br 
 Load the specified files after starting Scheme.
 .TP 
-\-option\-summary
+\-\-option\-summary
 .br 
 Print a summary of the command\-line options, including default values.
 .SH "FILES"
@@ -83,8 +83,8 @@ Print a summary of the command\-line options, including default values.
 \fI/usr/lib/mit\-scheme\fP 
 .SH "ENVIRONMENT VARIABLES"
 .LP 
-MIT Scheme refers to a large number of environment variables.  See the
-Texinfo documentation for details.
+MIT/GNU Scheme refers to a large number of environment variables.  See
+the Texinfo documentation for details.
 .SH "EXAMPLES"
 .LP 
 To use the interpreter without any frills, type:
@@ -94,28 +94,28 @@ To use the interpreter without any frills, type:
 To also load the compiler, type:
 .LP 
 .B mit\-scheme
-\-compiler
+\-\-compiler
 .LP 
 To load the compiler and editor, type:
 .LP 
 .B mit\-scheme
-\-compiler \-edwin \-edit
+\-\-compiler \-\-edwin \-\-edit
 .SH "AUTHORS"
 .LP 
-MIT Scheme Team <bug\-cscheme@zurich.ai.mit.edu>
+MIT/GNU Scheme Team <bug\-mit\-scheme@gnu.org>
 .SH "SEE ALSO"
 .LP
-The full documentation for MIT Scheme is maintained as a set of
+The full documentation for MIT/GNU Scheme is maintained as a set of
 Texinfo manuals.
 If the
 .B info
 program is properly installed at your site, the command
 .IP
 .B info
-"MIT Scheme User"
+"MIT/GNU Scheme User"
 .PP
 should give you access to the complete User's manual.  Programming
-information is located in the Info topics "MIT Scheme Ref" and
+information is located in the Info topics "MIT/GNU Scheme Ref" and
 "SOS".  Usage of the
 .B IMAIL
 mail reader is located in the "IMAIL" topic.

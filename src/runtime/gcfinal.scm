@@ -1,22 +1,26 @@
 #| -*-Scheme-*-
 
-$Id: gcfinal.scm,v 14.2 2000/04/10 19:10:53 cph Exp $
+$Id: gcfinal.scm,v 14.7 2003/06/08 04:21:56 cph Exp $
 
-Copyright (c) 2000 Massachusetts Institute of Technology
+Copyright 2000,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Garbage Finalization
@@ -75,7 +79,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			     (set-gc-finalizer-items! finalizer next))
 			 (procedure (weak-cdr (car items))))
 		       (loop (cdr items) items)))))))))
-
+
 (define (remove-all-from-gc-finalizer! finalizer)
   (guarantee-gc-finalizer finalizer 'REMOVE-ALL-FROM-GC-FINALIZER!)
   (let ((procedure (gc-finalizer-procedure finalizer)))
@@ -84,13 +88,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (let loop ()
 	 (let ((items (gc-finalizer-items finalizer)))
 	   (if (pair? items)
-	       (begin
+	       (let ((item (car items)))
 		 (set-gc-finalizer-items! finalizer (cdr items))
-		 (let ((object (weak-cdr (car items))))
-		   (if object
-		       (procedure object)))
+		 (if (weak-pair/car? item)
+		     (procedure (weak-cdr item)))
 		 (loop)))))))))
-
+
 (define (search-gc-finalizer finalizer predicate)
   (guarantee-gc-finalizer finalizer 'SEARCH-GC-FINALIZER)
   (without-interrupts
@@ -115,6 +118,32 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		       objects)))
 	   (reverse! objects))))))
 
+(define (make-gc-finalized-object finalizer get-context context->object)
+  ;; A bunch of hair to permit microcode descriptors be opened with
+  ;; interrupts turned on, yet not leave a dangling descriptor around
+  ;; if the open is interrupted before the runtime system's data
+  ;; structures are updated.
+  (guarantee-gc-finalizer finalizer 'MAKE-GC-FINALIZED-OBJECT)
+  (let ((p (weak-cons #f #f)))
+    (dynamic-wind
+     (lambda () unspecific)
+     (lambda ()
+       (and (get-context p)
+	    (let ((context (weak-cdr p)))
+	      (let ((object (context->object context)))
+		(without-interrupts
+		 (lambda ()
+		   (weak-set-car! p object)
+		   (set-gc-finalizer-items!
+		    finalizer
+		    (cons p (gc-finalizer-items finalizer)))))
+		object))))
+     (lambda ()
+       (if (and (not (weak-pair/car? p)) (weak-cdr p))
+	   (begin
+	     ((gc-finalizer-procedure finalizer) (weak-cdr p))
+	     (weak-set-cdr! p #f)))))))
+
 (define gc-finalizers)
 
 (define (reset-gc-finalizers)
@@ -133,13 +162,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (if (pair? items)
 	     (if (weak-pair/car? (car items))
 		 (loop (cdr items) items)
-		 (begin
-		   (procedure (weak-cdr (car items)))
-		   (let ((next (cdr items)))
-		     (if prev
-			 (set-cdr! prev next)
-			 (set-gc-finalizer-items! finalizer next))
-		     (loop next prev))))))))))
+		 (let ((context (weak-cdr (car items)))
+		       (next (cdr items)))
+		   (if prev
+		       (set-cdr! prev next)
+		       (set-gc-finalizer-items! finalizer next))
+		   (procedure context)
+		   (loop next prev)))))))))
 
 (define (walk-gc-finalizers-list procedure)
   (let loop ((finalizers gc-finalizers) (prev #f))

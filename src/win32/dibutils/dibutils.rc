@@ -8,14 +8,14 @@ BEGIN
   BEGIN
     BLOCK "040904E4"
     BEGIN
-	VALUE "CompanyName", "Artifical Intelligence Lab, MIT"
+	VALUE "CompanyName", "GNU Project"
 	VALUE "FileDescription", "DIB utilities for Scheme Graphics"
 	VALUE "FileVersion", "1.0"
 	VALUE "InternalName", "dibutils"
 	VALUE "LegalCopyright", "Copyright Massachusetts Institute of Technology 1993"
 	VALUE "OriginalFilename", "DIBUTILS.DLL"
-	VALUE "ProductName", "MIT Scheme"
-	VALUE "ProductVersion", "7.2.0 (alpha)"
+	VALUE "ProductName", "MIT/GNU Scheme"
+	VALUE "ProductVersion", "7.7.1"
     END
   END
 

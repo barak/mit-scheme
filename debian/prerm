@@ -15,16 +15,16 @@ set -e
 #          <conflicting-package> <version>
 # for details, see /usr/share/doc/packaging-manual/
 
-case "$1" in
-    upgrade)
-	;;
-    remove|failed-upgrade|deconfigure)
-	update-alternatives --remove scheme /usr/bin/mit-scheme
-	;;
-    *)
-	echo "prerm called with unknown argument \`$1'" >&2
-	exit 1
-	;;
+case "${1}" in
+(upgrade)
+    ;;
+(remove|failed-upgrade|deconfigure)
+    update-alternatives --remove scheme /usr/bin/mit-scheme
+    ;;
+(*)
+    echo "prerm called with unknown argument \"${1}\"" >&2
+    exit 1
+    ;;
 esac
 
 # dh_installdeb will replace this with shell code automatically

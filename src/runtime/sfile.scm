@@ -1,23 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.32 2001/12/18 18:39:55 cph Exp $
+$Id: sfile.scm,v 14.35 2003/09/05 20:51:22 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1999,2001,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 |#
 
 ;;;; Simple File Operations
@@ -165,16 +169,16 @@ USA.
 	      result))))))
 
 (define (file-processed? filename input-type output-type)
-  (file-modification-time<?
-   (pathname-default-type filename input-type)
-   (pathname-new-type filename output-type)))
+  (file-modification-time<=? (pathname-default-type filename input-type)
+			     (pathname-new-type filename output-type)))
 
-(define (file-modification-time<? source target)
-  (let ((source (file-modification-time-indirect source)))
-    (and source
-	 (let ((target (file-modification-time-indirect target)))
-	   (and target
-		(<= source target))))))
+(define (file-modification-time<? p1 p2)
+  (< (or (file-modification-time p1) -1)
+     (or (file-modification-time p2) -1)))
+
+(define (file-modification-time<=? p1 p2)
+  (<= (or (file-modification-time p1) -1)
+      (or (file-modification-time p2) -1)))
 
 (define (call-with-temporary-filename receiver)
   (call-with-temporary-file-pathname

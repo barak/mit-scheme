@@ -1,30 +1,34 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.105 2001/07/31 03:10:57 cph Exp $
+$Id: boot.c,v 9.116 2003/07/22 02:19:51 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,1994,1995,1996,1997 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 */
 
 /* This file contains `main' and associated startup code. */
 
 #include "scheme.h"
 #include "prims.h"
-#include "version.h"
 #include "option.h"
 #ifndef islower
 #include <ctype.h>
@@ -135,8 +139,7 @@ DEFUN (main_name, (argc, argv),
       compiler_reset (compiler_utilities);
       if (!option_band_specified)
 	{
-	  outf_console ("Scheme Microcode Version %d.%d\n",
-	                SCHEME_VERSION, SCHEME_SUBVERSION);
+	  outf_console ("Scheme Microcode Version %s\n", PACKAGE_VERSION);
 	  OS_initialize ();
 	  Enter_Interpreter ();
 	}
@@ -381,18 +384,17 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
   OS_initialize ();
   if (I_Am_Master)
     {
-      outf_console ("Scheme Microcode Version %d.%d\n",
-		    SCHEME_VERSION, SCHEME_SUBVERSION);
-      outf_console ("MIT Scheme running under %s\n", OS_Variant);
-      OS_announcement ();
-      outf_flush_console ();
+      if (!option_batch_mode)
+	{
+	  outf_console ("MIT/GNU Scheme running under %s\n", OS_Variant);
+	  OS_announcement ();
+	  outf_console ("\n");
+	  outf_flush_console ();
+	}
+      Current_State_Point = SHARP_F;
+      Fluid_Bindings = EMPTY_LIST;
+      INIT_FIXED_OBJECTS ();
     }
-  if (I_Am_Master)
-  {
-    Current_State_Point = SHARP_F;
-    Fluid_Bindings = EMPTY_LIST;
-    INIT_FIXED_OBJECTS ();
-  }
 
   /* The initial program to execute is one of
         (SCODE-EVAL (BINARY-FASLOAD <file-name>) SYSTEM-GLOBAL-ENVIRONMENT),
@@ -458,21 +460,21 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
   /* Setup registers */
   INITIALIZE_INTERRUPTS ();
   SET_INTERRUPT_MASK (0);
-  Env = THE_GLOBAL_ENV;
+  env_register = THE_GLOBAL_ENV;
   Trapping = false;
   Return_Hook_Address = NULL;
 
   /* Give the interpreter something to chew on, and ... */
  Will_Push (CONTINUATION_SIZE);
   Store_Return (RC_END_OF_COMPUTATION);
-  Store_Expression (SHARP_F);
+  exp_register = SHARP_F;
   Save_Cont ();
  Pushed ();
 
-  Store_Expression (expr);
+  exp_register = expr;
 
   /* Go to it! */
-  if ((Stack_Pointer <= Stack_Guard) || (Free > MemTop))
+  if ((sp_register <= Stack_Guard) || (Free > MemTop))
   {
     outf_fatal ("Configuration won't hold initial data.\n");
     termination_init_error ();
@@ -514,8 +516,8 @@ extern SCHEME_OBJECT EXFUN (Re_Enter_Interpreter, (void));
 SCHEME_OBJECT
 DEFUN_VOID (Re_Enter_Interpreter)
 {
-  Interpret (true);
-  return  Val;
+  Interpret (1);
+  return (val_register);
 }
 
 /* Garbage collection debugging utilities. */
@@ -591,16 +593,14 @@ DEFUN (stack_death, (name), CONST char * name)
 
 DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_microcode_identify, 0, 0, 0)
 {
-  fast SCHEME_OBJECT Result;
+  SCHEME_OBJECT Result;
   PRIMITIVE_HEADER (0);
   Result = (make_vector (IDENTITY_LENGTH, SHARP_F, true));
+  FAST_VECTOR_SET (Result, ID_RELEASE, SHARP_F);
   FAST_VECTOR_SET
-    (Result, ID_RELEASE,
-     (char_pointer_to_string ((unsigned char *) SCHEME_RELEASE)));
-  FAST_VECTOR_SET
-    (Result, ID_MICRO_VERSION, (LONG_TO_UNSIGNED_FIXNUM (SCHEME_VERSION)));
-  FAST_VECTOR_SET
-    (Result, ID_MICRO_MOD, (LONG_TO_UNSIGNED_FIXNUM (SCHEME_SUBVERSION)));
+    (Result, ID_MICRO_VERSION,
+     (char_pointer_to_string ((unsigned char *) PACKAGE_VERSION)));
+  FAST_VECTOR_SET (Result, ID_MICRO_MOD, SHARP_F);
   FAST_VECTOR_SET
     (Result, ID_PRINTER_WIDTH, (LONG_TO_UNSIGNED_FIXNUM (OS_tty_x_size ())));
   FAST_VECTOR_SET
@@ -647,11 +647,11 @@ DEFINE_PRIMITIVE ("MICROCODE-LIBRARY-PATH", Prim_microcode_library_path, 0, 0, 0
     CONST char ** scan = option_library_path;
     CONST char ** end = option_library_path;
     while (1)
-      if ((*end++) == 0)
-	{
-	  end -= 1;
+      {
+	if ((*end) == 0)
 	  break;
-	}
+	end += 1;
+      }
     {
       SCHEME_OBJECT result =
 	(allocate_marked_vector (TC_VECTOR, (end - scan), 1));
@@ -737,4 +737,10 @@ DEFINE_PRIMITIVE ("RELOAD-RETRIEVE-STRING", Prim_reload_retrieve_string, 0, 0, 0
     reload_saved_string = 0;
     PRIMITIVE_RETURN (result);
   }
+}
+
+DEFINE_PRIMITIVE ("BATCH-MODE?", Prim_batch_mode_p, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (option_batch_mode));
 }

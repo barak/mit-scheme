@@ -1,23 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: canon.scm,v 1.22 2002/02/08 03:54:25 cph Exp $
+$Id: canon.scm,v 1.25 2003/02/14 18:28:01 cph Exp $
 
-Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Scode canonicalization.
@@ -503,37 +507,36 @@ ARBITRARY:	The expression may be executed more than once.  It
 
 ;;;; Hairier expressions
 
-(let-syntax
-    ((is-operator?
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (let ((value (close-syntax (cadr form) environment))
-	       (name (caddr form)))
-	   `(OR (EQ? ,value (UCODE-PRIMITIVE ,name))
-		(AND (SCODE/ABSOLUTE-REFERENCE? ,value)
-		     (EQ? (SCODE/ABSOLUTE-REFERENCE-NAME ,value) ',name))))))))
+(define-syntax is-operator?
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((value (close-syntax (cadr form) environment))
+	   (name (caddr form)))
+       `(OR (EQ? ,value (UCODE-PRIMITIVE ,name))
+	    (AND (SCODE/ABSOLUTE-REFERENCE? ,value)
+		 (EQ? (SCODE/ABSOLUTE-REFERENCE-NAME ,value) ',name)))))))
 
-  (define (canonicalize/combination expr bound context)
-    (scode/combination-components
-     expr
-     (lambda (operator operands)
-       (cond ((lambda? operator)
-	      (canonicalize/let operator operands bound context))
-	     ((and (is-operator? operator lexical-unassigned?)
-		   (scode/the-environment? (car operands))
-		   (symbol? (cadr operands)))
-	      (canonicalize/unassigned? (cadr operands) expr bound context))
-	     ((and (is-operator? operator error-procedure)
-		   (scode/the-environment? (caddr operands)))
-	      (canonicalize/error operator operands bound context))
-	     (else
-	      (canonicalize/combine-binary
-	       scode/make-combination
-	       (canonicalize/expression operator bound context)
-	       (combine-list
-		(map (lambda (op)
-		       (canonicalize/expression op bound context))
-		     operands)))))))))
+(define (canonicalize/combination expr bound context)
+  (scode/combination-components
+   expr
+   (lambda (operator operands)
+     (cond ((lambda? operator)
+	    (canonicalize/let operator operands bound context))
+	   ((and (is-operator? operator lexical-unassigned?)
+		 (scode/the-environment? (car operands))
+		 (symbol? (cadr operands)))
+	    (canonicalize/unassigned? (cadr operands) expr bound context))
+	   ((and (is-operator? operator error-procedure)
+		 (scode/the-environment? (caddr operands)))
+	    (canonicalize/error operator operands bound context))
+	   (else
+	    (canonicalize/combine-binary
+	     scode/make-combination
+	     (canonicalize/expression operator bound context)
+	     (combine-list
+	      (map (lambda (op)
+		     (canonicalize/expression op bound context))
+		   operands))))))))
 
 (define (canonicalize/unassigned? name expr bound context)
   (cond ((not (eq? context 'FIRST-CLASS))
@@ -593,7 +596,7 @@ ARBITRARY:	The expression may be executed more than once.  It
 		  (caddr text))
 		 false true false)
 		(make-canout expr true true false))))))))
-
+
 ;;;; Utility for hairy expressions
 
 (define (scode/make-evaluation exp env arbitrary? original-expression)

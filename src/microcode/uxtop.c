@@ -1,22 +1,27 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.25 2000/12/05 21:23:49 cph Exp $
+$Id: uxtop.c,v 1.30 2003/07/09 22:53:55 cph Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
+Copyright 1996,1997,1999,2000,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 */
 
 #include "ux.h"
@@ -190,6 +195,9 @@ DEFUN (OS_error_code_to_syserr, (code), int code)
     case E2BIG:		return (syserr_arg_list_too_long);
     case EACCES:	return (syserr_permission_denied);
     case EAGAIN:	return (syserr_resource_temporarily_unavailable);
+#ifdef EADDRINUSE
+    case EADDRINUSE:	return (syserr_address_in_use);
+#endif
     case EBADF:		return (syserr_bad_file_descriptor);
     case EBUSY:		return (syserr_resource_busy);
     case ECHILD:	return (syserr_no_child_processes);
@@ -239,6 +247,9 @@ DEFUN (syserr_to_error_code, (syserr), enum syserr_names syserr)
 {
   switch (syserr)
     {
+#ifdef EADDRINUSE
+    case syserr_address_in_use:				return (EADDRINUSE);
+#endif
     case syserr_arg_list_too_long:			return (E2BIG);
     case syserr_bad_address:				return (EFAULT);
     case syserr_bad_file_descriptor:			return (EBADF);
@@ -286,13 +297,23 @@ DEFUN (syserr_to_error_code, (syserr), enum syserr_names syserr)
     }
 }
 
+#ifdef HAVE_STRERROR
+
+CONST char *
+DEFUN (OS_error_code_to_message, (syserr), unsigned int syserr)
+{
+  return (strerror (syserr_to_error_code ((enum syserr_names) syserr)));
+}
+
+#else /* not HAVE_STRERROR */
+
 #ifdef __HPUX__
-#define NEED_ERRLIST_DEFINITIONS
+# define NEED_ERRLIST_DEFINITIONS
 #endif
 
 #ifdef NEED_ERRLIST_DEFINITIONS
-extern char * sys_errlist [];
-extern int sys_nerr;
+  extern char * sys_errlist [];
+  extern int sys_nerr;
 #endif
 
 CONST char *
@@ -301,6 +322,8 @@ DEFUN (OS_error_code_to_message, (syserr), unsigned int syserr)
   int code = (syserr_to_error_code ((enum syserr_names) syserr));
   return (((code > 0) && (code <= sys_nerr)) ? (sys_errlist [code]) : 0);
 }
+
+#endif /* not HAVE_STRERROR */
 
 static char * syscall_names_table [] =
 {
@@ -363,7 +386,8 @@ static char * syscall_names_table [] =
   "mktime",
   "dynamic-load",
   "statfs",
-  "fstatfs"
+  "fstatfs",
+  "setsockopt"
 };
 
 void
@@ -376,6 +400,7 @@ OS_syscall_names (unsigned int * length, unsigned char *** names)
 static char * syserr_names_table [] =
 {
   "unknown",
+  "address-in-use",
   "arg-list-too-long",
   "bad-address",
   "bad-file-descriptor",

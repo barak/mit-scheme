@@ -1,23 +1,28 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.57 2002/02/03 03:38:55 cph Exp $
+$Id: error.scm,v 14.62 2003/03/10 20:53:34 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,1995,2000,2001,2002 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Error System
@@ -139,7 +144,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-structure (condition
 		   (conc-name %condition/)
-		   (constructor %make-condition (type continuation restarts))
+		   (constructor %%make-condition
+				(type continuation restarts field-values))
 		   (print-procedure
 		    (standard-unparser-method 'CONDITION
 		      (lambda (condition port)
@@ -150,9 +156,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (type #f read-only #t)
   (continuation #f read-only #t)
   (restarts #f read-only #t)
-  (field-values (make-vector (%condition-type/number-of-fields type) #f)
-		read-only #t)
+  (field-values #f read-only #t)
   (properties (make-1d-table) read-only #t))
+
+(define (%make-condition type continuation restarts)
+  (%%make-condition type continuation restarts
+		    (make-vector (%condition-type/number-of-fields type) #f)))
 
 (define (make-condition type continuation restarts field-alist)
   (guarantee-condition-type type 'MAKE-CONDITION)
@@ -269,9 +278,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(reporter condition port))))
 
 (define (condition/report-string condition)
-  (with-string-output-port
-    (lambda (port)
-      (write-condition-report condition port))))
+  (call-with-output-string
+   (lambda (port)
+     (write-condition-report condition port))))
 
 ;;;; Restarts
 
@@ -1242,10 +1251,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-integrable (guarantee-continuation object operator)
   (if (not (continuation? object))
       (error:wrong-type-argument object "continuation" operator)))
-
-(define-integrable (guarantee-output-port object operator)
-  (if (not (output-port? object))
-      (error:wrong-type-argument object "output port" operator)))
 
 (define-integrable (guarantee-condition-type object operator)
   (if (not (condition-type? object))

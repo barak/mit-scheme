@@ -1,23 +1,26 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.29 2001/03/21 05:39:42 cph Exp $
+$Id: emacs.scm,v 14.31 2003/02/14 18:28:32 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; GNU Emacs/Scheme Interface
@@ -170,10 +173,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (emacs/gc-start port)
   (output-port/flush-output port)
-  (channel-write-block (port/output-channel port) "\033b" 0 2))
+  (cwb (port/output-channel port) "\033b" 0 2))
 
 (define (emacs/gc-finish port)
-  (channel-write-block (port/output-channel port) "\033e" 0 2))
+  (cwb (port/output-channel port) "\033e" 0 2))
 
 (define (transmit-signal port type)
   (let ((channel (port/output-channel port))
@@ -181,7 +184,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     (output-port/flush-output port)
     (with-absolutely-no-interrupts
      (lambda ()
-       (channel-write-block channel buffer 0 2)))))
+       (cwb channel buffer 0 2)))))
 
 (define (transmit-signal-with-argument port type string)
   (let ((channel (port/output-channel port))
@@ -195,7 +198,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(output-port/flush-output port)
 	(with-absolutely-no-interrupts
 	 (lambda ()
-	   (channel-write-block channel buffer 0 buffer-length)))))))
+	   (cwb channel buffer 0 buffer-length)))))))
+
+(define (cwb channel string start end)
+  ;; This is a private copy of CHANNEL-WRITE-BLOCK that bypasses all
+  ;; the threading hair in that procedure.
+  (let loop ((start start) (n-left (fix:- end start)))
+    (let ((n
+	   ((ucode-primitive channel-write 4) (channel-descriptor channel)
+					      string start end)))
+      (cond ((not n) (loop start n-left))
+	    ((fix:< n n-left) (loop (fix:+ start n) (fix:- n-left n)))))))
 
 (define (emacs-typeout port message)
   (emacs-eval port "(message \"%s\" " (write-to-string message) ")"))

@@ -1,23 +1,27 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: shared.scm,v 1.23 2002/02/03 03:38:58 cph Exp $
-;;;
-;;; Copyright (c) 2001, 2002 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: shared.scm,v 1.27 2003/03/07 20:53:22 cph Exp $
+
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; Shared code for matchers and parsers
 
@@ -148,38 +152,25 @@
 
 ;;;; Parser macros
 
-(define parser-macros-rtd
-  (make-record-type "parser-macros" '(PARENT MATCHER-TABLE PARSER-TABLE)))
+(define-record-type <parser-macros>
+    (%make-parser-macros parent matcher-table parser-table)
+    parser-macros?
+  (parent parent-macros)
+  (matcher-table matcher-macros-table)
+  (parser-table parser-macros-table))
 
-(define make-parser-macros
-  (let ((constructor (record-constructor parser-macros-rtd)))
-    (lambda (parent)
-      (if parent (guarantee-parser-macros parent 'MAKE-PARSER-MACROS))
-      (constructor (or parent *global-parser-macros*)
-		   (make-eq-hash-table)
-		   (make-eq-hash-table)))))
+(define (make-parser-macros parent)
+  (if parent (guarantee-parser-macros parent 'MAKE-PARSER-MACROS))
+  (%make-parser-macros (or parent *global-parser-macros*)
+		       (make-eq-hash-table)
+		       (make-eq-hash-table)))
 
 (define *global-parser-macros*
-  ((record-constructor parser-macros-rtd)
-   #f
-   (make-eq-hash-table)
-   (make-eq-hash-table)))
+  (%make-parser-macros #f (make-eq-hash-table) (make-eq-hash-table)))
 
 (define (guarantee-parser-macros object procedure)
   (if (not (parser-macros? object))
       (error:wrong-type-argument object "parser macros" procedure)))
-
-(define parser-macros?
-  (record-predicate parser-macros-rtd))
-
-(define parent-macros
-  (record-accessor parser-macros-rtd 'PARENT))
-
-(define matcher-macros-table
-  (record-accessor parser-macros-rtd 'MATCHER-TABLE))
-
-(define parser-macros-table
-  (record-accessor parser-macros-rtd 'PARSER-TABLE))
 
 (define (define-matcher-macro name expander)
   (hash-table/put! (matcher-macros-table *parser-macros*) name expander))

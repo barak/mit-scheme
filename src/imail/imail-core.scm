@@ -1,23 +1,27 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: imail-core.scm,v 1.146 2001/09/14 17:19:02 cph Exp $
-;;;
-;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: imail-core.scm,v 1.151 2003/03/08 02:40:14 cph Exp $
+
+Copyright 1999,2000,2001,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; IMAIL mail reader: core definitions
 
@@ -647,10 +651,10 @@
   (set-message-folder! message #f))
 
 (define (message->string message)
-  (with-string-output-port
-    (lambda (port)
-      (write-header-fields (message-header-fields message) port)
-      (write-message-body message port))))
+  (call-with-output-string
+   (lambda (port)
+     (write-header-fields (message-header-fields message) port)
+     (write-message-body message port))))
 
 (define (message-time message)
   (let ((date (get-first-header-field-value message "date" #f)))
@@ -715,7 +719,7 @@
 ;;;; Folder orders
 
 (define-structure (folder-order
-		   (type-descriptor folder-order-rtd)
+		   (type-descriptor <folder-order>)
 		   (constructor make-folder-order (predicate)))
   (predicate #f read-only #t)
   (forward #f)
@@ -875,7 +879,7 @@
 ;;;; Header fields
 
 (define-structure (header-field
-		   (type-descriptor header-field-rtd)
+		   (type-descriptor <header-field>)
 		   (safe-accessors #t)
 		   (constructor #f)
 		   (print-procedure
@@ -887,7 +891,7 @@
   (value #f read-only #t))
 
 (define make-header-field
-  (let ((constructor (record-constructor header-field-rtd)))
+  (let ((constructor (record-constructor <header-field>)))
     (lambda (name value)
       (guarantee-header-field-name name 'MAKE-HEADER-FIELD)
       (constructor name value))))
@@ -900,8 +904,8 @@
   (and (string? object)
        (rfc822:header-field-name? object 0 (string-length object))))
 
-(define (copy-header-field header)
-  (record-copy header))
+(define copy-header-field
+  copy-record)
 
 (define (->header-fields object)
   (cond ((or (pair? object) (null? object)) object)
@@ -949,21 +953,21 @@
       (write-substring string start end port))))
 
 (define (header-fields->string headers)
-  (with-string-output-port
-    (lambda (port)
-      (write-header-fields headers port))))
+  (call-with-output-string
+   (lambda (port)
+     (write-header-fields headers port))))
 
 (define (header-field->string header)
-  (with-string-output-port
-    (lambda (port)
-      (write-header-field header port))))
+  (call-with-output-string
+   (lambda (port)
+     (write-header-field header port))))
 
 (define (header-field-value->string value)
-  (with-string-output-port
-    (lambda (port)
-      (encode-header-field-value value
-	(lambda (string start end)
-	  (write-substring string start end port))))))
+  (call-with-output-string
+   (lambda (port)
+     (encode-header-field-value value
+       (lambda (string start end)
+	 (write-substring string start end port))))))
 
 (define (get-first-header-field headers name error?)
   (let loop ((headers (->header-fields headers)))

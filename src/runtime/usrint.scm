@@ -1,23 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.17 2001/12/19 05:22:13 cph Exp $
+$Id: usrint.scm,v 1.20 2003/03/21 17:51:23 cph Exp $
 
-Copyright (c) 1991-1999, 2001 Massachusetts Institute of Technology
+Copyright 1991,1992,1993,1994,1995,2001 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; User Interface
@@ -45,18 +49,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 (error:wrong-type-datum prompt "a string or standard prompt"))))
 
 (define (write-command-prompt port prompt level)
-  (port/with-output-terminal-mode port 'COOKED
-    (lambda ()
-      (fresh-line port)
-      (newline port)
-      (if (and (pair? prompt)
-	       (eq? 'STANDARD (car prompt)))
-	  (begin
-	    (write level port)
-	    (write-string " " port)
-	    (write-string (cdr prompt) port))
-	  (write-string prompt port))
-      (flush-output port))))
+  (if (not (nearest-cmdl/batch-mode?))
+      (port/with-output-terminal-mode port 'COOKED
+	(lambda ()
+	  (fresh-line port)
+	  (newline port)
+	  (if (and (pair? prompt)
+		   (eq? 'STANDARD (car prompt)))
+	      (begin
+		(write level port)
+		(write-string " " port)
+		(write-string (cdr prompt) port))
+	      (write-string prompt port))
+	  (flush-output port)))))
 
 (define (prompt-for-command-expression prompt #!optional port)
   (let ((prompt (canonicalize-command-prompt prompt))
@@ -214,21 +219,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (default/write-result port expression object hash-number)
   expression
-  (port/with-output-terminal-mode port 'COOKED
-    (lambda ()
-      (fresh-line port)
-      (write-string ";" port)
-      (if (and write-result:undefined-value-is-special?
-	       (undefined-value? object))
-	  (write-string "Unspecified return value" port)
-	  (begin
-	    (write-string "Value" port)
-	    (if hash-number
-		(begin
-		  (write-string " " port)
-		  (write hash-number port)))
-	    (write-string ": " port)
-	    (write object port))))))
+  (if (not (nearest-cmdl/batch-mode?))
+      (port/with-output-terminal-mode port 'COOKED
+	(lambda ()
+	  (fresh-line port)
+	  (write-string ";" port)
+	  (if (and write-result:undefined-value-is-special?
+		   (undefined-value? object))
+	      (write-string "Unspecified return value" port)
+	      (begin
+		(write-string "Value" port)
+		(if hash-number
+		    (begin
+		      (write-string " " port)
+		      (write hash-number port)))
+		(write-string ": " port)
+		(write object port)))))))
 
 (define write-result:undefined-value-is-special? true)
 

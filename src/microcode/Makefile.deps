@@ -48,7 +48,7 @@ boot.o: boot.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
 	gc.h interp.h intrpt.h object.h obstack.h option.h os.h ostop.h \
 	ostty.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
-	stack.h types.h version.h
+	stack.h types.h
 char.o: char.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
 	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
@@ -238,6 +238,10 @@ prostty.o: prostty.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	gc.h interp.h intrpt.h object.h obstack.h os.h osctty.h osfile.h \
 	osio.h ostty.h outf.h prim.h prims.h returns.h scheme.h scode.h \
 	sdata.h stack.h types.h
+prpgsql.o: prpgsql.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h os.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h usrdef.h
 pruxdld.o: pruxdld.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
 	gc.h interp.h intrpt.h object.h obstack.h os.h outf.h prim.h prims.h \
@@ -307,9 +311,9 @@ sysprim.o: sysprim.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	prim.h prims.h returns.h scheme.h scode.h sdata.h stack.h types.h
 term.o: term.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	critsec.h default.h dstack.h edwin.h errors.h extern.h fixobj.h \
-	futures.h gc.h interp.h intrpt.h object.h obstack.h os.h osfile.h \
-	osfs.h osio.h ostop.h outf.h prim.h returns.h scheme.h scode.h \
-	sdata.h stack.h types.h
+	futures.h gc.h interp.h intrpt.h object.h obstack.h option.h os.h \
+	osfile.h osfs.h osio.h ostop.h outf.h prim.h returns.h scheme.h \
+	scode.h sdata.h stack.h types.h
 termcap.o: termcap.c ansidecl.h config.h confshared.h dstack.h intext.h os.h \
 	osscheme.h outf.h syscall.h ux.h
 terminfo.o: terminfo.c ansidecl.h config.h confshared.h

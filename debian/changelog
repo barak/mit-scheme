@@ -1,3 +1,57 @@
+mit-scheme (7.7.90-5) unstable; urgency=low
+
+  * Add "libx11-dev" to build-depends.  (closes: Bug#290845)
+  * Fix debian/control and debian/menu to eliminate some lintian errors
+    and warnings.
+
+ -- Chris Hanson <cph@debian.org>  Tue, 18 Jan 2005 00:33:57 -0500
+
+mit-scheme (7.7.90-4) unstable; urgency=low
+
+  * Fix problem with CPUID detection on older 486 processors.
+
+ -- Chris Hanson <cph@debian.org>  Fri, 31 Oct 2003 21:10:55 -0500
+
+mit-scheme (7.7.90-3) unstable; urgency=low
+
+  * Add --no-site-file to emacsen-install.  Update syntax and formatting
+    of emacs control files.  (closes: Bug#217903)
+
+ -- Chris Hanson <cph@debian.org>  Mon, 27 Oct 2003 23:45:46 -0500
+
+mit-scheme (7.7.90-2) unstable; urgency=low
+
+  * Fix fatal bug in GC indicator when run under Emacs.
+    (closes: Bug#212958)
+
+ -- Chris Hanson <cph@debian.org>  Wed, 15 Oct 2003 13:17:19 -0400
+
+mit-scheme (7.7.90-1) unstable; urgency=low
+
+  * New upstream unstable release.
+  * Use dynamic modules again.
+  * Standards version 3.6.1 (no changes).
+
+ -- Chris Hanson <cph@debian.org>  Thu, 18 Sep 2003 23:44:41 -0400
+
+mit-scheme (7.7.1-2) unstable; urgency=low
+
+  * Change program name to MIT/GNU Scheme; this is now a GNU program.
+  * Don't exclude PDF files from compression; zxpdf will handle them.
+  * Link crypto modules normally, now that crypto is allowed in main.
+  * Use dh_installman to install man pages.
+  * Update debian/rules according to latest advice from autotools-dev.
+  * Use debian/compat instead of DH_COMPAT; use debhelper v4.
+  * Bump standards version to 3.5.10: new DEB_BUILD_OPTIONS handling.
+
+ -- Chris Hanson <cph@debian.org>  Tue, 3 Jun 2003 17:57:24 -0400
+
+mit-scheme (7.7.1-1) unstable; urgency=low
+
+  * New upstream version.
+
+ -- Chris Hanson <cph@debian.org>  Tue, 18 Jun 2002 01:37:28 -0400
+
 mit-scheme (7.7.0-1) unstable; urgency=low
 
   * New upstream version.
@@ -118,7 +172,3 @@ mit-scheme (7.5.13-1) unstable; urgency=low
   * Initial Debian release.  (closes: Bug#82641)
 
  -- Chris Hanson <cph@debian.org>  Sat, 24 Feb 2001 01:17:12 -0500
-
-Local variables:
-mode: debian-changelog
-End:

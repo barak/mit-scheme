@@ -1,23 +1,28 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.30 2002/02/03 03:38:55 cph Exp $
+$Id: list.scm,v 14.37 2003/04/25 03:31:49 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,1994,1995,1996,2000 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; List Operations
@@ -69,7 +74,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	this-element)))
 
 (define (make-list length #!optional value)
-  (guarantee-index/list length 'MAKE-LIST)
+  (guarantee-index-fixnum length 'MAKE-LIST)
   (let ((value (if (default-object? value) '() value)))
     (let loop ((n length) (result '()))
       (if (fix:zero? n)
@@ -85,7 +90,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   items)
 
 (define (make-circular-list length #!optional value)
-  (guarantee-index/list length 'MAKE-CIRCULAR-LIST)
+  (guarantee-index-fixnum length 'MAKE-CIRCULAR-LIST)
   (if (not (fix:zero? length))
       (let ((value (if (default-object? value) '() value)))
 	(let ((last (cons value '())))
@@ -98,61 +103,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       '()))
 
 (define (make-initialized-list length initialization)
-  (guarantee-index/list length 'MAKE-INITIALIZED-LIST)
+  (guarantee-index-fixnum length 'MAKE-INITIALIZED-LIST)
   (let loop ((index (- length 1)) (result '()))
     (if (negative? index)
 	result
 	(loop (- index 1)
 	      (cons (initialization index) result)))))
-
-(define (length items)
-  (let ((lose
-	 (lambda () (error:wrong-type-argument items "proper list" 'LENGTH))))
-    (let loop ((l1 items) (l2 items) (length 0))
-      (if (pair? l1)
-	  (begin
-	    (if (eq? (cdr l1) l2)
-		(lose))
-	    (if (pair? (cdr l1))
-		(loop (cddr l1) (cdr l2) (fix:+ length 2))
-		(begin
-		  (if (not (null? (cdr l1)))
-		      (lose))
-		  (fix:+ length 1))))
-	  (begin
-	    (if (not (null? l1))
-		(lose))
-	    length)))))
 
-(define (list-ref list index)
-  (let ((tail (list-tail list index)))
-    (if (not (pair? tail))
-	(error:bad-range-argument index 'LIST-REF))
-    (car tail)))
-
-(define (list-tail list index)
-  (guarantee-index/list index 'LIST-TAIL)
-  (let loop ((list list) (index* index))
-    (if (fix:zero? index*)
-	list
-	(begin
-	  (if (not (pair? list))
-	      (error:bad-range-argument index 'LIST-TAIL))
-	  (loop (cdr list) (fix:- index* 1))))))
-
-(define (list-head list index)
-  (guarantee-index/list index 'LIST-HEAD)
-  (let loop ((list list) (index* index))
-    (if (fix:zero? index*)
-	'()
-	(begin
-	  (if (not (pair? list))
-	      (error:bad-range-argument index 'LIST-HEAD))
-	  (cons (car list) (loop (cdr list) (fix:- index* 1)))))))
-
-(define (sublist list start end)
-  (list-head (list-tail list start) (- end start)))
-
 (define (list? object)
   (let loop ((l1 object) (l2 object))
     (if (pair? l1)
@@ -161,18 +118,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	       (if (pair? l1)
 		   (loop (cdr l1) (cdr l2))
 		   (null? l1))))
-	(null? l1))))
-
-(define (alist? object)
-  (let loop ((l1 object) (l2 object))
-    (if (pair? l1)
-	(and (pair? (car l1))
-	     (let ((l1 (cdr l1)))
-	       (and (not (eq? l1 l2))
-		    (if (pair? l1)
-			(and (pair? (car l1))
-			     (loop (cdr l1) (cdr l2)))
-			(null? l1)))))
 	(null? l1))))
 
 (define (list-of-type? object predicate)
@@ -186,7 +131,91 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			     (loop (cdr l1) (cdr l2)))
 			(null? l1)))))
 	(null? l1))))
+
+(define (guarantee-list object caller)
+  (if (not (list? object))
+      (error:wrong-type-argument object "list" caller)))
+
+(define (guarantee-list-of-type object predicate description caller)
+  (if (not (list-of-type? object predicate))
+      (error:wrong-type-argument object description caller)))
+
+(define (alist? object)
+  (list-of-type? object pair?))
+
+(define (guarantee-alist object caller)
+  (guarantee-list-of-type object pair? "association list" caller))
+
+(define (list?->length object)
+  (let loop ((l1 object) (l2 object) (length 0))
+    (if (pair? l1)
+	(let ((l1 (cdr l1)))
+	  (and (not (eq? l1 l2))
+	       (if (pair? l1)
+		   (loop (cdr l1) (cdr l2) (fix:+ length 2))
+		   (and (null? l1)
+			(fix:+ length 1)))))
+	(and (null? l1)
+	     length))))
+
+(define (list-of-type?->length object predicate)
+  (let loop ((l1 object) (l2 object) (length 0))
+    (if (pair? l1)
+	(and (predicate (car l1))
+	     (let ((l1 (cdr l1)))
+	       (and (not (eq? l1 l2))
+		    (if (pair? l1)
+			(and (predicate (car l1))
+			     (loop (cdr l1) (cdr l2) (fix:+ length 2)))
+			(and (null? l1)
+			     (fix:+ length 1))))))
+	(and (null? l1)
+	     length))))
+
+(define (guarantee-list->length object caller)
+  (let ((n (list?->length object)))
+    (if (not n)
+	(error:wrong-type-argument object "list" caller))
+    n))
+
+(define (guarantee-list-of-type->length object predicate description caller)
+  (let ((n (list-of-type?->length object predicate)))
+    (if (not n)
+	(error:wrong-type-argument object description caller))
+    n))
+
+(define (length list)
+  (guarantee-list->length list 'LENGTH))
 
+(define (list-ref list index)
+  (let ((tail (list-tail list index)))
+    (if (not (pair? tail))
+	(error:bad-range-argument index 'LIST-REF))
+    (car tail)))
+
+(define (list-tail list index)
+  (guarantee-index-fixnum index 'LIST-TAIL)
+  (let loop ((list list) (index* index))
+    (if (fix:zero? index*)
+	list
+	(begin
+	  (if (not (pair? list))
+	      (error:bad-range-argument index 'LIST-TAIL))
+	  (loop (cdr list) (fix:- index* 1))))))
+
+(define (list-head list index)
+  (guarantee-index-fixnum index 'LIST-HEAD)
+  (let loop ((list list) (index* index))
+    (if (fix:zero? index*)
+	'()
+	(begin
+	  (if (not (pair? list))
+	      (error:bad-range-argument index 'LIST-HEAD))
+	  (cons (car list) (loop (cdr list) (fix:- index* 1)))))))
+
+(define (sublist list start end)
+  (list-head (list-tail list start) (- end start)))
+
 (define (list-copy items)
   (let ((lose (lambda () (error:wrong-type-argument items "list" 'LIST-COPY))))
     (cond ((pair? items)
@@ -536,7 +565,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     (let ((n (length first)))
       (do ((lists rest (cdr lists)))
 	  ((not (pair? lists)))
-	(if (not (= n (length (car lists))))
+	(if (not (fix:= n (length (car lists))))
 	    (error:bad-range-argument (car lists) 'MAP)))))
 
   (if (pair? rest)
@@ -545,85 +574,73 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  (map-2 first (car rest)))
       (map-1 first)))
 
+(define for-each)
+(define map*)
+(define append-map)
+(define append-map*)
+(define append-map!)
+(define append-map*!)
+
 (let-syntax
     ((mapper
       (rsc-macro-transformer
        (lambda (form environment)
 	 environment
 	 (let ((name (list-ref form 1))
-	       (combiner (list-ref form 2))
-	       (initial-value (list-ref form 3))
-	       (procedure (list-ref form 4))
-	       (first (list-ref form 5))
-	       (rest (list-ref form 6)))
-	   `(BEGIN
-	      (DEFINE (MAP-1 L)
-		(COND ((PAIR? L)
-		       (,combiner (,procedure (CAR L))
-				  (MAP-1 (CDR L))))
-		      ((NULL? L) ,initial-value)
-		      (ELSE (BAD-END))))
-
-	      (DEFINE (MAP-2 L1 L2)
-		(COND ((AND (PAIR? L1) (PAIR? L2))
-		       (,combiner (,procedure (CAR L1) (CAR L2))
-				  (MAP-2 (CDR L1) (CDR L2))))
-		      ((AND (NULL? L1) (NULL? L2)) ,initial-value)
-		      (ELSE (BAD-END))))
-
-	      (DEFINE (MAP-N LISTS)
-		(LET N-LOOP ((LISTS LISTS))
-		  (IF (PAIR? (CAR LISTS))
-		      (DO ((LISTS LISTS (CDR LISTS))
-			   (CARS '() (CONS (CAAR LISTS) CARS))
-			   (CDRS '() (CONS (CDAR LISTS) CDRS)))
-			  ((NOT (PAIR? LISTS))
-			   (,combiner (APPLY ,procedure (REVERSE! CARS))
-				      (N-LOOP (REVERSE! CDRS))))
-			(IF (NOT (PAIR? (CAR LISTS)))
-			    (BAD-END)))
-		      (DO ((LISTS LISTS (CDR LISTS)))
-			  ((NOT (PAIR? LISTS)) ,initial-value)
-			(IF (NOT (NULL? (CAR LISTS)))
-			    (BAD-END))))))
-
-	      (DEFINE (BAD-END)
-		(DO ((LISTS (CONS ,first ,rest) (CDR LISTS)))
-		    ((NOT (PAIR? LISTS)))
-		  (IF (NOT (LIST? (CAR LISTS)))
-		      (ERROR:WRONG-TYPE-ARGUMENT (CAR LISTS) "list" ',name)))
-		(LET ((N (LENGTH ,first)))
-		  (DO ((LISTS ,rest (CDR LISTS)))
-		      ((NOT (PAIR? LISTS)))
-		    (IF (NOT (= N (LENGTH (CAR LISTS))))
-			(ERROR:BAD-RANGE-ARGUMENT (CAR LISTS) ',name)))))
-
-	      (IF (PAIR? ,rest)
-		  (IF (PAIR? (CDR ,rest))
-		      (MAP-N (CONS ,first ,rest))
-		      (MAP-2 ,first (CAR ,rest)))
-		  (MAP-1 ,first))))))))
-
-  (define (for-each procedure first . rest)
-    (mapper for-each begin unspecific procedure first rest))
-
-  ;;(define (map procedure first . rest)
-  ;;  (mapper map cons '() procedure first rest))
-
-  (define (map* initial-value procedure first . rest)
-    (mapper map* cons initial-value procedure first rest))
-
-  (define (append-map procedure first . rest)
-    (mapper append-map append '() procedure first rest))
-
-  (define (append-map* initial-value procedure first . rest)
-    (mapper append-map* append initial-value procedure first rest))
-
-  (define (append-map! procedure first . rest)
-    (mapper append-map! append! '() procedure first rest))
-
-  (define (append-map*! initial-value procedure first . rest)
-    (mapper append-map*! append! initial-value procedure first rest)))
+	       (extra-vars (list-ref form 2))
+	       (combiner (list-ref form 3))
+	       (initial-value (list-ref form 4)))
+	   `(SET! ,name
+		  (NAMED-LAMBDA (,name ,@extra-vars PROCEDURE FIRST . REST)
+		    (DEFINE (MAP-1 L)
+		      (COND ((PAIR? L)
+			     (,combiner (PROCEDURE (CAR L))
+					(MAP-1 (CDR L))))
+			    ((NULL? L) ,initial-value)
+			    (ELSE (BAD-END))))
+		    (DEFINE (MAP-2 L1 L2)
+		      (COND ((AND (PAIR? L1) (PAIR? L2))
+			     (,combiner (PROCEDURE (CAR L1) (CAR L2))
+					(MAP-2 (CDR L1) (CDR L2))))
+			    ((AND (NULL? L1) (NULL? L2)) ,initial-value)
+			    (ELSE (BAD-END))))
+		    (DEFINE (MAP-N LISTS)
+		      (LET N-LOOP ((LISTS LISTS))
+			(IF (PAIR? (CAR LISTS))
+			    (DO ((LISTS LISTS (CDR LISTS))
+				 (CARS '() (CONS (CAAR LISTS) CARS))
+				 (CDRS '() (CONS (CDAR LISTS) CDRS)))
+				((NOT (PAIR? LISTS))
+				 (,combiner (APPLY PROCEDURE (REVERSE! CARS))
+					    (N-LOOP (REVERSE! CDRS))))
+			      (IF (NOT (PAIR? (CAR LISTS)))
+				  (BAD-END)))
+			    (DO ((LISTS LISTS (CDR LISTS)))
+				((NOT (PAIR? LISTS)) ,initial-value)
+			      (IF (NOT (NULL? (CAR LISTS)))
+				  (BAD-END))))))
+		    (DEFINE (BAD-END)
+		      (DO ((LISTS (CONS FIRST REST) (CDR LISTS)))
+			  ((NOT (PAIR? LISTS)))
+			(IF (NOT (LIST? (CAR LISTS)))
+			    (ERROR:WRONG-TYPE-ARGUMENT (CAR LISTS) "list"
+						       ',name)))
+		      (LET ((N (LENGTH FIRST)))
+			(DO ((LISTS REST (CDR LISTS)))
+			    ((NOT (PAIR? LISTS)))
+			  (IF (NOT (FIX:= N (LENGTH (CAR LISTS))))
+			      (ERROR:BAD-RANGE-ARGUMENT (CAR LISTS) ',name)))))
+		    (IF (PAIR? REST)
+			(IF (PAIR? (CDR REST))
+			    (MAP-N (CONS FIRST REST))
+			    (MAP-2 FIRST (CAR REST)))
+			(MAP-1 FIRST)))))))))
+  (mapper for-each () begin unspecific)
+  (mapper map* (initial-value) cons initial-value)
+  (mapper append-map () append '())
+  (mapper append-map* (initial-value) append initial-value)
+  (mapper append-map! () append! '())
+  (mapper append-map*! (initial-value) append! initial-value))
 
 (define mapcan append-map!)
 (define mapcan* append-map*!)
@@ -974,10 +991,3 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-integrable (guarantee-pair object procedure)
   (if (not (pair? object))
       (error:wrong-type-argument object "pair" procedure)))
-
-(define-integrable (guarantee-index/list object procedure)
-  (if (not (index-fixnum? object))
-      (guarantee-index/list/fail object procedure)))
-
-(define (guarantee-index/list/fail object procedure)
-  (error:wrong-type-argument object "valid list index" procedure))

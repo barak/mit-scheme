@@ -1,22 +1,26 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.23 1999/01/02 06:11:34 cph Exp $
+$Id: hashtb.scm,v 1.28 2003/07/30 05:13:46 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright 1990,1991,1993,1994,1995,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Hash Tables
@@ -27,6 +31,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;;; Hash Table Structure
 
 (define-structure (hash-table
+		   (type-descriptor <hash-table>)
 		   (constructor make-hash-table
 				(key-hash
 				 key=?
@@ -182,21 +187,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (if (and key (table-standard-accessors? table))
 	;; Optimize standard case: compiler makes this fast.
 	(let loop ((entries entries))
-	  (cond ((null? entries)
-		 default)
-		((eq? (system-pair-car (car entries)) key)
-		 (system-pair-cdr (car entries)))
-		(else
-		 (loop (cdr entries)))))
+	  (if (pair? entries)
+	      (if (eq? (system-pair-car (car entries)) key)
+		  (system-pair-cdr (car entries))
+		  (loop (cdr entries)))
+	      default))
 	(let ((key=? (table-key=? table))
 	      (entry-key (table-entry-key table)))
 	  (let loop ((entries entries))
-	    (cond ((null? entries)
-		   default)
-		  ((key=? (entry-key (car entries)) key)
-		   ((table-entry-datum table) (car entries)))
-		  (else
-		   (loop (cdr entries)))))))))
+	    (if (pair? entries)
+		(if (key=? (entry-key (car entries)) key)
+		    ((table-entry-datum table) (car entries))
+		    (loop (cdr entries)))
+		default))))))
 
 ;; This is useful when interning objects using a hash-table.
 (define (hash-table/get-key table key default)
@@ -206,21 +209,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (if (and key (table-standard-accessors? table))
 	;; Optimize standard case: compiler makes this fast.
 	(let loop ((entries entries))
-	  (cond ((null? entries)
-		 default)
-		((eq? (system-pair-car (car entries)) key)
-		 (system-pair-car (car entries)))
-		(else
-		 (loop (cdr entries)))))
+	  (if (pair? entries)
+	      (if (eq? (system-pair-car (car entries)) key)
+		  (system-pair-car (car entries))
+		  (loop (cdr entries)))
+	      default))
 	(let ((key=? (table-key=? table))
 	      (entry-key (table-entry-key table)))
 	  (let loop ((entries entries))
-	    (cond ((null? entries)
-		   default)
-		  ((key=? (entry-key (car entries)) key)
-		   (entry-key (car entries)))
-		  (else
-		   (loop (cdr entries)))))))))
+	    (if (pair? entries)
+		(if (key=? (entry-key (car entries)) key)
+		    (entry-key (car entries))
+		    (loop (cdr entries)))
+		default))))))
 
 (define hash-table/lookup
   (let ((default (list #f)))
@@ -251,21 +252,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		    (grow-table! table)))))))
       (if (and key (table-standard-accessors? table))
 	  (let loop ((entries (vector-ref buckets hash)))
-	    (cond ((null? entries)
-		   (add-bucket!))
-		  ((eq? (system-pair-car (car entries)) key)
-		   (system-pair-set-cdr! (car entries) datum))
-		  (else
-		   (loop (cdr entries)))))
+	    (if (pair? entries)
+		(if (eq? (system-pair-car (car entries)) key)
+		    (system-pair-set-cdr! (car entries) datum)
+		    (loop (cdr entries)))
+		(add-bucket!)))
 	  (let ((key=? (table-key=? table))
 		(entry-key (table-entry-key table)))
 	    (let loop ((entries (vector-ref buckets hash)))
-	      (cond ((null? entries)
-		     (add-bucket!))
-		    ((key=? (entry-key (car entries)) key)
-		     ((table-set-entry-datum! table) (car entries) datum))
-		    (else
-		     (loop (cdr entries))))))))))
+	      (if (pair? entries)
+		  (if (key=? (entry-key (car entries)) key)
+		      ((table-set-entry-datum! table) (car entries) datum)
+		      (loop (cdr entries)))
+		  (add-bucket!))))))))
 
 (define (hash-table/remove! table key)
   (guarantee-hash-table table 'HASH-TABLE/REMOVE!)
@@ -281,7 +280,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (let ((buckets (table-buckets table))
 	  (hash (compute-key-hash table key)))
       (let ((entries (vector-ref buckets hash)))
-	(if (not (null? entries))
+	(if (pair? entries)
 	    (let ((next (cdr entries)))
 	      (if (key=? (entry-key (car entries)) key)
 		  (without-interrupts
@@ -289,7 +288,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		     (vector-set! buckets hash next)
 		     (decrement-count)))
 		  (let loop ((previous entries) (entries next))
-		    (if (not (null? entries))
+		    (if (pair? entries)
 			(let ((next (cdr entries)))
 			  (if (key=? (entry-key (car entries)) key)
 			      (without-interrupts
@@ -297,6 +296,41 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				 (set-cdr! previous next)
 				 (decrement-count)))
 			      (loop entries next))))))))))))
+
+(define (hash-table/intern! table key get-datum)
+  (guarantee-hash-table table 'HASH-TABLE/INTERN!)
+  (let ((buckets (table-buckets table))
+	(hash (compute-key-hash table key)))
+    (let ((add-bucket!
+	   (lambda ()
+	     (let ((datum (get-datum)))
+	       (without-interrupts
+		(lambda ()
+		  (vector-set! buckets
+			       hash
+			       (cons ((table-make-entry table) key datum)
+				     (vector-ref buckets hash)))
+		  (if (> (let ((count (fix:+ (table-count table) 1)))
+			   (set-table-count! table count)
+			   count)
+			 (table-grow-size table))
+		      (grow-table! table))))
+	       datum))))
+      (if (and key (table-standard-accessors? table))
+	  (let loop ((entries (vector-ref buckets hash)))
+	    (if (pair? entries)
+		(if (eq? (system-pair-car (car entries)) key)
+		    (system-pair-cdr (car entries))
+		    (loop (cdr entries)))
+		(add-bucket!)))
+	  (let ((key=? (table-key=? table))
+		(entry-key (table-entry-key table)))
+	    (let loop ((entries (vector-ref buckets hash)))
+	      (if (pair? entries)
+		  (if (key=? (entry-key (car entries)) key)
+		      ((table-entry-datum table) (car entries))
+		      (loop (cdr entries)))
+		  (add-bucket!))))))))
 
 ;;;; Enumerators
 
@@ -319,11 +353,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (let per-bucket ((n 0) (i 0))
 	(if (fix:< n n-buckets)
 	    (let per-entry ((entries (vector-ref buckets n)) (i i))
-	      (if (null? entries)
-		  (per-bucket (fix:+ n 1) i)
+	      (if (pair? entries)
 		  (begin
 		    (vector-set! result i (car entries))
-		    (per-entry (cdr entries) (fix:+ i 1))))))))
+		    (per-entry (cdr entries) (fix:+ i 1)))
+		  (per-bucket (fix:+ n 1) i))))))
     result))
 
 (define (hash-table/entries-list table)
@@ -363,43 +397,43 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(if (fix:< n n-buckets)
 	    (loop (fix:+ n 1)
 		  (let loop ((entries (vector-ref buckets n)) (result result))
-		    (if (null? entries)
-			result
+		    (if (pair? entries)
 			(loop (cdr entries)
-			      (cons-element (car entries) result)))))
+			      (cons-element (car entries) result))
+			result)))
 	    result)))))
 
 ;;;; Parameters
 
 (define hash-table/key-hash
-  (record-accessor hash-table 'KEY-HASH))
+  (record-accessor <hash-table> 'KEY-HASH))
 
 (define hash-table/key=?
-  (record-accessor hash-table 'KEY=?))
+  (record-accessor <hash-table> 'KEY=?))
 
 (define hash-table/make-entry
-  (record-accessor hash-table 'MAKE-ENTRY))
+  (record-accessor <hash-table> 'MAKE-ENTRY))
 
 (define hash-table/entry-key
-  (record-accessor hash-table 'ENTRY-KEY))
+  (record-accessor <hash-table> 'ENTRY-KEY))
 
 (define hash-table/entry-datum
-  (record-accessor hash-table 'ENTRY-DATUM))
+  (record-accessor <hash-table> 'ENTRY-DATUM))
 
 (define hash-table/set-entry-datum!
-  (record-accessor hash-table 'SET-ENTRY-DATUM!))
+  (record-accessor <hash-table> 'SET-ENTRY-DATUM!))
 
 (define hash-table/rehash-threshold
-  (record-accessor hash-table 'REHASH-THRESHOLD))
+  (record-accessor <hash-table> 'REHASH-THRESHOLD))
 
 (define hash-table/rehash-size
-  (record-accessor hash-table 'REHASH-SIZE))
+  (record-accessor <hash-table> 'REHASH-SIZE))
 
 (define hash-table/count
-  (record-accessor hash-table 'COUNT))
+  (record-accessor <hash-table> 'COUNT))
 
 (define hash-table/size
-  (record-accessor hash-table 'GROW-SIZE))
+  (record-accessor <hash-table> 'GROW-SIZE))
 
 (define (set-hash-table/rehash-threshold! table threshold)
   (guarantee-hash-table table 'SET-HASH-TABLE/REHASH-THRESHOLD!)
@@ -464,39 +498,39 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(letrec
 	    ((scan-head
 	      (lambda (entries)
-		(cond ((null? entries)
-		       (vector-set! buckets i entries))
-		      ((entry-valid? (car entries))
-		       (vector-set! buckets i entries)
-		       (scan-tail entries (cdr entries)))
-		      (else
-		       (decrement-table-count! table)
-		       (scan-head (cdr entries))))))
+		(if (pair? entries)
+		    (if (entry-valid? (car entries))
+			(begin
+			  (vector-set! buckets i entries)
+			  (scan-tail entries (cdr entries)))
+			(begin
+			  (decrement-table-count! table)
+			  (scan-head (cdr entries))))
+		    (vector-set! buckets i entries))))
 	     (scan-tail
 	      (lambda (previous entries)
-		(cond ((null? entries)
-		       unspecific)
-		      ((entry-valid? (car entries))
-		       (scan-tail entries (cdr entries)))
-		      (else
-		       (decrement-table-count! table)
-		       (let loop ((entries (cdr entries)))
-			 (cond ((null? entries)
-				(set-cdr! previous entries))
-			       ((entry-valid? (car entries))
-				(set-cdr! previous entries)
-				(scan-tail entries (cdr entries)))
-			       (else
-				(decrement-table-count! table)
-				(loop (cdr entries))))))))))
+		(if (pair? entries)
+		    (if (entry-valid? (car entries))
+			(scan-tail entries (cdr entries))
+			(begin
+			  (decrement-table-count! table)
+			  (let loop ((entries (cdr entries)))
+			    (if (pair? entries)
+				(if (entry-valid? (car entries))
+				    (begin
+				      (set-cdr! previous entries)
+				      (scan-tail entries (cdr entries)))
+				    (begin
+				      (decrement-table-count! table)
+				      (loop (cdr entries))))
+				(set-cdr! previous entries)))))))))
 	  (let ((entries (vector-ref buckets i)))
-	    (cond ((null? entries)
-		   unspecific)
-		  ((entry-valid? (car entries))
-		   (scan-tail entries (cdr entries)))
-		  (else
-		   (decrement-table-count! table)
-		   (scan-head (cdr entries))))))))))
+	    (if (pair? entries)
+		(if (entry-valid? (car entries))
+		    (scan-tail entries (cdr entries))
+		    (begin
+		      (decrement-table-count! table)
+		      (scan-head (cdr entries)))))))))))
 
 (define-integrable (decrement-table-count! table)
   (set-table-count! table (fix:- (table-count table) 1)))
@@ -578,7 +612,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (do ((i 0 (fix:+ i 1)))
 	((fix:= i n-buckets))
       (let ((entries (vector-ref buckets i)))
-	(if (not (null? entries))
+	(if (pair? entries)
 	    (rehash-table-entries! table entries)))))
   (maybe-shrink-table! table))
 
@@ -589,7 +623,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(key-hash (table-key-hash table)))
     (let ((n-buckets (vector-length buckets)))
       (let loop ((entries entries))
-	(if (not (null? entries))
+	(if (pair? entries)
 	    (let ((rest (cdr entries)))
 	      (if (entry-valid? (car entries))
 		  (let ((hash
@@ -619,12 +653,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(do ((i 0 (fix:+ i 1)))
 	    ((fix:= i n-buckets))
 	  (let ((bucket (vector-ref buckets i)))
-	    (if (not (null? bucket))
+	    (if (pair? bucket)
 		(begin
 		  (let loop ((bucket bucket))
-		    (if (null? (cdr bucket))
-			(set-cdr! bucket entries)
-			(loop (cdr bucket))))
+		    (if (pair? (cdr bucket))
+			(loop (cdr bucket))
+			(set-cdr! bucket entries)))
 		  (set! entries bucket)
 		  (vector-set! buckets i '())))))
 	entries))))
@@ -780,16 +814,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (mark-address-hash-tables!)
   (let loop ((previous #f) (tables address-hash-tables))
-    (cond ((null? tables)
-	   unspecific)
-	  ((system-pair-car tables)
-	   (set-table-needs-rehash?! (system-pair-car tables) #t)
-	   (loop tables (system-pair-cdr tables)))
-	  (else
-	   (if previous
-	       (system-pair-set-cdr! previous (system-pair-cdr tables))
-	       (set! address-hash-tables (system-pair-cdr tables)))
-	   (loop previous (system-pair-cdr tables))))))
+    (if (system-pair? tables)
+	(if (system-pair-car tables)
+	    (begin
+	      (set-table-needs-rehash?! (system-pair-car tables) #t)
+	      (loop tables (system-pair-cdr tables)))
+	    (begin
+	      (if previous
+		  (system-pair-set-cdr! previous (system-pair-cdr tables))
+		  (set! address-hash-tables (system-pair-cdr tables)))
+	      (loop previous (system-pair-cdr tables)))))))
 
 ;;;; Miscellany
 

@@ -1,23 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.37 2001/12/18 18:39:42 cph Exp $
+$Id: ntprm.scm,v 1.43 2003/09/14 01:52:35 cph Exp $
 
-Copyright (c) 1992-2001 Massachusetts Institute of Technology
+Copyright 1995,1996,1998,1999,2000,2001 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 |#
 
 ;;;; Miscellaneous Win32 Primitives
@@ -447,55 +451,9 @@ USA.
 		       (set! port #f)
 		       unspecific))))))))))
 
-(define-structure (nt-select-registry (conc-name nt-select-registry/))
-  descriptors)
-
-(define (make-select-registry . descriptors)
-  (make-nt-select-registry descriptors))
-
-(define (add-to-select-registry! registry descriptor)
-  (if (not (memv descriptor (nt-select-registry/descriptors registry)))
-      (set-nt-select-registry/descriptors!
-       registry
-       (cons descriptor (nt-select-registry/descriptors registry)))))
-
-(define (remove-from-select-registry! registry descriptor)
-  (set-nt-select-registry/descriptors!
-   registry
-   (delv! descriptor (nt-select-registry/descriptors registry))))
-
-(define (select-registry-test registry block?)
-  (let ((descriptors (list->vector (nt-select-registry/descriptors registry))))
-    (let ((result
-	   ((ucode-primitive nt:waitformultipleobjects 3)
-	    descriptors #f block?)))
-      (cond ((and (fix:<= 0 result) (fix:< result (vector-length descriptors)))
-	     (list (vector-ref descriptors result)))
-	    ((fix:= result -1) #f)
-	    ((fix:= result -2) 'INTERRUPT)
-	    ((fix:= result -3) 'PROCESS-STATUS-CHANGE)
-	    (else (error "Illegal result from select-internal:" result))))))
-
-(define (select-descriptor descriptor block?)
-  (let ((result
-	 ((ucode-primitive nt:waitformultipleobjects 3)
-	  (vector descriptor) #f block?)))
-    (case result
-      ((0) 'INPUT-AVAILABLE)
-      ((-1) #f)
-      ((-2) 'INTERRUPT)
-      ((-3) 'PROCESS-STATUS-CHANGE)
-      (else (error "Illegal result from select-internal:" result)))))
-
-(define console-channel-descriptor)
-
-(define (cache-console-channel-descriptor!)
-  (set! console-channel-descriptor
-	(channel-descriptor-for-select (tty-input-channel)))
-  unspecific)
-
 ;;;; Subprocess/Shell Support
 
+(define console-channel-descriptor)
 (define nt/hide-subprocess-windows?)
 (define nt/subprocess-argument-quote-char)
 (define nt/subprocess-argument-escape-char)
@@ -504,7 +462,9 @@ USA.
   (let ((reset!
 	 (lambda ()
 	   (reset-environment-variables!)
-	   (cache-console-channel-descriptor!))))
+	   (set! console-channel-descriptor
+		 (channel-descriptor-for-select (tty-input-channel)))
+	   unspecific)))
     (reset!)
     (add-event-receiver! event:after-restart reset!))
   (set! nt/hide-subprocess-windows? #t)
@@ -697,8 +657,10 @@ USA.
 (define (os/parse-path-string string)
   (let ((end (string-length string))
 	(substring
-	 (lambda (string start end)
-	   (pathname-as-directory (substring string start end)))))
+	 (let ((cs (char-set-invert (char-set #\"))))
+	   (lambda (string start end)
+	     (pathname-as-directory (string-trim (substring string start end)
+						 cs))))))
     (let loop ((start 0))
       (if (< start end)
 	  (let ((index (substring-find-next-char string start end #\;)))

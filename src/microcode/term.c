@@ -1,22 +1,27 @@
 /* -*-C-*-
 
-$Id: term.c,v 1.15 2000/12/05 21:23:48 cph Exp $
+$Id: term.c,v 1.20 2003/03/21 17:28:33 cph Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright 1990,1991,1993,1994,1995,1996 Massachusetts Institute of Technology
+Copyright 2000,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 */
 
 #include "scheme.h"
@@ -25,6 +30,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "osfs.h"
 #include "osfile.h"
 #include "edwin.h"
+#include "option.h"
 
 extern long death_blow;
 extern char * Term_Messages [];
@@ -83,14 +89,14 @@ DEFUN (attempt_termination_backout, (code), int code)
 		+ STACK_ENV_EXTRA_SLOTS
 		+ ((code == TERM_NO_ERROR_HANDLER) ? 5 : 4));
       Store_Return (RC_HALT);
-      Store_Expression (LONG_TO_UNSIGNED_FIXNUM (code));
+      exp_register = (LONG_TO_UNSIGNED_FIXNUM (code));
       Save_Cont ();
       if (code == TERM_NO_ERROR_HANDLER)
 	STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (death_blow));
-      STACK_PUSH (Val);			/* Arg 3 */
-      STACK_PUSH (Fetch_Env ());	/* Arg 2 */
-      STACK_PUSH (Fetch_Expression ()); /* Arg 1 */
-      STACK_PUSH (Handler);		/* The handler function */
+      STACK_PUSH (val_register); /* Arg 3 */
+      STACK_PUSH (env_register); /* Arg 2 */
+      STACK_PUSH (exp_register); /* Arg 1 */
+      STACK_PUSH (Handler);	/* The handler function */
       STACK_PUSH (STACK_FRAME_HEADER
 		  + ((code == TERM_NO_ERROR_HANDLER) ? 4 : 3));
      Pushed ();
@@ -108,8 +114,11 @@ DEFUN (termination_prefix, (code), int code)
      message should be considered normal output.  */
   if (code == TERM_HALT)
     {
-      outf_console ("\n%s.\n", (Term_Messages [code]));
-      outf_flush_console ();
+      if (!option_batch_mode)
+	{
+	  outf_console ("\n%s.\n", (Term_Messages [code]));
+	  outf_flush_console ();
+	}
     }
   else
     {
@@ -188,7 +197,7 @@ void
 DEFUN_VOID (termination_end_of_computation)
 {
   termination_prefix (TERM_END_OF_COMPUTATION);
-  Print_Expression (Val, "Final result");
+  Print_Expression (val_register, "Final result");
   outf_console("\n");
   termination_suffix (TERM_END_OF_COMPUTATION, 0, 0);
 }

@@ -1,22 +1,27 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: occur.scm,v 1.5 2000/06/08 20:44:26 cph Exp $
-;;;
-;;; Copyright (c) 1992-2000 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#| -*-Scheme-*-
+
+$Id: occur.scm,v 1.9 2003/05/31 03:15:18 cph Exp $
+
+Copyright 1992,1995,1997,2000,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; Occurrence Commands
 
@@ -221,32 +226,38 @@ It serves as a menu to find any of the occurrences in this buffer.
 	(syntax-table (ref-variable syntax-table start))
 	(group (mark-group start))
 	(end (mark-index end)))
-    (let loop ((start (mark-index start)))
+    (let loop ((start (mark-index start)) (occurrences '()))
       (let ((match
 	     (re-search-buffer-forward pattern syntax-table group start end)))
 	(if match
-	    (cons (make-temporary-mark group (line-start-index group match) #f)
-		  (loop (line-end-index group match)))
-	    '())))))
+	    (loop (line-end-index group match)
+		  (cons (make-temporary-mark group
+					     (line-start-index group match)
+					     #f)
+			occurrences))
+	    (reverse! occurrences))))))
 
 (define (format-occurrences occurrences nlines output)
-  (if (null? occurrences)
-      '()
+  (if (pair? occurrences)
       (let loop
 	  ((occurrences occurrences)
 	   (previous (group-start (car occurrences)))
-	   (line 1))
+	   (line 1)
+	   (alist '()))
 	(let ((lstart (car occurrences))
 	      (index (mark-index output)))
 	  (let ((line (+ line (count-lines previous lstart))))
 	    (format-occurrence lstart line nlines output)
-	    (cons (cons index lstart)
-		  (if (null? (cdr occurrences))
-		      '()
-		      (begin
-			(if (not (= nlines 0))
-			    (insert-string "--------\n" output))
-			(loop (cdr occurrences) lstart line)))))))))
+	    (if (pair? (cdr occurrences))
+		(begin
+		  (if (not (= nlines 0))
+		      (insert-string "--------\n" output))
+		  (loop (cdr occurrences)
+			lstart
+			line
+			(cons (cons index lstart) alist)))
+		(reverse! alist)))))
+      '()))
 
 (define (format-occurrence lstart line nlines output)
   (let ((tag (pad-on-left-to (number->string line) 3)))

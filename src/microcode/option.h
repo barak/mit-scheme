@@ -1,22 +1,26 @@
 /* -*-C-*-
 
-$Id: option.h,v 1.12 1999/01/02 06:11:34 cph Exp $
+$Id: option.h,v 1.16 2003/03/21 17:28:29 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1993,1995,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 */
 
 #ifndef SCM_OPTION_H
@@ -34,6 +38,7 @@ extern int option_emacs_subprocess;
 extern int option_force_interactive;
 extern int option_disable_core_dump;
 extern int option_empty_list_eq_false;
+extern int option_batch_mode;
 
 /* String options */
 extern CONST char ** option_library_path;

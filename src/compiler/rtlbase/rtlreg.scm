@@ -1,29 +1,33 @@
 #| -*-Scheme-*-
 
-$Id: rtlreg.scm,v 4.9 2002/02/08 03:08:47 cph Exp $
+$Id: rtlreg.scm,v 4.12 2003/02/14 18:28:08 cph Exp $
 
-Copyright (c) 1987, 1988, 1990, 1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1987,1988,1990,1999,2001,2002 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; RTL Registers
 
 (declare (usual-integrations))
-
+
 (define *machine-register-map*)
 
 (define (initialize-machine-register-map!)
@@ -65,27 +69,27 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		 (loop (1+ register)))))
     (loop number-of-machine-registers)))
 
-(let-syntax
-    ((define-register-references
-       (sc-macro-transformer
-	(lambda (form environment)
-	  (let ((slot (cadr form)))
-	    (let ((name (symbol-append 'REGISTER- slot)))
-	      (let ((vector
-		     `(,(close-syntax (symbol-append 'RGRAPH- name)
-				      environment)
-		       *CURRENT-RGRAPH*)))
-		`(BEGIN
-		   (DEFINE-INTEGRABLE (,name REGISTER)
-		     (VECTOR-REF ,vector REGISTER))
-		   (DEFINE-INTEGRABLE
-		     (,(symbol-append 'SET- name '!) REGISTER VALUE)
-		     (VECTOR-SET! ,vector REGISTER VALUE))))))))))
-  (define-register-references bblock)
-  (define-register-references n-refs)
-  (define-register-references n-deaths)
-  (define-register-references live-length)
-  (define-register-references renumber))
+(define-syntax define-register-references
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((slot (cadr form)))
+       (let ((name (symbol-append 'REGISTER- slot)))
+	 (let ((vector
+		`(,(close-syntax (symbol-append 'RGRAPH- name)
+				 environment)
+		  *CURRENT-RGRAPH*)))
+	   `(BEGIN
+	      (DEFINE-INTEGRABLE (,name REGISTER)
+		(VECTOR-REF ,vector REGISTER))
+	      (DEFINE-INTEGRABLE
+		(,(symbol-append 'SET- name '!) REGISTER VALUE)
+		(VECTOR-SET! ,vector REGISTER VALUE)))))))))
+
+(define-register-references bblock)
+(define-register-references n-refs)
+(define-register-references n-deaths)
+(define-register-references live-length)
+(define-register-references renumber)
 
 (define-integrable (reset-register-n-refs! register)
   (set-register-n-refs! register 0))
