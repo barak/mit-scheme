@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.221 1992/04/22 21:03:05 mhwu Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.222 1992/08/18 03:27:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -260,7 +260,16 @@ with the contents of the startup message."
 (add-gc-daemon! editor-gc-daemon)
 
 (define (internal-error-handler condition)
-  (cond (debug-internal-errors?
+  (cond ((and (eq? condition-type:primitive-procedure-error
+		   (condition/type condition))
+	      (let ((operator (access-condition condition 'OPERATOR)))
+		(or (eq? operator (ucode-primitive x-display-process-events 2))
+		    (eq? operator (ucode-primitive x-display-flush 1)))))
+	 ;; This error indicates that the connection to the X server
+	 ;; has been broken.  The safest thing to do is to kill the
+	 ;; editor.
+	 (exit-editor))
+	(debug-internal-errors?
 	 (error condition))
 	((ref-variable debug-on-internal-error)
 	 (debug-scheme-error condition "internal"))
@@ -311,7 +320,7 @@ This does not affect editor errors or evaluation errors."
 (define (%editor-error)
   (editor-beep)
   (abort-current-command))
-
+
 (define (quit-editor-and-signal-error condition)
   (quit-editor-and (lambda () (error condition))))
 
@@ -334,7 +343,7 @@ This does not affect editor errors or evaluation errors."
 
 (define (exit-scheme)
   (within-continuation editor-abort %exit))
-
+
 (define (^G-signal)
   (let ((handler *^G-interrupt-handler*))
     (if handler
