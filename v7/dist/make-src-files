@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-src-files,v 1.12 2000/12/05 21:59:20 cph Exp $
+# $Id: make-src-files,v 1.13 2000/12/23 04:36:58 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -18,39 +18,40 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-prefix=`/scheme/v7/dist/release-prefix`
-rm -rf ${prefix}
-mkdir ${prefix}
-destination="${prefix}/src"
+PREFIX=`/scheme/v7/dist/release-prefix`
+rm -rf ${PREFIX}
+mkdir ${PREFIX}
+DESTINATION="${PREFIX}/src"
 
 (
-    cd ${prefix}
+    cd ${PREFIX}
     cvs -d /scheme/cvsroot checkout -P -d src v7/src
     cd src
-    etc/build-tree.sh
+    ./Setup.sh
 )
 
-find ${destination} -type d -name CVS -print | xargs rm -rf
-find ${destination} -type f -print | xargs chmod a-w
-find ${destination} -type d -print | xargs chmod g-w
+find ${DESTINATION} -type d -name CVS -print | xargs rm -rf
+find ${DESTINATION} -type f -print | xargs chmod g-w
+find ${DESTINATION} -type d -print | xargs chmod g-w
 
 cp -p /scheme/v7/src/ChangeLog changelog.txt
-cp -p /scheme/v7/src/ChangeLog ${destination}/.
+cp -p /scheme/v7/src/ChangeLog ${DESTINATION}/.
 
-tarfile=${prefix}-src.tar.gz
-zipfile=${prefix}-src.zip
-ucfile=${prefix}-src-ucode-gnu-linux.tar.gz
+tarfile=${PREFIX}-src.tar.gz
+zipfile=${PREFIX}-src.zip
+ucfile=${PREFIX}-src-ucode.tar.gz
 
 rm -f ${tarfile}
 rm -f ${zipfile}
 rm -f ${ucfile}
 
-tar cvzf ${tarfile} ${destination}
-zip -rl ${zipfile} ${destination}
+tar cvzf ${tarfile} ${DESTINATION}
+tar cvzf ${ucfile} ${DESTINATION}/microcode
 
-(cd ${destination}/microcode; unxutl/config i386-linux)
-tar cvzf ${ucfile} ${destination}/microcode
+rm -rf ${DESTINATION}/lib
+symlinks -rd ${DESTINATION}
+zip -rl ${zipfile} ${DESTINATION}
 
 chmod -w changelog.txt ${tarfile} ${zipfile} ${ucfile}
 
-rm -rf ${prefix}
+rm -rf ${PREFIX}
