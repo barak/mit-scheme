@@ -37,7 +37,7 @@
 
 ;;;; RTL Rules for 68020
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.146 1987/01/05 02:20:43 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.147 1987/01/09 19:42:20 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access lap-generator-syntax-table compiler-package)
@@ -727,45 +727,38 @@
 
 (define-rule statement
   (MESSAGE-RECEIVER:CLOSURE (? frame-size))
-  `(;; Push (JSR (@AO 0 #x0000))
-    (MOVE L (& #x4EA80000) (@-A 7))
-    ;; Push (PEA (@PCO ,(+ 6 (* 4 frame-size))))
-    (MOVE L (& ,(+ #x487A0000 (+ 6 (* 4 frame-size)))) (@-A 7))))
+  `((MOVE L (& ,frame-size) (@-A 7))))
 
 (define-rule statement
   (MESSAGE-RECEIVER:STACK (? frame-size))
-  `(;; Push (JSR (@AO 0 #x0020))
-    (MOVE L (& #x4EA80020) (@-A 7))
-    ;; Push (DB F (D 0) (@PCO ,(+ 6 (* 4 frame-size))))
-    (MOVE L (& ,(+ #x51C80000 (+ 6 (* 4 frame-size)))) (@-A 7))))
+  `((MOVE L (& ,(+ #x0020000 frame-size)) (@-A 7))))
 
 (define-rule statement
   (MESSAGE-RECEIVER:SUBPROBLEM (? continuation))
-  `((PEA (@PCR ,(continuation-label continuation)))
-    (MOVE B (& ,type-code:return-address) (@A 7))
-    ;; Push (JSR (@AO 0 #x0040))
-    (MOVE L (& #x4EA80040) (@-A 7))))
-
-(define-rule statement
-  (MESSAGE-SENDER:VALUE (? receiver-offset))
-  `(,@(clear-map!)
-    (MOVEQ (& -1) (D 0))
-    (LEA ,popper:value (A 0))
-    (JMP (@AO 7 ,(* receiver-offset 4)))))
+  (list `(MOVE L (& #x0040000) (@-A 7))))
 
 (define (apply-closure-sequence frame-size receiver-offset label)
   `((MOVEQ (& -1) (D 0))
     ,(load-dnw frame-size 1)
-    (LEA ,popper:apply-closure (A 0))
+    (LEA (@AO 7 ,(* receiver-offset 4)) (A 0))
     (LEA (@PCR ,label) (A 1))
-    (JMP (@AO 7 ,(* receiver-offset 4)))))
+    (JMP ,popper:apply_closure)))
 
 (define (apply-stack-sequence frame-size receiver-offset n-levels label)
   `((MOVEQ (& ,n-levels) (D 0))
     ,(load-dnw frame-size 1)
-    (LEA ,popper:apply-stack (A 0))
+    (LEA (@AO 7 ,(* receiver-offset 4)) (A 0))
     (LEA (@PCR ,label) (A 1))
-    (JMP (@AO 7 ,(* receiver-offset 4)))))
+    (JMP ,popper:apply-stack)))
+
+(define-rule statement
+  (MESSAGE-SENDER:VALUE (? receiver-offset))
+  (let ((size-offset (+ (* receiver-offset 4) 2)))
+    `(,@(clear-map!)
+      (ADD W (@AO 7 ,size-offset) (A 7))
+      (LEA (@AO 7 ,(+ size-offset 2)) (A 7))
+      (CLR B (@A 7))
+      (RTS))))
 
 ;;; end USING-SYNTAX
 )
