@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: proced.scm,v 4.21 2001/10/22 19:04:50 cph Exp $
+$Id: proced.scm,v 4.22 2001/10/22 19:10:46 cph Exp $
 
 Copyright (c) 1988-1990, 1999, 2001 Massachusetts Institute of Technology
 
@@ -24,7 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;; package: (compiler)
 
 (declare (usual-integrations))
-
+
 (define-rvalue procedure
   type			;either PROCEDURE or a continuation type
   block			;model of invocation environment [block]
@@ -124,7 +124,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (let ((number-required (length (procedure-required procedure))))
     (and (>= argument-count number-required)
 	 (if (procedure-rest procedure)
-	     true
+	     #t
 	     (<= argument-count
 		 (+ number-required
 		    (length (procedure-optional procedure))))))))

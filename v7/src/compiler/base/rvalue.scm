@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rvalue.scm,v 4.7 1999/01/02 06:06:43 cph Exp $
+$Id: rvalue.scm,v 4.8 2001/10/22 19:13:04 cph Exp $
 
-Copyright (c) 1988, 1989, 1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1989, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,10 +16,12 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Right (Hand Side) Values
+;;; package: (compiler)
 
 (declare (usual-integrations))
 
@@ -28,7 +30,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;; converted to a macro.
 ;;; (define (make-rvalue tag . extra)
-;;;   (list->vector (cons* tag false extra)))
+;;;   (list->vector (cons* tag #f extra)))
 
 (define-enumeration rvalue-type
   (block
@@ -73,7 +75,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (if (rvalue/reference? rvalue*)
 	  (eq? rvalue (lvalue-known-value (reference-lvalue rvalue*)))
 	  (eq? rvalue rvalue*))))
-
+
 ;;;; Constant
 
 (define-rvalue constant
@@ -130,7 +132,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (reference-to-known-location? reference)
   (variable-in-known-location? (reference-context reference)
 			       (reference-lvalue reference)))
-
+
 ;;; This type is only important while we use the `unassigned?' special
 ;;; form to perform optional argument defaulting.  When we switch over
 ;;; to the new optional argument proposal we can flush this since the
@@ -150,7 +152,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-integrable (rvalue/unassigned-test? rvalue)
   (eq? (tagged-vector/tag rvalue) unassigned-test-tag))
-
+
 ;;;; Expression
 
 (define-rvalue expression
@@ -166,7 +168,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((expression
 	 (make-rvalue expression-tag block continuation
 		      (node->edge (cfg-entry-node scfg))
-		      (generate-label 'EXPRESSION) false)))
+		      (generate-label 'EXPRESSION) #f)))
     (set! *expressions* (cons expression *expressions*))
     (set-block-procedure! block expression)
     expression))

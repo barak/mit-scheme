@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lvalue.scm,v 4.21 1999/01/02 06:06:43 cph Exp $
+$Id: lvalue.scm,v 4.22 2001/10/22 19:10:20 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1990, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,13 +16,15 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Left (Hand Side) Values
+;;; package: (compiler)
 
 (declare (usual-integrations))
-
+
 ;; IMPORTANT: Change transform/make-lvalue and the call to
 ;; define-type-definition in macros.scm whenever a field is added or
 ;; deleted!
@@ -52,8 +54,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;; (define (make-lvalue tag . extra)
 ;;;   (let ((lvalue
 ;;; 	 (list->vector
-;;; 	  (cons* tag false '() '() '() '() '() '() 'NOT-CACHED
-;;; 		 false '() false false '() extra))))
+;;; 	  (cons* tag #f '() '() '() '() '() '() 'NOT-CACHED
+;;; 		 #f '() #f #f '() extra))))
 ;;;     (set! *lvalues* (cons lvalue *lvalues*))
 ;;;     lvalue))
 
@@ -81,8 +83,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define set-continuation-variable/type! set-variable-in-cell?!)
 
 (define (make-variable block name)
-  (make-lvalue variable-tag block name '() false false '() false false
-	       false false false))
+  (make-lvalue variable-tag block name '() #f #f '() #f #f #f #f #f))
 
 (define variable-assoc
   (association-procedure eq? variable-name))
@@ -250,15 +251,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       (if (stack-block? block)
 		   (let ((procedure (block-procedure block)))
 		     (cond ((procedure-always-known-operator? procedure)
-			    true)
+			    #t)
 			   ((or (memq lvalue
 				      (cdr (procedure-required procedure)))
 				(memq lvalue (procedure-optional procedure))
 				(eq? lvalue (procedure-rest procedure)))
-			    false)
-			   (else true)))
-		   true))
-	     true))))
+			    #f)
+			   (else #t)))
+		   #t))
+	     #t))))
 
 (define (variable-unused? variable)
   (or (lvalue-integrated? variable)
@@ -271,7 +272,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (lvalue/unique-source lvalue)
   (let ((source-set (lvalue/source-set lvalue)))
-    (and (not (null? source-set))
+    (and (pair? source-set)
 	 (null? (cdr source-set))
 	 (car source-set))))
 
@@ -316,56 +317,3 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		   ;; which the variable is referenced.
 		   (memq variable
 			 (block-bound-variables reference-block))))))))
-
-;; This is not in use anywhere!  What is it for? -- Arthur & GJR 1/93
-
-#|
-
-(define (lvalue/articulation-points lvalue)
-  ;; This won't work if (memq lvalue (lvalue-backward-links lvalue))?
-  (let ((articulation-points '())
-	(number-tag "number-tag"))
-    (let ((articulation-point!
-	   (lambda (lvalue)
-	     (if (not (memq lvalue articulation-points))
-		 (begin
-		   (set! articulation-points (cons lvalue articulation-points))
-		   unspecific))))
-	  (allocate-number!
-	   (let ((n 0))
-	     (lambda ()
-	       (let ((number n))
-		 (set! n (1+ n))
-		 number)))))
-      (with-new-lvalue-marks
-       (lambda ()
-	 (let loop ((lvalue lvalue) (parent false) (number (allocate-number!)))
-	   (lvalue-mark! lvalue)
-	   (lvalue-put! lvalue number-tag number)
-	   (if (lvalue/source? lvalue)
-	       number
-	       (apply min
-		      (cons number
-			    (map (lambda (link)
-				   (cond ((not (lvalue-marked? link))
-					  (let ((low
-						 (loop link
-						       lvalue
-						       (allocate-number!))))
-					    (if (<= number low)
-						(articulation-point! lvalue))
-					    low))
-					 ((eq? link parent)
-					  number)
-					 (else
-					  (lvalue-get link number-tag))))
-				 (lvalue-initial-backward-links lvalue)))))))))
-    (set! articulation-points
-	  (sort (delq! lvalue articulation-points)
-		(lambda (x y)
-		  (< (lvalue-get x number-tag) (lvalue-get y number-tag)))))
-    (for-each (lambda (lvalue) (lvalue-remove! lvalue number-tag))
-	      (cons lvalue (lvalue-backward-links lvalue)))
-    articulation-points))
-
-|#

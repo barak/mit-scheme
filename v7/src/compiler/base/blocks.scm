@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: blocks.scm,v 4.14 1999/01/02 06:06:43 cph Exp $
+$Id: blocks.scm,v 4.15 2001/10/22 19:17:22 cph Exp $
 
-Copyright (c) 1988, 1989, 1990, 1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1990, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,14 +16,15 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Environment model data structures
 ;;; package: (compiler)
 
 (declare (usual-integrations))
-
+
 #|
 
 Interpreter compatible (hereafter, IC) blocks are vectors with an
@@ -92,8 +93,8 @@ from the continuation, and then "glued" into place afterwards.
 (define (make-block parent type)
   (let ((block
 	 (make-rvalue block-tag (enumeration/name->index block-types type)
-		      parent '() '() false false '()'() '() '() '() '() '()
-		      false false 'UNKNOWN 'UNKNOWN 'UNKNOWN false)))
+		      parent '() '() #f #f '()'() '() '() '() '() '()
+		      #f #f 'UNKNOWN 'UNKNOWN 'UNKNOWN #f)))
     (if parent
 	(set-block-children! parent (cons block (block-children parent))))
     (set! *blocks* (cons block *blocks*))
@@ -182,11 +183,10 @@ from the continuation, and then "glued" into place afterwards.
       (block-ancestor? block block*)))
 
 (define (block-ancestor? block block*)
-  (define (loop block)
+  (let loop ((block (block-parent block)))
     (and block
 	 (or (eq? block block*)
-	     (loop (block-parent block)))))
-  (loop (block-parent block)))
+	     (loop (block-parent block))))))
 
 (define-integrable (block-child? block block*)
   (eq? block (block-parent block*)))
@@ -197,11 +197,11 @@ from the continuation, and then "glued" into place afterwards.
 
 (define (block-nearest-common-ancestor block block*)
   (let loop
-      ((join false)
+      ((join #f)
        (ancestry (block-ancestry block))
        (ancestry* (block-ancestry block*)))
-    (if (and (not (null? ancestry))
-	     (not (null? ancestry*))
+    (if (and (pair? ancestry)
+	     (pair? ancestry*)
 	     (eq? (car ancestry) (car ancestry*)))
 	(loop (car ancestry) (cdr ancestry) (cdr ancestry*))
 	join)))
@@ -210,8 +210,8 @@ from the continuation, and then "glued" into place afterwards.
   (let loop
       ((ancestry (block-ancestry block))
        (ancestry* (block-ancestry block*)))
-    (and (not (null? ancestry))
-	 (if (and (not (null? ancestry*))
+    (and (pair? ancestry)
+	 (if (and (pair? ancestry*)
 		  (eq? (car ancestry) (car ancestry*)))
 	     (loop (cdr ancestry) (cdr ancestry*))
 	     (car ancestry)))))
@@ -236,7 +236,7 @@ from the continuation, and then "glued" into place afterwards.
   (if (block-parent block)
       (find-outermost-block (block-parent block))
       block))
-
+
 (define (stack-block/external-ancestor block)
   (let ((parent (block-parent block)))
     (if (and parent (stack-block? parent))
@@ -254,7 +254,7 @@ from the continuation, and then "glued" into place afterwards.
 	n
 	(loop (block-parent block)
 	      (+ n (block-frame-size block))))))
-
+
 (define (for-each-block-descendant! block procedure)
   (let loop ((block block))
     (procedure block)
@@ -287,29 +287,7 @@ from the continuation, and then "glued" into place afterwards.
 	 (rvalue/procedure? procedure)
 	 (procedure-target-block procedure))))
 
-#|
-(define (disown-block-child! block child)
-  (set-block-children! block (delq! child (block-children block)))
-  (if (eq? block (original-block-parent child))
-      (set-block-disowned-children! block
-				    (cons child (block-disowned-children block))))
-  unspecific)
-
-(define (own-block-child! block child)
-  (set-block-parent! child block)
-  (set-block-children! block (cons child (block-children block)))
-  (if (eq? block (original-block-parent child))
-      (set-block-disowned-children! block
-				    (delq! child (block-disowned-children block))))
-  unspecific)
-|#
-
 (define (transfer-block-child! child block block*)
-  ;; equivalent to
-  ;; (begin
-  ;;   (disown-block-child! block child)
-  ;;   (own-block-child! block* child))
-  ;; but faster.
   (let ((original-parent (original-block-parent child)))
     (set-block-children! block (delq! child (block-children block)))
     (if (eq? block original-parent)
@@ -341,7 +319,7 @@ from the continuation, and then "glued" into place afterwards.
 			      (block-entry-number block)))))
 
 (define (block-nearest-closure-ancestor block)
-  (let loop ((block block) (last false))
+  (let loop ((block block) (last #f))
     (and block
 	 (if (stack-block? block)
 	     (loop (block-parent block) block)
