@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml-parser.scm,v 1.13 2002/12/07 04:14:09 cph Exp $
+;;; $Id: xml-parser.scm,v 1.14 2002/12/08 17:58:45 cph Exp $
 ;;;
 ;;; Copyright (c) 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -218,11 +218,20 @@
 			   (if (not (eq? (vector-ref v 0) (vector-ref v* 0)))
 			       (perror p "Mismatched start tag"
 				       (vector-ref v 0) (vector-ref v* 0)))
-			   (coalesce-strings!
-			    (list-transform-negative (vector->list elements)
-			      (lambda (element)
-				(and (string? element)
-				     (string-null? element))))))
+			   (let ((contents
+				  (coalesce-strings!
+				   (list-transform-negative
+				       (vector->list elements)
+				     (lambda (element)
+				       (and (string? element)
+					    (string-null? element)))))))
+			     (if (null? contents)
+				 ;; Preserve fact that this element
+				 ;; was formed by a start/end tag pair
+				 ;; rather than by an empty-element
+				 ;; tag.
+				 (list "")
+				 contents)))
 			 (let ((v* (parse-content buffer)))
 			   (if (not v*)
 			       (perror p "Unterminated start tag"
