@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.20 2004/11/24 20:20:44 cph Exp $
+$Id: mod-lisp.scm,v 1.21 2004/11/25 04:19:53 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -451,7 +451,7 @@ USA.
 				   (pair? (cdr nv))
 				   (null? (cddr nv))))
 			 (error "Malformed cookie value:" string))
-		     (cons (intern (car nv)) (cdr nv))))
+		     (cons (intern (car nv)) (cadr nv))))
 		 (map string-trim (burst-string string #\; #f))))))
 
 (define (set-cookie message name value attrs)
