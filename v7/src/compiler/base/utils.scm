@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.82 1987/03/20 05:26:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.83 1987/04/13 19:25:31 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -263,7 +263,6 @@ MIT in each case. |#
       (primitive-type? (ucode-type character) object)
       (primitive-type? (ucode-type unassigned) object)
       (primitive-type? (ucode-type the-environment) object)
-      (primitive-type? (ucode-type extended-fixnum) object)
       (primitive-type? (ucode-type manifest-nm-vector) object)
       (primitive-type? (ucode-type manifest-special-nm-vector) object)))
 
