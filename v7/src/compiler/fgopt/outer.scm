@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/outer.scm,v 4.1 1987/12/04 19:06:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/outer.scm,v 4.2 1987/12/04 19:18:26 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -143,7 +143,9 @@ MIT in each case. |#
   block-passed-out!)
 
 (define (lvalue-externally-visible! lvalue)
-  (lvalue-passed-in! lvalue)
+  (if (not (and (lvalue/variable? lvalue)
+		(memq 'CONSTANT (variable-declarations? lvalue))))
+      (lvalue-passed-in! lvalue))
   (lvalue-passed-out! lvalue))
 
 (define (lvalue-passed-in! lvalue)
