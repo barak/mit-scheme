@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mit-syntax.scm,v 14.3 2002/02/19 19:08:08 cph Exp $
+;;; $Id: mit-syntax.scm,v 14.4 2002/02/19 19:09:12 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -33,8 +33,7 @@
   (lambda (form environment definition-environment history)
     definition-environment		;ignore
     (syntax-check '(KEYWORD EXPRESSION) form history)
-    (expression->transformer-item item
-				  (classify/subexpression (cadr form)
+    (expression->transformer-item (classify/subexpression (cadr form)
 							  environment
 							  history
 							  select-cadr)
