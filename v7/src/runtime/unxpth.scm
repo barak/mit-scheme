@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 1.7 1987/08/20 03:59:56 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 1.8 1987/11/24 22:27:04 jrm Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -180,7 +180,7 @@
 	      (let ((start* (1+ index))
 		    (name (wildify string start index)))
 		(if (= start* end)
-		    (receiver name "" "")
+		    (receiver name "" false)
 		    (or (let ((index (find-next-dot start*)))
 			  (and index
 			       (let ((version (parse-version (1+ index))))
