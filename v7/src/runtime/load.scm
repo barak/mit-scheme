@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.58 2001/12/18 21:21:43 cph Exp $
+$Id: load.scm,v 14.59 2001/12/18 22:17:06 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -73,7 +73,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	     (->environment environment)))
 	(syntax-table
 	 (if (or (default-object? syntax-table)
-		 (eq? syntax-table default-object))
+		 (eq? syntax-table default-object)
+		 (eq? syntax-table 'DEFAULT))
 	     default-object
 	     (guarantee-syntax-table syntax-table 'LOAD)))
 	(purify?
