@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/graphics.scm,v 1.2 1990/11/14 14:57:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/graphics.scm,v 1.3 1991/04/12 00:12:11 arthur Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -51,23 +51,29 @@ MIT in each case. |#
 
     (define graphics-device #F)
 
+    (define (init-if-necessary)
+      (if (not graphics-device)
+	  (init-graphics)))
+
     (set! clear-graphics
 	  (lambda ()
-	    (if (not graphics-device)
-		(init-graphics))
+	    (init-if-necessary)
 	    (graphics-clear graphics-device)
 	    (graphics-move-cursor graphics-device 0 0)))
 
     (set! clear-point
 	  (lambda (x y)
+	    (init-if-necessary)
 	    (graphics-erase-point graphics-device x y)))
 
     (set! draw-line-to
 	  (lambda (x y)
+	    (init-if-necessary)
 	    (graphics-drag-cursor graphics-device x y)))
 
     (set! draw-point
 	  (lambda (x y)
+	    (init-if-necessary)
 	    (graphics-draw-point graphics-device x y)))
 
     (set! graphics-available?
@@ -76,6 +82,7 @@ MIT in each case. |#
 
     (set! graphics-text
 	  (lambda (text x y)
+	    (init-if-necessary)
 	    ;; Accepts different parameters on Chipmunks.
 	    (graphics-draw-text graphics-device x y text)))
 
@@ -90,6 +97,7 @@ MIT in each case. |#
 
     (set! position-pen
 	  (lambda (x y)
+	    (init-if-necessary)
 	    (graphics-move-cursor graphics-device x y)))
 
 ))
