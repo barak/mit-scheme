@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.17 1992/01/14 19:23:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.18 1992/02/18 17:29:32 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -203,7 +203,7 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
  ((long) (((format_word *) (scan))[0])))
 
 #define FIRST_MANIFEST_CLOSURE_ENTRY(scan)				\
-(((((format_word *) (scan))[1]) ==   CLOSURE_HEADER_TO_ENTRY_WORD) ?	\
+(((((format_word *) (scan))[1]) == CLOSURE_HEADER_TO_ENTRY_WORD) ?	\
  (((char *) (scan)) + (2 * (sizeof (format_word)))) :			\
  (((char *) (scan)) + (4 * (sizeof (format_word)))))
 
@@ -244,40 +244,54 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 #define READ_CACHE_LINKAGE_COUNT(header)				\
   ((header) & 0xffff)
 
+#ifndef FIRST_OPERATOR_LINKAGE_OFFSET
+#  define FIRST_OPERATOR_LINKAGE_OFFSET 1
+#endif
+
 #define READ_OPERATOR_LINKAGE_COUNT(header)				\
-  (EXECUTE_CACHE_COUNT_TO_ENTRIES((header) & 0xffff))
+  (EXECUTE_CACHE_COUNT_TO_ENTRIES					\
+   (((header) & 0xffff) - (FIRST_OPERATOR_LINKAGE_OFFSET - 1)))
   
 #define MAKE_LINKAGE_SECTION_HEADER(kind, count)			\
   (MAKE_OBJECT(TC_LINKAGE_SECTION,					\
-	       ((kind) |						\
-		((((kind) == OPERATOR_LINKAGE_KIND)			\
-		  || ((kind) == GLOBAL_OPERATOR_LINKAGE_KIND)) ?	\
-		 (EXECUTE_CACHE_ENTRIES_TO_COUNT (count)) :		\
-		 (count)))))
+	       ((kind)							\
+		| ((((kind) == OPERATOR_LINKAGE_KIND)			\
+		    || ((kind) == GLOBAL_OPERATOR_LINKAGE_KIND))	\
+		   ? ((EXECUTE_CACHE_ENTRIES_TO_COUNT (count))		\
+		      + (FIRST_OPERATOR_LINKAGE_OFFSET - 1))		\
+		   : (count)))))
 
 /* This takes into account the 1 added by the main loop of the
    relocators.
  */
 
-#define END_OPERATOR_LINKAGE_AREA(scan, count)				\
-  (((SCHEME_OBJECT *) (scan)) + ((count) * EXECUTE_CACHE_ENTRY_SIZE))
+#ifndef END_OPERATOR_LINKAGE_AREA
+#  define END_OPERATOR_LINKAGE_AREA(scan, count)			\
+  (((SCHEME_OBJECT *) (scan))						\
+   + (((count) * EXECUTE_CACHE_ENTRY_SIZE))				\
+   + (FIRST_OPERATOR_LINKAGE_OFFSET - 1))
+#endif
 
 #define FIRST_OPERATOR_LINKAGE_ENTRY(scan)				\
-  ((char *) (((SCHEME_OBJECT *) (scan)) + 1))
+  ((char *) (((SCHEME_OBJECT *) (scan)) + FIRST_OPERATOR_LINKAGE_OFFSET))
 
 #define NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr)				\
   ((char *) (((SCHEME_OBJECT *) (word_ptr)) +				\
 	     EXECUTE_CACHE_ENTRY_SIZE))
 
-#define EXTRACT_OPERATOR_LINKAGE_ADDRESS(target, source)		\
+#ifndef EXTRACT_OPERATOR_LINKAGE_ADDRESS
+#  define EXTRACT_OPERATOR_LINKAGE_ADDRESS(target, source)		\
 {									\
   EXTRACT_EXECUTE_CACHE_ADDRESS (target, source);			\
 }
+#endif
 
-#define STORE_OPERATOR_LINKAGE_ADDRESS(source, target)			\
+#ifndef STORE_OPERATOR_LINKAGE_ADDRESS
+# define STORE_OPERATOR_LINKAGE_ADDRESS(source, target)			\
 {									\
   STORE_EXECUTE_CACHE_ADDRESS (target, source);				\
 }
+#endif
 
 /* Heuristic recovery aid. See uxtrap.c for its use.
    block is the address of a vector header followed by a non-marked
@@ -372,16 +386,30 @@ typedef unsigned short format_word;
 #endif /* HAS_COMPILER_SUPPORT */
 
 #ifndef FLUSH_I_CACHE
-#define FLUSH_I_CACHE() do {} while (0)
+#  define FLUSH_I_CACHE() do {} while (0)
 #endif /* FLUSH_I_CACHE */
 
 #ifndef COMPILER_TRANSPORT_END
-#define COMPILER_TRANSPORT_END() do					\
+#  define COMPILER_TRANSPORT_END() do					\
 {									\
   Registers[REGBLOCK_CLOSURE_SPACE] = ((SCHEME_OBJECT) 0);		\
   Registers[REGBLOCK_CLOSURE_FREE] = ((SCHEME_OBJECT) NULL);		\
   FLUSH_I_CACHE ();							\
 } while (0)
 #endif /* COMPILER_TRANSPORT_END */
+
+#ifndef START_CLOSURE_RELOCATION
+#  define START_CLOSURE_RELOCATION(scan) do { } while (0)
+#endif
+#ifndef END_CLOSURE_RELOCATION
+#  define END_CLOSURE_RELOCATION(scan) do { } while (0)
+#endif
+
+#ifndef START_OPERATOR_RELOCATION
+#  define START_OPERATOR_RELOCATION(scan) do { } while (0)
+#endif
+#ifndef END_OPERATOR_RELOCATION
+#  define END_OPERATOR_RELOCATION(scan) do { } while (0)
+#endif
 
 #endif /* CMPGC_H_INCLUDED */
