@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.2 1990/07/28 18:57:00 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.3 1990/11/08 11:10:56 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -36,6 +36,8 @@ MIT in each case. */
 #include "uxproc.h"
 #include "uxio.h"
 #include "osterm.h"
+
+extern char ** environ;
 
 static void EXFUN (deallocate_uncommitted_processes, (PTR ignore));
 static void EXFUN (subprocess_death, (pid_t pid, wait_status_t * status));
@@ -107,20 +109,6 @@ DEFUN (OS_process_deallocate, (process), Tprocess process)
 {
   (PROCESS_STATUS (process)) = process_status_free;
 }
-
-#define PROTECT_CHANNEL(channel)					\
-{									\
-  Tchannel * PROTECT_CHANNEL_cp = (dstack_alloc (sizeof (Tchannel)));	\
-  (*PROTECT_CHANNEL_cp) = (channel);					\
-  transaction_record_action						\
-    (tat_abort, channel_close, PROTECT_CHANNEL_cp);			\
-}
-
-static void
-DEFUN (channel_close, (cp), PTR cp)
-{
-  OS_channel_close (* ((Tchannel *) cp));
-}
 
 Tprocess
 DEFUN (OS_make_subprocess, (filename, argv, envp, ctty_type),
@@ -143,6 +131,9 @@ DEFUN (OS_make_subprocess, (filename, argv, envp, ctty_type),
     /* Implement shell-like subprocess control later. */
     error_unimplemented_primitive ();
 
+  if (envp == 0)
+    envp = environ;
+
   transaction_begin ();
   child = (process_allocate ());
 
@@ -155,7 +146,7 @@ DEFUN (OS_make_subprocess, (filename, argv, envp, ctty_type),
       }
       if (pty_name != 0)
 	{
-	  PROTECT_CHANNEL (parent_read);
+	  OS_channel_close_on_abort (parent_read);
 	  parent_write = parent_read;
 	}
       else
@@ -167,14 +158,14 @@ DEFUN (OS_make_subprocess, (filename, argv, envp, ctty_type),
       int pv [2];
       STD_VOID_SYSTEM_CALL ("pipe", (UX_pipe (pv)));
       MAKE_CHANNEL ((pv[0]), channel_type_pipe, child_read =);
-      PROTECT_CHANNEL (child_read);
+      OS_channel_close_on_abort (child_read);
       MAKE_CHANNEL ((pv[1]), channel_type_pipe, parent_write =);
-      PROTECT_CHANNEL (parent_write);
+      OS_channel_close_on_abort (parent_write);
       STD_VOID_SYSTEM_CALL ("pipe", (UX_pipe (pv)));
       MAKE_CHANNEL ((pv[0]), channel_type_pipe, parent_read =);
-      PROTECT_CHANNEL (parent_read);
+      OS_channel_close_on_abort (parent_read);
       MAKE_CHANNEL ((pv[1]), channel_type_pipe, child_write =);
-      PROTECT_CHANNEL (child_write);
+      OS_channel_close_on_abort (child_write);
     }
 
   /* Flush streams so that i/o won't be duplicated after the fork */
@@ -229,9 +220,11 @@ DEFUN (OS_make_subprocess, (filename, argv, envp, ctty_type),
 
 #ifdef HAVE_DUP2
       /* Setup the standard I/O for the child. */
-      if (((UX_dup2 (child_read, STDIN_FILENO)) < 0) ||
-	  ((UX_dup2 (child_write, STDOUT_FILENO)) < 0) ||
-	  ((UX_dup2 (child_write, STDERR_FILENO)) < 0))
+      if (((UX_dup2 ((CHANNEL_DESCRIPTOR (child_read)), STDIN_FILENO)) < 0)
+	  || ((UX_dup2 ((CHANNEL_DESCRIPTOR (child_write)), STDOUT_FILENO))
+	      < 0)
+	  || ((UX_dup2 ((CHANNEL_DESCRIPTOR (child_write)), STDERR_FILENO))
+	      < 0))
 	goto kill_child;
 #else
 #include "error: can't hack subprocess I/O without dup2() or equivalent"
@@ -242,10 +235,13 @@ DEFUN (OS_make_subprocess, (filename, argv, envp, ctty_type),
 	int fd = 0;
 	int open_max = (UX_SC_OPEN_MAX ());
 	while (fd < open_max)
-	  if (! ((fd == STDIN_FILENO) ||
-		 (fd == STDOUT_FILENO) ||
-		 (fd == STDERR_FILENO)))
-	    UX_close (fd++);
+	  {
+	    if (! ((fd == STDIN_FILENO) ||
+		   (fd == STDOUT_FILENO) ||
+		   (fd == STDERR_FILENO)))
+	      UX_close (fd);
+	    fd += 1;
+	  }
       }
 
       /* Force the signal mask to be empty.
@@ -361,19 +357,13 @@ DEFUN (OS_process_kill, (process), Tprocess process)
 void
 DEFUN (OS_process_stop, (process), Tprocess process)
 {
-  if (UX_SC_JOB_CONTROL ())
-    OS_process_send_signal (process, SIGTSTP);
-  else
-    error_unimplemented_primitive ();
+  OS_process_send_signal (process, SIGTSTP);
 }
 
 void
 DEFUN (OS_process_continue, (process), Tprocess process)
 {
-  if (UX_SC_JOB_CONTROL ())
-    OS_process_send_signal (process, SIGCONT);
-  else
-    error_unimplemented_primitive ();
+  OS_process_send_signal (process, SIGCONT);
 }
 
 void
