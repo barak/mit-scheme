@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.4 1988/02/19 20:56:49 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.5 1988/03/14 20:24:54 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -159,65 +159,76 @@ MIT in each case. |#
 		     (and compiler:generate-rtl-files?
 			  (pathname-new-type output-pathname "brtl"))
 		     (pathname-new-type output-pathname "binf")))))
+
+;;;; Utilities for compiling in batch mode
+
+(define compiler:batch-mode? false)
+(define compiler:abort-handled? false)
+(define compiler:abort-continuation)
 
 (define (compiler:batch-compile input #!optional output)
-  (fluid-let (((access *error-hook* error-system)
+  (fluid-let ((compiler:batch-mode? true)
+	      ((access *error-hook* error-system)
 	       (lambda (env mesg irr subst?)
-		 (newline)
-		 (display "*** Error: ")
-		 (display mesg)
-		 (display " ***")
-		 (newline)
-		 (display "Irritant: ")
-		 (write irr)
-		 (compiler:abort false))))
+		 (if compiler:abort-handled?
+		     (begin
+		       (newline)
+		       (newline)
+		       (display "*** Error: ")
+		       (display mesg)
+		       (display " ***")
+		       (newline)
+		       (display "Irritant: ")
+		       (write irr)
+		       (compiler:abort false))
+		     ((access standard-error-hook error-system)
+		      env mesg irr subst?)))))
     (if (unassigned? output)
 	(compile-bin-file input)
 	(compile-bin-file input output))))
-
-;;; Utilities for compiling in batch mode
-
-(define compiler:abort-handled? false)
-(define compiler:abort-continuation)
 
 (define (compiler:abort value)
   (if compiler:abort-handled?
       (begin
 	(newline)
-	(newline)
-	(display "    Aborting...")
+	(display "*** Aborting...")
 	(compiler:abort-continuation value))
       (error "compiler:abort: Not set up to abort" value)))
 
-(define (compiler-process transform input-pathname output-pathname)
-  (call-with-current-continuation
-   (lambda (abort-compilation)
-     (fluid-let ((compiler:abort-continuation abort-compilation)
-		 (compiler:abort-handled? true))
-       (fasdump (transform input-pathname output-pathname)
-		output-pathname)))))
+(define (batch-kernel real-kernel)
+  (lambda (input-string)
+    (call-with-current-continuation
+     (lambda (abort-compilation)
+       (fluid-let ((compiler:abort-continuation abort-compilation)
+		   (compiler:abort-handled? true))
+	 (real-kernel input-string))))))
 
 (define (compiler-pathnames input-string output-string default transform)
-  (let ((kernel
-	 (lambda (input-string)
-	   (let ((input-pathname
-		  (pathname->input-truename
-		   (merge-pathnames (->pathname input-string) default))))
-	     (if (not input-pathname)
-		 (error "File does not exist" input-string))
-	     (let ((output-pathname
-		    (let ((output-pathname
-			   (pathname-new-type input-pathname "com")))
-		      (if output-string
-			  (merge-pathnames (->pathname output-string)
-					   output-pathname)
-			  output-pathname))))
-	       (newline)
-	       (write-string "Compile File: ")
-	       (write (pathname->string input-pathname))
-	       (write-string " => ")
-	       (write (pathname->string output-pathname))
-	       (compiler-process transform input-pathname output-pathname))))))
+  (let* ((core
+	  (lambda (input-string)
+	    (let ((input-pathname
+		   (pathname->input-truename
+		    (merge-pathnames (->pathname input-string) default))))
+	      (if (not input-pathname)
+		  (error "File does not exist" input-string))
+	      (let ((output-pathname
+		     (let ((output-pathname
+			    (pathname-new-type input-pathname "com")))
+		       (if output-string
+			   (merge-pathnames (->pathname output-string)
+					    output-pathname)
+			   output-pathname))))
+		(newline)
+		(write-string "Compile File: ")
+		(write (pathname->string input-pathname))
+		(write-string " => ")
+		(write (pathname->string output-pathname))
+		(fasdump (transform input-pathname output-pathname)
+			 output-pathname)))))
+	 (kernel
+	  (if compiler:batch-mode?
+	      (batch-kernel core)
+	      core)))
     (if (pair? input-string)
 	(for-each kernel input-string)
 	(kernel input-string))))
@@ -567,12 +578,13 @@ MIT in each case. |#
   (compiler-phase "Linearizing BITs"
     (lambda ()
       (set! compiler:bits
-	    (LAP ,@(lap:make-entry-point compiler:entry-label
-					 compiler:block-label)
-		 ,@((access linearize-bits lap-syntax-package)
-		    (if compiler:preserve-data-structures?
-			*rtl-graphs*
-			(set! *rtl-graphs*))))))))
+	    (append-instruction-sequences!
+	     (lap:make-entry-point compiler:entry-label
+				   compiler:block-label)
+	     ((access linearize-bits lap-syntax-package)
+	      (if compiler:preserve-data-structures?
+		  *rtl-graphs*
+		  (set! *rtl-graphs*))))))))
 
 (define (phase/assemble)
   (compiler-phase "Assembling"
@@ -622,7 +634,7 @@ MIT in each case. |#
 		     (with-interrupt-mask interrupt-mask-none
 		       (lambda (old)
 			 ((ucode-primitive &make-object)
-			  type-code:compiled-expression
+			  type-code:compiled-entry
 			  (make-non-pointer-object
 			   (+ (cdr (or (assq label compiler:label-bindings)
 				       (error "Missing entry point" label)))

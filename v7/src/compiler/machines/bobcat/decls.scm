@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.2 1988/01/06 18:30:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.3 1988/03/14 20:23:52 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -48,12 +48,19 @@ MIT in each case. |#
   (rank false))
 
 (define source-filenames
-  (mapcan (lambda (subdirectory)
-	    (map (lambda (pathname)
-		   (string-append subdirectory "/" (pathname-name pathname)))
-		 (directory-read (string-append subdirectory "/*.bin"))))
-	  '("back" "base" "fggen" "fgopt" "rtlbase" "rtlgen" "rtlopt"
-		   "machines/bobcat")))
+  (let ((load-env (the-environment)))
+    (mapcan (lambda (subdirectory)
+	      (map (lambda (pathname)
+		     (string-append subdirectory "/" (pathname-name pathname)))
+		   (directory-read
+		    (string-append
+		     subdirectory
+		     (if (lexical-unbound? load-env
+					   'SOURCE-FILE-EXPRESSION)
+			 "/*.bin"
+			 source-file-expression)))))
+	    '("back" "base" "fggen" "fgopt" "rtlbase" "rtlgen" "rtlopt"
+		     "machines/bobcat"))))
 
 (define source-hash
   (make/hash-table 101

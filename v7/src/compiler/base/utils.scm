@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.2 1987/12/30 06:56:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.3 1988/03/14 20:25:13 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -203,13 +203,10 @@ MIT in each case. |#
   (define-type-code procedure)
   (define-type-code extended-procedure)
   (define-type-code cell)
-  (define-type-code compiled-expression)
-  (define-type-code compiler-link)
-  (define-type-code compiled-procedure)
   (define-type-code environment)
+  (define-type-code unassigned)
   (define-type-code stack-environment)
-  (define-type-code return-address compiler-return-address)
-  (define-type-code unassigned))
+  (define-type-code compiled-entry))
 
 (define (scode/procedure-type-code *lambda)
   (cond ((primitive-type? type-code:lambda *lambda)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.3 1987/12/31 10:01:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.4 1988/03/14 20:24:11 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -198,7 +198,15 @@ MIT in each case. |#
     (and value
 	 (or (rvalue/constant? value)
 	     (and (rvalue/procedure? value)
-		  (procedure/open? value))))))
+		  (procedure/open? value)
+#|
+		  ;; For now this is disabled.
+		  ;; We need self-consistent closing
+		  (or (procedure/open? value)
+		      (and (procedure/closure? value)
+			   (procedure/trivial-closure? value)))
+|#
+		  )))))
 
 (define (lvalue=? lvalue lvalue*)
   (or (eq? lvalue lvalue*)

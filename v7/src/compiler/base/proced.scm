@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.2 1987/12/30 06:59:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.3 1988/03/14 20:24:24 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -56,6 +56,7 @@ MIT in each case. |#
   closure-block		;for closure, where procedure is closed [block]
   closure-offset	;for closure, offset of procedure in stack frame
   register		;for continuation, argument register
+  closure-size		;for closure, virtual size of frame [integer or false]
   )
 
 (define *procedures*)
@@ -69,7 +70,7 @@ MIT in each case. |#
 		      (node->edge (cfg-entry-node scfg))
 		      (list-copy required) (list-copy optional) rest
 		      (generate-label name) false false false false false
-		      false)))
+		      false false)))
     (set! *procedures* (cons procedure *procedures*))
     (set-block-procedure! block procedure)
     procedure))
@@ -130,9 +131,10 @@ MIT in each case. |#
 	    (procedure-closing-block procedure))))
 
 (define-integrable (closure-procedure-needs-operator? procedure)
-  ;; **** When implemented, this must be true if the closure needs its
-  ;; parent frame since the parent frame is stored in the operator.
-  true)
+  ;; This must be true if the closure needs its parent frame since the
+  ;; parent frame is found from the operator.  Currently only avoided
+  ;; for trivial closures.
+  (not (procedure/trivial-closure? procedure)))
 
 (define (procedure-interface-optimizible? procedure)
   (and (stack-block? (procedure-block procedure))
@@ -190,6 +192,12 @@ MIT in each case. |#
 
 (define-integrable (procedure/closure? procedure)
   (procedure-closure-block procedure))
+
+(define-integrable (procedure/trivial-closure? procedure)
+  (let ((enclosing (procedure-closing-block procedure)))
+    (or (null? enclosing)
+	(and (ic-block? enclosing)
+	     (not (ic-block/use-lookup? enclosing))))))  
 
 (define (procedure/closed? procedure)
   (or (procedure/ic? procedure)
