@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ansi.scm,v 1.5 1993/09/01 17:59:16 gjr Exp $
+$Id: ansi.scm,v 1.6 1994/11/01 23:04:22 adams Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -157,4 +157,5 @@ MIT in each case. |#
        false				; ts-set-scroll-region-1
        false				; ts-set-window
        false				; ts-visible-bell
+       '()                              ; termcap-description-keys
        ))))
