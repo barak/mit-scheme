@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: edwin.sf,v 1.24 2000/03/02 18:40:01 cph Exp $
+;;; $Id: edwin.sf,v 1.25 2001/08/15 03:07:50 cph Exp $
 ;;;
-;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1991-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 (load-option 'CREF)
 
@@ -33,13 +34,13 @@
 
 (if (not (name->package '(EDWIN)))
     (begin
-      (if (not (file-exists? (pathname-new-type package-name "bco")))
+      (if (not (file-exists? (pathname-new-type package-name "pkd")))
 	  (begin
 	    ((access cref/generate-trivial-constructor
 		     (->environment '(CROSS-REFERENCE)))
-	     package-name)
-	    (sf (pathname-new-type package-name "con"))))
-      (load (pathname-new-type package-name "bco"))))
+	     package-name)))
+      (construct-packages-from-file
+       (fasload (pathname-new-type package-name "pkd")))))
 
 (if (lexical-unreferenceable? (->environment '(EDWIN CLASS-CONSTRUCTOR))
 			      'CLASS-DESCRIPTORS)
@@ -80,19 +81,7 @@
 
 (load "decls")
 
-(let ((generate
-       (in-package (->environment '(CROSS-REFERENCE))
-	 (generate/common
-	  (lambda (pathname pmodel changes?)
-	    (write-cref-unusual pathname pmodel changes?)
-	    (write-globals pathname pmodel changes?)
-	    (write-constructor pathname pmodel changes?))))))
-  (generate package-name)
-  (sf-conditionally (pathname-new-type package-name "con"))
-  (if (and (file-exists? (pathname-new-type package-name "avd"))
-	   (not (file-processed? package-name "avd" "bad")))
-      (fasdump (read-file (pathname-new-type package-name "avd"))
-	       (pathname-new-type package-name "bad"))))
+(cref/generate-constructors package-name)
 (sf-conditionally "edwin.ldr")
 
 )

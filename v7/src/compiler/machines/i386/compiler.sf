@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compiler.sf,v 1.10 2000/01/10 03:54:28 cph Exp $
+$Id: compiler.sf,v 1.11 2001/08/15 03:09:53 cph Exp $
 
-Copyright (c) 1992-2000 Massachusetts Institute of Technology
+Copyright (c) 1992-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Script to incrementally syntax the compiler
@@ -27,13 +28,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (if (not (name->package '(COMPILER)))
     (begin
       ;; If there is no existing package constructor, generate one.
-      (if (not (file-exists? "compiler.bco"))
-	  (begin
-	    ((access cref/generate-trivial-constructor
-		     (->environment '(CROSS-REFERENCE)))
-	     "compiler")
-	    (sf "compiler.con")))
-      (load "compiler.bco")))
+      (if (not (file-exists? "compiler.pkd"))
+	  ((access cref/generate-trivial-constructor
+		   (->environment '(CROSS-REFERENCE)))
+	   "compiler"))
+      (construct-packages-from-file (fasload "compiler.pkd"))))
 
 ;; Guarantee that the necessary syntactic transforms and optimizers
 ;; are loaded.
@@ -97,5 +96,3 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;; Rebuild the package constructors and cref.
 (cref/generate-constructors "compiler")
-(sf-conditionally "compiler.con")
-(sf-conditionally "compiler.ldr")

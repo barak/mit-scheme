@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.11 2001/05/26 02:58:25 cph Exp $
+;;; $Id: compile.scm,v 1.12 2001/08/15 03:10:30 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -44,6 +44,4 @@
 	      '("imail-browser"
 		"imail-summary"
 		"imail-top"))
-    (cref/generate-constructors "imail")
-    (sf "imail.con")
-    (sf "imail.ldr")))
+    (cref/generate-constructors "imail")))
