@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.5 1990/07/16 20:52:47 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.6 1990/07/24 22:16:59 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -81,6 +81,12 @@ struct xwindow
   int x_size;
   int y_size;
 
+  /* The clip rectangle. */
+  int clip_x;
+  int clip_y;
+  int clip_width;
+  int clip_height;
+
   struct drawing_attributes attributes;
 
   /* Standard graphics contexts. */
@@ -148,6 +154,10 @@ extern Boolean x_wait_for_event ();
 #define XW_WINDOW(xw) ((xw) -> window)
 #define XW_X_SIZE(xw) ((xw) -> x_size)
 #define XW_Y_SIZE(xw) ((xw) -> y_size)
+#define XW_CLIP_X(xw) ((xw) -> clip_x)
+#define XW_CLIP_Y(xw) ((xw) -> clip_y)
+#define XW_CLIP_WIDTH(xw) ((xw) -> clip_width)
+#define XW_CLIP_HEIGHT(xw) ((xw) -> clip_height)
 #define XW_BORDER_WIDTH(xw) (((xw) -> attributes) . border_width)
 #define XW_INTERNAL_BORDER_WIDTH(xw)					\
   (((xw) -> attributes) . internal_border_width)

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.5 1990/07/16 21:03:07 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.6 1990/07/24 22:17:12 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -111,10 +111,18 @@ set_clip_rectangle (xw, x_left, y_bottom, x_right, y_top)
       y_top = y_bottom;
       y_bottom = y;
     }
-  ((rectangles [0]) . x) = x_left;
-  ((rectangles [0]) . y) = y_top;
-  ((rectangles [0]) . width) = ((x_right + 1) - x_left);
-  ((rectangles [0]) . height) = ((y_bottom + 1) - y_top);
+  {
+    int width = ((x_right + 1) - x_left);
+    int height = ((y_bottom + 1) - y_top);
+    (XW_CLIP_X (xw)) = x_left;
+    (XW_CLIP_Y (xw)) = y_top;
+    (XW_CLIP_WIDTH (xw)) = width;
+    (XW_CLIP_HEIGHT (xw)) = height;
+    ((rectangles [0]) . x) = x_left;
+    ((rectangles [0]) . y) = y_top;
+    ((rectangles [0]) . width) = width;
+    ((rectangles [0]) . height) = height;
+  }
   XSetClipRectangles
     (display,
      (XW_NORMAL_GC (xw)),

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.10 1990/07/22 06:40:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.11 1990/07/24 22:17:04 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -351,6 +351,10 @@ x_make_window (display, window, x_size, y_size, attributes, extra, deallocator, 
   (XW_WINDOW (xw)) = window;
   (XW_X_SIZE (xw)) = x_size;
   (XW_Y_SIZE (xw)) = y_size;
+  (XW_CLIP_X (xw)) = 0;
+  (XW_CLIP_Y (xw)) = 0;
+  (XW_CLIP_WIDTH (xw)) = x_size;
+  (XW_CLIP_HEIGHT (xw)) = y_size;
   (xw -> attributes) = (* attributes);
   (XW_NORMAL_GC (xw)) = normal_gc;
   (XW_REVERSE_GC (xw)) = reverse_gc;
@@ -1008,11 +1012,17 @@ DEFINE_PRIMITIVE ("X-WINDOW-BEEP", Prim_x_window_beep, 1, 1, 0)
 
 DEFINE_PRIMITIVE ("X-WINDOW-CLEAR", Prim_x_window_clear, 1, 1, 0)
 {
-  struct xwindow * xw;
   PRIMITIVE_HEADER (1);
-
-  xw = (WINDOW_ARG (1));
-  XClearWindow ((XW_DISPLAY (xw)), (XW_WINDOW (xw)));
+  {
+    struct xwindow * xw = (WINDOW_ARG (1));
+    XClearArea ((XW_DISPLAY (xw)),
+		(XW_WINDOW (xw)),
+		(XW_CLIP_X (xw)),
+		(XW_CLIP_Y (xw)),
+		(XW_CLIP_WIDTH (xw)),
+		(XW_CLIP_HEIGHT (xw)),
+		False);
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
