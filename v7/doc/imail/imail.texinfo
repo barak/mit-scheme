@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.14 2000/07/26 02:55:50 cph Exp $
+@comment $Id: imail.texinfo,v 1.15 2000/07/26 03:27:56 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -27,7 +27,7 @@ Free Documentation License".
 
 @titlepage
 @title{IMAIL User's Manual}
-@subtitle Edition 0.7 for IMAIL Version 1.4
+@subtitle Edition 0.8 for IMAIL Version 1.4
 @subtitle 25 July 2000
 @author by Chris Hanson
 
@@ -155,7 +155,6 @@ for a complete list.  By default, @acronym{IMAIL} tries to connect to
 name that you are logged in as.  This is the right default if you are
 using stunnel on the client.
 
-@findex load-file
 After you are finished creating the init file, you can either restart
 Edwin, or you can load the file using @kbd{M-x load-file}.  At this
 point, you are ready to run @acronym{IMAIL}.  To start @acronym{IMAIL}
@@ -883,8 +882,8 @@ a standard means for structuring mail messages.  @acronym{MIME} permits
 a message to have multiple parts, each of which is called an
 @dfn{entity}.  It also provides a way to associate type information with
 each entity.  For example, an ordinary text message has type
-@samp{text/plain}, an @acronyn{HTML} has type @samp{text/html}, and a
-@acronyn{JPEG} image has type @samp{image/jpeg}.  Additionally,
+@samp{text/plain}, @acronym{HTML} has type @samp{text/html}, and a
+@acronym{JPEG} image has type @samp{image/jpeg}.  Additionally,
 @acronym{MIME} entities may be annotated to indicate whether they should
 be shown @dfn{in-line}, or whether they are @dfn{attachments} that
 should be shown only upon further user action.
@@ -916,18 +915,18 @@ rather than the hyphen lines, by setting the variable
 
 @vindex imail-mime-show-alternatives
 @acronym{MIME} also specifies a particular kind of multipart message, of
-type @samp{multipart/alternative}, in which the parts are different
+type @samp{multipart/@-alternative}, in which the parts are different
 representations of the same message.  A typical example of this is a
 mailer that sends both plain text and @acronym{HTML} versions of the
 message text.  Normally @acronym{IMAIL} shows only the simplest of these
-subparts (which is almost always plain text), and suppresses the
+parts (which is almost always plain text) and suppresses the
 alternatives.  However, if you set the variable
 @code{imail-mime-show-alternatives} to @code{#t}, @acronym{IMAIL} will
 show these alternative forms as attachments.
 
 As a general rule, any @acronym{MIME} entity that contains non-textual
 information is displayed as an attachment.  Attachments are normally
-shown as specially-formatted abbreviations; here is an example:
+shown as specially-formatted abbreviations.  Here is an example:
 
 @example
 @group
@@ -947,9 +946,9 @@ and is generally slightly larger than the decoded length.)
 @acronym{MIME} entity is displayed in this abbreviated format, and when
 it is expanded in line.  In general, all non-text entities are
 abbreviated.  Additionally, if a text entity is given a
-@dfn{disposition} of @code{attachment}, it is abbreviated.  Finally, if
-the character set of the entity is unknown, if the encoding type is
-unknown, or if the subtype is unknown, it is abbreviated.
+@dfn{@acronym{MIME} disposition} of @samp{attachment}, if the character
+set of the entity is unknown, if the encoding type is unknown, or if the
+subtype is unknown, it is abbreviated.
 
 @vindex imail-known-mime-charsets
 Two variables control the abbreviation of text entities.
@@ -984,7 +983,7 @@ Toggle a @acronym{MIME} entity between its formatted and raw forms
 The primary @acronym{MIME} command is @kbd{C-o}
 (@code{imail-save-attachment}), which saves a single attachment to a
 file.  If point is on an attachment, that is the attachment to be saved,
-otherwise @acronym{IMAIL} prompts for the attachment by name.  If a
+otherwise @acronym{IMAIL} prompts for an attachment by name.  If a
 prefix argument is specified, prompting is performed even if point is on
 an attachment.  Once the attachment is determined, @acronym{IMAIL}
 prompts for the name of a file to save the attachment to.  The filename
@@ -1004,17 +1003,21 @@ The command @kbd{w} (@code{imail-save-mime-entity}) is similar to
 @code{imail-save-attachment} except that it will save any @acronym{MIME}
 entity, not just an attachment.  For example, this allows you to save
 the message text.  This command saves the entity that point is on; if
-point is not on any entity, an error is signalled.
+point is not on any entity, an error is signalled.  If the entity is
+encoded, e.g. with quoted-printable or base64 encoding, it is decoded
+before it is saved.  If the entity is text, it is written to the file in
+text mode (relevant only under Windows and OS/2); otherwise it is
+written in binary mode.
 
 @kindex C-t
 @findex imail-toggle-mime-entity
 The command @kbd{C-t} (@code{imail-toggle-mime-entity}) is similar to
 @code{imail-save-mime-entity}, except that instead of saving the entity
 to a file, it toggles whether the entity is shown in-line or in
-abbreviated form.  A common situation when this is useful is when the
-text of a message is in some unknown character set.  In this case,
-@acronym{IMAIL} shows the text in abbreviated form; use @kbd{C-t} to
-expand it in place.
+abbreviated form.  A common situation in which this is useful is when
+the text of a message is in an unknown character set.  In this case,
+@acronym{IMAIL} by default shows the text in abbreviated form; use
+@kbd{C-t} to expand it in place.
 
 @node Flags, Sending Replies, MIME Support, Commands
 @section Flags
@@ -1259,15 +1262,15 @@ control over how messages are formatted in the message buffer.
 
 @vindex imail-auto-wrap
 By default, @acronym{IMAIL} automatically wraps long lines at the right
-margin.  It uses @dfn{adaptive fill}@footnote{see the online help for
+margin.  It uses @dfn{adaptive fill}@footnote{See the online help for
 the variable @code{adaptive-fill-regexp} for more information about
 adaptive fill.} to do the wrapping, which means that common prefixes
-such as @samp{>} and @samp{Chris>} will be automatically added to the
-wrapped line.  Generally, this wrapping makes messages easier to read.
-Specifically, it is important for messages sent by clients that use
-``soft'' line breaks, because such clients expect the mail reader to
-wrap lines.  However, if you'd rather not have @acronym{IMAIL} do this
-for you, you can disable wrapping by setting the variable
+such as @samp{>} and @samp{Chris>} will be automatically copied down
+with the wrapped line.  Generally, this wrapping makes messages easier
+to read.  Specifically, it is important for messages sent by clients
+that use ``soft'' line breaks, because such clients expect the mail
+reader to wrap lines.  However, if you'd rather not have @acronym{IMAIL}
+do this for you, you can disable wrapping by setting the variable
 @code{imail-auto-wrap} to @code{#f}.
 
 @vindex imail-kept-headers
@@ -1355,6 +1358,9 @@ Summarize messages that have one or more of the specified recipients
 @item C-M-t @var{topic} @key{RET}
 Summarize messages that have a match for the specified regexp
 @var{topic} in their subjects (@code{imail-summary-by-topic}).
+@item C-M-s @var{regexp} @key{RET}
+Summarize messages that have a match for the specified regexp
+anywhere in their header (@code{imail-summary-by-regexp}).
 @end table
 
 @kindex h
@@ -1384,6 +1390,14 @@ addresses separated by commas.
 @kbd{C-M-t @var{topic} @key{RET}} (@code{imail-summary-by-topic}) makes
 a partial summary mentioning only the messages whose subjects have a
 match for the regular expression @var{topic}.
+
+@kindex C-M-s
+@findex imail-summary-by-regexp
+@kbd{C-M-s @var{regexp} @key{RET}} (@code{imail-summary-by-regexp})
+makes a partial summary mentioning only the messages whose headers
+contain a match for the regular expression @var{regexp}.  This match
+includes all lines in the header, including for example the date and
+from lines.
 
 Note that there is only one summary buffer for any @acronym{IMAIL}
 folder; making one kind of summary discards any previously made summary.
@@ -1424,8 +1438,8 @@ by point using the @key{SPC} command (@code{imail-summary-select-message}).
 When you are finished using the summary, type @kbd{C-x k @key{RET}} to
 delete the summary buffer's window.  You can also exit @acronym{IMAIL}
 while in the summary: @kbd{q} (@code{imail-summary-quit}) deletes the
-summary window, then exits from @acronym{IMAIL} by saving the Imail
-folder and switching to another buffer.
+summary window, then exits from @acronym{IMAIL} by saving the
+@acronym{IMAIL} folder and switching to another buffer.
 
 @node Other Commands,  , Summaries, Commands
 @section Other Commands
