@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.22 1987/02/02 15:17:52 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.23 1987/02/03 15:59:15 jinx Exp $
  *
  * This file contains the code to support startup of
  * the SCHEME interpreter.
@@ -137,7 +137,8 @@ Exit_Scheme_Declarations;
 
 /* Main program */
 
-forward void Clear_Mem(), Start_Scheme(), Setup_Memory();
+forward void Start_Scheme();
+extern void Clear_Memory(), Setup_Memory();
 
 void
 main(argc, argv)
@@ -207,8 +208,8 @@ main(argc, argv)
     }
     else
     { if (!warned) printf(".\n");
-      Clear_Mem(blocks(Heap_Size), blocks(Stack_Size),
-                blocks(Constant_Size));
+      Clear_Memory(blocks(Heap_Size), blocks(Stack_Size),
+		   blocks(Constant_Size));
       /* We are reloading from scratch anyway. */
       Was_Scheme_Dumped = false;
       Start_Scheme(FASL_It ? PC_FASLOAD : PC_BAND_LOAD, File_Name);
@@ -226,89 +227,6 @@ main(argc, argv)
   compiler_initialize((long) FASL_It);
   Start_Scheme(FASL_It ? PC_FASLOAD : PC_BAND_LOAD, File_Name);
 }
-
-/* 	Memory Allocation, sequential processor:
-
-   ------------------------------------------
-   |         Control Stack        ||        |
-   |                              \/        |
-   ------------------------------------------
-   |     Constant + Pure Space    /\        |
-   |                              ||        |
-   ------------------------------------------
-   |                                        |
-   |           Heap Space                   |
-   ------------------------------------------
-  
-   Each area has a pointer to its starting address and a pointer to the
-   next free cell.  In addition, there is a pointer to the top of the
-   useable area of the heap (the heap is subdivided into two areas for
-   the purposes of GC, and this pointer indicates the top of the half
-   currently in use).
-
-*/
-
-/* Initialize free pointers within areas. Stack_Pointer is
-   special: it always points to a cell which is in use. */
-
-void
-Clear_Mem(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
-int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
-{ Heap_Top = Heap_Bottom + Our_Heap_Size;
-  Local_Heap_Base = Heap_Bottom;
-  Unused_Heap_Top = Heap_Bottom + 2*Our_Heap_Size;
-  Set_Mem_Top(Heap_Top - GC_Reserve);
-  Free = Heap_Bottom;
-  Free_Constant = Constant_Space;
-  Set_Pure_Top();
-  Initialize_Stack();
-  return;
-}
-
-/* Some machines may allocate and setup differently, thus
-   they can define Setup_Memory as an alias for their own 
-   procedure and it will replace this one.
-*/
-
-#ifndef Setup_Memory
-void
-Setup_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
-int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
-{
-/* First, assign values for the start of the areas */
-
-  if (Our_Heap_Size == 0)
-  { printf("Configuration won't hold initial data.\n");
-    exit(1);
-  }
-  Highest_Allocated_Address = 
-    Allocate_Heap_Space(Stack_Allocation_Size(Our_Stack_Size) + 
-	                2*Our_Heap_Size + Our_Constant_Size);
-  if (Heap == NULL)
-  { fprintf(stderr, "Not enough memory for this configuration.\n");
-    exit(1);
-  }
-  Align_Float(Heap);
-  Unused_Heap = Heap+Our_Heap_Size;
-  Align_Float(Unused_Heap);
-  Constant_Space = Heap + 2*Our_Heap_Size;
-  Align_Float(Constant_Space);
-  /* The extra word is needed by the garbage collector */
-  if (((C_To_Scheme(Highest_Allocated_Address)) & TYPE_CODE_MASK) != 0)
-  { fprintf(stderr,
-	    "Largest address does not fit in datum field of Pointer.\n");
-    fprintf(stderr,
-	    "Allocate less space or re-compile without Heap_In_Low_Memory.\n");
-    exit(1);
-  }
-
-/* Additional information about heap for primitives */
-
-  Heap_Bottom = Heap;
-  Clear_Mem(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size);
-  return;
-}
-#endif
 
 #define Default_Init_Fixed_Objects(Fixed_Objects)			\
 { Pointer Int_Vec, OB_Array, Error, Bad_Object,				\
