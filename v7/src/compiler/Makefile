@@ -1,5 +1,5 @@
 #
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/Attic/Makefile,v 1.9 1991/10/30 23:33:21 cph Exp $
+# $Id: Makefile,v 1.10 1992/12/23 13:42:11 cph Exp $
 #
 # Makefile for Scheme compiler
 # This makefile supports some utilities for the compiler.
@@ -37,7 +37,7 @@ stage1:
 	for subdir in $(SUBDIRS); \
 	do \
 	( cd $$subdir ; echo "making $$subdir" ; \
-	mkdir STAGE1 ; mv *.com *.binf STAGE1/. ) \
+	mkdir STAGE1 ; mv *.com *.bci STAGE1/. ) \
 	done
 
 unstage1:
@@ -68,7 +68,7 @@ stage2:
 	for subdir in $(SUBDIRS); \
 	do \
 	( cd $$subdir ; echo "making $$subdir" ; \
-	mkdir STAGE2 ; mv *.com *.binf STAGE2/. ) \
+	mkdir STAGE2 ; mv *.com *.bci STAGE2/. ) \
 	done
 
 unstage2:
@@ -99,7 +99,7 @@ stage3:
 	for subdir in $(SUBDIRS); \
 	do \
 	( cd $$subdir ; echo "making $$subdir" ; \
-	mkdir STAGE3 ; mv *.com *.binf STAGE3/. ) \
+	mkdir STAGE3 ; mv *.com *.bci STAGE3/. ) \
 	done
 
 unstage3:
