@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.137 1989/08/07 08:44:52 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.138 1989/08/11 10:54:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -120,10 +120,7 @@
 			    (let ((truename* (buffer-truename buffer)))
 			      (and truename*
 				   (pathname=? truename truename*))))))))))))
-
-(define (pathname=? x y)
-  (string=? (pathname->string x)
-	    (pathname->string y)))
+
 (define-command find-file
   "Visit a file in its own buffer.
 If the file is already in some buffer, select that buffer.

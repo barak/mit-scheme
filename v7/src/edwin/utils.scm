@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.16 1989/08/09 13:18:15 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.17 1989/08/11 10:54:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -110,7 +110,7 @@
 
 (define char-set:not-graphic
   (char-set-invert char-set:graphic))
-
+
 (define (read-line #!optional port)
   (read-string char-set:return
 	       (if (default-object? port)
@@ -118,7 +118,7 @@
 		   (guarantee-input-port port))))
 
 (define (read-from-string string)
-  (with-input-from-string string read))
+  (with-input-from-string string read))
 (define (y-or-n? . strings)
   (define (loop)
     (let ((char (char-upcase (read-char))))
@@ -182,3 +182,7 @@
 			(*unparser-list-breadth-limit* 10))
 	      (write value))
 	    (write value)))))
+
+(define (pathname=? x y)
+  (string=? (pathname->string x)
+	    (pathname->string y)))

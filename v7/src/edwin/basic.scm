@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.102 1989/08/08 10:05:18 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.103 1989/08/11 10:51:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -88,66 +88,38 @@ With an argument, inserts several newlines."
     (let ((m* (mark-right-inserting (current-point))))
       (insert-newlines (or argument 1))
       (set-current-point! m*))))
-
-(define-command keyboard-quit
-  "Signals a quit condition."
+
+(define-command narrow-to-region
+  "Restrict editing in current buffer to text between point and mark.
+Use \\[widen] to undo the effects of this command."
   ()
   (lambda ()
-    (editor-beep)
-    (temporary-message "Quit")
-    (^G-signal)))
+    (region-clip! (current-region))))
 
-(define-command ^r-bad-command
-  "This command is used to capture undefined keys.
-It is usually called directly by the command lookup
-procedure when it fails to find a command."
+(define-command widen
+  "Remove restrictions from current buffer.
+Allows full text to be seen and edited."
   ()
   (lambda ()
-    (editor-error "Undefined command: " (xchar->name (current-command-char)))))
+    (buffer-widen! (current-buffer))))
 
-(define (barf-if-read-only)
-  (editor-error "Trying to modify read only text."))
-
-(define-variable debug-on-editor-error
-  "True means signal Scheme error when an editor error occurs."
-  false)
-
-(define condition-type:editor-error
-  (make-error-type '()
-    (lambda (condition port)
-      (write-string "Editor error: " port)
-      (write-string (message-args->string (condition/irritants condition))
-		    port))))
-
-(define (editor-error . strings)
-  (if (ref-variable debug-on-editor-error)
-      (call-with-current-continuation
-       (lambda (continuation)
-	 (debug-scheme-error
-	  (make-condition condition-type:editor-error
-			  strings
-			  continuation))
-	 (%editor-error)))
-      (begin
-	(if (not (null? strings)) (apply temporary-message strings))
-	(%editor-error))))
-
-(define (%editor-error)
-  (editor-beep)
-  (abort-current-command))
-
-(define (editor-failure . strings)
-  (cond ((not (null? strings)) (apply temporary-message strings))
-	(*defining-keyboard-macro?* (clear-message)))
-  (editor-beep)
-  (keyboard-macro-disable))
-
-(define-integrable (editor-beep)
-  (screen-beep (current-screen)))
-
-(define (not-implemented)
-  (editor-error "Not yet implemented"))
+(define-command set-key
+  "Define a key binding from the keyboard.
+Prompts for a command and a key, and sets the key's binding.
+The key is bound in fundamental mode."
+  (lambda ()
+    (let ((command (prompt-for-command "Command")))
+      (list command
+	    (prompt-for-key (string-append "Put \""
+					   (command-name-string command)
+					   "\" on key")
+			    (mode-comtabs (ref-mode-object fundamental))))))
+  (lambda (command key)
+    (if (prompt-for-confirmation? "Go ahead")
+	(define-key 'fundamental key (command-name command)))))
 
+;;;; Prefixes
+
 (define-command control-prefix
   "Sets Control-bit of following character.
 This command followed by an = is equivalent to a Control-=."
@@ -221,6 +193,83 @@ For more information type the HELP key while entering the name."
   (lambda ()
     (dispatch-on-command (prompt-for-command "Extended Command") true)))
 
+;;;; Errors
+
+(define-command keyboard-quit
+  "Signals a quit condition."
+  ()
+  (lambda ()
+    (editor-beep)
+    (temporary-message "Quit")
+    (^G-signal)))
+
+(define-command ^r-bad-command
+  "This command is used to capture undefined keys.
+It is usually called directly by the command lookup
+procedure when it fails to find a command."
+  ()
+  (lambda ()
+    (editor-error "Undefined command: " (xchar->name (current-command-char)))))
+
+(define (barf-if-read-only)
+  (editor-error "Trying to modify read only text."))
+
+(define-variable debug-on-editor-error
+  "True means signal Scheme error when an editor error occurs."
+  false)
+
+(define condition-type:editor-error
+  (make-error-type '()
+    (lambda (condition port)
+      (write-string "Editor error: " port)
+      (write-string (message-args->string (condition/irritants condition))
+		    port))))
+
+(define (editor-error . strings)
+  (if (ref-variable debug-on-editor-error)
+      (call-with-current-continuation
+       (lambda (continuation)
+	 (debug-scheme-error
+	  (make-condition condition-type:editor-error
+			  strings
+			  continuation))
+	 (%editor-error)))
+      (begin
+	(if (not (null? strings)) (apply temporary-message strings))
+	(%editor-error))))
+
+(define (%editor-error)
+  (editor-beep)
+  (abort-current-command))
+
+(define (editor-failure . strings)
+  (cond ((not (null? strings)) (apply temporary-message strings))
+	(*defining-keyboard-macro?* (clear-message)))
+  (editor-beep)
+  (keyboard-macro-disable))
+
+(define-integrable (editor-beep)
+  (screen-beep (current-screen)))
+
+(define (not-implemented)
+  (editor-error "Not yet implemented"))
+
+;;;; Level Control
+
+(define-command exit-recursive-edit
+  "Exit normally from a subsystem of a level of editing."
+  ()
+  (lambda ()
+    (exit-recursive-edit 'EXIT)))
+
+(define-command abort-recursive-edit
+  "Abnormal exit from recursive editing command.
+The recursive edit is exited and the command that invoked it is aborted.
+For a normal exit, you should use \\[exit-recursive-edit], NOT this command."
+  ()
+  (lambda ()
+    (exit-recursive-edit 'ABORT)))
+
 (define-command suspend-scheme
   "Go back to Scheme's superior job.
 With argument, saves visited file first."
@@ -263,49 +312,7 @@ With prefix arg, silently save all file-visiting buffers, then kill."
 	    (set! edwin-finalization false)
 	    (reset-editor)))
     ((ref-command suspend-edwin))))
-
-(define-command exit-recursive-edit
-  "Exit normally from a subsystem of a level of editing."
-  ()
-  (lambda ()
-    (exit-recursive-edit 'EXIT)))
-
-(define-command abort-recursive-edit
-  "Abnormal exit from recursive editing command.
-The recursive edit is exited and the command that invoked it is aborted.
-For a normal exit, you should use \\[exit-recursive-edit], NOT this command."
-  ()
-  (lambda ()
-    (exit-recursive-edit 'ABORT)))
-
-(define-command narrow-to-region
-  "Restrict editing in current buffer to text between point and mark.
-Use \\[widen] to undo the effects of this command."
-  ()
-  (lambda ()
-    (region-clip! (current-region))))
-
-(define-command widen
-  "Remove restrictions from current buffer.
-Allows full text to be seen and edited."
-  ()
-  (lambda ()
-    (buffer-widen! (current-buffer))))
-
-(define-command set-key
-  "Define a key binding from the keyboard.
-Prompts for a command and a key, and sets the key's binding.
-The key is bound in fundamental mode."
-  (lambda ()
-    (let ((command (prompt-for-command "Command")))
-      (list command
-	    (prompt-for-key (string-append "Put \""
-					   (command-name-string command)
-					   "\" on key")
-			    (mode-comtabs (ref-mode-object fundamental))))))
-  (lambda (command key)
-    (if (prompt-for-confirmation? "Go ahead")
-	(define-key 'fundamental key (command-name command)))))
+
 ;;;; Comment Commands
 
 (define-variable comment-column

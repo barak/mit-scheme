@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.78 1989/08/09 13:16:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.79 1989/08/11 10:51:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -273,14 +273,13 @@
 		   (record-command-arguments expressions))
 	       arguments)))
 	  ((null? specification)
-	   (if record?
-	       (record-command-arguments '()))
+	   (if record? (record-command-arguments '()))
 	   '())
 	  (else
 	   (let ((old-chars-read keyboard-chars-read))
 	     (let ((arguments (specification)))
-	       (if (or record?
-		       (not (= keyboard-chars-read old-chars-read)))		   (record-command-arguments (map quotify-sexp arguments)))
+	       (if (or record? (not (= keyboard-chars-read old-chars-read)))
+		   (record-command-arguments (map quotify-sexp arguments)))
 	       arguments))))))
 
 (define (execute-command-history-entry entry)
