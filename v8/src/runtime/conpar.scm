@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/conpar.scm,v 14.8 1989/08/08 01:26:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/conpar.scm,v 14.9 1989/10/10 11:38:30 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -99,10 +99,12 @@ MIT in each case. |#
   (vector-length (stack-frame/elements stack-frame)))
 
 (define (stack-frame/ref stack-frame index)
-  (map-reference-trap
-   (let ((elements (stack-frame/elements stack-frame)))
-     (lambda ()
-       (vector-ref elements index)))))
+  (let ((elements (stack-frame/elements stack-frame)))
+    (let ((length (vector-length elements)))
+      (if (< index length)
+	  (map-reference-trap (lambda () (vector-ref elements index)))
+	  (stack-frame/ref (stack-frame/next stack-frame) (- index length))))))
+
 (define-integrable (stack-frame/return-address stack-frame)
   (stack-frame/ref stack-frame 0))
 
