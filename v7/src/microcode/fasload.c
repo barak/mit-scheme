@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.49 1990/01/21 23:34:19 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.50 1990/02/11 22:34:07 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -327,8 +327,7 @@ Relocate_Block(Scan, Stop_At)
 	       --count >= 0;
 	       )
 	  {
-	    address = ((long) *Scan);
-	    address = (ADDRESS_TO_DATUM (address));
+	    address = (ADDRESS_TO_DATUM ((SCHEME_OBJECT *) (*Scan)));
 	    *Scan++ = ((SCHEME_OBJECT) Relocate(address));
 	  }
 	  break;
@@ -348,7 +347,7 @@ Relocate_Block(Scan, Stop_At)
 	    Scan = ((SCHEME_OBJECT *) (word_ptr));
 	    word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
 	    EXTRACT_OPERATOR_LINKAGE_ADDRESS (address, Scan);
-	    address = (ADDRESS_TO_DATUM (address));
+	    address = (ADDRESS_TO_DATUM ((SCHEME_OBJECT *) address));
 	    address = ((long) (Relocate(address)));
 	    STORE_OPERATOR_LINKAGE_ADDRESS (address, Scan);
 	  }
@@ -375,7 +374,7 @@ Relocate_Block(Scan, Stop_At)
 	  Scan = ((SCHEME_OBJECT *) (word_ptr));
 	  word_ptr = (NEXT_MANIFEST_CLOSURE_ENTRY (word_ptr));
 	  EXTRACT_CLOSURE_ENTRY_ADDRESS (address, Scan);
-	  address = (ADDRESS_TO_DATUM (address));
+	  address = (ADDRESS_TO_DATUM ((SCHEME_OBJECT *) address));
 	  address = ((long) (Relocate (address)));
 	  STORE_CLOSURE_ENTRY_ADDRESS (address, Scan);
 	}
@@ -848,7 +847,7 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   Trapping = false;
   Return_Hook_Address = NULL;
   History = Make_Dummy_History();
-  Prev_Restore_History_Stacklet = SHARP_F;
+  Prev_Restore_History_Stacklet = ((SCHEME_OBJECT *) SHARP_F);
   Prev_Restore_History_Offset = 0;
 
   end_band_load(true, false);

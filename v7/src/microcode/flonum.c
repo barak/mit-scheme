@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.32 1989/10/28 06:44:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.33 1990/02/11 22:34:12 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -60,7 +60,8 @@ double_to_flonum (value)
   ALIGN_FLOAT (Free);
   Primitive_GC_If_Needed (FLONUM_SIZE);
   (*Free++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (FLONUM_SIZE - 1)));
-  (*((double *) Free)++) = value;
+  (*((double *) Free)) = value;
+  Free += (sizeof (double));
   return (MAKE_POINTER_OBJECT (TC_BIG_FLONUM, (Free - FLONUM_SIZE)));
 }
 

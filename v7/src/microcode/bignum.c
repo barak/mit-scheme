@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.29 1990/01/12 23:36:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.30 1990/02/11 22:34:00 cph Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,6 +36,7 @@ MIT in each case. */
 
 #ifdef MIT_SCHEME
 #include "scheme.h"
+#undef CHAR_BIT /* redefined in "limits.h" */
 #else
 #include "bignum.h"
 #endif
@@ -994,7 +995,6 @@ bignum_destructive_add (bignum, n)
 	}
       (*scan++) = (digit - BIGNUM_RADIX);
     }
-  return;
 }
 
 /* Division */
