@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.26 1995/07/11 22:29:22 cph Exp $
+$Id: dospth.scm,v 1.27 1995/07/11 22:31:03 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -274,7 +274,7 @@ MIT in each case. |#
        (eq? (car directory) 'ABSOLUTE)
        (pair? (cdr directory))
        (string? (cadr directory))
-       (string-null?? (cadr directory))))
+       (string-null? (cadr directory))))
 
 (define (dos/pathname-as-directory pathname)
   (let ((name (%pathname-name pathname))
