@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: slot.scm,v 1.3 1997/06/17 08:40:02 cph Exp $
+;;; $Id: slot.scm,v 1.4 1997/06/19 21:17:12 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -72,9 +72,6 @@
 
 (define (slot-initial-value? slot)
   (not (eq? record-slot-uninitialized (slot-initial-value slot))))
-
-(define (slot-allocation slot)
-  (slot-property slot 'ALLOCATION 'INSTANCE))
 
 (define (guarantee-slot-descriptor slot name)
   (if (not (slot-descriptor? slot))
