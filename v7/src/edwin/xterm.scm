@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.3 1989/04/25 02:00:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.4 1989/04/25 03:54:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -199,8 +199,15 @@
 	   (string-length (xterm-input-port-state/buffer state)))
 	true
 	(let ((buffer
-	       (xterm-screen/read-chars (xterm-input-port-state/screen state)
-					interval)))
+	       (let ((screen (xterm-input-port-state/screen state)))
+		 (if (zero? interval)
+		     (xterm-screen/read-chars screen 0)
+		     (let loop ((interval interval))
+		       (let ((result
+			      (xterm-screen/read-chars screen interval)))
+			 (if (integer? result)
+			     (loop result)
+			     result)))))))
 	  (and buffer
 	       (begin
 		 (check-for-interrupts! state buffer 0)
@@ -254,15 +261,11 @@
 	      (string-ref buffer 0)))))))
 
 (define (xterm-screen/read-chars screen interval)
-  (let ((xterm (screen-xterm screen)))
-    (let loop ((interval interval))
-      (let ((result (xterm-read-chars xterm interval)))
-	(if (and (not (screen-in-update? screen))
-		 (xterm-screen/process-events! screen))
-	    (update-screen! screen false))
-	(if (integer? result)
-	    (loop result)
-	    result)))))
+  (let ((result (xterm-read-chars (screen-xterm screen) interval)))
+    (if (and (not (screen-in-update? screen))
+	     (xterm-screen/process-events! screen))
+	(update-screen! screen false))
+    result))
 
 (define (xterm-screen/process-events! screen)
   (let ((xterm (screen-xterm screen)))
