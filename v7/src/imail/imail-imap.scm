@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.52 2000/05/17 18:40:09 cph Exp $
+;;; $Id: imail-imap.scm,v 1.53 2000/05/18 03:43:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -307,8 +307,7 @@
      (fill-messages-vector! folder 0)
      (if (imap-folder-uidvalidity folder)
 	 (set-imap-folder-unseen! folder #f))
-     (set-imap-folder-uidvalidity! folder uidvalidity)
-     (folder-modified! folder)))
+     (set-imap-folder-uidvalidity! folder uidvalidity)))
   (read-message-headers! folder 0))
 
 (define (detach-all-messages! folder)
@@ -349,8 +348,8 @@
        (let ((new-length (compute-messages-length v n)))
 	 (if new-length
 	     (set-imap-folder-messages! folder
-					(vector-head v new-length)))))))
-  (folder-modified! folder))
+					(vector-head v new-length))))
+       (folder-modified! folder 'EXPUNGE (- index 1))))))
 
 (define (initial-messages)
   (make-vector 64 #f))
@@ -414,18 +413,14 @@
 			 (set-imap-folder-n-messages! folder count)
 			 (fill-messages-vector! folder n)
 			 (set-imap-folder-messages-synchronized?! folder #t)
-			 (folder-modified! folder)
+			 (folder-modified! folder 'INCREASE-LENGTH)
 			 n)
-			((< count n)
-			 (error "EXISTS response decreased folder length:"
-				folder))
+			((= count n)
+			 (set-imap-folder-messages-synchronized?! folder #t)
+			 #f)
 			(else
-			 (if (not (imap-folder-messages-synchronized? folder))
-			     (begin
-			       (set-imap-folder-messages-synchronized?!
-				folder #t)
-			       (folder-modified! folder)))
-			 #f)))))))
+			 (error "EXISTS response decreased folder length:"
+				folder))))))))
 	(if n
 	    (read-message-headers! folder n)))
       (let ((v.n
@@ -442,7 +437,7 @@
 				#f))
 		  (fill-messages-vector! folder 0)
 		  (set-imap-folder-messages-synchronized?! folder #t)
-		  (folder-modified! folder)
+		  (folder-modified! folder 'SET-LENGTH)
 		  (cons v n))))))
 	((imail-message-wrapper "Reading message UIDs")
 	 (lambda ()
@@ -462,7 +457,7 @@
 			   ;; Flags might have been updated while
 			   ;; reading the UIDs.
 			   (if (%message-flags-initialized? m*)
-			       (%set-message-flags! m (message-flags m*)))
+			       (%%set-message-flags! m (message-flags m*)))
 			   (detach-message! m*)
 			   (attach-message! m folder i*)
 			   (vector-set! v* i* m)
@@ -470,8 +465,7 @@
 			 (begin
 			   (if (> (imap-message-uid m) (imap-message-uid m*))
 			       (error "Message inserted into folder:" m*))
-			   (loop (fix:+ i 1) i*)))))))
-	   (folder-modified! folder))))))
+			   (loop (fix:+ i 1) i*))))))))))))
 
 ;;;; Message datatype
 
@@ -485,7 +479,7 @@
 (define (imap-message-connection message)
   (imap-folder-connection (message-folder message)))
 
-(define-method set-message-flags! ((message <imap-message>) flags)
+(define-method %set-message-flags! ((message <imap-message>) flags)
   (imap:command:store-flags (imap-message-connection message)
 			    (message-index message)
 			    (map imail-flag->imap-flag
@@ -979,18 +973,14 @@
 				  (imap:response:exists-count response))
 	 #f)
 	((imap:response:expunge? response)
-	 (let ((folder (imap-connection-folder connection)))
-	   (remove-imap-folder-message
-	    folder
-	    (- (imap:response:expunge-index response) 1))
-	   (folder-modified! folder))
+	 (remove-imap-folder-message
+	  (imap-connection-folder connection)
+	  (- (imap:response:expunge-index response) 1))
 	 #f)
 	((imap:response:flags? response)
-	 (let ((folder (imap-connection-folder connection)))
-	   (set-imap-folder-allowed-flags!
-	    folder
-	    (map imap-flag->imail-flag (imap:response:flags response)))
-	   (folder-modified! folder))
+	 (set-imap-folder-allowed-flags!
+	  (imap-connection-folder connection)
+	  (map imap-flag->imail-flag (imap:response:flags response)))
 	 #f)
 	((imap:response:recent? response)
 	 #f)
@@ -1030,31 +1020,23 @@
 	    (if (memq '\* pflags) #t #f))
 	   (set-imap-folder-permanent-flags!
 	    folder
-	    (map imap-flag->imail-flag (delq '\* pflags)))
-	   (folder-modified! folder)))
+	    (map imap-flag->imail-flag (delq '\* pflags)))))
 	((imap:response-code:read-only? code)
-	 (let ((folder (imap-connection-folder connection)))
-	   (set-imap-folder-read-only?! folder #t)
-	   (folder-modified! folder)))
+	 (set-imap-folder-read-only?! (imap-connection-folder connection) #t))
 	((imap:response-code:read-write? code)
-	 (let ((folder (imap-connection-folder connection)))
-	   (set-imap-folder-read-only?! folder #f)
-	   (folder-modified! folder)))
+	 (set-imap-folder-read-only?! (imap-connection-folder connection) #f))
 	((imap:response-code:uidnext? code)
-	 (let ((folder (imap-connection-folder connection)))
-	   (set-imap-folder-uidnext! folder (imap:response-code:uidnext code))
-	   (folder-modified! folder)))
+	 (set-imap-folder-uidnext! (imap-connection-folder connection)
+				   (imap:response-code:uidnext code)))
 	((imap:response-code:uidvalidity? code)
 	 (let ((folder (imap-connection-folder connection))
 	       (uidvalidity (imap:response-code:uidvalidity code)))
 	   (if (not (eqv? uidvalidity (imap-folder-uidvalidity folder)))
 	       (new-imap-folder-uidvalidity! folder uidvalidity))))
 	((imap:response-code:unseen? code)
-	 (let ((folder (imap-connection-folder connection)))
-	   (set-imap-folder-unseen!
-	    folder
-	    (- (imap:response-code:unseen code) 1))
-	   (folder-modified! folder)))
+	 (set-imap-folder-unseen!
+	  (imap-connection-folder connection)
+	  (- (imap:response-code:unseen code) 1)))
 	#|
 	((or (imap:response-code:badcharset? code)
 	     (imap:response-code:newname? code)
@@ -1065,23 +1047,18 @@
 	))
 
 (define (process-fetch-attributes message response)
-  (let loop
-      ((keywords (imap:response:fetch-attribute-keywords response))
-       (any-modifications? #f))
-    (if (pair? keywords)
-	(loop (cdr keywords)
-	      (or (process-fetch-attribute
-		   message
-		   (car keywords)
-		   (imap:response:fetch-attribute response (car keywords)))
-		  any-modifications?))
-	(if any-modifications?
-	    (message-modified! message)))))
+  (for-each
+   (lambda (keyword)
+     (process-fetch-attribute message
+			      keyword
+			      (imap:response:fetch-attribute response
+							     keyword)))
+   (imap:response:fetch-attribute-keywords response)))
 
 (define (process-fetch-attribute message keyword datum)
   (case keyword
     ((FLAGS)
-     (%set-message-flags! message (map imap-flag->imail-flag datum))
+     (%%set-message-flags! message (map imap-flag->imail-flag datum))
      #t)
     ((RFC822.HEADER)
      (%set-message-header-fields! message
@@ -1104,7 +1081,7 @@
 (define %set-message-body!
   (slot-modifier <imap-message> 'BODY))
 
-(define %set-message-flags!
+(define %%set-message-flags!
   (slot-modifier <imap-message> 'FLAGS))
 
 (define %message-flags-initialized?

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.68 2000/05/17 20:52:21 cph Exp $
+;;; $Id: imail-core.scm,v 1.69 2000/05/18 03:42:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -207,13 +207,16 @@
 (define-method ->url ((folder <folder>))
   (folder-url folder))
 
-(define (folder-modified! folder)
+(define (folder-modified! folder type . parameters)
   (without-interrupts
    (lambda ()
      (set-folder-modification-count!
       folder
       (+ (folder-modification-count folder) 1))))
-  (event-distributor/invoke! (folder-modification-event folder) folder))
+  (event-distributor/invoke! (folder-modification-event folder)
+			     folder
+			     type
+			     parameters))
 
 (define (get-memoized-folder url)
   (let ((folder (hash-table/get memoized-folders url #f)))
@@ -322,9 +325,8 @@
     (<imail-object>)
   (header-fields define accessor)
   (body define accessor)
-  (flags define standard)
-  (modification-count define standard
-		      initial-value 0)
+  (flags define standard
+	 modifier %set-message-flags!)
   (folder define standard
 	  initial-value #f)
   (index define standard
@@ -342,16 +344,6 @@
   (if (not (message? message))
       (error:wrong-type-argument message "IMAIL message" procedure)))
 
-(define (message-modified! message)
-  (without-interrupts
-   (lambda ()
-     (set-message-modification-count!
-      message
-      (+ (message-modification-count message) 1))
-     (let ((folder (message-folder message)))
-       (if folder
-	   (folder-modified! folder))))))
-
 (define (message-attached? message #!optional folder)
   (let ((folder (if (default-object? folder) #f folder)))
     (if folder
@@ -363,13 +355,13 @@
 
 (define (attach-message! message folder index)
   (guarantee-folder folder 'ATTACH-MESSAGE!)
-  (set-message-folder! message folder)
-  (set-message-index! message index)
-  (message-modified! message))
+  (without-interrupts
+   (lambda ()
+     (set-message-folder! message folder)
+     (set-message-index! message index))))
 
 (define (detach-message! message)
-  (set-message-folder! message #f)
-  (message-modified! message))
+  (set-message-folder! message #f))
 
 (define-generic message-internal-time (message))
 (define-method message-internal-time ((message <message>))
@@ -468,8 +460,7 @@
    (lambda ()
      (let ((flags (message-flags message)))
        (if (not (flags-member? flag flags))
-	   (set-message-flags! message (cons flag flags))))
-     (message-modified! message))))
+	   (set-message-flags! message (cons flag flags)))))))
 
 (define (clear-message-flag message flag)
   (guarantee-message-flag flag 'SET-MESSAGE-FLAG)
@@ -477,8 +468,13 @@
    (lambda ()
      (let ((flags (message-flags message)))
        (if (flags-member? flag flags)
-	   (set-message-flags! message (flags-delete! flag flags))))
-     (message-modified! message))))
+	   (set-message-flags! message (flags-delete! flag flags)))))))
+
+(define (set-message-flags! message flags)
+  (%set-message-flags! message flags)
+  (let ((folder (message-folder message)))
+    (if folder
+	(folder-modified! folder 'FLAGS message))))
 
 (define (folder-flags folder)
   (let ((n (folder-length folder)))

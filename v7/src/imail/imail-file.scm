@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.27 2000/05/17 17:30:58 cph Exp $
+;;; $Id: imail-file.scm,v 1.28 2000/05/18 03:42:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -121,24 +121,27 @@
 (define-method expunge-deleted-messages ((folder <file-folder>))
   (without-interrupts
    (lambda ()
-     (let loop
-	 ((messages (file-folder-messages folder))
-	  (index 0)
-	  (messages* '()))
-       (cond ((not (pair? messages))
-	      (set-file-folder-messages! folder (reverse! messages*)))
-	     ((message-deleted? (car messages))
-	      (detach-message! (car messages))
-	      (folder-modified! folder)
-	      (loop (cdr messages) index messages*))
-	     (else
-	      (if (not (eqv? index (message-index (car messages))))
-		  (begin
-		    (set-message-index! (car messages) index)
-		    (message-modified! (car messages))))
-	      (loop (cdr messages)
-		    (fix:+ index 1)
-		    (cons (car messages) messages*))))))))
+     (let find-first ((messages (file-folder-messages folder)) (prev #f))
+       (if (pair? messages)
+	   (if (message-deleted? (car messages))
+	       (let loop
+		   ((messages messages)
+		    (prev prev)
+		    (index (message-index (car messages))))
+		 (if (pair? messages)
+		     (let ((next (cdr messages)))
+		       (if (message-deleted? (car messages))
+			   (begin
+			     (detach-message! (car messages))
+			     (if prev
+				 (set-cdr! prev next)
+				 (set-file-folder-messages! folder next))
+			     (folder-modified! folder 'EXPUNGE index)
+			     (loop next prev index))
+			   (begin
+			     (set-message-index! (car messages) index)
+			     (loop (cdr messages) messages (+ index 1)))))))
+	       (find-first (cdr messages) messages)))))))
 
 (define-method search-folder ((folder <file-folder>) criteria)
   (cond ((string? criteria)

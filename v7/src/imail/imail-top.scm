@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.58 2000/05/17 20:52:59 cph Exp $
+;;; $Id: imail-top.scm,v 1.59 2000/05/18 03:43:06 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -481,7 +481,8 @@ With prefix argument N moves backward N messages with these flags."
 	  (directory-pathname (file-folder-pathname folder))
 	  (user-homedir-pathname)))
      (add-event-receiver! (folder-modification-event folder)
-       (lambda (folder)
+       (lambda (folder type parameters)
+	 type parameters
 	 (maybe-add-command-suffix! notice-folder-modifications folder)))
      (add-kill-buffer-hook buffer delete-associated-buffers))))
 
