@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.73 1996/10/10 10:28:48 cph Exp $
+;;;	$Id: unix.scm,v 1.74 1996/12/24 22:32:15 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -138,14 +138,8 @@ Includes the new backup.  Must be > 0."
 	    (loop (+ i 1)))))))
 
 (define (os/backup-buffer? truename)
-  (and (memv (string-ref (vector-ref (file-attributes truename) 8) 0)
-	     '(#\- #\l))
-       (not
-	(let ((directory (pathname-directory truename)))
-	  (and (pair? directory)
-	       (eq? 'ABSOLUTE (car directory))
-	       (pair? (cdr directory))
-	       (eqv? "tmp" (cadr directory)))))))
+  (memv (string-ref (file-attributes/mode-string (file-attributes truename)) 0)
+	'(#\- #\l)))
 
 (define (os/default-backup-filename)
   "~/%backup%~")
