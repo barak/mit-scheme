@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/syntax.scm,v 1.74 1991/10/25 00:03:18 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/syntax.scm,v 1.75 1992/07/09 15:55:19 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -390,20 +390,20 @@ a comment ending."
 
 (define (forward-one-definition-end mark)
   (define (loop start)
-    (let ((end (forward-one-list start)))
-      (and end
-	   (let ((end*
-		  (let ((end (horizontal-space-end end)))
-		    (if (re-match-forward "[;\n]" end)
-			(line-start end 1 'LIMIT)
-			end))))
-	     (if (mark> end* mark)
-		 end*
-		 (loop (forward-one-definition-start end)))))))
+    (and start
+	 (let ((end (forward-one-list start)))
+	   (and end
+		(let ((end*
+		       (let ((end (horizontal-space-end end)))
+			 (if (re-match-forward "[;\n]" end)
+			     (line-start end 1 'LIMIT)
+			     end))))
+		  (if (mark> end* mark)
+		      end*
+		      (loop (forward-one-definition-start end))))))))
   (and (not (group-end? mark))
-       (loop 
-	(or (backward-one-definition-start (mark1+ mark))
-	    (forward-one-definition-start (group-start mark))))))
+       (loop (or (backward-one-definition-start (mark1+ mark))
+		 (forward-one-definition-start (group-start mark))))))
 
 (define (backward-one-definition-end mark)
   (let ((start (backward-one-definition-start mark)))
