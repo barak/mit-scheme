@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.209 1991/11/26 08:02:55 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.210 1992/01/10 22:26:54 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -47,7 +47,9 @@
 (declare (usual-integrations))
 
 (define (edit . args)
-  (cond ((not edwin-editor)
+  (cond ((within-editor?)
+	 (error "edwin: Editor already running"))
+	((not edwin-editor)
 	 (apply create-editor args))
 	((not (null? args))
 	 (error "edwin: Arguments ignored when re-entering editor" args)))
