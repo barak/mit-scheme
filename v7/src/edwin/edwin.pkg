@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.102 1992/11/01 07:12:57 arthur Exp $
+$Id: edwin.pkg,v 1.103 1992/11/17 22:52:27 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -75,6 +75,7 @@ MIT in each case. |#
 	 "basic"			; basic commands
 	 "bufcom"			; buffer commands
 	 "comhst"			; command history
+	 "dabbrev"			; M-x dabbrev-expand
 	 "evlcom"			; evaluation commands
 	 "filcom"			; file commands
 	 "fill"				; text fill commands
