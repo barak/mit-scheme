@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile.emx,v 1.6 1995/11/04 00:59:46 cph Exp $
+###	$Id: makefile.emx,v 1.7 1995/11/06 10:07:20 cph Exp $
 ###
 ###	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ###
@@ -70,7 +70,7 @@ ASFLAGS =
 
 %.exe :
 	$(CC) $(LDFLAGS) -o $(basename $@) $^
-	emxbind -bq $(basename $@)
+	emxbind -b -q $(basename $@)
 	del $(basename $@)
 
 include os2utl\makefile.cmn
@@ -78,11 +78,11 @@ include os2utl\makefile.cmn
 scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) scheme.res
 	$(CC) $(LDFLAGS) -o $(basename $@) \
 	$(OBJECTS) $(SCHEME_OBJECTS) $(SCHEME_LIB)
-	emxbind -bpq $(basename $@) -rscheme.res
+	emxbind -b -p -q -r$(basename $@).res $(basename $@)
 	del $(basename $@)
 
 bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) bchschem.res
 	$(CC) $(LDFLAGS) -o $(basename $@) \
 	$(OBJECTS) $(SCHEME_OBJECTS) $(SCHEME_LIB)
-	emxbind -bpq $(basename $@) -rbchschem.res
+	emxbind -b -p -q -r$(basename $@).res $(basename $@)
 	del $(basename $@)
