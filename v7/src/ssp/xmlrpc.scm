@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xmlrpc.scm,v 1.9 2005/02/06 04:44:27 cph Exp $
+$Id: xmlrpc.scm,v 1.10 2005/02/08 20:40:31 cph Exp $
 
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
@@ -41,9 +41,9 @@ USA.
    (rpc-elt:fault
     (rpc-elt:value
      (rpc-elt:struct
-      (rpc-elt:member (rpc-elt:name "faultCode")
+      (rpc-elt:member (rpc-elt:name '|faultCode|)
 		      (rpc-elt:value (rpc-elt:int (number->string code))))
-      (rpc-elt:member (rpc-elt:name "faultString")
+      (rpc-elt:member (rpc-elt:name '|faultString|)
 		      (rpc-elt:value (rpc-elt:string string))))))))
 
 (define (xml-rpc:simple-fault code message . irritants)
@@ -62,7 +62,7 @@ USA.
       (require (xml-name=? (xml-element-name elt) '|methodCall|))
       (values (let ((s (content-string (named-child '|methodName| elt))))
 		(require (re-string-match "\\`[a-zA-Z0-9_.:/]+\\'" s))
-		s)
+		(utf8-string->symbol s))
 	      (let ((elt (%named-child 'params elt)))
 		(if elt
 		    (parse-params elt)
@@ -260,16 +260,9 @@ USA.
 	 ((default-object? object)
 	  (rpc-elt:nil))
 	 ((string? object)
-	  (if (utf8-string-valid? object)
-	      (rpc-elt:string object)
-	      (call-with-output-string
-		(lambda (port)
-		  (let ((context (encode-base64:initialize port #f)))
-		    (encode-base64:update context
-					  object
-					  0
-					  (string-length object))
-		    (encode-base64:finalize context))))))
+	  (encode-string object))
+	 ((symbol? object)
+	  (encode-string (symbol->utf8-string object)))
 	 ((decoded-time? object)
 	  (rpc-elt:date-time (decoded-time->iso8601-string object)))
 	 ((and (pair? object)
@@ -289,6 +282,15 @@ USA.
 	  (error:wrong-type-argument object
 				     "an XML-RPC object"
 				     'encode-value)))))
+
+(define (encode-string string)
+  (if (utf8-string-valid? string)
+      (rpc-elt:string string)
+      (call-with-output-string
+	(lambda (port)
+	  (let ((context (encode-base64:initialize port #f)))
+	    (encode-base64:update context string 0 (string-length string))
+	    (encode-base64:finalize context))))))
 
 (define (rpc-elt name empty?)
   (let ((make-elt

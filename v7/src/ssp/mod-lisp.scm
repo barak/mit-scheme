@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.25 2005/02/06 04:44:20 cph Exp $
+$Id: mod-lisp.scm,v 1.26 2005/02/08 20:40:12 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -798,7 +798,7 @@ USA.
 		  (apply handler params)))))))))))
 
 (define (get-xmlrpc-method-handler pathname name)
-  (let ((methods (make-string-hash-table)))
+  (let ((methods (make-eq-hash-table)))
     (let ((environment (make-expansion-environment pathname)))
       (environment-define environment 'define-xmlrpc-method
 	(lambda (name handler)
