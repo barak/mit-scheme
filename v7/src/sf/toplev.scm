@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 3.4 1987/06/30 21:45:39 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 3.5 1988/02/28 22:59:02 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -67,6 +67,12 @@ Currently only the 68000 implementation needs this."
   (fluid-let ((wrapping-hook wrap-with-control-point))
     (syntax-file input-string bin-string spec-string)))
 
+(define (sf/set-default-syntax-table! syntax-table)
+  (if (or (false? syntax-table)
+	  (syntax-table? syntax-table))
+      (set! default-syntax-table syntax-table)
+      (error "Illegal syntax table" syntax-table)))
+
 (define (sf/set-file-syntax-table! pathname syntax-table)
   (pathname-map/insert! file-info/syntax-table
 			(pathname/normalize pathname)
@@ -84,7 +90,7 @@ Currently only the 68000 implementation needs this."
     (return-2 (pathname-map/lookup file-info/syntax-table
 				   pathname
 				   identity-procedure
-				   (lambda () false))
+				   (lambda () default-syntax-table))
 	      (file-info/get-declarations pathname))))
 
 (define (file-info/get-declarations pathname)
@@ -101,6 +107,9 @@ Currently only the 68000 implementation needs this."
 
 (define file-info/syntax-table
   (pathname-map/make))
+
+(define default-syntax-table
+  false)
 
 (define file-info/declarations
   (pathname-map/make))

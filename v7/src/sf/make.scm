@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/make.scm,v 3.14 1987/12/23 04:22:11 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/make.scm,v 3.15 1988/02/28 23:00:06 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,6 +39,7 @@ MIT in each case. |#
 
 (define sf)
 (define sfu? false)
+(define sf/set-default-syntax-table!)
 (define sf/set-file-syntax-table!)
 (define sf/add-file-declarations!)
 
@@ -60,7 +61,7 @@ MIT in each case. |#
     (make-environment
       (define :name "SF")
       (define :version 3)
-      (define :modification 14)
+      (define :modification 15)
       (define :files)
 
       (define :files-lists
