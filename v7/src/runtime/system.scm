@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: system.scm,v 14.10 1998/02/12 05:56:48 cph Exp $
+$Id: system.scm,v 14.11 1998/02/12 06:03:15 cph Exp $
 
 Copyright (c) 1988-98 Massachusetts Institute of Technology
 
@@ -57,10 +57,16 @@ MIT in each case. |#
 		     (error "Illegal subsystem version:"
 			    version))))
 	    version))))
-    (remove-subsystem-identification! name)
-    (set! subsystem-identifications
-	  (append! subsystem-identifications (list (cons name version)))))
-  unspecific)
+    (let ((entry (find-entry name)))
+      (if entry
+	  (begin
+	    (set-car! entry name)
+	    (set-cdr! entry version))
+	  (begin
+	    (set! subsystem-identifications
+		  (append! subsystem-identifications
+			   (list (cons name version))))
+	    unspecific)))))
 
 (define (remove-subsystem-identification! name)
   (let loop ((previous #f) (entries subsystem-identifications))
