@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.77 1992/02/17 22:09:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.78 1992/02/19 00:05:47 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -972,7 +972,6 @@ MIT in each case. |#
   (files "intmod")
   (parent (edwin))
   (export (edwin)
-	  accept-inferior-repl-output/unsafe
 	  edwin-command$inferior-debugger-self-insert
 	  edwin-command$inferior-repl-abort-nearest
 	  edwin-command$inferior-repl-abort-previous

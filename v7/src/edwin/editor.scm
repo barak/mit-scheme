@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.216 1992/02/18 14:09:51 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.217 1992/02/19 00:05:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -65,6 +65,7 @@
 		 (editor-thread-root-continuation)
 		 (editor-initial-threads '())
 		 (inferior-thread-changes? false)
+		 (inferior-threads '())
 		 (recursive-edit-continuation false)
 		 (recursive-edit-level 0))
        (editor-grab-display edwin-editor
@@ -368,6 +369,26 @@ This does not affect editor errors or evaluation errors."
     (with-editor-ungrabbed thunk)))
 
 (define inferior-thread-changes?)
+(define inferior-threads)
+
+(define (register-inferior-thread! thread output-processor)
+  (let ((flags (cons false output-processor)))
+    (set! inferior-threads
+	  (cons (system-pair-cons (ucode-type weak-cons) thread flags)
+		inferior-threads))
+    flags))
+
+(define (inferior-thread-output! flags)
+  (without-interrupts
+   (lambda ()
+     (set-car! flags true)
+     (set! inferior-thread-changes? true)
+     unspecific)))
+
+(define (inferior-thread-output!/unsafe flags)
+  (set-car! flags true)
+  (set! inferior-thread-changes? true)
+  unspecific)
 
 (define (accept-thread-output)
   (without-interrupts
@@ -375,4 +396,23 @@ This does not affect editor errors or evaluation errors."
      (and inferior-thread-changes?
 	  (begin
 	    (set! inferior-thread-changes? false)
-	    (accept-inferior-repl-output/unsafe))))))
+	    (let loop ((threads inferior-threads) (prev false) (output? false))
+	      (if (null? threads)
+		  output?
+		  (let ((record (car threads))
+			(next (cdr threads)))
+		    (let ((thread (system-pair-car record))
+			  (flags (system-pair-cdr record)))
+		      (if (and thread (not (thread-dead? thread)))
+			  (loop next
+				threads
+				(if (car flags)
+				    (begin
+				      (set-car! flags false)
+				      (or ((cdr flags)) output?))
+				    output?))
+			  (begin
+			    (if prev
+				(set-cdr! prev next)
+				(set! inferior-threads next))
+			    (loop next prev output?))))))))))))

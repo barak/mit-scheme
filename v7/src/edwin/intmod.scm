@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.43 1992/02/17 22:01:47 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.44 1992/02/19 00:05:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -76,7 +76,6 @@ but prefix argument means prompt for different environment."
 	(let ((thread (current-thread)))
 	  (detach-thread thread)
 	  (let ((port (make-interface-port buffer thread)))
-	    (register-interface-port! port)
 	    (attach-buffer-interface-port! buffer port)
 	    (with-input-from-port port
 	      (lambda ()
@@ -92,33 +91,7 @@ but prefix argument means prompt for different environment."
 				message))))))))))))
 
 (define (initialize-inferior-repls!)
-  (set! interface-ports '())
   unspecific)
-
-(define (register-interface-port! port)
-  (set! interface-ports
-	(system-pair-cons (ucode-type weak-cons) port interface-ports))
-  unspecific)
-
-(define (accept-inferior-repl-output/unsafe)
-  (let loop ((ports interface-ports) (prev false) (output? false))
-    (if (null? ports)
-	output?
-	(let ((port (system-pair-car ports))
-	      (next (system-pair-cdr ports)))
-	  (cond ((not port)
-		 (if prev
-		     (system-pair-set-cdr! prev next)
-		     (set! interface-ports next))
-		 (loop next prev output?))
-		((or (not (null? (port/output-strings port)))
-		     (not (queue-empty? (port/output-queue port))))
-		 (process-output-queue port)
-		 (loop next ports true))
-		(else
-		 (loop next ports output?)))))))
-
-(define interface-ports)
 
 (define (wait-for-input port level mode)
   (enqueue-output-operation! port
@@ -408,15 +381,21 @@ If this is an error, the debugger examines the error condition."
 ;;;; Interface Port
 
 (define (make-interface-port buffer thread)
-  (port/copy interface-port-template
-	     (make-interface-port-state
-	      thread
-	      (mark-left-inserting-copy (buffer-end buffer))
-	      (make-ring (ref-variable comint-input-ring-size))
-	      (make-queue)
-	      false
-	      (make-queue)
-	      '())))
+  (letrec
+      ((port
+	(port/copy interface-port-template
+		   (make-interface-port-state
+		    thread
+		    (mark-left-inserting-copy (buffer-end buffer))
+		    (make-ring (ref-variable comint-input-ring-size))
+		    (make-queue)
+		    false
+		    (make-queue)
+		    '()
+		    (register-inferior-thread!
+		     thread
+		     (lambda () (process-output-queue port)))))))
+    port))
 
 (define-structure (interface-port-state (conc-name interface-port-state/))
   (thread false read-only true)
@@ -425,7 +404,8 @@ If this is an error, the debugger examines the error condition."
   (expression-queue false read-only true)
   command-char
   (output-queue false read-only true)
-  output-strings)
+  output-strings
+  (output-registration false read-only true))
 
 (define-integrable (port/thread port)
   (interface-port-state/thread (port/state port)))
@@ -456,6 +436,9 @@ If this is an error, the debugger examines the error condition."
 
 (define-integrable (set-port/output-strings! port strings)
   (set-interface-port-state/output-strings! (port/state port) strings))
+
+(define-integrable (port/output-registration port)
+  (interface-port-state/output-registration (port/state port)))
 
 ;;; Output operations
 
@@ -478,7 +461,7 @@ If this is an error, the debugger examines the error condition."
 (define (enqueue-output-string! port string)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
     (set-port/output-strings! port (cons string (port/output-strings port)))
-    (set! inferior-thread-changes? true)
+    (inferior-thread-output!/unsafe (port/output-registration port))
     (set-interrupt-enables! interrupt-mask)))
 
 (define (enqueue-output-operation! port operator)
@@ -493,7 +476,7 @@ If this is an error, the debugger examines the error condition."
 	       (lambda (mark)
 		 (region-insert-string! mark string)))))))
     (enqueue!/unsafe (port/output-queue port) operator)
-    (set! inferior-thread-changes? true)
+    (inferior-thread-output!/unsafe (port/output-registration port))
     (set-interrupt-enables! interrupt-mask)))
 
 (define (process-output-queue port)
@@ -512,7 +495,8 @@ If this is an error, the debugger examines the error condition."
 	    (do ((strings (reverse! strings) (cdr strings)))
 		((null? strings))
 	      (region-insert-string! mark (car strings))))))
-    (set-interrupt-enables! interrupt-mask)))
+    (set-interrupt-enables! interrupt-mask))
+  true)
 
 ;;; Input operations
 
