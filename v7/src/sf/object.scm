@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: object.scm,v 4.4 1992/12/03 03:18:21 cph Exp $
+$Id: object.scm,v 4.5 1993/01/02 07:33:36 cph Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,33 +35,7 @@ MIT in each case. |#
 ;;;; SCode Optimizer: Data Types
 ;;; package: (scode-optimizer)
 
-(declare (usual-integrations)
-	 (automagic-integrations)
-	 (open-block-optimizations))
-
-(let-syntax
-    ((define-enumerand
-       (macro (name enumeration)
-	 `(DEFINE ,(symbol-append name '/ENUMERAND)
-	    (ENUMERATION/NAME->ENUMERAND
-	     ,(symbol-append 'ENUMERATION/ enumeration)
-	     ',name))))
-     (define-simple-type
-       (macro (name enumeration slots)
-	 `(BEGIN
-	    (DEFINE-ENUMERAND ,name ,enumeration)
-	    (DEFINE-STRUCTURE (,name
-			       (TYPE VECTOR)
-			       (NAMED ,(symbol-append name '/ENUMERAND))
-			       (CONC-NAME ,(symbol-append name '/))
-			       (CONSTRUCTOR ,(symbol-append name '/MAKE)))
-	      ,@slots)))))
-
-(define-integrable (object/enumerand object)
-  (vector-ref object 0))
-
-(define-integrable (set-object/enumerand! object enumerand)
-  (vector-set! object 0 enumerand))
+(declare (usual-integrations))
 
 ;;;; Enumerations
 
@@ -96,40 +70,57 @@ MIT in each case. |#
 
 (define (enumeration/name->enumerand enumeration name)
   (cdr (or (assq name (cdr enumeration))
-	   (error "Unknown enumeration name" name))))
+	   (error "Unknown enumeration name:" name))))
 
 (define (enumeration/name->index enumeration name)
   (enumerand/index (enumeration/name->enumerand enumeration name)))
+
+(let-syntax
+    ((define-enumeration
+       (macro (enumeration-name enumerand-names)
+	 `(BEGIN
+	    (DEFINE ,enumeration-name
+	      (ENUMERATION/MAKE ',enumerand-names))
+	    ,@(map (lambda (enumerand-name)
+		     `(DEFINE ,(symbol-append enumerand-name '/ENUMERAND)
+			(ENUMERATION/NAME->ENUMERAND ,enumeration-name
+						     ',enumerand-name)))
+		   enumerand-names)))))
+  (define-enumeration enumeration/random
+    (block
+     delayed-integration
+     variable))
+  (define-enumeration enumeration/expression
+    (access
+     assignment
+     combination
+     conditional
+     constant
+     declaration
+     delay
+     disjunction
+     in-package
+     open-block
+     procedure
+     quotation
+     reference
+     sequence
+     the-environment)))
 
-;;;; Random Types
+;;;; Records
 
-(define enumeration/random
-  (enumeration/make
-   '(BLOCK
-     DELAYED-INTEGRATION
-     VARIABLE
-     )))
-
-(define-enumerand block random)
 (define-structure (block (type vector)
 			 (named block/enumerand)
 			 (conc-name block/)
-			 (constructor %block/make))
+			 (constructor %block/make
+				      (parent safe? bound-variables)))
   parent
-  children
+  (children '())
   safe?
-  declarations
+  (declarations (declarations/make-null))
   bound-variables
-  flags)
+  (flags '()))
 
-(define (block/make parent safe?)
-  (let ((block
-	 (%block/make parent '() safe? (declarations/make-null) '() '())))
-    (if parent
-	(set-block/children! parent (cons block (block/children parent))))
-    block))
-
-(define-enumerand delayed-integration random)
 (define-structure (delayed-integration
 		   (type vector)
 		   (named delayed-integration/enumerand)
@@ -140,63 +131,59 @@ MIT in each case. |#
   operations
   value)
 
-(define-simple-type variable random
-  (block name flags))
+(let-syntax
+    ((define-simple-type
+       (macro (name slots)
+	 `(DEFINE-STRUCTURE (,name (TYPE VECTOR)
+				   (NAMED ,(symbol-append name '/ENUMERAND))
+				   (CONC-NAME ,(symbol-append name '/))
+				   (CONSTRUCTOR ,(symbol-append name '/MAKE)))
+	    ,@slots))))
+  (define-simple-type variable (block name flags))
+  (define-simple-type access (environment name))
+  (define-simple-type assignment (block variable value))
+  (define-simple-type combination (operator operands))
+  (define-simple-type conditional (predicate consequent alternative))
+  (define-simple-type constant (value))
+  (define-simple-type declaration (declarations expression))
+  (define-simple-type delay (expression))
+  (define-simple-type disjunction (predicate alternative))
+  (define-simple-type in-package (environment quotation))
+  (define-simple-type open-block (block variables values actions optimized))
+  (define-simple-type procedure (block name required optional rest body))
+  (define-simple-type quotation (block expression))
+  (define-simple-type reference (block variable))
+  (define-simple-type sequence (actions))
+  (define-simple-type the-environment (block)))
 
-(define (variable/make&bind! block name)
-  (let ((variable (variable/make block name '())))
-    (set-block/bound-variables! block
-				(cons variable
-				      (block/bound-variables block)))
-    variable))
+(define-integrable (object/enumerand object)
+  (vector-ref object 0))
 
-(define-integrable (variable/flag? variable flag)
-  (memq flag (variable/flags variable)))
+(define-integrable (set-object/enumerand! object enumerand)
+  (vector-set! object 0 enumerand))
+
+;;;; Miscellany
 
-(define (set-variable/flag! variable flag)
-  (if (not (variable/flag? variable flag))
-      (set-variable/flags! variable
-			   (cons flag (variable/flags variable)))))
-
-(let-syntax ((define-flag
-	       (macro (name tester setter)
-		 `(BEGIN
-		    (DEFINE (,tester VARIABLE)
-		      (VARIABLE/FLAG? VARIABLE (QUOTE ,name)))
-		    (DEFINE (,setter VARIABLE)
-		      (SET-VARIABLE/FLAG! VARIABLE (QUOTE ,name)))))))
-
+(let-syntax
+    ((define-flag
+       (macro (name tester setter)
+	 `(BEGIN
+	    (DEFINE (,tester VARIABLE)
+	      (MEMQ ',name (VARIABLE/FLAGS VARIABLE)))
+	    (DEFINE (,setter VARIABLE)
+	      (IF (NOT (MEMQ ',name (VARIABLE/FLAGS VARIABLE)))
+		  (SET-VARIABLE/FLAGS! VARIABLE
+				       (CONS ',name
+					     (VARIABLE/FLAGS VARIABLE)))))))))
   (define-flag SIDE-EFFECTED variable/side-effected variable/side-effect!)
   (define-flag REFERENCED    variable/referenced    variable/reference!)
   (define-flag INTEGRATED    variable/integrated    variable/integrated!)
-  (define-flag CAN-IGNORE    variable/can-ignore?   variable/can-ignore!)
-  )
+  (define-flag CAN-IGNORE    variable/can-ignore?   variable/can-ignore!))
 
 (define open-block/value-marker
   ;; This must be an interned object because we will fasdump it and
   ;; fasload it back in.
   (intern "#[(scode-optimizer)open-block/value-marker]"))
-
-;;;; Expression Types
-
-(define enumeration/expression
-  (enumeration/make
-   '(ACCESS
-     ASSIGNMENT
-     COMBINATION
-     CONDITIONAL
-     CONSTANT
-     DECLARATION
-     DELAY
-     DISJUNCTION
-     IN-PACKAGE
-     OPEN-BLOCK
-     PROCEDURE
-     QUOTATION
-     REFERENCE
-     SEQUENCE
-     THE-ENVIRONMENT
-     )))
 
 (define (expression/make-dispatch-vector)
   (make-vector (enumeration/cardinality enumeration/expression)))
@@ -214,49 +201,29 @@ MIT in each case. |#
   ;; Useful for debugging
   (vector-ref dispatch-vector
 	      (enumeration/name->index enumeration/expression name)))
-
-(define-simple-type access expression (environment name))
-(define-simple-type assignment expression (block variable value))
-(define-simple-type combination expression (operator operands))
-(define-simple-type conditional expression (predicate consequent alternative))
-(define-simple-type constant expression (value))
-(define-simple-type declaration expression (declarations expression))
-(define-simple-type delay expression (expression))
-(define-simple-type disjunction expression (predicate alternative))
-(define-simple-type in-package expression (environment quotation))
-(define-simple-type open-block expression (block variables values actions
-						 optimized))
-(define-simple-type procedure expression
-  (block name required optional rest body))
-(define-simple-type quotation expression (block expression))
-(define-simple-type reference expression (block variable))
-(define-simple-type sequence expression (actions))
-(define-simple-type the-environment expression (block))
-
-;;; end LET-SYNTAX
-)
 
 (define-integrable (global-ref/make name)
-  ;; system-global-environment = ()
-  (access/make (constant/make '()) name))
+  (access/make (constant/make system-global-environment) name))
 
-(define (global-ref? obj)
-  (and (access? obj)
-       (constant? (access/environment obj))
-       (eq? (constant/value (access/environment obj)) '())
-       (access/name obj)))
+(define (global-ref? object)
+  (and (access? object)
+       (constant? (access/environment object))
+       (eq? system-global-environment
+	    (constant/value (access/environment object)))
+       (access/name object)))
 
 (define-integrable (constant->integration-info constant)
-  (make-integration-info (constant/make constant) '()))
+  (make-integration-info (constant/make constant)))
 
-(define-integrable (integration-info? obj)
-  (pair? obj))
+(define-integrable (integration-info? object)
+  (and (pair? object)
+       (eq? integration-info-tag (car object))))
 
-(define-integrable (make-integration-info expression uninterned-variables)
-  (cons expression uninterned-variables))
+(define-integrable (make-integration-info expression)
+  (cons integration-info-tag expression))
 
 (define-integrable (integration-info/expression integration-info)
-  (car integration-info))
-
-(define-integrable (integration-info/uninterned-variables integration-info)
   (cdr integration-info))
+
+(define integration-info-tag
+  (string-copy "integration-info"))

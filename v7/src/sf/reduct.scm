@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: reduct.scm,v 4.3 1992/11/04 10:17:34 jinx Exp $
+$Id: reduct.scm,v 4.4 1993/01/02 07:33:36 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -53,7 +53,7 @@ that act differently depending on the number of arguments.
 (replace-operator (<name> (<nargs1> <value1>) (<nargs2> <value2>) ...))
 
 <name> is a symbol
-<nargs1> is a non-negative integer or one of the symbols ANY, ELSE, and OTHERWISE.
+<nargs1> is a non-negative integer or one of the symbols ANY, ELSE, OTHERWISE.
 <valueN> is a simple expression:
   <symbol>					; means a variable
   (QUOTE <constant>) = '<constant>		; means a constant
@@ -224,16 +224,8 @@ Examples:
 (define (any-shadowed? var-list source target)
   (let loop ((l var-list))
     (and (not (null? l))
-	 (or (shadowed? (variable/name (car l)) source target)
+	 (or (block/limited-lookup target (variable/name (car l)) source)
 	     (loop (cdr l))))))
-
-(define (shadowed? name source target)
-  (let search ((block target))
-    (and (not (eq? block source))
-	 (or (variable/assoc name (block/bound-variables block))
-	     (let ((parent (block/parent block)))
-	       (and (not (null? parent))
-		    (search parent)))))))
 
 (define (filter-vars expr-list)
   (let loop ((l expr-list)
@@ -512,7 +504,7 @@ Examples:
 ;;;; Replacement top level
 
 (define (replacement/make replacement decl-block)
-  (with-values
+  (call-with-values
       (lambda ()
 	(parse-replacement (car replacement)
 			   (cdr replacement)
@@ -525,7 +517,9 @@ Examples:
 			      default)))
 	  (if (or (not (pair? candidate))
 		  (and (car candidate)
-		       (shadowed? (car candidate) decl-block block)))
+		       (block/limited-lookup block
+					     (car candidate)
+					     decl-block)))
 	      (if-not-expanded)
 	      (if-expanded
 	       (combination/make (let ((frob (cdr candidate)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sf.pkg,v 4.7 1992/11/04 10:17:36 jinx Exp $
+$Id: sf.pkg,v 4.8 1993/01/02 07:33:37 cph Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -60,19 +60,17 @@ MIT in each case. |#
   (parent (scode-optimizer))
   (export ()
 	  sf
-	  sf:noisy?
 	  sf/add-file-declarations!
 	  sf/default-declarations
 	  sf/default-syntax-table
 	  sf/pathname-defaulting
 	  sf/set-default-syntax-table!
 	  sf/set-file-syntax-table!
+	  sf/set-usual-integrations-default-deletions!
 	  sf/top-level-definitions
 	  sf/usual-integrations-default-deletions
-	  sf/set-usual-integrations-default-deletions!
-	  sfu?
-	  syntax&integrate
-	  )
+	  sf:noisy?
+	  syntax&integrate)
   (export (scode-optimizer)
 	  integrate/procedure
 	  integrate/file
@@ -123,14 +121,12 @@ MIT in each case. |#
   (files "pardec")
   (parent (scode-optimizer))
   (export (scode-optimizer)
+	  declarations/bind
 	  declarations/known?
 	  declarations/make-null
-	  declarations/parse
-	  declarations/binders
-	  declarations/original
 	  declarations/map
-	  declarations/for-each-variable
-	  declarations/integrated-variables
+	  declarations/original
+	  declarations/parse
 	  operations->external))
 
 (define-package (scode-optimizer copy)
@@ -150,7 +146,8 @@ MIT in each case. |#
   (files "chtype")
   (parent (scode-optimizer))
   (export (scode-optimizer)
-	  intern-type))
+	  change-type/block
+	  change-type/expression))
 
 (define-package (scode-optimizer build-utilities)
   (files "butils")

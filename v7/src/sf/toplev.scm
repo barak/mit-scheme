@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.9 1992/11/04 10:17:39 jinx Exp $
+$Id: toplev.scm,v 4.10 1993/01/02 07:33:38 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -54,16 +54,8 @@ MIT in each case. |#
 
 (define (sf input-string #!optional bin-string spec-string)
   (syntax-file input-string
-	       (if (default-object? bin-string) false bin-string)
-	       (if (default-object? spec-string) false spec-string)))
-
-#|
-(define (scold input-string #!optional bin-string spec-string)
-  "Use this only for syntaxing the cold-load root file.
-Currently only the 68000 implementation needs this."
-  (fluid-let ((wrapping-hook wrap-with-control-point))
-    (syntax-file input-string bin-string spec-string)))
-|#
+	       (and (not (default-object? bin-string)) bin-string)
+	       (and (not (default-object? spec-string)) spec-string)))
 
 (define (syntax&integrate s-expression declarations #!optional syntax-table)
   (fluid-let ((sf:noisy? false))
@@ -140,27 +132,22 @@ Currently only the 68000 implementation needs this."
 
 ;;;; File Syntaxer
 
-(define sf/default-externs-pathname
-  (make-pathname false false false false "ext" 'NEWEST))
-
-(define sfu? false)
-
 (define (syntax-file input-string bin-string spec-string)
   (if (not (or (false? sf/default-syntax-table)
 	       (syntax-table? sf/default-syntax-table)))
-      (error "Malformed binding of SF/DEFAULT-SYNTAX-TABLE"
+      (error "Malformed binding of SF/DEFAULT-SYNTAX-TABLE:"
 	     sf/default-syntax-table))
   (if (not (list-of-symbols? sf/top-level-definitions))
-      (error "Malformed binding of SF/TOP-LEVEL-DEFINITIONS"
+      (error "Malformed binding of SF/TOP-LEVEL-DEFINITIONS:"
 	     sf/top-level-definitions))
   (for-each (lambda (input-string)
-	      (with-values
+	      (call-with-values
 		  (lambda ()
 		    (sf/pathname-defaulting input-string
 					    bin-string
 					    spec-string))
 		(lambda (input-pathname bin-pathname spec-pathname)
-		  (with-values (lambda () (file-info/find input-pathname))
+		  (call-with-values (lambda () (file-info/find input-pathname))
 		    (lambda (syntax-table declarations)
 		      (sf/internal input-pathname bin-pathname spec-pathname
 				   syntax-table declarations))))))
@@ -169,176 +156,153 @@ Currently only the 68000 implementation needs this."
 		(list input-string))))
 
 (define (sf/pathname-defaulting input-string bin-string spec-string)
+  spec-string				;ignored
   (let ((input-path (pathname/normalize input-string)))
-    (let ((input-type (pathname-type input-path)))
-      (let ((bin-path
-	     (let ((bin-path
-		    (pathname-new-type
-		     input-path
-		     (if (and (string? input-type)
-			      (not (string=? "scm" input-type)))
-			 (string-append "b" input-type)
-			 "bin"))))
-	       (if bin-string
-		   (merge-pathnames bin-string bin-path)
-		   bin-path))))
-	(let ((spec-path
-	       (and (or spec-string sfu?)
-		    (let ((spec-path
-			   (pathname-new-type
-			    bin-path
-			    (if (and (string? input-type)
-				     (not (string=? "scm" input-type)))
-				(string-append "u" input-type)
-				"unf"))))
-		      (if spec-string
-			  (merge-pathnames spec-string spec-path)
-			  spec-path)))))
-	  (values input-path bin-path spec-path))))))
+    (values input-path
+	    (let ((bin-path
+		   (pathname-new-type
+		    input-path
+		    (let ((input-type (pathname-type input-path)))
+		      (if (and (string? input-type)
+			       (not (string=? "scm" input-type)))
+			  (string-append "b" input-type)
+			  "bin")))))
+	      (if bin-string
+		  (merge-pathnames bin-string bin-path)
+		  bin-path))
+	    false)))
 
 (define (sf/internal input-pathname bin-pathname spec-pathname
 		     syntax-table declarations)
+  spec-pathname				;ignored
+  (let ((start-date (get-decoded-time)))
+    (if sf:noisy?
+	(begin
+	  (newline)
+	  (write-string "Syntax file: ")
+	  (write (enough-namestring input-pathname))
+	  (write-string " ")
+	  (write (enough-namestring bin-pathname))))
+    (fasdump (make-comment
+	      `((SOURCE-FILE . ,(->namestring input-pathname))
+		(DATE ,(decoded-time/year start-date)
+		      ,(decoded-time/month start-date)
+		      ,(decoded-time/day start-date))
+		(TIME ,(decoded-time/hour start-date)
+		      ,(decoded-time/minute start-date)
+		      ,(decoded-time/second start-date)))
+	      (sf/file->scode input-pathname bin-pathname
+			      syntax-table declarations))
+	     bin-pathname)))
+
+(define (sf/file->scode input-pathname output-pathname
+			syntax-table declarations)
   (fluid-let ((sf/default-externs-pathname
 	       (make-pathname (pathname-host input-pathname)
 			      (pathname-device input-pathname)
 			      (pathname-directory input-pathname)
 			      false
-			      "ext"
+			      externs-pathname-type
 			      'NEWEST)))
-    (let ((start-date (get-decoded-time)))
-      (if sf:noisy?
-	  (begin
-	    (newline)
-	    (write-string "Syntax file: ")
-	    (write (enough-namestring input-pathname))
-	    (write-string " ")
-	    (write (enough-namestring bin-pathname))
-	    (if spec-pathname
-		(begin
-		  (write-string " ")
-		  (write (enough-namestring spec-pathname))))))
-      (with-values
-	  (lambda ()
-	    (integrate/file input-pathname syntax-table declarations
-			    spec-pathname))
-	(lambda (expression externs events)
-	  (fasdump (wrapping-hook
-		    (make-comment
-		     `((SOURCE-FILE . ,(->namestring input-pathname))
-		       (DATE ,(decoded-time/year start-date)
-			     ,(decoded-time/month start-date)
-			     ,(decoded-time/day start-date))
-		       (TIME ,(decoded-time/hour start-date)
-			     ,(decoded-time/minute start-date)
-			     ,(decoded-time/second start-date)))
-		     (set! expression false)))
-		   bin-pathname)
-	  (write-externs-file (pathname-new-type
-			       bin-pathname
-			       (pathname-type sf/default-externs-pathname))
-			      (set! externs false))
-	  (if spec-pathname
-	      (begin (if sf:noisy?
-			 (begin
-			   (newline)
-			   (write-string "Writing ")
-			   (write (enough-namestring spec-pathname))))
-		     (with-output-to-file spec-pathname
-		       (lambda ()
-			 (newline)
-			 (write `(DATE ,(decoded-time/year start-date)
-				       ,(decoded-time/month start-date)
-				       ,(decoded-time/day start-date)
-				       ,(decoded-time/hour start-date)
-				       ,(decoded-time/minute start-date)
-				       ,(decoded-time/second start-date)))
-			 (newline)
-			 (write `(SOURCE-FILE ,(->namestring input-pathname)))
-			 (newline)
-			 (write `(BINARY-FILE ,(->namestring bin-pathname)))
-			 (for-each (lambda (event)
-				     (newline)
-				     (write `(,(car event)
-					      (RUNTIME ,(cdr event)))))
-				   events)))
-		     (if sf:noisy?
-			 (write-string " -- done")))))))))
+    (call-with-values
+	(lambda ()
+	  (integrate/file input-pathname syntax-table declarations))
+      (lambda (expression externs-block externs)
+	(if output-pathname
+	    (write-externs-file (pathname-new-type output-pathname
+						   externs-pathname-type)
+				externs-block
+				externs))
+	expression))))
+
+(define externs-pathname-type
+  "ext")
+
+(define sf/default-externs-pathname
+  (make-pathname false false false false externs-pathname-type 'NEWEST))
 
 (define (read-externs-file pathname)
   (let ((pathname (merge-pathnames pathname sf/default-externs-pathname)))
-    (if (file-exists? pathname)
-	(fasload pathname)
-	(begin
-	  (warn "Nonexistent externs file" (->namestring pathname))
-	  '()))))
+    (let ((namestring (->namestring pathname)))
+      (if (file-exists? pathname)
+	  (let ((object (fasload pathname))
+		(wrong-version
+		 (lambda (version)
+		   (warn (string-append
+			   "Externs file is wrong version (expected "
+			   (number->string externs-file-version)
+			   ", found "
+			   (number->string version)
+			   "):")
+			  namestring)
+		   (values false '()))))
+	    (cond ((and (vector? object)
+			(>= (vector-length object) 4)
+			(eq? externs-file-tag (vector-ref object 0))
+			(exact-integer? (vector-ref object 1))
+			(>= (vector-ref object 1) 2))
+		   (if (= externs-file-version (vector-ref object 1))
+		       (values (vector-ref object 2) (vector-ref object 3))
+		       (wrong-version (vector-ref object 1))))
+		  ((and (list? object)
+			(for-all? object
+			  (lambda (element)
+			    (and (vector? element)
+				 (= 4 (vector-length element))))))
+		   (wrong-version 1))
+		  (else
+		   (error "Not an externs file:" namestring))))
+	  (begin
+	    (warn "Nonexistent externs file:" namestring)
+	    (values false '()))))))
 
-(define (write-externs-file pathname externs)
+(define (write-externs-file pathname externs-block externs)
   (cond ((not (null? externs))
-	 (fasdump externs pathname))
+	 (fasdump (vector externs-file-tag externs-file-version
+			  externs-block externs)
+		  pathname))
 	((file-exists? pathname)
 	 (delete-file pathname))))
 
-(define (wrapping-hook scode)
-  scode)
+(define externs-file-tag
+  (string->symbol "#[(scode-optimizer top-level)externs-file]"))
 
-#|
-(define control-point-tail
-  `(3 ,(object-new-type (microcode-type 'NULL) 16)
-      () () () () () () () () () () () () () () ()))
-
-(define (wrap-with-control-point scode)
-  (system-list->vector type-code-control-point
-		       `(,return-address-restart-execution
-			 ,scode
-			 ,system-global-environment
-			 ,return-address-non-existent-continuation
-			 ,@control-point-tail)))
-
-(define type-code-control-point
-  (microcode-type 'CONTROL-POINT))
-
-(define return-address-restart-execution
-  (make-return-address (microcode-return 'RESTART-EXECUTION)))
-
-(define return-address-non-existent-continuation
-  (make-return-address (microcode-return 'NON-EXISTENT-CONTINUATION)))
-|#
+(define externs-file-version
+  2)
 
 ;;;; Optimizer Top Level
 
-(define (integrate/file file-name syntax-table declarations compute-free?)
-  compute-free?				;ignored
+(define (integrate/file file-name syntax-table declarations)
   (integrate/kernel (lambda ()
 		      (phase:syntax (phase:read file-name) syntax-table))
 		    declarations))
 
 (define (integrate/simple preprocessor input declarations receiver)
-  (with-values
+  (call-with-values
       (lambda ()
 	(integrate/kernel (lambda () (preprocessor input)) declarations))
     (or receiver
-	(lambda (expression externs events)
-	  externs events		;ignored
+	(lambda (expression externs-block externs)
+	  externs-block externs		;ignored
 	  expression))))
 
 (define (integrate/kernel get-scode declarations)
   (fluid-let ((previous-name false)
 	      (previous-process-time false)
-	      (previous-real-time false)
-	      (events '()))
-    (with-values
+	      (previous-real-time false))
+    (call-with-values
 	(lambda ()
-	  (with-values
+	  (call-with-values
 	      (lambda ()
-		(with-values
+		(call-with-values
 		    (lambda ()
 		      (phase:transform (canonicalize-scode (get-scode)
 							   declarations)))
 		  phase:optimize))
 	    phase:generate-scode))
-      (lambda (externs expression)
+      (lambda (expression externs-block externs)
 	(end-phase)
-	(values expression externs (reverse! events))))))
+	(values expression externs-block externs)))))
 
 (define (canonicalize-scode scode declarations)
   (let ((declarations (process-declarations declarations)))
@@ -371,13 +335,13 @@ Currently only the 68000 implementation needs this."
 
 (define (phase:generate-scode operations environment expression)
   (mark-phase "Generate SCode")
-  (values (operations->external operations environment)
-	  (cgen/external expression)))
+  (call-with-values (lambda () (operations->external operations environment))
+    (lambda (externs-block externs)
+      (values (cgen/external expression) externs-block externs))))
 
 (define previous-name)
 (define previous-process-time)
 (define previous-real-time)
-(define events)
 
 (define (mark-phase this-name)
   (end-phase)
@@ -387,19 +351,20 @@ Currently only the 68000 implementation needs this."
 	(write-string "    ")
 	(write-string this-name)
 	(write-string "...")))
-  (set! previous-name this-name))
+  (set! previous-name this-name)
+  unspecific)
 
 (define (end-phase)
   (let ((this-process-time (process-time-clock))
 	(this-real-time (real-time-clock)))
     (if previous-process-time
 	(let ((delta-process-time (- this-process-time previous-process-time)))
-	  (set! events (cons (cons previous-name delta-process-time) events))
 	  (time-report "      Time taken"
 		       delta-process-time
 		       (- this-real-time previous-real-time))))
     (set! previous-process-time this-process-time)
-    (set! previous-real-time this-real-time)))
+    (set! previous-real-time this-real-time))
+  unspecific)
 
 ;; Should match the compiler.  We'll merge the two at some point.
 (define (time-report prefix process-time real-time)

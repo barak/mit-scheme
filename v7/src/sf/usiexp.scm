@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.13 1992/12/22 21:00:55 cph Exp $
+$Id: usiexp.scm,v 4.14 1993/01/02 07:33:39 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,9 +36,6 @@ MIT in each case. |#
 ;;; package: (scode-optimizer expansion)
 
 (declare (usual-integrations)
-	 (automagic-integrations)
-	 (open-block-optimizations)
-	 (eta-substitution)
 	 (integrate-external "object"))
 
 ;;;; Fixed-arity arithmetic primitives
@@ -287,28 +284,24 @@ MIT in each case. |#
 (define (values-expansion operands if-expanded if-not-expanded block)
   if-not-expanded
   (if-expanded
-   (let ((block (block/make block true)))
+   (let ((block (block/make block true '())))
      (let ((variables
 	    (map (lambda (operand)
 		   operand
-		   (variable/make block
-				  (string->uninterned-symbol "value")
-				  '()))
+		   (variable/make&bind! block
+					(string->uninterned-symbol "value")))
 		 operands)))
-       (set-block/bound-variables! block variables)
        (combination/make
 	(procedure/make
 	 block lambda-tag:let variables '() false
-	 (let ((block (block/make block true)))
-	   (let ((variable (variable/make block 'RECEIVER '())))
-	     (let ((variables* (list variable)))
-	       (set-block/bound-variables! block variables*)
-	       (procedure/make
-		block lambda-tag:unnamed variables* '() false
-		(combination/make (reference/make block variable)
-				  (map (lambda (variable)
-					 (reference/make block variable))
-				       variables)))))))
+	 (let ((block (block/make block true '())))
+	   (let ((variable (variable/make&bind! block 'RECEIVER)))
+	     (procedure/make
+	      block lambda-tag:unnamed (list variable) '() false
+	      (combination/make (reference/make block variable)
+				(map (lambda (variable)
+				       (reference/make block variable))
+				     variables))))))
 	operands)))))
 
 (define (call-with-values-expansion operands if-expanded if-not-expanded block)

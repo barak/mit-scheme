@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/tables.scm,v 4.1 1988/06/13 12:31:31 cph Rel $
+$Id: tables.scm,v 4.2 1993/01/02 07:33:38 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,15 +43,15 @@ MIT in each case. |#
   (cons '() '()))
 
 (define (operations/lookup operations variable if-found if-not)
-  (let ((entry (assq variable (car operations)))
-	(finish
-	 (lambda (entry)
-	   (if-found (vector-ref (cdr entry) 1)
-		     (vector-ref (cdr entry) 2)))))
+  (let ((entry (assq variable (car operations))))
     (if entry
-	(if (cdr entry) (finish entry) (if-not))
-	(let ((entry (assq (variable/name variable) (cdr operations))))
-	  (if entry (finish entry) (if-not))))))
+	(if (cdr entry)
+	    (if-found (cadr entry) (cddr entry))
+	    (if-not))
+	(let ((entry (assq variable (cdr operations))))
+	  (if entry
+	      (if-found (cadr entry) (cddr entry))
+	      (if-not))))))
 
 (define (operations/shadow operations variables)
   (cons (map* (car operations)
@@ -59,32 +59,22 @@ MIT in each case. |#
 	      variables)
 	(cdr operations)))
 
-(define (operations/bind-global operations operation export? names values)
-  (cons (car operations)
-	(map* (cdr operations)
-	      (lambda (name value)
-		(cons name (vector export? operation value)))
-	      names values)))
-
-(define (operations/bind operations operation export? names values)
-  (cons (let ((make-binding
-	       (lambda (name value)
-		 (cons name (vector export? operation value)))))
-	  (if (eq? values 'NO-VALUES)
-	      (map* (car operations)
-		    (lambda (name) (make-binding name false))
-		    names)
-	      (map* (car operations) make-binding names values)))
+(define (operations/bind operations operation variable value)
+  (cons (cons (cons* variable operation value)
+	      (car operations))
 	(cdr operations)))
 
-(define (operations/extract-external operations procedure)
+(define (operations/bind-global operations operation variable value)
+  (cons (car operations)
+	(cons (cons* variable operation value)
+	      (cdr operations))))
+
+(define (operations/map-external operations procedure)
   (let loop ((elements (car operations)))
-    (if (null? elements)
-	'()
-	(let ((value (cdar elements)) (rest (loop (cdr elements))))
-	  (if (and value (vector-ref value 0))
-	      (procedure (caar elements) (vector-ref value 1)
-			 (vector-ref value 2)
-			 (lambda (value) (cons value rest))
-			 (lambda () rest))
-	      rest)))))
+    (cond ((null? elements)
+	   '())
+	  ((cdar elements)
+	   (cons (procedure (cadar elements) (caar elements) (cddar elements))
+		 (loop (cdr elements))))
+	  (else
+	   (loop (cdr elements))))))

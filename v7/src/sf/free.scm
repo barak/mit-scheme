@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/free.scm,v 4.1 1988/06/13 12:31:26 cph Rel $
+$Id: free.scm,v 4.2 1993/01/02 07:33:35 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,9 +35,6 @@ MIT in each case. |#
 ;;;; SCode Optimizer: Free Variable Analysis
 
 (declare (usual-integrations)
-	 (automagic-integrations)
-	 (open-block-optimizations)
-	 (eta-substitution)
 	 (integrate-external "object" "lsets"))
 
 (declare (integrate-operator no-free-variables singleton-variable
@@ -114,9 +111,10 @@ MIT in each case. |#
 
 (define-method/free 'PROCEDURE
   (lambda (expression)
-    (set/difference (free/expression (procedure/body expression))
-		    (list->variable-set
-		     (block/bound-variables (procedure/block expression))))))
+    (set/difference
+     (free/expression (procedure/body expression))
+     (list->variable-set
+      (block/bound-variables-list (procedure/block expression))))))
 
 (define-method/free 'OPEN-BLOCK
   (lambda (expression)
@@ -130,7 +128,7 @@ MIT in each case. |#
 			 (set/union (free/expression (car actions))
 				    (loop (cdr actions)))))))
      (list->variable-set 
-      (block/bound-variables (open-block/block expression))))))
+      (block/bound-variables-list (open-block/block expression))))))
 
 (define-method/free 'QUOTATION
   (lambda (expression) 
