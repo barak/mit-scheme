@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.46 1998/12/29 02:35:22 cph Exp $
+;;;	$Id: snr.scm,v 1.47 1998/12/29 04:08:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-98 Massachusetts Institute of Technology
 ;;;
@@ -223,7 +223,7 @@ If true, all headers are kept.
 Otherwise (the default), ignored headers aren't kept."
   #f
   boolean?)
-
+
 (define-variable news-group-show-seen-headers
   "Switch controlling whether already-seen headers are shown.
 If true, group buffers show all headers.
@@ -243,6 +243,32 @@ If false, only the unread headers are fetched from the
  server, and no additional context is available."
   #t
   boolean?)
+
+(define-variable news-group-cache-policy
+  "Controls how cacheing is used.
+The value of this variable is a list.
+The first element of the list describes the groups that are cached:
+ SUBSCRIBED            only subscribed groups are cached
+ ALL                   all groups are cached
+ [list of group names] only named groups are cached
+The second element of the list is a list containing zero or more of
+the following symbols:
+ HEADERS               headers are cached
+ BODIES                bodies are cached
+The default value of this variable is (SUBSCRIBED (HEADERS BODIES))."
+  '(SUBSCRIBED (HEADERS BODIES))
+  (lambda (object)
+    (and (pair? object)
+	 (or (eq? 'SUBSCRIBED (car object))
+	     (eq? 'ALL (car object))
+	     (list-of-strings? (car object)))
+	 (pair? (cdr object))
+	 (and (list? (cadr object))
+	      (for-all? (cadr object)
+		(lambda (element)
+		  (or (eq? 'HEADERS element)
+		      (eq? 'BODIES element)))))
+	 (null? (cddr object)))))
 
 (define-command rnews
   "Start a News reader.
@@ -842,7 +868,10 @@ Prompts for the News-group name, with completion."
     (let ((group-names
 	   (lambda () (nntp-connection:active-groups connection #f)))
 	  (string->group
-	   (lambda (string) (find-active-news-group connection string))))
+	   (lambda (string)
+	     (let ((group (find-active-news-group connection string)))
+	       (if group (news-group:apply-cache-policy group))
+	       group))))
       (string->group
        (let ((convert
 	      (lambda (vector) (map news-group:name (vector->list vector)))))
@@ -3999,7 +4028,18 @@ With prefix arg, replaces the file with the list information."
     (set-news-group:ranges-marked! group (canonicalize-ranges ranges-marked))
     (set-news-group:ranges-browsed! group (canonicalize-ranges ranges-browsed))
     (news-group:clip-ranges! group)
+    (news-group:apply-cache-policy group)
     group))
+
+(define (news-group:apply-cache-policy group)
+  (set-news-group:use-gdbm!
+   group
+   (let ((nggp (ref-variable news-group-cache-policy)))
+     (if (cond ((eq? 'ALL (car nggp)) #t)
+	       ((eq? 'SUBSCRIBED (car nggp)) (news-group:subscribed? group))
+	       (else (member (news-group:name group) (car nggp))))
+	 (cadr nggp)
+	 '()))))
 
 (define (news-group:get-threads group argument buffer)
   (let ((headers (news-group:get-headers group argument buffer))

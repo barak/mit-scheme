@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.228 1998/12/29 04:08:17 cph Exp $
+$Id: edwin.pkg,v 1.229 1998/12/29 04:09:50 cph Exp $
 
 Copyright (c) 1989-98 Massachusetts Institute of Technology
 
@@ -1741,13 +1741,13 @@ MIT in each case. |#
 	  edwin-variable$news-automatically-collapse-threads
 	  edwin-variable$news-common-mode-hook
 	  edwin-variable$news-group-author-columns
+	  edwin-variable$news-group-cache-policy
 	  edwin-variable$news-group-ignore-hidden-subjects
 	  edwin-variable$news-group-ignored-subject-retention
 	  edwin-variable$news-group-keep-ignored-headers
 	  edwin-variable$news-group-keep-seen-headers
 	  edwin-variable$news-group-mode-hook
 	  edwin-variable$news-group-show-author-name
-	  edwin-variable$news-group-show-cache-policy
 	  edwin-variable$news-group-show-context-headers
 	  edwin-variable$news-group-show-seen-headers
 	  edwin-variable$news-hide-groups
