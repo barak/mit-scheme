@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile,v 1.19 1998/04/14 05:13:11 cph Exp $
+###     $Id: makefile,v 1.20 1998/04/16 04:20:55 cph Exp $
 ###
 ###     Copyright (c) 1992-98 Massachusetts Institute of Technology
 ###
@@ -119,10 +119,10 @@ utils.c \
 vector.c \
 wind.c
 
-#prbfish.c \
-#prgdbm.c \
-#prmd5.c \
 OS_PRIM_SOURCES = \
+prbfish.c \
+prgdbm.c \
+prmd5.c \
 prosfile.c \
 prosfs.c \
 prosio.c \
@@ -224,10 +224,10 @@ utils.obj \
 vector.obj \
 wind.obj
 
-#prbfish.obj \
-#prgdbm.obj \
-#prmd5.obj \
 OS_PRIM_OBJECTS = \
+prbfish.obj \
+prgdbm.obj \
+prmd5.obj \
 prosfile.obj \
 prosfs.obj \
 prosio.obj \
@@ -282,7 +282,7 @@ BCHOBJECTS = $(CORE_OBJECTS) $(BCH_GC_OBJECTS) $(NT_OBJECTS) \
 
 SCHEME_SOURCES = $(USER_PRIM_SOURCES) missing.c
 SCHEME_OBJECTS = $(USER_PRIM_OBJECTS) missing.obj
-SCHEME_LIB = $(USER_LIBS) # md5.lib blowfish.lib gdbm.lib
+SCHEME_LIB = $(USER_LIBS) md5.lib blowfish.lib gdbm.lib
 
 scheme: scheme.exe
 
