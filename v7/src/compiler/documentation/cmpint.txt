@@ -1,6 +1,6 @@
 -*- Text -*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpint.txt,v 1.4 1990/08/17 23:45:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpint.txt,v 1.5 1990/09/12 02:09:07 jinx Rel $
 
 	Remarks:
 
@@ -134,9 +134,8 @@ following way:
 It is 0xfffe for compiler generated entries, 0xfffd for
 compiler-interface generated entries.
 
-- For compiled return addresses which have saved dynamic links it is
-always 0xfffc (-4).  The next item on the stack is then a dynamic
-link.
+- For compiled return addresses with saved dynamic links it is always
+0xfffc (-4).  The next item on the stack is then a dynamic link.
 
 - For the special return address `return_to_interpreter' it is
 always 0xfffb (-5).
@@ -259,8 +258,8 @@ offset_field_2 = (((entry_address_2 - entry_address_1) << 1) | 1)
 The length of the "constants" section is (tl - il).
 There are (tl + 1) total words in the object.
 
-=> In cmpint-md.h PC_ZERO_BITS should be defined to be the number of bits
-in instruction addresses which are always 0 (0 if no alignment
+=> In cmpint-md.h PC_ZERO_BITS should be defined to be the number of
+bits in instruction addresses that are always 0 (0 if no alignment
 constraints, 1 if halfword, etc.).
 
 => In cmpint-md.h format_word should be 'typedefd' to be the size of the
@@ -426,7 +425,7 @@ entry		CMP	Free,MemTop
 after_entry	<actual code for the entry>
 
 a "closure" entry might look like (this is not in the closure object,
-but in the code block to which the closure object points)
+but in the code block at which the closure object points)
 
 gc_or_int	LOADI	#interrupt-handler-index,rindex
 		LOADA	entry,rentry
@@ -471,23 +470,23 @@ interlocked by the hardware.  Thus a sequence like
 	CMP	Rfree,Rtemp
 	BGE	gc_or_int
 
-may be very slow.  Furthermore NOPs may have to be inserted explicitly
-between the LOAD and CMP instructions if the hardware does not insert
-them dynamically.
+may be very slow and NOPs may have to be inserted explicitly between
+the LOAD and CMP instructions to make the code work.
 
 Since MIT Scheme's interrupt response is not immediate, and polling is
 frequent, the following sequence can be used instead:
 
-	CMP	Rfree,Rmemtoop
+	CMP	Rfree,Rmemtop
 	BGE	gc_or_int
 	LOAD	MemTop(Regblock),Rmemtop
 
 Where Rmemtop is a register that holds a recent value of MemTop and is
-reloaded at every interrupt check.  Thus interrupt processing will be
-delayed by one entry point.  In other words, if the sequence of entry
-points executed dynamically is ep1, ep2, ep3, and an asynchronous
-interrupt occurs between ep1 and ep2, the interrupt handler will not
-be invoked until ep3, rather than ep2.
+reloaded at every interrupt check.  Thus interrupt processing will
+start at the second interrupt check after the actual interrupt comes
+in.  In other words, if the sequence of entry points executed
+dynamically is ep1, ep2, ep3, and an asynchronous interrupt occurs
+between ep1 and ep2, the interrupt handler will not be invoked until
+ep3, rather than ep2.
 
 This instruction sequence eliminates the need to wait for the LOAD to
 complete, and the LOAD will have completed (or will be handled by the
@@ -504,9 +503,9 @@ Various operating systems allow the signal handler convenient access
 to the interrupted code's register set.  In such a situation, the LOAD
 instruction can be eliminated and the C-level interrupt handler can
 modify Rmemtop directly.  Rmemtop should be chosen from the
-caller-saves convention registers if possible, since these registers
-must be explicitly saved by the signal handler, rather than implicitly
-by the calling convention.
+caller-saves convention (super-temporary) registers if possible, since
+these registers must be explicitly saved by the signal handler, rather
+than implicitly by the calling convention.
 
 	External calls from compiled code:
 
@@ -566,8 +565,8 @@ The least-significant halfword of the header contains the size in
 longwords of the execute-cache section (note that each cache entry may
 take up more than one longword).  The remaining bits (ignoring the
 type code) MUST be 0.  If a file makes enough external calls that this
-halfword field cannot hold the size, the links caches be separated into
-multiple blocks each with its own header.
+halfword field cannot hold the size, the links caches be separated
+into multiple blocks each with its own header.
 
 Occasionally a procedure is called with more than one number of
 arguments within the same file.  For example, the LIST procedure may
@@ -589,8 +588,8 @@ The code section would contain
 	push	<some list>
 	branch	sort-uuo-link
 
-In the constants section there would be a label
-which would contain the following after linking	
+In the constants section there would be a label that would contain the
+following after linking
 	
 sort-uuo-link:
 	jump	sort		; Absolute address for sort
@@ -714,12 +713,13 @@ trampoline_to_interface), passing the index and the address of the
 trampoline storage area as parameters.  In the example above this
 macro would store the LOADI (load immediate) and JSR instructions.
 
-*** Missing: ***
+*** Need to document better: ***
 	
 => ADJUST_CLOSURE_AT_CALL
 /* 68k magic.
-   On the 68k, when closures are invoked, the closure corresponding
-   to the first entry point is what's needed on the top of the stack.
+   On the 68k, when closures are invoked, the closure corresponding to
+   the first entry point (in a closure with more than one) is what's
+   needed on the top of the stack.
    Note that it is needed for environment only, not for code.
    The closure code does an
    ADDI.L	&magic-constant,(SP)
@@ -762,7 +762,7 @@ macro would store the LOADI (load immediate) and JSR instructions.
 /* Size (in long words) of the contents of a floating point register if
    different from a double.  For example, an MC68881 saves registers
    in 96 bit (3 longword) blocks.
-   Default is fine for PA.
+   Default is fine for most machines.
    define COMPILER_TEMP_SIZE			3
 */
 
