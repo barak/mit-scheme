@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.1 1987/06/13 20:59:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.2 1987/06/22 18:24:27 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -258,31 +258,31 @@ MIT in each case. |#
       (B GE S (@PCR ,gc-label)))))
 
 (define (procedure-header procedure gc-label)
-  (let ((internal-label (procedure-label procedure)))
-    (append! (if (procedure/closure? procedure)
-		 (let ((required (1+ (procedure-required procedure)))
-		       (optional (procedure-optional procedure))
-		       (label (procedure-external-label procedure)))
-		   (if (and (procedure-rest procedure)
-			    (zero? required))
-		       (begin (set-procedure-external-label! procedure
-							     internal-label)
-			      `((ENTRY-POINT ,internal-label)))
-		       `((ENTRY-POINT ,label)
-    			 ,@(make-external-label label)
-			 ,(test-dnw required 0)
-			 ,@(cond ((procedure-rest procedure)
-				  `((B GE S (@PCR ,internal-label))))
-				 ((zero? optional)
-				  `((B EQ S (@PCR ,internal-label))))
-				 (else
-				  (let ((wna-label (generate-label)))
-				    `((B LT S (@PCR ,wna-label))
-				      ,(test-dnw (+ required optional) 0)
-				      (B LE S (@PCR ,internal-label))
-				      (LABEL ,wna-label)))))
-			 (JMP ,entry:compiler-wrong-number-of-arguments))))
-		 '())
+  (let ((internal-label (procedure-label procedure))
+	(external-label (procedure-external-label procedure)))
+    (append! (case (procedure-name procedure) ;really `procedure/type'.
+	       ((IC)
+		`((ENTRY-POINT ,external-label)
+		  ,@(make-external-label external-label)))
+	       ((CLOSURE)
+		(let ((required (1+ (procedure-required procedure)))
+		      (optional (procedure-optional procedure)))
+		  `((ENTRY-POINT ,external-label)
+		    ,@(make-external-label external-label)
+		    ,(test-dnw required 0)
+		    ,@(cond ((procedure-rest procedure)
+			     `((B GE S (@PCR ,internal-label))))
+			    ((zero? optional)
+			     `((B EQ S (@PCR ,internal-label))))
+			    (else
+			     (let ((wna-label (generate-label)))
+			       `((B LT S (@PCR ,wna-label))
+				 ,(test-dnw (+ required optional) 0)
+				 (B LE S (@PCR ,internal-label))
+				 (LABEL ,wna-label)))))
+		    (JMP ,entry:compiler-wrong-number-of-arguments))))
+	       (else
+		'()))
 	     (if gc-label
 		 `((LABEL ,gc-label)
 		   (JSR ,entry:compiler-interrupt-procedure))
