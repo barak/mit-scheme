@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/load.c,v 9.30 1990/11/21 07:04:33 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/load.c,v 9.31 1992/01/16 01:47:56 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -53,7 +53,9 @@ MIT in each case. */
 
 #else /* BYTE_INVERSION */
 
-void Byte_Invert_Region(), Byte_Invert_Header();
+void
+  EXFUN (Byte_Invert_Region, (long *, long)),
+  EXFUN (Byte_Invert_Header, (long *, long, long, long));
 
 #define NORMALIZE_HEADER Byte_Invert_Header
 #define NORMALIZE_REGION Byte_Invert_Region
@@ -121,7 +123,7 @@ DEFUN_VOID (print_fasl_information)
 
 long
 DEFUN (initialize_variables_from_fasl_header, (buffer),
-       SCHEME_OBJECT *buffer)
+       SCHEME_OBJECT * buffer)
 {
   SCHEME_OBJECT Pointer_Heap_Base, Pointer_Const_Base;
 
@@ -243,11 +245,12 @@ DEFUN (initialize_variables_from_fasl_header, (buffer),
 #ifndef INHIBIT_CHECKSUMS
 
   {
-    extern unsigned long checksum_area ();
+    extern unsigned long
+      EXFUN (checksum_area, (unsigned long *, long, unsigned long));
 
     computed_checksum =
       (checksum_area (((unsigned long *) &buffer[0]),
-		      ((unsigned long) (FASL_HEADER_LENGTH)),
+		      ((long) (FASL_HEADER_LENGTH)),
 		      ((unsigned long) 0)));
 
   }
@@ -276,10 +279,10 @@ static Boolean Byte_Invert_Fasl_Files;
 
 void
 DEFUN (Byte_Invert_Header, (Header, Headsize, Test1, Test2),
-       long *Header AND
-       long Headsize AND
-       long Test1 AND
-       long Test2)
+       long * Header
+       AND long Headsize
+       AND long Test1
+       AND long Test2)
 {
   Byte_Invert_Fasl_Files = false;
 
@@ -296,8 +299,8 @@ DEFUN (Byte_Invert_Header, (Header, Headsize, Test1, Test2),
 
 void
 DEFUN (Byte_Invert_Region, (Region, Size),
-       long *Region AND
-       long Size)
+       long * Region
+       AND long Size)
 {
   register long word, size;
 

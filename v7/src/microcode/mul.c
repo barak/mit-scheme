@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/mul.c,v 9.30 1990/11/14 10:58:49 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/mul.c,v 9.31 1992/01/16 01:51:44 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,7 +37,8 @@ MIT in each case. */
    version has only been tried on machines with long = 32 bits.  This
    file is included in the appropriate os file. */
 
-extern SCHEME_OBJECT Mul ();
+extern SCHEME_OBJECT
+  EXFUN (Mul, (SCHEME_OBJECT, SCHEME_OBJECT));
 
 #if (TYPE_CODE_LENGTH == 8)
 
@@ -57,9 +58,9 @@ extern SCHEME_OBJECT Mul ();
 */
 
 SCHEME_OBJECT
-Mul (Arg1, Arg2)
-     SCHEME_OBJECT Arg1;
-     SCHEME_OBJECT Arg2;
+DEFUN (Mul, (Arg1, Arg2),
+       SCHEME_OBJECT Arg1
+       AND SCHEME_OBJECT Arg2)
 {
   register long A = (FIXNUM_TO_LONG (Arg1));
   register long B = (FIXNUM_TO_LONG (Arg2));
@@ -210,8 +211,9 @@ static long Fixnum_Range[2] = {SMALLEST_FIXNUM , BIGGEST_FIXNUM};
 #define	ABS(x)		(((x) < 0) ? -(x) : (x))
 
 SCHEME_OBJECT
-Mul(Arg1, Arg2)
-     SCHEME_OBJECT Arg1, Arg2;
+DEFUN (Mul, (Arg1, Arg2),
+       SCHEME_OBJECT Arg1
+       AND SCHEME_OBJECT Arg2)
 {
   long A, B, C;
   fast unsigned long Hi_A, Hi_B, Lo_A, Lo_B, Lo_C, Middle_C;
