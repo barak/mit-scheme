@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: i386.h,v 1.21 1993/06/24 04:07:07 gjr Exp $
+$Id: i386.h,v 1.22 1993/08/21 01:51:42 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -243,14 +243,16 @@ extern long i386_pc_displacement_relocation;
 		      + i386_pc_displacement_relocation);		\
   (* ((long *) displacement_address)) = new_displacement;		\
   (var) = ((SCHEME_OBJECT)						\
-	   ((displacement_address + 4) + new_displacement));		\
+	   ((ADDR_TO_SCHEME_ADDR (displacement_address + 4))		\
+	    + new_displacement));					\
 } while (0)
 
 #define STORE_DISPLACEMENT_FROM_ADDRESS(target, instr_address) do	\
 {									\
   long displacement_address = (((long) (instr_address)) + 1);		\
   (* ((long *) displacement_address)) =					\
-    (((long) (target)) - (displacement_address + 4));			\
+    (((long) (target))							\
+     - (ADDR_TO_SCHEME_ADDR (displacement_address + 4)));		\
 } while (0)
 
 #define BCH_EXTRACT_ADDRESS_FROM_DISPLACEMENT(var, v_addr, p_addr) do	\
@@ -383,13 +385,14 @@ extern long i386_pc_displacement_relocation;
 
 #define START_OPERATOR_RELOCATION(scan)	do				\
 {									\
-  SCHEME_OBJECT * _new, * _old;						\
+  SCHEME_OBJECT * _new, * _old, _loc;					\
 									\
   _new = (((SCHEME_OBJECT *) (scan)) + 1);				\
   _old = ((SCHEME_OBJECT *) (* _new));					\
+  _loc = (ADDR_TO_SCHEME_ADDR (_new));					\
 									\
-  (* _new) = ((SCHEME_OBJECT) _new);					\
-  i386_pc_displacement_relocation = (((long) _old) - ((long) _new));	\
+  (* _new) = _loc;							\
+  i386_pc_displacement_relocation = (((long) _old) - ((long) _loc));	\
 } while (0)
 
 #define END_OPERATOR_RELOCATION(scan)	i386_pc_displacement_relocation = 0
@@ -438,10 +441,10 @@ extern long i386_pc_displacement_relocation;
 {									\
   unsigned char *PC = ((unsigned char *) (entry_address));		\
 									\
-  *PC++ = 0xb0;			/* MOV	AL,byte */			\
-  *PC++ = (index);		/* byte value */			\
-  *PC++ = 0xff;			/* CALL */				\
-  *PC++ = 0x96;			/* /2 disp32(ESI) */			\
+  *PC++ = 0xb0;				/* MOV	AL,byte */		\
+  *PC++ = ((unsigned char) (index));	/* byte value */		\
+  *PC++ = 0xff;				/* CALL */			\
+  *PC++ = 0x96;				/* /2 disp32(ESI) */		\
   (* ((unsigned long *) PC)) = ESI_TRAMPOLINE_TO_INTERFACE_OFFSET;	\
 } while (0)
 
@@ -484,16 +487,21 @@ long i386_pc_displacement_relocation = 0;
 
 #define ASM_RESET_HOOK i386_reset_hook
 
-/* This assumes that the layout in memory of a far pointer has the
-   segment index as the most significant half word.
- */
+#if !defined(WINNT) || defined(WINNT_RAW_ADDRESSES)
+#  define HOOK_TO_SCHEME_OFFSET(hook) 					\
+  ((unsigned long) (hook))
+#else
+extern unsigned long winnt_address_delta;
+#  define HOOK_TO_SCHEME_OFFSET(hook)					\
+  (((unsigned long) (hook)) - winnt_address_delta)
+#endif
 
 #define SETUP_REGISTER(hook) do						\
 {									\
   extern void hook ();							\
 									\
   (* ((unsigned long *) (esi_value + offset))) =			\
-    ((unsigned long) hook);						\
+    (HOOK_TO_SCHEME_OFFSET (hook));					\
   offset += (COMPILER_HOOK_SIZE * (sizeof (SCHEME_OBJECT)));		\
 } while (0)
 

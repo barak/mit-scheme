@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.80 1993/06/15 19:05:18 gjr Exp $
+$Id: config.h,v 9.81 1993/08/21 01:53:31 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -384,11 +384,12 @@ typedef unsigned long SCHEME_OBJECT;
 #define HAS_FREXP
 #define HAS_MODF
 #endif
-
+
 #ifdef i386
 
 #define FASL_INTERNAL_FORMAT	FASL_I386
 #define HAS_COMPILER_SUPPORT
+#define HEAP_IN_LOW_MEMORY
 #define TYPE_CODE_LENGTH	6
 #define VAX_BYTE_ORDER
 #define b32
@@ -410,14 +411,34 @@ typedef unsigned long SCHEME_OBJECT;
    but we don't know about other 386 systems. 
  */
 
-#define HEAP_IN_LOW_MEMORY
-
 /* Bug in Mach 3.0 for 386s floating point library. */
 #ifndef _MACH_UNIX
 #  define HAS_FLOOR
 #  define HAS_FREXP
 #  define HAS_MODF
 #endif
+
+#if defined(WINNT) && !defined(WINNT_RAW_ADDRESSES)
+
+/* This kludge exists because of Win32s which allocates
+   user memory with the high bit set on addresses.
+   Real NT doesn't have this problem, but we want to
+   share binaries.
+ */
+
+typedef unsigned long SCHEME_ADDR;
+extern unsigned long winnt_address_delta;
+
+#define DATUM_TO_ADDRESS(datum) 					\
+  ((SCHEME_OBJECT *) (((unsigned long) (datum)) + winnt_address_delta))
+
+#define ADDRESS_TO_DATUM(address)					\
+  ((SCHEME_OBJECT) (((unsigned long) (address)) - winnt_address_delta))
+
+#define SCHEME_ADDR_TO_ADDR(saddr) (DATUM_TO_ADDRESS (saddr))
+#define ADDR_TO_SCHEME_ADDR(caddr) (ADDRESS_TO_DATUM (caddr))
+
+#endif /* WINNT && !WINNT_RAW_ADDRESSES */
 
 #endif /* i386 */
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.69 1993/08/03 08:29:48 gjr Exp $
+$Id: fasload.c,v 9.70 1993/08/21 01:55:48 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -443,7 +443,7 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
         break;
 
       case TC_MANIFEST_NM_VECTOR:
-        Scan += (OBJECT_DATUM (Temp) + 1);
+        Scan += ((OBJECT_DATUM (Temp)) + 1);
         break;
 
       case TC_LINKAGE_SECTION:
@@ -471,8 +471,9 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 		 --count >= 0;
 		 )
 	    {
-	      address = (ADDRESS_TO_DATUM ((SCHEME_OBJECT *) (*Scan)));
-	      *Scan++ = ((SCHEME_OBJECT) (Relocate (address)));
+	      address = (ADDRESS_TO_DATUM
+			 (SCHEME_ADDR_TO_ADDR ((SCHEME_OBJECT *) (* Scan))));
+	      *Scan++ = (ADDR_TO_SCHEME_ADDR (Relocate (address)));
 	    }
 	    break;
 	  }
@@ -494,9 +495,10 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 	      Scan = ((SCHEME_OBJECT *) (word_ptr));
 	      word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
 	      EXTRACT_OPERATOR_LINKAGE_ADDRESS (address, Scan);
-	      address = (ADDRESS_TO_DATUM ((SCHEME_OBJECT *) address));
+	      address = (ADDRESS_TO_DATUM (SCHEME_ADDR_TO_ADDR (address)));
 	      address = ((long) (Relocate (address)));
-	      STORE_OPERATOR_LINKAGE_ADDRESS (address, Scan);
+	      STORE_OPERATOR_LINKAGE_ADDRESS ((ADDR_TO_SCHEME_ADDR (address)),
+					      Scan);
 	    }
 	    Scan = &end_scan[1];
 	    END_OPERATOR_RELOCATION (Scan - 1);
@@ -533,9 +535,9 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 	  Scan = ((SCHEME_OBJECT *) (word_ptr));
 	  word_ptr = (NEXT_MANIFEST_CLOSURE_ENTRY (word_ptr));
 	  EXTRACT_CLOSURE_ENTRY_ADDRESS (address, Scan);
-	  address = (ADDRESS_TO_DATUM ((SCHEME_OBJECT *) address));
+	  address = (ADDRESS_TO_DATUM (SCHEME_ADDR_TO_ADDR (address)));
 	  address = ((long) (Relocate (address)));
-	  STORE_CLOSURE_ENTRY_ADDRESS (address, Scan);
+	  STORE_CLOSURE_ENTRY_ADDRESS ((ADDR_TO_SCHEME_ADDR (address)), Scan);
 	}
 	Scan = area_end;
 	END_CLOSURE_RELOCATION (Scan);

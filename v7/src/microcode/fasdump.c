@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: fasdump.c,v 9.55 1993/03/10 17:19:29 cph Exp $
+$Id: fasdump.c,v 9.56 1993/08/21 01:54:24 gjr Exp $
 
-Copyright (c) 1987-93 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -100,6 +100,10 @@ static CONST char * dump_file_name = ((char *) 0);
 
 #define Dump_Pointer(Code)						\
   Old = (OBJECT_ADDRESS (Temp));					\
+  Code
+
+#define DUMP_RAW_POINTER(Code)						\
+  Old = (SCHEME_ADDR_TO_ADDR (Temp));					\
   Code
 
 /* This depends on the fact that the last word in a compiled code block
@@ -225,8 +229,10 @@ DEFUN (DumpLoop, (Scan, mode), fast SCHEME_OBJECT * Scan AND int mode)
 		 --count >= 0;
 		 Scan += 1)
 	    {
-	      Temp = *Scan;
-	      Setup_Pointer_for_Dump (Transport_Quadruple ());
+	      Temp = (* Scan);
+	      DUMP_RAW_POINTER (Fasdump_Setup_Pointer
+				(TRANSPORT_RAW_QUADRUPLE (),
+				 RAW_BH (false, continue)));
 	    }
 	    Scan -= 1;
 	    break;
