@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.5 1992/11/13 22:54:28 cph Exp $
+;;;	$Id: dos.scm,v 1.6 1992/12/11 21:43:41 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -84,6 +84,7 @@ Includes the new backup.  Must be > 0."
   (lambda (n) (and (exact-integer? n) (> n 0))))
 
 (define os/directory-char-set (char-set #\\ #\/))
+(define os/expand-char-set (char-set #\$ #\~))
 
 (define (os/trim-pathname-string string)
   ;; Trim a filename with false starts to a unique name
@@ -94,8 +95,9 @@ Includes the new backup.  Must be > 0."
 	       (substring-find-previous-char-in-set string 0 index
 						    os/directory-char-set)))
 	  (cond ((not slash) string)
-		((and (fix:< (1+ slash) end)
-		      (char=? (string-ref string (1+ slash)) #\$))
+		((and (fix:< (fix:1+ slash) end)
+		      (char-set-member? os/expand-char-set
+					(string-ref string (fix:1+ slash))))
 		 (string-tail string (fix:1+ slash)))
 		((zero? slash)
 		 string)
@@ -104,27 +106,33 @@ Includes the new backup.  Must be > 0."
 		 (string-tail string slash))
 		(else
 		 (loop (fix:-1+ slash))))))))
+
   (define (trim-for-duplicate-device string)
     (let ((end (string-length string))
-	  (sep (char-set-union (char-set #\: #\$) os/directory-char-set)))
+	  (sep (char-set-union (char-set #\:)
+			       (char-set-union
+				os/expand-char-set
+				os/directory-char-set))))
       (let ((colon
 	     (substring-find-previous-char string 0 end #\:)))
 	(cond ((or (not colon) (zero? colon))
 	       string)
 	      ((and (fix:< (fix:1+ colon) end)
-		    (char=? (string-ref string (fix:1+ colon)) #\$))
+		    (char-set-member? os/expand-char-set
+				      (string-ref string (fix:1+ colon))))
 	       (string-tail string (fix:1+ colon)))
 	      ((substring-find-previous-char-in-set string 0 colon sep)
 	       =>
 	       (lambda (before)
 		 (string-tail string 
-			      (if (char=? (string-ref string before) #\$)
+			      (if (char-set-member? os/expand-char-set
+						    (string-ref string before))
 				  before
 				  (fix:1+ before)))))
 	      (else
 	       string)))))
+
   (trim-for-duplicate-device (trim-for-duplicate-top-level-directory string)))
-						      
 
 (define (os/pathname->display-string pathname)
   (os/filename->display-string (->namestring pathname)))
@@ -143,7 +151,7 @@ Includes the new backup.  Must be > 0."
             (begin
               (string-set! name slash #\\)
 	      (loop (1+ slash))))))))
-
+
 (define (file-type->version type version)
   (let ((version-string
 	 (and (fix:fixnum? version)
@@ -253,8 +261,11 @@ Includes the new backup.  Must be > 0."
 (define (os/directory-list-completions directory prefix)
   (define (->directory-namestring s)
     (->namestring (pathname-as-directory (->pathname s))))
+
   (define (->directory-wildcard s)
-    (string-append (->directory-namestring s) "*.*"))
+    (string-append (->directory-namestring s)
+		   "*.*"))
+
   (let ((plen (string-length prefix)))
     (let loop ((pathnames (directory-read (->directory-wildcard directory))))
       (if (null? pathnames)
@@ -341,25 +352,23 @@ Includes the new backup.  Must be > 0."
 
 (define (os/file-type-to-major-mode)
   (alist-copy
-   `(("article" . text)
-     ("asm" . midas)
+   `(("asm" . midas)
      ("bat" . text)
      ("bib" . text)
      ("c" . c)
-     ("cc" . c)
      ("h" . c)
      ("m4" . midas)
      ("pas" . pascal)
      ("s" . scheme)
      ("scm" . scheme)
-     ("text" . text)
      ("txi" . texinfo)
-     ("txt" . text)
-     ("y" . c))))
+     ("txt" . text))))
 
 (define (os/init-file-name)
-  (let* ((home (dos/current-home-directory))
-	 (user-init-file (merge-pathnames "edwin.ini" home)))
+  (let ((user-init-file
+	 (merge-pathnames "edwin.ini"
+			  (pathname-as-directory
+			   (dos/current-home-directory)))))
     (if (file-exists? user-init-file)
 	(->namestring user-init-file)
 	"/scheme/lib/edwin.ini")))
