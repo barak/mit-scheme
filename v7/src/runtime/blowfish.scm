@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: blowfish.scm,v 1.7 1999/05/18 17:11:58 cph Exp $
+$Id: blowfish.scm,v 1.8 1999/08/09 03:24:27 cph Exp $
 
 Copyright (c) 1997, 1999 Massachusetts Institute of Technology
 
@@ -104,11 +104,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			    0
 			    encrypt?))
 
-(define (blowfish-encrypt-port input output key-string encrypt?)
+(define (blowfish-encrypt-port input output key-string init-vector encrypt?)
   ;; Assumes that INPUT is in blocking mode.
   (let ((key (blowfish-set-key (md5 key-string)))
-	(buffer (make-string 4096))
-	(init-vector (make-string 8 #\NUL)))
+	(buffer (make-string 4096)))
     (let loop ((m 0))
       (let ((n (input-port/read-string! input buffer)))
 	(if (not (fix:= 0 n))
@@ -120,21 +119,41 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (loop (fix:and #x7 (fix:+ m n)))))))))
 
 (define (write-blowfish-file-header port)
-  (write-string blowfish-file-header port)
-  (newline port))
+  (write-string blowfish-file-header-v2 port)
+  (newline port)
+  (let ((init-vector (compute-blowfish-cfb-init-vector)))
+    (write-string init-vector port)
+    init-vector))
 
 (define (read-blowfish-file-header port)
-  (if (not (string=? (read-line port) blowfish-file-header))
-      (error:bad-range-argument port 'READ-BLOWFISH-FILE-HEADER)))
+  (let ((line (read-line port)))
+    (cond ((string=? blowfish-file-header-v1 line)
+	   (make-string 8 #\NUL))
+	  ((string=? blowfish-file-header-v2 line)
+	   (let ((init-vector (make-string 8)))
+	     (if (not (= 8 (read-string! init-vector 0 8 port)))
+		 (error "Short read while getting init-vector:" port))
+	     init-vector))
+	  (else
+	   (error:bad-range-argument port 'READ-BLOWFISH-FILE-HEADER)))))
 
 (define (blowfish-file? pathname)
   (let ((line (call-with-binary-input-file pathname read-line)))
     (and (not (eof-object? line))
-	 (string=? line blowfish-file-header))))
+	 (or (string=? line blowfish-file-header-v1)
+	     (string=? line blowfish-file-header-v2)))))
 
-(define blowfish-file-header
-  "Blowfish, 16 rounds")
+(define blowfish-file-header-v1 "Blowfish, 16 rounds")
+(define blowfish-file-header-v2 "Blowfish, 16 rounds, version 2")
 
+(define (compute-blowfish-cfb-init-vector)
+  (let ((iv (make-string 8)))
+    (do ((i 0 (fix:+ i 1))
+	 (t (get-universal-time) (quotient t #x100)))
+	((fix:= 8 i))
+      (vector-8b-set! iv i (remainder t #x100)))
+    iv))
+
 (define (md5-file filename)
   (call-with-binary-input-file filename
     (lambda (port)
