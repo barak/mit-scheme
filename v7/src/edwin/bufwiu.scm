@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: bufwiu.scm,v 1.32 2000/02/28 22:50:37 cph Exp $
+;;; $Id: bufwiu.scm,v 1.33 2000/04/10 02:27:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -45,17 +45,9 @@
 	  (if start
 	      (begin
 		;; If this change affects START-MARK, invalidate it
-		;; and request a display update.  Don't invalidate
-		;; START-MARK unless the changes require it.
+		;; and request a display update.
 		(if (and (%window-start-line-mark window)
-			 (let ((wlstart (%window-start-line-index window))
-			       (wstart (%window-start-index window)))
-			   (and (if (and (fix:= wlstart wstart)
-					 (fix:= (%window-start-partial window)
-						0))
-				    (fix:< start wstart)
-				    (fix:<= start wstart))
-				(fix:<= wlstart end))))
+			 (%start-clobbered? window start end))
 		    (begin
 		      (clear-window-start! window)
 		      (window-needs-redisplay! window)))
@@ -66,6 +58,27 @@
 		    (begin
 		      (%set-window-point-moved?! window 'SINCE-START-SET)
 		      (window-needs-redisplay! window)))))))))
+
+(define-integrable (%start-clobbered? window start end)
+  (let ((wlstart (%window-start-line-index window))
+	(wstart (%window-start-index window))
+	(partial (%window-start-partial window)))
+    (or (and (%window-current-start-delta window)
+	     ;; If the delta between START-LINE and START has changed
+	     ;; since the last redisplay, then the window start has
+	     ;; been clobbered.  For example, if the first line was
+	     ;; only partially visible, and is then entirely deleted,
+	     ;; WLSTART and WSTART will be equal -- which would
+	     ;; normally indicate that the window start is OK.
+	     (not (and (fix:= (%window-current-start-delta window)
+			      (fix:- wstart wlstart))
+		       (fix:= (%window-current-start-partial window)
+			      partial))))
+	(and (if (and (fix:= wlstart wstart)
+		      (fix:= 0 partial))
+		 (fix:< start wstart)
+		 (fix:<= start wstart))
+	     (fix:<= wlstart end)))))
 
 ;;;; Clip
 
