@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.18 2000/11/28 18:42:05 cph Exp $
+@comment $Id: imail.texinfo,v 1.19 2000/12/21 05:49:01 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -27,8 +27,8 @@ Free Documentation License".
 
 @titlepage
 @title{IMAIL User's Manual}
-@subtitle Edition 1.2 for IMAIL Version 1.5
-@subtitle 28 November 2000
+@subtitle Edition 1.3 for IMAIL Version 1.7
+@subtitle 20 December 2000
 @author by Chris Hanson
 
 @page
@@ -593,16 +593,19 @@ following the thread of an email conversation.  @kbd{C-c C-p}
 same subject.
 
 @kindex j
-@findex imail-show-message
+@findex imail-select-message
 @kindex >
 @findex imail-last-message
 @kindex <
 @findex imail-first-message
+@kindex M-u
+@findex imail-first-unseen-message
 To move to a message specified by absolute message number, use @kbd{j}
-(@code{imail-show-message}) with the message number as argument.  With
+(@code{imail-select-message}) with the message number as argument.  With
 no argument, @kbd{j} selects the first message.  @kbd{<}
 (@code{imail-first-message}) also selects the first message.  @kbd{>}
-(@code{imail-last-message}) selects the last message.
+(@code{imail-last-message}) selects the last message.  @kbd{M-u} selects
+the first unseen message (@code{imail-first-unseen-message}).
 
 @node Deleting Messages, Multiple Folders, Navigation, Commands
 @section Deleting Messages
@@ -800,10 +803,10 @@ open in a buffer.
 according to the value of the variable @code{imail-update-interval}.
 This variable specifies the time between checks in seconds.  It may also
 be set to @code{#f}, which disables automatic mail checking.  When
-@acronym{IMAIL} detects new mail, it normally modifies the mode line of
-all buffers to contain the string @samp{[New Mail]}.  This can be
-disabled by setting the variable @code{imail-global-mail-notification}
-to @code{#f}.
+@acronym{IMAIL} detects new mail in the primary folder, it normally
+modifies the mode line of all buffers to contain the string @samp{[New
+Mail]}.  This can be disabled by setting the variable
+@code{imail-global-mail-notification} to @code{#f}.
 
 @kindex C-u g
 @findex imail-input-from-folder
@@ -956,6 +959,7 @@ set of the entity is unknown, if the encoding type is unknown, or if the
 subtype is unknown, it is abbreviated.
 
 @vindex imail-known-mime-charsets
+@vindex imail-inline-mime-text-subtypes
 Two variables control the abbreviation of text entities.
 @code{imail-known-mime-charsets} is a list of regular expressions that
 specify the known character sets; by default it specifies
@@ -1013,6 +1017,13 @@ encoded, e.g. with quoted-printable or base64 encoding, it is decoded
 before it is saved.  If the entity is text, it is written to the file in
 text mode (relevant only under Windows and OS/2); otherwise it is
 written in binary mode.
+
+@findex imail-mouse-save-mime-entity
+A simpler way to save a @acronym{MIME} entity is to point at the entity
+with the mouse and click the right button
+(@code{imail-mouse-save-mime-entity}).  This works the same way as
+@code{imail-save-mime-entity} except that the entity is selected by the
+mouse instead of point.
 
 @kindex C-t
 @findex imail-toggle-mime-entity
@@ -1171,6 +1182,12 @@ broadcast announcements.)
 
 To omit the @samp{CC} field completely for a particular reply, enter
 the reply command with a numeric argument: @kbd{C-u r} or @kbd{1 r}.
+
+@vindex imail-reply-with-re
+By default, the @samp{Subject} field of a reply is initialized to the
+contents of the @samp{Subject} field of the message being replied to.
+However, if the variable @code{imail-reply-with-re} is set to @code{#t},
+then the reply subject will be prefixed with @samp{Re:}.
 
 Once the @samp{*mail*} buffer has been initialized, editing and sending
 the mail goes as usual.  You can edit the presupplied header fields if
@@ -1407,6 +1424,55 @@ from lines.
 Note that there is only one summary buffer for any @acronym{IMAIL}
 folder; making one kind of summary discards any previously made summary.
 
+@vindex imail-summary-height
+There are several variables that affect how summaries are displayed.
+@code{imail-summary-height} controls the height of the summary window.
+If it is an exact positive integer, the summary window is that many
+lines high.  Alternatively, if it is a real number between 0 and 1
+exclusive, the height of the summary window is computed by multiplying
+the number of lines in the message window by @code{imail-summary-height}
+and rounding to the nearest integer.
+
+@vindex imail-summary-fixed-layout
+If the variable @code{imail-summary-fixed-layout} is set to @code{#t},
+then an @acronym{IMAIL} message buffer and its associated summary buffer
+are always shown in a fixed window layout (provided the summary buffer
+exists).  Selecting either buffer causes all other windows in the
+current editor frame to be deleted, then splits the frame into two
+windows showing the summary buffer and message buffer.  Selecting any
+other buffer when this layout is displayed causes both windows to be
+deleted, and the other buffer displayed in a single window filling the
+editor frame.  Basically, this causes the message and summary buffers to
+be treated as a unit most of the time.  Currently, the default for
+@code{imail-summary-fixed-layout} is @code{#f}, but the feature has been
+very popular and the default may be changed to @code{#t} in a future
+release.
+
+@vindex imail-summary-pop-up-message
+When fixed layout is not used, the variable
+@code{imail-summary-pop-up-message} provides a different kind of window
+splitting for message and summary buffers.  If this is set to @code{#t}
+(the default), then selecting a new message in the summary buffer causes
+the message buffer to be popped up in a new window if it isn't already
+visible.
+
+@vindex imail-summary-highlight-message
+If the variable @code{imail-summary-highlight-message} is @code{#t}, the
+message currently selected in the message buffer is highlighted in the
+summary buffer.  This aids navigation in the summary buffer and is thus
+the default.  Set it to @code{#f} if you don't like the highlighting.
+
+@vindex imail-summary-show-date
+By default, the summary buffer has five columns: flags, message number,
+message length, subject, and author.  If @code{imail-summary-show-date}
+is set to @code{#t}, a sixth column containing an abbreviated date
+appears between the message number and the subject.
+
+@vindex imail-summary-subject-width
+The width of the subject column is specified by the value of
+@code{imail-summary-subject-width}; subject fields longer than this
+number of characters are truncated.
+
 @node Editing in Summaries,  , Making Summaries, Summaries
 @subsection Editing in Summaries
 
@@ -1424,9 +1490,10 @@ that message is selected in the @acronym{IMAIL} buffer.
 Almost all @acronym{IMAIL} commands work in the summary buffer as well
 as in the @acronym{IMAIL} buffer.  Thus, @kbd{d} in the summary buffer
 deletes the current message, @kbd{u} undeletes, and @kbd{x} expunges.
-@kbd{o} and @kbd{C-o} output the current message to a folder; @kbd{r}
-starts a reply to it.  You can scroll the current message while
-remaining in the summary buffer using @key{SPC} and @key{DEL}.
+@kbd{o} outputs the current message to a folder; @kbd{C-o} saves an
+attachment from the current message; @kbd{r} starts a reply to it.  You
+can scroll the current message while remaining in the summary buffer
+using @key{SPC} and @key{DEL}.
 
 @kindex e
 @findex imail-summary-select-message
@@ -1438,13 +1505,8 @@ contents of the @acronym{IMAIL} buffer but don't display it in a window
 unless it already appears).  You can always display the message indicated
 by point using the @key{e} command (@code{imail-summary-select-message}).
 
-@kindex q
-@findex imail-summary-quit
 When you are finished using the summary, type @kbd{C-x k @key{RET}} to
-delete the summary buffer's window.  You can also exit @acronym{IMAIL}
-while in the summary: @kbd{q} (@code{imail-summary-quit}) deletes the
-summary window, then exits from @acronym{IMAIL} by saving the
-@acronym{IMAIL} folder and switching to another buffer.
+delete the summary buffer's window.
 
 @node Other Commands,  , Summaries, Commands
 @section Other Commands
@@ -1454,7 +1516,10 @@ fit into any of the other documentation categories.
 
 @table @kbd
 @item q
-Quit out of @acronym{IMAIL} (@code{imail-quit}).
+Quit out of @acronym{IMAIL} (@code{imail-quit}).  This closes all open
+@acronym{IMAP} connections and buries all @acronym{IMAIL} buffers.  With
+prefix argument, only affects the current @acronym{IMAIL} buffer,
+leaving any other @acronym{IMAIL} buffers alone.
 
 @item M-d
 Disconnect from the @acronym{IMAP} server (@code{imail-disconnect}).
