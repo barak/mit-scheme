@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/compiler.pkg,v 1.1 1989/05/17 20:32:35 jinx Exp $
-$MC68020-Header: comp.pkg,v 1.22 89/04/26 05:11:52 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/compiler.pkg,v 1.2 1989/05/21 17:55:03 jinx Exp $
+$MC68020-Header: comp.pkg,v 1.22.1.1 89/05/21 14:45:10 GMT jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -35,7 +35,7 @@ MIT in each case. |#
 
 ;;;; Compiler Packaging
 
-(global-definitions "/scheme/runtime/runtim")
+(global-definitions "../runtime/runtim")
 
 (define-package (compiler)
   (files "base/switch"
@@ -138,8 +138,7 @@ MIT in each case. |#
 	  sc
 	  syntax-files!)
   (import (scode-optimizer top-level)
-	  sf/internal
-	  sf/pathname-defaulting)
+	  sf/internal)
   (initialization (initialize-package!)))
 
 (define-package (compiler top-level)
