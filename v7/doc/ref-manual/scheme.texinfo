@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.98 2001/11/16 21:02:36 cph Exp $
+@comment $Id: scheme.texinfo,v 1.99 2001/11/16 21:05:07 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -6465,6 +6465,15 @@ represents the pattern matching a character in that set; or an object
 returned by calling one of the procedures defined here.
 @end deffn
 
+@deffn {procedure+} rexp->regexp rexp
+Converts @var{rexp} to standard regular-expression notation, returning
+a newly-allocated string.
+@end deffn
+
+@deffn {procedure+} rexp-compile rexp
+Converts @var{rexp} to standard regular-expression notation, then
+compiles it and returns the compiled result.  Equivalent to
+
 @deffn {procedure+} rexp-any-char
 Returns a @acronym{REXP} that matches any single character except a
 newline.  This is equivalent to the @code{.} construct.
@@ -6597,15 +6606,6 @@ Returns a @acronym{REXP} that matches the same pattern as @var{rexp},
 but is insensitive to character case.  This has no equivalent in
 standard regular-expression notation.
 @end deffn
-
-@deffn {procedure+} rexp->regexp rexp
-Converts @var{rexp} to standard regular-expression notation, returning
-a newly-allocated string.
-@end deffn
-
-@deffn {procedure+} rexp-compile rexp
-Converts @var{rexp} to standard regular-expression notation, then
-compiles it and returns the compiled result.  Equivalent to
 
 @example
 (re-compile-pattern (rexp->regexp @var{rexp}) #f)
