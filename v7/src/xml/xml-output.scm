@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.27 2003/09/26 05:35:36 cph Exp $
+$Id: xml-output.scm,v 1.28 2003/09/26 19:39:01 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -333,52 +333,48 @@ USA.
   (write-xml-name (xml-parameter-entity-ref-name ref) ctx)
   (emit-string ";" ctx))
 
-(define (write-xml-attributes attributes suffix-cols ctx)
+(define (write-xml-attributes attrs suffix-cols ctx)
   (let ((col
 	 (and (ctx-indent-attributes? ctx)
 	      (ctx-start-col ctx))))
     (if (and col
-	     (pair? attributes)
-	     (pair? (cdr attributes))
+	     (pair? attrs)
+	     (pair? (cdr attrs))
 	     (>= (+ col
-		    (xml-attributes-columns attributes)
+		    (xml-attributes-columns attrs)
 		    suffix-cols)
 		 (ctx-x-size ctx)))
 	(begin
 	  (emit-char #\space ctx)
-	  (write-xml-attribute (car attributes) ctx)
-	  (for-each (lambda (attribute)
+	  (write-xml-attribute (car attrs) ctx)
+	  (for-each (lambda (attr)
 		      (write-indent (+ col 1) ctx)
-		      (write-xml-attribute attribute ctx))
-		    (cdr attributes)))
-	(for-each (lambda (attribute)
+		      (write-xml-attribute attr ctx))
+		    (cdr attrs)))
+	(for-each (lambda (attr)
 		    (emit-char #\space ctx)
-		    (write-xml-attribute attribute ctx))
-		  attributes))))
+		    (write-xml-attribute attr ctx))
+		  attrs))))
 
-(define (xml-attributes-columns attributes)
-  (let loop ((attributes attributes) (n-cols 0))
-    (if (pair? attributes)
-	(loop (cdr attributes)
-	      (+ n-cols 1 (xml-attribute-columns (car attributes))))
-	n-cols)))
+(define (xml-attributes-columns attrs)
+  (do ((attrs attrs (cdr attrs))
+       (n-cols 0 (+ n-cols 1 (xml-attribute-columns (car attrs)))))
+      ((not (pair? attrs)) n-cols)))
 
-(define (write-xml-attribute attribute ctx)
-  (write-xml-name (car attribute) ctx)
+(define (write-xml-attribute attr ctx)
+  (write-xml-name (xml-attribute-name attr) ctx)
   (emit-char #\= ctx)
-  (write-xml-attribute-value (cdr attribute) ctx))
+  (write-xml-attribute-value (xml-attribute-value attr) ctx))
 
 (define (write-xml-attribute-value value ctx)
   (emit-char #\" ctx)
-  (for-each (lambda (item)
-	      (write-xml-string item ctx))
-	    value)
+  (write-xml-string value ctx)
   (emit-char #\" ctx))
 
-(define (xml-attribute-columns attribute)
-  (+ (xml-name-columns (car attribute))
+(define (xml-attribute-columns attr)
+  (+ (xml-name-columns (xml-attribute-name attr))
      3
-     (xml-string-columns (cadr attribute))))
+     (xml-string-columns (xml-attribute-value attr))))
 
 (define (write-xml-string string ctx)
   (write-escaped-string string

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.48 2003/09/26 05:35:40 cph Exp $
+$Id: xml-parser.scm,v 1.49 2003/09/26 19:39:03 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -233,65 +233,59 @@ USA.
 
 ;;;; Elements
 
-(define (parse-element buffer)		;[39]
-  (let ((p (get-parser-buffer-pointer buffer)))
+(define (parse-element b)		;[39]
+  (let ((p (get-parser-buffer-pointer b)))
     (fluid-let ((*prefix-bindings* *prefix-bindings*))
-      (let ((v (parse-start-tag buffer)))
+      (let ((v (parse-start-tag b)))
 	(and v
-	     (vector
-	      (make-xml-element
-	       (vector-ref v 0)
-	       (vector-ref v 1)
-	       (if (string=? (vector-ref v 2) ">")
-		   (let loop ((elements '#()))
-		     (let ((v* (parse-end-tag buffer)))
-		       (if v*
-			   (begin
-			     (if (not (eq? (vector-ref v 0) (vector-ref v* 0)))
-				 (perror p "Mismatched start tag"
-					 (vector-ref v 0) (vector-ref v* 0)))
-			     (let ((contents
-				    (coalesce-strings!
-				     (delete-matching-items!
-					 (vector->list elements)
-				       (lambda (element)
-					 (and (string? element)
-					      (string-null? element)))))))
-			       (if (null? contents)
-				   ;; Preserve fact that this element
-				   ;; was formed by a start/end tag pair
-				   ;; rather than by an empty-element
-				   ;; tag.
-				   (list "")
-				   contents)))
-			   (let ((v* (parse-content buffer)))
-			     (if (not v*)
-				 (perror p "Unterminated start tag"
-					 (vector-ref v 0)))
-			     (if (equal? v* '#(""))
-				 (perror p "Unknown content"))
-			     (loop (vector-append elements v*))))))
-		   '()))))))))
+	     (begin
+	       (namespace-processing! v p)
+	       (vector (let ((name (vector-ref v 0)))
+			 (make-xml-element name
+					   (vector-ref v 1)
+					   (if (string=? (vector-ref v 2) ">")
+					       (parse-element-content b p name)
+					       '()))))))))))
 
 (define parse-start-tag			;[40,44]
   (*parser
    (top-level
-    (with-pointer p
-      (transform (lambda (v)
-		   (let* ((name (vector-ref v 0))
-			  (attributes
-			   (process-attr-decls name (vector-ref v 1) p)))
-		     (process-namespace-decls attributes)
-		     (vector (intern-element-name name)
-			     (map (lambda (attr)
-				    (cons (intern-attribute-name (car attr))
-					  (cdr attr)))
-				  attributes)
-			     (vector-ref v 2))))
-	(bracket "start tag"
-	    (seq "<" parse-uninterned-name)
-	    (match (alt ">" "/>"))
-	  parse-attribute-list))))))
+    (bracket "start tag"
+	(seq "<" parse-unexpanded-name)
+	(match (alt ">" "/>"))
+      parse-attribute-list))))
+
+(define (namespace-processing! v p)
+  (let* ((uname (vector-ref v 0))
+	 (attrs (process-attr-decls (car uname) (vector-ref v 1) p)))
+    (process-namespace-decls attrs)
+    (vector-set! v 0 (expand-element-name uname))
+    (for-each (lambda (attr)
+		(set-xml-attribute-name! attr
+					 (expand-attribute-name
+					  (xml-attribute-name attr))))
+	      attrs)))
+
+(define (parse-element-content b p name)
+  (let loop ((elements '#()))
+    (let ((v (parse-end-tag b)))
+      (if v
+	  (begin
+	    (if (not (xml-name=? (vector-ref v 0) name))
+		(perror p "Mismatched start tag" (vector-ref v 0) name))
+	    (let ((contents (coalesce-strings! (vector->list elements))))
+	      (if (null? contents)
+		  ;; Preserve fact that this element was formed by a
+		  ;; start/end tag pair rather than by an empty
+		  ;; element tag.
+		  (list "")
+		  contents)))
+	  (let ((v (parse-content b)))
+	    (if (not v)
+		(perror p "Unterminated start tag" name))
+	    (if (equal? v '#(""))
+		(perror p "Unknown content"))
+	    (loop (vector-append elements v)))))))
 
 (define parse-end-tag			;[42]
   (*parser
@@ -312,68 +306,41 @@ USA.
 
 ;;;; Attribute defaulting
 
-(define (process-attr-decls name attributes p)
+(define (process-attr-decls qname attrs p)
   (let ((decl
 	 (and (or *standalone?* *internal-dtd?*)
 	      (find-matching-item *att-decls*
-		(let ((name (string->symbol (car name))))
-		  (lambda (decl)
-		    (eq? name (xml-!attlist-name decl))))))))
+		(lambda (decl)
+		  (xml-name=? (xml-!attlist-name decl) qname))))))
     (if decl
-	(let loop
-	    ((definitions (xml-!attlist-definitions decl))
-	     (attributes attributes))
-	  (if (pair? definitions)
-	      (loop (cdr definitions)
-		    (process-attr-defn (car definitions) attributes p))
-	      attributes))
-	attributes)))
+	(do ((defns (xml-!attlist-definitions decl) (cdr defns))
+	     (attrs attrs (process-attr-defn (car defns) attrs p)))
+	    ((not (pair? defns)) attrs))
+	attrs)))
 
-(define (process-attr-defn definition attributes p)
-  (let ((name (symbol-name (car definition)))
-	(type (cadr definition))
-	(default (caddr definition)))
-    (let ((attribute
-	   (find-matching-item attributes
-	     (lambda (attribute)
-	       (string=? name (caar attribute))))))
-      (if attribute
-	  (let ((av (cdr attribute)))
+(define (process-attr-defn defn attrs p)
+  (let ((qname (car defn))
+	(type (cadr defn))
+	(default (caddr defn)))
+    (let ((attr
+	   (find-matching-item attrs
+	     (lambda (attr)
+	       (xml-name=? (car (xml-attribute-name attr)) qname)))))
+      (if attr
+	  (let ((av (xml-attribute-value attr)))
 	    (if (and (pair? default)
 		     (eq? (car default) '|#FIXED|)
-		     (not (attribute-value=? av (cdr default))))
-		(perror (cdar attribute)
-			"Incorrect attribute value"
-			(string->symbol name)))
+		     (not (string=? av (cdr default))))
+		(perror (cdar attr) "Incorrect attribute value" qname))
 	    (if (not (eq? type '|CDATA|))
-		(set-car! av (trim-attribute-whitespace (car av))))
-	    attributes)
+		(set-xml-attribute-value! attr (trim-attribute-whitespace av)))
+	    attrs)
 	  (begin
 	    (if (eq? default '|#REQUIRED|)
-		(perror p
-			"Missing required attribute value"
-			(string->symbol name)))
+		(perror p "Missing required attribute value" qname))
 	    (if (pair? default)
-		(cons (cons (cons name p) (cdr default))
-		      attributes)
-		attributes))))))
-
-(define (attribute-value=? v1 v2)
-  (and (boolean=? (pair? v1) (pair? v2))
-       (if (pair? v1)
-	   (and (let ((i1 (car v1))
-		      (i2 (car v2)))
-		  (cond ((string? i1)
-			 (and (string? i2)
-			      (string=? i1 i2)))
-			((xml-entity-ref? i1)
-			 (and (xml-entity-ref? i2)
-			      (eq? (xml-entity-ref-name i1)
-				   (xml-entity-ref-name i2))))
-			(else
-			 (error "Unknown attribute value item:" i1))))
-		(attribute-value=? (cdr v1) (cdr v2)))
-	   #t)))
+		(cons (%make-xml-attribute (cons qname p) (cdr default)) attrs)
+		attrs))))))
 
 ;;;; Other markup
 
@@ -419,15 +386,15 @@ USA.
   (*parser (require-success "Malformed element name" parse-element-name)))
 
 (define parse-element-name
-  (*parser (map intern-element-name parse-uninterned-name)))
+  (*parser (map expand-element-name parse-unexpanded-name)))
 
 (define parse-attribute-name
-  (*parser (map intern-attribute-name parse-uninterned-name)))
+  (*parser (map expand-attribute-name parse-unexpanded-name)))
 
-(define parse-uninterned-name		;[5]
+(define parse-unexpanded-name		;[5]
   (*parser
    (with-pointer p
-     (map (lambda (s) (cons s p))
+     (map (lambda (s) (cons (make-xml-qname s) p))
 	  (match (seq (? (seq match-name ":"))
 		      match-name))))))
 
@@ -458,53 +425,49 @@ USA.
 	     (loop)
 	     #t))))
 
-(define (process-namespace-decls attributes)
+;;;; Namespaces
+
+(define (process-namespace-decls attrs)
   (set! *prefix-bindings*
-	(let loop ((attributes attributes))
-	  (if (pair? attributes)
-	      (let ((name (xml-attribute-name (car attributes)))
-		    (tail (loop (cdr attributes))))
-		(let ((s (car name))
-		      (pn (cdr name)))
-		  (let ((iri
-			 (lambda ()
-			   (string->symbol
-			    (xml-attribute-value (car attributes)))))
+	(let loop ((attrs attrs))
+	  (if (pair? attrs)
+	      (let ((uname (xml-attribute-name (car attrs)))
+		    (value (xml-attribute-value (car attrs)))
+		    (tail (loop (cdr attrs))))
+		(let ((qname (car uname))
+		      (p (cdr uname)))
+		  (let ((get-iri (lambda () (make-xml-namespace-iri value)))
 			(forbidden-iri
 			 (lambda (iri)
-			   (perror pn "Forbidden namespace IRI" iri))))
+			   (perror p "Forbidden namespace IRI" iri))))
 		    (let ((guarantee-legal-iri
 			   (lambda (iri)
 			     (if (or (eq? iri xml-iri)
 				     (eq? iri xmlns-iri))
 				 (forbidden-iri iri)))))
-		      (cond ((string=? "xmlns" s)
-			     (let ((iri (iri)))
+		      (cond ((xml-name=? qname 'xmlns)
+			     (let ((iri (get-iri)))
 			       (guarantee-legal-iri iri)
 			       (cons (cons (null-xml-name-prefix) iri) tail)))
-			    ((string-prefix? "xmlns:" s)
-			     (if (string=? "xmlns:xmlns" s)
-				 (perror pn "Illegal namespace prefix" s))
-			     (let ((iri (iri)))
-			       (if (null-xml-namespace-iri? iri)
-				   ;; legal in XML 1.1
-				   (forbidden-iri ""))
-			       (if (string=? "xmlns:xml" s)
+			    ((xml-name-prefix=? qname 'xmlns)
+			     (if (xml-name=? qname 'xmlns:xmlns)
+				 (perror p "Illegal namespace prefix" qname))
+			     (let ((iri (get-iri)))
+			       (if (xml-name=? qname 'xmlns:xml)
 				   (if (not (eq? iri xml-iri))
 				       (forbidden-iri iri))
 				   (guarantee-legal-iri iri))
-			       (cons (cons (string-tail->symbol s 6) iri)
-				     tail)))
+			       (cons (cons (xml-name-local qname) iri) tail)))
 			    (else tail))))))
 	      *prefix-bindings*)))
   unspecific)
 
-(define (intern-element-name n) (intern-name n #f))
-(define (intern-attribute-name n) (intern-name n #t))
+(define (expand-element-name uname) (expand-name uname #f))
+(define (expand-attribute-name uname) (expand-name uname #t))
 
-(define (intern-name n attribute-name?)
-  (let ((qname (string->symbol (car n)))
-	(p (cdr n)))
+(define (expand-name uname attribute-name?)
+  (let ((qname (car uname))
+	(p (cdr uname)))
     (if *in-dtd?*
 	qname
 	(let ((iri (lookup-namespace-prefix qname p attribute-name?)))
@@ -654,25 +617,29 @@ USA.
 
 ;;;; Attributes
 
-(define (attribute-list-parser parse-name)
+(define (attribute-list-parser parse-name name=?)
   (let ((parse-attribute (attribute-parser parse-name)))
     (*parser
      (with-pointer p
        (encapsulate
 	   (lambda (v)
-	     (let ((alist (vector->list v)))
-	       (do ((alist alist (cdr alist)))
-		   ((not (pair? alist)))
-		 (let ((entry (assq (caar alist) (cdr alist))))
-		   (if entry
-		       (perror p "Duplicate entry in attribute list"))))
-	       alist))
+	     (let ((attrs (vector->list v)))
+	       (do ((attrs attrs (cdr attrs)))
+		   ((not (pair? attrs)))
+		 (let ((name (xml-attribute-name (car attrs))))
+		   (if (there-exists? (cdr attrs)
+			 (lambda (attr)
+			   (name=? (xml-attribute-name attr) name)))
+		       (perror p "Attributes with same name" name))))
+	       attrs))
 	 (seq (* parse-attribute)
 	      S?))))))
 
 (define (attribute-parser parse-name)	;[41,25]
   (*parser
-   (encapsulate (lambda (v) (cons (vector-ref v 0) (vector-ref v 1)))
+   (encapsulate (lambda (v)
+		  (%make-xml-attribute (vector-ref v 0)
+				       (vector-ref v 1)))
      (seq S
 	  parse-name
 	  S?
@@ -680,12 +647,14 @@ USA.
 	  S?
 	  parse-attribute-value))))
 
-(define parse-declaration-attributes
-  (attribute-list-parser (*parser (map make-xml-qname (match match-name)))))
-
 (define parse-attribute-list
-  (attribute-list-parser parse-uninterned-name))
+  (attribute-list-parser parse-unexpanded-name
+			 (lambda (a b) (xml-name=? (car a) (car b)))))
 
+(define parse-declaration-attributes
+  (attribute-list-parser (*parser (map make-xml-qname (match match-name)))
+			 xml-name=?))
+
 (define (attribute-value-parser alphabet parse-reference)
   (let ((a1 (alphabet- alphabet (string->alphabet "\"")))
 	(a2 (alphabet- alphabet (string->alphabet "'"))))
@@ -731,46 +700,43 @@ USA.
 			  (null? (cdr elements))))
 		(error "Uncoalesced attribute value:" elements))
 	    (normalize-attribute-value (car elements)))
-	  (require-success "Malformed attribute value"
-	    parser)))))
+	  (require-success "Malformed attribute value" parser)))))
 
 ;;;; Normalization
 
 (define (normalize-attribute-value string)
-  (coalesce-strings!
-   (reverse!
-    (let loop ((string string) (result '()))
-      (let ((buffer (string->parser-buffer (normalize-line-endings string))))
-	(let normalize-string ((port (open-output-string)) (result result))
-	  (let* ((p (get-parser-buffer-pointer buffer))
-		 (char (read-parser-buffer-char buffer)))
-	    (case char
-	      ((#f)
-	       (cons (get-output-string port) result))
-	      ((#\tab #\newline #\return)
-	       (write-char #\space port)
-	       (normalize-string port result))
-	      ((#\&)
-	       (set-parser-buffer-pointer! buffer p)
-	       (let ((v (parse-char-reference buffer)))
-		 (if v
-		     (begin
-		       (write-string (vector-ref v 0) port)
-		       (normalize-string port result))
-		     (normalize-string
-		      (open-output-string)
-		      (let ((name
-			     (vector-ref (parse-entity-reference-name buffer)
-					 0)))
-			(let ((value (dereference-entity name #t p)))
-			  (expand-entity-value name p
-			    (lambda ()
-			      (loop value
-				    (cons (get-output-string port)
-					  result))))))))))
-	      (else
-	       (write-char char port)
-	       (normalize-string port result))))))))))
+  (call-with-output-string
+    (lambda (port)
+      (let normalize-string ((string string))
+	(let ((b (string->parser-buffer (normalize-line-endings string))))
+	  (let loop ()
+	    (let* ((p (get-parser-buffer-pointer b))
+		   (char (read-parser-buffer-char b)))
+	      (case char
+		((#f)
+		 unspecific)
+		((#\tab #\newline #\return)
+		 (write-char #\space port)
+		 (loop))
+		((#\&)
+		 (set-parser-buffer-pointer! b p)
+		 (let ((v (parse-char-reference b)))
+		   (if v
+		       (begin
+			 (write-string (vector-ref v 0) port)
+			 (loop))
+		       (begin
+			 (let ((name
+				(vector-ref (parse-entity-reference-name b)
+					    0)))
+			   (let ((value (dereference-entity name #t p)))
+			     (expand-entity-value name p
+			       (lambda ()
+				 (normalize-string value)))))
+			 (loop)))))
+		(else
+		 (write-char char port)
+		 (loop))))))))))
 
 (define (trim-attribute-whitespace string)
   (call-with-output-string
@@ -1077,8 +1043,8 @@ USA.
 		    (list name type
 			  (if (and (not (eq? type '|CDATA|))
 				   (pair? default))
-			      (list (car default)
-				    (trim-attribute-whitespace (cadr default)))
+			      (cons (car default)
+				    (trim-attribute-whitespace (cdr default)))
 			      default))))
 	      (seq S
 		   parse-attribute-name

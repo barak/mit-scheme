@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.36 2003/09/26 05:35:43 cph Exp $
+$Id: xml-struct.scm,v 1.37 2003/09/26 19:39:06 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -30,11 +30,17 @@ USA.
 (define-syntax define-xml-type
   (sc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(IDENTIFIER * (IDENTIFIER EXPRESSION ? EXPRESSION))
-			(cdr form))
+     (if (and (pair? (cdr form))
+	      (identifier? (cadr form))
+	      (list-of-type? (cddr form)
+		(lambda (slot)
+		  (or (syntax-match? '(IDENTIFIER EXPRESSION) slot)
+		      (syntax-match? '(IDENTIFIER 'CANONICALIZE EXPRESSION)
+				     slot)))))
 	 (let ((root (symbol-append 'XML- (cadr form)))
 	       (slots (cddr form)))
 	   (let ((rtd (symbol-append '< root '>))
+		 (%constructor (symbol-append '%MAKE- root))
 		 (constructor (symbol-append 'MAKE- root))
 		 (predicate (symbol-append root '?))
 		 (error:not (symbol-append 'ERROR:NOT- root))
@@ -42,11 +48,18 @@ USA.
 		  (map (lambda (slot)
 			 (close-syntax (car slot) environment))
 		       slots)))
-	     (let ((test
-		    (lambda (slot var name)
-		      `(IF (NOT (,(close-syntax (cadr slot) environment) ,var))
-			   (ERROR:WRONG-TYPE-ARGUMENT
-			    ,var ,(symbol->string (car slot)) ',name)))))
+	     (let ((canonicalize
+		    (lambda (slot var caller)
+		      (if (eq? (cadr slot) 'CANONICALIZE)
+			  `(,(close-syntax (caddr slot) environment) ,var)
+			  `(BEGIN
+			     (IF (NOT (,(close-syntax (cadr slot) environment)
+				       ,var))
+				 (ERROR:WRONG-TYPE-ARGUMENT
+				  ,var
+				  ,(symbol->string (car slot))
+				  ',caller))
+			     ,var)))))
 	       `(BEGIN
 		  (DEFINE ,rtd
 		    (MAKE-RECORD-TYPE ',root '(,@(map car slots))))
@@ -63,19 +76,14 @@ USA.
 						     #\-
 						     #\space))
 		     CALLER))
-		  (DEFINE ,constructor
-		    (LET ((CONSTRUCTOR
-			   (RECORD-CONSTRUCTOR ,rtd '(,@(map car slots)))))
-		      (NAMED-LAMBDA (,constructor ,@slot-vars)
-			,@(map (lambda (slot var) (test slot var constructor))
-			       slots slot-vars)
-			(CONSTRUCTOR
-			 ,@(map (lambda (slot var)
-				  (if (pair? (cddr slot))
-				      `(,(caddr slot) ,var)
-				      var))
-				slots
-				slot-vars)))))
+		  (DEFINE ,%constructor
+		    (RECORD-CONSTRUCTOR ,rtd '(,@(map car slots))))
+		  (DEFINE (,constructor ,@slot-vars)
+		    (,%constructor
+		     ,@(map (lambda (slot var)
+			      (canonicalize slot var constructor))
+			    slots
+			    slot-vars)))
 		  ,@(map (lambda (slot var)
 			   (let* ((accessor (symbol-append root '- (car slot)))
 				  (modifier (symbol-append 'SET- accessor '!)))
@@ -86,8 +94,10 @@ USA.
 				  (LET ((MODIFIER
 					 (RECORD-MODIFIER ,rtd ',(car slot))))
 				    (NAMED-LAMBDA (,modifier OBJECT ,var)
-				      ,(test slot var modifier)
-				      (MODIFIER OBJECT ,var)))))))
+				      (MODIFIER OBJECT
+						,(canonicalize slot
+							       var
+							       modifier))))))))
 			 slots
 			 slot-vars)))))
 	 (ill-formed-syntax form)))))
@@ -136,33 +146,43 @@ USA.
   (char-set-union char-set:alphanumeric
 		  (string->char-set "_.-")))
 
+(define-xml-type attribute
+  (name xml-name?)
+  (value canonicalize canonicalize-char-data))
+
+(define (xml-char-data? object)
+  (or (wide-char? object)
+      (wide-string? object)
+      (and (string? object)
+	   (utf8-string-valid? object))))
+
+(define (canonicalize-char-data object)
+  (cond ((wide-char? object)
+	 (call-with-output-string
+	   (lambda (port)
+	     (write-utf8-char object port))))
+	((wide-string? object)
+	 (wide-string->utf8-string object))
+	((and (string? object)
+	      (utf8-string-valid? object))
+	 object)
+	(else (error:wrong-type-datum object "an XML char data"))))
+
 (define-xml-type element
   (name xml-name?)
-  (attributes xml-attribute-list? canonicalize-attributes)
+  (attributes xml-attribute-list?)
   (contents xml-content?))
 
 (define (xml-attribute-list? object)
   (and (list-of-type? object xml-attribute?)
-       (let loop ((attributes object))
-	 (if (pair? attributes)
-	     (and (not (there-exists? (cdr attributes)
-			 (let ((name (caar attributes)))
-			   (lambda (attribute)
-			     (xml-name=? (car attribute) name)))))
-		  (loop (cdr attributes)))
+       (let loop ((attrs object))
+	 (if (pair? attrs)
+	     (and (not (there-exists? (cdr attrs)
+			 (let ((name (xml-attribute-name (car attrs))))
+			   (lambda (attr)
+			     (xml-name=? (xml-attribute-name attr) name)))))
+		  (loop (cdr attrs)))
 	     #t))))
-
-(define (xml-attribute? object)
-  (and (pair? object)
-       (xml-name? (car object))
-       (xml-attribute-value? (cdr object))))
-
-(define (xml-attribute-value? object)
-  (and (pair? object)
-       (list-of-type? object xml-attribute-value-item?)))
-
-(define (xml-attribute-value-item? object)
-  (xml-char-data? object))
 
 (define (xml-content? object)
   (list-of-type? object xml-content-item?))
@@ -173,98 +193,74 @@ USA.
       (xml-element? object)
       (xml-processing-instructions? object)))
 
-(define-xml-type comment
-  (text xml-char-data? canonicalize-char-data))
-
-(define-xml-type processing-instructions
-  (name
-   (lambda (object)
-     (and (xml-qname? object)
-	  (not (string-ci=? "xml" (symbol-name object))))))
-  (text xml-char-data? canonicalize-char-data))
-
-(define (xml-char-data? object)
-  (or (string? object)
-      (wide-char? object)
-      (wide-string? object)))
-
-(define (canonicalize-attributes attributes)
-  (map (lambda (a)
-	 (cons (car a)
-	       (canonicalize-attribute-value (cdr a))))
-       attributes))
-
-(define (xml-attribute-name attr)
-  (car attr))
-
-(define (xml-attribute-value attr)
-  (cadr attr))
-
-(define (canonicalize-attribute-value v)
-  (canonicalize-content v))
-
-(define (canonicalize-entity-value v)
-  (if (xml-external-id? v)
-      v
-      (canonicalize-attribute-value v)))
-
 (define (canonicalize-content content)
   (letrec
       ((search
 	(lambda (items)
 	  (if (pair? items)
-	      (let ((item (canonicalize-char-data (car items)))
+	      (let ((item (car items))
 		    (items (cdr items)))
-		(if (string? item)
-		    (join item items)
-		    (cons item (search items))))
+		(if (xml-char-data? item)
+		    (join (canonicalize-char-data item) items)
+		    (begin
+		      (check-item item)
+		      (cons item (search items)))))
 	      '())))
        (join
 	(lambda (s items)
 	  (if (pair? items)
-	      (let ((item (canonicalize-char-data (car items)))
+	      (let ((item (car items))
 		    (items (cdr items)))
-		(if (string? item)
-		    (join (string-append s item) items)
-		    (cons* s item (search items))))
-	      (list s)))))
+		(if (xml-char-data? item)
+		    (join (string-append s (canonicalize-char-data item))
+			  items)
+		    (begin
+		      (check-item item)
+		      (cons* s item (search items)))))
+	      (list s))))
+       (check-item
+	(lambda (item)
+	  (if (not (or (xml-comment? item)
+		       (xml-element? item)
+		       (xml-processing-instructions? item)))
+	      (error:wrong-type-datum content "an XML content")))))
     (search content)))
-
-(define (canonicalize-char-data object)
-  (cond ((wide-char? object)
-	 (call-with-output-string
-	   (lambda (port)
-	     (write-utf8-char object port))))
-	((wide-string? object) (wide-string->utf8-string object))
-	(else object)))
 
+(define-xml-type comment
+  (text canonicalize canonicalize-char-data))
+
+(define-xml-type processing-instructions
+  (name
+   (lambda (object)
+     (and (xml-qname? object)
+	  (not (xml-name=? object 'xml)))))
+  (text canonicalize canonicalize-char-data))
+
 (define-xml-type dtd
   (root xml-name?)
-  (external
-   (lambda (object)
-     (or (not object)
-	 (xml-external-id? object))))
-  (internal
-   (lambda (object)
-     (list-of-type? object
-       (lambda (object)
-	 (or (xml-comment? object)
-	     (xml-!element? object)
-	     (xml-!attlist? object)
-	     (xml-!entity? object)
-	     (xml-unparsed-!entity? object)
-	     (xml-parameter-!entity? object)
-	     (xml-!notation? object)
-	     (xml-parameter-entity-ref? object)))))))
+  (external (lambda (object)
+	      (or (not object)
+		  (xml-external-id? object))))
+  (internal (lambda (object)
+	      (list-of-type? object
+		(lambda (object)
+		  (or (xml-comment? object)
+		      (xml-!element? object)
+		      (xml-!attlist? object)
+		      (xml-!entity? object)
+		      (xml-unparsed-!entity? object)
+		      (xml-parameter-!entity? object)
+		      (xml-!notation? object)
+		      (xml-parameter-entity-ref? object)))))))
 
 (define-xml-type external-id
   (id (lambda (object)
 	(or (not object)
 	    (public-id? object))))
-  (iri (lambda (object)
-	 (or (not object)
-	     (xml-char-data? object)))
-       canonicalize-char-data))
+  (iri canonicalize
+       (lambda (object)
+	 (and object
+	      (canonicalize-char-data object)))))
 
 (define (public-id? object)
   (string-composed-of? object char-set:xml-public-id))
@@ -309,24 +305,24 @@ USA.
 
 (define-xml-type !attlist
   (name xml-qname?)
-  (definitions
+  (definitions canonicalize
     (lambda (object)
-      (list-of-type? object
-	(lambda (item)
-	  (and (pair? item)
-	       (xml-qname? (car item))
-	       (pair? (cdr item))
-	       (!attlist-type? (cadr item))
-	       (pair? (cddr item))
-	       (!attlist-default? (caddr item))
-	       (null? (cdddr item))))))
-    (lambda (object)
+      (if (not (list-of-type? object
+		 (lambda (item)
+		   (and (pair? item)
+			(xml-qname? (car item))
+			(pair? (cdr item))
+			(!attlist-type? (cadr item))
+			(pair? (cddr item))
+			(!attlist-default? (caddr item))
+			(null? (cdddr item))))))
+	  (error:wrong-type-datum object "an XML !ATTLIST definition"))
       (map (lambda (item)
 	     (let ((d (caddr item)))
 	       (if (pair? d)
 		   (list (car item)
 			 (cadr item)
-			 (cons (car d) (canonicalize-attribute-value (cdr d))))
+			 (cons (car d) (canonicalize-char-data (cdr d))))
 		   item)))
 	   object))))
 
@@ -340,25 +336,22 @@ USA.
       (eq? object '|NMTOKENS|)
       (eq? object '|NMTOKEN|)
       (and (pair? object)
-	   (eq? '|NOTATION| (car object))
-	   (list-of-type? (cdr object) xml-qname?))
-      (and (pair? object)
-	   (eq? 'enumerated (car object))
-	   (list-of-type? (cdr object) xml-nmtoken?))))
+	   (or (and (eq? (car object) '|NOTATION|)
+		    (list-of-type? (cdr object) xml-qname?))
+	       (and (eq? (car object) 'enumerated)
+		    (list-of-type? (cdr object) xml-nmtoken?))))))
 
 (define (!attlist-default? object)
   (or (eq? object '|#REQUIRED|)
       (eq? object '|#IMPLIED|)
       (and (pair? object)
-	   (eq? '|#FIXED| (car object))
-	   (xml-attribute-value? (cdr object)))
-      (and (pair? object)
-	   (eq? 'default (car object))
-	   (xml-attribute-value? (cdr object)))))
+	   (or (eq? (car object) '|#FIXED|)
+	       (eq? (car object) 'default))
+	   (xml-char-data? (cdr object)))))
 
 (define-xml-type !entity
   (name xml-qname?)
-  (value entity-value? canonicalize-entity-value))
+  (value canonicalize canonicalize-entity-value))
 
 (define-xml-type unparsed-!entity
   (name xml-qname?)
@@ -367,16 +360,20 @@ USA.
 
 (define-xml-type parameter-!entity
   (name xml-qname?)
-  (value entity-value? canonicalize-entity-value))
+  (value canonicalize canonicalize-entity-value))
 
-(define (entity-value? object)
-  (or (and (pair? object)
-	   (list-of-type? object
-	     (lambda (object)
-	       (or (xml-char-data? object)
-		   (xml-entity-ref? object)
-		   (xml-parameter-entity-ref? object)))))
-      (xml-external-id? object)))
+(define (canonicalize-entity-value object)
+  (if (xml-external-id? object)
+      object
+      (begin
+	(if (not (and (pair? object)
+		      (list-of-type? object
+			(lambda (object)
+			  (or (xml-char-data? object)
+			      (xml-entity-ref? object)
+			      (xml-parameter-entity-ref? object))))))
+	    (error:wrong-type-datum object "an XML !ENTITY value"))
+	(canonicalize-content object))))
 
 (define-xml-type !notation
   (name xml-qname?)
