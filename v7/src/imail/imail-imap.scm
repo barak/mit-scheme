@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.72 2000/05/22 19:29:43 cph Exp $
+;;; $Id: imail-imap.scm,v 1.73 2000/05/22 19:43:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -829,7 +829,8 @@
 
 (define (guarantee-imap-folder-open folder)
   (let ((connection (imap-folder-connection folder)))
-    (if (guarantee-imap-connection-open connection)
+    (if (or (guarantee-imap-connection-open connection)
+	    (not (eq? folder (imap-connection-folder connection))))
 	(begin
 	  (set-imap-folder-messages-synchronized?! folder #f)
 	  (set-imap-connection-folder! connection folder)
@@ -840,7 +841,8 @@
 	  #t))))
 
 (define-method close-folder ((folder <imap-folder>))
-  (maybe-close-imap-connection (imap-folder-connection folder)))
+  (maybe-close-imap-connection (imap-folder-connection folder))
+  (set-imap-connection-folder! connection #f))
 
 (define-method folder-length ((folder <imap-folder>))
   (guarantee-imap-folder-open folder)
@@ -881,7 +883,7 @@
   unspecific)
 
 (define-method discard-folder-cache ((folder <imap-folder>))
-  (maybe-close-imap-connection (imap-folder-connection folder))
+  (close-folder folder)
   (reset-imap-folder! folder))
 
 (define-method probe-folder ((folder <imap-folder>))
