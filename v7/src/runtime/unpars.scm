@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 13.43 1987/04/24 13:37:27 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 13.44 1987/04/25 09:45:17 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -42,14 +42,10 @@
 (declare (usual-integrations))
 
 ;;; Control Variables
+
 (define *unparser-radix* #d10)
 (define *unparser-list-breadth-limit* false)
 (define *unparser-list-depth-limit* false)
-
-(define (unparse-with-brackets thunk)
-  (write-string "#[")
-  (thunk)
-  (write-char #\]))
 
 (define unparser-package
   (make-environment
@@ -58,6 +54,11 @@
 (define *unparse-string)
 (define *unparser-list-depth*)
 (define *slashify*)
+
+(define (unparse-with-brackets thunk)
+  (*unparse-string "#[")
+  (thunk)
+  (*unparse-char #\]))
 
 (define (unparse-object object port #!optional slashify)
   (if (unassigned? slashify) (set! slashify true))
@@ -311,4 +312,5 @@
 (define-type 'COMPLEX unparse-number)
 
 ;;; end UNPARSER-PACKAGE.
+))
 ))
