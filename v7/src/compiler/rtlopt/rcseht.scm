@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 1.1 1987/03/19 00:49:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 1.2 1987/04/22 10:09:28 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -56,10 +56,12 @@ MIT in each case. |#
 (define-vector-slots element 1
   expression cost in-memory?
   next-hash previous-hash
-  next-value previous-value first-value)
+  next-value previous-value first-value
+  copy-cache)
 
 (define (make-element expression)
-  (vector element-tag expression false false false false false false false))
+  (vector element-tag expression false false false false false false false
+	  false))
 
 (define (hash-table-lookup hash expression)
   (define (loop element)
@@ -136,38 +138,58 @@ MIT in each case. |#
 		     (bucket-loop (element-next-hash element)))
 	      (table-loop (1+ i)))))))
 
-(package (hash-table-copy)
+(define hash-table-copy
+  (let ()
+    (define (copy-loop elements)
+      (define (per-element element previous)
+	(and element
+	     (vector element-tag
+		     (element-expression element)
+		     (element-cost element)
+		     (element-in-memory? element)
+		     (per-element (element-next-hash element) element)
+		     previous
+		     (element-next-value element)
+		     (element-previous-value element)
+		     (element-first-value element)
+		     element)))
+      (if (null? elements)
+	  '()
+	  (cons (per-element (car elements) false)
+		(copy-loop (cdr elements)))))
 
-(define *elements*)
+    (define (update-values! elements)
+      (define (per-element element)
+	(if element
+	    (begin (if (element-first-value element)
+		       (set-element-first-value!
+			element
+			(element-copy-cache (element-first-value element))))
+		   (if (element-previous-value element)
+		       (set-element-previous-value!
+			element
+			(element-copy-cache (element-previous-value element))))
+		   (if (element-next-value element)
+		       (set-element-next-value!
+			element
+			(element-copy-cache (element-next-value element))))
+		   (per-element (element-next-hash element)))))
+      (if (not (null? elements))
+	  (begin (per-element (car elements))
+		 (update-values! (cdr elements)))))
 
-(define-export (hash-table-copy table)
-  (fluid-let ((*elements* '()))
-    (vector-map table element-copy)))
+    (define (reset-caches! elements)
+      (define (per-element element)
+	(if element
+	    (begin (set-element-copy-cache! element false)
+		   (per-element (element-next-hash element)))))
+      (if (not (null? elements))
+	  (begin (per-element (car elements))
+		 (reset-caches! (cdr elements)))))
 
-(define (element-copy element)
-  (and element
-       (let ((entry (assq element *elements*)))
-	 (if entry
-	     (cdr entry)
-	     (let ((new (make-element (element-expression element))))
-	       (set! *elements* (cons (cons element new) *elements*))
-	       (set-element-cost! new (element-cost element))
-	       (set-element-in-memory?! new (element-in-memory? element))
-	       (set-element-next-hash!
-		new
-		(element-copy (element-next-hash element)))
-	       (set-element-previous-hash!
-		new
-		(element-copy (element-previous-hash element)))
-	       (set-element-next-value!
-		new
-		(element-copy (element-next-value element)))
-	       (set-element-previous-value!
-		new
-		(element-copy (element-previous-value element)))
-	       (set-element-first-value!
-		new
-		(element-copy (element-first-value element)))
-	       new)))))
-
+    (named-lambda (hash-table-copy table)
+      (let ((elements (vector->list table)))
+	(let ((elements* (copy-loop elements)))
+	  (update-values! elements*)
+	  (reset-caches! elements)
 	  (list->vector elements*))))))
