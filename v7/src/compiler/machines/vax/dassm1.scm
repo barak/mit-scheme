@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm1.scm,v 4.5 1991/02/15 00:41:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm1.scm,v 4.6 1992/08/11 04:35:20 jinx Exp $
 $MC68020-Header: dassm1.scm,v 4.15 90/07/12 16:42:39 GMT jinx Exp $
 
-Copyright (c) 1987, 1989, 1991 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,6 +34,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; VAX Disassembler: User level
+;;; package: (compiler disassembler)
 
 (declare (usual-integrations))
 
@@ -47,49 +48,36 @@ MIT in each case. |#
 ;;;; Top level entries
 
 (define (compiler:write-lap-file filename #!optional symbol-table?)
-  (let ((pathname (->pathname filename)))
+  (let ((pathname (->pathname filename))
+	(symbol-table?
+	 (if (default-object? symbol-table?) true symbol-table?)))
     (with-output-to-file (pathname-new-type pathname "lap")
       (lambda ()
 	(let ((com-file (pathname-new-type pathname "com")))
-	  (let ((object (fasload com-file))
-		(info
-		 (let ((pathname (pathname-new-type pathname "binf")))
-		   (and (if (default-object? symbol-table?)
-			    (file-exists? pathname)
-			    symbol-table?)
-			(fasload pathname)))))
+	  (let ((object (fasload com-file)))
 	    (if (compiled-code-address? object)
-		(disassembler/write-compiled-code-block
-		 (compiled-code-address->block object)
-		 info)
+		(let ((block (compiled-code-address->block object)))
+		  (disassembler/write-compiled-code-block
+		   block
+		   (compiled-code-block/dbg-info block symbol-table?)))
 		(begin
 		  (if (not
 		       (and (scode/comment? object)
 			    (dbg-info-vector? (scode/comment-text object))))
 		      (error "Not a compiled file" com-file))
-		  (let ((items
+		  (let ((blocks
 			 (vector->list
 			  (dbg-info-vector/blocks-vector
 			   (scode/comment-text object)))))
-		    (if (not (null? items))
-			(if (false? info)
-			    (let loop ((items items))
-			      (disassembler/write-compiled-code-block
-			       (car items)
-			       false)
-			      (if (not (null? (cdr items)))
-				  (begin
-				    (write-char #\page)
-				    (loop (cdr items)))))
-			    (let loop
-				((items items) (info (vector->list info)))
-			      (disassembler/write-compiled-code-block
-			       (car items)
-			       (car info))
-			      (if (not (null? (cdr items)))
-				  (begin
-				    (write-char #\page)
-				    (loop (cdr items) (cdr info))))))))))))))))
+		    (if (not (null? blocks))
+			(do ((blocks blocks (cdr blocks)))
+			    ((null? blocks) unspecific)
+			  (disassembler/write-compiled-code-block
+			   (car blocks)
+			   (compiled-code-block/dbg-info (car blocks)
+							 symbol-table?))
+			  (if (not (null? (cdr blocks)))
+			      (write-char #\page)))))))))))))
 
 (define disassembler/base-address)
 
@@ -103,17 +91,6 @@ MIT in each case. |#
 	(newline)
 	(disassembler/write-compiled-code-block block info)))))
 
-;;; Operations exported from the disassembler package
-
-(define disassembler/instructions)
-(define disassembler/instructions/null?)
-(define disassembler/instructions/read)
-(define disassembler/lookup-symbol)
-(define disassembler/read-variable-cache)
-(define disassembler/read-procedure-cache)
-(define compiled-code-block/objects-per-procedure-cache)
-(define compiled-code-block/objects-per-variable-cache)
-
 (define (disassembler/write-compiled-code-block block info)
   (let ((symbol-table (and info (dbg-info/labels info))))
     (write-string "Disassembly of ")
@@ -204,9 +181,9 @@ MIT in each case. |#
     (let ((kind (integer-divide-quotient descriptor))
 	  (length (integer-divide-remainder descriptor)))
 
-      (define (write-caches size writer)
-	(let loop ((index (1+ index))
-		   (how-many (quotient length size)))
+      (define (write-caches offset size writer)
+	(let loop ((index (1+ (+ offset index)))
+		   (how-many (quotient (- length offset) size)))
 	  (if (zero? how-many)
 	      'DONE
 	      (begin
@@ -225,17 +202,20 @@ MIT in each case. |#
 	 (write field)
 	 (write-string "]")))
        (case kind
-	 ((0)
+	 ((0 3)
 	  (write-caches
+	   compiled-code-block/procedure-cache-offset
 	   compiled-code-block/objects-per-procedure-cache
 	   disassembler/write-procedure-cache))
 	 ((1)
 	  (write-caches
+	   0
 	   compiled-code-block/objects-per-variable-cache
 	  (lambda (block index)
 	    (disassembler/write-variable-cache "Reference" block index))))
 	 ((2)
 	  (write-caches
+	   0
 	   compiled-code-block/objects-per-variable-cache
 	  (lambda (block index)
 	    (disassembler/write-variable-cache "Assignment" block index))))
