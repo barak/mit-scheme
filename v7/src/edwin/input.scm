@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.82 1990/08/31 20:12:44 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.83 1990/09/12 02:29:32 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -187,8 +187,8 @@ B 3BAB8C
 (define-integrable (set-editor-input-port! new-port)
   (set! editor-input-port new-port))
 
-(define-integrable (keyboard-active? delay)
-  (char-ready? editor-input-port delay))
+(define-integrable (keyboard-active? interval)
+  (char-ready? editor-input-port interval))
 
 (define (keyboard-peek-char)
   (if *executing-keyboard-macro?*

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xform.scm,v 1.7 1990/09/12 02:23:23 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xform.scm,v 1.8 1990/09/12 02:25:47 cph Rel $
 ;;;
 ;;;	Copyright (c) 1985, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -146,8 +146,8 @@
     (lambda (text expression)
       (make-comment text (transform-expression transforms expression)))))
 
-(define (transform-delay transforms delay)
-  (make-delay (transform-expression transforms (delay-expression delay))))
+(define (transform-delay transforms expression)
+  (make-delay (transform-expression transforms (delay-expression expression))))
 
 (define scode-walker
   (make-scode-walker transform-constant
