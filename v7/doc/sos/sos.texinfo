@@ -1,5 +1,5 @@
 \input texinfo @c -*-Texinfo-*-
-@comment $Id: sos.texinfo,v 2.17 2004/10/17 02:11:15 cph Exp $
+@comment $Id: sos.texinfo,v 2.18 2004/10/17 02:41:54 cph Exp $
 @comment %**start of header
 @setfilename mit-scheme-sos
 @set EDITION 2.11
@@ -14,8 +14,7 @@
 @finalout
 
 @copying
-@acronym{SOS} is an object-oriented programming extension for MIT/GNU
-Scheme.
+This manual documents @acronym{SOS} @value{VERSION}.
 
 Copyright @copyright{} 1993,1994,1997,1998 Massachusetts Institute of Technology@*
 Copyright @copyright{} 1999,2000,2001,2002 Massachusetts Institute of Technology@*
@@ -51,7 +50,8 @@ Software Foundation raise funds for GNU development.''
 @insertcopying
 @end titlepage
 
-@setchapternewpage odd
+@setchapternewpage on
+@headings double
 
 @contents
 
@@ -2015,8 +2015,3 @@ to permit their use in free software.
 @printindex cp
 
 @bye
-
-@c Local Variables:
-@c selective-display: t
-@c truncate-lines: t
-@c End:
