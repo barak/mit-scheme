@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: utabmd.scm,v 9.66 1993/02/23 02:38:17 gjr Exp $
+;;; $Id: utabmd.scm,v 9.67 1993/06/29 21:37:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987-1993 Massachusetts Institute of Technology
 ;;;
@@ -63,7 +63,7 @@
 	       OBARRAY					;03
 	       MICROCODE-TYPES-VECTOR			;04
 	       MICROCODE-RETURNS-VECTOR			;05
-	       #F					;06
+	       INTERRUPT-MASK-VECTOR			;06
 	       MICROCODE-ERRORS-VECTOR			;07
 	       MICROCODE-IDENTIFICATION-VECTOR		;08
 	       SYSTEM-CALL-NAMES			;09
@@ -702,4 +702,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Id: utabmd.scm,v 9.66 1993/02/23 02:38:17 gjr Exp $"
+"$Id: utabmd.scm,v 9.67 1993/06/29 21:37:05 cph Exp $"
