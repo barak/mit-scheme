@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.40 2003/02/14 18:28:33 cph Exp $
+$Id: parse.scm,v 14.41 2003/07/30 04:14:23 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1997,1998,1999 Massachusetts Institute of Technology
@@ -31,24 +31,23 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! char-set/undefined-atom-delimiters (char-set #\[ #\] #\{ #\} #\|))
+  (set! char-set/undefined-atom-delimiters (string->char-set "[]{}"))
   (set! char-set/whitespace
-	(char-set #\Tab #\Linefeed #\Page #\Return #\Space))
+	(char-set #\tab #\linefeed #\page #\return #\space))
   (set! char-set/non-whitespace (char-set-invert char-set/whitespace))
-  (set! char-set/comment-delimiters (char-set #\Newline))
-  (set! char-set/special-comment-leaders (char-set #\# #\|))
-  (set! char-set/string-delimiters (char-set #\" #\\))
+  (set! char-set/comment-delimiters (char-set #\newline))
+  (set! char-set/special-comment-leaders (string->char-set "#|"))
+  (set! char-set/string-delimiters (string->char-set "\"\\"))
   (set! char-set/atom-delimiters
 	(char-set-union char-set/whitespace
-			(char-set-union char-set/undefined-atom-delimiters
-					(char-set #\( #\) #\; #\" #\' #\`))))
-  (set! char-set/atom-constituents (char-set-invert char-set/atom-delimiters))
+			char-set/undefined-atom-delimiters
+			(string->char-set "\"();'`|")))
   (set! char-set/char-delimiters
-	(char-set-union (char-set #\- #\\) char-set/atom-delimiters))
+	(char-set-union (string->char-set "-\\") char-set/atom-delimiters))
   (set! char-set/symbol-leaders
-	(char-set-difference char-set/atom-constituents
-			     (char-set #\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9
-				       #\+ #\- #\. #\#)))
+	(char-set-difference (char-set-invert char-set/atom-delimiters)
+			     (string->char-set "0123456789+-.#")))
+  (set! char-set/quoted-symbol-delimiters (string->char-set "|\\"))
   (set! char-set/non-digit
 	(char-set-difference (char-set-invert (char-set))
 			     char-set:numeric))
@@ -59,14 +58,14 @@ USA.
   (set! dot-symbol (intern "."))
   (set! named-objects
 	`((NULL . ,(list))
-	  (FALSE . ,false)
-	  (TRUE . ,true)
+	  (FALSE . ,#f)
+	  (TRUE . ,#t)
 	  (OPTIONAL . ,lambda-optional-tag)
 	  (REST . ,lambda-rest-tag)
 	  (AUX . ',lambda-auxiliary-tag)))
 
   (set! *parser-radix* 10)
-  (set! *parser-associate-positions?* false)
+  (set! *parser-associate-positions?* #f)
   (set! *parser-associate-position* parser-associate-positions/default)
   (set! *parser-current-position* parser-current-position/default)
   (set! *parser-canonicalize-symbols?* #t)
@@ -80,15 +79,16 @@ USA.
 (define char-set/special-comment-leaders)
 (define char-set/string-delimiters)
 (define char-set/atom-delimiters)
-(define char-set/atom-constituents)
 (define char-set/char-delimiters)
 (define char-set/symbol-leaders)
+(define char-set/quoted-symbol-delimiters)
 (define char-set/non-digit)
 
 (define lambda-optional-tag)
 (define lambda-rest-tag)
 (define lambda-auxiliary-tag)
 (define *parser-radix*)
+(define *parser-canonicalize-symbols?*)
 (define system-global-parser-table)
 
 (define (make-system-global-parser-table)
@@ -183,8 +183,7 @@ USA.
 	(if (not *parser-associate-positions?*)
 	    parser-current-position/default
 	    (current-position-getter port))))
-    (cyclic-parser-post-edit (thunk))
-))
+    (cyclic-parser-post-edit (thunk))))
 
 ;;;; Character Operations
 
@@ -321,7 +320,7 @@ USA.
 
 (define (parser-current-position/default offset)
   offset				; fnord
-  false)
+  #f)
 
 ;; Do not integrate this!!! -- GJR
 
@@ -333,16 +332,50 @@ USA.
 
 ;;;; Symbols/Numbers
 
+(define (read-atom)
+  (let ((s (read-string char-set/atom-delimiters)))
+    (if (eof-object? s)
+	(parse-error/end-of-file))
+    (if *parser-canonicalize-symbols?*
+	(string-downcase! s))
+    (if (eqv? (peek-char/eof-ok) #\|)
+	(values
+	 (call-with-output-string
+	   (lambda (port)
+	     (write-string s port)
+	     (let loop ()
+	       (discard-char)
+	       (let find-bar ()
+		 (let ((s (read-string char-set/quoted-symbol-delimiters)))
+		   (if (eof-object? s)
+		       (parse-error "Unterminated |"))
+		   (write-string s port)
+		   (if (char=? (read-char) #\|)
+		       (let ((s (read-string char-set/atom-delimiters)))
+			 (if (not (eof-object? s))
+			     (begin
+			       (if *parser-canonicalize-symbols?*
+				   (string-downcase! s))
+			       (write-string s port)
+			       (if (eqv? (peek-char/eof-ok) #\|)
+				   (loop)))))
+		       (begin
+			 (write-char (read-char) port)
+			 (find-bar))))))))
+	 #t)
+	(values s #f))))
+
 (define-accretor 0 (parse-object/atom)
-  (build-atom (read-atom)))
+  (receive (string force-sym?) (read-atom)
+    (or (and (not force-sym?)
+	     (parse-number string))
+	(string->symbol string))))
 
-(define-integrable (read-atom)
-  (read-string char-set/atom-delimiters))
-
-(define (build-atom string)
-  (or (parse-number string)
-      (intern-string! string)))
-
+(define-accretor 0 (parse-object/symbol)
+  (receive (string force-sym?) (read-atom)
+    force-sym?
+    (string->symbol string)))
+
 (define (parse-number string)
   (let ((radix (if (memv *parser-radix* '(2 8 10 16)) *parser-radix* 10)))
     (if (fix:= radix 10)
@@ -355,39 +388,33 @@ USA.
 		   string))
 	      #f)))))
 
-(define *parser-canonicalize-symbols?*)
-
-(define (intern-string! string)
-  ;; Special version of `intern' to reduce consing and increase speed.
-  (if *parser-canonicalize-symbols?*
-      (substring-downcase! string 0 (string-length string)))
-  (string->symbol string))
-
-(define-accretor 0 (parse-object/symbol)
-  (intern-string! (read-atom)))
-
 (define-accretor 1 (parse-object/numeric-prefix)
   (let ((number
 	 (let ((char (read-char)))
-	   (string-append (string #\# char) (read-atom)))))
-    (or (parse-number number)
-	(parse-error "Bad number syntax" number))))
+	   (receive (s force-sym?) (read-atom)
+	     force-sym?
+	     (string-append (string #\# char) s)))))
+    (let ((n (parse-number number)))
+      (if (not n)
+	  (parse-error "Bad number syntax" number))
+      n)))
 
 (define-accretor 1 (parse-object/bit-string)
   (discard-char)
-  (let ((string (read-atom)))
-    (let ((length (string-length string)))
+  (receive (s force-sym?) (read-atom)
+    force-sym?
+    (let ((end (string-length s)))
       (unsigned-integer->bit-string
-       length
+       end
        (let loop ((index 0) (result 0))
-	 (if (< index length)
-	     (loop (1+ index)
+	 (if (fix:< index end)
+	     (loop (fix:+ index 1)
 		   (+ (* result 2)
-		      (case (string-ref string index)
+		      (case (string-ref s index)
 			((#\0) 0)
 			((#\1) 1)
-			(else  (parse-error "Bad bit-string syntax"
-					    (string-append "#*" string))))))
+			(else (parse-error "Bad bit-string syntax"
+					   (string-append "#*" s))))))
 	     result))))))
 
 ;;;; Lists/Vectors
@@ -412,7 +439,7 @@ USA.
   (list))
 
 (define ignore-extra-list-closes
-  true)
+  #t)
 
 (define (collect-list/top-level)
   (let ((value (collect-list/dispatch)))
@@ -509,15 +536,7 @@ USA.
 	(list 'UNQUOTE-SPLICING (parse-object/dispatch)))
       (list 'UNQUOTE (parse-object/dispatch))))
 
-
 (define-accretor 0 (parse-object/string-quote)
-  ;; This version uses a string output port to collect the string fragments
-  ;; because string ports store the string efficiently and append the
-  ;; string fragments in amortized linear time.
-  ;;
-  ;; The common case for a string with no escapes is handled efficiently by
-  ;; lifting the code out of the loop.
-
   (discard-char)
   (let ((head (read-string char-set/string-delimiters)))
     (if (char=? #\" (read-char))
@@ -528,13 +547,13 @@ USA.
 	   (let loop ()
 	     (let ((char
 		    (let ((char (read-char)))
-		      (cond ((char-ci=? char #\n) #\Newline)
-			    ((char-ci=? char #\t) #\Tab)
-			    ((char-ci=? char #\v) #\VT)
-			    ((char-ci=? char #\b) #\BS)
-			    ((char-ci=? char #\r) #\Return)
-			    ((char-ci=? char #\f) #\Page)
-			    ((char-ci=? char #\a) #\BEL)
+		      (cond ((char-ci=? char #\n) #\newline)
+			    ((char-ci=? char #\t) #\tab)
+			    ((char-ci=? char #\v) #\vt)
+			    ((char-ci=? char #\b) #\bs)
+			    ((char-ci=? char #\r) #\return)
+			    ((char-ci=? char #\f) #\page)
+			    ((char-ci=? char #\a) #\bel)
 			    ((char->digit char 8)
 			     (let ((c2 (read-char)))
 			       (octal->char char c2 (read-char))))
@@ -549,12 +568,12 @@ USA.
 	(d2 (char->digit c2 8))
 	(d3 (char->digit c3 8)))
     (if (not (and d1 d2 d3))
-	(error "Badly formed octal string escape:" (string #\\ c1 c2 c3)))
+	(parse-error "Badly formed octal string escape" (string #\\ c1 c2 c3)))
     (let ((sum (+ (* #o100 d1) (* #o10 d2) d3)))
       (if (>= sum 256)
-	  (error "Octal string escape exceeds ASCII range:"
-		 (string #\\ c1 c2 c3)))
-      (ascii->char sum))))
+	  (parse-error "Octal string escape exceeds ISO-8859-1 range"
+		       (string #\\ c1 c2 c3)))
+      (integer->char sum))))
 
 (define-accretor 1 (parse-object/char-quote)
   (discard-char)
@@ -581,11 +600,11 @@ USA.
 
 (define-accretor 0 (parse-object/false)
   (discard-char)
-  false)
+  #f)
 
 (define-accretor 0 (parse-object/true)
   (discard-char)
-  true)
+  #t)
 
 (define-accretor 1 (parse-object/named-constant)
   (discard-char)
@@ -739,14 +758,14 @@ USA.
 (define (make-context)   (%make-context '() 0))
 
 (define (context/touch! context)
-  (set-context/touches! context  (fix:1+ (context/touches context))))
+  (set-context/touches! context  (fix:+ (context/touches context) 1)))
 
 (define (context/define-reference context index)
-  (let ((ref  (make-reference index
-			      context
-			      ()
-			      (context/touches context)
-			      #f)))
+  (let ((ref (make-reference index
+			     context
+			     '()
+			     (context/touches context)
+			     #f)))
     
     (set-context/references!
      context
