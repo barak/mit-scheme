@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg2.scm,v 1.1 1987/06/13 21:16:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg2.scm,v 1.2 1987/08/07 17:03:02 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,15 +38,7 @@ MIT in each case. |#
 
 ;;;; Editing
 
-;;; BBlock information is preserved only for deletions.  Doing the
-;;; same for insertions is more difficult and not currently needed.
-
 (define (snode-delete! snode)
-  (let ((bblock (node-bblock snode)))
-    (if (and bblock
-	     (eq? snode (bblock-exit bblock))
-	     (not (eq? snode (bblock-entry bblock))))
-	(set-bblock-exit! bblock (node-previous-first snode))))
   (let ((previous-edges (node-previous-edges snode))
 	(next-edge (snode-next-edge snode)))
     (let ((node (edge-right-node next-edge)))
@@ -178,28 +170,3 @@ MIT in each case. |#
   (set-node-generation! node *generation*))
 
 )
-
-(define (node-property-get node key)
-  (let ((entry (assq key (node-alist node))))
-    (and entry (cdr entry))))
-
-(define (node-property-put! node key item)
-  (let ((entry (assq key (node-alist node))))
-    (if entry
-	(set-cdr! entry item)
-	(set-node-alist! node (cons (cons key item) (node-alist node))))))
-
-(define (node-property-remove! node key)
-  (set-node-alist! node (del-assq! key (node-alist node))))
-
-(define (node-label node)
-  (or (node-labelled? node)
-      (let ((label (generate-label)))
-	(set-node-label! node label)
-	label)))
-
-(define-integrable (node-labelled? node)
-  (node-property-get node node-label))
-
-(define-integrable (set-node-label! node label)
-  (node-property-put! node node-label label))

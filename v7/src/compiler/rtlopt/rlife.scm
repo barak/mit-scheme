@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rlife.scm,v 1.57 1987/08/04 06:57:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rlife.scm,v 1.58 1987/08/07 17:08:45 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -37,9 +37,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-;;;; Lifetime Analysis
-
-(package (lifetime-analysis)
+(package (lifetime-analysis mark-set-registers!)
 
 (define-export (lifetime-analysis rgraphs)
   (for-each walk-rgraph rgraphs))
@@ -48,18 +46,24 @@ MIT in each case. |#
   (let ((n-registers (rgraph-n-registers rgraph))
 	(bblocks (rgraph-bblocks rgraph)))
     (set-rgraph-register-bblock! rgraph (make-vector n-registers false))
-    (set-rgraph-register-next-use! rgraph (make-vector n-registers false))
     (set-rgraph-register-n-refs! rgraph (make-vector n-registers 0))
     (set-rgraph-register-n-deaths! rgraph (make-vector n-registers 0))
     (set-rgraph-register-live-length! rgraph (make-vector n-registers 0))
-    (set-rgraph-register-crosses-call?! rgraph (make-bit-string n-registers false))
+    (set-rgraph-register-crosses-call?! rgraph
+					(make-bit-string n-registers false))
     (for-each (lambda (bblock)
-		(bblock-initialize-regsets! bblock n-registers))
+		(set-bblock-live-at-entry! bblock (make-regset n-registers))
+		(set-bblock-live-at-exit! bblock (make-regset n-registers))
+		(set-bblock-new-live-at-exit! bblock
+					      (make-regset n-registers)))
 	      bblocks)
     (fluid-let ((*current-rgraph* rgraph))
-      (walk-bblock bblocks))))
+      (walk-bblocks bblocks))
+    (for-each (lambda (bblock)
+		(set-bblock-new-live-at-exit! bblock false))
+	      (rgraph-bblocks rgraph))))
 
-(define (walk-bblock bblocks)
+(define (walk-bblocks bblocks)
   (let ((changed? false))
     (define (loop first-pass?)
       (for-each (lambda (bblock)
@@ -72,10 +76,10 @@ MIT in each case. |#
 			     (regset-copy! (bblock-live-at-entry bblock)
 					   (bblock-live-at-exit bblock))
 			     (propagate-block bblock)
-			     (for-each-previous-node (bblock-entry bblock)
-			       (lambda (rnode)
+			     (for-each-previous-node bblock
+			       (lambda (bblock*)
 				 (regset-union!
-				  (bblock-new-live-at-exit (node-bblock rnode))
+				  (bblock-new-live-at-exit bblock*)
 				  (bblock-live-at-entry bblock)))))))
 		bblocks)
       (if changed?
@@ -87,53 +91,49 @@ MIT in each case. |#
 		      (propagate-block&delete! bblock))
 		    bblocks)))
     (loop true)))
-
-)
 
 (define (propagate-block bblock)
   (propagation-loop bblock
-    (lambda (old dead live rtl rnode)
-      (update-live-registers! old dead live rtl false))))
+    (lambda (dead live rinst)
+      (update-live-registers! (bblock-live-at-entry bblock)
+			      dead
+			      live
+			      (rinst-rtl rinst)
+			      false false))))
 
 (define (propagate-block&delete! bblock)
   (for-each-regset-member (bblock-live-at-entry bblock)
     (lambda (register)
       (set-register-bblock! register 'NON-LOCAL)))
   (propagation-loop bblock
-    (lambda (old dead live rtl rnode)
-      (if (rtl:invocation? rtl)
-	  (for-each-regset-member old register-crosses-call!))
-      (if (instruction-dead? rtl old)
-	  (snode-delete! rnode)
-	  (begin (update-live-registers! old dead live rtl rnode)
-		 (for-each-regset-member old
-		   increment-register-live-length!))))))
+    (lambda (dead live rinst)
+      (let ((rtl (rinst-rtl rinst))
+	    (old (bblock-live-at-entry bblock)))
+	(if (rtl:invocation? rtl)
+	    (for-each-regset-member old register-crosses-call!))
+	(if (instruction-dead? rtl old)
+	    (set-rinst-rtl! rinst false)
+	    (begin (update-live-registers! old dead live rtl bblock rinst)
+		   (for-each-regset-member old
+		     increment-register-live-length!))))))
+  (bblock-perform-deletions! bblock))
 
 (define (propagation-loop bblock procedure)
-  (let ((old (bblock-live-at-entry bblock))
-	(dead (regset-allocate (rgraph-n-registers *current-rgraph*)))
+  (let ((dead (regset-allocate (rgraph-n-registers *current-rgraph*)))
 	(live (regset-allocate (rgraph-n-registers *current-rgraph*))))
     (bblock-walk-backward bblock
-      (lambda (rnode previous)
+      (lambda (rinst)
 	(regset-clear! dead)
 	(regset-clear! live)
-	(procedure old dead live (rnode-rtl rnode) rnode)))))
+	(procedure dead live rinst)))))
 
-(define (update-live-registers! old dead live rtl rnode)
-  (mark-set-registers! old dead rtl rnode)
-  (mark-used-registers! old live rtl rnode)
+(define (update-live-registers! old dead live rtl bblock rinst)
+  (mark-set-registers! old dead rtl bblock)
+  (mark-used-registers! old live rtl bblock rinst)
   (regset-difference! old dead)
   (regset-union! old live))
-
-(define (instruction-dead? rtl needed)
-  (and (rtl:assign? rtl)
-       (let ((address (rtl:assign-address rtl)))
-	 (and (rtl:register? address)
-	      (let ((register (rtl:register-number address)))
-		(and (pseudo-register? register)
-		     (not (regset-member? needed register))))))))
 
-(define (mark-set-registers! needed dead rtl rnode)
+(define (mark-set-registers! needed dead rtl bblock)
   ;; **** This code safely ignores PRE-INCREMENT and POST-INCREMENT
   ;; modes, since they are only used on the stack pointer.
   (if (rtl:assign? rtl)
@@ -141,28 +141,21 @@ MIT in each case. |#
 	(if (interesting-register? address)
 	    (let ((register (rtl:register-number address)))
 	      (regset-adjoin! dead register)
-	      (if rnode
-		  (let ((rnode* (register-next-use register)))
-		    (record-register-reference register rnode)
-		    (if (and (regset-member? needed register)
-			     rnode*
-			     (eq? (node-bblock rnode) (node-bblock rnode*)))
-			(set-rnode-logical-link! rnode* rnode)))))))))
+	      (if bblock (record-register-reference register bblock)))))))
 
-(define (mark-used-registers! needed live rtl rnode)
+(define (mark-used-registers! needed live rtl bblock rinst)
   (define (loop expression)
     (if (interesting-register? expression)
 	(let ((register (rtl:register-number expression)))
 	  (regset-adjoin! live register)
-	  (if rnode
-	      (begin (record-register-reference register rnode)
-		     (set-register-next-use! register rnode)
+	  (if bblock
+	      (begin (record-register-reference register bblock)
 		     (if (and (not (regset-member? needed register))
-			      (not (rnode-dead-register? rnode register)))
-			 (begin (set-rnode-dead-registers!
-				 rnode
+			      (not (rinst-dead-register? rinst register)))
+			 (begin (set-rinst-dead-registers!
+				 rinst
 				 (cons register
-				       (rnode-dead-registers rnode)))
+				       (rinst-dead-registers rinst)))
 				(increment-register-n-deaths! register))))))
 	(rtl:for-each-subexpression expression loop)))
   (if (and (rtl:assign? rtl)
@@ -173,15 +166,24 @@ MIT in each case. |#
 	  (loop (rtl:assign-expression rtl)))
       (rtl:for-each-subexpression rtl loop)))
 
-(define (record-register-reference register rnode)
-  (let ((bblock (node-bblock rnode))
-	(bblock* (register-bblock register)))
+(define (record-register-reference register bblock)
+  (let ((bblock* (register-bblock register)))
     (cond ((not bblock*)
 	   (set-register-bblock! register bblock))
 	  ((not (eq? bblock bblock*))
 	   (set-register-bblock! register 'NON-LOCAL)))
     (increment-register-n-refs! register)))
 
+(define (instruction-dead? rtl needed)
+  (and (rtl:assign? rtl)
+       (let ((address (rtl:assign-address rtl)))
+	 (and (rtl:register? address)
+	      (let ((register (rtl:register-number address)))
+		(and (pseudo-register? register)
+		     (not (regset-member? needed register))))))))
+
 (define (interesting-register? expression)
   (and (rtl:register? expression)
        (pseudo-register? (rtl:register-number expression))))
+
+)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 1.2 1987/05/07 00:10:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 1.3 1987/08/07 17:05:00 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,49 +36,118 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-;;; Hack to make RNODE-RTL, etc, work on both types of node.
+(define-snode sblock)
+(define-pnode pblock)
 
-(define-snode rtl-snode)
-(define-pnode rtl-pnode)
-(define-vector-slots rnode 7 rtl dead-registers logical-link register-map lap
-  frame-pointer-offset)
-(define-vector-slots rtl-pnode 13 consequent-lap-generator
+(define-vector-slots bblock 5
+  instructions
+  (live-at-entry
+   register-map)
+  live-at-exit
+  (new-live-at-exit
+   frame-pointer-offset)
+  label)
+
+(define (make-sblock instructions)
+  (make-pnode sblock-tag instructions false false false false))
+
+(define-vector-slots pblock 10
+  consequent-lap-generator
   alternative-lap-generator)
 
-(define (statement->snode statement)
-  (make-pnode rtl-snode-tag statement '() false false false false))
+(define (make-pblock instructions)
+  (make-pnode pblock-tag instructions false false false false false false))
 
-(define-integrable (statement->scfg statement)
-  (snode->scfg (statement->snode statement)))
+(define-vector-slots rinst 0
+  rtl
+  dead-registers
+  next)
 
-(define (predicate->pnode predicate)
-  (make-pnode rtl-pnode-tag predicate '() false false false false false false))
+(define (make-rtl-instruction rtl)
+  (vector rtl '() false))
 
-(define-integrable (predicate->pcfg predicate)
-  (pnode->pcfg (predicate->pnode predicate)))
+(define-integrable (statement->srtl statement)
+  (snode->scfg (make-sblock (make-rtl-instruction statement))))
 
-(define-integrable (rnode-dead-register? rnode register)
-  (memv register (rnode-dead-registers rnode)))
+(define-integrable (predicate->prtl predicate)
+  (pnode->pcfg (make-pblock (make-rtl-instruction predicate))))
 
-(let ((rnode-describe
-       (lambda (rnode)
-	 `((RNODE-RTL ,(rnode-rtl rnode))
-	   (RNODE-DEAD-REGISTERS ,(rnode-dead-registers rnode))
-	   (RNODE-LOGICAL-LINK ,(rnode-logical-link rnode))
-	   (RNODE-REGISTER-MAP ,(rnode-register-map rnode))
-	   (RNODE-LAP ,(rnode-lap rnode))
-	   (RNODE-FRAME-POINTER-OFFSET ,(rnode-frame-pointer-offset rnode))))))
+(let ((bblock-describe
+       (lambda (bblock)
+	 (descriptor-list bblock
+			  instructions
+			  register-map
+			  frame-pointer-offset))))
+  (define-vector-method sblock-tag ':DESCRIBE
+    (lambda (sblock)
+      (append! ((vector-tag-method snode-tag ':DESCRIBE) sblock)
+	       (bblock-describe sblock))))
+  (define-vector-method pblock-tag ':DESCRIBE
+    (lambda (pblock)
+      (append! ((vector-tag-method pnode-tag ':DESCRIBE) pblock)
+	       (bblock-describe pblock)
+	       (descriptor-list pblock
+				consequent-lap-generator
+				alternative-lap-generator)))))
+
+(define (rinst-dead-register? rinst register)
+  (memq register (rinst-dead-registers rinst)))
 
-  (define-vector-method rtl-snode-tag ':DESCRIBE
-    (lambda (snode)
-      (append! ((vector-tag-method snode-tag ':DESCRIBE) snode)
-	       (rnode-describe snode))))
+(package (bblock-compress!)
 
-  (define-vector-method rtl-pnode-tag ':DESCRIBE
-    (lambda (pnode)
-      (append! ((vector-tag-method pnode-tag ':DESCRIBE) pnode)
-	       (rnode-describe pnode)
-	       `((RTL-PNODE-CONSEQUENT-LAP-GENERATOR
-		  ,(rtl-pnode-consequent-lap-generator pnode))
-		 (RTL-PNODE-ALTERNATIVE-LAP-GENERATOR
-		  ,(rtl-pnode-alternative-lap-generator pnode)))))))
+(define-export (bblock-compress! bblock)
+  (if (sblock? bblock)
+      (let ((next (snode-next bblock)))
+	(if next
+	    (begin
+	      (if (node-previous=1? next)
+		  (begin
+		    (set-rinst-next! (rinst-last (bblock-instructions bblock))
+				     (bblock-instructions next))
+		    (set-bblock-instructions! next
+					      (bblock-instructions bblock))
+		    (snode-delete! bblock)))
+	      (bblock-compress! next))))
+      (let ((consequent (pnode-consequent bblock))
+	    (alternative (pnode-alternative bblock)))
+	(if consequent
+	    (bblock-compress! consequent))
+	(if alternative
+	    (bblock-compress! alternative)))))
+
+(define (rinst-last rinst)
+  (if (rinst-next rinst)
+      (rinst-last (rinst-next rinst))
+      rinst))
+
+)
+
+(define (bblock-walk-forward bblock procedure)
+  (let loop ((rinst (bblock-instructions bblock)))
+    (procedure rinst)
+    (if (rinst-next rinst) (loop (rinst-next rinst)))))
+
+(define (bblock-walk-backward bblock procedure)
+  (let loop ((rinst (bblock-instructions bblock)))
+    (if (rinst-next rinst) (loop (rinst-next rinst)))
+    (procedure rinst)))
+
+(define (bblock-label! bblock)
+  (or (bblock-label bblock)
+      (let ((label (generate-label)))
+	(set-bblock-label! bblock label)
+	label)))
+
+(define (bblock-perform-deletions! bblock)
+  (define (loop rinst)
+    (let ((next
+	   (and (rinst-next rinst)
+		(loop (rinst-next rinst)))))
+      (if (rinst-rtl rinst)
+	  (begin (set-rinst-next! rinst next)
+		 rinst)
+	  next)))
+  (let ((instructions (loop (bblock-instructions bblock))))
+    (if instructions
+	(set-bblock-instructions! bblock instructions)
+	(snode-delete! bblock))))

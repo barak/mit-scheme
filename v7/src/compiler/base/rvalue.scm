@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/rvalue.scm,v 1.4 1987/08/04 06:54:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/rvalue.scm,v 1.5 1987/08/07 17:03:59 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -148,39 +148,3 @@ MIT in each case. |#
 
 (define-integrable (unset-quotation-fg-entry! quotation)
   (set-quotation-fg-edge! quotation false))
-
-(define-vector-slots rgraph 0
-  edge
-  n-registers
-  continuations
-  bblocks
-  register-bblock
-  register-next-use
-  register-n-refs
-  register-n-deaths
-  register-live-length
-  register-crosses-call?
-  )
-
-(define-integrable rgraph-register-renumber rgraph-register-bblock)
-(define-integrable set-rgraph-register-renumber! set-rgraph-register-bblock!)
-
-(define *rgraphs*)
-(define *current-rgraph*)
-
-(define (rgraph-allocate)
-  (make-vector 10 false))
-
-(define (rgraph-entry-edges rgraph)
-  (cons (rgraph-edge rgraph)
-	(map continuation-rtl-edge (rgraph-continuations rgraph))))
-
-(define (rgraph-initial-edges rgraph)
-  (cons (rgraph-edge rgraph)
-	(let loop ((continuations (rgraph-continuations rgraph)))
-	  (if (null? continuations)
-	      '()
-	      (let ((edge (continuation-rtl-edge (car continuations))))
-		(if (node-previous=0? (edge-right-node edge))
-		    (cons edge (loop (cdr continuations)))
-		    (loop (cdr continuations))))))))

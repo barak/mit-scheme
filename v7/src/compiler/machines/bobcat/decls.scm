@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.20 1987/07/17 19:30:31 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.21 1987/08/07 17:03:46 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -75,9 +75,9 @@ MIT in each case. |#
 
 (define filenames/dependency-chain/base
   (filename/append "base"
-		   "object" "cfg1" "cfg2" "cfg3" "ctypes" "dtype1" "dtype2"
-		   "dtype3" "bblock" "dfg" "rtlty1" "rtlty2" "rtlreg" "rtlcfg"
-		   "emodel" "rtypes" "regset" "infutl" "infgen"))
+		   "object" "cfg1" "cfg2" "cfg3" "rgraph" "ctypes" "dtype1"
+		   "dtype2" "dtype3" "bblock" "dfg" "rtlty1" "rtlty2" "rtlreg"
+		   "rtlcfg" "emodel" "rtypes" "regset" "infutl" "infgen"))
 
 (define filenames/dependency-chain/rcse
   (filename/append "front-end" "rcseht" "rcserq" "rcse1" "rcse2"))
@@ -87,9 +87,9 @@ MIT in each case. |#
 	  (filename/append "alpha" "declar" "dflow1" "dflow2" "dflow3" "dflow4"
 			   "dflow5" "dflow6" "fggen1" "fggen2")
 	  (filename/append "front-end"
-			   "ralloc" "rcseep" "rcsesa" "rdeath" "rdebug"
-			   "rgcomb" "rgpcom" "rgpred" "rgproc" "rgrval"
-			   "rgstmt" "rlife" "rtlgen")
+			   "ralloc" "rcseep" "rdeath" "rdebug" "rgcomb"
+			   "rgpcom" "rgpred" "rgproc" "rgrval" "rgstmt" "rlife"
+			   "rtlgen")
 	  (filename/append "back-end" "lapgn1" "lapgn2" "lapgn3")))
 
 (define filenames/dependency-chain/bits
@@ -105,6 +105,13 @@ MIT in each case. |#
 
 (file-dependency/integration/join filenames/dependency-group/base
 				  filenames/dependency-chain/base)
+
+(file-dependency/integration/chain
+ (filename/append "machines/bobcat" "dassm1" "infutl"))
+
+(file-dependency/integration/join
+ (filename/append "machines/bobcat" "dassm2" "dassm3")
+ (filename/append "machines/bobcat" "dassm1" "infutl"))
 
 ;;;; Lap level integration and expansion dependencies
 
@@ -172,19 +179,20 @@ MIT in each case. |#
  (append (filename/append "base"
 			  "bblock" "cfg1" "cfg2" "cfg3" "ctypes" "dfg" "dtype1"
 			  "dtype2" "dtype3" "emodel" "infutl" "infgen" "linear"
-			  "object" "pmerly" "queue" "regset" "rtlcfg" "rtlcon"
-			  "rtlexp" "rtlreg" "rtlty1" "rtlty2" "rtypes" "sets"
-			  "toplv1" "toplv2" "toplv3" "utils")
+			  "object" "pmerly" "queue" "regset" "rgraph" "rtlcfg"
+			  "rtlcon" "rtlexp" "rtlreg" "rtlty1" "rtlty2" "rtypes"
+			  "sets" "toplv1" "toplv2" "toplv3" "utils")
 	 (filename/append "alpha" "declar" "dflow1" "dflow2" "dflow3" "dflow4"
 			  "dflow5" "dflow6" "fggen1" "fggen2")
 	 (filename/append "front-end"
 			  "ralloc" "rcse1" "rcse2" "rcseep" "rcseht" "rcserq"
-			  "rcsesa" "rdeath" "rdebug" "rgcomb" "rgpcom" "rgpred"
-			  "rgproc" "rgrval" "rgstmt" "rlife" "rtlgen")
+			  "rdeath" "rdebug" "rgcomb" "rgpcom" "rgpred" "rgproc"
+			  "rgrval" "rgstmt" "rlife" "rtlgen")
 	 (filename/append "back-end"
 			  "asmmac" "bittop" "bitutl" "insseq" "lapgn1" "lapgn2"
 			  "lapgn3" "regmap" "symtab" "syntax")
-	 (filename/append "machines/bobcat" "insmac" "machin"))
+	 (filename/append "machines/bobcat" "dassm1" "dassm2" "dassm3" "insmac"
+			  "machin"))
  compiler-syntax-table)
 
 (file-dependency/syntax/join

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/ralloc.scm,v 1.11 1987/08/04 06:56:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/ralloc.scm,v 1.12 1987/08/07 17:06:53 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -81,7 +81,7 @@ MIT in each case. |#
 			  (if renumber
 			      (regset-adjoin! live renumber)))))
 		    (bblock-walk-forward bblock
-		      (lambda (rnode next)
+		      (lambda (rinst)
 			(for-each-regset-member live
 			  (lambda (renumber)
 			    (regset-union! (vector-ref conflict-matrix
@@ -93,9 +93,9 @@ MIT in each case. |#
 						       register)))
 				      (if renumber
 					  (regset-delete! live renumber))))
-				  (rnode-dead-registers rnode))
+				  (rinst-dead-registers rinst))
 			(mark-births! live
-				      (rnode-rtl rnode)
+				      (rinst-rtl rinst)
 				      register->renumber)))))
 		bblocks)
 
@@ -126,8 +126,6 @@ MIT in each case. |#
 			allocate<?))
 	next-allocation))))
 
-)
-
 (define (allocate<? x y)
   (< (/ (register-n-refs x) (register-live-length x))
      (/ (register-n-refs y) (register-live-length y))))
@@ -141,3 +139,5 @@ MIT in each case. |#
 		  (regset-adjoin! live
 				  (vector-ref register->renumber
 					      register))))))))
+
+)

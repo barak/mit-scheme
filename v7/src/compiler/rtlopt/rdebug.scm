@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rdebug.scm,v 1.1 1987/04/17 10:53:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rdebug.scm,v 1.2 1987/08/07 17:08:01 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,53 +36,52 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (dump-register-info)
-  (for-each-pseudo-register
-   (lambda (register)
-     (if (positive? (register-n-refs register))
-	 (begin (newline)
-		(write register)
-		(write-string ": renumber ")
-		(write (register-renumber register))
-		(write-string "; nrefs ")
-		(write (register-n-refs register))
-		(write-string "; length ")
-		(write (register-live-length register))
-		(write-string "; ndeaths ")
-		(write (register-n-deaths register))
-		(let ((bblock (register-bblock register)))
-		  (cond ((eq? bblock 'NON-LOCAL)
-			 (if (register-crosses-call? register)
-			     (write-string "; crosses calls")
-			     (write-string "; multiple blocks")))
-			(bblock
-			 (write-string "; block ")
-			 (write (unhash bblock)))
-			(else
-			 (write-string "; no block!")))))))))
-
-(define (dump-block-info bblocks)
-  (let ((null-set (make-regset *n-registers*))
-	(machine-regs (make-regset *n-registers*)))
-    (for-each-machine-register
+(define (dump-register-info rgraph)
+  (fluid-let ((*current-rgraph* rgraph))
+    (for-each-pseudo-register
      (lambda (register)
-       (regset-adjoin! machine-regs register)))
-    (for-each (lambda (bblock)
-		(newline)
-		(newline)
-		(write bblock)
-		(let ((exit (bblock-exit bblock)))
-		  (let loop ((rnode (bblock-entry bblock)))
-		    (pp (rnode-rtl rnode))
-		    (if (not (eq? rnode exit))
-			(loop (snode-next rnode)))))
-		(let ((live-at-exit (bblock-live-at-exit bblock)))
-		  (regset-difference! live-at-exit machine-regs)
-		  (if (not (regset=? null-set live-at-exit))
-		      (begin (newline)
-			     (write-string "Registers live at end:")
-			     (for-each-regset-member live-at-exit
-			       (lambda (register)
-				 (write-string " ")
-				 (write register)))))))
-	      (reverse bblocks))))
+       (if (positive? (register-n-refs register))
+	   (begin (newline)
+		  (write register)
+		  (write-string ": renumber ")
+		  (write (register-renumber register))
+		  (write-string "; nrefs ")
+		  (write (register-n-refs register))
+		  (write-string "; length ")
+		  (write (register-live-length register))
+		  (write-string "; ndeaths ")
+		  (write (register-n-deaths register))
+		  (let ((bblock (register-bblock register)))
+		    (cond ((eq? bblock 'NON-LOCAL)
+			   (if (register-crosses-call? register)
+			       (write-string "; crosses calls")
+			       (write-string "; multiple blocks")))
+			  (bblock
+			   (write-string "; block ")
+			   (write (unhash bblock)))
+			  (else
+			   (write-string "; no block!"))))))))))
+
+(define (dump-block-info rgraph)
+  (fluid-let ((*current-rgraph* rgraph))
+    (let ((machine-regs (make-regset (rgraph-n-registers rgraph))))
+      (for-each-machine-register
+       (lambda (register)
+	 (regset-adjoin! machine-regs register)))
+      (for-each (lambda (bblock)
+		  (newline)
+		  (newline)
+		  (write bblock)
+		  (bblock-walk-forward bblock
+		    (lambda (rinst)
+		      (pp (rinst-rtl rinst))))
+		  (let ((live-at-exit (bblock-live-at-exit bblock)))
+		    (regset-difference! live-at-exit machine-regs)
+		    (if (not (regset-null? live-at-exit))
+			(begin (newline)
+			       (write-string "Registers live at end:")
+			       (for-each-regset-member live-at-exit
+				 (lambda (register)
+				   (write-string " ")
+				   (write register)))))))
+		(rgraph-bblocks rgraph)))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcserq.scm,v 1.3 1987/08/04 06:56:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcserq.scm,v 1.4 1987/08/07 17:07:33 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -64,28 +64,75 @@ MIT in each case. |#
       (let ((quantity (new-quantity register)))
 	(set-register-quantity! register quantity)
 	quantity)))
+
+(define (register-tables/make n-registers)
+  (vector (make-vector n-registers)
+	  (make-vector n-registers)
+	  (make-vector n-registers)
+	  (make-vector n-registers)
+	  (make-vector n-registers)
+	  (make-vector n-registers)))
 
-(define-integrable rgraph-register-quantity rgraph-register-bblock)
-(define-integrable rgraph-register-next-equivalent rgraph-register-next-use)
-(define-integrable rgraph-register-previous-equivalent rgraph-register-n-refs)
-(define-integrable rgraph-register-expression rgraph-register-n-deaths)
-(define-integrable rgraph-register-tick rgraph-register-live-length)
-(define-integrable rgraph-register-in-table rgraph-register-crosses-call?)
+(define (register-tables/reset! register-tables)
+  (vector-fill! (vector-ref register-tables 0) false)
+  (vector-fill! (vector-ref register-tables 1) false)
+  (vector-fill! (vector-ref register-tables 2) false)
+  (let ((expressions (vector-ref register-tables 3)))
+    (vector-fill! expressions false)
+    (for-each-machine-register
+     (lambda (register)
+       (vector-set! expressions
+		    register
+		    (rtl:make-machine-register register)))))
+  (vector-fill! (vector-ref register-tables 4) 0)
+  (vector-fill! (vector-ref register-tables 5) -1))
 
-(define-integrable set-rgraph-register-quantity! set-rgraph-register-bblock!)
-(define-integrable set-rgraph-register-next-equivalent!
-  set-rgraph-register-next-use!)
-(define-integrable set-rgraph-register-previous-equivalent!
-  set-rgraph-register-n-refs!)
-(define-integrable set-rgraph-register-expression!
-  set-rgraph-register-n-deaths!)
-(define-integrable set-rgraph-register-tick! set-rgraph-register-live-length!)
-(define-integrable set-rgraph-register-in-table!
-  set-rgraph-register-crosses-call?!)
+(define (register-tables/copy register-tables)
+  (vector (vector-map (vector-ref register-tables 0)
+		      (lambda (quantity)
+			(and quantity
+			     (quantity-copy quantity))))
+	  (vector-copy (vector-ref register-tables 1))
+	  (vector-copy (vector-ref register-tables 2))
+	  (vector-copy (vector-ref register-tables 3))
+	  (vector-copy (vector-ref register-tables 4))
+	  (vector-copy (vector-ref register-tables 5))))
+
+(define *register-tables*)
 
-(define-register-references quantity)
-(define-register-references next-equivalent)
-(define-register-references previous-equivalent)
-(define-register-references expression)
-(define-register-references tick)
-(define-register-references in-table)
+(define-integrable (register-quantity register)
+  (vector-ref (vector-ref *register-tables* 0) register))
+
+(define-integrable (set-register-quantity! register quantity)
+  (vector-set! (vector-ref *register-tables* 0) register quantity))
+
+(define-integrable (register-next-equivalent register)
+  (vector-ref (vector-ref *register-tables* 1) register))
+
+(define-integrable (set-register-next-equivalent! register next-equivalent)
+  (vector-set! (vector-ref *register-tables* 1) register next-equivalent))
+
+(define-integrable (register-previous-equivalent register)
+  (vector-ref (vector-ref *register-tables* 2) register))
+
+(define-integrable
+  (set-register-previous-equivalent! register previous-equivalent)
+  (vector-set! (vector-ref *register-tables* 2) register previous-equivalent))
+
+(define-integrable (register-expression register)
+  (vector-ref (vector-ref *register-tables* 3) register))
+
+(define-integrable (set-register-expression! register expression)
+  (vector-set! (vector-ref *register-tables* 3) register expression))
+
+(define-integrable (register-tick register)
+  (vector-ref (vector-ref *register-tables* 4) register))
+
+(define-integrable (set-register-tick! register tick)
+  (vector-set! (vector-ref *register-tables* 4) register tick))
+
+(define-integrable (register-in-table register)
+  (vector-ref (vector-ref *register-tables* 5) register))
+
+(define-integrable (set-register-in-table! register in-table)
+  (vector-set! (vector-ref *register-tables* 5) register in-table))

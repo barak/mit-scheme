@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 1.2 1987/07/08 22:01:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 1.3 1987/08/07 17:11:10 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -81,8 +81,8 @@ MIT in each case. |#
 	  label))))
 
 (define-integrable (set-current-branches! consequent alternative)
-  (set-rtl-pnode-consequent-lap-generator! *current-rnode* consequent)
-  (set-rtl-pnode-alternative-lap-generator! *current-rnode* alternative))
+  (set-pblock-consequent-lap-generator! *current-bblock* consequent)
+  (set-pblock-alternative-lap-generator! *current-bblock* alternative))
 
 ;;;; Frame Pointer
 
@@ -124,19 +124,17 @@ MIT in each case. |#
   *frame-pointer-offset*)
 
 (define (record-continuation-frame-pointer-offset! label)
-  (let ((continuation (label->continuation label)))
-    (guarantee-frame-pointer-offset!)
-    (if (continuation-frame-pointer-offset continuation)
-	(if (not (= (continuation-frame-pointer-offset continuation)
-		    *frame-pointer-offset*))
-	    (error "Continuation frame-pointer offset mismatch" continuation
-		   *frame-pointer-offset*))
-	(set-continuation-frame-pointer-offset! continuation
-						*frame-pointer-offset*))
+  (guarantee-frame-pointer-offset!)
+  (let ((continuation (label->continuation label))
+	(offset *frame-pointer-offset*))
+    (cond ((not (continuation-frame-pointer-offset continuation))
+	   (set-continuation-frame-pointer-offset! continuation offset))
+	  ((not (= (continuation-frame-pointer-offset continuation) offset))
+	   (error "Continuation frame-pointer offset mismatch" continuation)))
     (enqueue! *continuation-queue* continuation)))
 
-(define (record-rnode-frame-pointer-offset! rnode offset)
-  (if (rnode-frame-pointer-offset rnode)
-      (if (not (and offset (= (rnode-frame-pointer-offset rnode) offset)))
-	  (error "RNode frame-pointer offset mismatch" rnode offset))
-      (set-rnode-frame-pointer-offset! rnode offset)))
+(define (record-bblock-frame-pointer-offset! bblock offset)
+  (cond ((not (bblock-frame-pointer-offset bblock))
+	 (set-bblock-frame-pointer-offset! bblock offset))
+	((not (and offset (= (bblock-frame-pointer-offset bblock) offset)))
+	 (error "Basic block frame-pointer offset mismatch" bblock offset))))

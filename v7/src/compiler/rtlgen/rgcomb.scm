@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.32 1987/08/04 06:56:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.33 1987/08/07 17:08:10 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -68,23 +68,23 @@ MIT in each case. |#
 				    operator
 				    operands)))))))
 
-(define (combination/constant combination subproblem?)
-  (generate/normal-statement combination subproblem?
-    (lambda (subproblem?)
-      (let ((value (combination-value combination)))
-	(cond ((temporary? value)
-	       (transmit-values (generate/rvalue (vnode-known-value value))
-		 (lambda (prefix expression)
-		   (scfg*scfg->scfg!
-		    prefix
-		    (generate/assignment (combination-block combination)
-					 value
-					 expression
-					 subproblem?)))))
-	      ((value-ignore? value)
-	       (make-null-cfg))
-	      (else
-	       (error "Unknown combination value" value)))))))
+(define combination/constant
+  (normal-statement-generator
+   (lambda (combination subproblem?)
+     (let ((value (combination-value combination)))
+       (cond ((temporary? value)
+	      (transmit-values (generate/rvalue (vnode-known-value value))
+		(lambda (prefix expression)
+		  (scfg*scfg->scfg!
+		   prefix
+		   (generate/assignment (combination-block combination)
+					value
+					expression
+					subproblem?)))))
+	     ((value-ignore? value)
+	      (make-null-cfg))
+	     (else
+	      (error "Unknown combination value" value)))))))
 
 (define (generate-operands required optional rest operands)
   (define (required-loop required operands)
@@ -121,7 +121,7 @@ MIT in each case. |#
   ;; For the time being, all close-coded combinations will return
   ;; their values in the value register.
   (generate/normal-statement combination subproblem?
-    (lambda (subproblem?)
+    (lambda (combination subproblem?)
       (let ((value (combination-value combination)))
 	(cond ((temporary? value)
 	       (if (not subproblem?)

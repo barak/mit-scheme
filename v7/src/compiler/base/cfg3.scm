@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg3.scm,v 1.1 1987/06/13 21:16:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg3.scm,v 1.2 1987/08/07 17:03:15 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -128,6 +128,18 @@ MIT in each case. |#
   (if alternative-node
       (hooks-connect! (pcfg-alternative-hooks pcfg) alternative-node))
   (cfg-entry-node pcfg))
+
+(define (scfg-simple? scfg)
+  (cfg-simple? scfg scfg-next-hooks))
+
+(define (pcfg-simple? pcfg)
+  (and (cfg-simple? pcfg pcfg-consequent-hooks)
+       (cfg-simple? pcfg pcfg-alternative-hooks)))
+
+(define-integrable (cfg-simple? cfg cfg-hooks)
+  (and (not (null? (cfg-hooks cfg)))
+       (null? (cdr (cfg-hooks cfg)))
+       (eq? (cfg-entry-node cfg) (hook-node (car (cfg-hooks cfg))))))
 
 ;;;; CFG Construction
 

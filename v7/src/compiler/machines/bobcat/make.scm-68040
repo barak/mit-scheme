@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.41 1987/08/06 03:38:03 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.42 1987/08/07 17:13:18 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -45,12 +45,12 @@ MIT in each case. |#
   (define compiler-system
     (make-environment
       (define :name "Liar (Bobcat 68020)")
-      (define :version 1)
-      (define :modification 41)
+      (define :version 3)
+      (define :modification 0)
       (define :files)
 
 ;      (parse-rcs-header
-;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.41 1987/08/06 03:38:03 jinx Exp $"
+;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.42 1987/08/07 17:13:18 cph Exp $"
 ;       (lambda (filename version date time zone author state)
 ;	 (set! :version (car version))
 ;	 (set! :modification (cadr version))))
@@ -78,11 +78,11 @@ MIT in each case. |#
 		 "base/cfg1.bin"	;control flow graph
 		 "base/cfg2.bin"
 		 "base/cfg3.bin"
+		 "base/rgraph.bin"	;program graph abstraction
 		 "base/ctypes.bin"	;CFG datatypes
 		 "base/dtype1.bin"	;DFG datatypes
 		 "base/dtype2.bin"
 		 "base/dtype3.bin"
-		 "base/bblock.bin"	;Basic block datatype
 		 "base/dfg.bin"		;data flow graph
 		 "base/rtlty1.bin"	;RTL: type definitions
 		 "base/rtlty2.bin"
@@ -97,7 +97,13 @@ MIT in each case. |#
 		 "base/pmpars.bin"	;pattern matcher: parser
 		 "base/infutl.bin"	;utilities for info generation, shared
 		 "back-end/insseq.bin"	;lap instruction sequences
-		 "machines/bobcat/dassem.bin" ;disassembler
+		 "machines/bobcat/dassm1.bin" ;disassembler
+		 "base/linear.bin"	;linearization
+		 ))
+
+	 (cons disassembler-package
+	       '("machines/bobcat/dassm2.bin" ;disassembler
+		 "machines/bobcat/dassm3.bin"
 		 ))
 
 	 (cons converter-package
@@ -123,7 +129,6 @@ MIT in each case. |#
 		 "front-end/rgrval.bin"	;RTL generator: RValues
 		 "front-end/rgcomb.bin"	;RTL generator: Combinations
 		 "front-end/rgpcom.bin"	;RTL generator: Primitive open-coding
-		 "base/linear.bin"	;linearization
 		 ))
 
 	 (cons rtl-cse-package
@@ -131,7 +136,6 @@ MIT in each case. |#
 		 "front-end/rcse2.bin"
 		 "front-end/rcseep.bin"	;CSE expression predicates
 		 "front-end/rcseht.bin"	;CSE hash table
-		 "front-end/rcsesa.bin"	;CSE state abstraction
 		 "front-end/rcserq.bin"	;CSE register/quantity abstractions
 		 ))
 
@@ -178,8 +182,7 @@ MIT in each case. |#
 
       ))
 
-  (load-system! compiler-system true)
-  (compiler-package/initialize!))
+  (load-system! compiler-system true))
 
 (for-each (lambda (name)
 	    (local-assignment system-global-environment name

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 1.60 1987/08/04 06:54:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 1.61 1987/08/07 17:04:30 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -149,14 +149,19 @@ MIT in each case. |#
     (define (loop slots n)
       (if (null? slots)
 	  '()
-	  (cons (let ((ref-name (symbol-append class '- (car slots))))
-		  `(BEGIN
-		    (DEFINE-INTEGRABLE (,ref-name ,class)
-		      (VECTOR-REF ,class ,n))
-		    (DEFINE-INTEGRABLE (,(symbol-append 'SET- ref-name '!)
-					,class ,(car slots))
-		      (VECTOR-SET! ,class ,n ,(car slots)))))
-		(loop (cdr slots) (1+ n)))))
+	  (let ((make-defs
+		 (lambda (slot)
+		   (let ((ref-name (symbol-append class '- slot)))
+		     `(BEGIN
+			(DEFINE-INTEGRABLE (,ref-name ,class)
+			  (VECTOR-REF ,class ,n))
+			(DEFINE-INTEGRABLE (,(symbol-append 'SET- ref-name '!)
+					    ,class ,slot)
+			  (VECTOR-SET! ,class ,n ,slot))))))
+		(rest (loop (cdr slots) (1+ n))))
+	    (if (pair? (car slots))
+		(map* rest make-defs (car slots))
+		(cons (make-defs (car slots)) rest)))))
     (if (null? slots)
 	'*THE-NON-PRINTING-OBJECT*
 	`(BEGIN ,@(loop slots index)))))
@@ -179,8 +184,8 @@ MIT in each case. |#
 			   (APPEND!
 			    ((VECTOR-TAG-METHOD ,',parent ':DESCRIBE) ,type)
 			    (DESCRIPTOR-LIST ,type ,@slots))))))))))))
- (define-type-definition snode 6)
- (define-type-definition pnode 7)
+ (define-type-definition snode 4)
+ (define-type-definition pnode 5)
  (define-type-definition rvalue 1)
  (define-type-definition vnode 10))
 
@@ -194,7 +199,8 @@ MIT in each case. |#
 (let ((rtl-common
        (lambda (type prefix components wrap-constructor)
 	 `(BEGIN
-	    (DEFINE-INTEGRABLE (,(symbol-append prefix 'MAKE- type) ,@components)
+	    (DEFINE-INTEGRABLE
+	      (,(symbol-append prefix 'MAKE- type) ,@components)
 	      ,(wrap-constructor `(LIST ',type ,@components)))
 	    (DEFINE-INTEGRABLE (,(symbol-append 'RTL: type '?) EXPRESSION)
 	      (EQ? (CAR EXPRESSION) ',type))
@@ -220,12 +226,12 @@ MIT in each case. |#
   (syntax-table-define compiler-syntax-table 'DEFINE-RTL-STATEMENT
     (macro (type prefix . components)
       (rtl-common type prefix components
-		  (lambda (expression) `(STATEMENT->SCFG ,expression)))))
+		  (lambda (expression) `(STATEMENT->SRTL ,expression)))))
 
   (syntax-table-define compiler-syntax-table 'DEFINE-RTL-PREDICATE
     (macro (type prefix . components)
       (rtl-common type prefix components
-		  (lambda (expression) `(PREDICATE->PCFG ,expression))))))
+		  (lambda (expression) `(PREDICATE->PRTL ,expression))))))
 
 (syntax-table-define compiler-syntax-table 'DEFINE-REGISTER-REFERENCES
   (macro (slot)

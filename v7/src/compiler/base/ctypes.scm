@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.50 1987/08/04 06:54:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.51 1987/08/07 17:03:32 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -97,17 +97,29 @@ MIT in each case. |#
 (define-integrable (combination-compiled-for-value? combination)
   (eq? 'VALUE (combination-compilation-type combination)))
 
-(define-snode continuation rtl-edge label frame-pointer-offset block rgraph)
+(define continuation-tag
+  (make-vector-tag false 'CONTINUATION))
+
+(define continuation?
+  (tagged-vector-predicate continuation-tag))
+
+(define-vector-slots continuation 1
+  rtl-edge
+  label
+  frame-pointer-offset
+  block
+  rgraph)
+
 (define *continuations*)
 
-(define-integrable (make-continuation block rgraph)
+(define (make-continuation block rgraph)
   (let ((continuation
-	 (make-snode continuation-tag
-		     false
-		     (generate-label 'CONTINUATION)
-		     false
-		     block
-		     rgraph)))
+	 (vector continuation-tag
+		 false
+		 (generate-label 'CONTINUATION)
+		 false
+		 block
+		 rgraph)))
     (set! *continuations* (cons continuation *continuations*))
     (set-rgraph-continuations!
      rgraph

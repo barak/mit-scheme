@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.112 1987/08/04 06:56:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.113 1987/08/07 17:07:06 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -53,67 +53,71 @@ MIT in each case. |#
     (for-each (lambda (edge)
 		(enqueue! *initial-queue* (edge-right-node edge)))
 	      (rgraph-initial-edges rgraph))
-    (state:initialize rgraph continue-walk)))
+    (fluid-let ((*register-tables*
+		 (register-tables/make (rgraph-n-registers rgraph)))
+		(*hash-table*))
+      (continue-walk))))
 
 (define (continue-walk)
   (cond ((not (null? *branch-queue*))
 	 (let ((entry (car *branch-queue*)))
 	   (set! *branch-queue* (cdr *branch-queue*))
-	   (state:set! *current-rgraph* (car entry))
-	   (walk-rnode (cdr entry))))
+	   (set! *register-tables* (caar entry))
+	   (set! *hash-table* (cdar entry))
+	   (walk-bblock (cdr entry))))
 	((not (queue-empty? *initial-queue*))
-	 (state:reset! *current-rgraph*)
-	 (walk-rnode (dequeue! *initial-queue*)))))
+	 (state:reset!)
+	 (walk-bblock (dequeue! *initial-queue*)))))
+
+(define (state:reset!)
+  (register-tables/reset! *register-tables*)
+  (set! *hash-table* (make-hash-table)))
+
+(define (state:get)
+  (cons (register-tables/copy *register-tables*)
+	(hash-table-copy *hash-table*)))
 
-(define (walk-rnode rnode)
-  (node-mark! rnode)
-  ((vector-method rnode walk-rnode) rnode))
+(define (walk-bblock bblock)
+  (define (loop rinst)
+    (let ((rtl (rinst-rtl rinst)))
+      ((if (eq? (rtl:expression-type rtl) 'ASSIGN)
+	   cse/assign
+	   (cdr (or (assq (rtl:expression-type rtl) cse-methods)
+		    (error "Missing CSE method" (car rtl)))))
+       rtl))
+    (if (rinst-next rinst)
+	(loop (rinst-next rinst))))
+  (loop (bblock-instructions bblock))
+  (node-mark! bblock)
+  (if (sblock? bblock)
+      (let ((next (snode-next bblock)))
+	(if (walk-next? next)
+	    (walk-next next)
+	    (continue-walk)))
+      (let ((consequent (pnode-consequent bblock))
+	    (alternative (pnode-alternative bblock)))
+	(if (walk-next? consequent)
+	    (if (walk-next? alternative)
+		(if (node-previous>1? consequent)
+		    (begin (enqueue! *initial-queue* consequent)
+			   (walk-next alternative))
+		    (begin (if (node-previous>1? alternative)
+			       (enqueue! *initial-queue* alternative)
+			       (set! *branch-queue*
+				     (cons (cons (state:get) alternative)
+					   *branch-queue*)))
+			   (walk-bblock consequent)))
+		(walk-next consequent))
+	    (if (walk-next? alternative)
+		(walk-next alternative)
+		(continue-walk))))))
 
-(define-vector-method rtl-snode-tag walk-rnode
-  (lambda (rnode)
-    (cse-statement (rnode-rtl rnode))
-    (let ((next (snode-next rnode)))
-      (if (walk-next? next)
-	  (walk-next next)
-	  (continue-walk)))))
+(define (walk-next? bblock)
+  (and bblock (not (node-marked? bblock))))
 
-(define-vector-method rtl-pnode-tag walk-rnode
-  (lambda (rnode)
-    (cse-statement (rnode-rtl rnode))
-    (let ((consequent (pnode-consequent rnode))
-	  (alternative (pnode-alternative rnode)))
-      (if (walk-next? consequent)
-	  (if (walk-next? alternative)
-	      (if (node-previous>1? consequent)
-		  (begin (enqueue! *initial-queue* consequent)
-			 (walk-next alternative))
-		  (begin (if (node-previous>1? alternative)
-			     (enqueue! *initial-queue* alternative)
-			     (set! *branch-queue*
-				   (cons (cons (state:get *current-rgraph*)
-					       alternative)
-					 *branch-queue*)))
-			 (walk-rnode consequent)))
-	      (walk-next consequent))
-	  (if (walk-next? alternative)
-	      (walk-next alternative)
-	      (continue-walk))))))
-
-(define (walk-next? rnode)
-  (and rnode (not (node-marked? rnode))))
-
-(define (walk-next rnode)
-  (if (node-previous>1? rnode) (state:reset! *current-rgraph*))
-  (walk-rnode rnode))
-
-(define (cse-statement statement)
-  ((if (eq? (rtl:expression-type statement) 'ASSIGN)
-       cse/assign
-       (cdr (or (assq (rtl:expression-type statement) cse-methods)
-		(error "Missing CSE method" (car statement)))))
-   statement))
-
-(define cse-methods '())
+(define (walk-next bblock)
+  (if (node-previous>1? bblock) (state:reset!))
+  (walk-bblock bblock))
 
 (define (define-cse-method type method)
   (let ((entry (assq type cse-methods)))
@@ -121,6 +125,9 @@ MIT in each case. |#
 	(set-cdr! entry method)
 	(set! cse-methods (cons (cons type method) cse-methods))))
   type)
+
+(define cse-methods
+  '())
 
 (define (cse/assign statement)
   (expression-replace! rtl:assign-expression rtl:set-assign-expression!

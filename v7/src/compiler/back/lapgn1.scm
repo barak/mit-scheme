@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.40 1987/08/04 06:58:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.41 1987/08/07 17:10:54 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -37,10 +37,10 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define *block-start-label*)
-(define *entry-rnode*)
-(define *current-rnode*)
-(define *dead-registers*)
 (define *continuation-queue*)
+(define *entry-bblock*)
+(define *current-bblock*)
+(define *dead-registers*)
 
 (define (generate-bits rgraphs receiver)
   (with-new-node-marks
@@ -66,75 +66,82 @@ MIT in each case. |#
 	(cgen-entry (continuation-rtl-edge continuation))))))
 
 (define (cgen-entry edge)
-  (let ((rnode (edge-right-node edge)))
-    (fluid-let ((*entry-rnode* rnode))
-      (cgen-rnode rnode))))
+  (let ((bblock (edge-right-node edge)))
+    (fluid-let ((*entry-bblock* bblock))
+      (let loop ((bblock bblock))
+	(let ((offset (cgen-bblock bblock)))
+	  (let ((cgen-right
+		 (lambda (edge)
+		   (let ((next (edge-next-node edge)))
+		     (if next
+			 (begin
+			   (record-bblock-frame-pointer-offset! next offset)
+			   (if (node-previous>1? next)
+			       (let ((sblock
+				      (make-sblock
+				       (clear-map-instructions
+					(bblock-register-map bblock)))))
+				 (node-mark! sblock)
+				 (edge-insert-snode! edge sblock)))
+			   (if (not (node-marked? next))
+			       (loop next))))))))
+	    (if (sblock? bblock)
+		(cgen-right (snode-next-edge bblock))
+		(begin (cgen-right (pnode-consequent-edge bblock))
+		       (cgen-right (pnode-alternative-edge bblock))))))))))
 
-(define (cgen-rnode rnode)
-  (let ((offset (cgen-rnode-1 rnode)))
-    (define (cgen-right-node edge)
-      (let ((next (edge-next-node edge)))
-	(if next
-	    (begin
-	      (record-rnode-frame-pointer-offset! next offset)
-	      (if (node-previous>1? next)
-		  (let ((snode (statement->snode '(NOOP))))
-		    (set-rnode-lap! snode
-				    (clear-map-instructions
-				     (rnode-register-map rnode)))
-		    (node-mark! snode)
-		    (edge-insert-snode! edge snode)))
-	      (if (not (node-marked? next))
-		  (cgen-rnode next))))))
-    (if (rtl-snode? rnode)
-	(cgen-right-node (snode-next-edge rnode))
-	(begin (cgen-right-node (pnode-consequent-edge rnode))
-	       (cgen-right-node (pnode-alternative-edge rnode))))))
-
-(define (cgen-rnode-1 rnode)
+(define (cgen-bblock bblock)
   ;; This procedure is coded out of line to facilitate debugging.
-  (node-mark! rnode)
-  ;; LOOP is for easy restart while debugging.
-  (let loop ()
-    (let ((match-result
-	   (let ((rule
-		  (if (eq? (car (rnode-rtl rnode)) 'ASSIGN)
-		      (assq (caadr (rnode-rtl rnode)) *assign-rules*)
-		      (assq (car (rnode-rtl rnode)) *cgen-rules*))))
-	     (and rule
-		  (pattern-lookup (cdr rule) (rnode-rtl rnode))))))
-      (if match-result
-	  (fluid-let ((*current-rnode* rnode)
-		      (*dead-registers* (rnode-dead-registers rnode))
-		      (*register-map* (rnode-input-register-map rnode))
-		      (*prefix-instructions* '())
-		      (*needed-registers* '())
-		      (*frame-pointer-offset*
-		       (rnode-frame-pointer-offset rnode)))
-	    (let ((instructions (match-result)))
-	      (set-rnode-lap! rnode
-			      (LAP ,@*prefix-instructions* ,@instructions)))
-	    (delete-dead-registers!)
-	    (set-rnode-register-map! rnode *register-map*)
-	    *frame-pointer-offset*)
-	  (begin (error "CGEN-RNODE: No matching rules" (rnode-rtl rnode))
-		 (loop))))))
-
-(define (rnode-input-register-map rnode)
-  (if (or (eq? rnode *entry-rnode*)
-	  (not (node-previous=1? rnode)))
+  (node-mark! bblock)
+  (fluid-let ((*current-bblock* bblock)
+	      (*register-map* (bblock-input-register-map bblock))
+	      (*frame-pointer-offset* (bblock-frame-pointer-offset bblock)))
+    (set-bblock-instructions! bblock
+			      (let loop ((rinst (bblock-instructions bblock)))
+				(if (rinst-next rinst)
+				    (let ((instructions (cgen-rinst rinst)))
+				      (LAP ,@instructions
+					   ,@(loop (rinst-next rinst))))
+				    (cgen-rinst rinst))))
+    (set-bblock-register-map! bblock *register-map*)
+    *frame-pointer-offset*))
+
+(define (cgen-rinst rinst)
+  (let ((rtl (rinst-rtl rinst)))
+    ;; LOOP is for easy restart while debugging.
+    (let loop ()
+      (let ((match-result
+	     (let ((rule
+		    (if (eq? (car rtl) 'ASSIGN)
+			(assq (caadr rtl) *assign-rules*)
+			(assq (car rtl) *cgen-rules*))))
+	       (and rule
+		    (pattern-lookup (cdr rule) rtl)))))
+	(if match-result
+	    (fluid-let ((*dead-registers* (rinst-dead-registers rinst))
+			(*prefix-instructions* '())
+			(*needed-registers* '()))
+	      (let ((instructions (match-result)))
+		(delete-dead-registers!)
+		(LAP ,@*prefix-instructions* ,@instructions)))
+	    (begin (error "CGEN-BBLOCK: No matching rules" rtl)
+		   (loop)))))))
+
+(define (bblock-input-register-map bblock)
+  (if (or (eq? bblock *entry-bblock*)
+	  (not (node-previous=1? bblock)))
       (empty-register-map)
-      (let ((previous (node-previous-first rnode)))
-	(let ((map (rnode-register-map previous)))
-	  (if (rtl-pnode? previous)
+      (let ((previous (node-previous-first bblock)))
+	(let ((map (bblock-register-map previous)))
+	  (if (sblock? previous)
+	      map
 	      (delete-pseudo-registers
 	       map
 	       (regset->list
-		(regset-difference (bblock-live-at-exit (node-bblock previous))
-				   (bblock-live-at-entry (node-bblock rnode))))
-	       (lambda (map aliases) map))
-	      map)))))
-
+		(regset-difference (bblock-live-at-exit previous)
+				   (bblock-live-at-entry bblock)))
+	       (lambda (map aliases) map)))))))
+
 (define *cgen-rules* '())
 (define *assign-rules* '())
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.149 1987/06/13 21:16:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.150 1987/08/07 17:02:34 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -40,18 +40,18 @@ MIT in each case. |#
 
 (define cfg-node-tag (make-vector-tag false 'CFG-NODE))
 (define cfg-node? (tagged-vector-subclass-predicate cfg-node-tag))
-(define-vector-slots node 1 generation bblock alist previous-edges)
+(define-vector-slots node 1 generation previous-edges)
 
 (define-vector-method cfg-node-tag ':DESCRIBE
   (lambda (node)
-    (descriptor-list node generation bblock alist previous-edges)))
+    (descriptor-list node generation previous-edges)))
 
 (define snode-tag (make-vector-tag cfg-node-tag 'SNODE))
 (define snode? (tagged-vector-subclass-predicate snode-tag))
-(define-vector-slots snode 5 next-edge)
+(define-vector-slots snode 3 next-edge)
 
 (define (make-snode tag . extra)
-  (list->vector (cons* tag false false '() '() false extra)))
+  (list->vector (cons* tag false '() false extra)))
 
 (define-vector-method snode-tag ':DESCRIBE
   (lambda (snode)
@@ -60,10 +60,10 @@ MIT in each case. |#
 
 (define pnode-tag (make-vector-tag cfg-node-tag 'PNODE))
 (define pnode? (tagged-vector-subclass-predicate pnode-tag))
-(define-vector-slots pnode 5 consequent-edge alternative-edge)
+(define-vector-slots pnode 3 consequent-edge alternative-edge)
 
 (define (make-pnode tag . extra)
-  (list->vector (cons* tag false false '() '() false false extra)))
+  (list->vector (cons* tag false '() false false extra)))
 
 (define-vector-method pnode-tag ':DESCRIBE
   (lambda (pnode)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.17 1987/08/04 06:57:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.18 1987/08/07 17:09:04 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -37,56 +37,116 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (generate-rtl quotation procedures)
-  (with-new-node-marks
+  (generate/rgraph
+   (quotation-rgraph quotation)
    (lambda ()
-     (generate/rgraph
-      (quotation-rgraph quotation)
-      (lambda ()
-	(scfg*scfg->scfg!
-	 (rtl:make-assignment register:frame-pointer
-			      (rtl:make-fetch register:stack-pointer))
-	 (generate/node (let ((entry (quotation-fg-entry quotation)))
-			  (if (not compiler:preserve-data-structures?)
-			      (unset-quotation-fg-entry! quotation))
-			  entry)
-			false))))
-     (for-each (lambda (procedure)
-		 (generate/rgraph
-		  (procedure-rgraph procedure)
-		  (lambda ()
-		    (generate/procedure-header
-		     procedure
-		     (generate/node
-		      (let ((entry (procedure-fg-entry procedure)))
-			(if (not compiler:preserve-data-structures?)
-			    (unset-procedure-fg-entry! procedure))
-			entry)
-		      false)))))
-	       procedures))))
-
+     (scfg*scfg->scfg!
+      (rtl:make-assignment register:frame-pointer
+			   (rtl:make-fetch register:stack-pointer))
+      (generate/node (let ((entry (quotation-fg-entry quotation)))
+		       (if (not compiler:preserve-data-structures?)
+			   (unset-quotation-fg-entry! quotation))
+		       entry)
+		     false))))
+  (for-each (lambda (procedure)
+	      (generate/rgraph
+	       (procedure-rgraph procedure)
+	       (lambda ()
+		 (generate/procedure-header
+		  procedure
+		  (generate/node
+		   (let ((entry (procedure-fg-entry procedure)))
+		     (if (not compiler:preserve-data-structures?)
+			 (unset-procedure-fg-entry! procedure))
+		     entry)
+		   false)))))
+	    procedures))
+
 (define (generate/rgraph rgraph generator)
   (fluid-let ((*current-rgraph* rgraph)
+	      (*next-pseudo-number* number-of-machine-registers)
 	      (*temporary->register-map* '())
-	      (*next-pseudo-number* number-of-machine-registers))
-    (set-rgraph-edge! rgraph (node->edge (cfg-entry-node (generator))))
-    (set-rgraph-n-registers! rgraph *next-pseudo-number*)))
+	      (*memoizations* '()))
+    (set-rgraph-edge!
+     rgraph
+     (node->edge (cfg-entry-node (with-new-node-marks generator))))
+    (set-rgraph-n-registers! rgraph *next-pseudo-number*))
+  (set-rgraph-bblocks!
+   rgraph
+   (with-new-node-marks
+    (lambda ()
+      (define (loop bblock)
+	(node-mark! bblock)
+	(cons bblock
+	      (if (sblock? bblock)
+		  (next (snode-next bblock))
+		  (append! (next (pnode-consequent bblock))
+			   (next (pnode-alternative bblock))))))
+
+      (define (next bblock)
+	(if (and bblock (not (node-marked? bblock)))
+	    (loop bblock)
+	    '()))
+
+      (mapcan (lambda (edge)
+		(bblock-compress! (edge-right-node edge))
+		(loop (edge-right-node edge)))
+	      (rgraph-initial-edges rgraph))))))
 
+(define *memoizations*)
+
 (define (generate/node node subproblem?)
-  ;; This won't work when there are loops in the RTL.
-  (cond ((not (node-marked? node))
+  ;; This won't work when there are loops in the FG.
+  (cond ((or (null? (node-previous-edges node))
+	     (null? (cdr (node-previous-edges node))))
 	 (node-mark! node)
-	 (set-node-rtl-arguments! node subproblem?)
+	 ((vector-method node generate/node) node subproblem?))
+	((not (node-marked? node))
+	 (node-mark! node)
 	 (let ((result ((vector-method node generate/node) node subproblem?)))
-	   (set-node-rtl-result! node result)
+	   (set! *memoizations*
+		 (cons (cons* node subproblem? result)
+		       *memoizations*))
 	   result))
 	(else
-	 (if (not (boolean=? (node-rtl-arguments node) subproblem?))
-	     (error "Node regenerated with different arguments" node))
-	 (node-rtl-result node))))
+	 (let ((memoization
+		(cdr (or (assq node *memoizations*)
+			 (error "Marked node lacking memoization" node)))))
+	   (if (not (boolean=? (car memoization) subproblem?))
+	       (error "Node regenerated with different arguments" node))
+	   (cdr memoization)))))
 
 (define (define-generator tag generator)
   (define-vector-method tag generate/node generator))
 
+(define (define-statement-generator tag generator)
+  (define-generator tag (normal-statement-generator generator)))
+
+(define (normal-statement-generator generator)
+  (lambda (node subproblem?)
+    (generate/normal-statement node subproblem? generator)))
+
+(define (generate/normal-statement node subproblem? generator)
+  (let ((next (snode-next node)))
+    (if next
+	(scfg*scfg->scfg! (generator node true)
+			  (generate/node next subproblem?))
+	(generator node subproblem?))))
+
+(define (define-predicate-generator tag generator)
+  (define-generator tag (normal-predicate-generator generator)))
+
+(define (normal-predicate-generator generator)
+  (lambda (node subproblem?)
+    (pcfg*scfg->scfg!
+     (generator node)
+     (let ((consequent (pnode-consequent node)))
+       (and consequent
+	    (generate/node consequent subproblem?)))
+     (let ((alternative (pnode-alternative node)))
+       (and alternative
+	    (generate/node alternative subproblem?))))))
+
 (define (generate/subproblem-cfg subproblem)
   (if (cfg-null? (subproblem-cfg subproblem))
       (make-null-cfg)
@@ -108,46 +168,3 @@ MIT in each case. |#
   (transmit-values (generate/subproblem subproblem)
     (lambda (cfg expression)
       (scfg*scfg->scfg! cfg (rtl:make-push expression)))))
-
-(define (define-statement-generator tag generator)
-  (define-generator tag
-    (lambda (node subproblem?)
-      (generate/normal-statement node subproblem?
-	(lambda (subproblem?)
-	  (generator node subproblem?))))))
-
-(define (generate/normal-statement node subproblem? generator)
-  (if (snode-next node)
-      (scfg*scfg->scfg! (generator true)
-			(generate/node (snode-next node) subproblem?))
-      (generator subproblem?)))
-
-(define (define-predicate-generator tag generator)
-  (define-generator tag (normal-predicate-generator generator)))
-
-(define (normal-predicate-generator generator)
-  (lambda (node subproblem?)
-    (pcfg*scfg->scfg!
-     (generator node)
-     (and (pnode-consequent node)
-	  (generate/node (pnode-consequent node) subproblem?))
-     (and (pnode-alternative node)
-	  (generate/node (pnode-alternative node) subproblem?)))))
-
-(define-integrable (node-rtl-result node)
-  (node-property-get node tag/node-rtl-result))
-
-(define-integrable (set-node-rtl-result! node cfg)
-  (node-property-put! node tag/node-rtl-result cfg))
-
-(define tag/node-rtl-result
-  "node rtl result")
-
-(define-integrable (node-rtl-arguments node)
-  (node-property-get node tag/node-rtl-arguments))
-
-(define-integrable (set-node-rtl-arguments! node arguments)
-  (node-property-put! node tag/node-rtl-arguments arguments))
-
-(define tag/node-rtl-arguments
-  "node rtl arguments")
