@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: chrset.scm,v 14.11 2001/02/05 18:33:13 cph Exp $
+$Id: chrset.scm,v 14.12 2001/02/05 19:20:12 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -136,30 +136,32 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define char-set:newline)
 
 (define (initialize-package!)
+  ;; This must be first:
+  (set! char-set:not-01 (ascii-range->char-set #x02 #x100))
+
   (set! char-set:upper-case (ascii-range->char-set #x41 #x5B))
   (set! char-set:lower-case (ascii-range->char-set #x61 #x7B))
   (set! char-set:numeric (ascii-range->char-set #x30 #x3A))
   (set! char-set:graphic (ascii-range->char-set #x20 #x7F))
   (set! char-set:whitespace
-	(char-set char:newline #\Tab #\Linefeed #\Page #\Return #\Space))
+	(char-set #\newline #\tab #\linefeed #\page #\return #\space))
   (set! char-set:alphabetic
 	(char-set-union char-set:upper-case char-set:lower-case))
   (set! char-set:alphanumeric
 	(char-set-union char-set:alphabetic char-set:numeric))
   (set! char-set:standard
-	(char-set-union char-set:graphic (char-set char:newline)))
+	(char-set-union char-set:graphic (char-set #\newline)))
 
-  (set! char-set:not-upper-case (char-set-invert char-set:upper-case))
-  (set! char-set:not-lower-case (char-set-invert char-set:lower-case))
-  (set! char-set:not-numeric (char-set-invert char-set:numeric))
-  (set! char-set:not-graphic (char-set-invert char-set:graphic))
-  (set! char-set:not-whitespace (char-set-invert char-set:whitespace))
-  (set! char-set:not-alphabetic (char-set-invert char-set:alphabetic))
+  (set! char-set:not-upper-case   (char-set-invert char-set:upper-case))
+  (set! char-set:not-lower-case   (char-set-invert char-set:lower-case))
+  (set! char-set:not-numeric      (char-set-invert char-set:numeric))
+  (set! char-set:not-graphic      (char-set-invert char-set:graphic))
+  (set! char-set:not-whitespace   (char-set-invert char-set:whitespace))
+  (set! char-set:not-alphabetic   (char-set-invert char-set:alphabetic))
   (set! char-set:not-alphanumeric (char-set-invert char-set:alphanumeric))
-  (set! char-set:not-standard (char-set-invert char-set:standard))
+  (set! char-set:not-standard     (char-set-invert char-set:standard))
 
-  (set! char-set:not-01 (ascii-range->char-set #x02 #x100))
-  (set! char-set:newline (char-set char:newline))
+  (set! char-set:newline (char-set #\newline))
   unspecific)
 
 (define-integrable (char-upper-case? char)
