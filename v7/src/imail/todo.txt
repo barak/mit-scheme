@@ -1,14 +1,8 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.114 2001/04/10 20:37:17 cph Exp $
+$Id: todo.txt,v 1.115 2001/04/11 01:09:45 cph Exp $
 
 Bug fixes
 ---------
-
-* When forwarding a message using MIME, the code that strips off the
-  extra headers is causing problems -- in particular, it strips off
-  the MIME headers of the encapsulated message, which means that the
-  reader can't properly interpret the contents.  The MIME headers must
-  be left intact.
 
 * When network connection gets wedged, Edwin locks up and can't be
   interrupted with C-g.  This is fundamentally an Edwin problem, but

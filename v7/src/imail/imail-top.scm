@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.234 2001/03/19 19:31:12 cph Exp $
+;;; $Id: imail-top.scm,v 1.235 2001/04/11 01:09:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1154,7 +1154,11 @@ With negative argument, forward the message with all headers;
 		   (let ((headers (message-header-fields message)))
 		     (if raw?
 			 headers
-			 (maybe-reformat-headers headers mail-buffer))))
+			 (maybe-reformat-headers
+			  headers
+			  (or (imail-message->buffer message #f)
+			      mail-buffer)
+			  #t))))
 	      (lambda (port) (write-message-body message port)))
 	     (let ((mark (mark-left-inserting-copy (buffer-end mail-buffer))))
 	       (with-buffer-point-preserved mail-buffer
@@ -2071,38 +2075,55 @@ Negative argument means search in reverse."
 	       (write-message-body message port)))))))
 
 (define (insert-header-fields headers raw? mark)
-  (encode-header-fields (let ((headers (->header-fields headers)))
+  (encode-header-fields (let ((headers* (->header-fields headers)))
 			  (if raw?
-			      headers
+			      headers*
 			      (maybe-reformat-headers
-			       headers
+			       headers*
 			       (or (and (message? headers)
 					(imail-message->buffer headers #f))
-				   mark))))
+				   mark)
+			       #f)))
 			(lambda (string start end)
 			  (insert-substring string start end mark))))
 
-(define (maybe-reformat-headers headers buffer)
+(define (maybe-reformat-headers headers context keep-mime?)
   (let ((headers
-	 (cond ((ref-variable imail-kept-headers buffer)
-		=> (lambda (regexps)
-		     (append-map!
-		      (lambda (regexp)
-			(list-transform-positive headers
-			  (lambda (header)
-			    (re-string-match regexp
-					     (header-field-name header)
-					     #t))))
-		      regexps)))
-	       ((ref-variable imail-ignored-headers buffer)
-		=> (lambda (regexp)
-		     (list-transform-negative headers
-		       (lambda (header)
-			 (re-string-match regexp
-					  (header-field-name header)
-					  #t)))))
-	       (else headers)))
-	(filter (ref-variable imail-message-filter buffer)))
+	 (let ((mime-headers
+		(lambda ()
+		  (if keep-mime?
+		      (list-transform-positive headers
+			(lambda (header)
+			  (re-string-match "^\\(mime-version$\\|content-\\)"
+					   (header-field-name header)
+					   #t)))
+		      '()))))
+	   (cond ((ref-variable imail-kept-headers context)
+		  => (lambda (regexps)
+		       (remove-duplicates!
+			(append-map*!
+			 (mime-headers)
+			 (lambda (regexp)
+			   (list-transform-positive headers
+			     (lambda (header)
+			       (re-string-match regexp
+						(header-field-name header)
+						#t))))
+			 regexps)
+			(lambda (a b) (eq? a b)))))
+		 ((ref-variable imail-ignored-headers context)
+		  => (lambda (regexp)
+		       (remove-duplicates!
+			(append!
+			 (list-transform-negative headers
+			   (lambda (header)
+			     (re-string-match regexp
+					      (header-field-name header)
+					      #t)))
+			 (mime-headers))
+			(lambda (a b) (eq? a b)))))
+		 (else headers))))
+	(filter (ref-variable imail-message-filter context)))
     (if filter
 	(map (lambda (n.v)
 	       (make-header-field (car n.v) (cdr n.v)))
