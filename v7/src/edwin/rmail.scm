@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.40 1995/04/30 06:53:42 cph Exp $
+;;;	$Id: rmail.scm,v 1.41 1995/05/02 00:40:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -603,7 +603,7 @@ This variable is ignored if rmail-pop-procedure is #F."
   (let ((procedure (ref-variable rmail-pop-procedure buffer)))
     (and procedure
 	 (call-with-values (lambda () (get-pop-account-info server buffer))
-	   (lambda (user-name password)
+	   (lambda (user-name password save-password?)
 	     (let ((msg
 		    (string-append "Getting mail from POP server "
 				   server
@@ -611,22 +611,18 @@ This variable is ignored if rmail-pop-procedure is #F."
 	       (message msg)
 	       (let ((value
 		      (insert
-		       (let ((success? #f))
-			 (dynamic-wind
-			  (lambda () unspecific)
-			  (lambda ()
-			    (let ((filename
-				   (procedure
-				    server user-name password
-				    (buffer-default-directory buffer))))
-			      (set! success? #t)
-			      filename))
-			  (lambda ()
-			    ;; Failure might be due to bad password.
-			    (if (not success?)
-				(delete-saved-pop-server-password
-				 server
-				 user-name))))))))
+		       (let ((filename
+			      (procedure
+			       server user-name password
+			       (buffer-default-directory buffer))))
+			 (if save-password?
+			     ;; Password is saved only after
+			     ;; successful execution of the client, to
+			     ;; prevent saving an incorrect password.
+			     (save-pop-server-password server
+						       user-name
+						       password))
+			 filename))))
 		 (message msg "done")
 		 value)))))))
 
@@ -635,24 +631,23 @@ This variable is ignored if rmail-pop-procedure is #F."
     (if entry
 	(let ((user-name (cadr entry))
 	      (password (caddr entry)))
-	  (values user-name
-		  (case password
-		    ((PROMPT-ONCE)
-		     (or (get-saved-pop-server-password server user-name)
-			 (let ((password
-				(prompt-for-pop-server-password server)))
-			   (save-pop-server-password server user-name password)
-			   password)))
-		    ((PROMPT-ALWAYS)
-		     (prompt-for-pop-server-password server))
-		    (else
-		     password))))
+	  (case password
+	    ((PROMPT-ONCE)
+	     (let ((password (get-saved-pop-server-password server user-name)))
+	       (if password
+		   (values user-name password #f)
+		   (values user-name
+			   (prompt-for-pop-server-password server)
+			   #t))))
+	    ((PROMPT-ALWAYS)
+	     (values user-name (prompt-for-pop-server-password server) #f))
+	    (else
+	     (values user-name password #f))))
 	(let ((user-name
 	       (prompt-for-string
 		(string-append "User name for POP server " server)
 		(current-user-name))))
-	  (values user-name
-		  (prompt-for-pop-server-password server))))))
+	  (values user-name (prompt-for-pop-server-password server) #f)))))
 
 (define (get-saved-pop-server-password server user-name)
   (let ((entry (assoc (cons server user-name) saved-pop-passwords)))
