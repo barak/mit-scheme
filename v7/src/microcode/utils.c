@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.49 1991/03/01 00:55:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.50 1991/08/27 07:58:21 jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -631,105 +631,119 @@ Stop_History ()
   return;
 }
 
-SCHEME_OBJECT *
-Copy_Rib (Orig_Rib)
-     SCHEME_OBJECT *Orig_Rib;
-{
-  SCHEME_OBJECT *Result, *This_Rib;
+/* This returns a history object,
+   or SHARP_F if it needs to GC,
+   or SHARP_T if it is not a valid history object.
+ */
 
-  for (This_Rib = NULL, Result = Free;
-       (This_Rib != Orig_Rib) && (!GC_Check(0));
-       This_Rib = OBJECT_ADDRESS (This_Rib[RIB_NEXT_REDUCTION]))
+SCHEME_OBJECT
+DEFUN (copy_history, (hist_obj),
+       SCHEME_OBJECT hist_obj)
+{
+  long space_left, vert_type, rib_type;
+  SCHEME_OBJECT *fast_free;
+  SCHEME_OBJECT new_hunk, *last_hunk, *hist_ptr, *orig_hist, temp;
+  SCHEME_OBJECT *orig_rib, *source_rib, *rib_slot;
+
+  if (!(HUNK3_P (hist_obj)))
+    return (SHARP_T);
+
+  space_left = ((Space_Before_GC ()) - 3);
+  fast_free = Free;
+
+  vert_type = (OBJECT_TYPE (hist_obj));
+  orig_hist = (OBJECT_ADDRESS (hist_obj));
+  hist_ptr = orig_hist;
+  last_hunk = (Heap_Top - 3);
+
+  do
   {
-    if (This_Rib == NULL)
+    /* Allocate and link the vertebra. */
+
+    space_left -= 3;
+    if (space_left < 0)
+      return (SHARP_F);
+
+    new_hunk = (MAKE_POINTER_OBJECT (vert_type, fast_free));
+    last_hunk[HIST_NEXT_SUBPROBLEM] = new_hunk;
+
+    fast_free[HIST_PREV_SUBPROBLEM] =
+      (MAKE_POINTER_OBJECT ((OBJECT_TYPE (hist_ptr[HIST_PREV_SUBPROBLEM])),
+			    last_hunk));
+    last_hunk = fast_free;
+    fast_free += 3;
+
+    /* Copy the rib. */
+
+    temp = hist_ptr[HIST_RIB];
+    rib_type = (OBJECT_TYPE (temp));
+    orig_rib = (OBJECT_ADDRESS (temp));
+    rib_slot = (last_hunk + HIST_RIB);
+    
+    source_rib = orig_rib;
+
+    do
     {
-      This_Rib = Orig_Rib;
-    }
-    Free[RIB_EXP] = This_Rib[RIB_EXP];
-    Free[RIB_ENV] = This_Rib[RIB_ENV];
-    Free[RIB_NEXT_REDUCTION] =
-      (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, Free+3));
-    if (HISTORY_MARKED_P(This_Rib[RIB_MARK]))
-    {
-      HISTORY_MARK(Free[RIB_MARK]);
-    }
-    Free += 3;
-  }
-  ((Free - 3) [RIB_NEXT_REDUCTION]) =
-    (OBJECT_NEW_ADDRESS (((Free - 3) [RIB_NEXT_REDUCTION]), Result));
-  return (Result);
+      space_left -= 3;
+      if (space_left < 0)
+	return (SHARP_F);
+
+      *rib_slot = (MAKE_POINTER_OBJECT (rib_type, fast_free));
+      fast_free[RIB_EXP] = source_rib[RIB_EXP];
+      fast_free[RIB_ENV] = source_rib[RIB_ENV];
+      rib_slot = (fast_free + RIB_NEXT_REDUCTION);
+      fast_free += 3;
+      
+      temp = source_rib[RIB_NEXT_REDUCTION];
+      rib_type = (OBJECT_TYPE (temp));
+      source_rib = (OBJECT_ADDRESS (temp));
+    } while (source_rib != orig_rib);
+      
+    *rib_slot = (OBJECT_NEW_TYPE (rib_type, last_hunk[HIST_RIB]));
+
+    temp = hist_ptr[HIST_NEXT_SUBPROBLEM];
+    vert_type = (OBJECT_TYPE (temp));
+    hist_ptr = (OBJECT_ADDRESS (temp));
+  } while (hist_ptr != orig_hist);
+
+  Free = fast_free;
+  new_hunk = Heap_Top[HIST_NEXT_SUBPROBLEM - 3];
+  last_hunk[HIST_NEXT_SUBPROBLEM] = (OBJECT_NEW_TYPE (vert_type, new_hunk));
+  FAST_MEMORY_SET (new_hunk, HIST_PREV_SUBPROBLEM,
+		   (MAKE_POINTER_OBJECT
+		    ((OBJECT_TYPE (hist_ptr[HIST_PREV_SUBPROBLEM])),
+		     last_hunk)));
+  return (new_hunk);
 }
-
+
 /* Restore_History pops a history object off the stack and
    makes a COPY of it the current history collection object.
    This is called only from the RC_RESTORE_HISTORY case in
-   interpret.c . */
+   interpret.c .
+ */
 
 Boolean
-Restore_History (Hist_Obj)
-     SCHEME_OBJECT Hist_Obj;
+DEFUN (Restore_History, (hist_obj),
+       SCHEME_OBJECT hist_obj)
 {
-  SCHEME_OBJECT *New_History, *Next_Vertebra, *Prev_Vertebra,
-          *Orig_Vertebra;
+  SCHEME_OBJECT new_hist;
 
-  if (Consistency_Check)
+  new_hist = (copy_history (hist_obj));
+  if (new_hist == SHARP_F)
   {
-    if (!(HUNK3_P(Hist_Obj)))
-    {
-      fprintf(stderr, "Bad history to restore.\n");
-      Microcode_Termination(TERM_EXIT);
-      /*NOTREACHED*/
-    }
+    return (false);
   }
-  Orig_Vertebra = OBJECT_ADDRESS (Hist_Obj);
-  for (Next_Vertebra = NULL, Prev_Vertebra = NULL;
-       Next_Vertebra != Orig_Vertebra;
-       Next_Vertebra =
-         OBJECT_ADDRESS (Next_Vertebra[HIST_NEXT_SUBPROBLEM]))
+  else if (new_hist == SHARP_T)
   {
-    SCHEME_OBJECT *New_Rib;
-
-    if (Prev_Vertebra == NULL)
-    {
-      Next_Vertebra = Orig_Vertebra;
-    }
-    New_Rib = Copy_Rib(OBJECT_ADDRESS (Next_Vertebra[HIST_RIB]));
-    if (Prev_Vertebra == NULL)
-    {
-      New_History = Free;
-      Free[HIST_PREV_SUBPROBLEM] =
-	MAKE_OBJECT (UNMARKED_HISTORY_TYPE, 0); /* Clobbered later */
-    }
-    else
-    {
-      Prev_Vertebra[HIST_NEXT_SUBPROBLEM] =
-           MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, Free);
-      Free[HIST_PREV_SUBPROBLEM] =
-	MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, Prev_Vertebra);
-    }
-    Free[HIST_RIB] = MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, New_Rib);
-    Free[HIST_NEXT_SUBPROBLEM] = SHARP_F;
-    if (HISTORY_MARKED_P(Next_Vertebra[HIST_MARK]))
-    {
-      HISTORY_MARK(Free[HIST_MARK]);
-    }
-    Prev_Vertebra = Free;
-    Free += 3;
-    if (GC_Check(0))
-    {
-      return (false);
-    }
+    fprintf(stderr, "\nBad history to restore.\n");
+    Microcode_Termination (TERM_EXIT);
+    /*NOTREACHED*/
   }
-  (New_History [HIST_PREV_SUBPROBLEM]) =
-    (OBJECT_NEW_ADDRESS ((New_History [HIST_PREV_SUBPROBLEM]), (Free - 3)));
-  Prev_Vertebra[HIST_NEXT_SUBPROBLEM] =
-    MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, New_History);
-  if (HISTORY_MARKED_P(Orig_Vertebra[HIST_MARK]))
+  else
   {
-    HISTORY_MARK(Prev_Vertebra[HIST_MARK]);
+    History = (OBJECT_ADDRESS (new_hist));
+    return (true);
   }
-  History = New_History;
-  return (true);
 }
 
 /* If a "debugging" version of the interpreter is made, then this
