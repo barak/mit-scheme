@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.4 1990/07/30 16:45:34 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.5 1990/07/30 17:05:08 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -691,8 +691,6 @@ extern char * EXFUN (UX_ctermid, (char * s));
 #define UX_kill kill
 #else
 extern int EXFUN (UX_kill, (pid_t pid, int sig));
-#endif
-
 #endif
 
 #endif /* _BSD */
