@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.25 1987/02/07 15:29:41 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.26 1987/02/15 16:10:52 jinx Exp $
  *
  * This file contains the code to support startup of
  * the SCHEME interpreter.
@@ -50,6 +50,7 @@ MIT in each case. */
           {-heap heap-size}
 	  {-stack stack-size}
 	  {-constant constant-size}
+	  {-utabmd utab-filename}
           {other arguments ignored by the core microcode}
 
    with filespec either {-band band-name} or {{-}fasl file-name}
@@ -69,6 +70,7 @@ MIT in each case. */
 		  be allocated.
    constant-size..number of cells for constant and pure space in the
                   system.
+   utab-filename..name of an alternate utabmd file to use.
 
 Additional arguments may exist for particular machines; see CONFIG.H
 for details.  They are created by defining a macro Command_Line_Args.
@@ -403,20 +405,47 @@ Built_In_Primitive(Prim_Microcode_Identify, 0, "MICROCODE-IDENTIFY")
 
 Built_In_Primitive(Prim_Microcode_Tables_Filename,
 		   0, "MICROCODE-TABLES-FILENAME")
-{ char *From, *To,
-       *Prefix=SCHEME_SOURCES_PATH,
-       *Suffix=UCODE_TABLES_FILENAME;
-  long Count=0;
-  Pointer Result = Make_Pointer(TC_CHARACTER_STRING, Free);
-
+{ fast char *From, *To;
+  char *Prefix, *Suffix;
+  fast long Count;
+  long position;
+  Pointer Result;
   Primitive_0_Args();
-  /* Might run out of room to do this, but not likely */
-  for (From = &(Prefix[0]), To = (char *) &(Free[STRING_CHARS]);
-       *From != '\0'; Count++) *To++ = *From++;
-  for (From = &(Suffix[0]); *From != '\0'; Count++) *To++ = *From++;
+
+  if (((position = Parse_Option("-utabmd", Saved_argc, Saved_argv, true))
+       != NOT_THERE) &&
+      (position != (Saved_argc - 1)))
+  { Prefix = "";
+    Suffix = Saved_argv[position + 1];
+  }
+  else
+  { Prefix = SCHEME_SOURCES_PATH;
+    Suffix = UCODE_TABLES_FILENAME;
+  }
+  /* Find the length of the combined string, and allocate. */
+  Count = 0;
+  for (From = Prefix; *From++ != '\0'; )
+  { Count += 1;
+  }
+  for (From = Suffix; *From++ != '\0'; )
+  { Count += 1;
+  }
+  Primitive_GC_If_Needed(STRING_CHARS +
+			 ((Count + sizeof(Pointer)) /
+			  sizeof(Pointer)));
+
+  /* Append both substrings. */
+  Result = Make_Pointer(TC_CHARACTER_STRING, Free);
+  To = (char *) &(Free[STRING_CHARS]);
+  for (From = &(Prefix[0]); *From != '\0'; )
+  { *To++ = *From++;
+  }
+  for (From = &(Suffix[0]); *From != '\0'; )
+  { *To++ = *From++;
+  }
   *To = '\0';
-  Free += STRING_CHARS + (Count+sizeof(Pointer))/sizeof(Pointer);
-  Vector_Set(Result, STRING_LENGTH, FIXNUM_0+Count);
+  Free += STRING_CHARS + ((Count + sizeof(Pointer)) / sizeof(Pointer));
+  Vector_Set(Result, STRING_LENGTH, FIXNUM_0 + Count);
   Vector_Set(Result, STRING_HEADER,
     Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, (Free-Get_Pointer(Result))-1));
   return Result;
