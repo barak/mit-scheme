@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.27 1990/02/23 21:43:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.28 1990/03/12 23:20:01 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -705,9 +705,11 @@ MIT in each case. |#
 (let-syntax
     ((define-flonum-operation
        (macro (primitive-name instruction-name)
-	 `(define-flonum-method ',primitive-name flonum-methods/2-args
-	   (lambda (target source)
-	     (LAP (,instruction-name ,',source ,',target)))))))
+	 `(DEFINE-FLONUM-METHOD ',primitive-name FLONUM-METHODS/2-ARGS
+	   (LAMBDA (TARGET SOURCE)
+	     (IF (EFFECTIVE-ADDRESS/FLOAT-REGISTER? SOURCE)
+		 (LAP (,instruction-name ,',source ,',target))
+		 (LAP (,instruction-name D ,',source ,',target))))))))
   (define-flonum-operation flonum-add fadd)
   (define-flonum-operation flonum-subtract fsub)
   (define-flonum-operation flonum-multiply fmul)
