@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.3 1995/02/11 01:58:44 adams Exp $
+$Id: simplify.scm,v 1.4 1995/02/11 03:16:45 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -352,7 +352,7 @@ MIT in each case. |#
       (and *after-cps-conversion?*
 	   (CALL/? body)
 	   (form/simple&side-effect-free? value)
-	   (not (form/satisfies? value '(STATIC))))))
+	   (not (form/static? value)))))
 
 ;; Note: this only works if no variable free in value is captured
 ;; at any reference in node.
