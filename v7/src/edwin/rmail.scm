@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.30 1993/09/30 19:22:30 bal Exp $
+;;;	$Id: rmail.scm,v 1.31 1994/02/21 21:47:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-1993 Massachusetts Institute of Technology
 ;;;
@@ -980,9 +980,9 @@ original message into it."
 			 (strings (loop fs)))
 		     (if string
 			 (cons string
-			       (if strings
-				   (cons ", " strings)
-				   '()))
+			       (if (null? strings)
+				   '()
+				   (cons ", " strings)))
 			 strings))
 		   '()))))))
     (and (not (null? strings))
