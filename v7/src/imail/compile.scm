@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.2 2000/04/12 03:54:04 cph Exp $
+;;; $Id: compile.scm,v 1.3 2000/04/13 15:35:58 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -31,6 +31,7 @@
 		"imail-rmail"
 		"imail-umail"
 		"imail-util"
+		"rexp"
 		"rfc822"
 		"url"))
     (for-each (let ((syntax-table
