@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: widen.scm,v 1.4 1994/12/15 01:41:42 adams Exp $
+$Id: widen.scm,v 1.5 1995/01/28 15:35:20 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -449,7 +449,8 @@ MIT in each case. |#
   ;; where it expands to 0 values, the value itself where it expands
   ;; to one value, a pair for 2 values, and a vector for any other
   ;; case.
-  (pp `("Creating container" ,(length exprs)))
+  (if compiler:guru?
+      (pp `("Creating container" ,(length exprs))))
   (case (length exprs)
     ;;((0) `'#F)
     ((0) `'deleted-container)
