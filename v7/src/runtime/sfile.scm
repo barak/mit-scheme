@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.35 2003/09/05 20:51:22 cph Exp $
+$Id: sfile.scm,v 14.36 2004/10/28 19:38:23 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1999,2001,2003 Massachusetts Institute of Technology
@@ -246,3 +246,106 @@ USA.
   (let ((pathname (init-file-specifier->pathname specifier)))
     (guarantee-init-file-directory pathname)
     (open-output-file pathname (if (default-object? append?) #f append?))))
+
+;;;; MIME types
+
+(define-record-type <mime-type>
+    (%make-mime-type top-level subtype)
+    mime-type?
+  (top-level mime-type/top-level)
+  (subtype mime-type/subtype))
+
+(set-record-type-unparser-method! <mime-type>
+  (standard-unparser-method 'MIME-TYPE
+    (lambda (mime-type port)
+      (write-char #\space port)
+      (write-string (mime-type->string mime-type) port))))
+
+(define (make-mime-type top-level subtype)
+  (guarantee-mime-token top-level 'MAKE-MIME-TYPE)
+  (guarantee-mime-token subtype 'MAKE-MIME-TYPE)
+  (%make-mime-type top-level subtype))
+
+(define (mime-type->string mime-type)
+  (guarantee-mime-type mime-type 'MIME-TYPE->STRING)
+  (string-append (symbol-name (mime-type/top-level mime-type))
+		 "/"
+		 (symbol-name (mime-type/subtype mime-type))))
+
+(define (string->mime-type string)
+  (guarantee-mime-type-string string 'STRING->MIME-TYPE)
+  (let ((slash (string-find-next-char string #\/)))
+    (%make-mime-type (intern (string-head string slash))
+		     (intern (string-tail string (fix:+ slash 1))))))
+
+(define (mime-type-string? object)
+  (and (string? object)
+       (string-is-mime-type? object)))
+
+(define (string-is-mime-type? string)
+  (let ((end (string-length string)))
+    (let ((i (check-mime-token-syntax string 0 end)))
+      (and (fix:> i 0)
+	   (fix:< i end)
+	   (char=? (string-ref string i) #\/)
+	   (fix:< (fix:+ i 1) end)
+	   (fix:= end (check-mime-token-syntax string (fix:+ i 1) end))
+	   i))))
+
+(define (mime-token? object)
+  (and (interned-symbol? object)
+       (string-is-mime-token? (symbol-name object))))
+
+(define (mime-token-string? object)
+  (and (string? object)
+       (string-is-mime-token? object)))
+
+(define (string-is-mime-token? string)
+  (let ((end (string-length string)))
+    (fix:= end (check-mime-token-syntax string 0 end))))
+
+(define (check-mime-token-syntax string start end)
+  (let loop ((i start))
+    (if (fix:< i end)
+	(if (char-set-member? char-set:mime-token (string-ref string i))
+	    (loop (fix:+ i 1))
+	    i)
+	end)))
+
+(define char-set:mime-token)
+(define (initialize-package!)
+  (set! char-set:mime-token
+	(char-set-difference (ascii-range->char-set #x21 #x7F)
+			     (string->char-set "()<>@,;:\\\"/[]?=")))
+  unspecific)
+
+(define (pathname-mime-type pathname)
+  (pathname-type->mime-type (pathname-type pathname)))
+
+(define (pathname-type->mime-type type)
+  (and (string? type)
+       (let ((string (os/suffix-mime-type type)))
+	 (and string
+	      (string->mime-type string)))))
+
+(define-syntax define-guarantee
+  (sc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '(SYMBOL EXPRESSION) (cdr form))
+	 (let ((root (cadr form))
+	       (desc (close-syntax (caddr form) environment)))
+	   (let ((p-name (symbol root '?))
+		 (g-name (symbol 'guarantee- root))
+		 (e-name (symbol 'error:not- root)))
+	     `(BEGIN
+		(DEFINE (,g-name OBJECT CALLER)
+		  (IF (NOT (,(close-syntax p-name environment) OBJECT))
+		      (,(close-syntax e-name environment) OBJECT CALLER)))
+		(DEFINE (,e-name OBJECT CALLER)
+		  (ERROR:WRONG-TYPE-ARGUMENT OBJECT ,desc CALLER)))))
+	 (ill-formed-syntax form)))))
+
+(define-guarantee mime-type "MIME type")
+(define-guarantee mime-type-string "MIME type string")
+(define-guarantee mime-token "MIME token")
+(define-guarantee mime-token-string "MIME token string")

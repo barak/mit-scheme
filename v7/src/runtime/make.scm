@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.94 2004/10/28 03:21:23 cph Exp $
+$Id: make.scm,v 14.95 2004/10/28 19:38:09 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
@@ -371,7 +371,8 @@ USA.
        '(("prop1d" . (RUNTIME 1D-PROPERTY))
 	 ("events" . (RUNTIME EVENT-DISTRIBUTOR))
 	 ("gdatab" . (RUNTIME GLOBAL-DATABASE))
-	 ("gcfinal" . (RUNTIME GC-FINALIZER))))
+	 ("gcfinal" . (RUNTIME GC-FINALIZER))
+	 ("string" . (RUNTIME STRING))))
       (load-files
        (lambda (files)
 	 (do ((files files (cdr files)))
@@ -400,6 +401,7 @@ USA.
   (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-UNPARSER! #t)
   (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-UNPARSER! #t)
   (package-initialize '(RUNTIME GC-FINALIZER) 'INITIALIZE-PACKAGE! #t)
+  (package-initialize '(RUNTIME STRING) 'INITIALIZE-PACKAGE! #t)
 
   ;; Load everything else.
   ((lexical-reference environment-for-package 'LOAD-PACKAGES-FROM-FILE)
@@ -488,6 +490,7 @@ USA.
    (RUNTIME WORKING-DIRECTORY)
    (RUNTIME LOAD)
    (RUNTIME UNICODE)
+   (RUNTIME SIMPLE-FILE-OPS)
    ((RUNTIME OS-PRIMITIVES) INITIALIZE-MIME-TYPES! #f)
    ;; Syntax
    (RUNTIME NUMBER-PARSER)
@@ -517,7 +520,6 @@ USA.
    (RUNTIME STARBASE-GRAPHICS)
    (RUNTIME X-GRAPHICS)
    (RUNTIME OS2-GRAPHICS)
-   (RUNTIME STRING)
    ;; Emacs -- last because it installs hooks everywhere which must be initted.
    (RUNTIME EMACS-INTERFACE)
    ;; More debugging

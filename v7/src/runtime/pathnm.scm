@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.39 2004/10/28 03:21:47 cph Exp $
+$Id: pathnm.scm,v 14.40 2004/10/28 19:38:13 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,2000,2001 Massachusetts Institute of Technology
@@ -287,37 +287,6 @@ these rules:
 		    (or (%pathname-name pathname) name)
 		    (or (%pathname-type pathname) type)
 		    (or (%pathname-version pathname) version))))
-
-(define (pathname-mime-type pathname)
-  (let ((suffix (pathname-type pathname)))
-    (and (string? suffix)
-	 (let ((type (os/suffix-mime-type suffix)))
-	   (and type
-		(begin
-		  (guarantee-string type 'PATHNAME-MIME-TYPE)
-		  (let ((parts (burst-string type #\/ #f)))
-		    (if (not (and (pair? parts)
-				  (mime-token? (car parts))
-				  (pair? (cdr parts))
-				  (mime-token? (cadr parts))
-				  (null? (cddr parts))))
-			(error "Malformed MIME-type string:" type))
-		    (cons (intern (car parts))
-			  (intern (cadr parts))))))))))
-
-(define (mime-token? string)
-  (let ((end (string-length string)))
-    (let loop ((i 0))
-      (or (fix:= i end)
-	  (and (char-set-member? char-set:mime-token (string-ref string i))
-	       (loop (fix:+ i 1)))))))
-
-(define char-set:mime-token)
-(define (initialize-mime-token!)
-  (set! char-set:mime-token
-	(char-set-difference (ascii-range->char-set #x21 #x7F)
-			     (string->char-set "()<>@,;:\\\"/[]?=")))
-  unspecific)
 
 ;;;; Pathname Syntax
 
@@ -645,5 +614,4 @@ these rules:
 
 (define (initialize-package!)
   (reset-package!)
-  (add-event-receiver! event:after-restore reset-package!)
-  (initialize-mime-token!))
+  (add-event-receiver! event:after-restore reset-package!))
