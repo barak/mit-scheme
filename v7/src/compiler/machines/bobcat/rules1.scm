@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.28 1989/11/02 08:08:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.29 1989/11/15 02:40:21 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -600,14 +600,15 @@ MIT in each case. |#
 (define (convert-index->fixnum/register target source)
   (reuse-and-load-machine-target! 'DATA target source
     (lambda (target)
-      (LAP (LS L L (& ,(+ scheme-type-width 2)) ,target)))))
+      (LAP (AS L L (& ,(+ scheme-type-width 2)) ,target)))))
 
 (define (convert-index->fixnum/offset target address offset)
   (let ((source (indirect-reference! address offset)))
     (reuse-and-operate-on-machine-target! 'DATA target
       (lambda (target)
 	(LAP (MOV L ,source ,target)
-	     (LS L L (& ,(+ scheme-type-width 2)) ,target))))))
+	     (AS L L (& ,(+ scheme-type-width 2)) ,target))))))
+
 ;;;; Flonum Operations
 
 (define-rule statement
