@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxsock.c,v 1.8 1996/05/09 20:22:30 cph Exp $
+$Id: pruxsock.c,v 1.9 1996/05/09 20:38:40 cph Exp $
 
 Copyright (c) 1990-96 Massachusetts Institute of Technology
 
@@ -52,7 +52,7 @@ MIT in each case. */
 
 #ifdef HAVE_SOCKETS
 
-#include "ossock.h"
+#include "uxsock.h"
 #define SOCKET_CODE(code) code
 
 #else /* not HAVE_SOCKETS */
