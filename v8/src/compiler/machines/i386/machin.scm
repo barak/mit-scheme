@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.3 1995/01/10 23:15:57 ssmith Exp $
+$Id: machin.scm,v 1.4 1995/01/11 20:25:23 ssmith Exp $
 
 Copyright (c) 1992-1995 Massachusetts Institute of Technology
 
@@ -190,6 +190,7 @@ MIT in each case. |#
 (define-integrable regnum:datum-mask ebp)
 (define-integrable regnum:regs-pointer esi)
 (define-integrable regnum:free-pointer edi)
+(define-integrable regnum:hook eax)
 
 (define-integrable (machine-register-known-value register)
   register				; ignored
