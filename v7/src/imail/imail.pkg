@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.74 2000/07/05 00:34:24 cph Exp $
+;;; $Id: imail.pkg,v 1.75 2000/10/20 04:07:50 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -293,6 +293,7 @@
 	  edwin-command$imail-undelete-forward
 	  edwin-command$imail-undelete-previous-message
 	  edwin-mode$imail
+	  edwin-variable$imail-auto-summary
 	  edwin-variable$imail-auto-wrap
 	  edwin-variable$imail-body-cache-limit
 	  edwin-variable$imail-default-dont-reply-to-names
