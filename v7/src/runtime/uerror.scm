@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: uerror.scm,v 14.45 1999/01/02 06:19:10 cph Exp $
+$Id: uerror.scm,v 14.46 2001/03/08 18:43:07 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -299,7 +299,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;;; Utilities
 
 (define (error-type->string error-type)
-  (or (let ((code
+  (or (and (string? error-type)
+	   error-type)
+      (let ((code
 	     (if (symbol? error-type)
 		 (microcode-system-call-error/name->code error-type)
 		 (and (exact-nonnegative-integer? error-type) error-type))))
@@ -424,6 +426,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (doit (vector-ref error-code 0)
 		  (subvector->list error-code 1 (vector-length error-code)))
 	    (doit error-code '()))))))
+
+(define-low-level-handler 'ERROR-WITH-ARGUMENT
+  (lambda (continuation argument)
+    ((if (and (vector? argument)
+	      (fix:>= (vector-length argument) 1)
+	      (eqv? (vector-ref argument 0)
+		    (microcode-error/name->code 'SYSTEM-CALL)))
+	 system-call-error-handler
+	 default-error-handler)
+     continuation
+     argument)))
 
 (let ((fixed-objects (get-fixed-objects-vector)))
   (vector-set! fixed-objects
@@ -738,12 +751,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (write system-call port))))
       (write-string ", received " port)
       (let ((error-type (access-condition condition 'ERROR-TYPE)))
-	(if (symbol? error-type)
+	(if (or (symbol? error-type) (string? error-type))
 	    (write-string "the error: " port))
 	(write-string (error-type->string error-type) port))
       (write-string "." port))))
 
-(define-low-level-handler 'SYSTEM-CALL
+(define system-call-error-handler
   (let ((make-condition
 	 (condition-constructor condition-type:system-call-error
 				'(OPERATOR OPERANDS SYSTEM-CALL ERROR-TYPE)))
@@ -756,14 +769,21 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (let ((operator (apply-frame/operator frame))
 		  (operands (apply-frame/operands frame))
 		  (system-call
-		   (let ((system-call (vector-ref error-code 2)))
-		     (or (microcode-system-call/code->name system-call)
-			 system-call)))
+		   (if (string? (vector-ref error-code 1))
+		       (string->symbol (vector-ref error-code 1))
+		       (let ((system-call (vector-ref error-code 2)))
+			 (or (microcode-system-call/code->name system-call)
+			     system-call))))
 		  (error-type
-		   (let ((error-type (vector-ref error-code 1)))
-		     (or (microcode-system-call-error/code->name
-			  error-type)
-			 error-type))))
+		   (let ((error-type
+			  (if (string? (vector-ref error-code 1))
+			      (vector-ref error-code 2)
+			      (vector-ref error-code 1))))
+		     (if (string? error-type)
+			 error-type
+			 (or (microcode-system-call-error/code->name
+			      error-type)
+			     error-type)))))
 	      (let ((make-condition
 		     (lambda ()
 		       (make-condition continuation 'BOUND-RESTARTS
@@ -786,6 +806,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			       (error (make-condition))))))
 		      (else
 		       (error (make-condition)))))))))))
+
+(define-low-level-handler 'SYSTEM-CALL system-call-error-handler)
 
 ;;;; FASLOAD Errors
 
