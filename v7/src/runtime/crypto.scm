@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: crypto.scm,v 14.3 2000/04/10 19:04:17 cph Exp $
+$Id: crypto.scm,v 14.4 2000/04/11 04:00:28 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -20,7 +20,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 |#
 
 ;;;; Interface to cryptography libraries
-;;; package: ()
+;;; package: (runtime crypto)
 
 (declare (usual-integrations))
 
@@ -131,11 +131,46 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   ((ucode-primitive mhash_get_keygen_max_key_size 1)
    (keygen-name->id name 'MHASH-KEYGEN-MAX-KEY-SIZE)))
 
-(define (mhash-keygen name parameters keyword passphrase)
-  ((ucode-primitive mhash_keygen 4) (keygen-name->id name 'MHASH-KEYGEN)
-				    parameters
-				    keyword
-				    passphrase))
+(define (mhash-keygen name passphrase key-length . parameters)
+  (let ((keyword (make-string key-length)))
+    (if (not ((ucode-primitive mhash_keygen 4)
+	      (keygen-name->id name 'MHASH-KEYGEN)
+	      (convert-keygen-parameters name parameters)
+	      keyword
+	      passphrase))
+	(error "Error signalled by mhash_keygen()."))
+    keyword))
+
+(define (convert-keygen-parameters name parameters)
+  (let ((n-algorithms (mhash-keygen-uses-hash-algorithm name))
+	(uses-salt? (mhash-keygen-uses-salt? name))
+	(uses-count? (mhash-keygen-uses-count? name)))
+    (if (not (fix:= (length parameters)
+		    (+ n-algorithms
+		       (if uses-salt? 1 0)
+		       (if uses-count? 1 0))))
+	(error "Wrong number of parameters supplied:"
+	       parameters
+	       (error-irritant/noise "; should be:")
+	       `(,@(make-list n-algorithms 'HASH-TYPE)
+		 ,@(if uses-salt? '(SALT) '())
+		 ,@(if uses-count? '(COUNT) '()))))
+    (let ((n (fix:+ 2 n-algorithms)))
+      (let ((v (make-vector n)))
+	(vector-set! v 0
+		     (and uses-salt? (list-ref parameters n-algorithms)))
+	(vector-set! v 1
+		     (and uses-count?
+			  (list-ref parameters
+				    (if uses-salt?
+					(fix:+ n-algorithms 1)
+					n-algorithms))))
+	(do ((i 2 (fix:+ i 1))
+	     (names parameters (cdr names)))
+	    ((fix:= i n))
+	  (vector-set! v i
+		       (mhash-name->id (car names) 'MHASH-KEYGEN)))
+	v))))
 
 (define (mhash-available?)
   (implemented-primitive-procedure? (ucode-primitive mhash 4)))
@@ -226,6 +261,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define md5-sum->number mhash-sum->number)
 (define md5-sum->hexadecimal mhash-sum->hexadecimal)
 
+;;;; Package initialization
+
 (define (initialize-package!)
   (set! mhash-algorithm-names
 	(let ((n ((ucode-primitive mhash_count 0))))
