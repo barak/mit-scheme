@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/clscon.scm,v 1.2 1989/04/28 22:48:29 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/clscon.scm,v 1.3 1989/05/01 21:11:34 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -72,6 +72,7 @@
 	       (unparser/set-tagged-vector-method!
 		class
 		(unparser/standard-method name))
+	       (named-structure/set-tag-description! class object-description)
 	       class))))
       (if (not entry)
 	  (let ((class (make-class)))
