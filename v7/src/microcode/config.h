@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.71 1992/05/05 02:24:38 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.72 1992/07/23 12:31:38 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -450,7 +450,7 @@ typedef unsigned long SCHEME_OBJECT;
 
 #endif /* mips */
 
-#ifdef alpha
+#ifdef __alpha
 #define MACHINE_TYPE           "Alpha"
 #define FASL_INTERNAL_FORMAT   FASL_ALPHA
 
@@ -467,7 +467,7 @@ typedef unsigned long SCHEME_OBJECT;
 #define HAS_FLOOR
 /* #define HAS_FREXP */
 #define HAS_MODF
-#endif /* alpha */
+#endif /* __alpha */
 
 /* These (pdp10, nu) haven't worked in a while.
    Should be upgraded or flushed some day.  */
