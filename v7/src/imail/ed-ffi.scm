@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: ed-ffi.scm,v 1.17 2001/11/05 21:20:20 cph Exp $
+;;; $Id: ed-ffi.scm,v 1.18 2001/12/18 21:28:34 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -22,27 +22,15 @@
 ;;;; IMAIL mail reader: Edwin buffer packaging info
 
 (standard-scheme-find-file-initialization
- '#(("imail-browser"	(edwin imail front-end folder-browser)
-			edwin-syntax-table)
-    ("imail-core"	(edwin imail)
-			system-global-syntax-table)
-    ("imail-file"	(edwin imail file-folder)
-			system-global-syntax-table)
-    ("imail-imap"	(edwin imail imap-folder)
-			system-global-syntax-table)
-    ("imail-rmail"	(edwin imail file-folder rmail-folder)
-			system-global-syntax-table)
-    ("imail-summary"	(edwin imail front-end summary)
-			edwin-syntax-table)
-    ("imail-top"	(edwin imail front-end)
-			edwin-syntax-table)
-    ("imail-umail"	(edwin imail file-folder umail-folder)
-			system-global-syntax-table)
-    ("imail-util"	(edwin imail)
-			system-global-syntax-table)
-    ("imap-response"	(edwin imail imap-response)
-			system-global-syntax-table)
-    ("imap-syntax"	(edwin imail imap-syntax)
-			system-global-syntax-table)
-    ("url"		(runtime url)
-			system-global-syntax-table)))
+ '#(("imail-browser"	(edwin imail front-end folder-browser))
+    ("imail-core"	(edwin imail))
+    ("imail-file"	(edwin imail file-folder))
+    ("imail-imap"	(edwin imail imap-folder))
+    ("imail-rmail"	(edwin imail file-folder rmail-folder))
+    ("imail-summary"	(edwin imail front-end summary))
+    ("imail-top"	(edwin imail front-end))
+    ("imail-umail"	(edwin imail file-folder umail-folder))
+    ("imail-util"	(edwin imail))
+    ("imap-response"	(edwin imail imap-response))
+    ("imap-syntax"	(edwin imail imap-syntax))
+    ("url"		(runtime url))))

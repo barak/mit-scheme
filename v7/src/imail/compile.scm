@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.15 2001/11/05 21:23:58 cph Exp $
+;;; $Id: compile.scm,v 1.16 2001/12/18 21:32:08 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -26,21 +26,18 @@
 (load-option '*PARSER)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
-    (for-each compile-file
-	      '("imail-core"
+    (compile-file "url" '() (->environment '(RUNTIME)))
+    (for-each (lambda (filename)
+		(compile-file filename '() (->environment '(EDWIN))))
+	      '("imail-browser"
+		"imail-core"
 		"imail-file"
 		"imail-imap"
 		"imail-rmail"
+		"imail-summary"
+		"imail-top"
 		"imail-umail"
 		"imail-util"
 		"imap-response"
-		"imap-syntax"
-		"url"))
-    (for-each (let ((syntax-table
-		     (access edwin-syntax-table (->environment '(EDWIN)))))
-		(lambda (filename)
-		  (compile-file filename '() syntax-table)))
-	      '("imail-browser"
-		"imail-summary"
-		"imail-top"))
+		"imap-syntax"))
     (cref/generate-constructors "imail")))
