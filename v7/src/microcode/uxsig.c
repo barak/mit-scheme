@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.1 1990/06/20 19:37:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.2 1990/07/30 16:52:16 jinx Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -594,9 +594,10 @@ DEFUN (bind_handler, (signo, handler),
        int signo AND
        Tsignal_handler handler)
 {
-  if ((signo != 0) &&
-      ((handler != sighnd_stop) || (UX_SC_JOB_CONTROL ())) &&
-      ((current_handler (signo)) == SIG_DFL))
+  if ((signo != 0)
+      && ((handler != ((Tsignal_handler) sighnd_stop))
+	  || (UX_SC_JOB_CONTROL ()))
+      && ((current_handler (signo)) == SIG_DFL))
     INSTALL_HANDLER (signo, handler);
 }
 
@@ -767,12 +768,18 @@ static enum interrupt_handler
 DEFUN (encode_interrupt_handler, (handler), Tsignal_handler handler)
 {
   return
-    ((handler == sighnd_control_g) ? interrupt_handler_control_g
-     : (handler == sighnd_interactive) ? interrupt_handler_interactive
-     : (handler == sighnd_stop) ? interrupt_handler_stop
-     : (handler == sighnd_terminate) ? interrupt_handler_terminate
-     : (handler == SIG_IGN) ? interrupt_handler_ignore
-     : (handler == SIG_DFL) ? interrupt_handler_default
+    ((handler == ((Tsignal_handler) sighnd_control_g))
+     ? interrupt_handler_control_g
+     : (handler == ((Tsignal_handler) sighnd_interactive))
+     ? interrupt_handler_interactive
+     : (handler == ((Tsignal_handler) sighnd_stop))
+     ? interrupt_handler_stop
+     : (handler == ((Tsignal_handler) sighnd_terminate))
+     ? interrupt_handler_terminate
+     : (handler == ((Tsignal_handler) SIG_IGN))
+     ? interrupt_handler_ignore
+     : (handler == ((Tsignal_handler) SIG_DFL))
+     ? interrupt_handler_default
      : interrupt_handler_unknown);
 }
 
@@ -780,13 +787,19 @@ static Tsignal_handler
 DEFUN (decode_interrupt_handler, (encoding), enum interrupt_handler encoding)
 {
   return
-    ((encoding == interrupt_handler_control_g) ? sighnd_control_g
-     : (encoding == interrupt_handler_interactive) ? sighnd_interactive
-     : (encoding == interrupt_handler_stop) ? sighnd_stop
-     : (encoding == interrupt_handler_terminate) ? sighnd_terminate
-     : (encoding == interrupt_handler_ignore) ? SIG_IGN
-     : (encoding == interrupt_handler_default) ? SIG_DFL
-     : 0);
+    ((encoding == interrupt_handler_control_g)
+     ? ((Tsignal_handler) sighnd_control_g)
+     : (encoding == interrupt_handler_interactive)
+     ? ((Tsignal_handler) sighnd_interactive)
+     : (encoding == interrupt_handler_stop)
+     ? ((Tsignal_handler) sighnd_stop)
+     : (encoding == interrupt_handler_terminate)
+     ? ((Tsignal_handler) sighnd_terminate)
+     : (encoding == interrupt_handler_ignore)
+     ? ((Tsignal_handler) SIG_IGN)
+     : (encoding == interrupt_handler_default)
+     ? ((Tsignal_handler) SIG_DFL)
+     : ((Tsignal_handler) 0));
 }
 
 enum interrupt_handler

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.2 1990/06/28 18:20:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.3 1990/07/30 16:54:26 jinx Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -191,10 +191,11 @@ struct full_sigcontext
 
 #ifdef mips
 
-/* For now, no compiler */
-/* If the compiler is ever ported, look at <signal.h> */
+/* For now, no trap handling support in compiled code.
+   This should be fixed.
+ */
 
-#define sc_sp (sc_regs[29])
+#define sc_sp sc_regs[29]
 
 #endif /* mips */
 
