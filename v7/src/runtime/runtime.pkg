@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.129 1991/12/19 20:50:17 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.130 1992/01/23 19:15:49 arthur Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -2002,6 +2002,7 @@ MIT in each case. |#
 	  graphics-clear
 	  graphics-close
 	  graphics-coordinate-limits
+	  graphics-device?
 	  graphics-device-coordinate-limits
 	  graphics-device/properties
 	  graphics-disable-buffering
