@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.13 1990/01/11 01:01:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.14 1990/02/02 17:25:50 cph Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1396,7 +1396,11 @@ MIT in each case. |#
   (if (or (recnum? z)
 	  (real:< z -1)
 	  (real:< 1 z))
-      (complex:- rec:pi/2 (complex:asin z))
+      (complex:-i*
+       (complex:log
+	(complex:+ z
+		   (complex:+i*
+		    (complex:sqrt (complex:- 1 (complex:* z z)))))))
       ((copy real:acos) z)))
 
 (define (complex:atan z)
