@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.7 1990/04/04 18:23:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.8 1990/04/04 18:51:37 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -145,5 +145,5 @@ MIT in each case. |#
 		 result
 		 (error-irritant/noise #\newline)
 		 (error-irritant/noise "within procedure")
-		 (ucode-primitive file-touch)))))
-  unspecific)
+		 (ucode-primitive file-touch))
+	  result))))
