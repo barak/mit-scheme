@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.11 1991/03/14 04:22:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.12 1991/03/14 23:02:46 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -359,6 +359,12 @@ DEFUN (OS_channel_unregister, (channel), Tchannel channel)
     }
 }
 
+#ifdef HAVE_SELECT
+CONST int UX_have_select_p = 1;
+#else
+CONST int UX_have_select_p = 0;
+#endif
+
 enum select_input
 DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
 {
@@ -405,16 +411,15 @@ DEFUN (OS_channel_select_then_read, (channel, buffer, nbytes),
        size_t nbytes)
 {
 #ifdef HAVE_SELECT
-  if (OS_channels_registered > ((CHANNEL_REGISTERED (channel)) ? 1 : 0))
-    switch (UX_select_input ((CHANNEL_DESCRIPTOR (channel)),
-			     (! (CHANNEL_NONBLOCKING (channel)))))
-      {
-      case select_input_none:
-	return (-1);
-      case select_input_other:
-      case select_input_process_status:
-	return (-2);
-      }
+  switch (UX_select_input ((CHANNEL_DESCRIPTOR (channel)),
+			   (! (CHANNEL_NONBLOCKING (channel)))))
+    {
+    case select_input_none:
+      return (-1);
+    case select_input_other:
+    case select_input_process_status:
+      return (-2);
+    }
 #endif
   return (OS_channel_read (channel, buffer, nbytes));
 }

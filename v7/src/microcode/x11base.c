@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.17 1991/03/14 04:23:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.18 1991/03/14 23:03:03 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -37,7 +37,6 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #include "ux.h"
-#include "osio.h"
 #include "uxselect.h"
 #include "x11.h"
 
@@ -701,17 +700,12 @@ DEFUN (x_event_to_object, (event), XEvent * event)
    entry that reads events -- or else that all other event readers
    cooperate with this strategy.  */
 
-/* The time_limit argument is currently ignored, because Edwin doesn't
-   use it.  */
-
 static SCHEME_OBJECT
-DEFUN (xd_process_events, (xd, time_limit_p, time_limit),
+DEFUN (xd_process_events, (xd, non_block_p),
        struct xdisplay * xd AND
-       int time_limit_p AND
-       unsigned long time_limit)
+       int non_block_p)
 {
   Display * display = (XD_DISPLAY (xd));
-  int do_select = (OS_channels_registered > 0);
   unsigned int events_queued;
   if (XD_CACHED_EVENT_P (xd))
     {
@@ -719,17 +713,17 @@ DEFUN (xd_process_events, (xd, time_limit_p, time_limit),
       goto restart;
     }
   events_queued =
-    (do_select ? (XEventsQueued (display, QueuedAlready))
-     : time_limit_p ? (XEventsQueued (display, QueuedAfterReading))
+    (UX_have_select_p ? (XEventsQueued (display, QueuedAlready))
+     : non_block_p ? (XEventsQueued (display, QueuedAfterReading))
      : 0);
   while (1)
     {
       XEvent event;
       if (events_queued > 0)
 	events_queued -= 1;
-      else if (do_select)
+      else if (UX_have_select_p)
 	switch (UX_select_input ((ConnectionNumber (display)),
-				 (!time_limit_p)))
+				 (!non_block_p)))
 	  {
 	  case select_input_none:
 	    return (SHARP_F);
@@ -740,7 +734,7 @@ DEFUN (xd_process_events, (xd, time_limit_p, time_limit),
 	    events_queued = (XEventsQueued (display, QueuedAfterReading));
 	    continue;
 	  }
-      else if (time_limit_p)
+      else if (non_block_p)
 	return (SHARP_F);
       XNextEvent (display, (&event));
       if ((event . type) == KeymapNotify)
@@ -831,13 +825,8 @@ DEFINE_PRIMITIVE ("X-CLOSE-WINDOW", Prim_x_close_window, 1, 1, 0)
 DEFINE_PRIMITIVE ("X-DISPLAY-PROCESS-EVENTS", Prim_x_display_process_events, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  {
-    struct xdisplay * xd = (x_display_arg (1));
-    PRIMITIVE_RETURN
-      (((ARG_REF (2)) == SHARP_F)
-       ? (xd_process_events (xd, 0, 0))
-       : (xd_process_events (xd, 1, (arg_nonnegative_integer (2)))));
-  }
+  PRIMITIVE_RETURN
+    (xd_process_events ((x_display_arg (1)), (BOOLEAN_ARG (2))));
 }
 
 static void
