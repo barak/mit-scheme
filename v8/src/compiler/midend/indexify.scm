@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: indexify.scm,v 1.3 1995/03/28 05:19:27 adams Exp $
+$Id: indexify.scm,v 1.4 1995/06/15 18:01:55 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -38,6 +38,7 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (indexify/top-level program)
+  (indexify/do-dbg-info!)
   (indexify/expr program))
 
 (define-macro (define-indexifier keyword bindings . body)
@@ -98,7 +99,7 @@ MIT in each case. |#
 	 (internal-error "Unexpected use of %vector-index"
 			 `(CALL ,rator ,cont ,@rands)))
 	(else
-	 `(QUOTE ,(vector-index (QUOTE/text (first rands))
+ 	 `(QUOTE ,(vector-index (QUOTE/text (first rands))
 				(QUOTE/text (second rands)))))))
 
 (define (indexify/expr expr)
@@ -123,3 +124,21 @@ MIT in each case. |#
 
 (define (indexify/remember new old)
   (code-rewrite/remember new old))
+
+(define (indexify/do-dbg-info!)
+  (define (rewrite-indexifies! expr)
+    (cond ((QUOTE/? expr))
+	  ((LOOKUP/? expr))
+	  ((and (CALL/? expr)
+		(QUOTE/? (call/operator expr))
+		(eq? %vector-index (quote/text (call/operator expr)))
+		(for-all? (call/cont-and-operands expr) QUOTE/?))
+	   (let ((rands (call/operands expr)))
+	     (form/rewrite! expr
+	       `(QUOTE ,(vector-index (QUOTE/text (first rands))
+				      (QUOTE/text (second rands)))))))
+	  ((pair? expr)
+	   (map rewrite-indexifies! expr))))
+	  
+  (dbg-info/for-all-dbg-expressions! rewrite-indexifies!))
+   
