@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.54 1994/12/19 21:47:21 cph Exp $
+$Id: make.scm,v 14.55 1995/01/06 00:46:30 cph Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -125,7 +125,6 @@ MIT in each case. |#
   with-interrupt-mask)
 
 (define microcode-identification (microcode-identify))
-(define newline-char (vector-ref microcode-identification 5))
 (define os-name-string (vector-ref microcode-identification 8))
 (define tty-output-descriptor (tty-output-channel))
 
@@ -136,16 +135,10 @@ MIT in each case. |#
 	(cond ((not n) (loop start n-left))
 	      ((< n n-left) (loop (+ start n) (- n-left n))))))))
 
-(define (tty-write-char char)
-  (tty-write-string
-   (let ((string (string-allocate 1)))
-     (string-set! string 0 char)
-     string)))
-
 (define (fatal-error message)
-  (tty-write-char newline-char)
+  (tty-write-string newline-string)
   (tty-write-string message)
-  (tty-write-char newline-char)
+  (tty-write-string newline-string)
   (exit-with-value 1))
 
 ;;;; GC, Interrupts, Errors
@@ -179,11 +172,9 @@ MIT in each case. |#
 
 ;;;; Utilities
 
-
-
 (define (package-initialize package-name procedure-name mandatory?)
   (define (print-name string)
-    (tty-write-char newline-char)
+    (tty-write-string newline-string)
     (tty-write-string string)
     (tty-write-string " (")
     (let loop ((name package-name))
@@ -234,7 +225,7 @@ MIT in each case. |#
   value)
 
 (define (fasload filename purify?)
-  (tty-write-char newline-char)
+  (tty-write-string newline-string)
   (tty-write-string filename)
   (let ((value (binary-fasload filename)))
     (tty-write-string " loaded")
@@ -252,7 +243,7 @@ MIT in each case. |#
   (let* ((block-name (string-append "runtime_" filename))
 	 (value (initialize-c-compiled-block block-name)))
     (cond (value
-	   (tty-write-char newline-char)
+	   (tty-write-string newline-string)
 	   (tty-write-string block-name)
 	   (tty-write-string " initialized")
 	   (remember-to-purify purify? filename value))
@@ -305,6 +296,14 @@ MIT in each case. |#
 	(lambda (name)
 	  name				; ignored
 	  false))))
+
+(define os-name
+  (intern os-name-string))
+
+(define newline-string
+  (if (eq? 'UNIX os-name)
+      "\n"
+      "\r\n"))
 
 ;; Construct the package structure.
 ;; Lotta hair here to load the package code before its package is built.
@@ -391,7 +390,7 @@ MIT in each case. |#
 	   (eval (file->object filename #t #f) environment))
        unspecific))
    `((SORT-TYPE . MERGE-SORT)
-     (OS-TYPE . ,(intern os-name-string))
+     (OS-TYPE . ,os-name)
      (OPTIONS . NO-LOAD))))
 
 ;;; Funny stuff is done.  Rest of sequence is standardized.
@@ -468,9 +467,12 @@ MIT in each case. |#
    (RUNTIME DEBUGGER)
    ;; Misc (e.g., version)
    (RUNTIME)
-   ;; Graphics.  The last system loaded is the default for MAKE-GRAPHICS-DEVICE
+   ;; Graphics.  The last type initialized is the default for
+   ;; MAKE-GRAPHICS-DEVICE, only the types that are valid for the
+   ;; operating system are actually loaded and initialized.
    (RUNTIME STARBASE-GRAPHICS)
    (RUNTIME X-GRAPHICS)
+   (RUNTIME OS2-GRAPHICS)
    ;; Emacs -- last because it installs hooks everywhere which must be initted.
    (RUNTIME EMACS-INTERFACE)
    ;; More debugging
