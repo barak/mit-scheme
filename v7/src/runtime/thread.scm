@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.12 1993/04/28 19:47:27 cph Exp $
+$Id: thread.scm,v 1.13 1993/04/28 22:31:46 hal Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -227,7 +227,7 @@ MIT in each case. |#
 (define (%suspend-current-thread)
   (let ((thread (current-thread)))
     (let ((block-events? (thread/block-events? thread)))
-      (set-thread/block-events?! thread false)
+      (set-thread/block-events?! thread #f)
       (maybe-signal-input-thread-events)
       (let ((event
 	     (let ((event (handle-thread-events thread)))
@@ -239,8 +239,7 @@ MIT in each case. |#
 			(set-thread/continuation! thread continuation)
 			(thread-not-running thread 'WAITING))))
 		   event))))
-	(if (not block-events?)
-	    (set-thread/block-events?! thread #f))
+	(set-thread/block-events?! thread block-events?)
 	event))))
 
 (define (disallow-preempt-current-thread)
