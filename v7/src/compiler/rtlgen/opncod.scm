@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.60 1993/07/01 03:26:29 gjr Exp $
+$Id: opncod.scm,v 4.61 1993/10/26 19:34:45 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -472,8 +472,9 @@ MIT in each case. |#
 	    (if (and (object-type? (ucode-type fixnum) value)
 		     (not (negative? value)))
 		(finish
-		 (make-constant-locative base
-					 (+ value header-length-in-units)))
+		 (make-constant-locative
+		  base
+		  (back-end:+ value header-length-in-units)))
 		(unknown-index)))
 	  (unknown-index)))))
 
@@ -498,7 +499,7 @@ MIT in each case. |#
    (lambda (expression) (rtl:make-fetch (rtl:locative-offset expression 1)))
    (index-locative-generator rtl:locative-byte-offset
 			     rtl:locative-byte-index
-			     (* 2 address-units-per-object)
+			     (back-end:* address-units-per-object 2)
 			     scfg*scfg->scfg!)))
 
 (define float-memory-reference
