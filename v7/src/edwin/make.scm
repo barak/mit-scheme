@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 3.97 1999/02/01 03:56:42 cph Exp $
+$Id: make.scm,v 3.98 1999/02/18 04:06:10 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -45,4 +45,4 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				     ((UNIX) "edwinunx")
 				     (else "edwinunk"))))))
 	'QUERY)))))
-(add-identification! "Edwin" 3 97)
+(add-identification! "Edwin" 3 98)
