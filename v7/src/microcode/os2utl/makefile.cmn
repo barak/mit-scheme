@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile.cmn,v 1.4 1995/10/17 23:07:01 cph Exp $
+###	$Id: makefile.cmn,v 1.5 1995/10/30 08:08:12 cph Exp $
 ###
 ###	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ###
@@ -377,11 +377,14 @@ prmcon.$(OBJ) : scheme.tch prims.h prmcon.h
 $(OS2_OBJECTS) pros2fs.$(OBJ) pros2io.$(OBJ) pros2pm.$(OBJ) : \
 	dstack.h osscheme.h outf.h os.h ansidecl.h oscond.h posixtyp.h \
 	syscall.h osio.h os2.h os2api.h os2cthrd.h os2ctty.h os2io.h \
-	os2msg.h os2pm.h os2thrd.h
+	os2msg.h os2pm-mt.h os2pm.h os2pm-ed.h os2thrd.h
 os2ctty.$(OBJ) : osctty.h ossig.h
 os2env.$(OBJ) : scheme.tch osenv.h
 os2file.$(OBJ) : osfile.h
 os2fs.$(OBJ) : osfs.h
+os2pm.$(OBJ) : os2pm-id.h os2pm-mi.h os2pm-dc.h os2pm-rp.h
+os2pmcon.$(OBJ) : os2pmcon.h version.h
+os2pmcon.res : os2pmcon.rc os2pmcon.h
 os2proc.$(OBJ) : osproc.h
 os2top.$(OBJ) : scheme.tch ostop.h option.h
 os2tty.$(OBJ) : ostty.h
