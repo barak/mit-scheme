@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.151 1994/08/04 07:37:57 cph Exp $
+;;;	$Id: dired.scm,v 1.152 1994/08/04 08:48:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -79,64 +79,68 @@ Special value `always' suppresses confirmation."
   "Mode for \"editing\" directory listings.
 In dired, you are \"editing\" a list of the files in a directory.
 You can move using the usual cursor motion commands.
-Letters no longer insert themselves.
-Instead, type d to flag a file for Deletion.
-Type u to Unflag a file (remove its D or C flag).
-  Type Rubout to back up one line and unflag.
-Type x to eXecute the deletions requested.
+Letters no longer insert themselves.  Digits are prefix arguments.
+Instead, type \\[dired-flag-file-deletion] to flag a file for Deletion.
+Type \\[dired-mark] to Mark a file for later commands.
+  Most commands operate on the marked files and use the current file
+  if no files are marked.  Use a numeric prefix argument to operate on
+  the next ARG (or previous -ARG if ARG<0) files, or just `1'
+  to operate on the current file only.  Prefix arguments override marks.
+Type \\[dired-unmark] to Unmark a file.
+Type \\[dired-unmark-backward] to back up one line and unmark.
+Type \\[dired-do-deletions] to eXecute the deletions requested.
 Type f to Find the current line's file
-  (or Dired it, if it is a directory).
-Type o to find file or dired directory in Other window.
-Type # to flag temporary files (names beginning with #) for Deletion.
-Type ~ to flag backup files (names ending with ~) for Deletion.
-Type . to flag numerical backups for Deletion.
+  (or dired it in another buffer, if it is a directory).
+Type \\[dired-find-file-other-window] to find file or dired directory in Other window.
+Type \\[dired-flag-auto-save-files] to flag temporary files (names beginning with #) for Deletion.
+Type \\[dired-flag-backup-files] to flag backup files (names ending with ~) for Deletion.
+Type \\[dired-clean-directory] to flag numerical backups for Deletion.
   (Spares dired-kept-versions or its numeric argument.)
-Type r to rename a file.
-Type c to copy a file.
-Type g to read the directory again.  This discards all deletion-flags.
-Space and Rubout can be used to move down and up by lines.
-Also:
- M, G, O -- change file's mode, group or owner.
- C -- compress this file.  U -- uncompress this file.
- K -- encrypt/decrypt this file."
+Type \\[dired-do-rename] to rename a file.
+Type \\[dired-do-copy] to copy a file.
+Type \\[dired-revert] to read the directory again.  This discards all deletion-flags.
+Space and Rubout can be used to move down and up by lines."
 ;;Type v to view a file in View mode, returning to Dired when done.
   (lambda (buffer)
     (define-variable-local-value! buffer (ref-variable-object case-fold-search)
       false)
     (event-distributor/invoke! (ref-variable dired-mode-hook buffer) buffer)))
 
-(define-key 'dired #\r 'dired-do-rename)
-(define-key 'dired #\c-d 'dired-flag-file-deletion)
+(define-key 'dired #\# 'dired-flag-auto-save-files)
+(define-key 'dired #\. 'dired-clean-directory)
+(define-key 'dired #\? 'dired-summary)
 (define-key 'dired #\d 'dired-flag-file-deletion)
-(define-key 'dired #\v 'dired-view-file)
 (define-key 'dired #\e 'dired-find-file)
 (define-key 'dired #\f 'dired-find-file)
-(define-key 'dired #\m 'dired-mark)
-(define-key 'dired #\o 'dired-find-file-other-window)
-(define-key 'dired #\u 'dired-unmark)
-(define-key 'dired #\x 'dired-do-deletions)
-(define-key 'dired #\rubout 'dired-backup-unmark)
-(define-key 'dired #\M-rubout 'dired-unmark-all-files)
-(define-key 'dired #\? 'dired-summary)
-(define-key 'dired #\c 'dired-do-copy)
-(define-key 'dired #\# 'dired-flag-auto-save-files)
-(define-key 'dired #\~ 'dired-flag-backup-files)
-(define-key 'dired #\. 'dired-clean-directory)
+(define-key 'dired #\g 'dired-revert)
 (define-key 'dired #\h 'describe-mode)
-(define-key 'dired #\space 'dired-next-line)
+(define-key 'dired #\m 'dired-mark)
+(define-key 'dired #\n 'dired-next-line)
+(define-key 'dired #\o 'dired-find-file-other-window)
+(define-key 'dired #\p 'dired-previous-line)
+(define-key 'dired #\q 'dired-quit)
+(define-key 'dired #\u 'dired-unmark)
+(define-key 'dired #\v 'dired-view-file)
+(define-key 'dired #\x 'dired-do-deletions)
+(define-key 'dired #\~ 'dired-flag-backup-files)
+
+(define-key 'dired #\C 'dired-do-copy)
+(define-key 'dired #\G 'dired-chgrp)
+(define-key 'dired #\K 'dired-krypt-file)
+(define-key 'dired #\M 'dired-chmod)
+(define-key 'dired #\O 'dired-chown)
+(define-key 'dired #\R 'dired-do-rename)
+(define-key 'dired #\Z 'dired-do-compress)
+
+(define-key 'dired #\c-d 'dired-flag-file-deletion)
 (define-key 'dired #\c-n 'dired-next-line)
 (define-key 'dired #\c-p 'dired-previous-line)
-(define-key 'dired #\n 'dired-next-line)
-(define-key 'dired #\p 'dired-previous-line)
-(define-key 'dired #\g 'dired-revert)
-(define-key 'dired #\C 'dired-compress)
-(define-key 'dired #\U 'dired-uncompress)
-(define-key 'dired #\M 'dired-chmod)
-(define-key 'dired #\G 'dired-chgrp)
-(define-key 'dired #\O 'dired-chown)
-(define-key 'dired #\q 'dired-quit)
-(define-key 'dired #\K 'dired-krypt-file)
 (define-key 'dired #\c-\] 'dired-abort)
+
+(define-key 'dired #\rubout 'dired-backup-unmark)
+(define-key 'dired #\M-rubout 'dired-unmark-all-files)
+(define-key 'dired #\space 'dired-next-line)
+
 (let-syntax ((define-function-key
                (macro (mode key command)
                  (let ((token (if (pair? key) (car key) key)))
@@ -809,10 +813,16 @@ Actions controlled by variables list-directory-brief-switches
     (let ((point-on-line? (mark= lstart (line-start (current-point) 0))))
       (with-read-only-defeated lstart
 	(lambda ()
-	  (delete-string lstart (line-start lstart 1))
-	  (if (pathname=? (buffer-default-directory (mark-buffer lstart))
-			  (directory-pathname pathname))
-	      (insert-dired-entry! pathname lstart))))
+	  (let ((marker-char (mark-right-char lstart))
+		(lstart* (mark-left-inserting-copy lstart)))
+	    (if (pathname=? (buffer-default-directory (mark-buffer lstart))
+			    (directory-pathname pathname))
+		(begin
+		  (insert-dired-entry! pathname lstart)
+		  (delete-right-char lstart)
+		  (insert-chars marker-char 1 lstart)))
+	    (delete-string lstart* (line-start lstart* 1))
+	    (mark-temporary! lstart*))))
       (if point-on-line?
 	  (set-dired-point! lstart)))
     (mark-temporary! lstart)))
