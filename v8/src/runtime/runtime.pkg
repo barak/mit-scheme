@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.77 1990/09/13 23:08:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.78 1990/09/13 23:30:01 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -380,7 +380,14 @@ MIT in each case. |#
   (files "debug")
   (parent (runtime debugger-command-loop))
   (export ()
-	  debug)
+	  debug
+	  debugger:auto-toggle?
+	  debugger:count-subproblems-limit
+	  debugger:list-breadth-limit
+	  debugger:list-depth-limit
+	  debugger:print-return-values?
+	  debugger:student-walk?
+	  debugger:use-history?)
   (initialization (initialize-package!)))
 
 (define-package (runtime debugger-command-loop)

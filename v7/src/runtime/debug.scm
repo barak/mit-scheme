@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.20 1990/09/12 02:47:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.21 1990/09/13 23:30:16 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -42,6 +42,8 @@ MIT in each case. |#
 (define debugger:auto-toggle? true)
 (define debugger:count-subproblems-limit 50)
 (define debugger:use-history? false)
+(define debugger:list-depth-limit 5)
+(define debugger:list-breadth-limit 5)
 
 (define (debug #!optional object)
   (let ((dstate
@@ -310,7 +312,9 @@ MIT in each case. |#
 		   (- (output-port/x-size (current-output-port)) 11))))))))))
 
 (define (debugger-pp expression indentation)
-  (pretty-print expression (current-output-port) true indentation))
+  (fluid-let ((*unparser-list-depth-limit* debugger:list-depth-limit)
+	      (*unparser-list-breadth-limit* debugger:list-breadth-limit))
+    (pretty-print expression (current-output-port) true indentation)))
 
 (define expression-indentation 4)
 
