@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.11 1999/01/29 05:17:18 cph Exp $
+;;; $Id: compile.scm,v 1.12 1999/05/13 02:08:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-1999 Massachusetts Institute of Technology
 ;;;
@@ -60,7 +60,7 @@ with output going to the buffer *compilation*."
 			     'HISTORY 'FGREP
 			     'HISTORY-INDEX 0)))
   (lambda (command)
-    (run-compilation (string-append "grep -n " command " /dev/null"))))
+    (run-compilation (string-append "fgrep -n " command " /dev/null"))))
 
 (define-command kill-compilation
   "Kill the process made by the \\[compile] command."
