@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulfix.scm,v 1.4 1991/10/25 00:13:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulfix.scm,v 1.5 1992/03/11 09:31:51 cph Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -497,15 +497,15 @@ MIT in each case. |#
 
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate) (REGISTER (? source)))
-  (compare (fixnum-pred-1->cc predicate)
-	   (standard-source! source)
-	   0))
+  (compare-immediate (fixnum-pred-1->cc predicate)
+		     0
+		     (standard-source! source)))
 
 (define (fixnum-pred-1->cc predicate)
   (case predicate
     ((ZERO-FIXNUM?) '=)
-    ((NEGATIVE-FIXNUM?) '<)
-    ((POSITIVE-FIXNUM?) '>)
+    ((NEGATIVE-FIXNUM?) '>)
+    ((POSITIVE-FIXNUM?) '<)
     (else (error "unknown fixnum predicate" predicate))))
 
 (define-rule predicate
