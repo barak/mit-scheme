@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: autold.scm,v 1.61 2001/12/19 01:45:49 cph Exp $
+;;;$Id: autold.scm,v 1.62 2001/12/19 01:57:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -176,7 +176,7 @@ Second arg is prefix arg when called interactively."
 		(lambda (entry)
 		  (load (merge-pathnames (car entry) directory)
 			(cadr entry)
-			(cadr entry)
+			'DEFAULT
 			(or (null? (cddr entry)) (caddr entry))))
 		(cdr library)))
 	     (if (not (memq (car library) loaded-libraries))
