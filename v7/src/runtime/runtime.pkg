@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.67 1990/06/20 20:29:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.68 1990/06/21 22:11:42 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -1318,15 +1318,16 @@ MIT in each case. |#
 	  output-buffer/write-string-block
 	  tty-output-channel)
   (export (runtime console-input)
+	  channel-type=file?
 	  channel-type=terminal?
+	  input-buffer/channel
 	  input-buffer/char-ready?
+	  input-buffer/peek-char
 	  input-buffer/read-char
 	  make-input-buffer
 	  terminal-buffered
 	  terminal-buffered?
-	  terminal-char-ready?
 	  terminal-nonbuffered
-	  terminal-read-char
 	  tty-input-channel)
   (initialization (initialize-package!)))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.6 1990/06/20 20:29:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.7 1990/06/21 22:11:38 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -261,13 +261,6 @@ MIT in each case. |#
   ((ucode-primitive file-set-position 2) (channel-descriptor channel)
 					 position))
 
-(define (terminal-read-char channel)
-  ((ucode-primitive terminal-read-char 1) (channel-descriptor channel)))
-
-(define (terminal-char-ready? channel delay)
-  ((ucode-primitive terminal-char-ready? 2) (channel-descriptor channel)
-					    delay))
-
 (define (terminal-buffered? channel)
   ((ucode-primitive terminal-buffered? 1) (channel-descriptor channel)))
 
@@ -503,17 +496,24 @@ MIT in each case. |#
 	   (and (not (negative? n))
 		(+ (input-buffer/chars-available buffer) n))))))
 
-(define (input-buffer/char-ready? buffer)
-  (char-ready? buffer
-    (lambda (buffer)
-      (case (channel-blocking? (input-buffer/channel buffer))
-	((#F)
-	 (input-buffer/fill buffer))
-	((#T)
-	 (with-channel-blocking (input-buffer/channel buffer)
-				false
-				(lambda () (input-buffer/fill buffer))))
-	(else false)))))
+(define (input-buffer/char-ready? buffer interval)
+  (let ((fill
+	 (if (positive? interval)
+	     (lambda ()
+	       (let ((timeout (+ (real-time-clock) interval)))
+		 (let loop ()
+		   (cond ((input-buffer/fill buffer) true)
+			 ((< (real-time-clock) timeout) (loop))
+			 (else false)))))
+	     (lambda ()
+	       (input-buffer/fill buffer)))))
+    (char-ready? buffer
+      (lambda (buffer)
+	(let ((channel (input-buffer/channel buffer)))
+	  (case (channel-blocking? channel)
+	    ((#F) (fill))
+	    ((#T) (with-channel-blocking channel false fill))
+	    (else false)))))))
 
 (define (char-ready? buffer fill)
   (let ((end-index (input-buffer/end-index buffer)))
