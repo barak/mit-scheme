@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: posixtyp.h,v 1.10 1994/10/04 20:05:57 cph Exp $
+$Id: posixtyp.h,v 1.11 1994/11/28 04:30:16 cph Exp $
 
 Copyright (c) 1990-1994 Massachusetts Institute of Technology
 
@@ -103,14 +103,35 @@ MIT in each case. */
 /*#define _CC_T*/
 #endif
 
-#if defined(_OS2) && defined(__IBMC__)
+#ifdef _OS2
+#ifdef __IBMC__
+
 #include <sys/types.h>
 #include <time.h>
 #define _TIME_T
 #define _OFF_T
 #define _SIZE_T
 #define _CLOCK_T
-#endif /* _OS2 && __IBMC__ */
+
+#else /* not __IBMC__ */
+#ifdef __GNUC__
+
+/* This is for GCC with the GNU C library.  */
+#include <sys/types.h>
+#include <time.h>
+#define _TIME_T
+#define _OFF_T
+#define _SIZE_T
+#define _CLOCK_T
+#define _MODE_T
+#define _NLINK_T
+#define _PID_T
+#define _UID_T
+#define _GID_T
+
+#endif /* __GNUC__ */
+#endif /* not __IBMC__ */
+#endif /* _OS2 */
 
 #ifndef _MODE_T
 #define _MODE_T
