@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.83 1994/01/10 21:31:20 gjr Exp $
+$Id: cmpint.c,v 1.84 1994/11/28 04:03:58 cph Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -116,6 +116,39 @@ MIT in each case. */
 #  define PUSH_D_CACHE_REGION(addr, nwords) FLUSH_I_CACHE_REGION(addr, nwords)
 #endif
 
+/* ASM_ENTRY_POINT, EXFNX, and DEFNX are for OS/2.  The IBM C Set++/2
+   compiler has several different external calling conventions.  The
+   default calling convention is called _Optlink, uses a combination
+   of registers and the stack, and is complicated.  The calling
+   convention used for operating system interface procedures is called
+   _System, uses only the stack, and is very similar to the calling
+   conventions used with our DOS compilers.  So, in order to simplify
+   the changes to the assembly language, we use _System conventions
+   for calling C procedures from the assembly language file.
+
+   Since _Optlink is the default, we must somehow cause the relevant
+   procedures to be compiled using _System.  The easiest way to do
+   this is to force the use of _System everywhere, but that's
+   undesirable since _Optlink is generally more efficient.  Instead,
+   we use the ASM_ENTRY_POINT wrapper to cause each of the relevant
+   procedures to be tagged with the compiler's _System keyword.  The
+   relevant procedures are all of the SCHEME_UTILITY procedures,
+   C_to_interface, interface_to_C, and interface_to_scheme.  */
+
+#ifndef ASM_ENTRY_POINT
+#define ASM_ENTRY_POINT(name) name
+#endif
+
+#ifdef __STDC__
+#define EXFNX(name, proto) ASM_ENTRY_POINT (name) proto
+#define DEFNX(name, arglist, args) ASM_ENTRY_POINT (name) (args)
+#define DEFNX_VOID(name) ASM_ENTRY_POINT (name) (void)
+#else
+#define EXFNX(name, proto) ASM_ENTRY_POINT (name) ()
+#define DEFNX(name, arglist, args) ASM_ENTRY_POINT (name) arglist args;
+#define DEFNX_VOID(name) ASM_ENTRY_POINT (name) ()
+#endif
+
 /* Make noise words invisible to the C compiler. */
 
 #define C_UTILITY
@@ -132,7 +165,7 @@ typedef instruction * utility_result;
 
 /* Imports from assembly language */
 
-extern void EXFUN (C_to_interface, (void *));
+extern void EXFNX (C_to_interface, (void *));
 extern utility_result interface_to_C_hook;
 
 extern long C_return_value;
@@ -163,7 +196,7 @@ long C_return_value;
 #else
 #  define REFENTRY(name) ((void (*)()) name)
 #  define VARENTRY(name) void (*name)()
-#  define EXTENTRY(name) extern void EXFUN (name, (void))
+#  define EXTENTRY(name) extern void EXFNX (name, (void))
 #endif
 
 /* Structure returned by SCHEME_UTILITYs */
@@ -182,7 +215,7 @@ typedef struct utility_result_s utility_result;
 
 /* Imports from assembly language */
 
-extern long EXFUN (C_to_interface, (void *));
+extern long EXFNX (C_to_interface, (void *));
 
 EXTENTRY (interface_to_C);
 EXTENTRY (interface_to_scheme);
@@ -216,7 +249,7 @@ EXTENTRY (interface_to_scheme);
 /* utility table entries. */
 
 typedef utility_result EXFUN
-  ((*utility_table_entry), (long, long, long, long));
+  ((*ASM_ENTRY_POINT(utility_table_entry)), (long, long, long, long));
 
 #define RETURN_UNLESS_EXCEPTION(code, entry_point)                      \
 {                                                                       \
@@ -324,7 +357,8 @@ static SCHEME_OBJECT reflect_to_interface;
 extern C_UTILITY SCHEME_OBJECT EXFUN (bkpt_install, (PTR));
 extern C_UTILITY SCHEME_OBJECT EXFUN (bkpt_closure_install, (PTR));
 extern C_UTILITY Boolean EXFUN (bkpt_p, (PTR));
-extern C_UTILITY SCHEME_OBJECT EXFUN (bkpt_proceed, (PTR, SCHEME_OBJECT, SCHEME_OBJECT));
+extern C_UTILITY SCHEME_OBJECT EXFUN
+  (bkpt_proceed, (PTR, SCHEME_OBJECT, SCHEME_OBJECT));
 extern C_UTILITY void EXFUN (bkpt_remove, (PTR, SCHEME_OBJECT));
 
 /* These definitions reflect the indices into the table above. */
@@ -791,7 +825,7 @@ DEFUN (compiled_with_stack_marker, (thunk), SCHEME_OBJECT thunk)
  */
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_return_to_interpreter,
+DEFNX (comutil_return_to_interpreter,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -831,7 +865,7 @@ static utility_result
  */
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_primitive_apply,
+DEFNX (comutil_primitive_apply,
        (primitive, ignore_2, ignore_3, ignore_4),
        SCHEME_OBJECT primitive
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -850,7 +884,7 @@ DEFUN (comutil_primitive_apply,
  */
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_primitive_lexpr_apply,
+DEFNX (comutil_primitive_lexpr_apply,
        (primitive, ignore_2, ignore_3, ignore_4),
        SCHEME_OBJECT primitive
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -867,7 +901,7 @@ DEFUN (comutil_primitive_lexpr_apply,
  */
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_apply,
+DEFNX (comutil_apply,
        (procedure, nactuals, ignore_3, ignore_4),
        SCHEME_OBJECT procedure
        AND unsigned long nactuals
@@ -968,7 +1002,7 @@ loop:
 */
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_error,
+DEFNX (comutil_error,
        (nactuals, ignore_2, ignore_3, ignore_4),
        long nactuals AND
        long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -990,7 +1024,7 @@ DEFUN (comutil_error,
  */
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_lexpr_apply,
+DEFNX (comutil_lexpr_apply,
        (entry_address_raw, nactuals, ignore_3, ignore_4),
        SCHEME_ADDR entry_address_raw AND long nactuals
        AND long ignore_3 AND long ignore_4)
@@ -1227,7 +1261,7 @@ exit_proc:
 */
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_link,
+DEFNX (comutil_link,
        (ret_add_raw, block_address_raw, constant_address_raw, sections),
        SCHEME_ADDR ret_add_raw
        AND SCHEME_ADDR block_address_raw
@@ -1316,7 +1350,7 @@ DEFUN_VOID (comp_link_caches_restart)
 */
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_operator_apply_trap,
+DEFNX (comutil_operator_apply_trap,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -1331,7 +1365,7 @@ DEFUN (comutil_operator_apply_trap,
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_operator_arity_trap,
+DEFNX (comutil_operator_arity_trap,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -1346,7 +1380,7 @@ DEFUN (comutil_operator_arity_trap,
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_operator_entity_trap,
+DEFNX (comutil_operator_entity_trap,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -1361,7 +1395,7 @@ DEFUN (comutil_operator_entity_trap,
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_operator_interpreted_trap,
+DEFNX (comutil_operator_interpreted_trap,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -1378,7 +1412,7 @@ DEFUN (comutil_operator_interpreted_trap,
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_operator_lexpr_trap,
+DEFNX (comutil_operator_lexpr_trap,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -1395,7 +1429,7 @@ DEFUN (comutil_operator_lexpr_trap,
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_operator_primitive_trap,
+DEFNX (comutil_operator_primitive_trap,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -1423,7 +1457,7 @@ extern SCHEME_OBJECT EXFUN (compiler_var_error,
 */
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_operator_lookup_trap,
+DEFNX (comutil_operator_lookup_trap,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -1497,7 +1531,7 @@ DEFUN_VOID (comp_op_lookup_trap_restart)
  */
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_operator_1_0_trap,
+DEFNX (comutil_operator_1_0_trap,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -1509,7 +1543,7 @@ DEFUN (comutil_operator_1_0_trap,
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_operator_2_1_trap,
+DEFNX (comutil_operator_2_1_trap,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -1524,7 +1558,7 @@ DEFUN (comutil_operator_2_1_trap,
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_operator_2_0_trap,
+DEFNX (comutil_operator_2_0_trap,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -1537,7 +1571,7 @@ DEFUN (comutil_operator_2_0_trap,
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_operator_3_2_trap,
+DEFNX (comutil_operator_3_2_trap,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -1554,7 +1588,7 @@ DEFUN (comutil_operator_3_2_trap,
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_operator_3_1_trap,
+DEFNX (comutil_operator_3_1_trap,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -1570,7 +1604,7 @@ DEFUN (comutil_operator_3_1_trap,
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_operator_3_0_trap,
+DEFNX (comutil_operator_3_0_trap,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -1584,7 +1618,7 @@ DEFUN (comutil_operator_3_0_trap,
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_operator_4_3_trap,
+DEFNX (comutil_operator_4_3_trap,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -1604,7 +1638,7 @@ DEFUN (comutil_operator_4_3_trap,
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_operator_4_2_trap,
+DEFNX (comutil_operator_4_2_trap,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -1622,7 +1656,7 @@ DEFUN (comutil_operator_4_2_trap,
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_operator_4_1_trap,
+DEFNX (comutil_operator_4_1_trap,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -1639,7 +1673,7 @@ DEFUN (comutil_operator_4_1_trap,
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_operator_4_0_trap,
+DEFNX (comutil_operator_4_0_trap,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -1696,7 +1730,7 @@ DEFUN (compiler_interrupt_common, (entry_point_raw, state),
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_interrupt_closure, (ignore_1, ignore_2, ignore_3, ignore_4),
+DEFNX (comutil_interrupt_closure, (ignore_1, ignore_2, ignore_3, ignore_4),
        long ignore_1 AND
        long ignore_2 AND
        long ignore_3 AND
@@ -1706,7 +1740,7 @@ DEFUN (comutil_interrupt_closure, (ignore_1, ignore_2, ignore_3, ignore_4),
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_interrupt_dlink,
+DEFNX (comutil_interrupt_dlink,
        (entry_point_raw, dlink_raw, ignore_3, ignore_4),
        SCHEME_ADDR entry_point_raw AND
        SCHEME_ADDR dlink_raw AND
@@ -1720,7 +1754,7 @@ DEFUN (comutil_interrupt_dlink,
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_interrupt_procedure,
+DEFNX (comutil_interrupt_procedure,
        (entry_point_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR entry_point_raw AND
        long ignore_2 AND
@@ -1733,7 +1767,7 @@ DEFUN (comutil_interrupt_procedure,
 /* Val has live data, and there is no entry address on the stack */
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_interrupt_continuation,
+DEFNX (comutil_interrupt_continuation,
        (return_address_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR return_address_raw AND
        long ignore_2 AND
@@ -1746,7 +1780,7 @@ DEFUN (comutil_interrupt_continuation,
 /* Env has live data; no entry point on the stack */
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_interrupt_ic_procedure,
+DEFNX (comutil_interrupt_ic_procedure,
        (entry_point_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR entry_point_raw AND
        long ignore_2 AND
@@ -1757,7 +1791,8 @@ DEFUN (comutil_interrupt_ic_procedure,
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_interrupt_continuation_2, (ignore_1, ignore_2, ignore_3, ignore_4),
+DEFNX (comutil_interrupt_continuation_2,
+       (ignore_1, ignore_2, ignore_3, ignore_4),
        long ignore_1 AND
        long ignore_2 AND
        long ignore_3 AND
@@ -1782,7 +1817,7 @@ DEFUN_VOID (comp_interrupt_restart)
 /* Assigning a variable that has a trap in it (except unassigned) */
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_assignment_trap,
+DEFNX (comutil_assignment_trap,
        (return_address_raw, extension_addr_raw, value, ignore_4),
        SCHEME_ADDR return_address_raw
        AND SCHEME_ADDR extension_addr_raw
@@ -1846,7 +1881,7 @@ DEFUN_VOID (comp_assignment_trap_restart)
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_cache_lookup_apply,
+DEFNX (comutil_cache_lookup_apply,
        (extension_addr_raw, block_address_raw, nactuals, ignore_4),
        SCHEME_ADDR extension_addr_raw
        AND SCHEME_ADDR block_address_raw
@@ -1918,7 +1953,7 @@ DEFUN_VOID (comp_cache_lookup_apply_restart)
 
 #define CMPLR_REF_TRAP(name, c_trap, ret_code, restart, c_lookup)	\
 SCHEME_UTILITY utility_result						\
-DEFUN (name,								\
+DEFNX (name,								\
        (return_address_raw, extension_addr_raw, ignore_3, ignore_4),	\
        SCHEME_ADDR return_address_raw					\
        AND SCHEME_ADDR extension_addr_raw				\
@@ -2005,7 +2040,7 @@ CMPLR_REF_TRAP(comutil_unassigned_p_trap,
 
 #define COMPILER_ARITH_PRIM(name, fobj_index, arity)			\
 SCHEME_UTILITY utility_result						\
-DEFUN (name,								\
+DEFNX (name,								\
        (ignore_1, ignore_2, ignore_3, ignore_4),			\
        long ignore_1 AND long ignore_2					\
        AND long ignore_3 AND long ignore_4)				\
@@ -2042,7 +2077,7 @@ COMPILER_ARITH_PRIM (comutil_zero, GENERIC_TRAMPOLINE_ZERO_P, 2)
 
 #define CMPLR_REFERENCE(util_name, c_proc, ret_code, restart_name)	\
 SCHEME_UTILITY utility_result						\
-DEFUN (util_name,							\
+DEFNX (util_name,							\
        (ret_add_raw, environment, variable, ignore_4),			\
        SCHEME_ADDR ret_add_raw						\
        AND SCHEME_OBJECT environment AND SCHEME_OBJECT variable		\
@@ -2098,7 +2133,7 @@ DEFUN_VOID (restart_name)						\
 
 #define CMPLR_ASSIGNMENT(util_name, c_proc, ret_code, restart_name)	\
 SCHEME_UTILITY utility_result						\
-DEFUN (util_name,							\
+DEFNX (util_name,							\
        (ret_add_raw, environment, variable, value),			\
        SCHEME_ADDR ret_add_raw						\
        AND SCHEME_OBJECT environment					\
@@ -2192,7 +2227,7 @@ CMPLR_ASSIGNMENT(comutil_definition,
 		 comp_definition_restart)
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_lookup_apply,
+DEFNX (comutil_lookup_apply,
        (environment, variable, nactuals, ignore_4),
        SCHEME_OBJECT environment AND SCHEME_OBJECT variable
        AND long nactuals AND long ignore_4)
@@ -2249,7 +2284,7 @@ DEFUN_VOID (comp_lookup_apply_restart)
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_primitive_error,
+DEFNX (comutil_primitive_error,
        (ret_add_raw, primitive, ignore_3, ignore_4),
        SCHEME_ADDR ret_add_raw
        AND SCHEME_OBJECT primitive
@@ -2951,7 +2986,7 @@ DEFUN (bkpt_proceed, (ep, handle, state),
 #endif /* HAVE_BKPT_SUPPORT */
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_compiled_code_bkpt,
+DEFNX (comutil_compiled_code_bkpt,
        (entry_point_raw, state_raw, ignore_3, ignore_4),
        SCHEME_ADDR entry_point_raw AND SCHEME_ADDR state_raw
        AND long ignore_3 AND long ignore_4)
@@ -2997,7 +3032,7 @@ DEFUN (comutil_compiled_code_bkpt,
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_compiled_closure_bkpt,
+DEFNX (comutil_compiled_closure_bkpt,
        (entry_point_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR entry_point_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -3018,7 +3053,7 @@ DEFUN (comutil_compiled_closure_bkpt,
 }
 
 SCHEME_UTILITY utility_result
-DEFUN (comutil_reflect_to_interface,
+DEFNX (comutil_reflect_to_interface,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
@@ -3320,7 +3355,8 @@ extern int EXFUN (pc_to_utility_index, (unsigned long));
 #endif
 
 static int last_util_table_index =
-  (((sizeof (utility_descriptor_table)) / (sizeof (struct util_descriptor_s))) - 1);
+  (((sizeof (utility_descriptor_table)) / (sizeof (struct util_descriptor_s)))
+   - 1);
 
 char *
 DEFUN (utility_index_to_name, (index), int index)

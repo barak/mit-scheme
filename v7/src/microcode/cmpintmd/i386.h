@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: i386.h,v 1.24 1993/08/26 05:38:15 gjr Exp $
+$Id: i386.h,v 1.25 1994/11/28 04:05:21 cph Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,6 +48,14 @@ MIT in each case. */
 
 /* Until cmpaux-i386.m4 is updated. */
 #define CMPINT_USE_STRUCS
+
+/* Hack for OS/2 calling-convention type: */
+
+#ifdef _OS2
+#define ASM_ENTRY_POINT(name) (_System name)
+#else
+#define ASM_ENTRY_POINT(name) name
+#endif
 
 /*
 
@@ -510,7 +518,7 @@ extern unsigned long winnt_address_delta;
 void
 DEFUN_VOID (i386_reset_hook)
 {
-  extern int EXFUN (i386_interface_initialize, (void));
+  extern int EXFUN (ASM_ENTRY_POINT(i386_interface_initialize), (void));
   int offset = (COMPILER_REGBLOCK_N_FIXED * (sizeof (SCHEME_OBJECT)));
   unsigned char * esi_value = ((unsigned char *) (&Registers[0]));
   int fp_support_present = (i386_interface_initialize ());
