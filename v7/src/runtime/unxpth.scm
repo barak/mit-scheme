@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.8 1991/11/05 20:37:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.9 1992/02/13 18:26:43 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -231,16 +231,25 @@ MIT in each case. |#
 
 (define (unix/directory-pathname-as-file pathname)
   (let ((directory (%pathname-directory pathname)))
-    (if (not (and (pair? directory) (pair? (cdr directory))))
+    (if (not (and (pair? directory)
+		  (or (eq? 'ABSOLUTE (car directory))
+		      (pair? (cdr directory)))))
 	(error:bad-range-argument pathname 'DIRECTORY-PATHNAME-AS-FILE))
-    (parse-name (unparse-directory-component (car (last-pair directory)))
-      (lambda (name type)
+    (if (null? (cdr directory))
 	(%make-pathname (%pathname-host pathname)
 			'UNSPECIFIC
-			(simplify-directory (except-last-pair directory))
-			name
-			type
-			'UNSPECIFIC)))))
+			directory
+			""
+			false
+			'UNSPECIFIC)
+	(parse-name (unparse-directory-component (car (last-pair directory)))
+	  (lambda (name type)
+	    (%make-pathname (%pathname-host pathname)
+			    'UNSPECIFIC
+			    (simplify-directory (except-last-pair directory))
+			    name
+			    type
+			    'UNSPECIFIC))))))
 
 ;;;; Miscellaneous
 
