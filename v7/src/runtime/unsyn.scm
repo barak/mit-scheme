@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unsyn.scm,v 14.16 1994/03/22 21:36:27 cph Exp $
+$Id: unsyn.scm,v 14.17 1994/08/18 19:50:04 adams Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -108,7 +108,11 @@ MIT in each case. |#
 ;;;; Unsyntax Quanta
 
 (define (unsyntax-constant object)
-  (cond ((or (pair? object) (symbol? object))
+  (cond (;; R4RS self-evaluating objects:
+	 (or (boolean? object) (number? object) (char? object) (string? object))
+	 object)
+	(;; R4RS quoted data (in addition to above)
+	 (or (pair? object) (null? object) (symbol? object) (vector? object))
 	 `(QUOTE ,object))
 	((compiled-expression? object)
 	 (let ((scode (compiled-expression/scode object)))
