@@ -6,10 +6,10 @@
 @setchapternewpage odd
 @synindex vr fn
 
-@c $Id: sos.texinfo,v 1.2 1993/02/24 05:52:51 cph Exp $
+@c $Id: sos.texinfo,v 1.3 1993/02/24 07:45:54 cph Exp $
 
 @set TITLE The SOS Reference Manual
-@set EDITION 1.2
+@set EDITION 1.3
 @set UPDATED 21 February 1993
 @set UPDATE-MONTH February 1993
 
@@ -570,11 +570,10 @@ Returns @code{#t} if @var{object} is an instance, otherwise returns
 @code{#f}.
 @end deffn
 
-@deffn Procedure instance-of? instance class
-Returns @code{#t} if @var{instance} is a general instance of
-@var{class}, otherwise returns @code{#f}.  In other words, this
-predicate is true if the class of @var{instance} is @var{class} or one
-of its subclasses.
+@deffn Procedure instance-of? object class
+Returns @code{#t} if @var{object} is a general instance of @var{class},
+otherwise returns @code{#f}.  In other words, this predicate is true if
+the class of @var{object} is @var{class} or one of its subclasses.
 @end deffn
 
 @node Slots, Generic Procedures, Instances, Language
