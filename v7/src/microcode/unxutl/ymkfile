@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.2 1989/07/24 21:07:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.3 1989/07/26 04:16:14 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -112,16 +112,15 @@ MIT in each case. */
 
 /* Some machines don't find the standard C libraries in the usual place.  */
 #ifndef LIB_STANDARD
-#define LIB_STANDARD -lc
+#define LIB_STANDARD
 #endif
 
 #ifndef LIB_MATH
 #define LIB_MATH -lm
 #endif
 
-/* Unless inhibited or changed, use -lg to link for debugging.  */
-#ifndef LIBS_DEBUG
-#define LIBS_DEBUG -lg
+#ifndef LIB_DEBUG
+#define LIB_DEBUG -lg
 #endif
 
 #ifndef LIBX11_MACHINE
@@ -203,6 +202,18 @@ CC = cc
 M4 = m4
 AS = as
 
+#ifdef SUPPRESS_C_OPTIMIZER
+#undef C_OPTIMIZE_SWITCH
+#define C_OPTIMIZE_SWITCH
+#endif
+
+#ifdef SUPPRESS_C_DEBUGGING
+#undef C_DEBUG_SWITCH
+#define C_DEBUG_SWITCH
+#undef LIB_DEBUG
+#define LIB_DEBUG
+#endif
+
 LDFLAGS = LD_SWITCH_SYSTEM LD_SWITCH_MACHINE
 
 CFLAGS = C_OPTIMIZE_SWITCH C_SWITCH_MACHINE C_SWITCH_SYSTEM C_SWITCH_FEATURES \
@@ -248,7 +259,7 @@ SCHEME_SOURCES = $(X_SOURCES) $(CTERM_SOURCES) $(GRAPHICS_SOURCES) \
 SCHEME_OBJECTS = $(X_OBJECTS) $(CTERM_OBJECTS) $(GRAPHICS_OBJECTS) \
 	OBJECTS_SYSTEM OBJECTS_MACHINE $(USER_PRIM_OBJECTS) usrdef.o
 SCHEME_LIB = $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(CTERM_LIB) \
-	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIBS_DEBUG LIB_STANDARD
+	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
 
 SOURCES = \
 $(MACHINE_SOURCES) \
