@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 3.3 1987/03/19 17:19:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 3.4 1987/05/08 02:34:16 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -128,11 +128,8 @@ MIT in each case. |#
 	  (for-each procedure (binding/names binding))))))
 
 (define (declarations/for-each-binding declarations procedure)
-  (let ((procedure
-	 (lambda (bindings)
-	   (for-each procedure bindings))))
-    (procedure (declarations/before declarations))
-    (procedure (declarations/after declarations))))
+  (for-each procedure (declarations/before declarations))
+  (for-each procedure (declarations/after declarations)))
 
 (define (declarations/map declarations per-name per-value)
   (declarations/map-binding declarations
@@ -145,16 +142,21 @@ MIT in each case. |#
 		      (binding/export? binding)
 		      (if global? names (map per-name names))
 		      (if (eq? values 'NO-VALUES)
-			  values
+			  'NO-VALUES
 			  (map per-value values)))))))
 
 (define (declarations/map-binding declarations procedure)
-  (let ((procedure
-	 (lambda (bindings)
-	   (map procedure bindings))))
-    (declarations/make (declarations/original declarations)
-		       (procedure (declarations/before declarations))
-		       (procedure (declarations/after declarations)))))
+  (declarations/make (declarations/original declarations)
+		     (map procedure (declarations/before declarations))
+		     (map procedure (declarations/after declarations))))
+
+(define (declarations/integrated-variables declarations)
+  (mapcan (lambda (binding)
+	    (if (and (eq? 'INTEGRATE (binding/operation binding))
+		     (eq? 'NO-VALUES (binding/values binding)))
+		(list-copy (binding/names binding))
+		'()))
+	  (declarations/after declarations)))
 
 (declare (integrate-operator declarations/make declarations/original
 			     declarations/before declarations/after))
