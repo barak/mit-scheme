@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.120 2000/06/15 20:31:35 cph Exp $
+;;; $Id: imail-imap.scm,v 1.121 2000/06/19 01:49:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1335,28 +1335,22 @@
   (condition-accessor condition-type:imap-server-error 'RESPONSE))
 
 (define (imap:command connection command . arguments)
-  (let ((finished? #f))
-    (dynamic-wind
-     (lambda () unspecific)
-     (lambda ()
-       (let ((v
-	      (handle-broken-pipe
-	       (lambda (condition)
-		 condition
-		 (close-imap-connection connection)
-		 (error "Connection to IMAP server broken; please try again."))
-	       (lambda ()
-		 (imap:wait-for-tagged-response
-		  connection
-		  (imap:send-command connection command arguments)
-		  (if (eq? command 'UID)
-		      (car arguments)
-		      command))))))
-	 (set! finished? #t)
-	 v))
-     (lambda ()
-       (if (not finished?)
-	   (close-imap-connection connection))))))
+  (bind-condition-handler '()
+      (lambda (condition)
+	(if (not (eq? (condition/type condition)
+		      condition-type:imap-server-error))
+	    (begin
+	      (close-imap-connection connection)
+	      (if (broken-pipe? condition)
+		  (error
+		   "Connection to IMAP server broken; please try again.")))))
+    (lambda ()
+      (imap:wait-for-tagged-response
+       connection
+       (imap:send-command connection command arguments)
+       (if (eq? command 'UID)
+	   (car arguments)
+	   command)))))
 
 (define (start-imap-trace pathname)
   (stop-imap-trace)
