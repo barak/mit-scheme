@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.34 1990/11/14 14:04:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.35 1990/11/28 21:11:47 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -97,8 +97,8 @@ MIT in each case. */
 				/* man a.out for info */
 #endif
 
-#if defined (CANNOT_UEXEC)
-#include "Error: dumpworld.c only works on a few machines."
+#ifdef CANNOT_UNEXEC
+#include "Error: dmpwrld.c only works on a few machines."
 #endif
 
 #ifndef TEXT_START
