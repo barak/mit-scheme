@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.66 1994/11/14 05:16:32 cph Exp $
+$Id: utils.c,v 9.67 1994/11/28 04:37:22 cph Exp $
 
 Copyright (c) 1987-94 Massachusetts Institute of Technology
 
@@ -1062,6 +1062,8 @@ DEFUN (Translate_To_Point, (Target), SCHEME_OBJECT Target)
   /*NOTREACHED*/
 }
 
+#ifndef _OS2
+
 extern SCHEME_OBJECT EXFUN (Compiler_Get_Fixed_Objects, (void));
 
 SCHEME_OBJECT
@@ -1150,3 +1152,5 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
 
   return  result;
 }
+
+#endif /* not _OS2 */
