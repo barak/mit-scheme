@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.19 1987/08/08 23:19:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.20 1987/08/31 21:19:10 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -69,7 +69,11 @@ MIT in each case. |#
 	      (*memoizations* '()))
     (set-rgraph-edge!
      rgraph
-     (node->edge (cfg-entry-node (with-new-node-marks generator))))
+     (node->edge
+      (cfg-entry-node
+       (cleanup-noop-nodes
+	(lambda ()
+	  (with-new-node-marks generator))))))
     (set-rgraph-n-registers! rgraph *next-pseudo-number*))
    (with-new-node-marks
     (lambda ()
