@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.16 1997/08/24 04:05:49 cph Exp $
+$Id: ntio.c,v 1.17 1997/10/22 05:23:18 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -251,6 +251,13 @@ DEFUN (OS_channel_read, (channel, buffer, nbytes),
 	  if (nonblock)
 	    return (-1);
 	}
+      if ((CHANNEL_NONBLOCKING (channel))
+	  && ((CHANNEL_TYPE (channel)) == channel_type_win32_pipe))
+	{
+	  long n = (NT_pipe_channel_available (channel));
+	  if (n <= 0)
+	    return ((n == 0) ? (-1) : 0);
+	}
       {
 	DWORD bytes_read;
 	if ((!ReadFile ((CHANNEL_HANDLE (channel)),
@@ -266,91 +273,78 @@ DEFUN (OS_channel_read, (channel, buffer, nbytes),
       }
     }
 }
-
-static int
-DEFUN (raw_write, (fd, buffer, nbytes),
-       HANDLE fd AND CONST unsigned char * buffer AND DWORD nbytes)
-{
-  DWORD bytesWritten;
-  if (Screen_IsScreenHandle (fd))
-  {
-    SendMessage (fd, SCREEN_WRITE, (WPARAM)nbytes, (LPARAM)buffer);
-    return (nbytes);
-  }
-  if (IsConsoleHandle (fd))
-    return (nt_console_write (((void *) buffer), nbytes));
-  if (WriteFile (fd, buffer, nbytes, &bytesWritten, 0))
-    return (bytesWritten);
-  else
-    return (-1);
-}
-
-#define SYSCALL_WRITE(fd, buffer, size, so_far) do			\
-{									\
-  size_t _size = (size);						\
-  int _written;								\
-  _written = raw_write ((fd), (buffer), (_size));			\
-  if (_size != ((size_t) _written))					\
-    return ((_written < 0) ? -1 : (so_far) + _written);			\
-} while (0)
 
 long
-DEFUN (text_write, (hFile, buffer, nbytes),
-       HANDLE hFile AND CONST unsigned char * buffer AND size_t nbytes)
-{ /* Map LF to CR/LF */
-  static CONST unsigned char crlf[] = {CARRIAGE_RETURN, LINEFEED};
-  CONST unsigned char * start;
-  size_t i;
-
-  for (i = 0, start = buffer; i < nbytes; start = &buffer[i])
-  { size_t len;
-
-    while ((i < nbytes) && (buffer[i] != LINEFEED))
-      i++;
-    len = (&buffer[i] - start);
-
-    if (len != 0)
-      SYSCALL_WRITE (hFile, start, len, (i - len));
-
-    if ((i < nbytes) && (buffer[i] == LINEFEED))
-    { /* We are sitting on a linefeed. Write out CRLF */
-      /* This backs out incorrectly if only CR is written out */
-      SYSCALL_WRITE (hFile, crlf, (sizeof (crlf)), i);
-      i = i + 1; /* Skip over special character */
-    }
-  }
-  return (nbytes);
-}
-
-#undef SYSCALL_WRITE
-
-long
-DEFUN (OS_channel_write, (channel, buffer, nbytes),
-       Tchannel channel AND CONST PTR buffer AND size_t nbytes)
+NT_pipe_channel_available (Tchannel channel)
 {
-  if (nbytes == 0)
-    return (0);
-
-  while (1)
-  {
-    HANDLE  hFile;
-    long    scr;
-
-    hFile = CHANNEL_HANDLE(channel);
-    scr = ((CHANNEL_COOKED (channel))
-	   ? (text_write (hFile, buffer, nbytes))
-	   : (raw_write (hFile, buffer, nbytes)));
-
-    if (scr < 0)
+  DWORD n;
+  if (!PeekNamedPipe ((CHANNEL_HANDLE (channel)), 0, 0, 0, (&n), 0))
     {
-      NT_prim_check_errno (syscall_write);
-      continue;
+      DWORD code = (GetLastError ());
+      if (code == ERROR_BROKEN_PIPE)
+	return (-1);
+      NT_error_api_call (code, apicall_PeekNamedPipe);
     }
+  return (n);
+}
+
+static DWORD
+raw_write (HANDLE fd, const unsigned char * buffer, size_t n_bytes)
+{
+  DWORD n_written;
+  if (Screen_IsScreenHandle (fd))
+    {
+      SendMessage (fd, SCREEN_WRITE, ((WPARAM) n_bytes), ((LPARAM) buffer));
+      return (n_bytes);
+    }
+  if (IsConsoleHandle (fd))
+    return (nt_console_write (((void *) buffer), n_bytes));
+  STD_BOOL_API_CALL (WriteFile, (fd, buffer, n_bytes, (&n_written), 0));
+  return (n_written);
+}
 
-    if (scr > nbytes)
-      error_external_return ();
-    return scr;
-  }
+static DWORD
+text_write (HANDLE hFile, const unsigned char * buffer, size_t n_bytes) 
+{
+  /* Map LF to CR/LF */
+  static const unsigned char crlf [] = {CARRIAGE_RETURN, LINEFEED};
+  const unsigned char * start = buffer;
+  const unsigned char * end = (start + n_bytes);
+
+  while (start < end)
+    {
+      const unsigned char * scan = start;
+      while ((scan < end) && ((*scan) != LINEFEED))
+	scan += 1;
+      if (scan > start)
+	{
+	  unsigned int n_bytes = (scan - start);
+	  DWORD n_written = (raw_write (hFile, start, n_bytes));
+	  if (n_written < n_bytes)
+	    return ((start - buffer) + n_written);
+	}
+      if (scan < end)
+	{
+	  unsigned int n_bytes = (sizeof (crlf));
+	  DWORD n_written = (raw_write (hFile, crlf, n_bytes));
+	  if (n_written < n_bytes)
+	    /* This backs out incorrectly if only CR is written out.  */
+	    return (scan - buffer);
+	}
+      start = (scan + 1);
+    }
+  return (n_bytes);
+}
+
+long
+OS_channel_write (Tchannel channel, const void * buffer, size_t n_bytes)
+{
+  return
+    ((n_bytes == 0)
+     ? 0
+     : (CHANNEL_COOKED (channel))
+     ? (text_write ((CHANNEL_HANDLE (channel)), buffer, n_bytes))
+     : (raw_write ((CHANNEL_HANDLE (channel)), buffer, n_bytes)));
 }
 
 size_t
@@ -384,21 +378,19 @@ DEFUN (OS_channel_write_string, (channel, string),
 }
 
 void
-DEFUN (OS_make_pipe, (readerp, writerp),
-       Tchannel * readerp AND
-       Tchannel * writerp)
+OS_make_pipe (Tchannel * readerp, Tchannel * writerp)
 {
-/*
   HANDLE hread;
   HANDLE hwrite;
-  SECURITY_ATTRIBUTES sa;
-
-  (sa . nLength) = (sizeof (sa));
-  (sa . lpSecurityDescriptor) = 0;
-  (sa . bInheritHandle) = FALSE;
-
-  (CreatePipe ((&hread), (&hwrite), (&sa), 0))
-*/
+  STD_BOOL_API_CALL (CreatePipe, ((&hread), (&hwrite), 0, 0));
+  transaction_begin ();
+  NT_handle_close_on_abort (hwrite);
+  (*readerp) = (NT_make_channel (hread, channel_type_win32_pipe));
+  transaction_commit ();
+  transaction_begin ();
+  OS_channel_close_on_abort (*readerp);
+  (*writerp) = (NT_make_channel (hwrite, channel_type_win32_pipe));
+  transaction_commit ();
 }
 
 int

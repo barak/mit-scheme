@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.h,v 1.7 1997/06/19 05:55:51 cph Exp $
+$Id: ntio.h,v 1.8 1997/10/22 05:23:25 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -64,6 +64,7 @@ extern struct channel * channel_table;
 extern Tchannel NT_make_channel (HANDLE, enum channel_type);
 extern void NT_initialize_channel (Tchannel, HANDLE, enum channel_type);
 extern void NT_handle_close_on_abort (HANDLE);
+extern long NT_pipe_channel_available (Tchannel);
 
 #define BACKSPACE		'\b'
 #define SPACE			' '
