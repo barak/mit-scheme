@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.35 1988/09/27 01:56:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.36 1989/02/19 20:02:52 jinx Exp $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -478,7 +478,7 @@ dump (check)
 
   /* Print header. */
   fprintf (output, "/%c Emacs: This is -*- C -*- code. %c/\n\n", '*', '*');
-  fprintf (output, "/%c %s primitive declarations %c/\n\n",
+  fprintf (output, "/%c %s primitive declarations. %c/\n\n",
 	   '*', ((built_in_p) ? "Built in" : "User defined" ), '*');
   fprintf (output, "#include \"usrdef.h\"\n\n");
   fprintf (output,
@@ -495,15 +495,9 @@ dump (check)
       if (check)
 	fprintf (stderr, "No primitives found!\n");
 
-      /* C does not understand the empty array, thus it must be faked. */
-      fprintf (output, "/%c C does not understand the empty array, ", '*');
+      /* C does not understand empty arrays, thus it must be faked. */
+      fprintf (output, "/%c C does not understand empty arrays, ", '*');
       fprintf (output, "thus it must be faked. %c/\n\n", '*');
-
-      /* Dummy entry */
-      (result_buffer [0]) = (& dummy_entry);
-      update_from_entry (& dummy_entry);
-      print_procedure (output, (& dummy_entry), (& (dummy_error_string [0])));
-      fprintf (output, "\n");
     }
   else
     {
@@ -540,14 +534,6 @@ print_procedure (output, primitive_descriptor, error_string)
   return;
 }
 
-#define TABLE_NEWLINE()							\
-{									\
-  if (count != last)							\
-    fprintf (output, ",\n");						\
-  else									\
-    fprintf (output, "\n};\n");						\
-}
-
 void
 print_primitives (output, limit)
      FILE * output;
@@ -574,9 +560,9 @@ print_primitives (output, limit)
   fprintf (output, "\f\nchar * %s_Name_Table [] = {\n", the_kind);
   for (count = 0; (count < limit); count += 1)
     {
-      fprintf (output, "  \"%s\"", ((result_buffer [count]) -> scheme_name));
-      TABLE_NEWLINE ();
+      fprintf (output, "  \"%s\",\n", ((result_buffer [count]) -> scheme_name));
     }
+  fprintf (output, "  \"%s\"\n};\n", inexistent_entry.scheme_name);
 
   /* Print the documentation table. */
   fprintf (output, "\f\nchar * %s_Documentation_Table [] = {\n", the_kind);
@@ -585,29 +571,29 @@ print_primitives (output, limit)
       fprintf (output, "  ");
       table_entry = ((result_buffer [count]) -> documentation);
       if ((table_entry [0]) == '\0')
-	fprintf (output, "((char *) 0)");
+	fprintf (output, "((char *) 0),\n");
       else
-	fprintf (output, "\"%s\"", table_entry);
-      TABLE_NEWLINE ();
+	fprintf (output, "\"%s\",\n", table_entry);
     }
+  fprintf (output, "  ((char *) 0)\n};\n");
 
   /* Print the arity table. */
   fprintf (output, "\f\nint %s_Arity_Table [] = {\n", the_kind);
   for (count = 0; (count < limit); count += 1)
     {
-      fprintf (output, "  %s", ((result_buffer [count]) -> arity));
-      TABLE_NEWLINE ();
+      fprintf (output, "  %s,\n", ((result_buffer [count]) -> arity));
     }
+  fprintf (output, "  %s\n};\n", inexistent_entry.arity);
 
   /* Print the counts table. */
   fprintf (output, "\f\nint %s_Count_Table [] = {\n", the_kind);
   for (count = 0; (count < limit); count += 1)
     {
       fprintf (output,
-	       "  (%s * sizeof(Pointer))",
+	       "  (%s * sizeof(Pointer)),\n",
 	       ((result_buffer [count]) -> arity));
-      TABLE_NEWLINE ();
     }
+  fprintf (output, "  (%s * sizeof(Pointer))\n};\n", inexistent_entry.arity);
 
   return;
 }
