@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mime-codec.scm,v 14.5 2000/06/26 22:12:54 cph Exp $
+;;; $Id: mime-codec.scm,v 14.6 2000/06/27 15:19:58 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -613,7 +613,7 @@
 (define (decode-binhex40:initialize port text?)
   text?					;ignored
   (make-binhex40-decoding-context
-   (make-binhex40-decompressing-port port)))
+   (make-binhex40-run-length-decoding-port port)))
 
 (define (decode-binhex40:finalize context)
   (let ((state (binhex40-decoding-context/state context)))
@@ -749,54 +749,53 @@
 		  (vector-8b-ref binhex40-digit-table code)
 		  code))
 
-;;;; BinHex 4.0 decompression
+;;;; BinHex 4.0 run-length decoding
 
-(define (make-binhex40-decompressing-port port)
-  (make-port binhex40-decompressing-port-type
-	     (make-binhex40-decompressor-state port)))
+(define (make-binhex40-run-length-decoding-port port)
+  (make-port binhex40-run-length-decoding-port-type
+	     (make-binhex40-rld-state port)))
 
-(define binhex40-decompressing-port-type
+(define binhex40-run-length-decoding-port-type
   (make-port-type
    `((WRITE-CHAR
       ,(lambda (port char)
 	 (let ((state (port/state port)))
-	   (let ((port (binhex40-decompressor-state/port state))
-		 (char* (binhex40-decompressor-state/char state)))
-	     (cond ((binhex40-decompressor-state/marker-seen? state)
+	   (let ((port (binhex40-rld-state/port state))
+		 (char* (binhex40-rld-state/char state)))
+	     (cond ((binhex40-rld-state/marker-seen? state)
 		    (let ((n (char->integer char)))
 		      (cond ((fix:= n 0)
 			     (if char* (write-char char* port))
-			     (set-binhex40-decompressor-state/char!
-			      state binhex40-compression-marker))
+			     (set-binhex40-rld-state/char!
+			      state binhex40-rld-marker))
 			    (char*
 			     (do ((i 0 (fix:+ i 1)))
 				 ((fix:= i n))
 			       (write-char char* port))
-			     (set-binhex40-decompressor-state/char! state
-								    #f))))
-		    (set-binhex40-decompressor-state/marker-seen?! state #f))
-		   ((char=? char binhex40-compression-marker)
-		    (set-binhex40-decompressor-state/marker-seen?! state #t))
+			     (set-binhex40-rld-state/char! state #f))))
+		    (set-binhex40-rld-state/marker-seen?! state #f))
+		   ((char=? char binhex40-rld-marker)
+		    (set-binhex40-rld-state/marker-seen?! state #t))
 		   (else
 		    (if char* (write-char char* port))
-		    (set-binhex40-decompressor-state/char! state char)))))))
+		    (set-binhex40-rld-state/char! state char)))))))
      (CLOSE-OUTPUT
       ,(lambda (port)
 	 (let ((state (port/state port)))
-	   (let ((port (binhex40-decompressor-state/port state))
-		 (char* (binhex40-decompressor-state/char state)))
+	   (let ((port (binhex40-rld-state/port state))
+		 (char* (binhex40-rld-state/char state)))
 	     (if char*
 		 (write-char char* port))
-	     (if (binhex40-decompressor-state/marker-seen? state)
-		 (write-char binhex40-compression-marker port)))))))
+	     (if (binhex40-rld-state/marker-seen? state)
+		 (write-char binhex40-rld-marker port)))))))
    #f))
 
-(define-structure (binhex40-decompressor-state
-		   (conc-name binhex40-decompressor-state/)
-		   (constructor make-binhex40-decompressor-state (port)))
+(define-structure (binhex40-rld-state
+		   (conc-name binhex40-rld-state/)
+		   (constructor make-binhex40-rld-state (port)))
   (port #f read-only #t)
   (char #f)
   (marker-seen? #f))
 
-(define-integrable binhex40-compression-marker
+(define-integrable binhex40-rld-marker
   (integer->char #x90))
