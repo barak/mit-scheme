@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxsock.c,v 1.9 1996/05/09 20:38:40 cph Exp $
+$Id: pruxsock.c,v 1.10 1996/05/18 06:08:02 cph Exp $
 
 Copyright (c) 1990-96 Massachusetts Institute of Technology
 
@@ -129,6 +129,93 @@ DEFUN (arg_host, (arg), unsigned int arg)
 
 #endif /* HAVE_SOCKETS */ 
 
+DEFINE_PRIMITIVE ("NEW-OPEN-TCP-STREAM-SOCKET", Prim_new_open_tcp_stream_socket, 3, 3,
+  "Given HOST-ADDRESS and PORT-NUMBER, open a TCP stream socket.\n\
+The opened socket is stored in the cdr of WEAK-PAIR.")
+{
+  PRIMITIVE_HEADER (3);
+  CHECK_ARG (3, WEAK_PAIR_P);
+  SOCKET_CODE
+    ({
+      SET_PAIR_CDR
+	((ARG_REF (3)),
+	 (long_to_integer
+	  (OS_open_tcp_stream_socket ((arg_host (1)),
+				      (arg_nonnegative_integer (2))))));
+      PRIMITIVE_RETURN (SHARP_T);
+    });
+}
+
+DEFINE_PRIMITIVE ("NEW-OPEN-UNIX-STREAM-SOCKET", Prim_new_open_unix_stream_socket, 2, 2,
+  "Open the unix stream socket FILENAME.\n\
+The opened socket is stored in the cdr of WEAK-PAIR.")
+{
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (2, WEAK_PAIR_P);
+#ifdef HAVE_UNIX_SOCKETS
+  SET_PAIR_CDR
+    ((ARG_REF (2)),
+     (long_to_integer (OS_open_unix_stream_socket (STRING_ARG (1)))));
+#else
+  signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE);
+#endif
+  PRIMITIVE_RETURN (SHARP_T);
+}
+
+DEFINE_PRIMITIVE ("NEW-OPEN-TCP-SERVER-SOCKET", Prim_new_open_tcp_server_socket, 2, 2,
+  "Given PORT-NUMBER, open TCP server socket.\n\
+The opened socket is stored in the cdr of WEAK-PAIR.")
+{
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (2, WEAK_PAIR_P);
+  SOCKET_CODE
+    ({
+      SET_PAIR_CDR
+	((ARG_REF (2)),
+	 (long_to_integer
+	  (OS_open_server_socket ((arg_nonnegative_integer (1)), 1))));
+      PRIMITIVE_RETURN (SHARP_T);
+    });
+}
+
+#ifdef HAVE_SOCKETS
+
+static Tchannel
+DEFUN (arg_server_socket, (arg), unsigned int arg)
+{
+  Tchannel server_socket = (arg_nonnegative_integer (arg));
+  if ((OS_channel_type (server_socket)) != channel_type_tcp_server_socket)
+    error_bad_range_arg (arg);
+  return (server_socket);
+}
+
+#endif /* HAVE_SOCKETS */
+
+DEFINE_PRIMITIVE ("NEW-TCP-SERVER-CONNECTION-ACCEPT", Prim_new_tcp_server_connection_accept, 3, 3,
+  "Poll SERVER-SOCKET for a connection.\n\
+If a connection is available, it is opened and #T is returned;\n\
+the opened socket is stored in the cdr of WEAK-PAIR.\n\
+Otherwise, if SERVER-SOCKET is non-blocking, returns #F.\n\
+Second argument PEER-ADDRESS, if not #F, must be a host address string.\n\
+It is filled with the peer's address if given.")
+{
+  PRIMITIVE_HEADER (3);
+  CHECK_ARG (3, WEAK_PAIR_P);
+  SOCKET_CODE
+    ({
+      Tchannel server_socket = (arg_server_socket (1));
+      char * peer_host = (((ARG_REF (2)) == SHARP_F) ? 0 : (arg_host (2)));
+      Tchannel connection =
+	(OS_server_connection_accept (server_socket, peer_host, 0));
+      if (connection == NO_CHANNEL)
+	PRIMITIVE_RETURN (SHARP_F);
+      SET_PAIR_CDR ((ARG_REF (3)), (long_to_integer (connection)));
+      PRIMITIVE_RETURN (SHARP_T);
+    });
+}
+
+/* Obsolete Primitives, for compatibility with old runtime systems. */
+
 DEFINE_PRIMITIVE ("OPEN-TCP-STREAM-SOCKET", Prim_open_tcp_stream_socket, 2, 2,
   "Given HOST-ADDRESS and PORT-NUMBER, open and return a TCP stream socket.")
 {
@@ -153,7 +240,7 @@ DEFINE_PRIMITIVE ("OPEN-UNIX-STREAM-SOCKET", Prim_open_unix_stream_socket, 1, 1,
   signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE);
 #endif
 }
-
+
 DEFINE_PRIMITIVE ("OPEN-TCP-SERVER-SOCKET", Prim_open_tcp_server_socket, 1, 1,
   "Given PORT-NUMBER, open and return a TCP server socket.")
 {
@@ -165,19 +252,6 @@ DEFINE_PRIMITIVE ("OPEN-TCP-SERVER-SOCKET", Prim_open_tcp_server_socket, 1, 1,
 	 (OS_open_server_socket ((arg_nonnegative_integer (1)), 1)));
     });
 }
-
-#ifdef HAVE_SOCKETS
-
-static Tchannel
-DEFUN (arg_server_socket, (arg), unsigned int arg)
-{
-  Tchannel server_socket = (arg_nonnegative_integer (arg));
-  if ((OS_channel_type (server_socket)) != channel_type_tcp_server_socket)
-    error_bad_range_arg (arg);
-  return (server_socket);
-}
-
-#endif /* HAVE_SOCKETS */
 
 DEFINE_PRIMITIVE ("TCP-SERVER-CONNECTION-ACCEPT", Prim_tcp_server_connection_accept, 2, 2,
   "Poll SERVER-SOCKET for a connection.\n\

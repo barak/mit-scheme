@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prosfile.c,v 1.7 1994/11/20 08:23:29 cph Exp $
+$Id: prosfile.c,v 1.8 1996/05/18 06:07:16 cph Exp $
 
-Copyright (c) 1987-94 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -44,6 +44,42 @@ extern Tchannel EXFUN (arg_channel, (int));
 #define OPEN_FILE_HOOK(channel)
 #endif
 
+#define NEW_OPEN_FILE_PRIMITIVE(OS_open_file)				\
+{									\
+  PRIMITIVE_HEADER (2);							\
+  CHECK_ARG (2, WEAK_PAIR_P);						\
+  {									\
+    Tchannel channel = (OS_open_file (STRING_ARG (1)));			\
+    OPEN_FILE_HOOK (channel);						\
+    SET_PAIR_CDR ((ARG_REF (2)), (long_to_integer (channel)));		\
+    PRIMITIVE_RETURN (SHARP_T);						\
+  }									\
+}
+
+DEFINE_PRIMITIVE ("NEW-FILE-OPEN-INPUT-CHANNEL", Prim_new_file_open_input_channel, 2, 2,
+  "Open an input file called FILENAME.\n\
+The channel number is saved in the cdr of WEAK-PAIR.")
+  NEW_OPEN_FILE_PRIMITIVE (OS_open_input_file)
+
+DEFINE_PRIMITIVE ("NEW-FILE-OPEN-OUTPUT-CHANNEL", Prim_new_file_open_output_channel, 2, 2,
+  "Open an output file called FILENAME.\n\
+The channel number is saved in the cdr of WEAK-PAIR.\n\
+If the file exists, it is rewritten.")
+  NEW_OPEN_FILE_PRIMITIVE (OS_open_output_file)
+
+DEFINE_PRIMITIVE ("NEW-FILE-OPEN-IO-CHANNEL", Prim_new_file_open_io_channel, 2, 2,
+  "Open a file called FILENAME.\n\
+The channel number is saved in the cdr of WEAK-PAIR.\n\
+The file is opened for both input and output.\n\
+If the file exists, its contents are not disturbed.")
+  NEW_OPEN_FILE_PRIMITIVE (OS_open_io_file)
+
+DEFINE_PRIMITIVE ("NEW-FILE-OPEN-APPEND-CHANNEL", Prim_new_file_open_append_channel, 2, 2,
+  "Open an output file called FILENAME.\n\
+The channel number is saved in the cdr of WEAK-PAIR.\n\
+If the file exists, output is appended to its contents.")
+  NEW_OPEN_FILE_PRIMITIVE (OS_open_append_file)
+
 #define OPEN_FILE_PRIMITIVE(OS_open_file)				\
 {									\
   PRIMITIVE_HEADER (1);							\
@@ -73,29 +109,6 @@ DEFINE_PRIMITIVE ("FILE-OPEN-APPEND-CHANNEL", Prim_file_open_append_channel, 1, 
   "Open an output file called FILENAME, returning a channel number.\n\
 If the file exists, output is appended to its contents.")
   OPEN_FILE_PRIMITIVE (OS_open_append_file)
-
-DEFINE_PRIMITIVE ("FILE-OPEN-CHANNEL", Prim_file_open_channel, 2, 2,
-  "This is an obsolete primitive.\n\
-Open a file called FILENAME, returning a channel number.\n\
-Second argument MODE says how to open the file:\n\
-  #F        ==> open for input;\n\
-  #T        ==> open for output, rewriting file if it exists;\n\
-  otherwise ==> open for output, appending to existing file.")
-{
-  PRIMITIVE_HEADER (2);
-  {
-    CONST char * filename = (STRING_ARG (1));
-    fast SCHEME_OBJECT mode = (ARG_REF (2));
-    fast Tchannel channel =
-      ((mode == SHARP_F)
-       ? (OS_open_input_file (filename))
-       : (mode == SHARP_T)
-       ? (OS_open_output_file (filename))
-       : (OS_open_append_file (filename)));
-    OPEN_FILE_HOOK (channel);
-    PRIMITIVE_RETURN (long_to_integer (channel));
-  }
-}
 
 DEFINE_PRIMITIVE ("FILE-LENGTH-NEW", Prim_file_length_new, 1, 1,
   "Return the length of CHANNEL in characters.")
