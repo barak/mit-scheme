@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.7 1989/09/20 23:13:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.8 1990/07/16 20:17:38 markf Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,6 +36,7 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
+#include "ux.h"
 #include "x11.h"
 
 char *
@@ -43,9 +44,8 @@ x_malloc (size)
      int size;
 {
   char * result;
-  extern char * malloc ();
 
-  result = (malloc (size));
+  result = (UX_malloc (size));
   if (result == ((char *) 0))
     error_external_return ();
   return (result);
@@ -57,9 +57,8 @@ x_realloc (ptr, size)
      int size;
 {
   char * result;
-  extern char * realloc ();
 
-  result = (realloc (ptr, size));
+  result = (UX_realloc (ptr, size));
   if (result == ((char *) 0))
     error_external_return ();
   return (result);
@@ -321,7 +320,7 @@ x_default_attributes (display, resource_name, attributes)
 }
 
 struct xwindow *
-x_make_window (display, window, x_size, y_size, attributes, extra, deallocator)
+x_make_window (display, window, x_size, y_size, attributes, extra, deallocator, event_proc)
      Display * display;
      Window window;
      int x_size;
@@ -329,6 +328,7 @@ x_make_window (display, window, x_size, y_size, attributes, extra, deallocator)
      struct drawing_attributes * attributes;
      int extra;
      void (* deallocator) ();
+     void (* event_proc) ();
 {
   GC normal_gc;
   GC reverse_gc;
@@ -364,6 +364,7 @@ x_make_window (display, window, x_size, y_size, attributes, extra, deallocator)
   if (extra > 0)
     (xw -> extra) = ((char *) (x_malloc (extra)));
   (xw -> deallocator) = deallocator;
+  (xw -> event_proc) = event_proc;
   return (xw);
 }
 
@@ -392,6 +393,24 @@ x_window_to_xw (window)
 	return (xw);
     }
   return ((struct xwindow *) 0);
+}
+
+int
+x_window_to_xw_index (window)
+     Window window;
+{
+  int length = (x_window_table . length);
+  struct xwindow ** items = ((struct xwindow **) (x_window_table . items));
+  int i;
+  struct xwindow * xw;
+
+  for (i = 0; (i < length); i += 1)
+    {
+      xw = (items [i]);
+      if ((XW_WINDOW (xw)) == window)
+	return (i);
+    }
+  return (-1);
 }
 
 Display *
@@ -444,12 +463,34 @@ x_close_display (index)
   return;
 }
 
+static struct event_queue global_x_event_queue;
+
+Boolean
+x_process_events()
+{
+  Display ** displays;
+  Display * display;
+  int length;
+  int i;
+  Boolean any_events_p = false;
+
+  displays = ((Display **) (x_display_table . items));
+  length = (x_display_table . length);
+  for (i = 0; (i < length); ++i) {
+    if ((display = displays [i]) != ((Display *) 0)) {
+      any_events_p = x_distribute_events (display) || any_events_p;
+    }
+  }
+  return (any_events_p);
+}
+
 static void
 x_enqueue_event (events, event)
      struct event_queue * events;
      XEvent * event;
 {
   struct event_queue_element * element;
+  struct event_queue_element * global_element;
 
   element =
     ((struct event_queue_element *)
@@ -461,6 +502,18 @@ x_enqueue_event (events, event)
   else
     ((events -> tail) -> next) = element;
   (events -> tail) = element;
+
+  global_element =
+    ((struct event_queue_element *)
+     (x_malloc (sizeof (struct event_queue_element))));
+  (global_element -> event) = (* event);
+  (global_element -> next) = ((struct event_queue_element *) 0);
+  if ((global_x_event_queue . head) == ((struct event_queue_element *) 0))
+    (global_x_event_queue . head) = global_element;
+  else
+    ((global_x_event_queue . tail) -> next) = global_element;
+  (global_x_event_queue . tail) = global_element;
+
   return;
 }
 
@@ -480,6 +533,17 @@ x_dequeue_event (events, event)
   return (1);
 }
 
+int 
+x_dequeue_global_event (event)
+     XEvent * event;
+{
+  (void) x_process_events();
+  if (x_dequeue_event ((& global_x_event_queue), event)) {
+    return (1);
+  }
+  return (x_dequeue_event ((& global_x_event_queue), event));
+}
+
 void
 xw_enqueue_event (xw, event)
      struct xwindow * xw;
@@ -496,54 +560,271 @@ xw_dequeue_event (xw, event)
 {
   if (x_dequeue_event ((& (xw -> events)), event))
     return (1);
-  x_distribute_events (XW_DISPLAY (xw));
+  (void) x_distribute_events (XW_DISPLAY (xw));
   return (x_dequeue_event ((& (xw -> events)), event));
 }
 
-void
+Boolean
 x_distribute_events (display)
      Display * display;
 {
   int nevents;
-  XEvent event;
+  XEvent * event;
   struct xwindow * exw;
+  Boolean any_events_p;
 
   nevents = (XEventsQueued (display, QueuedAfterReading));
+  any_events_p = (nevents ? true : false);
   while (nevents > 0)
     {
-      XNextEvent (display, (& event));
+      event = (XEvent *) (x_malloc (sizeof (XEvent)));
+      XNextEvent (display, (event));
       nevents -= 1;
 
-      exw = (x_window_to_xw ((event . xany) . window));
+      exw = (x_window_to_xw ((event -> xany) . window));
       if (exw == ((struct xwindow *) 0))
 	continue;
-      xw_enqueue_event (exw, (& event));
+      (exw->event_proc)(exw, (event));
+      xw_enqueue_event (exw, (event));
     }
-  return;
+  return (any_events_p);
 }
 
 void
-xw_wait_for_window_event (xw, event)
+xw_wait_for_window_event (xw)
      struct xwindow * xw;
-     XEvent * event;
 {
   Display * display = (XW_DISPLAY (xw));
   struct xwindow * exw;
+  XEvent * event;
 
   while (1)
     {
       XNextEvent (display, event);
 
       exw = (x_window_to_xw ((event -> xany) . window));
-      if (exw == xw)
-	{
-	  x_distribute_events (display);
-	  break;
-	}
-      if (exw != ((struct xwindow *) 0))
+      if (exw != ((struct xwindow *) 0)) {
+	(exw->event_proc)(exw, event);
 	xw_enqueue_event (exw, event);
+	if (exw == xw)
+	  {
+	    (void) x_distribute_events (display);
+	    break;
+	  }
+      }
     }
   return;
+}
+
+static int * x_select_mask;
+static int x_select_mask_size;
+static int x_max_file_descriptor;
+
+int
+copy_x_select_mask (mask)
+     int ** mask;
+{
+  int i;
+  
+  *mask = (int *) x_malloc (x_select_mask_size * sizeof (int));
+  for (i = 0; i < x_select_mask_size; i++) {
+    (*mask) [i] = (x_select_mask) [i];
+  }
+  return (x_max_file_descriptor);
+}
+
+/* Note that because of the conditional use of select here we can't
+   depend on x_wait_for_event() actually waiting for an event. The
+   return value will tell you if an event actually was processed */
+
+Boolean
+x_wait_for_event ()
+{
+  int * select_mask;
+  int max_filedesc;
+  Boolean any_events_p;
+
+  any_events_p = x_process_events ();
+
+#ifdef HAVE_SELECT
+  if (! any_events_p) {
+    max_filedesc = copy_x_select_mask(&select_mask);
+    UX_select ((1 +max_filedesc), select_mask, 0, 0, 0);
+    any_events_p = x_process_events ();
+  }
+#endif  /* HAVE_SELECT */
+
+  return (any_events_p);
+}
+
+#define MAKE_EVENT(event_type, window_index, extra)			\
+(cons (LONG_TO_UNSIGNED_FIXNUM (event_type),				\
+       cons (((window_index < 0) ?					\
+	      SHARP_F :							\
+	      LONG_TO_UNSIGNED_FIXNUM (window_index)),			\
+	     extra)))
+
+int
+check_button (button)
+     int button;
+{
+  switch (button)
+    {
+    case Button1: return (0);
+    case Button2: return (1);
+    case Button3: return (2);
+    case Button4: return (3);
+    case Button5: return (4);
+    default: return (-1);
+    }
+}
+
+static SCHEME_OBJECT
+x_event_to_scheme_event (event)
+     XEvent * event;
+{
+  struct xwindow * exw;
+  int xw_index;
+
+  xw_index = x_window_to_xw_index ((event -> xany) . window);
+  exw = (struct xwindow *) (x_window_table . items) [xw_index];
+  switch (event -> type) {
+
+  case ConfigureNotify:
+    return (MAKE_EVENT (EVENT_TYPE_CONFIGURE, xw_index, EMPTY_LIST));
+    break;
+
+  case MapNotify:
+    return (MAKE_EVENT (EVENT_TYPE_MAP, xw_index, EMPTY_LIST));
+    break;
+
+  case UnmapNotify:
+    return (MAKE_EVENT (EVENT_TYPE_UNMAP, xw_index, EMPTY_LIST));
+    break;
+
+  case Expose:
+    return (MAKE_EVENT (EVENT_TYPE_EXPOSE, xw_index, EMPTY_LIST));
+    break;
+
+  case GraphicsExpose:
+    return (MAKE_EVENT (EVENT_TYPE_GRAPHICS_EXPOSE, xw_index, EMPTY_LIST));
+    break;
+
+  case KeyPress:
+    {
+      char copy_buffer [80];
+      KeySym keysym;
+
+      XLookupString ((& (event -> xkey)),
+		     (& (copy_buffer [0])),
+		     (sizeof (copy_buffer)),
+		     (& keysym),
+		     ((XComposeStatus *) 0));
+      return (MAKE_EVENT (EVENT_TYPE_KEY_PRESS,
+			  xw_index,
+			  cons(char_pointer_to_string (& (copy_buffer [0])),
+			       EMPTY_LIST)));
+      break;
+    }
+
+  case ButtonPress:
+    {
+      int button = (check_button ((event -> xbutton) . button));
+      int pointer_x = ((event -> xbutton) . x);
+      int pointer_y = ((event -> xbutton) . y);
+      return
+	(MAKE_EVENT (EVENT_TYPE_BUTTON_DOWN,
+		     xw_index,
+		     cons (long_to_integer (button),
+			   cons (LONG_TO_UNSIGNED_FIXNUM (pointer_x),
+				 cons (LONG_TO_UNSIGNED_FIXNUM (pointer_y),
+				       EMPTY_LIST)))));
+    }
+    break;
+
+  case ButtonRelease:
+    {
+      int button = (check_button ((event -> xbutton) . button));
+      int pointer_x = ((event -> xbutton) . x);
+      int pointer_y = ((event -> xbutton) . y);
+      return
+	(MAKE_EVENT (EVENT_TYPE_BUTTON_UP,
+		     xw_index,
+		     cons (long_to_integer (button),
+			   cons (LONG_TO_UNSIGNED_FIXNUM (pointer_x),
+				 cons (LONG_TO_UNSIGNED_FIXNUM (pointer_y),
+				       EMPTY_LIST)))));
+    }
+    break;
+
+  case NoExpose:
+    return (MAKE_EVENT (EVENT_TYPE_NO_EXPOSE, xw_index, EMPTY_LIST));
+    break;
+
+  case EnterNotify:
+    return (MAKE_EVENT (EVENT_TYPE_ENTER, xw_index, EMPTY_LIST));
+    break;
+
+  case LeaveNotify:
+    return (MAKE_EVENT (EVENT_TYPE_LEAVE, xw_index, EMPTY_LIST));
+    break;
+
+  case FocusIn:
+    return (MAKE_EVENT (EVENT_TYPE_FOCUS_IN, xw_index, EMPTY_LIST));
+    break;
+
+  case FocusOut:
+    return (MAKE_EVENT (EVENT_TYPE_FOCUS_OUT, xw_index, EMPTY_LIST));
+    break;
+
+  case MotionNotify:
+    {
+      int pointer_x = ((event -> xbutton) . x);
+      int pointer_y = ((event -> xbutton) . y);
+      return
+	(MAKE_EVENT (EVENT_TYPE_MOTION,
+		     xw_index,
+		     cons (LONG_TO_UNSIGNED_FIXNUM (pointer_x),
+			   cons (LONG_TO_UNSIGNED_FIXNUM (pointer_y),
+				 EMPTY_LIST))));
+    }
+    return (MAKE_EVENT (EVENT_TYPE_MOTION, xw_index, EMPTY_LIST));
+    break;
+
+  default:
+    return (MAKE_EVENT (EVENT_TYPE_UNKNOWN, xw_index, EMPTY_LIST));
+    break;
+  }
+}
+
+DEFINE_PRIMITIVE ("X-PROCESS-EVENTS", Prim_x_process_events, 0, 0,
+"Process any pending X events. Does not wait.")
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (x_process_events ()));
+}
+
+/* X-WAIT-FOR-EVENT-ON-WINDOW should be supplemented to accept a 
+   time out argument */
+
+DEFINE_PRIMITIVE ("X-WAIT-FOR-EVENT-ON-WINDOW",
+		  Prim_x_wait_for_event_on_window, 1, 1,
+"Wait for an X event for the X-WINDOW-INDEX argument.")
+{
+  PRIMITIVE_HEADER (1);
+  xw_wait_for_window_event (WINDOW_ARG (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+/* X-WAIT-FOR-EVENT should be supplemented to accept a time out argument */
+
+DEFINE_PRIMITIVE ("X-WAIT-FOR-EVENT", Prim_x_wait_for_event, 0, 0, 
+"Wait for an X event. It is possible that this procedure will return\n\
+even though there there are no X events. The return value will tell\n\
+you if there were actually any events processed.")
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (x_wait_for_event ()));
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-READ-EVENT-FLAGS!", Prim_x_window_read_event_flags, 1, 1, 0)
@@ -557,10 +838,55 @@ DEFINE_PRIMITIVE ("X-WINDOW-READ-EVENT-FLAGS!", Prim_x_window_read_event_flags, 
   (XW_EVENT_FLAGS (xw)) = 0;
   PRIMITIVE_RETURN (long_to_integer (old));
 }
+
+DEFINE_PRIMITIVE ("X-DEQUEUE-GLOBAL-EVENT", Prim_x_dequeue_global_event, 0, 0,
+"Returns an list representing a single event from the global X event queue.\n\
+The list is of the form (EVENT-TYPE X-WINDOW-INDEX . EXTRA) where EXTRA is\n\
+dependent on the EVENT-TYPE.")
+{
+  XEvent event;
+  int any_events;
+  PRIMITIVE_HEADER (0);
+
+  any_events = x_dequeue_global_event (& event);
+  if (!any_events) {
+    PRIMITIVE_RETURN (EMPTY_LIST);
+  }
+  PRIMITIVE_RETURN (x_event_to_scheme_event (& event));
+}
+  
+DEFINE_PRIMITIVE ("X-RETURN-EVENT-QUEUE", Prim_x_return_event_queue, 0, 0,
+  "Returns an list of all events (in order) from the global X event queue \n\
+and flushes the queue. Each event on the list is of the form \n\
+(EVENT-TYPE X-WINDOW-INDEX . EXTRA) where EXTRA is dependent on the \n\
+EVENT-TYPE.")
+{
+  XEvent event;
+  int any_events;
+  SCHEME_OBJECT event_list;
+  SCHEME_OBJECT event_list_tail;
+  SCHEME_OBJECT new_event;
+  PRIMITIVE_HEADER (0);
+
+  any_events = x_dequeue_global_event (& event);
+  if (!any_events) {
+    return (EMPTY_LIST);
+  }
+  event_list = cons (x_event_to_scheme_event (& event), EMPTY_LIST);
+  event_list_tail = event_list;
+  while (any_events = x_dequeue_global_event (& event)) {
+    new_event = cons (x_event_to_scheme_event (& event), EMPTY_LIST);
+    SET_PAIR_CDR (event_list_tail, new_event);
+    event_list_tail = new_event;
+  }
+  PRIMITIVE_RETURN (event_list);
+}
+  
 
 DEFINE_PRIMITIVE ("X-OPEN-DISPLAY", Prim_x_open_display, 1, 1, 0)
 {
   Display * display;
+  int display_file_descriptor;
   PRIMITIVE_HEADER (1);
 
   display =
@@ -573,6 +899,28 @@ DEFINE_PRIMITIVE ("X-OPEN-DISPLAY", Prim_x_open_display, 1, 1, 0)
   XSetErrorHandler (x_error_handler);
   XSetIOErrorHandler (x_io_error_handler);
 
+  display_file_descriptor = ConnectionNumber (display);
+
+  if (! x_select_mask_size) {
+    x_select_mask_size = 1;
+    x_select_mask = (int *) x_malloc (x_select_mask_size * sizeof (int));
+  }
+      
+
+  if (display_file_descriptor > x_max_file_descriptor) {
+
+    int new_select_mask_size;
+    
+    x_max_file_descriptor = display_file_descriptor;
+    new_select_mask_size = 1 + (x_max_file_descriptor / BITS_PER_INT);
+    if (new_select_mask_size > x_select_mask_size) {
+      x_select_mask = (int *) x_realloc (x_select_mask,
+					  new_select_mask_size * sizeof (int));
+      x_select_mask_size = new_select_mask_size;
+    }
+    SET_X_SELECT_MASK (display_file_descriptor);
+  }
+      
   PRIMITIVE_RETURN
     (LONG_TO_UNSIGNED_FIXNUM
      (x_allocate_table_index ((& x_display_table), ((char *) display))));
@@ -910,5 +1258,79 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-POSITION", Prim_x_window_set_position, 3, 3, 0)
      (XW_WINDOW (xw)),
      (arg_integer (2)),
      (arg_integer (3)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-WINDOW-PIXEL-COORD->CHAR-COORD",
+		  Prim_window_pixel_coord_to_char_coord,
+		  2,
+		  2,
+"Takes an X window and a pair (cons) of x and y pixel coordinates \n\
+and returns a pair of x and y character coordinates appropriate \n\
+for the current font associated with that window.")
+{
+  struct xwindow * xw;
+  SCHEME_OBJECT coord_list;
+  SCHEME_OBJECT x_coord;
+  SCHEME_OBJECT y_coord;
+  PRIMITIVE_HEADER (2);
+
+  xw = (WINDOW_ARG (1));
+  coord_list = (PAIR_ARG (2));
+  x_coord = (PAIR_CAR (coord_list));
+  y_coord = (PAIR_CDR (coord_list));
+  if (!((INTEGER_P (x_coord)) && (INTEGER_P (y_coord)))) {
+    error_wrong_type_arg (2);
+  }
+  PRIMITIVE_RETURN
+    (cons (long_to_integer (XTERM_X_CHARACTER (xw, integer_to_long (x_coord))),
+	   long_to_integer (XTERM_Y_CHARACTER (xw, integer_to_long (y_coord)))));
+}
+
+DEFINE_PRIMITIVE ("X-WINDOW-CHAR-COORD->PIXEL-COORD",
+		  Prim_window_char_coord_to_pixel_coord,
+		  2,
+		  2,
+"Takes an X window and a pair (cons) of x and y character coordinates \n\
+and returns a pair of x and y pixel coordinates appropriate \n\
+for the current font associated with that window.")
+{
+  struct xwindow * xw;
+  SCHEME_OBJECT coord_list;
+  SCHEME_OBJECT x_coord;
+  SCHEME_OBJECT y_coord;
+  PRIMITIVE_HEADER (2);
+
+  xw = (WINDOW_ARG (1));
+  coord_list = (PAIR_ARG (2));
+  x_coord = (PAIR_CAR (coord_list));
+  y_coord = (PAIR_CDR (coord_list));
+  if (!((INTEGER_P (x_coord)) && (INTEGER_P (y_coord)))) {
+    error_wrong_type_arg (2);
+  }
+  PRIMITIVE_RETURN
+    (cons (long_to_integer (XTERM_X_PIXEL (xw, integer_to_long (x_coord))),
+	   long_to_integer (XTERM_Y_PIXEL (xw, integer_to_long (y_coord)))));
+}
+
+DEFINE_PRIMITIVE ("X-SET-WINDOW-NAME", Prim_x_set_window_name, 2, 2,
+"Set the window name.")
+{
+  struct xwindow * xw;
+
+  PRIMITIVE_HEADER (2);
+  xw = WINDOW_ARG (1);
+  XStoreName (XW_DISPLAY (xw), XW_WINDOW (xw), STRING_ARG (2));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-SET-ICON-NAME", Prim_x_set_icon_name, 2, 2,
+"Set the window icon name.")
+{
+  struct xwindow * xw;
+
+  PRIMITIVE_HEADER (2);
+  xw = WINDOW_ARG (1);
+  XSetIconName (XW_DISPLAY (xw), XW_WINDOW (xw), STRING_ARG (2));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
