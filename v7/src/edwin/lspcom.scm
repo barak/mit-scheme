@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lspcom.scm,v 1.150 1989/04/28 22:51:11 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lspcom.scm,v 1.151 1991/03/11 01:14:28 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -208,8 +208,7 @@ If this would place point off screen, nothing happens."
     (insert-chars (current-command-char) argument)
     (if (positive? argument)
 	(let ((point (current-point)))
-	  (if (and (not (mark-left-char-quoted? point))
-		   (not (keyboard-active? 5)))
+	  (if (not (mark-left-char-quoted? point))
 	      (mark-flash (backward-one-sexp point) 'RIGHT))))))
 
 (define-command lisp-indent-line

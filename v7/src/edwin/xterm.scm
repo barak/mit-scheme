@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.13 1990/11/02 03:25:13 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.14 1991/03/11 01:15:02 cph Exp $
 ;;;
-;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -222,151 +222,74 @@
   (xterm-clear-rectangle! (screen-xterm screen)
 			  0 (screen-x-size screen) 0 (screen-y-size screen) 0))
 
-;;;; Input Port
-
-(define (make-xterm-input-port screen)
-  (input-port/copy xterm-input-port-template
-		   (make-xterm-input-port-state (screen-display screen))))
-
-(define-structure (xterm-input-port-state
-		   (constructor make-xterm-input-port-state (display))
-		   (conc-name xterm-input-port-state/))
-  (display false read-only true)
-  (buffer "")
-  (index 0)
-  ;; If we receive a non-keypress event while in a display update, we
-  ;; stash it here and abort the update.
-  (pending-event false))
-
-(define (operation/char-ready? port interval)
-  (let ((state (input-port/state port)))
-    (if (< (xterm-input-port-state/index state)
-	   (string-length (xterm-input-port-state/buffer state)))
-	true
-	(xterm-read-chars! state (+ (real-time-clock) interval)))))
-
-(define (operation/peek-char port)
-  (let ((state (input-port/state port)))
-    (let ((buffer (xterm-input-port-state/buffer state))
-	  (index (xterm-input-port-state/index state)))
-      (if (< index (string-length buffer))
-	  (string-ref buffer index)
-	  (let ((buffer (xterm-read-chars! state false)))
-	    (and buffer
-		 (string-ref buffer 0)))))))
-
-(define (operation/discard-char port)
-  (let ((state (input-port/state port)))
-    (set-xterm-input-port-state/index!
-     state
-     (1+ (xterm-input-port-state/index state)))))
-
-(define (operation/read-char port)
-  (let ((state (input-port/state port)))
-    (let ((buffer (xterm-input-port-state/buffer state))
-	  (index (xterm-input-port-state/index state)))
-      (if (< index (string-length buffer))
-	  (begin
-	    (set-xterm-input-port-state/index! state (1+ index))
-	    (string-ref buffer index))
-	  (let ((buffer (xterm-read-chars! state false)))
-	    (and buffer
-		 (begin
-		   (set-xterm-input-port-state/index! state 1)
-		   (string-ref buffer 0))))))))
-
-(define (operation/print-self state port)
-  (unparse-string state "from display ")
-  (unparse-object state
-		  (xterm-input-port-state/display (input-port/state port))))
-
-(define xterm-input-port-template
-  (make-input-port `((CHAR-READY? ,operation/char-ready?)
-		     (DISCARD-CHAR ,operation/discard-char)
-		     (PEEK-CHAR ,operation/peek-char)
-		     (PRINT-SELF ,operation/print-self)
-		     (READ-CHAR ,operation/read-char))
-		   false))
-
 ;;;; Event Handling
 
-(define (xterm-read-chars! state time-limit)
-  (let ((display (xterm-input-port-state/display state)))
-    (letrec
-	((loop
-	  (lambda ()
-	    (let ((event (x-display-process-events display time-limit)))
-	      (cond ((not event)
-		     false)
-		    ((= (vector-ref event 0) event-type:key-press)
-		     (let ((buffer (vector-ref event 2)))
-		       (set-xterm-input-port-state/buffer! state buffer)
-		       (set-xterm-input-port-state/index! state 0)
-		       (if signal-interrupts?
-			   (let ((^g-index
-				  (string-find-previous-char buffer #\BEL)))
-			     (if ^g-index
-				 (begin
-				   (set-xterm-input-port-state/index!
-				    state (1+ ^g-index))
-				   (signal-interrupt!)))))
-		       buffer))
-		    (else
-		     (process-special-event event))))))
-	 (process-special-event
-	  (lambda (event)
-	    (let ((handler (vector-ref event-handlers (vector-ref event 0)))
-		  (screen (xterm->screen (vector-ref event 1))))
-	      (if (and handler screen)
-		  (begin
-		    (let ((continuation (screen-in-update? screen)))
-		      (if continuation
-			  (begin
-			    (set-xterm-input-port-state/pending-event! state
-								       event)
-			    (continuation false))))
-		    (handler screen event))))
-	    (loop))))
-      (let ((event (xterm-input-port-state/pending-event state)))
-	(if event
-	    (begin
-	      (set-xterm-input-port-state/pending-event! state false)
-	      (process-special-event event))
-	    (loop))))))
-
-(define signal-interrupts?)
-(define pending-interrupt?)
-
-(define (signal-interrupt!)
-  (editor-beep)
-  (temporary-message "Quit")
-  (set! pending-interrupt? false)
-  (^G-signal))
-
-(define (with-editor-interrupts-from-x receiver)
-  (fluid-let ((signal-interrupts? true)
-	      (pending-interrupt? false))
-    (receiver (lambda (thunk) (thunk)))))
-
-(define (with-x-interrupts-enabled thunk)
-  (bind-signal-interrupts? true thunk))
-
-(define (with-x-interrupts-disabled thunk)
-  (bind-signal-interrupts? false thunk))
-
-(define (bind-signal-interrupts? new-mask thunk)
-  (let ((old-mask))
-    (dynamic-wind (lambda ()
-		    (set! old-mask signal-interrupts?)
-		    (set! signal-interrupts? new-mask)
-		    (if (and new-mask pending-interrupt?)
-			(signal-interrupt!)))
-		  thunk
-		  (lambda ()
-		    (set! new-mask signal-interrupts?)
-		    (set! signal-interrupts? old-mask)
-		    (if (and old-mask pending-interrupt?)
-			(signal-interrupt!))))))
+(define (get-xterm-input-operations screen)
+  (let ((display (screen-display screen))
+	(string false)
+	(start 0)
+	(end 0)
+	(pending-event false))
+    (let ((process-events!
+	   (lambda (limit)
+	     (letrec
+		 ((loop
+		   (lambda ()
+		     (let ((event (x-display-process-events display limit)))
+		       (cond ((not event)
+			      (if (not limit)
+				  (error "Blocking read returned #F."))
+			      false)
+			     ((eq? event true)
+			      ;; Handle subprocess output here.
+			      (loop))
+			     ((= (vector-ref event 0) event-type:key-press)
+			      (set! string (vector-ref event 2))
+			      (set! start 0)
+			      (set! end (string-length string))
+			      (if signal-interrupts?
+				  (let ((^g-index
+					 (string-find-previous-char string
+								    #\BEL)))
+				    (if ^g-index
+					(begin
+					  (set! start (fix:+ ^g-index 1))
+					  (signal-interrupt!)))))
+			      true)
+			     (else
+			      (process-special-event event))))))
+		  (process-special-event
+		   (lambda (event)
+		     (let ((handler
+			    (vector-ref event-handlers (vector-ref event 0)))
+			   (screen (xterm->screen (vector-ref event 1))))
+		       (if (and handler screen)
+			   (begin
+			     (let ((continuation (screen-in-update? screen)))
+			       (if continuation
+				   (begin
+				     (set! pending-event event)
+				     (continuation false))))
+			     (handler screen event))))
+		     (loop))))
+	       (if (not pending-event)
+		   (loop)
+		   (let ((event pending-event))
+		     (set! pending-event false)
+		     (process-special-event event)))))))
+      (values
+       (lambda ()			;char-ready?
+	 (if (fix:< start end)
+	     true
+	     (process-events! 0)))
+       (lambda ()			;peek-char
+	 (if (not (fix:< start end)) (process-events! false))
+	 (string-ref string start))
+       (lambda ()			;read-char
+	 (if (not (fix:< start end)) (process-events! false))
+	 (let ((char (string-ref string start)))
+	   (set! start (fix:+ start 1))
+	   char))))))
 
 ;;; The values of these flags must be equal to the corresponding event
 ;;; types in "microcode/x11base.c"
@@ -426,6 +349,40 @@
 	 (lambda ()
 	   (select-screen screen))))))
 
+(define signal-interrupts?)
+(define pending-interrupt?)
+
+(define (signal-interrupt!)
+  (editor-beep)
+  (temporary-message "Quit")
+  (set! pending-interrupt? false)
+  (^G-signal))
+
+(define (with-editor-interrupts-from-x receiver)
+  (fluid-let ((signal-interrupts? true)
+	      (pending-interrupt? false))
+    (receiver (lambda (thunk) (thunk)))))
+
+(define (with-x-interrupts-enabled thunk)
+  (bind-signal-interrupts? true thunk))
+
+(define (with-x-interrupts-disabled thunk)
+  (bind-signal-interrupts? false thunk))
+
+(define (bind-signal-interrupts? new-mask thunk)
+  (let ((old-mask))
+    (dynamic-wind (lambda ()
+		    (set! old-mask signal-interrupts?)
+		    (set! signal-interrupts? new-mask)
+		    (if (and new-mask pending-interrupt?)
+			(signal-interrupt!)))
+		  thunk
+		  (lambda ()
+		    (set! new-mask signal-interrupts?)
+		    (set! signal-interrupts? old-mask)
+		    (if (and old-mask pending-interrupt?)
+			(signal-interrupt!))))))
+
 (define x-display-type)
 (define x-display-data)
 
@@ -444,7 +401,7 @@
 			   true
 			   get-x-display
 			   make-xterm-screen
-			   make-xterm-input-port
+			   get-xterm-input-operations
 			   with-editor-interrupts-from-x
 			   with-x-interrupts-enabled
 			   with-x-interrupts-disabled))

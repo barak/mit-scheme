@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.9 1991/02/15 18:13:52 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.10 1991/03/11 01:14:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -70,7 +70,7 @@
 	       (if result (execute-char (current-comtabs) result))))))))
 
 (define (isearch-loop state)
-  (if (not (keyboard-active? 0))
+  (if (not ((editor-char-ready? current-editor)))
       (begin
 	(set-current-point! (search-state-point state))
 	(message (search-state-message state))))

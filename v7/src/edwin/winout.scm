@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/winout.scm,v 1.4 1989/08/09 13:18:18 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/winout.scm,v 1.5 1991/03/11 01:14:58 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -46,7 +46,7 @@
 ;;; package: (edwin window-output-port)
 
 (declare (usual-integrations))
-
+
 (define (with-output-to-current-point thunk)
   (with-output-to-window-point (current-window) thunk))
 
@@ -57,7 +57,7 @@
   (with-output-to-port port
     (lambda ()
       (with-cmdl/output-port (nearest-cmdl) port thunk))))
-
+
 (define (window-output-port window)
   (output-port/copy window-output-port-template window))
 
@@ -113,10 +113,10 @@
 	  (region-insert-string! point string)))))
 
 (define (operation/flush-output port)
-  ;; Calling `keyboard-active?' gives the screen abstraction a chance
-  ;; to do refresh if it needs to (e.g. if an X exposure event is
-  ;; received).
-  (keyboard-active? 0)
+  ;; Calling `editor-char-ready?' gives the screen abstraction a
+  ;; chance to do refresh if it needs to (e.g. if an X exposure event
+  ;; is received).
+  ((editor-char-ready? current-editor))
   (let ((window (output-port/state port)))
     (if (window-needs-redisplay? window)
 	(window-direct-update! window false))))

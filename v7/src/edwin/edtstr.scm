@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.12 1990/11/02 03:23:59 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.13 1991/03/11 01:14:10 cph Exp $
 ;;;
-;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -54,7 +54,9 @@
   (bufferset false read-only true)
   (kill-ring false read-only true)
   (char-history false read-only true)
-  (input-port false read-only true)
+  (char-ready? false read-only true)
+  (peek-char false read-only true)
+  (read-char false read-only true)
   (button-event false)
   (select-time 1))
 
@@ -63,16 +65,21 @@
     (let ((bufferset (make-bufferset initial-buffer))
 	  (screen (display-type/make-screen display-type make-screen-args)))
       (initialize-screen-root-window! screen bufferset initial-buffer)
-      (%make-editor name
-		    display-type
-		    (list screen)
-		    screen
-		    bufferset
-		    (make-ring 10)
-		    (make-ring 100)
-		    (display-type/make-input-port display-type screen)
-		    false
-		    1))))
+      (with-values
+	  (lambda () (display-type/get-input-operations display-type screen))
+	(lambda (char-ready? peek-char read-char)
+	  (%make-editor name
+			display-type
+			(list screen)
+			screen
+			bufferset
+			(make-ring 10)
+			(make-ring 100)
+			char-ready?
+			peek-char
+			read-char
+			false
+			1))))))
 
 (define-integrable (current-display-type)
   (editor-display-type current-editor))

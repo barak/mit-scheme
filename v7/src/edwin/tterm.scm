@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.3 1991/01/15 20:22:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.4 1991/03/11 01:14:47 cph Exp $
 
-Copyright (c) 1990, 1991 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -126,9 +126,44 @@ MIT in each case. |#
 	   (tf-teleray description)
 	   (tf-underscore description))))
 
-(define (make-console-input-port screen)
-  screen				; ignored
-  console-input-port)
+(define-integrable input-buffer-size 16)
+
+(define (get-console-input-operations screen)
+  screen				;ignored
+  (let ((channel (input-port/channel console-input-port))
+	(string (make-string input-buffer-size))
+	(start input-buffer-size)
+	(end input-buffer-size))
+    (let ((fill-buffer
+	   (lambda (block?)
+	     (let ((eof (lambda () "Reached EOF in keyboard input.")))
+	       (if (fix:= end 0) (eof))
+	       (if block?
+		   (channel-blocking channel)
+		   (channel-nonblocking channel))
+	       (let ((n (channel-read channel string 0 input-buffer-size)))
+		 (cond (n
+			(if (fix:= n 0) (eof))
+			(set! start 0)
+			(set! end n)
+			(if transcript-port
+			    (write-string (substring string 0 n)
+					  transcript-port)))
+		       (block? (error "Blocking read returned #F.")))
+		 n)))))
+      (values
+       (lambda ()			;char-ready?
+	 (if (fix:< start end)
+	     true
+	     (fill-buffer false)))
+       (lambda ()			;peek-char
+	 (if (not (fix:< start end)) (fill-buffer true))
+	 (string-ref string start))
+       (lambda ()			;read-char
+	 (if (not (fix:< start end)) (fill-buffer true))
+	 (let ((char (string-ref string start)))
+	   (set! start (fix:+ start 1))
+	   char))))))
 
 (define (signal-interrupt! interrupt-enables)
   interrupt-enables			; ignored
@@ -162,7 +197,7 @@ MIT in each case. |#
 			   false
 			   console-available?
 			   make-console-screen
-			   make-console-input-port
+			   get-console-input-operations
 			   with-console-grabbed
 			   with-console-interrupts-enabled
 			   with-console-interrupts-disabled))
@@ -219,13 +254,18 @@ MIT in each case. |#
 (define (channel-state channel)
   (and channel
        (channel-type=terminal? channel)
-       (terminal-get-state channel)))
+       (cons (channel-blocking? channel)
+	     (terminal-get-state channel))))
 
 (define (set-channel-state! channel state)
   (if (and channel
 	   (channel-type=terminal? channel)
 	   state)
-      (terminal-set-state channel state)))
+      (begin
+	(if (car state)
+	    (channel-blocking channel)
+	    (channel-nonblocking channel))
+	(terminal-set-state channel (cdr state)))))
 
 (define (terminal-operation operation channel)
   (if (and channel
@@ -494,7 +534,7 @@ MIT in each case. |#
 		       first-unused-x)))
 	      (do ((x (screen-cursor-x screen) (fix:1+ x)))
 		  ((fix:= x first-unused-x))
-		(output-char screen #\space))
+		(output-space screen))
 	      (record-cursor-after-output screen first-unused-x)))))))
 
 (define (clear-multi-char screen n)
@@ -519,7 +559,7 @@ MIT in each case. |#
 			   x-end))))
 		(do ((x cursor-x (fix:1+ x)))
 		    ((fix:= x x-end))
-		  (output-char screen #\space))
+		  (output-space screen))
 		(record-cursor-after-output screen x-end))))))))
 
 (define (insert-lines screen yl yu n)
@@ -823,3 +863,6 @@ MIT in each case. |#
 (define-integrable (output-char screen char)
   screen
   (output-port/write-char console-output-port char))
+
+(define-integrable (output-space screen)
+  (output-char screen #\space))

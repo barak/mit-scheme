@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.86 1991/01/15 13:59:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.87 1991/03/11 01:14:38 cph Exp $
 ;;;
-;;;	Copyright (c) 1989, 1990, 1991 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -533,7 +533,8 @@
       ((screen-debug-trace screen) 'screen screen 'update force?))
   (let ((current-matrix (screen-current-matrix screen))
 	(new-matrix (screen-new-matrix screen))
-	(y-size (screen-y-size screen)))
+	(y-size (screen-y-size screen))
+	(char-ready? (editor-char-ready? current-editor)))
     (let ((enable (matrix-enable new-matrix)))
       (let loop ((y 0))
 	(cond ((fix:= y y-size)
@@ -548,7 +549,7 @@
 		    ;; `terminal-preempt-update?' has side-effects,
 		    ;; and it must be run regardless of `force?'.
 		    (not force?)
-		    (or (keyboard-active? 0)
+		    (or (char-ready?)
 			(eq? (screen-debug-preemption-y screen) y)))
 	       (terminal-move-cursor screen
 				     (matrix-cursor-x current-matrix)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/display.scm,v 1.3 1990/11/02 03:23:38 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/display.scm,v 1.4 1991/03/11 01:14:06 cph Exp $
 ;;;
-;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -59,7 +59,7 @@
   (multiple-screens? false read-only true)
   (operation/available? false read-only true)
   (operation/make-screen false read-only true)
-  (operation/make-input-port false read-only true)
+  (operation/get-input-operations false read-only true)
   (operation/with-display-grabbed false read-only true)
   (operation/with-interrupts-enabled false read-only true)
   (operation/with-interrupts-disabled false read-only true))
@@ -68,7 +68,7 @@
 			   multiple-screens?
 			   available?
 			   make-screen
-			   make-input-port
+			   get-input-operations
 			   with-display-grabbed
 			   with-interrupts-enabled
 			   with-interrupts-disabled)
@@ -77,7 +77,7 @@
 			     multiple-screens?
 			     available?
 			     make-screen
-			     make-input-port
+			     get-input-operations
 			     with-display-grabbed
 			     with-interrupts-enabled
 			     with-interrupts-disabled)))
@@ -92,8 +92,8 @@
 (define (display-type/make-screen display-type args)
   (apply (display-type/operation/make-screen display-type) args))
 
-(define (display-type/make-input-port display-type screen)
-  ((display-type/operation/make-input-port display-type) screen))
+(define (display-type/get-input-operations display-type screen)
+  ((display-type/operation/get-input-operations display-type) screen))
 
 (define (display-type/with-display-grabbed display-type thunk)
   ((display-type/operation/with-display-grabbed display-type) thunk))

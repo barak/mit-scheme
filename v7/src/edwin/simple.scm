@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.29 1989/04/28 22:53:22 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.30 1991/03/11 01:14:43 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -203,10 +203,15 @@
 	      (else (extract-string start end))))))))
 
 (define (sit-for interval)
-  (if (not (keyboard-active? 0))
-      (begin
-       (update-screens! false)
-       (keyboard-active? interval))))
+  (let ((time-limit (+ (real-time-clock) interval))
+	(char-ready? (editor-char-ready? current-editor)))
+    (if (not (char-ready?))
+	(begin
+	 (update-screens! false)
+	 (let loop ()
+	   (if (and (not (char-ready?))
+		    (< (real-time-clock) time-limit))
+	       (loop)))))))
 
 (define (reposition-window-top mark)
   (if (not (and mark (set-window-start-mark! (current-window) mark false)))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.86 1990/11/14 15:14:53 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.87 1991/03/11 01:14:20 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -172,19 +172,16 @@ B 3BAB8C
 	(if (not command-prompt-displayed?)
 	    (clear-current-message!)))))
 
-(define-integrable (keyboard-active? interval)
-  (char-ready? (editor-input-port current-editor) interval))
-
 (define (keyboard-peek-char)
   (if *executing-keyboard-macro?*
       (keyboard-macro-peek-char)
-      (keyboard-read-char-1 input-port/peek-char)))
+      (keyboard-read-char-1 (editor-peek-char current-editor))))
 
 (define (keyboard-read-char)
   (set! keyboard-chars-read (1+ keyboard-chars-read))
   (if *executing-keyboard-macro?*
       (keyboard-macro-read-char)
-      (let ((char (keyboard-read-char-1 input-port/read-char)))
+      (let ((char (keyboard-read-char-1 (editor-read-char current-editor))))
 	(set! *auto-save-keystroke-count* (1+ *auto-save-keystroke-count*))
 	(ring-push! (current-char-history) char)
 	(if *defining-keyboard-macro?* (keyboard-macro-write-char char))
@@ -194,38 +191,44 @@ B 3BAB8C
 (define read-char-timeout/slow 2000)
 
 (define (keyboard-read-char-1 read-char)
-  ;; Perform redisplay if needed.
-  (if (not (keyboard-active? 0))
-      (begin
-	(update-screens! false)
-	(if (let ((interval (ref-variable auto-save-interval))
-		  (count *auto-save-keystroke-count*))
-	      (and (positive? interval)
-		   (> count interval)
-		   (> count 20)))
-	    (begin
-	      (do-auto-save)
-	      (set! *auto-save-keystroke-count* 0)))))
-  ;; Perform the appropriate juggling of the minibuffer message.
-  (cond ((within-typein-edit?)
-	 (if message-string
-	     (begin
-	       (keyboard-active? read-char-timeout/slow)
-	       (set! message-string false)
-	       (set! message-should-be-erased? false)
-	       (clear-current-message!))))
-	((and (or message-should-be-erased?
-		  (and command-prompt-string
-		       (not command-prompt-displayed?)))
-	      (not (keyboard-active? read-char-timeout/fast)))
-	 (set! message-string false)
-	 (set! message-should-be-erased? false)
-	 (if command-prompt-string
-	     (begin
-	       (set! command-prompt-displayed? true)
-	       (set-current-message! command-prompt-string))
-	     (clear-current-message!))))
-  (let ((char (read-char (editor-input-port current-editor))))
-    (if (not (char? char))
-	(error "reached EOF in keyboard input port"))
-    (remap-alias-char char)))
+  (let ((char-ready? (editor-char-ready? current-editor)))
+    ;; Perform redisplay if needed.
+    (if (not (char-ready?))
+	(begin
+	  (update-screens! false)
+	  (if (let ((interval (ref-variable auto-save-interval))
+		    (count *auto-save-keystroke-count*))
+		(and (positive? interval)
+		     (> count interval)
+		     (> count 20)))
+	      (begin
+		(do-auto-save)
+		(set! *auto-save-keystroke-count* 0)))))
+    ;; Perform the appropriate juggling of the minibuffer message.
+    (cond ((within-typein-edit?)
+	   (if message-string
+	       (begin
+		 (let ((t (+ (real-time-clock) read-char-timeout/slow)))
+		   (let loop ()
+		     (if (and (not (char-ready?))
+			      (< (real-time-clock) t))
+			 (loop))))
+		 (set! message-string false)
+		 (set! message-should-be-erased? false)
+		 (clear-current-message!))))
+	  ((and (or message-should-be-erased?
+		    (and command-prompt-string
+			 (not command-prompt-displayed?)))
+		(let ((t (+ (real-time-clock) read-char-timeout/fast)))
+		  (let loop ()
+		    (cond ((char-ready?) false)
+			  ((< (real-time-clock) t) (loop))
+			  (else true)))))
+	   (set! message-string false)
+	   (set! message-should-be-erased? false)
+	   (if command-prompt-string
+	       (begin
+		 (set! command-prompt-displayed? true)
+		 (set-current-message! command-prompt-string))
+	       (clear-current-message!)))))
+  (remap-alias-char (read-char)))

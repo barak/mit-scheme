@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.23 1991/02/15 18:13:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.24 1991/03/11 01:14:14 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -194,7 +194,7 @@ MIT in each case. |#
   (export (edwin)
 	  display-type?
 	  display-type/available?
-	  display-type/make-input-port
+	  display-type/get-input-operations
 	  display-type/make-screen
 	  display-type/multiple-screens?
 	  display-type/name
@@ -286,6 +286,8 @@ MIT in each case. |#
 	  terminal-set-state)
   (import (runtime interrupt-handler)
 	  hook/^g-interrupt)
+  (import (runtime transcript)
+	  transcript-port)
   (initialization (initialize-package!)))
 
 (define-package (edwin window)
@@ -420,7 +422,6 @@ MIT in each case. |#
 	  clear-message
 	  command-prompt
 	  initialize-typeout!
-	  keyboard-active?
 	  keyboard-peek-char
 	  keyboard-read-char
 	  message
