@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.51 2004/07/24 03:19:23 cph Exp $
+$Id: xml.pkg,v 1.52 2004/07/24 03:45:44 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -298,7 +298,7 @@ USA.
 	  xml->wide-string))
 
 (define-package (runtime xml html)
-  (files "xhtml")
+  (files "xhtml" "xhtml-entities")
   (parent (runtime xml))
   (export ()
 	  (html-document html-1.0-document)
@@ -492,4 +492,8 @@ USA.
 	  html:ul
 	  html:ul?
 	  html:var
-	  html:var?))
+	  html:var?)
+  (export (runtime xml parser)
+	  html-entities)
+  (export (runtime xml output)
+	  html-char->name-map))

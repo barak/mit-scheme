@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.13 2004/07/15 18:16:43 cph Exp $
+$Id: compile.scm,v 1.14 2004/07/24 03:45:29 cph Exp $
 
 Copyright 2001,2003,2004 Massachusetts Institute of Technology
 
@@ -43,5 +43,6 @@ USA.
 		    "xml-chars"
 		    "xml-output"
 		    "xml-parser"
-		    "xhtml"))))
+		    "xhtml"
+		    "xhtml-entities"))))
     (cref/generate-constructors "xml")))

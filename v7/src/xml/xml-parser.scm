@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.62 2004/06/28 03:27:04 cph Exp $
+$Id: xml-parser.scm,v 1.63 2004/07/24 03:45:54 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -232,20 +232,22 @@ USA.
 	       (dtd
 		(one-value
 		 (fluid-let ((*in-dtd?* #t))
-		   (parse-dtd buffer))))
-	       (misc-2 (if dtd (one-value (parse-misc buffer)) '()))
-	       (element
-		(or (one-value (parse-element buffer))
-		    (perror buffer "Missing root element")))
-	       (misc-3 (one-value (parse-misc buffer))))
-	  (if (peek-parser-buffer-char buffer)
-	      (perror buffer "Unparsed content in input"))
-	  (make-xml-document declaration
-			     misc-1
-			     dtd
-			     misc-2
-			     element
-			     misc-3))))))
+		   (parse-dtd buffer)))))
+	  (if (html-dtd? dtd)
+	      (add-html-entities!))
+	  (let* ((misc-2 (if dtd (one-value (parse-misc buffer)) '()))
+		 (element
+		  (or (one-value (parse-element buffer))
+		      (perror buffer "Missing root element")))
+		 (misc-3 (one-value (parse-misc buffer))))
+	    (if (peek-parser-buffer-char buffer)
+		(perror buffer "Unparsed content in input"))
+	    (make-xml-document declaration
+			       misc-1
+			       dtd
+			       misc-2
+			       element
+			       misc-3)))))))
 
 (define *standalone?*)
 (define *internal-dtd?*)
@@ -1007,6 +1009,12 @@ USA.
 		  name)
 	     (car entities)
 	     (loop (cdr entities))))))
+
+(define (add-html-entities!)
+  (if (pair? *general-entities*)
+      (begin
+	(set! *general-entities* (append *general-entities* html-entities))
+	unspecific)))
 
 (define (predefined-entities)
   (list (make-xml-!entity 'lt '("&#60;"))

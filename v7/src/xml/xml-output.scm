@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.33 2004/02/26 01:52:24 cph Exp $
+$Id: xml-output.scm,v 1.34 2004/07/24 03:45:49 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -57,18 +57,23 @@ USA.
   (wide-string->utf8-string (apply xml->wide-string xml options)))
 
 (define (write-xml-1 xml port options)
-  (%write-xml xml (make-ctx port options)))
+  (%write-xml xml
+	      (apply make-ctx
+		     'CHAR-MAP (if (and (xml-document? xml)
+					(html-dtd? (xml-document-dtd xml)))
+				   html-char->name-map
+				   (lambda (char) char #f))
+		     'PORT port
+		     options)))
 
 (define-structure (ctx (type-descriptor <ctx>)
-		       (keyword-constructor %make-ctx)
+		       (keyword-constructor make-ctx)
 		       (print-procedure
 			(standard-unparser-method 'XML-OUTPUT-CONTEXT #f)))
+  (char-map #f read-only #t)
   (port #f read-only #t)
   (indent-attributes? #f read-only #t)
   (indent-dtd? #f read-only #t))
-
-(define (make-ctx port options)
-  (apply %make-ctx 'PORT port options))
 
 (define (emit-char char ctx)
   (let ((port (ctx-port ctx)))
@@ -474,10 +479,16 @@ USA.
 (define (write-escaped-string string escapes ctx)
   (for-each-wide-char string
     (lambda (char)
-      (let ((e (assq char escapes)))
-	(if e
-	    (emit-string (cdr e) ctx)
-	    (emit-char char ctx))))))
+      (cond ((assq char escapes)
+	     => (lambda (e)
+		  (emit-string (cdr e) ctx)))
+	    (((ctx-char-map ctx) char)
+	     => (lambda (name)
+		  (emit-char #\& ctx)
+		  (emit-string (symbol-name name) ctx)
+		  (emit-char #\; ctx)))
+	    (else
+	     (emit-char char ctx))))))
 
 (define (for-each-wide-char string procedure)
   (let ((port (open-input-string string)))
