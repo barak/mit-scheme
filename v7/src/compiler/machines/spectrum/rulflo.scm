@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 4.34 1993/02/12 01:06:24 gjr Exp $
+$Id: rulflo.scm,v 4.35 1993/02/12 01:57:47 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -193,13 +193,13 @@ MIT in each case. |#
 ;; correctly.
 
 (define (invert-float-condition cc)
-  (let ((place (assq cc float-condition-table)))
+  (let ((place (assq cc float-inversion-table)))
     (if (not place)
 	(error "invert-float-condition: Unknown condition"
 	       cc)
 	(cadr place))))
 
-(define float-condition-table
+(define float-inversion-table
   ;; There are many others, but only these are used here.
   '((> !>)
     (< !<)
