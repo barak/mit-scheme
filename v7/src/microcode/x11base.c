@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.23 1991/07/23 08:16:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.24 1991/07/26 21:52:37 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -609,26 +609,44 @@ DEFUN (key_event, (xw, event, type),
 {
   char copy_buffer [80];
   KeySym keysym;
-  int nbytes =
+  int nbytes;
+
+  /* Make ShiftLock modifier not affect keys with other modifiers. */
+  if ((event -> state) &
+      (ShiftMask || ControlMask
+       || Mod1Mask || Mod2Mask || Mod3Mask || Mod4Mask || Mod5Mask))
+  {
+    if ((event->state) & LockMask)
+      (event->state) -= LockMask;
+  }
+  nbytes =
     (XLookupString (event,
 		    copy_buffer,
 		    (sizeof (copy_buffer)),
 		    (&keysym),
 		    (&compose_status)));
-  if ((nbytes < 1)
-      || (IsFunctionKey (keysym))
-      || (IsCursorKey (keysym))
-      || (IsKeypadKey (keysym))
-      || (IsMiscFunctionKey (keysym))
-      || (IsPFKey (keysym))
-      || (IsModifierKey (keysym)))
+  if ((nbytes < 1) || (IsModifierKey (keysym)))
     return (SHARP_F);
   else
     {
-      SCHEME_OBJECT result = (make_event_object (xw, type, 1));
-      if ((nbytes == 1) && (((event -> state) & Mod1Mask) != 0))
-	(copy_buffer[0]) |= 0x80;
+      long bucky = 0;
+
+      SCHEME_OBJECT result = (make_event_object (xw, type, 2));
+      if (nbytes == 1)
+      {
+	/* Convert to Scheme bucky bits (kept independent of the */
+	/* character).  Let X handle controlification. */
+	if ((event -> state) & Mod1Mask) /* Meta */
+	  bucky |= 1;
+	if ((event -> state) & Mod2Mask) /* Super */
+	  bucky |= 4;
+	if ((event -> state) & Mod3Mask) /* Hyper */
+	  bucky |= 8;
+	if ((event -> state) & Mod4Mask) /* Top */
+	  bucky |= 16;
+      }
       VECTOR_SET (result, EVENT_0, (memory_to_string (nbytes, copy_buffer)));
+      VECTOR_SET (result, EVENT_1, LONG_TO_UNSIGNED_FIXNUM (bucky));
       return (result);
     }
 }
