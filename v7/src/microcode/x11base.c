@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.74 2000/01/18 05:11:37 cph Exp $
+$Id: x11base.c,v 1.75 2000/10/01 02:15:58 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -1587,13 +1587,19 @@ DEFINE_PRIMITIVE ("X-WINDOW-CLEAR", Prim_x_window_clear, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   {
     struct xwindow * xw = (x_window_arg (1));
-    XClearArea ((XW_DISPLAY (xw)),
-		(XW_WINDOW (xw)),
-		((XW_CLIP_X (xw)) + (XW_INTERNAL_BORDER_WIDTH (xw))),
-		((XW_CLIP_Y (xw)) + (XW_INTERNAL_BORDER_WIDTH (xw))),
-		(XW_CLIP_WIDTH (xw)),
-		(XW_CLIP_HEIGHT (xw)),
-		False);
+    if (((XW_CLIP_X (xw)) == 0)
+	&& ((XW_CLIP_Y (xw)) == 0)
+	&& ((XW_CLIP_WIDTH (xw)) == (XW_X_SIZE (xw)))
+	&& ((XW_CLIP_HEIGHT (xw)) == (XW_Y_SIZE (xw))))
+      XClearWindow ((XW_DISPLAY (xw)), (XW_WINDOW (xw)));
+    else
+      XClearArea ((XW_DISPLAY (xw)),
+		  (XW_WINDOW (xw)),
+		  ((XW_CLIP_X (xw)) + (XW_INTERNAL_BORDER_WIDTH (xw))),
+		  ((XW_CLIP_Y (xw)) + (XW_INTERNAL_BORDER_WIDTH (xw))),
+		  (XW_CLIP_WIDTH (xw)),
+		  (XW_CLIP_HEIGHT (xw)),
+		  False);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
