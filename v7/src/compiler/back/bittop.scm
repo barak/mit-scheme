@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.10 1988/08/11 19:54:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.11 1989/05/17 20:42:19 jinx Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -69,9 +69,10 @@ MIT in each case. |#
 	  (initial-phase (instruction-sequence->directives input)))
 	(lambda (directives vars)
 	  (let* ((count (relax! directives vars))
-		 (code-block (final-phase directives)))
+		 (block (assemble-objects (final-phase directives))))
 	    (values count
-		    code-block
+		    (object-new-type (ucode-type compiled-code-block)
+				     block)
 		    (queue->list *entry-points*)
 		    (symbol-table->assq-list *the-symbol-table*)
 		    (queue->list *linkage-info*)))))))
@@ -102,33 +103,44 @@ MIT in each case. |#
 		(if (interval? val)
 		    (set-binding-value! (cdr pair) (interval-low val)))))
 	    (symbol-table-bindings *the-symbol-table*))
-  (let* ((length (- (* addressing-granularity
-		       (symbol-table-value *the-symbol-table* *end-label*))
-		    starting-pc))
-	 (output-block (bit-string-allocate (+ scheme-object-width length))))
-    (instruction-insert!
-     (make-nmv-header (quotient length scheme-object-width))
-     output-block
-     (instruction-initial-position output-block)
-     (lambda (position)
-       (assemble-directives! output-block directives position)))))
+  (let ((code-block
+	 (bit-string-allocate (- (* addressing-granularity
+				    (symbol-table-value *the-symbol-table*
+							*end-label*))
+				 starting-pc))))
+    (assemble-directives!
+     code-block
+     directives
+     (instruction-initial-position code-block))
+    code-block))
 
-(define (assemble-objects! block)
-  (let ((objects (queue->list *objects*))
-	(bl (quotient (bit-string-length block) scheme-object-width)))
-    (let* ((ol (length objects))
-	   (v (make-vector (+ ol bl))))
-      (write-bits! v scheme-object-width block)
-      (insert-objects! (object-new-type (ucode-type compiled-code-block) v)
-		       objects bl))))
+(define (assemble-objects code-block)
+  (let* ((objects (queue->list *objects*))
+	 (bl (quotient (bit-string-length code-block)
+		       scheme-object-width))
+	 (output-block (make-vector (1+ (+ (length objects) bl)))))
+    (let ((non-pointer-length
+	   ((ucode-primitive make-non-pointer-object) bl)))
+      (with-absolutely-no-interrupts
+	(lambda ()
+	  (vector-set! output-block 0
+		       ((ucode-primitive primitive-object-new-type)
+			(ucode-type manifest-nm-vector)
+			non-pointer-length)))))
+    (write-bits! output-block
+		 ;; After header just inserted.
+		 (* scheme-object-width 2)
+		 code-block)
+    (insert-objects! output-block objects (1+ bl))
+    output-block))
 
 (define (insert-objects! v objects where)
   (cond ((not (null? objects))
-	 (system-vector-set! v where (cadar objects))
+	 (vector-set! v where (cadar objects))
 	 (insert-objects! v (cdr objects) (1+ where)))
-	((not (= where (system-vector-length v)))
+	((not (= where (vector-length v)))
 	 (error "insert-objects!: object phase error" where))
-	(else v)))
+	(else unspecific)))
 
 (define (pad! block pc position)
   (let ((l (bit-string-length padding-string)))
@@ -182,8 +194,7 @@ MIT in each case. |#
 		    `(PC ,starting-pc ,pc)
 		    `(BIT-POSITION ,initial-position ,position)))
 	    (else
-	     (pad! block pc position)
-	     (assemble-objects! block))))
+	     (pad! block pc position))))
 
     (if (null? directives)
 	(end-assembly)
