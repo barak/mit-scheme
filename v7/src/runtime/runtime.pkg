@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.136 1992/02/27 01:12:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.137 1992/03/08 16:22:30 arthur Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -362,6 +362,7 @@ MIT in each case. |#
   (export ()
 	  decoded-time/date-string
 	  decoded-time/day
+	  decoded-time/day-of-week
 	  decoded-time/hour
 	  decoded-time/minute
 	  decoded-time/month
