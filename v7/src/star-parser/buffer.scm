@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.3 2001/06/29 05:18:19 cph Exp $
+;;; $Id: buffer.scm,v 1.4 2001/06/29 05:19:24 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -104,15 +104,15 @@
       (error:wrong-type-argument p "parser-buffer pointer" 'POINTER->INDEX)))
 
 (define (parser-buffer-position-string object)
-  (let ((position
-	 (if (parser-buffer-position? object)
+  (let ((pointer
+	 (if (parser-buffer-pointer? object)
 	     object
 	     (get-parser-buffer-pointer object))))
     (string-append
      "line "
-     (number->string (+ (parser-buffer-pointer-line object) 1))
+     (number->string (+ (parser-buffer-pointer-line pointer) 1))
      ", char "
-     (number->string (+ (parser-buffer-pointer-index object) 1)))))
+     (number->string (+ (parser-buffer-pointer-index pointer) 1)))))
 
 (let-syntax
     ((char-matcher
