@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pp.scm,v 14.34 1995/03/04 00:39:48 cph Exp $
+$Id: pp.scm,v 14.35 1995/05/13 19:01:38 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -1141,16 +1141,16 @@ MIT in each case. |#
   (subnode false read-only true))
 
 (define (make-prefix-node prefix subnode)
-  (cond ((or (list-node? subnode)
-	     (symbol? subnode))
-	 (%make-prefix-node (+ (string-length prefix) (node-size subnode))
-			    prefix
-			    subnode))
+  (cond ((string? subnode)
+	 (string-append prefix subnode))
 	((prefix-node? subnode)
 	 (make-prefix-node (string-append prefix (prefix-node-prefix subnode))
 			   (prefix-node-subnode subnode)))
 	(else
-	 (string-append prefix subnode))))
+	 (%make-prefix-node (+ (string-length prefix) (node-size subnode))
+			    prefix
+			    subnode))))
+
 
 (define (make-list-node car-node cdr-node)
   (cons (+ 1 (node-size car-node) (list-node-size cdr-node)) ;+1 space.
