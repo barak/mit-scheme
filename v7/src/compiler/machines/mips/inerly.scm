@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: inerly.scm,v 1.4 2001/12/20 02:03:21 cph Exp $
+$Id: inerly.scm,v 1.5 2001/12/20 02:37:21 cph Exp $
 
 Copyright (c) 1988, 1989, 1990, 1999, 2001 Massachusetts Institute of Technology
 
@@ -24,18 +24,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;; NOPs for now.
 
 (declare (usual-integrations))
-
-;;;; Transformers and utilities
-
-(define early-instructions '())
-(define early-transformers '())
-
-(define (define-early-transformer name transformer)
-  (set! early-transformers
-	(cons (cons name transformer)
-	      early-transformers)))
-
-;;; Instruction and addressing mode macros
 
 (syntax-table/define (->environment '(COMPILER))
 		     'DEFINE-INSTRUCTION

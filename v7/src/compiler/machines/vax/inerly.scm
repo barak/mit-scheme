@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: inerly.scm,v 1.8 2001/12/19 21:39:30 cph Exp $
+$Id: inerly.scm,v 1.9 2001/12/20 02:37:21 cph Exp $
 
 Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
 
@@ -26,8 +26,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 ;;;; Instruction macros
 
-(define early-instructions '())
-(define early-transformers '())
 (define early-ea-database '())
 
 (syntax-table/define (->environment '(COMPILER))

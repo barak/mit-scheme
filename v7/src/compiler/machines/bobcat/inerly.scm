@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: inerly.scm,v 1.9 2001/12/19 21:39:30 cph Exp $
+$Id: inerly.scm,v 1.10 2001/12/20 02:37:21 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -26,14 +26,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 ;;;; Transformers and utilities
 
-(define early-instructions '())
-(define early-transformers '())
 (define early-ea-database)
 
 (define (define-early-transformer name transformer)
   (set! early-transformers
 	(cons (cons name transformer)
-	      early-transformers)))
+	      early-transformers))
+  unspecific)
 
 (define (make-ea-transformer #!optional modes keywords)
   (make-database-transformer

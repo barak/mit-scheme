@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syerly.scm,v 1.11 1999/01/02 06:06:43 cph Exp $
+$Id: syerly.scm,v 1.12 2001/12/20 02:37:21 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -25,6 +25,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (declare (usual-integrations))
 
 ;;;; Early instruction assembly
+
+(define early-instructions '())
+(define early-transformers '())
 
 (define lap:syntax-instruction-expander
   (scode->scode-expander
