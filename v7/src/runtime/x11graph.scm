@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.37 1993/11/01 22:25:03 cph Exp $
+$Id: x11graph.scm,v 1.38 1993/12/05 06:15:08 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -48,7 +48,6 @@ MIT in each case. |#
   (x-display-get-default 3)
   (x-display-process-events 2)
   (x-font-structure 2)
-
   (x-window-beep 1)
   (x-window-clear 1)
   (x-window-colormap 1)
@@ -80,11 +79,12 @@ MIT in each case. |#
   (x-window-withdraw 1)
   (x-window-x-size 1)
   (x-window-y-size 1)
-
   (x-graphics-copy-area 8)
   (x-graphics-drag-cursor 3)
   (x-graphics-draw-line 5)
+  (x-graphics-draw-lines 3)
   (x-graphics-draw-point 3)
+  (x-graphics-draw-points 3)
   (x-graphics-draw-string 4)
   (x-graphics-fill-polygon 2)
   (x-graphics-map-x-coordinate 2)
@@ -100,14 +100,12 @@ MIT in each case. |#
   (x-graphics-set-line-style 2)
   (x-graphics-set-vdc-extent 5)
   (x-graphics-vdc-extent 1)
-
   (x-bytes-into-image 2)
   (x-create-image 3)
   (x-destroy-image 1)
   (x-display-image 8)
   (x-get-pixel-from-image 3)
   (x-set-pixel-in-image 4)
-
   (x-allocate-color 4)
   (x-create-colormap 3)
   (x-free-colormap 1)
@@ -221,7 +219,9 @@ MIT in each case. |#
 	   (drag-cursor ,x-graphics/drag-cursor)
 	   (draw-image ,image/draw)
 	   (draw-line ,x-graphics/draw-line)
+	   (draw-lines ,x-graphics/draw-lines)
 	   (draw-point ,x-graphics/draw-point)
+	   (draw-points ,x-graphics/draw-points)
 	   (draw-subimage ,image/draw-subimage)
 	   (draw-text ,x-graphics/draw-text)
 	   (fill-polygon ,x-graphics/fill-polygon)
@@ -622,8 +622,14 @@ MIT in each case. |#
   (x-graphics-draw-line (x-graphics-device/xw device)
 			x-start y-start x-end y-end))
 
+(define (x-graphics/draw-lines device xv yv)
+  (x-graphics-draw-lines (x-graphics-device/xw device) xv yv))
+
 (define (x-graphics/draw-point device x y)
   (x-graphics-draw-point (x-graphics-device/xw device) x y))
+
+(define (x-graphics/draw-points device xv yv)
+  (x-graphics-draw-points (x-graphics-device/xw device) xv yv))
 
 (define (x-graphics/draw-text device x y string)
   (x-graphics-draw-string (x-graphics-device/xw device) x y string))
