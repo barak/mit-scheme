@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sos.pkg,v 1.5 1997/06/19 21:28:26 cph Exp $
+$Id: sos.pkg,v 1.6 1997/06/25 03:43:03 cph Exp $
 
 Copyright (c) 1995-97 Massachusetts Institute of Technology
 
@@ -65,7 +65,10 @@ MIT in each case. |#
   (export (sos class)
 	  canonicalize-slot-argument
 	  compute-slot-descriptor
-	  install-slot-accessor-methods))
+	  error:no-such-slot
+	  install-slot-accessor-methods)
+  (import (runtime record-slot-access)
+	  error:no-such-slot))
 
 (define-package (sos class)
   (files "class")

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: class.scm,v 1.4 1997/06/19 20:22:51 cph Exp $
+;;; $Id: class.scm,v 1.5 1997/06/25 03:42:11 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -105,7 +105,7 @@
   (or (list-search-positive (class/slots class)
 	(lambda (slot)
 	  (eq? name (slot-name slot))))
-      (and error? (error:bad-range-argument name 'CLASS-SLOT))))
+      (and error? (error:no-such-slot class name))))
 
 (define (class->dispatch-tag class)
   (guarantee-class class 'CLASS->DISPATCH-TAG)
