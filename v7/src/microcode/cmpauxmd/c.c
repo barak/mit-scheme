@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: c.c,v 1.2 1993/06/09 09:01:13 jawilson Exp $
+$Id: c.c,v 1.3 1993/06/15 19:02:11 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -100,6 +100,20 @@ DEFUN_VOID (NO_SUBBLOCKS)
   return;
 }
 
+PTR
+DEFUN (lrealloc, (ptr, size),
+       PTR ptr
+       AND unsigned long size)
+{
+  extern PTR EXFUN (malloc, (unsigned long));
+  extern PTR EXFUN (realloc, (PTR, unsigned long));
+
+  if (ptr == ((PTR) NULL))
+    return (malloc (size));
+  else
+    return (realloc (ptr, size));
+}
+
 int
 DEFUN (declare_compiled_code, (name, decl_proc, code_proc),
        char * name
@@ -122,13 +136,13 @@ DEFUN (declare_compiled_code, (name, decl_proc, code_proc),
 				 : (compiled_code_blocks_size * 2));
     new_blocks =
       ((compiled_block *)
-       (realloc (compiled_code_blocks,
-		 (compiled_code_blocks_size * (sizeof (compiled_block))))));
+       (lrealloc (compiled_code_blocks,
+		  (compiled_code_blocks_size * (sizeof (compiled_block))))));
     
     new_names =
       ((char **)
-       (realloc (compiled_block_names,
-		 (compiled_code_blocks_size * (sizeof (char *))))));
+       (lrealloc (compiled_block_names,
+		  (compiled_code_blocks_size * (sizeof (char *))))));
 
     if ((new_blocks == ((compiled_block *) NULL))
 	|| (new_names == ((char **) NULL)))
