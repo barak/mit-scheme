@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.4 1990/11/13 08:45:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.5 1990/11/15 08:43:06 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -621,6 +621,10 @@ DEFUN_VOID (UX_initialize_signals)
   bind_handler (SIGUSR2,	sighnd_renice);
 #endif
   bind_handler (SIGCHLD,	sighnd_dead_subprocess);
+  /* If this signal is ignored, then the system call that would have
+     caused it will return EPIPE instead.  This is much easier for us
+     to handle. */
+  bind_handler (SIGPIPE,	SIG_IGN);
   if ((isatty (STDIN_FILENO)) || option_emacs_subprocess)
     {
       if (!option_emacs_subprocess)
