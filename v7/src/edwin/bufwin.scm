@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwin.scm,v 1.303 1994/09/08 20:34:04 adams Exp $
+;;;	$Id: bufwin.scm,v 1.304 1995/02/16 22:45:37 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -807,8 +807,7 @@
 (define (%clear-window-buffer-state! window)
   (%set-window-buffer! window false)
   (%set-window-point! window false)
-  (if (%window-start-line-mark window)
-      (clear-window-start! window))
+  (clear-window-start! window)
   (%clear-window-incremental-redisplay-state! window))
 
 (define (%clear-window-incremental-redisplay-state! window)
@@ -837,7 +836,7 @@
 	(mark-temporary! (%window-end-clip-mark window))
 	(%set-window-end-clip-mark! window false)))
   (%set-window-point-moved?! window false))
-
+
 (define-integrable (update-modified-tick! window)
   (%set-window-modified-tick! window
 			      (group-modified-tick (%window-group window))))
@@ -849,6 +848,7 @@
 	     (if (not (eqv? new-value old-value))
 		 (begin
 		   (%set-window-force-redraw?! window #t)
+		   (clear-window-start! window)
 		   (write window new-value))))))
 	(buffer (%window-buffer window)))
     (maybe-recache
@@ -1044,11 +1044,15 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
       (%set-window-point-moved?! window true))
   (window-needs-redisplay! window))
 
-(define-integrable (clear-window-start! window)
-  (mark-temporary! (%window-start-line-mark window))
-  (%set-window-start-line-mark! window false)
-  (mark-temporary! (%window-start-mark window))
-  (%set-window-start-mark! window false)
+(define (clear-window-start! window)
+  (if (%window-start-line-mark window)
+      (begin
+	(mark-temporary! (%window-start-line-mark window))
+	(%set-window-start-line-mark! window #f)))
+  (if (%window-start-mark window)
+      (begin
+	(mark-temporary! (%window-start-mark window))
+	(%set-window-start-mark! window #f)))
   (%set-window-start-line-y! window 0)
   (%set-window-start-column! window 0)
   (%set-window-start-partial! window 0))
