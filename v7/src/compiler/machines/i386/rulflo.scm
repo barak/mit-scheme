@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.12 1992/02/13 07:47:21 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.13 1992/02/18 22:05:20 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -430,8 +430,8 @@ MIT in each case. |#
 			 (? overflow?)))
   (QUALIFIER (binary-flonum-arithmetic? operation))
   overflow?				;ignore
-  ((flonum-unary-operation/general (flonum-1-arg%1/operator operation)
-				   target source)))
+  ((flonum-unary-operation/general (flonum-1-arg%1/operator operation))
+   target source))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -441,8 +441,8 @@ MIT in each case. |#
 			 (? overflow?)))
   (QUALIFIER (binary-flonum-arithmetic? operation))
   overflow?				;ignore
-  ((flonum-unary-operation/general (flonum-1%1-arg/operator operation)
-   target source)))
+  ((flonum-unary-operation/general (flonum-1%1-arg/operator operation))
+   target source))
 
 ;;;; Flonum Predicates
 
