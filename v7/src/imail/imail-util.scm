@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.9 2000/04/13 20:14:25 cph Exp $
+;;; $Id: imail-util.scm,v 1.10 2000/04/14 01:45:43 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -121,7 +121,7 @@
 	lines)))
 
 (define (lines->string lines)
-  (suffixed-append lines "\n"))
+  (decorated-string-append "" "" "\n" lines))
 
 (define (short-name->pathname name)
   (merge-pathnames name (current-home-directory)))
@@ -144,68 +144,7 @@
   (write-char #\: port)
   (write-string value port)
   (newline port))
-
-(define (separated-append tokens separator)
-  (cond ((not (pair? tokens)) "")
-	((not (pair? (cdr tokens))) (car tokens))
-	(else
-	 (let ((string
-		(make-string
-		 (let ((ns (string-length separator)))
-		   (do ((tokens (cdr tokens) (cdr tokens))
-			(count (string-length (car tokens))
-			       (fix:+ count
-				      (fix:+ (string-length (car tokens))
-					     ns))))
-		       ((not (pair? tokens)) count))))))
-	   (let loop
-	       ((tokens (cdr tokens))
-		(index (string-move! (car tokens) string 0)))
-	     (if (pair? tokens)
-		 (loop (cdr tokens)
-		       (string-move! (car tokens)
-				     string
-				     (string-move! separator string index)))))
-	   string))))
 
-(define (suffixed-append tokens suffix)
-  (if (pair? tokens)
-      (let ((string
-	     (make-string
-	      (let ((ns (string-length suffix)))
-		(do ((tokens tokens (cdr tokens))
-		     (count 0
-			    (fix:+ count
-				   (fix:+ (string-length (car tokens)) ns))))
-		    ((not (pair? tokens)) count))))))
-	(let loop ((tokens tokens) (index 0))
-	  (if (pair? tokens)
-	      (loop (cdr tokens)
-		    (string-move! suffix
-				  string
-				  (string-move! (car tokens) string index)))))
-	string)
-      ""))
-
-(define (prefixed-append tokens prefix)
-  (if (pair? tokens)
-      (let ((string
-	     (make-string
-	      (let ((ns (string-length prefix)))
-		(do ((tokens tokens (cdr tokens))
-		     (count 0
-			    (fix:+ count
-				   (fix:+ (string-length (car tokens)) ns))))
-		    ((not (pair? tokens)) count))))))
-	(let loop ((tokens tokens) (index 0))
-	  (if (pair? tokens)
-	      (loop (cdr tokens)
-		    (string-move! (car tokens)
-				  string
-				  (string-move! prefix string index)))))
-	string)
-      ""))
-
 (define (read-lines port)
   (source->list (lambda () (read-line port))))
 

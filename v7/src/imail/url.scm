@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: url.scm,v 1.6 2000/04/13 16:58:40 cph Exp $
+;;; $Id: url.scm,v 1.7 2000/04/14 01:45:49 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -105,7 +105,7 @@
 						    url:char-set:escaped)))
 	      (if index
 		  (begin
-		    (substring-move-left! string start index encoded i)
+		    (substring-move! string start index encoded i)
 		    (let ((i (fix:+ i (fix:- index start)))
 			  (code (vector-8b-ref string index)))
 		      (string-set! encoded i #\%)
@@ -116,8 +116,7 @@
 				   (fix:+ i 2)
 				   (string-ref digits (fix:and code #x0F)))
 		      (loop (fix:+ index 1) (fix:+ i 3))))
-		  (substring-move-left! string start end
-					encoded i))))
+		  (substring-move! string start end encoded i))))
 	  encoded))))
 
 (define (url:decode-substring string start end)
@@ -136,7 +135,7 @@
 	      (let ((regs (re-substring-search-forward patt string start end)))
 		(if regs
 		    (let ((index (re-match-start-index 0 regs)))
-		      (substring-move-left! string start index decoded i)
+		      (substring-move! string start index decoded i)
 		      (let ((i (fix:+ i (fix:- index start))))
 			(vector-8b-set!
 			 decoded i
@@ -145,5 +144,5 @@
 					     (fix:+ index 3)
 					     16))
 			(loop (fix:+ index 3) (fix:+ i 1))))
-		    (substring-move-left! string start end decoded i))))
+		    (substring-move! string start end decoded i))))
 	    decoded)))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.17 2000/04/07 19:39:10 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.18 2000/04/14 01:45:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -70,9 +70,9 @@
 (define (compute-rmail-folder-header-fields folder)
   (list (make-header-field "Version" " 5")
 	(make-header-field "Labels"
-			   (separated-append
-			    (flags->rmail-labels (folder-flags folder))
-			    ","))
+			   (decorated-string-append
+			    "" "," ""
+			    (flags->rmail-labels (folder-flags folder))))
 	(make-header-field "Note" "   This is the header of an rmail file.")
 	(make-header-field "Note" "   If you are seeing it in rmail,")
 	(make-header-field "Note"

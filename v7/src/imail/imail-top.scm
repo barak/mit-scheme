@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.19 2000/04/07 20:59:26 cph Exp $
+;;; $Id: imail-top.scm,v 1.20 2000/04/14 01:45:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -385,7 +385,8 @@ With prefix argument N moves forward N messages with these flags."
 		     (string-append "message with flag"
 				    (if (fix:= 1 (length flags)) "" "s")
 				    " "
-				    (separated-append flags ", "))))))
+				    (decorated-string-append "" ", " ""
+							     flags))))))
 
 (define-command imail-previous-flagged-message
   "Show previous message with one of the flags FLAGS.
@@ -496,7 +497,8 @@ With prefix argument N moves backward N messages with these flags."
 		       "/"
 		       (number->string (folder-length folder)))))
 		 (if (pair? flags)
-		     (string-append line "," (separated-append flags ","))
+		     (string-append line ","
+				    (decorated-string-append "" "," "" flags))
 		     line))
 	       " 0/0")))))
 

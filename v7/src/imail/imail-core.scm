@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.27 2000/04/07 20:58:49 cph Exp $
+;;; $Id: imail-core.scm,v 1.28 2000/04/14 01:45:34 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -533,7 +533,8 @@
   '("answered" "deleted" "edited" "filed" "forwarded" "resent" "seen"))
 
 (define (message-flags->header-field flags)
-  (make-header-field message-flags:name (separated-append flags " ")))
+  (make-header-field message-flags:name
+		     (decorated-string-append "" " " "" flags)))
 
 (define (header-field->message-flags header)
   (and (string-ci=? message-flags:name (header-field-name header))
@@ -729,10 +730,11 @@
 (define (get-all-header-field-values headers name)
   (let ((headers (get-all-header-fields headers name)))
     (and (pair? headers)
-	 (separated-append (map (lambda (header)
-				  (string-trim (header-field-value header)))
-				headers)
-			   ", "))))
+	 (decorated-string-append
+	  "" ", " ""
+	  (map (lambda (header)
+		 (string-trim (header-field-value header)))
+	       headers)))))
 
 (define (header-field-name? object)
   (and (string? object)

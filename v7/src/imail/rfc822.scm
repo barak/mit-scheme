@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rfc822.scm,v 1.3 2000/01/14 18:09:20 cph Exp $
+;;; $Id: rfc822.scm,v 1.4 2000/04/14 01:45:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -30,7 +30,7 @@
 (define (rfc822-addresses->string addresses)
   (if (null? addresses)
       ""
-      (separated-append addresses ", ")))
+      (decorated-string-append "" ", " "" addresses)))
 
 (define (string->rfc822-addresses string)
   (let ((address-list
@@ -70,9 +70,12 @@
 	   (eqv? #\@ (cadr local-part))
 	   (let ((domain (parse-domain (cddr local-part))))
 	     (and domain
-		  (cons (string-append (separated-append (car local-part) ".")
-				       "@"
-				       (separated-append (car domain) "."))
+		  (cons (string-append
+			 (decorated-string-append "" "." ""
+						  (car local-part))
+			 "@"
+			 (decorated-string-append "" "." ""
+						  (car domain)))
 			(cdr domain)))))))
 
   (define (parse-domain tokens)
