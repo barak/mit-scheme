@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.36 2001/05/12 20:03:21 cph Exp $
+;;; $Id: imail-util.scm,v 1.37 2001/05/14 19:27:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -326,7 +326,8 @@
 	(if-directory
 	 (lambda (pathname)
 	   (if-not-unique pathname
-			  (lambda () (filtered-list pathname filter))))))
+	     (lambda ()
+	       (simple-directory-read pathname (result-filter filter)))))))
     (cond ((not (safe-file-directory? (directory-pathname pathname)))
 	   (if-not-found))
 	  ((directory-pathname? pathname)
@@ -349,45 +350,42 @@
   (filtered-completions (merge-pathnames pathname) filter))
 
 (define (filtered-completions pathname filter)
+  (simple-directory-read-matching pathname (result-filter filter)))
+
+(define (simple-directory-read-matching pathname accumulator)
   (let* ((directory (directory-namestring pathname))
 	 (prefix (file-namestring pathname))
 	 (channel (directory-channel-open directory)))
     (let loop ((result '()))
       (let ((name (directory-channel-read-matching channel prefix)))
 	(if name
-	    (loop (filter-result (string-append directory name) filter result))
+	    (loop (accumulator name directory result))
 	    (begin
 	      (directory-channel-close channel)
 	      result))))))
 
-(define (filtered-list pathname filter)
+(define (simple-directory-read pathname accumulator)
   (let* ((directory (directory-namestring pathname))
 	 (channel (directory-channel-open directory)))
     (let loop ((result '()))
       (let ((name (directory-channel-read channel)))
 	(if name
-	    (loop (filter-result (string-append directory name) filter result))
+	    (loop (accumulator name directory result))
 	    (begin
 	      (directory-channel-close channel)
 	      result))))))
 
-(define (filter-result filename filter result)
-  (let ((pathname (parse-namestring filename #f #f)))
+(define ((result-filter filter) name directory result)
+  (let ((pathname (parse-namestring (string-append directory name) #f #f)))
     (cond ((safe-file-directory? pathname)
 	   (cons (pathname-as-directory pathname) result))
 	  ((filter pathname) (cons pathname result))
 	  (else result))))
 
 (define (safe-file-directory? pathname)
-  (call-with-current-continuation
-   (lambda (k)
-     (bind-condition-handler (list condition-type:file-error
-				   condition-type:port-error)
-	 (lambda (condition)
-	   condition
-	   (k #f))
-       (lambda ()
-	 (file-directory? pathname))))))
+  (catch-file-errors (lambda (condition) condition #f)
+    (lambda ()
+      (file-directory? pathname))))
 
 ;;;; Extended-string input port
 
