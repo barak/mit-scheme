@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.48 2003/03/08 04:53:58 cph Exp $
+$Id: defstr.scm,v 14.49 2003/03/11 05:00:41 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,1997,2000 Massachusetts Institute of Technology
@@ -74,7 +74,7 @@ differences:
 * The INCLUDE option is not implemented.
 
 |#
-
+
 (define-expander 'DEFINE-STRUCTURE system-global-environment
   (lambda (form environment closing-environment)
     (if (not (and (pair? (cdr form)) (list? (cddr form))))
@@ -545,12 +545,6 @@ differences:
 		(else
 		 (error "Unrecognized structure slot option:" option))))))
 	(make-slot name default type read-only?)))))
-
-(define (get-slot-default slot structure)
-  (make-syntactic-closure
-      (parser-context/environment (structure/context structure))
-      (map slot/name (structure/slots structure))
-    (slot/default slot)))
 
 ;;;; Descriptive Structure
 
@@ -703,58 +697,69 @@ differences:
 	  ,@slot-names)))))
 
 (define (constructor-definition/keyword structure name)
-  (make-constructor structure name 'KEYWORD-LIST
-    (lambda (tag-expression)
-      (let ((context (structure/context structure)))
-	(let ((list-cons
-	       `(,@(constructor-prefix-slots structure tag-expression)
-		 (,(absolute 'DEFINE-STRUCTURE/KEYWORD-PARSER context)
-		  KEYWORD-LIST
-		  (,(absolute 'LIST context)
-		   ,@(map (lambda (slot)
-			    `(,(absolute 'CONS context)
-			      ',(slot/name slot)
-			      ,(get-slot-default slot structure)))
-			  (structure/slots structure)))))))
-	  (case (structure/type structure)
-	    ((RECORD)
-	     `(,(absolute 'APPLY context) ,(absolute '%RECORD context)
-					  ,@list-cons))
-	    ((VECTOR)
-	     `(,(absolute 'APPLY context) ,(absolute 'VECTOR context)
-					  ,@list-cons))
-	    ((LIST)
-	     `(,(absolute 'CONS* context) ,@list-cons))))))))
+  (let ((context (structure/context structure)))
+    (if (eq? (structure/type structure) 'RECORD)
+	`(DEFINE ,name
+	   (,(absolute 'RECORD-KEYWORD-CONSTRUCTOR context)
+	    ,(close (structure/tag-expression structure) context)))
+	(make-constructor structure name 'KEYWORD-LIST
+	  (lambda (tag-expression)
+	    (let ((list-cons
+		   `(,@(constructor-prefix-slots structure tag-expression)
+		     (,(absolute 'DEFINE-STRUCTURE/KEYWORD-PARSER context)
+		      ,tag-expression
+		      KEYWORD-LIST))))
+	      (case (structure/type structure)
+		((VECTOR)
+		 `(,(absolute 'APPLY context) ,(absolute 'VECTOR context)
+					      ,@list-cons))
+		((LIST)
+		 `(,(absolute 'CONS* context) ,@list-cons)))))))))
 
 (define (constructor-definition/boa structure name lambda-list)
   (make-constructor structure name lambda-list
     (lambda (tag-expression)
-      `(,(absolute (case (structure/type structure)
-		     ((RECORD) '%RECORD)
-		     ((VECTOR) 'VECTOR)
-		     ((LIST) 'LIST))
-		   (structure/context structure))
-	,@(constructor-prefix-slots structure tag-expression)
-	,@(call-with-values (lambda () (parse-mit-lambda-list lambda-list))
-	    (lambda (required optional rest)
-	      (let ((name->slot
-		     (lambda (name)
-		       (or (slot-assoc name (structure/slots structure))
-			   (error "Not a defined structure slot:" name)))))
-		(let ((required (map name->slot required))
-		      (optional (map name->slot optional))
-		      (rest (and rest (name->slot rest))))
-		  (map (lambda (slot)
-			 (cond ((or (memq slot required)
-				    (eq? slot rest))
-				(slot/name slot))
-			       ((memq slot optional)
-				`(IF (DEFAULT-OBJECT? ,(slot/name slot))
-				     ,(get-slot-default slot structure)
-				     ,(slot/name slot)))
-			       (else
-				(get-slot-default slot structure))))
-		       (structure/slots structure))))))))))
+      (let ((type (structure/type structure))
+	    (context (structure/context structure)))
+	`(,(absolute (case type
+		       ((RECORD) '%RECORD)
+		       ((VECTOR) 'VECTOR)
+		       ((LIST) 'LIST))
+		     context)
+	  ,@(constructor-prefix-slots structure tag-expression)
+	  ,@(call-with-values (lambda () (parse-mit-lambda-list lambda-list))
+	      (lambda (required optional rest)
+		(let ((name->slot
+		       (lambda (name)
+			 (or (slot-assoc name (structure/slots structure))
+			     (error "Not a defined structure slot:" name)))))
+		  (let ((required (map name->slot required))
+			(optional (map name->slot optional))
+			(rest (and rest (name->slot rest))))
+		    (map (lambda (slot)
+			   (let ((name (slot/name slot)))
+			     (if (or (memq slot required)
+				     (eq? slot rest))
+				 name
+				 (let ((dv
+					(if (eq? type 'RECORD)
+					    `(,(absolute
+						'RECORD-TYPE-DEFAULT-VALUE
+						context)
+					      ,(close (structure/tag-expression
+						       structure)
+						      context)
+					      ',name)
+					    `(,(absolute
+						'STRUCTURE-TAG/DEFAULT-VALUE
+						context)
+					      ,tag-expression
+					      ',type
+					      ',name))))
+				   (if (memq slot optional)
+				       `(IF (DEFAULT-OBJECT? ,name) ,dv ,name)
+				       dv)))))
+			 (structure/slots structure)))))))))))
 
 (define (make-constructor structure name lambda-list generate-body)
   (let* ((context (structure/context structure))
@@ -821,30 +826,33 @@ differences:
   (if (structure/tagged? structure)
       (let ((type (structure/type structure))
 	    (type-name (structure/type-descriptor structure))
-	    (name
-	     (symbol->string
-	      (parser-context/name (structure/context structure))))
-	    (field-names (map slot/name (structure/slots structure)))
-	    (context (structure/context structure)))
-	(if (eq? type 'RECORD)
-	    `((DEFINE ,type-name
-		(,(absolute 'MAKE-RECORD-TYPE context) ',name ',field-names))
-	      ,@(let ((expression (structure/print-procedure structure)))
-		  (if expression
-		      `((,(absolute 'SET-RECORD-TYPE-UNPARSER-METHOD! context)
-			 ,type-name
-			 ,(close expression context)))
-		      `())))
-	    (let ((type-expression
-		   `(,(absolute 'MAKE-DEFINE-STRUCTURE-TYPE context)
-		     ',type
-		     ',name
-		     ',field-names
-		     ',(map slot/index (structure/slots structure))
-		     ,(close (structure/print-procedure structure) context))))
-	      (if type-name
-		  `((DEFINE ,type-name ,type-expression))
-		  `((,(absolute 'NAMED-STRUCTURE/SET-TAG-DESCRIPTION! context)
-		     ,(close (structure/tag-expression structure) context)
-		     ,type-expression))))))
+	    (slots (structure/slots structure))
+	    (context (structure/context structure))
+	    (print-procedure (structure/print-procedure structure)))
+	(let ((name (symbol->string (parser-context/name context)))
+	      (field-names (map slot/name slots))
+	      (inits
+	       (map (lambda (slot)
+		      `(LAMBDA () ,(close (slot/default slot) context)))
+		    slots)))
+	  (let ((type-expression
+		 (if (eq? type 'RECORD)
+		     `(,(absolute 'MAKE-RECORD-TYPE context)
+		       ',name
+		       ',field-names
+		       (LIST ,@inits)
+		       ,(close print-procedure context))
+		     `(,(absolute 'MAKE-DEFINE-STRUCTURE-TYPE context)
+		       ',type
+		       ',name
+		       ',field-names
+		       ',(map slot/index (structure/slots structure))
+		       (LIST ,@inits)
+		       ,(close print-procedure context)))))
+	    (if type-name
+		`((DEFINE ,type-name ,type-expression))
+		`((,(absolute 'NAMED-STRUCTURE/SET-TAG-DESCRIPTION!
+			      context)
+		   ,(close (structure/tag-expression structure) context)
+		   ,type-expression))))))
       '()))

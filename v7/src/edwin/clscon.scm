@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: clscon.scm,v 1.11 2003/02/14 18:28:11 cph Exp $
+$Id: clscon.scm,v 1.12 2003/03/11 05:01:21 cph Exp $
 
-Copyright 1986-1999, 2002 Massachusetts Institute of Technology
+Copyright 1989,1990,1991,1993,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -55,6 +55,7 @@ USA.
 					    name
 					    (map car transforms)
 					    (map cdr transforms)
+					    #f
 					    (unparser/standard-method name)))
 	       class))))
       (if (not entry)

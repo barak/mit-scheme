@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.26 2003/02/14 18:28:33 cph Exp $
+$Id: random.scm,v 14.27 2003/03/11 05:00:48 cph Exp $
 
-Copyright (c) 1993-2001 Massachusetts Institute of Technology
+Copyright 1988,1989,1993,1994,1995,1996 Massachusetts Institute of Technology
+Copyright 1998,1999,2000,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -170,7 +171,7 @@ USA.
 
 (define (random-state? object)
   (and (vector? object)
-       (not (fix:= (vector-length object) 0))
+       (fix:= (vector-length object) 4)
        (eq? (vector-ref object 0) random-state-tag)))
 
 (define-integrable random-state-tag
@@ -224,4 +225,5 @@ USA.
 				'RANDOM-STATE
 				'(INDEX BORROW VECTOR)
 				'(1 2 3)
+				#f
 				(standard-unparser-method 'RANDOM-STATE #f))))

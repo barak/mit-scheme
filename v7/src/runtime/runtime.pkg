@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.435 2003/03/08 02:26:01 cph Exp $
+$Id: runtime.pkg,v 14.436 2003/03/11 05:00:56 cph Exp $
 
 Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright (c) 1993,1994,1995,1996,1997 Massachusetts Institute of Technology
@@ -2683,7 +2683,8 @@ USA.
 	  record-keyword-constructor
 	  record-modifier
 	  record-predicate
-	  record-type-default-values
+	  record-type-default-inits
+	  record-type-default-value
 	  record-type-descriptor
 	  record-type-dispatch-tag
 	  record-type-field-names
@@ -2691,8 +2692,9 @@ USA.
 	  record-type?
 	  record-updater
 	  record?
-	  set-record-type-default-values!
+	  set-record-type-default-inits!
 	  set-record-type-unparser-method!
+	  structure-tag/default-value
 	  unparse-record)
   (export (runtime record-slot-access)
 	  record-type-field-index)
