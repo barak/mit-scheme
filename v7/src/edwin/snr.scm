@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.10 1996/05/15 04:40:17 cph Exp $
+;;;	$Id: snr.scm,v 1.11 1996/05/15 05:51:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -3197,7 +3197,7 @@ With prefix arg, replaces the file with the list information."
 		      (let loop ((item (first-item item)) (n n))
 			(let ((previous (previous-item buffer item)))
 			  (procedure buffer item previous n)
-			  (if (< n 1)
+			  (if (< n -1)
 			      (if previous
 				  (loop previous (+ n 1))
 				  (editor-failure)))))))))
