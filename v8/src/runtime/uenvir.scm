@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/uenvir.scm,v 14.15 1989/10/27 07:19:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/uenvir.scm,v 14.16 1990/04/21 16:25:12 jinx Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -286,10 +286,11 @@ MIT in each case. |#
 	  (let ((parent (dbg-block/parent block)))
 	    (case (dbg-block/type parent)
 	      ((STACK)
-	       (make-stack-ccenv parent
-				 frame
-				 (+ (dbg-continuation/offset continuation)
-				    (vector-length (dbg-block/layout block)))))
+	       (make-stack-ccenv
+		parent
+		frame
+		(+ (dbg-continuation/offset continuation)
+		   (vector-length (dbg-block/layout-vector block)))))
 	      ((IC)
 	       (let ((index (dbg-block/ic-parent-index block)))
 		 (if index
@@ -329,7 +330,7 @@ MIT in each case. |#
 	      (frame (stack-ccenv/frame environment))
 	      (index
 	       (+ (stack-ccenv/start-index environment)
-		  (vector-length (dbg-block/layout block)))))
+		  (vector-length (dbg-block/layout-vector block)))))
 	   (let ((stack-link (dbg-block/stack-link block)))
 	     (cond ((not stack-link)
 		    (with-values
@@ -347,7 +348,8 @@ MIT in each case. |#
 		   (else
 		    (loop stack-link
 			  frame
-			  (+ (vector-length (dbg-block/layout stack-link))
+			  (+ (vector-length
+			      (dbg-block/layout-vector stack-link))
 			     (case (dbg-block/type stack-link)
 			       ((STACK)
 				0)
@@ -399,7 +401,8 @@ MIT in each case. |#
 (define (stack-ccenv/bound-names environment)
   (map dbg-variable/name
        (list-transform-positive
-	   (vector->list (dbg-block/layout (stack-ccenv/block environment)))
+	   (vector->list
+	    (dbg-block/layout-vector (stack-ccenv/block environment)))
 	 dbg-variable?)))
 
 (define (stack-ccenv/bound? environment name)
@@ -468,7 +471,7 @@ MIT in each case. |#
   (map dbg-variable/name
        (list-transform-positive
 	   (vector->list
-	    (dbg-block/layout (closure-ccenv/stack-block environment)))
+	    (dbg-block/layout-vector (closure-ccenv/stack-block environment)))
 	 (lambda (variable)
 	   (and (dbg-variable? variable)
 		(closure-ccenv/variable-bound? environment variable))))))
@@ -479,12 +482,12 @@ MIT in each case. |#
       (and index
 	   (closure-ccenv/variable-bound?
 	    environment
-	    (vector-ref (dbg-block/layout block) index))))))
+	    (vector-ref (dbg-block/layout-vector block) index))))))
 
 (define (closure-ccenv/variable-bound? environment variable)
   (or (eq? (dbg-variable/type variable) 'INTEGRATED)
       (vector-find-next-element
-       (dbg-block/layout (closure-ccenv/closure-block environment))
+       (dbg-block/layout-vector (closure-ccenv/closure-block environment))
        variable)))
 
 (define (closure-ccenv/lookup environment name)
@@ -501,9 +504,16 @@ MIT in each case. |#
 			(closure-ccenv/get-value environment)
 			value))
 
+(define-integrable (closure/get-value closure closure-block index)
+  (compiled-closure/ref closure
+			index
+			(dbg-block/layout-first-offset closure-block)))
+
 (define (closure-ccenv/get-value environment)
   (lambda (index)
-    (compiled-closure/ref (closure-ccenv/closure environment) index)))
+    (closure/get-value (closure-ccenv/closure environment)
+		       (closure-ccenv/closure-block environment)
+		       index)))
 
 (define (closure-ccenv/has-parent? environment)
   (let ((stack-block (closure-ccenv/stack-block environment)))
@@ -530,7 +540,7 @@ MIT in each case. |#
 	 (guarantee-ic-environment
 	  (let ((index (dbg-block/ic-parent-index closure-block)))
 	    (if index
-		(compiled-closure/ref closure index)
+		(closure/get-value closure closure-block index)
 		(compiled-code-block/environment
 		 (compiled-entry/block closure))))))
 	(else
@@ -541,43 +551,43 @@ MIT in each case. |#
 
 (define (lookup-dbg-variable block name get-value)
   (let loop ((name name))
-    (let ((index (dbg-block/find-name block name)))
-      (let ((variable (vector-ref (dbg-block/layout block) index)))
-	(case (dbg-variable/type variable)
-	  ((NORMAL)
-	   (get-value index))
-	  ((CELL)
-	   (let ((value (get-value index)))
-	     (if (not (cell? value))
-		 (error "Value of variable should be in cell" variable value))
-	     (cell-contents value)))
-	  ((INTEGRATED)
-	   (dbg-variable/value variable))
-	  ((INDIRECTED)
-	   (loop (dbg-variable/name (dbg-variable/value variable))))
-	  (else
-	   (error "Unknown variable type" variable)))))))
+    (let* ((index (dbg-block/find-name block name))
+	   (variable (vector-ref (dbg-block/layout-vector block) index)))
+      (case (dbg-variable/type variable)
+	((NORMAL)
+	 (get-value index))
+	((CELL)
+	 (let ((value (get-value index)))
+	   (if (not (cell? value))
+	       (error "Value of variable should be in cell" variable value))
+	   (cell-contents value)))
+	((INTEGRATED)
+	 (dbg-variable/value variable))
+	((INDIRECTED)
+	 (loop (dbg-variable/name (dbg-variable/value variable))))
+	(else
+	 (error "Unknown variable type" variable))))))
 
 (define (assignable-dbg-variable? block name)
   (eq? 'CELL
        (dbg-variable/type
-	(vector-ref (dbg-block/layout block)
+	(vector-ref (dbg-block/layout-vector block)
 		    (dbg-block/find-name block name)))))
 
 (define (assign-dbg-variable! block name get-value value)
-  (let ((index (dbg-block/find-name block name)))
-    (let ((variable (vector-ref (dbg-block/layout block) index)))
-      (case (dbg-variable/type variable)
-	((CELL)
-	 (let ((cell (get-value index)))
-	   (if (not (cell? cell))
-	       (error "Value of variable should be in cell" name cell))
-	   (set-cell-contents! cell value)
-	   unspecific))
-	((NORMAL INTEGRATED INDIRECTED)
-	 (error "Variable cannot be side-effected" variable))
-	(else
-	 (error "Unknown variable type" variable))))))
+  (let ((index (dbg-block/find-name block name))	
+	(variable (vector-ref (dbg-block/layout-vector block) index)))
+    (case (dbg-variable/type variable)
+      ((CELL)
+       (let ((cell (get-value index)))
+	 (if (not (cell? cell))
+	     (error "Value of variable should be in cell" name cell))
+	 (set-cell-contents! cell value)
+	 unspecific))
+      ((NORMAL INTEGRATED INDIRECTED)
+       (error "Variable cannot be side-effected" variable))
+      (else
+       (error "Unknown variable type" variable)))))
 
 (define (dbg-block/name block)
   (let ((procedure (dbg-block/procedure block)))

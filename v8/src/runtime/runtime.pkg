@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.65 1990/04/12 21:53:41 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.66 1990/04/21 16:26:47 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -234,6 +234,8 @@ MIT in each case. |#
 	  dbg-block/find-name
 	  dbg-block/ic-parent-index
 	  dbg-block/layout
+	  dbg-block/layout-first-offset
+	  dbg-block/layout-vector
 	  dbg-block/normal-closure-index
 	  dbg-block/original-parent
 	  dbg-block/parent

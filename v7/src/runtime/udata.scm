@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.11 1989/08/15 13:20:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.12 1990/04/21 16:26:13 jinx Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -145,13 +145,26 @@ MIT in each case. |#
 	(error "Stack address out of range" address start-offset))
     index))
 
-(define-integrable (compiled-closure/ref closure index)
-  ;; 68020 specific -- must be rewritten in compiler interface.
-  ((ucode-primitive primitive-object-ref 2) closure (+ 2 index)))
+;; In the following two procedures, offset can be #f to support
+;; old-style 68020 closures.  When offset is not #f, it works on all
+;; architectures.
 
-(define-integrable (compiled-closure/set! closure index value)
-  ;; 68020 specific -- must be rewritten in compiler interface.
-  ((ucode-primitive primitive-object-set! 3) closure (+ 2 index) value)
+(define (compiled-closure/ref closure index offset)
+  (if (not offset)
+      ((ucode-primitive primitive-object-ref 2) closure (+ 2 index))
+      ((ucode-primitive primitive-object-ref 2)
+       ((ucode-primitive compiled-code-address->block 1)
+	closure)
+       (+ index offset))))
+
+(define-integrable (compiled-closure/set! closure index offset value)
+  (if (not offset)
+      ((ucode-primitive primitive-object-set! 3) closure (+ 2 index) value)
+      ((ucode-primitive primitive-object-set! 3)
+       ((ucode-primitive compiled-code-address->block 1)
+	closure)
+       (+ index offset)
+       value))
   unspecific)
 
 ;;;; Compiled Code Blocks

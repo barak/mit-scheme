@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.15 1989/11/21 00:00:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.16 1990/04/21 16:26:26 jinx Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -269,28 +269,38 @@ MIT in each case. |#
 	   (equal? (car x) (car y))
 	   (directory-prefix? (cdr x) (cdr y)))))
 
+(define-integrable (dbg-block/layout-first-offset block)
+  (let ((layout (dbg-block/layout block)))
+    (and (pair? layout) (car layout))))
+
+(define-integrable (dbg-block/layout-vector block)
+  (let ((layout (dbg-block/layout block)))
+    (if (pair? layout)
+	(cdr layout)
+	layout)))
+
 (define (dbg-block/dynamic-link-index block)
-  (vector-find-next-element (dbg-block/layout block)
+  (vector-find-next-element (dbg-block/layout-vector block)
 			    dbg-block-name/dynamic-link))
 
 (define (dbg-block/ic-parent-index block)
-  (vector-find-next-element (dbg-block/layout block)
+  (vector-find-next-element (dbg-block/layout-vector block)
 			    dbg-block-name/ic-parent))
 
 (define (dbg-block/normal-closure-index block)
-  (vector-find-next-element (dbg-block/layout block)
+  (vector-find-next-element (dbg-block/layout-vector block)
 			    dbg-block-name/normal-closure))
 
 (define (dbg-block/return-address-index block)
-  (vector-find-next-element (dbg-block/layout block)
+  (vector-find-next-element (dbg-block/layout-vector block)
 			    dbg-block-name/return-address))
 
 (define (dbg-block/static-link-index block)
-  (vector-find-next-element (dbg-block/layout block)
+  (vector-find-next-element (dbg-block/layout-vector block)
 			    dbg-block-name/static-link))
 
 (define (dbg-block/find-name block name)
-  (let ((layout (dbg-block/layout block)))
+  (let ((layout (dbg-block/layout-vector block)))
     (let ((end (vector-length layout)))
       (let loop ((index 0))
 	(and (< index end)
