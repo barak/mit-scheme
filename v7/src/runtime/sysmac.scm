@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sysmac.scm,v 14.8 2002/02/03 03:38:57 cph Exp $
+$Id: sysmac.scm,v 14.9 2002/02/09 06:10:07 cph Exp $
 
 Copyright (c) 1988, 1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -30,7 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
    (lambda (form environment)
      (let ((primitive-definition
 	    (lambda (variable-name primitive-args)
-	      `(DEFINE-INTEGRABLE ,(close-syntax variable-name environment)
+	      `(DEFINE-INTEGRABLE ,variable-name
 		 ,(apply make-primitive-procedure primitive-args)))))
        `(BEGIN ,@(map (lambda (name)
 			(cond ((not (pair? name))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infstr.scm,v 1.14 2002/02/03 03:38:55 cph Exp $
+$Id: infstr.scm,v 1.15 2002/02/09 06:09:47 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -155,7 +155,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       (sc-macro-transformer
        (lambda (form environment)
 	 (let ((symbol (symbol-append 'DBG-BLOCK-NAME/ (cadr form))))
-	   `(DEFINE-INTEGRABLE ,(close-syntax symbol environment)
+	   `(DEFINE-INTEGRABLE ,symbol
 	      ',((ucode-primitive string->symbol)
 		 (string-append "#[(runtime compiler-info)"
 				(string-downcase (symbol-name symbol))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.36 2002/02/03 03:38:56 cph Exp $
+$Id: parse.scm,v 14.37 2002/02/09 06:09:51 cph Exp $
 
 Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -281,13 +281,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
      (let ((offset (cadr form))
 	   (param-list (caddr form))
 	   (body (cdddr form)))
-       `(DEFINE ,(map (lambda (name)
-			(close-syntax name environment))
-		      param-list)
+       `(DEFINE ,param-list
 	  (LET ((CORE
 		 (LAMBDA ()
 		   ,@(map (lambda (expression)
-			    (close-syntax expression environment))
+			    (make-syntactic-closure environment
+				(cdr param-list)
+			      expression))
 			  body))))
 	    (IF *PARSER-ASSOCIATE-POSITIONS?*
 		(RECORDING-OBJECT-POSITION ,offset CORE)

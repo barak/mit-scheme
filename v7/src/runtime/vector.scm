@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vector.scm,v 14.20 2002/02/03 03:38:57 cph Exp $
+$Id: vector.scm,v 14.21 2002/02/09 06:10:11 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -206,7 +206,7 @@ USA.
     ((iref
       (sc-macro-transformer
        (lambda (form environment)
-	 `(DEFINE-INTEGRABLE (,(close-syntax (cadr form) environment) VECTOR)
+	 `(DEFINE-INTEGRABLE (,(cadr form) VECTOR)
 	    (GUARANTEE-VECTOR VECTOR 'SAFE-VECTOR-REF)
 	    (VECTOR-REF VECTOR ,(caddr form)))))))
   (iref vector-first 0)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.20 2002/02/03 03:38:55 cph Exp $
+$Id: graphics.scm,v 1.21 2002/02/09 06:09:43 cph Exp $
 
 Copyright (c) 1989-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -257,9 +257,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
        (lambda (form environment)
 	 (let ((name (cadr form)))
 	   `(DEFINE-INTEGRABLE
-	      (,(close-syntax (symbol-append 'GRAPHICS-DEVICE/OPERATION/ name)
-			      environment)
-	       DEVICE)
+	      (,(symbol-append 'GRAPHICS-DEVICE/OPERATION/ name) DEVICE)
 	      (,(close-syntax (symbol-append 'GRAPHICS-DEVICE-TYPE/OPERATION/
 					     name)
 			      environment)

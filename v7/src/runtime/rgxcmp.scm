@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rgxcmp.scm,v 1.119 2002/02/03 03:38:56 cph Exp $
+;;; $Id: rgxcmp.scm,v 1.120 2002/02/09 06:09:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
 ;;;
@@ -36,8 +36,7 @@
 	  ,@(let loop ((n 0) (suffixes suffixes))
 	      (if (pair? suffixes)
 		  (cons `(DEFINE-INTEGRABLE
-			   ,(close-syntax (symbol-append prefix (car suffixes))
-					  environment)
+			   ,(symbol-append prefix (car suffixes))
 			   ,n)
 			(loop (+ n 1) (cdr suffixes)))
 		  '()))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.49 2002/02/03 03:38:55 cph Exp $
+$Id: arith.scm,v 1.50 2002/02/09 06:09:39 cph Exp $
 
 Copyright (c) 1989-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -149,7 +149,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 (lambda (form environment)
 	   (let ((name (list-ref form 1))
 		 (identity (close-syntax (list-ref form 3) environment)))
-	     `(SET! ,name
+	     `(SET! ,(close-syntax name environment)
 		    (MAKE-ENTITY
 		     (NAMED-LAMBDA (,name SELF . ZS)
 		       SELF		; ignored
@@ -174,7 +174,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(sc-macro-transformer
 	 (lambda (form environment)
 	   (let ((name (list-ref form 1)))
-	     `(SET! ,name
+	     `(SET! ,(close-syntax name environment)
 		    (MAKE-ENTITY
 		     (NAMED-LAMBDA (,name SELF Z1 . ZS)
 		       SELF		; ignored
@@ -198,7 +198,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 (lambda (form environment)
 	   (let ((name (list-ref form 1))
 		 (type (list-ref form 4)))
-	     `(SET! ,name
+	     `(SET! ,(close-syntax name environment)
 		    (MAKE-ENTITY
 		     (NAMED-LAMBDA (,name SELF . ZS)
 		       SELF		; ignored
@@ -232,7 +232,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 (lambda (form environment)
 	   (let ((name (list-ref form 1))
 		 (generic-binary (close-syntax (list-ref form 2) environment)))
-	     `(SET! ,name
+	     `(SET! ,(close-syntax name environment)
 		    (MAKE-ENTITY
 		     (NAMED-LAMBDA (,name SELF X . XS)
 		       SELF		; ignored
@@ -537,7 +537,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     ((define-addition-operator
        (sc-macro-transformer
 	(lambda (form environment)
-	  (let ((name (close-syntax (list-ref form 1) environment))
+	  (let ((name (list-ref form 1))
 		(int:op (close-syntax (list-ref form 2) environment)))
 	    `(DEFINE (,name U/U* V/V*)
 	       (RAT:BINARY-OPERATOR U/U* V/V*
@@ -700,7 +700,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     ((define-integer-coercion
        (sc-macro-transformer
 	(lambda (form environment)
-	  `(DEFINE (,(close-syntax (list-ref form 1) environment) Q)
+	  `(DEFINE (,(list-ref form 1) Q)
 	     (COND ((RATNUM? Q)
 		    (,(close-syntax (list-ref form 3) environment)
 		     (RATNUM-NUMERATOR Q)
@@ -956,7 +956,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     ((define-standard-unary
        (sc-macro-transformer
 	(lambda (form environment)
-	  `(DEFINE (,(close-syntax (list-ref form 1) environment) X)
+	  `(DEFINE (,(list-ref form 1) X)
 	     (IF (FLONUM? X)
 		 (,(close-syntax (list-ref form 2) environment) X)
 		 (,(close-syntax (list-ref form 3) environment) X)))))))
@@ -987,7 +987,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(lambda (form environment)
 	  (let ((flo:op (close-syntax (list-ref form 2) environment))
 		(rat:op (close-syntax (list-ref form 3) environment)))
-	    `(DEFINE (,(close-syntax (list-ref form 1) environment) X Y)
+	    `(DEFINE (,(list-ref form 1) X Y)
 	       (IF (FLONUM? X)
 		   (IF (FLONUM? Y)
 		       (,flo:op X Y)
@@ -1079,7 +1079,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		       (FLO:->INTEGER ,n)
 		       (ERROR:WRONG-TYPE-ARGUMENT ,n "integer"
 						  ',(list-ref form 2))))))
-	   `(DEFINE (,(close-syntax (list-ref form 1) environment) N M)
+	   `(DEFINE (,(list-ref form 1) N M)
 	      (IF (FLONUM? N)
 		  (INT:->INEXACT
 		   (,operator ,(flo->int 'N)
@@ -1104,7 +1104,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       (sc-macro-transformer
        (lambda (form environment)
 	 (let ((operator (close-syntax (list-ref form 2) environment)))
-	   `(DEFINE (,(close-syntax (list-ref form 1) environment) Q)
+	   `(DEFINE (,(list-ref form 1) Q)
 	      (IF (FLONUM? Q)
 		  (RAT:->INEXACT (,operator (FLO:->RATIONAL Q)))
 		  (,operator Q))))))))
@@ -1115,7 +1115,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     ((define-transcendental-unary
       (sc-macro-transformer
        (lambda (form environment)
-	 `(DEFINE (,(close-syntax (list-ref form 1) environment) X)
+	 `(DEFINE (,(list-ref form 1) X)
 	    (IF (,(close-syntax (list-ref form 2) environment) X)
 		,(close-syntax (list-ref form 3) environment)
 		(,(close-syntax (list-ref form 4) environment)

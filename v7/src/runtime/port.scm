@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.22 2002/02/03 03:38:56 cph Exp $
+$Id: port.scm,v 1.23 2002/02/09 06:09:55 cph Exp $
 
 Copyright (c) 1991-2002 Massachusetts Institute of Technology
 
@@ -194,9 +194,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(lambda (form environment)
 	  (let ((dir (cadr form))
 		(name (caddr form)))
-	    `(DEFINE (,(close-syntax (symbol-append dir '-PORT/OPERATION/ name)
-				     environment)
-		      PORT)
+	    `(DEFINE (,(symbol-append dir '-PORT/OPERATION/ name) PORT)
 	       (,(close-syntax (symbol-append 'PORT-TYPE/ name) environment)
 		(PORT/TYPE PORT))))))))
   (define-port-operation input char-ready?)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: starbase.scm,v 1.16 2002/02/03 03:38:56 cph Exp $
+$Id: starbase.scm,v 1.17 2002/02/09 06:10:03 cph Exp $
 
 Copyright (c) 1989-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -110,17 +110,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
        (lambda (form environment)
 	 (let ((name (cadr form)))
 	   `(BEGIN
-	      (DEFINE (,(close-syntax (symbol-append 'STARBASE-DEVICE/ name)
-				      environment)
-		       DEVICE)
+	      (DEFINE (,(symbol-append 'STARBASE-DEVICE/ name) DEVICE)
 		(,(close-syntax
 		   (symbol-append 'STARBASE-GRAPHICS-DESCRIPTOR/ name)
 		   environment)
 		 (GRAPHICS-DEVICE/DESCRIPTOR DEVICE)))
-	      (DEFINE (,(close-syntax
-			 (symbol-append 'SET-STARBASE-DEVICE/ name '!)
-			 environment)
-		       DEVICE VALUE)
+	      (DEFINE
+		(,(symbol-append 'SET-STARBASE-DEVICE/ name '!) DEVICE VALUE)
 		(,(close-syntax
 		   (symbol-append 'SET-STARBASE-GRAPHICS-DESCRIPTOR/ name '!)
 		   environment)
