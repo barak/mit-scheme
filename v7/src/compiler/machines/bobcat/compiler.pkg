@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.36 1992/05/26 20:22:37 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.37 1992/07/29 22:04:11 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -87,6 +87,7 @@ MIT in each case. |#
 	  compiler:generate-lap-files?
 	  compiler:generate-range-checks?
 	  compiler:generate-rtl-files?
+	  compiler:generate-stack-checks?
 	  compiler:generate-type-checks?
 	  compiler:implicit-self-static?
 	  compiler:intersperse-rtl-in-lap?

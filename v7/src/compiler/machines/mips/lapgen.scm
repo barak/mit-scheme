@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/lapgen.scm,v 1.9 1992/05/14 03:07:51 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/lapgen.scm,v 1.10 1992/07/29 22:05:50 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -557,6 +557,9 @@ MIT in each case. |#
 
 (define-integrable reg:lexpr-primitive-arity
   (INST-EA (OFFSET #x001C ,regnum:regs-pointer)))
+
+(define-integrable reg:stack-guard
+  (INST-EA (OFFSET #x002C ,regnum:regs-pointer)))
 
 (define (lap:make-label-statement label)
   (LAP (LABEL ,label)))

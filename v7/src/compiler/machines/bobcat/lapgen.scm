@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.44 1992/07/05 14:20:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.45 1992/07/29 22:04:20 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1061,6 +1061,7 @@ MIT in each case. |#
 (define-integrable reg:lexpr-primitive-arity (INST-EA (@AO 6 #x001C)))
 (define-integrable reg:closure-free (INST-EA (@AO 6 #x0024)))
 (define-integrable reg:closure-space (INST-EA (@AO 6 #X0028)))
+(define-integrable reg:stack-guard (INST-EA (@AO 6 #X002C)))
 
 (let-syntax ((define-codes
 	       (macro (start . names)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.32 1992/07/05 14:20:51 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.33 1992/07/29 22:04:02 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -400,8 +400,15 @@ MIT in each case. |#
     (LAP (LABEL ,gc-label)
 	 (JSR ,entry)
 	 ,@(make-external-label code-word label)
-	 (CMP L ,reg:compiled-memtop (A 5))
-	 (B GE B (@PCR ,gc-label)))))
+	 ,@(interrupt-check gc-label))))
+
+(define (interrupt-check gc-label)
+  (LAP (CMP L ,reg:compiled-memtop (A 5))
+       (B GE B (@PCR ,gc-label))
+       ,@(if compiler:generate-stack-checks?
+	     (LAP (CMP L ,reg:stack-guard (A 7))
+		  (B LE B (@PCR ,gc-label)))
+	     (LAP))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
@@ -424,8 +431,7 @@ MIT in each case. |#
 	   (LABEL ,gc-label)
 	   ,@(invoke-interface-jsr code:compiler-interrupt-ic-procedure)
 	   ,@(make-external-label expression-code-word internal-label)
-	   (CMP L ,reg:compiled-memtop (A 5))
-	   (B GE B (@PCR ,gc-label))))))
+	   ,@(interrupt-check gc-label)))))
 
 (define-rule statement
   (OPEN-PROCEDURE-HEADER (? internal-label))
@@ -506,8 +512,7 @@ long-word aligned and there is no need for shuffling.
 				      external-label)
 	       (ADD UL (& ,(MC68020/make-magic-closure-constant entry)) (@A 7))
 	       (LABEL ,internal-label)
-	       (CMP L ,reg:compiled-memtop (A 5))
-	       (B GE B (@PCR ,gc-label)))))))
+	       ,@(interrupt-check gc-label))))))
 
 (define (MC68020/cons-closure target procedure-label min max size)
   (let* ((target (reference-target-alias! target 'ADDRESS))
@@ -588,8 +593,7 @@ long-word aligned and there is no need for shuffling.
 				      external-label)
 	       (ADD UL (& ,(MC68040/make-magic-closure-constant entry)) (@A 7))
 	       (LABEL ,internal-label)
-	       (CMP L ,reg:compiled-memtop (A 5))
-	       (B GE B (@PCR ,gc-label)))))))
+	       ,@(interrupt-check gc-label))))))
 
 (define (MC68040/cons-closure target procedure-label min max size)
   (MC68040/with-allocated-closure target 1 size

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules3.scm,v 1.10 1991/10/25 00:13:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules3.scm,v 1.11 1992/07/29 22:10:37 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -428,7 +428,16 @@ MIT in each case. |#
 (define (interrupt-check gc-label)
   (LAP (SLT ,regnum:assembler-temp ,regnum:memtop ,regnum:free)
        (BNE ,regnum:assembler-temp 0 (@PCR ,gc-label))
-       (LW ,regnum:memtop ,reg:memtop)))
+       (LW ,regnum:memtop ,reg:memtop)
+       ,@(if compiler:generate-stack-checks?
+	     (LAP (LW ,regnum:assembler-temp ,reg:stack-guard)
+		  (NOP)
+		  (SLT ,regnum:assembler-temp
+		       ,regnum:stack-pointer
+		       ,regnum:assembler-temp)
+		  (BNE ,regnum:assembler-temp 0 (@PCR ,gc-label))
+		  (NOP))
+	     (LAP))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
