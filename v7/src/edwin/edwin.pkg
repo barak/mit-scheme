@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.127 1993/08/22 17:13:49 gjr Exp $
+$Id: edwin.pkg,v 1.128 1993/09/01 18:12:59 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -284,6 +284,8 @@ MIT in each case. |#
   (file-case os-type
     ((dos nt) "ansi" "bios"))
   (parent (edwin screen))
+  (export (edwin)
+	  resize-screen)
   (import (runtime primitive-io)
 	  channel-type=terminal?
 	  have-select?
