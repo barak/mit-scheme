@@ -15,9 +15,9 @@ if [ -z "${CVS2CL}" ]; then
     exit 1
 fi
 
-COMMON="--revisions --usermap /scheme/v7/src/etc/usermap --domain zurich.csail.mit.edu --stdout --no-wrap --separate-header"
-GOPTS_SCHEME="-d :ext:anoncvs@subversions.gnu.org:/cvsroot/mit-scheme"
-GOPTS_HTML="-d :ext:anoncvs@savannah.gnu.org:/webcvs/mit-scheme"
+COMMON="--revisions --usermap /scheme/v7/src/etc/usermap --domain zurich.csail.mit.edu --stdout --no-wrap --separate-header --window 3600"
+GOPTS_SCHEME="-d:ext:anoncvs@subversions.gnu.org:/cvsroot/mit-scheme"
+GOPTS_HTML="-d:ext:anoncvs@savannah.gnu.org:/webcvs/mit-scheme"
 O="ChangeLog"
 N="${O}.new"
 
