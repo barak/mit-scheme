@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.32 1989/03/29 02:45:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.33 1989/04/05 05:46:52 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -53,7 +53,7 @@ MIT in each case. |#
     ((quick-sort) "qsort")
     (else))
   (file-case os-type
-    ((unix) "unxpth")
+    ((unix) "unxpth" "unxprm")
     ((vms) "vmspth")
     (else "unkpth")))
 
@@ -856,6 +856,7 @@ MIT in each case. |#
 	  error-type:failed-argument-coercion
 	  error-type:fasdump
 	  error-type:fasload
+	  error-type:file
 	  error-type:illegal-argument
 	  error-type:missing-handler
 	  error-type:open-file

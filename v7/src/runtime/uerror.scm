@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.7 1989/03/07 01:23:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.8 1989/04/05 05:46:30 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,9 +45,6 @@ MIT in each case. |#
   (set! internal-apply-frame/fasdump?
 	(internal-apply-frame/operator-filter
 	 (ucode-primitive primitive-fasdump)))
-  (set! internal-apply-frame/file-open-channel?
-	(internal-apply-frame/operator-filter
-	 (ucode-primitive file-open-channel)))
   (build-condition-types!)
   (set! microcode-error-types (make-error-types))
   (set! error-type:bad-error-code (microcode-error-type 'BAD-ERROR-CODE))
@@ -140,7 +137,6 @@ MIT in each case. |#
 
 (define internal-apply-frame/fasload?)
 (define internal-apply-frame/fasdump?)
-(define internal-apply-frame/file-open-channel?)
 
 (define (internal-apply-frame/add-fluid-binding-name frame)
   (let ((name (internal-apply-frame/operand frame 1)))
@@ -164,6 +160,10 @@ MIT in each case. |#
 	     (car arity)
 	     (cdr arity))))
    repl-environment))
+
+(define (file-error condition-type frame)
+  condition-type frame
+  (make-error-condition error-type:file '() repl-environment))
 
 (define (open-file-error condition-type frame)
   condition-type
@@ -209,6 +209,7 @@ MIT in each case. |#
 (define error-type:fasload)
 (define error-type:illegal-argument)
 (define error-type:missing-handler)
+(define error-type:file)
 (define error-type:open-file)
 (define error-type:random-internal)
 (define error-type:wrong-type-argument)
@@ -226,12 +227,14 @@ MIT in each case. |#
 			     "Datum out of range"))
   (set! error-type:failed-argument-coercion
 	(make-base-type "Argument cannot be coerced to floating point"))
+  (set! error-type:file
+	(make-base-type "File operation error"))
   (set! error-type:open-file
-	(make-base-type "Unable to open file"))
+	(make-condition-type (list error-type:file) "Unable to open file"))
   (set! error-type:fasdump
-	(make-base-type "Fasdump error"))
+	(make-condition-type (list error-type:file) "Fasdump error"))
   (set! error-type:fasload
-	(make-base-type "Fasload error"))
+	(make-condition-type (list error-type:file) "Fasload error"))
   (set! error-type:anomalous
 	(make-internal-type "Anomalous microcode error"))
   (set! error-type:missing-handler
@@ -320,7 +323,7 @@ MIT in each case. |#
        (ILLEGAL-REFERENCE-TRAP ,(make-internal-type "Illegal reference trap"))
        (INAPPLICABLE-CONTINUATION
 	,(make-internal-type "Inapplicable continuation"))
-       (IO-ERROR ,(make-base-type "I/O error"))
+       (IO-ERROR ,(make-condition-type (list error-type:file) "I/O error"))
        (OUT-OF-FILE-HANDLES
 	,(make-condition-type (list error-type:open-file)
 			      "Too many open files"))
@@ -365,7 +368,7 @@ MIT in each case. |#
 	    (return-code (microcode-return frame-type)))
 	(let ((entry (vector-ref alists error-code)))
 	  (cond ((pair? entry)
-		 (let ((entry* (assv return-code (cdr entry))))
+		 (let ((entry* (assv return-code entry)))
 		   (if entry*
 		       (let ((entry** (assq frame-filter (cdr entry*))))
 			 (if entry**
@@ -377,10 +380,11 @@ MIT in each case. |#
 					     (append! (cdr entry*)
 						      (list entry**))
 					     (cons entry** (cdr entry*)))))))
-		       (set-cdr! entry
-				 (cons (list return-code
-					     (cons frame-filter handler))
-				       (cdr entry))))))
+		       (vector-set! alists
+				    error-code
+				    (cons (list return-code
+						(cons frame-filter handler))
+					  entry)))))
 		((null? entry)
 		 (vector-set! alists
 			      error-code
@@ -569,13 +573,29 @@ MIT in each case. |#
     (define-operand-handler 'FASDUMP-ENVIRONMENT 0
       internal-apply-frame/fasdump?)
 
-    (define-error-handler 'EXTERNAL-RETURN 'INTERNAL-APPLY
-      internal-apply-frame/file-open-channel?
+    (define-error-handler 'BAD-RANGE-ARGUMENT-0 'INTERNAL-APPLY
+      (internal-apply-frame/operator-filter
+       (ucode-primitive file-open-channel)
+       (ucode-primitive make-directory))
       open-file-error)
 
     (define-error-handler 'OUT-OF-FILE-HANDLES 'INTERNAL-APPLY
-      internal-apply-frame/file-open-channel?
+      (internal-apply-frame/operator-filter
+       (ucode-primitive file-open-channel))
       out-of-file-handles-error)
+
+    (define-error-handler 'EXTERNAL-RETURN 'INTERNAL-APPLY
+      (internal-apply-frame/operator-filter
+       (ucode-primitive file-length)
+       (ucode-primitive file-read-char)
+       (ucode-primitive file-write-char)
+       (ucode-primitive file-write-string)
+       (ucode-primitive copy-file)
+       (ucode-primitive rename-file)
+       (ucode-primitive remove-file)
+       (ucode-primitive link-file)
+       (ucode-primitive set-file-modes! 2))
+      file-error)
 
     (define-total-error-handler 'WRITE-INTO-PURE-SPACE
       write-into-pure-space-error)
