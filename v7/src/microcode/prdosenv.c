@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/prdosenv.c,v 1.1 1992/05/05 06:55:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/prdosenv.c,v 1.2 1992/05/13 16:50:13 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -128,4 +128,17 @@ DEFINE_PRIMITIVE ("HOSTNAME", Prim_hostname, 0, 0,
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN
     (char_pointer_to_string ((unsigned char *) "IBMPC"));
+}
+
+DEFINE_PRIMITIVE ("DOS-SET-KEYBOARD-MODIFIER-MASK!", Prim_dos_set_kbd_mod_mask,
+		  1, 1,
+		  "Set the keyboard modifier mask")
+{
+  extern unsigned char EXFUN (dos_set_kbd_modifier_mask, (unsigned char));
+  PRIMITIVE_HEADER (1);
+  
+  PRIMITIVE_RETURN (long_to_integer
+		    ((long)
+		     (dos_set_kbd_modifier_mask ((unsigned char)
+						 (arg_integer (1))))));
 }
