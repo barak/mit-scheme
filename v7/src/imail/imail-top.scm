@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.248 2001/05/24 01:14:07 cph Exp $
+;;; $Id: imail-top.scm,v 1.249 2001/05/24 03:43:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1605,11 +1605,8 @@ Negative argument means search in reverse."
 
 (define (imail-default-url protocol)
   (cond ((not protocol)
-	 (or (imail-selected-url #f)
-	     (let ((folder
-		    (buffer-get (chase-imail-buffer (selected-buffer))
-				'IMAIL-FOLDER
-				#f)))
+	 (or (selected-url #f)
+	     (let ((folder (selected-folder #f)))
 	       (and folder
 		    (resource-locator folder)))
 	     (imail-default-url "imap")))
@@ -1634,54 +1631,22 @@ Negative argument means search in reverse."
 	((string-ci=? protocol "file") (make-rmail-url "~/RMAIL"))
 	(else (error:bad-range-argument protocol))))
 
-(define (imail-selected-url-string #!optional error? mark)
-  (let ((url
-	 (imail-selected-url (if (default-object? error?) #t error?)
-			     (if (default-object? mark) #f mark))))
-    (and url
-	 (url->string url))))
-
-(define (imail-selected-url #!optional error? mark)
-  (let ((mark
-	 (if (or (default-object? mark) (not mark))
-	     (current-point)
-	     mark)))
-    (or (let ((selector
-	       (buffer-get (mark-buffer mark) 'IMAIL-URL-SELECTOR #f)))
-	  (and selector
-	      (selector mark)))
-	(and (if (default-object? error?) #t error?)
-	     (error "No selected URL:" mark)))))
-
-(define (set-imail-url-selector! buffer selector)
-  (buffer-put! buffer 'IMAIL-URL-SELECTOR selector))
-
 (define (imail-default-container)
-  (or (imail-browser-url #f)
-      (container-url (imail-default-url #f))))
-
-(define (imail-browser-url #!optional error? buffer)
-  (let ((buffer
-	 (if (or (default-object? buffer) (not buffer))
-	     (selected-buffer)
-	     buffer)))
-    (or (buffer-get buffer 'IMAIL-BROWSER-URL #f)
-	(and (if (default-object? error?) #t error?)
-	     (error "Buffer has no IMAIL browser URL:" buffer)))))
-
-(define (set-imail-browser-url! buffer url)
-  (buffer-put! buffer 'IMAIL-BROWSER-URL url))
+  (let ((container (selected-container #f)))
+    (if container
+	(resource-locator container)
+	(container-url (imail-default-url #f)))))
 
 (define (maybe-prompt-for-folder prompt . options)
-  (or (imail-selected-url-string #f)
+  (or (selected-url-string #f)
       (apply prompt-for-folder prompt #f options)))
 
 (define (maybe-prompt-for-selectable-folder prompt . options)
-  (or (imail-selected-url-string #f)
+  (or (selected-url-string #f)
       (apply prompt-for-selectable-folder prompt #f options)))
 
 (define (maybe-prompt-for-container prompt . options)
-  (or (imail-selected-url-string #f)
+  (or (selected-url-string #f)
       (apply prompt-for-container prompt #f options)))
 
 (define (prompt-for-folder prompt default . options)
@@ -1931,16 +1896,6 @@ Negative argument means search in reverse."
     (if message (message-seen message))
     (signal-modification-event folder 'SELECT-MESSAGE message)))
 
-(define (selected-folder #!optional error? buffer)
-  (or (buffer-get (chase-imail-buffer
-		   (if (or (default-object? buffer) (not buffer))
-		       (selected-buffer)
-		       buffer))
-		  'IMAIL-FOLDER
-		  #f)
-      (and (if (default-object? error?) #t error?)
-	   (error "No selected IMAIL folder."))))
-
 (define (selected-message #!optional error? buffer)
   (or (let ((buffer
 	     (if (or (default-object? buffer) (not buffer))
@@ -2028,6 +1983,50 @@ Negative argument means search in reverse."
 (define (chase-imail-buffer buffer)
   (or (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)
       buffer))
+
+(define (selected-folder #!optional error? buffer)
+  (or (buffer-get (chase-imail-buffer
+		   (if (or (default-object? buffer) (not buffer))
+		       (selected-buffer)
+		       buffer))
+		  'IMAIL-FOLDER
+		  #f)
+      (and (if (default-object? error?) #t error?)
+	   (error "No selected IMAIL folder."))))
+
+(define (selected-container #!optional error? buffer)
+  (let ((buffer
+	 (if (or (default-object? buffer) (not buffer))
+	     (selected-buffer)
+	     buffer)))
+    (or (buffer-get buffer 'IMAIL-CONTAINER #f)
+	(and (if (default-object? error?) #t error?)
+	     (error "Buffer has no IMAIL container:" buffer)))))
+
+(define (set-buffer-imail-container! buffer container)
+  (buffer-put! buffer 'IMAIL-CONTAINER container))
+
+(define (selected-url-string #!optional error? mark)
+  (let ((url
+	 (selected-url (if (default-object? error?) #t error?)
+		       (if (default-object? mark) #f mark))))
+    (and url
+	 (url->string url))))
+
+(define (selected-url #!optional error? mark)
+  (let ((mark
+	 (if (or (default-object? mark) (not mark))
+	     (current-point)
+	     mark)))
+    (or (let ((selector
+	       (buffer-get (mark-buffer mark) 'IMAIL-URL-SELECTOR #f)))
+	  (and selector
+	      (selector mark)))
+	(and (if (default-object? error?) #t error?)
+	     (error "No selected URL:" mark)))))
+
+(define (set-buffer-imail-url-selector! buffer selector)
+  (buffer-put! buffer 'IMAIL-URL-SELECTOR selector))
 
 ;;;; Folder-event handling
 
