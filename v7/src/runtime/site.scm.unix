@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: site.scm.unix,v 1.11 1993/11/13 02:21:15 gjr Exp $
+$Id: site.scm.unix,v 1.12 1993/11/13 02:43:18 gjr Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -55,19 +55,22 @@ MIT in each case. |#
 		     (loop (cdr args)))))))))
     (if *call/cc-warn?*
 	(warn "call/cc: Invoking the C compiler:" command-line))
-    (let ((inside (working-directory-pathname))
-	  (outside false))
-      (dynamic-wind
-       (lambda ()
-	 (stop-thread-timer)
-	 (set! outside ((ucode-primitive working-directory-pathname 0)))
-	 ((ucode-primitive set-working-directory-pathname! 1) inside))
-       (lambda ()
-	 ((ucode-primitive system) command-line))
-       (lambda ()
-	 (set! inside ((ucode-primitive working-directory-pathname 0)))
-	 ((ucode-primitive set-working-directory-pathname! 1) outside)
-	 (start-thread-timer))))))
+    (system command-line)))
+
+(define (system command-line)
+  (let ((inside (working-directory-pathname))
+	(outside false))
+    (dynamic-wind
+     (lambda ()
+       (stop-thread-timer)
+       (set! outside ((ucode-primitive working-directory-pathname 0)))
+       ((ucode-primitive set-working-directory-pathname! 1) inside))
+     (lambda ()
+       ((ucode-primitive system) command-line))
+     (lambda ()
+       (set! inside ((ucode-primitive working-directory-pathname 0)))
+       ((ucode-primitive set-working-directory-pathname! 1) outside)
+       (start-thread-timer)))))
 
 ;;; Normalization of various directory structures.
 
