@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.1 2000/05/17 20:53:29 cph Exp $
+;;; $Id: imail-summary.scm,v 1.2 2000/05/18 04:21:21 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -25,7 +25,7 @@
 (define-command imail-summary
   "Display a summary of the selected folder, one line per message."
   ()
-  (lambda () (imail-summary "All" (lambda (m) m #t))))
+  (lambda () (imail-summary "All" #f)))
 
 (define-command imail-summary-by-flags
   "Display a summary of the selected folder, one line per message.
@@ -35,10 +35,7 @@ The flags are specified as a comma-separated list of names."
   (lambda (flags-string)
     (imail-summary
      (string-append "Flags " flags-string)
-     (let ((flags
-	    (list-transform-negative
-		(map string-trim (burst-string flags-string #\, #f))
-	      string-null?)))
+     (let ((flags (parse-comma-list-string flags-string)))
        (lambda (m)
 	 (flags-intersect? (message-flags m) flags))))))
 
@@ -57,13 +54,24 @@ The recipients are specified as a comma-separated list of names."
   (lambda (recipients-string primary-only?)
     (imail-summary
      (string-append "Recipients " recipients-string)
-     (let ((recipients
-	    (list-transform-negative
-		(map string-trim (burst-string recipients-string #\, #f))
-	      string-null?)))
-       (lambda (m)
-	 ???)))))
+     (let ((regexp
+	    (apply regexp-group
+		   (map re-quote-string
+			(parse-comma-list-string recipients-string)))))
+       (let ((try
+	      (lambda (s)
+		(and s
+		     (re-string-search-forward regexp s #t)))))
+	 (lambda (m)
+	   (or (try (get-first-header-field-value m "from" #f))
+	       (try (get-first-header-field-value m "to" #f))
+	       (and (not primary-only?)
+		    (try (get-first-header-field-value m "cc" #f))))))))))
 
+(define (parse-comma-list-string string)
+  (list-transform-negative (map string-trim (burst-string string #\, #f))
+    string-null?))
+
 (define (imail-summary description predicate)
   (let* ((folder (selected-folder))
 	 (folder-buffer (imail-folder->buffer folder #t))
@@ -73,21 +81,72 @@ The recipients are specified as a comma-separated list of names."
 		     (new-buffer
 		      (string-append (buffer-name folder-buffer)
 				     "-summary"))))
-		(buffer-put! folder-buffer 'IMAIL-SUMMARY-BUFFER buffer)
+		(without-interrupts
+		 (lambda ()
+		   (add-event-receiver! (folder-modification-event folder)
+					imail-summary-modification-event)
+		   (associate-buffer-with-imail-buffer
+		    folder-buffer summary-buffer)
+		   (buffer-put! folder-buffer 'IMAIL-SUMMARY-BUFFER buffer)
+		   (buffer-put! summary-buffer 'IMAIL-MESSAGE-METHOD
+				imail-summary-selected-message)))
 		buffer))))
-    (buffer-reset! summary-buffer)
-    (fill-imail-summary-buffer! summary-buffer folder predicate)
-    (set-buffer-major-mode! summary-buffer (ref-mode-object imail))
-    (buffer-not-modified! summary-buffer)
-    (local-set-variable! truncate-lines #t summary-buffer)
-    (local-set-variable! mode-line-process (list ": " description)
-			 summary-buffer)
-    (associate-buffer-with-imail-buffer folder-buffer summary-buffer)
-    (buffer-put! summary-buffer 'IMAIL-MESSAGE-METHOD
-		 imail-summary-selected-message)
-    (imail-summary-select-message summary-buffer
-				  (selected-message #f folder-buffer))
+    (buffer-put! summary-buffer 'IMAIL-SUMMARY-DESCRIPTION description)
+    (buffer-put! summary-buffer 'IMAIL-SUMMARY-PREDICATE predicate)
+    (rebuild-imail-summary-buffer summary-buffer)
     (select-buffer summary-buffer)))
+
+(define (imail-summary-modification-event folder type parameters)
+  (let ((buffer (imail-folder->buffer folder #f)))
+    (if buffer
+	(case type
+	  ((FLAGS)
+	   (let ((mark (imail-summary-message-mark buffer (car parameters))))
+	     (if mark
+		 (with-read-only-defeated mark
+		   (lambda ()
+		     (delete-right-char mark)
+		     (insert-char (if (message-deleted? (car parameters))
+				      #\D
+				      #\space)
+				  mark))))))
+	  ((SELECT-MESSAGE)
+	   (let ((mark (imail-summary-message-mark buffer (car parameters))))
+	     (if mark
+		 (set-buffer-point! buffer mark))))
+	  ((EXPUNGE)
+	   (let ((m1 (line-start (buffer-start buffer) (car parameters))))
+	     (if m1
+		 (let ((m2 (line-start m1 1)))
+		   (if m2
+		       (with-read-only-defeated m1
+			 (lambda ()
+			   (delete-string m1 m2))))))))
+	  ((INCREASE-LENGTH SET-LENGTH)
+	   (rebuild-imail-summary-buffer buffer))))))
+
+(define (imail-summary-message-mark buffer message)
+  (let ((index (message-index message)))
+    (and index
+	 (line-start (buffer-start buffer) index))))
+
+(define (rebuild-imail-summary-buffer buffer)
+  (buffer-reset! buffer)
+  (fill-imail-summary-buffer! buffer
+			      (selected-folder #f buffer)
+			      (buffer-get buffer
+					  'IMAIL-SUMMARY-PREDICATE
+					  #f))
+  (set-buffer-major-mode! buffer (ref-mode-object imail))
+  (buffer-not-modified! buffer)
+  (local-set-variable! truncate-lines #t buffer)
+  (local-set-variable! mode-line-process
+		       (list ": "
+			     (buffer-get buffer
+					 'IMAIL-SUMMARY-DESCRIPTION
+					 "All"))
+		       buffer)
+  (imail-summary-select-message buffer (selected-message #f buffer)))
 
 (define (imail-summary-selected-message buffer)
   (let ((folder (selected-folder #f buffer))
@@ -102,42 +161,37 @@ The recipients are specified as a comma-separated list of names."
   (let ((mark (line-start (buffer-start buffer) (message-index message))))
     (if mark
 	(set-buffer-point! buffer mark))))
-
+
 (define (fill-imail-summary-buffer! buffer folder predicate)
-  (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
-    (for-each
-     (lambda (message)
-       (if (predicate message)
-	   (begin
-	     (insert-string " " mark)
-	     (insert-string-pad-left
-	      (number->string (message-index message))
-	      4
-	      #\space
-	      mark)
-	     (insert-string "  " mark)
-	     (insert-string-pad-right
-	      (message-summary-date-string message)
-	      11
-	      #\space
-	      mark)
-	     (insert-string "  " mark)
-	     (insert-string-pad-right
-	      (let ((s (message-summary-from-string message)))
-		(if (> (string-length s) 24)
-		    (string-head s 24)
-		    s))
-	      24
-	      #\space
-	      mark)
-	     (insert-string " " mark)
-	     (insert-string (message-summary-subject-string message) mark)
-	     (insert-newline mark))))
-     (let ((end (folder-length folder)))
-       (let loop ((i 0) (messages '()))
-	 (if (< i end)
-	     (loop (+ i 1) (cons (get-message folder i) messages))
-	     (reverse! messages)))))))
+  (let ((messages
+	 (let ((end (folder-length folder)))
+	   (let loop ((i 0) (messages '()))
+	     (if (< i end)
+		 (loop (+ i 1) (cons (get-message folder i) messages))
+		 (reverse! messages))))))
+    (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
+      (for-each (lambda (message)
+		  (if (or (not predicate) (predicate message))
+		      (write-imail-summary-line! message mark)))
+		messages)
+      (mark-temporary! mark))))
+
+(define (write-imail-summary-line! message mark)
+  (insert-string " " mark)
+  (insert-string-pad-left (number->string (message-index message))
+			  4 #\space mark)
+  (insert-string "  " mark)
+  (insert-string-pad-right (message-summary-date-string message)
+			   11 #\space mark)
+  (insert-string "  " mark)
+  (insert-string-pad-right (let ((s (message-summary-from-string message)))
+			     (if (> (string-length s) 24)
+				 (string-head s 24)
+				 s))
+			   24 #\space mark)
+  (insert-string " " mark)
+  (insert-string (message-summary-subject-string message) mark)
+  (insert-newline mark))
 
 (define (message-summary-date-string message)
   (let ((t (message-time message)))
