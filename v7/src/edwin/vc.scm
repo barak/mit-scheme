@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.74 2000/10/26 04:19:14 cph Exp $
+;;; $Id: vc.scm,v 1.75 2000/11/29 21:31:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -871,19 +871,18 @@ to that version."
 (define-command vc-directory
   "Show version-control status of files under a directory.
 Normally shows only locked files; prefix arg says to show all files."
-  "P"
-  (lambda (all-files?)
-    (let ((directory (buffer-default-directory (selected-buffer))))
-      (let ((buffer (vc-dired directory all-files?)))
-	(if (group-end? (line-start (buffer-start buffer) 1 'LIMIT))
-	    (begin
-	      (if (not (buffer-visible? buffer))
-		  (kill-buffer buffer))
-	      (message "No files are currently "
-		       (if all-files? "registered" "locked")
-		       " in "
-		       (->namestring directory)))
-	    (pop-up-buffer buffer #t))))))
+  "DDired under VC (directory)\nP"
+  (lambda (directory all-files?)
+    (let ((buffer (vc-dired directory all-files?)))
+      (if (group-end? (line-start (buffer-start buffer) 1 'LIMIT))
+	  (begin
+	    (if (not (buffer-visible? buffer))
+		(kill-buffer buffer))
+	    (message "No files are currently "
+		     (if all-files? "registered" "locked")
+		     " in "
+		     (->namestring directory)))
+	  (pop-up-buffer buffer #t)))))
 
 (define-command vc-dired
   "Show version-control status of files under a directory.
