@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: blowfish.scm,v 1.21 2001/02/28 21:42:29 cph Exp $
+$Id: blowfish.scm,v 1.22 2001/03/01 04:10:42 cph Exp $
 
 Copyright (c) 1997-2001 Massachusetts Institute of Technology
 
@@ -31,32 +31,28 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define blowfish-ofb64 (ucode-primitive blowfish-ofb64-substring 8))
 
 (define (blowfish-available?)
-  (or (mcrypt-available?)
-      (implemented-primitive-procedure? blowfish-cfb64)))
+  (implemented-primitive-procedure? blowfish-cfb64))
 
 (define (blowfish-encrypt-port input output key init-vector encrypt?)
-  (if (mcrypt-available?)
-      (mcrypt-encrypt-port "blowfish" "cfb" input output key init-vector
-			   encrypt?)
-      ;; Assumes that INPUT is in blocking mode.
-      (let ((key (blowfish-set-key key))
-	    (input-buffer (make-string 4096))
-	    (output-buffer (make-string 4096)))
-	(dynamic-wind
-	 (lambda ()
-	   unspecific)
-	 (lambda ()
-	   (let loop ((m 0))
-	     (let ((n (input-port/read-string! input input-buffer)))
-	       (if (not (fix:= 0 n))
-		   (let ((m
-			  (blowfish-cfb64 input-buffer 0 n output-buffer 0
-					  key init-vector m encrypt?)))
-		     (write-substring output-buffer 0 n output)
-		     (loop m))))))
-	 (lambda ()
-	   (string-fill! input-buffer #\NUL)
-	   (string-fill! output-buffer #\NUL))))))
+  ;; Assumes that INPUT is in blocking mode.
+  (let ((key (blowfish-set-key key))
+	(input-buffer (make-string 4096))
+	(output-buffer (make-string 4096)))
+    (dynamic-wind
+     (lambda ()
+       unspecific)
+     (lambda ()
+       (let loop ((m 0))
+	 (let ((n (input-port/read-string! input input-buffer)))
+	   (if (not (fix:= 0 n))
+	       (let ((m
+		      (blowfish-cfb64 input-buffer 0 n output-buffer 0
+				      key init-vector m encrypt?)))
+		 (write-substring output-buffer 0 n output)
+		 (loop m))))))
+     (lambda ()
+       (string-fill! input-buffer #\NUL)
+       (string-fill! output-buffer #\NUL)))))
 
 (define (compute-blowfish-init-vector)
   ;; This init vector includes a timestamp with a resolution of
