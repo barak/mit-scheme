@@ -2,7 +2,7 @@
 
 (DECLARE (USUAL-INTEGRATIONS))	; MIT Scheme-ism: promise not to redefine prims
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/wabbit/wabbit.scratch,v 1.1 1995/07/13 01:54:47 ziggy Exp $
+;;; $Id: wabbit.scratch,v 1.2 2000/03/21 04:37:32 cph Exp $
 
 ;;
 ;; Serious monkey-ing around with the Wabbit hunting / Headhunting facility...
