@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 14.4 1989/10/27 04:42:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 14.5 1989/10/28 06:47:35 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -176,7 +176,7 @@ MIT in each case. |#
 	    (let ((digit (char->digit (car chars*) radix)))
 	      (cond (digit
 		     (loop (cdr chars*) (+ (* n radix) digit)))
-		    ((char=? (car chars*) #\.)
+		    ((dot-or-exponent? (car chars*))
 		     (values chars false false))
 		    ((char=? (car chars*) #\#)
 		     (let loop ((chars* (cdr chars*)) (n (* n radix)))
@@ -184,65 +184,65 @@ MIT in each case. |#
 			      (values chars* n true))
 			     ((char=? (car chars*) #\#)
 			      (loop (cdr chars*) (* n radix)))
-			     ((char=? (car chars*) #\.)
+			     ((dot-or-exponent? (car chars*))
 			      (values chars false false))
 			     (else
 			      (values chars* n true)))))
 		    (else
 		     (values chars* n false))))))))
+
+(define (dot-or-exponent? char)
+  (or (char=? #\. char)
+      (char-ci=? #\e char)
+      (char-ci=? #\s char)
+      (char-ci=? #\f char)
+      (char-ci=? #\d char)
+      (char-ci=? #\l char)))
 
 (define (parse-decimal chars)
-  (let ((handle-suffix
-	 (lambda (chars x inexact?)
-	   (with-values (lambda () (parse-suffix chars))
-	     (lambda (chars exponent)
-	       (if exponent
-		   (values chars (* x (expt 10 exponent)) true)
-		   (values chars x inexact?)))))))
-    (cond ((null? chars)
-	   (values chars false false))
-	  ((char=? #\. (car chars))
-	   (let ((chars* (cdr chars)))
-	     (if (and (not (null? chars*))
-		      (char->digit (car chars*) 10))
-		 (with-values (lambda () (parse-decimal-fraction chars*))
-		   (lambda (chars x)
-		     (handle-suffix chars x true)))
-		 (values chars false false))))
-	  ((char->digit (car chars) 10)
-	   (with-values (lambda () (parse-decimal-integer chars))
-	     handle-suffix))
-	  (else
-	   (values chars false false)))))
+  (cond ((null? chars)
+	 (values chars false false))
+	((char=? #\. (car chars))
+	 (let ((chars* (cdr chars)))
+	   (if (and (not (null? chars*))
+		    (char->digit (car chars*) 10))
+	       (with-values (lambda () (parse-decimal-fraction chars*))
+		 (lambda (chars x)
+		   (parse-decimal-suffix chars x true)))
+	       (values chars false false))))
+	(else
+	 (let ((digit (char->digit (car chars) 10)))
+	   (if digit
+	       (parse-decimal-integer (cdr chars) digit)
+	       (values chars false false))))))
 
-(define (parse-decimal-integer chars)
-  (let loop ((chars* (cdr chars)) (n (char->digit (car chars) 10)))
-    (if (null? chars*)
-	(values '() n false)
-	(let ((digit (char->digit (car chars*) 10)))
-	  (if digit
-	      (loop (cdr chars*) (+ (* n 10) digit))
-	      (cond ((char=? #\. (car chars*))
-		     (with-values
-			 (lambda () (parse-decimal-fraction (cdr chars*)))
-		       (lambda (chars* fraction)
-			 (values chars* (+ n fraction) true))))
-		    ((char=? #\# (car chars*))
-		     (let loop ((chars* (cdr chars*)) (n (* n 10)))
-		       (cond ((null? chars*)
-			      (values '() n true))
-			     ((char=? #\# (car chars*))
-			      (loop (cdr chars*) (* n 10)))
-			     ((char=? #\. (car chars*))
-			      (let loop ((chars* (cdr chars*)))
-				(if (and (not (null? chars*))
-					 (char=? #\# (car chars*)))
-				    (loop (cdr chars*))
-				    (values chars* n true))))
-			     (else
-			      (values chars* n true)))))
-		    (else
-		     (values chars* n false))))))))
+(define (parse-decimal-integer chars n)
+  (if (null? chars)
+      (parse-decimal-suffix '() n false)
+      (let ((digit (char->digit (car chars) 10)))
+	(if digit
+	    (parse-decimal-integer (cdr chars) (+ (* n 10) digit))
+	    (cond ((char=? #\. (car chars))
+		   (with-values
+		       (lambda () (parse-decimal-fraction (cdr chars)))
+		     (lambda (chars fraction)
+		       (parse-decimal-suffix chars (+ n fraction) true))))
+		  ((char=? #\# (car chars))
+		   (let loop ((chars (cdr chars)) (n (* n 10)))
+		     (cond ((null? chars)
+			    (parse-decimal-suffix '() n true))
+			   ((char=? #\# (car chars))
+			    (loop (cdr chars) (* n 10)))
+			   ((char=? #\. (car chars))
+			    (let loop ((chars (cdr chars)))
+			      (if (and (not (null? chars))
+				       (char=? #\# (car chars)))
+				  (loop (cdr chars))
+				  (parse-decimal-suffix chars n true))))
+			   (else
+			    (parse-decimal-suffix chars n true)))))
+		  (else
+		   (parse-decimal-suffix chars n false)))))))
 
 (define (parse-decimal-fraction chars)
   (let loop ((chars chars) (f 0) (exponent 0))
@@ -259,28 +259,33 @@ MIT in each case. |#
 			((null? (cdr chars)) (done '()))
 			(else (loop (cdr chars)))))))))))
 
-(define (parse-suffix chars)
-  (if (and (not (null? chars))
-	   (or (char-ci=? #\e (car chars))
-	       (char-ci=? #\s (car chars))
-	       (char-ci=? #\f (car chars))
-	       (char-ci=? #\d (car chars))
-	       (char-ci=? #\l (car chars))))
-      (with-values (lambda () (parse-sign (cdr chars)))
-	(lambda (chars* sign)
-	  (let ((digit
-		 (and (not (null? chars*))
-		      (char->digit (car chars*) 10))))
-	    (if digit
-		(let loop ((chars* (cdr chars*)) (n digit))
-		  (let ((digit
-			 (and (not (null? chars*))
-			      (char->digit (car chars*) 10))))
-		    (if digit
-			(loop (cdr chars*) (+ (* n 10) digit))
-			(values chars* (if (eqv? -1 sign) (- n) n)))))
-		(values chars false)))))
-      (values chars false)))
+(define (parse-decimal-suffix chars x inexact?)
+  (let ((finish
+	 (lambda (chars exponent)
+	   (if exponent
+	       (values chars (* x (expt 10 exponent)) true)
+	       (values chars x inexact?)))))
+    (if (and (not (null? chars))
+	     (or (char-ci=? #\e (car chars))
+		 (char-ci=? #\s (car chars))
+		 (char-ci=? #\f (car chars))
+		 (char-ci=? #\d (car chars))
+		 (char-ci=? #\l (car chars))))
+	(with-values (lambda () (parse-sign (cdr chars)))
+	  (lambda (chars* sign)
+	    (let ((digit
+		   (and (not (null? chars*))
+			(char->digit (car chars*) 10))))
+	      (if digit
+		  (let loop ((chars* (cdr chars*)) (n digit))
+		    (let ((digit
+			   (and (not (null? chars*))
+				(char->digit (car chars*) 10))))
+		      (if digit
+			  (loop (cdr chars*) (+ (* n 10) digit))
+			  (finish chars* (if (eqv? -1 sign) (- n) n)))))
+		  (finish chars false)))))
+	(finish chars false))))
 
 (define (parse-sign chars)
   (cond ((null? chars) (values chars false))
