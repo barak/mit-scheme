@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.55 2000/12/05 21:23:46 cph Exp $
+$Id: option.c,v 1.56 2001/02/24 04:08:28 cph Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -1195,62 +1195,51 @@ DEFUN (read_command_line_options, (argc, argv),
     CONST char * band_variable = BAND_VARIABLE;
     CONST char * default_band = DEFAULT_BAND;
 
-    /* If the default band doesn't exist, look for alternates.  */
-    if (!search_for_library_file (DEFAULT_BAND))
+#ifdef HAS_COMPILER_SUPPORT
+    struct band_descriptor
       {
-	CONST char * alternate_bands [] =
-	  {
-	    ALL_DEFAULT_BAND,
-	    COMPILER_DEFAULT_BAND,
-	    EDWIN_DEFAULT_BAND,
-	    "6001.com",
-	    "mechanics.com",
-	    0
-	  };
-	unsigned int i = 0;
-	while (1)
-	  {
-	    CONST char * band = (alternate_bands[i]);
-	    if (band == 0)
-	      break;
-	    if (search_for_library_file (band))
-	      {
-		default_band = band;
-		option_large_sizes = 1;
-		break;
-	      }
-	    i += 1;
-	  }
-      }
+	CONST char * band;
+	CONST char * envvar;
+	int large_p;
+	int compiler_support_p;
+	int edwin_support_p;
+      };
+    struct band_descriptor available_bands [] =
+      {
+	{ DEFAULT_BAND, BAND_VARIABLE, 0, 0, 0 },
+	{ COMPILER_DEFAULT_BAND, COMPILER_BAND_VARIABLE, 1, 1, 0 },
+	{ EDWIN_DEFAULT_BAND, EDWIN_BAND_VARIABLE, 1, 0, 1 },
+	{ ALL_DEFAULT_BAND, ALL_BAND_VARIABLE, 1, 1, 1 },
+	{ "6001.com", EDWIN_BAND_VARIABLE, 1, 0, 1 },
+	{ "mechanics.com", COMPILER_BAND_VARIABLE, 1, 1, 0 },
+	{ "edwin-mechanics.com", ALL_BAND_VARIABLE, 1, 1, 1 },
+	{ 0, 0, 0, 0, 0 }
+      };
+    struct band_descriptor * scan = available_bands;
+#endif
 
     option_band_specified = 0;
     if (option_band_file != 0)
       xfree (option_band_file);
+
 #ifdef HAS_COMPILER_SUPPORT
-    if (option_compiler_defaults)
-      if (option_edwin_defaults)
-	{
-	  option_large_sizes = 1;
-	  option_band_specified = 1;
-	  band_variable = ALL_BAND_VARIABLE;
-	  default_band = ALL_DEFAULT_BAND;
-	}
-      else
-	{
-	  option_large_sizes = 1;
-	  option_band_specified = 1;
-	  band_variable = COMPILER_BAND_VARIABLE;
-	  default_band = COMPILER_DEFAULT_BAND;
-	}
-    else
-      if (option_edwin_defaults)
-	{
-	  option_large_sizes = 1;
-	  option_band_specified = 1;
-	  band_variable = EDWIN_BAND_VARIABLE;
-	  default_band = EDWIN_DEFAULT_BAND;
-	}
+    while ((scan -> band) != 0)
+      {
+	if ((option_compiler_defaults ? (scan -> compiler_support_p) : 1)
+	    && (option_edwin_defaults ? (scan -> edwin_support_p) : 1)
+	    && (search_for_library_file (scan -> band)))
+	  {
+	    option_band_specified = 1;
+	    band_variable = (scan -> envvar);
+	    default_band = (scan -> band);
+	    if (scan -> large_p)
+	      option_large_sizes = 1;
+	    break;
+	  }
+	scan += 1;
+      }
 #endif
+
     if (option_fasl_file != 0)
       {
 	if (option_raw_band != 0)
