@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.22 1989/04/26 05:11:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.23 1989/07/25 13:06:04 arthur Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -70,6 +70,7 @@ MIT in each case. |#
 	 "rtlbase/rtlcfg"		;RTL: CFG types
 	 "rtlbase/rtlobj"		;RTL: CFG objects
 	 "rtlbase/regset"		;RTL: register sets
+	 "rtlbase/valclass"		;RTL: value classes
 
 	 "back/insseq"			;LAP instruction sequences
 	 )
@@ -137,18 +138,20 @@ MIT in each case. |#
 	  sc
 	  syntax-files!)
   (import (scode-optimizer top-level)
-	  sf/internal
-	  sf/pathname-defaulting)
+	  sf/internal)
   (initialization (initialize-package!)))
 
 (define-package (compiler top-level)
-  (files "base/toplev")
+  (files "base/toplev"
+	 "base/crstop")
   (parent (compiler))
   (export ()
 	  cf
 	  compile-bin-file
 	  compile-procedure
-	  compiler:reset!)
+	  compiler:reset!
+	  cross-compile-bin-file
+	  cross-compile-bin-file-end)
   (export (compiler fg-generator)
 	  compile-recursively)
   (export (compiler rtl-generator)
@@ -537,7 +540,10 @@ MIT in each case. |#
 	 "machines/bobcat/instr1"	;68000 Effective addressing
 	 "machines/bobcat/instr2"	;68000 Instructions
 	 "machines/bobcat/instr3"	;  "        "
-	 "machines/bobcat/instr4"	;  "        "	 )
+	 "machines/bobcat/instr4"	;  "        "
+	 "machines/bobcat/flinstr1"	;68881 Floating Point Instructions
+	 "machines/bobcat/flinstr2"	;  "        "	  "	   "
+	 )
   (parent (compiler))
   (export (compiler)
 	  lap-generator/match-rtl-instruction

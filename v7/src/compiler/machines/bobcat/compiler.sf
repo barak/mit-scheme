@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.sf,v 1.7 1988/12/15 17:02:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.sf,v 1.8 1989/07/25 13:05:50 arthur Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -89,7 +89,9 @@ MIT in each case. |#
 		    (load (string-append "machines/bobcat/" name ".scm")
 			  '(COMPILER LAP-SYNTAXER)
 			  early-syntax-table)
-		    (write-string " -- done"))		  '("instr1" "instr2" "instr3" "instr4")))))
+		    (write-string " -- done"))		  '("instr1" "instr2" "instr3" "instr4"
+			     "flinstr1" "flinstr2")))))
+
 ;; Resyntax any files that need it.
 ((access syntax-files! (->environment '(COMPILER))))
 
