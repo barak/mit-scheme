@@ -12253,9 +12253,9 @@ does not include support for Starbase --- you must rebuild the microcode
 to get this support.
 @end defop
 
-@defop {operation+} x-graphics-device source-x-left source-y-top width height destination-x-left destination-y-top
+@defop {operation+} x-graphics-device copy-area source-x-left source-y-top width height destination-x-left destination-y-top
 This operation copies the contents of the rectangle specified by
-@var{source-x-left}, @var{source-y-top}, @var{width}, and @{height} to
+@var{source-x-left}, @var{source-y-top}, @var{width}, and @var{height} to
 the rectangle of the same dimensions at @var{destination-x-left} and
 @var{destination-y-top}.
 @end defop
