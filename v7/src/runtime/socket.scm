@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.23 2003/07/09 04:26:50 cph Exp $
+$Id: socket.scm,v 1.24 2003/07/09 22:28:18 cph Exp $
 
 Copyright 1996,1997,1998,1999,2001,2002 Massachusetts Institute of Technology
 Copyright 2003 Massachusetts Institute of Technology
@@ -71,7 +71,8 @@ USA.
 			    (if (or (default-object? host) (not host))
 				((ucode-primitive host-address-any 0))
 				host))
-    (listen-tcp-server-socket server-socket)))
+    (listen-tcp-server-socket server-socket)
+    server-socket))
 
 (define (create-tcp-server-socket)
   (open-channel
