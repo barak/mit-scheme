@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.1 1990/02/27 19:45:28 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.2 1990/03/16 22:43:33 cph Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,27 +43,27 @@ MIT in each case. |#
 (let-syntax
     ((define-special-primitives
        (macro names
-	 `(define-primitives
+	 `(DEFINE-PRIMITIVES
 	    ,@(map (lambda (name)
 		     (list (symbol-append 'prim- name)
 			   name))
 		   names)))))
   (define-special-primitives
-      create-process
-      process-get-pid
-      process-get-input-channel
-      process-get-output-channel
-      process-get-status-flags
-      process-char-ready?))
+    create-process
+    process-get-pid
+    process-get-input-channel
+    process-get-output-channel
+    process-get-status-flags
+    process-char-ready?))
 
 (let-syntax
     ((define-process-primitives
        (macro names
 	 `(BEGIN ,@(map (lambda (name)
 			  `(BEGIN
-			     (define (,name process)
+			     (DEFINE (,name PROCESS)
 			       (,(symbol-append 'prim- name)
-				(process/microcode-process process)))))
+				(PROCESS/MICROCODE-PROCESS PROCESS)))))
 			names)))))
   (define-process-primitives
     process-get-pid
@@ -72,8 +72,6 @@ MIT in each case. |#
     process-get-status-flags))
 
 (define-structure (process
-		   (type vector)
-		   (named)
 		   (conc-name process/)
 		   (constructor make-process
 				(command-string microcode-process)))
@@ -84,10 +82,8 @@ MIT in each case. |#
   (from-port false)				;port to read from process
   )
 
-(define prim/create-process (make-primitive-procedure 'create-process))
-
 (define (create-process command-string)
-  (let* ((prim-process (prim-create-process command-string))
+  (let* ((prim-process ((ucode-primitive create-process) command-string))
 	 (process (make-process command-string prim-process)))
     (set-process/to-port! process (open-process-output process))
     (set-process/from-port! process (open-process-input process))
@@ -97,5 +93,5 @@ MIT in each case. |#
   ((ucode-primitive kill-process) (process/microcode-process process)))
 
 (define (delete-process process)
-  ((input-port/custom-operation to-port 'close) (process/to-port process))
+  (close-output-port (process/to-port process))
   (kill-process process))
