@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: syntactic-closures.scm,v 14.9 2002/03/01 17:46:25 cph Exp $
+;;; $Id: syntactic-closures.scm,v 14.10 2002/04/17 00:29:23 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -991,25 +991,29 @@
   (list (list (cons forms environment))))
 
 (define (history/add-reduction form environment history)
-  (cons (cons (cons form environment)
-	      (car history))
-	(cdr history)))
+  (and history
+       (cons (cons (cons form environment)
+		   (car history))
+	     (cdr history))))
 
 (define (history/replace-reduction form environment history)
   ;; This is like ADD-REDUCTION, but it discards the current reduction
   ;; before adding a new one.  This is used when the current reduction
   ;; is not interesting, such as when reducing a syntactic closure.
-  (cons (cons (cons form environment)
-	      (cdar history))
-	(cdr history)))
+  (and history
+       (cons (cons (cons form environment)
+		   (cdar history))
+	     (cdr history))))
 
 (define (history/add-subproblem form environment history selector)
-  (cons (list (cons form environment))
-	(cons (cons selector (car history))
-	      (cdr history))))
+  (and history
+       (cons (list (cons form environment))
+	     (cons (cons selector (car history))
+		   (cdr history)))))
 
 (define (history/original-form history)
-  (caar (last-pair (car history))))
+  (and history
+       (caar (last-pair (car history)))))
 
 ;;;; Selectors
 ;;;  These are used by the expansion history to record subproblem
