@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: calias.scm,v 1.19 2000/02/24 01:23:22 cph Exp $
+;;; $Id: calias.scm,v 1.20 2001/01/06 05:37:43 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -88,6 +88,11 @@
 	 (char->name (unmap-alias-key key)))
 	((special-key? key)
 	 (special-key/name key))
+	((button? key)
+	 (string-append "button-"
+			(if (button/down? key) "down" "up")
+			"-"
+			(number->string (button/number key))))
         (else
           (error "key-name: Unknown key type" key))))
 
@@ -187,7 +192,7 @@
 		 (loop (cdr x) (cdr y)))))))
 
 (define (xkey->list xkey)
-  (cond ((key? xkey)
+  (cond ((or (key? xkey) (button? xkey))
 	 (list xkey))
 	((and (not (null? xkey))
 	      (list-of-type? xkey key?))
