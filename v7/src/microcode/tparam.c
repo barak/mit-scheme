@@ -1,5 +1,5 @@
 /* Merge parameters into a termcap entry string.
-   Copyright (C) 1985, 1987 Free Software Foundation, Inc.
+   Copyright (C) 1985-1992 Free Software Foundation, Inc.
 
 
 		       NO WARRANTY
@@ -111,7 +111,11 @@ what you give them.   Help stamp out software-hoarding!  */
 
 #include "ansidecl.h"
 
-extern char * EXFUN (tparam, (char *, char*, int, int, ...));
+#ifndef alpha
+  extern char * EXFUN (tparam, (char *, char*, int, int, ...));
+#else
+  extern char * tparam ();
+#endif
 extern char * EXFUN (tgoto, (char *, int, int));
 
 /* Assuming STRING is the value of a termcap string entry
