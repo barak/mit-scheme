@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: occur.scm,v 1.8 2003/02/14 18:28:12 cph Exp $
+$Id: occur.scm,v 1.9 2003/05/31 03:15:18 cph Exp $
 
-Copyright 1992-2000 Massachusetts Institute of Technology
+Copyright 1992,1995,1997,2000,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -226,32 +226,38 @@ It serves as a menu to find any of the occurrences in this buffer.
 	(syntax-table (ref-variable syntax-table start))
 	(group (mark-group start))
 	(end (mark-index end)))
-    (let loop ((start (mark-index start)))
+    (let loop ((start (mark-index start)) (occurrences '()))
       (let ((match
 	     (re-search-buffer-forward pattern syntax-table group start end)))
 	(if match
-	    (cons (make-temporary-mark group (line-start-index group match) #f)
-		  (loop (line-end-index group match)))
-	    '())))))
+	    (loop (line-end-index group match)
+		  (cons (make-temporary-mark group
+					     (line-start-index group match)
+					     #f)
+			occurrences))
+	    (reverse! occurrences))))))
 
 (define (format-occurrences occurrences nlines output)
-  (if (null? occurrences)
-      '()
+  (if (pair? occurrences)
       (let loop
 	  ((occurrences occurrences)
 	   (previous (group-start (car occurrences)))
-	   (line 1))
+	   (line 1)
+	   (alist '()))
 	(let ((lstart (car occurrences))
 	      (index (mark-index output)))
 	  (let ((line (+ line (count-lines previous lstart))))
 	    (format-occurrence lstart line nlines output)
-	    (cons (cons index lstart)
-		  (if (null? (cdr occurrences))
-		      '()
-		      (begin
-			(if (not (= nlines 0))
-			    (insert-string "--------\n" output))
-			(loop (cdr occurrences) lstart line)))))))))
+	    (if (pair? (cdr occurrences))
+		(begin
+		  (if (not (= nlines 0))
+		      (insert-string "--------\n" output))
+		  (loop (cdr occurrences)
+			lstart
+			line
+			(cons (cons index lstart) alist)))
+		(reverse! alist)))))
+      '()))
 
 (define (format-occurrence lstart line nlines output)
   (let ((tag (pad-on-left-to (number->string line) 3)))
