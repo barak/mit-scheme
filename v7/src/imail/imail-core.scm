@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.16 2000/01/20 17:16:40 cph Exp $
+;;; $Id: imail-core.scm,v 1.17 2000/01/20 17:44:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -434,12 +434,6 @@
 		 (if (predicate message)
 		     message
 		     (loop index)))))))))
-
-(define (previous-deleted-message message)
-  (previous-message message message-deleted?))
-
-(define (next-deleted-message message)
-  (next-message message message-deleted?))
 
 ;;;; Message flags
 
