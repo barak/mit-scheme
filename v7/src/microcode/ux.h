@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.12 1990/11/01 04:33:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.13 1990/11/08 11:10:08 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -640,6 +640,9 @@ extern int EXFUN (UX_tcsetpgrp, (int fd, pid_t pgrp_id));
 #define UX_gethostbyname gethostbyname
 #define UX_getservbyname getservbyname
 #define UX_socket socket
+#define UX_bind bind
+#define UX_listen listen
+#define UX_accept accept
 #endif
 
 #ifdef HAVE_DUMB_OPEN
