@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.15 1992/02/27 19:14:19 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.16 1992/08/21 23:52:31 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -163,6 +163,18 @@ Otherwise, a new buffer is created for each topic."
   "Shell command for printing a file"
   "lpr"
   string?)
+
+(define lpr-prompt-for-name?
+  ;; If true, lpr commands prompt for a name to appear on the title page.
+  false)
+
+(define lpr-most-recent-name
+  ;; If name prompting is enabled, the last name is saved here.
+  false)
+
+(define lpr-print-not-special?
+  ;; If true, the print-* commands are just like the lpr-* commands.
+  false)
 
 (define-autoload-command 'lpr-buffer 'PRINT
   "Print buffer contents with Unix command `lpr'.")

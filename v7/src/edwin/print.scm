@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/print.scm,v 1.5 1992/02/27 19:14:03 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/print.scm,v 1.6 1992/08/21 23:52:18 cph Exp $
 ;;;
-;;;	Copyright (c) 1991 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -51,57 +51,99 @@
 Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
   '()
   (lambda ()
-    (print-region/internal (buffer-region (current-buffer))
-			   (ref-variable lpr-switches))))
+    (print-region/internal (buffer-region (current-buffer)) false)))
 
 (define-command print-buffer
   "Print buffer contents as with Unix command `lpr -p'.
 Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
   '()
   (lambda ()
-    (print-region/internal (buffer-region (current-buffer))
-			   (cons "-p" (ref-variable lpr-switches)))))
+    (print-region/internal (buffer-region (current-buffer)) true)))
 
 (define-command lpr-region
   "Print region contents as with Unix command `lpr'.
 Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
   "r"
   (lambda  (region)
-    (print-region/internal region (ref-variable lpr-switches))))
+    (print-region/internal region false)))
 
 (define-command print-region
   "Print region contents as with Unix command `lpr -p'.
 Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
   "r"
   (lambda  (region)
-    (print-region/internal region (cons "-p" (ref-variable lpr-switches)))))
-
-(define (switches->string switches)
-  (if (null? switches)
-      ""
-      (apply string-append
-	     (cons (car switches)
-		   (let loop ((remaining (cdr switches)))
-		     (if (null? remaining)
-			 '("")
-			 (cons " "
-			       (cons (car remaining)
-				     (loop (cdr remaining))))))))))
-
-(define (print-region/internal region switches)
-  (let ((width (ref-variable tab-width)))
-    (let ((buffer (temporary-buffer " *spool temp*")))
+    (print-region/internal region true)))
+
+(define (print-region/internal region print-command?)
+  (let ((switches
+	 (let ((switches (ref-variable lpr-switches))
+	       (title (print-region-title-string region)))
+	   (append (if (and print-command? (not lpr-print-not-special?))
+		       '("-p")
+		       '())
+		   (let ((job-name
+			  (or (and lpr-prompt-for-name?
+				   (not (there-exists? switches
+					  (lambda (switch)
+					    (string-prefix? "-J" switch))))
+				   (let ((job-name
+					  (prompt-for-string
+					   "Name to print on title page"
+					   lpr-most-recent-name
+					   'INSERTED-DEFAULT)))
+				     (if (string-null? job-name)
+					 false
+					 (begin
+					   (set! lpr-most-recent-name job-name)
+					   job-name))))
+			      title)))
+		     (if job-name
+			 (list (string-append "-J \"" job-name "\""))
+			 '()))
+		   (if (and title
+			    (not (there-exists? switches
+				   (lambda (switch)
+				     (string-prefix "-T" switch)))))
+		       (list (string-append "-T \"" title "\""))
+		       '())
+		   switches))))
+    (let ((source-buffer (mark-buffer (region-start region)))
+	  (temp-buffer (temporary-buffer " *spool temp*")))
       (message "Spooling...")
-      (region-insert-string! (buffer-point buffer)
-			     (region->string region))
-      (if (not (= width 8))
-	  (begin (with-selected-buffer buffer
-		   (lambda ()
-		     (local-set-variable! tab-width width)))
-		 (untabify-region (region-start region) (region-end region))))
-      (shell-command
-       region (buffer-end buffer) false false
-       (string-append (ref-variable lpr-command (current-buffer))
-		      " "
-		      (switches->string switches)))
-      (message "Spooling...done"))))
+      (insert-region (region-start region)
+		     (region-end region)
+		     (buffer-point temp-buffer))
+      (let ((width (ref-variable tab-width source-buffer)))
+	(if (not (= width 8))
+	    (begin
+	      (define-variable-local-value! temp-buffer
+		(ref-variable-object tab-width)
+		width)
+	      (untabify-region (buffer-start temp-buffer)
+			       (buffer-end temp-buffer)))))
+      (shell-command region (buffer-end temp-buffer) false false
+		     (apply string-append
+			    (ref-variable lpr-command source-buffer)
+			    (let loop ((switches switches))
+			      (if (null? switches)
+				  (list "")
+				  (cons* " "
+					 (car switches)
+					 (loop (cdr switches)))))))
+      (append-message "done"))))
+
+(define (print-region-title-string region)
+  (let ((buffer-title
+	 (let ((buffer (mark-buffer (region-start region))))
+	   (and buffer
+		(or (let ((pathname (buffer-pathname buffer)))
+		      (and pathname
+			   (let ((filename (file-namestring pathname)))
+			     (and (not (string-null? filename))
+				  filename))))
+		    (string-append "Edwin buffer " (buffer-name buffer)))))))
+    (if (or (not buffer-title)
+	    (and (group-start? (region-start region))
+		 (group-end? (region-end region))))
+	buffer-title
+	(string-append "region from " buffer-title))))
