@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.39 1994/11/27 23:05:09 cph Exp $
+$Id: option.c,v 1.40 1994/11/28 04:28:41 cph Exp $
 
 Copyright (c) 1990-94 Massachusetts Institute of Technology
 
@@ -58,12 +58,16 @@ extern int strlen ();
 # define NULL 0
 #endif
 
+#if defined(DOS386) || defined(WINNT) || defined(_OS2)
+#define DOS_LIKE_FILENAMES
+#endif
+
 extern struct obstack scratch_obstack;
 extern CONST char * scheme_program_name;
 extern void EXFUN (termination_init_error, (void));
 
 #ifndef SUB_DIRECTORY_DELIMITER
-#  if defined(DOS386) || defined(WINNT)
+#  ifdef DOS_LIKE_FILENAMES
 #    define SUB_DIRECTORY_DELIMITER '\\'
 #  else
 #    define SUB_DIRECTORY_DELIMITER '/'
@@ -71,14 +75,14 @@ extern void EXFUN (termination_init_error, (void));
 #endif
 
 #ifndef PATH_DELIMITER
-#  if defined(DOS386) || defined(WINNT)
+#  ifdef DOS_LIKE_FILENAMES
 #    define PATH_DELIMITER ';'
 #  else
 #    define PATH_DELIMITER ':'
 #  endif
 #endif
 
-#if defined(DOS386) || defined(WINNT)
+#ifdef DOS_LIKE_FILENAMES
 #  define FILE_ABSOLUTE(filename)			\
      ((((filename) [0]) == SUB_DIRECTORY_DELIMITER)	\
       || (((filename) [1]) == ':'))
@@ -281,7 +285,7 @@ The following options are only meaningful to bchscheme:
 #endif
 
 #ifndef DEFAULT_LIBRARY_PATH
-#if defined(DOS386) || defined(WINNT)
+#ifdef DOS_LIKE_FILENAMES
 #define DEFAULT_LIBRARY_PATH "\\scheme\\lib"
 #else
 #define DEFAULT_LIBRARY_PATH "/usr/local/lib/mit-scheme"
@@ -422,7 +426,7 @@ The following options are only meaningful to bchscheme:
 /* These are only meaningful for bchscheme */
 
 #ifndef DEFAULT_GC_DIRECTORY
-#if defined(DOS386) || defined(WINNT)
+#ifdef DOS_LIKE_FILENAMES
 #define DEFAULT_GC_DIRECTORY		"\\tmp"
 #else
 #define DEFAULT_GC_DIRECTORY		"/tmp"
