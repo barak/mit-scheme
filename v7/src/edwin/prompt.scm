@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: prompt.scm,v 1.182 1999/01/31 04:01:19 cph Exp $
+;;; $Id: prompt.scm,v 1.183 1999/08/09 18:22:24 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -974,8 +974,8 @@ Whilst editing the command, the following commands are available:
 		 (loop (string-append ts (char->string input))))))))))
 
 (define (prompt-for-confirmed-password)
-  (let ((password1 (prompt-for-password "Password: ")))
-    (let ((password2 (prompt-for-password "Verify: ")))
+  (let ((password1 (prompt-for-password "Pass phrase")))
+    (let ((password2 (prompt-for-password "Verify")))
       (if (not (string=? password1 password2))
 	  (editor-error "Passwords do not match!"))
       password1)))
