@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.21 1992/12/22 22:05:32 cph Exp $
+$Id: defstr.scm,v 14.22 1992/12/28 21:56:38 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -591,8 +591,7 @@ differences:
     (if predicate-name
 	(let ((tag-expression (structure/tag-expression structure))
 	      (variable (string->uninterned-symbol "object")))
-	  `((DECLARE (INTEGRATE-OPERATOR ,predicate-name))
-	    (DEFINE (,predicate-name ,variable)
+	  `((DEFINE (,predicate-name ,variable)
 	      ,(case (structure/type structure)
 		 ((RECORD)
 		  `(AND (,(absolute '%RECORD?) ,variable)
@@ -706,8 +705,7 @@ differences:
   (if (structure-type? tag)
       (and (eq? (structure-type/type tag) type)
 	   tag)
-      (and (symbol? tag)
-	   (let ((structure-type (named-structure/get-tag-description tag)))
-	     (and (structure-type? structure-type)
-		  (eq? (structure-type/type structure-type) type)
-		  structure-type)))))
+      (let ((structure-type (named-structure/get-tag-description tag)))
+	(and (structure-type? structure-type)
+	     (eq? (structure-type/type structure-type) type)
+	     structure-type))))
