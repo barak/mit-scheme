@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.49 1993/04/27 08:38:16 cph Exp $
+$Id: x11base.c,v 1.50 1993/04/27 09:57:21 cph Exp $
 
 Copyright (c) 1989-93 Massachusetts Institute of Technology
 
@@ -251,9 +251,7 @@ DEFUN (deallocate_x_colormap, (xcm), struct xcolormap * xcm)
 /* Error Handlers */
 
 static int
-DEFUN (x_io_error_handler, (display, error_event),
-       Display * display AND
-       XErrorEvent * error_event)
+DEFUN (x_io_error_handler, (display), Display * display)
 {
   fprintf (stderr, "\nX IO Error\n");
   error_external_return ();
@@ -528,9 +526,7 @@ DEFUN (x_make_window, (xd, window, x_size, y_size, attributes, methods, extra),
 static jmp_buf x_close_window_jmp_buf;
 
 static int
-DEFUN (x_close_window_io_error, (display, error_event),
-       Display * display AND
-       XErrorEvent * error_event)
+DEFUN (x_close_window_io_error, (display), Display * display)
 {
   longjmp (x_close_window_jmp_buf, 1);
 }
