@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.328 1999/04/07 04:09:04 cph Exp $
+$Id: runtime.pkg,v 14.329 1999/04/08 05:01:33 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -506,6 +506,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  month/max-days
 	  month/short-string
 	  string->decoded-time
+	  string->file-time
+	  string->universal-time
 	  time-zone->string
 	  time-zone?
 	  universal-time->global-decoded-time
