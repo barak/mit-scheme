@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pgsql.scm,v 1.4 2003/11/06 04:16:46 cph Exp $
+$Id: pgsql.scm,v 1.5 2003/11/07 20:07:47 cph Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -335,7 +335,10 @@ USA.
   (pq-field-name (result->handle result) index))
 
 (define (pgsql-get-value result row column)
-  (pq-get-value (result->handle result) row column))
+  (let ((handle (result->handle result)))
+    (if (pq-get-is-null? handle row column)
+	#f
+	(pq-get-value handle row column))))
 
 (define (pgsql-get-is-null? result row column)
   (pq-get-is-null? (result->handle result) row column))
