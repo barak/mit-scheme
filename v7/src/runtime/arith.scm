@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.24 1992/06/11 19:28:24 jinx Exp $
+$Id: arith.scm,v 1.25 1992/09/21 19:06:40 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -41,20 +41,6 @@ MIT in each case. |#
 
 (define-macro (copy x)
   `(LOCAL-DECLARE ((INTEGRATE ,x)) ,x))
-
-(define (reduce-comparator binary-comparator numbers)
-  (or (null? numbers)
-      (let loop ((x (car numbers)) (rest (cdr numbers)))
-	(or (null? rest)
-	    (let ((y (car rest)))
-	      (and (binary-comparator x y)
-		   (loop y (cdr rest))))))))
-
-(define (reduce-max/min max/min x1 xs)
-  (let loop ((x1 x1) (xs xs))
-    (if (null? xs)
-	x1
-	(loop (max/min x1 (car xs)) (cdr xs)))))
 
 ;;;; Primitives
 
@@ -1705,19 +1691,33 @@ MIT in each case. |#
   (not (complex:exact? z)))
 
 (define (= . zs)
-  (reduce-comparator complex:= zs))
+  (reduce-comparator complex:= zs '=))
 
 (define (< . xs)
-  (reduce-comparator complex:< xs))
+  (reduce-comparator complex:< xs '<))
 
 (define (> . xs)
-  (reduce-comparator complex:> xs))
+  (reduce-comparator complex:> xs '>))
 
 (define (<= . xs)
-  (reduce-comparator (lambda (x y) (not (complex:< y x))) xs))
+  (reduce-comparator (lambda (x y) (not (complex:< y x))) xs '<=))
 
 (define (>= . xs)
-  (reduce-comparator (lambda (x y) (not (complex:< x y))) xs))
+  (reduce-comparator (lambda (x y) (not (complex:< x y))) xs '>=))
+
+(define (reduce-comparator binary-comparator numbers procedure)
+  (cond ((null? numbers)
+	 true)
+	((null? (cdr numbers))
+	 (if (not (complex:complex? (car numbers)))
+	     (error:wrong-type-argument (car numbers) false procedure))
+	 true)
+	(else
+	 (let loop ((x (car numbers)) (rest (cdr numbers)))
+	   (or (null? rest)
+	       (let ((y (car rest)))
+		 (and (binary-comparator x y)
+		      (loop y (cdr rest)))))))))
 
 (define zero? complex:zero?)
 (define positive? complex:positive?)
@@ -1729,15 +1729,33 @@ MIT in each case. |#
 (define even? complex:even?)
 
 (define (max x . xs)
-  (reduce-max/min complex:max x xs))
+  (reduce-max/min complex:max x xs 'MAX))
 
 (define (min x . xs)
-  (reduce-max/min complex:min x xs))
+  (reduce-max/min complex:min x xs 'MIN))
 
+(define (reduce-max/min max/min x1 xs procedure)
+  (if (null? xs)
+      (begin
+	(if (not (complex:complex? x1))
+	    (error:wrong-type-argument x1 false procedure))
+	x1)
+      (let loop ((x1 x1) (xs xs))
+	(let ((x1 (max/min x1 (car xs)))
+	      (xs (cdr xs)))
+	  (if (null? xs)
+	      x1
+	      (loop x1 xs))))))
+
 (define (+ . zs)
-  (cond ((null? zs) 0)
-	((null? (cdr zs)) (car zs))
-	((null? (cddr zs)) (complex:+ (car zs) (cadr zs)))
+  (cond ((null? zs)
+	 0)
+	((null? (cdr zs))
+	 (if (not (complex:complex? (car zs)))
+	     (error:wrong-type-argument (car zs) false '+))
+	 (car zs))
+	((null? (cddr zs))
+	 (complex:+ (car zs) (cadr zs)))
 	(else
 	 (complex:+ (car zs)
 		    (complex:+ (cadr zs)
@@ -1747,17 +1765,24 @@ MIT in each case. |#
 (define -1+ complex:-1+)
 
 (define (* . zs)
-  (cond ((null? zs) 1)
-	((null? (cdr zs)) (car zs))
-	((null? (cddr zs)) (complex:* (car zs) (cadr zs)))
+  (cond ((null? zs)
+	 1)
+	((null? (cdr zs))
+	 (if (not (complex:complex? (car zs)))
+	     (error:wrong-type-argument (car zs) false '*))
+	 (car zs))
+	((null? (cddr zs))
+	 (complex:* (car zs) (cadr zs)))
 	(else
 	 (complex:* (car zs)
 		    (complex:* (cadr zs)
 			       (reduce complex:* 1 (cddr zs)))))))
 
 (define (- z1 . zs)
-  (cond ((null? zs) (complex:negate z1))
-	((null? (cdr zs)) (complex:- z1 (car zs)))
+  (cond ((null? zs)
+	 (complex:negate z1))
+	((null? (cdr zs))
+	 (complex:- z1 (car zs)))
 	(else
 	 (complex:- z1
 		    (complex:+ (car zs)
@@ -1765,10 +1790,12 @@ MIT in each case. |#
 					  (reduce complex:+ 0 (cddr zs))))))))
 
 (define conjugate complex:conjugate)
-
+
 (define (/ z1 . zs)
-  (cond ((null? zs) (complex:invert z1))
-	((null? (cdr zs)) (complex:/ z1 (car zs)))
+  (cond ((null? zs)
+	 (complex:invert z1))
+	((null? (cdr zs))
+	 (complex:/ z1 (car zs)))
 	(else
 	 (complex:/ z1
 		    (complex:* (car zs)
@@ -1776,26 +1803,16 @@ MIT in each case. |#
 					  (reduce complex:* 1 (cddr zs))))))))
 
 (define abs complex:abs)
-#|
-;; Kludge!
-
-(define quotient complex:quotient)
-(define remainder complex:remainder)
-(define modulo complex:modulo)
-|#
+
+;;; The following three procedures were originally just renamings of
+;;; their COMPLEX: equivalents.  They have been rewritten this way to
+;;; cause the compiler to generate better code for them.
 
 (define (quotient n d)
   ((ucode-primitive quotient 2) n d))
 
 (define (remainder n d)
   ((ucode-primitive remainder 2) n d))
-
-#|
-
-(define (modulo n d)
-  ((ucode-primitive modulo 2) n d))
-
-|#
 
 (define (modulo n d)
   (let ((r ((ucode-primitive remainder 2) n d)))
