@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.81 1993/08/21 01:53:31 gjr Exp $
+$Id: config.h,v 9.82 1993/10/27 01:41:39 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -513,7 +513,7 @@ extern unsigned long winnt_address_delta;
 /* #define HAS_FREXP */
 #define HAS_MODF
 
-#ifdef HAS_COMPILER_SUPPORT
+#if defined(HAS_COMPILER_SUPPORT) && !defined(NATIVE_CODE_IS_C)
 extern void * alpha_heap_malloc (long);
 #  define HEAP_MALLOC		alpha_heap_malloc
 #endif
