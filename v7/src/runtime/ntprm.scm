@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.41 2003/09/14 00:20:42 cph Exp $
+$Id: ntprm.scm,v 1.42 2003/09/14 01:01:45 cph Exp $
 
 Copyright 1995,1996,1998,1999,2000,2001 Massachusetts Institute of Technology
 Copyright 2003 Massachusetts Institute of Technology
@@ -657,16 +657,17 @@ USA.
 (define (os/parse-path-string string)
   (let ((end (string-length string))
 	(substring
-	 (lambda (string start end)
-	   (pathname-as-directory (substring string start end)))))
+	 (let ((cs (char-set #\")))
+	   (lambda (string start end)
+	     (pathname-as-directory (string-trim (substring string start end)
+						 cs))))))
     (let loop ((start 0))
       (if (< start end)
 	  (let ((index (substring-find-next-char string start end #\;)))
 	    (if index
 		(if (= index start)
 		    (loop (+ index 1))
-		    (cons (string-trim (substring string start index)
-				       (char-set #\"))
+		    (cons (substring string start index)
 			  (loop (+ index 1))))
 		(list (substring string start end))))
 	  '()))))
