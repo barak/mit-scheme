@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.54 2000/06/12 01:38:12 cph Exp $
+;;; $Id: sendmail.scm,v 1.55 2000/06/12 03:29:43 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -883,7 +883,7 @@ the user from the mailer."
 		    (mime-parameters->string parameters)))
     (mail-insert-field-value
      m
-     "Content-Encoding"
+     "Content-Transfer-Encoding"
      (if (and (eq? type 'MESSAGE) (eq? subtype 'RFC822))
 	 "7bit"
 	 "base64"))
