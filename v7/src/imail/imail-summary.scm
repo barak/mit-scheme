@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.30 2000/10/26 16:41:07 cph Exp $
+;;; $Id: imail-summary.scm,v 1.31 2000/10/26 22:16:45 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -161,9 +161,10 @@ SUBJECT is a string of regexps separated by commas."
 			 (create-buffer-layout
 			  (lambda (window buffers)
 			    (let ((buffer (car buffers)))
-			      (select-buffer buffer window)
-			      (imail-summary-pop-up-message-buffer buffer
-								   window)))
+			      (if (eq? (window-buffer window) buffer)
+				  (imail-summary-pop-up-message-buffer buffer
+								       window)
+				  (select-buffer buffer window))))
 			  (list buffer folder-buffer)))))
 		  buffer)))))
     (buffer-put! buffer 'IMAIL-SUMMARY-DESCRIPTION description)
@@ -484,10 +485,9 @@ SUBJECT is a string of regexps separated by commas."
 	 (if (or (default-object? window) (not window))
 	     (selected-window)
 	     window)))
-    (if (and folder-buffer (selected-buffer? buffer))
-	(pop-up-buffer folder-buffer #f
-		       `((HEIGHT ,(imail-summary-height buffer window))
-			 (SCREEN ,(window-screen window)))))))
+    (if (and folder-buffer (eq? (window-buffer window) buffer))
+	(window-split-vertically! window
+				  (imail-summary-height buffer window)))))
 
 (define (imail-summary-height buffer window)
   (let ((height (ref-variable imail-summary-height buffer)))
