@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxproc.c,v 1.19 1996/03/11 20:38:24 cph Exp $
+$Id: uxproc.c,v 1.20 1997/05/01 03:51:13 cph Exp $
 
-Copyright (c) 1990-96 Massachusetts Institute of Technology
+Copyright (c) 1990-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,6 +39,10 @@ MIT in each case. */
 
 #ifndef HAVE_DUP2
 #include "error: can't hack subprocess I/O without dup2() or equivalent"
+#endif
+
+#if defined(__osf__) || defined(__bsdi__)
+#define USE_TIOCSCTTY
 #endif
 
 extern char ** environ;
@@ -355,7 +359,7 @@ DEFUN (OS_make_subprocess,
 		|| ((SLAVE_PTY_P (ctty_name)) && (! (SETUP_SLAVE_PTY (fd))))
 #endif
 		|| (! (isatty (fd)))
-#ifdef __osf__
+#ifdef USE_TIOCSCTTY
 		|| ((UX_ioctl (fd, TIOCSCTTY, 0)) < 0)
 #endif
 		/* Tell the controlling terminal its process group. */
@@ -701,13 +705,16 @@ DEFUN (stop_signal_handler, (signo), int signo)
    must disable them if they are present. */
 #define IUCLC 0
 #define OLCUC 0
-#define ONLCR 0
 #define NLDLY 0
 #define CRDLY 0
 #define TABDLY 0
 #define BSDLY 0
 #define VTDLY 0
 #define FFDLY 0
+#endif
+
+#ifndef ONLCR
+#define ONLCR 0
 #endif
 
 static int
