@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.11 1988/05/19 15:26:57 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.12 1988/05/28 04:11:13 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -139,6 +139,13 @@ MIT in each case. |#
   (move-to-alias-register! source 'DATA target)
   (LAP))
 
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->ADDRESS (CONSTANT (? source))))
+  (QUALIFIER (pseudo-register? target))
+  (let ((target (reference-assignment-alias! target 'DATA)))
+    (LAP ,(load-constant source target)
+	 (AND L ,mask-reference ,target))))
+
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->ADDRESS (REGISTER (? source))))
   (QUALIFIER (pseudo-register? target))
