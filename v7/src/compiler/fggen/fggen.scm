@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.28 1991/06/14 21:19:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.29 1991/08/26 15:07:35 jinx Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -689,8 +689,8 @@ MIT in each case. |#
 				expression name value)
 	  (generate/combination
 	   block continuation context
-	   (let ((old-value (generate-uninterned-symbol))
-		 (new-value (generate-uninterned-symbol)))
+	   (let ((old-value (generate-uninterned-symbol "set-old-"))
+		 (new-value (generate-uninterned-symbol "set-new-")))
 	     (scode/make-let (list new-value)
 			     (list value)
 	       (scode/make-let (list old-value)
@@ -753,7 +753,7 @@ MIT in each case. |#
 	   (scode/make-conditional predicate true alternative))
 	  (generate/combination
 	   block continuation context
-	   (let ((temp (generate-uninterned-symbol)))
+	   (let ((temp (generate-uninterned-symbol "or-predicate-")))
 	     (scode/make-let (list temp)
 			     (list predicate)
 			     (let ((predicate (scode/make-variable temp)))
