@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.282 1997/02/21 05:42:48 cph Exp $
+$Id: runtime.pkg,v 14.283 1997/04/24 06:35:14 cph Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -1488,6 +1488,7 @@ MIT in each case. |#
   (files "numpar")
   (parent ())
   (export ()
+	  flonum-parser-fast?
 	  string->number
 	  substring->number))
 
