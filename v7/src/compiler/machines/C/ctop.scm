@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.3 1993/11/09 04:14:48 gjr Exp $
+$Id: ctop.scm,v 1.4 1993/11/13 03:51:55 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -40,14 +40,23 @@ MIT in each case. |#
 ;;;; Exports to the compiler
 
 (define compiled-output-extension "c")
+(define compiler:invoke-c-compiler? true)
+(define compiler:c-compiler-name "cc")
+(define compiler:c-compiler-switches 'UNKNOWN)
+(define compiler:c-linker-name "ld")
+(define compiler:c-linker-switches 'UNKNOWN)
+(define compiler:c-linker-output-extension 'UNKNOWN)
 
 (define (compiler-file-output object pathname)
   (let ((pair (vector-ref object 1)))
     (call-with-output-file pathname
       (lambda (port)
-	(write-string (cdr pair) port)))))
+	(write-string (cdr pair) port)))
+    (if compiler:invoke-c-compiler?
+	(c-compile pathname))))
 
 (define (compiled-scode->procedure compiled-scode environment)
+  ;; This could compile to a file, c-compile it, and then load it.
   environment				; ignored
   (error "compiled-scode->procedure: Not yet implemented"
 	 compiled-scode))
@@ -65,6 +74,106 @@ MIT in each case. |#
 	  (< (vector-ref x 0)
 	     (vector-ref y 0)))))
 
+(define (c-compile pathname)
+  (fluid-let ((*call/cc-c-compiler* compiler:c-compiler-name)
+	      (*call/cc-warn?* false))
+    (let ((source (enough-namestring pathname))
+	  (object (enough-namestring (pathname-new-type pathname "o"))))
+      (newline)
+      (display ";Compiling ")
+      (display source)
+      (apply call/cc
+	     (append (c-compiler-switches) (list source)))
+      (set! *call/cc-c-compiler* compiler:c-linker-name)
+      (newline)
+      (display ";Linking ")
+      (display object)
+      (apply call/cc
+	     (append (list "-o")
+		     (list
+		      (enough-namestring
+		       (pathname-new-type pathname
+					  (c-output-extension))))
+		     (c-linker-switches)
+		     (list object))))))
+
+(define (c-output-extension)
+  (cond ((not (eq? compiler:c-linker-output-extension 'UNKNOWN))
+	 compiler:c-linker-output-extension)
+	((assoc microcode-id/operating-system-variant
+		c-compiler-switch-table)
+	 => (lambda (place)
+	      (set! compiler:c-linker-output-extension (cadr place))
+	      (cadr place)))
+	(else
+	 (error "c-output-extension: Unknown OS"
+		microcode-id/operating-system-variant))))
+
+(define c-compiler-switch-table
+  `(("SunOS"
+     "so"
+     ("-c" "-pic" "-O" "-Dsun4" "-D_SUNOS4")
+     ())
+    ("AIX"
+     "so"
+     ("-c" "-O" "-D_AIX")
+     ,(lambda (dir)
+	(list "-bM:SRE"
+	      (string-append "-bE:"
+			     (->namestring (merge-pathnames dir "liarc.exp")))
+	      (string-append "-bI:"
+			     (->namestring (merge-pathnames dir "scheme.imp")))
+	      "-edload_initialize_file")))
+    ("HP-UX"
+     "sl"
+     ("-c" "+z" "-O" "-Ae" "-D_HPUX")
+     ("-b"))
+    ("OSF"
+     "so"
+     ("-c" "-std1")
+     ("-shared"))))
+
+(define (c-compiler-switches)
+  (if (not (eq? compiler:c-compiler-switches 'UNKNOWN))
+      compiler:c-compiler-switches
+      (let ((place (assoc microcode-id/operating-system-variant
+			  c-compiler-switch-table))
+	    (dir (system-library-directory-pathname "include")))
+	(cond ((not place)
+	       (error 'c-compiler-switches "Unknown OS"
+		      microcode-id/operating-system-variant))
+	      ((not dir)
+	       (error 'c-compiler-switches
+		      "Cannot find \"include\" directory"))
+	      (else
+	       (let ((result
+		      (append
+		       (caddr place)
+		       (list
+			(string-append
+			 "-I"
+			 (->namestring
+			  (directory-pathname-as-file dir)))))))
+		 (set! compiler:c-compiler-switches result)
+		 result))))))
+
+(define (c-linker-switches)
+  (cond ((not (eq? compiler:c-linker-switches 'UNKNOWN))
+	 compiler:c-linker-switches)
+	((assoc microcode-id/operating-system-variant c-compiler-switch-table)
+	 => (lambda (place)
+	      (let ((switches (cadddr place)))
+		(if (pair? switches)
+		    switches
+		    (let ((dir (system-library-directory-pathname "include")))
+		      (if (not dir)
+			  (error 'c-linker-switches
+				 "Cannot find \"include\" directory"))
+		      (switches dir))))))
+	(else
+	 (error 'c-linker-switches "Unknown OS"
+		microcode-id/operating-system-variant))))
+
 ;; Global variables for assembler and linker
 
 (define *recursive-compilation-results*)
