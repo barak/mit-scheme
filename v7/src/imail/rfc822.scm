@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rfc822.scm,v 1.2 2000/01/07 23:10:44 cph Exp $
+;;; $Id: rfc822.scm,v 1.3 2000/01/14 18:09:20 cph Exp $
 ;;;
-;;; Copyright (c) 1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
