@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.7 2001/08/17 13:01:25 cph Exp $
+;;; $Id: load.scm,v 1.8 2001/12/19 04:03:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-1999, 2001 Massachusetts Institute of Technology
 ;;;
@@ -28,7 +28,7 @@
 	 (lambda (mname tname)
 	   (syntax-table/define system-global-syntax-table
 				mname
-				(lexical-reference environment tname))))))
+				(environment-lookup environment tname))))))
   (install 'DEFINE-CLASS 'TRANSFORM:DEFINE-CLASS)
   (install 'DEFINE-GENERIC 'TRANSFORM:DEFINE-GENERIC)
   (install 'DEFINE-METHOD 'TRANSFORM:DEFINE-METHOD)

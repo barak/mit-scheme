@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: usicon.scm,v 4.4 1999/01/02 06:06:43 cph Exp $
+$Id: usicon.scm,v 4.5 2001/12/19 04:02:53 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; SCode Optimizer: Usual Integrations: Constants
@@ -24,7 +25,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (declare (usual-integrations)
 	 (integrate-external "object"))
-
+
 (define usual-integrations/constant-names)
 (define usual-integrations/constant-values)
 (define usual-integrations/constant-alist)
@@ -39,7 +40,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (set! usual-integrations/constant-values
 	(map (lambda (name)
 	       (let ((object
-		      (lexical-reference system-global-environment name)))
+		      (environment-lookup system-global-environment name)))
 		 (if (not (memq (microcode-type/code->name
 				 (object-type object))
 				'(BIGNUM
@@ -68,7 +69,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(map (lambda (name)
 	       (cons name
 		     (constant/make
-		      false
-		      (lexical-reference system-global-environment name))))
+		      #f
+		      (environment-lookup system-global-environment name))))
 	     usual-integrations/constant-names))
-  'DONE)
+  unspecific)
