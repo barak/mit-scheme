@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/telnet.scm,v 1.4 1991/10/25 00:03:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/telnet.scm,v 1.5 1991/11/22 20:29:27 arthur Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -54,7 +54,7 @@ and telnet-mode-hook, in that order."
   (set-variable! comint-prompt-regexp
 		 (or (ref-variable telnet-prompt-pattern)
 		     (ref-variable shell-prompt-pattern)))
-  (let ((process (current-process)))
+  (let ((process (get-buffer-process (current-buffer))))
     (if process
 	(set-process-filter! process
 			     (make-telnet-filter process))))
