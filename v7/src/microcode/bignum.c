@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bignum.c,v 9.43 1997/01/02 05:21:30 cph Exp $
+$Id: bignum.c,v 9.44 1997/04/23 05:40:11 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -661,6 +661,90 @@ DEFUN_VOID (bignum_length_upper_limit)
   (BIGNUM_REF (result, 0)) = 0;
   (BIGNUM_REF (result, 1)) = BIGNUM_DIGIT_LENGTH;
   return (result);
+}
+
+bignum_type
+DEFUN (bignum_shift_left, (n, m), bignum_type n AND unsigned long m)
+{
+  unsigned long ln = (BIGNUM_LENGTH (n));
+  unsigned long delta = 0;
+  if (m == 0)
+    return (n);
+  {
+    bignum_digit_type digit = (BIGNUM_REF (n, (ln - 1)));
+    while (digit > 0)
+      {
+	delta += 1;
+	digit >>= 1;
+      }
+  }
+  {
+    unsigned long zeroes = (m / BIGNUM_DIGIT_LENGTH);
+    unsigned long shift = (m % BIGNUM_DIGIT_LENGTH);
+    unsigned long ln2
+      = (((ln - 1) + ((delta + m) / BIGNUM_DIGIT_LENGTH))
+	 + (((delta + m) % BIGNUM_DIGIT_LENGTH) != 0));
+    bignum_type result = (bignum_allocate (ln2, (BIGNUM_NEGATIVE_P (n))));
+    bignum_digit_type * scan_n = (BIGNUM_START_PTR (n));
+    bignum_digit_type * end_n = (scan_n + ln);
+    bignum_digit_type * scan_result = (BIGNUM_START_PTR (result));
+    while ((zeroes--) > 0)
+      (*scan_result++) = 0;
+    if (shift == 0)
+      while (scan_n < end_n)
+	(*scan_result++) = (*scan_n++);
+    else
+      {
+	unsigned long temp = 0;
+	while (scan_n < end_n)
+	  {
+	    bignum_digit_type digit = (*scan_n++);
+	    (*scan_result++) = (((digit << shift) & BIGNUM_DIGIT_MASK) | temp);
+	    temp = (digit >> (BIGNUM_DIGIT_LENGTH - shift));
+	  }
+	if (temp != 0)
+	  (*scan_result) = temp;
+      }
+    return (result);
+  }
+}
+
+bignum_type
+DEFUN (unsigned_long_to_shifted_bignum, (n, m, sign),
+       unsigned long n AND
+       unsigned long m AND
+       int sign)
+{
+  unsigned long delta = 0;
+  if (n == 0)
+    return (BIGNUM_ZERO ());
+  {
+    unsigned long n1 = n;
+    while (n1 > 0)
+      {
+	delta += 1;
+	n1 >>= 1;
+      }
+  }
+  {
+    unsigned long zeroes = (m / BIGNUM_DIGIT_LENGTH);
+    unsigned long shift = (m % BIGNUM_DIGIT_LENGTH);
+    unsigned long ln
+      = (((delta + m) / BIGNUM_DIGIT_LENGTH)
+	 + (((delta + m) % BIGNUM_DIGIT_LENGTH) != 0));
+    bignum_type result = (bignum_allocate (ln, sign));
+    bignum_digit_type * scan_result = (BIGNUM_START_PTR (result));
+    while ((zeroes--) > 0)
+      (*scan_result++) = 0;
+    (*scan_result++) = ((n << shift) & BIGNUM_DIGIT_MASK);
+    n >>= (BIGNUM_DIGIT_LENGTH - shift);
+    while (n > 0)
+      {
+	(*scan_result++) = (n & BIGNUM_DIGIT_MASK);
+	n >>= BIGNUM_DIGIT_LENGTH;
+      }
+    return (result);
+  }
 }
 
 bignum_type

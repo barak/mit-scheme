@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: artutl.c,v 1.13 1997/04/22 22:42:16 cph Exp $
+$Id: artutl.c,v 1.14 1997/04/23 05:40:18 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -462,24 +462,46 @@ DEFUN (integer_remainder, (n, d), SCHEME_OBJECT n AND SCHEME_OBJECT d)
   }
 }
 
+static unsigned long
+DEFUN (unsigned_long_length_in_bits, (n), unsigned long n)
+{
+  unsigned long result = 0;
+  while (n > 0)
+    {
+      result += 1;
+      n >>= 1;
+    }
+  return (result);
+}
+
 SCHEME_OBJECT
 DEFUN (integer_length_in_bits, (n), SCHEME_OBJECT n)
 {
   if (FIXNUM_P (n))
     {
       long n1 = (FIXNUM_TO_LONG (n));
-      unsigned long n2 = ((n1 < 0) ? (- n1) : n1);
-      unsigned long result = ((sizeof (unsigned long)) * CHAR_BIT);
-      unsigned long m = (1 << (result - 1));
-      while (result > 0)
-	{
-	  if (n2 >= m)
-	    break;
-	  result -= 1;
-	  m >>= 1;
-	}
-      return (LONG_TO_UNSIGNED_FIXNUM (result));
+      return (LONG_TO_UNSIGNED_FIXNUM
+	      (unsigned_long_length_in_bits ((n1 < 0) ? (- n1) : n1)));
     }
   else
     return (bignum_length_in_bits (n));
+}
+
+SCHEME_OBJECT
+DEFUN (integer_shift_left, (n, m), SCHEME_OBJECT n AND unsigned long m)
+{
+  if ((m == 0) || (!integer_positive_p (n)))
+    return (n);
+  if (FIXNUM_P (n))
+    {
+      unsigned long n1 = (UNSIGNED_FIXNUM_TO_LONG (n));
+      unsigned long ln = (unsigned_long_length_in_bits (n1));
+      unsigned long lr = (ln + m);
+      return
+	((lr <= FIXNUM_LENGTH)
+	 ? (LONG_TO_UNSIGNED_FIXNUM (n1 << m))
+	 : (unsigned_long_to_shifted_bignum (n1, m, 0)));
+    }
+  else
+    return (bignum_shift_left (n, m));
 }

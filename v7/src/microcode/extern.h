@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: extern.h,v 9.54 1997/04/22 22:42:25 cph Exp $
+$Id: extern.h,v 9.55 1997/04/23 05:41:03 cph Exp $
 
 Copyright (c) 1987-97 Massachusetts Institute of Technology
 
@@ -206,6 +206,8 @@ extern Boolean EXFUN (integer_divide,
 extern SCHEME_OBJECT EXFUN (integer_quotient, (SCHEME_OBJECT, SCHEME_OBJECT));
 extern SCHEME_OBJECT EXFUN (integer_remainder, (SCHEME_OBJECT, SCHEME_OBJECT));
 extern SCHEME_OBJECT EXFUN (integer_length_in_bits, (SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN
+  (integer_shift_left, (SCHEME_OBJECT, SCHEME_OBJECT));
 
 /* Character utilities */
 extern long EXFUN (char_downcase, (long));

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bignum.h,v 9.29 1996/10/02 18:57:02 cph Exp $
+$Id: bignum.h,v 9.30 1997/04/23 05:40:26 cph Exp $
 
-Copyright (c) 1989-96 Massachusetts Institute of Technology
+Copyright (c) 1989-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -92,6 +92,9 @@ extern int EXFUN
 			   int twos_complement_p));
 extern bignum_type EXFUN (bignum_length_in_bits, (bignum_type));
 extern bignum_type EXFUN (bignum_length_upper_limit, (void));
+extern bignum_type EXFUN (bignum_shift_left, (bignum_type, unsigned long));
+extern bignum_type EXFUN
+  (unsigned_long_to_shifted_bignum, (unsigned long, unsigned long, int));
 extern bignum_type EXFUN
   (digit_stream_to_bignum,
    (unsigned int n_digits,

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: intprm.c,v 1.5 1997/04/22 22:42:41 cph Exp $
+$Id: intprm.c,v 1.6 1997/04/23 05:40:32 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -178,5 +178,18 @@ DEFINE_PRIMITIVE ("INTEGER->FLONUM", Prim_integer_to_flonum, 2, 2, 0)
     if ((control & 2) != 0)
       error_bad_range_arg (1);
     PRIMITIVE_RETURN (SHARP_F);
+  }
+}
+
+DEFINE_PRIMITIVE ("INTEGER-SHIFT-LEFT", Prim_integer_shift_left, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  Set_Time_Zone (Zone_Math);
+  CHECK_ARG (1, INTEGER_P);
+  {
+    SCHEME_OBJECT n = (ARG_REF (1));
+    if (integer_negative_p (n))
+      error_bad_range_arg (1);
+    PRIMITIVE_RETURN (integer_shift_left (n, (arg_ulong_integer (2))));
   }
 }
