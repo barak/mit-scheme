@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: intmod.scm,v 1.102 1999/10/23 03:16:22 cph Exp $
+;;; $Id: intmod.scm,v 1.103 1999/10/31 04:31:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -56,7 +56,7 @@ Otherwise, only evaluation of expressions in the REPL buffer itself do this."
       (call-with-transcript-buffer
        (lambda (buffer)
 	 (procedure (buffer-end buffer))))
-      (procedure false)))
+      (procedure #f)))
 
 (define-command repl
   "Run an inferior read-eval-print loop (REPL), with I/O through a buffer.
@@ -64,27 +64,61 @@ With no arguments, selects the current evaluation buffer,
  or creates a new one if there is none.
 With one C-u, creates a new REPL buffer unconditionally.
 With two C-u's, creates a new REPL buffer with a new evaluation environment.
-  (Otherwise USER-INITIAL-ENVIRONMENT is used.)"
+  (Otherwise USER-INITIAL-ENVIRONMENT is used.)
+If a new REPL buffer is created, it automatically becomes the REPL buffer
+  for the current buffer."
   "p"
   (lambda (argument)
     (select-buffer
-     (let ((make-new
-	    (lambda (environment)
-	      (let ((buffer (new-buffer initial-buffer-name)))
-		(start-inferior-repl! buffer
-				      environment
-				      (environment-syntax-table environment)
-				      #f)
-		buffer))))
-       (if (>= argument 16)
-	   (make-new (extend-ic-environment system-global-environment))
-	   (or (and (< argument 4) (current-repl-buffer* #f))
-	       (make-new user-initial-environment)))))))
+     (let ((buffer (current-buffer)))
+       (let ((make-new
+	      (lambda (environment)
+		(let ((repl-buffer (new-buffer initial-buffer-name)))
+		  (start-inferior-repl! repl-buffer
+					environment
+					(environment-syntax-table environment)
+					#f)
+		  ;; Wait for the buffer's thread to start up and
+		  ;; attach its interface port.
+		  (let loop ()
+		    (if (not (repl-buffer? repl-buffer))
+			(loop)))
+		  ;; If there is already a global REPL buffer, make
+		  ;; this one the local REPL buffer for this buffer.
+		  (if (repl-buffer-list)
+		      (set-local-repl-buffer! buffer repl-buffer))
+		  repl-buffer))))
+	 (if (>= argument 16)
+	     (make-new (extend-ic-environment system-global-environment))
+	     (or (and (< argument 4) (current-repl-buffer* buffer))
+		 (make-new user-initial-environment))))))))
 
+(define-command set-inferior-repl-buffer
+  "Select an inferior REPL buffer for evaluating this buffer's contents.
+Subsequent evaluation commands executed in the current buffer will be
+evaluated in the specified inferior REPL buffer."
+  (lambda ()
+    (list
+     (find-buffer
+      (let ((buffers (repl-buffer-list)))
+	(prompt-for-string-table-name "REPL buffer"
+				      (and (pair? buffers)
+					   (buffer-name (car buffers)))
+				      (alist->string-table
+				       (map (lambda (buffer)
+					      (cons (buffer-name buffer)
+						    buffer))
+					    buffers))
+				      'DEFAULT-TYPE 'VISIBLE-DEFAULT
+				      'REQUIRE-MATCH? #t))
+      #t)))
+  (lambda (repl-buffer)
+    (set-local-repl-buffer! (current-buffer) repl-buffer)))
+
 (define (start-inferior-repl! buffer environment syntax-table message)
   (set-buffer-major-mode! buffer (ref-mode-object inferior-repl))
   (if (ref-variable repl-mode-locked)
-      (buffer-put! buffer 'MAJOR-MODE-LOCKED true))
+      (buffer-put! buffer 'MAJOR-MODE-LOCKED #t))
   (if (environment? environment)
       (local-set-variable! scheme-environment environment buffer))
   (create-thread editor-thread-root-continuation
@@ -100,11 +134,11 @@ With two C-u's, creates a new REPL buffer with a new evaluation environment.
 	  (dynamic-wind
 	   (lambda () unspecific)
 	   (lambda ()
-	     (repl/start (make-repl false
+	     (repl/start (make-repl #f
 				    port
 				    environment
 				    syntax-table
-				    false
+				    #f
 				    `((ERROR-DECISION ,error-decision))
 				    user-initial-prompt)
 			 (make-init-message message)))
@@ -112,7 +146,7 @@ With two C-u's, creates a new REPL buffer with a new evaluation environment.
 	     (signal-thread-event editor-thread
 	       (lambda ()
 		 (unwind-inferior-repl-buffer buffer))))))))))
-
+
 (define (make-init-message message)
   (if message
       (cmdl-message/append cmdl-message/init-inferior message)
@@ -129,7 +163,7 @@ With two C-u's, creates a new REPL buffer with a new evaluation environment.
 
 (define (inferior-repl/quit)
   unspecific)
-
+
 (define (current-repl-buffer buffer)
   (let ((buffer (current-repl-buffer* buffer)))
     (if (not buffer)
@@ -137,21 +171,46 @@ With two C-u's, creates a new REPL buffer with a new evaluation environment.
     buffer))
 
 (define (current-repl-buffer* buffer)
-  (if (and buffer (repl-buffer? buffer))
-      buffer
-      (let ((buffer (current-buffer)))
-	(if (buffer-interface-port buffer #f)
-	    buffer
+  (let ((buffer (or buffer (current-buffer))))
+    (if (repl-buffer? buffer)
+	buffer
+	(or (local-repl-buffer buffer)
 	    (global-repl-buffer)))))
 
+(define (local-repl-buffer buffer)
+  (or (let ((wp (buffer-get buffer 'REPL-BUFFER #f)))
+	(and (weak-pair? wp)
+	     (let ((repl-buffer (weak-car wp)))
+	       (and (repl-buffer? repl-buffer)
+		    (buffer-alive? repl-buffer)
+		    repl-buffer))))
+      (begin
+	(buffer-remove! buffer 'REPL-BUFFER)
+	#f)))
+
+(define (set-local-repl-buffer! buffer repl-buffer)
+  (if repl-buffer
+      (begin
+	(if (not (repl-buffer? repl-buffer))
+	    (error:wrong-type-argument repl-buffer "REPL buffer"
+				       'SET-LOCAL-REPL-BUFFER!))
+	(buffer-put! buffer 'REPL-BUFFER (weak-cons repl-buffer #f)))
+      (begin
+	(undefine-variable-local-value! buffer (ref-variable-object run-light))
+	(buffer-remove! buffer 'REPL-BUFFER))))
+
 (define (global-repl-buffer)
-  (set! repl-buffers (list-transform-positive repl-buffers buffer-alive?))
-  (let ((buffers repl-buffers))
-    (and (not (null? buffers))
+  (let ((buffers (repl-buffer-list)))
+    (and (pair? buffers)
 	 (car buffers))))
 
+(define (repl-buffer-list)
+  (set! repl-buffers (list-transform-positive repl-buffers buffer-alive?))
+  repl-buffers)
+
 (define (repl-buffer? buffer)
-  (buffer-interface-port buffer #f))
+  (and (buffer? buffer)
+       (buffer-interface-port buffer #f)))
 
 (define repl-buffers)
 
@@ -164,13 +223,14 @@ With two C-u's, creates a new REPL buffer with a new evaluation environment.
     (lambda ()
       (maybe-switch-modes! port mode)
       (let ((buffer (port/buffer port)))
-	(define-variable-local-value! buffer
-	  (ref-variable-object mode-line-process)
-	  (list ": "
-		'RUN-LIGHT
-		(if (= level 1)
-		    ""
-		    (string-append " [level: " (number->string level) "]"))))
+	(local-set-variable!
+	 mode-line-process
+	 (list ": "
+	       'RUN-LIGHT
+	       (if (= level 1)
+		   ""
+		   (string-append " [level: " (number->string level) "]")))
+	 buffer)
 	(set-run-light! buffer #f))))
   ;; This doesn't do any output, but prods the editor to notice that
   ;; the modeline has changed and a redisplay is needed.
@@ -180,7 +240,7 @@ With two C-u's, creates a new REPL buffer with a new evaluation environment.
 
 (define (end-input-wait port)
   (set-run-light! (port/buffer port) #t)
-  (signal-thread-event (port/thread port) false))
+  (signal-thread-event (port/thread port) #f))
 
 (define (standard-prompt-spacing port)
   (fresh-line port)
@@ -262,7 +322,11 @@ With two C-u's, creates a new REPL buffer with a new evaluation environment.
   (let ((value (if run? "eval" "listen")))
     (if (eq? buffer (global-run-light-buffer))
 	(set-global-run-light! value))
-    (set-local-run-light! buffer value)))
+    (set-local-run-light! buffer value)
+    (for-each (lambda (buffer*)
+		(if (eq? buffer (local-repl-buffer buffer*))
+		    (set-local-run-light! buffer* value)))
+	      (buffer-list))))
 
 (define (global-run-light-buffer)
   (and (variable-default-value (ref-variable-object evaluate-in-inferior-repl))
@@ -273,10 +337,10 @@ With two C-u's, creates a new REPL buffer with a new evaluation environment.
   (global-window-modeline-event!))
 
 (define (local-run-light buffer)
-  (variable-local-value buffer (ref-variable-object run-light)))
+  (ref-variable run-light buffer))
 
 (define (set-local-run-light! buffer value)
-  (define-variable-local-value! buffer (ref-variable-object run-light) value)
+  (local-set-variable! run-light value buffer)
   (buffer-modeline-event! buffer 'RUN-LIGHT))
 
 (add-variable-assignment-daemon!
@@ -331,7 +395,7 @@ With two C-u's, creates a new REPL buffer with a new evaluation environment.
 			   (loop))))))
 	      cmdl-interrupt/abort-top-level))
 	    ((PROMPT)
-	     (if (and (ref-variable-object debug-on-evaluation-error)
+	     (if (and (ref-variable debug-on-evaluation-error)
 		      (let ((start? (ref-variable debugger-start-on-error?)))
 			(if (eq? 'ASK start?)
 			    (let loop ()
@@ -545,11 +609,11 @@ If this is an error, the debugger examines the error condition."
 
 (define (port/inferior-cmdl port)
   (let ((thread (current-thread))
-	(cmdl false))
+	(cmdl #f))
     (signal-thread-event (port/thread port)
       (lambda ()
 	(set! cmdl (nearest-cmdl))
-	(signal-thread-event thread false)))
+	(signal-thread-event thread #f)))
     (do () (cmdl)
       (suspend-current-thread))
     cmdl))
@@ -645,7 +709,7 @@ If this is an error, the debugger examines the error condition."
     (lambda (mark)
       (if mark
 	  (insert-string
-	   (fluid-let ((*unparse-with-maximum-readability?* true))
+	   (fluid-let ((*unparse-with-maximum-readability?* #t))
 	     (write-to-string expression))
 	   mark))))
   (let ((port (buffer-interface-port buffer #t)))
@@ -723,8 +787,8 @@ If this is an error, the debugger examines the error condition."
 		    (mark-right-inserting-copy (buffer-end buffer))
 		    (make-ring (ref-variable comint-input-ring-size))
 		    (make-queue)
-		    false
-		    false
+		    #f
+		    #f
 		    (make-queue)
 		    '()
 		    (register-inferior-thread!
@@ -737,15 +801,15 @@ If this is an error, the debugger examines the error condition."
        (interface-port-state? (port/state object))))
 
 (define-structure (interface-port-state (conc-name interface-port-state/))
-  (thread false read-only true)
-  (mark false read-only true)
-  (input-ring false read-only true)
-  (expression-queue false read-only true)
+  (thread #f read-only #t)
+  (mark #f read-only #t)
+  (input-ring #f read-only #t)
+  (expression-queue #f read-only #t)
   current-queue-element
   command-char
-  (output-queue false read-only true)
+  (output-queue #f read-only #t)
   output-strings
-  (output-registration false read-only true))
+  (output-registration #f read-only #t))
 
 (define-integrable (port/thread port)
   (interface-port-state/thread (port/state port)))
@@ -960,8 +1024,8 @@ If this is an error, the debugger examines the error condition."
   (unsolicited-prompt port prompt-for-confirmation? prompt))
 
 (define unsolicited-prompt
-  (let ((wait-value (list false))
-	(abort-value (list false)))
+  (let ((wait-value (list #f))
+	(abort-value (list #f)))
     (lambda (port procedure prompt)
       (let ((value wait-value))
 	(signal-thread-event editor-thread
@@ -1017,7 +1081,7 @@ If this is an error, the debugger examines the error condition."
   (read-command-char port level))
 
 (define (read-command-char port level)
-  (set-port/command-char! port false)
+  (set-port/command-char! port #f)
   (wait-for-input port (ref-mode-object inferior-cmdl) port/command-char level)
   (port/command-char port))
 
@@ -1047,18 +1111,16 @@ If this is an error, the debugger examines the error condition."
   (enqueue-output-operation! port
     (lambda (mark transcript?)
       (if (not transcript?)
-	  (define-variable-local-value! (mark-buffer mark)
-	    (ref-variable-object scheme-environment)
-	    environment))
+	  (local-set-variable! scheme-environment environment
+			       (mark-buffer mark)))
       #t)))
 
 (define (operation/set-default-syntax-table port syntax-table)
   (enqueue-output-operation! port
     (lambda (mark transcript?)
       (if (not transcript?)
-	  (define-variable-local-value! (mark-buffer mark)
-	    (ref-variable-object scheme-syntax-table)
-	    syntax-table))
+	  (local-set-variable! scheme-syntax-table syntax-table
+			       (mark-buffer mark)))
       #t)))
 
 (define interface-port-type

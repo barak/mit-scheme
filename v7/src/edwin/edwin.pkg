@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.240 1999/10/07 17:00:36 cph Exp $
+$Id: edwin.pkg,v 1.241 1999/10/31 04:34:09 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -624,15 +624,20 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  edwin-command$inferior-repl-eval-last-sexp
 	  edwin-command$inferior-repl-eval-region
 	  edwin-command$repl
+	  edwin-command$set-inferior-repl-buffer
 	  edwin-mode$inferior-cmdl
 	  edwin-mode$inferior-repl
 	  edwin-variable$inferior-repl-write-results
 	  edwin-variable$repl-enable-transcript-buffer
 	  edwin-variable$repl-error-decision
+	  global-repl-buffer
 	  inferior-repl-eval-expression
 	  inferior-repl-eval-region
 	  initialize-inferior-repls!
+	  local-repl-buffer
+	  repl-buffer-list
 	  repl-buffer?
+	  set-local-repl-buffer!
 	  start-inferior-repl!)
   (import (runtime user-interface)
 	  default/write-result))
