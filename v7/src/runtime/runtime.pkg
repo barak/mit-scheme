@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.530 2005/02/08 00:10:55 cph Exp $
+$Id: runtime.pkg,v 14.531 2005/02/18 18:21:09 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -1445,6 +1445,7 @@ USA.
 	  break-on-signals
 	  condition-accessor
 	  condition-constructor
+	  condition-of-type?
 	  condition-predicate
 	  condition-signaller
 	  condition-type/error?

@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.66 2004/11/19 17:25:28 cph Exp $
+$Id: error.scm,v 14.67 2005/02/18 18:20:55 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1995,2000,2001,2002 Massachusetts Institute of Technology
-Copyright 2003,2004 Massachusetts Institute of Technology
+Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -220,12 +220,17 @@ USA.
 	 (guarantee-restarts restarts operator)
 	 (list-copy restarts))))
 
+(define (condition-of-type? object type)
+  (guarantee-condition-type type 'CONDITION-OF-TYPE?)
+  (%condition-of-type? object type))
+
 (define (condition-predicate type)
   (guarantee-condition-type type 'CONDITION-PREDICATE)
-  (lambda (object)
-    (and (condition? object)
-	 (memq type
-	       (%condition-type/generalizations (%condition/type object))))))
+  (lambda (object) (%condition-of-type? object type)))
+
+(define (%condition-of-type? object type)
+  (and (condition? object)
+       (memq type (%condition-type/generalizations (%condition/type object)))))
 
 (define (condition-accessor type field-name)
   (guarantee-condition-type type 'CONDITION-ACCESSOR)
