@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: picture.scm,v 1.25 1997/12/30 01:57:13 cph Exp $
+$Id: picture.scm,v 1.26 1997/12/30 05:42:53 cph Exp $
 
-Copyright (c) 1991-95 Massachusetts Institute of Technology
+Copyright (c) 1991-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -303,6 +303,20 @@ MIT in each case. |#
 	(cond ((< bin 0) 0)
 	      ((>= bin n-bins) (- n-bins 1))
 	      (else bin))))))
+
+(define (cutoff-binner cut-fraction min-value max-value n-bins)
+  ;; Bin values with distinguished zero bin.  If the value would have
+  ;; fallen in the low CUT-FRACTION of the zero bin for a linear
+  ;; binning, then it goes in the zero bin here.  Otherwise, the value
+  ;; is binned in the top N-1 bins.
+  (let ((cut-value
+	 (exact->inexact
+	  (+ min-value (* cut-fraction (/ (- max-value min-value) n-bins)))))
+	(binner (linear-binner min-value max-value (- n-bins 1))))
+    (lambda (value)
+      (if (flo:< value cut-value)
+	  0
+	  (fix:+ 1 (binner value))))))
 
 (define-integrable visual-class:static-gray 0)
 (define-integrable visual-class:gray-scale 1)

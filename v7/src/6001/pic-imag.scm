@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pic-imag.scm,v 1.7 1995/02/24 00:37:57 cph Exp $
+$Id: pic-imag.scm,v 1.8 1997/12/30 05:43:34 cph Exp $
 
-Copyright (c) 1991-95 Massachusetts Institute of Technology
+Copyright (c) 1991-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,27 +45,22 @@ MIT in each case. |#
 	 (pic-data (picture-data pic))
 	 (image-width (fix:* h-sf pic-width)) ;x
 	 (image-height (fix:* v-sf pic-height)) ;iy
+	 (image-depth (graphics-operation window 'IMAGE-DEPTH))
 	 (image (image/create window image-width image-height))
-	 (byte-string (make-string (fix:* image-width image-height)))
+	 (pixels
+	  (if (<= image-depth 8)
+	      (make-string (fix:* image-width image-height))
+	      (make-vector (fix:* image-width image-height))))
+	 (write-pixel
+	  (if (<= image-depth 8)
+	      vector-8b-set!
+	      vector-set!))
 	 (py-max (- pic-height 1))
 	 (rect-index-height (fix:* v-sf image-width))
-	 (range (flo:- pic-max pic-min))
-	 (index-range (string-length gray-map))
-	 (mul (if (flo:< range 1e-12)
-		  0.
-		  (/ index-range
-		     (flo:* (flo:+ 1. 7.142e-8)	; 1+epsilon
-			    range))))
+	 (binner (cutoff-binner .01 pic-min pic-max (vector-length gray-map)))
 	 (gray-pixel
 	  (lambda (pixel-value)
-	    (vector-8b-ref
-	     gray-map
-	     (let ((pixel
-		    (flo:floor->exact
-		     (flo:* mul (flo:- pixel-value pic-min)))))
-	       (cond ((fix:< pixel 0) 0)
-		     ((fix:< pixel index-range) pixel)
-		     (else (fix:- index-range 1))))))))
+	    (vector-ref gray-map (binner pixel-value)))))
 
     (cond ((and (fix:= 1 h-sf) (fix:= 1 v-sf))
 	   (let y-loop ((py py-max) (iy-index 0))
@@ -75,10 +70,10 @@ MIT in each case. |#
 		     (let x-loop ((px 0))
 		       (if (fix:< px pic-width)
 			   (begin
-			     (vector-8b-set!
-			      byte-string
+			     (write-pixel
+			      pixels
 			      (fix:+ px iy-index)
-			      (gray-pixel (floating-vector-ref pic-row px)))
+			      (gray-pixel (flo:vector-ref pic-row px)))
 			     (x-loop (fix:+ px 1))))))
 		   (y-loop (fix:- py 1) (fix:+ iy-index rect-index-height))))))
 
@@ -90,13 +85,11 @@ MIT in each case. |#
 		     (if (fix:< px pic-width)
 			 (let* ((n-is-0 (fix:+ ix iy-index))
 				(n-is-1 (fix:+ n-is-0 image-width))
-				(v
-				 (gray-pixel
-				  (floating-vector-ref pic-row px))))
-			   (vector-8b-set! byte-string n-is-0 v)
-			   (vector-8b-set! byte-string (fix:+ n-is-0 1) v)
-			   (vector-8b-set! byte-string n-is-1 v)
-			   (vector-8b-set! byte-string (fix:+ n-is-1 1) v)
+				(v (gray-pixel (flo:vector-ref pic-row px))))
+			   (write-pixel pixels n-is-0 v)
+			   (write-pixel pixels (fix:+ n-is-0 1) v)
+			   (write-pixel pixels n-is-1 v)
+			   (write-pixel pixels (fix:+ n-is-1 1) v)
 			   (x-loop (fix:+ px 1) (fix:+ ix h-sf)))
 			 (y-loop (fix:- py 1) 
 				 (fix:+ iy-index rect-index-height))))))))
@@ -110,18 +103,16 @@ MIT in each case. |#
 			 (let* ((row0 (fix:+ ix iy-index))
 				(row1 (fix:+ row0 image-width))
 				(row2 (fix:+ row1 image-width))
-				(v
-				 (gray-pixel
-				  (floating-vector-ref pic-row px))))
-			   (vector-8b-set! byte-string row0 v)
-			   (vector-8b-set! byte-string (fix:+ row0 1) v)
-			   (vector-8b-set! byte-string (fix:+ row0 2) v)
-			   (vector-8b-set! byte-string row1 v)
-			   (vector-8b-set! byte-string (fix:+ row1 1) v)
-			   (vector-8b-set! byte-string (fix:+ row1 2) v)
-			   (vector-8b-set! byte-string row2 v)
-			   (vector-8b-set! byte-string (fix:+ row2 1) v)
-			   (vector-8b-set! byte-string (fix:+ row2 2) v)
+				(v (gray-pixel (flo:vector-ref pic-row px))))
+			   (write-pixel pixels row0 v)
+			   (write-pixel pixels (fix:+ row0 1) v)
+			   (write-pixel pixels (fix:+ row0 2) v)
+			   (write-pixel pixels row1 v)
+			   (write-pixel pixels (fix:+ row1 1) v)
+			   (write-pixel pixels (fix:+ row1 2) v)
+			   (write-pixel pixels row2 v)
+			   (write-pixel pixels (fix:+ row2 1) v)
+			   (write-pixel pixels (fix:+ row2 2) v)
 			   (x-loop (fix:+ px 1) (fix:+ ix h-sf)))
 			 (y-loop (fix:- py 1) 
 				 (fix:+ iy-index rect-index-height))))))))
@@ -136,25 +127,23 @@ MIT in each case. |#
 				(row1 (fix:+ row0 image-width))
 				(row2 (fix:+ row1 image-width))
 				(row3 (fix:+ row2 image-width))
-				(v
-				 (gray-pixel
-				  (floating-vector-ref pic-row px))))
-			   (vector-8b-set! byte-string row0 v)
-			   (vector-8b-set! byte-string (fix:+ row0 1) v)
-			   (vector-8b-set! byte-string (fix:+ row0 2) v)
-			   (vector-8b-set! byte-string (fix:+ row0 3) v)
-			   (vector-8b-set! byte-string row1 v)
-			   (vector-8b-set! byte-string (fix:+ row1 1) v)
-			   (vector-8b-set! byte-string (fix:+ row1 2) v)
-			   (vector-8b-set! byte-string (fix:+ row1 3) v)
-			   (vector-8b-set! byte-string row2 v)
-			   (vector-8b-set! byte-string (fix:+ row2 1) v)
-			   (vector-8b-set! byte-string (fix:+ row2 2) v)
-			   (vector-8b-set! byte-string (fix:+ row2 3) v)
-			   (vector-8b-set! byte-string row3 v)
-			   (vector-8b-set! byte-string (fix:+ row3 1) v)
-			   (vector-8b-set! byte-string (fix:+ row3 2) v)
-			   (vector-8b-set! byte-string (fix:+ row3 3) v)
+				(v (gray-pixel (flo:vector-ref pic-row px))))
+			   (write-pixel pixels row0 v)
+			   (write-pixel pixels (fix:+ row0 1) v)
+			   (write-pixel pixels (fix:+ row0 2) v)
+			   (write-pixel pixels (fix:+ row0 3) v)
+			   (write-pixel pixels row1 v)
+			   (write-pixel pixels (fix:+ row1 1) v)
+			   (write-pixel pixels (fix:+ row1 2) v)
+			   (write-pixel pixels (fix:+ row1 3) v)
+			   (write-pixel pixels row2 v)
+			   (write-pixel pixels (fix:+ row2 1) v)
+			   (write-pixel pixels (fix:+ row2 2) v)
+			   (write-pixel pixels (fix:+ row2 3) v)
+			   (write-pixel pixels row3 v)
+			   (write-pixel pixels (fix:+ row3 1) v)
+			   (write-pixel pixels (fix:+ row3 2) v)
+			   (write-pixel pixels (fix:+ row3 3) v)
 			   (x-loop (fix:+ px 1) (fix:+ ix h-sf)))
 			 (y-loop (fix:- py 1) 
 				 (fix:+ iy-index rect-index-height))))))))
@@ -165,8 +154,7 @@ MIT in each case. |#
 		 (let ((pic-row (vector-ref pic-data py)))
 		   (let x-loop ((px 0) (ix 0))
 		     (if (fix:< px pic-width)
-			 (let* ((v
-				 (gray-pixel (floating-vector-ref pic-row px)))
+			 (let* ((v (gray-pixel (flo:vector-ref pic-row px)))
 				(n-start (fix:+ ix iy-index))
 				(n-end (fix:+ n-start rect-index-height)))
 			   (let n-loop ((n n-start))
@@ -175,17 +163,17 @@ MIT in each case. |#
 				   (let m-loop ((m n))
 				     (if (fix:< m m-end)
 					 (begin
-					   (vector-8b-set! byte-string m v)
+					   (write-pixel pixels m v)
 					   (m-loop (fix:+ m 1)))
 					 (n-loop (fix:+ n image-width)))))
 				 (x-loop (fix:+ px 1) (fix:+ ix h-sf)))))
 			 (y-loop (fix:- py 1) 
 				 (fix:+ iy-index rect-index-height)))))))))
     ;; Kludge: IMAGE/FILL-FROM-BYTE-VECTOR should take an argument
-    ;; that specifies what color a given byte in BYTE-STRING maps to.
+    ;; that specifies what color a given byte in PIXELS maps to.
     ;; OS/2 requires this information, so we supply it here.
     (if (eq? 'OS/2 microcode-id/operating-system)
-	(os2-image/set-colormap image os2-image-colormap:gray-256))
-    (image/fill-from-byte-vector image byte-string)
-    (1d-table/put! (graphics-device/properties window) image #t)
+	(os2-image/set-colormap image (os2-image-colormap)))
+    (image/fill-from-byte-vector image pixels)
+    (1d-table/put! (graphics-device/properties window) image (cons h-sf v-sf))
     image))
