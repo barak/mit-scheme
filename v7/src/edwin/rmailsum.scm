@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.1 1991/08/05 16:39:45 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.2 1991/08/06 20:56:02 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -46,7 +46,11 @@
 
 (declare (usual-integrations))
 
+(define rmail-buffer false)
+
 (define rmail-summary-buffer false)
+
+(define rmail-summary-vector false)
 
 (define-variable rmail-last-multi-labels
   ""
@@ -99,11 +103,13 @@
 
 (define rmail-new-summary 
   (lambda (description function . args)
+    (guarantee-rmail-summary-variables)
     (message "Computing summary lines...")
     (if (not rmail-summary-buffer)
 	(set! rmail-summary-buffer
 	      (temporary-buffer (string-append (buffer-name (current-buffer)) "-summary"))))
     (let ((summary-msgs ())
+	  (the-current-message-number (msg-memo/number (current-msg-memo)))
 	  (new-summary-line-count 0))
       (let loop ((the-memo (msg-memo/first (current-msg-memo))))
 	(let ((next-memo (msg-memo/next the-memo)))
@@ -114,7 +120,7 @@
 			  summary-msgs)))
 	  (if next-memo
 	      (loop next-memo))))
-      (select-buffer rmail-summary-buffer)
+      (select-buffer-other-window rmail-summary-buffer)
       (set-buffer-writeable! (current-buffer))
       (set-current-point! (buffer-start (current-buffer)))
       (kill-string (buffer-start (current-buffer))
@@ -124,14 +130,20 @@
 	    (begin
 	      (insert-string (car the-summary-list))
 	      (loop (cdr the-summary-list)))))
-;;;	       (subst-char-in-region 1 2 ?\( ?\ )
       (set-buffer-read-only! (current-buffer))
-      (set-current-point! (buffer-start (current-buffer)))) 
-;      (rmail-summary-mode)
+      (set-current-point! (buffer-start (current-buffer)))
+      (set-current-major-mode! (ref-mode-object rmail-summary))
 ;      ((ref-command make-local-variable) 'minor-mode-alist)
 ;      (set-variable! minor-mode-alist (list ": " description))
-;      (rmail-summary-goto-msg mesg true)
-      (message "Computing summary lines...done")))
+      (set-current-point! 
+       (line-start
+	(re-search-forward 
+	 (string-append "^[ ]*" (number->string the-current-message-number))
+	 (buffer-start (current-buffer))
+	 (buffer-end (current-buffer)))
+	0))
+      (rmail-summary-goto-message-current-line)
+      (message "Computing summary lines...done"))))
 
 (define (rmail-make-summary-line memo)
   (let ((new-summary-line-count 0))
@@ -244,10 +256,9 @@
      (if (not the-mark)
 	 "                         "
 	 (let* ((from
-		 (mail-strip-quoted-names
-		  (extract-string
-		   the-mark
-		   (skip-chars-backward " \t" (line-end the-mark 0)))))
+		 (mail-extract-real-name
+		  (skip-chars-forward " \t" the-mark)
+		  (skip-chars-backward " " (line-end the-mark 0))))
 		(len (string-length from))
 		(mch (string-find-next-char-in-set from (char-set #\@ #\%))))
 	   (substring
@@ -273,31 +284,206 @@
 	   (extract-string the-start (line-end the-start 0)))))
    "\n"))
 
-(defun rmail-summary-next-all (&optional number)
-  (interactive "p")
-  (forward-line (if number number 1))
-  (rmail-summary-goto-msg))
+(define (mail-extract-real-name address-start address-end)
+  (cond ((re-search-forward "[ \t\"]*\\<\\(.*\\)\\>[\" \t]*<.*>" address-start address-end)
+	 (extract-string (re-match-start 1) (re-match-end 1)))
+	;; Chris VanHaren (Athena User Consultant) <vanharen>
+	((re-search-forward "[ \t\"]*\\<\\(.*\\)\\>.*(.*).*<.*>.*" address-start address-end)
+	 (extract-string (re-match-start 1) (re-match-end 1)))
+	((re-search-forward ".*(\\(.*\\))" address-start address-end)
+	 (extract-string (re-match-start 1) (re-match-end 1)))
+	((re-search-forward ".*<\\(.*\\)>.*" address-start address-end)
+	 (extract-string (re-match-start 1) (re-match-end 1)))
+	((re-search-forward " *\\<\\(.*\\)\\> *" address-start address-end)
+	 (extract-string (re-match-start 1) (re-match-end 1)))
+	(else
+	 address)))
+
+(define-variable rmail-summary-mode-hook
+  "An event distributor what is invoked when entering RMAIL Summary mode."
+  (make-event-distributor))
 
-(defun rmail-summary-previous-all (&optional number)
-  (interactive "p")
-  (forward-line (- (if number number 1)))
-  (rmail-summary-goto-msg))
+(define-major-mode rmail-summary read-only "RMAIL Summary"
+  "Major mode in effect in Rmail summary buffer.
+A subset of the Rmail mode commands are supported in this mode. 
+As commands are issued in the summary buffer the corresponding
+mail message is displayed in the rmail buffer.
 
-(defun rmail-summary-next-msg (&optional number)
-  (interactive "p")
-  (forward-line 0)
-  (and (> number 0) (forward-line 1))
-  (let ((count (if (< number 0) (- number) number))
-	(search (if (> number 0) 're-search-forward 're-search-backward))
-	end)
-    (while (and (> count 0) (funcall search "^.....[^D]" nil t))
-      (setq count (1- count)))
-    (rmail-summary-goto-msg)))
+n       Move to next undeleted message, or arg messages.
+p       Move to previous undeleted message, or arg messages.
+C-n	Move to next, or forward arg messages.
+C-p	Move to previous, or previous arg messages.
+j       Jump to the message at the cursor location.
+d       Delete the message at the cursor location and move to next message.
+u	Undelete this or previous deleted message.
+q	Quit Rmail.
+x	Exit and kill the summary window.
+space   Scroll message in other window forward.
+delete  Scroll message backward.
 
-(defun rmail-summary-previous-msg (&optional number)
-  (interactive "p")
-  (rmail-summary-next-msg (- (if number number 1))))
+Entering this mode calls value of hook variable rmail-summary-mode-hook."
+  (let ((buffer (current-buffer)))
+    (set-buffer-read-only! buffer))
+  (event-distributor/invoke! (ref-variable rmail-summary-mode-hook)))
 
+(define (guarantee-rmail-summary-variables)
+  (let ((number-of-messages (msg-memo/number (msg-memo/last (current-msg-memo)))))
+    (set! rmail-buffer (current-buffer))
+    (set! rmail-summary-vector (make-vector number-of-messages #F))))
+
+(define-key 'rmail-summary #\j		'rmail-summary-show-message)
+(define-key 'rmail-summary #\n		'rmail-summary-next-undeleted-message)
+(define-key 'rmail-summary #\p		'rmail-summary-previous-undeleted-message)
+(define-key 'rmail-summary #\m-n	'rmail-summary-next-message)
+(define-key 'rmail-summary #\m-p	'rmail-summary-previous-message)
+(define-key 'rmail-summary #\c-m-n	'rmail-summary-next-labeled-message)
+(define-key 'rmail-summary #\c-m-p	'rmail-summary-previous-labeled-message)
+(define-key 'rmail-summary #\space	'rmail-summary-scroll-message-up)
+(define-key 'rmail-summary #\rubout	'rmail-summary-scroll-message-down)
+(define-key 'rmail-summary #\u		'rmail-summary-undelete-previous-message)
+(define-key 'rmail-summary #\q		'rmail-summary-quit)
+(define-key 'rmail-summary #\x		'rmail-summary-exit)
+(define-key 'rmail-summary #\d		'rmail-summary-delete-forward)
+(define-key 'rmail-summary #\C-d	'rmail-summary-delete-backward)
+(define-key 'rmail-summary #\M-d        'rmail-summary-delete)
+
+;;; (define-key 'rmail #\.		'beginning-of-buffer)
+;;; (define-key 'rmail #\a		'rmail-add-label)
+;;; (define-key 'rmail #\k		'rmail-kill-label)
+;;; (define-key 'rmail #\e		'rmail-expunge)
+;;; (define-key 'rmail #\x		'rmail-expunge)
+;;; (define-key 'rmail #\s		'rmail-expunge-and-save)
+;;; (define-key 'rmail #\g		'rmail-get-new-mail)
+;;; (define-key 'rmail #\c-m-h	'rmail-summary)
+;;; (define-key 'rmail #\l		'rmail-summary-by-labels)
+;;; (define-key 'rmail #\c-m-l	'rmail-summary-by-labels)
+;;; (define-key 'rmail #\c-m-r	'rmail-summary-by-recipients)
+;;; (define-key 'rmail #\t		'rmail-toggle-header)
+;;; (define-key 'rmail #\m		'rmail-mail)
+;;; (define-key 'rmail #\r		'rmail-reply)
+;;; (define-key 'rmail #\c		'rmail-continue)
+;;; (define-key 'rmail #\f		'rmail-forward)
+;;; (define-key 'rmail #\m-s	'rmail-search)
+;;; (define-key 'rmail #\o		'rmail-output-to-rmail-file)
+;;; (define-key 'rmail #\c-o	'rmail-output)
+;;; (define-key 'rmail #\i		'rmail-input)
+;;; (define-key 'rmail #\q		'rmail-quit)
+;;; (define-key 'rmail #\>		'rmail-last-message)
+;;; (define-key 'rmail #\?		'describe-mode)
+;;; (define-key 'rmail #\w		'rmail-edit-current-message)
+
+(define (make-rmail-summary-handler-prefix-arg key)
+  (lambda (arg)
+    (select-buffer-other-window rmail-buffer)
+    ((command-procedure (comtab-entry (mode-comtabs (current-major-mode)) key)) arg)
+    (select-buffer-other-window rmail-summary-buffer)))
+
+(define-command rmail-summary-show-message
+  ""
+  "P"
+  (lambda (arg)
+    (if arg
+	(let ((the-new-mark
+	       (re-search-forward 
+		(string-append "^[ ]*" (number->string arg))
+		(buffer-start (current-buffer))
+		(buffer-end (current-buffer)))))
+	  (if the-new-mark
+	      (begin
+		(set-current-point! (line-start the-new-mark 0))
+		(rmail-summary-goto-message-current-line))
+	      (message (string-append "Message "
+				      (number->string arg)
+				      " not found."))))
+	(rmail-summary-goto-message-current-line))))
+
+(define (rmail-summary-goto-message-current-line)
+  (let ((start (line-start (current-point) 0)))
+    (let ((end (mark+ start 4)))
+      (if end
+	  (let ((the-message-number
+		 (string->number (string-trim (extract-string start end)))))
+	    (if (not (null? the-message-number))
+		(begin
+		  (select-buffer-other-window rmail-buffer)
+		  ((command-procedure (comtab-entry (mode-comtabs (current-major-mode)) #\j)) the-message-number)
+		  (select-buffer-other-window rmail-summary-buffer))))))))
+
+(define-command rmail-summary-next-message
+  "Goto ARGth previous message."
+  "p"
+  (lambda (arg)
+    (set-current-point! (line-start (current-point) arg))
+    (rmail-summary-goto-message-current-line)))
+
+(define-command rmail-summary-previous-message
+  "Goto ARGth next message."
+  "p"
+  (lambda (arg)
+    (set-current-point! (line-start (current-point) (- arg)))
+    (rmail-summary-goto-message-current-line)))
+
+(define-command rmail-summary-next-undeleted-message 
+  "Goto ARGth next undeleted message."
+  "p"
+  (lambda (arg)
+    (let ((the-buf-end (buffer-end (current-buffer))))
+      (let loop ((count arg)
+		 (the-mark (line-end (current-point) 0)))
+	(if (> count 0)
+	    (let ((the-new-mark
+		   (re-search-forward "^....[^D]" the-mark the-buf-end)))
+	      (if the-new-mark
+		  (loop (-1+ count) the-new-mark)
+		  (begin
+		    (set-current-point! (line-start the-mark 0))
+		    (rmail-summary-goto-message-current-line))))
+	    (begin
+	      (set-current-point! (line-start the-mark 0))
+	      (rmail-summary-goto-message-current-line)))))))
+
+(define-command rmail-summary-previous-undeleted-message 
+  "Goto ARGth previous undeleted message."
+  "p"
+  (lambda (arg)
+    (let ((the-buf-start (buffer-start (current-buffer))))
+      (let loop ((count arg)
+		 (the-mark (line-start (current-point) 0)))
+	(if (> count 0)
+	    (let ((the-new-mark
+		   (re-search-backward "^....[^D]" the-mark the-buf-start)))
+	      (if the-new-mark
+		  (loop (-1+ count) the-new-mark)
+		  (begin
+		    (set-current-point! (line-start the-mark 0))
+		    (rmail-summary-goto-message-current-line))))
+	    (begin
+	      (set-current-point! (line-start the-mark 0))
+	      (rmail-summary-goto-message-current-line)))))))
+
+(define-command rmail-summary-scroll-message-up
+  "Scroll RMAIL window up."
+  "P"
+  (lambda (arg)
+    (select-buffer-other-window rmail-buffer)
+    (let ((window (current-window)))
+      (scroll-window window
+		     (standard-scroll-window-argument window arg 1)
+		     (lambda () true)))
+    (select-buffer-other-window rmail-summary-buffer)))
+ 
+(define-command rmail-summary-scroll-message-down
+  "Scroll RMAIL window down."
+  "P"
+  (lambda (arg)
+    (select-buffer-other-window rmail-buffer)
+    (let ((window (current-window)))
+      (scroll-window window
+		     (standard-scroll-window-argument window arg -1)
+		     (lambda () true)))
+    (select-buffer-other-window rmail-summary-buffer)))
+
+#|
 (defun rmail-summary-delete-forward ()
   (interactive)
   (let (end)
@@ -326,116 +512,6 @@
 	  (t
 	   (rmail-summary-goto-msg)))))
 
-;; Rmail Summary mode is suitable only for specially formatted data.
-(put 'rmail-summary-mode 'mode-class 'special)
-
-(defun rmail-summary-mode ()
-  "Major mode in effect in Rmail summary buffer.
-A subset of the Rmail mode commands are supported in this mode. 
-As commands are issued in the summary buffer the corresponding
-mail message is displayed in the rmail buffer.
-
-n       Move to next undeleted message, or arg messages.
-p       Move to previous undeleted message, or arg messages.
-C-n	Move to next, or forward arg messages.
-C-p	Move to previous, or previous arg messages.
-j       Jump to the message at the cursor location.
-d       Delete the message at the cursor location and move to next message.
-u	Undelete this or previous deleted message.
-q	Quit Rmail.
-x	Exit and kill the summary window.
-space   Scroll message in other window forward.
-delete  Scroll message backward.
-
-Entering this mode calls value of hook variable rmail-summary-mode-hook."
-  (interactive)
-  (kill-all-local-variables)
-  (make-local-variable 'rmail-buffer)
-  (make-local-variable 'rmail-total-messages)
-  (setq major-mode 'rmail-summary-mode)
-  (setq mode-name "RMAIL Summary")
-  (use-local-map rmail-summary-mode-map)
-  (setq truncate-lines t)
-  (setq buffer-read-only t)
-  (set-syntax-table text-mode-syntax-table)
-  (run-hooks 'rmail-summary-mode-hook))
-
-(defun rmail-summary-goto-msg (&optional n nowarn)
-  (interactive "P")
-  (if (consp n) (setq n (prefix-numeric-value n)))
-  (if (eobp) (forward-line -1))
-  (beginning-of-line)
-  (let ((buf rmail-buffer)
-	(cur (point))
-	(curmsg (string-to-int
-		 (buffer-substring (point)
-				   (min (point-max) (+ 5 (point)))))))
-    (if (not n)
-	(setq n curmsg)
-      (if (< n 1)
-	  (progn (message "No preceding message")
-		 (setq n 1)))
-      (if (> n rmail-total-messages)
-	  (progn (message "No following message")
-		 (goto-char (point-max))
-		 (rmail-summary-goto-msg)))
-      (goto-char (point-min))
-      (if (not (re-search-forward (concat "^ *" (int-to-string n)) nil t))
-	  (progn (or nowarn (message "Message %d not found" n))
-		 (setq n curmsg)
-		 (goto-char cur))))
-    (beginning-of-line)
-    (skip-chars-forward " ")
-    (skip-chars-forward "0-9")
-    (save-excursion (if (= (following-char) ?-)
-			(let ((buffer-read-only nil))
-			  (delete-char 1)
-			  (insert " "))))
-    (beginning-of-line)
-    (pop-to-buffer buf)
-    (rmail-show-message n)
-    (pop-to-buffer rmail-summary-buffer)))
-
-(defvar rmail-summary-mode-map nil)
-
-(if rmail-summary-mode-map
-    nil
-  (setq rmail-summary-mode-map (make-keymap))
-  (suppress-keymap rmail-summary-mode-map)
-  (define-key rmail-summary-mode-map "j" 'rmail-summary-goto-msg)
-  (define-key rmail-summary-mode-map "n" 'rmail-summary-next-msg)
-  (define-key rmail-summary-mode-map "p" 'rmail-summary-previous-msg)
-  (define-key rmail-summary-mode-map "\C-n" 'rmail-summary-next-all)
-  (define-key rmail-summary-mode-map "\C-p" 'rmail-summary-previous-all)
-  (define-key rmail-summary-mode-map " " 'rmail-summary-scroll-msg-up)
-  (define-key rmail-summary-mode-map "q" 'rmail-summary-quit)
-  (define-key rmail-summary-mode-map "u" 'rmail-summary-undelete)
-  (define-key rmail-summary-mode-map "x" 'rmail-summary-exit)
-  (define-key rmail-summary-mode-map "\177" 'rmail-summary-scroll-msg-down)
-  (define-key rmail-summary-mode-map "d" 'rmail-summary-delete-forward))
-
-(defun rmail-summary-scroll-msg-up (&optional dist)
-  "Scroll other window forward."
-  (interactive "P")
-  (let ((window (selected-window))
-	(new-window (display-buffer rmail-buffer)))
-    (unwind-protect
-	(progn
-	  (select-window new-window)
-	  (scroll-up dist))
-      (select-window window))))
-
-(defun rmail-summary-scroll-msg-down (&optional dist)
-  "Scroll other window backward."
-  (interactive "P")
-  (let ((window (selected-window))
-	(new-window (display-buffer rmail-buffer)))
-    (unwind-protect
-	(progn
-	  (select-window new-window)
-	  (scroll-down dist))
-      (select-window window))))
-
 (defun rmail-summary-quit ()
   "Quit out of rmail and rmail summary."
   (interactive)
@@ -453,3 +529,10 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
 		       (delete-window (selected-window))))
     ;; Switch to the rmail buffer in this window.
     (switch-to-buffer rmail-buffer)))
+|#
+
+
+
+
+
+
