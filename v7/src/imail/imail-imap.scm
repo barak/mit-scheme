@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.108 2000/06/05 17:50:45 cph Exp $
+;;; $Id: imail-imap.scm,v 1.109 2000/06/05 18:20:38 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -800,51 +800,53 @@
 
 (define-method message-mime-body-part
     ((message <imap-message>) selector cache?)
-  (let ((section
-	 (map (lambda (x)
-		(if (exact-nonnegative-integer? x)
-		    (+ x 1)
-		    x))
-	      selector)))
-    (let ((entry
-	   (list-search-positive (imap-message-body-parts message)
-	     (lambda (entry)
-	       (equal? (car entry) section)))))
-      (if entry
-	  (cdr entry)
-	  (let ((part
-		 (imap:response:fetch-body-part
-		  (let ((suffix 
-			 (string-append
-			  " body part for message "
-			  (number->string (+ (message-index message) 1)))))
-		    ((imail-message-wrapper "Reading" suffix)
-		     (lambda ()
-		       (imap:read-literal-progress-hook imail-progress-meter
-			 (lambda ()
-			   (imap:command:uid-fetch
-			    (imap-folder-connection (message-folder message))
-			    (imap-message-uid message)
-			    `(',(string-append
-				 "body["
-				 (decorated-string-append
-				  "" "." ""
-				  (map (lambda (x)
-					 (if (exact-nonnegative-integer? x)
-					     (number->string x)
-					     (symbol->string x)))
-				       section))
-				 "]"))))))))
-		  section
-		  #f)))
-	    (if (and cache?
-		     (or (eq? cache? #t)
-			 (< (string-length part) cache?)))
-		(set-imap-message-body-parts!
-		 message
-		 (cons (cons section part)
-		       (imap-message-body-parts message))))
-	    part)))))
+  (if (equal? selector '(TEXT))
+      (message-body message)
+      (let ((section
+	     (map (lambda (x)
+		    (if (exact-nonnegative-integer? x)
+			(+ x 1)
+			x))
+		  selector)))
+	(let ((entry
+	       (list-search-positive (imap-message-body-parts message)
+		 (lambda (entry)
+		   (equal? (car entry) section)))))
+	  (if entry
+	      (cdr entry)
+	      (let ((part (%imap-message-body-part message section)))
+		(if (and cache?
+			 (or (eq? cache? #t)
+			     (< (string-length part) cache?)))
+		    (set-imap-message-body-parts!
+		     message
+		     (cons (cons section part)
+			   (imap-message-body-parts message))))
+		part))))))
+
+(define (%imap-message-body-part message section)
+  (imap:response:fetch-body-part
+   (let ((suffix 
+	  (string-append " body part for message "
+			 (number->string (+ (message-index message) 1)))))
+     ((imail-message-wrapper "Reading" suffix)
+      (lambda ()
+	(imap:read-literal-progress-hook imail-progress-meter
+	  (lambda ()
+	    (imap:command:uid-fetch
+	     (imap-folder-connection (message-folder message))
+	     (imap-message-uid message)
+	     `(',(string-append "body["
+				(decorated-string-append
+				 "" "." ""
+				 (map (lambda (x)
+					(if (exact-nonnegative-integer? x)
+					    (number->string x)
+					    (symbol->string x)))
+				      section))
+				"]"))))))))
+   section
+   #f))
 
 (define (parse-mime-body body)
   (cond ((not (and (pair? body) (list? body))) (parse-mime-body:lose body))
