@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simapp.scm,v 4.3 1988/06/14 08:35:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simapp.scm,v 4.4 1988/12/12 21:30:21 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -36,9 +36,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package (simulate-application)
-
-(define-export (simulate-application lvalues applications)
+(define (simulate-application lvalues applications)
   (for-each initialize-lvalue-cache! lvalues)
   (for-each (lambda (application)
 	      (set-application-operators! application '()))
@@ -137,7 +135,7 @@ MIT in each case. |#
 		 (for-each loop (lvalue-backward-links lvalue)))))
     (eq-set-union* (lvalue-initial-values (car lvalues))
 		   (map lvalue-initial-values (cdr lvalues)))))
-
+
 (define (lvalue-unassigned! lvalue)
   (lvalue-connect! lvalue (make-constant (make-unassigned-reference-trap))))
 
@@ -167,19 +165,31 @@ MIT in each case. |#
 				  (lvalue-values-cache lvalue))))
 
 (define (lvalue-connect!:lvalue to from)
-  (if (not (memq from (lvalue-backward-links to)))
+  (if (not (memq from (lvalue-initial-backward-links to)))
       (begin
-	(enqueue-nodes! (lvalue-applications to))
-	(set-lvalue-backward-links! to (cons from (lvalue-backward-links to)))
-	(set-lvalue-forward-links! from (cons to (lvalue-forward-links from)))
-	(set-lvalue-values-cache! to
-				  (eq-set-union (lvalue-values-cache from)
-						(lvalue-values-cache to)))
-	(for-each (lambda (from)
-		    (lvalue-connect!:lvalue to from))
-		  (lvalue-backward-links from))
-	(for-each (lambda (to)
-		    (lvalue-connect!:lvalue to from))
-		  (lvalue-forward-links to)))))
-
-)
+	(set-lvalue-initial-backward-links!
+	 to
+	 (cons from (lvalue-initial-backward-links to)))
+	(set-lvalue-initial-forward-links!
+	 from
+	 (cons to (lvalue-initial-forward-links from)))))
+  (letrec ((connect
+	    (lambda (to from)
+	      (if (not (memq from (lvalue-backward-links to)))
+		  (begin
+		    (enqueue-nodes! (lvalue-applications to))
+		    (set-lvalue-backward-links!
+		     to
+		     (cons from (lvalue-backward-links to)))
+		    (set-lvalue-forward-links!
+		     from
+		     (cons to (lvalue-forward-links from)))
+		    (set-lvalue-values-cache!
+		     to
+		     (eq-set-union (lvalue-values-cache from)
+				   (lvalue-values-cache to)))
+		    (for-each (lambda (from) (connect to from))
+			      (lvalue-backward-links from))
+		    (for-each (lambda (to) (connect to from))
+			      (lvalue-forward-links to)))))))
+    (connect to from)))
