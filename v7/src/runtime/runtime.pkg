@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.343 2000/04/11 03:46:57 cph Exp $
+$Id: runtime.pkg,v 14.344 2000/04/11 15:19:18 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -3528,6 +3528,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (files "crypto")
   (parent ())
   (export ()
+	  make-mhash-keygen-type
 	  md5-available?
 	  md5-file
 	  md5-string
@@ -3544,7 +3545,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  mhash-keygen
 	  mhash-keygen-max-key-size
 	  mhash-keygen-salt-size
-	  mhash-keygen-types
+	  mhash-keygen-type-names
+	  mhash-keygen-type?
 	  mhash-keygen-uses-count?
 	  mhash-keygen-uses-hash-algorithm
 	  mhash-keygen-uses-salt?
@@ -3552,7 +3554,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  mhash-substring
 	  mhash-sum->hexadecimal
 	  mhash-sum->number
-	  mhash-types
+	  mhash-type-names
 	  mhash-update)
   (initialization (initialize-package!)))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: crypto.scm,v 14.5 2000/04/11 04:17:37 cph Exp $
+$Id: crypto.scm,v 14.6 2000/04/11 15:19:14 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -33,11 +33,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (mhash-name->id name procedure)
   (let ((n (vector-length mhash-algorithm-names)))
     (let loop ((i 0))
-      (if (fix:< i n)
-	  (if (eq? name (vector-ref mhash-algorithm-names i))
-	      i
-	      (loop (fix:+ i 1)))
-	  (error:bad-range-argument name procedure)))))
+      (cond ((fix:= i n) (error:bad-range-argument name procedure))
+	    ((eq? name (vector-ref mhash-algorithm-names i)) i)
+	    (else (loop (fix:+ i 1)))))))
 
 (define-structure mhash-context (index #f read-only #t))
 (define-structure mhash-hmac-context (index #f read-only #t))
@@ -50,7 +48,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (if (not (mhash-hmac-context? object))
       (error:wrong-type-argument object "mhash HMAC context" procedure)))
 
-(define (mhash-types)
+(define (mhash-type-names)
   (vector->list mhash-algorithm-names))
 
 (define (mhash-get-block-size name)
@@ -102,13 +100,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (keygen-name->id name procedure)
   (let ((n (vector-length mhash-keygen-names)))
     (let loop ((i 0))
-      (if (fix:< i n)
-	  (if (eq? name (vector-ref mhash-keygen-names i))
-	      i
-	      (loop (fix:+ i 1)))
-	  (error:bad-range-argument name procedure)))))
+      (cond ((fix:= i n) (error:bad-range-argument name procedure))
+	    ((eq? name (vector-ref mhash-keygen-names i)) i)
+	    (else (loop (fix:+ i 1)))))))
 
-(define (mhash-keygen-types)
+(define (mhash-keygen-type-names)
   (vector->list mhash-keygen-names))
 
 (define (mhash-keygen-uses-salt? name)
@@ -131,37 +127,52 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   ((ucode-primitive mhash_get_keygen_max_key_size 1)
    (keygen-name->id name 'MHASH-KEYGEN-MAX-KEY-SIZE)))
 
-(define (mhash-keygen name passphrase key-length . parameters)
-  (let ((keyword (make-string key-length)))
+(define (mhash-keygen type passphrase)
+  (if (not (mhash-keygen-type? type))
+      (error:wrong-type-argument type "mhash type" 'MHASH-KEYGEN))
+  (let ((keyword (make-string (mhash-keygen-type-key-length type))))
     (if (not ((ucode-primitive mhash_keygen 4)
-	      (keygen-name->id name 'MHASH-KEYGEN)
-	      (convert-keygen-parameters name parameters)
+	      (mhash-keygen-type-name type)
+	      (mhash-keygen-type-parameter-vector type)
 	      keyword
 	      passphrase))
-	(error "Error signalled by mhash_keygen()."))
+	(error "Error signalled by mhash_keygen."))
     keyword))
 
-(define (convert-keygen-parameters name parameters)
+(define-structure (mhash-keygen-type (constructor %make-mhash-keygen-type))
+  (name #f read-only #t)
+  (key-length #f read-only #t)
+  (parameter-vector #f read-only #t))
+
+(define (make-mhash-keygen-type name key-length . parameters)
+  (if (not (index-fixnum? key-length))
+      (error:wrong-type-argument key-length "key length"
+				 'MAKE-MHASH-KEYGEN-TYPE))
+  (if (not (let ((m (mhash-keygen-max-key-size name)))
+	     (or (= m 0)
+		 (<= key-length m))))
+      (error:bad-range-argument key-length 'MAKE-MHASH-KEYGEN-TYPE))
   (let ((n-algorithms (mhash-keygen-uses-hash-algorithm name))
 	(uses-salt? (mhash-keygen-uses-salt? name))
 	(uses-count? (mhash-keygen-uses-count? name)))
-    (if (not (fix:= (length parameters)
-		    (+ n-algorithms
-		       (if uses-salt? 1 0)
-		       (if uses-count? 1 0))))
+    (if (not (= (length parameters)
+		(+ n-algorithms
+		   (if uses-salt? 1 0)
+		   (if uses-count? 1 0))))
 	(error "Wrong number of parameters supplied:"
 	       parameters
 	       (error-irritant/noise "; should be:")
 	       `(,@(make-list n-algorithms 'HASH-TYPE)
 		 ,@(if uses-salt? '(SALT) '())
 		 ,@(if uses-count? '(COUNT) '()))))
-    (let ((n (fix:+ 2 n-algorithms)))
+    (let ((n (+ 2 n-algorithms)))
       (let ((v (make-vector n)))
 	(vector-set! v 0
 		     (and uses-salt?
 			  (let ((salt (list-ref parameters n-algorithms))
 				(n (mhash-keygen-salt-size name)))
-			    (if (not (fix:= n (string-length salt)))
+			    (if (not (or (= n 0)
+					 (= n (string-length salt))))
 				(error "Salt size incorrect:"
 				       (string-length salt)
 				       (error-irritant/noise "; should be:")
@@ -171,14 +182,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		     (and uses-count?
 			  (list-ref parameters
 				    (if uses-salt?
-					(fix:+ n-algorithms 1)
+					(+ n-algorithms 1)
 					n-algorithms))))
 	(do ((i 2 (fix:+ i 1))
 	     (names parameters (cdr names)))
 	    ((fix:= i n))
 	  (vector-set! v i
-		       (mhash-name->id (car names) 'MHASH-KEYGEN)))
-	v))))
+		       (mhash-name->id (car names) 'MAKE-MHASH-KEYGEN-TYPE)))
+	(%make-mhash-keygen-type name key-length v)))))
 
 (define (mhash-available?)
   (implemented-primitive-procedure? (ucode-primitive mhash 4)))
