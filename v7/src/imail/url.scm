@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: url.scm,v 1.7 2000/04/14 01:45:49 cph Exp $
+;;; $Id: url.scm,v 1.8 2000/07/02 05:09:21 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -24,7 +24,7 @@
 
 (define url:char-set:safe (string->char-set "$-_.+"))
 (define url:char-set:extra (string->char-set "!*'(),"))
-(define url:char-set:national (string->char-set "{}|\^~[]`"))
+(define url:char-set:national (string->char-set "{}|\\^~[]`"))
 (define url:char-set:punctuation (string->char-set "<>#%\""))
 (define url:char-set:reserved (string->char-set ";/?:@&="))
 
@@ -41,7 +41,8 @@
   (char-set-invert url:char-set:unescaped))
 
 (define url:rexp:escape
-  (rexp-sequence "%" char-set:alphanumeric char-set:alphanumeric))
+  (let ((char-set:hex (string->char-set "0123456789ABCDEFabcdef")))
+    (rexp-sequence "%" char-set:hex char-set:hex)))
 
 (define url:rexp:uchar
   (rexp-alternatives url:char-set:unreserved url:rexp:escape))
