@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.21 1991/08/06 15:39:21 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.22 1991/09/03 22:56:52 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -48,6 +48,7 @@
 (declare (usual-integrations))
 
 (define-primitives
+  (clear-interrupts! 1)
   (real-timer-clear 0)
   (real-timer-set 2)
   (x-open-display 1)
@@ -490,10 +491,10 @@
 		  (lambda ()
 		    (receiver
 		     (lambda (thunk)
-		       (dynamic-wind real-timer-clear
+		       (dynamic-wind stop-timer-interrupt
 				     thunk
 				     start-timer-interrupt))))
-		  real-timer-clear)))
+		  stop-timer-interrupt)))
 
 (define (set-x-timer-interval! interval)
   (if (not (or (false? interval)
@@ -509,7 +510,11 @@
 (define (start-timer-interrupt)
   (if timer-interval
       (real-timer-set timer-interval timer-interval)
-      (real-timer-clear)))
+      (stop-timer-interrupt)))
+
+(define (stop-timer-interrupt)
+  (real-timer-clear)
+  (clear-interrupts! interrupt-bit/timer))
 
 (define (with-x-interrupts-enabled thunk)
   (bind-signal-interrupts? true thunk))
