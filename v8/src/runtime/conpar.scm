@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.34 1994/12/19 21:44:25 cph Exp $
+$Id: conpar.scm,v 14.35 1994/12/19 22:11:51 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -549,16 +549,18 @@ MIT in each case. |#
 		 5
 		 (fix:+ 5 fsize))))
 	  ((fix:= code code/interrupt-restart)
-	   (let ((homes-saved (object-datum (element-stream/ref stream 2)))
-		 (regs-saved (object-datum (element-stream/ref stream 3))))
-	     ;; The first reg saved is _always_ the continuation,
-	     ;; part of the next frame.
-	     (fix:- (fix:+
-		     ;; Return code, reflect code, homes saved, regs saved,
-		     ;; and entry point
-		     5
-		     (fix:+ homes-saved regs-saved))
-		    1)))
+	   (if (fix:= 12 microcode-id/version)
+	       4
+	       (let ((homes-saved (object-datum (element-stream/ref stream 2)))
+		     (regs-saved (object-datum (element-stream/ref stream 3))))
+		 ;; The first reg saved is _always_ the continuation,
+		 ;; part of the next frame.
+		 (fix:- (fix:+
+			 ;; Return code, reflect code, homes saved, regs saved,
+			 ;; and entry point
+			 5
+			 (fix:+ homes-saved regs-saved))
+			1))))
 	  ((fix:= code code/restore-regs)
 	   (fix:+ 3 (object-datum (element-stream/ref stream 2))))
 	  ((fix:= code code/apply-compiled)
