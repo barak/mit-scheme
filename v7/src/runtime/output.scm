@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: output.scm,v 14.24 2002/11/20 19:46:21 cph Exp $
+$Id: output.scm,v 14.25 2002/12/09 05:40:26 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -58,6 +58,11 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 (define (output-port/y-size port)
   (let ((operation (port/operation port 'Y-SIZE)))
+    (and operation
+	 (operation port))))
+
+(define (output-port/column port)
+  (let ((operation (port/operation port 'OUTPUT-COLUMN)))
     (and operation
 	 (operation port))))
 

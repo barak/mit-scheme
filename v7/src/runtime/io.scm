@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.65 2002/11/20 19:46:20 cph Exp $
+$Id: io.scm,v 14.66 2002/12/09 05:40:04 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -514,7 +514,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   line-translation			; string that newline maps to
   logical-size
   closed?
-  line-start?)
+  column)
 
 (define (output-buffer-sizes translation buffer-size)
   (let ((logical-size
@@ -548,7 +548,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 			     translation
 			     logical-size
 			     #f
-			     #t)))))
+			     0)))))
 
 (define (output-buffer/close buffer associated-buffer)
   (output-buffer/drain-block buffer)
@@ -713,13 +713,26 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 				 n-prev*
 				 (loop (fix:+ index 1)
 				       (fix:+ n-prev* 1))))))))))))
-    (if (fix:> n-written 0)
-	(set-output-buffer/line-start?!
-	 buffer
-	 (char=? #\newline
-		 (string-ref string (fix:+ start (fix:- n-written 1))))))
+    (set-output-buffer/column!
+     buffer
+     (let* ((end (fix:+ start n-written))
+	    (nl (substring-find-previous-char string start end #\newline)))
+       (if nl
+	   (count-columns string (fix:+ nl 1) end 0)
+	   (count-columns string start end (output-buffer/column buffer)))))
     n-written))
 
+(define (count-columns string start end column)
+  ;; This simple-minded algorithm works only for a limited subset of
+  ;; US-ASCII.  Doing a better job quickly gets very hairy.
+  (do ((start start (fix:+ start 1))
+       (column column
+	       (fix:+ column
+		      (if (char=? #\tab (string-ref string start))
+			  (fix:- 8 (fix:remainder column 8))
+			  1))))
+      ((fix:= start end) column)))
+
 (define (output-buffer/drain buffer)
   (let ((string (output-buffer/string buffer))
 	(position (output-buffer/position buffer)))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.16 2002/11/20 19:46:20 cph Exp $
+$Id: genio.scm,v 1.17 2002/12/09 05:40:41 cph Exp $
 
-Copyright (c) 1991-1999 Massachusetts Institute of Technology
+Copyright (c) 1991-1999, 2002 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -56,6 +56,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	   (OUTPUT-BLOCKING-MODE ,operation/output-blocking-mode)
 	   (OUTPUT-BUFFER-SIZE ,operation/output-buffer-size)
 	   (OUTPUT-CHANNEL ,operation/output-channel)
+	   (OUTPUT-COLUMN ,operation/output-column)
 	   (OUTPUT-OPEN? ,operation/output-open?)
 	   (OUTPUT-TERMINAL-MODE ,operation/output-terminal-mode)
 	   (SET-OUTPUT-BLOCKING-MODE ,operation/set-output-blocking-mode)
@@ -232,8 +233,11 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 				       string start end))
 
 (define (operation/fresh-line port)
-  (if (not (output-buffer/line-start? (port/output-buffer port)))
+  (if (not (fix:= 0 (output-buffer/column (port/output-buffer port))))
       (operation/write-char port #\newline)))
+
+(define (operation/output-column port)
+  (output-buffer/column (port/output-buffer port)))
 
 (define (operation/output-buffer-size port)
   (output-buffer/size (port/output-buffer port)))
