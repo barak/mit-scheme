@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.42 1993/12/17 02:10:32 cph Exp $
+$Id: error.scm,v 14.43 1993/12/17 02:34:15 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -311,7 +311,7 @@ MIT in each case. |#
       (error:wrong-type-argument reporter "restart reporter" 'WITH-RESTART))
   (if (not (procedure? effector))
       (error:wrong-type-argument effector "restart effector" 'WITH-RESTART))
-  (if (not (procedure? interactor))
+  (if (not (or (not interactor) (procedure? interactor)))
       (error:wrong-type-argument interactor "restart interactor"
 				 'WITH-RESTART))
   (let ((restart (%make-restart name reporter effector interactor)))
