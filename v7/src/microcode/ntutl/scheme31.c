@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme31.c,v 1.4 1993/09/04 07:00:37 gjr Exp $
+$Id: scheme31.c,v 1.5 1993/09/13 18:41:24 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -169,11 +169,11 @@ win32_unlock_memory_area (LPVOID area, unsigned long size)
 UINT
 win32_install_async_timer (void ** state_ptr,
 			   unsigned long * base,
-			   unsigned long memtop_off,
-			   unsigned long int_code_off,
-			   unsigned long int_mask_off,
+			   long memtop_off,
+			   long int_code_off,
+			   long int_mask_off,
 			   unsigned long bit_mask,
-			   unsigned long ctr_off,
+			   long ctr_off,
 			   unsigned long message,
 			   HWND window)
 {
@@ -182,11 +182,11 @@ win32_install_async_timer (void ** state_ptr,
   UINT result;
 
   param.base = ((SCM_ULPTR) base);
-  param.memtop_off = ((SCM_ULONG) memtop_off);
-  param.int_code_off = ((SCM_ULONG) int_code_off);
-  param.int_mask_off = ((SCM_ULONG) int_mask_off);
+  param.memtop_off = ((SCM_LONG) memtop_off);
+  param.int_code_off = ((SCM_LONG) int_code_off);
+  param.int_mask_off = ((SCM_LONG) int_mask_off);
   param.bit_mask = ((SCM_ULONG) bit_mask);
-  param.ctr_off = ((SCM_ULONG) ctr_off);
+  param.ctr_off = ((SCM_LONG) ctr_off);
   param.message = ((SCM_ULONG) message);
   param.window = ((SCM_ULONG) window);
 

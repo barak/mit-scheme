@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme16.c,v 1.6 1993/09/08 04:46:00 gjr Exp $
+$Id: scheme16.c,v 1.7 1993/09/13 18:39:57 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -312,11 +312,11 @@ static struct ntw16lib_itimer_s
   struct ntw16lib_itimer_s FAR * next;
   unsigned long index;
   unsigned long FAR * base;
-  unsigned long memtop_off;
-  unsigned long int_code_off;
-  unsigned long int_mask_off;
+  long memtop_off;
+  long int_code_off;
+  long int_mask_off;
   unsigned long bit_mask;
-  unsigned long ctr_off;
+  long ctr_off;
   UINT message;
   HWND window;
   UINT selector;
@@ -326,31 +326,31 @@ static struct ntw16lib_itimer_s
 void FAR _export 
 scheme_asynctimer (void)
 {
-  struct ntw16lib_itimer_s FAR * scm_timer = async_timers;
+  struct ntw16lib_itimer_s FAR * scm_timer;
 
-  while (scm_timer != ((struct ntw16lib_itimer_s FAR *) NULL))
+  for (scm_timer = async_timers;
+       scm_timer != ((struct ntw16lib_itimer_s FAR *) NULL);
+       scm_timer = scm_timer->next)
   {
     scm_timer->base[scm_timer->int_code_off] |= scm_timer->bit_mask;
-    if ((scm_timer->base[scm_timer->int_mask_off]
-	 & scm_timer->bit_mask)
-	!= 0)
+    if ((scm_timer->base[scm_timer->int_mask_off] & scm_timer->bit_mask)
+	!= 0L)
       scm_timer->base[scm_timer->memtop_off] = ((unsigned long) -1L);
     scm_timer->base[scm_timer->ctr_off] += 1L;
     if ((scm_timer->base[scm_timer->ctr_off]
 	 > scm_timer->base[scm_timer->ctr_off + 1])
-	&& (scm_timer->base[scm_timer->ctr_off + 1] != 0))
+	&& (scm_timer->base[scm_timer->ctr_off + 1] != 0L))
     {
-      if (scm_timer->base[scm_timer->ctr_off + 2] == 0)
+      if (scm_timer->base[scm_timer->ctr_off + 2] == 0L)
       {
 	PostMessage (scm_timer->window,
 		     scm_timer->message,
 		     ((WPARAM) 0),
 		     ((LPARAM) 0));
-	scm_timer->base[scm_timer->ctr_off + 2] = 1;
+	scm_timer->base[scm_timer->ctr_off + 2] = 1L;
       }
       scm_timer->base[scm_timer->ctr_off] = 0L;
     }
-    scm_timer = scm_timer->next;
   }
   return;
 }
