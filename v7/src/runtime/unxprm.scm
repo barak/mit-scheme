@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.16 1991/11/04 20:30:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.17 1992/05/26 05:31:03 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -69,6 +69,33 @@ MIT in each case. |#
 	       ((ucode-primitive file-access) (directory-namestring pathname)
 					      2))))))
 
+(define (call-with-temporary-filename receiver)
+  (let find-eligible-directory
+      ((eligible-directories '("." "/tmp" "/usr/tmp")))
+    (if (null? eligible-directories)
+	(error "Can't locate directory for temporary file")
+	(let ((dir (->namestring
+		    (pathname-as-directory
+		     (merge-pathnames (car eligible-directories))))))
+	  (if (file-writable? dir)
+	      (let ((base-name
+		     (string-append dir "_" (unix/current-user-name) "_scm")))
+		(let unique-file ((ext 0))
+		  (let ((name (string-append base-name (number->string ext))))
+		    (if (or (file-exists? name)
+			    (not (file-touch name)))
+			(if (fix:> ext 999) ; don't get rediculous here
+			    (error "Cannot find unique temp file name"
+				   base-name)
+			    (unique-file (fix:+ ext 1)))
+			(dynamic-wind
+			 (lambda () unspecific)
+			 (lambda () (receiver name))
+			 (lambda () (if (file-exists? name)
+					(delete-file name))))))))
+	      (find-eligible-directory (cdr eligible-directories)))))))
+    
+
 (define (file-attributes-direct filename)
   ((ucode-primitive file-attributes)
    (->namestring (merge-pathnames filename))))
