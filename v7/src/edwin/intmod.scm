@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.59 1993/08/02 03:06:34 cph Exp $
+;;;	$Id: intmod.scm,v 1.60 1993/08/04 20:21:00 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -870,7 +870,8 @@ If this is an error, the debugger examines the error condition."
       (if (not transcript?)
 	  (begin
 	    (set-buffer-default-directory! (mark-buffer mark) directory)
-	    (message (->namestring directory))))
+	    ;;(message (->namestring directory))
+	    ))
       #t)))
 
 (define (operation/set-default-environment port environment)
