@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.17 1989/05/16 17:01:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.18 1989/05/16 18:19:32 cph Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -409,6 +409,8 @@ DEFINE_PRIMITIVE ("SCAN-LIST-FORWARD", Prim_scan_list_forward, 7, 7, 0)
 	    }
 	  continue;
 	}
+      if (SYNTAX_ENTRY_PREFIX (sentry))
+	continue;
 
       switch (SYNTAX_ENTRY_CODE (sentry))
 	{
@@ -770,6 +772,8 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 	    }
 	  in_comment = 0;
 	}
+      else if (SYNTAX_ENTRY_PREFIX (sentry))
+	continue;
       else
 
 	switch (SYNTAX_ENTRY_CODE (sentry))
