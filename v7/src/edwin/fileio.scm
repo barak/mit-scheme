@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.100 1991/05/15 17:42:51 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.101 1991/05/16 23:13:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -58,6 +58,8 @@
   (let ((truename (pathname->input-truename pathname)))
     (if truename
 	(begin
+	  ;; Set modified so that file supercession check isn't done.
+	  (set-group-modified! (buffer-group buffer) true)
 	  (region-delete! (buffer-unclipped-region buffer))
 	  (%insert-file (buffer-start buffer) truename)
 	  (set-buffer-point! buffer (buffer-start buffer))))
