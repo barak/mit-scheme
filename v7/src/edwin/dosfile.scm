@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dosfile.scm,v 1.10 1997/03/14 05:12:55 cph Exp $
+;;;	$Id: dosfile.scm,v 1.11 1997/10/22 05:10:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-97 Massachusetts Institute of Technology
 ;;;
@@ -434,6 +434,7 @@ Includes the new backup.  Must be > 0."
 
 (define (os/shell-file-name)
   (or (get-environment-variable "SHELL")
+      (get-environment-variable "COMSPEC")
       dos/default-shell-file-name))
 
 (define (os/shell-name pathname)
