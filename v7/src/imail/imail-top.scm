@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.119 2000/06/02 02:48:08 cph Exp $
+;;; $Id: imail-top.scm,v 1.120 2000/06/02 17:28:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -751,17 +751,21 @@ With prefix argument N moves backward N messages with these flags."
 (define (insert-mime-message-body message mark)
   (insert-mime-message-part message
 			    (message-mime-body-structure message)
+			    #f
 			    '()
 			    mark))
 
-(define-generic insert-mime-message-part (message body selector mark))
+(define-generic insert-mime-message-part
+    (message body enclosure selector mark))
 
 (define-method insert-mime-message-part
-    (message (body <mime-body-multipart>) selector mark)
+    (message (body <mime-body-multipart>) enclosure selector mark)
+  enclosure
   (let ((parts (mime-body-multipart-parts body)))
     (if (eq? (mime-body-subtype body) 'ALTERNATIVE)
-	(insert-mime-message-part message (car parts) `(,@selector 0) mark)
-	(let ((boundary (cdr (assq 'BOUNDARY (mime-body-parameters body)))))
+	(insert-mime-message-part message (car parts) body `(,@selector 0)
+				  mark)
+	(let ((boundary (mime-body-parameter body 'BOUNDARY "----------")))
 	  (do ((parts parts (cdr parts))
 	       (i 0 (fix:+ i 1)))
 	      ((null? parts))
@@ -772,42 +776,42 @@ With prefix argument N moves backward N messages with these flags."
 		  (insert-string boundary mark)
 		  (insert-newline mark)
 		  (insert-newline mark)))
-	    (insert-mime-message-part message (car parts) `(,@selector ,i)
+	    (insert-mime-message-part message (car parts) body `(,@selector ,i)
 				      mark))))))
 
 (define-method insert-mime-message-part
-    (message (body <mime-body-text>) selector mark)
-  (let ((text
-	 (if (null? selector)
-	     (message-body message)
-	     (message-mime-body-part message selector))))
-    (if (or (eq? (mime-body-subtype body) 'PLAIN)
-	    (let ((charset
-		   (let ((entry (assq 'CHARSET (mime-body-parameters body))))
-		     (if entry
-			 (cdr entry)
-			 "us-ascii"))))
-	      (or (string-ci=? charset "us-ascii")
-		  (re-string-match "\\`iso-8859-[0-9]+\\'" charset #t))))
-	(begin
-	  (case (mime-body-one-part-encoding body)
-	    ((QUOTED-PRINTABLE)
-	     (insert-auto-wrapped-string (decode-quoted-printable-string text)
-					 #t
-					 mark))
-	    ((BASE64)
-	     (call-with-values (lambda () (decode-base64-text-string text #f))
-	       (lambda (decoded-text pending-return?)
-		 (insert-auto-wrapped-string decoded-text #t mark)
-		 (if pending-return?
-		     (insert-char #\return mark)))))
-	    (else
-	     (insert-auto-wrapped-string text #f mark)))
-	  (guarantee-newline mark))
-	(insert-mime-message-binary message body selector mark))))
-
+    (message (body <mime-body-text>) enclosure selector mark)
+  (if (or (eq? (mime-body-subtype body) 'PLAIN)
+	  (let ((charset (mime-body-parameter body 'CHARSET "us-ascii")))
+	    (or (string-ci=? charset "us-ascii")
+		(re-string-match "\\`iso-8859-[0-9]+\\'" charset #t))))
+      (let ((text
+	     (message-mime-body-part
+	      message
+	      (if (or (not enclosure)
+		      (and (eq? (mime-body-type enclosure) 'MESSAGE)
+			   (eq? (mime-body-subtype enclosure) 'RFC822)))
+		  `(,@selector TEXT)
+		  selector))))
+	(case (mime-body-one-part-encoding body)
+	  ((QUOTED-PRINTABLE)
+	   (insert-auto-wrapped-string (decode-quoted-printable-string text)
+				       #t
+				       mark))
+	  ((BASE64)
+	   (call-with-values (lambda () (decode-base64-text-string text #f))
+	     (lambda (decoded-text pending-return?)
+	       (insert-auto-wrapped-string decoded-text #t mark)
+	       (if pending-return?
+		   (insert-char #\return mark)))))
+	  (else
+	   (insert-auto-wrapped-string text #f mark)))
+	(guarantee-newline mark))
+      (insert-mime-message-binary message body enclosure selector mark)))
+
 (define-method insert-mime-message-part
-    (message (body <mime-body-message>) selector mark)
+    (message (body <mime-body-message>) enclosure selector mark)
+  enclosure
   (insert-string
    (header-fields->string
     (maybe-reformat-headers
@@ -818,16 +822,50 @@ With prefix argument N moves backward N messages with these flags."
   (insert-newline mark)
   (insert-mime-message-part message
 			    (mime-body-message-body body)
+			    body
 			    selector
 			    mark))
 
 (define-method insert-mime-message-part
-    (message (body <mime-body>) selector mark)
-  (insert-mime-message-binary message body selector mark))
+    (message (body <mime-body>) enclosure selector mark)
+  (insert-mime-message-binary message body enclosure selector mark))
 
-(define (insert-mime-message-binary message body selector mark)
-  message body selector
-  (insert-string "[** ATTACHMENT **]\n" mark))
+(define (insert-mime-message-binary message body enclosure selector mark)
+  message enclosure
+  (let ((start (mark-right-inserting-copy mark)))
+    (insert-string "<attachment " mark)
+    (let ((column (mark-column mark)))
+      (cond ((mime-body-parameter body 'NAME #f)
+	     => (lambda (name)
+		  (insert-string "name=" mark)
+		  (insert name mark)
+		  (insert-newline mark)
+		  (change-column column mark)))
+	    ((let ((disposition (mime-body-disposition body)))
+	       (and disposition
+		    (let ((entry (assq 'FILENAME (cdr disposition))))
+		      (and entry
+			   (cdr entry)))))
+	     => (lambda (filename)
+		  (insert-string "filename=" mark)
+		  (insert filename mark)
+		  (insert-newline mark)
+		  (change-column column mark))))
+      (insert-string "type=" mark)
+      (insert (mime-body-type body) mark)
+      (insert-string "/" mark)
+      (insert (mime-body-subtype body) mark)
+      (insert-newline mark)
+      (change-column column mark)
+      (insert-string "encoding=" mark)
+      (insert (mime-body-one-part-encoding body) mark))
+    (insert-string ">" mark)
+    (insert-newline mark)
+    (add-text-property (mark-group mark)
+		       (mark-index start)
+		       (mark-index mark)
+		       'IMAIL-MIME-ATTACHMENT
+		       (cons body selector))))
 
 (define (insert-auto-wrapped-string string encoded? mark)
   (let ((mode
