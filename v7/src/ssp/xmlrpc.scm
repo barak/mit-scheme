@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xmlrpc.scm,v 1.2 2003/12/29 07:31:26 uid67408 Exp $
+$Id: xmlrpc.scm,v 1.3 2004/10/28 19:56:38 cph Exp $
 
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -61,6 +61,7 @@ USA.
 (define (xml-rpc:get-method-handler pathname name)
   (let ((methods (make-string-hash-table)))
     (let ((environment (make-expansion-environment pathname)))
+      (environment-define environment 'server-environment server-environment)
       (environment-define environment 'define-xmlrpc-method
 	(lambda (name handler)
 	  (hash-table/put! methods name handler)))
@@ -241,7 +242,7 @@ USA.
 	 ;; Probably not right -- formatting issues
 	 (rpc-elt:double (number->string object)))
 	((boolean? object)
-	 (rpc-elt:boolean (if object "1" "0")))
+	 (rpc-elt:boolean? (if object "1" "0")))
 	((string? object)
 	 (if (utf8-string-valid? object)
 	     (rpc-elt:string object)
@@ -277,7 +278,7 @@ USA.
 
 (define (rpc-elt name)
   (let ((make-elt
-	 (standard-element-constructor name (null-xml-namespace-iri))))
+	 (standard-xml-element-constructor name (null-xml-namespace-iri) #f)))
     (lambda contents
       (apply make-elt #f contents))))
 
