@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.24 1999/01/02 06:11:34 cph Exp $
+$Id: ntfs.c,v 1.25 1999/12/21 18:48:25 cph Exp $
 
 Copyright (c) 1992-1999 Massachusetts Institute of Technology
 
@@ -152,13 +152,19 @@ create_file_for_info (const char * namestring)
 }
 
 enum file_existence
-DEFUN (OS_file_existence_test, (name), CONST char * name)
+OS_file_existence_test (const char * name)
 {
   BY_HANDLE_FILE_INFORMATION info;
   return
     (((NT_get_file_info (name, (&info))) == gfi_ok)
      ? file_does_exist
      : file_doesnt_exist);
+}
+
+enum file_existence
+OS_file_existence_test_direct (const char * name)
+{
+  return (OS_file_existence_test (name));
 }
 
 #define R_OK 4

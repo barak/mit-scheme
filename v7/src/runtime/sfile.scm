@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.22 1999/11/19 14:12:53 cph Exp $
+$Id: sfile.scm,v 14.23 1999/12/21 18:50:47 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -24,8 +24,23 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (declare (usual-integrations))
 
-(define (file-exists? filename)
-  ((ucode-primitive file-exists? 1) (->namestring (merge-pathnames filename))))
+(define (file-exists-direct? filename)
+  (let ((result
+	 ((ucode-primitive file-exists-direct? 1)
+	  (->namestring (merge-pathnames filename)))))
+    (if (eq? 0 result)
+	#t
+	result)))
+
+(define (file-exists-indirect? filename)
+  (let ((result
+	 ((ucode-primitive file-exists? 1)
+	  (->namestring (merge-pathnames filename)))))
+    (if (eq? 0 result)
+	#f
+	result)))
+
+(define file-exists? file-exists-indirect?)
 
 (define (rename-file from to)
   ((ucode-primitive file-rename) (->namestring (merge-pathnames from))

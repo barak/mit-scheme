@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: osfs.h,v 1.7 1999/01/02 06:11:34 cph Exp $
+$Id: osfs.h,v 1.8 1999/12/21 18:48:47 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -27,6 +27,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 enum file_existence { file_does_exist, file_doesnt_exist, file_is_link };
 
 extern enum file_existence EXFUN (OS_file_existence_test, (CONST char * name));
+extern enum file_existence EXFUN
+  (OS_file_existence_test_direct, (CONST char * name));
 extern int EXFUN (OS_file_access, (CONST char * name, unsigned int mode));
 extern int EXFUN (OS_file_directory_p, (CONST char * name));
 extern CONST char * EXFUN (OS_file_soft_link_p, (CONST char * name));

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosfs.c,v 1.13 1999/01/02 06:11:34 cph Exp $
+$Id: prosfs.c,v 1.14 1999/12/21 18:48:29 cph Exp $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 
@@ -54,6 +54,25 @@ Signal an error if the file's existence is indeterminate.")
   PRIMITIVE_HEADER (1);
   {
     enum file_existence result = (OS_file_existence_test (STRING_ARG (1)));
+    PRIMITIVE_RETURN
+      ((result == file_doesnt_exist)
+       ? SHARP_F
+       : (result == file_does_exist)
+       ? SHARP_T
+       : FIXNUM_ZERO);
+  }
+}
+
+DEFINE_PRIMITIVE ("FILE-EXISTS-DIRECT?", Prim_file_exists_direct_p, 1, 1,
+  "Return #T iff FILENAME refers to an existing file.\n\
+Return #F if the file doesn't exist.\n\
+Return zero if it's a symbolic link.\n\
+Signal an error if the file's existence is indeterminate.")
+{
+  PRIMITIVE_HEADER (1);
+  {
+    enum file_existence result
+      = (OS_file_existence_test_direct (STRING_ARG (1)));
     PRIMITIVE_RETURN
       ((result == file_doesnt_exist)
        ? SHARP_F

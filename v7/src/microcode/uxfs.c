@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxfs.c,v 1.17 1999/01/02 06:11:34 cph Exp $
+$Id: uxfs.c,v 1.18 1999/12/21 18:48:34 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -152,12 +152,31 @@ enum file_existence
 DEFUN (OS_file_existence_test, (name), CONST char * name)
 {
   struct stat s;
-  return
-    ((UX_read_file_status_indirect (name, (&s)))
-     ? file_does_exist
-     : (UX_read_file_status (name, (&s)))
-     ? file_is_link
-     : file_doesnt_exist);
+  if (!UX_read_file_status (name, (&s)))
+    return (file_doesnt_exist);
+#ifdef HAVE_SYMBOLIC_LINKS
+  if (((s . st_mode) & S_IFMT) == S_IFLNK)
+    {
+      if (UX_read_file_status_indirect (name, (&s)))
+	return (file_does_exist);
+      else
+	return (file_is_link);
+    }
+#endif
+  return (file_does_exist);
+}
+
+enum file_existence
+DEFUN (OS_file_existence_test_direct, (name), CONST char * name)
+{
+  struct stat s;
+  if (!UX_read_file_status (name, (&s)))
+    return (file_doesnt_exist);
+#ifdef HAVE_SYMBOLIC_LINKS
+  if (((s . st_mode) & S_IFMT) == S_IFLNK)
+    return (file_is_link);
+#endif
+  return (file_does_exist);
 }
 
 CONST char *
