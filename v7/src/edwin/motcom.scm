@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motcom.scm,v 1.42 1991/08/06 15:37:33 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motcom.scm,v 1.43 1991/08/06 22:04:26 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -170,8 +170,34 @@ Continuation lines are skipped."
 			   column)))
       (set-command-message! temporary-goal-column-tag column))))
 
+;;; Jokes
+
 (define-command hyper-space
   "Engage warp drive."
   ()
   (lambda ()
     (message "Sorry, but superluminal travel is not available now.")))
+
+(define-command top-hat
+  "Deliver tophat joke."
+  ()
+  (lambda ()
+    (message "No party in progress.")))
+
+(define-command super-man
+  "Deliver super man joke."
+  ()
+  (lambda ()
+    (message "It's a bird... It's a plane... No, it's #\S-man!")))
+
+(define-command super-menu
+  "Deliver super menu joke."
+  ()
+  (lambda ()
+    (message "Big Mac, Medium Fries, Small Coke")))
+
+(define-command top-dollar
+  "Deliver top dollar joke."
+  ()
+  (lambda ()
+    (message "Real Estate in Monaco.")))

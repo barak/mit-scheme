@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.129 1991/08/06 15:37:47 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.130 1991/08/06 22:04:19 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -146,7 +146,12 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental #\c-^ 'control-prefix)
 (define-key 'fundamental #\c-_ 'undo)
 (define-key 'fundamental #\c-rubout 'backward-delete-char-untabify)
+;;; Jokes
 (define-key 'fundamental #\h-space 'hyper-space)
+(define-key 'fundamental #\s-menu 'super-menu)
+(define-key 'fundamental #\t-$ 'top-dollar)
+(define-key 'fundamental #\t-hat 'top-hat)
+(define-key 'fundamental (make-special-key 'malesymbol 4) 'super-man)
 
 (define-key 'fundamental #\m-space 'just-one-space)
 (define-key 'fundamental #\m-% 'query-replace)
