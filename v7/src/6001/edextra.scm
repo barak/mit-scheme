@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/edextra.scm,v 1.3 1992/09/02 02:20:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/edextra.scm,v 1.4 1992/09/02 02:56:36 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -36,7 +36,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-((ref-command load-library) 'print false)
+(load-edwin-library 'PRINT)
 
 (define-command print-graphics
   "Print out the last displayed picture."
