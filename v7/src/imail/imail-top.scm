@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.197 2000/06/27 16:37:48 cph Exp $
+;;; $Id: imail-top.scm,v 1.198 2000/06/27 16:41:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -899,8 +899,8 @@ With prefix argument, prompt even when point is on an attachment."
 	   (call-with-mime-decoding-output-port
 	    (let ((encoding (mime-body-one-part-encoding body)))
 	      (if (and (eq? (mime-body-type body) 'APPLICATION)
-		       (eq? (mime-body-subtype body) 'BINHEX40)
-		       (memq encoding '(7BIT 8BIT BINARY)))
+		       (eq? (mime-body-subtype body) 'MAC-BINHEX40)
+		       (eq? encoding '7BIT))
 		  'BINHEX40
 		  encoding))
 	    port
