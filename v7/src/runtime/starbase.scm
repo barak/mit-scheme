@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/starbase.scm,v 1.2 1990/01/17 04:42:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/starbase.scm,v 1.3 1990/01/17 05:04:24 gjs Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -194,36 +194,32 @@ MIT in each case. |#
 			     invert?))
 
 (define (operation/text-height device)
-  (starbase-device/text-height (starbase-device/descriptor device)))
+  (starbase-device/text-height device))
 
 (define (operation/text-aspect device)
-  (starbase-device/text-aspect (starbase-device/descriptor device)))
+  (starbase-device/text-aspect device))
 
 (define (operation/text-slant device)
-  (starbase-device/text-slant (starbase-device/descriptor device)))
+  (starbase-device/text-slant device))
 
 (define (operation/text-rotation device)
-  (starbase-device/text-rotation (starbase-device/descriptor device)))
+  (starbase-device/text-rotation device))
 
 (define (operation/set-text-height device height)
-  (let ((device (starbase-device/descriptor device)))
-    (starbase-set-text-height device height)
-    (set-starbase-device/text-height! device height)))
+  (starbase-set-text-height (starbase-device/descriptor device) height)
+  (set-starbase-device/text-height! device height))
 
 (define (operation/set-text-aspect device aspect)
-  (let ((device (starbase-device/descriptor device)))
-    (starbase-set-text-aspect device aspect)
-    (set-starbase-device/text-aspect! device aspect)))
+  (starbase-set-text-aspect (starbase-device/descriptor device) aspect)
+  (set-starbase-device/text-aspect! device aspect))
 
 (define (operation/set-text-slant device slant)
-  (let ((device (starbase-device/descriptor device)))
-    (starbase-set-text-slant device slant)
-    (set-starbase-device/text-slant! device slant)))
+  (starbase-set-text-slant (starbase-device/descriptor device) slant)
+  (set-starbase-device/text-slant! device slant))
 
 (define (operation/set-text-rotation device rotation)
-  (let ((device (starbase-device/descriptor device)))
-    (starbase-set-text-rotation device rotation)
-    (set-starbase-device/text-rotation! device rotation)))
+  (starbase-set-text-rotation (starbase-device/descriptor device) rotation)
+  (set-starbase-device/text-rotation! device rotation))
 
 (define (operation/color-map-size device)
   (starbase-color-map-size (starbase-device/descriptor device)))
