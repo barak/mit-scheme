@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/etc/stackp.scm,v 1.2 1988/10/26 04:14:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/etc/stackp.scm,v 1.3 1988/10/27 07:07:27 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -74,11 +74,12 @@ MIT in each case. |#
 
 (define (continuation->stream continuation)
   (let stack-frame->stream ((frame (continuation->stack-frame continuation)))
-    (let ((length (stack-frame/length frame)))
-      (let loop ((n 0))
-	(if (< n length)
-	    (cons-stream (stack-frame/ref frame n) (loop (1+ n)))
-	    (let ((next (stack-frame/next frame)))
-	      (if next
-		  (stack-frame->stream next)
-		  (stream))))))))
+    (cons-stream (stack-frame/return-address frame)
+		 (let ((length (stack-frame/length frame)))
+		   (let loop ((n 0))
+		     (if (< n length)
+			 (cons-stream (stack-frame/ref frame n) (loop (1+ n)))
+			 (let ((next (stack-frame/next frame)))
+			   (if next
+			       (stack-frame->stream next)
+			       (stream)))))))))
