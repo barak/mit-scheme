@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.31 1997/10/22 20:00:47 cph Exp $
+$Id: os2prm.scm,v 1.32 1997/10/22 23:01:16 cph Exp $
 
 Copyright (c) 1994-97 Massachusetts Institute of Technology
 
@@ -443,7 +443,7 @@ MIT in each case. |#
 		    (map (lambda (s) (fix:+ (string-length s) 1)) strings)))))
       (let ((n (string-length (car strings))))
 	(substring-move-left! (car strings) 0 n result 0)
-	(string-set! result (fix:+ index n) #\NUL)
+	(string-set! result n #\NUL)
 	(let loop ((strings (cdr strings)) (index (fix:+ n 1)))
 	  (let ((n (string-length (car strings))))
 	    (substring-move-left! (car strings) 0 n result index)
