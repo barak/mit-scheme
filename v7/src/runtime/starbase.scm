@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/starbase.scm,v 1.8 1992/01/30 23:29:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/starbase.scm,v 1.9 1992/02/04 23:59:26 cph Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -97,9 +97,9 @@ MIT in each case. |#
   unspecific)
 
 (define starbase-graphics-device-type)
-
+
 (define-structure (starbase-graphics-descriptor
-		   (conc-name starbase-descriptor/)
+		   (conc-name starbase-graphics-descriptor/)
 		   (constructor make-starbase-descriptor (identifier)))
   (identifier false read-only true)
   x-left
@@ -115,18 +115,18 @@ MIT in each case. |#
   (starbase-graphics-descriptor/identifier
    (graphics-device/descriptor device)))
 
-(let-syntax ((define-accessors-and-mutators
-	       (macro (name)
-		 `(begin
-		    (define (,(symbol-append 'starbase-device/ name) device)
-		      (,(symbol-append 'starbase-graphics-descriptor/ name)
-		       (graphics-device/descriptor device)))
-		    (define (,(symbol-append 'set-starbase-device/ name '!)
-			     device value)
-		      (,(symbol-append
-			 'set-starbase-graphics-descriptor/ name '!)
-		       (graphics-device/descriptor device)
-		       value))))))
+(let-syntax
+    ((define-accessors-and-mutators
+       (macro (name)
+	 `(BEGIN
+	    (DEFINE (,(symbol-append 'STARBASE-DEVICE/ name) DEVICE)
+	      (,(symbol-append 'STARBASE-GRAPHICS-DESCRIPTOR/ name)
+	       (GRAPHICS-DEVICE/DESCRIPTOR DEVICE)))
+	    (DEFINE (,(symbol-append 'SET-STARBASE-DEVICE/ name '!)
+		     DEVICE VALUE)
+	      (,(symbol-append 'SET-STARBASE-GRAPHICS-DESCRIPTOR/ name '!)
+	       (GRAPHICS-DEVICE/DESCRIPTOR DEVICE)
+	       VALUE))))))
   (define-accessors-and-mutators x-left)
   (define-accessors-and-mutators y-bottom)
   (define-accessors-and-mutators x-right)

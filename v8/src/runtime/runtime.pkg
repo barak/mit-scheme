@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.131 1992/01/30 00:38:28 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.132 1992/02/04 23:59:37 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -2029,6 +2029,11 @@ MIT in each case. |#
   (files "x11graph")
   (parent ())
   (export ()
+	  x-character-bounds/ascent
+	  x-character-bounds/descent
+	  x-character-bounds/lbearing
+	  x-character-bounds/rbearing
+	  x-character-bounds/width
 	  x-close-all-displays
 	  x-close-display
 	  x-colormap/allocate-color
@@ -2037,6 +2042,16 @@ MIT in each case. |#
 	  x-colormap/store-color
 	  x-colormap/store-colors
 	  x-colormap?
+	  x-font-structure/all-chars-exist?
+	  x-font-structure/character-bounds
+	  x-font-structure/default-char
+	  x-font-structure/direction
+	  x-font-structure/max-ascent
+	  x-font-structure/max-bounds
+	  x-font-structure/max-descent
+	  x-font-structure/min-bounds
+	  x-font-structure/name
+	  x-font-structure/start-index
 	  x-geometry-string
 	  x-graphics-device-type
 	  x-image/destroy
@@ -2049,21 +2064,7 @@ MIT in each case. |#
 	  x-image/width
 	  x-image?
 	  x-open-display
-	  x-font-structure/name
-	  x-font-structure/direction
-	  x-font-structure/all-chars-exist
-	  x-font-structure/default-char
-	  x-font-structure/min-bounds
-	  x-font-structure/max-bounds
-	  x-font-structure/start-index
-	  x-font-structure/character-bounds
-	  x-font-structure/max-ascent
-	  x-font-structure/max-descent
-	  x-character-bounds/lbearing
-	  x-character-bounds/rbearing
-	  x-character-bounds/width
-	  x-character-bounds/ascent
-	  x-character-bounds/descent)
+	  )
   (initialization (initialize-package!)))
 
 (define-package (runtime starbase-graphics)
