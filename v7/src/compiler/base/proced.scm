@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: proced.scm,v 4.22 2001/10/22 19:10:46 cph Exp $
+$Id: proced.scm,v 4.23 2001/10/24 00:46:29 cph Exp $
 
 Copyright (c) 1988-1990, 1999, 2001 Massachusetts Institute of Technology
 
@@ -59,10 +59,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   alist			;random bits of information [assq list]
   debugging-info	;[dbg-procedure or dbg-continuation]
   )
-
+
 ;; (1) The first meaning is used during closure analysis.
 ;;     The second meaning is used during side-effect analysis.
-
+
 (define *procedures*)
 
 (define (make-procedure type block name required optional rest names values
@@ -119,6 +119,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-integrable (rvalue/procedure? rvalue)
   (eq? (tagged-vector/tag rvalue) procedure-tag))
+
+(define (rvalue/true-procedure? rvalue)
+  (and (rvalue/procedure? rvalue)
+       (not (procedure-continuation? rvalue))))
 
 (define (procedure-arity-correct? procedure argument-count)
   (let ((number-required (length (procedure-required procedure))))
