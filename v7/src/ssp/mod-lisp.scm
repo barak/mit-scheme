@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.14 2004/11/22 16:23:34 cph Exp $
+$Id: mod-lisp.scm,v 1.15 2004/11/22 19:17:45 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -719,12 +719,13 @@ USA.
 (define (http-request-pathname)
   *current-pathname*)
 
-(define (http-response-header keyword datum #!optional override?)
+(define (http-response-header keyword datum #!optional overwrite?)
   (guarantee-symbol keyword 'HTTP-RESPONSE-HEADER)
   (guarantee-string datum 'HTTP-RESPONSE-HEADER)
   (if (memq keyword '(STATUS CONTENT-LENGTH))
       (error "Illegal header keyword:" keyword))
-  (if (if (default-object? override?) #f override?)
+  (if (or (eq? keyword 'CONTENT-TYPE)
+	  (if (default-object? overwrite?) #f overwrite?))
       (set-header *current-response* keyword datum)
       (add-header *current-response* keyword datum)))
 
