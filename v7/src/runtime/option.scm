@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.19 1993/02/25 09:14:09 gjr Exp $
+$Id: option.scm,v 14.20 1993/08/30 22:40:01 ziggy Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -76,6 +76,13 @@ MIT in each case. |#
     (HASH-TABLE ((RUNTIME HASH-TABLE) (INITIALIZE-PACKAGE!) "hashtb"))
     (KRYPT ((RUNTIME KRYPT) #F "krypt"))
     (SUBPROCESS ((RUNTIME SUBPROCESS) (INITIALIZE-PACKAGE!) "process"))
+    (PC-SAMPLE ((RUNTIME PC-SAMPLE) (INITIALIZE-PACKAGE!) "pcsample" "binutl")
+	       ((RUNTIME PC-SAMPLE INTERP-PROC-PROFILING) (INITIALIZE-PACKAGE!)
+							  "iproprof")
+	       ((RUNTIME PC-SAMPLE  CODE-BLOCK-PROFILING) (INITIALIZE-PACKAGE!)
+							  "coblprof")
+	       ((RUNTIME PC-SAMPLE DISPLAY) (INITIALIZE-PACKAGE!) "pcsdisp")
+	       )
     ))
 
 (define loaded-options
