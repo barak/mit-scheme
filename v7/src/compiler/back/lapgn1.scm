@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.30 1987/05/13 10:59:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.31 1987/05/14 10:56:30 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -230,8 +230,8 @@ MIT in each case. |#
 (define-integrable (reference-assignment-alias! register type)
   (register-reference (allocate-assignment-alias! register type)))
 
-(define-integrable (reference-temporary-register! register type)
-  (register-reference (allocate-temporary-register! register type)))
+(define-integrable (reference-temporary-register! type)
+  (register-reference (allocate-temporary-register! type)))
 
 (define (move-to-alias-register! source type target)
   (reuse-pseudo-register-alias! source type
