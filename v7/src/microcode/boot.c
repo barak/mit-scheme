@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.82 1993/08/03 08:29:38 gjr Exp $
+$Id: boot.c,v 9.83 1993/08/21 01:45:16 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -115,7 +115,7 @@ DEFUN (main_name, (argc, argv),
 {
   init_exit_scheme ();
   scheme_program_name = (argv[0]);
-  initial_C_stack_pointer = (&argc);
+  initial_C_stack_pointer = ((PTR) (&argc));
   obstack_init (&scratch_obstack);
   reload_saved_string = 0;
   reload_saved_string_length = 0;
@@ -126,9 +126,9 @@ DEFUN (main_name, (argc, argv),
       extern SCHEME_OBJECT compiler_utilities;
       extern void EXFUN (compiler_reset, (SCHEME_OBJECT));
 
-      if (! ((Heap_Size == option_heap_size)
-	     && (Stack_Size == option_stack_size)
-	     && (Constant_Size == option_constant_size)))
+      if (! ((Heap_Size == ((long) option_heap_size))
+	     && (Stack_Size == ((long) option_stack_size))
+	     && (Constant_Size == ((long) option_constant_size))))
 	{
 	  outf_error ("%s: warning: ignoring allocation parameters.\n",
 		      scheme_program_name);
@@ -319,12 +319,16 @@ DEFUN_VOID (make_fixed_objects_vector)
     
     NT_initialize_fov (fixed_objects_vector);
   }
-#endif
+#endif /* WINNT */
 
   return (fixed_objects_vector);
 }
 
 /* Boot Scheme */
+
+#ifndef ENTRY_HOOK
+#  define ENTRY_HOOK() do { } while (0)
+#endif
 
 static void
 DEFUN (Start_Scheme, (Start_Prim, File_Name),
@@ -376,7 +380,7 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
       *Free++ = FName;
       expr = MAKE_POINTER_OBJECT (TC_PCOMB1, inner_arg);
       break;
-
+
     case BOOT_GET_WORK:		/* ((GET-WORK)) */
       prim = make_primitive ("GET-WORK");
       inner_arg = Free;
@@ -430,23 +434,36 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
     outf_fatal ("Configuration won't hold initial data.\n");
     termination_init_error ();
   }
-#ifdef ENTRY_HOOK
   ENTRY_HOOK ();
-#endif
   Enter_Interpreter ();
 }
+
+#ifdef WINNT
+  extern void EXFUN (WinntEnterHook, (void (*) (void)));
+# define HOOK_ENTER_INTERPRETER WinntEnterHook
+#endif
 
-extern SCHEME_OBJECT EXFUN (Re_Enter_Interpreter, (void));
+#ifndef HOOK_ENTER_INTERPRETER
+#  define HOOK_ENTER_INTERPRETER(func) func ()
+#endif
 
 static void
-DEFUN_VOID (Enter_Interpreter)
+DEFUN_VOID (Do_Enter_Interpreter)
 {
   Interpret (scheme_dumped_p);
   outf_fatal ("\nThe interpreter returned to top level!\n");
   Microcode_Termination (TERM_EXIT);
 }
 
+static void
+DEFUN_VOID (Enter_Interpreter)
+{
+  HOOK_ENTER_INTERPRETER (Do_Enter_Interpreter);
+}
+
 /* This must be used with care, and only synchronously. */
+
+extern SCHEME_OBJECT EXFUN (Re_Enter_Interpreter, (void));
 
 SCHEME_OBJECT
 DEFUN_VOID (Re_Enter_Interpreter)
