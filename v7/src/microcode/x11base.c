@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.3 1989/06/27 10:09:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.4 1989/07/05 19:08:45 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -159,7 +159,7 @@ x_error_handler (display, error_event)
   char buffer [2048];
 
   XGetErrorText (display, (error_event -> error_code),
-		 (& buffer), (sizeof (buffer)));
+		 buffer, (sizeof (buffer)));
   fprintf (stderr, "\nX Error: %s\n", buffer);
   fprintf (stderr, "         Request code: %d\n",
 	   (error_event -> request_code));
