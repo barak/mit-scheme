@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.75 1993/06/24 05:44:06 gjr Exp $
+$Id: interp.c,v 9.76 1993/06/24 05:52:20 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -585,8 +585,9 @@ Repeat_Dispatch:
 Do_Expression:
 
   if (Eval_Debug)
-  { Print_Expression(Fetch_Expression(), "Eval, expression");
-    printf ("\n");
+  {
+    Print_Expression ((Fetch_Expression ()), "Eval, expression");
+    outf_console ("\n");
   }
 
 /* The expression register has an Scode item in it which
@@ -998,9 +999,10 @@ Pop_Return_Non_Trapping:
     Microcode_Termination (TERM_BAD_STACK);
   }
   if (Eval_Debug)
-  { Print_Return("Pop_Return, return code");
-    Print_Expression(Val, "Pop_Return, value");
-    printf ("\n");
+  {
+    Print_Return ("Pop_Return, return code");
+    Print_Expression (Val, "Pop_Return, value");
+    outf_console ("\n");
   };
 
   /* Dispatch on the return code.  A BREAK here will cause
@@ -1426,7 +1428,7 @@ external_assignment_return:
       if ((! (Valid_Fixed_Obj_Vector())) ||
 	  ((handler = (Get_Fixed_Obj_Slot(Trap_Handler))) == SHARP_F))
       {
-	fprintf(stderr, "There is no trap handler for recovery!\n");
+	outf_fatal ("There is no trap handler for recovery!\n");
 	termination_trap ();
 	/*NOTREACHED*/
       }
