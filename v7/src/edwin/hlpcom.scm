@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: hlpcom.scm,v 1.111 2000/02/23 22:59:01 cph Exp $
+;;; $Id: hlpcom.scm,v 1.112 2000/02/23 23:00:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -400,6 +400,7 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 		  (find-escape next comtabs))))
 	 (new-mode
 	  (lambda (argument next comtabs)
+	    comtabs
 	    (find-escape next
 			 (mode-comtabs (name->mode argument 'ERROR)))))
 	 (quote-next
