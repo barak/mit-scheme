@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rexp.scm,v 1.10 2000/04/13 19:47:34 cph Exp $
+;;; $Id: rexp.scm,v 1.11 2000/04/13 20:14:59 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -193,7 +193,7 @@
 		 ((NOT-SYNTAX-CHAR) (string-append "\\S" (syntax-type)))
 		 (else (lose))))))
 	  (else (lose)))))
-
+
 (define (case-fold-string s)
   (let ((end (string-length s)))
     (let loop ((start 0) (parts '()))
@@ -211,3 +211,26 @@
 			  (substring s start index))
 			 parts))
 	    (apply string-append (reverse! parts)))))))
+
+(define (separated-append tokens separator)
+  (cond ((not (pair? tokens)) "")
+	((not (pair? (cdr tokens))) (car tokens))
+	(else
+	 (let ((string
+		(make-string
+		 (let ((ns (string-length separator)))
+		   (do ((tokens (cdr tokens) (cdr tokens))
+			(count (string-length (car tokens))
+			       (fix:+ count
+				      (fix:+ (string-length (car tokens))
+					     ns))))
+		       ((not (pair? tokens)) count))))))
+	   (let loop
+	       ((tokens (cdr tokens))
+		(index (string-move! (car tokens) string 0)))
+	     (if (pair? tokens)
+		 (loop (cdr tokens)
+		       (string-move! (car tokens)
+				     string
+				     (string-move! separator string index)))))
+	   string))))
