@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.1 1987/12/30 07:06:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.2 1987/12/30 10:53:57 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -105,9 +105,10 @@ MIT in each case. |#
 		      (LAP (MOV L (@PCR ,(constant->label primitive)) (D 6))
 			   (JMP ,entry:compiler-primitive-apply)))
 		     ((= arity -1)
-		      (LAP (MOV L (& ,frame-size) ,reg:lexpr-primitive-arity)
+		      (LAP (MOV L (& ,(-1+ frame-size))
+				,reg:lexpr-primitive-arity)
 			   (MOV L (@PCR ,(constant->label primitive)) (D 6))
-			   (JMP ,entry:compiler-primitive-apply)))
+			   (JMP ,entry:compiler-primitive-lexpr-apply)))
 		     (else
 		      ;; Unknown primitive arity.  Go through apply.
 		      (LAP ,(load-dnw frame-size 0)
