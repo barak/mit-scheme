@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.8 1995/01/19 01:27:46 adams Exp $
+$Id: utils.scm,v 1.9 1995/01/22 16:20:56 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -431,7 +431,7 @@ MIT in each case. |#
 	     (clobber-letrec! form))
 	    ((LET LAMBDA)
 	     (let ((body (caddr form)))
-	       (if (and (pair? body) (eq? (car body) 'LETREC))
+	       (if (LETREC/? body)
 		   (clobber-letrec! body)
 		   (set-car! (cddr form)
 			     `(LETREC ((,lamname ,form*))
@@ -452,8 +452,8 @@ MIT in each case. |#
   (let walk ((form form))
     (cond ((not (pair? form))
 	   form)
-	  ((eq? 'QUOTE (car form))
-	   `(QUOTE ,(cadr form)))
+	  ((QUOTE/? form)
+	   `(QUOTE ,(quote/text form)))
 	  (else
 	   (cons (walk (car form))
 		 (walk (cdr form)))))))
@@ -465,8 +465,8 @@ MIT in each case. |#
 	     (if (not place)
 		 form
 		 (cadr place))))
-	  ((eq? 'QUOTE (car form))
-	   `(QUOTE ,(cadr form)))
+	  ((QUOTE/? form)
+	   `(QUOTE ,(quote/text form)))
 	  (else
 	   (cons (walk (car form))
 		 (walk (cdr form)))))))
@@ -481,10 +481,12 @@ MIT in each case. |#
 
   (define (uninteresting expr)
     (cond ((not (pair? expr)) expr)
-	  ((or (QUOTE/? expr)
-	       (LOOKUP/? expr)
-	       (DECLARE/? expr))
-	   (list-copy expr))
+	  ((QUOTE/? expr)
+	   `(QUOTE ,(quote/text expr)))
+	  ((LOOKUP/? expr)
+	   `(LOOKUP ,(lookup/name expr)))
+	  ((DECLARE/? expr)
+	   `(DECLARE ,@(list-copy (declare/declarations expr))))
 	  ((LAMBDA/? expr)
 	   `(LAMBDA ,(lambda/formals expr) ,(copy (lambda/body expr))))
 	  ((LET/? expr)
@@ -524,15 +526,14 @@ Example use of FORM/COPY-TRANSFORMING:
 	 (case (car expr)
 	   ((LOOKUP QUOTE LAMBDA) true)
 	   ((IF)
-	    (and (walk (cadr expr))
-		 (walk (caddr expr))
-		 (walk (cadddr expr))))
+	    (and (walk (if/predicate expr))
+		 (walk (if/consequent expr))
+		 (walk (if/alternate expr))))
 	   ((CALL)
-	    (let ((rator (cadr expr)))
-	      (and (pair? rator)
-		   (eq? (car rator) 'QUOTE)
-		   (operator/satisfies? (cadr rator) operator-properties)
-		   (for-all? (cddr expr) walk))))
+	    (let ((rator (call/operator expr)))
+	      (and (QUOTE/? rator)
+		   (operator/satisfies? (quote/text rator) operator-properties)
+		   (for-all? (call/cont-and-operands expr) walk))))
 	   (else false)))))
 
 (define (form/simple&side-effect-free? operand)
@@ -550,10 +551,11 @@ Example use of FORM/COPY-TRANSFORMING:
 	       (form/simple&side-effect-free? (caddr form))
 	       (form/simple&side-effect-free? (caddr form))))
 	 ((CALL)
-	  (let ((rator (cadr form)))
+	  (let ((rator (call/operator form)))
 	    (and (QUOTE/? rator)
-		 (operator/satisfies? (cadr rator) '(SIMPLE))
-		 (for-all? (cddr form) form/simple&side-effect-free?))))
+		 (operator/satisfies? (quote/text rator) '(SIMPLE))
+		 (for-all? (call/cont-and-operands form)
+		   form/simple&side-effect-free?))))
 	 (else false))))
 
 (define (pseudo-simple-operator? rator)
@@ -569,10 +571,11 @@ Example use of FORM/COPY-TRANSFORMING:
 	       (form/simple&side-effect-free? (caddr form))
 	       (form/simple&side-effect-free? (caddr form))))
 	 ((CALL)
-	  (let ((rator (cadr form)))
+	  (let ((rator (call/operator form)))
 	    (and (QUOTE/? rator)
-		 (pseudo-simple-operator? (cadr rator))
-		 (for-all? (cddr form) form/simple&side-effect-free?))))
+		 (pseudo-simple-operator? (quote/text rator))
+		 (for-all? (call/cont-and-operands form)
+		   form/simple&side-effect-free?))))
 	 (else false))))
 
 (define (binding-context-type keyword context bindings)
@@ -598,12 +601,10 @@ Example use of FORM/COPY-TRANSFORMING:
 
 (define (form/static? form)
   ;; This assumes that the operands are OK.
-  (and (pair? form)
-       (eq? (car form) 'CALL)
-       (let ((rator (cadr form)))
-	 (and (pair? rator)
-	      (eq? 'QUOTE (car rator))
-	      (operator/satisfies? (cadr rator) '(STATIC))))))
+  (and (CALL/? form)
+       (let ((rator (call/operator form)))
+	 (and (QUOTE/? rator)
+	      (operator/satisfies? (quote/text rator) '(STATIC))))))
 
 (define (form/free-vars form)
   (form/%free-vars form true))
