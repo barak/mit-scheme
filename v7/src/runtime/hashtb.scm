@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.25 2003/02/14 18:28:32 cph Exp $
+$Id: hashtb.scm,v 1.26 2003/03/13 03:15:41 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright 1990,1991,1993,1994,1995,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,6 +31,7 @@ USA.
 ;;;; Hash Table Structure
 
 (define-structure (hash-table
+		   (type-descriptor <hash-table>)
 		   (constructor make-hash-table
 				(key-hash
 				 key=?
@@ -376,34 +377,34 @@ USA.
 ;;;; Parameters
 
 (define hash-table/key-hash
-  (record-accessor hash-table 'KEY-HASH))
+  (record-accessor <hash-table> 'KEY-HASH))
 
 (define hash-table/key=?
-  (record-accessor hash-table 'KEY=?))
+  (record-accessor <hash-table> 'KEY=?))
 
 (define hash-table/make-entry
-  (record-accessor hash-table 'MAKE-ENTRY))
+  (record-accessor <hash-table> 'MAKE-ENTRY))
 
 (define hash-table/entry-key
-  (record-accessor hash-table 'ENTRY-KEY))
+  (record-accessor <hash-table> 'ENTRY-KEY))
 
 (define hash-table/entry-datum
-  (record-accessor hash-table 'ENTRY-DATUM))
+  (record-accessor <hash-table> 'ENTRY-DATUM))
 
 (define hash-table/set-entry-datum!
-  (record-accessor hash-table 'SET-ENTRY-DATUM!))
+  (record-accessor <hash-table> 'SET-ENTRY-DATUM!))
 
 (define hash-table/rehash-threshold
-  (record-accessor hash-table 'REHASH-THRESHOLD))
+  (record-accessor <hash-table> 'REHASH-THRESHOLD))
 
 (define hash-table/rehash-size
-  (record-accessor hash-table 'REHASH-SIZE))
+  (record-accessor <hash-table> 'REHASH-SIZE))
 
 (define hash-table/count
-  (record-accessor hash-table 'COUNT))
+  (record-accessor <hash-table> 'COUNT))
 
 (define hash-table/size
-  (record-accessor hash-table 'GROW-SIZE))
+  (record-accessor <hash-table> 'GROW-SIZE))
 
 (define (set-hash-table/rehash-threshold! table threshold)
   (guarantee-hash-table table 'SET-HASH-TABLE/REHASH-THRESHOLD!)
