@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/rvalue.scm,v 4.3 1988/06/14 08:33:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/rvalue.scm,v 4.4 1988/12/12 21:51:30 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -113,7 +113,7 @@ MIT in each case. |#
 ;;;; Reference
 
 (define-rvalue reference
-  block
+  context
   lvalue
   safe?)
 
@@ -141,7 +141,7 @@ MIT in each case. |#
   (lvalue-known-value (reference-lvalue reference)))
 
 (define (reference-to-known-location? reference)
-  (variable-in-known-location? (reference-block reference)
+  (variable-in-known-location? (reference-context reference)
 			       (reference-lvalue reference)))
 
 ;;; This type is only important while we use the `unassigned?' special
@@ -150,7 +150,7 @@ MIT in each case. |#
 ;;; efficiency of this construct won't matter anymore.
 
 (define-rvalue unassigned-test
-  block
+  context
   lvalue)
 
 (define (make-unassigned-test block lvalue)
