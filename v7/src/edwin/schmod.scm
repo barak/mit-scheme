@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: schmod.scm,v 1.40 1997/10/03 06:00:26 cph Exp $
+;;;	$Id: schmod.scm,v 1.41 1998/03/02 18:55:12 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -55,6 +55,8 @@
   "Major mode specialized for editing Scheme code.
 \\[lisp-indent-line] indents the current line for Scheme.
 \\[indent-sexp] indents the next s-expression.
+\\[scheme-complete-variable] completes the variable preceding point.
+\\[show-parameter-list] shows the parameters of the call surrounding point.
 
 The following commands evaluate Scheme expressions:
 
