@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.26 1987/07/23 21:51:03 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.27 1987/08/05 07:32:48 jinx Rel $ */
 
 /* String primitives. */
 
@@ -52,7 +52,6 @@ allocate_string (nbytes)
   count = ((BYTES_TO_POINTERS (nbytes + 1)) + 2);
   result = (allocate_non_marked_vector (TC_CHARACTER_STRING, count, true));
   set_string_length (result, nbytes);
-  Free += count;
   return (result);
 }
 
