@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.90 1989/04/28 22:50:16 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.91 1989/08/03 01:34:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -47,9 +47,33 @@
 
 (declare (usual-integrations))
 
-(define history '())
-(define current-file false)
-(define current-node false)
+(define info-buffer-name "*info*")
+
+(define-variable info-history
+  "List of info nodes user has visited.
+Each element of list is a vector #(FILENAME NODENAME BUFFERPOS)."
+  '())
+
+(define-variable info-current-file
+  "Info file that Info is now looking at, or #F."
+  false)
+
+(define-variable info-current-subfile
+  "Info subfile that is actually in the *info* buffer now,
+or #F if current info file is not split into subfiles."
+  false)
+
+(define-variable info-current-node
+  "Name of node that Info is now looking at, or #F."
+  false)
+
+(define-variable info-tag-table-start
+  "Mark pointing at beginning of current Info file's tag table,
+or #F if file has no tag table.")
+
+(define-variable info-tag-table-end
+  "Mark pointing at end of current Info file's tag table,
+or #F if file has no tag table.")
 
 (define-major-mode info fundamental "Info"
   "Info mode provides commands for browsing through the Info documentation tree.
@@ -85,25 +109,29 @@ s	Search through this Info file for specified regexp,
 	and select the node in which the next occurrence is found."
   (local-set-variable! syntax-table text-mode:syntax-table)
   (local-set-variable! case-fold-search true)
+  (local-set-variable! info-history (ref-variable info-history))
+  (local-set-variable! info-current-file false)
+  (local-set-variable! info-current-subfile false)
+  (local-set-variable! info-current-node false)
   (local-set-variable! info-tag-table-start false)
   (local-set-variable! info-tag-table-end false)
   (buffer-put! (current-buffer) 'MODELINE-STRING info-modeline-string))
-
+
 (define (info-modeline-string window)
   (string-append "--"
 		 (modeline-modified-string window)
-		 "-Info: ("
-		 (let ((pathname (buffer-pathname (window-buffer window))))
+		 "-Info:  ("
+		 (let ((pathname (ref-variable info-current-file)))
 		   (if pathname
-		       (pathname-name pathname)
+		       (pathname-name-string pathname)
 		       ""))
 		 ")"
-		 (or current-node "")
+		 (or (ref-variable info-current-node) "")
 		 "      "
 		 (modeline-mode-string window)
 		 "--"
 		 (modeline-percentage-string window)))
-
+
 (define-key 'info #\space 'scroll-up)
 (define-key 'info #\. 'beginning-of-buffer)
 (define-key 'info #\1 'info-first-menu-item)
@@ -162,13 +190,10 @@ Allowed only if the variable Info Enable Edit is not false."
   "Create a buffer for Info, the documentation browser program."
   ()
   (lambda ()
-    (let ((buffer (find-buffer "*Info*")))
+    (let ((buffer (find-buffer info-buffer-name)))
       (if buffer
 	  (select-buffer buffer)
-	  (begin (set! current-file false)
-		 (set! current-node false)
-		 (set! history '())
-		 ((ref-command info-directory)))))))
+	  ((ref-command info-directory))))))
 
 (define-command info-directory
   "Go to the Info directory node."
@@ -211,12 +236,12 @@ Allowed only if the variable Info Enable Edit is not false."
   "Go back to the last node visited."
   ()
   (lambda ()
-    (if (null? history)
+    (if (null? (ref-variable info-history))
 	(editor-error "This is the first Info node you have looked at"))
-    (let ((entry (car history)))
-      (set! history (cdr history))
+    (let ((entry (car (ref-variable info-history))))
+      (set-variable! info-history (cdr (ref-variable info-history)))
       (find-node (vector-ref entry 0) (vector-ref entry 1))
-      (set! history (cdr history))
+      (set-variable! info-history (cdr (ref-variable info-history)))
       (set-current-point!
        (mark+ (region-start (buffer-unclipped-region (current-buffer)))
 	      (vector-ref entry 2))))))
@@ -237,7 +262,12 @@ Allowed only if the variable Info Enable Edit is not false."
 
 (define-command info-search
   "Search for regexp, starting from point, and select node it's found in."
-  "sSearch (regexp)"
+  (lambda ()
+    (let ((regexp
+	   (prompt-for-string "Search (regexp)"
+			      (ref-variable info-previous-search))))
+      (set-variable! info-previous-search regexp)
+      (list regexp)))
   (lambda (regexp)
     (let ((regexp
 	   (if (string-null? regexp)
@@ -246,17 +276,58 @@ Allowed only if the variable Info Enable Edit is not false."
 		 (set-variable! info-previous-search regexp)
 		 regexp)))
 	  (buffer (current-buffer)))
-      (let ((mark
-	     (without-group-clipped! (buffer-group buffer)
-	       (lambda ()
-		 (re-search-forward regexp)))))
-	(if mark
-	    (begin
-	      (if (group-end? mark)	;then not in current node
-		  (record-current-node))
-	      (buffer-widen! buffer)
-	      (select-node buffer mark))
-	    (editor-failure))))))
+      (let ((original-file (ref-variable info-current-file))
+	    (original-subfile (ref-variable info-current-subfile))
+	    (original-node (ref-variable info-current-node))
+	    (original-point (mark-index (current-point)))
+	    (perform-search
+	     (lambda (start)
+	       (without-group-clipped! (buffer-group buffer)
+		 (lambda ()
+		   (re-search-forward regexp start)))))
+	    (win
+	     (lambda (mark)
+	       (buffer-widen! buffer)
+	       (select-buffer buffer)
+	       (select-node mark))))
+	(let ((mark (perform-search (current-point))))
+	  (if mark
+	      (win mark)
+	      (if (not original-subfile)
+		  (editor-error)
+		  (let loop
+		      ((subfiles
+			(let ((subfile (ref-variable info-current-subfile)))
+			  (let loop ((subfiles (subfile-list)))
+			    (if (pathname=? (subfile-pathname (car subfiles))
+					    subfile)
+				(cdr subfiles)
+				(loop (cdr subfiles)))))))
+		    (if (null? subfiles)
+			(begin
+			  (clear-message)
+			  (set-current-subfile! original-subfile)
+			  (select-node
+			   (mark+ (buffer-start buffer) original-point))
+			  (editor-error))
+			(begin
+			  (let ((pathname (subfile-pathname (car subfiles))))
+			    (message "Searching subfile "
+				     (pathname-name-string pathname)
+				     "...")
+			    (set-current-subfile! pathname))
+			  (let ((mark (perform-search (buffer-start buffer))))
+			    (if mark
+				(begin
+				  (clear-message)
+				  (win mark))
+				(loop (cdr subfiles))))))))))
+	(if (and original-file
+		 (not (and (pathname=? original-file
+				       (ref-variable info-current-file))
+			   (string-ci=? original-node
+					(ref-variable info-current-node)))))
+	    (record-node original-file original-node original-point))))))
 
 (define-command info-summary
   "Display a brief summary of all Info commands."
@@ -512,38 +583,64 @@ The name may be an abbreviation of the reference name."
 (define (find-node filename nodename)
   (let ((pathname
 	 (and filename
-	      (merge-pathnames (->pathname filename)
-			       (->pathname (ref-variable info-directory))))))
-    (if (and pathname (not (file-exists? pathname)))
-	(error "Info file does not exist" pathname))
-    (record-current-node)
-    (let ((buffer (find-or-create-buffer "*Info*")))
+	      (let ((pathname
+		     (let ((pathname (->pathname filename)))
+		       (merge-pathnames
+			pathname
+			;; Use Info's default directory,
+			;; unless filename is explicitly self-relative.
+			(if (let ((directory (pathname-directory pathname)))
+			      (and (pair? directory)
+				   (eq? (car directory) 'SELF)))
+			    (pathname-directory-path
+			     (current-default-pathname))
+			    (->pathname (ref-variable info-directory)))))))		(if (file-exists? pathname)
+		    pathname
+		    (let ((pathname*
+			   (pathname-new-name
+			    pathname
+			    (string-downcase (pathname-name pathname)))))
+		      (if (file-exists? pathname*)
+			  pathname*
+			  (editor-error "Info file does not exist: "
+					pathname))))))))
+    (let ((buffer (find-or-create-buffer info-buffer-name)))
+      (select-buffer buffer)
+      (if (ref-variable info-current-file)
+	  (record-node (ref-variable info-current-file)
+		       (ref-variable info-current-node)
+		       (mark-index (current-point))))
       ;; Switch files if necessary.
       (if (and pathname
-	       (not (and (buffer-pathname buffer)
-			 (pathname=? pathname (buffer-pathname buffer)))))
-	  (begin (buffer-reset! buffer)
-		 (read-buffer buffer pathname)
-		 (set-buffer-major-mode! buffer (ref-mode-object info))
-		 (find-tag-table buffer))
-	  (group-un-clip! (buffer-group buffer)))
+	       (let ((pathname* (ref-variable info-current-file)))
+		 (not (and pathname* (pathname=? pathname pathname*)))))
+	  (begin
+	    (read-buffer buffer pathname)
+	    (if (not (eq? (buffer-major-mode buffer) (ref-mode-object info)))
+		(set-buffer-major-mode! buffer (ref-mode-object info)))
+	    (find-tag-table buffer)
+	    (set-variable! info-current-file pathname)
+	    (set-variable! info-current-subfile false))
+	  (begin
+	    (if (not (eq? (buffer-major-mode buffer) (ref-mode-object info)))
+		(set-buffer-major-mode! buffer (ref-mode-object info)))
+	    (group-un-clip! (buffer-group buffer))))
       (set-buffer-read-only! buffer)
       (if (string=? nodename "*")
-	  (begin (set! current-file pathname)
-		 (set! current-node nodename)
-		 (select-buffer buffer))
-	  (select-node buffer
-		       (let ((end (buffer-end buffer)))
-			 (define (loop start)
-			   (let ((node (next-node start end)))
-			     (if node
-				 (if (let ((name (extract-node-name node)))
-				       (and name
-					    (string-ci=? nodename name)))
-				     node
-				     (loop node))
-				 (error "FIND-NODE: No such node" nodename))))
-			 (loop (node-search-start buffer nodename))))))))
+	  (begin
+	    (set-variable! info-current-subfile false)
+	    (set-variable! info-current-node nodename))
+	  (select-node
+	   (let ((end (buffer-end buffer)))
+	     (let loop ((start (node-search-start nodename)))
+	       (let ((node (next-node start end)))
+		 (if (not node)
+		     (editor-error "No such node: " nodename))
+		 (if (let ((name (extract-node-name node)))
+		       (and name
+			    (string-ci=? nodename name)))
+		     node
+		     (loop node))))))))))
 
 (define (parse-node-name name receiver)
   (let ((name (string-trim name)))
@@ -558,40 +655,31 @@ The name may be an abbreviation of the reference name."
 	      (error "PARSE-NODE-NAME: Missing close paren" name)))
 	(receiver false (if (string-null? name) "Top" name)))))
 
-(define (record-current-node)
-  (if current-file
-      (set! history
-	    (cons (vector current-file
-			  current-node
-			  (mark-index (current-point)))
-		  history))))
-
-(define (select-node buffer point)
+(define (select-node point)
   (let ((node (node-start point (group-start point))))
-    (set! current-file (buffer-pathname buffer))
-    (set! current-node (extract-node-name node))
-    ;; **** need to add active node hacking here ****
+    (set-variable! info-current-node (extract-node-name node))    ;; **** need to add active node hacking here ****
     (region-clip! (node-region node))
-    (select-buffer buffer)
     (set-current-point! point)))
-
+
+(define (record-node file node point)
+  (set-variable! info-history
+		 (cons (vector file node point)
+		       (ref-variable info-history))))
+
 (define (node-start start end)
-  (let ((mark (search-backward "\n" start end)))
-    (and mark
-	 (line-start mark 2))))
+  (line-start (search-backward "\n" start end 'ERROR) 2 'ERROR))
 
 (define (node-region node)
   (make-region node (node-end node)))
 
 (define (node-end node)
   (let ((end (group-end node)))
-    (define (loop start)
+    (let loop ((start node))
       (let ((mark (re-search-forward "[\f]" start)))
 	(cond ((not mark) end)
 	      ((char=? (extract-left-char (re-match-start 0)) #\newline)
 	       (mark-1+ (re-match-start 0)))
-	      (else (loop mark)))))
-    (loop node)))
+	      (else (loop mark)))))))
 
 (define (next-node start end)
   (let ((mark (search-forward "\n" start end)))
@@ -676,30 +764,124 @@ The name may be an abbreviation of the reference name."
   "\nEnd tag table\n")
 
 (define (find-tag-table buffer)
-  (let ((end (buffer-end buffer)))
-    (let ((mark (line-start end -8)))
-      (if mark
-	  (let ((tag-table-end
-		 (and (search-forward tag-table-end-string mark)
-		      (re-match-start 0))))
-	    (set-variable! info-tag-table-start
-			   (and tag-table-end
-				(search-backward tag-table-start-string
-						 tag-table-end)
-				(re-match-end 0)))
-	    (set-variable! info-tag-table-end tag-table-end))
-	  (begin
-	    (set-variable! info-tag-table-start false)
-	    (set-variable! info-tag-table-end false))))))
+  (let* ((end (buffer-end buffer))
+	 (mark (line-start end -8))
+	 (tag-table-end
+	  (and mark
+	       (search-forward tag-table-end-string mark)
+	       (re-match-start 0)))
+	 (tag-table-start
+	  (and tag-table-end
+	       (search-backward tag-table-start-string
+				tag-table-end)
+	       (re-match-end 0))))
+    (if (and tag-table-end (not tag-table-start))
+	(begin
+	  (message "Ill-formed tag table, ignoring")
+	  (editor-beep)))
+    ;; If this is an indirect file, read the top node into another
+    ;; buffer and set the marks to point at it.
+    (if (and tag-table-start
+	     (match-forward "(Indirect)\n" tag-table-start))
+	(let* ((buffer* (find-or-create-buffer " *info tag table*"))
+	       (group (buffer-group buffer*)))
+	  (insert-string (extract-string (buffer-start buffer)
+					 (buffer-end buffer))
+			 (buffer-start buffer*))
+	  (set-variable! info-tag-table-start
+			 (make-mark group (mark-index tag-table-start)))
+	  (set-variable! info-tag-table-end
+			 (make-mark group (mark-index tag-table-end))))
+	(begin
+	  (set-variable! info-tag-table-start tag-table-start)
+	  (set-variable! info-tag-table-end
+			 (and tag-table-start tag-table-end))))))
 
-(define (node-search-start buffer nodename)
-  (if (not (ref-variable info-tag-table-start))
-      (buffer-start buffer)
-      (let ((string (string-append "Node: " nodename "¢")))
-	(let ((mark (search-forward string
-				    (ref-variable info-tag-table-start)
-				    (ref-variable info-tag-table-end))))
-	  (or (and mark
-		   (mark+ (buffer-start buffer)
-			  (max 0 (- (with-input-from-mark mark read) 1000))))
-	      (buffer-start buffer))))))
+(define (node-search-start nodename)
+  (let ((buffer (current-buffer)))
+    (if (ref-variable info-tag-table-start)
+	(let ((mark
+	       (or (search-forward (string-append "Node: " nodename "\177")
+				   (ref-variable info-tag-table-start)
+				   (ref-variable info-tag-table-end))
+		   (editor-error "No such node: " nodename))))
+	  ;; Force order of events, since read-subfile has side-effect.
+	  (let ((index
+		 (let ((start (read-index-from-mark mark)))
+		   (if (mark~ (ref-variable info-tag-table-start)
+			      (buffer-start buffer))
+		       start
+		       (read-subfile start)))))
+	    (mark+ (buffer-start buffer) (max 0 (- index 1000)))))
+	(buffer-start buffer))))
+
+(define (read-subfile index)
+  (let loop
+      ((subfiles
+	(let ((subfiles (subfile-list)))
+	  (if (> (cdar subfiles) index)
+	      (editor-error "Illegal indirect index" index))
+	  subfiles)))
+    (if (or (null? (cdr subfiles))
+	    (> (cdadr subfiles) index))
+	(begin
+	  (set-current-subfile! (subfile-pathname (car subfiles)))
+	  (+ (- index (subfile-index (car subfiles)))
+	     (mark-index
+	      (let ((buffer (current-buffer)))
+		(search-forward "\n"
+				(buffer-start buffer)
+				(buffer-end buffer)
+				'ERROR)))))
+	(loop (cdr subfiles)))))
+
+(define (set-current-subfile! pathname)
+  (let ((subfile (ref-variable info-current-subfile)))
+    (if (or (not subfile)
+	    (not (pathname=? subfile pathname)))
+	(begin
+	  (read-buffer (current-buffer) pathname)
+	  (set-variable! info-current-subfile pathname)))))
+
+(define-integrable subfile-filename car)
+(define-integrable subfile-index cdr)
+
+(define (subfile-pathname subfile)
+  (merge-pathnames (->pathname (subfile-filename subfile))
+		   (ref-variable info-current-file)))
+
+(define (subfile-list)
+  (let ((result
+	 (let loop ((start
+		     (let ((start (ref-variable info-tag-table-start)))
+		       (search-forward "\n\nIndirect:\n"
+				       (group-start start)
+				       start
+				       'ERROR))))
+	   (if (match-forward "" start)
+	       '()
+	       (begin
+		 (search-forward ": " start (group-end start) 'ERROR)
+		 (let* ((colon (re-match-start 0))
+			(index (read-index-from-mark (re-match-end 0))))
+		   (cons (cons (extract-string start colon) index)
+			 (loop (line-start start 1 'ERROR)))))))))
+    (if (null? result)
+	(editor-error "Empty indirect file list"))
+    result))
+
+(define (read-index-from-mark mark)
+  (let ((lose
+	 (lambda ()
+	   (editor-error "Malformed index in Info file"))))
+    (bind-condition-handler '()
+	(lambda (condition)
+	  (and (not (condition/internal? condition))
+	       (error? condition)
+	       (lose)))
+      (lambda ()
+	(let ((index (with-input-from-mark mark read)))
+	  (if (and (integer? index)
+		   (positive? index))
+	      (-1+ index)
+	      (lose)))))))
