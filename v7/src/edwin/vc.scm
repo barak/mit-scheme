@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.26 1997/06/25 07:26:48 cph Exp $
+;;;	$Id: vc.scm,v 1.27 1997/07/21 04:36:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-97 Massachusetts Institute of Technology
 ;;;
@@ -158,10 +158,13 @@ Otherwise, the mod time of the file is the checkout time."
 		     (append! hooks (list vc-file-not-found-hook)))))
 
 (define (vc-mode-line master buffer)
-  (set-variable-local-value!
-   buffer
-   (ref-variable-object vc-mode-line-status)
-   (and master (string-append " " (vc-mode-line-status master buffer))))
+  (let ((variable (ref-variable-object vc-mode-line-status)))
+    (if master
+	(set-variable-local-value!
+	 buffer
+	 variable
+	 (string-append " " (vc-mode-line-status master buffer)))
+	(undefine-variable-local-value! buffer variable)))
   ;; root shouldn't modify a registered file without locking it first.
   (if (and master
 	   (= 0 (unix/current-uid))
