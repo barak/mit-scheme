@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/boot.scm,v 13.43 1987/04/17 00:58:33 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/boot.scm,v 13.44 1987/10/09 17:13:14 jinx Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -59,7 +59,7 @@
    WITH-INTERRUPT-MASK
    GET-FIXED-OBJECTS-VECTOR WITH-HISTORY-DISABLED
    PRIMITIVE-PROCEDURE-ARITY NOT FALSE?
-   UNSNAP-LINKS!
+   ;; UNSNAP-LINKS!
 
    ;; Environment
    LEXICAL-REFERENCE LEXICAL-ASSIGNMENT LOCAL-ASSIGNMENT
@@ -69,7 +69,6 @@
    EQ?
    PRIMITIVE-SET-TYPE MAKE-NON-POINTER-OBJECT
    PRIMITIVE-TYPE? PRIMITIVE-TYPE PRIMITIVE-DATUM
-   OBJECT-DANGEROUS? MAKE-OBJECT-SAFE MAKE-OBJECT-DANGEROUS
 
    ;; List Operations
    ;; (these appear here for the time being because the compiler

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 13.44 1987/05/19 13:16:48 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 13.45 1987/10/09 17:13:54 jinx Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -115,21 +115,20 @@
   (make-primitive-procedure 'STRING->SYMBOL))
 
 (define (symbol->string symbol)
-  (make-object-safe (&pair-car symbol)))
+  (&pair-car symbol))
 
 (define make-symbol string->uninterned-symbol)
 (define make-interned-symbol string->symbol)
 (define symbol-print-name symbol->string)
 
+;; NOTE: Both of these assume that there are no reference traps.
+;; They can cause great harm if used indiscriminately.
+
 (define (symbol-global-value symbol)
-  (make-object-safe (&pair-cdr symbol)))
+  (&pair-cdr symbol))
 
 (define (set-symbol-global-value! symbol value)
-  (&pair-set-cdr! symbol
-		  ((if (object-dangerous? (&pair-cdr symbol))
-		       make-object-dangerous
-		       make-object-safe)
-		   value)))
+  (&pair-set-cdr! symbol value))
 
 (define (make-named-tag name)
   (string->symbol (string-append "#[" name "]")))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/histry.scm,v 13.47 1987/06/04 21:08:49 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/histry.scm,v 13.48 1987/10/09 17:13:22 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -51,9 +51,11 @@
 	(return-address-pop-from-compiled-code
 	 (make-return-address
 	  (microcode-return 'POP-FROM-COMPILED-CODE)))
+	(hunk:make (make-primitive-procedure 'HUNK3-CONS))
+	(type-code:unmarked-history (microcode-type 'unmarked-history))
+	(type-code:marked-history (microcode-type 'marked-history))
 
 	;; VERTEBRA abstraction.
-	(make-vertebra (make-primitive-procedure 'HUNK3-CONS))
 	(vertebra-rib system-hunk3-cxr0)
 	(shallower-vertebra system-hunk3-cxr2)
 	(set-vertebra-rib! system-hunk3-set-cxr0!)
@@ -61,57 +63,84 @@
 	(set-shallower-vertebra! system-hunk3-set-cxr2!)
 
 	;; REDUCTION abstraction.
-	(make-reduction (make-primitive-procedure 'HUNK3-CONS))
 	(reduction-expression system-hunk3-cxr0)
 	(reduction-environment system-hunk3-cxr1)
 	(set-reduction-expression! system-hunk3-set-cxr0!)
 	(set-reduction-environment! system-hunk3-set-cxr1!)
-	(set-next-reduction! system-hunk3-set-cxr2!)
-	)
+	(set-next-reduction! system-hunk3-set-cxr2!))
 
 (declare (integrate-primitive-procedures
-	  (make-vertebra hunk3-cons)
+	  (hunk:make hunk3-cons)
 	  (vertebra-rib system-hunk3-cxr0)
 	  (shallower-vertebra system-hunk3-cxr2)
 	  (set-vertebra-rib! system-hunk3-set-cxr0!)
 	  (set-deeper-vertebra! system-hunk3-set-cxr1!)
 	  (set-shallower-vertebra! system-hunk3-set-cxr2!)
-	  (make-reduction hunk3-cons)
 	  (reduction-expression system-hunk3-cxr0)
 	  (reduction-environment system-hunk3-cxr1)
 	  (set-reduction-expression! system-hunk3-set-cxr0!)
 	  (set-reduction-environment! system-hunk3-set-cxr1!)
-	  (set-next-reduction! system-hunk3-set-cxr2!)))
+	  (set-next-reduction! system-hunk3-set-cxr2!))
+
+	 (integrate-operator history:mark history:unmark history:marked?))
+
+(define (history:unmark object)
+  (declare (integrate object))
+  (primitive-set-type type-code:unmarked-history object))
+
+(define (history:mark object)
+  (declare (integrate object))
+  (primitive-set-type type-code:marked-history object))
+
+(define (history:marked? object)
+  (declare (integrate object))
+  (primitive-type? type-code:marked-history object))
 
+;; Vertebra operations
+
+(declare (integrate-operator make-vertebra))
+
+(define (make-vertebra rib deeper shallower)
+  (declare (integrate rib deeper shallower))
+  (history:unmark (hunk:make rib deeper shallower)))
+
 (define (deeper-vertebra vertebra)
-  (make-object-safe (system-hunk3-cxr1 vertebra)))
+  (system-hunk3-cxr1 vertebra))
 
 (define (marked-vertebra? vertebra)
-  (object-dangerous? (system-hunk3-cxr1 vertebra)))
+  (history:marked? (system-hunk3-cxr1 vertebra)))
 
 (define (mark-vertebra! vertebra)
   (system-hunk3-set-cxr1!
    vertebra
-   (make-object-dangerous (system-hunk3-cxr1 vertebra))))
+   (history:mark (system-hunk3-cxr1 vertebra))))
 
 (define (unmark-vertebra! vertebra)
   (system-hunk3-set-cxr1! vertebra
-			  (make-object-safe (system-hunk3-cxr1 vertebra))))
+			  (history:unmark (system-hunk3-cxr1 vertebra))))
+
+;; Reduction operations
+
+(declare (integrate-operator make-reduction))
+
+(define (make-reduction expression environment next)
+  (declare (integrate expression environment next))
+  (history:unmark (hunk:make expression environment next)))
 
 (define (next-reduction reduction)
-  (make-object-safe (system-hunk3-cxr2 reduction)))
+  (system-hunk3-cxr2 reduction))
 
 (define (marked-reduction? reduction)
-  (object-dangerous? (system-hunk3-cxr2 reduction)))
+  (history:marked? (system-hunk3-cxr2 reduction)))
 
 (define (mark-reduction! reduction)
   (system-hunk3-set-cxr2!
    reduction
-   (make-object-dangerous (system-hunk3-cxr2 reduction))))
+   (history:mark (system-hunk3-cxr2 reduction))))
 
 (define (unmark-reduction! reduction)
   (system-hunk3-set-cxr2! reduction
-			  (make-object-safe (system-hunk3-cxr2 reduction))))
+			  (history:unmark (system-hunk3-cxr2 reduction))))
 
 (define (link-vertebrae previous next)
   (set-deeper-vertebra! previous next)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 3.2 1987/05/09 20:02:49 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 3.3 1987/10/09 17:18:47 jinx Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -57,7 +57,6 @@ MIT in each case. |#
     EQ?
     PRIMITIVE-SET-TYPE MAKE-NON-POINTER-OBJECT
     PRIMITIVE-TYPE? PRIMITIVE-TYPE PRIMITIVE-DATUM
-    OBJECT-DANGEROUS? MAKE-OBJECT-SAFE MAKE-OBJECT-DANGEROUS
 
     ;; Numbers
     ZERO? POSITIVE? NEGATIVE? 1+ -1+
