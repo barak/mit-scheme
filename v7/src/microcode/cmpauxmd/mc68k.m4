@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.22 1992/02/11 22:19:55 cph Exp $
+###	$Id: mc68k.m4,v 1.23 1992/09/25 01:19:13 cph Exp $
 ###
 ###	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ###
@@ -163,7 +163,11 @@ define(COMPARE_TYPE_CODE,
 
 ### External conventions
 
-	set	regblock_val,8		# from const.h (* 4)
+	set	regblock_memtop,0	# from const.h (* 4)
+	set	regblock_int_mask,4
+	set	regblock_val,8
+	set	regblock_stack_guard,44
+	set	regblock_int_code,48
 	set	address_mask,HEX(ADDRESS_MASK)
 
 # This must match the compiler (machin.scm)
@@ -173,7 +177,7 @@ define(dlink, %a4)			# Dynamic link register (contains a
 define(rfree, %a5)			# Free pointer
 define(regs, %a6)			# Pointer to Registers[0]
 define(rmask, %d7)			# Mask to clear type code
-define(rval,%d6)
+define(rval,%d6)			# Procedure value
 
 reference_external(Ext_Stack_Pointer)
 reference_external(Free)
@@ -633,3 +637,63 @@ define_generic_unary_predicate(negative,2a,lt)
 define_generic_binary(add,2b,fadd)
 define_generic_unary_predicate(positive,2c,gt)
 define_generic_unary_predicate(zero,2d,eq)
+
+### Close-coded stack and interrupt check for use when stack checking
+### is enabled.
+
+define_c_label(asm_stack_and_interrupt_check_12)
+	mov.l	&-12,-(%sp)
+	bra.b	stack_and_interrupt_check
+
+define_c_label(asm_stack_and_interrupt_check_14)
+	mov.l	&-14,-(%sp)
+	bra.b	stack_and_interrupt_check
+
+define_c_label(asm_stack_and_interrupt_check_18)
+	mov.l	&-18,-(%sp)
+	bra.b	stack_and_interrupt_check
+
+define_c_label(asm_stack_and_interrupt_check_22)
+	mov.l	&-22,-(%sp)
+	bra.b	stack_and_interrupt_check
+
+define_c_label(asm_stack_and_interrupt_check_24)
+	mov.l	&-24,-(%sp)
+#	bra.b	stack_and_interrupt_check
+
+### On entry, 4(%sp) contains the resumption address, and 0(%sp) is
+### the offset between the resumption address and the GC label
+### address.
+define_debugging_label(stack_and_interrupt_check)
+
+### If the Scheme stack pointer is <= Stack_Guard, then the stack has
+### overflowed -- in which case we must signal a stack-overflow interrupt.
+	cmp.l	%sp,regblock_stack_guard(regs)
+	bgt.b	stack_and_interrupt_check_1
+
+### Set the stack-overflow interrupt bit. If the stack-overflow
+### interrupt is disabled, skip forward to gc test.  Otherwise, set
+### MemTop to -1 and signal the interrupt.
+	bset	&0,regblock_int_code+3(regs)
+	btst	&0,regblock_int_mask+3(regs)
+	beq.b	stack_and_interrupt_check_1
+	mov.l	&-1,regblock_memtop(regs)
+	bra.b	stack_and_interrupt_check_2
+
+### If (Free >= MemTop), signal an interrupt.
+stack_and_interrupt_check_1:
+	cmp.l	rfree,regblock_memtop(regs)
+	bge.b	stack_and_interrupt_check_2
+
+### No action necessary -- return to resumption address.
+	addq.l	&4,%sp
+	rts
+
+### Must signal the interrupt -- return to GC label instead.
+stack_and_interrupt_check_2:
+	mov.l	%d0,-(%sp)
+	mov.l	4(%sp),%d0
+	add.l	%d0,8(%sp)
+	mov.l	(%sp),%d0
+	addq.l	&8,%sp
+	rts

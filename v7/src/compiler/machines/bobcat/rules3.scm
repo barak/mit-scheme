@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.33 1992/07/29 22:04:02 cph Exp $
+$Id: rules3.scm,v 4.34 1992/09/25 01:18:33 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -400,15 +400,21 @@ MIT in each case. |#
     (LAP (LABEL ,gc-label)
 	 (JSR ,entry)
 	 ,@(make-external-label code-word label)
-	 ,@(interrupt-check gc-label))))
+	 ,@(interrupt-check gc-label -12))))
 
-(define (interrupt-check gc-label)
-  (LAP (CMP L ,reg:compiled-memtop (A 5))
-       (B GE B (@PCR ,gc-label))
-       ,@(if compiler:generate-stack-checks?
-	     (LAP (CMP L ,reg:stack-guard (A 7))
-		  (B LE B (@PCR ,gc-label)))
-	     (LAP))))
+(define (interrupt-check gc-label gc-label-offset)
+  (if (not compiler:generate-stack-checks?)
+      (LAP (CMP L ,reg:compiled-memtop (A 5))
+	   (B GE B (@PCR ,gc-label)))
+      (LAP (JSR
+	    ,(case gc-label-offset
+	       ((-12) entry:compiler-stack-and-interrupt-check-12)
+	       ((-14) entry:compiler-stack-and-interrupt-check-14)
+	       ((-18) entry:compiler-stack-and-interrupt-check-18)
+	       ((-22) entry:compiler-stack-and-interrupt-check-22)
+	       ((-24) entry:compiler-stack-and-interrupt-check-24)
+	       (else (error "Illegal GC label offset:"
+			    gc-label-offset)))))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
@@ -431,7 +437,7 @@ MIT in each case. |#
 	   (LABEL ,gc-label)
 	   ,@(invoke-interface-jsr code:compiler-interrupt-ic-procedure)
 	   ,@(make-external-label expression-code-word internal-label)
-	   ,@(interrupt-check gc-label)))))
+	   ,@(interrupt-check gc-label -14)))))
 
 (define-rule statement
   (OPEN-PROCEDURE-HEADER (? internal-label))
@@ -498,21 +504,30 @@ long-word aligned and there is no need for shuffling.
 		  (internal-procedure-code-word rtl-proc)
 		  internal-label
 		  entry:compiler-interrupt-procedure))
-	  (LAP (LABEL ,gc-label)
-	       ,@(let ((distance (* 10 entry)))
-		   (cond ((zero? distance)
-			  (LAP))
-			 ((< distance 128)
-			  (LAP (MOVEQ (& ,distance) (D 0))
-			       (ADD L (D 0) (@A 7))))
-			 (else
-			  (LAP (ADD L (& ,distance) (@A 7))))))
-	       (JMP ,entry:compiler-interrupt-closure)
-	       ,@(make-external-label internal-entry-code-word
-				      external-label)
-	       (ADD UL (& ,(MC68020/make-magic-closure-constant entry)) (@A 7))
-	       (LABEL ,internal-label)
-	       ,@(interrupt-check gc-label))))))
+	  (with-values
+	      (lambda ()
+		(let ((distance (* 10 entry)))
+		  (cond ((zero? distance)
+			 (values (LAP)
+				 0))
+			((< distance 128)
+			 (values (LAP (MOVEQ (& ,distance) (D 0))
+				      (ADD L (D 0) (@A 7)))
+				 4))
+			(else
+			 (values (LAP (ADD L (& ,distance) (@A 7)))
+				 6)))))
+	    (lambda (adjustment adjustment-size)
+	      (LAP (LABEL ,gc-label)
+		   ,@adjustment
+		   (JMP ,entry:compiler-interrupt-closure)
+		   ,@(make-external-label internal-entry-code-word
+					  external-label)
+		   (ADD UL (& ,(MC68020/make-magic-closure-constant entry))
+			(@A 7))
+		   (LABEL ,internal-label)
+		   ,@(interrupt-check gc-label
+				      (- -18 adjustment-size)))))))))
 
 (define (MC68020/cons-closure target procedure-label min max size)
   (let* ((target (reference-target-alias! target 'ADDRESS))
@@ -593,7 +608,7 @@ long-word aligned and there is no need for shuffling.
 				      external-label)
 	       (ADD UL (& ,(MC68040/make-magic-closure-constant entry)) (@A 7))
 	       (LABEL ,internal-label)
-	       ,@(interrupt-check gc-label))))))
+	       ,@(interrupt-check gc-label -18))))))
 
 (define (MC68040/cons-closure target procedure-label min max size)
   (MC68040/with-allocated-closure target 1 size

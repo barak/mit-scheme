@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.30 1992/02/12 15:47:58 jinx Exp $
+$Id: mc68k.h,v 1.31 1992/09/25 01:19:03 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -58,10 +58,11 @@ MIT in each case. */
 
 /* Machine parameters to be set by the user. */
 
-/* Processor type.  Choose a number from the above list, or allocate your own. */
+/* Processor type.
+   Choose a number from the above list, or allocate your own. */
 
 #ifndef COMPILER_PROCESSOR_TYPE
-#  define COMPILER_PROCESSOR_TYPE		COMPILER_MC68020_TYPE
+#define COMPILER_PROCESSOR_TYPE		COMPILER_MC68040_TYPE
 #endif
 
 /* Size (in long words) of the contents of a floating point register if
@@ -471,11 +472,11 @@ do {									\
 
 /* This overrides the definition in cmpint.c because the code below
    depends on knowing it, and is inserted before the definition in
-   cmpint.c
- */
+   "cmpint.c". */
 
 #define COMPILER_REGBLOCK_N_FIXED	16
 
+#define COMPILER_REGBLOCK_START_HOOKS	COMPILER_REGBLOCK_N_FIXED
 #define COMPILER_REGBLOCK_N_HOOKS	80
 #define COMPILER_HOOK_SIZE		2	/* absolute jsr instruction */
 
@@ -483,11 +484,11 @@ do {									\
   (COMPILER_REGBLOCK_N_HOOKS * COMPILER_HOOK_SIZE)
 
 #define A6_TRAMPOLINE_TO_INTERFACE_OFFSET				\
-  ((COMPILER_REGBLOCK_N_FIXED + (2 * COMPILER_HOOK_SIZE)) *		\
+  ((COMPILER_REGBLOCK_START_HOOKS + (2 * COMPILER_HOOK_SIZE)) *		\
    (sizeof (SCHEME_OBJECT)))
 
 #define A6_CLOSURE_HOOK_OFFSET						\
-  ((COMPILER_REGBLOCK_N_FIXED + (37 * COMPILER_HOOK_SIZE)) *		\
+  ((COMPILER_REGBLOCK_START_HOOKS + (37 * COMPILER_HOOK_SIZE)) *	\
    (sizeof (SCHEME_OBJECT)))
 
 #ifdef IN_CMPINT_C
@@ -526,7 +527,7 @@ DEFUN_VOID (mc68k_reset_hook)
   extern void EXFUN (interface_initialize, (void));
 
   unsigned char * a6_value = ((unsigned char *) (&Registers[0]));
-  int offset = (COMPILER_REGBLOCK_N_FIXED * (sizeof (SCHEME_OBJECT)));
+  int offset = (COMPILER_REGBLOCK_START_HOOKS * (sizeof (SCHEME_OBJECT)));
 
   /* These must match machines/bobcat/lapgen.scm */
 
@@ -596,14 +597,15 @@ DEFUN_VOID (mc68k_reset_hook)
 
   SETUP_REGISTER (asm_generic_quotient);		/* 38 */
   SETUP_REGISTER (asm_generic_remainder);		/* 39 */
-#if 0
-  /* We are out of hook space! */
-
   SETUP_REGISTER (asm_generic_modulo);			/* 40 */
-#endif
+  SETUP_REGISTER (asm_stack_and_interrupt_check_12);	/* 41 */
+  SETUP_REGISTER (asm_stack_and_interrupt_check_14);	/* 42 */
+  SETUP_REGISTER (asm_stack_and_interrupt_check_18);	/* 43 */
+  SETUP_REGISTER (asm_stack_and_interrupt_check_22);	/* 44 */
+  SETUP_REGISTER (asm_stack_and_interrupt_check_24);	/* 45 */
 
   FLUSH_CACHE_INITIALIZE ();
-  FLUSH_I_CACHE_REGION (&Registers[COMPILER_REGBLOCK_N_FIXED],
+  FLUSH_I_CACHE_REGION (&Registers[COMPILER_REGBLOCK_START_HOOKS],
 			(COMPILER_REGBLOCK_N_HOOKS * COMPILER_HOOK_SIZE));
 
   interface_initialize ();

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.45 1992/07/29 22:04:20 cph Exp $
+$Id: lapgen.scm,v 4.46 1992/09/25 01:18:08 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -1138,11 +1138,16 @@ MIT in each case. |#
     closure-hook		; This doesn't have a code: counterpart.
     quotient
     remainder
-    ;; modulo			; We are out of hook space!
+    modulo
+    stack-and-interrupt-check-12 ; This doesn't have a code: counterpart.
+    stack-and-interrupt-check-14 ; This doesn't have a code: counterpart.
+    stack-and-interrupt-check-18 ; This doesn't have a code: counterpart.
+    stack-and-interrupt-check-22 ; This doesn't have a code: counterpart.
+    stack-and-interrupt-check-24 ; This doesn't have a code: counterpart.
     ))
 
 (define-integrable (invoke-interface code)
-  (LAP ,@(load-dnw code 0)
+  (LAP (MOVEQ (& ,code) (D 0))
        (JMP ,entry:compiler-scheme-to-interface)))
 
 #|
@@ -1151,12 +1156,12 @@ MIT in each case. |#
 ;; The others can be handled similarly.
 
 (define-integrable (invoke-interface-jsr code)
-  (LAP ,@(load-dnw code 0)
+  (LAP (MOVEQ (& ,code) (D 0))
        (LEA (@PCO 12) (A 0))
        (MOV L (A 0) (D 1))
        (JMP ,entry:compiler-scheme-to-interface)))
 |#
 
 (define-integrable (invoke-interface-jsr code)
-  (LAP ,@(load-dnw code 0)
+  (LAP (MOVEQ (& ,code) (D 0))
        (JSR ,entry:compiler-scheme-to-interface-jsr)))

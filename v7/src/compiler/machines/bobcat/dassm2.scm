@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.19 1992/08/11 02:25:29 jinx Exp $
+$Id: dassm2.scm,v 4.20 1992/09/25 01:17:58 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -338,7 +338,12 @@ MIT in each case. |#
 	   closure-hook
 	   quotient
 	   remainder
-	   ;; modulo		; No hook space.
+	   modulo
+	   stack-and-interrupt-check-12
+	   stack-and-interrupt-check-14
+	   stack-and-interrupt-check-18
+	   stack-and-interrupt-check-22
+	   stack-and-interrupt-check-24
 	   ))
       ;; Compiled code temporaries
       ,@(let loop ((i 0) (index first-temp))
