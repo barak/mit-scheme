@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.76 2001/12/20 18:56:59 cph Exp $
+$Id: make.scm,v 14.77 2001/12/20 21:20:40 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -25,28 +25,28 @@ USA.
 
 (declare (usual-integrations))
 
-((ucode-primitive set-interrupt-enables! 1) 0)
+(set-interrupt-enables! 0)
 
 ;; This must be defined as follows so that it is no part of a multi-define
 ;; itself.  It must also precede any other top-level definitions in this file
 ;; that are not performed directly using LOCAL-ASSIGNMENT.
 
-((ucode-primitive local-assignment 3)
+(local-assignment
  #f ;global environment
  'DEFINE-MULTIPLE
- (named-lambda (define-multiple env names values)
+ (lambda (env names values)
    (if (or (not (vector? names))
 	   (not (vector? values))
-	   (not (= (vector-length names) (vector-length values))))
-       (error "define-multiple: Invalid arguments" names values)
-       (let ((len (vector-length names)))
-	 (let loop ((i 0) (val unspecific))
-	   (if (>= i len)
-	       val
-	       (loop (1+ i)
-		     (local-assignment env
-				       (vector-ref names i)
-				       (vector-ref values i)))))))))
+	   (not (fix:= (vector-length names) (vector-length values))))
+       (error "DEFINE-MULTIPLE: Invalid arguments" names values))
+   (let ((len (vector-length names)))
+     (let loop ((i 0) (val unspecific))
+       (if (fix:< i len)
+	   (loop (fix:+ i 1)
+		 (local-assignment env
+				   (vector-ref names i)
+				   (vector-ref values i)))
+	   val)))))
 
 (define system-global-environment #f)
 
@@ -56,17 +56,18 @@ USA.
 ;; *MAKE-ENVIRONMENT is referred to by compiled code.  It must go
 ;; before the uses of the-environment later, and after apply above.
 (define (*make-environment parent names . values)
-  (apply ((ucode-primitive scode-eval 2)
-	  ((ucode-primitive system-pair-cons 3)
-	   (ucode-type lambda)
-	   ((ucode-primitive object-set-type 2)
-	    (ucode-type the-environment)
-	    0)
-	   names)
-	  parent)
-	 values))
+  (system-list->vector
+   (ucode-type environment)
+   (cons (system-pair-cons (ucode-type procedure)
+			   (system-pair-cons (ucode-type lambda)
+					     unspecific
+					     names)
+			   parent)
+	 values)))
 
-(let ((environment-for-package (let () (the-environment))))
+(let ((environment-for-package
+       (*make-environment system-global-environment
+			  (vector lambda-tag:unnamed))))
 
 (define-primitives
   (+ integer-add)
