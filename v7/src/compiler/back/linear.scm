@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.2 1988/06/14 08:10:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.3 1988/09/07 06:23:24 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,53 +36,58 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (bblock-linearize-bits bblock)
-  (node-mark! bblock)
-  (if (and (not (bblock-label bblock))
-	   (node-previous>1? bblock))
-      (bblock-label! bblock))
-  (let ((kernel
-	 (lambda ()
-	   (LAP ,@(bblock-instructions bblock)
-		,@(if (sblock? bblock)
-		      (linearize-sblock-next (snode-next bblock))
-		      (linearize-pblock bblock
-					(pnode-consequent bblock)
-					(pnode-alternative bblock)))))))
-    (if (bblock-label bblock)
-	(LAP ,(lap:make-label-statement (bblock-label bblock)) ,@(kernel))
-	(kernel))))
+(define (bblock-linearize-bits bblock queue-continuations!)
+  (define (linearize-bblock bblock)
+    (node-mark! bblock)
+    (queue-continuations! bblock)
+    (if (and (not (bblock-label bblock))
+	     (node-previous>1? bblock))
+	(bblock-label! bblock))
+    (let ((kernel
+	   (lambda ()
+	     (LAP ,@(bblock-instructions bblock)
+		  ,@(if (sblock? bblock)
+			(linearize-sblock-next
+			 (or (snode-next bblock)
+			     (sblock-continuation bblock)))
+			(linearize-pblock bblock
+					  (pnode-consequent bblock)
+					  (pnode-alternative bblock)))))))
+      (if (bblock-label bblock)
+	  (LAP ,(lap:make-label-statement (bblock-label bblock)) ,@(kernel))
+	  (kernel))))
 
-(define (linearize-sblock-next bblock)
-  (cond ((not bblock) (LAP))
-	((node-marked? bblock)
-	 (LAP ,(lap:make-unconditional-branch (bblock-label! bblock))))
-	(else (bblock-linearize-bits bblock))))
+  (define (linearize-sblock-next bblock)
+    (cond ((not bblock) (LAP))
+	  ((node-marked? bblock)
+	   (LAP ,(lap:make-unconditional-branch (bblock-label! bblock))))
+	  (else (linearize-bblock bblock))))
 
-(define (linearize-pblock pblock cn an)
-  (if (node-marked? cn)
-      (if (node-marked? an)
-	  (LAP ,@((pblock-consequent-lap-generator pblock) (bblock-label! cn))
-	       ,(lap:make-unconditional-branch (bblock-label! an)))
-	  (LAP ,@((pblock-consequent-lap-generator pblock) (bblock-label! cn))
-	       ,@(bblock-linearize-bits an)))
-      (if (node-marked? an)
-	  (LAP ,@((pblock-alternative-lap-generator pblock) (bblock-label! an))
-	       ,@(bblock-linearize-bits cn))
-	  (let ((label (bblock-label! cn))
-		(alternative (bblock-linearize-bits an)))
-	    (LAP ,@((pblock-consequent-lap-generator pblock) label)
-		 ,@alternative
-		 ,@(if (node-marked? cn)
-		       (LAP)
-		       (bblock-linearize-bits cn)))))))
+  (define (linearize-pblock pblock cn an)
+    (if (node-marked? cn)
+	(if (node-marked? an)
+	    (LAP ,@((pblock-consequent-lap-generator pblock)
+		    (bblock-label! cn))
+		 ,(lap:make-unconditional-branch (bblock-label! an)))
+	    (LAP ,@((pblock-consequent-lap-generator pblock)
+		    (bblock-label! cn))
+		 ,@(linearize-bblock an)))
+	(if (node-marked? an)
+	    (LAP ,@((pblock-alternative-lap-generator pblock)
+		    (bblock-label! an))
+		 ,@(linearize-bblock cn))
+	    (let ((label (bblock-label! cn))
+		  (alternative (linearize-bblock an)))
+	      (LAP ,@((pblock-consequent-lap-generator pblock) label)
+		   ,@alternative
+		   ,@(if (node-marked? cn)
+			 (LAP)
+			 (linearize-bblock cn)))))))
 
-(define (map-lap procedure objects)
-  (let loop ((objects objects))
-    (if (null? objects)
-	(LAP)
-	(LAP ,@(procedure (car objects))
-	     ,@(loop (cdr objects))))))
+  (linearize-bblock bblock))
 
 (define linearize-bits
-  (make-linearizer map-lap bblock-linearize-bits))
+  (make-linearizer bblock-linearize-bits
+    (lambda () (LAP))
+    (lambda (x y) (LAP ,@x ,@y))
+    identity-procedure))
