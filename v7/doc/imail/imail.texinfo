@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.13 2000/07/26 02:29:14 cph Exp $
+@comment $Id: imail.texinfo,v 1.14 2000/07/26 02:55:50 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -27,7 +27,7 @@ Free Documentation License".
 
 @titlepage
 @title{IMAIL User's Manual}
-@subtitle Edition 0.6 for IMAIL Version 1.4
+@subtitle Edition 0.7 for IMAIL Version 1.4
 @subtitle 25 July 2000
 @author by Chris Hanson
 
@@ -57,7 +57,6 @@ viewing and editing email, and how to customize its optional behavior.
 * Getting Started::             
 * Concepts::                    
 * Commands::                    
-* Variables::                   
 * GNU Free Documentation License::  
 * Key Index::                   
 * Command Index::               
@@ -150,8 +149,8 @@ to @code{load-option}.  Here is an example:
 Note that this is syntactically similar to Scheme's @code{set!} special
 form, but that it modifies the value of an Edwin editor variable rather
 than a Scheme variable.  There are several other variables that control
-how @acronym{IMAIL} connects to the server.  @xref{Variables}, for a
-complete list.  By default, @acronym{IMAIL} tries to connect to
+how @acronym{IMAIL} connects to the server.  @xref{Multiple Folders},
+for a complete list.  By default, @acronym{IMAIL} tries to connect to
 @samp{localhost} using port @code{143}, and to log in using the user
 name that you are logged in as.  This is the right default if you are
 using stunnel on the client.
@@ -465,7 +464,7 @@ are explicitly pointed out in their descriptions below; most other
 commands will force an @acronym{IMAP} folder into the online state if it
 is offline.
 
-@node Commands, Variables, Concepts, Top
+@node Commands, GNU Free Documentation License, Concepts, Top
 @chapter Commands
 
 @acronym{IMAIL} provides a rich set of commands for manipulating
@@ -494,9 +493,9 @@ specified.
 * MIME Support::                
 * Flags::                       
 * Sending Replies::             
+* Message Display::             
 * Summaries::                   
 * Other Commands::              
-* Differences between IMAIL and Rmail::  
 @end menu
 
 @node Navigation, Deleting Messages, Commands, Commands
@@ -1111,7 +1110,7 @@ Means you have resent the message.  Assigned by the command @kbd{C-u f}
 All other flags are assigned or removed only by the user, and have no
 standard meaning.
 
-@node Sending Replies, Summaries, Flags, Commands
+@node Sending Replies, Message Display, Flags, Commands
 @section Sending Replies
 
 @acronym{IMAIL} has several commands that use Mail mode to send outgoing
@@ -1252,7 +1251,66 @@ The @kbd{c} (@code{imail-continue}) command resumes editing the
 @samp{*mail*} buffer, to finish editing an outgoing message you were
 already composing, or to alter a message you have sent.
 
-@node Summaries, Other Commands, Sending Replies, Commands
+@node Message Display, Summaries, Sending Replies, Commands
+@section Message Display
+
+@acronym{IMAIL} provides several variables and commands to give you
+control over how messages are formatted in the message buffer.
+
+@vindex imail-auto-wrap
+By default, @acronym{IMAIL} automatically wraps long lines at the right
+margin.  It uses @dfn{adaptive fill}@footnote{see the online help for
+the variable @code{adaptive-fill-regexp} for more information about
+adaptive fill.} to do the wrapping, which means that common prefixes
+such as @samp{>} and @samp{Chris>} will be automatically added to the
+wrapped line.  Generally, this wrapping makes messages easier to read.
+Specifically, it is important for messages sent by clients that use
+``soft'' line breaks, because such clients expect the mail reader to
+wrap lines.  However, if you'd rather not have @acronym{IMAIL} do this
+for you, you can disable wrapping by setting the variable
+@code{imail-auto-wrap} to @code{#f}.
+
+@vindex imail-kept-headers
+Another feature of @acronym{IMAIL} is that it filters message headers,
+showing you only the most relevant ones.  There are two variables that
+control how this is done, and a command that can override the filtering.
+The variable @code{imail-kept-headers} contains a list of regular
+expressions that are matched against message-header names (the name is
+everything to the left of the colon, e.g. @samp{From} in @samp{From:
+cph}).  If @code{imail-kept-headers} is a non-empty list, then only the
+headers matching those regular expressions are shown.  Furthermore, the
+shown headers will be in the same order as the regular expressions.
+
+@vindex imail-ignored-headers
+If @code{imail-kept-headers} is an empty list, then all of the message
+headers are shown, except those matching the regular expression that is
+the value of the variable @code{imail-ignored-headers}.  By default, the
+value of @code{imail-ignored-headers} contains some common uninteresting
+header names; this expression is identical to the default used by Rmail.
+Note that @code{imail-ignored-headers} is a single regular expression,
+while @code{imail-kept-headers} is a list of regular expressions.  This
+is because @code{imail-ignored-headers} is meant to be an exact analog
+of the Rmail variable @code{rmail-ignored-headers}.
+
+@kindex t
+@findex imail-toggle-header
+Regardless of how the message-header filtering is done, you can toggle
+between viewing the filtered headers and the unfiltered headers using
+the @kbd{t} command (@code{imail-toggle-header}).  If filtered headers
+are shown, this command replaces them with unfiltered headers, and vice
+versa.
+
+@kindex C-c C-t
+@findex imail-toggle-message
+As you can see, @acronym{IMAIL} performs extensive transformation of a
+mail message before presenting it to you: @acronym{MIME} formatting,
+line wrapping, and header filtering.  Sometimes, it's desirable to see
+the original message, exactly as it was received, without any formatting
+at all.  The command @kbd{C-c C-t} toggles the entire message between
+a formatted view and a raw view.  This should be used with care, as a
+message with a large attachment might not fit in memory in its raw form.
+
+@node Summaries, Other Commands, Message Display, Commands
 @section Summaries
 
 A @dfn{summary} is a buffer containing one line per message to give you
@@ -1369,7 +1427,7 @@ while in the summary: @kbd{q} (@code{imail-summary-quit}) deletes the
 summary window, then exits from @acronym{IMAIL} by saving the Imail
 folder and switching to another buffer.
 
-@node Other Commands, Differences between IMAIL and Rmail, Summaries, Commands
+@node Other Commands,  , Summaries, Commands
 @section Other Commands
 
 @example
@@ -1377,61 +1435,12 @@ folder and switching to another buffer.
 (@code{imail-disconnect})
 (@code{imail-quit})
 (@code{imail-save-folder})
-(@code{imail-toggle-header})
-(@code{imail-toggle-message})
-@end example
 
-@node Differences between IMAIL and Rmail,  , Other Commands, Commands
-@section Differences between IMAIL and Rmail
-
-@node Variables, GNU Free Documentation License, Commands, Top
-@chapter Variables
-
-@menu
-* Appearance Options::          
-* Mail-Sending Options::        
-* Summary Options::             
-* Other Variables::             
-@end menu
-
-@node Appearance Options, Mail-Sending Options, Variables, Variables
-@section Appearance Options
-
-@example
-(@code{imail-auto-wrap})
-(@code{imail-ignored-headers})
-(@code{imail-kept-headers})
-(@code{imail-message-filter})
-@end example
-
-@node Mail-Sending Options, Summary Options, Appearance Options, Variables
-@section Mail-Sending Options
-
-@example
-(@code{imail-reply-with-re})
-@end example
-
-@node Summary Options, Other Variables, Mail-Sending Options, Variables
-@section Summary Options
-
-@example
-(@code{imail-summary-highlight-message})
-(@code{imail-summary-mode-hook})
-(@code{imail-summary-pop-up-message})
-(@code{imail-summary-show-date})
-(@code{imail-summary-subject-width})
-@end example
-
-@node Other Variables,  , Summary Options, Variables
-@section Other Variables
-
-@example
 (@code{imail-body-cache-limit})
-(@code{imail-mode-hook})
 (@code{imail-pass-phrase-retention-time})
 @end example
 
-@node GNU Free Documentation License, Key Index, Variables, Top
+@node GNU Free Documentation License, Key Index, Commands, Top
 @unnumbered GNU Free Documentation License
 
 @include gfdl.texinfo
