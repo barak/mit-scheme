@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.47 2002/11/20 19:46:15 cph Exp $
+$Id: uxio.c,v 1.48 2003/01/22 02:04:13 cph Exp $
 
-Copyright (c) 1990-2001 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
+Copyright 1996,1997,1998,2000,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -303,7 +304,7 @@ DEFUN (OS_channel_nonblocking, (channel), Tchannel channel)
        sets driver's FIONBIO flag for FNDELAY, but not FNBLOCK.  Note that
        driver will return EWOULDBLOCK, rather than EAGAIN. */
     int true = 1;
-    ioctl(fd,FIONBIO,&true);
+    ioctl (fd, FIONBIO, (&true));
   }
 #endif
   (CHANNEL_NONBLOCKING (channel)) = 1;
@@ -350,9 +351,391 @@ DEFUN (OS_channel_blocking, (channel), Tchannel channel)
 
 #ifdef HAVE_POLL
 
-/* poll(2) */
-
 CONST int OS_have_select_p = 1;
+
+struct select_registry_s
+{
+  unsigned int length;
+  unsigned int n_fds;
+  struct pollfd * entries;
+};
+
+#define MIN_SR_LENGTH 4
+#define SR_BYTES(length) ((sizeof (struct pollfd)) * (length))
+
+#define SR_LENGTH(r) ((r) -> length)
+#define SR_N_FDS(r) ((r) -> n_fds)
+#define SR_ENTRIES(r) ((r) -> entries)
+#define SR_ENTRY(r, i) ((SR_ENTRIES (r)) + (i))
+
+#define DECODE_MODE(mode)						\
+(((((mode) & SELECT_MODE_READ) != 0) ? POLLIN : 0)			\
+ | ((((mode) & SELECT_MODE_WRITE) != 0) ? POLLOUT : 0))
+
+#define ENCODE_MODE(revents)						\
+(((((revents) & POLLIN) != 0) ? SELECT_MODE_READ : 0)			\
+ | ((((revents) & POLLOUT) != 0) ? SELECT_MODE_WRITE : 0))
+
+select_registry_t
+DEFUN_VOID (OS_allocate_select_registry)
+{
+  struct select_registry_s * r
+    = (UX_malloc (sizeof (struct select_registry_s)));
+  (SR_LENGTH (r)) = MIN_SR_LENGTH;
+  (SR_N_FDS (r)) = 0;
+  (SR_ENTRIES (r)) = (UX_malloc (SR_BYTES (MIN_SR_LENGTH)));
+  return (r);
+}
+
+void
+DEFUN (OS_deallocate_select_registry, (registry), select_registry_t registry)
+{
+  struct select_registry_s * r = registry;
+  UX_free (SR_ENTRIES (r));
+  UX_free (r);
+}
+
+void
+DEFUN (OS_add_to_select_registry, (registry, fd, mode),
+       select_registry_t registry AND
+       int fd AND
+       unsigned int mode)
+{
+  struct select_registry_s * r = registry;
+  unsigned int i = 0;
+  while (i < (SR_N_FDS (r)))
+    {
+      if (((SR_ENTRY (r, i)) -> fd) == fd)
+	{
+	  ((SR_ENTRY (r, i)) -> events) |= (DECODE_MODE (mode));
+	  return;
+	}
+      i += 1;
+    }
+  if (i == (SR_LENGTH (r)))
+    {
+      unsigned int length = ((SR_LENGTH (r)) * 2);
+      (SR_ENTRIES (r)) = (UX_realloc ((SR_ENTRIES (r)), (SR_BYTES (length))));
+      (SR_LENGTH (r)) = length;
+    }
+  ((SR_ENTRY (r, i)) -> fd) = fd;
+  ((SR_ENTRY (r, i)) -> events) = (DECODE_MODE (mode));
+  (SR_N_FDS (r)) += 1;
+}
+
+void
+DEFUN (OS_remove_from_select_registry, (registry, fd, mode),
+       select_registry_t registry AND
+       int fd AND
+       unsigned int mode)
+{
+  struct select_registry_s * r = registry;
+  unsigned int i = 0;
+  while (1)
+    {
+      if (i == (SR_N_FDS (r)))
+	return;
+      if (((SR_ENTRY (r, i)) -> fd) == fd)
+	{
+	  ((SR_ENTRY (r, i)) -> events) &=~ (DECODE_MODE (mode));
+	  if (((SR_ENTRY (r, i)) -> events) == 0)
+	    break;
+	  return;
+	}
+      i += 1;
+    }
+  (SR_N_FDS (r)) -= 1;
+  while (i < (SR_N_FDS (r)))
+    {
+      (* (SR_ENTRY (r, i))) = (* (SR_ENTRY (r, (i + 1))));
+      i += 1;
+    }
+  if ((i < ((SR_LENGTH (r)) / 2))
+      && ((SR_LENGTH (r)) > MIN_SR_LENGTH))
+    {
+      unsigned int length = ((SR_LENGTH (r)) / 2);
+      (SR_ENTRIES (r)) = (UX_realloc ((SR_ENTRIES (r)), (SR_BYTES (length))));
+      (SR_LENGTH (r)) = length;
+    }
+}
+
+unsigned int
+DEFUN (OS_select_registry_length, (registry),
+       select_registry_t registry)
+{
+  struct select_registry_s * r = registry;
+  return (SR_N_FDS (r));
+}
+
+void
+DEFUN (OS_select_registry_result, (registry, index),
+       select_registry_t registry AND
+       unsigned int index AND
+       int * fd_r AND
+       unsigned int * mode_r)
+{
+  struct select_registry_s * r = registry;
+  (*fd_r) = ((SR_ENTRY (r, index)) -> fd);
+  (*mode_r) = (ENCODE_MODE ((SR_ENTRY (r, index)) -> revents));
+}
+
+int
+DEFUN (OS_test_select_registry, (registry, blockp),
+       select_registry_t registry AND
+       int blockp)
+{
+  struct select_registry_s * r = registry;
+  while (1)
+    {
+      int nfds
+	= (poll ((SR_ENTRIES (r)),
+		 (SR_N_FDS (r)),
+		 (blockp ? INFTIM : 0)));
+      if (nfds >= 0)
+	return (nfds);
+      if (errno != EINTR)
+	error_system_call (errno, syscall_select);
+      if (OS_process_any_status_change ())
+	return (SELECT_PROCESS_STATUS_CHANGE);
+      if (pending_interrupts_p ())
+	return (SELECT_INTERRUPT);
+    }
+}
+
+int
+DEFUN (OS_test_select_descriptor, (fd, blockp, mode),
+       int fd AND
+       int blockp AND
+       unsigned int mode)
+{
+  struct pollfd pfds [1];
+  ((pfds [0]) . fd) = fd;
+  ((pfds [0]) . events) = (DECODE_MODE (mode));
+  while (1)
+    {
+      int nfds = (poll (pfds, 1, (blockp ? INFTIM : 0)));
+      if (nfds > 0)
+	return (ENCODE_MODE ((pfds [0]) . revents));
+      if (nfds == 0)
+	return (0);
+      if (errno != EINTR)
+	error_system_call (errno, syscall_select);
+      if (OS_process_any_status_change ())
+	return (SELECT_PROCESS_STATUS_CHANGE);
+      if (pending_interrupts_p ())
+	return (SELECT_INTERRUPT);
+    }
+}
+
+#else /* not HAVE_POLL */
+
+#ifdef HAVE_SELECT
+CONST int OS_have_select_p = 1;
+#else
+CONST int OS_have_select_p = 0;
+#endif
+
+struct select_registry_s
+{
+  SELECT_TYPE qreaders;
+  SELECT_TYPE qwriters;
+  SELECT_TYPE rreaders;
+  SELECT_TYPE rwriters;
+  unsigned int n_fds;
+};
+
+#define SR_QREADERS(r) (& ((r) -> qreaders))
+#define SR_QWRITERS(r) (& ((r) -> qwriters))
+#define SR_RREADERS(r) (& ((r) -> rreaders))
+#define SR_RWRITERS(r) (& ((r) -> rwriters))
+#define SR_N_FDS(r) ((r) -> n_fds)
+
+#define SR_FD_ISSET(fd, r)						\
+((FD_ISSET ((fd), (SR_QREADERS (r))))					\
+ || (FD_ISSET ((fd), (SR_QWRITERS (r)))))
+
+#define SR_RMODE(r, fd)							\
+(((FD_ISSET ((fd), (SR_RREADERS (r)))) ? SELECT_MODE_READ : 0)		\
+ | ((FD_ISSET ((fd), (SR_RWRITERS (r)))) ? SELECT_MODE_WRITE : 0))
+
+select_registry_t
+DEFUN_VOID (OS_allocate_select_registry)
+{
+  struct select_registry_s * r
+    = (UX_malloc (sizeof (struct select_registry_s)));
+  FD_ZERO (SR_QREADERS (r));
+  FD_ZERO (SR_QWRITERS (r));
+  FD_ZERO (SR_RREADERS (r));
+  FD_ZERO (SR_RWRITERS (r));
+  (SR_N_FDS (r)) = 0;
+  return (r);
+}
+
+void
+DEFUN (OS_deallocate_select_registry, (registry), select_registry_t registry)
+{
+  struct select_registry_s * r = registry;
+  UX_free (r);
+}
+
+void
+DEFUN (OS_add_to_select_registry, (registry, fd, mode),
+       select_registry_t registry AND
+       int fd AND
+       unsigned int mode)
+{
+  struct select_registry_s * r = registry;
+  int was_set = (SR_FD_ISSET (fd, r));
+  if ((mode & SELECT_MODE_READ) != 0)
+    FD_SET (fd, (SR_QREADERS (r)));
+  if ((mode & SELECT_MODE_WRITE) != 0)
+    FD_SET (fd, (SR_QWRITERS (r)));
+  if ((!was_set) && (SR_FD_ISSET (fd, r)))
+    (SR_N_FDS (r)) += 1;
+}
+
+void
+DEFUN (OS_remove_from_select_registry, (registry, fd, mode),
+       select_registry_t registry AND
+       int fd AND
+       unsigned int mode)
+{
+  struct select_registry_s * r = registry;
+  int was_set = (SR_FD_ISSET (fd, r));
+  if ((mode & SELECT_MODE_READ) != 0)
+    FD_CLR (fd, (SR_QREADERS (r)));
+  if ((mode & SELECT_MODE_WRITE) != 0)
+    FD_CLR (fd, (SR_QWRITERS (r)));
+  if (was_set && (!SR_FD_ISSET (fd, r)))
+    (SR_N_FDS (r)) -= 1;
+}
+
+unsigned int
+DEFUN (OS_select_registry_length, (registry),
+       select_registry_t registry)
+{
+  struct select_registry_s * r = registry;
+  return (SR_N_FDS (r));
+}
+
+void
+DEFUN (OS_select_registry_result, (registry, index),
+       select_registry_t registry AND
+       unsigned int index AND
+       int * fd_r AND
+       unsigned int * mode_r)
+{
+  struct select_registry_s * r = registry;
+  unsigned int i = 0;
+  int fd;
+
+  while (fd = 0; (fd < FD_SETSIZE); fd += 1)
+    {
+      if (SR_FD_ISSET (fd, r))
+	{
+	  if (i < index)
+	    i += 1;
+	  else
+	    {
+	      (*fd_r) = fd;
+	      (*mode_r) = (SR_RMODE (r, fd));
+	      return;
+	    }
+	}
+    }
+}
+
+int
+DEFUN (OS_test_select_registry, (registry, blockp),
+       select_registry_t registry AND
+       int blockp)
+{
+#ifdef HAVE_SELECT
+  struct select_registry_s * r = registry;
+  while (1)
+    {
+      int nfds;
+
+      (* (SR_RREADERS (r))) = (* (SR_QREADERS (r)));
+      (* (SR_RWRITERS (r))) = (* (SR_QWRITERS (r)));
+      INTERRUPTABLE_EXTENT
+	(nfds,
+	 ((OS_process_any_status_change ())
+	  ? ((errno = EINTR), (-1))
+	  : (UX_select (FD_SETSIZE,
+			(SR_RREADERS (r)),
+			(SR_RWRITERS (r)),
+			0,
+			(blockp ? 0 : (&zero_timeout))))));
+      if (nfds >= 0)
+	return (nfds);
+      if (errno != EINTR)
+	error_system_call (errno, syscall_select);
+      if (OS_process_any_status_change ())
+	return (SELECT_PROCESS_STATUS_CHANGE);
+      if (pending_interrupts_p ())
+	return (SELECT_INTERRUPT);
+    }
+#else
+  error_system_call (ENOSYS, syscall_select);
+  return (1);
+#endif
+}
+
+int
+DEFUN (OS_test_select_descriptor, (fd, blockp, mode),
+       int fd AND
+       int blockp AND
+       unsigned int mode)
+{
+#ifdef HAVE_SELECT
+  while (1)
+    {
+      SELECT_TYPE readable;
+      SELECT_TYPE writeable;
+      int nfds;
+
+      FD_ZERO (&readable);
+      if ((mode & SELECT_MODE_READ) != 0)
+	FD_SET (fd, (&readable));
+
+      FD_ZERO (&writeable);
+      if ((mode & SELECT_MODE_WRITE) != 0)
+	FD_SET (fd, (&writeable));
+      
+      INTERRUPTABLE_EXTENT
+	(nfds,
+	 ((OS_process_any_status_change ())
+	  ? ((errno = EINTR), (-1))
+	  : (UX_select (1,
+			(&readable),
+			(&writeable),
+			0,
+			(blockp ? 0 : (&zero_timeout))))));
+      if (nfds > 0)
+	return
+	  (((FD_ISSET (fd, (&readable))) ? SELECT_MODE_READ : 0)
+	   | ((FD_ISSET (fd, (&writeable))) ? SELECT_MODE_WRITE : 0));
+      if (nfds == 0)
+	return (0);
+      if (errno != EINTR)
+	error_system_call (errno, syscall_select);
+      if (OS_process_any_status_change ())
+	return (SELECT_PROCESS_STATUS_CHANGE);
+      if (pending_interrupts_p ())
+	return (SELECT_INTERRUPT);
+    }
+#else
+  error_system_call (ENOSYS, syscall_select);
+  return (1);
+#endif
+}
+
+#endif /* not HAVE_POLL */
+
+#ifdef HAVE_POLL
+
+/* poll(2) */
 
 unsigned int
 DEFUN_VOID (UX_select_registry_size)
@@ -516,12 +899,6 @@ DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
 #else /* not HAVE_POLL */
 
 /* select(2) */
-
-#ifdef HAVE_SELECT
-CONST int OS_have_select_p = 1;
-#else
-CONST int OS_have_select_p = 0;
-#endif
 
 unsigned int
 DEFUN_VOID (UX_select_registry_size)

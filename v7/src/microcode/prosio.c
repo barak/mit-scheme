@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: prosio.c,v 1.19 2002/11/20 19:46:13 cph Exp $
+$Id: prosio.c,v 1.20 2003/01/22 02:04:06 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright 1987,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
+Copyright 1996,1997,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -217,7 +218,7 @@ DEFINE_PRIMITIVE ("CHANNEL-BLOCKING", Prim_channel_blocking, 1, 1,
   OS_channel_blocking (arg_channel (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
+
 DEFINE_PRIMITIVE ("MAKE-PIPE", Prim_make_pipe, 0, 0,
   "Return a cons of two channels, the reader and writer of a pipe.")
 {
@@ -232,9 +233,126 @@ DEFINE_PRIMITIVE ("MAKE-PIPE", Prim_make_pipe, 0, 0,
     PRIMITIVE_RETURN (result);
   }
 }
+
+/* Select registry */
+
+static select_registry_t
+DEFUN (arg_select_registry, (arg_number), int arg_number)
+{
+  return ((select_registry_t) (arg_ulong_integer (arg_number)));
+}
+
+static unsigned int
+DEFUN (arg_sr_mode, (arg_number), int arg_number)
+{
+  unsigned long n = (arg_ulong_integer (arg_number));
+  if (! ((n >= 1) && (n <= 3)))
+    error_bad_range_arg (arg_number);
+  return (n);
+}
 
 DEFINE_PRIMITIVE ("HAVE-SELECT?", Prim_have_select_p, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (OS_have_select_p));
+}
+
+DEFINE_PRIMITIVE ("ALLOCATE-SELECT-REGISTRY", Prim_alloc_selreg, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN
+    (ulong_to_integer
+     ((unsigned long) (OS_allocate_select_registry ())));
+}
+
+DEFINE_PRIMITIVE ("DEALLOCATE-SELECT-REGISTRY", Prim_dealloc_selreg, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  OS_deallocate_select_registry (arg_select_registry (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("ADD-TO-SELECT-REGISTRY", Prim_add_to_selreg, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  OS_add_to_select_registry ((arg_select_registry (1)),
+			     (arg_nonnegative_integer (2)),
+			     (arg_sr_mode (3)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("REMOVE-FROM-SELECT-REGISTRY", Prim_rem_from_selreg, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  OS_remove_from_select_registry ((arg_select_registry (1)),
+				  (arg_nonnegative_integer (2)),
+				  (arg_sr_mode (3)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("SELECT-REGISTRY-LENGTH", Prim_selreg_length, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (ulong_to_integer (OS_select_registry_length (arg_select_registry (1))));
+}
+
+DEFINE_PRIMITIVE ("TEST-SELECT-REGISTRY", Prim_test_selreg, 4, 4, 0)
+{
+  PRIMITIVE_HEADER (4);
+  {
+    select_registry_t r = (arg_select_registry (1));
+    unsigned int rl = (OS_select_registry_length (r));
+    int blockp = (BOOLEAN_ARG (2));
+    SCHEME_OBJECT vr = (VECTOR_ARG (3));
+    SCHEME_OBJECT vw = (VECTOR_ARG (4));
+    int result;
+
+    if ((VECTOR_LENGTH (vr)) < (rl + 1))
+      error_bad_range_arg (3);
+    if ((VECTOR_LENGTH (vw)) < (rl + 1))
+      error_bad_range_arg (4);
+    result = (OS_test_select_registry (r, blockp));
+    if (result > 0)
+      {
+	unsigned int i = 0;
+	unsigned int ir = 1;
+	unsigned int iw = 1;
+	while (i < rl)
+	  {
+	    int fd;
+	    unsigned int mode;
+
+	    OS_select_registry_result (r, i, (&fd), (&mode));
+	    if (mode > 0)
+	      {
+		SCHEME_OBJECT sfd = (long_to_integer (fd));
+		if ((mode & SELECT_MODE_READ) != 0)
+		  {
+		    VECTOR_SET (vr, ir, sfd);
+		    ir += 1;
+		  }
+		if ((mode & SELECT_MODE_WRITE) != 0)
+		  {
+		    VECTOR_SET (vw, iw, sfd);
+		    iw += 1;
+		  }
+	      }
+	    i += 1;
+	  }
+	VECTOR_SET (vr, 0, (ulong_to_integer (ir - 1)));
+	VECTOR_SET (vw, 0, (ulong_to_integer (iw - 1)));
+      }
+    PRIMITIVE_RETURN (long_to_integer (result));
+  }
+}
+
+DEFINE_PRIMITIVE ("TEST-SELECT-DESCRIPTOR", Prim_test_sel_desc, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  PRIMITIVE_RETURN
+    (long_to_integer
+     (OS_test_select_descriptor ((arg_nonnegative_integer (1)),
+				 (BOOLEAN_ARG (2)),
+				 (arg_sr_mode (3)))));
 }

@@ -1,8 +1,10 @@
 /* -*-C-*-
 
-$Id: version.h,v 11.186 2002/11/20 19:46:16 cph Exp $
+$Id: version.h,v 11.187 2003/01/22 02:04:19 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1993,1994,1995,1996,1997,1999 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -36,5 +38,5 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #  define SCHEME_VERSION	14
 #endif
 #ifndef SCHEME_SUBVERSION
-#  define SCHEME_SUBVERSION	10
+#  define SCHEME_SUBVERSION	11
 #endif

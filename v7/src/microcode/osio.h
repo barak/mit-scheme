@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: osio.h,v 1.16 2002/11/20 19:46:12 cph Exp $
+$Id: osio.h,v 1.17 2003/01/22 02:03:59 cph Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright 1990,1991,1993,1994,1995,1997 Massachusetts Institute of Technology
+Copyright 2000,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -72,11 +73,41 @@ extern void EXFUN
 extern int EXFUN (OS_channel_nonblocking_p, (Tchannel channel));
 extern void EXFUN (OS_channel_nonblocking, (Tchannel channel));
 extern void EXFUN (OS_channel_blocking, (Tchannel channel));
+
+/* Interface to poll(2) or select(2) */
 
 #ifdef __WIN32__
 extern int OS_have_select_p;
 #else
 extern CONST int OS_have_select_p;
 #endif
+
+typedef PTR select_registry_t;
+#define SELECT_MODE_READ 1
+#define SELECT_MODE_WRITE 2
+
+#define SELECT_INTERRUPT (-1)
+#define SELECT_PROCESS_STATUS_CHANGE (-2)
+
+extern select_registry_t EXFUN
+  (OS_allocate_select_registry, (void));
+extern void EXFUN
+  (OS_deallocate_select_registry, (select_registry_t registry));
+extern void EXFUN
+  (OS_add_to_select_registry,
+   (select_registry_t registry, int fd, unsigned int mode));
+extern void EXFUN
+  (OS_remove_from_select_registry,
+   (select_registry_t registry, int fd, unsigned int mode));
+extern unsigned int EXFUN
+  (OS_select_registry_length, (select_registry_t registry));
+extern void EXFUN
+  (OS_select_registry_result,
+   (select_registry_t registry, unsigned int index,
+    int * fd_r, unsigned int * mode_r));
+extern int EXFUN
+  (OS_test_select_registry, (select_registry_t registry, int blockp));
+extern int EXFUN
+  (OS_test_select_descriptor, (int fd, int blockp, unsigned int mode));
 
 #endif /* SCM_OSIO_H */
