@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/dassm2.scm,v 4.19 1992/08/11 04:32:06 jinx Exp $
-$MC68020-Header: dassm2.scm,v 4.17 90/05/03 15:17:04 GMT jinx Exp $
+$Id: dassm2.scm,v 4.20 1993/07/02 01:56:43 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -113,17 +112,15 @@ MIT in each case. |#
 		(let ((next-state (disassembler/next-state instruction state)))
 		  (receiver
 		   *current-offset
-		   (cond ((and (pair? state)
-			       (eq? (car state) 'PC-REL-LOW-OFFSET))
-			  (pc-relative-inst offset instruction (cadr state)))
-			((and (eq? 'PC-REL-OFFSET state)
-			      (not (pair? next-state)))
-			 (pc-relative-inst offset instruction false))
-			(else
-			 instruction))
+		   (if (and (pair? state)
+			    (eq? (car state) 'PC-REL-OFFSET))
+		       (pc-relative-inst offset instruction (cdr state))
+		       instruction)
 		   next-state))))))))
 
-(define (pc-relative-inst start-address instruction left-side)
+(define-integrable *privilege-level* 3)
+
+(define (pc-relative-inst start-address instruction base-reg)
   (let ((opcode (car instruction)))
     (if (not (memq opcode '(LDO LDW)))
 	instruction
@@ -131,27 +128,35 @@ MIT in each case. |#
 	      (target (cadddr instruction)))
 	  (let ((offset (cadr offset-exp))
 		(space-reg (caddr offset-exp))
-		(base-reg (cadddr offset-exp)))
-	    (let* ((real-address
-		    (+ start-address
-		       offset
-		       (if (not left-side)
-			   0
-			   (- (let ((val (* left-side #x800)))
-				(if (>= val #x80000000)
-				    (- val #x100000000)
-				    val))
-			      4))))
-		   (label
-		    (disassembler/lookup-symbol *symbol-table real-address)))
-	      (if (not label)
-		  instruction
-		  `(,opcode () (OFFSET ,(if left-side
-					    `(RIGHT (- ,label (- *PC* 4)))
-					    `(- ,label *PC*))
-				       ,space-reg
-				       ,base-reg)
-			    ,target))))))))	    
+		(base-reg* (cadddr offset-exp)))
+	    (if (not (= base-reg* base-reg))
+		instruction
+		(let* ((real-address
+			(+ start-address
+			   (- offset *privilege-level*)
+			   #|
+			   (if (not left-side)
+			       0
+			       (- (let ((val (* left-side #x800)))
+				    (if (>= val #x80000000)
+					(- val #x100000000)
+					val))
+				  4))
+			   |#
+			   ))
+		       (label
+			(disassembler/lookup-symbol *symbol-table real-address)))
+		  (if (not label)
+		      instruction
+		      `(,opcode () (OFFSET `(- ,label *PC*)
+					   #|
+					   ,(if left-side
+						`(RIGHT (- ,label (- *PC* 4)))
+						`(- ,label *PC*))
+					   |#
+					   ,space-reg
+					   ,base-reg)
+				,target)))))))))
 
 (define (disassembler/initial-state)
   'INSTRUCTION-NEXT)
@@ -160,19 +165,14 @@ MIT in each case. |#
   (cond ((not disassembler/compiled-code-heuristics?)
 	 'INSTRUCTION)
 	((and (eq? state 'INSTRUCTION)
-	      (equal? instruction '(BL () 1 (@PCO 0))))
-	 'PC-REL-DEP)
-	((and (eq? state 'PC-REL-DEP)
-	      (equal? instruction '(DEP () 0 31 2 1)))
-	 'PC-REL-OFFSET)
-	((and (eq? state 'PC-REL-OFFSET)
-	      (= (length instruction) 4)
-	      (equal? (list (car instruction)
-			    (cadr instruction)
-			    (cadddr instruction))
-		      '(ADDIL () 1)))
-	 (list 'PC-REL-LOW-OFFSET (caddr instruction)))
+	      (eq? (list-ref instruction 0) 'BL)
+	      (equal? (list-ref instruction 3) '(@PCO 0)))
+	 (cons 'PC-REL-OFFSET (list-ref instruction 2)))
 	((memq (car instruction) '(B BV BLE))
+	 (if (memq 'N (cadr instruction))
+	     'EXTERNAL-LABEL
+	     'DELAY-SLOT))
+	((eq? state 'DELAY-SLOT)
 	 'EXTERNAL-LABEL)
 	(else
 	 'INSTRUCTION)))
@@ -189,7 +189,7 @@ MIT in each case. |#
 	(and label
 	     (dbg-label/external? label)))
       (and *block
-	   (not (eq? state 'INSTRUCTION))
+	   (eq? state 'EXTERNAL-LABEL)
 	   (let loop ((offset (+ offset 4)))
 	     (let* ((contents (read-bits (- offset 2) 16))
 		    (odd? (bit-string-clear! contents 0))
@@ -210,7 +210,7 @@ MIT in each case. |#
 					 offset)))
 
 (define (read-procedure offset)
-  (define-integrable (bit-string-andc-bang x y)
+  (define (bit-string-andc-bang x y)
     (bit-string-andc! x y)
     x)
 
