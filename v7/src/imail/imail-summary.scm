@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.27 2000/09/30 00:29:44 cph Exp $
+;;; $Id: imail-summary.scm,v 1.28 2000/10/20 04:33:20 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -43,6 +43,15 @@ If false, the message buffer is updated but not popped up."
   "Width of the subject field, in characters."
   35
   exact-nonnegative-integer?)
+
+(define-variable imail-summary-height
+  "Height of the summary window, either in lines or as a fraction.
+An exact positive integer means a fixed number of lines.
+A real number between 0 and 1 exclusive means a fraction of the screen height."
+  1/4
+  (lambda (x)
+    (or (and (exact-integer? x) (positive? x))
+	(and (real? x) (< 0 x 1)))))
 
 (define-command imail-summary
   "Display a summary of the selected folder, one line per message."
@@ -455,8 +464,16 @@ SUBJECT is a string of regexps separated by commas."
 (define (imail-summary-pop-up-message-buffer buffer)
   (let ((folder-buffer (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)))
     (if (and folder-buffer (selected-buffer? buffer))
-	(pop-up-buffer folder-buffer #f))))
-
+	(pop-up-buffer folder-buffer #f
+		       `((HEIGHT
+			  ,(let ((height
+				  (ref-variable imail-summary-height buffer)))
+			     (if (exact-integer? height)
+				 height
+				 (round->exact
+				  (* (window-y-size (selected-window))
+				     height))))))))))
+
 (define (sync-imail-summary-buffer buffer)
   (let ((message
 	 (selected-message #f (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f))))
