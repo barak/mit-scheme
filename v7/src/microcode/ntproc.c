@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntproc.c,v 1.4 1997/10/25 00:15:06 cph Exp $
+$Id: ntproc.c,v 1.5 1997/10/25 07:38:45 cph Exp $
 
 Copyright (c) 1997 Massachusetts Institute of Technology
 
@@ -154,6 +154,8 @@ NT_make_subprocess (const char * filename,
   STARTUPINFO si;
   PROCESS_INFORMATION pi;
 
+  transaction_begin ();
+
   /* Explicitly specify no security */
   STD_BOOL_API_CALL
     (InitializeSecurityDescriptor, ((&sdp), SECURITY_DESCRIPTOR_REVISION));
@@ -179,7 +181,6 @@ NT_make_subprocess (const char * filename,
       (si . wShowWindow) |= SW_HIDE;
     }
 
-  transaction_begin ();
   lock_process_table ();
   child = (allocate_process ());
   STD_BOOL_API_CALL
@@ -198,6 +199,9 @@ NT_make_subprocess (const char * filename,
   (PROCESS_RAW_REASON (child)) = STILL_ACTIVE;
   (PROCESS_TICK (child)) = process_tick;
   PROCESS_STATUS_SYNC (child);
+  STD_BOOL_API_CALL (CloseHandle, (si . hStdInput));
+  STD_BOOL_API_CALL (CloseHandle, (si . hStdOutput));
+  STD_BOOL_API_CALL (CloseHandle, (si . hStdError));
   transaction_commit ();
   STD_BOOL_API_CALL (CloseHandle, ((PROCESS_HANDLES (child)) . hThread));
   ((PROCESS_HANDLES (child)) . hThread) = INVALID_HANDLE_VALUE;
@@ -221,6 +225,7 @@ copy_handle (HANDLE handle)
   STD_BOOL_API_CALL
     (DuplicateHandle,
      (parent, handle, parent, (&copy), 0, TRUE, DUPLICATE_SAME_ACCESS));
+  NT_handle_close_on_abort (copy);
   return (copy);
 }
 
@@ -260,12 +265,7 @@ find_child_console (DWORD pid)
   struct fcc_info fi;
   (fi . pid) = pid;
   (fi . hwnd) = INVALID_HANDLE_VALUE;
-  if (!EnumWindows (find_child_console_1, ((LPARAM) (&fi))))
-    {
-      DWORD code = (GetLastError ());
-      if (code != ERROR_SUCCESS)
-	NT_error_api_call ((GetLastError ()), apicall_EnumWindows);
-    }
+  EnumWindows (find_child_console_1, ((LPARAM) (&fi)));
   return (fi . hwnd);
 }
 
