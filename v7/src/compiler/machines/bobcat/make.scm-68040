@@ -37,13 +37,27 @@
 
 ;;;; Compiler Make File for MC68020
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.7 1986/12/13 17:31:11 cph Exp $
-
 (declare (usual-integrations))
 
 (set-working-directory-pathname! "$zcomp")
+(load "rcs" system-global-environment)
 (load "load" system-global-environment)
 
+(in-package compiler-package
+
+  (define compiler-system
+    (make-environment
+      (define :name "Liar (Bobcat 68020)")
+      (define :version)
+      (define :modification)
+
+      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.8 1986/12/13 18:10:01 cph Exp $"
+	(lambda (filename version date time author state)
+	  (set! :version (car version))
+	  (set! :modification (cadr version))))))
+
+  (add-system! compiler-system))
+
 (load-system system-global-environment
 	     'COMPILER-PACKAGE
 	     '(SYSTEM-GLOBAL-ENVIRONMENT)
@@ -117,14 +131,6 @@
 		)
 
 	       ))
-
-(in-package compiler-package
-  (define compiler-system
-    (make-environment
-      (define :name "Liar (Bobcat 68020)")
-      (define :version 3)
-      (define :modification 0)))
-  (add-system! compiler-system))
 
 (%ge compiler-package)
 (%gst (access compiler-syntax-table compiler-package))
