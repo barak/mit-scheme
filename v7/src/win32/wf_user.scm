@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: wf_user.scm,v 1.2 1993/11/10 21:34:40 adams Exp $
+$Id: wf_user.scm,v 1.3 1994/10/26 18:35:04 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -57,6 +57,7 @@ MIT in each case. |#
 (define  delete-menu)
 (define  delete-object)
 (define  destroy-menu)
+(define  destroy-window)
 (define  draw-menu-bar)
 (define  ellipse)
 (define  enable-menu-item)
@@ -80,7 +81,7 @@ MIT in each case. |#
 (define  hilite-menu-item)
 (define  insert-menu)
 (define  invalidate-rect)
-(define  is-menu)
+(define  is-menu?)
 (define  line-to)
 (define  load-cursor)
 (define  load-icon)
@@ -198,6 +199,10 @@ MIT in each case. |#
     (windows-procedure (destroy-menu (menu hmenu))
       bool user32.dll "DestroyMenu"))
 
+  (set!  destroy-window
+    (windows-procedure (destroy-window (window hwnd))
+      bool user32.dll "DestroyWindow"))
+
   (set!  draw-menu-bar
     (windows-procedure (draw-menu-bar (window hwnd))
       bool user32.dll "DrawMenuBar"))
@@ -246,7 +251,7 @@ MIT in each case. |#
     (windows-procedure
 	(get-menu-string (menu hmenu) (item uint) (buffer string)
 			      (max-chars int) (flags uint))
-      int user32.dll "GetMenuString"))
+      int user32.dll "GetMenuStringA"))
 
   (set!  get-nearest-color
     (windows-procedure (get-nearest-color (hdc hdc) (color colorref))
@@ -295,8 +300,8 @@ MIT in each case. |#
     (windows-procedure (invalidate-rect (hwnd hwnd) (rect rect) (erase? bool))
       bool user32.dll "InvalidateRect"))
 
-  (set!  is-menu
-    (windows-procedure (is-menu (handle hmenu)) bool user32.dll "IsMenu"))
+  (set!  is-menu?
+    (windows-procedure (is-menu? (handle hmenu)) bool user32.dll "IsMenu"))
 
   (set!  line-to
     (windows-procedure (line-to (hdc hdc) (x int) (y int))
