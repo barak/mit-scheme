@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.4 1989/09/20 23:13:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.5 1990/07/16 20:52:47 markf Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -103,6 +103,10 @@ struct xwindow
   /* Deallocation procedure to do window-specific deallocation. */
   void (* deallocator) ();
 
+  /* Procedure to call on each received event (called with the
+     xwindow and the event) */
+  void (* event_proc) ();
+
   /* Nonzero iff this window is mapped. */
   char visible_p;
 };
@@ -128,8 +132,11 @@ extern Display * x_close_window ();
 extern void x_close_display ();
 extern void xw_enqueue_event ();
 extern int xw_dequeue_event ();
-extern void x_distribute_events ();
+extern Boolean x_distribute_events ();
 extern void xw_wait_for_window_event ();
+extern int check_button ();
+extern Boolean x_process_events ();
+extern Boolean x_wait_for_event ();
 
 #define DISPLAY_ARG(arg)						\
   ((Display *) (x_allocation_item_arg (arg, (& x_display_table))))
@@ -161,6 +168,54 @@ extern void xw_wait_for_window_event ();
 #define FONT_HEIGHT(f)	(((f) -> ascent) + ((f) -> descent))
 #define FONT_BASE(f)    ((f) -> ascent)
 
-#define EVENT_FLAG_RESIZED	0x01
-#define EVENT_FLAG_BUTTON_DOWN	0x02
-#define EVENT_FLAG_BUTTON_UP	0x04
+#define XTERM_X_PIXEL(xw, x)						\
+  (((x) * (FONT_WIDTH (XW_FONT (xw)))) + (XW_INTERNAL_BORDER_WIDTH (xw)))
+
+#define XTERM_Y_PIXEL(xw, y)						\
+  (((y) * (FONT_HEIGHT (XW_FONT (xw)))) + (XW_INTERNAL_BORDER_WIDTH (xw)))
+
+#define XTERM_X_CHARACTER(xw, x)					\
+  (((x) - (XW_INTERNAL_BORDER_WIDTH (xw))) / (FONT_WIDTH (XW_FONT (xw))))
+
+#define XTERM_Y_CHARACTER(xw, y)					\
+  (((y) - (XW_INTERNAL_BORDER_WIDTH (xw))) / (FONT_HEIGHT (XW_FONT (xw))))
+
+#define EVENT_TYPE_UNKNOWN		0
+#define EVENT_TYPE_RESIZED		1
+#define EVENT_TYPE_BUTTON_DOWN		2
+#define EVENT_TYPE_BUTTON_UP		3
+#define EVENT_TYPE_FOCUS_IN		4
+#define EVENT_TYPE_FOCUS_OUT		5
+#define EVENT_TYPE_ENTER		6
+#define EVENT_TYPE_LEAVE		7
+#define EVENT_TYPE_MOTION		8
+#define EVENT_TYPE_CONFIGURE		9
+#define EVENT_TYPE_MAP			10
+#define EVENT_TYPE_UNMAP		11
+#define EVENT_TYPE_EXPOSE		12
+#define EVENT_TYPE_NO_EXPOSE     	13
+#define EVENT_TYPE_GRAPHICS_EXPOSE   	14
+#define EVENT_TYPE_KEY_PRESS	   	15
+
+#define EVENT_FLAG_RESIZED		(1 << (EVENT_TYPE_RESIZED - 1))
+#define EVENT_FLAG_BUTTON_DOWN		(1 << (EVENT_TYPE_BUTTON_DOWN - 1))
+#define EVENT_FLAG_BUTTON_UP		(1 << (EVENT_TYPE_BUTTON_UP - 1))
+#define EVENT_FLAG_FOCUS_IN		(1 << (EVENT_TYPE_FOCUS_IN - 1))
+#define EVENT_FLAG_FOCUS_OUT		(1 << (EVENT_TYPE_FOCUS_OUT - 1))
+#define EVENT_FLAG_ENTER		(1 << (EVENT_TYPE_ENTER - 1))
+#define EVENT_FLAG_LEAVE		(1 << (EVENT_TYPE_LEAVE - 1))
+#define EVENT_FLAG_MOTION		(1 << (EVENT_TYPE_MOTION - 1))
+#define EVENT_FLAG_CONFIGURE		(1 << (EVENT_TYPE_CONFIGURE - 1))
+#define EVENT_FLAG_MAP			(1 << (EVENT_TYPE_MAP - 1))
+#define EVENT_FLAG_UNMAP		(1 << (EVENT_TYPE_UNMAP - 1))
+#define EVENT_FLAG_EXPOSE		(1 << (EVENT_TYPE_EXPOSE - 1))
+#define EVENT_FLAG_NO_EXPOSE		(1 << (EVENT_TYPE_NO_EXPOSE - 1))
+#define EVENT_FLAG_GRAPHICS_EXPOSE	(1 << (EVENT_TYPE_GRAPHICS_EXPOSE - 1))
+#define EVENT_FLAG_KEY_PRESS		(1 << (EVENT_TYPE_KEY_PRESS - 1))
+
+#define BITS_PER_INT 	32	/* this should be somewhere else */
+
+#define SET_X_SELECT_MASK(fd)						\
+{									\
+  (x_select_mask) [fd / BITS_PER_INT] |= (1 << (fd % BITS_PER_INT));	\
+}
