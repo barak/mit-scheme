@@ -1,6 +1,11 @@
+echo ""
+echo "Do not use /scheme/etc/rebuild."
+echo "Use /scheme/etc/rebuild-7.4 or /scheme/etc/rebuild-8.0"
+echo ""
+exit 1
+________________________________________________________________________
 #!/bin/csh -f
-
-# $Id: rebuild,v 1.13 1994/01/08 21:36:00 gjr Exp $
+# $Id: rebuild,v 1.14 1995/07/31 18:27:07 adams Exp $
 
 # Arguments: runtimeversion compilerversion edwinversion 6001version
 
