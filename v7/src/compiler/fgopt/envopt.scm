@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/envopt.scm,v 1.4 1988/12/13 13:03:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/envopt.scm,v 1.5 1989/03/14 19:42:25 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,9 +36,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package (optimize-environments!)
-
-(define-export (optimize-environments! procedures&continuations)
+(define (optimize-environments! procedures&continuations)
   ;; Does this really have to ignore continuations?
   ;; Is this only because we implement continuations differently?
   (let ((procedures (list-transform-negative
@@ -162,29 +160,41 @@ MIT in each case. |#
 			       target-block))))))
 	    ((not (eq? target-block original))
 	     (set-procedure-target-block! procedure target-block)
-	     (enqueue-nodes! (procedure-free-callers procedure)))
-	    (else 'DONE)))))
+	     (enqueue-nodes! (procedure-free-callers procedure)))))))
 
 (define (choose-target-block! procedure)
-  (let ((callers (procedure-free-callers procedure))
+  (let ((block (procedure-block procedure))
 	(parent (procedure-closing-block procedure))
 	(target-block (procedure-target-block procedure)))
     ;; This now becomes `original-block-parent' of the procedure's
     ;; invocation block.
     (set-procedure-target-block! procedure parent)
-    (if (and
-	 ;; The following clause makes some cases of LET-like
-	 ;; procedures track their parents in order to avoid closing
-	 ;; over the same variables twice.
-	 (not (and (null? callers)
-		   (procedure-always-known-operator? procedure)
-		   (for-all? (procedure-applications procedure)
-		     (lambda (application)
-		       (eq? (application-block application) parent)))))
-	 (block-ancestor? parent target-block))
-	(let ((myself (procedure-block procedure)))
-	  (disown-block-child! parent myself)
-	  (own-block-child! target-block myself)))
+    (if (and (block-ancestor? parent target-block)
+	     ;; If none of the free variables of this procedure
+	     ;; require lookup, then it will eventually become a
+	     ;; trivial procedure.  So it should be OK to raise it as
+	     ;; far as we like.
+	     (or (for-all? (block-free-variables block)
+		   (lambda (variable)
+		     (let ((value (lvalue-known-value variable)))
+		       (and value
+			    (or (eq? value procedure)
+				(rvalue/constant? value)
+				(and (rvalue/procedure? value)
+				     (procedure/trivial-closure?
+				      value)))))))
+		 ;; The following clause makes some cases of LET-like
+		 ;; procedures track their parents in order to avoid
+		 ;; closing over the same variables twice.
+		 (not (and (null? (procedure-free-callers procedure))
+			   (procedure-always-known-operator? procedure)
+			   (for-all? (procedure-applications procedure)
+			     (lambda (application)
+			       (eq? (application-block application)
+				    parent)))))))
+	(begin
+	  (disown-block-child! parent block)
+	  (own-block-child! target-block block)))
     unspecific))
 
 ;;; Utilities
@@ -203,16 +213,12 @@ MIT in each case. |#
 	  (if (false? place)
 	      (set-procedure-free-callees! procedure
 					   (cons (list on-whom var) bucket))
-	      (set-cdr! place
-			(cons var (cdr place))))))
-    'DONE))
+	      (set-cdr! place (cons var (cdr place)))))))
+  unspecific)
 
 (define (add-free-caller! procedure on-whom)
   (let ((bucket (procedure-free-callers procedure)))
     (cond ((null? bucket)
 	   (set-procedure-free-callers! procedure (list on-whom)))
 	  ((not (memq on-whom bucket))
-	   (set-procedure-free-callers! procedure (cons on-whom bucket))))
-    'DONE))
-
-)
+	   (set-procedure-free-callers! procedure (cons on-whom bucket))))))
