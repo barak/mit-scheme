@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.60 1993/08/03 08:30:06 gjr Exp $
+$Id: utils.c,v 9.61 1993/08/07 00:15:54 adams Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -1093,6 +1093,7 @@ extern SCHEME_OBJECT EXFUN (Re_Enter_Interpreter, (void));
 extern SCHEME_OBJECT EXFUN (C_call_scheme,
 			    (SCHEME_OBJECT, long, SCHEME_OBJECT *));
 
+
 SCHEME_OBJECT
 DEFUN (C_call_scheme, (proc, nargs, argvec),
        SCHEME_OBJECT proc
@@ -1100,6 +1101,11 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
        AND SCHEME_OBJECT * argvec)
 {
   SCHEME_OBJECT primitive, prim_lexpr, * sp, result;
+
+  extern void *C_Frame_Pointer, *C_Stack_Pointer;
+  void *cfp, *csp;
+  
+  cfp = C_Frame_Pointer, csp = C_Stack_Pointer;
   
   primitive = (Regs [REGBLOCK_PRIMITIVE]);
   prim_lexpr = (Regs [REGBLOCK_LEXPR_ACTUALS]);
@@ -1140,5 +1146,7 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
   Regs [REGBLOCK_LEXPR_ACTUALS] = prim_lexpr;
   Regs [REGBLOCK_PRIMITIVE] = primitive;
 
+  C_Frame_Pointer = cfp;
+  C_Stack_Pointer = csp;
   return (result);
 }
