@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/version.h,v 11.109 1992/02/10 13:54:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/version.h,v 11.110 1992/03/14 00:09:44 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,5 +46,5 @@ MIT in each case. */
 #define VERSION		11
 #endif
 #ifndef SUBVERSION
-#define SUBVERSION	109
+#define SUBVERSION	110
 #endif
