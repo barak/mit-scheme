@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: clsmac.scm,v 1.9 2002/02/09 05:37:59 cph Exp $
+;;; $Id: clsmac.scm,v 1.10 2002/02/13 01:18:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989, 1999, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -80,7 +80,7 @@
 	      (ill-formed-syntax form)))))))
 
 (define with-instance-variables
-  (make-macro-reference-trap
+  (make-unmapped-macro-reference-trap
    (make-compiler-item
     (lambda (form environment history)
       (if (syntax-match? '(IDENTIFIER EXPRESSION (* IDENTIFIER) + EXPRESSION)
