@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.196 2000/06/27 02:47:58 cph Exp $
+;;; $Id: imail-top.scm,v 1.197 2000/06/27 16:37:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -897,7 +897,12 @@ With prefix argument, prompt even when point is on an attachment."
 	 filename
 	 (lambda (port)
 	   (call-with-mime-decoding-output-port
-	    (mime-body-one-part-encoding body)
+	    (let ((encoding (mime-body-one-part-encoding body)))
+	      (if (and (eq? (mime-body-type body) 'APPLICATION)
+		       (eq? (mime-body-subtype body) 'BINHEX40)
+		       (memq encoding '(7BIT 8BIT BINARY)))
+		  'BINHEX40
+		  encoding))
 	    port
 	    text?
 	    (lambda (port)
@@ -2256,6 +2261,8 @@ Negative argument means search in reverse."
      (call-with-decode-quoted-printable-output-port port text? generator))
     ((BASE64)
      (call-with-decode-base64-output-port port text? generator))
+    ((BINHEX40)
+     (call-with-decode-binhex40-output-port port text? generator))
     (else
      (generator port))))
 
