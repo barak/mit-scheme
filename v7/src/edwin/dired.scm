@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dired.scm,v 1.175 2000/03/31 19:35:00 cph Exp $
+;;; $Id: dired.scm,v 1.176 2000/03/31 19:40:13 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -918,7 +918,7 @@ Actions controlled by variables list-directory-brief-switches
 		      (continue))
 		(continue)))))))
 
-(define (dired-this-file #!optional mark)
+(define (dired-this-file #!optional mark error?)
   (let ((mark
 	 (cond ((or (default-object? mark) (not mark))
 		(current-point))
@@ -928,8 +928,9 @@ Actions controlled by variables list-directory-brief-switches
 		    (buffer-point mark)))
 	       (else mark))))
     (let ((start (line-start mark 0)))
-      (and (dired-filename-start start)
-	   (cons (dired-pathname start) start)))))
+      (if (dired-filename-start start)
+	  (dired-pathname start)
+	  (and error? (editor-error "No file on this line"))))))
 
 (define (for-each-dired-mark buffer procedure)
   (for-each (lambda (file)
