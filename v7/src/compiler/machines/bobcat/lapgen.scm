@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.38 1991/01/30 22:03:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.39 1991/01/30 22:48:01 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -365,7 +365,7 @@ MIT in each case. |#
 
 #|
 
-;; This is believed to be a fossil.
+;; *** This is believed to be a fossil. ***
 ;; Left here until the first compilation to make sure that it really is.
 ;; Can be removed the next time it is seen.
 
@@ -943,6 +943,12 @@ MIT in each case. |#
 ;;;; OBJECT->DATUM rules - Mhwu
 ;;;  Similar to fixnum rules, but no sign extension
 
+#|
+
+;; *** This is believed to be a fossil. ***
+;; Left here until the first compilation to make sure that it really is.
+;; Can be removed the next time it is seen.
+
 (define (load-constant-datum constant register-ref)
   (if (non-pointer-object? constant)
       (LAP (MOV L (& ,(careful-object-datum constant)) ,register-ref))
@@ -950,6 +956,8 @@ MIT in each case. |#
 		(@PCR ,(constant->label constant))
 		,register-ref)
 	   ,@(object->address register-ref))))
+
+|#
 
 (define (object->address register-reference)
   (LAP (AND L ,mask-reference ,register-reference)))
@@ -1001,6 +1009,12 @@ MIT in each case. |#
   (let ((ascii (char->ascii character)))
     (if (< ascii 128) ascii (- ascii 256))))
 
+#|
+
+;; *** This is believed to be a fossil. ***
+;; Left here until the first compilation to make sure that it really is.
+;; Can be removed the next time it is seen.
+
 (define (byte-offset->register source source-reg target)
   ;; This code uses a temporary register because right now the register
   ;; allocator thinks that it could use the same register for the target
@@ -1018,6 +1032,8 @@ MIT in each case. |#
 	     (MOV L ,temp-ref ,(register-reference target)))
 	(LAP (CLR L ,(register-reference target))
 	     (MOV B ,source ,(register-reference target))))))
+
+|#
 
 ;;;; Registers/Entries
 
@@ -1092,10 +1108,10 @@ MIT in each case. |#
 		 `(BEGIN ,@(loop names start)))))
   (define-entries #x40
     scheme-to-interface			; Main entry point (only one necessary)
-    scheme-to-interface-jsr		; Used by rules4, for convenience
-    trampoline-to-interface		; Used by trampolines, for convenience
-    shortcircuit-apply			; Used by rules3, for speed
-    shortcircuit-apply-size-1		; Small frames, save time and space
+    scheme-to-interface-jsr		; Used by rules3&4, for convenience.
+    trampoline-to-interface		; Used by trampolines, for convenience.
+    shortcircuit-apply			; Used by rules3, for speed.
+    shortcircuit-apply-size-1		; Small frames, save time and space.
     shortcircuit-apply-size-2
     shortcircuit-apply-size-3
     shortcircuit-apply-size-4
@@ -1103,7 +1119,7 @@ MIT in each case. |#
     shortcircuit-apply-size-6
     shortcircuit-apply-size-7
     shortcircuit-apply-size-8
-    primitive-apply			; Common entries to save space
+    primitive-apply			; Common entries to save space.
     primitive-lexpr-apply
     error
     link
