@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.263 2001/06/03 06:02:58 cph Exp $
+;;; $Id: imail-top.scm,v 1.264 2001/06/04 17:39:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -828,10 +828,10 @@ With prefix argument N, removes FLAG from next N messages,
 					'REQUIRE-MATCH? #t)))
   (lambda (url-string)
     (let ((url (imail-parse-partial-url url-string)))
-      (copy-folder (open-resource url)
+      (copy-folder url
 		   (resource-locator (selected-folder))
-		   (lambda () ((ref-command imail-get-new-mail) #f))
-		   (string-append "from " (url->string url))))))
+		   (string-append "from " (url->string url))
+		   (lambda () ((ref-command imail-get-new-mail) #f))))))
 
 (define-command imail-output
   "Append this message to a specified folder."
@@ -1395,36 +1395,39 @@ If it doesn't exist, it is created first."
 	      (url-base-name (imail-parse-partial-url from)))
 	     'HISTORY 'IMAIL-COPY-FOLDER-TARGET))))
   (lambda (from to)
-    (let ((from (imail-parse-partial-url from)))
-      (let ((folder (open-resource from))
-	    (to
-	     (let ((to (imail-parse-partial-url to)))
-	       (if (container-url? to)
-		   (make-content-url to (url-content-name from))
-		   to))))
-	(if (eq? (resource-locator folder) to)
-	    (editor-error "Can't copy folder to itself:" to))
-	(with-open-connection to
-	  (lambda ()
-	    (copy-folder folder to #f
-			 (string-append "to " (url->string to)))))))))
+    (let ((from (imail-parse-partial-url from))
+	  (to (imail-parse-partial-url to)))
+      (copy-folder from
+		   (if (container-url? to)
+		       (make-content-url to (url-content-name from))
+		       to)))))
 
-(define (copy-folder folder to refresh reference-string)
-  (let ((n (folder-length folder)))
-    (do ((i 0 (+ i 1)))
-	((= i n))
-      ((message-wrapper #f
-			"Copying message "
-			(number->string (+ i 1))
-			"/"
-			(number->string n))
-       (lambda () (append-message (get-message folder i) to))))
-    (if refresh (refresh))
-    (message (number->string n)
-	     " message"
-	     (if (= n 1) "" "s")
-	     " copied "
-	     reference-string)))
+(define (copy-folder url new-url #!optional reference-string refresh)
+  (if (eq? url new-url)
+      (editor-error "Can't copy folder to itself:" to))
+  (with-open-resource url
+    (lambda (folder)
+      (with-open-connection new-url
+	(lambda ()
+	  (let ((n (folder-length folder)))
+	    (do ((i 0 (+ i 1)))
+		((= i n))
+	      ((message-wrapper #f
+				"Copying message "
+				(number->string (+ i 1))
+				"/"
+				(number->string n))
+	       (lambda () (append-message (get-message folder i) new-url))))
+	    (if (if (default-object? refresh) #f refresh)
+		(refresh))
+	    (message (number->string n)
+		     " message"
+		     (if (= n 1) "" "s")
+		     " copied "
+		     (if (or (default-object? reference-string)
+			     (not reference-string))
+			 (string-append "to " (url->string new-url))
+			 reference-string))))))))
 
 ;;;; Miscellany
 
