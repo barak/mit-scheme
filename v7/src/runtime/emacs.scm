@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 13.42 1987/03/07 17:36:00 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 13.43 1987/07/02 20:01:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -75,12 +75,6 @@
 (define (emacs-rep-message string)
   (transmit-signal-with-argument #\m string))
 
-(define (emacs-rep-prompt level string)
-  (transmit-signal-with-argument #\p
-				 (string-append (object->string level)
-						" "
-						string)))
-
 (define (emacs-rep-value object)
   (transmit-signal-with-argument #\v (object->string object)))
 
@@ -89,6 +83,27 @@
     (lambda ()
       (write object))))
 
+(define (emacs-rep-prompt level string)
+  (transmit-signal-with-argument
+   #\p
+   (string-append (object->string level)
+		  " "
+		  (let ((entry (assoc string emacs-rep-prompt-alist)))
+		    (if entry
+			(cdr entry)
+			string)))))
+
+(define emacs-rep-prompt-alist
+  '(("]=>" . "[Normal REPL]")
+    ("==>" . "[Normal REPL]")
+    ("Eval-in-env-->" . "[Normal REPL]")
+    ("Bkpt->" . "[Breakpoint REPL]")
+    ("Error->" . "[Error REPL]")
+    ("Debug-->" . "[Debugger]")
+    ("Debugger-->" . "[Debugger REPL]")
+    ("Where-->" . "[Environment Inspector]")
+    ("Which-->" . "[Task Inspector]")))
+
 (define (emacs-read-char-immediate)
   (define (loop)
     (let ((char (primitive-read-char-immediate)))
