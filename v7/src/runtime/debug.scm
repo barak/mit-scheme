@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 14.36 1993/10/15 10:01:09 cph Exp $
+$Id: debug.scm,v 14.37 1993/12/22 01:26:13 jmiller Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -769,9 +769,13 @@ MIT in each case. |#
 	      (if (not thread)
 		  ((stack-frame->continuation subproblem) value)
 		  (begin
-		    (restart-thread thread #t
-		      (lambda ()
-			((stack-frame->continuation subproblem) value)))
+		    (restart-thread
+		     thread
+		     (prompt-for-confirmation
+		      "Restarting other thread; discard events in its queue"
+		      port)
+		     (lambda ()
+		       ((stack-frame->continuation subproblem) value)))
 		    (if (prompt-for-confirmation
 			 "Thread restarted; exit debugger"
 			 port)
