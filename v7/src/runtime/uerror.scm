@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.22 1991/03/11 23:33:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.23 1991/03/14 04:26:42 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -442,7 +442,7 @@ MIT in each case. |#
   (make-condition-type 'UNLINKABLE-VARIABLE condition-type:variable-error '()
     (lambda (condition port)
       (write-string "The variable " port)
-      (write (access-condition condition 'NAME) port)
+      (write (access-condition condition 'LOCATION) port)
       (write-string " is already bound; it cannot be linked to." port))))
 
 (define-error-handler 'BAD-ASSIGNMENT
