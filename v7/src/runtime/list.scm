@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.5 1989/03/07 01:21:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.6 1989/04/21 19:25:06 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -166,13 +166,15 @@ MIT in each case. |#
 	 car)))
 
 (define-integrable (weak-set-car! weak-pair object)
-  (system-pair-set-car! weak-pair (or object weak-pair/false)))
+  (system-pair-set-car! weak-pair (or object weak-pair/false))
+  unspecific)
 
 (define-integrable (weak-cdr weak-pair)
   (system-pair-cdr weak-pair))
 
 (define-integrable (weak-set-cdr! weak-pair object)
-  (system-pair-set-cdr! weak-pair object))
+  (system-pair-set-cdr! weak-pair object)
+  unspecific)
 
 (define (weak-memq object weak-list)
   (let ((object (if object object weak-pair/false)))
@@ -181,6 +183,26 @@ MIT in each case. |#
 	   (if (eq? object (system-pair-car weak-list))
 	       weak-list
 	       (loop (system-pair-cdr weak-list)))))))
+
+(define (weak-list->list weak-list)
+  (if (weak-pair? weak-list)
+      (let ((car (system-pair-car weak-list)))
+	(if (not car)
+	    (weak-list->list (system-pair-cdr weak-list))
+	    (cons (if (eq? car weak-pair/false) false car)
+		  (weak-list->list (system-pair-cdr weak-list)))))
+      (begin
+	(if (not (null? weak-list))
+	    (error "improperly terminated weak list" weak-list))
+	'())))
+
+(define (list->weak-list list)
+  (if (pair? list)
+      (weak-cons (car list) (list->weak-list (cdr list)))
+      (begin
+	(if (not (null? list))
+	    (error "improperly terminated list" list))
+	'())))
 
 (define weak-pair/false
   "weak-pair/false")
