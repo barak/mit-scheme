@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.158 1994/12/19 23:27:34 cph Exp $
+$Id: edwin.pkg,v 1.159 1995/01/06 01:04:45 cph Exp $
 
-Copyright (c) 1989-1994 Massachusetts Institute of Technology
+Copyright (c) 1989-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,7 +35,9 @@ MIT in each case. |#
 ;;;; Edwin Packaging
 
 (global-definitions "../runtime/runtime")
-;;(global-definitions "../win32/win32")
+(os-type-case
+ ((dos nt)
+  (global-definitions "../win32/win32")))
 
 (define-package (edwin)
   (file-case os-type
@@ -123,6 +125,12 @@ MIT in each case. |#
   (parent ())
   (import (runtime rep)
 	  hook/repl-eval)
+  (import (runtime primitive-io)
+	  input-buffer/read-substring
+	  make-input-buffer
+	  make-output-buffer
+	  output-buffer/drain-block
+	  output-buffer/write-substring-block)
   (export (edwin class-macros)
 	  class-instance-transforms)
   (export ()
@@ -286,7 +294,8 @@ MIT in each case. |#
 	  with-screen-in-update))
 
 (define-package (edwin screen console-screen)
-  (files "termcap" "tterm")
+  (file-case os-type
+    ((unix dos nt) "termcap" "tterm"))
   (file-case os-type
     ((dos nt) "ansi" "bios"))
   (parent (edwin screen))
@@ -686,7 +695,7 @@ MIT in each case. |#
 (define-package (edwin dired)
   (files "dired")
   (file-case os-type
-   ((unix) "dirunx"))
+    ((unix) "dirunx"))
   (parent (edwin))
   (export (edwin)
 	  dired-filename-start
@@ -840,8 +849,6 @@ MIT in each case. |#
 	  edwin-variable$debugger-start-on-error?
 	  edwin-variable$debugger-verbose-mode?
 	  edwin-variable$environment-package-limit)
-  (import (runtime continuation-parser)
-	  stack-frame/reductions)
   (import (runtime debugger)
 	  command/condition-restart
 	  command/frame
@@ -863,7 +870,6 @@ MIT in each case. |#
 	  dstate/using-history?
 	  expression-indentation
 	  improper-list-length
-	  invalid-expression?
 	  make-initial-dstate
 	  print-reduction-expression
 	  print-subproblem-environment
@@ -873,11 +879,9 @@ MIT in each case. |#
 	  set-current-subproblem!
 	  set-dstate/environment-list!
 	  set-dstate/reduction-number!
-	  stack-frame/compiled-code?
 	  write-restarts)
   (import (runtime debugger-utilities)
 	  print-binding
-	  show-environment-name
 	  output-to-string
 	  write-dbg-name
 	  print-user-friendly-name)
@@ -920,34 +924,9 @@ MIT in each case. |#
 	  group-reinsert-properties!
 	  reinsert-properties-size))
 
-;;;; This is the variant used under DOS and NT (for now)
-
-#|
 (define-package (edwin process)
   (file-case os-type
-    ((dos nt)  "dosproc"))
-  (parent (edwin))
-  (export (edwin)
-	  buffer-processes			; always present
-	  delete-process			; always present
-	  get-buffer-process			; always present
-	  initialize-processes!			; always present
-	  process-list				; always present
-	  process-output-available?		; always present
-	  process-status-changes?		; always present
-	  subprocesses-available?))		; always present
-
-(define-package (edwin dosjob)
-  (file-case os-type
-    ((dos) "doscom" "dosshell"))
-  (parent (edwin)))
-|#
-
-;;;; This is the variant used under Unix/X
-
-(define-package (edwin process)
-  (file-case os-type
-    ((unix) "process")
+    ((unix os/2) "process")
     ((dos nt)  "dosproc"))
   (parent (edwin))
   (export (edwin)
@@ -963,7 +942,6 @@ MIT in each case. |#
 	  edwin-variable$exec-path
 	  edwin-variable$process-connection-type
 	  edwin-variable$shell-file-name
-	  find-program
 	  get-buffer-process			; always present
 	  get-process-by-name
 	  handle-process-status-changes
@@ -1001,218 +979,329 @@ MIT in each case. |#
 	  stop-process
 	  subprocesses-available?		; always present
 	  run-synchronous-process))
+
+(os-type-case
+ ((dos)
+  (define-package (edwin dosjob)
+    (files "doscom" "dosshell")
+    (parent (edwin)))))
 
-(define-package (edwin screen x-screen)
-  (files "xterm")
-  (parent (edwin screen))
-  (export (edwin)
-	  x-screen-auto-raise
-	  xterm-screen/flush!
-	  xterm-screen/grab-focus!)
-  (export (edwin x-commands)
-	  screen-xterm
-	  xterm-screen/set-icon-name
-	  xterm-screen/set-name)
-  (initialization (initialize-package!)))
+(os-type-case
+ ((unix)
+  (define-package (edwin screen x-screen)
+    (files "xterm")
+    (parent (edwin screen))
+    (export (edwin)
+	    x-screen-auto-raise
+	    xterm-screen/flush!
+	    xterm-screen/grab-focus!)
+    (export (edwin x-commands)
+	    screen-xterm
+	    xterm-screen/set-icon-name
+	    xterm-screen/set-name)
+    (initialization (initialize-package!)))
 
-#| PC only:
-(define-package (edwin screen win32)
-  (files "win32")
-  (parent (edwin screen))
-  (import (win32)
-	  destroy-window
-	  get-handle
-	  load-icon
-	  message-beep
-	  send-message
-	  set-active-window
-	  set-focus
-	  set-window-text
-	  sleep
-	  show-window
-	  SW_SHOWMINNOACTIVE
-	  update-window
-	  )
-  (export (edwin win-commands)
-	  screen->handle
-	  win32-screen/set-name!)
-  (initialization (initialize-package!)))
+  (define-package (edwin x-keys)
+    (file "key-x11")
+    (parent (edwin))
+    (export (edwin screen x-screen)
+	    x-make-special-key)
+    (initialization (initialize-package!)))
 
-(define-package (edwin win32-keys)
-  (files "key-w32")
-  (parent (edwin))
-  (export (edwin screen win32)
-	  win32-make-special-key)
-  (export (edwin)
-	  end ; the END key
-	  )
-  (initialization (initialize-package!)))
-|#
+  (define-package (edwin x-commands)
+    (files "xcom")
+    (parent (edwin))
+    (export (edwin)
+	    edwin-command$x-auto-raise-mode
+	    edwin-command$x-lower-screen
+	    edwin-command$x-raise-screen
+	    edwin-command$x-set-background-color
+	    edwin-command$x-set-border-color
+	    edwin-command$x-set-border-width
+	    edwin-command$x-set-cursor-color
+	    edwin-command$x-set-font
+	    edwin-command$x-set-foreground-color
+	    edwin-command$x-set-icon-name
+	    edwin-command$x-set-internal-border-width
+	    edwin-command$x-set-mouse-color
+	    edwin-command$x-set-mouse-shape
+	    edwin-command$x-set-position
+	    edwin-command$x-set-size
+	    edwin-command$x-set-window-name
+	    edwin-variable$x-screen-icon-name-format
+	    edwin-variable$x-screen-icon-name-length
+	    edwin-variable$x-screen-name-format
+	    edwin-variable$x-screen-name-length
+	    x-button1-down
+	    x-button1-up
+	    x-button2-down
+	    x-button2-up
+	    x-button3-down
+	    x-button3-up
+	    x-button4-down
+	    x-button4-up
+	    x-button5-down
+	    x-button5-up)
+    (export (edwin screen x-screen)
+	    update-xterm-screen-names!)))
 
-(define-package (edwin screen os2-screen)
-  (files "os2term")
-  (parent (edwin screen))
-  (export (edwin)
-	  os2-screen/get-position
-	  os2-screen/hide!
-	  os2-screen/lower!
-	  os2-screen/maximize!
-	  os2-screen/minimize!
-	  os2-screen/raise!
-	  os2-screen/restore!
-	  os2-screen/set-background-color!
-	  os2-screen/set-font!
-	  os2-screen/set-foreground-color!
-	  os2-screen/set-position!
-	  os2-screen/set-size!
-	  os2/desktop-width
-	  os2/desktop-height
-	  screen-char-width
-	  screen-char-height
-	  screen-pel-width
-	  screen-pel-height)
-  (initialization (initialize-package!)))
+ ((dos nt)
+  (define-package (edwin screen win32)
+    (files "win32")
+    (parent (edwin screen))
+    (import (win32)
+	    destroy-window
+	    get-handle
+	    load-icon
+	    message-beep
+	    send-message
+	    set-active-window
+	    set-focus
+	    set-window-text
+	    sleep
+	    show-window
+	    sw_showminnoactive
+	    update-window)
+    (export (edwin win-commands)
+	    screen->handle
+	    win32-screen/set-name!)
+    (initialization (initialize-package!)))
 
-(define-package (edwin x-commands)
-  (files "xcom")
-  (parent (edwin))
-  (export (edwin)
-	  edwin-command$x-auto-raise-mode
-	  edwin-command$x-lower-screen
-	  edwin-command$x-raise-screen
-	  edwin-command$x-set-background-color
-	  edwin-command$x-set-border-color
-	  edwin-command$x-set-border-width
-	  edwin-command$x-set-cursor-color
-	  edwin-command$x-set-font
-	  edwin-command$x-set-foreground-color
-	  edwin-command$x-set-icon-name
-	  edwin-command$x-set-internal-border-width
-	  edwin-command$x-set-mouse-color
-	  edwin-command$x-set-mouse-shape
-	  edwin-command$x-set-position
-	  edwin-command$x-set-size
-	  edwin-command$x-set-window-name
-	  edwin-variable$x-screen-icon-name-format
-	  edwin-variable$x-screen-icon-name-length
-	  edwin-variable$x-screen-name-format
-	  edwin-variable$x-screen-name-length
-	  x-button1-down
-	  x-button1-up
-	  x-button2-down
-	  x-button2-up
-	  x-button3-down
-	  x-button3-up
-	  x-button4-down
-	  x-button4-up
-	  x-button5-down
-	  x-button5-up)
-  (export (edwin screen x-screen)
-	  update-xterm-screen-names!))
-#| PC only:
-(define-package (edwin win-commands)
-  (files "win32com")
-  (parent (edwin))
-  (import (win32)
-	  load-icon
-	  get-handle)
-  (export (edwin)
-	  edwin-command$set-icon)
-  (export (edwin screen win32)
-	  update-win32-screen-name!))
-|#
-(define-package (edwin os2-commands)
-  (files "os2com")
-  (parent (edwin))
-  (export (edwin)
-	  edwin-command$set-background-color
-	  edwin-command$set-font
-	  edwin-command$set-foreground-color
-	  edwin-command$set-screen-position
-	  edwin-command$set-screen-size
-	  edwin-command$show-screen-position
-	  edwin-command$show-screen-size))
+  (define-package (edwin win32-keys)
+    (files "key-w32")
+    (parent (edwin))
+    (export (edwin screen win32)
+	    win32-make-special-key)
+    (export (edwin)
+	    ;; the END key
+	    end)
+    (initialization (initialize-package!)))
+
+  (define-package (edwin win-commands)
+    (files "win32com")
+    (parent (edwin))
+    (import (win32)
+	    load-icon
+	    get-handle)
+    (export (edwin)
+	    edwin-command$set-icon)
+    (export (edwin screen win32)
+	    update-win32-screen-name!)))
+
+ ((os/2)
+  (define-package (edwin screen os2-screen)
+    (files "os2term")
+    (parent (edwin screen))
+    (export (edwin)
+	    os2-screen/get-position
+	    os2-screen/hide!
+	    os2-screen/lower!
+	    os2-screen/maximize!
+	    os2-screen/minimize!
+	    os2-screen/raise!
+	    os2-screen/restore!
+	    os2-screen/set-background-color!
+	    os2-screen/set-font!
+	    os2-screen/set-foreground-color!
+	    os2-screen/set-position!
+	    os2-screen/set-size!
+	    os2/desktop-width
+	    os2/desktop-height
+	    screen-char-width
+	    screen-char-height
+	    screen-pel-width
+	    screen-pel-height)
+    (import (runtime os2-window-primitives)
+	    button-event-type:down
+	    button-event/number
+	    button-event/type
+	    button-event/x
+	    button-event/y
+	    cursor_flash
+	    cursor_solid
+	    event-type
+	    event-type:button
+	    event-type:close
+	    event-type:focus
+	    event-type:key
+	    event-type:paint
+	    event-type:resize
+	    event-type:visibility
+	    event-wid
+	    focus-event/gained?
+	    font-metrics/descender
+	    font-metrics/height
+	    font-metrics/width
+	    kc_alt
+	    kc_ctrl
+	    kc_virtualkey
+	    key-event/code
+	    key-event/flags
+	    key-event/repeat
+	    number-of-event-types
+	    os2win-activate
+	    os2win-beep
+	    os2win-clear
+	    os2win-close
+	    os2win-close-event-qid
+	    os2win-console-wid
+	    os2win-desktop-height
+	    os2win-desktop-width
+	    os2win-focus?
+	    os2win-get-event
+	    os2win-get-pos
+	    os2win-get-size
+	    os2win-move-cursor
+	    os2win-open-1
+	    os2win-open-event-qid
+	    os2win-scroll
+	    os2win-set-colors
+	    os2win-set-font
+	    os2win-set-grid
+	    os2win-set-pos
+	    os2win-set-size
+	    os2win-set-state
+	    os2win-shape-cursor
+	    os2win-show
+	    os2win-show-cursor
+	    os2win-write
+	    paint-event/xh
+	    paint-event/xl
+	    paint-event/yh
+	    paint-event/yl
+	    resize-event/height
+	    resize-event/width
+	    virtual-key-supremum
+	    visibility-event/shown?
+	    vk_backspace
+	    vk_backtab
+	    vk_break
+	    vk_button1
+	    vk_button2
+	    vk_button3
+	    vk_clear
+	    vk_delete
+	    vk_down
+	    vk_end
+	    vk_enddrag
+	    vk_enter
+	    vk_ereof
+	    vk_esc
+	    vk_f1
+	    vk_f10
+	    vk_f11
+	    vk_f12
+	    vk_f13
+	    vk_f14
+	    vk_f15
+	    vk_f16
+	    vk_f17
+	    vk_f18
+	    vk_f19
+	    vk_f2
+	    vk_f20
+	    vk_f21
+	    vk_f22
+	    vk_f23
+	    vk_f24
+	    vk_f3
+	    vk_f4
+	    vk_f5
+	    vk_f6
+	    vk_f7
+	    vk_f8
+	    vk_f9
+	    vk_home
+	    vk_insert
+	    vk_left
+	    vk_newline
+	    vk_pa1
+	    vk_pagedown
+	    vk_pageup
+	    vk_pause
+	    vk_printscrn
+	    vk_right
+	    vk_space
+	    vk_sysrq
+	    vk_tab
+	    vk_up
+	    window-state:bottom
+	    window-state:hide
+	    window-state:maximize
+	    window-state:minimize
+	    window-state:restore
+	    window-state:top)
+    (initialization (initialize-package!)))
+
+  (define-package (edwin os2-commands)
+    (files "os2com")
+    (parent (edwin))
+    (export (edwin)
+	    edwin-command$set-background-color
+	    edwin-command$set-font
+	    edwin-command$set-foreground-color
+	    edwin-command$set-screen-position
+	    edwin-command$set-screen-size
+	    edwin-command$show-screen-position
+	    edwin-command$show-screen-size))))
 
-(define-package (edwin x-keys)
-  (files "key-x11")
-  (parent (edwin))
-  (export (edwin screen x-screen)
-	  x-make-special-key)
-  (initialization (initialize-package!)))
+(os-type-case
+ ((unix)
+  (define-package (edwin vc)
+    (files "vc")
+    (parent (edwin))
+    (export (edwin)
+	    edwin-command$vc-cancel-version
+	    edwin-command$vc-diff
+	    edwin-command$vc-finish-logentry
+	    edwin-command$vc-insert-headers
+	    edwin-command$vc-next-action
+	    edwin-command$vc-print-log
+	    edwin-command$vc-register
+	    edwin-command$vc-revert-buffer
+	    edwin-command$vc-toggle-read-only
+	    edwin-command$vc-version-diff
+	    edwin-command$vc-version-other-window
+	    edwin-mode$vc-log
+	    edwin-variable$diff-switches
+	    edwin-variable$vc-checkin-hooks
+	    edwin-variable$vc-checkin-switches
+	    edwin-variable$vc-checkout-carefully
+	    edwin-variable$vc-command-messages
+	    edwin-variable$vc-initial-comment
+	    edwin-variable$vc-keep-workfiles
+	    edwin-variable$vc-log-mode-hook
+	    edwin-variable$vc-make-backup-files
+	    edwin-variable$vc-mode-line-status
+	    edwin-variable$vc-rcs-preserve-mod-times
+	    edwin-variable$vc-rcs-status
+	    edwin-variable$vc-suppress-confirm))
 
-
-(define-package (edwin vc)
-  (files "vc")
-  (parent (edwin))
-  (export (edwin)
-	  edwin-command$vc-cancel-version
-	  edwin-command$vc-diff
-	  edwin-command$vc-finish-logentry
-	  edwin-command$vc-insert-headers
-	  edwin-command$vc-next-action
-	  edwin-command$vc-print-log
-	  edwin-command$vc-register
-	  edwin-command$vc-revert-buffer
-	  edwin-command$vc-toggle-read-only
-	  edwin-command$vc-version-diff
-	  edwin-command$vc-version-other-window
-	  edwin-mode$vc-log
-	  edwin-variable$diff-switches
-	  edwin-variable$vc-checkin-hooks
-	  edwin-variable$vc-checkin-switches
-	  edwin-variable$vc-checkout-carefully
-	  edwin-variable$vc-command-messages
-	  edwin-variable$vc-initial-comment
-	  edwin-variable$vc-keep-workfiles
-	  edwin-variable$vc-log-mode-hook
-	  edwin-variable$vc-make-backup-files
-	  edwin-variable$vc-mode-line-status
-	  edwin-variable$vc-rcs-preserve-mod-times
-	  edwin-variable$vc-rcs-status
-	  edwin-variable$vc-suppress-confirm))
-
-(define-package (edwin rcs-parse)
-  (files "rcsparse")
-  (parent (edwin))
-  (export (edwin)
-	  parse-rcs-admin
-	  rcs-admin/access-list
-	  rcs-admin/branch
-	  rcs-admin/comment
-	  rcs-admin/description
-	  rcs-admin/expand
-	  rcs-admin/head
-	  rcs-admin/locks
-	  rcs-admin/strict?
-	  rcs-admin/symbols
-	  rcs-admin?
-	  rcs-delta/author
-	  rcs-delta/branches
-	  rcs-delta/date
-	  rcs-delta/next
-	  rcs-delta/number
-	  rcs-delta/state
-	  rcs-delta?
-	  rcs-find-delta
-	  rcs-number-head
-	  rcs-number-length))
-#|
-(define-package (edwin rcs)
-  (files "rcs")
-  (parent (edwin))
-  (export (edwin)
-	  edwin-command$rcs-ci
-	  edwin-command$rcs-ci-locked-files
-	  edwin-command$rcs-co
-	  edwin-command$rcs-diff
-	  edwin-command$rcs-list-locked-files
-	  edwin-command$rcs-log
-	  edwin-command$rcs-unlock
-	  edwin-variable$rcs-ci-default-switches
-	  edwin-variable$rcs-co-default-switches
-	  edwin-variable$rcs-diff-default-switches
-	  edwin-variable$rcs-log-default-switches))
-|#
+  (define-package (edwin rcs-parse)
+    (file "rcsparse")
+    (parent (edwin))
+    (export (edwin)
+	    parse-rcs-admin
+	    rcs-admin/access-list
+	    rcs-admin/branch
+	    rcs-admin/comment
+	    rcs-admin/description
+	    rcs-admin/expand
+	    rcs-admin/head
+	    rcs-admin/locks
+	    rcs-admin/strict?
+	    rcs-admin/symbols
+	    rcs-admin?
+	    rcs-delta/author
+	    rcs-delta/branches
+	    rcs-delta/date
+	    rcs-delta/next
+	    rcs-delta/number
+	    rcs-delta/state
+	    rcs-delta?
+	    rcs-find-delta
+	    rcs-number-head
+	    rcs-number-length))))
 
 (define-package (edwin sendmail)
   (files "sendmail")
@@ -1326,47 +1415,6 @@ MIT in each case. |#
 	  edwin-variable$rmail-primary-inbox-list
 	  edwin-variable$rmail-reply-with-re
 	  rmail-spool-directory))
-
-#|
-(define-package (edwin bochser)
-  (files "bochser"
-	 "bochsmod")
-  (parent (edwin))
-  (export (edwin)
-	  edwin-command$bochser-mode
-	  edwin-mode$bochser
-	  edwin-variable$bochs
-	  edwin-variable$bochsmod-internal-bochs-table
-	  edwin-variable$bochsmod-bindings-buffer
-	  edwin-variable$bochsmod-bochs-buffer
-	  edwin-variable$bochsmod-default-scheme-environment
-	  edwin-variable$bochsmod-default-syntax-table
-	  edwin-variable$bochsmod-current-environment-bochs
-	  edwin-variable$bochsmod-smart-windows
-	  edwin-variable$bochsmod-show-bindings
-	  edwin-variable$bochsmod-create-env-buffers?
-	  edwin-variable$bochsmod-buffers-in-screens?
-	  edwin-command$bochsmod-open-bochs-before-point
-	  edwin-command$bochsmod-open-bochs-before-mouse-point
-	  edwin-command$bochsmod-close-bochs-before-point
-	  edwin-command$bochsmod-close-bochs-before-mouse-point
-	  edwin-command$bochsmod-close-bochs-around-point
-	  edwin-command$bochsmod-close-bochs-around-mouse-point
-	  edwin-command$bochsmod-extract-code
-	  edwin-command$bochsmod-kill-buffer
-	  edwin-command$bochsmod-delete-window
-	  edwin-command$bochsmod-delete-other-windows
-	  edwin-command$bochsmod-switch-to-buffer
-	  edwin-command$down-bochs
-	  edwin-command$backward-down-bochs
-	  edwin-command$up-bochs
-	  edwin-command$backward-up-bochs
-	  edwin-command$bochsmod-attach-bindings
-	  edwin-variable$bindings-window-fraction)
-  (import (runtime debugger-utilities)
-	  show-environment-bindings)
-  (initialization (initialize-bochser-mode!)))
-|#
 
 (define-package (edwin stepper)
   (files "eystep")
