@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwiu.scm,v 1.24 1993/01/29 23:05:40 cph Exp $
+;;;	$Id: bufwiu.scm,v 1.25 1993/09/23 07:06:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -72,12 +72,8 @@
 	      (begin
 		;; If this change affects START-MARK, invalidate it
 		;; and request a display update.
-		(if (let ((wlstart (%window-start-line-index window))
-			  (wstart (%window-start-index window)))
-		      (and (if (fix:= wlstart wstart)
-			       (fix:< start wstart)
-			       (fix:<= start wstart))
-			   (fix:<= wlstart end)))
+		(if (and (fix:<= start (%window-start-index window))
+			 (fix:<= (%window-start-line-index window) end))
 		    (begin
 		      (clear-window-start! window)
 		      (window-needs-redisplay! window)))
@@ -154,13 +150,14 @@
 	(preserve-nothing! window))
       (let ((start (%window-current-start-index window))
 	    (end (%window-current-end-index window)))
-	(cond ((and (%window-start-clip-mark window)
-		    (or (fix:< start (%window-group-start-index window))
-			(fix:< (%window-group-start-index window)
-			       (%window-start-clip-index window))
-			(fix:< (%window-group-end-index window) end)
-			(fix:< (%window-end-clip-index window)
-			       (%window-group-end-index window))))
+	(cond ((or (not start)
+		   (and (%window-start-clip-mark window)
+			(or (fix:< start (%window-group-start-index window))
+			    (fix:< (%window-group-start-index window)
+				   (%window-start-clip-index window))
+			    (fix:< (%window-group-end-index window) end)
+			    (fix:< (%window-end-clip-index window)
+				   (%window-group-end-index window)))))
 	       (preserve-nothing! window))
 	      ((and (fix:> (group-modified-tick (%window-group window))
 			   (%window-modified-tick window))
