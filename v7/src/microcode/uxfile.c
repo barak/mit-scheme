@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfile.c,v 1.4 1991/01/24 11:25:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfile.c,v 1.5 1991/05/10 00:07:27 cph Exp $
 
-Copyright (c) 1990-1 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -136,7 +136,6 @@ DEFUN (OS_open_load_file, (filename), CONST char * filename)
 Tchannel
 DEFUN (OS_open_dump_file, (filename), CONST char * filename)
 {
-  OS_file_remove_link (filename);
   while (1)
     {
       int fd = (UX_open (filename, (O_WRONLY | O_CREAT | O_TRUNC), MODE_REG));

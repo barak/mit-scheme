@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.50 1991/05/05 00:37:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.51 1991/05/10 00:07:08 cph Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -537,8 +537,8 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
   else
   {
     CONST char * filename = ((CONST char *) (STRING_LOC ((ARG_REF (2)), 0)));
-    dump_channel =
-      (OS_open_dump_file (filename));
+    OS_file_remove_link (filename);
+    dump_channel = (OS_open_dump_file (filename));
     if (dump_channel == NO_CHANNEL)
       error_bad_range_arg (2);
     result = Write_File((Free - 1),
