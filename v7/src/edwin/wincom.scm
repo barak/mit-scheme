@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: wincom.scm,v 1.113 1992/11/13 22:59:28 cph Exp $
+;;;	$Id: wincom.scm,v 1.114 1992/11/14 01:01:25 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -442,7 +442,7 @@ Also kills any pop up window it may have created."
 (define *previous-popped-up-window* (object-hash false))
 (define *minibuffer-scroll-window* (object-hash false))
 
-(define (pop-up-buffer buffer #!optional select? not-current-window)
+(define (pop-up-buffer buffer #!optional select? not-current-window?)
   ;; If some new window is created by this procedure, it is returned
   ;; as the value.  Otherwise the value is false.
   (let ((select? (and (not (default-object? select?)) select?))
