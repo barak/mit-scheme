@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/reccom.scm,v 1.11 1989/04/15 00:52:11 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/reccom.scm,v 1.12 1989/04/23 23:25:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -106,10 +106,10 @@ The text previously in the region is overwritten by the blanks."
   (lambda ()
     (delete-rectangle (current-mark) (current-point) true)))
 
-(define (make-space-to-column column mark) ;new make-space-to-column
-  (mark-permanent! mark)
-  (change-column column mark)
-  (line-end mark 0))
+(define (make-space-to-column column mark)
+  (let ((mark (mark-permanent! mark)))
+    (change-column column mark)
+    (line-end mark 0)))
 
 (define (yank-rectangle rectangle point)
   (let ((goal (mark-column point)))

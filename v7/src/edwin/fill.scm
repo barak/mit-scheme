@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.42 1989/04/15 00:49:34 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.43 1989/04/23 23:21:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -199,14 +199,15 @@ With argument, turn auto-fill mode on iff argument is positive."
   "The number of columns to indent each line."  0)
 
 (define (center-line mark)
-  (mark-permanent! mark)
-  (delete-horizontal-space (line-start mark 0))
-  (delete-horizontal-space (line-end mark 0))
-  (let ((d (- (- (ref-variable fill-column) (ref-variable left-margin))
-	      (mark-column (line-end mark 0)))))
-    (if (positive? d)
-	(insert-horizontal-space (+ (ref-variable left-margin) (quotient d 2))
-				 (line-start mark 0)))))
+  (let ((mark (mark-permanent! mark)))
+    (delete-horizontal-space (line-start mark 0))
+    (delete-horizontal-space (line-end mark 0))
+    (let ((d (- (- (ref-variable fill-column) (ref-variable left-margin))
+		(mark-column (line-end mark 0)))))
+      (if (positive? d)
+	  (insert-horizontal-space (+ (ref-variable left-margin)
+				      (quotient d 2))
+				   (line-start mark 0))))))
 
 (define-command center-line
   "Center the line point is on, within the width specified by `fill-column'.

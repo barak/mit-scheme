@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/things.scm,v 1.76 1989/04/15 00:53:32 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/things.scm,v 1.77 1989/04/23 23:26:47 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -271,9 +271,9 @@
 	(change-column column point))))
 
 (define (change-column column point)
-  (mark-permanent! point)
-  (delete-horizontal-space point)
-  (insert-horizontal-space column point))
+  (let ((point (mark-permanent! point)))
+    (delete-horizontal-space point)
+    (insert-horizontal-space column point)))
 
 ;;;; Lines
 
