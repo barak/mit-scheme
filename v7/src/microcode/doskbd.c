@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/doskbd.c,v 1.4 1992/05/13 16:49:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/doskbd.c,v 1.5 1992/05/25 16:19:34 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -1302,4 +1302,64 @@ dos_set_kbd_modifier_mask (unsigned char new_mask)
 #endif /* DOSX_RM_HANDLER_REAL */
 
   return (old_mask);
+}
+
+extern int EXFUN (dos_set_kbd_translation,
+		  (unsigned, unsigned, unsigned char));
+
+#ifndef PADDED_PATTERN_SIZE
+#  define PADDED_PATTERN_SIZE 0
+#endif
+
+#ifndef RM_ISR_TABLE_SIZE
+#  define RM_ISR_TABLE_SIZE 0
+#endif
+
+int
+dos_set_kbd_translation (unsigned shift_p,
+			 unsigned scan_code,
+			 unsigned char new)
+{
+  unsigned char old;
+  unsigned char * table;
+  unsigned offset;
+
+  if (scan_code >= (sizeof (shifted_scan_code_to_ascii)))
+    return (-1);
+
+  if (shift_p != 0)
+  {
+    table = &shifted_scan_code_to_ascii[0];
+    offset = PADDED_PATTERN_SIZE;
+  }
+  else
+  {
+    table = &unshifted_scan_code_to_ascii[0];
+    offset = (PADDED_PATTERN_SIZE + RM_ISR_TABLE_SIZE);
+  }
+  old = table[scan_code];
+  table[scan_code] = new;
+			       
+
+#ifdef DPMI_RM_HANDLER_REAL
+
+  if (DPMI_RM_selector != 0)
+    farcpy ((offset + scan_code),
+	    DPMI_RM_selector,
+	    ((unsigned) (& table[scan_code])),
+	    (getDS ()),
+	    1);
+
+#endif /* DPMI_RM_HANDLER_REAL */
+
+#ifdef DOSX_RM_HANDLER_REAL
+
+  if (DOSX_RM_segment != 0)
+    (* ((unsigned char *)
+	((((unsigned long) DOSX_RM_segment) << 4) + offset)))
+      = new;
+
+#endif /* DOSX_RM_HANDLER_REAL */
+
+  return (old);
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/prdosenv.c,v 1.2 1992/05/13 16:50:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/prdosenv.c,v 1.3 1992/05/25 16:20:10 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -141,4 +141,22 @@ DEFINE_PRIMITIVE ("DOS-SET-KEYBOARD-MODIFIER-MASK!", Prim_dos_set_kbd_mod_mask,
 		    ((long)
 		     (dos_set_kbd_modifier_mask ((unsigned char)
 						 (arg_integer (1))))));
+}
+
+DEFINE_PRIMITIVE ("DOS-SET-KEYBOARD-TRANSLATION!",
+		  Prim_dos_set_keyboard_translation,
+		  3, 3, 0)
+{
+  int result;
+  extern int EXFUN (dos_set_kbd_translation,
+		    (unsigned, unsigned, unsigned char));
+  PRIMITIVE_HEADER (3);
+  
+  result = (dos_set_kbd_translation (((unsigned) (arg_integer (1))),
+				     ((unsigned) (arg_integer (2))),
+				     ((unsigned char) (arg_integer (3)))));
+  if (result < 0)
+    error_bad_range_arg (2);
+
+  PRIMITIVE_RETURN (long_to_integer ((long) result));
 }
