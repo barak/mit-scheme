@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.4 1987/12/04 18:58:01 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.5 1987/12/04 19:24:45 cph Exp $
 
 (require 'scheme)
 
@@ -247,7 +247,7 @@ Control returns to the top level rep loop."
 	   (interrupt-process "scheme" t))
 	  (xscheme-control-g-disabled-p
 	   (message "Relax..."))
-	  (else
+	  (t
 	   (setq xscheme-control-g-disabled-p t)
 	   (message "Sending C-G interrupt to Scheme...")
 	   (interrupt-process "scheme" t)
