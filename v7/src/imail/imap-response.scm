@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.39 2000/07/03 02:07:06 cph Exp $
+;;; $Id: imap-response.scm,v 1.40 2000/07/03 03:36:50 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -277,7 +277,7 @@
 		 #f
 		 (error "Illegal nstring:" atom))))
 	  (else (error "Illegal astring syntax:" char)))))
-
+
 (define (read-quoted input)
   (with-string-output-port
     (lambda (output)
@@ -300,76 +300,40 @@
 		     (lose))))
 	      ((not (char=? #\" char))
 	       (lose)))))))
-
+
 (define (read-literal input)
   (with-string-output-port
     (lambda (output)
       (read-literal-to-port input output))))
 
 (define (read-literal-to-port input output)
-  (let ((n (read-literal-length input))
-	(b1 (make-string 4096))
-	(b2 (make-string 4096)))
-    (let loop ((i 0))
-      (if (fix:< i n)
-	  (call-with-values
-	      (lambda ()
-		(let ((n-to-read (fix:- n i)))
-		  (if (fix:<= n-to-read 4096)
-		      (read-and-translate input n-to-read #t b1 b2)
-		      (read-and-translate input 4096 #f b1 b2))))
-	    (lambda (n-read n-written)
-	      (if (fix:= 0 n-read)
-		  (error "Premature EOF:" input))
-	      (let ((i (fix:+ i n-read)))
-		(if (and *read-literal-progress-hook* (fix:<= i n))
-		    (*read-literal-progress-hook* i n))
-		(write-substring b2 0 n-written output)
-		(loop i))))))))
-
-(define (read-literal-length port)
   (discard-known-char #\{ port)
-  (let ((n (read-number port)))
+  (let ((n (read-number port))
+	(progress-hook *read-literal-progress-hook*))
     (discard-known-char #\} port)
     (discard-known-char #\return port)
     (discard-known-char #\linefeed port)
-    n))
-
-(define (read-and-translate port n-to-read last-segment? b1 b2)
-  (let ((n-read (read-substring!-internal b1 0 n-to-read port)))
-    (let loop ((i1 0) (i2 0))
-      (cond ((fix:= i1 n-read)
-	     (values n-read i2))
-	    ((char=? #\return (string-ref b1 i1))
-	     (let ((i1 (fix:+ i1 1)))
-	       (if (fix:= i1 n-read)
-		   (values (let ((char
-				  (if (or (fix:< n-read n-to-read)
-					  (not last-segment?))
-				      (peek-char port)
-				      (make-eof-object port))))
-			     (cond ((eof-object? char)
-				    (string-set! b2 i2 #\return)
-				    i1)
-				   ((char=? #\linefeed char)
-				    (read-char port)
-				    (string-set! b2 i2 #\newline)
-				    (fix:+ i1 1))
-				   (else
-				    (string-set! b2 i2 #\return)
-				    i1)))
-			   (fix:+ i2 1))
-		   (loop (if (char=? #\linefeed (string-ref b1 i1))
-			     (begin
-			       (string-set! b2 i2 #\newline)
-			       (fix:+ i1 1))
-			     (begin
-			       (string-set! b2 i2 #\return)
-			       i1))
-			 (fix:+ i2 1)))))
-	    (else
-	     (string-set! b2 i2 (string-ref b1 i1))
-	     (loop (fix:+ i1 1) (fix:+ i2 1)))))))
+    (let loop ((i 0))
+      (if (fix:< i n)
+	  (let ((i (fix:+ i 1))
+		(char (read-char-no-eof input)))
+	    (if (and (char=? char #\return)
+		     (fix:< i n)
+		     (char=? (peek-char-no-eof input) #\linefeed))
+		(begin
+		  (discard-char input)
+		  (newline output)
+		  (if (and progress-hook
+			   (or (fix:= (fix:remainder i 4096) 0)
+			       (fix:= (fix:remainder i 4096) 4095)))
+		      (progress-hook i n))
+		  (loop (fix:+ i 1)))
+		(begin
+		  (write-char char output)
+		  (if (and progress-hook
+			   (fix:= (fix:remainder i 4096) 0))
+		      (progress-hook i n))
+		  (loop i))))))))
 
 (define (imap:read-literal-progress-hook procedure thunk)
   (fluid-let ((*read-literal-progress-hook* procedure))
