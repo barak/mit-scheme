@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.278 2001/11/06 04:45:13 cph Exp $
+;;; $Id: imail-top.scm,v 1.279 2001/12/03 18:12:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -147,8 +147,8 @@ Otherwise, the text is left as is."
 (define-variable imail-forward-all-headers
   "If true, forwarded email messages will contain all header fields.
 Otherwise, only the header fields normally shown by IMAIL are sent."
-  #f
-  boolean?)
+  'ASK
+  (lambda (x) (or (boolean? x) (eq? x 'ASK))))
 
 (define-variable imail-forward-using-mime
   "If true, forwarded email messages are sent as MIME attachments.
@@ -1189,7 +1189,11 @@ With negative argument, forward the message with all headers;
        (let ((raw?
 	      (if (< (command-argument-numeric-value argument) 0)
 		  #t
-		  (ref-variable imail-forward-all-headers mail-buffer))))
+		  (let ((all?
+			 (ref-variable imail-forward-all-headers mail-buffer)))
+		    (if (eq? all? 'ASK)
+			(prompt-for-confirmation? "Forward all header fields")
+			all?)))))
 	 (if (ref-variable imail-forward-using-mime mail-buffer)
 	     (add-buffer-mime-attachment!
 	      mail-buffer
