@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.9 1992/01/31 13:35:37 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.10 1992/02/04 05:13:31 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -85,13 +85,7 @@ MIT in each case. |#
 			 (REGISTER (? source2))
 			 (? overflow?)))
   overflow?				; ignored
-  (case operator
-    ((FIXNUM-LSH)
-     (require-register! ecx))		; CL used as shift count
-    ((FIXNUM-QUOTIENT FIXNUM-REMAINDER)
-     (require-register! eax)		; dividend low/quotient
-     (require-register! edx)))		; dividend high/remainder
-  (fixnum-2-args target source1 source2 (fixnum-2-args/operate operator)))
+  ((fixnum-2-args/operate operator) target source1 source2))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -102,8 +96,7 @@ MIT in each case. |#
   (QUALIFIER (or (and (not (eq? operator 'FIXNUM-QUOTIENT))
 		      (not (eq? operator 'FIXNUM-REMAINDER)))
 		 (integer-power-of-2? (abs constant))))
-  overflow?				; ignored
-  (fixnum-2-args/register*constant operator target source constant))
+  (fixnum-2-args/register*constant operator target source constant overflow?))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -112,8 +105,7 @@ MIT in each case. |#
 			 (REGISTER (? source))
 			 (? overflow?)))
   (QUALIFIER (fixnum-2-args/commutative? operator))
-  overflow?				; ignored
-  (fixnum-2-args/register*constant operator target source constant))
+  (fixnum-2-args/register*constant operator target source constant overflow?))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -155,8 +147,7 @@ MIT in each case. |#
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate) (OBJECT->FIXNUM (REGISTER (? register))))
   (fixnum-branch! predicate)
-  (let ((temp (standard-move-to-temporary! register)))
-    (object->fixnum temp)))
+  (object->fixnum (standard-move-to-temporary! register)))
 
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate) (OFFSET (REGISTER (? address)) (? offset)))
@@ -198,7 +189,7 @@ MIT in each case. |#
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (OBJECT->FIXNUM (CONSTANT (? constant)))
 		      (REGISTER (? register)))
-  (fixnum-branch/commuted! predicate)
+  (fixnum-branch! (commute-fixnum-predicate predicate))
   (LAP (CMP W ,(source-register-reference register)
 	    (& ,(fixnum-object->fixnum-word constant)))))
 
@@ -214,7 +205,7 @@ MIT in each case. |#
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (OBJECT->FIXNUM (CONSTANT (? constant)))
 		      (OFFSET (REGISTER (? address)) (? offset)))
-  (fixnum-branch/commuted! predicate)
+  (fixnum-branch! (commute-fixnum-predicate predicate))
   (LAP (CMP W ,(source-indirect-reference! address offset)
 	    (& ,(fixnum-object->fixnum-word constant)))))
 
@@ -298,21 +289,64 @@ MIT in each case. |#
 		   FIXNUM-OR
 		   FIXNUM-XOR)))
 	     
-(define (fixnum-2-args target source1 source2 operation)
-  (two-arg-register-operation (fixnum-2-args/operate operator)
-			      (fixnum-2-args/commutative? operator)
-			      'GENERAL
-			      any-reference
-			      any-reference
+(define ((fixnum-2-args/standard commutative? operate) target source1 source2)
+  (two-arg-register-operation operate
+			      commutative?
 			      target
 			      source1
 			      source2))
 
-(define (fixnum-2-args/register*constant operator target source constant)
+(define (two-arg-register-operation operate commutative?
+				    target source1 source2)
+  (let* ((worst-case
+	  (lambda (target source1 source2)
+	    (LAP (LAP (MOV W ,target ,source1))
+		 ,@(operate target source2))))
+	 (new-target-alias!
+	  (lambda ()
+	    (let ((source1 (any-reference source1))
+		  (source2 (any-reference source2)))
+	      (delete-dead-registers!)
+	      (worst-case (target-register-reference target)
+			  source1
+			  source2)))))
+    (cond ((pseudo-register? target)
+	   (reuse-pseudo-register-alias
+	    source1 'GENERAL
+	    (lambda (alias)
+	      (let ((source2 (if (= source1 source2)
+				 (register-reference alias)
+				 (any-reference source2))))
+		(delete-register! alias)
+		(delete-dead-registers!)
+		(add-pseudo-register-alias! target alias)
+		(operate (register-reference alias) source2)))
+	    (lambda ()
+	      (if commutative?
+		  (reuse-pseudo-register-alias
+		   source2 'GENERAL
+		   (lambda (alias2)
+		     (let ((source1 (any-reference source1)))
+		       (delete-register! alias2)
+		       (delete-dead-registers!)
+		       (add-pseudo-register-alias! target alias2)
+		       (operate (register-reference alias2) source1)))
+		   new-target-alias!)
+		  (new-target-alias!)))))
+	  ((not (eq? (register-type target) 'GENERAL))
+	   (error "two-arg-register-operation: Wrong type register"
+		  target 'GENERAL))
+	  (else
+	   (worst-case (register-reference target)
+		       (any-reference source1)
+		       (any-reference source2))))))
+
+(define (fixnum-2-args/register*constant operator target
+					 source constant overflow?)
   (fixnum-1-arg
    target source
    (lambda (target)
-     ((fixnum-2-args/operate-constant operator) target constant))))
+     ((fixnum-2-args/operate-constant operator) target constant overflow?))))
 
 ;;;; Arithmetic operations
 
@@ -326,18 +360,18 @@ MIT in each case. |#
 (define (word->fixnum target)
   (LAP (AND W ,target (& ,(fix:not fixnum-bits-mask)))))
 
-(define (add-fixnum-constant target constant)
-  (if (zero? constant)
+(define (add-fixnum-constant target constant overflow?)
+  (if (and (zero? constant) (not overflow?))
       (LAP)
       (LAP (ADD W ,target (& ,(* constant fixnum-1))))))
 
 (define-fixnum-method 'ONE-PLUS-FIXNUM fixnum-methods/1-arg
   (lambda (target)
-    (add-fixnum-constant target 1)))
+    (add-fixnum-constant target 1 false)))
 
 (define-fixnum-method 'MINUS-ONE-PLUS-FIXNUM fixnum-methods/1-arg
   (lambda (target)
-    (add-fixnum-constant target -1)))
+    (add-fixnum-constant target -1 false)))
 
 (define-fixnum-method 'FIXNUM-NOT fixnum-methods/1-arg
   (lambda (target)
@@ -350,117 +384,125 @@ MIT in each case. |#
 
 (let-syntax
     ((binary-operation
-      (macro (name instr idempotent?)
+      (macro (name instr commutative? idempotent?)
 	`(define-fixnum-method ',name fixnum-methods/2-args
-	   (lambda (target source2)
-	     (if (and ,idempotent? (equal? target source2))
-		 (LAP)
-		 (LAP (,instr W ,',target ,',source2))))))))
+	   (fixnum-2-args/standard
+	    ,commutative?
+	    (lambda (target source2)
+	      (if (and ,idempotent? (equal? target source2))
+		  (LAP)
+		  (LAP (,instr W ,',target ,',source2)))))))))
 
-  (binary-operation PLUS-FIXNUM ADD false)
-  (binary-operation MINUS-FIXNUM SUB false)
-  (binary-operation FIXNUM-AND AND true)
-  (binary-operation FIXNUM-OR OR true)
-  (binary-operation FIXNUM-XOR XOR false))
+  (binary-operation PLUS-FIXNUM ADD true false)
+  (binary-operation MINUS-FIXNUM SUB false false)
+  (binary-operation FIXNUM-AND AND true true)
+  (binary-operation FIXNUM-OR OR true true)
+  (binary-operation FIXNUM-XOR XOR true false))
 
 (define-fixnum-method 'FIXNUM-ANDC fixnum-methods/2-args
-  (lambda (target source2)
-    (if (equal? target source2)
-	(load-fixnum-constant 0 target)
-	(let ((temp (temporary-register-reference)))
-	  (LAP ,@(if (equal? temp source2)
-		     (LAP)
-		     (LAP (MOV W ,temp ,source2)))
-	       (NOT W ,temp)
-	       (AND W ,target ,temp))))))
+  (fixnum-2-args/standard
+   false
+   (lambda (target source2)
+     (if (equal? target source2)
+	 (load-fixnum-constant 0 target)
+	 (let ((temp (temporary-register-reference)))
+	   (LAP ,@(if (equal? temp source2)
+		      (LAP)
+		      (LAP (MOV W ,temp ,source2)))
+		(NOT W ,temp)
+		(AND W ,target ,temp)))))))
 
 (define-fixnum-method 'MULTIPLY-FIXNUM fixnum-methods/2-args
-  (lambda (target source2)
-    (cond ((not (equal? target source2))
-	   (LAP (SAR W ,target (& ,scheme-type-width))
-		(IMUL W ,target ,source2)))
-	  ((even? scheme-type-width)
-	   (LAP (SAR W ,target (& ,(quotient scheme-type-width 2)))
-		(IMUL W ,target ,target)))
-	  (else
-	   (let ((temp (temporary-register-reference)))
-	     (LAP (MOV W ,temp ,target)
-		  (SAR W ,target (& ,scheme-type-width))
-		  (IMUL W ,target ,temp)))))))
+  (fixnum-2-args/standard
+   false
+   (lambda (target source2)
+     (cond ((not (equal? target source2))
+	    (LAP (SAR W ,target (& ,scheme-type-width))
+		 (IMUL W ,target ,source2)))
+	   ((even? scheme-type-width)
+	    (LAP (SAR W ,target (& ,(quotient scheme-type-width 2)))
+		 (IMUL W ,target ,target)))
+	   (else
+	    (let ((temp (temporary-register-reference)))
+	      (LAP (MOV W ,temp ,target)
+		   (SAR W ,target (& ,scheme-type-width))
+		   (IMUL W ,target ,temp))))))))
 
 (define-fixnum-method 'FIXNUM-LSH fixnum-methods/2-args
-  (lambda (target source2)
-    ;; SOURCE2 is guaranteed not to be ECX because of the
-    ;; require-register! used in the rule.
-    ;; TARGET can be ECX only if the rule has machine register
-    ;; ECX as the target, unlikely, but it must be handled!
-    (let ((with-target
-	    (lambda (target)
-	      (let ((jlabel (generate-label 'SHIFT-JOIN))
-		    (slabel (generate-label 'SHIFT-NEGATIVE)))
-		(LAP (MOV W (R ,ecx) ,source2)
-		     (SAR W (R ,ecx) (& ,scheme-type-width))
-		     (JS (@PCR ,slabel))
-		     (SHL W ,target (R ,ecx))
-		     (JMP (@PCR ,jlabel))
-		     (LABEL ,slabel)
-		     (NEG W (R ,ecx))
-		     (SHR W ,target (R ,ecx))
-		     ,@(word->fixnum target)
-		     (LABEL ,jlabel))))))
+  (let ((operate
+	 (lambda (target source2)
+	   ;; SOURCE2 is guaranteed not to be ECX because of the
+	   ;; require-register! used below.
+	   ;; TARGET can be ECX only if the rule has machine register
+	   ;; ECX as the target, unlikely, but it must be handled!
+	   (let ((with-target
+		   (lambda (target)
+		     (let ((jlabel (generate-label 'SHIFT-JOIN))
+			   (slabel (generate-label 'SHIFT-NEGATIVE)))
+		       (LAP (MOV W (R ,ecx) ,source2)
+			    (SAR W (R ,ecx) (& ,scheme-type-width))
+			    (JS (@PCR ,slabel))
+			    (SHL W ,target (R ,ecx))
+			    (JMP (@PCR ,jlabel))
+			    (LABEL ,slabel)
+			    (NEG W (R ,ecx))
+			    (SHR W ,target (R ,ecx))
+			    ,@(word->fixnum target)
+			    (LABEL ,jlabel))))))
 
-      (if (not (equal? target (INST-EA (R ,ecx))))
-	  (with-target target)
-	  (let ((temp (temporary-register-reference)))
-	    (LAP (MOV W ,temp ,target)
-		 ,@(with-target temp)
-		 (MOV W ,target ,temp)))))))
-
-;; ***** These should be rewritten.  Rather than use the standard 2 arg
-;; register allocator, they should use their own to specify that the result
-;; is in eax or edx after the rule.  This avoids unnecessary moves! ****
-
-(define-fixnum-method 'FIXNUM-QUOTIENT fixnum-methods/2-args
-  (lambda (target source2)
-    (if (equal? target source2)
-	(load-fixnum-constant 1 target)
-	(let ((do-divide
-	       (lambda ()
-		 (LAP (MOV W (R ,edx) (R ,eax))
-		      (SAR W (R ,edx) (& 31))
-		      (IDIV W (R ,eax) ,source2)
-		      (SAL W (R ,eax) (& ,scheme-type-width))))))
-	  (if (equal? target (INST-EA (R ,eax)))
-	      (do-divide)
-	      (LAP (MOV W (R ,eax) ,target)
-		   ,@(do-divide)
-		   (MOV W ,target (R ,eax))))))))
+	     (if (not (equal? target (INST-EA (R ,ecx))))
+		 (with-target target)
+		 (let ((temp (temporary-register-reference)))
+		   (LAP (MOV W ,temp ,target)
+			,@(with-target temp)
+			(MOV W ,target ,temp))))))))
+    (lambda (target source1 source2)
+      (require-register! ecx)
+      (two-arg-register-operation operate
+				  false
+				  target
+				  source1
+				  source2))))
 
+(define-fixnum-method 'FIXNUM-QUOTIENT fixnum-methods/2-args
+  (lambda (target source1 source2)
+    (if (= source2 source1)
+	(load-fixnum-constant 1 (target-register-reference target))
+	(let ((load-dividend (load-machine-register! source1 eax)))
+	  (require-register! edx)
+	  (let ((source2 (any-reference source2)))
+	    (rtl-target:=machine-register! eax)
+	    (LAP ,@load-dividend
+		 (MOV W (R ,edx) (R ,eax))
+		 (SAR W (R ,edx) (& 31))
+		 (IDIV W (R ,eax) ,source2)
+		 (SAL W (R ,eax) (& ,scheme-type-width))))))))
+
 (define-fixnum-method 'FIXNUM-REMAINDER fixnum-methods/2-args
   (lambda (target source1 source2)
-    (if (ea/same? source1 source2)
-	(load-fixnum-constant 0 target)
-	(LAP ,@(if (not (equal? target (INST-EA (R ,eax))))
-		   (MOV W (R ,eax) ,target)
-		   (LAP))
-	     (MOV W (R ,edx) (R ,eax))
-	     (SAR W (R ,edx) (& 31))
-	     (IDIV W (R ,eax) ,source2)
-	     (SAL W (R ,edx) (& ,scheme-type-width))
-	     ,@(if (not (equal? target (INST-EA (R ,edx))))
-		   (MOV W ,target (R ,edx))
-		   (LAP))))))
+    (if (= source2 source1)
+	(load-fixnum-constant 0 (target-register-reference target))
+	(let ((load-dividend (load-machine-register! source1 eax)))
+	  (require-register! edx)
+	  (let ((source2 (any-reference source2)))
+	    (rtl-target:=machine-register! edx)
+	    (LAP ,@load-dividend
+		 (MOV W (R ,edx) (R ,eax))
+		 (SAR W (R ,edx) (& 31))
+		 (IDIV W (R ,eax) ,source2)
+		 (SAL W (R ,edx) (& ,scheme-type-width))))))))
 
 (define-fixnum-method 'PLUS-FIXNUM fixnum-methods/2-args-constant
-  (lambda (target n)
-    (add-fixnum-constant target n)))
+  (lambda (target n overflow?)
+    (add-fixnum-constant target n overflow?)))
 
 (define-fixnum-method 'MINUS-FIXNUM fixnum-methods/2-args-constant
-  (lambda (target n)
-    (add-fixnum-constant target (- 0 n))))
+  (lambda (target n overflow?)
+    (add-fixnum-constant target (- 0 n) overflow?)))
 
 (define-fixnum-method 'FIXNUM-OR fixnum-methods/2-args-constant
-  (lambda (target n)
+  (lambda (target n overflow?)
+    overflow?				; ignored
     (cond ((zero? n)
 	   (LAP))
 	  ((= n -1)
@@ -469,7 +511,8 @@ MIT in each case. |#
 	   (LAP (OR W ,target (& ,(* n fixnum-1))))))))
 
 (define-fixnum-method 'FIXNUM-XOR fixnum-methods/2-args-constant
-  (lambda (target n)
+  (lambda (target n overflow?)
+    overflow?				; ignored
     (cond ((zero? n)
 	   (LAP))
 	  ((= n -1)
@@ -479,25 +522,28 @@ MIT in each case. |#
 	   (LAP (XOR W ,target (& ,(* n fixnum-1))))))))
 
 (define-fixnum-method 'FIXNUM-AND fixnum-methods/2-args-constant
-  (lambda (target n)
+  (lambda (target n overflow?)
+    overflow?				; ignored
     (cond ((zero? n)
 	   (load-fixnum-constant 0 target))
 	  ((= n -1)
 	   (LAP))
 	  (else
 	   (LAP (AND W ,target (& ,(* n fixnum-1))))))))
-
+
 (define-fixnum-method 'FIXNUM-ANDC fixnum-methods/2-args-constant
-  (lambda (target n)
+  (lambda (target n overflow?)
+    overflow?				; ignored
     (cond ((zero? n)
 	   (LAP))
 	  ((= n -1)
 	   (load-fixnum-constant 0 target))
 	  (else
 	   (LAP (AND W ,target (& ,(* (fix:not n) fixnum-1))))))))
-
+
 (define-fixnum-method 'FIXNUM-LSH fixnum-methods/2-args-constant
-  (lambda (target n)
+  (lambda (target n overflow?)
+    overflow?				; ignored
     (cond ((zero? n)
 	   (LAP))
 	  ((not (<= (- 0 scheme-datum-width) n scheme-datum-width))
@@ -508,19 +554,18 @@ MIT in each case. |#
 	   (LAP (SHR W ,target (& ,(- 0 n)))
 		,@(word->fixnum target))))))
 
-;; **** Overflow not set by SAL instruction!
-;; also (LAP) leaves condition codes as before, while they should
-;; clear the overflow flag! ****
-
 (define-fixnum-method 'MULTIPLY-FIXNUM fixnum-methods/2-args-constant
-  (lambda (target n)
+  (lambda (target n overflow?)
     (cond ((zero? n)
 	   (load-fixnum-constant 0 target))
 	  ((= n 1)
-	   (LAP))
+	   (if (not overflow?)
+	       (LAP)
+	       (add-fixnum-constant target 0 overflow?)))
 	  ((= n -1)
 	   (LAP (NEG W ,target)))
-	  ((integer-power-of-2? (if (negative? n) (- 0 n) n))
+	  ((and (not overflow?)
+		(integer-power-of-2? (if (negative? n) (- 0 n) n)))
 	   =>
 	   (lambda (expt-of-2)
 	     (if (negative? n)
@@ -531,7 +576,8 @@ MIT in each case. |#
 	   (LAP (IMUL W ,target (& ,n)))))))
 
 (define-fixnum-method 'FIXNUM-QUOTIENT fixnum-methods/2-args-constant
-  (lambda (target n)
+  (lambda (target n overflow?)
+    overflow?				; ignored
     (cond ((= n 1)
 	   (LAP))
 	  ((= n -1)
@@ -554,9 +600,10 @@ MIT in each case. |#
 	   (error "Fixnum-quotient/constant: Bad value" n)))))
 
 (define-fixnum-method 'FIXNUM-REMAINDER fixnum-methods/2-args-constant
-  (lambda (target n)
+  (lambda (target n overflow?)
     ;; (remainder x y) is 0 or has the sign of x.
     ;; Thus we can always "divide" by (abs y) to make things simpler.
+    overflow?				; ignored
     (let ((n (if (negative? n) (- 0 n) n)))
       (cond ((= n 1)
 	     (load-fixnum-constant 0 target))
@@ -578,14 +625,14 @@ MIT in each case. |#
 	    (else
 	     (error "Fixnum-remainder/constant: Bad value" n))))))
 
-(define (fixnum-branch/commuted! predicate)
-  (fixnum-branch!
-   (case predicate
-     ((EQUAL-FIXNUM?) 'EQUAL-FIXNUM?)
-     ((LESS-THAN-FIXNUM?) 'GREATER-THAN-FIXNUM?)
-     ((GREATER-THAN-FIXNUM?) 'LESS-THAN-FIXNUM?)
-     (else
-      (error "FIXNUM-BRANCH/commuted!: Unknown predicate" predicate)))))
+(define (commute-fixnum-predicate predicate)
+  (case predicate
+    ((EQUAL-FIXNUM? ZERO-FIXNUM?) 'EQUAL-FIXNUM?)
+    ((LESS-THAN-FIXNUM? NEGATIVE-FIXNUM?) 'GREATER-THAN-FIXNUM?)
+    ((GREATER-THAN-FIXNUM? POSITIVE-FIXNUM?) 'LESS-THAN-FIXNUM?)
+    (else
+     (error "commute-fixnum-predicate: Unknown predicate"
+	    predicate))))
 
 (define (fixnum-branch! predicate)
   (case predicate
