@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: prompt.scm,v 1.189 2000/10/26 02:28:22 cph Exp $
+;;; $Id: prompt.scm,v 1.190 2000/10/30 15:39:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -86,7 +86,8 @@
     (cond ((condition? value)
 	   (signal-condition value))
 	  ((and (pair? value) (eq? (car value) typein-edit-abort-flag))
-	   (abort-current-command (cdr value)))
+	   (apply-input-event (cdr value))
+	   (within-typein-edit thunk))
 	  (else
 	   value))))
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: basic.scm,v 1.139 2000/06/05 17:44:58 cph Exp $
+;;; $Id: basic.scm,v 1.140 2000/10/30 15:39:06 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -196,14 +196,17 @@ It reads another character (a subcommand) and dispatches on it."
   ()
   (lambda ()
     (set-command-prompt-prefix!)
-    (let ((input (with-editor-interrupts-disabled keyboard-read)))
-      (if (input-event? input)
-	  (apply-input-event input)
-	  (dispatch-on-key (current-comtabs)
-			   (let ((prefix-key (current-command-key)))
-			     ((if (pair? prefix-key) append cons)
-			      prefix-key
-			      (list input))))))))
+    (let loop ()
+      (let ((input (with-editor-interrupts-disabled keyboard-read)))
+	(if (input-event? input)
+	    (begin
+	      (apply-input-event input)
+	      (loop))
+	    (dispatch-on-key (current-comtabs)
+			     (let ((prefix-key (current-command-key)))
+			       ((if (pair? prefix-key) append cons)
+				prefix-key
+				(list input)))))))))
 
 (define (set-command-prompt-prefix!)
   (set-command-prompt!
