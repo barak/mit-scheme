@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.40 2004/10/28 19:38:13 cph Exp $
+$Id: pathnm.scm,v 14.41 2004/11/26 04:47:24 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,2000,2001 Massachusetts Institute of Technology
@@ -161,6 +161,11 @@ these rules:
   (let ((directory (pathname-directory pathname)))
     (and (pair? directory)
 	 (eq? (car directory) 'ABSOLUTE))))
+
+(define (pathname-relative? pathname)
+  (let ((directory (pathname-directory pathname)))
+    (and (pair? directory)
+	 (eq? (car directory) 'RELATIVE))))
 
 (define (pathname-wild? pathname)
   (let ((pathname (->pathname pathname)))
