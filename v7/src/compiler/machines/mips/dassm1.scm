@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/dassm1.scm,v 1.1 1990/05/07 04:12:03 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/dassm1.scm,v 1.2 1992/08/11 04:46:19 jinx Exp $
 $MC68020-Header: dassm1.scm,v 4.14 89/10/26 07:37:28 GMT cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,7 +33,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Disassembler: User Level
+;;;; MIPS Disassembler: User Level
+;;; package: (compiler disassembler)
 
 (declare (usual-integrations))
 
@@ -47,49 +48,36 @@ MIT in each case. |#
 ;;;; Top level entries
 
 (define (compiler:write-lap-file filename #!optional symbol-table?)
-  (let ((pathname (->pathname filename)))
+  (let ((pathname (->pathname filename))
+	(symbol-table?
+	 (if (default-object? symbol-table?) true symbol-table?)))
     (with-output-to-file (pathname-new-type pathname "lap")
       (lambda ()
 	(let ((com-file (pathname-new-type pathname "com")))
-	  (let ((object (fasload com-file))
-		(info
-		 (let ((pathname (pathname-new-type pathname "binf")))
-		   (and (if (default-object? symbol-table?)
-			    (file-exists? pathname)
-			    symbol-table?)
-			(fasload pathname)))))
+	  (let ((object (fasload com-file)))
 	    (if (compiled-code-address? object)
-		(disassembler/write-compiled-code-block
-		 (compiled-code-address->block object)
-		 info)
+		(let ((block (compiled-code-address->block object)))
+		  (disassembler/write-compiled-code-block
+		   block
+		   (compiled-code-block/dbg-info block symbol-table?)))
 		(begin
 		  (if (not
 		       (and (scode/comment? object)
 			    (dbg-info-vector? (scode/comment-text object))))
 		      (error "Not a compiled file" com-file))
-		  (let ((items
+		  (let ((blocks
 			 (vector->list
 			  (dbg-info-vector/blocks-vector
 			   (scode/comment-text object)))))
-		    (if (not (null? items))
-			(if (false? info)
-			    (let loop ((items items))
-			      (disassembler/write-compiled-code-block
-			       (car items)
-			       false)
-			      (if (not (null? (cdr items)))
-				  (begin
-				    (write-char #\page)
-				    (loop (cdr items)))))
-			    (let loop
-				((items items) (info (vector->list info)))
-			      (disassembler/write-compiled-code-block
-			       (car items)
-			       (car info))
-			      (if (not (null? (cdr items)))
-				  (begin
-				    (write-char #\page)
-				    (loop (cdr items) (cdr info))))))))))))))))
+		    (if (not (null? blocks))
+			(do ((blocks blocks (cdr blocks)))
+			    ((null? blocks) unspecific)
+			  (disassembler/write-compiled-code-block
+			   (car blocks)
+			   (compiled-code-block/dbg-info (car blocks)
+							 symbol-table?))
+			  (if (not (null? (cdr blocks)))
+			      (write-char #\page)))))))))))))
 
 (define disassembler/base-address)
 
@@ -103,17 +91,6 @@ MIT in each case. |#
 	(newline)
 	(disassembler/write-compiled-code-block block info)))))
 
-;;; Operations exported from the disassembler package
-
-(define disassembler/instructions)
-(define disassembler/instructions/null?)
-(define disassembler/instructions/read)
-(define disassembler/lookup-symbol)
-(define disassembler/read-variable-cache)
-(define disassembler/read-procedure-cache)
-(define compiled-code-block/objects-per-procedure-cache)
-(define compiled-code-block/objects-per-variable-cache)
-
 (define (disassembler/write-compiled-code-block block info)
   (let ((symbol-table (and info (dbg-info/labels info))))
     (write-string "Disassembly of ")
@@ -199,22 +176,24 @@ MIT in each case. |#
 	(else false)))
 
 (define (disassembler/write-linkage-section block symbol-table index)
-  (define (write-caches index size how-many writer)
-    (let loop ((index index) (how-many how-many))
-      (if (zero? how-many)
-	  'DONE
-	  (begin
-	    (disassembler/write-instruction
-	     symbol-table
-	     (compiled-code-block/index->offset index)
-	     (lambda ()
-	       (writer block index)))
-	    (loop (+ size index) (-1+ how-many))))))
-
   (let* ((field (object-datum (system-vector-ref block index)))
 	 (descriptor (integer-divide field #x10000)))
     (let ((kind (integer-divide-quotient descriptor))
 	  (length (integer-divide-remainder descriptor)))
+
+      (define (write-caches offset size writer)
+	(let loop ((index (1+ (+ offset index)))
+		   (how-many (quotient (- length offset) size)))
+	  (if (zero? how-many)
+	      'DONE
+	      (begin
+		(disassembler/write-instruction
+		 symbol-table
+		 (compiled-code-block/index->offset index)
+		 (lambda ()
+		   (writer block index)))
+		(loop (+ size index) (-1+ how-many))))))
+
       (disassembler/write-instruction
        symbol-table
        (compiled-code-block/index->offset index)
@@ -222,22 +201,27 @@ MIT in each case. |#
 	 (write-string "#[LINKAGE-SECTION ")
 	 (write field)
 	 (write-string "]")))
-      (write-caches
-       (1+ index)
-       compiled-code-block/objects-per-procedure-cache
-       (quotient length compiled-code-block/objects-per-procedure-cache)
        (case kind
-	 ((0)
-	  disassembler/write-procedure-cache)
+	 ((0 3)
+	  (write-caches
+	   compiled-code-block/procedure-cache-offset
+	   compiled-code-block/objects-per-procedure-cache
+	   disassembler/write-procedure-cache))
 	 ((1)
+	  (write-caches
+	   0
+	   compiled-code-block/objects-per-variable-cache
 	  (lambda (block index)
-	    (disassembler/write-variable-cache "Reference" block index)))
+	    (disassembler/write-variable-cache "Reference" block index))))
 	 ((2)
+	  (write-caches
+	   0
+	   compiled-code-block/objects-per-variable-cache
 	  (lambda (block index)
-	    (disassembler/write-variable-cache "Assignment" block index)))
+	    (disassembler/write-variable-cache "Assignment" block index))))
 	 (else
 	  (error "disassembler/write-linkage-section: Unknown section kind"
-		 kind))))
+		 kind)))
       (1+ (+ index length)))))
 
 (define-integrable (variable-cache-name cache)
