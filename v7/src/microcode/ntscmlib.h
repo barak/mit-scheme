@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscmlib.h,v 1.3 1993/09/04 07:01:36 gjr Exp $
+$Id: ntscmlib.h,v 1.4 1993/09/13 18:37:21 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -72,11 +72,11 @@ extern void
 extern UINT
   win32_install_async_timer (void **,			/* timer state */
 			     unsigned long *,		/* regs */
-			     unsigned long,		/* memtop off */
-			     unsigned long,		/* int_code off */
-			     unsigned long,		/* int_mask off */
+			     long,			/* memtop off */
+			     long,			/* int_code off */
+			     long,			/* int_mask off */
 			     unsigned long,		/* mask */
-			     unsigned long, 		/* ctr_off */
+			     long, 			/* ctr_off */
 			     unsigned long,		/* message */
 			     HWND);			/* window */
 
@@ -111,6 +111,7 @@ extern void
 #endif
 
 typedef LPVOID SCM_VDPTR;
+typedef long SCM_LONG;
 typedef unsigned long SCM_ULONG;
 typedef unsigned short SCM_BOOL;
 typedef unsigned short SCM_SEL;
@@ -142,11 +143,11 @@ struct ntw32lib_itimer_s
 {
   SCM_ULONG handle;		/* ->32 */
   SCM_ULPTR base;		/* ->16 */
-  SCM_ULONG memtop_off;		/* ->16 */
-  SCM_ULONG int_code_off;	/* ->16 */
-  SCM_ULONG int_mask_off;	/* ->16 */
+  SCM_LONG memtop_off;		/* ->16 */
+  SCM_LONG int_code_off;	/* ->16 */
+  SCM_LONG int_mask_off;	/* ->16 */
   SCM_ULONG bit_mask;		/* ->16 */
-  SCM_ULONG ctr_off;		/* ->16 */
+  SCM_LONG ctr_off;		/* ->16 */
   SCM_ULONG message;		/* ->16 */
   SCM_ULONG window;		/* ->16 */
 };
