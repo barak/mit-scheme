@@ -1,6 +1,6 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/config,v 1.4 1989/08/02 17:03:38 cph Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/config,v 1.5 1990/02/07 21:31:56 jinx Exp $
 # Modelled on the configuration script for GNU CC
 #   Copyright (C) 1988 Free Software Foundation, Inc.
 
@@ -88,6 +88,11 @@ case $# in
 		cmp_file=sun-nfp/cmp68020.s
 		cmp_link=cmp68020.s
 		;;
+	sun4) 
+		system_file=bsd4-2 
+		machine_file=sun4 
+		mfour_file=bsd 
+		;; 
 	umax)				# Encore Multimax
 	    	system_file=umax
 		machine_file=umax
