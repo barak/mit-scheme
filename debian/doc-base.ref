@@ -1,0 +1,13 @@
+Document: mit-scheme-ref
+Title: MIT Scheme Reference Manual
+Author: Chris Hanson
+Abstract: A detailed description of the MIT Scheme runtime system.
+ This is intended to be a reference document for programmers.
+Section: Apps/Programming
+
+Format: HTML
+Index: /usr/share/doc/mit-scheme/html/scheme.html
+Files: /usr/share/doc/mit-scheme/html/scheme*.html
+
+Format: pdf
+Files: /usr/share/doc/mit-scheme/pdf/scheme.pdf

@@ -1,0 +1,5 @@
+?package(mit-scheme):\
+  needs=X11\
+  section=Apps/Programming\
+  title="MIT Scheme"\
+  command="scheme -compiler -edwin -edit"

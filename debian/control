@@ -1,0 +1,24 @@
+Source: mit-scheme
+Section: devel
+Priority: optional
+Maintainer: Chris Hanson <cph@debian.org>
+Build-Depends: debhelper (>> 2.0.0), m4, mit-scheme, tetex-bin, tetex-extra, texi2html, texinfo
+Standards-Version: 3.5.6
+
+Package: mit-scheme
+Architecture: i386
+Depends: ${shlibs:Depends}
+Recommends: mime-support
+Suggests: libssl0.9.6, libmhash2, libmcrypt4
+Description: The MIT Scheme development environment
+ MIT Scheme is an implementation of the Scheme programming language,
+ providing an interpreter, compiler, source-code debugger, integrated
+ Emacs-like editor, and a large runtime library.  MIT Scheme is best
+ suited to programming large applications with a rapid development
+ cycle.
+Description-fr: L'environnement de développement Scheme du MIT
+ Le Scheme du MIT est une implémentation du langage de programmation Scheme,
+ fournissant un interpréteur, un compilateur, un débogueur de code source, un
+ éditeur intégré à la Emacs et une grande bibliothèque exécutable. Le Scheme du
+ MIT est plus adapté pour la programmation de grandes applications avec un
+ cycle de développement rapide.

@@ -1,0 +1,110 @@
+#!/usr/bin/make -f
+# Sample debian/rules that uses debhelper.
+# GNU copyright 1997 to 1999 by Joey Hess.
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+# This is the debhelper compatability version to use.
+export DH_COMPAT=2
+
+AUTOTOOLS := /usr/share/misc
+DESTDIR := $(shell pwd)/debian/mit-scheme
+
+export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+export DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+
+PREFIX = /usr
+LIBDIR = $(PREFIX)/lib/mit-scheme
+EMACSDIR = $(PREFIX)/share/emacs/site-lisp/mit-scheme
+INFODIR = $(PREFIX)/share/info
+MANDIR = $(PREFIX)/share/man
+DOCDIR = $(PREFIX)/share/doc/mit-scheme
+HTMLDIR = $(DOCDIR)/html
+PDFDIR = $(DOCDIR)/pdf
+
+INSTALL = install --preserve-timestamps
+
+CONF_FLAGS = --build=$(DEB_BUILD_GNU_TYPE) --host=$(DEB_HOST_GNU_TYPE) \
+	--prefix=$(PREFIX) --mandir=$(MANDIR) --infodir=$(INFODIR)
+DOC_CONF_FLAGS = --enable-html=$(HTMLDIR) --enable-pdf=$(PDFDIR) --enable-ps=no
+
+configure: configure-stamp
+configure-stamp:
+	dh_testdir
+	cd src; ./configure $(CONF_FLAGS)
+	cd doc; ./configure $(CONF_FLAGS) $(DOC_CONF_FLAGS)
+	touch configure-stamp
+
+build: configure-stamp build-stamp
+build-stamp:
+	dh_testdir
+	$(MAKE)
+	touch build-stamp
+
+clean:
+	dh_testdir
+	dh_testroot
+	rm -f build-stamp configure-stamp
+	-$(MAKE) distclean
+	-test -r $(AUTOTOOLS)/config.sub \
+	    && cp -pf $(AUTOTOOLS)/config.sub config.sub
+	-test -r $(AUTOTOOLS)/config.guess \
+	    && cp -pf $(AUTOTOOLS)/config.guess config.guess
+	dh_clean
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_clean -k
+	dh_installdirs
+	cd src;$(MAKE) install DESTDIR=$(DESTDIR)
+	mv $(DESTDIR)$(PREFIX)/bin/scheme $(DESTDIR)$(PREFIX)/bin/mit-scheme
+	for FILE in 6001.com compiler.com edwin.com runtime.com gcdrone; do \
+	    rm -f $(DESTDIR)/$(LIBDIR)/$${FILE}; \
+	done
+	cd doc;$(MAKE) install-html DESTDIR=$(DESTDIR)
+	cd doc;$(MAKE) install-pdf DESTDIR=$(DESTDIR)
+	$(INSTALL) -m 644 etc/*.el $(DESTDIR)/$(EMACSDIR)/.
+	$(INSTALL) -m 644 debian/mit-scheme.1 $(DESTDIR)/$(MANDIR)/man1/.
+	gzip -9 $(DESTDIR)/$(MANDIR)/man1/mit-scheme.1
+	ln -s mit-scheme.1.gz $(DESTDIR)/$(MANDIR)/man1/bchscheme.1.gz
+	rm -f $(DESTDIR)/$(LIBDIR)/edwin/etc/mime.types
+	ln -s /etc/mime.types $(DESTDIR)/$(LIBDIR)/edwin/etc/.
+
+# Build architecture-independent files here.
+binary-indep: build install
+# We have nothing to do by default.
+
+# Build architecture-dependent files here.
+binary-arch: build install
+	dh_testdir
+	dh_testroot
+#	dh_installdebconf
+	dh_installdocs
+	dh_installexamples
+	dh_installmenu
+	dh_installemacsen
+#	dh_installpam
+#	dh_installinit
+	dh_installcron
+#	dh_installman
+	dh_installinfo doc/imail/mit-scheme-imail.info*
+	dh_installinfo doc/ref-manual/mit-scheme-ref.info*
+	dh_installinfo doc/sos/mit-scheme-sos.info*
+	dh_installinfo doc/user-manual/mit-scheme-user.info*
+	dh_installchangelogs src/ChangeLog
+	dh_link
+	dh_strip
+	dh_compress --exclude=.pdf
+	dh_fixperms
+#	dh_makeshlibs
+	dh_installdeb
+#	dh_perl
+	dh_shlibdeps --exclude=prbfish.so --exclude=prmcrypt.so --exclude=prmd5.so --exclude=prmhash.so
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install configure
