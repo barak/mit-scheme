@@ -1,5 +1,7 @@
 ;;; -*-Scheme-*-
 ;;;
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 13.41 1987/01/23 00:13:25 jinx Exp $
+;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
@@ -36,8 +38,6 @@
 ;;;
 
 ;;;; Garbage Collector
-
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 13.40 1987/01/21 21:38:21 jinx Exp $
 
 (declare (usual-integrations)
 	 (compilable-primitive-functions
@@ -200,3 +200,4 @@
 	ie)))))
 
 ;;; end GARBAGE-COLLECTOR-PACKAGE.
+))

@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 13.41 1987/01/23 00:15:03 jinx Exp $
+;;;
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -250,4 +252,5 @@
 
 ((access setup-files-vector primitive-io))
 (add-gc-daemon! (make-primitive-procedure 'CLOSE-LOST-OPEN-FILES))
+
 (add-gc-daemon! (access close-lost-open-files-daemon primitive-io))

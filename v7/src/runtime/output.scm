@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 13.41 1987/01/23 00:16:55 jinx Exp $
+;;;
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -36,8 +38,6 @@
 ;;;
 
 ;;;; Output
-
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 13.40 1987/01/21 21:40:41 jinx Exp $
 
 (declare (usual-integrations))
 
@@ -323,4 +323,5 @@
 
 (define (non-printing-object? object)
   (and (not (future? object))
+       (eq? object *the-non-printing-object*)))
 	((access :flush-output port))))))

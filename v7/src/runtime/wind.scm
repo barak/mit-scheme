@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/wind.scm,v 13.41 1987/01/23 00:22:29 jinx Exp $
+;;;
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -96,5 +98,6 @@
 	       (fixed-objects-vector-slot 'STATE-SPACE-ROOT)
 	       (current-dynamic-state))
   (set-fixed-objects-vector! fov))
+
 
   (set-fixed-objects-vector! fov))

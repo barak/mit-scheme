@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcstat.scm,v 13.41 1987/01/23 00:13:34 jinx Exp $
+;;;
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -267,4 +269,5 @@
 	     (write-string "%) free: ") (write heap-left)))
 	 (vector->list statistic)))
 
+)
 )

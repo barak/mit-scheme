@@ -1,5 +1,7 @@
 ;;; -*-Scheme-*-
 ;;;
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 13.41 1987/01/23 00:11:14 jinx Exp $
+;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
@@ -36,8 +38,6 @@
 ;;;
 
 ;;;; Debugger
-
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 13.40 1987/01/21 21:37:09 jinx Exp $
 
 (in-package debugger-package
 (declare (usual-integrations))
@@ -543,4 +543,5 @@
 	       lambda-tag:make-environment
 	       lambda-tag:make-package)))
     (named-lambda (special-name? symbol)
+      (memq symbol the-special-names))))
       (memq symbol the-special-names))))

@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/string.scm,v 13.41 1987/01/23 00:20:37 jinx Rel $
+;;;
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -419,3 +421,4 @@
 	      (substring-move-right! string 0 n result 0)
 	      (begin (substring-fill! result 0 i char)
 		     (substring-move-right! string 0 length result i)))
+	  result))))

@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/char.scm,v 13.41 1987/01/23 00:09:52 jinx Rel $
+;;;
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -373,3 +375,4 @@
 (define char-alphanumeric? (char-set-predicate char-set:alphanumeric))
 (define char-graphic? (char-set-predicate char-set:graphic))
 (define char-standard? (char-set-predicate char-set:standard))
+(define char-whitespace? (char-set-predicate char-set:whitespace))

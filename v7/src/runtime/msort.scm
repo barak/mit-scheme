@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1985 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/msort.scm,v 13.41 1987/01/23 00:15:59 jinx Rel $
+;;;
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -97,3 +99,4 @@
   (let ((size (vector-length vector)))
     (do! vector (vector-cons size '()) 0 size)
     vector))
+|#

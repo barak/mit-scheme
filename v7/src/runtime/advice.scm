@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1985 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 13.41 1987/01/23 00:07:35 jinx Exp $
+;;;
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -455,4 +457,5 @@
 
 (define *args*   (access *args* advice-package))
 (define *proc*   (access *proc* advice-package))
+(define *result* (access *result* advice-package))
 (define *result* (access *result* advice-package))

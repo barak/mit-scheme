@@ -1,5 +1,7 @@
 ;;; -*-Scheme-*-
 ;;;
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 13.41 1987/01/23 00:16:30 jinx Exp $
+;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
@@ -36,8 +38,6 @@
 ;;;
 
 ;;;; Number Parser
-
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 13.40 1987/01/21 21:40:27 jinx Exp $
 
 (declare (usual-integrations))
 
@@ -276,3 +276,4 @@
 	       (otherwise chars))))))
 
 ;;; end NUMBER-PARSER-PACKAGE
+))

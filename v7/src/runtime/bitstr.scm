@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/bitstr.scm,v 13.41 1987/01/23 00:09:36 jinx Exp $
+;;;
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -80,4 +82,5 @@
 	(nbits (bit-string-length bit-string)))
     (if (bit-string-ref bit-string (-1+ nbits))	;Sign bit.
 	(- unsigned-result (expt 2 nbits))
+	unsigned-result)))
 	unsigned-result)))

@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/vector.scm,v 13.41 1987/01/23 00:22:17 jinx Exp $
+;;;
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -160,4 +162,5 @@
 (define (vector-fifth vector) (vector-ref vector 4))
 (define (vector-sixth vector) (vector-ref vector 5))
 (define (vector-seventh vector) (vector-ref vector 6))
+(define (vector-eighth vector) (vector-ref vector 7))
 (define (vector-eighth vector) (vector-ref vector 7))

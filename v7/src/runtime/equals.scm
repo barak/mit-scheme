@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/equals.scm,v 13.41 1987/01/23 00:11:42 jinx Exp $
+;;;
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -36,8 +38,6 @@
 ;;;
 
 ;;;; Equality
-
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/equals.scm,v 13.40 1987/01/21 21:37:25 jinx Exp $
 
 (declare (usual-integrations))
 
@@ -86,3 +86,4 @@
 		  (bit-string=? x y))
 		 (else false)))))
 
+)

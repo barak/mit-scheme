@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1985 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sfile.scm,v 13.41 1987/01/23 00:19:51 jinx Rel $
+;;;
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -63,3 +65,4 @@
 	(if (eq? 'NEWEST (pathname-version pathname))
 	    (pathname-newest pathname)
 	    (p-file-exists?
+	     (pathname->string (pathname->absolute-pathname pathname))))))))
