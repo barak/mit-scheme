@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.50 1994/10/30 05:42:20 cph Exp $
+$Id: load.scm,v 14.51 1995/07/27 20:22:21 adams Exp $
 
-Copyright (c) 1988-94 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,7 +38,7 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! *purification-root-marker* (intern "#[PURIFICATION-ROOT]"))
+  ;;(set! *purification-root-marker* (intern "#[PURIFICATION-ROOT]"))
   (set! load-noisily? false)
   (set! load/loading? false)
   (set! load/suppress-loading-message? false)
@@ -100,14 +100,15 @@ MIT in each case. |#
 		      (find-pathname filename load/default-types))
 		  (lambda (pathname loader)
 		    (fluid-let ((load/current-pathname pathname))
-		      (let ((value
-			     (loader pathname
-				     environment
-				     syntax-table
-				     purify?
-				     load-noisily?)))
-			(cond (last-file? value)
-			      (load-noisily? (write-line value))))))))))
+		      (let ((load-it
+			     (lambda ()
+			       (loader pathname
+				       environment
+				       syntax-table
+				       purify?
+				       load-noisily?))))
+			(cond (last-file? (load-it))
+			      (load-noisily? (write-line (load-it)))))))))))
 	 (if (pair? filename/s)
 	     (let loop ((filenames filename/s))
 	       (if (null? (cdr filenames))
@@ -282,7 +283,9 @@ MIT in each case. |#
 
 (define (load-scode-end scode environment purify?)
   (if purify? (purify (load/purification-root scode)))
-  (extended-scode-eval scode
+  (extended-scode-eval (if (compiled-module? scode)
+			   (compiled-module/expression scode)
+			   scode)
 		       (if (eq? environment default-object)
 			   (nearest-repl/environment)
 			   environment)))
@@ -298,22 +301,27 @@ MIT in each case. |#
 	  (write-string " -- done" port)
 	  value))))
 
-(define *purification-root-marker*)
+;;(define *purification-root-marker*)
+;;
+;;(define (load/purification-root object)
+;;  (or (and (comment? object)
+;;	   (let ((text (comment-text object)))
+;;	     (and (dbg-info-vector? text)
+;;		  (dbg-info-vector/purification-root text))))
+;;      (and (object-type? (ucode-type compiled-entry) object)
+;;	   (let* ((block ((ucode-primitive compiled-code-address->block 1)
+;;			  object))
+;;		  (index (- (system-vector-length block) 3)))
+;;	     (and (not (negative? index))
+;;		  (let ((frob (system-vector-ref block index)))
+;;		    (and (pair? frob)
+;;			 (eq? (car frob) *purification-root-marker*)
+;;			 (cdr frob))))))
+;;      object))
 
 (define (load/purification-root object)
-  (or (and (comment? object)
-	   (let ((text (comment-text object)))
-	     (and (dbg-info-vector? text)
-		  (dbg-info-vector/purification-root text))))
-      (and (object-type? (ucode-type compiled-entry) object)
-	   (let* ((block ((ucode-primitive compiled-code-address->block 1)
-			  object))
-		  (index (- (system-vector-length block) 3)))
-	     (and (not (negative? index))
-		  (let ((frob (system-vector-ref block index)))
-		    (and (pair? frob)
-			 (eq? (car frob) *purification-root-marker*)
-			 (cdr frob))))))
+  (or (and (compiled-module? object)
+	   (compiled-module/purification-root object))
       object))
 
 (define (read-file filename)
