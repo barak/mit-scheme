@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: win32.sf,v 1.6 2001/12/19 21:52:41 cph Exp $
+$Id: win32.sf,v 1.7 2001/12/19 21:55:37 cph Exp $
 
 Copyright (c) 1993-1999, 2001 Massachusetts Institute of Technology
 
@@ -32,7 +32,7 @@ USA.
       ("dib"        "win_ffi")))
 
   (sf-conditionally "ffimacro")
-  (if (file-modification-time<? "ffimacro.bin" "ffimacro.com")
+  (if (not (file-modification-time<? "ffimacro.bin" "ffimacro.com"))
       (cbf "ffimacro"))
   (load "ffimacro")
 

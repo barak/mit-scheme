@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sf.sf,v 4.9 2001/08/15 03:06:05 cph Exp $
+$Id: sf.sf,v 4.10 2001/12/19 21:53:03 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
 |#
 
-(fluid-let ((sf/default-syntax-table syntax-table/system-internal)
+(fluid-let ((sf/default-syntax-table (->environment '(RUNTIME)))
 	    (sf/top-level-definitions 
 	     '(ACCESS?
 	       ASSIGNMENT?
