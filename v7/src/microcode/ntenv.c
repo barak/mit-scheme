@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntenv.c,v 1.11 1995/04/23 03:04:00 cph Exp $
+$Id: ntenv.c,v 1.12 1995/04/23 03:16:24 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -78,11 +78,7 @@ DEFUN (OS_encode_time ,(buffer), struct time_structure * buffer)
   (ts -> tm_hour) = (buffer -> hour);
   (ts -> tm_min) = (buffer -> minute);
   (ts -> tm_sec) = (buffer -> second);
-  {
-    /* In localtime() encoding, 0 is Sunday; in ours, it's Monday. */
-    int wday = (buffer -> day_of_week);
-    (ts -> tm_wday) = ((wday == 6) ? 0 : (wday + 1));
-  }
+  (ts -> tm_isdst) = (buffer -> daylight_savings_time);
   STD_UINT_SYSTEM_CALL (syscall_mktime, t, (NT_mktime (ts)));
   return (t);
 }

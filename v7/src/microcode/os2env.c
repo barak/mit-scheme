@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2env.c,v 1.4 1995/04/23 03:03:44 cph Exp $
+$Id: os2env.c,v 1.5 1995/04/23 03:16:49 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -104,7 +104,7 @@ OS_encode_time (struct time_structure * buffer)
   (ts . tm_hour) = (buffer -> hour);
   (ts . tm_min) = (buffer -> minute);
   (ts . tm_sec) = (buffer -> second);
-  (ts . tm_isdst) = -1;	/* Let mktime figure it out */
+  (ts . tm_isdst) = (buffer -> daylight_savings_time);
   {
     time_t t = (mktime (&ts));
     if (t < 0)

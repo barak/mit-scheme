@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosenv.c,v 1.7 1995/04/23 03:04:52 cph Exp $
+$Id: dosenv.c,v 1.8 1995/04/23 03:16:35 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -75,11 +75,7 @@ DEFUN (OS_encode_time ,(buffer), struct time_structure * buffer)
   (ts -> tm_hour) = (buffer -> hour);
   (ts -> tm_min) = (buffer -> minute);
   (ts -> tm_sec) = (buffer -> second);
-  {
-    /* In localtime() encoding, 0 is Sunday; in ours, it's Monday. */
-    int wday = (buffer -> day_of_week);
-    (ts -> tm_wday) = ((wday == 6) ? 0 : (wday + 1));
-  }
+  (ts -> tm_isdst) = (buffer -> daylight_savings_time);
   STD_UINT_SYSTEM_CALL (syscall_mktime, t, (DOS_mktime (ts)));
   return (t);
 }

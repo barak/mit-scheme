@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxenv.c,v 1.13 1995/04/23 03:04:58 cph Exp $
+$Id: uxenv.c,v 1.14 1995/04/23 03:16:42 cph Exp $
 
 Copyright (c) 1990-95 Massachusetts Institute of Technology
 
@@ -75,17 +75,7 @@ DEFUN (OS_encode_time ,(buffer), struct time_structure * buffer)
   (ts -> tm_hour) = (buffer -> hour);
   (ts -> tm_min) = (buffer -> minute);
   (ts -> tm_sec) = (buffer -> second);
-#if 0
-  {
-    /* In localtime() encoding, 0 is Sunday; in ours, it's Monday. */
-    int wday = (buffer -> day_of_week);
-    (ts -> tm_wday) = ((wday == 6) ? 0 : (wday + 1));
-  }
-#else
-  (ts -> tm_wday) = 0;
-#endif
-  (ts -> tm_yday) = 0;
-  (ts -> tm_isdst) = -1;	/* Let mktime figure it out */
+  (ts -> tm_isdst) = (buffer -> daylight_savings_time);
 #ifdef HAVE_MKTIME
   STD_UINT_SYSTEM_CALL (syscall_mktime, t, (UX_mktime (ts)));
 #else
