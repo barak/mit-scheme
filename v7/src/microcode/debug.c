@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: debug.c,v 9.46 1993/11/03 19:04:12 jmiller Exp $
+$Id: debug.c,v 9.47 1995/07/26 21:04:40 adams Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -433,7 +433,7 @@ DEFUN (Print_Expression, (expression, string),
 
 extern char * Type_Names [];
 
-static void
+void
 DEFUN (do_printing, (stream, Expr, Detailed),
        outf_channel stream AND SCHEME_OBJECT Expr AND Boolean Detailed)
 {
@@ -442,6 +442,11 @@ DEFUN (do_printing, (stream, Expr, Detailed),
 
   Temp_Address = (OBJECT_DATUM (Expr));
   handled_p = false;
+
+  if (Expr == EMPTY_LIST)	{ outf (stream, "()");	return; }
+  else if (Expr == SHARP_F)	{ outf (stream, "#F");	return; }
+  else if (Expr == SHARP_T)	{ outf (stream, "#T");	return; }
+  else if (Expr == UNSPECIFIC)	{ outf (stream, "[UNSPECIFIC]"); return; }
 
   switch (OBJECT_TYPE (Expr))
     {
@@ -470,7 +475,10 @@ DEFUN (do_printing, (stream, Expr, Detailed),
       Expr = (MEMORY_REF (Expr, DEFINE_NAME));
       goto SPrint;
 
-    case TC_FIXNUM:
+    case TC_POSITIVE_FIXNUM:
+#if (TC_POSITIVE_FIXNUM != TC_NEGATIVE_FIXNUM)
+    case TC_NEGATIVE_FIXNUM:
+#endif
       outf (stream, "%ld", ((long) (FIXNUM_TO_LONG (Expr))));
       return;
 
@@ -484,11 +492,6 @@ DEFUN (do_printing, (stream, Expr, Detailed),
       return;
 
     case TC_NULL:
-      if (Temp_Address == 0)
-	{
-	  outf (stream, "()");
-	  return;
-	}
       break;
 
     case TC_UNINTERNED_SYMBOL:
@@ -620,7 +623,7 @@ DEFUN (do_printing, (stream, Expr, Detailed),
       outf (stream, "]");
       return;
 
-    case TC_TRUE:
+    case TC_CONSTANT:
       if (Temp_Address == 0)
 	{
 	  outf (stream, "#T");
@@ -699,6 +702,15 @@ DEFUN (do_printing, (stream, Expr, Detailed),
   outf (stream, " 0x%lx]", ((long) Temp_Address));
   return;
 }
+
+extern void
+DEFUN (Debug_Print, (Expr, Detailed),
+       SCHEME_OBJECT Expr AND Boolean Detailed)
+{
+  do_printing(console_output, Expr, Detailed);
+  outf_flush_console ();
+  return;
+}
 
 static Boolean
 DEFUN (print_one_continuation_frame, (stream, Temp),
@@ -739,7 +751,8 @@ DEFUN (Back_Trace, (stream), outf_channel stream)
   Back_Trace_Entry_Hook();
   Old_Stack = Stack_Pointer;
   while (true)
-  {
+  { 
+    /**************************** I DON'T UNDERSTAND THIS -- JSM
     if ((STACK_LOCATIVE_DIFFERENCE (Stack_Top, (STACK_LOC (0)))) <= 0)
     {
       if ((STACK_LOC (0)) == Old_Stack)
@@ -748,6 +761,7 @@ DEFUN (Back_Trace, (stream), outf_channel stream)
 	outf (stream, "\n[Stack ends abruptly.]\n");
       break;
     }
+    *******************************/
     if (Return_Hook_Address == (STACK_LOC (0)))
     {
       Temp = (STACK_POP ());
@@ -767,15 +781,17 @@ DEFUN (Back_Trace, (stream), outf_channel stream)
     }
     if ((OBJECT_TYPE (Temp)) == TC_RETURN_CODE)
     {
+      outf (stream, "{0x%x}", STACK_LOC(0));
       if (print_one_continuation_frame (stream, Temp))
 	break;
     }
     else
     {
+      outf (stream, "{0x%x}", STACK_LOC(0));
       print_expression (stream, Temp, "  ...");
       if ((OBJECT_TYPE (Temp)) == TC_MANIFEST_NM_VECTOR)
       {
-	Stack_Pointer = (STACK_LOC (- (OBJECT_DATUM (Temp))));
+	Stack_Pointer = (STACK_LOC (OBJECT_DATUM (Temp)));
         outf (stream, " (skipping)");
       }
       outf (stream, "\n");
@@ -787,7 +803,7 @@ DEFUN (Back_Trace, (stream), outf_channel stream)
   return;
 }
 
-static void
+void
 DEFUN (print_stack, (sp), SCHEME_OBJECT * sp)
 {
   SCHEME_OBJECT * saved_sp;
@@ -797,6 +813,12 @@ DEFUN (print_stack, (sp), SCHEME_OBJECT * sp)
   Back_Trace (console_output);
   Stack_Pointer = saved_sp;
   return;
+}
+
+extern void
+DEFUN_VOID(Debug_Stack_Trace)
+{
+  print_stack(STACK_LOC(0));
 }
 
 static Boolean
