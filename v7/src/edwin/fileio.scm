@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fileio.scm,v 1.149 2000/01/05 02:41:26 cph Exp $
+;;; $Id: fileio.scm,v 1.150 2000/03/23 03:19:11 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -130,7 +130,7 @@ of the predicates is satisfied, the file is written in the usual way."
 ;;;; Input
 
 (define (read-buffer buffer pathname visit?)
-  (set-buffer-writable! buffer)
+  (set-buffer-writeable! buffer)
   (let ((truename #f)
 	(file-error #f)
 	(group (buffer-group buffer)))
@@ -560,7 +560,7 @@ Otherwise, a message is written both before and after long file writes."
 				(->namestring pathname)))
 			   (lambda ()
 			     (let ((m (file-modes pathname)))
-			       (os/set-file-modes-writable! pathname)
+			       (os/set-file-modes-writeable! pathname)
 			       (set! modes m)))))
 		     (write-buffer buffer)))
 	      (if modes

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dos.scm,v 1.51 2000/01/16 13:24:07 cph Exp $
+;;; $Id: dos.scm,v 1.52 2000/03/23 03:19:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-2000 Massachusetts Institute of Technology
 ;;;
@@ -22,7 +22,7 @@
 
 (declare (usual-integrations))
 
-(define (os/set-file-modes-writable! pathname)
+(define (os/set-file-modes-writeable! pathname)
   (set-file-modes! pathname
 		   (fix:andc (file-modes pathname) nt-file-mode/read-only)))
 

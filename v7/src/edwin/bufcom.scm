@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: bufcom.scm,v 1.106 1999/01/28 03:59:44 cph Exp $
+;;; $Id: bufcom.scm,v 1.107 2000/03/23 03:18:47 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -124,7 +124,7 @@ Reads the new name in the echo area."
 (define (kill-buffer-query-modified buffer)
   (or (not (and (buffer-pathname buffer)
 		(buffer-modified? buffer)
-		(buffer-writable? buffer)))
+		(buffer-writeable? buffer)))
       (prompt-for-yes-or-no?
        (string-append "Buffer "
 		      (buffer-name buffer)
@@ -199,9 +199,9 @@ When locked, the buffer's major mode may not be changed."
   ()
   (lambda ()
     (let ((buffer (current-buffer)))
-      (if (buffer-writable? buffer)
+      (if (buffer-writeable? buffer)
 	  (set-buffer-read-only! buffer)
-	  (set-buffer-writable! buffer)))))
+	  (set-buffer-writeable! buffer)))))
 
 (define-command no-toggle-read-only
   "Display warning indicating that this buffer may not be modified."
@@ -212,7 +212,7 @@ When locked, the buffer's major mode may not be changed."
 (define (save-buffer-changes buffer)
   (if (and (buffer-pathname buffer)
 	   (buffer-modified? buffer)
-	   (buffer-writable? buffer)
+	   (buffer-writeable? buffer)
 	   (prompt-for-yes-or-no?
 	    (string-append "Buffer "
 			   (buffer-name buffer)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debuge.scm,v 1.53 1999/01/02 06:11:34 cph Exp $
+;;; $Id: debuge.scm,v 1.54 2000/03/23 03:19:05 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -28,7 +28,7 @@
 
 (define (debug-save-buffer buffer)
   (if (and (buffer-modified? buffer)
-	   (buffer-writable? buffer)
+	   (buffer-writeable? buffer)
 	   (not (minibuffer? buffer)))
       (let ((pathname
 	     (let ((pathname (buffer-pathname buffer)))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: struct.scm,v 1.92 1999/11/01 03:40:13 cph Exp $
+;;; $Id: struct.scm,v 1.93 2000/03/23 03:19:20 cph Exp $
 ;;;
-;;; Copyright (c) 1985, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1985, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -77,7 +77,7 @@
   (marks '())
   start-mark
   end-mark
-  (writable? #t)
+  (writeable? #t)
   display-start
   display-end
   (start-changes-index #f)
@@ -132,14 +132,14 @@
 (define-integrable (group-display-end-index? group index)
   (fix:>= index (group-display-end-index group)))
 
-(define-integrable (set-group-writable! group)
-  (set-group-writable?! group #t))
+(define-integrable (set-group-writeable! group)
+  (set-group-writeable?! group #t))
 
 (define-integrable (set-group-read-only! group)
-  (set-group-writable?! group #f))
+  (set-group-writeable?! group #f))
 
 (define-integrable (group-read-only? group)
-  (not (group-writable? group)))
+  (not (group-writeable? group)))
 
 (define (group-region group)
   (%make-region (group-start-mark group) (group-end-mark group)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: modlin.scm,v 1.21 2000/01/10 03:24:58 cph Exp $
+;;; $Id: modlin.scm,v 1.22 2000/03/23 03:19:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -264,7 +264,7 @@ If #F, the normal method is used."
 	   ((#\n)
 	    (if (group-clipped? (buffer-group buffer)) " Narrow" ""))
 	   ((#\*)
-	    (cond ((not (buffer-writable? buffer)) "%")
+	    (cond ((not (buffer-writeable? buffer)) "%")
 		  ((buffer-modified? buffer) "*")
 		  (else "-")))
 	   ((#\s)

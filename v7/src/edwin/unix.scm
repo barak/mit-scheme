@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unix.scm,v 1.106 2000/02/28 04:23:05 cph Exp $
+;;; $Id: unix.scm,v 1.107 2000/03/23 03:19:24 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -637,7 +637,7 @@ option, instead taking -P <filename>."
   dir					; ignored
   (%quit))
 
-(define (os/set-file-modes-writable! pathname)
+(define (os/set-file-modes-writeable! pathname)
   (set-file-modes! pathname #o777))
 
 (define os/restore-modes-to-updated-file!

@@ -1,6 +1,6 @@
 ;;; -*- Scheme -*-
 
-;; Copyright (c) 1992, 1999 Massachusetts Institute of Technology
+;; Copyright (c) 1992, 1999-2000 Massachusetts Institute of Technology
 ;;
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
@@ -22,7 +22,7 @@
 ;;;
 ;;; Author: Brian A. LaMacchia -- bal@zurich.ai.mit.edu
 ;;;
-;;; $Id: techinfo.scm,v 1.5 1999/01/02 06:11:34 cph Exp $
+;;; $Id: techinfo.scm,v 1.6 2000/03/23 03:19:21 cph Exp $
 ;;;
 
 (declare (usual-integrations))
@@ -183,7 +183,7 @@ is set to t.  At Athena it is nil."
 
 (define (techinfo-display-internal-node node-list #!optional placement)
   (set-variable! techinfo-current-node-list node-list)
-  (set-buffer-writable! (current-buffer))
+  (set-buffer-writeable! (current-buffer))
   (set-current-point! (buffer-start (current-buffer)))
   (kill-string (buffer-start (current-buffer))
 	       (buffer-end (current-buffer)))
@@ -211,7 +211,7 @@ is set to t.  At Athena it is nil."
 
 (define (techinfo-display-leaf-node node-list)
   (set-variable! techinfo-current-node-list node-list)
-  (set-buffer-writable! (current-buffer))
+  (set-buffer-writeable! (current-buffer))
   (set-current-point! (buffer-start (current-buffer)))
   (kill-string (buffer-start (current-buffer))
 	       (buffer-end (current-buffer)))

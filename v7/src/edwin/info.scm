@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: info.scm,v 1.133 1999/01/02 06:11:34 cph Exp $
+;;; $Id: info.scm,v 1.134 2000/03/23 03:19:13 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -314,7 +314,7 @@ Allowed only if the variable Info Enable Edit is not false."
   (lambda ()
     (if (not (ref-variable info-enable-edit))
 	(editor-error "Editing Info nodes is not enabled"))
-    (set-buffer-writable! (current-buffer))
+    (set-buffer-writeable! (current-buffer))
     (set-current-major-mode! (ref-mode-object info-edit))
     (message "Editing: Type C-c C-c to return to Info")))
 

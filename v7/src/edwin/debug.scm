@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debug.scm,v 1.48 1999/02/24 21:36:02 cph Exp $
+;;; $Id: debug.scm,v 1.49 2000/03/23 03:19:04 cph Exp $
 ;;;
-;;; Copyright (c) 1992-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1992-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -34,7 +34,7 @@
   (region-read-only (make-region start end)))
 
 (define (readable-between start end)
-  (region-writable (make-region start end)))
+  (region-writeable (make-region start end)))
 
 (define (dehigh-between start end)
   (highlight-region (make-region start end) (default-face)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rmail.scm,v 1.67 2000/03/22 17:36:03 cph Exp $
+;;; $Id: rmail.scm,v 1.68 2000/03/23 03:19:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -1614,7 +1614,7 @@ buffer visiting that file."
 		   'RMAIL-OLD-TEXT
 		   (extract-string (buffer-start buffer)
 				   (buffer-end buffer)))
-      (set-buffer-writable! buffer)
+      (set-buffer-writeable! buffer)
       (message
        (substitute-command-keys
 	"Editing: Type \\[rmail-cease-edit] to return to Rmail, \\[rmail-abort-edit] to abort."
@@ -2296,25 +2296,25 @@ Completion is performed over known labels when reading."
   (with-group-undo-disabled (buffer-group buffer) thunk))
 
 (define (with-group-open group thunk)
-  (let ((outside-writable)
-	(inside-writable 'FULLY)
+  (let ((outside-writeable)
+	(inside-writeable 'FULLY)
 	(outside-start)
 	(outside-end)
 	(inside-start (mark-permanent! (group-absolute-start group)))
 	(inside-end (mark-permanent! (group-absolute-end group))))
     (unwind-protect (lambda ()
-		      (set! outside-writable (group-writable? group))
+		      (set! outside-writeable (group-writeable? group))
 		      (set! outside-start (group-start-mark group))
 		      (set! outside-end (group-end-mark group))
-		      (set-group-writable?! group inside-writable)
+		      (set-group-writeable?! group inside-writeable)
 		      (set-group-start-mark! group inside-start)
 		      (set-group-end-mark! group inside-end))
 		    thunk
 		    (lambda ()
-		      (set! inside-writable (group-writable? group))
+		      (set! inside-writeable (group-writeable? group))
 		      (set! inside-start (group-start-mark group))
 		      (set! inside-end (group-end-mark group))
-		      (set-group-writable?! group outside-writable)
+		      (set-group-writeable?! group outside-writeable)
 		      (set-group-start-mark! group outside-start)
 		      (set-group-end-mark! group outside-end)))))
 

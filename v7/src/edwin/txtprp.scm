@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: txtprp.scm,v 1.19 2000/02/25 17:47:37 cph Exp $
+;;; $Id: txtprp.scm,v 1.20 2000/03/23 03:19:23 cph Exp $
 ;;;
 ;;; Copyright (c) 1993-2000 Massachusetts Institute of Technology
 ;;;
@@ -237,7 +237,7 @@
 (define (subgroup-read-only group start end)
   (add-text-property group start end 'READ-ONLY (list 'READ-ONLY)))
 
-(define (subgroup-writable group start end)
+(define (subgroup-writeable group start end)
   (remove-text-property group start end 'READ-ONLY))
 
 (define (region-read-only region)
@@ -245,14 +245,14 @@
 		      (region-start-index region)
 		      (region-end-index region)))
 
-(define (region-writable region)
-  (subgroup-writable (region-group region)
-		     (region-start-index region)
-		     (region-end-index region)))
+(define (region-writeable region)
+  (subgroup-writeable (region-group region)
+		      (region-start-index region)
+		      (region-end-index region)))
 
 (define (text-not-insertable? group start)
   ;; Assumes that (GROUP-TEXT-PROPERTIES GROUP) is not #F.
-  (and (not (eq? 'FULLY (group-writable? group)))
+  (and (not (eq? 'FULLY (group-writeable? group)))
        (not (fix:= start 0))
        (not (fix:= start (group-length group)))
        (let ((interval (find-interval group start)))
@@ -269,7 +269,7 @@
 
 (define (text-not-deleteable? group start end)
   ;; Assumes that (GROUP-TEXT-PROPERTIES GROUP) is not #F.
-  (and (not (eq? 'FULLY (group-writable? group)))
+  (and (not (eq? 'FULLY (group-writeable? group)))
        (fix:< start end)
        (let loop ((interval (find-interval group start)))
 	 (or (interval-property interval 'READ-ONLY #f)

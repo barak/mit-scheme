@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.208 2000/02/28 22:51:09 cph Exp $
+;;; $Id: filcom.scm,v 1.209 2000/03/23 03:19:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -126,7 +126,7 @@ invocation."
 	   (not (file-test-no-errors file-writeable? pathname))))
       (if buffer-read-only?
 	  (set-buffer-read-only! buffer)
-	  (set-buffer-writable! buffer))
+	  (set-buffer-writeable! buffer))
       (setup-buffer-auto-save! buffer)
       (let ((serious-message
 	     (lambda (msg)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: evlcom.scm,v 1.62 1999/05/13 03:06:40 cph Exp $
+;;; $Id: evlcom.scm,v 1.63 2000/03/23 03:19:09 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -546,14 +546,14 @@ Set by Scheme evaluation code to update the mode line."
 		      (set! outside (group-read-only? group))
 		      (if inside
 			  (set-group-read-only! group)
-			  (set-group-writable! group)))
+			  (set-group-writeable! group)))
 		    (lambda ()
 		      (procedure buffer))
 		    (lambda ()
 		      (set! inside (group-read-only? group))
 		      (if outside
 			  (set-group-read-only! group)
-			  (set-group-writable! group)))))))
+			  (set-group-writeable! group)))))))
 
 (define (transcript-buffer)
   (let ((name (ref-variable transcript-buffer-name)))

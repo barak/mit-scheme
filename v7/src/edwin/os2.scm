@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: os2.scm,v 1.48 2000/01/16 13:24:14 cph Exp $
+;;; $Id: os2.scm,v 1.49 2000/03/23 03:19:15 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -22,7 +22,7 @@
 
 (declare (usual-integrations))
 
-(define (os/set-file-modes-writable! pathname)
+(define (os/set-file-modes-writeable! pathname)
   (set-file-modes! pathname
 		   (fix:andc (file-modes pathname) os2-file-mode/read-only)))
 

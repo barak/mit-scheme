@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.175 2000/02/29 04:07:07 cph Exp $
+;;; $Id: buffer.scm,v 1.176 2000/03/23 03:19:02 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -113,7 +113,7 @@ The buffer is guaranteed to be deselected at that time."
       (without-interrupts thunk)))
 
 (define (buffer-reset! buffer)
-  (set-buffer-writable! buffer)
+  (set-buffer-writeable! buffer)
   (buffer-widen! buffer)
   (region-delete! (buffer-region buffer))
   (buffer-not-modified! buffer)
@@ -272,11 +272,11 @@ The buffer is guaranteed to be deselected at that time."
 (define-integrable (buffer-read-only? buffer)
   (group-read-only? (buffer-group buffer)))
 
-(define-integrable (buffer-writable? buffer)
+(define-integrable (buffer-writeable? buffer)
   (not (buffer-read-only? buffer)))
 
-(define (set-buffer-writable! buffer)
-  (set-group-writable! (buffer-group buffer))
+(define (set-buffer-writeable! buffer)
+  (set-group-writeable! (buffer-group buffer))
   (buffer-modeline-event! buffer 'BUFFER-MODIFIABLE))
 
 (define (set-buffer-read-only! buffer)
@@ -288,12 +288,12 @@ The buffer is guaranteed to be deselected at that time."
 	(outside)
 	(inside 'FULLY))
     (dynamic-wind (lambda ()
-		    (set! outside (group-writable? group))
-		    (set-group-writable?! group inside))
+		    (set! outside (group-writeable? group))
+		    (set-group-writeable?! group inside))
 		  thunk
 		  (lambda ()
-		    (set! inside (group-writable? group))
-		    (set-group-writable?! group outside)))))
+		    (set! inside (group-writeable? group))
+		    (set-group-writeable?! group outside)))))
 
 ;;;; Local Bindings
 

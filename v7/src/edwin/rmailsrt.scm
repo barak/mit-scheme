@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rmailsrt.scm,v 1.12 1999/08/20 20:35:39 cph Exp $
+;;; $Id: rmailsrt.scm,v 1.13 2000/03/23 03:19:18 cph Exp $
 ;;;
-;;; Copyright (c) 1991-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -110,7 +110,7 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 	   (sort-vect (make-vector (1+ nummsg))))
       (message "Finding sort keys...")
       (widen)
-      (set-buffer-writable! (current-buffer))
+      (set-buffer-writeable! (current-buffer))
       (let loop ((n 0)
 		 (the-memo (msg-memo/first (current-msg-memo))))
 	(let ((next (msg-memo/next the-memo)))

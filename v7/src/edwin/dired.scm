@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dired.scm,v 1.171 2000/03/22 16:12:32 cph Exp $
+;;; $Id: dired.scm,v 1.172 2000/03/23 03:19:06 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -201,7 +201,7 @@ Type `h' after entering dired for more info."
 (define (fill-dired-buffer! buffer directory-spec)
   (let ((pathname (car directory-spec))
 	(file-list (cdr directory-spec)))
-    (set-buffer-writable! buffer)
+    (set-buffer-writeable! buffer)
     (region-delete! (buffer-region buffer))
     (temporary-message
      (string-append "Reading directory " (->namestring pathname) "..."))

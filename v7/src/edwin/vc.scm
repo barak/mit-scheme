@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.33 2000/03/10 22:23:26 cph Exp $
+;;; $Id: vc.scm,v 1.34 2000/03/23 03:19:25 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -165,9 +165,9 @@ of the buffer."
 (define-command vc-next-action
   "Do the next logical checkin or checkout operation on the current file.
    If the file is not already registered, this registers it for version
-control and then retrieves a writable, locked copy for editing.
+control and then retrieves a writeable, locked copy for editing.
    If the file is registered and not locked by anyone, this checks out
-a writable and locked file ready for editing.
+a writeable and locked file ready for editing.
    If the file is checked out and locked by the calling user, this
 first checks to see if the file has changed since checkout.  If not,
 it performs a revert.
