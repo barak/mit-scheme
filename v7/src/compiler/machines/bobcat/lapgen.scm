@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.30 1990/03/14 21:05:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.31 1990/04/01 22:26:01 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -505,7 +505,8 @@ MIT in each case. |#
   n)
 
 (define-integrable fixnum-1
-  (expt 2 scheme-type-width))
+  ;; (expt 2 scheme-type-width) ***
+  64)
 
 (define (load-fixnum-constant constant register-reference)
   (LAP (MOV L (& ,(* constant fixnum-1)) ,register-reference)))
@@ -765,8 +766,9 @@ MIT in each case. |#
 (define (object->datum register-reference)
   (LAP (AND L ,mask-reference ,register-reference)))
 
-(define scheme-type-mask
-  (-1+ (expt 2 scheme-type-width)))
+(define-integrable scheme-type-mask
+  ;; (-1+ (expt 2 scheme-type-width)) ***
+  #x3f)
 
 (define use-68020-instructions? true)
 
@@ -852,7 +854,7 @@ MIT in each case. |#
   (INST (LABEL ,label)))
 
 (define (lap:make-unconditional-branch label)
-  (INST (BRA (@PCR ,label))))
+  (LAP (BRA (@PCR ,label))))
 
 (define (lap:make-entry-point label block-start-label)
   block-start-label
