@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.19 1992/02/04 00:36:02 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.20 1992/02/04 00:42:48 jinx Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1120,15 +1120,17 @@ DEFUN_VOID (interactive_back_trace)
   else
   {
     transaction_begin ();
-    FILE * to_dump = (fopen (&input_string[0], "w"));
-    if (to_dump == ((FILE *) NULL))
     {
-      printf ("Error opening \"%s\".\n", (&input_string[0]));
-      transaction_abort ();
-      return;
+      FILE * to_dump = (fopen (&input_string[0], "w"));
+      if (to_dump == ((FILE *) NULL))
+      {
+	printf ("Error opening \"%s\".\n", (&input_string[0]));
+	transaction_abort ();
+	return;
+      }
+      transaction_record_action (tat_always, fclose, ((PTR) to_dump));
+      debug_back_trace (to_dump);
     }
-    transaction_record_action (tat_always, fclose, ((PTR) to_dump));
-    debug_back_trace (to_dump);
     transaction_commit ();
   }
   return;
