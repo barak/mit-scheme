@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.20 2000/12/05 21:23:48 cph Exp $
+$Id: ux.c,v 1.21 2002/08/21 02:21:35 cph Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright (c) 1990-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 #include "ux.h"
@@ -639,7 +640,13 @@ linux_heap_malloc (unsigned long requested_length)
 {
   unsigned long ps = (getpagesize ());
   void * addr
-    = (mmap (((void *) ps),
+    = (mmap (((void *)
+#ifndef VALGRIND_MODE
+	      ps
+#else
+	      0x10000
+#endif
+	      ),
 	     (((requested_length + (ps - 1)) / ps) * ps),
 	     (PROT_EXEC | PROT_READ | PROT_WRITE),
 	     (MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED),

@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-### $Id: i386.m4,v 1.58 2002/07/02 18:13:28 cph Exp $
+### $Id: i386.m4,v 1.59 2002/08/21 02:21:56 cph Exp $
 ###
 ### Copyright (c) 1992-2002 Massachusetts Institute of Technology
 ###
@@ -133,6 +133,8 @@
 ###	what you're doing.
 ### DISABLE_387
 ###	If defined, do not generate 387 floating-point instructions.
+### VALGRIND_MODE
+###	If defined, modify code to make it work with valgrind.
 
 ####	Utility macros and definitions
 
@@ -406,11 +408,13 @@ define_c_label(i386_interface_initialize)
 
 IF387(`
 #	OP(mov,l)	TW(REG(cr0),REG(ecx))		# Test for 387 presence
+ifdef(`VALGRIND_MODE',`',`
 	smsw		REG(cx)
 	OP(mov,l)	TW(IMM(HEX(12)),REG(edx))
 	OP(and,l)	TW(REG(edx),REG(ecx))
 	OP(cmp,l)	TW(REG(edx),REG(ecx))
 	jne	i386_initialize_no_fp
+')
 	OP(inc,l)	REG(eax)			# 387 available
 	OP(sub,l)	TW(IMM(4),REG(esp))
 	fclex
