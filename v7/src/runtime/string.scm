@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/string.scm,v 14.2 1988/10/15 17:19:16 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/string.scm,v 14.3 1992/02/12 21:48:41 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -124,7 +124,7 @@ MIT in each case. |#
 (define (string-ci<=? string1 string2)
   (not (substring-ci<? string2 0 (string-length string2)
 		       string1 0 (string-length string1))))
-
+
 (define (string-fill! string char)
   (substring-fill! string 0 (string-length string) char))
 
@@ -173,10 +173,10 @@ MIT in each case. |#
 	result)))
 
 (define-integrable (string-null? string)
-  (zero? (string-length string)))
+  (fix:= 0 (string-length string)))
 
 (define (substring string start end)
-  (let ((result (string-allocate (- end start))))
+  (let ((result (string-allocate (fix:- end start))))
     (substring-move-right! string start end result 0)
     result))
 
@@ -188,12 +188,11 @@ MIT in each case. |#
 
 (define (list->string chars)
   (let ((result (string-allocate (length chars))))
-    (define (loop index chars)
+    (let loop ((index 0) (chars chars))
       (if (null? chars)
 	  result
 	  (begin (string-set! result index (car chars))
-		 (loop (1+ index) (cdr chars)))))
-    (loop 0 chars)))
+		 (loop (fix:+ index 1) (cdr chars)))))))
 
 (define (string . chars)
   (list->string chars))
@@ -204,13 +203,12 @@ MIT in each case. |#
   (substring->list string 0 (string-length string)))
 
 (define (substring->list string start end)
-  (define (loop index)
-    (if (= index end)
-	'()
+  (let loop ((index start))
+    (if (fix:< index end)
 	(cons (string-ref string index)
-	      (loop (1+ index)))))
-  (loop start))
-
+	      (loop (fix:+ index 1)))
+	'())))
+
 (define (string-copy string)
   (let ((size (string-length string)))
     (let ((result (string-allocate size)))
@@ -218,21 +216,19 @@ MIT in each case. |#
       result)))
 
 (define (string-append . strings)
-  (define (count strings)
-    (if (null? strings)
-	0
-	(+ (string-length (car strings))
-	   (count (cdr strings)))))
-
-  (let ((result (string-allocate (count strings))))
-    (define (move strings index)
+  (let ((result
+	 (string-allocate
+	  (let loop ((strings strings))
+	    (if (null? strings)
+		0
+		(fix:+ (string-length (car strings))
+		       (loop (cdr strings))))))))
+    (let loop ((strings strings) (index 0))
       (if (null? strings)
 	  result
 	  (let ((size (string-length (car strings))))
 	    (substring-move-right! (car strings) 0 size result index)
-	    (move (cdr strings) (+ index size)))))
-
-    (move strings 0)))
+	    (loop (cdr strings) (fix:+ index size)))))))
 
 ;;;; Case
 
@@ -240,17 +236,16 @@ MIT in each case. |#
   (substring-upper-case? string 0 (string-length string)))
 
 (define (substring-upper-case? string start end)
-  (define (find-upper start)
-    (and (not (= start end))
-	 ((if (char-upper-case? (string-ref string start))
-	      search-rest
-	      find-upper)
-	  (1+ start))))
-  (define (search-rest start)
-    (or (= start end)
-	(and (not (char-lower-case? (string-ref string start)))
-	     (search-rest (1+ start)))))
-  (find-upper start))
+  (let find-upper ((start start))
+    (and (fix:< start end)
+	 (let ((char (string-ref string start)))
+	   (if (char-upper-case? char)
+	       (let search-rest ((start (fix:+ start 1)))
+		 (or (fix:= start end)
+		     (and (not (char-lower-case? (string-ref string start)))
+			  (search-rest (fix:+ start 1)))))
+	       (and (not (char-lower-case? char))
+		    (find-upper (fix:+ start 1))))))))
 
 (define (string-upcase string)
   (let ((string (string-copy string)))
@@ -264,17 +259,16 @@ MIT in each case. |#
   (substring-lower-case? string 0 (string-length string)))
 
 (define (substring-lower-case? string start end)
-  (define (find-lower start)
-    (and (not (= start end))
-	 ((if (char-lower-case? (string-ref string start))
-	      search-rest
-	      find-lower)
-	  (1+ start))))
-  (define (search-rest start)
-    (or (= start end)
-	(and (not (char-upper-case? (string-ref string start)))
-	     (search-rest (1+ start)))))
-  (find-lower start))
+  (let find-lower ((start start))
+    (and (fix:< start end)
+	 (let ((char (string-ref string start)))
+	   (if (char-lower-case? char)
+	       (let search-rest ((start (fix:+ start 1)))
+		 (or (fix:= start end)
+		     (and (not (char-upper-case? (string-ref string start)))
+			  (search-rest (fix:+ start 1)))))
+	       (and (not (char-upper-case? char))
+		    (find-lower (fix:+ start 1))))))))
 
 (define (string-downcase string)
   (let ((string (string-copy string)))
@@ -283,14 +277,14 @@ MIT in each case. |#
 
 (define (string-downcase! string)
   (substring-downcase! string 0 (string-length string)))
-
+
 (define (string-capitalized? string)
   (substring-capitalized? string 0 (string-length string)))
 
 (define (substring-capitalized? string start end)
-  (and (not (= start end))
-       (char-upper-case? (string-ref string 0))
-       (substring-lower-case? string (1+ start) end)))
+  (and (fix:< start end)
+       (char-upper-case? (string-ref string start))
+       (substring-lower-case? string (fix:+ start 1) end)))
 
 (define (string-capitalize string)
   (let ((string (string-copy string)))
@@ -319,12 +313,12 @@ MIT in each case. |#
   (substring-replace! string 0 (string-length string) char1 char2))
 
 (define (substring-replace! string start end char1 char2)
-  (define (loop start)
+  (let loop ((start start))
     (let ((index (substring-find-next-char string start end char1)))
       (if index
-	  (begin (string-set! string index char2)
-		 (loop (1+ index))))))
-  (loop start))
+	  (begin
+	    (string-set! string index char2)
+	    (loop (fix:+ index 1)))))))
 
 ;;;; Compare
 
@@ -360,7 +354,7 @@ MIT in each case. |#
 	 (= (substring-match-backward string1 start1 end1
 				      string2 start2 end2)
 	    length))))
-
+
 (define (string-compare-ci string1 string2 if= if< if>)
   (let ((size1 (string-length string1))
 	(size2 (string-length string2)))
@@ -397,49 +391,60 @@ MIT in each case. |#
 ;;;; Trim/Pad
 
 (define (string-trim-left string #!optional char-set)
-  (if (default-object? char-set) (set! char-set char-set:not-whitespace))
-  (let ((index (string-find-next-char-in-set string char-set))
+  (let ((index
+	 (string-find-next-char-in-set string
+				       (if (default-object? char-set)
+					   char-set:not-whitespace
+					   char-set)))
 	(length (string-length string)))
     (if (not index)
 	""
 	(substring string index length))))
 
 (define (string-trim-right string #!optional char-set)
-  (if (default-object? char-set) (set! char-set char-set:not-whitespace))
-  (let ((index (string-find-previous-char-in-set string char-set)))
+  (let ((index
+	 (string-find-previous-char-in-set string
+					   (if (default-object? char-set)
+					       char-set:not-whitespace
+					       char-set))))
     (if (not index)
 	""
-	(substring string 0 (1+ index)))))
+	(substring string 0 (fix:+ index 1)))))
 
 (define (string-trim string #!optional char-set)
-  (if (default-object? char-set) (set! char-set char-set:not-whitespace))
-  (let ((index (string-find-next-char-in-set string char-set)))
-    (if (not index)
-	""
-	(substring string index
-		   (1+ (string-find-previous-char-in-set string char-set))))))
+  (let ((char-set
+	 (if (default-object? char-set) char-set:not-whitespace char-set)))
+    (let ((index (string-find-next-char-in-set string char-set)))
+      (if (not index)
+	  ""
+	  (substring string
+		     index
+		     (fix:+ (string-find-previous-char-in-set string char-set)
+			    1))))))
 
 (define (string-pad-right string n #!optional char)
-  (if (default-object? char) (set! char #\Space))
   (let ((length (string-length string)))
-    (if (= length n)
+    (if (fix:= length n)
 	string
 	(let ((result (string-allocate n)))
-	  (if (> length n)
+	  (if (fix:> length n)
 	      (substring-move-right! string 0 n result 0)
-	      (begin (substring-move-right! string 0 length result 0)
-		     (substring-fill! result length n char)))
+	      (begin
+		(substring-move-right! string 0 length result 0)
+		(substring-fill! result length n
+				 (if (default-object? char) #\space char))))
 	  result))))
 
 (define (string-pad-left string n #!optional char)
-  (if (default-object? char) (set! char #\Space))
   (let ((length (string-length string)))
-    (if (= length n)
+    (if (fix:= length n)
 	string
 	(let ((result (string-allocate n))
-	      (i (- n length)))
+	      (i (fix:- n length)))
 	  (if (negative? i)
 	      (substring-move-right! string 0 n result 0)
-	      (begin (substring-fill! result 0 i char)
-		     (substring-move-right! string 0 length result i)))
+	      (begin
+		(substring-fill! result 0 i
+				 (if (default-object? char) #\space char))
+		(substring-move-right! string 0 length result i)))
 	  result))))
