@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.17 1990/11/19 22:50:26 cph Rel $
+$Id: proced.scm,v 4.18 1994/02/02 01:48:25 gjr Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -58,8 +58,8 @@ MIT in each case. |#
   closure-offset	;for closure, offset of procedure in stack frame
   register		;for continuation, argument register
   closure-size		;for closure, virtual size of frame [integer or false]
-  (target-block		;where procedure is "really" closed [block]
-   initial-callees)	;procs. invoked by me directly
+  target-block		;where procedure is "really" closed [block]
+  initial-callees	;procs. invoked by me directly
   (free-callees		;procs. invoked by means of free variables (1)
    callees)		;procs. invoked by me (transitively)
   (free-callers		;procs. that invoke me by means of free variables (1)
@@ -71,7 +71,7 @@ MIT in each case. |#
   alist			;random bits of information [assq list]
   debugging-info	;[dbg-procedure or dbg-continuation]
   )
-
+
 ;; (1) The first meaning is used during closure analysis.
 ;;     The second meaning is used during side-effect analysis.
 
@@ -88,9 +88,25 @@ MIT in each case. |#
 		      (list-copy optional)
 		      (if (eq? type continuation-type/procedure)
 			  rest
-			  '())		;initial continuation/combinations
-		      (generate-label name) false false false false false
-		      false false false false false false '() '() '() false)))
+			  '())
+		      (generate-label name)	; label
+		      false			; applications
+		      false			; always-known-operator?
+		      false			; closure-cons
+		      false			; closure-context
+		      false			; closure-offset
+		      false			; register
+		      false			; closure-size
+		      false			; target-block
+		      false			; initial-callees
+		      false			; free-callees/callees
+		      false			; free-callers/callers
+		      false			; virtual-closure?
+		      '()			; closure-reasons
+		      '()			; variables/side-effects
+		      '()			; alist
+		      false			; debugging-info
+		      )))
     (set! *procedures* (cons procedure *procedures*))
     (set-block-procedure! block procedure)
     procedure))

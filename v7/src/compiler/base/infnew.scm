@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: infnew.scm,v 4.10 1993/10/12 07:27:38 cph Exp $
+$Id: infnew.scm,v 4.11 1994/02/02 01:48:39 gjr Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -130,10 +130,12 @@ MIT in each case. |#
 			   dbg-block-name/static-link)))
       (make-dbg-block 'STACK
 		      (block->dbg-block parent)
-		      (and (procedure/closure? procedure)
-			   (block->dbg-block
-			    (reference-context/block
-			     (procedure-closure-context procedure))))
+		      (if (procedure/closure? procedure)
+			  (block->dbg-block
+			   (reference-context/block
+			    (procedure-closure-context procedure)))
+			  (block->dbg-block
+			   (procedure-target-block procedure)))
 		      layout
 		      (block->dbg-block (block-stack-link block))))))
 
