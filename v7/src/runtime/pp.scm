@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.17 1991/08/16 18:59:54 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.18 1991/08/17 16:07:23 jinx Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -228,8 +228,10 @@ MIT in each case. |#
 	((symbol? node)
 	 (*unparse-symbol node))
 	((highlighted-node? node)
-	 (let ((start-string (pph/start-string (highlighted-node/highlight node)))
-	       (end-string  (pph/end-string (highlighted-node/highlight node))))
+	 (let ((start-string
+		(pph/start-string (highlighted-node/highlight node)))
+	       (end-string
+		(pph/end-string (highlighted-node/highlight node))))
 	   (*unparse-string start-string)
 	   (print-guaranteed-node (highlighted-node/subnode node))
 	   (*unparse-string end-string)))
@@ -292,8 +294,8 @@ MIT in each case. |#
 	 (max-cols (quotient (+ n-nodes 1) 2)))
 
     (define (try-columns n-columns)
-      (let ((nodev (list->vector nodes))
-	    (last-size (node-size (vector-ref nodev (-1+ n-nodes)))))
+      (let* ((nodev (list->vector nodes))
+	     (last-size (node-size (vector-ref nodev (-1+ n-nodes)))))
 
 	(define (fit? n-cols widths)
 	  ;; This must check that all rows fit.
@@ -329,9 +331,21 @@ MIT in each case. |#
 	  (if (< n 2)
 	      (default)
 	      (let ((widths (find-widths n)))
-		(if (fit? n widths)
-		    (print-guaranteed-table nodes column widths)
-		    (try (- n 1))))))
+		(if (not (fit? n widths))
+		    (try (- n 1))
+		    (print-guaranteed-table
+		     nodes column
+		     ;; Try to make it look pretty
+		     (let ((next-n (-1+ n)))
+		       (if (or (= n 2)
+			       (not (= (quotient (+ n-nodes next-n) n)
+				       (quotient (+ n-nodes (-1+ next-n))
+						 next-n))))
+			   widths
+			   (let ((nwidths (find-widths next-n)))
+			     (if (fit? (-1+ n) nwidths)
+				 nwidths
+				 widths)))))))))
 
 	(try n-columns)))
 
@@ -346,7 +360,7 @@ MIT in each case. |#
 		 ;; Make sure there are at least two relatively full rows.
 		 ;; This also guarantees that nodes is not null?
 		 (try-columns max-cols))
-		((> space 0)
+		((>= space 0)
 		 (loop (1+ n)
 		       (cdr nodes)
 		       (- space (1+ (node-size (car nodes))))))
