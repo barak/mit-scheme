@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.59 2000/04/01 05:17:53 cph Exp $
+;;; $Id: vc.scm,v 1.60 2000/04/02 03:11:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -591,7 +591,9 @@ merge in the changes into your working copy."
 			  (if (ref-variable vc-initial-comment buffer)
 			      #f
 			      ""))
-		      (let ((keep? (or keep? (vc-keep-workfiles? workfile))))
+		      (let ((keep?
+			     (or keep?
+				 (ref-variable vc-keep-workfiles buffer))))
 			(lambda (comment)
 			  (vc-backend-register workfile revision comment keep?)
 			  (vc-resync-workfile-buffer workfile keep?)))
@@ -635,7 +637,10 @@ merge in the changes into your working copy."
   (let ((revision (vc-get-revision revision? "New version level")))
     (vc-save-workfile-buffer (vc-master-workfile master))
     (vc-start-entry master "Enter a change comment." comment
-		    (let ((keep? (vc-keep-workfiles? master)))
+		    (let ((keep?
+			   (or (cvs-master? master)
+			       (ref-variable vc-keep-workfiles
+					     (vc-workfile-buffer master #f)))))
 		      (lambda (comment)
 			(vc-backend-checkin master revision
 					    (if (blank-string? comment)
@@ -1483,24 +1488,25 @@ the value of vc-log-mode-hook."
 
 (define-vc-type-operation 'DIFF vc-type:rcs
   (lambda (master rev1 rev2 simple?)
-    (vc-run-command master
-		    `((STATUS 1)
-		      (BUFFER ,(get-vc-diff-buffer simple?)))
-		    "rcsdiff"
-		    "-q"
-		    (if (and rev1 rev2)
-			(list (string-append "-r" rev1)
-			      (string-append "-r" rev2))
-			(let ((rev
-			       (or rev1 rev2
-				   (vc-backend-workfile-revision master))))
-			  (and rev
-			       (string-append "-r" rev))))
-		    (if simple?
-			(and (diff-brief-available?) "--brief")
-			(ref-variable diff-switches
-				      (vc-workfile-buffer master #f)))
-		    (vc-master-workfile master))))
+    (= 1
+       (vc-run-command master
+		       `((STATUS 1)
+			 (BUFFER ,(get-vc-diff-buffer simple?)))
+		       "rcsdiff"
+		       "-q"
+		       (if (and rev1 rev2)
+			   (list (string-append "-r" rev1)
+				 (string-append "-r" rev2))
+			   (let ((rev
+				  (or rev1 rev2
+				      (vc-backend-workfile-revision master))))
+			     (and rev
+				  (string-append "-r" rev))))
+		       (if simple?
+			   (and (diff-brief-available?) "--brief")
+			   (ref-variable diff-switches
+					 (vc-workfile-buffer master #f)))
+		       (vc-master-workfile master)))))
 
 (define-vc-type-operation 'PRINT-LOG vc-type:rcs
   (lambda (master)
@@ -1963,10 +1969,6 @@ the value of vc-log-mode-hook."
     (pathname-new-directory directory
 			    (append (pathname-directory directory)
 				    (list name)))))
-
-(define (vc-keep-workfiles? master)
-  (or (cvs-master? master)
-      (ref-variable vc-keep-workfiles (vc-workfile-buffer master #f))))
 
 (define (->workfile object)
   (cond ((vc-master? object) (vc-master-workfile object))
