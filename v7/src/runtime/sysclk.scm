@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sysclk.scm,v 14.1 1988/06/13 11:57:59 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sysclk.scm,v 14.2 1989/11/28 01:28:19 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -71,11 +71,11 @@ MIT in each case. |#
 	    (increment-non-runtime! (- end start)))
 	(receiver (process->system-time end))))))
 
-(define-integrable (process->system-time ticks)
+(define (process->system-time ticks)
   (internal-time/ticks->seconds (- ticks offset-time)))
 
-(define-integrable (internal-time/ticks->seconds ticks)
-  (/ ticks 1000))
+(define (internal-time/ticks->seconds ticks)
+  (/ (exact->inexact ticks) 1000))
 
-(define-integrable (internal-time/seconds->ticks seconds)
-  (* seconds 1000))
+(define (internal-time/seconds->ticks seconds)
+  (round->exact (* seconds 1000)))
