@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.h,v 1.7 1990/04/12 21:12:22 jinx Rel $
+$Id: bitstr.h,v 1.8 1992/08/29 12:57:38 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,7 +40,7 @@ MIT in each case. */
 #define BIT_STRING_LENGTH_TO_GC_LENGTH(bits)				\
   (((bits) + (OBJECT_LENGTH - 1)) / OBJECT_LENGTH)
 
-#define LOW_MASK(nbits) ((1 << (nbits)) - 1)
+#define LOW_MASK(nbits) ((1L << (nbits)) - 1)
 #define ANY_MASK(nbits, offset) ((LOW_MASK (nbits)) << (offset))
 
 #define BIT_STRING_LENGTH(bit_string)					\
