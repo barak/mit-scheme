@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.62 1990/02/27 19:53:29 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.63 1990/03/26 19:38:29 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -605,6 +605,7 @@ MIT in each case. |#
 	  gc-statistic/this-gc-end
 	  gc-statistic/this-gc-start
 	  gc-statistics
+	  gc-timestamp
 	  gctime)
   (export (runtime gc-notification)
 	  default/record-statistic!

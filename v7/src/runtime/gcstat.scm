@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcstat.scm,v 14.1 1988/06/13 11:45:17 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcstat.scm,v 14.2 1990/03/26 19:38:43 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -44,6 +44,7 @@ MIT in each case. |#
 	  (BOUNDED . ,bounded:install-history!)
 	  (UNBOUNDED . ,unbounded:install-history!)))
   (set-history-mode! 'BOUNDED)
+  (set! meter (cons 0 0))
   (statistics-reset!)
   (add-event-receiver! event:after-restore statistics-reset!)
   (set! hook/gc-start recorder/gc-start)
@@ -62,8 +63,11 @@ MIT in each case. |#
 (define last-gc-start)
 (define last-gc-end)
 
+(define (gc-timestamp)
+  meter)
+
 (define (statistics-reset!)
-  (set! meter 1)
+  (set! meter (cons 1 (1+ (cdr meter))))
   (set! total-gc-time 0)
   (set! last-gc-start false)
   (set! last-gc-end (process-time-clock))
@@ -82,7 +86,7 @@ MIT in each case. |#
 	 (make-gc-statistic meter heap-left
 			    start-time end-time
 			    last-gc-start last-gc-end)))
-    (set! meter (1+ meter))
+    (set! meter (cons (1+ (car meter)) (cdr meter)))
     (set! total-gc-time (+ (- end-time start-time) total-gc-time))
     (set! last-gc-start start-time)
     (set! last-gc-end end-time)
