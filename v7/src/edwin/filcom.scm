@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.214 2001/05/07 18:36:50 cph Exp $
+;;; $Id: filcom.scm,v 1.215 2001/05/10 18:34:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -118,7 +118,7 @@ procedures are called."
 		(let ((error?
 		       (not
 			(catch-file-errors
-			 (lambda () #f)
+			 (lambda (condition) condition #f)
 			 (lambda () (read-buffer buffer pathname #t))))))
 		  (if error?
 		      (do ((hooks
@@ -181,7 +181,7 @@ procedures are called."
 	  buffer))))
 
 (define (file-test-no-errors test . args)
-  (catch-file-errors (lambda () #f)
+  (catch-file-errors (lambda (condition) condition #f)
 		     (lambda () (apply test args))))
 
 (define (file-newer-than-file? a b)
@@ -194,7 +194,7 @@ procedures are called."
 (define (load-find-file-initialization buffer pathname)
   (let ((pathname
 	 (catch-file-errors
-	  (lambda () #f)
+	  (lambda (condition) condition #f)
 	  (lambda () (os/find-file-initialization-filename pathname)))))
     (if pathname
 	(let ((database
@@ -203,7 +203,7 @@ procedures are called."
 		  (bind-condition-handler (list condition-type:error)
 		      evaluation-error-handler
 		    (lambda ()
-		      (catch-file-errors (lambda () #f)
+		      (catch-file-errors (lambda (condition) condition #f)
 			(lambda ()
 			  (fluid-let ((load/suppress-loading-message? #t))
 			    (load pathname
