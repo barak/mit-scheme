@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: curren.scm,v 1.108 1993/08/01 06:10:37 cph Exp $
+;;;	$Id: curren.scm,v 1.109 1993/08/16 08:04:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -79,16 +79,17 @@
 (define (delete-screen! screen)
   (without-interrupts
    (lambda ()
-     (let ((other (other-screen screen true)))
-       (if other
-	   (begin
-	     (if (selected-screen? screen)
-		 (select-screen (or (other-screen screen false) other)))
-	     (screen-discard! screen)
-	     (set-editor-screens! current-editor
-				  (delq! screen
-					 (editor-screens current-editor))))
-	   (save-buffers-kill-edwin))))))
+     (if (not (screen-deleted? screen))
+	 (let ((other (other-screen screen true)))
+	   (if other
+	       (begin
+		 (if (selected-screen? screen)
+		     (select-screen (or (other-screen screen false) other)))
+		 (screen-discard! screen)
+		 (set-editor-screens! current-editor
+				      (delq! screen
+					     (editor-screens current-editor))))
+	       (save-buffers-kill-edwin)))))))
 
 (define (select-screen screen)
   (without-interrupts
