@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: hlpcom.scm,v 1.113 2000/02/24 00:59:01 cph Exp $
+;;; $Id: hlpcom.scm,v 1.114 2000/02/24 01:30:24 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -394,6 +394,7 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 	    (cons (let ((port (make-accumulator-output-port)))
 		    (describe-bindings
 		     (mode-comtabs (name->mode argument 'ERROR))
+		     #f
 		     port)
 		    (newline port)
 		    (get-output-from-accumulator port))

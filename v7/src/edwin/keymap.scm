@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: keymap.scm,v 1.15 2000/02/24 01:30:18 cph Exp $
+;;;$Id: keymap.scm,v 1.16 2000/02/24 01:31:11 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -134,10 +134,11 @@ Previous contents of that buffer are killed first."
   (let loop ((comtabs comtabs))
     (cons (sort-and-simplify (comtab->alist (car comtabs)))
 	  (if (and (pair? (cdr comtabs))
-		   (not (there-exists? global-modes
-			  (lambda (mode)
-			    (eq? (cdr comtabs) (mode-comtabs mode)))))
-		   (comtab? (cadr comtabs)))
+		   (comtab? (cadr comtabs))
+		   (or global?
+		       (not (there-exists? global-modes
+			      (lambda (mode)
+				(eq? (cdr comtabs) (mode-comtabs mode)))))))
 	      (loop (cdr comtabs))
 	      '()))))
 
