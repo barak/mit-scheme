@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapopt.scm,v 1.3 1994/12/16 20:15:09 adams Exp $
+$Id: lapopt.scm,v 1.4 1995/03/08 14:33:28 adams Exp $
 
 Copyright (c) 1991-1994 Massachusetts Institute of Technology
 
@@ -290,9 +290,12 @@ MIT in each case. |#
 
 (define (offset-fits? offset opcode)
   (and (number? offset)
-       (memq opcode '(LDW LDB LDO LDI LDH STW STB STH STWM LDWM
-			  STWS LDWS FLDWS FLDDS FSTWS FSTDS))
-       (<= -8192 offset 8191)))
+       (or (and	;; These opcodes require a small offset otherwise they are
+                ;; assembled as two instructions.
+	        (memq opcode '(LDW LDB LDO LDI LDH STW STB STH STWM LDWM
+			       STWS LDWS FLDWS FLDDS FSTWS FSTDS))
+		(<= -8192 offset 8191))
+	   (eq? opcode 'LDIL))))
 
 ;;;; Utilities
 
@@ -768,9 +771,9 @@ MIT in each case. |#
 		 (walk (cdr instr)))))))
 
 (define (find-movable-instr/delay instr instrs)
-  (let* ((next (find-or-label instrs))
+  (let* ((next   (find-or-label instrs))
 	 (instr* (and next (car next)))
-	 (next* (and next (find-non-label (cdr next)))))
+	 (next*  (and next (find-non-label (cdr next)))))
     (if (and instr*
 	     (call-with-values
 	      (lambda () (classify-instruction instr*))
@@ -815,9 +818,9 @@ MIT in each case. |#
 |#
 
 (define (find-movable-instr/load instrs reads writes next**)
-  (let* ((next (find-or-label instrs))
-	 (instr (and next (car next)))
-	 (next* (and next (find-non-label (cdr next)))))
+  (let* ((next   (find-or-label instrs))
+	 (instr  (and next (car next)))
+	 (next*  (and next (find-non-label (cdr next)))))
     (if (and instr
 	     (not (instr-skips? instr))
 	     (call-with-values
