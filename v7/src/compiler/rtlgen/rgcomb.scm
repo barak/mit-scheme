@@ -37,7 +37,7 @@
 
 ;;;; RTL Generation: Combinations
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.5 1987/01/01 18:49:25 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.6 1987/01/01 19:07:14 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -159,7 +159,7 @@
 	(open-code:memory-reference combination offset rest-generator
 				    index)))))
 
-(define (open-code:memory-reference combination offset index)
+(define (open-code:memory-reference combination offset rest-generator index)
   (open-code-expression-1 combination offset rest-generator
     (lambda (operand)
       (rtl:make-fetch (rtl:locative-offset operand index)))))
