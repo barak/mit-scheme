@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.109 1992/12/15 19:54:38 gjr Exp $
+$Id: edwin.pkg,v 1.110 1993/01/09 01:16:07 cph Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -169,8 +169,6 @@ MIT in each case. |#
   (files "grpops")
   (parent (edwin))
   (export (edwin)
-	  %group-insert-char!
-	  %group-insert-substring!
 	  finish-group-insert!
 	  gap-allocation-extra
 	  group-copy-substring!
@@ -204,12 +202,17 @@ MIT in each case. |#
   (parent (edwin))
   (export (edwin)
 	  disable-group-undo!
+	  edwin-command$undo
+	  edwin-variable$undo-limit
+	  edwin-variable$undo-strong-limit
 	  enable-group-undo!
 	  undo-boundary!
 	  undo-done!
 	  undo-leave-window!
+	  undo-more
 	  undo-record-deletion!
 	  undo-record-insertion!
+	  undo-start
 	  with-group-undo-disabled))
 
 (define-package (edwin display-type)
@@ -1102,7 +1105,7 @@ MIT in each case. |#
 	  edwin-variable$rmail-primary-inbox-list
 	  edwin-variable$rmail-reply-with-re
 	  rmail-spool-directory))
-
+#|
 (define-package (edwin bochser)
   (files "bochser"
 	 "bochsmod")
@@ -1141,3 +1144,4 @@ MIT in each case. |#
   (import (runtime debugger-utilities)
 	  show-environment-bindings)
   (initialization (initialize-bochser-mode!)))
+|#

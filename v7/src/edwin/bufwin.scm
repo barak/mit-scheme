@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.296 1992/03/13 10:52:39 cph Exp $
+;;;	$Id: bufwin.scm,v 1.297 1993/01/09 01:15:54 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -54,8 +54,6 @@
 ;;; current-end-mark
 ;;; start-mark
 ;;; start-line-mark
-;;; start-changes-mark
-;;; end-changes-mark
 ;;; start-clip-mark
 ;;; end-clip-mark
 
@@ -135,15 +133,9 @@
    ;; non-positive.
    start-line-y
 
-   ;; This contains the daemon that is invoked when insertions or
-   ;; deletions are performed on the buffer.
-   changes-daemon
-
-   ;; These variables delimit the region of the buffer that has been
-   ;; affected by insertions or deletions since the last display
-   ;; update.  If no changes have occurred, they are #F.
-   start-changes-mark
-   end-changes-mark
+   ;; This contains the buffer's MODIFIED-TICK from the last time that
+   ;; redisplay completed for this window.
+   modified-tick
 
    ;; This contains the daemon that is invoked when the buffer's
    ;; display clipping is changed.
@@ -155,8 +147,15 @@
    start-clip-mark
    end-clip-mark
 
-   ;; If true, this flag indicates that point has moved since the last
-   ;; time that START-LINE-MARK was set.
+   ;; This flag is set to #F at the end of a display update, and
+   ;; subsequently set to a true value if the point has moved, or if
+   ;; it was inside a changed region, or if it was outside a clipping
+   ;; region, or any of several other conditions that could possibly
+   ;; affect the validity of our idea about where point is.  However,
+   ;; there are two possible true values: #T means that the START-MARK
+   ;; for the window has been recomputed and is known to be correct.
+   ;; 'SINCE-START-MARK means the new START-MARK has not yet been
+   ;; computed.
    point-moved?
 
    ;; If true, this flag indicates that the window should be entirely
@@ -333,32 +332,18 @@
   (with-instance-variables buffer-window window (y)
     (set! start-line-y y)))
 
-(define-integrable (%window-changes-daemon window)
-  (with-instance-variables buffer-window window () changes-daemon))
+(define-integrable (%window-modified-tick window)
+  (with-instance-variables buffer-window window () modified-tick))
 
-(define-integrable (%set-window-changes-daemon! window daemon)
-  (with-instance-variables buffer-window window (daemon)
-    (set! changes-daemon daemon)))
-
-(define-integrable (%window-start-changes-mark window)
-  (with-instance-variables buffer-window window () start-changes-mark))
+(define-integrable (%set-window-modified-tick! window tick)
+  (with-instance-variables buffer-window window (tick)
+    (set! modified-tick tick)))
 
 (define-integrable (%window-start-changes-index window)
-  (mark-index (%window-start-changes-mark window)))
-
-(define-integrable (%set-window-start-changes-mark! window mark)
-  (with-instance-variables buffer-window window (mark)
-    (set! start-changes-mark mark)))
-
-(define-integrable (%window-end-changes-mark window)
-  (with-instance-variables buffer-window window () end-changes-mark))
+  (group-start-changes-index (%window-group window)))
 
 (define-integrable (%window-end-changes-index window)
-  (mark-index (%window-end-changes-mark window)))
-
-(define-integrable (%set-window-end-changes-mark! window mark)
-  (with-instance-variables buffer-window window (mark)
-    (set! end-changes-mark mark)))
+  (group-end-changes-index (%window-group window)))
 
 (define-integrable (%window-clip-daemon window)
   (with-instance-variables buffer-window window () clip-daemon))
@@ -642,16 +627,18 @@
   (%clear-window-buffer-state! window))
 
 (define-method buffer-window (:kill! window)
-  (without-interrupts (lambda () (%unset-window-buffer! window)))
+  (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (%unset-window-buffer! window)
+    (set-interrupt-enables! mask))
   (usual=> window :kill!))
 
 (define-method buffer-window (:salvage! window)
-  (without-interrupts
-   (lambda ()
-     (%set-window-point-index! window (%window-group-start-index window))
-     (%set-window-point-moved?! window 'SINCE-START-SET)
-     (%reset-window-structures! window)
-     (buffer-window/redraw! window))))
+  (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (%set-window-point-index! window (%window-group-start-index window))
+    (%set-window-point-moved?! window 'SINCE-START-SET)
+    (%reset-window-structures! window)
+    (buffer-window/redraw! window)
+    (set-interrupt-enables! mask)))
 
 (define-method buffer-window (:set-size! window x y)
   (if (%window-debug-trace window)
@@ -675,6 +662,16 @@
   (%release-window-outlines! window)
   (set-window-y-size! window y)
   (%set-window-point-moved?! window 'SINCE-START-SET))
+
+(define (buffer-window/cursor-enable! window)
+  (if (%window-debug-trace window)
+      ((%window-debug-trace window) 'window window 'cursor-enable!))
+  (=> (inferior-window (%window-cursor-inferior window)) :enable!))
+
+(define (buffer-window/cursor-disable! window)
+  (if (%window-debug-trace window)
+      ((%window-debug-trace window) 'window window 'cursor-disable!))
+  (=> (inferior-window (%window-cursor-inferior window)) :disable!))
 
 ;;;; Update
 
@@ -739,21 +736,11 @@
 (define (buffer-window/redraw! window)
   (if (%window-debug-trace window)
       ((%window-debug-trace window) 'window window 'force-redraw!))
-  (without-interrupts
-   (lambda ()
-     (%set-window-force-redraw?! window true)
-     (%clear-window-incremental-redisplay-state! window)
-     (window-needs-redisplay! window))))
-
-(define (buffer-window/cursor-enable! window)
-  (if (%window-debug-trace window)
-      ((%window-debug-trace window) 'window window 'cursor-enable!))
-  (=> (inferior-window (%window-cursor-inferior window)) :enable!))
-
-(define (buffer-window/cursor-disable! window)
-  (if (%window-debug-trace window)
-      ((%window-debug-trace window) 'window window 'cursor-disable!))
-  (=> (inferior-window (%window-cursor-inferior window)) :disable!))
+  (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (%set-window-force-redraw?! window true)
+    (%clear-window-incremental-redisplay-state! window)
+    (window-needs-redisplay! window)
+    (set-interrupt-enables! mask)))
 
 ;;;; Window State
 
@@ -764,7 +751,6 @@
   (%release-window-outlines! window)
   (%set-window-free-o3! window false)
   (%set-window-override-string! window false)
-  (%set-window-changes-daemon! window (make-changes-daemon window))
   (%set-window-clip-daemon! window (make-clip-daemon window))
   (%set-window-debug-trace! window false)
   (%set-window-saved-screen! window false))
@@ -779,7 +765,6 @@
   (%set-window-point! window false)
   (if (%window-start-line-mark window)
       (clear-start-mark! window))
-  (%set-window-point-moved?! window false)
   (%clear-window-incremental-redisplay-state! window))
 
 (define (%clear-window-incremental-redisplay-state! window)
@@ -799,18 +784,19 @@
   (%clear-window-outstanding-changes! window))
 
 (define-integrable (%clear-window-outstanding-changes! window)
-  (if (%window-start-changes-mark window)
-      (begin
-	(mark-temporary! (%window-start-changes-mark window))
-	(%set-window-start-changes-mark! window false)
-	(mark-temporary! (%window-end-changes-mark window))
-	(%set-window-end-changes-mark! window false)))
+  (if (%window-buffer window)
+      (update-modified-tick! window))
   (if (%window-start-clip-mark window)
       (begin
 	(mark-temporary! (%window-start-clip-mark window))
 	(%set-window-start-clip-mark! window false)
 	(mark-temporary! (%window-end-clip-mark window))
-	(%set-window-end-clip-mark! window false))))
+	(%set-window-end-clip-mark! window false)))
+  (%set-window-point-moved?! window false))
+
+(define-integrable (update-modified-tick! window)
+  (%set-window-modified-tick! window
+			      (group-modified-tick (%window-group window))))
 
 (define (%recache-window-buffer-local-variables! window)
   (let ((buffer (%window-buffer window)))
@@ -839,10 +825,7 @@
   (if (%window-buffer window)
       (%unset-window-buffer! window))
   (%set-window-buffer! window new-buffer)
-  (let ((group (%window-group window))
-	(changes-daemon (%window-changes-daemon window)))
-    (add-group-delete-daemon! group changes-daemon)
-    (add-group-insert-daemon! group changes-daemon)
+  (let ((group (%window-group window)))
     (add-group-clip-daemon! group (%window-clip-daemon window))
     (%set-window-point-index! window (mark-index (group-point group))))
   (if (buffer-display-start new-buffer)
@@ -861,11 +844,8 @@
      buffer
      (mark-permanent! (buffer-window/start-mark window)))
     (%set-buffer-point! buffer (buffer-window/point window)))
-  (let ((group (%window-group window))
-	(changes-daemon (%window-changes-daemon window)))
-    (remove-group-delete-daemon! group changes-daemon)
-    (remove-group-insert-daemon! group changes-daemon)
-    (remove-group-clip-daemon! group (%window-clip-daemon window)))
+  (remove-group-clip-daemon! (%window-group window)
+			     (%window-clip-daemon window))
   (%clear-window-buffer-state! window))
 
 (define-integrable (buffer-window/point window)
@@ -875,12 +855,12 @@
   (let ((mark (clip-mark-to-display window mark)))
     (if (%window-debug-trace window)
 	((%window-debug-trace window) 'window window 'set-point! mark))
-    (without-interrupts
-     (lambda ()
-       (%set-window-point-index! window (mark-index mark))
-       (%set-window-point-moved?! window 'SINCE-START-SET)
-       (%set-buffer-point! (%window-buffer window) mark)
-       (window-needs-redisplay! window)))))
+    (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+      (%set-window-point-index! window (mark-index mark))
+      (%set-window-point-moved?! window 'SINCE-START-SET)
+      (%set-buffer-point! (%window-buffer window) mark)
+      (window-needs-redisplay! window)
+      (set-interrupt-enables! mask))))
 
 ;;;; Start Mark
 
@@ -916,17 +896,17 @@
     (lambda (start y-start)
       (cond ((predict-index-visible? window start y-start
 				     (%window-point-index window))
-	     (without-interrupts
-	      (lambda ()
-		(set-start-mark! window start y-start))))
+	     (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+	       (set-start-mark! window start y-start)
+	       (set-interrupt-enables! mask)))
 	    (point-y
-	     (without-interrupts
-	      (lambda ()
-		(%set-window-point-index!
-		 window
-		 (or (predict-index window start y-start 0 point-y)
-		     (%window-group-end-index window)))
-		(set-start-mark! window start y-start))))))))
+	     (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+	       (%set-window-point-index!
+		window
+		(or (predict-index window start y-start 0 point-y)
+		    (%window-group-end-index window)))
+	       (set-start-mark! window start y-start)
+	       (set-interrupt-enables! mask)))))))
 
 (define (buffer-window/scroll-y-absolute! window y-point)
   (if (%window-debug-trace window)
@@ -939,9 +919,26 @@
       (lambda ()
 	(predict-start-line window (%window-point-index window) y-point))
     (lambda (start y-start)
-      (without-interrupts
-       (lambda ()
-	 (set-start-mark! window start y-start))))))
+      (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+	(set-start-mark! window start y-start)
+	(set-interrupt-enables! mask)))))
+
+(define (buffer-window/y-center window)
+  (let ((y-size (window-y-size window)))
+    (let ((result
+	   (round->exact
+	    (* y-size (/ (ref-variable cursor-centering-point) 100)))))
+      (if (< result y-size)
+	  result
+	  (- y-size 1)))))
+
+(define-variable cursor-centering-point
+  "The distance from the top of the window at which to center the point.
+This number is a percentage, where 0 is the window's top and 100 the bottom."
+  50
+  (lambda (cursor-centering-point)
+    (and (real? cursor-centering-point)
+	 (<= 0 cursor-centering-point 100))))
 
 (define (set-start-mark! window start-line y-start)
   (if (fix:= y-start 0)
@@ -990,7 +987,9 @@
   (%set-window-start-line-y! window 0))
 
 (define (guarantee-start-mark! window)
-  (without-interrupts (lambda () (%guarantee-start-mark! window))))
+  (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (%guarantee-start-mark! window)
+    (set-interrupt-enables! mask)))
 
 (define (%guarantee-start-mark! window)
   (let ((index-at!
@@ -1007,20 +1006,31 @@
 		((eq? (%window-point-moved? window) 'SINCE-START-SET)
 		 (let ((point (%window-point-index window)))
 		   (if (or (%window-start-clip-mark window)
-			   (%window-start-changes-mark window)
+			   (fix:> (group-modified-tick (%window-group window))
+				  (%window-modified-tick window))
 			   (not (%window-current-start-mark window))
-			   (fix:< point (%window-current-start-index window))
-			   (fix:> point (%window-current-end-index window))
-			   (fix:< (%window-current-start-y window) 0)
-			   (fix:> (%window-current-end-y window)
-				  (window-y-size window)))
+			   (fix:<
+			    point
+			    (if (fix:< (%window-current-start-y window) 0)
+				(fix:+ (%window-current-start-index window)
+				       (outline-index-length
+					(%window-start-outline window)))
+				(%window-current-start-index window)))
+			   (fix:> point
+				  (if (fix:> (%window-current-end-y window)
+					     (window-y-size window))
+				      (fix:- (%window-current-end-index window)
+					     (outline-index-length
+					      (%window-end-outline window)))
+				      (%window-current-end-index window))))
 		       (let ((start-y (%window-start-line-y window))
 			     (y-size (window-y-size window))
 			     (scroll-step (ref-variable scroll-step)))
 			 (if (fix:= 0 scroll-step)
-			     (if (not (predict-y-limited window start-line
-							 start-y point
-							 0 y-size))
+			     (if (predict-y-limited window start-line
+						    start-y point
+						    0 y-size)
+				 (%set-window-point-moved?! window true)
 				 (index-at! point
 					    (buffer-window/y-center window)))
 			     (let ((y
@@ -1036,9 +1046,9 @@
 				     ((fix:< y 0)
 				      (index-at! point (fix:+ y scroll-step)))
 				     ((fix:>= y y-size)
-				      (index-at!
-				       point
-				       (fix:- y scroll-step)))))))))))))))
+				      (index-at! point
+						 (fix:- y scroll-step)))))))
+		       (%set-window-point-moved?! window true)))))))))
 
 (define-variable scroll-step
   "The number of lines to try scrolling a window by when point moves out.
@@ -1048,23 +1058,6 @@ If this is zero, point is always centered after it moves off screen."
   (lambda (scroll-step)
     (and (fix:fixnum? scroll-step)
 	 (fix:>= scroll-step 0))))
-
-(define (buffer-window/y-center window)
-  (let ((y-size (window-y-size window)))
-    (let ((result
-	   (round->exact
-	    (* y-size (/ (ref-variable cursor-centering-point) 100)))))
-      (if (< result y-size)
-	  result
-	  (- y-size 1)))))
-
-(define-variable cursor-centering-point
-  "The distance from the top of the window at which to center the point.
-This number is a percentage, where 0 is the window's top and 100 the bottom."
-  50
-  (lambda (cursor-centering-point)
-    (and (real? cursor-centering-point)
-	 (<= 0 cursor-centering-point 100))))
 
 ;;;; Override Message
 
@@ -1075,10 +1068,10 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
   (if (%window-debug-trace window)
       ((%window-debug-trace window) 'window window 'set-override-message!
 				    message))
-  (without-interrupts
-   (lambda ()
-     (%set-window-override-string! window message)
-     (window-needs-redisplay! window))))
+  (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (%set-window-override-string! window message)
+    (window-needs-redisplay! window)
+    (set-interrupt-enables! mask)))
 
 (define (buffer-window/clear-override-message! window)
   (if (%window-override-string window)
@@ -1086,10 +1079,10 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
 	(if (%window-debug-trace window)
 	    ((%window-debug-trace window) 'window window
 					  'clear-override-message!))
-	(without-interrupts
-	 (lambda ()
-	   (%set-window-override-string! window false)
-	   (buffer-window/redraw! window))))))
+	(let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+	  (%set-window-override-string! window false)
+	  (buffer-window/redraw! window)
+	  (set-interrupt-enables! mask)))))
 
 (define (update-override-string! window screen x-start y-start xl xu yl yu)
   ;; This should probably update like any other string, paying
@@ -1116,7 +1109,8 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
 	  (set-inferior-start! (%window-cursor-inferior window)
 			       (vector-ref results 1)
 			       0))))
-  (%update-blank-inferior! window 1 true))
+  (%update-blank-inferior! window 1 true)
+  (update-modified-tick! window))
 
 ;;;; Update Finalization
 
@@ -1138,7 +1132,6 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
   (%set-window-current-end-y! window (o3-y end))
   (deallocate-o3! window start)
   (deallocate-o3! window end)
-  (%clear-window-outstanding-changes! window)
   (update-blank-inferior! window true)
   (update-cursor! window)
   (%window-modeline-event! window 'SET-OUTLINES))

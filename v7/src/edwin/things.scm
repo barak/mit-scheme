@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/things.scm,v 1.83 1991/11/21 10:38:40 cph Exp $
+;;;	$Id: things.scm,v 1.84 1993/01/09 01:16:21 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -110,55 +110,64 @@
   (kill-region (forward-thing (current-point) n limit?)))
 
 (define (transpose-things forward-thing n)
-  (define (forward-once i)
-    i					;ignore
-    (let ((m4 (mark-right-inserting (forward-thing (current-point) 1 'ERROR))))
-      (set-current-point! m4)
-      (let ((m2 (mark-permanent! (forward-thing m4 -1 'ERROR))))
-	(let ((m1 (mark-permanent! (forward-thing m2 -1 'ERROR))))
-	  (let ((m3 (forward-thing m1 1 'ERROR)))
-	    (insert-string (extract-and-delete-string m1 m3) m4)
-	    (insert-string (extract-and-delete-string m2 m4) m1))))))
-
-  (define (backward-once i)
-    i					;ignore
-    (let ((m2 (mark-permanent! (forward-thing (current-point) -1 'ERROR))))
-      (let ((m1 (mark-left-inserting (forward-thing m2 -1 'ERROR))))
-	(let ((m3 (forward-thing m1 1 'ERROR))
-	      (m4 (mark-right-inserting (forward-thing m2 1 'ERROR))))
-	    (insert-string (extract-and-delete-string m1 m3) m4)
-	    (insert-string (extract-and-delete-string m2 m4) m1))
-	(set-current-point! m1))))
-
-  (define (special)
-    (let ((m1 (normalize (current-point)))
-	  (m2 (normalize (current-mark))))
-      (cond ((mark< m1 m2)
-	     (exchange m1 m2
-		       (lambda (m1 m2)
-			 (set-current-point! m2)
-			 (set-current-mark! m1))))
-	    ((mark< m2 m1)
-	     (exchange m2 m1
-		       (lambda (m2 m1)
-			 (set-current-point! m2)
-			 (set-current-mark! m1)))))))
-
-  (define (exchange m1 m2 receiver)
-    (let ((m1 (mark-right-inserting m1))
-	  (m3 (forward-thing m1 1 'ERROR))
-	  (m2 (mark-permanent! m2))
-	  (m4 (mark-right-inserting (forward-thing m2 1 'ERROR))))
-      (insert-string (extract-and-delete-string m1 m3) m4)
-      (insert-string (extract-and-delete-string m2 m4) m1)
-      (receiver m4 m1)))
-
-  (define (normalize m)
-    (forward-thing (forward-thing m 1 'ERROR) -1 'ERROR))
-
-  (cond ((positive? n) (dotimes n forward-once))
-	((negative? n) (dotimes (- n) backward-once))
-	(else (special))))
+  (cond ((> n 0)
+	 (do ((i 0 (+ i 1)))
+	     ((= i n))
+	   (let* ((m4
+		   (mark-right-inserting-copy
+		    (forward-thing (current-point) 1 'ERROR)))
+		  (m2
+		   (mark-left-inserting-copy (forward-thing m4 -1 'ERROR)))
+		  (m1
+		   (mark-left-inserting-copy (forward-thing m2 -1 'ERROR)))
+		  (m3 (forward-thing m1 1 'ERROR)))
+	     (set-current-point! m4)
+	     (insert-string (extract-and-delete-string m1 m3) m4)
+	     (insert-string (extract-and-delete-string m2 m4) m1)
+	     (mark-temporary! m1)
+	     (mark-temporary! m2)
+	     (mark-temporary! m4))))
+	((< n 0)
+	 (do ((i 0 (- i 1)))
+	     ((= i n))
+	   (let* ((m2
+		   (mark-left-inserting-copy
+		    (forward-thing (current-point) -1 'ERROR)))
+		  (m1 (mark-left-inserting-copy (forward-thing m2 -1 'ERROR)))
+		  (m3 (forward-thing m1 1 'ERROR))
+		  (m4 (mark-right-inserting-copy (forward-thing m2 1 'ERROR))))
+	     (insert-string (extract-and-delete-string m1 m3) m4)
+	     (insert-string (extract-and-delete-string m2 m4) m1)
+	     (set-current-point! m1)
+	     (mark-temporary! m1)
+	     (mark-temporary! m2)
+	     (mark-temporary! m4))))
+	(else
+	 (let ((normalize
+		(lambda (m)
+		  (forward-thing (forward-thing m 1 'ERROR) -1 'ERROR)))
+	       (exchange
+		(lambda (m1 m2 set-m1! set-m2!)
+		  (let ((m1 (mark-right-inserting-copy m1))
+			(m3 (forward-thing m1 1 'ERROR))
+			(m2 (mark-left-inserting-copy m2))
+			(m4
+			 (mark-right-inserting-copy
+			  (forward-thing m2 1 'ERROR))))
+		    (insert-string (extract-and-delete-string m1 m3) m4)
+		    (insert-string (extract-and-delete-string m2 m4) m1)
+		    (set-m1! m4)
+		    (set-m2! m1)
+		    (mark-temporary! m1)
+		    (mark-temporary! m2)
+		    (mark-temporary! m4)))))
+	   (let ((m1 (normalize (current-point)))
+		 (m2 (normalize (current-mark))))
+	     (cond ((mark< m1 m2)
+		    (exchange m1 m2 set-current-mark! set-current-point!))
+		   ((mark< m2 m1)
+		    (exchange m2 m1
+			      set-current-point! set-current-mark!))))))))
 
 ;;;; Horizontal Space
 
@@ -167,10 +176,10 @@
 	       (horizontal-space-end mark)))
 
 (define (horizontal-space-start mark)
-  (skip-chars-backward " \t" mark (line-start mark 0)))
+  (skip-chars-backward " \t" mark))
 
 (define (horizontal-space-end mark)
-  (skip-chars-forward " \t" mark (line-end mark 0)))
+  (skip-chars-forward " \t" mark))
 
 (define (compute-horizontal-space c1 c2 tab-width)
   ;; Compute the number of tabs/spaces required to fill from column C1

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.113 1992/11/16 22:41:01 cph Exp $
+;;;	$Id: fileio.scm,v 1.114 1993/01/09 01:16:10 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -157,8 +157,7 @@ Each procedure is called with three arguments:
 	  (lambda ()
 	    (let ((gap-start* (fix:+ index n)))
 	      (undo-record-insertion! group index gap-start*)
-	      (finish-group-insert! group index n)
-	      (record-insertion! group index gap-start*))))
+	      (finish-group-insert! group index n))))
 	(channel-close channel)
 	n))))
 
@@ -688,29 +687,14 @@ Otherwise, a message is written both before and after long file writes."
 	 end-of-line)))
 
 (define (with-group-daemons-disabled group redisplay? action)
-  (let ((insert-daemons '())
-	(delete-daemons '())
-	(clip-daemons '())
-	(move-point-daemons '()))
+  (let ((clip-daemons '()))
     (let ((swap
 	   (lambda ()
-	     (let ((old (vector-ref group group-index:insert-daemons)))
-	       (vector-set! group group-index:insert-daemons
-			    insert-daemons)
-	       (set! insert-daemons old))
-	     (let ((old (vector-ref group group-index:delete-daemons)))
-	       (vector-set! group group-index:delete-daemons
-			    delete-daemons)
-	       (set! delete-daemons old))
-	     ;; I think the following two are unnecessary, but...
+	     ;; I think the following is unnecessary, but...
 	     (let ((old (vector-ref group group-index:clip-daemons)))
 	       (vector-set! group group-index:clip-daemons
 			    clip-daemons)
 	       (set! clip-daemons old))
-	     (let ((old (vector-ref group group-index:move-point-daemons)))
-	       (vector-set! group group-index:move-point-daemons
-			    move-point-daemons)
-	       (set! move-point-daemons old))
 	     unspecific)))
       (dynamic-wind
        swap

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: curren.scm,v 1.105 1992/11/13 21:40:06 cph Exp $
+;;;	$Id: curren.scm,v 1.106 1993/01/09 01:16:02 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -109,7 +109,15 @@
 
 (define (update-screens! display-style)
   (let loop ((screens (screen-list)))
-    (or (null? screens)
+    (if (null? screens)
+	(begin
+	  ;; All the buffer changes have been successfully written to
+	  ;; the screens, so erase the change records.
+	  (do ((buffers (buffer-list) (cdr buffers)))
+	      ((null? buffers))
+	    (set-group-start-changes-index! (buffer-group (car buffers))
+					    false))
+	  true)
 	(and (update-screen! (car screens) display-style)
 	     (loop (cdr screens))))))
 

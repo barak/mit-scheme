@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: buffrm.scm,v 1.46 1992/09/10 02:43:14 cph Exp $
+;;;	$Id: buffrm.scm,v 1.47 1993/01/09 01:15:52 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -222,6 +222,9 @@
     (if modeline-inferior
 	(modeline-window:event! (inferior-window modeline-inferior) type)))
   (screen-modeline-event! (window-screen frame) frame type))
+
+(define (notice-window-changes! frame)
+  (%notice-window-changes! (frame-text-inferior frame)))
 
 (define-integrable (window-override-message window)
   (buffer-window/override-message (frame-text-inferior window)))

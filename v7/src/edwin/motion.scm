@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motion.scm,v 1.83 1991/03/22 00:32:37 cph Exp $
+;;;	$Id: motion.scm,v 1.84 1993/01/09 01:16:18 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -54,7 +54,7 @@
 	((eq? limit? 'FAILURE) (editor-failure) limit)
 	((eq? limit? 'ERROR) (editor-error))
 	((not limit?) false)
-	(else (error "Unknown limit type" limit?))))
+	(else (error "Unknown limit type:" limit?))))
 
 (define (mark1+ mark #!optional limit?)
   (let ((group (mark-group mark))
@@ -62,7 +62,7 @@
     (if (group-end-index? group index)
 	(limit-mark-motion (and (not (default-object? limit?)) limit?)
 			   (group-end-mark group))
-	(make-mark group (fix:1+ index)))))
+	(make-mark group (fix:+ index 1)))))
 
 (define (mark-1+ mark #!optional limit?)
   (let ((group (mark-group mark))
@@ -70,7 +70,7 @@
     (if (group-start-index? group index)
 	(limit-mark-motion (and (not (default-object? limit?)) limit?)
 			   (group-start-mark group))
-	(make-mark group (fix:-1+ index)))))
+	(make-mark group (fix:- index 1)))))
 
 (define (region-count-chars region)
   (fix:- (region-end-index region) (region-start-index region)))
@@ -111,38 +111,16 @@
 
 ;;;; Motion by Lines
 
-;;; Move to the beginning of the Nth line, starting from INDEX in
-;;; GROUP, where positive N means down, negative N means up, and zero
-;;; N means the current line.  If such a line exists, call IF-OK on
-;;; the position (of the line's start), otherwise call IF-NOT-OK on
-;;; the limiting mark (the group's start or end) which was exceeded.
-
-(define (move-vertically group index n if-ok if-not-ok)
-  (cond ((fix:positive? n)
-	 (let ((limit (group-end-index group)))
-	   (let loop ((i index) (n n))
-	     (let ((j (%find-next-newline group i limit)))
-	       (cond ((not j) (if-not-ok (group-end-mark group)))
-		     ((fix:= n 1) (if-ok (fix:1+ j)))
-		     (else (loop (fix:1+ j) (fix:-1+ n))))))))
-	((fix:negative? n)
-	 (let ((limit (group-start-index group)))
-	   (let loop ((i index) (n n))
-	     (let ((j (%find-previous-newline group i limit)))
-	       (cond ((fix:zero? n) (if-ok (or j limit)))
-		     ((not j) (if-not-ok (group-start-mark group)))
-		     (else (loop (fix:-1+ j) (fix:1+ n))))))))
-	(else
-	 (if-ok (line-start-index group index)))))
-
 (define (line-start-index group index)
   (let ((limit (group-start-index group)))
-    (or (%find-previous-newline group index limit)
-	limit)))
+    (let ((index (group-find-previous-char group limit index #\newline)))
+      (if index
+	  (fix:+ index 1)
+	  limit))))
 
 (define (line-end-index group index)
   (let ((limit (group-end-index group)))
-    (or (%find-next-newline group index limit)
+    (or (group-find-next-char group index limit #\newline)
 	limit)))
 
 (define (line-start-index? group index)
@@ -152,27 +130,46 @@
 (define (line-end-index? group index)
   (or (group-end-index? group index)
       (char=? (group-right-char group index) #\newline)))
-
+
 (define (line-start mark n #!optional limit?)
-  (let ((group (mark-group mark)))
-    (move-vertically group (mark-index mark) n
-      (lambda (index)
-	(make-mark group index))
-      (lambda (mark)
-	(limit-mark-motion (and (not (default-object? limit?)) limit?)
-			   mark)))))
+  (let ((group (mark-group mark))
+	(lose
+	 (lambda (mark)
+	   (limit-mark-motion (and (not (default-object? limit?)) limit?)
+			      mark))))
+    (if (fix:> n 0)
+	(let ((limit (group-end-index group)))
+	  (let loop ((i (mark-index mark)) (n n))
+	    (let ((j (group-find-next-char group i limit #\newline)))
+	      (cond ((not j) (lose (group-end-mark group)))
+		    ((fix:= n 1) (make-mark group (fix:+ j 1)))
+		    (else (loop (fix:+ j 1) (fix:- n 1)))))))
+	(let ((limit (group-start-index group)))
+	  (let loop ((i (mark-index mark)) (n n))
+	    (let ((j (group-find-previous-char group limit i #\newline)))
+	      (cond ((fix:= n 0) (make-mark group (if j (fix:+ j 1) limit)))
+		    ((not j) (lose (group-start-mark group)))
+		    (else (loop j (fix:+ n 1))))))))))
 
 (define (line-end mark n #!optional limit?)
-  (let ((group (mark-group mark)))
-    (move-vertically group (mark-index mark) n
-      (lambda (index)
-	(let ((end (%find-next-newline group index (group-end-index group))))
-	  (if end
-	      (make-mark group end)
-	      (group-end-mark group))))
-      (lambda (mark)
-	(limit-mark-motion (and (not (default-object? limit?)) limit?)
-			   mark)))))
+  (let ((group (mark-group mark))
+	(lose
+	 (lambda (mark)
+	   (limit-mark-motion (and (not (default-object? limit?)) limit?)
+			      mark))))
+    (if (fix:< n 0)
+	(let ((limit (group-start-index group)))
+	  (let loop ((i (mark-index mark)) (n n))
+	    (let ((j (group-find-previous-char group limit i #\newline)))
+	      (cond ((not j) (lose (group-start-mark group)))
+		    ((fix:= n -1) (make-mark group j))
+		    (else (loop j (fix:+ n 1)))))))
+	(let ((limit (group-end-index group)))
+	  (let loop ((i (mark-index mark)) (n n))
+	    (let ((j (group-find-next-char group i limit #\newline)))
+	      (cond ((fix:= n 0) (make-mark group (or j limit)))
+		    ((not j) (lose (group-end-mark group)))
+		    (else (loop (fix:+ j 1) (fix:- n 1))))))))))
 
 (define (line-start? mark)
   (line-start-index? (mark-group mark) (mark-index mark)))
@@ -187,14 +184,11 @@
 
 (define (group-count-lines group start end)
   (let loop ((start start) (n 0))
-    (if (fix:= start end)
-	n
-	(let ((i (%find-next-newline group start end))
-	      (n (fix:1+ n)))
-	  (if (not i)
-	      n
-	      (loop (fix:1+ i) n))))))
-
+    (cond ((fix:= start end) n)
+	  ((group-find-next-char group start end #\newline)
+	   => (lambda (i) (loop (fix:+ i 1) (fix:+ n 1))))
+	  (else (fix:+ n 1)))))
+
 ;;;; Motion by Columns
 
 (define (mark-column mark)
@@ -212,7 +206,7 @@
     (make-mark group
 	       (group-column->index group
 				    (line-start-index group index)
-				    (line-end-index group index)
+				    (group-end-index group)
 				    0
 				    column
 				    (group-tab-width group)))))

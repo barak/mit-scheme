@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.19 1991/04/02 19:55:27 cph Exp $
+;;;	$Id: bufwiu.scm,v 1.20 1993/01/09 01:15:56 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -48,52 +48,49 @@
 
 ;;;; Insert/Delete
 
-(define (make-changes-daemon window)
-  ;; It is assumed that the insert daemon is called after the
-  ;; insertion has been performed, and the delete daemon before the
-  ;; deletion has been performed.  It is also assumed that interrupts
-  ;; are disabled.
-  (lambda (group start end)
-    (if (%window-debug-trace window)
-	((%window-debug-trace window) 'window window 'change-daemon
-				      group start end))
-    ;; Record changes that intersect the current outlines.
-    (if (and (not (%window-force-redraw? window))
-	     (fix:<= (%window-current-start-index window) end)
-	     (fix:<= start (%window-current-end-index window)))
-	(begin
-	  (if (not (%window-start-changes-mark window))
+(define (%notice-window-changes! window)
+  ;; Assumes that interrupts are disabled.
+  (let ((group (%window-group window)))
+    (if (fix:> (group-modified-tick group) (%window-modified-tick window))
+	(let ((start (group-start-changes-index group))
+	      (end (group-end-changes-index group)))
+	  (if (%window-debug-trace window)
+	      ((%window-debug-trace window) 'window window
+					    '%notice-window-changes!))
+	  (if (not (%window-force-redraw? window))
+	      ;; If this change intersects the visible region of the
+	      ;; buffer, request a display update.
+	      (if (and start
+		       (fix:<= (%window-current-start-index window) end)
+		       (fix:<= start (%window-current-end-index window)))
+		  (window-needs-redisplay! window)
+		  ;; Otherwise mark the window to indicate that it has
+		  ;; been updated to reflect these changes.
+		  (%set-window-modified-tick! window
+					      (group-modified-tick group))))
+	  (if (%window-start-line-mark window)
 	      (begin
-		(%set-window-start-changes-mark!
-		 window
-		 (make-permanent-mark group start false))
-		(%set-window-end-changes-mark!
-		 window
-		 (make-permanent-mark group end true)))
-	      (begin
-		(if (fix:< start (%window-start-changes-index window))
-		    (set-mark-index! (%window-start-changes-mark window)
-				     start))
-		(if (fix:> end (%window-end-changes-index window))
-		    (set-mark-index! (%window-end-changes-mark window) end))))
-	  (window-needs-redisplay! window)))
-    ;; If this change affects where the window starts, choose a
-    ;; new place to start it.
-    (if (%window-start-line-mark window)
-	(begin
-	  (if (let ((wlstart (%window-start-line-index window))
-		    (wstart (%window-start-index window)))
-		(and (if (fix:= wlstart wstart)
-			 (fix:< start wstart)
-			 (fix:<= start wstart))
-		     (fix:<= wlstart end)))
-	      (begin
-		(clear-start-mark! window)
-		(window-needs-redisplay! window)))
-	  (if (and (not (eq? (%window-point-moved? window) 'SINCE-START-SET))
-		   (fix:<= start (%window-point-index window))
-		   (fix:<= (%window-point-index window) end))
-	      (%set-window-point-moved?! window 'SINCE-START-SET))))))
+		;; If this change affects START-MARK, invalidate it
+		;; and request a display update.
+		(if (let ((wlstart (%window-start-line-index window))
+			  (wstart (%window-start-index window)))
+		      (and (if (fix:= wlstart wstart)
+			       (fix:< start wstart)
+			       (fix:<= start wstart))
+			   (fix:<= wlstart end)))
+		    (begin
+		      (clear-start-mark! window)
+		      (window-needs-redisplay! window)))
+		;; If this change affects POINT, invalidate it.  It's
+		;; not necessary to request a display update here
+		;; because POINT is always in the visible region of
+		;; the buffer.
+		(if (and (not (eq? (%window-point-moved? window)
+				   'SINCE-START-SET))
+			 (fix:<= start (%window-point-index window))
+			 (fix:<= (%window-point-index window) end))
+		    (%set-window-point-moved?! window
+					       'SINCE-START-SET))))))))
 
 ;;;; Clip
 
@@ -151,6 +148,8 @@
   (if (%window-force-redraw? window)
       (begin
 	(%set-window-force-redraw?! window false)
+	;; When one of the cached buffer-local variables is set, it
+	;; sets the FORCE-REDRAW bit so that this code will run.
 	(%recache-window-buffer-local-variables! window)
 	(preserve-nothing! window))
       (let ((start (%window-current-start-index window))
@@ -163,7 +162,10 @@
 			(fix:< (%window-end-clip-index window)
 			       (%window-group-end-index window))))
 	       (preserve-nothing! window))
-	      ((%window-start-changes-mark window)
+	      ((and (fix:> (group-modified-tick (%window-group window))
+			   (%window-modified-tick window))
+		    (fix:<= start (%window-end-changes-index window))
+		    (fix:<= (%window-start-changes-index window) end))
 	       (let ((start-changes
 		      (let ((start-changes
 			     (%window-start-changes-index window)))
@@ -181,7 +183,8 @@
 						   end-changes end)
 			 (preserve-top! window start start-changes)))))
 	      (else
-	       (preserve-all! window start end))))))
+	       (preserve-all! window start end)))))
+  (%clear-window-outstanding-changes! window))
 
 (define-integrable (preserve-nothing! window)
   (regenerate-outlines window
@@ -307,11 +310,8 @@
 		   (regenerate-outlines window wlstart wlsy))))))
       (cond ((fix:= wlstart start-index)
 	     (cond ((fix:= wlsy start-y)
-		    (%clear-window-outstanding-changes! window)
 		    (if (%window-point-moved? window)
-			(begin
-			  (%set-window-point-moved?! window false)
-			  (update-cursor! window))))
+			(update-cursor! window)))
 		   ((fix:< wlsy start-y)
 		    (scroll-up wlsy))
 		   (else
@@ -399,43 +399,41 @@
 ;;; redisplay.
 
 (define (buffer-window/needs-redisplay? window)
-  (if (or (window-needs-redisplay? window)
-	  (not (%window-saved-screen window))
-	  (screen-needs-update? (%window-saved-screen window)))
-      true
-      false))
+  (or (window-needs-redisplay? window)
+      (not (%window-saved-screen window))
+      (screen-needs-update? (%window-saved-screen window))))
 
 (define (buffer-window/direct-output-forward-char! window)
   (if (%window-debug-trace window)
       ((%window-debug-trace window) 'window window
 				    'direct-output-forward-char!))
-  (without-interrupts
-   (lambda ()
-     (%set-window-point-index! window (fix:+ (%window-point-index window) 1))
-     (let ((x-start
-	    (fix:+ (inferior-x-start (%window-cursor-inferior window)) 1))
-	   (y-start (inferior-y-start (%window-cursor-inferior window))))
-       (screen-direct-output-move-cursor
-	(%window-saved-screen window)
-	(fix:+ (%window-saved-x-start window) x-start)
-	(fix:+ (%window-saved-y-start window) y-start))
-       (%set-inferior-x-start! (%window-cursor-inferior window) x-start)))))
+  (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (%set-window-point-index! window (fix:+ (%window-point-index window) 1))
+    (let ((x-start
+	   (fix:+ (inferior-x-start (%window-cursor-inferior window)) 1))
+	  (y-start (inferior-y-start (%window-cursor-inferior window))))
+      (screen-direct-output-move-cursor
+       (%window-saved-screen window)
+       (fix:+ (%window-saved-x-start window) x-start)
+       (fix:+ (%window-saved-y-start window) y-start))
+      (%set-inferior-x-start! (%window-cursor-inferior window) x-start))
+    (set-interrupt-enables! mask)))
 
 (define (buffer-window/direct-output-backward-char! window)
   (if (%window-debug-trace window)
       ((%window-debug-trace window) 'window window
 				    'direct-output-backward-char!))
-  (without-interrupts
-   (lambda ()
-     (%set-window-point-index! window (fix:- (%window-point-index window) 1))
-     (let ((x-start
-	    (fix:- (inferior-x-start (%window-cursor-inferior window)) 1))
-	   (y-start (inferior-y-start (%window-cursor-inferior window))))
-       (screen-direct-output-move-cursor
-	(%window-saved-screen window)
-	(fix:+ (%window-saved-x-start window) x-start)
-	(fix:+ (%window-saved-y-start window) y-start))
-       (%set-inferior-x-start! (%window-cursor-inferior window) x-start)))))
+  (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (%set-window-point-index! window (fix:- (%window-point-index window) 1))
+    (let ((x-start
+	   (fix:- (inferior-x-start (%window-cursor-inferior window)) 1))
+	  (y-start (inferior-y-start (%window-cursor-inferior window))))
+      (screen-direct-output-move-cursor
+       (%window-saved-screen window)
+       (fix:+ (%window-saved-x-start window) x-start)
+       (fix:+ (%window-saved-y-start window) y-start))
+      (%set-inferior-x-start! (%window-cursor-inferior window) x-start))
+    (set-interrupt-enables! mask)))
 
 (define (buffer-window/home-cursor! window)
   (if (%window-debug-trace window)
@@ -445,82 +443,62 @@
 	   (fix:< 0 (%window-saved-xu window))
 	   (fix:<= (%window-saved-yl window) 0)
 	   (fix:< 0 (%window-saved-yu window)))
-      (without-interrupts
-       (lambda ()
-	 (screen-direct-output-move-cursor (%window-saved-screen window)
-					   (%window-saved-x-start window)
-					   (%window-saved-y-start window))))))
+      (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+	(screen-direct-output-move-cursor (%window-saved-screen window)
+					  (%window-saved-x-start window)
+					  (%window-saved-y-start window))
+	(set-interrupt-enables! mask))))
 
 (define (buffer-window/direct-output-insert-char! window char)
   (if (%window-debug-trace window)
       ((%window-debug-trace window) 'window window
 				    'direct-output-insert-char! char))
-  (without-interrupts
-   (lambda ()
-     (%group-insert-char! (%window-group window)
-			  (%window-point-index window)
-			  char)
-     (let ((x-start (inferior-x-start (%window-cursor-inferior window)))
-	   (y-start (inferior-y-start (%window-cursor-inferior window))))
-       (screen-direct-output-char
-	(%window-saved-screen window)
-	(fix:+ (%window-saved-x-start window) x-start)
-	(fix:+ (%window-saved-y-start window) y-start)
-	char
-	false)
-       (let ((outline (direct-output-outline window y-start)))
-	 (set-outline-index-length! outline
-				    (fix:+ (outline-index-length outline) 1)))
-       (%set-inferior-x-start! (%window-cursor-inferior window)
-			       (fix:+ x-start 1))))))
+  (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (group-insert-char! (%window-group window)
+			(%window-point-index window)
+			char)
+    (let ((x-start (inferior-x-start (%window-cursor-inferior window)))
+	  (y-start (inferior-y-start (%window-cursor-inferior window))))
+      (screen-direct-output-char
+       (%window-saved-screen window)
+       (fix:+ (%window-saved-x-start window) x-start)
+       (fix:+ (%window-saved-y-start window) y-start)
+       char
+       false)
+      (let ((outline (direct-output-outline window y-start)))
+	(set-outline-index-length! outline
+				   (fix:+ (outline-index-length outline) 1)))
+      (%set-inferior-x-start! (%window-cursor-inferior window)
+			      (fix:+ x-start 1)))
+    (update-modified-tick! window)
+    (set-interrupt-enables! mask)))
 
 (define (buffer-window/direct-output-insert-substring! window string start end)
   (if (%window-debug-trace window)
       ((%window-debug-trace window) 'window window
 				    'direct-output-insert-substring!
 				    (string-copy string) start end))
-  (without-interrupts
-   (lambda ()
-     (%group-insert-substring! (%window-group window)
-			       (%window-point-index window)
-			       string start end)
-     (let ((x-start (inferior-x-start (%window-cursor-inferior window)))
-	   (y-start (inferior-y-start (%window-cursor-inferior window)))
-	   (length (fix:- end start)))
-       (screen-direct-output-substring
-	(%window-saved-screen window)
-	(fix:+ (%window-saved-x-start window) x-start)
-	(fix:+ (%window-saved-y-start window) y-start)
-	string start end
-	false)
-       (let ((outline (direct-output-outline window y-start)))
-	 (set-outline-index-length! outline
-				    (fix:+ (outline-index-length outline)
-					   length)))
-       (%set-inferior-x-start! (%window-cursor-inferior window)
-			       (fix:+ x-start length))))))
-
-(define (buffer-window/direct-output-insert-newline! window)
-  (if (%window-debug-trace window)
-      ((%window-debug-trace window) 'window window
-				    'direct-output-insert-newline!))
-  (without-interrupts
-   (lambda ()
-     (%group-insert-char! (%window-group window)
-			  (%window-point-index window)
-			  #\newline)
-     (let ((end-y (%window-current-end-y window)))
-       (screen-direct-output-move-cursor (%window-saved-screen window)
-					 (%window-saved-x-start window)
-					 (fix:+ (%window-saved-y-start window)
-						end-y))
-       (%set-window-end-outline!
-	window
-	(make-outline window 0 1 (%window-end-outline window) false))
-       (%set-window-current-end-y! window (fix:+ end-y 1))
-       (update-blank-inferior! window false)
-       (%set-inferior-x-start! (%window-cursor-inferior window) 0)
-       (%set-inferior-y-start! (%window-cursor-inferior window) end-y)))))
+  (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (group-insert-substring! (%window-group window)
+			     (%window-point-index window)
+			     string start end)
+    (let ((x-start (inferior-x-start (%window-cursor-inferior window)))
+	  (y-start (inferior-y-start (%window-cursor-inferior window)))
+	  (length (fix:- end start)))
+      (screen-direct-output-substring
+       (%window-saved-screen window)
+       (fix:+ (%window-saved-x-start window) x-start)
+       (fix:+ (%window-saved-y-start window) y-start)
+       string start end
+       false)
+      (let ((outline (direct-output-outline window y-start)))
+	(set-outline-index-length! outline
+				   (fix:+ (outline-index-length outline)
+					  length)))
+      (%set-inferior-x-start! (%window-cursor-inferior window)
+			      (fix:+ x-start length)))
+    (update-modified-tick! window)
+    (set-interrupt-enables! mask)))
 
 (define (direct-output-outline window y)
   (let loop
@@ -530,3 +508,26 @@
       (if (fix:< y end-y)
 	  outline
 	  (loop (outline-next outline) end-y)))))
+
+(define (buffer-window/direct-output-insert-newline! window)
+  (if (%window-debug-trace window)
+      ((%window-debug-trace window) 'window window
+				    'direct-output-insert-newline!))
+  (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (group-insert-char! (%window-group window)
+			(%window-point-index window)
+			#\newline)
+    (let ((end-y (%window-current-end-y window)))
+      (screen-direct-output-move-cursor (%window-saved-screen window)
+					(%window-saved-x-start window)
+					(fix:+ (%window-saved-y-start window)
+					       end-y))
+      (%set-window-end-outline!
+       window
+       (make-outline window 0 1 (%window-end-outline window) false))
+      (%set-window-current-end-y! window (fix:+ end-y 1))
+      (update-blank-inferior! window false)
+      (%set-inferior-x-start! (%window-cursor-inferior window) 0)
+      (%set-inferior-y-start! (%window-cursor-inferior window) end-y))
+    (update-modified-tick! window)
+    (set-interrupt-enables! mask)))

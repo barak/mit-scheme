@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.43 1992/11/17 22:42:45 cph Exp $
+$Id: decls.scm,v 1.44 1993/01/09 01:16:04 cph Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -114,8 +114,8 @@ MIT in each case. |#
 		"autold"
 		"autosv"
 		"basic"
-		"bochser"
-		"bochsmod"
+		;;"bochser"
+		;;"bochsmod"
 		"bufcom"
 		"bufinp"
 		"bufmnu"

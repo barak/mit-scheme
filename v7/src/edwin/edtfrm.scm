@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtfrm.scm,v 1.84 1991/04/01 10:06:58 cph Exp $
+;;;	$Id: edtfrm.scm,v 1.85 1993/01/09 01:16:06 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -81,6 +81,12 @@
 (define (editor-frame-update-display! window display-style)
   ;; Returns true if update is successfully completed (or unnecessary).
   ;; Assumes that interrupts are disabled.
+  (notice-window-changes! (editor-frame-typein-window window))
+  (let ((start (editor-frame-window0 window)))
+    (notice-window-changes! start)
+    (do ((window (window1+ start) (window1+ window)))
+	((eq? window start))
+      (notice-window-changes! window)))
   (with-instance-variables editor-frame window (display-style)
     (if (and (not display-style)
 	     (not (car redisplay-flags)))

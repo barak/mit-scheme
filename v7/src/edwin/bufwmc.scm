@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwmc.scm,v 1.14 1991/05/17 19:11:32 cph Exp $
+;;;	$Id: bufwmc.scm,v 1.15 1993/01/09 01:15:59 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -173,7 +173,8 @@
 		(%window-start-line-y window)))))
 
 (define-integrable (outlines-valid? window)
-  (and (not (%window-start-changes-mark window))
+  (and (fix:= (group-modified-tick (%window-group window))
+	      (%window-modified-tick window))
        (not (%window-start-clip-mark window))
        (not (%window-point-moved? window))
        (not (%window-force-redraw? window))

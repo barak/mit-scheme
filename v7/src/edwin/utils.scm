@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.27 1992/02/04 04:04:34 cph Exp $
+;;;	$Id: utils.scm,v 1.28 1993/01/09 01:16:25 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -46,21 +46,114 @@
 
 (declare (usual-integrations))
 
-(define-integrable set-string-maximum-length!
-  (ucode-primitive set-string-maximum-length! 2))
+(define-macro (chars-to-words-shift)
+  ;; This is written as a macro so that the shift will be a constant
+  ;; in the compiled code.
+  (let ((chars-per-word (vector-ref ((ucode-primitive gc-space-status 0)) 0)))
+    (case chars-per-word
+      ((4) -2)
+      ((8) -3)
+      (else (error "Can't support this word size:" chars-per-word)))))
+
+(define (string-allocate n-chars)
+  (if (not (fix:fixnum? n-chars))
+      (error:wrong-type-argument n-chars "fixnum" 'STRING-ALLOCATE))
+  (if (not (fix:>= n-chars 0))
+      (error:bad-range-argument n-chars 'STRING-ALLOCATE))
+  (let ((n-words (fix:+ (fix:lsh n-chars (chars-to-words-shift)) 3)))
+    (if (not ((ucode-primitive heap-available? 1) n-words))
+	(begin
+	  (gc-flip)
+	  (if (not ((ucode-primitive heap-available? 1) n-words))
+	      (error "Unable to allocate string of this length:" n-chars))))
+    (let ((mask (set-interrupt-enables! interrupt-mask/none)))
+      (let ((result
+	     ((ucode-primitive primitive-get-free 1)
+	      (ucode-type string))))
+	((ucode-primitive primitive-object-set! 3)
+	 result
+	 0
+	 ((ucode-primitive primitive-object-set-type 2)
+	  (ucode-type manifest-nm-vector)
+	  (fix:- n-words 1)))
+	(set-string-length! result n-chars)
+	;; This won't work if range-checking is turned on.
+	(string-set! result (fix:+ n-chars 1) #\nul)
+	((ucode-primitive primitive-increment-free 1) n-words)
+	(set-interrupt-enables! mask)
+	result))))
+
+(define (set-string-maximum-length! string n-chars)
+  (if (not (string? string))
+      (error:wrong-type-argument string "string" 'SET-STRING-MAXIMUM-LENGTH!))
+  (if (not (fix:fixnum? n-chars))
+      (error:wrong-type-argument n-chars "fixnum" 'SET-STRING-MAXIMUM-LENGTH!))
+  (if (not (and (fix:>= n-chars 0)
+		(fix:< n-chars
+		       (fix:lsh (fix:- (system-vector-length string) 1)
+				(fix:- 0 (chars-to-words-shift))))))
+      (error:bad-range-argument n-chars 'SET-STRING-MAXIMUM-LENGTH!))
+  (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    ((ucode-primitive primitive-object-set! 3)
+     string
+     0
+     ((ucode-primitive primitive-object-set-type 2)
+      (ucode-type manifest-nm-vector)
+      (fix:+ (fix:lsh n-chars (chars-to-words-shift)) 2)))
+    (set-string-length! string n-chars)
+    ;; This won't work if range-checking is turned on.
+    (string-set! string (fix:+ n-chars 1) #\nul)
+    (set-interrupt-enables! mask)))
+
+(define (%substring-move! source start-source end-source
+			  target start-target)
+  (cond ((not (fix:< start-source end-source))
+	 unspecific)
+	((not (eq? source target))
+	 (if (fix:< (fix:- end-source start-source) 32)
+	     (do ((scan-source start-source (fix:+ scan-source 1))
+		  (scan-target start-target (fix:+ scan-target 1)))
+		 ((fix:= scan-source end-source) unspecific)
+	       (string-set! target
+			    scan-target
+			    (string-ref source scan-source)))
+	     (substring-move-left! source start-source end-source
+				   target start-target)))
+	((fix:< start-source start-target)
+	 (if (fix:< (fix:- end-source start-source) 32)
+	     (do ((scan-source end-source (fix:- scan-source 1))
+		  (scan-target
+		   (fix:+ start-target (fix:- end-source start-source))
+		   (fix:- scan-target 1)))
+		 ((fix:= scan-source start-source) unspecific)
+	       (string-set! source
+			    (fix:- scan-target 1)
+			    (string-ref source (fix:- scan-source 1))))
+	     (substring-move-right! source start-source end-source
+				    source start-target)))
+	((fix:< start-target start-source)
+	 (if (fix:< (fix:- end-source start-source) 32)
+	     (do ((scan-source start-source (fix:+ scan-source 1))
+		  (scan-target start-target (fix:+ scan-target 1)))
+		 ((fix:= scan-source end-source) unspecific)
+	       (string-set! source
+			    scan-target
+			    (string-ref source scan-source)))
+	     (substring-move-left! source start-source end-source
+				   source start-target)))))
 
 (define (string-append-char string char)
   (let ((size (string-length string)))
-    (let ((result (string-allocate (1+ size))))
-      (substring-move-right! string 0 size result 0)
+    (let ((result (string-allocate (fix:+ size 1))))
+      (%substring-move! string 0 size result 0)
       (string-set! result size char)
       result)))
 
 (define (string-append-substring string1 string2 start2 end2)
   (let ((length1 (string-length string1)))
-    (let ((result (string-allocate (+ length1 (- end2 start2)))))
-      (substring-move-right! string1 0 length1 result 0)
-      (substring-move-right! string2 start2 end2 result length1)
+    (let ((result (string-allocate (fix:+ length1 (fix:- end2 start2)))))
+      (%substring-move! string1 0 length1 result 0)
+      (%substring-move! string2 start2 end2 result length1)
       result)))
 
 (define (string-greatest-common-prefix strings)
@@ -80,22 +173,7 @@
   (cond ((string-null? x) y)
 	((string-null? y) x)
 	(else (string-append x " " y))))
-
-(define (list-of-type? object type)
-  (let loop ((object object))
-    (if (null? object)
-	true
-	(and (pair? object)
-	     (type (car object))
-	     (loop (cdr object))))))
-
-(define (dotimes n procedure)
-  (define (loop i)
-    (if (< i n)
-	(begin (procedure i)
-	       (loop (1+ i)))))
-  (loop 0))
-
+
 (define char-set:null
   (char-set))
 
@@ -107,31 +185,6 @@
 
 (define char-set:not-graphic
   (char-set-invert char-set:graphic))
-
-(define (read-line #!optional port)
-  (read-string char-set:return
-	       (if (default-object? port)
-		   (current-input-port)
-		   (guarantee-input-port port))))
-
-(define (y-or-n? . strings)
-  (define (loop)
-    (let ((char (char-upcase (read-char))))
-      (cond ((or (char=? char #\Y)
-		 (char=? char #\Space))
-	     (write-string "Yes")
-	     true)
-	    ((or (char=? char #\N)
-		 (char=? char #\Rubout))
-	     (write-string "No")
-	     false)
-	    (else
-	     (if (not (char=? char #\newline))
-		 (beep))
-	     (loop)))))
-  (newline)
-  (for-each write-string strings)
-  (loop))
 
 (define (char-controlify char)
   (if (ascii-controlified? char)
@@ -157,6 +210,31 @@
 
 (define (char-base char)
   (make-char (char-code char) 0))
+
+(define (read-line #!optional port)
+  (read-string char-set:return
+	       (if (default-object? port)
+		   (current-input-port)
+		   (guarantee-input-port port))))
+
+(define (y-or-n? . strings)
+  (define (loop)
+    (let ((char (char-upcase (read-char))))
+      (cond ((or (char=? char #\Y)
+		 (char=? char #\Space))
+	     (write-string "Yes")
+	     true)
+	    ((or (char=? char #\N)
+		 (char=? char #\Rubout))
+	     (write-string "No")
+	     false)
+	    (else
+	     (if (not (char=? char #\newline))
+		 (beep))
+	     (loop)))))
+  (newline)
+  (for-each write-string strings)
+  (loop))
 
 (define (catch-file-errors if-error thunk)
   (call-with-protected-continuation
@@ -176,3 +254,13 @@
 (define (list-of-strings? object)
   (and (list? object)
        (for-all? object string?)))
+
+(define list-of-type?
+  for-all?)
+
+(define (dotimes n procedure)
+  (define (loop i)
+    (if (< i n)
+	(begin (procedure i)
+	       (loop (1+ i)))))
+  (loop 0))

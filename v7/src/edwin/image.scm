@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/image.scm,v 1.128 1991/04/01 10:07:13 cph Exp $
+;;;	$Id: image.scm,v 1.129 1993/01/09 01:16:13 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -109,7 +109,9 @@
   ;; Various things depend on this.
   (if tab-width
       (let loop ((index start) (c start-column))
-	(if (or (fix:= c column) (fix:= index end))
+	(if (or (fix:= c column)
+		(fix:= index end)
+		(fix:= (char->integer #\newline) (vector-8b-ref string index)))
 	    (cons index c)
 	    (let ((c
 		   (fix:+ c
@@ -121,7 +123,9 @@
 		  (cons index c)
 		  (loop (fix:+ index 1) c)))))
       (let loop ((index start) (c start-column))
-	(if (or (fix:= c column) (fix:= index end))
+	(if (or (fix:= c column)
+		(fix:= index end)
+		(fix:= (char->integer #\newline) (vector-8b-ref string index)))
 	    (cons index c)
 	    (let ((c
 		   (fix:+ c
@@ -211,7 +215,8 @@
 	   (let ((i&c
 		  (%substring-column->index text start gap-start
 					    start-column tab-width column)))
-	     (if (fix:< (cdr i&c) column)
+	     (if (and (fix:< (cdr i&c) column)
+		      (not (char=? #\newline (string-ref text (car i&c)))))
 		 (fix:- (substring-column->index text gap-end
 						 (fix:+ end gap-length)
 						 (cdr i&c) tab-width column)

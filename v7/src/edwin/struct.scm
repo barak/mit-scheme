@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: struct.scm,v 1.81 1992/11/12 18:00:39 cph Exp $
+;;;	$Id: struct.scm,v 1.82 1993/01/09 01:16:20 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -99,10 +99,10 @@
   read-only?
   display-start
   display-end
-  insert-daemons
-  delete-daemons
+  start-changes-index
+  end-changes-index
+  modified-tick
   clip-daemons
-  move-point-daemons
   undo-data
   modified?
   point
@@ -124,10 +124,10 @@
       (vector-set! group group-index:end-mark end)
       (vector-set! group group-index:display-end end))
     (vector-set! group group-index:read-only? false)
-    (vector-set! group group-index:insert-daemons '())
-    (vector-set! group group-index:delete-daemons '())
+    (vector-set! group group-index:start-changes-index false)
+    (vector-set! group group-index:end-changes-index false)
+    (vector-set! group group-index:modified-tick 0)
     (vector-set! group group-index:clip-daemons '())
-    (vector-set! group group-index:move-point-daemons '())
     (vector-set! group group-index:undo-data false)
     (vector-set! group group-index:modified? false)
     (vector-set! group group-index:point (make-permanent-mark group 0 true))
@@ -167,6 +167,12 @@
 (define-integrable (set-group-writable! group)
   (vector-set! group group-index:read-only? false))
 
+(define-integrable (set-group-start-changes-index! group start)
+  (vector-set! group group-index:start-changes-index start))
+
+(define-integrable (set-group-end-changes-index! group end)
+  (vector-set! group group-index:end-changes-index end))
+
 (define-integrable (set-group-marks! group marks)
   (vector-set! group group-index:marks marks))
 
@@ -204,13 +210,8 @@
 (define-integrable (set-group-modified! group sense)
   (vector-set! group group-index:modified? sense))
 
-(define-integrable (%set-group-point! group point)
+(define-integrable (set-group-point! group point)
   (vector-set! group group-index:point (mark-left-inserting-copy point)))
-
-(define (set-group-point! group point)
-  (let ((old-point (group-point group)))
-    (%set-group-point! group point)
-    (record-move-point! group point old-point)))
 
 (define (group-absolute-start group)
   (make-temporary-mark group 0 false))
@@ -259,39 +260,6 @@
     (vector-set! group group-index:start-mark start)
     (vector-set! group group-index:end-mark end)))
 
-(define (invoke-group-daemons! daemons group start end)
-  (let loop ((daemons daemons))
-    (if (not (null? daemons))
-	(begin
-	  ((car daemons) group start end)
-	  (loop (cdr daemons))))))
-
-(define (record-insertion! group start end)
-  (invoke-group-daemons! (group-insert-daemons group) group start end))
-
-(define (add-group-insert-daemon! group daemon)
-  (vector-set! group
-	       group-index:insert-daemons
-	       (cons daemon (vector-ref group group-index:insert-daemons))))
-
-(define (remove-group-insert-daemon! group daemon)
-  (vector-set! group
-	       group-index:insert-daemons
-	       (delq! daemon (vector-ref group group-index:insert-daemons))))
-
-(define (record-deletion! group start end)
-  (invoke-group-daemons! (group-delete-daemons group) group start end))
-
-(define (add-group-delete-daemon! group daemon)
-  (vector-set! group
-	       group-index:delete-daemons
-	       (cons daemon (vector-ref group group-index:delete-daemons))))
-
-(define (remove-group-delete-daemon! group daemon)
-  (vector-set! group
-	       group-index:delete-daemons
-	       (delq! daemon (vector-ref group group-index:delete-daemons))))
-
 (define (record-clipping! group start end)
   (let ((buffer (group-buffer group)))
     (if (and buffer
@@ -303,6 +271,13 @@
 	(set-buffer-display-start! buffer false)))
   (invoke-group-daemons! (group-clip-daemons group) group start end))
 
+(define (invoke-group-daemons! daemons group start end)
+  (let loop ((daemons daemons))
+    (if (not (null? daemons))
+	(begin
+	  ((car daemons) group start end)
+	  (loop (cdr daemons))))))
+
 (define (add-group-clip-daemon! group daemon)
   (vector-set! group
 	       group-index:clip-daemons
@@ -312,21 +287,6 @@
   (vector-set! group
 	       group-index:clip-daemons
 	       (delq! daemon (vector-ref group group-index:clip-daemons))))
-
-(define (record-move-point! group start end)
-  (invoke-group-daemons! (group-move-point-daemons group) group start end))
-
-(define (add-group-move-point-daemon! group daemon)
-  (vector-set! group
-	       group-index:move-point-daemons
-	       (cons daemon (vector-ref group
-					group-index:move-point-daemons))))
-
-(define (remove-group-move-point-daemon! group daemon)
-  (vector-set! group
-	       group-index:move-point-daemons
-	       (delq! daemon (vector-ref group
-					 group-index:move-point-daemons))))
 
 (define (group-local-ref group variable)
   (variable-local-value (let ((buffer (group-buffer group)))

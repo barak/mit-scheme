@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.16 1992/04/04 13:07:09 cph Exp $
+;;;	$Id: grpops.scm,v 1.17 1993/01/09 01:16:11 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -44,7 +44,7 @@
 
 ;;;; Group Operations
 
-(declare (usual-integrations))
+(declare (usual-integrations string-allocate))
 
 ;;; These high-performance ops deal directly with groups and indices
 ;;; for speed and the least consing.  Since indices are not in general
@@ -65,42 +65,42 @@
 (define (group-extract-string group start end)
   (let ((text (group-text group))
 	(gap-start (group-gap-start group))
-	(string (make-string (fix:- end start))))
+	(string (string-allocate (fix:- end start))))
     (cond ((fix:<= end gap-start)
-	   (substring-move-right! text start end string 0))
+	   (%substring-move! text start end string 0))
 	  ((fix:>= start gap-start)
-	   (substring-move-right! text
-				  (fix:+ start (group-gap-length group))
-				  (fix:+ end (group-gap-length group))
-				  string
-				  0))
+	   (%substring-move! text
+			     (fix:+ start (group-gap-length group))
+			     (fix:+ end (group-gap-length group))
+			     string
+			     0))
 	  (else
-	   (substring-move-right! text start gap-start string 0)
-	   (substring-move-right! text
-				  (group-gap-end group)
-				  (fix:+ end (group-gap-length group))
-				  string
-				  (fix:- gap-start start))))
+	   (%substring-move! text start gap-start string 0)
+	   (%substring-move! text
+			     (group-gap-end group)
+			     (fix:+ end (group-gap-length group))
+			     string
+			     (fix:- gap-start start))))
     string))
 
 (define (group-copy-substring! group start end string start*)
   (let ((text (group-text group))
 	(gap-start (group-gap-start group)))
     (cond ((fix:<= end gap-start)
-	   (substring-move-right! text start end string start*))
+	   (%substring-move! text start end string start*))
 	  ((fix:>= start gap-start)
-	   (substring-move-right! text
-				  (fix:+ start (group-gap-length group))
-				  (fix:+ end (group-gap-length group))
-				  string
-				  start*))
+	   (%substring-move! text
+			     (fix:+ start (group-gap-length group))
+			     (fix:+ end (group-gap-length group))
+			     string
+			     start*))
 	  (else
-	   (substring-move-right! text start gap-start string start*)
-	   (substring-move-right! text
-				  (group-gap-end group)
-				  (fix:+ end (group-gap-length group))
-				  string
-				  (fix:+ start* (fix:- gap-start start)))))))
+	   (%substring-move! text start gap-start string start*)
+	   (%substring-move! text
+			     (group-gap-end group)
+			     (fix:+ end (group-gap-length group))
+			     string
+			     (fix:+ start* (fix:- gap-start start)))))))
 
 (define (group-left-char group index)
   (string-ref (group-text group)
@@ -119,65 +119,58 @@
 
 (define (group-insert-char! group index char)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (declare (integrate %group-insert-char!))
-    (%group-insert-char! group index char)
-    (if (not (null? (group-insert-daemons group)))
-	(invoke-group-daemons! (group-insert-daemons group)
-			       group index (group-gap-start group)))
-    (set-interrupt-enables! interrupt-mask)))
-
-(define (%group-insert-char! group index char)
-  (if (group-read-only? group)
-      (barf-if-read-only))
-  (if (not (group-modified? group))
-      (check-first-group-modification group))
-  (if (group-undo-data group)
-      (undo-record-insertion! group index (fix:+ index 1)))
-  (prepare-gap-for-insert! group index 1)
-  (string-set! (group-text group) index char)
-  (finish-group-insert! group index 1))
+    (if (group-read-only? group)
+	(barf-if-read-only))
+    (if (not (group-modified? group))
+	(check-first-group-modification group))
+    (undo-record-insertion! group index (fix:+ index 1))
+    (prepare-gap-for-insert! group index 1)
+    (string-set! (group-text group) index char)
+    (finish-group-insert! group index 1)
+    (set-interrupt-enables! interrupt-mask)
+    unspecific))
 
 (define (group-insert-string! group index string)
   (group-insert-substring! group index string 0 (string-length string)))
 
 (define (group-insert-substring! group index string start end)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (declare (integrate %group-insert-substring!))
-    (%group-insert-substring! group index string start end)
-    (if (not (null? (group-insert-daemons group)))
-	(invoke-group-daemons! (group-insert-daemons group)
-			       group index (group-gap-start group)))
-    (set-interrupt-enables! interrupt-mask)))
-
-(define (%group-insert-substring! group index string start end)
-  (if (group-read-only? group)
-      (barf-if-read-only))
-  (if (not (group-modified? group))
-      (check-first-group-modification group))
-  (let ((n (fix:- end start)))
-    (if (group-undo-data group)
-	(undo-record-insertion! group index (fix:+ index n)))
-    (prepare-gap-for-insert! group index n)
-    (substring-move-right! string start end (group-text group) index)
-    (finish-group-insert! group index n)))
+    (if (group-read-only? group)
+	(barf-if-read-only))
+    (if (not (group-modified? group))
+	(check-first-group-modification group))
+    (let ((n (fix:- end start)))
+      (undo-record-insertion! group index (fix:+ index n))
+      (prepare-gap-for-insert! group index n)
+      ;; SUBSTRING-MOVE-RIGHT is a primitive, and as such has a high
+      ;; calling cost; but the C compiler probably generates better
+      ;; code for the primitive's inner loop.  So inline code this
+      ;; primitive for small insertions to avoid the calling overhead,
+      ;; and use the primitive for large insertions to gain the inner
+      ;; loop speed.  There's no reason why 32 is a special number
+      ;; here, it's just out of the hat.
+      (%substring-move! string start end (group-text group) index)
+      (finish-group-insert! group index n))
+    (set-interrupt-enables! interrupt-mask)
+    unspecific))
 
 (define-integrable (prepare-gap-for-insert! group new-start n)
   (cond ((fix:< new-start (group-gap-start group))
 	 (let ((new-end (fix:+ new-start (group-gap-length group))))
-	   (substring-move-right! (group-text group)
-				  new-start
-				  (group-gap-start group)
-				  (group-text group)
-				  new-end)
+	   (%substring-move! (group-text group)
+			     new-start
+			     (group-gap-start group)
+			     (group-text group)
+			     new-end)
 	   (vector-set! group group-index:gap-start new-start)
 	   (vector-set! group group-index:gap-end new-end)))
 	((fix:> new-start (group-gap-start group))
 	 (let ((new-end (fix:+ new-start (group-gap-length group))))
-	   (substring-move-left! (group-text group)
-				 (group-gap-end group)
-				 new-end
-				 (group-text group)
-				 (group-gap-start group))
+	   (%substring-move! (group-text group)
+			     (group-gap-end group)
+			     new-end
+			     (group-text group)
+			     (group-gap-start group))
 	   (vector-set! group group-index:gap-start new-start)
 	   (vector-set! group group-index:gap-end new-end))))
   (if (fix:< (group-gap-length group) n)
@@ -191,8 +184,8 @@
 	(let ((end* (string-length text)))
 	  (let ((text* (string-allocate (fix:+ end* n)))
 		(new-end (fix:+ end n)))
-	    (substring-move-right! text 0 start text* 0)
-	    (substring-move-right! text end end* text* new-end)
+	    (%substring-move! text 0 start text* 0)
+	    (%substring-move! text end end* text* new-end)
 	    (vector-set! group group-index:text text*)
 	    (vector-set! group group-index:gap-end new-end)))
 	(vector-set! group group-index:gap-length (fix:+ length n)))))
@@ -200,6 +193,18 @@
 (define-integrable (finish-group-insert! group index n)
   (vector-set! group group-index:gap-start (fix:+ index n))
   (vector-set! group group-index:gap-length (fix:- (group-gap-length group) n))
+  (if (group-start-changes-index group)
+      (begin
+	(if (fix:< index (group-start-changes-index group))
+	    (set-group-start-changes-index! group index))
+	(set-group-end-changes-index!
+	 group
+	 (if (fix:> index (group-end-changes-index group))
+	     (fix:+ index n)
+	     (fix:+ (group-end-changes-index group) n))))
+      (begin
+	(set-group-start-changes-index! group index)
+	(set-group-end-changes-index! group (fix:+ index n))))
   (do ((marks (group-marks group) (system-pair-cdr marks)))
       ((null? marks))
     (if (and (system-pair-car marks)
@@ -208,7 +213,9 @@
 		      (mark-left-inserting? (system-pair-car marks)))))
 	(set-mark-index! (system-pair-car marks)
 			 (fix:+ (mark-index (system-pair-car marks)) n))))
-  ;; The MODIFIED? bit must not be set until after the undo record is made.
+  (vector-set! group group-index:modified-tick
+	       (fix:+ (group-modified-tick group) 1))
+  ;; The MODIFIED? bit must be set *after* the undo recording.
   (set-group-modified! group true))
 
 ;;;; Deletions
@@ -226,50 +233,56 @@
 	    (barf-if-read-only))
 	(if (not (group-modified? group))
 	    (check-first-group-modification group))
-	(if (group-undo-data group)
-	    (undo-record-deletion! group start end))
-	(if (not (null? (group-delete-daemons group)))
-	    (invoke-group-daemons! (group-delete-daemons group)
-				   group start end))
-	;; The MODIFIED? bit must not be set until after the undo
-	;; record is made.
-	(set-group-modified! group true)
-	(let ((length (fix:- end start)))
+	;; Guarantee that the gap is between START and END.  This is
+	;; best done before the undo recording.
+	(cond ((fix:< (group-gap-start group) start)
+	       (%substring-move! (group-text group)
+				 (group-gap-end group)
+				 (fix:+ start (group-gap-length group))
+				 (group-text group)
+				 (group-gap-start group)))
+	      ((fix:> (group-gap-start group) end)
+	       (%substring-move! (group-text group)
+				 end
+				 (group-gap-start group)
+				 (group-text group)
+				 (fix:+ end (group-gap-length group)))))
+	(undo-record-deletion! group start end)
+	(let ((n (fix:- end start)))
+	  (if (group-start-changes-index group)
+	      (begin
+		(if (fix:< start (group-start-changes-index group))
+		    (set-group-start-changes-index! group start))
+		(set-group-end-changes-index!
+		 group
+		 (if (fix:>= end (group-end-changes-index group))
+		     start
+		     (fix:- (group-end-changes-index group) n))))
+	      (begin
+		(set-group-start-changes-index! group start)
+		(set-group-end-changes-index! group start)))
 	  (do ((marks (group-marks group) (system-pair-cdr marks)))
 	      ((null? marks))
 	    (cond ((or (not (system-pair-car marks))
-		       (fix:< (mark-index (system-pair-car marks)) start))
+		       (fix:<= (mark-index (system-pair-car marks)) start))
 		   unspecific)
 		  ((fix:<= (mark-index (system-pair-car marks)) end)
 		   (set-mark-index! (system-pair-car marks) start))
 		  (else
 		   (set-mark-index!
 		    (system-pair-car marks)
-		    (fix:- (mark-index (system-pair-car marks)) length))))))
-	;; Guarantee that the gap is between START and END.
-	(cond ((fix:< (group-gap-start group) start)
-	       (let ((text (group-text group))
-		     (new-end (fix:+ start (group-gap-length group))))
-		 (do ((index (group-gap-end group) (fix:+ index 1))
-		      (index* (group-gap-start group) (fix:+ index* 1)))
-		     ((not (fix:< index new-end)))
-		   (string-set! text index* (string-ref text index)))))
-	      ((fix:> (group-gap-start group) end)
-	       (let ((text (group-text group)))
-		 (do ((index (group-gap-start group) (fix:- index 1))
-		      (index* (group-gap-end group) (fix:- index* 1)))
-		     ((not (fix:< end index)))
-		   (string-set! text
-				(fix:- index* 1)
-				(string-ref text (fix:- index 1)))))))
+		    (fix:- (mark-index (system-pair-car marks)) n))))))
+	(vector-set! group group-index:modified-tick
+		     (fix:+ (group-modified-tick group) 1))
+	;; The MODIFIED? bit must be set *after* the undo recording.
+	(set-group-modified! group true)
 	(vector-set! group group-index:gap-start start)
 	(let ((gap-end (fix:+ end (group-gap-length group))))
 	  (if (fix:> (fix:- gap-end start) gap-maximum-extra)
 	      (let* ((new-gap-end (fix:+ start gap-allocation-extra))
 		     (text (group-text group))
 		     (text-end (string-length text)))
-		(substring-move-left! text gap-end text-end
-				      text new-gap-end)
+		(%substring-move! text gap-end text-end text new-gap-end)
 		(set-string-maximum-length! text
 					    (fix:+ new-gap-end
 						   (fix:- text-end gap-end)))
@@ -280,4 +293,5 @@
 		(vector-set! group group-index:gap-end gap-end)
 		(vector-set! group group-index:gap-length
 			     (fix:- gap-end start)))))
-	(set-interrupt-enables! interrupt-mask))))
+	(set-interrupt-enables! interrupt-mask)
+	unspecific)))
