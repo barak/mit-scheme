@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.42 2000/04/19 03:21:06 cph Exp $
+$Id: ntscreen.c,v 1.43 2000/04/20 04:09:19 cph Exp $
 
 Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
@@ -509,7 +509,16 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
    SCREEN  screen = GETSCREEN (hWnd);
 
-   if (win32_trace_level > 0)
+   /* Ignore common but uninteresting messages.  */
+   if (win32_trace_level
+       > (((uMsg == WM_SCHEME_INTERRUPT)
+	   || (uMsg == WM_PAINT)
+	   || (uMsg == WM_TIMER)
+	   || (uMsg == WM_NCHITTEST)
+	   || (uMsg == WM_SETCURSOR)
+	   || (uMsg == WM_MOUSEMOVE))
+	  ? 2
+	  : 0))
      {
        const char * name = (translate_message_code (uMsg));
        fprintf (win32_trace_file, "ScreenWndProc: ");
@@ -2086,9 +2095,14 @@ process_keydown (HWND handle, UINT message, WPARAM wparam, LPARAM lparam)
       return (1);
     }
 
-  /* If no modifiers other than shift are involved, TranslateMessage
-     will do something reasonable, so use it.  */
-  if (((get_modifiers ()) &~ (SCREEN_SHIFT_PRESSED | SCREEN_CAPSLOCK_ON)) == 0)
+  /* If no modifiers other than shift or the lock keys are involved,
+     TranslateMessage will do something reasonable, so use it.  */
+  if (((get_modifiers ())
+       &~ (SCREEN_SHIFT_PRESSED
+	   | SCREEN_CAPSLOCK_ON
+	   | SCREEN_NUMLOCK_ON
+	   | SCREEN_SCROLLLOCK_ON))
+      == 0)
     {
       use_translate_message (handle, message, wparam, lparam);
       return (0);
