@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.66 2003/09/05 20:51:14 cph Exp $
+$Id: load.scm,v 14.67 2004/11/19 17:28:51 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -71,13 +72,11 @@ USA.
 (define (load filename/s #!optional environment syntax-table purify?)
   syntax-table				;ignored
   (let ((environment
-	 ;; Kludge until optional defaulting fixed.
-	 (if (or (default-object? environment)
-		 (eq? environment default-object))
-	     default-object
+	 (if (default-object? environment)
+	     environment
 	     (->environment environment)))
 	(purify?
-	 (if (or (default-object? purify?) (eq? purify? default-object))
+	 (if (default-object? purify?)
 	     #f
 	     purify?)))
     (handle-load-hooks
@@ -133,20 +132,10 @@ USA.
     (lambda (result hooks)
       (for-each (lambda (hook) (hook)) hooks)
       result)))
-
-(define default-object
-  (list 'DEFAULT-OBJECT))
 
 (define (load-noisily filename #!optional environment syntax-table purify?)
-  syntax-table				;ignored
   (fluid-let ((load-noisily? #t))
-    (load filename
-	  ;; This defaulting is a kludge until we get the optional
-	  ;; defaulting fixed.  Right now it must match the defaulting
-	  ;; of `load'.
-	  (if (default-object? environment) default-object environment)
-	  'DEFAULT
-	  (if (default-object? purify?) default-object purify?))))
+    (load filename environment syntax-table purify?)))
 
 (define (load-latest . args)
   (fluid-let ((load/default-find-pathname-with-type find-latest-file))
@@ -277,7 +266,7 @@ USA.
 (define (load-scode-end scode environment purify?)
   (if purify? (purify (load/purification-root scode)))
   (extended-scode-eval scode
-		       (if (eq? environment default-object)
+		       (if (default-object? environment)
 			   (nearest-repl/environment)
 			   environment)))
 
@@ -370,7 +359,7 @@ USA.
   (stream-map stream
 	      (let ((repl (nearest-repl)))
 		(let* ((environment
-			(if (eq? environment default-object)
+			(if (default-object? environment)
 			    (repl/environment repl)
 			    environment)))
 		  (lambda (s-expression)
@@ -579,27 +568,24 @@ USA.
 	  ((load
 	    (lambda (fname #!optional env syntax-table purify?)
 	      syntax-table		;ignored
-	      (let ((env (if (default-object? env) default-object env))
-		    (purify?
-		     (if (default-object? purify?) default-object purify?)))
-		(let ((place (find-filename fname alist)))
-		  (if (not place)
-		      (real-load fname env 'DEFAULT purify?)
-		      (handle-load-hooks
-		       (lambda ()
-			 (let ((scode (caddr place)))
-			   (loading-message fname
-					    load/suppress-loading-message?
-					    ";Pseudo-loading ")
-			   (if (and (not (eq? purify? default-object)) purify?)
-			       (set! to-purify
-				     (cons (load/purification-root scode)
-					   to-purify)))
-			   (fluid-let ((load/current-pathname (cadr place)))
-			     (extended-scode-eval scode
-						  (if (eq? env default-object)
-						      environment
-						      env)))))))))))
+	      (let ((place (find-filename fname alist)))
+		(if (not place)
+		    (real-load fname env 'DEFAULT purify?)
+		    (handle-load-hooks
+		     (lambda ()
+		       (let ((scode (caddr place)))
+			 (loading-message fname
+					  load/suppress-loading-message?
+					  ";Pseudo-loading ")
+			 (if (if (default-object? purify?) #f purify?)
+			     (set! to-purify
+				   (cons (load/purification-root scode)
+					 to-purify)))
+			 (fluid-let ((load/current-pathname (cadr place)))
+			   (extended-scode-eval scode
+						(if (default-object? env)
+						    environment
+						    env))))))))))
 	   (fasload
 	    (lambda (filename #!optional suppress-message?)
 	      (let ((suppress-message?

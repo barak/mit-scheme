@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.65 2004/02/16 05:36:11 cph Exp $
+$Id: error.scm,v 14.66 2004/11/19 17:25:28 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1995,2000,2001,2002 Massachusetts Institute of Technology
@@ -419,21 +419,6 @@ USA.
 	 (if (eq? name (%restart/name (car restarts)))
 	     (car restarts)
 	     (loop (cdr restarts))))))
-
-(define-syntax restarts-default
-  (sc-macro-transformer
-   (lambda (form environment)
-     (let ((restarts (close-syntax (cadr form) environment))
-	   (name (close-syntax (caddr form) environment)))
-       ;; This is a macro because DEFAULT-OBJECT? is.
-       `(COND ((OR (DEFAULT-OBJECT? ,restarts)
-		   (EQ? 'BOUND-RESTARTS ,restarts))
-	       *BOUND-RESTARTS*)
-	      ((CONDITION? ,restarts)
-	       (%CONDITION/RESTARTS ,restarts))
-	      (ELSE
-	       (GUARANTEE-RESTARTS ,restarts ,name)
-	       ,restarts))))))
 
 (define (find-restart name #!optional restarts)
   (guarantee-symbol name 'FIND-RESTART)
@@ -478,6 +463,16 @@ USA.
 			(restarts-default restarts 'USE-VALUE))))
     (if restart
 	((%restart/effector restart) datum))))
+
+(define (restarts-default restarts name)
+  (cond ((or (default-object? restarts)
+	     (eq? 'BOUND-RESTARTS restarts))
+	 *bound-restarts*)
+	((condition? restarts)
+	 (%condition/restarts restarts))
+	(else
+	 (guarantee-restarts restarts name)
+	 restarts)))
 
 ;;;; Condition Signalling and Handling
 
