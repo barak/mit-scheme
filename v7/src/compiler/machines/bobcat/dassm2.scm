@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.12 1988/12/30 07:05:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.13 1989/07/25 12:40:44 arthur Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -75,7 +75,9 @@ MIT in each case. |#
 			      (variable-cache-name
 			       (system-vector-ref new-block 3))
 			      arity))
-		     ((#xfc)		; interpreted
+		     ((#xfc		; interpreted
+		       #x114		; fixed arity primitive
+		       #x11a)		; lexpr primitive
 		      (vector 'INTERPRETED
 			      (system-vector-ref new-block 3)
 			      arity))
@@ -329,11 +331,13 @@ MIT in each case. |#
       (8  . (REGISTER VALUE))
       (12 . (REGISTER ENVIRONMENT))
       (16 . (REGISTER TEMPORARY))
-      ;; Compiler temporaries
+      ;; Old compiled code temporaries
+      ;; Retained for compatibility with old compiled code and should
+      ;; eventually be flushed.
       ,@(let loop ((index 40) (i 0))
 	  (if (= i 50)
 	      '()
-	      (cons `(,index . (TEMPORARY ,i))
+	      (cons `(,index . (OLD TEMPORARY ,i))
 		    (loop (+ index 4) (1+ i)))))
       ;; Interpreter entry points
       ,@(make-entries
@@ -346,7 +350,14 @@ MIT in each case. |#
 		lookup safe-lookup set! access unassigned? unbound? define
 		reference-trap safe-reference-trap assignment-trap
 		unassigned?-trap
-		&+ &- &* &/ &= &< &> 1+ -1+ zero? positive? negative?))))))
+		&+ &- &* &/ &= &< &> 1+ -1+ zero? positive? negative?))
+      ;; Compiled code temporaries
+      ,@(let loop ((index 720) (i 0))
+	  (if (= i 300)
+	      '()
+	      (cons `(,index . (TEMPORARY ,i))
+		    (loop (+ index 12) (1+ i))))))))
+)
 
 (define (make-pc-relative thunk)
   (let ((reference-offset *current-offset))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.7 1988/11/07 14:33:30 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.8 1989/07/25 12:41:41 arthur Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -83,8 +83,9 @@ registers into some interesting sorting order.
 
 (define (register-type? register type)
   ;; This predicate is true iff `register' has the given `type'.
-  ;; `register' must be a machine register.
-  (or (not type)
+  ;; `register' must be a machine register.  If `type' is #f, this predicate
+  ;; returns #f iff `register' is not a word register.
+  (or (and (not type) (word-register? register))
       (eq? (register-type register) type)))
 
 (define ((register-type-predicate type) register)
@@ -326,14 +327,17 @@ registers into some interesting sorting order.
 	(let ((alias (map-entry:find-alias entry type needed-registers)))
 	  (and alias
 	       (or
-		;; If we are reallocating a register of a specific
-		;; type, first see if there is an available register
-		;; of some other type that we can stash the value in.
+		;; If we are reallocating a register of a specific type, first
+		;; see if there is an available register of some other
+		;; assignment-compatible type that we can stash the value in.
 		(and type
 		     (let ((values
 			    (find-free-register
 			     map
-			     false			     (cons alias needed-registers))))
+			     (if (register-types-compatible? type false)
+				 false
+				 type)
+			     (cons alias needed-registers))))
 		       (and
 			values
 			(bind-allocator-values values

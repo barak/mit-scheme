@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.14 1989/01/18 09:58:56 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.15 1989/07/25 12:39:50 arthur Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -42,6 +42,8 @@ MIT in each case. |#
 (define-integrable scheme-object-width 32)
 (define-integrable scheme-datum-width 24)
 (define-integrable scheme-type-width 8)
+(define-integrable flonum-size 2)
+(define-integrable float-alignment 32)
 
 ;; It is currently required that both packed characters and objects be
 ;; integrable numbers of address units.  Furthermore, the number of
@@ -118,7 +120,15 @@ MIT in each case. |#
 (define-integrable a5 13)
 (define-integrable a6 14)
 (define-integrable a7 15)
-(define number-of-machine-registers 16)
+(define-integrable fp0 16)
+(define-integrable fp1 17)
+(define-integrable fp2 18)
+(define-integrable fp3 19)
+(define-integrable fp4 20)
+(define-integrable fp5 21)
+(define-integrable fp6 22)
+(define-integrable fp7 23)
+(define number-of-machine-registers 24)
 (define number-of-temporary-registers 50)
 
 (define-integrable regnum:dynamic-link a4)
@@ -130,28 +140,48 @@ MIT in each case. |#
   registers)
 
 (define available-machine-registers
-  (list d0 d1 d2 d3 d4 d5 d6 a0 a1 a2 a3))
+  (list d0 d1 d2 d3 d4 d5 d6
+	a0 a1 a2 a3
+	fp0 fp1 fp2 fp3 fp4 fp5 fp6 fp7))
 
 (define initial-non-object-registers
   (list d7 a4 a5 a6 a7))
 
+(define (float-register? register)
+  (if (machine-register? register)
+      (eq? (register-type register) 'FLOAT)
+      (error "FLOAT-REGISTER? valid only for machine registers" register)))
+
+(define (word-register? register)
+  (if (machine-register? register)
+      (memq (register-type register)
+	    '(DATA ADDRESS))))
+
+(define (register-types-compatible? type1 type2)  (eq? (eq? type1 'FLOAT) (eq? type2 'FLOAT)))
+
 (define register-type
-  (let ((types (make-vector 16)))
-    (let loop ((i 0) (j 8))
+  (let ((types (make-vector number-of-machine-registers)))
+    (let loop ((i 0) (j 8) (k 16))
       (if (< i 8)
 	  (begin (vector-set! types i 'DATA)
 		 (vector-set! types j 'ADDRESS)
-		 (loop (1+ i) (1+ j)))))
+		 (vector-set! types k 'FLOAT)
+		 (loop (1+ i) (1+ j) (1+ k)))))
     (lambda (register)
       (vector-ref types register))))
 
 (define register-reference
-  (let ((references (make-vector 16)))
+  (let ((references (make-vector number-of-machine-registers)))
     (let loop ((i 0) (j 8))
       (if (< i 8)
 	  (begin (vector-set! references i (INST-EA (D ,i)))
 		 (vector-set! references j (INST-EA (A ,i)))
-		 (loop (1+ i) (1+ j)))))    (lambda (register)
+		 (loop (1+ i) (1+ j)))))
+    (let loop ((i 16) (names '(FP0 FP1 FP2 FP3 FP4 FP5 FP6 FP7)))
+      (if (not (null? names))
+	  (begin (vector-set! references i (car names))
+		 (loop (1+ i) (cdr names)))))
+    (lambda (register)
       (vector-ref references register))))
 
 (define mask-reference (INST-EA (D 7)))

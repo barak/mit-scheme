@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.13 1988/11/08 08:21:03 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.14 1989/07/25 12:37:01 arthur Exp $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,6 +47,8 @@ MIT in each case. |#
 (define-rtl-expression fixnum->object rtl: expression)
 (define-rtl-expression fixnum->address rtl: expression)
 (define-rtl-expression address->fixnum rtl: expression)
+(define-rtl-expression float->object rtl: expression)
+(define-rtl-expression @address->float rtl: expression)
 (define-rtl-expression offset rtl: register number)
 (define-rtl-expression pre-increment rtl: register number)
 (define-rtl-expression post-increment rtl: register number)
@@ -66,6 +68,13 @@ MIT in each case. |#
 
 (define-rtl-predicate fixnum-pred-1-arg % predicate operand)
 (define-rtl-predicate fixnum-pred-2-args % predicate operand-1 operand-2)
+
+(define-rtl-expression flonum-1-arg rtl: operator operand)
+(define-rtl-expression flonum-2-args rtl: operator operand-1 operand-2)
+
+(define-rtl-predicate flonum-pred-1-arg % predicate operand)
+(define-rtl-predicate flonum-pred-2-args % predicate operand-1 operand-2)
+
 (define-rtl-expression generic-unary rtl: operator operand)
 (define-rtl-expression generic-binary rtl: operator operand-1 operand-2)
 

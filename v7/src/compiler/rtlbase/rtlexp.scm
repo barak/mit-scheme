@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.11 1988/12/12 21:30:25 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.12 1989/07/25 12:37:17 arthur Exp $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -73,9 +73,13 @@ MIT in each case. |#
 	      CONS-CLOSURE
 	      FIXNUM-1-ARG
 	      FIXNUM-2-ARGS
+	      FLONUM-1-ARG
+	      FLONUM-2-ARGS
 	      OBJECT->ADDRESS
 	      OBJECT->DATUM
 	      OBJECT->FIXNUM
+	      OBJECT->ADDRESS
+	      @ADDRESS->FLOAT
 	      ADDRESS->FIXNUM
 	      FIXNUM->ADDRESS
 	      OBJECT->TYPE
@@ -251,6 +255,14 @@ MIT in each case. |#
 	 (and (rtl:constant-expression?
 	       (rtl:fixnum-2-args-operand-1 expression))
 	      (rtl:constant-expression?
-	       (rtl:fixnum-2-args-operand-2 expression))))	(else
+	       (rtl:fixnum-2-args-operand-2 expression))))
+	((FLONUM-1-ARG)
+	 (rtl:constant-expression? (rtl:flonum-1-arg-operand expression)))
+	((FLONUM-2-ARGS)
+	 (and (rtl:constant-expression?
+	       (rtl:flonum-2-args-operand-1 expression))
+	      (rtl:constant-expression?
+	       (rtl:flonum-2-args-operand-2 expression))))
+	(else
 	 false))
       true))

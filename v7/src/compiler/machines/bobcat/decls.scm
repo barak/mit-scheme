@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.21 1989/04/26 05:09:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.22 1989/07/25 12:40:16 arthur Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -332,10 +332,10 @@ MIT in each case. |#
     (file-dependency/syntax/join
      (append (filename/append "base"
 			      "blocks" "cfg1" "cfg2" "cfg3" "constr"
-			      "contin" "ctypes" "debug" "enumer" "infnew"
-			      "lvalue" "object" "pmerly" "proced" "refctx"
-			      "rvalue" "scode" "sets" "subprb" "switch"
-			      "toplev" "utils")
+			      "contin" "crstop" "ctypes" "debug" "enumer"
+			      "infnew" "lvalue" "object" "pmerly" "proced"
+			      "refctx" "rvalue" "scode" "sets" "subprb"
+			      "switch" "toplev" "utils")
 	     (filename/append "back"
 			      "asmmac" "bittop" "bitutl" "insseq" "lapgn1"
 			      "lapgn2" "lapgn3" "linear" "regmap" "symtab"
@@ -351,7 +351,8 @@ MIT in each case. |#
 			      "sideff" "simapp" "simple" "subfre")
 	     (filename/append "rtlbase"
 			      "regset" "rgraph" "rtlcfg" "rtlcon" "rtlexp"
-			      "rtline" "rtlobj" "rtlreg" "rtlty1" "rtlty2")
+			      "rtline" "rtlobj" "rtlreg" "rtlty1" "rtlty2"
+			      "valclass")
 	     (filename/append "rtlgen"
 			      "fndblk" "fndvar" "opncod" "rgcomb" "rgproc"
 			      "rgretn" "rgrval" "rgstmt" "rtlgen")
@@ -366,7 +367,8 @@ MIT in each case. |#
      lap-generator-syntax-table)
     (file-dependency/syntax/join
      (filename/append "machines/bobcat"
-		      "insutl" "instr1" "instr2" "instr3" "instr4")
+		      "insutl" "instr1" "instr2" "instr3" "instr4"
+		      "flinstr1" "flinstr2")
      assembler-syntax-table)))
 
 ;;;; Integration Dependencies
@@ -383,7 +385,7 @@ MIT in each case. |#
 	(rtl-base
 	 (filename/append "rtlbase"
 			  "regset" "rgraph" "rtlcfg" "rtlexp" "rtlobj"
-			  "rtlreg" "rtlty1" "rtlty2"))
+			  "rtlreg" "rtlty1" "rtlty2" "valclass"))
 	(cse-base
 	 (filename/append "rtlopt"
 			  "rcse1" "rcse2" "rcseep" "rcseht" "rcserq" "rcsesr"))
@@ -405,7 +407,8 @@ MIT in each case. |#
 	 (append
 	  (filename/append "back" "bittop")
 	  (filename/append "machines/bobcat"
-			   "instr1" "instr2" "instr3" "instr4"))))
+			   "instr1" "instr2" "instr3" "instr4"
+			   "flinstr1" "flinstr2"))))
 
     (define (file-dependency/integration/join filenames dependencies)
       (for-each (lambda (filename)
@@ -476,6 +479,9 @@ MIT in each case. |#
     (define-integration-dependencies "rtlbase" "rtlty2" "machines/bobcat"
       "machin")
     (define-integration-dependencies "rtlbase" "rtlty2" "rtlbase" "rtlty1")
+    (define-integration-dependencies "rtlbase" "valclass" "rtlbase"
+      "rtlty1" "rtlty2" "rtlreg")
+
     (file-dependency/integration/join
      (append
       (filename/append "base" "refctx")

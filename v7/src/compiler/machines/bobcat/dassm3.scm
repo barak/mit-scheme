@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm3.scm,v 4.6 1988/08/29 22:40:41 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm3.scm,v 4.7 1989/07/25 12:40:35 arthur Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -82,7 +82,6 @@ MIT in each case. |#
 		    (if (= (extract *ir 3 6) #b001)
 			%CMPM
 			%EOR))))
-
 	  (lambda ()
 	    (let ((size (extract *ir 6 8)))
 	      (cond ((= size #b00)
@@ -106,7 +105,7 @@ MIT in each case. |#
 		    %ADDX
 		    %ADD)))
 	  (lambda () shift/rotate/bitop)
-	  undefined))
+	  (lambda () coprocessor)))
 
 ;;;; Operations
 
@@ -587,7 +586,192 @@ MIT in each case. |#
 		     `(& ,(extract extension 0 5))
 		     (make-data-register 'D (extract extension 0 3)))))
       `(,opcode ,source ,offset ,width ,@target))))
+
+;;;
+;;; COPROCESSOR
+;;;
 
+(define (coprocessor)
+  (if (= (coprocessor-id) floating-point-coprocessor-id)
+      (floating-point-coprocessor)
+      (undefined-instruction)))
+
+;;;
+;;; FLOATING POINT INSTRUCTIONS
+;;;
+
+(define floating-point-coprocessor-id #b001)
+
+(define (coprocessor-id)
+  (extract *ir 9 12))
+
+(define (floating-point-coprocessor)
+  (let* ((op-class-indicator (extract *ir 6 9))
+	 (opcode (extract (peek-word) 0 7)))
+    (cond ((and (= op-class-indicator #b000)
+		(= opcode #b0000000))
+	   (let ((ext (get-word)))
+	     (let ((keyword (get-fmove-keyword *ir ext)))
+	       (if (null? keyword)
+		   (undefined-instruction)
+		   (case keyword
+		     (FMOVE-TO-FP
+		      (decode-ordinary-floating-instruction 'FMOVE ext))
+		     (FMOVE-FROM-FP
+		      (let ((dst-fmt (floating-specifier->mnemonic
+				      (extract ext 10 13)))
+			    (src-reg (extract ext 7 10)))
+			(if (eq? dst-fmt 'P)
+			    '(FMOVE packed decimal)
+			    `(FMOVE ,dst-fmt (FP ,src-reg) ,(decode-ea-d 'L)))))
+		     (FMOVE-FPcr
+		      (let ((reg
+			     (cdr (assoc (extract ext 10 13) 
+					 '((#b001 . FPIAR)
+					   (#b010 . FPSR)
+					   (#b100 . FPCR))))))
+			(if (= (extract ext 13 14) 1)
+			    `(FMOVE ,reg ,(decode-ea-d 'L))
+			    `(FMOVE ,(decode-ea-d 'L) ,reg))))
+		     (FMOVECR
+		      `(FMOVECR X (& ,(extract ext 0 7))
+				(FP ,(extract ext 7 10))))
+		     (FMOVEM-FPn
+		      '(FMOVEM to FP-s))
+		     (FMOVEM-FPcr
+		      '(FMOVEM to CR-s)))))))
+	  ((= op-class-indicator #b000)
+	   (let ((ext (get-word))
+		 (opcode-name (floating-opcode->mnemonic opcode)))
+	     (decode-ordinary-floating-instruction opcode-name ext)))
+	  ((= (extract *ir 7 9) #b01)
+	   (let ((float-cc (decode-float-cc (extract *ir 0 6)))
+		 (size (extract *ir 6 7)))
+	     ((access append ())
+	      `(FB ,float-cc)
+	      (if (= size 0)
+		  `(W ,(make-pc-relative (lambda () (fetch-immediate 'W))))
+		  `(L ,(make-pc-relative (lambda () (fetch-immediate 'L))))))))
+	  (else
+	   (undefined-instruction)))))
+
+(define (decode-ordinary-floating-instruction opcode-name ext)
+  (let ((src-spec (extract ext 10 13))
+	(rm (extract ext 14 15))
+	(dst-reg (extract ext 7 10)))
+    (if (= rm 1)
+	`(,opcode-name
+	  ,(floating-specifier->mnemonic src-spec)
+	  ,(decode-ea-d 'L)
+	  (FP ,dst-reg))
+	(if (= src-spec dst-reg)
+	    `(,opcode-name (FP ,dst-reg))
+	    `(,opcode-name (FP ,src-spec) (FP ,dst-reg))))))
+
+(define (floating-opcode->mnemonic n)
+  (let ((entry (assoc n 
+		      '((#b0011000 . FABS)
+			(#b0011100 . FACOS)
+			(#b0100010 . FADD)
+			(#b0001100 . FASIN)
+			(#b0001010 . FATAN)
+			(#b0001101 . FATANH)
+			(#b0111000 . FCMP)
+			(#b0011101 . FCOS)
+			(#b0011001 . FCOSH)
+			(#b0100000 . FDIV)
+			(#b0010000 . FETOX)
+			(#b0001000 . FETOXM1)
+			(#b0011110 . FGETEXP)
+			(#b0011111 . FGETMAN)
+			(#b0000001 . FINT)
+			(#b0000011 . FINTRZ)
+			(#b0010101 . FLOG10)
+			(#b0010110 . FLOG2)
+			(#b0010100 . FLOGN)
+			(#b0000110 . FLOGNP1)
+			(#b0100001 . FMOD)
+			(#b0100011 . FMUL)
+			(#b0011010 . FNEG)
+			(#b0100101 . FREM)
+			(#b0100110 . FSCALE)
+			(#b0100100 . FSGLDIV)
+			(#b0100111 . FSGLMUL)
+			(#b0001110 . FSIN)
+			(#b0000010 . FSINH)
+			(#b0000100 . FSQRT)
+			(#b0101000 . FSUB)
+			(#b0001111 . FTAN)
+			(#b0001001 . FTANH)
+			(#b0010010 . FTENTOX)
+			(#b0111010 . FTST)
+			(#b0010001 . FTWOTOX)))))
+    (and entry
+	 (cdr entry))))
+
+(define (floating-specifier->mnemonic n)
+  (let ((entry (assoc n 
+		      '((0 . L)
+			(1 . S)
+			(2 . X)
+			(3 . P)
+			(4 . W)
+			(5 . D)
+			(6 . B)))))
+    (and entry
+	 (cdr entry))))
+
+(define (decode-float-cc bits)
+  (cdr (or (assv bits
+		 '((1 . EQ) (14 . NE)
+		   (2 . GT) (13 . NGT)
+		   (3 . GE) (12 . NGE)
+		   (4 . LT) (11 . NLT)
+		   (5 . LE) (10 . NLE)
+		   (6 . GL) (9 . NGL)
+		   (4 . MI) (3 . PL)
+		   (7 . GLE) (8 . NGLE)
+		   (0 . F) (15 . T)))
+      (error "DECODE-FLOAT-CC: Unrecognized floating point condition code" bits))))
+
+(define (match-bits? high low pattern-list)
+  (let high-loop ((i 15) (l pattern-list))
+    (cond ((< i 0)
+	   (let low-loop ((i 15) (l l))
+	     (cond ((< i 0) #t)
+		   ((or (eq? (car l) '?)
+			(eq? (if (bit-string-ref low i) 1 0)
+			     (car l)))
+		    (low-loop (-1+ i) (cdr l)))
+		   (else
+		    #f))))
+	  ((or (eq? (car l) '?)
+	       (eq? (if (bit-string-ref high i) 1 0)
+		    (car l)))
+	   (high-loop (-1+ i) (cdr l)))
+	  (else #f))))
+
+(define (get-fmove-keyword high low)
+  (let loop ((l fmove-patterns))
+    (cond ((null? l) '())
+	  ((match-bits? high low (caar l))
+	   (cdar l))
+	  (else
+	   (loop (cdr l))))))
+
+(define fmove-patterns
+  '(((1 1 1 1 0 0 1 0 0 0 ? ? ? ? ? ?
+      0 ? 0 ? ? ? ? ? ? 0 0 0 0 0 0 0) . FMOVE-TO-FP)
+    ((1 1 1 1 0 0 1 0 0 0 ? ? ? ? ? ?
+      0 1 1 ? ? ? ? ? ? ? ? ? ? ? ? ?) . FMOVE-FROM-FP)
+    ((1 1 1 1 0 0 1 0 0 0 ? ? ? ? ? ?
+      1 0 ? ? ? ? 0 0 0 0 0 0 0 0 0 0) . FMOVE-FPcr)
+    ((1 1 1 1 0 0 1 0 0 0 0 0 0 0 0 0
+      0 1 0 1 1 1 ? ? ? ? ? ? ? ? ? ?) . FMOVECR)
+    ((1 1 1 1 0 0 1 0 0 0 ? ? ? ? ? ?
+      1 1 ? ? ? ? 0 0 0 ? ? ? ? ? ? ?) . FMOVEM-FPn)
+    ((1 1 1 1 0 0 1 0 0 0 ? ? ? ? ? ?
+      1 0 ? ? ? ? 0 0 0 0 0 0 0 0 0 0) . FMOVEM-FPcr)))
 
 ;;;; Bit String Manipulation
 
@@ -606,6 +790,14 @@ MIT in each case. |#
 
 (define get-word (make-fetcher 16))
 (define get-longword (make-fetcher 32))
+
+(define (make-peeker size-in-bits)
+  (lambda ()
+    (read-bits *current-offset size-in-bits)))
+
+(define peek-word (make-peeker 16))
+(define peek-longword (make-peeker 32))
+
 (declare (integrate-operator extract extract+))
 
 (define (extract bit-string start end)

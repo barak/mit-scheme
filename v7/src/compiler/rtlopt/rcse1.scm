@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.17 1989/01/21 09:29:50 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.18 1989/07/25 12:32:31 arthur Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -297,6 +297,14 @@ MIT in each case. |#
 (define-trivial-two-arg-method 'FIXNUM-PRED-2-ARGS
   rtl:fixnum-pred-2-args-operand-1 rtl:set-fixnum-pred-2-args-operand-1!
   rtl:fixnum-pred-2-args-operand-2 rtl:set-fixnum-pred-2-args-operand-2!)
+
+(define-trivial-one-arg-method 'FLONUM-PRED-1-ARG
+  rtl:flonum-pred-1-arg-operand rtl:set-flonum-pred-1-arg-operand!)
+
+(define-trivial-two-arg-method 'FLONUM-PRED-2-ARGS
+  rtl:flonum-pred-2-args-operand-1 rtl:set-flonum-pred-2-args-operand-1!
+  rtl:flonum-pred-2-args-operand-2 rtl:set-flonum-pred-2-args-operand-2!)
+
 (define-trivial-one-arg-method 'TRUE-TEST
   rtl:true-test-expression rtl:set-true-test-expression!)
 

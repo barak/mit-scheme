@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.22 1989/04/27 20:06:32 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.23 1989/07/25 12:38:20 arthur Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -93,7 +93,7 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OFFSET-ADDRESS (REGISTER (? source)) (? n)))
-  (QUALIFIER (and (pseudo-register? target) (pseudo-register? source)))
+  (QUALIFIER (and (pseudo-word? target) (pseudo-register? source)))
   (reuse-pseudo-register-alias! source 'DATA
     (lambda (reusable-alias)
       (delete-dead-registers!)
@@ -127,8 +127,14 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (REGISTER (? source)))
-  (QUALIFIER (pseudo-register? target))
+  (QUALIFIER (pseudo-word? target))
   (move-to-alias-register! source 'DATA target)
+  (LAP))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (REGISTER (? source)))
+  (QUALIFIER (pseudo-float? target))
+  (move-to-alias-register! source 'FLOAT target)
   (LAP))
 
 (define (convert-object/constant->register target constant conversion)
@@ -357,7 +363,13 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (REGISTER (? r)))
+  (QUALIFIER (pseudo-word? r))
   (LAP (MOV L ,(standard-register-reference r false) (@A+ 5))))
+
+(define-rule statement
+  (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (REGISTER (? r)))
+  (QUALIFIER (pseudo-float? r))
+  (LAP (FMOVE D ,(float-register-reference r) (@A+ 5))))
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (OFFSET (REGISTER (? r)) (? n)))
@@ -582,7 +594,57 @@ MIT in each case. |#
 	  ((register-saved-into-home? register)
 	   (pseudo-register-home register))
 	  (else
-	   (reference-alias-register! register 'DATA)))))
+	   (reference-alias-register! register 'DATA)))))
+
+;;;; Flonum Operations
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLOAT->OBJECT (REGISTER (? source))))
+  (QUALIFIER (pseudo-float? source))
+  (let ((target (reference-target-alias! target 'DATA)))
+    (LAP (MOV L (A 5) ,target)
+	 (OR L (& ,(make-non-pointer-literal (ucode-type flonum) 0)) ,target)
+	 ,(load-non-pointer (ucode-type manifest-nm-vector)
+			    flonum-size
+			    (INST-EA (@A+ 5)))
+	 (FMOVE D
+		,(float-register-reference source)
+		(@A+ 5)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (@ADDRESS->FLOAT (REGISTER (? source))))
+  (QUALIFIER (pseudo-float? target))
+  (LAP (FMOVE D
+	      ,(indirect-reference! source 1)
+	      ,(reference-target-alias! target 'FLOAT))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLONUM-1-ARG (? operator) (REGISTER (? source))))
+  (QUALIFIER (and (pseudo-float? target) (pseudo-float? source)))
+  (let ((source-reference (float-register-reference source)))
+    (let ((target-reference (float-target-reference target)))
+      (LAP ,@((flonum-1-arg/operate operator)
+	      source-reference
+	      target-reference)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLONUM-2-ARGS (? operator)
+			 (REGISTER (? source1))
+			 (REGISTER (? source2))))
+  (QUALIFIER (and (pseudo-float? target)
+		  (pseudo-float? source1)
+		  (pseudo-float? source2)))
+  (let ((source1-reference (float-register-reference source1))
+	(source2-reference (float-register-reference source2)))
+    (let ((target-reference (float-target-reference target)))
+      (LAP (FMOVE ,source1-reference ,target-reference)
+	   ,@((flonum-2-args/operate operator)
+	      source2-reference
+	      target-reference)))))
 ;;;; CHAR->ASCII/BYTE-OFFSET
 
 (define (load-char-into-register type source target)

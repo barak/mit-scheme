@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.16 1989/01/21 09:18:55 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.17 1989/07/25 12:37:32 arthur Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -38,6 +38,16 @@ MIT in each case. |#
 
 ;;;; Statements
 
+(define (%make-assign-classified locative expression)
+  (if (rtl:register? locative)
+      (let ((register (rtl:register-number locative)))
+	(if (pseudo-register? register)
+	    (set-rgraph-register-value-class!
+	     *current-rgraph*
+	     register
+	     (rtl->value-class expression)))))
+  (%make-assign locative expression))
+
 (define (rtl:make-assignment locative expression)
   (expression-simplify-for-statement expression
     (lambda (expression)
@@ -48,16 +58,15 @@ MIT in each case. |#
 (define (rtl:make-assignment-internal locative expression)
   (let ((assign-register
 	 (lambda (locative)
-	   (if (rtl:non-object-valued-expression? expression)
-	       ;; We don't know for sure that this register is
-	       ;; assigned only once.  However, if it is assigned
-	       ;; multiple times, then all of those assignments
-	       ;; should be non-object valued expressions.  This
-	       ;; constraint is not enforced.
-	       (add-rgraph-non-object-register!
-		*current-rgraph*
-		(rtl:register-number locative)))
-	   (%make-assign locative expression))))
+	   (let ((register (rtl:register-number locative)))
+	     (if (rtl:non-object-valued-expression? expression)
+		 ;; We don't know for sure that this register is
+		 ;; assigned only once.  However, if it is assigned
+		 ;; multiple times, then all of those assignments
+		 ;; should be non-object valued expressions.  This
+		 ;; constraint is not enforced.
+		 (add-rgraph-non-object-register! *current-rgraph* register))
+	     (%make-assign-classified locative expression)))))
     (cond ((rtl:pseudo-register-expression? locative)
 	   (assign-register locative))
 	  ((or (rtl:machine-register-expression? locative)
@@ -101,6 +110,18 @@ MIT in each case. |#
       (expression-simplify-for-predicate operand2
 	(lambda (operand2)
 	  (%make-fixnum-pred-2-args predicate operand1 operand2))))))
+
+(define (rtl:make-flonum-pred-1-arg predicate operand)
+  (expression-simplify-for-predicate operand
+    (lambda (operand)
+      (%make-flonum-pred-1-arg predicate operand))))
+
+(define (rtl:make-flonum-pred-2-args predicate operand1 operand2)
+  (expression-simplify-for-predicate operand1
+    (lambda (operand1)
+      (expression-simplify-for-predicate operand2
+	(lambda (operand2)
+	  (%make-flonum-pred-2-args predicate operand1 operand2))))))
 
 (define (rtl:make-pop locative)
   (locative-dereference-for-statement locative
@@ -329,13 +350,16 @@ MIT in each case. |#
     (if (rtl:non-object-valued-expression? expression)
 	(add-rgraph-non-object-register! *current-rgraph*
 					 (rtl:register-number pseudo)))
-    (scfg-append! (%make-assign pseudo expression) (receiver pseudo))))
+    (scfg-append! (%make-assign-classified pseudo expression)
+		  (receiver pseudo))))
 
 (define (assign-to-address-temporary expression scfg-append! receiver)
   (let ((pseudo (rtl:make-pseudo-register)))
     (add-rgraph-non-object-register! *current-rgraph*
 				     (rtl:register-number pseudo))
-    (scfg-append! (%make-assign pseudo (rtl:make-object->address expression))
+    (scfg-append! (%make-assign-classified
+		   pseudo
+		   (rtl:make-object->address expression))
 		  (receiver pseudo))))
 
 (define (define-expression-method name method)
@@ -530,7 +554,7 @@ MIT in each case. |#
     (expression-simplify operand scfg-append!
       (lambda (operand)
 	(receiver (rtl:make-fixnum-1-arg operator operand))))))
-
+
 (define-expression-method 'GENERIC-BINARY
   (lambda (receiver scfg-append! operator operand1 operand2)
     (expression-simplify operand1 scfg-append!
@@ -545,5 +569,36 @@ MIT in each case. |#
     (expression-simplify operand scfg-append!
       (lambda (operand)
 	(receiver (rtl:make-generic-unary operator operand))))))
+(define-expression-method 'FLONUM-1-ARG
+  (lambda (receiver scfg-append! operator operand)
+    (expression-simplify operand scfg-append!
+      (lambda (s-operand)
+	(receiver (rtl:make-flonum-1-arg
+		   operator
+		   s-operand))))))
+
+(define-expression-method 'FLONUM-2-ARGS
+  (lambda (receiver scfg-append! operator operand1 operand2)
+    (expression-simplify operand1 scfg-append!
+      (lambda (s-operand1)
+	(expression-simplify operand2 scfg-append!
+	  (lambda (s-operand2)
+	    (receiver (rtl:make-flonum-2-args
+		       operator
+		       s-operand1
+		       s-operand2))))))))
+
+(define-expression-method 'FLOAT->OBJECT
+  (lambda (receiver scfg-append! expression)
+    (expression-simplify expression scfg-append!
+      (lambda (expression)
+	(receiver (rtl:make-float->object expression))))))
+
+(define-expression-method '@ADDRESS->FLOAT
+  (lambda (receiver scfg-append! expression)
+    (expression-simplify expression scfg-append!
+      (lambda (expression)
+	(receiver (rtl:make-@address->float expression))))))
+
 ;;; end EXPRESSION-SIMPLIFY package
 )
