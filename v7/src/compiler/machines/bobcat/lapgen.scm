@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.11 1988/08/29 22:43:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.12 1988/10/20 16:19:58 markf Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -316,13 +316,22 @@ MIT in each case. |#
   n)
 
 (define-integrable (load-fixnum-constant constant register-reference)
-  (LAP (MOV L (& ,constant) ,register-reference)))
+  (LAP (MOV L (& ,(* #x100 constant)) ,register-reference)))
 
-(define-integrable (object->fixnum source target)
-  (LAP (BFEXTS ,source (& 8) (& 24) ,target)))
+(define-integrable (object->fixnum reg-ref)
+  (LAP (LS L L (& 8) ,reg-ref)))
 
-(define-integrable (fixnum->object effective-address)
-  (put-type-in-ea (ucode-type fixnum) effective-address))
+(define-integrable (address->fixnum reg-ref)
+  (LAP (LS L L (& 8) ,reg-ref)))
+
+(define (fixnum->object reg-ref)
+  (LAP
+   (MOV B (& ,(ucode-type fixnum)) ,reg-ref)
+   (RO R L (& 8) ,reg-ref)))
+
+(define-integrable (fixnum->address reg-ref)
+  (LAP
+   (AS R L (& 8) ,reg-ref)))
 
 (define (test-fixnum effective-address)
   (if (effective-address/data&alterable? effective-address)
@@ -404,11 +413,11 @@ MIT in each case. |#
 
 (define-fixnum-method 'ONE-PLUS-FIXNUM fixnum-methods/1-arg
   (lambda (reference)
-    (LAP (ADDQ L (& 1) ,reference))))
+    (LAP (ADD L (& #x100) ,reference))))
 
 (define-fixnum-method 'MINUS-ONE-PLUS-FIXNUM fixnum-methods/1-arg
   (lambda (reference)
-    (LAP (SUBQ L (& 1) ,reference))))
+    (LAP (SUB L (& #x100) ,reference))))
 
 (define-fixnum-method 'PLUS-FIXNUM fixnum-methods/2-args
   (lambda (target source)
@@ -417,13 +426,13 @@ MIT in each case. |#
 (define-fixnum-method 'PLUS-FIXNUM fixnum-methods/2-args-constant
   (lambda (target n)
     (cond ((zero? n) (LAP))
-	  ((and (negative? n) (<= -8 n)) (LAP (SUBQ L (& ,(- n)) ,target)))
-	  ((and (positive? n) (<= n 8)) (LAP (ADDQ L (& ,n) ,target)))
-	  (else (LAP (ADD L (& ,n) ,target))))))
+	  (else (LAP (ADD L (& ,(* n #x100)) ,target))))))
 
 (define-fixnum-method 'MULTIPLY-FIXNUM fixnum-methods/2-args
   (lambda (target source)
-    (LAP (MUL S L ,source ,target))))
+    (LAP
+     (AS R L (& 8) ,target)
+     (MUL S L ,source ,target))))
 
 (define-fixnum-method 'MULTIPLY-FIXNUM fixnum-methods/2-args-constant
   (lambda (target n)
@@ -433,7 +442,11 @@ MIT in each case. |#
 	  (else
 	   (let ((power-of-2 (integer-log-base-2? n)))
 	     (if power-of-2
-		 (LAP (AS L L (& ,power-of-2) ,target))
+		 (if (> power-of-2 8)
+		     (let ((temp (reference-temporary-register! 'DATA)))
+		       (LAP (MOV L (& ,power-of-2) ,temp)
+			    (AS L L ,temp ,target)))
+		     (LAP (AS L L (& ,power-of-2) ,target)))
 		 (LAP (MUL S L (& ,n) ,target))))))))
 
 (define (integer-log-base-2? n)
@@ -449,9 +462,7 @@ MIT in each case. |#
 (define-fixnum-method 'MINUS-FIXNUM fixnum-methods/2-args-constant
   (lambda (target n)
     (cond ((zero? n) (LAP))
-	  ((and (negative? n) (<= -8 n)) (LAP (ADDQ L (& ,(- n)) ,target)))
-	  ((and (positive? n) (<= n 8)) (LAP (SUBQ L (& ,n) ,target)))
-	  (else (LAP (SUB L (& ,n) ,target))))))
+	  (else (LAP (SUB L (& ,(* n #x100)) ,target))))))
 
 ;;;; OBJECT->DATUM rules - Mhwu
 ;;;  Similar to fixnum rules, but no sign extension
