@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: closan.scm,v 4.29 2001/11/05 18:57:11 cph Exp $
+$Id: closan.scm,v 4.30 2002/03/19 17:21:03 cph Exp $
 
-Copyright (c) 1987-1991, 1998, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987-1991, 1998, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -49,13 +49,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;; The closure analysis uses a handful of straightforward rules to
 ;;; decide whether to close a procedure.  These rules fall into two
 ;;; general classes: (1) The procedure is stored or invoked in a place
-;;; where it's ancestor environments aren't available on the stack;
+;;; where its ancestor environments aren't available on the stack;
 ;;; (2) The procedure is invoked from a place in which other
 ;;; procedures are also invoked, and so must be closed to provide a
 ;;; uniform calling interface amongst the procedures.
 ;;;
-;;; The environment analysis is considerably more complex.  The basic
-;;; algorithm is to take each procedure and raise it up in the
+;;; The environment optimization is considerably more complex.  The
+;;; basic algorithm is to take each procedure and raise it up in the
 ;;; environment heirarchy so that its closing environment is the
 ;;; top-level environment.  Then, a number of constraints are applied
 ;;; to the procedure, which together have the effect of pulling it
@@ -106,7 +106,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;; feedback makes analysis of the algorithm very difficult.
 ;;;
 ;;; This brings up my final point about the implementation.  The
-;;; entire relaxation process involves a great deal of undiscipled
+;;; entire relaxation process involves a great deal of undisciplined
 ;;; feedback.  In addition to the transitive closure problem, there is
 ;;; also the ad hoc intermixing of constraint application and closing
 ;;; of procedures.  The end result of all of this is that the specific
