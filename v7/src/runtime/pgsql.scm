@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pgsql.scm,v 1.5 2003/11/07 20:07:47 cph Exp $
+$Id: pgsql.scm,v 1.6 2003/11/09 04:40:51 cph Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -223,8 +223,8 @@ USA.
    (lambda ()
      (if (connection-handle connection)
 	 (begin
-	   (remove-from-gc-finalizer! connections connection)
-	   (set-connection-handle! connection #f))))))
+	   (set-connection-handle! connection #f)
+	   (remove-from-gc-finalizer! connections connection))))))
 
 (define (call-with-pgsql-conn parameters procedure)
   (let ((conn))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: process.scm,v 1.29 2003/03/10 20:53:34 cph Exp $
+$Id: process.scm,v 1.30 2003/11/09 04:40:54 cph Exp $
 
 Copyright 1990,1991,1992,1995,1997,1998 Massachusetts Institute of Technology
 Copyright 1999,2000,2003 Massachusetts Institute of Technology
@@ -206,8 +206,8 @@ USA.
    (lambda ()
      (if (subprocess-index process)
 	 (begin
-	   (remove-from-gc-finalizer! subprocess-finalizer process)
 	   (set-subprocess-index! process #f)
+	   (remove-from-gc-finalizer! subprocess-finalizer process)
 	   (%close-subprocess-i/o process))))))
 
 (define (subprocess-status process)

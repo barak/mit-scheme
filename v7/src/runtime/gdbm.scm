@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gdbm.scm,v 1.6 2003/07/21 03:19:25 cph Exp $
+$Id: gdbm.scm,v 1.7 2003/11/09 04:40:43 cph Exp $
 
 Copyright 1996,1999,2000,2003 Massachusetts Institute of Technology
 
@@ -70,8 +70,8 @@ USA.
    (lambda ()
      (if (gdbf-descriptor gdbf)
 	 (begin
-	   (remove-from-gc-finalizer! gdbf-finalizer gdbf)
-	   (set-gdbf-descriptor! gdbf #f))))))
+	   (set-gdbf-descriptor! gdbf #f)
+	   (remove-from-gc-finalizer! gdbf-finalizer gdbf))))))
 
 ;; Parameters to gdbm_store for simple insertion or replacement in the
 ;; case that the key is already in the database.

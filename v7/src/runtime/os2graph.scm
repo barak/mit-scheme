@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.23 2003/03/10 20:53:34 cph Exp $
+$Id: os2graph.scm,v 1.24 2003/11/09 04:40:47 cph Exp $
 
 Copyright 1995,1996,1997,1999,2000 Massachusetts Institute of Technology
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
@@ -167,8 +167,8 @@ USA.
   (if (window/wid window)
       (begin
 	(destroy-image (window/backing-image window))
-	(remove-from-gc-finalizer! window-finalizer window)
-	(set-window/wid! window #f))))
+	(set-window/wid! window #f)
+	(remove-from-gc-finalizer! window-finalizer window))))
 
 (define-integrable (os2-graphics-device/wid device)
   (window/wid (graphics-device/descriptor device)))
@@ -945,8 +945,8 @@ USA.
 (define (destroy-image image)
   (if (image/ps image)
       (begin
-	(remove-from-gc-finalizer! image-finalizer image)
-	(set-image/ps! image #f))))
+	(set-image/ps! image #f)
+	(remove-from-gc-finalizer! image-finalizer image))))
 
 (define (destroy-memory-ps ps)
   (let ((bitmap (os2ps-set-bitmap ps #f)))

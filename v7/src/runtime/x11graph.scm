@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.56 2003/03/07 20:48:09 cph Exp $
+$Id: x11graph.scm,v 1.57 2003/11/09 04:41:02 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1998,1999,2000,2001 Massachusetts Institute of Technology
@@ -259,8 +259,8 @@ USA.
      (if (x-display/xd display)
 	 (begin
 	   (remove-all-from-gc-finalizer! (x-display/window-finalizer display))
-	   (remove-from-gc-finalizer! display-finalizer display)
-	   (set-x-display/xd! display #f))))))
+	   (set-x-display/xd! display #f)
+	   (remove-from-gc-finalizer! display-finalizer display))))))
 
 (define (x-graphics/open-display? display)
   (if (x-display/xd display) #t #f))
@@ -445,10 +445,10 @@ USA.
 (define (close-x-window window)
   (if (x-window/xw window)
       (begin
+	(set-x-window/xw! window #f)
 	(remove-from-gc-finalizer!
 	 (x-display/window-finalizer (x-window/display window))
-	 window)
-	(set-x-window/xw! window #f))))
+	 window))))
 
 (define (x-geometry-string x y width height)
   (string-append (if (and width height)
@@ -856,6 +856,7 @@ USA.
 	image))))
 
 (define (x-image/destroy image)
+  (set-x-image/descriptor! image #f)
   (remove-from-gc-finalizer! image-list image))
 
 (define (x-image/get-pixel image x y)
@@ -935,7 +936,7 @@ USA.
 (define-record-type <colormap>
     (%make-colormap descriptor)
     x-colormap?
-  (descriptor colormap/descriptor))
+  (descriptor colormap/descriptor set-colormap/descriptor!))
 
 (define colormap-list)
 
@@ -963,6 +964,7 @@ USA.
 	(make-colormap descriptor)))))
 
 (define (x-colormap/free colormap)
+  (set-colormap/descriptor! colormap #f)
   (remove-from-gc-finalizer! colormap-list colormap))
 
 (define (x-colormap/allocate-color colormap r g b)
