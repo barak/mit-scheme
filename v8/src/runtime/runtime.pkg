@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.104 1991/05/10 00:03:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.105 1991/05/10 05:24:27 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -580,6 +580,7 @@ MIT in each case. |#
 	  condition/get
 	  condition/properties
 	  condition/put!
+	  condition/report-string
 	  condition/restarts
 	  condition/type
 	  condition?
