@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.23 1991/08/27 23:21:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.24 1991/09/18 20:00:45 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -279,6 +279,8 @@ MIT in each case. |#
 (define (unparse/true object)
   (cond ((eq? object true) (*unparse-string "#T"))
 	((undefined-value? object) (*unparse-string "#[undefined-value]"))
+	((eq? object lambda-optional-tag) (*unparse-string "#!optional"))
+	((eq? object lambda-rest-tag) (*unparse-string "#!rest"))
 	(else (unparse/default object))))
 
 (define (unparse/return-address return-address)

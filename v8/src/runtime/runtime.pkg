@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.122 1991/09/08 02:57:03 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.123 1991/09/18 20:01:00 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1346,6 +1346,9 @@ MIT in each case. |#
   (export (runtime input-port)
 	  parse-object/internal)
   (export (runtime syntaxer)
+	  lambda-optional-tag
+	  lambda-rest-tag)
+  (export (runtime unparser)
 	  lambda-optional-tag
 	  lambda-rest-tag)
   (export (runtime macros)
