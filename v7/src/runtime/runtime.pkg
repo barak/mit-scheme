@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.240 1995/01/06 00:49:03 cph Exp $
+$Id: runtime.pkg,v 14.241 1995/01/06 20:28:31 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -2531,6 +2531,7 @@ MIT in each case. |#
 	  os2win-set-font
 	  os2win-set-grid
 	  os2win-set-line-type
+	  os2win-set-mix
 	  os2win-set-pos
 	  os2win-set-size
 	  os2win-set-state

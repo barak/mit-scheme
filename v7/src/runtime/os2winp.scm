@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2winp.scm,v 1.1 1995/01/06 00:50:03 cph Exp $
+$Id: os2winp.scm,v 1.2 1995/01/06 20:26:55 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -68,6 +68,7 @@ MIT in each case. |#
   (os2win-query-capabilities 3)
   (os2win-query-capability 2)
   (os2win-set-title 2)
+  (os2win-set-mix 2)
   (os2win-open-event-qid 0)
   (os2win-close-event-qid 1)
   (os2win-get-event 2)
