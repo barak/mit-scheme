@@ -1,7 +1,7 @@
 
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.19 1992/02/08 14:54:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.20 1992/02/10 21:10:14 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -298,8 +298,14 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
     struct drawing_attributes attributes;
     struct xwindow_methods methods;
     XSetWindowAttributes wattributes;
+    CONST char * resource_name;
+    CONST char * resource_class;
+    int map_p;
+
+    x_decode_window_map_arg
+      ((ARG_REF (3)), (&resource_name), (&resource_class), (&map_p));
     x_default_attributes
-      (display, RESOURCE_NAME, RESOURCE_CLASS, (&attributes));
+      (display, resource_name, resource_class, (&attributes));
     (wattributes . background_pixel) = (attributes . background_pixel);
     (wattributes . border_pixel) = (attributes . border_pixel);
     (wattributes . backing_store) = Always;
@@ -317,7 +323,7 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
 	(XGeometry (display, (DefaultScreen (display)),
 		    (((ARG_REF (2)) == SHARP_F)
 		     ? (x_get_default
-			(display, RESOURCE_NAME, RESOURCE_CLASS,
+			(display, resource_name, resource_class,
 			 "geometry", "Geometry", 0))
 		     : (STRING_ARG (2))),
 		    DEFAULT_GEOMETRY, (attributes . border_width),
@@ -350,7 +356,7 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
 	xw_set_wm_name (xw, "scheme-graphics");
 	xw_set_wm_icon_name (xw, "scheme-graphics");
 	XSelectInput (display, window, StructureNotifyMask);
-	xw_make_window_map (xw, RESOURCE_NAME, RESOURCE_CLASS, (ARG_REF (3)));
+	xw_make_window_map (xw, resource_name, resource_class, map_p);
 	PRIMITIVE_RETURN (XW_TO_OBJECT (xw));
       }
     }

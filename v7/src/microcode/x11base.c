@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.33 1992/02/09 03:48:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.34 1992/02/10 21:09:31 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -251,10 +251,10 @@ DEFUN (x_get_default,
        (display, resource_name, resource_class,
 	property_name, property_class, sdefault),
        Display * display AND
-       char * resource_name AND
-       char * resource_class AND
-       char * property_name AND
-       char * property_class AND
+       CONST char * resource_name AND
+       CONST char * resource_class AND
+       CONST char * property_name AND
+       CONST char * property_class AND
        char * sdefault)
 {
   char * result = (XGetDefault (display, resource_name, property_name));
@@ -277,10 +277,10 @@ DEFUN (x_default_color,
        (display, resource_class, resource_name,
 	property_name, property_class, default_color),
        Display * display AND
-       char * resource_name AND
-       char * resource_class AND
-       char * property_name AND
-       char * property_class AND
+       CONST char * resource_name AND
+       CONST char * resource_class AND
+       CONST char * property_name AND
+       CONST char * property_class AND
        unsigned long default_color)
 {
   char * color_name =
@@ -303,8 +303,8 @@ void
 DEFUN (x_default_attributes, 
        (display, resource_name, resource_class, attributes),
        Display * display AND
-       char * resource_name AND
-       char * resource_class AND
+       CONST char * resource_name AND
+       CONST char * resource_class AND
        struct drawing_attributes * attributes)
 {
   int screen_number = (DefaultScreen (display));
@@ -532,23 +532,32 @@ DEFUN (xw_set_wm_icon_name, (xw, name),
 }
 
 void
-DEFUN (xw_make_window_map, (xw, resource_name, resource_class, map_arg),
-       struct xwindow * xw AND
-       CONST char * resource_name AND
-       CONST char * resource_class AND
-       SCHEME_OBJECT map_arg)
+DEFUN (x_decode_window_map_arg, (map_arg, resource_name, resource_class),
+       SCHEME_OBJECT map_arg AND
+       CONST char ** resource_name AND
+       CONST char ** resource_class AND
+       int * map_p)
 {
-  int map_p = 0;
+  (*map_p) = 0;
   if (map_arg == SHARP_F)
-    map_p = 1;
+    (*map_p) = 1;
   else if ((PAIR_P (map_arg))
 	   && (STRING_P (PAIR_CAR (map_arg)))
 	   && (STRING_P (PAIR_CDR (map_arg))))
     {
-      resource_class = ((CONST char *) (STRING_LOC ((PAIR_CDR (map_arg)), 0)));
-      resource_name = ((CONST char *) (STRING_LOC ((PAIR_CAR (map_arg)), 0)));
-      map_p = 1;
+      (*resource_name) = ((CONST char *) (STRING_LOC ((PAIR_CAR (map_arg)), 0)));
+      (*resource_class) = ((CONST char *) (STRING_LOC ((PAIR_CDR (map_arg)), 0)));
+      (*map_p) = 1;
     }
+}
+
+void
+DEFUN (xw_make_window_map, (xw, resource_name, resource_class, map_p),
+       struct xwindow * xw AND
+       CONST char * resource_name AND
+       CONST char * resource_class AND
+       int map_p)
+{
   xw_set_class_hint (xw, resource_name, resource_class);
   if (map_p)
     {

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.11 1992/02/08 14:54:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.12 1992/02/10 21:09:03 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -233,17 +233,17 @@ extern PTR EXFUN (x_realloc, (PTR ptr, unsigned int size));
 extern char * EXFUN
   (x_get_default,
    (Display * display,
-    char * resource_name,
-    char * resource_class,
-    char * property_name,
-    char * property_class,
+    CONST char * resource_name,
+    CONST char * resource_class,
+    CONST char * property_name,
+    CONST char * property_class,
     char * sdefault));
 
 extern void EXFUN
   (x_default_attributes,
    (Display * display,
-    char * resource_name,
-    char * resource_class,
+    CONST char * resource_name,
+    CONST char * resource_class,
     struct drawing_attributes * attributes));
 
 extern struct xwindow * EXFUN
@@ -266,8 +266,15 @@ extern void EXFUN
   (xw_set_wm_icon_name, (struct xwindow * xw, CONST char * name));
 
 extern void EXFUN
+  (x_decode_window_map_arg,
+   (SCHEME_OBJECT map_arg,
+    CONST char ** resource_class,
+    CONST char ** resource_name,
+    int * map_p));
+
+extern void EXFUN
   (xw_make_window_map,
    (struct xwindow * xw,
     CONST char * resource_name,
     CONST char * resource_class,
-    SCHEME_OBJECT map_arg));
+    int map_p));

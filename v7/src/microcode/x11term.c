@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.16 1992/02/08 14:54:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.17 1992/02/10 21:09:52 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -479,8 +479,14 @@ DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3, 0)
     Display * display = (XD_DISPLAY (xd));
     struct drawing_attributes attributes;
     struct xwindow_methods methods;
+    CONST char * resource_name;
+    CONST char * resource_class;
+    int map_p;
+    
+    x_decode_window_map_arg
+      ((ARG_REF (3)), (&resource_name), (&resource_class), (&map_p));
     x_default_attributes
-      (display, RESOURCE_NAME, RESOURCE_CLASS, (&attributes));
+      (display, resource_name, resource_class, (&attributes));
     (methods . deallocator) = xterm_deallocate;
     (methods . event_processor) = xterm_process_event;
     (methods . x_coordinate_map) = xterm_x_coordinate_map;
@@ -496,7 +502,7 @@ DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3, 0)
 	 (display, (DefaultScreen (display)),
 	  (((ARG_REF (2)) == SHARP_F)
 	   ? (x_get_default
-	      (display, RESOURCE_NAME, RESOURCE_CLASS,
+	      (display, resource_name, resource_class,
 	       "geometry", "Geometry", 0))
 	   : (STRING_ARG (2))),
 	  DEFAULT_GEOMETRY, (attributes . border_width),
@@ -543,7 +549,7 @@ DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3, 0)
 	xw_set_wm_input_hint (xw, 1);
 	xw_set_wm_name (xw, "scheme-terminal");
 	xw_set_wm_icon_name (xw, "scheme-terminal");
-	xw_make_window_map (xw, RESOURCE_NAME, RESOURCE_CLASS, (ARG_REF (3)));
+	xw_make_window_map (xw, resource_name, resource_class, map_p);
 	PRIMITIVE_RETURN (XW_TO_OBJECT (xw));
       }
     }
