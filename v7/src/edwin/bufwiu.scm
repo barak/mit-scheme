@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwiu.scm,v 1.22 1993/01/12 10:50:38 cph Exp $
+;;;	$Id: bufwiu.scm,v 1.23 1993/01/12 22:06:34 bal Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -169,10 +169,14 @@
 	       (let ((start-changes
 		      (let ((start-changes
 			     (%window-start-changes-index window)))
-			(%window-line-start-index window start-changes)))
+			(if (%window-group-start-index? window start-changes)
+			    (%window-group-start-index window)
+			    (%window-line-start-index window start-changes))))
 		     (end-changes
 		      (let ((end-changes (%window-end-changes-index window)))
-			(%window-line-end-index window end-changes))))
+			(if (%window-group-end-index? window end-changes)
+			    (%window-group-end-index window)
+			    (%window-line-end-index window end-changes)))))
 		 (if (fix:<= start-changes start)
 		     (if (fix:< end-changes end)
 			 (preserve-bottom! window end-changes end)
