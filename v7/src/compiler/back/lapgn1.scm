@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.32 1987/05/15 19:51:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.33 1987/05/18 17:57:18 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -170,8 +170,10 @@ MIT in each case. |#
   (if register (need-register! register))
   register)
 
-(define-integrable (register-has-alias? register type)
-  (pseudo-register-alias *register-map* type register))
+(define (register-has-alias? register type)
+  (if (machine-register? register)
+      (register-type? register type)
+      (pseudo-register-alias *register-map* type register)))
 
 (define-integrable (register-alias register type)
   (maybe-need-register! (pseudo-register-alias *register-map* type register)))
