@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml-struct.scm,v 1.6 2002/11/20 19:46:27 cph Exp $
+;;; $Id: xml-struct.scm,v 1.7 2002/12/07 04:14:19 cph Exp $
 ;;;
-;;; Copyright (c) 2001 Massachusetts Institute of Technology
+;;; Copyright (c) 2001, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This file is part of MIT Scheme.
 ;;;
@@ -50,6 +50,10 @@
   name
   attributes
   contents)
+
+(define-structure (xml-comment
+		   (type-descriptor xml-comment-rtd))
+  text)
 
 (define-structure (xml-processing-instructions
 		   (type-descriptor xml-processing-instructions-rtd)

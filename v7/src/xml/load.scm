@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.6 2002/11/20 19:46:27 cph Exp $
+;;; $Id: load.scm,v 1.7 2002/12/07 04:13:39 cph Exp $
 ;;;
 ;;; Copyright (c) 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -26,4 +26,4 @@
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (package/system-loader "xml" '() 'QUERY)))
-(add-subsystem-identification! "XML" '(0 2))
+(add-subsystem-identification! "XML" '(0 3))

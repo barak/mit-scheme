@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml-output.scm,v 1.2 2002/11/20 19:46:27 cph Exp $
+;;; $Id: xml-output.scm,v 1.3 2002/12/07 04:13:58 cph Exp $
 ;;;
-;;; Copyright (c) 2001 Massachusetts Institute of Technology
+;;; Copyright (c) 2001, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This file is part of MIT Scheme.
 ;;;
@@ -69,7 +69,12 @@
 	  (write-string "</" port)
 	  (write-xml-name (xml-element-name element) port)
 	  (write-string ">" port))
-	(write-string "/>" port))))
+	(write-string " />" port))))
+
+(define-method write-xml ((pi xml-comment-rtd) port)
+  (write-string "<!--" port)
+  (write-string (xml-comment-text pi) port)
+  (write-string "-->" port))
 
 (define-method write-xml ((pi xml-processing-instructions-rtd) port)
   (write-string "<?" port)

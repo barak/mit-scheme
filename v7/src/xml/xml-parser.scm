@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml-parser.scm,v 1.12 2002/11/20 19:46:27 cph Exp $
+;;; $Id: xml-parser.scm,v 1.13 2002/12/07 04:14:09 cph Exp $
 ;;;
-;;; Copyright (c) 2001 Massachusetts Institute of Technology
+;;; Copyright (c) 2001, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This file is part of MIT Scheme.
 ;;;
@@ -283,11 +283,14 @@
   (terminated-region-parser "character data" alphabet:char-data "]]>"))
 
 (define parse-comment			;[15]
-  (let ((match-body
-	 (terminated-region-matcher "comment" alphabet:xml-char "--")))
+  (let ((parse-body
+	 (terminated-region-parser "comment" alphabet:xml-char "--")))
     (*parser
-     (sbracket "comment" "<!--" "-->"
-       (noise match-body)))))
+     (encapsulate
+	 (lambda (v)
+	   (make-xml-comment (vector-ref v 0)))
+       (sbracket "comment" "<!--" "-->"
+	 parse-body)))))
 
 (define parse-cdata-section		;[18,19,20,21]
   (bracketed-region-parser "CDATA section" "<![CDATA[" "]]>"))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml.pkg,v 1.10 2002/11/20 19:46:27 cph Exp $
+;;; $Id: xml.pkg,v 1.11 2002/12/07 04:13:49 cph Exp $
 ;;;
-;;; Copyright (c) 2001 Massachusetts Institute of Technology
+;;; Copyright (c) 2001, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This file is part of MIT Scheme.
 ;;;
@@ -38,6 +38,7 @@
 	  make-xml-!element
 	  make-xml-!entity
 	  make-xml-!notation
+	  make-xml-comment
 	  make-xml-declaration
 	  make-xml-document
 	  make-xml-dtd
@@ -55,6 +56,7 @@
 	  set-xml-!entity-value!
 	  set-xml-!notation-id!
 	  set-xml-!notation-name!
+	  set-xml-comment-text!
 	  set-xml-declaration-encoding!
 	  set-xml-declaration-standalone!
 	  set-xml-declaration-version!
@@ -96,6 +98,9 @@
 	  xml-!notation-name
 	  xml-!notation-rtd
 	  xml-!notation?
+	  xml-comment-rtd
+	  xml-comment-text
+	  xml-comment?
 	  xml-declaration-encoding
 	  xml-declaration-rtd
 	  xml-declaration-standalone
