@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.15 1999/08/13 18:40:30 cph Exp $
+$Id: socket.scm,v 1.16 2001/06/02 01:26:39 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Socket Support
@@ -59,14 +60,20 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (lambda ()
 	 ((ucode-primitive new-open-unix-stream-socket 2) filename p))))))
 
-(define (open-tcp-server-socket service)
+(define (open-tcp-server-socket service #!optional host)
   (open-channel
    (lambda (p)
      (with-thread-timer-stopped
        (lambda ()
-	 ((ucode-primitive new-open-tcp-server-socket 2)
-	  (tcp-service->port service)
-	  p))))))
+	 (let ((channel ((ucode-primitive create-tcp-server-socket 0))))
+	   (system-pair-set-cdr! p channel)
+	   ((ucode-primitive bind-tcp-server-socket 3)
+	    channel
+	    (if (or (default-object? host) (not host))
+		((ucode-primitive host-address-any 0))
+		host)
+	    (tcp-service->port service))
+	   ((ucode-primitive listen-tcp-server-socket 1) channel)))))))
 
 (define (tcp-service->port service)
   (if (exact-nonnegative-integer? service)
@@ -114,3 +121,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (allocate-host-address)
   (string-allocate ((ucode-primitive host-address-length 0))))
+
+(define host-address-any
+  (ucode-primitive host-address-any 0))
+
+(define host-address-loopback
+  (ucode-primitive host-address-loopback 0))
