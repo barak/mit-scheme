@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.91 1995/10/15 00:36:48 cph Exp $
+$Id: bchmmg.c,v 9.92 1997/05/01 01:27:55 cph Exp $
 
-Copyright (c) 1987-95 Massachusetts Institute of Technology
+Copyright (c) 1987-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,6 +39,11 @@ MIT in each case. */
 #include "prims.h"
 #include "option.h"
 #include "oscond.h"
+#include "posixtyp.h"
+
+#ifdef _POSIX
+#include <unistd.h>
+#endif
 
 #ifdef DOS386
 #  include <string.h>
@@ -252,6 +257,8 @@ DEFUN (io_error_retry_p, (operation_name, noise),
     case IDIGNORE:
       Microcode_Termination (TERM_EXIT);
   }
+  /*NOTREACHED*/
+  return (0);
 }
 
 #else /* not WINNT */
@@ -416,10 +423,9 @@ DEFUN (parameterization_termination, (kill_p, init_p),
   fflush (stderr);
   if (init_p)
     termination_init_error ();			/*NOTREACHED*/
-  else if (kill_p)
+  if (kill_p)
     Microcode_Termination (TERM_EXIT);		/*NOTREACHED*/
-  else
-    return (-1);
+  return (-1);
 }
 
 #ifdef SIGCONT
@@ -1784,6 +1790,7 @@ DEFUN (catastrophic_failure, (name), char * name)
 	      scheme_program_name, name);
   Microcode_Termination (TERM_EXIT);
   /*NOTREACHED*/
+  return (0);
 }
 
 #define GCDIE(m)			catastrophic_failure (m)
@@ -1907,7 +1914,9 @@ DEFUN (termination_open_gc_file, (operation, extra),
 }
 
 extern char * EXFUN (mktemp, (char *));
-extern long EXFUN (lseek, (int, long, int));
+#ifndef _POSIX
+extern off_t EXFUN (lseek, (int, off_t, int));
+#endif
 
 static void
 DEFUN (open_gc_file, (size, unlink_p),
@@ -3342,6 +3351,7 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
  Pushed ();
   PRIMITIVE_ABORT (PRIM_APPLY);
   /*NOTREACHED*/
+  return (0);
 }
 
 static void
@@ -3511,6 +3521,7 @@ DEFINE_PRIMITIVE ("BCHSCHEME-PARAMETERS-SET!", Prim_bchscheme_set_params, 1, 1, 
 #if (CAN_RECONFIGURE_GC_BUFFERS == 0)
   signal_error_from_primitive (ERR_UNDEFINED_PRIMITIVE);
   /*NOTREACHED*/
+  return (0);
 #else
 
   {
@@ -3597,6 +3608,7 @@ DEFINE_PRIMITIVE ("BCHSCHEME-PARAMETERS-SET!", Prim_bchscheme_set_params, 1, 1, 
 	signal_error_from_primitive (ERR_EXTERNAL_RETURN);
     }
     /*NOTREACHED*/
+    return (0);
   }
 #endif /* (CAN_RECONFIGURE_GC_BUFFERS == 0) */
 }
