@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2com.scm,v 1.2 1995/05/20 10:19:46 cph Exp $
+;;;	$Id: os2com.scm,v 1.3 1996/04/23 23:08:01 cph Exp $
 ;;;
-;;;	Copyright (c) 1994 Massachusetts Institute of Technology
+;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -77,24 +77,24 @@ but changes the meaning of COLOR-NAME when it is used in the future."
       (os2-screen/set-font! screen font)
       (update-screen! screen #t))))
 
-(define-command set-screen-size
-  "Set size of editor screen to WIDTH x HEIGHT."
-  "nScreen width (chars)\nnScreen height (chars)"
+(define-command set-frame-size
+  "Set size of editor frame to WIDTH x HEIGHT."
+  "nFrame width (chars)\nnFrame height (chars)"
   (lambda (width height)
     (os2-screen/set-size! (selected-screen) (max 2 width) (max 2 height))))
 
-(define-command set-screen-position
-  "Set position of editor screen to (X,Y)."
+(define-command set-frame-position
+  "Set position of editor frame to (X,Y)."
   "nX position (pels)\nnY position (pels)"
   (lambda (x y)
     (os2-screen/set-position! (selected-screen) x y)))
 
-(define-command show-screen-size
-  "Show size of editor screen."
+(define-command show-frame-size
+  "Show size of editor frame."
   ()
   (lambda ()
     (let ((screen (selected-screen)))
-      (message "Screen is "
+      (message "Frame is "
 	       (screen-x-size screen)
 	       " chars wide and "
 	       (screen-y-size screen)
@@ -104,13 +104,38 @@ but changes the meaning of COLOR-NAME when it is used in the future."
 	       (screen-pel-height screen)
 	       " pels)"))))
 
-(define-command show-screen-position
-  "Show position of editor screen.
+(define-command show-frame-position
+  "Show position of editor frame.
 This is the position of the lower left-hand corner of the frame border
-surrounding the screen, relative to the lower left-hand corner of the
+surrounding the frame, relative to the lower left-hand corner of the
 desktop."
   ()
   (lambda ()
     (call-with-values (lambda () (os2-screen/get-position (selected-screen)))
       (lambda (x y)
-	(message "Screen's lower left-hand corner is at (" x "," y ")")))))
+	(message "Frame's lower left-hand corner is at (" x "," y ")")))))
+
+;; For upwards compatibility
+(define edwin-command$set-screen-size edwin-command$set-frame-size)
+(define edwin-command$set-screen-position edwin-command$set-frame-position)
+(define edwin-command$show-screen-size edwin-command$show-frame-size)
+(define edwin-command$show-screen-position edwin-command$show-frame-position)
+
+(define-command set-frame-name
+  "Set name of selected frame to NAME.
+Useful only if `frame-name-format' is false."
+  "sSet frame name"
+  (lambda (name) (os2-screen/set-title! (selected-screen) name)))
+
+(define (update-os2-screen-names! screen)
+  (let ((window
+	 (if (and (selected-screen? screen) (within-typein-edit?))
+	     (typein-edit-other-window)
+	     (screen-selected-window screen)))
+	(format (ref-variable frame-name-format buffer))
+	(length (ref-variable frame-name-length buffer)))
+    (if format
+	(os2-screen/set-title!
+	 screen
+	 (string-trim-right
+	  (format-modeline-string window format length))))))

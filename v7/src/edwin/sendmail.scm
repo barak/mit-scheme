@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.32 1995/05/23 11:37:56 cph Exp $
+;;;	$Id: sendmail.scm,v 1.33 1996/04/23 23:07:43 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -159,24 +159,23 @@ that string is inserted.
 If mail-archive-file-name is true, an FCC: field with that file name
 is inserted."
   "P"
-  (lambda (no-erase?)
-    (make-mail-buffer '(("To" "") ("Subject" ""))
-		      #f
-		      select-buffer
-		      (if no-erase?
-			  'KEEP-PREVIOUS-MAIL
-			  'QUERY-DISCARD-PREVIOUS-MAIL))))
+  (lambda (no-erase?) (mail-command no-erase? select-buffer)))
 
 (define-command mail-other-window
-  "Like `mail' command, but display mail buffer in another window."
+  "Like \\[mail] command, but display mail buffer in another window."
   "P"
-  (lambda (no-erase?)
-    (make-mail-buffer '(("To" "") ("Subject" ""))
-		      #f
-		      select-buffer-other-window
-		      (if no-erase?
-			  'KEEP-PREVIOUS-MAIL
-			  'QUERY-DISCARD-PREVIOUS-MAIL))))
+  (lambda (no-erase?) (mail-command no-erase? select-buffer-other-window)))
+
+(define-command mail-other-frame
+  "Like \\[mail] command, but display mail buffer in another frame."
+  "P"
+  (lambda (no-erase?) (mail-command no-erase? select-buffer-other-screen)))
+
+(define (mail-command no-erase? select-buffer)
+  (make-mail-buffer '(("To" "") ("Subject" "")) #f select-buffer
+		    (if no-erase?
+			'KEEP-PREVIOUS-MAIL
+			'QUERY-DISCARD-PREVIOUS-MAIL)))
 
 (define (make-mail-buffer headers reply-buffer #!optional
 			  selector handle-previous buffer-name mode)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2term.scm,v 1.11 1996/03/20 23:52:27 cph Exp $
+;;;	$Id: os2term.scm,v 1.12 1996/04/23 23:07:54 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -261,8 +261,15 @@
   unspecific)
 
 (define (os2-screen/wrap-update! screen thunk)
-  screen
-  (thunk))
+  (let ((finished? #f))
+    (dynamic-wind (lambda () unspecific)
+		  (lambda ()
+		    (let ((result (thunk)))
+		      (set! finished? result)
+		      result))
+		  (lambda ()
+		    (if finished?
+			(update-os2-screen-names! screen))))))
 
 (define (os2-screen/write-cursor! screen x y)
   (os2win-move-cursor (screen-wid screen) (cx->x screen x) (cy->y screen y)))
@@ -443,6 +450,9 @@
 
 (define (os2-screen/set-position! screen x y)
   (os2win-set-pos (screen-wid screen) x y))
+
+(define (os2-screen/set-title! screen title)
+  (os2win-set-title (screen-wid screen) title))
 
 (define (os2-screen/raise! screen)
   (os2win-set-state (screen-wid screen) window-state:top))

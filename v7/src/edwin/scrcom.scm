@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: scrcom.scm,v 1.4 1993/09/01 18:03:14 gjr Exp $
+;;;	$Id: scrcom.scm,v 1.5 1996/04/23 23:07:48 cph Exp $
 ;;;
-;;;	Copyright (c) 1990-1993 Massachusetts Institute of Technology
+;;;	Copyright (c) 1990-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -45,17 +45,51 @@
 ;;;; Screen Commands
 
 (declare (usual-integrations))
-
-(define-command delete-screen
-  "Delete the screen that point is in."
+
+(define-command delete-frame
+  "Delete the frame that point is in."
   ()
   (lambda ()
     (if (null? (cdr (screen-list)))
-	(editor-error "Can't delete the only screen"))
+	(editor-error "Can't delete the only frame"))
     (delete-screen! (selected-screen))))
 
+(define-command make-frame
+  "Create a new frame, displaying the current buffer."
+  ()
+  (lambda () (select-buffer-other-screen (current-buffer))))
+
+(define-command other-frame
+  "Select the ARG'th different visible frame, and raise it.
+All frames are arranged in a cyclic order.
+This command selects the frame ARG steps away in that order.
+A negative ARG moves in the opposite order."
+  "p"
+  (lambda (arg)
+    (let ((screen (other-screen (selected-screen) arg #t)))
+      (if (not screen)
+	  (editor-error "No other frame"))
+      (select-screen screen))))
+
+(define-variable frame-name-format
+  "If not false, template for displaying frame name.
+Has same format as `mode-line-format'."
+  'mode-line-buffer-identification)
+
+(define-variable frame-name-length
+  "Maximum length of frame name.
+Used only if `frame-name-format' is non-false."
+  64
+  exact-nonnegative-integer?)
+
+;; For upwards compatibility:
+(define edwin-command$delete-screen edwin-command$delete-frame)
+(define edwin-variable$x-screen-name-format edwin-variable$frame-name-format)
+(define edwin-variable$x-screen-name-length edwin-variable$frame-name-length)
+
+;;; This command is for Windows, and shouldn't really be here.
+;;; It is for terminal screens only.
 (define-command resize-screen
   "Resize the screen that point is in."
   ()
-  (lambda ()
-    (resize-screen)))
+  (lambda () (resize-screen)))

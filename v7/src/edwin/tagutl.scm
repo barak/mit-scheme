@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: tagutl.scm,v 1.54 1994/01/14 00:43:39 cph Exp $
+;;;	$Id: tagutl.scm,v 1.55 1996/04/23 23:07:32 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -95,19 +95,16 @@ See documentation of variable tags-table-pathnames."
     (&find-tag-command string previous-tag? find-file)))
 
 (define-command find-tag-other-window
-  "Find tag (in current list of tag table) whose name contains TAGNAME.
- Selects the buffer that the tag is contained in in another window
-and puts point at its definition.
- If TAGNAME is a null string, the expression in the buffer
-around or before point is used as the tag name.
- If second arg NEXT is non-false (interactively, with prefix arg),
-searches for the next tag in the tag table
-that matches the tagname used in the previous find-tag.
-
-See documentation of variable tags-table-pathnames."
+  "Like \\[find-tag], but select buffer in another window."
   (lambda () (find-tag-arguments "Find tag in other window"))
   (lambda (string previous-tag?)
     (&find-tag-command string previous-tag? find-file-other-window)))
+
+(define-command find-tag-other-frame
+  "Like \\[find-tag], but select buffer in another frame."
+  (lambda () (find-tag-arguments "Find tag in other frame"))
+  (lambda (string previous-tag?)
+    (&find-tag-command string previous-tag? find-file-other-screen)))
 
 ;;;; Find Tag
 

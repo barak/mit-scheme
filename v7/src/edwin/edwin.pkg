@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.185 1996/04/23 22:38:27 cph Exp $
+$Id: edwin.pkg,v 1.186 1996/04/23 23:08:15 cph Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -85,7 +85,7 @@ MIT in each case. |#
 	 "motcom"			; motion commands
 	 "replaz"			; replace commands
 	 "schmod"			; scheme mode
-	 "scrcom"			; screen commands
+	 "scrcom"			; frame commands
 	 "sercom"			; search commands
 	 "texcom"			; text commands
 	 "wincom"			; window commands
@@ -813,6 +813,7 @@ MIT in each case. |#
 	  edwin-variable$debugger-quit-on-return?
 	  edwin-variable$debugger-show-help-message?
 	  edwin-variable$debugger-split-window?
+	  edwin-variable$debugger-start-new-frame?
 	  edwin-variable$debugger-start-new-screen?
 	  edwin-variable$debugger-start-on-error?
 	  edwin-variable$debugger-verbose-mode?
@@ -1013,8 +1014,32 @@ MIT in each case. |#
     (files "xcom")
     (parent (edwin))
     (export (edwin)
+	    edwin-command$auto-raise-mode
+	    edwin-command$lower-frame
+	    edwin-command$raise-frame
+	    edwin-command$set-background-color
+	    edwin-command$set-border-color
+	    edwin-command$set-border-width
+	    edwin-command$set-cursor-color
+	    edwin-command$set-font
+	    edwin-command$set-foreground-color
+	    edwin-command$set-frame-icon-name
+	    edwin-command$set-frame-name
+	    edwin-command$set-frame-position
+	    edwin-command$set-frame-size
+	    edwin-command$set-internal-border-width
+	    edwin-command$set-mouse-color
+	    edwin-command$set-mouse-shape
+	    edwin-command$set-mouse-shape
 	    edwin-command$x-auto-raise-mode
 	    edwin-command$x-lower-screen
+	    edwin-command$x-mouse-ignore
+	    edwin-command$x-mouse-keep-one-window
+	    edwin-command$x-mouse-select
+	    edwin-command$x-mouse-select-and-split
+	    edwin-command$x-mouse-set-mark
+	    edwin-command$x-mouse-set-point
+	    edwin-command$x-mouse-show-event
 	    edwin-command$x-raise-screen
 	    edwin-command$x-set-background-color
 	    edwin-command$x-set-border-color
@@ -1029,6 +1054,10 @@ MIT in each case. |#
 	    edwin-command$x-set-position
 	    edwin-command$x-set-size
 	    edwin-command$x-set-window-name
+	    edwin-variable$frame-icon-name-format
+	    edwin-variable$frame-icon-name-length
+	    edwin-variable$frame-name-format
+	    edwin-variable$frame-name-length
 	    edwin-variable$x-screen-icon-name-format
 	    edwin-variable$x-screen-icon-name-length
 	    edwin-variable$x-screen-name-format
@@ -1202,6 +1231,7 @@ MIT in each case. |#
 	    os2-screen/set-foreground-color!
 	    os2-screen/set-position!
 	    os2-screen/set-size!
+	    os2-screen/set-title!
 	    os2/desktop-width
 	    os2/desktop-height
 	    screen-char-width
@@ -1352,10 +1382,17 @@ MIT in each case. |#
 	    edwin-command$set-background-color
 	    edwin-command$set-font
 	    edwin-command$set-foreground-color
+	    edwin-command$set-frame-name
+	    edwin-command$set-frame-position
+	    edwin-command$set-frame-size
 	    edwin-command$set-screen-position
 	    edwin-command$set-screen-size
+	    edwin-command$show-frame-position
+	    edwin-command$show-frame-size
 	    edwin-command$show-screen-position
-	    edwin-command$show-screen-size))))
+	    edwin-command$show-screen-size)
+    (export (edwin screen os2-screen)
+	    update-os2-screen-names!))))
 
 (define-package (edwin sendmail)
   (files "sendmail")

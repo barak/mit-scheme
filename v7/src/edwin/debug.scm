@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.34 1995/11/13 23:47:32 cph Exp $
+;;;	$Id: debug.scm,v 1.35 1996/04/23 23:08:30 cph Exp $
 ;;;
-;;;	Copyright (c) 1992-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -899,12 +899,14 @@ Set this variable to #F to disable this abbreviation."
   #T
   boolean?)
 
-(define-variable debugger-start-new-screen?
-  "#T means start a new-screen whenever the debugger is invoked.
-#F means continue in same screen.
-'ASK means ask user whether to start new-screen."
+(define-variable debugger-start-new-frame?
+  "#T means start a new frame whenever the debugger is invoked.
+#F means continue in same frame.
+'ASK means ask user."
   #T
   boolean-or-ask?)
+(define edwin-variable$debugger-start-new-screen?
+  edwin-variable$debugger-start-new-frame?)
 
 (define-variable debugger-hide-system-code?
   "True means don't show subproblems created by the runtime system."

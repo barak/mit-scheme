@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: curren.scm,v 1.118 1995/06/07 19:01:43 cph Exp $
+;;;	$Id: curren.scm,v 1.119 1996/04/23 23:08:38 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -74,16 +74,17 @@
 			      (append! (editor-screens current-editor)
 				       (list screen)))
 	 (event-distributor/invoke!
-	  (variable-default-value (ref-variable-object screen-creation-hook))
+	  (variable-default-value (ref-variable-object frame-creation-hook))
 	  screen)
 	 (update-screen! screen false)
 	 screen)))))
 
-(define-variable screen-creation-hook
-  "An event distributor that is invoked when a screen is created.
-The new screen passed as its argument.
-The screen is guaranteed to be deselected at that time."
+(define-variable frame-creation-hook
+  "An event distributor that is invoked when a frame is created.
+The new frame passed as its argument.
+The frame is guaranteed to be deselected at that time."
   (make-event-distributor))
+(define edwin-variable$screen-creation-hook edwin-variable$frame-creation-hook)
 
 (define (delete-screen! screen)
   (without-interrupts

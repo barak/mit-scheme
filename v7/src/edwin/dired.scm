@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.161 1996/04/10 01:06:34 cph Exp $
+;;;	$Id: dired.scm,v 1.162 1996/04/23 23:08:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -163,6 +163,12 @@ Type `h' after entering dired for more info."
   "DDired in other window (directory)"
   (lambda (directory)
     (select-buffer-other-window (make-dired-buffer directory))))
+
+(define-command dired-other-frame
+  "\"Edit\" directory DIRNAME.  Like \\[dired] but selects in another frame."
+  "DDired in other frame (directory)"
+  (lambda (directory)
+    (select-buffer-other-screen (make-dired-buffer directory))))
 
 (define (make-dired-buffer directory #!optional file-list)
   (let ((directory (pathname-simplify directory))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.187 1995/09/13 23:00:55 cph Exp $
+;;;	$Id: filcom.scm,v 1.188 1996/04/23 23:08:06 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -68,10 +68,12 @@ May create a window, or reuse one."
 (define (find-file-other-screen filename)
   (select-buffer-other-screen (find-file-noselect filename true)))
 
-(define-command find-file-other-screen
-  "Visit a file in another screen."
-  "FFind file in other screen"
+(define-command find-file-other-frame
+  "Visit a file in another frame."
+  "FFind file in other frame"
   find-file-other-screen)
+(define edwin-command$find-file-other-screen
+  edwin-command$find-file-other-frame)
 
 (define-command find-alternate-file
   "Find file FILENAME, select its buffer, kill previous buffer.

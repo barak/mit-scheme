@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: wincom.scm,v 1.117 1994/03/11 05:22:42 cph Exp $
+;;;	$Id: wincom.scm,v 1.118 1996/04/23 23:07:26 cph Exp $
 ;;;
-;;;	Copyright (c) 1987, 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -64,11 +64,12 @@ Do not set this variable below 1."
   2
   exact-nonnegative-integer?)
 
-(define-variable use-multiple-screens
-  "If true, commands try to use multiple screens rather than multiple windows.
-Has no effect unless multiple-screen support is available."
+(define-variable use-multiple-frames
+  "If true, commands try to use multiple frames rather than multiple windows.
+Has no effect unless multiple-frame support is available."
   false
   boolean?)
+(define edwin-variable$use-multiple-screens edwin-variable$use-multiple-frames)
 
 (define-variable pop-up-windows
   "True enables the use of pop-up windows."
@@ -376,7 +377,7 @@ or if the window is the only window of its frame."
       (editor-error "Not implemented for typein window")))
 
 (define (use-multiple-screens?)
-  (and (ref-variable use-multiple-screens)
+  (and (ref-variable use-multiple-frames)
        (multiple-screens?)))
 
 (define (select-buffer-other-window buffer)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xcom.scm,v 1.12 1994/10/26 01:33:47 cph Exp $
+;;;	$Id: xcom.scm,v 1.13 1996/04/23 23:07:18 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -64,15 +64,15 @@
 (define (current-xterm)
   (screen-xterm (selected-screen)))
 
-(define-command x-set-foreground-color
-  "Set foreground (text) color to COLOR."
+(define-command set-foreground-color
+  "Set foreground (text) color of selected frame to COLOR."
   "sSet foreground color"
   (lambda (color)
     (x-window-set-foreground-color (current-xterm) color)
     (update-screen! (selected-screen) true)))
 
-(define-command x-set-background-color
-  "Set background color to COLOR."
+(define-command set-background-color
+  "Set background color of selected frame to COLOR."
   "sSet background color"
   (lambda (color)
     (let ((xterm (current-xterm)))
@@ -80,26 +80,26 @@
       (x-window-clear xterm))
     (update-screen! (selected-screen) true)))
 
-(define-command x-set-border-color
-  "Set border color to COLOR."
+(define-command set-border-color
+  "Set border color of selected frame to COLOR."
   "sSet border color"
   (lambda (color)
     (x-window-set-border-color (current-xterm) color)))
 
-(define-command x-set-cursor-color
-  "Set cursor color to COLOR."
+(define-command set-cursor-color
+  "Set cursor color of selected frame to COLOR."
   "sSet cursor color"
   (lambda (color)
     (x-window-set-cursor-color (current-xterm) color)))
 
-(define-command x-set-mouse-color
-  "Set mouse color to COLOR."
+(define-command set-mouse-color
+  "Set mouse color of selected frame to COLOR."
   "sSet mouse color"
   (lambda (color)
     (x-window-set-mouse-color (current-xterm) color)))
 
-(define-command x-set-font
-  "Set font to be used for drawing text."
+(define-command set-font
+  "Set text font of selected frame to FONT."
   "sSet font"
   (lambda (font)
     (let ((xterm (current-xterm)))
@@ -109,44 +109,42 @@
 	    (editor-error "Unknown font name: " font))
 	(xterm-set-size xterm x-size y-size)))))
 
-(define-command x-set-size
-  "Set size of editor screen to WIDTH x HEIGHT."
-  "nScreen width (chars)\nnScreen height (chars)"
+(define-command set-frame-size
+  "Set size of selected frame to WIDTH x HEIGHT."
+  "nFrame width (chars)\nnFrame height (chars)"
   (lambda (width height)
     (xterm-set-size (current-xterm) (max 2 width) (max 2 height))))
 
-(define-command x-set-position
-  "Set position of editor screen to (X,Y)."
+(define-command set-frame-position
+  "Set position of selected frame to (X,Y)."
   "nX position (pixels)\nnY position (pixels)"
   (lambda (x y)
     (x-window-set-position (current-xterm) x y)))
 
-(define-command x-set-border-width
-  "Set width of border to WIDTH."
+(define-command set-border-width
+  "Set border width of selected frame to WIDTH."
   "nSet border width"
   (lambda (width)
     (x-window-set-border-width (current-xterm) (max 0 width))
     (update-screen! (selected-screen) true)))
 
-(define-command x-set-internal-border-width
-  "Set width of internal border to WIDTH."
+(define-command set-internal-border-width
+  "Set internal border width of selected frame to WIDTH."
   "nSet internal border width"
   (lambda (width)
     (x-window-set-internal-border-width (current-xterm) (max 0 width))))
 
-(define-command x-set-window-name
-  "Set X window name to NAME.
-Useful only if `x-screen-name-format' is false."
-  "sSet X window name"
-  (lambda (name)
-    (xterm-screen/set-name (selected-screen) name)))
+(define-command set-frame-name
+  "Set name of selected frame to NAME.
+Useful only if `frame-name-format' is false."
+  "sSet frame name"
+  (lambda (name) (xterm-screen/set-name (selected-screen) name)))
 
-(define-command x-set-icon-name
-  "Set X window icon name to NAME.
-Useful only if `x-screen-icon-name-format' is false."
-  "sSet X window icon name"
-  (lambda (name)
-    (xterm-screen/set-icon-name (selected-screen) name)))
+(define-command set-frame-icon-name
+  "Set icon name of selected frame to NAME.
+Useful only if `frame-icon-name-format' is false."
+  "sSet frame icon name"
+  (lambda (name) (xterm-screen/set-icon-name (selected-screen) name)))
 
 (define (update-xterm-screen-names! screen)
   (let ((window
@@ -154,7 +152,7 @@ Useful only if `x-screen-icon-name-format' is false."
 	     (typein-edit-other-window)
 	     (screen-selected-window screen))))
     (let ((buffer (window-buffer window))
-  (update-name
+	  (update-name
 	   (lambda (set-name format length)
 	     (if format
 		 (set-name
@@ -162,60 +160,48 @@ Useful only if `x-screen-icon-name-format' is false."
 		  (string-trim-right
 		   (format-modeline-string window format length)))))))
       (update-name xterm-screen/set-name
-		   (ref-variable x-screen-name-format buffer)
-		   (ref-variable x-screen-name-length buffer))
+		   (ref-variable frame-name-format buffer)
+		   (ref-variable frame-name-length buffer))
       (update-name xterm-screen/set-icon-name
-		   (ref-variable x-screen-icon-name-format buffer)
-		   (ref-variable x-screen-icon-name-length buffer)))))
+		   (ref-variable frame-icon-name-format buffer)
+		   (ref-variable frame-icon-name-length buffer)))))
 
-(define-variable x-screen-name-format
-  "If not false, template for displaying X window name.
-Has same format as `mode-line-format'."
-  'mode-line-buffer-identification)
-
-(define-variable x-screen-name-length
-  "Maximum length of X window name.
-Used only if `x-screen-name-format' is non-false."
-  64
-  exact-nonnegative-integer?)
-
-(define-variable x-screen-icon-name-format
-  "If not false, template for displaying X window icon name.
+(define-variable frame-icon-name-format
+  "If not false, template for displaying frame icon name.
 Has same format as `mode-line-format'."
   "edwin")
 
-(define-variable x-screen-icon-name-length
-  "Maximum length of X window icon name.
-Used only if `x-screen-icon-name-format' is non-false."
+(define-variable frame-icon-name-length
+  "Maximum length of frame icon name.
+Used only if `frame-icon-name-format' is non-false."
   32
   exact-nonnegative-integer?)
 
-(define-command x-raise-screen
-  "Raise the editor screen so that it is not obscured by other X windows."
+(define-command raise-frame
+  "Raise the selected frame so that it is not obscured by other windows."
   ()
   (lambda () (x-window-raise (current-xterm))))
 
-(define-command x-lower-screen
-  "Lower the editor screen so that it does not obscure other X windows."
+(define-command lower-frame
+  "Lower the selected frame so that it does not obscure other windows."
   ()
   (lambda () (x-window-lower (current-xterm))))
 
-(define-command x-auto-raise-mode
+(define-command auto-raise-mode
   "Toggle auto-raise mode.
-With argument, turn auto-raise mode on iff argument is positive."
+With argument, turn auto-raise mode on if argument is positive.
+When auto-raise mode is on, typing in a frame causes it to be raised."
   "P"
   (lambda (argument)
-    (let ((argument (command-argument-value argument)))
-      (cond ((and (or (not argument) (positive? argument))
-		  (not x-screen-auto-raise))
-	     (set! x-screen-auto-raise true))
-	    ((and (or (not argument) (not (positive? argument)))
-		  x-screen-auto-raise)
-	     (set! x-screen-auto-raise false))))
+    (set! x-screen-auto-raise
+	  (let ((argument (command-argument-value argument)))
+	    (if argument
+		(> argument 0)
+		(not x-screen-auto-raise))))
     (message "Auto-raise " (if x-screen-auto-raise "enabled" "disabled"))))
 
-(define-command x-set-mouse-shape
-  "Set mouse cursor shape to SHAPE.
+(define-command set-mouse-shape
+  "Set mouse cursor shape for selected frame to SHAPE.
 SHAPE must be the (string) name of one of the known cursor shapes.
 When called interactively, completion is available on the input."
   (lambda ()
@@ -317,33 +303,43 @@ When called interactively, completion is available on the input."
 ;;;; Mouse Commands
 ;;; (For compatibility with old code.)
 
-(define edwin-command$x-mouse-select
-  (copy-command 'X-MOUSE-SELECT
-		(ref-command-object mouse-select)))
+(let-syntax
+    ((copy
+      (lambda (name)
+	`(DEFINE ,(symbol-append 'EDWIN-COMMAND$X- name)
+	   ,(symbol-append 'EDWIN-COMMAND$ name)))))
+  (copy set-foreground-color)
+  (copy set-background-color)
+  (copy set-border-color)
+  (copy set-cursor-color)
+  (copy set-mouse-color)
+  (copy set-font)
+  (copy set-border-width)
+  (copy set-internal-border-width)
+  (copy auto-raise-mode)
+  (copy set-mouse-shape)
+  (copy mouse-select)
+  (copy mouse-keep-one-window)
+  (copy mouse-select-and-split)
+  (copy mouse-set-point)
+  (copy mouse-set-mark)
+  (copy mouse-show-event)
+  (copy mouse-ignore))
 
-(define edwin-command$x-mouse-keep-one-window
-  (copy-command 'X-MOUSE-KEEP-ONE-WINDOW
-		(ref-command-object mouse-keep-one-window)))
+(define edwin-command$x-set-size edwin-command$set-frame-size)
+(define edwin-command$x-set-position edwin-command$set-frame-position)
+(define edwin-command$x-set-window-name edwin-command$set-frame-name)
+(define edwin-command$x-set-icon-name edwin-command$set-frame-icon-name)
+(define edwin-command$x-raise-screen edwin-command$raise-frame)
+(define edwin-command$x-lower-screen edwin-command$lower-frame)
 
-(define edwin-command$x-mouse-select-and-split
-  (copy-command 'X-MOUSE-SELECT-AND-SPLIT
-		(ref-command-object mouse-select-and-split)))
-
-(define edwin-command$x-mouse-set-point
-  (copy-command 'X-MOUSE-SET-POINT
-		(ref-command-object mouse-set-point)))
-
-(define edwin-command$x-mouse-set-mark
-  (copy-command 'X-MOUSE-SET-MARK
-		(ref-command-object mouse-set-mark)))
-
-(define edwin-command$x-mouse-show-event
-  (copy-command 'X-MOUSE-SHOW-EVENT
-		(ref-command-object mouse-show-event)))
-
-(define edwin-command$x-mouse-ignore
-  (copy-command 'X-MOUSE-IGNORE
-		(ref-command-object mouse-ignore)))
+(let-syntax
+    ((copy
+      (lambda (name)
+	`(DEFINE ,(symbol-append 'EDWIN-VARIABLE$X-SCREEN- name)
+	   ,(symbol-append 'EDWIN-VARIABLE$FRAME- name)))))
+  (copy icon-name-format)
+  (copy icon-name-length))
 
 (define x-button1-down button1-down)
 (define x-button2-down button2-down)
