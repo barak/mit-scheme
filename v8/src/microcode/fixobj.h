@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/fixobj.h,v 9.28 1989/10/26 07:49:43 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/fixobj.h,v 9.29 1991/01/24 04:32:32 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -44,8 +44,8 @@ MIT in each case. */
 #define Primitives_Vector	0x06	/* Primitive code -> Name map. */
 #define Errors_Vector		0x07	/* Error code -> Name map. */
 #define Identification_Vector	0x08	/* ID Vector index -> name map. */
-/* UNUSED slot			0x09 */
-/* UNUSED slot			0x0A */
+#define FIXOBJ_SYSTEM_CALL_NAMES	0x09	/* System call index -> name */
+#define FIXOBJ_SYSTEM_CALL_ERRORS	0x0A	/* System call error -> name */
 #define GC_Daemon		0x0B	/* Procedure to run after GC. */
 #define Trap_Handler		0x0C	/* Abort after disaster. */
 /* UNUSED slot			0x0D */
