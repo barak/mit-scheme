@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.175 1993/03/07 20:56:22 cph Exp $
+$Id: runtime.pkg,v 14.176 1993/04/19 08:39:11 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -1601,6 +1601,8 @@ MIT in each case. |#
 	  pty-master-quit
 	  pty-master-send-signal
 	  pty-master-stop
+	  set-terminal-input-baud-rate!
+	  set-terminal-output-baud-rate!
 	  terminal-cooked-input
 	  terminal-cooked-input?
 	  terminal-cooked-output

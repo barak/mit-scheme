@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.32 1993/01/12 23:08:46 gjr Exp $
+$Id: io.scm,v 14.33 1993/04/19 08:38:59 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -226,6 +226,8 @@ MIT in each case. |#
 	(ucode-primitive terminal-flush-output 1)
 	(ucode-primitive terminal-get-ispeed 1)
 	(ucode-primitive terminal-get-ospeed 1)
+	(ucode-primitive terminal-set-ispeed 2)
+	(ucode-primitive terminal-set-ospeed 2)
 	(ucode-primitive terminal-get-state 1)
 	(ucode-primitive terminal-nonbuffered 1)
 	(ucode-primitive terminal-raw-output 1)
@@ -405,6 +407,16 @@ MIT in each case. |#
 (define (terminal-output-baud-rate channel)
   ((ucode-primitive baud-index->rate 1)
    ((ucode-primitive terminal-get-ospeed 1) (channel-descriptor channel))))
+
+(define (set-terminal-input-baud-rate! channel baud)
+  ((ucode-primitive terminal-set-ispeed 2)
+   (channel-descriptor channel)
+   ((ucode-primitive baud-rate->index 1) baud)))
+
+(define (set-terminal-output-baud-rate! channel baud)
+  ((ucode-primitive terminal-set-ospeed 2)
+   (channel-descriptor channel)
+   ((ucode-primitive baud-rate->index 1) baud)))
 
 ;;;; PTY Master Primitives
 
@@ -791,45 +803,6 @@ MIT in each case. |#
 (define (input-buffer/buffered-chars buffer)
   (fix:- (input-buffer/end-index buffer) (input-buffer/start-index buffer)))
 
-(define (input-buffer/chars-remaining buffer)
-  (let ((channel (input-buffer/channel buffer)))
-    (and (channel-open? channel)
-	 (channel-type=file? channel)
-	 (not (input-buffer/line-translation buffer)) ; Can't tell otherwise
-	 (not (input-buffer/end-marker buffer))	      ; Can't tell otherwise
-	 (let ((n (fix:- (file-length channel) (file-position channel))))
-	   (and (fix:>= n 0)
-		(fix:+ (input-buffer/buffered-chars buffer) n))))))
-
-(define (input-buffer/char-ready? buffer interval)
-  (char-ready? buffer
-    (lambda (buffer)
-      (let ((channel (input-buffer/channel buffer)))
-	(and (channel-open? channel)
-	     (with-channel-blocking channel false
-	       (lambda ()
-		 (if (positive? interval)
-		     (let ((timeout (+ (real-time-clock) interval)))
-		       (let loop ()
-			 (let ((n (input-buffer/fill buffer)))
-			   (if n
-			       (fix:> n 0)
-			       (and (< (real-time-clock) timeout)
-				    (loop))))))
-		     (input-buffer/fill* buffer)))))))))
-
-(define (char-ready? buffer fill)
-  (let ((end-index (input-buffer/end-index buffer)))
-    (cond ((fix:= (input-buffer/end-index buffer) 0) false)
-	  ((fix:< (input-buffer/start-index buffer) end-index) true)
-	  (else (fill buffer)))))
-
-(define (input-buffer/eof? buffer)
-  ;; This returns true iff it knows that it is at EOF.
-  ;; If BUFFER is non-blocking with no input available, it returns false.
-  (and (not (input-buffer/char-ready? buffer 0))
-       (fix:= (input-buffer/end-index buffer) 0)))
-
 (define (input-buffer/fill buffer)
   (let ((channel (input-buffer/channel buffer)))
     (if (channel-closed? channel)
@@ -880,7 +853,44 @@ MIT in each case. |#
     (and n
 	 (fix:> n 0))))
 
-;;;; Input line termination translation
+(define (input-buffer/chars-remaining buffer)
+  (let ((channel (input-buffer/channel buffer)))
+    (and (channel-open? channel)
+	 (channel-type=file? channel)
+	 (not (input-buffer/line-translation buffer)) ; Can't tell otherwise
+	 (not (input-buffer/end-marker buffer))	      ; Can't tell otherwise
+	 (let ((n (fix:- (file-length channel) (file-position channel))))
+	   (and (fix:>= n 0)
+		(fix:+ (input-buffer/buffered-chars buffer) n))))))
+
+(define (input-buffer/char-ready? buffer interval)
+  (char-ready? buffer
+    (lambda (buffer)
+      (let ((channel (input-buffer/channel buffer)))
+	(and (channel-open? channel)
+	     (with-channel-blocking channel false
+	       (lambda ()
+		 (if (positive? interval)
+		     (let ((timeout (+ (real-time-clock) interval)))
+		       (let loop ()
+			 (let ((n (input-buffer/fill buffer)))
+			   (if n
+			       (fix:> n 0)
+			       (and (< (real-time-clock) timeout)
+				    (loop))))))
+		     (input-buffer/fill* buffer)))))))))
+
+(define (char-ready? buffer fill)
+  (let ((end-index (input-buffer/end-index buffer)))
+    (cond ((fix:= (input-buffer/end-index buffer) 0) false)
+	  ((fix:< (input-buffer/start-index buffer) end-index) true)
+	  (else (fill buffer)))))
+
+(define (input-buffer/eof? buffer)
+  ;; This returns true iff it knows that it is at EOF.
+  ;; If BUFFER is non-blocking with no input available, it returns false.
+  (and (not (input-buffer/char-ready? buffer 0))
+       (fix:= (input-buffer/end-index buffer) 0)))
 
 (define (input-buffer/translate! buffer)
   (with-values
@@ -893,11 +903,10 @@ MIT in each case. |#
       (set-input-buffer/end-index! buffer logical-end)
       (set-input-buffer/real-end! buffer real-end)
       logical-end)))
-
-;; This maps a multi-character (perhaps only 1) sequence into a single
-;; newline character.
-
+
 (define (substring/input-translate! string translation start end)
+  ;; This maps a multi-character (perhaps only 1) sequence into a
+  ;; single newline character.
   (let ((tlen (string-length translation))
 	(match (vector-8b-ref translation 0)))
 
@@ -920,7 +929,7 @@ MIT in each case. |#
 				 (else
 				  (verify-loop (fix:+ tpos 1)
 					       (fix:+ spos 1)))))))))))
-
+
     (define (clobber-loop target source)
       ;; Found one match, continue looking at source
       (string-set! string target #\Newline)
