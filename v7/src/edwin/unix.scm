@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.39 1993/10/26 23:15:31 cph Exp $
+;;;	$Id: unix.scm,v 1.40 1994/03/04 21:32:09 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-1993 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -132,8 +132,15 @@ Includes the new backup.  Must be > 0."
 	      (directory-pathname pathname)))))
 
 (define (os/precious-backup-pathname pathname)
-  (->pathname (string-append (->namestring pathname) "#")))
-
+  (let ((directory (directory-pathname pathname)))
+    (let loop ((i 0))
+      (let ((pathname
+	     (merge-pathnames (string-append "#tmp#" (number->string i))
+			      directory)))
+	(if (allocate-temporary-file pathname)
+	    pathname
+	    (loop (+ i 1)))))))
+
 (define (os/backup-buffer? truename)
   (and (memv (string-ref (vector-ref (file-attributes truename) 8) 0)
 	     '(#\- #\l))
@@ -162,7 +169,7 @@ Includes the new backup.  Must be > 0."
 	  (string-set! result 0 #\$)
 	  result)
 	filename)))
-
+
 (define (os/backup-by-copying? truename buffer)
   (let ((attributes (file-attributes truename)))
     (or (and (ref-variable backup-by-copying-when-linked buffer)
