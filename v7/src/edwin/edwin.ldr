@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.55 1995/04/13 23:38:09 cph Exp $
+$Id: edwin.ldr,v 1.56 1995/10/25 02:19:36 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -152,12 +152,15 @@ MIT in each case. |#
 	(load "rgxcmp" (->environment '(EDWIN REGULAR-EXPRESSION-COMPILER)))
 	(load "linden" (->environment '(EDWIN LISP-INDENTATION)))
 
-	(load-case 'OS-TYPE
-		   '((UNIX . "unix")
-		     (DOS . "dos")
-		     (NT . "dos")
-		     (OS/2 . "os2"))
-		   environment)
+	(case (lookup 'OS-TYPE)
+	  ((UNIX)
+	   (load "unix" environment))
+	  ((DOS NT)
+	   (load "dos" environment)
+	   (load "dosfile" environment))
+	  ((OS/2)
+	   (load "os2" environment)
+	   (load "dosfile" environment)))
 
 	(load "fileio" environment)
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.180 1995/10/24 05:38:04 cph Exp $
+$Id: edwin.pkg,v 1.181 1995/10/25 02:19:27 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -1106,7 +1106,7 @@ MIT in each case. |#
   (global-definitions "../win32/win32")
 
   (extend-package (edwin)
-    (files "dos"))
+    (files "dos" "dosfile"))
 
   (extend-package (edwin screen console-screen)
     (files "ansi" "bios"))
@@ -1158,7 +1158,7 @@ MIT in each case. |#
 
  ((os/2)
   (extend-package (edwin)
-    (files "os2")
+    (files "os2" "dosfile")
     (import (runtime os2-window-primitives)
 	    os2-clipboard-read-text
 	    os2-clipboard-write-text))
