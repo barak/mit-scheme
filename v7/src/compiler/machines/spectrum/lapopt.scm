@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapopt.scm,v 1.7 1993/02/15 04:01:11 gjr Exp $
+$Id: lapopt.scm,v 1.8 1993/02/15 04:57:13 gjr Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -171,6 +171,12 @@ MIT in each case. |#
     (and (match-internal pattern instance)
 	 dict)))
 
+(define (pc-sensitive? instr)
+  (or (eq? instr '*PC*)
+      (and (pair? instr)
+	   (or (pc-sensitive? (car instr))
+	       (pc-sensitive? (cdr instr))))))
+
 (define (skips? instr)
   ;; Not really true, for example
   ;; (COMBT (<) ...)
@@ -242,13 +248,15 @@ MIT in each case. |#
 	   (frame (cdr (assq 'frame dict2)))
 	   (ret (cdr (assq 'ret dict1))))
       (cond ((or (not next)
+		 (pc-sensitive? (car next))
+		 (memq (caar next)
+		       '(ENTRY-POINT EXTERNAL-LABEL BLOCK-OFFSET))
 		 (and (eq? (caar next) 'LABEL)
 		      (or (not next*)
 			  (not (skips? (car next*))))))
 	     (values (fix-simple-return ret frame junk)
 		     rest))
-	    ((or (memq (caar next)
-		       '(LABEL ENTRY-POINT EXTERNAL-LABEL BLOCK-OFFSET))
+	    ((or (eq? (caar next) 'LABEL)
 		 (skips? (car next)))
 	     (values '() false))
 	    (else
@@ -302,10 +310,12 @@ MIT in each case. |#
 	   (let* ((next (find-or-label (cdr instrs)))
 		  (next* (and next (find-non-label (cdr next)))))
 	     (if (and next
-		      (memq (instruction-type (car next)) '(ALU MEMORY))
-		      (not (skips? (car next)))
-		      (or (not next*)
-			  (not (skips? (car next*)))))
+		      (let ((instr (car next)))
+			(memq (instruction-type instr) '(ALU MEMORY))
+			(not (skips? instr))
+			(not (pc-sensitive? instr))
+			(or (not next*)
+			    (not (skips? (car next*))))))
 		 (fix-sequences (cdr next)
 				`(,@(reverse
 				     (list-difference (cdr instrs) next))
