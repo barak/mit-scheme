@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.5 1988/11/08 11:14:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.6 1988/12/12 21:52:40 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -58,22 +58,22 @@ MIT in each case. |#
 		     ((or (procedure-rest procedure)
 			  (closure-procedure-needs-external-descriptor?
 			   procedure))
-		      (with-procedure-arity-encoding
-		       procedure
-		       (lambda (min max)
-			 (rtl:make-procedure-header (procedure-label procedure)
-						    min max))))
+		      (with-values
+			  (lambda () (procedure-arity-encoding procedure))
+			(lambda (min max)
+			  (rtl:make-procedure-header
+			   (procedure-label procedure)
+			   min max))))
 		     (else
 		      ;; It's not an open procedure but it looks like one
 		      ;; at the rtl level.
 		      (rtl:make-open-procedure-header
 		       (procedure-label procedure)))))
 	      ((procedure-rest procedure)
-	       (with-procedure-arity-encoding
-		procedure
-		(lambda (min max)
-		  (rtl:make-procedure-header (procedure-label procedure)
-					     min max))))
+	       (with-values (lambda () (procedure-arity-encoding procedure))
+		 (lambda (min max)
+		   (rtl:make-procedure-header (procedure-label procedure)
+					      min max))))
 	      (else
 	       (rtl:make-open-procedure-header (procedure-label procedure))))
 	(setup-stack-frame procedure)))
@@ -118,11 +118,13 @@ MIT in each case. |#
 	     (cellify-variable rest)
 	     (make-null-cfg)))
        (scfg*->scfg!
-	(map (lambda (name value)
-	       (if (and (procedure? value)
-			(not (procedure/trivial-or-virtual? value)))
-		   (letrec-close block name value)
-		   (make-null-cfg)))
+	(map (let ((context (make-reference-context block)))
+	       (set-reference-context/offset! context 0)
+	       (lambda (name value)
+		 (if (and (procedure? value)
+			  (not (procedure/trivial-or-virtual? value)))
+		     (letrec-close context name value)
+		     (make-null-cfg))))
 	     names values))))))
 
 (define (setup-bindings names values pushes)
@@ -150,15 +152,14 @@ MIT in each case. |#
 	 (enqueue-procedure! value)
 	 (case (procedure/type value)
 	   ((CLOSURE)
-	    (if (procedure/trivial-closure? value)
-		(begin
-		  (error "Letrec value is trivial closure" value)
-		  (recvr (make-null-cfg)
-			 (make-trivial-closure-cons value)))
-		(recvr (make-null-cfg)
-		       (make-non-trivial-closure-cons value))))
+	    (recvr (make-null-cfg)
+		   (make-non-trivial-closure-cons value)))
 	   ((IC)
-	    (make-ic-cons value 'USE-ENV recvr))
+	    (with-values (lambda () (make-ic-cons value 'USE-ENV)) recvr))
+	   ((TRIVIAL-CLOSURE)
+	    (error "Letrec value is trivial closure" value)
+	    (recvr (make-null-cfg)
+		   (make-trivial-closure-cons value)))
 	   ((OPEN-EXTERNAL OPEN-INTERNAL)
 	    (error "Letrec value is open procedure" value))
 	   (else
@@ -166,10 +167,11 @@ MIT in each case. |#
 	(else
 	 (error "Unknown letrec binding value" value))))
 
-(define (letrec-close block variable value)
+(define (letrec-close context variable value)
   (load-closure-environment
-   value 0
-   (find-variable block variable 0
+   value
+   (find-variable context
+		  variable
 		  rtl:make-fetch
 		  (lambda (nearest-ic-locative name)
 		    nearest-ic-locative name ;; ignored
