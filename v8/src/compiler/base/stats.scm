@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stats.scm,v 1.2 1995/01/05 22:28:22 adams Exp $
+$Id: stats.scm,v 1.3 1995/03/12 16:31:16 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -93,7 +93,7 @@ MIT in each case. |#
       (cond ((find-statistic statistic)
 	     => (lambda (stat)
 		  (apply (compiler-statistic/sample stat) data)
-		  datum))	 
+		  data))
 	    (else
 	     (define-compiler-statistic (length data) statistic)
 	     (warn "SAMPLE should be replaced with call to SAMPLE/1 or SAMPLE/2"
