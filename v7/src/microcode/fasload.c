@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.27 1987/06/05 04:14:38 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.28 1987/07/07 21:02:46 cph Rel $
 
    The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
@@ -457,6 +457,7 @@ load_file(from_band_load)
   }
 
   Set_Pure_Top();
+  FASLOAD_RELOCATE_HOOK (Orig_Heap, Free, Orig_Constant, Free_Constant);
   Relocate_Into(Xtemp, Dumped_Object);
   return *Xtemp;
 }
