@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.36 1991/02/24 01:10:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.37 1991/09/24 22:39:20 cph Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -58,7 +58,7 @@ MIT in each case. */
 #define Get_Fixed_Obj_Slot(N)	FAST_VECTOR_REF (Fixed_Objects, N)
 #define Set_Fixed_Obj_Slot(N,S)	FAST_VECTOR_SET (Fixed_Objects, N, S)
 #define Update_FObj_Slot(N, S)  Set_Fixed_Obj_Slot(N, S)
-#define Declare_Fixed_Objects()	SCHEME_OBJECT Fixed_Objects;
+#define Declare_Fixed_Objects()	SCHEME_OBJECT Fixed_Objects
 #define Valid_Fixed_Obj_Vector() (VECTOR_P (Fixed_Objects))
 #define Save_Fixed_Obj(Save_FO)					\
   Save_FO = Fixed_Objects;					\
