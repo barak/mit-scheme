@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseep.scm,v 1.4 1987/05/07 00:14:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseep.scm,v 1.5 1987/05/18 23:26:09 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -70,37 +70,4 @@ MIT in each case. |#
 	(if (eq? (rtl:expression-type x) (rtl:expression-type y))
 	    (expression-equivalent? x y false)
 	    (rtl:any-subexpression? x loop))))
-  (loop x))
-
-(define (expression-address-varies? expression)
-  (if (memq (rtl:expression-type expression)
-	    '(OFFSET PRE-INCREMENT POST-INCREMENT))
-      (register-expression-varies? (rtl:address-register expression))
-      (rtl:any-subexpression? expression expression-address-varies?)))
-
-(define (expression-varies? expression)
-  ;; This procedure should not be called on a register expression.
-  (let ((type (rtl:expression-type expression)))
-    (or (memq type '(OFFSET PRE-INCREMENT POST-INCREMENT))
-	(if (eq? type 'REGISTER)
-	    (register-expression-varies? expression)
-	    (rtl:any-subexpression? expression expression-varies?)))))
-
-(define (register-expression-varies? expression)
-  (not (or (= regnum:regs-pointer (rtl:register-number expression))
-	   (= regnum:frame-pointer (rtl:register-number expression)))))
-
-(define (stack-push/pop? expression)
-  (and (pre/post-increment? expression)
-       (interpreter-stack-pointer? (rtl:address-register expression))))
-
-(define (heap-allocate? expression)
-  (and (pre/post-increment? expression)
-       (interpreter-free-pointer? (rtl:address-register expression))))
-
-(define-integrable (pre/post-increment? expression)
-  (memq (rtl:expression-type expression) '(PRE-INCREMENT POST-INCREMENT)))
-
-(define-integrable (expression-not-object? expression)
-  (memq (rtl:expression-type expression)
   (loop x))
