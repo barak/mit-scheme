@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.8 1991/09/24 17:53:24 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.9 1991/10/10 22:54:44 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -680,7 +680,8 @@ and reverse search is specified by a negative numeric arg."
 		  (narrow-to-region start (mark1+ m))))
 	    (set-buffer-point! buffer start))
 	  (if (current-buffer? buffer)
-	      (message "No messages")))
+	      (begin (update-mode-line! buffer)
+		     (message "No messages"))))
 	(let ((last (msg-memo/last memo)))
 	  (cond ((not n)
 		 (select-message buffer last))
