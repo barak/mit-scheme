@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.16 1991/03/16 08:13:31 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.17 1991/04/26 05:27:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -45,7 +45,7 @@
 ;;;; X Terminal
 
 (declare (usual-integrations))
-
+
 (define-primitives
   (x-open-display 1)
   (x-close-all-displays 0)
@@ -61,9 +61,15 @@
   (x-window-set-name 2)
   (xterm-clear-rectangle! 6)
   (xterm-draw-cursor 1)
+  (xterm-dump-rectangle 5)
   (xterm-enable-cursor 2)
   (xterm-erase-cursor 1)
+  (xterm-map-x-coordinate 2)
+  (xterm-map-y-coordinate 2)
+  (xterm-map-x-size 2)
+  (xterm-map-y-size 2)
   (xterm-open-window 3)
+  (xterm-reconfigure 3)
   (xterm-restore-contents 6)
   (xterm-save-contents 5)
   (xterm-scroll-lines-down 6)
@@ -301,17 +307,18 @@
 (define-integrable event-type:button-down 0)
 (define-integrable event-type:button-up 1)
 (define-integrable event-type:configure 2)
-(define-integrable event-type:enter 3)		
-(define-integrable event-type:focus-in 4)	
-(define-integrable event-type:focus-out 5)		
-(define-integrable event-type:key-press 6)		
-(define-integrable event-type:leave 7)		
-(define-integrable event-type:motion 8) 
-(define-integrable number-of-event-types 9)
+(define-integrable event-type:enter 3)
+(define-integrable event-type:focus-in 4)
+(define-integrable event-type:focus-out 5)
+(define-integrable event-type:key-press 6)
+(define-integrable event-type:leave 7)
+(define-integrable event-type:motion 8)
+(define-integrable event-type:expose 9)
+(define-integrable number-of-event-types 10)
 
-;; This mask contains button-down, button-up, configure, focus-in, and
-;; key-press.
-(define-integrable event-mask #x057)
+;; This mask contains button-down, button-up, configure, focus-in,
+;; key-press, and expose.
+(define-integrable event-mask #x257)
 
 (define event-handlers
   (make-vector number-of-event-types false))
@@ -321,28 +328,42 @@
 
 (define-event-handler event-type:configure
   (lambda (screen event)
-    (let ((x-size (vector-ref event 2))
+    (let ((xterm (screen-xterm screen))
+	  (x-size (vector-ref event 2))
 	  (y-size (vector-ref event 3)))
-      (if (not (and (= x-size (screen-x-size screen))
-		    (= y-size (screen-y-size screen))))
-	  (begin
-	    (set-screen-size! screen x-size y-size)
-	    (update-screen! screen true))))))
+      (xterm-reconfigure xterm x-size y-size)
+      (let ((x-size (xterm-map-x-size xterm x-size))
+	    (y-size (xterm-map-y-size xterm y-size)))
+	(if (not (and (= x-size (screen-x-size screen))
+		      (= y-size (screen-y-size screen))))
+	    (begin
+	      (set-screen-size! screen x-size y-size)
+	      (update-screen! screen true)))))))
+
+(define-event-handler event-type:expose
+  (lambda (screen event)
+    (xterm-dump-rectangle (screen-xterm screen)
+			  (vector-ref event 2)
+			  (vector-ref event 3)
+			  (vector-ref event 4)
+			  (vector-ref event 5))))
 
 (define-event-handler event-type:button-down
   (lambda (screen event)
-    (send (screen-root-window screen) ':button-event!
-	  (make-down-button (vector-ref event 4))
-	  (vector-ref event 2)
-	  (vector-ref event 3))
+    (let ((xterm (screen-xterm screen)))
+      (send (screen-root-window screen) ':button-event!
+	    (make-down-button (vector-ref event 4))
+	    (xterm-map-x-coordinate xterm (vector-ref event 2))
+	    (xterm-map-y-coordinate xterm (vector-ref event 3))))
     (update-screen! screen false)))
 
 (define-event-handler event-type:button-up
   (lambda (screen event)
-    (send (screen-root-window screen) ':button-event!
-	  (make-up-button (vector-ref event 4))
-	  (vector-ref event 2)
-	  (vector-ref event 3))
+    (let ((xterm (screen-xterm screen)))
+      (send (screen-root-window screen) ':button-event!
+	    (make-up-button (vector-ref event 4))
+	    (xterm-map-x-coordinate xterm (vector-ref event 2))
+	    (xterm-map-y-coordinate xterm (vector-ref event 3))))
     (update-screen! screen false)))
 
 (define-event-handler event-type:focus-in
