@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.3 1992/10/15 17:04:39 jinx Exp $
+$Id: rules3.scm,v 1.4 1993/02/15 21:44:43 gjr Exp $
 
-Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
+Copyright (c) 1992-1993 Digital Equipment Corporation (D.E.C.)
 
 This software was developed at the Digital Equipment Corporation
 Cambridge Research Laboratory.  Permission to copy this software, to
@@ -715,23 +715,18 @@ case.
 			    (list regnum:first-arg regnum:second-arg
 				  regnum:third-arg regnum:fourth-arg)
     (lambda ()
-      (let* (
-#| Bug in Alpha -- stq is dying at this location
-	     (i1
+      (let* ((i1
 	      (load-pc-relative-address regnum:fourth-arg
 					'CONSTANT environment-label))
-|#
 	     (i2 (load-pc-relative-address regnum:second-arg
 					   'CODE *block-label*))
 	     (i3 (load-pc-relative-address regnum:third-arg
 					   'CONSTANT free-ref-label)))
 	(LAP
 	 ;; Grab interp's env. and store in code block at environment-label
-#|
 	 (LDQ ,regnum:first-arg ,reg:environment)
 	 ,@i1
 	 (STQ ,regnum:first-arg (OFFSET 0 ,regnum:fourth-arg))
-|#
 	 ;; Now invoke the linker
 	 ;; (arg1 is return address, supplied by interface)
 	 ,@i2
