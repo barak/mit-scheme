@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.48 1996/05/14 23:35:22 cph Exp $
+;;;	$Id: process.scm,v 1.49 1996/05/15 18:48:40 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
@@ -617,13 +617,7 @@ after the listing is made.)"
 	 'DEFAULT)))
   (call-with-input-copier process input-region output-mark 512
     (lambda (copy-input)
-      (call-with-output-copier process output-mark input-region
-			       ;; The 16 here is a heuristic that
-			       ;; seems to work provide reasonable
-			       ;; feedback for the popclient program,
-			       ;; which at present is the only
-			       ;; subprocess that uses this feature.
-			       (if allow-redisplay? 16 512)
+      (call-with-output-copier process output-mark input-region 512
 	(lambda (copy-output)
 	  (if copy-input
 	      (if copy-output
