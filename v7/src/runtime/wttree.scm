@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: wttree.scm,v 1.4 1994/09/19 20:39:49 adams Exp $
+$Id: wttree.scm,v 1.5 1994/11/14 18:51:26 adams Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1993-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -31,6 +31,17 @@ there shall be no use of the name of the Massachusetts Institute of
 Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
+
+#|
+Copyright (c) 1993-1994 Stephen Adams
+
+Any copy of this software must include this copyright notice in full.
+This is a derived work based on the following reference:
+
+  Stephen Adams, Implemeting Sets Efficiently in a Functional
+     Language, CSTR 92-10, Department of Electronics and Computer
+     Science, University of Southampton, 1992
+|#
 
 ;;;; Weight-balanced tree (wt-tree) Operations
 ;;; package: (runtime wt-tree)
