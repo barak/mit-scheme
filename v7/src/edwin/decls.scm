@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.65 1999/10/07 17:00:42 cph Exp $
+$Id: decls.scm,v 1.66 2000/01/10 03:27:00 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -47,7 +47,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				   true))))))))
 	      (if (not (null? reasons))
 		  (begin
-		    (newline)
 		    (write-string "Processing ")
 		    (write source)
 		    (write-string " because of:")
@@ -55,6 +54,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				(write-char #\space)
 				(write reason))
 			      reasons)
+		    (newline)
 		    (fluid-let ((sf/default-syntax-table
 				 (lexical-reference (->environment '(EDWIN))
 						    syntax-table))
