@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.8 2000/12/08 19:18:35 cph Exp $
+# $Id: Makefile.in,v 1.9 2000/12/08 19:19:23 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -80,8 +80,7 @@ tags TAGS:
 	$(srcdir)/Tags.sh $(SUBDIRS)
 
 install: all
-	( cd microcode; $(MAKE) $@ )
-
+	$(mkinstalldirs) $(DESTDIR)
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/SRC
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/SRC/edwin
@@ -92,6 +91,8 @@ install: all
 	$(mkinstalldirs) $(DESTDIR)$(EDDIR)/etc
 	$(mkinstalldirs) $(DESTDIR)$(EODIR)
 	$(mkinstalldirs) $(DESTDIR)$(RODIR)
+
+	( cd microcode; $(MAKE) $@ )
 
 	$(INSTALL_DATA) $(srcdir)/etc/optiondb.scm $(DESTDIR)$(AUXDIR)/.
 	$(INSTALL_DATA) $(srcdir)/etc/TUTORIAL $(DESTDIR)$(EDDIR)/etc/.
