@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.442 2003/04/14 18:59:08 cph Exp $
+$Id: runtime.pkg,v 14.443 2003/04/14 19:40:36 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4499,9 +4499,9 @@ USA.
   (files "unicode")
   (parent (runtime))
   (export ()
+	  8-bit-alphabet?
 	  <alphabet>
 	  <wide-string>
-	  8-bit-alphabet?
 	  alphabet
 	  alphabet+
 	  alphabet-
@@ -4524,8 +4524,10 @@ USA.
 	  open-wide-input-string
 	  open-wide-output-string
 	  read-utf16-be-char
+	  read-utf16-char
 	  read-utf16-le-char
 	  read-utf32-be-char
+	  read-utf32-char
 	  read-utf32-le-char
 	  read-utf8-char
 	  string->alphabet
@@ -4535,8 +4537,14 @@ USA.
 	  utf16-be-string-length
 	  utf16-le-string->wide-string
 	  utf16-le-string-length
+	  utf16-string->wide-string
+	  utf16-string-length
+	  utf32-be-string->wide-string
 	  utf32-be-string-length
+	  utf32-le-string->wide-string
 	  utf32-le-string-length
+	  utf32-string->wide-string
+	  utf32-string-length
 	  utf8-string->wide-string
 	  utf8-string-length
 	  well-formed-code-point-list?
@@ -4545,6 +4553,10 @@ USA.
 	  wide-string->string
 	  wide-string->utf16-be-string
 	  wide-string->utf16-le-string
+	  wide-string->utf16-string
+	  wide-string->utf32-be-string
+	  wide-string->utf32-le-string
+	  wide-string->utf32-string
 	  wide-string->utf8-string
 	  wide-string-index?
 	  wide-string-length
@@ -4552,8 +4564,10 @@ USA.
 	  wide-string-set!
 	  wide-string?
 	  write-utf16-be-char
+	  write-utf16-char
 	  write-utf16-le-char
 	  write-utf32-be-char
+	  write-utf32-char
 	  write-utf32-le-char
 	  write-utf8-char)
   (export (runtime parser-buffer)
