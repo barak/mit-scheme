@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules2.scm,v 1.2 1995/01/20 20:17:17 ssmith Exp $
+$Id: rules2.scm,v 1.3 1995/05/24 00:19:54 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -96,14 +96,13 @@ MIT in each case. |#
       (begin
 	(set-equal-branches!)
 	(LAP (CMP W (R ,(standard-source! source))
-		  (& ,(make-non-pointer-literal (object-type #f)
-						(object-datum #f))))))))
+		  (& ,(make-non-pointer-literal (386-object-type #f)
+						(386-object-datum #f))))))))
 
 (define-rule predicate
   (PRED-1-ARG NULL? (REGISTER (? source)))
   (set-equal-branches!)
-  (LAP (CMP W (R ,(standard-source! source)) (@RO B ,regnum:regs-pointer
-						  ,register-block/empty-list))))
+  (LAP (CMP W (R ,(standard-source! source)) ,(get-regblock-ea register-block/empty-list))))
 
 (define-rule predicate
   (PRED-2-ARGS WORD-LESS-THAN-UNSIGNED?
