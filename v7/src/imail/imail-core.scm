@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.42 2000/05/08 14:59:06 cph Exp $
+;;; $Id: imail-core.scm,v 1.43 2000/05/08 15:30:45 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -405,15 +405,19 @@
 
 ;;;; Message Navigation
 
-(define-generic first-unseen-message (folder))
-(define-method first-unseen-message ((folder <folder>))
-  (let ((message (first-message folder)))
-    (and message
-	 (let loop ((message message))
-	   (let ((next (next-message message)))
-	     (cond ((not next) message)
-		   ((message-seen? next) (loop next))
-		   (else next)))))))
+(define (first-unseen-message folder)
+  (let ((end (folder-length folder)))
+    (and (> end 0)
+	 (let loop ((start (first-unseen-message-index folder)))
+	   (let ((message (get-message folder start)))
+	     (if (and (message-seen? message) (< (+ start 1) end))
+		 (loop (+ start 1))
+		 message))))))
+
+(define-generic first-unseen-message-index (folder))
+(define-method first-unseen-message-index ((folder <folder>))
+  folder
+  0)
 
 (define (first-message folder)
   (and (> (folder-length folder) 0)

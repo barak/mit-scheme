@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.20 2000/05/08 15:04:01 cph Exp $
+;;; $Id: imail-imap.scm,v 1.21 2000/05/08 15:30:49 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -395,11 +395,13 @@
   (guarantee-imap-folder-open folder)
   (vector-ref (imap-folder-messages folder) index))
 
-(define-method unseen-message ((folder <imap-folder>))
+#|
+;; There's no guarantee that UNSEEN is kept up to date by the server.
+;; So unless we want to manually update it, it's useless.
+(define-method first-unseen-message-index ((folder <imap-folder>))
   (guarantee-imap-folder-open folder)
-  (let ((unseen (imap-folder-unseen folder)))
-    (and unseen
-	 (get-message folder unseen))))
+  (or (imap-folder-unseen folder) 0))
+|#
 
 (define-method append-message ((folder <imap-folder>) (message <message>))
   (guarantee-imap-folder-open folder)
@@ -450,7 +452,7 @@
 				connection 'FETCH (+ index 1) items))
 
 (define (imap:command:fetch-range connection start end items)
-  (if (fix:< start end)
+  (if (< start end)
       (imap:command:multiple-response imap:response:fetch?
 				      connection 'FETCH
 				      (cons 'ATOM
@@ -645,7 +647,7 @@
 	((imap:response:fetch? response)
 	 (process-fetch-attributes
 	  (get-message (selected-imap-folder connection)
-		       (fix:- (imap:response:fetch-index response) 1))
+		       (- (imap:response:fetch-index response) 1))
 	  response)
 	 (eq? command 'FETCH))
 	(else
