@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.34 1987/08/06 06:05:47 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.35 1987/08/10 21:25:07 jinx Exp $ */
 
 /* Memory management top level.  Garbage collection to disk.
 
@@ -104,11 +104,13 @@ Pointer *free_buffer_top, *free_buffer_bottom;
 extern char *mktemp();
 
 int gc_file;
+static long current_disk_position;
 static char *gc_file_name;
 static char gc_default_file_name[FILE_NAME_LENGTH] = GC_DEFAULT_FILE_NAME;
 
 void
-open_gc_file()
+open_gc_file(size)
+     int size;
 {
   int position;
   int flags;
@@ -151,6 +153,14 @@ open_gc_file()
     fprintf(stderr, "Aborting.\n");
     exit(1);
   }
+#ifdef hpux
+  if (gc_file_name == gc_default_file_name)
+  {
+    extern prealloc();
+    prealloc(gc_file, size);
+  }
+#endif
+  current_disk_position = 0;
   return;
 }
 
@@ -233,7 +243,7 @@ Setup_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
   Heap_Bottom = Heap;
   Clear_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size);
 
-  open_gc_file();
+  open_gc_file(Our_Heap_Size * sizeof(Pointer));
   return;
 }
 
@@ -253,7 +263,8 @@ dump_buffer(from, position, nbuffers, name, success)
 {
   long bytes_written;
 
-  if (lseek(gc_file, *position, 0) == -1)
+  if ((current_disk_position != *position) &&
+      (lseek(gc_file, *position, 0) == -1))
   {
     if (success == NULL)
     {
@@ -280,6 +291,7 @@ dump_buffer(from, position, nbuffers, name, success)
   }
 
   *position += bytes_written;
+  current_disk_position = *position;
   return;
 }
 
@@ -292,7 +304,8 @@ load_buffer(position, to, nbytes, name)
 {
   long bytes_read;
 
-  if (lseek(gc_file, position, 0) == -1)
+  if ((current_disk_position != position) &&
+      (lseek(gc_file, position, 0) == -1))
   {
     fprintf(stderr, "\nCould not position GC file to read %s.\n", name);
     Microcode_Termination(TERM_EXIT);
@@ -304,6 +317,7 @@ load_buffer(position, to, nbytes, name)
     Microcode_Termination(TERM_EXIT);
     /*NOTREACHED*/
   }
+  current_disk_position += bytes_read;
   return;
 }
 
