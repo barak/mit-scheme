@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osterm.h,v 1.4 1990/11/05 11:55:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osterm.h,v 1.5 1990/11/08 11:12:58 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -54,8 +54,14 @@ extern void EXFUN (OS_terminal_nonbuffered, (Tchannel channel));
 extern void EXFUN (OS_terminal_flush_input, (Tchannel channel));
 extern void EXFUN (OS_terminal_flush_output, (Tchannel channel));
 extern void EXFUN (OS_terminal_drain_output, (Tchannel channel));
+extern int EXFUN (OS_job_control_p, (void));
 extern CONST char * EXFUN
   (OS_open_pty_master, (Tchannel * master_fd, CONST char ** master_fname));
 extern void EXFUN (OS_pty_master_send_signal, (Tchannel channel, int sig));
+extern void EXFUN (OS_pty_master_kill, (Tchannel channel));
+extern void EXFUN (OS_pty_master_stop, (Tchannel channel));
+extern void EXFUN (OS_pty_master_continue, (Tchannel channel));
+extern void EXFUN (OS_pty_master_interrupt, (Tchannel channel));
+extern void EXFUN (OS_pty_master_quit, (Tchannel channel));
 
 #endif /* SCM_OSTERM_H */

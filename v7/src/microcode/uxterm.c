@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.6 1990/11/05 11:55:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.7 1990/11/08 11:12:40 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -418,11 +418,18 @@ DEFUN (OS_terminal_drain_output, (channel), Tchannel channel)
   STD_VOID_SYSTEM_CALL
     ("tcdrain", (UX_tcdrain (CHANNEL_DESCRIPTOR (channel))));
 }
+
+int
+DEFUN_VOID (OS_job_control_p)
+{
+  return (UX_SC_JOB_CONTROL ());
+}
 
 #ifdef HAVE_PTYS
 
 /* Open an available pty, putting channel in (*ptyv),
-   and return the file name of the pty.  Return 0 if none available.  */
+   and return the file name of the pty.
+   Signal error if none available.  */
 
 CONST char *
 DEFUN (OS_open_pty_master, (master_fd, master_fname),
@@ -452,7 +459,7 @@ DEFUN (OS_open_pty_master, (master_fd, master_fname),
 	if (fd < 0)
 	  {
 	    if (errno == EACCES)
-	      return (0);
+	      goto loser;
 	    if (errno != EINTR)
 	      continue;
 	    deliver_pending_interrupts ();
@@ -474,17 +481,19 @@ DEFUN (OS_open_pty_master, (master_fd, master_fname),
 	(*master_fname) = master_name;
 	return (slave_name);
       }
+ loser:
+  error_external_return ();
   return (0);
 }
 
 void
 DEFUN (OS_pty_master_send_signal, (channel, sig), Tchannel channel AND int sig)
 {
-#ifdef _HPUX
+#ifdef TIOCSIGSEND
   STD_VOID_SYSTEM_CALL
     ("ioctl_TIOCSIGSEND",
      (UX_ioctl ((CHANNEL_DESCRIPTOR (channel)), TIOCSIGSEND, sig)));
-#else /* not _HPUX */
+#else /* not TIOCSIGSEND */
 #ifdef HAVE_BSD_JOB_CONTROL
   int fd = (CHANNEL_DESCRIPTOR (channel));
   int gid;
@@ -493,9 +502,9 @@ DEFUN (OS_pty_master_send_signal, (channel, sig), Tchannel channel AND int sig)
 #else /* not HAVE_BSD_JOB_CONTROL */
   error_unimplemented_primitive ();
 #endif /* HAVE_BSD_JOB_CONTROL */
-#endif /* _HPUX */
+#endif /* TIOCSIGSEND */
 }
-
+
 #else /* not HAVE_PTYS */
 
 CONST char *
@@ -503,7 +512,7 @@ DEFUN (OS_open_pty_master, (master_fd, master_fname),
        Tchannel * master_fd AND
        CONST char ** master_fname)
 {
-  return (0);
+  error_unimplemented_primitive ();
 }
 
 void
@@ -513,3 +522,33 @@ DEFUN (OS_pty_master_send_signal, (channel, sig), Tchannel channel AND int sig)
 }
 
 #endif /* HAVE_PTYS */
+
+void
+DEFUN (OS_pty_master_kill, (channel), Tchannel channel)
+{
+  OS_pty_master_send_signal (channel, SIGKILL);
+}
+
+void
+DEFUN (OS_pty_master_stop, (channel), Tchannel channel)
+{
+  OS_pty_master_send_signal (channel, SIGTSTP);
+}
+
+void
+DEFUN (OS_pty_master_continue, (channel), Tchannel channel)
+{
+  OS_pty_master_send_signal (channel, SIGCONT);
+}
+
+void
+DEFUN (OS_pty_master_interrupt, (channel), Tchannel channel)
+{
+  OS_pty_master_send_signal (channel, SIGINT);
+}
+
+void
+DEFUN (OS_pty_master_quit, (channel), Tchannel channel)
+{
+  OS_pty_master_send_signal (channel, SIGQUIT);
+}
