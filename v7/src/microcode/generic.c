@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.28 1988/08/16 17:49:29 markf Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.29 1988/09/02 04:13:14 cph Rel $ */
 
 #include "scheme.h"
 #include "prims.h"
@@ -746,8 +746,9 @@ DEFINE_PRIMITIVE ("&*", Prim_multiply, 2, 2, 0)
      : (basic_multiply (Arg1, Arg2)));
 }
 
-static Pointer basic_divide(Arg1, Arg2)
-fast Pointer Arg1, Arg2;
+static Pointer
+basic_divide(Arg1, Arg2)
+     fast Pointer Arg1, Arg2;
 {
   switch (Type_Code(Arg1))
   { case TC_FIXNUM:
@@ -758,8 +759,10 @@ fast Pointer Arg1, Arg2;
 	    Sign_Extend(Arg1, A);
 	    Sign_Extend(Arg2, B);
 	    if (B==0) Primitive_Error(ERR_ARG_2_BAD_RANGE);
+	    if ((A % B) == 0)
+	      return (C_Integer_To_Scheme_Integer ((long) (A / B)));
             Result = (double) A / (double) B;
-	    Reduced_Flonum_Result(Result);
+	    Flonum_Result (Result);
           }
 	 case TC_BIG_FLONUM:
 	  { fast long A;
@@ -768,11 +771,6 @@ fast Pointer Arg1, Arg2;
 	    Primitive_Error(ERR_ARG_2_BAD_RANGE);
 	    Reduced_Flonum_Result(((double) A) / Get_Float(Arg2));
           }
-
-/* Prim_Divide continues on the next page */
-
-/* Prim_Divide, continued */
-
 	 case TC_BIG_FIXNUM:
 	  { Pointer Big_Arg1, Result, B;
 	    long A;
@@ -787,7 +785,7 @@ fast Pointer Arg1, Arg2;
 	    Sign_Extend(Arg1, A);
 	    { B = Big_To_Float(Arg2);
 	      if (Type_Code(B) == TC_BIG_FLONUM)
-	      { Reduced_Flonum_Result(A / Get_Float(B));
+	      { Flonum_Result(A / Get_Float(B));
 	      }
 	      Primitive_Error(ERR_ARG_2_FAILED_COERCION);
 	    }
@@ -832,11 +830,6 @@ fast Pointer Arg1, Arg2;
        }
        /*NOTREACHED*/
      }
-
-/* Prim_Divide continues on the next page */
-
-/* Prim_Divide, continued */
-
     case TC_BIG_FIXNUM:
      { switch (Type_Code(Arg2))
        { case TC_FIXNUM:
@@ -853,7 +846,7 @@ fast Pointer Arg1, Arg2;
 	    if (Type_Code(A) == TC_BIG_FLONUM)
 	    { long B;
 	      Sign_Extend(Arg2, B);
-	      Reduced_Flonum_Result(Get_Float(A) / ((double) B));
+	      Flonum_Result(Get_Float(A) / ((double) B));
 	    }
 	    Primitive_Error(ERR_ARG_1_FAILED_COERCION);
 	  }
@@ -889,7 +882,7 @@ fast Pointer Arg1, Arg2;
 	      if (Type_Code(B) == TC_BIG_FLONUM)
 	      { if (Get_Float(B) == 0)
 		  Primitive_Error(ERR_ARG_2_BAD_RANGE);
-   	        { Reduced_Flonum_Result(Get_Float(A) / Get_Float(B));
+   	        { Flonum_Result(Get_Float(A) / Get_Float(B));
 	        }
 	      }
 	      Primitive_Error(ERR_ARG_2_FAILED_COERCION);
