@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.5 1988/06/14 08:46:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.6 1988/06/15 20:47:59 jrm Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -83,17 +83,26 @@ MIT in each case. |#
 (define disassembler/base-address)
 
 (define (disassembler/write-compiled-entry entry)
-  (let ((the-block (compiled-code-address->block entry)))
-    (fluid-let ((disassembler/write-offsets? true)
-		(disassembler/write-addresses? true)
-		(disassembler/base-address (object-datum the-block)))
-      (newline)
-      (newline)
-      (disassembler/write-compiled-code-block
-       the-block
-       (->compiler-info
-	(system-vector-ref the-block
-			   (-  (system-vector-length the-block) 2)))))))
+  (define (do-it the-block)
+    (compiler-info/with-on-demand-loading ;force compiler info loading
+     (lambda ()
+       (compiled-code-block->compiler-info the-block
+         (lambda (info)
+	   (fluid-let ((disassembler/write-offsets? 	true)
+		       (disassembler/write-addresses? 	true)
+		       (disassembler/base-address (primitive-datum the-block)))
+	     (newline)
+	     (newline)
+	     (disassembler/write-compiled-code-block the-block info)))
+	 (lambda () (error "No compiler info for entry" entry))))))
+
+  (compiled-entry->block-and-offset entry
+    (lambda (block offset) offset (do-it block))
+    (lambda (manifest-block manifest-offset block offset)
+      manifest-block manifest-offset offset
+      (write-string "Writing MANIFEST-CLOSURE")
+      (do-it block))
+    (lambda () (error "Cannot disassemble entry" entry))))
 
 ;;; Operations exported from the disassembler package
 
