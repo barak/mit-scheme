@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.90 1992/04/22 21:14:39 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.91 1992/05/12 15:45:40 mhwu Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -37,13 +37,15 @@ MIT in each case. |#
 (global-definitions "../runtime/runtim")
 
 (define-package (edwin)
+  (file-case os-type
+    ((unix) "unix")
+    ((dos)  "dos"))
   (files "utils"
 	 "nvector"
 	 "ring"
 	 "strtab"
 	 "strpad"
 	 "class"
-	 "unix"
 
 	 "paths"
 	 "struct"
@@ -815,7 +817,9 @@ MIT in each case. |#
   (parent (edwin)))
 
 (define-package (edwin process)
-  (files "process")
+  (file-case os-type
+    ((unix) "process")
+    ((dos)  "dosproc"))
   (parent (edwin))
   (export (edwin)
 	  accept-process-output
